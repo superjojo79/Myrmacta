@@ -1,0 +1,299 @@
+# Visualisation des instances de workflow
+
+> Rendu BPMN.js à partir du XML natif Flowable.  
+> Coloration des états (actif / terminé / erreur) par overlays CSS.  
+> Notification SSE sur changement d'état — rafraîchissement manuel.
+
+---
+
+### Principe
+
+La visualisation est rendue dans le browser via **BPMN.js** (`bpmn-js` — `NavigatedViewer`) à partir du XML BPMN natif Flowable. Aucune conversion de format — le XML produit par Flowable est consommé directement. Les états (actif, terminé, erreur) sont appliqués par **overlays CSS** sur le rendu.
+
+### Accès
+
+La visualisation est accessible aux utilisateurs impliqués dans l'instance (assignés à une tâche, initiateurs, observateurs configurés). Le contrôle d'accès est géré par le port `WorkflowParticipantPort`.
+
+### Endpoints backend
+
+| Méthode | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/workflows/{instanceId}/diagram` | XML BPMN + IDs actifs / terminés / en erreur |
+| `GET` | `/api/workflows/{instanceId}/history` | Étapes avec timing, durée et assigné |
+| `GET` | `/api/workflows/{instanceId}/tasks` | Tâches actives avec assigné courant |
+| `POST` | `/api/workflows/{instanceId}/tasks/{taskId}/reassign` | Réassignation de tâche |
+
+### Modèles de réponse
+
+```java
+// Réponse diagram
+public record WorkflowDiagramView(
+    String       bpmnXml,        // XML BPMN natif Flowable → consommé par BPMN.js
+    List<String> activeIds,      // activités en cours
+    List<String> completedIds,   // activités terminées
+    List<String> failedIds       // activités en erreur
+) {}
+
+// Entrée d'historique
+@Value @Builder
+public class ActivityHistoryEntry {
+    String   activityId;
+    String   name;
+    String   assignee;
+    Instant  startTime;
+    Instant  endTime;       // null si encore en cours
+    Long     durationMs;
+}
+```
+
+### Adaptateur Flowable
+
+```java
+@Component
+@RequiredArgsConstructor
+public class FlowableWorkflowVisualizationAdapter
+        implements WorkflowVisualizationPort {
+
+    private final RepositoryService repositoryService;
+    private final RuntimeService    runtimeService;
+    private final HistoryService    historyService;
+    private final TaskService       taskService;
+
+    @Override
+    public WorkflowDiagramView getDiagram(String instanceId, String tenantId) {
+
+        HistoricProcessInstance hpi = historyService
+            .createHistoricProcessInstanceQuery()
+            .processInstanceId(instanceId)
+            .processInstanceTenantId(tenantId)
+            .singleResult();
+
+        // XML BPMN natif — transmis directement à BPMN.js sans conversion
+        BpmnModel model  = repositoryService
+            .getBpmnModel(hpi.getProcessDefinitionId());
+        String    bpmnXml = new BpmnXMLConverter()
+            .convertToXML(model).toString();
+
+        List<String> activeIds = runtimeService
+            .getActiveActivityIds(instanceId);
+
+        List<String> completedIds = historyService
+            .createHistoricActivityInstanceQuery()
+            .processInstanceId(instanceId).finished().list()
+            .stream().map(HistoricActivityInstance::getActivityId)
+            .distinct().toList();
+
+        List<String> failedIds = historyService
+            .createHistoricActivityInstanceQuery()
+            .processInstanceId(instanceId).list().stream()
+            .filter(a -> a.getDeleteReason() != null
+                      && a.getDeleteReason().startsWith("error"))
+            .map(HistoricActivityInstance::getActivityId).toList();
+
+        return new WorkflowDiagramView(bpmnXml, activeIds,
+                                       completedIds, failedIds);
+    }
+
+    @Override
+    public List<ActivityHistoryEntry> getHistory(String instanceId,
+                                                  String tenantId) {
+        return historyService
+            .createHistoricActivityInstanceQuery()
+            .processInstanceId(instanceId)
+            .orderByHistoricActivityInstanceStartTime().asc()
+            .list().stream()
+            .map(a -> ActivityHistoryEntry.builder()
+                .activityId(a.getActivityId())
+                .name      (a.getActivityName())
+                .assignee  (a.getAssignee())
+                .startTime (a.getStartTime().toInstant())
+                .endTime   (a.getEndTime() != null
+                              ? a.getEndTime().toInstant() : null)
+                .durationMs(a.getDurationInMillis())
+                .build())
+            .toList();
+    }
+
+    @Override
+    public void reassignTask(String taskId, String assigneeId,
+                             String tenantId) {
+        taskService.setAssignee(taskId, assigneeId);
+    }
+}
+```
+
+### Frontend Vue 3 — composant WorkflowViewer
+
+**Dépendance npm :**
+
+```bash
+npm install bpmn-js
+```
+
+**Rendu et coloration :**
+
+```javascript
+import BpmnViewer from 'bpmn-js/lib/NavigatedViewer';
+
+const viewer = new BpmnViewer({ container: '#bpmn-canvas' });
+
+async function loadDiagram(instanceId) {
+    const { bpmnXml, activeIds, completedIds, failedIds }
+        = await api.get(`/api/workflows/${instanceId}/diagram`);
+
+    // Rendu du XML natif Flowable — aucune conversion
+    await viewer.importXML(bpmnXml);
+
+    const canvas   = viewer.get('canvas');
+    const overlays = viewer.get('overlays');
+
+    completedIds.forEach(id => canvas.addMarker(id, 'highlight-completed'));
+    activeIds.forEach   (id => canvas.addMarker(id, 'highlight-active'));
+    failedIds.forEach   (id => canvas.addMarker(id, 'highlight-failed'));
+
+    // Badge visuel sur les étapes actives
+    activeIds.forEach(id => overlays.add(id, {
+        position: { top: -12, right: -12 },
+        html: '<div class="bpmn-badge active">●</div>'
+    }));
+}
+```
+
+**CSS des overlays :**
+
+```css
+.highlight-completed .djs-visual > :nth-child(1) {
+    fill: #dcfce7 !important; stroke: #16a34a !important;
+}
+.highlight-active .djs-visual > :nth-child(1) {
+    fill: #dbeafe !important; stroke: #2563eb !important;
+}
+.highlight-failed .djs-visual > :nth-child(1) {
+    fill: #fee2e2 !important; stroke: #dc2626 !important;
+}
+.bpmn-badge.active {
+    background: #2563eb; color: white;
+    border-radius: 50%; width: 16px; height: 16px;
+    font-size: 10px; display: flex;
+    align-items: center; justify-content: center;
+}
+```
+
+### Notification de changement d'état — SSE
+
+Le canal SSE existant est réutilisé. Un `FlowableEventListener` notifie les utilisateurs impliqués à chaque transition significative — la vue affiche une bannière de rafraîchissement sans polling.
+
+```java
+@Component
+@RequiredArgsConstructor
+public class WorkflowStateEventListener implements FlowableEventListener {
+
+    private final SendNotificationUseCase notification;
+    private final WorkflowParticipantPort participants;
+
+    private static final Set<FlowableEngineEventType> RELEVANT = Set.of(
+        FlowableEngineEventType.TASK_ASSIGNED,
+        FlowableEngineEventType.ACTIVITY_COMPLETED,
+        FlowableEngineEventType.PROCESS_COMPLETED
+    );
+
+    @Override
+    public void onEvent(FlowableEvent raw) {
+        if (!(raw instanceof FlowableEngineEvent event)) return;
+        if (!RELEVANT.contains(event.getType()))        return;
+
+        String instanceId = event.getProcessInstanceId();
+
+        participants.findByInstanceId(instanceId).forEach(userId ->
+            notification.send(NotificationEvent.builder()
+                .channel (NotificationChannel.BROWSER)
+                .userId  (userId)
+                .type    ("WORKFLOW_STATE_CHANGED")
+                .payload (Map.of("instanceId", instanceId))
+                .build())
+        );
+    }
+
+    @Override public boolean isFailOnException()                   { return false; }
+    @Override public boolean isFireOnTransactionLifecycleEvent()   { return false; }
+}
+```
+
+Côté Vue 3, la notification déclenche une bannière — rafraîchissement au clic :
+
+```javascript
+watch(notifications, (newNotifs) => {
+    const latest = newNotifs[0];
+    if (latest?.type === 'WORKFLOW_STATE_CHANGED'
+     && latest.payload.instanceId === props.instanceId) {
+        showRefreshBanner.value = true;
+    }
+});
+```
+
+### Ports domaine ajoutés
+
+```java
+// domain/workflow/port/out
+public interface WorkflowVisualizationPort {
+    WorkflowDiagramView      getDiagram(String instanceId, String tenantId);
+    List<ActivityHistoryEntry> getHistory(String instanceId, String tenantId);
+    void reassignTask(String taskId, String assigneeId, String tenantId);
+}
+
+// Résolution des utilisateurs impliqués dans une instance
+public interface WorkflowParticipantPort {
+    List<String> findByInstanceId(String instanceId); // retourne les userIds
+}
+```
+
+### Mise à jour de la structure de packages
+
+Dans `infrastructure/flowable` :
+
+```
+infrastructure/flowable
+├── FlowableWorkflowAdapter
+├── FlowableWorkflowVisualizationAdapter  ← nouveau
+├── WorkflowStateEventListener            ← nouveau
+├── ConnectorServiceTask
+└── ConnectorTriggerRuntime
+```
+
+---
+
+---
+
+## Dépendance npm
+
+```bash
+npm install bpmn-js
+```
+
+---
+
+## Affichage du dossier en regard du workflow
+
+Le panneau de visualisation affiche le dossier associé à l'instance en
+parallèle du diagramme BPMN — signalétique, statut, éléments et relations
+(voir [11-dossiers.md](11-dossiers.md)).
+
+```
+GET /api/workflows/{instanceId}/dossier
+    → { dossier, elements, relations }
+```
+
+```
+┌───────────────────────────┬────────────────────────────────────┐
+│  Diagramme BPMN (bpmn-js) │  Dossier DOS-SINISTRE-2024-000042  │
+│                           │  Statut : EN_COURS                 │
+│  [Réception] ──●──        │                                    │
+│  [Instruction]            │  Éléments (3)                      │
+│  [Décision]               │  📎 Formulaire de déclaration      │
+│  [Clôture]                │  📄 Rapport d'expertise            │
+│                           │  📝 Note du gestionnaire           │
+│                           │                                    │
+│                           │  Dossiers liés (1)                 │
+│                           │  → DOS-RECOURS-2024-000007         │
+└───────────────────────────┴────────────────────────────────────┘
+```

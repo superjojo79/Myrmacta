@@ -136,7 +136,7 @@ export const useAuthStore = defineStore('auth', {
 ## Lien avec le multi-tenant
 
 Le claim `tenant_id` est résolu depuis le token OIDC dans le filtre
-`TenantResolutionFilter` — voir [06-multi-tenant.md](06-multi-tenant.md).
+`TenantResolutionFilter` — voir [02-multi-tenant.md](02-multi-tenant.md).
 
 ## Dépendances Maven
 

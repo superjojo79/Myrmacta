@@ -153,16 +153,16 @@ La documentation d'architecture est disponible dans le répertoire `analysis doc
 | ------------------------------------------------------------ | ------------------------------------ |
 | [00-index.md](analysis%20doc/00-index.md)                    | Vue d'ensemble et dépendances        |
 | [01-architecture-hexagonale.md](analysis%20doc/01-architecture-hexagonale.md) | Ports & Adapters, structure packages |
-| [02-workflow-engine.md](analysis%20doc/02-workflow-engine.md) | Flowable, BPMN, event bus            |
-| [03-connecteurs.md](analysis%20doc/03-connecteurs.md)        | Système de connecteurs extensible    |
-| [04-generation-documents.md](analysis%20doc/04-generation-documents.md) | Stack PDF, CSS print, performances   |
-| [05-templates-documents.md](analysis%20doc/05-templates-documents.md) | Versionning, variants, résolution    |
-| [06-multi-tenant.md](analysis%20doc/06-multi-tenant.md)      | Isolation schéma PostgreSQL          |
-| [07-authentification.md](analysis%20doc/07-authentification.md) | OAuth2/OIDC, BFF, providers          |
-| [08-frontend.md](analysis%20doc/08-frontend.md)              | Vue 3, PrimeVue, Pinia               |
+| [02-multi-tenant.md](analysis%20doc/02-multi-tenant.md)      | Isolation schéma PostgreSQL          |
+| [03-authentification.md](analysis%20doc/03-authentification.md) | OAuth2/OIDC, BFF, providers          |
+| [04-dossiers.md](analysis%20doc/04-dossiers.md)              | Entité métier centrale               |
+| [05-workflow-engine.md](analysis%20doc/05-workflow-engine.md) | Flowable, BPMN, event bus            |
+| [06-connecteurs.md](analysis%20doc/06-connecteurs.md)        | Système de connecteurs extensible    |
+| [07-generation-documents.md](analysis%20doc/07-generation-documents.md) | Stack PDF, CSS print, performances   |
+| [08-templates-documents.md](analysis%20doc/08-templates-documents.md) | Versionning, variants, résolution    |
 | [09-notifications.md](analysis%20doc/09-notifications.md)    | Email, webhook, SSE                  |
 | [10-visualisation-workflow.md](analysis%20doc/10-visualisation-workflow.md) | BPMN.js, historique, réassignation   |
-| [11-dossiers.md](analysis%20doc/11-dossiers.md)              | Entité métier centrale               |
+| [11-frontend.md](analysis%20doc/11-frontend.md)              | Vue 3, PrimeVue, Pinia               |
 
 ------
 

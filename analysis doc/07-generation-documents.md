@@ -1,7 +1,7 @@
 # Génération de documents PDF
 
 > Stack Thymeleaf → HTML → Flying Saucer → OpenPDF.  
-> Les templates sont gérés dans [05-templates-documents.md](05-templates-documents.md).
+> Les templates sont gérés dans [08-templates-documents.md](08-templates-documents.md).
 
 ---
 

@@ -266,7 +266,7 @@ public class ConnectorExecutionController {
 
 Chaque `WorkflowTriggerEvent` retourné par un `TriggerConnector` produit
 la création d'un **dossier** et le démarrage de son instance workflow
-(voir [11-dossiers.md](11-dossiers.md)). Un trigger qui importe un fichier
+(voir [04-dossiers.md](04-dossiers.md)). Un trigger qui importe un fichier
 CSV peut retourner N événements → N dossiers créés en batch.
 
 ```java

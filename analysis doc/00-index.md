@@ -10,16 +10,16 @@
 | # | Fonctionnalité | Fichier |
 |---|---|---|
 | 01 | Architecture hexagonale — Ports & Adapters | [01-architecture-hexagonale.md](01-architecture-hexagonale.md) |
-| 02 | Moteur de workflow — Flowable | [02-workflow-engine.md](02-workflow-engine.md) |
-| 03 | Système de connecteurs | [03-connecteurs.md](03-connecteurs.md) |
-| 04 | Génération de documents PDF | [04-generation-documents.md](04-generation-documents.md) |
-| 05 | Templates de documents | [05-templates-documents.md](05-templates-documents.md) |
-| 06 | Multi-tenant | [06-multi-tenant.md](06-multi-tenant.md) |
-| 07 | Authentification — OAuth2/OIDC + BFF | [07-authentification.md](07-authentification.md) |
-| 08 | Frontend — Vue 3 + PrimeVue | [08-frontend.md](08-frontend.md) |
+| 02 | Multi-tenant | [02-multi-tenant.md](02-multi-tenant.md) |
+| 03 | Authentification — OAuth2/OIDC + BFF | [03-authentification.md](03-authentification.md) |
+| 04 | Dossiers — entité métier centrale | [04-dossiers.md](04-dossiers.md) |
+| 05 | Moteur de workflow — Flowable | [05-workflow-engine.md](05-workflow-engine.md) |
+| 06 | Système de connecteurs | [06-connecteurs.md](06-connecteurs.md) |
+| 07 | Génération de documents PDF | [07-generation-documents.md](07-generation-documents.md) |
+| 08 | Templates de documents | [08-templates-documents.md](08-templates-documents.md) |
 | 09 | Notifications | [09-notifications.md](09-notifications.md) |
 | 10 | Visualisation des instances de workflow | [10-visualisation-workflow.md](10-visualisation-workflow.md) |
-| 11 | Dossiers — entité métier centrale | [11-dossiers.md](11-dossiers.md) |
+| 11 | Frontend — Vue 3 + PrimeVue | [11-frontend.md](11-frontend.md) |
 
 ---
 

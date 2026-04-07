@@ -2,7 +2,7 @@
 
 > Orchestration des flux métier via BPMN 2.0.  
 > Les triggers entrants transitent par le système de connecteurs
-> (voir [03-connecteurs.md](03-connecteurs.md)).
+> (voir [06-connecteurs.md](06-connecteurs.md)).
 
 ---
 
@@ -91,7 +91,7 @@ public interface WorkflowEventPublisher {
 ## Lien avec les dossiers
 
 Le workflow opère toujours dans le contexte d'un **dossier** (voir
-[11-dossiers.md](11-dossiers.md)). L'identifiant du dossier (`dossierId`)
+[04-dossiers.md](04-dossiers.md)). L'identifiant du dossier (`dossierId`)
 est injecté comme variable de processus à la création de l'instance et
 accessible depuis tous les `ServiceTask`.
 

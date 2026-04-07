@@ -276,7 +276,7 @@ npm install bpmn-js
 
 Le panneau de visualisation affiche le dossier associé à l'instance en
 parallèle du diagramme BPMN — signalétique, statut, éléments et relations
-(voir [11-dossiers.md](11-dossiers.md)).
+(voir [04-dossiers.md](04-dossiers.md)).
 
 ```
 GET /api/workflows/{instanceId}/dossier

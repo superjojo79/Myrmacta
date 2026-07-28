@@ -20,6 +20,7 @@
 | 09 | Notifications | [09-notifications.md](09-notifications.md) |
 | 10 | Visualisation des instances de workflow | [10-visualisation-workflow.md](10-visualisation-workflow.md) |
 | 11 | Frontend — Vue 3 + PrimeVue | [11-frontend.md](11-frontend.md) |
+| 12 | Autorisation (RBAC) & conformité des données | [12-autorisation-conformite.md](12-autorisation-conformite.md) |
 
 ---
 

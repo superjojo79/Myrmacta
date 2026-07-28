@@ -1,106 +1,132 @@
-# Points à trancher — FlowForge
+# Points tranchés — FlowForge
 
 > Décisions architecturales et de sécurité identifiées lors de la revue de conception.
-> Chaque point doit être résolu avant ou pendant le démarrage du développement.
+> Toutes les décisions ci-dessous sont actées et répercutées dans la documentation
+> technique correspondante (`analysis doc/`). Ce fichier fait office de journal de
+> décision (registre) — il ne reflète plus des questions ouvertes.
 
 ---
 
 ## Sécurité
 
-### [ ] 1. Validation du `tenantId` avant injection dans le `search_path`
+### [x] 1. Validation du `tenantId` avant injection dans le `search_path`
 
-**Problème :** `SchemaMultiTenantConnectionProvider` concatène directement le `tenantId` dans la requête SQL `SET search_path TO {tenantId}, public` sans sanitisation. Un `tenantId` malformé ou malveillant peut constituer une injection SQL.
+**Problème :** `SchemaMultiTenantConnectionProvider` concaténait directement le `tenantId` dans la requête SQL `SET search_path TO {tenantId}, public` sans sanitisation.
 
-**Décision à prendre :** Définir et documenter la règle de validation du `tenantId` (regex, longueur max, caractères autorisés) et choisir où elle s'applique — à la création du tenant uniquement, ou à chaque résolution de requête.
+**Décision retenue :** Double barrière — (1) validation par regex (`^[a-z][a-z0-9_]{2,62}$`) à la création du tenant, alignée sur les contraintes d'identifiant PostgreSQL, et (2) vérification à chaque résolution contre un registre des tenants actifs mis en cache, plus échappement de l'identifiant via `Connection.enquoteIdentifier()` au lieu d'une concaténation brute (défense en profondeur).
 
----
-
-### [ ] 2. Comportement si le claim `tenant_id` est absent du token OIDC
-
-**Problème :** Le `TenantResolutionFilter` ne rejette pas la requête si le claim `tenant_id` est absent. Le `TenantIdentifierResolver` tombe alors sur le fallback `"public"`, rendant le schéma public accessible.
-
-**Décision à prendre :** Rejeter la requête avec une 401/403 si le claim est absent, ou réserver le schéma `public` à un usage strictement technique inaccessible via l'API.
+**Documenté dans :** [02-multi-tenant.md](analysis%20doc/02-multi-tenant.md).
 
 ---
 
-### [ ] 3. Authentification des webhooks entrants
+### [x] 2. Comportement si le claim `tenant_id` est absent du token OIDC
 
-**Problème :** Le connecteur `http-rest` en mode TRIGGER reçoit des webhooks externes sans mécanisme d'authentification documenté. N'importe qui connaissant l'URL peut déclencher des créations de dossiers.
+**Problème :** Le `TenantResolutionFilter` ne rejetait pas la requête si le claim `tenant_id` était absent, et le `TenantIdentifierResolver` tombait sur le fallback `"public"`, rendant le schéma public accessible.
 
-**Décision à prendre :** Choisir un mécanisme de vérification des webhooks entrants — signature HMAC (à la GitHub/Stripe), token secret par instance de connecteur, ou IP allowlist — et définir son emplacement dans l'architecture (filtre HTTP, `TriggerConnector`, ou couche dédiée).
+**Décision retenue :** Le `TenantResolutionFilter` rejette la requête (403) si le claim est absent ou vide. Le `TenantIdentifierResolver` ne fait plus de fallback silencieux : il lève une exception si aucun tenant n'est présent dans le contexte. Le schéma `public` reste réservé à un contexte système explicite (jobs internes, migration), jamais atteint via une requête API.
+
+**Documenté dans :** [02-multi-tenant.md](analysis%20doc/02-multi-tenant.md).
 
 ---
 
-### [ ] 4. Gestion des clés de chiffrement des secrets de connecteurs
+### [x] 3. Authentification des webhooks entrants
 
-**Problème :** Les champs `PASSWORD` des `ConnectorInstance` sont chiffrés AES-GCM avec une "clé par tenant", mais la gestion de ces clés n'est pas documentée : stockage, rotation, accès.
+**Problème :** Le connecteur `http-rest` en mode TRIGGER recevait des webhooks externes sans mécanisme d'authentification documenté.
 
-**Décision à prendre :** Définir où sont stockées les clés (colonne en base, variable d'environnement, vault externe type HashiCorp Vault ou Azure Key Vault) et documenter la stratégie de rotation.
+**Décision retenue :** Signature HMAC-SHA256 par défaut (modèle GitHub/Stripe), secret stocké comme champ `PASSWORD` de la `ConnectorInstance` (donc chiffré au repos comme les autres secrets). Un champ `webhookAuthType` (SELECT : `HMAC_SHA256`, `SHARED_SECRET_TOKEN`, `IP_ALLOWLIST`) permet d'adapter le mécanisme aux capacités du système appelant. Vérification effectuée dans l'adaptateur web (`WebhookController`), avant d'atteindre `ConnectorTriggerRuntime` — c'est un détail HTTP/infrastructure, pas une responsabilité du domaine.
+
+**Documenté dans :** [06-connecteurs.md](analysis%20doc/06-connecteurs.md).
+
+---
+
+### [x] 4. Gestion des clés de chiffrement des secrets de connecteurs
+
+**Problème :** Les champs `PASSWORD` des `ConnectorInstance` sont chiffrés AES-GCM avec une « clé par tenant », mais la gestion de ces clés n'était pas documentée.
+
+**Décision retenue :** Chiffrement en enveloppe — une KEK (Key Encryption Key) unique gérée par un service externe (HashiCorp Vault Transit, Azure Key Vault ou AWS KMS), et une DEK (Data Encryption Key) par tenant, chiffrée par la KEK et stockée en base sous forme chiffrée. La rotation de la KEK est déléguée au vault (versionnage natif) ; la rotation d'une DEK est un job explicite (`RotateTenantEncryptionKeyUseCase`), jamais automatique. Une clé maître unique via variable d'environnement reste un compromis toléré uniquement en mono-tenant/développement, documenté comme limitation temporaire.
+
+**Documenté dans :** [06-connecteurs.md](analysis%20doc/06-connecteurs.md).
 
 ---
 
 ## Architecture
 
-### [ ] 5. `ConnectorInstance` — entité JPA ou objet domaine ?
+### [x] 5. `ConnectorInstance` — entité JPA ou objet domaine ?
 
-**Problème :** L'entité JPA `ConnectorInstance` (annotée `@Entity`, `@Convert`) est passée directement aux interfaces `TriggerConnector` et `ServiceConnector`, qui sont des ports du domaine. Cela fait dépendre le domaine d'une classe d'infrastructure.
+**Problème :** L'entité JPA `ConnectorInstance` était passée directement aux ports `TriggerConnector` et `ServiceConnector`, couplant le domaine à l'infrastructure.
 
-**Décision à prendre :** Introduire un objet domaine `ConnectorInstanceData` distinct de l'entité JPA, l'adaptateur assurant la conversion — ou accepter le compromis et le documenter explicitement.
+**Décision retenue :** Introduction de `ConnectorInstanceData`, objet domaine pur (config déjà déchiffrée) consommé par les ports `TriggerConnector`/`ServiceConnector`. L'entité JPA est renommée `ConnectorInstanceJpaEntity` et reste confinée à `infrastructure.persistence.connector` ; l'adaptateur assure la conversion (et le déchiffrement) — conforme au pattern déjà appliqué à `WorkflowInstance`/`WorkflowJpaEntity`.
 
----
-
-### [ ] 6. Extensibilité de `WorkflowEventPublisher`
-
-**Problème :** L'interface déclare une méthode par type d'événement (`publish(WorkflowStartedEvent)`, `publish(WorkflowCompletedEvent)`). Chaque nouvel état du workflow impose une modification de l'interface et de tous ses adaptateurs.
-
-**Décision à prendre :** Adopter une signature générique `void publish(WorkflowEvent event)` avec hiérarchie de types, ou conserver les méthodes typées en acceptant l'évolution de l'interface à chaque nouvel événement.
+**Documenté dans :** [06-connecteurs.md](analysis%20doc/06-connecteurs.md), [01-architecture-hexagonale.md](analysis%20doc/01-architecture-hexagonale.md).
 
 ---
 
-### [ ] 7. Durabilité des événements de déclenchement workflow
+### [x] 6. Extensibilité de `WorkflowEventPublisher`
 
-**Problème :** Le bus `ApplicationEventPublisher` est synchrone et en mémoire. Un crash entre la réception d'un trigger (webhook, Kafka…) et le démarrage effectif de l'instance Flowable entraîne une perte de l'événement sans possibilité de rejeu.
+**Problème :** L'interface déclarait une méthode par type d'événement — chaque nouvel état du workflow imposait une modification de l'interface et de tous ses adaptateurs.
 
-**Décision à prendre :** Évaluer si le niveau de criticité du projet justifie un mécanisme de durabilité (outbox pattern avec table de staging, ou délégation à un broker externe), ou documenter explicitement que la perte d'événement en cas de crash est acceptable.
+**Décision retenue :** Signature générique `void publish(WorkflowEvent event)` avec `WorkflowEvent` en interface scellée (`sealed interface`, Java 21). Un nouvel événement = un nouveau type implémentant l'interface scellée, sans modification de `WorkflowEventPublisher`. Les adaptateurs qui routent par type utilisent un `switch` exhaustif sur les types permis, ce qui conserve la vérification à la compilation malgré la signature générique.
 
----
-
-### [ ] 8. Validation des champs dynamiques des dossiers
-
-**Problème :** `Dossier.fields` est une `Map<String, Object>` dont les valeurs ne sont pas validées contre le schéma `FieldDefinition` du `DossierType` associé au moment de la création ou de la mise à jour.
-
-**Décision à prendre :** Définir où s'effectue la validation (use case `CreateDossierUseCase`, couche REST, ou les deux) et comment sont traités les champs inconnus ou les valeurs hors contrainte.
+**Documenté dans :** [05-workflow-engine.md](analysis%20doc/05-workflow-engine.md).
 
 ---
 
-### [ ] 9. Duplication `usecase/` et `port/in/` dans le domaine dossier
+### [x] 7. Durabilité des événements de déclenchement workflow
 
-**Problème :** La structure de packages de `04-dossiers.md` liste les mêmes noms dans `domain/dossier/usecase/` et dans `domain/dossier/port/in/`. Ce n'est pas cohérent avec le pattern documenté dans `01-architecture-hexagonale.md`.
+**Problème :** Le bus `ApplicationEventPublisher` est synchrone et en mémoire — un crash entre la réception d'un trigger et le démarrage de l'instance Flowable entraînait une perte sans rejeu possible.
 
-**Décision à prendre :** Clarifier la convention : les interfaces sont dans `port/in/`, les implémentations dans `usecase/` — et l'appliquer uniformément à tous les modules du domaine.
+**Décision retenue :** Pattern outbox transactionnel — l'événement de trigger est écrit dans une table `outbox_event` (schéma du tenant) dans la même transaction que la création du `Dossier`, puis un relais (scheduler de polling, avec chemin d'évolution vers Debezium/CDC si le volume l'exige) le publie sur le bus applicatif et le marque traité, avec clé d'idempotence pour éviter tout double traitement en cas de retry. Solution retenue car elle ne nécessite pas de nouvelle brique d'infrastructure immédiate tout en garantissant la durabilité.
+
+**Documenté dans :** [05-workflow-engine.md](analysis%20doc/05-workflow-engine.md).
+
+---
+
+### [x] 8. Validation des champs dynamiques des dossiers
+
+**Problème :** `Dossier.fields` n'était pas validé contre le schéma `FieldDefinition` du `DossierType` associé.
+
+**Décision retenue :** Validation aux deux niveaux — couche REST pour le retour d'erreurs par champ (400) à des fins d'UX, et use case (`CreateDossierUseCase`/`CreateDossierBatchUseCase`) comme garde-fou faisant autorité, car les triggers/imports batch contournent la couche REST. Un service domaine pur `DossierFieldValidator` vérifie les champs requis, la conformité de type, et les valeurs `SELECT` hors énumération. Les champs inconnus sont rejetés par défaut, avec un indicateur `allowUnknownFields` sur `DossierType` pour les cas de compatibilité ascendante volontaire.
+
+**Documenté dans :** [04-dossiers.md](analysis%20doc/04-dossiers.md).
+
+---
+
+### [x] 9. Duplication `usecase/` et `port/in/` dans le domaine dossier
+
+**Problème :** La structure de packages de `04-dossiers.md` listait les mêmes noms dans `domain/dossier/usecase/` et dans `domain/dossier/port/in/`, incohérent avec `01-architecture-hexagonale.md`.
+
+**Décision retenue :** Convention uniformisée : `port/in/` contient uniquement les interfaces, `usecase/` contient les implémentations suffixées `Impl` (ex. `CreateDossierUseCaseImpl` implémente `CreateDossierUseCase`). Appliqué à tous les modules du domaine (`workflow`, `document`, `connector`, `notification`, `dossier`) et vérifié en revue de code.
+
+**Documenté dans :** [04-dossiers.md](analysis%20doc/04-dossiers.md).
 
 ---
 
 ## Opérationnel
 
-### [ ] 10. Stratégie de migration Liquibase multi-tenant
+### [x] 10. Stratégie de migration Liquibase multi-tenant
 
-**Problème :** Le choix de Liquibase est acté mais la stratégie opérationnelle n'est pas documentée, notamment : création du schéma à l'onboarding d'un nouveau tenant, migration de l'ensemble des tenants existants lors d'un déploiement, et gestion des erreurs partielles.
+**Problème :** Le choix de Liquibase était acté mais la stratégie opérationnelle (onboarding, migration de masse, erreurs partielles) n'était pas documentée.
 
-**Décision à prendre :** Documenter le bootstrap Liquibase multi-tenant (contexts `tenant-init` vs `migration`), la stratégie de lock lors de déploiements multi-instances, et le comportement attendu si la migration échoue sur un sous-ensemble de tenants.
+**Décision retenue :** Deux contextes Liquibase — `tenant-init` (changelog complet exécuté une fois à la création d'un schéma) et `tenant-migration` (changesets incrémentaux appliqués à tous les schémas existants lors d'un déploiement). Exécution via un Job Kubernetes dédié (hook pre-upgrade), qui boucle sur les tenants actifs avant le démarrage des nouveaux pods applicatifs — évite toute migration concurrente entre plusieurs instances. Une table de contrôle `platform.tenant_migration_status` isole les échecs par tenant (statut `MIGRATING_ERROR`, requêtes API bloquées en 503 pour ce tenant uniquement) sans affecter les autres tenants ; le Job est idempotent et rejouable sur les seuls tenants en échec.
 
----
-
-### [ ] 11. Scaling horizontal et scheduler Flowable Community
-
-**Problème :** Flowable Community gère les jobs asynchrones et le scheduler via une table de lock en base. En déploiement multi-instances (Kubernetes), sans coordination, le risque de double exécution de jobs existe.
-
-**Décision à prendre :** Valider que le mécanisme de lock Flowable natif est suffisant pour le niveau de charge cible, ou définir une contrainte de déploiement (une seule instance en charge des jobs Flowable, les autres en mode API uniquement).
+**Documenté dans :** [02-multi-tenant.md](analysis%20doc/02-multi-tenant.md).
 
 ---
 
-### [ ] 12. Fichier `architecture-technique v7.md` — référence ou archive ?
+### [x] 11. Scaling horizontal et scheduler Flowable Community
 
-**Problème :** Le fichier `architecture-technique v7.md` coexiste avec les 11 fichiers thématiques numérotés qui en sont le découpage. Les deux sont trackés dans git, sans qu'il soit clair lequel est la référence à maintenir.
+**Problème :** Risque perçu de double exécution des jobs Flowable en déploiement multi-instances Kubernetes.
 
-**Décision à prendre :** Supprimer `architecture-technique v7.md` et faire des fichiers numérotés la seule source de vérité, ou le conserver explicitement comme document de synthèse avec une note indiquant qu'il n'est plus mis à jour.
+**Décision retenue :** Le job executor de Flowable Community gère nativement le verrouillage optimiste au niveau ligne (`lockOwner`/`lockExpirationTime`) et supporte le clustering sans contrainte d'instance unique. La configuration des délais de verrou (`lockTimeInMillis`, `defaultAsyncJobAcquireWaitTime`) est validée par un test de charge au niveau cible. Si la contention devient un problème à l'échelle visée, séparation opérationnelle entre pods API (`asyncExecutorActivate: false`) et pods worker (`asyncExecutorActivate: true`, eux-mêmes réplicables pour la haute disponibilité), plutôt qu'une limitation à une seule instance globale.
+
+**Documenté dans :** [05-workflow-engine.md](analysis%20doc/05-workflow-engine.md).
+
+---
+
+### [x] 12. Fichier `architecture-technique v7.md` — référence ou archive ?
+
+**Problème :** Le fichier `architecture-technique v7.md` coexistait avec les 11 fichiers thématiques numérotés qui en sont le découpage, sans qu'il soit clair lequel faisait référence.
+
+**Décision retenue :** `00-index.md` couvre intégralement et sans écart les 11 fichiers thématiques (déjà la table des matières utilisée par le `README.md` du dépôt). `architecture-technique v7.md` est supprimé du suivi ; les fichiers numérotés de `analysis doc/` sont l'unique source de vérité.
+
+**Documenté dans :** suppression effective du fichier ; voir [00-index.md](analysis%20doc/00-index.md).

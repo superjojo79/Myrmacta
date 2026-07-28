@@ -262,38 +262,15 @@ infrastructure/flowable
 
 ---
 
----
-
-## Dépendance npm
-
-```bash
-npm install bpmn-js
-```
-
----
-
 ## Affichage du dossier en regard du workflow
 
 Le panneau de visualisation affiche le dossier associé à l'instance en
-parallèle du diagramme BPMN — signalétique, statut, éléments et relations
-(voir [04-dossiers.md](04-dossiers.md)).
+parallèle du diagramme BPMN — signalétique, statut, éléments et relations.
+Le rendu de ce panneau (schéma et contenu) est décrit une seule fois dans
+[04-dossiers.md — Impact sur la visualisation](04-dossiers.md#impact-sur-la-visualisation),
+pour éviter de dupliquer le même exemple dans les deux documents.
 
 ```
 GET /api/workflows/{instanceId}/dossier
     → { dossier, elements, relations }
-```
-
-```
-┌───────────────────────────┬────────────────────────────────────┐
-│  Diagramme BPMN (bpmn-js) │  Dossier DOS-SINISTRE-2024-000042  │
-│                           │  Statut : EN_COURS                 │
-│  [Réception] ──●──        │                                    │
-│  [Instruction]            │  Éléments (3)                      │
-│  [Décision]               │  📎 Formulaire de déclaration      │
-│  [Clôture]                │  📄 Rapport d'expertise            │
-│                           │  📝 Note du gestionnaire           │
-│                           │                                    │
-│                           │  Dossiers liés (1)                 │
-│                           │  → DOS-RECOURS-2024-000007         │
-└───────────────────────────┴────────────────────────────────────┘
 ```

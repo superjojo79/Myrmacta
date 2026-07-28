@@ -22,8 +22,6 @@
 
 ---
 
----
-
 ## Initialisation de la session (Pinia)
 
 ```javascript

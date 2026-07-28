@@ -59,8 +59,6 @@ pdf:
 
 ---
 
----
-
 ## CSS print — contraintes Flying Saucer
 
 Flying Saucer implémente **CSS 2.1** avec quelques extensions CSS 3 sélectives.
@@ -96,8 +94,6 @@ Flying Saucer implémente **CSS 2.1** avec quelques extensions CSS 3 sélectives
 
 ---
 
----
-
 ## Performances
 
 ### Ordres de grandeur (JVM chaud, `ITextRenderer` en pool)
@@ -116,8 +112,6 @@ Flying Saucer implémente **CSS 2.1** avec quelques extensions CSS 3 sélectives
 - Images embarquées en **base64 inline** (évite les I/O par génération)
 - Tableaux longs : fragmenter en sections plutôt qu'un seul tableau monolithique
 - Pour du batch : `ExecutorService` parallèle dimensionné selon les CPU disponibles
-
----
 
 ---
 
@@ -153,8 +147,6 @@ inputs.forEach(el => el.addEventListener('input', () => {
 
 ---
 
----
-
 ## Stockage des documents générés
 
 **Recommandation : MinIO** (compatible S3, self-hosted)
@@ -164,8 +156,6 @@ inputs.forEach(el => el.addEventListener('input', () => {
 - Intégration Spring via `software.amazon.awssdk:s3`
 
 Alternative : stockage filesystem local pour les environnements simples.
-
----
 
 ---
 

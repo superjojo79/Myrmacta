@@ -145,8 +145,6 @@ public class DocumentGenerationTask implements JavaDelegate {
 
 ---
 
----
-
 ## Port domaine
 
 ```java

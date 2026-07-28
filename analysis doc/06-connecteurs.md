@@ -202,13 +202,21 @@ public class ConnectorServiceTask implements JavaDelegate {
 
 ### Intégration Flowable — rôle trigger
 
+Chaque événement retourné par le connecteur produit soit la création d'un
+nouveau dossier, soit le démarrage d'un nouveau workflow sur un dossier
+existant — voir `WorkflowTriggerEvent.existingDossierReference` dans la
+section « Lien avec les dossiers » ci-dessous.
+
 ```java
 @Component
 @RequiredArgsConstructor
 public class ConnectorTriggerRuntime {
 
-    private final RuntimeService  runtimeService;
-    private final ConnectorRegistry registry;
+    private final RuntimeService         runtimeService;
+    private final ConnectorRegistry      registry;
+    private final CreateDossierUseCase   createDossierUseCase;
+    private final GetDossierUseCase      getDossierUseCase;
+    private final AttachWorkflowUseCase  attachWorkflowUseCase;
 
     public void onIncomingEvent(ConnectorInstance instance,
                                 Map<String, Object> rawPayload) {
@@ -216,16 +224,46 @@ public class ConnectorTriggerRuntime {
         TriggerConnector connector =
             (TriggerConnector) registry.get(instance.getConnectorType());
 
-        WorkflowTriggerEvent event = connector.onEvent(instance, rawPayload);
+        // Retourne une liste — un seul événement entrant peut produire
+        // N dossiers (import batch) ou cibler N dossiers existants
+        connector.onEvent(instance, rawPayload).forEach(event ->
+            startWorkflowFor(instance, event));
+    }
 
-        runtimeService.createProcessInstanceBuilder()
+    private void startWorkflowFor(ConnectorInstance instance,
+                                  WorkflowTriggerEvent event) {
+
+        UUID dossierId = event.getExistingDossierReference() != null
+            ? getDossierUseCase.getByReference(
+                  instance.getTenantId(), event.getExistingDossierReference()).getId()
+            : createDossierUseCase.create(CreateDossierCommand.builder()
+                  .tenantId       (instance.getTenantId())
+                  .dossierTypeCode(event.getDossierTypeCode())
+                  .fields         (event.getDossierFields())
+                  .createdBy      ("trigger:" + instance.getId())
+                  .build()).getId();
+
+        DossierWorkflowLink link = attachWorkflowUseCase.reserve(
+            dossierId, event.getProcessKey(), "connector:" + instance.getId());
+
+        ProcessInstance pi = runtimeService.createProcessInstanceBuilder()
             .processDefinitionKey(event.getProcessKey())
             .tenantId(instance.getTenantId())
+            .variable("dossierId", dossierId.toString())
+            .variable("dossierWorkflowLinkId", link.getId().toString())
             .variables(event.getVariables())
             .start();
+
+        attachWorkflowUseCase.confirmStarted(link.getId(), pi.getId());
     }
 }
 ```
+
+> Si `existingDossierReference` référence un dossier qui a déjà un workflow
+> actif, `reserve(...)` lève `WorkflowAlreadyRunningException` — au
+> connecteur de décider comment réagir (rejet du message, mise en file
+> d'attente, dead-letter — voir le pattern retry de
+> [09-notifications.md](09-notifications.md)).
 
 ### Appel direct via API
 
@@ -263,15 +301,26 @@ public class ConnectorExecutionController {
 ## Lien avec les dossiers
 
 Chaque `WorkflowTriggerEvent` retourné par un `TriggerConnector` produit
-la création d'un **dossier** et le démarrage de son instance workflow
-(voir [04-dossiers.md](04-dossiers.md)). Un trigger qui importe un fichier
-CSV peut retourner N événements → N dossiers créés en batch.
+soit la création d'un **nouveau dossier**, soit le démarrage d'un nouveau
+workflow sur un **dossier existant** (voir
+[04-dossiers.md](04-dossiers.md), section « Démarrage d'un nouveau workflow
+sur un dossier existant » — orchestration détaillée dans
+`ConnectorTriggerRuntime` ci-dessus). Un trigger qui importe un fichier CSV
+peut retourner N événements → N dossiers créés en batch ; un trigger qui
+referme une boucle métier (ex. réponse à un webhook de suivi) peut au
+contraire cibler un dossier déjà ouvert via `existingDossierReference`.
 
 ```java
 public class WorkflowTriggerEvent {
     String              processKey;
-    String              dossierTypeCode; // type de dossier à créer
-    Map<String, Object> dossierFields;   // champs du signalétique
-    Map<String, Object> variables;       // variables Flowable supplémentaires
+    String              dossierTypeCode;       // type de dossier à créer — ignoré si existingDossierReference est renseigné
+    Map<String, Object> dossierFields;         // champs du signalétique — idem
+    Map<String, Object> variables;             // variables Flowable supplémentaires
+
+    String              existingDossierReference; // optionnel — référence d'un dossier
+                                                    // existant (ex: "DOS-SINISTRE-2024-000042").
+                                                    // Si renseigné, ConnectorTriggerRuntime
+                                                    // appelle AttachWorkflowUseCase.reserve(...)
+                                                    // au lieu de CreateDossierUseCase.create(...)
 }
 ```

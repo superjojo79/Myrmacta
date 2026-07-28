@@ -22,6 +22,7 @@ La visualisation est accessible aux utilisateurs impliqués dans l'instance (ass
 | `GET` | `/api/workflows/{instanceId}/history` | Étapes avec timing, durée et assigné |
 | `GET` | `/api/workflows/{instanceId}/tasks` | Tâches actives avec assigné courant |
 | `POST` | `/api/workflows/{instanceId}/tasks/{taskId}/reassign` | Réassignation de tâche |
+| `GET` | `/api/dossiers/{dossierId}/workflows` | Historique des workflows exécutés sur le dossier (`DossierWorkflowLink[]`, voir [04-dossiers.md](04-dossiers.md)) |
 
 ### Modèles de réponse
 
@@ -274,3 +275,29 @@ pour éviter de dupliquer le même exemple dans les deux documents.
 GET /api/workflows/{instanceId}/dossier
     → { dossier, elements, relations }
 ```
+
+### Sélecteur de run — dossier avec plusieurs workflows
+
+Un dossier ayant été manipulé par plusieurs workflows successifs (voir
+[04-dossiers.md](04-dossiers.md)) a plusieurs entrées dans
+`GET /api/dossiers/{dossierId}/workflows`. Le `WorkflowViewer` affiche cette
+liste comme une frise chronologique au-dessus du diagramme ; sélectionner
+une entrée recharge le diagramme BPMN correspondant via
+`GET /api/workflows/{instanceId}/diagram` avec l'`instanceId` de l'entrée
+choisie. Par défaut, l'entrée sans `endedAt` (le workflow actif) est
+sélectionnée ; s'il n'y en a pas, c'est la plus récente.
+
+```
+Historique des workflows — Dossier DOS-SINISTRE-2024-000042
+┌───────────────────────────────────────────────────────────────┐
+│  #1 instruction-sinistre   DOSSIER_INSTRUIT     10/01 → 25/01  │
+│  #2 reouverture-sinistre   REOUVERTURE_CLOTUREE 03/02 → 04/02  │
+│  #3 controle-qualite       EN_INSTRUCTION       01/03 → …   ●  │ ← sélectionné (pas d'endedAt)
+└───────────────────────────────────────────────────────────────┘
+```
+
+> Les libellés affichés (`DOSSIER_INSTRUIT`, `EN_INSTRUCTION`…) sont les
+> codes métier configurés dans `WorkflowTypeConfig.statusDefinitions` pour
+> chaque `processDefinitionKey` — voir [05-workflow-engine.md](05-workflow-engine.md).
+> Ce ne sont pas les valeurs de l'enum technique `StatusOutcome`, qui ne
+> détermine que si l'exécution est terminée et de quelle manière.

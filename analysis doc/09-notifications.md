@@ -81,6 +81,37 @@ es.addEventListener('notification', e => {
 });
 ```
 
+### Scalabilité SSE en déploiement multi-instances
+
+**Problème :** la map `emitters` de l'exemple ci-dessus est locale à la JVM. En déploiement mono-instance elle fonctionne telle quelle, mais le modèle de déploiement cible (voir README — Kubernetes, plusieurs pods) casse cette hypothèse : un utilisateur connecté en SSE au pod A ne recevra jamais un événement déclenché par un traitement (ServiceTask Flowable, webhook) exécuté sur le pod B, puisque l'`SseEmitter` de cet utilisateur n'existe que dans la mémoire du pod A.
+
+**Décision retenue :** découpler l'émission de l'événement (n'importe quel pod) de sa diffusion aux `SseEmitter` locaux, via un relais pub/sub partagé entre instances.
+
+```
+ServiceTask / Webhook (pod B)
+    │
+    ▼
+SendNotificationUseCase.send(event)          ← peut s'exécuter sur n'importe quel pod
+    │
+    ▼
+BrowserPushPort.push(userId, event)
+    │
+    ▼
+PostgreSQL NOTIFY canal "sse_notifications"  ← relais inter-pods (voir alternative Redis ci-dessous)
+    │
+    ├──▶ pod A : LISTEN → emitters locaux (utilisateur connecté ici) → push SSE
+    ├──▶ pod B : LISTEN → aucun emitter local pour cet utilisateur → ignoré
+    └──▶ pod C : LISTEN → idem
+```
+
+| Option | Mécanisme | Avantage | Coût |
+|---|---|---|---|
+| **PostgreSQL `LISTEN`/`NOTIFY`** (retenu par défaut) | Chaque pod maintient une connexion `LISTEN` sur un canal par tenant ou global | Aucune infrastructure supplémentaire — PostgreSQL est déjà une dépendance dure du projet | Débit et taille de payload limités (recommandé : ne transporter qu'un identifiant, puis re-fetch côté pod si besoin) ; une connexion JDBC dédiée et longue par pod |
+| Redis Pub/Sub | `publish`/`subscribe` sur un canal par utilisateur ou tenant | Débit plus élevé, latence plus faible, découplage total de PostgreSQL | Ajoute une dépendance d'infrastructure non prévue dans la stack actuelle |
+| Sticky sessions (affinité de pod) | Le load balancer route toujours le même utilisateur vers le même pod | Pas de relais applicatif à écrire | Ne résout pas le cas où l'émetteur de l'événement (autre requête HTTP, job async) tombe sur un pod différent de celui où l'utilisateur est connecté ; fragilise le rolling-update Kubernetes |
+
+L'implémentation `SseNotificationAdapter` (voir [01-architecture-hexagonale.md](01-architecture-hexagonale.md)) reste responsable des deux rôles : publier sur le canal partagé, et retransmettre aux `SseEmitter` locaux sur réception. Le contrat du port `BrowserPushPort` ne change pas — seul l'adaptateur évolue, conformément au principe hexagonal.
+
 ### Dépendances Maven supplémentaires
 
 ```xml
@@ -96,8 +127,6 @@ es.addEventListener('notification', e => {
     <artifactId>spring-retry</artifactId>
 </dependency>
 ```
-
----
 
 ---
 

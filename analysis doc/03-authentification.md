@@ -131,22 +131,7 @@ export const useAuthStore = defineStore('auth', {
 
 ---
 
----
-
 ## Lien avec le multi-tenant
 
 Le claim `tenant_id` est résolu depuis le token OIDC dans le filtre
 `TenantResolutionFilter` — voir [02-multi-tenant.md](02-multi-tenant.md).
-
-## Dépendances Maven
-
-```xml
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-security</artifactId>
-</dependency>
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-oauth2-client</artifactId>
-</dependency>
-```

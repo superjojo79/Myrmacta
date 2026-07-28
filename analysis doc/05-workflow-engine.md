@@ -34,8 +34,6 @@
 
 ---
 
----
-
 ## Déclenchement — Event Bus
 
 **Choix retenu : Spring `ApplicationEventPublisher`**
@@ -47,8 +45,6 @@ Les sources de triggers sont encapsulées dans le **système de connecteurs** (v
 ```
 Connecteur Trigger  →  ConnectorTriggerRuntime  →  ApplicationEventPublisher  →  Flowable
 ```
-
----
 
 ---
 
@@ -74,16 +70,6 @@ public interface WorkflowEventPublisher {
     void publish(WorkflowStartedEvent event);
     void publish(WorkflowCompletedEvent event);
 }
-```
-
-## Dépendance Maven
-
-```xml
-<dependency>
-    <groupId>org.flowable</groupId>
-    <artifactId>flowable-spring-boot-starter</artifactId>
-    <version>7.x.x</version>
-</dependency>
 ```
 
 ---

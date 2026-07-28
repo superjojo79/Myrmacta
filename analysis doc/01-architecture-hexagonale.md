@@ -39,6 +39,17 @@ com.monapp
 │   │           ├── WorkflowRepository
 │   │           └── WorkflowEventPublisher
 │   │
+│   ├── dossier                     # entité métier centrale — voir 04-dossiers.md
+│   │   ├── model                   # Dossier, DossierType, DossierElement, DossierRelation…
+│   │   ├── usecase                 # CreateDossierUseCase, UpdateDossierStatusUseCase…
+│   │   └── port
+│   │       ├── in
+│   │       │   ├── CreateDossierUseCase
+│   │       │   └── UpdateDossierStatusUseCase
+│   │       └── out
+│   │           ├── DossierRepository
+│   │           └── DossierReferenceGenerator
+│   │
 │   ├── document
 │   │   ├── model                   # DocumentTemplate, GeneratedDocument, TemplateStatus…
 │   │   ├── usecase                 # GenerateDocumentUseCase, PublishTemplateUseCase…

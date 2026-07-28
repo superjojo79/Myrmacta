@@ -260,8 +260,6 @@ public class ConnectorExecutionController {
 
 ---
 
----
-
 ## Lien avec les dossiers
 
 Chaque `WorkflowTriggerEvent` retourné par un `TriggerConnector` produit

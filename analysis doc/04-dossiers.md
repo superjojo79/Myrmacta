@@ -48,6 +48,7 @@ public class DossierType {
     private String  label;
     private String  workflowKey;  // clé BPMN à instancier pour ce type
     private boolean active;
+    private boolean allowUnknownFields; // false par défaut — voir "Validation des champs dynamiques"
 
     @Convert(converter = JsonListConverter.class)
     @Column(columnDefinition = "jsonb")
@@ -236,6 +237,81 @@ public class SequentialReferenceGenerator implements DossierReferenceGenerator {
 
 ---
 
+## Validation des champs dynamiques
+
+**Problème identifié en revue :** `Dossier.fields` (`Map<String, Object>`) n'était validé nulle part contre le schéma `FieldDefinition` du `DossierType` associé, ni à la création ni à la mise à jour.
+
+**Décision retenue — validation aux deux niveaux :**
+
+- **Couche REST** — validation immédiate pour retourner une réponse `400` avec le détail des erreurs par champ, à des fins d'UX (formulaire de saisie généré dynamiquement depuis `fieldDefinitions`).
+- **Use case (`CreateDossierUseCase`, `CreateDossierBatchUseCase`, `UpdateDossierStatusUseCase` le cas échéant)** — validation faisant autorité, car les créations issues d'un trigger ou d'un import batch ne passent jamais par la couche REST.
+
+Un service domaine pur `DossierFieldValidator` (aucune dépendance framework) implémente la règle commune :
+
+```java
+// domain/dossier/model — pur Java
+public class DossierFieldValidator {
+
+    public List<FieldValidationError> validate(List<FieldDefinition> definitions,
+            Map<String, Object> values, boolean allowUnknownFields) {
+
+        List<FieldValidationError> errors = new ArrayList<>();
+
+        for (FieldDefinition def : definitions) {
+            Object value = values.get(def.getName());
+            if (def.isRequired() && isBlank(value)) {
+                errors.add(FieldValidationError.required(def.getName()));
+                continue;
+            }
+            if (value != null && !matchesType(value, def.getType())) {
+                errors.add(FieldValidationError.typeMismatch(def.getName(), def.getType()));
+            }
+            if (def.getType() == FieldType.SELECT && value != null
+                    && !def.getOptions().contains(value)) {
+                errors.add(FieldValidationError.invalidOption(def.getName(), def.getOptions()));
+            }
+        }
+
+        if (!allowUnknownFields) {
+            Set<String> knownNames = definitions.stream()
+                .map(FieldDefinition::getName).collect(toSet());
+            values.keySet().stream()
+                .filter(name -> !knownNames.contains(name))
+                .forEach(name -> errors.add(FieldValidationError.unknownField(name)));
+        }
+
+        return errors;
+    }
+}
+```
+
+`DossierType.allowUnknownFields` (nouveau champ booléen, `false` par défaut) permet à un tenant d'autoriser explicitement des champs hors schéma — cas de compatibilité ascendante volontaire lors de l'évolution d'un type de dossier sans migration immédiate des intégrations amont.
+
+```java
+public class CreateDossierUseCaseImpl implements CreateDossierUseCase {
+
+    @Override
+    public Dossier create(CreateDossierCommand cmd) {
+        DossierType type = dossierTypeRepository
+            .findByCode(cmd.tenantId(), cmd.dossierTypeCode())
+            .orElseThrow();
+
+        List<FieldValidationError> errors = fieldValidator.validate(
+            type.getFieldDefinitions(), cmd.fields(), type.isAllowUnknownFields());
+
+        if (!errors.isEmpty()) {
+            throw new DossierFieldValidationException(errors);
+        }
+
+        // ... création du dossier
+    }
+}
+```
+
+La couche REST intercepte `DossierFieldValidationException` pour produire le `400` détaillé ; la création par trigger/batch (`ConnectorTriggerRuntime`) laisse l'exception se propager — un enregistrement invalide au sein d'un batch est journalisé et écarté sans bloquer les autres.
+
+---
+
 ## Création depuis un trigger — unitaire et batch
 
 Le `ConnectorTriggerRuntime` supporte la création batch — un seul événement
@@ -353,6 +429,8 @@ et relations visibles en panneau latéral.
 
 ## Structure de packages
 
+**Décision retenue — convention `usecase/` vs `port/in/` :** `port/in/` contient exclusivement les interfaces exposées aux adaptateurs entrants ; `usecase/` contient leurs implémentations, suffixées `Impl`. Cette convention (déjà énoncée dans [01-architecture-hexagonale.md](01-architecture-hexagonale.md)) est appliquée ici pour corriger la duplication de noms précédemment listée dans les deux dossiers, et s'applique uniformément à tous les modules du domaine.
+
 ```
 domain
 └── dossier
@@ -364,15 +442,16 @@ domain
     │   ├── DossierStatus
     │   ├── ElementType
     │   ├── RelationType
-    │   └── FieldDefinition
+    │   ├── FieldDefinition
+    │   └── DossierFieldValidator
     ├── usecase
-    │   ├── CreateDossierUseCase
-    │   ├── CreateDossierBatchUseCase
-    │   ├── GetDossierUseCase
-    │   ├── UpdateDossierStatusUseCase
-    │   ├── AddDossierElementUseCase
-    │   ├── LinkDossiersUseCase
-    │   └── LinkDossierToProcessUseCase
+    │   ├── CreateDossierUseCaseImpl
+    │   ├── CreateDossierBatchUseCaseImpl
+    │   ├── GetDossierUseCaseImpl
+    │   ├── UpdateDossierStatusUseCaseImpl
+    │   ├── AddDossierElementUseCaseImpl
+    │   ├── LinkDossiersUseCaseImpl
+    │   └── LinkDossierToProcessUseCaseImpl
     └── port
         ├── in
         │   ├── CreateDossierUseCase

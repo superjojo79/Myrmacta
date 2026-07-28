@@ -52,8 +52,8 @@ com.monapp
 │   │           └── DocumentStoragePort     ← MinIO ou filesystem
 │   │
 │   ├── connector
-│   │   ├── model                   # ConnectorInstance, ConnectorDefinition, ConfigField…
-│   │   ├── usecase                 # RegisterConnectorUseCase, ExecuteConnectorUseCase…
+│   │   ├── model                   # ConnectorInstanceData, ConnectorDefinition, ConfigField…
+│   │   ├── usecase                 # RegisterConnectorUseCaseImpl, ExecuteConnectorUseCaseImpl…
 │   │   └── port
 │   │       ├── in
 │   │       │   ├── ExecuteConnectorUseCase
@@ -181,6 +181,8 @@ public class StartWorkflowUseCaseImpl implements StartWorkflowUseCase {
 ```
 
 **Les connecteurs sont des adaptateurs sortants.** `ConnectorDefinition` / `TriggerConnector` / `ServiceConnector` sont des ports sortants du domaine `connector`. Chaque connecteur (D365, HTTP REST, SMTP…) est un adaptateur dans `infrastructure.connector.builtin`.
+
+**`ConnectorInstance` illustre la règle « entités JPA distinctes des entités domaine ».** Le domaine manipule `ConnectorInstanceData` (pur Java, config déjà déchiffrée) ; l'entité de persistance `ConnectorInstanceJpaEntity` (`@Entity`, `@Convert`) reste confinée à `infrastructure.persistence.connector`. C'est `ConnectorInstanceJpaAdapter` qui assure la conversion — voir [06-connecteurs.md](06-connecteurs.md#connectorinstance--entité-jpa-vs-objet-domaine) pour le détail de cette décision, tranchée après une revue ayant identifié le couplage initial entre le domaine et l'entité JPA.
 
 ### Bénéfices concrets pour ce projet
 

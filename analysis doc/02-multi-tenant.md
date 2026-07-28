@@ -68,6 +68,16 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
 
         if (auth != null && auth.getPrincipal() instanceof OidcUser user) {
             String tenantId = user.getClaimAsString("tenant_id");
+
+            // Décision — le claim tenant_id est obligatoire : pas de fallback
+            // silencieux vers le schéma public. Voir "Résolution du tenant"
+            // et "Routing du schéma PostgreSQL" ci-dessous.
+            if (tenantId == null || tenantId.isBlank()) {
+                res.sendError(HttpServletResponse.SC_FORBIDDEN,
+                    "tenant_id claim manquant");
+                return;
+            }
+
             tenantContext.setTenantId(tenantId);
         }
 
@@ -76,6 +86,12 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
     }
 }
 ```
+
+### Décision — claim `tenant_id` absent
+
+**Problème identifié en revue :** sans rejet explicite, une requête authentifiée mais dépourvue du claim `tenant_id` retombait sur le fallback `"public"` du `TenantIdentifierResolver`, rendant le schéma public accessible depuis l'API.
+
+**Décision retenue :** le `TenantResolutionFilter` rejette la requête avec un `403` dès que le claim est absent ou vide (voir code ci-dessus). Le schéma `public` est réservé à un usage strictement technique — bootstrap Liquibase, jobs internes exécutés hors contexte HTTP — et n'est jamais atteint par déduction d'un tenant `null`. C'est pourquoi `TenantIdentifierResolver` (ci-dessous) lève une exception plutôt que de retourner `"public"` par défaut.
 
 ### Routing du schéma PostgreSQL
 
@@ -90,8 +106,11 @@ public class TenantIdentifierResolver
 
     @Override
     public String resolveCurrentTenantIdentifier() {
-        String id = tenantContext.getTenantId();
-        return id != null ? id : "public"; // fallback schéma public
+        // Décision — pas de fallback silencieux vers "public" : un contexte
+        // manquant est une erreur de programmation ou une requête qui n'aurait
+        // pas dû atteindre cette couche (voir TenantResolutionFilter).
+        return Optional.ofNullable(tenantContext.getTenantId())
+            .orElseThrow(MissingTenantContextException::new);
     }
 
     @Override
@@ -105,12 +124,23 @@ public class SchemaMultiTenantConnectionProvider
         implements MultiTenantConnectionProvider<String> {
 
     private final DataSource dataSource;
+    private final TenantRegistry tenantRegistry; // registre des tenants actifs, en cache
 
     @Override
     public Connection getConnection(String tenantId) throws SQLException {
+        // Décision — défense en profondeur contre l'injection SQL via tenantId :
+        // 1. le tenantId est déjà validé par regex à sa création (voir plus bas) ;
+        // 2. on revérifie ici qu'il correspond à un tenant actif connu (pas de
+        //    confiance aveugle dans le claim JWT, même signé) ;
+        // 3. l'identifiant est échappé via enquoteIdentifier() plutôt que concaténé.
+        if (!tenantRegistry.isActiveTenant(tenantId)) {
+            throw new UnknownTenantException(tenantId);
+        }
+
         Connection conn = dataSource.getConnection();
+        String schema = conn.enquoteIdentifier(tenantId, true);
         conn.createStatement()
-            .execute("SET search_path TO " + tenantId + ", public");
+            .execute("SET search_path TO " + schema + ", public");
         return conn;
     }
 
@@ -119,6 +149,31 @@ public class SchemaMultiTenantConnectionProvider
             throws SQLException {
         conn.createStatement().execute("SET search_path TO public");
         conn.close();
+    }
+}
+```
+
+### Décision — validation du `tenantId`
+
+**Problème identifié en revue :** le `tenantId` était concaténé tel quel dans `SET search_path TO {tenantId}, public`, sans sanitisation — un `tenantId` malformé ou malveillant pouvait constituer une injection SQL.
+
+**Décision retenue — double barrière :**
+
+1. **À la création du tenant** (source unique de vérité) : validation par expression régulière `^[a-z][a-z0-9_]{2,62}$`, alignée sur les contraintes d'identifiant PostgreSQL (minuscules, chiffres, underscore, 63 caractères maximum).
+2. **À chaque résolution de requête** (défense en profondeur) : vérification que le `tenantId` porté par le claim OIDC correspond à un tenant actif connu du `TenantRegistry` (registre en cache, rafraîchi périodiquement depuis la table des tenants) — un claim signé n'est pas une garantie suffisante si le mapping du claim côté IdP venait à être mal configuré.
+
+De plus, l'identifiant est échappé via `Connection.enquoteIdentifier()` (JDBC 4.3+) avant d'être injecté dans le `SET search_path`, plutôt qu'une simple concaténation de chaîne — les identifiants SQL ne pouvant pas être paramétrés via `PreparedStatement`, l'échappement explicite est la protection appropriée en complément de la validation.
+
+```java
+public final class TenantIdValidator {
+
+    private static final Pattern TENANT_ID_PATTERN =
+        Pattern.compile("^[a-z][a-z0-9_]{2,62}$");
+
+    public static void validate(String tenantId) {
+        if (tenantId == null || !TENANT_ID_PATTERN.matcher(tenantId).matches()) {
+            throw new InvalidTenantIdException(tenantId);
+        }
     }
 }
 ```
@@ -139,15 +194,51 @@ runtimeService.createProcessInstanceBuilder()
     .start();
 ```
 
+### Bootstrap et migration Liquibase multi-tenant
+
+**Décision retenue :** deux contextes Liquibase distincts partagent le même changelog maître (`db/changelog/tenant/changelog-master.xml`) :
+
+| Contexte | Déclenché par | Portée |
+|---|---|---|
+| `tenant-init` | Onboarding d'un nouveau tenant | Changelog complet, exécuté une seule fois sur le nouveau schéma |
+| `tenant-migration` | Déploiement applicatif | Changesets incrémentaux, appliqués à tous les schémas de tenants existants |
+
+```java
+// Onboarding — création du schéma + changelog complet en contexte tenant-init
+public void onboardTenant(String tenantId) {
+    TenantIdValidator.validate(tenantId);
+    createSchemaIfAbsent(tenantId);
+
+    Liquibase liquibase = new Liquibase(
+        "db/changelog/tenant/changelog-master.xml",
+        new ClassLoaderResourceAccessor(),
+        jdbcConnectionFor(tenantId));
+    liquibase.update(new Contexts("tenant-init"), new LabelExpression());
+
+    tenantRegistry.registerActive(tenantId);
+}
+```
+
+**Exécution en Job dédié, pas depuis les pods applicatifs.** La migration de l'ensemble des tenants existants (contexte `tenant-migration`) est déclenchée par un Job Kubernetes (hook Helm `pre-upgrade`), exécuté **avant** le démarrage des nouveaux pods applicatifs. Cela élimine tout risque de migrations concurrentes lancées par plusieurs instances au démarrage, chaque schéma ayant son propre verrou Liquibase (`DATABASECHANGELOGLOCK`) mais celui-ci ne protégeant pas contre des instances migrant des tenants différents en parallèle de façon incontrôlée.
+
+**Gestion des erreurs partielles.** Une table de contrôle `platform.tenant_migration_status(tenant_id, target_version, status, error_message, updated_at)` trace l'état de chaque tenant. Si la migration d'un tenant échoue :
+
+- le tenant est marqué `MIGRATING_ERROR` ;
+- les requêtes API pour ce tenant sont bloquées (503) via une vérification dans le `TenantResolutionFilter`, le temps de la correction ;
+- les autres tenants ne sont pas impactés — le Job continue sur les tenants suivants ;
+- le Job est idempotent et peut être rejoué en ciblant uniquement les tenants en `MIGRATING_ERROR`.
+
 ### Synthèse des choix multi-tenant
 
 | Couche | Choix |
 |---|---|
 | Isolation données | Schéma PostgreSQL par tenant |
-| Résolution tenant | Claim `tenant_id` dans le token OIDC |
+| Résolution tenant | Claim `tenant_id` dans le token OIDC — obligatoire, requête rejetée (403) si absent |
+| Validation `tenantId` | Regex à la création + vérification contre le registre des tenants actifs à chaque requête + `enquoteIdentifier()` |
 | Provider OIDC | Realm Keycloak partagé + claim custom |
 | Propagation Spring | Bean `@RequestScope` — compatible Virtual Threads |
 | Flowable | `tenantId` natif sur déploiements et instances |
+| Migration Liquibase | Contexts `tenant-init` / `tenant-migration`, Job Kubernetes dédié, suivi par tenant en base |
 
 > **Évolution future** — pour les traitements hors contexte HTTP (batch Flowable, jobs asynchrones), `ScopedValue` (Java 22+) est la voie naturelle pour propager le tenant sans `@RequestScope`.
 

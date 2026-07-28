@@ -147,8 +147,11 @@ public class SchemaMultiTenantConnectionProvider
     @Override
     public void releaseConnection(String tenantId, Connection conn)
             throws SQLException {
-        conn.createStatement().execute("SET search_path TO public");
-        conn.close();
+        try {
+            conn.createStatement().execute("SET search_path TO public");
+        } finally {
+            conn.close(); // toujours fermer, même si le reset échoue
+        }
     }
 }
 ```
@@ -177,6 +180,18 @@ public final class TenantIdValidator {
     }
 }
 ```
+
+### Robustesse du `search_path` face au pool de connexions
+
+Le `search_path` est un état de **session PostgreSQL**, pas de la transaction JDBC. Deux risques doivent être traités explicitement, faute de quoi une connexion peut être rendue au pool avec le `search_path` d'un autre tenant :
+
+| Risque | Cause | Mitigation retenue |
+|---|---|---|
+| Connexion rendue au pool sans reset | Exception levée entre `getConnection()` et `releaseConnection()` (ex. requête en erreur) avant que Hibernate n'appelle le reset | `releaseConnection()` doit toujours exécuter le `SET search_path TO public` dans un bloc `try/finally`, y compris en cas d'échec de la requête métier |
+| Connexion physique réutilisée par Hikari sans repasser par `releaseConnection()` | Fermeture anormale de la connexion applicative (timeout, crash de thread) sans que Hibernate ne rende la main au provider | `HikariConfig.connectionInitSql` / `connectionTestQuery` positionné à `SET search_path TO public` pour garantir un état neutre à chaque emprunt du pool, en complément du reset applicatif |
+| Connexion validée par Hikari sans revalidation du schéma | `dataSource.getConnection()` peut retourner une connexion physique déjà utilisée par un tenant précédent | `getConnection(tenantId)` **doit toujours réémettre** `SET search_path` avant tout usage, jamais supposer un état neutre par défaut (déjà le cas dans l'implémentation ci-dessus — à ne jamais optimiser en le rendant conditionnel) |
+
+> **Recommandation de test** — ce comportement doit être couvert par un test d'intégration dédié : ouvrir/fermer des connexions pour deux tenants en boucle serrée (y compris avec des requêtes en échec) et vérifier qu'aucune donnée croisée n'est lisible. Un test manuel ou une revue de code ne suffisent pas à garantir l'absence de fuite.
 
 ### Flowable — `tenantId` natif
 

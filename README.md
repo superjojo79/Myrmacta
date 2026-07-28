@@ -163,6 +163,7 @@ La documentation d'architecture est disponible dans le répertoire `analysis doc
 | [09-notifications.md](analysis%20doc/09-notifications.md)    | Email, webhook, SSE                  |
 | [10-visualisation-workflow.md](analysis%20doc/10-visualisation-workflow.md) | BPMN.js, historique, réassignation   |
 | [11-frontend.md](analysis%20doc/11-frontend.md)              | Vue 3, PrimeVue, Pinia               |
+| [12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md) | RBAC, rétention, conformité RGPD     |
 
 ------
 

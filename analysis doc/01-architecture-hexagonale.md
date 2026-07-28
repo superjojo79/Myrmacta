@@ -29,7 +29,8 @@ com.monapp
 ├── domain                          ← zéro dépendance framework
 │   │
 │   ├── workflow
-│   │   ├── model                   # WorkflowInstance, WorkflowStatus, Task…
+│   │   ├── model                   # WorkflowInstance, WorkflowStatus, Task, WorkflowTypeConfig,
+│   │   │                           # WorkflowStatusDefinition, StatusOutcome…
 │   │   ├── usecase                 # StartWorkflowUseCase, CompleteTaskUseCase…
 │   │   └── port
 │   │       ├── in                  # interfaces appelées par les adaptateurs entrants
@@ -37,7 +38,25 @@ com.monapp
 │   │       │   └── CompleteTaskUseCase
 │   │       └── out                 # interfaces implémentées par les adaptateurs sortants
 │   │           ├── WorkflowRepository
-│   │           └── WorkflowEventPublisher
+│   │           ├── WorkflowEventPublisher
+│   │           └── WorkflowTypeConfigRepository  ← nouveau — statuts métier configurables par workflow
+│   │
+│   ├── dossier                     # entité métier centrale — voir 04-dossiers.md
+│   │   ├── model                   # Dossier, DossierType, DossierElement, DossierRelation,
+│   │   │                           # DossierWorkflowLink…
+│   │   ├── usecase                 # CreateDossierUseCase, UpdateDossierStatusUseCase,
+│   │   │                           # AttachWorkflowUseCase, UpdateWorkflowLinkStatusUseCase…
+│   │   └── port
+│   │       ├── in
+│   │       │   ├── CreateDossierUseCase
+│   │       │   ├── UpdateDossierStatusUseCase
+│   │       │   ├── AttachWorkflowUseCase             ← nouveau
+│   │       │   ├── UpdateWorkflowLinkStatusUseCase   ← nouveau
+│   │       │   └── GetDossierWorkflowHistoryUseCase  ← nouveau
+│   │       └── out
+│   │           ├── DossierRepository
+│   │           ├── DossierWorkflowLinkRepository     ← nouveau
+│   │           └── DossierReferenceGenerator
 │   │
 │   ├── document
 │   │   ├── model                   # DocumentTemplate, GeneratedDocument, TemplateStatus…
@@ -82,8 +101,8 @@ com.monapp
     │   └── notification
     │
     ├── persistence                 # Adaptateurs sortants — Spring Data JPA
-    │   ├── workflow                # WorkflowJpaAdapter implements WorkflowRepository
-    │   ├── dossier                 # DossierJpaAdapter, SequentialReferenceGenerator
+    │   ├── workflow                # WorkflowJpaAdapter, WorkflowTypeConfigJpaAdapter
+    │   ├── dossier                 # DossierJpaAdapter, DossierWorkflowLinkJpaAdapter, SequentialReferenceGenerator
     │   ├── document                # DocumentTemplateJpaAdapter
     │   └── connector               # ConnectorInstanceJpaAdapter
     │

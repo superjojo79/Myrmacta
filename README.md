@@ -107,16 +107,17 @@ L'application est construite sur le modèle **Ports & Adapters (hexagonal)** —
 
 | Couche            | Technologie                     | Choix                                           |
 | ----------------- | ------------------------------- | ----------------------------------------------- |
-| Backend           | Java 21 · Spring Boot 3.x       | Virtual Threads, ecosystem mature               |
-| Workflow          | Flowable 7.x Community          | BPMN 2.0, Apache 2.0, designer intégré          |
+| Backend           | Java 25 LTS · Spring Boot 4.1.x | Virtual Threads, ecosystem mature               |
+| Workflow          | Flowable 8.0.x Community        | BPMN 2.0, Apache 2.0, designer intégré          |
 | Persistence       | PostgreSQL + Spring Data JPA    | JSONB pour champs dynamiques, schéma par tenant |
-| Génération PDF    | Flying Saucer + OpenPDF + jsoup | LGPL, sans licence commerciale                  |
-| Sécurité          | Spring Security + OAuth2 Client | BFF intégré, provider-agnostique                |
-| Frontend          | Vue 3 + Vite + PrimeVue         | SPA, composants métier riches                   |
+| Génération PDF    | Flying Saucer 10.4.x + jsoup 1.22.x | LGPL, sans licence commerciale              |
+| Sécurité          | Spring Security 7 + OAuth2 Client | BFF intégré, provider-agnostique              |
+| Frontend          | Vue 3 + Vite + PrimeVue (embarqué `static/`) | SPA même origine, composants métier riches |
 | State management  | Pinia                           | Store réactif Vue 3                             |
 | BPMN viewer       | bpmn-js                         | Rendu fidèle, overlays d'état                   |
 | Stockage fichiers | MinIO                           | Compatible S3, self-hosted, Apache 2.0          |
-| Auth server       | Keycloak                        | Self-hosted, OIDC/OAuth2, LDAP                  |
+| Auth server       | Keycloak 26.7.x                 | Self-hosted, OIDC/OAuth2, LDAP                  |
+| Build             | Maven mono-module + ArchUnit    | Règle domaine vérifiée en CI                    |
 
 ### Licences — aucune contrainte commerciale
 
@@ -126,21 +127,37 @@ Toutes les librairies retenues sont sous licences libres (Apache 2.0, LGPL, MIT)
 
 ## Modèle de déploiement
 
-L'application est conçue pour un déploiement **SaaS mutualisé** — une instance unique sert plusieurs organisations. L'isolation est garantie au niveau PostgreSQL (schéma dédié par tenant). Le déploiement cible des environnements conteneurisés (Docker / Kubernetes).
+L'application est conçue pour un déploiement **SaaS mutualisé au niveau de l'infrastructure**, avec
+une isolation applicative complète : chaque organisation est servie par sa **propre instance Spring
+Boot dédiée**, configurée avec son identifiant de tenant au démarrage (voir
+[02-multi-tenant.md](analysis%20doc/02-multi-tenant.md), décision n° 13). Chaque instance embarque
+également le frontend Vue 3 dans `static/` (décision n° 27) — même origine API / SPA. Toutes les
+instances partagent la même base PostgreSQL (isolation par schéma dédié) et le même serveur Keycloak
+(realm partagé). Le routage vers la bonne instance est assuré par un reverse-proxy Apache à
+configuration statique (décision n° 14). Le déploiement cible des environnements conteneurisés
+(Docker / Kubernetes) ; une instance de tenant peut être scalée indépendamment des autres si sa
+charge le justifie.
 
 ```
-┌─────────────────────────────────────┐
-│  Instance Spring Boot               │
-│  (BFF + API + Flowable + PDF)       │
-└──────┬──────────────┬───────────────┘
-       │              │
-       ▼              ▼
-┌────────────┐  ┌──────────┐  ┌──────────────┐
-│ PostgreSQL │  │  MinIO   │  │   Keycloak   │
-│ tenant_a   │  │ (S3)     │  │ (OIDC/OAuth2)│
-│ tenant_b   │  │          │  │              │
-│ tenant_n   │  │          │  │              │
-└────────────┘  └──────────┘  └──────────────┘
+┌───────────────────┐   ┌───────────────────┐   ┌───────────────────┐
+│ Instance Spring    │   │ Instance Spring    │   │ Instance Spring    │
+│ Boot — tenant_a    │   │ Boot — tenant_b    │   │ Boot — tenant_n    │
+│ (BFF+API+Flowable) │   │ (BFF+API+Flowable) │   │ (BFF+API+Flowable) │
+└──────────┬──────────┘   └──────────┬──────────┘   └──────────┬──────────┘
+           │                         │                         │
+           └────────────┬────────────┴────────────┬────────────┘
+                         ▼                         ▼
+                  ┌────────────┐            ┌──────────────┐
+                  │ PostgreSQL │            │   Keycloak   │
+                  │ tenant_a   │            │ (OIDC/OAuth2)│
+                  │ tenant_b   │            │ realm partagé│
+                  │ tenant_n   │            └──────────────┘
+                  └─────┬──────┘
+                        ▼
+                  ┌──────────┐
+                  │  MinIO   │
+                  │ (S3)     │
+                  └──────────┘
 ```
 
 ------
@@ -171,3 +188,7 @@ La documentation d'architecture est disponible dans le répertoire `analysis doc
 
 > Projet en phase de conception — architecture définie, développement à démarrer.
 >  Activité indépendante complémentaire.
+
+La documentation d'architecture a fait l'objet d'une [revue pré-implémentation](REVUE-PRE-IMPLEMENTATION.md)
+qui en détaille les points restant à trancher. Ces points, ainsi que les décisions déjà actées, sont
+suivis dans [TODO.md](TODO.md).

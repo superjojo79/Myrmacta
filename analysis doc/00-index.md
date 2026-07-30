@@ -1,7 +1,8 @@
 # Architecture technique — Moteur de flux métier & génération de documents
 
 > Projet : activité indépendante complémentaire  
-> Stack de base : Java 21 · Spring Boot 3.x · PostgreSQL · Vue 3
+> Stack de base : Java 25 LTS · Spring Boot 4.1.x · PostgreSQL · Vue 3  
+> Build : mono-module Maven · frontend embarqué (`static/`) — décision n° 27
 
 ---
 
@@ -26,25 +27,25 @@
 
 ## Stack synthétique
 
-### Backend (Spring Boot 3.x / Java 21)
+### Backend (Spring Boot 4.1.x / Java 25 LTS)
 
 | Composant | Librairie | Rôle |
 |---|---|---|
-| Workflow engine | Flowable 7.x | BPMN 2.0 + DMN, triggers, tasks |
-| Génération PDF | Flying Saucer + OpenPDF + jsoup | Thymeleaf → HTML → PDF |
-| Sécurité | Spring Security + OAuth2 Client | BFF, session httpOnly |
+| Workflow engine | Flowable 8.0.x | BPMN 2.0 + DMN, triggers, tasks |
+| Génération PDF | Flying Saucer 10.4.x + OpenPDF + jsoup 1.22.x | Thymeleaf → HTML → PDF |
+| Sécurité | Spring Security 7 + OAuth2 Client | BFF, session httpOnly |
 | Persistence | Spring Data JPA + PostgreSQL | Données métier + Flowable |
 | Notifications | Spring Mail + Spring Retry | Email, webhook, SSE |
 | Dossiers | Spring Data JPA + PostgreSQL JSONB | Entité centrale, champs dynamiques |
 
-### Frontend (Vue 3)
+### Frontend (Vue 3 — embarqué)
 
 | Composant | Librairie | Rôle |
 |---|---|---|
-| Framework | Vue 3 + Vite | SPA |
+| Framework | Vue 3 + Vite | SPA, build copié dans `static/` |
 | UI | PrimeVue | Composants métier |
 | State | Pinia | Store réactif |
-| HTTP | Axios | Appels API |
+| HTTP | Axios | Appels API (même origine) |
 | BPMN viewer | bpmn-js | Visualisation workflow |
 
 ### Infrastructure
@@ -53,7 +54,8 @@
 |---|---|
 | Base de données | PostgreSQL (schéma par tenant) |
 | Stockage fichiers | MinIO (compatible S3) |
-| Auth server | Keycloak (ou provider OIDC externe) |
+| Auth server | Keycloak 26.7.x (ou provider OIDC externe) |
+| Build | Maven mono-module (ArchUnit pour la règle domaine) |
 
 ---
 
@@ -64,19 +66,19 @@
 <dependency>
     <groupId>org.flowable</groupId>
     <artifactId>flowable-spring-boot-starter</artifactId>
-    <version>7.x.x</version>
+    <version>8.0.x</version>
 </dependency>
 
 <!-- Génération PDF -->
 <dependency>
     <groupId>org.xhtmlrenderer</groupId>
-    <artifactId>flying-saucer-pdf-openpdf</artifactId>
-    <version>9.9.4</version>
+    <artifactId>flying-saucer-pdf</artifactId>
+    <version>10.4.x</version>
 </dependency>
 <dependency>
     <groupId>org.jsoup</groupId>
     <artifactId>jsoup</artifactId>
-    <version>1.17.2</version>
+    <version>1.22.x</version>
 </dependency>
 
 <!-- Templates -->
@@ -114,9 +116,16 @@
     <groupId>org.springframework.retry</groupId>
     <artifactId>spring-retry</artifactId>
 </dependency>
+
+<!-- Règle d'architecture (tests) -->
+<dependency>
+    <groupId>com.tngtech.archunit</groupId>
+    <artifactId>archunit-junit5</artifactId>
+    <scope>test</scope>
+</dependency>
 ```
 
-**Frontend (npm) :**
+**Frontend (npm) — build puis copie dans `src/main/resources/static/` :**
 
 ```bash
 npm install bpmn-js

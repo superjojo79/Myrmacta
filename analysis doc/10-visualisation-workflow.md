@@ -24,6 +24,15 @@ La visualisation est accessible aux utilisateurs impliqués dans l'instance (ass
 | `POST` | `/api/workflows/{instanceId}/tasks/{taskId}/reassign` | Réassignation de tâche |
 | `GET` | `/api/dossiers/{dossierId}/workflows` | Historique des workflows exécutés sur le dossier (`DossierWorkflowLink[]`, voir [04-dossiers.md](04-dossiers.md)) |
 
+> **Mise à jour — décision n° 17.** `GetDossierWorkflowHistoryUseCase.getHistory(...)` renvoyait une
+> entité JPA directement comme corps de cette réponse — le risque concret (proxy Hibernate sérialisé,
+> `LazyInitializationException`) disparaît par construction puisque `DossierWorkflowLink` est
+> désormais un objet domaine pur (`@Value`, aucune annotation JPA — voir
+> [04-dossiers.md](04-dossiers.md)), sans danger technique à être sérialisé tel quel. La question plus
+> générale de découpler le contrat d'API du modèle domaine (pour qu'un renommage de champ domaine ne
+> change pas silencieusement la réponse HTTP) reste du ressort du point 24 — sur le modèle du `record`
+> `WorkflowDiagramView` déjà utilisé ci-dessous comme DTO de réponse dédié.
+
 ### Modèles de réponse
 
 ```java
@@ -258,7 +267,12 @@ infrastructure/flowable
 ├── FlowableWorkflowVisualizationAdapter  ← nouveau
 ├── WorkflowStateEventListener            ← nouveau
 ├── ConnectorServiceTask
-└── ConnectorTriggerRuntime
+└── OutboxRelay                           # décision n° 16 — démarre Flowable depuis outbox
+
+infrastructure/connector
+├── ConnectorTriggerRuntime               # décision n° 16 — producteur dossier + outbox
+├── registry
+└── builtin
 ```
 
 ---

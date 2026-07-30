@@ -16,34 +16,60 @@ Plusieurs templates peuvent coexister pour un même type de document selon la si
 La clé de résolution est un triplet `(templateKey, variantKey, locale)`. `variantKey` et `locale` sont optionnels — `null` signifie "défaut".
 
 ```java
+// domain/document/model — pur Java, aucune annotation JPA (décision n° 17,
+// voir 01-architecture-hexagonale.md) — record, accesseurs sans préfixe (.id(), .templateKey()…)
+@Builder
+public record DocumentTemplate(
+    UUID   id,
+    String templateKey,   // type de document  : "contrat", "facture", "relance"
+    String variantKey,    // variante métier    : "standard", "premium", "B2B" — nullable, null = défaut
+    String locale,        // langue             : "fr", "nl", "en" — nullable, null = défaut
+
+    String label,
+    int    version,       // 1, 2, 3…
+
+    TemplateStatus status, // DRAFT, ACTIVE, ARCHIVED
+
+    String htmlContent,   // contenu Thymeleaf complet
+
+    String  tenantId,
+    Instant createdAt,
+    Instant updatedAt,
+    String  updatedBy
+) {}
+```
+
+```java
+// infrastructure/persistence/document — entité de persistance, porte la contrainte
+// d'unicité (préoccupation de stockage, pas de domaine)
 @Entity
-@Table(uniqueConstraints = @UniqueConstraint(
+@Table(name = "document_template", uniqueConstraints = @UniqueConstraint(
     columnNames = {"tenant_id", "template_key", "variant_key", "locale"}
 ))
-public class DocumentTemplate {
+public class DocumentTemplateJpaEntity {
 
     @Id @GeneratedValue
     private UUID id;
 
-    private String templateKey;   // type de document  : "contrat", "facture", "relance"
-    private String variantKey;    // variante métier    : "standard", "premium", "B2B"
-                                  //                      null = défaut
-    private String locale;        // langue             : "fr", "nl", "en"
-                                  //                      null = défaut
-
+    private String templateKey;
+    private String variantKey;
+    private String locale;
     private String label;
-    private int    version;       // 1, 2, 3…
+    private int    version;
 
     @Enumerated(EnumType.STRING)
-    private TemplateStatus status; // DRAFT, ACTIVE, ARCHIVED
+    private TemplateStatus status;
 
     @Column(columnDefinition = "TEXT")
-    private String htmlContent;   // contenu Thymeleaf complet
+    private String htmlContent;
 
     private String  tenantId;
     private Instant createdAt;
     private Instant updatedAt;
     private String  updatedBy;
+
+    // conversion assurée par DocumentTemplateJpaAdapter — même principe que
+    // DossierJpaAdapter, voir 04-dossiers.md
 }
 ```
 
@@ -94,10 +120,10 @@ public class TemplateResolutionRequest {
 public class TemplateResolver {
 
     private final DocumentTemplateRepository repository;
-    private final TenantContext tenantContext;
+    private final TenantProperties tenantProperties; // décision n° 13 — constante de configuration
 
     public DocumentTemplate resolve(TemplateResolutionRequest req) {
-        String tenant = tenantContext.getTenantId();
+        String tenant = tenantProperties.id();
 
         return repository
             .findActive(tenant, req.getTemplateKey(),
@@ -123,8 +149,8 @@ Le `ServiceTask` de génération construit la requête de résolution à partir 
 public class DocumentGenerationTask implements JavaDelegate {
 
     private final TemplateResolver         resolver;
-    private final DocumentGenerationService generator;
-    private final DocumentStorageService    storage;
+    private final GenerateDocumentUseCase  generateDocument; // domain/document/port/in
+    private final DocumentStoragePort      storage;          // domain/document/port/out
 
     @Override
     public void execute(DelegateExecution exec) {
@@ -136,7 +162,7 @@ public class DocumentGenerationTask implements JavaDelegate {
             .build();
 
         DocumentTemplate template = resolver.resolve(req);
-        byte[] pdf = generator.generate(template, exec.getVariables());
+        byte[] pdf = generateDocument.generate(template, exec.getVariables());
 
         exec.setVariable("generatedDocumentId", storage.store(pdf));
     }
@@ -156,3 +182,7 @@ public interface DocumentTemplateRepository {
     List<DocumentTemplate> findAllByTenantAndKey(String tenantId, String key);
 }
 ```
+
+> La génération PDF et le stockage passent par `GenerateDocumentUseCase` /
+> `DocumentStoragePort` (voir [07-generation-documents.md](07-generation-documents.md),
+> décision n° 18) — pas par des « Services » hors hexagone.

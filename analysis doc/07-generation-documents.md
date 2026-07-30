@@ -16,22 +16,22 @@ Thymeleaf  →  HTML  →  jsoup (XHTML)  →  Flying Saucer  →  OpenPDF
 | Librairie | Rôle | Licence |
 |---|---|---|
 | Thymeleaf | Fusion template + données | Apache 2.0 |
-| jsoup | HTML5 → XHTML strict | MIT |
-| Flying Saucer (`xhtmlrenderer`) | Rendu XHTML → PDF layout | LGPL |
-| OpenPDF | Écriture PDF (`flying-saucer-pdf-openpdf`) | LGPL / MPL |
+| jsoup 1.22.x | HTML5 → XHTML strict | MIT |
+| Flying Saucer (`flying-saucer-pdf` 10.4.x) | Rendu XHTML → PDF layout | LGPL |
+| OpenPDF | Écriture PDF (transitively via `flying-saucer-pdf`) | LGPL / MPL |
 
 ### Dépendances Maven
 
 ```xml
 <dependency>
     <groupId>org.xhtmlrenderer</groupId>
-    <artifactId>flying-saucer-pdf-openpdf</artifactId>
-    <version>9.9.4</version>
+    <artifactId>flying-saucer-pdf</artifactId>
+    <version>10.4.x</version>
 </dependency>
 <dependency>
     <groupId>org.jsoup</groupId>
     <artifactId>jsoup</artifactId>
-    <version>1.17.2</version>
+    <version>1.22.x</version>
 </dependency>
 ```
 
@@ -170,5 +170,10 @@ public interface PdfRenderer {
 public interface DocumentStoragePort {
     String store(byte[] content);
     byte[] retrieve(String documentId);
+}
+
+// domain/document/port/in — utilisé par DocumentGenerationTask (décision n° 18)
+public interface GenerateDocumentUseCase {
+    byte[] generate(DocumentTemplate template, Map<String, Object> variables);
 }
 ```

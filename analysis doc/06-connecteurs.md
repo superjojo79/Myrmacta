@@ -147,6 +147,12 @@ public class ConnectorRegistry {
 
 **Décision retenue :** séparation stricte entre l'entité de persistance et l'objet domaine, sur le même modèle que `WorkflowInstance`/`WorkflowJpaEntity`. Les ports `TriggerConnector` et `ServiceConnector` (définis plus haut) consomment `ConnectorInstanceData` — objet domaine pur, sans aucune annotation JPA, dont la `config` est déjà déchiffrée.
 
+> **Mise à jour — décision n° 17.** `ConnectorInstanceData` est devenu un `record` (accesseurs sans
+> préfixe — `.id()`, `.tenantId()`…), alignée sur la convention retenue pour les autres entités du
+> domaine — voir [01-architecture-hexagonale.md](01-architecture-hexagonale.md). Elle n'était pas
+> restée une classe manuscrite par choix délibéré ; c'était simplement la forme montrée avant que la
+> décision n° 17 ne généralise et documente cette convention.
+
 ```java
 // infrastructure/persistence/connector — entité de persistance, jamais exposée au domaine
 @Entity
@@ -170,16 +176,15 @@ public class ConnectorInstanceJpaEntity {
 }
 
 // domain/connector/model — pur Java, aucune annotation JPA, config déjà déchiffrée
-public class ConnectorInstanceData {
-    private final UUID                 id;
-    private final String               tenantId;
-    private final String               name;
-    private final String               connectorType;
-    private final boolean              enabled;
-    private final Map<String, Object>  config; // déchiffré par l'adaptateur avant conversion
-
-    // getters, pas de setters — objet immuable
-}
+@Builder
+public record ConnectorInstanceData(
+    UUID                id,
+    String              tenantId,
+    String              name,
+    String              connectorType,
+    boolean             enabled,
+    Map<String, Object> config // déchiffré par l'adaptateur avant conversion
+) {}
 ```
 
 L'adaptateur `ConnectorInstanceJpaAdapter` (dans `infrastructure.persistence.connector`) assure la conversion, y compris le déchiffrement AES-GCM des champs `PASSWORD`, avant d'exposer un `ConnectorInstanceData` au domaine :
@@ -246,7 +251,7 @@ public class ConnectorServiceTask implements JavaDelegate {
 
     private final ConnectorRegistry            registry;
     private final ConnectorInstanceRepository  instances;
-    private final TenantContext                tenantContext;
+    private final TenantProperties             tenantProperties; // décision n° 13 — constante de configuration, plus un contexte à résoudre
 
     @Override
     public void execute(DelegateExecution exec) {
@@ -254,11 +259,11 @@ public class ConnectorServiceTask implements JavaDelegate {
             (String) exec.getVariable("connectorInstanceId"));
 
         ConnectorInstanceData instance = instances
-            .findByIdAndTenantId(instanceId, tenantContext.getTenantId())
+            .findByIdAndTenantId(instanceId, tenantProperties.id())
             .orElseThrow();
 
         ServiceConnector connector =
-            (ServiceConnector) registry.get(instance.getConnectorType());
+            (ServiceConnector) registry.get(instance.connectorType());
 
         Map<String, Object> result =
             connector.execute(instance, exec.getVariables());
@@ -276,63 +281,63 @@ nouveau dossier, soit le démarrage d'un nouveau workflow sur un dossier
 existant — voir `WorkflowTriggerEvent.existingDossierReference` dans la
 section « Lien avec les dossiers » ci-dessous.
 
+**Décision n° 16 — option B.** Le runtime ne démarre **pas** Flowable
+directement. Il crée/résout le dossier et écrit l'outbox dans la même
+transaction ; le relais documenté dans
+[05-workflow-engine.md](05-workflow-engine.md) réserve le lien, démarre
+Flowable et confirme.
+
 ```java
 @Component
 @RequiredArgsConstructor
 public class ConnectorTriggerRuntime {
 
-    private final RuntimeService         runtimeService;
-    private final ConnectorRegistry      registry;
-    private final CreateDossierUseCase   createDossierUseCase;
-    private final GetDossierUseCase      getDossierUseCase;
-    private final AttachWorkflowUseCase  attachWorkflowUseCase;
+    private final ConnectorRegistry    registry;
+    private final CreateDossierUseCase createDossierUseCase;
+    private final GetDossierUseCase    getDossierUseCase;
+    private final OutboxPort           outboxPort;   // écriture outbox_event
 
+    /** Phase producteur — appelée après authentification webhook (adaptateur web). */
+    @Transactional
     public void onIncomingEvent(ConnectorInstanceData instance,
                                 Map<String, Object> rawPayload) {
 
         TriggerConnector connector =
-            (TriggerConnector) registry.get(instance.getConnectorType());
+            (TriggerConnector) registry.get(instance.connectorType());
 
-        // Retourne une liste — un seul événement entrant peut produire
-        // N dossiers (import batch) ou cibler N dossiers existants
-        connector.onEvent(instance, rawPayload).forEach(event ->
-            startWorkflowFor(instance, event));
+        // Un seul événement entrant peut produire N dossiers (import batch)
+        // ou cibler N dossiers existants
+        for (WorkflowTriggerEvent event : connector.onEvent(instance, rawPayload)) {
+            UUID dossierId = resolveOrCreateDossier(instance, event);
+            outboxPort.append(TriggerOutboxPayload.from(dossierId, instance, event));
+        }
+        // Commit → ACK webhook. Aucun démarrage Flowable ici.
     }
 
-    private void startWorkflowFor(ConnectorInstance instance,
-                                  WorkflowTriggerEvent event) {
-
-        UUID dossierId = event.getExistingDossierReference() != null
-            ? getDossierUseCase.getByReference(
-                  instance.getTenantId(), event.getExistingDossierReference()).getId()
-            : createDossierUseCase.create(CreateDossierCommand.builder()
-                  .tenantId       (instance.getTenantId())
-                  .dossierTypeCode(event.getDossierTypeCode())
-                  .fields         (event.getDossierFields())
-                  .createdBy      ("trigger:" + instance.getId())
-                  .build()).getId();
-
-        DossierWorkflowLink link = attachWorkflowUseCase.reserve(
-            dossierId, event.getProcessKey(), "connector:" + instance.getId());
-
-        ProcessInstance pi = runtimeService.createProcessInstanceBuilder()
-            .processDefinitionKey(event.getProcessKey())
-            .tenantId(instance.getTenantId())
-            .variable("dossierId", dossierId.toString())
-            .variable("dossierWorkflowLinkId", link.getId().toString())
-            .variables(event.getVariables())
-            .start();
-
-        attachWorkflowUseCase.confirmStarted(link.getId(), pi.getId());
+    private UUID resolveOrCreateDossier(ConnectorInstanceData instance,
+                                        WorkflowTriggerEvent event) {
+        if (event.getExistingDossierReference() != null) {
+            // Décision n° 20 — résolution système, hors ACL utilisateur
+            return getDossierUseCase.getByReference(
+                instance.tenantId(),
+                event.getExistingDossierReference(),
+                AccessContext.system("connector-trigger")).id();
+        }
+        return createDossierUseCase.create(CreateDossierCommand.builder()
+            .tenantId       (instance.tenantId())
+            .dossierTypeCode(event.getDossierTypeCode())
+            .fields         (event.getDossierFields())
+            .createdBy      ("trigger:" + instance.id())
+            .build()).id();
     }
 }
 ```
 
-> Si `existingDossierReference` référence un dossier qui a déjà un workflow
-> actif, `reserve(...)` lève `WorkflowAlreadyRunningException` — au
-> connecteur de décider comment réagir (rejet du message, mise en file
-> d'attente, dead-letter — voir le pattern retry de
-> [09-notifications.md](09-notifications.md)).
+> La collision « workflow déjà actif » n'est **plus** détectée ici — elle
+> survient dans le relais au moment de `reserveOrResume`. Si elle se produit,
+> l'événement outbox passe en dead-letter (le dossier existe déjà, l'ACK a été
+> donné). Voir politiques retry / DLQ dans
+> [05-workflow-engine.md](05-workflow-engine.md).
 
 ### Authentification des webhooks entrants
 
@@ -354,13 +359,13 @@ public class HmacWebhookAuthenticator implements WebhookAuthenticator {
 
     @Override
     public void authenticate(ConnectorInstanceData instance, HttpServletRequest request, byte[] rawBody) {
-        String secret   = (String) instance.getConfig().get("webhookSecret");
+        String secret   = (String) instance.config().get("webhookSecret");
         String expected = "sha256=" + hmacSha256Hex(secret, rawBody);
         String received = request.getHeader("X-Signature-256");
 
         if (received == null || !MessageDigest.isEqual(
                 expected.getBytes(UTF_8), received.getBytes(UTF_8))) {
-            throw new WebhookAuthenticationException(instance.getId());
+            throw new WebhookAuthenticationException(instance.id());
         }
     }
 }
@@ -374,14 +379,18 @@ public class WebhookController {
     private final ConnectorInstanceRepository       instances;
     private final Map<WebhookAuthType, WebhookAuthenticator> authenticators;
     private final ConnectorTriggerRuntime           triggerRuntime;
+    private final TenantProperties                  tenantProperties; // décision n° 13
 
     @PostMapping("/{instanceId}")
     public ResponseEntity<Void> receive(@PathVariable UUID instanceId,
             HttpServletRequest request, @RequestBody byte[] rawBody) {
 
-        ConnectorInstanceData instance = instances.findById(instanceId).orElseThrow();
+        ConnectorInstanceData instance = instances
+            .findByIdAndTenantId(instanceId, tenantProperties.id())
+            .orElseThrow();
 
-        authenticators.get(instance.getWebhookAuthType())
+        authenticators.get(WebhookAuthType.valueOf(
+                (String) instance.config().get("webhookAuthType")))
             .authenticate(instance, request, rawBody);
 
         triggerRuntime.onIncomingEvent(instance, parseJson(rawBody));
@@ -390,7 +399,18 @@ public class WebhookController {
 }
 ```
 
-Le champ `webhookAuthType` est ajouté au `getConfigSchema()` du connecteur `http-rest` (type `SELECT`, valeurs `HMAC_SHA256` / `SHARED_SECRET_TOKEN` / `IP_ALLOWLIST`), permettant à l'UI de générer dynamiquement le formulaire de configuration correspondant (secret HMAC, token, ou liste d'IP autorisées).
+Le champ `webhookAuthType` est un `ConfigField` SELECT du connecteur `http-rest` (valeurs
+`HMAC_SHA256` / `SHARED_SECRET_TOKEN` / `IP_ALLOWLIST`) — stocké dans `ConnectorInstanceData.config`,
+pas comme champ de premier niveau du record (décision n° 18). L'UI génère dynamiquement le formulaire
+de configuration correspondant (secret HMAC, token, ou liste d'IP autorisées).
+
+**Résolution du tenant (décision n° 14, [02-multi-tenant.md](02-multi-tenant.md#routage-vers-linstance--chemin-par-tenant-reverse-proxy-statique)).**
+L'URL complète exposée au tiers pour configurer son webhook inclut le préfixe de chemin propre au
+tenant, transparent pour ce contrôleur : `https://example.com/{tenantId}/api/webhooks/{instanceId}`.
+Le reverse-proxy route déjà la requête vers l'instance du bon tenant avant qu'elle n'atteigne ce
+code — `findByIdAndTenantId` avec `tenantProperties.id()` n'est donc plus qu'une défense en
+profondeur, plus une nécessité pour éviter une résolution circulaire (l'instance ne dessert de toute
+façon jamais qu'un seul schéma).
 
 ### Appel direct via API
 
@@ -404,7 +424,7 @@ public class ConnectorExecutionController {
 
     private final ConnectorRegistry           registry;
     private final ConnectorInstanceRepository instances;
-    private final TenantContext               tenantContext;
+    private final TenantProperties            tenantProperties; // décision n° 13
 
     @PostMapping("/{instanceId}/execute")
     public ResponseEntity<Map<String, Object>> execute(
@@ -412,16 +432,22 @@ public class ConnectorExecutionController {
             @RequestBody Map<String, Object> inputParams) {
 
         ConnectorInstanceData instance = instances
-            .findByIdAndTenantId(instanceId, tenantContext.getTenantId())
+            .findByIdAndTenantId(instanceId, tenantProperties.id())
             .orElseThrow();
 
         ServiceConnector connector =
-            (ServiceConnector) registry.get(instance.getConnectorType());
+            (ServiceConnector) registry.get(instance.connectorType());
 
         return ResponseEntity.ok(connector.execute(instance, inputParams));
     }
 }
 ```
+
+Cet endpoint est celui protégé par la chaîne de sécurité machine-to-machine (`client_credentials`,
+décision n° 14) — voir [03-authentification.md](03-authentification.md#authentification-machine-to-machine--client_credentials).
+Un appelant `API_SERVICE` l'atteint via le même chemin propre au tenant que les webhooks
+(`https://example.com/{tenantId}/api/connectors/{instanceId}/execute`) — un seul mécanisme de
+routage sert les deux cas, voir [02-multi-tenant.md](02-multi-tenant.md).
 
 ---
 
@@ -431,11 +457,13 @@ Chaque `WorkflowTriggerEvent` retourné par un `TriggerConnector` produit
 soit la création d'un **nouveau dossier**, soit le démarrage d'un nouveau
 workflow sur un **dossier existant** (voir
 [04-dossiers.md](04-dossiers.md), section « Démarrage d'un nouveau workflow
-sur un dossier existant » — orchestration détaillée dans
-`ConnectorTriggerRuntime` ci-dessus). Un trigger qui importe un fichier CSV
-peut retourner N événements → N dossiers créés en batch ; un trigger qui
-referme une boucle métier (ex. réponse à un webhook de suivi) peut au
-contraire cibler un dossier déjà ouvert via `existingDossierReference`.
+sur un dossier existant »). L'orchestration est scindée (décision n° 16) :
+`ConnectorTriggerRuntime` crée/résout le dossier et écrit l'outbox ; le
+relais de [05-workflow-engine.md](05-workflow-engine.md) réserve le lien et
+démarre Flowable. Un trigger qui importe un fichier CSV peut retourner N
+événements → N dossiers créés en batch ; un trigger qui referme une boucle
+métier (ex. réponse à un webhook de suivi) peut au contraire cibler un
+dossier déjà ouvert via `existingDossierReference`.
 
 ```java
 public class WorkflowTriggerEvent {
@@ -447,7 +475,8 @@ public class WorkflowTriggerEvent {
     String              existingDossierReference; // optionnel — référence d'un dossier
                                                     // existant (ex: "DOS-SINISTRE-2024-000042").
                                                     // Si renseigné, ConnectorTriggerRuntime
-                                                    // appelle AttachWorkflowUseCase.reserve(...)
-                                                    // au lieu de CreateDossierUseCase.create(...)
+                                                    // résout le dossier (GetDossierUseCase) au
+                                                    // lieu de CreateDossierUseCase.create(...) ;
+                                                    // le relais outbox réserve ensuite le lien.
 }
 ```

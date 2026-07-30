@@ -49,6 +49,15 @@ Clôture du dossier             ← Dossier.status = CLOTURE / ARCHIVE, piloté 
 
 ## Modèle de données
 
+> **Depuis la décision n° 17** ([TODO.md](../TODO.md)), toutes les classes ci-dessous sont des
+> `record` Java — objets domaine purs, aucune annotation JPA, accesseurs sans préfixe (`.id()`,
+> `.tenantId()`…). `@Builder` (Lombok) reste utilisé au-dessus du `record` pour la construction à
+> de nombreux champs — un `record` conserve son constructeur canonique quoi qu'il arrive, `@Builder`
+> n'ajoute qu'une syntaxe de construction alternative. Chacune a son entité de persistance homonyme
+> suffixée `JpaEntity` (`DossierJpaEntity`, `DossierTypeJpaEntity`…), confinée à
+> `infrastructure.persistence.dossier` et jamais exposée au domaine — voir « Structure de packages »
+> en fin de document pour la liste complète et un exemple d'adaptateur assurant la conversion.
+
 ### `DossierType` — schéma dynamique par tenant
 
 Chaque tenant configure ses propres types de dossiers. Le schéma des champs
@@ -56,23 +65,18 @@ dynamiques est déclaré dans `fieldDefinitions` — l'UI génère les formulair
 de saisie à partir de ce schéma, sans code supplémentaire.
 
 ```java
-@Entity
-public class DossierType {
-
-    @Id @GeneratedValue
-    private UUID id;
-
-    private String  tenantId;
-    private String  code;         // "SINISTRE", "DEMANDE_SUBVENTION", "RECLAMATION"
-    private String  label;
-    private String  workflowKey;  // clé BPMN à instancier pour ce type
-    private boolean active;
-    private boolean allowUnknownFields; // false par défaut — voir "Validation des champs dynamiques"
-
-    @Convert(converter = JsonListConverter.class)
-    @Column(columnDefinition = "jsonb")
-    private List<FieldDefinition> fieldDefinitions;
-}
+// domain/dossier/model — pur Java, aucune annotation JPA
+@Builder
+public record DossierType(
+    UUID                   id,
+    String                 tenantId,
+    String                 code,         // "SINISTRE", "DEMANDE_SUBVENTION", "RECLAMATION"
+    String                 label,
+    String                 workflowKey,  // clé BPMN à instancier pour ce type
+    boolean                active,
+    boolean                allowUnknownFields, // false par défaut — voir "Validation des champs dynamiques"
+    List<FieldDefinition>  fieldDefinitions
+) {}
 
 @Value @Builder
 public class FieldDefinition {
@@ -86,43 +90,157 @@ public class FieldDefinition {
 }
 ```
 
-### `Dossier` — entité centrale
-
 ```java
+// infrastructure/persistence/dossier — entité de persistance, jamais exposée au domaine
 @Entity
-public class Dossier {
+@Table(name = "dossier_type")
+public class DossierTypeJpaEntity {
 
     @Id @GeneratedValue
     private UUID id;
 
-    private String tenantId;
+    private String  tenantId;
+    private String  code;
+    private String  label;
+    private String  workflowKey;
+    private boolean active;
+    private boolean allowUnknownFields;
+
+    @Convert(converter = JsonListConverter.class)
+    @Column(columnDefinition = "jsonb")
+    private List<FieldDefinition> fieldDefinitions;
+
+    // getters/setters standards (JPA en a besoin) — conversion assurée par
+    // DossierTypeJpaAdapter, même principe que DossierJpaAdapter ci-dessous
+}
+```
+
+### `Dossier` — entité centrale
+
+```java
+// domain/dossier/model — pur Java, aucune annotation JPA (décision n° 17)
+@Builder
+public record Dossier(
+    UUID   id,
+    String tenantId,
 
     // ── Signalétique ──────────────────────────────────────────────────────────
-    private String reference;        // numéro unique généré : "DOS-2024-00042"
-    private String dossierTypeCode;  // référence vers DossierType
-    private String label;            // libellé libre
+    String reference,        // numéro unique généré : "DOS-2024-00042"
+    String dossierTypeCode,  // référence vers DossierType
+    String label,            // libellé libre
 
-    @Enumerated(EnumType.STRING)
-    private DossierStatus status;    // DRAFT → OUVERT → EN_COURS → CLOTURE → ARCHIVE
+    DossierStatus status,    // DRAFT → OUVERT → EN_COURS → CLOTURE → ARCHIVE
 
     // ── Champs dynamiques ─────────────────────────────────────────────────────
-    @Convert(converter = JsonMapConverter.class)
-    @Column(columnDefinition = "jsonb")
-    private Map<String, Object> fields;  // valeurs des FieldDefinition du DossierType
+    Map<String, Object> fields,  // valeurs des FieldDefinition du DossierType
 
     // ── Lien Flowable ─────────────────────────────────────────────────────────
     // Un dossier peut être manipulé par plusieurs workflows successifs — voir
     // DossierWorkflowLink ci-dessous, qui porte l'historique complet. Ce champ
     // n'est qu'un pointeur dénormalisé de confort vers le workflow actif ;
     // il vaut null si aucun workflow n'est en cours sur ce dossier.
-    private UUID currentWorkflowLinkId;  // nullable — DossierWorkflowLink actif
+    UUID currentWorkflowLinkId,  // nullable — DossierWorkflowLink actif
 
     // ── Audit ─────────────────────────────────────────────────────────────────
+    String  createdBy,
+    Instant createdAt,
+    String  updatedBy,  // auteur de la dernière mutation (décision n° 18)
+    Instant updatedAt,
+    String  closedBy,   // nullable
+    Instant closedAt    // nullable
+) {
+    /** Transition de statut — un record est immuable, l'use case persiste la copie retournée. */
+    public Dossier withStatus(DossierStatus newStatus, String updatedBy, Instant at) {
+        return new Dossier(id, tenantId, reference, dossierTypeCode, label,
+            newStatus, fields, currentWorkflowLinkId, createdBy, createdAt,
+            updatedBy, at, closedBy, closedAt);
+    }
+}
+```
+
+```java
+// infrastructure/persistence/dossier — entité de persistance, jamais exposée au domaine
+@Entity
+@Table(name = "dossier")
+public class DossierJpaEntity {
+
+    @Id @GeneratedValue
+    private UUID id;
+
+    private String tenantId;
+    private String reference;
+    private String dossierTypeCode;
+    private String label;
+
+    @Enumerated(EnumType.STRING)
+    private DossierStatus status;
+
+    @Convert(converter = JsonMapConverter.class)
+    @Column(columnDefinition = "jsonb")
+    private Map<String, Object> fields;
+
+    private UUID currentWorkflowLinkId;
+
     private String  createdBy;
     private Instant createdAt;
+    private String  updatedBy;
     private Instant updatedAt;
     private String  closedBy;
     private Instant closedAt;
+
+    // getters/setters standards (JPA en a besoin) — omis pour la lisibilité
+}
+```
+
+```java
+// infrastructure/persistence/dossier — assure la conversion dans les deux sens
+@Repository
+@RequiredArgsConstructor
+public class DossierJpaAdapter implements DossierRepository {
+
+    private final DossierJpaRepository jpa;
+
+    @Override
+    public void save(Dossier dossier) {
+        jpa.save(toEntity(dossier));
+    }
+
+    @Override
+    public Optional<Dossier> findById(UUID id) {
+        return jpa.findById(id).map(this::toDomain);
+    }
+
+    private Dossier toDomain(DossierJpaEntity e) {
+        return Dossier.builder()
+            .id(e.getId()).tenantId(e.getTenantId()).reference(e.getReference())
+            .dossierTypeCode(e.getDossierTypeCode()).label(e.getLabel())
+            .status(e.getStatus()).fields(e.getFields())
+            .currentWorkflowLinkId(e.getCurrentWorkflowLinkId())
+            .createdBy(e.getCreatedBy()).createdAt(e.getCreatedAt())
+            .updatedBy(e.getUpdatedBy()).updatedAt(e.getUpdatedAt())
+            .closedBy(e.getClosedBy())
+            .closedAt(e.getClosedAt())
+            .build();
+    }
+
+    private DossierJpaEntity toEntity(Dossier d) {
+        DossierJpaEntity e = new DossierJpaEntity();
+        e.setId(d.id());
+        e.setTenantId(d.tenantId());
+        e.setReference(d.reference());
+        e.setDossierTypeCode(d.dossierTypeCode());
+        e.setLabel(d.label());
+        e.setStatus(d.status());
+        e.setFields(d.fields());
+        e.setCurrentWorkflowLinkId(d.currentWorkflowLinkId());
+        e.setCreatedBy(d.createdBy());
+        e.setCreatedAt(d.createdAt());
+        e.setUpdatedBy(d.updatedBy());
+        e.setUpdatedAt(d.updatedAt());
+        e.setClosedBy(d.closedBy());
+        e.setClosedAt(d.closedAt());
+        return e;
+    }
 }
 ```
 
@@ -132,8 +250,36 @@ Un dossier agrège des éléments de types hétérogènes produits ou collectés
 au fil du workflow.
 
 ```java
+// domain/dossier/model — pur Java, aucune annotation JPA (décision n° 17)
+@Builder
+public record DossierElement(
+    UUID   id,
+    UUID   dossierId,
+    String tenantId,
+
+    ElementType type,
+    // ATTACHMENT    — pièce jointe déposée par un utilisateur
+    // PRODUCED_DOC  — document généré par un ServiceTask
+    // INFORMATION   — bloc de données structurées
+    // NOTE          — commentaire libre
+    // LINK          — référence vers une ressource externe
+
+    String label,
+    String storageRef,      // référence MinIO pour ATTACHMENT / PRODUCED_DOC
+
+    Map<String, Object> metadata,   // données spécifiques selon le type
+
+    String  addedBy,
+    Instant addedAt,
+    String  workflowStepId  // étape Flowable productrice (nullable)
+) {}
+```
+
+```java
+// infrastructure/persistence/dossier — entité de persistance
 @Entity
-public class DossierElement {
+@Table(name = "dossier_element")
+public class DossierElementJpaEntity {
 
     @Id @GeneratedValue
     private UUID id;
@@ -143,22 +289,19 @@ public class DossierElement {
 
     @Enumerated(EnumType.STRING)
     private ElementType type;
-    // ATTACHMENT    — pièce jointe déposée par un utilisateur
-    // PRODUCED_DOC  — document généré par un ServiceTask
-    // INFORMATION   — bloc de données structurées
-    // NOTE          — commentaire libre
-    // LINK          — référence vers une ressource externe
 
     private String label;
-    private String storageRef;      // référence MinIO pour ATTACHMENT / PRODUCED_DOC
+    private String storageRef;
 
     @Convert(converter = JsonMapConverter.class)
     @Column(columnDefinition = "jsonb")
-    private Map<String, Object> metadata;   // données spécifiques selon le type
+    private Map<String, Object> metadata;
 
     private String  addedBy;
     private Instant addedAt;
-    private String  workflowStepId; // étape Flowable productrice (nullable)
+    private String  workflowStepId;
+
+    // conversion assurée par DossierElementJpaAdapter — même principe que DossierJpaAdapter
 }
 ```
 
@@ -176,28 +319,50 @@ Chaque exécution — passée ou en cours — est représentée par une ligne
 ayant opéré sur le dossier.
 
 ```java
+// domain/dossier/model — pur Java, aucune annotation JPA (décision n° 17)
+@Builder
+public record DossierWorkflowLink(
+    UUID   id,
+    UUID   dossierId,
+    String tenantId,
+
+    String processInstanceId,     // nullable — ID Flowable, renseigné par confirmStarted(...)
+    String processDefinitionKey,  // clé BPMN — référence un WorkflowTypeConfig (voir 05-workflow-engine.md)
+    int    sequence,              // 1, 2, 3… — ordre des exécutions sur ce dossier
+
+    String status,   // statut métier courant — code libre, validé contre
+                      // WorkflowTypeConfig.statusDefinitions (voir 05-workflow-engine.md)
+
+    String  triggerRef, // origine du démarrage : "connector:<id>", "manual:<userId>",
+                         // "api", "workflow:<processInstanceId d'origine>" (chaînage)
+
+    Instant startedAt,
+    Instant endedAt,    // nullable — renseigné quand le statut courant atteint un outcome terminal
+    String  endReason   // nullable — motif de fin (message d'erreur, annulation…)
+) {}
+```
+
+```java
+// infrastructure/persistence/dossier — entité de persistance
 @Entity
-public class DossierWorkflowLink {
+@Table(name = "dossier_workflow_link")
+public class DossierWorkflowLinkJpaEntity {
 
     @Id @GeneratedValue
     private UUID id;
 
     private UUID   dossierId;
     private String tenantId;
-
-    private String processInstanceId;     // ID Flowable — renseigné une fois l'instance démarrée
-    private String processDefinitionKey;  // clé BPMN — référence un WorkflowTypeConfig (voir 05-workflow-engine.md)
-    private int    sequence;              // 1, 2, 3… — ordre des exécutions sur ce dossier
-
-    private String status;   // statut métier courant — code libre, validé contre
-                              // WorkflowTypeConfig.statusDefinitions (voir 05-workflow-engine.md)
-
-    private String  triggerRef; // origine du démarrage : "connector:<id>", "manual:<userId>",
-                                 // "api", "workflow:<processInstanceId d'origine>" (chaînage)
-
+    private String processInstanceId;
+    private String processDefinitionKey;
+    private int    sequence;
+    private String status;
+    private String triggerRef;
     private Instant startedAt;
-    private Instant endedAt;    // renseigné quand le statut courant atteint un outcome terminal
-    private String  endReason;  // optionnel — motif de fin (message d'erreur, annulation…)
+    private Instant endedAt;
+    private String  endReason;
+
+    // conversion assurée par DossierWorkflowLinkJpaAdapter — même principe que DossierJpaAdapter
 }
 ```
 
@@ -220,8 +385,34 @@ vérification préalable non atomique.
 ### `DossierRelation` — liens entre dossiers
 
 ```java
+// domain/dossier/model — pur Java, aucune annotation JPA (décision n° 17)
+@Builder
+public record DossierRelation(
+    UUID   id,
+    UUID   sourceDossierId,
+    UUID   targetDossierId,
+    String tenantId,
+
+    RelationType type,
+    // PARENT_CHILD  — dossier enfant créé pour traiter un aspect précis nécessitant
+    //                 un workflow dédié, distinct du dossier principal
+    // SUBSEQUENT    — dossier de suite créé lorsque des éléments du dossier initial
+    //                 s'avèrent erronés ou incomplets et doivent être repris à neuf
+    // LINKED        — lien logique simple : B est une conséquence de A, sans
+    //                 hiérarchie ni notion de correction
+    // DUPLICATE     — doublon identifié
+    // MERGED_INTO   — dossier fusionné dans un autre
+
+    String  createdBy,
+    Instant createdAt
+) {}
+```
+
+```java
+// infrastructure/persistence/dossier — entité de persistance
 @Entity
-public class DossierRelation {
+@Table(name = "dossier_relation")
+public class DossierRelationJpaEntity {
 
     @Id @GeneratedValue
     private UUID id;
@@ -232,17 +423,11 @@ public class DossierRelation {
 
     @Enumerated(EnumType.STRING)
     private RelationType type;
-    // PARENT_CHILD  — dossier enfant créé pour traiter un aspect précis nécessitant
-    //                 un workflow dédié, distinct du dossier principal
-    // SUBSEQUENT    — dossier de suite créé lorsque des éléments du dossier initial
-    //                 s'avèrent erronés ou incomplets et doivent être repris à neuf
-    // LINKED        — lien logique simple : B est une conséquence de A, sans
-    //                 hiérarchie ni notion de correction
-    // DUPLICATE     — doublon identifié
-    // MERGED_INTO   — dossier fusionné dans un autre
 
     private String  createdBy;
     private Instant createdAt;
+
+    // conversion assurée par DossierRelationJpaAdapter — même principe que DossierJpaAdapter
 }
 ```
 
@@ -397,7 +582,7 @@ public class CreateDossierUseCaseImpl implements CreateDossierUseCase {
             .orElseThrow();
 
         List<FieldValidationError> errors = fieldValidator.validate(
-            type.getFieldDefinitions(), cmd.fields(), type.isAllowUnknownFields());
+            type.fieldDefinitions(), cmd.fields(), type.allowUnknownFields());
 
         if (!errors.isEmpty()) {
             throw new DossierFieldValidationException(errors);
@@ -415,50 +600,44 @@ La couche REST intercepte `DossierFieldValidationException` pour produire le `40
 ## Création depuis un trigger — unitaire et batch
 
 Le `ConnectorTriggerRuntime` supporte la création batch — un seul événement
-entrant peut produire N dossiers (ex: import de fichier CSV).
+entrant peut produire N dossiers (ex: import de fichier CSV). **Décision
+n° 16 — option B :** chaque dossier est créé (ou résolu) et journalisé dans
+l'outbox dans la même transaction producteur ; le démarrage Flowable est
+différé au relais (voir [05-workflow-engine.md](05-workflow-engine.md) et
+[06-connecteurs.md](06-connecteurs.md)).
 
 ```java
 // TriggerConnector retourne une liste — 1 événement = 1 dossier
 public interface TriggerConnector {
-    List<WorkflowTriggerEvent> onEvent(ConnectorInstance instance,
+    List<WorkflowTriggerEvent> onEvent(ConnectorInstanceData instance,
                                        Map<String, Object> rawPayload);
 }
 
-// ConnectorTriggerRuntime — itération et création
-events.forEach(event -> {
+// ConnectorTriggerRuntime — phase producteur (décision n° 16)
+@Transactional
+public void onIncomingEvent(ConnectorInstanceData instance,
+                            Map<String, Object> rawPayload) {
+    connector.onEvent(instance, rawPayload).forEach(event -> {
 
-    // 1. Création du dossier
-    Dossier dossier = createDossierUseCase.create(
-        CreateDossierCommand.builder()
-            .tenantId       (instance.getTenantId())
-            .dossierTypeCode(event.getDossierTypeCode())
-            .fields         (event.getDossierFields())
-            .createdBy      ("trigger:" + instance.getId())
-            .build());
+        // 1. Création ou résolution du dossier — validation métier ici
+        UUID dossierId = event.getExistingDossierReference() != null
+            ? getDossierUseCase.getByReference(
+                  instance.tenantId(), event.getExistingDossierReference(),
+                  AccessContext.system("connector-trigger")).id()
+            : createDossierUseCase.create(CreateDossierCommand.builder()
+                  .tenantId       (instance.tenantId())
+                  .dossierTypeCode(event.getDossierTypeCode())
+                  .fields         (event.getDossierFields())
+                  .createdBy      ("trigger:" + instance.id())
+                  .build()).id();
 
-    // 2. Réservation du lien dossier ↔ workflow — vérifie la règle de
-    //    concurrence (aucun autre workflow actif) et attribue son id avant
-    //    même le démarrage Flowable, pour que la variable soit disponible
-    //    dès les premiers ServiceTask exécutés de façon synchrone par .start()
-    DossierWorkflowLink link = attachWorkflowUseCase.reserve(
-        dossier.getId(), event.getProcessKey(), "connector:" + instance.getId());
-
-    // 3. Démarrage de l'instance Flowable
-    ProcessInstance pi = runtimeService
-        .createProcessInstanceBuilder()
-        .processDefinitionKey(event.getProcessKey())
-        .tenantId(instance.getTenantId())
-        .variable("dossierId", dossier.getId().toString())
-        .variable("dossierWorkflowLinkId", link.getId().toString())
-        .variables(event.getVariables())
-        .start();
-
-    // 4. Confirmation — renseigne processInstanceId + startedAt sur le lien
-    attachWorkflowUseCase.confirmStarted(link.getId(), pi.getId());
-});
+        // 2. Journalisation outbox — atomique avec l'étape 1
+        //    (pas de réserve / démarrage Flowable ici)
+        outboxPort.append(TriggerOutboxPayload.from(dossierId, instance, event));
+    });
+    // Commit → ACK. Le relais fera reserveOrResume → start → confirmStarted.
+}
 ```
-
----
 
 ## Démarrage d'un nouveau workflow sur un dossier existant
 
@@ -474,6 +653,13 @@ public interface AttachWorkflowUseCase {
     // WorkflowAlreadyRunningException si un workflow est déjà actif sur ce dossier
     DossierWorkflowLink reserve(UUID dossierId, String processDefinitionKey,
                                 String triggerRef);
+
+    // Variante idempotente pour le relais outbox (décision n° 16) :
+    // reprend un lien RESERVED existant pour ce dossier+process au rejeu ;
+    // no-op conceptuel si déjà ACTIVE avec processInstanceId ;
+    // délègue à reserve(...) sinon.
+    DossierWorkflowLink reserveOrResume(UUID dossierId, String processDefinitionKey,
+                                        String triggerRef);
 
     // Complète le lien réservé une fois l'instance Flowable effectivement démarrée
     void confirmStarted(UUID linkId, String processInstanceId);
@@ -498,7 +684,7 @@ public class DossierWorkflowController {
 
     private final AttachWorkflowUseCase attachWorkflowUseCase;
     private final RuntimeService        runtimeService;
-    private final TenantContext         tenantContext;
+    private final TenantProperties      tenantProperties; // décision n° 13 — constante de configuration
 
     @PostMapping
     public ResponseEntity<DossierWorkflowLink> start(
@@ -511,13 +697,13 @@ public class DossierWorkflowController {
 
         ProcessInstance pi = runtimeService.createProcessInstanceBuilder()
             .processDefinitionKey(req.processDefinitionKey())
-            .tenantId(tenantContext.getTenantId())
+            .tenantId(tenantProperties.id())
             .variable("dossierId", dossierId.toString())
-            .variable("dossierWorkflowLinkId", link.getId().toString())
+            .variable("dossierWorkflowLinkId", link.id().toString())
             .variables(req.variables())
             .start();
 
-        attachWorkflowUseCase.confirmStarted(link.getId(), pi.getId());
+        attachWorkflowUseCase.confirmStarted(link.id(), pi.getId());
         return ResponseEntity.ok(link);
     }
 }
@@ -551,17 +737,17 @@ public class StartChainedWorkflowTask extends DossierAwareTask {
         String nextProcessKey = (String) exec.getVariable("nextProcessKey");
 
         DossierWorkflowLink link = attachWorkflowUseCase.reserve(
-            dossier.getId(), nextProcessKey,
+            dossier.id(), nextProcessKey,
             "workflow:" + exec.getProcessInstanceId());
 
         ProcessInstance pi = runtimeService.createProcessInstanceBuilder()
             .processDefinitionKey(nextProcessKey)
             .tenantId(exec.getTenantId())
-            .variable("dossierId", dossier.getId().toString())
-            .variable("dossierWorkflowLinkId", link.getId().toString())
+            .variable("dossierId", dossier.id().toString())
+            .variable("dossierWorkflowLinkId", link.id().toString())
             .start();
 
-        attachWorkflowUseCase.confirmStarted(link.getId(), pi.getId());
+        attachWorkflowUseCase.confirmStarted(link.id(), pi.getId());
     }
 }
 ```
@@ -570,6 +756,39 @@ public class StartChainedWorkflowTask extends DossierAwareTask {
 > (`DossierWorkflowLink.status` avec `outcome != NONE`) **avant** que ce
 > `ServiceTask` ne s'exécute, sinon `reserve(...)` échoue — la règle de
 > concurrence s'applique aussi au chaînage interne.
+
+---
+
+## Contrôle d'accès au niveau type de dossier (décision n° 20)
+
+L'ACL porte sur le **`DossierType`**, pas sur l'instance. Un grant `VIEW` /
+`EDIT` sur un type s'applique à tous les dossiers de ce type. Pour un
+appelant `User`, `DossierAccessPolicy` consulte `dossier_type_acl` ;
+`TENANT_ADMIN` / `WORKFLOW_ADMIN` contournent. Les appels système
+(`DossierAwareTask`, relais outbox, résolution trigger) passent
+`AccessContext.system(...)`. Détail dans
+[12-autorisation-conformite.md](12-autorisation-conformite.md).
+
+```java
+// domain/dossier/port/in
+public interface GetDossierUseCase {
+    Dossier get(UUID id, AccessContext ctx);
+    Dossier getByReference(String tenantId, String reference, AccessContext ctx);
+}
+
+public interface GrantDossierTypeAccessUseCase {
+    void grant(GrantDossierTypeAccessCommand cmd);
+    // dossierTypeCode, subjectUserId, permission, grantedBy — admin tenant
+}
+
+public interface RevokeDossierTypeAccessUseCase {
+    void revoke(String dossierTypeCode, String subjectUserId, AccessContext.User actor);
+}
+```
+
+`CreateDossierUseCase` (appelant `User`) exige `EDIT` sur le `dossierTypeCode`
+cible. Aucun grant par instance n'est écrit à la création. La liste / recherche
+est filtrée aux types pour lesquels le sujet a au moins `VIEW`.
 
 ---
 
@@ -588,7 +807,8 @@ public abstract class DossierAwareTask implements JavaDelegate {
     @Override
     public final void execute(DelegateExecution exec) {
         UUID    id      = UUID.fromString((String) exec.getVariable("dossierId"));
-        Dossier dossier = getDossier.get(id);
+        // Décision n° 20 — appel système : pas d'ACL utilisateur
+        Dossier dossier = getDossier.get(id, AccessContext.system("flowable"));
         executeWithDossier(exec, dossier);
     }
 
@@ -608,7 +828,7 @@ public class AttachGeneratedDocumentTask extends DossierAwareTask {
         String storageRef = (String) exec.getVariable("generatedDocumentId");
 
         addElement.add(AddDossierElementCommand.builder()
-            .dossierId     (dossier.getId())
+            .dossierId     (dossier.id())
             .type          (ElementType.PRODUCED_DOC)
             .label         ("Document généré — " + exec.getCurrentActivityName())
             .storageRef    (storageRef)
@@ -659,16 +879,20 @@ a un, sinon le plus récent.
 domain
 └── dossier
     ├── model
-    │   ├── Dossier
-    │   ├── DossierType
-    │   ├── DossierElement
-    │   ├── DossierRelation
-    │   ├── DossierWorkflowLink        ← nouveau — historique dossier ↔ workflows
+    │   ├── Dossier                     ← record — décision n° 17
+    │   ├── DossierType                 ← record
+    │   ├── DossierElement              ← record
+    │   ├── DossierRelation             ← record
+    │   ├── DossierWorkflowLink         ← record — historique dossier ↔ workflows
     │   ├── DossierStatus
     │   ├── ElementType
     │   ├── RelationType
     │   ├── FieldDefinition
-    │   └── DossierFieldValidator
+    │   ├── DossierFieldValidator
+    │   ├── AccessContext                  ← décision n° 20
+    │   ├── DossierTypeAclEntry            ← décision n° 20
+    │   └── DossierPermission              ← VIEW | EDIT (sur le type)
+    ├── DossierAccessPolicy                ← décision n° 20 — service domaine
     ├── usecase
     │   ├── CreateDossierUseCaseImpl
     │   ├── CreateDossierBatchUseCaseImpl
@@ -676,35 +900,47 @@ domain
     │   ├── UpdateDossierStatusUseCaseImpl
     │   ├── AddDossierElementUseCaseImpl
     │   ├── LinkDossiersUseCaseImpl
-    │   ├── AttachWorkflowUseCaseImpl          ← nouveau — remplace LinkDossierToProcessUseCase
-    │   ├── UpdateWorkflowLinkStatusUseCaseImpl ← nouveau
-    │   └── GetDossierWorkflowHistoryUseCaseImpl ← nouveau
+    │   ├── AttachWorkflowUseCaseImpl
+    │   ├── UpdateWorkflowLinkStatusUseCaseImpl
+    │   ├── GetDossierWorkflowHistoryUseCaseImpl
+    │   ├── GrantDossierTypeAccessUseCaseImpl  ← décision n° 20
+    │   └── RevokeDossierTypeAccessUseCaseImpl ← décision n° 20
     └── port
         ├── in
         │   ├── CreateDossierUseCase
         │   ├── CreateDossierBatchUseCase
-        │   ├── GetDossierUseCase
+        │   ├── GetDossierUseCase          ← get(id, AccessContext)
         │   ├── UpdateDossierStatusUseCase
         │   ├── AddDossierElementUseCase
         │   ├── LinkDossiersUseCase
         │   ├── AttachWorkflowUseCase
         │   ├── UpdateWorkflowLinkStatusUseCase
-        │   └── GetDossierWorkflowHistoryUseCase
+        │   ├── GetDossierWorkflowHistoryUseCase
+        │   ├── GrantDossierTypeAccessUseCase
+        │   └── RevokeDossierTypeAccessUseCase
         └── out
             ├── DossierRepository
             ├── DossierTypeRepository
             ├── DossierElementRepository
             ├── DossierRelationRepository
-            ├── DossierWorkflowLinkRepository  ← nouveau
+            ├── DossierWorkflowLinkRepository
+            ├── DossierTypeAclRepository   ← décision n° 20
             └── DossierReferenceGenerator
 
 infrastructure
 └── persistence
     └── dossier
+        ├── DossierJpaEntity
+        ├── DossierTypeJpaEntity
+        ├── DossierElementJpaEntity
+        ├── DossierRelationJpaEntity
+        ├── DossierWorkflowLinkJpaEntity
+        ├── DossierTypeAclJpaEntity        ← décision n° 20
         ├── DossierJpaAdapter
         ├── DossierTypeJpaAdapter
         ├── DossierElementJpaAdapter
         ├── DossierRelationJpaAdapter
-        ├── DossierWorkflowLinkJpaAdapter  ← nouveau
+        ├── DossierWorkflowLinkJpaAdapter
+        ├── DossierTypeAclJpaAdapter
         └── SequentialReferenceGenerator
 ```

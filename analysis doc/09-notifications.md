@@ -81,36 +81,50 @@ es.addEventListener('notification', e => {
 });
 ```
 
-### Scalabilité SSE en déploiement multi-instances
+### Scalabilité SSE — chemin d'évolution si un tenant est scalé sur plusieurs répliques
 
-**Problème :** la map `emitters` de l'exemple ci-dessus est locale à la JVM. En déploiement mono-instance elle fonctionne telle quelle, mais le modèle de déploiement cible (voir README — Kubernetes, plusieurs pods) casse cette hypothèse : un utilisateur connecté en SSE au pod A ne recevra jamais un événement déclenché par un traitement (ServiceTask Flowable, webhook) exécuté sur le pod B, puisque l'`SseEmitter` de cet utilisateur n'existe que dans la mémoire du pod A.
+**Ce n'est pas un défaut de la V1.** Avec le modèle de déploiement retenu (décision n° 13,
+[02-multi-tenant.md](02-multi-tenant.md)) — une instance Spring Boot dédiée par tenant — la map
+`emitters` de l'exemple ci-dessus fonctionne telle quelle par défaut : un tenant donné n'a qu'une
+seule instance, donc une seule JVM, donc une seule map en mémoire pour tous ses utilisateurs
+connectés. Le problème ne se pose jamais **entre tenants différents**, puisqu'ils n'ont jamais de
+composant partagé.
 
-**Décision retenue :** découpler l'émission de l'événement (n'importe quel pod) de sa diffusion aux `SseEmitter` locaux, via un relais pub/sub partagé entre instances.
+**Le sujet redevient pertinent uniquement si un tenant précis est scalé** sur plusieurs répliques de
+sa propre instance (voir « Scaling horizontal d'un tenant » dans
+[02-multi-tenant.md](02-multi-tenant.md)) : un utilisateur de ce tenant connecté en SSE à la réplique
+A ne recevrait alors pas un événement déclenché par un traitement (ServiceTask Flowable, webhook)
+exécuté sur la réplique B du **même tenant**, puisque l'`SseEmitter` de cet utilisateur n'existe que
+dans la mémoire de la réplique A.
+
+**Décision retenue pour ce cas** (à activer, pas par défaut) : découpler l'émission de l'événement
+(n'importe quelle réplique du tenant) de sa diffusion aux `SseEmitter` locaux, via un relais pub/sub
+partagé entre les répliques de ce tenant.
 
 ```
-ServiceTask / Webhook (pod B)
+ServiceTask / Webhook (réplique B, tenant_a)
     │
     ▼
-SendNotificationUseCase.send(event)          ← peut s'exécuter sur n'importe quel pod
+SendNotificationUseCase.send(event)          ← peut s'exécuter sur n'importe quelle réplique de tenant_a
     │
     ▼
 BrowserPushPort.push(userId, event)
     │
     ▼
-PostgreSQL NOTIFY canal "sse_notifications"  ← relais inter-pods (voir alternative Redis ci-dessous)
+PostgreSQL NOTIFY canal propre au tenant     ← relais inter-répliques (voir alternative Redis ci-dessous)
     │
-    ├──▶ pod A : LISTEN → emitters locaux (utilisateur connecté ici) → push SSE
-    ├──▶ pod B : LISTEN → aucun emitter local pour cet utilisateur → ignoré
-    └──▶ pod C : LISTEN → idem
+    ├──▶ réplique A : LISTEN → emitters locaux (utilisateur connecté ici) → push SSE
+    ├──▶ réplique B : LISTEN → aucun emitter local pour cet utilisateur → ignoré
+    └──▶ réplique C : LISTEN → idem
 ```
 
 | Option | Mécanisme | Avantage | Coût |
 |---|---|---|---|
-| **PostgreSQL `LISTEN`/`NOTIFY`** (retenu par défaut) | Chaque pod maintient une connexion `LISTEN` sur un canal par tenant ou global | Aucune infrastructure supplémentaire — PostgreSQL est déjà une dépendance dure du projet | Débit et taille de payload limités (recommandé : ne transporter qu'un identifiant, puis re-fetch côté pod si besoin) ; une connexion JDBC dédiée et longue par pod |
-| Redis Pub/Sub | `publish`/`subscribe` sur un canal par utilisateur ou tenant | Débit plus élevé, latence plus faible, découplage total de PostgreSQL | Ajoute une dépendance d'infrastructure non prévue dans la stack actuelle |
-| Sticky sessions (affinité de pod) | Le load balancer route toujours le même utilisateur vers le même pod | Pas de relais applicatif à écrire | Ne résout pas le cas où l'émetteur de l'événement (autre requête HTTP, job async) tombe sur un pod différent de celui où l'utilisateur est connecté ; fragilise le rolling-update Kubernetes |
+| **PostgreSQL `LISTEN`/`NOTIFY`** (retenu par défaut si le besoin se présente) | Chaque réplique du tenant maintient une connexion `LISTEN` sur un canal propre à ce tenant | Aucune infrastructure supplémentaire — PostgreSQL est déjà une dépendance dure du projet, et la connexion est de toute façon déjà scopée au schéma du tenant | Débit et taille de payload limités (recommandé : ne transporter qu'un identifiant, puis re-fetch côté réplique si besoin) ; une connexion JDBC dédiée et longue par réplique |
+| Redis Pub/Sub | `publish`/`subscribe` sur un canal par utilisateur, au sein du pool du tenant | Débit plus élevé, latence plus faible, découplage total de PostgreSQL | Ajoute une dépendance d'infrastructure non prévue dans la stack actuelle |
+| Sticky sessions (affinité de réplique) | Le load balancer du tenant route toujours le même utilisateur vers la même réplique | Pas de relais applicatif à écrire | Ne résout pas le cas où l'émetteur de l'événement (autre requête HTTP, job async) tombe sur une réplique différente de celle où l'utilisateur est connecté ; fragilise le rolling-update |
 
-L'implémentation `SseNotificationAdapter` (voir [01-architecture-hexagonale.md](01-architecture-hexagonale.md)) reste responsable des deux rôles : publier sur le canal partagé, et retransmettre aux `SseEmitter` locaux sur réception. Le contrat du port `BrowserPushPort` ne change pas — seul l'adaptateur évolue, conformément au principe hexagonal.
+L'implémentation `SseNotificationAdapter` (voir [01-architecture-hexagonale.md](01-architecture-hexagonale.md)) resterait responsable des deux rôles si ce chemin est activé : publier sur le canal partagé, et retransmettre aux `SseEmitter` locaux sur réception. Le contrat du port `BrowserPushPort` ne changerait pas — seul l'adaptateur évoluerait, conformément au principe hexagonal.
 
 ### Dépendances Maven supplémentaires
 

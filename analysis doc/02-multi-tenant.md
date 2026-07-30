@@ -1,7 +1,7 @@
 # Multi-tenant
 
-> Isolation par schéma PostgreSQL. Le tenant est résolu depuis le token OIDC
-> et propagé via un bean @RequestScope compatible Virtual Threads.
+> Isolation par schéma PostgreSQL. Chaque tenant est servi par sa propre instance Spring Boot,
+> configurée avec son identifiant au démarrage — décision n° 13, [TODO.md](../TODO.md).
 
 ---
 
@@ -17,11 +17,108 @@ PostgreSQL (instance unique)
     └── tables métier
 ```
 
-Bon équilibre entre isolation des données, simplicité opérationnelle et support natif Flowable. Migration Liquibase exécutée par schéma à la création de chaque tenant — les changesets idempotents et le système de `contexts` permettent de distinguer l'initialisation d'un nouveau tenant des migrations appliquées à l'ensemble des tenants existants lors d'un déploiement.
+Bon équilibre entre isolation des données, simplicité opérationnelle et support natif Flowable.
 
-### Résolution du tenant — claim OIDC
+### Modèle de déploiement — une instance dédiée par tenant
 
-Le `tenant_id` est porté comme **claim custom dans le token OIDC**, ajouté par le provider (mapper Keycloak ou équivalent). Il est résolu une fois à l'entrée de chaque requête et propagé via un bean `@RequestScope`.
+**Décision retenue (n° 13).** Chaque tenant est servi par sa **propre instance Spring Boot**,
+démarrée séparément — port ou serveur distinct — et configurée avec son identifiant de tenant en dur
+au démarrage. Toutes les instances partagent la même base PostgreSQL multi-schéma, mais chaque
+instance n'ouvre jamais qu'une connexion vers son propre schéma, fixé une fois pour toutes. Il
+n'existe pas de mode alternatif où une même instance servirait plusieurs tenants.
+
+Le tenant devient une **propriété de configuration**, lue une fois au démarrage de la JVM, jamais
+une donnée résolue dynamiquement par requête :
+
+```java
+@ConfigurationProperties(prefix = "app.tenant")
+public record TenantProperties(String id) {}
+```
+
+```yaml
+app:
+  tenant:
+    id: tenant_a   # unique par instance déployée — jamais résolu dynamiquement
+```
+
+`TenantProperties` est un bean singleton ordinaire : il est disponible sans distinction dans les
+threads de requête HTTP, les `JavaDelegate` exécutés par le job executor asynchrone de Flowable, le
+scheduler du relais outbox, ou tout autre composant — il n'y a plus de contexte à propager, puisqu'il
+n'y a plus rien qui varie d'une exécution à l'autre au sein d'un même process.
+
+**Pourquoi ce choix plutôt qu'un mécanisme de propagation (`ThreadLocal`, `ScopedValue`).** Le
+problème initial — certains composants (relais outbox, `JavaDelegate` Flowable, listeners
+d'événements, job de migration) s'exécutent hors requête HTTP et ne pouvaient pas résoudre leur
+tenant via un bean `@RequestScope` — n'est pas résolu en rendant la propagation plus sûre, mais en
+supprimant le besoin de propager quoi que ce soit : le tenant ne varie plus au sein d'un process, il
+n'y a donc plus d'endroit où un oubli de propagation peut se reproduire.
+
+Le routage vers la bonne instance se fait par **chemin**, via une configuration statique de
+reverse-proxy — voir « Routage vers l'instance » ci-dessous.
+
+**L'onboarding d'un nouveau tenant** devient une opération de provisioning à part entière — création
+du schéma, génération de la configuration de la nouvelle instance, démarrage de celle-ci, ajout de la
+règle de routage correspondante — plutôt qu'un simple appel applicatif. L'outillage de ce
+provisioning n'est pas encore spécifié (voir point 31, découpage en lots).
+
+**Scaling horizontal d'un tenant — chemin d'évolution, pas un défaut.** Si la charge d'un tenant
+donné le justifie, plusieurs répliques de son instance dédiée peuvent être démarrées derrière un
+répartiteur de charge propre à ce tenant. Cela ne concerne alors que ce tenant : aucune coordination
+inter-tenants n'est nécessaire. Ce scaling réintroduit, mais seulement dans le pool de répliques de
+ce tenant, les questions de session HTTP partagée (voir
+[03-authentification.md](03-authentification.md)) et de diffusion SSE inter-répliques (voir
+[09-notifications.md](09-notifications.md)) — non traitées par défaut, à activer au cas par cas.
+
+### Routage vers l'instance — chemin par tenant, reverse-proxy statique
+
+**Décision retenue (point 14, [TODO.md](../TODO.md)).** Le routage vers la bonne instance se fait
+par **chemin** — chaque tenant est adressé sous un préfixe d'URL qui lui est propre
+(`https://example.com/tenant_a/...`) — plutôt que par sous-domaine ou par port. La configuration du
+reverse-proxy est **statique** : un bloc par tenant, ajouté à la configuration du serveur lors du
+provisioning, sans annuaire consulté dynamiquement à chaque requête.
+
+```apache
+# httpd.conf — un bloc par tenant, ajouté au provisioning
+ProxyPass        "/tenant_a" "http://127.0.0.1:8081/tenant_a"
+ProxyPassReverse "/tenant_a" "http://127.0.0.1:8081/tenant_a"
+
+ProxyPass        "/tenant_b" "http://127.0.0.1:8082/tenant_b"
+ProxyPassReverse "/tenant_b" "http://127.0.0.1:8082/tenant_b"
+```
+
+Chaque instance sert nativement sous ce même préfixe, via le mécanisme standard de Spring Boot — pas
+de logique applicative dédiée au multi-tenant dans le routage :
+
+```yaml
+server:
+  servlet:
+    context-path: /${app.tenant.id}    # ex. /tenant_a — identique au préfixe du reverse-proxy
+  forward-headers-strategy: framework  # honore X-Forwarded-* pour les URLs absolues générées
+                                        # (redirect_uri OAuth2, cookies) — voir 03-authentification.md
+```
+
+Le préfixe n'est donc jamais réécrit ni retiré par le proxy : la même URL, préfixe inclus, désigne
+la ressource côté client comme côté serveur. Cela couvre uniformément le trafic humain (SPA,
+redirection OAuth2 — voir [03-authentification.md](03-authentification.md)) et les appels non
+authentifiés (webhooks, API machine-to-machine — voir [06-connecteurs.md](06-connecteurs.md)), sans
+mécanisme de routage distinct pour chacun.
+
+**Pourquoi ce choix plutôt qu'un sous-domaine ou un port dédié.** Un sous-domaine par tenant
+(`tenant_a.example.com`) impose une gestion de certificat (wildcard ou émission automatisée par
+tenant) ; un port dédié se heurte aux pare-feux des systèmes tiers, qui n'autorisent souvent que
+80/443. Le chemin conserve un hostname et un certificat uniques, avec une configuration de
+reverse-proxy volontairement simple — un bloc statique par tenant, sans composant de routage
+dynamique supplémentaire à opérer.
+
+**Ce que ça coûte.** L'onboarding d'un tenant ajoute une étape à l'outillage de provisioning :
+générer et déployer le bloc de configuration du reverse-proxy correspondant, en plus de la création
+du schéma et du démarrage de l'instance. Le rechargement du reverse-proxy (`apachectl graceful` ou
+équivalent) doit être inclus dans ce processus, sans interrompre le trafic des autres tenants.
+
+### Résolution du tenant — vérification d'identité, pas sélection de schéma
+
+Le `tenant_id` reste porté comme **claim custom dans le token OIDC**, ajouté par le provider (mapper
+Keycloak ou équivalent) :
 
 ```json
 {
@@ -32,31 +129,21 @@ Le `tenant_id` est porté comme **claim custom dans le token OIDC**, ajouté par
 }
 ```
 
-### Provider OIDC — Keycloak (realm partagé)
-
-Un realm partagé avec un claim `tenant_id` par utilisateur. Évolutif vers des realms dédiés si un tenant exige une configuration SSO spécifique (Azure AD, Google Workspace…).
-
-### Propagation du tenant — `@RequestScope`
-
-`@RequestScope` est le choix retenu plutôt que `ThreadLocal` — bean Spring géré par le conteneur, compatible Virtual Threads Java 21 sans friction, cycle de vie garanti par la requête HTTP.
+Contrairement au modèle envisagé avant la décision n° 13, ce claim ne sert plus à **sélectionner**
+un schéma — le schéma est fixé une fois pour toutes par la configuration de l'instance
+(`app.tenant.id`). Il sert à **vérifier** que l'utilisateur authentifié appartient bien au tenant que
+cette instance sert, et à rejeter dans le cas contraire — un utilisateur du tenant B ne doit jamais
+être traité comme faisant partie des données du tenant A, même si son authentification auprès du
+realm partagé a réussi.
 
 ```java
-// Bean request-scoped — une instance par requête HTTP
-@Component
-@RequestScope
-public class TenantContext {
-    private String tenantId;
-
-    public String getTenantId()          { return tenantId; }
-    public void   setTenantId(String id) { this.tenantId = id; }
-}
-
-// Filtre — résolution du tenant depuis le token OIDC en début de requête
+// Filtre — vérifie que l'utilisateur authentifié appartient au tenant de CETTE instance.
+// Ne sélectionne plus de schéma : la connexion est déjà fixée par la configuration.
 @Component
 @RequiredArgsConstructor
 public class TenantResolutionFilter extends OncePerRequestFilter {
 
-    private final TenantContext tenantContext;
+    private final TenantProperties tenantProperties;
 
     @Override
     protected void doFilterInternal(HttpServletRequest req,
@@ -67,105 +154,58 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
             .getContext().getAuthentication();
 
         if (auth != null && auth.getPrincipal() instanceof OidcUser user) {
-            String tenantId = user.getClaimAsString("tenant_id");
+            String claimedTenantId = user.getClaimAsString("tenant_id");
 
-            // Décision — le claim tenant_id est obligatoire : pas de fallback
-            // silencieux vers le schéma public. Voir "Résolution du tenant"
-            // et "Routing du schéma PostgreSQL" ci-dessous.
-            if (tenantId == null || tenantId.isBlank()) {
+            // Décision — le claim tenant_id doit être présent et correspondre au tenant
+            // configuré de cette instance, sinon rejet. Pas de fallback silencieux.
+            if (!tenantProperties.id().equals(claimedTenantId)) {
                 res.sendError(HttpServletResponse.SC_FORBIDDEN,
-                    "tenant_id claim manquant");
+                    "tenant_id claim absent ou ne correspond pas à cette instance");
                 return;
             }
-
-            tenantContext.setTenantId(tenantId);
         }
 
         chain.doFilter(req, res);
-        // Pas de clear() nécessaire — le bean est détruit en fin de requête
     }
 }
 ```
 
-### Décision — claim `tenant_id` absent
+### Provider OIDC — Keycloak (realm partagé)
 
-**Problème identifié en revue :** sans rejet explicite, une requête authentifiée mais dépourvue du claim `tenant_id` retombait sur le fallback `"public"` du `TenantIdentifierResolver`, rendant le schéma public accessible depuis l'API.
+Un realm partagé avec un claim `tenant_id` par utilisateur. Évolutif vers des realms dédiés si un
+tenant exige une configuration SSO spécifique (Azure AD, Google Workspace…).
 
-**Décision retenue :** le `TenantResolutionFilter` rejette la requête avec un `403` dès que le claim est absent ou vide (voir code ci-dessus). Le schéma `public` est réservé à un usage strictement technique — bootstrap Liquibase, jobs internes exécutés hors contexte HTTP — et n'est jamais atteint par déduction d'un tenant `null`. C'est pourquoi `TenantIdentifierResolver` (ci-dessous) lève une exception plutôt que de retourner `"public"` par défaut.
+### Connexion à la base — schéma fixé à la configuration
 
-### Routing du schéma PostgreSQL
+Puisqu'une instance ne dessert jamais qu'un seul schéma, le SPI multi-tenant d'Hibernate
+(`CurrentTenantIdentifierResolver`, `MultiTenantConnectionProvider`) n'est plus nécessaire : le
+`search_path` est fixé une fois à l'ouverture du pool de connexions, jamais rebasculé.
 
-```java
-// CurrentTenantIdentifierResolver Hibernate — lit le bean request-scoped
-@Component
-@RequiredArgsConstructor
-public class TenantIdentifierResolver
-        implements CurrentTenantIdentifierResolver<String> {
-
-    private final TenantContext tenantContext;
-
-    @Override
-    public String resolveCurrentTenantIdentifier() {
-        // Décision — pas de fallback silencieux vers "public" : un contexte
-        // manquant est une erreur de programmation ou une requête qui n'aurait
-        // pas dû atteindre cette couche (voir TenantResolutionFilter).
-        return Optional.ofNullable(tenantContext.getTenantId())
-            .orElseThrow(MissingTenantContextException::new);
-    }
-
-    @Override
-    public boolean validateExistingCurrentSessions() { return true; }
-}
-
-// MultiTenantConnectionProvider — switche le search_path PostgreSQL
-@Component
-@RequiredArgsConstructor
-public class SchemaMultiTenantConnectionProvider
-        implements MultiTenantConnectionProvider<String> {
-
-    private final DataSource dataSource;
-    private final TenantRegistry tenantRegistry; // registre des tenants actifs, en cache
-
-    @Override
-    public Connection getConnection(String tenantId) throws SQLException {
-        // Décision — défense en profondeur contre l'injection SQL via tenantId :
-        // 1. le tenantId est déjà validé par regex à sa création (voir plus bas) ;
-        // 2. on revérifie ici qu'il correspond à un tenant actif connu (pas de
-        //    confiance aveugle dans le claim JWT, même signé) ;
-        // 3. l'identifiant est échappé via enquoteIdentifier() plutôt que concaténé.
-        if (!tenantRegistry.isActiveTenant(tenantId)) {
-            throw new UnknownTenantException(tenantId);
-        }
-
-        Connection conn = dataSource.getConnection();
-        String schema = conn.enquoteIdentifier(tenantId, true);
-        conn.createStatement()
-            .execute("SET search_path TO " + schema + ", public");
-        return conn;
-    }
-
-    @Override
-    public void releaseConnection(String tenantId, Connection conn)
-            throws SQLException {
-        try {
-            conn.createStatement().execute("SET search_path TO public");
-        } finally {
-            conn.close(); // toujours fermer, même si le reset échoue
-        }
-    }
-}
+```yaml
+spring:
+  datasource:
+    url: jdbc:postgresql://db-host:5432/flowforge
+    hikari:
+      connection-init-sql: SET search_path TO ${app.tenant.id}, public
 ```
 
-### Décision — validation du `tenantId`
+Chaque connexion du pool porte donc le même `search_path` pendant toute la durée de vie du pool —
+il n'existe plus de scénario où une connexion pourrait être rendue avec le `search_path` d'un autre
+tenant, puisqu'aucun autre tenant n'est jamais atteint par cette instance. La configuration Hibernate
+redevient une configuration JPA ordinaire, sans multi-tenancy.
 
-**Problème identifié en revue :** le `tenantId` était concaténé tel quel dans `SET search_path TO {tenantId}, public`, sans sanitisation — un `tenantId` malformé ou malveillant pouvait constituer une injection SQL.
+### Validation du `tenantId` — au provisioning, plus à chaque requête
 
-**Décision retenue — double barrière :**
+**Contexte.** Dans le modèle abandonné, le `tenantId` porté par le claim JWT était utilisé pour
+sélectionner dynamiquement un schéma à chaque requête, ce qui imposait une double barrière
+(validation + registre des tenants actifs consulté à chaque résolution) contre le risque d'injection
+dans le `search_path`. Avec la décision n° 13, le nom du schéma n'est plus jamais dérivé d'une
+requête utilisateur : il est fixé une fois par la configuration de déploiement de l'instance.
 
-1. **À la création du tenant** (source unique de vérité) : validation par expression régulière `^[a-z][a-z0-9_]{2,62}$`, alignée sur les contraintes d'identifiant PostgreSQL (minuscules, chiffres, underscore, 63 caractères maximum).
-2. **À chaque résolution de requête** (défense en profondeur) : vérification que le `tenantId` porté par le claim OIDC correspond à un tenant actif connu du `TenantRegistry` (registre en cache, rafraîchi périodiquement depuis la table des tenants) — un claim signé n'est pas une garantie suffisante si le mapping du claim côté IdP venait à être mal configuré.
-
-De plus, l'identifiant est échappé via `Connection.enquoteIdentifier()` (JDBC 4.3+) avant d'être injecté dans le `SET search_path`, plutôt qu'une simple concaténation de chaîne — les identifiants SQL ne pouvant pas être paramétrés via `PreparedStatement`, l'échappement explicite est la protection appropriée en complément de la validation.
+**Ce qui reste nécessaire.** La validation par expression régulière reste pertinente **au moment du
+provisioning** — quand un outil crée un nouveau schéma pour un nouveau tenant et génère la
+configuration de la future instance — pour garantir un identifiant conforme aux contraintes
+PostgreSQL et éviter qu'une valeur malformée ne se retrouve dans la configuration de déploiement.
 
 ```java
 public final class TenantIdValidator {
@@ -181,80 +221,88 @@ public final class TenantIdValidator {
 }
 ```
 
-### Robustesse du `search_path` face au pool de connexions
-
-Le `search_path` est un état de **session PostgreSQL**, pas de la transaction JDBC. Deux risques doivent être traités explicitement, faute de quoi une connexion peut être rendue au pool avec le `search_path` d'un autre tenant :
-
-| Risque | Cause | Mitigation retenue |
-|---|---|---|
-| Connexion rendue au pool sans reset | Exception levée entre `getConnection()` et `releaseConnection()` (ex. requête en erreur) avant que Hibernate n'appelle le reset | `releaseConnection()` doit toujours exécuter le `SET search_path TO public` dans un bloc `try/finally`, y compris en cas d'échec de la requête métier |
-| Connexion physique réutilisée par Hikari sans repasser par `releaseConnection()` | Fermeture anormale de la connexion applicative (timeout, crash de thread) sans que Hibernate ne rende la main au provider | `HikariConfig.connectionInitSql` / `connectionTestQuery` positionné à `SET search_path TO public` pour garantir un état neutre à chaque emprunt du pool, en complément du reset applicatif |
-| Connexion validée par Hikari sans revalidation du schéma | `dataSource.getConnection()` peut retourner une connexion physique déjà utilisée par un tenant précédent | `getConnection(tenantId)` **doit toujours réémettre** `SET search_path` avant tout usage, jamais supposer un état neutre par défaut (déjà le cas dans l'implémentation ci-dessus — à ne jamais optimiser en le rendant conditionnel) |
-
-> **Recommandation de test** — ce comportement doit être couvert par un test d'intégration dédié : ouvrir/fermer des connexions pour deux tenants en boucle serrée (y compris avec des requêtes en échec) et vérifier qu'aucune donnée croisée n'est lisible. Un test manuel ou une revue de code ne suffisent pas à garantir l'absence de fuite.
+L'échappement via `Connection.enquoteIdentifier()` reste une bonne pratique lorsque l'identifiant est
+composé dans une instruction SQL (bootstrap, `CREATE SCHEMA` — voir ci-dessous), mais ne défend plus
+contre une entrée utilisateur arrivant par requête : cette classe de risque a disparu avec
+l'abandon de la sélection dynamique de schéma.
 
 ### Flowable — `tenantId` natif
 
 ```java
-// Déploiement d'un processus pour un tenant
+// Déploiement d'un processus — le tenantId est désormais une constante de configuration
 repositoryService.createDeployment()
-    .tenantId(tenantContext.getTenantId())
+    .tenantId(tenantProperties.id())
     .addClasspathResource("processes/mon-workflow.bpmn20.xml")
     .deploy();
 
 // Démarrage d'une instance de processus
 runtimeService.createProcessInstanceBuilder()
     .processDefinitionKey("mon-workflow")
-    .tenantId(tenantContext.getTenantId())
+    .tenantId(tenantProperties.id())
     .start();
 ```
 
-### Bootstrap et migration Liquibase multi-tenant
+Cet usage est désormais redondant avec l'isolation par schéma — un moteur Flowable donné ne gère
+jamais que les processus d'un seul tenant, quel que soit le `tenantId` qu'on lui déclare. Il est
+conservé par défense en profondeur (cohérence des requêtes historiques, clarté des logs Flowable),
+sans être porteur de l'isolation elle-même.
 
-**Décision retenue :** deux contextes Liquibase distincts partagent le même changelog maître (`db/changelog/tenant/changelog-master.xml`) :
+### Bootstrap et migration Liquibase — une étape de démarrage par instance
 
-| Contexte | Déclenché par | Portée |
-|---|---|---|
-| `tenant-init` | Onboarding d'un nouveau tenant | Changelog complet, exécuté une seule fois sur le nouveau schéma |
-| `tenant-migration` | Déploiement applicatif | Changesets incrémentaux, appliqués à tous les schémas de tenants existants |
+**Décision retenue.** Chaque instance migre son propre schéma à son propre démarrage, avant
+d'accepter du trafic. Il n'y a plus de Job Kubernetes distinct orchestrant plusieurs schémas, ni de
+distinction entre un contexte `tenant-init` et un contexte `tenant-migration` : le suivi natif de
+Liquibase (`DATABASECHANGELOG`) applique déjà uniquement les changesets manquants, que le schéma soit
+tout juste créé ou déjà à jour — les deux cas sont couverts par la même exécution.
 
 ```java
-// Onboarding — création du schéma + changelog complet en contexte tenant-init
-public void onboardTenant(String tenantId) {
-    TenantIdValidator.validate(tenantId);
-    createSchemaIfAbsent(tenantId);
+@Component
+@RequiredArgsConstructor
+public class TenantSchemaBootstrap implements ApplicationRunner {
 
-    Liquibase liquibase = new Liquibase(
-        "db/changelog/tenant/changelog-master.xml",
-        new ClassLoaderResourceAccessor(),
-        jdbcConnectionFor(tenantId));
-    liquibase.update(new Contexts("tenant-init"), new LabelExpression());
+    private final TenantProperties tenantProperties;
+    private final DataSource       dataSource;
 
-    tenantRegistry.registerActive(tenantId);
+    @Override
+    public void run(ApplicationArguments args) throws Exception {
+        String tenantId = tenantProperties.id();
+        TenantIdValidator.validate(tenantId);
+
+        try (Connection conn = dataSource.getConnection()) {
+            conn.createStatement().execute(
+                "CREATE SCHEMA IF NOT EXISTS " + conn.enquoteIdentifier(tenantId, true));
+        }
+
+        Liquibase liquibase = new Liquibase(
+            "db/changelog/tenant/changelog-master.xml",
+            new ClassLoaderResourceAccessor(),
+            dataSource.getConnection());
+        liquibase.update(new Contexts(), new LabelExpression());
+    }
 }
 ```
 
-**Exécution en Job dédié, pas depuis les pods applicatifs.** La migration de l'ensemble des tenants existants (contexte `tenant-migration`) est déclenchée par un Job Kubernetes (hook Helm `pre-upgrade`), exécuté **avant** le démarrage des nouveaux pods applicatifs. Cela élimine tout risque de migrations concurrentes lancées par plusieurs instances au démarrage, chaque schéma ayant son propre verrou Liquibase (`DATABASECHANGELOGLOCK`) mais celui-ci ne protégeant pas contre des instances migrant des tenants différents en parallèle de façon incontrôlée.
-
-**Gestion des erreurs partielles.** Une table de contrôle `platform.tenant_migration_status(tenant_id, target_version, status, error_message, updated_at)` trace l'état de chaque tenant. Si la migration d'un tenant échoue :
-
-- le tenant est marqué `MIGRATING_ERROR` ;
-- les requêtes API pour ce tenant sont bloquées (503) via une vérification dans le `TenantResolutionFilter`, le temps de la correction ;
-- les autres tenants ne sont pas impactés — le Job continue sur les tenants suivants ;
-- le Job est idempotent et peut être rejoué en ciblant uniquement les tenants en `MIGRATING_ERROR`.
+Si la migration échoue, l'instance ne démarre pas — l'orchestrateur de déploiement (readiness probe,
+health check) ne la met jamais en service, et son redémarrage rejoue naturellement la migration.
+Il n'y a plus besoin d'une table de suivi inter-tenants pour coordonner cet aspect : chaque instance
+ne rend compte que d'elle-même, via ses propres logs et son propre statut de santé. Une table
+`platform.tenant_migration_status` peut néanmoins être conservée à titre d'observabilité inter-
+tenants pour un tableau de bord d'exploitation (voir point 29 du [TODO.md](../TODO.md)), sans rôle de
+coordination.
 
 ### Synthèse des choix multi-tenant
 
 | Couche | Choix |
 |---|---|
 | Isolation données | Schéma PostgreSQL par tenant |
-| Résolution tenant | Claim `tenant_id` dans le token OIDC — obligatoire, requête rejetée (403) si absent |
-| Validation `tenantId` | Regex à la création + vérification contre le registre des tenants actifs à chaque requête + `enquoteIdentifier()` |
+| Modèle de déploiement | Une instance Spring Boot dédiée par tenant (décision n° 13) |
+| Résolution tenant | Propriété de configuration (`app.tenant.id`), fixée au démarrage |
+| Vérification tenant | Claim `tenant_id` du token OIDC comparé au tenant configuré — rejet (403) sinon |
+| Validation `tenantId` | Regex au provisioning (création du schéma) |
 | Provider OIDC | Realm Keycloak partagé + claim custom |
-| Propagation Spring | Bean `@RequestScope` — compatible Virtual Threads |
-| Flowable | `tenantId` natif sur déploiements et instances |
-| Migration Liquibase | Contexts `tenant-init` / `tenant-migration`, Job Kubernetes dédié, suivi par tenant en base |
-
-> **Évolution future** — pour les traitements hors contexte HTTP (batch Flowable, jobs asynchrones), `ScopedValue` (Java 22+) est la voie naturelle pour propager le tenant sans `@RequestScope`.
+| Connexion base | `search_path` fixé une fois via `connectionInitSql` — pas de SPI multi-tenant Hibernate |
+| Flowable | `tenantId` natif conservé par défense en profondeur, redondant avec le schéma |
+| Migration Liquibase | Étape de démarrage (`ApplicationRunner`) par instance, idempotente par nature |
+| Scaling d'un tenant | Plusieurs répliques de sa propre instance — chemin d'évolution, pas un défaut |
 
 ---

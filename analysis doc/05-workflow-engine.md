@@ -22,7 +22,7 @@
 <dependency>
     <groupId>org.flowable</groupId>
     <artifactId>flowable-spring-boot-starter</artifactId>
-    <version>7.x.x</version>
+    <version>8.0.x</version>
 </dependency>
 ```
 
@@ -38,53 +38,130 @@
 
 **Choix retenu : Spring `ApplicationEventPublisher`**
 
-Les workflows sont déclenchés par des événements externes matérialisés en `ApplicationEvent` Spring, puis transmis au moteur Flowable via des `Signal` ou `Message Events` BPMN.
+Les workflows sont déclenchés par des événements externes matérialisés en événements
+domaine, puis transmis au moteur Flowable via des `Signal` ou `Message Events` BPMN.
 
-Les sources de triggers sont encapsulées dans le **système de connecteurs** (voir section 15). Le `ConnectorTriggerRuntime` publie les événements sur le bus Spring — les triggers bruts (Kafka, webhook, scheduler…) ne sont plus câblés directement dans le moteur.
+Les sources de triggers sont encapsulées dans le **système de connecteurs**
+(voir [06-connecteurs.md](06-connecteurs.md)). Le `ConnectorTriggerRuntime` crée/résout le dossier
+et journalise un événement outbox ; un relais démarre ensuite Flowable — décision n° 16.
 
 ```
-Connecteur Trigger  →  ConnectorTriggerRuntime  →  ApplicationEventPublisher  →  Flowable
+Connecteur Trigger  →  ConnectorTriggerRuntime (dossier + outbox)  →  Relais  →  Flowable
 ```
 
 ### Décision — durabilité des événements de déclenchement
 
-**Problème identifié en revue :** `ApplicationEventPublisher` est synchrone et en mémoire — un crash entre la réception d'un trigger (webhook, scheduler…) et le démarrage effectif de l'instance Flowable entraînait une perte de l'événement, sans possibilité de rejeu.
+**Problème identifié en revue :** `ApplicationEventPublisher` est synchrone et en mémoire — un crash
+entre la réception d'un trigger (webhook, scheduler…) et le démarrage effectif de l'instance Flowable
+entraînait une perte de l'événement, sans possibilité de rejeu.
 
-**Décision retenue — pattern outbox transactionnel.** L'événement de trigger est écrit dans une table `outbox_event` (schéma du tenant concerné) **dans la même transaction** que la création du `Dossier` associé. Un relais applicatif (scheduler de polling) lit les événements non traités et les publie sur `ApplicationEventPublisher`, avant de les marquer traités — avec une clé d'idempotence (`event_id`) pour empêcher tout double traitement en cas de retry après un crash partiel du relais lui-même.
+**Décision retenue — pattern outbox transactionnel (décision n° 7), articulé en option B
+(décision n° 16).** Le dossier est créé ou résolu **dans la même transaction** que l'écriture dans
+`outbox_event`. Un relais applicatif (scheduler de polling) lit les événements `PENDING`, démarre
+Flowable, puis marque l'événement traité — uniquement en cas de succès, dans la même transaction.
+Clé d'idempotence : `event_id`.
 
 ```java
+public enum OutboxStatus { PENDING, PROCESSED, DEAD }
+
 @Entity
 @Table(name = "outbox_event")
 public class OutboxEventEntity {
     @Id
-    private UUID   eventId;      // clé d'idempotence
-    private String eventType;    // "WorkflowTriggerEvent"
-    private String payloadJson;  // WorkflowTriggerEvent sérialisé
-    private Instant createdAt;
-    private Instant processedAt; // null tant que non traité
+    private UUID         eventId;             // clé d'idempotence
+    private String       eventType;           // "TriggerOutboxPayload"
+    private String       payloadJson;         // TriggerOutboxPayload sérialisé
+    private OutboxStatus status;              // PENDING | PROCESSED | DEAD
+    private int          attempts;
+    private String       lastError;           // nullable
+    private Instant      createdAt;
+    private Instant      processedAt;         // null tant que non traité
 }
 
-// Écriture — même transaction que CreateDossierUseCase
+/** Contenu stocké — événement déjà normalisé + dossier résolu. */
+public record TriggerOutboxPayload(
+    UUID                dossierId,
+    UUID                connectorInstanceId,
+    String              processKey,
+    Map<String, Object> variables,
+    String              triggerRef            // "connector:{instanceId}"
+) {}
+```
+
+**Phase producteur** — détail dans [06-connecteurs.md](06-connecteurs.md) (`ConnectorTriggerRuntime`) :
+
+```java
 @Transactional
 public void onIncomingEvent(ConnectorInstanceData instance, Map<String, Object> rawPayload) {
     List<WorkflowTriggerEvent> events = connector.onEvent(instance, rawPayload);
-    events.forEach(event -> outboxRepository.save(OutboxEventEntity.from(event)));
-    // Le dossier est créé et l'événement est journalisé de façon atomique.
-}
-
-// Relais — scheduler de polling, hors transaction métier
-@Scheduled(fixedDelay = 1000)
-public void relayPendingEvents() {
-    outboxRepository.findUnprocessed().forEach(entry -> {
-        if (!alreadyProcessed(entry.getEventId())) {
-            applicationEventPublisher.publishEvent(entry.toDomainEvent());
-        }
-        outboxRepository.markProcessed(entry.getEventId());
-    });
+    for (WorkflowTriggerEvent event : events) {
+        UUID dossierId = resolveOrCreateDossier(instance, event); // jamais de Flowable ici
+        outboxRepository.save(OutboxEventEntity.pending(
+            TriggerOutboxPayload.from(dossierId, instance, event)));
+    }
+    // Transaction commit → ACK webhook. Dossier(s) + outbox atomiques.
 }
 ```
 
-Cette solution est retenue car elle ne nécessite aucune nouvelle brique d'infrastructure (la table outbox vit dans PostgreSQL, déjà présent) tout en garantissant la durabilité. **Chemin d'évolution documenté** : si le volume d'événements ou le besoin de diffusion multi-consommateurs augmente, le relais de polling peut être remplacé par une capture Debezium/CDC sur la table `outbox_event`, publiant directement vers un broker externe (Kafka) sans changer le contrat d'écriture côté producteur.
+**Phase relais** — démarre Flowable, corrige les défauts du pseudo-code initial :
+
+```java
+@Scheduled(fixedDelay = 1000)
+public void relayPendingEvents() {
+    // Mono-tenant par construction (décision n° 13).
+    // FOR UPDATE SKIP LOCKED seulement si le tenant est scalé sur plusieurs répliques.
+    for (OutboxEventEntity entry : outboxRepository.lockNextPending(batchSize)) {
+        processOne(entry);
+    }
+}
+
+@Transactional
+void processOne(OutboxEventEntity entry) {
+    TriggerOutboxPayload payload = entry.toPayload();
+    try {
+        DossierWorkflowLink link = attachWorkflowUseCase
+            .reserveOrResume(payload.dossierId(), payload.processKey(), payload.triggerRef());
+        // reserveOrResume : si un lien RESERVED existe déjà pour ce dossier+process (rejeu),
+        // le reprend ; si ACTIVE avec processInstanceId, no-op → markProcessed ;
+        // si un AUTRE workflow est ACTIVE → WorkflowAlreadyRunningException → dead-letter.
+
+        if (link.processInstanceId() == null) {
+            ProcessInstance pi = runtimeService.createProcessInstanceBuilder()
+                .processDefinitionKey(payload.processKey())
+                .tenantId(tenantProperties.tenantId())
+                .variable("dossierId", payload.dossierId().toString())
+                .variable("dossierWorkflowLinkId", link.id().toString())
+                .variables(payload.variables())
+                .start();
+            attachWorkflowUseCase.confirmStarted(link.id(), pi.getId());
+        }
+
+        outboxRepository.markProcessed(entry.getEventId()); // uniquement après succès
+    } catch (WorkflowAlreadyRunningException ex) {
+        outboxRepository.markDead(entry.getEventId(), ex.getMessage());
+    } catch (Exception ex) {
+        outboxRepository.recordFailure(entry.getEventId(), ex.getMessage());
+        // attempts++ ; si attempts >= maxAttempts → DEAD, sinon reste PENDING pour retry
+    }
+}
+```
+
+Politiques actées : **retry** avec plafond d'`attempts` ; **dead-letter** (`status = DEAD`) pour les
+échecs définitifs et les collisions de workflow actif ; **purge** des `PROCESSED` au-delà d'une
+rétention configurable (job périodique). Le bus `ApplicationEventPublisher` n'est **plus** le
+vecteur de durabilité des triggers — il reste disponible pour les événements domaine post-démarrage
+(`WorkflowEvent`, décision n° 6).
+
+Cette solution ne nécessite aucune nouvelle brique d'infrastructure (la table outbox vit dans
+PostgreSQL, déjà présent). **Chemin d'évolution documenté** : si le volume ou le besoin de diffusion
+multi-consommateurs augmente, le relais de polling peut être remplacé par une capture Debezium/CDC
+sur `outbox_event`, publiant vers un broker externe (Kafka) sans changer le contrat d'écriture côté
+producteur.
+
+> **Mise à jour — décision n° 13 ([02-multi-tenant.md](02-multi-tenant.md)).** Avec une instance
+> dédiée par tenant, le relais n'interroge jamais que le schéma de cette instance — nativement
+> mono-tenant. `FOR UPDATE SKIP LOCKED` ne redevient utile que si ce tenant est scalé sur plusieurs
+> répliques (voir « Scaling horizontal d'un tenant » dans [02-multi-tenant.md](02-multi-tenant.md)).
 
 ---
 
@@ -164,20 +241,16 @@ statut possibles (ex. `EN_INSTRUCTION`, `EN_ATTENTE_EXPERT` pour un workflow
 sinistre ; `EN_VERIFICATION`, `VALIDE` pour un workflow subvention).
 
 ```java
-@Entity
-public class WorkflowTypeConfig {
-
-    @Id @GeneratedValue
-    private UUID id;
-
-    private String tenantId;
-    private String workflowKey;   // = processDefinitionKey BPMN
-    private String label;
-
-    @Convert(converter = JsonListConverter.class)
-    @Column(columnDefinition = "jsonb")
-    private List<WorkflowStatusDefinition> statusDefinitions;
-}
+// domain/workflow/model — pur Java, aucune annotation JPA (décision n° 17,
+// voir 01-architecture-hexagonale.md) — record, accesseurs sans préfixe (.id(), .tenantId()…)
+@Builder
+public record WorkflowTypeConfig(
+    UUID                           id,
+    String                         tenantId,
+    String                         workflowKey,   // = processDefinitionKey BPMN
+    String                         label,
+    List<WorkflowStatusDefinition> statusDefinitions
+) {}
 
 @Value @Builder
 public class WorkflowStatusDefinition {
@@ -188,6 +261,28 @@ public class WorkflowStatusDefinition {
 }
 
 public enum StatusOutcome { NONE, COMPLETED, CANCELLED, FAILED }
+```
+
+```java
+// infrastructure/persistence/workflow — entité de persistance, jamais exposée au domaine
+@Entity
+@Table(name = "workflow_type_config")
+public class WorkflowTypeConfigJpaEntity {
+
+    @Id @GeneratedValue
+    private UUID id;
+
+    private String tenantId;
+    private String workflowKey;
+    private String label;
+
+    @Convert(converter = JsonListConverter.class)
+    @Column(columnDefinition = "jsonb")
+    private List<WorkflowStatusDefinition> statusDefinitions;
+
+    // conversion assurée par WorkflowTypeConfigJpaAdapter — même principe que
+    // DossierJpaAdapter, voir 04-dossiers.md
+}
 ```
 
 Le statut `initial` est posé automatiquement quand `AttachWorkflowUseCase.reserve(...)`
@@ -229,9 +324,14 @@ public class UpdateWorkflowLinkStatusTask implements JavaDelegate {
 
 ## Scaling horizontal et scheduler Flowable Community
 
-**Problème identifié en revue :** Flowable Community gère les jobs asynchrones et le scheduler via une table de verrouillage en base — en déploiement multi-instances (Kubernetes), le risque de double exécution des jobs semblait imposer une contrainte forte de déploiement.
+**Problème identifié en revue :** Flowable Community gère les jobs asynchrones et le scheduler via une table de verrouillage en base — le risque de double exécution des jobs semblait imposer une contrainte forte de déploiement dès lors que plusieurs instances de l'application pouvaient exister.
 
-**Décision retenue :** le job executor de Flowable Community gère nativement le verrouillage optimiste au niveau ligne sur les tables `ACT_RU_JOB` / `ACT_RU_TIMER_JOB` (`lockOwner`, `lockExpirationTime`) — plusieurs moteurs Flowable pointant vers la même base peuvent cohabiter sans double exécution, à condition que les paramètres de verrouillage soient correctement dimensionnés pour la charge cible. Ce n'est donc **pas** une contrainte de « une seule instance ».
+**Décision retenue (mise à jour par la décision n° 13, [02-multi-tenant.md](02-multi-tenant.md)).**
+Avec une instance Spring Boot dédiée par tenant, un moteur Flowable donné ne gère jamais que les
+jobs de son propre tenant : aucune contention n'est possible **entre tenants**, puisqu'aucune table
+de jobs n'est jamais partagée entre deux instances de tenants différents (chaque schéma a ses
+propres tables `ACT_RU_JOB` / `ACT_RU_TIMER_JOB`). Ce n'est donc plus, par défaut, un sujet à
+trancher au niveau de la plateforme.
 
 ```yaml
 flowable:
@@ -243,14 +343,22 @@ flowable:
       default-timer-job-acquire-wait-time: 10s
 ```
 
-Le dimensionnement de `lockTimeInMillis` et des délais d'acquisition est validé par un test de charge au niveau de trafic cible avant mise en production.
+**Si un tenant donné est scalé sur plusieurs répliques** (voir « Scaling horizontal d'un tenant » dans
+[02-multi-tenant.md](02-multi-tenant.md)), le job executor de Flowable Community gère nativement le
+verrouillage optimiste au niveau ligne (`lockOwner`, `lockExpirationTime`) entre les répliques de ce
+tenant — plusieurs moteurs Flowable pointant vers le même schéma peuvent cohabiter sans double
+exécution, à condition que les paramètres de verrouillage soient dimensionnés pour la charge de ce
+tenant. Le dimensionnement de `lockTimeInMillis` et des délais d'acquisition est alors validé par un
+test de charge, pour ce tenant.
 
-**Si la contention devient un problème mesuré** (nombreuses instances qui pollent la même table de jobs), la stratégie opérationnelle de repli est une **séparation des rôles** plutôt qu'une limitation à une instance unique :
+**Si la contention devient un problème mesuré** dans le pool de répliques d'un tenant scalé, la
+stratégie opérationnelle de repli reste une **séparation des rôles**, appliquée à ce seul tenant :
 
-- pods **API** : `asyncExecutorActivate: false` — ne participent pas à l'acquisition de jobs, uniquement au trafic REST/BFF, librement réplicables ;
-- pods **worker** : `asyncExecutorActivate: true` — exécutent les jobs asynchrones et le scheduler, eux-mêmes réplicables pour la haute disponibilité (le verrouillage optimiste natif de Flowable reste la garantie contre la double exécution entre workers).
+- répliques **API** : `asyncExecutorActivate: false` — ne participent pas à l'acquisition de jobs, uniquement au trafic REST/BFF, librement réplicables ;
+- répliques **worker** : `asyncExecutorActivate: true` — exécutent les jobs asynchrones et le scheduler, elles-mêmes réplicables pour la haute disponibilité (le verrouillage optimiste natif de Flowable reste la garantie contre la double exécution entre workers).
 
-Cette séparation permet de scaler indépendamment la capacité API et la capacité de traitement des jobs, sans jamais revenir à une contrainte de instance unique globale.
+Cette séparation permet de scaler indépendamment la capacité API et la capacité de traitement des
+jobs **d'un tenant donné**, sans jamais concerner les autres tenants.
 
 ---
 

@@ -25,7 +25,7 @@ Les rôles sont portés par le claim `realm_access.roles` du token OIDC (voir ex
 | `WORKFLOW_ADMIN` | Tenant entier | Déploiement de processus BPMN, réassignation de tâches, accès au cockpit Flowable |
 | `DOSSIER_MANAGER` | Dossiers assignés / de son périmètre | Création, instruction, clôture de dossiers ; ajout d'éléments |
 | `DOSSIER_VIEWER` | Dossiers de son périmètre | Lecture seule — dossier, historique, documents |
-| `API_SERVICE` | Machine-to-machine | Appel des endpoints connecteurs (`/api/connectors/{id}/execute`) sans session utilisateur |
+| `API_SERVICE` | Machine-to-machine | Appel des endpoints connecteurs (`/api/connectors/{id}/execute`) sans session utilisateur — flux `client_credentials` par tenant, voir [03-authentification.md](03-authentification.md#authentification-machine-to-machine--client_credentials) |
 
 Cette liste est un point de départ — la granularité exacte (par exemple restreindre `DOSSIER_MANAGER`
 à un sous-ensemble de `DossierType`) est un sujet à trancher dès que les premiers cas d'usage réels
@@ -36,23 +36,131 @@ sont connus.
 | Couche | Mécanisme | Exemple |
 |---|---|---|
 | REST — niveau méthode | `@PreAuthorize("hasRole('WORKFLOW_ADMIN')")` sur les contrôleurs | Réassignation de tâche, déploiement de processus |
-| Use case — niveau ressource | Vérification explicite dans le use case (le rôle seul ne suffit pas — il faut aussi vérifier que la ressource appartient au périmètre de l'utilisateur) | `GetDossierUseCase` vérifie que l'utilisateur est `createdBy`, assigné, ou `TENANT_ADMIN` avant de retourner le dossier |
-| Visualisation workflow | Port dédié déjà identifié | `WorkflowParticipantPort` (voir [10-visualisation-workflow.md](10-visualisation-workflow.md)) restreint l'accès aux assignés, initiateurs et observateurs configurés |
+| Use case — niveau type | `DossierAccessPolicy` + table `dossier_type_acl` (décision n° 20) | Accès à tout dossier d'un `DossierType` selon VIEW/EDIT |
+| Visualisation workflow | Port dédié déjà identifié | `WorkflowParticipantPort` — complémentaire ; l'ACL de type gouverne l'accès à la fiche dossier |
+
+### Décision n° 20 — contrôle d'accès au niveau type de dossier (A2 + B2 + C1)
+
+**Règle :** le contrôle de rôle (`@PreAuthorize`) protège contre les actions hors périmètre de rôle ;
+le contrôle ACL protège contre l'accès aux dossiers d'un `DossierType` hors périmètre de
+l'utilisateur. L'ACL est définie **au niveau du type**, pas de l'instance de dossier : un grant
+`VIEW` sur le type « Sinistre » donne accès à **tous** les dossiers de ce type.
+
+> **Amendement.** La première formulation de B2 posait une table `dossier_acl` par instance.
+> Elle est remplacée par `dossier_type_acl` : périmètre métier = famille de dossiers, pas
+> partage dossier-par-dossier.
+
+#### A2 — `AccessContext`
 
 ```java
-// domain/dossier/port/out — nouveau port pour l'autorisation au niveau ressource
-public interface DossierAccessPort {
-    boolean canView(UUID dossierId, String userId, String tenantId);
-    boolean canEdit(UUID dossierId, String userId, String tenantId);
+// domain/dossier/model
+public sealed interface AccessContext
+    permits AccessContext.User, AccessContext.System, AccessContext.Service {
+
+    record User(String userId, Set<String> roles) implements AccessContext {}
+    record System(String reason) implements AccessContext {}    // "flowable", "outbox-relay"…
+    record Service(String clientId) implements AccessContext {} // API_SERVICE
 }
 ```
 
-**Règle :** le contrôle de rôle (`@PreAuthorize`) protège contre les actions hors périmètre de rôle ;
-le contrôle de ressource (`DossierAccessPort`) protège contre l'accès à une ressource d'un même
-tenant mais hors périmètre de l'utilisateur (ex. un `DOSSIER_MANAGER` ne doit pas nécessairement voir
-tous les dossiers du tenant). Les deux sont nécessaires — l'un ne remplace pas l'autre.
+| Variante | Effet sur l'ACL |
+|---|---|
+| `User` | Évaluation de `DossierAccessPolicy` sur le `dossierTypeCode` |
+| `System` | Contournement — moteur, relais, jobs |
+| `Service` | **Refus** d'accès dossier — M2M limité aux endpoints connecteurs |
 
----
+Les use cases dossier prennent le contexte en paramètre :
+`GetDossierUseCase.get(UUID id, AccessContext ctx)`.
+`DossierAwareTask` et `ConnectorTriggerRuntime` passent `AccessContext.system(...)`.
+
+#### B2 — table `dossier_type_acl`
+
+```java
+public enum DossierPermission { VIEW, EDIT }  // EDIT implique VIEW
+
+// domain/dossier/model
+@Builder
+public record DossierTypeAclEntry(
+    UUID              id,
+    String            tenantId,
+    String            dossierTypeCode,   // clé du DossierType, pas l'id d'un dossier
+    String            subjectUserId,
+    DossierPermission permission,
+    String            grantedBy,
+    Instant           grantedAt
+) {}
+```
+
+| Règle | Détail |
+|---|---|
+| Source de vérité | Pour `DOSSIER_MANAGER` / `DOSSIER_VIEWER` : grant sur le **type** ; s'applique à toutes les instances de ce type |
+| Bypass rôle | `TENANT_ADMIN` et `WORKFLOW_ADMIN` contournent l'ACL (tous les types du tenant) |
+| Administration | `GrantDossierTypeAccessUseCase` / `RevokeDossierTypeAccessUseCase` — réservés aux admins tenant (ou équivalent) |
+| Création de dossier | Exige `EDIT` sur le `dossierTypeCode` cible (humain) ; pas de grant par instance à la création |
+| Liste / recherche | Filtrée aux `dossierTypeCode` pour lesquels le sujet a au moins `VIEW` |
+| Unicité | `(tenant_id, dossier_type_code, subject_user_id)` — une permission effective ; upgrade `VIEW`→`EDIT` possible |
+
+À intégrer au modèle physique consolidé (point 25).
+
+> **Création par trigger.** Les dossiers créés avec `createdBy = trigger:…` suivent la même
+> règle : visibles / éditables dès qu'un humain a un grant sur le type — plus besoin de partage
+> instance-par-instance ni de grant à l'assignation Flowable.
+
+> **Lien avec le point 19.** Restreindre un rôle à un sous-ensemble de `DossierType` est
+> matérialisé par cette ACL de type ; le point 19 ne garde que la liste des rôles et le mapping
+> `realm_access.roles` → autorités Spring.
+
+#### C1 — `DossierAccessPolicy` (service domaine)
+
+Pur Java ; dépend de `DossierTypeAclRepository` (port sortant). Évalue toujours via le
+`dossierTypeCode` (fourni directement, ou lu sur le `Dossier` chargé).
+
+```java
+// domain/dossier — service domaine, pas un port
+public class DossierAccessPolicy {
+
+    private final DossierTypeAclRepository acl;
+
+    public void assertCanViewType(String dossierTypeCode, AccessContext.User user) {
+        if (isTenantWideAdmin(user)) return;
+        if (!acl.hasAtLeast(dossierTypeCode, user.userId(), DossierPermission.VIEW)) {
+            throw new AccessDeniedException(dossierTypeCode, user.userId(), "VIEW");
+        }
+    }
+
+    public void assertCanEditType(String dossierTypeCode, AccessContext.User user) {
+        if (isTenantWideAdmin(user)) return;
+        if (!acl.hasAtLeast(dossierTypeCode, user.userId(), DossierPermission.EDIT)) {
+            throw new AccessDeniedException(dossierTypeCode, user.userId(), "EDIT");
+        }
+    }
+
+    /** Raccourcis instance — délèguent au type du dossier. */
+    public void assertCanView(Dossier dossier, AccessContext.User user) {
+        assertCanViewType(dossier.dossierTypeCode(), user);
+    }
+
+    public void assertCanEdit(Dossier dossier, AccessContext.User user) {
+        assertCanEditType(dossier.dossierTypeCode(), user);
+    }
+
+    private static boolean isTenantWideAdmin(AccessContext.User user) {
+        return user.roles().contains("TENANT_ADMIN")
+            || user.roles().contains("WORKFLOW_ADMIN");
+    }
+}
+
+// domain/dossier/port/out
+public interface DossierTypeAclRepository {
+    boolean hasAtLeast(String dossierTypeCode, String userId, DossierPermission required);
+    void grant(DossierTypeAclEntry entry);
+    void revoke(String dossierTypeCode, String userId);
+    List<DossierTypeAclEntry> listByType(String dossierTypeCode);
+    List<String> typeCodesReadableBy(String userId); // pour filtrer list/search
+}
+```
+
+Refus → `AccessDeniedException` → HTTP 403 (format d'erreur normalisé : point 24).
 
 ## Conformité des données (RGPD et assimilés)
 
@@ -75,10 +183,12 @@ production, au même titre que les points sécurité déjà listés dans [TODO.m
 
 ### Traçabilité et minimisation
 
-- Les champs `createdBy` / `updatedBy` / `closedBy` déjà présents sur `Dossier` et
-  `DossierElement` (voir [04-dossiers.md](04-dossiers.md)) constituent une base d'audit, mais ne
-  couvrent pas les accès en lecture — à évaluer selon le niveau de traçabilité requis par les clients
-  cibles (secteur assurance, secteur public).
+- Les champs d'audit déjà présents constituent une base de traçabilité des écritures, mais ne
+  couvrent pas les accès en lecture — à évaluer selon le niveau requis par les clients cibles
+  (secteur assurance, secteur public) :
+  - `Dossier` : `createdBy` / `updatedBy` / `closedBy` (+ horodatages associés) — décision n° 18 ;
+  - `DossierElement` : `addedBy` / `addedAt` (un élément est ajouté, pas mis à jour — pas de
+    `createdBy`/`updatedBy` sur cet agrégat).
 - Les `fields` dynamiques (`Map<String, Object>` en JSONB) n'ont pas de mécanisme de classification —
   rien n'empêche un tenant de déclarer un `FieldDefinition` contenant une donnée sensible (ex. numéro
   de sécurité sociale) sans le signaler. Un flag optionnel `sensitive: boolean` sur `FieldDefinition`
@@ -99,13 +209,13 @@ production, au même titre que les points sécurité déjà listés dans [TODO.m
 
 ## Synthèse des décisions à trancher
 
-| # | Sujet | Décision à prendre |
-|---|---|---|
-| 1 | Granularité des rôles | Valider la liste des rôles de référence ci-dessus avec les premiers cas d'usage réels |
-| 2 | Contrôle au niveau ressource | Introduire `DossierAccessPort` (ou équivalent) avant l'implémentation de `GetDossierUseCase` |
-| 3 | Rétention | Définir le modèle de rétention par `DossierType` (durée, action à expiration) |
-| 4 | Suppression cohérente base + stockage objet | Définir le mécanisme garantissant la purge conjointe PostgreSQL / MinIO |
-| 5 | Classification des champs dynamiques | Décider si `FieldDefinition.sensitive` est nécessaire dès la V1 |
+Ces décisions sont désormais suivies dans [TODO.md](../TODO.md), avec leur contexte détaillé dans
+[REVUE-PRE-IMPLEMENTATION.md](../REVUE-PRE-IMPLEMENTATION.md).
 
-> Ces points complètent la liste de [TODO.md](../TODO.md) — à terme, ils devraient y être fusionnés
-> (section "Conformité") plutôt que maintenus dans un document séparé.
+| Sujet | Décision à prendre | Suivi |
+|---|---|---|
+| Granularité des rôles | Valider la liste des rôles de référence ci-dessus avec les premiers cas d'usage réels | Point 19 |
+| Contrôle au niveau type | **Tranché** — A2 `AccessContext` + B2 `dossier_type_acl` + C1 `DossierAccessPolicy` | Décision n° 20 |
+| Rétention | Définir le modèle de rétention par `DossierType` (durée, action à expiration) | Point 21 |
+| Suppression cohérente base + stockage objet | Définir le mécanisme garantissant la purge conjointe PostgreSQL / MinIO | Point 22 |
+| Classification des champs dynamiques | Décider si `FieldDefinition.sensitive` est nécessaire dès la V1 | Point 23 |

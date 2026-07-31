@@ -2,6 +2,7 @@ package com.flowforge.infrastructure.web.dossier;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oidcLogin;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -65,6 +66,26 @@ class DossierApiTest {
     }
 
     @Test
+    void updateType_tenantAdminCanPatchLabelAndActive() throws Exception {
+        String code = createType(true);
+
+        mockMvc.perform(patch("/api/dossier-types/{code}", code)
+                        .with(user("admin-patch-type", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "label": "Patched %s",
+                                  "active": false
+                                }
+                                """.formatted(code)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(code))
+                .andExpect(jsonPath("$.label").value("Patched " + code))
+                .andExpect(jsonPath("$.active").value(false));
+    }
+
+    @Test
     void createType_workflowAdmin_returns403() throws Exception {
         mockMvc.perform(post("/api/dossier-types")
                         .with(user("workflow-admin", "WORKFLOW_ADMIN"))
@@ -91,6 +112,64 @@ class DossierApiTest {
                 .andExpect(jsonPath("$.status").value("DRAFT"))
                 .andExpect(jsonPath("$.createdBy").value("manager-create"))
                 .andExpect(jsonPath("$.updatedBy").value("manager-create"));
+    }
+
+    @Test
+    void createDossier_appliesFieldDefaultWhenFieldIsMissing() throws Exception {
+        String code = createTypeWithFields("DEFAULT", """
+                [
+                  {
+                    "name": "priority",
+                    "label": "Priority",
+                    "type": "STRING",
+                    "required": false,
+                    "defaultValue": "NORMAL",
+                    "options": [],
+                    "group": "details"
+                  }
+                ]
+                """);
+        grant(code, "manager-default", "EDIT");
+
+        mockMvc.perform(post("/api/dossiers")
+                        .with(user("manager-default"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(dossierPayload(code, "Default dossier")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.fields.priority").value("NORMAL"));
+    }
+
+    @Test
+    void createDossier_withInvalidFieldTypeReturns400WithErrors() throws Exception {
+        String code = createTypeWithFields("INVALID", """
+                [
+                  {
+                    "name": "amount",
+                    "label": "Amount",
+                    "type": "NUMBER",
+                    "required": true,
+                    "defaultValue": null,
+                    "options": [],
+                    "group": "details"
+                  }
+                ]
+                """);
+        grant(code, "manager-invalid-field", "EDIT");
+
+        mockMvc.perform(post("/api/dossiers")
+                        .with(user("manager-invalid-field"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(dossierPayload(code, "Invalid field dossier", """
+                                {
+                                  "amount": "not-a-number"
+                                }
+                                """)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.errors[0].field").value("amount"))
+                .andExpect(jsonPath("$.errors[0].code").value("TYPE_MISMATCH"));
     }
 
     @Test
@@ -135,6 +214,59 @@ class DossierApiTest {
         mockMvc.perform(get("/api/dossiers/{id}", dossier.id())
                         .with(user("no-view-user")))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void getDossier_withViewGrant_returns200() throws Exception {
+        String code = createType(true);
+        grant(code, "manager-view-source", "EDIT");
+        DossierFixture dossier = createDossier(code, "manager-view-source", "Viewable dossier");
+        grant(code, "viewer-with-grant", "VIEW");
+
+        mockMvc.perform(get("/api/dossiers/{id}", dossier.id())
+                        .with(user("viewer-with-grant", "DOSSIER_VIEWER")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(dossier.id()))
+                .andExpect(jsonPath("$.dossierTypeCode").value(code));
+    }
+
+    @Test
+    void getDossier_workflowAdminWithoutGrant_returns200() throws Exception {
+        String code = createType(true);
+        grant(code, "manager-workflow-bypass-source", "EDIT");
+        DossierFixture dossier = createDossier(code, "manager-workflow-bypass-source", "Workflow bypass dossier");
+
+        mockMvc.perform(get("/api/dossiers/{id}", dossier.id())
+                        .with(user("workflow-bypass", "WORKFLOW_ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(dossier.id()));
+    }
+
+    @Test
+    void revokeAcl_thenCreateAndGetAreDenied() throws Exception {
+        String code = createType(true);
+        grant(code, "revoked-manager", "EDIT");
+        DossierFixture dossier = createDossier(code, "revoked-manager", "Revoked dossier");
+
+        revoke(code, "revoked-manager");
+
+        mockMvc.perform(post("/api/dossiers")
+                        .with(user("revoked-manager"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(dossierPayload(code, "Denied after revoke")))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/dossiers/{id}", dossier.id())
+                        .with(user("revoked-manager")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void grantAcl_twiceIsIdempotent() throws Exception {
+        String code = createType(true);
+
+        grant(code, "idempotent-manager", "EDIT");
+        grant(code, "idempotent-manager", "EDIT");
     }
 
     @Test
@@ -230,6 +362,17 @@ class DossierApiTest {
         return code;
     }
 
+    private String createTypeWithFields(String prefix, String fieldDefinitions) throws Exception {
+        String code = uniqueCode(prefix);
+        mockMvc.perform(post("/api/dossier-types")
+                        .with(user("admin-" + code, "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(typePayload(code, true, fieldDefinitions)))
+                .andExpect(status().isCreated());
+        return code;
+    }
+
     private void grant(String code, String userId, String permission) throws Exception {
         mockMvc.perform(post("/api/dossier-types/{code}/acl", code)
                         .with(user("acl-admin-" + code, "TENANT_ADMIN"))
@@ -241,6 +384,13 @@ class DossierApiTest {
                                   "permission": "%s"
                                 }
                                 """.formatted(userId, permission)))
+                .andExpect(status().isNoContent());
+    }
+
+    private void revoke(String code, String userId) throws Exception {
+        mockMvc.perform(delete("/api/dossier-types/{code}/acl/{userId}", code, userId)
+                        .with(user("acl-admin-" + code, "TENANT_ADMIN"))
+                        .with(csrf()))
                 .andExpect(status().isNoContent());
     }
 
@@ -272,6 +422,10 @@ class DossierApiTest {
     }
 
     private static String typePayload(String code, boolean active) {
+        return typePayload(code, active, "[]");
+    }
+
+    private static String typePayload(String code, boolean active, String fieldDefinitions) {
         return """
                 {
                   "code": "%s",
@@ -279,19 +433,23 @@ class DossierApiTest {
                   "workflowKey": "workflow-%s",
                   "active": %s,
                   "allowUnknownFields": false,
-                  "fieldDefinitions": []
+                  "fieldDefinitions": %s
                 }
-                """.formatted(code, code, code.toLowerCase(), active);
+                """.formatted(code, code, code.toLowerCase(), active, fieldDefinitions);
     }
 
     private static String dossierPayload(String code, String label) {
+        return dossierPayload(code, label, "{}");
+    }
+
+    private static String dossierPayload(String code, String label, String fields) {
         return """
                 {
                   "dossierTypeCode": "%s",
                   "label": "%s",
-                  "fields": {}
+                  "fields": %s
                 }
-                """.formatted(code, label);
+                """.formatted(code, label, fields);
     }
 
     private static String uniqueCode(String prefix) {

@@ -1,4 +1,4 @@
 /**
- * Socle multi-tenant infrastructure : validation d'identifiants (provisioning / boot).
+ * Socle multi-tenant infrastructure : validation d'identifiants + garde claim OIDC.
  */
 package com.flowforge.infrastructure.tenant;

@@ -41,4 +41,19 @@ class ApiAuthenticationEntryPointTest {
 
         verify(delegate).commence(request, response, exception);
     }
+
+    @Test
+    void emptyServletPath_usesRequestUriForApiDetection() throws Exception {
+        AuthenticationEntryPoint delegate = mock(AuthenticationEntryPoint.class);
+        var entryPoint = new ApiAuthenticationEntryPoint(delegate);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setServletPath("");
+        request.setRequestURI("/api/auth/me");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        entryPoint.commence(
+                request, response, new AuthenticationCredentialsNotFoundException("unauthenticated"));
+
+        assertThat(response.getStatus()).isEqualTo(401);
+    }
 }

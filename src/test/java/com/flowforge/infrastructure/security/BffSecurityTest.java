@@ -111,4 +111,20 @@ class BffSecurityTest {
         assertThat(clientRegistrationRepository.findByRegistrationId("oidc").getRegistrationId())
                 .isEqualTo("oidc");
     }
+
+    @Test
+    void nonApiAnonymous_redirectsToOidcAuthorization() throws Exception {
+        MvcResult result = mockMvc.perform(get("/")).andReturn();
+
+        assertThat(result.getResponse().getStatus()).isIn(302, 303);
+        assertThat(result.getResponse().getRedirectedUrl()).contains("/oauth2/authorization/oidc");
+    }
+
+    @Test
+    void oauth2AuthorizationEndpoint_redirectsTowardIdp() throws Exception {
+        MvcResult result = mockMvc.perform(get("/oauth2/authorization/oidc")).andReturn();
+
+        assertThat(result.getResponse().getStatus()).isIn(302, 303);
+        assertThat(result.getResponse().getRedirectedUrl()).contains("127.0.0.1:9");
+    }
 }

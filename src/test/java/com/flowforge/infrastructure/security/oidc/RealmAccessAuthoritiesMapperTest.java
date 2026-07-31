@@ -53,6 +53,26 @@ class RealmAccessAuthoritiesMapperTest {
                 .containsExactlyInAnyOrder("SCOPE_openid", "ROLE_WORKFLOW_ADMIN");
     }
 
+    @Test
+    void ignoresNullAndBlankRoleEntries() {
+        var roles = new java.util.ArrayList<>();
+        roles.add(null);
+        roles.add("  ");
+        roles.add("DOSSIER_VIEWER");
+        var authorities = mapper.mapAuthorities(List.of(oidcAuthority(Map.of("roles", roles))));
+
+        assertThat(authorities)
+                .extracting(GrantedAuthority::getAuthority)
+                .containsExactly("ROLE_DOSSIER_VIEWER");
+    }
+
+    @Test
+    void rolesClaimNotACollection_yieldsNoRoleAuthorities() {
+        var authorities = mapper.mapAuthorities(List.of(oidcAuthority(Map.of("roles", "WORKFLOW_ADMIN"))));
+
+        assertThat(authorities).isEmpty();
+    }
+
     private static OidcUserAuthority oidcAuthority(Map<String, Object> realmAccess) {
         var claims = new java.util.HashMap<String, Object>();
         claims.put("sub", "user-1");

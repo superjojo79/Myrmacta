@@ -147,10 +147,10 @@ Phase 5 complétée (2026-07-31). Pas d’échéances calendaires.
 
 ## Next action
 
-**Phase 7 terminée** — implementation `verified`. Enchaîner phase 8 (`dev-testing`)
-ou phase 9 (`dev-review`) ; testing doc déjà largement `verified`.
+**Phase 8 terminée** — testing `verified` (66 tests, Jacoco 98.7 %). Enchaîner
+phase 9 (`dev-review`).
 
 ## Progress summary
 
-T1–T11 livrés. Phase 7 : alignement design OK ; correctifs mineurs `/me` rôles
-`ROLE_*` only + test `tenant_id` blank. Evidence : suite verte + lint OK.
+T1–T11 + phase 7 + phase 8 OK. Couverture auth renforcée (mapper edges, CSRF
+filter, redirects OAuth). `./mvnw clean verify` vert.

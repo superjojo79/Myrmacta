@@ -136,4 +136,4 @@ axios.defaults.xsrfHeaderName = 'X-XSRF-TOKEN';
 - Feature `autorisation-conformite` (`@PreAuthorize`)
 - Smoke local Keycloak réel (ops)
 
-**Prochaine phase :** `dev-testing` (phase 8) si revalidation formelle, sinon `dev-review` (phase 9).
+**Prochaine phase :** `dev-review` (phase 9).

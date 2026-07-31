@@ -46,4 +46,22 @@ class AuthControllerTest {
         assertThat(response.getBody()).isEqualTo(new AuthUserResponse(
                 "Ada Lovelace", "ada@example.com", List.of("WORKFLOW_ADMIN")));
     }
+
+    @Test
+    void me_ignoresBlankRoleAfterPrefixStrip() {
+        OidcIdToken idToken = new OidcIdToken(
+                "token",
+                Instant.now(),
+                Instant.now().plusSeconds(60),
+                Map.of("sub", "user-1", "email", "ada@example.com", "name", "Ada"));
+        var user = new DefaultOidcUser(
+                List.of(
+                        new SimpleGrantedAuthority("ROLE_"),
+                        new SimpleGrantedAuthority("ROLE_TENANT_ADMIN")),
+                idToken);
+
+        ResponseEntity<AuthUserResponse> response = controller.me(user);
+
+        assertThat(response.getBody().roles()).containsExactly("TENANT_ADMIN");
+    }
 }

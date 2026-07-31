@@ -64,15 +64,17 @@ Alignement success criteria requirements : CRUD + ACL + DRAFT + ProblemDetail +
 
 ### API MockMvc + OIDC mock
 - [ ] Anonyme `POST /api/dossiers` → 401
-- [ ] `TENANT_ADMIN` crée type → 201
-- [ ] Non-admin crée type → 403
-- [ ] Grant EDIT puis create dossier → 201 `DRAFT` + référence
-- [ ] Create champs invalides → 400 ProblemDetail `errors[]`
-- [ ] Get sans VIEW → 403 ; avec VIEW → 200
+- [ ] `TENANT_ADMIN` crée type → 201 ; PATCH type (`active`/fields) → 200
+- [ ] Non-admin / `WORKFLOW_ADMIN` crée type → 403
+- [ ] Grant EDIT puis create dossier (`label` requis) → 201 `DRAFT` + référence ;
+      `tenantId` = instance
+- [ ] Create sur type `active=false` → conflit/erreur métier
+- [ ] Create champs invalides / FILE required blank → 400 ProblemDetail `errors[]`
+- [ ] Get sans VIEW → 403 ; avec VIEW → 200 ; `WORKFLOW_ADMIN` bypass OK
 - [ ] Get by `ref` → 200
 - [ ] PATCH status légal → 200 ; illégal → 409
 - [ ] PATCH status version stale → 409
-- [ ] Revoke ACL → create/get refusés
+- [ ] Revoke ACL → create/get refusés ; re-grant idempotent 204
 - [ ] CSRF manquant sur mutateur → 403
 - [ ] Suite BFF existante non régressée
 

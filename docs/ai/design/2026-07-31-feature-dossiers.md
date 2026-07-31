@@ -98,7 +98,7 @@ H2 mode PostgreSQL (tests) · Security BFF existant · ArchUnit.
 | Type | Champs clés |
 |---|---|
 | `DossierType` | id, tenantId, code, label, workflowKey, active, allowUnknownFields, fieldDefinitions |
-| `FieldDefinition` | name, label, type (`STRING\|NUMBER\|DATE\|BOOLEAN\|SELECT\|FILE`), required, defaultValue, options, group |
+| `FieldDefinition` | name, label, type (`STRING\|NUMBER\|DATE\|BOOLEAN\|SELECT\|FILE`), required, defaultValue, options, group — `FILE` = valeur string (ref storage), pas d’upload en B |
 | `Dossier` | id, tenantId, reference, dossierTypeCode, label, status, fields, currentWorkflowLinkId (toujours null en B), version, createdBy/At, updatedBy/At, closedBy/At |
 | `DossierStatus` | `DRAFT → OUVERT → EN_COURS ↔ SUSPENDU → CLOTURE → ARCHIVE` (+ annulation vers `CLOTURE`) |
 | `AccessContext` | sealed : `User(userId, roles)`, `System(reason)`, `Service(clientId)` |
@@ -133,15 +133,16 @@ Implémentation : `UPDATE dossier_reference_seq SET last_value = last_value + 1
 
 | Méthode | Path | Authz | Réponse |
 |---|---|---|---|
-| POST | `/api/dossier-types` | `TENANT_ADMIN` | 201 type |
-| GET | `/api/dossier-types` | authentifié ; filtré VIEW (admins : tous) | 200 liste |
-| GET | `/api/dossier-types/{code}` | VIEW ou bypass | 200 / 403 / 404 |
-| POST | `/api/dossiers` | EDIT sur type | 201 dossier `DRAFT` |
-| GET | `/api/dossiers/{id}` | VIEW | 200 / 403 / 404 |
-| GET | `/api/dossiers?ref={reference}` | VIEW | 200 / 403 / 404 |
+| POST | `/api/dossier-types` | `TENANT_ADMIN` seul | 201 type |
+| PATCH | `/api/dossier-types/{code}` | `TENANT_ADMIN` seul | 200 type (label, workflowKey, fields, allowUnknownFields, active) |
+| GET | `/api/dossier-types` | authentifié ; filtré VIEW (`TENANT_ADMIN`/`WORKFLOW_ADMIN` : tous) | 200 liste |
+| GET | `/api/dossier-types/{code}` | VIEW ou bypass admin | 200 / 403 / 404 |
+| POST | `/api/dossiers` | EDIT sur type (ou bypass) ; body `dossierTypeCode`, `label` requis, `fields` ; `tenantId` = `TenantProperties.id()` | 201 dossier `DRAFT` |
+| GET | `/api/dossiers/{id}` | VIEW ou bypass | 200 / 403 / 404 |
+| GET | `/api/dossiers?ref={reference}` | VIEW ou bypass | 200 / 403 / 404 |
 | PATCH | `/api/dossiers/{id}/status` | EDIT ; body `{status, expectedVersion?}` | 200 / 409 |
-| POST | `/api/dossier-types/{code}/acl` | `TENANT_ADMIN` | 204 |
-| DELETE | `/api/dossier-types/{code}/acl/{userId}` | `TENANT_ADMIN` | 204 |
+| POST | `/api/dossier-types/{code}/acl` | `TENANT_ADMIN` seul ; idempotent | 204 |
+| DELETE | `/api/dossier-types/{code}/acl/{userId}` | `TENANT_ADMIN` seul | 204 |
 
 Tous les `/api/**` : session BFF ; mutateurs = CSRF. Anonyme → 401 (comportement
 auth existant).

@@ -35,3 +35,18 @@ spring:
       - org.flowable.spring.boot.EndpointAutoConfiguration
       - org.flowable.spring.boot.actuate.info.FlowableInfoAutoConfiguration
       - org.flowable.spring.boot.ldap.FlowableLdapAutoConfiguration
+
+
+app:
+  tenant:
+    id: tenant_dev   # unique par instance déployée — jamais résolu dynamiquement
+
+# Cible multi-tenant (non actif) — décommenter feature par feature avec datasource / reverse-proxy :
+# server:
+#   servlet:
+#     context-path: /${app.tenant.id}
+#   forward-headers-strategy: framework
+# spring:
+#   datasource:
+#     hikari:
+#       connection-init-sql: SET search_path TO ${app.tenant.id}, public

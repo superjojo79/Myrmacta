@@ -23,7 +23,7 @@ class DomainConfigTest {
     @Test
     void start_viaSpringBeans_persistsInstance() {
         WorkflowInstance instance = startWorkflowUseCase.start(
-                new StartWorkflowCommand("demo-process", "tenant-a"));
+                new StartWorkflowCommand("demo-process", "tenant_a"));
 
         assertThat(instance.status()).isEqualTo(WorkflowStatus.RUNNING);
         assertThat(workflowRepository.findById(instance.id())).contains(instance);

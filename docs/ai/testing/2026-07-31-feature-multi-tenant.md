@@ -2,6 +2,8 @@
 phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
+status: draft
+created: 2026-07-31
 ---
 
 # Testing Strategy
@@ -9,73 +11,109 @@ description: Define testing approach, test cases, and quality assurance
 ## Test Coverage Goals
 **What level of testing do we aim for?**
 
-- Unit test coverage target (default: 100% of new/changed code)
-- Integration test scope (critical paths + error handling)
-- End-to-end test scenarios (key user journeys)
-- Alignment with requirements/design acceptance criteria
+- **Unitaires :** 100 % de `TenantIdValidator` / `InvalidTenantIdException` (chemins
+  OK + rejet).
+- **Config :** smoke optionnel — `TenantProperties` bindé avec `app.tenant.id`
+  (sans DataSource).
+- **Régression :** tests workflow existants verts avec fixtures `tenant_a`.
+- **ArchUnit :** règles actuelles toujours vertes (domaine sans infra/framework).
+- **E2E / UI / DB :** hors scope tranche A.
+- **Jacoco :** conserver le seuil bundle ≥ 80 % (`./mvnw verify`).
+
+Alignement success criteria : validator testé ; yaml cohérent ; `./mvnw test` vert.
 
 ## Unit Tests
 **What individual components need testing?**
 
-### Component/Module 1
-- [ ] Test case 1: [Description] (covers scenario / branch)
-- [ ] Test case 2: [Description] (covers edge case / error handling)
-- [ ] Additional coverage: [Description]
+### TenantIdValidator
+Fichier prévu :
+`src/test/java/com/flowforge/infrastructure/tenant/TenantIdValidatorTest.java`
 
-### Component/Module 2
-- [ ] Test case 1: [Description]
-- [ ] Test case 2: [Description]
-- [ ] Additional coverage: [Description]
+- [ ] Accepte `tenant_a`, `tenant_dev`, `abc` (borne basse longueur)
+- [ ] Accepte longueur max raisonnable (≤ 63 chars total selon regex)
+- [ ] Refuse `null` → `InvalidTenantIdException`
+- [ ] Refuse `""` / blank
+- [ ] Refuse `tenant-a` (tiret)
+- [ ] Refuse `Tenant_a` (majuscule)
+- [ ] Refuse `1tenant` (ne commence pas par une lettre)
+- [ ] Refuse `ab` (trop court : moins de 3 chars après la 1ʳᵉ lettre… *voir note*)
+- [ ] Refuse identifiant > 63 caractères
+
+> **Note regex :** `^[a-z][a-z0-9_]{2,62}$` ⇒ total 3–63 caractères. Cas `ab` =
+> 2 chars → refus. Documenter chaque assertion sur ce contrat.
+
+### TenantProperties (optionnel smoke)
+Fichier prévu (si jugé utile en implémentation) :
+`src/test/java/com/flowforge/infrastructure/config/TenantPropertiesTest.java`
+
+- [ ] Binding `app.tenant.id=tenant_dev` expose la valeur via le bean
+- [ ] Absence de `app.tenant.id` → échec de contexte / binding (fail-fast)
 
 ## Integration Tests
 **How do we test component interactions?**
 
-- [ ] Integration scenario 1
-- [ ] Integration scenario 2
-- [ ] API endpoint tests
-- [ ] Integration scenario 3 (failure mode / rollback)
+- [ ] N/A obligatoire — pas de DataSource / proxy / OIDC dans cette tranche
+- [ ] Régression : `DomainConfigTest` + suite workflow restent verts (path non activé)
 
 ## End-to-End Tests
 **What user flows need validation?**
 
-- [ ] User flow 1: [Description]
-- [ ] User flow 2: [Description]
-- [ ] Critical path testing
-- [ ] Regression of adjacent features
+- [ ] N/A — pas de parcours utilisateur UI/HTTP dans cette feature
+
+## Architecture Tests (ArchUnit)
+Fichier : `src/test/java/com/flowforge/ArchitectureRulesTest.java` (existant)
+
+- [ ] Domaine ne dépend toujours pas de Spring / JPA / Flowable / `infrastructure`
+- [ ] Nouveau code `infrastructure.tenant` / `TenantProperties` n’introduit pas de
+      dépendance inverse vers le domaine workflow (pas requis ArchUnit dédié si
+      aucune règle nouvelle)
 
 ## Test Data
 **What data do we use for testing?**
 
-- Test fixtures and mocks
-- Seed data requirements
-- Test database setup
+| Fixture | Valeur | Usage |
+|---|---|---|
+| Tenant valide | `tenant_a`, `tenant_dev` | Validator OK ; workflow tests |
+| Tenant invalide | `tenant-a`, `1x`, `AB`, `""` | Validator KO |
+| Config locale | `app.tenant.id=tenant_dev` | application.yml / smoke |
+
+- Remplacer toutes les occurrences test `tenant-a` → `tenant_a` dans
+  `StartWorkflowUseCaseImplTest`, `WorkflowInstanceTest`, et tout autre test touché.
 
 ## Test Reporting & Coverage
 **How do we verify and communicate test results?**
 
-- Coverage commands and thresholds (`npm run test -- --coverage`)
-- Coverage gaps (files/functions below 100% and rationale)
-- Links to test reports or dashboards
-- Manual testing outcomes and sign-off
+```bash
+./mvnw test          # Surefire + Jacoco report
+./mvnw verify        # + jacoco:check (≥ 80 % lignes bundle)
+```
+
+- Couverture attendue : 100 % lignes sur `TenantIdValidator` (+ exception si logique).
+- Gaps acceptables : N/A hors classes de la feature ; `FlowForgeApplication.main`
+  déjà non couvert.
 
 ## Manual Testing
 **What requires human validation?**
 
-- UI/UX testing checklist (include accessibility)
-- Browser/device compatibility
-- Smoke tests after deployment
+- [ ] Relire `application.yml` : `app.tenant.id` présent ; path / search_path
+      clairement non actifs par défaut
+- [ ] Relire doc reverse-proxy dans design / implementation
+- [ ] Confirmer qu’aucun filtre Security n’a été ajouté
 
 ## Performance Testing
 **How do we validate performance?**
 
-- Load testing scenarios
-- Stress testing approach
-- Performance benchmarks
+- N/A — validator pur CPU, pas d’IO.
 
 ## Bug Tracking
 **How do we manage issues?**
 
-- Issue tracking process
-- Bug severity levels
-- Regression testing strategy
+- Échec validator / régression ArchUnit / `jacoco:check` = bloquant PR.
+- Activation accidentelle de `context-path` cassant les tests = bug P0 de cette
+  feature.
 
+## Phase notes
+
+- Scénarios dérivés des success criteria requirements + edge cases regex.
+- **Prochaine phase lifecycle après implémentation :** exécuter ces cases en phase 5/8.
+- Pour l’instant (phase 1 docs) : checkboxes restent `[ ]` jusqu’à l’implémentation.

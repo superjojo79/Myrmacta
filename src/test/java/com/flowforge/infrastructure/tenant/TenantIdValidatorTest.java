@@ -10,6 +10,20 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 class TenantIdValidatorTest {
 
+    @Test
+    void rejectsNull_withNullSafeMessage() {
+        assertThatThrownBy(() -> TenantIdValidator.validate(null))
+                .isInstanceOf(InvalidTenantIdException.class)
+                .hasMessageContaining("null");
+    }
+
+    @Test
+    void rejectsInvalidId_withIdInMessage() {
+        assertThatThrownBy(() -> TenantIdValidator.validate("tenant-a"))
+                .isInstanceOf(InvalidTenantIdException.class)
+                .hasMessageContaining("tenant-a");
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"tenant_a", "tenant_dev", "abc"})
     void acceptsValidTenantIds(String tenantId) {

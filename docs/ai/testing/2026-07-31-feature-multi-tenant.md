@@ -13,8 +13,8 @@ created: 2026-07-31
 
 - **Unitaires :** 100 % de `TenantIdValidator` / `InvalidTenantIdException` (chemins
   OK + rejet).
-- **Config :** smoke optionnel — `TenantProperties` bindé avec `app.tenant.id`
-  (sans DataSource).
+- **Config :** smoke — `TenantProperties` bindé avec `app.tenant.id` + validation
+  regex au démarrage (sans DataSource).
 - **Régression :** tests workflow existants verts avec fixtures `tenant_a`.
 - **ArchUnit :** règles actuelles toujours vertes (domaine sans infra/framework).
 - **E2E / UI / DB :** hors scope tranche A.
@@ -42,12 +42,14 @@ Fichier prévu :
 > **Note regex :** `^[a-z][a-z0-9_]{2,62}$` ⇒ total 3–63 caractères. Cas `ab` =
 > 2 chars → refus. Documenter chaque assertion sur ce contrat.
 
-### TenantProperties (optionnel smoke)
-Fichier prévu (si jugé utile en implémentation) :
+### TenantProperties + validation au démarrage
+Fichier(s) prévu(s) :
 `src/test/java/com/flowforge/infrastructure/config/TenantPropertiesTest.java`
+(et/ou test du runner de validation)
 
 - [ ] Binding `app.tenant.id=tenant_dev` expose la valeur via le bean
 - [ ] Absence de `app.tenant.id` → échec de contexte / binding (fail-fast)
+- [ ] `app.tenant.id=tenant-a` (invalide) → échec au démarrage via `TenantIdValidator`
 
 ## Integration Tests
 **How do we test component interactions?**

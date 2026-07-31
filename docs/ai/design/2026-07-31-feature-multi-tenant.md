@@ -59,9 +59,10 @@ sequenceDiagram
 | Zone | Rôle |
 |---|---|
 | `infrastructure.config.TenantProperties` | Record / `@ConfigurationProperties(prefix="app.tenant")` — `id` requis |
-| `infrastructure.tenant.TenantIdValidator` | Validation regex provisioning / bootstrap futur |
+| `infrastructure.tenant.TenantIdValidator` | Validation regex (provisioning + démarrage instance) |
 | `infrastructure.tenant.InvalidTenantIdException` | Erreur d’identifiant |
-| `application.yml` | `app.tenant.id` ; commentaires ou profil pour path / `connection-init-sql` |
+| `infrastructure.config` (bootstrap léger) | Au démarrage : `TenantIdValidator.validate(tenantProperties.id())` |
+| `application.yml` | `app.tenant.id` actif ; path / `connection-init-sql` **commentés** |
 | Docs design/implementation | Contrat reverse-proxy chemin + instance dédiée |
 
 ### Stack
@@ -98,7 +99,7 @@ app:
   tenant:
     id: tenant_dev   # actif — unique par instance déployée
 
-# Cible (non actif par défaut) — commenté ou profil `tenant` :
+# Cible (non actif) — blocs commentés dans application.yml (pas de profil Spring) :
 # server:
 #   servlet:
 #     context-path: /${app.tenant.id}
@@ -111,6 +112,10 @@ app:
 
 Activation de `@EnableConfigurationProperties(TenantProperties.class)` (ou
 enregistrement équivalent) depuis `infrastructure.config` — sans toucher au domaine.
+
+Un composant de démarrage léger (ex. `ApplicationRunner` / `@PostConstruct` dans
+`infrastructure.config`) appelle `TenantIdValidator.validate(tenantProperties.id())`
+afin qu’un id absent au binding ou non conforme fasse échouer le boot.
 
 ### Validator
 
@@ -157,7 +162,8 @@ Le préfixe n’est pas réécrit : même path côté client et instance (quand
 | `context-path` | Documenté, inactif par défaut | Activation immédiate (casse URLs/tests) |
 | Domaine workflow | Inchangé + fixtures `tenant_a` | Couplage use case → `TenantProperties` |
 | Packages | Properties dans `config` ; validator dans `tenant` | Tout dans `config` ; validator en `domain` |
-| Binding `id` | Propriété **requise** (fail-fast au démarrage) | Défaut silencieux / optionnel |
+| Binding `id` | Propriété **requise** + regex au boot | Défaut silencieux ; validation provisioning only |
+| Path / search_path inactifs | Blocs **commentés** dans yaml | Profil Spring `tenant` |
 | Isolation | Instance dédiée + schéma (n° 13) — doc | ThreadLocal / SPI Hibernate multi-tenant |
 | Routage | Chemin + proxy statique (n° 14) — doc | Sous-domaine ; port dédié |
 
@@ -188,7 +194,8 @@ Le préfixe n’est pas réécrit : même path côté client et instance (quand
 |---|---|
 | `TenantProperties` / `app.tenant.id` | Overview, API config, components |
 | Validator + regex + exception | Data models, API validator |
-| YAML path / search_path documentés inactifs | API Design yaml |
+| Validation regex au démarrage | API config + responsabilités bootstrap |
+| YAML path / search_path commentés | API Design yaml |
 | Doc reverse-proxy | API contrat proxy |
 | Fixtures `tenant_a` | Data models workflow |
 | Non-goals DB / OIDC / Liquibase / Flowable | Component hors scope + décisions |
@@ -197,5 +204,5 @@ Le préfixe n’est pas réécrit : même path côté client et instance (quand
 
 ## Review notes
 
-- Draft phase 1 — à valider en phase 2 (requirements) puis phase 3 (design review).
-- **Prochaine phase lifecycle :** revue requirements (`dev-requirements` phase 2).
+- Aligné sur clarifications phase 2 requirements (fail-fast + regex boot ; yaml commenté).
+- **Prochaine phase lifecycle :** revue design (`dev-design` phase 3).

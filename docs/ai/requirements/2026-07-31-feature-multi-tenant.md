@@ -2,8 +2,8 @@
 phase: requirements
 title: Requirements & Problem Understanding
 description: Clarify the problem space, gather requirements, and define success criteria
-status: draft
-created: 2026-07-31
+status: reviewed
+reviewed: 2026-07-31
 ---
 
 # Requirements & Problem Understanding
@@ -33,15 +33,16 @@ schéma PostgreSQL par tenant, et un routage par chemin via reverse-proxy statiq
 ### Primary goals
 
 - Introduire `TenantProperties` (`app.tenant.id`) comme **constante de configuration**
-  de l’instance (décision n° 13).
+  de l’instance (décision n° 13) — propriété **requise** (fail-fast si absente).
 - Livrer `TenantIdValidator` + `InvalidTenantIdException` avec la regex
   `^[a-z][a-z0-9_]{2,62}$` (contraintes identifiant PostgreSQL / provisioning).
+- Valider `TenantProperties.id()` avec `TenantIdValidator` **au démarrage** de
+  l’application (fail-fast si id invalide) — défense locale en plus du provisioning.
 - Documenter dans `application.yml` le modèle cible :
-  - `app.tenant.id` **actif** (valeur locale par défaut, ex. `tenant_dev`) ;
+  - `app.tenant.id` **actif** (valeur locale par défaut `tenant_dev`) ;
   - `server.servlet.context-path` et `spring.datasource.hikari.connection-init-sql`
-    **documentés mais non actifs** par défaut (profil ou commentaires) pour ne pas
-    casser le runtime / tests actuels.
-- Documenter le contrat reverse-proxy (chemin `/ {tenantId}`, blocs statiques) pour
+    **commentés** dans le yaml (non actifs) — pas de profil Spring obligatoire.
+- Documenter le contrat reverse-proxy (chemin `/{tenantId}`, blocs statiques) pour
   les features / ops aval.
 - Aligner les fixtures de test workflow `tenant-a` → `tenant_a` (conforme à la regex).
 
@@ -63,6 +64,7 @@ schéma PostgreSQL par tenant, et un routage par chemin via reverse-proxy statiq
 - Table `platform.tenant_migration_status` (point 29 — observabilité optionnelle).
 - Refactor du domaine workflow pour lire `TenantProperties` (adaptateurs aval).
 - Activation de `context-path` par défaut.
+- Profil Spring dédié `tenant` pour activer le path (les commentaires yaml suffisent).
 
 ## User Stories & Use Cases
 **How will users interact with the solution?**
@@ -74,35 +76,40 @@ Fondation technique ; « utilisateurs » = contributeurs et features aval.
 - En tant que **outil / ops de provisioning**, je veux valider un `tenantId` via
   `TenantIdValidator` avant création de schéma / génération de config.
 - En tant que **mainteneur**, je veux que `context-path` et `search_path` soient
-  documentés dans la config sans casser les tests du socle hexagonal.
+  documentés (commentés) dans la config sans casser les tests du socle hexagonal.
 - En tant que **feature `authentification`**, je veux un contrat clair : le claim
   OIDC `tenant_id` devra égaler `TenantProperties.id()` (filtre hors scope ici).
+- En tant que **ops**, je veux qu’une instance mal configurée (`app.tenant.id` absent
+  ou non conforme à la regex) **refuse de démarrer**.
 
 ### Scénarios clés
 
-1. Démarrage local : `app.tenant.id=tenant_dev` lu via `TenantProperties`.
+1. Démarrage local : `app.tenant.id=tenant_dev` lu via `TenantProperties` + validé.
 2. `TenantIdValidator.validate("tenant_a")` OK ; `validate("tenant-a")` /
    `validate("")` / `validate(null)` → `InvalidTenantIdException`.
-3. Lecture de la doc / yaml : mode cible `context-path` + `connection-init-sql`
-   décrit, non appliqué au profil par défaut.
-4. Tests workflow existants : fixtures `tenant_a` uniquement.
+3. `app.tenant.id` absent ou `tenant-a` dans la config → échec au démarrage.
+4. Lecture du yaml : blocs cibles `context-path` + `connection-init-sql` **commentés**,
+   non appliqués.
+5. Tests workflow existants : fixtures `tenant_a` uniquement.
 
 ### Edge cases
 
-- Identifiant trop court (`ab`), commençant par un chiffre, ou contenant `-` → rejet.
-- Absence de `app.tenant.id` au runtime → échec de binding Spring
-  (`@ConfigurationProperties` / validation) — à préciser en design (propriété requise).
+- Identifiant trop court (`ab`), commençant par un chiffre, ou contenant `-` → rejet
+  (validator et/ou démarrage).
+- Identifiant à la borne haute (63 caractères valides) → accepté ; 64 → rejet.
 
 ## Success Criteria
 **How will we know when we're done?**
 
 - [ ] `TenantProperties` dans `com.flowforge.infrastructure.config`, bindé sur
-      `app.tenant.id`, exposé comme bean.
+      `app.tenant.id` (**requis**), exposé comme bean.
 - [ ] `TenantIdValidator` + `InvalidTenantIdException` dans
       `com.flowforge.infrastructure.tenant`.
+- [ ] Au démarrage, `TenantProperties.id()` passé dans `TenantIdValidator.validate`
+      (échec si invalide).
 - [ ] Regex `^[a-z][a-z0-9_]{2,62}$` couverte par tests unitaires (cas OK + refus).
-- [ ] `application.yml` contient `app.tenant.id` actif ; `context-path` et
-      `connection-init-sql` documentés / profilés **sans** activer le path par défaut.
+- [ ] `application.yml` contient `app.tenant.id: tenant_dev` actif ; `context-path` et
+      `connection-init-sql` **commentés** (non actifs).
 - [ ] Doc reverse-proxy (chemin + bloc statique par tenant) dans design et/ou
       implementation.
 - [ ] Fixtures workflow : plus de `tenant-a` ; usage de `tenant_a` (ou autre id valide).
@@ -129,7 +136,8 @@ Fondation technique ; « utilisateurs » = contributeurs et features aval.
 ### Time / budget / rollout
 
 - Livraison via branche `feature-multi-tenant` / PR ; pas de feature flag.
-- Activation progressive : path + datasource dans les features infra suivantes.
+- Activation progressive : path + datasource dans les features infra suivantes
+  (décommenter / activer yaml au moment voulu).
 
 ### Assumptions nommées
 
@@ -144,39 +152,55 @@ Fondation technique ; « utilisateurs » = contributeurs et features aval.
 - Point 31 (outillage provisioning) et point 29 (statut migration plateforme)
   restent différés.
 - L’environnement CI/agent peut tourner sous JDK 21 alors que le projet cible 25 —
-  risque connu de compile ; les docs / tests unitaires purs du validator restent
-  la preuve principale de cette phase docs.
+  risque connu de compile ; les unitaires du validator + smoke config restent la
+  preuve principale de cette feature.
+- La validation regex au démarrage **complète** (ne remplace pas) la validation au
+  provisioning (analyse § validation) — défense en profondeur locale.
 
 ## Questions & Open Items
 **What do we still need to clarify?**
 
-Aucune question bloquante pour rédiger design / testing de la tranche A.
+- Aucune question bloquante — phase 2 requirements **revue et acceptée**.
+- **Différé :** filtre OIDC (`authentification`), bootstrap Liquibase / schéma,
+  Flowable `tenantId`, outillage provisioning (point 31), observabilité migration
+  (point 29), activation `context-path` / datasource.
 
-| Point | Statut |
-|---|---|
-| Périmètre tranche A (socle config + validator) | **Acté** |
-| `context-path` non actif par défaut | **Acté** |
-| Domaine workflow inchangé + fixtures `tenant_a` | **Acté** |
-| Packages `config` + `infrastructure.tenant` | **Acté** |
-| Filtre OIDC / Liquibase / provisioning / Flowable | **Différé** (features / points 29·31) |
-| Binding fail-fast si `app.tenant.id` absent | À figer en design (recommandation : requis) |
-
-## Alternatives brainstormées (phase 1)
+## Alternatives brainstormées
 
 | Approche | Trade-off | Verdict |
 |---|---|---|
 | A — Socle config + validator | Preuve du modèle sans JPA/auth | **Retenu** |
 | B — Tranche runtime DB | Plus proche prod, active JPA tôt | Écarté pour V1 feature |
 | C — Périmètre analyse complet | Mélange multi-tenant / auth / ops | Écarté |
+| Path via profil Spring `tenant` | Plus propre pour activer plus tard | Écarté — commentaires yaml suffisent (tranche A) |
+| Pas de validation regex au boot | Strictement « provisioning only » | Écarté — fail-fast local retenu |
+| Validator en domaine | Pur Java métier | Écarté — contrainte ops/PostgreSQL |
 
-## Clarifications actées (phase 1)
+## Clarifications actées
 
 1. **Périmètre :** A — `TenantProperties`, `TenantIdValidator`, config documentée,
    tests validator, doc reverse-proxy ; sans PostgreSQL / Liquibase / filtre OIDC /
    Flowable.
-2. **context-path :** B — `app.tenant.id` actif ; path et `connection-init-sql`
-   documentés, non actifs par défaut.
-3. **Domaine workflow :** B — pas de couplage runtime à `TenantProperties` ;
+2. **context-path :** `app.tenant.id` actif ; path et `connection-init-sql`
+   **commentés** dans `application.yml`, non actifs.
+3. **Domaine workflow :** pas de couplage runtime à `TenantProperties` ;
    fixtures `tenant-a` → `tenant_a`.
-4. **Packages :** A — properties dans `infrastructure.config` ; validator +
+4. **Packages :** properties dans `infrastructure.config` ; validator +
    exception dans `infrastructure.tenant`.
+5. **Binding :** `app.tenant.id` **requis** + validation regex au démarrage
+   via `TenantIdValidator`.
+
+## Review notes (phase 2)
+
+| Point | Résolution |
+|---|---|
+| Conformité template README | Sections présentes + UX / perf / rollout / assumptions |
+| `chemin / {tenantId}` (typo espace) | Corrigé → `/{tenantId}` |
+| Ambiguïté « profil ou commentaires » | **Commentaires yaml** uniquement |
+| Binding fail-fast ouvert | **Acté** — propriété requise |
+| Validation regex runtime | **Acté** — au démarrage via validator |
+| Alternatives revalidées | Tranche A / path commenté / validator infra / fail-fast boot |
+| Design draft | À aligner (même clarifications) puis phase 3 |
+| Contradiction domaine vs config | Aucune — domaine inchangé ; config = source de vérité instance |
+
+**Prochaine phase :** `dev-design` (phase 3 — revue design contre requirements).

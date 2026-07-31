@@ -26,8 +26,8 @@ flowchart LR
   end
 
   subgraph outgoing["Adaptateurs sortants in-memory"]
-    REPO[InMemoryWorkflowRepository]
-    PUB[InMemoryWorkflowEventPublisher]
+    REPO[persistence.workflow<br/>InMemoryWorkflowRepository]
+    PUB[flowable<br/>InMemoryWorkflowEventPublisher]
   end
 
   DC --> PIN
@@ -48,8 +48,9 @@ flowchart LR
 | `domain.workflow.port.in` | Contrat use case (interface) |
 | `domain.workflow.usecase` | Orchestration (`*Impl`) |
 | `domain.workflow.port.out` | Persistence / événements (interfaces) |
-| `infrastructure.*` (in-memory) | Implémentations jetables pour prouver le câblage |
-| `DomainConfig` | `@Bean` : use case ← ports out |
+| `infrastructure.persistence.workflow` | `InMemoryWorkflowRepository` (remplacé plus tard par JPA) |
+| `infrastructure.flowable` | `InMemoryWorkflowEventPublisher` (remplacé plus tard par Flowable) |
+| `infrastructure.config.DomainConfig` | `@Bean` : use case ← ports out |
 
 ### Stack (déjà dans `pom.xml`)
 
@@ -99,10 +100,12 @@ Aucun endpoint REST dans cette feature. Auth N/A.
 **What are the major building blocks?**
 
 - **Backend packages** : rename `com.monapp` → `com.flowforge` ; conserver l’arbre documenté
-  (domain × 5 contextes, infrastructure × web/persistence/flowable/pdf/storage/notification/connector).
-- **Tranche livrée** : workflow domain + in-memory adapters + `DomainConfig`.
+  (domain × 5 contextes ; infrastructure × web/persistence/flowable/pdf/storage/notification/connector/config).
+  Hors workflow : `package-info` seulement.
+- **Tranche livrée** : workflow domain + in-memory adapters (packages cibles finaux) + `DomainConfig`.
 - **ArchUnit** : `ArchitectureRulesTest` sur `com.flowforge`.
 - **Frontend / DB / tiers** : hors scope.
+- **`CompleteTaskUseCase`** : hors scope ; `WorkflowInstance.complete()` reste pour les tests d’état.
 
 ## Design Decisions
 **Why did we choose this approach?**

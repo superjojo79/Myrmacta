@@ -159,25 +159,6 @@ déchiffrés via les logs et les API d'administration.
 
 ---
 
-### [ ] 32. Retrait synchronisé des exclusions autoconfig temporaires (Security/OAuth2/Flowable)
-
-**Constat (revue de code, phase architecture-hexagonale) :** `src/main/resources/application.yml`
-désactive Security, OAuth2 client et Flowable via des entrées séparées dans
-`spring.autoconfigure.exclude` (3 lignes à elles seules pour la sécurité), documentées comme
-temporaires « à retirer feature par feature ». Rien n'empêche aujourd'hui un retrait partiel de
-ces exclusions lors de l'implémentation de la feature `authentification` — l'application
-démarrerait alors sans filtre de sécurité actif sans qu'aucun test existant ne le détecte, tant
-qu'aucune route REST n'est encore exposée pour révéler le trou.
-
-**À décider :** un mécanisme de garde à la levée des exclusions (test d'intégration qui échoue si
-une partie seulement des lignes `Security`/`OAuth2` est retirée sans configuration de sécurité
-effective en place), ou à défaut une checklist explicite dans la doc `implementation` de la
-feature `authentification`.
-
-**Impacte :** `src/main/resources/application.yml`, feature `authentification` à venir.
-
----
-
 ## Processus
 
 ### [ ] 31. Découpage en lots d'implémentation
@@ -247,6 +228,28 @@ section 9 de [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md). Le supp
 **Décision retenue :** Chiffrement en enveloppe — une KEK (Key Encryption Key) unique gérée par un service externe (HashiCorp Vault Transit, Azure Key Vault ou AWS KMS), et une DEK (Data Encryption Key) par tenant, chiffrée par la KEK et stockée en base sous forme chiffrée. La rotation de la KEK est déléguée au vault (versionnage natif) ; la rotation d'une DEK est un job explicite (`RotateTenantEncryptionKeyUseCase`), jamais automatique. Une clé maître unique via variable d'environnement reste un compromis toléré uniquement en mono-tenant/développement, documenté comme limitation temporaire.
 
 **Documenté dans :** [06-connecteurs.md](analysis%20doc/06-connecteurs.md).
+
+---
+
+### [x] 32. Retrait synchronisé des exclusions autoconfig temporaires (Security/OAuth2/Flowable)
+
+**Problème (revue de code, phase architecture-hexagonale) :** `src/main/resources/application.yml`
+désactivait Security, OAuth2 client et Flowable via des entrées séparées dans
+`spring.autoconfigure.exclude` (3 lignes à elles seules pour la sécurité), documentées comme
+temporaires « à retirer feature par feature ». Rien n'empêchait un retrait partiel de ces
+exclusions lors de l'implémentation de la feature `authentification` — l'application aurait pu
+démarrer sans filtre de sécurité actif sans qu'aucun test ne le détecte.
+
+**Décision retenue :** la feature `authentification` (PR #12) a retiré les 3 lignes Security/OAuth2
+d'un seul mouvement, en même temps qu'elle câblait `SecurityConfig` (chaîne BFF `oauth2Login` +
+CSRF + `TenantResolutionFilter`). Vérifié en revue de code post-merge : plus aucune exclusion
+Security/OAuth2 dans `application.yml` ; `BffSecurityTest` couvre le 401/403 anonyme et mismatch de
+tenant, donc un retrait partiel futur (ex. lors du retrait des exclusions JPA/Flowable restantes)
+serait immédiatement détecté par la suite de tests existante. Pas de garde dédiée supplémentaire
+jugée nécessaire au-delà de cette couverture.
+
+**Documenté dans :** [docs/ai/requirements/2026-07-31-feature-authentification.md](docs/ai/requirements/2026-07-31-feature-authentification.md),
+`src/main/java/com/flowforge/infrastructure/security/SecurityConfig.java`.
 
 ---
 

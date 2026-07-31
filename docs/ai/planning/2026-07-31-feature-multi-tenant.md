@@ -116,10 +116,10 @@ Phase 5 complétée (2026-07-31). Pas d’échéances calendaires.
 
 ## Next action
 
-**Phase 9** — code review finale (`dev-review`).
+Lifecycle **terminé** pour la tranche A — PR #9 prête à merger.
 
 ## Progress summary
 
-T1–T8 livrés. Phases 7–8 OK (2026-07-31).
-Evidence phase 8 : `./mvnw test` **36** OK ; `./mvnw verify` Jacoco 96.7 % ;
-packages feature 100 %. Prêt pour phase 9.
+T1–T8 livrés. Phases 7–9 OK (2026-07-31).
+Evidence phase 9 : `./mvnw test` **36** OK ; `./mvnw verify` Jacoco 96.7 % ;
+lint OK ; aucun finding bloquant. **Prêt à merger.**

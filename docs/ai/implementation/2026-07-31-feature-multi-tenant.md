@@ -137,8 +137,45 @@ domaine workflow inchangé structurellement.
 
 **Verdict phase 7 :** implementation **alignée** — prêt pour phase 8 (`dev-testing`) puis phase 9 (`dev-review`).
 
+## Phase 9 — Code Review (2026-07-31)
+
+**Evidence (frais) :** `./mvnw test` → 36 tests, 0 failure ; `./mvnw verify` → Jacoco OK
+(96.7 % lignes, packages feature 100 %) ; lint feature OK. `DomainConfig` inchangé vs
+`origin/main`.
+
+### Checklist finale
+
+| Critère | Statut |
+|---|---|
+| Design match (`TenantConfig` dédié, double fail-fast, yaml commenté) | OK |
+| Pas de trou logique sur la tranche livrée | OK |
+| Sécurité (pas de sélection de schéma HTTP ; pas de filtre OIDC ajouté) | OK |
+| Points d’intégration (`TenantConfig` + `DomainConfig` cohabitent) | OK |
+| Tests couvrent le changement | OK (36 tests ; boot fail-fast `tenant-a`) |
+| Docs à jour (req/design/plan/impl/testing) | OK |
+| Rollback | OK — additif, aucune migration |
+| Breaking change | `app.tenant.id` **requis** au boot — intentionnel |
+
+### Findings (par sévérité)
+
+| Sévérité | Fichier / zone | Issue | Recommandation |
+|---|---|---|---|
+| Bloquant | — | Aucun | — |
+| Important | `application.yml` (`app.tenant.id: tenant_dev`) | Défaut local ; une instance mal provisionnée pourrait démarrer avec `tenant_dev` | Surcharger `app.tenant.id` par instance au déploiement ; outillage provisioning (point 31) |
+| Nice-to-have | Adaptateurs futurs | `StartWorkflowCommand.tenantId` toujours fourni par l’appelant | Injecter `TenantProperties.id()` dès le premier adaptateur HTTP |
+| Nice-to-have | `TenantConfigTest` | Boot test full `SpringApplicationBuilder` un peu lourd | Acceptable ; alternative `@SpringBootTest` + expect failure si besoin |
+
+### Alignement architecture
+
+- Intent : tenant = constante d’instance (n° 13), routage chemin documenté (n° 14).
+- Code : `TenantProperties` + runner regex ; pas de SPI Hibernate ; path inactif.
+- Cohérence modules : même style que `DomainConfig` (config Spring hors domaine).
+- Pas de duplication d’utilitaire existant ; pas de dépendance circulaire.
+
+**Verdict phase 9 :** **prêt à merger** (PR #9).
+
 ### Follow-ups (hors scope tranche A)
 
 - Activation `context-path` + datasource / Liquibase bootstrap
 - `TenantResolutionFilter` (feature `authentification`)
-- Outillage provisioning (point 31)
+- Outillage provisioning (point 31) — inclut surcharge obligatoire de `app.tenant.id`

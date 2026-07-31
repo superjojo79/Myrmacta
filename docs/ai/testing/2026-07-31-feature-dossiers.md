@@ -5,6 +5,7 @@ description: Define testing approach, test cases, and quality assurance
 status: draft
 created: 2026-07-31
 updated: 2026-07-31
+# aligned with design review 2026-07-31
 ---
 
 # Testing Strategy
@@ -68,8 +69,10 @@ Alignement success criteria requirements : CRUD + ACL + DRAFT + ProblemDetail +
 - [ ] Non-admin / `WORKFLOW_ADMIN` crée type → 403
 - [ ] Grant EDIT puis create dossier (`label` requis) → 201 `DRAFT` + référence ;
       `tenantId` = instance
-- [ ] Create sur type `active=false` → conflit/erreur métier
+- [ ] Create sur type `active=false` → **409**
+- [ ] DefaultValue injecté si clé absente puis validé
 - [ ] Create champs invalides / FILE required blank → 400 ProblemDetail `errors[]`
+- [ ] Create sans `label` → 400
 - [ ] Get sans VIEW → 403 ; avec VIEW → 200 ; `WORKFLOW_ADMIN` bypass OK
 - [ ] Get by `ref` → 200
 - [ ] PATCH status légal → 200 ; illégal → 409

@@ -2,7 +2,8 @@
 phase: implementation
 title: Implementation Guide
 description: Technical implementation notes, patterns, and code guidelines
-status: implemented
+status: verified
+checked: 2026-07-31
 updated: 2026-07-31
 ---
 
@@ -47,6 +48,18 @@ com.flowforge.infrastructure
 - Logout `/api/auth/logout` + `OidcClientInitiatedLogoutSuccessHandler`
 - Entry point : `/api/**` → 401 vide ; sinon `/oauth2/authorization/oidc`
 - `TenantResolutionFilter` après `SecurityContextHolderFilter`
+- `authorizeHttpRequests` : `anyRequest().authenticated()` — les chemins
+  `/oauth2/**` / callback sont pris en charge par les filtres `oauth2Login`
+  (pas de `permitAll` explicite)
+
+### Mapping rôles
+
+`RealmAccessAuthoritiesMapper` lit `realm_access.roles` sur l’**ID token**
+uniquement (`OidcUserAuthority.getIdToken()`). Le provisioning IdP doit y
+placer le claim (pas seulement l’access token).
+
+`/me.roles` ne conserve que les autorités `ROLE_*` (préfixe retiré) — les
+`SCOPE_*` sont exclus du JSON.
 
 ### YAML
 
@@ -59,7 +72,6 @@ com.flowforge.infrastructure
 
 `com.flowforge.support.OidcClientTestConfiguration` fournit un
 `ClientRegistrationRepository` `@Primary` (endpoints locaux factices).
-Importé par `@SpringBootTest` concernés + `SpringApplicationBuilder` tenant fail-fast.
 
 ### Contrat SPA (feature `frontend`)
 
@@ -71,29 +83,57 @@ axios.defaults.xsrfHeaderName = 'X-XSRF-TOKEN';
 // GET /api/auth/me → 401 anonyme ; 403 tenant (session déjà invalidée)
 ```
 
-## Changed files (phase 5)
+## Changed files (phase 5 + correctifs phase 7)
 
 - `pom.xml` — `spring-boot-starter-webmvc-test`
 - `application.yml` — OIDC, forward-headers, cookies, retrait exclusions Security
 - Packages `infrastructure.security*`, `web.auth`, `TenantResolutionFilter`
-- Tests unitaires + `BffSecurityIT` + stub OIDC + imports Domain/Tenant tests
-- Docs planning / testing / implementation
+- Tests unitaires + `BffSecurityTest` + stub OIDC
+- Phase 7 : filtre `/me` sur `ROLE_*` seulement ; test `tenant_id` blank
 
 ## Design deviations
 
-- Aucune déviation fonctionnelle vs design reviewed.
-- Note Boot 4 : `@AutoConfigureMockMvc` dans
-  `org.springframework.boot.webmvc.test.autoconfigure` + starter dédié.
+| Écart | Sévérité | Résolution phase 7 |
+|---|---|---|
+| `/me.roles` incluait `SCOPE_*` | Mineur | **Corrigé** — filtre `ROLE_*` avant strip |
+| Pas de `permitAll` OAuth2 explicite | Mineur | Accepté — short-circuit `oauth2Login` documenté |
+| Boot 4 MockMvc package | Doc | Starter `webmvc-test` |
 
 ## Edge cases handled
 
-- Claim `tenant_id` absent / mismatch → session invalidée + 403
-- Rôles déjà préfixés `ROLE_` → pas de double préfixe
+- Claim `tenant_id` absent / blank / mismatch → session invalidée + 403
+- Rôles déjà préfixés `ROLE_` → pas de double préfixe (mapper)
 - `/me` anonyme → 401 avant contrôleur (entry point)
+- `/me` n’expose pas `SCOPE_*`
 
-## Evidence (phase 5)
+## Requirements coverage (phase 7)
 
-| Commande | Résultat |
+| Exigence | Statut |
 |---|---|
-| `./mvnw test` | **50** tests, 0 failure |
-| `./mvnw verify` | BUILD SUCCESS ; Jacoco check OK |
+| Retrait exclusions Security/OAuth2 | OK |
+| Chaîne BFF CSRF + oauth2Login + logout | OK |
+| `/api/auth/me` + 401 `/api/**` | OK |
+| `registrationId=oidc` | OK |
+| Mapper `realm_access` → `ROLE_*` ; JSON sans préfixe | OK |
+| `TenantResolutionFilter` 403 + invalidate | OK |
+| `forward-headers` ; cookie secure configurable | OK |
+| Tests sans IdP ; ArchUnit ; Jacoco | OK |
+| Non-goals M2M / webhooks / SPA / RS | Respectés |
+
+## Evidence (phase 7)
+
+| Commande / revue | Résultat |
+|---|---|
+| Revue design ↔ code | Aligné ; écarts mineurs traités / documentés |
+| `./mvnw clean verify` | **58** tests, 0 failure ; Jacoco check OK |
+| Lint feature | OK |
+| Note Surefire | `BffSecurityTest` (pas `*IT` — exclu par défaut Surefire) |
+
+## Follow-ups (hors tranche)
+
+- Chaînes `@Order(1)` M2M et `@Order(2)` webhooks
+- Feature `frontend` (Pinia / Axios)
+- Feature `autorisation-conformite` (`@PreAuthorize`)
+- Smoke local Keycloak réel (ops)
+
+**Prochaine phase :** `dev-testing` (phase 8) si revalidation formelle, sinon `dev-review` (phase 9).

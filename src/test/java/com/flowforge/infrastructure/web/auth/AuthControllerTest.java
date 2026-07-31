@@ -44,6 +44,6 @@ class AuthControllerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isEqualTo(new AuthUserResponse(
-                "Ada Lovelace", "ada@example.com", List.of("SCOPE_openid", "WORKFLOW_ADMIN")));
+                "Ada Lovelace", "ada@example.com", List.of("WORKFLOW_ADMIN")));
     }
 }

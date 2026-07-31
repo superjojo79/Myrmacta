@@ -20,16 +20,12 @@ public class AuthController {
         }
         List<String> roles = user.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
-                .map(AuthController::stripRolePrefix)
+                .filter(authority -> authority != null && authority.startsWith("ROLE_"))
+                .map(authority -> authority.substring("ROLE_".length()))
+                .filter(role -> !role.isBlank())
                 .distinct()
                 .sorted()
                 .toList();
         return ResponseEntity.ok(new AuthUserResponse(user.getFullName(), user.getEmail(), roles));
-    }
-
-    private static String stripRolePrefix(String authority) {
-        return authority != null && authority.startsWith("ROLE_")
-                ? authority.substring("ROLE_".length())
-                : authority;
     }
 }

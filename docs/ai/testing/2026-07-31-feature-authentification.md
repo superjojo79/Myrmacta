@@ -52,7 +52,7 @@ Alignement success criteria requirements : BFF testable sans IdP ; garde tenant 
 ## Integration Tests (MockMvc + mock OIDC)
 **How do we test component interactions?**
 
-Fichiers : `BffSecurityIT`, stub `OidcClientTestConfiguration`
+Fichiers : `BffSecurityTest`, stub `OidcClientTestConfiguration`
 
 - [x] `GET /api/auth/me` anonyme → **401** body vide (pas 302 vers IdP)
 - [x] `oidcLogin()` avec claims name/email/roles + `tenant_id=tenant_dev` → **200**

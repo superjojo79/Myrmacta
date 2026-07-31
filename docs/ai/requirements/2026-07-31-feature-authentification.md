@@ -168,7 +168,7 @@ de JWT au browser, et garantir que la session OIDC appartient bien au tenant de
 
 1. **Périmètre :** option B — BFF + CSRF + logout + `/me` + converter rôles +
    `TenantResolutionFilter` ; sans M2M / webhooks / SPA.
-2. **Non-auth :** 401 JSON sur `/api/**`, redirect OAuth ailleurs.
+2. **Non-auth :** 401 **body vide** sur `/api/**`, redirect OAuth ailleurs.
 3. **Tests / local IdP :** mock OIDC ; Keycloak hors CI.
 4. **Cookies :** `SameSite=Lax` ; `app.security.cookie.secure` (défaut true).
 5. **Proxy :** `forward-headers-strategy: framework` actif ; `context-path` commenté.

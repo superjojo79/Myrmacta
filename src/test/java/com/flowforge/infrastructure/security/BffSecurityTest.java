@@ -24,7 +24,7 @@ import org.springframework.test.web.servlet.MvcResult;
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(OidcClientTestConfiguration.class)
-class BffSecurityIT {
+class BffSecurityTest {
 
     @Autowired
     private MockMvc mockMvc;

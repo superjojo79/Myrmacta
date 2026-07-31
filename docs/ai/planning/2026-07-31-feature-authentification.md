@@ -70,7 +70,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Outcome :** chaîne BFF complète ; TODO 32 partiel.
   - **Depends on :** T1–T6
   - **Validation :** IT BFF + boot tests.
-  - **Tests liés :** BffSecurityIT.
+  - **Tests liés :** BffSecurityTest.
 
 ### M4 — Harness tests + IT
 
@@ -83,7 +83,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 - [x] **T9. Tests MockMvc BFF (mock OIDC)**
   - **Outcome :** 401/200/403/CSRF/logout/registration id couverts.
   - **Depends on :** T7, T8
-  - **Validation :** `BffSecurityIT` vert.
+  - **Validation :** `BffSecurityTest` vert.
   - **Tests liés :** Integration Tests.
 
 ### M5 — Preuves & docs
@@ -147,9 +147,10 @@ Phase 5 complétée (2026-07-31). Pas d’échéances calendaires.
 
 ## Next action
 
-**Phase 5 terminée** — enchaîner phase 7 (check implementation) puis phase 8 testing / phase 9 review.
+**Phase 7 terminée** — implementation `verified`. Enchaîner phase 8 (`dev-testing`)
+ou phase 9 (`dev-review`) ; testing doc déjà largement `verified`.
 
 ## Progress summary
 
-T1–T11 livrés (2026-07-31). BFF OIDC + garde tenant ; `./mvnw test` 50 OK ;
-`./mvnw verify` Jacoco check OK ; docs implementation à jour.
+T1–T11 livrés. Phase 7 : alignement design OK ; correctifs mineurs `/me` rôles
+`ROLE_*` only + test `tenant_id` blank. Evidence : suite verte + lint OK.

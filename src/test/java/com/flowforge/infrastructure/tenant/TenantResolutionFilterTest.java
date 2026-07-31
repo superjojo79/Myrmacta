@@ -91,6 +91,22 @@ class TenantResolutionFilterTest {
         assertThat(session.isInvalid()).isTrue();
     }
 
+    @Test
+    void forbidsAndInvalidatesSession_whenTenantClaimBlank() throws Exception {
+        authenticateWithTenant("");
+        MockHttpSession session = new MockHttpSession();
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setSession(session);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        FilterChain chain = mock(FilterChain.class);
+
+        filter.doFilter(request, response, chain);
+
+        verify(chain, never()).doFilter(request, response);
+        assertThat(response.getStatus()).isEqualTo(403);
+        assertThat(session.isInvalid()).isTrue();
+    }
+
     private static void authenticateWithTenant(String tenantId) {
         var claims = new java.util.HashMap<String, Object>();
         claims.put("sub", "user-1");

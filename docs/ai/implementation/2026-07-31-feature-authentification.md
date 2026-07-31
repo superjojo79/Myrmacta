@@ -2,6 +2,8 @@
 phase: implementation
 title: Implementation Guide
 description: Technical implementation notes, patterns, and code guidelines
+status: implemented
+updated: 2026-07-31
 ---
 
 # Implementation Guide
@@ -9,57 +11,89 @@ description: Technical implementation notes, patterns, and code guidelines
 ## Development Setup
 **How do we get started?**
 
-- Prerequisites and dependencies
-- Environment setup steps
-- Configuration needed
+- JDK **25**, Maven Wrapper : `./mvnw test` / `./mvnw verify`
+- Worktree : `.worktrees/feature-authentification`
+- Run réel : exporter `OIDC_ISSUER_URI` et `OIDC_CLIENT_SECRET` (requis, sans défaut)
+- Tests : stub `OidcClientTestConfiguration` + `src/test/resources/application.properties`
+- Dépendance test Boot 4 : `spring-boot-starter-webmvc-test` (`@AutoConfigureMockMvc`)
 
 ## Code Structure
 **How is the code organized?**
 
-- Directory structure
-- Module organization
-- Naming conventions
+```text
+com.flowforge.infrastructure
+├── config
+│   ├── TenantProperties / TenantConfig      # existants
+│   └── SecurityCookieProperties             # app.security.cookie.secure
+├── security
+│   ├── SecurityConfig                       # BFF @Order(3)
+│   ├── ApiAuthenticationEntryPoint
+│   ├── CsrfCookieEagerLoadFilter
+│   └── oidc.RealmAccessAuthoritiesMapper
+├── tenant
+│   ├── TenantIdValidator                    # existant
+│   └── TenantResolutionFilter               # invalidate + 403
+└── web.auth
+    ├── AuthController                       # GET /api/auth/me
+    └── AuthUserResponse
+```
 
-## Implementation Notes
-**Key technical details to remember:**
+## Key Implementation Details
 
-### Core Features
-- Feature 1: Implementation approach
-- Feature 2: Implementation approach
-- Feature 3: Implementation approach
+### SecurityFilterChain BFF `@Order(3)`
 
-### Patterns & Best Practices
-- Design patterns being used
-- Code style guidelines
-- Common utilities/helpers
+- CSRF cookie non-httpOnly + `CsrfTokenRequestAttributeHandler` + eager-load filter
+- `oauth2Login` + `RealmAccessAuthoritiesMapper`
+- Logout `/api/auth/logout` + `OidcClientInitiatedLogoutSuccessHandler`
+- Entry point : `/api/**` → 401 vide ; sinon `/oauth2/authorization/oidc`
+- `TenantResolutionFilter` après `SecurityContextHolderFilter`
 
-## Integration Points
-**How do pieces connect?**
+### YAML
 
-- API integration details
-- Database connections
-- Third-party service setup
+- Exclusions **Security / OAuth2 client retirées** ; JPA / Flowable / Mail conservées
+- `server.forward-headers-strategy: framework` actif ; `context-path` commenté
+- `registrationId` / provider = **`oidc`**
+- `${OIDC_ISSUER_URI}` / `${OIDC_CLIENT_SECRET}` sans défaut
 
-## Error Handling
-**How do we handle failures?**
+### Tests sans IdP
 
-- Error handling strategy
-- Logging approach
-- Retry/fallback mechanisms
+`com.flowforge.support.OidcClientTestConfiguration` fournit un
+`ClientRegistrationRepository` `@Primary` (endpoints locaux factices).
+Importé par `@SpringBootTest` concernés + `SpringApplicationBuilder` tenant fail-fast.
 
-## Performance Considerations
-**How do we keep it fast?**
+### Contrat SPA (feature `frontend`)
 
-- Optimization strategies
-- Caching approach
-- Query optimization
-- Resource management
+```javascript
+axios.defaults.withCredentials = true;
+axios.defaults.xsrfCookieName = 'XSRF-TOKEN';
+axios.defaults.xsrfHeaderName = 'X-XSRF-TOKEN';
+// login : /oauth2/authorization/oidc
+// GET /api/auth/me → 401 anonyme ; 403 tenant (session déjà invalidée)
+```
 
-## Security Notes
-**What security measures are in place?**
+## Changed files (phase 5)
 
-- Authentication/authorization
-- Input validation
-- Data encryption
-- Secrets management
+- `pom.xml` — `spring-boot-starter-webmvc-test`
+- `application.yml` — OIDC, forward-headers, cookies, retrait exclusions Security
+- Packages `infrastructure.security*`, `web.auth`, `TenantResolutionFilter`
+- Tests unitaires + `BffSecurityIT` + stub OIDC + imports Domain/Tenant tests
+- Docs planning / testing / implementation
 
+## Design deviations
+
+- Aucune déviation fonctionnelle vs design reviewed.
+- Note Boot 4 : `@AutoConfigureMockMvc` dans
+  `org.springframework.boot.webmvc.test.autoconfigure` + starter dédié.
+
+## Edge cases handled
+
+- Claim `tenant_id` absent / mismatch → session invalidée + 403
+- Rôles déjà préfixés `ROLE_` → pas de double préfixe
+- `/me` anonyme → 401 avant contrôleur (entry point)
+
+## Evidence (phase 5)
+
+| Commande | Résultat |
+|---|---|
+| `./mvnw test` | **50** tests, 0 failure |
+| `./mvnw verify` | BUILD SUCCESS ; Jacoco check OK |

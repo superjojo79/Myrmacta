@@ -98,16 +98,16 @@ de JWT au browser, et garantir que la session OIDC appartient bien au tenant de
 ## Success Criteria
 **How will we know when we're done?**
 
-- [ ] Exclusions Security / OAuth2 client retirées ; JPA/Flowable/Mail restent exclus.
-- [ ] `SecurityFilterChain` BFF câblée (oauth2Login, CSRF, logout OIDC).
-- [ ] `GET /api/auth/me` conforme ; 401 anonyme sur `/api/**`.
-- [ ] `registrationId` = `oidc` documenté et configuré.
-- [ ] Converter `realm_access.roles` → `ROLE_*` ; JSON `roles` sans préfixe.
-- [ ] `TenantResolutionFilter` 403 si claim absent / mismatch.
-- [ ] `forward-headers-strategy: framework` actif ; `context-path` commenté.
-- [ ] `app.security.cookie.secure` (défaut true) appliqué session + CSRF.
-- [ ] `./mvnw test` vert **sans** IdP réel ; ArchUnit / Jacoco OK.
-- [ ] Docs requirements / design / testing alignés sur tranche A+.
+- [x] Exclusions Security / OAuth2 client retirées ; JPA/Flowable/Mail restent exclus.
+- [x] `SecurityFilterChain` BFF câblée (oauth2Login, CSRF, logout OIDC).
+- [x] `GET /api/auth/me` conforme ; 401 anonyme sur `/api/**`.
+- [x] `registrationId` = `oidc` documenté et configuré.
+- [x] Converter `realm_access.roles` → `ROLE_*` ; JSON `roles` sans préfixe.
+- [x] `TenantResolutionFilter` 403 si claim absent / mismatch.
+- [x] `forward-headers-strategy: framework` actif ; `context-path` commenté.
+- [x] `app.security.cookie.secure` (défaut true) appliqué session + CSRF.
+- [x] `./mvnw test` vert **sans** IdP réel ; ArchUnit / Jacoco OK.
+- [x] Docs requirements / design / testing alignés sur tranche A+.
 
 **Performance benchmarks :** N/A — chemin auth session, pas d’IO métier nouveau.
 

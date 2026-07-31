@@ -5,14 +5,17 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.flowforge.FlowForgeApplication;
 import com.flowforge.infrastructure.tenant.InvalidTenantIdException;
+import com.flowforge.support.OidcClientTestConfiguration;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.context.annotation.Import;
 
 @SpringBootTest
+@Import(OidcClientTestConfiguration.class)
 class TenantConfigTest {
 
     @Autowired
@@ -47,7 +50,8 @@ class TenantConfigTest {
     @Test
     void invalidTenantId_failsBootViaApplicationRunner() {
         // Args CLI > application.yml (Builder.properties() serait écrasé par le yaml).
-        assertThatThrownBy(() -> new SpringApplicationBuilder(FlowForgeApplication.class)
+        assertThatThrownBy(() -> new SpringApplicationBuilder(
+                                FlowForgeApplication.class, OidcClientTestConfiguration.class)
                         .web(WebApplicationType.NONE)
                         .run("--app.tenant.id=tenant-a"))
                 .isInstanceOf(InvalidTenantIdException.class)

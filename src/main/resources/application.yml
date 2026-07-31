@@ -1,5 +1,6 @@
 # Temporary — disable infra autoconfig until real adapters land (design phase 3).
 # Remove entries feature-by-feature (JPA, Security, Flowable, …).
+# Security / OAuth2 client exclusions removed — feature authentification (TODO 32 partiel).
 spring:
   application:
     name: flowforge
@@ -11,11 +12,6 @@ spring:
       - org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration
       - org.springframework.boot.data.jpa.autoconfigure.DataJpaRepositoriesAutoConfiguration
       - org.springframework.boot.liquibase.autoconfigure.LiquibaseAutoConfiguration
-      - org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration
-      - org.springframework.boot.security.autoconfigure.web.servlet.ServletWebSecurityAutoConfiguration
-      - org.springframework.boot.security.autoconfigure.web.servlet.SecurityFilterAutoConfiguration
-      - org.springframework.boot.security.oauth2.client.autoconfigure.OAuth2ClientAutoConfiguration
-      - org.springframework.boot.security.oauth2.client.autoconfigure.servlet.OAuth2ClientWebSecurityAutoConfiguration
       - org.springframework.boot.mail.autoconfigure.MailSenderAutoConfiguration
       - org.flowable.spring.boot.ProcessEngineAutoConfiguration
       - org.flowable.spring.boot.ProcessEngineServicesAutoConfiguration
@@ -35,17 +31,39 @@ spring:
       - org.flowable.spring.boot.EndpointAutoConfiguration
       - org.flowable.spring.boot.actuate.info.FlowableInfoAutoConfiguration
       - org.flowable.spring.boot.ldap.FlowableLdapAutoConfiguration
+  security:
+    oauth2:
+      client:
+        registration:
+          oidc:
+            client-id: ${OIDC_CLIENT_ID:mon-app}
+            client-secret: ${OIDC_CLIENT_SECRET}
+            scope: openid, profile, email
+            authorization-grant-type: authorization_code
+            provider: oidc
+        provider:
+          oidc:
+            issuer-uri: ${OIDC_ISSUER_URI}
 
+server:
+  forward-headers-strategy: framework
+  servlet:
+    session:
+      cookie:
+        same-site: lax
+        secure: ${app.security.cookie.secure:true}
 
 app:
   tenant:
     id: tenant_dev   # unique par instance déployée — jamais résolu dynamiquement
+  security:
+    cookie:
+      secure: true   # false en local HTTP (profil / override)
 
-# Cible multi-tenant (non actif) — décommenter feature par feature avec datasource / reverse-proxy :
+# Cible multi-tenant (non actif) — décommenter avec datasource / reverse-proxy :
 # server:
 #   servlet:
 #     context-path: /${app.tenant.id}
-#   forward-headers-strategy: framework
 # spring:
 #   datasource:
 #     hikari:

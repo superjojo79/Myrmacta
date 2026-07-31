@@ -2,7 +2,7 @@
 phase: planning
 title: Project Planning & Task Breakdown
 description: Break down work into actionable tasks and estimate timeline
-status: planned
+status: implemented
 created: 2026-07-31
 updated: 2026-07-31
 ---
@@ -12,200 +12,144 @@ updated: 2026-07-31
 ## Milestones
 **What are the major checkpoints?**
 
-- [ ] **M1 — Config & propriétés** : yaml OIDC/`forward-headers`/cookies ; `SecurityCookieProperties`
-- [ ] **M2 — Pièces security (TDD)** : mapper rôles, entry point 401, `TenantResolutionFilter`
-- [ ] **M3 — BFF câblé** : `SecurityConfig` `@Order(3)`, `AuthController`, retrait exclusions
-- [ ] **M4 — Harness tests + IT** : stub `ClientRegistrationRepository`, MockMvc OIDC
-- [ ] **M5 — Preuves & docs** : suite / ArchUnit / Jacoco ; doc implementation + contrat SPA
+- [x] **M1 — Config & propriétés** : yaml OIDC/`forward-headers`/cookies ; `SecurityCookieProperties`
+- [x] **M2 — Pièces security (TDD)** : mapper rôles, entry point 401, `TenantResolutionFilter`
+- [x] **M3 — BFF câblé** : `SecurityConfig` `@Order(3)`, `AuthController`, retrait exclusions
+- [x] **M4 — Harness tests + IT** : stub `ClientRegistrationRepository`, MockMvc OIDC
+- [x] **M5 — Preuves & docs** : suite / ArchUnit / Jacoco ; doc implementation + contrat SPA
 
 ## Task Breakdown
 **What specific work needs to be done?**
 
 Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
-Ordre recommandé : **T1 → T2** puis **T3 ∥ T4 ∥ T5** → **T6 → T7 → T8 → T9 → T10 → T11**.
-
 ### M1 — Config & propriétés
 
-- [ ] **T1. YAML sécurité + OIDC client `oidc`**
-  - **Outcome :** `forward-headers-strategy: framework` actif ; `context-path` reste
-    commenté ; session/CSRF cookies SameSite=Lax + `secure` lié à
-    `app.security.cookie.secure` (défaut `true`) ; registration/provider **`oidc`**
-    avec `${OIDC_ISSUER_URI}` / `${OIDC_CLIENT_SECRET}` **sans défaut** ;
-    `OIDC_CLIENT_ID` défaut `mon-app` OK. Exclusions Security/OAuth2 **pas encore
-    retirées** (retrait en T7) pour ne pas casser le boot intermédiaire.
+- [x] **T1. YAML sécurité + OIDC client `oidc`**
+  - **Outcome :** forward-headers actif ; cookies SameSite=Lax + secure configurable ;
+    registration `oidc` ; issuer/secret requis ; exclusions Security retirées avec T7.
   - **Depends on :** —
-  - **Validation :** relecture yaml ; placeholders présents ; JPA/Flowable toujours exclus.
-  - **Tests liés :** Manual yaml ; Config cookie (T2).
+  - **Validation :** yaml relu ; JPA/Flowable exclus.
+  - **Tests liés :** Manual yaml.
 
-- [ ] **T2. `SecurityCookieProperties` + tests**
-  - **Outcome :** record/`@ConfigurationProperties(prefix=app.security.cookie)` ;
-    enable via config security ; défaut `secure=true` ; override testable.
-  - **Depends on :** T1 (préfixe yaml)
-  - **Validation :** tests unitaires / binding verts.
+- [x] **T2. `SecurityCookieProperties` + tests**
+  - **Outcome :** `@ConfigurationProperties` + défaut `secure=true`.
+  - **Depends on :** T1
+  - **Validation :** `SecurityCookiePropertiesTest` vert.
   - **Tests liés :** Unit — SecurityCookieProperties.
 
 ### M2 — Pièces security (TDD)
 
-- [ ] **T3. `RealmAccessAuthoritiesMapper` + tests**
-  - **Outcome :** `GrantedAuthoritiesMapper` dans `infrastructure.security.oidc` ;
-    `realm_access.roles` → `ROLE_*` ; claim absent → pas d’autorités rôle ;
-    rôles déjà préfixés gérés sans double `ROLE_`.
+- [x] **T3. `RealmAccessAuthoritiesMapper` + tests**
+  - **Outcome :** `realm_access.roles` → `ROLE_*`.
   - **Depends on :** —
-  - **Validation :** tests unitaires mapper verts.
+  - **Validation :** 4 tests mapper verts.
   - **Tests liés :** Unit — RealmAccessAuthoritiesMapper.
 
-- [ ] **T4. `ApiAuthenticationEntryPoint` + tests**
-  - **Outcome :** `/api/**` → **401 body vide** ; hors API → délègue au entry point
-    login OAuth (redirect).
+- [x] **T4. `ApiAuthenticationEntryPoint` + tests**
+  - **Outcome :** `/api/**` → 401 vide ; hors API → délégué.
   - **Depends on :** —
-  - **Validation :** tests unitaires / mock request-response.
-  - **Tests liés :** Unit — ApiAuthenticationEntryPoint ; IT 401 (T9).
+  - **Validation :** 2 tests entry point verts.
+  - **Tests liés :** Unit — ApiAuthenticationEntryPoint.
 
-- [ ] **T5. `TenantResolutionFilter` + tests**
-  - **Outcome :** skip si anonyme ; si `OidcUser` : claim `tenant_id` vs
-    `TenantProperties.id()` ; absent/blank/mismatch → **`session.invalidate()` +
-    403 body vide** ; match → `chain.doFilter`.
+- [x] **T5. `TenantResolutionFilter` + tests**
+  - **Outcome :** mismatch/absent → invalidate + 403.
   - **Depends on :** —
-  - **Validation :** tests unitaires filtre (mock filter chain / session).
-  - **Tests liés :** Unit — TenantResolutionFilter ; IT 403 (T9).
+  - **Validation :** 4 tests filtre verts.
+  - **Tests liés :** Unit — TenantResolutionFilter.
 
 ### M3 — BFF câblé
 
-- [ ] **T6. `AuthController` + `AuthUserResponse`**
-  - **Outcome :** `GET /api/auth/me` → `{name,email,roles}` avec rôles **sans**
-    préfixe `ROLE_` (strip depuis authorities) ; package `infrastructure.web.auth`.
+- [x] **T6. `AuthController` + `AuthUserResponse`**
+  - **Outcome :** `GET /api/auth/me` ; rôles sans `ROLE_`.
   - **Depends on :** —
-  - **Validation :** compile ; comportement couvert en T9 (et smoke unitaire éventuel).
-  - **Tests liés :** IT `/me` 200 (T9).
+  - **Validation :** `AuthControllerTest` + IT `/me`.
+  - **Tests liés :** Unit AuthController ; IT `/me`.
 
-- [ ] **T7. `SecurityConfig` BFF `@Order(3)` + retrait exclusions Security/OAuth2**
-  - **Outcome :** chaîne BFF : CSRF double-submit + eager-load filter ; `oauth2Login`
-    + mapper T3 ; logout `/api/auth/logout` + `OidcClientInitiatedLogoutSuccessHandler` ;
-    entry point T4 ; filtre T5 après auth ; cookies secure via T2. Retirer du yaml
-    les exclusions Security / OAuth2 client (TODO 32 partiel) — **garder**
-    JPA/Flowable/Mail. Aucune chaîne M2M/webhooks.
+- [x] **T7. `SecurityConfig` BFF `@Order(3)` + retrait exclusions Security/OAuth2**
+  - **Outcome :** chaîne BFF complète ; TODO 32 partiel.
   - **Depends on :** T1–T6
-  - **Validation :** classes présentes ; yaml exclusions Security absentes ;
-    boot réel exige OIDC env (hors tests).
-  - **Tests liés :** IT stub contexte (T8/T9) ; Manual yaml.
+  - **Validation :** IT BFF + boot tests.
+  - **Tests liés :** BffSecurityIT.
 
 ### M4 — Harness tests + IT
 
-- [ ] **T8. Stub `ClientRegistrationRepository` + config test**
-  - **Outcome :** `@TestConfiguration` / `src/test/resources` permettant
-    `@SpringBootTest` / MockMvc **sans** discovery HTTP ni `OIDC_ISSUER_URI` réel ;
-    registration id `oidc`.
+- [x] **T8. Stub `ClientRegistrationRepository` + config test**
+  - **Outcome :** `OidcClientTestConfiguration` + `application.properties` test.
   - **Depends on :** T7
-  - **Validation :** contexte Spring de test démarre ; DomainConfigTest / Tenant*
-    adaptés si besoin (import stub).
-  - **Tests liés :** IT « stub repository » ; régression DomainConfig / Tenant*.
+  - **Validation :** contexte Spring sans discovery.
+  - **Tests liés :** IT stub ; DomainConfig / TenantConfig imports.
 
-- [ ] **T9. Tests MockMvc BFF (mock OIDC)**
-  - **Outcome :** couverture IT :
-    - `/api/auth/me` anonyme → 401 body vide (pas 302)
-    - `oidcLogin()` + `tenant_id=tenant_dev` + rôles → 200, `roles` sans `ROLE_`
-    - `tenant_id` other / absent → 403 + session invalidée (2ᵉ `/me` → 401)
-    - POST sans CSRF → 403 ; avec CSRF → pas d’échec CSRF
-    - smoke logout URL configurée
+- [x] **T9. Tests MockMvc BFF (mock OIDC)**
+  - **Outcome :** 401/200/403/CSRF/logout/registration id couverts.
   - **Depends on :** T7, T8
-  - **Validation :** tests IT verts.
-  - **Tests liés :** Integration Tests (testing doc).
+  - **Validation :** `BffSecurityIT` vert.
+  - **Tests liés :** Integration Tests.
 
 ### M5 — Preuves & docs
 
-- [ ] **T10. Suite complète + ArchUnit + Jacoco**
-  - **Outcome :** `./mvnw test` et `./mvnw verify` verts ; ArchUnit : domaine sans
-    Spring Security / `infrastructure.security` ; Jacoco bundle ≥ 80 %.
+- [x] **T10. Suite complète + ArchUnit + Jacoco**
+  - **Outcome :** `./mvnw test` + `verify` verts ; Jacoco ≥ 80 %.
   - **Depends on :** T2–T5, T8, T9
-  - **Validation :** evidence fraîche commandes + rapport Jacoco.
-  - **Tests liés :** ArchUnit ; coverage ; régression workflow.
+  - **Validation :** 50 tests ; Jacoco check OK (≥ 80 % lignes).
+  - **Tests liés :** ArchUnit ; coverage.
 
-- [ ] **T11. Documentation implementation + contrat SPA**
-  - **Outcome :** doc `implementation` : packages, yaml, stub tests, contrat SPA
-    (`/oauth2/authorization/oidc`, Axios CSRF, 401/403) ; checklist manuelle cochable.
+- [x] **T11. Documentation implementation + contrat SPA**
+  - **Outcome :** doc implementation + contrat SPA Axios/`oidc`.
   - **Depends on :** T7
-  - **Validation :** `lint --feature authentification` OK ; relecture manuelle.
+  - **Validation :** lint feature OK.
   - **Tests liés :** Manual Testing.
 
 ## Traceability — testing → tasks
 
 | Scénario (testing doc) | Task(s) | Statut |
 |---|---|---|
-| Mapper `realm_access` → `ROLE_*` / edge | T3 | todo |
-| TenantResolutionFilter skip / 403+invalidate / OK | T5, T9 | todo |
-| SecurityCookieProperties défaut / override | T2 | todo |
-| ApiAuthenticationEntryPoint API vs hors API | T4, T9 | todo |
-| `/me` anonyme 401 body vide | T4, T7, T9 | todo |
-| `/me` oidcLogin 200 + roles sans préfixe | T3, T6, T9 | todo |
-| tenant mismatch / absent → 403 + session | T5, T9 | todo |
-| CSRF mutant | T7, T9 | todo |
-| Logout URL smoke | T7, T9 | todo |
-| Stub ClientRegistrationRepository | T8, T9 | todo |
-| Régression DomainConfig / Tenant* / workflow | T8, T10 | todo |
-| ArchUnit domaine ↛ Security | T10 | todo |
-| Jacoco ≥ 80 % | T10 | todo |
-| Manual yaml / SPA / forward-headers | T1, T7, T11 | todo |
+| Mapper `realm_access` → `ROLE_*` / edge | T3 | done |
+| TenantResolutionFilter skip / 403+invalidate / OK | T5, T9 | done |
+| SecurityCookieProperties défaut / override | T2 | done |
+| ApiAuthenticationEntryPoint API vs hors API | T4, T9 | done |
+| `/me` anonyme 401 body vide | T4, T7, T9 | done |
+| `/me` oidcLogin 200 + roles sans préfixe | T3, T6, T9 | done |
+| tenant mismatch / absent → 403 + session | T5, T9 | done |
+| CSRF mutant | T7, T9 | done |
+| Logout URL smoke | T7, T9 | done |
+| Stub ClientRegistrationRepository | T8, T9 | done |
+| Régression DomainConfig / Tenant* / workflow | T8, T10 | done |
+| ArchUnit domaine ↛ Security | T10 | done |
+| Jacoco ≥ 80 % | T10 | done |
+| Manual yaml / SPA / forward-headers | T1, T7, T11 | done |
 | E2E Keycloak | — | N/A hors scope |
 
 ## Dependencies
 **What needs to happen in what order?**
 
-```text
-T1 → T2
-T3, T4, T5 (parallélisables, TDD)
-T6
-T7 (câblage + retrait exclusions)  ← après T1–T6
-T8 (stub tests) → T9 (IT)
-T10 (preuves) ; T11 (docs, peut démarrer dès T7)
-```
-
-**Externe :** JDK 25 ; pas de Keycloak CI. Dépend de multi-tenant livré
-(`TenantProperties`).
+Exécuté : T1→T2 ; T3∥T4∥T5 ; T6→T7→T8→T9→T10+T11.
 
 ## Timeline & Estimates
 **When will things be done?**
 
-Pas d’échéances calendaires. Envergure relative :
-
-| Task | Envergure |
-|---|---|
-| T1 | Petite (yaml) |
-| T2–T5 | Petites (TDD unitaire) |
-| T6 | Petite |
-| T7 | Moyenne (SecurityFilterChain + yaml) |
-| T8–T9 | Moyenne (harness + IT — risque Boot 4 / Security 7) |
-| T10–T11 | Petite–moyenne |
+Phase 5 complétée (2026-07-31). Pas d’échéances calendaires.
 
 ## Risks & Mitigation
 **What could go wrong?**
 
-| Risque | Mitigation |
+| Risque | Mitigation / issue |
 |---|---|
-| Discovery OIDC casse `@SpringBootTest` | T8 stub repository **avant** d’exiger la suite verte ; jamais d’issuer réel en CI |
-| Retrait exclusions trop tôt | Exclusions Security retirées seulement en T7 avec config prête |
-| `oidcLogin()` + claims `realm_access` / `tenant_id` | Fixtures IT explicites ; doc test data |
-| CSRF eager-load / XOR handler | Suivre design (handler non-XOR + filtre eager) ; IT CSRF |
-| Régression DomainConfig / Tenant tests | Adapter imports stub en T8 ; T10 gate |
-| Scope creep M2M / webhooks / SPA | Non-goals ; BFF `@Order(3)` seulement |
-| JDK agent ≠ 25 | `JAVA_HOME` Temurin 25 (comme multi-tenant) |
-| Placeholder OIDC casse run local oublié | Documenté ; fail-fast voulu hors tests |
+| Boot 4 MockMvc package move | Ajout `spring-boot-starter-webmvc-test` |
+| Discovery OIDC en tests | Stub `ClientRegistrationRepository` |
+| JDK 21 vs 25 | Temurin 25 (`JAVA_HOME`) |
 
 ## Resources Needed
 **What do we need to succeed?**
 
 - Worktree : `/workspace/.worktrees/feature-authentification`
-- Branche : `feature-authentification`
 - JDK 25 + `./mvnw`
-- Docs : requirements / design / testing `2026-07-31-feature-authentification` (reviewed / reviewed / draft)
-- Analyse : `analysis doc/03-authentification.md` (écarts design font foi)
 
 ## Next action
 
-**Phase 4 terminée** — enchaîner **phase 5** (`dev-implementation`) en démarrant par **T1**
-(puis T2, puis T3–T5 en TDD).
+**Phase 5 terminée** — enchaîner phase 7 (check implementation) puis phase 8 testing / phase 9 review.
 
 ## Progress summary
 
-Plan initial créé (2026-07-31) : 11 tâches, 5 milestones, traçabilité testing
-complète. Aucune tâche démarrée.
+T1–T11 livrés (2026-07-31). BFF OIDC + garde tenant ; `./mvnw test` 50 OK ;
+`./mvnw verify` Jacoco check OK ; docs implementation à jour.

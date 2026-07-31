@@ -2,8 +2,8 @@
 phase: design
 title: System Design & Architecture
 description: Define the technical architecture, components, and data models
-status: draft
-created: 2026-07-31
+status: reviewed
+reviewed: 2026-07-31
 ---
 
 # System Design & Architecture
@@ -26,48 +26,78 @@ flowchart TB
   end
 
   subgraph this["Cette feature — code livré"]
-    TP[TenantProperties<br/>infrastructure.config]
+    TC[TenantConfig<br/>infrastructure.config]
+    TP[TenantProperties]
+    RUN[TenantIdValidationRunner<br/>ApplicationRunner]
     VAL[TenantIdValidator<br/>infrastructure.tenant]
     EX[InvalidTenantIdException]
-    YML[application.yml<br/>app.tenant.id actif]
-    TP --> YML
+    YML[application.yml<br/>app.tenant.id=tenant_dev]
+    TC --> TP
+    TC --> RUN
+    RUN --> VAL
+    RUN --> TP
     VAL --> EX
+    YML --> TP
   end
 
-  INST --- TP
+  INST --- TC
   VAL -.->|au provisioning futur| PG
 ```
 
-### Flux conceptuel (cible, hors implémentation complète)
+### Flux démarrage (cette feature)
+
+```mermaid
+sequenceDiagram
+  participant Boot as Spring Boot
+  participant Bind as Binder
+  participant Props as TenantProperties
+  participant Runner as TenantIdValidationRunner
+  participant Val as TenantIdValidator
+
+  Boot->>Bind: charge application.yml
+  Bind->>Props: app.tenant.id (requis)
+  Note over Bind,Props: absent / blank → échec binding
+  Boot->>Runner: run(ApplicationArguments)
+  Runner->>Props: id()
+  Runner->>Val: validate(id)
+  alt id invalide
+    Val-->>Runner: InvalidTenantIdException
+    Runner-->>Boot: échec démarrage
+  else id valide
+    Val-->>Runner: OK
+    Runner-->>Boot: continue
+  end
+```
+
+### Flux provisioning (cible, hors code de cette feature)
 
 ```mermaid
 sequenceDiagram
   participant Ops as Provisioning
   participant Val as TenantIdValidator
-  participant App as Instance Boot
-  participant Props as TenantProperties
 
   Ops->>Val: validate(tenantId)
   Val-->>Ops: OK / InvalidTenantIdException
   Note over Ops: CREATE SCHEMA + config instance + bloc proxy
-  App->>Props: bind app.tenant.id
-  Note over App: context-path / search_path activés plus tard
 ```
 
 ### Responsabilités
 
 | Zone | Rôle |
 |---|---|
-| `infrastructure.config.TenantProperties` | Record / `@ConfigurationProperties(prefix="app.tenant")` — `id` requis |
-| `infrastructure.tenant.TenantIdValidator` | Validation regex (provisioning + démarrage instance) |
-| `infrastructure.tenant.InvalidTenantIdException` | Erreur d’identifiant |
-| `infrastructure.config` (bootstrap léger) | Au démarrage : `TenantIdValidator.validate(tenantProperties.id())` |
-| `application.yml` | `app.tenant.id` actif ; path / `connection-init-sql` **commentés** |
+| `infrastructure.config.TenantProperties` | `record` `@ConfigurationProperties(prefix="app.tenant")` — `id` `@NotBlank` |
+| `infrastructure.config.TenantConfig` | `@Configuration` + `@EnableConfigurationProperties(TenantProperties.class)` ; déclare le runner |
+| `infrastructure.config.TenantIdValidationRunner` | `ApplicationRunner` : `TenantIdValidator.validate(tenantProperties.id())` |
+| `infrastructure.tenant.TenantIdValidator` | Validation regex (provisioning + démarrage) |
+| `infrastructure.tenant.InvalidTenantIdException` | `RuntimeException` avec id fautif (nullable-safe message) |
+| `DomainConfig` | **Inchangé** — câblage workflow only |
+| `application.yml` | `app.tenant.id: tenant_dev` ; path / `connection-init-sql` **commentés** |
 | Docs design/implementation | Contrat reverse-proxy chemin + instance dédiée |
 
 ### Stack
 
-Java 25 · Spring Boot 4.1 · Configuration Properties — **sans** DataSource / JPA /
+Java 25 · Spring Boot 4.1 · Configuration Properties · Validation
+(`spring-boot-starter-validation` déjà présent) — **sans** DataSource / JPA /
 Liquibase / Security / Flowable (exclusions autoconfig conservées).
 
 ## Data Models
@@ -77,9 +107,9 @@ Pas d’entité métier persistée dans cette tranche.
 
 | Type | Emplacement | Champs / comportement |
 |---|---|---|
-| `TenantProperties` | `infrastructure.config` | `id: String` — requis au binding |
+| `TenantProperties` | `infrastructure.config` | `record TenantProperties(@NotBlank String id)` |
 | `TenantIdValidator` | `infrastructure.tenant` | `validate(String)` statique ; pattern `^[a-z][a-z0-9_]{2,62}$` |
-| `InvalidTenantIdException` | `infrastructure.tenant` | `RuntimeException` avec id fautif |
+| `InvalidTenantIdException` | `infrastructure.tenant` | `RuntimeException` — message inclut l’id reçu (ou `"null"`) |
 
 ### Domaine workflow (inchangé structurellement)
 
@@ -110,12 +140,20 @@ app:
 #       connection-init-sql: SET search_path TO ${app.tenant.id}, public
 ```
 
-Activation de `@EnableConfigurationProperties(TenantProperties.class)` (ou
-enregistrement équivalent) depuis `infrastructure.config` — sans toucher au domaine.
+```text
+com.flowforge.infrastructure.config.TenantConfig  (@Configuration)
+  @EnableConfigurationProperties(TenantProperties.class)
+  @Bean ApplicationRunner tenantIdValidationRunner(TenantProperties)
+      → new TenantIdValidationRunner(properties)
+```
 
-Un composant de démarrage léger (ex. `ApplicationRunner` / `@PostConstruct` dans
-`infrastructure.config`) appelle `TenantIdValidator.validate(tenantProperties.id())`
-afin qu’un id absent au binding ou non conforme fasse échouer le boot.
+`TenantIdValidationRunner` implémente `ApplicationRunner` et délègue à
+`TenantIdValidator`. `DomainConfig` n’est pas modifié.
+
+Double barrière fail-fast :
+
+1. Binding : `@NotBlank` sur `id` (propriété absente / blank → échec contexte).
+2. Runner : regex via `TenantIdValidator` (ex. `tenant-a` → échec démarrage).
 
 ### Validator
 
@@ -144,12 +182,13 @@ Le préfixe n’est pas réécrit : même path côté client et instance (quand
 ## Component Breakdown
 **What are the major building blocks?**
 
-- **Config :** `TenantProperties` + enablement Spring.
+- **Config tenant :** `TenantProperties`, `TenantConfig`, `TenantIdValidationRunner`.
 - **Tenant infra :** package `infrastructure.tenant` (`package-info`, validator,
   exception).
-- **YAML :** `app.tenant.id` ; blocs cibles path / search_path documentés inactifs.
+- **YAML :** `app.tenant.id` ; blocs cibles path / search_path commentés.
 - **Tests fixtures :** remplacement `tenant-a` → `tenant_a` dans tests workflow.
 - **Docs :** reverse-proxy + règles d’usage pour features aval.
+- **Inchangé :** `DomainConfig` / tranche workflow.
 - **Hors scope code :** bootstrap schéma, Liquibase, filtre OIDC, Flowable tenantId,
   outillage provisioning.
 
@@ -159,17 +198,21 @@ Le préfixe n’est pas réécrit : même path côté client et instance (quand
 | Décision | Choix | Alternatives écartées |
 |---|---|---|
 | Périmètre V1 feature | Socle config + validator (tranche A) | Runtime DB complet ; filtre OIDC inclus |
-| `context-path` | Documenté, inactif par défaut | Activation immédiate (casse URLs/tests) |
+| `context-path` | Commenté, inactif par défaut | Activation immédiate (casse URLs/tests) |
 | Domaine workflow | Inchangé + fixtures `tenant_a` | Couplage use case → `TenantProperties` |
 | Packages | Properties dans `config` ; validator dans `tenant` | Tout dans `config` ; validator en `domain` |
-| Binding `id` | Propriété **requise** + regex au boot | Défaut silencieux ; validation provisioning only |
+| Câblage Spring | **`TenantConfig` dédié** + `ApplicationRunner` | Étendre `DomainConfig` ; `@PostConstruct` sur properties |
+| Binding `id` | `@NotBlank` + regex au boot | Défaut silencieux ; validation provisioning only |
 | Path / search_path inactifs | Blocs **commentés** dans yaml | Profil Spring `tenant` |
 | Isolation | Instance dédiée + schéma (n° 13) — doc | ThreadLocal / SPI Hibernate multi-tenant |
 | Routage | Chemin + proxy statique (n° 14) — doc | Sous-domaine ; port dédié |
 
-### Alternatives revalidées
+### Alternatives revalidées (phase 3)
 
-- Validator en domaine : rejette — contrainte PostgreSQL/ops, pas règle métier dossier.
+- Validator en domaine : rejette — contrainte PostgreSQL/ops, pas règle métier.
+- Étendre `DomainConfig` : rejette — mélange câblage workflow et tenant.
+- `@PostConstruct` sur `TenantProperties` : rejette — validation de boot moins
+  explicite / testable qu’un `ApplicationRunner` dédié.
 - Activer `connection-init-sql` sans DataSource : inutile tant que JDBC est exclu.
 - Provisioning outillé (point 31) : différé explicitement.
 
@@ -177,32 +220,45 @@ Le préfixe n’est pas réécrit : même path côté client et instance (quand
 **How should the system perform?**
 
 - **Sécurité (fondation) :** pas de sélection de schéma depuis une entrée HTTP ; id
-  d’instance figé ; validation regex avant tout SQL de provisioning futur.
+  d’instance figé ; validation regex au boot et avant SQL de provisioning futur.
 - **Ops :** onboarding = provisioning (schéma + instance + bloc proxy), pas un API
   runtime dans cette feature.
-- **Testabilité :** validator 100 % unitaire sans Spring ; smoke optionnel
-  `TenantProperties` via contexte Spring léger si utile.
-- **Compatibilité :** ne pas casser `DomainConfigTest` ni le serving racine actuel.
+- **Testabilité :** validator 100 % unitaire sans Spring ; smoke
+  `TenantConfig` / binding / runner (sans DataSource).
+- **Compatibilité :** ne pas casser `DomainConfigTest` ni le serving racine actuel
+  (`context-path` non activé).
 - **Rollout :** merge PR `feature-multi-tenant` ; activation path/datasource feature
-  par feature.
+  par feature (décommenter yaml).
 - **Perf / scale :** N/A pour la tranche ; scaling répliques = évolution documentée
   dans l’analyse.
 
-## Requirements coverage (phase 1 draft)
+## Requirements coverage (phase 3)
 
 | Exigence | Couverture design |
 |---|---|
-| `TenantProperties` / `app.tenant.id` | Overview, API config, components |
+| `TenantProperties` / `app.tenant.id` requis | Data models `@NotBlank` + API config |
 | Validator + regex + exception | Data models, API validator |
-| Validation regex au démarrage | API config + responsabilités bootstrap |
+| Validation regex au démarrage | `TenantIdValidationRunner` + sequence boot |
 | YAML path / search_path commentés | API Design yaml |
 | Doc reverse-proxy | API contrat proxy |
 | Fixtures `tenant_a` | Data models workflow |
 | Non-goals DB / OIDC / Liquibase / Flowable | Component hors scope + décisions |
 | Packages config + tenant | Responsabilités |
-| Fail-fast id requis | Design Decisions binding |
+| Fail-fast id absent / invalide | Double barrière binding + runner |
+| `DomainConfig` non mélangé | Décision `TenantConfig` dédié |
+| Pattern pour features aval | Auth contrat + règle adaptateurs |
+| UX N/A / perf N/A / rollout PR | NFR |
 
-## Review notes
+## Review notes (phase 3)
 
-- Aligné sur clarifications phase 2 requirements (fail-fast + regex boot ; yaml commenté).
-- **Prochaine phase lifecycle :** revue design (`dev-design` phase 3).
+| Point | Résolution |
+|---|---|
+| Template design README | Sections architecture, models, API, components, decisions, NFR |
+| Ambiguïté ApplicationRunner vs PostConstruct / DomainConfig | **Acté : `TenantConfig` + `TenantIdValidationRunner`** |
+| Sequence boot manquante | Ajoutée (binding → runner → validator) |
+| Couverture requirements | Table phase 3 — tous les success criteria / goals couverts |
+| Retour requirements | Aucun gap bloquant ; pas de retour phase 2 |
+| Diagrammes mermaid | Overview + boot + provisioning |
+
+- Aucune question d’architecture ouverte pour la tranche A.
+- **Prochaine phase :** planning initial (`dev-planning` / phase 4).

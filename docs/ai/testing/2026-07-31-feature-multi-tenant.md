@@ -42,14 +42,18 @@ Fichier prévu :
 > **Note regex :** `^[a-z][a-z0-9_]{2,62}$` ⇒ total 3–63 caractères. Cas `ab` =
 > 2 chars → refus. Documenter chaque assertion sur ce contrat.
 
-### TenantProperties + validation au démarrage
-Fichier(s) prévu(s) :
-`src/test/java/com/flowforge/infrastructure/config/TenantPropertiesTest.java`
-(et/ou test du runner de validation)
+### TenantProperties + TenantConfig / runner
+Fichiers prévus :
+- `src/test/java/com/flowforge/infrastructure/config/TenantPropertiesTest.java`
+  et/ou `TenantConfigTest.java`
+- `src/test/java/com/flowforge/infrastructure/config/TenantIdValidationRunnerTest.java`
+  (unitaire pur possible : runner + properties + assert exception)
 
 - [ ] Binding `app.tenant.id=tenant_dev` expose la valeur via le bean
-- [ ] Absence de `app.tenant.id` → échec de contexte / binding (fail-fast)
-- [ ] `app.tenant.id=tenant-a` (invalide) → échec au démarrage via `TenantIdValidator`
+- [ ] Absence de `app.tenant.id` → échec de contexte / binding (`@NotBlank`)
+- [ ] `TenantIdValidationRunner` avec id valide → pas d’exception
+- [ ] `TenantIdValidationRunner` avec `tenant-a` → `InvalidTenantIdException`
+- [ ] `DomainConfigTest` non régressé (TenantConfig cohabite, path non activé)
 
 ## Integration Tests
 **How do we test component interactions?**

@@ -159,6 +159,58 @@ class DossierApiTest {
     }
 
     @Test
+    void getDossier_byReference_returns200() throws Exception {
+        String code = createType(true);
+        grant(code, "manager-ref", "EDIT");
+        DossierFixture dossier = createDossier(code, "manager-ref", "Ref dossier");
+
+        mockMvc.perform(get("/api/dossiers").param("ref", dossier.reference())
+                        .with(user("manager-ref")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(dossier.id()))
+                .andExpect(jsonPath("$.reference").value(dossier.reference()));
+    }
+
+    @Test
+    void updateStatus_staleExpectedVersion_returns409() throws Exception {
+        String code = createType(true);
+        grant(code, "manager-version", "EDIT");
+        DossierFixture dossier = createDossier(code, "manager-version", "Version dossier");
+
+        mockMvc.perform(patch("/api/dossiers/{id}/status", dossier.id())
+                        .with(user("manager-version"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "status": "OUVERT",
+                                  "expectedVersion": %d
+                                }
+                                """.formatted(dossier.version() + 10)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409));
+    }
+
+    @Test
+    void updateStatus_illegalTransition_returns409() throws Exception {
+        String code = createType(true);
+        grant(code, "manager-illegal", "EDIT");
+        DossierFixture dossier = createDossier(code, "manager-illegal", "Illegal transition");
+
+        mockMvc.perform(patch("/api/dossiers/{id}/status", dossier.id())
+                        .with(user("manager-illegal"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "status": "ARCHIVE"
+                                }
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409));
+    }
+
+    @Test
     void createType_withoutCsrf_returns403() throws Exception {
         mockMvc.perform(post("/api/dossier-types")
                         .with(user("admin-no-csrf", "TENANT_ADMIN"))
@@ -185,7 +237,7 @@ class DossierApiTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "userId": "%s",
+                                  "subjectUserId": "%s",
                                   "permission": "%s"
                                 }
                                 """.formatted(userId, permission)))
@@ -200,7 +252,11 @@ class DossierApiTest {
                         .content(dossierPayload(code, label)))
                 .andExpect(status().isCreated())
                 .andReturn();
-        return new DossierFixture(extractString(result.getResponse().getContentAsString(), "id"));
+        String body = result.getResponse().getContentAsString();
+        return new DossierFixture(
+                extractString(body, "id"),
+                extractString(body, "reference"),
+                extractLong(body, "version"));
     }
 
     private static RequestPostProcessor user(String userId, String... roles) {
@@ -250,5 +306,13 @@ class DossierApiTest {
         return matcher.group(1);
     }
 
-    private record DossierFixture(String id) {}
+    private static long extractLong(String json, String field) {
+        var matcher = Pattern.compile("\"" + field + "\"\\s*:\\s*(\\d+)").matcher(json);
+        if (!matcher.find()) {
+            throw new AssertionError("Missing JSON field: " + field + " in " + json);
+        }
+        return Long.parseLong(matcher.group(1));
+    }
+
+    private record DossierFixture(String id, String reference, long version) {}
 }

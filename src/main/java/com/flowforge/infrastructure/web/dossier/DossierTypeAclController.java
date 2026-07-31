@@ -50,7 +50,7 @@ public class DossierTypeAclController {
                 new GrantDossierTypeAccessUseCase.GrantCommand(
                         tenantProperties.id(),
                         code,
-                        required(request.userId(), "userId"),
+                        required(request.subjectUserId(), "subjectUserId"),
                         request.permission()),
                 actor);
         return ResponseEntity.noContent().build();

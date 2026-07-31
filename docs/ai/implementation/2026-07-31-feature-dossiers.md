@@ -2,7 +2,8 @@
 phase: implementation
 title: Implementation Guide
 description: Technical implementation notes, patterns, and code guidelines
-status: implemented
+status: checked
+checked: 2026-07-31
 updated: 2026-07-31
 ---
 
@@ -39,7 +40,7 @@ com.flowforge.infrastructure
 ### Persistence
 
 - Liquibase : `db/changelog/db.changelog-master.yaml` → `001-dossier-tables`
-- JSON via Hibernate `SqlTypes.JSON` ; colonnes Liquibase compatibles H2
+- JSON via Hibernate `SqlTypes.JSON` ; colonnes Liquibase `json` (H2-friendly)
 - `@Version` sur `DossierJpaEntity`
 - Références : `SequentialReferenceGenerator` (JdbcTemplate) —
   insert + ignore duplicate → update +1 → select ; format
@@ -51,6 +52,7 @@ com.flowforge.infrastructure
 - Gate `TENANT_ADMIN` : `TenantAdminGuard` (web) + défense dans use cases admin
 - ACL type : `DossierAccessPolicy` (`EDIT` ⇒ `VIEW` ; System bypass ; Service refus)
 - `AccessContextFactory` : OIDC `sub` + rôles sans préfixe `ROLE_`
+- ACL grant body : `{ "subjectUserId", "permission" }`
 
 ### API
 
@@ -61,7 +63,8 @@ com.flowforge.infrastructure
 | POST/GET/PATCH | `/api/dossiers`, `?ref=`, `/{id}/status` |
 
 Erreurs : `DossierExceptionHandler` → RFC 7807 `ProblemDetail`
-(400 `errors[]`, 403, 404, 409).
+(400 `errors[]`, 403, 404, 409 dont OptimisticLock /
+`ObjectOptimisticLockingFailureException`).
 
 ### Écarts H2 vs PostgreSQL
 
@@ -72,18 +75,41 @@ Erreurs : `DossierExceptionHandler` → RFC 7807 `ProblemDetail`
 ## Verification Evidence
 
 ```text
-./mvnw -B verify
-Tests run: 113, Failures: 0, Errors: 0
+./mvnw -B verify   # phase 7
+Tests run: 116, Failures: 0, Errors: 0
 Jacoco: All coverage checks have been met (ligne ~83 %)
 ```
 
 ## Design deviations
 
-- Aucune déviation fonctionnelle vs design reviewed
-- Seq SQL volontairement portable (design citait `RETURNING` PG) — comportement
-  équivalent atomique en transaction
+| Sévérité | Écart | Traitement |
+|---|---|---|
+| High | OptimisticLock → 409 manquant | **Corrigé** en phase 7 |
+| Med | ACL JSON `userId` vs `subjectUserId` | **Corrigé** → `subjectUserId` |
+| Med | Index `(tenant_id, dossier_type_code)` + CHECK permission absents Liquibase | Follow-up bas (unicité/ACL déjà OK) |
+| Low | JSON `json` vs design `jsonb` | Accepté (compat H2) |
+| Low | Seq sans `RETURNING` | Accepté (portable, transactionnel) |
+
+## Phase 7 — Check Implementation notes
+
+| Exigence design/requirements | Statut |
+|---|---|
+| Domaine pur + records + validator + policy + transitions | OK |
+| Ports / `*Impl` / ArchUnit | OK |
+| Create DRAFT + tenantId instance + label + inactive 409 | OK |
+| Référence UTC format | OK |
+| JPA + Liquibase 4 tables + exclusions Flowable/Mail | OK |
+| Surface API complète | OK |
+| TenantAdminGuard sans method security | OK |
+| ProblemDetail 400/403/404/409 (+ OLS) | OK |
+| expectedVersion + `@Version` | OK |
+
+Aucun gap bloquant restant pour la tranche B.
 
 ## Follow-ups
 
+- Changelog Liquibase : index secondaire + CHECK permission (nice-to-have)
 - Smoke PG réel (hors CI)
 - Lots suivants : éléments, relations, workflow links, PATCH fields, pagination
+
+**Prochaine phase :** `dev-testing` (phase 8).

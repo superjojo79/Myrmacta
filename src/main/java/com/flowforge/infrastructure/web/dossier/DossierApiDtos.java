@@ -89,4 +89,4 @@ record DossierResponse(
     }
 }
 
-record GrantDossierTypeAccessRequest(String userId, DossierPermission permission) {}
+record GrantDossierTypeAccessRequest(String subjectUserId, DossierPermission permission) {}

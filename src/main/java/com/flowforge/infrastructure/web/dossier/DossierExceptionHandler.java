@@ -6,10 +6,12 @@ import com.flowforge.domain.dossier.model.DossierFieldValidationException;
 import com.flowforge.domain.dossier.model.DossierNotFoundException;
 import com.flowforge.domain.dossier.model.IllegalDossierStatusTransitionException;
 import com.flowforge.domain.dossier.model.InactiveDossierTypeException;
+import jakarta.persistence.OptimisticLockException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -37,9 +39,11 @@ public class DossierExceptionHandler {
             IllegalDossierStatusTransitionException.class,
             DossierConflictException.class,
             InactiveDossierTypeException.class,
-            DataIntegrityViolationException.class
+            DataIntegrityViolationException.class,
+            ObjectOptimisticLockingFailureException.class,
+            OptimisticLockException.class
     })
-    ProblemDetail handleConflict(RuntimeException ex) {
+    ProblemDetail handleConflict(Exception ex) {
         return problem(HttpStatus.CONFLICT, "Dossier conflict", ex.getMessage());
     }
 

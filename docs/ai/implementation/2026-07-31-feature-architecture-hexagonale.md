@@ -101,3 +101,26 @@ Lint feature OK. Aucun `com.monapp` résiduel. Domaine sans Spring/JPA/Flowable.
 - Jacoco / seuils (phase 8 optionnelle)
 
 **Verdict phase 7 :** implementation **alignée** — prêt pour phase 8 (`dev-testing`) puis phase 9 (`dev-review`).
+
+## Phase 9 — Code Review (2026-07-31)
+
+**Evidence :** `./mvnw verify` → 15 tests, Jacoco OK, BUILD SUCCESS. Branche synchronisée avec `origin/main` (#8).
+
+### Checklist finale
+
+| Critère | Statut |
+|---|---|
+| Design match | OK |
+| Pas de trou logique sur la tranche livrée | OK |
+| Sécurité (pas d’HTTP/auth dans le scope) | N/A / OK |
+| Points d’intégration (DomainConfig, ports) | OK |
+| Tests couvrent le changement | OK (95.7 % / 100 % feature) |
+| Docs à jour | OK |
+
+### Findings
+
+- **Bloquants :** aucun
+- **Important :** stubs in-memory câblés en « prod » via `DomainConfig` jusqu’au remplacement JPA/Flowable — attendu pour cette fondation, à ne pas déployer comme backend métier
+- **Nice-to-have :** valider `processKey`/`tenantId` non blank ; sync `com.monapp` dans `analysis doc/` ; `allowEmptyShould` retiré en review
+
+**Verdict phase 9 :** **prêt à merger** (PR #7).

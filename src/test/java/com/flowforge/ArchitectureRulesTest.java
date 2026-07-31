@@ -20,14 +20,12 @@ class ArchitectureRulesTest {
             .should().dependOnClassesThat().resideInAnyPackage(
                     "org.springframework..",
                     "jakarta.persistence..",
-                    "org.flowable..")
-            .allowEmptyShould(true);
+                    "org.flowable..");
 
     @ArchTest
     static final ArchRule domain_never_depends_on_infrastructure = noClasses()
             .that().resideInAPackage("..domain..")
-            .should().dependOnClassesThat().resideInAPackage("..infrastructure..")
-            .allowEmptyShould(true);
+            .should().dependOnClassesThat().resideInAPackage("..infrastructure..");
 
     @ArchTest
     static final ArchRule usecase_impl_naming_convention = classes()

@@ -1,0 +1,189 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-dossier-type
+      author: flowforge
+      changes:
+        - createTable:
+            tableName: dossier_type
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_dossier_type
+                    nullable: false
+              - column:
+                  name: tenant_id
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: code
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: label
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: workflow_key
+                  type: varchar(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: active
+                  type: boolean
+                  constraints:
+                    nullable: false
+              - column:
+                  name: allow_unknown_fields
+                  type: boolean
+                  constraints:
+                    nullable: false
+              - column:
+                  name: field_definitions
+                  type: json
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: dossier_type
+            columnNames: tenant_id, code
+            constraintName: uq_dossier_type_tenant_code
+
+  - changeSet:
+      id: 001-dossier
+      author: flowforge
+      changes:
+        - createTable:
+            tableName: dossier
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_dossier
+                    nullable: false
+              - column:
+                  name: tenant_id
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: reference
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dossier_type_code
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: label
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: fields
+                  type: json
+                  constraints:
+                    nullable: false
+              - column:
+                  name: current_workflow_link_id
+                  type: uuid
+              - column:
+                  name: version
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_by
+                  type: varchar(128)
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+              - column:
+                  name: closed_by
+                  type: varchar(128)
+              - column:
+                  name: closed_at
+                  type: timestamp with time zone
+        - addUniqueConstraint:
+            tableName: dossier
+            columnNames: tenant_id, reference
+            constraintName: uq_dossier_tenant_reference
+
+  - changeSet:
+      id: 001-dossier-type-acl
+      author: flowforge
+      changes:
+        - createTable:
+            tableName: dossier_type_acl
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_dossier_type_acl
+                    nullable: false
+              - column:
+                  name: tenant_id
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dossier_type_code
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: subject_user_id
+                  type: varchar(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: permission
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: dossier_type_acl
+            columnNames: tenant_id, dossier_type_code, subject_user_id
+            constraintName: uq_dossier_type_acl_subject
+
+  - changeSet:
+      id: 001-dossier-reference-seq
+      author: flowforge
+      changes:
+        - sql:
+            splitStatements: true
+            sql: |
+              CREATE TABLE dossier_reference_seq (
+                  tenant_id varchar(64) NOT NULL,
+                  dossier_type_code varchar(64) NOT NULL,
+                  "year" integer NOT NULL,
+                  last_value bigint NOT NULL
+              );
+              ALTER TABLE dossier_reference_seq
+                  ADD CONSTRAINT pk_dossier_reference_seq
+                  PRIMARY KEY (tenant_id, dossier_type_code, "year");

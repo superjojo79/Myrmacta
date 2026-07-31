@@ -40,4 +40,10 @@ class WorkflowInstanceTest {
                 .isInstanceOf(InvalidStateException.class)
                 .hasMessageContaining("Workflow non actif");
     }
+
+    @Test
+    void create_rejectsNullCommand() {
+        assertThatThrownBy(() -> WorkflowInstance.create(null))
+                .isInstanceOf(NullPointerException.class);
+    }
 }

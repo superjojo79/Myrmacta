@@ -31,4 +31,16 @@ class InMemoryWorkflowRepositoryTest {
     void findById_unknown_returnsEmpty() {
         assertThat(repository.findById(UUID.randomUUID())).isEmpty();
     }
+
+    @Test
+    void save_overwritesExistingId() {
+        WorkflowInstance first = WorkflowInstance.create(
+                new StartWorkflowCommand("demo-process", "tenant-a"));
+        WorkflowInstance updated = first.complete();
+
+        repository.save(first);
+        repository.save(updated);
+
+        assertThat(repository.findById(first.id())).contains(updated);
+    }
 }

@@ -9,20 +9,20 @@ class WorkflowInstanceTest {
 
     @Test
     void create_producesRunningInstanceWithId() {
-        var cmd = new StartWorkflowCommand("demo-process", "tenant-a");
+        var cmd = new StartWorkflowCommand("demo-process", "tenant_a");
 
         WorkflowInstance instance = WorkflowInstance.create(cmd);
 
         assertThat(instance.id()).isNotNull();
         assertThat(instance.processKey()).isEqualTo("demo-process");
-        assertThat(instance.tenantId()).isEqualTo("tenant-a");
+        assertThat(instance.tenantId()).isEqualTo("tenant_a");
         assertThat(instance.status()).isEqualTo(WorkflowStatus.RUNNING);
     }
 
     @Test
     void complete_fromRunning_returnsCompleted() {
         WorkflowInstance running = WorkflowInstance.create(
-                new StartWorkflowCommand("demo-process", "tenant-a"));
+                new StartWorkflowCommand("demo-process", "tenant_a"));
 
         WorkflowInstance completed = running.complete();
 
@@ -33,7 +33,7 @@ class WorkflowInstanceTest {
     @Test
     void complete_whenNotRunning_throwsInvalidState() {
         WorkflowInstance completed = WorkflowInstance.create(
-                        new StartWorkflowCommand("demo-process", "tenant-a"))
+                        new StartWorkflowCommand("demo-process", "tenant_a"))
                 .complete();
 
         assertThatThrownBy(completed::complete)

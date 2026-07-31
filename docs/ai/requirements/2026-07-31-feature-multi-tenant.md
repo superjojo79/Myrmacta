@@ -101,20 +101,20 @@ Fondation technique ; « utilisateurs » = contributeurs et features aval.
 ## Success Criteria
 **How will we know when we're done?**
 
-- [ ] `TenantProperties` dans `com.flowforge.infrastructure.config`, bindé sur
+- [x] `TenantProperties` dans `com.flowforge.infrastructure.config`, bindé sur
       `app.tenant.id` (**requis**), exposé comme bean.
-- [ ] `TenantIdValidator` + `InvalidTenantIdException` dans
+- [x] `TenantIdValidator` + `InvalidTenantIdException` dans
       `com.flowforge.infrastructure.tenant`.
-- [ ] Au démarrage, `TenantProperties.id()` passé dans `TenantIdValidator.validate`
+- [x] Au démarrage, `TenantProperties.id()` passé dans `TenantIdValidator.validate`
       (échec si invalide).
-- [ ] Regex `^[a-z][a-z0-9_]{2,62}$` couverte par tests unitaires (cas OK + refus).
-- [ ] `application.yml` contient `app.tenant.id: tenant_dev` actif ; `context-path` et
+- [x] Regex `^[a-z][a-z0-9_]{2,62}$` couverte par tests unitaires (cas OK + refus).
+- [x] `application.yml` contient `app.tenant.id: tenant_dev` actif ; `context-path` et
       `connection-init-sql` **commentés** (non actifs).
-- [ ] Doc reverse-proxy (chemin + bloc statique par tenant) dans design et/ou
+- [x] Doc reverse-proxy (chemin + bloc statique par tenant) dans design et/ou
       implementation.
-- [ ] Fixtures workflow : plus de `tenant-a` ; usage de `tenant_a` (ou autre id valide).
-- [ ] `./mvnw test` vert ; ArchUnit inchangé / vert.
-- [ ] Docs requirements / design / testing alignés sur ce périmètre (tranche A).
+- [x] Fixtures workflow : plus de `tenant-a` ; usage de `tenant_a` (ou autre id valide).
+- [x] `./mvnw test` vert ; ArchUnit inchangé / vert.
+- [x] Docs requirements / design / testing alignés sur ce périmètre (tranche A).
 
 **Performance benchmarks :** N/A — pas d’IO métier dans cette tranche.
 

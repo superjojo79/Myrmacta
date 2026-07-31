@@ -20,7 +20,7 @@ class InMemoryWorkflowRepositoryTest {
     @Test
     void save_thenFindById_returnsInstance() {
         WorkflowInstance instance = WorkflowInstance.create(
-                new StartWorkflowCommand("demo-process", "tenant-a"));
+                new StartWorkflowCommand("demo-process", "tenant_a"));
 
         repository.save(instance);
 
@@ -35,7 +35,7 @@ class InMemoryWorkflowRepositoryTest {
     @Test
     void save_overwritesExistingId() {
         WorkflowInstance first = WorkflowInstance.create(
-                new StartWorkflowCommand("demo-process", "tenant-a"));
+                new StartWorkflowCommand("demo-process", "tenant_a"));
         WorkflowInstance updated = first.complete();
 
         repository.save(first);

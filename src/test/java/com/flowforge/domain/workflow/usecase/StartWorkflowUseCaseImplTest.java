@@ -34,13 +34,13 @@ class StartWorkflowUseCaseImplTest {
 
     @Test
     void start_persistsRunningInstanceAndPublishesEvent() {
-        var cmd = new StartWorkflowCommand("demo-process", "tenant-a");
+        var cmd = new StartWorkflowCommand("demo-process", "tenant_a");
 
         WorkflowInstance instance = useCase.start(cmd);
 
         assertThat(instance.status()).isEqualTo(WorkflowStatus.RUNNING);
         assertThat(instance.processKey()).isEqualTo("demo-process");
-        assertThat(instance.tenantId()).isEqualTo("tenant-a");
+        assertThat(instance.tenantId()).isEqualTo("tenant_a");
 
         ArgumentCaptor<WorkflowInstance> saved = ArgumentCaptor.forClass(WorkflowInstance.class);
         verify(repository).save(saved.capture());
@@ -53,7 +53,7 @@ class StartWorkflowUseCaseImplTest {
 
     @Test
     void start_doesNotPublishWhenSaveFails() {
-        var cmd = new StartWorkflowCommand("demo-process", "tenant-a");
+        var cmd = new StartWorkflowCommand("demo-process", "tenant_a");
         doThrow(new RuntimeException("db down")).when(repository).save(any());
 
         assertThatThrownBy(() -> useCase.start(cmd))

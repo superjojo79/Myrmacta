@@ -20,7 +20,7 @@ class InMemoryWorkflowEventPublisherTest {
     @Test
     void publish_recordsEvent() {
         WorkflowInstance instance = WorkflowInstance.create(
-                new StartWorkflowCommand("demo-process", "tenant-a"));
+                new StartWorkflowCommand("demo-process", "tenant_a"));
         var event = new WorkflowStartedEvent(instance);
 
         publisher.publish(event);
@@ -31,9 +31,9 @@ class InMemoryWorkflowEventPublisherTest {
     @Test
     void publish_preservesOrder() {
         WorkflowInstance first = WorkflowInstance.create(
-                new StartWorkflowCommand("p1", "tenant-a"));
+                new StartWorkflowCommand("p1", "tenant_a"));
         WorkflowInstance second = WorkflowInstance.create(
-                new StartWorkflowCommand("p2", "tenant-a"));
+                new StartWorkflowCommand("p2", "tenant_a"));
 
         publisher.publish(new WorkflowStartedEvent(first));
         publisher.publish(new WorkflowStartedEvent(second));

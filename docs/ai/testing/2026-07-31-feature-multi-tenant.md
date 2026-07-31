@@ -2,8 +2,8 @@
 phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
-status: draft
-created: 2026-07-31
+status: implemented
+updated: 2026-07-31
 ---
 
 # Testing Strategy
@@ -11,68 +11,56 @@ created: 2026-07-31
 ## Test Coverage Goals
 **What level of testing do we aim for?**
 
-- **Unitaires :** 100 % de `TenantIdValidator` / `InvalidTenantIdException` (chemins
-  OK + rejet).
-- **Config :** smoke — `TenantProperties` bindé avec `app.tenant.id` + validation
-  regex au démarrage (sans DataSource).
-- **Régression :** tests workflow existants verts avec fixtures `tenant_a`.
-- **ArchUnit :** règles actuelles toujours vertes (domaine sans infra/framework).
-- **E2E / UI / DB :** hors scope tranche A.
-- **Jacoco :** conserver le seuil bundle ≥ 80 % (`./mvnw verify`).
-
-Alignement success criteria : validator testé ; yaml cohérent ; `./mvnw test` vert.
+- **Unitaires :** 100 % de `TenantIdValidator` / chemins runner.
+- **Config :** smoke `TenantProperties` + fail missing/blank.
+- **Régression :** workflow + `DomainConfigTest` + ArchUnit.
+- **Jacoco :** seuil bundle ≥ 80 % — **96.7 %** lignes (59/61) après phase 5.
 
 ## Unit Tests
 **What individual components need testing?**
 
 ### TenantIdValidator
-Fichier prévu :
+Fichier :
 `src/test/java/com/flowforge/infrastructure/tenant/TenantIdValidatorTest.java`
 
-- [ ] Accepte `tenant_a`, `tenant_dev`, `abc` (borne basse longueur)
-- [ ] Accepte longueur max raisonnable (≤ 63 chars total selon regex)
-- [ ] Refuse `null` → `InvalidTenantIdException`
-- [ ] Refuse `""` / blank
-- [ ] Refuse `tenant-a` (tiret)
-- [ ] Refuse `Tenant_a` (majuscule)
-- [ ] Refuse `1tenant` (ne commence pas par une lettre)
-- [ ] Refuse `ab` (trop court : moins de 3 chars après la 1ʳᵉ lettre… *voir note*)
-- [ ] Refuse identifiant > 63 caractères
-
-> **Note regex :** `^[a-z][a-z0-9_]{2,62}$` ⇒ total 3–63 caractères. Cas `ab` =
-> 2 chars → refus. Documenter chaque assertion sur ce contrat.
+- [x] Accepte `tenant_a`, `tenant_dev`, `abc` (borne basse longueur)
+- [x] Accepte longueur max (63 chars)
+- [x] Refuse `null` → `InvalidTenantIdException`
+- [x] Refuse `""` / blank
+- [x] Refuse `tenant-a` (tiret)
+- [x] Refuse `Tenant_a` (majuscule)
+- [x] Refuse `1tenant` (ne commence pas par une lettre)
+- [x] Refuse `ab` / `a` (trop court)
+- [x] Refuse identifiant > 63 caractères
 
 ### TenantProperties + TenantConfig / runner
-Fichiers prévus :
-- `src/test/java/com/flowforge/infrastructure/config/TenantPropertiesTest.java`
-  et/ou `TenantConfigTest.java`
-- `src/test/java/com/flowforge/infrastructure/config/TenantIdValidationRunnerTest.java`
-  (unitaire pur possible : runner + properties + assert exception)
+Fichiers :
+- `TenantConfigTest.java`
+- `TenantIdValidationRunnerTest.java`
 
-- [ ] Binding `app.tenant.id=tenant_dev` expose la valeur via le bean
-- [ ] Absence de `app.tenant.id` → échec de contexte / binding (`@NotBlank`)
-- [ ] `TenantIdValidationRunner` avec id valide → pas d’exception
-- [ ] `TenantIdValidationRunner` avec `tenant-a` → `InvalidTenantIdException`
-- [ ] `DomainConfigTest` non régressé (TenantConfig cohabite, path non activé)
+- [x] Binding `app.tenant.id=tenant_dev` expose la valeur via le bean
+- [x] Absence de `app.tenant.id` → échec de contexte / binding (`@NotBlank`)
+- [x] `TenantIdValidationRunner` avec id valide → pas d’exception
+- [x] `TenantIdValidationRunner` avec `tenant-a` → `InvalidTenantIdException`
+- [x] `DomainConfigTest` non régressé (TenantConfig cohabite, path non activé)
+- [x] Blank `app.tenant.id=` → échec de contexte
 
 ## Integration Tests
 **How do we test component interactions?**
 
-- [ ] N/A obligatoire — pas de DataSource / proxy / OIDC dans cette tranche
-- [ ] Régression : `DomainConfigTest` + suite workflow restent verts (path non activé)
+- [x] N/A obligatoire — pas de DataSource / proxy / OIDC dans cette tranche
+- [x] Régression : `DomainConfigTest` + suite workflow restent verts (path non activé)
 
 ## End-to-End Tests
 **What user flows need validation?**
 
-- [ ] N/A — pas de parcours utilisateur UI/HTTP dans cette feature
+- [x] N/A — pas de parcours utilisateur UI/HTTP dans cette feature
 
 ## Architecture Tests (ArchUnit)
 Fichier : `src/test/java/com/flowforge/ArchitectureRulesTest.java` (existant)
 
-- [ ] Domaine ne dépend toujours pas de Spring / JPA / Flowable / `infrastructure`
-- [ ] Nouveau code `infrastructure.tenant` / `TenantProperties` n’introduit pas de
-      dépendance inverse vers le domaine workflow (pas requis ArchUnit dédié si
-      aucune règle nouvelle)
+- [x] Domaine ne dépend toujours pas de Spring / JPA / Flowable / `infrastructure`
+- [x] Nouveau code infra n’introduit pas de dépendance inverse domaine ← infra
 
 ## Test Data
 **What data do we use for testing?**
@@ -80,11 +68,8 @@ Fichier : `src/test/java/com/flowforge/ArchitectureRulesTest.java` (existant)
 | Fixture | Valeur | Usage |
 |---|---|---|
 | Tenant valide | `tenant_a`, `tenant_dev` | Validator OK ; workflow tests |
-| Tenant invalide | `tenant-a`, `1x`, `AB`, `""` | Validator KO |
+| Tenant invalide | `tenant-a`, `1x`, `AB`, `""` | Validator / runner KO |
 | Config locale | `app.tenant.id=tenant_dev` | application.yml / smoke |
-
-- Remplacer toutes les occurrences test `tenant-a` → `tenant_a` dans
-  `StartWorkflowUseCaseImplTest`, `WorkflowInstanceTest`, et tout autre test touché.
 
 ## Test Reporting & Coverage
 **How do we verify and communicate test results?**
@@ -94,17 +79,19 @@ Fichier : `src/test/java/com/flowforge/ArchitectureRulesTest.java` (existant)
 ./mvnw verify        # + jacoco:check (≥ 80 % lignes bundle)
 ```
 
-- Couverture attendue : 100 % lignes sur `TenantIdValidator` (+ exception si logique).
-- Gaps acceptables : N/A hors classes de la feature ; `FlowForgeApplication.main`
-  déjà non couvert.
+### Evidence phase 5 (2026-07-31)
+
+| Commande | Résultat |
+|---|---|
+| `./mvnw test` | **33** tests, 0 failure, BUILD SUCCESS |
+| `./mvnw verify` | Jacoco check OK — **96.7 %** lignes (59/61) |
 
 ## Manual Testing
 **What requires human validation?**
 
-- [ ] Relire `application.yml` : `app.tenant.id` présent ; path / search_path
-      clairement non actifs par défaut
-- [ ] Relire doc reverse-proxy dans design / implementation
-- [ ] Confirmer qu’aucun filtre Security n’a été ajouté
+- [x] Relire `application.yml` : `app.tenant.id` présent ; path / search_path commentés
+- [x] Relire doc reverse-proxy dans implementation
+- [x] Confirmer qu’aucun filtre Security n’a été ajouté
 
 ## Performance Testing
 **How do we validate performance?**
@@ -115,11 +102,9 @@ Fichier : `src/test/java/com/flowforge/ArchitectureRulesTest.java` (existant)
 **How do we manage issues?**
 
 - Échec validator / régression ArchUnit / `jacoco:check` = bloquant PR.
-- Activation accidentelle de `context-path` cassant les tests = bug P0 de cette
-  feature.
+- Activation accidentelle de `context-path` = bug P0.
 
 ## Phase notes
 
-- Scénarios dérivés des success criteria requirements + edge cases regex.
-- **Prochaine phase lifecycle après implémentation :** exécuter ces cases en phase 5/8.
-- Pour l’instant (phase 1 docs) : checkboxes restent `[ ]` jusqu’à l’implémentation.
+- Phase 5 : scénarios exécutés et cochés.
+- **Prochaine phase lifecycle :** 7 check implementation, puis formaliser phase 8 si besoin.

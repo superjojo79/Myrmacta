@@ -137,6 +137,38 @@
         </dependency>
     </dependencies>
 
+    <profiles>
+        <!-- ./mvnw -Psecurity-scan verify — scan CVE des dépendances (OWASP Dependency-Check).
+             Non lié au cycle de vie par défaut : appelle le NVD (réseau + cache local), pas
+             adapté à chaque build local/CI standard. -->
+        <profile>
+            <id>security-scan</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.owasp</groupId>
+                        <artifactId>dependency-check-maven</artifactId>
+                        <version>12.2.2</version>
+                        <configuration>
+                            <failBuildOnCVSS>9</failBuildOnCVSS>
+                            <formats>
+                                <format>HTML</format>
+                                <format>JSON</format>
+                            </formats>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
     <build>
         <plugins>
             <plugin>

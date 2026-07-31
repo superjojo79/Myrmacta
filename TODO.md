@@ -159,6 +159,25 @@ déchiffrés via les logs et les API d'administration.
 
 ---
 
+### [ ] 32. Retrait synchronisé des exclusions autoconfig temporaires (Security/OAuth2/Flowable)
+
+**Constat (revue de code, phase architecture-hexagonale) :** `src/main/resources/application.yml`
+désactive Security, OAuth2 client et Flowable via des entrées séparées dans
+`spring.autoconfigure.exclude` (3 lignes à elles seules pour la sécurité), documentées comme
+temporaires « à retirer feature par feature ». Rien n'empêche aujourd'hui un retrait partiel de
+ces exclusions lors de l'implémentation de la feature `authentification` — l'application
+démarrerait alors sans filtre de sécurité actif sans qu'aucun test existant ne le détecte, tant
+qu'aucune route REST n'est encore exposée pour révéler le trou.
+
+**À décider :** un mécanisme de garde à la levée des exclusions (test d'intégration qui échoue si
+une partie seulement des lignes `Security`/`OAuth2` est retirée sans configuration de sécurité
+effective en place), ou à défaut une checklist explicite dans la doc `implementation` de la
+feature `authentification`.
+
+**Impacte :** `src/main/resources/application.yml`, feature `authentification` à venir.
+
+---
+
 ## Processus
 
 ### [ ] 31. Découpage en lots d'implémentation

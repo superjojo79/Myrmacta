@@ -2,8 +2,9 @@
 phase: implementation
 title: Implementation Guide
 description: Technical implementation notes, patterns, and code guidelines
-status: implemented
+status: verified
 updated: 2026-07-31
+checked: 2026-07-31
 ---
 
 # Implementation Guide
@@ -91,12 +92,53 @@ domaine workflow inchangé structurellement.
 - Binding sans `app.tenant.id` → échec contexte
 - `DomainConfig` + `TenantConfig` cohabitent ; path racine inchangé
 
-## Evidence (phase 5)
+## Phase 7 — Check Implementation
+
+**Evidence (frais, 2026-07-31) :**
 
 | Commande | Résultat |
 |---|---|
 | `./mvnw test` | **33** tests, 0 failure, BUILD SUCCESS |
-| `./mvnw verify` | Jacoco check OK ; lignes bundle **96.7 %** (59/61) |
+| `./mvnw verify` | Jacoco check OK — **96.7 %** lignes (59/61) |
 | Lint feature | OK |
+| Fixtures workflow | plus de `tenant-a` hors cas d’invalidité volontaires |
+| Scope creep | aucun filtre Security / Liquibase / DataSource ajouté |
+| `DomainConfig` | inchangé vs `origin/main` |
 
-**Prochaine phase :** 6 (planning reconcile — reflété) puis 7 check implementation.
+### Couverture design ↔ code
+
+| Élément design | Statut |
+|---|---|
+| `TenantProperties` `@NotBlank` + prefix `app.tenant` | OK |
+| `TenantConfig` + `@EnableConfigurationProperties` | OK |
+| `TenantIdValidationRunner` (`ApplicationRunner`) | OK |
+| `TenantIdValidator` regex `^[a-z][a-z0-9_]{2,62}$` | OK |
+| `InvalidTenantIdException` message null-safe | OK |
+| `DomainConfig` inchangé | OK |
+| YAML `tenant_dev` + path/search_path commentés | OK |
+| Doc reverse-proxy | OK (ce document) |
+| Fixtures `tenant_a` | OK |
+| Non-goals DB / OIDC / Flowable / provisioning | OK (absents) |
+| Couverture packages feature (tenant + Tenant*) | **100 %** lignes Jacoco |
+
+### Couverture requirements ↔ code
+
+| Success criterion | Statut |
+|---|---|
+| Bean `TenantProperties` requis | OK |
+| Validator + exception package `tenant` | OK |
+| Validation regex au démarrage | OK |
+| Tests regex OK/KO | OK (`TenantIdValidatorTest`) |
+| YAML commenté path / search_path | OK |
+| Doc reverse-proxy | OK |
+| Fixtures `tenant_a` | OK |
+| `./mvnw test` + ArchUnit verts | OK |
+| Docs alignés | OK |
+
+**Verdict phase 7 :** implementation **alignée** — prêt pour phase 8 (`dev-testing`) puis phase 9 (`dev-review`).
+
+### Follow-ups (hors scope tranche A)
+
+- Activation `context-path` + datasource / Liquibase bootstrap
+- `TenantResolutionFilter` (feature `authentification`)
+- Outillage provisioning (point 31)

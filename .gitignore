@@ -16,7 +16,7 @@ buildNumber.properties
 # JDT-specific (Eclipse Java Development Tools)
 .classpath
 
-# AI DevKit feature worktrees
+# Local / AI DevKit feature worktrees
 .worktrees/
 
 # Serena local project data

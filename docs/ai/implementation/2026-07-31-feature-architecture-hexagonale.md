@@ -2,6 +2,9 @@
 phase: implementation
 title: Implementation Guide
 description: Technical implementation notes, patterns, and code guidelines
+status: verified
+updated: 2026-07-31
+checked: 2026-07-31
 ---
 
 # Implementation Guide
@@ -9,57 +12,115 @@ description: Technical implementation notes, patterns, and code guidelines
 ## Development Setup
 **How do we get started?**
 
-- Prerequisites and dependencies
-- Environment setup steps
-- Configuration needed
+- JDK **25**, Maven Wrapper : `./mvnw test`
+- Worktree : `.worktrees/feature-architecture-hexagonale`
+- Aucune base / Keycloak / Flowable requis pour cette feature (exclusions autoconfig)
 
 ## Code Structure
 **How is the code organized?**
 
-- Directory structure
-- Module organization
-- Naming conventions
+```text
+com.flowforge
+├── FlowForgeApplication
+├── domain.workflow
+│   ├── model          # records + InvalidStateException
+│   ├── port.in/out
+│   └── usecase        # StartWorkflowUseCaseImpl
+└── infrastructure
+    ├── config         # DomainConfig
+    ├── persistence.workflow  # InMemoryWorkflowRepository
+    └── flowable              # InMemoryWorkflowEventPublisher
+```
 
-## Implementation Notes
-**Key technical details to remember:**
+Autres contextes (`dossier`, …) : `package-info` seulement.
 
-### Core Features
-- Feature 1: Implementation approach
-- Feature 2: Implementation approach
-- Feature 3: Implementation approach
+## Key Implementation Details
 
-### Patterns & Best Practices
-- Design patterns being used
-- Code style guidelines
-- Common utilities/helpers
+### DomainConfig pattern
 
-## Integration Points
-**How do pieces connect?**
+`infrastructure.config.DomainConfig` déclare des `@Bean` :
+`WorkflowRepository`, `WorkflowEventPublisher`, `StartWorkflowUseCase` (interface).
+Le domaine reste sans annotation Spring.
 
-- API integration details
-- Database connections
-- Third-party service setup
+### Autoconfig temporaire
 
-## Error Handling
-**How do we handle failures?**
+`application.yml` exclut JDBC/JPA/Liquibase/Security/OAuth2/Mail et les
+auto-config Flowable 8. À retirer feature par feature.
 
-- Error handling strategy
-- Logging approach
-- Retry/fallback mechanisms
+### Ordre use case
 
-## Performance Considerations
-**How do we keep it fast?**
+`create` → `save` → `publish` (pas de publish si save échoue).
 
-- Optimization strategies
-- Caching approach
-- Query optimization
-- Resource management
+## Changed files (phase 5)
 
-## Security Notes
-**What security measures are in place?**
+- Rename `com.monapp` → `com.flowforge`
+- Domaine workflow + ports + `StartWorkflowUseCaseImpl`
+- Adaptateurs in-memory + `DomainConfig`
+- Tests unitaires + `DomainConfigTest` + ArchUnit
+- `application.yml` exclusions
 
-- Authentication/authorization
-- Input validation
-- Data encryption
-- Secrets management
+## Design deviations
 
+| Écart | Sévérité | Notes |
+|---|---|---|
+| Pas de `@Builder` Lombok sur les `record`s | Basse | Design : fabrique `create` = chemin nominal ; `@Builder` seulement autorisé |
+| Smoke nommé `DomainConfigTest` (pas `*IT`) | Basse | Surefire n’exécute pas `*IT` par défaut |
+| `allowEmptyShould(true)` gardé sur 2 règles domaine ArchUnit | Basse | Règle `usecase` sans empty-should ; les deux autres restent permissives sans impact |
+
+Aucune déviation fonctionnelle vs design / requirements.
+
+## Edge cases handled
+
+- `WorkflowInstance.complete()` hors `RUNNING` → `InvalidStateException`
+- Save repository en échec → pas de `publish`
+
+## Phase 7 — Check Implementation
+
+**Evidence :** `./mvnw test` → Tests run: 13, Failures: 0, BUILD SUCCESS (2026-07-31).
+Lint feature OK. Aucun `com.monapp` résiduel. Domaine sans Spring/JPA/Flowable.
+
+### Couverture design ↔ code
+
+| Élément design | Statut |
+|---|---|
+| Package `com.flowforge` + arbre | OK |
+| Modèle workflow (`record`s, exception, fabrique, `complete`) | OK |
+| Ports in/out + `StartWorkflowUseCaseImpl` | OK |
+| In-memory repo/publisher packages cibles | OK |
+| `DomainConfig` beans | OK |
+| Exclusions autoconfig | OK |
+| ArchUnit 3 règles | OK |
+| Tests sans Spring (modèle + use case) | OK |
+| Doc pattern câblage | OK (javadoc + ce fichier) |
+
+### Missing / follow-ups
+
+- Remplacer in-memory par JPA/Flowable (features aval)
+- Retirer exclusions autoconfig progressivement
+- Sync lexicale `com.monapp` dans `analysis doc/` (chore)
+- Jacoco / seuils (phase 8 optionnelle)
+
+**Verdict phase 7 :** implementation **alignée** — prêt pour phase 8 (`dev-testing`) puis phase 9 (`dev-review`).
+
+## Phase 9 — Code Review (2026-07-31)
+
+**Evidence :** `./mvnw verify` → 15 tests, Jacoco OK, BUILD SUCCESS. Branche synchronisée avec `origin/main` (#8).
+
+### Checklist finale
+
+| Critère | Statut |
+|---|---|
+| Design match | OK |
+| Pas de trou logique sur la tranche livrée | OK |
+| Sécurité (pas d’HTTP/auth dans le scope) | N/A / OK |
+| Points d’intégration (DomainConfig, ports) | OK |
+| Tests couvrent le changement | OK (95.7 % / 100 % feature) |
+| Docs à jour | OK |
+
+### Findings
+
+- **Bloquants :** aucun
+- **Important :** stubs in-memory câblés en « prod » via `DomainConfig` jusqu’au remplacement JPA/Flowable — attendu pour cette fondation, à ne pas déployer comme backend métier
+- **Nice-to-have :** valider `processKey`/`tenantId` non blank ; sync `com.monapp` dans `analysis doc/` ; `allowEmptyShould` retiré en review
+
+**Verdict phase 9 :** **prêt à merger** (PR #7).

@@ -32,9 +32,9 @@ Alignement success criteria requirements : BFF testable sans IdP ; garde tenant 
 
 ### TenantResolutionFilter
 - [ ] Skip si non authentifié
-- [ ] 403 si authentifié OIDC sans `tenant_id` / blank
-- [ ] 403 si `tenant_id` ≠ `TenantProperties.id()`
-- [ ] Continue si `tenant_id` égal à l’instance
+- [ ] 403 + **session invalidée** si authentifié OIDC sans `tenant_id` / blank
+- [ ] 403 + **session invalidée** si `tenant_id` ≠ `TenantProperties.id()`
+- [ ] Continue si `tenant_id` égal à l’instance (session intacte)
 
 ### SecurityCookieProperties
 - [ ] Défaut `secure=true`
@@ -50,14 +50,15 @@ Alignement success criteria requirements : BFF testable sans IdP ; garde tenant 
 Fichiers cibles (indicatif) :
 `AuthControllerTest`, `BffSecurityIT` / `TenantResolutionFilterIT`
 
-- [ ] `GET /api/auth/me` anonyme → **401** (pas 302 vers IdP)
+- [ ] `GET /api/auth/me` anonyme → **401** body vide (pas 302 vers IdP)
 - [ ] `oidcLogin()` avec claims name/email/roles + `tenant_id=tenant_dev` → **200**
       body `roles` sans préfixe `ROLE_`
-- [ ] `oidcLogin()` `tenant_id=other` → **403**
-- [ ] `oidcLogin()` sans claim `tenant_id` → **403**
+- [ ] `oidcLogin()` `tenant_id=other` → **403** body vide + session invalidée
+      (appel suivant `/me` → 401)
+- [ ] `oidcLogin()` sans claim `tenant_id` → **403** + session invalidée
 - [ ] POST mutant sans CSRF → **403** ; avec CSRF token → pas 403 CSRF
 - [ ] Logout URL `/api/auth/logout` configurée (smoke)
-- [ ] Contexte Spring boot avec yaml test / mock issuer — exclusions Security retirées
+- [ ] Contexte Spring : stub `ClientRegistrationRepository` (pas de discovery HTTP)
 - [ ] `DomainConfigTest` + suite Tenant* + workflow **non régressés**
 
 ## End-to-End Tests

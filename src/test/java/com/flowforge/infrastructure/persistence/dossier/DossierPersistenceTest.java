@@ -17,7 +17,7 @@ import org.springframework.context.annotation.Import;
 
 @SpringBootTest
 @Import(OidcClientTestConfiguration.class)
-class DossierPersistenceIT {
+class DossierPersistenceTest {
 
     @Autowired
     private DossierTypeRepository dossierTypeRepository;

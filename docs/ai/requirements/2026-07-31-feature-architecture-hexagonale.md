@@ -88,23 +88,23 @@ et les features aval.
 ## Success Criteria
 **How will we know when we're done?**
 
-- [ ] Package racine `com.flowforge` partout (sources, tests, ArchUnit) — plus de `com.monapp`.
-- [ ] Arborescence `domain/{workflow,dossier,document,connector,notification}` et
+- [x] Package racine `com.flowforge` partout (sources, tests, ArchUnit) — plus de `com.monapp`.
+- [x] Arborescence `domain/{workflow,dossier,document,connector,notification}` et
       `infrastructure/{web,persistence,flowable,pdf,storage,notification,connector,config}`
       présente (hors workflow : `package-info` suffit).
-- [ ] Tranche workflow livrée :
+- [x] Tranche workflow livrée :
   - ports `port.in` / `port.out`
   - `StartWorkflowUseCaseImpl` + modèle minimal (`WorkflowInstance`, `WorkflowStatus`,
     `StartWorkflowCommand`, `WorkflowStartedEvent`)
   - `InMemoryWorkflowRepository` dans `infrastructure.persistence.workflow`
   - `InMemoryWorkflowEventPublisher` dans `infrastructure.flowable`
   - `DomainConfig` dans `infrastructure.config`
-- [ ] Tests unitaires du use case et du modèle **sans** `@SpringBootTest`.
-- [ ] `ArchitectureRulesTest` vert (3 règles) sur `com.flowforge`.
-- [ ] `./mvnw test` vert.
-- [ ] Pattern de câblage documenté (javadoc `DomainConfig` et/ou
+- [x] Tests unitaires du use case et du modèle **sans** `@SpringBootTest`.
+- [x] `ArchitectureRulesTest` vert (3 règles) sur `com.flowforge`.
+- [x] `./mvnw test` vert.
+- [x] Pattern de câblage documenté (javadoc `DomainConfig` et/ou
       `docs/ai/implementation/2026-07-31-feature-architecture-hexagonale.md`).
-- [ ] Docs requirements / design / testing alignés sur ce périmètre.
+- [x] Docs requirements / design / testing alignés sur ce périmètre.
 
 **Performance benchmarks :** N/A (pas d’IO métier) — critère qualitatif : tests unitaires
 domaine sans contexte Spring.

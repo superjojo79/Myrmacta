@@ -23,30 +23,30 @@ Alignement critères de succès requirements : use case testable sans Spring ; A
 **What individual components need testing?**
 
 ### StartWorkflowUseCaseImpl
-- [ ] Démarre un workflow : statut `RUNNING`, `save` appelé, événement publié
-- [ ] Propage processKey / tenantId depuis la commande
-- [ ] Échoue proprement si le port repository lève une exception (pas de publish orphelin si save échoue — ordre save puis publish)
+- [x] Démarre un workflow : statut `RUNNING`, `save` appelé, événement publié
+- [x] Propage processKey / tenantId depuis la commande
+- [x] Échoue proprement si le port repository lève une exception (pas de publish orphelin si save échoue — ordre save puis publish)
 
 ### WorkflowInstance (modèle)
-- [ ] `create` produit une instance `RUNNING` avec id non nul
-- [ ] `complete` depuis `RUNNING` → `COMPLETED`
-- [ ] `complete` hors `RUNNING` → exception domaine
+- [x] `create` produit une instance `RUNNING` avec id non nul
+- [x] `complete` depuis `RUNNING` → `COMPLETED`
+- [x] `complete` hors `RUNNING` → exception domaine
 
 ### InMemoryWorkflowRepository
-- [ ] `save` puis `findById` retourne l’instance
-- [ ] `findById` inconnu → `Optional.empty()`
+- [x] `save` puis `findById` retourne l’instance
+- [x] `findById` inconnu → `Optional.empty()`
 
 ### InMemoryWorkflowEventPublisher
-- [ ] `publish` enregistre l’événement (observable en test)
-- [ ] Plusieurs publications conservées dans l’ordre
+- [x] `publish` enregistre l’événement (observable en test)
+- [x] Plusieurs publications conservées dans l’ordre
 
 ## Integration Tests
 **How do we test component interactions?**
 
-- [ ] `DomainConfig` : contexte Spring minimal (ou test de configuration) expose
+- [x] `DomainConfig` : contexte Spring minimal (ou test de configuration) expose
       `StartWorkflowUseCase` câblé aux beans in-memory — **sans**
       DataSource / Flowable / Security
-- [ ] Parcours câblé : `useCase.start(cmd)` via bean Spring → instance retrouvable via repository bean
+- [x] Parcours câblé : `useCase.start(cmd)` via bean Spring → instance retrouvable via repository bean
 - [ ] Pas de tests d’API HTTP (hors scope)
 
 ## End-to-End Tests
@@ -55,10 +55,10 @@ Alignement critères de succès requirements : use case testable sans Spring ; A
 - [ ] N/A — pas de parcours utilisateur UI/HTTP dans cette feature
 
 ## Architecture Tests (ArchUnit)
-- [ ] Domaine ne dépend pas de `org.springframework..`, `jakarta.persistence..`, `org.flowable..`
-- [ ] Domaine ne dépend pas de `..infrastructure..`
-- [ ] Classes concrètes dans `..usecase..` suffixées `Impl`
-- [ ] Après introduction de `*Impl`, retirer ou restreindre `allowEmptyShould(true)` là où ce n’est plus nécessaire
+- [x] Domaine ne dépend pas de `org.springframework..`, `jakarta.persistence..`, `org.flowable..`
+- [x] Domaine ne dépend pas de `..infrastructure..`
+- [x] Classes concrètes dans `..usecase..` suffixées `Impl`
+- [x] Après introduction de `*Impl`, retirer ou restreindre `allowEmptyShould(true)` là où ce n’est plus nécessaire
 
 ## Test Data
 **What data do we use for testing?**

@@ -2,7 +2,7 @@
 phase: planning
 title: Project Planning & Task Breakdown
 description: Break down work into actionable tasks and estimate timeline
-status: ready
+status: implemented
 created: 2026-07-31
 ---
 
@@ -11,9 +11,9 @@ created: 2026-07-31
 ## Milestones
 **What are the major checkpoints?**
 
-- [ ] **M1 — Socle packages** : rename `com.flowforge`, arborescence complète, exclusions autoconfig
-- [ ] **M2 — Tranche workflow** : modèle, ports, `StartWorkflowUseCaseImpl`, adaptateurs in-memory, `DomainConfig`
-- [ ] **M3 — Preuves & docs** : tests unitaires + ArchUnit verts, doc implementation / javadoc câblage
+- [x] **M1 — Socle packages** : rename `com.flowforge`, arborescence complète, exclusions autoconfig
+- [x] **M2 — Tranche workflow** : modèle, ports, `StartWorkflowUseCaseImpl`, adaptateurs in-memory, `DomainConfig`
+- [x] **M3 — Preuves & docs** : tests unitaires + ArchUnit verts, doc implementation / javadoc câblage
 
 ## Task Breakdown
 **What specific work needs to be done?**
@@ -22,19 +22,19 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M1 — Socle packages
 
-- [ ] **T1. Rename `com.monapp` → `com.flowforge`**
+- [x] **T1. Rename `com.monapp` → `com.flowforge`**
   - **Outcome :** sources, tests, `package-info`, ArchUnit sur `com.flowforge` ; plus aucune référence Java `com.monapp`.
   - **Depends on :** —
   - **Validation :** `rg 'com\\.monapp' src` vide ; `./mvnw test` compile/passe (ArchUnit packages vides OK).
   - **Tests liés :** ArchUnit (packages `com.flowforge`).
 
-- [ ] **T2. Compléter l’arborescence infrastructure**
+- [x] **T2. Compléter l’arborescence infrastructure**
   - **Outcome :** package `infrastructure.config` (+ `package-info`) ; hors workflow toujours `package-info` only.
   - **Depends on :** T1
   - **Validation :** arbre conforme success criteria requirements.
   - **Tests liés :** — (structure).
 
-- [ ] **T3. Exclusions autoconfig temporaires**
+- [x] **T3. Exclusions autoconfig temporaires**
   - **Outcome :** `application.yml` exclut DataSource, JPA, Liquibase, Security, OAuth2, Mail, Flowable (design phase 3).
   - **Depends on :** —
   - **Validation :** fichier présent ; commentaire « temporaire — retirer feature par feature ».
@@ -42,25 +42,25 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M2 — Tranche workflow (TDD)
 
-- [ ] **T4. Modèle domaine workflow**
+- [x] **T4. Modèle domaine workflow**
   - **Outcome :** `WorkflowStatus`, `StartWorkflowCommand`, `WorkflowInstance` (fabrique `create`, `complete`), `WorkflowStartedEvent`, `InvalidStateException` en `domain.workflow.model`.
   - **Depends on :** T1
   - **Validation :** tests modèle verts (voir T8) ; aucun import Spring/JPA/Flowable.
   - **Tests liés :** Unit — WorkflowInstance (create / complete OK / complete invalide).
 
-- [ ] **T5. Ports workflow**
+- [x] **T5. Ports workflow**
   - **Outcome :** `StartWorkflowUseCase` (`port.in`) ; `WorkflowRepository`, `WorkflowEventPublisher` (`port.out`).
   - **Depends on :** T4
   - **Validation :** interfaces compilent ; utilisées par T6.
   - **Tests liés :** couverts via T6/T8.
 
-- [ ] **T6. `StartWorkflowUseCaseImpl`**
+- [x] **T6. `StartWorkflowUseCaseImpl`**
   - **Outcome :** impl dans `usecase` ; ctor ports out ; `start` = `create` → `save` → `publish`.
   - **Depends on :** T5
   - **Validation :** tests use case sans Spring (T8) ; ArchUnit naming `*Impl`.
   - **Tests liés :** Unit — StartWorkflowUseCaseImpl (start OK, propagation champs, pas de publish si save échoue).
 
-- [ ] **T7. Adaptateurs in-memory + `DomainConfig`**
+- [x] **T7. Adaptateurs in-memory + `DomainConfig`**
   - **Outcome :**
     - `InMemoryWorkflowRepository` → `infrastructure.persistence.workflow` (`ConcurrentHashMap`)
     - `InMemoryWorkflowEventPublisher` → `infrastructure.flowable`
@@ -71,25 +71,25 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M3 — Preuves & docs
 
-- [ ] **T8. Tests unitaires modèle + use case**
+- [x] **T8. Tests unitaires modèle + use case**
   - **Outcome :** tests JUnit5 **sans** `@SpringBootTest` ; mocks ou in-memory pour ports.
   - **Depends on :** T4, T6
   - **Validation :** scénarios testing doc Unit — WorkflowInstance + StartWorkflowUseCaseImpl tous `[x]` côté exécution.
   - **Tests liés :** Unit StartWorkflowUseCaseImpl ; Unit WorkflowInstance.
 
-- [ ] **T9. Tests unitaires adaptateurs in-memory**
+- [x] **T9. Tests unitaires adaptateurs in-memory**
   - **Outcome :** save/findById ; publish observable / ordre.
   - **Depends on :** T7
   - **Validation :** scénarios testing InMemory* verts.
   - **Tests liés :** Unit InMemoryWorkflowRepository ; Unit InMemoryWorkflowEventPublisher.
 
-- [ ] **T10. ArchUnit + smoke config (optionnel)**
+- [x] **T10. ArchUnit + smoke config (optionnel)**
   - **Outcome :** `ArchitectureRulesTest` sur `com.flowforge` ; retirer `allowEmptyShould(true)` sur règle `usecase` ; smoke `@SpringBootTest`/`@Import(DomainConfig)` **optionnel** sans datasource.
   - **Depends on :** T6, T7, T1
   - **Validation :** 3 règles ArchUnit vertes ; `./mvnw test` exit 0.
   - **Tests liés :** Architecture Tests ; Integration DomainConfig (si fait).
 
-- [ ] **T11. Documentation implementation**
+- [x] **T11. Documentation implementation**
   - **Outcome :** `docs/ai/implementation/2026-07-31-feature-architecture-hexagonale.md` décrit setup, structure, pattern `DomainConfig`, exclusions autoconfig.
   - **Depends on :** T7
   - **Validation :** success criterion « pattern documenté » ; lint feature OK.
@@ -162,4 +162,10 @@ Pas d’échéances calendaires. Ordre d’exécution recommandé : **T1 → T3 
 
 ## Next action
 
-Démarrer **phase 5 (`dev-implementation`)** par **T1** (rename), puis T3 / T4 en TDD.
+**Phase 5 terminée** — enchaîner phase 6 (reconcile, déjà reflété ici) puis phase 7 check implementation / phase 8 testing.
+
+
+## Progress summary
+
+Tous les tâches T1–T11 livrées (2026-07-31). `./mvnw test` vert (unitaires + ArchUnit + DomainConfigTest).
+Rename `com.flowforge`, tranche StartWorkflow in-memory, exclusions autoconfig, docs implementation.

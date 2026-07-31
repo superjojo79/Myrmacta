@@ -2,6 +2,8 @@
 phase: implementation
 title: Implementation Guide
 description: Technical implementation notes, patterns, and code guidelines
+status: in-progress
+updated: 2026-07-31
 ---
 
 # Implementation Guide
@@ -9,57 +11,65 @@ description: Technical implementation notes, patterns, and code guidelines
 ## Development Setup
 **How do we get started?**
 
-- Prerequisites and dependencies
-- Environment setup steps
-- Configuration needed
+- JDK **25**, Maven Wrapper : `./mvnw test`
+- Worktree : `.worktrees/feature-architecture-hexagonale`
+- Aucune base / Keycloak / Flowable requis pour cette feature (exclusions autoconfig)
 
 ## Code Structure
 **How is the code organized?**
 
-- Directory structure
-- Module organization
-- Naming conventions
+```text
+com.flowforge
+├── FlowForgeApplication
+├── domain.workflow
+│   ├── model          # records + InvalidStateException
+│   ├── port.in/out
+│   └── usecase        # StartWorkflowUseCaseImpl
+└── infrastructure
+    ├── config         # DomainConfig
+    ├── persistence.workflow  # InMemoryWorkflowRepository
+    └── flowable              # InMemoryWorkflowEventPublisher
+```
 
-## Implementation Notes
-**Key technical details to remember:**
+Autres contextes (`dossier`, …) : `package-info` seulement.
 
-### Core Features
-- Feature 1: Implementation approach
-- Feature 2: Implementation approach
-- Feature 3: Implementation approach
+## Key Implementation Details
 
-### Patterns & Best Practices
-- Design patterns being used
-- Code style guidelines
-- Common utilities/helpers
+### DomainConfig pattern
 
-## Integration Points
-**How do pieces connect?**
+`infrastructure.config.DomainConfig` déclare des `@Bean` :
+`WorkflowRepository`, `WorkflowEventPublisher`, `StartWorkflowUseCase` (interface).
+Le domaine reste sans annotation Spring.
 
-- API integration details
-- Database connections
-- Third-party service setup
+### Autoconfig temporaire
 
-## Error Handling
-**How do we handle failures?**
+`application.yml` exclut JDBC/JPA/Liquibase/Security/OAuth2/Mail et les
+auto-config Flowable 8. À retirer feature par feature.
 
-- Error handling strategy
-- Logging approach
-- Retry/fallback mechanisms
+### Ordre use case
 
-## Performance Considerations
-**How do we keep it fast?**
+`create` → `save` → `publish` (pas de publish si save échoue).
 
-- Optimization strategies
-- Caching approach
-- Query optimization
-- Resource management
+## Changed files (phase 5)
 
-## Security Notes
-**What security measures are in place?**
+- Rename `com.monapp` → `com.flowforge`
+- Domaine workflow + ports + `StartWorkflowUseCaseImpl`
+- Adaptateurs in-memory + `DomainConfig`
+- Tests unitaires + `DomainConfigTest` + ArchUnit
+- `application.yml` exclusions
 
-- Authentication/authorization
-- Input validation
-- Data encryption
-- Secrets management
+## Design deviations
 
+- Aucune déviation majeure.
+- Smoke Spring nommé `DomainConfigTest` (Surefire `*IT` non exécuté par défaut).
+
+## Edge cases handled
+
+- `WorkflowInstance.complete()` hors `RUNNING` → `InvalidStateException`
+- Save repository en échec → pas de `publish`
+
+## Follow-ups
+
+- Remplacer in-memory par JPA/Flowable (features aval)
+- Retirer exclusions autoconfig progressivement
+- Sync lexicale `com.monapp` dans `analysis doc/` (chore)

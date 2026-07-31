@@ -4,10 +4,10 @@ import com.flowforge.infrastructure.config.SecurityCookieProperties;
 import com.flowforge.infrastructure.security.oidc.RealmAccessAuthoritiesMapper;
 import com.flowforge.infrastructure.tenant.TenantResolutionFilter;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.oauth2.client.oidc.web.logout.OidcClientInitiatedLogoutSuccessHandler;
@@ -24,6 +24,19 @@ import org.springframework.security.web.context.SecurityContextHolderFilter;
 @EnableWebSecurity
 @EnableConfigurationProperties(SecurityCookieProperties.class)
 public class SecurityConfig {
+
+    /**
+     * Empêche le double enregistrement servlet de {@link TenantResolutionFilter}
+     * ({@code @Component}) — la garde ne doit vivre que dans la chaîne Security.
+     */
+    @Bean
+    FilterRegistrationBean<TenantResolutionFilter> tenantResolutionFilterRegistration(
+            TenantResolutionFilter tenantResolutionFilter) {
+        FilterRegistrationBean<TenantResolutionFilter> registration =
+                new FilterRegistrationBean<>(tenantResolutionFilter);
+        registration.setEnabled(false);
+        return registration;
+    }
 
     @Bean
     @Order(3)

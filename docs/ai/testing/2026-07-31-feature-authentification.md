@@ -131,16 +131,19 @@ export JAVA_HOME=…/jdk-25
 ./mvnw clean verify
 ```
 
-### Evidence phase 8 (2026-07-31)
+### Evidence phase 8–9 (2026-07-31)
 
 | Commande | Résultat |
 |---|---|
-| `./mvnw clean verify` | **66** tests, 0 failure, BUILD SUCCESS |
+| `./mvnw clean verify` (phase 9) | **67** tests, 0 failure, BUILD SUCCESS |
 | Jacoco check | OK |
-| Jacoco lignes (bundle) | **98.7 %** (157/159) |
+| Jacoco lignes (bundle) | **98.8 %** (160/162) |
 | Jacoco branches (bundle) | **90.4 %** (47/52) |
 
 Rapport : `target/site/jacoco/index.html`
+
+Phase 9 : test `tenantResolutionFilter_isNotRegisteredAsServletFilter` (hygiène
+double filtre).
 
 ## Manual Testing
 **What requires human validation?**

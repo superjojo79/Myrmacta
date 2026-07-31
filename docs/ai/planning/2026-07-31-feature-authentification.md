@@ -147,10 +147,10 @@ Phase 5 complétée (2026-07-31). Pas d’échéances calendaires.
 
 ## Next action
 
-**Phase 8 terminée** — testing `verified` (66 tests, Jacoco 98.7 %). Enchaîner
-phase 9 (`dev-review`).
+**Phase 9 terminée** — prêt à merger. Suivi ops : mapper IdP `realm_access` sur
+ID token ; features aval M2M / frontend / autorisation.
 
 ## Progress summary
 
-T1–T11 + phase 7 + phase 8 OK. Couverture auth renforcée (mapper edges, CSRF
-filter, redirects OAuth). `./mvnw clean verify` vert.
+Lifecycle A+ complet (phases 1–5, 7–9). Correctif phase 9 : désactivation
+enregistrement servlet de `TenantResolutionFilter`. Suite verte ; Jacoco OK.

@@ -4,6 +4,7 @@ title: Implementation Guide
 description: Technical implementation notes, patterns, and code guidelines
 status: verified
 checked: 2026-07-31
+reviewed: 2026-07-31
 updated: 2026-07-31
 ---
 
@@ -27,13 +28,13 @@ com.flowforge.infrastructure
 │   ├── TenantProperties / TenantConfig      # existants
 │   └── SecurityCookieProperties             # app.security.cookie.secure
 ├── security
-│   ├── SecurityConfig                       # BFF @Order(3)
+│   ├── SecurityConfig                       # BFF @Order(3) + FilterRegistrationBean
 │   ├── ApiAuthenticationEntryPoint
 │   ├── CsrfCookieEagerLoadFilter
 │   └── oidc.RealmAccessAuthoritiesMapper
 ├── tenant
 │   ├── TenantIdValidator                    # existant
-│   └── TenantResolutionFilter               # invalidate + 403
+│   └── TenantResolutionFilter               # Security chain only
 └── web.auth
     ├── AuthController                       # GET /api/auth/me
     └── AuthUserResponse
@@ -48,18 +49,16 @@ com.flowforge.infrastructure
 - Logout `/api/auth/logout` + `OidcClientInitiatedLogoutSuccessHandler`
 - Entry point : `/api/**` → 401 vide ; sinon `/oauth2/authorization/oidc`
 - `TenantResolutionFilter` après `SecurityContextHolderFilter`
-- `authorizeHttpRequests` : `anyRequest().authenticated()` — les chemins
-  `/oauth2/**` / callback sont pris en charge par les filtres `oauth2Login`
-  (pas de `permitAll` explicite)
+- `FilterRegistrationBean` **disabled** pour `TenantResolutionFilter` (évite double
+  enregistrement servlet + Security)
 
 ### Mapping rôles
 
 `RealmAccessAuthoritiesMapper` lit `realm_access.roles` sur l’**ID token**
-uniquement (`OidcUserAuthority.getIdToken()`). Le provisioning IdP doit y
-placer le claim (pas seulement l’access token).
+uniquement. Provisioning IdP : mapper Keycloak vers l’ID token (pas seulement
+l’access token).
 
-`/me.roles` ne conserve que les autorités `ROLE_*` (préfixe retiré) — les
-`SCOPE_*` sont exclus du JSON.
+`/me.roles` : autorités `ROLE_*` uniquement (préfixe retiré).
 
 ### YAML
 
@@ -70,8 +69,7 @@ placer le claim (pas seulement l’access token).
 
 ### Tests sans IdP
 
-`com.flowforge.support.OidcClientTestConfiguration` fournit un
-`ClientRegistrationRepository` `@Primary` (endpoints locaux factices).
+`OidcClientTestConfiguration` — `ClientRegistrationRepository` `@Primary`.
 
 ### Contrat SPA (feature `frontend`)
 
@@ -83,57 +81,56 @@ axios.defaults.xsrfHeaderName = 'X-XSRF-TOKEN';
 // GET /api/auth/me → 401 anonyme ; 403 tenant (session déjà invalidée)
 ```
 
-## Changed files (phase 5 + correctifs phase 7)
-
-- `pom.xml` — `spring-boot-starter-webmvc-test`
-- `application.yml` — OIDC, forward-headers, cookies, retrait exclusions Security
-- Packages `infrastructure.security*`, `web.auth`, `TenantResolutionFilter`
-- Tests unitaires + `BffSecurityTest` + stub OIDC
-- Phase 7 : filtre `/me` sur `ROLE_*` seulement ; test `tenant_id` blank
-
 ## Design deviations
 
-| Écart | Sévérité | Résolution phase 7 |
+| Écart | Sévérité | Résolution |
 |---|---|---|
-| `/me.roles` incluait `SCOPE_*` | Mineur | **Corrigé** — filtre `ROLE_*` avant strip |
-| Pas de `permitAll` OAuth2 explicite | Mineur | Accepté — short-circuit `oauth2Login` documenté |
-| Boot 4 MockMvc package | Doc | Starter `webmvc-test` |
+| `/me.roles` incluait `SCOPE_*` | Mineur | Corrigé (phase 7) |
+| Pas de `permitAll` OAuth2 explicite | Mineur | Accepté — short-circuit `oauth2Login` |
+| Double filtre servlet `TenantResolutionFilter` | Important | **Corrigé phase 9** — `FilterRegistrationBean` disabled |
+| Boot 4 MockMvc | Doc | Starter `webmvc-test` |
 
 ## Edge cases handled
 
 - Claim `tenant_id` absent / blank / mismatch → session invalidée + 403
 - Rôles déjà préfixés `ROLE_` → pas de double préfixe (mapper)
-- `/me` anonyme → 401 avant contrôleur (entry point)
-- `/me` n’expose pas `SCOPE_*`
+- `/me` anonyme → 401 ; pas de `SCOPE_*` dans JSON
 
-## Requirements coverage (phase 7)
+## Review notes (phase 9)
 
-| Exigence | Statut |
+| Point | Verdict |
 |---|---|
-| Retrait exclusions Security/OAuth2 | OK |
-| Chaîne BFF CSRF + oauth2Login + logout | OK |
-| `/api/auth/me` + 401 `/api/**` | OK |
-| `registrationId=oidc` | OK |
-| Mapper `realm_access` → `ROLE_*` ; JSON sans préfixe | OK |
-| `TenantResolutionFilter` 403 + invalidate | OK |
-| `forward-headers` ; cookie secure configurable | OK |
-| Tests sans IdP ; ArchUnit ; Jacoco | OK |
-| Non-goals M2M / webhooks / SPA / RS | Respectés |
+| Design match | PASS |
+| Logic gaps | PASS |
+| Security | PASS (filtre servlet désactivé) |
+| Integration | PASS |
+| Tests | PASS — 66+ tests ; Jacoco ≥ 98 % lignes |
+| Docs | PASS (deploy/monitoring templates hors chemin critique) |
+| Bloquants | **Aucun** |
+| Prêt à merger | **OUI** |
 
-## Evidence (phase 7)
+### Findings phase 9
 
-| Commande / revue | Résultat |
+1. **Corrigé :** `TenantResolutionFilter` n’est plus enregistré comme filtre servlet
+   global (`FilterRegistrationBean#setEnabled(false)` + test).
+2. **Suivi ops :** s’assurer que Keycloak mappe `realm_access.roles` dans l’**ID token**.
+3. **Nice-to-have :** IT MockMvc exerçant le mapper via claim `realm_access` (aujourd’hui
+   couvert unitairement ; `oidcLogin()` bypasse le flux login).
+
+## Evidence (phase 9)
+
+| Commande | Résultat |
 |---|---|
-| Revue design ↔ code | Aligné ; écarts mineurs traités / documentés |
-| `./mvnw clean verify` | **58** tests, 0 failure ; Jacoco check OK |
+| `./mvnw clean verify` | **66+** tests, 0 failure ; Jacoco check OK |
 | Lint feature | OK |
-| Note Surefire | `BffSecurityTest` (pas `*IT` — exclu par défaut Surefire) |
+| Revue holistique | Aucun bloquant ; prêt à merger |
 
 ## Follow-ups (hors tranche)
 
 - Chaînes `@Order(1)` M2M et `@Order(2)` webhooks
 - Feature `frontend` (Pinia / Axios)
 - Feature `autorisation-conformite` (`@PreAuthorize`)
+- Checklist IdP : claim `tenant_id` + `realm_access` sur ID token
 - Smoke local Keycloak réel (ops)
 
-**Prochaine phase :** `dev-review` (phase 9).
+**Lifecycle tranche A+ :** prêt à merger (PR).

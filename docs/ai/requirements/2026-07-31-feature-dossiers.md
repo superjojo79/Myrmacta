@@ -158,24 +158,24 @@ ARCHIVE → (terminal)
 ## Success Criteria
 **How will we know when we're done?**
 
-- [ ] Exclusions DataSource / HibernateJpa / DataJpa / Liquibase retirées ;
+- [x] Exclusions DataSource / HibernateJpa / DataJpa / Liquibase retirées ;
       Flowable / Mail restent exclus.
-- [ ] Domaine `dossier` pur (ArchUnit) + use cases câblés dans `DomainConfig`
+- [x] Domaine `dossier` pur (ArchUnit) + use cases câblés dans `DomainConfig`
       (ou config dédiée).
-- [ ] Liquibase crée : `dossier_type`, `dossier`, `dossier_type_acl`,
+- [x] Liquibase crée : `dossier_type`, `dossier`, `dossier_type_acl`,
       `dossier_reference_seq` (+ index/contraintes actés).
-- [ ] Générateur de référence atomique + format documenté ; millésime UTC.
-- [ ] Version optimiste sur dossier ; 409 si conflit.
-- [ ] `DossierFieldValidator` + validation create ; 400 ProblemDetail.
-- [ ] `DossierAccessPolicy` + table ACL + grant/revoke ; 403 si refus ;
+- [x] Générateur de référence atomique + format documenté ; millésime UTC.
+- [x] Version optimiste sur dossier ; 409 si conflit.
+- [x] `DossierFieldValidator` + validation create ; 400 ProblemDetail.
+- [x] `DossierAccessPolicy` + table ACL + grant/revoke ; 403 si refus ;
       `EDIT` ⇒ `VIEW` ; `Service` refus ; admins bypass dossiers.
-- [ ] Surface API (tableau ci-dessus) opérationnelle sous session BFF + CSRF ;
+- [x] Surface API (tableau ci-dessus) opérationnelle sous session BFF + CSRF ;
       admin types = `TENANT_ADMIN` seul.
-- [ ] Création en `DRAFT` ; `tenantId` depuis `TenantProperties` ; transitions
+- [x] Création en `DRAFT` ; `tenantId` depuis `TenantProperties` ; transitions
       statut validées.
-- [ ] Tests H2 (PostgreSQL mode) + unitaires ; `./mvnw test` / `verify` verts ;
+- [x] Tests H2 (PostgreSQL mode) + unitaires ; `./mvnw test` / `verify` verts ;
       Jacoco ≥ 80 %.
-- [ ] Docs requirements / design / testing / planning alignés sur tranche B.
+- [x] Docs requirements / design / testing / planning alignés sur tranche B.
 
 **Performance benchmarks :** N/A pour la tranche — CRUD simple ; pas de cible
 latence formelle. Scaling horizontal couvert par séquence SQL atomique +

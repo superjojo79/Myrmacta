@@ -2,7 +2,7 @@
 phase: planning
 title: Project Planning & Task Breakdown
 description: Break down work into actionable tasks and estimate timeline
-status: ready
+status: implemented
 created: 2026-07-31
 updated: 2026-07-31
 ---
@@ -12,11 +12,11 @@ updated: 2026-07-31
 ## Milestones
 **What are the major checkpoints?**
 
-- [ ] **M1 — Domaine pur (TDD)** : model, validator, policy, transitions, ports
-- [ ] **M2 — Persistence** : H2 dep, Liquibase, JPA, JdbcTemplate seq, levée exclusions
-- [ ] **M3 — Use cases** : types (create/update), dossiers, statut, ACL
-- [ ] **M4 — API REST** : controllers, guards TENANT_ADMIN, ProblemDetail
-- [ ] **M5 — Preuves & docs** : IT H2, ArchUnit, Jacoco, doc implementation
+- [x] **M1 — Domaine pur (TDD)** : model, validator, policy, transitions, ports
+- [x] **M2 — Persistence** : H2 dep, Liquibase, JPA, JdbcTemplate seq, levée exclusions
+- [x] **M3 — Use cases** : types (create/update), dossiers, statut, ACL
+- [x] **M4 — API REST** : controllers, guards TENANT_ADMIN, ProblemDetail
+- [x] **M5 — Preuves & docs** : IT H2, ArchUnit, Jacoco, doc implementation
 
 ## Task Breakdown
 **What specific work needs to be done?**
@@ -25,7 +25,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M1 — Domaine pur (TDD)
 
-- [ ] **T1. Model records + enums**
+- [x] **T1. Model records + enums**
   - **Outcome :** `Dossier` (dont `version`, `currentWorkflowLinkId` null),
     `DossierType`, `FieldDefinition` (record), `FieldType`, `DossierStatus`,
     `AccessContext`, `DossierPermission`, `DossierTypeAclEntry` ;
@@ -34,28 +34,28 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Validation :** compile ; ArchUnit domaine pur.
   - **Tests liés :** ArchUnit.
 
-- [ ] **T2. `DossierFieldValidator` + application des defaults + tests**
+- [x] **T2. `DossierFieldValidator` + application des defaults + tests**
   - **Outcome :** required / type / select / unknown / FILE string ;
     helper appliquant `defaultValue` si clé absente avant validate.
   - **Depends on :** T1
   - **Validation :** tests unitaires verts.
   - **Tests liés :** Unit — DossierFieldValidator (+ defaults).
 
-- [ ] **T3. `DossierAccessPolicy` + tests**
+- [x] **T3. `DossierAccessPolicy` + tests**
   - **Outcome :** System bypass ; TENANT_ADMIN / WORKFLOW_ADMIN bypass ;
     VIEW/EDIT (`EDIT` ⇒ `VIEW`) ; Service refus ; sans grant refus.
   - **Depends on :** T1
   - **Validation :** tests policy verts.
   - **Tests liés :** Unit — DossierAccessPolicy.
 
-- [ ] **T4. `DossierStatusTransitions` + tests**
+- [x] **T4. `DossierStatusTransitions` + tests**
   - **Outcome :** graphe design ; exception conflit si illégal ; ARCHIVE
     terminal ; règles `closed*` documentées pour le use case.
   - **Depends on :** T1
   - **Validation :** tests transitions verts.
   - **Tests liés :** Unit — UpdateDossierStatus rules.
 
-- [ ] **T5. Ports in/out (interfaces)**
+- [x] **T5. Ports in/out (interfaces)**
   - **Outcome :** interfaces use cases (dont `UpdateDossierTypeUseCase`) +
     repositories + `DossierReferenceGenerator` + exceptions métier
     (`DossierFieldValidationException`, `AccessDeniedException`,
@@ -66,7 +66,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M2 — Persistence
 
-- [ ] **T6. Dépendance H2 test + config test datasource/schema**
+- [x] **T6. Dépendance H2 test + config test datasource/schema**
   - **Outcome :** `com.h2database:h2` (test) ; URL
     `MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE` ; `CREATE SCHEMA` /
     `SET SCHEMA` pour `tenant_dev` ; OIDC stub inchangé.
@@ -74,7 +74,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Validation :** pom + properties test.
   - **Tests liés :** IT boot.
 
-- [ ] **T7. Liquibase changelog tables dossiers**
+- [x] **T7. Liquibase changelog tables dossiers**
   - **Outcome :** master changelog + changeset :
     `dossier_type`, `dossier`, `dossier_type_acl`, `dossier_reference_seq`
     (jsonb, UNIQUE, version) ; schéma non créé par Liquibase.
@@ -82,21 +82,21 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Validation :** Liquibase appliqué en IT.
   - **Tests liés :** IT persistence schema.
 
-- [ ] **T8. `*JpaEntity` + Spring Data + adapters (`SqlTypes.JSON`)**
+- [x] **T8. `*JpaEntity` + Spring Data + adapters (`SqlTypes.JSON`)**
   - **Outcome :** mappers bi-directionnels ; repos out ; `@Version` sur
     dossier ; JSON fields / fieldDefinitions.
   - **Depends on :** T5, T7
   - **Validation :** IT save/load type + dossier.
   - **Tests liés :** IT persistence.
 
-- [ ] **T9. `SequentialReferenceGenerator` (JdbcTemplate)**
+- [x] **T9. `SequentialReferenceGenerator` (JdbcTemplate)**
   - **Outcome :** upsert année + `UPDATE … RETURNING` ; format
     `DOS-{TYPE}-{YYYY}-{seq:06d}` ; `Year.now(UTC)`.
   - **Depends on :** T7, T8
   - **Validation :** unit format + IT incrément / unicité.
   - **Tests liés :** Unit format ; IT référence.
 
-- [ ] **T10. Activer JDBC/JPA/Liquibase + yaml runtime**
+- [x] **T10. Activer JDBC/JPA/Liquibase + yaml runtime**
   - **Outcome :** exclusions DataSource/JPA/Liquibase retirées ;
     `ddl-auto: none` ; datasource env +
     `connection-init-sql: SET search_path TO ${app.tenant.id}, public` ;
@@ -107,20 +107,20 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M3 — Use cases
 
-- [ ] **T11. Use cases DossierType (create / update / get / list)**
+- [x] **T11. Use cases DossierType (create / update / get / list)**
   - **Outcome :** `Create*` / `UpdateDossierTypeUseCase` (code immuable) /
     `Get*` / `List*` avec filtre ACL ; type `active=false` géré.
   - **Depends on :** T2, T3, T5, T8
   - **Validation :** tests use case / IT API types.
   - **Tests liés :** IT API types.
 
-- [ ] **T12. Use cases ACL grant / revoke**
+- [x] **T12. Use cases ACL grant / revoke**
   - **Outcome :** grant idempotent ; revoke ; `DossierTypeAclRepository`.
   - **Depends on :** T3, T5, T8
   - **Validation :** IT ACL.
   - **Tests liés :** IT grant/revoke.
 
-- [ ] **T13. `CreateDossierUseCase` / `GetDossierUseCase`**
+- [x] **T13. `CreateDossierUseCase` / `GetDossierUseCase`**
   - **Outcome :** policy + type actif (sinon `InactiveDossierTypeException`)
     + defaults + validation + ref + save `DRAFT` ;
     `tenantId` fourni par appelant (= `TenantProperties`) ;
@@ -129,14 +129,14 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Validation :** tests create/get.
   - **Tests liés :** IT API dossiers ; defaults ; inactive 409.
 
-- [ ] **T14. `UpdateDossierStatusUseCase`**
+- [x] **T14. `UpdateDossierStatusUseCase`**
   - **Outcome :** transitions T4 ; `updated*` ; `closed*` sur CLOTURE ;
     `expectedVersion` + `@Version` → conflit.
   - **Depends on :** T4, T8, T13
   - **Validation :** tests statut + 409 version.
   - **Tests liés :** Unit transitions ; IT PATCH status.
 
-- [ ] **T15. Câblage Spring (`DossierConfig` / `DomainConfig`)**
+- [x] **T15. Câblage Spring (`DossierConfig` / `DomainConfig`)**
   - **Outcome :** beans use cases + adapters + `JdbcTemplate` seq.
   - **Depends on :** T11–T14
   - **Validation :** injection IT.
@@ -144,7 +144,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M4 — API REST
 
-- [ ] **T16. Helpers web — `AccessContextFactory` + `TenantAdminGuard`**
+- [x] **T16. Helpers web — `AccessContextFactory` + `TenantAdminGuard`**
   - **Outcome :** `OidcUser` → `AccessContext.User` (sub + rôles sans
     `ROLE_`) ; gate `ROLE_TENANT_ADMIN` → 403 sinon ; **pas** de
     `@EnableMethodSecurity`.
@@ -152,14 +152,14 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Validation :** unit helper / IT 403 WORKFLOW_ADMIN sur POST type.
   - **Tests liés :** IT admin gate.
 
-- [ ] **T17. Controllers + DTOs surface API**
+- [x] **T17. Controllers + DTOs surface API**
   - **Outcome :** tous les endpoints design/requirements ; CSRF hérité BFF ;
     `tenantId` depuis `TenantProperties` ; label requis côté request.
   - **Depends on :** T15, T16
   - **Validation :** MockMvc scénarios authz.
   - **Tests liés :** IT API MockMvc.
 
-- [ ] **T18. `ProblemDetail` exception handler**
+- [x] **T18. `ProblemDetail` exception handler**
   - **Outcome :** 400 `errors[]` / label ; 403 ACL/admin ; 404 ; 409
     (transition, version, unique, type inactif).
   - **Depends on :** T17
@@ -168,14 +168,14 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M5 — Preuves & docs
 
-- [ ] **T19. Suite complète + ArchUnit + Jacoco**
+- [x] **T19. Suite complète + ArchUnit + Jacoco**
   - **Outcome :** `./mvnw test` + `verify` verts ; couverture ≥ 80 % ;
     régression auth/workflow/tenant.
   - **Depends on :** T2–T4, T9, T17, T18
   - **Validation :** CI locale verte.
   - **Tests liés :** ArchUnit ; coverage ; BffSecurityTest.
 
-- [ ] **T20. Doc implementation + notes écarts H2/SQL**
+- [x] **T20. Doc implementation + notes écarts H2/SQL**
   - **Outcome :** `docs/ai/implementation/2026-07-31-feature-dossiers.md`
     rempli ; contrat REST résumé ; écarts H2 documentés si découverts.
   - **Depends on :** T17–T19
@@ -253,11 +253,9 @@ Pas d’estimation calendaire. Ordre : M1 → M2 (T6/T7/T10 tôt) → M3 → M4 
 
 ## Next action
 
-**Phase 5 — Execute Plan** : démarrer **T1** (model records) en TDD, puis T2–T5.
+**Phase 7 — Check Implementation**, puis phase 8 testing / phase 9 review.
 
 ## Progress summary
 
-Phase 4 : plan réconcilié avec le design reviewed (JdbcTemplate seq, H2 dep,
-`UpdateDossierTypeUseCase`, `TenantAdminGuard`, defaults, 409 type inactif,
-`ddl-auto: none`, traçabilité testing complète). **0/20 tâches done.**
-Prêt pour l’implémentation.
+Phase 5 terminée : T1–T20 livrés. `./mvnw verify` — 113 tests verts, Jacoco
+≥ 80 % (~83 %). Suite : check implementation + revue.

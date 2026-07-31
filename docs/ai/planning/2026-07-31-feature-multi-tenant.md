@@ -116,10 +116,10 @@ Phase 5 complétée (2026-07-31). Pas d’échéances calendaires.
 
 ## Next action
 
-**Phase 7** — check implementation (`dev-implementation`), puis phase 8 testing / 9 review.
+**Phase 8** — formaliser / revalider la stratégie de tests (`dev-testing`), puis phase 9 review.
 
 ## Progress summary
 
-Toutes les tâches T1–T8 livrées (2026-07-31). `./mvnw test` : 33 tests OK.
-`./mvnw verify` : Jacoco check OK (96.7 % lignes). Docs implementation à jour.
-Aucun bloqueur restant pour la tranche A.
+T1–T8 livrés. Phase 7 check : implementation **alignée** (2026-07-31).
+Evidence : `./mvnw test` 33 OK ; `./mvnw verify` Jacoco 96.7 % ; lint OK.
+Aucun bloqueur. Prêt pour phase 8.

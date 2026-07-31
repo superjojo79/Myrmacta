@@ -16,5 +16,5 @@ buildNumber.properties
 # JDT-specific (Eclipse Java Development Tools)
 .classpath
 
-# Local git worktrees
+# Local / AI DevKit feature worktrees
 .worktrees/

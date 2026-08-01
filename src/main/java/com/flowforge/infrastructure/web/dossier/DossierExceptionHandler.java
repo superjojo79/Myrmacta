@@ -39,12 +39,16 @@ public class DossierExceptionHandler {
             IllegalDossierStatusTransitionException.class,
             DossierConflictException.class,
             InactiveDossierTypeException.class,
-            DataIntegrityViolationException.class,
             ObjectOptimisticLockingFailureException.class,
             OptimisticLockException.class
     })
     ProblemDetail handleConflict(Exception ex) {
         return problem(HttpStatus.CONFLICT, "Dossier conflict", ex.getMessage());
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    ProblemDetail handleDataIntegrity(DataIntegrityViolationException ex) {
+        return problem(HttpStatus.CONFLICT, "Dossier conflict", "Unique constraint or data integrity violation");
     }
 
     @ExceptionHandler({

@@ -2,10 +2,11 @@
 phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
-status: verified
+status: reviewed
 created: 2026-07-31
-updated: 2026-07-31
+updated: 2026-08-01
 verified: 2026-07-31
+reviewed: 2026-08-01
 ---
 
 # Testing Strategy
@@ -62,13 +63,14 @@ Fichiers :
 Fichiers :
 `UpdateDossierTypeUseCaseImplTest`, `GetDossierTypeUseCaseImplTest`,
 `RevokeDossierTypeAccessUseCaseImplTest`, `ListDossierTypesUseCaseImplTest`,
-`CreateDossierUseCaseImplTest`
+`CreateDossierUseCaseImplTest`, `GrantDossierTypeAccessUseCaseImplTest`
 
 - [x] Update type happy / non-admin / not found
 - [x] Get type view / deny / not found
 - [x] Revoke admin / non-admin
 - [x] List filtré VIEW ; admins voient tout
 - [x] Create dossier DRAFT / inactive / validation
+- [x] Grant ACL : type existant / type manquant 404 / non-admin
 
 ### SequentialReferenceGenerator
 Fichier :
@@ -108,7 +110,9 @@ Fichier :
 - [x] Sans `label` → 400
 - [x] Get sans VIEW → 403 ; avec VIEW → 200 ; `WORKFLOW_ADMIN` bypass
 - [x] Get by `ref` → 200
-- [x] PATCH status légal → 200 ; illégal → 409 ; version stale → 409
+- [x] PATCH status légal → 200 + `version` incrémentée ; illégal → 409 ; version stale → 409
+- [x] Type code dupliqué → 409 (intégrité)
+- [x] Grant ACL type inconnu → 404
 - [x] Revoke ACL → refus ; re-grant idempotent 204
 - [x] CSRF manquant → 403
 - [x] Suite BFF non régressée (`BffSecurityTest`)
@@ -153,6 +157,15 @@ export JAVA_HOME=…/jdk-25
 | Jacoco lignes (bundle) | **~93 %** |
 | Classes dossier &lt; 50 % lignes | **aucune** |
 
+### Evidence phase 9 (2026-08-01)
+
+| Commande | Résultat |
+|---|---|
+| `npx ai-devkit@latest lint --feature dossiers` | All checks passed |
+| `./mvnw -B verify` | **139** tests, 0 failure, BUILD SUCCESS |
+| Jacoco check | OK |
+| Jacoco lignes (bundle) | **~95 %** |
+
 Rapport : `target/site/jacoco/index.html`
 
 Gaps acceptés (&lt; 80 % locaux, non bloquants) : accessors d’exceptions,
@@ -180,5 +193,11 @@ quelques branches `DossierTypeController` / validator (couverts ailleurs en IT).
 - Gaps fermés : Update/Get/Revoke type use cases, SequentialReferenceGenerator
   (Clock), ExceptionHandler OLS, API PATCH type / defaults / invalid fields /
   VIEW / WORKFLOW_ADMIN bypass / revoke+re-grant, persistence `@Version`.
-- Aucun défaut de design découvert.
-- **Prochaine phase :** `dev-review` (phase 9).
+
+## Phase 9 notes
+
+- Bloquant corrigé : `version` API après PATCH status (save + flush).
+- Couverture ajoutée : grant type manquant, duplicate type 409, version
+  post-transition.
+- Aucun défaut de design restant pour la tranche B.
+- **Lifecycle :** prêt à merger.

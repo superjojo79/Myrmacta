@@ -81,7 +81,6 @@ public final class CreateDossierUseCaseImpl implements CreateDossierUseCase {
                 now,
                 null,
                 null);
-        dossierRepository.save(dossier);
-        return dossier;
+        return dossierRepository.save(dossier);
     }
 }

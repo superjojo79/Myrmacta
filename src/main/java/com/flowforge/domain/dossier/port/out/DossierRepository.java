@@ -5,7 +5,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface DossierRepository {
-    void save(Dossier dossier);
+    /** Persists and returns the dossier with post-flush state (e.g. incremented {@code version}). */
+    Dossier save(Dossier dossier);
 
     Optional<Dossier> findById(UUID id);
 

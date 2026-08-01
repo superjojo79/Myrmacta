@@ -2,9 +2,10 @@
 phase: planning
 title: Project Planning & Task Breakdown
 description: Break down work into actionable tasks and estimate timeline
-status: implemented
+status: reviewed
 created: 2026-07-31
-updated: 2026-07-31
+updated: 2026-08-01
+reviewed: 2026-08-01
 ---
 
 # Project Planning & Task Breakdown
@@ -253,9 +254,10 @@ Pas d’estimation calendaire. Ordre : M1 → M2 (T6/T7/T10 tôt) → M3 → M4 
 
 ## Next action
 
-**Phase 7 — Check Implementation**, puis phase 8 testing / phase 9 review.
+**Phase 9 terminée** — prêt à merger. Suivi ops : smoke PG réel ; index/CHECK
+Liquibase optionnels ; observabilité (TODO 29) hors tranche.
 
 ## Progress summary
 
-Phase 5 terminée : T1–T20 livrés. `./mvnw verify` — 113 tests verts, Jacoco
-≥ 80 % (~83 %). Suite : check implementation + revue.
+Tranche B complète (T1–T20 + correctifs phases 7–9). `./mvnw -B verify` —
+**139** tests verts, Jacoco ~95 % lignes. Aucun bloquant de revue.

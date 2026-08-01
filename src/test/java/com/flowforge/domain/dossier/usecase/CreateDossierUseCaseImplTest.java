@@ -3,6 +3,7 @@ package com.flowforge.domain.dossier.usecase;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -58,6 +59,7 @@ class CreateDossierUseCaseImplTest {
         var type = type(true, false, List.of(field("priority", FieldType.STRING, false, "NORMAL")));
         when(typeRepository.findByCode(TENANT, TYPE_CODE)).thenReturn(Optional.of(type));
         when(referenceGenerator.generate(TENANT, TYPE_CODE)).thenReturn("DOS-SINISTRE-2026-000001");
+        when(dossierRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         Dossier dossier = useCase.create(
                 new CreateDossierUseCase.CreateDossierCommand(

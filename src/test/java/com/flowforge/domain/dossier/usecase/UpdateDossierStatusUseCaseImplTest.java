@@ -2,6 +2,7 @@ package com.flowforge.domain.dossier.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -46,6 +47,10 @@ class UpdateDossierStatusUseCaseImplTest {
     void update_movesStatusAndPersistsWhenVersionMatches() {
         Dossier existing = dossier(DossierStatus.DRAFT, 3);
         when(dossierRepository.findById(existing.id())).thenReturn(Optional.of(existing));
+        when(dossierRepository.save(any())).thenAnswer(invocation -> {
+            Dossier arg = invocation.getArgument(0);
+            return arg.withVersion(arg.version() + 1);
+        });
 
         Dossier updated = useCase.update(
                 new UpdateDossierStatusUseCase.UpdateDossierStatusCommand(
@@ -53,7 +58,7 @@ class UpdateDossierStatusUseCaseImplTest {
                 actor);
 
         assertThat(updated.status()).isEqualTo(DossierStatus.OUVERT);
-        assertThat(updated.version()).isEqualTo(3);
+        assertThat(updated.version()).isEqualTo(4);
         assertThat(updated.updatedBy()).isEqualTo("u2");
         assertThat(updated.updatedAt()).isAfterOrEqualTo(existing.updatedAt());
         assertThat(updated.closedBy()).isNull();
@@ -62,13 +67,18 @@ class UpdateDossierStatusUseCaseImplTest {
         verify(accessPolicy).assertCanEdit(existing, actor);
         ArgumentCaptor<Dossier> saved = ArgumentCaptor.forClass(Dossier.class);
         verify(dossierRepository).save(saved.capture());
-        assertThat(saved.getValue()).isEqualTo(updated);
+        assertThat(saved.getValue().status()).isEqualTo(DossierStatus.OUVERT);
+        assertThat(saved.getValue().version()).isEqualTo(3);
     }
 
     @Test
     void update_setsClosureMetadataWhenClosing() {
         Dossier existing = dossier(DossierStatus.OUVERT, 4);
         when(dossierRepository.findById(existing.id())).thenReturn(Optional.of(existing));
+        when(dossierRepository.save(any())).thenAnswer(invocation -> {
+            Dossier arg = invocation.getArgument(0);
+            return arg.withVersion(arg.version() + 1);
+        });
 
         Dossier updated = useCase.update(
                 new UpdateDossierStatusUseCase.UpdateDossierStatusCommand(
@@ -76,10 +86,11 @@ class UpdateDossierStatusUseCaseImplTest {
                 actor);
 
         assertThat(updated.status()).isEqualTo(DossierStatus.CLOTURE);
+        assertThat(updated.version()).isEqualTo(5);
         assertThat(updated.closedBy()).isEqualTo("closer");
         assertThat(updated.closedAt()).isNotNull();
         assertThat(updated.closedAt()).isEqualTo(updated.updatedAt());
-        verify(dossierRepository).save(updated);
+        verify(dossierRepository).save(any());
     }
 
     @Test

@@ -59,8 +59,10 @@ public class DossierConfig {
     }
 
     @Bean
-    GrantDossierTypeAccessUseCase grantDossierTypeAccessUseCase(DossierTypeAclRepository aclRepository) {
-        return new GrantDossierTypeAccessUseCaseImpl(aclRepository);
+    GrantDossierTypeAccessUseCase grantDossierTypeAccessUseCase(
+            DossierTypeRepository typeRepository,
+            DossierTypeAclRepository aclRepository) {
+        return new GrantDossierTypeAccessUseCaseImpl(typeRepository, aclRepository);
     }
 
     @Bean

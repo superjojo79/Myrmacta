@@ -18,8 +18,9 @@ public class JpaDossierRepositoryAdapter implements DossierRepository {
 
     @Override
     @Transactional
-    public void save(Dossier dossier) {
-        repository.save(DossierJpaEntity.fromDomain(dossier));
+    public Dossier save(Dossier dossier) {
+        // flush so @Version is incremented before mapping back to the domain
+        return repository.saveAndFlush(DossierJpaEntity.fromDomain(dossier)).toDomain();
     }
 
     @Override

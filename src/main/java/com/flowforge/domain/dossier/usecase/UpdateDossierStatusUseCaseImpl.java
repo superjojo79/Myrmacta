@@ -35,7 +35,6 @@ public final class UpdateDossierStatusUseCaseImpl implements UpdateDossierStatus
 
         DossierStatusTransitions.assertCanTransition(dossier.status(), command.status());
         Dossier updated = dossier.withStatus(command.status(), command.updatedBy(), Instant.now());
-        repository.save(updated);
-        return updated;
+        return repository.save(updated);
     }
 }

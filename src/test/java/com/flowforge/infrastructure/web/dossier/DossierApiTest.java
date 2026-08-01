@@ -287,7 +287,37 @@ class DossierApiTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(dossier.id()))
                 .andExpect(jsonPath("$.status").value("OUVERT"))
-                .andExpect(jsonPath("$.updatedBy").value("manager-status"));
+                .andExpect(jsonPath("$.updatedBy").value("manager-status"))
+                .andExpect(jsonPath("$.version").value(dossier.version() + 1));
+    }
+
+    @Test
+    void createType_duplicateCode_returns409() throws Exception {
+        String code = createType(true);
+
+        mockMvc.perform(post("/api/dossier-types")
+                        .with(user("admin-dup", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(typePayload(code, true)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.detail").value("Unique constraint or data integrity violation"));
+    }
+
+    @Test
+    void grantAcl_unknownType_returns404() throws Exception {
+        mockMvc.perform(post("/api/dossier-types/{code}/acl", "MISSING_TYPE")
+                        .with(user("acl-admin-missing", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "subjectUserId": "someone",
+                                  "permission": "VIEW"
+                                }
+                                """))
+                .andExpect(status().isNotFound());
     }
 
     @Test

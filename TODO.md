@@ -9,6 +9,10 @@
 > - **[Décisions actées](#décisions-actées)** — décisions prises lors de la revue de conception
 >   initiale, déjà répercutées dans `analysis doc/`. Elles font office de journal ; ne les rouvrir
 >   qu'avec une raison explicite.
+>
+> **Reste à implémenter (features / lots différés) :** synthèse consolidée dans
+> [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) — follow-ups des tranches livrées, features
+> lifecycle non démarrées, et mapping vers les points ouverts ci-dessous.
 
 ---
 

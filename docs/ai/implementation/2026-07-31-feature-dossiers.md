@@ -145,6 +145,8 @@ Jacoco: All coverage checks have been met (ligne ~95 %)
 
 ## Follow-ups
 
+Synthèse consolidée : [DEFERRED-FEATURES.md](../../../DEFERRED-FEATURES.md).
+
 - Changelog Liquibase : index secondaire + CHECK permission (nice-to-have)
 - Smoke PG réel (hors CI)
 - Lots suivants : éléments, relations, workflow links, PATCH fields, pagination

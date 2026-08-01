@@ -4,6 +4,7 @@ title: System Design & Architecture
 description: Define the technical architecture, components, and data models
 status: reviewed
 reviewed: 2026-07-31
+updated: 2026-08-01
 ---
 
 # System Design & Architecture
@@ -220,4 +221,4 @@ Le use case est exposé par son **interface** port.in. Aucune annotation Spring 
 - Modèle : fabrique + immutabilité ; exception locale au bounded context workflow.
 - Autoconfig : exclusions temporaires documentées (à retirer feature par feature).
 - Aucun retour arrière requirements nécessaire.
-- **Prochaine phase :** planning initial (`dev-planning` / phase 4).
+- **Lifecycle :** phases 1–9 terminées — prêt à merger.

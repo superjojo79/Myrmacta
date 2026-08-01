@@ -4,7 +4,7 @@ title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
 status: verified
 verified: 2026-07-31
-updated: 2026-07-31
+updated: 2026-08-01
 ---
 
 # Testing Strategy
@@ -172,4 +172,4 @@ double filtre).
   entry point `servletPath` vide ; `/me` `ROLE_` blank ; IT redirect hors API +
   `/oauth2/authorization/oidc`.
 - Boot 4 : `spring-boot-starter-webmvc-test` ; classe `BffSecurityTest`.
-- Aucun défaut de design découvert — enchaîner phase 9 (`dev-review`).
+- **Lifecycle :** phase 9 terminée — prêt à merger.

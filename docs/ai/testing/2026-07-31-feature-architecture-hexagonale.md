@@ -4,6 +4,7 @@ title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
 status: verified
 verified: 2026-07-31
+updated: 2026-08-01
 ---
 
 # Testing Strategy
@@ -123,4 +124,4 @@ Rapport : `target/site/jacoco/index.html`
 - Écarts de couverture : aucun sur le code de feature ; `main()` non testé (acceptable).
 - Deux tests ajoutés en phase 8 : NPE `create(null)` ; overwrite repository.
 - Jacoco activé dans `pom.xml` (seuil 80 %).
-- **Prochaine phase :** 9 — `dev-review`.
+- **Lifecycle :** phase 9 terminée — prêt à merger.

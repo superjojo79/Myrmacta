@@ -4,6 +4,7 @@ title: Project Planning & Task Breakdown
 description: Break down work into actionable tasks and estimate timeline
 status: implemented
 created: 2026-07-31
+updated: 2026-08-01
 ---
 
 # Project Planning & Task Breakdown
@@ -162,10 +163,10 @@ Pas d’échéances calendaires. Ordre d’exécution recommandé : **T1 → T3 
 
 ## Next action
 
-**Phase 5 terminée** — enchaîner phase 6 (reconcile, déjà reflété ici) puis phase 7 check implementation / phase 8 testing.
-
+**Phase 9 terminée** — prêt à merger. Suivi : remplacer stubs in-memory (features aval) ;
+sync lexicale `com.monapp` dans `analysis doc/`.
 
 ## Progress summary
 
-Tous les tâches T1–T11 livrées (2026-07-31). `./mvnw test` vert (unitaires + ArchUnit + DomainConfigTest).
-Rename `com.flowforge`, tranche StartWorkflow in-memory, exclusions autoconfig, docs implementation.
+Lifecycle fondation complet (phases 1–5, 7–9). T1–T11 livrées ; `./mvnw verify` vert ;
+Jacoco OK. Aucun bloquant de revue.

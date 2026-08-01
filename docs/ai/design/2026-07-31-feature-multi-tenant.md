@@ -4,6 +4,7 @@ title: System Design & Architecture
 description: Define the technical architecture, components, and data models
 status: reviewed
 reviewed: 2026-07-31
+updated: 2026-08-01
 ---
 
 # System Design & Architecture
@@ -261,4 +262,4 @@ Le préfixe n’est pas réécrit : même path côté client et instance (quand
 | Diagrammes mermaid | Overview + boot + provisioning |
 
 - Aucune question d’architecture ouverte pour la tranche A.
-- **Prochaine phase :** planning initial (`dev-planning` / phase 4).
+- **Lifecycle tranche A :** phases 1–9 terminées — prêt à merger.

@@ -4,7 +4,7 @@ title: Requirements & Problem Understanding
 description: Clarify the problem space, gather requirements, and define success criteria
 status: reviewed
 reviewed: 2026-07-31
-updated: 2026-07-31
+updated: 2026-08-01
 ---
 
 # Requirements & Problem Understanding
@@ -190,4 +190,4 @@ de JWT au browser, et garantir que la session OIDC appartient bien au tenant de
 | Questions ouvertes bloquantes | Aucune |
 | Design / testing drafts | Alignés sur les clarifications ; revue design = phase 3 |
 
-**Prochaine phase :** `dev-design` (phase 3 — revue design contre requirements).
+**Lifecycle tranche A+ :** phases 1–9 terminées — prêt à merger.

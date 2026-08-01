@@ -2,6 +2,8 @@
 phase: deployment
 title: Deployment Strategy
 description: Define deployment process, infrastructure, and release procedures
+status: drafted
+updated: 2026-08-01
 ---
 
 # Deployment Strategy
@@ -9,64 +11,35 @@ description: Define deployment process, infrastructure, and release procedures
 ## Infrastructure
 **Where will the application run?**
 
-- Hosting platform (AWS, GCP, Azure, etc.)
-- Infrastructure components (servers, databases, etc.)
-- Environment separation (dev, staging, production)
-
-## Deployment Pipeline
-**How do we deploy changes?**
-
-### Build Process
-- Build steps and commands
-- Asset compilation/optimization
-- Environment configuration
-
-### CI/CD Pipeline
-- Automated testing gates
-- Build automation
-- Deployment automation
+Instance Spring Boot **dédiée par tenant** (décision n° 13). `app.tenant.id` =
+constante d’instance (= futur nom de schéma).
 
 ## Environment Configuration
-**What settings differ per environment?**
 
-### Development
-- Configuration details
-- Local setup
+| Variable / propriété | Rôle |
+|---|---|
+| `app.tenant.id` | Identifiant tenant (regex `^[a-z][a-z0-9_]{0,62}$`) — **requis** |
 
-### Staging
-- Configuration details
-- Testing environment
-
-### Production
-- Configuration details
-- Monitoring setup
-
-## Deployment Steps
-**What's the release process?**
-
-1. Pre-deployment checklist
-2. Deployment execution steps
-3. Post-deployment validation
-4. Rollback procedure (if needed)
+Surcharger `app.tenant.id` par instance au déploiement (ne pas laisser le défaut
+`tenant_dev` en prod). `context-path` / search_path documentés en yaml commenté —
+activation hors tranche.
 
 ## Database Migrations
-**How do we handle schema changes?**
 
-- Migration strategy
-- Backup procedures
-- Rollback approach
+Aucune dans cette tranche (pas de bootstrap schéma / Liquibase ici).
+
+## Deployment Steps
+
+1. Provisionner l’id tenant (ops / point 31).
+2. Déployer avec `app.tenant.id=<tenant>` valide.
+3. Boot fail-fast si id invalide / absent.
+4. Smoke : contexte démarre ; `TenantIdValidator` OK.
 
 ## Secrets Management
-**How do we handle sensitive data?**
 
-- Environment variables
-- Secret storage solution
-- Key rotation strategy
+N/A spécifique — secrets DB/OIDC gérés par features aval.
 
 ## Rollback Plan
-**What if something goes wrong?**
 
-- Rollback triggers
-- Rollback steps
-- Communication plan
-
+Redéployer la version précédente. Changement additif ; `app.tenant.id` requis est
+intentionnel (breaking soft au boot).

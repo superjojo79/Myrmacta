@@ -4,7 +4,7 @@ title: System Design & Architecture
 description: Define the technical architecture, components, and data models
 status: reviewed
 reviewed: 2026-07-31
-updated: 2026-07-31
+updated: 2026-08-01
 ---
 
 # System Design & Architecture
@@ -316,4 +316,4 @@ com.flowforge.infrastructure
 | Retour requirements | Aucun gap bloquant |
 
 - Aucune question d’architecture ouverte pour la tranche A+.
-- **Prochaine phase :** planning initial (`dev-planning` / phase 4).
+- **Lifecycle tranche A+ :** phases 1–9 terminées — prêt à merger.

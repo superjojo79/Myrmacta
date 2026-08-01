@@ -18,6 +18,9 @@
 
 # Points ouverts
 
+> Pour le backlog d’implémentation reporté (hors décisions à trancher), voir
+> [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md).
+
 ## Bloquants — à trancher avant le premier commit applicatif
 
 > Les trois points initialement classés bloquants sont désormais tranchés — propagation du tenant

@@ -4,7 +4,7 @@ title: Requirements & Problem Understanding
 description: Clarify the problem space, gather requirements, and define success criteria
 status: reviewed
 reviewed: 2026-07-31
-updated: 2026-07-31
+updated: 2026-08-01
 ---
 
 # Requirements & Problem Understanding
@@ -284,4 +284,4 @@ version optimiste.
 | Questions bloquantes | Aucune |
 | Design / testing drafts | Alignement mineur design (table endpoints) ; revue design = phase 3 |
 
-**Prochaine phase :** `dev-design` (phase 3 — revue design contre requirements).
+**Lifecycle tranche B :** phases 1–9 terminées — prêt à merger.

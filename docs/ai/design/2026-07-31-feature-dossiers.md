@@ -4,7 +4,7 @@ title: System Design & Architecture
 description: Define the technical architecture, components, and data models
 status: reviewed
 reviewed: 2026-07-31
-updated: 2026-07-31
+updated: 2026-08-01
 ---
 
 # System Design & Architecture
@@ -387,5 +387,4 @@ Ajouter `com.h2database:h2` en `test` scope (absent du `pom` aujourd’hui).
 | Retour requirements | Aucun gap bloquant |
 
 - Aucune question d’architecture ouverte pour la tranche B.
-- **Prochaine phase :** `dev-planning` phase 4 — réconcilier le plan (H2 dep,
-  `UpdateDossierTypeUseCase`, JdbcTemplate, gate admin) puis exécution.
+- **Lifecycle tranche B :** phases 1–9 terminées — prêt à merger.

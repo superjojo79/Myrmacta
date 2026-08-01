@@ -20,6 +20,22 @@ fi
 exists() { [[ -f "$1" ]]; }
 nonempty() { [[ -f "$1" ]] && [[ -s "$1" ]]; }
 
+# Read a YAML frontmatter scalar (first --- block only).
+fm_get() {
+  local file="$1" key="$2"
+  [[ -f "$file" ]] || return 0
+  awk -v key="$key" '
+    NR == 1 && /^---[[:space:]]*$/ { in_fm = 1; next }
+    in_fm && /^---[[:space:]]*$/ { exit }
+    in_fm && $0 ~ ("^" key ":") {
+      sub("^[^:]+:[[:space:]]*", "", $0)
+      gsub(/[[:space:]]+$/, "", $0)
+      print
+      exit
+    }
+  ' "$file"
+}
+
 LINT_OUTPUT="$($AI_DEVKIT_BIN lint --feature "$FEATURE" 2>/dev/null || true)"
 
 lint_doc() {
@@ -69,6 +85,12 @@ if exists "$PLN"; then
   echo "Planning: $DONE/$TOTAL tasks done, $TODO remaining"
 fi
 
+IMP_STATUS="$(fm_get "$IMP" status)"
+IMP_CHECKED="$(fm_get "$IMP" checked)"
+IMP_REVIEWED="$(fm_get "$IMP" reviewed)"
+TST_STATUS="$(fm_get "$TST" status)"
+TST_VERIFIED="$(fm_get "$TST" verified)"
+
 # Infer phase
 echo ""
 echo "--- Suggested phase ---"
@@ -81,7 +103,16 @@ elif ! exists "$PLN"; then
 elif exists "$PLN" && [[ ${TODO:-0} -gt 0 ]]; then
   echo "Phase 5 (Execute Plan) — $TODO tasks remaining"
 elif exists "$PLN" && [[ ${TODO:-0} -eq 0 ]] && [[ ${TOTAL:-0} -gt 0 ]]; then
-  echo "Phase 7 (Check Implementation) — all tasks done, verify against design"
+  # All tasks done — discriminate 7 / 8 / 9 / complete via frontmatter.
+  if [[ -z "$IMP_CHECKED" && "$IMP_STATUS" != "checked" && "$IMP_STATUS" != "verified" && "$IMP_STATUS" != "reviewed" ]]; then
+    echo "Phase 7 (Check Implementation) — all tasks done, verify against design"
+  elif [[ "$TST_STATUS" != "verified" && -z "$TST_VERIFIED" ]]; then
+    echo "Phase 8 (Write Tests) — implementation checked, verify coverage"
+  elif [[ -z "$IMP_REVIEWED" && "$IMP_STATUS" != "reviewed" ]]; then
+    echo "Phase 9 (Code Review) — tests verified, final pre-push review"
+  else
+    echo "Complete — lifecycle finished, ready to merge"
+  fi
 else
   echo "Phase 2 (Review Requirements) — docs exist, review for completeness"
 fi

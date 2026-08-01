@@ -4,6 +4,7 @@ title: Requirements & Problem Understanding
 description: Clarify the problem space, gather requirements, and define success criteria
 status: reviewed
 reviewed: 2026-07-31
+updated: 2026-08-01
 ---
 
 # Requirements & Problem Understanding
@@ -151,7 +152,7 @@ domaine sans contexte Spring.
 - **Différé :** contrat d’API / DTO (point 24).
 - **Différé :** modèles complets des autres contextes (leurs features).
 - **Différé :** mise à jour lexicale `com.monapp` dans `analysis doc/`.
-- **Différé :** activation Jacoco / seuils de couverture (phase 8 testing).
+- **Lifecycle :** phases 1–9 terminées — prêt à merger.
 
 ## Review notes (phase 2)
 

@@ -2,6 +2,8 @@
 phase: deployment
 title: Deployment Strategy
 description: Define deployment process, infrastructure, and release procedures
+status: drafted
+updated: 2026-08-01
 ---
 
 # Deployment Strategy
@@ -9,64 +11,27 @@ description: Define deployment process, infrastructure, and release procedures
 ## Infrastructure
 **Where will the application run?**
 
-- Hosting platform (AWS, GCP, Azure, etc.)
-- Infrastructure components (servers, databases, etc.)
-- Environment separation (dev, staging, production)
-
-## Deployment Pipeline
-**How do we deploy changes?**
-
-### Build Process
-- Build steps and commands
-- Asset compilation/optimization
-- Environment configuration
-
-### CI/CD Pipeline
-- Automated testing gates
-- Build automation
-- Deployment automation
+Socle Spring Boot (fondation hexagonale). Pas de dépendance runtime DB / Keycloak /
+Flowable pour cette feature (exclusions autoconfig).
 
 ## Environment Configuration
-**What settings differ per environment?**
 
-### Development
-- Configuration details
-- Local setup
-
-### Staging
-- Configuration details
-- Testing environment
-
-### Production
-- Configuration details
-- Monitoring setup
-
-## Deployment Steps
-**What's the release process?**
-
-1. Pre-deployment checklist
-2. Deployment execution steps
-3. Post-deployment validation
-4. Rollback procedure (if needed)
+Aucune variable dédiée. JDK **25** ; artefact Maven standard.
 
 ## Database Migrations
-**How do we handle schema changes?**
 
-- Migration strategy
-- Backup procedures
-- Rollback approach
+Aucune (pas de JPA/Liquibase dans cette tranche).
+
+## Deployment Steps
+
+1. Build : `./mvnw -B verify`
+2. Déployer le jar Spring Boot.
+3. Smoke : contexte démarre ; ArchUnit / suite verte en CI.
 
 ## Secrets Management
-**How do we handle sensitive data?**
 
-- Environment variables
-- Secret storage solution
-- Key rotation strategy
+N/A pour cette fondation.
 
 ## Rollback Plan
-**What if something goes wrong?**
 
-- Rollback triggers
-- Rollback steps
-- Communication plan
-
+Redéployer la version précédente — changement additif (packages + stubs in-memory).

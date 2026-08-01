@@ -4,6 +4,7 @@ title: Requirements & Problem Understanding
 description: Clarify the problem space, gather requirements, and define success criteria
 status: reviewed
 reviewed: 2026-07-31
+updated: 2026-08-01
 ---
 
 # Requirements & Problem Understanding
@@ -203,4 +204,4 @@ Fondation technique ; « utilisateurs » = contributeurs et features aval.
 | Design draft | À aligner (même clarifications) puis phase 3 |
 | Contradiction domaine vs config | Aucune — domaine inchangé ; config = source de vérité instance |
 
-**Prochaine phase :** `dev-design` (phase 3 — revue design contre requirements).
+**Lifecycle tranche A :** phases 1–9 terminées — prêt à merger.

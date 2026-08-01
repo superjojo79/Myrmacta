@@ -4,6 +4,7 @@ title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
 status: verified
 verified: 2026-07-31
+updated: 2026-08-01
 ---
 
 # Testing Strategy
@@ -120,4 +121,4 @@ Rapport : `target/site/jacoco/index.html`
 - Écarts de couverture : aucun sur le code de feature ; `main()` non testé (acceptable).
 - Ajouts phase 8 : messages d’exception validator ; boot fail-fast `tenant-a` via
   args CLI (`Builder.properties()` serait écrasé par `application.yml`).
-- **Prochaine phase :** 9 — `dev-review`.
+- **Lifecycle :** phase 9 terminée — prêt à merger.

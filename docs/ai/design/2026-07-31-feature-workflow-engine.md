@@ -86,7 +86,7 @@ ArchUnit. Domaine pur (décision 17).
 
 ## Start paths (D-START)
 
-### Manuel synchrone — proposition **DD-TX** (à confirmer)
+### Manuel synchrone — **DD-TX = option 2** (acté)
 
 ```mermaid
 sequenceDiagram

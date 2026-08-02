@@ -113,7 +113,7 @@ updated: 2026-08-02
   helpers dossiers).
 - `WorkflowTypeConfig` seed pour `smokeProcess` avec au moins un statut
   `initial` et un terminal `COMPLETED`.
-- BPMN smoke minimal (start → userTask → end) + option delegate.
+- BPMN smoke DD-SMOKE : start → userTask → delegate statut terminal → end.
 - Utilisateurs mock : `TENANT_ADMIN`, `WORKFLOW_ADMIN`, user EDIT, user VIEW,
   anonyme.
 - Clock / scheduler : invocation directe `relayPendingEvents()` en test

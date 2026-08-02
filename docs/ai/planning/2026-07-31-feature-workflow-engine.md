@@ -2,23 +2,31 @@
 phase: planning
 title: Project Planning & Task Breakdown
 description: Break down work into actionable tasks and estimate timeline
-status: drafted
+status: ready
 created: 2026-08-02
 updated: 2026-08-02
 ---
 
-<!-- Aligned with design reviewed (DD-TX…DD-STUBS) -->
-
 # Project Planning & Task Breakdown
+
+## Phase 4 — synthèse
+
+Plan réconcilié avec requirements/design `reviewed` (D-START…D-FAIL,
+DD-TX…DD-STUBS) et scenarios testing. **14 tâches**, 0 done. Prêt pour
+phase 5 (Execute Plan) en TDD : démarrer par **T1 → T2 → T4** (domaine
+pur), puis persistence.
+
+Aucun blocker externe (`connecteurs` hors scope). Traçage `task` CLI
+indisponible.
 
 ## Milestones
 **What are the major checkpoints?**
 
-- [ ] **M1 — Domaine & ports** : link, config, events sealed, outbox model, exceptions
-- [ ] **M2 — Persistence & Flowable** : Liquibase, JPA, retrait exclusions, smoke BPMN
-- [ ] **M3 — Use cases & relais** : AttachWorkflow, start/complete, outbox relay, delegates
-- [ ] **M4 — API REST** : controllers, authz, ProblemDetail
-- [ ] **M5 — Preuves & docs** : IT H2, régressions, doc implementation
+- [ ] **M1 — Domaine & ports** : link, config étendue, events sealed, outbox/idempotency ports, DD-STUBS préparé
+- [ ] **M2 — Persistence & Flowable** : Liquibase (link/outbox/config/idempotency), JPA, activation Flowable, smoke BPMN
+- [ ] **M3 — Use cases & jobs** : Attach, ManualStartOrchestrator (DD-TX), complete, relais, orphan, delegates
+- [ ] **M4 — API REST** : start+Idempotency-Key, history, complete, workflow-type-configs
+- [ ] **M5 — Preuves & docs** : IT complètes, régressions, doc implementation
 
 ## Task Breakdown
 **What specific work needs to be done?**
@@ -27,114 +35,134 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M1 — Domaine & ports
 
-- [ ] **T1. `DossierWorkflowLink` + exceptions métier**
-  - **Outcome :** record domaine ; `WorkflowAlreadyRunningException` ; helpers
-    ended/active / abortReserved reasons.
+- [ ] **T1. `DossierWorkflowLink` + exceptions**
+  - **Outcome :** record pur ; `WorkflowAlreadyRunningException` ;
+    `AbortReservedReason` (`ORPHAN_START_FAILED`, `ORPHAN_TIMEOUT`, …) ;
+    helpers RESERVED/ACTIVE/TERMINATED (dérivés colonnes).
   - **Depends on :** —
-  - **Validation :** compile ; ArchUnit pur.
-  - **Tests liés :** Unit Attach (T9).
+  - **Validation :** compile ; ArchUnit domaine pur.
+  - **Tests liés :** Unit Attach (T9) ; glossaire A6.
 
-- [ ] **T2. `WorkflowTypeConfig` + `StatusOutcome` + validation codes**
-  - **Outcome :** records/enums ; un `initial` ; `allowedDossierStatuses` non
-    vide ; `onStartDossierStatus?` ; reject unknown status.
+- [ ] **T2. `WorkflowTypeConfig` + validation**
+  - **Outcome :** `statusDefinitions` (un `initial`) ;
+    `allowedDossierStatuses` non vide ; `onStartDossierStatus?` ;
+    `StatusOutcome` ; reject unknown status / liste vide.
   - **Depends on :** —
   - **Validation :** unit validation.
-  - **Tests liés :** Unit WorkflowTypeConfig / UpdateStatus.
+  - **Tests liés :** Unit WorkflowTypeConfig / UpdateStatus ; D-STATUS /
+    D-DOSSIER-STATUS.
 
-- [ ] **T3. `WorkflowEvent` sealed + publisher générique + DD-STUBS**
-  - **Outcome :** Started/Completed/Failed ; retirer câblage et modèle
-    in-memory legacy (`StartWorkflowUseCase` / `WorkflowInstance` /
-    InMemory*) hors tests.
+- [ ] **T3. `WorkflowEvent` sealed (+ préparation DD-STUBS)**
+  - **Outcome :** `Started` / `Completed` / `Failed` ; publisher générique.
+    **Ne pas** casser le boot : retirer `StartWorkflowUseCase` /
+    `WorkflowInstance` / InMemory* **au plus tard dans T11** quand
+    `WorkflowEnginePort` + nouveaux beans remplacent `DomainConfig`
+    (DD-STUBS opt. 1). Jusque-là : introduire sealed events sans supprimer
+    le legacy si les tests `DomainConfigTest` / StartWorkflow bloquent.
   - **Depends on :** —
-  - **Validation :** unit switch exhaustif ; DomainConfig sans stubs prod.
-  - **Tests liés :** Unit WorkflowEvent sealed ; compile DomainConfig.
+  - **Validation :** unit switch exhaustif.
+  - **Tests liés :** Unit WorkflowEvent sealed.
 
-- [ ] **T4. Modèle outbox + ports + idempotency + config étendue**
+- [ ] **T4. Outbox + idempotency ports + properties**
   - **Outcome :** `OutboxStatus`, `TriggerOutboxPayload`, `OutboxRepository` ;
-    `IdempotencyStore` ; `WorkflowTypeConfig.allowedDossierStatuses` +
-    `onStartDossierStatus` ; properties `app.workflow.outbox.*` +
-    `reserve-timeout`.
+    `IdempotencyStore` (port) ; `@ConfigurationProperties`
+    `app.workflow.outbox.*` + `app.workflow.reserve-timeout` (DD-OUTBOX /
+    D-ORPHAN défauts).
   - **Depends on :** —
-  - **Validation :** compile.
-  - **Tests liés :** Unit relais (T10) ; Unit start idempotency.
+  - **Validation :** compile ; bind yaml test.
+  - **Tests liés :** Unit relais (T10) ; Unit idempotency (T11).
 
-- [ ] **T5. Ports in workflow / dossier (interfaces)**
-  - **Outcome :** `AttachWorkflowUseCase`, `GetDossierWorkflowHistoryUseCase`,
-    `CompleteTaskUseCase`, `UpdateWorkflowLinkStatusUseCase`,
-    ports config ; ajuster `StartWorkflowUseCase` si besoin du moteur réel.
+- [ ] **T5. Ports in/out (interfaces)**
+  - **Outcome :** `AttachWorkflowUseCase` (reserve / reserveOrResume /
+    confirmStarted / abortReserved) ; `GetDossierWorkflowHistoryUseCase` ;
+    `CompleteTaskUseCase` ; `UpdateWorkflowLinkStatusUseCase` ;
+    ports CRUD `WorkflowTypeConfig` ; **`WorkflowEnginePort`**
+    (start with businessKey, completeTask, findByBusinessKey) — **pas** de
+    nouveau `StartWorkflowUseCase` legacy.
   - **Depends on :** T1–T4
   - **Validation :** compile.
   - **Tests liés :** —
 
 ### M2 — Persistence & Flowable
 
-- [ ] **T6. Liquibase : link + outbox + workflow_type_config**
-  - **Outcome :** changesets + index partiel actif ; colonnes alignées design.
+- [ ] **T6. Liquibase : link + outbox + config + idempotency**
+  - **Outcome :** `dossier_workflow_link` + index partiel actif ;
+    `workflow_type_config` (jsonb statuses + allowedStatuses +
+    on_start_dossier_status) ; `outbox_event` + index (status, created_at) ;
+    **`workflow_idempotency`** PK (tenant_id, dossier_id, idempotency_key).
   - **Depends on :** T1, T2, T4
   - **Validation :** IT schema H2.
   - **Tests liés :** IT Persistence.
 
-- [ ] **T7. JPA entities + adapters (link, config, outbox)**
-  - **Outcome :** adapters bi-directionnels ; `currentWorkflowLinkId` MAJ ;
-    retirer câblage prod `InMemoryWorkflowRepository` si remplacé.
+- [ ] **T7. JPA entities + adapters**
+  - **Outcome :** adapters link / config / outbox / idempotency ;
+    MAJ `dossier.current_workflow_link_id` à confirm ; clear quand lien
+    terminé (actif seulement).
   - **Depends on :** T5, T6
-  - **Validation :** IT round-trip + contrainte unique.
+  - **Validation :** IT round-trip + contrainte unique + idempotency save/get.
   - **Tests liés :** IT Persistence.
 
-- [ ] **T8. Activer Flowable + smoke BPMN classpath**
-  - **Outcome :** exclusions Flowable retirées (garder ce qui doit l’être) ;
-    yaml async executor ; process smoke ; boot IT vert.
+- [ ] **T8. Activer Flowable + DD-SMOKE BPMN**
+  - **Outcome :** exclusions Flowable process retirées autant que nécessaire ;
+    yaml async executor ; `processes/smoke-process.bpmn20.xml`
+    (`smokeProcess` : userTask → delegate statut terminal → end) ; boot IT.
   - **Depends on :** T6
-  - **Validation :** contexte Spring + start RuntimeService en IT.
+  - **Validation :** contexte Spring + RuntimeService start IT.
   - **Tests liés :** IT Flowable smoke.
 
-### M3 — Use cases & relais
+### M3 — Use cases & jobs
 
-- [ ] **T9. `AttachWorkflowUseCaseImpl` (+ history + abortReserved)**
-  - **Outcome :** reserve / reserveOrResume / confirmStarted / abortReserved /
-    getHistory ; statut initial ; sequence ; collision ; allowedStatuses.
+- [ ] **T9. `AttachWorkflowUseCaseImpl` + history**
+  - **Outcome :** reserve (allowedStatuses + initial + sequence) ;
+    reserveOrResume ; confirmStarted ; abortReserved ; getHistory ;
+    collision → exception.
   - **Depends on :** T5, T7, T2
   - **Validation :** unit + IT.
   - **Tests liés :** Unit AttachWorkflow ; IT Persistence.
 
-- [ ] **T10. OutboxRelayScheduler + ReservedReconcileJob + purge**
-  - **Outcome :** relais retry/DLQ ; D-ORPHAN (businessKey=linkId) ; purge
-    PROCESSED.
-  - **Depends on :** T4, T7, T8, T9
-  - **Validation :** unit + IT relais/orphan.
+- [ ] **T10. OutboxRelay + ReservedReconcileJob + purge**
+  - **Outcome :** relais DD-OUTBOX (retry / DEAD / idempotence rejeu) ;
+    orphan DD-BKEY/D-ORPHAN ; purge PROCESSED 7d.
+  - **Depends on :** T4, T7, T8, T9, `WorkflowEnginePort` (T11 peut fournir
+    l’adaptateur en parallèle contrôlée — sinon stub port en unit T10).
+  - **Validation :** unit + IT invoke directe (pas de sleep flaky).
   - **Tests liés :** Unit OutboxRelay ; IT Relais ; Unit/IT orphan.
 
-- [ ] **T11. ManualStartOrchestrator + Complete + delegates (DD-TX)**
-  - **Outcome :** orchestrateur sync D-FAIL/D-VARS/D-DOSSIER-STATUS/D-IDEM ;
-    `WorkflowEnginePort` Flowable ; `CompleteTaskUseCaseImpl` ;
-    `UpdateWorkflowLinkStatusTask` (+ `UpdateDossierStatusTask` mince) ;
-    events sealed.
-  - **Depends on :** T3, T8, T9, T4
-  - **Validation :** IT smoke start/complete + compensation.
-  - **Tests liés :** IT Flowable smoke ; Unit UpdateStatus ; Unit orchestrator.
+- [ ] **T11. ManualStartOrchestrator + Complete + delegates + DD-STUBS**
+  - **Outcome :** orchestrateur DD-TX / D-FAIL / D-VARS / D-IDEM /
+    D-DOSSIER-STATUS ; adaptateur Flowable `WorkflowEnginePort` ;
+    `CompleteTaskUseCaseImpl` ; `UpdateWorkflowLinkStatusTask` +
+    `UpdateDossierStatusTask` mince ; publisher sealed ; **suppression
+    legacy in-memory** de `DomainConfig` (DD-STUBS).
+  - **Depends on :** T3, T8, T9, T4, T7
+  - **Validation :** IT smoke start/complete/compensate ; DomainConfig sans
+    InMemory*.
+  - **Tests liés :** Unit orchestrator ; IT Flowable smoke ; Unit UpdateStatus.
 
 ### M4 — API REST
 
-- [ ] **T12. Controllers dossier workflows + tasks + configs**
-  - **Outcome :** surface API requirements (POST/GET workflows, complete
-    task EDIT, POST/PATCH/GET workflow-type-configs) ; CSRF/session ;
-    ACL type ; ProblemDetail 409 collision ; pas d’enqueue outbox public.
+- [ ] **T12. Controllers + authz + Idempotency-Key**
+  - **Outcome :** POST/GET `/api/dossiers/{id}/workflows` (EDIT/VIEW,
+    header Idempotency-Key **requis** sur POST) ; POST
+    `/api/workflow-tasks/{taskId}/complete` (EDIT) ; POST/PATCH/GET
+    `/api/workflow-type-configs` ; ProblemDetail 400/403/404/409 ; CSRF ;
+    pas d’enqueue outbox.
   - **Depends on :** T9, T11, T2
   - **Validation :** MockMvc OIDC.
-  - **Tests liés :** IT API MockMvc.
+  - **Tests liés :** IT API MockMvc (+ Idempotency-Key / reserved vars).
 
 ### M5 — Preuves & docs
 
-- [ ] **T13. Suite tests complète + régressions**
-  - **Outcome :** tous scénarios testing doc cochables ; Jacoco ≥ 80 % ;
-    ArchUnit ; dossiers/auth verts.
+- [ ] **T13. Suite tests + régressions**
+  - **Outcome :** scenarios testing doc verts ; Jacoco ≥ 80 % ; ArchUnit ;
+    dossiers/auth non régressés.
   - **Depends on :** T8–T12
-  - **Validation :** `./mvnw test` (ou équivalent projet).
+  - **Validation :** `./mvnw test` (ou `verify` projet).
   - **Tests liés :** tous.
 
-- [ ] **T14. Doc implementation + follow-ups DEFERRED**
-  - **Outcome :** notes d’impl ; non-goals connecteurs/UI/visu rappelés ;
-    chemins config outbox.
+- [ ] **T14. Doc implementation + follow-ups**
+  - **Outcome :** notes d’impl (TX, businessKey, yaml) ; rappel non-goals
+    connecteurs/UI/visu ; pointer DEFERRED.
   - **Depends on :** T13
   - **Validation :** relecture.
   - **Tests liés :** —
@@ -143,36 +171,46 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 **What needs to happen in what order?**
 
 ```text
-T1–T5 (domaine) → T6–T8 (infra Flowable) → T9–T11 (usecases/relais) → T12 (API) → T13–T14
+T1,T2,T4 (domaine) → T5 → T6 → T7,T8
+                ↘ T3 (events ; DD-STUBS finalisé dans T11)
+T7,T8,T5 → T9 → T10∥T11 → T12 → T13 → T14
 ```
 
-- Bloqué par feature `connecteurs` : **non** — producteur outbox seed/API suffit.
-- Suites dossiers doivent rester vertes (partage schéma / ACL).
+- **Next 3 tasks (phase 5) :** T1 → T2 → T4 (puis T5).
+- Risque sequencing : ne pas supprimer legacy DomainConfig avant T11.
+- Pas de dépendance `connecteurs`.
 
 ## Risks & Mitigation
 
 | Risque | Mitigation |
 |---|---|
-| Ordre init Liquibase vs Flowable Boot 4 | IT boot tôt (T8) ; ajuster config si collision |
-| Index partiel H2 vs PG | MODE=PostgreSQL ; doc smoke PG différé |
-| Périmètre trop large (UI Flowable, connecteurs) | Non-goals stricts requirements |
-| Flaky scheduler tests | Invocation directe du relais |
+| Liquibase vs schema Flowable Boot 4 | T8 tôt ; ajuster init si collision |
+| Index partiel H2 | MODE=PostgreSQL ; doc écart si besoin |
+| DomainConfig cassé mi-parcours | DD-STUBS final uniquement en T11 |
+| Flaky `@Scheduled` | invoke directe relais/orphan en tests |
+| Périmètre UI/connecteurs | non-goals requirements |
 
 ## Resources Needed
 
-- Analyse `05` / `04`, décisions 6/7/11/13/16/17/20/27
-- Worktree `.worktrees/feature-workflow-engine`
-- Maven Wrapper + H2 test
+- Docs requirements/design/testing `reviewed`/`draft`
+- Analyse `05` / `04` ; décisions 6/7/11/13/16/17/20/27
+- Worktree `.worktrees/feature-workflow-engine` ; `./mvnw`
 
 ## Traceability testing → tasks
 
 | Scénario testing | Tasks |
 |---|---|
-| Attach reserve/resume/collision | T9, T1 |
-| Config / statut / outcome | T2, T11 |
-| Outbox relay policies | T10, T4 |
-| Persistence + index | T6, T7 |
-| Flowable smoke | T8, T11 |
-| API MockMvc | T12 |
-| Events sealed | T3 |
-| Régression Jacoco/ArchUnit | T13 |
+| Attach reserve/resume/collision/abort | T1, T9 |
+| Config / allowedStatuses / onStart / outcome | T2, T9, T11 |
+| Outbox relay policies | T4, T10 |
+| D-ORPHAN reconcile | T10, T8 (BKEY) |
+| ManualStart DD-TX / D-FAIL / D-IDEM / D-VARS | T4, T11, T12 |
+| Persistence + index + idempotency table | T6, T7 |
+| Flowable smoke + delegate | T8, T11 |
+| Complete task + reserved keys | T11, T12 |
+| API MockMvc + Idempotency-Key | T12 |
+| Events sealed + DD-STUBS DomainConfig | T3, T11, T13 |
+| Régression Jacoco/ArchUnit/dossiers/auth | T13 |
+
+**Couverture :** chaque section de
+`docs/ai/testing/2026-07-31-feature-workflow-engine.md` mappe ≥ 1 tâche.

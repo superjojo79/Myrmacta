@@ -87,7 +87,7 @@ des instances Flowable et un historique d’exécutions.
 
 | Méthode | Path | Authz |
 |---|---|---|
-| POST | `/api/dossiers/{id}/workflows` | **D-AUTHZ = option 3** : `EDIT` sur le type (ou bypass `TENANT_ADMIN` / `WORKFLOW_ADMIN`) — reserve→Flowable→confirm **synchrone** ; permission dédiée `START_WORKFLOW` éventuelle = TODO 19 (hors V1) |
+| POST | `/api/dossiers/{id}/workflows` | **D-AUTHZ = option 3** : `EDIT` sur le type (ou bypass `TENANT_ADMIN` / `WORKFLOW_ADMIN`) — reserve→Flowable→confirm **synchrone** ; permission dédiée `START_WORKFLOW` éventuelle = TODO 19 (hors V1). **D-IDEM = option 2** : header `Idempotency-Key` (ou équivalent) requis pour les mutateurs start — même clé + même dossier → même lien sans second start ; clé différente pendant actif → 409 |
 | GET | `/api/dossiers/{id}/workflows` | `VIEW` (ou bypass) — historique trié `sequence` |
 | POST | `/api/workflow-tasks/{taskId}/complete` | `EDIT` sur le type du dossier lié (ou bypass) ; body variables |
 | POST | `/api/workflow-type-configs` | `TENANT_ADMIN` ou `WORKFLOW_ADMIN` |
@@ -262,6 +262,8 @@ V1 (décision n° 11 documentée).
   `WorkflowTypeConfig.allowedDossierStatuses` ; liste obligatoire non vide à
   la création de config ; défaut smoke recommandé
   `{OUVERT, EN_COURS, SUSPENDU}` (figé en design).
+- A8 / **D-ORPHAN** — option 2 : réconciliation expire+reprise ; défaut timeout
+  5 min ; corrélation instance / annulation ORPHAN_TIMEOUT.
 
 ## Questions & Open Items
 **What do we still need to clarify?**
@@ -277,6 +279,7 @@ V1 (décision n° 11 documentée).
 | Q7 | Chaînage N→N+1 / liste tâches | **Différé** — non-goals |
 | Q8 | Qui peut POST start ? | **Clos** — D-AUTHZ option 3 (EDIT V1) |
 | Q9 | Statuts dossier autorisant le start ? | **Clos** — D-STATUS option 3 (par config) |
+| Q10 | RESERVED orphelins | **Clos** — D-ORPHAN option 2 (reprise, T=5 min) |
 
 Aucun item bloquant ouvert pour passer en revue design.
 

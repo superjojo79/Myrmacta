@@ -123,21 +123,18 @@ sequenceDiagram
   end
 ```
 
-**Proposition DD-TX (recommandée) :** 2 (ou 3) transactions applicatives
-distinctes — **jamais** `Flowable.start` dans la même TX JPA que `reserve` —
-car Flowable gère ses propres commits `ACT_*`.
+**DD-TX acté :** transactions applicatives distinctes — **jamais**
+`Flowable.start` dans la même TX JPA que `reserve` (Flowable commit `ACT_*`
+séparément).
 
 | Étape | TX | Contenu |
 |---|---|---|
-| 1 | TX1 | `reserve` + validations (config, ACL déjà au controller, allowedStatuses) — **commit** |
-| 2 | hors TX JPA | `RuntimeService.start…` avec `businessKey = linkId` |
-| 3a | TX2 | `confirmStarted` + enregistrement idempotency + `onStartDossierStatus?` |
+| 1 | TX1 | `reserve` + validations (config, ACL controller, allowedStatuses) — **commit** |
+| 2 | hors TX JPA | `RuntimeService.start…` avec **`businessKey = linkId`** (**DD-BKEY** acté) |
+| 3a | TX2 | `confirmStarted` + idempotency + `onStartDossierStatus?` |
 | 3b | TX2b | compensation `endedAt` + `ORPHAN_START_FAILED` |
 
-Alternatives non retenues a priori : TX unique (risque instance sans lien) ;
-tout laisser à D-ORPHAN sans compensation (UX 409 prolongé).
-
-> **Question ouverte phase 3 :** confirmer **DD-TX** ci-dessus (oui / variante).
+Écartées : TX unique ; outbox forcée sur API manuelle (contre D-START).
 
 ### Outbox + relais (non-humain)
 
@@ -278,8 +275,8 @@ profit Flowable + link.
 | Id | Choix | Statut |
 |---|---|---|
 | D-START…D-FAIL | Voir requirements | **Acté** phase 2 |
-| **DD-TX** | reserve commit → Flowable.start → confirm/compensate | **Proposition — à confirmer** |
-| DD-BKEY | `businessKey = dossierWorkflowLinkId` (UUID string) | Proposé (sert D-ORPHAN) |
+| **DD-TX** | reserve commit → Flowable.start hors TX → confirm/compensate | **Acté** (opt. 2) |
+| DD-BKEY | `businessKey = dossierWorkflowLinkId` (UUID string) | **Question ouverte** |
 | DD-IDEM | Table `workflow_idempotency` ; TTL ≥ reserve-timeout | Proposé |
 | DD-SMOKE | `smokeProcess` classpath + userTask + delegate statut | Proposé |
 | DD-OUTBOX | batch 20, max-attempts 5, poll 1s, retention 7d | Proposé (Q3 req) |
@@ -342,8 +339,9 @@ profit Flowable + link.
 
 | # | Item | Disposition |
 |---|---|---|
-| DD-TX | Frontières transactionnelles start sync | **Question ouverte** (recommandation ci-dessus) |
-| DD-BKEY / DD-IDEM / DD-SMOKE / DD-OUTBOX | Détails techniques | Proposés — confirmés avec DD-TX ou ajustés |
+| DD-TX | Frontières TX start sync | **Clos** — option 2 |
+| DD-BKEY | Corrélation instance ↔ link | **Question ouverte** |
+| DD-IDEM / DD-SMOKE / DD-OUTBOX / DD-STUBS | Détails techniques | Proposés |
 
 ## References
 

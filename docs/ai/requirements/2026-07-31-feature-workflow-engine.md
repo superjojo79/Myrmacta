@@ -67,8 +67,11 @@ des instances Flowable et un historique d’exécutions.
     + relais — jamais de start Flowable dans la TX producteur.
   - **Producteur outbox V1** : port/repository pour **tests / seed** + contrat
     prêt pour `connecteurs`. **Pas** d’endpoint public d’enqueue.
-  - **Réconciliation des RESERVED orphelins** : politique obligatoire (timeout
-    + cleanup / reprise) — détail chiffré à figer (question suivante / design).
+  - **Réconciliation RESERVED (**D-ORPHAN = option 2**)** : après timeout
+    `app.workflow.reserve-timeout` (défaut **5 min**), job de reprise —
+    retente `start+confirm` si pas d’instance ; si instance corrélée trouvée →
+    `confirmStarted` ; sinon termine le lien (`endedAt`,
+    `endReason=ORPHAN_TIMEOUT`) et libère le dossier.
 - Aligner `WorkflowEvent` sur l’**interface scellée** (décision n° 6) :
   `Started` / `Completed` / `Failed` ; publisher générique ; adaptateur
   in-memory ou no-op acceptable en V1 (notifications = feature séparée).
@@ -255,6 +258,10 @@ V1 (décision n° 11 documentée).
   (hint UI seulement).
 - A6 — « RESERVED / ACTIVE / TERMINATED » = glossaire dérivé des colonnes,
   pas un champ `state` supplémentaire.
+- A7 / **D-STATUS** — option 3 : éligibilité start = `Dossier.status` ∈
+  `WorkflowTypeConfig.allowedDossierStatuses` ; liste obligatoire non vide à
+  la création de config ; défaut smoke recommandé
+  `{OUVERT, EN_COURS, SUSPENDU}` (figé en design).
 
 ## Questions & Open Items
 **What do we still need to clarify?**
@@ -269,6 +276,7 @@ V1 (décision n° 11 documentée).
 | Q6 | Lier `processDefinitionKey` à `DossierType.workflowKey` ? | **Clos** — D-KEY option 2 |
 | Q7 | Chaînage N→N+1 / liste tâches | **Différé** — non-goals |
 | Q8 | Qui peut POST start ? | **Clos** — D-AUTHZ option 3 (EDIT V1) |
+| Q9 | Statuts dossier autorisant le start ? | **Clos** — D-STATUS option 3 (par config) |
 
 Aucun item bloquant ouvert pour passer en revue design.
 

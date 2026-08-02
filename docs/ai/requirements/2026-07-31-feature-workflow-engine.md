@@ -54,7 +54,9 @@ des instances Flowable et un historique d’exécutions.
   `Dossier.currentWorkflowLinkId`.
 - Livrer **`WorkflowTypeConfig`** + `WorkflowStatusDefinition` /
   `StatusOutcome` ; validation des codes de statut métier du lien ; statut
-  `initial` à la réservation.
+  `initial` à la réservation ; **`allowedDossierStatuses[]`**
+  (**D-STATUS = option 3**) — le start (API ou relais) refuse si
+  `Dossier.status` ∉ liste (400/409 métier).
 - Livrer l’**outbox transactionnel + relais** (décisions n° 7 / 16) :
   table `outbox_event`, `OutboxStatus`, `TriggerOutboxPayload`, scheduler,
   idempotence `event_id`, retry / dead-letter / purge `PROCESSED`.
@@ -245,7 +247,9 @@ V1 (décision n° 11 documentée).
 - A3 / **D-START** — Hybride option 3 : manuel HTTP **synchrone** ; outbox =
   seul chemin pour triggers non-humains (+ seed/tests) ; **sans** API enqueue
   publique ; réconciliation des RESERVED orphelins **obligatoire**.
-- A4 — Accès start/history/complete via ACL du `DossierType` du dossier.
+- A4 / **D-AUTHZ** — option 3 : start manuel = `EDIT` type (bypass admins) en
+  V1 ; raffinement permission `START_WORKFLOW` = TODO 19, hors tranche.
+  History = `VIEW` ; complete task = `EDIT` (même base ACL type).
 - A5 / **D-KEY** — option 2 : `processDefinitionKey` **requis** ; doit exister
   en `WorkflowTypeConfig` ; **pas** de contrainte vs `DossierType.workflowKey`
   (hint UI seulement).
@@ -264,6 +268,7 @@ V1 (décision n° 11 documentée).
 | Q5 | Métriques Micrometer âge outbox | **Différé** TODO 29 |
 | Q6 | Lier `processDefinitionKey` à `DossierType.workflowKey` ? | **Clos** — D-KEY option 2 |
 | Q7 | Chaînage N→N+1 / liste tâches | **Différé** — non-goals |
+| Q8 | Qui peut POST start ? | **Clos** — D-AUTHZ option 3 (EDIT V1) |
 
 Aucun item bloquant ouvert pour passer en revue design.
 

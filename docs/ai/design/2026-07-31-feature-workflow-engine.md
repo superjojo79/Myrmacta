@@ -200,16 +200,19 @@ flowable:
   # lock / acquire : valeurs analyse 05 ; affiner après smoke IT
 ```
 
-### Smoke BPMN
+### Smoke BPMN — **DD-SMOKE = option 1** (acté)
 
 - Fichier classpath : `processes/smoke-process.bpmn20.xml`
 - Key : `smokeProcess`
-- Flux : start → userTask `smokeTask` → serviceTask `updateWorkflowLinkStatusTask`
-  (statut terminal config) → end
-- Variables injectées : `dossierId`, `dossierWorkflowLinkId` (+ `tenantId` si utile lecture seule)
+- Flux : start → **userTask** `smokeTask` → **serviceTask**
+  `updateWorkflowLinkStatusTask` (variable `targetWorkflowStatus` = code
+  terminal config, ex. `COMPLETED`) → end
+- Variables injectées plateforme : `dossierId`, `dossierWorkflowLinkId`
+  (+ `tenantId` en lecture seule si utile)
+- Pas d’async executor requis sur ce chemin pour l’IT (évite waits flaky)
 
 Seed config IT : `allowedDossierStatuses = [OUVERT, EN_COURS, SUSPENDU]`,
-un statut `initial`, un terminal `COMPLETED`.
+un statut `initial`, un terminal `COMPLETED` (`outcome=COMPLETED`).
 
 ---
 
@@ -344,8 +347,9 @@ profit Flowable + link.
 | DD-TX | Frontières TX start sync | **Clos** — option 2 |
 | DD-BKEY | Corrélation instance ↔ link | **Clos** — businessKey = linkId |
 | DD-IDEM | Persistance Idempotency-Key | **Clos** — table `workflow_idempotency` |
-| DD-OUTBOX | Défauts polling / retry / rétention | **Question ouverte** |
-| DD-SMOKE / DD-STUBS | Smoke BPMN + retrait stubs | Proposés |
+| DD-OUTBOX | Défauts polling / retry / rétention | **Clos** — profil proposé (opt. 1) |
+| DD-SMOKE | Process BPMN d’acceptation IT | **Question ouverte** |
+| DD-STUBS | Retrait stubs in-memory prod | Proposé (recommandé oui) |
 
 ## References
 

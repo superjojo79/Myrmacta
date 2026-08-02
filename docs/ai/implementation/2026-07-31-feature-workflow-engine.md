@@ -42,7 +42,8 @@ description: Technical implementation notes, patterns, and code guidelines
   - Manual start checks idempotency before reserving, reserves, starts Flowable with `businessKey = linkId`, confirms and records idempotency, or aborts with `ORPHAN_START_FAILED`.
   - Reserved variables (`dossierId`, `dossierWorkflowLinkId`, `tenantId`) are rejected for client-provided variables and injected by the platform.
   - `UpdateWorkflowLinkStatusUseCaseImpl` terminates links for terminal outcomes and clears `Dossier.currentWorkflowLinkId`.
-  - Legacy `StartWorkflowUseCase` / `WorkflowRepository` beans are no longer exposed by production config.
+  - Legacy `StartWorkflowUseCase` / `WorkflowInstance` / `InMemoryWorkflowRepository`
+    removed from `src/main` (DD-STUBS).
 - T12 API:
   - `POST /api/dossiers/{id}/workflows` requires `Idempotency-Key`, EDIT ACL, returns 201 on first start and 200 on idempotency replay.
   - `GET /api/dossiers/{id}/workflows` requires VIEW ACL.

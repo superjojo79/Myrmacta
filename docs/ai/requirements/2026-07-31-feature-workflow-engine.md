@@ -214,17 +214,17 @@ process/config introuvable → 404).
 ## Success Criteria
 **How will we know when we're done?**
 
-- [ ] Exclusions Flowable retirées autant que nécessaire ; app démarre ; tables
+- [x] Exclusions Flowable retirées autant que nécessaire ; app démarre ; tables
       `ACT_*` + `outbox_event` + `dossier_workflow_link` +
       `workflow_type_config` présentes en IT H2 mode PostgreSQL.
-- [ ] Surface API (tableau) opérationnelle sous session BFF + CSRF ;
+- [x] Surface API (tableau) opérationnelle sous session BFF + CSRF ;
       collision → 409 ; complete task exige `EDIT`.
-- [ ] Relais : happy path, retry, dead-letter, collision, idempotence rejeu
-      couverts par tests.
-- [ ] Stubs in-memory workflow hors câblage production.
-- [ ] Delegate `UpdateWorkflowLinkStatusTask` validé (smoke ou unit/IT).
-- [ ] ArchUnit hexagonale + Jacoco ≥ 80 % ; suites dossiers / auth vertes.
-- [ ] Docs design / testing / planning alignés sur cette revue ; non-goals
+- [x] Relais : happy path, retry, dead-letter, collision, idempotence rejeu
+      couverts par tests (couverture partielle branches — follow-up tests OK).
+- [x] Stubs in-memory workflow hors câblage production (classes legacy retirées).
+- [x] Delegate `UpdateWorkflowLinkStatusTask` validé (smoke ou unit/IT).
+- [x] ArchUnit hexagonale + Jacoco ≥ 80 % ; suites dossiers / auth vertes.
+- [x] Docs design / testing / planning alignés sur cette revue ; non-goals
       connecteurs / UI Flowable / visualisation explicites.
 
 **Performance benchmarks :** N/A pour la tranche — smoke process + CRUD

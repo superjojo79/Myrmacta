@@ -2,7 +2,8 @@
 phase: design
 title: System Design & Architecture
 description: Define the technical architecture, components, and data models
-status: in-review
+status: reviewed
+reviewed: 2026-08-02
 created: 2026-08-02
 updated: 2026-08-02
 ---
@@ -252,9 +253,11 @@ WorkflowEnginePort (start / completeTask / findByBusinessKey) — adapte Flowabl
 WorkflowEventPublisher.publish(WorkflowEvent)
 ```
 
-Stubs `InMemoryWorkflowRepository` / publisher typé `WorkflowStartedEvent` :
-retirés du câblage prod ; `WorkflowInstance` in-memory déprécié / retiré au
-profit Flowable + link.
+**DD-STUBS = option 1 (acté) :** retrait du câblage prod **et** suppression
+(ou confinement strict `src/test`) de `InMemoryWorkflowRepository`,
+`InMemoryWorkflowEventPublisher`, `StartWorkflowUseCase` /
+`WorkflowInstance` legacy. Source de vérité = Flowable +
+`DossierWorkflowLink` + `WorkflowEnginePort`.
 
 ---
 
@@ -282,10 +285,9 @@ profit Flowable + link.
 | **DD-TX** | reserve commit → Flowable.start hors TX → confirm/compensate | **Acté** (opt. 2) |
 | **DD-BKEY** | `businessKey = dossierWorkflowLinkId` (UUID string) | **Acté** (opt. 1) |
 | **DD-IDEM** | Table dédiée `workflow_idempotency` ; TTL ≥ reserve-timeout | **Acté** (opt. 1) |
-| DD-SMOKE | `smokeProcess` classpath + userTask + delegate statut | Proposé |
 | **DD-OUTBOX** | batch 20, max-attempts 5, poll 1s, retention 7d | **Acté** (opt. 1) |
-| DD-STUBS | Retrait câblage in-memory prod | Proposé |
-| DD-SMOKE | `smokeProcess` classpath + userTask + delegate statut | **Question ouverte** |
+| **DD-SMOKE** | `smokeProcess` : userTask → delegate statut terminal → end | **Acté** (opt. 1) |
+| **DD-STUBS** | Retrait prod + suppression modèle in-memory legacy | **Acté** (opt. 1) |
 | Engine | Flowable 8 CE | Acté analyse |
 | Concurrence | Index unique partiel | Acté analyse |
 
@@ -348,8 +350,21 @@ profit Flowable + link.
 | DD-BKEY | Corrélation instance ↔ link | **Clos** — businessKey = linkId |
 | DD-IDEM | Persistance Idempotency-Key | **Clos** — table `workflow_idempotency` |
 | DD-OUTBOX | Défauts polling / retry / rétention | **Clos** — profil proposé (opt. 1) |
-| DD-SMOKE | Process BPMN d’acceptation IT | **Question ouverte** |
-| DD-STUBS | Retrait stubs in-memory prod | Proposé (recommandé oui) |
+| DD-SMOKE | Process BPMN d’acceptation IT | **Clos** — opt. 1 (userTask + delegate) |
+| DD-STUBS | Retrait stubs in-memory prod | **Clos** — opt. 1 (suppression legacy) |
+
+### Décisions design actées (phase 3)
+
+| Id | Choix |
+|---|---|
+| DD-TX | Split TX : reserve → start hors TX → confirm/compensate |
+| DD-BKEY | `businessKey = linkId` |
+| DD-IDEM | Table `workflow_idempotency` |
+| DD-OUTBOX | batch 20 / max-attempts 5 / poll 1s / retention 7d |
+| DD-SMOKE | userTask → delegate statut terminal → end |
+| DD-STUBS | Suppression squelette in-memory (prod + modèle legacy) |
+
+**Phase 3 close** — design `reviewed` (2026-08-02). Aucun item design bloquant ouvert.
 
 ## References
 

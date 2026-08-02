@@ -7,6 +7,8 @@ created: 2026-08-02
 updated: 2026-08-02
 ---
 
+<!-- Aligned with design reviewed (DD-TX…DD-STUBS) -->
+
 # Project Planning & Task Breakdown
 
 ## Milestones
@@ -27,23 +29,25 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 - [ ] **T1. `DossierWorkflowLink` + exceptions métier**
   - **Outcome :** record domaine ; `WorkflowAlreadyRunningException` ; helpers
-    ended/active.
+    ended/active / abortReserved reasons.
   - **Depends on :** —
   - **Validation :** compile ; ArchUnit pur.
-  - **Tests liés :** Unit Attach (T8).
+  - **Tests liés :** Unit Attach (T9).
 
 - [ ] **T2. `WorkflowTypeConfig` + `StatusOutcome` + validation codes**
-  - **Outcome :** records/enums ; règle un `initial` ; reject unknown status.
+  - **Outcome :** records/enums ; un `initial` ; `allowedDossierStatuses` non
+    vide ; `onStartDossierStatus?` ; reject unknown status.
   - **Depends on :** —
   - **Validation :** unit validation.
   - **Tests liés :** Unit WorkflowTypeConfig / UpdateStatus.
 
-- [ ] **T3. `WorkflowEvent` sealed + publisher générique**
-  - **Outcome :** Started/Completed/Failed ; remplacer signature
-    `publish(WorkflowStartedEvent)` ; migrer stubs/tests existants.
+- [ ] **T3. `WorkflowEvent` sealed + publisher générique + DD-STUBS**
+  - **Outcome :** Started/Completed/Failed ; retirer câblage et modèle
+    in-memory legacy (`StartWorkflowUseCase` / `WorkflowInstance` /
+    InMemory*) hors tests.
   - **Depends on :** —
-  - **Validation :** unit switch exhaustif ; tests StartWorkflow adaptés.
-  - **Tests liés :** Unit WorkflowEvent sealed.
+  - **Validation :** unit switch exhaustif ; DomainConfig sans stubs prod.
+  - **Tests liés :** Unit WorkflowEvent sealed ; compile DomainConfig.
 
 - [ ] **T4. Modèle outbox + ports + idempotency + config étendue**
   - **Outcome :** `OutboxStatus`, `TriggerOutboxPayload`, `OutboxRepository` ;
@@ -86,27 +90,28 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M3 — Use cases & relais
 
-- [ ] **T9. `AttachWorkflowUseCaseImpl` (+ history)**
-  - **Outcome :** reserve / reserveOrResume / confirmStarted / getHistory ;
-    statut initial ; sequence ; collision.
+- [ ] **T9. `AttachWorkflowUseCaseImpl` (+ history + abortReserved)**
+  - **Outcome :** reserve / reserveOrResume / confirmStarted / abortReserved /
+    getHistory ; statut initial ; sequence ; collision ; allowedStatuses.
   - **Depends on :** T5, T7, T2
   - **Validation :** unit + IT.
   - **Tests liés :** Unit AttachWorkflow ; IT Persistence.
 
-- [ ] **T10. OutboxRelayScheduler + politiques retry/DLQ/purge**
-  - **Outcome :** `processOne` ; idempotence ; markProcessed uniquement succès ;
-    job purge PROCESSED.
+- [ ] **T10. OutboxRelayScheduler + ReservedReconcileJob + purge**
+  - **Outcome :** relais retry/DLQ ; D-ORPHAN (businessKey=linkId) ; purge
+    PROCESSED.
   - **Depends on :** T4, T7, T8, T9
-  - **Validation :** unit + IT relais.
-  - **Tests liés :** Unit OutboxRelay ; IT Relais.
+  - **Validation :** unit + IT relais/orphan.
+  - **Tests liés :** Unit OutboxRelay ; IT Relais ; Unit/IT orphan.
 
-- [ ] **T11. Start/Complete via Flowable + delegates statut**
-  - **Outcome :** adaptateur moteur ; `CompleteTaskUseCaseImpl` ;
-    `UpdateWorkflowLinkStatusTask` (+ dossier status si trivial) ;
-    publication events.
-  - **Depends on :** T3, T8, T9
-  - **Validation :** IT smoke complete task + delegate.
-  - **Tests liés :** IT Flowable smoke ; Unit UpdateStatus.
+- [ ] **T11. ManualStartOrchestrator + Complete + delegates (DD-TX)**
+  - **Outcome :** orchestrateur sync D-FAIL/D-VARS/D-DOSSIER-STATUS/D-IDEM ;
+    `WorkflowEnginePort` Flowable ; `CompleteTaskUseCaseImpl` ;
+    `UpdateWorkflowLinkStatusTask` (+ `UpdateDossierStatusTask` mince) ;
+    events sealed.
+  - **Depends on :** T3, T8, T9, T4
+  - **Validation :** IT smoke start/complete + compensation.
+  - **Tests liés :** IT Flowable smoke ; Unit UpdateStatus ; Unit orchestrator.
 
 ### M4 — API REST
 

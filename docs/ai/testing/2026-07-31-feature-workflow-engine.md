@@ -58,6 +58,18 @@ updated: 2026-08-02
 ### CompleteTaskUseCase (si logique domaine testable)
 - [ ] Task inexistante → erreur métier
 - [ ] Variables transmises au port moteur
+- [ ] Clés réservées dans variables complete → rejet (aligné D-VARS)
+
+### ManualStartOrchestrator / DD-TX / D-FAIL / D-IDEM
+- [ ] Happy path : reserve→start→confirm → ACTIVE + idempotency row
+- [ ] Replay même `Idempotency-Key` → même link, pas de second start
+- [ ] Start Flowable KO → abortReserved ORPHAN_START_FAILED + erreur API
+- [ ] Clés réservées dans body → 400 avant reserve
+
+### ReservedReconcileJob (D-ORPHAN)
+- [ ] Instance trouvée par businessKey=linkId → confirmStarted
+- [ ] Pas d’instance + retry start OK → confirm
+- [ ] Timeout sans instance → ORPHAN_TIMEOUT, dossier libéré
 
 ## Integration Tests
 **How do we test component interactions?**

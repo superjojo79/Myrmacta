@@ -158,7 +158,7 @@ AttachWorkflowUseCase
 GetDossierWorkflowHistoryUseCase
   getHistory(dossierId) -> List<DossierWorkflowLink>
 
-StartWorkflowUseCase / CompleteTaskUseCase
+CompleteTaskUseCase
 UpdateWorkflowLinkStatusUseCase.update(linkId, status, activityId?)
 
 OutboxRepository
@@ -170,8 +170,19 @@ WorkflowEventPublisher.publish(WorkflowEvent)
 
 ### REST
 
-Voir requirements — DTOs JSON alignés records ; erreurs collision → 409 ;
-validation statut → 400 ; not found dossier/config → 404.
+Aligné requirements (revue phase 2) :
+
+| Méthode | Path | Authz |
+|---|---|---|
+| POST | `/api/dossiers/{id}/workflows` | EDIT (sync reserve→start→confirm) |
+| GET | `/api/dossiers/{id}/workflows` | VIEW |
+| POST | `/api/workflow-tasks/{taskId}/complete` | EDIT sur type du dossier lié |
+| POST/PATCH/GET | `/api/workflow-type-configs…` | mutate : TENANT_ADMIN\|WORKFLOW_ADMIN ; GET : authentifié |
+
+DTOs JSON alignés records. Erreurs : collision → 409 ; statut inconnu → 400 ;
+not found → 404. Pas d’API enqueue outbox. Glossaire lien RESERVED/ACTIVE/
+TERMINATED = dérivé colonnes (`process_instance_id` / `ended_at`), pas d’enum
+`state` (A6).
 
 ## Components & Modules
 

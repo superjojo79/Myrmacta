@@ -2,7 +2,8 @@
 phase: requirements
 title: Requirements & Problem Understanding
 description: Clarify the problem space, gather requirements, and define success criteria
-status: draft
+status: reviewed
+reviewed: 2026-08-02
 created: 2026-08-02
 updated: 2026-08-02
 ---
@@ -40,8 +41,10 @@ des instances Flowable et un historique d’exécutions.
 - Activer **Flowable 8** (`flowable-spring-boot-starter` déjà en `pom.xml`) :
   retrait des exclusions autoconfig Flowable nécessaires au runtime processus ;
   tables `ACT_*` dans le schéma tenant ; `tenantId` = `TenantProperties.id()`.
-- Remplacer le squelette in-memory par un **adaptateur Flowable** pour
-  démarrer une instance et compléter une tâche utilisateur.
+- Remplacer le squelette in-memory : la **source de vérité runtime** devient
+  Flowable + `DossierWorkflowLink`. `StartWorkflowUseCase` /
+  `WorkflowInstance` in-memory sont migrés ou retirés du câblage prod (les
+  tests peuvent garder des fakes).
 - Livrer le domaine / infra **lien dossier↔workflow** :
   `DossierWorkflowLink` (record pur), ports
   `AttachWorkflowUseCase` (`reserve` / `reserveOrResume` / `confirmStarted`),
@@ -51,72 +54,77 @@ des instances Flowable et un historique d’exécutions.
 - Livrer **`WorkflowTypeConfig`** + `WorkflowStatusDefinition` /
   `StatusOutcome` ; validation des codes de statut métier du lien ; statut
   `initial` à la réservation.
-- Livrer l’**outbox transactionnel + relais** (décisions n° 7 / 16) côté
-  consommateur workflow : table `outbox_event`, `OutboxStatus`,
-  `TriggerOutboxPayload`, scheduler de polling, idempotence `event_id`,
-  retry / dead-letter / purge `PROCESSED`.
-- **Producteur outbox minimal** pour cette tranche : un chemin **manuel /
-  API** et un **producteur de test / seed** capable d’écrire
-  `PENDING` sans livrer la feature `connecteurs` (le
-  `ConnectorTriggerRuntime` reste hors scope).
+- Livrer l’**outbox transactionnel + relais** (décisions n° 7 / 16) :
+  table `outbox_event`, `OutboxStatus`, `TriggerOutboxPayload`, scheduler,
+  idempotence `event_id`, retry / dead-letter / purge `PROCESSED`.
+- **Producteur outbox V1** : port/repository utilisable en **tests / seed**
+  (et prêt pour `connecteurs`). **Pas** d’endpoint public d’enqueue. Le
+  démarrage manuel HTTP reste **synchrone** (A3).
 - Aligner `WorkflowEvent` sur l’**interface scellée** (décision n° 6) :
   `Started` / `Completed` / `Failed` ; publisher générique ; adaptateur
   in-memory ou no-op acceptable en V1 (notifications = feature séparée).
-- Ports : `StartWorkflowUseCase`, `CompleteTaskUseCase`,
-  `UpdateWorkflowLinkStatusUseCase` ; delegates Flowable
-  `UpdateWorkflowLinkStatusTask` (+ `UpdateDossierStatusTask` si le câblage
-  dossier est trivial depuis variables).
-- API REST minimale (session BFF + CSRF) :
-  démarrage manuel sur dossier, historique des liens, complétion de tâche,
-  CRUD / lecture `WorkflowTypeConfig` pour admin.
-- Tests : unitaires domaine + relais (idempotence, collision, dead-letter) ;
-  IT H2 mode PostgreSQL (Liquibase outbox + links + smoke Flowable) ;
-  non-régression ArchUnit / Jacoco / auth / dossiers.
+- Ports : `CompleteTaskUseCase`, `UpdateWorkflowLinkStatusUseCase` ;
+  delegate Flowable **`UpdateWorkflowLinkStatusTask` (requis)** ;
+  `UpdateDossierStatusTask` **inclus** s’il se limite à appeler le use case
+  statut dossier existant depuis variables process (sinon follow-up).
+- API REST minimale (session BFF + CSRF) — tableau ci-dessous.
+- Tests : unitaires domaine + relais ; IT H2 mode PostgreSQL (Liquibase +
+  smoke Flowable) ; non-régression ArchUnit / Jacoco / auth / dossiers.
 
 ### Surface API (acceptation)
 
 | Méthode | Path | Authz |
 |---|---|---|
-| POST | `/api/dossiers/{id}/workflows` | `EDIT` type (ou bypass admin) — démarre via reserve→Flowable→confirm |
+| POST | `/api/dossiers/{id}/workflows` | `EDIT` sur le type (ou bypass admin) — reserve→Flowable→confirm **synchrone** |
 | GET | `/api/dossiers/{id}/workflows` | `VIEW` (ou bypass) — historique trié `sequence` |
-| POST | `/api/workflow-tasks/{taskId}/complete` | authentifié ; body variables ; contrôle accès dossier lié |
+| POST | `/api/workflow-tasks/{taskId}/complete` | `EDIT` sur le type du dossier lié (ou bypass) ; body variables |
 | POST | `/api/workflow-type-configs` | `TENANT_ADMIN` ou `WORKFLOW_ADMIN` |
-| GET | `/api/workflow-type-configs` | authentifié (admins : tous ; sinon lecture) |
-| GET | `/api/workflow-type-configs/{workflowKey}` | idem |
+| PATCH | `/api/workflow-type-configs/{workflowKey}` | `TENANT_ADMIN` ou `WORKFLOW_ADMIN` |
+| GET | `/api/workflow-type-configs` | authentifié — liste lisible par tout utilisateur authentifié |
+| GET | `/api/workflow-type-configs/{workflowKey}` | authentifié |
+
+**Body `POST …/workflows` :** `processDefinitionKey` (requis) + `variables`
+(optionnel). La clé doit référencer un `WorkflowTypeConfig` existant.
+`DossierType.workflowKey` est un **hint UI** (préremplissage) — **pas** une
+contrainte serveur en V1 (A5).
 
 Mutateurs : CSRF BFF. Anonyme `/api/**` → 401. Erreurs : `ProblemDetail`
-(dont collision workflow actif → 409).
+(collision workflow actif → 409 ; statut métier inconnu → 400 ;
+process/config introuvable → 404).
 
 ### Secondary goals
 
 - Documenter le contrat outbox / `TriggerOutboxPayload` pour `connecteurs`
   (sans implémenter les webhooks).
-- Garder un **processus BPMN de smoke** versionné (classpath) pour IT /
-  démo locale.
+- Un **processus BPMN de smoke** versionné (classpath) pour IT / démo locale.
 - Préserver le chemin d’évolution CDC/Debezium (doc only).
 
 ### Non-goals
 
 - Feature `connecteurs` (HMAC, `ConnectorInstance`, DEK/KEK,
-  `ConnectorTriggerRuntime` complet).
-- Flowable UI Designer / Cockpit embarqués en prod.
-- `visualisation-workflow`, `notifications` (listeners métier riches),
-  `frontend`.
+  `ConnectorTriggerRuntime` complet) et **tout endpoint public d’enqueue
+  outbox**.
+- Flowable UI Designer / Cockpit embarqués.
+- `visualisation-workflow` (liste des tâches, diagrammes), listeners
+  `notifications` riches, `frontend`.
+- `GET` collection des tâches Flowable (complete uniquement par `taskId`).
+- Chaînage automatique `startChainedWorkflowTask` (ServiceTask N→N+1).
 - `DossierElement` / `DossierRelation` / MinIO.
 - Scaling multi-répliques d’un tenant (`FOR UPDATE SKIP LOCKED`, séparation
-  API/worker) — documenté, non implémenté sauf config Flowable par défaut.
+  API/worker) — config async Flowable par défaut seulement.
 - Testcontainers PostgreSQL / tests de charge verrous Flowable (TODO 28).
-- OpenAPI formel ; MDC / métriques Micrometer outbox (TODO 29) au-delà d’un
-  compteur/log minimal acceptable.
+- OpenAPI formel ; métriques Micrometer âge outbox (TODO 29) au-delà de logs
+  structurés minimaux.
 - Chaînes sécu M2M / webhooks (follow-ups auth).
 
 ## Alternatives considérées
 
 | Approche | Trade-off | Verdict |
 |---|---|---|
-| **A — Flowable réel + outbox + `DossierWorkflowLink` (cette tranche)** | Plus large, débloque connecteurs et historique | **Retenue** (alignée décisions 7/16 + DEFERRED) |
-| B — Liens + API manuelle seulement, stubs Flowable | Rapide mais ne retire pas l’exclusion ni ne prouve le moteur | Écartée |
-| C — Démarrage synchrone sans outbox | Simple, réouvre perte au crash (décision 7) | Écartée |
+| **A — Flowable réel + outbox + `DossierWorkflowLink`** | Plus large, débloque connecteurs et historique | **Retenue** (décisions 7/16 + DEFERRED) |
+| B — Liens + API manuelle seulement, stubs Flowable | Rapide mais ne prouve pas le moteur | Écartée |
+| C — Démarrage synchrone sans outbox | Réouvre perte au crash (décision 7) | Écartée |
+| D — Forcer l’API manuelle via outbox aussi | UX plus lente / complexité sans gain V1 | Écartée (A3) |
 
 ## User Stories & Use Cases
 **How will users interact with the solution?**
@@ -126,79 +134,142 @@ Mutateurs : CSRF BFF. Anonyme `/api/**` → 401. Erreurs : `ProblemDetail`
   avec `processInstanceId`.
 - En tant que **utilisateur VIEW**, je consulte l’historique des exécutions
   d’un dossier (`sequence`, statuts métier, dates).
-- En tant que **utilisateur habilité**, je complète une tâche humaine
+- En tant que **utilisateur EDIT** (ou bypass), je complète une tâche humaine
   Flowable avec des variables.
-- En tant que **TENANT_ADMIN / WORKFLOW_ADMIN**, je configure les statuts
-  métier d’un `workflowKey` (`WorkflowTypeConfig`).
-- En tant que **relais outbox**, je consomme les `PENDING`, démarre Flowable
-  de façon idempotente, marque `PROCESSED` ou `DEAD`.
+- En tant que **TENANT_ADMIN / WORKFLOW_ADMIN**, je crée / mets à jour les
+  statuts métier d’un `workflowKey` (`WorkflowTypeConfig`).
+- En tant que **utilisateur authentifié**, je lis les configs de workflow
+  (pour UI / clients).
+- En tant que **relais outbox**, je consomme les `PENDING` (écrits par seed /
+  futurs connecteurs), démarre Flowable de façon idempotente, marque
+  `PROCESSED` ou `DEAD`.
 - En tant que **ops / CI**, je démarre l’app avec Flowable actif sur le schéma
-  tenant sans exclusion bloquante, smoke process OK.
+  tenant, smoke process OK.
 
-### Edge cases
+### Scénarios clés
 
-- Second workflow actif sur le même dossier →
-  `WorkflowAlreadyRunningException` / 409 / dead-letter si via outbox.
-- Rejeu outbox : reprendre lien `RESERVED` ; no-op si déjà `ACTIVE` avec
-  `processInstanceId`.
-- Statut métier inconnu pour le `workflowKey` → rejet.
-- Échecs répétés relais → `DEAD` après plafond `attempts`.
-- Process definition absente → échec relais / API avec message actionnable.
+1. Admin crée `WorkflowTypeConfig` pour `smokeProcess` (statut initial +
+   terminal) → 201.
+2. User EDIT : `POST /api/dossiers/{id}/workflows` avec
+   `processDefinitionKey=smokeProcess` → 200, lien avec `processInstanceId`,
+   `currentWorkflowLinkId` posé.
+3. User VIEW : `GET …/workflows` → historique `sequence` croissante.
+4. Second `POST` pendant lien actif → 409 ProblemDetail.
+5. Complete task smoke → process avance ; delegate peut poser statut métier
+   terminal → `endedAt` renseigné.
+6. Seed outbox `PENDING` → relais démarre instance + `PROCESSED` ; rejeu →
+   idempotent.
+7. Collision via outbox (autre workflow actif) → `DEAD`.
+8. `processDefinitionKey` sans config / process inconnu → 404 (API) ou
+   retry/DEAD (relais).
+9. Boot IT H2 : tables métier + `ACT_*` ; suites dossiers/auth vertes.
+
+### Edge cases & glossaire lien
+
+États techniques du lien (**pas** un enum séparé — dérivés des colonnes) :
+
+| État parlé | Signification |
+|---|---|
+| **RESERVED** | `ended_at IS NULL` et `process_instance_id IS NULL` |
+| **ACTIVE** | `ended_at IS NULL` et `process_instance_id IS NOT NULL` |
+| **TERMINATED** | `ended_at IS NOT NULL` (outcome terminal) |
+
+- Second workflow actif → `WorkflowAlreadyRunningException` / 409 ; via outbox
+  → `DEAD`.
+- Rejeu outbox : reprendre **RESERVED** même dossier+process ; si **ACTIVE**
+  avec `processInstanceId` → `markProcessed` sans second start.
+- Statut métier inconnu pour le `workflowKey` → 400.
+- Échecs répétés relais → `DEAD` après `app.workflow.outbox.max-attempts`.
+- `AccessContext.System` pour relais / delegates (bypass ACL) ; `Service`
+  reste hors endpoints humains.
 
 ## Success Criteria
 **How will we know when we're done?**
 
-- Exclusions Flowable retirées autant que nécessaire ; app démarre ; tables
-  `ACT_*` + `outbox_event` + `dossier_workflow_link` + `workflow_type_config`
-  créées (Liquibase / Flowable) sur H2 mode PostgreSQL en IT.
-- `POST /api/dossiers/{id}/workflows` démarre une instance réelle ; GET
-  historique renvoie le lien ; complete task avance le process smoke.
-- Relais : scénarios unitaires/IT pour happy path, retry, dead-letter,
-  collision, idempotence rejeu.
-- Stubs in-memory workflow retirés du câblage production (tests peuvent
-  garder des fakes ciblés).
-- ArchUnit hexagonale + Jacoco ≥ 80 % non régressés ; suite dossiers / auth
-  verte.
-- Docs design/testing/planning alignés ; non-goals explicites pour
-  connecteurs / UI Flowable / visualisation.
+- [ ] Exclusions Flowable retirées autant que nécessaire ; app démarre ; tables
+      `ACT_*` + `outbox_event` + `dossier_workflow_link` +
+      `workflow_type_config` présentes en IT H2 mode PostgreSQL.
+- [ ] Surface API (tableau) opérationnelle sous session BFF + CSRF ;
+      collision → 409 ; complete task exige `EDIT`.
+- [ ] Relais : happy path, retry, dead-letter, collision, idempotence rejeu
+      couverts par tests.
+- [ ] Stubs in-memory workflow hors câblage production.
+- [ ] Delegate `UpdateWorkflowLinkStatusTask` validé (smoke ou unit/IT).
+- [ ] ArchUnit hexagonale + Jacoco ≥ 80 % ; suites dossiers / auth vertes.
+- [ ] Docs design / testing / planning alignés sur cette revue ; non-goals
+      connecteurs / UI Flowable / visualisation explicites.
+
+**Performance benchmarks :** N/A pour la tranche — smoke process + CRUD
+config ; pas de cible latence formelle. Tuning async / multi-répliques hors
+V1 (décision n° 11 documentée).
 
 ## Constraints & Assumptions
 **What limitations do we need to work within?**
 
+### Technical constraints
+
+- Java 25 · Spring Boot 4.1 · Flowable 8.0.x · Liquibase · BFF déjà livré.
 - Instance **mono-tenant** (décision n° 13) : `TenantProperties.id()` partout ;
   pas de `TenantContext` request-scoped pour le relais / delegates.
 - Domaine pur sans JPA (décision n° 17) ; convention `port/in` + `usecase/*Impl`.
-- Outbox option B (décision n° 16) : producteur connecteurs **hors scope** ;
-  cette tranche livre le **schéma + relais + producteur API/manuel** et un
-  hook/port prêt pour connecteurs.
-- IT sur H2 MODE=PostgreSQL (comme dossiers) ; PG réel hors CI.
-- Jackson 3 défaut Flowable 8 — rester sur le défaut sauf blocage prouvé
-  (`flowable.variable-json-mapper=jackson2` en repli documenté).
+- Outbox option B (décision n° 16) : producteur connecteurs **hors scope**.
+- IT : **H2 MODE=PostgreSQL** ; PG réel hors CI.
+- Jackson 3 défaut Flowable 8 — repli `flowable.variable-json-mapper=jackson2`
+  seulement si blocage prouvé.
 - Ordre Liquibase / Flowable sous Boot 4 à valider au premier démarrage IT
   (vigilance décision n° 27).
+
+### Business / product
+
+- Rôles de référence inchangés — TODO 19 non rouvert ; A2 pour admin config.
+- ACL au **type**, pas à l’instance process (décision n° 20).
+- Un seul workflow non terminé par dossier (index partiel).
+
+### Time / rollout
+
+- Branche `feature-workflow-engine` / PR ; pas de feature flag.
+- Rollout = merge + déploiement instance tenant (ops hors docs).
 
 ### Assumptions (acceptées)
 
 - A1 — Un seul process BPMN de smoke suffit pour l’acceptation IT.
-- A2 — `WORKFLOW_ADMIN` peut administrer `WorkflowTypeConfig` (avec
-  `TENANT_ADMIN`) ; liste définitive des rôles = TODO 19, hors blocage.
-- A3 — Le démarrage manuel API peut démarrer Flowable **dans la requête**
-  (reserve→start→confirm) ; l’outbox reste le chemin durable pour les
-  triggers asynchrones (connecteurs futurs + éventuel enqueue manuel
-  optionnel si utile aux tests).
-- A4 — Pas de grant ACL par instance de workflow (décision n° 20) : l’accès
-  suit l’ACL du `DossierType`.
+- A2 — `WORKFLOW_ADMIN` et `TENANT_ADMIN` administrent `WorkflowTypeConfig`.
+- A3 — Démarrage manuel API **synchrone** (reserve→start→confirm) ; outbox =
+  chemin async (seed/tests + futurs connecteurs), **sans** API enqueue publique.
+- A4 — Accès start/history/complete via ACL du `DossierType` du dossier.
+- A5 — `processDefinitionKey` du body est requis et doit exister en
+  `WorkflowTypeConfig` ; **pas** de contrainte d’égalité avec
+  `DossierType.workflowKey` en V1 (hint UI seulement).
+- A6 — « RESERVED / ACTIVE / TERMINATED » = glossaire dérivé des colonnes,
+  pas un champ `state` supplémentaire.
 
 ## Questions & Open Items
 **What do we still need to clarify?**
 
 | # | Item | Disposition |
 |---|---|---|
-| Q1 | Embarquer Flowable UI en local ? | **Différé** — non-goal V1 ; designer externe / fichiers BPMN |
-| Q2 | Enqueue manuel via outbox vs start synchrone API | **A3** — synchrone API ; outbox pour async |
-| Q3 | Plafonds `attempts` / rétention purge outbox | Valeurs config par défaut documentées en design (`app.workflow.outbox.*`) ; réglage ops plus tard |
+| Q1 | Embarquer Flowable UI en local ? | **Différé** — non-goal |
+| Q2 | Enqueue manuel via outbox | **Clos** — A3 / alternative D écartée |
+| Q3 | Défauts `max-attempts` / rétention purge | **Clos pour V1** — valeurs dans design (`app.workflow.outbox.*`) ; ops peut surcharger plus tard |
 | Q4 | Testcontainers / charge verrous | **Différé** TODO 28 |
-| Q5 | Métriques Micrometer âge outbox | **Différé** TODO 29 ; logs structurés min. dans la tranche |
+| Q5 | Métriques Micrometer âge outbox | **Différé** TODO 29 |
+| Q6 | Lier `processDefinitionKey` à `DossierType.workflowKey` ? | **Clos** — A5 (pas en V1) |
+| Q7 | Chaînage N→N+1 / liste tâches | **Différé** — non-goals |
+
+Aucun item bloquant ouvert pour passer en revue design.
+
+## Revue (phase 2) — synthèse
+
+**Validé :** problème, goals/non-goals, stories, critères, contraintes,
+alternatives A–D, glossaire lien, surface API (+ PATCH config, authz EDIT sur
+complete), séparation start synchrone vs outbox seed.
+
+**Mis à jour dans cette revue :** clarifications A3/A5/A6, PATCH config, authz
+complete, non-goals enqueue/chaînage/liste tâches, scénarios clés, success
+criteria en checklist, perf N/A.
+
+**Restant pour phase 3 (design) :** figer valeurs outbox par défaut, détail
+BPMN smoke, mapping exact stubs→adaptateurs, ordre init Liquibase/Flowable.
 
 ## Sources
 
@@ -207,3 +278,4 @@ Mutateurs : CSRF BFF. Anonyme `/api/**` → 401. Erreurs : `ProblemDetail`
 - `DEFERRED-FEATURES.md` §2 ordre 1 `workflow-engine`
 - Code existant : `domain.workflow.*`, stubs
   `infrastructure.persistence.workflow` / `infrastructure.flowable`
+- Mémoire projet : périmètre tranche workflow-engine (phase 1)

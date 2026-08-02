@@ -110,8 +110,9 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 ### M4 — API REST
 
 - [ ] **T12. Controllers dossier workflows + tasks + configs**
-  - **Outcome :** surface API requirements ; CSRF/session ; ACL type ;
-    ProblemDetail 409 collision.
+  - **Outcome :** surface API requirements (POST/GET workflows, complete
+    task EDIT, POST/PATCH/GET workflow-type-configs) ; CSRF/session ;
+    ACL type ; ProblemDetail 409 collision ; pas d’enqueue outbox public.
   - **Depends on :** T9, T11, T2
   - **Validation :** MockMvc OIDC.
   - **Tests liés :** IT API MockMvc.

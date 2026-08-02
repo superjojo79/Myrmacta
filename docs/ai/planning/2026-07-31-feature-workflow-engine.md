@@ -15,7 +15,13 @@ updated: 2026-08-02
 `./mvnw test` → 147 tests, 0 fail ; Jacoco ~86 % ; legacy in-memory
 supprimé (DD-STUBS). Traçage `task` CLI indisponible.
 
-Prochaine phase lifecycle : **7 Check Implementation** puis 8/9.
+## Phase 7 — Check Implementation
+
+**Clos.** Alignement design OK ; pas d’écart majeur. Écarts notés dans
+`docs/ai/implementation/…` (DEV-TX2 medium, DEV-PURGE/DEV-TRIG low,
+DEV-TESTS → phase 8). `InMemoryWorkflowEventPublisher` confiné `src/test`.
+
+Prochaine phase lifecycle : **8 Write Tests** puis 9.
 
 ## Milestones
 **What are the major checkpoints?**

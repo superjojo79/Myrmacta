@@ -9,6 +9,11 @@ updated: 2026-08-02
 
 # Testing Strategy
 
+## Phase 7 note
+IT happy-path API / persistence / smoke OK. Cases non cochés ci-dessous =
+backlog **phase 8** (401/403, 409 collision, outbox/orphan units, config
+non-admin).
+
 ## Test Coverage Goals
 **What level of testing do we aim for?**
 

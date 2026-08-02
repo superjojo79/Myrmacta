@@ -2,6 +2,10 @@
 phase: implementation
 title: Implementation Guide
 description: Technical implementation notes, patterns, and code guidelines
+status: checked
+checked: 2026-08-02
+created: 2026-08-02
+updated: 2026-08-02
 ---
 
 # Implementation Guide
@@ -25,6 +29,7 @@ description: Technical implementation notes, patterns, and code guidelines
   - `infrastructure.flowable.*` for engine adapter, delegates, tenant deployment, outbox/orphan jobs.
   - `infrastructure.web.workflow.*` for REST DTOs/controllers/ProblemDetail mapping.
 - `application.workflow.ManualStartOrchestrator` coordinates DD-TX start without framework annotations.
+- Prod publisher = `NoOpWorkflowEventPublisher` ; `InMemoryWorkflowEventPublisher` confined to `src/test` (DD-STUBS).
 
 ## Implementation Notes
 **Key technical details to remember:**
@@ -54,6 +59,7 @@ description: Technical implementation notes, patterns, and code guidelines
 - Keep domain use-case implementations free of framework annotations; wire them in `WorkflowConfig`.
 - Keep schedulers invocable through package-private methods for tests; avoid sleeps in IT.
 - Do not expose public outbox enqueue endpoints in this tranche.
+- Adapter `@Transactional` on repository writes commits reserve before Flowable.start (DD-TX critical constraint). Prefer a future `TransactionTemplate` wrapper if TX2 bundling (confirm + idempotency + onStart) must be atomic.
 
 ## Integration Points
 **How do pieces connect?**
@@ -78,6 +84,7 @@ description: Technical implementation notes, patterns, and code guidelines
 - Indexes cover active link lookup/history and pending outbox polling.
 - Flowable async executor is enabled, but smoke completion path remains synchronous.
 - Multi-replica locking optimizations (`SKIP LOCKED`) remain deferred.
+- Outbox/idempotency purge methods exist on ports/adapters but have no scheduled caller yet (follow-up).
 
 ## Security Notes
 **What security measures are in place?**
@@ -87,3 +94,49 @@ description: Technical implementation notes, patterns, and code guidelines
 - Config mutation is limited to `TENANT_ADMIN`/`WORKFLOW_ADMIN`.
 - Client variables cannot override platform-reserved variables.
 
+## Phase 7 — Check Implementation
+
+**Verdict :** aligné design/requirements — **pas d’écart majeur**. Suites : phase 8 (tests manquants) puis 9.
+
+### Matrice d’alignement
+
+| Décision | Attendu | Implémenté | Sévérité écart |
+|---|---|---|---|
+| D-START | Hybrid sync + outbox, pas d’enqueue public | `ManualStartOrchestrator` + `OutboxRelayScheduler` ; pas d’API enqueue | OK |
+| D-KEY | `processDefinitionKey` → config existante | `AttachWorkflowUseCaseImpl.reserve` | OK |
+| D-AUTHZ | EDIT start/complete ; admin config | Controllers + `DossierAccessPolicy` | OK |
+| D-STATUS | `allowedDossierStatuses[]` | Validé à `reserve` | OK |
+| D-ORPHAN | resume / retry / `ORPHAN_TIMEOUT` ; timeout 5m | `ReservedReconcileJob` + `WorkflowProperties` | OK (poll = timeout) |
+| D-IDEM | Header requis ; table dédiée | Header + `workflow_idempotency` | OK |
+| D-VARS | Clés réservées refusées + injectées | `WorkflowVariables` start/complete/outbox | OK |
+| D-DOSSIER-STATUS | `onStartDossierStatus?` après confirm | `applyOnStartStatusIfConfigured` | OK |
+| D-FAIL | Compensate immédiat si start KO | `abortReserved(ORPHAN_START_FAILED)` | OK |
+| DD-TX | reserve commit → start hors TX → confirm/idem | Ordre respecté ; TX2 non atomique (saves séparés) | **Medium** |
+| DD-BKEY | `businessKey = linkId` | `FlowableWorkflowEngineAdapter.start` | OK |
+| DD-IDEM | Table `workflow_idempotency` | Liquibase + `JpaIdempotencyStoreAdapter` | OK |
+| DD-OUTBOX | batch 20 / max 5 / poll 1s / retention 7d | Defaults yaml + properties ; **purge non schedulée** | **Low** |
+| DD-SMOKE | userTask → delegate terminal → end | `smoke-process.bpmn20.xml` | OK |
+| DD-STUBS | Legacy hors prod / test-only | Legacy retiré ; publisher in-memory → `src/test` | OK |
+
+### Écarts & follow-ups
+
+| ID | Sévérité | Description | Action |
+|---|---|---|---|
+| DEV-TX2 | Medium | TX2 (`confirmStarted` + `idempotency.remember` + `onStart`) n’est pas une seule TX applicative ; crash intermédiaire peut laisser ACTIVE sans ligne idempotency | Follow-up phase 8/impl : `TransactionTemplate` infra autour TX2 |
+| DEV-PURGE | Low | `purgeProcessedOlderThanDays` / `purgeExpired` non appelés par un job | Follow-up ops/scheduler |
+| DEV-TRIG | Low | `triggerRef = "manual:" + idempotencyKey` (pas `userSubject`) | Acceptable V1 ; documenter si audit nécessite subject |
+| DEV-TESTS | Low→phase 8 | Gaps testing doc : 401/403 API, collision 409, branches outbox/orphan unitaires, mutation config non-admin | Phase 8 |
+
+### Fichiers clés revus
+
+- `ManualStartOrchestrator`, `AttachWorkflowUseCaseImpl`
+- `OutboxRelayScheduler`, `ReservedReconcileJob`
+- `DossierWorkflowController`, `WorkflowTaskController`, `WorkflowTypeConfigController`
+- `FlowableWorkflowEngineAdapter`, `WorkflowConfig`, `002-workflow-tables.yaml`, smoke BPMN
+
+### Preuves phase 7
+
+- `npx ai-devkit@latest lint --feature workflow-engine` → OK
+- `JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64 ./mvnw test` →
+  **156 tests, 0 failures, 0 errors** ; Jacoco instructions **86,2 %**
+- `check-status workflow-engine` → **Phase 8 (Write Tests)**

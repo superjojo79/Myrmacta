@@ -56,7 +56,11 @@ des instances Flowable et un historique d’exécutions.
   `StatusOutcome` ; validation des codes de statut métier du lien ; statut
   `initial` à la réservation ; **`allowedDossierStatuses[]`**
   (**D-STATUS = option 3**) — le start (API ou relais) refuse si
-  `Dossier.status` ∉ liste (400/409 métier).
+  `Dossier.status` ∉ liste (400/409 métier) ;
+  **`onStartDossierStatus` nullable (**D-DOSSIER-STATUS = option 2**)** —
+  si renseigné, après `confirmStarted` appliquer la transition dossier
+  (si légale), sinon ne pas toucher `Dossier.status` (BPMN reste source
+  habituelle via delegate).
 - Livrer l’**outbox transactionnel + relais** (décisions n° 7 / 16) :
   table `outbox_event`, `OutboxStatus`, `TriggerOutboxPayload`, scheduler,
   idempotence `event_id`, retry / dead-letter / purge `PROCESSED`.
@@ -272,6 +276,9 @@ V1 (décision n° 11 documentée).
 - A9 / **D-IDEM** — option 2 : `Idempotency-Key` sur `POST …/workflows` ;
   persistance de la clé liée au lien créé ; TTL aligné ou ≥ reserve-timeout
   (détail design).
+- A10 / **D-VARS** — option 2 : variables libres ; clés réservées
+  `dossierId` / `dossierWorkflowLinkId` / `tenantId` interdites au client ;
+  injection plateforme.
 
 ## Questions & Open Items
 **What do we still need to clarify?**
@@ -289,6 +296,7 @@ V1 (décision n° 11 documentée).
 | Q9 | Statuts dossier autorisant le start ? | **Clos** — D-STATUS option 3 (par config) |
 | Q10 | RESERVED orphelins | **Clos** — D-ORPHAN option 2 (reprise, T=5 min) |
 | Q11 | Idempotence POST start | **Clos** — D-IDEM option 2 (`Idempotency-Key`) |
+| Q12 | Variables au start | **Clos** — D-VARS option 2 (clés réservées) |
 
 Aucun item bloquant ouvert pour passer en revue design.
 

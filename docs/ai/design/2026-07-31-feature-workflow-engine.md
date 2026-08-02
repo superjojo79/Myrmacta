@@ -145,7 +145,8 @@ retry puis `DEAD` après `max-attempts`.
 ### D-ORPHAN — job `ReservedReconcileJob`
 
 - Sélection : liens `ended_at IS NULL AND process_instance_id IS NULL AND started_at < now - reserve-timeout`.
-- Corrélation : `RuntimeService.createProcessInstanceQuery().processInstanceBusinessKey(linkId)`.
+- Corrélation (**DD-BKEY = option 1**) :
+  `RuntimeService.createProcessInstanceQuery().processInstanceBusinessKey(linkId.toString())`.
 - Si instance trouvée → `confirmStarted` (+ onStart si pertinent / idempotent).
 - Sinon retente `start` une fois ; si encore KO → `ORPHAN_TIMEOUT` + end link.
 - Défaut timeout : **5 min** (`app.workflow.reserve-timeout`).
@@ -276,8 +277,8 @@ profit Flowable + link.
 |---|---|---|
 | D-START…D-FAIL | Voir requirements | **Acté** phase 2 |
 | **DD-TX** | reserve commit → Flowable.start hors TX → confirm/compensate | **Acté** (opt. 2) |
-| DD-BKEY | `businessKey = dossierWorkflowLinkId` (UUID string) | **Question ouverte** |
-| DD-IDEM | Table `workflow_idempotency` ; TTL ≥ reserve-timeout | Proposé |
+| **DD-BKEY** | `businessKey = dossierWorkflowLinkId` (UUID string) | **Acté** (opt. 1) |
+| **DD-IDEM** | Table dédiée `workflow_idempotency` ; TTL ≥ reserve-timeout | **Acté** (opt. 1) |
 | DD-SMOKE | `smokeProcess` classpath + userTask + delegate statut | Proposé |
 | DD-OUTBOX | batch 20, max-attempts 5, poll 1s, retention 7d | Proposé (Q3 req) |
 | DD-STUBS | Retrait câblage in-memory prod | Proposé |
@@ -340,8 +341,9 @@ profit Flowable + link.
 | # | Item | Disposition |
 |---|---|---|
 | DD-TX | Frontières TX start sync | **Clos** — option 2 |
-| DD-BKEY | Corrélation instance ↔ link | **Question ouverte** |
-| DD-IDEM / DD-SMOKE / DD-OUTBOX / DD-STUBS | Détails techniques | Proposés |
+| DD-BKEY | Corrélation instance ↔ link | **Clos** — businessKey = linkId |
+| DD-IDEM | Persistance Idempotency-Key | **Question ouverte** |
+| DD-SMOKE / DD-OUTBOX / DD-STUBS | Détails techniques | Proposés |
 
 ## References
 

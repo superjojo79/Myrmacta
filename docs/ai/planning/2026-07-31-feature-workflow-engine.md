@@ -2,22 +2,20 @@
 phase: planning
 title: Project Planning & Task Breakdown
 description: Break down work into actionable tasks and estimate timeline
-status: ready
+status: implemented
 created: 2026-08-02
 updated: 2026-08-02
 ---
 
 # Project Planning & Task Breakdown
 
-## Phase 4 — synthèse
+## Phase 5 — synthèse
 
-Plan réconcilié avec requirements/design `reviewed` (D-START…D-FAIL,
-DD-TX…DD-STUBS) et scenarios testing. **14 tâches**, 0 done. Prêt pour
-phase 5 (Execute Plan) en TDD : démarrer par **T1 → T2 → T4** (domaine
-pur), puis persistence.
+**14/14 tâches done.** Flowable + link + outbox + API livrés. Suite :
+`./mvnw test` → 147 tests, 0 fail ; Jacoco ~86 % ; legacy in-memory
+supprimé (DD-STUBS). Traçage `task` CLI indisponible.
 
-Aucun blocker externe (`connecteurs` hors scope). Traçage `task` CLI
-indisponible.
+Prochaine phase lifecycle : **7 Check Implementation** puis 8/9.
 
 ## Milestones
 **What are the major checkpoints?**

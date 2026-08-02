@@ -2,8 +2,8 @@
 phase: requirements
 title: Requirements & Problem Understanding
 description: Clarify the problem space, gather requirements, and define success criteria
-status: in-review
-reviewed:
+status: reviewed
+reviewed: 2026-08-02
 created: 2026-08-02
 updated: 2026-08-02
 ---
@@ -202,6 +202,8 @@ process/config introuvable → 404).
 
 - Second workflow actif → `WorkflowAlreadyRunningException` / 409 ; via outbox
   → `DEAD`.
+- Échec `start` synchrone après reserve → compensation immédiate du lien
+  (**D-FAIL**) ; pas de 200 avec lien RESERVED.
 - Rejeu outbox : reprendre **RESERVED** même dossier+process ; si **ACTIVE**
   avec `processInstanceId` → `markProcessed` sans second start.
 - Statut métier inconnu pour le `workflowKey` → 400.
@@ -285,6 +287,8 @@ V1 (décision n° 11 documentée).
   injection plateforme.
 - A11 / **D-DOSSIER-STATUS** — option 2 : `onStartDossierStatus` optionnel sur
   config ; start ne mute le dossier que si défini + transition légale.
+- A12 / **D-FAIL** — option 2 : compensation immédiate du RESERVED si start
+  sync échoue ; D-ORPHAN = filet.
 
 ## Questions & Open Items
 **What do we still need to clarify?**
@@ -304,21 +308,27 @@ V1 (décision n° 11 documentée).
 | Q11 | Idempotence POST start | **Clos** — D-IDEM option 2 (`Idempotency-Key`) |
 | Q12 | Variables au start | **Clos** — D-VARS option 2 (clés réservées) |
 | Q13 | Start change-t-il Dossier.status ? | **Clos** — D-DOSSIER-STATUS option 2 |
+| Q14 | Échec start sync après reserve | **Clos** — D-FAIL option 2 |
 
-Aucun item bloquant ouvert pour passer en revue design.
+### Décisions start actées (phase 2 interactive)
 
-## Revue (phase 2) — synthèse
+| Id | Sujet | Choix |
+|---|---|---|
+| D-START | Chemins de démarrage | Hybride : sync humain + outbox non-humain |
+| D-KEY | Clé process | Libre si `WorkflowTypeConfig` existe |
+| D-AUTHZ | Qui démarre | `EDIT` V1 (+ TODO 19) |
+| D-STATUS | Statuts dossier | `allowedDossierStatuses[]` sur config |
+| D-ORPHAN | RESERVED orphelins | Reprise puis timeout 5 min |
+| D-IDEM | Retry client | `Idempotency-Key` |
+| D-VARS | Variables | Libres ; clés réservées interdites |
+| D-DOSSIER-STATUS | Statut dossier au start | `onStartDossierStatus` optionnel |
+| D-FAIL | Échec start sync | Compensation immédiate + filet orphan |
 
-**Validé :** problème, goals/non-goals, stories, critères, contraintes,
-alternatives A–D, glossaire lien, surface API (+ PATCH config, authz EDIT sur
-complete), séparation start synchrone vs outbox seed.
+**Phase 2 close** (confirmée 2026-08-02) — statut `reviewed`.
 
-**Mis à jour dans cette revue :** clarifications A3/A5/A6, PATCH config, authz
-complete, non-goals enqueue/chaînage/liste tâches, scénarios clés, success
-criteria en checklist, perf N/A.
-
-**Restant pour phase 3 (design) :** figer valeurs outbox par défaut, détail
-BPMN smoke, mapping exact stubs→adaptateurs, ordre init Liquibase/Flowable.
+**Phase 3 (design)** : persistance idempotency-key, corrélation orphan,
+frontières TX start, défauts outbox, BPMN smoke, ordre Liquibase/Flowable,
+mapping stubs→adaptateurs.
 
 ## Sources
 

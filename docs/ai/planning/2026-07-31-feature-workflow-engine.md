@@ -45,13 +45,14 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Validation :** unit switch exhaustif ; tests StartWorkflow adaptés.
   - **Tests liés :** Unit WorkflowEvent sealed.
 
-- [ ] **T4. Modèle outbox + ports**
-  - **Outcome :** `OutboxStatus`, `TriggerOutboxPayload`, `OutboxRepository`
-    port ; config properties `app.workflow.outbox.*` (batch, maxAttempts,
-    retention).
+- [ ] **T4. Modèle outbox + ports + idempotency + config étendue**
+  - **Outcome :** `OutboxStatus`, `TriggerOutboxPayload`, `OutboxRepository` ;
+    `IdempotencyStore` ; `WorkflowTypeConfig.allowedDossierStatuses` +
+    `onStartDossierStatus` ; properties `app.workflow.outbox.*` +
+    `reserve-timeout`.
   - **Depends on :** —
   - **Validation :** compile.
-  - **Tests liés :** Unit relais (T10).
+  - **Tests liés :** Unit relais (T10) ; Unit start idempotency.
 
 - [ ] **T5. Ports in workflow / dossier (interfaces)**
   - **Outcome :** `AttachWorkflowUseCase`, `GetDossierWorkflowHistoryUseCase`,

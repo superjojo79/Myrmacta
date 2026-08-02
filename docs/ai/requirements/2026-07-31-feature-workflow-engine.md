@@ -76,6 +76,10 @@ des instances Flowable et un historique d’exécutions.
     retente `start+confirm` si pas d’instance ; si instance corrélée trouvée →
     `confirmStarted` ; sinon termine le lien (`endedAt`,
     `endReason=ORPHAN_TIMEOUT`) et libère le dossier.
+  - **Compensation synchrone (**D-FAIL = option 2**)** : si `Flowable.start`
+    échoue dans la requête API après `reserve` → terminer le lien immédiatement
+    (`endReason=ORPHAN_START_FAILED` ou équivalent) + ProblemDetail ; D-ORPHAN
+    reste le filet si la compensation n’a pas pu être commitée.
 - Aligner `WorkflowEvent` sur l’**interface scellée** (décision n° 6) :
   `Started` / `Completed` / `Failed` ; publisher générique ; adaptateur
   in-memory ou no-op acceptable en V1 (notifications = feature séparée).
@@ -279,6 +283,8 @@ V1 (décision n° 11 documentée).
 - A10 / **D-VARS** — option 2 : variables libres ; clés réservées
   `dossierId` / `dossierWorkflowLinkId` / `tenantId` interdites au client ;
   injection plateforme.
+- A11 / **D-DOSSIER-STATUS** — option 2 : `onStartDossierStatus` optionnel sur
+  config ; start ne mute le dossier que si défini + transition légale.
 
 ## Questions & Open Items
 **What do we still need to clarify?**
@@ -297,6 +303,7 @@ V1 (décision n° 11 documentée).
 | Q10 | RESERVED orphelins | **Clos** — D-ORPHAN option 2 (reprise, T=5 min) |
 | Q11 | Idempotence POST start | **Clos** — D-IDEM option 2 (`Idempotency-Key`) |
 | Q12 | Variables au start | **Clos** — D-VARS option 2 (clés réservées) |
+| Q13 | Start change-t-il Dossier.status ? | **Clos** — D-DOSSIER-STATUS option 2 |
 
 Aucun item bloquant ouvert pour passer en revue design.
 

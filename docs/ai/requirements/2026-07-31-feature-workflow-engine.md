@@ -2,11 +2,12 @@
 phase: requirements
 title: Requirements & Problem Understanding
 description: Clarify the problem space, gather requirements, and define success criteria
-status: reviewed
-reviewed: 2026-08-02
+status: in-review
+reviewed:
 created: 2026-08-02
 updated: 2026-08-02
 ---
+
 
 # Requirements & Problem Understanding
 
@@ -57,9 +58,15 @@ des instances Flowable et un historique d’exécutions.
 - Livrer l’**outbox transactionnel + relais** (décisions n° 7 / 16) :
   table `outbox_event`, `OutboxStatus`, `TriggerOutboxPayload`, scheduler,
   idempotence `event_id`, retry / dead-letter / purge `PROCESSED`.
-- **Producteur outbox V1** : port/repository utilisable en **tests / seed**
-  (et prêt pour `connecteurs`). **Pas** d’endpoint public d’enqueue. Le
-  démarrage manuel HTTP reste **synchrone** (A3).
+- **Démarrage hybride (décision revue D-START = option 3)** :
+  - **Manuel / API humaine** : synchrone `reserve → Flowable.start → confirm`
+    dans la requête HTTP (feedback immédiat).
+  - **Triggers non-humains** (connecteurs, jobs) : **uniquement** via outbox
+    + relais — jamais de start Flowable dans la TX producteur.
+  - **Producteur outbox V1** : port/repository pour **tests / seed** + contrat
+    prêt pour `connecteurs`. **Pas** d’endpoint public d’enqueue.
+  - **Réconciliation des RESERVED orphelins** : politique obligatoire (timeout
+    + cleanup / reprise) — détail chiffré à figer (question suivante / design).
 - Aligner `WorkflowEvent` sur l’**interface scellée** (décision n° 6) :
   `Started` / `Completed` / `Failed` ; publisher générique ; adaptateur
   in-memory ou no-op acceptable en V1 (notifications = feature séparée).
@@ -124,7 +131,8 @@ process/config introuvable → 404).
 | **A — Flowable réel + outbox + `DossierWorkflowLink`** | Plus large, débloque connecteurs et historique | **Retenue** (décisions 7/16 + DEFERRED) |
 | B — Liens + API manuelle seulement, stubs Flowable | Rapide mais ne prouve pas le moteur | Écartée |
 | C — Démarrage synchrone sans outbox | Réouvre perte au crash (décision 7) | Écartée |
-| D — Forcer l’API manuelle via outbox aussi | UX plus lente / complexité sans gain V1 | Écartée (A3) |
+| D — Forcer l’API manuelle via outbox aussi | UX plus lente / complexité sans gain V1 | Écartée |
+| **D-START — Hybride (opt. 3)** : sync humain + outbox async + réconciliation RESERVED | UX + durabilité homogène pour non-humain | **Retenue** (revue phase 2) |
 
 ## User Stories & Use Cases
 **How will users interact with the solution?**
@@ -234,8 +242,9 @@ V1 (décision n° 11 documentée).
 
 - A1 — Un seul process BPMN de smoke suffit pour l’acceptation IT.
 - A2 — `WORKFLOW_ADMIN` et `TENANT_ADMIN` administrent `WorkflowTypeConfig`.
-- A3 — Démarrage manuel API **synchrone** (reserve→start→confirm) ; outbox =
-  chemin async (seed/tests + futurs connecteurs), **sans** API enqueue publique.
+- A3 / **D-START** — Hybride option 3 : manuel HTTP **synchrone** ; outbox =
+  seul chemin pour triggers non-humains (+ seed/tests) ; **sans** API enqueue
+  publique ; réconciliation des RESERVED orphelins **obligatoire**.
 - A4 — Accès start/history/complete via ACL du `DossierType` du dossier.
 - A5 — `processDefinitionKey` du body est requis et doit exister en
   `WorkflowTypeConfig` ; **pas** de contrainte d’égalité avec
@@ -249,7 +258,7 @@ V1 (décision n° 11 documentée).
 | # | Item | Disposition |
 |---|---|---|
 | Q1 | Embarquer Flowable UI en local ? | **Différé** — non-goal |
-| Q2 | Enqueue manuel via outbox | **Clos** — A3 / alternative D écartée |
+| Q2 | Méthode de start (sync / outbox / hybride) | **Clos** — D-START option 3 |
 | Q3 | Défauts `max-attempts` / rétention purge | **Clos pour V1** — valeurs dans design (`app.workflow.outbox.*`) ; ops peut surcharger plus tard |
 | Q4 | Testcontainers / charge verrous | **Différé** TODO 28 |
 | Q5 | Métriques Micrometer âge outbox | **Différé** TODO 29 |

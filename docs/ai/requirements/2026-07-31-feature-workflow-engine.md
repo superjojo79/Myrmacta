@@ -91,9 +91,9 @@ des instances Flowable et un historique d’exécutions.
 | GET | `/api/workflow-type-configs/{workflowKey}` | authentifié |
 
 **Body `POST …/workflows` :** `processDefinitionKey` (requis) + `variables`
-(optionnel). La clé doit référencer un `WorkflowTypeConfig` existant.
-`DossierType.workflowKey` est un **hint UI** (préremplissage) — **pas** une
-contrainte serveur en V1 (A5).
+(optionnel). La clé doit référencer un `WorkflowTypeConfig` existant
+(**D-KEY = option 2**). `DossierType.workflowKey` = **hint UI uniquement** —
+aucune égalité imposée côté serveur.
 
 Mutateurs : CSRF BFF. Anonyme `/api/**` → 401. Erreurs : `ProblemDetail`
 (collision workflow actif → 409 ; statut métier inconnu → 400 ;

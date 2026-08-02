@@ -2,6 +2,9 @@
 phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
+status: draft
+created: 2026-08-02
+updated: 2026-08-02
 ---
 
 # Testing Strategy
@@ -9,73 +12,122 @@ description: Define testing approach, test cases, and quality assurance
 ## Test Coverage Goals
 **What level of testing do we aim for?**
 
-- Unit test coverage target (default: 100% of new/changed code)
-- Integration test scope (critical paths + error handling)
-- End-to-end test scenarios (key user journeys)
-- Alignment with requirements/design acceptance criteria
+- **Unitaires domaine :** AttachWorkflow (reserve / resume / confirm /
+  collision), validation `WorkflowTypeConfig` / statuts, sealed events,
+  CompleteTask règles d’accès si purement domaine, outbox state machine
+  (attempts → DEAD).
+- **Unitaires infra :** relais (`processOne` happy / retry / dead /
+  idempotence), mappers JPA, delegates statut (outcome terminal).
+- **IT H2 MODE=PostgreSQL :** Liquibase tables lien/outbox/config ; index
+  unique actif ; démarrage Flowable smoke BPMN ; API MockMvc + OIDC mock
+  (start / history / complete / config).
+- **Régression :** dossiers, auth BFF, ArchUnit, Jacoco ≥ 80 %, Tenant*.
+- **Hors scope :** Testcontainers PG, charge multi-répliques Flowable,
+  E2E navigateur, Keycloak réel.
 
 ## Unit Tests
 **What individual components need testing?**
 
-### Component/Module 1
-- [ ] Test case 1: [Description] (covers scenario / branch)
-- [ ] Test case 2: [Description] (covers edge case / error handling)
-- [ ] Additional coverage: [Description]
+### AttachWorkflowUseCaseImpl
+- [ ] `reserve` crée lien avec statut `initial`, `sequence` incrémentée,
+      `processInstanceId` null, met à jour `currentWorkflowLinkId`
+- [ ] Second `reserve` pendant lien actif → `WorkflowAlreadyRunningException`
+- [ ] `confirmStarted` pose `processInstanceId`
+- [ ] `reserveOrResume` reprend lien RESERVED même dossier+process
+- [ ] `reserveOrResume` no-op conceptuel si ACTIVE + processInstanceId
+- [ ] `reserveOrResume` → dead-letter path si autre workflow ACTIVE
+      (exception collision)
 
-### Component/Module 2
-- [ ] Test case 1: [Description]
-- [ ] Test case 2: [Description]
-- [ ] Additional coverage: [Description]
+### WorkflowTypeConfig / UpdateWorkflowLinkStatus
+- [ ] Statut inconnu pour `workflowKey` → rejet
+- [ ] Statut `initial` unique / présent à la config
+- [ ] `outcome != NONE` → `endedAt` renseigné, dossier libéré pour nouveau lien
+- [ ] `outcome == NONE` → lien reste actif
+
+### OutboxRelay / OutboxRepository (fakes)
+- [ ] Happy path → `PROCESSED` après start+confirm
+- [ ] Échec transient → `attempts++`, reste `PENDING`
+- [ ] `attempts >= max` → `DEAD`
+- [ ] `WorkflowAlreadyRunningException` → `DEAD` immédiat
+- [ ] Rejeu : déjà confirmé → `markProcessed` sans second start
+
+### WorkflowEvent sealed
+- [ ] Publisher accepte Started/Completed/Failed
+- [ ] Exhaustivité switch adaptateur test
+
+### CompleteTaskUseCase (si logique domaine testable)
+- [ ] Task inexistante → erreur métier
+- [ ] Variables transmises au port moteur
 
 ## Integration Tests
 **How do we test component interactions?**
 
-- [ ] Integration scenario 1
-- [ ] Integration scenario 2
-- [ ] API endpoint tests
-- [ ] Integration scenario 3 (failure mode / rollback)
+### Persistence H2
+- [ ] Changelog crée `dossier_workflow_link`, `outbox_event`,
+      `workflow_type_config`
+- [ ] Index unique partiel : 2 liens `ended_at IS NULL` → échec contrainte
+- [ ] Round-trip config jsonb statusDefinitions
+- [ ] Outbox save/lock/markProcessed
+
+### Flowable smoke
+- [ ] Déploiement process classpath (ex. `smoke-process.bpmn20.xml`)
+- [ ] Start via RuntimeService avec `tenantId` = `TenantProperties.id()`
+- [ ] Variables `dossierId` / `dossierWorkflowLinkId` présentes
+- [ ] Complete task utilisateur du smoke → process avance / termine
+- [ ] Delegate statut lien (si câblé dans smoke) met à jour le lien
+
+### API MockMvc + OIDC
+- [ ] POST start : EDIT OK ; sans grant 403 ; anonyme 401 ; CSRF requis
+- [ ] Collision second start → 409 ProblemDetail
+- [ ] GET history : ordre `sequence`, VIEW OK
+- [ ] POST complete task : happy path
+- [ ] CRUD/GET `workflow-type-configs` : admin OK ; non-admin restreint
+
+### Relais IT
+- [ ] Insérer PENDING → après tick/invoke relais → instance Flowable +
+      lien confirmé + PROCESSED
+- [ ] Payload processKey inconnu → attempts / DEAD selon politique
 
 ## End-to-End Tests
-**What user flows need validation?**
+**What user journeys need testing?**
 
-- [ ] User flow 1: [Description]
-- [ ] User flow 2: [Description]
-- [ ] Critical path testing
-- [ ] Regression of adjacent features
+- Hors scope navigateur. Parcours API IT ci-dessus couvrent le journey
+  « config → start → task → history ».
 
-## Test Data
-**What data do we use for testing?**
+## Test Data & Fixtures
+**What test data do we need?**
 
-- Test fixtures and mocks
-- Seed data requirements
-- Test database setup
+- Fixture `DossierType` + dossier `DRAFT`/`EN_COURS` existants (réutiliser
+  helpers dossiers).
+- `WorkflowTypeConfig` seed pour `smokeProcess` avec au moins un statut
+  `initial` et un terminal `COMPLETED`.
+- BPMN smoke minimal (start → userTask → end) + option delegate.
+- Utilisateurs mock : `TENANT_ADMIN`, `WORKFLOW_ADMIN`, user EDIT, user VIEW,
+  anonyme.
+- Clock / scheduler : invocation directe `relayPendingEvents()` en test
+  (pas d’attente flaky).
 
-## Test Reporting & Coverage
-**How do we verify and communicate test results?**
+## Coverage Targets
 
-- Coverage commands and thresholds (`npm run test -- --coverage`)
-- Coverage gaps (files/functions below 100% and rationale)
-- Links to test reports or dashboards
-- Manual testing outcomes and sign-off
+| Zone | Cible |
+|---|---|
+| Nouveau code domaine workflow / attach / outbox | ≥ 80 % lignes (Jacoco projet) |
+| Suite globale | Jacoco ≥ 80 % maintenu |
+| Branches relais (happy/retry/dead/idempotence) | toutes exercées |
 
-## Manual Testing
-**What requires human validation?**
+## Alignment with requirements
 
-- UI/UX testing checklist (include accessibility)
-- Browser/device compatibility
-- Smoke tests after deployment
+| Critère succès requirements | Couverture test |
+|---|---|
+| Flowable actif + tables | IT démarrage + persistence |
+| Start API + history + complete | API MockMvc |
+| Relais idempotent / DLQ | Unit + IT relais |
+| Stubs prod retirés | ArchUnit / smoke DomainConfig |
+| Non-régression dossiers/auth | Suites existantes CI |
 
-## Performance Testing
-**How do we validate performance?**
+## Mocks & Boundaries
 
-- Load testing scenarios
-- Stress testing approach
-- Performance benchmarks
-
-## Bug Tracking
-**How do we manage issues?**
-
-- Issue tracking process
-- Bug severity levels
-- Regression testing strategy
-
+- Pas de Keycloak réel — `oidcLogin()` / users mock.
+- Pas de broker ; outbox = table.
+- Producteur connecteurs mocké par insert repository en IT.
+- PG réel / charge async multi-pods : différé TODO 28.

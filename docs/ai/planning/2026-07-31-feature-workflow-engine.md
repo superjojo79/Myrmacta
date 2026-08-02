@@ -2,6 +2,9 @@
 phase: planning
 title: Project Planning & Task Breakdown
 description: Break down work into actionable tasks and estimate timeline
+status: drafted
+created: 2026-08-02
+updated: 2026-08-02
 ---
 
 # Project Planning & Task Breakdown
@@ -9,52 +12,160 @@ description: Break down work into actionable tasks and estimate timeline
 ## Milestones
 **What are the major checkpoints?**
 
-- [ ] Milestone 1: [Description]
-- [ ] Milestone 2: [Description]
-- [ ] Milestone 3: [Description]
+- [ ] **M1 — Domaine & ports** : link, config, events sealed, outbox model, exceptions
+- [ ] **M2 — Persistence & Flowable** : Liquibase, JPA, retrait exclusions, smoke BPMN
+- [ ] **M3 — Use cases & relais** : AttachWorkflow, start/complete, outbox relay, delegates
+- [ ] **M4 — API REST** : controllers, authz, ProblemDetail
+- [ ] **M5 — Preuves & docs** : IT H2, régressions, doc implementation
 
 ## Task Breakdown
 **What specific work needs to be done?**
 
-### Phase 1: Foundation
-- [ ] Task 1.1: [Description]
-- [ ] Task 1.2: [Description]
+Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
-### Phase 2: Core Features
-- [ ] Task 2.1: [Description]
-- [ ] Task 2.2: [Description]
+### M1 — Domaine & ports
 
-### Phase 3: Integration & Polish
-- [ ] Task 3.1: [Description]
-- [ ] Task 3.2: [Description]
+- [ ] **T1. `DossierWorkflowLink` + exceptions métier**
+  - **Outcome :** record domaine ; `WorkflowAlreadyRunningException` ; helpers
+    ended/active.
+  - **Depends on :** —
+  - **Validation :** compile ; ArchUnit pur.
+  - **Tests liés :** Unit Attach (T8).
+
+- [ ] **T2. `WorkflowTypeConfig` + `StatusOutcome` + validation codes**
+  - **Outcome :** records/enums ; règle un `initial` ; reject unknown status.
+  - **Depends on :** —
+  - **Validation :** unit validation.
+  - **Tests liés :** Unit WorkflowTypeConfig / UpdateStatus.
+
+- [ ] **T3. `WorkflowEvent` sealed + publisher générique**
+  - **Outcome :** Started/Completed/Failed ; remplacer signature
+    `publish(WorkflowStartedEvent)` ; migrer stubs/tests existants.
+  - **Depends on :** —
+  - **Validation :** unit switch exhaustif ; tests StartWorkflow adaptés.
+  - **Tests liés :** Unit WorkflowEvent sealed.
+
+- [ ] **T4. Modèle outbox + ports**
+  - **Outcome :** `OutboxStatus`, `TriggerOutboxPayload`, `OutboxRepository`
+    port ; config properties `app.workflow.outbox.*` (batch, maxAttempts,
+    retention).
+  - **Depends on :** —
+  - **Validation :** compile.
+  - **Tests liés :** Unit relais (T10).
+
+- [ ] **T5. Ports in workflow / dossier (interfaces)**
+  - **Outcome :** `AttachWorkflowUseCase`, `GetDossierWorkflowHistoryUseCase`,
+    `CompleteTaskUseCase`, `UpdateWorkflowLinkStatusUseCase`,
+    ports config ; ajuster `StartWorkflowUseCase` si besoin du moteur réel.
+  - **Depends on :** T1–T4
+  - **Validation :** compile.
+  - **Tests liés :** —
+
+### M2 — Persistence & Flowable
+
+- [ ] **T6. Liquibase : link + outbox + workflow_type_config**
+  - **Outcome :** changesets + index partiel actif ; colonnes alignées design.
+  - **Depends on :** T1, T2, T4
+  - **Validation :** IT schema H2.
+  - **Tests liés :** IT Persistence.
+
+- [ ] **T7. JPA entities + adapters (link, config, outbox)**
+  - **Outcome :** adapters bi-directionnels ; `currentWorkflowLinkId` MAJ ;
+    retirer câblage prod `InMemoryWorkflowRepository` si remplacé.
+  - **Depends on :** T5, T6
+  - **Validation :** IT round-trip + contrainte unique.
+  - **Tests liés :** IT Persistence.
+
+- [ ] **T8. Activer Flowable + smoke BPMN classpath**
+  - **Outcome :** exclusions Flowable retirées (garder ce qui doit l’être) ;
+    yaml async executor ; process smoke ; boot IT vert.
+  - **Depends on :** T6
+  - **Validation :** contexte Spring + start RuntimeService en IT.
+  - **Tests liés :** IT Flowable smoke.
+
+### M3 — Use cases & relais
+
+- [ ] **T9. `AttachWorkflowUseCaseImpl` (+ history)**
+  - **Outcome :** reserve / reserveOrResume / confirmStarted / getHistory ;
+    statut initial ; sequence ; collision.
+  - **Depends on :** T5, T7, T2
+  - **Validation :** unit + IT.
+  - **Tests liés :** Unit AttachWorkflow ; IT Persistence.
+
+- [ ] **T10. OutboxRelayScheduler + politiques retry/DLQ/purge**
+  - **Outcome :** `processOne` ; idempotence ; markProcessed uniquement succès ;
+    job purge PROCESSED.
+  - **Depends on :** T4, T7, T8, T9
+  - **Validation :** unit + IT relais.
+  - **Tests liés :** Unit OutboxRelay ; IT Relais.
+
+- [ ] **T11. Start/Complete via Flowable + delegates statut**
+  - **Outcome :** adaptateur moteur ; `CompleteTaskUseCaseImpl` ;
+    `UpdateWorkflowLinkStatusTask` (+ dossier status si trivial) ;
+    publication events.
+  - **Depends on :** T3, T8, T9
+  - **Validation :** IT smoke complete task + delegate.
+  - **Tests liés :** IT Flowable smoke ; Unit UpdateStatus.
+
+### M4 — API REST
+
+- [ ] **T12. Controllers dossier workflows + tasks + configs**
+  - **Outcome :** surface API requirements ; CSRF/session ; ACL type ;
+    ProblemDetail 409 collision.
+  - **Depends on :** T9, T11, T2
+  - **Validation :** MockMvc OIDC.
+  - **Tests liés :** IT API MockMvc.
+
+### M5 — Preuves & docs
+
+- [ ] **T13. Suite tests complète + régressions**
+  - **Outcome :** tous scénarios testing doc cochables ; Jacoco ≥ 80 % ;
+    ArchUnit ; dossiers/auth verts.
+  - **Depends on :** T8–T12
+  - **Validation :** `./mvnw test` (ou équivalent projet).
+  - **Tests liés :** tous.
+
+- [ ] **T14. Doc implementation + follow-ups DEFERRED**
+  - **Outcome :** notes d’impl ; non-goals connecteurs/UI/visu rappelés ;
+    chemins config outbox.
+  - **Depends on :** T13
+  - **Validation :** relecture.
+  - **Tests liés :** —
 
 ## Dependencies
 **What needs to happen in what order?**
 
-- Task dependencies and blockers
-- External dependencies (APIs, services, etc.)
-- Team/resource dependencies
+```text
+T1–T5 (domaine) → T6–T8 (infra Flowable) → T9–T11 (usecases/relais) → T12 (API) → T13–T14
+```
 
-## Timeline & Estimates
-**When will things be done?**
-
-- Estimated effort per task/phase
-- Target dates for milestones
-- Buffer for unknowns
+- Bloqué par feature `connecteurs` : **non** — producteur outbox seed/API suffit.
+- Suites dossiers doivent rester vertes (partage schéma / ACL).
 
 ## Risks & Mitigation
-**What could go wrong?**
 
-- Technical risks
-- Resource risks
-- Dependency risks
-- Mitigation strategies
+| Risque | Mitigation |
+|---|---|
+| Ordre init Liquibase vs Flowable Boot 4 | IT boot tôt (T8) ; ajuster config si collision |
+| Index partiel H2 vs PG | MODE=PostgreSQL ; doc smoke PG différé |
+| Périmètre trop large (UI Flowable, connecteurs) | Non-goals stricts requirements |
+| Flaky scheduler tests | Invocation directe du relais |
 
 ## Resources Needed
-**What do we need to succeed?**
 
-- Team members and roles
-- Tools and services
-- Infrastructure
-- Documentation/knowledge
+- Analyse `05` / `04`, décisions 6/7/11/13/16/17/20/27
+- Worktree `.worktrees/feature-workflow-engine`
+- Maven Wrapper + H2 test
 
+## Traceability testing → tasks
+
+| Scénario testing | Tasks |
+|---|---|
+| Attach reserve/resume/collision | T9, T1 |
+| Config / statut / outcome | T2, T11 |
+| Outbox relay policies | T10, T4 |
+| Persistence + index | T6, T7 |
+| Flowable smoke | T8, T11 |
+| API MockMvc | T12 |
+| Events sealed | T3 |
+| Régression Jacoco/ArchUnit | T13 |

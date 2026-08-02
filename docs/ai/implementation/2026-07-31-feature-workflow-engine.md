@@ -125,7 +125,8 @@ updated: 2026-08-02
 | DEV-TX2 | Medium | TX2 (`confirmStarted` + `idempotency.remember` + `onStart`) n’est pas une seule TX applicative ; crash intermédiaire peut laisser ACTIVE sans ligne idempotency | Follow-up phase 8/impl : `TransactionTemplate` infra autour TX2 |
 | DEV-PURGE | Low | `purgeProcessedOlderThanDays` / `purgeExpired` non appelés par un job | Follow-up ops/scheduler |
 | DEV-TRIG | Low | `triggerRef = "manual:" + idempotencyKey` (pas `userSubject`) | Acceptable V1 ; documenter si audit nécessite subject |
-| DEV-TESTS | Low→phase 8 | Gaps testing doc : 401/403 API, collision 409, branches outbox/orphan unitaires, mutation config non-admin | Phase 8 |
+| DEV-TESTS | Low→phase 8 | Gaps testing doc : 401/403 API, collision 409, branches outbox/orphan unitaires, mutation config non-admin | **Clos phase 8** |
+| DEV-RESUME | — (fix) | `reserveOrResume` ne reprenait pas un lien ACTIVE même process → rejeu outbox marquait DEAD au lieu de PROCESSED | **Corrigé phase 8** |
 
 ### Fichiers clés revus
 

@@ -2,17 +2,22 @@
 phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
-status: draft
+status: verified
+verified: 2026-08-02
 created: 2026-08-02
 updated: 2026-08-02
 ---
 
 # Testing Strategy
 
-## Phase 7 note
-IT happy-path API / persistence / smoke OK. Cases non cochés ci-dessous =
-backlog **phase 8** (401/403, 409 collision, outbox/orphan units, config
-non-admin).
+## Phase 8 — résultats
+
+`JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64 ./mvnw test` → **171 tests,
+0 fail** ; Jacoco instructions **89,1 %** (≥ 80 %).
+
+Fix TDD livré avec la couverture : `reserveOrResume` reprend un lien
+**ACTIVE** même `processDefinitionKey` (rejeu outbox → `markProcessed`
+sans second start).
 
 ## Test Coverage Goals
 **What level of testing do we aim for?**
@@ -34,52 +39,70 @@ non-admin).
 **What individual components need testing?**
 
 ### AttachWorkflowUseCaseImpl
+Fichier : `src/test/java/com/flowforge/domain/dossier/usecase/AttachWorkflowUseCaseImplTest.java`
+
 - [x] `reserve` crée lien avec statut `initial`, `sequence` incrémentée,
       `processInstanceId` null, met à jour `currentWorkflowLinkId`
+      (`WorkflowPersistenceTest`)
 - [x] Second `reserve` pendant lien actif → `WorkflowAlreadyRunningException`
 - [x] `confirmStarted` pose `processInstanceId`
-- [ ] `reserveOrResume` reprend lien RESERVED même dossier+process
-- [ ] `reserveOrResume` no-op conceptuel si ACTIVE + processInstanceId
-- [ ] `reserveOrResume` → dead-letter path si autre workflow ACTIVE
+- [x] `reserveOrResume` reprend lien RESERVED même dossier+process
+- [x] `reserveOrResume` no-op conceptuel si ACTIVE + processInstanceId
+- [x] `reserveOrResume` → dead-letter path si autre workflow ACTIVE
       (exception collision)
 
 ### WorkflowTypeConfig / UpdateWorkflowLinkStatus
-- [ ] Statut inconnu pour `workflowKey` → rejet
-- [ ] Statut `initial` unique / présent à la config
+Fichiers : `WorkflowTypeConfigTest.java`,
+`UpdateWorkflowLinkStatusUseCaseImplTest.java`
+
+- [x] Statut inconnu pour `workflowKey` → rejet
+- [x] Statut `initial` unique / présent à la config
 - [x] `outcome != NONE` → `endedAt` renseigné, dossier libéré pour nouveau lien
-- [ ] `outcome == NONE` → lien reste actif
+- [x] `outcome == NONE` → lien reste actif
 
 ### OutboxRelay / OutboxRepository (fakes)
-- [ ] Happy path → `PROCESSED` après start+confirm
-- [ ] Échec transient → `attempts++`, reste `PENDING`
-- [ ] `attempts >= max` → `DEAD`
-- [ ] `WorkflowAlreadyRunningException` → `DEAD` immédiat
-- [ ] Rejeu : déjà confirmé → `markProcessed` sans second start
+Fichiers : `OutboxRelaySchedulerTest.java`, `WorkflowPersistenceTest.java`
+
+- [x] Happy path → `PROCESSED` après start+confirm
+- [x] Échec transient → `attempts++`, reste `PENDING`
+- [x] `attempts >= max` → `DEAD`
+- [x] `WorkflowAlreadyRunningException` → `DEAD` immédiat
+- [x] Rejeu : déjà confirmé → `markProcessed` sans second start
 
 ### WorkflowEvent sealed
-- [ ] Publisher accepte Started/Completed/Failed
-- [ ] Exhaustivité switch adaptateur test
+Fichiers : `WorkflowEventTest.java`, `InMemoryWorkflowEventPublisherTest.java`
+
+- [x] Publisher accepte Started/Completed/Failed
+- [x] Exhaustivité switch adaptateur test
 
 ### CompleteTaskUseCase (si logique domaine testable)
-- [ ] Task inexistante → erreur métier
-- [ ] Variables transmises au port moteur
-- [ ] Clés réservées dans variables complete → rejet (aligné D-VARS)
+Fichier : `CompleteTaskUseCaseImplTest.java`
+
+- [ ] Task inexistante → erreur métier *(délégé au moteur / API — hors UC)*
+- [x] Variables transmises au port moteur
+- [x] Clés réservées dans variables complete → rejet (aligné D-VARS)
 
 ### ManualStartOrchestrator / DD-TX / D-FAIL / D-IDEM
-- [ ] Happy path : reserve→start→confirm → ACTIVE + idempotency row
-- [ ] Replay même `Idempotency-Key` → même link, pas de second start
-- [ ] Start Flowable KO → abortReserved ORPHAN_START_FAILED + erreur API
-- [ ] Clés réservées dans body → 400 avant reserve
+Fichier : `ManualStartOrchestratorTest.java` (+ API reserved vars)
+
+- [x] Happy path : reserve→start→confirm → ACTIVE + idempotency row
+- [x] Replay même `Idempotency-Key` → même link, pas de second start
+- [x] Start Flowable KO → abortReserved ORPHAN_START_FAILED + erreur API
+- [x] Clés réservées dans body → 400 avant reserve
 
 ### ReservedReconcileJob (D-ORPHAN)
-- [ ] Instance trouvée par businessKey=linkId → confirmStarted
-- [ ] Pas d’instance + retry start OK → confirm
-- [ ] Timeout sans instance → ORPHAN_TIMEOUT, dossier libéré
+Fichier : `ReservedReconcileJobTest.java`
+
+- [x] Instance trouvée par businessKey=linkId → confirmStarted
+- [x] Pas d’instance + retry start OK → confirm
+- [x] Timeout sans instance → ORPHAN_TIMEOUT, dossier libéré
 
 ## Integration Tests
 **How do we test component interactions?**
 
 ### Persistence H2
+Fichier : `WorkflowPersistenceTest.java`
+
 - [x] Changelog crée `dossier_workflow_link`, `outbox_event`,
       `workflow_type_config`
 - [x] Index unique partiel : 2 liens `ended_at IS NULL` → échec contrainte
@@ -87,6 +110,8 @@ non-admin).
 - [x] Outbox save/lock/markProcessed
 
 ### Flowable smoke
+Fichier : `WorkflowApiTest.java` (parcours start→complete)
+
 - [x] Déploiement process classpath (ex. `smoke-process.bpmn20.xml`)
 - [x] Start via RuntimeService avec `tenantId` = `TenantProperties.id()`
 - [x] Variables `dossierId` / `dossierWorkflowLinkId` présentes
@@ -94,18 +119,22 @@ non-admin).
 - [x] Delegate statut lien (si câblé dans smoke) met à jour le lien
 
 ### API MockMvc + OIDC
+Fichier : `WorkflowApiTest.java`
+
 - [x] POST start : EDIT OK ; CSRF requis ; idempotency replay 200
-- [ ] POST start : sans grant 403 ; anonyme 401
-- [ ] Collision second start avec clé différente → 409 ProblemDetail
+- [x] POST start : sans grant 403 ; anonyme 401
+- [x] Collision second start avec clé différente → 409 ProblemDetail
 - [x] GET history : ordre `sequence`, VIEW OK
 - [x] POST complete task : happy path
 - [x] CRUD/GET `workflow-type-configs` : admin OK
-- [ ] CRUD/GET `workflow-type-configs` : non-admin mutation restreinte
+- [x] CRUD/GET `workflow-type-configs` : non-admin mutation restreinte
 
 ### Relais IT
-- [ ] Insérer PENDING → après tick/invoke relais → instance Flowable +
+Fichier : `OutboxRelayIT.java`
+
+- [x] Insérer PENDING → après tick/invoke relais → instance Flowable +
       lien confirmé + PROCESSED
-- [ ] Payload processKey inconnu → attempts / DEAD selon politique
+- [x] Payload processKey inconnu → attempts / DEAD selon politique
 
 ## End-to-End Tests
 **What user journeys need testing?**
@@ -123,16 +152,16 @@ non-admin).
 - BPMN smoke DD-SMOKE : start → userTask → delegate statut terminal → end.
 - Utilisateurs mock : `TENANT_ADMIN`, `WORKFLOW_ADMIN`, user EDIT, user VIEW,
   anonyme.
-- Clock / scheduler : invocation directe `relayPendingEvents()` en test
+- Clock / scheduler : invocation directe `processOne` / `reconcile` en test
   (pas d’attente flaky).
 
 ## Coverage Targets
 
-| Zone | Cible |
-|---|---|
-| Nouveau code domaine workflow / attach / outbox | ≥ 80 % lignes (Jacoco projet) |
-| Suite globale | Jacoco ≥ 80 % maintenu |
-| Branches relais (happy/retry/dead/idempotence) | toutes exercées |
+| Zone | Cible | Preuve phase 8 |
+|---|---|---|
+| Nouveau code domaine workflow / attach / outbox | ≥ 80 % lignes (Jacoco projet) | **89,1 %** instructions |
+| Suite globale | Jacoco ≥ 80 % maintenu | OK |
+| Branches relais (happy/retry/dead/idempotence) | toutes exercées | Units + IT |
 
 ## Alignment with requirements
 

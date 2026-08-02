@@ -21,7 +21,13 @@ supprimé (DD-STUBS). Traçage `task` CLI indisponible.
 `docs/ai/implementation/…` (DEV-TX2 medium, DEV-PURGE/DEV-TRIG low,
 DEV-TESTS → phase 8). `InMemoryWorkflowEventPublisher` confiné `src/test`.
 
-Prochaine phase lifecycle : **8 Write Tests** puis 9.
+## Phase 8 — Write Tests
+
+**Clos.** Gaps testing couverts ; `./mvnw test` → 171 / 0 fail ; Jacoco
+89,1 %. Fix `reserveOrResume` ACTIVE (rejeu outbox). Doc testing
+`status: verified`.
+
+Prochaine phase lifecycle : **9 Code Review**.
 
 ## Milestones
 **What are the major checkpoints?**

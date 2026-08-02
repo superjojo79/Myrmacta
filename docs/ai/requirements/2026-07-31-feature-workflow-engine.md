@@ -96,9 +96,14 @@ des instances Flowable et un historique d’exécutions.
 | GET | `/api/workflow-type-configs/{workflowKey}` | authentifié |
 
 **Body `POST …/workflows` :** `processDefinitionKey` (requis) + `variables`
-(optionnel). La clé doit référencer un `WorkflowTypeConfig` existant
-(**D-KEY = option 2**). `DossierType.workflowKey` = **hint UI uniquement** —
-aucune égalité imposée côté serveur.
+(optionnel, objet JSON). La clé doit référencer un `WorkflowTypeConfig`
+existant (**D-KEY = option 2**). `DossierType.workflowKey` = **hint UI
+uniquement** — aucune égalité imposée côté serveur.
+
+**Variables (**D-VARS = option 2**)** : map libre sauf clés **réservées
+refusées** dans le body/payload client — `dossierId`,
+`dossierWorkflowLinkId`, `tenantId` → 400 si présentes. La plateforme les
+injecte après `reserve` / avant `start`. Pas de JSON Schema start en V1.
 
 Mutateurs : CSRF BFF. Anonyme `/api/**` → 401. Erreurs : `ProblemDetail`
 (collision workflow actif → 409 ; statut métier inconnu → 400 ;
@@ -264,6 +269,9 @@ V1 (décision n° 11 documentée).
   `{OUVERT, EN_COURS, SUSPENDU}` (figé en design).
 - A8 / **D-ORPHAN** — option 2 : réconciliation expire+reprise ; défaut timeout
   5 min ; corrélation instance / annulation ORPHAN_TIMEOUT.
+- A9 / **D-IDEM** — option 2 : `Idempotency-Key` sur `POST …/workflows` ;
+  persistance de la clé liée au lien créé ; TTL aligné ou ≥ reserve-timeout
+  (détail design).
 
 ## Questions & Open Items
 **What do we still need to clarify?**
@@ -280,6 +288,7 @@ V1 (décision n° 11 documentée).
 | Q8 | Qui peut POST start ? | **Clos** — D-AUTHZ option 3 (EDIT V1) |
 | Q9 | Statuts dossier autorisant le start ? | **Clos** — D-STATUS option 3 (par config) |
 | Q10 | RESERVED orphelins | **Clos** — D-ORPHAN option 2 (reprise, T=5 min) |
+| Q11 | Idempotence POST start | **Clos** — D-IDEM option 2 (`Idempotency-Key`) |
 
 Aucun item bloquant ouvert pour passer en revue design.
 

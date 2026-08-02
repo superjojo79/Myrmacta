@@ -82,7 +82,7 @@ des instances Flowable et un historique d’exécutions.
 
 | Méthode | Path | Authz |
 |---|---|---|
-| POST | `/api/dossiers/{id}/workflows` | `EDIT` sur le type (ou bypass admin) — reserve→Flowable→confirm **synchrone** |
+| POST | `/api/dossiers/{id}/workflows` | **D-AUTHZ = option 3** : `EDIT` sur le type (ou bypass `TENANT_ADMIN` / `WORKFLOW_ADMIN`) — reserve→Flowable→confirm **synchrone** ; permission dédiée `START_WORKFLOW` éventuelle = TODO 19 (hors V1) |
 | GET | `/api/dossiers/{id}/workflows` | `VIEW` (ou bypass) — historique trié `sequence` |
 | POST | `/api/workflow-tasks/{taskId}/complete` | `EDIT` sur le type du dossier lié (ou bypass) ; body variables |
 | POST | `/api/workflow-type-configs` | `TENANT_ADMIN` ou `WORKFLOW_ADMIN` |
@@ -246,9 +246,9 @@ V1 (décision n° 11 documentée).
   seul chemin pour triggers non-humains (+ seed/tests) ; **sans** API enqueue
   publique ; réconciliation des RESERVED orphelins **obligatoire**.
 - A4 — Accès start/history/complete via ACL du `DossierType` du dossier.
-- A5 — `processDefinitionKey` du body est requis et doit exister en
-  `WorkflowTypeConfig` ; **pas** de contrainte d’égalité avec
-  `DossierType.workflowKey` en V1 (hint UI seulement).
+- A5 / **D-KEY** — option 2 : `processDefinitionKey` **requis** ; doit exister
+  en `WorkflowTypeConfig` ; **pas** de contrainte vs `DossierType.workflowKey`
+  (hint UI seulement).
 - A6 — « RESERVED / ACTIVE / TERMINATED » = glossaire dérivé des colonnes,
   pas un champ `state` supplémentaire.
 
@@ -262,7 +262,7 @@ V1 (décision n° 11 documentée).
 | Q3 | Défauts `max-attempts` / rétention purge | **Clos pour V1** — valeurs dans design (`app.workflow.outbox.*`) ; ops peut surcharger plus tard |
 | Q4 | Testcontainers / charge verrous | **Différé** TODO 28 |
 | Q5 | Métriques Micrometer âge outbox | **Différé** TODO 29 |
-| Q6 | Lier `processDefinitionKey` à `DossierType.workflowKey` ? | **Clos** — A5 (pas en V1) |
+| Q6 | Lier `processDefinitionKey` à `DossierType.workflowKey` ? | **Clos** — D-KEY option 2 |
 | Q7 | Chaînage N→N+1 / liste tâches | **Différé** — non-goals |
 
 Aucun item bloquant ouvert pour passer en revue design.

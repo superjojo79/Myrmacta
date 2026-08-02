@@ -1,4 +1,15 @@
 package com.flowforge.domain.workflow.model;
 
-public record WorkflowStartedEvent(WorkflowInstance instance) {
+import java.time.Instant;
+import java.util.Objects;
+import java.util.UUID;
+
+public record WorkflowStartedEvent(UUID workflowInstanceId, Instant occurredAt, String processKey)
+        implements WorkflowEvent {
+
+    public WorkflowStartedEvent {
+        Objects.requireNonNull(workflowInstanceId, "workflowInstanceId");
+        Objects.requireNonNull(occurredAt, "occurredAt");
+        Objects.requireNonNull(processKey, "processKey");
+    }
 }

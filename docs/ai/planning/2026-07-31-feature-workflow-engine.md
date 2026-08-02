@@ -22,11 +22,11 @@ indisponible.
 ## Milestones
 **What are the major checkpoints?**
 
-- [ ] **M1 — Domaine & ports** : link, config étendue, events sealed, outbox/idempotency ports, DD-STUBS préparé
-- [ ] **M2 — Persistence & Flowable** : Liquibase (link/outbox/config/idempotency), JPA, activation Flowable, smoke BPMN
-- [ ] **M3 — Use cases & jobs** : Attach, ManualStartOrchestrator (DD-TX), complete, relais, orphan, delegates
-- [ ] **M4 — API REST** : start+Idempotency-Key, history, complete, workflow-type-configs
-- [ ] **M5 — Preuves & docs** : IT complètes, régressions, doc implementation
+- [x] **M1 — Domaine & ports** : link, config étendue, events sealed, outbox/idempotency ports, DD-STUBS préparé
+- [x] **M2 — Persistence & Flowable** : Liquibase (link/outbox/config/idempotency), JPA, activation Flowable, smoke BPMN
+- [x] **M3 — Use cases & jobs** : Attach, ManualStartOrchestrator (DD-TX), complete, relais, orphan, delegates
+- [x] **M4 — API REST** : start+Idempotency-Key, history, complete, workflow-type-configs
+- [x] **M5 — Preuves & docs** : IT complètes, régressions, doc implementation
 
 ## Task Breakdown
 **What specific work needs to be done?**
@@ -35,7 +35,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M1 — Domaine & ports
 
-- [ ] **T1. `DossierWorkflowLink` + exceptions**
+- [x] **T1. `DossierWorkflowLink` + exceptions**
   - **Outcome :** record pur ; `WorkflowAlreadyRunningException` ;
     `AbortReservedReason` (`ORPHAN_START_FAILED`, `ORPHAN_TIMEOUT`, …) ;
     helpers RESERVED/ACTIVE/TERMINATED (dérivés colonnes).
@@ -43,7 +43,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Validation :** compile ; ArchUnit domaine pur.
   - **Tests liés :** Unit Attach (T9) ; glossaire A6.
 
-- [ ] **T2. `WorkflowTypeConfig` + validation**
+- [x] **T2. `WorkflowTypeConfig` + validation**
   - **Outcome :** `statusDefinitions` (un `initial`) ;
     `allowedDossierStatuses` non vide ; `onStartDossierStatus?` ;
     `StatusOutcome` ; reject unknown status / liste vide.
@@ -52,7 +52,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Tests liés :** Unit WorkflowTypeConfig / UpdateStatus ; D-STATUS /
     D-DOSSIER-STATUS.
 
-- [ ] **T3. `WorkflowEvent` sealed (+ préparation DD-STUBS)**
+- [x] **T3. `WorkflowEvent` sealed (+ préparation DD-STUBS)**
   - **Outcome :** `Started` / `Completed` / `Failed` ; publisher générique.
     **Ne pas** casser le boot : retirer `StartWorkflowUseCase` /
     `WorkflowInstance` / InMemory* **au plus tard dans T11** quand
@@ -63,7 +63,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Validation :** unit switch exhaustif.
   - **Tests liés :** Unit WorkflowEvent sealed.
 
-- [ ] **T4. Outbox + idempotency ports + properties**
+- [x] **T4. Outbox + idempotency ports + properties**
   - **Outcome :** `OutboxStatus`, `TriggerOutboxPayload`, `OutboxRepository` ;
     `IdempotencyStore` (port) ; `@ConfigurationProperties`
     `app.workflow.outbox.*` + `app.workflow.reserve-timeout` (DD-OUTBOX /
@@ -72,7 +72,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Validation :** compile ; bind yaml test.
   - **Tests liés :** Unit relais (T10) ; Unit idempotency (T11).
 
-- [ ] **T5. Ports in/out (interfaces)**
+- [x] **T5. Ports in/out (interfaces)**
   - **Outcome :** `AttachWorkflowUseCase` (reserve / reserveOrResume /
     confirmStarted / abortReserved) ; `GetDossierWorkflowHistoryUseCase` ;
     `CompleteTaskUseCase` ; `UpdateWorkflowLinkStatusUseCase` ;
@@ -85,7 +85,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M2 — Persistence & Flowable
 
-- [ ] **T6. Liquibase : link + outbox + config + idempotency**
+- [x] **T6. Liquibase : link + outbox + config + idempotency**
   - **Outcome :** `dossier_workflow_link` + index partiel actif ;
     `workflow_type_config` (jsonb statuses + allowedStatuses +
     on_start_dossier_status) ; `outbox_event` + index (status, created_at) ;
@@ -94,7 +94,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Validation :** IT schema H2.
   - **Tests liés :** IT Persistence.
 
-- [ ] **T7. JPA entities + adapters**
+- [x] **T7. JPA entities + adapters**
   - **Outcome :** adapters link / config / outbox / idempotency ;
     MAJ `dossier.current_workflow_link_id` à confirm ; clear quand lien
     terminé (actif seulement).
@@ -102,7 +102,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Validation :** IT round-trip + contrainte unique + idempotency save/get.
   - **Tests liés :** IT Persistence.
 
-- [ ] **T8. Activer Flowable + DD-SMOKE BPMN**
+- [x] **T8. Activer Flowable + DD-SMOKE BPMN**
   - **Outcome :** exclusions Flowable process retirées autant que nécessaire ;
     yaml async executor ; `processes/smoke-process.bpmn20.xml`
     (`smokeProcess` : userTask → delegate statut terminal → end) ; boot IT.
@@ -112,7 +112,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M3 — Use cases & jobs
 
-- [ ] **T9. `AttachWorkflowUseCaseImpl` + history**
+- [x] **T9. `AttachWorkflowUseCaseImpl` + history**
   - **Outcome :** reserve (allowedStatuses + initial + sequence) ;
     reserveOrResume ; confirmStarted ; abortReserved ; getHistory ;
     collision → exception.
@@ -120,7 +120,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Validation :** unit + IT.
   - **Tests liés :** Unit AttachWorkflow ; IT Persistence.
 
-- [ ] **T10. OutboxRelay + ReservedReconcileJob + purge**
+- [x] **T10. OutboxRelay + ReservedReconcileJob + purge**
   - **Outcome :** relais DD-OUTBOX (retry / DEAD / idempotence rejeu) ;
     orphan DD-BKEY/D-ORPHAN ; purge PROCESSED 7d.
   - **Depends on :** T4, T7, T8, T9, `WorkflowEnginePort` (T11 peut fournir
@@ -128,7 +128,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Validation :** unit + IT invoke directe (pas de sleep flaky).
   - **Tests liés :** Unit OutboxRelay ; IT Relais ; Unit/IT orphan.
 
-- [ ] **T11. ManualStartOrchestrator + Complete + delegates + DD-STUBS**
+- [x] **T11. ManualStartOrchestrator + Complete + delegates + DD-STUBS**
   - **Outcome :** orchestrateur DD-TX / D-FAIL / D-VARS / D-IDEM /
     D-DOSSIER-STATUS ; adaptateur Flowable `WorkflowEnginePort` ;
     `CompleteTaskUseCaseImpl` ; `UpdateWorkflowLinkStatusTask` +
@@ -141,7 +141,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M4 — API REST
 
-- [ ] **T12. Controllers + authz + Idempotency-Key**
+- [x] **T12. Controllers + authz + Idempotency-Key**
   - **Outcome :** POST/GET `/api/dossiers/{id}/workflows` (EDIT/VIEW,
     header Idempotency-Key **requis** sur POST) ; POST
     `/api/workflow-tasks/{taskId}/complete` (EDIT) ; POST/PATCH/GET
@@ -153,14 +153,14 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M5 — Preuves & docs
 
-- [ ] **T13. Suite tests + régressions**
+- [x] **T13. Suite tests + régressions**
   - **Outcome :** scenarios testing doc verts ; Jacoco ≥ 80 % ; ArchUnit ;
     dossiers/auth non régressés.
   - **Depends on :** T8–T12
   - **Validation :** `./mvnw test` (ou `verify` projet).
   - **Tests liés :** tous.
 
-- [ ] **T14. Doc implementation + follow-ups**
+- [x] **T14. Doc implementation + follow-ups**
   - **Outcome :** notes d’impl (TX, businessKey, yaml) ; rappel non-goals
     connecteurs/UI/visu ; pointer DEFERRED.
   - **Depends on :** T13

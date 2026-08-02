@@ -6,6 +6,7 @@ import com.flowforge.domain.workflow.model.WorkflowStartedEvent;
 import com.flowforge.domain.workflow.port.in.StartWorkflowUseCase;
 import com.flowforge.domain.workflow.port.out.WorkflowEventPublisher;
 import com.flowforge.domain.workflow.port.out.WorkflowRepository;
+import java.time.Instant;
 import java.util.Objects;
 
 public class StartWorkflowUseCaseImpl implements StartWorkflowUseCase {
@@ -22,7 +23,8 @@ public class StartWorkflowUseCaseImpl implements StartWorkflowUseCase {
     public WorkflowInstance start(StartWorkflowCommand cmd) {
         WorkflowInstance instance = WorkflowInstance.create(cmd);
         repository.save(instance);
-        publisher.publish(new WorkflowStartedEvent(instance));
+        publisher.publish(
+                new WorkflowStartedEvent(instance.id(), Instant.now(), instance.processKey()));
         return instance;
     }
 }

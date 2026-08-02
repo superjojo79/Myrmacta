@@ -48,7 +48,8 @@ class StartWorkflowUseCaseImplTest {
 
         ArgumentCaptor<WorkflowStartedEvent> event = ArgumentCaptor.forClass(WorkflowStartedEvent.class);
         verify(publisher).publish(event.capture());
-        assertThat(event.getValue().instance()).isEqualTo(instance);
+        assertThat(event.getValue().workflowInstanceId()).isEqualTo(instance.id());
+        assertThat(event.getValue().processKey()).isEqualTo("demo-process");
     }
 
     @Test

@@ -29,10 +29,10 @@ updated: 2026-08-02
 **What individual components need testing?**
 
 ### AttachWorkflowUseCaseImpl
-- [ ] `reserve` crée lien avec statut `initial`, `sequence` incrémentée,
+- [x] `reserve` crée lien avec statut `initial`, `sequence` incrémentée,
       `processInstanceId` null, met à jour `currentWorkflowLinkId`
-- [ ] Second `reserve` pendant lien actif → `WorkflowAlreadyRunningException`
-- [ ] `confirmStarted` pose `processInstanceId`
+- [x] Second `reserve` pendant lien actif → `WorkflowAlreadyRunningException`
+- [x] `confirmStarted` pose `processInstanceId`
 - [ ] `reserveOrResume` reprend lien RESERVED même dossier+process
 - [ ] `reserveOrResume` no-op conceptuel si ACTIVE + processInstanceId
 - [ ] `reserveOrResume` → dead-letter path si autre workflow ACTIVE
@@ -41,7 +41,7 @@ updated: 2026-08-02
 ### WorkflowTypeConfig / UpdateWorkflowLinkStatus
 - [ ] Statut inconnu pour `workflowKey` → rejet
 - [ ] Statut `initial` unique / présent à la config
-- [ ] `outcome != NONE` → `endedAt` renseigné, dossier libéré pour nouveau lien
+- [x] `outcome != NONE` → `endedAt` renseigné, dossier libéré pour nouveau lien
 - [ ] `outcome == NONE` → lien reste actif
 
 ### OutboxRelay / OutboxRepository (fakes)
@@ -75,25 +75,27 @@ updated: 2026-08-02
 **How do we test component interactions?**
 
 ### Persistence H2
-- [ ] Changelog crée `dossier_workflow_link`, `outbox_event`,
+- [x] Changelog crée `dossier_workflow_link`, `outbox_event`,
       `workflow_type_config`
-- [ ] Index unique partiel : 2 liens `ended_at IS NULL` → échec contrainte
-- [ ] Round-trip config jsonb statusDefinitions
-- [ ] Outbox save/lock/markProcessed
+- [x] Index unique partiel : 2 liens `ended_at IS NULL` → échec contrainte
+- [x] Round-trip config jsonb statusDefinitions
+- [x] Outbox save/lock/markProcessed
 
 ### Flowable smoke
-- [ ] Déploiement process classpath (ex. `smoke-process.bpmn20.xml`)
-- [ ] Start via RuntimeService avec `tenantId` = `TenantProperties.id()`
-- [ ] Variables `dossierId` / `dossierWorkflowLinkId` présentes
-- [ ] Complete task utilisateur du smoke → process avance / termine
-- [ ] Delegate statut lien (si câblé dans smoke) met à jour le lien
+- [x] Déploiement process classpath (ex. `smoke-process.bpmn20.xml`)
+- [x] Start via RuntimeService avec `tenantId` = `TenantProperties.id()`
+- [x] Variables `dossierId` / `dossierWorkflowLinkId` présentes
+- [x] Complete task utilisateur du smoke → process avance / termine
+- [x] Delegate statut lien (si câblé dans smoke) met à jour le lien
 
 ### API MockMvc + OIDC
-- [ ] POST start : EDIT OK ; sans grant 403 ; anonyme 401 ; CSRF requis
-- [ ] Collision second start → 409 ProblemDetail
-- [ ] GET history : ordre `sequence`, VIEW OK
-- [ ] POST complete task : happy path
-- [ ] CRUD/GET `workflow-type-configs` : admin OK ; non-admin restreint
+- [x] POST start : EDIT OK ; CSRF requis ; idempotency replay 200
+- [ ] POST start : sans grant 403 ; anonyme 401
+- [ ] Collision second start avec clé différente → 409 ProblemDetail
+- [x] GET history : ordre `sequence`, VIEW OK
+- [x] POST complete task : happy path
+- [x] CRUD/GET `workflow-type-configs` : admin OK
+- [ ] CRUD/GET `workflow-type-configs` : non-admin mutation restreinte
 
 ### Relais IT
 - [ ] Insérer PENDING → après tick/invoke relais → instance Flowable +

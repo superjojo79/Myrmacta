@@ -1,0 +1,221 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-dossier-workflow-link
+      author: flowforge
+      changes:
+        - createTable:
+            tableName: dossier_workflow_link
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_dossier_workflow_link
+                    nullable: false
+              - column:
+                  name: dossier_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: tenant_id
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: process_instance_id
+                  type: varchar(128)
+              - column:
+                  name: process_definition_key
+                  type: varchar(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: sequence
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: trigger_ref
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: started_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ended_at
+                  type: timestamp with time zone
+              - column:
+                  name: end_reason
+                  type: varchar(64)
+        - createIndex:
+            tableName: dossier_workflow_link
+            indexName: ix_dossier_workflow_link_dossier_sequence
+            columns:
+              - column:
+                  name: dossier_id
+              - column:
+                  name: sequence
+        - sql:
+            dbms: postgresql
+            splitStatements: false
+            sql: |
+              CREATE UNIQUE INDEX uq_dossier_workflow_link_active
+              ON dossier_workflow_link (dossier_id)
+              WHERE ended_at IS NULL;
+        - sql:
+            dbms: h2
+            splitStatements: true
+            sql: |
+              ALTER TABLE dossier_workflow_link
+              ADD active_dossier_id uuid
+              GENERATED ALWAYS AS (CASE WHEN ended_at IS NULL THEN dossier_id ELSE NULL END);
+              CREATE UNIQUE INDEX uq_dossier_workflow_link_active
+              ON dossier_workflow_link (active_dossier_id);
+
+  - changeSet:
+      id: 002-workflow-type-config
+      author: flowforge
+      changes:
+        - createTable:
+            tableName: workflow_type_config
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_workflow_type_config
+                    nullable: false
+              - column:
+                  name: tenant_id
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: workflow_key
+                  type: varchar(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: label
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status_definitions
+                  type: json
+                  constraints:
+                    nullable: false
+              - column:
+                  name: allowed_dossier_statuses
+                  type: json
+                  constraints:
+                    nullable: false
+              - column:
+                  name: on_start_dossier_status
+                  type: varchar(32)
+        - addUniqueConstraint:
+            tableName: workflow_type_config
+            columnNames: tenant_id, workflow_key
+            constraintName: uq_workflow_type_config_tenant_key
+
+  - changeSet:
+      id: 002-outbox-event
+      author: flowforge
+      changes:
+        - createTable:
+            tableName: outbox_event
+            columns:
+              - column:
+                  name: event_id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_outbox_event
+                    nullable: false
+              - column:
+                  name: event_type
+                  type: varchar(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: payload
+                  type: json
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: attempts
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_error
+                  type: varchar(1024)
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: processed_at
+                  type: timestamp with time zone
+        - createIndex:
+            tableName: outbox_event
+            indexName: ix_outbox_event_status_created_at
+            columns:
+              - column:
+                  name: status
+              - column:
+                  name: created_at
+
+  - changeSet:
+      id: 002-workflow-idempotency
+      author: flowforge
+      changes:
+        - createTable:
+            tableName: workflow_idempotency
+            columns:
+              - column:
+                  name: tenant_id
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dossier_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: idempotency_key
+                  type: varchar(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: link_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: workflow_idempotency
+            columnNames: tenant_id, dossier_id, idempotency_key
+            constraintName: pk_workflow_idempotency

@@ -111,6 +111,96 @@ class WorkflowApiTest {
     }
 
     @Test
+    void start_anonymousReturns401AndWithoutEditReturns403() throws Exception {
+        createWorkflowConfig("smokeProcess");
+        String typeCode = createType();
+        grant(typeCode, "workflow-owner", "EDIT");
+        String dossierId = createDossier(typeCode, "workflow-owner");
+
+        mockMvc.perform(post("/api/dossiers/{id}/workflows", dossierId)
+                        .with(csrf())
+                        .header("Idempotency-Key", "idem-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "processDefinitionKey": "smokeProcess"
+                                }
+                                """))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post("/api/dossiers/{id}/workflows", dossierId)
+                        .with(user("no-edit-user"))
+                        .with(csrf())
+                        .header("Idempotency-Key", "idem-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "processDefinitionKey": "smokeProcess"
+                                }
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status").value(403));
+    }
+
+    @Test
+    void start_secondDifferentIdempotencyKeyWhileActiveReturns409() throws Exception {
+        createWorkflowConfig("smokeProcess");
+        String typeCode = createType();
+        grant(typeCode, "workflow-collision", "EDIT");
+        String dossierId = createDossier(typeCode, "workflow-collision");
+
+        mockMvc.perform(post("/api/dossiers/{id}/workflows", dossierId)
+                        .with(user("workflow-collision"))
+                        .with(csrf())
+                        .header("Idempotency-Key", "idem-first-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "processDefinitionKey": "smokeProcess"
+                                }
+                                """))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/dossiers/{id}/workflows", dossierId)
+                        .with(user("workflow-collision"))
+                        .with(csrf())
+                        .header("Idempotency-Key", "idem-second-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "processDefinitionKey": "smokeProcess"
+                                }
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409));
+    }
+
+    @Test
+    void workflowTypeConfigMutationRequiresAdminRole() throws Exception {
+        mockMvc.perform(post("/api/workflow-type-configs")
+                        .with(user("plain-user"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "workflowKey": "deniedProcess",
+                                  "label": "Denied",
+                                  "statusDefinitions": [
+                                    {
+                                      "code": "STARTED",
+                                      "label": "Started",
+                                      "initial": true,
+                                      "outcome": "NONE"
+                                    }
+                                  ],
+                                  "allowedDossierStatuses": ["OUVERT"]
+                                }
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status").value(403));
+    }
+
+    @Test
     void manualStartRequiresIdempotencyKeyAndRejectsReservedVariables() throws Exception {
         createWorkflowConfig("smokeProcess");
         String typeCode = createType();

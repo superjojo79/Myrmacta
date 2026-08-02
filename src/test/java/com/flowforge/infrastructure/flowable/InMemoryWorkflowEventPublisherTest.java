@@ -2,6 +2,8 @@ package com.flowforge.infrastructure.flowable;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.flowforge.domain.workflow.model.WorkflowCompletedEvent;
+import com.flowforge.domain.workflow.model.WorkflowFailedEvent;
 import com.flowforge.domain.workflow.model.WorkflowStartedEvent;
 import java.time.Instant;
 import java.util.UUID;
@@ -24,6 +26,17 @@ class InMemoryWorkflowEventPublisherTest {
         publisher.publish(event);
 
         assertThat(publisher.published()).containsExactly(event);
+    }
+
+    @Test
+    void publish_acceptsStartedCompletedAndFailed() {
+        Instant at = Instant.parse("2026-08-02T12:00:00Z");
+        UUID id = UUID.randomUUID();
+        publisher.publish(new WorkflowStartedEvent(id, at, "smokeProcess"));
+        publisher.publish(new WorkflowCompletedEvent(id, at));
+        publisher.publish(new WorkflowFailedEvent(id, at, "boom"));
+
+        assertThat(publisher.published()).hasSize(3);
     }
 
     @Test

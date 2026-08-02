@@ -36,6 +36,22 @@ class WorkflowTypeConfigTest {
     }
 
     @Test
+    void rejectsMultipleInitialStatuses() {
+        assertThatThrownBy(() -> new WorkflowTypeConfig(
+                        UUID.randomUUID(),
+                        "tenant_a",
+                        "smokeProcess",
+                        "Smoke",
+                        List.of(
+                                new WorkflowStatusDefinition("INIT", "Init", true, StatusOutcome.NONE),
+                                new WorkflowStatusDefinition("ALSO", "Also", true, StatusOutcome.NONE)),
+                        List.of(DossierStatus.OUVERT),
+                        null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("exactly one initial");
+    }
+
+    @Test
     void rejectsEmptyAllowedDossierStatuses() {
         assertThatThrownBy(() -> new WorkflowTypeConfig(
                         UUID.randomUUID(),

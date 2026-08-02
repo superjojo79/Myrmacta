@@ -63,6 +63,8 @@ public final class AttachWorkflowUseCaseImpl implements AttachWorkflowUseCase, G
     @Override
     public DossierWorkflowLink reserveOrResume(UUID dossierId, String processDefinitionKey, String triggerRef) {
         return linkRepository.findReservedByDossierAndProcess(dossierId, processDefinitionKey)
+                .or(() -> linkRepository.findActiveByDossierId(dossierId)
+                        .filter(link -> processDefinitionKey.equals(link.processDefinitionKey())))
                 .orElseGet(() -> reserve(dossierId, processDefinitionKey, triggerRef));
     }
 

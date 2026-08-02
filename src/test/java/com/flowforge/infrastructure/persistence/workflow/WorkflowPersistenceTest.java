@@ -44,6 +44,9 @@ class WorkflowPersistenceTest {
     private OutboxRepository outboxRepository;
 
     @Autowired
+    private SpringDataOutboxEventRepository springDataOutbox;
+
+    @Autowired
     private AttachWorkflowUseCase attachWorkflow;
 
     @Autowired
@@ -79,6 +82,26 @@ class WorkflowPersistenceTest {
         outboxRepository.markProcessed(event.eventId());
 
         assertThat(outboxRepository.lockNextPending(10))
+                .extracting(stored -> stored.eventId())
+                .doesNotContain(event.eventId());
+    }
+
+    @Test
+    void outboxRecordFailureIncrementsAttemptsThenMarksDead() {
+        var event = outboxRepository.savePending(new TriggerOutboxPayload(
+                UUID.randomUUID(), null, "smokeProcess", Map.of(), "trigger-fail"));
+
+        outboxRepository.recordFailure(event.eventId(), "boom-1", 3);
+        OutboxEventJpaEntity afterOne = springDataOutbox.findById(event.eventId()).orElseThrow();
+        assertThat(afterOne.toDomain().attempts()).isEqualTo(1);
+        assertThat(afterOne.toDomain().status()).isEqualTo(OutboxStatus.PENDING);
+
+        outboxRepository.recordFailure(event.eventId(), "boom-2", 3);
+        outboxRepository.recordFailure(event.eventId(), "boom-3", 3);
+        OutboxEventJpaEntity dead = springDataOutbox.findById(event.eventId()).orElseThrow();
+        assertThat(dead.toDomain().attempts()).isEqualTo(3);
+        assertThat(dead.toDomain().status()).isEqualTo(OutboxStatus.DEAD);
+        assertThat(outboxRepository.lockNextPending(50))
                 .extracting(stored -> stored.eventId())
                 .doesNotContain(event.eventId());
     }

@@ -280,8 +280,9 @@ profit Flowable + link.
 | **DD-BKEY** | `businessKey = dossierWorkflowLinkId` (UUID string) | **Acté** (opt. 1) |
 | **DD-IDEM** | Table dédiée `workflow_idempotency` ; TTL ≥ reserve-timeout | **Acté** (opt. 1) |
 | DD-SMOKE | `smokeProcess` classpath + userTask + delegate statut | Proposé |
-| DD-OUTBOX | batch 20, max-attempts 5, poll 1s, retention 7d | Proposé (Q3 req) |
+| **DD-OUTBOX** | batch 20, max-attempts 5, poll 1s, retention 7d | **Acté** (opt. 1) |
 | DD-STUBS | Retrait câblage in-memory prod | Proposé |
+| DD-SMOKE | `smokeProcess` classpath + userTask + delegate statut | **Question ouverte** |
 | Engine | Flowable 8 CE | Acté analyse |
 | Concurrence | Index unique partiel | Acté analyse |
 
@@ -342,8 +343,9 @@ profit Flowable + link.
 |---|---|---|
 | DD-TX | Frontières TX start sync | **Clos** — option 2 |
 | DD-BKEY | Corrélation instance ↔ link | **Clos** — businessKey = linkId |
-| DD-IDEM | Persistance Idempotency-Key | **Question ouverte** |
-| DD-SMOKE / DD-OUTBOX / DD-STUBS | Détails techniques | Proposés |
+| DD-IDEM | Persistance Idempotency-Key | **Clos** — table `workflow_idempotency` |
+| DD-OUTBOX | Défauts polling / retry / rétention | **Question ouverte** |
+| DD-SMOKE / DD-STUBS | Smoke BPMN + retrait stubs | Proposés |
 
 ## References
 

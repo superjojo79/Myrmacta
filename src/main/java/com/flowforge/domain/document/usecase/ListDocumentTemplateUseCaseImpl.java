@@ -1,5 +1,7 @@
 package com.flowforge.domain.document.usecase;
 
+import com.flowforge.domain.document.DocumentTemplateSupport;
+
 import com.flowforge.domain.document.model.DocumentTemplate;
 import com.flowforge.domain.document.port.in.ListDocumentTemplateUseCase;
 import com.flowforge.domain.document.port.out.DocumentTemplateRepository;

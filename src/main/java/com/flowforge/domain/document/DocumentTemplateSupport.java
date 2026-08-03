@@ -1,12 +1,12 @@
-package com.flowforge.domain.document.usecase;
+package com.flowforge.domain.document;
 
 import com.flowforge.domain.document.model.TemplateValidationException;
 
-final class DocumentTemplateSupport {
+public final class DocumentTemplateSupport {
 
     private DocumentTemplateSupport() {}
 
-    static String normalizeOptional(String value) {
+    public static String normalizeOptional(String value) {
         if (value == null) {
             return null;
         }
@@ -14,20 +14,20 @@ final class DocumentTemplateSupport {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
-    static String requireText(String value, String field) {
+    public static String requireText(String value, String field) {
         if (value == null || value.isBlank()) {
             throw new TemplateValidationException(field + " must not be blank");
         }
         return value.trim();
     }
 
-    static void assertHtmlSize(String html, int maxBytes) {
+    public static void assertHtmlSize(String html, int maxBytes) {
         if (html.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > maxBytes) {
             throw new TemplateValidationException("htmlContent exceeds " + maxBytes + " bytes");
         }
     }
 
-    static String updatedByOrSystem(String updatedBy) {
+    public static String updatedByOrSystem(String updatedBy) {
         return updatedBy == null || updatedBy.isBlank() ? "system" : updatedBy.trim();
     }
 }

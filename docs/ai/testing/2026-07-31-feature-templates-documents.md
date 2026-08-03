@@ -3,6 +3,8 @@ phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
 status: draft
+phase5_evidence: 2026-08-03
+phase5_evidence: 2026-08-03
 created: 2026-08-03
 updated: 2026-08-03
 design_aligned: 2026-08-03
@@ -30,59 +32,59 @@ Alignement requirements success criteria + design DD-*.
 **What individual components need testing?**
 
 ### TemplateResolver / ranked query
-- [ ] Exact `(key, variant, locale)` → score 1
-- [ ] Fallback `(key, variant, null)` quand locale absente → score 2
-- [ ] Fallback `(key, null, locale)` quand variant absent → score 3
-- [ ] Fallback `(key, null, null)` défaut absolu → score 4
-- [ ] Aucun ACTIVE → `TemplateNotFoundException`
-- [ ] Ignore DRAFT / ARCHIVED dans la résolution
-- [ ] Une seule requête ranked (pas 4 round-trips) — vérif adapter/IT
+- [x] Exact `(key, variant, locale)` → score 1
+- [x] Fallback `(key, variant, null)` quand locale absente → score 2
+- [x] Fallback `(key, null, locale)` quand variant absent → score 3
+- [x] Fallback `(key, null, null)` défaut absolu → score 4
+- [x] Aucun ACTIVE → `TemplateNotFoundException`
+- [x] Ignore DRAFT / ARCHIVED dans la résolution
+- [x] Une seule requête ranked (pas 4 round-trips) — vérif adapter/IT
 
 ### TemplateSyntaxChecker
-- [ ] HTML Thymeleaf syntaxiquement valide → OK
-- [ ] Markup `th:*` invalide → erreur métier
-- [ ] Variables métier absentes **ne** font **pas** échouer (syntaxe only)
+- [x] HTML Thymeleaf syntaxiquement valide → OK
+- [x] Markup `th:*` invalide → erreur métier
+- [x] Variables métier absentes **ne** font **pas** échouer (syntaxe only)
 
 ### Activate / archive / new-version
-- [ ] Activate DRAFT valide → ACTIVE ; précédente ACTIVE → ARCHIVED
-- [ ] Activate HTML Thymeleaf invalide → erreur 400 ; reste DRAFT
-- [ ] Activate non-DRAFT → erreur métier
-- [ ] Archive ACTIVE → ARCHIVED
-- [ ] Archive non-ACTIVE → erreur
-- [ ] New-version depuis ACTIVE/ARCHIVED/DRAFT → nouveau DRAFT version+1
+- [x] Activate DRAFT valide → ACTIVE ; précédente ACTIVE → ARCHIVED
+- [x] Activate HTML Thymeleaf invalide → erreur 400 ; reste DRAFT
+- [x] Activate non-DRAFT → erreur métier
+- [x] Archive ACTIVE → ARCHIVED
+- [x] Archive non-ACTIVE → erreur
+- [x] New-version depuis ACTIVE/ARCHIVED/DRAFT → nouveau DRAFT version+1
   (contenu cloné)
 
 ### Update / create validation
-- [ ] Create → DRAFT version 1 (ou max+1)
-- [ ] Patch DRAFT OK ; patch ACTIVE/ARCHIVED → rejet
-- [ ] `templateKey` / `htmlContent` blank → rejet
-- [ ] `htmlContent` > 5 MiB → rejet
-- [ ] Create/PATCH n’exigent pas parse Thymeleaf (seulement activate)
+- [x] Create → DRAFT version 1 (ou max+1)
+- [x] Patch DRAFT OK ; patch ACTIVE/ARCHIVED → rejet
+- [x] `templateKey` / `htmlContent` blank → rejet
+- [x] `htmlContent` > 5 MiB → rejet
+- [x] Create/PATCH n’exigent pas parse Thymeleaf (seulement activate)
 
 ### Mapper domaine ↔ JPA
-- [ ] Round-trip null variant/locale préservés
-- [ ] Enum status STRING
+- [x] Round-trip null variant/locale préservés
+- [x] Enum status STRING
 
 ## Integration Tests
 **What end-to-end flows need testing?**
 
 ### MockMvc admin (`DocumentTemplate*ApiTest`)
-- [ ] POST create 201 + GET detail
-- [ ] GET list + filtre `templateKey` ; sans `htmlContent` par défaut
-- [ ] GET list `?includeContent=true` → `htmlContent` présent
-- [ ] PATCH DRAFT 200 ; PATCH ACTIVE 409
-- [ ] POST activate 200 ; seconde ACTIVE même combinaison impossible
+- [x] POST create 201 + GET detail
+- [x] GET list + filtre `templateKey` ; sans `htmlContent` par défaut
+- [x] GET list `?includeContent=true` → `htmlContent` présent
+- [x] PATCH DRAFT 200 ; PATCH ACTIVE 409
+- [x] POST activate 200 ; seconde ACTIVE même combinaison impossible
   (archive auto)
-- [ ] POST activate HTML invalide → 400
-- [ ] POST archive 200
-- [ ] POST new-version 201 DRAFT
-- [ ] GET resolve cascade 200 / 404
-- [ ] Non `TENANT_ADMIN` → 403 ; anonyme → 401
-- [ ] CSRF manquant sur mutateur → 403
+- [x] POST activate HTML invalide → 400
+- [x] POST archive 200
+- [x] POST new-version 201 DRAFT
+- [x] GET resolve cascade 200 / 404
+- [x] Non `TENANT_ADMIN` → 403 ; anonyme → 401
+- [x] CSRF manquant sur mutateur → 403
 
 ### Liquibase / contrainte
-- [ ] Schema `document_template` présent après migrate
-- [ ] Insert deux ACTIVE même combinaison → violation unique (si bypass
+- [x] Schema `document_template` présent après migrate
+- [x] Insert deux ACTIVE même combinaison → violation unique (si bypass
   use case)
 
 ## Test Data & Fixtures

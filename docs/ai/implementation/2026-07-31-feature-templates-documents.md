@@ -2,64 +2,85 @@
 phase: implementation
 title: Implementation Guide
 description: Technical implementation notes, patterns, and code guidelines
+status: draft
+created: 2026-08-03
+updated: 2026-08-03
+phase5: 2026-08-03
+phase6: 2026-08-03
 ---
 
 # Implementation Guide
 
 ## Development Setup
-**How do we get started?**
 
-- Prerequisites and dependencies
-- Environment setup steps
-- Configuration needed
+- Worktree `.worktrees/feature-templates-documents`
+- JDK 25 — `JAVA_HOME=/home/ubuntu/java/jdk-25.0.4+7`
+- `spring-boot-starter-thymeleaf` déjà au pom (SpringTemplateEngine / SpEL)
 
 ## Code Structure
-**How is the code organized?**
 
-- Directory structure
-- Module organization
-- Naming conventions
+```
+domain/document/model|port|usecase/ + DocumentTemplateSupport
+infrastructure/persistence/document/   JPA + ranked native query
+infrastructure/document/               ThymeleafTemplateSyntaxChecker
+infrastructure/web/document/           Controller + ExceptionHandler + DTOs
+infrastructure/config/DocumentConfig.java
+db/changelog/changes/004-document-template-tables.yaml
+```
 
 ## Implementation Notes
-**Key technical details to remember:**
 
-### Core Features
-- Feature 1: Implementation approach
-- Feature 2: Implementation approach
-- Feature 3: Implementation approach
+### Persistence
 
-### Patterns & Best Practices
-- Design patterns being used
-- Code style guidelines
-- Common utilities/helpers
+- Table `document_template` ; PG index partiel ACTIVE + unique version (COALESCE)
+- H2 : colonnes générées `active_*` / `ver_*` (pattern 002/003)
+- `findBestActive` : native SQL ranked scores 1–4, `FETCH FIRST 1 ROW ONLY`
 
-## Integration Points
-**How do pieces connect?**
+### Checker
 
-- API integration details
-- Database connections
-- Third-party service setup
+- `SpringTemplateEngine` + `TemplateManager.parseString` (syntaxe only)
+- Markup invalide type `<th:block …` non fermé → `InvalidTemplateSyntaxException`
 
-## Error Handling
-**How do we handle failures?**
+### API
 
-- Error handling strategy
-- Logging approach
-- Retry/fallback mechanisms
+- `/api/document-templates` + path littéral `/resolve` avant `{id}` UUID
+- Liste : `htmlContent` vide sauf `?includeContent=true`
+- Authz `@PreAuthorize("hasRole('TENANT_ADMIN')")` + CSRF mutateurs
 
-## Performance Considerations
-**How do we keep it fast?**
+## Changed files (phase 5)
 
-- Optimization strategies
-- Caching approach
-- Query optimization
-- Resource management
+- Domaine models/ports/use cases + `DocumentTemplateSupport`
+- Liquibase 004 + master include
+- JPA entity/adapter/Spring Data
+- Checker, DocumentConfig, web layer
+- Tests : Models, Ports, SchemaIT, PersistenceIT, Checker, UseCases, ApiTest
 
-## Security Notes
-**What security measures are in place?**
+## Design deviations
 
-- Authentication/authorization
-- Input validation
-- Data encryption
-- Secrets management
+| Item | Note |
+|---|---|
+| DocumentTemplateSupport hors `usecase` | ArchUnit `*Impl` naming |
+| Checker via SpringTemplateEngine | OGNL absent du classpath Boot 4 |
 
+## Edge cases handled
+
+- blank variant/locale → null
+- activate syntax KO → 400, reste DRAFT
+- archive auto de l’ACTIVE précédente
+- DataIntegrityViolation → 409
+- list strip content
+
+## Evidence (T9)
+
+```text
+JAVA_HOME=…/jdk-25.0.4+7 ./mvnw verify
+→ Tests run: 315, Failures: 0, Errors: 0
+→ Jacoco INSTRUCTION 11011/12569 = 87.60%
+→ npx ai-devkit lint --feature templates-documents → All checks passed
+→ task CLI : unavailable
+```
+
+## Non-goals / deferred
+
+- PDF / Flying Saucer / Flowable ServiceTask → `generation-documents`
+- `@Version` JPA / pagination / OpenAPI

@@ -1,5 +1,7 @@
 package com.flowforge.domain.document.usecase;
 
+import com.flowforge.domain.document.DocumentTemplateSupport;
+
 import com.flowforge.domain.document.model.DocumentTemplate;
 import com.flowforge.domain.document.model.TemplateNotFoundException;
 import com.flowforge.domain.document.model.TemplateStatus;

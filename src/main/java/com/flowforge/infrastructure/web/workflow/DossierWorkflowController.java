@@ -1,13 +1,10 @@
 package com.flowforge.infrastructure.web.workflow;
 
 import com.flowforge.application.workflow.ManualStartOrchestrator;
-import com.flowforge.domain.dossier.DossierAccessPolicy;
 import com.flowforge.domain.dossier.model.AccessContext;
-import com.flowforge.domain.dossier.model.Dossier;
-import com.flowforge.domain.dossier.model.DossierNotFoundException;
 import com.flowforge.domain.dossier.port.in.GetDossierWorkflowHistoryUseCase;
-import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.infrastructure.web.dossier.AccessContextFactory;
+import com.flowforge.infrastructure.web.dossier.DossierAccessGuard;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
@@ -26,20 +23,17 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/dossiers/{id}/workflows")
 class DossierWorkflowController {
 
-    private final DossierRepository dossierRepository;
-    private final DossierAccessPolicy accessPolicy;
+    private final DossierAccessGuard accessGuard;
     private final ManualStartOrchestrator orchestrator;
     private final GetDossierWorkflowHistoryUseCase historyUseCase;
     private final AccessContextFactory accessContextFactory;
 
     DossierWorkflowController(
-            DossierRepository dossierRepository,
-            DossierAccessPolicy accessPolicy,
+            DossierAccessGuard accessGuard,
             ManualStartOrchestrator orchestrator,
             GetDossierWorkflowHistoryUseCase historyUseCase,
             AccessContextFactory accessContextFactory) {
-        this.dossierRepository = dossierRepository;
-        this.accessPolicy = accessPolicy;
+        this.accessGuard = accessGuard;
         this.orchestrator = orchestrator;
         this.historyUseCase = historyUseCase;
         this.accessContextFactory = accessContextFactory;
@@ -55,9 +49,7 @@ class DossierWorkflowController {
             throw new IllegalArgumentException("Idempotency-Key header is required");
         }
         AccessContext.User actor = accessContextFactory.user(authentication);
-        Dossier dossier = dossierRepository.findById(dossierId)
-                .orElseThrow(() -> new DossierNotFoundException("Dossier not found: " + dossierId));
-        accessPolicy.assertCanEdit(dossier, actor);
+        accessGuard.requireEditable(dossierId, actor);
         var result = orchestrator.start(
                 dossierId,
                 required(request.processDefinitionKey(), "processDefinitionKey"),
@@ -73,9 +65,7 @@ class DossierWorkflowController {
     @GetMapping
     List<WorkflowLinkResponse> history(@PathVariable("id") UUID dossierId, Authentication authentication) {
         AccessContext.User actor = accessContextFactory.user(authentication);
-        Dossier dossier = dossierRepository.findById(dossierId)
-                .orElseThrow(() -> new DossierNotFoundException("Dossier not found: " + dossierId));
-        accessPolicy.assertCanView(dossier, actor);
+        accessGuard.requireViewable(dossierId, actor);
         return historyUseCase.getHistory(dossierId).stream().map(WorkflowLinkResponse::from).toList();
     }
 

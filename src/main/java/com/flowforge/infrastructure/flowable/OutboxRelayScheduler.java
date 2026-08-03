@@ -8,7 +8,6 @@ import com.flowforge.domain.workflow.port.out.OutboxRepository;
 import com.flowforge.domain.workflow.port.out.WorkflowEnginePort;
 import com.flowforge.domain.workflow.WorkflowVariables;
 import com.flowforge.infrastructure.config.WorkflowProperties;
-import java.util.HashMap;
 import java.util.Map;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -64,10 +63,7 @@ class OutboxRelayScheduler {
                 return;
             }
 
-            Map<String, Object> variables = new HashMap<>(event.payload().variables());
-            variables.put(WorkflowVariables.DOSSIER_ID, link.dossierId().toString());
-            variables.put(WorkflowVariables.DOSSIER_WORKFLOW_LINK_ID, link.id().toString());
-            variables.put(WorkflowVariables.TENANT_ID, link.tenantId());
+            Map<String, Object> variables = WorkflowVariables.withPlatformVariables(event.payload().variables(), link);
             String processInstanceId = workflowEnginePort.start(
                     link.processDefinitionKey(), link.tenantId(), link.id().toString(), variables);
             attachWorkflow.confirmStarted(link.id(), processInstanceId);

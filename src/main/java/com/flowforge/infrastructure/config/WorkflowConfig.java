@@ -2,7 +2,6 @@ package com.flowforge.infrastructure.config;
 
 import com.flowforge.application.workflow.ManualStartOrchestrator;
 import com.flowforge.domain.dossier.port.in.AttachWorkflowUseCase;
-import com.flowforge.domain.dossier.port.in.UpdateDossierStatusUseCase;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
 import com.flowforge.domain.dossier.usecase.AttachWorkflowUseCaseImpl;
@@ -15,6 +14,7 @@ import com.flowforge.domain.workflow.port.out.WorkflowTypeConfigRepository;
 import com.flowforge.domain.workflow.usecase.CompleteTaskUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.UpdateWorkflowLinkStatusUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.WorkflowTypeConfigUseCaseImpl;
+import com.flowforge.infrastructure.workflow.WorkflowStartConfirmer;
 import org.flowable.spring.boot.ProcessEngineConfigurationConfigurer;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -58,20 +58,18 @@ public class WorkflowConfig {
     ManualStartOrchestrator manualStartOrchestrator(
             DossierRepository dossierRepository,
             DossierWorkflowLinkRepository linkRepository,
-            WorkflowTypeConfigRepository configRepository,
             AttachWorkflowUseCase attachWorkflow,
             WorkflowEnginePort workflowEnginePort,
             IdempotencyStore idempotencyStore,
-            UpdateDossierStatusUseCase updateDossierStatusUseCase,
+            WorkflowStartConfirmer workflowStartConfirmer,
             WorkflowEventPublisher eventPublisher) {
         return new ManualStartOrchestrator(
                 dossierRepository,
                 linkRepository,
-                configRepository,
                 attachWorkflow,
                 workflowEnginePort,
                 idempotencyStore,
-                updateDossierStatusUseCase,
+                workflowStartConfirmer,
                 eventPublisher);
     }
 

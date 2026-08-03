@@ -4,12 +4,14 @@ import com.flowforge.domain.dossier.model.AbortReservedReason;
 import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierNotFoundException;
 import com.flowforge.domain.dossier.model.DossierWorkflowLink;
+import com.flowforge.domain.dossier.model.DossierWorkflowLinkNotFoundException;
 import com.flowforge.domain.dossier.model.WorkflowAlreadyRunningException;
 import com.flowforge.domain.dossier.port.in.AttachWorkflowUseCase;
 import com.flowforge.domain.dossier.port.in.GetDossierWorkflowHistoryUseCase;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
 import com.flowforge.domain.workflow.model.WorkflowTypeConfig;
+import com.flowforge.domain.workflow.model.WorkflowTypeConfigNotFoundException;
 import com.flowforge.domain.workflow.port.out.WorkflowTypeConfigRepository;
 import java.time.Instant;
 import java.util.List;
@@ -36,7 +38,8 @@ public final class AttachWorkflowUseCaseImpl implements AttachWorkflowUseCase, G
         Dossier dossier = dossierRepository.findById(dossierId)
                 .orElseThrow(() -> new DossierNotFoundException("Dossier not found: " + dossierId));
         WorkflowTypeConfig config = configRepository.findByWorkflowKey(dossier.tenantId(), processDefinitionKey)
-                .orElseThrow(() -> new IllegalArgumentException("Workflow type config not found: " + processDefinitionKey));
+                .orElseThrow(() -> new WorkflowTypeConfigNotFoundException(
+                        "Workflow type config not found: " + processDefinitionKey));
         if (!config.allowsDossierStatus(dossier.status())) {
             throw new IllegalStateException("Dossier status " + dossier.status() + " cannot start " + processDefinitionKey);
         }
@@ -71,7 +74,7 @@ public final class AttachWorkflowUseCaseImpl implements AttachWorkflowUseCase, G
     @Override
     public void confirmStarted(UUID linkId, String processInstanceId) {
         DossierWorkflowLink link = linkRepository.findById(linkId)
-                .orElseThrow(() -> new IllegalArgumentException("Workflow link not found: " + linkId));
+                .orElseThrow(() -> new DossierWorkflowLinkNotFoundException("Workflow link not found: " + linkId));
         DossierWorkflowLink confirmed = linkRepository.save(link.withProcessInstance(processInstanceId));
         Dossier dossier = dossierRepository.findById(confirmed.dossierId())
                 .orElseThrow(() -> new DossierNotFoundException("Dossier not found: " + confirmed.dossierId()));
@@ -81,7 +84,7 @@ public final class AttachWorkflowUseCaseImpl implements AttachWorkflowUseCase, G
     @Override
     public void abortReserved(UUID linkId, AbortReservedReason reason) {
         DossierWorkflowLink link = linkRepository.findById(linkId)
-                .orElseThrow(() -> new IllegalArgumentException("Workflow link not found: " + linkId));
+                .orElseThrow(() -> new DossierWorkflowLinkNotFoundException("Workflow link not found: " + linkId));
         DossierWorkflowLink aborted = linkRepository.save(link.abort(reason, Instant.now()));
         Dossier dossier = dossierRepository.findById(aborted.dossierId())
                 .orElseThrow(() -> new DossierNotFoundException("Dossier not found: " + aborted.dossierId()));

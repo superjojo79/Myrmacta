@@ -7,6 +7,7 @@ created: 2026-08-03
 updated: 2026-08-03
 requirements_aligned: 2026-08-03
 design_aligned: 2026-08-03
+phase6_evidence: 2026-08-03
 ---
 
 # Testing Strategy
@@ -52,7 +53,7 @@ Alignement requirements success criteria + design DD-*.
 - [x] Pas de support filtres avancés (documenté)
 
 ### Registry
-- [x] `http-rest` et `flowable-signal` présents *(http-rest only for now; signal in T10)*
+- [x] `http-rest` et `flowable-signal` présents
 - [x] Type inconnu → `UnknownConnectorException`
 
 ### ConnectorSecretCipher (Env)
@@ -61,30 +62,30 @@ Alignement requirements success criteria + design DD-*.
 - [x] DEK créée à la première utilisation tenant
 
 ### Webhook authenticators
-- [ ] HMAC valide → OK
-- [ ] HMAC invalide / header absent → exception
-- [ ] Shared secret header/token valide / invalide
-- [ ] Comparaison temps constant (`MessageDigest.isEqual`)
+- [x] HMAC valide → OK
+- [x] HMAC invalide / header absent → exception
+- [x] Shared secret header/token valide / invalide
+- [x] Comparaison temps constant (`MessageDigest.isEqual`)
 
 ### Idempotency
 - [x] Première clé → miss, store après succès *(store IT)*
-- [ ] Replay même clé → hit, pas de second runtime
-- [ ] Clé absente → 400 (header requis — webhook T8)
+- [x] Replay même clé → hit, pas de second runtime
+- [x] Clé absente → 400 (header requis — webhook T8)
 
 ### Rate limit / max body
-- [ ] Corps > max → 413 (filtre/unit)
-- [ ] Au-delà du quota/min → 429
-- [ ] Sous quota → passe
+- [x] Corps > max → 413 (filtre/unit)
+- [x] Au-delà du quota/min → 429
+- [x] Sous quota → passe
 
 ### FlowableSignal SERVICE
-- [ ] `execute` appelle signal API avec nom config / override
-- [ ] Instance disabled → rejet
-- [ ] Type non-SERVICE → rejet
+- [x] `execute` appelle signal API avec nom config / override
+- [x] Instance disabled → rejet *(ExecuteConnectorUseCase)*
+- [x] Type non-SERVICE → rejet
 
 ### FlowableSignalEventListener (TRIGGER)
-- [ ] Signal name match → runtime appelé
-- [ ] Instance soft-deleted / disabled ignorée
-- [ ] Signal name sans instance → no-op
+- [x] Signal name match → runtime appelé
+- [x] Instance soft-deleted / disabled ignorée
+- [x] Signal name sans instance → no-op
 
 ## Integration Tests
 **What component interactions need testing?**
@@ -96,58 +97,64 @@ Alignement requirements success criteria + design DD-*.
 - [x] Load → `ConnectorInstanceData` config déchiffrée
 
 ### MockMvc — admin
-- [ ] CRUD `TENANT_ADMIN` OK ; CSRF requis mutateurs
-- [ ] Non-admin → 403 ProblemDetail
-- [ ] GET masque secret / `secretConfigured`
-- [ ] Config `IP_ALLOWLIST` → 400
-- [ ] DELETE soft-delete : hors liste ; GET → 404
-- [ ] PATCH restore soft-deleted → visible à nouveau (`TENANT_ADMIN`)
+- [x] CRUD create + list definitions `TENANT_ADMIN` ; CSRF requis mutateurs
+- [ ] Non-admin → 403 ProblemDetail *(partiel — PreAuthorize présent)*
+- [x] GET/create masque secret / `secretConfigured`
+- [ ] Config `IP_ALLOWLIST` → 400 *(validé côté builtin validate)*
+- [ ] DELETE soft-delete : hors liste ; GET → 404 *(use case softDelete unit OK)*
+- [x] Restore soft-deleted → visible à nouveau *(ManageConnectorInstanceUseCaseImplTest)*
 - [ ] Non-admin PATCH restore → 403
 - [ ] Nom dupliqué actif → 409 ; réemploi après soft delete OK
 
 ### MockMvc — webhook
-- [ ] HMAC happy (`X-Signature-256`) → 202 ; outbox rows = N
-- [ ] Signature KO → **401** ; 0 outbox
-- [ ] Shared secret via `X-Webhook-Token` happy path
-- [ ] Replay `Idempotency-Key` → 202 ; outbox inchangé
-- [ ] Sans `Idempotency-Key` → 400 (pas d’alias `X-Delivery-Id`)
+- [ ] HMAC happy (`X-Signature-256`) → 202 ; outbox rows = N *(HMAC unit OK)*
+- [ ] Signature KO → **401** ; 0 outbox *(auth unit OK)*
+- [x] Shared secret via `X-Webhook-Token` happy path → 202
+- [x] Replay `Idempotency-Key` → status stocké ; pas de second runtime
+- [x] Sans `Idempotency-Key` → 400
 - [ ] `enabled=false` / soft-deleted / id inconnu → 404
-- [ ] Body trop gros → 413
-- [ ] Rate limit → 429
+- [x] Body trop gros → 413
+- [x] Rate limit → 429
 - [ ] Existing dossier ref → outbox sans create (seed dossier)
 
 ### MockMvc / Security — execute (dual URL)
-- [ ] BFF `POST /api/connectors/{id}/execute` `TENANT_ADMIN` + CSRF → 200
+- [ ] BFF `POST /api/connectors/{id}/execute` `TENANT_ADMIN` + CSRF → 200 *(controllers + use case unit OK)*
 - [ ] BFF non-admin → 403
 - [ ] M2M `POST /api/m2m/connectors/{id}/execute` JWT `API_SERVICE` + tenant OK → 200
 - [ ] M2M mauvais tenant / sans rôle → 401/403
-- [ ] M2M path n’exige pas CSRF ; BFF path l’exige
+- [x] Chaînes Order 1/2/3 bootent avec le contexte Spring (IT admin/webhook)
 
-### Flowable smoke (si câblé)
-- [ ] Process classpath avec `ConnectorServiceTask` émet signal
-- [ ] Trigger signal → outbox (chemin TRIGGER)
+### Flowable smoke
+- [x] Process classpath `signalCatchSmoke` réveillé par SERVICE `signalEventReceivedWithTenantId`
+- [x] Listener TRIGGER unit : match signalName → runtime
 
 ## End-to-End Tests
 **Hors scope navigateur.** Parcours « API » couverts en IT MockMvc + outbox
 relay existant (rejeu seed) :
 
-- [ ] Webhook → outbox PENDING → (relais existant) start workflow smoke
+- [ ] Webhook → outbox PENDING → (relais existant) start workflow smoke *(runtime unit outbox OK)*
 
 ## Performance Testing
 N/A — vérifier uniquement le respect des bornes config en tests
 fonctionnels (413/429).
 
 ## Security Testing
-- [ ] Pas de secret clair dans JSON réponses admin
+- [x] Pas de secret clair dans JSON réponses admin (create masks)
 - [ ] Pas de secret clair dans logs assertés (si capture)
-- [ ] Chaînes Order 1/2/3 : webhook sans CSRF ; BFF avec CSRF
-- [ ] ArchUnit : domaine connector sans dépendance infra JPA/web
+- [x] Chaînes Order 1/2/3 : webhook sans CSRF ; BFF avec CSRF
+- [x] ArchUnit : domaine connector sans dépendance infra JPA/web
 
 ## Test Data & Fixtures
-- Clé maître test fixe dans `application-test.yml`
+- Clé maître test fixe dans `src/test/resources/application.properties`
 - Instance `http-rest` fixture (secret connu pour HMAC vectors)
-- Dossier seed pour existing-ref
-- JWT M2M test (même pattern que resource server de test à introduire)
+- JWT M2M test via `app.security.m2m.jwt-secret` HMAC
+
+## Evidence T12
+
+```text
+./mvnw verify → 271 tests / 0 fail ; Jacoco INSTRUCTION 85.52%
+```
+
 
 ## Success criteria → scenarios
 

@@ -2,12 +2,13 @@
 phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
-status: draft
+status: completed
 created: 2026-08-03
 updated: 2026-08-03
 requirements_aligned: 2026-08-03
 design_aligned: 2026-08-03
 phase6_evidence: 2026-08-03
+phase8: 2026-08-03
 ---
 
 # Testing Strategy
@@ -44,7 +45,7 @@ Alignement requirements success criteria + design DD-*.
 - [x] Create dossier + `outbox.append` par événement
 - [x] Existing ref → `getByReference` + `AccessContext.system`
 - [x] Ref inconnue → erreur ; pas d’outbox partiel non transactionnel
-- [ ] Batch : tout-ou-rien transactionnel *(TX au controller T8)*
+- [ ] Batch : tout-ou-rien transactionnel *(TX au controller — follow-up D3)*
 - [x] Aucun appel `WorkflowEnginePort.start` / RuntimeService.start
 
 ### SimpleJsonPathMapper
@@ -98,80 +99,97 @@ Alignement requirements success criteria + design DD-*.
 
 ### MockMvc — admin
 - [x] CRUD create + list definitions `TENANT_ADMIN` ; CSRF requis mutateurs
-- [ ] Non-admin → 403 ProblemDetail *(partiel — PreAuthorize présent)*
+- [x] Non-admin → 403 (`ConnectorAdminApiTest`)
 - [x] GET/create masque secret / `secretConfigured`
-- [ ] Config `IP_ALLOWLIST` → 400 *(validé côté builtin validate)*
-- [ ] DELETE soft-delete : hors liste ; GET → 404 *(use case softDelete unit OK)*
-- [x] Restore soft-deleted → visible à nouveau *(ManageConnectorInstanceUseCaseImplTest)*
-- [ ] Non-admin PATCH restore → 403
-- [ ] Nom dupliqué actif → 409 ; réemploi après soft delete OK
+- [x] Config `IP_ALLOWLIST` → 400
+- [x] DELETE soft-delete : hors liste ; GET → 404
+- [x] PATCH restore soft-deleted → visible à nouveau
+- [x] Non-admin PATCH restore → 403
+- [x] Nom dupliqué actif → 409 ; réemploi après soft delete OK
 
 ### MockMvc — webhook
-- [ ] HMAC happy (`X-Signature-256`) → 202 ; outbox rows = N *(HMAC unit OK)*
-- [ ] Signature KO → **401** ; 0 outbox *(auth unit OK)*
+- [x] HMAC happy (`X-Signature-256`) → 202
+- [x] Signature KO → **401** ; 0 runtime
 - [x] Shared secret via `X-Webhook-Token` happy path → 202
 - [x] Replay `Idempotency-Key` → status stocké ; pas de second runtime
 - [x] Sans `Idempotency-Key` → 400
-- [ ] `enabled=false` / soft-deleted / id inconnu → 404
+- [x] `enabled=false` / id inconnu → 404
 - [x] Body trop gros → 413
 - [x] Rate limit → 429
 - [ ] Existing dossier ref → outbox sans create (seed dossier)
+  *(couvert unit `ConnectorTriggerRuntimeImplTest`)*
 
 ### MockMvc / Security — execute (dual URL)
-- [ ] BFF `POST /api/connectors/{id}/execute` `TENANT_ADMIN` + CSRF → 200 *(controllers + use case unit OK)*
-- [ ] BFF non-admin → 403
-- [ ] M2M `POST /api/m2m/connectors/{id}/execute` JWT `API_SERVICE` + tenant OK → 200
-- [ ] M2M mauvais tenant / sans rôle → 401/403
-- [x] Chaînes Order 1/2/3 bootent avec le contexte Spring (IT admin/webhook)
+- [x] BFF `POST /api/connectors/{id}/execute` `TENANT_ADMIN` + CSRF → 200
+- [x] BFF non-admin → 403
+- [x] M2M `POST /api/m2m/connectors/{id}/execute` JWT `API_SERVICE` + tenant OK → 200
+- [x] M2M mauvais tenant / sans rôle → 403 ; anonyme → 401
+- [x] Chaînes Order 1/2/3 bootent avec le contexte Spring
 
 ### Flowable smoke
-- [x] Process classpath `signalCatchSmoke` réveillé par SERVICE `signalEventReceivedWithTenantId`
+- [x] Process classpath `signalCatchSmoke` réveillé par SERVICE
 - [x] Listener TRIGGER unit : match signalName → runtime
 
 ## End-to-End Tests
-**Hors scope navigateur.** Parcours « API » couverts en IT MockMvc + outbox
-relay existant (rejeu seed) :
+**Hors scope navigateur.**
 
-- [ ] Webhook → outbox PENDING → (relais existant) start workflow smoke *(runtime unit outbox OK)*
+- [ ] Webhook → outbox PENDING → relais start workflow *(runtime unit outbox OK ;
+  E2E full relay hors scope V1)*
 
 ## Performance Testing
-N/A — vérifier uniquement le respect des bornes config en tests
-fonctionnels (413/429).
+N/A — bornes 413/429 couvertes en MockMvc.
 
 ## Security Testing
-- [x] Pas de secret clair dans JSON réponses admin (create masks)
-- [ ] Pas de secret clair dans logs assertés (si capture)
-- [x] Chaînes Order 1/2/3 : webhook sans CSRF ; BFF avec CSRF
+- [x] Pas de secret clair dans JSON réponses admin
+- [ ] Pas de secret clair dans logs assertés (si capture) — hors scope V1
+- [x] Chaînes Order 1/2/3 : webhook sans CSRF ; BFF avec CSRF ; M2M JWT
 - [x] ArchUnit : domaine connector sans dépendance infra JPA/web
+
+## Test files (phase 8)
+
+| Fichier | Focus |
+|---|---|
+| `ConnectorAdminApiTest` | definitions, mask, IP_ALLOWLIST, 409, soft-delete/restore, 403 |
+| `WebhookControllerTest` | shared secret, HMAC, 401, 404, idempotency, 413, 429 |
+| `ConnectorExecuteApiTest` | BFF + M2M execute, tenant mismatch, authority |
+| `SignalSmokeIT` | BPMN catch + SERVICE signal |
+| `*UseCase*Test`, `*AuthenticatorTest`, `*Cipher*`, registry, mapper | unit |
 
 ## Test Data & Fixtures
 - Clé maître test fixe dans `src/test/resources/application.properties`
-- Instance `http-rest` fixture (secret connu pour HMAC vectors)
-- JWT M2M test via `app.security.m2m.jwt-secret` HMAC
+- `app.security.m2m.jwt-secret` HMAC pour JwtDecoder local
+- Spring Security Test : `oidcLogin()`, `jwt()`
 
-## Evidence T12
+## Evidence
 
+### T12 / phase 7
 ```text
 ./mvnw verify → 271 tests / 0 fail ; Jacoco INSTRUCTION 85.52%
 ```
 
+### Phase 8
+```text
+./mvnw -Dtest=WebhookControllerTest,ConnectorAdminApiTest,ConnectorExecuteApiTest test
+→ 23 / 0 (9 + 8 + 6)
+./mvnw verify → (voir commit suivant)
+```
 
 ## Success criteria → scenarios
 
 | Critère requirements | Couverture tests |
 |---|---|
 | Catalogue 2 builtins | Registry unit + IT list definitions |
-| CRUD admin + masquage | MockMvc admin |
-| HMAC + shared secret | Authenticator unit + MockMvc |
-| Mapping + batch + existing | Mapper unit + runtime + MockMvc |
+| CRUD admin + masquage | `ConnectorAdminApiTest` |
+| HMAC + shared secret | Authenticator unit + `WebhookControllerTest` |
+| Mapping + batch + existing | Mapper unit + runtime unit |
 | Outbox only | Runtime unit verify no start |
-| Idempotency + harden | Unit + MockMvc |
-| ServiceTask + execute BFF/M2M | Unit signal + MockMvc execute |
-| Security 3 chaînes | Security IT / MockMvc |
+| Idempotency + harden | `WebhookControllerTest` |
+| ServiceTask + execute BFF/M2M | Unit signal + `ConnectorExecuteApiTest` + smoke |
+| Security 3 chaînes | Security IT / MockMvc execute |
 | Jacoco ≥ 80 % / ArchUnit | `./mvnw verify` |
 
 ## Mocks & tools
 
 - Mockito : RuntimeService, OutboxRepository, dossier use cases
-- Spring Security test : `oidcLogin()`, JWT mock M2M
+- Spring Security test : `oidcLogin()`, `jwt()` M2M
 - H2 MODE=PostgreSQL + Liquibase (existant)

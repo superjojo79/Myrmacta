@@ -15,6 +15,20 @@ main_integrated: 2026-08-03 # PR #18
 Plan initial **phase 4** — dérivé des docs `requirements` / `design` /
 `testing` en `reviewed` (ou `design_aligned`). Prêt pour phase 5.
 
+## Phase 9 — Code Review
+
+**Clos.** Aucun finding bloquant. Lifecycle **Complete** — prêt à merge.
+
+Preuve finale : `./mvnw verify` → **199** / 0 ; Jacoco **90,3 %** ; ArchUnit OK.
+
+Follow-ups non bloquants :
+- DEV-WF-UNUSED (low) : `accessContextFactory.user(...)` sans usage du
+  retour dans `WorkflowTypeConfigController` create/update — nettoyer ou
+  documenter.
+- DEV-SENS-HELPER (nice) : `FieldDefinition.isSensitive()` seulement utilisé
+  en tests.
+- DEV-SENS-BOOL (low, accepté) : `Boolean` coerce Jackson.
+
 ## Phase 8 — Write Tests
 
 **Clos.** Gaps comblés (+6 tests) ; `./mvnw verify` → 199 / 0 ; Jacoco

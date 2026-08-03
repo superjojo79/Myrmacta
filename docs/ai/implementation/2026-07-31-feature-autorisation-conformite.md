@@ -2,13 +2,38 @@
 phase: implementation
 title: Implementation Guide
 description: Technical implementation notes, patterns, and code guidelines
-status: checked
+status: reviewed
 created: 2026-08-03
 updated: 2026-08-03
 phase7: 2026-08-03
+phase9: 2026-08-03
 ---
 
 # Implementation Guide
+
+## Phase 9 — Code Review
+
+**Clos.** Holistic review OK — prêt à merge.
+
+### Findings
+
+| ID | Sévérité | Fichier | Issue | Recommandation |
+|---|---|---|---|---|
+| — | Blocking | — | Aucun | — |
+| DEV-WF-UNUSED | Low | `WorkflowTypeConfigController` | `accessContextFactory.user(auth)` appelé sans utiliser le retour (résidu après retrait de `requireWorkflowAdmin`) | Retirer l’appel ou garder explicitement pour valider OIDC principal |
+| DEV-SENS-HELPER | Nice | `FieldDefinition` | `isSensitive()` non utilisé en prod | OK pour API future ; sinon retirer |
+| DEV-SENS-BOOL | Low (accepté) | `FieldDefinition` | `Boolean` + coerce vs `boolean` | Déjà documenté |
+
+### Checklist finale
+
+- [x] Design match (matrice authz, guard domaine, sensitive meta, D-403)
+- [x] Pas de gap logique majeur
+- [x] Sécurité : double garde types/ACL ; pas d’annotation rôle sur dossiers/start/complete ; `DossierAccessGuard` conservé
+- [x] Intégrations BFF / policy / JSON fieldDefinitions
+- [x] Tests couvrent changements (199 / Jacoco 90,3 %)
+- [x] Docs + TODO §19/§23 + DEFERRED stockage
+- [x] Rollback safe (pas de migration SQL irreversible)
+- [x] Breaking in-repo géré (ctor confort `FieldDefinition`)
 
 ## Phase 7 — Check Implementation
 

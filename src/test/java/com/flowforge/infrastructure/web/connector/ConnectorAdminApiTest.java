@@ -35,7 +35,8 @@ class ConnectorAdminApiTest {
         mockMvc.perform(get("/api/connector-definitions")
                         .with(user("connector-admin", "TENANT_ADMIN")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[*].type", hasItem("http-rest")));
+                .andExpect(jsonPath("$[*].type", hasItem("http-rest")))
+                .andExpect(jsonPath("$[*].type", hasItem("flowable-signal")));
     }
 
     @Test

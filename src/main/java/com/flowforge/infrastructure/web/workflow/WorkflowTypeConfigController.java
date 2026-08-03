@@ -3,6 +3,7 @@ package com.flowforge.infrastructure.web.workflow;
 import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.AccessDeniedException;
 import com.flowforge.domain.workflow.model.WorkflowTypeConfig;
+import com.flowforge.domain.workflow.model.WorkflowTypeConfigNotFoundException;
 import com.flowforge.domain.workflow.port.in.GetWorkflowTypeConfigUseCase;
 import com.flowforge.domain.workflow.port.in.SaveWorkflowTypeConfigUseCase;
 import com.flowforge.infrastructure.config.TenantProperties;
@@ -58,7 +59,7 @@ class WorkflowTypeConfigController {
             Authentication authentication) {
         requireWorkflowAdmin(authentication);
         WorkflowTypeConfig existing = getUseCase.getByKey(workflowKey)
-                .orElseThrow(() -> new IllegalArgumentException("Workflow type config not found: " + workflowKey));
+                .orElseThrow(() -> new WorkflowTypeConfigNotFoundException("Workflow type config not found: " + workflowKey));
         return WorkflowTypeConfigResponse.from(saveUseCase.update(
                 request.toDomain(tenantProperties.id(), existing.id(), workflowKey)));
     }
@@ -74,7 +75,7 @@ class WorkflowTypeConfigController {
         accessContextFactory.user(authentication);
         return getUseCase.getByKey(workflowKey)
                 .map(WorkflowTypeConfigResponse::from)
-                .orElseThrow(() -> new IllegalArgumentException("Workflow type config not found: " + workflowKey));
+                .orElseThrow(() -> new WorkflowTypeConfigNotFoundException("Workflow type config not found: " + workflowKey));
     }
 
     private void requireWorkflowAdmin(Authentication authentication) {

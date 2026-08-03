@@ -3,10 +3,12 @@ package com.flowforge.domain.workflow.usecase;
 import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierNotFoundException;
 import com.flowforge.domain.dossier.model.DossierWorkflowLink;
+import com.flowforge.domain.dossier.model.DossierWorkflowLinkNotFoundException;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
 import com.flowforge.domain.workflow.model.StatusOutcome;
 import com.flowforge.domain.workflow.model.WorkflowTypeConfig;
+import com.flowforge.domain.workflow.model.WorkflowTypeConfigNotFoundException;
 import com.flowforge.domain.workflow.port.in.UpdateWorkflowLinkStatusUseCase;
 import com.flowforge.domain.workflow.port.out.WorkflowTypeConfigRepository;
 import java.time.Instant;
@@ -31,9 +33,9 @@ public final class UpdateWorkflowLinkStatusUseCaseImpl implements UpdateWorkflow
     @Override
     public void update(UUID linkId, String status, String activityId) {
         DossierWorkflowLink link = linkRepository.findById(linkId)
-                .orElseThrow(() -> new IllegalArgumentException("Workflow link not found: " + linkId));
+                .orElseThrow(() -> new DossierWorkflowLinkNotFoundException("Workflow link not found: " + linkId));
         WorkflowTypeConfig config = configRepository.findByWorkflowKey(link.tenantId(), link.processDefinitionKey())
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new WorkflowTypeConfigNotFoundException(
                         "Workflow type config not found: " + link.processDefinitionKey()));
         StatusOutcome outcome = config.outcomeOf(status);
         if (outcome == null) {

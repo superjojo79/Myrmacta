@@ -2,7 +2,8 @@
 phase: requirements
 title: Requirements & Problem Understanding
 description: Clarify the problem space, gather requirements, and define success criteria
-status: draft
+status: reviewed
+reviewed: 2026-08-03
 created: 2026-08-03
 updated: 2026-08-03
 ---
@@ -25,7 +26,8 @@ signaler un champ sensible (TODO §23).
 - **Situation actuelle :** `AccessContext`, `DossierAccessPolicy`,
   `dossier_type_acl`, mapping `realm_access.roles` → `ROLE_*` livrés ;
   `TenantAdminGuard` infra HTTP ; checks `hasRole("TENANT_ADMIN")` dupliqués
-  dans les use cases ; aucun `@EnableMethodSecurity`. Analyse :
+  dans les use cases ; `WorkflowTypeConfigController.requireWorkflowAdmin`
+  manuel ; aucun `@EnableMethodSecurity`. Analyse :
   `analysis doc/12-autorisation-conformite.md` + TODO §19 / §23.
 - **UX :** pas d’écrans Vue — contrat REST + métadonnée `sensitive` pour la
   future SPA / exports ; pas de masquage à l’affichage dans cette tranche.
@@ -40,24 +42,41 @@ signaler un champ sensible (TODO §23).
   `API_SERVICE`. Restriction par sous-ensemble de `DossierType` = ACL type
   (décision n° 20), déjà livrée. Mapping IdP → `ROLE_*` = inchangé
   (`authentification`).
-- Activer **`@EnableMethodSecurity`** et annoter les **controllers** avec
-  `@PreAuthorize` selon la matrice rôles × endpoints (voir design).
+- Activer **`@EnableMethodSecurity`** et annoter les controllers selon la
+  **surface livrable** ci-dessous (source d’acceptation ; détail SpEL dans
+  design).
 - Introduire un **`TenantAdminGuard` domaine** (pur Java) utilisé par les use
-  cases admin (CRUD types, grant/revoke ACL) ; conserver la défense en
-  profondeur avec les annotations HTTP. Retirer / ne plus s’appuyer sur le
-  guard infra HTTP une fois les annotations en place.
+  cases admin **types + ACL** (create/update type, grant/revoke) ; défense en
+  profondeur avec `@PreAuthorize` HTTP. **Supprimer** le guard infra HTTP
+  `infrastructure.web.dossier.TenantAdminGuard`.
+- Remplacer `WorkflowTypeConfigController.requireWorkflowAdmin` par
+  `@PreAuthorize` (`TENANT_ADMIN` **ou** `WORKFLOW_ADMIN`). Les use cases
+  workflow-config restent sans check rôle (pas d’`AccessContext` aujourd’hui) —
+  une seule garde HTTP pour cette surface.
 - Conserver **`DossierAccessPolicy` + `AccessContext`** comme source de vérité
   pour VIEW/EDIT type (bypass `TENANT_ADMIN` / `WORKFLOW_ADMIN`, System OK,
-  Service refus).
+  Service refus) sur dossiers + start/history/complete workflow.
 - Ajouter **`FieldDefinition.sensitive`** (`boolean`, défaut `false`) :
-  persisté dans le JSON `fieldDefinitions`, accepté en create/update type,
-  renvoyé dans les réponses types. **Pas de masquage** des valeurs dossier en
-  lecture dans cette tranche (TODO §23 partiel — documentation seule).
+  persisté dans le JSON `fieldDefinitions`, accepté en create/update type
+  (**TENANT_ADMIN** uniquement), renvoyé dans les réponses types. **Pas de
+  masquage** des valeurs dossier en lecture (TODO §23 partiel).
 - Assurer **403 `ProblemDetail`** cohérent pour refus rôle (method security) et
-  refus ACL domaine (`AccessDeniedException`).
-- Tests : unitaires guard / policy / sérialisation `sensitive` ; MockMvc
-  `@PreAuthorize` (rôle insuffisant → 403) ; suite ArchUnit / Jacoco non
-  régressée.
+  refus ACL / guard domaine (`com.flowforge.domain…AccessDeniedException`).
+- Tests : unitaires guard / policy / `sensitive` ; MockMvc `@PreAuthorize` ;
+  ArchUnit / Jacoco non régressés.
+
+### Surface livrable (acceptation authz)
+
+| Surface | Authz attendue |
+|---|---|
+| `POST` / `PATCH /api/dossier-types` | `@PreAuthorize` `TENANT_ADMIN` + guard domaine |
+| `POST` / `DELETE /api/dossier-types/{code}/acl…` | `@PreAuthorize` `TENANT_ADMIN` + guard domaine |
+| `GET /api/dossier-types` (+ `/{code}`) | Session BFF ; filtrage / policy use case (inchangé) |
+| `POST` / `GET` / `PATCH /api/dossiers/**` | Session BFF ; **`DossierAccessPolicy`** (pas de `@PreAuthorize` rôle métier) |
+| `POST` / `PATCH /api/workflow-type-configs` | `@PreAuthorize` `hasAnyRole(TENANT_ADMIN, WORKFLOW_ADMIN)` ; retire check manuel |
+| `GET /api/workflow-type-configs` (+ `/{key}`) | Session BFF (inchangé) |
+| `POST /api/dossiers/{id}/workflows`, `GET …/workflows`, `POST /api/workflow-tasks/…/complete` | Session BFF + **policy dossier** (EDIT/VIEW) ; **pas** de `@PreAuthorize` rôle |
+| `FieldDefinition.sensitive` | Create/update/get type ; défaut `false` ; GET dossier **en clair** |
 
 ### Secondary goals
 
@@ -79,6 +98,10 @@ signaler un champ sensible (TODO §23).
 - Chaîne M2M `client_credentials` / webhooks HMAC (features
   `authentification` follow-up / `connecteurs`).
 - Nouveaux rôles au-delà des cinq V1 ; ACL par instance de dossier.
+- Guard domaine « workflow admin » / passage d’`AccessContext` dans les use
+  cases workflow-config (garde HTTP seule).
+- `@PreAuthorize` distinguant `DOSSIER_MANAGER` vs `DOSSIER_VIEWER` sur les
+  endpoints dossier (la distinction reste **grant EDIT vs VIEW**).
 - OpenAPI formel ; Testcontainers ; écrans Vue.
 - Refonte générique d’un framework permissions multi-ressources.
 
@@ -90,12 +113,13 @@ signaler un champ sensible (TODO §23).
 - En tant que **TENANT_ADMIN**, j’appelle les endpoints d’admin types / ACL ;
   un utilisateur sans ce rôle reçoit **403** au bord HTTP **et** au use case.
 - En tant que **DOSSIER_MANAGER** avec grant EDIT, je crée / instruit des
-  dossiers ; sans grant, **403** via `DossierAccessPolicy` (inchangé).
-- En tant que **DOSSIER_VIEWER**, je lis selon VIEW ; je ne peux pas muter
-  (controller + policy).
-- En tant que **WORKFLOW_ADMIN**, je bypass l’ACL type (déjà) et j’accède aux
-  endpoints workflow admin annotés ; je ne remplace pas `TENANT_ADMIN` pour le
-  CRUD types / ACL.
+  dossiers ; sans grant, **403** via `DossierAccessPolicy`.
+- En tant que **DOSSIER_VIEWER** avec grant VIEW, je lis ; sans grant EDIT je
+  ne mute pas — refus **policy** (pas d’annotation rôle MANAGER/VIEWER sur
+  l’endpoint).
+- En tant que **WORKFLOW_ADMIN**, je bypass l’ACL type (déjà) et je mute les
+  `workflow-type-configs` ; je **ne** remplace **pas** `TENANT_ADMIN` pour le
+  CRUD types / ACL (403).
 - En tant qu’**admin configurant un type**, je marque certains
   `FieldDefinition` avec `sensitive: true` pour documenter le caractère
   sensible ; la valeur reste visible en clair dans `GET` dossier (V1).
@@ -110,33 +134,40 @@ signaler un champ sensible (TODO §23).
    `GET` type renvoie le flag.
 3. `DOSSIER_MANAGER` sans grant → refus ACL sur create/get dossier (régression
    policy OK).
-4. `WORKFLOW_ADMIN` sur endpoint admin type → **403** ; sur bypass lecture
-   dossier → OK (policy).
+4. `WORKFLOW_ADMIN` sur `POST /api/dossier-types` → **403** ; lecture dossier
+   (bypass policy) → OK ; `POST /api/workflow-type-configs` → OK.
 5. JSON type historique sans clé `sensitive` → désérialisé comme `false`.
-6. `./mvnw test` vert ; Jacoco ≥ 80 % ; ArchUnit OK.
+6. `DOSSIER_VIEWER` (authentifié) sur `PATCH …/status` sans grant EDIT →
+   **403** policy (pas 401).
+7. `./mvnw test` vert ; Jacoco ≥ 80 % ; ArchUnit OK.
 
 ### Edge cases
 
-- Method security vs `AccessDeniedException` domaine : les deux → HTTP 403
-  ProblemDetail (pas 401 si session authentifiée).
+- Method security vs `AccessDeniedException` **domaine** : les deux → HTTP 403
+  ProblemDetail (pas 401 si session authentifiée). Attention au homonyme
+  Spring `AccessDeniedException` — ne pas confondre dans les handlers.
 - `API_SERVICE` : toujours refus accès dossier (policy) ; pas de nouveaux
   endpoints connecteurs ici.
 - Champ `sensitive` absent / null en entrée API → `false`.
+- Start / complete / history workflow : aucune annotation de rôle ; EDIT/VIEW
+  policy seule.
 
 ## Success Criteria
 **How will we know when we're done?**
 
-- [ ] Point 19 documenté comme **clos V1** (cinq rôles + renvoi ACL type / mapping
-  existant).
-- [ ] `@EnableMethodSecurity` actif ; controllers métier annotés selon matrice
-  design.
-- [ ] `TenantAdminGuard` domaine branché sur use cases admin ; guard infra HTTP
-  retiré ou réduit à néant.
+- [ ] Point 19 documenté comme **clos V1** (cinq rôles + renvoi ACL type /
+  mapping existant).
+- [ ] `@EnableMethodSecurity` actif ; **surface livrable** respectée
+  (annotations présentes / absentes comme tabulaire).
+- [ ] `TenantAdminGuard` domaine branché sur use cases types + ACL ; classe
+  infra HTTP **supprimée**.
+- [ ] Check manuel `requireWorkflowAdmin` **supprimé** au profit de
+  `@PreAuthorize`.
 - [ ] `FieldDefinition.sensitive` (défaut false) bout-en-bout (domaine, JSON
-  JPA, API).
-- [ ] Aucun masquage lecture dossier basé sur `sensitive`.
-- [ ] MockMvc : rôle insuffisant → 403 ; admin OK ; régressions dossiers /
-  workflow / auth.
+  JPA, API) ; seul un `TENANT_ADMIN` peut l’écrire via API types.
+- [ ] Aucun masquage lecture dossier basé sur `sensitive` (assert test).
+- [ ] MockMvc : rôle insuffisant → 403 ProblemDetail ; admin OK ; régressions
+  dossiers / workflow / auth.
 - [ ] Contrainte stockage S3/FS (anti-MinIO) documentée (requirements + design).
 - [ ] `./mvnw test` vert ; ArchUnit ; Jacoco ≥ 80 %.
 - [ ] Docs requirements / design / testing / planning alignés ; TODO §19 / §23
@@ -151,12 +182,14 @@ stockage nouveau.
 ### Technical constraints
 
 - Java 25 · Spring Boot 4.1 · Security 7 · BFF session déjà livré.
-- Domaine pur (décision n° 17) : pas d’annotations Spring dans
-  `domain.*` sauf ce qui est déjà exclu par ArchUnit ; le guard domaine est
-  du Java pur.
+- Domaine pur (décision n° 17) : pas d’annotations Spring dans `domain.*` ;
+  le guard domaine est du Java pur.
 - `fieldDefinitions` déjà en JSON/JSONB : pas de changeset colonne SQL
   obligatoire pour `sensitive` (évolution du document JSON).
 - Hexagonal : method security au bord HTTP seulement.
+- Homonymie `AccessDeniedException` domaine vs Spring : handlers existants
+  ciblent le type **domaine** ; le bridging method security doit mapper le
+  type Spring (ou équivalent Boot 4 / Security 7) vers 403 ProblemDetail.
 
 ### Business / product
 
@@ -165,12 +198,20 @@ stockage nouveau.
 - Conformité « légère » = classification documentaire des champs, pas
   moteur RGPD complet.
 
+### Time / rollout
+
+- Branche cloud `cursor/autorisation-conformite-f54c` / PR ; pas de feature
+  flag.
+- Smoke IdP réel (cinq rôles realm) = ops, hors CI.
+- Traçage `task` CLI indisponible sur cet environnement.
+
 ### Assumptions
 
 - Les cinq noms de rôles realm Keycloak correspondent exactement aux chaînes
   sans préfixe `ROLE_` déjà utilisées dans le code.
-- Les endpoints workflow existants restent sous les mêmes règles métier ;
-  on ajoute surtout des annotations cohérentes.
+- Les règles métier dossiers / workflow (policy) restent valides ; cette
+  tranche **ajoute** method security sur les surfaces admin et uniformise les
+  guards, sans changer la sémantique ACL type.
 - Le port objet S3/FS sera introduit quand `DossierElement` / génération
   documents arriveront — hors code ici.
 
@@ -185,8 +226,11 @@ stockage nouveau.
 | Q2 | Point 19 rôles | Cinq rôles de référence V1 |
 | Q3 | Placement `@PreAuthorize` | Controllers uniquement |
 | Q4 | Comportement `sensitive` | Métadonnée seule, pas de masquage lecture |
-| Q5 | Checks admin use case | Guard domaine factorisé + annotations HTTP |
+| Q5 | Checks admin types/ACL | Guard domaine factorisé + annotations HTTP |
 | Q6 | Port stockage | Doc seule (S3 cible, FS possible) ; pas de skeleton |
+| Q7 | Start/complete/history workflow | **Pas** de `@PreAuthorize` rôle — policy seule |
+| Q8 | Workflow type-config | `@PreAuthorize` admin\|workflow-admin ; **pas** de guard domaine |
+| Q9 | MANAGER vs VIEWER sur API dossier | Distinction via **ACL EDIT/VIEW**, pas via rôle HTTP |
 
 ### Différé / hors tranche
 
@@ -195,3 +239,51 @@ stockage nouveau.
 - `ObjectStoragePort` + adaptateurs.
 - Validation empirique des rôles avec premiers clients réels (peut rouvrir
   point 19 plus tard si besoin produit).
+- Guard domaine workflow-admin si les use cases config gagnent un
+  `AccessContext`.
+
+### Bloquant ouvert
+
+**Aucun** — prêt pour revue design (phase 3).
+
+## Alternatives brainstormées
+
+| Approche | Trade-off | Verdict |
+|---|---|---|
+| Authz only (sans `sensitive`) | Plus petit, laisse §23 intact | Écarté — option 2 retenue |
+| Authz + masquage lecture | Sémantique UX sans SPA | Écarté — meta seule |
+| Authz + rétention/purge | Bloque sur storage / éléments | Écarté |
+| `@PreAuthorize` aussi sur use cases | Couplage SpEL / domaine | Écarté |
+| Controller seul (sans guard domaine) | Moins de défense en profondeur | Écarté — Q5 option 3 |
+| Double garde non factorisée | Duplication `requireTenantAdmin` | Écarté |
+| Skeleton `ObjectStoragePort` | Code mort | Écarté — doc seule |
+| `@PreAuthorize` sur start/complete | Rôle unique inadapté (ACL type) | Écarté — Q7 |
+| Fusion WORKFLOW→TENANT | Moins de finesse BPMN | Écarté — 5 rôles |
+
+## Clarifications actées
+
+1. **Périmètre :** option 2 — method security + guard domaine types/ACL +
+   `sensitive` meta ; §21–22 et port storage hors code.
+2. **Rôles V1 :** cinq noms ; mapping `ROLE_*` existant ; ACL type = sous-ensemble
+   types.
+3. **Surface authz :** tabulaire ci-dessus (Q7–Q9 inclus).
+4. **`sensitive` :** écrit via API types (TENANT_ADMIN) ; lu sur types ; valeurs
+   dossier non redactées.
+5. **403 :** method security + domaine → ProblemDetail ; 401 réservé à
+   l’anonyme `/api/**`.
+6. **Stockage :** contrainte S3/FS anti-MinIO documentée uniquement.
+
+## Review notes (phase 2)
+
+| Point | Résolution |
+|---|---|
+| Conformité template README | Sections OK + surface + rollout + alternatives + clarifications |
+| Story VIEWER « controller + policy » | Corrigée → **policy EDIT** seule |
+| Matrice workflow floue (design draft) | **Q7/Q8** actés dans requirements (source d’acceptation) |
+| Asymétrie guard workflow-config | Acceptée — HTTP only (pas d’AccessContext use case) |
+| Qui écrit `sensitive` | **TENANT_ADMIN** via create/update type |
+| Homonymie AccessDeniedException | Contrainte technique + critère 403 |
+| Questions bloquantes | **Aucune** |
+| Alignement design/testing/planning | À propager en phase 3 (design) ; testing scénario 4/6 déjà proches |
+
+**Prochaine phase :** `dev-design` (phase 3 — Review Design).

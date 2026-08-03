@@ -2,7 +2,6 @@ package com.flowforge.infrastructure.web.connector;
 
 import com.flowforge.domain.connector.model.ConnectorInstanceData;
 import com.flowforge.domain.connector.port.in.ManageConnectorInstanceUseCase;
-import com.flowforge.domain.connector.port.out.ConnectorCatalog;
 import com.flowforge.infrastructure.config.TenantProperties;
 import java.net.URI;
 import java.util.List;
@@ -27,20 +26,11 @@ public class ConnectorAdminController {
 
     private final TenantProperties tenantProperties;
     private final ManageConnectorInstanceUseCase manageUseCase;
-    private final ConnectorCatalog catalog;
 
     public ConnectorAdminController(
-            TenantProperties tenantProperties,
-            ManageConnectorInstanceUseCase manageUseCase,
-            ConnectorCatalog catalog) {
+            TenantProperties tenantProperties, ManageConnectorInstanceUseCase manageUseCase) {
         this.tenantProperties = tenantProperties;
         this.manageUseCase = manageUseCase;
-        this.catalog = catalog;
-    }
-
-    @GetMapping("/definitions")
-    public List<ConnectorDefinitionResponse> listDefinitions() {
-        return catalog.listAll().stream().map(ConnectorDefinitionResponse::from).toList();
     }
 
     @PostMapping

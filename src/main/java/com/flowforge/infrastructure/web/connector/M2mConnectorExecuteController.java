@@ -27,7 +27,7 @@ public class M2mConnectorExecuteController {
     }
 
     @PostMapping("/api/m2m/connectors/{id}/execute")
-    @PreAuthorize("hasRole('TENANT_ADMIN') or hasAuthority('API_SERVICE')")
+    @PreAuthorize("hasAuthority('API_SERVICE')")
     public Map<String, Object> execute(
             @PathVariable UUID id,
             @RequestBody(required = false) ExecuteConnectorRequest request) {

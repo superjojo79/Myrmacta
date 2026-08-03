@@ -310,7 +310,7 @@ Conflit nom actif → **409** (unique partiel).
 | O2 | Accroche signal | **Clos** — DD-SIGNAL-HOOK 1 |
 | O3 | Purge job idempotency | **Différé** — TTL au read V1 |
 | O4 | Matcher M2M | **Clos** — `/api/m2m/**` |
-| O5 | Type d’événement Flowable exact | **Impl** — valider sur Flowable 8 + smoke |
+| O5 | Type d’événement Flowable exact | **Clos** — `ACTIVITY_SIGNALED` + SignalSmokeIT |
 | O6 | Dédup TRIGGER signal (executionId) | **Nice** — hors V1 strict |
 
 **Phase 3 close** (2026-08-03) — statut `reviewed`.

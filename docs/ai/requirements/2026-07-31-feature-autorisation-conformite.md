@@ -155,22 +155,22 @@ signaler un champ sensible (TODO §23).
 ## Success Criteria
 **How will we know when we're done?**
 
-- [ ] Point 19 documenté comme **clos V1** (cinq rôles + renvoi ACL type /
+- [x] Point 19 documenté comme **clos V1** (cinq rôles + renvoi ACL type /
   mapping existant).
-- [ ] `@EnableMethodSecurity` actif ; **surface livrable** respectée
+- [x] `@EnableMethodSecurity` actif ; **surface livrable** respectée
   (annotations présentes / absentes comme tabulaire).
-- [ ] `TenantAdminGuard` domaine branché sur use cases types + ACL ; classe
+- [x] `TenantAdminGuard` domaine branché sur use cases types + ACL ; classe
   infra HTTP **supprimée**.
-- [ ] Check manuel `requireWorkflowAdmin` **supprimé** au profit de
+- [x] Check manuel `requireWorkflowAdmin` **supprimé** au profit de
   `@PreAuthorize`.
-- [ ] `FieldDefinition.sensitive` (défaut false) bout-en-bout (domaine, JSON
+- [x] `FieldDefinition.sensitive` (défaut false) bout-en-bout (domaine, JSON
   JPA, API) ; seul un `TENANT_ADMIN` peut l’écrire via API types.
-- [ ] Aucun masquage lecture dossier basé sur `sensitive` (assert test).
-- [ ] MockMvc : rôle insuffisant → 403 ProblemDetail ; admin OK ; régressions
+- [x] Aucun masquage lecture dossier basé sur `sensitive` (assert test).
+- [x] MockMvc : rôle insuffisant → 403 ProblemDetail ; admin OK ; régressions
   dossiers / workflow / auth.
-- [ ] Contrainte stockage S3/FS (anti-MinIO) documentée (requirements + design).
-- [ ] `./mvnw test` vert ; ArchUnit ; Jacoco ≥ 80 %.
-- [ ] Docs requirements / design / testing / planning alignés ; TODO §19 / §23
+- [x] Contrainte stockage S3/FS (anti-MinIO) documentée (requirements + design).
+- [x] `./mvnw test` vert ; ArchUnit ; Jacoco ≥ 80 %.
+- [x] Docs requirements / design / testing / planning alignés ; TODO §19 / §23
   mis à jour.
 
 **Performance benchmarks :** N/A — chemins authz déjà présents ; pas d’IO

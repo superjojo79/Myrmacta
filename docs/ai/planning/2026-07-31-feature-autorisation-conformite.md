@@ -15,11 +15,16 @@ main_integrated: 2026-08-03 # PR #18
 Plan initial **phase 4** — dérivé des docs `requirements` / `design` /
 `testing` en `reviewed` (ou `design_aligned`). Prêt pour phase 5.
 
+## Phase 7 — Check Implementation
+
+**Clos.** Alignement design OK ; écart low DEV-SENS-BOOL seulement.
+Preuve : `./mvnw verify` → 193 / 0 ; Jacoco 90,2 %. Suite : phase 8
+(formaliser testing) puis phase 9.
+
 ## Phase 5 — synthèse
 
 **9/9 tâches done (T1–T9).** `./mvnw verify` → 193 tests / 0 fail ; Jacoco
-90,2 % ; ArchUnit OK. Écart low DEV-SENS-BOOL (`Boolean` coerce). Suite :
-phase 7 Check Implementation.
+90,2 % ; ArchUnit OK. Écart low DEV-SENS-BOOL (`Boolean` coerce).
 
 ## Phase 4 — synthèse
 

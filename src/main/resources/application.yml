@@ -72,6 +72,13 @@ app:
       max-attempts: 5
       poll-delay: 1s
       processed-retention: 7d
+  connector:
+    crypto:
+      master-key: ${APP_CONNECTOR_MASTER_KEY:}
+    webhook:
+      max-body-bytes: 1048576
+      rate-limit-per-minute: 120
+      idempotency-ttl: 24h
 
 flowable:
   async-executor-activate: true

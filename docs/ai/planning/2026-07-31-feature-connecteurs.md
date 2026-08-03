@@ -2,25 +2,28 @@
 phase: planning
 title: Project Planning & Task Breakdown
 description: Break down work into actionable tasks and estimate timeline
-status: ready
+status: in-progress
 created: 2026-08-03
 updated: 2026-08-03
 design_aligned: 2026-08-03
 phase4: 2026-08-03
+phase5: 2026-08-03
 ---
 
 # Project Planning & Task Breakdown
 
 Plan initial **phase 4** — dérivé des docs `requirements` / `design`
-(`reviewed`) et `testing` (`draft` design_aligned). Prêt pour phase 5.
+(`reviewed`) et `testing` (`draft` design_aligned).
 
+**Phase 5 en cours** — T1–T3 done. Next : T4.
 Traçage `task` CLI : **indisponible**.
+Preuve : `./mvnw -Dtest=ConnectorModelsTest,ConnectorPropertiesTest,ConnectorPortsContractTest,ConnectorSchemaIT test` → 17/0 (JDK 25).
 
 ## Milestones
 **What are the major checkpoints?**
 
-- [ ] **M1 — Domaine & ports** : models, exceptions, ports admin/trigger/execute/cipher
-- [ ] **M2 — Persistence & crypto** : Liquibase, JPA soft-delete, EnvMasterKeyCipher, idempotency store
+- [x] **M1 — Domaine & ports** : models, exceptions, ports admin/trigger/execute/cipher
+- [~] **M2 — Persistence & crypto** : Liquibase done ; T4 JPA/cipher remaining
 - [ ] **M3 — Registry & builtins trigger** : registry, JsonPath, http-rest TRIGGER, TriggerRuntime
 - [ ] **M4 — Security & HTTP** : 3 chaînes, webhook harden, admin CRUD, dual execute
 - [ ] **M5 — flowable-signal** : SERVICE + listener TRIGGER + ServiceTask + smoke BPMN
@@ -33,43 +36,34 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M1 — Domaine & ports
 
-- [ ] **T1. Models domaine connector**
-  - **Outcome :** `ConnectorInstanceData`, `WorkflowTriggerEvent`,
-    `ConfigField`, `ConnectorCapability`, `WebhookAuthType`
-    (HMAC / SHARED_SECRET only) ; exceptions
-    (`UnknownConnectorException`, `WebhookAuthenticationException`,
-    `ConnectorValidationException`, …).
+- [x] **T1. Models domaine connector**
+  - **Outcome :** models + enums + exceptions + `ConnectorDefinition` /
+    `TriggerConnector` / `ServiceConnector`.
   - **Depends on :** —
-  - **Validation :** compile ; ArchUnit domaine pur.
-  - **Tests liés :** — (consommé T3–T8).
+  - **Validation :** `ConnectorModelsTest` 12/0.
+  - **Tests liés :** ConnectorModelsTest.
 
-- [ ] **T2. Ports in/out + properties**
-  - **Outcome :** ports repository instance ; use cases admin
-    (create/update/get/list/softDelete/restore) ; `ConnectorTriggerRuntime`
-    (port ou classe domaine) ; `ExecuteConnectorUseCase` ;
-    `ConnectorSecretCipher` (port) ; `WebhookIdempotencyStore` (port) ;
-    `@ConfigurationProperties` `app.connector.crypto.*` +
-    `app.connector.webhook.*` (max-body, rate-limit, idempotency-ttl).
+- [x] **T2. Ports in/out + properties**
+  - **Outcome :** ports repo/cipher/idempotency + manage/execute/trigger ;
+    `ConnectorProperties` + yaml `app.connector.*`.
   - **Depends on :** T1
-  - **Validation :** compile ; bind yaml test.
+  - **Validation :** ConnectorPropertiesTest + ConnectorPortsContractTest.
   - **Tests liés :** Unit cipher/idempotency/harden (T4, T9).
 
 ### M2 — Persistence & crypto
 
-- [ ] **T3. Liquibase connector tables**
-  - **Outcome :** changelog
-    `connector_instance` (+ `deleted_at`) + unique partiel
-    `(tenant_id, name) WHERE deleted_at IS NULL` ; `tenant_connector_dek` ;
-    `webhook_idempotency` ; enregistré dans master.
+- [x] **T3. Liquibase connector tables**
+  - **Outcome :** `003-connector-tables.yaml` ; unique partiel PG /
+    `active_name` H2 ; DEK + webhook_idempotency.
   - **Depends on :** T1
-  - **Validation :** IT schema H2 MODE=PostgreSQL.
+  - **Validation :** `ConnectorSchemaIT` 2/0.
   - **Tests liés :** IT Liquibase/JPA.
 
 - [ ] **T4. JPA adapters + EnvMasterKeyCipher + idempotency**
   - **Outcome :** `ConnectorInstanceJpaEntity` / adapter (encrypt on save,
     decrypt on load, filter soft-delete, `findIncludingDeleted` pour
     restore) ; `EnvMasterKeyCipher` + DEK wrap ; adapter idempotency TTL
-    24h au read ; clé test dans `application-test.yml`.
+    24h au read ; clé test dans `application.properties` test.
   - **Depends on :** T2, T3
   - **Validation :** IT round-trip secrets chiffrés ; unit cipher.
   - **Tests liés :** Unit ConnectorSecretCipher ; IT Liquibase/JPA ;
@@ -177,11 +171,12 @@ T5,T4 → T10 → T11
 T8,T9,T11 → T12 → T13
 ```
 
-- **Next 3 tasks (phase 5) :** T1 → T2 → T3 (puis T4 ∥ T5).
+- **Next 3 tasks (phase 5) :** T4 → T5 → T6.
 - Risque sequencing : T9 execute peut appeler use case avant T10 si
   `flowable-signal` pas encore là — enchaîner T10 avant de finaliser
   execute IT signal, ou stub temporaire.
 - Dep Maven resource-server dès T7.
+- JDK 25 requis (`JAVA_HOME`).
 
 ## Risks & Mitigation
 

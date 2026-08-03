@@ -2,64 +2,57 @@
 phase: implementation
 title: Implementation Guide
 description: Technical implementation notes, patterns, and code guidelines
+status: in-progress
+created: 2026-08-03
+updated: 2026-08-03
+phase5: 2026-08-03
 ---
 
 # Implementation Guide
 
-## Development Setup
-**How do we get started?**
+## Phase 5 progress
 
-- Prerequisites and dependencies
-- Environment setup steps
-- Configuration needed
+| Task | Statut | Notes |
+|---|---|---|
+| T1 Models | done | records + enums + exceptions + definition interfaces |
+| T2 Ports + properties | done | ports in/out ; `ConnectorProperties` ; yaml |
+| T3 Liquibase | done | `003-connector-tables.yaml` ; H2 generated `active_name` |
+| T4+ | pending | |
+
+**Preuve :** Temurin 25 (`~/java/jdk-25.0.4+7`) ;
+`./mvnw -Dtest=ConnectorModelsTest,ConnectorPropertiesTest,ConnectorPortsContractTest,ConnectorSchemaIT test`
+→ **17 / 0**.
+
+## Development Setup
+
+- Java 25 (Temurin) — installer si agent n’a que JDK 21.
+- Worktree : `.worktrees/feature-connecteurs`.
+- `app.connector.crypto.master-key` : vide en yaml principal ; clé test en T4.
 
 ## Code Structure
-**How is the code organized?**
 
-- Directory structure
-- Module organization
-- Naming conventions
+```
+domain/connector/model/
+domain/connector/port/in|out/
+infrastructure/config/ConnectorProperties.java
+db/changelog/changes/003-connector-tables.yaml
+```
 
 ## Implementation Notes
-**Key technical details to remember:**
 
-### Core Features
-- Feature 1: Implementation approach
-- Feature 2: Implementation approach
-- Feature 3: Implementation approach
+### Liquibase unique name (DD-NAME-UQ)
 
-### Patterns & Best Practices
-- Design patterns being used
-- Code style guidelines
-- Common utilities/helpers
+- PostgreSQL : partial unique index `WHERE deleted_at IS NULL`
+- H2 : generated `active_name` + unique `(tenant_id, active_name)`
 
-## Integration Points
-**How do pieces connect?**
+### ConfigFieldType
 
-- API integration details
-- Database connections
-- Third-party service setup
+Séparé de `dossier.FieldType` (PASSWORD/URL/INTEGER dédiés connecteurs).
 
-## Error Handling
-**How do we handle failures?**
+## Deviations
 
-- Error handling strategy
-- Logging approach
-- Retry/fallback mechanisms
+Aucune vs design pour T1–T3.
 
-## Performance Considerations
-**How do we keep it fast?**
+## Next
 
-- Optimization strategies
-- Caching approach
-- Query optimization
-- Resource management
-
-## Security Notes
-**What security measures are in place?**
-
-- Authentication/authorization
-- Input validation
-- Data encryption
-- Secrets management
-
+T4 — JPA adapters + `EnvMasterKeyCipher` + idempotency store.

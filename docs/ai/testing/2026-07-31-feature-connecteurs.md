@@ -5,6 +5,7 @@ description: Define testing approach, test cases, and quality assurance
 status: draft
 created: 2026-08-03
 updated: 2026-08-03
+requirements_aligned: 2026-08-03
 ---
 
 # Testing Strategy
@@ -89,14 +90,17 @@ Alignement requirements success criteria + design DD-*.
 - [ ] Non-admin → 403 ProblemDetail
 - [ ] GET masque secret / `secretConfigured`
 - [ ] Config `IP_ALLOWLIST` → 400
+- [ ] DELETE soft-delete : hors liste ; GET → 404
+- [ ] PATCH restore soft-deleted → visible à nouveau (`TENANT_ADMIN`)
+- [ ] Non-admin PATCH restore → 403
 
 ### MockMvc — webhook
-- [ ] HMAC happy → 202 ; outbox rows = N
-- [ ] Signature KO → 401/403 ; 0 outbox
-- [ ] Shared secret happy path
+- [ ] HMAC happy (`X-Signature-256`) → 202 ; outbox rows = N
+- [ ] Signature KO → **401** ; 0 outbox
+- [ ] Shared secret via `X-Webhook-Token` happy path
 - [ ] Replay `Idempotency-Key` → 202 ; outbox inchangé
-- [ ] Sans `Idempotency-Key` → 400
-- [ ] `enabled=false` / id inconnu → 404
+- [ ] Sans `Idempotency-Key` → 400 (pas d’alias `X-Delivery-Id`)
+- [ ] `enabled=false` / soft-deleted / id inconnu → 404
 - [ ] Body trop gros → 413
 - [ ] Rate limit → 429
 - [ ] Existing dossier ref → outbox sans create (seed dossier)

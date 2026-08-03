@@ -5,6 +5,7 @@ description: Define the technical architecture, components, and data models
 status: draft
 created: 2026-08-03
 updated: 2026-08-03
+requirements_aligned: 2026-08-03
 ---
 
 # System Design & Architecture
@@ -12,7 +13,7 @@ updated: 2026-08-03
 ## Architecture Overview
 **What is the high-level system structure?**
 
-Tranche **connecteurs** alignée requirements `draft` (D-SCOPE…D-EXECUTE-AUTH) :
+Tranche **connecteurs** alignée requirements `reviewed` (D-SCOPE…D-DEFAULTS) :
 registry + instances chiffrées, webhooks `http-rest`, `flowable-signal`
 TRIGGER/SERVICE, outbox producteur, chaînes Security M2M + webhook.
 
@@ -141,9 +142,9 @@ WebhookAuthType: HMAC_SHA256 | SHARED_SECRET_TOKEN
 
 | Table | Colonnes clés |
 |---|---|
-| `connector_instance` | id UUID PK, tenant_id, name, connector_type, enabled, config jsonb, created_at, updated_at |
+| `connector_instance` | id UUID PK, tenant_id, name, connector_type, enabled, config jsonb, deleted_at nullable, created_at, updated_at |
 | `tenant_connector_dek` | tenant_id PK, dek_wrapped bytea/text, key_version, updated_at |
-| `webhook_idempotency` | instance_id, idem_key, created_at, response_status ; PK (instance_id, idem_key) ; TTL job optionnel |
+| `webhook_idempotency` | instance_id, idem_key, created_at, response_status ; PK (instance_id, idem_key) ; TTL 24h |
 
 Champs `PASSWORD` du JSON `config` chiffrés AES-GCM au repos (DEK tenant).
 
@@ -201,7 +202,10 @@ sequenceDiagram
 ```
 
 - Instance absente / `enabled=false` → **404**.
-- Auth KO → **401** ProblemDetail (pas de détail oracle).
+- Auth KO → **401** ProblemDetail (pas de détail oracle) — D-WH-FAIL.
+- Soft-deleted / disabled → **404**.
+- Sans `Idempotency-Key` → **400** (D-IDEM-HDR — pas d’alias `X-Delivery-Id`).
+- Shared secret : header **`X-Webhook-Token`** (D-TOKEN-HDR).
 - Après commit TX → 202 corps vide (ou `{accepted:true}` minimal).
 
 ### Rate limit / body — **DD-HARDEN**
@@ -269,7 +273,11 @@ en variables.
 ```
 
 GET détail : `config.webhookSecret` → `"********"` (ou omission +
-`secretConfigured: true`).
+`secretConfigured: true`). Soft-deleted → 404. Liste exclut soft-deleted.
+
+DELETE = soft delete (`deleted_at=now()`, `enabled=false`). Restore =
+PATCH effaçant `deleted_at` (et typiquement `enabled=true`) — `TENANT_ADMIN`
+uniquement (D-DELETE / D-UNDELETE).
 
 ### Execute body
 
@@ -306,10 +314,12 @@ GET détail : `config.webhookSecret` → `"********"` (ou omission +
 | DD-MAP | JSONPath simple déclaratif | Pas SpEL |
 | DD-HARDEN | Properties max-body + rate/min | In-memory |
 | DD-MASK | Masquage secrets lecture | Jamais clair API |
-| DD-404 | Disabled → 404 webhook | Anti-oracle |
+| DD-404 | Disabled / soft-deleted → 404 | Anti-oracle |
+| DD-SOFT | Soft delete + PATCH restore | Pas de purge V1 |
 | DD-M2M | Resource server JWT Order(1) | Claim tenant_id |
 | DD-CIPHER | Interface + Env impl | Vault stub profile |
-| DD-SIGNAL-HOOK | Listener Flowable → runtime | Smoke IT |
+| DD-SIGNAL-HOOK | Listener Flowable → runtime | Smoke IT — Q17 |
+| DD-HEADERS | HMAC `X-Signature-256` ; token `X-Webhook-Token` ; `Idempotency-Key` | Phase 2 |
 
 ---
 

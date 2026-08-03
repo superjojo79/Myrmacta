@@ -349,4 +349,5 @@ Erreurs → exceptions propagées Flowable (échec activité).
 | O7 | Versions libs | **Clos** — pom existant |
 
 **Phase 3 close** (2026-08-03) — statut `reviewed` ; DQ1–DQ5.
-**Phase 4** — plan de tâches (`dev-planning`).
+**Phase 4 close** — plan T1–T15 (`dev-planning`, PQ1 couches).
+**Phase 5** — Execute Plan (`dev-implementation`).

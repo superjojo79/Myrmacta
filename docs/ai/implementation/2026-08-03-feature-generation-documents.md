@@ -9,10 +9,9 @@ updated: 2026-08-03
 
 # Implementation Guide
 
-Phase 1 — pas d’implémentation code. Voir design draft
-`docs/ai/design/2026-08-03-feature-generation-documents.md`.
+Requirements + design `reviewed` ; planning T1–T15 prêt (phase 4).
 
 Worktree : `.worktrees/feature-generation-documents` · branche
 `feature-generation-documents`.
 
-Prochaine phase doc : **Phase 2 — Review Requirements**.
+Prochaine phase : **Phase 5 — Execute Plan** (démarrer T1).

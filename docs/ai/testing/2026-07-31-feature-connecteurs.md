@@ -171,7 +171,7 @@ N/A — bornes 413/429 couvertes en MockMvc.
 ```text
 ./mvnw -Dtest=WebhookControllerTest,ConnectorAdminApiTest,ConnectorExecuteApiTest test
 → 23 / 0 (9 + 8 + 6)
-./mvnw verify → (voir commit suivant)
+./mvnw verify → 287 tests / 0 fail ; Jacoco INSTRUCTION 88.10%
 ```
 
 ## Success criteria → scenarios

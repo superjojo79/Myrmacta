@@ -9,6 +9,7 @@ phase5: 2026-08-03
 phase6: 2026-08-03
 phase7: 2026-08-03
 phase7_result: aligned
+phase8: 2026-08-03
 ---
 
 # Implementation Guide
@@ -22,11 +23,17 @@ documentés). Suite : **Phase 8** (`dev-testing`).
 
 ```text
 JAVA_HOME=…/jdk-25.0.4+7 ./mvnw verify
-→ Tests run: 271, Failures: 0, Errors: 0
-→ Jacoco INSTRUCTION 9352/10935 = 85.52%
+→ Tests run: 287, Failures: 0, Errors: 0
+→ Jacoco INSTRUCTION 9624/10924 = 88.10%
 → npx ai-devkit lint --feature connecteurs → All checks passed
 → task CLI : unavailable (`unknown command 'task'`)
 ```
+
+### Phase 8 testing
+
+Gaps MockMvc phase 7 comblés : admin soft-delete/restore/409/403,
+webhook HMAC 401/404, dual execute BFF+M2M (`ConnectorExecuteApiTest`).
+Doc testing `status: completed`. Suite : **Phase 9** (`dev-review`).
 
 ### Design coverage matrix
 
@@ -61,12 +68,12 @@ JAVA_HOME=…/jdk-25.0.4+7 ./mvnw verify
 | D4 | Smoke IT SERVICE catch OK ; TRIGGER listener → outbox seulement en unit | basse | Couverture partielle acceptée V1 |
 | D5 | Doublon `/api/connectors/definitions` retiré en phase 7 (catalogue = `/api/connector-definitions` only) | — | Corrigé |
 
-### Gaps tests (non bloquants phase 7)
+### Gaps tests (phase 8)
 
-- MockMvc HMAC happy / auth 401 E2E (unit authenticators OK)
-- MockMvc dual execute JWT M2M
-- MockMvc 409 nom dupliqué / soft-delete list 404
-→ à traiter en **Phase 8** (`dev-testing`)
+Comblés. Restent hors V1 / follow-up :
+- E2E webhook → outbox → relay start
+- Idempotency reserve atomique (D3)
+- Asserts absence secrets dans logs
 
 ## Phase 5–6 progress
 

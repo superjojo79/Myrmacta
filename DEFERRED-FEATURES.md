@@ -12,10 +12,10 @@
 **Statut lifecycle (check-status) :** `architecture-hexagonale`, `multi-tenant`,
 `authentification`, `dossiers`, `workflow-engine`, `autorisation-conformite`,
 `connecteurs`, `templates-documents` sont **Complete** (mergés). Feature en
-cours : `generation-documents` (phase 1 requirements/design/testing **draft**,
-décisions stakeholder 2026-08-03). Les features `notifications`,
-`visualisation-workflow`, `frontend` restent en docs skeleton / planning non
-exécuté.
+cours : `generation-documents` (phases 1–6 — implémentation T1–T15, verify
+353/0 Jacoco 87,2 % ; prochaine phase 7 check). Les features
+`notifications`, `visualisation-workflow`, `frontend` restent en docs
+skeleton / planning non exécuté.
 
 ---
 
@@ -94,7 +94,7 @@ Ordre indicatif aligné sur l’analyse et les dépendances techniques :
 | — | `autorisation-conformite` | **Complete** (main) |
 | — | `connecteurs` | **Complete** (main) |
 | — | `templates-documents` | **Complete** (main) |
-| 1 | `generation-documents` | PDF + S3/FS + Flowable tasks + PRODUCED_DOC — **phase 1 draft** |
+| 1 | `generation-documents` | PDF + S3/FS + Flowable + PRODUCED_DOC — **phase 5–6 done** |
 | 3 | `notifications` | Outbox notifications, webhooks sortants, SSE |
 | 4 | `visualisation-workflow` | Diagramme BPMN / état runtime |
 | 5 | `frontend` | Vue 3 + Pinia + Axios dans `static/` (décision n° 27) |

@@ -24,6 +24,14 @@ public class AccessContextFactory {
         return AccessContext.user(oidcUser.getSubject(), roles);
     }
 
+    /**
+     * Ensures the request carries an OIDC principal (same check as {@link #user}).
+     * Use when the actor is not needed by the use case (e.g. workflow-type-config).
+     */
+    public void requireOidcPrincipal(Authentication authentication) {
+        user(authentication);
+    }
+
     private static OidcUser oidcUser(Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof OidcUser oidcUser)) {
             throw new IllegalArgumentException("OIDC user required");

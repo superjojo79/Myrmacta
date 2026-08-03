@@ -45,7 +45,7 @@ class WorkflowTypeConfigController {
     ResponseEntity<WorkflowTypeConfigResponse> create(
             @RequestBody WorkflowTypeConfigRequest request,
             Authentication authentication) {
-        accessContextFactory.user(authentication);
+        accessContextFactory.requireOidcPrincipal(authentication);
         WorkflowTypeConfig saved = saveUseCase.create(request.toDomain(tenantProperties.id(), UUID.randomUUID(), null));
         return ResponseEntity
                 .created(URI.create("/api/workflow-type-configs/" + saved.workflowKey()))
@@ -58,7 +58,7 @@ class WorkflowTypeConfigController {
             @PathVariable String workflowKey,
             @RequestBody WorkflowTypeConfigRequest request,
             Authentication authentication) {
-        accessContextFactory.user(authentication);
+        accessContextFactory.requireOidcPrincipal(authentication);
         WorkflowTypeConfig existing = getUseCase.getByKey(workflowKey)
                 .orElseThrow(() -> new WorkflowTypeConfigNotFoundException("Workflow type config not found: " + workflowKey));
         return WorkflowTypeConfigResponse.from(saveUseCase.update(
@@ -67,13 +67,13 @@ class WorkflowTypeConfigController {
 
     @GetMapping
     List<WorkflowTypeConfigResponse> list(Authentication authentication) {
-        accessContextFactory.user(authentication);
+        accessContextFactory.requireOidcPrincipal(authentication);
         return getUseCase.list().stream().map(WorkflowTypeConfigResponse::from).toList();
     }
 
     @GetMapping("/{workflowKey}")
     WorkflowTypeConfigResponse get(@PathVariable String workflowKey, Authentication authentication) {
-        accessContextFactory.user(authentication);
+        accessContextFactory.requireOidcPrincipal(authentication);
         return getUseCase.getByKey(workflowKey)
                 .map(WorkflowTypeConfigResponse::from)
                 .orElseThrow(() -> new WorkflowTypeConfigNotFoundException("Workflow type config not found: " + workflowKey));

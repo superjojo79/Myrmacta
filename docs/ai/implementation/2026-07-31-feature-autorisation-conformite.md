@@ -21,12 +21,12 @@ Traçage `task` CLI indisponible.
 
 ### Findings
 
-| ID | Sévérité | Fichier | Issue | Recommandation |
+| ID | Sévérité | Fichier | Issue | Statut |
 |---|---|---|---|---|
 | — | Blocking | — | Aucun | — |
-| DEV-WF-UNUSED | Low | `WorkflowTypeConfigController` | `accessContextFactory.user(auth)` sans usage du retour (create/update/list/get) — side-effect : valide principal OIDC | Retirer si redondant avec session BFF, ou commenter l’intention |
-| DEV-SENS-HELPER | Nice | `FieldDefinition` | `isSensitive()` surtout tests | OK pour API future ; sinon retirer |
-| DEV-SENS-BOOL | Low (accepté) | `FieldDefinition` | `Boolean` + coerce vs `boolean` | Déjà documenté |
+| DEV-WF-UNUSED | Low | `WorkflowTypeConfigController` | retour inutilisé de `user(auth)` | **Résolu** — `requireOidcPrincipal` (validation OIDC conservée) |
+| DEV-SENS-HELPER | Nice | `FieldDefinition` | `isSensitive()` surtout tests | **Résolu** — helper conservé + `DossierType.hasSensitiveFields()` |
+| DEV-SENS-BOOL | Low (accepté) | `FieldDefinition` | `Boolean` + coerce vs `boolean` | Accepté ; documenté |
 
 ### Checklist finale
 
@@ -150,6 +150,8 @@ Nouveaux tests phase 8 : `CreateDossierTypeUseCaseImplTest`,
 
 ## Known Issues / Follow-ups
 
-- Follow-ups non bloquants phase 9 : DEV-WF-UNUSED, DEV-SENS-HELPER
+- DEV-WF-UNUSED / DEV-SENS-HELPER : **résolus** (validation OIDC via `requireOidcPrincipal` ;
+  `isSensitive()` branché via `DossierType.hasSensitiveFields`)
+- DEV-SENS-BOOL : accepté
 - Produit : masquage/exports `sensitive` ; port S3/FS
 - Lifecycle **Complete** — prêt à merge (`cursor/autorisation-conformite-f54c`)

@@ -19,14 +19,12 @@ Plan initial **phase 4** — dérivé des docs `requirements` / `design` /
 
 **Clos.** Aucun finding bloquant. Lifecycle **Complete** — prêt à merge.
 
-Preuve finale (re-vérifiée) : `./mvnw verify` → **199** / 0 ; Jacoco **~90 %** ;
-ArchUnit OK.
+Preuve finale (re-vérifiée post follow-ups) : `./mvnw verify` → **200** / 0 ;
+Jacoco **~90 %** ; ArchUnit OK.
 
-Follow-ups non bloquants :
-- DEV-WF-UNUSED (low) : `accessContextFactory.user(...)` sans usage du
-  retour dans `WorkflowTypeConfigController` — side-effect OIDC ; nettoyer
-  ou documenter.
-- DEV-SENS-HELPER (nice) : `FieldDefinition.isSensitive()` surtout tests.
+Follow-ups :
+- DEV-WF-UNUSED / DEV-SENS-HELPER : **résolus** (`requireOidcPrincipal` ;
+  `DossierType.hasSensitiveFields` → `isSensitive()`).
 - DEV-SENS-BOOL (low, accepté) : `Boolean` coerce Jackson.
 
 ## Phase 8 — Write Tests

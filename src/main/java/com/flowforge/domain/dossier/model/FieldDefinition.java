@@ -34,6 +34,7 @@ public record FieldDefinition(
         this(name, label, type, required, defaultValue, options, group, false);
     }
 
+    /** Canonical boolean reader for the {@code sensitive} metadata (redaction/exports later). */
     public boolean isSensitive() {
         return Boolean.TRUE.equals(sensitive);
     }

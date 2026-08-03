@@ -125,10 +125,11 @@ JAVA_HOME=…/jdk-25.0.4+7 ./mvnw -q verify
 
 ## Follow-ups (non-bloquants)
 
-- Phase 8 : enrichir couverture (races activate concurrentes, CSRF mutateurs, authz négative)
+- Phase 8 : couverture API/security/contraintes enrichie (`status: verified`)
 - `@Version` / ETag si besoin concurrence éditoriale
 - PDF / Flying Saucer / Flowable ServiceTask → `generation-documents`
 - OpenAPI / pagination
+- Stress activate multi-thread (hors V1 ; unique SQL couvre la race)
 
 ## Non-goals / deferred
 

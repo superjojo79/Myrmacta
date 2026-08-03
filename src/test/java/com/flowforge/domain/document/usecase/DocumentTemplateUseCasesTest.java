@@ -111,6 +111,48 @@ class DocumentTemplateUseCasesTest {
     }
 
     @Test
+    void update_partialFields_keepUnspecifiedValues() {
+        UUID id = UUID.randomUUID();
+        when(repository.findByIdAndTenantId(id, TENANT))
+                .thenReturn(Optional.of(sample(id, TemplateStatus.DRAFT, 1)));
+        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        var labelOnly = update.update(new UpdateDocumentTemplateUseCase.UpdateCommand(
+                id, "only-label", null, "admin"));
+        assertThat(labelOnly.label()).isEqualTo("only-label");
+        assertThat(labelOnly.htmlContent()).isEqualTo("<p th:text=\"${title}\">x</p>");
+
+        var htmlOnly = update.update(new UpdateDocumentTemplateUseCase.UpdateCommand(
+                id, null, "<p>only-html</p>", "admin"));
+        assertThat(htmlOnly.label()).isEqualTo("label");
+        assertThat(htmlOnly.htmlContent()).isEqualTo("<p>only-html</p>");
+    }
+
+    @Test
+    void resolve_returnsBestActive_andNormalizesBlankKeys() {
+        UUID id = UUID.randomUUID();
+        when(repository.findBestActive(TENANT, "contrat", null, null))
+                .thenReturn(Optional.of(sample(id, TemplateStatus.ACTIVE, 1)));
+
+        var resolved = resolve.resolve(new TemplateResolutionRequest("contrat", "  ", ""));
+        assertThat(resolved.id()).isEqualTo(id);
+        verify(repository).findBestActive(TENANT, "contrat", null, null);
+    }
+
+    @Test
+    void activate_withoutPreviousActive_onlySavesDraftAsActive() {
+        UUID draftId = UUID.randomUUID();
+        when(repository.findByIdAndTenantId(draftId, TENANT))
+                .thenReturn(Optional.of(sample(draftId, TemplateStatus.DRAFT, 1)));
+        when(repository.findActiveExact(TENANT, "contrat", "premium", "fr")).thenReturn(Optional.empty());
+        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        var activated = activate.activate(draftId, TENANT, "admin");
+        assertThat(activated.status()).isEqualTo(TemplateStatus.ACTIVE);
+        verify(repository).save(any());
+    }
+
+    @Test
     void activate_checksSyntaxThenArchivesPreviousActive() {
         UUID draftId = UUID.randomUUID();
         UUID previousId = UUID.randomUUID();

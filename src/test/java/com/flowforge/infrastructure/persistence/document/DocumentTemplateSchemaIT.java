@@ -41,27 +41,39 @@ class DocumentTemplateSchemaIT {
 
     @Test
     void uniqueActive_rejectsSecondActiveForSameCombination() {
+        String key = "uq-active-" + UUID.randomUUID();
         UUID first = UUID.randomUUID();
         UUID second = UUID.randomUUID();
-        insertActive(first, "contrat", null, null, 1);
-        assertThatThrownBy(() -> insertActive(second, "contrat", null, null, 2))
+        insertRow(first, key, null, null, 1, "ACTIVE");
+        assertThatThrownBy(() -> insertRow(second, key, null, null, 2, "ACTIVE"))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
-    private void insertActive(UUID id, String key, String variant, String locale, int version) {
+    @Test
+    void uniqueVersion_rejectsDuplicateVersionForSameCombination() {
+        String key = "uq-ver-" + UUID.randomUUID();
+        UUID first = UUID.randomUUID();
+        UUID second = UUID.randomUUID();
+        insertRow(first, key, "premium", "fr", 1, "DRAFT");
+        assertThatThrownBy(() -> insertRow(second, key, "premium", "fr", 1, "ARCHIVED"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    private void insertRow(UUID id, String key, String variant, String locale, int version, String status) {
         jdbc.update(
                 """
                 INSERT INTO document_template (
                   id, tenant_id, template_key, variant_key, locale, label, version, status,
                   html_content, created_at, updated_at, updated_by)
-                VALUES (?, 'tenant_dev', ?, ?, ?, 'label', ?, 'ACTIVE', '<p>x</p>',
+                VALUES (?, 'tenant_dev', ?, ?, ?, 'label', ?, ?, '<p>x</p>',
                         CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'test')
                 """,
                 id,
                 key,
                 variant,
                 locale,
-                version);
+                version,
+                status);
     }
 
     private boolean tableExists(String table) {

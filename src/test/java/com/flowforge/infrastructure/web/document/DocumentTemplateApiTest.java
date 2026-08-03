@@ -150,6 +150,68 @@ class DocumentTemplateApiTest {
                 .andExpect(status().isNotFound());
     }
 
+    @Test
+    void patchDraft_createWithoutThymeleafParse_lifecycleConflicts_andResolveFallback() throws Exception {
+        String key = "gap-" + UUID.randomUUID();
+
+        // Create accepts invalid Thymeleaf (parse only on activate)
+        String draftId = createDraftRaw(key, "<th:block th:each=\"x : ${y}\"");
+        mockMvc.perform(patch("/api/document-templates/" + draftId)
+                        .with(admin())
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"label":"patched","htmlContent":"<p th:text=\\"${title}\\">ok</p>"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.label").value("patched"))
+                .andExpect(jsonPath("$.status").value("DRAFT"));
+
+        mockMvc.perform(post("/api/document-templates/" + draftId + "/activate")
+                        .with(admin())
+                        .with(csrf()))
+                .andExpect(status().isOk());
+
+        // Activate already-ACTIVE → 409
+        mockMvc.perform(post("/api/document-templates/" + draftId + "/activate")
+                        .with(admin())
+                        .with(csrf()))
+                .andExpect(status().isConflict());
+
+        // Default ACTIVE (null/null) resolves when exact variant/locale missing
+        mockMvc.perform(get("/api/document-templates/resolve")
+                        .param("templateKey", key)
+                        .param("variantKey", "missing-variant")
+                        .param("locale", "de")
+                        .with(admin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(draftId))
+                .andExpect(jsonPath("$.status").value("ACTIVE"));
+
+        mockMvc.perform(post("/api/document-templates/" + draftId + "/archive")
+                        .with(admin())
+                        .with(csrf()))
+                .andExpect(status().isOk());
+
+        // Archive non-ACTIVE → 409
+        mockMvc.perform(post("/api/document-templates/" + draftId + "/archive")
+                        .with(admin())
+                        .with(csrf()))
+                .andExpect(status().isConflict());
+
+        mockMvc.perform(post("/api/document-templates")
+                        .with(admin())
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"templateKey":" ","label":"x","htmlContent":"<p>y</p>"}
+                                """))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(get("/api/document-templates/" + UUID.randomUUID()).with(admin()))
+                .andExpect(status().isNotFound());
+    }
+
     private String createDraft(String key) throws Exception {
         return createDraftRaw(key, "<p th:text=\"${title}\">x</p>");
     }

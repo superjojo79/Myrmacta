@@ -18,7 +18,9 @@ phase5: 2026-08-03
 | T2 Ports + properties | done | ports in/out ; `ConnectorProperties` ; yaml |
 | T3 Liquibase | done | `003-connector-tables.yaml` ; H2 generated `active_name` |
 | T4 JPA + cipher + idempotency | done | EnvMasterKeyCipher AES-GCM ; secrets `enc:v1:` at rest |
-| T5+ | pending | |
+| T5 Registry + JsonPath + http-rest | done | SimpleJsonPathMapper ; HttpRestTriggerConnector |
+| T6 TriggerRuntime | done | outbox only ; ConnectorCatalog port (ArchUnit OK) |
+| T7+ | pending | |
 
 **Preuve T4 :** `./mvnw -Dtest=EnvMasterKeyCipherTest,ConnectorPersistenceIT,ConnectorSchemaIT test` → **9 / 0**.
 

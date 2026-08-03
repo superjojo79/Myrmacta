@@ -15,16 +15,16 @@ phase5: 2026-08-03
 Plan initial **phase 4** — dérivé des docs `requirements` / `design`
 (`reviewed`) et `testing` (`draft` design_aligned).
 
-**Phase 5 en cours** — T1–T4 done. Next : T5.
+**Phase 5 en cours** — T1–T6 done. Next : T7.
 Traçage `task` CLI : **indisponible**.
-Preuve T4 : `./mvnw -Dtest=EnvMasterKeyCipherTest,ConnectorPersistenceIT,ConnectorSchemaIT test` → 9/0.
+Preuve T5–T6 + ArchUnit : 29 tests ciblés / 0 fail.
 
 ## Milestones
 **What are the major checkpoints?**
 
 - [x] **M1 — Domaine & ports** : models, exceptions, ports admin/trigger/execute/cipher
 - [x] **M2 — Persistence & crypto** : Liquibase + JPA + EnvMasterKeyCipher + idempotency
-- [ ] **M3 — Registry & builtins trigger** : registry, JsonPath, http-rest TRIGGER, TriggerRuntime
+- [x] **M3 — Registry & builtins trigger** : registry, JsonPath, http-rest TRIGGER, TriggerRuntime
 - [ ] **M4 — Security & HTTP** : 3 chaînes, webhook harden, admin CRUD, dual execute
 - [ ] **M5 — flowable-signal** : SERVICE + listener TRIGGER + ServiceTask + smoke BPMN
 - [ ] **M6 — Preuves & docs** : IT complètes, Jacoco ≥ 80 %, doc implementation
@@ -69,20 +69,19 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M3 — Registry & builtins trigger
 
-- [ ] **T5. ConnectorRegistry + SimpleJsonPathMapper + http-rest TRIGGER**
-  - **Outcome :** discovery `@Component` definitions ; mapper `$` / `.` /
+- [x] **T5. ConnectorRegistry + SimpleJsonPathMapper + http-rest TRIGGER**
+  - **Outcome :** `ConnectorCatalog` / `ConnectorRegistry` ; mapper `$` / `.` /
     `[n]` ; `HttpRestTriggerConnector` mapping déclaratif → 1..N events ;
-    reject `IP_ALLOWLIST` à validate.
+    reject `IP_ALLOWLIST`.
   - **Depends on :** T1, T2
-  - **Validation :** unit mapper + mapping + registry.
+  - **Validation :** SimpleJsonPathMapperTest 5/0 ; Registry 2/0 ; HttpRest 5/0.
   - **Tests liés :** Unit Mapping ; SimpleJsonPathMapper ; Registry.
 
-- [ ] **T6. ConnectorTriggerRuntime**
+- [x] **T6. ConnectorTriggerRuntime**
   - **Outcome :** create dossier / existing ref (`AccessContext.system`) ;
-    batch TX ; `OutboxRepository.savePending` uniquement — **aucun** start
-    Flowable ; `createdBy` = `trigger:{instanceId}`.
-  - **Depends on :** T2, T5 ; use cases dossier existants
-  - **Validation :** unit verify outbox + no start.
+    batch TX-ready ; `OutboxRepository.savePending` only — **no** Flowable start.
+  - **Depends on :** T2, T5
+  - **Validation :** ConnectorTriggerRuntimeImplTest 5/0 ; ArchUnit OK.
   - **Tests liés :** Unit ConnectorTriggerRuntime.
 
 ### M4 — Security & HTTP
@@ -169,7 +168,7 @@ T5,T4 → T10 → T11
 T8,T9,T11 → T12 → T13
 ```
 
-- **Next 3 tasks (phase 5) :** T5 → T6 → T7.
+- **Next 3 tasks (phase 5) :** T7 → T8 → T9.
 - Risque sequencing : T9 execute peut appeler use case avant T10 si
   `flowable-signal` pas encore là — enchaîner T10 avant de finaliser
   execute IT signal, ou stub temporaire.

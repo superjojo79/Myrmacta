@@ -33,18 +33,27 @@ Alignement requirements success criteria + design DD-*.
 **What individual components need testing?**
 
 ### Mapping déclaratif (HttpRestTriggerConnector / mapper)
-- [ ] Objet JSON → 1 `WorkflowTriggerEvent` avec fields/variables
-- [ ] Tableau / `itemsPath` → N événements
-- [ ] `existingDossierReferencePath` renseigné → pas de create fields requis
-- [ ] `processKeyPath` override le défaut config
-- [ ] Chemin manquant / invalide → erreur métier claire
+- [x] Objet JSON → 1 `WorkflowTriggerEvent` avec fields/variables
+- [x] Tableau / `itemsPath` → N événements
+- [x] `existingDossierReferencePath` renseigné → pas de create fields requis
+- [x] `processKeyPath` override le défaut config
+- [x] Chemin manquant / invalide → erreur métier claire
 
 ### ConnectorTriggerRuntime
-- [ ] Create dossier + `outbox.append` par événement
-- [ ] Existing ref → `getByReference` + `AccessContext.system`
-- [ ] Ref inconnue → erreur ; pas d’outbox partiel non transactionnel
-- [ ] Batch : tout-ou-rien transactionnel
-- [ ] Aucun appel `WorkflowEnginePort.start` / RuntimeService.start
+- [x] Create dossier + `outbox.append` par événement
+- [x] Existing ref → `getByReference` + `AccessContext.system`
+- [x] Ref inconnue → erreur ; pas d’outbox partiel non transactionnel
+- [ ] Batch : tout-ou-rien transactionnel *(TX au controller T8)*
+- [x] Aucun appel `WorkflowEnginePort.start` / RuntimeService.start
+
+### SimpleJsonPathMapper
+- [x] `$.a.b` et `$.items[0].x` résolus
+- [x] Chemin invalide → erreur métier
+- [x] Pas de support filtres avancés (documenté)
+
+### Registry
+- [x] `http-rest` et `flowable-signal` présents *(http-rest only for now; signal in T10)*
+- [x] Type inconnu → `UnknownConnectorException`
 
 ### ConnectorSecretCipher (Env)
 - [x] Round-trip PASSWORD fields

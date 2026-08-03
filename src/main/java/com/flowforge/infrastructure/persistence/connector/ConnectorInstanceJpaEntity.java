@@ -65,6 +65,7 @@ class ConnectorInstanceJpaEntity {
         this.connectorType = data.connectorType();
         this.enabled = data.enabled();
         this.config = encryptedConfig == null ? Map.of() : Map.copyOf(encryptedConfig);
+        this.deletedAt = null;
         this.updatedAt = Instant.now();
     }
 

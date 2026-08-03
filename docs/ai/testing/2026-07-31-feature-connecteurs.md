@@ -9,6 +9,7 @@ requirements_aligned: 2026-08-03
 design_aligned: 2026-08-03
 phase6_evidence: 2026-08-03
 phase8: 2026-08-03
+phase9: 2026-08-03
 ---
 
 # Testing Strategy
@@ -45,7 +46,7 @@ Alignement requirements success criteria + design DD-*.
 - [x] Create dossier + `outbox.append` par événement
 - [x] Existing ref → `getByReference` + `AccessContext.system`
 - [x] Ref inconnue → erreur ; pas d’outbox partiel non transactionnel
-- [ ] Batch : tout-ou-rien transactionnel *(TX au controller — follow-up D3)*
+- [x] Batch : claim atomique avant runtime *(phase 9 `beginOrGetCompleted`)*
 - [x] Aucun appel `WorkflowEnginePort.start` / RuntimeService.start
 
 ### SimpleJsonPathMapper
@@ -80,7 +81,8 @@ Alignement requirements success criteria + design DD-*.
 
 ### FlowableSignal SERVICE
 - [x] `execute` appelle signal API avec nom config / override
-- [x] Instance disabled → rejet *(ExecuteConnectorUseCase)*
+- [x] Instance disabled → 404 (`ExecuteConnectorUseCase` + MockMvc)
+- [x] Soft-deleted → 404 (MockMvc)
 - [x] Type non-SERVICE → rejet
 
 ### FlowableSignalEventListener (TRIGGER)
@@ -170,8 +172,13 @@ N/A — bornes 413/429 couvertes en MockMvc.
 ### Phase 8
 ```text
 ./mvnw -Dtest=WebhookControllerTest,ConnectorAdminApiTest,ConnectorExecuteApiTest test
-→ 23 / 0 (9 + 8 + 6)
-./mvnw verify → 287 tests / 0 fail ; Jacoco INSTRUCTION 88.10%
+→ 23 / 0 (puis étendu)
+```
+
+### Phase 9
+```text
+./mvnw verify → 291 tests / 0 fail ; Jacoco INSTRUCTION 87.62%
+Fixes: atomic idempotency, execute 404 coverage, PATCH restore body required
 ```
 
 ## Success criteria → scenarios

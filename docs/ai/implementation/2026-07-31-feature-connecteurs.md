@@ -10,84 +10,81 @@ phase6: 2026-08-03
 phase7: 2026-08-03
 phase7_result: aligned
 phase8: 2026-08-03
+phase9: 2026-08-03
+phase9_result: ready-with-followups
 ---
 
 # Implementation Guide
 
-## Phase 7 — Check Implementation
+## Phase 9 — Code Review
 
-**Résultat :** aligné sur design/requirements `reviewed` (écarts mineurs
-documentés). Suite : **Phase 8** (`dev-testing`).
+**Résultat :** prêt à merger avec follow-ups non bloquants
+(`phase9_result: ready-with-followups`).
 
 ### Evidence (fresh)
 
 ```text
 JAVA_HOME=…/jdk-25.0.4+7 ./mvnw verify
-→ Tests run: 287, Failures: 0, Errors: 0
-→ Jacoco INSTRUCTION 9624/10924 = 88.10%
+→ Tests run: 291, Failures: 0, Errors: 0
+→ Jacoco INSTRUCTION 9707/11079 = 87.62%
 → npx ai-devkit lint --feature connecteurs → All checks passed
-→ task CLI : unavailable (`unknown command 'task'`)
+→ task CLI : unavailable
 ```
 
-### Phase 8 testing
+### Blocking findings — fixed in phase 9
 
-Gaps MockMvc phase 7 comblés : admin soft-delete/restore/409/403,
-webhook HMAC 401/404, dual execute BFF+M2M (`ConnectorExecuteApiTest`).
-Doc testing `status: completed`. Suite : **Phase 9** (`dev-review`).
+| # | Finding | Fix |
+|---|---|---|
+| B1 | Idempotency find→process→store race | `beginOrGetCompleted` atomic INSERT status=0 + `complete` |
+| B2 | `DataIntegrityViolation` always « name exists » | Message narrowed; in-flight → 409 dédié |
+| B3 | Execute soft-deleted/disabled untested | Unit + MockMvc 404 |
+| B4 | PATCH body null = restore footgun | Body required ; restore via `{"restore":true}` |
+
+### Important follow-ups (non-blocking)
+
+| # | Item | Recommendation |
+|---|---|---|
+| I1 | SERVICE signal → TRIGGER listener side effects | Dedup `(signalName, executionId)` or suppress reentrancy |
+| I2 | Max-body after full buffer | Container/filter limit ≤ 1 MiB |
+| I3 | Rate-limit before auth | Count after auth / separate unauth budget |
+| I4 | DEK create race | UPSERT / catch unique then re-read |
+| I5 | Liquibase 003 sans rollback | Add rollback blocks |
+| I6 | M2M/BFF Security 401/403 corps vide | Align ProblemDetail if product wants RFC7807 everywhere |
+
+### Nice-to-have
+
+- Heuristique crypto `*secret`/`*password` → baser sur `ConfigFieldType.PASSWORD`
+- Purge TTL idempotency (O3)
+- Factoriser `problem()` / `isSecretKey` avec dossier/workflow
+
+### Checklist phase 9
+
+- [x] Design match (DD-* + surface API)
+- [x] Logic gaps bloquants corrigés (idempotency, 409, PATCH, execute 404)
+- [x] Security addressed (3 chaînes, HMAC, mask, soft-delete)
+- [x] Integration points verified (outbox, Flowable signal smoke)
+- [x] Tests cover changes (`./mvnw verify` 291/0)
+- [x] Docs updated (implementation + testing + ce rapport)
+
+## Phase 7 — Check Implementation
+
+**Résultat :** aligné sur design/requirements `reviewed`.
 
 ### Design coverage matrix
 
 | Décision / surface | Impl | Statut |
 |---|---|---|
-| Registry + `http-rest` TRIGGER + `flowable-signal` BOTH | builtins + ConnectorRegistry | OK |
-| DD-JSONPATH parser maison | SimpleJsonPathMapper | OK |
-| DD-CIPHER EnvMasterKeyCipher + DEK | EnvMasterKeyCipher + tenant_connector_dek | OK |
-| DD-NAME-UQ unique partiel / H2 active_name | 003-connector-tables.yaml | OK |
-| DD-SOFT soft delete + PATCH restore | Manage + AdminController | OK |
-| DD-MASK secrets `********` | ConnectorResponse | OK |
-| DD-HEADERS HMAC / token / Idempotency-Key | authenticators + WebhookController | OK |
-| DD-HARDEN 1 MiB / 120/min / TTL 24h | ConnectorProperties + rate limiter | OK |
-| DD-404 disabled/deleted webhook | filter enabled + find non-deleted | OK |
-| DD-EXECUTE-ROUTE dual URL | ConnectorExecute + M2mConnectorExecute | OK |
-| DD-M2M Order 1 JWT API_SERVICE + tenant_id | SecurityConfig + M2mTenantValidationFilter | OK |
-| Webhook Order 2 / BFF Order 3 | SecurityConfig | OK |
-| DD-SIGNAL-HOOK ACTIVITY_SIGNALED | FlowableSignalEventListener | OK (O5 clos) |
-| ConnectorServiceTask | `${connectorServiceTask}` | OK |
-| Outbox only (pas start synchrone) | ConnectorTriggerRuntimeImpl | OK |
-| Surface `/api/connector-definitions` | ConnectorDefinitionController | OK |
-| Admin CRUD paths | ConnectorAdminController | OK |
-| ProblemDetail 401/404/409/413/429 | ConnectorExceptionHandler | OK |
-
-### Deviations (severity)
-
-| # | Écart | Sévérité | Disposition |
-|---|---|---|---|
-| D1 | Design diagramme « un » `ConnectorExecutionController` ; code = 2 controllers | basse | Accepté — même use case, URLs duales respectées |
-| D2 | Body execute expose `processInstanceId` ; SERVICE n’utilise que `signalName` + `variables` | basse | Documenté ; ciblage executionId hors V1 |
-| D3 | Idempotence webhook = find+store (pas reserve atomique) ; course concurrente possible | moyenne | Follow-up phase 8 / ops ; PK limite le double-store |
-| D4 | Smoke IT SERVICE catch OK ; TRIGGER listener → outbox seulement en unit | basse | Couverture partielle acceptée V1 |
-| D5 | Doublon `/api/connectors/definitions` retiré en phase 7 (catalogue = `/api/connector-definitions` only) | — | Corrigé |
-
-### Gaps tests (phase 8)
-
-Comblés. Restent hors V1 / follow-up :
-- E2E webhook → outbox → relay start
-- Idempotency reserve atomique (D3)
-- Asserts absence secrets dans logs
-
-## Phase 5–6 progress
-
-| Task | Statut | Notes |
-|---|---|---|
-| T1–T13 | done | voir planning `completed` |
+| Registry + builtins | ConnectorRegistry + http-rest + flowable-signal | OK |
+| DD-JSONPATH / DD-CIPHER / DD-NAME-UQ / DD-SOFT / DD-MASK | OK | OK |
+| DD-HEADERS / DD-HARDEN / DD-404 / DD-EXECUTE-ROUTE / DD-M2M | OK | OK |
+| DD-SIGNAL-HOOK ACTIVITY_SIGNALED | FlowableSignalEventListener | OK |
+| DD-IDEM atomic claim | beginOrGetCompleted + complete | OK (phase 9) |
 
 ## Development Setup
 
-- Java 25 (Temurin) — `JAVA_HOME=/home/ubuntu/java/jdk-25.0.4+7`.
-- Worktree : `.worktrees/feature-connecteurs` (branche `feature-connecteurs`).
-- `app.connector.crypto.master-key` : requis en prod ; clé test Base64 32 bytes
-  dans `src/test/resources/application.properties`.
-- M2M tests : `app.security.m2m.jwt-secret` (HMAC HS256) si pas d’issuer-uri.
+- Java 25 — `JAVA_HOME=/home/ubuntu/java/jdk-25.0.4+7`
+- Worktree `.worktrees/feature-connecteurs`
+- `app.connector.crypto.master-key` + `app.security.m2m.jwt-secret` en test
 
 ## Code Structure
 
@@ -95,65 +92,32 @@ Comblés. Restent hors V1 / follow-up :
 domain/connector/model|port|usecase/
 infrastructure/connector/{builtin,crypto,mapping,registry}/
 infrastructure/persistence/connector/
-infrastructure/web/connector/          # admin, webhook, execute BFF/M2M
-infrastructure/flowable/               # ConnectorServiceTask, FlowableSignalEventListener
-infrastructure/security/               # SecurityConfig Order 1/2/3 + M2M JWT
+infrastructure/web/connector/
+infrastructure/flowable/
+infrastructure/security/
 db/changelog/changes/003-connector-tables.yaml
 processes/signal-smoke.bpmn20.xml
 ```
 
 ## Implementation Notes
 
-### Security chains (T7)
+### Idempotency (phase 9)
 
-1. `@Order(1)` `/api/m2m/**` — oauth2 resource-server JWT, authority `API_SERVICE`,
-   `M2mTenantValidationFilter` (claim `tenant_id` == `app.tenant.id`), CSRF off.
-2. `@Order(2)` `/api/webhooks/**` — permitAll Spring ; auth métier HMAC/token.
-3. `@Order(3)` BFF OIDC — inchangé.
+1. `beginOrGetCompleted` : INSERT `response_status=0` (in-flight) or return completed status
+2. Concurrent claim → PK conflict → re-read ; in-flight → `WebhookIdempotencyInFlightException` (409)
+3. After runtime success → `complete(..., 202)`
 
-`JwtDecoder` : issuer-uri si présent, sinon HMAC `app.security.m2m.jwt-secret`,
-sinon refuse.
+### Security / webhooks / dual execute / flowable-signal
 
-### Crypto (T4)
-
-- Master key Base64 32 bytes (`app.connector.crypto.master-key`)
-- DEK per tenant in `tenant_connector_dek` (wrapped with master key)
-- Password keys: `*secret` / `*password` / `webhookSecret` / `clientSecret`
-- Wire format: `enc:v1:<base64(iv||ciphertext)>`
-- API responses mask secrets as `********` + `secretConfigured` map
-
-### Webhooks (T8)
-
-- Headers : `X-Signature-256` (`sha256=<hex>`) ou `X-Webhook-Token` ;
-  `Idempotency-Key` **requis**
-- Auth KO → **401** ; unknown/disabled/deleted → **404**
-- Max body 1 MiB → 413 ; rate 120/min/instance → 429
-- Runtime → outbox only
-
-### Dual execute (T9)
-
-- BFF `POST /api/connectors/{id}/execute` (`TENANT_ADMIN` + CSRF)
-- M2M `POST /api/m2m/connectors/{id}/execute` (`API_SERVICE`)
-- Même `ExecuteConnectorUseCaseImpl`
-
-### flowable-signal (T10–T11)
-
-- Capability **BOTH** ; config `signalName`, `processKey`, `dossierTypeCode`
-- SERVICE : `RuntimeService.signalEventReceivedWithTenantId`
-- `ConnectorServiceTask` lit `connectorInstanceId` / `connectorInput`
-- TRIGGER : `FlowableSignalEventListener` sur `ACTIVITY_SIGNALED`
-- Smoke : `signal-smoke.bpmn20.xml`
+Voir notes phases 5–8 (inchangées hors idempotency et PATCH).
 
 ## Non-goals / DEFERRED
 
-- smtp / s3 / scheduler builtins ; http-rest SERVICE (SSRF)
-- IP allowlist ; Vault/KMS réel ; UI admin
-- Dedup TRIGGER signal `(signalName, executionId, instanceId)`
-- Rate-limit multi-pod ; reserve atomique idempotency (D3)
-- Ciblage `processInstanceId` / executionId sur execute (D2)
+- smtp / s3 / scheduler ; http-rest SERVICE ; IP allowlist ; Vault ; UI
+- Dedup TRIGGER signal (I1)
+- Rate-limit multi-pod ; filter max-body amont (I2/I3)
 
-## Follow-ups
+## Follow-ups post-merge
 
-1. Phase 8 — combler gaps MockMvc listés ci-dessus
-2. Phase 9 — `dev-review`
-3. Ops : documenter rotation DEK / Vault adapter
+1. I1–I6 ci-dessus
+2. Ops : rotation DEK / Vault adapter

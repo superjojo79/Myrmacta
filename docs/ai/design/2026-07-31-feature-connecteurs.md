@@ -309,6 +309,7 @@ Conflit nom actif → **409** (unique partiel).
 | O1 | JSONPath impl | **Clos** — DD-JSONPATH 1 |
 | O2 | Accroche signal | **Clos** — DD-SIGNAL-HOOK 1 |
 | O3 | Purge job idempotency | **Différé** — TTL au read V1 |
+| O4 | Matcher M2M | **Clos** — `/api/m2m/**` |
 | O5 | Type d’événement Flowable exact | **Clos** — `ACTIVITY_SIGNALED` + SignalSmokeIT |
 | O6 | Dédup TRIGGER signal (executionId) | **Nice** — follow-up I1 phase 9 |
 

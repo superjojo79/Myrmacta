@@ -5,6 +5,7 @@ description: Define the technical architecture, components, and data models
 status: draft
 created: 2026-08-03
 updated: 2026-08-03
+phase2_sync: 2026-08-03
 ---
 
 # System Design & Architecture
@@ -12,10 +13,10 @@ updated: 2026-08-03
 ## Architecture Overview
 **What is the high-level system structure?**
 
-Tranche **templates-documents** (requirements draft) : stockage versionné
+Tranche **templates-documents** (requirements `reviewed`) : stockage versionné
 Thymeleaf en PostgreSQL, résolution multi-variants, API admin
 `TENANT_ADMIN`. PDF / Flowable ServiceTask hors scope
-(`generation-documents`).
+(`generation-documents`). Sync phase 2 : D-UQ + D-RESOLVE-PATH.
 
 ```mermaid
 flowchart TB
@@ -105,7 +106,7 @@ Table `document_template` :
 | created_at / updated_at | TIMESTAMPTZ | |
 | updated_by | VARCHAR | |
 
-Contraintes :
+Contraintes (**D-UQ** — écart vs `@UniqueConstraint` analyse sans version) :
 
 - Unique partiel ACTIVE (**DD-ACTIVE-UQ**) :
   `(tenant_id, template_key, COALESCE(variant_key,''), COALESCE(locale,''))
@@ -113,6 +114,8 @@ Contraintes :
 - Unique version (**DD-VER-UQ**) :
   `(tenant_id, template_key, COALESCE(variant_key,''), COALESCE(locale,''),
   version)`
+- **Pas** de unique global `(tenant, key, variant, locale)` sans version
+  (bloquerait multi-DRAFT / historique ARCHIVED).
 
 Liquibase : `004-document-template-tables.yaml`.
 
@@ -140,11 +143,12 @@ Aligné requirements surface. Corps JSON (esquisse) :
 **POST activate / archive / new-version** — body vide ; new-version
 retourne le nouveau `DRAFT`.
 
-**GET resolve?templateKey=&variantKey=&locale=** → 200 template ACTIVE
-résolu (contenu inclus) ou 404.
+**GET `/api/document-templates/resolve?templateKey=&variantKey=&locale=`**
+→ 200 template ACTIVE résolu (contenu inclus) ou 404.
+Path **littéral** `resolve` (**D-RESOLVE-PATH**) ; `{id}` typé UUID.
 
 Erreurs `ProblemDetail` : 400 validation, 401/403 sécurité, 404 inconnu,
-409 conflit cycle de vie / unique ACTIVE.
+409 conflit cycle de vie / unique ACTIVE / unique version.
 
 ---
 

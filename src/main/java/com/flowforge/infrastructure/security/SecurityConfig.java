@@ -1,10 +1,12 @@
 package com.flowforge.infrastructure.security;
 
+import com.flowforge.infrastructure.config.ConnectorProperties;
 import com.flowforge.infrastructure.config.M2mSecurityProperties;
 import com.flowforge.infrastructure.config.SecurityCookieProperties;
 import com.flowforge.infrastructure.config.TenantProperties;
 import com.flowforge.infrastructure.security.oidc.RealmAccessAuthoritiesMapper;
 import com.flowforge.infrastructure.tenant.TenantResolutionFilter;
+import com.flowforge.infrastructure.web.connector.WebhookBodySizeLimitFilter;
 import java.nio.charset.StandardCharsets;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -103,12 +105,18 @@ public class SecurityConfig {
 
     @Bean
     @Order(2)
-    SecurityFilterChain webhookSecurityFilterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain webhookSecurityFilterChain(HttpSecurity http, ConnectorProperties connectorProperties)
+            throws Exception {
         // Auth métier (HMAC / token) réalisée dans les contrôleurs — pas d'OIDC ici.
         http.securityMatcher("/api/webhooks/**")
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+                // Rejette une requête trop volumineuse avant que Spring ne bufférise le corps
+                // en mémoire (voir WebhookBodySizeLimitFilter) — endpoint anonyme exposé sur internet.
+                .addFilterBefore(
+                        new WebhookBodySizeLimitFilter(connectorProperties.webhook().maxBodyBytes()),
+                        SecurityContextHolderFilter.class);
         return http.build();
     }
 

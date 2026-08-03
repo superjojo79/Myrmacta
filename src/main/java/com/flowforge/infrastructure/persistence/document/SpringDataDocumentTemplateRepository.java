@@ -17,12 +17,21 @@ interface SpringDataDocumentTemplateRepository extends JpaRepository<DocumentTem
     List<DocumentTemplateJpaEntity> findByTenantIdAndTemplateKeyOrderByVersionDesc(
             String tenantId, String templateKey);
 
-    Optional<DocumentTemplateJpaEntity> findByTenantIdAndTemplateKeyAndVariantKeyAndLocaleAndStatus(
-            String tenantId,
-            String templateKey,
-            String variantKey,
-            String locale,
-            TemplateStatus status);
+    @Query(
+            """
+            SELECT e FROM DocumentTemplateJpaEntity e
+            WHERE e.tenantId = :tenantId
+              AND e.templateKey = :templateKey
+              AND e.status = :status
+              AND ((:variantKey IS NULL AND e.variantKey IS NULL) OR e.variantKey = :variantKey)
+              AND ((:locale IS NULL AND e.locale IS NULL) OR e.locale = :locale)
+            """)
+    Optional<DocumentTemplateJpaEntity> findActiveExact(
+            @Param("tenantId") String tenantId,
+            @Param("templateKey") String templateKey,
+            @Param("variantKey") String variantKey,
+            @Param("locale") String locale,
+            @Param("status") TemplateStatus status);
 
     @Query(
             """

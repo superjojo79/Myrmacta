@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.flowforge.domain.document.model.DocumentTemplate;
 import com.flowforge.domain.document.model.TemplateStatus;
+import com.flowforge.domain.document.port.in.ActivateDocumentTemplateUseCase;
+import com.flowforge.domain.document.port.in.CreateDocumentTemplateUseCase;
 import com.flowforge.domain.document.port.out.DocumentTemplateRepository;
 import com.flowforge.support.OidcClientTestConfiguration;
 import java.time.Instant;
@@ -19,6 +21,35 @@ class DocumentTemplatePersistenceIT {
 
     @Autowired
     private DocumentTemplateRepository repository;
+
+    @Autowired
+    private CreateDocumentTemplateUseCase createUseCase;
+
+    @Autowired
+    private ActivateDocumentTemplateUseCase activateUseCase;
+
+    @Test
+    void activate_archivesPreviousActive_includingNullDefaults() {
+        String key = "act-" + UUID.randomUUID();
+        var first = createUseCase.create(new CreateDocumentTemplateUseCase.CreateCommand(
+                key, null, null, "v1", "<p th:text=\"${title}\">x</p>", "test"));
+        activateUseCase.activate(first.id(), "tenant_dev", "test");
+
+        var second = createUseCase.create(new CreateDocumentTemplateUseCase.CreateCommand(
+                key, null, null, "v2", "<p th:text=\"${title}\">y</p>", "test"));
+        var activated = activateUseCase.activate(second.id(), "tenant_dev", "test");
+
+        assertThat(activated.status()).isEqualTo(TemplateStatus.ACTIVE);
+        assertThat(activated.version()).isEqualTo(2);
+        assertThat(repository.findByIdAndTenantId(first.id(), "tenant_dev"))
+                .get()
+                .extracting(DocumentTemplate::status)
+                .isEqualTo(TemplateStatus.ARCHIVED);
+        assertThat(repository.findActiveExact("tenant_dev", key, null, null))
+                .get()
+                .extracting(DocumentTemplate::id)
+                .isEqualTo(second.id());
+    }
 
     @Test
     void findBestActive_prefersExactThenFallbacks() {

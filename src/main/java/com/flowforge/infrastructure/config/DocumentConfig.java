@@ -1,5 +1,6 @@
 package com.flowforge.infrastructure.config;
 
+import com.flowforge.domain.document.port.in.ActivateDocumentTemplateUseCase;
 import com.flowforge.domain.document.port.out.DocumentTemplateRepository;
 import com.flowforge.domain.document.port.out.TemplateSyntaxChecker;
 import com.flowforge.domain.document.usecase.ActivateDocumentTemplateUseCaseImpl;
@@ -12,6 +13,8 @@ import com.flowforge.domain.document.usecase.ResolveDocumentTemplateUseCaseImpl;
 import com.flowforge.domain.document.usecase.UpdateDocumentTemplateUseCaseImpl;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Configuration
 public class DocumentConfig {
@@ -30,12 +33,20 @@ public class DocumentConfig {
         return new UpdateDocumentTemplateUseCaseImpl(tenantProperties.id(), repository, MAX_HTML_BYTES);
     }
 
+    /**
+     * Wraps activate in a single TX (DD-ACTIVATE-TX): archive previous ACTIVE + mark DRAFT ACTIVE.
+     */
     @Bean
-    ActivateDocumentTemplateUseCaseImpl activateDocumentTemplateUseCase(
+    ActivateDocumentTemplateUseCase activateDocumentTemplateUseCase(
             TenantProperties tenantProperties,
             DocumentTemplateRepository repository,
-            TemplateSyntaxChecker syntaxChecker) {
-        return new ActivateDocumentTemplateUseCaseImpl(tenantProperties.id(), repository, syntaxChecker);
+            TemplateSyntaxChecker syntaxChecker,
+            PlatformTransactionManager transactionManager) {
+        ActivateDocumentTemplateUseCaseImpl impl = new ActivateDocumentTemplateUseCaseImpl(
+                tenantProperties.id(), repository, syntaxChecker);
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        return (id, tenantId, updatedBy) ->
+                tx.execute(status -> impl.activate(id, tenantId, updatedBy));
     }
 
     @Bean

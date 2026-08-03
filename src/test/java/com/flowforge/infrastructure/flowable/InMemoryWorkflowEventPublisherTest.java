@@ -2,9 +2,11 @@ package com.flowforge.infrastructure.flowable;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.flowforge.domain.workflow.model.StartWorkflowCommand;
-import com.flowforge.domain.workflow.model.WorkflowInstance;
+import com.flowforge.domain.workflow.model.WorkflowCompletedEvent;
+import com.flowforge.domain.workflow.model.WorkflowFailedEvent;
 import com.flowforge.domain.workflow.model.WorkflowStartedEvent;
+import java.time.Instant;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -19,9 +21,7 @@ class InMemoryWorkflowEventPublisherTest {
 
     @Test
     void publish_recordsEvent() {
-        WorkflowInstance instance = WorkflowInstance.create(
-                new StartWorkflowCommand("demo-process", "tenant_a"));
-        var event = new WorkflowStartedEvent(instance);
+        var event = new WorkflowStartedEvent(UUID.randomUUID(), Instant.now(), "demo-process");
 
         publisher.publish(event);
 
@@ -29,17 +29,26 @@ class InMemoryWorkflowEventPublisherTest {
     }
 
     @Test
-    void publish_preservesOrder() {
-        WorkflowInstance first = WorkflowInstance.create(
-                new StartWorkflowCommand("p1", "tenant_a"));
-        WorkflowInstance second = WorkflowInstance.create(
-                new StartWorkflowCommand("p2", "tenant_a"));
+    void publish_acceptsStartedCompletedAndFailed() {
+        Instant at = Instant.parse("2026-08-02T12:00:00Z");
+        UUID id = UUID.randomUUID();
+        publisher.publish(new WorkflowStartedEvent(id, at, "smokeProcess"));
+        publisher.publish(new WorkflowCompletedEvent(id, at));
+        publisher.publish(new WorkflowFailedEvent(id, at, "boom"));
 
-        publisher.publish(new WorkflowStartedEvent(first));
-        publisher.publish(new WorkflowStartedEvent(second));
+        assertThat(publisher.published()).hasSize(3);
+    }
+
+    @Test
+    void publish_preservesOrder() {
+        var first = new WorkflowStartedEvent(UUID.randomUUID(), Instant.now(), "p1");
+        var second = new WorkflowStartedEvent(UUID.randomUUID(), Instant.now(), "p2");
+
+        publisher.publish(first);
+        publisher.publish(second);
 
         assertThat(publisher.published())
-                .extracting(e -> e.instance().processKey())
+                .extracting(e -> ((WorkflowStartedEvent) e).processKey())
                 .containsExactly("p1", "p2");
     }
 }

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             targetNamespace="http://flowforge/processes">
+  <process id="smokeProcess" name="Smoke Process" isExecutable="true">
+    <startEvent id="startEvent" name="Start" />
+    <sequenceFlow id="flow_start_task" sourceRef="startEvent" targetRef="smokeTask" />
+
+    <userTask id="smokeTask" name="Smoke Task" />
+    <sequenceFlow id="flow_task_update" sourceRef="smokeTask" targetRef="updateWorkflowLinkStatusTask" />
+
+    <serviceTask id="updateWorkflowLinkStatusTask"
+                 name="Update workflow link status"
+                 flowable:delegateExpression="${updateWorkflowLinkStatusTask}" />
+    <sequenceFlow id="flow_update_end" sourceRef="updateWorkflowLinkStatusTask" targetRef="endEvent" />
+
+    <endEvent id="endEvent" name="End" />
+  </process>
+</definitions>

@@ -77,4 +77,23 @@ public record Dossier(
                 closedBy,
                 closedAt);
     }
+
+    public Dossier withCurrentWorkflowLinkId(UUID workflowLinkId, String updatedBy, Instant at) {
+        return new Dossier(
+                id,
+                tenantId,
+                reference,
+                dossierTypeCode,
+                label,
+                status,
+                fields,
+                workflowLinkId,
+                version,
+                createdBy,
+                createdAt,
+                updatedBy,
+                at,
+                closedBy,
+                closedAt);
+    }
 }

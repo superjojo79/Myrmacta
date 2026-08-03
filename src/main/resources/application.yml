@@ -9,8 +9,6 @@ spring:
   autoconfigure:
     exclude:
       - org.springframework.boot.mail.autoconfigure.MailSenderAutoConfiguration
-      - org.flowable.spring.boot.ProcessEngineAutoConfiguration
-      - org.flowable.spring.boot.ProcessEngineServicesAutoConfiguration
       - org.flowable.spring.boot.FlowableJpaAutoConfiguration
       - org.flowable.spring.boot.FlowableSecurityAutoConfiguration
       - org.flowable.spring.boot.app.AppEngineAutoConfiguration
@@ -67,6 +65,16 @@ app:
   security:
     cookie:
       secure: true   # false en local HTTP (profil / override)
+  workflow:
+    reserve-timeout: 5m
+    outbox:
+      batch-size: 20
+      max-attempts: 5
+      poll-delay: 1s
+      processed-retention: 7d
+
+flowable:
+  async-executor-activate: true
 
 # Cible multi-tenant (non actif) — décommenter avec datasource / reverse-proxy :
 # server:

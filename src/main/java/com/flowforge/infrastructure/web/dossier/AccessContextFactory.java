@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class AccessContextFactory {
 
-    AccessContext.User user(Authentication authentication) {
+    public AccessContext.User user(Authentication authentication) {
         OidcUser oidcUser = oidcUser(authentication);
         Set<String> roles = authentication.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)

@@ -1,0 +1,17 @@
+package com.flowforge.domain.dossier.model;
+
+import java.util.UUID;
+
+public class WorkflowAlreadyRunningException extends RuntimeException {
+
+    private final UUID dossierId;
+
+    public WorkflowAlreadyRunningException(UUID dossierId) {
+        super("A workflow is already active for dossier " + dossierId);
+        this.dossierId = dossierId;
+    }
+
+    public UUID dossierId() {
+        return dossierId;
+    }
+}

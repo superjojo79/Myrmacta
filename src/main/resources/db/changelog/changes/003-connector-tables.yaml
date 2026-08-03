@@ -1,0 +1,143 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-connector-instance
+      author: flowforge
+      changes:
+        - createTable:
+            tableName: connector_instance
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_connector_instance
+                    nullable: false
+              - column:
+                  name: tenant_id
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: connector_type
+                  type: varchar(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: enabled
+                  type: boolean
+                  constraints:
+                    nullable: false
+              - column:
+                  name: config
+                  type: json
+                  constraints:
+                    nullable: false
+              - column:
+                  name: deleted_at
+                  type: timestamp with time zone
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: connector_instance
+            indexName: ix_connector_instance_tenant
+            columns:
+              - column:
+                  name: tenant_id
+        - sql:
+            dbms: postgresql
+            splitStatements: false
+            sql: |
+              CREATE UNIQUE INDEX uq_connector_instance_tenant_name_active
+              ON connector_instance (tenant_id, name)
+              WHERE deleted_at IS NULL;
+        - sql:
+            dbms: h2
+            splitStatements: true
+            sql: |
+              ALTER TABLE connector_instance
+              ADD active_name varchar(255)
+              GENERATED ALWAYS AS (CASE WHEN deleted_at IS NULL THEN name ELSE NULL END);
+              CREATE UNIQUE INDEX uq_connector_instance_tenant_name_active
+              ON connector_instance (tenant_id, active_name);
+
+  - changeSet:
+      id: 003-tenant-connector-dek
+      author: flowforge
+      changes:
+        - createTable:
+            tableName: tenant_connector_dek
+            columns:
+              - column:
+                  name: tenant_id
+                  type: varchar(64)
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_tenant_connector_dek
+                    nullable: false
+              - column:
+                  name: dek_wrapped
+                  type: varchar(512)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: key_version
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 003-webhook-idempotency
+      author: flowforge
+      changes:
+        - createTable:
+            tableName: webhook_idempotency
+            columns:
+              - column:
+                  name: instance_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: idem_key
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: response_status
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: webhook_idempotency
+            columnNames: instance_id, idem_key
+            constraintName: pk_webhook_idempotency
+        - createIndex:
+            tableName: webhook_idempotency
+            indexName: ix_webhook_idempotency_created
+            columns:
+              - column:
+                  name: created_at

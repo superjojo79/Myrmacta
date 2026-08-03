@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             targetNamespace="http://flowforge/processes">
+
+  <signal id="connectorSmokeSignal" name="connectorSmokeSignal" flowable:scope="global"/>
+
+  <!-- Waiting process: catches global signal (validates SERVICE signalEventReceived). -->
+  <process id="signalCatchSmoke" name="Signal Catch Smoke" isExecutable="true">
+    <startEvent id="catchStart" name="Start"/>
+    <sequenceFlow id="flow_catch_wait" sourceRef="catchStart" targetRef="waitSignal"/>
+    <intermediateCatchEvent id="waitSignal" name="Wait connectorSmokeSignal">
+      <signalEventDefinition signalRef="connectorSmokeSignal"/>
+    </intermediateCatchEvent>
+    <sequenceFlow id="flow_catch_end" sourceRef="waitSignal" targetRef="catchEnd"/>
+    <endEvent id="catchEnd" name="End"/>
+  </process>
+
+  <!-- Emitter process: service task invokes connectorServiceTask (SERVICE path). -->
+  <process id="signalEmitSmoke" name="Signal Emit Smoke" isExecutable="true">
+    <startEvent id="emitStart" name="Start"/>
+    <sequenceFlow id="flow_emit_task" sourceRef="emitStart" targetRef="emitSignalTask"/>
+    <serviceTask id="emitSignalTask"
+                 name="Emit via connector"
+                 flowable:delegateExpression="${connectorServiceTask}"/>
+    <sequenceFlow id="flow_emit_end" sourceRef="emitSignalTask" targetRef="emitEnd"/>
+    <endEvent id="emitEnd" name="End"/>
+  </process>
+</definitions>

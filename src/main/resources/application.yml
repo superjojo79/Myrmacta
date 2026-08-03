@@ -65,6 +65,9 @@ app:
   security:
     cookie:
       secure: true   # false en local HTTP (profil / override)
+    m2m:
+      issuer-uri: ${OAUTH2_ISSUER_URI:}   # resource-server JWT M2M ; vide en local/test
+      jwt-secret: ${M2M_JWT_SECRET:}       # HMAC HS256 optionnel (local/test sans IdP)
   workflow:
     reserve-timeout: 5m
     outbox:
@@ -72,6 +75,13 @@ app:
       max-attempts: 5
       poll-delay: 1s
       processed-retention: 7d
+  connector:
+    crypto:
+      master-key: ${APP_CONNECTOR_MASTER_KEY:}
+    webhook:
+      max-body-bytes: 1048576
+      rate-limit-per-minute: 120
+      idempotency-ttl: 24h
 
 flowable:
   async-executor-activate: true

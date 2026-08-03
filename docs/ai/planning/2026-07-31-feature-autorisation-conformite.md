@@ -15,6 +15,11 @@ main_integrated: 2026-08-03 # PR #18
 Plan initial **phase 4** — dérivé des docs `requirements` / `design` /
 `testing` en `reviewed` (ou `design_aligned`). Prêt pour phase 5.
 
+## Phase 8 — Write Tests
+
+**Clos.** Gaps comblés (+6 tests) ; `./mvnw verify` → 199 / 0 ; Jacoco
+90,3 %. Suite : phase 9 Code Review.
+
 ## Phase 7 — Check Implementation
 
 **Clos.** Alignement design OK ; écart low DEV-SENS-BOOL seulement.

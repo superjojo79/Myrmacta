@@ -113,10 +113,13 @@ infrastructure
 
 ## Testing Notes
 
-Preuve phase 7 : `./mvnw verify` — 193 / 0 ; Jacoco 90,2 %.
+Preuve phase 8 : `./mvnw verify` — **199** / 0 ; Jacoco **90,3 %**.
+
+Nouveaux tests phase 8 : `CreateDossierTypeUseCaseImplTest`,
+`MethodSecurityExceptionHandlerTest`, `grantAcl_dossierManager_returns403ProblemDetail`,
+`updateStatus_viewerWithViewOnly_returns403`.
 
 ## Known Issues / Follow-ups
 
-- Phase 8 : confirmer doc testing `verified` + éventuels gaps formels
 - Phase 9 : code review
 - Follow-ups produit : masquage/exports `sensitive` ; port S3/FS

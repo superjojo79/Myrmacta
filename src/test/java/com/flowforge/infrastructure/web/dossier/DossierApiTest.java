@@ -371,6 +371,45 @@ class DossierApiTest {
     }
 
     @Test
+    void grantAcl_dossierManager_returns403ProblemDetail() throws Exception {
+        String code = createType(true);
+
+        mockMvc.perform(post("/api/dossier-types/{code}/acl", code)
+                        .with(user("manager-acl", "DOSSIER_MANAGER"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "subjectUserId": "someone",
+                                  "permission": "VIEW"
+                                }
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status").value(403))
+                .andExpect(jsonPath("$.title").value("Access denied"));
+    }
+
+    @Test
+    void updateStatus_viewerWithViewOnly_returns403() throws Exception {
+        String code = createType(true);
+        grant(code, "setup-editor", "EDIT");
+        grant(code, "viewer-status", "VIEW");
+        DossierFixture dossier = createDossier(code, "setup-editor", "Viewer status dossier");
+
+        mockMvc.perform(patch("/api/dossiers/{id}/status", dossier.id())
+                        .with(user("viewer-status", "DOSSIER_VIEWER"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "status": "OUVERT"
+                                }
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status").value(403));
+    }
+
+    @Test
     void updateStatus_legalTransition_returnsUpdatedDossier() throws Exception {
         String code = createType(true);
         grant(code, "manager-status", "EDIT");

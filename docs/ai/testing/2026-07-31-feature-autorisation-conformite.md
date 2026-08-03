@@ -5,6 +5,7 @@ description: Define testing approach, test cases, and quality assurance
 status: draft
 created: 2026-08-03
 updated: 2026-08-03
+design_aligned: 2026-08-03
 ---
 
 # Testing Strategy
@@ -15,12 +16,13 @@ updated: 2026-08-03
 - **Unitaires :** `TenantAdminGuard` domaine ; non-régression
   `DossierAccessPolicy` ; construction / défaut `FieldDefinition.sensitive` ;
   use cases admin (refus non-admin via guard domaine).
-- **IT MockMvc :** `@PreAuthorize` (403 rôle insuffisant / 2xx admin) sur
-  types + ACL + mutateurs workflow config ; round-trip `sensitive` sur type.
+- **IT MockMvc :** `@PreAuthorize` (403 `ProblemDetail` / 2xx admin) sur
+  types + ACL + mutateurs workflow config ; **pas** d’exigence d’annotation
+  rôle sur start/complete (policy seule) ; round-trip `sensitive`.
 - **Régression :** auth BFF, dossiers, workflow, ArchUnit, Jacoco ≥ 80 %.
 - **E2E navigateur / IdP réel / masquage UI :** hors scope.
 
-Alignement requirements : scénarios clés 1–6 + edge 403 authentifié.
+Alignement requirements `reviewed` + design D-403 / D-WF-* : scénarios 1–7.
 
 ## Unit Tests
 **What individual components need testing?**
@@ -51,11 +53,13 @@ Alignement requirements : scénarios clés 1–6 + edge 403 authentifié.
 **How do we test component interactions?**
 
 ### Method security MockMvc
-- [ ] `POST /api/dossier-types` en `DOSSIER_MANAGER` → **403**
+- [ ] `POST /api/dossier-types` en `DOSSIER_MANAGER` → **403** ProblemDetail
+- [ ] `POST /api/dossier-types` en `WORKFLOW_ADMIN` → **403** (pas TENANT_ADMIN)
 - [ ] `POST /api/dossier-types` en `TENANT_ADMIN` → **201** (ou 2xx)
-- [ ] `POST …/acl` sans TENANT_ADMIN → **403**
+- [ ] `POST …/acl` sans TENANT_ADMIN → **403** ProblemDetail
 - [ ] Mutateur workflow type-config sans admin/workflow-admin → **403**
-- [ ] Mutateur workflow type-config en `WORKFLOW_ADMIN` → autorisé (si matrice)
+- [ ] Mutateur workflow type-config en `WORKFLOW_ADMIN` → autorisé
+- [ ] `DOSSIER_VIEWER` authentifié `PATCH …/status` sans EDIT → **403** policy
 - [ ] Session absente `/api/**` → **401** (régression BFF)
 
 ### sensitive bout-en-bout

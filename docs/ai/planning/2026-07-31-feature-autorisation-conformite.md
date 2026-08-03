@@ -5,9 +5,12 @@ description: Break down work into actionable tasks and estimate timeline
 status: draft
 created: 2026-08-03
 updated: 2026-08-03
+design_aligned: 2026-08-03
 ---
 
 # Project Planning & Task Breakdown
+
+> Aligné design `reviewed` (D-WF-INST, D-WF-CFG, D-403, D-SENS-DEF).
 
 ## Milestones
 **What are the major checkpoints?**
@@ -15,7 +18,7 @@ updated: 2026-08-03
 - [ ] **M1 — Domaine** : `TenantAdminGuard` + `FieldDefinition.sensitive` +
   branchement use cases admin
 - [ ] **M2 — Security HTTP** : `@EnableMethodSecurity` + `@PreAuthorize` +
-  suppression guard infra + 403 cohérent
+  suppression guard infra + advice D-403
 - [ ] **M3 — API / persistence sensitive** : round-trip JSON + IT
 - [ ] **M4 — Preuves & docs** : couverture testing, TODO §19/§23,
   DEFERRED note stockage, doc implementation
@@ -28,8 +31,8 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 ### M1 — Domaine
 
 - [ ] **T1. `FieldDefinition.sensitive`**
-  - **Outcome :** 8e composant `boolean sensitive` ; défaut `false` ;
-    tous les call sites / tests compilent.
+  - **Outcome :** 8e composant `boolean sensitive` ; ctor confort
+    `sensitive=false` (D-SENS-DEF) ; call sites / tests compilent.
   - **Depends on :** —
   - **Validation :** compile + unit FieldDefinition / validator ignore flag.
   - **Tests liés :** Unit — FieldDefinition.sensitive ; validator.
@@ -57,20 +60,22 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Validation :** contexte boot IT.
   - **Tests liés :** IT method security (smoke).
 
-- [ ] **T5. Annoter controllers + retirer guard infra**
-  - **Outcome :** matrice design appliquée (`dossier-types` mutateurs + ACL
-    → `TENANT_ADMIN` ; workflow type-config mutateurs →
-    `TENANT_ADMIN|WORKFLOW_ADMIN`) ; suppression
-    `infrastructure.web.dossier.TenantAdminGuard` et injections.
+- [ ] **T5. Annoter controllers + retirer guards manuels HTTP**
+  - **Outcome :** matrice design `reviewed` :
+    types/ACL → `TENANT_ADMIN` ; workflow-type-configs mutateurs →
+    `hasAnyRole(TENANT_ADMIN,WORKFLOW_ADMIN)` ; **aucune** annotation sur
+    dossiers / start / history / complete (D-WF-INST) ; suppression
+    `infrastructure.web.dossier.TenantAdminGuard` + `requireWorkflowAdmin`.
   - **Depends on :** T4
-  - **Validation :** MockMvc 403 / 2xx.
+  - **Validation :** MockMvc 403 / 2xx ; grep absence guard infra.
   - **Tests liés :** IT — Method security MockMvc.
 
-- [ ] **T6. Bridging 403 method security**
-  - **Outcome :** refus `@PreAuthorize` → HTTP 403 `ProblemDetail` (pas 500) ;
-    alignement advice si nécessaire.
+- [ ] **T6. Bridging 403 method security (D-403)**
+  - **Outcome :** `MethodSecurityExceptionHandler` (ou équivalent) mappe
+    exceptions d’autorisation **Spring** → 403 `ProblemDetail` ; handlers
+    domaine inchangés (FQCN distincts).
   - **Depends on :** T5
-  - **Validation :** MockMvc assert status + body type.
+  - **Validation :** MockMvc assert status + `ProblemDetail`.
   - **Tests liés :** IT — Method security MockMvc.
 
 ### M3 — sensitive bout-en-bout

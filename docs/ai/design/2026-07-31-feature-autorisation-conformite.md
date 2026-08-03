@@ -133,7 +133,7 @@ public record FieldDefinition(
     String defaultValue,
     List<String> options,
     String group,
-    boolean sensitive
+    Boolean sensitive  // coerced: null/absent → false
 ) {
     // Constructeur de confort (call sites Java existants) :
     // déléguer au canonique avec sensitive=false
@@ -142,12 +142,13 @@ public record FieldDefinition(
 
 | Règle | Détail |
 |---|---|
-| Défaut Java | Constructeur / factory sans `sensitive` → `false` |
-| Défaut JSON | Propriété absente → `false` (boolean primitif Jackson) ; `null` évité (primitif) |
+| Défaut Java | Constructeur confort sans `sensitive` → `false` |
+| Défaut JSON | Clé absente / `null` → `false` via coerce `Boolean.TRUE.equals` (composant `Boolean`, pas `boolean` primitif — Jackson) |
 | Persistance | Document JSON `field_definitions` — **pas** de changeset SQL colonne |
 | Validation | `DossierFieldValidator` **ignore** `sensitive` |
 | Écriture API | Uniquement via create/update type (`TENANT_ADMIN`) |
 | Lecture dossier | Valeurs **en clair** si `sensitive=true` (V1) |
+| Helper | `isSensitive()` pour lecture booléenne |
 
 ### Rôles V1 (point 19 — clos)
 
@@ -223,7 +224,9 @@ infrastructure
 ├── security/SecurityConfig             # + @EnableMethodSecurity
 ├── web/security/MethodSecurityExceptionHandler  # NEW — 403 ProblemDetail
 ├── web/dossier/*Controller             # @PreAuthorize ; - TenantAdminGuard infra
+├── web/dossier/DossierAccessGuard      # KEEP (PR #18)
 ├── web/workflow/WorkflowTypeConfigController    # @PreAuthorize ; - requireWorkflowAdmin
+├── web/workflow/DossierWorkflow* / Task*        # KEEP DossierAccessGuard ; no role annotation
 └── config/DossierConfig                # bean TenantAdminGuard
 ```
 
@@ -259,7 +262,7 @@ Hors scope. La SPA pourra lire `sensitive` plus tard — non imposé.
 | D-DOS-ROLE | MANAGER/VIEWER via ACL EDIT/VIEW | `@PreAuthorize` par rôle dossier |
 | D-STORE | Doc S3/FS anti-MinIO, pas de port code | Skeleton port ; FS no-op |
 | D-403 | Advice Spring authz → ProblemDetail 403 | AccessDeniedHandler filter-only ; 500 défaut ; JSON ad hoc |
-| D-SENS-DEF | `boolean` + ctor confort `false` | `Boolean` nullable ; migration SQL |
+| D-SENS-DEF | `Boolean` + coerce null/absent → false + ctor confort | `boolean` primitif (casse Jackson FAIL_ON_NULL_FOR_PRIMITIVES) |
 
 ### Alternatives revalidées (phase 3)
 

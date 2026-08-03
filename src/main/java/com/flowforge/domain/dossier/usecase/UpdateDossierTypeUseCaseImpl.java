@@ -1,7 +1,7 @@
 package com.flowforge.domain.dossier.usecase;
 
+import com.flowforge.domain.dossier.TenantAdminGuard;
 import com.flowforge.domain.dossier.model.AccessContext;
-import com.flowforge.domain.dossier.model.AccessDeniedException;
 import com.flowforge.domain.dossier.model.DossierNotFoundException;
 import com.flowforge.domain.dossier.model.DossierType;
 import com.flowforge.domain.dossier.port.in.UpdateDossierTypeUseCase;
@@ -11,15 +11,18 @@ import java.util.Objects;
 public final class UpdateDossierTypeUseCaseImpl implements UpdateDossierTypeUseCase {
 
     private final DossierTypeRepository repository;
+    private final TenantAdminGuard tenantAdminGuard;
 
-    public UpdateDossierTypeUseCaseImpl(DossierTypeRepository repository) {
+    public UpdateDossierTypeUseCaseImpl(
+            DossierTypeRepository repository, TenantAdminGuard tenantAdminGuard) {
         this.repository = Objects.requireNonNull(repository, "repository");
+        this.tenantAdminGuard = Objects.requireNonNull(tenantAdminGuard, "tenantAdminGuard");
     }
 
     @Override
     public DossierType update(UpdateDossierTypeCommand command, AccessContext.User actor) {
         Objects.requireNonNull(command, "command");
-        requireTenantAdmin(actor);
+        tenantAdminGuard.requireTenantAdmin(actor);
 
         DossierType existing = repository.findByCode(command.tenantId(), command.code())
                 .orElseThrow(() -> new DossierNotFoundException(
@@ -32,12 +35,5 @@ public final class UpdateDossierTypeUseCaseImpl implements UpdateDossierTypeUseC
                 command.fieldDefinitions());
         repository.save(updated);
         return updated;
-    }
-
-    private static void requireTenantAdmin(AccessContext.User actor) {
-        Objects.requireNonNull(actor, "actor");
-        if (!actor.hasRole("TENANT_ADMIN")) {
-            throw new AccessDeniedException("TENANT_ADMIN role required");
-        }
     }
 }

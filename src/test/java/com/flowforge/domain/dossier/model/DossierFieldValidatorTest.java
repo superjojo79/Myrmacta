@@ -35,6 +35,13 @@ class DossierFieldValidatorTest {
     }
 
     @Test
+    void sensitiveFlag_isIgnoredByValidation() {
+        var defs = List.of(new FieldDefinition(
+                "ssn", "SSN", FieldType.STRING, true, null, List.of(), null, true));
+        assertThat(validator.validate(defs, Map.of("ssn", "123"), false)).isEmpty();
+    }
+
+    @Test
     void unknownField_rejectedWhenNotAllowed() {
         var defs = List.of(field("name", FieldType.STRING, false, null));
         var errors = validator.validate(defs, Map.of("extra", "x"), false);

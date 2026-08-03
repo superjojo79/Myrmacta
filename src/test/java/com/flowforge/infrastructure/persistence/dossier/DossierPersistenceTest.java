@@ -54,7 +54,8 @@ class DossierPersistenceTest {
                                 true,
                                 null,
                                 List.of(),
-                                "identity"),
+                                "identity",
+                                true),
                         new FieldDefinition(
                                 "severity",
                                 "Severity",
@@ -68,6 +69,13 @@ class DossierPersistenceTest {
 
         assertThat(dossierTypeRepository.findByCode("tenant_dev", "SINISTRE"))
                 .contains(type);
+        assertThat(dossierTypeRepository.findByCode("tenant_dev", "SINISTRE"))
+                .get()
+                .extracting(DossierType::fieldDefinitions)
+                .asList()
+                .first()
+                .extracting("sensitive")
+                .isEqualTo(true);
         assertThat(dossierTypeRepository.findAll("tenant_dev"))
                 .contains(type);
     }

@@ -2,7 +2,7 @@
 phase: planning
 title: Project Planning & Task Breakdown
 description: Break down work into actionable tasks and estimate timeline
-status: ready
+status: implemented
 created: 2026-08-03
 updated: 2026-08-03
 design_aligned: 2026-08-03
@@ -14,6 +14,12 @@ main_integrated: 2026-08-03 # PR #18
 
 Plan initial **phase 4** — dérivé des docs `requirements` / `design` /
 `testing` en `reviewed` (ou `design_aligned`). Prêt pour phase 5.
+
+## Phase 5 — synthèse
+
+**9/9 tâches done (T1–T9).** `./mvnw verify` → 193 tests / 0 fail ; Jacoco
+90,2 % ; ArchUnit OK. Écart low DEV-SENS-BOOL (`Boolean` coerce). Suite :
+phase 7 Check Implementation.
 
 ## Phase 4 — synthèse
 
@@ -32,13 +38,13 @@ réintroduire le couple find+assert.
 ## Milestones
 **What are the major checkpoints?**
 
-- [ ] **M1 — Domaine** : `TenantAdminGuard` + `FieldDefinition.sensitive` +
+- [x] **M1 — Domaine** : `TenantAdminGuard` + `FieldDefinition.sensitive` +
   branchement use cases admin types/ACL
-- [ ] **M2 — Security HTTP** : `@EnableMethodSecurity` + `@PreAuthorize`
+- [x] **M2 — Security HTTP** : `@EnableMethodSecurity` + `@PreAuthorize`
   (matrice) + suppression guards manuels HTTP + advice D-403
-- [ ] **M3 — sensitive bout-en-bout** : JSON / API / persistence ; pas de
+- [x] **M3 — sensitive bout-en-bout** : JSON / API / persistence ; pas de
   redaction lecture dossier
-- [ ] **M4 — Preuves & docs** : testing vert, Jacoco ≥ 80 %, TODO §19/§23,
+- [x] **M4 — Preuves & docs** : testing vert, Jacoco ≥ 80 %, TODO §19/§23,
   note S3/FS, doc implementation
 
 ## Task Breakdown
@@ -48,7 +54,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M1 — Domaine
 
-- [ ] **T1. `FieldDefinition.sensitive` (D-SENS-DEF)**
+- [x] **T1. `FieldDefinition.sensitive` (D-SENS-DEF)**
   - **Outcome :** 8e composant `boolean sensitive` ; constructeur confort
     déléguant avec `sensitive=false` ; tous les call sites / tests
     compilent ; validator ignore le flag.
@@ -58,7 +64,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Tests liés :** Unit — FieldDefinition.sensitive ; validator.
   - **Req :** success `sensitive` bout-en-bout (partie domaine).
 
-- [ ] **T2. `TenantAdminGuard` domaine + tests**
+- [x] **T2. `TenantAdminGuard` domaine + tests**
   - **Outcome :** `com.flowforge.domain.dossier.TenantAdminGuard` pur ;
     `requireTenantAdmin(AccessContext.User)` →
     `com.flowforge.domain…AccessDeniedException` si pas `TENANT_ADMIN`.
@@ -68,7 +74,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Tests liés :** Unit — TenantAdminGuard.
   - **Req :** guard domaine.
 
-- [ ] **T3. Brancher guard sur use cases admin**
+- [x] **T3. Brancher guard sur use cases admin**
   - **Outcome :** Create/Update `DossierType`, Grant/Revoke ACL appellent
     le guard ; suppression des `requireTenantAdmin` privés ; bean dans
     `DossierConfig` ; injection constructeur.
@@ -80,14 +86,14 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M2 — Security HTTP
 
-- [ ] **T4. `@EnableMethodSecurity`**
+- [x] **T4. `@EnableMethodSecurity`**
   - **Outcome :** annotation sur `SecurityConfig` (BFF) ; contexte boot OK.
   - **Depends on :** —
   - **Validation :** IT boot / smoke security existante verte.
   - **Tests liés :** IT method security (smoke via T5/T8).
   - **Req :** EnableMethodSecurity actif.
 
-- [ ] **T5. Annoter controllers + retirer guards HTTP manuels**
+- [x] **T5. Annoter controllers + retirer guards HTTP manuels**
   - **Outcome :** matrice design `reviewed` :
     - `POST`/`PATCH` dossier-types + ACL → `@PreAuthorize("hasRole('TENANT_ADMIN')")`
     - mutateurs workflow-type-configs →
@@ -104,7 +110,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
     sur types, TENANT_ADMIN OK, ACL, workflow-config).
   - **Req :** surface livrable ; Q7–Q9.
 
-- [ ] **T6. Bridging 403 method security (D-403)**
+- [x] **T6. Bridging 403 method security (D-403)**
   - **Outcome :** advice (`MethodSecurityExceptionHandler` ou équivalent)
     mappe `AuthorizationDeniedException` /
     `org.springframework.security.access.AccessDeniedException` → 403
@@ -118,7 +124,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M3 — sensitive bout-en-bout
 
-- [ ] **T7. API / JSON / persistence `sensitive`**
+- [x] **T7. API / JSON / persistence `sensitive`**
   - **Outcome :** create/update/get type transportent le flag ; omission →
     `false` ; IT persistence JSON ; GET dossier avec champ sensible →
     **valeur en clair** (pas de redaction).
@@ -129,7 +135,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M4 — Preuves & docs
 
-- [ ] **T8. Couverture testing + régression**
+- [x] **T8. Couverture testing + régression**
   - **Outcome :** cases du doc testing cochables (ou couverts par suites
     existantes documentées) ; `./mvnw test` vert ; Jacoco ≥ 80 % ;
     ArchUnit OK ; scénarios req 3/6 (MANAGER sans grant, VIEWER sans EDIT)
@@ -139,7 +145,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Tests liés :** tous + E2E « régression mvn test ».
   - **Req :** critères tests / Jacoco / ArchUnit.
 
-- [ ] **T9. Docs suivi produit + implementation**
+- [x] **T9. Docs suivi produit + implementation**
   - **Outcome :** TODO §19 **clos** ; §23 **partiel** (flag oui, masquage
     non) ; note anti-MinIO / port S3–FS dans `DEFERRED-FEATURES.md` (ou
     équivalent) ; `docs/ai/implementation/…autorisation-conformite.md`

@@ -9,8 +9,20 @@
 > - Ce fichier consolide le **chemin d’implémentation restant** pour ne pas le
 >   perdre à la clôture de lifecycle.
 
-**Statut lifecycle (check-status) :** les quatre features ci-dessus sont
-**Complete**. Les autres features ont des docs skeleton / planning non exécuté.
+**Statut lifecycle (check-status) :** `architecture-hexagonale`, `multi-tenant`,
+`authentification`, `dossiers`, `workflow-engine` sont **Complete**.
+`autorisation-conformite` : implémentation phase 5 livrée (method security +
+`sensitive` meta) — phases 7–9 à clôturer. Les autres features ont des docs
+skeleton / planning non exécuté.
+
+---
+
+## 0. Stockage objet (contrainte transversale)
+
+**Ne pas coupler à MinIO.** Quand le stockage objet arrivera (`generation-documents`,
+pièces jointes, purge §22), introduire un **port abstrait** avec adaptateur
+**S3** (cible) et **filesystem** (alternative). Aucun port code dans
+`autorisation-conformite` (doc seule).
 
 ---
 
@@ -77,14 +89,14 @@ indicatif aligné sur l’analyse et les dépendances techniques :
 
 | Ordre | Feature | Dépendances / livrable attendu |
 |---|---|---|
-| 1 | `workflow-engine` | Flowable réel, outbox + relais (décisions n° 7 / 16), `DossierWorkflowLink`, retrait exclusion Flowable |
-| 2 | `autorisation-conformite` | `@PreAuthorize` / method security, point 19 (rôles), durcissement ACL |
-| 3 | `connecteurs` | Webhooks entrants HMAC, `ConnectorInstance`, DEK/KEK (décisions n° 3 / 4), chaîne sécurité webhooks |
-| 4 | `templates-documents` | Templates Thymeleaf versionnés |
-| 5 | `generation-documents` | PDF + MinIO / stockage |
-| 6 | `notifications` | Outbox notifications, webhooks sortants, SSE |
-| 7 | `visualisation-workflow` | Diagramme BPMN / état runtime |
-| 8 | `frontend` | Vue 3 + Pinia + Axios dans `static/` (décision n° 27) |
+| — | `workflow-engine` | **Complete** (main) |
+| — | `autorisation-conformite` | Phase 5 livrée — method security, rôles V1, `sensitive` meta ; phases 7–9 |
+| 1 | `connecteurs` | Webhooks entrants HMAC, `ConnectorInstance`, DEK/KEK (décisions n° 3 / 4), chaîne sécurité webhooks |
+| 2 | `templates-documents` | Templates Thymeleaf versionnés |
+| 3 | `generation-documents` | PDF + stockage objet via port abstrait (S3/FS — pas MinIO en dur) |
+| 4 | `notifications` | Outbox notifications, webhooks sortants, SSE |
+| 5 | `visualisation-workflow` | Diagramme BPMN / état runtime |
+| 6 | `frontend` | Vue 3 + Pinia + Axios dans `static/` (décision n° 27) |
 
 ---
 
@@ -95,10 +107,10 @@ Voir le détail et les options dans [TODO.md](TODO.md) et
 
 | Point | Titre | État après tranches livrées |
 |---|---|---|
-| 19 | Granularité rôles RBAC | **Ouvert** — ACL type livrée ; liste définitive des rôles à valider |
-| 21 | Rétention par `DossierType` | **Ouvert** — hors tranche B |
-| 22 | Purge PostgreSQL / MinIO | **Ouvert** — hors tranche B |
-| 23 | `FieldDefinition.sensitive` | **Ouvert** — hors tranche B |
+| 19 | Granularité rôles RBAC | **Clos V1** — cinq rôles + mapping `ROLE_*` ; ACL type |
+| 21 | Rétention par `DossierType` | **Ouvert** — hors tranche authz |
+| 22 | Purge PostgreSQL / object store | **Ouvert** — port S3/FS à venir ; pas MinIO en dur |
+| 23 | `FieldDefinition.sensitive` | **Partiel** — flag meta livré ; masquage/exports différés |
 | 24 | Contrat d’API complet | **Partiel** — surface dossiers minimale + `ProblemDetail` ; reste listes, pagination, OpenAPI, autres ressources |
 | 25 | Modèle physique consolidé (ERD) | **Partiel** — tables dossiers livrées ; reste ERD global, `platform.*`, ACT_*, outbox, etc. |
 | 26 | Concurrence dossier / référence | **Partiel / quasi clos en B** — `@Version` + `dossier_reference_seq` + format UTC ; reste smoke PG multi-pods |

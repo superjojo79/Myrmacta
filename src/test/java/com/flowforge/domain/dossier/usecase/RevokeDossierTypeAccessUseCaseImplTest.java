@@ -5,6 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import com.flowforge.domain.dossier.TenantAdminGuard;
 import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.AccessDeniedException;
 import com.flowforge.domain.dossier.port.in.RevokeDossierTypeAccessUseCase;
@@ -25,7 +26,7 @@ class RevokeDossierTypeAccessUseCaseImplTest {
     @BeforeEach
     void setUp() {
         aclRepository = mock(DossierTypeAclRepository.class);
-        useCase = new RevokeDossierTypeAccessUseCaseImpl(aclRepository);
+        useCase = new RevokeDossierTypeAccessUseCaseImpl(aclRepository, new TenantAdminGuard());
     }
 
     @Test

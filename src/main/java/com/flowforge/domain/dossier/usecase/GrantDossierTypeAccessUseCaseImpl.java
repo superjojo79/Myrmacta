@@ -1,7 +1,7 @@
 package com.flowforge.domain.dossier.usecase;
 
+import com.flowforge.domain.dossier.TenantAdminGuard;
 import com.flowforge.domain.dossier.model.AccessContext;
-import com.flowforge.domain.dossier.model.AccessDeniedException;
 import com.flowforge.domain.dossier.model.DossierNotFoundException;
 import com.flowforge.domain.dossier.model.DossierTypeAclEntry;
 import com.flowforge.domain.dossier.port.in.GrantDossierTypeAccessUseCase;
@@ -13,18 +13,21 @@ public final class GrantDossierTypeAccessUseCaseImpl implements GrantDossierType
 
     private final DossierTypeRepository typeRepository;
     private final DossierTypeAclRepository aclRepository;
+    private final TenantAdminGuard tenantAdminGuard;
 
     public GrantDossierTypeAccessUseCaseImpl(
             DossierTypeRepository typeRepository,
-            DossierTypeAclRepository aclRepository) {
+            DossierTypeAclRepository aclRepository,
+            TenantAdminGuard tenantAdminGuard) {
         this.typeRepository = Objects.requireNonNull(typeRepository, "typeRepository");
         this.aclRepository = Objects.requireNonNull(aclRepository, "aclRepository");
+        this.tenantAdminGuard = Objects.requireNonNull(tenantAdminGuard, "tenantAdminGuard");
     }
 
     @Override
     public void grant(GrantCommand command, AccessContext.User actor) {
         Objects.requireNonNull(command, "command");
-        requireTenantAdmin(actor);
+        tenantAdminGuard.requireTenantAdmin(actor);
 
         typeRepository.findByCode(command.tenantId(), command.dossierTypeCode())
                 .orElseThrow(() -> new DossierNotFoundException(
@@ -35,12 +38,5 @@ public final class GrantDossierTypeAccessUseCaseImpl implements GrantDossierType
                 command.dossierTypeCode(),
                 command.subjectUserId(),
                 command.permission()));
-    }
-
-    private static void requireTenantAdmin(AccessContext.User actor) {
-        Objects.requireNonNull(actor, "actor");
-        if (!actor.hasRole("TENANT_ADMIN")) {
-            throw new AccessDeniedException("TENANT_ADMIN role required");
-        }
     }
 }

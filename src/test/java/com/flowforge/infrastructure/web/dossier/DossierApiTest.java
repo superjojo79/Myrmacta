@@ -86,13 +86,114 @@ class DossierApiTest {
     }
 
     @Test
-    void createType_workflowAdmin_returns403() throws Exception {
+    void createType_workflowAdmin_returns403ProblemDetail() throws Exception {
         mockMvc.perform(post("/api/dossier-types")
                         .with(user("workflow-admin", "WORKFLOW_ADMIN"))
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(typePayload(uniqueCode("DENIED"), true)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status").value(403))
+                .andExpect(jsonPath("$.title").value("Access denied"));
+    }
+
+    @Test
+    void createType_dossierManager_returns403ProblemDetail() throws Exception {
+        mockMvc.perform(post("/api/dossier-types")
+                        .with(user("manager-denied", "DOSSIER_MANAGER"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(typePayload(uniqueCode("MGRDENY"), true)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status").value(403))
+                .andExpect(jsonPath("$.title").value("Access denied"));
+    }
+
+    @Test
+    void createType_withSensitiveField_roundTripsFlag() throws Exception {
+        String code = uniqueCode("SENS");
+        String fields = """
+                [{
+                  "name": "ssn",
+                  "label": "SSN",
+                  "type": "STRING",
+                  "required": false,
+                  "options": [],
+                  "sensitive": true
+                }]
+                """;
+
+        mockMvc.perform(post("/api/dossier-types")
+                        .with(user("admin-sens", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(typePayload(code, true, fields)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.fieldDefinitions[0].sensitive").value(true));
+
+        mockMvc.perform(get("/api/dossier-types/{code}", code)
+                        .with(user("admin-sens", "TENANT_ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fieldDefinitions[0].name").value("ssn"))
+                .andExpect(jsonPath("$.fieldDefinitions[0].sensitive").value(true));
+    }
+
+    @Test
+    void createType_withoutSensitiveKey_defaultsToFalse() throws Exception {
+        String code = uniqueCode("NOSENS");
+        String fields = """
+                [{
+                  "name": "city",
+                  "label": "City",
+                  "type": "STRING",
+                  "required": false,
+                  "options": []
+                }]
+                """;
+
+        mockMvc.perform(post("/api/dossier-types")
+                        .with(user("admin-nosens", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(typePayload(code, true, fields)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.fieldDefinitions[0].sensitive").value(false));
+    }
+
+    @Test
+    void getDossier_sensitiveFieldValue_isReturnedInClear() throws Exception {
+        String code = uniqueCode("SSNTYPE");
+        String fields = """
+                [{
+                  "name": "ssn",
+                  "label": "SSN",
+                  "type": "STRING",
+                  "required": true,
+                  "options": [],
+                  "sensitive": true
+                }]
+                """;
+        mockMvc.perform(post("/api/dossier-types")
+                        .with(user("admin-ssn", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(typePayload(code, true, fields)))
+                .andExpect(status().isCreated());
+        grant(code, "manager-ssn", "EDIT");
+
+        MvcResult created = mockMvc.perform(post("/api/dossiers")
+                        .with(user("manager-ssn"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(dossierPayload(code, "Sensitive dossier", "{\"ssn\":\"123-45-6789\"}")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.fields.ssn").value("123-45-6789"))
+                .andReturn();
+        String id = extractString(created.getResponse().getContentAsString(), "id");
+
+        mockMvc.perform(get("/api/dossiers/{id}", id).with(user("manager-ssn")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fields.ssn").value("123-45-6789"));
     }
 
     @Test

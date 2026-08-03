@@ -2,10 +2,11 @@
 phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
-status: draft
+status: verified
 created: 2026-08-03
 updated: 2026-08-03
 design_aligned: 2026-08-03
+verified: 2026-08-03
 ---
 
 # Testing Strategy
@@ -28,54 +29,54 @@ Alignement requirements `reviewed` + design D-403 / D-WF-* : scénarios 1–7.
 **What individual components need testing?**
 
 ### TenantAdminGuard (domaine)
-- [ ] `TENANT_ADMIN` → OK (pas d’exception)
-- [ ] `WORKFLOW_ADMIN` seul → `AccessDeniedException`
-- [ ] `DOSSIER_MANAGER` → deny
-- [ ] User sans rôles → deny
+- [x] `TENANT_ADMIN` → OK (pas d’exception)
+- [x] `WORKFLOW_ADMIN` seul → `AccessDeniedException`
+- [x] `DOSSIER_MANAGER` → deny
+- [x] User sans rôles → deny
 
 ### FieldDefinition.sensitive
-- [ ] Constructeur / record : `sensitive=true` conservé
-- [ ] Défaut `false` quand non spécifié (factory / overload / compact)
-- [ ] `DossierFieldValidator` ignore le flag (fixture avec sensitive OK)
+- [x] Constructeur / record : `sensitive=true` conservé
+- [x] Défaut `false` quand non spécifié (factory / overload / compact)
+- [x] `DossierFieldValidator` ignore le flag (fixture avec sensitive OK)
 
 ### Use cases admin (guard domaine)
-- [ ] `CreateDossierType` non-admin → deny (via guard)
-- [ ] `UpdateDossierType` non-admin → deny
-- [ ] `Grant` / `Revoke` non-admin → deny
-- [ ] Admin happy path inchangé (régression)
+- [x] `CreateDossierType` non-admin → deny (via guard)
+- [x] `UpdateDossierType` non-admin → deny
+- [x] `Grant` / `Revoke` non-admin → deny
+- [x] Admin happy path inchangé (régression)
 
 ### DossierAccessPolicy (régression)
-- [ ] Bypass TENANT_ADMIN / WORKFLOW_ADMIN
-- [ ] Service refus
-- [ ] VIEW vs EDIT
+- [x] Bypass TENANT_ADMIN / WORKFLOW_ADMIN
+- [x] Service refus
+- [x] VIEW vs EDIT
 
 ## Integration Tests
 **How do we test component interactions?**
 
 ### Method security MockMvc
-- [ ] `POST /api/dossier-types` en `DOSSIER_MANAGER` → **403** ProblemDetail
-- [ ] `POST /api/dossier-types` en `WORKFLOW_ADMIN` → **403** (pas TENANT_ADMIN)
-- [ ] `POST /api/dossier-types` en `TENANT_ADMIN` → **201** (ou 2xx)
-- [ ] `POST …/acl` sans TENANT_ADMIN → **403** ProblemDetail
-- [ ] Mutateur workflow type-config sans admin/workflow-admin → **403**
-- [ ] Mutateur workflow type-config en `WORKFLOW_ADMIN` → autorisé
-- [ ] `DOSSIER_VIEWER` authentifié `PATCH …/status` sans EDIT → **403** policy
-- [ ] Session absente `/api/**` → **401** (régression BFF)
+- [x] `POST /api/dossier-types` en `DOSSIER_MANAGER` → **403** ProblemDetail
+- [x] `POST /api/dossier-types` en `WORKFLOW_ADMIN` → **403** (pas TENANT_ADMIN)
+- [x] `POST /api/dossier-types` en `TENANT_ADMIN` → **201** (ou 2xx)
+- [x] `POST …/acl` sans TENANT_ADMIN → **403** ProblemDetail
+- [x] Mutateur workflow type-config sans admin/workflow-admin → **403**
+- [x] Mutateur workflow type-config en `WORKFLOW_ADMIN` → autorisé
+- [x] `DOSSIER_VIEWER` authentifié `PATCH …/status` sans EDIT → **403** policy
+- [x] Session absente `/api/**` → **401** (régression BFF)
 
 ### sensitive bout-en-bout
-- [ ] Create type avec champ `sensitive: true` → GET renvoie `true`
-- [ ] Create type sans clé `sensitive` → GET renvoie `false`
-- [ ] GET dossier avec champ sensible → **valeur en clair** (pas de redaction)
+- [x] Create type avec champ `sensitive: true` → GET renvoie `true`
+- [x] Create type sans clé `sensitive` → GET renvoie `false`
+- [x] GET dossier avec champ sensible → **valeur en clair** (pas de redaction)
 
 ### Persistence JSON
-- [ ] Save/load `DossierType` avec `sensitive` via JPA/H2 (IT persistence ou
+- [x] Save/load `DossierType` avec `sensitive` via JPA/H2 (IT persistence ou
   API)
 
 ## End-to-End Tests
 **What user flows need validation?**
 
-- [ ] Hors scope navigateur
-- [ ] Régression suite `./mvnw test` (auth + dossiers + workflow)
+- [x] Hors scope navigateur
+- [x] Régression suite `./mvnw test` (auth + dossiers + workflow)
 
 ## Test Data
 **What data do we use for testing?**

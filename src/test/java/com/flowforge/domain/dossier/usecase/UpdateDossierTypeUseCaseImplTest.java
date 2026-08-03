@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.flowforge.domain.dossier.TenantAdminGuard;
 import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.AccessDeniedException;
 import com.flowforge.domain.dossier.model.DossierNotFoundException;
@@ -35,7 +36,7 @@ class UpdateDossierTypeUseCaseImplTest {
     @BeforeEach
     void setUp() {
         repository = mock(DossierTypeRepository.class);
-        useCase = new UpdateDossierTypeUseCaseImpl(repository);
+        useCase = new UpdateDossierTypeUseCaseImpl(repository, new TenantAdminGuard());
     }
 
     @Test

@@ -41,14 +41,14 @@
 Points identifiés par [12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md),
 qui prévoyait leur fusion dans ce registre.
 
-### [ ] 19. Granularité des rôles RBAC
+### [x] 19. Granularité des rôles RBAC
 
-**Énoncé :** les cinq rôles de référence sont un point de départ à valider avec les premiers cas
-d'usage réels.
-
-**À décider :** la liste définitive des rôles ; et le mapping technique de `realm_access.roles`
-vers les autorités Spring Security. La restriction à un sous-ensemble de `DossierType` est déjà
-matérialisée par l'ACL de type (décision n° 20) — le point 19 n'a plus à la redéfinir.
+**Clos V1 (2026-08-03 — feature `autorisation-conformite`) :** les cinq rôles
+`TENANT_ADMIN`, `WORKFLOW_ADMIN`, `DOSSIER_MANAGER`, `DOSSIER_VIEWER`,
+`API_SERVICE` sont la liste définitive V1. Mapping `realm_access.roles` →
+`ROLE_*` déjà livré (`authentification`). Restriction par type = ACL
+(décision n° 20). Peut être rouvert si les premiers clients réels exigent
+d’autres rôles.
 
 **Impacte :** [12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md).
 
@@ -76,10 +76,12 @@ balayage.
 
 ---
 
-### [ ] 23. Classification des champs dynamiques sensibles
+### [~] 23. Classification des champs dynamiques sensibles
 
-**À décider :** si `FieldDefinition.sensitive` entre en V1, et ce qu'il conditionne — masquage à
-l'affichage, exclusion des exports, des logs et des payloads de webhooks sortants.
+**Partiel (2026-08-03 — feature `autorisation-conformite`) :** flag
+`FieldDefinition.sensitive` livré (métadonnée JSON, défaut false, API types).
+**Reste ouvert :** masquage à l'affichage, exclusion des exports / logs /
+webhooks sortants.
 
 **Impacte :** [04-dossiers.md](analysis%20doc/04-dossiers.md),
 [12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md).

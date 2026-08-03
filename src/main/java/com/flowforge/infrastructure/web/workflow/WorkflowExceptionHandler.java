@@ -2,7 +2,10 @@ package com.flowforge.infrastructure.web.workflow;
 
 import com.flowforge.domain.dossier.model.AccessDeniedException;
 import com.flowforge.domain.dossier.model.DossierNotFoundException;
+import com.flowforge.domain.dossier.model.DossierWorkflowLinkNotFoundException;
 import com.flowforge.domain.dossier.model.WorkflowAlreadyRunningException;
+import com.flowforge.domain.workflow.model.WorkflowTaskNotFoundException;
+import com.flowforge.domain.workflow.model.WorkflowTypeConfigNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -23,6 +26,15 @@ class WorkflowExceptionHandler {
         return problem(HttpStatus.NOT_FOUND, "Dossier resource not found", ex.getMessage());
     }
 
+    @ExceptionHandler({
+            DossierWorkflowLinkNotFoundException.class,
+            WorkflowTypeConfigNotFoundException.class,
+            WorkflowTaskNotFoundException.class
+    })
+    ProblemDetail handleWorkflowResourceNotFound(RuntimeException ex) {
+        return problem(HttpStatus.NOT_FOUND, "Workflow resource not found", ex.getMessage());
+    }
+
     @ExceptionHandler(WorkflowAlreadyRunningException.class)
     ProblemDetail handleAlreadyRunning(WorkflowAlreadyRunningException ex) {
         return problem(HttpStatus.CONFLICT, "Workflow conflict", ex.getMessage());
@@ -40,9 +52,6 @@ class WorkflowExceptionHandler {
 
     @ExceptionHandler({IllegalArgumentException.class, HttpMessageNotReadableException.class})
     ProblemDetail handleBadRequest(Exception ex) {
-        if (ex.getMessage() != null && ex.getMessage().toLowerCase().contains("not found")) {
-            return problem(HttpStatus.NOT_FOUND, "Workflow resource not found", ex.getMessage());
-        }
         return problem(HttpStatus.BAD_REQUEST, "Bad request", ex.getMessage());
     }
 

@@ -9,6 +9,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.flowforge.domain.dossier.model.AbortReservedReason;
@@ -16,18 +17,13 @@ import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierStatus;
 import com.flowforge.domain.dossier.model.DossierWorkflowLink;
 import com.flowforge.domain.dossier.port.in.AttachWorkflowUseCase;
-import com.flowforge.domain.dossier.port.in.UpdateDossierStatusUseCase;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
-import com.flowforge.domain.workflow.model.StatusOutcome;
-import com.flowforge.domain.workflow.model.WorkflowStatusDefinition;
-import com.flowforge.domain.workflow.model.WorkflowTypeConfig;
 import com.flowforge.domain.workflow.port.out.IdempotencyStore;
 import com.flowforge.domain.workflow.port.out.WorkflowEnginePort;
 import com.flowforge.domain.workflow.port.out.WorkflowEventPublisher;
-import com.flowforge.domain.workflow.port.out.WorkflowTypeConfigRepository;
+import com.flowforge.infrastructure.workflow.WorkflowStartConfirmer;
 import java.time.Instant;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -41,11 +37,10 @@ class ManualStartOrchestratorTest {
 
     private DossierRepository dossierRepository;
     private DossierWorkflowLinkRepository linkRepository;
-    private WorkflowTypeConfigRepository configRepository;
     private AttachWorkflowUseCase attachWorkflow;
     private WorkflowEnginePort workflowEnginePort;
     private IdempotencyStore idempotencyStore;
-    private UpdateDossierStatusUseCase updateDossierStatusUseCase;
+    private WorkflowStartConfirmer workflowStartConfirmer;
     private WorkflowEventPublisher eventPublisher;
     private ManualStartOrchestrator orchestrator;
 
@@ -53,25 +48,23 @@ class ManualStartOrchestratorTest {
     void setUp() {
         dossierRepository = mock(DossierRepository.class);
         linkRepository = mock(DossierWorkflowLinkRepository.class);
-        configRepository = mock(WorkflowTypeConfigRepository.class);
         attachWorkflow = mock(AttachWorkflowUseCase.class);
         workflowEnginePort = mock(WorkflowEnginePort.class);
         idempotencyStore = mock(IdempotencyStore.class);
-        updateDossierStatusUseCase = mock(UpdateDossierStatusUseCase.class);
+        workflowStartConfirmer = mock(WorkflowStartConfirmer.class);
         eventPublisher = mock(WorkflowEventPublisher.class);
         orchestrator = new ManualStartOrchestrator(
                 dossierRepository,
                 linkRepository,
-                configRepository,
                 attachWorkflow,
                 workflowEnginePort,
                 idempotencyStore,
-                updateDossierStatusUseCase,
+                workflowStartConfirmer,
                 eventPublisher);
     }
 
     @Test
-    void start_reservesStartsConfirmsAndRemembersIdempotency() {
+    void start_reservesStartsAndDelegatesConfirmationAtomically() {
         UUID dossierId = UUID.randomUUID();
         Dossier dossier = dossier(dossierId);
         DossierWorkflowLink reserved = reservedLink(dossierId);
@@ -80,7 +73,6 @@ class ManualStartOrchestratorTest {
         when(attachWorkflow.reserve(eq(dossierId), eq(PROCESS), anyString())).thenReturn(reserved);
         when(workflowEnginePort.start(eq(PROCESS), eq(TENANT), eq(reserved.id().toString()), anyMap()))
                 .thenReturn("proc-1");
-        when(configRepository.findByWorkflowKey(TENANT, PROCESS)).thenReturn(Optional.of(config(null)));
         when(linkRepository.findById(reserved.id()))
                 .thenReturn(Optional.of(reserved.withProcessInstance("proc-1")));
 
@@ -89,9 +81,10 @@ class ManualStartOrchestratorTest {
 
         assertThat(result.replay()).isFalse();
         assertThat(result.link().isActive()).isTrue();
-        verify(attachWorkflow).confirmStarted(reserved.id(), "proc-1");
-        verify(idempotencyStore).remember(TENANT, dossierId, "idem-1", reserved.id());
         verify(workflowEnginePort).start(eq(PROCESS), eq(TENANT), eq(reserved.id().toString()), anyMap());
+        // TX2 (confirm + idempotency + onStart) est déléguée à un seul appel transactionnel.
+        verify(workflowStartConfirmer).confirm(dossier, reserved, "proc-1", PROCESS, "idem-1");
+        verify(eventPublisher).publish(any());
     }
 
     @Test
@@ -110,6 +103,7 @@ class ManualStartOrchestratorTest {
         assertThat(result.link().id()).isEqualTo(existing.id());
         verify(attachWorkflow, never()).reserve(any(), any(), any());
         verify(workflowEnginePort, never()).start(any(), any(), any(), any());
+        verifyNoInteractions(workflowStartConfirmer);
     }
 
     @Test
@@ -127,8 +121,7 @@ class ManualStartOrchestratorTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("engine down");
         verify(attachWorkflow).abortReserved(reserved.id(), AbortReservedReason.ORPHAN_START_FAILED);
-        verify(attachWorkflow, never()).confirmStarted(any(), any());
-        verify(idempotencyStore, never()).remember(any(), any(), any(), any());
+        verifyNoInteractions(workflowStartConfirmer);
     }
 
     @Test
@@ -140,19 +133,6 @@ class ManualStartOrchestratorTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("reserved");
         verify(attachWorkflow, never()).reserve(any(), any(), any());
-    }
-
-    private static WorkflowTypeConfig config(DossierStatus onStart) {
-        return new WorkflowTypeConfig(
-                UUID.randomUUID(),
-                TENANT,
-                PROCESS,
-                "Smoke",
-                List.of(
-                        new WorkflowStatusDefinition("STARTED", "Started", true, StatusOutcome.NONE),
-                        new WorkflowStatusDefinition("COMPLETED", "Done", false, StatusOutcome.COMPLETED)),
-                List.of(DossierStatus.OUVERT, DossierStatus.EN_COURS),
-                onStart);
     }
 
     private static DossierWorkflowLink reservedLink(UUID dossierId) {

@@ -8,7 +8,6 @@ import com.flowforge.domain.workflow.port.out.WorkflowEnginePort;
 import com.flowforge.domain.workflow.WorkflowVariables;
 import com.flowforge.infrastructure.config.WorkflowProperties;
 import java.time.Instant;
-import java.util.Map;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -50,10 +49,7 @@ class ReservedReconcileJob {
                     link.processDefinitionKey(),
                     link.tenantId(),
                     link.id().toString(),
-                    Map.of(
-                            WorkflowVariables.DOSSIER_ID, link.dossierId().toString(),
-                            WorkflowVariables.DOSSIER_WORKFLOW_LINK_ID, link.id().toString(),
-                            WorkflowVariables.TENANT_ID, link.tenantId()));
+                    WorkflowVariables.withPlatformVariables(null, link));
             attachWorkflow.confirmStarted(link.id(), processInstanceId);
         } catch (RuntimeException ex) {
             attachWorkflow.abortReserved(link.id(), AbortReservedReason.ORPHAN_TIMEOUT);

@@ -81,19 +81,10 @@ Alignement requirements success criteria + design DD-*.
 - [ ] Instance disabled → rejet
 - [ ] Type non-SERVICE → rejet
 
-### SimpleJsonPathMapper
-- [ ] `$.a.b` et `$.items[0].x` résolus
-- [ ] Chemin invalide → erreur métier
-- [ ] Pas de support filtres avancés (documenté)
-
 ### FlowableSignalEventListener (TRIGGER)
 - [ ] Signal name match → runtime appelé
 - [ ] Instance soft-deleted / disabled ignorée
 - [ ] Signal name sans instance → no-op
-
-### Registry
-- [ ] `http-rest` et `flowable-signal` présents
-- [ ] Type inconnu → `UnknownConnectorException`
 
 ## Integration Tests
 **What component interactions need testing?**

@@ -5,6 +5,7 @@ description: Define testing approach, test cases, and quality assurance
 status: draft
 created: 2026-08-03
 updated: 2026-08-03
+design_aligned: 2026-08-03
 ---
 
 # Testing Strategy
@@ -28,13 +29,19 @@ Alignement requirements success criteria + design DD-*.
 ## Unit Tests
 **What individual components need testing?**
 
-### TemplateResolver
-- [ ] Exact `(key, variant, locale)` → hit
-- [ ] Fallback `(key, variant, null)` quand locale absente
-- [ ] Fallback `(key, null, locale)` quand variant absent
-- [ ] Fallback `(key, null, null)` défaut absolu
+### TemplateResolver / ranked query
+- [ ] Exact `(key, variant, locale)` → score 1
+- [ ] Fallback `(key, variant, null)` quand locale absente → score 2
+- [ ] Fallback `(key, null, locale)` quand variant absent → score 3
+- [ ] Fallback `(key, null, null)` défaut absolu → score 4
 - [ ] Aucun ACTIVE → `TemplateNotFoundException`
 - [ ] Ignore DRAFT / ARCHIVED dans la résolution
+- [ ] Une seule requête ranked (pas 4 round-trips) — vérif adapter/IT
+
+### TemplateSyntaxChecker
+- [ ] HTML Thymeleaf syntaxiquement valide → OK
+- [ ] Markup `th:*` invalide → erreur métier
+- [ ] Variables métier absentes **ne** font **pas** échouer (syntaxe only)
 
 ### Activate / archive / new-version
 - [ ] Activate DRAFT valide → ACTIVE ; précédente ACTIVE → ARCHIVED

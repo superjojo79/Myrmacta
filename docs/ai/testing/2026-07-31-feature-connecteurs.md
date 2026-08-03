@@ -2,6 +2,9 @@
 phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
+status: draft
+created: 2026-08-03
+updated: 2026-08-03
 ---
 
 # Testing Strategy
@@ -9,73 +12,143 @@ description: Define testing approach, test cases, and quality assurance
 ## Test Coverage Goals
 **What level of testing do we aim for?**
 
-- Unit test coverage target (default: 100% of new/changed code)
-- Integration test scope (critical paths + error handling)
-- End-to-end test scenarios (key user journeys)
-- Alignment with requirements/design acceptance criteria
+- **Unitaires domaine :** mapping déclaratif ; `ConnectorTriggerRuntime`
+  (create / existing / batch / disabled) ; validation config auth types ;
+  masquage secrets ; cipher encrypt/decrypt round-trip (env key).
+- **Unitaires infra :** HMAC + shared secret authenticators ; idempotency
+  store ; rate limit / max body ; registry discovery ; `flowable-signal`
+  execute (RuntimeService mock).
+- **IT H2 MODE=PostgreSQL :** Liquibase tables connector/DEK/idempotency ;
+  MockMvc admin CRUD ; webhook happy/fail ; execute BFF + M2M mock ;
+  smoke ServiceTask / signal si faisable.
+- **Régression :** dossiers, workflow/outbox, auth BFF, ArchUnit, Jacoco ≥ 80 %.
+- **Hors scope :** Testcontainers PG, Keycloak réel, charge multi-pod rate
+  limit, E2E navigateur, Vault réel.
+
+Alignement requirements success criteria + design DD-*.
 
 ## Unit Tests
 **What individual components need testing?**
 
-### Component/Module 1
-- [ ] Test case 1: [Description] (covers scenario / branch)
-- [ ] Test case 2: [Description] (covers edge case / error handling)
-- [ ] Additional coverage: [Description]
+### Mapping déclaratif (HttpRestTriggerConnector / mapper)
+- [ ] Objet JSON → 1 `WorkflowTriggerEvent` avec fields/variables
+- [ ] Tableau / `itemsPath` → N événements
+- [ ] `existingDossierReferencePath` renseigné → pas de create fields requis
+- [ ] `processKeyPath` override le défaut config
+- [ ] Chemin manquant / invalide → erreur métier claire
 
-### Component/Module 2
-- [ ] Test case 1: [Description]
-- [ ] Test case 2: [Description]
-- [ ] Additional coverage: [Description]
+### ConnectorTriggerRuntime
+- [ ] Create dossier + `outbox.append` par événement
+- [ ] Existing ref → `getByReference` + `AccessContext.system`
+- [ ] Ref inconnue → erreur ; pas d’outbox partiel non transactionnel
+- [ ] Batch : tout-ou-rien transactionnel
+- [ ] Aucun appel `WorkflowEnginePort.start` / RuntimeService.start
+
+### ConnectorSecretCipher (Env)
+- [ ] Round-trip PASSWORD fields
+- [ ] Champs non-PASSWORD inchangés
+- [ ] DEK créée à la première utilisation tenant
+
+### Webhook authenticators
+- [ ] HMAC valide → OK
+- [ ] HMAC invalide / header absent → exception
+- [ ] Shared secret header/token valide / invalide
+- [ ] Comparaison temps constant (`MessageDigest.isEqual`)
+
+### Idempotency
+- [ ] Première clé → miss, store après succès
+- [ ] Replay même clé → hit, pas de second runtime
+- [ ] Clé absente → traité sans dédup (ou 400 si on impose header —
+    **imposer header requis** sur webhook)
+
+### Rate limit / max body
+- [ ] Corps > max → 413 (filtre/unit)
+- [ ] Au-delà du quota/min → 429
+- [ ] Sous quota → passe
+
+### FlowableSignal SERVICE
+- [ ] `execute` appelle signal API avec nom config / override
+- [ ] Instance disabled → rejet
+- [ ] Type non-SERVICE → rejet
+
+### Registry
+- [ ] `http-rest` et `flowable-signal` présents
+- [ ] Type inconnu → `UnknownConnectorException`
 
 ## Integration Tests
-**How do we test component interactions?**
+**What component interactions need testing?**
 
-- [ ] Integration scenario 1
-- [ ] Integration scenario 2
-- [ ] API endpoint tests
-- [ ] Integration scenario 3 (failure mode / rollback)
+### Liquibase / JPA
+- [ ] Tables `connector_instance`, `tenant_connector_dek`,
+      `webhook_idempotency` créées
+- [ ] Persist instance : secrets chiffrés en colonne JSON (pas clair)
+- [ ] Load → `ConnectorInstanceData` config déchiffrée
+
+### MockMvc — admin
+- [ ] CRUD `TENANT_ADMIN` OK ; CSRF requis mutateurs
+- [ ] Non-admin → 403 ProblemDetail
+- [ ] GET masque secret / `secretConfigured`
+- [ ] Config `IP_ALLOWLIST` → 400
+
+### MockMvc — webhook
+- [ ] HMAC happy → 202 ; outbox rows = N
+- [ ] Signature KO → 401/403 ; 0 outbox
+- [ ] Shared secret happy path
+- [ ] Replay `Idempotency-Key` → 202 ; outbox inchangé
+- [ ] Sans `Idempotency-Key` → 400
+- [ ] `enabled=false` / id inconnu → 404
+- [ ] Body trop gros → 413
+- [ ] Rate limit → 429
+- [ ] Existing dossier ref → outbox sans create (seed dossier)
+
+### MockMvc / Security — execute
+- [ ] BFF `TENANT_ADMIN` → 200 signal mock/spy
+- [ ] M2M JWT `API_SERVICE` + tenant OK → 200
+- [ ] M2M mauvais tenant / sans rôle → 401/403
+- [ ] User BFF non-admin → 403
+
+### Flowable smoke (si câblé)
+- [ ] Process classpath avec `ConnectorServiceTask` émet signal
+- [ ] Trigger signal → outbox (chemin TRIGGER)
 
 ## End-to-End Tests
-**What user flows need validation?**
+**Hors scope navigateur.** Parcours « API » couverts en IT MockMvc + outbox
+relay existant (rejeu seed) :
 
-- [ ] User flow 1: [Description]
-- [ ] User flow 2: [Description]
-- [ ] Critical path testing
-- [ ] Regression of adjacent features
-
-## Test Data
-**What data do we use for testing?**
-
-- Test fixtures and mocks
-- Seed data requirements
-- Test database setup
-
-## Test Reporting & Coverage
-**How do we verify and communicate test results?**
-
-- Coverage commands and thresholds (`npm run test -- --coverage`)
-- Coverage gaps (files/functions below 100% and rationale)
-- Links to test reports or dashboards
-- Manual testing outcomes and sign-off
-
-## Manual Testing
-**What requires human validation?**
-
-- UI/UX testing checklist (include accessibility)
-- Browser/device compatibility
-- Smoke tests after deployment
+- [ ] Webhook → outbox PENDING → (relais existant) start workflow smoke
 
 ## Performance Testing
-**How do we validate performance?**
+N/A — vérifier uniquement le respect des bornes config en tests
+fonctionnels (413/429).
 
-- Load testing scenarios
-- Stress testing approach
-- Performance benchmarks
+## Security Testing
+- [ ] Pas de secret clair dans JSON réponses admin
+- [ ] Pas de secret clair dans logs assertés (si capture)
+- [ ] Chaînes Order 1/2/3 : webhook sans CSRF ; BFF avec CSRF
+- [ ] ArchUnit : domaine connector sans dépendance infra JPA/web
 
-## Bug Tracking
-**How do we manage issues?**
+## Test Data & Fixtures
+- Clé maître test fixe dans `application-test.yml`
+- Instance `http-rest` fixture (secret connu pour HMAC vectors)
+- Dossier seed pour existing-ref
+- JWT M2M test (même pattern que resource server de test à introduire)
 
-- Issue tracking process
-- Bug severity levels
-- Regression testing strategy
+## Success criteria → scenarios
 
+| Critère requirements | Couverture tests |
+|---|---|
+| Catalogue 2 builtins | Registry unit + IT list definitions |
+| CRUD admin + masquage | MockMvc admin |
+| HMAC + shared secret | Authenticator unit + MockMvc |
+| Mapping + batch + existing | Mapper unit + runtime + MockMvc |
+| Outbox only | Runtime unit verify no start |
+| Idempotency + harden | Unit + MockMvc |
+| ServiceTask + execute BFF/M2M | Unit signal + MockMvc execute |
+| Security 3 chaînes | Security IT / MockMvc |
+| Jacoco ≥ 80 % / ArchUnit | `./mvnw verify` |
+
+## Mocks & tools
+
+- Mockito : RuntimeService, OutboxRepository, dossier use cases
+- Spring Security test : `oidcLogin()`, JWT mock M2M
+- H2 MODE=PostgreSQL + Liquibase (existant)

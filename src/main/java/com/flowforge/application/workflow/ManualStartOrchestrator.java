@@ -77,7 +77,11 @@ public final class ManualStartOrchestrator {
             processInstanceId = workflowEnginePort.start(
                     processDefinitionKey, reserved.tenantId(), reserved.id().toString(), engineVariables);
         } catch (RuntimeException ex) {
-            attachWorkflow.abortReserved(reserved.id(), AbortReservedReason.ORPHAN_START_FAILED);
+            try {
+                attachWorkflow.abortReserved(reserved.id(), AbortReservedReason.ORPHAN_START_FAILED);
+            } catch (RuntimeException abortEx) {
+                ex.addSuppressed(abortEx);
+            }
             throw ex;
         }
 

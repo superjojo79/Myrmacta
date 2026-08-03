@@ -41,6 +41,13 @@ class OutboxRelayScheduler {
 
     void processOne(OutboxEvent event) {
         try {
+            try {
+                WorkflowVariables.assertNoReservedKeys(event.payload().variables());
+            } catch (IllegalArgumentException ex) {
+                outboxRepository.markDead(event.eventId(), ex.getMessage());
+                return;
+            }
+
             DossierWorkflowLink link = attachWorkflow.reserveOrResume(
                     event.payload().dossierId(),
                     event.payload().processKey(),
@@ -49,8 +56,15 @@ class OutboxRelayScheduler {
                 outboxRepository.markProcessed(event.eventId());
                 return;
             }
+
+            var existing = workflowEnginePort.findProcessInstanceIdByBusinessKey(link.id().toString());
+            if (existing.isPresent()) {
+                attachWorkflow.confirmStarted(link.id(), existing.get());
+                outboxRepository.markProcessed(event.eventId());
+                return;
+            }
+
             Map<String, Object> variables = new HashMap<>(event.payload().variables());
-            WorkflowVariables.assertNoReservedKeys(variables);
             variables.put(WorkflowVariables.DOSSIER_ID, link.dossierId().toString());
             variables.put(WorkflowVariables.DOSSIER_WORKFLOW_LINK_ID, link.id().toString());
             variables.put(WorkflowVariables.TENANT_ID, link.tenantId());

@@ -20,6 +20,7 @@ import com.flowforge.infrastructure.config.WorkflowProperties;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -51,6 +52,8 @@ class OutboxRelaySchedulerTest {
                         event.payload().processKey(),
                         event.payload().triggerRef()))
                 .thenReturn(reserved);
+        when(workflowEnginePort.findProcessInstanceIdByBusinessKey(reserved.id().toString()))
+                .thenReturn(Optional.empty());
         when(workflowEnginePort.start(anyString(), anyString(), anyString(), anyMap())).thenReturn("proc-1");
 
         scheduler.processOne(event);
@@ -62,10 +65,45 @@ class OutboxRelaySchedulerTest {
     }
 
     @Test
+    void processOne_confirmsExistingInstanceByBusinessKeyWithoutSecondStart() {
+        OutboxEvent event = pendingEvent();
+        DossierWorkflowLink reserved = reservedLink(event.payload().dossierId());
+        when(attachWorkflow.reserveOrResume(any(), any(), any())).thenReturn(reserved);
+        when(workflowEnginePort.findProcessInstanceIdByBusinessKey(reserved.id().toString()))
+                .thenReturn(Optional.of("proc-existing"));
+
+        scheduler.processOne(event);
+
+        verify(attachWorkflow).confirmStarted(reserved.id(), "proc-existing");
+        verify(outboxRepository).markProcessed(event.eventId());
+        verify(workflowEnginePort, never()).start(any(), any(), any(), any());
+    }
+
+    @Test
+    void processOne_rejectsReservedVariablesBeforeReserve() {
+        OutboxEvent event = OutboxEvent.pending(
+                new TriggerOutboxPayload(
+                        UUID.randomUUID(),
+                        null,
+                        "smokeProcess",
+                        Map.of("dossierId", "client-forbidden"),
+                        "seed:bad-vars"),
+                Instant.parse("2026-08-02T10:00:00Z"));
+
+        scheduler.processOne(event);
+
+        verify(attachWorkflow, never()).reserveOrResume(any(), any(), any());
+        verify(outboxRepository).markDead(eq(event.eventId()), anyString());
+        verify(workflowEnginePort, never()).start(any(), any(), any(), any());
+    }
+
+    @Test
     void processOne_recordsFailureOnTransientEngineError() {
         OutboxEvent event = pendingEvent();
         DossierWorkflowLink reserved = reservedLink(event.payload().dossierId());
         when(attachWorkflow.reserveOrResume(any(), any(), any())).thenReturn(reserved);
+        when(workflowEnginePort.findProcessInstanceIdByBusinessKey(reserved.id().toString()))
+                .thenReturn(Optional.empty());
         when(workflowEnginePort.start(anyString(), anyString(), anyString(), anyMap()))
                 .thenThrow(new IllegalStateException("temporary"));
 

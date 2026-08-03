@@ -66,7 +66,7 @@ class DossierWorkflowController {
         var link = result.link();
         int status = result.replay() ? 200 : 201;
         return ResponseEntity.status(status)
-                .location(URI.create("/api/dossiers/" + dossierId + "/workflows/" + link.id()))
+                .location(URI.create("/api/dossiers/" + dossierId + "/workflows"))
                 .body(WorkflowLinkResponse.from(link));
     }
 

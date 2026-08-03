@@ -6,6 +6,7 @@ status: reviewed
 reviewed: 2026-08-03
 created: 2026-08-03
 updated: 2026-08-03
+stakeholder_decisions: 2026-08-03
 ---
 
 # Requirements & Problem Understanding
@@ -62,9 +63,11 @@ avec des données dossier / workflow.
 - **API resolve** (**D-RESOLVE-API = 1**, **D-RESOLVE-PATH = 1**) :
   `GET /api/document-templates/resolve` (path littéral) ; `{id}` typé
   `UUID` pour éviter la collision Spring MVC.
-- Validation minimale (**D-VALIDATE = 1**) : `templateKey` et `htmlContent`
-  non blank ; taille max `htmlContent` (**1 MiB**) ; pas de compile
-  Thymeleaf obligatoire en V1.
+- Validation (**D-VALIDATE = 2**, confirmé stakeholder) : create/PATCH =
+  `templateKey` / `htmlContent` non blank + taille max **5 MiB** (**A1**) ;
+  **activate** = parse Thymeleaf (syntaxe) ; échec → 400, reste `DRAFT`.
+- Liste (**D-LIST = 3**) : résumé par défaut ; `htmlContent` seulement si
+  `?includeContent=true`.
 - **Unicité** (**D-UQ = 1**) : index partiel ACTIVE + unique
   `(combinaison, version)` — **pas** l’`@UniqueConstraint` analyse sur
   `(tenant, key, variant, locale)` seul (incompatible multi-versions).
@@ -74,12 +77,12 @@ avec des données dossier / workflow.
 
 | Méthode | Path | Authz / notes |
 |---|---|---|
-| GET | `/api/document-templates` | `TENANT_ADMIN` — liste (filtre optionnel `templateKey`) ; toutes versions / statuts |
+| GET | `/api/document-templates` | `TENANT_ADMIN` — liste (filtre `templateKey`) ; résumé **sans** `htmlContent` sauf `?includeContent=true` (**D-LIST**) |
 | GET | `/api/document-templates/resolve` | `TENANT_ADMIN` — query `templateKey` + opt. `variantKey` / `locale` → ACTIVE résolu (**avant** `/{id}` ; path littéral) |
 | GET | `/api/document-templates/{id}` | `TENANT_ADMIN` — détail ; `{id}` = **UUID** |
 | POST | `/api/document-templates` | `TENANT_ADMIN` — créer en `DRAFT` (version = max+1 ou 1) ; OK si ACTIVE existe |
 | PATCH | `/api/document-templates/{id}` | `TENANT_ADMIN` — éditer **`label` / `htmlContent` seulement** si `DRAFT` ; sinon 409 ; clés immuables |
-| POST | `/api/document-templates/{id}/activate` | `TENANT_ADMIN` — **`DRAFT`→`ACTIVE` uniquement** ; archive l’ACTIVE précédente ; `ARCHIVED`/`ACTIVE` → 409 |
+| POST | `/api/document-templates/{id}/activate` | `TENANT_ADMIN` — **`DRAFT`→`ACTIVE` uniquement** ; parse Thymeleaf OK requis ; archive l’ACTIVE précédente ; syntaxe KO → 400 ; `ARCHIVED`/`ACTIVE` → 409 |
 | POST | `/api/document-templates/{id}/archive` | `TENANT_ADMIN` — `ACTIVE`→`ARCHIVED` (sans activer un autre) ; autre statut → 409 |
 | POST | `/api/document-templates/{id}/new-version` | `TENANT_ADMIN` — clone contenu → nouveau `DRAFT` (version+1) depuis tout statut |
 
@@ -107,8 +110,8 @@ Normalisation entrée (**A7**) : `variantKey` / `locale` blank (`""`) →
   différé**).
 - UI Vue / OpenAPI formel / pagination avancée (TODO §24 partiel —
   liste filtrée V1).
-- Validation compile Thymeleaf stricte ; sandboxing expressions ;
-  upload fichiers template.
+- Sandboxing expressions Thymeleaf / dialectes custom ; upload fichiers
+  template ; render avec données métier (→ génération).
 - Multi-tenant cross-schema ; templates plateforme partagés.
 - Réactivation directe d’un `ARCHIVED` (passer par `new-version` puis
   `activate`).
@@ -126,6 +129,9 @@ Normalisation entrée (**A7**) : `variantKey` / `locale` blank (`""`) →
 | Unique (tenant,key,variant,locale) analyse vs unique versionné | Unique analyse bloque multi-versions | **D-UQ** partiel ACTIVE + (combinaison, version) |
 | Path resolve dédié vs query collection | Path plus explicite ; attention collision `{id}` | **Path littéral** (**D-RESOLVE-PATH**) |
 | Un seul DRAFT vs multi-DRAFT | Un seul simplifie ; multi permet itérations parallèles | **Multi-DRAFT** (**D-MULTI-DRAFT**) |
+| Validate minimale vs parse activate | Parse coûte plus ; évite ACTIVE invalide | **Parse à l’activate** (**D-VALIDATE 2**) |
+| Max HTML 1 vs 5 MiB | 5 MiB pour images base64 / docs riches | **5 MiB** (**A1**) |
+| Liste sans HTML vs include opt-in | Opt-in évite payloads lourds par défaut | **`?includeContent=true`** (**D-LIST 3**) |
 
 ## User Stories & Use Cases
 
@@ -146,7 +152,9 @@ Normalisation entrée (**A7**) : `variantKey` / `locale` blank (`""`) →
   - plusieurs `DRAFT` pour la même combinaison → OK ;
   - `archive` laisse la combinaison sans ACTIVE → resolve cascade / 404 ;
   - resolve sans aucun fallback → 404 `TemplateNotFound` ;
-  - `templateKey` blank ou HTML > 1 MiB → 400 ;
+  - `templateKey` blank ou HTML > 5 MiB → 400 ;
+  - activate HTML Thymeleaf invalide → 400, reste DRAFT ;
+  - liste sans `includeContent` → pas de `htmlContent` ;
   - `variantKey=""` → traité comme `null`.
 
 ## Success Criteria
@@ -160,6 +168,8 @@ Normalisation entrée (**A7**) : `variantKey` / `locale` blank (`""`) →
   (contrainte SQL + gestion conflit)
 - [ ] Surface API admin ci-dessus via MockMvc + `TENANT_ADMIN`
 - [ ] Path `/resolve` littéral + `{id}` UUID sans collision
+- [ ] Activate parse Thymeleaf : OK → ACTIVE ; KO → 400 / DRAFT
+- [ ] Liste : sans contenu par défaut ; `includeContent=true` inclut HTML
 - [ ] Non-admin → 403 ; anonyme → 401
 - [ ] `./mvnw verify` vert ; Jacoco INSTRUCTION ≥ 80 %
 - [ ] Docs feature alignées ; `npx ai-devkit lint --feature templates-documents`
@@ -171,7 +181,7 @@ Normalisation entrée (**A7**) : `variantKey` / `locale` blank (`""`) →
 - Tenant = constante instance (`TenantProperties`, décision n° 13).
 - Pas de MinIO / stockage objet dans cette tranche (DEFERRED §0).
 - Contenu = HTML Thymeleaf TEXT en base (analyse § stratégie).
-- **A1** — Taille max HTML 1 MiB (aligné webhook connecteurs).
+- **A1** — Taille max HTML **5 MiB** (confirmé stakeholder).
 - **A2** — `version` entier monotone par combinaison ; géré applicativement
   (race create/new-version → conflit unique version → 409).
 - **A3** — Pas de hard delete V1.
@@ -196,15 +206,17 @@ Normalisation entrée (**A7**) : `variantKey` / `locale` blank (`""`) →
 | Q4 | Endpoint resolve HTTP ? | **Clos** — D-RESOLVE-API 1 |
 | Q5 | Édition ACTIVE ? | **Clos** — D-EDIT 1 |
 | Q6 | Null vs empty variant/locale | **Clos** — D-NULL 1 + A7 |
-| Q7 | Validation Thymeleaf compile | **Clos** — D-VALIDATE 1 |
+| Q7 | Validation Thymeleaf compile | **Clos stakeholder** — D-VALIDATE 2 (parse activate) |
 | Q8 | Preview HTML/PDF | **Différé** — D-PREVIEW |
 | Q9 | Pagination liste | **Différé** — TODO §24 ; A4 |
-| Q10 | Bornes taille HTML | **Clos** — A1 = 1 MiB |
-| Q11 | Unique analyse vs multi-versions | **Clos** — D-UQ 1 (écart analyse) |
+| Q10 | Bornes taille HTML | **Clos stakeholder** — A1 = 5 MiB |
+| Q11 | Unique analyse vs multi-versions | **Clos stakeholder** — D-UQ 2 |
 | Q12 | Collision path resolve / `{id}` | **Clos** — D-RESOLVE-PATH 1 |
-| Q13 | Plusieurs DRAFT simultanés ? | **Clos** — D-MULTI-DRAFT 1 |
+| Q13 | Plusieurs DRAFT simultanés ? | **Clos stakeholder** — D-MULTI-DRAFT 2 |
 | Q14 | Réactiver un ARCHIVED ? | **Clos** — non ; new-version + activate |
 | Q15 | PATCH des clés (key/variant/locale) ? | **Clos** — immuables après create |
+| Q16 | Resolve HTTP ? | **Clos stakeholder** — D-RESOLVE-API 2 |
+| Q17 | Contenu dans la liste ? | **Clos stakeholder** — D-LIST 3 (`includeContent`) |
 
 ### Décisions actées
 
@@ -222,11 +234,14 @@ Normalisation entrée (**A7**) : `variantKey` / `locale` blank (`""`) →
 | D-ADMIN | Authz | `TENANT_ADMIN` seul |
 | D-DELETE | Suppression | Statut `ARCHIVED` (pas soft-delete, pas DELETE) |
 | D-UQ | Contraintes SQL | Partiel ACTIVE + unique (combinaison, version) |
-| D-VALIDATE | Contenu | Non-blank + max 1 MiB |
+| D-VALIDATE | Contenu | Non-blank + max 5 MiB ; **parse Thymeleaf à l’activate** |
+| D-LIST | Payload liste | Résumé ; `?includeContent=true` pour HTML |
 | D-PREVIEW | Preview | Différé génération |
 | D-FLOWABLE | ServiceTask | Différé génération |
 
-**Phase 2 close** (2026-08-03) — statut `reviewed`.
+**Phase 2 close** (2026-08-03) — statut `reviewed` ; décisions Q1–Q9
+reconfirmées avec stakeholder (unicité, resolve HTTP, multi-DRAFT, admin,
+mutabilité, archive, validate parse activate, 5 MiB, includeContent).
 **Phase 3** — revue design contre requirements `reviewed`.
 
 ## Sources

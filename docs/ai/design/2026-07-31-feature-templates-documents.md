@@ -140,15 +140,18 @@ Aligné requirements surface. Corps JSON (esquisse) :
 
 **PATCH draft** — `label` et/ou `htmlContent` ; statut ≠ DRAFT → 409.
 
-**POST activate / archive / new-version** — body vide ; new-version
-retourne le nouveau `DRAFT`.
+**GET list** — résumé (sans `htmlContent`) ; `?includeContent=true` pour
+inclure le HTML (**D-LIST**).
+
+**POST activate / archive / new-version** — body vide ; activate parse
+Thymeleaf d’abord ; new-version retourne le nouveau `DRAFT`.
 
 **GET `/api/document-templates/resolve?templateKey=&variantKey=&locale=`**
 → 200 template ACTIVE résolu (contenu inclus) ou 404.
 Path **littéral** `resolve` (**D-RESOLVE-PATH**) ; `{id}` typé UUID.
 
-Erreurs `ProblemDetail` : 400 validation, 401/403 sécurité, 404 inconnu,
-409 conflit cycle de vie / unique ACTIVE / unique version.
+Erreurs `ProblemDetail` : 400 validation / Thymeleaf syntaxe, 401/403
+sécurité, 404 inconnu, 409 conflit cycle de vie / unique ACTIVE / version.
 
 ---
 
@@ -158,11 +161,12 @@ Erreurs `ProblemDetail` : 400 validation, 401/403 sécurité, 404 inconnu,
 |---|---|
 | `CreateDocumentTemplateUseCase` | Valide ; version = max+1 ; status DRAFT |
 | `UpdateDocumentTemplateUseCase` | DRAFT only |
-| `ActivateDocumentTemplateUseCase` | TX : archive ACTIVE courante → ACTIVE nouvelle |
+| `ActivateDocumentTemplateUseCase` | Parse Thymeleaf → TX : archive ACTIVE courante → ACTIVE nouvelle |
 | `ArchiveDocumentTemplateUseCase` | ACTIVE → ARCHIVED |
 | `NewDocumentTemplateVersionUseCase` | Clone html/label/keys → nouveau DRAFT |
-| `List/GetDocumentTemplateUseCase` | Lecture tenant courant |
+| `List/GetDocumentTemplateUseCase` | Lecture tenant ; omit `htmlContent` sauf flag |
 | `TemplateResolver` / `ResolveDocumentTemplateUseCase` | Cascade 4 niveaux |
+| `ThymeleafTemplateSyntaxChecker` (infra) | Parse syntaxe sans render métier |
 
 `tenantId` toujours `TenantProperties.id()` — jamais depuis le body client.
 
@@ -177,7 +181,9 @@ Erreurs `ProblemDetail` : 400 validation, 401/403 sécurité, 404 inconnu,
 | DD-ACTIVATE-TX | Archive + activate dans une TX | Cohérence cycle de vie |
 | DD-RESOLVE-ORDER | Ordre cascade analyse § résolution | Spécificité décroissante |
 | DD-NO-SOFT-DELETE | Pas de `deleted_at` | ARCHIVED suffit (D-DELETE) |
-| DD-MAX-HTML | 1 MiB `htmlContent` | Bornes alignées connecteurs |
+| DD-MAX-HTML | **5 MiB** `htmlContent` | Confirmé stakeholder (A1) |
+| DD-THYMELEAF-ACTIVATE | Parse Thymeleaf à l’activate | D-VALIDATE 2 ; échec → 400 / DRAFT |
+| DD-LIST-CONTENT | Liste sans HTML ; `?includeContent=true` | D-LIST 3 |
 | DD-PKG | Package `document` existant | Placeholders déjà réservés |
 
 ### Alternatives écartées
@@ -193,7 +199,8 @@ Erreurs `ProblemDetail` : 400 validation, 401/403 sécurité, 404 inconnu,
 - `@PreAuthorize("hasRole('TENANT_ADMIN')")` sur tous les endpoints.
 - CSRF sur mutateurs BFF.
 - Pas de chaîne Security nouvelle (BFF Order 3 suffit).
-- Contenu HTML potentiellement large : borne 1 MiB ; pas d’index full-text V1.
+- Contenu HTML potentiellement large : borne **5 MiB** ; liste sans HTML
+  par défaut ; pas d’index full-text V1.
 - Resolve : jusqu’à 4 lectures ; acceptable V1 ; optimisation OR-query
   possible follow-up.
 
@@ -202,6 +209,7 @@ Erreurs `ProblemDetail` : 400 validation, 401/403 sécurité, 404 inconnu,
 | # | Item | Disposition |
 |---|---|---|
 | O1 | Endpoint resolve séparé vs query sur collection | **Resolve dédié** (clarity) |
-| O2 | Retourner htmlContent dans list | **Oui V1** (admin) ; mask ultérieur si besoin |
+| O2 | Retourner htmlContent dans list | **Clos** — D-LIST / DD-LIST-CONTENT |
 | O3 | Optimistic locking `@Version` JPA | **Nice** — follow-up si conflits PATCH fréquents |
-| O4 | Compile Thymeleaf à l’activate | **Différé** (D-VALIDATE) |
+| O4 | Compile Thymeleaf à l’activate | **Clos** — DD-THYMELEAF-ACTIVATE |
+| O5 | Portée exacte parse (dialect / variables) | **Phase 3** — syntaxe only, pas render métier |

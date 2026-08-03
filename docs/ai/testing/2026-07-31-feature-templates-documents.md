@@ -14,14 +14,14 @@ updated: 2026-08-03
 
 - **Unitaires domaine :** `TemplateResolver` cascade ; activate archive
   précédente ; refus PATCH hors DRAFT ; new-version incrémente ;
-  validation blank / taille HTML.
+  validation blank / taille HTML (5 MiB) ; parse Thymeleaf à l’activate.
 - **IT H2 MODE=PostgreSQL :** Liquibase `document_template` + index
   partiel ACTIVE ; MockMvc admin CRUD / activate / archive / resolve ;
-  concurrence activate (contrainte unique).
+  liste `includeContent` ; concurrence activate (contrainte unique).
 - **Régression :** dossiers, connecteurs, workflow, auth BFF, ArchUnit,
   Jacoco ≥ 80 %.
 - **Hors scope :** Testcontainers PG, Keycloak réel, génération PDF,
-  E2E navigateur, compile Thymeleaf stricte.
+  E2E navigateur, sandboxing Thymeleaf avancé.
 
 Alignement requirements success criteria + design DD-*.
 
@@ -37,7 +37,8 @@ Alignement requirements success criteria + design DD-*.
 - [ ] Ignore DRAFT / ARCHIVED dans la résolution
 
 ### Activate / archive / new-version
-- [ ] Activate DRAFT → ACTIVE ; précédente ACTIVE → ARCHIVED
+- [ ] Activate DRAFT valide → ACTIVE ; précédente ACTIVE → ARCHIVED
+- [ ] Activate HTML Thymeleaf invalide → erreur 400 ; reste DRAFT
 - [ ] Activate non-DRAFT → erreur métier
 - [ ] Archive ACTIVE → ARCHIVED
 - [ ] Archive non-ACTIVE → erreur
@@ -48,7 +49,8 @@ Alignement requirements success criteria + design DD-*.
 - [ ] Create → DRAFT version 1 (ou max+1)
 - [ ] Patch DRAFT OK ; patch ACTIVE/ARCHIVED → rejet
 - [ ] `templateKey` / `htmlContent` blank → rejet
-- [ ] `htmlContent` > 1 MiB → rejet
+- [ ] `htmlContent` > 5 MiB → rejet
+- [ ] Create/PATCH n’exigent pas parse Thymeleaf (seulement activate)
 
 ### Mapper domaine ↔ JPA
 - [ ] Round-trip null variant/locale préservés
@@ -59,10 +61,12 @@ Alignement requirements success criteria + design DD-*.
 
 ### MockMvc admin (`DocumentTemplate*ApiTest`)
 - [ ] POST create 201 + GET detail
-- [ ] GET list + filtre `templateKey`
+- [ ] GET list + filtre `templateKey` ; sans `htmlContent` par défaut
+- [ ] GET list `?includeContent=true` → `htmlContent` présent
 - [ ] PATCH DRAFT 200 ; PATCH ACTIVE 409
 - [ ] POST activate 200 ; seconde ACTIVE même combinaison impossible
   (archive auto)
+- [ ] POST activate HTML invalide → 400
 - [ ] POST archive 200
 - [ ] POST new-version 201 DRAFT
 - [ ] GET resolve cascade 200 / 404

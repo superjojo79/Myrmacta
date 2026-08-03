@@ -29,9 +29,22 @@ public class DocumentTemplateExceptionHandler {
         return problem(HttpStatus.NOT_FOUND, "Document template not found", ex.getMessage());
     }
 
-    @ExceptionHandler({InvalidTemplateStateException.class, DataIntegrityViolationException.class})
-    ProblemDetail handleConflict(Exception ex) {
+    @ExceptionHandler(InvalidTemplateStateException.class)
+    ProblemDetail handleInvalidState(InvalidTemplateStateException ex) {
         return problem(HttpStatus.CONFLICT, "Document template conflict", ex.getMessage());
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    ProblemDetail handleIntegrity(DataIntegrityViolationException ex) {
+        String detail = "A conflicting document template already exists";
+        Throwable cause = ex.getMostSpecificCause();
+        String message = cause == null || cause.getMessage() == null ? "" : cause.getMessage().toLowerCase();
+        if (message.contains("uq_template_active") || message.contains("active_template_key")) {
+            detail = "An ACTIVE template already exists for this key/variant/locale";
+        } else if (message.contains("uq_template_version") || message.contains("ver_variant_key")) {
+            detail = "A template version already exists for this key/variant/locale";
+        }
+        return problem(HttpStatus.CONFLICT, "Document template conflict", detail);
     }
 
     private static ProblemDetail problem(HttpStatus status, String title, String detail) {

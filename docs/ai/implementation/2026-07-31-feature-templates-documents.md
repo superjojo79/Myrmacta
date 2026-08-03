@@ -2,7 +2,7 @@
 phase: implementation
 title: Implementation Guide
 description: Technical implementation notes, patterns, and code guidelines
-status: checked
+status: reviewed
 created: 2026-08-03
 updated: 2026-08-03
 phase5: 2026-08-03
@@ -10,6 +10,8 @@ phase6: 2026-08-03
 phase7: 2026-08-03
 checked: 2026-08-03
 phase7_result: aligned
+phase9: 2026-08-03
+reviewed: 2026-08-03
 ---
 
 # Implementation Guide
@@ -107,25 +109,51 @@ db/changelog/changes/004-document-template-tables.yaml
 - blank variant/locale → null
 - activate syntax KO → 400, reste DRAFT
 - archive auto de l’ACTIVE précédente (y compris null/null) en TX
-- DataIntegrityViolation → 409
+- DataIntegrityViolation → 409 sanitizé (pas de SQL brut)
 - list strip content
 - resolve 404 si aucun ACTIVE
 
-## Evidence (phase 7)
+## Phase 9 — Code review
+
+### Checklist
+
+| Critère | Verdict |
+|---|---|
+| Design match (lifecycle, ranked resolve, dual UQ, checker, TX) | OK |
+| Security (TENANT_ADMIN, CSRF, tenant hors body) | OK |
+| Logic gaps bloquants | Aucun |
+| Integration (Liquibase 004, ArchUnit, BFF) | OK |
+| Tests / Jacoco ≥ 80 % | OK |
+| Docs AI à jour | OK |
+
+### Findings
+
+| Sévérité | Item | Disposition |
+|---|---|---|
+| Blocking | — | Aucun |
+| Important | 409 DataIntegrity fuyait le SQL | **Corrigé** — messages stables (pattern connecteurs) |
+| Important | `requestTenantId` param ignoré (tenant injecté) | Follow-up — pas d’IDOR (controller = `TenantProperties`) |
+| Important | parse Thymeleaf dans la TX activate | Follow-up — atomicité OK ; optimiser hors TX plus tard |
+| Nice | liste renvoie `htmlContent: ""` | Accepté V1 |
+| Nice | beans `*Impl` vs interface activate | Accepté V1 |
+
+### Evidence (phase 9)
 
 ```text
 JAVA_HOME=…/jdk-25.0.4+7 ./mvnw -q verify
 → exit 0
-→ Surefire: tests=323, failures=0, errors=0, skipped=0
-→ DocumentTemplatePersistenceIT: 4 tests (dont activate_archivesPreviousActive_includingNullDefaults)
-→ Jacoco INSTRUCTION 11035/12593 = 87.63%
+→ Surefire: tests=331, failures=0, errors=0, skipped=0
+→ Jacoco INSTRUCTION 11080/12635 = 87.69%
+→ DocumentTemplateExceptionHandlerTest: 3 tests
 → npx ai-devkit lint --feature templates-documents → All checks passed
-→ task CLI : unavailable (unknown command 'task')
+→ task CLI : unavailable
+→ Verdict: ready to merge
 ```
 
 ## Follow-ups (non-bloquants)
 
-- Phase 8 : couverture API/security/contraintes enrichie (`status: verified`)
+- Assert `requestTenantId == tenantId` (ou retirer le paramètre redondant)
+- Parse Thymeleaf hors `TransactionTemplate`, TX uniquement archive+activate
 - `@Version` / ETag si besoin concurrence éditoriale
 - PDF / Flying Saucer / Flowable ServiceTask → `generation-documents`
 - OpenAPI / pagination

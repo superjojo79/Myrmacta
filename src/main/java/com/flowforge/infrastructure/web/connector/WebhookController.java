@@ -83,12 +83,12 @@ class WebhookController {
         String secret = stringValue(instance.config().get("webhookSecret"), "webhookSecret");
         authenticator(authType).authenticate(instance.id(), secret, body, headers);
 
-        return idempotencyStore.findResponseStatus(instance.id(), idempotencyKey)
+        return idempotencyStore.beginOrGetCompleted(instance.id(), idempotencyKey)
                 .map(status -> ResponseEntity.status(status).<Void>build())
                 .orElseGet(() -> {
                     Object payload = readPayload(body);
                     triggerRuntime.onIncomingEvent(instance, payload);
-                    idempotencyStore.store(instance.id(), idempotencyKey, ACCEPTED);
+                    idempotencyStore.complete(instance.id(), idempotencyKey, ACCEPTED);
                     return ResponseEntity.accepted().build();
                 });
     }

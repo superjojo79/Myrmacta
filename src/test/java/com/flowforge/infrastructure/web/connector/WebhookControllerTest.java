@@ -63,7 +63,7 @@ class WebhookControllerTest {
     void receive_validSharedSecretDispatchesAndStoresAccepted() throws Exception {
         ConnectorInstanceData instance = instance(true);
         when(instances.findByIdAndTenantId(INSTANCE_ID, "tenant_dev")).thenReturn(Optional.of(instance));
-        when(idempotencyStore.findResponseStatus(INSTANCE_ID, "idem-1")).thenReturn(Optional.empty());
+        when(idempotencyStore.beginOrGetCompleted(INSTANCE_ID, "idem-1")).thenReturn(Optional.empty());
 
         mockMvc.perform(post("/api/webhooks/{instanceId}", INSTANCE_ID)
                         .header("Idempotency-Key", "idem-1")
@@ -73,14 +73,14 @@ class WebhookControllerTest {
                 .andExpect(status().isAccepted());
 
         verify(runtime).onIncomingEvent(eq(instance), any());
-        verify(idempotencyStore).store(INSTANCE_ID, "idem-1", 202);
+        verify(idempotencyStore).complete(INSTANCE_ID, "idem-1", 202);
     }
 
     @Test
     void receive_idempotencyHitReturnsStoredStatusWithoutDispatch() throws Exception {
         ConnectorInstanceData instance = instance(true);
         when(instances.findByIdAndTenantId(INSTANCE_ID, "tenant_dev")).thenReturn(Optional.of(instance));
-        when(idempotencyStore.findResponseStatus(INSTANCE_ID, "idem-1")).thenReturn(Optional.of(202));
+        when(idempotencyStore.beginOrGetCompleted(INSTANCE_ID, "idem-1")).thenReturn(Optional.of(202));
 
         mockMvc.perform(post("/api/webhooks/{instanceId}", INSTANCE_ID)
                         .header("Idempotency-Key", "idem-1")
@@ -90,6 +90,7 @@ class WebhookControllerTest {
                 .andExpect(status().isAccepted());
 
         verify(runtime, never()).onIncomingEvent(any(), any());
+        verify(idempotencyStore, never()).complete(any(), any(), anyInt());
     }
 
     @Test
@@ -114,7 +115,7 @@ class WebhookControllerTest {
     @Test
     void receive_overPerInstanceRateLimitReturns429() throws Exception {
         when(instances.findByIdAndTenantId(INSTANCE_ID, "tenant_dev")).thenReturn(Optional.of(instance(true)));
-        when(idempotencyStore.findResponseStatus(eq(INSTANCE_ID), any())).thenReturn(Optional.empty());
+        when(idempotencyStore.beginOrGetCompleted(eq(INSTANCE_ID), any())).thenReturn(Optional.empty());
 
         for (int i = 0; i < 2; i++) {
             mockMvc.perform(post("/api/webhooks/{instanceId}", INSTANCE_ID)
@@ -137,7 +138,7 @@ class WebhookControllerTest {
     void receive_validHmacDispatchesAndStoresAccepted() throws Exception {
         ConnectorInstanceData instance = hmacInstance(true);
         when(instances.findByIdAndTenantId(INSTANCE_ID, "tenant_dev")).thenReturn(Optional.of(instance));
-        when(idempotencyStore.findResponseStatus(INSTANCE_ID, "idem-hmac")).thenReturn(Optional.empty());
+        when(idempotencyStore.beginOrGetCompleted(INSTANCE_ID, "idem-hmac")).thenReturn(Optional.empty());
         byte[] body = "{\"event\":\"created\"}".getBytes(java.nio.charset.StandardCharsets.UTF_8);
 
         mockMvc.perform(post("/api/webhooks/{instanceId}", INSTANCE_ID)
@@ -148,7 +149,7 @@ class WebhookControllerTest {
                 .andExpect(status().isAccepted());
 
         verify(runtime).onIncomingEvent(eq(instance), any());
-        verify(idempotencyStore).store(INSTANCE_ID, "idem-hmac", 202);
+        verify(idempotencyStore).complete(INSTANCE_ID, "idem-hmac", 202);
     }
 
     @Test
@@ -165,7 +166,7 @@ class WebhookControllerTest {
                 .andExpect(jsonPath("$.status").value(401));
 
         verify(runtime, never()).onIncomingEvent(any(), any());
-        verify(idempotencyStore, never()).store(any(), any(), anyInt());
+        verify(idempotencyStore, never()).complete(any(), any(), anyInt());
     }
 
     @Test

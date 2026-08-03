@@ -60,9 +60,9 @@ public class ConnectorAdminController {
 
     @PatchMapping("/{id}")
     public ConnectorResponse update(
-            @PathVariable UUID id, @RequestBody(required = false) UpdateConnectorRequest request) {
+            @PathVariable UUID id, @RequestBody UpdateConnectorRequest request) {
         if (request == null) {
-            return ConnectorResponse.from(manageUseCase.restore(id, tenantProperties.id()));
+            throw new IllegalArgumentException("Request body is required");
         }
         ConnectorInstanceData updated = manageUseCase.update(new ManageConnectorInstanceUseCase.UpdateCommand(
                 id,

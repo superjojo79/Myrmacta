@@ -42,6 +42,10 @@ class WebhookIdempotencyJpaEntity {
         return responseStatus;
     }
 
+    void responseStatus(int responseStatus) {
+        this.responseStatus = responseStatus;
+    }
+
     Instant createdAt() {
         return createdAt;
     }

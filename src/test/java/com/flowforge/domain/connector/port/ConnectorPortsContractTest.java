@@ -61,12 +61,17 @@ class ConnectorPortsContractTest {
 
         WebhookIdempotencyStore store = new WebhookIdempotencyStore() {
             @Override
-            public Optional<Integer> findResponseStatus(UUID instanceId, String idempotencyKey) {
+            public Optional<Integer> beginOrGetCompleted(UUID instanceId, String idempotencyKey) {
                 return Optional.empty();
             }
 
             @Override
-            public void store(UUID instanceId, String idempotencyKey, int responseStatus) {}
+            public void complete(UUID instanceId, String idempotencyKey, int responseStatus) {}
+
+            @Override
+            public Optional<Integer> findResponseStatus(UUID instanceId, String idempotencyKey) {
+                return Optional.empty();
+            }
         };
 
         ManageConnectorInstanceUseCase manage = new ManageConnectorInstanceUseCase() {

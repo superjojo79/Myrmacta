@@ -4,6 +4,7 @@ import com.flowforge.domain.connector.model.ConnectorInstanceNotFoundException;
 import com.flowforge.domain.connector.model.ConnectorValidationException;
 import com.flowforge.domain.connector.model.UnknownConnectorException;
 import com.flowforge.domain.connector.model.WebhookAuthenticationException;
+import com.flowforge.domain.connector.model.WebhookIdempotencyInFlightException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -39,12 +40,25 @@ public class ConnectorExceptionHandler {
         return problem(HttpStatus.PAYLOAD_TOO_LARGE, "Webhook payload too large", ex.getMessage());
     }
 
-    @ExceptionHandler(DataIntegrityViolationException.class)
-    ProblemDetail handleConflict(DataIntegrityViolationException ex) {
+    @ExceptionHandler(WebhookIdempotencyInFlightException.class)
+    ProblemDetail handleIdempotencyInFlight(WebhookIdempotencyInFlightException ex) {
         return problem(
                 HttpStatus.CONFLICT,
-                "Connector conflict",
-                "A connector with this name already exists");
+                "Webhook delivery in progress",
+                ex.getMessage());
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    ProblemDetail handleConflict(DataIntegrityViolationException ex) {
+        String detail = "A conflicting connector resource already exists";
+        Throwable cause = ex.getMostSpecificCause();
+        String message = cause == null || cause.getMessage() == null ? "" : cause.getMessage().toLowerCase();
+        if (message.contains("active_name")
+                || message.contains("uq_connector_instance_tenant_name")
+                || message.contains("connector_instance")) {
+            detail = "A connector with this name already exists";
+        }
+        return problem(HttpStatus.CONFLICT, "Connector conflict", detail);
     }
 
     @ExceptionHandler({

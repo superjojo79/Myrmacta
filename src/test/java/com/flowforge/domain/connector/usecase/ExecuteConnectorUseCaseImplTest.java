@@ -63,4 +63,24 @@ class ExecuteConnectorUseCaseImplTest {
                 .isInstanceOf(UnsupportedOperationException.class)
                 .hasMessageContaining("does not support SERVICE");
     }
+
+    @Test
+    void execute_rejectsDisabledConnector() {
+        UUID id = UUID.randomUUID();
+        ConnectorInstanceData instance = new ConnectorInstanceData(
+                id, "tenant_dev", "Disabled", "service-test", false, Map.of());
+        when(repository.findByIdAndTenantId(id, "tenant_dev")).thenReturn(Optional.of(instance));
+
+        assertThatThrownBy(() -> useCase.execute(id, "tenant_dev", Map.of()))
+                .isInstanceOf(com.flowforge.domain.connector.model.ConnectorInstanceNotFoundException.class);
+    }
+
+    @Test
+    void execute_rejectsMissingConnector() {
+        UUID id = UUID.randomUUID();
+        when(repository.findByIdAndTenantId(id, "tenant_dev")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> useCase.execute(id, "tenant_dev", Map.of()))
+                .isInstanceOf(com.flowforge.domain.connector.model.ConnectorInstanceNotFoundException.class);
+    }
 }

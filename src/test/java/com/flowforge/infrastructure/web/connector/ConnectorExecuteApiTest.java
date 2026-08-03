@@ -113,6 +113,43 @@ class ConnectorExecuteApiTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    void execute_bffDisabledConnector_returns404() throws Exception {
+        String id = createSignalConnector();
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .patch("/api/connectors/{id}", id)
+                        .with(oidcUser("seed-admin", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"enabled\": false}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/connectors/{id}/execute", id)
+                        .with(oidcUser("exec-admin", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404));
+    }
+
+    @Test
+    void execute_bffSoftDeletedConnector_returns404() throws Exception {
+        String id = createSignalConnector();
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .delete("/api/connectors/{id}", id)
+                        .with(oidcUser("seed-admin", "TENANT_ADMIN"))
+                        .with(csrf()))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(post("/api/connectors/{id}/execute", id)
+                        .with(oidcUser("exec-admin", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isNotFound());
+    }
+
     private String createSignalConnector() throws Exception {
         String name = "Signal exec " + UUID.randomUUID();
         MvcResult result = mockMvc.perform(post("/api/connectors")

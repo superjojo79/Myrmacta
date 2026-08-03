@@ -70,10 +70,12 @@ class ConnectorPersistenceIT {
     }
 
     @Test
-    void webhookIdempotency_storesAndReplaysWithinTtl() {
+    void webhookIdempotency_claimsCompletesAndReplaysWithinTtl() {
         UUID instanceId = UUID.randomUUID();
-        idempotencyStore.store(instanceId, "delivery-1", 202);
+        assertThat(idempotencyStore.beginOrGetCompleted(instanceId, "delivery-1")).isEmpty();
+        idempotencyStore.complete(instanceId, "delivery-1", 202);
         assertThat(idempotencyStore.findResponseStatus(instanceId, "delivery-1")).contains(202);
+        assertThat(idempotencyStore.beginOrGetCompleted(instanceId, "delivery-1")).contains(202);
         assertThat(idempotencyStore.findResponseStatus(instanceId, "missing")).isEmpty();
     }
 }

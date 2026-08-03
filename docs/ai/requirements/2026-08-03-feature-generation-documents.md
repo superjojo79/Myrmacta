@@ -8,6 +8,7 @@ created: 2026-08-03
 updated: 2026-08-03
 stakeholder_decisions: 2026-08-03
 phase2: 2026-08-03
+phase2_stakeholder_confirm: 2026-08-03
 ---
 
 # Requirements & Problem Understanding
@@ -228,10 +229,13 @@ métier.
 | Q14 | Playwright | **Différé** — non-goal |
 | Q15 | Purge orphelins / §22 | **Différé** — TODO §22 |
 | Q16 | M2M `API_SERVICE` | **Différé** — A7 |
-| Q17 | Bypass admin download | **Clos Phase 2** — A12 (aligné dossiers) |
-| Q18 | Codes HTTP resolve/type | **Clos Phase 2** — A4 (404 / 409) |
-| Q19 | API create élément | **Clos Phase 2** — A11 (non) |
-| Q20 | Format `dossierId` | **Clos Phase 2** — A10 |
+| Q17 | Bypass admin download | **Clos stakeholder** — option 1 = A12 |
+| Q18 | Codes HTTP resolve/type | **Clos stakeholder** — option 1 = A4 (404 / 409) |
+| Q19 | API create élément | **Clos stakeholder** — option 1 = A11 (non) |
+| Q20 | Unicité `storage_ref` | **Clos stakeholder** — option 1 = A15 |
+| Q21 | Format `dossierId` | **Assumption** — A10 (UUID string, pattern workflow) |
+| Q22 | Contexte Flowable | **Assumption** — A9 (`AccessContext.system`) |
+| Q23 | Content-Disposition | **Assumption** — A13 |
 
 ### Décisions actées
 
@@ -252,9 +256,11 @@ métier.
 | D-PREVIEW | Preview | Différé |
 
 **Phase 1 close** (2026-08-03) — décisions Q1–Q12 ; assumptions A1–A8.
-**Phase 2 close** (2026-08-03) — statut `reviewed` ; Q17–Q20 clos ;
-A9–A15 ajoutées (alignement dossiers / delegates / ProblemDetail) ;
-section Alternatives ; mapping HTTP↔Flowable ; success criteria ACL bypass.
+**Phase 2** — première passe docs + écarts ; **reprise stakeholder** :
+Q17–Q20 confirmés explicitement (options 1) ; A9/A10/A13 restent
+assumptions alignées code existant (non bloquantes).
+**Phase 2 close** (2026-08-03) — statut `reviewed` ; A4/A11/A12/A15
+validés stakeholder ; section Alternatives ; mapping HTTP↔Flowable.
 **Phase 3** — revue design (`dev-design`) contre requirements `reviewed`.
 
 ## Sources

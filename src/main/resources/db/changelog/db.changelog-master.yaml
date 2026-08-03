@@ -7,3 +7,5 @@ databaseChangeLog:
       file: db/changelog/changes/003-connector-tables.yaml
   - include:
       file: db/changelog/changes/004-document-template-tables.yaml
+  - include:
+      file: db/changelog/changes/005-dossier-element-tables.yaml

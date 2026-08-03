@@ -1,11 +1,16 @@
 package com.flowforge.infrastructure.config;
 
 import com.flowforge.domain.document.port.in.ActivateDocumentTemplateUseCase;
+import com.flowforge.domain.document.port.in.GenerateDocumentUseCase;
+import com.flowforge.domain.document.port.in.ResolveDocumentTemplateUseCase;
 import com.flowforge.domain.document.port.out.DocumentTemplateRepository;
+import com.flowforge.domain.document.port.out.HtmlTemplateProcessor;
+import com.flowforge.domain.document.port.out.PdfRenderer;
 import com.flowforge.domain.document.port.out.TemplateSyntaxChecker;
 import com.flowforge.domain.document.usecase.ActivateDocumentTemplateUseCaseImpl;
 import com.flowforge.domain.document.usecase.ArchiveDocumentTemplateUseCaseImpl;
 import com.flowforge.domain.document.usecase.CreateDocumentTemplateUseCaseImpl;
+import com.flowforge.domain.document.usecase.GenerateDocumentUseCaseImpl;
 import com.flowforge.domain.document.usecase.GetDocumentTemplateUseCaseImpl;
 import com.flowforge.domain.document.usecase.ListDocumentTemplateUseCaseImpl;
 import com.flowforge.domain.document.usecase.NewDocumentTemplateVersionUseCaseImpl;
@@ -77,5 +82,14 @@ public class DocumentConfig {
     ResolveDocumentTemplateUseCaseImpl resolveDocumentTemplateUseCase(
             TenantProperties tenantProperties, DocumentTemplateRepository repository) {
         return new ResolveDocumentTemplateUseCaseImpl(tenantProperties.id(), repository);
+    }
+
+    @Bean
+    GenerateDocumentUseCase generateDocumentUseCase(
+            ResolveDocumentTemplateUseCase resolveDocumentTemplateUseCase,
+            HtmlTemplateProcessor htmlTemplateProcessor,
+            PdfRenderer pdfRenderer) {
+        return new GenerateDocumentUseCaseImpl(
+                resolveDocumentTemplateUseCase, htmlTemplateProcessor, pdfRenderer);
     }
 }

@@ -1,0 +1,42 @@
+package com.flowforge.infrastructure.web.document;
+
+import com.flowforge.domain.document.model.InvalidTemplateStateException;
+import com.flowforge.domain.document.model.InvalidTemplateSyntaxException;
+import com.flowforge.domain.document.model.TemplateNotFoundException;
+import com.flowforge.domain.document.model.TemplateValidationException;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+@RestControllerAdvice(basePackages = "com.flowforge.infrastructure.web.document")
+public class DocumentTemplateExceptionHandler {
+
+    @ExceptionHandler({
+        TemplateValidationException.class,
+        InvalidTemplateSyntaxException.class,
+        IllegalArgumentException.class,
+        HttpMessageNotReadableException.class
+    })
+    ProblemDetail handleBadRequest(Exception ex) {
+        return problem(HttpStatus.BAD_REQUEST, "Bad request", ex.getMessage());
+    }
+
+    @ExceptionHandler(TemplateNotFoundException.class)
+    ProblemDetail handleNotFound(TemplateNotFoundException ex) {
+        return problem(HttpStatus.NOT_FOUND, "Document template not found", ex.getMessage());
+    }
+
+    @ExceptionHandler({InvalidTemplateStateException.class, DataIntegrityViolationException.class})
+    ProblemDetail handleConflict(Exception ex) {
+        return problem(HttpStatus.CONFLICT, "Document template conflict", ex.getMessage());
+    }
+
+    private static ProblemDetail problem(HttpStatus status, String title, String detail) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
+        problem.setTitle(title);
+        return problem;
+    }
+}

@@ -10,10 +10,11 @@
 >   perdre à la clôture de lifecycle.
 
 **Statut lifecycle (check-status) :** `architecture-hexagonale`, `multi-tenant`,
-`authentification`, `dossiers`, `workflow-engine` sont **Complete**.
-`autorisation-conformite` : implémentation phase 5 livrée (method security +
-`sensitive` meta) — phases 7–9 à clôturer. Les autres features ont des docs
-skeleton / planning non exécuté.
+`authentification`, `dossiers`, `workflow-engine`, `autorisation-conformite`,
+`connecteurs` sont **Complete** (mergés). Prochaine feature démarrée :
+`templates-documents` (phase 1 requirements draft). Les features
+`generation-documents`, `notifications`, `visualisation-workflow`, `frontend`
+restent en docs skeleton / planning non exécuté.
 
 ---
 
@@ -84,19 +85,18 @@ minimale, `ProblemDetail`, gate `TENANT_ADMIN`.
 
 ## 2. Features lifecycle non livrées
 
-Docs `docs/ai/*` initialisées ; planning non exécuté (0 tâche cochée). Ordre
-indicatif aligné sur l’analyse et les dépendances techniques :
+Ordre indicatif aligné sur l’analyse et les dépendances techniques :
 
 | Ordre | Feature | Dépendances / livrable attendu |
 |---|---|---|
 | — | `workflow-engine` | **Complete** (main) |
-| — | `autorisation-conformite` | Phase 5 livrée — method security, rôles V1, `sensitive` meta ; phases 7–9 |
-| 1 | `connecteurs` | Webhooks entrants HMAC, `ConnectorInstance`, DEK/KEK (décisions n° 3 / 4), chaîne sécurité webhooks |
-| 2 | `templates-documents` | Templates Thymeleaf versionnés |
-| 3 | `generation-documents` | PDF + stockage objet via port abstrait (S3/FS — pas MinIO en dur) |
-| 4 | `notifications` | Outbox notifications, webhooks sortants, SSE |
-| 5 | `visualisation-workflow` | Diagramme BPMN / état runtime |
-| 6 | `frontend` | Vue 3 + Pinia + Axios dans `static/` (décision n° 27) |
+| — | `autorisation-conformite` | **Complete** (main) |
+| — | `connecteurs` | **Complete** (main) |
+| 1 | `templates-documents` | Templates Thymeleaf versionnés — **phase 1 draft** (CRUD + resolve) |
+| 2 | `generation-documents` | PDF + stockage objet via port abstrait (S3/FS — pas MinIO en dur) |
+| 3 | `notifications` | Outbox notifications, webhooks sortants, SSE |
+| 4 | `visualisation-workflow` | Diagramme BPMN / état runtime |
+| 5 | `frontend` | Vue 3 + Pinia + Axios dans `static/` (décision n° 27) |
 
 ---
 

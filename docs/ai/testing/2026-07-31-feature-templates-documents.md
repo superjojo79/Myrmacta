@@ -2,6 +2,9 @@
 phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
+status: draft
+created: 2026-08-03
+updated: 2026-08-03
 ---
 
 # Testing Strategy
@@ -9,73 +12,89 @@ description: Define testing approach, test cases, and quality assurance
 ## Test Coverage Goals
 **What level of testing do we aim for?**
 
-- Unit test coverage target (default: 100% of new/changed code)
-- Integration test scope (critical paths + error handling)
-- End-to-end test scenarios (key user journeys)
-- Alignment with requirements/design acceptance criteria
+- **Unitaires domaine :** `TemplateResolver` cascade ; activate archive
+  précédente ; refus PATCH hors DRAFT ; new-version incrémente ;
+  validation blank / taille HTML.
+- **IT H2 MODE=PostgreSQL :** Liquibase `document_template` + index
+  partiel ACTIVE ; MockMvc admin CRUD / activate / archive / resolve ;
+  concurrence activate (contrainte unique).
+- **Régression :** dossiers, connecteurs, workflow, auth BFF, ArchUnit,
+  Jacoco ≥ 80 %.
+- **Hors scope :** Testcontainers PG, Keycloak réel, génération PDF,
+  E2E navigateur, compile Thymeleaf stricte.
+
+Alignement requirements success criteria + design DD-*.
 
 ## Unit Tests
 **What individual components need testing?**
 
-### Component/Module 1
-- [ ] Test case 1: [Description] (covers scenario / branch)
-- [ ] Test case 2: [Description] (covers edge case / error handling)
-- [ ] Additional coverage: [Description]
+### TemplateResolver
+- [ ] Exact `(key, variant, locale)` → hit
+- [ ] Fallback `(key, variant, null)` quand locale absente
+- [ ] Fallback `(key, null, locale)` quand variant absent
+- [ ] Fallback `(key, null, null)` défaut absolu
+- [ ] Aucun ACTIVE → `TemplateNotFoundException`
+- [ ] Ignore DRAFT / ARCHIVED dans la résolution
 
-### Component/Module 2
-- [ ] Test case 1: [Description]
-- [ ] Test case 2: [Description]
-- [ ] Additional coverage: [Description]
+### Activate / archive / new-version
+- [ ] Activate DRAFT → ACTIVE ; précédente ACTIVE → ARCHIVED
+- [ ] Activate non-DRAFT → erreur métier
+- [ ] Archive ACTIVE → ARCHIVED
+- [ ] Archive non-ACTIVE → erreur
+- [ ] New-version depuis ACTIVE/ARCHIVED/DRAFT → nouveau DRAFT version+1
+  (contenu cloné)
+
+### Update / create validation
+- [ ] Create → DRAFT version 1 (ou max+1)
+- [ ] Patch DRAFT OK ; patch ACTIVE/ARCHIVED → rejet
+- [ ] `templateKey` / `htmlContent` blank → rejet
+- [ ] `htmlContent` > 1 MiB → rejet
+
+### Mapper domaine ↔ JPA
+- [ ] Round-trip null variant/locale préservés
+- [ ] Enum status STRING
 
 ## Integration Tests
-**How do we test component interactions?**
+**What end-to-end flows need testing?**
 
-- [ ] Integration scenario 1
-- [ ] Integration scenario 2
-- [ ] API endpoint tests
-- [ ] Integration scenario 3 (failure mode / rollback)
+### MockMvc admin (`DocumentTemplate*ApiTest`)
+- [ ] POST create 201 + GET detail
+- [ ] GET list + filtre `templateKey`
+- [ ] PATCH DRAFT 200 ; PATCH ACTIVE 409
+- [ ] POST activate 200 ; seconde ACTIVE même combinaison impossible
+  (archive auto)
+- [ ] POST archive 200
+- [ ] POST new-version 201 DRAFT
+- [ ] GET resolve cascade 200 / 404
+- [ ] Non `TENANT_ADMIN` → 403 ; anonyme → 401
+- [ ] CSRF manquant sur mutateur → 403
 
-## End-to-End Tests
-**What user flows need validation?**
+### Liquibase / contrainte
+- [ ] Schema `document_template` présent après migrate
+- [ ] Insert deux ACTIVE même combinaison → violation unique (si bypass
+  use case)
 
-- [ ] User flow 1: [Description]
-- [ ] User flow 2: [Description]
-- [ ] Critical path testing
-- [ ] Regression of adjacent features
+## Test Data & Fixtures
 
-## Test Data
-**What data do we use for testing?**
+- Templates HTML minimaux Thymeleaf (`th:text`) en fixtures string
+- `TenantProperties` test = `tenant_dev` (existant)
+- Spring Security Test : `oidcLogin()` + rôle `TENANT_ADMIN`
 
-- Test fixtures and mocks
-- Seed data requirements
-- Test database setup
+## Mocks & tools
 
-## Test Reporting & Coverage
-**How do we verify and communicate test results?**
+- Mockito : repository pour unit resolver / use cases
+- MockMvc + Security test pour API
+- H2 MODE=PostgreSQL + Liquibase (existant)
+- ArchUnit règles hexagone inchangées
 
-- Coverage commands and thresholds (`npm run test -- --coverage`)
-- Coverage gaps (files/functions below 100% and rationale)
-- Links to test reports or dashboards
-- Manual testing outcomes and sign-off
+## Success criteria → scenarios
 
-## Manual Testing
-**What requires human validation?**
-
-- UI/UX testing checklist (include accessibility)
-- Browser/device compatibility
-- Smoke tests after deployment
-
-## Performance Testing
-**How do we validate performance?**
-
-- Load testing scenarios
-- Stress testing approach
-- Performance benchmarks
-
-## Bug Tracking
-**How do we manage issues?**
-
-- Issue tracking process
-- Bug severity levels
-- Regression testing strategy
-
+| Critère requirements | Couverture tests |
+|---|---|
+| Table + index ACTIVE | Liquibase IT / contrainte |
+| Record + adapter + ArchUnit | Unit mapper + `./mvnw verify` |
+| Cascade résolution | Unit TemplateResolver + MockMvc resolve |
+| Une seule ACTIVE | Activate use case + unique index |
+| Surface API admin | MockMvc CRUD / lifecycle |
+| 401 / 403 | MockMvc security |
+| Jacoco ≥ 80 % | `./mvnw verify` |

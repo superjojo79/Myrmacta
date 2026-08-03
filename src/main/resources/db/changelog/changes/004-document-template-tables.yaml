@@ -1,0 +1,113 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-document-template
+      author: flowforge
+      changes:
+        - createTable:
+            tableName: document_template
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_document_template
+                    nullable: false
+              - column:
+                  name: tenant_id
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: template_key
+                  type: varchar(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: variant_key
+                  type: varchar(128)
+              - column:
+                  name: locale
+                  type: varchar(32)
+              - column:
+                  name: label
+                  type: varchar(255)
+              - column:
+                  name: version
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: html_content
+                  type: clob
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_by
+                  type: varchar(255)
+        - createIndex:
+            tableName: document_template
+            indexName: ix_document_template_tenant_key
+            columns:
+              - column:
+                  name: tenant_id
+              - column:
+                  name: template_key
+        - sql:
+            dbms: postgresql
+            splitStatements: true
+            sql: |
+              CREATE UNIQUE INDEX uq_template_active
+              ON document_template (
+                tenant_id,
+                template_key,
+                COALESCE(variant_key, ''),
+                COALESCE(locale, '')
+              )
+              WHERE status = 'ACTIVE';
+              CREATE UNIQUE INDEX uq_template_version
+              ON document_template (
+                tenant_id,
+                template_key,
+                COALESCE(variant_key, ''),
+                COALESCE(locale, ''),
+                version
+              );
+        - sql:
+            dbms: h2
+            splitStatements: true
+            sql: |
+              ALTER TABLE document_template
+              ADD active_template_key varchar(128)
+              GENERATED ALWAYS AS (CASE WHEN status = 'ACTIVE' THEN template_key ELSE NULL END);
+              ALTER TABLE document_template
+              ADD active_variant_key varchar(128)
+              GENERATED ALWAYS AS (CASE WHEN status = 'ACTIVE' THEN COALESCE(variant_key, '') ELSE NULL END);
+              ALTER TABLE document_template
+              ADD active_locale varchar(32)
+              GENERATED ALWAYS AS (CASE WHEN status = 'ACTIVE' THEN COALESCE(locale, '') ELSE NULL END);
+              CREATE UNIQUE INDEX uq_template_active
+              ON document_template (tenant_id, active_template_key, active_variant_key, active_locale);
+              ALTER TABLE document_template
+              ADD ver_variant_key varchar(128)
+              GENERATED ALWAYS AS (COALESCE(variant_key, ''));
+              ALTER TABLE document_template
+              ADD ver_locale varchar(32)
+              GENERATED ALWAYS AS (COALESCE(locale, ''));
+              CREATE UNIQUE INDEX uq_template_version
+              ON document_template (tenant_id, template_key, ver_variant_key, ver_locale, version);

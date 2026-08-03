@@ -2,59 +2,92 @@
 phase: planning
 title: Project Planning & Task Breakdown
 description: Break down work into actionable tasks and estimate timeline
+status: completed
+created: 2026-08-03
+updated: 2026-08-03
+design_aligned: 2026-08-03
+phase4: 2026-08-03
+phase5: 2026-08-03
+phase6: 2026-08-03
 ---
 
 # Project Planning & Task Breakdown
 
+Plan **phase 4–6** — dérivé des docs `requirements` / `design`
+(`reviewed`) et `testing` (`draft` design_aligned).
+
+**Phase 5–6 done** — T1–T10. Traçage `task` CLI : **indisponible**.
+Preuve T9 : `./mvnw verify` → **315 / 0**, Jacoco instructions **87,60 %**.
+
 ## Milestones
 **What are the major checkpoints?**
 
-- [ ] Milestone 1: [Description]
-- [ ] Milestone 2: [Description]
-- [ ] Milestone 3: [Description]
+- [x] **M1 — Domaine & ports** : models, exceptions, ports admin/resolve/checker
+- [x] **M2 — Persistence** : Liquibase 004 dual PG/H2 + JPA adapter + ranked query
+- [x] **M3 — Use cases & checker** : CRUD lifecycle + Thymeleaf syntax checker
+- [x] **M4 — HTTP API** : controller admin + resolve, security, ProblemDetail
+- [x] **M5 — Preuves & docs** : MockMvc/IT, Jacoco ≥ 80 %, notes implementation
 
 ## Task Breakdown
 **What specific work needs to be done?**
 
-### Phase 1: Foundation
-- [ ] Task 1.1: [Description]
-- [ ] Task 1.2: [Description]
+Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
-### Phase 2: Core Features
-- [ ] Task 2.1: [Description]
-- [ ] Task 2.2: [Description]
+### M1 — Domaine & ports
 
-### Phase 3: Integration & Polish
-- [ ] Task 3.1: [Description]
-- [ ] Task 3.2: [Description]
+- [x] **T1. Models domaine document**
+  - **Outcome :** models + enums + exceptions.
+  - **Validation :** `DocumentTemplateModelsTest` 9/0.
 
-## Dependencies
-**What needs to happen in what order?**
+- [x] **T2. Ports in/out**
+  - **Outcome :** repository, syntax checker, ports in admin/resolve.
+  - **Validation :** `DocumentTemplatePortsContractTest` 1/0.
 
-- Task dependencies and blockers
-- External dependencies (APIs, services, etc.)
-- Team/resource dependencies
+### M2 — Persistence
 
-## Timeline & Estimates
-**When will things be done?**
+- [x] **T3. Liquibase `004-document-template-tables`**
+  - **Validation :** `DocumentTemplateSchemaIT` 3/0.
 
-- Estimated effort per task/phase
-- Target dates for milestones
-- Buffer for unknowns
+- [x] **T4. JPA entity + adapter + ranked resolve**
+  - **Validation :** MapperTest 2/0 ; PersistenceIT 3/0.
 
-## Risks & Mitigation
-**What could go wrong?**
+### M3 — Use cases & checker
 
-- Technical risks
-- Resource risks
-- Dependency risks
-- Mitigation strategies
+- [x] **T5. ThymeleafTemplateSyntaxChecker**
+  - **Validation :** `ThymeleafTemplateSyntaxCheckerTest` 3/0.
 
-## Resources Needed
-**What do we need to succeed?**
+- [x] **T6. Use cases admin lifecycle**
+  - **Validation :** `DocumentTemplateUseCasesTest` (partie lifecycle).
 
-- Team members and roles
-- Tools and services
-- Infrastructure
-- Documentation/knowledge
+- [x] **T7. TemplateResolver + Resolve use case**
+  - **Validation :** UseCasesTest resolve + PersistenceIT ranked.
 
+### M4 — HTTP API
+
+- [x] **T8. DocumentTemplateController**
+  - **Validation :** `DocumentTemplateApiTest` 4/0.
+
+### M5 — Preuves & docs
+
+- [x] **T9. IT sécurité + régression**
+  - **Validation :** `./mvnw verify` 315/0 ; Jacoco 87,60 % ; ArchUnit OK.
+
+- [x] **T10. Docs implementation + sync planning**
+  - **Validation :** lint feature OK.
+
+## Traceability testing → tasks
+
+| Scénario testing | Tâche(s) | Statut |
+|---|---|---|
+| Resolver scores 1–4 | T4, T7 | done |
+| SyntaxChecker | T5 | done |
+| Activate/archive/new-version | T6, T8 | done |
+| Liste includeContent | T6, T8 | done |
+| Security 401/403/CSRF | T8, T9 | done |
+| Jacoco ≥ 80 % | T9 | done |
+
+## Progress summary
+
+Feature **templates-documents** implémentée bout-en-bout (CRUD versionné +
+resolve ranked + parse activate). Prochaine phase lifecycle : **7 — Check
+Implementation**.

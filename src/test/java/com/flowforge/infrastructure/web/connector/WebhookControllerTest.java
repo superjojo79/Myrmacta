@@ -1,12 +1,14 @@
 package com.flowforge.infrastructure.web.connector;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.flowforge.domain.connector.model.ConnectorInstanceData;
@@ -131,6 +133,68 @@ class WebhookControllerTest {
                 .andExpect(status().isTooManyRequests());
     }
 
+    @Test
+    void receive_validHmacDispatchesAndStoresAccepted() throws Exception {
+        ConnectorInstanceData instance = hmacInstance(true);
+        when(instances.findByIdAndTenantId(INSTANCE_ID, "tenant_dev")).thenReturn(Optional.of(instance));
+        when(idempotencyStore.findResponseStatus(INSTANCE_ID, "idem-hmac")).thenReturn(Optional.empty());
+        byte[] body = "{\"event\":\"created\"}".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+
+        mockMvc.perform(post("/api/webhooks/{instanceId}", INSTANCE_ID)
+                        .header("Idempotency-Key", "idem-hmac")
+                        .header("X-Signature-256", "sha256=" + hmacHex("hmac-secret", body))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isAccepted());
+
+        verify(runtime).onIncomingEvent(eq(instance), any());
+        verify(idempotencyStore).store(INSTANCE_ID, "idem-hmac", 202);
+    }
+
+    @Test
+    void receive_invalidHmacReturns401WithoutDispatch() throws Exception {
+        when(instances.findByIdAndTenantId(INSTANCE_ID, "tenant_dev"))
+                .thenReturn(Optional.of(hmacInstance(true)));
+
+        mockMvc.perform(post("/api/webhooks/{instanceId}", INSTANCE_ID)
+                        .header("Idempotency-Key", "idem-bad")
+                        .header("X-Signature-256", "sha256=deadbeef")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"event\":\"created\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401));
+
+        verify(runtime, never()).onIncomingEvent(any(), any());
+        verify(idempotencyStore, never()).store(any(), any(), anyInt());
+    }
+
+    @Test
+    void receive_disabledInstanceReturns404() throws Exception {
+        when(instances.findByIdAndTenantId(INSTANCE_ID, "tenant_dev"))
+                .thenReturn(Optional.of(instance(false)));
+
+        mockMvc.perform(post("/api/webhooks/{instanceId}", INSTANCE_ID)
+                        .header("Idempotency-Key", "idem-dis")
+                        .header("X-Webhook-Token", "secret")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isNotFound());
+
+        verify(runtime, never()).onIncomingEvent(any(), any());
+    }
+
+    @Test
+    void receive_unknownInstanceReturns404() throws Exception {
+        when(instances.findByIdAndTenantId(INSTANCE_ID, "tenant_dev")).thenReturn(Optional.empty());
+
+        mockMvc.perform(post("/api/webhooks/{instanceId}", INSTANCE_ID)
+                        .header("Idempotency-Key", "idem-miss")
+                        .header("X-Webhook-Token", "secret")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isNotFound());
+    }
+
     private static ConnectorInstanceData instance(boolean enabled) {
         return new ConnectorInstanceData(
                 INSTANCE_ID,
@@ -141,5 +205,28 @@ class WebhookControllerTest {
                 Map.of(
                         "webhookAuthType", "SHARED_SECRET_TOKEN",
                         "webhookSecret", "secret"));
+    }
+
+    private static ConnectorInstanceData hmacInstance(boolean enabled) {
+        return new ConnectorInstanceData(
+                INSTANCE_ID,
+                "tenant_dev",
+                "Claims HMAC",
+                "http-rest",
+                enabled,
+                Map.of(
+                        "webhookAuthType", "HMAC_SHA256",
+                        "webhookSecret", "hmac-secret"));
+    }
+
+    private static String hmacHex(String secret, byte[] body) {
+        try {
+            javax.crypto.Mac mac = javax.crypto.Mac.getInstance("HmacSHA256");
+            mac.init(new javax.crypto.spec.SecretKeySpec(
+                    secret.getBytes(java.nio.charset.StandardCharsets.UTF_8), "HmacSHA256"));
+            return java.util.HexFormat.of().formatHex(mac.doFinal(body));
+        } catch (Exception ex) {
+            throw new IllegalStateException(ex);
+        }
     }
 }

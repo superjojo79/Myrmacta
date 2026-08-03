@@ -6,6 +6,7 @@ status: reviewed
 reviewed: 2026-08-03
 created: 2026-08-03
 updated: 2026-08-03
+main_integrated: 2026-08-03 # PR #18 TX2 + DossierAccessGuard
 ---
 
 # System Design & Architecture
@@ -112,7 +113,8 @@ domaine pur · JPA JSON `fieldDefinitions` · H2 IT · ArchUnit · BFF existant
 | `DossierConfig` | Bean `TenantAdminGuard` injecté dans use cases admin |
 | Controllers admin types/ACL | `@PreAuthorize("hasRole('TENANT_ADMIN')")` ; plus de guard infra |
 | `WorkflowTypeConfigController` | `@PreAuthorize("hasAnyRole('TENANT_ADMIN','WORKFLOW_ADMIN')")` sur mutateurs ; **supprimer** `requireWorkflowAdmin` |
-| Controllers dossiers + `DossierWorkflow*` + `WorkflowTask*` | **Aucune** annotation rôle ; policy seule |
+| Controllers dossiers + `DossierWorkflow*` + `WorkflowTask*` | **Aucune** annotation rôle ; ACL via `DossierAccessPolicy` / `DossierAccessGuard` (PR #18) |
+| `infrastructure.web.dossier.DossierAccessGuard` | **Existant (PR #18)** — `requireViewable` / `requireEditable` ; à **conserver** (ne pas réintroduire le couple find+assert dupliqué) |
 | `infrastructure.web.dossier.TenantAdminGuard` | **Supprimé** |
 | `SecurityConfig` | Ajouter `@EnableMethodSecurity` |
 | Advice method security | Bridging Spring deny → 403 ProblemDetail (voir D-403) |
@@ -176,9 +178,9 @@ Aucun type / bean dans cette tranche.
 | `POST` / `GET` / `PATCH /api/dossiers/**` | *(aucune)* | `DossierAccessPolicy` |
 | `POST` / `PATCH /api/workflow-type-configs` | `hasAnyRole('TENANT_ADMIN','WORKFLOW_ADMIN')` | *(aucune — use case sans AccessContext)* |
 | `GET /api/workflow-type-configs` (+ `/{key}`) | *(aucune)* — session BFF | — |
-| `POST /api/dossiers/{id}/workflows` | *(aucune)* | `assertCanEdit` |
-| `GET /api/dossiers/{id}/workflows` | *(aucune)* | `assertCanView` |
-| `POST /api/workflow-tasks/{id}/complete` | *(aucune)* | `assertCanEdit` |
+| `POST /api/dossiers/{id}/workflows` | *(aucune)* | `DossierAccessGuard.requireEditable` |
+| `GET /api/dossiers/{id}/workflows` | *(aucune)* | `DossierAccessGuard.requireViewable` |
+| `POST /api/workflow-tasks/{id}/complete` | *(aucune)* | `DossierAccessGuard.requireEditable` |
 
 SpEL : `hasRole` / `hasAnyRole` (préfixe `ROLE_` géré par Spring).
 
@@ -321,5 +323,15 @@ Hors scope. La SPA pourra lire `sensitive` plus tard — non imposé.
 | Template README | Sections + coverage + review notes |
 | Questions architecture bloquantes | **Aucune** |
 
-**Prochaine phase :** exécution du plan (phase 5) — planning T1–T9 déjà draft ;
-propager D-WF-* / D-403 dans planning si besoin mineur avant implémentation.
+### Intégration main (PR #18 — 2026-08-03)
+
+Avant phase 5 : `origin/main` fusionné (`fix(workflow): TX2 atomique +
+simplifications`). Impacts utiles pour cette feature :
+
+- **`DossierAccessGuard`** factorise load+ACL sur start/history/complete —
+  T5 ne doit **pas** le défaire.
+- Exceptions typées not-found workflow (`WorkflowTypeConfigNotFoundException`,
+  etc.) — handlers déjà alignés ; D-403 reste centré sur les denials **Spring**.
+- `requireWorkflowAdmin` toujours présent sur type-config — cible T5 inchangée.
+
+**Prochaine phase :** exécution du plan (phase 5) — planning `ready`.

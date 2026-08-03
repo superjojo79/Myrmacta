@@ -7,6 +7,7 @@ created: 2026-08-03
 updated: 2026-08-03
 design_aligned: 2026-08-03
 phase4: 2026-08-03
+main_integrated: 2026-08-03 # PR #18
 ---
 
 # Project Planning & Task Breakdown
@@ -19,6 +20,11 @@ Plan initial **phase 4** — dérivé des docs `requirements` / `design` /
 **9 tâches d’implémentation (T1–T9), 4 milestones.** Aucun bloqueur.
 Traçage `task` CLI indisponible. Branche :
 `cursor/autorisation-conformite-f54c`.
+
+**Main intégré (PR #18) :** TX2 atomique, `WorkflowVariables` helper,
+exceptions not-found typées, **`DossierAccessGuard`**. Contrainte phase 5 :
+conserver `DossierAccessGuard` sur controllers workflow instance ; ne pas
+réintroduire le couple find+assert.
 
 **Prochaines actions phase 5 (ordre) :** T1 + T2 en parallèle → T3 ; T4 → T5
 → T6 ; T7 après T1 ; puis T8 → T9.
@@ -87,12 +93,13 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
     - mutateurs workflow-type-configs →
       `@PreAuthorize("hasAnyRole('TENANT_ADMIN','WORKFLOW_ADMIN')")`
     - **aucune** annotation rôle sur dossiers / start / history / complete
-      (D-WF-INST)
+      (D-WF-INST) ; **conserver** `DossierAccessGuard` (PR #18)
     - suppression `infrastructure.web.dossier.TenantAdminGuard` + injections
     - suppression `requireWorkflowAdmin`
   - **Depends on :** T4
   - **Validation :** MockMvc 403/2xx ; `rg TenantAdminGuard infrastructure/web`
-    vide (sauf absence) ; pas de `requireWorkflowAdmin`.
+    vide (sauf absence) ; pas de `requireWorkflowAdmin` ;
+    `DossierAccessGuard` toujours référencé par workflow controllers.
   - **Tests liés :** IT — Method security MockMvc (MANAGER, WORKFLOW_ADMIN
     sur types, TENANT_ADMIN OK, ACL, workflow-config).
   - **Req :** surface livrable ; Q7–Q9.

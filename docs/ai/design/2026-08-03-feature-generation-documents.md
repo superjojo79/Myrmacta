@@ -7,6 +7,7 @@ created: 2026-08-03
 updated: 2026-08-03
 requirements_aligned: 2026-08-03
 stakeholder_decisions: 2026-08-03
+note: awaiting-phase3-review
 ---
 
 # System Design & Architecture
@@ -14,7 +15,7 @@ stakeholder_decisions: 2026-08-03
 ## Architecture Overview
 **What is the high-level system structure?**
 
-Tranche **generation-documents** (requirements `draft`) : pipeline PDF
+Tranche **generation-documents** (requirements `reviewed`) : pipeline PDF
 Thymeleaf → Flying Saucer, port stockage S3/FS, deux JavaDelegates Flowable,
 `DossierElement` `PRODUCED_DOC`, API generate (mémoire) + download (ACL).
 
@@ -175,8 +176,10 @@ Pas de header `storageRef`. Resolve cascade ACTIVE uniquement.
 Échec resolve → 404 ; échec rendu/Thymeleaf → 400.
 
 **GET `/api/dossier-elements/{id}/content`** — authentifié ;
-charge élément → dossier → `DossierAccessPolicy` exige `VIEW` (implique
-aussi `EDIT`) ; `retrieve` storage → `200 application/pdf`.  
+charge élément → dossier → `DossierAccessPolicy.assertCanView` (ACL
+`VIEW`/`EDIT`, bypass `TENANT_ADMIN` / `WORKFLOW_ADMIN` / System — **A12**) ;
+`retrieve` storage → `200 application/pdf` + `Content-Disposition`
+attachment (**A13**).  
 403 si ACL KO ; 404 si élément / storage absent ; 409 si type ≠
 `PRODUCED_DOC` ou `storageRef` null.
 
@@ -189,13 +192,15 @@ aussi `EDIT`) ; `retrieve` storage → `200 application/pdf`.
 
 ### Flowable — `attachGeneratedDocumentTask`
 
-1. Résout dossier via `dossierId` (variable process — pattern workflow
-   existant).
+1. Résout dossier via `dossierId` UUID string (**A10** — pattern
+   `UpdateDossierStatusDelegate`).
 2. Lit `generatedDocumentId` ; vérifie présence objet (retrieve ou exists).
-3. `AddDossierElementUseCase` → `PRODUCED_DOC`, label **A3**,
+3. `AddDossierElementUseCase` + `AccessContext.system("flowable-delegate")`
+   (**A9**) → `PRODUCED_DOC`, label **A3**,
    `workflowStepId = currentActivityId`, `addedBy = "system"`.
 4. Metadata recommandée : `templateKey` / `contentType=application/pdf`
    si disponibles.
+5. Pas d’HTTP create élément (**A11**).
 
 Erreurs → exceptions métier propagées Flowable (échec activité).
 
@@ -233,7 +238,7 @@ Erreurs → exceptions métier propagées Flowable (échec activité).
 | DD-PORT-SIG | `store(tenantId, contentType, bytes)` | Cloisonnement tenant ; revue § storage |
 | DD-NO-REG | Pas de table generated_document | Élément = registre métier V1 |
 | DD-HTTP-MEM | POST generate sans store | Évite orphelins (D-HTTP-STORE) |
-| DD-ACL-VIEW | Download exige permission VIEW | D-AUTHZ 3 ; `implies` existant |
+| DD-ACL-VIEW | Download via `assertCanView` + bypass admin | D-AUTHZ 3 ; A12 ; `implies` existant |
 | DD-FS-DEFAULT | `app.storage.type=filesystem` défaut IT/dev | A6 |
 | DD-S3-NAME | Adapter nommé S3, pas Minio* | DEFERRED §0 |
 | DD-ENUM-V1 | `ElementType` V1 = PRODUCED_DOC only | Évite faux chemins ATTACHMENT |

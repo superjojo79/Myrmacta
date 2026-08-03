@@ -5,6 +5,7 @@ import com.flowforge.domain.dossier.port.in.GrantDossierTypeAccessUseCase;
 import com.flowforge.domain.dossier.port.in.RevokeDossierTypeAccessUseCase;
 import com.flowforge.infrastructure.config.TenantProperties;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,27 +22,24 @@ public class DossierTypeAclController {
     private final GrantDossierTypeAccessUseCase grantDossierTypeAccessUseCase;
     private final RevokeDossierTypeAccessUseCase revokeDossierTypeAccessUseCase;
     private final AccessContextFactory accessContextFactory;
-    private final TenantAdminGuard tenantAdminGuard;
 
     public DossierTypeAclController(
             TenantProperties tenantProperties,
             GrantDossierTypeAccessUseCase grantDossierTypeAccessUseCase,
             RevokeDossierTypeAccessUseCase revokeDossierTypeAccessUseCase,
-            AccessContextFactory accessContextFactory,
-            TenantAdminGuard tenantAdminGuard) {
+            AccessContextFactory accessContextFactory) {
         this.tenantProperties = tenantProperties;
         this.grantDossierTypeAccessUseCase = grantDossierTypeAccessUseCase;
         this.revokeDossierTypeAccessUseCase = revokeDossierTypeAccessUseCase;
         this.accessContextFactory = accessContextFactory;
-        this.tenantAdminGuard = tenantAdminGuard;
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('TENANT_ADMIN')")
     public ResponseEntity<Void> grant(
             @PathVariable String code,
             @RequestBody GrantDossierTypeAccessRequest request,
             Authentication authentication) {
-        tenantAdminGuard.requireTenantAdmin(authentication);
         AccessContext.User actor = accessContextFactory.user(authentication);
         if (request.permission() == null) {
             throw new IllegalArgumentException("permission is required");
@@ -57,11 +55,11 @@ public class DossierTypeAclController {
     }
 
     @DeleteMapping("/{userId}")
+    @PreAuthorize("hasRole('TENANT_ADMIN')")
     public ResponseEntity<Void> revoke(
             @PathVariable String code,
             @PathVariable String userId,
             Authentication authentication) {
-        tenantAdminGuard.requireTenantAdmin(authentication);
         revokeDossierTypeAccessUseCase.revoke(
                 tenantProperties.id(),
                 code,

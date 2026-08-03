@@ -1,6 +1,7 @@
 package com.flowforge.infrastructure.config;
 
 import com.flowforge.domain.dossier.DossierAccessPolicy;
+import com.flowforge.domain.dossier.TenantAdminGuard;
 import com.flowforge.domain.dossier.port.in.CreateDossierTypeUseCase;
 import com.flowforge.domain.dossier.port.in.CreateDossierUseCase;
 import com.flowforge.domain.dossier.port.in.GetDossierTypeUseCase;
@@ -30,18 +31,25 @@ import org.springframework.context.annotation.Configuration;
 public class DossierConfig {
 
     @Bean
+    TenantAdminGuard tenantAdminGuard() {
+        return new TenantAdminGuard();
+    }
+
+    @Bean
     DossierAccessPolicy dossierAccessPolicy(DossierTypeAclRepository aclRepository) {
         return new DossierAccessPolicy(aclRepository);
     }
 
     @Bean
-    CreateDossierTypeUseCase createDossierTypeUseCase(DossierTypeRepository typeRepository) {
-        return new CreateDossierTypeUseCaseImpl(typeRepository);
+    CreateDossierTypeUseCase createDossierTypeUseCase(
+            DossierTypeRepository typeRepository, TenantAdminGuard tenantAdminGuard) {
+        return new CreateDossierTypeUseCaseImpl(typeRepository, tenantAdminGuard);
     }
 
     @Bean
-    UpdateDossierTypeUseCase updateDossierTypeUseCase(DossierTypeRepository typeRepository) {
-        return new UpdateDossierTypeUseCaseImpl(typeRepository);
+    UpdateDossierTypeUseCase updateDossierTypeUseCase(
+            DossierTypeRepository typeRepository, TenantAdminGuard tenantAdminGuard) {
+        return new UpdateDossierTypeUseCaseImpl(typeRepository, tenantAdminGuard);
     }
 
     @Bean
@@ -61,13 +69,15 @@ public class DossierConfig {
     @Bean
     GrantDossierTypeAccessUseCase grantDossierTypeAccessUseCase(
             DossierTypeRepository typeRepository,
-            DossierTypeAclRepository aclRepository) {
-        return new GrantDossierTypeAccessUseCaseImpl(typeRepository, aclRepository);
+            DossierTypeAclRepository aclRepository,
+            TenantAdminGuard tenantAdminGuard) {
+        return new GrantDossierTypeAccessUseCaseImpl(typeRepository, aclRepository, tenantAdminGuard);
     }
 
     @Bean
-    RevokeDossierTypeAccessUseCase revokeDossierTypeAccessUseCase(DossierTypeAclRepository aclRepository) {
-        return new RevokeDossierTypeAccessUseCaseImpl(aclRepository);
+    RevokeDossierTypeAccessUseCase revokeDossierTypeAccessUseCase(
+            DossierTypeAclRepository aclRepository, TenantAdminGuard tenantAdminGuard) {
+        return new RevokeDossierTypeAccessUseCaseImpl(aclRepository, tenantAdminGuard);
     }
 
     @Bean

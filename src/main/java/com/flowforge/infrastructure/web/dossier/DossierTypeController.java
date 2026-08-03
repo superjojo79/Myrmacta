@@ -11,6 +11,7 @@ import com.flowforge.infrastructure.config.TenantProperties;
 import java.net.URI;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -30,7 +31,6 @@ public class DossierTypeController {
     private final GetDossierTypeUseCase getDossierTypeUseCase;
     private final ListDossierTypesUseCase listDossierTypesUseCase;
     private final AccessContextFactory accessContextFactory;
-    private final TenantAdminGuard tenantAdminGuard;
 
     public DossierTypeController(
             TenantProperties tenantProperties,
@@ -38,22 +38,20 @@ public class DossierTypeController {
             UpdateDossierTypeUseCase updateDossierTypeUseCase,
             GetDossierTypeUseCase getDossierTypeUseCase,
             ListDossierTypesUseCase listDossierTypesUseCase,
-            AccessContextFactory accessContextFactory,
-            TenantAdminGuard tenantAdminGuard) {
+            AccessContextFactory accessContextFactory) {
         this.tenantProperties = tenantProperties;
         this.createDossierTypeUseCase = createDossierTypeUseCase;
         this.updateDossierTypeUseCase = updateDossierTypeUseCase;
         this.getDossierTypeUseCase = getDossierTypeUseCase;
         this.listDossierTypesUseCase = listDossierTypesUseCase;
         this.accessContextFactory = accessContextFactory;
-        this.tenantAdminGuard = tenantAdminGuard;
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('TENANT_ADMIN')")
     public ResponseEntity<DossierTypeResponse> create(
             @RequestBody CreateDossierTypeRequest request,
             Authentication authentication) {
-        tenantAdminGuard.requireTenantAdmin(authentication);
         AccessContext.User actor = accessContextFactory.user(authentication);
         DossierType type = createDossierTypeUseCase.create(
                 new CreateDossierTypeUseCase.CreateDossierTypeCommand(
@@ -71,11 +69,11 @@ public class DossierTypeController {
     }
 
     @PatchMapping("/{code}")
+    @PreAuthorize("hasRole('TENANT_ADMIN')")
     public ResponseEntity<DossierTypeResponse> update(
             @PathVariable String code,
             @RequestBody UpdateDossierTypeRequest request,
             Authentication authentication) {
-        tenantAdminGuard.requireTenantAdmin(authentication);
         AccessContext.User actor = accessContextFactory.user(authentication);
         DossierType existing = getDossierTypeUseCase.getByCode(tenantProperties.id(), code, actor);
         DossierType type = updateDossierTypeUseCase.update(

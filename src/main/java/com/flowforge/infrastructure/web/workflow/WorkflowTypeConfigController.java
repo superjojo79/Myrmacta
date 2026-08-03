@@ -1,7 +1,5 @@
 package com.flowforge.infrastructure.web.workflow;
 
-import com.flowforge.domain.dossier.model.AccessContext;
-import com.flowforge.domain.dossier.model.AccessDeniedException;
 import com.flowforge.domain.workflow.model.WorkflowTypeConfig;
 import com.flowforge.domain.workflow.model.WorkflowTypeConfigNotFoundException;
 import com.flowforge.domain.workflow.port.in.GetWorkflowTypeConfigUseCase;
@@ -12,6 +10,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -42,10 +41,11 @@ class WorkflowTypeConfigController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('TENANT_ADMIN','WORKFLOW_ADMIN')")
     ResponseEntity<WorkflowTypeConfigResponse> create(
             @RequestBody WorkflowTypeConfigRequest request,
             Authentication authentication) {
-        requireWorkflowAdmin(authentication);
+        accessContextFactory.requireOidcPrincipal(authentication);
         WorkflowTypeConfig saved = saveUseCase.create(request.toDomain(tenantProperties.id(), UUID.randomUUID(), null));
         return ResponseEntity
                 .created(URI.create("/api/workflow-type-configs/" + saved.workflowKey()))
@@ -53,11 +53,12 @@ class WorkflowTypeConfigController {
     }
 
     @PatchMapping("/{workflowKey}")
+    @PreAuthorize("hasAnyRole('TENANT_ADMIN','WORKFLOW_ADMIN')")
     WorkflowTypeConfigResponse update(
             @PathVariable String workflowKey,
             @RequestBody WorkflowTypeConfigRequest request,
             Authentication authentication) {
-        requireWorkflowAdmin(authentication);
+        accessContextFactory.requireOidcPrincipal(authentication);
         WorkflowTypeConfig existing = getUseCase.getByKey(workflowKey)
                 .orElseThrow(() -> new WorkflowTypeConfigNotFoundException("Workflow type config not found: " + workflowKey));
         return WorkflowTypeConfigResponse.from(saveUseCase.update(
@@ -66,22 +67,15 @@ class WorkflowTypeConfigController {
 
     @GetMapping
     List<WorkflowTypeConfigResponse> list(Authentication authentication) {
-        accessContextFactory.user(authentication);
+        accessContextFactory.requireOidcPrincipal(authentication);
         return getUseCase.list().stream().map(WorkflowTypeConfigResponse::from).toList();
     }
 
     @GetMapping("/{workflowKey}")
     WorkflowTypeConfigResponse get(@PathVariable String workflowKey, Authentication authentication) {
-        accessContextFactory.user(authentication);
+        accessContextFactory.requireOidcPrincipal(authentication);
         return getUseCase.getByKey(workflowKey)
                 .map(WorkflowTypeConfigResponse::from)
                 .orElseThrow(() -> new WorkflowTypeConfigNotFoundException("Workflow type config not found: " + workflowKey));
-    }
-
-    private void requireWorkflowAdmin(Authentication authentication) {
-        AccessContext.User user = accessContextFactory.user(authentication);
-        if (!user.hasRole("TENANT_ADMIN") && !user.hasRole("WORKFLOW_ADMIN")) {
-            throw new AccessDeniedException("WORKFLOW_ADMIN or TENANT_ADMIN role required");
-        }
     }
 }

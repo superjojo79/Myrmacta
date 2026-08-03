@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.flowforge.domain.dossier.TenantAdminGuard;
 import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.AccessDeniedException;
 import com.flowforge.domain.dossier.model.DossierNotFoundException;
@@ -32,7 +33,8 @@ class GrantDossierTypeAccessUseCaseImplTest {
     void setUp() {
         typeRepository = mock(DossierTypeRepository.class);
         aclRepository = mock(DossierTypeAclRepository.class);
-        useCase = new GrantDossierTypeAccessUseCaseImpl(typeRepository, aclRepository);
+        useCase = new GrantDossierTypeAccessUseCaseImpl(
+                typeRepository, aclRepository, new TenantAdminGuard());
     }
 
     @Test

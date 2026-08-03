@@ -39,4 +39,9 @@ public record DossierType(
                 allowUnknownFields,
                 fieldDefinitions);
     }
+
+    /** Metadata only — true if any field is marked sensitive (no redaction yet). */
+    public boolean hasSensitiveFields() {
+        return fieldDefinitions.stream().anyMatch(FieldDefinition::isSensitive);
+    }
 }

@@ -6,6 +6,7 @@ status: draft
 created: 2026-08-03
 updated: 2026-08-03
 design_aligned: 2026-08-03
+phase3_sync: 2026-08-03
 ---
 
 # Testing Strategy
@@ -34,40 +35,50 @@ Aligné requirements success criteria + design DD-*.
 **What individual components need testing?**
 
 ### GenerateDocumentUseCase
-- [ ] Resolve ACTIVE + variables → appelle PdfRenderer avec XHTML
+- [ ] Resolve ACTIVE → `HtmlTemplateProcessor` → `PdfRenderer`
 - [ ] Template introuvable → exception métier
-- [ ] Thymeleaf evaluation error → exception métier
+- [ ] Erreur processor → exception métier
 - [ ] Ne appelle **pas** DocumentStoragePort
+- [ ] Domaine sans dépendance Thymeleaf/jsoup/AWS (ArchUnit)
+
+### HtmlTemplateProcessor (Thymeleaf adapter)
+- [ ] Évalue `th:text` avec variables
+- [ ] Expression invalide → erreur métier
 
 ### PdfRenderer (Flying Saucer)
-- [ ] HTML/XHTML minimal → bytes commencent par `%PDF`
+- [ ] HTML5 simple (jsoup interne) → bytes `%PDF`
 - [ ] Document multi-pages simple (smoke)
 - [ ] Pool/ThreadLocal : deux appels successifs OK
 
 ### DocumentStoragePort — filesystem
 - [ ] store → retrieve round-trip
+- [ ] `exists` true/false
 - [ ] storageRef préfixe tenant (A2)
 - [ ] Path traversal (`../`) → rejet
 - [ ] retrieve clé inconnue → exception
 
 ### DocumentStoragePort — S3 (mock client)
 - [ ] putObject / getObject mapping storageRef
+- [ ] `exists` via headObject (mock)
 - [ ] contentType `application/pdf` propagé
 
+### Variable filter (DQ2)
+- [ ] Strip `dossierId` / `generatedDocumentId` / `documentType`… avant merge
+- [ ] HTTP variables sans clés plateforme inchangées
+
 ### AddDossierElementUseCase
-- [ ] PRODUCED_DOC + storageRef → persisté
+- [ ] PRODUCED_DOC + storageRef + metadata DQ4 → persisté
 - [ ] dossier inconnu → erreur
 - [ ] type autre que PRODUCED_DOC refusé V1 (si tenté)
 
 ### DocumentGenerationTask
-- [ ] Variables D-VARS → generate + store → `generatedDocumentId` set
+- [ ] Variables D-VARS filtrées → generate + store → `generatedDocumentId`
 - [ ] `documentType` absent → échec
-- [ ] Propagate variables d’exécution au merge
 
 ### AttachGeneratedDocumentTask
-- [ ] `dossierId` + `generatedDocumentId` → élément PRODUCED_DOC
+- [ ] `exists` false → échec (pas d’insert)
+- [ ] `dossierId` + ref existante → élément PRODUCED_DOC + metadata DQ4
 - [ ] Label A3 contient activityName
-- [ ] Variable storage absente → échec
 - [ ] `workflowStepId` = activityId
 
 ## Integration Tests

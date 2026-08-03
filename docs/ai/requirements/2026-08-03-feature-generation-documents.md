@@ -261,7 +261,8 @@ Q17–Q20 confirmés explicitement (options 1) ; A9/A10/A13 restent
 assumptions alignées code existant (non bloquantes).
 **Phase 2 close** (2026-08-03) — statut `reviewed` ; A4/A11/A12/A15
 validés stakeholder ; section Alternatives ; mapping HTTP↔Flowable.
-**Phase 3** — revue design (`dev-design`) contre requirements `reviewed`.
+**Phase 3 close** — design `reviewed` (DQ1–DQ5). **Phase 4** — plan
+(`dev-planning`).
 
 ## Sources
 

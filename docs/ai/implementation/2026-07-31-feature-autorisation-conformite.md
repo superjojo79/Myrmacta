@@ -15,13 +15,17 @@ phase9: 2026-08-03
 
 **Clos.** Holistic review OK — prêt à merge.
 
+Preuve fraîche (2026-08-03) : `JAVA_HOME=…/jdk-25.0.4+7 ./mvnw verify`
+→ **199** tests / 0 fail / exit 0 ; Jacoco instructions **~90 %** ; ArchUnit OK.
+Traçage `task` CLI indisponible.
+
 ### Findings
 
 | ID | Sévérité | Fichier | Issue | Recommandation |
 |---|---|---|---|---|
 | — | Blocking | — | Aucun | — |
-| DEV-WF-UNUSED | Low | `WorkflowTypeConfigController` | `accessContextFactory.user(auth)` appelé sans utiliser le retour (résidu après retrait de `requireWorkflowAdmin`) | Retirer l’appel ou garder explicitement pour valider OIDC principal |
-| DEV-SENS-HELPER | Nice | `FieldDefinition` | `isSensitive()` non utilisé en prod | OK pour API future ; sinon retirer |
+| DEV-WF-UNUSED | Low | `WorkflowTypeConfigController` | `accessContextFactory.user(auth)` sans usage du retour (create/update/list/get) — side-effect : valide principal OIDC | Retirer si redondant avec session BFF, ou commenter l’intention |
+| DEV-SENS-HELPER | Nice | `FieldDefinition` | `isSensitive()` surtout tests | OK pour API future ; sinon retirer |
 | DEV-SENS-BOOL | Low (accepté) | `FieldDefinition` | `Boolean` + coerce vs `boolean` | Déjà documenté |
 
 ### Checklist finale
@@ -30,7 +34,7 @@ phase9: 2026-08-03
 - [x] Pas de gap logique majeur
 - [x] Sécurité : double garde types/ACL ; pas d’annotation rôle sur dossiers/start/complete ; `DossierAccessGuard` conservé
 - [x] Intégrations BFF / policy / JSON fieldDefinitions
-- [x] Tests couvrent changements (199 / Jacoco 90,3 %)
+- [x] Tests couvrent changements (199 / Jacoco ~90 %)
 - [x] Docs + TODO §19/§23 + DEFERRED stockage
 - [x] Rollback safe (pas de migration SQL irreversible)
 - [x] Breaking in-repo géré (ctor confort `FieldDefinition`)
@@ -146,5 +150,6 @@ Nouveaux tests phase 8 : `CreateDossierTypeUseCaseImplTest`,
 
 ## Known Issues / Follow-ups
 
-- Phase 9 : code review
-- Follow-ups produit : masquage/exports `sensitive` ; port S3/FS
+- Follow-ups non bloquants phase 9 : DEV-WF-UNUSED, DEV-SENS-HELPER
+- Produit : masquage/exports `sensitive` ; port S3/FS
+- Lifecycle **Complete** — prêt à merge (`cursor/autorisation-conformite-f54c`)

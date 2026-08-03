@@ -15,8 +15,8 @@ phase8: 2026-08-03
 ## Phase 9 — Code Review
 
 **Clos.** Aucun bloqueur ; follow-ups low/nice documentés (DEV-WF-UNUSED,
-DEV-SENS-HELPER). Preuve : `./mvnw verify` → 199 / 0 ; Jacoco 90,3 %.
-Lifecycle **Complete**.
+DEV-SENS-HELPER). Preuve fraîche : `./mvnw verify` → **199** / 0 ; Jacoco
+**~90 %** ; ArchUnit OK. Lifecycle **Complete**.
 
 ## Phase 8 — synthèse
 

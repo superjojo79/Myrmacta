@@ -65,9 +65,9 @@ ne peuvent pas démarrer de processus de façon durable.
 - **Durcissement** (**D-HARDEN = 2**, **D-DEFAULTS = 1**) : max-body **1 MiB**,
   rate **120/min/instance** (in-memory).
 - **SERVICE** (**D-SIGNAL = 2**, **D-SERVICE-INVOKE = 2**) :
-  `ConnectorServiceTask` + `POST /api/connectors/{id}/execute`.
+  `ConnectorServiceTask` + execute dual-URL (**DD-EXECUTE-ROUTE**).
 - **Authz execute** (**D-EXECUTE-AUTH = 3**) : BFF `TENANT_ADMIN` **et**
-  chaîne M2M `@Order(1)` `client_credentials` + `API_SERVICE`.
+  M2M `API_SERVICE` via chemins séparés (phase 3).
 - Tests unitaires + MockMvc/IT H2 ; ArchUnit ; Jacoco ≥ 80 %.
 
 ### Surface API (acceptation)
@@ -76,11 +76,12 @@ ne peuvent pas démarrer de processus de façon durable.
 |---|---|---|
 | GET | `/api/connector-definitions` | `TENANT_ADMIN` — catalogue types |
 | GET | `/api/connectors` | `TENANT_ADMIN` — liste **hors soft-deleted** |
-| POST | `/api/connectors` | `TENANT_ADMIN` — créer |
+| POST | `/api/connectors` | `TENANT_ADMIN` — créer ; nom unique parmi actives |
 | GET | `/api/connectors/{id}` | `TENANT_ADMIN` — détail (secrets masqués) ; soft-deleted → **404** |
 | PATCH | `/api/connectors/{id}` | `TENANT_ADMIN` — update / enable ; **restore** soft-deleted (`deletedAt=null`) |
 | DELETE | `/api/connectors/{id}` | `TENANT_ADMIN` — **soft delete** (`deletedAt` + désactivation) |
-| POST | `/api/connectors/{id}/execute` | BFF `TENANT_ADMIN` **ou** M2M `API_SERVICE` ; soft-deleted → 404 |
+| POST | `/api/connectors/{id}/execute` | BFF `TENANT_ADMIN` + CSRF ; soft-deleted → 404 |
+| POST | `/api/m2m/connectors/{id}/execute` | M2M JWT `API_SERVICE` ; soft-deleted → 404 |
 | POST | `/api/webhooks/{instanceId}` | Chaîne webhook ; HMAC ou `X-Webhook-Token` ; **`Idempotency-Key` requis** |
 
 Mutateurs BFF : CSRF. Webhooks / M2M : chaînes sans session/CSRF.
@@ -139,9 +140,11 @@ Anonyme hors webhook → 401. Auth webhook KO → **401**. Erreurs :
 6. Instance `enabled=false` ou soft-deleted → webhook **404**.
 7. Mapping avec `existingDossierReference` → résolution système + outbox.
 8. `flowable-signal` SERVICE via ServiceTask ou `/execute` → signal émis.
-9. `/execute` : admin BFF OK ; M2M `API_SERVICE` OK ; autre rôle 403.
+9. Execute BFF `/api/connectors/{id}/execute` OK ; M2M
+   `/api/m2m/connectors/{id}/execute` OK ; mauvais rôle / tenant → 401/403.
 10. DELETE → soft-deleted hors liste ; PATCH restore → visible / webhook OK.
-11. Boot IT : tables `connector_instance` (+ `deleted_at`) + DEK + idempotency.
+11. Nom dupliqué parmi actives → 409 ; réemploi après soft delete OK.
+12. Boot IT : tables `connector_instance` (+ `deleted_at`) + DEK + idempotency.
 
 ### Edge cases
 
@@ -158,7 +161,7 @@ Anonyme hors webhook → 401. Auth webhook KO → **401**. Erreurs :
 - [ ] `Idempotency-Key` requis ; TTL 24h ; max-body 1 MiB ; rate 120/min.
 - [ ] Mapping déclaratif (D-DEFAULTS) → 1..N ; create + existing ref.
 - [ ] Outbox alimentée ; aucun `RuntimeService.start` dans la TX webhook.
-- [ ] `ConnectorServiceTask` + `/execute` (BFF + M2M) pour signal.
+- [ ] `ConnectorServiceTask` + dual execute (BFF + `/api/m2m/...`) pour signal.
 - [ ] Chaînes Security : M2M `@Order(1)`, webhook `@Order(2)`, BFF `@Order(3)`.
 - [ ] ArchUnit + Jacoco ≥ 80 % ; suites existantes vertes.
 - [ ] Docs design / testing alignés ; non-goals explicites.
@@ -220,7 +223,10 @@ Anonyme hors webhook → 401. Auth webhook KO → **401**. Erreurs :
 | Q14 | Code HTTP auth webhook KO | **Clos** — D-WH-FAIL 1 |
 | Q15 | Header shared secret | **Clos** — D-TOKEN-HDR 1 |
 | Q16 | Delete / restore | **Clos** — D-DELETE 2 + D-UNDELETE 3 |
-| Q17 | Accroche Flowable signal TRIGGER | **Phase 3 design** — détail listener |
+| Q17 | Accroche Flowable signal TRIGGER | **Clos** — DD-SIGNAL-HOOK (`FlowableEventListener`) |
+| Q18 | Routes execute BFF vs M2M | **Clos** — DD-EXECUTE-ROUTE dual URL |
+| Q19 | Impl JSONPath | **Clos** — DD-JSONPATH parser maison |
+| Q20 | Unicité name | **Clos** — DD-NAME-UQ unique partiel |
 
 ### Décisions actées
 
@@ -243,10 +249,13 @@ Anonyme hors webhook → 401. Auth webhook KO → **401**. Erreurs :
 | D-SIGNAL | flowable-signal | TRIGGER + SERVICE |
 | D-SERVICE-INVOKE | Invoke SERVICE | ServiceTask + /execute |
 | D-EXECUTE-AUTH | Authz execute | BFF admin + M2M API_SERVICE |
+| DD-EXECUTE-ROUTE | Chemins execute | BFF + `/api/m2m/...` |
+| DD-SIGNAL-HOOK | TRIGGER signal | FlowableEventListener global |
+| DD-JSONPATH | Mapping paths | Parser maison |
+| DD-NAME-UQ | Name unique | Partiel WHERE deleted_at IS NULL |
 
 **Phase 2 close** (2026-08-03) — statut `reviewed`.
-
-**Suite :** Phase 3 — Review Design (`dev-design`) ; Q17 accroche signal.
+**Phase 3** — design `reviewed` ; requirements API alignée dual execute.
 
 ## Sources
 

@@ -6,6 +6,7 @@ status: draft
 created: 2026-08-03
 updated: 2026-08-03
 requirements_aligned: 2026-08-03
+design_aligned: 2026-08-03
 ---
 
 # Testing Strategy
@@ -72,6 +73,16 @@ Alignement requirements success criteria + design DD-*.
 - [ ] Instance disabled → rejet
 - [ ] Type non-SERVICE → rejet
 
+### SimpleJsonPathMapper
+- [ ] `$.a.b` et `$.items[0].x` résolus
+- [ ] Chemin invalide → erreur métier
+- [ ] Pas de support filtres avancés (documenté)
+
+### FlowableSignalEventListener (TRIGGER)
+- [ ] Signal name match → runtime appelé
+- [ ] Instance soft-deleted / disabled ignorée
+- [ ] Signal name sans instance → no-op
+
 ### Registry
 - [ ] `http-rest` et `flowable-signal` présents
 - [ ] Type inconnu → `UnknownConnectorException`
@@ -93,6 +104,7 @@ Alignement requirements success criteria + design DD-*.
 - [ ] DELETE soft-delete : hors liste ; GET → 404
 - [ ] PATCH restore soft-deleted → visible à nouveau (`TENANT_ADMIN`)
 - [ ] Non-admin PATCH restore → 403
+- [ ] Nom dupliqué actif → 409 ; réemploi après soft delete OK
 
 ### MockMvc — webhook
 - [ ] HMAC happy (`X-Signature-256`) → 202 ; outbox rows = N
@@ -105,11 +117,12 @@ Alignement requirements success criteria + design DD-*.
 - [ ] Rate limit → 429
 - [ ] Existing dossier ref → outbox sans create (seed dossier)
 
-### MockMvc / Security — execute
-- [ ] BFF `TENANT_ADMIN` → 200 signal mock/spy
-- [ ] M2M JWT `API_SERVICE` + tenant OK → 200
+### MockMvc / Security — execute (dual URL)
+- [ ] BFF `POST /api/connectors/{id}/execute` `TENANT_ADMIN` + CSRF → 200
+- [ ] BFF non-admin → 403
+- [ ] M2M `POST /api/m2m/connectors/{id}/execute` JWT `API_SERVICE` + tenant OK → 200
 - [ ] M2M mauvais tenant / sans rôle → 401/403
-- [ ] User BFF non-admin → 403
+- [ ] M2M path n’exige pas CSRF ; BFF path l’exige
 
 ### Flowable smoke (si câblé)
 - [ ] Process classpath avec `ConnectorServiceTask` émet signal

@@ -2,7 +2,8 @@
 phase: design
 title: System Design & Architecture
 description: Define the technical architecture, components, and data models
-status: draft
+status: reviewed
+reviewed: 2026-08-03
 created: 2026-08-03
 updated: 2026-08-03
 requirements_aligned: 2026-08-03
@@ -13,9 +14,10 @@ requirements_aligned: 2026-08-03
 ## Architecture Overview
 **What is the high-level system structure?**
 
-Tranche **connecteurs** alignée requirements `reviewed` (D-SCOPE…D-DEFAULTS) :
-registry + instances chiffrées, webhooks `http-rest`, `flowable-signal`
-TRIGGER/SERVICE, outbox producteur, chaînes Security M2M + webhook.
+Tranche **connecteurs** alignée requirements `reviewed` + décisions phase 3
+(DD-EXECUTE-ROUTE, DD-SIGNAL-HOOK, DD-JSONPATH, DD-NAME-UQ) : registry,
+instances chiffrées, webhooks `http-rest`, `flowable-signal` TRIGGER/SERVICE,
+outbox producteur, chaînes Security M2M + webhook + BFF.
 
 ```mermaid
 flowchart TB
@@ -27,7 +29,7 @@ flowchart TB
 
   subgraph app["Instance FlowForge — connecteurs"]
     WSEC[Webhook SecurityChain Order2]
-    MSEC[M2M SecurityChain Order1]
+    MSEC[M2M SecurityChain Order1 /api/m2m/**]
     BFF[BFF SecurityChain Order3]
     WC[WebhookController]
     AC[ConnectorAdminController]
@@ -39,6 +41,8 @@ flowchart TB
     REG[ConnectorRegistry]
     CIP[ConnectorSecretCipher]
     ST[ConnectorServiceTask]
+    SEL[FlowableSignalEventListener]
+    MAP[SimpleJsonPathMapper]
     OX[(outbox_event)]
     CI[(connector_instance)]
     DEK[(tenant_connector_dek)]
@@ -57,6 +61,9 @@ flowchart TB
     EC --> REG
     ST --> REG
     ST --> FL
+    SEL --> FL
+    SEL --> RT
+    REG --> MAP
     CIP --> DEK
     IDEM --> IDEMT
   end
@@ -72,7 +79,9 @@ flowchart TB
 ### Stack
 
 Java 25 · Spring Boot 4.1 · Flowable 8 · Spring Security (3 chaînes) ·
+`spring-boot-starter-oauth2-resource-server` (**à ajouter** pour M2M) ·
 Spring Data JPA · Liquibase · H2 MODE=PostgreSQL IT · ArchUnit.
+**Pas** de dépendance Jayway JsonPath (DD-JSONPATH).
 
 ### Responsabilités
 
@@ -80,11 +89,11 @@ Spring Data JPA · Liquibase · H2 MODE=PostgreSQL IT · ArchUnit.
 |---|---|
 | `domain.connector` | Models, ports in/out, use cases admin + trigger + execute |
 | `infrastructure.connector.registry` | `ConnectorRegistry` + discovery |
-| `infrastructure.connector.builtin` | `http-rest`, `flowable-signal` |
-| `infrastructure.persistence.connector` | JPA + cipher decrypt on load |
-| `infrastructure.web.connector` | Webhook / admin / execute controllers |
-| `infrastructure.security` | M2M `@Order(1)`, webhook `@Order(2)`, BFF `@Order(3)` |
-| `infrastructure.flowable` | `ConnectorServiceTask` JavaDelegate |
+| `infrastructure.connector.builtin` | `http-rest`, `flowable-signal` + `SimpleJsonPathMapper` |
+| `infrastructure.persistence.connector` | JPA + cipher + soft-delete filters |
+| `infrastructure.web.connector` | Webhook / admin / execute (dual mapping) |
+| `infrastructure.security` | M2M `@Order(1)` `/api/m2m/**`, webhook `@Order(2)`, BFF `@Order(3)` |
+| `infrastructure.flowable` | `ConnectorServiceTask` + `FlowableSignalEventListener` |
 
 ---
 
@@ -94,192 +103,120 @@ Spring Data JPA · Liquibase · H2 MODE=PostgreSQL IT · ArchUnit.
 
 ```text
 ConnectorInstanceData(id, tenantId, name, connectorType, enabled, config)
+  // deletedAt = concern persistence ; repos ne renvoient pas soft-deleted
+  // sauf findIncludingDeleted pour PATCH restore
 WorkflowTriggerEvent(processKey, dossierTypeCode, dossierFields, variables,
                      existingDossierReference?)
 ConfigField(name, label, type, required, defaultValue, options, helpText)
 WebhookAuthType: HMAC_SHA256 | SHARED_SECRET_TOKEN
-  (IP_ALLOWLIST réservé, non implémenté → reject config)
 ```
 
-`config` (Map) porte notamment pour `http-rest` TRIGGER :
+`config` (`http-rest` / signal) :
 
 | Clé | Rôle |
 |---|---|
 | `webhookAuthType` | `HMAC_SHA256` \| `SHARED_SECRET_TOKEN` |
-| `webhookSecret` | PASSWORD — HMAC ou token |
-| `processKey` | Défaut process (surchargeable par règle) |
-| `dossierTypeCode` | Type à créer si pas de ref existante |
-| `mapping` | Objet déclaratif — voir ci-dessous |
-| `signalName` | Pour `flowable-signal` (émission / écoute) |
+| `webhookSecret` | PASSWORD |
+| `processKey` / `dossierTypeCode` | Défauts create |
+| `mapping` | Objet déclaratif DD-MAP |
+| `signalName` | `flowable-signal` |
 
-### Mapping déclaratif (`mapping`) — **DD-MAP**
+### Mapping — **DD-MAP** + **DD-JSONPATH**
 
-```json
-{
-  "mode": "array_or_object",
-  "itemsPath": "$",
-  "fields": {
-    "claimNumber": "$.claim.id",
-    "amount": "$.claim.amount"
-  },
-  "variables": {
-    "source": "$.meta.source"
-  },
-  "existingDossierReferencePath": "$.dossierRef",
-  "processKeyPath": "$.processKey",
-  "dossierTypeCodePath": null
-}
-```
-
-- Corps objet → 1 événement ; tableau (ou `itemsPath`) → N.
-- Si `existingDossierReferencePath` résout une valeur non vide →
-  `GetDossierUseCase` + `AccessContext.system("connector-trigger")` ;
-  sinon `CreateDossierUseCase` avec fields mappés.
-- Chemins : sous-ensemble JSONPath simple (`$.a.b`, index optionnel) —
-  **pas** de script/SpEL (D-MAP).
+Schéma inchangé (requirements D-DEFAULTS). Résolution chemins :
+**parser minimal maison** — `$`, `.field`, `[n]` uniquement ; pas de filtres
+`?(...)`, ni scripts.
 
 ### Persistance
 
-| Table | Colonnes clés |
+| Table | Colonnes / contraintes |
 |---|---|
-| `connector_instance` | id UUID PK, tenant_id, name, connector_type, enabled, config jsonb, deleted_at nullable, created_at, updated_at |
-| `tenant_connector_dek` | tenant_id PK, dek_wrapped bytea/text, key_version, updated_at |
-| `webhook_idempotency` | instance_id, idem_key, created_at, response_status ; PK (instance_id, idem_key) ; TTL 24h |
-
-Champs `PASSWORD` du JSON `config` chiffrés AES-GCM au repos (DEK tenant).
+| `connector_instance` | id, tenant_id, name, connector_type, enabled, config jsonb, deleted_at, created_at, updated_at ; **unique partiel** `(tenant_id, name) WHERE deleted_at IS NULL` (**DD-NAME-UQ**) |
+| `tenant_connector_dek` | tenant_id PK, dek_wrapped, key_version, updated_at |
+| `webhook_idempotency` | (instance_id, idem_key) PK, created_at, response_status ; TTL logique 24h |
 
 ---
 
 ## Crypto (D-CRYPTO)
 
-```mermaid
-sequenceDiagram
-  participant Adm as Admin API
-  participant Adp as JpaAdapter
-  participant Cip as EnvMasterKeyCipher
-  participant DB as tenant_connector_dek / connector_instance
-
-  Adm->>Adp: save(config clair)
-  Adp->>Cip: encryptPasswordFields(tenantId, config)
-  Cip->>DB: ensure DEK (wrap master-key)
-  Cip-->>Adp: config chiffré
-  Adp->>DB: persist connector_instance
-  Note over Cip: VaultTransitCipher @Profile stub / hors path V1
-```
-
-- Property : `app.connector.crypto.master-key` (Base64 32 bytes) — **obligatoire**
-  hors profil test (test = clé fixe documentée).
-- Rotation DEK / Vault : interfaces prêtes, use case rotation **hors scope**.
+Inchangé phase 2 : port + `EnvMasterKeyCipher` ; master-key Base64 32 bytes ;
+Vault stub hors path. Password fields AES-GCM via DEK tenant.
 
 ---
 
 ## Webhook path
 
-```mermaid
-sequenceDiagram
-  participant C as Client
-  participant RL as MaxBody+RateLimit
-  participant WC as WebhookController
-  participant A as Authenticator
-  participant I as Idempotency
-  participant RT as TriggerRuntime
-  participant OX as Outbox
-
-  C->>RL: POST /api/webhooks/{id} + Idempotency-Key
-  RL-->>C: 413 / 429 si refus
-  RL->>WC: rawBody
-  WC->>A: HMAC ou shared secret
-  A-->>WC: OK / WebhookAuthenticationException
-  WC->>I: find(instance, key)
-  alt hit
-    I-->>C: même 202
-  else miss
-    WC->>RT: onIncomingEvent
-    RT->>OX: append N payloads
-    RT-->>I: store key
-    WC-->>C: 202 Accepted
-  end
-```
-
-- Instance absente / `enabled=false` → **404**.
-- Auth KO → **401** ProblemDetail (pas de détail oracle) — D-WH-FAIL.
-- Soft-deleted / disabled → **404**.
-- Sans `Idempotency-Key` → **400** (D-IDEM-HDR — pas d’alias `X-Delivery-Id`).
-- Shared secret : header **`X-Webhook-Token`** (D-TOKEN-HDR).
-- Après commit TX → 202 corps vide (ou `{accepted:true}` minimal).
-
-### Rate limit / body — **DD-HARDEN**
-
-| Property | Défaut | Effet |
-|---|---|---|
-| `app.connector.webhook.max-body-bytes` | `1048576` (1 MiB) | 413 |
-| `app.connector.webhook.rate-limit-per-minute` | `120` | 429 / instance |
-| `app.connector.webhook.idempotency-ttl` | `24h` | purge / rejet expire |
-
-Compteur rate limit : `ConcurrentHashMap` in-memory (A14).
+Inchangé : max-body 1 MiB, rate 120/min, `Idempotency-Key` requis,
+HMAC `X-Signature-256`, token `X-Webhook-Token`, auth KO **401**,
+disabled/soft-deleted **404**, ACK **202** après commit outbox.
 
 ---
 
-## Security chains
+## Security chains — **DD-EXECUTE-ROUTE**
 
 | Order | Matcher | Session / CSRF | Auth |
 |---|---|---|---|
-| 1 | `/api/connectors/*/execute` (et futurs M2M) | Stateless | JWT resource server `client_credentials` ; `tenant_id` == `TenantProperties.id()` ; role `API_SERVICE` |
-| 2 | `/api/webhooks/**` | Stateless | Aucune session ; auth métier HMAC/token |
-| 3 | Other | BFF + CSRF | OIDC existant |
+| 1 | `/api/m2m/**` | Stateless | JWT resource server `client_credentials` ; `tenant_id` == `TenantProperties.id()` ; role `API_SERVICE` |
+| 2 | `/api/webhooks/**` | Stateless | Auth métier HMAC/token (pas OIDC) |
+| 3 | Other (dont `/api/connectors/**`) | BFF + CSRF | OIDC ; execute BFF = `TENANT_ADMIN` |
 
-Admin `/api/connectors/**` (hors execute) et `/api/connector-definitions` :
-chaîne BFF + `@PreAuthorize("hasRole('TENANT_ADMIN')")`.
+**Deux URLs execute** (même use case) :
+
+| Path | Chaîne | Authz |
+|---|---|---|
+| `POST /api/connectors/{id}/execute` | BFF Order 3 | `TENANT_ADMIN` + CSRF |
+| `POST /api/m2m/connectors/{id}/execute` | M2M Order 1 | JWT `API_SERVICE` |
+
+Admin catalogue / CRUD : BFF + `@PreAuthorize("hasRole('TENANT_ADMIN')")`.
+
+```mermaid
+flowchart LR
+  BFF_EX["/api/connectors/id/execute"] --> UC[ExecuteConnectorUseCase]
+  M2M_EX["/api/m2m/connectors/id/execute"] --> UC
+  UC --> REG[Registry ServiceConnector]
+```
 
 ---
 
-## flowable-signal
+## flowable-signal — **DD-SIGNAL-HOOK**
 
 ### TRIGGER
 
-Écoute / subscription runtime : adaptateur qui, sur signal Flowable nommé
-(`signalName` config), construit un payload minimal et appelle
-`ConnectorTriggerRuntime` (même outbox). Détail d’accroche Flowable
-(`RuntimeService` signal listener vs event listener) — implémentation avec
-smoke test.
+Bean `FlowableSignalEventListener` enregistré sur le moteur (event dispatcher
+Flowable) :
+
+1. Filtre les événements liés aux **signaux** (activity/signal fired —
+   type exact validé à l’impl + smoke).
+2. Extrait le **nom de signal**.
+3. Charge les `ConnectorInstance` enabled non soft-deleted de type
+   `flowable-signal` dont `config.signalName` matche.
+4. Pour chacune : construit un payload minimal (variables d’exécution
+   disponibles) → mapping config ou event fixe → `ConnectorTriggerRuntime`
+   (outbox only).
+
+Idempotence TRIGGER signal : hors `Idempotency-Key` HTTP — dédup optionnelle
+par `(signalName, executionId, instanceId)` **nice-to-have** ; V1 accepte
+rejeu moteur (documenté). Suivi outbox / collision = déjà géré relais.
 
 ### SERVICE
 
-`execute(instance, inputParams)` :
+`RuntimeService.signalEventReceived` (ou API Flowable 8 équivalente) avec
+`signalName` config / override body ; `ConnectorServiceTask` lit
+`connectorInstanceId` process variable.
 
-- Lit `signalName` (+ `executionId` / `processInstanceId` / variables depuis
-  `inputParams`).
-- Émet via `RuntimeService.signalEventReceived` (ou API Flowable 8
-  équivalente).
-- Retourne map résultat (`signaled: true`, nom).
-
-`ConnectorServiceTask` : résout `connectorInstanceId` depuis variables
-process, charge instance (tenant), caste `ServiceConnector`, merge résultats
-en variables.
+Smoke BPMN : process qui **émet** un signal (SERVICE) et/ou déclenche
+l’événement consommé par le listener (TRIGGER) — au moins un chemin IT.
 
 ---
 
 ## API Design
 
-### Admin create/patch body
+### Admin
 
-```json
-{
-  "name": "Claims inbound",
-  "connectorType": "http-rest",
-  "enabled": true,
-  "config": { "...": "..." }
-}
-```
+Bodies create/patch inchangés. Soft delete / PATCH restore (phase 2).
+Conflit nom actif → **409** (unique partiel).
 
-GET détail : `config.webhookSecret` → `"********"` (ou omission +
-`secretConfigured: true`). Soft-deleted → 404. Liste exclut soft-deleted.
-
-DELETE = soft delete (`deleted_at=now()`, `enabled=false`). Restore =
-PATCH effaçant `deleted_at` (et typiquement `enabled=true`) — `TENANT_ADMIN`
-uniquement (D-DELETE / D-UNDELETE).
-
-### Execute body
+### Execute body (BFF et M2M)
 
 ```json
 {
@@ -295,15 +232,16 @@ uniquement (D-DELETE / D-UNDELETE).
 
 | Composant | Responsabilité |
 |---|---|
-| `ConnectorRegistry` | Index `type → definition` |
-| `HttpRestTriggerConnector` | Parse + mapping → events |
+| `ConnectorRegistry` | Index type → definition |
+| `HttpRestTriggerConnector` | Mapping + events |
+| `SimpleJsonPathMapper` | Parser `$` / `.` / `[n]` |
 | `FlowableSignalConnector` | TRIGGER+SERVICE |
-| `ConnectorTriggerRuntime` | resolve/create dossier + outbox |
-| `EnvMasterKeyCipher` | AES-GCM + DEK wrap |
-| `HmacWebhookAuthenticator` / `SharedSecretWebhookAuthenticator` | Auth |
-| `WebhookIdempotencyStore` | Dédup |
-| `WebhookBodyLimitFilter` / `WebhookRateLimitFilter` | Hardening |
-| Controllers | HTTP + ProblemDetail |
+| `FlowableSignalEventListener` | Accroche moteur → runtime |
+| `ConnectorTriggerRuntime` | Dossier + outbox |
+| `EnvMasterKeyCipher` | AES-GCM + DEK |
+| Authenticators + idempotency + filters | Webhook harden |
+| `ConnectorExecutionController` | Dual `@RequestMapping` BFF + M2M |
+| Controllers admin / webhook | ProblemDetail |
 
 ---
 
@@ -311,41 +249,56 @@ uniquement (D-DELETE / D-UNDELETE).
 
 | Id | Décision | Notes |
 |---|---|---|
-| DD-MAP | JSONPath simple déclaratif | Pas SpEL |
-| DD-HARDEN | Properties max-body + rate/min | In-memory |
-| DD-MASK | Masquage secrets lecture | Jamais clair API |
-| DD-404 | Disabled / soft-deleted → 404 | Anti-oracle |
-| DD-SOFT | Soft delete + PATCH restore | Pas de purge V1 |
-| DD-M2M | Resource server JWT Order(1) | Claim tenant_id |
-| DD-CIPHER | Interface + Env impl | Vault stub profile |
-| DD-SIGNAL-HOOK | Listener Flowable → runtime | Smoke IT — Q17 |
-| DD-HEADERS | HMAC `X-Signature-256` ; token `X-Webhook-Token` ; `Idempotency-Key` | Phase 2 |
+| DD-MAP | JSONPath déclaratif | Pas SpEL |
+| DD-JSONPATH | Parser maison minimal | Pas Jayway |
+| DD-HARDEN | 1 MiB / 120/min / 24h | In-memory rate |
+| DD-MASK | Secrets masqués GET | |
+| DD-404 | Disabled / soft-deleted → 404 | |
+| DD-SOFT | Soft delete + PATCH restore | |
+| DD-NAME-UQ | Unique partiel name | WHERE deleted_at IS NULL |
+| DD-EXECUTE-ROUTE | Dual URL BFF + `/api/m2m/...` | Évite conflit chaînes |
+| DD-M2M | Resource server Order 1 | Dep oauth2-resource-server |
+| DD-CIPHER | Env master-key | Vault stub |
+| DD-SIGNAL-HOOK | FlowableEventListener global | Filtre signalName |
+| DD-HEADERS | X-Signature-256 / X-Webhook-Token / Idempotency-Key | |
+
+### Alternatives écartées (phase 3)
+
+| Sujet | Écarté | Pourquoi |
+|---|---|---|
+| Execute une URL auth composite | Complexe Security | Dual URL plus clair |
+| Listener BPMN-only signal | Couverture partielle | Listener global retenu |
+| Jayway JsonPath | Dep + surface | Parser maison suffit |
+| Unique name strict | Bloque réemploi après soft delete | Unique partiel |
 
 ---
 
 ## Non-Functional Requirements
 
-- **Sécurité :** triple chaîne ; secrets chiffrés ; pas de log de config
-  déchiffrée complète.
-- **Fiabilité :** ACK après commit outbox ; idempotence retries.
-- **Perf :** 1 MiB body max ; 120 req/min/instance défaut.
-- **Ops :** master-key obligatoire prod ; doc limitation multi-pod rate limit.
+- **Sécurité :** 3 chaînes disjointes par matcher ; resource-server M2M ;
+  secrets chiffrés ; pas de log config claire complète.
+- **Fiabilité :** ACK après commit outbox ; idempotence HTTP webhooks.
+- **Perf :** bornes D-DEFAULTS.
+- **Ops :** `app.connector.crypto.master-key` obligatoire hors test ;
+  rate limit multi-pod best-effort.
 
 ---
 
 ## Requirements coverage
 
-| Requirement / décision | Design |
+| Requirement | Design |
 |---|---|
-| D-SCOPE + builtins | Registry + http-rest + flowable-signal |
-| D-CRYPTO | Cipher port + env + DEK table |
-| D-ADMIN | PreAuthorize TENANT_ADMIN |
-| D-WEBHOOK-AUTH | HMAC + shared secret authenticators |
-| D-MAP | mapping JSON config |
+| D-SCOPE builtins | Registry + http-rest + flowable-signal |
+| D-CRYPTO | Cipher + DEK table |
+| D-ADMIN / soft delete / restore | Admin API + deleted_at + PATCH |
+| D-WEBHOOK-AUTH / headers / 401 | Authenticators + DD-HEADERS |
+| D-MAP / D-DEFAULTS | mapping + SimpleJsonPathMapper |
 | D-HARDEN | filters + properties |
-| D-TARGET | runtime create + existing ref |
-| D-IDEM | webhook_idempotency table |
-| D-SIGNAL / invoke / auth | ServiceTask + execute + M2M+BFF |
+| D-TARGET | runtime create + existing |
+| D-IDEM / D-IDEM-HDR | webhook_idempotency + header requis |
+| D-SIGNAL / invoke / auth | Listener + ServiceTask + dual execute |
+| D-EXECUTE-AUTH | DD-EXECUTE-ROUTE dual paths |
+| D-NAME (implicite) | DD-NAME-UQ |
 
 ---
 
@@ -353,14 +306,19 @@ uniquement (D-DELETE / D-UNDELETE).
 
 | # | Item | Disposition |
 |---|---|---|
-| O1 | Dialecto JSONPath exact (lib vs parser maison) | Tranché à l’impl — préférer parser minimal maison si dep lourde |
-| O2 | Accroche exacte listener signal Flowable 8 | Tranché à l’impl + smoke |
-| O3 | Purge job idempotency | Nice — TTL au read suffit V1 |
-| O4 | Matcher Ant exact M2M execute | `/api/connectors/*/execute` |
+| O1 | JSONPath impl | **Clos** — DD-JSONPATH 1 |
+| O2 | Accroche signal | **Clos** — DD-SIGNAL-HOOK 1 |
+| O3 | Purge job idempotency | **Différé** — TTL au read V1 |
+| O4 | Matcher M2M | **Clos** — `/api/m2m/**` |
+| O5 | Type d’événement Flowable exact | **Impl** — valider sur Flowable 8 + smoke |
+| O6 | Dédup TRIGGER signal (executionId) | **Nice** — hors V1 strict |
+
+**Phase 3 close** (2026-08-03) — statut `reviewed`.
+
+**Suite :** Phase 4 — Create Initial Plan (`dev-planning`).
 
 ## References
 
-- `analysis doc/06-connecteurs.md`
-- Requirements `2026-07-31-feature-connecteurs.md`
+- Requirements `2026-07-31-feature-connecteurs.md` (`reviewed`)
+- `analysis doc/06-connecteurs.md`, `03-authentification.md`
 - Design `workflow-engine` (outbox / TriggerOutboxPayload)
-- Security follow-ups authentification (chaînes 1/2)

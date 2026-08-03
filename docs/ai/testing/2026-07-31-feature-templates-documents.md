@@ -3,11 +3,10 @@ phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
 status: draft
-phase5_evidence: 2026-08-03
-phase5_evidence: 2026-08-03
 created: 2026-08-03
 updated: 2026-08-03
 design_aligned: 2026-08-03
+phase5_evidence: 2026-08-03
 ---
 
 # Testing Strategy

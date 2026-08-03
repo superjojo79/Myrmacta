@@ -47,9 +47,9 @@ Alignement requirements success criteria + design DD-*.
 - [ ] Aucun appel `WorkflowEnginePort.start` / RuntimeService.start
 
 ### ConnectorSecretCipher (Env)
-- [ ] Round-trip PASSWORD fields
-- [ ] Champs non-PASSWORD inchangés
-- [ ] DEK créée à la première utilisation tenant
+- [x] Round-trip PASSWORD fields
+- [x] Champs non-PASSWORD inchangés
+- [x] DEK créée à la première utilisation tenant
 
 ### Webhook authenticators
 - [ ] HMAC valide → OK
@@ -58,10 +58,9 @@ Alignement requirements success criteria + design DD-*.
 - [ ] Comparaison temps constant (`MessageDigest.isEqual`)
 
 ### Idempotency
-- [ ] Première clé → miss, store après succès
+- [x] Première clé → miss, store après succès *(store IT)*
 - [ ] Replay même clé → hit, pas de second runtime
-- [ ] Clé absente → traité sans dédup (ou 400 si on impose header —
-    **imposer header requis** sur webhook)
+- [ ] Clé absente → 400 (header requis — webhook T8)
 
 ### Rate limit / max body
 - [ ] Corps > max → 413 (filtre/unit)
@@ -91,10 +90,10 @@ Alignement requirements success criteria + design DD-*.
 **What component interactions need testing?**
 
 ### Liquibase / JPA
-- [ ] Tables `connector_instance`, `tenant_connector_dek`,
+- [x] Tables `connector_instance`, `tenant_connector_dek`,
       `webhook_idempotency` créées
-- [ ] Persist instance : secrets chiffrés en colonne JSON (pas clair)
-- [ ] Load → `ConnectorInstanceData` config déchiffrée
+- [x] Persist instance : secrets chiffrés en colonne JSON (pas clair)
+- [x] Load → `ConnectorInstanceData` config déchiffrée
 
 ### MockMvc — admin
 - [ ] CRUD `TENANT_ADMIN` OK ; CSRF requis mutateurs

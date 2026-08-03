@@ -15,15 +15,15 @@ phase5: 2026-08-03
 Plan initial **phase 4** — dérivé des docs `requirements` / `design`
 (`reviewed`) et `testing` (`draft` design_aligned).
 
-**Phase 5 en cours** — T1–T3 done. Next : T4.
+**Phase 5 en cours** — T1–T4 done. Next : T5.
 Traçage `task` CLI : **indisponible**.
-Preuve : `./mvnw -Dtest=ConnectorModelsTest,ConnectorPropertiesTest,ConnectorPortsContractTest,ConnectorSchemaIT test` → 17/0 (JDK 25).
+Preuve T4 : `./mvnw -Dtest=EnvMasterKeyCipherTest,ConnectorPersistenceIT,ConnectorSchemaIT test` → 9/0.
 
 ## Milestones
 **What are the major checkpoints?**
 
 - [x] **M1 — Domaine & ports** : models, exceptions, ports admin/trigger/execute/cipher
-- [~] **M2 — Persistence & crypto** : Liquibase done ; T4 JPA/cipher remaining
+- [x] **M2 — Persistence & crypto** : Liquibase + JPA + EnvMasterKeyCipher + idempotency
 - [ ] **M3 — Registry & builtins trigger** : registry, JsonPath, http-rest TRIGGER, TriggerRuntime
 - [ ] **M4 — Security & HTTP** : 3 chaînes, webhook harden, admin CRUD, dual execute
 - [ ] **M5 — flowable-signal** : SERVICE + listener TRIGGER + ServiceTask + smoke BPMN
@@ -59,15 +59,13 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Validation :** `ConnectorSchemaIT` 2/0.
   - **Tests liés :** IT Liquibase/JPA.
 
-- [ ] **T4. JPA adapters + EnvMasterKeyCipher + idempotency**
+- [x] **T4. JPA adapters + EnvMasterKeyCipher + idempotency**
   - **Outcome :** `ConnectorInstanceJpaEntity` / adapter (encrypt on save,
-    decrypt on load, filter soft-delete, `findIncludingDeleted` pour
-    restore) ; `EnvMasterKeyCipher` + DEK wrap ; adapter idempotency TTL
-    24h au read ; clé test dans `application.properties` test.
+    decrypt on load, soft-delete) ; `EnvMasterKeyCipher` + `JpaTenantDekStore` ;
+    `JpaWebhookIdempotencyStoreAdapter` TTL 24h ; master-key test properties.
   - **Depends on :** T2, T3
-  - **Validation :** IT round-trip secrets chiffrés ; unit cipher.
-  - **Tests liés :** Unit ConnectorSecretCipher ; IT Liquibase/JPA ;
-    Security « pas de secret clair ».
+  - **Validation :** EnvMasterKeyCipherTest 4/0 ; ConnectorPersistenceIT 3/0.
+  - **Tests liés :** Unit ConnectorSecretCipher ; IT Liquibase/JPA.
 
 ### M3 — Registry & builtins trigger
 
@@ -171,7 +169,7 @@ T5,T4 → T10 → T11
 T8,T9,T11 → T12 → T13
 ```
 
-- **Next 3 tasks (phase 5) :** T4 → T5 → T6.
+- **Next 3 tasks (phase 5) :** T5 → T6 → T7.
 - Risque sequencing : T9 execute peut appeler use case avant T10 si
   `flowable-signal` pas encore là — enchaîner T10 avant de finaliser
   execute IT signal, ou stub temporaire.

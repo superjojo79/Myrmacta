@@ -27,7 +27,13 @@ DEV-TESTS → phase 8). `InMemoryWorkflowEventPublisher` confiné `src/test`.
 89,1 %. Fix `reserveOrResume` ACTIVE (rejeu outbox). Doc testing
 `status: verified`.
 
-Prochaine phase lifecycle : **9 Code Review**.
+## Phase 9 — Code Review
+
+**Clos.** Bloquant DEV-RELAY-DUP corrigé (corrélation businessKey avant
+start outbox). Impl `status: reviewed`. Preuve finale : 173 tests / 0 fail ;
+Jacoco 89,6 %. Lifecycle **Complete** — prêt à merge.
+
+Follow-ups non bloquants : DEV-TX2, DEV-PURGE, DEV-ORPHAN-VARS.
 
 ## Milestones
 **What are the major checkpoints?**

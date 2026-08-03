@@ -2,10 +2,11 @@
 phase: implementation
 title: Implementation Guide
 description: Technical implementation notes, patterns, and code guidelines
-status: checked
+status: reviewed
 checked: 2026-08-02
+reviewed: 2026-08-03
 created: 2026-08-02
-updated: 2026-08-02
+updated: 2026-08-03
 ---
 
 # Implementation Guide
@@ -127,6 +128,7 @@ updated: 2026-08-02
 | DEV-TRIG | Low | `triggerRef = "manual:" + idempotencyKey` (pas `userSubject`) | Acceptable V1 ; documenter si audit nécessite subject |
 | DEV-TESTS | Low→phase 8 | Gaps testing doc : 401/403 API, collision 409, branches outbox/orphan unitaires, mutation config non-admin | **Clos phase 8** |
 | DEV-RESUME | — (fix) | `reserveOrResume` ne reprenait pas un lien ACTIVE même process → rejeu outbox marquait DEAD au lieu de PROCESSED | **Corrigé phase 8** |
+| DEV-RELAY-DUP | Blocking→fix | Relais retry après start OK / confirm KO pouvait re-`start` Flowable | **Corrigé phase 9** |
 
 ### Fichiers clés revus
 
@@ -141,3 +143,36 @@ updated: 2026-08-02
 - `JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64 ./mvnw test` →
   **156 tests, 0 failures, 0 errors** ; Jacoco instructions **86,2 %**
 - `check-status workflow-engine` → **Phase 8 (Write Tests)**
+
+## Phase 9 — Code Review
+
+**Verdict :** prêt à merge. Bloquant corrigé ; follow-ups non bloquants documentés.
+
+### Checklist finale
+
+| Critère | Statut |
+|---|---|
+| Design match (D-* / DD-*) | OK (TX2 / purge follow-ups connus) |
+| Pas de trou logique bloquant | OK après DEV-RELAY-DUP |
+| Sécurité (ACL, CSRF, D-VARS) | OK |
+| Points d’intégration Flowable/outbox | OK |
+| Tests couvrent les changements | OK (173 / 0 fail, Jacoco 89,6 %) |
+| Docs à jour | OK |
+
+### Findings phase 9
+
+| Sévérité | ID | Issue | Action |
+|---|---|---|---|
+| Blocking | DEV-RELAY-DUP | Relais pouvait créer une 2ᵉ instance Flowable | **Corrigé** : `findProcessInstanceIdByBusinessKey` avant start |
+| Important | DEV-TX2 | TX2 confirm+idempotency non atomique | Follow-up post-merge (`TransactionTemplate`) |
+| Important | DEV-PURGE | Retention outbox / TTL idempotency non schedulées | Follow-up ops |
+| Important | DEV-ORPHAN-VARS | Retry orphan sans variables client | Acceptable V1 ; outbox reste source de vérité |
+| Nice | DEV-LOC | `Location` pointait vers GET-by-id inexistant | **Corrigé** → collection history |
+| Nice | DEV-LOCK | `lockNextPending` sans `SKIP LOCKED` | Non-goal multi-réplique V1 |
+| Nice | DEV-RECONCILE-POLL | Cadence orphan = `reserve-timeout` | Follow-up propriété dédiée |
+
+### Preuves phase 9
+
+- `JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64 ./mvnw test` →
+  **173 tests, 0 fail** ; Jacoco instructions **89,6 %**
+- `check-status workflow-engine` → **Complete**

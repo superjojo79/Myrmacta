@@ -19,6 +19,11 @@ Fix TDD livré avec la couverture : `reserveOrResume` reprend un lien
 **ACTIVE** même `processDefinitionKey` (rejeu outbox → `markProcessed`
 sans second start).
 
+## Phase 9 — preuves revue
+
+`./mvnw test` → **173 tests, 0 fail** ; Jacoco **89,6 %**. Ajouts :
+corrélation businessKey avant start relais ; D-VARS avant reserve → DEAD.
+
 ## Test Coverage Goals
 **What level of testing do we aim for?**
 
@@ -68,6 +73,8 @@ Fichiers : `OutboxRelaySchedulerTest.java`, `WorkflowPersistenceTest.java`
 - [x] `attempts >= max` → `DEAD`
 - [x] `WorkflowAlreadyRunningException` → `DEAD` immédiat
 - [x] Rejeu : déjà confirmé → `markProcessed` sans second start
+- [x] Instance Flowable déjà présente (businessKey) → confirm sans second start
+- [x] Variables réservées dans payload → `DEAD` avant reserve
 
 ### WorkflowEvent sealed
 Fichiers : `WorkflowEventTest.java`, `InMemoryWorkflowEventPublisherTest.java`

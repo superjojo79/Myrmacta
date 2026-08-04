@@ -94,7 +94,7 @@ Ordre indicatif aligné sur l’analyse et les dépendances techniques :
 | — | `autorisation-conformite` | **Complete** (main) |
 | — | `connecteurs` | **Complete** (main) |
 | — | `templates-documents` | **Complete** (main) |
-| 1 | `generation-documents` | PDF + S3/FS + Flowable + PRODUCED_DOC — **phase 5–6 done** |
+| 1 | `generation-documents` | PDF + S3/FS + Flowable + PRODUCED_DOC — **phase 9 READY** (merge) |
 | 3 | `notifications` | Outbox notifications, webhooks sortants, SSE |
 | 4 | `visualisation-workflow` | Diagramme BPMN / état runtime |
 | 5 | `frontend` | Vue 3 + Pinia + Axios dans `static/` (décision n° 27) |

@@ -4,10 +4,11 @@ title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
 status: draft
 created: 2026-08-03
-updated: 2026-08-03
+updated: 2026-08-04
 design_aligned: 2026-08-03
 phase3_sync: 2026-08-03
 phase5_evidence: 2026-08-03
+phase7_note: 2026-08-04
 ---
 
 # Testing Strategy
@@ -161,3 +162,8 @@ Aligné requirements success criteria + design DD-*.
 **Phase 5 evidence** (2026-08-03) — majorité des cases verts ; gaps mineurs
 (blank templateKey 400, ACL EDIT, storageRef cassé, persistence round-trip)
 → **Phase 8**.
+
+**Phase 7 note** (2026-08-04) — code aligned design ; `./mvnw clean verify`
+353/0, Jacoco 87,20 %. `DossierElementSchemaIT` hors include surefire défaut
+(`*IT`) — passe en `-Dtest=DossierElementSchemaIT` ; à traiter phase 8
+(renommer ou include).

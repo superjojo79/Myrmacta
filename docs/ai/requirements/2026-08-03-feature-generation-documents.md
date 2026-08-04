@@ -5,10 +5,11 @@ description: Clarify the problem space, gather requirements, and define success 
 status: reviewed
 reviewed: 2026-08-03
 created: 2026-08-03
-updated: 2026-08-03
+updated: 2026-08-04
 stakeholder_decisions: 2026-08-03
 phase2: 2026-08-03
 phase2_stakeholder_confirm: 2026-08-03
+phase7_success_criteria: 2026-08-04
 ---
 
 # Requirements & Problem Understanding
@@ -164,21 +165,24 @@ métier.
 ## Success Criteria
 **How will we know when we're done?**
 
-- [ ] `GenerateDocumentUseCase` produit un PDF non vide (`%PDF`) depuis un
+- [x] `GenerateDocumentUseCase` produit un PDF non vide (`%PDF`) depuis un
       template ACTIVE + variables.
-- [ ] `FilesystemStorageAdapter` et `S3StorageAdapter` implémentent
+- [x] `FilesystemStorageAdapter` et `S3StorageAdapter` implémentent
       `DocumentStoragePort` ; switch `app.storage.type`.
-- [ ] `documentGenerationTask` écrit `generatedDocumentId` ; test delegate
+- [x] `documentGenerationTask` écrit `generatedDocumentId` ; test delegate
       (et smoke BPMN si pattern connecteurs réutilisable).
-- [ ] `attachGeneratedDocumentTask` persiste `dossier_element` type
+- [x] `attachGeneratedDocumentTask` persiste `dossier_element` type
       `PRODUCED_DOC` avec `storageRef` + label A3 ; contexte System.
-- [ ] `POST /api/documents/generate` renvoie `application/pdf` sans écrire
+- [x] `POST /api/documents/generate` renvoie `application/pdf` sans écrire
       dans le storage FS de test.
-- [ ] `GET /api/dossier-elements/{id}/content` : ACL VIEW OK ; sans ACL 403 ;
+- [x] `GET /api/dossier-elements/{id}/content` : ACL VIEW OK ; sans ACL 403 ;
       bypass `TENANT_ADMIN` / `WORKFLOW_ADMIN` OK.
-- [ ] Liquibase `005-dossier-element-tables` (ou équivalent) appliqué.
-- [ ] `./mvnw verify` vert ; Jacoco instructions ≥ 80 % ; ArchUnit OK.
-- [ ] `npx ai-devkit lint --feature generation-documents` OK.
+- [x] Liquibase `005-dossier-element-tables` (ou équivalent) appliqué.
+- [x] `./mvnw verify` vert ; Jacoco instructions ≥ 80 % ; ArchUnit OK.
+- [x] `npx ai-devkit lint --feature generation-documents` OK.
+
+Preuve phase 7 (2026-08-04) : `./mvnw clean verify` → **353 / 0**,
+Jacoco **87,20 %** ; SchemaIT 005 via `-Dtest=DossierElementSchemaIT` **2 / 0**.
 
 ## Constraints & Assumptions
 

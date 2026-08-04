@@ -2,12 +2,13 @@
 phase: implementation
 title: Implementation Guide
 description: Technical implementation notes, patterns, and code guidelines
-status: reviewed
+status: checked
 created: 2026-08-03
 updated: 2026-08-04
 phase5: 2026-08-03
 phase6: 2026-08-03
 phase7: 2026-08-04
+alignment: aligned
 ---
 
 # Implementation Guide
@@ -44,63 +45,58 @@ app.storage.filesystem.root: ...
 app.storage.s3.bucket / region / endpoint / credentials
 ```
 
-## Evidence (phase 5)
+## Phase 7 — Check Implementation (2026-08-04)
+
+### Alignment status: **aligned**
+
+Revue fichier-par-fichier vs design/requirements `reviewed` : **20/20**
+points de contrôle ALIGNED (ports DQ1–DQ5, UC, adapters, Flowable, HTTP,
+persistence, config). Aucun écart bloquant. Pas de retour design requis.
+
+### Checklist design → code
+
+| Id | Exigence | Verdict |
+|---|---|---|
+| DQ1 | Port `HtmlTemplateProcessor` + adapter Thymeleaf | aligned |
+| DQ2 | Filtre clés plateforme avant merge | aligned (`DocumentVariableFilter` dans UC) |
+| DQ3 | `DocumentStoragePort.exists` ; attach l’utilise | aligned |
+| DQ4 | Metadata fixe templateKey/contentType/variant?/locale? | aligned |
+| DQ5 | jsoup dans `FlyingSaucerPdfAdapter` | aligned |
+| DD-HTTP-MEM | POST generate sans store | aligned |
+| DD-ACL-VIEW | `assertCanView` + bypass admin | aligned |
+| DD-NO-REG | Pas de table `generated_document` | aligned |
+| DD-ENUM-V1 | `PRODUCED_DOC` seul | aligned |
+| DD-TASK-NAMES | beans documentGeneration / attachGenerated | aligned |
+| A2–A4 / A9–A13 / A15 | storageRef, ProblemDetail, System ctx, disposition | aligned |
+
+### Deviations / notes (non bloquant)
+
+| Sévérité | Item | Disposition |
+|---|---|---|
+| note | O6 borne ~1 MiB sur JSON `variables` | Non livré — follow-up phase 8 / ops soft |
+| note | Filtre DQ2 dans UC (pas inline task) | Conforme « avant HTP » |
+| note | `*IT.java` (ex. `DossierElementSchemaIT`) hors include surefire défaut (`*Test`) | Préexistant projet ; IT passe en `-Dtest=…` ; phase 8 peut renommer/inclure |
+| note | Gaps tests MockMvc (blank templateKey 400, ACL EDIT, storageRef cassé, round-trip JPA) | Phase 8 |
+
+### Evidence (phase 7, fresh)
 
 ```text
-JAVA_HOME=…/jdk-25.0.4+7 ./mvnw verify
+JAVA_HOME=…/jdk-25.0.4+7 ./mvnw clean verify
 → Tests run: 353, Failures: 0, Errors: 0
 → Jacoco INSTRUCTION 12423/14247 = 87.20%
 → ArchUnit OK
-→ npx ai-devkit lint --feature generation-documents → OK
+→ npx ai-devkit lint --feature generation-documents → All checks passed
+→ ./mvnw -Dtest=DossierElementSchemaIT test → 2/0 (Liquibase 005 colonnes)
 ```
 
-## Phase 7 — Check Implementation (2026-08-04)
+### Changed files (livré phase 5, vérifié phase 7)
 
-Revue code Java/YAML vs design `docs/ai/design/2026-08-03-feature-generation-documents.md`.
-
-| # | Exigence | Statut |
-|---|---|---|
-| 1 | HtmlTemplateProcessor port + Thymeleaf adapter (DQ1) | ALIGNED |
-| 2 | DocumentVariableFilter clés plateforme (DQ2) | ALIGNED |
-| 3 | DocumentStoragePort store/retrieve/exists (DQ3) | ALIGNED |
-| 4 | Metadata attach templateKey/contentType/variant?/locale? (DQ4) | ALIGNED |
-| 5 | jsoup uniquement FlyingSaucerPdfAdapter (DQ5) | ALIGNED |
-| 6 | GenerateDocumentUseCase → byte[], pas de store | ALIGNED |
-| 7 | Add/Get DossierElement ; ElementType PRODUCED_DOC only | ALIGNED |
-| 8 | ThymeleafHtmlTemplateProcessor évalue expressions | ALIGNED |
-| 9 | FlyingSaucerPdfAdapter jsoup + ITextRenderer | ALIGNED |
-| 10 | FilesystemStorageAdapter anti-traversal + `{tenant}/{uuid}.pdf` | ALIGNED |
-| 11 | S3StorageAdapter HeadObject ; pas Minio* | ALIGNED |
-| 12 | StorageConfig ConditionalOnProperty filesystem\|s3, défaut FS | ALIGNED |
-| 13 | documentGenerationTask generate+store+generatedDocumentId | ALIGNED |
-| 14 | attachGeneratedDocumentTask exists + system + label A3 | ALIGNED |
-| 15 | POST /api/documents/generate PreAuthorize + PDF mémoire | ALIGNED |
-| 16 | GET content assertCanView + attachment + 404/409/403 | ALIGNED |
-| 17 | Pas d’HTTP create élément | ALIGNED |
-| 18 | Liquibase 005 colonnes/index, pas unique storage_ref, pas FK SQL | ALIGNED |
-| 19 | Pas de table generated_document | ALIGNED |
-| 20 | app.storage.* dans yaml | ALIGNED |
-
-### Écarts / notes
-
-| Sévérité | Item | Détail |
-|---|---|---|
-| note | #13 filtre DQ2 | Filtrage dans `GenerateDocumentUseCaseImpl` (pas inline dans la task) — conforme « avant HtmlTemplateProcessor ». |
-| note | O6 | Borne taille JSON `variables` (ex. 1 MiB) non implémentée — open design item. |
-| note | AddDossierElement | `AccessContext` reçu mais non consommé (ACL) — OK V1 car pas d’HTTP create, seul Flowable system. |
-| note | Tests | Pas de test API dédié 409 sur GET content (handler présent). |
-
-### Hors V1 — non introduit
-
-Pas de `delete` storage, Playwright, adapter Minio*, table registre, HTTP attach/store, enum `ATTACHMENT`.
-
-## Design alignment notes
-
-- DQ1–DQ5 respectés (ports HTP/exists, filter vars, metadata, jsoup-in-PDF).
-- Pas de table `generated_document` ; pas d’HTTP attach/store.
-- BPMN smoke optionnel : delegates unitaires seulement.
-- Phase 7 : **20/20 ALIGNED** ; écarts mineurs/notes uniquement.
+Ports document, filtre variables, Generate UC, adapters Thymeleaf/PDF/FS/S3,
+`StorageConfig`, modèle `DossierElement` + Liquibase 005 + JPA, 2 JavaDelegates
+Flowable, controllers generate + content + exception handler, beans config,
+tests associés.
 
 ## Next
 
-**Phase 8 — Testing** (`dev-testing`) : combler scénarios 409 content + O6 si retenu.
+**Phase 8 — Write Tests** (`dev-testing`) — combler gaps MockMvc / persistence
+et éventuellement inclure `*IT` dans surefire ou renommer.

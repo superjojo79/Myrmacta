@@ -5,10 +5,11 @@ description: Define the technical architecture, components, and data models
 status: reviewed
 reviewed: 2026-08-03
 created: 2026-08-03
-updated: 2026-08-03
+updated: 2026-08-04
 requirements_aligned: 2026-08-03
 stakeholder_decisions: 2026-08-03
 phase3: 2026-08-03
+phase7: 2026-08-04
 ---
 
 # System Design & Architecture
@@ -345,9 +346,11 @@ Erreurs → exceptions propagées Flowable (échec activité).
 | DQ3 | exists vs retrieve | **Clos stakeholder** — `exists` |
 | DQ4 | metadata shape | **Clos stakeholder** — minimal fixe |
 | DQ5 | jsoup placement | **Clos stakeholder** — dans PDF adapter |
-| O6 | Bornes taille JSON `variables` | **Impl** — validation raisonnable (ex. 1 MiB) |
+| O6 | Bornes taille JSON `variables` | **Ouvert soft** — non livré V1 ; follow-up phase 8 / ops |
 | O7 | Versions libs | **Clos** — pom existant |
 
 **Phase 3 close** (2026-08-03) — statut `reviewed` ; DQ1–DQ5.
 **Phase 4 close** — plan T1–T15 (`dev-planning`, PQ1 couches).
-**Phase 5** — Execute Plan (`dev-implementation`).
+**Phase 5–6** — Execute Plan + planning completed.
+**Phase 7 close** (2026-08-04) — implementation `checked` / `aligned` ;
+aucun écart bloquant vs design.

@@ -12,7 +12,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 @SpringBootTest
 @Import(OidcClientTestConfiguration.class)
-class DossierElementSchemaIT {
+class DossierElementSchemaTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;

@@ -46,7 +46,7 @@ class DossierElementContentApiTest {
 
     @Test
     void download_withViewAcl_returnsPdf() throws Exception {
-        Fixture fixture = prepareProducedDoc("viewer-ok");
+        Fixture fixture = prepareProducedDoc("viewer-ok", true);
         grant(fixture.typeCode(), "viewer-ok", "VIEW");
 
         mockMvc.perform(get("/api/dossier-elements/{id}/content", fixture.elementId())
@@ -58,8 +58,19 @@ class DossierElementContentApiTest {
     }
 
     @Test
+    void download_withEditAcl_returns200() throws Exception {
+        Fixture fixture = prepareProducedDoc("editor-ok", true);
+        grant(fixture.typeCode(), "editor-ok", "EDIT");
+
+        mockMvc.perform(get("/api/dossier-elements/{id}/content", fixture.elementId())
+                        .with(user("editor-ok", "DOSSIER_MANAGER")))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PDF));
+    }
+
+    @Test
     void download_withoutAcl_returns403() throws Exception {
-        Fixture fixture = prepareProducedDoc("viewer-denied");
+        Fixture fixture = prepareProducedDoc("viewer-denied", true);
         mockMvc.perform(get("/api/dossier-elements/{id}/content", fixture.elementId())
                         .with(user("viewer-denied", "DOSSIER_VIEWER")))
                 .andExpect(status().isForbidden());
@@ -67,7 +78,7 @@ class DossierElementContentApiTest {
 
     @Test
     void download_tenantAdminBypass_returns200() throws Exception {
-        Fixture fixture = prepareProducedDoc("admin-bypass");
+        Fixture fixture = prepareProducedDoc("admin-bypass", true);
         mockMvc.perform(get("/api/dossier-elements/{id}/content", fixture.elementId())
                         .with(user("admin-bypass", "TENANT_ADMIN")))
                 .andExpect(status().isOk());
@@ -80,12 +91,22 @@ class DossierElementContentApiTest {
                 .andExpect(status().isNotFound());
     }
 
-    private Fixture prepareProducedDoc(String suffix) throws Exception {
+    @Test
+    void download_brokenStorageRef_returns404() throws Exception {
+        Fixture fixture = prepareProducedDoc("broken-ref", false);
+        mockMvc.perform(get("/api/dossier-elements/{id}/content", fixture.elementId())
+                        .with(user("admin-broken", "TENANT_ADMIN")))
+                .andExpect(status().isNotFound());
+    }
+
+    private Fixture prepareProducedDoc(String suffix, boolean storeBytes) throws Exception {
         String code = createType("EL_" + suffix);
         grant(code, "mgr-" + suffix, "EDIT");
         String dossierId = createDossier(code, "mgr-" + suffix);
-        String ref = documentStoragePort.store(
-                TENANT_ID, "application/pdf", "%PDF-content".getBytes(StandardCharsets.UTF_8));
+        String ref = storeBytes
+                ? documentStoragePort.store(
+                        TENANT_ID, "application/pdf", "%PDF-content".getBytes(StandardCharsets.UTF_8))
+                : TENANT_ID + "/" + UUID.randomUUID() + ".pdf";
         var element = addDossierElementUseCase.add(
                 new AddDossierElementUseCase.AddCommand(
                         UUID.fromString(dossierId),

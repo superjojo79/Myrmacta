@@ -111,6 +111,18 @@ class DocumentGenerationApiTest {
     }
 
     @Test
+    void generate_blankTemplateKey_returns400() throws Exception {
+        mockMvc.perform(post("/api/documents/generate")
+                        .with(user("gen-admin", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "templateKey": "  ", "variables": {} }
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void generate_withoutCsrf_returns403() throws Exception {
         mockMvc.perform(post("/api/documents/generate")
                         .with(user("gen-admin", "TENANT_ADMIN"))

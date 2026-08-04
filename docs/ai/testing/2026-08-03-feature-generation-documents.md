@@ -103,6 +103,8 @@ Aligné requirements success criteria + design DD-*.
 - [x] Élément inconnu → 404
 - [x] storageRef cassé → 404
 - [x] Bypass `TENANT_ADMIN` → 200
+- [x] Bypass `WORKFLOW_ADMIN` → 200
+- [x] `storageRef` null → 409
 
 ### Liquibase / persistence
 - [x] Table `dossier_element` après migrate
@@ -170,11 +172,12 @@ Aligné requirements success criteria + design DD-*.
 **Phase 8 close** (2026-08-04) — gaps clos ; `DossierElementSchemaIT`
 renommé `DossierElementSchemaTest` ; O6 borne 1 MiB reste soft / hors V1.
 
+**Phase 9** (2026-08-04) — revue READY ; durcissement Add/Get + tests
+WORKFLOW_ADMIN / 409.
+
 ```text
 ./mvnw clean verify
-→ Tests run: 362, Failures: 0, Errors: 0
-→ Jacoco INSTRUCTION 12463/14278 = 87.29%
+→ Tests run: 366, Failures: 0, Errors: 0
+→ Jacoco INSTRUCTION 12513/14325 = 87.35%
 → ArchUnit OK
 ```
-
-**Next :** Phase 9 — Code Review (`dev-review`).

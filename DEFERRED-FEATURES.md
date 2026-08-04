@@ -11,11 +11,11 @@
 
 **Statut lifecycle (check-status) :** `architecture-hexagonale`, `multi-tenant`,
 `authentification`, `dossiers`, `workflow-engine`, `autorisation-conformite`,
-`connecteurs`, `templates-documents` sont **Complete** (mergés). Feature en
-cours : `generation-documents` (phases 1–6 — implémentation T1–T15, verify
-353/0 Jacoco 87,2 % ; prochaine phase 7 check). Les features
-`notifications`, `visualisation-workflow`, `frontend` restent en docs
-skeleton / planning non exécuté.
+`connecteurs`, `templates-documents` sont **Complete** (mergés). Feature
+`generation-documents` : phases 1–9 **READY** (verify 366/0, Jacoco 87,35 % ;
+PR feature en revue). Les features `notifications`,
+`visualisation-workflow`, `frontend` restent en docs skeleton / planning non
+exécuté.
 
 ---
 

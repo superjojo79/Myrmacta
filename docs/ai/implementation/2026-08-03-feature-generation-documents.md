@@ -9,7 +9,9 @@ phase5: 2026-08-03
 phase6: 2026-08-03
 phase7: 2026-08-04
 phase8: 2026-08-04
+phase9: 2026-08-04
 alignment: aligned
+review: ready
 ---
 
 # Implementation Guide
@@ -101,6 +103,28 @@ tests associés.
 
 Gaps tests clos + `./mvnw clean verify` → **362 / 0**, Jacoco **87,29 %**.
 
-## Next
+## Phase 9 — Code Review (2026-08-04)
 
-**Phase 9 — Code Review** (`dev-review`).
+### Verdict: **READY**
+
+| Sévérité | Finding | Disposition |
+|---|---|---|
+| blocking | — | aucun |
+| important | `AccessContext` no-op dans Add UC | **Fixed** — `assertCanEdit` |
+| important | `storageRef` non validé A2 à l’add | **Fixed** — préfixe tenant / `..` |
+| important | Get UC sans check tenant dossier | **Fixed** — 404 mismatch |
+| important | Gaps tests WORKFLOW_ADMIN / 409 | **Fixed** |
+| important | Doc rollback Liquibase 005 | **Fixed** (deployment) |
+| nice | O6 borne variables, 500 vs 404 storage, truncate label | Follow-up post-merge |
+
+### Checklist
+
+- [x] Design match DQ1–DQ5 / DD-*
+- [x] Pas de trou authz HTTP V1 ; Add UC aligné policy
+- [x] Path traversal FS/S3
+- [x] Integration Flowable / JPA / Liquibase
+- [x] Tests + Jacoco ≥ 80 %
+- [x] Docs feature + rollback 005
+- [x] Fresh `./mvnw clean verify` → **366 / 0**, Jacoco **87,35 %**
+
+Traçage `task` CLI : indisponible.

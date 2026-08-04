@@ -113,9 +113,10 @@ public class DossierConfig {
     AddDossierElementUseCase addDossierElementUseCase(
             TenantProperties tenantProperties,
             DossierRepository dossierRepository,
-            DossierElementRepository dossierElementRepository) {
+            DossierElementRepository dossierElementRepository,
+            DossierAccessPolicy accessPolicy) {
         return new AddDossierElementUseCaseImpl(
-                tenantProperties.id(), dossierRepository, dossierElementRepository);
+                tenantProperties.id(), dossierRepository, dossierElementRepository, accessPolicy);
     }
 
     @Bean

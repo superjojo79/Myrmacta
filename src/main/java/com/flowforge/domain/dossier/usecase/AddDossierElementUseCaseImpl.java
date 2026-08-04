@@ -1,5 +1,6 @@
 package com.flowforge.domain.dossier.usecase;
 
+import com.flowforge.domain.dossier.DossierAccessPolicy;
 import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierElement;
@@ -19,14 +20,17 @@ public final class AddDossierElementUseCaseImpl implements AddDossierElementUseC
     private final String tenantId;
     private final DossierRepository dossierRepository;
     private final DossierElementRepository elementRepository;
+    private final DossierAccessPolicy accessPolicy;
 
     public AddDossierElementUseCaseImpl(
             String tenantId,
             DossierRepository dossierRepository,
-            DossierElementRepository elementRepository) {
+            DossierElementRepository elementRepository,
+            DossierAccessPolicy accessPolicy) {
         this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
         this.dossierRepository = Objects.requireNonNull(dossierRepository, "dossierRepository");
         this.elementRepository = Objects.requireNonNull(elementRepository, "elementRepository");
+        this.accessPolicy = Objects.requireNonNull(accessPolicy, "accessPolicy");
     }
 
     @Override
@@ -36,9 +40,7 @@ public final class AddDossierElementUseCaseImpl implements AddDossierElementUseC
         if (command.type() != ElementType.PRODUCED_DOC) {
             throw new InvalidDossierElementException("Only PRODUCED_DOC is supported in V1");
         }
-        if (command.storageRef() == null || command.storageRef().isBlank()) {
-            throw new InvalidDossierElementException("storageRef is required for PRODUCED_DOC");
-        }
+        String storageRef = requireValidStorageRef(command.storageRef());
         if (command.label() == null || command.label().isBlank()) {
             throw new InvalidDossierElementException("label is required");
         }
@@ -48,6 +50,7 @@ public final class AddDossierElementUseCaseImpl implements AddDossierElementUseC
         if (!tenantId.equals(dossier.tenantId())) {
             throw new DossierNotFoundException("Dossier not found: " + command.dossierId());
         }
+        accessPolicy.assertCanEdit(dossier, ctx);
         Map<String, Object> metadata = command.metadata() == null ? Map.of() : command.metadata();
         DossierElement element = new DossierElement(
                 UUID.randomUUID(),
@@ -55,11 +58,22 @@ public final class AddDossierElementUseCaseImpl implements AddDossierElementUseC
                 tenantId,
                 ElementType.PRODUCED_DOC,
                 command.label().trim(),
-                command.storageRef().trim(),
+                storageRef,
                 metadata,
                 command.addedBy() == null || command.addedBy().isBlank() ? "system" : command.addedBy(),
                 Instant.now(),
                 command.workflowStepId());
         return elementRepository.save(element);
+    }
+
+    private String requireValidStorageRef(String storageRef) {
+        if (storageRef == null || storageRef.isBlank()) {
+            throw new InvalidDossierElementException("storageRef is required for PRODUCED_DOC");
+        }
+        String trimmed = storageRef.trim();
+        if (!trimmed.startsWith(tenantId + "/") || trimmed.contains("..")) {
+            throw new InvalidDossierElementException("storageRef must be tenant-scoped and opaque");
+        }
+        return trimmed;
     }
 }

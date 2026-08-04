@@ -40,6 +40,9 @@ public final class GetDossierElementUseCaseImpl implements GetDossierElementUseC
         Dossier dossier = dossierRepository
                 .findById(element.dossierId())
                 .orElseThrow(() -> new DossierNotFoundException("Dossier not found: " + element.dossierId()));
+        if (!tenantId.equals(dossier.tenantId())) {
+            throw new DossierNotFoundException("Dossier not found: " + element.dossierId());
+        }
         accessPolicy.assertCanView(dossier, ctx);
         return element;
     }

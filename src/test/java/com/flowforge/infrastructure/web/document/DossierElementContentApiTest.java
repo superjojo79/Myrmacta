@@ -9,11 +9,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.flowforge.domain.dossier.model.AccessContext;
+import com.flowforge.domain.dossier.model.DossierElement;
 import com.flowforge.domain.dossier.model.ElementType;
 import com.flowforge.domain.dossier.port.in.AddDossierElementUseCase;
+import com.flowforge.domain.dossier.port.out.DossierElementRepository;
 import com.flowforge.domain.document.port.out.DocumentStoragePort;
 import com.flowforge.support.OidcClientTestConfiguration;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -43,6 +46,9 @@ class DossierElementContentApiTest {
 
     @Autowired
     private AddDossierElementUseCase addDossierElementUseCase;
+
+    @Autowired
+    private DossierElementRepository dossierElementRepository;
 
     @Test
     void download_withViewAcl_returnsPdf() throws Exception {
@@ -85,6 +91,14 @@ class DossierElementContentApiTest {
     }
 
     @Test
+    void download_workflowAdminBypass_returns200() throws Exception {
+        Fixture fixture = prepareProducedDoc("wf-bypass", true);
+        mockMvc.perform(get("/api/dossier-elements/{id}/content", fixture.elementId())
+                        .with(user("wf-bypass", "WORKFLOW_ADMIN")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void download_unknownElement_returns404() throws Exception {
         mockMvc.perform(get("/api/dossier-elements/{id}/content", UUID.randomUUID())
                         .with(user("admin", "TENANT_ADMIN")))
@@ -97,6 +111,28 @@ class DossierElementContentApiTest {
         mockMvc.perform(get("/api/dossier-elements/{id}/content", fixture.elementId())
                         .with(user("admin-broken", "TENANT_ADMIN")))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void download_nullStorageRef_returns409() throws Exception {
+        String code = createType("EL_null_ref");
+        grant(code, "mgr-null-ref", "EDIT");
+        String dossierId = createDossier(code, "mgr-null-ref");
+        DossierElement element = dossierElementRepository.save(new DossierElement(
+                UUID.randomUUID(),
+                UUID.fromString(dossierId),
+                TENANT_ID,
+                ElementType.PRODUCED_DOC,
+                "Document sans storage",
+                null,
+                Map.of("templateKey", "contrat", "contentType", "application/pdf"),
+                "system",
+                Instant.parse("2026-08-04T05:00:00Z"),
+                null));
+
+        mockMvc.perform(get("/api/dossier-elements/{id}/content", element.id())
+                        .with(user("admin-null-ref", "TENANT_ADMIN")))
+                .andExpect(status().isConflict());
     }
 
     private Fixture prepareProducedDoc(String suffix, boolean storeBytes) throws Exception {

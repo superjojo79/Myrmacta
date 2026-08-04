@@ -2,71 +2,46 @@
 phase: deployment
 title: Deployment Strategy
 description: Define deployment process, infrastructure, and release procedures
+status: reviewed
+updated: 2026-08-04
+phase9: 2026-08-04
 ---
 
 # Deployment Strategy
 
-## Infrastructure
-**Where will the application run?**
+## Feature-specific notes (`generation-documents`)
 
-- Hosting platform (AWS, GCP, Azure, etc.)
-- Infrastructure components (servers, databases, etc.)
-- Environment separation (dev, staging, production)
+### Config
 
-## Deployment Pipeline
-**How do we deploy changes?**
+```yaml
+app.storage.type: filesystem   # or s3
+app.storage.filesystem.root: ...
+app.storage.s3.bucket / region / endpoint / credentials
+```
 
-### Build Process
-- Build steps and commands
-- Asset compilation/optimization
-- Environment configuration
+Défaut **filesystem** (dev/IT). Prod typique : `s3` + endpoint compatible.
 
-### CI/CD Pipeline
-- Automated testing gates
-- Build automation
-- Deployment automation
+### Database — Liquibase `005-dossier-element-tables`
 
-## Environment Configuration
-**What settings differ per environment?**
+- ChangeSet additif : `createTable dossier_element` + 2 indexes.
+- Pas de FK SQL sur `dossier_id` (pattern 001–004).
+- Pas d’unicité `storage_ref` (A15).
 
-### Development
-- Configuration details
-- Local setup
+### Rollback
 
-### Staging
-- Configuration details
-- Testing environment
+1. **Schema :** `liquibase rollbackCount 1` (ou rollback au tag précédent) —
+   Liquibase auto-rollback sur `createTable` / `createIndex` (pas de bloc
+   `rollback:` SQL custom requis, contrairement à certains changesets 001).
+2. **Données :** rollback droppe `dossier_element` → perte des métadonnées
+   d’éléments PRODUCED_DOC.
+3. **Objets storage :** **non purgés** par le rollback Liquibase (FS/S3
+   orphelins possibles — TODO §22 / purge différée).
+4. **App :** retirer/désactiver les beans Flowable
+   `documentGenerationTask` / `attachGeneratedDocumentTask` et endpoints
+   generate/content si rollback applicatif partiel.
 
-### Production
-- Configuration details
-- Monitoring setup
+### Post-deploy checks
 
-## Deployment Steps
-**What's the release process?**
-
-1. Pre-deployment checklist
-2. Deployment execution steps
-3. Post-deployment validation
-4. Rollback procedure (if needed)
-
-## Database Migrations
-**How do we handle schema changes?**
-
-- Migration strategy
-- Backup procedures
-- Rollback approach
-
-## Secrets Management
-**How do we handle sensitive data?**
-
-- Environment variables
-- Secret storage solution
-- Key rotation strategy
-
-## Rollback Plan
-**What if something goes wrong?**
-
-- Rollback triggers
-- Rollback steps
-- Communication plan
-
+- `POST /api/documents/generate` (rôle admin) → PDF
+- Smoke BPMN avec les 2 ServiceTasks si processus déployés
+- `GET /api/dossier-elements/{id}/content` avec ACL VIEW

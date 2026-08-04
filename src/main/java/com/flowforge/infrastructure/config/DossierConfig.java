@@ -2,8 +2,10 @@ package com.flowforge.infrastructure.config;
 
 import com.flowforge.domain.dossier.DossierAccessPolicy;
 import com.flowforge.domain.dossier.TenantAdminGuard;
+import com.flowforge.domain.dossier.port.in.AddDossierElementUseCase;
 import com.flowforge.domain.dossier.port.in.CreateDossierTypeUseCase;
 import com.flowforge.domain.dossier.port.in.CreateDossierUseCase;
+import com.flowforge.domain.dossier.port.in.GetDossierElementUseCase;
 import com.flowforge.domain.dossier.port.in.GetDossierTypeUseCase;
 import com.flowforge.domain.dossier.port.in.GetDossierUseCase;
 import com.flowforge.domain.dossier.port.in.GrantDossierTypeAccessUseCase;
@@ -11,12 +13,15 @@ import com.flowforge.domain.dossier.port.in.ListDossierTypesUseCase;
 import com.flowforge.domain.dossier.port.in.RevokeDossierTypeAccessUseCase;
 import com.flowforge.domain.dossier.port.in.UpdateDossierStatusUseCase;
 import com.flowforge.domain.dossier.port.in.UpdateDossierTypeUseCase;
+import com.flowforge.domain.dossier.port.out.DossierElementRepository;
 import com.flowforge.domain.dossier.port.out.DossierReferenceGenerator;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.dossier.port.out.DossierTypeAclRepository;
 import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
+import com.flowforge.domain.dossier.usecase.AddDossierElementUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.CreateDossierTypeUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.CreateDossierUseCaseImpl;
+import com.flowforge.domain.dossier.usecase.GetDossierElementUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.GetDossierTypeUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.GetDossierUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.GrantDossierTypeAccessUseCaseImpl;
@@ -102,5 +107,25 @@ public class DossierConfig {
             DossierRepository dossierRepository,
             DossierAccessPolicy accessPolicy) {
         return new UpdateDossierStatusUseCaseImpl(dossierRepository, accessPolicy);
+    }
+
+    @Bean
+    AddDossierElementUseCase addDossierElementUseCase(
+            TenantProperties tenantProperties,
+            DossierRepository dossierRepository,
+            DossierElementRepository dossierElementRepository,
+            DossierAccessPolicy accessPolicy) {
+        return new AddDossierElementUseCaseImpl(
+                tenantProperties.id(), dossierRepository, dossierElementRepository, accessPolicy);
+    }
+
+    @Bean
+    GetDossierElementUseCase getDossierElementUseCase(
+            TenantProperties tenantProperties,
+            DossierElementRepository dossierElementRepository,
+            DossierRepository dossierRepository,
+            DossierAccessPolicy accessPolicy) {
+        return new GetDossierElementUseCaseImpl(
+                tenantProperties.id(), dossierElementRepository, dossierRepository, accessPolicy);
     }
 }

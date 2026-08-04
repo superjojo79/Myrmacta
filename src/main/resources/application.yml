@@ -82,6 +82,16 @@ app:
       max-body-bytes: 1048576
       rate-limit-per-minute: 120
       idempotency-ttl: 24h
+  storage:
+    type: ${APP_STORAGE_TYPE:filesystem}
+    filesystem:
+      root: ${APP_STORAGE_FS_ROOT:./data/documents}
+    s3:
+      bucket: ${APP_STORAGE_S3_BUCKET:}
+      region: ${APP_STORAGE_S3_REGION:us-east-1}
+      endpoint: ${APP_STORAGE_S3_ENDPOINT:}
+      access-key-id: ${APP_STORAGE_S3_ACCESS_KEY:}
+      secret-access-key: ${APP_STORAGE_S3_SECRET_KEY:}
 
 flowable:
   async-executor-activate: true

@@ -2,13 +2,14 @@
 phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
-status: draft
+status: completed
 created: 2026-08-03
 updated: 2026-08-04
 design_aligned: 2026-08-03
 phase3_sync: 2026-08-03
 phase5_evidence: 2026-08-03
 phase7_note: 2026-08-04
+phase8: 2026-08-04
 ---
 
 # Testing Strategy
@@ -92,20 +93,20 @@ Aligné requirements success criteria + design DD-*.
 - [x] `DOSSIER_VIEWER` → 403
 - [x] Anonyme → 401 ; CSRF manquant → 403
 - [x] templateKey inconnu → 404
-- [ ] Body invalide (blank templateKey) → 400
+- [x] Body invalide (blank templateKey) → 400
 - [x] Aucun objet créé dans storage FS après POST
 
 ### MockMvc download content
 - [x] GET content 200 pour user avec ACL VIEW
-- [ ] ACL EDIT → 200
+- [x] ACL EDIT → 200
 - [x] Sans ACL → 403
 - [x] Élément inconnu → 404
-- [ ] storageRef cassé → 404
+- [x] storageRef cassé → 404
 - [x] Bypass `TENANT_ADMIN` → 200
 
 ### Liquibase / persistence
 - [x] Table `dossier_element` après migrate
-- [ ] Round-trip JPA metadata JSON + null workflow_step_id
+- [x] Round-trip JPA metadata JSON + null workflow_step_id
 
 ### Flowable smoke (si pattern existant connecteurs)
 - [x] Tests unitaires beans delegate (BPMN smoke optionnel — non requis V1)
@@ -122,7 +123,8 @@ Aligné requirements success criteria + design DD-*.
 | PDF | `FlyingSaucerPdfAdapterTest` |
 | FS / S3 | `FilesystemStorageAdapterTest`, `S3StorageAdapterTest` |
 | Tasks | `DocumentGenerationTaskTest`, `AttachGeneratedDocumentTaskTest` |
-| Schema | `DossierElementSchemaIT` |
+| Schema | `DossierElementSchemaTest` |
+| Persistence | `DossierElementPersistenceTest` |
 | API | `DocumentGenerationApiTest`, `DossierElementContentApiTest` |
 
 ## Test Data & Fixtures
@@ -130,7 +132,7 @@ Aligné requirements success criteria + design DD-*.
 - Template ACTIVE minimal : `<html><body><span th:text="${title}">x</span></body></html>`
 - Variables : `{ "title": "Hello" }`
 - `TenantProperties` = `tenant_dev`
-- Dossier + `DossierType` + ACL VIEW fixture (patterns dossiers IT)
+- Dossier + `DossierType` + ACL VIEW/EDIT fixture (patterns dossiers IT)
 - Root FS tmp / `app.storage.filesystem.root` test properties
 
 ## Mocks & tools
@@ -142,7 +144,7 @@ Aligné requirements success criteria + design DD-*.
 
 ## Coverage Target
 
-- Jacoco **instructions ≥ 80 %** (module) — **preuve phase 5 : 87,20 %**
+- Jacoco **instructions ≥ 80 %** (module)
 - Priorité lignes : use cases, adapters FS/PDF, tasks, controllers,
   exception handlers
 
@@ -153,17 +155,26 @@ Aligné requirements success criteria + design DD-*.
 | GenerateDocumentUseCase PDF | Unit + MockMvc generate |
 | FS + S3 adapters | Unit FS + S3 mock |
 | documentGenerationTask | Unit delegate |
-| attach → dossier_element | Unit delegate + schema IT |
+| attach → dossier_element | Unit delegate + schema/persistence |
 | POST sans store | MockMvc + assert FS vide |
-| GET + ACL | MockMvc ACL + bypass admin |
-| Liquibase 005 | Schema IT |
-| verify / Jacoco / ArchUnit / lint | `./mvnw verify` 353/0 |
+| GET + ACL | MockMvc VIEW/EDIT + bypass admin |
+| Liquibase 005 | `DossierElementSchemaTest` (surefire) |
+| verify / Jacoco / ArchUnit / lint | `./mvnw clean verify` |
 
-**Phase 5 evidence** (2026-08-03) — majorité des cases verts ; gaps mineurs
-(blank templateKey 400, ACL EDIT, storageRef cassé, persistence round-trip)
-→ **Phase 8**.
+## Phase evidence
 
-**Phase 7 note** (2026-08-04) — code aligned design ; `./mvnw clean verify`
-353/0, Jacoco 87,20 %. `DossierElementSchemaIT` hors include surefire défaut
-(`*IT`) — passe en `-Dtest=DossierElementSchemaIT` ; à traiter phase 8
-(renommer ou include).
+**Phase 5** (2026-08-03) — majorité des cases ; gaps mineurs ouverts.
+
+**Phase 7** (2026-08-04) — code aligned ; note `*IT` hors surefire.
+
+**Phase 8 close** (2026-08-04) — gaps clos ; `DossierElementSchemaIT`
+renommé `DossierElementSchemaTest` ; O6 borne 1 MiB reste soft / hors V1.
+
+```text
+./mvnw clean verify
+→ Tests run: 362, Failures: 0, Errors: 0
+→ Jacoco INSTRUCTION 12463/14278 = 87.29%
+→ ArchUnit OK
+```
+
+**Next :** Phase 9 — Code Review (`dev-review`).

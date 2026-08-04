@@ -8,6 +8,7 @@ updated: 2026-08-04
 phase5: 2026-08-03
 phase6: 2026-08-03
 phase7: 2026-08-04
+phase8: 2026-08-04
 alignment: aligned
 ---
 
@@ -73,10 +74,10 @@ persistence, config). Aucun écart bloquant. Pas de retour design requis.
 
 | Sévérité | Item | Disposition |
 |---|---|---|
-| note | O6 borne ~1 MiB sur JSON `variables` | Non livré — follow-up phase 8 / ops soft |
+| note | O6 borne ~1 MiB sur JSON `variables` | Soft / hors V1 — non livré |
 | note | Filtre DQ2 dans UC (pas inline task) | Conforme « avant HTP » |
-| note | `*IT.java` (ex. `DossierElementSchemaIT`) hors include surefire défaut (`*Test`) | Préexistant projet ; IT passe en `-Dtest=…` ; phase 8 peut renommer/inclure |
-| note | Gaps tests MockMvc (blank templateKey 400, ACL EDIT, storageRef cassé, round-trip JPA) | Phase 8 |
+| note | Schema surefire | Phase 8 : `DossierElementSchemaTest` (ex-`*IT`) inclus |
+| note | Gaps MockMvc / JPA | Phase 8 clos |
 
 ### Evidence (phase 7, fresh)
 
@@ -96,7 +97,10 @@ Ports document, filtre variables, Generate UC, adapters Thymeleaf/PDF/FS/S3,
 Flowable, controllers generate + content + exception handler, beans config,
 tests associés.
 
+## Phase 8
+
+Gaps tests clos + `./mvnw clean verify` → **362 / 0**, Jacoco **87,29 %**.
+
 ## Next
 
-**Phase 8 — Write Tests** (`dev-testing`) — combler gaps MockMvc / persistence
-et éventuellement inclure `*IT` dans surefire ou renommer.
+**Phase 9 — Code Review** (`dev-review`).

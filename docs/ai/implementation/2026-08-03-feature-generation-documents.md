@@ -4,12 +4,13 @@ title: Implementation Guide
 description: Technical implementation notes, patterns, and code guidelines
 status: checked
 created: 2026-08-03
-updated: 2026-08-04
+updated: 2026-08-07
 phase5: 2026-08-03
 phase6: 2026-08-03
 phase7: 2026-08-04
 phase8: 2026-08-04
 phase9: 2026-08-04
+a8_fonts: 2026-08-07
 alignment: aligned
 review: ready
 ---
@@ -32,7 +33,8 @@ domain/document          — DocumentVariableFilter
 domain/dossier/model     — DossierElement, ElementType.PRODUCED_DOC
 domain/dossier/port+uc   — Add/Get DossierElement
 infrastructure/document  — ThymeleafHtmlTemplateProcessor
-infrastructure/pdf       — FlyingSaucerPdfAdapter (jsoup XHTML)
+infrastructure/pdf       — FlyingSaucerPdfAdapter (jsoup XHTML) + ClasspathFontRegistrar (A8)
+resources/fonts          — LiberationSans-Regular.ttf (+ LICENSE SIL OFL)
 infrastructure/storage   — FilesystemStorageAdapter, S3StorageAdapter
 infrastructure/flowable  — DocumentGenerationTask, AttachGeneratedDocumentTask
 infrastructure/web/document — DocumentGenerationController, DossierElementContentController
@@ -71,6 +73,7 @@ persistence, config). Aucun écart bloquant. Pas de retour design requis.
 | DD-ENUM-V1 | `PRODUCED_DOC` seul | aligned |
 | DD-TASK-NAMES | beans documentGeneration / attachGenerated | aligned |
 | A2–A4 / A9–A13 / A15 | storageRef, ProblemDetail, System ctx, disposition | aligned |
+| A8 / DD-FONTS-A8 | Polices TTF/OTF classpath via `ClasspathFontRegistrar` | aligned (corrigé 2026-08-07) |
 
 ### Deviations / notes (non bloquant)
 
@@ -80,6 +83,7 @@ persistence, config). Aucun écart bloquant. Pas de retour design requis.
 | note | Filtre DQ2 dans UC (pas inline task) | Conforme « avant HTP » |
 | note | Schema surefire | Phase 8 : `DossierElementSchemaTest` (ex-`*IT`) inclus |
 | note | Gaps MockMvc / JPA | Phase 8 clos |
+| fixed | A8 polices classpath non enregistrées | T16 — `ClasspathFontRegistrar` + Liberation Sans |
 
 ### Evidence (phase 7, fresh)
 

@@ -13,6 +13,8 @@ import org.xhtmlrenderer.pdf.ITextRenderer;
 @Component
 public class FlyingSaucerPdfAdapter implements PdfRenderer {
 
+    private static final ClasspathFontRegistrar CLASSPATH_FONTS = new ClasspathFontRegistrar();
+
     private final ThreadLocal<ITextRenderer> renderers = ThreadLocal.withInitial(FlyingSaucerPdfAdapter::newRenderer);
 
     @Override
@@ -35,6 +37,7 @@ public class FlyingSaucerPdfAdapter implements PdfRenderer {
 
     private static ITextRenderer newRenderer() {
         ITextRenderer renderer = new ITextRenderer();
+        CLASSPATH_FONTS.registerInto(renderer);
         renderer.getSharedContext()
                 .setUserAgentCallback(new RestrictedResourceUserAgent(renderer.getOutputDevice()));
         return renderer;

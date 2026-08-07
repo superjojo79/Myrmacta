@@ -4,11 +4,12 @@ title: Project Planning & Task Breakdown
 description: Break down work into actionable tasks and estimate timeline
 status: completed
 created: 2026-08-03
-updated: 2026-08-03
+updated: 2026-08-07
 design_aligned: 2026-08-03
 phase4: 2026-08-03
 phase5: 2026-08-03
 phase6: 2026-08-03
+a8_fonts: 2026-08-07
 sequencing: layered
 ---
 
@@ -18,7 +19,8 @@ Plan **phase 4–6** — dérivé des docs `requirements` / `design` (`reviewed`
 et `testing` (`draft` → scenarios cochés phase 5).
 
 **Phase 5–6 done** — T1–T15. Traçage `task` CLI : **indisponible**.  
-Preuve T14 : `./mvnw verify` → **353 / 0**, Jacoco instructions **87,20 %**.
+Preuve T14 : `./mvnw verify` → **353 / 0**, Jacoco instructions **87,20 %**.  
+**Follow-up A8** — T16 (polices classpath) en cours / livré sur branche feature.
 
 ## Milestones
 **What are the major checkpoints?**
@@ -96,6 +98,15 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 - [x] **T15. Docs implementation + sync planning**
   - **Validation :** lint feature + planning statuses.
 
+### M8 — Écart A8 polices classpath
+
+- [x] **T16. ClasspathFontRegistrar + Liberation Sans (A8 / DD-FONTS-A8)**
+  - **Outcome :** scan `classpath:/fonts/**` TTF/OTF ; register dans
+    `FlyingSaucerPdfAdapter.newRenderer()` ; WOFF ignorés ; CDN toujours
+    bloqué via `RestrictedResourceUserAgent`.
+  - **Validation :** `ClasspathFontRegistrarTest` +
+    `FlyingSaucerPdfAdapterTest#classpathTtfFont_isEmbeddedWhenReferencedByCssFontFamily`.
+
 ## Traceability testing → tasks
 
 | Scénario testing | Tâche(s) | Statut |
@@ -103,6 +114,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 | GenerateDocumentUseCase + ArchUnit | T1, T2, T9, T14 | done |
 | HtmlTemplateProcessor | T3 | done |
 | PdfRenderer Flying Saucer | T4 | done |
+| A8 fonts classpath TTF/OTF | T16 | done |
 | Storage FS / S3 | T5, T6 | done |
 | Variable filter DQ2 | T2, T10 | done |
 | AddDossierElement | T7, T8 | done |

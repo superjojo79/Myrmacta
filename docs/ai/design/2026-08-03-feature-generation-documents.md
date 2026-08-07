@@ -5,11 +5,12 @@ description: Define the technical architecture, components, and data models
 status: reviewed
 reviewed: 2026-08-03
 created: 2026-08-03
-updated: 2026-08-04
+updated: 2026-08-07
 requirements_aligned: 2026-08-03
 stakeholder_decisions: 2026-08-03
 phase3: 2026-08-03
 phase7: 2026-08-04
+a8_fonts: 2026-08-07
 ---
 
 # System Design & Architecture
@@ -93,7 +94,7 @@ config (DEFERRED §0).
 | `domain.dossier.port.in` | `AddDossierElementUseCase`, get-by-id élément |
 | `domain.dossier.port.out` | `DossierElementRepository` |
 | `infrastructure.document` | `ThymeleafHtmlTemplateProcessor` |
-| `infrastructure.pdf` | `FlyingSaucerPdfAdapter` (jsoup XHTML + ITextRenderer) |
+| `infrastructure.pdf` | `FlyingSaucerPdfAdapter` + `ClasspathFontRegistrar` (A8) |
 | `infrastructure.storage` | `FilesystemStorageAdapter`, `S3StorageAdapter` |
 | `infrastructure.flowable` | `DocumentGenerationTask`, `AttachGeneratedDocumentTask` |
 | `infrastructure.web.document` | Controllers generate + element content + handlers |
@@ -245,7 +246,8 @@ Erreurs → exceptions propagées Flowable (échec activité).
    `StringTemplateResolver` ; **évalue** les expressions (≠ checker
    syntax-only).
 3. **FlyingSaucerPdfAdapter** — jsoup HTML→XHTML (**DQ5**) +
-   `ITextRenderer` ThreadLocal/pool.
+   `ITextRenderer` ThreadLocal/pool + enregistrement polices classpath
+   (**DD-FONTS-A8** / **A8**) via `ClasspathFontRegistrar`.
 4. **FilesystemStorageAdapter** — root config ; store/retrieve/exists ;
    anti path-traversal ; défaut IT/dev.
 5. **S3StorageAdapter** — AWS SDK v2 ; `HeadObject` pour exists ; endpoint
@@ -281,6 +283,7 @@ Erreurs → exceptions propagées Flowable (échec activité).
 | DD-LOGICAL-FK | Pas de FK SQL `dossier_id` | Pattern changelogs 001–004 |
 | DD-TASK-NAMES | Beans documentGeneration / attachGenerated | Analyse 08 |
 | DD-POM-DEPS | Réutiliser versions pom existantes | flying-saucer / jsoup / aws déjà là |
+| DD-FONTS-A8 | Scan `classpath:/fonts/**` TTF/OTF ; register dans `ITextFontResolver` à la création du renderer ; WOFF ignorés ; pas de CDN | **A8** ; jar-safe via chemin ressource ClassLoader |
 
 ### Alternatives écartées
 
@@ -292,6 +295,8 @@ Erreurs → exceptions propagées Flowable (échec activité).
 | metadata vide ou libre | Écartée (DQ4) |
 | jsoup dans use case / HtmlTemplateProcessor | Écartée (DQ5) |
 | Playwright / MinIO client / HTTP store | Non-goals requirements |
+| Liste YAML `app.pdf.fonts[]` | Écartée V1 — scan `fonts/**` suffit (A8) |
+| `@font-face` CDN / WOFF | Interdit (A8) ; user-agent restreint + scan TTF/OTF seulement |
 
 ---
 

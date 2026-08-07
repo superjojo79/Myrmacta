@@ -2,7 +2,13 @@ package com.flowforge.infrastructure.pdf;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
+import java.util.Set;
+import java.util.TreeSet;
 import org.junit.jupiter.api.Test;
+import org.openpdf.text.pdf.PdfDictionary;
+import org.openpdf.text.pdf.PdfName;
+import org.openpdf.text.pdf.PdfReader;
 
 class FlyingSaucerPdfAdapterTest {
 
@@ -46,5 +52,49 @@ class FlyingSaucerPdfAdapterTest {
                 "<html><body><img src=\"data:image/gif;base64,"
                         + "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBTAA7\" /></body></html>");
         assertThat(pdf).startsWith("%PDF".getBytes());
+    }
+
+    @Test
+    void classpathTtfFont_isEmbeddedWhenReferencedByCssFontFamily() throws IOException {
+        // A8 — TTF/OTF registered from classpath only; CSS font-family must resolve to
+        // the shipped Liberation Sans face (not a silent fallback to Times/Helvetica).
+        byte[] pdf = adapter.render("""
+                <html><head><style>
+                  body { font-family: 'Liberation Sans', sans-serif; }
+                </style></head><body><p>Hello Liberation</p></body></html>
+                """);
+        assertThat(pdf).startsWith("%PDF".getBytes());
+        assertThat(baseFonts(pdf))
+                .anyMatch(name -> name.contains("LiberationSans"));
+    }
+
+    private static Set<String> baseFonts(byte[] pdf) throws IOException {
+        Set<String> names = new TreeSet<>();
+        PdfReader reader = new PdfReader(pdf);
+        try {
+            for (int page = 1; page <= reader.getNumberOfPages(); page++) {
+                PdfDictionary resources = reader.getPageN(page).getAsDict(PdfName.RESOURCES);
+                if (resources == null) {
+                    continue;
+                }
+                PdfDictionary fonts = resources.getAsDict(PdfName.FONT);
+                if (fonts == null) {
+                    continue;
+                }
+                for (PdfName key : fonts.getKeys()) {
+                    PdfDictionary font = (PdfDictionary) PdfReader.getPdfObject(fonts.get(key));
+                    if (font == null) {
+                        continue;
+                    }
+                    PdfName baseFont = font.getAsName(PdfName.BASEFONT);
+                    if (baseFont != null) {
+                        names.add(PdfName.decodeName(baseFont.toString()));
+                    }
+                }
+            }
+        } finally {
+            reader.close();
+        }
+        return names;
     }
 }

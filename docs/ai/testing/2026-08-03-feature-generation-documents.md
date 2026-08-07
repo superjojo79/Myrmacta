@@ -4,12 +4,13 @@ title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
 status: completed
 created: 2026-08-03
-updated: 2026-08-04
+updated: 2026-08-07
 design_aligned: 2026-08-03
 phase3_sync: 2026-08-03
 phase5_evidence: 2026-08-03
 phase7_note: 2026-08-04
 phase8: 2026-08-04
+a8_fonts: 2026-08-07
 ---
 
 # Testing Strategy
@@ -52,6 +53,10 @@ Aligné requirements success criteria + design DD-*.
 - [x] HTML5 simple (jsoup interne) → bytes `%PDF`
 - [x] Document multi-pages simple (smoke)
 - [x] Pool/ThreadLocal : deux appels successifs OK
+- [x] **A8** — police TTF classpath (`Liberation Sans`) embarquée quand
+  référencée en `font-family` (assertion `PdfReader` BaseFont)
+- [x] **A8** — scan ignore WOFF ; échec clair si TTF illisible
+- [x] URLs `http(s)` / `file` non résolues (SSRF) — inchangé
 
 ### DocumentStoragePort — filesystem
 - [x] store → retrieve round-trip
@@ -122,7 +127,7 @@ Aligné requirements success criteria + design DD-*.
 | Generate UC | `GenerateDocumentUseCaseImplTest` |
 | Add element | `AddDossierElementUseCaseImplTest` |
 | Thymeleaf | `ThymeleafHtmlTemplateProcessorTest` |
-| PDF | `FlyingSaucerPdfAdapterTest` |
+| PDF | `FlyingSaucerPdfAdapterTest`, `ClasspathFontRegistrarTest` |
 | FS / S3 | `FilesystemStorageAdapterTest`, `S3StorageAdapterTest` |
 | Tasks | `DocumentGenerationTaskTest`, `AttachGeneratedDocumentTaskTest` |
 | Schema | `DossierElementSchemaTest` |

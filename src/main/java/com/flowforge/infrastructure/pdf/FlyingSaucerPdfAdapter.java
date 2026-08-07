@@ -13,7 +13,7 @@ import org.xhtmlrenderer.pdf.ITextRenderer;
 @Component
 public class FlyingSaucerPdfAdapter implements PdfRenderer {
 
-    private final ThreadLocal<ITextRenderer> renderers = ThreadLocal.withInitial(ITextRenderer::new);
+    private final ThreadLocal<ITextRenderer> renderers = ThreadLocal.withInitial(FlyingSaucerPdfAdapter::newRenderer);
 
     @Override
     public byte[] render(String html) {
@@ -31,6 +31,13 @@ public class FlyingSaucerPdfAdapter implements PdfRenderer {
         } catch (Exception ex) {
             throw new DocumentRenderException("PDF rendering failed: " + ex.getMessage(), ex);
         }
+    }
+
+    private static ITextRenderer newRenderer() {
+        ITextRenderer renderer = new ITextRenderer();
+        renderer.getSharedContext()
+                .setUserAgentCallback(new RestrictedResourceUserAgent(renderer.getOutputDevice()));
+        return renderer;
     }
 
     static String toXhtml(String html) {

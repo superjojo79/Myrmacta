@@ -74,6 +74,29 @@ class EnvMasterKeyCipherTest {
                 .hasMessageContaining("master-key");
     }
 
+    @Test
+    void encryptDecrypt_stringRoundTrip() {
+        String ciphertext = cipher.encrypt("tenant_dev", "webhook-hmac-secret");
+        assertThat(ciphertext).startsWith("enc:v1:");
+        assertThat(ciphertext).doesNotContain("webhook-hmac-secret");
+        assertThat(cipher.decrypt("tenant_dev", ciphertext)).isEqualTo("webhook-hmac-secret");
+    }
+
+    @Test
+    void encrypt_nullOrBlank_throwsIllegalArgument() {
+        assertThatThrownBy(() -> cipher.encrypt("tenant_dev", null))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> cipher.encrypt("tenant_dev", "  "))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void decrypt_withoutPrefix_throwsIllegalArgument() {
+        assertThatThrownBy(() -> cipher.decrypt("tenant_dev", "not-encrypted"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("enc:v1:");
+    }
+
     /** Minimal DEK store for unit tests — production uses JPA. */
     static final class InMemoryDekStore implements TenantDekStore {
         private final Map<String, String> wrappedByTenant = new ConcurrentHashMap<>();

@@ -8,7 +8,6 @@ spring:
     check-template-location: false
   autoconfigure:
     exclude:
-      - org.springframework.boot.mail.autoconfigure.MailSenderAutoConfiguration
       - org.flowable.spring.boot.FlowableJpaAutoConfiguration
       - org.flowable.spring.boot.FlowableSecurityAutoConfiguration
       - org.flowable.spring.boot.app.AppEngineAutoConfiguration
@@ -37,6 +36,9 @@ spring:
     open-in-view: false
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yaml
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:587}
   security:
     oauth2:
       client:
@@ -82,6 +84,17 @@ app:
       max-body-bytes: 1048576
       rate-limit-per-minute: 120
       idempotency-ttl: 24h
+  notification:
+    outbox:
+      batch-size: 20
+      max-attempts: 3
+      poll-delay: 1s
+      retention: 7d
+    webhook:
+      connect-timeout: 5s
+      read-timeout: 5s
+    sse:
+      heartbeat-interval: 15s
   storage:
     type: ${APP_STORAGE_TYPE:filesystem}
     filesystem:

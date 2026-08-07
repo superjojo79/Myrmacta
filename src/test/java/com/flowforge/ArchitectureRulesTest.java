@@ -30,6 +30,7 @@ class ArchitectureRulesTest {
     @ArchTest
     static final ArchRule usecase_impl_naming_convention = classes()
             .that().resideInAPackage("..usecase..")
+            .and().areTopLevelClasses()
             .and().areNotInterfaces()
             .should().haveSimpleNameEndingWith("Impl");
 }

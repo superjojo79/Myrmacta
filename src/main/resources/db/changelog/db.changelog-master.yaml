@@ -9,3 +9,5 @@ databaseChangeLog:
       file: db/changelog/changes/004-document-template-tables.yaml
   - include:
       file: db/changelog/changes/005-dossier-element-tables.yaml
+  - include:
+      file: db/changelog/changes/006-notification-tables.yaml

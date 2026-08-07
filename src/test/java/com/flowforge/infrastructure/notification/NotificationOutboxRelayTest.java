@@ -1,0 +1,232 @@
+package com.flowforge.infrastructure.notification;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import com.flowforge.domain.connector.port.out.ConnectorSecretCipher;
+import com.flowforge.domain.notification.model.NotificationChannel;
+import com.flowforge.domain.notification.model.NotificationOutboxRecord;
+import com.flowforge.domain.notification.model.NotificationOutboxStatus;
+import com.flowforge.domain.notification.model.NotificationWebhookConfig;
+import com.flowforge.domain.notification.model.WebhookDeliveryCommand;
+import com.flowforge.domain.notification.port.out.BrowserPushPort;
+import com.flowforge.domain.notification.port.out.EmailPort;
+import com.flowforge.domain.notification.port.out.NotificationOutboxRepository;
+import com.flowforge.domain.notification.port.out.NotificationWebhookRepository;
+import com.flowforge.domain.notification.port.out.WebhookPort;
+import com.flowforge.infrastructure.config.NotificationProperties;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import tools.jackson.databind.json.JsonMapper;
+
+class NotificationOutboxRelayTest {
+
+    private NotificationOutboxRepository outboxRepository;
+    private NotificationWebhookRepository webhookRepository;
+    private EmailPort emailPort;
+    private WebhookPort webhookPort;
+    private BrowserPushPort browserPushPort;
+    private ConnectorSecretCipher cipher;
+    private NotificationOutboxRelay relay;
+
+    @BeforeEach
+    void setUp() {
+        outboxRepository = mock(NotificationOutboxRepository.class);
+        webhookRepository = mock(NotificationWebhookRepository.class);
+        emailPort = mock(EmailPort.class);
+        webhookPort = mock(WebhookPort.class);
+        browserPushPort = mock(BrowserPushPort.class);
+        cipher = mock(ConnectorSecretCipher.class);
+        NotificationProperties properties = new NotificationProperties(
+                new NotificationProperties.Outbox(20, 3, Duration.ofSeconds(1), Duration.ofDays(7)),
+                null,
+                null);
+        relay = new NotificationOutboxRelay(
+                outboxRepository,
+                webhookRepository,
+                emailPort,
+                webhookPort,
+                browserPushPort,
+                cipher,
+                properties,
+                JsonMapper.builder().build());
+    }
+
+    @Test
+    void relay_emailSuccess_marksProcessed() {
+        Instant now = Instant.parse("2026-08-07T12:00:00Z");
+        NotificationOutboxRecord record = pending(
+                NotificationChannel.EMAIL,
+                "{\"to\":\"a@example.com\",\"subject\":\"Hi\",\"body\":\"Body\"}",
+                now);
+        when(outboxRepository.lockNextPending(20, now)).thenReturn(List.of(record));
+
+        relay.relayPending(now);
+
+        verify(emailPort).send("a@example.com", "Hi", "Body");
+        verify(outboxRepository).markProcessed(record.id(), now);
+        verify(outboxRepository).purgeTerminalOlderThan(now.minus(Duration.ofDays(7)));
+    }
+
+    @Test
+    void relay_webhookSuccess_decryptsSecretAndDelivers() {
+        Instant now = Instant.parse("2026-08-07T12:00:00Z");
+        UUID webhookId = UUID.randomUUID();
+        NotificationOutboxRecord record = pending(
+                NotificationChannel.WEBHOOK,
+                "{\"webhookConfigId\":\"" + webhookId + "\",\"payload\":{\"k\":\"v\"}}",
+                now);
+        NotificationWebhookConfig config = new NotificationWebhookConfig(
+                webhookId,
+                "tenant_dev",
+                "hook",
+                "https://example.com/hook",
+                "enc:cipher",
+                true,
+                null,
+                now,
+                now);
+        when(outboxRepository.lockNextPending(20, now)).thenReturn(List.of(record));
+        when(webhookRepository.findByIdAndTenantId(webhookId, "tenant_dev")).thenReturn(Optional.of(config));
+        when(cipher.decrypt("tenant_dev", "enc:cipher")).thenReturn("plain-secret");
+
+        relay.relayPending(now);
+
+        ArgumentCaptor<WebhookDeliveryCommand> captor = ArgumentCaptor.forClass(WebhookDeliveryCommand.class);
+        verify(webhookPort).send(captor.capture());
+        WebhookDeliveryCommand cmd = captor.getValue();
+        org.assertj.core.api.Assertions.assertThat(cmd.targetUrl()).isEqualTo("https://example.com/hook");
+        org.assertj.core.api.Assertions.assertThat(cmd.secretPlain()).isEqualTo("plain-secret");
+        org.assertj.core.api.Assertions.assertThat(cmd.outboxId()).isEqualTo(record.id());
+        org.assertj.core.api.Assertions.assertThat(cmd.payload()).containsEntry("k", "v");
+        verify(outboxRepository).markProcessed(record.id(), now);
+    }
+
+    @Test
+    void relay_webhookMissingOrDisabled_marksDead() {
+        Instant now = Instant.parse("2026-08-07T12:00:00Z");
+        UUID webhookId = UUID.randomUUID();
+        NotificationOutboxRecord record = pending(
+                NotificationChannel.WEBHOOK,
+                "{\"webhookConfigId\":\"" + webhookId + "\",\"payload\":{}}",
+                now);
+        when(outboxRepository.lockNextPending(20, now)).thenReturn(List.of(record));
+        when(webhookRepository.findByIdAndTenantId(webhookId, "tenant_dev")).thenReturn(Optional.empty());
+
+        relay.relayPending(now);
+
+        verify(webhookPort, never()).send(any());
+        verify(outboxRepository).markDead(eq(record.id()), anyString(), eq(now));
+        verify(outboxRepository, never()).recordFailure(any(), anyString(), anyInt(), any());
+    }
+
+    @Test
+    void relay_webhookDeliveryFailure_recordsFailure() {
+        Instant now = Instant.parse("2026-08-07T12:00:00Z");
+        UUID webhookId = UUID.randomUUID();
+        NotificationOutboxRecord record = pending(
+                NotificationChannel.WEBHOOK,
+                "{\"webhookConfigId\":\"" + webhookId + "\",\"payload\":{}}",
+                now);
+        NotificationWebhookConfig config = new NotificationWebhookConfig(
+                webhookId,
+                "tenant_dev",
+                "hook",
+                "https://example.com/hook",
+                null,
+                true,
+                null,
+                now,
+                now);
+        when(outboxRepository.lockNextPending(20, now)).thenReturn(List.of(record));
+        when(webhookRepository.findByIdAndTenantId(webhookId, "tenant_dev")).thenReturn(Optional.of(config));
+        org.mockito.Mockito.doThrow(new IllegalStateException("upstream 500"))
+                .when(webhookPort)
+                .send(any());
+
+        relay.relayPending(now);
+
+        verify(outboxRepository).recordFailure(record.id(), "upstream 500", 3, now);
+        verify(outboxRepository, never()).markProcessed(any(), any());
+    }
+
+    @Test
+    void relay_browserDelivered_marksProcessed() {
+        Instant now = Instant.parse("2026-08-07T12:00:00Z");
+        NotificationOutboxRecord record = pending(
+                NotificationChannel.BROWSER,
+                "{\"userId\":\"user-1\",\"payload\":{\"a\":1}}",
+                now);
+        when(outboxRepository.lockNextPending(20, now)).thenReturn(List.of(record));
+        when(browserPushPort.push(eq("user-1"), any())).thenReturn(true);
+
+        relay.relayPending(now);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> eventCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(browserPushPort).push(eq("user-1"), eventCaptor.capture());
+        org.assertj.core.api.Assertions.assertThat(eventCaptor.getValue())
+                .containsEntry("id", record.id().toString())
+                .containsKey("payload")
+                .containsKey("at");
+        verify(outboxRepository).markProcessed(record.id(), now);
+    }
+
+    @Test
+    void relay_browserSkipped_marksProcessed() {
+        Instant now = Instant.parse("2026-08-07T12:00:00Z");
+        NotificationOutboxRecord record = pending(
+                NotificationChannel.BROWSER,
+                "{\"userId\":\"user-1\",\"payload\":{}}",
+                now);
+        when(outboxRepository.lockNextPending(20, now)).thenReturn(List.of(record));
+        when(browserPushPort.push(eq("user-1"), any())).thenReturn(false);
+
+        relay.relayPending(now);
+
+        verify(outboxRepository).markProcessed(record.id(), now);
+        verify(outboxRepository, never()).markDead(any(), anyString(), any());
+    }
+
+    @Test
+    void relay_invalidPayloadJson_recordsFailure() {
+        Instant now = Instant.parse("2026-08-07T12:00:00Z");
+        NotificationOutboxRecord record =
+                pending(NotificationChannel.EMAIL, "{not-json", now);
+        when(outboxRepository.lockNextPending(20, now)).thenReturn(List.of(record));
+
+        relay.relayPending(now);
+
+        verify(emailPort, never()).send(anyString(), anyString(), anyString());
+        verify(outboxRepository).recordFailure(eq(record.id()), anyString(), eq(3), eq(now));
+    }
+
+    private static NotificationOutboxRecord pending(
+            NotificationChannel channel, String payloadJson, Instant now) {
+        return new NotificationOutboxRecord(
+                UUID.randomUUID(),
+                "tenant_dev",
+                channel,
+                NotificationOutboxStatus.PENDING,
+                payloadJson,
+                0,
+                now,
+                null,
+                now,
+                now,
+                null);
+    }
+}

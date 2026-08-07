@@ -82,6 +82,26 @@ public class EnvMasterKeyCipher implements ConnectorSecretCipher {
         return Map.copyOf(out);
     }
 
+    @Override
+    public String encrypt(String tenantId, String plaintext) {
+        if (plaintext == null || plaintext.isBlank()) {
+            throw new IllegalArgumentException("plaintext must not be null or blank");
+        }
+        SecretKey dek = resolveDek(tenantId);
+        return ENC_PREFIX
+                + encryptToBase64(dek, plaintext.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
+    @Override
+    public String decrypt(String tenantId, String ciphertext) {
+        if (ciphertext == null || !ciphertext.startsWith(ENC_PREFIX)) {
+            throw new IllegalArgumentException("ciphertext must start with " + ENC_PREFIX);
+        }
+        SecretKey dek = resolveDek(tenantId);
+        byte[] plain = decryptFromBase64(dek, ciphertext.substring(ENC_PREFIX.length()));
+        return new String(plain, java.nio.charset.StandardCharsets.UTF_8);
+    }
+
     static boolean isPasswordKey(String key) {
         String k = key.toLowerCase(Locale.ROOT);
         return k.equals("webhooksecret")

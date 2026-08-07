@@ -9,6 +9,7 @@ class NoOpWorkflowEventPublisher implements WorkflowEventPublisher {
 
     @Override
     public void publish(WorkflowEvent event) {
-        // Notifications are delivered by a later feature; publishing is a no-op in V1.
+        // Intentional no-op (D-PUBLISHER): notifications are dispatched only via
+        // notificationDispatchTask / POST /api/notifications/send, not WorkflowEventPublisher.
     }
 }

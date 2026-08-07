@@ -57,6 +57,16 @@ class ConnectorPortsContractTest {
             public Map<String, Object> decryptPasswordFields(String tenantId, Map<String, Object> config) {
                 return config;
             }
+
+            @Override
+            public String encrypt(String tenantId, String plaintext) {
+                return "enc:v1:" + plaintext;
+            }
+
+            @Override
+            public String decrypt(String tenantId, String ciphertext) {
+                return ciphertext.startsWith("enc:v1:") ? ciphertext.substring("enc:v1:".length()) : ciphertext;
+            }
         };
 
         WebhookIdempotencyStore store = new WebhookIdempotencyStore() {

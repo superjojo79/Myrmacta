@@ -4,12 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.flowforge.domain.notification.model.WebhookDeliveryCommand;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -25,6 +28,17 @@ class WebhookRestAdapterTest {
 
     private static final ObjectMapper MAPPER = JsonMapper.builder().build();
 
+    /**
+     * Deterministic, offline stand-in for real DNS resolution — literal-IP parsing below
+     * performs no network I/O, so {@code hooks.example.com} resolves without touching the network.
+     */
+    private static final OutboundUrlGuard.HostResolver FAKE_RESOLVER = host -> {
+        if ("hooks.example.com".equals(host.toLowerCase(Locale.ROOT))) {
+            return new InetAddress[] {literalAddress("93.184.216.34")};
+        }
+        throw new UnknownHostException(host);
+    };
+
     private OutboundUrlGuard guard;
     private List<CapturedPost> posts;
     private AtomicInteger guardCalls;
@@ -33,7 +47,7 @@ class WebhookRestAdapterTest {
     @BeforeEach
     void setUp() {
         guardCalls = new AtomicInteger();
-        guard = new OutboundUrlGuard(false) {
+        guard = new OutboundUrlGuard(false, FAKE_RESOLVER) {
             @Override
             public void assertSafe(String url) {
                 guardCalls.incrementAndGet();
@@ -126,6 +140,16 @@ class WebhookRestAdapterTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("upstream 500");
         assertThat(attempts).hasValue(1);
+    }
+
+    private static InetAddress literalAddress(String literalIp) {
+        try {
+            // A literal IP string is parsed locally — InetAddress.getByName performs no
+            // DNS query in this case, so the fixture stays fully offline.
+            return InetAddress.getByName(literalIp);
+        } catch (UnknownHostException ex) {
+            throw new AssertionError(ex);
+        }
     }
 
     private static String hmacHex(String secret, byte[] body) throws Exception {

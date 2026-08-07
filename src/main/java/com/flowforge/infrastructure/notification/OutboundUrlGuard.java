@@ -1,25 +1,46 @@
 package com.flowforge.infrastructure.notification;
 
+import java.net.InetAddress;
 import java.net.URI;
+import java.net.UnknownHostException;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 import org.springframework.util.StringUtils;
 
 /**
- * SSRF guard for outbound notification webhook URLs (literal host checks only).
+ * SSRF guard for outbound notification webhook URLs.
  *
  * <p>A13: profiles {@code test}/{@code local} may allow {@code http} only to loopback
  * ({@code localhost}, {@code 127.0.0.1}, {@code ::1}). Public {@code http} hosts remain
  * rejected. HTTPS to private/loopback/metadata hosts is always rejected.
+ *
+ * <p>Literal hosts (dotted/decimal IPv4, IPv6, IPv4-mapped) are checked directly. A DNS
+ * name is additionally <b>resolved</b> and every returned address is checked against the
+ * same private/loopback/link-local ranges — a literal-only hostname check would let an
+ * attacker point a public-looking domain at an internal address (DNS rebinding) and sail
+ * straight through. This narrows, but does not eliminate, TOCTOU rebinding between this
+ * check and the actual connection (no IP pinning on the HTTP client).
  */
 public class OutboundUrlGuard {
 
     private static final Set<String> LOOPBACK_HOSTS = Set.of("localhost", "127.0.0.1", "::1");
 
+    @FunctionalInterface
+    interface HostResolver {
+        InetAddress[] resolve(String host) throws UnknownHostException;
+    }
+
     private final boolean allowLocalHttp;
+    private final HostResolver resolver;
 
     public OutboundUrlGuard(boolean allowLocalHttp) {
+        this(allowLocalHttp, InetAddress::getAllByName);
+    }
+
+    OutboundUrlGuard(boolean allowLocalHttp, HostResolver resolver) {
         this.allowLocalHttp = allowLocalHttp;
+        this.resolver = Objects.requireNonNull(resolver, "resolver");
     }
 
     public void assertSafe(String url) {
@@ -67,6 +88,44 @@ public class OutboundUrlGuard {
         if (isBlockedHost(normalizedHost)) {
             throw new IllegalArgumentException("Webhook URL host is not allowed");
         }
+        if (!isLiteralAddress(normalizedHost)) {
+            assertResolvedAddressesSafe(normalizedHost);
+        }
+    }
+
+    private static boolean isLiteralAddress(String normalizedHost) {
+        return normalizedHost.contains(":") || extractIpv4(normalizedHost) != null;
+    }
+
+    private void assertResolvedAddressesSafe(String host) {
+        InetAddress[] addresses;
+        try {
+            addresses = resolver.resolve(host);
+        } catch (UnknownHostException ex) {
+            throw new IllegalArgumentException("Webhook URL host cannot be resolved: " + host, ex);
+        }
+        if (addresses == null || addresses.length == 0) {
+            throw new IllegalArgumentException("Webhook URL host cannot be resolved: " + host);
+        }
+        for (InetAddress address : addresses) {
+            if (isBlockedResolvedAddress(address)) {
+                throw new IllegalArgumentException(
+                        "Webhook URL host resolves to a disallowed network: " + host);
+            }
+        }
+    }
+
+    private static boolean isBlockedResolvedAddress(InetAddress address) {
+        if (address.isLoopbackAddress()
+                || address.isLinkLocalAddress()
+                || address.isSiteLocalAddress()
+                || address.isAnyLocalAddress()
+                || address.isMulticastAddress()) {
+            return true;
+        }
+        byte[] bytes = address.getAddress();
+        // IPv6 unique local addresses fc00::/7 — not covered by isSiteLocalAddress().
+        return bytes.length == 16 && (bytes[0] & 0xfe) == 0xfc;
     }
 
     private static String extractAuthorityHost(String url) {

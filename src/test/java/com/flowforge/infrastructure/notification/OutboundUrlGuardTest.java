@@ -3,6 +3,11 @@ package com.flowforge.infrastructure.notification;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.Arrays;
+import java.util.Locale;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
@@ -10,8 +15,42 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 class OutboundUrlGuardTest {
 
-    private final OutboundUrlGuard strict = new OutboundUrlGuard(false);
-    private final OutboundUrlGuard allowLocalHttp = new OutboundUrlGuard(true);
+    /**
+     * Deterministic, offline stand-in for real DNS resolution — literal-IP parsing below
+     * performs no network I/O, so this map can be built without touching the network.
+     */
+    private static final Map<String, InetAddress[]> FAKE_DNS = Map.of(
+            "hooks.example.com", addresses("93.184.216.34"),
+            "evil.attacker.example", addresses("10.0.0.5"),
+            "rebind.attacker.example", addresses("169.254.169.254"),
+            "multi-answer.attacker.example", addresses("8.8.8.8", "192.168.1.1"));
+
+    private static final OutboundUrlGuard.HostResolver FAKE_RESOLVER = host -> {
+        InetAddress[] resolved = FAKE_DNS.get(host.toLowerCase(Locale.ROOT));
+        if (resolved == null) {
+            throw new UnknownHostException(host);
+        }
+        return resolved;
+    };
+
+    private final OutboundUrlGuard strict = new OutboundUrlGuard(false, FAKE_RESOLVER);
+    private final OutboundUrlGuard allowLocalHttp = new OutboundUrlGuard(true, FAKE_RESOLVER);
+
+    private static InetAddress[] addresses(String... literalIps) {
+        return Arrays.stream(literalIps)
+                .map(OutboundUrlGuardTest::literalAddress)
+                .toArray(InetAddress[]::new);
+    }
+
+    private static InetAddress literalAddress(String literalIp) {
+        try {
+            // A literal IP string is parsed locally — InetAddress.getByName performs no
+            // DNS query in this case, so building the fixture stays fully offline.
+            return InetAddress.getByName(literalIp);
+        } catch (UnknownHostException ex) {
+            throw new AssertionError(ex);
+        }
+    }
 
     @Test
     void httpsPublicHost_isAccepted() {
@@ -131,5 +170,36 @@ class OutboundUrlGuardTest {
         assertThatThrownBy(() -> strict.assertSafe("http://2130706433/hook"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
-}
 
+    // --- DNS rebinding: a public-looking hostname resolving to a private/metadata address ---
+
+    @Test
+    void hostnameResolvingToPrivateAddress_isRejected() {
+        assertThatThrownBy(() -> strict.assertSafe("https://evil.attacker.example/hook"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("disallowed network");
+    }
+
+    @Test
+    void hostnameResolvingToMetadataAddress_isRejected() {
+        assertThatThrownBy(() -> strict.assertSafe("https://rebind.attacker.example/hook"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("disallowed network");
+    }
+
+    @Test
+    void hostnameWithOneBlockedAmongMultipleResolvedAddresses_isRejected() {
+        // A DNS name may return several A/AAAA records — every one must be checked, not
+        // just the first, otherwise round-robin/rebinding across answers slips through.
+        assertThatThrownBy(() -> strict.assertSafe("https://multi-answer.attacker.example/hook"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("disallowed network");
+    }
+
+    @Test
+    void unresolvableHostname_isRejected() {
+        assertThatThrownBy(() -> strict.assertSafe("https://does-not-exist.invalid/hook"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cannot be resolved");
+    }
+}

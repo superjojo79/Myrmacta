@@ -22,7 +22,7 @@
         <!-- Décision n° 27 — versions de stack -->
         <flowable.version>8.0.0</flowable.version>
         <flying-saucer.version>10.4.0</flying-saucer.version>
-        <jsoup.version>1.22.2</jsoup.version>
+        <jsoup.version>1.23.1</jsoup.version>
         <archunit.version>1.5.0</archunit.version>
         <aws.sdk.version>2.50.1</aws.sdk.version>
         <spring-retry.version>2.0.13</spring-retry.version>

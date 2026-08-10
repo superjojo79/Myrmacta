@@ -8,6 +8,7 @@ updated: 2026-08-10
 design_aligned: 2026-08-10
 phase2_sync: 2026-08-10
 phase3_sync: 2026-08-10
+phase4_sync: 2026-08-10
 ---
 
 # Testing Strategy
@@ -130,6 +131,7 @@ phase3_sync: 2026-08-10
 
 ## Sources
 
-- Requirements + design `visualisation-workflow` draft (2026-08-10)
+- Requirements + design `visualisation-workflow` `reviewed` (2026-08-10)
+- Planning phase 4 `ready` — traçabilité scénarios → T1–T13
 - Patterns tests : `WorkflowApiTest`, `Notification*ApiTest`,
   `DossierApiTest`

@@ -2,18 +2,19 @@
 phase: planning
 title: Project Planning & Task Breakdown
 description: Break down work into actionable tasks and estimate timeline
-status: draft
+status: ready
 created: 2026-08-10
 updated: 2026-08-10
 design_aligned: 2026-08-10
 phase3_sync: 2026-08-10
+phase4: 2026-08-10
 sequencing: layered
 ---
 
 # Project Planning & Task Breakdown
 
-Plan **phase 4 (initial)** — dérivé des docs `requirements` / `design`
-(`reviewed`) et `testing` (`draft`). Aucune tâche d’implémentation
+Plan **phase 4** — dérivé des docs `requirements` / `design` (`reviewed`)
+et `testing` (`draft`, scénarios `- [ ]`). Aucune tâche d’implémentation
 démarrée.
 
 Traçage `task` CLI : **indisponible** (`npx ai-devkit@latest task list
@@ -22,13 +23,12 @@ Traçage `task` CLI : **indisponible** (`npx ai-devkit@latest task list
 ## Milestones
 **What are the major checkpoints?**
 
-- [ ] **M1 — Domaine** : models views, ports, use cases lecture + reassign,
-      `observerUserIds`, `DossierWorkflowLink.startedBy`
-- [ ] **M2 — Persistance** : Liquibase 007, repos, JPA, AttachWorkflow
-      signatures + orchestrator/outbox `startedBy`
-- [ ] **M3 — Flowable adapters** : visualization + participants
-- [ ] **M4 — HTTP** : controller viz + ProblemDetail 409 + admin observers
-- [ ] **M5 — SSE listener** : `WorkflowStateEventListener`
+- [ ] **M1 — Domaine** : models, ports, use cases lecture + reassign
+- [ ] **M2 — Persistance & wiring startedBy** : Liquibase 007, JPA, repos,
+      AttachWorkflow + orchestrator/outbox
+- [ ] **M3 — Adapters Flowable** : visualization + participants
+- [ ] **M4 — HTTP** : controller viz + admin observers + 409 handler
+- [ ] **M5 — SSE** : `WorkflowStateEventListener`
 - [ ] **M6 — Preuves & docs** : verify, Jacoco ≥ 80 %, sync docs
 
 ## Task Breakdown
@@ -39,128 +39,191 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 ### M1 — Domaine
 
 - [ ] **T1. Models + ports out**
-  - **Outcome :** views ; ports viz/participant ; exception missing-PI ;
+  - **Outcome :** `WorkflowDiagramView`, `ActivityHistoryEntry`,
+    `WorkflowTaskView` ; `WorkflowVisualizationPort` ;
+    `WorkflowParticipantPort` ; `WorkflowProcessInstanceMissingException`
+    (ou équivalent → 409) ; reuse access-denied / not-found ;
     `WorkflowTypeConfig.observerUserIds` ; `DossierWorkflowLink.startedBy`.
   - **Deps :** aucune.
-  - **Validation :** tests modèles observers / startedBy ; ArchUnit.
-  - **Tests :** WorkflowTypeConfig observers ; DossierWorkflowLink.
+  - **Validation :** unit modèles ; ArchUnit `domain.workflow` sans
+    dépendances web/mail.
+  - **Tests :** WorkflowTypeConfig observers ; DossierWorkflowLink
+    startedBy ; prépare use cases.
 
-- [ ] **T2. Use cases lecture**
-  - **Outcome :** Get diagram / history / tasks / dossier link ; load
-    link → si PI absent : 409 sur moteur, **200** sur dossier (R1) ;
-    participant|TA/WA → délègue ports ; `relations: []`.
-  - **Deps :** T1.
-  - **Validation :** use case unit tests (403/404/409 paths + dossier
-    sans PI).
-  - **Tests :** Get* use cases (testing §).
+- [ ] **T2. Use cases lecture (authz in UC)**
+  - **Outcome :** Get diagram / history / tasks / dossier-link ;
+    charge link → authz participant|TA/WA (DD-AUTHZ-LAYER) ;
+    PI absent → 409 moteur, **200** dossier (R1) ; dossier via
+    `DossierRepository` + elements (DD-DOSSIER-LOAD) ; `relations: []`.
+  - **Deps :** T1 (ports mockés en test).
+  - **Validation :** Get*UseCaseTest (403/404/409 + dossier sans PI +
+    observateur).
+  - **Tests :** Get diagram/history/tasks ; Get link dossier.
 
 - [ ] **T3. Use case reassign**
-  - **Outcome :** WA|TA only ; validate assigneeId ; task belongs to
-    instance ; délègue `reassignTask`.
+  - **Outcome :** WA|TA only ; `assigneeId` non blank ; tâche appartient
+    à l’instance du link ; PI requis ; délègue
+    `WorkflowVisualizationPort.reassignTask`.
   - **Deps :** T1.
   - **Validation :** ReassignWorkflowTaskUseCaseTest.
   - **Tests :** Reassign use case.
 
-### M2 — Persistance
+### M2 — Persistance & startedBy
 
-- [ ] **T4. Liquibase 007 + JPA (observers + started_by)**
-  - **Outcome :** `observer_user_ids` + `started_by` ; mapping JPA ;
-    admin DTOs observers ; link DTO/`WorkflowLinkResponse` expose
-    `startedBy` si utile.
+- [ ] **T4. Liquibase 007 + JPA**
+  - **Outcome :** changelog
+    `007-workflow-viz-columns.yaml` inclus au master ;
+    `workflow_type_config.observer_user_ids` JSON NOT NULL défaut `[]` ;
+    `dossier_workflow_link.started_by` VARCHAR ; mapping entities ;
+    admin DTOs `observerUserIds` ; `WorkflowLinkResponse.startedBy`.
   - **Deps :** T1.
-  - **Validation :** SchemaIT ; round-trip.
-  - **Tests :** Liquibase / persistence.
-
-- [ ] **T4b. AttachWorkflow + producteurs startedBy**
-  - **Outcome :** `reserve` / `reserveOrResume(..., startedBy)` ;
-    ManualStartOrchestrator passe `sub` ; OutboxRelay passe
-    `"system:outbox"` ; resume ne écrase pas.
-  - **Deps :** T4.
-  - **Validation :** unit AttachWorkflow + orchestrator/relay tests.
-  - **Tests :** AttachWorkflowUseCaseImplTest ; OutboxRelaySchedulerTest.
+  - **Validation :** SchemaIT colonnes ; round-trip config + link.
+  - **Tests :** Liquibase / WorkflowTypeConfig + link persistence ;
+    MockMvc/persistence config observers (partiel jusqu’à T10).
 
 - [ ] **T5. Repo helpers**
-  - **Outcome :** `DossierElementRepository.findByDossierId…` ;
-    `DossierWorkflowLinkRepository.findByProcessInstanceId` (+ tenant).
-  - **Deps :** T4 (ou parallèle si pas de dépendance colonne).
-  - **Validation :** persistence IT.
-  - **Tests :** Persistence helpers (testing §).
+  - **Outcome :**
+    `DossierElementRepository.findByDossierIdOrderByAddedAtAsc` ;
+    `DossierWorkflowLinkRepository.findByProcessInstanceId(tenantId, piid)`
+    (+ index si besoin).
+  - **Deps :** T4.
+  - **Validation :** persistence IT round-trip.
+  - **Tests :** Persistence helpers.
+
+- [ ] **T6. AttachWorkflow + producteurs `startedBy`**
+  - **Outcome :**
+    `reserve` / `reserveOrResume(..., String startedBy)` ;
+    resume **ne remplace pas** `startedBy` ;
+    `ManualStartOrchestrator` passe OIDC `sub` (signature start étendue
+    ou contexte) ;
+    `OutboxRelayScheduler` passe `"system:outbox"` ;
+    tous appelants / tests mis à jour.
+  - **Deps :** T4.
+  - **Validation :** AttachWorkflowUseCaseImplTest ; tests orchestrator /
+    relay mis à jour verts.
+  - **Tests :** AttachWorkflow startedBy ; ManualStart / outbox wiring.
 
 ### M3 — Flowable adapters
 
-- [ ] **T6. FlowableWorkflowVisualizationAdapter**
-  - **Outcome :** XML natif, active/completed/failedIds (D-FAIL), tasks,
-    reassign `setAssignee`, filtre tenant.
+- [ ] **T7. FlowableWorkflowVisualizationAdapter**
+  - **Outcome :** XML natif (`BpmnXMLConverter`) ; active / completed /
+    failedIds (`deleteReason.startsWith("error")`) ; list tasks ;
+    `setAssignee` ; filtres `processInstanceTenantId` ; 404 si instance
+    absente.
   - **Deps :** T1.
-  - **Validation :** adapter unit tests (testing § adapter).
-  - **Tests :** FlowableWorkflowVisualizationAdapterTest.
+  - **Validation :** FlowableWorkflowVisualizationAdapterTest (services
+    mockés).
+  - **Tests :** adapter visualization (testing §).
 
-- [ ] **T7. FlowableWorkflowParticipantAdapter**
-  - **Outcome :** initiateur + assignees + observers config (A2–A4).
-  - **Deps :** T1, T4/T5 (config + link).
+- [ ] **T8. FlowableWorkflowParticipantAdapter**
+  - **Outcome :** union `startedBy` + startUserId + assignees +
+    `observerUserIds` (A2–A4, R3) ; distinct ; blanks ignorés ; OK sans PI.
+  - **Deps :** T1, T4, T5.
   - **Validation :** participant resolution tests.
-  - **Tests :** Participant adapter / helper.
+  - **Tests :** Participant resolution (testing §).
 
 ### M4 — HTTP
 
-- [ ] **T8. WorkflowLinkVisualizationController + handler**
-  - **Outcome :** 5 endpoints ; authz ; CSRF reassign ; 409 mapping ;
-    wiring beans.
-  - **Deps :** T2, T3, T6, T7.
-  - **Validation :** MockMvc IT (testing § MockMvc).
-  - **Tests :** WorkflowLinkVisualizationApiTest ;
-    ExceptionHandlerTest.
+- [ ] **T9. WorkflowLinkVisualizationController + handler**
+  - **Outcome :** 5 endpoints sous `/api/workflow-links/{linkId}` ;
+    CSRF reassign ; mapping 409/403/404 ; beans config wiring UC +
+    adapters ; controller mince (délègue UC).
+  - **Deps :** T2, T3, T5, T7, T8.
+  - **Validation :** MockMvc visualisation (tous cas testing §).
+  - **Tests :** WorkflowLinkVisualizationApiTest ; Exception handler.
 
-- [ ] **T9. Admin WorkflowTypeConfig observerUserIds**
-  - **Outcome :** request/response JSON ; validation blank ; défaut `[]`.
+- [ ] **T10. Admin `observerUserIds` sur WorkflowTypeConfig**
+  - **Outcome :** POST/PATCH/GET acceptent/renvoient la liste ; blank →
+    400 ; défaut `[]` ; authz TA|WA inchangée.
   - **Deps :** T4.
-  - **Validation :** MockMvc create/update/get.
-  - **Tests :** WorkflowTypeConfig API extension.
+  - **Validation :** MockMvc create/update/get observers.
+  - **Tests :** MockMvc / persistence config observers.
 
 ### M5 — SSE
 
-- [ ] **T10. WorkflowStateEventListener**
-  - **Outcome :** filter events ; resolve linkId ; fan-out
-    `SendNotificationUseCase` BROWSER avec
-    `payload.type=WORKFLOW_STATE_CHANGED` (R2) ; fail-soft.
-  - **Deps :** T7, T5.
-  - **Validation :** listener unit tests.
-  - **Tests :** WorkflowStateEventListenerTest.
+- [ ] **T11. WorkflowStateEventListener**
+  - **Outcome :** events
+    `TASK_ASSIGNED` / `ACTIVITY_COMPLETED` / `PROCESS_COMPLETED` ;
+    resolve link via `findByProcessInstanceId` ; fan-out
+    `SendNotificationUseCase` BROWSER
+    `payload.type=WORKFLOW_STATE_CHANGED` (R2) ; fail-soft ;
+    enregistrement engine config.
+  - **Deps :** T5, T8.
+  - **Validation :** WorkflowStateEventListenerTest.
+  - **Tests :** WorkflowStateEventListener (testing §).
 
-### M6 — Preuves
+### M6 — Preuves & docs
 
-- [ ] **T11. Verify + docs sync**
-  - **Outcome :** `./mvnw verify` vert ; Jacoco ≥ 80 % ; scenarios
-    testing `[x]` ; implementation/planning status synced.
-  - **Deps :** T1–T10.
-  - **Validation :** verify evidence in testing doc.
-  - **Tests :** suite complète.
+- [ ] **T12. `./mvnw verify` + Jacoco ≥ 80 %**
+  - **Deps :** T1–T11.
+  - **Validation :** exit 0 ; Jacoco instructions ; ArchUnit ; pas de
+    régression workflow/notifications/dossiers.
+  - **Tests :** Coverage targets.
+
+- [ ] **T13. Docs sync phase 5–8**
+  - **Outcome :** cocher scénarios testing ; planning statuses ;
+    implementation notes / deviations.
+  - **Deps :** T12.
+  - **Validation :** `npx ai-devkit lint --feature visualisation-workflow`.
+
+## Traceability testing → tasks
+
+| Scénario testing | Tâche(s) |
+|---|---|
+| WorkflowTypeConfig + observers (modèle) | T1, T4, T10 |
+| Participant resolution | T8, T2 |
+| AttachWorkflow startedBy | T6 |
+| Get diagram / history / tasks UC | T2 |
+| Get link dossier UC | T2, T5 |
+| Reassign UC | T3 |
+| FlowableWorkflowVisualizationAdapter | T7 |
+| WorkflowStateEventListener | T11 |
+| Exception handler 409/403/404 | T9 |
+| MockMvc visualisation | T9 |
+| MockMvc / persistence config observers | T4, T10 |
+| Persistence helpers | T5 |
+| Jacoco ≥ 80 % + ArchUnit + régression | T12–T13 |
+
+**Couverture :** chaque section scénario du testing doc a ≥ 1 tâche.
 
 ## Dependencies
 **What needs to happen in what order?**
 
 ```text
 T1 → T2 / T3
-T1 → T4 → T9
-T1 → T6
-T4/T5 → T7 → T10
-T2+T3+T6+T7 → T8 → T11
+T1 → T4 → T5 → T8 → T11
+T4 → T6
+T4 → T10
+T1 → T7
+T2 + T3 + T5 + T7 + T8 → T9 → T12 → T13
+T6 ∥ T7 (après T4 / T1)
 ```
 
-- Dépend de features livrées : `workflow-engine`, `notifications`,
-  `dossiers` / `generation-documents` (éléments).
-- Feature aval : `frontend` (Viewer) — hors tâches.
+External : feature `frontend` (Viewer) hors plan ; pas de Cockpit Flowable.
 
 ## Risks & Mitigation
 
 | Risque | Mitigation |
 |---|---|
-| IT Flowable lourdes / flaky | Préférer unit adapter + MockMvc `@MockBean` port si coûteux |
-| `startUserId` null en prod | Documenté A2 ; observers + assignees suffisent |
-| Fan-out SSE N outbox | Accepté V1 ; fail-soft listener |
-| Régression admin config | Tests API config existants + extension |
+| IT Flowable flaky / lourde | Unit adapters mock services ; MockMvc `@MockBean` ports si besoin |
+| Régression `reserve` signatures | T6 met à jour tous appelants + tests existants |
+| Double ACL dossier | DD-DOSSIER-LOAD — ne pas appeler `GetDossierUseCase` |
+| `system:outbox` dans participants | OK liste ; aucun sub humain ne matche (A11) |
+| Fan-out SSE N outbox | Fail-soft listener ; coût accepté V1 |
+| Scope creep UI bpmn-js | Non-goal D-SCOPE — ne pas implémenter |
 
-## Summary
+## Resources Needed
 
-Plan initial prêt pour phase 5 après revue requirements (phase 2) et
-design (phase 3). Première implémentation suggérée : **T1 → T4 → T6**.
+- Worktree `.worktrees/feature-visualisation-workflow` (actif).
+- Patterns : `WorkflowApiTest`, `DossierApiTest`,
+  `NotificationOutboxRelay` / SSE, `AttachWorkflowUseCaseImpl`,
+  `ManualStartOrchestrator`, `OutboxRelayScheduler`.
+- JDK 25 pour `./mvnw verify` (pom `java.version=25`).
+
+## Progress summary
+
+Phase 4 close (2026-08-10) — planning **`ready`** (T1–T13).  
+Première implémentation suggérée : **T1 → T4 → T6** (socle modèle +
+migration + startedBy), puis **T2/T7/T8**.  
+Task CLI indisponible.  
+**Next :** phase 5 — Execute Plan (`dev-implementation` + TDD).

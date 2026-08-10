@@ -1,4 +1,4 @@
-# Frontend — Vue 3 + PrimeVue
+# Frontend — Vue 3 + TypeScript + PrimeVue
 
 > SPA consommée depuis la même origine que l'API Spring Boot (pattern BFF).  
 > Aucun token JWT manipulé côté browser.  
@@ -7,15 +7,44 @@
 
 ---
 
-**Choix retenu : Vue 3 (Vite) + PrimeVue + Pinia**
+**Choix retenu : Vue 3 (Vite) + TypeScript + PrimeVue + Pinia**
 
 | Composant | Rôle |
 |---|---|
 | Vue 3 | Framework SPA |
+| TypeScript | Typage statique — `<script setup lang="ts">`, `strict: true` |
 | Vite | Bundler / HMR (dev) ; build de production copié dans `static/` |
 | PrimeVue | Librairie de composants UI métier (DataTable, formulaires, timeline…) |
 | Pinia | State management (remplaçant officiel Vuex) |
 | Axios | Client HTTP — appels relatifs vers l'API Spring Boot (même origine) |
+| Vitest + Vue Test Utils | Tests unitaires / composants |
+| Playwright | Tests end-to-end (parcours session, formulaires, workflow) |
+| ESLint + Prettier | Lint et formatage — `@vue/eslint-config-typescript` |
+
+### Pourquoi TypeScript
+
+Écarté à tort dans une première itération de cette analyse (exemples de code en `.js` pur) alors que
+l'application manipule des ACL, des variables de workflow et des documents multi-tenant — un terrain
+propice aux régressions silencieuses au refactor sans typage statique. Le typage statique est d'autant
+plus pertinent que le point ouvert n° 24 du [TODO](../TODO.md) (statut de contrat de l'API vis-à-vis du
+frontend) reste à trancher : si une génération OpenAPI est retenue côté backend, un client TypeScript
+généré (`openapi-typescript` ou `orval`) donne une garantie de synchronisation front/back qu'un client
+JavaScript ne peut pas offrir — à réévaluer dès que le point n° 24 sera acté.
+
+### Qualité et tests — non négociable dès le premier commit
+
+Absent de la première itération de cette analyse. Le projet backend est couvert par ArchUnit et une
+suite de tests exhaustive (`./mvnw verify`) ; le frontend doit suivre la même discipline dès sa mise en
+place plutôt que rattraper la dette après coup :
+
+- **Vitest** (unitaire/composants) — colocalisé avec le code (`*.spec.ts`), exécuté en CI au même titre
+  que `./mvnw verify` côté backend.
+- **Playwright** (e2e) — au minimum le parcours de session (redirection Keycloak, `/api/auth/me`,
+  cookie CSRF) et un parcours métier représentatif (création de dossier, complétion de tâche).
+- **ESLint (`@vue/eslint-config-typescript`) + Prettier** — gate CI, cohérent avec le formatage imposé
+  côté Java par le build Maven.
+- **`vue-tsc --noEmit`** en CI — le compilateur TypeScript comme vérification statique indépendante du
+  bundler Vite (esbuild ne type-check pas).
 
 ### Packaging — frontend embarqué
 
@@ -42,14 +71,28 @@ opérationnelle prioritaire).
 
 ## Initialisation de la session (Pinia)
 
-```javascript
-// stores/auth.js
+```typescript
+// stores/auth.ts
+import { defineStore } from 'pinia';
+import axios from 'axios';
+
+interface AuthenticatedUser {
+    id: string;
+    email: string;
+    roles: string[];
+}
+
+interface AuthState {
+    user: AuthenticatedUser | null;
+    authenticated: boolean;
+}
+
 export const useAuthStore = defineStore('auth', {
-    state: () => ({ user: null, authenticated: false }),
+    state: (): AuthState => ({ user: null, authenticated: false }),
     actions: {
-        async init() {
+        async init(): Promise<void> {
             try {
-                const { data } = await axios.get('/api/auth/me',
+                const { data } = await axios.get<AuthenticatedUser>('/api/auth/me',
                     { withCredentials: true });
                 this.user = data;
                 this.authenticated = true;
@@ -67,7 +110,13 @@ La configuration Axios pour le jeton CSRF (`xsrfCookieName`/`xsrfHeaderName`) es
 ## Dépendances npm
 
 ```bash
-npm create vite@latest frontend -- --template vue
+npm create vite@latest frontend -- --template vue-ts
 npm install primevue @primevue/themes primeicons
 npm install pinia axios bpmn-js
+
+# Qualité et tests
+npm install -D vitest @vue/test-utils jsdom
+npm install -D @playwright/test
+npm install -D eslint @vue/eslint-config-typescript eslint-plugin-vue prettier
+npm install -D vue-tsc
 ```

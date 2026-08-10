@@ -97,7 +97,7 @@ Ordre indicatif aligné sur l’analyse et les dépendances techniques :
 | 1 | `generation-documents` | PDF + S3/FS + Flowable + PRODUCED_DOC — **phase 9 READY** (merge) |
 | 3 | `notifications` | Outbox notifications, webhooks sortants, SSE |
 | 4 | `visualisation-workflow` | Diagramme BPMN / état runtime |
-| 5 | `frontend` | Vue 3 + Pinia + Axios dans `static/` (décision n° 27) |
+| 5 | `frontend` | Vue 3 + TypeScript + Pinia + Axios dans `static/`, Vitest/Playwright/ESLint en CI (décision n° 27) |
 
 ---
 

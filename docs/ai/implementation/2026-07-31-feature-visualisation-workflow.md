@@ -2,13 +2,15 @@
 phase: implementation
 title: Implementation Guide
 description: Technical implementation notes, patterns, and code guidelines
-status: checked
+status: reviewed
 created: 2026-08-10
 updated: 2026-08-10
 phase4_sync: 2026-08-10
 phase5: 2026-08-10
 phase6: 2026-08-10
 phase7: 2026-08-10
+phase9: 2026-08-10
+phase9_result: ready
 alignment: aligned
 ---
 
@@ -105,5 +107,56 @@ Spot-check phase 7:
 - Incidents Flowable avancés
 - Remplacer réflexion listener par typage `FlowableEngineEvent` si API stable
 
-**Phase 7 close** (2026-08-10) — implementation `checked` / `aligned`.  
-**Next :** phase 8 — Write Tests (formaliser couverture / evidence testing doc).
+**Phase 7 close** (2026-08-10) — implementation `checked` / `aligned`.
+
+## Phase 9 — Code Review (2026-08-10)
+
+**Verdict :** prêt à merger (PR #34). Aucun blocker résiduel ; follow-ups
+importants corrigés ou acceptés V1.
+
+### Checklist finale
+
+| Critère | Statut |
+|---|---|
+| Design match (D-* / DD-*) | OK |
+| Pas de trou logique bloquant | OK |
+| Sécurité (authz UC, CSRF, tenant Flowable) | OK après durcissement |
+| Points d’intégration Flowable / SSE / Liquibase | OK |
+| Tests couvrent les changements | OK (phase 8 + correctifs 9) |
+| Docs à jour | OK |
+
+### Findings phase 9
+
+| Sévérité | ID | Issue | Action |
+|---|---|---|---|
+| Important | REV-REASSIGN | `assertTask` + `reassign` en deux appels (TOCTOU / 500) | **Corrigé** — `reassignTask(piId, taskId, assignee, tenant)` atomique |
+| Important | REV-TENANT-ACT | Historic activities sans `activityTenantId` | **Corrigé** — filtre sur diagram + history |
+| Important | REV-ROLLBACK | Liquibase 007 sans `rollback:` | **Corrigé** — dropColumn / dropIndex |
+| Important | REV-SSE-TX | Listener hors `COMMITTED` | Accepté V1 — follow-up |
+| Nice | REV-REFLECT | Extraction PI par réflexion | Accepté V1 (déjà phase 7) |
+| Nice | REV-LISTENERS | `setEventListeners` remplace la liste | Accepté V1 — signal via autre chemin |
+| Nice | REV-DTO | Records domaine exposés HTTP | Accepté V1 (design) |
+
+### Correctifs phase 9
+
+- Port / adapter : `reassignTask(processInstanceId, …)` valide instance+tenant puis `setAssignee`
+- `activityTenantId(tenantId)` sur queries historic activities
+- Rollbacks Liquibase 007 (`observer_user_ids`, `started_by`, index piid)
+
+### Evidence (phase 9)
+
+```text
+JAVA_HOME=/tmp/jdk/jdk-25.0.4+7 ./mvnw -q verify
+→ Surefire 540 tests, 0 failures/errors/skips
+→ Jacoco instructions 88 % (≥ 80 %)
+→ ArchUnit OK
+→ npx ai-devkit lint --feature visualisation-workflow → All checks passed
+```
+
+### Follow-ups post-merge
+
+- SSE sur transaction `COMMITTED` si API Flowable stable
+- Cast `FlowableEngineEvent` à la place de la réflexion
+- Pagination history ; DTOs HTTP dédiés ; append listeners
+
+**Lifecycle :** phase 9 terminée — prêt à merger.

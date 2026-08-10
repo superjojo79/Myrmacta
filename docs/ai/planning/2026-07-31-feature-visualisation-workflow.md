@@ -222,9 +222,9 @@ External : feature `frontend` (Viewer) hors plan ; pas de Cockpit Flowable.
 
 ## Progress summary
 
-Phase 5–8 implementation/testing update (2026-08-10) — **T1–T13 done** :
-domain contracts, persistence helpers, `startedBy` producers, Flowable
-visualization/participant adapters, REST visualization API, observer DTOs,
-409 handler, and `WorkflowStateEventListener`.
-Validation : targeted workflow suite and full `./mvnw -q verify` pass
-(530 tests, 0 failures/errors/skips). Task CLI indisponible.
+Phase 5–8 implementation/testing update (2026-08-10) — **T1–T13 done**.
+
+**Phase 9 — Code Review (2026-08-10) :** implementation `reviewed` /
+`phase9_result: ready`. Correctifs : reassign atomique, `activityTenantId`,
+rollbacks Liquibase 007. Preuve : `./mvnw -q verify` → **540**/0, Jacoco
+**88 %**. Task CLI indisponible. Prêt à merger (PR #34).

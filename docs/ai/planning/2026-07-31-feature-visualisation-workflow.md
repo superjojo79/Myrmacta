@@ -6,13 +6,15 @@ status: draft
 created: 2026-08-10
 updated: 2026-08-10
 design_aligned: 2026-08-10
+phase3_sync: 2026-08-10
 sequencing: layered
 ---
 
 # Project Planning & Task Breakdown
 
-Plan **phase 4 (initial)** — dérivé des docs `requirements` / `design` /
-`testing` (`draft`). Aucune tâche d’implémentation démarrée.
+Plan **phase 4 (initial)** — dérivé des docs `requirements` / `design`
+(`reviewed`) et `testing` (`draft`). Aucune tâche d’implémentation
+démarrée.
 
 Traçage `task` CLI : **indisponible** (`npx ai-devkit@latest task list
 --json` → `unknown command 'task'`).
@@ -21,9 +23,9 @@ Traçage `task` CLI : **indisponible** (`npx ai-devkit@latest task list
 **What are the major checkpoints?**
 
 - [ ] **M1 — Domaine** : models views, ports, use cases lecture + reassign,
-      `WorkflowTypeConfig.observerUserIds`
-- [ ] **M2 — Persistance** : Liquibase 007, repos (elements by dossier,
-      link by processInstanceId), JPA config
+      `observerUserIds`, `DossierWorkflowLink.startedBy`
+- [ ] **M2 — Persistance** : Liquibase 007, repos, JPA, AttachWorkflow
+      signatures + orchestrator/outbox `startedBy`
 - [ ] **M3 — Flowable adapters** : visualization + participants
 - [ ] **M4 — HTTP** : controller viz + ProblemDetail 409 + admin observers
 - [ ] **M5 — SSE listener** : `WorkflowStateEventListener`
@@ -37,13 +39,11 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 ### M1 — Domaine
 
 - [ ] **T1. Models + ports out**
-  - **Outcome :** `WorkflowDiagramView`, `ActivityHistoryEntry`,
-    `WorkflowTaskView` ; `WorkflowVisualizationPort` ;
-    `WorkflowParticipantPort` ; exceptions reserved / reuse not-found &
-    access-denied ; `WorkflowTypeConfig` + `observerUserIds`.
+  - **Outcome :** views ; ports viz/participant ; exception missing-PI ;
+    `WorkflowTypeConfig.observerUserIds` ; `DossierWorkflowLink.startedBy`.
   - **Deps :** aucune.
-  - **Validation :** tests modèles observers ; ArchUnit package.
-  - **Tests :** WorkflowTypeConfig observers ; prépare use cases.
+  - **Validation :** tests modèles observers / startedBy ; ArchUnit.
+  - **Tests :** WorkflowTypeConfig observers ; DossierWorkflowLink.
 
 - [ ] **T2. Use cases lecture**
   - **Outcome :** Get diagram / history / tasks / dossier link ; load
@@ -63,12 +63,21 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M2 — Persistance
 
-- [ ] **T4. Liquibase 007 + JPA config observers**
-  - **Outcome :** colonne `observer_user_ids` JSON NOT NULL default `[]` ;
-    mapping entity/domain ; admin DTOs étendus.
+- [ ] **T4. Liquibase 007 + JPA (observers + started_by)**
+  - **Outcome :** `observer_user_ids` + `started_by` ; mapping JPA ;
+    admin DTOs observers ; link DTO/`WorkflowLinkResponse` expose
+    `startedBy` si utile.
   - **Deps :** T1.
-  - **Validation :** SchemaIT ; round-trip config.
-  - **Tests :** Liquibase / WorkflowTypeConfig persistence.
+  - **Validation :** SchemaIT ; round-trip.
+  - **Tests :** Liquibase / persistence.
+
+- [ ] **T4b. AttachWorkflow + producteurs startedBy**
+  - **Outcome :** `reserve` / `reserveOrResume(..., startedBy)` ;
+    ManualStartOrchestrator passe `sub` ; OutboxRelay passe
+    `"system:outbox"` ; resume ne écrase pas.
+  - **Deps :** T4.
+  - **Validation :** unit AttachWorkflow + orchestrator/relay tests.
+  - **Tests :** AttachWorkflowUseCaseImplTest ; OutboxRelaySchedulerTest.
 
 - [ ] **T5. Repo helpers**
   - **Outcome :** `DossierElementRepository.findByDossierId…` ;

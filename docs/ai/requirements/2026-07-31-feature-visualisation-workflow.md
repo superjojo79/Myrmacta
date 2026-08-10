@@ -8,6 +8,7 @@ updated: 2026-08-10
 stakeholder_decisions: 2026-08-10
 phase2: 2026-08-10
 phase2_stakeholder_confirm: 2026-08-10
+phase3_sync: 2026-08-10
 ---
 
 # Requirements & Problem Understanding
@@ -43,14 +44,18 @@ Viewer Vue/`bpmn-js` (feature `frontend`) n’a pas de contrat backend.
   cases lecture + réassign, adaptateur Flowable, API REST sur
   **`/api/workflow-links/{linkId}/…`** (**D-ID = B**).
 - **Contrôle d’accès participants** (**D-AUTHZ = B**,
-  **D-PARTICIPANT = B**) : initiateur (`startUserId`) + assignés
-  (tâches actives **et** historiques) + observateurs configurés ;
-  bypass `TENANT_ADMIN` / `WORKFLOW_ADMIN`.
+  **D-PARTICIPANT = B**, **R3**) : `startedBy` du link (toujours) +
+  initiateur Flowable (`startUserId`) + assignés (tâches actives **et**
+  historiques) + observateurs configurés ; bypass `TENANT_ADMIN` /
+  `WORKFLOW_ADMIN`.
+- **`startedBy` sur `DossierWorkflowLink`** (**R3** / DD-STARTEDBY) :
+  colonne persistée à la réserve ; manuel = OIDC `sub` ; outbox =
+  `"system:outbox"` ; signatures `reserve` / `reserveOrResume` étendues.
 - **Observateurs** (**D-OBS = A**, **D-OBS-ID = A**) : champ
   `observerUserIds` (`List<String>` = OIDC `sub`) sur
   `WorkflowTypeConfig` ; exposé sur
   `POST|PATCH /api/workflow-type-configs` (**TA|WA**, authz admin
-  existante) ; Liquibase `007`.
+  existante) ; Liquibase `007` (observers + `started_by`).
 - **Surface API** (**D-API = B**) :
   - `GET …/diagram` — XML BPMN + `activeIds` / `completedIds` / `failedIds`
   - `GET …/history` — étapes (timing, durée, assigné)
@@ -232,8 +237,10 @@ Anonyme → **401**. Erreurs : `ProblemDetail`.
 
 - [ ] `WorkflowVisualizationPort` + adapter Flowable exposent diagram /
       history / tasks / reassign (tenant-safe).
-- [ ] `WorkflowParticipantPort` résout initiateur + assignés +
-      `observerUserIds` ; bypass TA/WA en couche HTTP/use case.
+- [ ] `WorkflowParticipantPort` résout `startedBy` + initiateur +
+      assignés + `observerUserIds` ; bypass TA/WA dans les use cases.
+- [ ] `DossierWorkflowLink.startedBy` persisté (Liquibase 007) ; reserve
+      manuel / outbox renseignent la valeur (R3).
 - [ ] `WorkflowTypeConfig` persiste `observerUserIds` (Liquibase 007) ;
       `POST|PATCH /api/workflow-type-configs` les acceptent / renvoient
       (authz TA|WA).
@@ -271,8 +278,13 @@ Anonyme → **401**. Erreurs : `ProblemDetail`.
 - **A9** — Préfixe `failedIds` : `deleteReason != null &&
   deleteReason.startsWith("error")` (casse exacte).
 - **A10** — Authz lecture viz = participants **ou** TA/WA ; **pas** de
-  second filtre `DossierAccessGuard` V1 (observateur peut lire le panneau
-  dossier via le link même sans ACL type — accepté D-AUTHZ B).
+  second filtre `DossierAccessGuard` / `GetDossierUseCase` V1 — le panneau
+  charge `DossierRepository` + éléments directement après authz
+  participant (DD-DOSSIER-LOAD A).
+- **A11** — `startedBy` : toujours participant (DD-STARTEDBY-PART A) ;
+  valeur `"system:outbox"` n’accorde de droit à aucun user OIDC humain.
+- **A12** — Authz lecture/réassign appliquée **dans les use cases**
+  (DD-AUTHZ-LAYER A), pas seulement un filter HTTP.
 
 ## Questions & Open Items
 
@@ -291,6 +303,8 @@ Anonyme → **401**. Erreurs : `ProblemDetail`.
 | Q11 | Non-goals | **Clos** — D-NONGOALS A |
 | Q12 | Admin observers path/authz | **Clos** — phase 2 (TA\|WA, paths réels) |
 | Q13 | ACL dossier supplémentaire | **Clos** — A10 (non V1) |
+| Q14 | Accès RESERVED sans PI | **Clos** — R3 `startedBy` |
+| Q15 | Couche authz / load dossier | **Clos** — phase 3 (A12, DD-DOSSIER-LOAD) |
 
 ### Décisions actées
 
@@ -298,7 +312,7 @@ Anonyme → **401**. Erreurs : `ProblemDetail`.
 |---|---|---|
 | D-SCOPE | Tranche | Backend only (pas de Vue/bpmn-js) |
 | D-AUTHZ | Lecture | `WorkflowParticipantPort` + bypass TA/WA |
-| D-PARTICIPANT | Composition | Initiateur + assignés + observateurs |
+| D-PARTICIPANT | Composition | `startedBy` + initiateur + assignés + observateurs |
 | D-OBS | Stockage observateurs | `WorkflowTypeConfig` |
 | D-OBS-ID | Identité | `observerUserIds` = OIDC `sub` |
 | D-API | Endpoints | diagram, history, tasks, dossier + reassign |
@@ -312,10 +326,12 @@ Anonyme → **401**. Erreurs : `ProblemDetail`.
 | D-NONGOALS | Hors scope | Paquet UI / cockpit / relations / rôles |
 | R1 | GET dossier sans PI | **200** (pas 409) |
 | R2 | Forme SSE type | Dans `payload.type` |
+| R3 | Starter link | `startedBy` persisté ; toujours participant |
 
 **Phase 1 close** (2026-08-10) — D-SCOPE…D-NONGOALS.  
 **Phase 2 close** (2026-08-10) — statut `reviewed` ; R1–R2 + A8–A10 ;
-chemins admin `workflow-type-configs` précisés ; questions Q1–Q13 closes.
+chemins admin `workflow-type-configs` précisés ; questions Q1–Q13 closes.  
+**Phase 3 sync** (2026-08-10) — R3 + A11–A12 ; design `reviewed`.
 
 Follow-ups non bloquants : incidents Flowable riches ; relations dossier ;
 Viewer Vue (`frontend`).

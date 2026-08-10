@@ -7,6 +7,7 @@ created: 2026-08-10
 updated: 2026-08-10
 design_aligned: 2026-08-10
 phase2_sync: 2026-08-10
+phase3_sync: 2026-08-10
 ---
 
 # Testing Strategy
@@ -14,9 +15,9 @@ phase2_sync: 2026-08-10
 ## Test Coverage Goals
 **What level of testing do we aim for?**
 
-- **Unitaires domaine :** résolution participants (composition) ; use
-  cases get diagram/history/tasks/dossier ; reassign authz ; validation
-  `observerUserIds` / `WorkflowTypeConfig`.
+- **Unitaires domaine :** résolution participants (`startedBy` + …) ;
+  use cases get diagram/history/tasks/dossier ; reassign authz ;
+  validation `observerUserIds` ; AttachWorkflow `startedBy`.
 - **Unitaires infra :** adapter visualisation (XML, active/completed/
   failedIds) ; adapter participants ; listener SSE (events filtrés,
   fan-out, fail-soft) ; mapping 409/403/404.
@@ -36,10 +37,17 @@ phase2_sync: 2026-08-10
 - [ ] dédup à l’écriture admin
 
 ### Participant resolution (port/adapter ou helper)
-- [ ] union initiateur + assignees actifs/historiques + observers
+- [ ] union `startedBy` + initiateur + assignees + observers
+- [ ] `startedBy` toujours inclus même avec PI
+- [ ] `"system:outbox"` présent dans la liste mais ne matche pas un sub humain
 - [ ] ignore null/blank ; distinct
 - [ ] config absente → observers `[]`
-- [ ] link sans processInstanceId → pas de crash (liste observers only)
+- [ ] link sans processInstanceId → `startedBy` + observers (pas de crash)
+
+### AttachWorkflow startedBy
+- [ ] reserve persiste `startedBy`
+- [ ] reserveOrResume sur link existant **ne remplace pas** `startedBy`
+- [ ] ManualStart / outbox passent les valeurs attendues (tests wiring)
 
 ### Get diagram / history / tasks use cases
 - [ ] participant OK → délègue port avec processInstanceId + tenantId
@@ -87,7 +95,8 @@ phase2_sync: 2026-08-10
 - [ ] GET diagram **409** link sans `processInstanceId`
 - [ ] GET history / tasks **200** structure JSON
 - [ ] GET dossier **200** avec `elements` + `relations: []` **y compris
-      RESERVED** (R1)
+      RESERVED** (R1) pour `startedBy` (sans ACL type dossier)
+- [ ] GET dossier **200** pour observateur sans ACL type (A10)
 - [ ] POST reassign **204** en WA ; **403** en DOSSIER_MANAGER participant
 - [ ] POST reassign sans CSRF → **403** ; anonyme → **401**
 - [ ] TA bypass lecture OK

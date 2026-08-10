@@ -2,7 +2,7 @@
 phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
-status: draft
+status: verified
 created: 2026-08-10
 updated: 2026-08-10
 design_aligned: 2026-08-10
@@ -128,6 +128,14 @@ phase4_sync: 2026-08-10
 | Jacoco instructions projet | ≥ 80 % |
 | ArchUnit | OK |
 | Scénarios ci-dessus | tous `[x]` en phase 8 |
+
+## Verification Evidence
+
+- Targeted workflow command:
+  `./mvnw -q test -Dtest='*Workflow*Test,*Workflow*IT,*Attach*,*Visualization*,*Participant*,*WorkflowLink*,*WorkflowState*'`
+  → 68 tests, 0 failures/errors/skips.
+- Full verification: `./mvnw -q verify` → 530 surefire tests, 0
+  failures/errors/skips ; ArchUnit and Jacoco verify phase completed.
 
 ## Sources
 

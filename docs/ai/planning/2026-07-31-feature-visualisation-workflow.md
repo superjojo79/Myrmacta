@@ -29,7 +29,7 @@ Traçage `task` CLI : **indisponible** (`npx ai-devkit@latest task list
 - [x] **M3 — Adapters Flowable** : visualization + participants
 - [x] **M4 — HTTP** : controller viz + admin observers + 409 handler
 - [x] **M5 — SSE** : `WorkflowStateEventListener`
-- [ ] **M6 — Preuves & docs** : verify, Jacoco ≥ 80 %, sync docs
+- [x] **M6 — Preuves & docs** : verify, Jacoco ≥ 80 %, sync docs
 
 ## Task Breakdown
 **What specific work needs to be done?**
@@ -154,13 +154,13 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M6 — Preuves & docs
 
-- [ ] **T12. `./mvnw verify` + Jacoco ≥ 80 %**
+- [x] **T12. `./mvnw verify` + Jacoco ≥ 80 %**
   - **Deps :** T1–T11.
   - **Validation :** exit 0 ; Jacoco instructions ; ArchUnit ; pas de
     régression workflow/notifications/dossiers.
   - **Tests :** Coverage targets.
 
-- [ ] **T13. Docs sync phase 5–8**
+- [x] **T13. Docs sync phase 5–8**
   - **Outcome :** cocher scénarios testing ; planning statuses ;
     implementation notes / deviations.
   - **Deps :** T12.
@@ -222,9 +222,9 @@ External : feature `frontend` (Viewer) hors plan ; pas de Cockpit Flowable.
 
 ## Progress summary
 
-Phase 5 implementation update (2026-08-10) — **T1–T11 done** :
+Phase 5–8 implementation/testing update (2026-08-10) — **T1–T13 done** :
 domain contracts, persistence helpers, `startedBy` producers, Flowable
 visualization/participant adapters, REST visualization API, observer DTOs,
 409 handler, and `WorkflowStateEventListener`.
-Remaining : **T12** full `./mvnw verify` + coverage gate, **T13** final docs
-sync after full verification. Task CLI indisponible.
+Validation : targeted workflow suite and full `./mvnw -q verify` pass
+(530 tests, 0 failures/errors/skips). Task CLI indisponible.

@@ -2,7 +2,7 @@
 phase: implementation
 title: Implementation Guide
 description: Technical implementation notes, patterns, and code guidelines
-status: implemented
+status: verified
 created: 2026-08-10
 updated: 2026-08-10
 phase4_sync: 2026-08-10
@@ -16,8 +16,8 @@ phase4_sync: 2026-08-10
 - Branch `feature-visualisation-workflow`
 - JDK 25 (`java.version` pom) — installer si l’environnement n’a que 21
 - Dépendances : Flowable déjà au pom ; notifications SSE déjà livrées
-- Planning **T1–T11 done** : backend visualization slice implemented ;
-  full `verify`/coverage gate remains T12.
+- Planning **T1–T13 done** : backend visualization slice implemented and
+  verified with targeted workflow tests plus full Maven verify.
 
 ## Code Structure
 
@@ -78,3 +78,11 @@ Aucune déviation fonctionnelle connue. Détails d’implémentation notables :
 - Tests : `WorkflowLinkVisualizationUseCaseImplTest`,
   `FlowableWorkflowParticipantAdapterTest`, `WorkflowStateEventListenerTest`,
   `WorkflowSchemaIT`, extended `WorkflowApiTest`, persistence helper coverage.
+
+## Verification Evidence
+
+- `npx ai-devkit@latest lint --feature visualisation-workflow` → OK.
+- `./mvnw -q test -Dtest='*Workflow*Test,*Workflow*IT,*Attach*,*Visualization*,*Participant*,*WorkflowLink*,*WorkflowState*'`
+  → OK ; 68 matching surefire tests, 0 failures/errors/skips.
+- `./mvnw -q verify` → OK ; 530 surefire tests, 0 failures/errors/skips,
+  ArchUnit/Jacoco verify phase completed.

@@ -94,8 +94,7 @@ public final class WorkflowLinkVisualizationUseCaseImpl implements
         }
         DossierWorkflowLink link = loadTenantLink(linkId);
         String processInstanceId = requireProcessInstance(link);
-        visualizationPort.assertTaskOnInstance(processInstanceId, taskId, tenantId);
-        visualizationPort.reassignTask(taskId, assigneeId, tenantId);
+        visualizationPort.reassignTask(processInstanceId, taskId, assigneeId, tenantId);
     }
 
     private DossierWorkflowLink requireReadableLink(UUID linkId, AccessContext.User actor) {

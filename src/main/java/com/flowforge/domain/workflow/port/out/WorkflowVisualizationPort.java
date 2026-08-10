@@ -15,5 +15,6 @@ public interface WorkflowVisualizationPort {
 
     void assertTaskOnInstance(String processInstanceId, String taskId, String tenantId);
 
-    void reassignTask(String taskId, String assigneeId, String tenantId);
+    /** Reassigns after verifying the task belongs to the process instance and tenant. */
+    void reassignTask(String processInstanceId, String taskId, String assigneeId, String tenantId);
 }

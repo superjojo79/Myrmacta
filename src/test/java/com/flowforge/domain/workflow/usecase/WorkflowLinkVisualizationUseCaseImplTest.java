@@ -148,8 +148,7 @@ class WorkflowLinkVisualizationUseCaseImplTest {
 
         useCase.reassign(link.id(), "task-1", "assignee-sub", user("workflow-admin", "WORKFLOW_ADMIN"));
 
-        verify(visualizationPort).assertTaskOnInstance("proc-1", "task-1", TENANT);
-        verify(visualizationPort).reassignTask("task-1", "assignee-sub", TENANT);
+        verify(visualizationPort).reassignTask("proc-1", "task-1", "assignee-sub", TENANT);
     }
 
     @Test
@@ -159,7 +158,7 @@ class WorkflowLinkVisualizationUseCaseImplTest {
 
         assertThatThrownBy(() -> useCase.reassign(link.id(), "task-1", "assignee-sub", user("starter-sub")))
                 .isInstanceOf(AccessDeniedException.class);
-        verify(visualizationPort, never()).reassignTask("task-1", "assignee-sub", TENANT);
+        verify(visualizationPort, never()).reassignTask("proc-1", "task-1", "assignee-sub", TENANT);
     }
 
     @Test

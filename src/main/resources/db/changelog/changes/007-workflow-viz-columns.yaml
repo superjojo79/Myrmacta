@@ -21,6 +21,10 @@ databaseChangeLog:
             tableName: workflow_type_config
             columnName: observer_user_ids
             columnDataType: json
+      rollback:
+        - dropColumn:
+            tableName: workflow_type_config
+            columnName: observer_user_ids
 
   - changeSet:
       id: 007-dossier-workflow-link-started-by
@@ -34,6 +38,10 @@ databaseChangeLog:
                   type: varchar(128)
                   constraints:
                     nullable: true
+      rollback:
+        - dropColumn:
+            tableName: dossier_workflow_link
+            columnName: started_by
 
   - changeSet:
       id: 007-dossier-workflow-link-piid-index
@@ -47,3 +55,7 @@ databaseChangeLog:
                   name: tenant_id
               - column:
                   name: process_instance_id
+      rollback:
+        - dropIndex:
+            tableName: dossier_workflow_link
+            indexName: ix_dossier_workflow_link_tenant_piid

@@ -2,7 +2,9 @@ package com.flowforge.infrastructure.flowable;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -61,6 +63,7 @@ class FlowableWorkflowVisualizationAdapterTest {
         HistoricActivityInstanceQuery activityQuery = mock(HistoricActivityInstanceQuery.class);
         when(historyService.createHistoricActivityInstanceQuery()).thenReturn(activityQuery);
         when(activityQuery.processInstanceId(PI)).thenReturn(activityQuery);
+        when(activityQuery.activityTenantId(TENANT)).thenReturn(activityQuery);
         when(activityQuery.list()).thenReturn(List.of(completed, failed, ignored));
 
         when(repositoryService.getProcessModel(DEF))
@@ -93,17 +96,33 @@ class FlowableWorkflowVisualizationAdapterTest {
     }
 
     @Test
-    void reassignTask_callsSetAssigneeWhenTenantMatches() {
+    void reassignTask_callsSetAssigneeWhenTaskBelongsToInstanceAndTenant() {
         TaskQuery query = mock(TaskQuery.class);
         Task task = mock(Task.class);
         when(taskService.createTaskQuery()).thenReturn(query);
         when(query.taskId("task-1")).thenReturn(query);
         when(query.singleResult()).thenReturn(task);
+        when(task.getProcessInstanceId()).thenReturn(PI);
         when(task.getTenantId()).thenReturn(TENANT);
 
-        adapter.reassignTask("task-1", "assignee-sub", TENANT);
+        adapter.reassignTask(PI, "task-1", "assignee-sub", TENANT);
 
         verify(taskService).setAssignee("task-1", "assignee-sub");
+    }
+
+    @Test
+    void reassignTask_rejectsTaskFromOtherProcess() {
+        TaskQuery query = mock(TaskQuery.class);
+        Task task = mock(Task.class);
+        when(taskService.createTaskQuery()).thenReturn(query);
+        when(query.taskId("task-1")).thenReturn(query);
+        when(query.singleResult()).thenReturn(task);
+        when(task.getProcessInstanceId()).thenReturn("other-pi");
+        when(task.getTenantId()).thenReturn(TENANT);
+
+        assertThatThrownBy(() -> adapter.reassignTask(PI, "task-1", "assignee-sub", TENANT))
+                .isInstanceOf(WorkflowTaskNotFoundException.class);
+        verify(taskService, never()).setAssignee(any(), any());
     }
 
     @Test

@@ -46,6 +46,7 @@ class FlowableWorkflowVisualizationAdapter implements WorkflowVisualizationPort 
         ProcessReference process = requireProcess(processInstanceId, tenantId);
         List<HistoricActivityInstance> activities = historyService.createHistoricActivityInstanceQuery()
                 .processInstanceId(processInstanceId)
+                .activityTenantId(tenantId)
                 .list();
         List<String> activeIds = process.active()
                 ? runtimeService.getActiveActivityIds(processInstanceId)
@@ -75,6 +76,7 @@ class FlowableWorkflowVisualizationAdapter implements WorkflowVisualizationPort 
         requireProcess(processInstanceId, tenantId);
         return historyService.createHistoricActivityInstanceQuery()
                 .processInstanceId(processInstanceId)
+                .activityTenantId(tenantId)
                 .orderByHistoricActivityInstanceStartTime()
                 .asc()
                 .list()
@@ -108,13 +110,8 @@ class FlowableWorkflowVisualizationAdapter implements WorkflowVisualizationPort 
     }
 
     @Override
-    public void reassignTask(String taskId, String assigneeId, String tenantId) {
-        Task task = taskService.createTaskQuery()
-                .taskId(taskId)
-                .singleResult();
-        if (task == null || !tenantId.equals(task.getTenantId())) {
-            throw new WorkflowTaskNotFoundException("Workflow task not found: " + taskId);
-        }
+    public void reassignTask(String processInstanceId, String taskId, String assigneeId, String tenantId) {
+        assertTaskOnInstance(processInstanceId, taskId, tenantId);
         taskService.setAssignee(taskId, assigneeId);
     }
 

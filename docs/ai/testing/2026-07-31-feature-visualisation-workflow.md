@@ -152,7 +152,9 @@ phase8_completed: 2026-08-10
 - Targeted (phase 8 gaps):
   `./mvnw -q test -Dtest='FlowableWorkflowVisualizationAdapterTest,FlowableWorkflowParticipantAdapterTest,WorkflowLinkVisualizationUseCaseImplTest,WorkflowExceptionHandlerTest,WorkflowApiTest'`
   → exit 0.
-- Full verification: _(pending `./mvnw verify` this session)_
+- Full verification (2026-08-10): `./mvnw -q verify` → **exit 0** ;
+  Surefire **539** tests, **0** failures/errors/skips ;
+  Jacoco instructions **88 %** (≥ 80 %) ; ArchUnit OK.
 
 ## Sources
 

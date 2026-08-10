@@ -1,0 +1,49 @@
+databaseChangeLog:
+  - changeSet:
+      id: 007-workflow-type-config-observers
+      author: flowforge
+      changes:
+        - addColumn:
+            tableName: workflow_type_config
+            columns:
+              - column:
+                  name: observer_user_ids
+                  type: json
+                  constraints:
+                    nullable: true
+        - update:
+            tableName: workflow_type_config
+            columns:
+              - column:
+                  name: observer_user_ids
+                  value: '[]'
+        - addNotNullConstraint:
+            tableName: workflow_type_config
+            columnName: observer_user_ids
+            columnDataType: json
+
+  - changeSet:
+      id: 007-dossier-workflow-link-started-by
+      author: flowforge
+      changes:
+        - addColumn:
+            tableName: dossier_workflow_link
+            columns:
+              - column:
+                  name: started_by
+                  type: varchar(128)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: 007-dossier-workflow-link-piid-index
+      author: flowforge
+      changes:
+        - createIndex:
+            tableName: dossier_workflow_link
+            indexName: ix_dossier_workflow_link_tenant_piid
+            columns:
+              - column:
+                  name: tenant_id
+              - column:
+                  name: process_instance_id

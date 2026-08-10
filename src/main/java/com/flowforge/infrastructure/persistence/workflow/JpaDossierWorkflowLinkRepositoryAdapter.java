@@ -32,6 +32,13 @@ class JpaDossierWorkflowLinkRepositoryAdapter implements DossierWorkflowLinkRepo
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<DossierWorkflowLink> findByProcessInstanceId(String tenantId, String processInstanceId) {
+        return repository.findByTenantIdAndProcessInstanceId(tenantId, processInstanceId)
+                .map(DossierWorkflowLinkJpaEntity::toDomain);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<DossierWorkflowLink> findActiveByDossierId(UUID dossierId) {
         return repository.findFirstByDossierIdAndEndedAtIsNull(dossierId).map(DossierWorkflowLinkJpaEntity::toDomain);
     }

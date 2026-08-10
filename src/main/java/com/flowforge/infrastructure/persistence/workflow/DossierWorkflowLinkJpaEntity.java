@@ -46,6 +46,9 @@ class DossierWorkflowLinkJpaEntity {
     @Column(name = "end_reason", length = 64)
     private String endReason;
 
+    @Column(name = "started_by", length = 128)
+    private String startedBy;
+
     protected DossierWorkflowLinkJpaEntity() {
         // JPA
     }
@@ -62,6 +65,7 @@ class DossierWorkflowLinkJpaEntity {
         this.startedAt = link.startedAt();
         this.endedAt = link.endedAt();
         this.endReason = link.endReason();
+        this.startedBy = link.startedBy();
     }
 
     static DossierWorkflowLinkJpaEntity fromDomain(DossierWorkflowLink link) {
@@ -80,6 +84,7 @@ class DossierWorkflowLinkJpaEntity {
                 triggerRef,
                 startedAt,
                 endedAt,
-                endReason);
+                endReason,
+                startedBy);
     }
 }

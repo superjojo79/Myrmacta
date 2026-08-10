@@ -4,6 +4,8 @@ import com.flowforge.domain.dossier.model.AccessDeniedException;
 import com.flowforge.domain.dossier.model.DossierNotFoundException;
 import com.flowforge.domain.dossier.model.DossierWorkflowLinkNotFoundException;
 import com.flowforge.domain.dossier.model.WorkflowAlreadyRunningException;
+import com.flowforge.domain.workflow.model.WorkflowProcessInstanceMissingException;
+import com.flowforge.domain.workflow.model.WorkflowProcessInstanceNotFoundException;
 import com.flowforge.domain.workflow.model.WorkflowTaskNotFoundException;
 import com.flowforge.domain.workflow.model.WorkflowTypeConfigNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -28,6 +30,7 @@ class WorkflowExceptionHandler {
 
     @ExceptionHandler({
             DossierWorkflowLinkNotFoundException.class,
+            WorkflowProcessInstanceNotFoundException.class,
             WorkflowTypeConfigNotFoundException.class,
             WorkflowTaskNotFoundException.class
     })
@@ -38,6 +41,11 @@ class WorkflowExceptionHandler {
     @ExceptionHandler(WorkflowAlreadyRunningException.class)
     ProblemDetail handleAlreadyRunning(WorkflowAlreadyRunningException ex) {
         return problem(HttpStatus.CONFLICT, "Workflow conflict", ex.getMessage());
+    }
+
+    @ExceptionHandler(WorkflowProcessInstanceMissingException.class)
+    ProblemDetail handleProcessInstanceMissing(WorkflowProcessInstanceMissingException ex) {
+        return problem(HttpStatus.CONFLICT, "Workflow process instance missing", ex.getMessage());
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

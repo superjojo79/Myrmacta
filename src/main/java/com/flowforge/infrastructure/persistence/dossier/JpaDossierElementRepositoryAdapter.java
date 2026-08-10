@@ -2,6 +2,7 @@ package com.flowforge.infrastructure.persistence.dossier;
 
 import com.flowforge.domain.dossier.model.DossierElement;
 import com.flowforge.domain.dossier.port.out.DossierElementRepository;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
@@ -26,5 +27,13 @@ public class JpaDossierElementRepositoryAdapter implements DossierElementReposit
     @Transactional(readOnly = true)
     public Optional<DossierElement> findByIdAndTenantId(UUID id, String tenantId) {
         return repository.findByIdAndTenantId(id, tenantId).map(DossierElementJpaEntity::toDomain);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DossierElement> findByDossierIdOrderByAddedAtAsc(UUID dossierId) {
+        return repository.findByDossierIdOrderByAddedAtAsc(dossierId).stream()
+                .map(DossierElementJpaEntity::toDomain)
+                .toList();
     }
 }

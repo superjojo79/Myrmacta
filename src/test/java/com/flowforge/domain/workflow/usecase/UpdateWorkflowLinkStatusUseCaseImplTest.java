@@ -85,7 +85,8 @@ class UpdateWorkflowLinkStatusUseCaseImplTest {
                         new WorkflowStatusDefinition("IN_PROGRESS", "In progress", false, StatusOutcome.NONE),
                         new WorkflowStatusDefinition("COMPLETED", "Done", false, StatusOutcome.COMPLETED)),
                 List.of(DossierStatus.OUVERT),
-                null);
+                null,
+                List.of());
     }
 
     private static DossierWorkflowLink activeLink(UUID linkId, UUID dossierId) {
@@ -99,6 +100,7 @@ class UpdateWorkflowLinkStatusUseCaseImplTest {
                 "STARTED",
                 "manual",
                 Instant.parse("2026-08-02T10:00:00Z"),
+                null,
                 null,
                 null);
     }

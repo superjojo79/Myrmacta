@@ -6,9 +6,9 @@ import java.util.UUID;
 
 public interface AttachWorkflowUseCase {
 
-    DossierWorkflowLink reserve(UUID dossierId, String processDefinitionKey, String triggerRef);
+    DossierWorkflowLink reserve(UUID dossierId, String processDefinitionKey, String triggerRef, String startedBy);
 
-    DossierWorkflowLink reserveOrResume(UUID dossierId, String processDefinitionKey, String triggerRef);
+    DossierWorkflowLink reserveOrResume(UUID dossierId, String processDefinitionKey, String triggerRef, String startedBy);
 
     void confirmStarted(UUID linkId, String processInstanceId);
 

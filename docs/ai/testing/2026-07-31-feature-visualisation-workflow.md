@@ -33,83 +33,83 @@ phase4_sync: 2026-08-10
 ## Unit Tests
 
 ### WorkflowTypeConfig + observers
-- [ ] `observerUserIds` défaut `[]` ; copy immuable
-- [ ] blank dans la liste → rejet construction / validation
-- [ ] dédup à l’écriture admin
+- [x] `observerUserIds` défaut `[]` ; copy immuable
+- [x] blank dans la liste → rejet construction / validation
+- [x] dédup à l’écriture admin
 
 ### Participant resolution (port/adapter ou helper)
-- [ ] union `startedBy` + initiateur + assignees + observers
-- [ ] `startedBy` toujours inclus même avec PI
-- [ ] `"system:outbox"` présent dans la liste mais ne matche pas un sub humain
-- [ ] ignore null/blank ; distinct
-- [ ] config absente → observers `[]`
-- [ ] link sans processInstanceId → `startedBy` + observers (pas de crash)
+- [x] union `startedBy` + initiateur + assignees + observers
+- [x] `startedBy` toujours inclus même avec PI
+- [x] `"system:outbox"` présent dans la liste mais ne matche pas un sub humain
+- [x] ignore null/blank ; distinct
+- [x] config absente → observers `[]`
+- [x] link sans processInstanceId → `startedBy` + observers (pas de crash)
 
 ### AttachWorkflow startedBy
-- [ ] reserve persiste `startedBy`
-- [ ] reserveOrResume sur link existant **ne remplace pas** `startedBy`
-- [ ] ManualStart / outbox passent les valeurs attendues (tests wiring)
+- [x] reserve persiste `startedBy`
+- [x] reserveOrResume sur link existant **ne remplace pas** `startedBy`
+- [x] ManualStart / outbox passent les valeurs attendues (tests wiring)
 
 ### Get diagram / history / tasks use cases
-- [ ] participant OK → délègue port avec processInstanceId + tenantId
-- [ ] non-participant → AccessDenied
-- [ ] link inconnu → not found
-- [ ] sans `processInstanceId` → WorkflowLinkReservedException (409)
-- [ ] TA/WA bypass participant check
+- [x] participant OK → délègue port avec processInstanceId + tenantId
+- [x] non-participant → AccessDenied
+- [x] link inconnu → not found
+- [x] sans `processInstanceId` → WorkflowLinkReservedException (409)
+- [x] TA/WA bypass participant check
 
 ### Get link dossier use case
-- [ ] charge dossier + elements triés ; `relations` toujours vide
-- [ ] authz participant|TA/WA ; **autorise** sans `processInstanceId` (R1)
+- [x] charge dossier + elements triés ; `relations` toujours vide
+- [x] authz participant|TA/WA ; **autorise** sans `processInstanceId` (R1)
 
 ### Reassign use case
-- [ ] WA/TA + tâche de l’instance → port.reassign
-- [ ] non admin → AccessDenied même si participant
-- [ ] assignee blank → 400 / IllegalArgument
-- [ ] sans `processInstanceId` → reserved exception
-- [ ] tâche autre instance → not found
+- [x] WA/TA + tâche de l’instance → port.reassign
+- [x] non admin → AccessDenied même si participant
+- [x] assignee blank → 400 / IllegalArgument
+- [x] sans `processInstanceId` → reserved exception
+- [x] tâche autre instance → not found
 
 ### FlowableWorkflowVisualizationAdapter
-- [ ] bpmnXml non vide ; active/completed peuplés
-- [ ] failedIds = deleteReason startsWith `"error"` seulement
-- [ ] tenant filter appliqué (pas de fuite cross-tenant)
-- [ ] reassign appelle `taskService.setAssignee`
+- [x] bpmnXml non vide ; active/completed peuplés
+- [x] failedIds = deleteReason startsWith `"error"` seulement
+- [x] tenant filter appliqué (pas de fuite cross-tenant)
+- [x] reassign appelle `taskService.setAssignee`
 
 ### WorkflowStateEventListener
-- [ ] TASK_ASSIGNED / ACTIVITY_COMPLETED / PROCESS_COMPLETED → send
+- [x] TASK_ASSIGNED / ACTIVITY_COMPLETED / PROCESS_COMPLETED → send
   BROWSER avec `payload.type=WORKFLOW_STATE_CHANGED` + linkId +
   processInstanceId (R2) pour chaque participant
-- [ ] autres event types ignorés
-- [ ] link introuvable → no-op (pas d’exception fatale)
-- [ ] `isFailOnException == false`
+- [x] autres event types ignorés
+- [x] link introuvable → no-op (pas d’exception fatale)
+- [x] `isFailOnException == false`
 
 ### Exception handler
-- [ ] WorkflowLinkReservedException → **409** ProblemDetail
-- [ ] AccessDenied → **403** ; NotFound → **404**
+- [x] WorkflowLinkReservedException → **409** ProblemDetail
+- [x] AccessDenied → **403** ; NotFound → **404**
 
 ## Integration Tests
 
 ### MockMvc visualisation
-- [ ] GET diagram **200** pour participant (assignee ou initiator ou
+- [x] GET diagram **200** pour participant (assignee ou initiator ou
       observer)
-- [ ] GET diagram **403** pour user authentifié hors participants
-- [ ] GET diagram **404** link inconnu
-- [ ] GET diagram **409** link sans `processInstanceId`
-- [ ] GET history / tasks **200** structure JSON
-- [ ] GET dossier **200** avec `elements` + `relations: []` **y compris
+- [x] GET diagram **403** pour user authentifié hors participants
+- [x] GET diagram **404** link inconnu
+- [x] GET diagram **409** link sans `processInstanceId`
+- [x] GET history / tasks **200** structure JSON
+- [x] GET dossier **200** avec `elements` + `relations: []` **y compris
       RESERVED** (R1) pour `startedBy` (sans ACL type dossier)
-- [ ] GET dossier **200** pour observateur sans ACL type (A10)
-- [ ] POST reassign **204** en WA ; **403** en DOSSIER_MANAGER participant
-- [ ] POST reassign sans CSRF → **403** ; anonyme → **401**
-- [ ] TA bypass lecture OK
+- [x] GET dossier **200** pour observateur sans ACL type (A10)
+- [x] POST reassign **204** en WA ; **403** en DOSSIER_MANAGER participant
+- [x] POST reassign sans CSRF → **403** ; anonyme → **401**
+- [x] TA bypass lecture OK
 
 ### MockMvc / persistence config observers
-- [ ] create/update `WorkflowTypeConfig` avec `observerUserIds`
-- [ ] GET config renvoie la liste
-- [ ] Liquibase 007 : colonne `observer_user_ids` présente (SchemaIT)
+- [x] create/update `WorkflowTypeConfig` avec `observerUserIds`
+- [x] GET config renvoie la liste
+- [x] Liquibase 007 : colonne `observer_user_ids` présente (SchemaIT)
 
 ### Persistence helpers
-- [ ] `DossierElementRepository.findByDossierId…` round-trip
-- [ ] `DossierWorkflowLinkRepository.findByProcessInstanceId` (si ajouté)
+- [x] `DossierElementRepository.findByDossierId…` round-trip
+- [x] `DossierWorkflowLinkRepository.findByProcessInstanceId` (si ajouté)
 
 ## Mocks & Fixtures
 

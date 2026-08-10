@@ -15,7 +15,8 @@ public record DossierWorkflowLink(
         String triggerRef,
         Instant startedAt,
         Instant endedAt,
-        String endReason
+        String endReason,
+        String startedBy
 ) {
     public DossierWorkflowLink {
         Objects.requireNonNull(id, "id");
@@ -52,7 +53,8 @@ public record DossierWorkflowLink(
                 triggerRef,
                 startedAt,
                 endedAt,
-                endReason);
+                endReason,
+                startedBy);
     }
 
     public DossierWorkflowLink abort(AbortReservedReason reason, Instant at) {
@@ -69,7 +71,8 @@ public record DossierWorkflowLink(
                 triggerRef,
                 startedAt,
                 at,
-                reason.name());
+                reason.name(),
+                startedBy);
     }
 
     public DossierWorkflowLink withStatus(String newStatus, Instant endedAt, String endReason) {
@@ -85,6 +88,7 @@ public record DossierWorkflowLink(
                 triggerRef,
                 startedAt,
                 endedAt,
-                endReason);
+                endReason,
+                startedBy);
     }
 }

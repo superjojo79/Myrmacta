@@ -15,6 +15,8 @@ import org.springframework.stereotype.Component;
 @Component
 class OutboxRelayScheduler {
 
+    static final String SYSTEM_OUTBOX_STARTED_BY = "system:outbox";
+
     private final OutboxRepository outboxRepository;
     private final AttachWorkflowUseCase attachWorkflow;
     private final WorkflowEnginePort workflowEnginePort;
@@ -50,7 +52,8 @@ class OutboxRelayScheduler {
             DossierWorkflowLink link = attachWorkflow.reserveOrResume(
                     event.payload().dossierId(),
                     event.payload().processKey(),
-                    event.payload().triggerRef());
+                    event.payload().triggerRef(),
+                    SYSTEM_OUTBOX_STARTED_BY);
             if (link.isActive()) {
                 outboxRepository.markProcessed(event.eventId());
                 return;

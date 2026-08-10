@@ -9,6 +9,7 @@ import com.flowforge.domain.dossier.model.WorkflowAlreadyRunningException;
 import com.flowforge.domain.dossier.port.in.AttachWorkflowUseCase;
 import com.flowforge.domain.dossier.port.in.GetDossierWorkflowHistoryUseCase;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
+import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
 import com.flowforge.domain.workflow.model.OutboxStatus;
 import com.flowforge.domain.workflow.model.StatusOutcome;
 import com.flowforge.domain.workflow.model.TriggerOutboxPayload;
@@ -51,6 +52,9 @@ class WorkflowPersistenceTest {
 
     @Autowired
     private GetDossierWorkflowHistoryUseCase historyUseCase;
+
+    @Autowired
+    private DossierWorkflowLinkRepository linkRepository;
 
     @Test
     void persistsWorkflowConfigAndIdempotencyRows() {
@@ -113,16 +117,21 @@ class WorkflowPersistenceTest {
         Dossier dossier = dossier(DossierStatus.OUVERT);
         dossierRepository.save(dossier);
 
-        var reserved = attachWorkflow.reserve(dossier.id(), processKey, "manual");
+        var reserved = attachWorkflow.reserve(dossier.id(), processKey, "manual", "starter-sub");
         assertThat(reserved.isReserved()).isTrue();
+        assertThat(reserved.startedBy()).isEqualTo("starter-sub");
         assertThat(dossierRepository.findById(dossier.id()).orElseThrow().currentWorkflowLinkId())
                 .isNull();
 
         attachWorkflow.confirmStarted(reserved.id(), "proc-1");
         assertThat(dossierRepository.findById(dossier.id()).orElseThrow().currentWorkflowLinkId())
                 .isEqualTo(reserved.id());
+        assertThat(linkRepository.findByProcessInstanceId("tenant_dev", "proc-1"))
+                .get()
+                .extracting(link -> link.id())
+                .isEqualTo(reserved.id());
 
-        assertThatThrownBy(() -> attachWorkflow.reserve(dossier.id(), processKey, "manual-2"))
+        assertThatThrownBy(() -> attachWorkflow.reserve(dossier.id(), processKey, "manual-2", "starter-sub"))
                 .isInstanceOf(WorkflowAlreadyRunningException.class);
 
         assertThat(historyUseCase.getHistory(dossier.id()))
@@ -142,7 +151,8 @@ class WorkflowPersistenceTest {
                         new WorkflowStatusDefinition("STARTED", "Started", true, StatusOutcome.NONE),
                         new WorkflowStatusDefinition("COMPLETED", "Completed", false, StatusOutcome.COMPLETED)),
                 List.of(DossierStatus.OUVERT, DossierStatus.EN_COURS, DossierStatus.SUSPENDU),
-                null);
+                null,
+                List.of());
     }
 
     private static Dossier dossier(DossierStatus status) {

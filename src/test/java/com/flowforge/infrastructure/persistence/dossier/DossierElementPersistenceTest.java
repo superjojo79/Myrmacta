@@ -27,6 +27,7 @@ class DossierElementPersistenceTest {
     @Test
     void saveAndLoad_roundTripsMetadataAndNullWorkflowStepId() {
         UUID id = UUID.randomUUID();
+        UUID dossierId = UUID.randomUUID();
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("templateKey", "contrat");
         metadata.put("contentType", "application/pdf");
@@ -35,7 +36,7 @@ class DossierElementPersistenceTest {
 
         DossierElement saved = dossierElementRepository.save(new DossierElement(
                 id,
-                UUID.randomUUID(),
+                dossierId,
                 TENANT_ID,
                 ElementType.PRODUCED_DOC,
                 "Document généré — persist",
@@ -60,5 +61,34 @@ class DossierElementPersistenceTest {
         assertThat(loaded.metadata()).isEqualTo(metadata);
         assertThat(loaded.type()).isEqualTo(ElementType.PRODUCED_DOC);
         assertThat(loaded.label()).isEqualTo("Document généré — persist");
+    }
+
+    @Test
+    void findByDossierIdOrderByAddedAtAsc_returnsElementsForDossierInChronologicalOrder() {
+        UUID dossierId = UUID.randomUUID();
+        DossierElement newer = dossierElement(dossierId, "newer", "2026-08-04T05:05:00Z");
+        DossierElement older = dossierElement(dossierId, "older", "2026-08-04T05:00:00Z");
+        DossierElement otherDossier = dossierElement(UUID.randomUUID(), "other", "2026-08-04T04:00:00Z");
+        dossierElementRepository.save(newer);
+        dossierElementRepository.save(older);
+        dossierElementRepository.save(otherDossier);
+
+        assertThat(dossierElementRepository.findByDossierIdOrderByAddedAtAsc(dossierId))
+                .extracting(DossierElement::label)
+                .containsExactly("older", "newer");
+    }
+
+    private static DossierElement dossierElement(UUID dossierId, String label, String addedAt) {
+        return new DossierElement(
+                UUID.randomUUID(),
+                dossierId,
+                TENANT_ID,
+                ElementType.PRODUCED_DOC,
+                label,
+                TENANT_ID + "/" + UUID.randomUUID() + ".pdf",
+                Map.of(),
+                "system",
+                Instant.parse(addedAt),
+                null);
     }
 }

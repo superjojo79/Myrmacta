@@ -105,7 +105,8 @@ class WorkflowStartConfirmerTest {
                 "Smoke",
                 List.of(new WorkflowStatusDefinition("STARTED", "Started", true, StatusOutcome.NONE)),
                 List.of(DossierStatus.OUVERT, DossierStatus.EN_COURS),
-                onStart);
+                onStart,
+                List.of());
     }
 
     private static DossierWorkflowLink reservedLink(UUID dossierId) {
@@ -119,6 +120,7 @@ class WorkflowStartConfirmerTest {
                 "STARTED",
                 "manual:idem-1",
                 Instant.parse("2026-08-02T10:00:00Z"),
+                null,
                 null,
                 null);
     }

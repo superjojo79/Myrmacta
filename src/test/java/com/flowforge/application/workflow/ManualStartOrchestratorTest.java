@@ -70,18 +70,19 @@ class ManualStartOrchestratorTest {
         DossierWorkflowLink reserved = reservedLink(dossierId);
         when(dossierRepository.findById(dossierId)).thenReturn(Optional.of(dossier));
         when(idempotencyStore.findLinkId(TENANT, dossierId, "idem-1")).thenReturn(Optional.empty());
-        when(attachWorkflow.reserve(eq(dossierId), eq(PROCESS), anyString())).thenReturn(reserved);
+        when(attachWorkflow.reserve(eq(dossierId), eq(PROCESS), anyString(), eq("starter-sub"))).thenReturn(reserved);
         when(workflowEnginePort.start(eq(PROCESS), eq(TENANT), eq(reserved.id().toString()), anyMap()))
                 .thenReturn("proc-1");
         when(linkRepository.findById(reserved.id()))
                 .thenReturn(Optional.of(reserved.withProcessInstance("proc-1")));
 
         ManualStartOrchestrator.StartResult result =
-                orchestrator.start(dossierId, PROCESS, Map.of("priority", "HIGH"), "idem-1");
+                orchestrator.start(dossierId, PROCESS, Map.of("priority", "HIGH"), "idem-1", "starter-sub");
 
         assertThat(result.replay()).isFalse();
         assertThat(result.link().isActive()).isTrue();
         verify(workflowEnginePort).start(eq(PROCESS), eq(TENANT), eq(reserved.id().toString()), anyMap());
+        verify(attachWorkflow).reserve(dossierId, PROCESS, "manual:idem-1", "starter-sub");
         // TX2 (confirm + idempotency + onStart) est déléguée à un seul appel transactionnel.
         verify(workflowStartConfirmer).confirm(dossier, reserved, "proc-1", PROCESS, "idem-1");
         verify(eventPublisher).publish(any());
@@ -97,11 +98,11 @@ class ManualStartOrchestratorTest {
         when(linkRepository.findById(existing.id())).thenReturn(Optional.of(existing));
 
         ManualStartOrchestrator.StartResult result =
-                orchestrator.start(dossierId, PROCESS, Map.of(), "idem-1");
+                orchestrator.start(dossierId, PROCESS, Map.of(), "idem-1", "starter-sub");
 
         assertThat(result.replay()).isTrue();
         assertThat(result.link().id()).isEqualTo(existing.id());
-        verify(attachWorkflow, never()).reserve(any(), any(), any());
+        verify(attachWorkflow, never()).reserve(any(), any(), any(), any());
         verify(workflowEnginePort, never()).start(any(), any(), any(), any());
         verifyNoInteractions(workflowStartConfirmer);
     }
@@ -113,11 +114,11 @@ class ManualStartOrchestratorTest {
         DossierWorkflowLink reserved = reservedLink(dossierId);
         when(dossierRepository.findById(dossierId)).thenReturn(Optional.of(dossier));
         when(idempotencyStore.findLinkId(TENANT, dossierId, "idem-1")).thenReturn(Optional.empty());
-        when(attachWorkflow.reserve(eq(dossierId), eq(PROCESS), anyString())).thenReturn(reserved);
+        when(attachWorkflow.reserve(eq(dossierId), eq(PROCESS), anyString(), eq("starter-sub"))).thenReturn(reserved);
         when(workflowEnginePort.start(eq(PROCESS), eq(TENANT), eq(reserved.id().toString()), anyMap()))
                 .thenThrow(new IllegalStateException("engine down"));
 
-        assertThatThrownBy(() -> orchestrator.start(dossierId, PROCESS, Map.of(), "idem-1"))
+        assertThatThrownBy(() -> orchestrator.start(dossierId, PROCESS, Map.of(), "idem-1", "starter-sub"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("engine down");
         verify(attachWorkflow).abortReserved(reserved.id(), AbortReservedReason.ORPHAN_START_FAILED);
@@ -129,10 +130,10 @@ class ManualStartOrchestratorTest {
         UUID dossierId = UUID.randomUUID();
 
         assertThatThrownBy(() ->
-                        orchestrator.start(dossierId, PROCESS, Map.of("tenantId", "x"), "idem-1"))
+                        orchestrator.start(dossierId, PROCESS, Map.of("tenantId", "x"), "idem-1", "starter-sub"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("reserved");
-        verify(attachWorkflow, never()).reserve(any(), any(), any());
+        verify(attachWorkflow, never()).reserve(any(), any(), any(), any());
     }
 
     private static DossierWorkflowLink reservedLink(UUID dossierId) {
@@ -147,7 +148,8 @@ class ManualStartOrchestratorTest {
                 "manual:idem-1",
                 Instant.parse("2026-08-02T10:00:00Z"),
                 null,
-                null);
+                null,
+                "starter-sub");
     }
 
     private static Dossier dossier(UUID id) {

@@ -51,9 +51,10 @@ class AttachWorkflowUseCaseImplTest {
         when(linkRepository.findReservedByDossierAndProcess(dossierId, PROCESS))
                 .thenReturn(Optional.of(reserved));
 
-        DossierWorkflowLink result = useCase.reserveOrResume(dossierId, PROCESS, "outbox:1");
+        DossierWorkflowLink result = useCase.reserveOrResume(dossierId, PROCESS, "outbox:1", "new-starter");
 
         assertThat(result).isEqualTo(reserved);
+        assertThat(result.startedBy()).isEqualTo("original-starter");
         verify(linkRepository, never()).save(any());
     }
 
@@ -65,10 +66,11 @@ class AttachWorkflowUseCaseImplTest {
                 .thenReturn(Optional.empty());
         when(linkRepository.findActiveByDossierId(dossierId)).thenReturn(Optional.of(active));
 
-        DossierWorkflowLink result = useCase.reserveOrResume(dossierId, PROCESS, "outbox:replay");
+        DossierWorkflowLink result = useCase.reserveOrResume(dossierId, PROCESS, "outbox:replay", "new-starter");
 
         assertThat(result.isActive()).isTrue();
         assertThat(result.processInstanceId()).isEqualTo("proc-1");
+        assertThat(result.startedBy()).isEqualTo("original-starter");
         verify(linkRepository, never()).save(any());
     }
 
@@ -90,6 +92,7 @@ class AttachWorkflowUseCaseImplTest {
                 "manual",
                 Instant.parse("2026-08-02T10:00:00Z"),
                 null,
+                null,
                 null);
 
         when(linkRepository.findReservedByDossierAndProcess(dossierId, PROCESS))
@@ -98,8 +101,23 @@ class AttachWorkflowUseCaseImplTest {
         when(dossierRepository.findById(dossierId)).thenReturn(Optional.of(dossier));
         when(configRepository.findByWorkflowKey(TENANT, PROCESS)).thenReturn(Optional.of(config()));
 
-        assertThatThrownBy(() -> useCase.reserveOrResume(dossierId, PROCESS, "outbox:collision"))
+        assertThatThrownBy(() -> useCase.reserveOrResume(dossierId, PROCESS, "outbox:collision", "starter-sub"))
                 .isInstanceOf(WorkflowAlreadyRunningException.class);
+    }
+
+    @Test
+    void reserve_persistsStartedByOnNewLink() {
+        UUID dossierId = UUID.randomUUID();
+        Dossier dossier = dossier(dossierId, DossierStatus.OUVERT);
+        when(dossierRepository.findById(dossierId)).thenReturn(Optional.of(dossier));
+        when(configRepository.findByWorkflowKey(TENANT, PROCESS)).thenReturn(Optional.of(config()));
+        when(linkRepository.findActiveByDossierId(dossierId)).thenReturn(Optional.empty());
+        when(linkRepository.nextSequence(dossierId)).thenReturn(7);
+        when(linkRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        DossierWorkflowLink reserved = useCase.reserve(dossierId, PROCESS, "manual:idem", "starter-sub");
+
+        assertThat(reserved.startedBy()).isEqualTo("starter-sub");
     }
 
     private static WorkflowTypeConfig config() {
@@ -112,7 +130,8 @@ class AttachWorkflowUseCaseImplTest {
                         new WorkflowStatusDefinition("STARTED", "Started", true, StatusOutcome.NONE),
                         new WorkflowStatusDefinition("COMPLETED", "Done", false, StatusOutcome.COMPLETED)),
                 List.of(DossierStatus.OUVERT, DossierStatus.EN_COURS),
-                null);
+                null,
+                List.of());
     }
 
     private static DossierWorkflowLink reservedLink(UUID dossierId) {
@@ -127,7 +146,8 @@ class AttachWorkflowUseCaseImplTest {
                 "manual",
                 Instant.parse("2026-08-02T10:00:00Z"),
                 null,
-                null);
+                null,
+                "original-starter");
     }
 
     private static Dossier dossier(UUID id, DossierStatus status) {

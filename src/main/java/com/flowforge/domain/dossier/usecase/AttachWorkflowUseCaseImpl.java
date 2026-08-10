@@ -34,7 +34,10 @@ public final class AttachWorkflowUseCaseImpl implements AttachWorkflowUseCase, G
     }
 
     @Override
-    public DossierWorkflowLink reserve(UUID dossierId, String processDefinitionKey, String triggerRef) {
+    public DossierWorkflowLink reserve(UUID dossierId, String processDefinitionKey, String triggerRef, String startedBy) {
+        if (startedBy == null || startedBy.isBlank()) {
+            throw new IllegalArgumentException("startedBy is required");
+        }
         Dossier dossier = dossierRepository.findById(dossierId)
                 .orElseThrow(() -> new DossierNotFoundException("Dossier not found: " + dossierId));
         WorkflowTypeConfig config = configRepository.findByWorkflowKey(dossier.tenantId(), processDefinitionKey)
@@ -59,16 +62,17 @@ public final class AttachWorkflowUseCaseImpl implements AttachWorkflowUseCase, G
                 triggerRef,
                 Instant.now(),
                 null,
-                null);
+                null,
+                startedBy);
         return linkRepository.save(link);
     }
 
     @Override
-    public DossierWorkflowLink reserveOrResume(UUID dossierId, String processDefinitionKey, String triggerRef) {
+    public DossierWorkflowLink reserveOrResume(UUID dossierId, String processDefinitionKey, String triggerRef, String startedBy) {
         return linkRepository.findReservedByDossierAndProcess(dossierId, processDefinitionKey)
                 .or(() -> linkRepository.findActiveByDossierId(dossierId)
                         .filter(link -> processDefinitionKey.equals(link.processDefinitionKey())))
-                .orElseGet(() -> reserve(dossierId, processDefinitionKey, triggerRef));
+                .orElseGet(() -> reserve(dossierId, processDefinitionKey, triggerRef, startedBy));
     }
 
     @Override

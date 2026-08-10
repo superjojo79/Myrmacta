@@ -47,6 +47,17 @@ class DossierWorkflowLinkTest {
         assertThat(confirmed.processInstanceId()).isEqualTo("pi-9");
         assertThat(confirmed.isActive()).isTrue();
         assertThat(confirmed.id()).isEqualTo(reserved.id());
+        assertThat(confirmed.startedBy()).isEqualTo(reserved.startedBy());
+    }
+
+    @Test
+    void startedBy_isPreservedOnAbort() {
+        DossierWorkflowLink reserved = link(null, null);
+
+        DossierWorkflowLink aborted =
+                reserved.abort(AbortReservedReason.ORPHAN_START_FAILED, T0.plusSeconds(1));
+
+        assertThat(aborted.startedBy()).isEqualTo("user-starter");
     }
 
     @Test
@@ -74,7 +85,8 @@ class DossierWorkflowLinkTest {
                         "manual:u1",
                         T0,
                         null,
-                        null))
+                        null,
+                        "user-starter"))
                 .isInstanceOf(NullPointerException.class);
     }
 
@@ -90,6 +102,7 @@ class DossierWorkflowLinkTest {
                 "manual:u1",
                 T0,
                 endedAt,
-                endedAt == null ? null : "DONE");
+                endedAt == null ? null : "DONE",
+                "user-starter");
     }
 }

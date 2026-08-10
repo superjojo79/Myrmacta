@@ -1,6 +1,8 @@
 package com.flowforge.domain.workflow.model;
 
 import com.flowforge.domain.dossier.model.DossierStatus;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -13,7 +15,8 @@ public record WorkflowTypeConfig(
         String label,
         List<WorkflowStatusDefinition> statusDefinitions,
         List<DossierStatus> allowedDossierStatuses,
-        DossierStatus onStartDossierStatus
+        DossierStatus onStartDossierStatus,
+        List<String> observerUserIds
 ) {
     public WorkflowTypeConfig {
         Objects.requireNonNull(id, "id");
@@ -30,6 +33,21 @@ public record WorkflowTypeConfig(
         if (initials != 1) {
             throw new IllegalArgumentException("statusDefinitions must contain exactly one initial status");
         }
+        observerUserIds = normalizeObserverUserIds(observerUserIds);
+    }
+
+    private static List<String> normalizeObserverUserIds(List<String> raw) {
+        if (raw == null || raw.isEmpty()) {
+            return List.of();
+        }
+        LinkedHashSet<String> deduped = new LinkedHashSet<>();
+        for (String id : raw) {
+            if (id == null || id.isBlank()) {
+                throw new IllegalArgumentException("observerUserIds must not contain blank entries");
+            }
+            deduped.add(id);
+        }
+        return List.copyOf(new ArrayList<>(deduped));
     }
 
     public String initialStatusCode() {

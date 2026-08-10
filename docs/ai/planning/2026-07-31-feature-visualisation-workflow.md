@@ -23,12 +23,12 @@ Traçage `task` CLI : **indisponible** (`npx ai-devkit@latest task list
 ## Milestones
 **What are the major checkpoints?**
 
-- [ ] **M1 — Domaine** : models, ports, use cases lecture + reassign
-- [ ] **M2 — Persistance & wiring startedBy** : Liquibase 007, JPA, repos,
+- [x] **M1 — Domaine** : models, ports, use cases lecture + reassign
+- [x] **M2 — Persistance & wiring startedBy** : Liquibase 007, JPA, repos,
       AttachWorkflow + orchestrator/outbox
-- [ ] **M3 — Adapters Flowable** : visualization + participants
-- [ ] **M4 — HTTP** : controller viz + admin observers + 409 handler
-- [ ] **M5 — SSE** : `WorkflowStateEventListener`
+- [x] **M3 — Adapters Flowable** : visualization + participants
+- [x] **M4 — HTTP** : controller viz + admin observers + 409 handler
+- [x] **M5 — SSE** : `WorkflowStateEventListener`
 - [ ] **M6 — Preuves & docs** : verify, Jacoco ≥ 80 %, sync docs
 
 ## Task Breakdown
@@ -38,7 +38,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M1 — Domaine
 
-- [ ] **T1. Models + ports out**
+- [x] **T1. Models + ports out**
   - **Outcome :** `WorkflowDiagramView`, `ActivityHistoryEntry`,
     `WorkflowTaskView` ; `WorkflowVisualizationPort` ;
     `WorkflowParticipantPort` ; `WorkflowProcessInstanceMissingException`
@@ -50,7 +50,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Tests :** WorkflowTypeConfig observers ; DossierWorkflowLink
     startedBy ; prépare use cases.
 
-- [ ] **T2. Use cases lecture (authz in UC)**
+- [x] **T2. Use cases lecture (authz in UC)**
   - **Outcome :** Get diagram / history / tasks / dossier-link ;
     charge link → authz participant|TA/WA (DD-AUTHZ-LAYER) ;
     PI absent → 409 moteur, **200** dossier (R1) ; dossier via
@@ -60,7 +60,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
     observateur).
   - **Tests :** Get diagram/history/tasks ; Get link dossier.
 
-- [ ] **T3. Use case reassign**
+- [x] **T3. Use case reassign**
   - **Outcome :** WA|TA only ; `assigneeId` non blank ; tâche appartient
     à l’instance du link ; PI requis ; délègue
     `WorkflowVisualizationPort.reassignTask`.
@@ -70,7 +70,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M2 — Persistance & startedBy
 
-- [ ] **T4. Liquibase 007 + JPA**
+- [x] **T4. Liquibase 007 + JPA**
   - **Outcome :** changelog
     `007-workflow-viz-columns.yaml` inclus au master ;
     `workflow_type_config.observer_user_ids` JSON NOT NULL défaut `[]` ;
@@ -81,7 +81,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Tests :** Liquibase / WorkflowTypeConfig + link persistence ;
     MockMvc/persistence config observers (partiel jusqu’à T10).
 
-- [ ] **T5. Repo helpers**
+- [x] **T5. Repo helpers**
   - **Outcome :**
     `DossierElementRepository.findByDossierIdOrderByAddedAtAsc` ;
     `DossierWorkflowLinkRepository.findByProcessInstanceId(tenantId, piid)`
@@ -90,7 +90,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Validation :** persistence IT round-trip.
   - **Tests :** Persistence helpers.
 
-- [ ] **T6. AttachWorkflow + producteurs `startedBy`**
+- [x] **T6. AttachWorkflow + producteurs `startedBy`**
   - **Outcome :**
     `reserve` / `reserveOrResume(..., String startedBy)` ;
     resume **ne remplace pas** `startedBy` ;
@@ -105,7 +105,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M3 — Flowable adapters
 
-- [ ] **T7. FlowableWorkflowVisualizationAdapter**
+- [x] **T7. FlowableWorkflowVisualizationAdapter**
   - **Outcome :** XML natif (`BpmnXMLConverter`) ; active / completed /
     failedIds (`deleteReason.startsWith("error")`) ; list tasks ;
     `setAssignee` ; filtres `processInstanceTenantId` ; 404 si instance
@@ -115,7 +115,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
     mockés).
   - **Tests :** adapter visualization (testing §).
 
-- [ ] **T8. FlowableWorkflowParticipantAdapter**
+- [x] **T8. FlowableWorkflowParticipantAdapter**
   - **Outcome :** union `startedBy` + startUserId + assignees +
     `observerUserIds` (A2–A4, R3) ; distinct ; blanks ignorés ; OK sans PI.
   - **Deps :** T1, T4, T5.
@@ -124,7 +124,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M4 — HTTP
 
-- [ ] **T9. WorkflowLinkVisualizationController + handler**
+- [x] **T9. WorkflowLinkVisualizationController + handler**
   - **Outcome :** 5 endpoints sous `/api/workflow-links/{linkId}` ;
     CSRF reassign ; mapping 409/403/404 ; beans config wiring UC +
     adapters ; controller mince (délègue UC).
@@ -132,7 +132,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Validation :** MockMvc visualisation (tous cas testing §).
   - **Tests :** WorkflowLinkVisualizationApiTest ; Exception handler.
 
-- [ ] **T10. Admin `observerUserIds` sur WorkflowTypeConfig**
+- [x] **T10. Admin `observerUserIds` sur WorkflowTypeConfig**
   - **Outcome :** POST/PATCH/GET acceptent/renvoient la liste ; blank →
     400 ; défaut `[]` ; authz TA|WA inchangée.
   - **Deps :** T4.
@@ -141,7 +141,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M5 — SSE
 
-- [ ] **T11. WorkflowStateEventListener**
+- [x] **T11. WorkflowStateEventListener**
   - **Outcome :** events
     `TASK_ASSIGNED` / `ACTIVITY_COMPLETED` / `PROCESS_COMPLETED` ;
     resolve link via `findByProcessInstanceId` ; fan-out
@@ -222,8 +222,9 @@ External : feature `frontend` (Viewer) hors plan ; pas de Cockpit Flowable.
 
 ## Progress summary
 
-Phase 4 close (2026-08-10) — planning **`ready`** (T1–T13).  
-Première implémentation suggérée : **T1 → T4 → T6** (socle modèle +
-migration + startedBy), puis **T2/T7/T8**.  
-Task CLI indisponible.  
-**Next :** phase 5 — Execute Plan (`dev-implementation` + TDD).
+Phase 5 implementation update (2026-08-10) — **T1–T11 done** :
+domain contracts, persistence helpers, `startedBy` producers, Flowable
+visualization/participant adapters, REST visualization API, observer DTOs,
+409 handler, and `WorkflowStateEventListener`.
+Remaining : **T12** full `./mvnw verify` + coverage gate, **T13** final docs
+sync after full verification. Task CLI indisponible.

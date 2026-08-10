@@ -93,6 +93,36 @@ class FlowableWorkflowParticipantAdapterTest {
                         "observer-a");
     }
 
+    @Test
+    void findParticipantUserIds_missingConfigYieldsEmptyObserversAndIgnoresBlankIds() {
+        DossierWorkflowLink link = link("proc-blank", "  ");
+        when(configRepository.findByWorkflowKey(TENANT, PROCESS)).thenReturn(Optional.empty());
+
+        HistoricProcessInstanceQuery processQuery = mock(HistoricProcessInstanceQuery.class);
+        HistoricProcessInstance process = mock(HistoricProcessInstance.class);
+        when(historyService.createHistoricProcessInstanceQuery()).thenReturn(processQuery);
+        when(processQuery.processInstanceId("proc-blank")).thenReturn(processQuery);
+        when(processQuery.processInstanceTenantId(TENANT)).thenReturn(processQuery);
+        when(processQuery.singleResult()).thenReturn(process);
+        when(process.getStartUserId()).thenReturn(null);
+
+        TaskQuery taskQuery = mock(TaskQuery.class);
+        Task blankAssignee = mock(Task.class);
+        when(taskService.createTaskQuery()).thenReturn(taskQuery);
+        when(taskQuery.processInstanceId("proc-blank")).thenReturn(taskQuery);
+        when(taskQuery.taskTenantId(TENANT)).thenReturn(taskQuery);
+        when(taskQuery.list()).thenReturn(List.of(blankAssignee));
+        when(blankAssignee.getAssignee()).thenReturn("");
+
+        HistoricTaskInstanceQuery historicTaskQuery = mock(HistoricTaskInstanceQuery.class);
+        when(historyService.createHistoricTaskInstanceQuery()).thenReturn(historicTaskQuery);
+        when(historicTaskQuery.processInstanceId("proc-blank")).thenReturn(historicTaskQuery);
+        when(historicTaskQuery.taskTenantId(TENANT)).thenReturn(historicTaskQuery);
+        when(historicTaskQuery.list()).thenReturn(List.of());
+
+        assertThat(adapter.findParticipantUserIds(link)).isEmpty();
+    }
+
     private static DossierWorkflowLink link(String processInstanceId, String startedBy) {
         return new DossierWorkflowLink(
                 UUID.randomUUID(),

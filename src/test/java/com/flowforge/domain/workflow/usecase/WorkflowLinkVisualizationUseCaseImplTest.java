@@ -92,6 +92,19 @@ class WorkflowLinkVisualizationUseCaseImplTest {
     }
 
     @Test
+    void getDiagram_allowsTenantAdminWithoutParticipantLookup() {
+        DossierWorkflowLink link = activeLink("proc-1");
+        when(linkRepository.findById(link.id())).thenReturn(Optional.of(link));
+        when(visualizationPort.getDiagram("proc-1", TENANT))
+                .thenReturn(new WorkflowDiagramView("<definitions/>", List.of(), List.of(), List.of()));
+
+        useCase.getDiagram(link.id(), user("tenant-admin", "TENANT_ADMIN"));
+
+        verify(visualizationPort).getDiagram("proc-1", TENANT);
+        verify(participantPort, never()).findParticipantUserIds(link);
+    }
+
+    @Test
     void getDiagram_unknownLinkReturnsNotFound() {
         UUID linkId = UUID.randomUUID();
         when(linkRepository.findById(linkId)).thenReturn(Optional.empty());

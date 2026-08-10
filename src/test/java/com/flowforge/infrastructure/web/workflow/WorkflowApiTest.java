@@ -311,6 +311,55 @@ class WorkflowApiTest {
                         .with(user("observer-sub")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.bpmnXml").isNotEmpty());
+
+        mockMvc.perform(get("/api/workflow-links/{id}/dossier", linkId)
+                        .with(user("observer-sub")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.dossier.id").value(dossierId))
+                .andExpect(jsonPath("$.relations", hasSize(0)));
+    }
+
+    @Test
+    void visualizationUnknownLinkReturns404AndTenantAdminBypassesParticipantCheck() throws Exception {
+        mockMvc.perform(get("/api/workflow-links/{id}/diagram", UUID.randomUUID())
+                        .with(user("reader")))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404));
+
+        String processKey = "smokeProcess";
+        createWorkflowConfig(processKey);
+        String typeCode = createType();
+        grant(typeCode, "viz-owner", "EDIT");
+        String dossierId = createDossier(typeCode, "viz-owner");
+        MvcResult startResult = mockMvc.perform(post("/api/dossiers/{id}/workflows", dossierId)
+                        .with(user("viz-owner"))
+                        .with(csrf())
+                        .header("Idempotency-Key", "idem-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "processDefinitionKey": "%s"
+                                }
+                                """.formatted(processKey)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String linkId = extractString(startResult.getResponse().getContentAsString(), "id");
+
+        mockMvc.perform(get("/api/workflow-links/{id}/diagram", linkId)
+                        .with(user("tenant-admin-bypass", "TENANT_ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.bpmnXml").isNotEmpty());
+
+        mockMvc.perform(post("/api/workflow-links/{id}/tasks/{taskId}/reassign", linkId, "missing-task")
+                        .with(user("tenant-admin-bypass", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "assigneeId": "someone"
+                                }
+                                """))
+                .andExpect(status().isNotFound());
     }
 
     @Test

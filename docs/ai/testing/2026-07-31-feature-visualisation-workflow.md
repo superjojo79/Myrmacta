@@ -2,7 +2,7 @@
 phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
-status: verified
+status: completed
 created: 2026-08-10
 updated: 2026-08-10
 design_aligned: 2026-08-10
@@ -10,6 +10,7 @@ phase2_sync: 2026-08-10
 phase3_sync: 2026-08-10
 phase4_sync: 2026-08-10
 phase7_sync: 2026-08-10
+phase8_completed: 2026-08-10
 ---
 
 # Testing Strategy
@@ -112,6 +113,22 @@ phase7_sync: 2026-08-10
 - [x] `DossierElementRepository.findByDossierId…` round-trip
 - [x] `DossierWorkflowLinkRepository.findByProcessInstanceId` (si ajouté)
 
+## Test Files (phase 8)
+
+| Fichier | Couverture |
+|---|---|
+| `WorkflowLinkVisualizationUseCaseImplTest` | lecture / dossier / reassign / authz TA·WA |
+| `FlowableWorkflowVisualizationAdapterTest` | diagram états, tenant, reassign, assertTask |
+| `FlowableWorkflowParticipantAdapterTest` | union participants, blank, config absente |
+| `WorkflowStateEventListenerTest` | fan-out SSE, ignore, fail-soft |
+| `WorkflowExceptionHandlerTest` | 409 missing PI, 403 AccessDenied, 404 |
+| `WorkflowApiTest` | MockMvc diagram/history/tasks/dossier/reassign |
+| `WorkflowSchemaIT` | colonnes `observer_user_ids`, `started_by` |
+| `AttachWorkflowUseCaseImplTest` | `startedBy` persist / non-overwrite |
+| `WorkflowTypeConfigTest` | validation `observerUserIds` |
+| `DossierElementPersistenceTest` | order by `addedAt` |
+| `WorkflowPersistenceTest` | `findByProcessInstanceId`, `startedBy` |
+
 ## Mocks & Fixtures
 
 - Process BPMN de test minimal déjà utilisé par workflow IT (réutiliser).
@@ -132,11 +149,10 @@ phase7_sync: 2026-08-10
 
 ## Verification Evidence
 
-- Targeted workflow command:
-  `./mvnw -q test -Dtest='*Workflow*Test,*Workflow*IT,*Attach*,*Visualization*,*Participant*,*WorkflowLink*,*WorkflowState*'`
-  → 68 tests, 0 failures/errors/skips.
-- Full verification: `./mvnw -q verify` → 530 surefire tests, 0
-  failures/errors/skips ; ArchUnit and Jacoco verify phase completed.
+- Targeted (phase 8 gaps):
+  `./mvnw -q test -Dtest='FlowableWorkflowVisualizationAdapterTest,FlowableWorkflowParticipantAdapterTest,WorkflowLinkVisualizationUseCaseImplTest,WorkflowExceptionHandlerTest,WorkflowApiTest'`
+  → exit 0.
+- Full verification: _(pending `./mvnw verify` this session)_
 
 ## Sources
 

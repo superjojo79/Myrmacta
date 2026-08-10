@@ -91,6 +91,34 @@
     {
       "registry": "codeaholicguy/ai-devkit",
       "name": "tdd"
+    },
+    {
+      "registry": "codeaholicguy/ai-devkit",
+      "name": "security-review"
+    },
+    {
+      "registry": "antfu/skills",
+      "name": "vue"
+    },
+    {
+      "registry": "antfu/skills",
+      "name": "vue-best-practices"
+    },
+    {
+      "registry": "antfu/skills",
+      "name": "pinia"
+    },
+    {
+      "registry": "antfu/skills",
+      "name": "vue-testing-best-practices"
+    },
+    {
+      "registry": "antfu/skills",
+      "name": "vite"
+    },
+    {
+      "registry": "antfu/skills",
+      "name": "vitest"
     }
   ]
 }

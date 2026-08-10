@@ -47,10 +47,11 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 - [ ] **T2. Use cases lecture**
   - **Outcome :** Get diagram / history / tasks / dossier link ; load
-    link → reserved check → participant|TA/WA → délègue ports ; dossier
-    panel `relations: []`.
+    link → si PI absent : 409 sur moteur, **200** sur dossier (R1) ;
+    participant|TA/WA → délègue ports ; `relations: []`.
   - **Deps :** T1.
-  - **Validation :** use case unit tests (403/404/409 paths).
+  - **Validation :** use case unit tests (403/404/409 paths + dossier
+    sans PI).
   - **Tests :** Get* use cases (testing §).
 
 - [ ] **T3. Use case reassign**
@@ -111,8 +112,8 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 - [ ] **T10. WorkflowStateEventListener**
   - **Outcome :** filter events ; resolve linkId ; fan-out
-    `SendNotificationUseCase` BROWSER `WORKFLOW_STATE_CHANGED` ;
-    fail-soft.
+    `SendNotificationUseCase` BROWSER avec
+    `payload.type=WORKFLOW_STATE_CHANGED` (R2) ; fail-soft.
   - **Deps :** T7, T5.
   - **Validation :** listener unit tests.
   - **Tests :** WorkflowStateEventListenerTest.

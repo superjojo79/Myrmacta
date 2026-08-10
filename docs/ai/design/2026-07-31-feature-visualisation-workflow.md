@@ -7,6 +7,7 @@ created: 2026-08-10
 updated: 2026-08-10
 requirements_aligned: 2026-08-10
 stakeholder_decisions: 2026-08-10
+phase2_sync: 2026-08-10
 ---
 
 # System Design & Architecture
@@ -14,7 +15,7 @@ stakeholder_decisions: 2026-08-10
 ## Architecture Overview
 **What is the high-level system structure?**
 
-Tranche **visualisation-workflow** (requirements `draft`) : lecture runtime
+Tranche **visualisation-workflow** (requirements `reviewed`) : lecture runtime
 Flowable (diagramme XML + états + historique + tâches), réassignation
 admin, résolution des participants (initiateur / assignés / observateurs),
 panneau dossier lié, et push SSE `WORKFLOW_STATE_CHANGED`. **Pas d’UI Vue**
@@ -127,9 +128,9 @@ Pour un `DossierWorkflowLink` avec `processInstanceId` :
 Bypass TA/WA : **hors** du port — appliqué dans le guard HTTP / use case
 (`AccessContext.User.roles`).
 
-Si link RESERVED : participants = observateurs config + (pas d’initiateur
-Flowable) ; les endpoints viz renvoient **409** avant lecture moteur
-(D-RESERVED) — le guard peut court-circuiter après résolution link.
+Si `processInstanceId` absent : participants = observateurs config
+(éventuellement) ; endpoints **moteur** (diagram/history/tasks/reassign)
+→ **409** (R1) ; `GET …/dossier` reste autorisé si participant|TA/WA.
 
 ### Persistance Liquibase `007-workflow-type-config-observers`
 
@@ -160,10 +161,10 @@ DossierElementRepository.findByDossierIdOrderByAddedAtAsc(dossierId)
 Base : `/api/workflow-links/{linkId}`
 
 ```http
-GET /diagram → 200 WorkflowDiagramView
+GET /diagram → 200 WorkflowDiagramView   # 409 si pas de processInstanceId
 GET /history → 200 ActivityHistoryEntry[]
 GET /tasks → 200 WorkflowTaskView[]
-GET /dossier → 200 { dossier, elements, relations: [] }
+GET /dossier → 200 { dossier, elements, relations: [] }  # OK sans PI (R1)
 POST /tasks/{taskId}/reassign
 Content-Type: application/json
 X-CSRF-TOKEN: …
@@ -175,7 +176,7 @@ X-CSRF-TOKEN: …
 
 | Endpoint | Règle |
 |---|---|
-| GET * | Authentifié + (`participant` **ou** TA/WA) |
+| GET * | Authentifié + (`participant` **ou** TA/WA) ; **pas** `DossierAccessGuard` (A10) |
 | POST reassign | TA \| WA + CSRF |
 
 | Cas | Status |
@@ -184,9 +185,10 @@ X-CSRF-TOKEN: …
 | Link absent / autre tenant | 404 |
 | Non participant (GET) | 403 |
 | Non WA/TA (reassign) | 403 |
-| RESERVED | 409 |
+| `processInstanceId` null (diagram/history/tasks/reassign) | 409 |
 | assigneeId blank | 400 |
 | task inconnue / mauvaise instance | 404 |
+| PI présent mais instance Flowable absente | 404 |
 
 ### Admin config (existant, étendu)
 
@@ -194,21 +196,22 @@ Requêtes create/update `WorkflowTypeConfig` acceptent
 `observerUserIds: string[]` ; réponses l’incluent. Validation : pas de
 blank ; dédup case-sensitive ; défaut `[]`.
 
-### SSE payload (**DD-SSE**)
+### SSE payload (**DD-SSE** / R2)
+
+`SendNotificationUseCase` avec `channels=[BROWSER]`, `userId`=participant,
+`payload` =
 
 ```json
 {
   "type": "WORKFLOW_STATE_CHANGED",
-  "payload": {
-    "linkId": "<uuid>",
-    "processInstanceId": "<flowable-id>"
-  }
+  "linkId": "<uuid>",
+  "processInstanceId": "<flowable-id>"
 }
 ```
 
-Canal `BROWSER`, `userId` = chaque participant. Events Flowable :
-`TASK_ASSIGNED`, `ACTIVITY_COMPLETED`, `PROCESS_COMPLETED`.
-`isFailOnException = false`.
+L’event SSE client (relay existant) enveloppe `{ id, at, payload }` —
+le client lit `payload.type`. Events Flowable : `TASK_ASSIGNED`,
+`ACTIVITY_COMPLETED`, `PROCESS_COMPLETED`. `isFailOnException = false`.
 
 Résolution `linkId` depuis `processInstanceId` via
 `DossierWorkflowLinkRepository` (méthode find-by-processInstanceId à
@@ -264,7 +267,8 @@ db/changelog/changes/007-workflow-type-config-observers.yaml
 | DD-FAIL | `deleteReason` préfixe `error` | D-FAIL A |
 | DD-SSE | Listener → notif BROWSER existante | D-SSE A ; pas nouveau canal |
 | DD-REL | `relations: []` constant | Lot relations différé |
-| DD-GUARD | 404/403/409 alignés | D-DENY / D-RESERVED |
+| DD-GUARD | 404/403/409 alignés ; dossier sans PI = 200 | D-DENY / R1 |
+| DD-SSE-TYPE | `type` dans `NotificationEvent.payload` | R2 / A8 |
 
 ### Écarts vs analyse `10-visualisation-workflow.md`
 

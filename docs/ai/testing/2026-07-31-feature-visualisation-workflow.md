@@ -6,6 +6,7 @@ status: draft
 created: 2026-08-10
 updated: 2026-08-10
 design_aligned: 2026-08-10
+phase2_sync: 2026-08-10
 ---
 
 # Testing Strategy
@@ -44,18 +45,18 @@ design_aligned: 2026-08-10
 - [ ] participant OK → délègue port avec processInstanceId + tenantId
 - [ ] non-participant → AccessDenied
 - [ ] link inconnu → not found
-- [ ] RESERVED → WorkflowLinkReservedException
+- [ ] sans `processInstanceId` → WorkflowLinkReservedException (409)
 - [ ] TA/WA bypass participant check
 
 ### Get link dossier use case
 - [ ] charge dossier + elements triés ; `relations` toujours vide
-- [ ] mêmes règles authz / RESERVED que diagram
+- [ ] authz participant|TA/WA ; **autorise** sans `processInstanceId` (R1)
 
 ### Reassign use case
 - [ ] WA/TA + tâche de l’instance → port.reassign
 - [ ] non admin → AccessDenied même si participant
 - [ ] assignee blank → 400 / IllegalArgument
-- [ ] RESERVED → reserved exception
+- [ ] sans `processInstanceId` → reserved exception
 - [ ] tâche autre instance → not found
 
 ### FlowableWorkflowVisualizationAdapter
@@ -66,7 +67,8 @@ design_aligned: 2026-08-10
 
 ### WorkflowStateEventListener
 - [ ] TASK_ASSIGNED / ACTIVITY_COMPLETED / PROCESS_COMPLETED → send
-  BROWSER `WORKFLOW_STATE_CHANGED` pour chaque participant
+  BROWSER avec `payload.type=WORKFLOW_STATE_CHANGED` + linkId +
+  processInstanceId (R2) pour chaque participant
 - [ ] autres event types ignorés
 - [ ] link introuvable → no-op (pas d’exception fatale)
 - [ ] `isFailOnException == false`
@@ -82,9 +84,10 @@ design_aligned: 2026-08-10
       observer)
 - [ ] GET diagram **403** pour user authentifié hors participants
 - [ ] GET diagram **404** link inconnu
-- [ ] GET diagram **409** link RESERVED
+- [ ] GET diagram **409** link sans `processInstanceId`
 - [ ] GET history / tasks **200** structure JSON
-- [ ] GET dossier **200** avec `elements` + `relations: []`
+- [ ] GET dossier **200** avec `elements` + `relations: []` **y compris
+      RESERVED** (R1)
 - [ ] POST reassign **204** en WA ; **403** en DOSSIER_MANAGER participant
 - [ ] POST reassign sans CSRF → **403** ; anonyme → **401**
 - [ ] TA bypass lecture OK

@@ -2,6 +2,10 @@
 phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
+status: draft
+created: 2026-08-10
+updated: 2026-08-10
+design_aligned: 2026-08-10
 ---
 
 # Testing Strategy
@@ -9,73 +13,111 @@ description: Define testing approach, test cases, and quality assurance
 ## Test Coverage Goals
 **What level of testing do we aim for?**
 
-- Unit test coverage target (default: 100% of new/changed code)
-- Integration test scope (critical paths + error handling)
-- End-to-end test scenarios (key user journeys)
-- Alignment with requirements/design acceptance criteria
+- **Unitaires domaine :** résolution participants (composition) ; use
+  cases get diagram/history/tasks/dossier ; reassign authz ; validation
+  `observerUserIds` / `WorkflowTypeConfig`.
+- **Unitaires infra :** adapter visualisation (XML, active/completed/
+  failedIds) ; adapter participants ; listener SSE (events filtrés,
+  fan-out, fail-soft) ; mapping 409/403/404.
+- **IT H2 + MockMvc :** endpoints `/api/workflow-links/{id}/…` ;
+  extension admin `observerUserIds` ; Liquibase 007.
+- **Régression :** ArchUnit (domain sans Flowable API engine dans
+  use cases si applicable) ; Jacoco ≥ 80 % ; suites workflow /
+  notifications existantes vertes.
+- **Hors scope :** UI bpmn-js, Flowable Cockpit, SMTP/SSE multi-pod,
+  Testcontainers PostgreSQL réel.
 
 ## Unit Tests
-**What individual components need testing?**
 
-### Component/Module 1
-- [ ] Test case 1: [Description] (covers scenario / branch)
-- [ ] Test case 2: [Description] (covers edge case / error handling)
-- [ ] Additional coverage: [Description]
+### WorkflowTypeConfig + observers
+- [ ] `observerUserIds` défaut `[]` ; copy immuable
+- [ ] blank dans la liste → rejet construction / validation
+- [ ] dédup à l’écriture admin
 
-### Component/Module 2
-- [ ] Test case 1: [Description]
-- [ ] Test case 2: [Description]
-- [ ] Additional coverage: [Description]
+### Participant resolution (port/adapter ou helper)
+- [ ] union initiateur + assignees actifs/historiques + observers
+- [ ] ignore null/blank ; distinct
+- [ ] config absente → observers `[]`
+- [ ] link sans processInstanceId → pas de crash (liste observers only)
+
+### Get diagram / history / tasks use cases
+- [ ] participant OK → délègue port avec processInstanceId + tenantId
+- [ ] non-participant → AccessDenied
+- [ ] link inconnu → not found
+- [ ] RESERVED → WorkflowLinkReservedException
+- [ ] TA/WA bypass participant check
+
+### Get link dossier use case
+- [ ] charge dossier + elements triés ; `relations` toujours vide
+- [ ] mêmes règles authz / RESERVED que diagram
+
+### Reassign use case
+- [ ] WA/TA + tâche de l’instance → port.reassign
+- [ ] non admin → AccessDenied même si participant
+- [ ] assignee blank → 400 / IllegalArgument
+- [ ] RESERVED → reserved exception
+- [ ] tâche autre instance → not found
+
+### FlowableWorkflowVisualizationAdapter
+- [ ] bpmnXml non vide ; active/completed peuplés
+- [ ] failedIds = deleteReason startsWith `"error"` seulement
+- [ ] tenant filter appliqué (pas de fuite cross-tenant)
+- [ ] reassign appelle `taskService.setAssignee`
+
+### WorkflowStateEventListener
+- [ ] TASK_ASSIGNED / ACTIVITY_COMPLETED / PROCESS_COMPLETED → send
+  BROWSER `WORKFLOW_STATE_CHANGED` pour chaque participant
+- [ ] autres event types ignorés
+- [ ] link introuvable → no-op (pas d’exception fatale)
+- [ ] `isFailOnException == false`
+
+### Exception handler
+- [ ] WorkflowLinkReservedException → **409** ProblemDetail
+- [ ] AccessDenied → **403** ; NotFound → **404**
 
 ## Integration Tests
-**How do we test component interactions?**
 
-- [ ] Integration scenario 1
-- [ ] Integration scenario 2
-- [ ] API endpoint tests
-- [ ] Integration scenario 3 (failure mode / rollback)
+### MockMvc visualisation
+- [ ] GET diagram **200** pour participant (assignee ou initiator ou
+      observer)
+- [ ] GET diagram **403** pour user authentifié hors participants
+- [ ] GET diagram **404** link inconnu
+- [ ] GET diagram **409** link RESERVED
+- [ ] GET history / tasks **200** structure JSON
+- [ ] GET dossier **200** avec `elements` + `relations: []`
+- [ ] POST reassign **204** en WA ; **403** en DOSSIER_MANAGER participant
+- [ ] POST reassign sans CSRF → **403** ; anonyme → **401**
+- [ ] TA bypass lecture OK
 
-## End-to-End Tests
-**What user flows need validation?**
+### MockMvc / persistence config observers
+- [ ] create/update `WorkflowTypeConfig` avec `observerUserIds`
+- [ ] GET config renvoie la liste
+- [ ] Liquibase 007 : colonne `observer_user_ids` présente (SchemaIT)
 
-- [ ] User flow 1: [Description]
-- [ ] User flow 2: [Description]
-- [ ] Critical path testing
-- [ ] Regression of adjacent features
+### Persistence helpers
+- [ ] `DossierElementRepository.findByDossierId…` round-trip
+- [ ] `DossierWorkflowLinkRepository.findByProcessInstanceId` (si ajouté)
 
-## Test Data
-**What data do we use for testing?**
+## Mocks & Fixtures
 
-- Test fixtures and mocks
-- Seed data requirements
-- Test database setup
+- Process BPMN de test minimal déjà utilisé par workflow IT (réutiliser).
+- Users MockMvc : `oidcLogin` avec rôles TA / WA / DOSSIER_MANAGER /
+  user sans rôle + `sub` contrôlé.
+- Stub/fake Flowable services en unitaire adapter ; IT sur moteur H2
+  Flowable existant si les suites workflow le permettent, sinon mock
+  port + IT HTTP avec `@MockBean` port (préférer IT réel quand
+  low-cost).
 
-## Test Reporting & Coverage
-**How do we verify and communicate test results?**
+## Coverage Targets
 
-- Coverage commands and thresholds (`npm run test -- --coverage`)
-- Coverage gaps (files/functions below 100% and rationale)
-- Links to test reports or dashboards
-- Manual testing outcomes and sign-off
+| Zone | Cible |
+|---|---|
+| Jacoco instructions projet | ≥ 80 % |
+| ArchUnit | OK |
+| Scénarios ci-dessus | tous `[x]` en phase 8 |
 
-## Manual Testing
-**What requires human validation?**
+## Sources
 
-- UI/UX testing checklist (include accessibility)
-- Browser/device compatibility
-- Smoke tests after deployment
-
-## Performance Testing
-**How do we validate performance?**
-
-- Load testing scenarios
-- Stress testing approach
-- Performance benchmarks
-
-## Bug Tracking
-**How do we manage issues?**
-
-- Issue tracking process
-- Bug severity levels
-- Regression testing strategy
-
+- Requirements + design `visualisation-workflow` draft (2026-08-10)
+- Patterns tests : `WorkflowApiTest`, `Notification*ApiTest`,
+  `DossierApiTest`

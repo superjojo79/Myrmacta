@@ -2,64 +2,42 @@
 phase: implementation
 title: Implementation Guide
 description: Technical implementation notes, patterns, and code guidelines
+status: draft
+created: 2026-08-10
+updated: 2026-08-10
 ---
 
 # Implementation Guide
 
 ## Development Setup
-**How do we get started?**
 
-- Prerequisites and dependencies
-- Environment setup steps
-- Configuration needed
+- Worktree `.worktrees/feature-visualisation-workflow`
+- Branch `feature-visualisation-workflow`
+- JDK 25 (`java.version` pom) — installer si l’environnement n’a que 21
+- Dépendances : Flowable déjà au pom ; notifications SSE déjà livrées
 
 ## Code Structure
-**How is the code organized?**
 
-- Directory structure
-- Module organization
-- Naming conventions
+```
+domain/workflow/model          — WorkflowDiagramView, ActivityHistoryEntry,
+                                 WorkflowTaskView ; WorkflowTypeConfig+observers
+domain/workflow/port/in|out    — visualization + participant + use cases
+domain/workflow/usecase        — get* / reassign
+infrastructure/flowable        — VisualizationAdapter, ParticipantAdapter,
+                                 WorkflowStateEventListener
+infrastructure/web/workflow    — WorkflowLinkVisualizationController
+infrastructure/persistence/…  — 007 observers ; element list ; link by piid
+```
 
 ## Implementation Notes
-**Key technical details to remember:**
 
-### Core Features
-- Feature 1: Implementation approach
-- Feature 2: Implementation approach
-- Feature 3: Implementation approach
+- Suivre design `draft` + décisions D-* requirements.
+- Ne pas ajouter de code Vue / bpmn-js (D-SCOPE A).
+- Réutiliser `SendNotificationUseCase` pour SSE (ne pas créer un nouveau
+  canal).
+- Pattern authz : guard participant en bordure HTTP/use case ; port
+  participants pur (liste userIds).
 
-### Patterns & Best Practices
-- Design patterns being used
-- Code style guidelines
-- Common utilities/helpers
+## Deviations from Design
 
-## Integration Points
-**How do pieces connect?**
-
-- API integration details
-- Database connections
-- Third-party service setup
-
-## Error Handling
-**How do we handle failures?**
-
-- Error handling strategy
-- Logging approach
-- Retry/fallback mechanisms
-
-## Performance Considerations
-**How do we keep it fast?**
-
-- Optimization strategies
-- Caching approach
-- Query optimization
-- Resource management
-
-## Security Notes
-**What security measures are in place?**
-
-- Authentication/authorization
-- Input validation
-- Data encryption
-- Secrets management
-
+Aucune (implémentation non démarrée).

@@ -9,6 +9,7 @@ design_aligned: 2026-08-10
 phase2_sync: 2026-08-10
 phase3_sync: 2026-08-10
 phase4_sync: 2026-08-10
+phase7_sync: 2026-08-10
 ---
 
 # Testing Strategy
@@ -54,7 +55,7 @@ phase4_sync: 2026-08-10
 - [x] participant OK → délègue port avec processInstanceId + tenantId
 - [x] non-participant → AccessDenied
 - [x] link inconnu → not found
-- [x] sans `processInstanceId` → WorkflowLinkReservedException (409)
+- [x] sans `processInstanceId` → WorkflowProcessInstanceMissingException (409)
 - [x] TA/WA bypass participant check
 
 ### Get link dossier use case
@@ -83,7 +84,7 @@ phase4_sync: 2026-08-10
 - [x] `isFailOnException == false`
 
 ### Exception handler
-- [x] WorkflowLinkReservedException → **409** ProblemDetail
+- [x] WorkflowProcessInstanceMissingException → **409** ProblemDetail
 - [x] AccessDenied → **403** ; NotFound → **404**
 
 ## Integration Tests

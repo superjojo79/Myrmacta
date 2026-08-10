@@ -48,6 +48,10 @@ class WorkflowTypeConfigJpaEntity {
     @Column(name = "on_start_dossier_status", length = 32)
     private DossierStatus onStartDossierStatus;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "observer_user_ids", nullable = false, columnDefinition = "json")
+    private List<String> observerUserIds = List.of();
+
     protected WorkflowTypeConfigJpaEntity() {
         // JPA
     }
@@ -60,6 +64,7 @@ class WorkflowTypeConfigJpaEntity {
         this.statusDefinitions = config.statusDefinitions();
         this.allowedDossierStatuses = config.allowedDossierStatuses();
         this.onStartDossierStatus = config.onStartDossierStatus();
+        this.observerUserIds = config.observerUserIds();
     }
 
     static WorkflowTypeConfigJpaEntity fromDomain(WorkflowTypeConfig config) {
@@ -74,6 +79,7 @@ class WorkflowTypeConfigJpaEntity {
                 label,
                 statusDefinitions,
                 allowedDossierStatuses,
-                onStartDossierStatus);
+                onStartDossierStatus,
+                observerUserIds == null ? List.of() : observerUserIds);
     }
 }

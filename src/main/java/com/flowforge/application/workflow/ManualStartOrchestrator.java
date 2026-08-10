@@ -49,7 +49,11 @@ public final class ManualStartOrchestrator {
             UUID dossierId,
             String processDefinitionKey,
             Map<String, Object> variables,
-            String idempotencyKey) {
+            String idempotencyKey,
+            String startedBy) {
+        if (startedBy == null || startedBy.isBlank()) {
+            throw new IllegalArgumentException("startedBy is required");
+        }
         WorkflowVariables.assertNoReservedKeys(variables);
         Dossier dossier = dossierRepository.findById(dossierId)
                 .orElseThrow(() -> new DossierNotFoundException("Dossier not found: " + dossierId));
@@ -59,7 +63,8 @@ public final class ManualStartOrchestrator {
             return new StartResult(replay.get(), true);
         }
 
-        DossierWorkflowLink reserved = attachWorkflow.reserve(dossierId, processDefinitionKey, "manual:" + idempotencyKey);
+        DossierWorkflowLink reserved = attachWorkflow.reserve(
+                dossierId, processDefinitionKey, "manual:" + idempotencyKey, startedBy);
         Map<String, Object> engineVariables = WorkflowVariables.withPlatformVariables(variables, reserved);
 
         String processInstanceId;

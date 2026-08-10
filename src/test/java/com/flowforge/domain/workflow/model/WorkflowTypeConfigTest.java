@@ -30,7 +30,8 @@ class WorkflowTypeConfigTest {
                         "Smoke",
                         List.of(new WorkflowStatusDefinition("DONE", "Done", false, StatusOutcome.COMPLETED)),
                         List.of(DossierStatus.OUVERT),
-                        null))
+                        null,
+                        List.of()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("initial");
     }
@@ -46,7 +47,8 @@ class WorkflowTypeConfigTest {
                                 new WorkflowStatusDefinition("INIT", "Init", true, StatusOutcome.NONE),
                                 new WorkflowStatusDefinition("ALSO", "Also", true, StatusOutcome.NONE)),
                         List.of(DossierStatus.OUVERT),
-                        null))
+                        null,
+                        List.of()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("exactly one initial");
     }
@@ -60,7 +62,8 @@ class WorkflowTypeConfigTest {
                         "Smoke",
                         List.of(new WorkflowStatusDefinition("INIT", "Init", true, StatusOutcome.NONE)),
                         List.of(),
-                        null))
+                        null,
+                        List.of()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("allowedDossierStatuses");
     }
@@ -69,6 +72,60 @@ class WorkflowTypeConfigTest {
     void unknownStatusRejectedByValidator() {
         WorkflowTypeConfig config = validConfig();
         assertThat(config.isKnownStatus("NOPE")).isFalse();
+    }
+
+    @Test
+    void observerUserIds_defaultsToEmptyImmutableList() {
+        WorkflowTypeConfig config = validConfig();
+
+        assertThat(config.observerUserIds()).isEmpty();
+        assertThatThrownBy(() -> config.observerUserIds().add("u1"))
+                .isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
+    void observerUserIds_nullTreatedAsEmpty() {
+        WorkflowTypeConfig config = new WorkflowTypeConfig(
+                UUID.randomUUID(),
+                "tenant_a",
+                "smokeProcess",
+                "Smoke",
+                List.of(new WorkflowStatusDefinition("INIT", "Init", true, StatusOutcome.NONE)),
+                List.of(DossierStatus.OUVERT),
+                null,
+                null);
+
+        assertThat(config.observerUserIds()).isEmpty();
+    }
+
+    @Test
+    void observerUserIds_rejectsBlankEntries() {
+        assertThatThrownBy(() -> new WorkflowTypeConfig(
+                        UUID.randomUUID(),
+                        "tenant_a",
+                        "smokeProcess",
+                        "Smoke",
+                        List.of(new WorkflowStatusDefinition("INIT", "Init", true, StatusOutcome.NONE)),
+                        List.of(DossierStatus.OUVERT),
+                        null,
+                        List.of("user-a", "  ")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("observerUserIds");
+    }
+
+    @Test
+    void observerUserIds_deduplicatesPreservingOrder() {
+        WorkflowTypeConfig config = new WorkflowTypeConfig(
+                UUID.randomUUID(),
+                "tenant_a",
+                "smokeProcess",
+                "Smoke",
+                List.of(new WorkflowStatusDefinition("INIT", "Init", true, StatusOutcome.NONE)),
+                List.of(DossierStatus.OUVERT),
+                null,
+                List.of("user-a", "user-b", "user-a"));
+
+        assertThat(config.observerUserIds()).containsExactly("user-a", "user-b");
     }
 
     private static WorkflowTypeConfig validConfig() {
@@ -81,6 +138,7 @@ class WorkflowTypeConfigTest {
                         new WorkflowStatusDefinition("INIT", "Init", true, StatusOutcome.NONE),
                         new WorkflowStatusDefinition("DONE", "Done", false, StatusOutcome.COMPLETED)),
                 List.of(DossierStatus.OUVERT, DossierStatus.EN_COURS, DossierStatus.SUSPENDU),
-                DossierStatus.EN_COURS);
+                DossierStatus.EN_COURS,
+                List.of());
     }
 }

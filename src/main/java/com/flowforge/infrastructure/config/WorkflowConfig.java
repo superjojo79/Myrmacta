@@ -2,18 +2,23 @@ package com.flowforge.infrastructure.config;
 
 import com.flowforge.application.workflow.ManualStartOrchestrator;
 import com.flowforge.domain.dossier.port.in.AttachWorkflowUseCase;
+import com.flowforge.domain.dossier.port.out.DossierElementRepository;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
 import com.flowforge.domain.dossier.usecase.AttachWorkflowUseCaseImpl;
 import com.flowforge.domain.workflow.port.in.CompleteTaskUseCase;
 import com.flowforge.domain.workflow.port.in.UpdateWorkflowLinkStatusUseCase;
 import com.flowforge.domain.workflow.port.out.IdempotencyStore;
+import com.flowforge.domain.workflow.port.out.WorkflowParticipantPort;
 import com.flowforge.domain.workflow.port.out.WorkflowEnginePort;
 import com.flowforge.domain.workflow.port.out.WorkflowEventPublisher;
 import com.flowforge.domain.workflow.port.out.WorkflowTypeConfigRepository;
+import com.flowforge.domain.workflow.port.out.WorkflowVisualizationPort;
 import com.flowforge.domain.workflow.usecase.CompleteTaskUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.UpdateWorkflowLinkStatusUseCaseImpl;
+import com.flowforge.domain.workflow.usecase.WorkflowLinkVisualizationUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.WorkflowTypeConfigUseCaseImpl;
+import com.flowforge.infrastructure.flowable.WorkflowStateEventListener;
 import com.flowforge.infrastructure.workflow.WorkflowStartConfirmer;
 import org.flowable.spring.boot.ProcessEngineConfigurationConfigurer;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -55,6 +60,23 @@ public class WorkflowConfig {
     }
 
     @Bean
+    WorkflowLinkVisualizationUseCaseImpl workflowLinkVisualizationUseCaseImpl(
+            TenantProperties tenantProperties,
+            DossierWorkflowLinkRepository linkRepository,
+            DossierRepository dossierRepository,
+            DossierElementRepository elementRepository,
+            WorkflowVisualizationPort visualizationPort,
+            WorkflowParticipantPort participantPort) {
+        return new WorkflowLinkVisualizationUseCaseImpl(
+                tenantProperties.id(),
+                linkRepository,
+                dossierRepository,
+                elementRepository,
+                visualizationPort,
+                participantPort);
+    }
+
+    @Bean
     ManualStartOrchestrator manualStartOrchestrator(
             DossierRepository dossierRepository,
             DossierWorkflowLinkRepository linkRepository,
@@ -76,5 +98,10 @@ public class WorkflowConfig {
     @Bean
     ProcessEngineConfigurationConfigurer processEngineDatabaseTypeConfigurer() {
         return configuration -> configuration.setDatabaseType("postgres");
+    }
+
+    @Bean
+    ProcessEngineConfigurationConfigurer workflowStateEventListenerConfigurer(WorkflowStateEventListener listener) {
+        return configuration -> configuration.setEventListeners(java.util.List.of(listener));
     }
 }

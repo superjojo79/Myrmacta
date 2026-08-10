@@ -12,6 +12,8 @@ public interface DossierWorkflowLinkRepository {
 
     Optional<DossierWorkflowLink> findById(UUID id);
 
+    Optional<DossierWorkflowLink> findByProcessInstanceId(String tenantId, String processInstanceId);
+
     Optional<DossierWorkflowLink> findActiveByDossierId(UUID dossierId);
 
     Optional<DossierWorkflowLink> findReservedByDossierAndProcess(UUID dossierId, String processDefinitionKey);

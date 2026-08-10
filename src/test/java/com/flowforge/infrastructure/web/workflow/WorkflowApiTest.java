@@ -2,6 +2,9 @@ package com.flowforge.infrastructure.web.workflow;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oidcLogin;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -9,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.flowforge.support.OidcClientTestConfiguration;
+import com.flowforge.domain.dossier.port.in.AttachWorkflowUseCase;
 import java.util.Arrays;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -37,6 +41,9 @@ class WorkflowApiTest {
     @Autowired
     private TaskService taskService;
 
+    @Autowired
+    private AttachWorkflowUseCase attachWorkflow;
+
     @Test
     void configCrudAndManualStartExposeHistory() throws Exception {
         String processKey = "smokeProcess";
@@ -63,6 +70,7 @@ class WorkflowApiTest {
                 .andExpect(jsonPath("$.dossierId").value(dossierId))
                 .andExpect(jsonPath("$.processDefinitionKey").value(processKey))
                 .andExpect(jsonPath("$.processInstanceId").isNotEmpty())
+                .andExpect(jsonPath("$.startedBy").value("workflow-editor"))
                 .andReturn();
         String linkId = extractString(startResult.getResponse().getContentAsString(), "id");
 
@@ -90,6 +98,81 @@ class WorkflowApiTest {
                 .processInstanceId(processInstanceId)
                 .singleResult()
                 .getId();
+
+        mockMvc.perform(get("/api/workflow-links/{id}/diagram", linkId)
+                        .with(user("workflow-editor")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.bpmnXml", containsString("<process id=\"smokeProcess\"")))
+                .andExpect(jsonPath("$.activeIds[0]").value("smokeTask"));
+
+        mockMvc.perform(get("/api/workflow-links/{id}/history", linkId)
+                        .with(user("workflow-editor")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].activityId", hasItem("startEvent")));
+
+        mockMvc.perform(get("/api/workflow-links/{id}/tasks", linkId)
+                        .with(user("workflow-editor")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].taskId").value(taskId))
+                .andExpect(jsonPath("$[0].name").value("Smoke Task"));
+
+        mockMvc.perform(get("/api/workflow-links/{id}/dossier", linkId)
+                        .with(user("workflow-editor")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.dossier.id").value(dossierId))
+                .andExpect(jsonPath("$.relations", hasSize(0)));
+
+        mockMvc.perform(get("/api/workflow-links/{id}/diagram", linkId)
+                        .with(user("non-participant")))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/api/workflow-links/{id}/tasks/{taskId}/reassign", linkId, taskId)
+                        .with(user("workflow-editor"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "assigneeId": "assignee-sub"
+                                }
+                                """))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/api/workflow-links/{id}/tasks/{taskId}/reassign", linkId, taskId)
+                        .with(user("workflow-admin", "WORKFLOW_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "assigneeId": "assignee-sub"
+                                }
+                                """))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/api/workflow-links/{id}/tasks/{taskId}/reassign", linkId, taskId)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "assigneeId": "assignee-sub"
+                                }
+                                """))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post("/api/workflow-links/{id}/tasks/{taskId}/reassign", linkId, taskId)
+                        .with(user("workflow-admin", "WORKFLOW_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "assigneeId": "assignee-sub"
+                                }
+                                """))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/workflow-links/{id}/tasks", linkId)
+                        .with(user("assignee-sub")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].assignee").value("assignee-sub"));
+
         mockMvc.perform(post("/api/workflow-tasks/{taskId}/complete", taskId)
                         .with(user("workflow-editor"))
                         .with(csrf())
@@ -176,6 +259,110 @@ class WorkflowApiTest {
     }
 
     @Test
+    void visualizationReservedLinkAllowsDossierButDiagramReturns409() throws Exception {
+        String processKey = "reservedProcess-" + UUID.randomUUID();
+        createWorkflowConfig(processKey);
+        String typeCode = createType();
+        grant(typeCode, "reserved-starter", "EDIT");
+        String dossierId = createDossier(typeCode, "reserved-starter");
+        var reserved = attachWorkflow.reserve(
+                UUID.fromString(dossierId), processKey, "manual:reserved", "reserved-starter");
+
+        mockMvc.perform(get("/api/workflow-links/{id}/dossier", reserved.id())
+                        .with(user("reserved-starter")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.dossier.id").value(dossierId))
+                .andExpect(jsonPath("$.relations", hasSize(0)));
+
+        mockMvc.perform(get("/api/workflow-links/{id}/diagram", reserved.id())
+                        .with(user("reserved-starter")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409));
+    }
+
+    @Test
+    void workflowTypeConfigObserverUserIdsRoundTripAndAuthorizeVisualization() throws Exception {
+        String processKey = "smokeProcess";
+        createWorkflowConfig(processKey);
+        updateWorkflowConfigObservers(processKey, "observer-sub");
+        mockMvc.perform(get("/api/workflow-type-configs/{workflowKey}", processKey)
+                        .with(user("reader")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.observerUserIds[0]").value("observer-sub"));
+
+        String typeCode = createType();
+        grant(typeCode, "observer-starter", "EDIT");
+        String dossierId = createDossier(typeCode, "observer-starter");
+        MvcResult startResult = mockMvc.perform(post("/api/dossiers/{id}/workflows", dossierId)
+                        .with(user("observer-starter"))
+                        .with(csrf())
+                        .header("Idempotency-Key", "idem-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "processDefinitionKey": "%s"
+                                }
+                                """.formatted(processKey)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String linkId = extractString(startResult.getResponse().getContentAsString(), "id");
+
+        mockMvc.perform(get("/api/workflow-links/{id}/diagram", linkId)
+                        .with(user("observer-sub")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.bpmnXml").isNotEmpty());
+
+        mockMvc.perform(get("/api/workflow-links/{id}/dossier", linkId)
+                        .with(user("observer-sub")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.dossier.id").value(dossierId))
+                .andExpect(jsonPath("$.relations", hasSize(0)));
+    }
+
+    @Test
+    void visualizationUnknownLinkReturns404AndTenantAdminBypassesParticipantCheck() throws Exception {
+        mockMvc.perform(get("/api/workflow-links/{id}/diagram", UUID.randomUUID())
+                        .with(user("reader")))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404));
+
+        String processKey = "smokeProcess";
+        createWorkflowConfig(processKey);
+        String typeCode = createType();
+        grant(typeCode, "viz-owner", "EDIT");
+        String dossierId = createDossier(typeCode, "viz-owner");
+        MvcResult startResult = mockMvc.perform(post("/api/dossiers/{id}/workflows", dossierId)
+                        .with(user("viz-owner"))
+                        .with(csrf())
+                        .header("Idempotency-Key", "idem-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "processDefinitionKey": "%s"
+                                }
+                                """.formatted(processKey)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String linkId = extractString(startResult.getResponse().getContentAsString(), "id");
+
+        mockMvc.perform(get("/api/workflow-links/{id}/diagram", linkId)
+                        .with(user("tenant-admin-bypass", "TENANT_ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.bpmnXml").isNotEmpty());
+
+        mockMvc.perform(post("/api/workflow-links/{id}/tasks/{taskId}/reassign", linkId, "missing-task")
+                        .with(user("tenant-admin-bypass", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "assigneeId": "someone"
+                                }
+                                """))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void workflowTypeConfigMutationRequiresAdminRole() throws Exception {
         mockMvc.perform(post("/api/workflow-type-configs")
                         .with(user("plain-user"))
@@ -235,6 +422,10 @@ class WorkflowApiTest {
     }
 
     private void createWorkflowConfig(String workflowKey) throws Exception {
+        createWorkflowConfig(workflowKey, new String[0]);
+    }
+
+    private void createWorkflowConfig(String workflowKey, String... observerUserIds) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/workflow-type-configs")
                         .with(user("workflow-admin-" + UUID.randomUUID(), "WORKFLOW_ADMIN"))
                         .with(csrf())
@@ -258,15 +449,56 @@ class WorkflowApiTest {
                                     }
                                   ],
                                   "allowedDossierStatuses": ["OUVERT", "EN_COURS", "SUSPENDU"],
-                                  "onStartDossierStatus": null
+                                  "onStartDossierStatus": null,
+                                  "observerUserIds": %s
                                 }
-                                """.formatted(workflowKey)))
+                                """.formatted(workflowKey, observerJson(observerUserIds))))
                 .andReturn();
         int status = result.getResponse().getStatus();
         if (status != 201 && status != 409) {
             throw new AssertionError("Expected workflow config seed to return 201 or 409 but was " + status
                     + ": " + result.getResponse().getContentAsString());
         }
+    }
+
+    private static String observerJson(String... observerUserIds) {
+        if (observerUserIds == null || observerUserIds.length == 0) {
+            return "[]";
+        }
+        return "[" + Arrays.stream(observerUserIds)
+                .map(id -> "\"" + id + "\"")
+                .reduce((left, right) -> left + "," + right)
+                .orElse("") + "]";
+    }
+
+    private void updateWorkflowConfigObservers(String workflowKey, String... observerUserIds) throws Exception {
+        mockMvc.perform(patch("/api/workflow-type-configs/{workflowKey}", workflowKey)
+                        .with(user("workflow-admin-" + UUID.randomUUID(), "WORKFLOW_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "label": "Smoke",
+                                  "statusDefinitions": [
+                                    {
+                                      "code": "STARTED",
+                                      "label": "Started",
+                                      "initial": true,
+                                      "outcome": "NONE"
+                                    },
+                                    {
+                                      "code": "COMPLETED",
+                                      "label": "Completed",
+                                      "initial": false,
+                                      "outcome": "COMPLETED"
+                                    }
+                                  ],
+                                  "allowedDossierStatuses": ["OUVERT", "EN_COURS", "SUSPENDU"],
+                                  "onStartDossierStatus": null,
+                                  "observerUserIds": %s
+                                }
+                                """.formatted(observerJson(observerUserIds))))
+                .andExpect(status().isOk());
     }
 
     private String createType() throws Exception {

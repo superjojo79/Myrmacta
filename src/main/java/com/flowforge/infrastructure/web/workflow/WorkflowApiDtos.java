@@ -14,6 +14,8 @@ record StartWorkflowRequest(String processDefinitionKey, Map<String, Object> var
 
 record CompleteTaskRequest(Map<String, Object> variables) {}
 
+record ReassignWorkflowTaskRequest(String assigneeId) {}
+
 record WorkflowLinkResponse(
         UUID id,
         UUID dossierId,
@@ -25,7 +27,8 @@ record WorkflowLinkResponse(
         String triggerRef,
         Instant startedAt,
         Instant endedAt,
-        String endReason) {
+        String endReason,
+        String startedBy) {
 
     static WorkflowLinkResponse from(DossierWorkflowLink link) {
         return new WorkflowLinkResponse(
@@ -39,7 +42,8 @@ record WorkflowLinkResponse(
                 link.triggerRef(),
                 link.startedAt(),
                 link.endedAt(),
-                link.endReason());
+                link.endReason(),
+                link.startedBy());
     }
 }
 
@@ -48,7 +52,8 @@ record WorkflowTypeConfigRequest(
         String label,
         List<WorkflowStatusDefinitionRequest> statusDefinitions,
         List<DossierStatus> allowedDossierStatuses,
-        DossierStatus onStartDossierStatus) {
+        DossierStatus onStartDossierStatus,
+        List<String> observerUserIds) {
 
     WorkflowTypeConfig toDomain(String tenantId, UUID id, String keyOverride) {
         String key = keyOverride == null ? workflowKey : keyOverride;
@@ -61,7 +66,8 @@ record WorkflowTypeConfigRequest(
                         ? List.of()
                         : statusDefinitions.stream().map(WorkflowStatusDefinitionRequest::toDomain).toList(),
                 allowedDossierStatuses == null ? List.of() : allowedDossierStatuses,
-                onStartDossierStatus);
+                onStartDossierStatus,
+                observerUserIds);
     }
 
     private static String required(String value, String field) {
@@ -85,7 +91,8 @@ record WorkflowTypeConfigResponse(
         String label,
         List<WorkflowStatusDefinition> statusDefinitions,
         List<DossierStatus> allowedDossierStatuses,
-        DossierStatus onStartDossierStatus) {
+        DossierStatus onStartDossierStatus,
+        List<String> observerUserIds) {
 
     static WorkflowTypeConfigResponse from(WorkflowTypeConfig config) {
         return new WorkflowTypeConfigResponse(
@@ -95,6 +102,7 @@ record WorkflowTypeConfigResponse(
                 config.label(),
                 config.statusDefinitions(),
                 config.allowedDossierStatuses(),
-                config.onStartDossierStatus());
+                config.onStartDossierStatus(),
+                config.observerUserIds());
     }
 }

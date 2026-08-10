@@ -50,7 +50,8 @@ class OutboxRelaySchedulerTest {
         when(attachWorkflow.reserveOrResume(
                         event.payload().dossierId(),
                         event.payload().processKey(),
-                        event.payload().triggerRef()))
+                        event.payload().triggerRef(),
+                        OutboxRelayScheduler.SYSTEM_OUTBOX_STARTED_BY))
                 .thenReturn(reserved);
         when(workflowEnginePort.findProcessInstanceIdByBusinessKey(reserved.id().toString()))
                 .thenReturn(Optional.empty());
@@ -68,7 +69,7 @@ class OutboxRelaySchedulerTest {
     void processOne_confirmsExistingInstanceByBusinessKeyWithoutSecondStart() {
         OutboxEvent event = pendingEvent();
         DossierWorkflowLink reserved = reservedLink(event.payload().dossierId());
-        when(attachWorkflow.reserveOrResume(any(), any(), any())).thenReturn(reserved);
+        when(attachWorkflow.reserveOrResume(any(), any(), any(), any())).thenReturn(reserved);
         when(workflowEnginePort.findProcessInstanceIdByBusinessKey(reserved.id().toString()))
                 .thenReturn(Optional.of("proc-existing"));
 
@@ -92,7 +93,7 @@ class OutboxRelaySchedulerTest {
 
         scheduler.processOne(event);
 
-        verify(attachWorkflow, never()).reserveOrResume(any(), any(), any());
+        verify(attachWorkflow, never()).reserveOrResume(any(), any(), any(), any());
         verify(outboxRepository).markDead(eq(event.eventId()), anyString());
         verify(workflowEnginePort, never()).start(any(), any(), any(), any());
     }
@@ -101,7 +102,7 @@ class OutboxRelaySchedulerTest {
     void processOne_recordsFailureOnTransientEngineError() {
         OutboxEvent event = pendingEvent();
         DossierWorkflowLink reserved = reservedLink(event.payload().dossierId());
-        when(attachWorkflow.reserveOrResume(any(), any(), any())).thenReturn(reserved);
+        when(attachWorkflow.reserveOrResume(any(), any(), any(), any())).thenReturn(reserved);
         when(workflowEnginePort.findProcessInstanceIdByBusinessKey(reserved.id().toString()))
                 .thenReturn(Optional.empty());
         when(workflowEnginePort.start(anyString(), anyString(), anyString(), anyMap()))
@@ -117,7 +118,7 @@ class OutboxRelaySchedulerTest {
     @Test
     void processOne_marksDeadImmediatelyOnActiveWorkflowCollision() {
         OutboxEvent event = pendingEvent();
-        when(attachWorkflow.reserveOrResume(any(), any(), any()))
+        when(attachWorkflow.reserveOrResume(any(), any(), any(), any()))
                 .thenThrow(new WorkflowAlreadyRunningException(event.payload().dossierId()));
 
         scheduler.processOne(event);
@@ -130,7 +131,7 @@ class OutboxRelaySchedulerTest {
     void processOne_marksProcessedWithoutSecondStartWhenLinkAlreadyActive() {
         OutboxEvent event = pendingEvent();
         DossierWorkflowLink active = reservedLink(event.payload().dossierId()).withProcessInstance("proc-1");
-        when(attachWorkflow.reserveOrResume(any(), any(), any())).thenReturn(active);
+        when(attachWorkflow.reserveOrResume(any(), any(), any(), any())).thenReturn(active);
 
         scheduler.processOne(event);
 
@@ -158,6 +159,7 @@ class OutboxRelaySchedulerTest {
                 "seed:test",
                 Instant.parse("2026-08-02T10:00:00Z"),
                 null,
-                null);
+                null,
+                OutboxRelayScheduler.SYSTEM_OUTBOX_STARTED_BY);
     }
 }

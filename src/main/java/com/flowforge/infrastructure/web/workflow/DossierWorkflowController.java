@@ -54,7 +54,8 @@ class DossierWorkflowController {
                 dossierId,
                 required(request.processDefinitionKey(), "processDefinitionKey"),
                 request.variables() == null ? Map.of() : request.variables(),
-                idempotencyKey);
+                idempotencyKey,
+                actor.userId());
         var link = result.link();
         int status = result.replay() ? 200 : 201;
         return ResponseEntity.status(status)

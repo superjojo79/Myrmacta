@@ -97,7 +97,8 @@ class OutboxRelayIT {
                         new WorkflowStatusDefinition("STARTED", "Started", true, StatusOutcome.NONE),
                         new WorkflowStatusDefinition("COMPLETED", "Completed", false, StatusOutcome.COMPLETED)),
                 List.of(DossierStatus.OUVERT, DossierStatus.EN_COURS, DossierStatus.SUSPENDU),
-                null));
+                null,
+                List.of()));
     }
 
     private static Dossier dossier(DossierStatus status) {

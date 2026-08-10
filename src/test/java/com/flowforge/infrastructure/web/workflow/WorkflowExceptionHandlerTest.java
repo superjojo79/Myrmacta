@@ -2,7 +2,9 @@ package com.flowforge.infrastructure.web.workflow;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.flowforge.domain.dossier.model.AccessDeniedException;
 import com.flowforge.domain.dossier.model.DossierWorkflowLinkNotFoundException;
+import com.flowforge.domain.workflow.model.WorkflowProcessInstanceMissingException;
 import com.flowforge.domain.workflow.model.WorkflowTaskNotFoundException;
 import com.flowforge.domain.workflow.model.WorkflowTypeConfigNotFoundException;
 import org.junit.jupiter.api.Test;
@@ -10,6 +12,23 @@ import org.junit.jupiter.api.Test;
 class WorkflowExceptionHandlerTest {
 
     private final WorkflowExceptionHandler handler = new WorkflowExceptionHandler();
+
+    @Test
+    void handlesProcessInstanceMissing_as409() {
+        var problem = handler.handleProcessInstanceMissing(
+                new WorkflowProcessInstanceMissingException("Workflow link has no process instance"));
+
+        assertThat(problem.getStatus()).isEqualTo(409);
+        assertThat(problem.getTitle()).isEqualTo("Workflow process instance missing");
+    }
+
+    @Test
+    void handlesAccessDenied_as403() {
+        var problem = handler.handleAccessDenied(new AccessDeniedException("not a participant"));
+
+        assertThat(problem.getStatus()).isEqualTo(403);
+        assertThat(problem.getTitle()).isEqualTo("Access denied");
+    }
 
     @Test
     void handlesWorkflowTypeConfigNotFound_as404() {

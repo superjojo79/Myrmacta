@@ -92,6 +92,7 @@ class ReservedReconcileJobTest {
                 "manual",
                 Instant.parse("2026-08-02T10:00:00Z"),
                 null,
+                null,
                 null);
     }
 }

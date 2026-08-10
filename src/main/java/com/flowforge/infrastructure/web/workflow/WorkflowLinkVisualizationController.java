@@ -1,0 +1,83 @@
+package com.flowforge.infrastructure.web.workflow;
+
+import com.flowforge.domain.workflow.model.ActivityHistoryEntry;
+import com.flowforge.domain.workflow.model.WorkflowDiagramView;
+import com.flowforge.domain.workflow.model.WorkflowLinkDossierView;
+import com.flowforge.domain.workflow.model.WorkflowTaskView;
+import com.flowforge.domain.workflow.port.in.GetWorkflowDiagramUseCase;
+import com.flowforge.domain.workflow.port.in.GetWorkflowHistoryUseCase;
+import com.flowforge.domain.workflow.port.in.GetWorkflowLinkDossierUseCase;
+import com.flowforge.domain.workflow.port.in.GetWorkflowTasksUseCase;
+import com.flowforge.domain.workflow.port.in.ReassignWorkflowTaskUseCase;
+import com.flowforge.infrastructure.web.dossier.AccessContextFactory;
+import java.util.List;
+import java.util.UUID;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/workflow-links/{linkId}")
+class WorkflowLinkVisualizationController {
+
+    private final GetWorkflowDiagramUseCase getDiagramUseCase;
+    private final GetWorkflowHistoryUseCase getHistoryUseCase;
+    private final GetWorkflowTasksUseCase getTasksUseCase;
+    private final GetWorkflowLinkDossierUseCase getDossierUseCase;
+    private final ReassignWorkflowTaskUseCase reassignUseCase;
+    private final AccessContextFactory accessContextFactory;
+
+    WorkflowLinkVisualizationController(
+            GetWorkflowDiagramUseCase getDiagramUseCase,
+            GetWorkflowHistoryUseCase getHistoryUseCase,
+            GetWorkflowTasksUseCase getTasksUseCase,
+            GetWorkflowLinkDossierUseCase getDossierUseCase,
+            ReassignWorkflowTaskUseCase reassignUseCase,
+            AccessContextFactory accessContextFactory) {
+        this.getDiagramUseCase = getDiagramUseCase;
+        this.getHistoryUseCase = getHistoryUseCase;
+        this.getTasksUseCase = getTasksUseCase;
+        this.getDossierUseCase = getDossierUseCase;
+        this.reassignUseCase = reassignUseCase;
+        this.accessContextFactory = accessContextFactory;
+    }
+
+    @GetMapping("/diagram")
+    WorkflowDiagramView diagram(@PathVariable UUID linkId, Authentication authentication) {
+        return getDiagramUseCase.getDiagram(linkId, accessContextFactory.user(authentication));
+    }
+
+    @GetMapping("/history")
+    List<ActivityHistoryEntry> history(@PathVariable UUID linkId, Authentication authentication) {
+        return getHistoryUseCase.getHistory(linkId, accessContextFactory.user(authentication));
+    }
+
+    @GetMapping("/tasks")
+    List<WorkflowTaskView> tasks(@PathVariable UUID linkId, Authentication authentication) {
+        return getTasksUseCase.getTasks(linkId, accessContextFactory.user(authentication));
+    }
+
+    @GetMapping("/dossier")
+    WorkflowLinkDossierView dossier(@PathVariable UUID linkId, Authentication authentication) {
+        return getDossierUseCase.getDossier(linkId, accessContextFactory.user(authentication));
+    }
+
+    @PostMapping("/tasks/{taskId}/reassign")
+    ResponseEntity<Void> reassign(
+            @PathVariable UUID linkId,
+            @PathVariable String taskId,
+            @RequestBody ReassignWorkflowTaskRequest request,
+            Authentication authentication) {
+        reassignUseCase.reassign(
+                linkId,
+                taskId,
+                request == null ? null : request.assigneeId(),
+                accessContextFactory.user(authentication));
+        return ResponseEntity.noContent().build();
+    }
+}

@@ -12,6 +12,8 @@ interface SpringDataDossierWorkflowLinkRepository extends JpaRepository<DossierW
 
     Optional<DossierWorkflowLinkJpaEntity> findFirstByDossierIdAndEndedAtIsNull(UUID dossierId);
 
+    Optional<DossierWorkflowLinkJpaEntity> findByTenantIdAndProcessInstanceId(String tenantId, String processInstanceId);
+
     Optional<DossierWorkflowLinkJpaEntity>
             findFirstByDossierIdAndProcessDefinitionKeyAndEndedAtIsNullAndProcessInstanceIdIsNull(
                     UUID dossierId, String processDefinitionKey);

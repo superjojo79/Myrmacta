@@ -13,7 +13,7 @@ description: Technical implementation notes, patterns, and code guidelines
 
 ## Status
 
-Phase 5 en cours. Complété : **T1–T6**. Suivant : **T7** (shell/router).
+Phase 5 en cours. Complété : **T1–T8**. Suivant : **T9** (elements list API).
 
 ## Development Setup
 

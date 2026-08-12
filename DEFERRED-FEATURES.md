@@ -4,18 +4,21 @@
 > (`architecture-hexagonale`, `multi-tenant`, `authentification`, `dossiers`).
 >
 > - Les **points ouverts à trancher** restent dans [TODO.md](TODO.md).
-> - Le détail par feature reste dans `docs/ai/**/2026-07-31-feature-*.md`
+> - Le détail par feature reste dans `docs/ai/**/2026-*-feature-*.md`
 >   (sections Non-goals, Différé, Follow-ups).
 > - Ce fichier consolide le **chemin d’implémentation restant** pour ne pas le
 >   perdre à la clôture de lifecycle.
 
 **Statut lifecycle (check-status) :** `architecture-hexagonale`, `multi-tenant`,
 `authentification`, `dossiers`, `workflow-engine`, `autorisation-conformite`,
-`connecteurs`, `templates-documents`, `generation-documents`, `notifications`
-sont **Complete** (mergés). Feature `visualisation-workflow` : **démarrée**
-(branche `feature-visualisation-workflow`, docs phase 1 draft — backend only,
-participants + observateurs, API `/api/workflow-links/{linkId}`). Feature
-`frontend` reste en docs skeleton / planning non exécuté.
+`connecteurs`, `templates-documents`, `generation-documents`, `notifications`,
+`visualisation-workflow` sont **Complete** (mergés). Feature `frontend` :
+**démarrée** (branche `cursor/feature-frontend-21f2`, docs phase 1 draft —
+décisions stakeholder 2026-08-12 : vague 1 instructeur + vague 2 admin
+types/templates/connectors/workflow-configs ; packaging Maven→`static/` ;
+maquette
+[FlowForge - Maquettes UI.html](analysis%20doc/FlowForge%20-%20Maquettes%20UI.html)
+= référence UX ; pas Rapports/SLA ni liste dossiers tant que TODO §24).
 
 ---
 
@@ -69,7 +72,7 @@ pièces jointes, purge §22), introduire un **port abstrait** avec adaptateur
 | Relations entre dossiers | Lot suivant |
 | `DossierWorkflowLink` + AttachWorkflow | Lot `workflow-engine` |
 | PATCH fields dossier | Extension API (point 24) |
-| Liste / recherche / pagination dossiers | Point 24 |
+| Liste / recherche / pagination dossiers | Point 24 — **bloque** l’écran Supervision complet du mock |
 | Index Liquibase `(tenant_id, dossier_type_code)` | Nice-to-have |
 | CHECK SQL `permission ∈ {VIEW,EDIT}` | Nice-to-have |
 | `Long version` / `Persistable` pour `isNew()` | Nice-to-have JPA |
@@ -82,9 +85,17 @@ pièces jointes, purge §22), introduire un **port abstrait** avec adaptateur
 validation champs, références séquentielles, `@Version`, ACL type, API REST
 minimale, `ProblemDetail`, gate `TENANT_ADMIN`.
 
+### 1.5 `visualisation-workflow` (mergé)
+
+| Item | Notes |
+|---|---|
+| Viewer Vue / `bpmn-js` | Feature `frontend` — consomme `GET …/diagram` |
+| Cockpit Flowable | Hors scope produit |
+| SSE multi-pod | Hors V1 (session mono-réplique) |
+
 ---
 
-## 2. Features lifecycle non livrées
+## 2. Features lifecycle
 
 Ordre indicatif aligné sur l’analyse et les dépendances techniques :
 
@@ -96,8 +107,8 @@ Ordre indicatif aligné sur l’analyse et les dépendances techniques :
 | — | `templates-documents` | **Complete** (main) |
 | — | `generation-documents` | **Complete** (main) |
 | — | `notifications` | **Complete** (main) |
-| 1 | `visualisation-workflow` | API diagram/history/tasks/reassign + participants + SSE — **phase 1 draft** |
-| 2 | `frontend` | Vue 3 + TypeScript + Pinia + Axios + `bpmn-js` Viewer dans `static/` (décision n° 27) |
+| — | `visualisation-workflow` | **Complete** (main) — API diagram/history/tasks/reassign + participants + SSE |
+| 1 | `frontend` | **En cours (phase 1)** — vague 1 : socle + auth(`sub`) + CRUD parcours dossier/viz/SSE ; vague 2 : admin types/ACL/templates/connectors/WF configs ; UX = maquette HTML (décision n° 27) |
 
 ---
 
@@ -112,10 +123,10 @@ Voir le détail et les options dans [TODO.md](TODO.md) et
 | 21 | Rétention par `DossierType` | **Ouvert** — hors tranche authz |
 | 22 | Purge PostgreSQL / object store | **Ouvert** — port S3/FS à venir ; pas MinIO en dur |
 | 23 | `FieldDefinition.sensitive` | **Partiel** — flag meta livré ; masquage/exports différés |
-| 24 | Contrat d’API complet | **Partiel** — surface dossiers minimale + `ProblemDetail` ; reste listes, pagination, OpenAPI, autres ressources |
+| 24 | Contrat d’API complet | **Partiel** — surface dossiers minimale + `ProblemDetail` ; reste listes, pagination, OpenAPI, autres ressources — **impacte Supervision FE** |
 | 25 | Modèle physique consolidé (ERD) | **Partiel** — tables dossiers livrées ; reste ERD global, `platform.*`, ACT_*, outbox, etc. |
 | 26 | Concurrence dossier / référence | **Partiel / quasi clos en B** — `@Version` + `dossier_reference_seq` + format UTC ; reste smoke PG multi-pods |
-| 28 | Stratégie de test | **Partiel** — ArchUnit + Jacoco ≥ 80 % + H2 ; reste Testcontainers / charge Flowable / outbox |
+| 28 | Stratégie de test | **Partiel** — ArchUnit + Jacoco ≥ 80 % + H2 ; reste Testcontainers / charge Flowable / outbox ; FE = Vitest + Playwright (feature `frontend`) |
 | 29 | Observabilité | **Ouvert** — monitoring features = `deferred` |
 | 30 | Durcissement entrées exposées | **Ouvert** — rate limit, SSRF, antivirus PJ… |
 | 31 | Découpage en lots / provisioning | **Partiel** — lots lifecycle démarrés ; outillage provisioning ops encore à produire |
@@ -129,6 +140,7 @@ Voir le détail et les options dans [TODO.md](TODO.md) et
 - Smoke manuel : Keycloak réel, PostgreSQL réel
 - Observabilité : MDC `tenantId` / `dossierId` / `processInstanceId`, métriques Micrometer (TODO §29)
 - Chore docs : `com.monapp` résiduel dans `analysis doc/`
+- Build FE : `npm run build` → copie vers `src/main/resources/static/` (Maven plugin ou CI)
 
 ---
 
@@ -137,6 +149,7 @@ Voir le détail et les options dans [TODO.md](TODO.md) et
 | Source | Usage |
 |---|---|
 | [TODO.md](TODO.md) | Points ouverts + décisions actées |
-| `docs/ai/**/2026-07-31-feature-{architecture-hexagonale,multi-tenant,authentification,dossiers}.md` | Non-goals, Différé, Follow-ups phase 9 |
-| `docs/ai/**/2026-07-31-feature-{workflow-engine,autorisation-conformite,connecteurs,…}.md` | Features non démarrées |
+| `docs/ai/**/2026-*-feature-*.md` | Non-goals, Différé, Follow-ups lifecycle |
+| [11-frontend.md](analysis%20doc/11-frontend.md) | Stack FE + packaging + maquette |
+| [FlowForge - Maquettes UI.html](analysis%20doc/FlowForge%20-%20Maquettes%20UI.html) | Référence UX / écrans |
 | `analysis doc/` | Cible architecture |

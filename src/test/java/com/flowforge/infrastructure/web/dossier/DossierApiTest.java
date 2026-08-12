@@ -6,11 +6,17 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.hamcrest.Matchers.hasKey;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.flowforge.domain.dossier.model.AccessContext;
+import com.flowforge.domain.dossier.model.ElementType;
+import com.flowforge.domain.dossier.port.in.AddDossierElementUseCase;
 import com.flowforge.support.OidcClientTestConfiguration;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
@@ -33,6 +39,9 @@ class DossierApiTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private AddDossierElementUseCase addDossierElementUseCase;
 
     @Test
     void createDossier_anonymous_returns401() throws Exception {
@@ -519,6 +528,31 @@ class DossierApiTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(typePayload(uniqueCode("CSRF"), true)))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void listElements_returnsViewsWithoutStorageRef() throws Exception {
+        String code = createType(true);
+        grant(code, "mgr-elements", "EDIT");
+        DossierFixture dossier = createDossier(code, "mgr-elements", "Elements dossier");
+        addDossierElementUseCase.add(
+                new AddDossierElementUseCase.AddCommand(
+                        UUID.fromString(dossier.id()),
+                        ElementType.PRODUCED_DOC,
+                        "Rapport PDF",
+                        TENANT_ID + "/secret-path/doc.pdf",
+                        Map.of("templateKey", "rapport"),
+                        "system",
+                        "step-1"),
+                AccessContext.system("test"));
+
+        mockMvc.perform(get("/api/dossiers/{id}/elements", dossier.id())
+                        .with(user("mgr-elements")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].label").value("Rapport PDF"))
+                .andExpect(jsonPath("$[0].downloadable").value(true))
+                .andExpect(jsonPath("$[0].type").value("PRODUCED_DOC"))
+                .andExpect(jsonPath("$[0]", not(hasKey("storageRef"))));
     }
 
     private String createType(boolean active) throws Exception {

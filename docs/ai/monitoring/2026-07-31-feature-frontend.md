@@ -2,79 +2,20 @@
 phase: monitoring
 title: Monitoring & Observability
 description: Define monitoring strategy, metrics, alerts, and incident response
+feature: frontend
+updated: 2026-08-12
 ---
 
 # Monitoring & Observability
 
-## Key Metrics
-**What do we need to track?**
+## SPA / BFF
 
-### Performance Metrics
-- Response time/latency
-- Throughput/requests per second
-- Resource utilization (CPU, memory, disk)
+- Erreurs boot session : `auth.bootError` (pas de redirect sur 5xx).
+- SSE notifications : reconnect 5 s ; panneau `failed` si déconnecté.
+- Cap client inbox notifs : 100 items.
 
-### Business Metrics
-- User engagement metrics
-- Conversion/success rates
-- Feature usage
+## Backend (existant)
 
-### Error Metrics
-- Error rates by type
-- Failed requests
-- Exception tracking
-
-## Monitoring Tools
-**What tools are we using?**
-
-- Application monitoring (APM)
-- Infrastructure monitoring
-- Log aggregation
-- User analytics
-
-## Logging Strategy
-**What do we log and how?**
-
-- Log levels and categories
-- Structured logging format
-- Log retention policy
-- Sensitive data handling
-
-## Alerts & Notifications
-**When and how do we get notified?**
-
-### Critical Alerts
-- Alert 1: [Condition] → [Action]
-- Alert 2: [Condition] → [Action]
-
-### Warning Alerts
-- Alert 1: [Condition] → [Action]
-- Alert 2: [Condition] → [Action]
-
-## Dashboards
-**What do we visualize?**
-
-- System health dashboard
-- Business metrics dashboard
-- Custom views per team/role
-
-## Incident Response
-**How do we handle issues?**
-
-### On-Call Rotation
-- Schedule and contacts
-- Escalation path
-
-### Incident Process
-1. Detection and triage
-2. Investigation and diagnosis
-3. Resolution and mitigation
-4. Post-mortem and learning
-
-## Health Checks
-**How do we verify system health?**
-
-- Endpoint health checks
-- Dependency checks
-- Automated smoke tests
-
+S’appuyer sur logs Spring / métriques Micrometer déjà prévues hors scope
+FE V1. Surveiller 401/403 sur `/api/auth/me`, 409 viz, latence
+`/api/workflow-tasks/mine`.

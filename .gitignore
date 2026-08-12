@@ -19,5 +19,16 @@ buildNumber.properties
 # Local / AI DevKit feature worktrees
 .worktrees/
 
+# Frontend (Vite)
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/playwright-report/
+frontend/test-results/
+
+# Bundles SPA générés (D-PACK) — ne pas committer
+src/main/resources/static/**
+!src/main/resources/static/.gitkeep
+
 # Serena local project data
 .serena/

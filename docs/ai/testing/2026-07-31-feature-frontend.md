@@ -2,6 +2,16 @@
 phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
+status: completed
+created: 2026-08-12
+updated: 2026-08-12
+feature: frontend
+design_aligned: 2026-08-12
+stakeholder_decisions: 2026-08-12
+phase2_sync: 2026-08-12
+phase3_sync: 2026-08-12
+phase4_sync: 2026-08-12
+phase8_completed: 2026-08-12
 ---
 
 # Testing Strategy
@@ -9,73 +19,144 @@ description: Define testing approach, test cases, and quality assurance
 ## Test Coverage Goals
 **What level of testing do we aim for?**
 
-- Unit test coverage target (default: 100% of new/changed code)
-- Integration test scope (critical paths + error handling)
-- End-to-end test scenarios (key user journeys)
-- Alignment with requirements/design acceptance criteria
+- **Vitest + VTU :** stores, API helpers, DynamicFields / SensitiveValue,
+  BpmnViewer, StartWorkflowDialog, Supervision, CreateDossier, admin smoke.
+- **Playwright (**D-E2E**) :** session mockée ; parcours vague 1 ; smoke admin.
+- **Statique :** `vue-tsc --noEmit`, ESLint, Prettier.
+- **Backend delta :** Auth `id` ; `/mine` enrichi + authz ; elements DTO ;
+  `./mvnw verify` (plugin FE Node 22 + Jacoco).
+- **Hors CI :** Keycloak réel ; Rapports SLA ; upload éléments.
+
+Cible coverage Vitest ≥ **80 %** lignes `frontend/src` (hors bootstrap).
 
 ## Unit Tests
-**What individual components need testing?**
 
-### Component/Module 1
-- [ ] Test case 1: [Description] (covers scenario / branch)
-- [ ] Test case 2: [Description] (covers edge case / error handling)
-- [ ] Additional coverage: [Description]
+### Auth (**D-ME**)
+- [x] `/me` mappe `id` + `name` + roles ; 401 → redirect OAuth
+- [x] getters `isTenantAdmin` / `isWorkflowAdmin`
 
-### Component/Module 2
-- [ ] Test case 1: [Description]
-- [ ] Test case 2: [Description]
-- [ ] Additional coverage: [Description]
+### Axios / CSRF / base (**DD-BASE**)
+- [x] defaults credentials + XSRF names
+- [x] ProblemDetail → erreur typée
+- [x] préfixe API cohérent avec `BASE_URL` / baseURI
+
+### SensitiveValue (**D-SENSITIVE**)
+- [x] `sensitive` + non-TA → `••••` ; TA → clair ; non-sensitive → valeur
+
+### CreateDossier / DynamicFields (**D-ACTIONS**)
+- [x] `dossierTypeCode` + `label` + required ; POST create ; ProblemDetail
+
+### Dossier store / détail
+- [x] loadById / loadByRef ; workflows ; start
+- [x] PATCH status + `expectedVersion` (**D-STATUS**)
+- [x] diagram 409 sans PI
+- [x] complete `{}` + reassign (admin only)
+- [x] start dialog + ProblemDetail statut (Phase 8)
+
+### StartWorkflowDialog (**DD-START**)
+- [x] défaut = `type.workflowKey`
+- [x] option autre → workflow-type-configs
+- [x] header `Idempotency-Key` non blank
+
+### Inbox (**DD-INBOX-DTO**, **DD-INBOX-AUTHZ**)
+- [x] Backend assignee=sub ; skip sans dossierId ; ≤100 ; enrichit ref+linkId
+- [x] FE empty state ; complete rafraîchit ; pas de `?assigneeId=`
+
+### Elements (**DD-ELEMENTS-DTO**)
+- [x] Backend sans `storageRef` ; `downloadable` ; authz
+- [x] FE liste + content ; Ajouter disabled
+
+### BpmnViewer / Notifications / Supervision
+- [x] importXML + markers + destroy
+- [x] EventSource + mark-read local + fail-soft + reconnect
+- [x] resolve ref / UUID ; pas de faux KPI
+
+### Admin vague 2
+- [x] Types/ACL/templates (activate/archive/new-version)/connectors
+      (`secretConfigured` + definitions)/workflow-configs smoke
+
+### Backend MockMvc / UC
+- [x] `/api/auth/me` contient `id`
+- [x] `/api/workflow-tasks/mine` (unit UC)
+- [x] `/api/dossiers/{id}/elements` sans storageRef
+- [x] SPA fallback handler
 
 ## Integration Tests
-**How do we test component interactions?**
 
-- [ ] Integration scenario 1
-- [ ] Integration scenario 2
-- [ ] API endpoint tests
-- [ ] Integration scenario 3 (failure mode / rollback)
+- [x] Vitest + vi.mock store↔api
+- [x] SPA fallback unit (`SpaFallbackConfigTest`)
 
-## End-to-End Tests
-**What user flows need validation?**
+## End-to-End Tests (Playwright, session mock)
 
-- [ ] User flow 1: [Description]
-- [ ] User flow 2: [Description]
-- [ ] Critical path testing
-- [ ] Regression of adjacent features
+Fichier : [`frontend/e2e/pilotage.spec.ts`](../../../frontend/e2e/pilotage.spec.ts)
 
-## Test Data
-**What data do we use for testing?**
+- [x] **E2E-1** Boot (`id` présent)
+- [x] **E2E-2** Créer dossier → détail
+- [x] **E2E-3** PATCH status
+- [x] **E2E-4** Start + Idempotency-Key + diagramme
+- [x] **E2E-5** Complete `{}` (inbox)
+- [x] **E2E-6** Reassign admin vs manager (E2E-6 + E2E-6b)
+- [x] **E2E-7** Inbox `/mine`
+- [x] **E2E-8** SSE panneau notifications
+- [x] **E2E-9** Nav sans Rapports
+- [x] **E2E-10** Admin types smoke
 
-- Test fixtures and mocks
-- Seed data requirements
-- Test database setup
+## Phase 8 — Evidence (2026-08-12)
 
-## Test Reporting & Coverage
-**How do we verify and communicate test results?**
+| Commande | Résultat |
+|---|---|
+| `npm run typecheck` | exit 0 |
+| `npm run lint` | exit 0 |
+| `npm run test` | **62** passed / 28 files |
+| `npm run test:coverage` | lines **90.87 %** (≥ 80 %) |
+| `npm run build` | exit 0 |
+| `npm run test:e2e` | **11** passed |
 
-- Coverage commands and thresholds (`npm run test -- --coverage`)
-- Coverage gaps (files/functions below 100% and rationale)
-- Links to test reports or dashboards
-- Manual testing outcomes and sign-off
+### Specs FE (échantillon)
 
-## Manual Testing
-**What requires human validation?**
+- `frontend/src/stores/{auth,dossier,tasks,notifications}*.spec.ts`
+- `frontend/src/api/{http,dossiers,clients,phase8Api}*.spec.ts`
+- `frontend/src/components/dossier/{SensitiveValue,DynamicFields,ElementsList}*.spec.ts`
+- `frontend/src/views/pilotage/{CreateDossierView,DossierDetailView,phase8Pilotage}*.spec.ts`
+- `frontend/src/views/admin/{adminActions,adminViews,DossierTypesAdminView}*.spec.ts`
+- Backend : `ListMyTasksUseCaseImplTest`, `ListDossierElementsUseCaseImplTest`,
+  `DossierApiTest#listElements_*`, `AuthControllerTest`, `SpaFallbackConfigTest`
 
-- UI/UX testing checklist (include accessibility)
-- Browser/device compatibility
-- Smoke tests after deployment
+## Phase 9 — Re-verify (2026-08-12)
 
-## Performance Testing
-**How do we validate performance?**
+Après correctifs revue (auth logout form, viz soft-fail, guard admin) :
 
-- Load testing scenarios
-- Stress testing approach
-- Performance benchmarks
+| Commande | Résultat |
+|---|---|
+| `npm run typecheck` / `lint` | exit 0 |
+| `npm run test` | **65** passed / 28 files |
+| `npm run test:coverage` | lines **90.96 %** |
+| `npm run test:e2e` | **11** passed |
+| Maven ciblé (JDK 25, `-Dskip.frontend`) | Failures 0 |
 
-## Bug Tracking
-**How do we manage issues?**
+## Test Data / Reporting
 
-- Issue tracking process
-- Bug severity levels
-- Regression testing strategy
+Fixtures DTO + BPMN minimal ; user `{ id, name, email, roles }`.
 
+```bash
+cd frontend && npm run typecheck && npm run lint && npm run test -- --coverage
+cd frontend && npm run test:e2e
+./mvnw verify -Dmaven.compiler.release=21
+```
+
+## Manual / Perf
+
+Maquette, mobile, context-path (**DD-BASE**), Keycloak hors CI, secrets
+admin. Perf hors gate ; inbox ≤ 100.
+
+## Traceability
+
+| Décision | Tests |
+|---|---|
+| D-ME | Auth + E2E-1 |
+| D-ACTIONS / D-STATUS / D-COMPLETE / DD-START | E2E-2..5 |
+| DD-INBOX-* | `/mine` + E2E-7 |
+| DD-ELEMENTS-DTO | MockMvc + FE |
+| D-SENSITIVE / D-MOCKGAP | SensitiveValue ; E2E-9 |
+| D-ADMIN / A-CONN-SECRET | Admin ; E2E-10 |
+| DD-NODE / D-PACK / D-E2E | verify Node 22 + Playwright |

@@ -25,21 +25,25 @@ export const routes: RouteRecordRaw[] = [
   {
     path: '/admin/dossier-types',
     name: 'admin-dossier-types',
+    meta: { roles: ['TENANT_ADMIN'] },
     component: () => import('@/views/admin/DossierTypesAdminView.vue'),
   },
   {
     path: '/admin/templates',
     name: 'admin-templates',
+    meta: { roles: ['TENANT_ADMIN'] },
     component: () => import('@/views/admin/TemplatesAdminView.vue'),
   },
   {
     path: '/admin/connectors',
     name: 'admin-connectors',
+    meta: { roles: ['TENANT_ADMIN'] },
     component: () => import('@/views/admin/ConnectorsAdminView.vue'),
   },
   {
     path: '/admin/workflow-types',
     name: 'admin-workflow-types',
+    meta: { roles: ['TENANT_ADMIN', 'WORKFLOW_ADMIN'] },
     component: () => import('@/views/admin/WorkflowConfigsAdminView.vue'),
   },
 ]

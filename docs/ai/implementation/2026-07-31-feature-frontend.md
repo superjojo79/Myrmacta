@@ -1,6 +1,6 @@
 ---
 phase: implementation
-status: completed
+status: reviewed
 feature: frontend
 created: 2026-08-12
 updated: 2026-08-12
@@ -8,6 +8,8 @@ phase5_started: 2026-08-12
 phase5_completed: 2026-08-12
 phase6_synced: 2026-08-12
 phase7_checked: 2026-08-12
+phase8_tested: 2026-08-12
+phase9_reviewed: 2026-08-12
 title: Implementation Guide
 description: Technical implementation notes, patterns, and code guidelines
 ---
@@ -16,10 +18,9 @@ description: Technical implementation notes, patterns, and code guidelines
 
 ## Status
 
-Phases **5–7** closes. Implémentation T1–T28 livrée ; Phase 7 check
-d’alignement design/requirements **OK** après correctifs ciblés
-(SensitiveValue, route admin, templates lifecycle, SSE reconnect,
-connector-definitions).
+Phases **5–9** closes. Implémentation T1–T28 livrée ; Phase 7 check
+d’alignement **OK** ; Phase 8 tests OK ; Phase 9 review **prêt à
+merger** après correctifs (voir ci-dessous).
 
 ## Development Setup
 
@@ -104,7 +105,65 @@ fallback.
 | T19–T21 | Maven Node 22, E2E, evidence vague 1 |
 | T22–T28 | Admin + preuves ; P7 correctifs alignement |
 
-## Next
+## Phase 9 — Code Review (2026-08-12)
 
-Phase 8 **terminée** (`dev-testing`) — Vitest 62 / coverage 90.87 % /
-E2E 11. Suivant : Phase 9 — `dev-review`.
+**Verdict :** prêt à merger (PR #38). Blockers corrigés ; follow-ups
+non bloquants documentés.
+
+### Checklist finale
+
+| Critère | Statut |
+|---|---|
+| Design match (D-* / DD-*) | OK |
+| Pas de trou logique bloquant | OK après soft-fail viz + logout form |
+| Sécurité (BFF, CSRF logout, guard admin FE) | OK (API reste source de vérité) |
+| Points d’intégration SPA / Maven / SSE | OK |
+| Tests couvrent les changements | OK (voir evidence) |
+| Docs à jour | OK |
+
+### Findings phase 9
+
+| Sévérité | ID | Issue | Action |
+|---|---|---|---|
+| Blocking | REV-VIZ | `loadVisualization` soft-failait seulement le 409 → 403/5xx cassait le détail | **Corrigé** soft-fail toute erreur |
+| Important | REV-AUTH | Redirect OIDC sur toute erreur `/me` | **Corrigé** 401/403 seulement + `bootError` |
+| Important | REV-BASE | OAuth/logout sans préfixe `DD-BASE` | **Corrigé** `tenantPath` + `resolveApiBaseUrl` |
+| Important | REV-LOGOUT | Logout XHR ne suivait pas la chaîne OIDC | **Corrigé** form POST + CSRF cookie |
+| Important | REV-ROUTE | Pas de `watch` sur `route.params.id` | **Corrigé** reload détail |
+| Important | REV-BPMN | BPMN vide sans `linkId` | **Corrigé** `:unavailable` |
+| Important | REV-ADMIN | Routes admin sans guard FE | **Corrigé** `meta.roles` + `beforeEach` |
+| Nice | REV-ENC | `elementId` non encodé dans URL | **Corrigé** `encodeURIComponent` |
+| Nice | REV-SSE-CAP | Inbox notifs non bornée | **Corrigé** cap 100 |
+| Follow-up | REV-SENS | Redaction serveur champs sensitive | Hors V1 FE |
+| Follow-up | REV-VERIFY | `./mvnw verify` sans `-Dskip.frontend` en CI | Packaging / CI |
+
+### Correctifs phase 9
+
+- `stores/auth.ts` : redirect 401/403, `tenantPath`, logout form+CSRF, `bootError`
+- `stores/dossier.ts` : soft-fail visualisation pour toute erreur
+- `DossierDetailView.vue` : `watch` params + BPMN unavailable sans link
+- `routes.ts` + `main.ts` : guard rôles admin
+- `api/elements.ts` : encode URI ; `notifications.ts` : cap 100
+
+### Evidence (phase 9)
+
+```text
+cd frontend && npm run typecheck && npm run lint && npm run test
+→ 65 passed / 28 files, exit 0
+npm run test:coverage → lines 90.96 % (≥ 80 %)
+npm run test:e2e → 11 passed
+JAVA_HOME=…/jdk-25.0.4+7 ./mvnw -Dskip.frontend=true \
+  -Dtest=SpaFallbackConfigTest,AuthControllerTest,DossierApiTest,\
+ListDossierElementsUseCaseImplTest,ListMyTasksUseCaseImplTest test
+→ Failures: 0, Errors: 0
+npx ai-devkit@latest lint --feature frontend → All checks passed
+```
+
+### Follow-ups post-merge
+
+- Redaction API champs sensitive (serveur)
+- CI `./mvnw verify` sans skip.frontend pour peupler `static/`
+- Checklist manuelle context-path `/{tenantId}/` (DD-BASE)
+- Guard FE admin : course possible avant `init()` `/me` (API protège)
+
+**Lifecycle :** phase 9 terminée — prêt à merger.

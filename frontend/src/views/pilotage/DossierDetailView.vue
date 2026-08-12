@@ -48,9 +48,22 @@ watch(
 )
 
 onMounted(async () => {
-  const id = String(route.params.id)
-  await store.loadById(id)
+  await loadCurrent()
 })
+
+watch(
+  () => route.params.id,
+  async () => {
+    await loadCurrent()
+  },
+)
+
+async function loadCurrent() {
+  const id = String(route.params.id ?? '')
+  if (!id) return
+  actionError.value = null
+  await store.loadById(id)
+}
 
 async function saveStatus() {
   actionError.value = null
@@ -116,7 +129,7 @@ async function confirmReassign() {
 
     <ElementsList :elements="elements" />
 
-    <BpmnViewer :diagram="diagram" :unavailable="diagramUnavailable" />
+    <BpmnViewer :diagram="diagram" :unavailable="diagramUnavailable || !linkId" />
     <HistoryTimeline :history="history" />
     <TaskList
       :tasks="tasks"

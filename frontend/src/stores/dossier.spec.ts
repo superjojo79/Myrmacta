@@ -93,6 +93,18 @@ describe('dossier store', () => {
     expect(store.diagramUnavailable).toBe(true)
   })
 
+  it('soft-fails visualization on 403 without throwing', async () => {
+    vi.mocked(workflowsApi.getWorkflowDiagram).mockRejectedValue({
+      response: { status: 403, data: { status: 403, detail: 'forbidden' } },
+    })
+    vi.mocked(workflowsApi.getWorkflowHistory).mockRejectedValue({ response: { status: 403 } })
+    vi.mocked(workflowsApi.getWorkflowTasks).mockRejectedValue({ response: { status: 403 } })
+    const store = useDossierStore()
+    await expect(store.loadVisualization('link-1')).resolves.toBeUndefined()
+    expect(store.diagramUnavailable).toBe(true)
+    expect(store.diagram).toBeNull()
+  })
+
   it('creates and starts workflow with reload', async () => {
     vi.mocked(dossiersApi.createDossier).mockResolvedValue({
       id: 'd1',

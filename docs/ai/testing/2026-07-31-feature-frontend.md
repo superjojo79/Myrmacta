@@ -122,6 +122,18 @@ Fichier : [`frontend/e2e/pilotage.spec.ts`](../../../frontend/e2e/pilotage.spec.
 - Backend : `ListMyTasksUseCaseImplTest`, `ListDossierElementsUseCaseImplTest`,
   `DossierApiTest#listElements_*`, `AuthControllerTest`, `SpaFallbackConfigTest`
 
+## Phase 9 — Re-verify (2026-08-12)
+
+Après correctifs revue (auth logout form, viz soft-fail, guard admin) :
+
+| Commande | Résultat |
+|---|---|
+| `npm run typecheck` / `lint` | exit 0 |
+| `npm run test` | **65** passed / 28 files |
+| `npm run test:coverage` | lines **90.96 %** |
+| `npm run test:e2e` | **11** passed |
+| Maven ciblé (JDK 25, `-Dskip.frontend`) | Failures 0 |
+
 ## Test Data / Reporting
 
 Fixtures DTO + BPMN minimal ; user `{ id, name, email, roles }`.

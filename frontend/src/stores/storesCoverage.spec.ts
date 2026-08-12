@@ -7,13 +7,11 @@ import * as dossiersApi from '@/api/dossiers'
 import * as typesApi from '@/api/dossierTypes'
 import * as workflowsApi from '@/api/workflows'
 import * as tasksApi from '@/api/tasks'
-import axios from 'axios'
 
 vi.mock('@/api/dossiers')
 vi.mock('@/api/dossierTypes')
 vi.mock('@/api/workflows')
 vi.mock('@/api/tasks')
-vi.mock('axios')
 
 describe('stores remaining coverage', () => {
   beforeEach(() => {
@@ -89,13 +87,16 @@ describe('stores remaining coverage', () => {
   })
 
   it('auth logout and notifications message path', async () => {
-    vi.mocked(axios.post).mockResolvedValue({})
-    const location = { href: '' }
-    vi.stubGlobal('window', { location })
+    document.body.innerHTML = ''
+    document.cookie = 'XSRF-TOKEN=csrf-cov'
     const auth = useAuthStore()
     auth.user = { id: 'u', name: 'Ada', email: null, roles: [] }
-    await auth.logout()
-    expect(location.href).toBe('/')
+    auth.logout()
+    expect(auth.user).toBeNull()
+    const form = document.querySelector('form') as HTMLFormElement
+    expect(form.method.toLowerCase()).toBe('post')
+    expect(form.action).toContain('/api/auth/logout')
+    expect((form.querySelector('input[name="_csrf"]') as HTMLInputElement).value).toBe('csrf-cov')
 
     let source: { onmessage: ((ev: MessageEvent) => void) | null; onerror: ((ev: Event) => void) | null } | null =
       null
@@ -122,3 +123,4 @@ describe('stores remaining coverage', () => {
     vi.unstubAllGlobals()
   })
 })
+

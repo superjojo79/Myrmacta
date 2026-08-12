@@ -95,15 +95,12 @@ export const useDossierStore = defineStore('dossier', () => {
       ])
       diagramUnavailable.value = false
     } catch (err) {
-      const problem = toProblemDetail(err)
-      if (problem.status === 409) {
-        diagramUnavailable.value = true
-        diagram.value = null
-        history.value = await getWorkflowHistory(linkId).catch(() => [])
-        tasks.value = await getWorkflowTasks(linkId).catch(() => [])
-        return
-      }
-      throw err
+      // Soft-fail viz (409 sans PI, 403 non-participant, 5xx) — ne pas masquer le dossier.
+      diagramUnavailable.value = true
+      diagram.value = null
+      history.value = await getWorkflowHistory(linkId).catch(() => [])
+      tasks.value = await getWorkflowTasks(linkId).catch(() => [])
+      void err
     }
   }
 

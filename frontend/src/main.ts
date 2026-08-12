@@ -19,6 +19,15 @@ const router = createRouter({
   routes,
 })
 
+router.beforeEach((to) => {
+  const required = to.meta.roles as string[] | undefined
+  if (!required?.length) return true
+  const auth = useAuthStore()
+  if (!auth.user) return true
+  const ok = required.some((role) => auth.roles.includes(role))
+  return ok ? true : { name: 'supervision' }
+})
+
 app.use(pinia)
 app.use(router)
 app.use(PrimeVue, {

@@ -330,5 +330,5 @@ MVP). Pagination inbox >100 — follow-up hors V1.
 
 ## Next
 
-Phase 5 — Execute Plan (`dev-implementation`) en TDD, commencer par
-**T1** (puis T2/T3 ou T5 en parallèle backend).
+Lifecycle **phases 5–9 terminées**. Branche
+`cursor/feature-frontend-21f2` · PR #38 — prêt à merger.

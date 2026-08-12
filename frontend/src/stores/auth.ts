@@ -1,10 +1,23 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import axios from 'axios'
+import axios, { type AxiosError } from 'axios'
 import type { AuthUser } from '@/api/types'
+import { resolveApiBaseUrl } from '@/api/http'
+import { useNotificationsStore } from '@/stores/notifications'
+
+function readCookie(name: string): string | null {
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))
+  return match ? decodeURIComponent(match[1]) : null
+}
+
+function tenantPath(path: string): string {
+  const prefix = resolveApiBaseUrl()
+  return `${prefix}${path.startsWith('/') ? path : `/${path}`}`
+}
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<AuthUser | null>(null)
+  const bootError = ref<string | null>(null)
   const authenticated = computed(() => user.value != null)
 
   const roles = computed(() => user.value?.roles ?? [])
@@ -14,23 +27,51 @@ export const useAuthStore = defineStore('auth', () => {
   )
 
   async function init(): Promise<void> {
+    bootError.value = null
     try {
       const { data } = await axios.get<AuthUser>('/api/auth/me')
       user.value = data
-    } catch {
+    } catch (err) {
       user.value = null
-      window.location.href = '/oauth2/authorization/oidc'
+      const status = (err as AxiosError)?.response?.status
+      if (status === 401 || status === 403) {
+        window.location.href = tenantPath('/oauth2/authorization/oidc')
+        return
+      }
+      bootError.value = 'Impossible de charger la session'
     }
   }
 
-  async function logout(): Promise<void> {
+  function logout(): void {
     try {
-      await axios.post('/api/auth/logout')
-    } finally {
-      user.value = null
-      window.location.href = '/'
+      useNotificationsStore().disconnect()
+    } catch {
+      /* pinia may be unavailable in isolated tests */
     }
+    user.value = null
+    const form = document.createElement('form')
+    form.method = 'POST'
+    form.action = tenantPath('/api/auth/logout')
+    const csrf = readCookie('XSRF-TOKEN')
+    if (csrf) {
+      const input = document.createElement('input')
+      input.type = 'hidden'
+      input.name = '_csrf'
+      input.value = csrf
+      form.appendChild(input)
+    }
+    document.body.appendChild(form)
+    form.submit()
   }
 
-  return { user, authenticated, roles, isTenantAdmin, isWorkflowAdmin, init, logout }
+  return {
+    user,
+    bootError,
+    authenticated,
+    roles,
+    isTenantAdmin,
+    isWorkflowAdmin,
+    init,
+    logout,
+  }
 })

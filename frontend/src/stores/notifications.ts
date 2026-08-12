@@ -63,6 +63,9 @@ export const useNotificationsStore = defineStore('notifications', () => {
           read: false,
           raw: payload,
         })
+        if (items.value.length > 100) {
+          items.value = items.value.slice(0, 100)
+        }
       }
     } catch {
       failed.value = true

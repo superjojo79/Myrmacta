@@ -57,7 +57,7 @@ Cible coverage Vitest ≥ **80 %** lignes `frontend/src` (hors bootstrap).
 - [ ] header `Idempotency-Key` non blank
 
 ### Inbox (**DD-INBOX-DTO**, **DD-INBOX-AUTHZ**)
-- [ ] Backend assignee=sub ; skip sans dossierId ; ≤100 ; enrichit ref+linkId
+- [x] Backend assignee=sub ; skip sans dossierId ; ≤100 ; enrichit ref+linkId
 - [ ] FE empty state ; complete rafraîchit ; pas de `?assigneeId=`
 
 ### Elements (**DD-ELEMENTS-DTO**)
@@ -73,8 +73,8 @@ Cible coverage Vitest ≥ **80 %** lignes `frontend/src` (hors bootstrap).
 - [ ] Types/ACL/templates/connectors (`secretConfigured`)/workflow-configs smoke
 
 ### Backend MockMvc
-- [ ] `/api/auth/me` contient `id`
-- [ ] `/api/workflow-tasks/mine`
+- [x] `/api/auth/me` contient `id`
+- [x] `/api/workflow-tasks/mine` (unit UC)
 - [ ] `/api/dossiers/{id}/elements` sans storageRef
 
 ## Integration Tests

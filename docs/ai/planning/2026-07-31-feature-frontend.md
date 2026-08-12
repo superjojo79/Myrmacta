@@ -32,7 +32,7 @@ Branche agent : `cursor/feature-frontend-21f2` · lifecycle
 
 ### Vague 1 — Instructeur (**D-SEQ**)
 - [x] **M1 — Scaffold & qualité** : Vite vue-ts, deps, gates CI, Node 22
-- [ ] **M2 — Auth BFF & shell** : `/me`+`id`, CSRF, layout maquette
+- [x] **M2 — Auth BFF & shell** : `/me`+`id`, CSRF, layout maquette
 - [ ] **M3 — Backend deltas** : `/mine` enrichi, elements list, auth id
 - [ ] **M4 — Dossier cœur FE** : create, détail, status, viz, start, tasks
 - [ ] **M5 — Compléments vague 1** : elements UI, SSE, Supervision, inbox UI
@@ -96,7 +96,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Validation :** Vitest auth store.
   - **Tests :** Auth store ; E2E-1 (plus tard T20).
 
-- [ ] **T7. Shell layout + tokens**
+- [x] **T7. Shell layout + tokens**
   - **Outcome :** nav Pilotage (Supervision, Tâches) + Admin (rôles) ;
     **pas** Rapports (**D-MOCKGAP**) ; CSS tokens maquette + thème
     PrimeVue ; header user (`name`/`email`).
@@ -106,7 +106,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M3 — Backend deltas
 
-- [ ] **T8. Inbox `GET /api/workflow-tasks/mine`**
+- [x] **T8. Inbox `GET /api/workflow-tasks/mine`**
   - **Outcome :** `ListMyTasksUseCase` + port Flowable
     `taskAssignee(sub)` ; enrichissement `dossierId` (var) +
     `dossierReference` + `linkId` ; skip sans dossierId ; plafond 100 ;

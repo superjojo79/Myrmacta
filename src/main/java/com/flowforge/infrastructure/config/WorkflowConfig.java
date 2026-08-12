@@ -7,14 +7,17 @@ import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
 import com.flowforge.domain.dossier.usecase.AttachWorkflowUseCaseImpl;
 import com.flowforge.domain.workflow.port.in.CompleteTaskUseCase;
+import com.flowforge.domain.workflow.port.in.ListMyTasksUseCase;
 import com.flowforge.domain.workflow.port.in.UpdateWorkflowLinkStatusUseCase;
 import com.flowforge.domain.workflow.port.out.IdempotencyStore;
 import com.flowforge.domain.workflow.port.out.WorkflowParticipantPort;
 import com.flowforge.domain.workflow.port.out.WorkflowEnginePort;
 import com.flowforge.domain.workflow.port.out.WorkflowEventPublisher;
+import com.flowforge.domain.workflow.port.out.WorkflowTaskInboxPort;
 import com.flowforge.domain.workflow.port.out.WorkflowTypeConfigRepository;
 import com.flowforge.domain.workflow.port.out.WorkflowVisualizationPort;
 import com.flowforge.domain.workflow.usecase.CompleteTaskUseCaseImpl;
+import com.flowforge.domain.workflow.usecase.ListMyTasksUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.UpdateWorkflowLinkStatusUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.WorkflowLinkVisualizationUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.WorkflowTypeConfigUseCaseImpl;
@@ -49,6 +52,21 @@ public class WorkflowConfig {
     @Bean
     CompleteTaskUseCase completeTaskUseCase(WorkflowEnginePort workflowEnginePort) {
         return new CompleteTaskUseCaseImpl(workflowEnginePort);
+    }
+
+    @Bean
+    ListMyTasksUseCase listMyTasksUseCase(
+            TenantProperties tenantProperties,
+            WorkflowTaskInboxPort inboxPort,
+            WorkflowEnginePort workflowEnginePort,
+            DossierWorkflowLinkRepository linkRepository,
+            DossierRepository dossierRepository) {
+        return new ListMyTasksUseCaseImpl(
+                tenantProperties.id(),
+                inboxPort,
+                workflowEnginePort,
+                linkRepository,
+                dossierRepository);
     }
 
     @Bean

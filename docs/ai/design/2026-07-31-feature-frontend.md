@@ -324,5 +324,4 @@ Inchangés vs Phase 2 sync ; elements consomme le nouveau DTO.
 
 ## Next
 
-Phase 4 — Create Initial Plan (`dev-planning`) → status planning
-`ready`.
+Phase 5 — Execute Plan (`dev-implementation`). Planning `ready` (T1–T28).

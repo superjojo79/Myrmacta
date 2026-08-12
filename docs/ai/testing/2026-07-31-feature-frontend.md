@@ -6,7 +6,8 @@ status: draft
 created: 2026-08-12
 updated: 2026-08-12
 feature: frontend
-design_aligned: pending-review
+design_aligned: 2026-08-12
+stakeholder_decisions: 2026-08-12
 ---
 
 # Testing Strategy
@@ -14,94 +15,90 @@ design_aligned: pending-review
 ## Test Coverage Goals
 **What level of testing do we aim for?**
 
-- **Unitaires / composants (Vitest + VTU) :** stores Pinia, clients API
-  (mock Axios), composants shell, BpmnViewer (importXML mocké), listes
-  tâches, rendu erreurs `ProblemDetail`.
-- **E2E (Playwright) :** boot session (auth mockée), ouverture dossier
-  par ref, affichage diagramme (stub XML), complete task, SSE
-  notification (mock EventSource si besoin).
-- **Qualité statique :** `vue-tsc --noEmit`, ESLint, Prettier check.
-- **Régression backend :** `./mvnw verify` reste vert (packaging static
-  ne casse pas Boot / Security).
-- **Hors scope :** Keycloak réel en CI ; Rapports SLA ; admin
-  connecteurs/templates ; perf Lighthouse bloquant.
+- **Vitest + VTU :** stores, API helpers, DynamicFields / SensitiveValue,
+  BpmnViewer (importXML mock), Supervision, CreateDossier, admin forms
+  smoke.
+- **Playwright (**D-E2E = A**) :** session mockée (stub `/api/auth/me`
+  avec `id`) ; parcours vague 1 ; smoke vague 2 admin.
+- **Statique :** `vue-tsc --noEmit`, ESLint, Prettier.
+- **Backend delta :** tests `AuthController` / `AuthUserResponse` pour
+  champ `id` ; `./mvnw verify` (plugin FE + Jacoco existant).
+- **Hors CI :** Keycloak réel ; Rapports SLA ; upload éléments.
 
-Cible : **≥ 80 %** lignes sur `frontend/src` (Vitest coverage), hors
-`main.ts` bootstrap et types générés/manuels purs.
+Cible coverage Vitest ≥ **80 %** lignes `frontend/src` (hors bootstrap).
 
 ## Unit Tests
-**What individual components need testing?**
 
-### Auth store
-- [ ] `init` OK → `authenticated` + user peuplé depuis `/api/auth/me`
-- [ ] `init` 401 → redirect `window.location` vers
-      `/oauth2/authorization/keycloak` (spy)
-- [ ] getters rôles : `isWorkflowAdmin` true si `WORKFLOW_ADMIN` ou
-      `TENANT_ADMIN`
+### Auth (**D-ME**)
+- [ ] `/me` mappe `id` + roles ; 401 → redirect OAuth
+- [ ] getters `isTenantAdmin` / `isWorkflowAdmin`
 
-### Axios / CSRF helpers
-- [ ] defaults `withCredentials`, `xsrfCookieName`, `xsrfHeaderName`
-- [ ] interceptor mappe 403/404 ProblemDetail vers erreur typée
+### Axios / CSRF
+- [ ] defaults credentials + XSRF names
+- [ ] ProblemDetail → erreur typée
+
+### SensitiveValue (**D-SENSITIVE**)
+- [ ] `sensitive` + non-TA → `••••`
+- [ ] TA → valeur claire
+- [ ] non-sensitive → valeur
+
+### CreateDossier / DynamicFields (**D-ACTIONS**)
+- [ ] charge types ; valide required ; POST create
+- [ ] erreur ProblemDetail affichée
 
 ### Dossier store
-- [ ] `loadById` / `loadByRef` peuplent summary
-- [ ] charge workflows puis sélectionne link actif
-- [ ] `loadDiagram` ignore / surface 409 sans PI
-- [ ] `completeTask` POST puis refresh tasks
-- [ ] `reassignTask` refusé UX si non admin (pas d’appel) ; admin appelle API
+- [ ] loadById / loadByRef ; workflows ; start workflow
+- [ ] diagram 409 sans PI
+- [ ] complete + reassign (reassign no-call si non admin)
 
-### BpmnViewer component
-- [ ] appelle `importXML` avec XML fourni
-- [ ] applique markers active/completed/failed
-- [ ] destroy viewer au unmount
-- [ ] XML vide → état vide / message
+### Elements (**D-ELEMENTS**)
+- [ ] liste + lien content ; bouton Ajouter disabled
 
-### Notification store / drawer
-- [ ] ouverture EventSource sur `/api/notifications/stream`
-- [ ] push événement → liste
-- [ ] erreur stream → flag reconnect sans throw
+### BpmnViewer
+- [ ] importXML + markers ; destroy unmount ; XML vide
 
-### SupervisionView
-- [ ] submit ref → navigate `/dossiers/:id` après resolve `?ref=`
-- [ ] erreur 404 → message ProblemDetail
+### Notifications (**A-NOTIF-READ**)
+- [ ] EventSource ; push liste ; mark-read local ; fail-soft
 
-### Guards UI
-- [ ] bouton Réassigner absent sans rôle admin
-- [ ] complete visible pour utilisateur authentifié (backend tranche)
+### Supervision (**D-MOCKGAP**)
+- [ ] resolve ref → navigate ; pas de KPI mockés rendus comme réels
+
+### MobileTasks (**A-MOBILE**)
+- [ ] filtre `assigneeId === auth.id`
+
+### Admin vague 2
+- [ ] Types list/create/patch smoke
+- [ ] ACL add/remove
+- [ ] Templates activate/archive smoke
+- [ ] Connectors CRUD smoke (secret non réaffiché si redact)
+- [ ] WorkflowTypeConfigs observers
+
+### Backend
+- [ ] `AuthUserResponse` JSON contient `id` = subject OIDC (MockMvc)
 
 ## Integration Tests
-**How do we test component interactions?**
 
-Peu d’IT « serveur » FE. Couverture par :
+- [ ] Vitest + msw/vi.mock chaînes store↔api
+- [ ] Optionnel : MockMvc `GET /` → `index.html` si fallback ajouté
 
-- [ ] Vitest composant + store + Axios mock (msw ou vi.mock)
-- [ ] Smoke Boot : resource `static/index.html` servie `GET /` (MockMvc
-      ou `@SpringBootTest` web) **si** fallback ajouté — sinon note
-      manuelle packaging
+## End-to-End Tests (Playwright, session mock)
 
-## End-to-End Tests
-**What user flows need validation?**
-
-- [ ] **E2E-1 Session** : arrivée app avec cookie session mock → shell
-      visible ; sans session → redirect OAuth (assert URL)
-- [ ] **E2E-2 Dossier** : ouvrir par ref → champs + workflows listés
-- [ ] **E2E-3 Viz** : diagramme canvas présent après stub `/diagram`
-- [ ] **E2E-4 Complete** : complete task → toast/refresh (stub POST 204/200)
-- [ ] **E2E-5 Reassign** : rôle admin → POST reassign ; rôle manager →
-      contrôle absent
-- [ ] **E2E-6 SSE** : événement injecté → entrée panneau notifications
+- [ ] **E2E-1** Boot shell authentifié (`id` présent)
+- [ ] **E2E-2** Créer dossier → détail
+- [ ] **E2E-3** Start workflow + diagramme canvas
+- [ ] **E2E-4** Complete task
+- [ ] **E2E-5** Reassign visible admin / absent manager
+- [ ] **E2E-6** SSE → entrée panneau
+- [ ] **E2E-7** Nav sans entrée Rapports
+- [ ] **E2E-8** Admin : créer un dossier-type (vague 2)
 
 ## Test Data
-**What data do we use for testing?**
 
-- Fixtures JSON alignées DTOs backend (dossier sinistre mock
-  `DOS-SINISTRE-2026-000042`, diagram XML minimal BPMN 2.0).
-- MSW / Playwright route stubs pour `/api/**`.
-- Utilisateur mock : `{ fullName, email, roles: ['DOSSIER_MANAGER'] }`
-  et variant admin.
+- Fixtures DTO alignées backend ; BPMN XML minimal ; user
+  `{ id: 'user-1', email, roles }` ± TA/WA.
+- Playwright : route stubs `/api/**` ; pas Keycloak CI.
 
 ## Test Reporting & Coverage
-**How do we verify and communicate test results?**
 
 ```bash
 cd frontend && npm run typecheck && npm run lint && npm run test -- --coverage
@@ -109,38 +106,28 @@ cd frontend && npm run test:e2e
 ./mvnw verify -Dmaven.compiler.release=21
 ```
 
-- Seuils Vitest coverage documentés dans `vitest.config.ts`.
-- Evidence Phase 8 : coller sorties + % coverage dans
-  `docs/ai/testing/…` et implementation.
+Evidence Phase 8 : coller sorties + %.
 
 ## Manual Testing
-**What requires human validation?**
 
-- [ ] Alignement visuel vs maquette (shell, détail dossier) desktop
-- [ ] Vue mobile tâches (viewport étroit)
-- [ ] Smoke Keycloak réel hors CI
-- [ ] Context-path tenant (`/{tenantId}/`) assets + API
-- [ ] Accessibilité basique (clavier, focus)
+- [ ] Alignement maquette shell/détail
+- [ ] Mobile viewport tâches
+- [ ] Context-path tenant
+- [ ] Smoke Keycloak hors CI
+- [ ] Admin secrets non leakés à l’écran
 
 ## Performance Testing
-**How do we validate performance?**
 
-- Hors gate V1. Budget informel : first contentful shell < 3 s en dev
-  proxy ; Viewer BPMN lazy.
+Hors gate V1 ; lazy admin + bpmn-js.
 
-## Bug Tracking
-**How do we manage issues?**
+## Traceability
 
-- Bugs FE dans suivi projet / PR ; régression = rejouer Vitest +
-  Playwright smoke + `./mvnw verify`.
-
-## Traceability requirements → tests
-
-| Success criteria / story | Tests |
+| Décision / critère | Tests |
 |---|---|
-| Session BFF + CSRF | Auth store ; E2E-1 ; Axios defaults |
-| Dossier détail | Dossier store ; E2E-2 |
-| bpmn-js overlays | BpmnViewer ; E2E-3 |
-| Complete / reassign | Store actions ; E2E-4/5 |
-| SSE notifications | Notification store ; E2E-6 |
-| Gates qualité | typecheck, lint, coverage scripts CI |
+| D-ME | Auth store ; AuthController IT ; E2E-1 |
+| D-ACTIONS | Create/start/complete ; E2E-2..5 |
+| D-ELEMENTS | Elements unit |
+| D-SENSITIVE | SensitiveValue |
+| D-MOCKGAP | Supervision ; E2E-7 |
+| D-ADMIN-RES | Admin units ; E2E-8 |
+| D-E2E / D-PACK | Playwright mock ; verify + static |

@@ -6,7 +6,8 @@ status: draft
 created: 2026-08-12
 updated: 2026-08-12
 feature: frontend
-requirements_aligned: pending-review
+requirements_aligned: 2026-08-12
+stakeholder_decisions: 2026-08-12
 ---
 
 # System Design & Architecture
@@ -14,20 +15,19 @@ requirements_aligned: pending-review
 ## Architecture Overview
 **What is the high-level system structure?**
 
-Tranche **frontend** (requirements `draft`) : SPA Vue 3 TypeScript
-embarquée dans chaque instance Boot (décision n° 27), même origine BFF,
-consommation des API déjà livrées. **Pas de nouveau bounded context
-Java** — uniquement adaptateurs web Spring minimaux si fallback SPA /
-resource handlers.
+SPA Vue 3 TS embarquée (**D-PACK = A**) ; BFF même origine ; vague 1
+instructeur puis vague 2 admin (**D-SEQ = A**). Backend : micro-delta
+`AuthUserResponse.id` (**D-ME = A**) + fallback SPA `index.html`
+(**A-HISTORY**) si absent.
 
 ```mermaid
 flowchart TB
-  subgraph browser["Navigateur — même origine"]
+  subgraph browser["Navigateur"]
     SPA[Vue 3 SPA]
-    PINIA[Pinia stores]
-    AX[Axios + CSRF]
+    PINIA[Pinia]
+    AX[Axios CSRF]
     BPMN[bpmn-js Viewer]
-    SSE[EventSource notifications]
+    SSE[EventSource]
     SPA --> PINIA
     SPA --> AX
     SPA --> BPMN
@@ -35,64 +35,66 @@ flowchart TB
   end
 
   subgraph boot["Instance FlowForge / tenant"]
-    STATIC[static/ index.html + assets]
+    STATIC[static/ via frontend-maven-plugin]
     SEC[SecurityFilterChain BFF]
-    AUTH[/api/auth/me · logout]
-    DOS[/api/dossiers…]
-    WF[/api/workflow-links… · tasks]
-    NOTIF[/api/notifications/stream]
-    DOC[/api/dossier-elements…/content]
+    AUTH["/api/auth/me + id=sub"]
+    DOS["/api/dossiers + types + ACL"]
+    WF["/api/workflow-links + tasks + type-configs"]
+    DOC["/api/document-templates + elements/content"]
+    CON["/api/connectors + definitions"]
+    NOTIF["/api/notifications/stream"]
     STATIC --> SPA
     AX --> SEC
     SSE --> SEC
-    SEC --> AUTH
-    SEC --> DOS
-    SEC --> WF
-    SEC --> NOTIF
-    SEC --> DOC
+    SEC --> AUTH & DOS & WF & DOC & CON & NOTIF
   end
 
-  IDP[Keycloak OIDC]
-  SEC -.->|oauth2 login/logout| IDP
+  IDP[Keycloak]
+  SEC -.-> IDP
 ```
 
 ### Stack
 
-| Couche | Choix |
-|---|---|
-| App | Vue 3 `<script setup lang="ts">`, Vue Router |
-| Build | Vite ; `frontend/` → `dist/` → `src/main/resources/static/` |
-| UI | PrimeVue + thème custom (tokens maquette) + PrimeIcons |
-| State | Pinia (`auth`, `dossier`, `notifications`) |
-| HTTP | Axios relatif, `withCredentials`, XSRF cookie/header |
-| BPMN | `bpmn-js` Viewer (lecture seule) |
-| Qualité | Vitest, Vue Test Utils, Playwright, ESLint, Prettier, `vue-tsc` |
+Vue 3 + Vite + TS strict · PrimeVue (tokens maquette) · Pinia ·
+Vue Router · Axios · bpmn-js Viewer · Vitest / VTU · Playwright
+(**D-E2E = A**) · ESLint/Prettier · vue-tsc · frontend-maven-plugin.
 
-### Responsabilités
+### Packages FE
 
 | Zone | Rôle |
 |---|---|
-| `frontend/src/app` | Bootstrap, router, layout shell |
-| `frontend/src/stores` | Pinia auth / dossier / notifications |
-| `frontend/src/api` | Clients Axios typés (interfaces manuelles) |
-| `frontend/src/views` | SupervisionMVP, DossierDetail, MobileTasks |
+| `frontend/src/app` | Bootstrap, router, guards rôles UX |
+| `frontend/src/stores` | `auth`, `dossier`, `notifications`, `admin/*` |
+| `frontend/src/api` | Clients Axios typés manuels (**A-OPENAPI**) |
+| `frontend/src/views/pilotage` | Supervision, DossierDetail, MobileTasks, CreateDossier |
+| `frontend/src/views/admin` | Types, ACL, Templates, Connectors, WorkflowTypeConfigs |
 | `frontend/src/components/workflow` | BpmnViewer, TaskList, HistoryTimeline |
-| `frontend/src/components/notifications` | NotificationDrawer |
-| `frontend/src/styles` | Tokens CSS (maquette) |
-| Spring `static/` + WebMvc | Sert artefacts ; fallback SPA si ajouté |
+| `frontend/src/components/dossier` | DynamicFields, SensitiveValue, ElementsList |
+| `frontend/src/styles` | Tokens CSS maquette |
+
+### Backend touchpoints (cette feature)
+
+| Change | Détail |
+|---|---|
+| `AuthUserResponse` + `AuthController` | Ajouter `id` = `OidcUser.getSubject()` |
+| WebMvc / Security | Servir `static/` ; fallback non-`/api/**` → `index.html` |
+| `pom.xml` | `frontend-maven-plugin` : `npm ci` + `npm run build` + copy `dist` → `static/` ; gitignore bundles |
 
 ---
 
 ## Data Models
-**What data do we need to manage?**
-
-### Côté client (TypeScript)
 
 ```typescript
 interface AuthUser {
+  id: string; // OIDC sub
   fullName: string | null;
   email: string | null;
-  roles: string[]; // ex. DOSSIER_MANAGER, WORKFLOW_ADMIN
+  roles: string[];
+}
+
+interface DossierCreateRequest {
+  typeCode: string;
+  fields: Record<string, unknown>;
 }
 
 interface DossierSummary {
@@ -104,12 +106,13 @@ interface DossierSummary {
   version: number;
 }
 
-interface WorkflowLinkView {
-  linkId: string;
-  workflowKey: string;
-  status: string;
-  processInstanceId: string | null;
-  startedBy: string | null;
+interface FieldDefinition {
+  key: string;
+  label: string;
+  type: string;
+  required?: boolean;
+  sensitive?: boolean;
+  // …aligné backend
 }
 
 interface WorkflowDiagramView {
@@ -118,166 +121,111 @@ interface WorkflowDiagramView {
   completedIds: string[];
   failedIds: string[];
 }
-
-interface WorkflowTaskView {
-  taskId: string;
-  name: string;
-  assigneeId: string | null;
-  createdAt: string | null;
-}
-
-interface NotificationEvent {
-  // payload SSE existant — type discriminant éventuel dans payload
-  id?: string;
-  channel?: string;
-  payload: Record<string, unknown>;
-}
 ```
 
-Alignement strict sur DTOs JSON backend ; pas de duplication métier
-Java dans le FE.
-
-### Persistance navigateur
-
-- Cookie session httpOnly (serveur) + cookie `XSRF-TOKEN` lisible JS.
-- Pas de localStorage de secrets ; Pinia mémoire seule.
+Pas de JWT en localStorage ; session cookie + `XSRF-TOKEN`.
 
 ---
 
 ## API Design
-**How do components communicate?**
 
-### Consommées (existantes)
+### Auth / session
+- `GET /api/auth/me` → inclut **`id`**
+- Logout Boot existant ; Axios CSRF defaults
 
-| Méthode | Path | Usage FE |
-|---|---|---|
-| GET | `/api/auth/me` | Boot session |
-| POST | `/api/auth/logout` | Déconnexion (form/handler Boot) |
-| GET | `/api/dossiers/{id}` | Détail |
-| GET | `/api/dossiers?ref=` | Ouverture par référence |
-| GET | `/api/dossiers/{id}/workflows` | Links |
-| POST | `/api/dossiers/{id}/workflows` | Démarrer workflow (si exposé UX) |
-| GET | `/api/workflow-links/{linkId}/diagram` | bpmn-js |
-| GET | `/api/workflow-links/{linkId}/history` | Timeline |
-| GET | `/api/workflow-links/{linkId}/tasks` | Tâches actives |
-| GET | `/api/workflow-links/{linkId}/dossier` | Panneau lié |
-| POST | `/api/workflow-links/{linkId}/tasks/{taskId}/reassign` | Admin |
-| POST | `/api/workflow-tasks/{taskId}/complete` | Complétion |
-| GET | `/api/dossier-elements/{id}/content` | Download / preview |
-| GET | `/api/notifications/stream` | SSE |
+### Vague 1
+| API | Usage |
+|---|---|
+| `GET/POST /api/dossier-types` | Liste types pour création (GET) |
+| `POST /api/dossiers` | Création |
+| `GET /api/dossiers/{id}` · `?ref=` | Détail / resolve |
+| `PATCH /api/dossiers/{id}/status` | Si exposé UX status (optionnel V1) |
+| `GET/POST /api/dossiers/{id}/workflows` | Links + start |
+| `GET …/workflow-links/{id}/diagram\|history\|tasks\|dossier` | Viz |
+| `POST …/tasks/{taskId}/reassign` | Admin WF |
+| `POST /api/workflow-tasks/{taskId}/complete` | Complete |
+| `GET /api/dossier-elements/{id}/content` | Download |
+| `GET /api/notifications/stream` | SSE |
 
-### Auth / CSRF
+### Vague 2
+| API | Usage |
+|---|---|
+| CRUD `/api/dossier-types` + ACL | Admin types |
+| CRUD `/api/document-templates` (+ activate/archive/new-version) | Templates |
+| CRUD `/api/connectors` + `GET /api/connector-definitions` | Connecteurs |
+| CRUD `/api/workflow-type-configs` | Config WF + observers |
 
-```typescript
-axios.defaults.withCredentials = true;
-axios.defaults.xsrfCookieName = 'XSRF-TOKEN';
-axios.defaults.xsrfHeaderName = 'X-XSRF-TOKEN';
-```
+Hors V1 UI : `/api/notification-webhooks`, génération PDF UI, métriques SLA.
 
-Erreurs : lire `ProblemDetail` (`type`, `title`, `status`, `detail`).
-
-### Non consommées V1
-
-Admin connecteurs, templates, types, ACL, webhooks notification,
-génération PDF UI, métriques SLA.
+Erreurs : `ProblemDetail`.
 
 ---
 
 ## Component Breakdown
-**What are the major building blocks?**
 
-### Routes (Vue Router)
+### Routes
 
-| Path | Vue | Notes |
+| Path | Vague | Vue |
 |---|---|---|
-| `/` | redirect → `/supervision` | |
-| `/supervision` | `SupervisionView` | MVP ouverture ref/id |
-| `/dossiers/:id` | `DossierDetailView` | Cœur V1 |
-| `/tasks` | `MobileTasksView` | Layout responsive |
-| `/login` callback | N/A | géré par Boot OAuth2 |
+| `/supervision` | 1 | Supervision MVP (ref/id + créer) |
+| `/dossiers/new` | 1 | CreateDossier |
+| `/dossiers/:id` | 1 | DossierDetail |
+| `/tasks` | 1 | MobileTasks (`assigneeId === auth.id`) |
+| `/admin/dossier-types` | 2 | Types + ACL |
+| `/admin/templates` | 2 | Templates |
+| `/admin/connectors` | 2 | Connectors |
+| `/admin/workflow-types` | 2 | WorkflowTypeConfigs |
 
-### Stores
+Nav : Pilotage (Supervision, Tâches) + Admin (si rôles) ; **pas** Rapports.
 
-- **auth** : `init()`, `logout()`, getters `isAdmin`, `roles`.
-- **dossier** : charge détail + links + viz sélectionnée ; actions
-  complete / reassign.
-- **notifications** : connect SSE, buffer événements, mark-read local
-  (UI only si pas d’API mark-read).
+### Sensitive fields (**D-SENSITIVE**)
+Composant `SensitiveValue` : si `field.sensitive && !isTenantAdmin` →
+`••••` ; sinon valeur. Création : saisie normale (pas de mask input
+sauf UX optionnelle).
+
+### Elements (**D-ELEMENTS**)
+Liste métadonnées ; lien download content ; bouton Ajouter `disabled`
++ tooltip « bientôt ».
 
 ### bpmn-js
-
-- Instancier Viewer dans `onMounted` ; `importXML(bpmnXml)` ;
-  coloriser `activeIds` / `completedIds` / `failedIds` (markers CSS) ;
-  destroy `onBeforeUnmount`.
-
-### Build / packaging
-
-1. `frontend/package.json` scripts : `dev`, `build`, `test`, `lint`,
-   `typecheck`, `test:e2e`.
-2. Vite `base: './'` ou base relative au context-path.
-3. Maven : exécuter build Node pendant `generate-resources` **ou**
-   étape CI qui copie `frontend/dist/**` → `static/` avant package.
-4. Conserver `.gitkeep` remplacé par artefacts générés (gitignore
-   `static/assets` si build CI only — **décision d’implémentation** :
-   préférer commit ignore des bundles, build en verify).
+Viewer lazy ; overlays active/completed/failed ; destroy on unmount.
 
 ---
 
 ## Design Decisions
-**Why did we choose this approach?**
 
-| Id | Décision | Alternatives | Raison |
-|---|---|---|---|
-| **DD-SCOPE** | Socle + dossier/viz/tâches/SSE ; Supervision MVP | Full mock screens | APIs manquantes (liste/SLA) |
-| **DD-PACK** | Embarqué `static/` | CDN séparé | Décision 27 / CSRF SameSite=Lax |
-| **DD-UI** | PrimeVue + tokens maquette | CSS only / autre kit | Stack figée + UX mock prioritaire |
-| **DD-STATE** | Pinia | Fournir props only | Session + SSE + dossier partagés |
-| **DD-HTTP** | Axios | fetch natif | CSRF helpers + analysis 11 |
-| **DD-BPMN** | bpmn-js Viewer | SVG custom / image | Standard Flowable XML |
-| **DD-TYPES** | Interfaces manuelles | openapi-typescript | Point 24 ouvert |
-| **DD-TEST** | Vitest + Playwright gates | Tests FE plus tard | Analysis 11 non négociable |
-| **DD-AUTHZ-UI** | Masquage rôles + confiance backend | FE-only guards | Sécurité réelle serveur |
-
-### Alignement maquette
-
-Écrans mock → mapping V1 :
-
-| Mock | V1 |
-|---|---|
-| Supervision | MVP (recherche ref/id + placeholders) |
-| Dossier — détail | **Complet** (API) |
-| Rapports & SLA | **Hors scope** |
-| Mobile | **Adaptatif** Mes tâches |
-| Marque & logo | Tokens / guidelines CSS only |
+| Id | Décision | Raison |
+|---|---|---|
+| DD-PACK | frontend-maven-plugin | D-PACK A / verify unique |
+| DD-ME | `id` = sub dans `/me` | D-ME A / Mes tâches |
+| DD-SEQ | 2 vagues | D-SEQ A |
+| DD-ADMIN | Types+ACL, templates, connectors, WF configs | D-ADMIN-RES A |
+| DD-MOCK | Pas Rapports / pas faux KPI | D-MOCKGAP A |
+| DD-SENS | Mask sauf TA | D-SENSITIVE A |
+| DD-E2E | Mock session CI | D-E2E A |
+| DD-TYPES | TS manuel | A-OPENAPI |
+| DD-UI | PrimeVue + tokens maquette | Stack + UX mock prime |
 
 ---
 
 ## Non-Functional Requirements
-**How should the system perform?**
 
-- **Sécurité :** jamais de JWT access en JS ; CSRF sur mutations ;
-  pas de HTML non échappé depuis champs dossier (XSS).
-- **Perf :** lazy routes ; Viewer BPMN chargé sur écran dossier ;
-  SSE fail-soft.
-- **A11y :** focus visible, labels formulaires, contrastes tokens mock.
-- **Compat :** navigateurs evergreen ; mobile pour vue tâches.
-- **CI :** `npm run typecheck && lint && test` ; Playwright smoke ;
-  `./mvnw verify` inclut ou suppose static à jour.
-- **i18n :** français V1.
-- **Observabilité FE :** erreurs API log console structurées ; pas de
-  PII dans logs client.
+- Sécurité : pas de JWT JS ; CSRF ; XSS escape champs ; secrets
+  connecteurs non réaffichés.
+- A11y basique ; UI fr (**A-I18N**).
+- CI : `npm run typecheck && lint && test` dans plugin ou phase Maven ;
+  Playwright mock ; `./mvnw verify`.
+- Perf : lazy admin routes + bpmn-js.
 
 ## Risks
 
 | Risque | Mitigation |
 |---|---|
-| Context-path tenant casse assets/API | `base` Vite + chemins relatifs Axios |
-| Absence `sub` dans `/me` limite « mes tâches » | Q6 ; filtrer par assignee si API renvoie ids ; sinon liste link tasks |
-| Bundle static oublié en CI | Gate verify échoue si `index.html` manquant |
-| PrimeVue ≠ maquette | Tokens + overrides CSS ; maquette prime UX |
-| Playwright + OAuth CI flaky | Mock session / route Bypass test profile |
+| Scope vague 2 large | D-SEQ : ne pas bloquer vague 1 |
+| Node sur agents Maven | Documenter version Node ; cache npm CI |
+| Context-path | `base` Vite relatif |
+| Drift DTO admin | Fixtures depuis IT MockMvc existantes |
 
 ## Next
 
-Phase 2 — Review Requirements (`dev-requirements`), puis Phase 3 Design
-review formalisée.
+Phase 2 — Review Requirements, puis Phase 3 Design review.

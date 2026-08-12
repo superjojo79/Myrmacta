@@ -14,9 +14,11 @@
 `connecteurs`, `templates-documents`, `generation-documents`, `notifications`,
 `visualisation-workflow` sont **Complete** (mergés). Feature `frontend` :
 **démarrée** (branche `cursor/feature-frontend-21f2`, docs phase 1 draft —
-SPA Vue 3 + TypeScript + PrimeVue + Pinia embarquée dans `static/`, maquette
+décisions stakeholder 2026-08-12 : vague 1 instructeur + vague 2 admin
+types/templates/connectors/workflow-configs ; packaging Maven→`static/` ;
+maquette
 [FlowForge - Maquettes UI.html](analysis%20doc/FlowForge%20-%20Maquettes%20UI.html)
-comme référence UX).
+= référence UX ; pas Rapports/SLA ni liste dossiers tant que TODO §24).
 
 ---
 
@@ -106,7 +108,7 @@ Ordre indicatif aligné sur l’analyse et les dépendances techniques :
 | — | `generation-documents` | **Complete** (main) |
 | — | `notifications` | **Complete** (main) |
 | — | `visualisation-workflow` | **Complete** (main) — API diagram/history/tasks/reassign + participants + SSE |
-| 1 | `frontend` | **En cours** — Vue 3 + TypeScript + Pinia + Axios + `bpmn-js` Viewer dans `static/` (décision n° 27) ; UX = maquette HTML |
+| 1 | `frontend` | **En cours (phase 1)** — vague 1 : socle + auth(`sub`) + CRUD parcours dossier/viz/SSE ; vague 2 : admin types/ACL/templates/connectors/WF configs ; UX = maquette HTML (décision n° 27) |
 
 ---
 

@@ -69,4 +69,6 @@ description: Technical implementation notes, patterns, and code guidelines
 
 ## Status
 
-Phase 1 draft — aucune implémentation démarrée. Voir planning T1–T15.
+Phase 1 draft (décisions stakeholder 2026-08-12 appliquées aux docs
+requirements/design/testing/planning). **Aucune implémentation démarrée.**
+Voir planning T1–T26 (vague 1 puis vague 2).

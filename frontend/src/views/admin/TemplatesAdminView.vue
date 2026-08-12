@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { createDocumentTemplate, listDocumentTemplates, updateDocumentTemplate } from '@/api/admin'
+import {
+  activateDocumentTemplate,
+  archiveDocumentTemplate,
+  createDocumentTemplate,
+  listDocumentTemplates,
+  newDocumentTemplateVersion,
+  updateDocumentTemplate,
+} from '@/api/admin'
 import type { DocumentTemplate } from '@/api/types'
 import { toProblemDetail } from '@/api/http'
 
@@ -38,6 +45,21 @@ async function rename(template: DocumentTemplate) {
   await updateDocumentTemplate(template.id, { label })
   await refresh()
 }
+
+async function activate(template: DocumentTemplate) {
+  await activateDocumentTemplate(template.id)
+  await refresh()
+}
+
+async function archive(template: DocumentTemplate) {
+  await archiveDocumentTemplate(template.id)
+  await refresh()
+}
+
+async function newVersion(template: DocumentTemplate) {
+  await newDocumentTemplateVersion(template.id)
+  await refresh()
+}
 </script>
 
 <template>
@@ -52,8 +74,15 @@ async function rename(template: DocumentTemplate) {
     </form>
     <ul>
       <li v-for="tpl in templates" :key="tpl.id">
-        <strong>{{ tpl.templateKey }}</strong> — {{ tpl.label }} (v{{ tpl.version }}, {{ tpl.status }})
-        <button type="button" @click="rename(tpl)">Renommer</button>
+        <div>
+          <strong>{{ tpl.templateKey }}</strong> — {{ tpl.label }} (v{{ tpl.version }}, {{ tpl.status }})
+        </div>
+        <div class="actions">
+          <button type="button" @click="rename(tpl)">Renommer</button>
+          <button type="button" @click="activate(tpl)">Activer</button>
+          <button type="button" @click="archive(tpl)">Archiver</button>
+          <button type="button" @click="newVersion(tpl)">Nouvelle version</button>
+        </div>
       </li>
     </ul>
   </section>
@@ -71,8 +100,17 @@ ul {
   padding: 0;
 }
 li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
   padding: 0.5rem 0;
   border-bottom: 1px solid #ddd;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
 }
 .error {
   color: #c92a2a;

@@ -30,7 +30,7 @@ const { user, isTenantAdmin, isWorkflowAdmin } = storeToRefs(auth)
         <RouterLink
           v-if="isTenantAdmin || isWorkflowAdmin"
           class="app-shell__link"
-          to="/admin/workflow-configs"
+          to="/admin/workflow-types"
         >
           Workflows
         </RouterLink>

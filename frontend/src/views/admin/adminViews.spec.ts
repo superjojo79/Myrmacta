@@ -24,6 +24,9 @@ describe('admin views smoke', () => {
         secretConfigured: { password: true },
       },
     ])
+    vi.mocked(adminApi.listConnectorDefinitions).mockResolvedValue([
+      { type: 'HTTP', label: 'HTTP' },
+    ])
     vi.mocked(workflowsApi.listWorkflowTypeConfigs).mockResolvedValue([])
   })
 

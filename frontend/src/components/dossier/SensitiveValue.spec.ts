@@ -5,15 +5,15 @@ import SensitiveValue from './SensitiveValue.vue'
 import { useAuthStore } from '@/stores/auth'
 
 describe('SensitiveValue', () => {
-  it('masks sensitive values for non tenant admins', () => {
+  it('masks sensitive values for non tenant admins without reveal control', () => {
     setActivePinia(createPinia())
     const auth = useAuthStore()
     auth.user = { id: 'u1', name: 'Ada', email: null, roles: ['DOSSIER_MANAGER'] }
     const wrapper = mount(SensitiveValue, {
       props: { value: 'secret', sensitive: true },
     })
-    expect(wrapper.text()).toContain('••••')
-    expect(wrapper.text()).not.toContain('secret')
+    expect(wrapper.text()).toBe('••••')
+    expect(wrapper.find('button').exists()).toBe(false)
   })
 
   it('shows clear value for tenant admin', () => {

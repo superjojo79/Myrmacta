@@ -18,9 +18,9 @@ sequencing: two-waves
 
 # Project Planning & Task Breakdown
 
-Plan **phase 4** — dérivé des docs `requirements` / `design`
-(`reviewed`) et `testing` (`draft`, scénarios `- [ ]`). **Aucune tâche
-d’implémentation démarrée.**
+Plan **phase 4** exécuté en Phase 5 ; **Phase 6** synchronisée
+(T1–T28 `[x]`, M1–M9 `[x]`). Docs `requirements` / `design`
+(`reviewed`) ; testing scenarios couverts.
 
 Traçage `task` CLI : **indisponible** (`npx ai-devkit@latest task list
 --json` → `unknown command 'task'`).

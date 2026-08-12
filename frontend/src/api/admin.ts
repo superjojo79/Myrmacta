@@ -30,6 +30,28 @@ export async function updateDocumentTemplate(
   return data
 }
 
+export async function activateDocumentTemplate(id: string): Promise<DocumentTemplate> {
+  const { data } = await axios.post<DocumentTemplate>(`/api/document-templates/${id}/activate`)
+  return data
+}
+
+export async function archiveDocumentTemplate(id: string): Promise<DocumentTemplate> {
+  const { data } = await axios.post<DocumentTemplate>(`/api/document-templates/${id}/archive`)
+  return data
+}
+
+export async function newDocumentTemplateVersion(id: string): Promise<DocumentTemplate> {
+  const { data } = await axios.post<DocumentTemplate>(`/api/document-templates/${id}/new-version`)
+  return data
+}
+
+export async function listConnectorDefinitions(): Promise<
+  Array<{ type: string; label?: string; [key: string]: unknown }>
+> {
+  const { data } = await axios.get('/api/connector-definitions')
+  return data
+}
+
 export async function listConnectors(): Promise<Connector[]> {
   const { data } = await axios.get<Connector[]>('/api/connectors')
   return data

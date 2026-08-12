@@ -42,6 +42,7 @@ describe('admin actions coverage', () => {
         secretConfigured: {},
       },
     ])
+    vi.mocked(adminApi.listConnectorDefinitions).mockResolvedValue([{ type: 'HTTP', label: 'HTTP' }])
     vi.mocked(workflowsApi.listWorkflowTypeConfigs).mockResolvedValue([
       {
         id: '1',

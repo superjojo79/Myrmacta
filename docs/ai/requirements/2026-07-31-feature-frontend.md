@@ -194,24 +194,25 @@ HTTP bruts pour piloter les dossiers et tâches.
 **How will we know when we're done?**
 
 ### Vague 1
-- [ ] `frontend/` buildable ; `static/` peuplé via Maven plugin.
-- [ ] `/api/auth/me` expose `id` (+ `name`, `email`, `roles`) ; auth
+- [x] `frontend/` buildable ; `static/` peuplé via Maven plugin.
+- [x] `/api/auth/me` expose `id` (+ `name`, `email`, `roles`) ; auth
       store + CSRF + logout ; **aucun JWT** access en browser.
-- [ ] Création dossier (`dossierTypeCode`, `label`, `fields`) + start
+- [x] Création dossier (`dossierTypeCode`, `label`, `fields`) + start
       workflow + détail + viz + complete `{}` + reassign + **PATCH status**.
-- [ ] `GET /api/dossiers/{id}/elements` + download content ; Ajouter
+- [x] `GET /api/dossiers/{id}/elements` + download content ; Ajouter
       disabled.
-- [ ] `GET /api/workflow-tasks/mine` + vue Mes tâches.
-- [ ] SSE notifications ; Supervision sans faux KPI ; pas de nav
+- [x] `GET /api/workflow-tasks/mine` + vue Mes tâches.
+- [x] SSE notifications ; Supervision sans faux KPI ; pas de nav
       Rapports.
-- [ ] Masquage `sensitive` (sauf TA).
-- [ ] Vitest + `vue-tsc` + ESLint ; Playwright mock session (**D-E2E**).
-- [ ] `./mvnw verify` vert (FE packaging inclus).
+- [x] Masquage `sensitive` (sauf TA).
+- [x] Vitest + `vue-tsc` + ESLint ; Playwright mock session (**D-E2E**).
+- [~] `./mvnw verify` vert (FE packaging inclus) — plugin configuré ;
+      verify complet CI / session hors skip.frontend.
 
 ### Vague 2
-- [ ] CRUD UI types(+ACL), templates, connectors, workflow-type-configs.
-- [ ] Tests Vitest + E2E smoke admin (au moins create/list type).
-- [ ] Lint feature OK ; docs prêtes pour Phase 3+.
+- [x] CRUD UI types(+ACL), templates, connectors, workflow-type-configs.
+- [x] Tests Vitest + E2E smoke admin (au moins create/list type).
+- [x] Lint feature OK ; docs prêtes pour Phase 3+.
 
 ## Constraints & Assumptions
 

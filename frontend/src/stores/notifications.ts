@@ -16,14 +16,27 @@ export const useNotificationsStore = defineStore('notifications', () => {
   const connected = ref(false)
   const failed = ref(false)
   let source: EventSource | null = null
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+  let stopped = false
 
   const unreadCount = computed(() => items.value.filter((n) => !n.read).length)
 
-  function connect(): void {
-    if (source) return
+  function scheduleReconnect(): void {
+    if (stopped || reconnectTimer) return
+    failed.value = true
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null
+      connect(true)
+    }, 5000)
+  }
+
+  function connect(force = false): void {
+    if (source && !force) return
+    stopped = false
     failed.value = false
     const prefix = resolveApiBaseUrl()
     try {
+      source?.close()
       source = new EventSource(`${prefix}/api/notifications/stream`, { withCredentials: true })
       source.onopen = () => {
         connected.value = true
@@ -31,9 +44,9 @@ export const useNotificationsStore = defineStore('notifications', () => {
       }
       source.onerror = () => {
         connected.value = false
-        failed.value = true
         source?.close()
         source = null
+        scheduleReconnect()
       }
       source.onmessage = (event) => {
         let payload: Record<string, unknown> = {}
@@ -54,10 +67,16 @@ export const useNotificationsStore = defineStore('notifications', () => {
     } catch {
       failed.value = true
       connected.value = false
+      scheduleReconnect()
     }
   }
 
   function disconnect(): void {
+    stopped = true
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer)
+      reconnectTimer = null
+    }
     source?.close()
     source = null
     connected.value = false

@@ -38,8 +38,8 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/views/admin/ConnectorsAdminView.vue'),
   },
   {
-    path: '/admin/workflow-configs',
-    name: 'admin-workflow-configs',
+    path: '/admin/workflow-types',
+    name: 'admin-workflow-types',
     component: () => import('@/views/admin/WorkflowConfigsAdminView.vue'),
   },
 ]

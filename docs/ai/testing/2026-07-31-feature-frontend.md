@@ -8,6 +8,7 @@ updated: 2026-08-12
 feature: frontend
 design_aligned: 2026-08-12
 stakeholder_decisions: 2026-08-12
+phase2_sync: 2026-08-12
 ---
 
 # Testing Strategy
@@ -30,7 +31,7 @@ Cible coverage Vitest ≥ **80 %** lignes `frontend/src` (hors bootstrap).
 ## Unit Tests
 
 ### Auth (**D-ME**)
-- [ ] `/me` mappe `id` + roles ; 401 → redirect OAuth
+- [ ] `/me` mappe `id` + `name` + roles ; 401 → redirect OAuth
 - [ ] getters `isTenantAdmin` / `isWorkflowAdmin`
 
 ### Axios / CSRF
@@ -43,16 +44,23 @@ Cible coverage Vitest ≥ **80 %** lignes `frontend/src` (hors bootstrap).
 - [ ] non-sensitive → valeur
 
 ### CreateDossier / DynamicFields (**D-ACTIONS**)
-- [ ] charge types ; valide required ; POST create
+- [ ] charge types ; valide `dossierTypeCode` + `label` + required ; POST create
 - [ ] erreur ProblemDetail affichée
 
 ### Dossier store
 - [ ] loadById / loadByRef ; workflows ; start workflow
+- [ ] **PATCH status** avec `expectedVersion` (**D-STATUS**)
 - [ ] diagram 409 sans PI
-- [ ] complete + reassign (reassign no-call si non admin)
+- [ ] complete `{}` (**D-COMPLETE**) + reassign (no-call si non admin)
 
-### Elements (**D-ELEMENTS**)
-- [ ] liste + lien content ; bouton Ajouter disabled
+### Inbox (**D-INBOX**)
+- [ ] Backend : `/mine` ne renvoie que tâches assignées au `sub`
+- [ ] FE MobileTasks affiche empty state si `[]`
+- [ ] complete depuis inbox rafraîchit la liste
+
+### Elements (**D-ELEMENTS**, **D-ELEMENTS-API**)
+- [ ] Backend liste par dossierId + authz
+- [ ] FE liste + lien content ; bouton Ajouter disabled
 
 ### BpmnViewer
 - [ ] importXML + markers ; destroy unmount ; XML vide
@@ -63,9 +71,6 @@ Cible coverage Vitest ≥ **80 %** lignes `frontend/src` (hors bootstrap).
 ### Supervision (**D-MOCKGAP**)
 - [ ] resolve ref → navigate ; pas de KPI mockés rendus comme réels
 
-### MobileTasks (**A-MOBILE**)
-- [ ] filtre `assigneeId === auth.id`
-
 ### Admin vague 2
 - [ ] Types list/create/patch smoke
 - [ ] ACL add/remove
@@ -75,6 +80,8 @@ Cible coverage Vitest ≥ **80 %** lignes `frontend/src` (hors bootstrap).
 
 ### Backend
 - [ ] `AuthUserResponse` JSON contient `id` = subject OIDC (MockMvc)
+- [ ] MockMvc `/api/workflow-tasks/mine`
+- [ ] MockMvc `/api/dossiers/{id}/elements`
 
 ## Integration Tests
 
@@ -85,12 +92,14 @@ Cible coverage Vitest ≥ **80 %** lignes `frontend/src` (hors bootstrap).
 
 - [ ] **E2E-1** Boot shell authentifié (`id` présent)
 - [ ] **E2E-2** Créer dossier → détail
-- [ ] **E2E-3** Start workflow + diagramme canvas
-- [ ] **E2E-4** Complete task
-- [ ] **E2E-5** Reassign visible admin / absent manager
-- [ ] **E2E-6** SSE → entrée panneau
-- [ ] **E2E-7** Nav sans entrée Rapports
-- [ ] **E2E-8** Admin : créer un dossier-type (vague 2)
+- [ ] **E2E-3** PATCH status OK
+- [ ] **E2E-4** Start workflow + diagramme canvas
+- [ ] **E2E-5** Complete task `{}`
+- [ ] **E2E-6** Reassign visible admin / absent manager
+- [ ] **E2E-7** Inbox `/mine` + empty/list
+- [ ] **E2E-8** SSE → entrée panneau
+- [ ] **E2E-9** Nav sans entrée Rapports
+- [ ] **E2E-10** Admin : créer un dossier-type (vague 2)
 
 ## Test Data
 
@@ -125,9 +134,10 @@ Hors gate V1 ; lazy admin + bpmn-js.
 | Décision / critère | Tests |
 |---|---|
 | D-ME | Auth store ; AuthController IT ; E2E-1 |
-| D-ACTIONS | Create/start/complete ; E2E-2..5 |
-| D-ELEMENTS | Elements unit |
+| D-ACTIONS / D-STATUS / D-COMPLETE | Create/status/start/complete ; E2E-2..5 |
+| D-INBOX | `/mine` backend + E2E-7 |
+| D-ELEMENTS-API | Elements MockMvc + FE unit |
 | D-SENSITIVE | SensitiveValue |
-| D-MOCKGAP | Supervision ; E2E-7 |
-| D-ADMIN-RES | Admin units ; E2E-8 |
+| D-MOCKGAP | Supervision ; E2E-9 |
+| D-ADMIN-RES | Admin units ; E2E-10 |
 | D-E2E / D-PACK | Playwright mock ; verify + static |

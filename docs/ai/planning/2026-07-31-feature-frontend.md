@@ -8,12 +8,13 @@ updated: 2026-08-12
 feature: frontend
 design_aligned: 2026-08-12
 stakeholder_decisions: 2026-08-12
+phase2_sync: 2026-08-12
 sequencing: two-waves
 ---
 
 # Project Planning & Task Breakdown
 
-Plan **phase 1** après décisions stakeholder 2026-08-12.
+Plan aligné requirements **`reviewed`** (Phase 2) + design draft.
 **Aucune tâche d’implémentation démarrée.**
 
 Traçage `task` CLI : **indisponible**.
@@ -24,15 +25,16 @@ Branche : `cursor/feature-frontend-21f2` · lifecycle `feature-frontend`.
 
 ### Vague 1 — Instructeur (**D-SEQ**)
 - [ ] **M1** Scaffold & qualité
-- [ ] **M2** Auth BFF (`id`=sub) & shell (sans Rapports)
-- [ ] **M3** Création dossier + détail + viz + start/complete/reassign
-- [ ] **M4** Éléments, SSE, Supervision MVP, Mes tâches
-- [ ] **M5** Packaging Maven → `static/` + preuves vague 1
+- [ ] **M2** Auth BFF (`id`=sub, champ `name`) & shell (sans Rapports)
+- [ ] **M3** Backend deltas inbox + elements list + auth `id`
+- [ ] **M4** Création dossier + détail + status + viz + start/complete/reassign
+- [ ] **M5** Éléments, SSE, Supervision MVP, Mes tâches (`/mine`)
+- [ ] **M6** Packaging Maven → `static/` + preuves vague 1
 
 ### Vague 2 — Admin
-- [ ] **M6** Admin types + ACL
-- [ ] **M7** Admin templates + connectors + workflow-type-configs
-- [ ] **M8** Preuves admin + sync docs
+- [ ] **M7** Admin types + ACL
+- [ ] **M8** Admin templates + connectors + workflow-type-configs
+- [ ] **M9** Preuves admin + sync docs
 
 ## Task Breakdown
 
@@ -45,57 +47,62 @@ Statuts : `[ ]` · `[~]` · `[x]` · `[!]`
 
 ### M2 — Auth & shell
 - [ ] **T4** Axios CSRF + ProblemDetail helper
-- [ ] **T5** Backend : `AuthUserResponse.id` + test MockMvc (**D-ME**)
+- [ ] **T5** Backend : `AuthUserResponse(id, name, email, roles)` + MockMvc (**D-ME**)
 - [ ] **T6** Auth store boot/logout + wiring
 - [ ] **T7** Shell/nav tokens maquette ; **pas** Rapports (**D-MOCKGAP**)
 
-### M3 — Dossier cœur
-- [ ] **T8** API clients dossiers/types/workflows/viz
-- [ ] **T9** CreateDossier + DynamicFields + SensitiveValue (**D-SENSITIVE**)
-- [ ] **T10** DossierDetailView + store (load id/ref)
-- [ ] **T11** BpmnViewer + history/tasks (409 sans PI)
-- [ ] **T12** Start workflow + complete + reassign UI (**D-ACTIONS**)
+### M3 — Backend deltas vague 1
+- [ ] **T8** `GET /api/workflow-tasks/mine` + use case/port/tests (**D-INBOX**)
+- [ ] **T9** `GET /api/dossiers/{id}/elements` + tests (**D-ELEMENTS-API**)
 
-### M4 — Compléments vague 1
-- [ ] **T13** ElementsList + download ; Ajouter disabled (**D-ELEMENTS**)
-- [ ] **T14** Notifications SSE + mark-read local
-- [ ] **T15** Supervision MVP (ref/id + lien créer ; sans faux KPI)
-- [ ] **T16** MobileTasks filtrées par `auth.id` (**A-MOBILE**)
+### M4 — Dossier cœur FE
+- [ ] **T10** API clients dossiers/types/workflows/viz/mine/elements
+- [ ] **T11** CreateDossier (`dossierTypeCode`, `label`, fields) + SensitiveValue
+- [ ] **T12** DossierDetailView + store (load id/ref) + **PATCH status** (**D-STATUS**)
+- [ ] **T13** BpmnViewer + history/tasks (409 sans PI)
+- [ ] **T14** Start workflow + complete `{}` + reassign UI (**D-ACTIONS**, **D-COMPLETE**)
 
-### M5 — Packaging vague 1
-- [ ] **T17** `frontend-maven-plugin` + gitignore bundles + fallback `index.html` (**D-PACK**, **A-HISTORY**)
-- [ ] **T18** Playwright E2E-1..7 (session mock **D-E2E**) + coverage Vitest
-- [ ] **T19** `./mvnw verify` evidence + docs sync vague 1
+### M5 — Compléments vague 1
+- [ ] **T15** ElementsList via `/dossiers/{id}/elements` + download ; Ajouter disabled
+- [ ] **T16** Notifications SSE + mark-read local
+- [ ] **T17** Supervision MVP (ref/id + lien créer ; sans faux KPI)
+- [ ] **T18** MobileTasks via `/mine` (**D-INBOX**, **A-MOBILE**)
 
-### M6 — Admin types
-- [ ] **T20** UI CRUD dossier-types
-- [ ] **T21** UI ACL type
+### M6 — Packaging vague 1
+- [ ] **T19** `frontend-maven-plugin` + gitignore + fallback `index.html`
+- [ ] **T20** Playwright E2E (session mock) + coverage Vitest
+- [ ] **T21** `./mvnw verify` evidence + docs sync vague 1
 
-### M7 — Admin reste (**D-ADMIN-RES**)
-- [ ] **T22** UI document-templates (activate/archive/new-version)
-- [ ] **T23** UI connectors + definitions (secrets redact)
-- [ ] **T24** UI workflow-type-configs + observers
+### M7 — Admin types
+- [ ] **T22** UI CRUD dossier-types
+- [ ] **T23** UI ACL type
 
-### M8 — Clôture
-- [ ] **T25** E2E-8 + tests admin Vitest
-- [ ] **T26** Evidence finale + DEFERRED/lint + Phase 7/8/9 docs
+### M8 — Admin reste (**D-ADMIN-RES**)
+- [ ] **T24** UI document-templates (activate/archive/new-version)
+- [ ] **T25** UI connectors + definitions (secrets redact)
+- [ ] **T26** UI workflow-type-configs + observers
+
+### M9 — Clôture
+- [ ] **T27** E2E admin smoke + Vitest admin
+- [ ] **T28** Evidence finale + DEFERRED/lint + Phase 7/8/9 docs
 
 ## Dependencies
 
 ```text
-Vague 1: T1→T2→T3 ; T2→T4→T6→T7 ; T5∥T4 ; T4→T8→T9→T10→T11→T12
-         T10→T13 ; T7→T14 ; T10→T15 ; T12→T16 ; T1…T16→T17→T18→T19
-Vague 2: T19→T20→T21 ; T19→T22 ; T19→T23 ; T19→T24 ; T20…T24→T25→T26
+Vague 1: T1→T2→T3 ; T2→T4→T6→T7 ; T5∥T4 ; T5→T8 ; T5→T9
+         T4→T10→T11→T12→T13→T14 ; T9→T15 ; T7→T16 ; T12→T17 ; T8→T18
+         T1…T18→T19→T20→T21
+Vague 2: T21→T22→T23 ; T21→T24||T25||T26 ; →T27→T28
 ```
 
 ## Risks & Mitigation
 
 | Risque | Mitigation |
 |---|---|
-| Scope admin | Ne pas démarrer M6 avant T19 vert |
+| Scope admin | Ne pas démarrer M7 avant T21 vert |
+| Inbox Flowable query | Tests unit + MockMvc ; tenant-safe |
 | Node/Maven | Version Node figée dans plugin |
 | TODO §24 liste | Supervision MVP uniquement |
-| Flaky OAuth E2E | Mock session only |
 
 ## Resources
 
@@ -104,4 +111,4 @@ tdd / verify. Maquette HTML + analysis 11.
 
 ## Next
 
-Phase 2 — Review Requirements (`dev-requirements`).
+Phase 3 — Review Design (`dev-design`).

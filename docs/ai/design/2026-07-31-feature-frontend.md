@@ -8,6 +8,7 @@ updated: 2026-08-12
 feature: frontend
 requirements_aligned: 2026-08-12
 stakeholder_decisions: 2026-08-12
+phase2_sync: 2026-08-12
 ---
 
 # System Design & Architecture
@@ -16,9 +17,11 @@ stakeholder_decisions: 2026-08-12
 **What is the high-level system structure?**
 
 SPA Vue 3 TS embarquée (**D-PACK = A**) ; BFF même origine ; vague 1
-instructeur puis vague 2 admin (**D-SEQ = A**). Backend : micro-delta
-`AuthUserResponse.id` (**D-ME = A**) + fallback SPA `index.html`
-(**A-HISTORY**) si absent.
+instructeur puis vague 2 admin (**D-SEQ = A**). Requirements
+**`reviewed`** (Phase 2). Backend deltas : `AuthUserResponse.id`
+(**D-ME**) ; `GET /api/workflow-tasks/mine` (**D-INBOX**) ;
+`GET /api/dossiers/{id}/elements` (**D-ELEMENTS-API**) ; fallback SPA
+`index.html` (**A-HISTORY**) si absent.
 
 ```mermaid
 flowchart TB
@@ -37,9 +40,9 @@ flowchart TB
   subgraph boot["Instance FlowForge / tenant"]
     STATIC[static/ via frontend-maven-plugin]
     SEC[SecurityFilterChain BFF]
-    AUTH["/api/auth/me + id=sub"]
-    DOS["/api/dossiers + types + ACL"]
-    WF["/api/workflow-links + tasks + type-configs"]
+    AUTH["/api/auth/me id,name,email,roles"]
+    DOS["/api/dossiers + status + elements + types + ACL"]
+    WF["/api/workflow-links + tasks + /mine + type-configs"]
     DOC["/api/document-templates + elements/content"]
     CON["/api/connectors + definitions"]
     NOTIF["/api/notifications/stream"]
@@ -76,7 +79,9 @@ Vue Router · Axios · bpmn-js Viewer · Vitest / VTU · Playwright
 
 | Change | Détail |
 |---|---|
-| `AuthUserResponse` + `AuthController` | Ajouter `id` = `OidcUser.getSubject()` |
+| `AuthUserResponse` + `AuthController` | Ajouter `id` = `OidcUser.getSubject()` ; garder `name` (pas `fullName`) |
+| `GET /api/workflow-tasks/mine` | Inbox tâches actives assignées au `sub` (**D-INBOX**) — use case + port Flowable |
+| `GET /api/dossiers/{id}/elements` | Liste métadonnées éléments (**D-ELEMENTS-API**) via repo existant |
 | WebMvc / Security | Servir `static/` ; fallback non-`/api/**` → `index.html` |
 | `pom.xml` | `frontend-maven-plugin` : `npm ci` + `npm run build` + copy `dist` → `static/` ; gitignore bundles |
 
@@ -87,14 +92,25 @@ Vue Router · Axios · bpmn-js Viewer · Vitest / VTU · Playwright
 ```typescript
 interface AuthUser {
   id: string; // OIDC sub
-  fullName: string | null;
+  name: string | null;
   email: string | null;
   roles: string[];
 }
 
 interface DossierCreateRequest {
-  typeCode: string;
+  dossierTypeCode: string;
+  label: string;
   fields: Record<string, unknown>;
+}
+
+interface MyWorkflowTask {
+  taskId: string;
+  name: string;
+  assigneeId: string;
+  createdAt: string | null;
+  dossierId: string;
+  dossierReference?: string;
+  linkId?: string;
 }
 
 interface DossierSummary {
@@ -137,13 +153,15 @@ Pas de JWT en localStorage ; session cookie + `XSRF-TOKEN`.
 | API | Usage |
 |---|---|
 | `GET/POST /api/dossier-types` | Liste types pour création (GET) |
-| `POST /api/dossiers` | Création |
+| `POST /api/dossiers` | Création (`dossierTypeCode`, `label`, `fields`) |
 | `GET /api/dossiers/{id}` · `?ref=` | Détail / resolve |
-| `PATCH /api/dossiers/{id}/status` | Si exposé UX status (optionnel V1) |
+| `PATCH /api/dossiers/{id}/status` | Changement statut (**D-STATUS**) + `expectedVersion` |
+| `GET /api/dossiers/{id}/elements` | Liste éléments (**D-ELEMENTS-API**) |
 | `GET/POST /api/dossiers/{id}/workflows` | Links + start |
 | `GET …/workflow-links/{id}/diagram\|history\|tasks\|dossier` | Viz |
 | `POST …/tasks/{taskId}/reassign` | Admin WF |
-| `POST /api/workflow-tasks/{taskId}/complete` | Complete |
+| `GET /api/workflow-tasks/mine` | Inbox (**D-INBOX**) |
+| `POST /api/workflow-tasks/{taskId}/complete` | Complete `variables: {}` (**D-COMPLETE**) |
 | `GET /api/dossier-elements/{id}/content` | Download |
 | `GET /api/notifications/stream` | SSE |
 
@@ -197,7 +215,11 @@ Viewer lazy ; overlays active/completed/failed ; destroy on unmount.
 | Id | Décision | Raison |
 |---|---|---|
 | DD-PACK | frontend-maven-plugin | D-PACK A / verify unique |
-| DD-ME | `id` = sub dans `/me` | D-ME A / Mes tâches |
+| DD-ME | `id` = sub dans `/me` ; champ `name` | D-ME A + code existant |
+| DD-INBOX | Endpoint `/workflow-tasks/mine` | D-INBOX B |
+| DD-ELEMENTS-API | `GET /dossiers/{id}/elements` | D-ELEMENTS-API A |
+| DD-STATUS | UI PATCH status | D-STATUS A |
+| DD-COMPLETE | Complete sans formulaire variables | D-COMPLETE A |
 | DD-SEQ | 2 vagues | D-SEQ A |
 | DD-ADMIN | Types+ACL, templates, connectors, WF configs | D-ADMIN-RES A |
 | DD-MOCK | Pas Rapports / pas faux KPI | D-MOCKGAP A |

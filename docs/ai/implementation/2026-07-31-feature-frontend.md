@@ -42,6 +42,8 @@ frontend/src/{app,api,stores,views,components,styles}
 | T4 | `api/http.ts` CSRF + `resolveApiBaseUrl` (DD-BASE) |
 | T5 | `AuthUserResponse(id,name,email,roles)` + AuthControllerTest |
 | T6 | Pinia `auth` store + boot `init()` |
+| T7 | AppShell + vue-router ; nav sans Rapports |
+| T8 | `ListMyTasksUseCase` + Flowable inbox + `GET /api/workflow-tasks/mine` |
 
 ## Design deviations
 
@@ -55,4 +57,4 @@ frontend/src/{app,api,stores,views,components,styles}
 
 ## Next
 
-T7 shell + vue-router ; puis T8/T9 backend inbox/elements.
+T9 `GET /api/dossiers/{id}/elements` ; puis T10+ FE métier.

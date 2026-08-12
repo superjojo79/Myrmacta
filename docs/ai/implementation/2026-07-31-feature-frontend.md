@@ -1,5 +1,9 @@
 ---
 phase: implementation
+status: not-started
+feature: frontend
+created: 2026-08-12
+updated: 2026-08-12
 title: Implementation Guide
 description: Technical implementation notes, patterns, and code guidelines
 ---
@@ -63,3 +67,6 @@ description: Technical implementation notes, patterns, and code guidelines
 - Data encryption
 - Secrets management
 
+## Status
+
+Phase 1 draft — aucune implémentation démarrée. Voir planning T1–T15.

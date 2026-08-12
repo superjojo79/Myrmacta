@@ -9,13 +9,15 @@ feature: frontend
 design_aligned: 2026-08-12
 stakeholder_decisions: 2026-08-12
 phase2_sync: 2026-08-12
+phase3_sync: 2026-08-12
 sequencing: two-waves
 ---
 
 # Project Planning & Task Breakdown
 
-Plan aligné requirements **`reviewed`** (Phase 2) + design draft.
-**Aucune tâche d’implémentation démarrée.**
+Plan aligné requirements **`reviewed`** + design **`reviewed`** (Phase 3).
+**Aucune tâche d’implémentation démarrée.** (Phase 4 formalisera
+`status: ready`.)
 
 Traçage `task` CLI : **indisponible**.
 
@@ -24,74 +26,68 @@ Branche : `cursor/feature-frontend-21f2` · lifecycle `feature-frontend`.
 ## Milestones
 
 ### Vague 1 — Instructeur (**D-SEQ**)
-- [ ] **M1** Scaffold & qualité
-- [ ] **M2** Auth BFF (`id`=sub, champ `name`) & shell (sans Rapports)
-- [ ] **M3** Backend deltas inbox + elements list + auth `id`
-- [ ] **M4** Création dossier + détail + status + viz + start/complete/reassign
-- [ ] **M5** Éléments, SSE, Supervision MVP, Mes tâches (`/mine`)
-- [ ] **M6** Packaging Maven → `static/` + preuves vague 1
+- [ ] **M1** Scaffold & qualité (Node 22)
+- [ ] **M2** Auth BFF (`id`+`name`) & shell ; Vite `base: './'`
+- [ ] **M3** Backend deltas : `/me` id, `/mine` enrichi, elements list
+- [ ] **M4** Création + détail + status + viz + start (DD-START) + complete/reassign
+- [ ] **M5** Éléments DTO, SSE, Supervision MVP, Mes tâches `/mine`
+- [ ] **M6** Packaging Maven Node 22 → `static/` + SPA fallback + preuves
 
 ### Vague 2 — Admin
 - [ ] **M7** Admin types + ACL
-- [ ] **M8** Admin templates + connectors + workflow-type-configs
+- [ ] **M8** Admin templates + connectors (mask) + workflow-type-configs
 - [ ] **M9** Preuves admin + sync docs
 
 ## Task Breakdown
 
-Statuts : `[ ]` · `[~]` · `[x]` · `[!]`
-
 ### M1 — Scaffold
-- [ ] **T1** Init Vite `frontend/` vue-ts strict + structure dossiers
+- [ ] **T1** Init Vite `frontend/` vue-ts strict ; `base: './'` (**DD-BASE**)
 - [ ] **T2** Deps PrimeVue/Pinia/Axios/Router/bpmn-js + Vitest/Playwright/ESLint/Prettier/vue-tsc
-- [ ] **T3** Scripts `typecheck|lint|test|test:e2e|build` + README FE
+- [ ] **T3** Scripts gates + README FE ; engines Node 22
 
 ### M2 — Auth & shell
-- [ ] **T4** Axios CSRF + ProblemDetail helper
-- [ ] **T5** Backend : `AuthUserResponse(id, name, email, roles)` + MockMvc (**D-ME**)
-- [ ] **T6** Auth store boot/logout + wiring
-- [ ] **T7** Shell/nav tokens maquette ; **pas** Rapports (**D-MOCKGAP**)
+- [ ] **T4** Axios CSRF + ProblemDetail + résolution préfixe API (**DD-BASE**)
+- [ ] **T5** Backend `AuthUserResponse(id, name, email, roles)` + MockMvc
+- [ ] **T6** Auth store boot/logout
+- [ ] **T7** Shell/nav tokens ; pas Rapports
 
-### M3 — Backend deltas vague 1
-- [ ] **T8** `GET /api/workflow-tasks/mine` + use case/port/tests (**D-INBOX**)
-- [ ] **T9** `GET /api/dossiers/{id}/elements` + tests (**D-ELEMENTS-API**)
+### M3 — Backend deltas
+- [ ] **T8** `ListMyTasksUseCase` + `GET /mine` enrichi (plafond 100) + tests (**DD-INBOX-***)
+- [ ] **T9** `ListDossierElementsUseCase` + elements DTO sans storageRef + tests
 
 ### M4 — Dossier cœur FE
-- [ ] **T10** API clients dossiers/types/workflows/viz/mine/elements
-- [ ] **T11** CreateDossier (`dossierTypeCode`, `label`, fields) + SensitiveValue
-- [ ] **T12** DossierDetailView + store (load id/ref) + **PATCH status** (**D-STATUS**)
-- [ ] **T13** BpmnViewer + history/tasks (409 sans PI)
-- [ ] **T14** Start workflow + complete `{}` + reassign UI (**D-ACTIONS**, **D-COMPLETE**)
+- [ ] **T10** API clients (mine, elements, status, start+Idempotency-Key)
+- [ ] **T11** CreateDossier + DynamicFields + SensitiveValue
+- [ ] **T12** DossierDetail + PATCH status
+- [ ] **T13** BpmnViewer + history/tasks
+- [ ] **T14** StartWorkflowDialog (**DD-START**) + complete `{}` + reassign
 
 ### M5 — Compléments vague 1
-- [ ] **T15** ElementsList via `/dossiers/{id}/elements` + download ; Ajouter disabled
+- [ ] **T15** ElementsList + download ; Ajouter disabled
 - [ ] **T16** Notifications SSE + mark-read local
-- [ ] **T17** Supervision MVP (ref/id + lien créer ; sans faux KPI)
-- [ ] **T18** MobileTasks via `/mine` (**D-INBOX**, **A-MOBILE**)
+- [ ] **T17** Supervision MVP
+- [ ] **T18** MobileTasks via `/mine`
 
-### M6 — Packaging vague 1
-- [ ] **T19** `frontend-maven-plugin` + gitignore + fallback `index.html`
-- [ ] **T20** Playwright E2E (session mock) + coverage Vitest
+### M6 — Packaging
+- [ ] **T19** frontend-maven-plugin **Node 22** + gitignore + SPA fallback
+- [ ] **T20** Playwright E2E mock + Vitest coverage
 - [ ] **T21** `./mvnw verify` evidence + docs sync vague 1
 
-### M7 — Admin types
+### M7–M9 — Admin + clôture
 - [ ] **T22** UI CRUD dossier-types
-- [ ] **T23** UI ACL type
-
-### M8 — Admin reste (**D-ADMIN-RES**)
-- [ ] **T24** UI document-templates (activate/archive/new-version)
-- [ ] **T25** UI connectors + definitions (secrets redact)
+- [ ] **T23** UI ACL
+- [ ] **T24** UI templates
+- [ ] **T25** UI connectors (+ secretConfigured)
 - [ ] **T26** UI workflow-type-configs + observers
-
-### M9 — Clôture
-- [ ] **T27** E2E admin smoke + Vitest admin
-- [ ] **T28** Evidence finale + DEFERRED/lint + Phase 7/8/9 docs
+- [ ] **T27** E2E/Vitest admin smoke
+- [ ] **T28** Evidence finale + lint + Phase 7/8/9 docs
 
 ## Dependencies
 
 ```text
 Vague 1: T1→T2→T3 ; T2→T4→T6→T7 ; T5∥T4 ; T5→T8 ; T5→T9
          T4→T10→T11→T12→T13→T14 ; T9→T15 ; T7→T16 ; T12→T17 ; T8→T18
-         T1…T18→T19→T20→T21
+         →T19→T20→T21
 Vague 2: T21→T22→T23 ; T21→T24||T25||T26 ; →T27→T28
 ```
 
@@ -99,16 +95,10 @@ Vague 2: T21→T22→T23 ; T21→T24||T25||T26 ; →T27→T28
 
 | Risque | Mitigation |
 |---|---|
-| Scope admin | Ne pas démarrer M7 avant T21 vert |
-| Inbox Flowable query | Tests unit + MockMvc ; tenant-safe |
-| Node/Maven | Version Node figée dans plugin |
-| TODO §24 liste | Supervision MVP uniquement |
-
-## Resources
-
-Skills vue / pinia / vite / vitest / playwright / flowforge-conventions /
-tdd / verify. Maquette HTML + analysis 11.
+| Context-path | DD-BASE checklist |
+| Inbox join cost | Cap 100 |
+| Admin scope | Gate T21 avant M7 |
 
 ## Next
 
-Phase 3 — Review Design (`dev-design`).
+Phase 4 — Create Initial Plan (`ready`).

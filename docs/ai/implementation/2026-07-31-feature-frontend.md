@@ -69,5 +69,5 @@ description: Technical implementation notes, patterns, and code guidelines
 
 ## Status
 
-Phase 1 draft + Phase 2 requirements **reviewed** (2026-08-12).
-**Aucune implémentation démarrée.** Voir planning T1–T28.
+Phase 3 design **reviewed** (2026-08-12). **Aucune implémentation
+démarrée.** Voir planning T1–T28 ; prochaine Phase 4 (`ready`).

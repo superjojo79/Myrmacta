@@ -8,7 +8,7 @@ updated: 2026-08-12
 feature: frontend
 stakeholder_decisions: 2026-08-12
 phase2: 2026-08-12
-phase2_stakeholder_confirm: 2026-08-12
+phase3_sync: 2026-08-12
 ---
 
 # Requirements & Problem Understanding
@@ -242,9 +242,9 @@ HTTP bruts pour piloter les dossiers et tâches.
 | Id | Statut |
 |---|---|
 | Décisions Phase 1 + Phase 2 | **Clos** |
-| Shape exacte DTO `/mine` + pagination éventuelle | **Phase 3 design** |
-| Version Node embalisée dans frontend-maven-plugin | **Phase 5** |
-| Redaction secrets connecteurs (champ API) | **Phase 3** — lire DTOs existants |
+| Décisions design Phase 3 (inbox DTO/authz, base Vite, start, elements DTO, Node 22) | **Clos** — voir design `reviewed` |
+| Pagination inbox au-delà du plafond 100 | **Follow-up** hors V1 |
+| Redaction secrets connecteurs | **Clos** — API mask existante (**A-CONN-SECRET**) |
 
 ## Phase 2 review notes
 

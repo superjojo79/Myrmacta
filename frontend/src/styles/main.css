@@ -1,0 +1,34 @@
+:root {
+  --color-surface: #e9e9ea;
+  --color-accent: #5980a6;
+  --color-text: #1d2d3d;
+  --font-body: 'Barlow', system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-shell__brand {
+  font-weight: 600;
+  padding: 1rem 1.25rem;
+  background: #1d2d3d;
+  color: #eef6ff;
+}
+
+.app-shell__main {
+  padding: 1.25rem;
+}

@@ -26,6 +26,7 @@ public class AuthController {
                 .distinct()
                 .sorted()
                 .toList();
-        return ResponseEntity.ok(new AuthUserResponse(user.getFullName(), user.getEmail(), roles));
+        return ResponseEntity.ok(new AuthUserResponse(
+                user.getSubject(), user.getFullName(), user.getEmail(), roles));
     }
 }

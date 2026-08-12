@@ -1,73 +1,58 @@
 ---
 phase: implementation
-status: not-started
+status: in-progress
 feature: frontend
 created: 2026-08-12
 updated: 2026-08-12
+phase5_started: 2026-08-12
 title: Implementation Guide
 description: Technical implementation notes, patterns, and code guidelines
 ---
 
 # Implementation Guide
 
-## Development Setup
-**How do we get started?**
-
-- Prerequisites and dependencies
-- Environment setup steps
-- Configuration needed
-
-## Code Structure
-**How is the code organized?**
-
-- Directory structure
-- Module organization
-- Naming conventions
-
-## Implementation Notes
-**Key technical details to remember:**
-
-### Core Features
-- Feature 1: Implementation approach
-- Feature 2: Implementation approach
-- Feature 3: Implementation approach
-
-### Patterns & Best Practices
-- Design patterns being used
-- Code style guidelines
-- Common utilities/helpers
-
-## Integration Points
-**How do pieces connect?**
-
-- API integration details
-- Database connections
-- Third-party service setup
-
-## Error Handling
-**How do we handle failures?**
-
-- Error handling strategy
-- Logging approach
-- Retry/fallback mechanisms
-
-## Performance Considerations
-**How do we keep it fast?**
-
-- Optimization strategies
-- Caching approach
-- Query optimization
-- Resource management
-
-## Security Notes
-**What security measures are in place?**
-
-- Authentication/authorization
-- Input validation
-- Data encryption
-- Secrets management
-
 ## Status
 
-Phase 4 planning **`ready`** (2026-08-12) — T1–T28. **Aucune
-implémentation démarrée.** Prochaine : Phase 5 Execute Plan (T1).
+Phase 5 en cours. Complété : **T1–T6**. Suivant : **T7** (shell/router).
+
+## Development Setup
+
+```bash
+cd frontend && npm install
+npm run dev          # HMR
+npm run typecheck && npm run lint && npm run test && npm run build
+./mvnw -Dmaven.compiler.release=21 -Dtest=AuthControllerTest test
+```
+
+Node **22+**. JDK env cloud = 21 → toujours `-Dmaven.compiler.release=21`.
+
+## Code Structure
+
+```
+frontend/src/{app,api,stores,views,components,styles}
+```
+
+## Completed (Phase 5)
+
+| Task | Notes |
+|---|---|
+| T1 | Vite vue-ts, `base: './'`, arborescence design |
+| T2 | PrimeVue 5, Pinia, Axios, vue-router, bpmn-js, Vitest, Playwright, ESLint |
+| T3 | Scripts gates + README ; smoke `scaffold.spec.ts` |
+| T4 | `api/http.ts` CSRF + `resolveApiBaseUrl` (DD-BASE) |
+| T5 | `AuthUserResponse(id,name,email,roles)` + AuthControllerTest |
+| T6 | Pinia `auth` store + boot `init()` |
+
+## Design deviations
+
+- Aucune majeure. `@primevue/themes` npm marque deprecated → migration
+  `@primeuix/themes` prévue à T7 si besoin.
+
+## Edge cases
+
+- Auth 401 → redirect Keycloak.
+- Context-path : premier segment de `baseURI` comme préfixe Axios.
+
+## Next
+
+T7 shell + vue-router ; puis T8/T9 backend inbox/elements.

@@ -19,5 +19,12 @@ buildNumber.properties
 # Local / AI DevKit feature worktrees
 .worktrees/
 
+# Frontend (Vite)
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/playwright-report/
+frontend/test-results/
+
 # Serena local project data
 .serena/

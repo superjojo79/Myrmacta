@@ -3,6 +3,7 @@ phase: planning
 title: Project Planning & Task Breakdown
 description: Break down work into actionable tasks and estimate timeline
 status: ready
+phase5_started: 2026-08-12
 created: 2026-08-12
 updated: 2026-08-12
 feature: frontend
@@ -30,7 +31,7 @@ Branche agent : `cursor/feature-frontend-21f2` · lifecycle
 **What are the major checkpoints?**
 
 ### Vague 1 — Instructeur (**D-SEQ**)
-- [ ] **M1 — Scaffold & qualité** : Vite vue-ts, deps, gates CI, Node 22
+- [x] **M1 — Scaffold & qualité** : Vite vue-ts, deps, gates CI, Node 22
 - [ ] **M2 — Auth BFF & shell** : `/me`+`id`, CSRF, layout maquette
 - [ ] **M3 — Backend deltas** : `/mine` enrichi, elements list, auth id
 - [ ] **M4 — Dossier cœur FE** : create, détail, status, viz, start, tasks
@@ -49,7 +50,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M1 — Scaffold & qualité
 
-- [ ] **T1. Init Vite `frontend/`**
+- [x] **T1. Init Vite `frontend/`**
   - **Outcome :** projet `vue-ts` sous `frontend/` ; `strict: true` ;
     `base: './'` (**DD-BASE**) ; arborescence
     `src/{app,api,stores,views,components,styles}`.
@@ -57,7 +58,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Validation :** `npm run build` produit `dist/`.
   - **Tests :** smoke build (prépare Vitest T3).
 
-- [ ] **T2. Dépendances UI & outils**
+- [x] **T2. Dépendances UI & outils**
   - **Outcome :** primevue + themes + primeicons ; pinia ; axios ;
     vue-router ; bpmn-js ; vitest + VTU + jsdom ; playwright ; eslint
     vue-ts ; prettier ; vue-tsc ; `engines.node` = 22.
@@ -65,7 +66,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Validation :** install sans peer errors bloquants.
   - **Tests :** configs vitest/playwright présentes.
 
-- [ ] **T3. Gates scripts + README FE**
+- [x] **T3. Gates scripts + README FE**
   - **Outcome :** scripts `typecheck|lint|test|test:e2e|build` ; README
     court ; placeholder spec vert.
   - **Deps :** T2.
@@ -74,21 +75,21 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M2 — Auth BFF & shell
 
-- [ ] **T4. Axios CSRF + ProblemDetail + base API**
+- [x] **T4. Axios CSRF + ProblemDetail + base API**
   - **Outcome :** defaults `withCredentials` / XSRF ; helper erreur
     typée ; résolution préfixe API vs `BASE_URL`/`baseURI` (**DD-BASE**).
   - **Deps :** T2.
   - **Validation :** unit defaults + prefix helper.
   - **Tests :** Axios / CSRF / base (testing doc).
 
-- [ ] **T5. Backend `AuthUserResponse.id`**
+- [x] **T5. Backend `AuthUserResponse.id`**
   - **Outcome :** record `(id, name, email, roles)` ; `id =
     OidcUser.getSubject()` ; MockMvc.
   - **Deps :** aucune (parallèle T4).
   - **Validation :** MockMvc `/api/auth/me` JSON contient `id`.
   - **Tests :** AuthController / AuthUserResponse IT.
 
-- [ ] **T6. Auth store + boot**
+- [x] **T6. Auth store + boot**
   - **Outcome :** Pinia `auth` ; `init` → `/me` ; 401 → OAuth redirect ;
     logout ; getters TA/WA ; wiring `main.ts`.
   - **Deps :** T4, T5.

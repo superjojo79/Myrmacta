@@ -31,13 +31,13 @@ Cible coverage Vitest ≥ **80 %** lignes `frontend/src` (hors bootstrap).
 ## Unit Tests
 
 ### Auth (**D-ME**)
-- [ ] `/me` mappe `id` + `name` + roles ; 401 → redirect OAuth
-- [ ] getters `isTenantAdmin` / `isWorkflowAdmin`
+- [x] `/me` mappe `id` + `name` + roles ; 401 → redirect OAuth
+- [x] getters `isTenantAdmin` / `isWorkflowAdmin`
 
 ### Axios / CSRF / base (**DD-BASE**)
-- [ ] defaults credentials + XSRF names
+- [x] defaults credentials + XSRF names
 - [ ] ProblemDetail → erreur typée
-- [ ] préfixe API cohérent avec `BASE_URL` / baseURI
+- [x] préfixe API cohérent avec `BASE_URL` / baseURI
 
 ### SensitiveValue (**D-SENSITIVE**)
 - [ ] `sensitive` + non-TA → `••••` ; TA → clair ; non-sensitive → valeur

@@ -69,14 +69,24 @@ describe('admin actions coverage', () => {
     ])
   })
 
-  it('templates rename and create', async () => {
+  it('templates rename create and lifecycle actions', async () => {
     vi.mocked(adminApi.createDocumentTemplate).mockResolvedValue({} as never)
     vi.mocked(adminApi.updateDocumentTemplate).mockResolvedValue({} as never)
+    vi.mocked(adminApi.activateDocumentTemplate).mockResolvedValue({} as never)
+    vi.mocked(adminApi.archiveDocumentTemplate).mockResolvedValue({} as never)
+    vi.mocked(adminApi.newDocumentTemplateVersion).mockResolvedValue({} as never)
     const wrapper = mount(TemplatesAdminView)
     await flushPromises()
-    await wrapper.get('li button').trigger('click')
+    const buttons = wrapper.findAll('li button')
+    await buttons[0].trigger('click') // Renommer
+    await buttons[1].trigger('click') // Activer
+    await buttons[2].trigger('click') // Archiver
+    await buttons[3].trigger('click') // Nouvelle version
     await flushPromises()
     expect(adminApi.updateDocumentTemplate).toHaveBeenCalled()
+    expect(adminApi.activateDocumentTemplate).toHaveBeenCalled()
+    expect(adminApi.archiveDocumentTemplate).toHaveBeenCalled()
+    expect(adminApi.newDocumentTemplateVersion).toHaveBeenCalled()
     const inputs = wrapper.findAll('form input')
     await inputs[0].setValue('k2')
     await inputs[1].setValue('Label')

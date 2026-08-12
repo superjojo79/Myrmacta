@@ -6,6 +6,8 @@ import DossierDetailView from './DossierDetailView.vue'
 import { routes } from '@/app/routes'
 import * as dossiersApi from '@/api/dossiers'
 import * as typesApi from '@/api/dossierTypes'
+import * as workflowsApi from '@/api/workflows'
+import * as tasksApi from '@/api/tasks'
 import { useAuthStore } from '@/stores/auth'
 
 vi.mock('@/api/dossiers')
@@ -15,7 +17,7 @@ vi.mock('@/api/workflows', () => ({
   getWorkflowHistory: vi.fn().mockResolvedValue([]),
   getWorkflowTasks: vi.fn().mockResolvedValue([]),
   listWorkflowTypeConfigs: vi.fn().mockResolvedValue([]),
-  reassignWorkflowTask: vi.fn(),
+  reassignWorkflowTask: vi.fn().mockResolvedValue(undefined),
 }))
 vi.mock('@/api/tasks')
 vi.mock('bpmn-js/lib/NavigatedViewer', () => ({
@@ -26,27 +28,29 @@ vi.mock('bpmn-js/lib/NavigatedViewer', () => ({
   },
 }))
 
-describe('DossierDetailView', () => {
+const baseDossier = {
+  id: 'd1',
+  tenantId: 't',
+  reference: 'DOS-1',
+  dossierTypeCode: 'CLAIM',
+  label: 'Claim A',
+  status: 'DRAFT' as const,
+  fields: { priority: 'NORMAL' },
+  currentWorkflowLinkId: 'link-1' as string | null,
+  version: 1,
+  createdBy: 'u',
+  createdAt: '',
+  updatedBy: 'u',
+  updatedAt: '',
+  closedBy: null,
+  closedAt: null,
+}
+
+describe('DossierDetailView phase 8', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.resetAllMocks()
-    vi.mocked(dossiersApi.getDossierById).mockResolvedValue({
-      id: 'd1',
-      tenantId: 't',
-      reference: 'DOS-1',
-      dossierTypeCode: 'CLAIM',
-      label: 'Claim A',
-      status: 'DRAFT',
-      fields: { priority: 'NORMAL' },
-      currentWorkflowLinkId: null,
-      version: 1,
-      createdBy: 'u',
-      createdAt: '',
-      updatedBy: 'u',
-      updatedAt: '',
-      closedBy: null,
-      closedAt: null,
-    })
+    vi.mocked(dossiersApi.getDossierById).mockResolvedValue({ ...baseDossier })
     vi.mocked(typesApi.getDossierType).mockResolvedValue({
       id: 't1',
       tenantId: 't',
@@ -59,37 +63,94 @@ describe('DossierDetailView', () => {
     })
     vi.mocked(dossiersApi.listDossierWorkflows).mockResolvedValue([])
     vi.mocked(dossiersApi.listDossierElements).mockResolvedValue([])
-    vi.mocked(dossiersApi.updateDossierStatus).mockResolvedValue({
-      id: 'd1',
-      tenantId: 't',
-      reference: 'DOS-1',
-      dossierTypeCode: 'CLAIM',
-      label: 'Claim A',
-      status: 'OUVERT',
-      fields: {},
-      currentWorkflowLinkId: null,
-      version: 2,
-      createdBy: 'u',
-      createdAt: '',
-      updatedBy: 'u',
-      updatedAt: '',
-      closedBy: null,
-      closedAt: null,
+    vi.mocked(workflowsApi.getWorkflowDiagram).mockResolvedValue({
+      bpmnXml: '<xml/>',
+      activeIds: [],
+      completedIds: [],
+      failedIds: [],
     })
+    vi.mocked(workflowsApi.getWorkflowHistory).mockResolvedValue([])
+    vi.mocked(workflowsApi.getWorkflowTasks).mockResolvedValue([
+      {
+        taskId: 'task-1',
+        name: 'Review',
+        assignee: 'u',
+        taskDefinitionKey: 'k',
+        createTime: null,
+      },
+    ])
+    vi.mocked(dossiersApi.startDossierWorkflow).mockResolvedValue({
+      id: 'link-1',
+      dossierId: 'd1',
+      tenantId: 't',
+      processInstanceId: 'pi',
+      processDefinitionKey: 'wf',
+      sequence: 1,
+      status: 'ACTIVE',
+      triggerRef: null,
+      startedAt: null,
+      endedAt: null,
+      endReason: null,
+      startedBy: 'u',
+    })
+    vi.mocked(tasksApi.completeTask).mockResolvedValue(undefined)
   })
 
-  it('loads dossier and patches status', async () => {
+  async function mountDetail(roles: string[]) {
     const auth = useAuthStore()
-    auth.user = { id: 'u', name: 'Ada', email: null, roles: ['TENANT_ADMIN'] }
+    auth.user = { id: 'u', name: 'Ada', email: null, roles }
     const router = createRouter({ history: createMemoryHistory(), routes })
     await router.push('/dossiers/d1')
     await router.isReady()
     const wrapper = mount(DossierDetailView, { global: { plugins: [router] } })
     await flushPromises()
-    expect(wrapper.text()).toContain('Claim A')
-    await wrapper.get('.status-select select').setValue('OUVERT')
+    return wrapper
+  }
+
+  it('starts workflow from dialog with default key', async () => {
+    const wrapper = await mountDetail(['TENANT_ADMIN'])
+    await wrapper.get('button.primary').trigger('click')
+    await flushPromises()
+    await wrapper.get('.dialog button.primary').trigger('click')
+    await flushPromises()
+    expect(dossiersApi.startDossierWorkflow).toHaveBeenCalled()
+    const call = vi.mocked(dossiersApi.startDossierWorkflow).mock.calls[0]
+    expect(call[0]).toBe('d1')
+    expect(call[1]).toBe('wf')
+    expect(call[3]).toBeTruthy()
+  })
+
+  it('completes a task with empty variables', async () => {
+    const wrapper = await mountDetail(['DOSSIER_MANAGER'])
+    const completeBtn = wrapper.findAll('.task-list button').find((b) => b.text() === 'Compléter')
+    expect(completeBtn).toBeTruthy()
+    await completeBtn!.trigger('click')
+    await flushPromises()
+    expect(tasksApi.completeTask).toHaveBeenCalledWith('task-1', {})
+  })
+
+  it('shows reassign only for admin and confirms reassignment', async () => {
+    const manager = await mountDetail(['DOSSIER_MANAGER'])
+    expect(manager.text()).not.toContain('Réassigner')
+    manager.unmount()
+
+    const admin = await mountDetail(['WORKFLOW_ADMIN'])
+    expect(admin.text()).toContain('Réassigner')
+    const reassignBtn = admin.findAll('.task-list button').find((b) => b.text() === 'Réassigner')
+    await reassignBtn!.trigger('click')
+    await admin.get('.reassign input').setValue('user-2')
+    await admin.get('.reassign button').trigger('click')
+    await flushPromises()
+    expect(workflowsApi.reassignWorkflowTask).toHaveBeenCalledWith('link-1', 'task-1', 'user-2')
+  })
+
+  it('surfaces ProblemDetail when status patch fails', async () => {
+    vi.mocked(dossiersApi.updateDossierStatus).mockRejectedValue({
+      response: { status: 409, data: { detail: 'stale version', status: 409 } },
+    })
+    const wrapper = await mountDetail(['TENANT_ADMIN'])
     await wrapper.get('button').trigger('click')
     await flushPromises()
-    expect(dossiersApi.updateDossierStatus).toHaveBeenCalledWith('d1', 'OUVERT', 1)
+    expect(wrapper.text()).toContain('stale version')
   })
 })

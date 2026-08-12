@@ -2,6 +2,7 @@
 import { RouterLink, RouterView } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
+import NotificationDrawer from '@/components/notifications/NotificationDrawer.vue'
 
 const auth = useAuthStore()
 const { user, isTenantAdmin, isWorkflowAdmin } = storeToRefs(auth)
@@ -14,13 +15,30 @@ const { user, isTenantAdmin, isWorkflowAdmin } = storeToRefs(auth)
       <p class="app-shell__section">Pilotage</p>
       <RouterLink class="app-shell__link" to="/supervision">Supervision</RouterLink>
       <RouterLink class="app-shell__link" to="/tasks">Tâches</RouterLink>
+      <RouterLink class="app-shell__link" to="/dossiers/new">Nouveau dossier</RouterLink>
       <template v-if="isTenantAdmin || isWorkflowAdmin">
         <p class="app-shell__section">Admin</p>
-        <span class="app-shell__link app-shell__link--muted">Types (vague 2)</span>
+        <RouterLink v-if="isTenantAdmin" class="app-shell__link" to="/admin/dossier-types">
+          Types
+        </RouterLink>
+        <RouterLink v-if="isTenantAdmin" class="app-shell__link" to="/admin/templates">
+          Templates
+        </RouterLink>
+        <RouterLink v-if="isTenantAdmin" class="app-shell__link" to="/admin/connectors">
+          Connecteurs
+        </RouterLink>
+        <RouterLink
+          v-if="isTenantAdmin || isWorkflowAdmin"
+          class="app-shell__link"
+          to="/admin/workflow-configs"
+        >
+          Workflows
+        </RouterLink>
       </template>
     </aside>
     <div class="app-shell__content">
       <header class="app-shell__header">
+        <NotificationDrawer />
         <span>{{ user?.name || user?.email || 'Session' }}</span>
         <button type="button" class="app-shell__logout" @click="auth.logout()">Déconnexion</button>
       </header>

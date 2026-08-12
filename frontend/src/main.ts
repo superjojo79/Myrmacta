@@ -1,6 +1,9 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import { createRouter, createWebHistory } from 'vue-router'
+import PrimeVue from 'primevue/config'
+import Aura from '@primevue/themes/aura'
+import 'primeicons/primeicons.css'
 import '@/styles/main.css'
 import App from './App.vue'
 import { configureHttpClient } from '@/api/http'
@@ -18,6 +21,11 @@ const router = createRouter({
 
 app.use(pinia)
 app.use(router)
+app.use(PrimeVue, {
+  theme: {
+    preset: Aura,
+  },
+})
 app.mount('#app')
 
 void useAuthStore().init()

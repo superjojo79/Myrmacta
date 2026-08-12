@@ -22,4 +22,24 @@ export const routes: RouteRecordRaw[] = [
     name: 'dossier-detail',
     component: () => import('@/views/pilotage/DossierDetailView.vue'),
   },
+  {
+    path: '/admin/dossier-types',
+    name: 'admin-dossier-types',
+    component: () => import('@/views/admin/DossierTypesAdminView.vue'),
+  },
+  {
+    path: '/admin/templates',
+    name: 'admin-templates',
+    component: () => import('@/views/admin/TemplatesAdminView.vue'),
+  },
+  {
+    path: '/admin/connectors',
+    name: 'admin-connectors',
+    component: () => import('@/views/admin/ConnectorsAdminView.vue'),
+  },
+  {
+    path: '/admin/workflow-configs',
+    name: 'admin-workflow-configs',
+    component: () => import('@/views/admin/WorkflowConfigsAdminView.vue'),
+  },
 ]

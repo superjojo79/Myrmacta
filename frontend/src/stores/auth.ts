@@ -19,7 +19,7 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = data
     } catch {
       user.value = null
-      window.location.href = '/oauth2/authorization/keycloak'
+      window.location.href = '/oauth2/authorization/oidc'
     }
   }
 

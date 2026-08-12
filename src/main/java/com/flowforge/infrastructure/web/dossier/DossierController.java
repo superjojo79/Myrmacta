@@ -2,11 +2,14 @@ package com.flowforge.infrastructure.web.dossier;
 
 import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.Dossier;
+import com.flowforge.domain.dossier.model.DossierElementView;
 import com.flowforge.domain.dossier.port.in.CreateDossierUseCase;
 import com.flowforge.domain.dossier.port.in.GetDossierUseCase;
+import com.flowforge.domain.dossier.port.in.ListDossierElementsUseCase;
 import com.flowforge.domain.dossier.port.in.UpdateDossierStatusUseCase;
 import com.flowforge.infrastructure.config.TenantProperties;
 import java.net.URI;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +30,7 @@ public class DossierController {
     private final TenantProperties tenantProperties;
     private final CreateDossierUseCase createDossierUseCase;
     private final GetDossierUseCase getDossierUseCase;
+    private final ListDossierElementsUseCase listDossierElementsUseCase;
     private final UpdateDossierStatusUseCase updateDossierStatusUseCase;
     private final AccessContextFactory accessContextFactory;
 
@@ -34,11 +38,13 @@ public class DossierController {
             TenantProperties tenantProperties,
             CreateDossierUseCase createDossierUseCase,
             GetDossierUseCase getDossierUseCase,
+            ListDossierElementsUseCase listDossierElementsUseCase,
             UpdateDossierStatusUseCase updateDossierStatusUseCase,
             AccessContextFactory accessContextFactory) {
         this.tenantProperties = tenantProperties;
         this.createDossierUseCase = createDossierUseCase;
         this.getDossierUseCase = getDossierUseCase;
+        this.listDossierElementsUseCase = listDossierElementsUseCase;
         this.updateDossierStatusUseCase = updateDossierStatusUseCase;
         this.accessContextFactory = accessContextFactory;
     }
@@ -78,6 +84,13 @@ public class DossierController {
                 tenantProperties.id(),
                 required(reference, "ref"),
                 accessContextFactory.user(authentication)));
+    }
+
+    @GetMapping("/{id}/elements")
+    public List<DossierElementView> listElements(
+            @PathVariable UUID id,
+            Authentication authentication) {
+        return listDossierElementsUseCase.list(id, accessContextFactory.user(authentication));
     }
 
     @PatchMapping("/{id}/status")

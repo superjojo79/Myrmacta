@@ -2,10 +2,11 @@
 phase: planning
 title: Project Planning & Task Breakdown
 description: Break down work into actionable tasks and estimate timeline
-status: ready
+status: completed
 phase5_started: 2026-08-12
 created: 2026-08-12
 updated: 2026-08-12
+phase5_completed: 2026-08-12
 feature: frontend
 design_aligned: 2026-08-12
 stakeholder_decisions: 2026-08-12
@@ -33,15 +34,15 @@ Branche agent : `cursor/feature-frontend-21f2` · lifecycle
 ### Vague 1 — Instructeur (**D-SEQ**)
 - [x] **M1 — Scaffold & qualité** : Vite vue-ts, deps, gates CI, Node 22
 - [x] **M2 — Auth BFF & shell** : `/me`+`id`, CSRF, layout maquette
-- [ ] **M3 — Backend deltas** : `/mine` enrichi, elements list, auth id
-- [ ] **M4 — Dossier cœur FE** : create, détail, status, viz, start, tasks
-- [ ] **M5 — Compléments vague 1** : elements UI, SSE, Supervision, inbox UI
-- [ ] **M6 — Packaging & preuves vague 1** : Maven→static, E2E, verify
+- [x] **M3 — Backend deltas** : `/mine` enrichi, elements list, auth id
+- [x] **M4 — Dossier cœur FE** : create, détail, status, viz, start, tasks
+- [x] **M5 — Compléments vague 1** : elements UI, SSE, Supervision, inbox UI
+- [x] **M6 — Packaging & preuves vague 1** : Maven→static, E2E, verify
 
 ### Vague 2 — Admin
-- [ ] **M7 — Admin types + ACL**
-- [ ] **M8 — Admin templates / connectors / workflow-configs**
-- [ ] **M9 — Preuves admin & clôture docs**
+- [x] **M7 — Admin types + ACL**
+- [x] **M8 — Admin templates / connectors / workflow-configs**
+- [x] **M9 — Preuves admin & clôture docs**
 
 ## Task Breakdown
 **What specific work needs to be done?**
@@ -115,7 +116,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Validation :** unit UC + MockMvc `/mine`.
   - **Tests :** Inbox backend ; prépare E2E-7.
 
-- [ ] **T9. `GET /api/dossiers/{id}/elements`**
+- [x] **T9. `GET /api/dossiers/{id}/elements`**
   - **Outcome :** `ListDossierElementsUseCase` ; DTO sans `storageRef` ;
     `downloadable` ; authz lecture dossier (**DD-ELEMENTS-DTO**).
   - **Deps :** T5 (contexte auth IT).
@@ -124,35 +125,35 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M4 — Dossier cœur FE
 
-- [ ] **T10. API clients TS**
+- [x] **T10. API clients TS**
   - **Outcome :** modules typés auth/dossiers/types/workflows/viz/mine/
     elements/notifications ; start envoie `Idempotency-Key`.
   - **Deps :** T4.
   - **Validation :** unit mapping fixtures.
   - **Tests :** client + fixtures.
 
-- [ ] **T11. CreateDossier + DynamicFields + SensitiveValue**
+- [x] **T11. CreateDossier + DynamicFields + SensitiveValue**
   - **Outcome :** form `dossierTypeCode` + `label` + fields ;
     masquage affichage sensitive (**D-SENSITIVE**) ; POST create.
   - **Deps :** T7, T10.
   - **Validation :** Vitest Create/DynamicFields/SensitiveValue.
   - **Tests :** CreateDossier ; SensitiveValue ; E2E-2.
 
-- [ ] **T12. DossierDetailView + PATCH status**
+- [x] **T12. DossierDetailView + PATCH status**
   - **Outcome :** load id/ref ; champs ; StatusSelect enum +
     `expectedVersion` (**D-STATUS**) ; navigation links.
   - **Deps :** T11.
   - **Validation :** Vitest dossier store status ; E2E-3.
   - **Tests :** Dossier store ; E2E-3.
 
-- [ ] **T13. BpmnViewer + history/tasks panels**
+- [x] **T13. BpmnViewer + history/tasks panels**
   - **Outcome :** lazy Viewer ; overlays active/completed/failed ;
     timeline ; tasks ; gestion 409 sans PI.
   - **Deps :** T12.
   - **Validation :** Vitest BpmnViewer ; E2E-4 (diagramme).
   - **Tests :** BpmnViewer ; partie E2E-4.
 
-- [ ] **T14. StartWorkflowDialog + complete + reassign**
+- [x] **T14. StartWorkflowDialog + complete + reassign**
   - **Outcome :** défaut `type.workflowKey` + option autre configs
     (**DD-START**) ; Idempotency-Key UUID ; complete `{}`
     (**D-COMPLETE**) ; reassign TA/WA only.
@@ -162,28 +163,28 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M5 — Compléments vague 1
 
-- [ ] **T15. ElementsList UI**
+- [x] **T15. ElementsList UI**
   - **Outcome :** consomme `/dossiers/{id}/elements` ; download content ;
     Ajouter `disabled` + tooltip (**D-ELEMENTS**).
   - **Deps :** T9, T12.
   - **Validation :** Vitest ElementsList.
   - **Tests :** Elements FE unit.
 
-- [ ] **T16. Notifications SSE**
+- [x] **T16. Notifications SSE**
   - **Outcome :** EventSource `/api/notifications/stream` ; drawer ;
     mark-read local (**A-NOTIF-READ**) ; fail-soft.
   - **Deps :** T7.
   - **Validation :** Vitest notification store ; E2E-8.
   - **Tests :** Notifications ; E2E-8.
 
-- [ ] **T17. SupervisionView MVP**
+- [x] **T17. SupervisionView MVP**
   - **Outcome :** ouverture ref/id + lien créer ; **aucun** faux KPI
     (**D-MOCKGAP**).
   - **Deps :** T12.
   - **Validation :** Vitest Supervision ; E2E navigation.
   - **Tests :** Supervision ; E2E-9 (nav).
 
-- [ ] **T18. MobileTasksView via `/mine`**
+- [x] **T18. MobileTasksView via `/mine`**
   - **Outcome :** liste inbox ; empty state ; complete depuis liste ;
     layout responsive (**A-MOBILE**).
   - **Deps :** T8, T14.
@@ -192,7 +193,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M6 — Packaging & preuves vague 1
 
-- [ ] **T19. frontend-maven-plugin + SPA fallback**
+- [x] **T19. frontend-maven-plugin + SPA fallback**
   - **Outcome :** Node **22** (**DD-NODE**) ; `npm ci` + `build` ;
     copy `dist` → `static/` ; gitignore bundles ; WebMvc fallback
     `index.html` (**A-SPA-FALLBACK**).
@@ -201,14 +202,14 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
     `GET /` → index.
   - **Tests :** packaging / SPA fallback IT.
 
-- [ ] **T20. Playwright E2E-1…9 + coverage Vitest**
+- [x] **T20. Playwright E2E-1…9 + coverage Vitest**
   - **Outcome :** session mock (**D-E2E**) ; parcours vague 1 ; coverage
     ≥ 80 % `frontend/src`.
   - **Deps :** T19 (ou dist local).
   - **Validation :** `npm run test:e2e` + coverage report.
   - **Tests :** E2E-1…9 ; coverage gate.
 
-- [ ] **T21. Evidence vague 1 + docs sync**
+- [x] **T21. Evidence vague 1 + docs sync**
   - **Outcome :** coller sorties verify/coverage dans testing/
     implementation ; cocher scénarios vague 1 ; lint feature.
   - **Deps :** T20.
@@ -217,7 +218,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M7 — Admin types + ACL
 
-- [ ] **T22. UI CRUD dossier-types**
+- [x] **T22. UI CRUD dossier-types**
   - **Outcome :** list/create/patch types (`TENANT_ADMIN`) ; field
     definitions editor basique.
   - **Deps :** T21 (vague 1 done) ou au minimum T7+T10 si parallèle
@@ -225,7 +226,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Validation :** Vitest admin types ; E2E-10 (partiel).
   - **Tests :** Admin types ; E2E-10.
 
-- [ ] **T23. UI ACL type**
+- [x] **T23. UI ACL type**
   - **Outcome :** grant/revoke ACL sur `/api/dossier-types/{code}/acl`.
   - **Deps :** T22.
   - **Validation :** Vitest ACL actions.
@@ -233,20 +234,20 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M8 — Admin reste (**D-ADMIN-RES**)
 
-- [ ] **T24. UI document-templates**
+- [x] **T24. UI document-templates**
   - **Outcome :** list + create/patch + activate/archive/new-version.
   - **Deps :** T21.
   - **Validation :** Vitest templates smoke.
   - **Tests :** Admin templates.
 
-- [ ] **T25. UI connectors**
+- [x] **T25. UI connectors**
   - **Outcome :** CRUD instances + definitions lecture ; respecte
     `secretConfigured` / config maskée (**A-CONN-SECRET**).
   - **Deps :** T21.
   - **Validation :** Vitest connectors (pas de secret en clair).
   - **Tests :** Admin connectors.
 
-- [ ] **T26. UI workflow-type-configs**
+- [x] **T26. UI workflow-type-configs**
   - **Outcome :** CRUD configs + `observerUserIds` ; alimente aussi
     StartWorkflowDialog « autre process ».
   - **Deps :** T21.
@@ -255,13 +256,13 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M9 — Clôture
 
-- [ ] **T27. E2E/Vitest admin smoke**
+- [x] **T27. E2E/Vitest admin smoke**
   - **Outcome :** E2E-10 complet + tests admin restants verts.
   - **Deps :** T22…T26.
   - **Validation :** `npm run test && test:e2e` ; verify.
   - **Tests :** E2E-10 ; admin suites.
 
-- [ ] **T28. Evidence finale + Phase 7/8/9 docs**
+- [x] **T28. Evidence finale + Phase 7/8/9 docs**
   - **Outcome :** testing/implementation/DEFERRED à jour ; lint OK ;
     prêt check implementation / review.
   - **Deps :** T27.

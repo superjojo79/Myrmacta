@@ -17,9 +17,21 @@ export default defineConfig({
     include: ['src/**/*.{test,spec}.ts'],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'html'],
+      reporter: ['text', 'html', 'json-summary'],
       include: ['src/**/*.{ts,vue}'],
-      exclude: ['src/main.ts', 'src/**/*.d.ts'],
+      exclude: [
+        'src/main.ts',
+        'src/App.vue',
+        'src/**/*.d.ts',
+        'src/components/workflow/BpmnViewer.vue',
+        'src/assets/**',
+      ],
+      thresholds: {
+        lines: 80,
+        statements: 75,
+        functions: 70,
+        branches: 60,
+      },
     },
   },
 })

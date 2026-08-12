@@ -43,6 +43,6 @@ describe('auth store', () => {
     await store.init()
 
     expect(store.authenticated).toBe(false)
-    expect(location.href).toBe('/oauth2/authorization/keycloak')
+    expect(location.href).toBe('/oauth2/authorization/oidc')
   })
 })

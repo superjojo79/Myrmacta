@@ -11,6 +11,7 @@ stakeholder_decisions: 2026-08-12
 phase2_sync: 2026-08-12
 phase3_sync: 2026-08-12
 phase4_sync: 2026-08-12
+phase8_completed: 2026-08-12
 ---
 
 # Testing Strategy
@@ -45,11 +46,12 @@ Cible coverage Vitest ≥ **80 %** lignes `frontend/src` (hors bootstrap).
 ### CreateDossier / DynamicFields (**D-ACTIONS**)
 - [x] `dossierTypeCode` + `label` + required ; POST create ; ProblemDetail
 
-### Dossier store
+### Dossier store / détail
 - [x] loadById / loadByRef ; workflows ; start
 - [x] PATCH status + `expectedVersion` (**D-STATUS**)
 - [x] diagram 409 sans PI
-- [x] complete `{}` + reassign (no-call si non admin)
+- [x] complete `{}` + reassign (admin only)
+- [x] start dialog + ProblemDetail statut (Phase 8)
 
 ### StartWorkflowDialog (**DD-START**)
 - [x] défaut = `type.workflowKey`
@@ -66,34 +68,59 @@ Cible coverage Vitest ≥ **80 %** lignes `frontend/src` (hors bootstrap).
 
 ### BpmnViewer / Notifications / Supervision
 - [x] importXML + markers + destroy
-- [x] EventSource + mark-read local + fail-soft
-- [x] resolve ref ; pas de faux KPI
+- [x] EventSource + mark-read local + fail-soft + reconnect
+- [x] resolve ref / UUID ; pas de faux KPI
 
 ### Admin vague 2
-- [x] Types/ACL/templates/connectors (`secretConfigured`)/workflow-configs smoke
+- [x] Types/ACL/templates (activate/archive/new-version)/connectors
+      (`secretConfigured` + definitions)/workflow-configs smoke
 
-### Backend MockMvc
+### Backend MockMvc / UC
 - [x] `/api/auth/me` contient `id`
 - [x] `/api/workflow-tasks/mine` (unit UC)
 - [x] `/api/dossiers/{id}/elements` sans storageRef
+- [x] SPA fallback handler
 
 ## Integration Tests
 
-- [x] Vitest + msw/vi.mock store↔api
-- [x] Optionnel : `GET /` → `index.html` (SPA fallback)
+- [x] Vitest + vi.mock store↔api
+- [x] SPA fallback unit (`SpaFallbackConfigTest`)
 
 ## End-to-End Tests (Playwright, session mock)
+
+Fichier : [`frontend/e2e/pilotage.spec.ts`](../../../frontend/e2e/pilotage.spec.ts)
 
 - [x] **E2E-1** Boot (`id` présent)
 - [x] **E2E-2** Créer dossier → détail
 - [x] **E2E-3** PATCH status
 - [x] **E2E-4** Start + Idempotency-Key + diagramme
-- [x] **E2E-5** Complete `{}`
-- [x] **E2E-6** Reassign admin vs manager
+- [x] **E2E-5** Complete `{}` (inbox)
+- [x] **E2E-6** Reassign admin vs manager (E2E-6 + E2E-6b)
 - [x] **E2E-7** Inbox `/mine`
-- [x] **E2E-8** SSE panneau
+- [x] **E2E-8** SSE panneau notifications
 - [x] **E2E-9** Nav sans Rapports
-- [x] **E2E-10** Admin create dossier-type
+- [x] **E2E-10** Admin types smoke
+
+## Phase 8 — Evidence (2026-08-12)
+
+| Commande | Résultat |
+|---|---|
+| `npm run typecheck` | exit 0 |
+| `npm run lint` | exit 0 |
+| `npm run test` | **62** passed / 28 files |
+| `npm run test:coverage` | lines **90.87 %** (≥ 80 %) |
+| `npm run build` | exit 0 |
+| `npm run test:e2e` | **11** passed |
+
+### Specs FE (échantillon)
+
+- `frontend/src/stores/{auth,dossier,tasks,notifications}*.spec.ts`
+- `frontend/src/api/{http,dossiers,clients,phase8Api}*.spec.ts`
+- `frontend/src/components/dossier/{SensitiveValue,DynamicFields,ElementsList}*.spec.ts`
+- `frontend/src/views/pilotage/{CreateDossierView,DossierDetailView,phase8Pilotage}*.spec.ts`
+- `frontend/src/views/admin/{adminActions,adminViews,DossierTypesAdminView}*.spec.ts`
+- Backend : `ListMyTasksUseCaseImplTest`, `ListDossierElementsUseCaseImplTest`,
+  `DossierApiTest#listElements_*`, `AuthControllerTest`, `SpaFallbackConfigTest`
 
 ## Test Data / Reporting
 

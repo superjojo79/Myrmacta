@@ -106,4 +106,5 @@ fallback.
 
 ## Next
 
-Phase 8 — `dev-testing` (couverture / scénarios) puis Phase 9 — `dev-review`.
+Phase 8 **terminée** (`dev-testing`) — Vitest 62 / coverage 90.87 % /
+E2E 11. Suivant : Phase 9 — `dev-review`.

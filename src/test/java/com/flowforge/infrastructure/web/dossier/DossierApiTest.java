@@ -612,6 +612,26 @@ class DossierApiTest {
     }
 
     @Test
+    void listDossiers_invalidPageOrSizeOrSort_returns400() throws Exception {
+        mockMvc.perform(get("/api/dossiers")
+                        .param("page", "-1")
+                        .with(user("admin-bad-page", "TENANT_ADMIN")))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/dossiers")
+                        .param("size", "0")
+                        .with(user("admin-bad-size", "TENANT_ADMIN")))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/dossiers")
+                        .param("size", "101")
+                        .with(user("admin-bad-size2", "TENANT_ADMIN")))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/dossiers")
+                        .param("sort", "reference,asc")
+                        .with(user("admin-bad-sort", "TENANT_ADMIN")))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void listDossiers_anonymous_returns401() throws Exception {
         mockMvc.perform(get("/api/dossiers")).andExpect(status().isUnauthorized());
     }

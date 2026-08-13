@@ -12,6 +12,7 @@ phase2_sync: 2026-08-13
 phase3_sync: 2026-08-13
 phase4_sync: 2026-08-13
 phase5_evidence: 2026-08-13
+phase7_sync: 2026-08-13
 ---
 
 # Testing Strategy
@@ -77,7 +78,7 @@ phase5_evidence: 2026-08-13
 - [x] User sans ACL → `content=[]`, `totalElements=0`
 - [x] Type hors ACL → page vide
 - [x] Params invalides → 400 ProblemDetail
-- [ ] Appel style service/API_SERVICE → 403
+- [x] Appel style service/API_SERVICE → 403 — couvert unitaire UC ; MockMvc N/A (controller = user OIDC only, M2M hors path)
 - [x] Anonyme → 401
 
 ## End-to-End Tests

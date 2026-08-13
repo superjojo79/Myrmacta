@@ -10,6 +10,7 @@ phase4_sync: 2026-08-13
 phase5: 2026-08-13
 phase6: 2026-08-13
 phase7: 2026-08-13
+phase8: 2026-08-13
 checked: 2026-08-13
 alignment: aligned
 ---
@@ -76,4 +77,4 @@ Phase 5 baseline : ./mvnw test → 593 OK ; frontend 68 OK
 - Projection Criteria **sans** colonne `fields`.
 
 ## Progress
-Phases 1–7 closes. **Next :** Phase 8 Write Tests (coverage verify / close remaining manual boxes).
+Phases 1–8 closes (`testing` status `verified` 2026-08-13). **Next :** Phase 9 Code Review (`dev-review`) + PR. Manual UX smoke reste checklist QA.

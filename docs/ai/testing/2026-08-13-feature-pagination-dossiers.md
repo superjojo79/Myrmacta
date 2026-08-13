@@ -2,9 +2,11 @@
 phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
-status: draft
+status: verified
 created: 2026-08-13
 updated: 2026-08-13
+verified: 2026-08-13
+phase8: 2026-08-13
 feature: pagination-dossiers
 design_aligned: 2026-08-13
 stakeholder_decisions: 2026-08-13
@@ -85,7 +87,7 @@ phase7_sync: 2026-08-13
 **What user flows need validation?**
 
 - [x] Hors scope Playwright pour cette feature
-- [ ] Manuel smoke : Supervision liste + filtre + deep-link URL (checklist)
+- [ ] Manuel smoke : Supervision liste + filtre + deep-link URL (checklist Phase 9 / QA)
 
 ## Test Data
 **What data do we use for testing?**
@@ -95,16 +97,47 @@ phase7_sync: 2026-08-13
 - Labels types distincts pour assert `dossierTypeLabel`.
 - Timestamps contrôlés pour ordre `updatedAt`.
 
+## Test Suites (liens)
+**Backend**
+- `src/test/java/com/flowforge/domain/dossier/usecase/SearchDossiersUseCaseImplTest.java`
+- `src/test/java/com/flowforge/infrastructure/persistence/dossier/DossierSearchPersistenceTest.java`
+- `src/test/java/com/flowforge/infrastructure/web/dossier/DossierListQueryParserTest.java`
+- `src/test/java/com/flowforge/infrastructure/web/dossier/DossierApiTest.java` (liste + `?ref=` + validation)
+
+**Frontend**
+- `frontend/src/api/dossiers.spec.ts` (`listDossiers`)
+- `frontend/src/views/pilotage/SupervisionView.spec.ts`
+- `frontend/src/views/pilotage/phase8Pilotage.spec.ts`
+- `frontend/src/views/pilotage/pilotageCoverage.spec.ts`
+
 ## Test Reporting & Coverage
 **How do we verify and communicate test results?**
 
 ```bash
-./mvnw test
-cd frontend && npm run test -- --coverage
+export JAVA_HOME=/tmp/jdk/jdk-25.0.4+7
+./mvnw test jacoco:report
+cd frontend && npm run test -- --run --coverage
 ```
 
-Évidence Phase 8 : jacoco zones `dossier` search + rapports Vitest
-`SupervisionView`.
+### Phase 8 evidence (2026-08-13)
+
+**Backend** — `./mvnw test jacoco:report` (JDK 25) :
+- Surefire : **594** tests, **0** failures / errors / skipped
+- Jacoco global : LINE **88.80 %**, INSTRUCTION **88.22 %** (≥ 80 %)
+- Classes feature (LINE) :
+  - `SearchDossiersUseCaseImpl` 97.7 %
+  - `JpaDossierSearchAdapter` 96.8 %
+  - `DossierListQueryParser` 100 %
+  - `DossierController` 97.5 %
+  - `DossierSpecifications` 93.3 %
+  - `DossierListItem` 100 % ; `DossierPage` / `SearchDossiersQuery` ~73 %
+    (branches record equals/hashCode — non bloquant)
+
+**Frontend** — `npm run test -- --run --coverage` :
+- **28** fichiers / **68** tests passed
+- Lines **90.53 %**, Statements **89.25 %** (≥ 80 %)
+- `SupervisionView.vue` lines ~84 % ; `dossiers.ts` lines 100 %
+- Fix env : dépendance explicite `html-encoding-sniffer` (jsdom) pour runs coverage stables
 
 ## Manual Testing
 **What requires human validation?**
@@ -117,10 +150,11 @@ cd frontend && npm run test -- --coverage
 **How do we validate performance?**
 
 - Pas de bench dédié V1 ; smoke local avec ~1k dossiers optionnel.
-- Valider presence indexes Liquibase en revue design/impl.
+- [x] Indexes Liquibase `008-dossier-list-indexes.yaml` présents et appliqués (IT persistence / changelog master).
 
 ## Bug Tracking
 **How do we manage issues?**
 
 - Écarts bloquants → Phase 7/9 ; follow-ups non bloquants documentés
   implementation.
+- Manual UX smoke reporté Phase 9 / QA (non bloquant pour `verified` coverage).

@@ -10,6 +10,7 @@ design_aligned: 2026-08-13
 stakeholder_decisions: 2026-08-13
 phase2_sync: 2026-08-13
 phase3_sync: 2026-08-13
+phase4_sync: 2026-08-13
 ---
 
 # Testing Strategy

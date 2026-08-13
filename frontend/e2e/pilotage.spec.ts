@@ -181,6 +181,35 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
       return
     }
     if (method === 'GET') {
+      const parsed = new URL(url)
+      const path = parsed.pathname.replace(/\/$/, '')
+      // Paginated list: GET /api/dossiers (no id, no ?ref=)
+      if (path.endsWith('/api/dossiers') && !parsed.searchParams.has('ref')) {
+        const body = dossierBody({ currentWorkflowLinkId: linkId })
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            content: [
+              {
+                id: body.id,
+                reference: body.reference,
+                label: body.label,
+                dossierTypeCode: body.dossierTypeCode,
+                dossierTypeLabel: 'Sinistre',
+                status: body.status,
+                createdAt: body.createdAt,
+                updatedAt: body.updatedAt,
+              },
+            ],
+            page: Number(parsed.searchParams.get('page') ?? 0),
+            size: Number(parsed.searchParams.get('size') ?? 20),
+            totalElements: 1,
+            totalPages: 1,
+          }),
+        })
+        return
+      }
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -350,6 +379,8 @@ test('E2E-9 supervision has no fake KPI and no Rapports', async ({ page }) => {
   await openApp(page)
   await page.getByRole('link', { name: 'Supervision' }).click()
   await expect(page.getByRole('heading', { name: 'Supervision' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Filtrer' })).toBeVisible()
+  await expect(page.getByText('DOS-1')).toBeVisible()
   await expect(page.getByText('Rapports')).toHaveCount(0)
   await expect(page.getByText('KPI')).toHaveCount(0)
 })

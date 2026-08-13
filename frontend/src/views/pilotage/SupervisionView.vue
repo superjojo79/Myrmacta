@@ -65,11 +65,11 @@ async function loadList() {
       dossierTypeCode: typeFilter.value || undefined,
       reference: referenceFilter.value || undefined,
     })
-    items.value = result.content
-    totalElements.value = result.totalElements
-    totalPages.value = result.totalPages
-    page.value = result.page
-    size.value = result.size
+    items.value = result.content ?? []
+    totalElements.value = result.totalElements ?? 0
+    totalPages.value = result.totalPages ?? 0
+    page.value = result.page ?? page.value
+    size.value = result.size ?? size.value
   } catch (err) {
     listError.value = toProblemDetail(err).detail ?? 'Impossible de charger la liste'
     items.value = []

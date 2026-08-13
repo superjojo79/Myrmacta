@@ -8,6 +8,7 @@ updated: 2026-08-13
 feature: pagination-dossiers
 design_aligned: 2026-08-13
 stakeholder_decisions: 2026-08-13
+phase2_sync: 2026-08-13
 ---
 
 # Testing Strategy
@@ -37,9 +38,11 @@ stakeholder_decisions: 2026-08-13
 
 ### Validation / parsing (controller ou helper)
 - [ ] `page < 0` → 400
-- [ ] `size` 0 / 101 → 400 ; défaut 20 si absent
+- [ ] `size` 0 / 101 → 400 ; défaut 20 si absent ; `1` et `100` OK
 - [ ] `sort=reference,asc` → 400 ; `updatedAt,desc` / absent → OK
 - [ ] `status=NOPE` → 400 ; `status=OUVERT` → OK
+- [ ] Item JSON contient `label` + `dossierTypeLabel` ; pas de `fields`
+- [ ] `GET …?ref=…&page=0` → get-by-ref (pas envelope liste)
 
 ### Frontend
 - [ ] `listDossiers` envoie les bons query params

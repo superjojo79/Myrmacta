@@ -8,6 +8,7 @@ updated: 2026-08-13
 feature: pagination-dossiers
 requirements_aligned: 2026-08-13
 stakeholder_decisions: 2026-08-13
+phase2_sync: 2026-08-13
 ---
 
 # System Design & Architecture
@@ -88,8 +89,9 @@ SearchDossiersQuery {
 DossierListItem {
   id: UUID
   reference: String
+  label: String              // Dossier.label (métier)
   dossierTypeCode: String
-  dossierTypeLabel: String   // from DossierType.label ; "" if missing
+  dossierTypeLabel: String   // DossierType.label ; "" if missing
   status: DossierStatus
   createdAt: Instant
   updatedAt: Instant
@@ -134,7 +136,7 @@ sinon seq scan acceptable sous A1.
 | Query | Règle |
 |---|---|
 | `page` | défaut `0` ; `< 0` → 400 |
-| `size` | défaut `20` ; hors `1..100` → 400 |
+| `size` | défaut `20` ; hors **`1..100`** (y compris `0`) → 400 |
 | `sort` | absent ou `updatedAt,desc` OK ; autre → 400 |
 | `status` | absent OK ; sinon enum `DossierStatus` sinon 400 |
 | `dossierTypeCode` | absent OK ; sinon filtre exact (hors ACL → page vide) |
@@ -151,6 +153,7 @@ service → 403. Résultat ∩ types VIEW (admins bypass).
     {
       "id": "…",
       "reference": "DOS-FAC-2026-000042",
+      "label": "Facture Acme",
       "dossierTypeCode": "FAC",
       "dossierTypeLabel": "Facture",
       "status": "OUVERT",
@@ -165,6 +168,9 @@ service → 403. Résultat ∩ types VIEW (admins bypass).
 }
 ```
 
+Routage : `@GetMapping(params = "ref")` conserve get-by-ref ; mapping liste
+sans `ref` (priorité Spring sur `params=ref` quand présent).
+
 **Erreurs :** 401 anonyme ; 403 service ; 400 ProblemDetail (validation).
 
 ### Inchangé
@@ -178,8 +184,8 @@ service → 403. Résultat ∩ types VIEW (admins bypass).
 
 - `listDossiers(params)` → envelope typée.
 - `SupervisionView` : filtres + table + pagination ; `useRoute`/`router.replace`
-  pour sync `status`, `dossierTypeCode`, `reference`, `page` (size optionnel
-  dans l’URL ; défaut 20 si absent).
+  pour sync `status`, `dossierTypeCode`, `reference`, `page` (`size` optionnel
+  dans l’URL ; défaut 20 si absent ; `sort` non synchronisé V1).
 - Select types : réutiliser `GET /api/dossier-types` (déjà filtré VIEW).
 - Select status : enum FE existant.
 - Formulaire ouvrir-par-ref/UUID conservé (appelle toujours getById / getByRef).

@@ -30,6 +30,13 @@ describe('phase 8 pilotage edge cases', () => {
         fieldDefinitions: [],
       },
     ])
+    vi.mocked(dossiersApi.listDossiers).mockResolvedValue({
+      content: [],
+      page: 0,
+      size: 20,
+      totalElements: 0,
+      totalPages: 0,
+    })
   })
 
   it('CreateDossier shows validation when label missing', async () => {
@@ -71,8 +78,9 @@ describe('phase 8 pilotage edge cases', () => {
     await router.push('/supervision')
     await router.isReady()
     const wrapper = mount(SupervisionView, { global: { plugins: [router] } })
-    await wrapper.get('input').setValue('11111111-1111-1111-1111-111111111111')
-    await wrapper.get('form').trigger('submit.prevent')
+    await flushPromises()
+    await wrapper.get('.supervision__form input').setValue('11111111-1111-1111-1111-111111111111')
+    await wrapper.get('.supervision__form').trigger('submit.prevent')
     await flushPromises()
     expect(store.loadById).toHaveBeenCalled()
     expect(push).toHaveBeenCalledWith('/dossiers/11111111-1111-1111-1111-111111111111')

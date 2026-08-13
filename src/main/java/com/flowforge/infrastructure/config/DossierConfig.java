@@ -12,11 +12,13 @@ import com.flowforge.domain.dossier.port.in.GrantDossierTypeAccessUseCase;
 import com.flowforge.domain.dossier.port.in.ListDossierElementsUseCase;
 import com.flowforge.domain.dossier.port.in.ListDossierTypesUseCase;
 import com.flowforge.domain.dossier.port.in.RevokeDossierTypeAccessUseCase;
+import com.flowforge.domain.dossier.port.in.SearchDossiersUseCase;
 import com.flowforge.domain.dossier.port.in.UpdateDossierStatusUseCase;
 import com.flowforge.domain.dossier.port.in.UpdateDossierTypeUseCase;
 import com.flowforge.domain.dossier.port.out.DossierElementRepository;
 import com.flowforge.domain.dossier.port.out.DossierReferenceGenerator;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
+import com.flowforge.domain.dossier.port.out.DossierSearchPort;
 import com.flowforge.domain.dossier.port.out.DossierTypeAclRepository;
 import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
 import com.flowforge.domain.dossier.usecase.AddDossierElementUseCaseImpl;
@@ -29,6 +31,7 @@ import com.flowforge.domain.dossier.usecase.GrantDossierTypeAccessUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.ListDossierElementsUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.ListDossierTypesUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.RevokeDossierTypeAccessUseCaseImpl;
+import com.flowforge.domain.dossier.usecase.SearchDossiersUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.UpdateDossierStatusUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.UpdateDossierTypeUseCaseImpl;
 import org.springframework.context.annotation.Bean;
@@ -103,6 +106,14 @@ public class DossierConfig {
             DossierTypeRepository typeRepository,
             DossierAccessPolicy accessPolicy) {
         return new GetDossierUseCaseImpl(dossierRepository, typeRepository, accessPolicy);
+    }
+
+    @Bean
+    SearchDossiersUseCase searchDossiersUseCase(
+            DossierSearchPort dossierSearchPort,
+            DossierTypeAclRepository aclRepository,
+            DossierTypeRepository typeRepository) {
+        return new SearchDossiersUseCaseImpl(dossierSearchPort, aclRepository, typeRepository);
     }
 
     @Bean

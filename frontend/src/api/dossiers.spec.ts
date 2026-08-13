@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import axios from 'axios'
-import { createDossier, startDossierWorkflow, updateDossierStatus } from './dossiers'
+import { createDossier, listDossiers, startDossierWorkflow, updateDossierStatus } from './dossiers'
 
 vi.mock('axios')
 
@@ -8,6 +8,7 @@ describe('dossiers api client', () => {
   beforeEach(() => {
     vi.mocked(axios.post).mockReset()
     vi.mocked(axios.patch).mockReset()
+    vi.mocked(axios.get).mockReset()
   })
 
   it('creates a dossier with typed payload', async () => {
@@ -24,6 +25,28 @@ describe('dossiers api client', () => {
       dossierTypeCode: 'CLAIM',
       label: 'Claim',
       fields: { a: 1 },
+    })
+  })
+
+  it('lists dossiers with filter params', async () => {
+    vi.mocked(axios.get).mockResolvedValue({
+      data: { content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 },
+    })
+    await listDossiers({
+      page: 1,
+      size: 20,
+      status: 'OUVERT',
+      dossierTypeCode: 'FAC',
+      reference: 'DOS',
+    })
+    expect(axios.get).toHaveBeenCalledWith('/api/dossiers', {
+      params: {
+        page: 1,
+        size: 20,
+        status: 'OUVERT',
+        dossierTypeCode: 'FAC',
+        reference: 'DOS',
+      },
     })
   })
 

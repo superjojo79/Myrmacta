@@ -7,6 +7,8 @@ created: 2026-08-13
 updated: 2026-08-13
 feature: pagination-dossiers
 phase4_sync: 2026-08-13
+phase5: 2026-08-13
+phase6: 2026-08-13
 ---
 
 # Implementation Guide
@@ -16,34 +18,48 @@ phase4_sync: 2026-08-13
 
 - Worktree : `.worktrees/feature-pagination-dossiers`
 - Branche : `feature-pagination-dossiers`
-- JDK 25 + `./mvnw test`
-- Frontend : `cd frontend && npm ci && npm run test`
+- `JAVA_HOME` JDK 25 ; `./mvnw test` → **593** tests OK
+- `cd frontend && npm run test -- --run` → **68** tests OK ; `npm run typecheck` OK
 
 ## Code Structure
 **How is the code organized?**
 
-Voir design Phase 3 (`SearchDossiersUseCase`, `DossierSearchPort`,
-`JpaDossierSearchAdapter` + Specs, `DossierController` list mapping,
-`SupervisionView` état local).
+| Zone | Fichiers clés |
+|---|---|
+| Domain | `SearchDossiersQuery`, `DossierListItem`, `DossierPage`, `SearchDossiersUseCase`, `DossierSearchPort`, `SearchDossiersUseCaseImpl` |
+| Infra | `DossierSpecifications`, `JpaDossierSearchAdapter`, Liquibase `008-dossier-list-indexes` |
+| Web | `DossierListQueryParser`, `DossierPageResponse` / `DossierListItemResponse`, `DossierController#list` |
+| FE | `listDossiers`, types page/item, `SupervisionView` (état local + URL) |
 
 ## Implementation Notes
 **Key technical details to remember:**
 
 ### Core Features
-- Planning T1–T12 (Phase 4) — not started.
-- DQ1 Specs ; DQ4 projection sans `fields` ; DQ2 labels UC ; DQ3 indexes
-  `008-dossier-list-indexes` ; DQ5 FE local state.
+- T1–T12 livrés (Phase 5).
+- Routage : `params=ref` prioritaire sur liste.
+- Projection Criteria **sans** colonne `fields`.
+- ACL mirror `ListDossierTypesUseCaseImpl`.
 
 ### Patterns & Best Practices
-- Mirror ACL de `ListDossierTypesUseCaseImpl`.
-- Ne pas casser `GET /api/dossiers?ref=`.
-- TDD sur UC (T5) et Specs/IT (T4) avant API large.
+- Specs + `count(spec)` + multiselect Criteria.
+- Labels type en batch UC (`findAll` → map).
+
+### Deviations
+- Aucune majeure vs design DQ1–DQ5.
 
 ## Integration Points
 **How do pieces connect?**
 
-- `DossierConfig` beans ; Liquibase master include 008 ;
-  `api/dossiers.listDossiers` → Supervision.
+- `DossierConfig` bean `SearchDossiersUseCase`.
+- Supervision consomme `GET /api/dossiers` + `GET /api/dossier-types`.
+
+## Evidence (Phase 5)
+
+```text
+./mvnw test → Tests run: 593, Failures: 0, Errors: 0 — BUILD SUCCESS
+frontend npm test → 28 files / 68 tests passed
+frontend npm run typecheck → OK
+```
 
 ## Progress
-Phases 1–4 docs closes. **Next :** Phase 5 — Execute Plan (T1).
+Phases 1–6 closes côté impl. **Next :** Phase 7 Check Implementation (formelle) → Phase 8 → 9.

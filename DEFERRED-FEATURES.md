@@ -12,7 +12,7 @@
 **Statut lifecycle (check-status) :** `architecture-hexagonale`, `multi-tenant`,
 `authentification`, `dossiers`, `workflow-engine`, `autorisation-conformite`,
 `connecteurs`, `templates-documents`, `generation-documents`, `notifications`,
-`visualisation-workflow`, `frontend` sont **Complete** (mergés — `frontend` via
+`visualisation-workflow`, `frontend`, `pagination-dossiers` (en cours de merge) sont **Complete**/lifecycle advanced (mergés — `frontend` via
 PR #38 `cursor/feature-frontend-21f2`, vague 1 instructeur + vague 2 admin
 types/templates/connectors/workflow-configs ; packaging Maven→`static/` ;
 maquette
@@ -71,7 +71,7 @@ pièces jointes, purge §22), introduire un **port abstrait** avec adaptateur
 | Relations entre dossiers | Lot suivant |
 | `DossierWorkflowLink` + AttachWorkflow | Lot `workflow-engine` |
 | PATCH fields dossier | Extension API (point 24) |
-| Liste / recherche / pagination dossiers | Point 24 — **bloque** l’écran Supervision complet du mock |
+| Liste / recherche / pagination dossiers | **Livré** — feature `pagination-dossiers` (API + Supervision) |
 | Index Liquibase `(tenant_id, dossier_type_code)` | Nice-to-have |
 | CHECK SQL `permission ∈ {VIEW,EDIT}` | Nice-to-have |
 | `Long version` / `Persistable` pour `isNew()` | Nice-to-have JPA |
@@ -100,7 +100,7 @@ consomme `GET …/diagram`).
 | Item | Notes |
 |---|---|
 | Écrans Rapports / SLA | Hors scope V1 (mock UI de référence uniquement) |
-| Liste / recherche / pagination dossiers (Supervision complet) | Bloqué par TODO §24 côté backend |
+| Liste / recherche / pagination dossiers (Supervision complet) | **Livré** — `pagination-dossiers` |
 | `npm run test` / `lint` / `test:e2e` en CI | Câblé (`.github/workflows/ci.yml`, job `frontend`) |
 
 ---

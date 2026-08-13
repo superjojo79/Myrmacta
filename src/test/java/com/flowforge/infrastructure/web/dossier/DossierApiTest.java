@@ -561,6 +561,77 @@ class DossierApiTest {
                 .andExpect(jsonPath("$[0]", not(hasKey("storageRef"))));
     }
 
+    @Test
+    void listDossiers_admin_returnsEnvelopeWithTypeLabelAndNoFields() throws Exception {
+        String code = createType(true);
+        grant(code, "mgr-list", "EDIT");
+        DossierFixture dossier = createDossier(code, "mgr-list", "Listed dossier");
+
+        mockMvc.perform(get("/api/dossiers")
+                        .param("dossierTypeCode", code)
+                        .with(user("admin-list", "TENANT_ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20))
+                .andExpect(jsonPath("$.totalElements").value(org.hamcrest.Matchers.greaterThanOrEqualTo(1)))
+                .andExpect(jsonPath("$.content[?(@.id=='%s')].label".formatted(dossier.id())).isNotEmpty())
+                .andExpect(jsonPath("$.content[?(@.id=='%s')].dossierTypeLabel".formatted(dossier.id())).isNotEmpty())
+                .andExpect(jsonPath("$.content[0]", not(hasKey("fields"))));
+    }
+
+    @Test
+    void listDossiers_userWithoutAcl_returnsEmptyPage() throws Exception {
+        mockMvc.perform(get("/api/dossiers").with(user("no-acl-user", "DOSSIER_VIEWER")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isEmpty())
+                .andExpect(jsonPath("$.totalElements").value(0));
+    }
+
+    @Test
+    void listDossiers_typeOutsideAcl_returnsEmptyPage() throws Exception {
+        String visible = createType(true);
+        String hidden = createType(true);
+        grant(visible, "mgr-filter", "VIEW");
+        grant(hidden, "other-user", "EDIT");
+        createDossier(hidden, "other-user", "Hidden");
+
+        mockMvc.perform(get("/api/dossiers")
+                        .param("dossierTypeCode", hidden)
+                        .with(user("mgr-filter", "DOSSIER_MANAGER")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isEmpty())
+                .andExpect(jsonPath("$.totalElements").value(0));
+    }
+
+    @Test
+    void listDossiers_invalidStatus_returns400() throws Exception {
+        mockMvc.perform(get("/api/dossiers")
+                        .param("status", "NOPE")
+                        .with(user("admin-bad-status", "TENANT_ADMIN")))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void listDossiers_anonymous_returns401() throws Exception {
+        mockMvc.perform(get("/api/dossiers")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void listDossiers_refParamStillReturnsSingleDossier() throws Exception {
+        String code = createType(true);
+        grant(code, "mgr-ref-list", "EDIT");
+        DossierFixture dossier = createDossier(code, "mgr-ref-list", "Ref still works");
+
+        mockMvc.perform(get("/api/dossiers")
+                        .param("ref", dossier.reference())
+                        .param("page", "0")
+                        .with(user("mgr-ref-list")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(dossier.id()))
+                .andExpect(jsonPath("$.reference").value(dossier.reference()))
+                .andExpect(jsonPath("$.content").doesNotExist());
+    }
+
     private String createType(boolean active) throws Exception {
         String code = uniqueCode(active ? "ACTIVE" : "INACTIVE");
         mockMvc.perform(post("/api/dossier-types")

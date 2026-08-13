@@ -1,5 +1,12 @@
 import axios from 'axios'
-import type { Dossier, DossierElementView, DossierStatus, WorkflowLink } from './types'
+import type {
+  Dossier,
+  DossierElementView,
+  DossierListParams,
+  DossierPage,
+  DossierStatus,
+  WorkflowLink,
+} from './types'
 
 export async function createDossier(payload: {
   dossierTypeCode: string
@@ -7,6 +14,18 @@ export async function createDossier(payload: {
   fields: Record<string, unknown>
 }): Promise<Dossier> {
   const { data } = await axios.post<Dossier>('/api/dossiers', payload)
+  return data
+}
+
+export async function listDossiers(params: DossierListParams = {}): Promise<DossierPage> {
+  const query: Record<string, string | number> = {}
+  if (params.page != null) query.page = params.page
+  if (params.size != null) query.size = params.size
+  if (params.sort) query.sort = params.sort
+  if (params.status) query.status = params.status
+  if (params.dossierTypeCode) query.dossierTypeCode = params.dossierTypeCode
+  if (params.reference) query.reference = params.reference
+  const { data } = await axios.get<DossierPage>('/api/dossiers', { params: query })
   return data
 }
 

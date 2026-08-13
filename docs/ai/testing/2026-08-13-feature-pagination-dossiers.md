@@ -11,6 +11,8 @@ stakeholder_decisions: 2026-08-13
 phase2_sync: 2026-08-13
 phase3_sync: 2026-08-13
 phase4_sync: 2026-08-13
+phase5_evidence: 2026-08-13
+verified: 2026-08-13
 ---
 
 # Testing Strategy
@@ -29,60 +31,60 @@ phase4_sync: 2026-08-13
 **What individual components need testing?**
 
 ### `SearchDossiersUseCaseImpl`
-- [ ] Admin bypass → aucun filtre de type injecté (tous types)
-- [ ] User avec grants VIEW → `allowedTypeCodes` restreint
-- [ ] Zéro grant → page vide sans appel search (short-circuit)
-- [ ] `dossierTypeCode` hors allowed → page vide
-- [ ] `dossierTypeCode` dans allowed → délégué au port avec filtre
-- [ ] `reference` blank → traité absent
-- [ ] Attache `dossierTypeLabel` via batch types ; `""` si type manquant
-- [ ] `AccessContext.Service` → `AccessDeniedException` / 403
+- [x] Admin bypass → aucun filtre de type injecté (tous types)
+- [x] User avec grants VIEW → `allowedTypeCodes` restreint
+- [x] Zéro grant → page vide sans appel search (short-circuit)
+- [x] `dossierTypeCode` hors allowed → page vide
+- [x] `dossierTypeCode` dans allowed → délégué au port avec filtre
+- [x] `reference` blank → traité absent
+- [x] Attache `dossierTypeLabel` via batch types ; `""` si type manquant
+- [x] `AccessContext.Service` → `AccessDeniedException` / 403
 
 ### `JpaDossierSearchAdapter` / Specs
-- [ ] Projection **ne charge pas** `fields` (assert colonnes / item sans fields)
-- [ ] Spec status / type-in / reference prefix CI
-- [ ] Tri `updatedAt` desc + pagination totals
+- [x] Projection **ne charge pas** `fields` (assert colonnes / item sans fields)
+- [x] Spec status / type-in / reference prefix CI
+- [x] Tri `updatedAt` desc + pagination totals
 
 ### Validation / parsing (controller ou helper)
-- [ ] `page < 0` → 400
-- [ ] `size` 0 / 101 → 400 ; défaut 20 si absent ; `1` et `100` OK
-- [ ] `sort=reference,asc` → 400 ; `updatedAt,desc` / absent → OK
-- [ ] `status=NOPE` → 400 ; `status=OUVERT` → OK
-- [ ] Item JSON contient `label` + `dossierTypeLabel` ; pas de `fields`
-- [ ] `GET …?ref=…&page=0` → get-by-ref (pas envelope liste)
+- [x] `page < 0` → 400
+- [x] `size` 0 / 101 → 400 ; défaut 20 si absent ; `1` et `100` OK
+- [x] `sort=reference,asc` → 400 ; `updatedAt,desc` / absent → OK
+- [x] `status=NOPE` → 400 ; `status=OUVERT` → OK
+- [x] Item JSON contient `label` + `dossierTypeLabel` ; pas de `fields`
+- [x] `GET …?ref=…&page=0` → get-by-ref (pas envelope liste)
 
 ### Frontend (état local)
-- [ ] `listDossiers` envoie les bons query params
-- [ ] `SupervisionView` affiche les lignes et pagine (state local, pas Pinia search)
-- [ ] Changement filtre met à jour l’URL (`router.replace`)
-- [ ] Hydratation depuis query URL au mount
-- [ ] Clic ligne → navigation `/dossiers/{id}`
-- [ ] Formulaire ouvrir-par-ref toujours présent et fonctionnel (mock API)
+- [x] `listDossiers` envoie les bons query params
+- [x] `SupervisionView` affiche les lignes et pagine (state local, pas Pinia search)
+- [x] Changement filtre met à jour l’URL (`router.replace`)
+- [x] Hydratation depuis query URL au mount
+- [x] Clic ligne → navigation `/dossiers/{id}`
+- [x] Formulaire ouvrir-par-ref toujours présent et fonctionnel (mock API)
 
 ## Integration Tests
 **How do we test component interactions?**
 
 ### Persistence / search adapter
-- [ ] Insert N dossiers → page 0 size 20 → totaux corrects
-- [ ] Filtre `status` exact
-- [ ] Filtre `dossierTypeCode` exact
-- [ ] Filtre `reference` préfixe case-insensitive
-- [ ] Tri `updatedAt` desc stable
-- [ ] Combinaison filtres + pagination page 1
+- [x] Insert N dossiers → page 0 size 20 → totaux corrects
+- [x] Filtre `status` exact
+- [x] Filtre `dossierTypeCode` exact
+- [x] Filtre `reference` préfixe case-insensitive
+- [x] Tri `updatedAt` desc stable
+- [x] Combinaison filtres + pagination page 1
 
 ### MockMvc API
-- [ ] `GET /api/dossiers` authentifié → 200 envelope
-- [ ] `GET /api/dossiers?ref=…` → **toujours** un `DossierResponse` (régression)
-- [ ] User sans ACL → `content=[]`, `totalElements=0`
-- [ ] Type hors ACL → page vide
-- [ ] Params invalides → 400 ProblemDetail
+- [x] `GET /api/dossiers` authentifié → 200 envelope
+- [x] `GET /api/dossiers?ref=…` → **toujours** un `DossierResponse` (régression)
+- [x] User sans ACL → `content=[]`, `totalElements=0`
+- [x] Type hors ACL → page vide
+- [x] Params invalides → 400 ProblemDetail
 - [ ] Appel style service/API_SERVICE → 403
-- [ ] Anonyme → 401
+- [x] Anonyme → 401
 
 ## End-to-End Tests
 **What user flows need validation?**
 
-- [ ] Hors scope Playwright pour cette feature
+- [x] Hors scope Playwright pour cette feature
 - [ ] Manuel smoke : Supervision liste + filtre + deep-link URL (checklist)
 
 ## Test Data

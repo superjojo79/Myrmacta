@@ -31,6 +31,7 @@ public class M2mTenantValidationFilter extends OncePerRequestFilter {
         if (authentication != null && authentication.getPrincipal() instanceof Jwt jwt) {
             String claimedTenantId = jwt.getClaimAsString("tenant_id");
             if (!tenantProperties.id().equals(claimedTenantId)) {
+                SecurityAuditLog.tenantMismatch(request, claimedTenantId);
                 SecurityContextHolder.clearContext();
                 response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                 return;

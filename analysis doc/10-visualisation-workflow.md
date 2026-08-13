@@ -16,12 +16,19 @@ La visualisation est accessible aux utilisateurs impliqués dans l'instance (ass
 
 ### Endpoints backend
 
+> **Mise à jour — décision DD-URL (implémentation).** Le schéma ci-dessous utilisait `instanceId`
+> (l'ID moteur Flowable brut). L'implémentation livrée utilise à la place `linkId`, l'identifiant
+> métier de `DossierWorkflowLink` : ni le SPA ni l'URL n'exposent jamais l'ID interne du moteur
+> BPMN. Racine réelle : `/api/workflow-links/{linkId}/...`
+> (`WorkflowLinkVisualizationController`).
+
 | Méthode | Endpoint | Description |
 |---|---|---|
-| `GET` | `/api/workflows/{instanceId}/diagram` | XML BPMN + IDs actifs / terminés / en erreur |
-| `GET` | `/api/workflows/{instanceId}/history` | Étapes avec timing, durée et assigné |
-| `GET` | `/api/workflows/{instanceId}/tasks` | Tâches actives avec assigné courant |
-| `POST` | `/api/workflows/{instanceId}/tasks/{taskId}/reassign` | Réassignation de tâche |
+| `GET` | `/api/workflow-links/{linkId}/diagram` | XML BPMN + IDs actifs / terminés / en erreur |
+| `GET` | `/api/workflow-links/{linkId}/history` | Étapes avec timing, durée et assigné |
+| `GET` | `/api/workflow-links/{linkId}/tasks` | Tâches actives avec assigné courant |
+| `POST` | `/api/workflow-links/{linkId}/tasks/{taskId}/reassign` | Réassignation de tâche |
+| `GET` | `/api/workflow-links/{linkId}/dossier` | Panneau dossier en regard du workflow (voir plus bas) |
 | `GET` | `/api/dossiers/{dossierId}/workflows` | Historique des workflows exécutés sur le dossier (`DossierWorkflowLink[]`, voir [04-dossiers.md](04-dossiers.md)) |
 
 > **Mise à jour — décision n° 17.** `GetDossierWorkflowHistoryUseCase.getHistory(...)` renvoyait une
@@ -147,9 +154,9 @@ import BpmnViewer from 'bpmn-js/lib/NavigatedViewer';
 
 const viewer = new BpmnViewer({ container: '#bpmn-canvas' });
 
-async function loadDiagram(instanceId) {
+async function loadDiagram(linkId) {
     const { bpmnXml, activeIds, completedIds, failedIds }
-        = await api.get(`/api/workflows/${instanceId}/diagram`);
+        = await api.get(`/api/workflow-links/${linkId}/diagram`);
 
     // Rendu du XML natif Flowable — aucune conversion
     await viewer.importXML(bpmnXml);
@@ -199,7 +206,7 @@ Le canal SSE existant est réutilisé. Un `FlowableEventListener` notifie les ut
 public class WorkflowStateEventListener implements FlowableEventListener {
 
     private final SendNotificationUseCase notification;
-    private final WorkflowParticipantPort participants;
+    private final WorkflowParticipantPort participantPort;
 
     private static final Set<FlowableEngineEventType> RELEVANT = Set.of(
         FlowableEngineEventType.TASK_ASSIGNED,
@@ -212,14 +219,16 @@ public class WorkflowStateEventListener implements FlowableEventListener {
         if (!(raw instanceof FlowableEngineEvent event)) return;
         if (!RELEVANT.contains(event.getType()))        return;
 
-        String instanceId = event.getProcessInstanceId();
+        // linkRepository.findByProcessInstanceId(...) résout le DossierWorkflowLink métier —
+        // seul link.id() (pas l'instanceId moteur) part dans le payload, cf. décision DD-URL.
+        DossierWorkflowLink link = resolveLink(event.getProcessInstanceId());
 
-        participants.findByInstanceId(instanceId).forEach(userId ->
+        participantPort.findParticipantUserIds(link).forEach(userId ->
             notification.send(NotificationEvent.builder()
                 .channel (NotificationChannel.BROWSER)
                 .userId  (userId)
                 .type    ("WORKFLOW_STATE_CHANGED")
-                .payload (Map.of("instanceId", instanceId))
+                .payload (Map.of("linkId", link.id().toString()))
                 .build())
         );
     }
@@ -235,7 +244,7 @@ Côté Vue 3, la notification déclenche une bannière — rafraîchissement au 
 watch(notifications, (newNotifs) => {
     const latest = newNotifs[0];
     if (latest?.type === 'WORKFLOW_STATE_CHANGED'
-     && latest.payload.instanceId === props.instanceId) {
+     && latest.payload.linkId === props.linkId) {
         showRefreshBanner.value = true;
     }
 });
@@ -243,17 +252,24 @@ watch(notifications, (newNotifs) => {
 
 ### Ports domaine ajoutés
 
+`WorkflowVisualizationPort` reste scopé sur `processInstanceId` (adaptateur Flowable, port.out) —
+c'est le use case (`WorkflowLinkVisualizationUseCaseImpl`, port.in exposé par le contrôleur) qui
+résout `linkId → processInstanceId` via `DossierWorkflowLinkRepository` avant d'appeler ce port,
+conformément à la décision DD-URL (le moteur BPMN garde son ID interne, jamais exposé au SPA).
+
 ```java
-// domain/workflow/port/out
+// domain/workflow/port/out — adaptateur Flowable, ID moteur interne uniquement
 public interface WorkflowVisualizationPort {
-    WorkflowDiagramView      getDiagram(String instanceId, String tenantId);
-    List<ActivityHistoryEntry> getHistory(String instanceId, String tenantId);
-    void reassignTask(String taskId, String assigneeId, String tenantId);
+    WorkflowDiagramView         getDiagram(String processInstanceId, String tenantId);
+    List<ActivityHistoryEntry>  getHistory(String processInstanceId, String tenantId);
+    List<WorkflowTaskView>      listActiveTasks(String processInstanceId, String tenantId);
+    void                        assertTaskOnInstance(String processInstanceId, String taskId, String tenantId);
+    void                        reassignTask(String processInstanceId, String taskId, String assigneeId, String tenantId);
 }
 
-// Résolution des utilisateurs impliqués dans une instance
+// Résolution des utilisateurs impliqués dans un lien workflow↔dossier
 public interface WorkflowParticipantPort {
-    List<String> findByInstanceId(String instanceId); // retourne les userIds
+    List<String> findParticipantUserIds(DossierWorkflowLink link);
 }
 ```
 
@@ -286,9 +302,21 @@ Le rendu de ce panneau (schéma et contenu) est décrit une seule fois dans
 pour éviter de dupliquer le même exemple dans les deux documents.
 
 ```
-GET /api/workflows/{instanceId}/dossier
-    → { dossier, elements, relations }
+GET /api/workflow-links/{linkId}/dossier
+    → { dossier, elements, relations: [] }
 ```
+
+> **Mise à jour — décision DD-REL (implémentation).** `relations` est toujours renvoyé vide
+> (`List.of()`, `WorkflowLinkVisualizationUseCaseImpl.getDossier`). Les relations entre dossiers
+> sont différées (lot suivant, voir [DEFERRED-FEATURES.md §1.4](../DEFERRED-FEATURES.md)) — le champ
+> existe dans le contrat de réponse pour ne pas casser le SPA quand elles seront livrées, mais
+> n'est peuplé par aucun code aujourd'hui.
+>
+> Par ailleurs, cet endpoint charge le dossier via `DossierRepository` après authz "participant
+> workflow ou TENANT_ADMIN/WORKFLOW_ADMIN" — **sans** repasser par l'ACL type de dossier
+> (`DossierAccessPolicy`). Décision DD-DOSSIER-LOAD initialement retenue pour éviter une double
+> vérification d'ACL ; revue suite à l'audit de sécurité et l'ACL type est désormais **également**
+> appliquée sur ce chemin (voir [12-autorisation-conformite.md](12-autorisation-conformite.md)).
 
 ### Sélecteur de run — dossier avec plusieurs workflows
 
@@ -297,8 +325,8 @@ Un dossier ayant été manipulé par plusieurs workflows successifs (voir
 `GET /api/dossiers/{dossierId}/workflows`. Le `WorkflowViewer` affiche cette
 liste comme une frise chronologique au-dessus du diagramme ; sélectionner
 une entrée recharge le diagramme BPMN correspondant via
-`GET /api/workflows/{instanceId}/diagram` avec l'`instanceId` de l'entrée
-choisie. Par défaut, l'entrée sans `endedAt` (le workflow actif) est
+`GET /api/workflow-links/{linkId}/diagram` avec le `linkId` (`DossierWorkflowLink.id()`)
+de l'entrée choisie. Par défaut, l'entrée sans `endedAt` (le workflow actif) est
 sélectionnée ; s'il n'y en a pas, c'est la plus récente.
 
 ```

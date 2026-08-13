@@ -1,7 +1,8 @@
 # Notifications
 
 > Trois canaux : email, webhook sortant, notification navigateur (SSE).  
-> Dispatcher unifié appelé depuis un ServiceTask Flowable ou directement via l'API.
+> Envoi déclenché depuis un ServiceTask Flowable ou directement via l'API, via un
+> **outbox transactionnel** — voir décision n° 33 ([TODO.md](../TODO.md)).
 
 ---
 
@@ -10,52 +11,53 @@
 | Canal | Mécanisme | Usage typique |
 |---|---|---|
 | Email | Spring Mail / JavaMailSender | Alertes, confirmations |
-| Webhook sortant | RestClient + Spring Retry | Intégrations noCode (Make, n8n, Zapier), Flowable |
+| Webhook sortant | `RestClient` + garde SSRF (`OutboundUrlGuard`) | Intégrations noCode (Make, n8n, Zapier), Flowable |
 | Navigateur (push) | SSE — Server-Sent Events | Notifications temps réel dans la SPA |
 
-### Dispatcher unifié
+### Pattern outbox transactionnel (décision n° 33)
 
-Un `ServiceTask` Flowable appelle le `NotificationDispatcher`, qui route selon le canal configuré. Plusieurs canaux peuvent être déclenchés simultanément.
+**Écart assumé par rapport à une version antérieure de cette page**, qui décrivait un
+`NotificationDispatcher` synchrone appelant directement les canaux. L'implémentation retenue est
+symétrique à l'outbox du déclenchement workflow (décision n° 7) : le use case n'effectue **aucune
+I/O** — il valide l'événement et écrit un enregistrement par canal dans `notification_outbox`, dans
+la même transaction que l'action métier qui déclenche la notification. Un relais de polling
+(`@Scheduled`) dispatche ensuite réellement, avec retry/backoff porté par la table (`attempts`,
+`recordFailure`), pas par une annotation Spring.
 
 ```java
-@Service
-@RequiredArgsConstructor
-public class NotificationDispatcher {
+// domain/notification/usecase — DD-UC-NO-IO : pas de port de canal appelé ici
+public final class SendNotificationUseCaseImpl implements SendNotificationUseCase {
+    public List<UUID> send(NotificationEvent event, String tenantId) {
+        // valide chaque canal, puis écrit un batch dans l'outbox — aucun appel EmailPort/WebhookPort/BrowserPushPort
+        return outboxRepository.savePendingBatch(tenantId, writes, now);
+    }
+}
 
-    private final EmailNotificationService   emailService;
-    private final WebhookNotificationService webhookService;
-    private final SseNotificationController  sseController;
-
-    public void dispatch(NotificationEvent event) {
-        switch (event.getChannel()) {
-            case EMAIL   -> emailService.send(event);
-            case WEBHOOK -> webhookService.send(
-                                event.getWebhookConfig(), event.getPayload());
-            case BROWSER -> sseController.push(event.getUserId(), event);
-        }
+// infrastructure/notification — relais, hors transaction métier
+@Component
+public class NotificationOutboxRelay {
+    @Scheduled(fixedDelayString = "${app.notification.outbox.poll-delay:1s}")
+    void relayPendingEvents() {
+        // lockNextPending → dispatch réel par canal → markProcessed / recordFailure / markDead
     }
 }
 ```
 
-### Webhook sortant — Spring Retry
+Avantage recherché : durabilité de l'envoi (un crash entre la décision métier et l'appel réseau ne
+perd jamais la notification, rejouable) sans introduire de brique d'infrastructure supplémentaire —
+même raisonnement que la décision n° 7.
 
-Retry exponentiel indispensable pour absorber les indisponibilités temporaires des plateformes cibles.
+### Webhook sortant — retry porté par le relais outbox
 
-```java
-@Retryable(
-    retryFor    = { RestClientException.class },
-    maxAttempts = 3,
-    backoff     = @Backoff(delay = 1000, multiplier = 2) // 1s → 2s → 4s
-)
-public void send(WebhookConfig config, NotificationPayload payload) { … }
+Un échec (`RuntimeException`) lors de `dispatchWebhook` incrémente `attempts` via
+`outboxRepository.recordFailure(...)` ; le relais retente au prochain cycle de polling jusqu'à
+`app.notification.webhook.*` / `app.notification.outbox.max-attempts`, puis passe l'enregistrement
+en `DEAD` pour retraitement manuel. Pas de `@Retryable` Spring Retry — la dépendance a été retirée
+du `pom.xml` (jamais utilisée, cf. décision n° 33).
 
-@Recover
-public void recover(RestClientException ex, WebhookConfig config, …) {
-    // Dead-letter en base pour retraitement manuel
-}
-```
-
-Chaque webhook est configurable par tenant : URL cible, secret HMAC, format du payload (JSON générique ou format spécifique à la plateforme).
+Chaque webhook est configurable par tenant : URL cible, secret HMAC (chiffré au repos), format du
+payload JSON. Toute URL cible passe par `OutboundUrlGuard` (résolution DNS + blocage des plages
+privées/loopback/link-local/métadonnées cloud) avant l'envoi.
 
 ### Notifications navigateur — SSE
 
@@ -134,34 +136,31 @@ L'implémentation `SseNotificationAdapter` (voir [01-architecture-hexagonale.md]
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-mail</artifactId>
 </dependency>
-
-<!-- Retry (webhooks) -->
-<dependency>
-    <groupId>org.springframework.retry</groupId>
-    <artifactId>spring-retry</artifactId>
-</dependency>
 ```
+
+Pas de dépendance retry dédiée — le retry webhook est porté par `NotificationOutboxRelay` (voir
+ci-dessus), pas par Spring Retry.
 
 ---
 
 ## Ports domaine
 
 ```java
-// domain/notification/port/in
+// domain/notification/port/in — écrit l'outbox, n'appelle aucun port de canal (DD-UC-NO-IO)
 public interface SendNotificationUseCase {
-    void send(NotificationEvent event);
+    List<UUID> send(NotificationEvent event, String tenantId);
 }
 
-// domain/notification/port/out
+// domain/notification/port/out — appelés uniquement par NotificationOutboxRelay
 public interface EmailPort {
-    void send(NotificationEvent event);
+    void send(String to, String subject, String body);
 }
 
 public interface WebhookPort {
-    void send(WebhookConfig config, NotificationPayload payload);
+    void send(WebhookDeliveryCommand command);
 }
 
 public interface BrowserPushPort {
-    void push(String userId, NotificationEvent event);
+    boolean push(String userId, Map<String, Object> event);
 }
 ```

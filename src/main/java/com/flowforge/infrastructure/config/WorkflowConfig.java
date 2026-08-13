@@ -1,9 +1,11 @@
 package com.flowforge.infrastructure.config;
 
 import com.flowforge.application.workflow.ManualStartOrchestrator;
+import com.flowforge.domain.dossier.DossierAccessPolicy;
 import com.flowforge.domain.dossier.port.in.AttachWorkflowUseCase;
 import com.flowforge.domain.dossier.port.out.DossierElementRepository;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
+import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
 import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
 import com.flowforge.domain.dossier.usecase.AttachWorkflowUseCaseImpl;
 import com.flowforge.domain.workflow.port.in.CompleteTaskUseCase;
@@ -82,16 +84,20 @@ public class WorkflowConfig {
             TenantProperties tenantProperties,
             DossierWorkflowLinkRepository linkRepository,
             DossierRepository dossierRepository,
+            DossierTypeRepository dossierTypeRepository,
             DossierElementRepository elementRepository,
             WorkflowVisualizationPort visualizationPort,
-            WorkflowParticipantPort participantPort) {
+            WorkflowParticipantPort participantPort,
+            DossierAccessPolicy dossierAccessPolicy) {
         return new WorkflowLinkVisualizationUseCaseImpl(
                 tenantProperties.id(),
                 linkRepository,
                 dossierRepository,
+                dossierTypeRepository,
                 elementRepository,
                 visualizationPort,
-                participantPort);
+                participantPort,
+                dossierAccessPolicy);
     }
 
     @Bean

@@ -123,6 +123,32 @@ class DocumentGenerationApiTest {
     }
 
     @Test
+    void generate_exceedingRateLimit_returns429() throws Exception {
+        String key = createActiveTemplate();
+        String caller = "rate-limited-" + UUID.randomUUID();
+        String body = """
+                { "templateKey": "%s", "variables": { "title": "X" } }
+                """.formatted(key);
+        int limitPerMinute = 30;
+
+        for (int i = 0; i < limitPerMinute; i++) {
+            mockMvc.perform(post("/api/documents/generate")
+                            .with(user(caller, "TENANT_ADMIN"))
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isOk());
+        }
+
+        mockMvc.perform(post("/api/documents/generate")
+                        .with(user(caller, "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isTooManyRequests());
+    }
+
+    @Test
     void generate_withoutCsrf_returns403() throws Exception {
         mockMvc.perform(post("/api/documents/generate")
                         .with(user("gen-admin", "TENANT_ADMIN"))

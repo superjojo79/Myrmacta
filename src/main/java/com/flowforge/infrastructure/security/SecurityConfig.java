@@ -1,12 +1,14 @@
 package com.flowforge.infrastructure.security;
 
 import com.flowforge.infrastructure.config.ConnectorProperties;
+import com.flowforge.infrastructure.config.DocumentGenerationProperties;
 import com.flowforge.infrastructure.config.M2mSecurityProperties;
 import com.flowforge.infrastructure.config.SecurityCookieProperties;
 import com.flowforge.infrastructure.config.TenantProperties;
 import com.flowforge.infrastructure.security.oidc.RealmAccessAuthoritiesMapper;
 import com.flowforge.infrastructure.tenant.TenantResolutionFilter;
 import com.flowforge.infrastructure.web.connector.WebhookBodySizeLimitFilter;
+import com.flowforge.infrastructure.web.document.DocumentGenerationBodySizeLimitFilter;
 import java.nio.charset.StandardCharsets;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -127,7 +129,8 @@ public class SecurityConfig {
             SecurityCookieProperties cookieProperties,
             RealmAccessAuthoritiesMapper authoritiesMapper,
             TenantResolutionFilter tenantResolutionFilter,
-            ClientRegistrationRepository clientRegistrationRepository)
+            ClientRegistrationRepository clientRegistrationRepository,
+            DocumentGenerationProperties documentGenerationProperties)
             throws Exception {
         CookieCsrfTokenRepository csrfRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
         csrfRepository.setCookieCustomizer(cookie -> cookie
@@ -146,6 +149,11 @@ public class SecurityConfig {
                         .csrfTokenRequestHandler(csrfHandler))
                 .addFilterAfter(new CsrfCookieEagerLoadFilter(), BasicAuthenticationFilter.class)
                 .addFilterAfter(tenantResolutionFilter, SecurityContextHolderFilter.class)
+                // Rejette une génération de document trop volumineuse avant bufférisation —
+                // seul POST /api/documents/generate est concerné (voir shouldNotFilter).
+                .addFilterBefore(
+                        new DocumentGenerationBodySizeLimitFilter(documentGenerationProperties.maxBodyBytes()),
+                        SecurityContextHolderFilter.class)
                 .oauth2Login(oauth2 -> oauth2.userInfoEndpoint(
                         userInfo -> userInfo.userAuthoritiesMapper(authoritiesMapper)))
                 .logout(logout -> logout

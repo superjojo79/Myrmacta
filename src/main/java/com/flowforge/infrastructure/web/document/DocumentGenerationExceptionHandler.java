@@ -9,9 +9,12 @@ import com.flowforge.domain.dossier.model.AccessDeniedException;
 import com.flowforge.domain.dossier.model.DossierElementNotFoundException;
 import com.flowforge.domain.dossier.model.DossierNotFoundException;
 import com.flowforge.domain.dossier.model.InvalidDossierElementException;
+import com.flowforge.infrastructure.security.SecurityAuditLog;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -46,8 +49,14 @@ public class DocumentGenerationExceptionHandler {
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    ProblemDetail handleAccessDenied(AccessDeniedException ex) {
+    ProblemDetail handleAccessDenied(AccessDeniedException ex, HttpServletRequest request, Authentication authentication) {
+        SecurityAuditLog.accessDenied(request, authentication, ex.getMessage());
         return problem(HttpStatus.FORBIDDEN, "Access denied", ex.getMessage());
+    }
+
+    @ExceptionHandler(DocumentGenerationRateLimitExceededException.class)
+    ProblemDetail handleRateLimit(DocumentGenerationRateLimitExceededException ex) {
+        return problem(HttpStatus.TOO_MANY_REQUESTS, "Rate limit exceeded", ex.getMessage());
     }
 
     private static ProblemDetail problem(HttpStatus status, String title, String detail) {

@@ -84,6 +84,10 @@ app:
       max-body-bytes: 1048576
       rate-limit-per-minute: 120
       idempotency-ttl: 24h
+  document:
+    generate:
+      max-body-bytes: 262144
+      rate-limit-per-minute: 30
   notification:
     outbox:
       batch-size: 20

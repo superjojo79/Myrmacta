@@ -157,6 +157,10 @@ class WorkflowApiTest {
                                 """))
                 .andExpect(status().isUnauthorized());
 
+        // assigneeId must be a known participant/observer (best-effort guard, no user directory) —
+        // configure assignee-sub as an observer of this workflow key before reassigning to it.
+        updateWorkflowConfigObservers(processKey, "assignee-sub");
+
         mockMvc.perform(post("/api/workflow-links/{id}/tasks/{taskId}/reassign", linkId, taskId)
                         .with(user("workflow-admin", "WORKFLOW_ADMIN"))
                         .with(csrf())
@@ -312,6 +316,14 @@ class WorkflowApiTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.bpmnXml").isNotEmpty());
 
+        // Being a workflow observer grants visibility into process state (diagram/history/tasks)
+        // but not the dossier's business fields: the dossier panel additionally enforces the
+        // type-level VIEW ACL, and observer-sub was never granted one for this dossier type.
+        mockMvc.perform(get("/api/workflow-links/{id}/dossier", linkId)
+                        .with(user("observer-sub")))
+                .andExpect(status().isForbidden());
+
+        grant(typeCode, "observer-sub", "VIEW");
         mockMvc.perform(get("/api/workflow-links/{id}/dossier", linkId)
                         .with(user("observer-sub")))
                 .andExpect(status().isOk())
@@ -356,7 +368,7 @@ class WorkflowApiTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "assigneeId": "someone"
+                                  "assigneeId": "viz-owner"
                                 }
                                 """))
                 .andExpect(status().isNotFound());

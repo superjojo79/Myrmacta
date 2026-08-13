@@ -62,7 +62,7 @@ class WorkflowStateEventListenerTest {
         assertThat(events.getAllValues().getFirst().payload())
                 .containsEntry("type", WorkflowStateEventListener.WORKFLOW_STATE_CHANGED)
                 .containsEntry("linkId", link.id().toString())
-                .containsEntry("processInstanceId", "proc-1");
+                .doesNotContainKey("processInstanceId");
     }
 
     @Test

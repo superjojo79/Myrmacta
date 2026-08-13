@@ -48,7 +48,10 @@ class TenantConfigTest {
     }
 
     @Test
-    void invalidTenantId_failsBootViaApplicationRunner() {
+    void invalidTenantId_failsBootViaEnvironmentPostProcessor() {
+        // TenantIdEnvironmentValidator (META-INF/spring.factories) ne s'exécute que sur un vrai
+        // bootstrap SpringApplication — ApplicationContextRunner ne le déclenche pas, d'où l'usage
+        // de SpringApplicationBuilder ici plutôt que withUserConfiguration(TenantConfig.class).
         // Args CLI > application.yml (Builder.properties() serait écrasé par le yaml).
         assertThatThrownBy(() -> new SpringApplicationBuilder(
                                 FlowForgeApplication.class, OidcClientTestConfiguration.class)

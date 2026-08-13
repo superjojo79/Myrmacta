@@ -302,7 +302,9 @@ test('E2E-4 start workflow sends Idempotency-Key', async ({ page }) => {
   await page.getByRole('button', { name: 'Démarrer workflow' }).click()
   await expect(page.getByRole('heading', { name: 'Démarrer un workflow' })).toBeVisible()
   await page.locator('.dialog button.primary').click()
-  await expect(page.getByText('Diagramme')).toBeVisible()
+  // getByText('Diagramme') is ambiguous: it also matches the "Diagramme indisponible (...)"
+  // warning paragraph BpmnViewer renders before the diagram has loaded (strict-mode violation).
+  await expect(page.getByRole('heading', { name: 'Diagramme' })).toBeVisible()
 })
 
 test('E2E-5 complete task from inbox with {}', async ({ page }) => {

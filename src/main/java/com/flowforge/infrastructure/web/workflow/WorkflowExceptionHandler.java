@@ -8,10 +8,13 @@ import com.flowforge.domain.workflow.model.WorkflowProcessInstanceMissingExcepti
 import com.flowforge.domain.workflow.model.WorkflowProcessInstanceNotFoundException;
 import com.flowforge.domain.workflow.model.WorkflowTaskNotFoundException;
 import com.flowforge.domain.workflow.model.WorkflowTypeConfigNotFoundException;
+import com.flowforge.infrastructure.security.SecurityAuditLog;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -19,7 +22,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 class WorkflowExceptionHandler {
 
     @ExceptionHandler(AccessDeniedException.class)
-    ProblemDetail handleAccessDenied(AccessDeniedException ex) {
+    ProblemDetail handleAccessDenied(AccessDeniedException ex, HttpServletRequest request, Authentication authentication) {
+        SecurityAuditLog.accessDenied(request, authentication, ex.getMessage());
         return problem(HttpStatus.FORBIDDEN, "Access denied", ex.getMessage());
     }
 

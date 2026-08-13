@@ -6,12 +6,15 @@ import com.flowforge.domain.dossier.model.DossierFieldValidationException;
 import com.flowforge.domain.dossier.model.DossierNotFoundException;
 import com.flowforge.domain.dossier.model.IllegalDossierStatusTransitionException;
 import com.flowforge.domain.dossier.model.InactiveDossierTypeException;
+import com.flowforge.infrastructure.security.SecurityAuditLog;
 import jakarta.persistence.OptimisticLockException;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -26,7 +29,8 @@ public class DossierExceptionHandler {
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    ProblemDetail handleAccessDenied(AccessDeniedException ex) {
+    ProblemDetail handleAccessDenied(AccessDeniedException ex, HttpServletRequest request, Authentication authentication) {
+        SecurityAuditLog.accessDenied(request, authentication, ex.getMessage());
         return problem(HttpStatus.FORBIDDEN, "Access denied", ex.getMessage());
     }
 

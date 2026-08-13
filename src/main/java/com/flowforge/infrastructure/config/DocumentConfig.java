@@ -16,12 +16,14 @@ import com.flowforge.domain.document.usecase.ListDocumentTemplateUseCaseImpl;
 import com.flowforge.domain.document.usecase.NewDocumentTemplateVersionUseCaseImpl;
 import com.flowforge.domain.document.usecase.ResolveDocumentTemplateUseCaseImpl;
 import com.flowforge.domain.document.usecase.UpdateDocumentTemplateUseCaseImpl;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @Configuration
+@EnableConfigurationProperties(DocumentGenerationProperties.class)
 public class DocumentConfig {
 
     public static final int MAX_HTML_BYTES = 5 * 1024 * 1024;

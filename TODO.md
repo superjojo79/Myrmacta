@@ -154,13 +154,27 @@ ouverte par le document `12`.
 
 ---
 
-### [ ] 30. Durcissement des points d'entrée exposés
+### [~] 30. Durcissement des points d'entrée exposés
 
-**À décider :** rate limiting sur `/api/webhooks/**` ; plafonnement de la taille du corps de requête,
-aujourd'hui chargé intégralement en mémoire pour la vérification HMAC ; taille, types et analyse
-antivirale des pièces jointes ; protection SSRF sur le connecteur `http-rest` en rôle SERVICE et sur
-les webhooks sortants, dont les URL sont fournies par le tenant ; et prévention des fuites de secrets
-déchiffrés via les logs et les API d'administration.
+**Livré (audit sécurité, cette session) :** rate limiting + plafond de taille en mémoire sur
+`/api/webhooks/**` (`WebhookRequestRateLimiter`, `WebhookBodySizeLimitFilter`) et sur
+`POST /api/documents/generate` (`DocumentGenerationRateLimiter`,
+`DocumentGenerationBodySizeLimitFilter`) ; protection SSRF sur le rendu PDF
+(`RestrictedResourceUserAgent`) et les webhooks sortants (`OutboundUrlGuard`, résolution DNS
+incluse) ; journal d'audit sécurité structuré sur les 403 (`SecurityAuditLog`).
+
+**Reste ouvert / reporté :**
+- **Rate limiter distribué (Redis ou équivalent).** Les deux limiteurs ci-dessus sont en mémoire
+  locale (`ConcurrentHashMap` par JVM) — corrects pour le modèle retenu (décision n° 13, une
+  instance par tenant), mais chaque réplique aurait son propre compteur si un tenant était un jour
+  scalé horizontalement, multipliant de facto la limite effective. **Décision : ne pas ajouter Redis
+  maintenant** — aucun déploiement multi-réplique n'est prévu à court terme, et cela introduirait une
+  dépendance d'infrastructure hors stack figée sans besoin actuel. À réactiver si/quand un tenant est
+  effectivement scalé horizontalement.
+- Taille, types et analyse antivirale des pièces jointes / uploads génériques.
+- Protection SSRF sur le connecteur `http-rest` en rôle SERVICE (V1 = TRIGGER uniquement, non
+  concerné aujourd'hui).
+- Prévention des fuites de secrets déchiffrés via les logs et les API d'administration.
 
 **Impacte :** [06-connecteurs.md](analysis%20doc/06-connecteurs.md),
 [09-notifications.md](analysis%20doc/09-notifications.md),
@@ -298,6 +312,35 @@ jugée nécessaire au-delà de cette couverture.
 
 **Documenté dans :** [05-workflow-engine.md](analysis%20doc/05-workflow-engine.md),
 [06-connecteurs.md](analysis%20doc/06-connecteurs.md) (décision n° 16).
+
+---
+
+### [x] 33. Pattern outbox pour les notifications ; `WorkflowEventPublisher` = no-op en production
+
+**Problème :** `09-notifications.md` décrivait un `NotificationDispatcher` synchrone (appel direct
+email/webhook/SSE depuis le `ServiceTask` Flowable, retry via Spring Retry `@Retryable`).
+L'implémentation livrée a divergé sur les deux points sans jamais repasser par une décision :
+`SendNotificationUseCaseImpl` ne fait aucune I/O — il écrit dans `notification_outbox`, et un
+relais (`NotificationOutboxRelay`) dispatche réellement avec retry/backoff maison. Par ailleurs
+`WorkflowEventPublisher` (décision n° 6) n'a **aucune** implémentation de production câblée sur les
+notifications : le bean réel est `NoOpWorkflowEventPublisher`, volontairement inerte.
+
+**Décision retenue :**
+- **Notifications = outbox transactionnel**, symétrique à la décision n° 7 (déclenchement workflow) :
+  écriture dans `notification_outbox` dans la même transaction que l'action métier, puis relais de
+  polling avec `attempts`/backoff. Retenu pour la même raison que la décision n° 7 — durabilité sans
+  brique d'infra supplémentaire — et pour uniformiser les deux chemins outbox du projet. La
+  dépendance `spring-retry` (jamais utilisée, `@Retryable` absent du code) est retirée du `pom.xml` ;
+  le retry reste porté par le relais, pas par une annotation Spring.
+- **`WorkflowEventPublisher` reste no-op en V1.** Les notifications déclenchées par un changement
+  d'état workflow passent par un `ServiceTask` explicite du process BPMN
+  (`notificationDispatchTask`), pas par un listener générique sur `WorkflowEvent`. Le point
+  d'extension de la décision n° 6 (signature générique `publish(WorkflowEvent)`) reste disponible si
+  un futur besoin (audit trail générique, intégration tierce) justifie un abonné réel — non requis
+  en V1.
+
+**Documenté dans :** [09-notifications.md](analysis%20doc/09-notifications.md) (mis à jour pour
+refléter l'outbox au lieu du dispatcher synchrone d'origine).
 
 ---
 
@@ -500,4 +543,26 @@ Corollaires actés dans le même mouvement : le risque concret de fuite d'un pro
 **Écartées / abandonnées :** ACL par instance de dossier (première B2) ; A1, A3, B1, B3, C2.
 
 **Documenté dans :** [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md), section 3, et répercuté dans [12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md), [04-dossiers.md](analysis%20doc/04-dossiers.md) et [06-connecteurs.md](analysis%20doc/06-connecteurs.md).
+
+---
+
+### [x] 34. ACL type de dossier sur le panneau dossier de la visualisation workflow
+
+**Problème :** `GET /api/workflow-links/{linkId}/dossier` (feature `visualisation-workflow`,
+décision DD-DOSSIER-LOAD) chargeait le dossier après authz « participant workflow ou
+TENANT_ADMIN/WORKFLOW_ADMIN » **sans** repasser par `DossierAccessPolicy` (décision n° 20) —
+motivé à l'origine par l'évitement d'une double vérification d'ACL (A10). Un simple participant ou
+observer d'un workflow, sans entrée `dossier_type_acl` de niveau VIEW, pouvait donc lire
+l'intégralité des champs métier du dossier — un modèle d'accès incohérent entre les deux portes
+d'entrée pour lire le même dossier (`GetDossierUseCase` vs panneau viz), relevé par l'audit
+sécurité de cette session.
+
+**Décision retenue :** revenir sur DD-DOSSIER-LOAD/A10 — `WorkflowLinkVisualizationUseCaseImpl.getDossier`
+appelle désormais `DossierAccessPolicy.assertCanView(dossier, actor)` en plus du contrôle
+participant. `TENANT_ADMIN`/`WORKFLOW_ADMIN` continuent de contourner (comme partout ailleurs) ;
+un participant/observer sans ACL VIEW garde l'accès au diagramme/historique/tâches (aucune donnée
+métier du dossier) mais reçoit 403 sur le panneau dossier.
+
+**Documenté dans :** [12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md),
+[10-visualisation-workflow.md](analysis%20doc/10-visualisation-workflow.md).
 

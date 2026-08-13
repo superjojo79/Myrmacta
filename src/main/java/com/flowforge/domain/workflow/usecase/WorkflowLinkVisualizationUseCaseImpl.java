@@ -1,12 +1,18 @@
 package com.flowforge.domain.workflow.usecase;
 
+import com.flowforge.domain.dossier.DossierAccessPolicy;
+import com.flowforge.domain.dossier.DossierFieldRedactor;
 import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.AccessDeniedException;
+import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierNotFoundException;
+import com.flowforge.domain.dossier.model.DossierType;
 import com.flowforge.domain.dossier.model.DossierWorkflowLink;
 import com.flowforge.domain.dossier.model.DossierWorkflowLinkNotFoundException;
+import com.flowforge.domain.dossier.model.FieldDefinition;
 import com.flowforge.domain.dossier.port.out.DossierElementRepository;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
+import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
 import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
 import com.flowforge.domain.workflow.model.ActivityHistoryEntry;
 import com.flowforge.domain.workflow.model.WorkflowDiagramView;
@@ -34,23 +40,29 @@ public final class WorkflowLinkVisualizationUseCaseImpl implements
     private final String tenantId;
     private final DossierWorkflowLinkRepository linkRepository;
     private final DossierRepository dossierRepository;
+    private final DossierTypeRepository dossierTypeRepository;
     private final DossierElementRepository elementRepository;
     private final WorkflowVisualizationPort visualizationPort;
     private final WorkflowParticipantPort participantPort;
+    private final DossierAccessPolicy dossierAccessPolicy;
 
     public WorkflowLinkVisualizationUseCaseImpl(
             String tenantId,
             DossierWorkflowLinkRepository linkRepository,
             DossierRepository dossierRepository,
+            DossierTypeRepository dossierTypeRepository,
             DossierElementRepository elementRepository,
             WorkflowVisualizationPort visualizationPort,
-            WorkflowParticipantPort participantPort) {
+            WorkflowParticipantPort participantPort,
+            DossierAccessPolicy dossierAccessPolicy) {
         this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
         this.linkRepository = Objects.requireNonNull(linkRepository, "linkRepository");
         this.dossierRepository = Objects.requireNonNull(dossierRepository, "dossierRepository");
+        this.dossierTypeRepository = Objects.requireNonNull(dossierTypeRepository, "dossierTypeRepository");
         this.elementRepository = Objects.requireNonNull(elementRepository, "elementRepository");
         this.visualizationPort = Objects.requireNonNull(visualizationPort, "visualizationPort");
         this.participantPort = Objects.requireNonNull(participantPort, "participantPort");
+        this.dossierAccessPolicy = Objects.requireNonNull(dossierAccessPolicy, "dossierAccessPolicy");
     }
 
     @Override
@@ -74,11 +86,20 @@ public final class WorkflowLinkVisualizationUseCaseImpl implements
     @Override
     public WorkflowLinkDossierView getDossier(UUID linkId, AccessContext.User actor) {
         DossierWorkflowLink link = requireReadableLink(linkId, actor);
-        var dossier = dossierRepository.findById(link.dossierId())
+        Dossier dossier = dossierRepository.findById(link.dossierId())
                 .filter(candidate -> tenantId.equals(candidate.tenantId()))
                 .orElseThrow(() -> new DossierNotFoundException("Dossier not found: " + link.dossierId()));
+        dossierAccessPolicy.assertCanView(dossier, actor);
         var elements = elementRepository.findByDossierIdOrderByAddedAtAsc(link.dossierId());
-        return new WorkflowLinkDossierView(dossier, elements, List.of());
+        return new WorkflowLinkDossierView(redactSensitiveFields(dossier, actor), elements, List.of());
+    }
+
+    private Dossier redactSensitiveFields(Dossier dossier, AccessContext.User actor) {
+        List<FieldDefinition> fieldDefinitions = dossierTypeRepository
+                .findByCode(dossier.tenantId(), dossier.dossierTypeCode())
+                .map(DossierType::fieldDefinitions)
+                .orElseGet(List::of);
+        return DossierFieldRedactor.redact(dossier, fieldDefinitions, actor);
     }
 
     @Override
@@ -94,6 +115,12 @@ public final class WorkflowLinkVisualizationUseCaseImpl implements
         }
         DossierWorkflowLink link = loadTenantLink(linkId);
         String processInstanceId = requireProcessInstance(link);
+        // Best-effort guard against typos, not an identity check (no local user directory —
+        // OIDC only): assigneeId must already be a recognized participant or configured observer.
+        if (!participantPort.findParticipantUserIds(link).contains(assigneeId)) {
+            throw new IllegalArgumentException(
+                    "assigneeId is not a known participant or observer of this workflow: " + assigneeId);
+        }
         visualizationPort.reassignTask(processInstanceId, taskId, assigneeId, tenantId);
     }
 

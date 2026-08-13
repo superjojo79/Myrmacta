@@ -25,7 +25,6 @@
         <jsoup.version>1.23.1</jsoup.version>
         <archunit.version>1.5.0</archunit.version>
         <aws.sdk.version>2.50.3</aws.sdk.version>
-        <spring-retry.version>2.0.13</spring-retry.version>
         <skip.frontend>false</skip.frontend>
     </properties>
 
@@ -102,11 +101,6 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-mail</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.retry</groupId>
-            <artifactId>spring-retry</artifactId>
-            <version>${spring-retry.version}</version>
         </dependency>
 
         <!-- Stockage fichiers (MinIO via API S3) — 07-generation-documents.md -->

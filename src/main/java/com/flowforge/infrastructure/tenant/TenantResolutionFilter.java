@@ -1,6 +1,7 @@
 package com.flowforge.infrastructure.tenant;
 
 import com.flowforge.infrastructure.config.TenantProperties;
+import com.flowforge.infrastructure.security.SecurityAuditLog;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -34,6 +35,7 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
         if (authentication != null && authentication.getPrincipal() instanceof OidcUser user) {
             String claimedTenantId = user.getClaimAsString("tenant_id");
             if (!tenantProperties.id().equals(claimedTenantId)) {
+                SecurityAuditLog.tenantMismatch(request, claimedTenantId);
                 HttpSession session = request.getSession(false);
                 if (session != null) {
                     session.invalidate();

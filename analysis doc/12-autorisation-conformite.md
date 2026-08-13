@@ -162,6 +162,34 @@ public interface DossierTypeAclRepository {
 
 Refus → `AccessDeniedException` → HTTP 403 (format d'erreur normalisé : point 24).
 
+### Où ce contrôle s'applique — tous les chemins de lecture d'un dossier
+
+**Mise à jour post-audit sécurité.** `GET /api/workflow-links/{linkId}/dossier` (panneau dossier de
+la visualisation workflow, [10-visualisation-workflow.md](10-visualisation-workflow.md)) chargeait
+initialement le dossier via `DossierRepository` après authz « participant workflow ou
+TENANT_ADMIN/WORKFLOW_ADMIN » **uniquement** — sans repasser par `DossierAccessPolicy` (décision
+DD-DOSSIER-LOAD, motivée par l'évitement d'une double vérification d'ACL). Un simple participant ou
+observer du workflow, sans entrée `dossier_type_acl` de niveau VIEW, pouvait donc lire l'intégralité
+des champs du dossier — incohérent avec le modèle d'accès décrit ci-dessus.
+
+**Décision retenue (décision n° 34, [TODO.md](../TODO.md)) :**
+`WorkflowLinkVisualizationUseCaseImpl.getDossier` appelle désormais
+`DossierAccessPolicy.assertCanView(dossier, actor)` **en plus** du contrôle « participant
+workflow ». Un observer/assigné sans ACL VIEW voit toujours le diagramme, l'historique et les
+tâches (ces endpoints ne renvoient aucune donnée métier du dossier), mais reçoit 403 sur le
+panneau dossier tant qu'il n'a pas d'entrée ACL explicite.
+
+### Masquage des champs sensibles — appliqué côté serveur
+
+`FieldDefinition.sensitive` (décision n° 20, ci-dessus) n'était vérifié que côté frontend
+(`SensitiveValue.vue`) — la valeur en clair était systématiquement présente dans la réponse JSON,
+y compris pour un simple détenteur d'ACL `EDIT`. `DossierFieldRedactor` (domaine pur,
+`com.flowforge.domain.dossier`) retire désormais du `Dossier.fields()` renvoyé toute clé marquée
+`sensitive`, sauf pour `TENANT_ADMIN` — appliqué sur `GetDossierUseCaseImpl` et
+`WorkflowLinkVisualizationUseCaseImpl.getDossier`. Les contextes `System` (génération de documents,
+triggers connecteurs) ne sont pas concernés : ils ne rendent jamais la donnée à un navigateur.
+Voir point 23 dans [TODO.md](../TODO.md) pour le contexte complet.
+
 ## Conformité des données (RGPD et assimilés)
 
 Le produit traite des données potentiellement sensibles pour le compte de tiers (sinistres,

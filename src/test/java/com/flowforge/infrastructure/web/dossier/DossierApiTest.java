@@ -170,7 +170,7 @@ class DossierApiTest {
     }
 
     @Test
-    void getDossier_sensitiveFieldValue_isReturnedInClear() throws Exception {
+    void getDossier_sensitiveFieldValue_redactedForNonAdminButClearForTenantAdmin() throws Exception {
         String code = uniqueCode("SSNTYPE");
         String fields = """
                 [{
@@ -200,7 +200,13 @@ class DossierApiTest {
                 .andReturn();
         String id = extractString(created.getResponse().getContentAsString(), "id");
 
+        // D-SENSITIVE = A: masked server-side for every viewer except TENANT_ADMIN, even one
+        // holding an EDIT ACL entry on the dossier type.
         mockMvc.perform(get("/api/dossiers/{id}", id).with(user("manager-ssn")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fields.ssn").doesNotExist());
+
+        mockMvc.perform(get("/api/dossiers/{id}", id).with(user("admin-ssn", "TENANT_ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.fields.ssn").value("123-45-6789"));
     }

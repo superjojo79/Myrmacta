@@ -12,9 +12,8 @@
 **Statut lifecycle (check-status) :** `architecture-hexagonale`, `multi-tenant`,
 `authentification`, `dossiers`, `workflow-engine`, `autorisation-conformite`,
 `connecteurs`, `templates-documents`, `generation-documents`, `notifications`,
-`visualisation-workflow` sont **Complete** (mergés). Feature `frontend` :
-**démarrée** (branche `cursor/feature-frontend-21f2`, docs phase 1 draft —
-décisions stakeholder 2026-08-12 : vague 1 instructeur + vague 2 admin
+`visualisation-workflow`, `frontend` sont **Complete** (mergés — `frontend` via
+PR #38 `cursor/feature-frontend-21f2`, vague 1 instructeur + vague 2 admin
 types/templates/connectors/workflow-configs ; packaging Maven→`static/` ;
 maquette
 [FlowForge - Maquettes UI.html](analysis%20doc/FlowForge%20-%20Maquettes%20UI.html)
@@ -89,9 +88,20 @@ minimale, `ProblemDetail`, gate `TENANT_ADMIN`.
 
 | Item | Notes |
 |---|---|
-| Viewer Vue / `bpmn-js` | Feature `frontend` — consomme `GET …/diagram` |
 | Cockpit Flowable | Hors scope produit |
 | SSE multi-pod | Hors V1 (session mono-réplique) |
+
+**Déjà couvert (ne pas replanifier) :** viewer Vue / `bpmn-js`
+(`frontend/src/components/workflow/BpmnViewer.vue`, feature `frontend`,
+consomme `GET …/diagram`).
+
+### 1.6 `frontend` (mergé)
+
+| Item | Notes |
+|---|---|
+| Écrans Rapports / SLA | Hors scope V1 (mock UI de référence uniquement) |
+| Liste / recherche / pagination dossiers (Supervision complet) | Bloqué par TODO §24 côté backend |
+| `npm run test` / `lint` / `test:e2e` en CI | Câblé (`.github/workflows/ci.yml`, job `frontend`) |
 
 ---
 
@@ -108,7 +118,7 @@ Ordre indicatif aligné sur l’analyse et les dépendances techniques :
 | — | `generation-documents` | **Complete** (main) |
 | — | `notifications` | **Complete** (main) |
 | — | `visualisation-workflow` | **Complete** (main) — API diagram/history/tasks/reassign + participants + SSE |
-| 1 | `frontend` | **En cours (phase 1)** — vague 1 : socle + auth(`sub`) + CRUD parcours dossier/viz/SSE ; vague 2 : admin types/ACL/templates/connectors/WF configs ; UX = maquette HTML (décision n° 27) |
+| — | `frontend` | **Complete** (main, PR #38) — vague 1 : socle + auth(`sub`) + CRUD parcours dossier/viz/SSE ; vague 2 : admin types/ACL/templates/connectors/WF configs ; UX = maquette HTML (décision n° 27) |
 
 ---
 
@@ -122,13 +132,13 @@ Voir le détail et les options dans [TODO.md](TODO.md) et
 | 19 | Granularité rôles RBAC | **Clos V1** — cinq rôles + mapping `ROLE_*` ; ACL type |
 | 21 | Rétention par `DossierType` | **Ouvert** — hors tranche authz |
 | 22 | Purge PostgreSQL / object store | **Ouvert** — port S3/FS à venir ; pas MinIO en dur |
-| 23 | `FieldDefinition.sensitive` | **Partiel** — flag meta livré ; masquage/exports différés |
+| 23 | `FieldDefinition.sensitive` | **Quasi clos** — flag meta + masquage serveur livrés (`DossierFieldRedactor`, D-SENSITIVE = A) sur `GET /api/dossiers/**` et le panneau dossier de la visualisation ; reste masquage sur d'éventuels futurs exports (CSV, etc.) |
 | 24 | Contrat d’API complet | **Partiel** — surface dossiers minimale + `ProblemDetail` ; reste listes, pagination, OpenAPI, autres ressources — **impacte Supervision FE** |
 | 25 | Modèle physique consolidé (ERD) | **Partiel** — tables dossiers livrées ; reste ERD global, `platform.*`, ACT_*, outbox, etc. |
 | 26 | Concurrence dossier / référence | **Partiel / quasi clos en B** — `@Version` + `dossier_reference_seq` + format UTC ; reste smoke PG multi-pods |
-| 28 | Stratégie de test | **Partiel** — ArchUnit + Jacoco ≥ 80 % + H2 ; reste Testcontainers / charge Flowable / outbox ; FE = Vitest + Playwright (feature `frontend`) |
+| 28 | Stratégie de test | **Partiel** — ArchUnit + Jacoco ≥ 80 % + H2 ; reste Testcontainers / charge Flowable / outbox ; FE = Vitest + Playwright, câblés en CI (job `frontend`, `.github/workflows/ci.yml`) |
 | 29 | Observabilité | **Ouvert** — monitoring features = `deferred` |
-| 30 | Durcissement entrées exposées | **Ouvert** — rate limit, SSRF, antivirus PJ… |
+| 30 | Durcissement entrées exposées | **Partiel** — rate limit + taille max sur webhooks entrants et `POST /api/documents/generate` ; SSRF (PDF + webhooks sortants) fermé ; reste antivirus PJ, upload générique… |
 | 31 | Découpage en lots / provisioning | **Partiel** — lots lifecycle démarrés ; outillage provisioning ops encore à produire |
 
 ---

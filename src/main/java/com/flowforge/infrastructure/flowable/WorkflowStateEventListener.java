@@ -53,10 +53,11 @@ public class WorkflowStateEventListener implements FlowableEventListener {
         try {
             linkRepository.findByProcessInstanceId(tenantProperties.id(), processInstanceId)
                     .ifPresent(link -> {
+                        // Only linkId is exposed — the frontend never sees the raw Flowable
+                        // process instance id (see WorkflowLinkVisualizationController, DD-URL).
                         Map<String, Object> payload = Map.of(
                                 "type", WORKFLOW_STATE_CHANGED,
-                                "linkId", link.id().toString(),
-                                "processInstanceId", processInstanceId);
+                                "linkId", link.id().toString());
                         participantPort.findParticipantUserIds(link).forEach(userId -> sendNotificationUseCase.send(
                                 new NotificationEvent(
                                         List.of(NotificationChannel.BROWSER),

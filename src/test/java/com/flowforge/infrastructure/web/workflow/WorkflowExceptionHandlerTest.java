@@ -1,6 +1,7 @@
 package com.flowforge.infrastructure.web.workflow;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 import com.flowforge.domain.dossier.model.AccessDeniedException;
 import com.flowforge.domain.dossier.model.DossierWorkflowLinkNotFoundException;
@@ -8,6 +9,8 @@ import com.flowforge.domain.workflow.model.WorkflowProcessInstanceMissingExcepti
 import com.flowforge.domain.workflow.model.WorkflowTaskNotFoundException;
 import com.flowforge.domain.workflow.model.WorkflowTypeConfigNotFoundException;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.security.core.Authentication;
 
 class WorkflowExceptionHandlerTest {
 
@@ -24,7 +27,10 @@ class WorkflowExceptionHandlerTest {
 
     @Test
     void handlesAccessDenied_as403() {
-        var problem = handler.handleAccessDenied(new AccessDeniedException("not a participant"));
+        var problem = handler.handleAccessDenied(
+                new AccessDeniedException("not a participant"),
+                new MockHttpServletRequest("GET", "/api/workflow-links/abc/diagram"),
+                mock(Authentication.class));
 
         assertThat(problem.getStatus()).isEqualTo(403);
         assertThat(problem.getTitle()).isEqualTo("Access denied");

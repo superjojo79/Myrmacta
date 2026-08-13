@@ -100,8 +100,9 @@ public class DossierConfig {
     @Bean
     GetDossierUseCase getDossierUseCase(
             DossierRepository dossierRepository,
+            DossierTypeRepository typeRepository,
             DossierAccessPolicy accessPolicy) {
-        return new GetDossierUseCaseImpl(dossierRepository, accessPolicy);
+        return new GetDossierUseCaseImpl(dossierRepository, typeRepository, accessPolicy);
     }
 
     @Bean

@@ -2,7 +2,7 @@
 phase: implementation
 title: Implementation Guide
 description: Technical implementation notes, patterns, and code guidelines
-status: checked
+status: reviewed
 created: 2026-08-13
 updated: 2026-08-13
 feature: pagination-dossiers
@@ -11,7 +11,10 @@ phase5: 2026-08-13
 phase6: 2026-08-13
 phase7: 2026-08-13
 phase8: 2026-08-13
+phase9: 2026-08-13
+phase9_result: ready-with-followups
 checked: 2026-08-13
+reviewed: 2026-08-13
 alignment: aligned
 ---
 
@@ -69,12 +72,61 @@ Phase 5 baseline : ./mvnw test → 593 OK ; frontend 68 OK
 
 **Phase 7 close** — implementation `checked` / `aligned`.
 
+## Phase 9 — Code Review (2026-08-13)
+
+**Résultat :** READY to merge with follow-ups (`phase9_result: ready-with-followups`).
+
+### Design alignment
+
+| Intent (design) | Impl | Verdict |
+|---|---|---|
+| UC + ACL VIEW + empty page / Service 403 | `SearchDossiersUseCaseImpl` | match |
+| Specs + Criteria projection sans `fields` | `JpaDossierSearchAdapter` multiselect | match |
+| Indexes Liquibase 008 | changelog master + IT | match |
+| Parser D-VALID / envelope D-PAGE | `DossierListQueryParser` + DTOs | match |
+| `?ref=` wins over list | dual `@GetMapping` + MockMvc | match |
+| Supervision local state + URL sync + open-by-ref | `SupervisionView.vue` | match |
+
+### Blocking — fixed in Phase 9
+
+| # | Finding | Fix |
+|---|---|---|
+| B1 | Prefixe `reference` : `%` / `_` traités comme wildcards LIKE | Escape Criteria `like(..., '\\')` + test IT littéral `DOS-%WILD` |
+| B2 | `Filter.restricted` acceptait `Set.of()` (Javadoc non-empty) | Guard `IllegalArgumentException` + test |
+
+### Important follow-ups (non-blocking)
+
+| # | Item | Recommendation |
+|---|---|---|
+| I1 | `SupervisionView` `syncRoute` + `watch(route.query)` peut double-fetch | Charger uniquement via watch, ou flag skip |
+| I2 | Labels types via `findAll` | Batch `findByCodes` sur la page (perf catalogue large) |
+| I3 | Manual UX smoke (clavier / deep-link / Network sans `fields`) | Checklist QA |
+
+### Nice-to-have
+
+- Accessibilité clavier sur lignes du tableau
+- Escape LIKE documenté dans design (comportement littéral explicite)
+
+### Evidence (fresh Phase 9)
+
+```text
+JAVA_HOME=/tmp/jdk/jdk-25.0.4+7 ./mvnw test
+→ Tests run: 596, Failures: 0, Errors: 0, Skipped: 0
+cd frontend && npm run test -- --run → 28 files / 68 tests passed
+npm run typecheck → exit 0
+npx ai-devkit@latest lint --feature pagination-dossiers → All checks passed
+task CLI : unavailable (unknown command 'task')
+```
+
+**Phase 9 close** — implementation `reviewed` ; prêt PR / merge.
+
 ## Implementation Notes
 **Key technical details to remember:**
 
 - T1–T12 livrés ; DQ1–DQ5 respectés.
 - Routage : `params=ref` prioritaire sur liste.
 - Projection Criteria **sans** colonne `fields`.
+- Prefixe référence = littéral (LIKE metacharacters échappés).
 
 ## Progress
-Phases 1–8 closes (`testing` status `verified` 2026-08-13). **Next :** Phase 9 Code Review (`dev-review`) + PR. Manual UX smoke reste checklist QA.
+Phases 1–9 closes. Feature READY (`ready-with-followups`). Manual UX smoke reste checklist QA.

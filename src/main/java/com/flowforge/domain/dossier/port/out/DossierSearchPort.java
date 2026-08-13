@@ -30,6 +30,9 @@ public interface DossierSearchPort {
         public static Filter restricted(
                 DossierStatus status, Set<String> dossierTypeCodes, String referencePrefix) {
             Objects.requireNonNull(dossierTypeCodes, "dossierTypeCodes");
+            if (dossierTypeCodes.isEmpty()) {
+                throw new IllegalArgumentException("dossierTypeCodes must be non-empty");
+            }
             return new Filter(status, dossierTypeCodes, referencePrefix);
         }
     }

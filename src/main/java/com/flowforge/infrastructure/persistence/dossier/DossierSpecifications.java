@@ -31,11 +31,20 @@ final class DossierSpecifications {
             if (prefix != null) {
                 predicates.add(cb.like(
                         cb.lower(root.get("reference")),
-                        prefix.toLowerCase(Locale.ROOT) + "%"));
+                        escapeLikePrefix(prefix.toLowerCase(Locale.ROOT)) + "%",
+                        '\\'));
             }
 
             return cb.and(predicates.toArray(Predicate[]::new));
         };
+    }
+
+    /** Escape LIKE metacharacters so user input is a literal prefix. */
+    static String escapeLikePrefix(String prefix) {
+        return prefix
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
     }
 
     /** Helper for tests / clarity — status equality. */

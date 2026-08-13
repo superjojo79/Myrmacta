@@ -7,6 +7,7 @@ created: 2026-08-13
 updated: 2026-08-13
 verified: 2026-08-13
 phase8: 2026-08-13
+phase9: 2026-08-13
 feature: pagination-dossiers
 design_aligned: 2026-08-13
 stakeholder_decisions: 2026-08-13
@@ -158,3 +159,8 @@ cd frontend && npm run test -- --run --coverage
 - Écarts bloquants → Phase 7/9 ; follow-ups non bloquants documentés
   implementation.
 - Manual UX smoke reporté Phase 9 / QA (non bloquant pour `verified` coverage).
+
+## Phase 9 — Code Review
+Lifecycle **READY** (`ready-with-followups`) — voir implementation Phase 9.
+Hardenings : escape LIKE prefix ; `Filter.restricted` non-empty.
+Evidence fraîche : BE **596** OK ; FE **68** OK ; typecheck OK.

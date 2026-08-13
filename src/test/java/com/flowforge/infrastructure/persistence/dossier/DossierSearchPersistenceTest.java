@@ -73,6 +73,17 @@ class DossierSearchPersistenceTest {
                 .allSatisfy(item -> assertThat(item).hasNoNullFieldsOrPropertiesExcept());
         // projection must not expose fields — DossierListItem has no fields property
         assertThat(byPrefix.content().getFirst().dossierTypeLabel()).isEmpty();
+
+        Dossier wildcardLiteral = save("DOS-%WILD_001", "FAC", "Wild", DossierStatus.OUVERT, t3.plusSeconds(1));
+        DossierPage byLiteralWildcard = dossierSearchPort.search(
+                TENANT,
+                DossierSearchPort.Filter.unrestricted(null, "DOS-%WILD"),
+                0,
+                20);
+        assertThat(byLiteralWildcard.content())
+                .extracting(DossierListItem::id)
+                .contains(wildcardLiteral.id())
+                .doesNotContain(facOpen.id());
     }
 
     private Dossier save(

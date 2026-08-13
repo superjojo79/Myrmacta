@@ -12,7 +12,6 @@ phase2_sync: 2026-08-13
 phase3_sync: 2026-08-13
 phase4_sync: 2026-08-13
 phase5_evidence: 2026-08-13
-verified: 2026-08-13
 ---
 
 # Testing Strategy

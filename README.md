@@ -114,7 +114,7 @@ L'application est construite sur le modèle **Ports & Adapters (hexagonal)** —
 | Sécurité          | Spring Security 7 + OAuth2 Client | BFF intégré, provider-agnostique              |
 | Frontend          | Vue 3 + Vite + TypeScript + PrimeVue (embarqué `static/`) | SPA même origine, typage statique aligné sur le contrat API, composants métier riches |
 | State management  | Pinia                           | Store réactif Vue 3                             |
-| Tests frontend    | Vitest + Playwright + ESLint/Prettier | Unitaire/composants + e2e, qualité alignée sur `./mvnw verify` côté backend |
+| Tests frontend    | Vitest + Playwright + ESLint/Prettier | Unitaire/composants **et** e2e (`npm run test:all`) obligatoires pour features FE ; aligné job CI `frontend` |
 | BPMN viewer       | bpmn-js                         | Rendu fidèle, overlays d'état                   |
 | Stockage fichiers | MinIO                           | Compatible S3, self-hosted, Apache 2.0          |
 | Auth server       | Keycloak 26.7.x                 | Self-hosted, OIDC/OAuth2, LDAP                  |

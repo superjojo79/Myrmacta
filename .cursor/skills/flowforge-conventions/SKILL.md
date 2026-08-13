@@ -73,7 +73,12 @@ Référence : `analysis doc/11-frontend.md`.
 1. Lire `DEFERRED-FEATURES.md` + docs `docs/ai/**` de la feature.
 2. Suivre `dev-lifecycle` (requirements → design → planning → implementation → testing → review → PR).
 3. Implémentation en **TDD** (`tdd` + `verify`) : test qui échoue → code → `./mvnw verify` (ou scope de tests ciblé puis verify avant claim).
-4. Pour le FE : Vitest/Playwright selon la tranche ; ne pas inventer une stack parallèle.
+4. Pour le FE : **Vitest et Playwright sont tous les deux obligatoires** dès qu’une
+   feature touche le SPA ou un contrat API consommé par le SPA.
+   - `cd frontend && npm run test` (unitaires)
+   - `cd frontend && npm run test:e2e` (ou `npm run test:all`)
+   - Mettre à jour les mocks/assertions `frontend/e2e/**` quand les shapes API changent.
+   - **Interdit** de déclarer Playwright « hors scope » pour contourner Phase 8/9.
 5. Points ouverts : `TODO.md` / `REVUE-PRE-IMPLEMENTATION.md` — ne pas « trancher » silencieusement une décision ouverte.
 
 ## Commandes utiles
@@ -81,6 +86,10 @@ Référence : `analysis doc/11-frontend.md`.
 ```bash
 ./mvnw verify -Dmaven.compiler.release=21   # suite backend + ArchUnit + couverture
 ./mvnw test -Dtest=NomDuTest                 # test ciblé
+cd frontend && npm run test                  # Vitest
+cd frontend && npm run test:e2e              # Playwright (aligné job CI frontend)
+cd frontend && npm run test:all              # Vitest + Playwright
+npx playwright install --with-deps chromium  # navigateurs Playwright si manquants
 npx ai-devkit@latest skill list              # skills installés
 ./scripts/vendor-ai-devkit-skills.sh         # recopier les skills en fichiers portables
 ```
@@ -105,3 +114,5 @@ npx ai-devkit@latest skill list              # skills installés
 - Servir le frontend depuis un serveur Node distinct en prod (contredit décision n° 27).
 - Ajouter des dépendances framework dans `domain`.
 - Claim « c’est bon » sans sortie fraîche de `./mvnw verify` / tests FE (skill `verify`).
+- Claim Phase 8/9 FE sans preuve Playwright (`npm run test:e2e` / `test:all`) alors
+  que le SPA ou ses mocks E2E sont impactés.

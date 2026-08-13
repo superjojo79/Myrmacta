@@ -25,7 +25,16 @@ Use for Phase 8.
 4. Add unit tests for happy paths, edge cases, and error handling for each module. Highlight missing branches.
 5. Add integration tests for critical cross-component flows, setup/teardown, and boundary/failure cases.
 6. Run coverage tooling, identify gaps, and suggest additional tests if below the target.
-7. If task tracing is available, record evidence for each fresh test/coverage command per `task`.
-8. Update the selected testing doc with test file links and results.
+7. **Frontend E2E (mandatory when FE or shared API contracts used by FE change):**
+   - Do **not** mark Playwright as out of scope for FlowForge FE features.
+   - Update `frontend/e2e/**` mocks/assertions when API shapes or routes change
+     (Vitest mocks alone are not sufficient).
+   - Run fresh evidence with `cd frontend && npm run test:e2e` (or
+     `npm run test:all`). Install browsers if needed:
+     `npx playwright install --with-deps chromium`.
+   - Record Playwright command, exit code, and pass counts in the testing doc.
+   - Phase 8 is incomplete without that evidence when the feature touches FE.
+8. If task tracing is available, record evidence for each fresh test/coverage command per `task`.
+9. Update the selected testing doc with test file links and results (unit, IT, **and E2E**).
 
 Next: `dev-review`. If tests reveal design flaws, return to `dev-design`.

@@ -9,10 +9,13 @@ description: Define testing approach, test cases, and quality assurance
 ## Test Coverage Goals
 **What level of testing do we aim for?**
 
-- Unit test coverage target (default: 100% of new/changed code)
-- Integration test scope (critical paths + error handling)
-- End-to-end test scenarios (key user journeys)
-- Alignment with requirements/design acceptance criteria
+- Backend: Jacoco ≥ project threshold on new/changed code (`./mvnw test` / `verify`).
+- Frontend unit: Vitest (`cd frontend && npm run test` / `test:coverage`).
+- **Frontend E2E: Playwright is mandatory** when the feature touches the SPA or
+  an API contract consumed by the SPA (`cd frontend && npm run test:e2e` or
+  `npm run test:all`). Do **not** mark Playwright out of scope to skip Phase 8.
+- Integration tests for critical paths + error handling (MockMvc / persistence).
+- Align with requirements/design acceptance criteria.
 
 ## Unit Tests
 **What individual components need testing?**
@@ -38,10 +41,15 @@ description: Define testing approach, test cases, and quality assurance
 ## End-to-End Tests
 **What user flows need validation?**
 
+FlowForge CI runs Playwright on every PR (`frontend` job). Phase 8 must produce
+fresh `npm run test:e2e` evidence for FE-impacting features and keep
+`frontend/e2e/**` mocks in sync with API shapes (Vitest mocks alone are not enough).
+
 - [ ] User flow 1: [Description]
 - [ ] User flow 2: [Description]
 - [ ] Critical path testing
-- [ ] Regression of adjacent features
+- [ ] Regression of adjacent features / existing E2E specs still green
+- [ ] E2E network mocks updated for any new/changed API contracts
 
 ## Test Data
 **What data do we use for testing?**
@@ -49,14 +57,22 @@ description: Define testing approach, test cases, and quality assurance
 - Test fixtures and mocks
 - Seed data requirements
 - Test database setup
+- Playwright `page.route` fixtures (keep aligned with real API envelopes)
 
 ## Test Reporting & Coverage
 **How do we verify and communicate test results?**
 
-- Coverage commands and thresholds (`npm run test -- --coverage`)
-- Coverage gaps (files/functions below 100% and rationale)
+```bash
+./mvnw test
+cd frontend && npm run test -- --coverage
+cd frontend && npm run test:e2e   # or: npm run test:all
+```
+
+- Coverage commands and thresholds
+- Coverage gaps (files/functions below target and rationale)
 - Links to test reports or dashboards
 - Manual testing outcomes and sign-off
+- **Record Playwright command + pass counts** before marking testing `verified`
 
 ## Manual Testing
 **What requires human validation?**
@@ -78,4 +94,3 @@ description: Define testing approach, test cases, and quality assurance
 - Issue tracking process
 - Bug severity levels
 - Regression testing strategy
-

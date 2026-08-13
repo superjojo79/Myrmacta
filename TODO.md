@@ -93,7 +93,11 @@ webhooks sortants.
 Ces points ne bloquent pas le démarrage, mais ils doivent être planifiés explicitement : aucun n'est
 couvert aujourd'hui, même partiellement.
 
-### [ ] 24. Contrat d'API — surface incomplète et format d'erreur non normalisé
+### [~] 24. Contrat d'API — surface incomplète et format d'erreur non normalisé
+
+**Partiel (2026-08-13 — feature `pagination-dossiers`) :** liste/recherche/pagination
+dossiers + envelope page + Supervision FE livrés. **Reste ouvert :** OpenAPI formel,
+pagination des autres ressources, surface admin exhaustive.
 
 **Énoncé :** aucun endpoint de création, recherche, liste ou mise à jour de dossier n'est documenté,
 pas plus que l'administration des `DossierType`, `ConnectorInstance` et templates. Les listes

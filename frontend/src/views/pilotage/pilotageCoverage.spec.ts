@@ -8,6 +8,8 @@ import { routes } from '@/app/routes'
 import { useDossierStore } from '@/stores/dossier'
 import { useTasksStore } from '@/stores/tasks'
 import * as tasksApi from '@/api/tasks'
+import * as dossiersApi from '@/api/dossiers'
+import * as dossierTypesApi from '@/api/dossierTypes'
 
 vi.mock('@/api/tasks')
 vi.mock('@/api/dossiers')
@@ -18,6 +20,14 @@ describe('pilotage remaining coverage', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.resetAllMocks()
+    vi.mocked(dossierTypesApi.listDossierTypes).mockResolvedValue([])
+    vi.mocked(dossiersApi.listDossiers).mockResolvedValue({
+      content: [],
+      page: 0,
+      size: 20,
+      totalElements: 0,
+      totalPages: 0,
+    })
   })
 
   it('SupervisionView opens by ref', async () => {
@@ -31,8 +41,9 @@ describe('pilotage remaining coverage', () => {
     await router.push('/supervision')
     await router.isReady()
     const wrapper = mount(SupervisionView, { global: { plugins: [router] } })
-    await wrapper.get('input').setValue('DOS-1')
-    await wrapper.get('form').trigger('submit.prevent')
+    await flushPromises()
+    await wrapper.get('.supervision__form input').setValue('DOS-1')
+    await wrapper.get('.supervision__form').trigger('submit.prevent')
     await flushPromises()
     expect(store.loadByRef).toHaveBeenCalledWith('DOS-1')
     expect(push).toHaveBeenCalledWith('/dossiers/d1')

@@ -90,3 +90,43 @@ record DossierResponse(
 }
 
 record GrantDossierTypeAccessRequest(String subjectUserId, DossierPermission permission) {}
+
+record DossierListItemResponse(
+        UUID id,
+        String reference,
+        String label,
+        String dossierTypeCode,
+        String dossierTypeLabel,
+        DossierStatus status,
+        Instant createdAt,
+        Instant updatedAt) {
+
+    static DossierListItemResponse from(com.flowforge.domain.dossier.model.DossierListItem item) {
+        return new DossierListItemResponse(
+                item.id(),
+                item.reference(),
+                item.label(),
+                item.dossierTypeCode(),
+                item.dossierTypeLabel(),
+                item.status(),
+                item.createdAt(),
+                item.updatedAt());
+    }
+}
+
+record DossierPageResponse(
+        List<DossierListItemResponse> content,
+        int page,
+        int size,
+        long totalElements,
+        int totalPages) {
+
+    static DossierPageResponse from(com.flowforge.domain.dossier.model.DossierPage page) {
+        return new DossierPageResponse(
+                page.content().stream().map(DossierListItemResponse::from).toList(),
+                page.page(),
+                page.size(),
+                page.totalElements(),
+                page.totalPages());
+    }
+}

@@ -6,6 +6,7 @@ import com.flowforge.domain.dossier.model.DossierElementView;
 import com.flowforge.domain.dossier.port.in.CreateDossierUseCase;
 import com.flowforge.domain.dossier.port.in.GetDossierUseCase;
 import com.flowforge.domain.dossier.port.in.ListDossierElementsUseCase;
+import com.flowforge.domain.dossier.port.in.SearchDossiersUseCase;
 import com.flowforge.domain.dossier.port.in.UpdateDossierStatusUseCase;
 import com.flowforge.infrastructure.config.TenantProperties;
 import java.net.URI;
@@ -32,6 +33,7 @@ public class DossierController {
     private final GetDossierUseCase getDossierUseCase;
     private final ListDossierElementsUseCase listDossierElementsUseCase;
     private final UpdateDossierStatusUseCase updateDossierStatusUseCase;
+    private final SearchDossiersUseCase searchDossiersUseCase;
     private final AccessContextFactory accessContextFactory;
 
     public DossierController(
@@ -40,12 +42,14 @@ public class DossierController {
             GetDossierUseCase getDossierUseCase,
             ListDossierElementsUseCase listDossierElementsUseCase,
             UpdateDossierStatusUseCase updateDossierStatusUseCase,
+            SearchDossiersUseCase searchDossiersUseCase,
             AccessContextFactory accessContextFactory) {
         this.tenantProperties = tenantProperties;
         this.createDossierUseCase = createDossierUseCase;
         this.getDossierUseCase = getDossierUseCase;
         this.listDossierElementsUseCase = listDossierElementsUseCase;
         this.updateDossierStatusUseCase = updateDossierStatusUseCase;
+        this.searchDossiersUseCase = searchDossiersUseCase;
         this.accessContextFactory = accessContextFactory;
     }
 
@@ -65,6 +69,21 @@ public class DossierController {
         return ResponseEntity
                 .created(URI.create("/api/dossiers/" + dossier.id()))
                 .body(DossierResponse.from(dossier));
+    }
+
+    @GetMapping
+    public DossierPageResponse list(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) String sort,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String dossierTypeCode,
+            @RequestParam(required = false) String reference,
+            Authentication authentication) {
+        return DossierPageResponse.from(searchDossiersUseCase.search(
+                tenantProperties.id(),
+                DossierListQueryParser.parse(page, size, sort, status, dossierTypeCode, reference),
+                accessContextFactory.user(authentication)));
     }
 
     @GetMapping("/{id}")

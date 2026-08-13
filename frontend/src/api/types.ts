@@ -55,6 +55,34 @@ export interface Dossier {
   closedAt: string | null
 }
 
+export interface DossierListItem {
+  id: string
+  reference: string
+  label: string
+  dossierTypeCode: string
+  dossierTypeLabel: string
+  status: DossierStatus
+  createdAt: string
+  updatedAt: string
+}
+
+export interface DossierPage {
+  content: DossierListItem[]
+  page: number
+  size: number
+  totalElements: number
+  totalPages: number
+}
+
+export interface DossierListParams {
+  page?: number
+  size?: number
+  sort?: string
+  status?: DossierStatus | ''
+  dossierTypeCode?: string
+  reference?: string
+}
+
 export interface WorkflowLink {
   id: string
   dossierId: string

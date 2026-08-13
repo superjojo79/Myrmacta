@@ -14,9 +14,13 @@ SPA Vue 3 + TypeScript embarquée dans `src/main/resources/static/` (décision n
 | `npm run build` | `vue-tsc` + bundle `dist/` |
 | `npm run typecheck` | Vérification TypeScript |
 | `npm run lint` | ESLint |
-| `npm run test` | Vitest |
+| `npm run test` | Vitest (unitaires / composants) |
 | `npm run test:coverage` | Vitest + couverture |
-| `npm run test:e2e` | Playwright (preview server) |
+| `npm run test:e2e` | Playwright (preview server) — **obligatoire** avant claim Phase 8/9 FE |
+| `npm run test:all` | Vitest **puis** Playwright (parité locale avec le job CI `frontend`) |
+
+> Les mocks Vitest ne remplacent pas `frontend/e2e/**`. Tout changement de
+> contrat API consommé par le SPA doit mettre à jour les `page.route` Playwright.
 
 ## Structure
 

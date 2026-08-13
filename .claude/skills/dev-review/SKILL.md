@@ -34,5 +34,9 @@ Use for Phase 9. Take a holistic review stance: findings first, ordered by sever
 12. Summarize blocking issues, important follow-ups, and nice-to-haves. Per finding include file, issue, impact severity, and recommendation.
 13. If task tracing is available, add blockers and set `blocked` for blocking findings; if review passes with final evidence, close the task per `task`.
 14. Complete final checklist: design match, no logic gaps, security addressed, integration points verified, tests cover changes, docs updated.
+15. **If the diff touches frontend or FE-consumed API contracts:** require fresh
+    Playwright evidence (`cd frontend && npm run test:e2e` or `test:all`) in this
+    session. Missing E2E evidence or stale `frontend/e2e/**` mocks is a **blocking**
+    finding — return to `dev-testing`.
 
 Done: if the checklist passes, the feature is ready to push and create a PR. If blocking issues remain, return to `dev-implementation` or `dev-testing`.

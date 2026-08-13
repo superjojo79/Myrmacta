@@ -32,6 +32,10 @@ If no verification command exists (e.g., no test suite), tell the user and ask t
 | Claim | Required Evidence | Not Sufficient |
 |---|---|---|
 | Tests pass | Test output: 0 failures, exit 0 | Previous run, "should pass now" |
+| Backend tests pass | Fresh `./mvnw test` or `./mvnw verify`, 0 failures | FE tests alone |
+| Frontend unit tests pass | Fresh `cd frontend && npm run test`, 0 failures | Backend alone |
+| Frontend E2E pass | Fresh `cd frontend && npm run test:e2e` (or `test:all`), 0 failures | Vitest alone; “Playwright hors scope”; “CI will catch it” |
+| FE feature / API contract used by SPA | Vitest **and** Playwright evidence in this session; E2E mocks updated for new shapes | Component specs with axios mocks only |
 | Build succeeds | Build output: exit 0 | Linter passing, partial build |
 | Bug is fixed | Reproduce symptom → now passes | "Changed code, should be fixed" |
 | Linter clean | Linter output: 0 errors | Single file check |
@@ -60,6 +64,7 @@ If step 4 passes, the test is wrong. Rewrite it.
 | "The test is flaky" | Flaky ≠ ignorable | Fix the flake first |
 | "It compiles, so it works" | Compilation ≠ correctness | Run the tests |
 | "The CI will catch it" | CI is a safety net, not a substitute | Verify locally first |
+| "Playwright is out of scope / Vitest is enough" | E2E mocks diverge from unit mocks; CI runs Playwright | Run `npm run test:e2e` (or `test:all`) and update `frontend/e2e/**` |
 | "The agent said it's done" | Agent claims need verification too | Check diff and run tests |
 
 ## Memory Integration

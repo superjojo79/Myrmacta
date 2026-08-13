@@ -57,5 +57,7 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      # Keep E2E as a separate step for clearer CI logs; locally agents should
+      # use `npm run test:all` (Vitest + Playwright) before claiming Phase 8/9 FE.
       - name: E2E tests (Playwright)
         run: npm run test:e2e

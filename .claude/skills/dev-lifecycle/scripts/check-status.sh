@@ -107,7 +107,7 @@ elif exists "$PLN" && [[ ${TODO:-0} -eq 0 ]] && [[ ${TOTAL:-0} -gt 0 ]]; then
   if [[ -z "$IMP_CHECKED" && "$IMP_STATUS" != "checked" && "$IMP_STATUS" != "verified" && "$IMP_STATUS" != "reviewed" ]]; then
     echo "Phase 7 (Check Implementation) — all tasks done, verify against design"
   elif [[ "$TST_STATUS" != "verified" && -z "$TST_VERIFIED" ]]; then
-    echo "Phase 8 (Write Tests) — implementation checked, verify coverage"
+    echo "Phase 8 (Write Tests) — implementation checked, verify coverage (+ Playwright if FE)"
   elif [[ -z "$IMP_REVIEWED" && "$IMP_STATUS" != "reviewed" ]]; then
     echo "Phase 9 (Code Review) — tests verified, final pre-push review"
   else

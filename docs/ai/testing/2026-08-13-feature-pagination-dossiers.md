@@ -9,6 +9,7 @@ feature: pagination-dossiers
 design_aligned: 2026-08-13
 stakeholder_decisions: 2026-08-13
 phase2_sync: 2026-08-13
+phase3_sync: 2026-08-13
 ---
 
 # Testing Strategy
@@ -29,12 +30,17 @@ phase2_sync: 2026-08-13
 ### `SearchDossiersUseCaseImpl`
 - [ ] Admin bypass → aucun filtre de type injecté (tous types)
 - [ ] User avec grants VIEW → `allowedTypeCodes` restreint
-- [ ] Zéro grant → page vide sans appel search (ou search short-circuit)
+- [ ] Zéro grant → page vide sans appel search (short-circuit)
 - [ ] `dossierTypeCode` hors allowed → page vide
 - [ ] `dossierTypeCode` dans allowed → délégué au port avec filtre
 - [ ] `reference` blank → traité absent
-- [ ] Attache `dossierTypeLabel` depuis types ; label `""` si type manquant
-- [ ] Service/M2M context → refus (si testé au use case) / couvert API 403
+- [ ] Attache `dossierTypeLabel` via batch types ; `""` si type manquant
+- [ ] `AccessContext.Service` → `AccessDeniedException` / 403
+
+### `JpaDossierSearchAdapter` / Specs
+- [ ] Projection **ne charge pas** `fields` (assert colonnes / item sans fields)
+- [ ] Spec status / type-in / reference prefix CI
+- [ ] Tri `updatedAt` desc + pagination totals
 
 ### Validation / parsing (controller ou helper)
 - [ ] `page < 0` → 400
@@ -44,13 +50,13 @@ phase2_sync: 2026-08-13
 - [ ] Item JSON contient `label` + `dossierTypeLabel` ; pas de `fields`
 - [ ] `GET …?ref=…&page=0` → get-by-ref (pas envelope liste)
 
-### Frontend
+### Frontend (état local)
 - [ ] `listDossiers` envoie les bons query params
-- [ ] `SupervisionView` affiche les lignes et pagine
+- [ ] `SupervisionView` affiche les lignes et pagine (state local, pas Pinia search)
 - [ ] Changement filtre met à jour l’URL (`router.replace`)
 - [ ] Hydratation depuis query URL au mount
 - [ ] Clic ligne → navigation `/dossiers/{id}`
-- [ ] Formulaire ouvrir-par-ref toujours présent et fonctionnel (mock store)
+- [ ] Formulaire ouvrir-par-ref toujours présent et fonctionnel (mock API)
 
 ## Integration Tests
 **How do we test component interactions?**

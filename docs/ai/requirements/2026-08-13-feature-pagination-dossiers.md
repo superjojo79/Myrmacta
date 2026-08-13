@@ -9,6 +9,7 @@ feature: pagination-dossiers
 stakeholder_decisions: 2026-08-13
 phase2: 2026-08-13
 phase2_stakeholder_confirm: 2026-08-13
+phase3_sync: 2026-08-13
 todo_24_slice: list-search-pagination
 ---
 

@@ -2,11 +2,12 @@
 phase: requirements
 title: Requirements & Problem Understanding
 description: Clarify the problem space, gather requirements, and define success criteria
-status: draft
+status: reviewed
 created: 2026-08-14
 updated: 2026-08-14
 feature: relations-dossiers
 stakeholder_decisions: 2026-08-14
+phase2: 2026-08-14
 todo_ref: DEFERRED-FEATURES.md §1.4 (Relations entre dossiers)
 ---
 
@@ -45,8 +46,9 @@ construit la vue avec `List.of()` (`WorkflowLinkVisualizationUseCaseImpl.java:94
   `analysis doc/04-dossiers.md` (domaine pur, `dossier_relation` en base,
   même tenant obligatoire).
 - **`POST /api/dossiers/{id}/relations`** — création manuelle d'une relation
-  par un utilisateur autorisé (source = `{id}`, cible = `targetDossierId`
-  du body, `type` parmi les 5 valeurs).
+  par un utilisateur autorisé : EDIT sur le type du dossier source **et**
+  VIEW sur le type du dossier cible (D-CREATE-ACL, Phase 2), `type` parmi
+  les 5 valeurs.
 - **`GET /api/dossiers/{id}/relations`** — liste bidirectionnelle (le
   dossier peut être source ou cible), filtrée par ACL VIEW sur le dossier
   « de l'autre côté », avec libellé de sens adapté à l'affichage (ex.
@@ -60,9 +62,11 @@ construit la vue avec `List.of()` (`WorkflowLinkVisualizationUseCaseImpl.java:94
   déjà livrée).
 - **ServiceTask BPMN** `createChildDossierTask` : dans un process, crée un
   **nouveau** dossier enfant (`CreateDossierUseCase`), la relation
-  correspondante, puis démarre un workflow dédié dessus en réutilisant
-  l'orchestrateur existant `ManualStartOrchestrator` (mêmes garanties
-  transactionnelles/idempotence que le démarrage manuel).
+  correspondante (`type` restreint à `PARENT_CHILD`/`SUBSEQUENT`,
+  D-SERVICETASK-TYPES, Phase 2), puis démarre un workflow dédié dessus en
+  réutilisant l'orchestrateur existant `ManualStartOrchestrator`. Protégé
+  contre les doublons par un nouveau store d'idempotence dédié
+  (D-IDEMPOTENCY, Phase 2) — voir Design.
 
 ### Secondary goals
 
@@ -71,6 +75,9 @@ construit la vue avec `List.of()` (`WorkflowLinkVisualizationUseCaseImpl.java:94
   — même principe D-ITEM que `pagination-dossiers`, aucune fuite de champ
   sensible par ce chemin.
 - Index Liquibase adaptés (`source_dossier_id`, `target_dossier_id`).
+- Nouveau store d'idempotence dédié à la création du dossier enfant par le
+  `ServiceTask` (D-IDEMPOTENCY), distinct de l'`IdempotencyStore` existant
+  qui protège uniquement le démarrage du workflow.
 - Couverture tests alignée Jacoco / Vitest projet (≥ 80 % zones touchées).
 - Mettre à jour `DEFERRED-FEATURES.md` §1.4 une fois livré.
 
@@ -103,6 +110,10 @@ construit la vue avec `List.of()` (`WorkflowLinkVisualizationUseCaseImpl.java:94
 | **D-DIRECTION** | Affichage panneau | **A** — bidirectionnel avec libellé inversé (le dossier montre ses relations sortantes ET entrantes) |
 | **D-TYPES** | Types de relation | Réutilisation telle quelle de la liste déjà spécifiée dans `analysis doc/04-dossiers.md` : `PARENT_CHILD`, `SUBSEQUENT`, `LINKED`, `DUPLICATE`, `MERGED_INTO` |
 | **D-MUTABILITY** | Cycle de vie relation | Création + lecture seule en V1 — pas d'update/delete |
+| **D-IDEMPOTENCY** *(Phase 2)* | Anti-doublon `ServiceTask` | **A** — nouveau store d'idempotence dédié, même pattern que `IdempotencyStore` (DD-TX) : clé dérivée de `(processInstanceId, activityId)`, vérifiée avant `CreateDossierUseCase.create()` |
+| **D-SERVICETASK-TYPES** *(Phase 2)* | Types autorisés au `ServiceTask` | **A** — restreint à `PARENT_CHILD` / `SUBSEQUENT` (seuls types cohérents avec une création automatique) ; `LINKED`/`DUPLICATE`/`MERGED_INTO` restent réservés à la création manuelle |
+| **D-CREATE-ACL** *(Phase 2)* | Droits requis pour `POST .../relations` | **A** — EDIT sur le type du dossier source **et** VIEW sur le type du dossier cible (empêche de lier un dossier hors périmètre VIEW de l'actor) |
+| **D-DTO** *(Phase 2, résolu par précédent)* | Forme de `relatedDossier` | Type domaine unique `DossierRelationView` dans `domain.dossier.model`, réutilisé tel quel par `workflow` — même précédent que `WorkflowLinkDossierView` qui dépend déjà de `Dossier`/`DossierElement` (types du même package). Pas de duplication de DTO ; aucune dépendance de `workflow` vers une couche HTTP. |
 
 ### Alternatives écartées
 
@@ -111,6 +122,9 @@ construit la vue avec `List.of()` (`WorkflowLinkVisualizationUseCaseImpl.java:94
 | Portée ServiceTask | Crée dossier enfant + relation + workflow dédié | Simple liaison entre deux dossiers déjà existants (plus petit scope, mais ne couvre pas le cas d'usage métier principal documenté dans `analysis doc/04`) |
 | ACL relation masquée | Filtrer côté serveur (omise) | Renvoyer un résumé minimal masqué (fuite de métadonnées : existence + statut d'un dossier hors ACL de l'utilisateur) |
 | Affichage | Bidirectionnel | Sortant uniquement (UX dégradée : un dossier enfant ne verrait pas son parent) |
+| Idempotence ServiceTask | Store dédié (D-IDEMPOTENCY) | Compter sur l'atomicité Flowable+JPA — rejeté, contredit la raison d'être du split reserve/confirm (DD-TX) déjà en place pour le démarrage manuel |
+| Types ServiceTask | Restreint PARENT_CHILD/SUBSEQUENT | Les 5 types génériques — rejeté, `DUPLICATE`/`MERGED_INTO`/`LINKED` n'ont pas de sens pour une création automatique de dossier |
+| ACL création manuelle | EDIT source + VIEW cible | EDIT source seule — rejeté, permettrait de faire apparaître un dossier hors périmètre VIEW dans les relations d'un dossier géré par quelqu'un d'autre |
 
 ## User Stories & Use Cases
 **How will users interact with the solution?**
@@ -144,9 +158,18 @@ construit la vue avec `List.of()` (`WorkflowLinkVisualizationUseCaseImpl.java:94
 - `type` invalide / absent / `targetDossierId` absent → 400 `ProblemDetail`.
 - `POST` par un utilisateur sans droit EDIT sur le type du dossier source →
   403 (même politique que `PATCH /status`).
+- `POST` par un utilisateur avec EDIT sur la source mais sans VIEW sur le
+  type du dossier cible (D-CREATE-ACL) → **403** — même convention que
+  `GetDossierUseCaseImpl` (dossier du même tenant mais non VIEW-accessible
+  = `AccessDeniedException`/403, pas 404 ; le 404 reste réservé au dossier
+  introuvable ou d'un autre tenant, cf. `DossierNotFoundException`).
 - `ServiceTask` exécuté deux fois pour la même activité de process (retry
-  Flowable après échec transitoire) → **risque de doublon de dossier
-  enfant**, à verrouiller en Phase 2/3 design (voir Questions ouvertes).
+  Flowable après échec transitoire) → protégé par le store d'idempotence
+  dédié (D-IDEMPOTENCY) : le deuxième appel réutilise le dossier/la
+  relation déjà créés et ne relance que le démarrage du workflow.
+- `ServiceTask` configuré avec un `relationType` hors `PARENT_CHILD`/
+  `SUBSEQUENT` (D-SERVICETASK-TYPES) → échec du délégué (erreur de
+  configuration process, pas une entrée utilisateur).
 - Dossier cible déjà `ARCHIVE`/`CLOTURE` → relation autorisée quand même
   (une relation trace un fait, pas un état courant).
 
@@ -161,7 +184,10 @@ construit la vue avec `List.of()` (`WorkflowLinkVisualizationUseCaseImpl.java:94
 - [ ] `DossierDetailView.vue` affiche une section « Dossiers liés » + action
       « Lier un dossier » fonctionnelle (recherche via `GET /api/dossiers`).
 - [ ] `createChildDossierTask` (ServiceTask) crée dossier + relation +
-      démarre le workflow dédié dans un test d'intégration BPMN.
+      démarre le workflow dédié dans un test d'intégration BPMN, et un
+      rejeu de la même activité ne crée pas de doublon (D-IDEMPOTENCY).
+- [ ] `POST .../relations` refuse (403) une cible hors du périmètre VIEW de
+      l'actor, même avec EDIT sur la source (D-CREATE-ACL).
 - [ ] Régression : aucun endpoint existant (`elements`, `status`, liste
       paginée) n'est impacté.
 - [ ] `./mvnw test` (zones touchées) + `frontend` Vitest/Playwright OK.
@@ -200,25 +226,18 @@ construit la vue avec `List.of()` (`WorkflowLinkVisualizationUseCaseImpl.java:94
 ## Questions & Open Items
 **What do we still need to clarify?**
 
-### À trancher en Phase 2 (Review Requirements) / Phase 3 (Design)
+### Clos Phase 2
 
-- **Q1 — Idempotence du `ServiceTask`.** Si Flowable ré-exécute
-  `createChildDossierTask` après un échec transitoire (le job executor
-  retry est standard), comment éviter un deuxième dossier enfant / une
-  deuxième relation ? Piste : dériver une clé d'idempotence déterministe de
-  `(processInstanceId, activityId)`, la stocker sur la relation créée (ou
-  un registre dédié), et court-circuiter si elle existe déjà — à valider en
-  design.
-- **Q2 — Nom exact et forme du DTO résumé de dossier lié** dans les
-  réponses relation : réutiliser tel quel `DossierListItem` (couplage entre
-  contextes `dossier` et `workflow`) ou dupliquer un DTO plus léger propre à
-  cette feature ? À trancher en Phase 3 (design), impact architecture
-  hexagonale (le contexte `workflow` ne doit pas dépendre du DTO HTTP du
-  contexte `dossier`).
-- **Q3 — `relationType` autorisés pour le `ServiceTask`.** Les 5 types
-  restent-ils tous valides en configuration de process (y compris
-  `DUPLICATE`/`MERGED_INTO`, sémantiquement étranges pour une création
-  automatique), ou restreint-on le `ServiceTask` à `PARENT_CHILD` /
-  `SUBSEQUENT` uniquement ? Proposition par défaut : restreindre au
-  `ServiceTask` (le domaine `DossierRelation` reste générique, seule la
-  validation du délégué est plus stricte) — à confirmer en Phase 2.
+| Id | Clarification |
+|---|---|
+| Q1 | Idempotence du `ServiceTask` → store dédié, clé `(processInstanceId, activityId)` (D-IDEMPOTENCY) |
+| Q2 | `DossierRelationView` = type domaine unique, réutilisé directement par `workflow` (précédent `Dossier`/`DossierElement`) — pas de duplication de DTO (D-DTO) |
+| Q3 | `ServiceTask` restreint à `PARENT_CHILD`/`SUBSEQUENT` (D-SERVICETASK-TYPES) |
+| Q4 | `POST .../relations` exige EDIT source **+** VIEW cible (D-CREATE-ACL) — sinon 403, cohérent avec `GetDossierUseCaseImpl` |
+
+### Reporté hors feature
+
+- Suppression/modification d'une relation (V1 = création + lecture seule).
+- Détection/validation des combinaisons logiquement contradictoires entre
+  relations (ex. deux `PARENT_CHILD` inverses).
+- Filtrage/tri de `GET /api/dossiers` (pagination-dossiers) par relation.

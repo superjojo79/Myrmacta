@@ -6,6 +6,7 @@ status: draft
 created: 2026-08-14
 updated: 2026-08-14
 feature: relations-dossiers
+phase2_stakeholder_sync: 2026-08-14
 ---
 
 # Testing Strategy
@@ -29,15 +30,21 @@ feature: relations-dossiers
       (si vérifié au niveau domaine plutôt qu'use case).
 
 ### `CreateDossierRelationUseCaseImpl`
-- [ ] Crée la relation quand l'actor a `assertCanEdit` sur le dossier source.
+- [ ] Crée la relation quand l'actor a EDIT sur la source **et** VIEW sur
+      la cible (D-CREATE-ACL).
 - [ ] Rejette (403) si l'actor n'a pas EDIT sur le type du dossier source.
+- [ ] Rejette (403) si l'actor a EDIT sur la source mais pas VIEW sur le
+      type du dossier cible (D-CREATE-ACL — même convention 403 que
+      `GetDossierUseCaseImpl`, pas de masquage par 404).
 - [ ] Rejette (404) si le dossier cible n'existe pas ou appartient à un
-      autre tenant (jamais 403).
+      autre tenant.
 - [ ] Rejette (400) l'auto-relation (`source == target`).
 - [ ] Rejette (409) une relation strictement dupliquée (même source, cible,
       type) — mapping de la violation de contrainte unique.
 - [ ] Accepte les 5 `RelationType` (`PARENT_CHILD`, `SUBSEQUENT`, `LINKED`,
-      `DUPLICATE`, `MERGED_INTO`).
+      `DUPLICATE`, `MERGED_INTO`) — la restriction à `PARENT_CHILD`/
+      `SUBSEQUENT` s'applique uniquement au `ServiceTask`, pas à ce use
+      case générique.
 
 ### `ListDossierRelationsUseCaseImpl`
 - [ ] Retourne les relations où le dossier interrogé est source
@@ -52,19 +59,35 @@ feature: relations-dossiers
       du DTO, même garantie que `DossierListItem`).
 - [ ] Dossier sans aucune relation → liste vide, pas d'erreur.
 
+### `CreateChildDossierWithRelationUseCaseImpl`
+- [ ] Premier appel : crée dossier + relation (avec `idempotencyKey`) dans
+      une seule transaction, renvoie le `childDossierId`.
+- [ ] Deuxième appel avec la même `(tenantId, sourceDossierId,
+      idempotencyKey)` : ne crée rien, renvoie le `childDossierId` déjà
+      existant (lookup par `findByIdempotencyKey`, pas de second insert).
+- [ ] Deux appels concurrents avec la même clé (course) : un seul aboutit,
+      l'autre échoue proprement sur la contrainte unique partielle
+      (`uq_dossier_relation_idempotency`) — pas de doublon possible même
+      hors verrou applicatif.
+- [ ] Une relation créée manuellement (`idempotencyKey = null`) n'entre
+      jamais en collision avec l'index partiel.
+
 ### `CreateChildDossierDelegate` (ServiceTask)
 - [ ] Variables requises manquantes (`childDossierTypeCode`,
       `workflowProcessKey`, …) → exception claire, pas de NPE.
-- [ ] Crée le dossier enfant avec le bon `dossierTypeCode`/`label`/`fields`.
-- [ ] Crée la relation avec le `relationType` fourni, source = dossier
-      courant, cible = dossier enfant créé.
+- [ ] Dérive correctement `idempotencyKey` depuis
+      `processInstanceId`/`activityId` de l'exécution Flowable.
 - [ ] Démarre le workflow dédié via `ManualStartOrchestrator` avec les
-      `childWorkflowVariables` fournies.
-- [ ] Rejette un `relationType` hors de la liste restreinte au ServiceTask
-      (si Q3 tranchée en restriction — voir requirements).
-- [ ] **Idempotence (Q1) :** un deuxième appel avec la même clé
-      `(processInstanceId, activityId)` ne crée pas de second dossier
-      enfant/relation — test dédié une fois Q1 verrouillée en design.
+      `childWorkflowVariables` fournies, en s'appuyant sur le
+      `childDossierId` renvoyé par `CreateChildDossierWithRelationUseCase`
+      (qu'il vienne d'une création ou d'un replay).
+- [ ] Rejette (échec explicite du délégué) un `relationType` hors
+      `{PARENT_CHILD, SUBSEQUENT}` (D-SERVICETASK-TYPES) — ex. `LINKED`
+      configuré par erreur sur le process.
+- [ ] **Idempotence bout en bout (D-IDEMPOTENCY) :** un deuxième appel du
+      délégué avec la même clé ne crée ni second dossier enfant ni seconde
+      relation, et relance seulement le démarrage du workflow (déjà
+      protégé par l'`IdempotencyStore` existant).
 
 ## Integration Tests
 **How do we test component interactions?**

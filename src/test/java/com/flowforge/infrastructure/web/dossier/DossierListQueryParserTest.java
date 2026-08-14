@@ -25,6 +25,21 @@ class DossierListQueryParserTest {
     }
 
     @Test
+    void rejectsPageAboveMax() {
+        assertThatThrownBy(() -> DossierListQueryParser.parse(
+                        SearchDossiersQuery.MAX_PAGE + 1, 20, null, null, null, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("page");
+    }
+
+    @Test
+    void acceptsMaxPage() {
+        SearchDossiersQuery query =
+                DossierListQueryParser.parse(SearchDossiersQuery.MAX_PAGE, 20, null, null, null, null);
+        assertThat(query.page()).isEqualTo(SearchDossiersQuery.MAX_PAGE);
+    }
+
+    @Test
     void rejectsSizeOutOfBounds() {
         assertThatThrownBy(() -> DossierListQueryParser.parse(0, 0, null, null, null, null))
                 .isInstanceOf(IllegalArgumentException.class);

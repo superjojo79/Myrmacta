@@ -15,13 +15,13 @@ final class DossierListQueryParser {
             String dossierTypeCode,
             String reference) {
         int resolvedPage = page == null ? 0 : page;
-        if (resolvedPage < 0) {
-            throw new IllegalArgumentException("page must be >= 0");
+        if (resolvedPage < 0 || resolvedPage > SearchDossiersQuery.MAX_PAGE) {
+            throw new IllegalArgumentException("page must be between 0 and " + SearchDossiersQuery.MAX_PAGE);
         }
 
         int resolvedSize = size == null ? 20 : size;
-        if (resolvedSize < 1 || resolvedSize > 100) {
-            throw new IllegalArgumentException("size must be between 1 and 100");
+        if (resolvedSize < 1 || resolvedSize > SearchDossiersQuery.MAX_SIZE) {
+            throw new IllegalArgumentException("size must be between 1 and " + SearchDossiersQuery.MAX_SIZE);
         }
 
         if (sort != null && !sort.isBlank() && !"updatedAt,desc".equals(sort.trim())) {

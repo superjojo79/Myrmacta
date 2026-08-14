@@ -55,7 +55,9 @@ public class JpaDossierSearchAdapter implements DossierSearchPort {
         cq.orderBy(cb.desc(root.get("updatedAt")), cb.asc(root.get("id")));
 
         TypedQuery<Object[]> query = entityManager.createQuery(cq);
-        query.setFirstResult(page * size);
+        // Long multiplication first: page/size are validated by SearchDossiersQuery to keep this
+        // in-range, but computing in int would silently wrap before that guarantee could help.
+        query.setFirstResult(Math.toIntExact((long) page * size));
         query.setMaxResults(size);
         List<DossierListItem> content = query.getResultList().stream()
                 .map(JpaDossierSearchAdapter::toItem)

@@ -59,7 +59,7 @@ phase2_stakeholder_sync: 2026-08-14
       du DTO, même garantie que `DossierListItem`).
 - [ ] Dossier sans aucune relation → liste vide, pas d'erreur.
 
-### `CreateChildDossierWithRelationUseCaseImpl`
+### `ChildDossierRelationConfirmer`
 - [ ] Premier appel : crée dossier + relation (avec `idempotencyKey`) dans
       une seule transaction, renvoie le `childDossierId`.
 - [ ] Deuxième appel avec la même `(tenantId, sourceDossierId,
@@ -79,7 +79,7 @@ phase2_stakeholder_sync: 2026-08-14
       `processInstanceId`/`activityId` de l'exécution Flowable.
 - [ ] Démarre le workflow dédié via `ManualStartOrchestrator` avec les
       `childWorkflowVariables` fournies, en s'appuyant sur le
-      `childDossierId` renvoyé par `CreateChildDossierWithRelationUseCase`
+      `childDossierId` renvoyé par `ChildDossierRelationConfirmer`
       (qu'il vienne d'une création ou d'un replay).
 - [ ] Rejette (échec explicite du délégué) un `relationType` hors
       `{PARENT_CHILD, SUBSEQUENT}` (D-SERVICETASK-TYPES) — ex. `LINKED`

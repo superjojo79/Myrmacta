@@ -2,11 +2,12 @@
 phase: design
 title: System Design & Architecture
 description: Define the technical architecture, components, and data models
-status: draft
+status: reviewed
 created: 2026-08-14
 updated: 2026-08-14
 feature: relations-dossiers
 phase2_stakeholder_sync: 2026-08-14
+phase3: 2026-08-14
 ---
 
 # System Design & Architecture
@@ -27,11 +28,11 @@ graph TD
   end
 
   subgraph Automatique - BPMN
-    BPMN[ServiceTask createChildDossierTask] --> Delegate[CreateChildDossierDelegate]
-    Delegate --> ChildUC["CreateChildDossierWithRelationUseCaseImpl<br/>(@Transactional, une seule TX JPA)"]
-    ChildUC -->|lookup idempotencyKey| RelationRepoLookup[(dossier_relation<br/>unique tenant_id+source+idempotency_key)]
+    BPMN[ServiceTask createChildDossierTask] --> Delegate[CreateChildDossierDelegate<br/>infrastructure/flowable]
+    Delegate --> ChildConfirmer["ChildDossierRelationConfirmer<br/>infrastructure/dossier — @Transactional"]
+    ChildConfirmer -->|lookup idempotencyKey| RelationRepoLookup[(dossier_relation<br/>unique tenant_id+source+idempotency_key)]
     RelationRepoLookup -->|trouvé, replay| Orchestrator
-    RelationRepoLookup -->|absent| CreateDossierUC[CreateDossierUseCase]
+    RelationRepoLookup -->|absent, même TX| CreateDossierUC[CreateDossierUseCase]
     CreateDossierUC --> CreateUC[CreateDossierRelationUseCaseImpl]
     Delegate --> Orchestrator[ManualStartOrchestrator]
     Orchestrator --> Attach[AttachWorkflowUseCase.reserve]
@@ -61,24 +62,34 @@ graph TD
   `WorkflowLinkVisualizationUseCaseImpl.getDossier`.
 - `CreateChildDossierDelegate` (infrastructure `flowable`) — nouveau
   `JavaDelegate`, orchestre création dossier enfant + relation + démarrage
-  workflow en trois appels vers des use cases déjà indépendamment testés.
-- `CreateChildDossierWithRelationUseCaseImpl` (domaine `dossier`, nouveau,
-  `@Transactional`) — **résolution Q1/D-IDEMPOTENCY, affinée pendant la
-  Phase 2** : contrairement au démarrage du workflow (qui touche un
-  système externe, Flowable — d'où le split reserve/confirm de
-  `ManualStartOrchestrator`), créer le dossier enfant et sa relation sont
-  **deux écritures dans la même base**, donc atomisables dans une seule
-  transaction JPA classique. Pas besoin d'un store séparé : la colonne
-  `idempotency_key` (nullable) sur `dossier_relation` elle-même, protégée
-  par une contrainte unique partielle, sert à la fois de verrou et de
-  preuve de complétion. Algorithme : `SELECT` par
+  workflow en trois appels vers des composants déjà indépendamment testés.
+- `ChildDossierRelationConfirmer` (**infrastructure** `dossier`, nouveau,
+  `@Transactional`) — **résolution Q1/D-IDEMPOTENCY, corrigée en Phase 3
+  (violation ArchUnit détectée)**. Première esquisse : un use case domaine
+  `CreateChildDossierWithRelationUseCaseImpl` en `domain.dossier.usecase`
+  annoté `@Transactional` — **invalide**, `domain_has_no_framework_dependency`
+  (`ArchitectureRulesTest.java`) interdit tout import
+  `org.springframework..` dans `..domain..`. Corrigé en suivant le
+  précédent déjà établi par `WorkflowStartConfirmer`
+  (`infrastructure/workflow`, `@Transactional`, orchestre plusieurs use
+  cases domaine pour les faire joindre une transaction commune) : ce
+  composant vit en `infrastructure.dossier`, dépend de `CreateDossierUseCase`
+  et `CreateDossierRelationUseCase` (ports `in`, domaine) et de
+  `DossierRelationRepository` (port `out`, domaine — appel direct légitime
+  depuis l'infrastructure, même schéma que `WorkflowStartConfirmer` avec
+  `IdempotencyStore`/`WorkflowTypeConfigRepository`). Algorithme, dans une
+  seule `@Transactional` : `SELECT` par
   `(tenantId, sourceDossierId, idempotencyKey)` → si trouvé, relation déjà
   créée, renvoyer son `targetDossierId` (replay, aucune écriture) ; sinon,
-  créer dossier + relation dans la même transaction (la contrainte unique
-  protège aussi contre une course entre deux jobs concurrents). Le
-  `ServiceTask` appelle ensuite `ManualStartOrchestrator.start(...)`, qui a
-  sa propre protection (existante) contre le rejeu du démarrage de
-  workflow sur un `childDossierId` déjà connu.
+  créer dossier + relation (chaque appel de use case déclenche son propre
+  `@Transactional` au niveau de l'adaptateur JPA, qui **rejoint** — propagation
+  `REQUIRED` par défaut — la transaction ouverte par le confirmer plutôt
+  que d'en ouvrir une nouvelle, garantissant l'atomicité des deux écritures).
+  La contrainte unique partielle protège en plus contre une course entre
+  deux jobs concurrents. Le `ServiceTask` appelle ensuite
+  `ManualStartOrchestrator.start(...)`, qui a sa propre protection
+  (existante) contre le rejeu du démarrage de workflow sur un
+  `childDossierId` déjà connu.
 
 ## Data Models
 **What data do we need to manage?**
@@ -215,25 +226,38 @@ dupliquée.
 ## Component Breakdown
 **What are the major building blocks?**
 
-**Backend (domaine `dossier`) :**
+**Backend (domaine `dossier`, pur, aucune dépendance Spring/JPA/Flowable) :**
 - `domain/dossier/model/{DossierRelation, RelationType, DossierRelationView, RelationDirection}.java`
 - `domain/dossier/port/out/DossierRelationRepository.java` — `save`,
-  `findByDossier(UUID dossierId)` (source OU cible, une seule requête),
+  `findByDossier(String tenantId, UUID dossierId)` (source OU cible, une
+  seule requête, `tenantId` explicite — convention du reste du repo, ex.
+  `DossierTypeRepository.findByCode(tenantId, code)`),
   `findByIdempotencyKey(String tenantId, UUID sourceDossierId, String idempotencyKey)`.
-- `domain/dossier/port/in/{CreateDossierRelationUseCase, ListDossierRelationsUseCase, CreateChildDossierWithRelationUseCase}.java`
-- `domain/dossier/usecase/{CreateDossierRelationUseCaseImpl, ListDossierRelationsUseCaseImpl, CreateChildDossierWithRelationUseCaseImpl}.java`
-  — ce dernier est `@Transactional`, appelé uniquement par le `ServiceTask`
-  (jamais par le contrôleur HTTP, qui utilise `CreateDossierRelationUseCase`
-  seul pour la création manuelle sur un dossier déjà existant).
+- `domain/dossier/port/in/{CreateDossierRelationUseCase, ListDossierRelationsUseCase}.java`
+- `domain/dossier/usecase/{CreateDossierRelationUseCaseImpl, ListDossierRelationsUseCaseImpl}.java`
+  — création manuelle (contrôleur HTTP) pour la première ; les deux
+  couvrent un seul écrit/lecture chacune, pas de coordination transactionnelle
+  nécessaire au niveau domaine.
 - `infrastructure/persistence/dossier/{DossierRelationJpaEntity, DossierRelationJpaAdapter, SpringDataDossierRelationRepository}.java`
 - `infrastructure/web/dossier/{DossierRelationResponse, CreateDossierRelationRequest}.java` — DTO HTTP, extension de `DossierController` existant (pas de nouveau `@RestController`).
 
-**Backend (infrastructure `flowable`) :**
+**Backend (infrastructure, coordination transactionnelle) :**
+- `infrastructure/dossier/ChildDossierRelationConfirmer.java` — `@Transactional`,
+  dépend de `CreateDossierUseCase`, `CreateDossierRelationUseCase`,
+  `DossierRelationRepository` (voir Composants clés ci-dessus). **Seul**
+  composant transactionnel multi-écriture de cette feature — le contrôleur
+  HTTP ne l'utilise jamais, il passe directement par
+  `CreateDossierRelationUseCase` (écrit unique, pas de coordination requise).
+  Appelle les deux use cases avec `AccessContext.system("flowable-delegate")`
+  (même convention que `UpdateDossierStatusDelegate`) — `DossierAccessPolicy`
+  court-circuite déjà tout contrôle ACL pour le contexte `System`, donc
+  D-CREATE-ACL (VIEW sur la cible) ne s'applique naturellement qu'à la
+  création manuelle via HTTP, jamais au `ServiceTask`.
 - `infrastructure/flowable/CreateChildDossierDelegate.java` (bean
-  `createChildDossierTask`) — dépend de
-  `CreateChildDossierWithRelationUseCase` et `ManualStartOrchestrator`.
-  Valide `relationType ∈ {PARENT_CHILD, SUBSEQUENT}` (D-SERVICETASK-TYPES)
-  avant tout appel — échec immédiat et explicite sinon. Dérive
+  `createChildDossierTask`) — dépend de `ChildDossierRelationConfirmer` et
+  `ManualStartOrchestrator`. Valide `relationType ∈ {PARENT_CHILD,
+  SUBSEQUENT}` (D-SERVICETASK-TYPES) avant tout appel — échec immédiat et
+  explicite sinon. Dérive
   `idempotencyKey = execution.getProcessInstanceId() + ":" + execution.getCurrentActivityId()`.
 
 **Frontend :**
@@ -269,13 +293,24 @@ dupliquée.
   `dossier` (déjà le cas pour `Dossier`/`DossierElement` dans
   `WorkflowLinkDossierView`), jamais l'inverse, et jamais un DTO de couche
   web.
-- **Store d'idempotence dédié pour la création du dossier enfant, distinct
-  de l'`IdempotencyStore` existant** — plutôt que de supposer une
-  atomicité Flowable+JPA que le reste du code base ne suppose jamais
-  (raison d'être du split reserve/confirm, DD-TX). Garde le `ServiceTask`
-  sûr par construction en cas de retry du job executor, sans toucher à
-  l'`IdempotencyStore` existant (qui reste scopé au démarrage de workflow
-  sur un dossier déjà existant).
+- **Idempotence de la création du dossier enfant via une colonne dédiée +
+  contrainte unique, pas un store séparé** — contrairement au démarrage du
+  workflow (système externe Flowable, d'où le split reserve/confirm
+  DD-TX), créer un dossier et sa relation sont deux écritures JPA dans la
+  même base, atomisables par une transaction Spring classique. Ne
+  duplique pas `IdempotencyStore` (qui reste scopé au démarrage de
+  workflow sur un dossier déjà existant) ; garde le `ServiceTask` sûr par
+  construction en cas de retry du job executor.
+- **`ChildDossierRelationConfirmer` en `infrastructure`, pas un use case
+  domaine `@Transactional`** — trouvé en Phase 3 (Review Design) :
+  `ArchitectureRulesTest.domain_has_no_framework_dependency` interdit tout
+  import Spring dans `..domain..`, donc `@Transactional` ne peut pas
+  vivre sur une classe de `domain.dossier.usecase`. Suit le précédent déjà
+  établi par `WorkflowStartConfirmer` (`infrastructure/workflow`) : un
+  petit composant infrastructure `@Transactional` qui orchestre plusieurs
+  use cases/ports domaine, dont les appels JPA individuels rejoignent la
+  transaction ouverte (propagation `REQUIRED` par défaut) plutôt que d'en
+  ouvrir de nouvelles.
 - **`ServiceTask` restreint à `PARENT_CHILD`/`SUBSEQUENT`** — le domaine
   `DossierRelation` reste générique (5 types utilisables en création
   manuelle), seule la validation du délégué est plus stricte : `LINKED`/
@@ -304,9 +339,9 @@ dupliquée.
   même tenant non autorisé (convention `GetDossierUseCaseImpl`, pas de
   masquage par 404 pour l'ACL intra-tenant).
 - **Fiabilité :** le `ServiceTask` est protégé contre les retries Flowable
-  par `ChildDossierCreationIdempotencyStore` (D-IDEMPOTENCY, résolu Phase
-  2) — clé `(processInstanceId, activityId)` vérifiée avant
-  `CreateDossierUseCase.create()`.
+  par `ChildDossierRelationConfirmer` (D-IDEMPOTENCY, résolu Phase 2,
+  composant corrigé en Phase 3) — clé `(processInstanceId, activityId)`
+  vérifiée dans la même transaction que la création dossier + relation.
 - **Performance :** `findByDossier` doit être une requête unique
   (`source_dossier_id = ? OR target_dossier_id = ?`), couverte par les deux
   index dédiés — pas de N+1 sur le panneau dossier (déjà chargé avec

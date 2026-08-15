@@ -78,6 +78,25 @@ public record Dossier(
                 closedAt);
     }
 
+    public Dossier withFields(Map<String, Object> newFields, String updatedBy, Instant at) {
+        return new Dossier(
+                id,
+                tenantId,
+                reference,
+                dossierTypeCode,
+                label,
+                status,
+                newFields,
+                currentWorkflowLinkId,
+                version,
+                createdBy,
+                createdAt,
+                updatedBy,
+                at,
+                closedBy,
+                closedAt);
+    }
+
     public Dossier withVersion(long version) {
         return new Dossier(
                 id,

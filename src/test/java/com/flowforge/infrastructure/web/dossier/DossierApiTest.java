@@ -1,5 +1,6 @@
 package com.flowforge.infrastructure.web.dossier;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oidcLogin;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -11,15 +12,20 @@ import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.ElementType;
 import com.flowforge.domain.dossier.port.in.AddDossierElementUseCase;
 import com.flowforge.support.OidcClientTestConfiguration;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -525,6 +531,502 @@ class DossierApiTest {
                                 """))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.status").value(409));
+    }
+
+    @Test
+    void updateFields_managerWithEdit_mergesAndReturns200() throws Exception {
+        String code = createTypeWithFields("PATCHFIELDS", """
+                [
+                  {"name": "montant", "label": "Montant", "type": "NUMBER", "required": false, "options": [], "group": "d"},
+                  {"name": "commentaire", "label": "Commentaire", "type": "STRING", "required": false, "options": [], "group": "d"}
+                ]
+                """);
+        grant(code, "manager-patch-fields", "EDIT");
+        DossierFixture dossier = createDossierWithFields(
+                code, "manager-patch-fields", "Patch fields dossier", "{\"montant\":100,\"commentaire\":\"old\"}");
+
+        mockMvc.perform(patch("/api/dossiers/{id}/fields", dossier.id())
+                        .with(user("manager-patch-fields"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "fields": {"montant": 200}
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(dossier.id()))
+                .andExpect(jsonPath("$.fields.montant").value(200))
+                .andExpect(jsonPath("$.fields.commentaire").value("old"))
+                .andExpect(jsonPath("$.updatedBy").value("manager-patch-fields"))
+                .andExpect(jsonPath("$.version").value(dossier.version() + 1));
+    }
+
+    @Test
+    void updateFields_nullValueClearsField() throws Exception {
+        String code = createTypeWithFields("PATCHCLEAR", """
+                [{"name": "commentaire", "label": "Commentaire", "type": "STRING", "required": false, "options": [], "group": "d"}]
+                """);
+        grant(code, "manager-patch-clear", "EDIT");
+        DossierFixture dossier = createDossierWithFields(
+                code, "manager-patch-clear", "Clear field dossier", "{\"commentaire\":\"old\"}");
+
+        mockMvc.perform(patch("/api/dossiers/{id}/fields", dossier.id())
+                        .with(user("manager-patch-clear"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "fields": {"commentaire": null}
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fields").value(not(hasKey("commentaire"))));
+    }
+
+    @Test
+    void updateFields_emptyFields_returns400() throws Exception {
+        String code = createType(true);
+        grant(code, "manager-patch-empty", "EDIT");
+        DossierFixture dossier = createDossier(code, "manager-patch-empty", "Empty patch dossier");
+
+        mockMvc.perform(patch("/api/dossiers/{id}/fields", dossier.id())
+                        .with(user("manager-patch-empty"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "fields": {}
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    void updateFields_viewerWithViewOnly_returns403() throws Exception {
+        String code = createType(true);
+        grant(code, "setup-editor-fields", "EDIT");
+        grant(code, "viewer-fields", "VIEW");
+        DossierFixture dossier = createDossier(code, "setup-editor-fields", "Viewer fields dossier");
+
+        mockMvc.perform(patch("/api/dossiers/{id}/fields", dossier.id())
+                        .with(user("viewer-fields", "DOSSIER_VIEWER"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "fields": {"montant": 1}
+                                }
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status").value(403));
+    }
+
+    @Test
+    void updateFields_unknownDossier_returns404() throws Exception {
+        mockMvc.perform(patch("/api/dossiers/{id}/fields", UUID.randomUUID())
+                        .with(user("manager-patch-404"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "fields": {"montant": 1}
+                                }
+                                """))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void updateFields_statusCloture_returns409() throws Exception {
+        String code = createType(true);
+        grant(code, "manager-patch-cloture", "EDIT");
+        DossierFixture dossier = createDossier(code, "manager-patch-cloture", "Cloture fields dossier");
+        transitionStatus(dossier.id(), "manager-patch-cloture", "OUVERT");
+        transitionStatus(dossier.id(), "manager-patch-cloture", "CLOTURE");
+
+        mockMvc.perform(patch("/api/dossiers/{id}/fields", dossier.id())
+                        .with(user("manager-patch-cloture"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "fields": {"montant": 1}
+                                }
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409));
+    }
+
+    @Test
+    void updateFields_statusClotureWithMatchingExpectedVersion_stillReturns409WithStatusDetail() throws Exception {
+        // The status gate must be checked independently of the optimistic lock: even when
+        // expectedVersion matches exactly, a CLOTURE dossier is still rejected, and the
+        // ProblemDetail must name the status cause (not "Expected version") so a client can
+        // tell the two distinct 409 causes apart.
+        String code = createType(true);
+        grant(code, "manager-patch-cloture-version", "EDIT");
+        DossierFixture dossier = createDossier(code, "manager-patch-cloture-version", "Cloture+version dossier");
+        transitionStatus(dossier.id(), "manager-patch-cloture-version", "OUVERT");
+        transitionStatus(dossier.id(), "manager-patch-cloture-version", "CLOTURE");
+        MvcResult afterTransitions = mockMvc.perform(get("/api/dossiers/{id}", dossier.id())
+                        .with(user("manager-patch-cloture-version")))
+                .andExpect(status().isOk())
+                .andReturn();
+        long currentVersion = extractLong(afterTransitions.getResponse().getContentAsString(), "version");
+
+        mockMvc.perform(patch("/api/dossiers/{id}/fields", dossier.id())
+                        .with(user("manager-patch-cloture-version"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "fields": {"montant": 1},
+                                  "expectedVersion": %d
+                                }
+                                """.formatted(currentVersion)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("status")))
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("Expected version"))));
+    }
+
+    @Test
+    void updateFields_noNetChange_stillAdvancesVersionAndUpdatedAt() throws Exception {
+        // D-NOOP-VERSION: a PATCH that merges to the exact same field values still advances
+        // version/updatedAt — no no-op detection exists (or is meant to exist), it's a free
+        // side effect of Hibernate's @Version on every save(). End-to-end proof with the real
+        // H2 DB, not just a mocked repository.
+        String code = createTypeWithFields("PATCHNOOP", """
+                [{"name": "montant", "label": "Montant", "type": "NUMBER", "required": false, "options": [], "group": "d"}]
+                """);
+        grant(code, "manager-patch-noop", "EDIT");
+        DossierFixture dossier = createDossierWithFields(
+                code, "manager-patch-noop", "No-op patch dossier", "{\"montant\":100}");
+
+        mockMvc.perform(patch("/api/dossiers/{id}/fields", dossier.id())
+                        .with(user("manager-patch-noop"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "fields": {"montant": 100}
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fields.montant").value(100))
+                .andExpect(jsonPath("$.version").value(dossier.version() + 1));
+    }
+
+    @Test
+    void updateFields_multipleSensitiveFieldsChanged_emitsOneSecurityAuditEventPerField() throws Exception {
+        String code = createTypeWithFields("PATCHMULTISENS", """
+                [
+                  {"name": "ssn", "label": "SSN", "type": "STRING", "required": false, "options": [], "sensitive": true},
+                  {"name": "iban", "label": "IBAN", "type": "STRING", "required": false, "options": [], "sensitive": true}
+                ]
+                """);
+        grant(code, "manager-patch-multisens", "EDIT");
+        DossierFixture dossier = createDossierWithFields(
+                code, "manager-patch-multisens", "Multi sensitive dossier",
+                "{\"ssn\":\"111-11-1111\",\"iban\":\"FR001\"}");
+
+        ListAppender<ILoggingEvent> appender = attachSecurityAuditAppender();
+        try {
+            mockMvc.perform(patch("/api/dossiers/{id}/fields", dossier.id())
+                            .with(user("manager-patch-multisens"))
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "fields": {"ssn": "222-22-2222", "iban": "FR002"}
+                                    }
+                                    """))
+                    .andExpect(status().isOk());
+        } finally {
+            detachSecurityAuditAppender(appender);
+        }
+
+        List<String> sensitiveFieldChangedMessages = appender.list.stream()
+                .map(ILoggingEvent::getFormattedMessage)
+                .filter(msg -> msg.contains("event=sensitive_field_changed"))
+                .toList();
+        assertThat(sensitiveFieldChangedMessages)
+                .hasSize(2)
+                .anyMatch(msg -> msg.contains("field=ssn"))
+                .anyMatch(msg -> msg.contains("field=iban"));
+    }
+
+    @Test
+    void updateFields_statusArchive_returns409() throws Exception {
+        String code = createType(true);
+        grant(code, "manager-patch-archive", "EDIT");
+        DossierFixture dossier = createDossier(code, "manager-patch-archive", "Archive fields dossier");
+        transitionStatus(dossier.id(), "manager-patch-archive", "OUVERT");
+        transitionStatus(dossier.id(), "manager-patch-archive", "CLOTURE");
+        transitionStatus(dossier.id(), "manager-patch-archive", "ARCHIVE");
+
+        mockMvc.perform(patch("/api/dossiers/{id}/fields", dossier.id())
+                        .with(user("manager-patch-archive"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "fields": {"montant": 1}
+                                }
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409));
+    }
+
+    @Test
+    void updateFields_staleExpectedVersion_returns409() throws Exception {
+        String code = createType(true);
+        grant(code, "manager-patch-version", "EDIT");
+        DossierFixture dossier = createDossier(code, "manager-patch-version", "Version fields dossier");
+
+        mockMvc.perform(patch("/api/dossiers/{id}/fields", dossier.id())
+                        .with(user("manager-patch-version"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "fields": {"montant": 1},
+                                  "expectedVersion": %d
+                                }
+                                """.formatted(dossier.version() + 10)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409));
+    }
+
+    @Test
+    void updateFields_clearingRequiredField_returns400() throws Exception {
+        String code = createTypeWithFields("PATCHREQ", """
+                [{"name": "montant", "label": "Montant", "type": "NUMBER", "required": true, "options": [], "group": "d"}]
+                """);
+        grant(code, "manager-patch-required", "EDIT");
+        DossierFixture dossier = createDossierWithFields(
+                code, "manager-patch-required", "Required field dossier", "{\"montant\":100}");
+
+        mockMvc.perform(patch("/api/dossiers/{id}/fields", dossier.id())
+                        .with(user("manager-patch-required"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "fields": {"montant": null}
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("montant"))
+                .andExpect(jsonPath("$.errors[0].code").value("REQUIRED"));
+    }
+
+    @Test
+    void updateFields_typeMismatch_returns400() throws Exception {
+        String code = createTypeWithFields("PATCHTYPE", """
+                [{"name": "montant", "label": "Montant", "type": "NUMBER", "required": false, "options": [], "group": "d"}]
+                """);
+        grant(code, "manager-patch-type", "EDIT");
+        DossierFixture dossier = createDossierWithFields(
+                code, "manager-patch-type", "Type mismatch dossier", "{\"montant\":100}");
+
+        mockMvc.perform(patch("/api/dossiers/{id}/fields", dossier.id())
+                        .with(user("manager-patch-type"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "fields": {"montant": "not-a-number"}
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("montant"))
+                .andExpect(jsonPath("$.errors[0].code").value("TYPE_MISMATCH"));
+    }
+
+    @Test
+    void updateFields_unknownField_returns400WhenNotAllowed() throws Exception {
+        String code = createType(true);
+        grant(code, "manager-patch-unknown", "EDIT");
+        DossierFixture dossier = createDossier(code, "manager-patch-unknown", "Unknown field dossier");
+
+        mockMvc.perform(patch("/api/dossiers/{id}/fields", dossier.id())
+                        .with(user("manager-patch-unknown"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "fields": {"mystere": "x"}
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("mystere"))
+                .andExpect(jsonPath("$.errors[0].code").value("UNKNOWN_FIELD"));
+    }
+
+    @Test
+    void updateFields_sensitiveFieldChanged_emitsSecurityAuditEvent() throws Exception {
+        String code = createTypeWithFields("PATCHSENS", """
+                [{"name": "ssn", "label": "SSN", "type": "STRING", "required": false, "options": [], "sensitive": true}]
+                """);
+        grant(code, "manager-patch-sensitive", "EDIT");
+        DossierFixture dossier = createDossierWithFields(
+                code, "manager-patch-sensitive", "Sensitive field dossier", "{\"ssn\":\"111-11-1111\"}");
+
+        ListAppender<ILoggingEvent> appender = attachSecurityAuditAppender();
+        try {
+            mockMvc.perform(patch("/api/dossiers/{id}/fields", dossier.id())
+                            .with(user("manager-patch-sensitive"))
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "fields": {"ssn": "222-22-2222"}
+                                    }
+                                    """))
+                    .andExpect(status().isOk());
+        } finally {
+            detachSecurityAuditAppender(appender);
+        }
+
+        assertThat(appender.list).anySatisfy(event -> {
+            String message = event.getFormattedMessage();
+            assertThat(message).contains("event=sensitive_field_changed");
+            assertThat(message).contains("field=ssn");
+            assertThat(message).doesNotContain("111-11-1111");
+            assertThat(message).doesNotContain("222-22-2222");
+        });
+    }
+
+    @Test
+    void updateFields_noSensitiveFieldChanged_emitsNoSecurityAuditEvent() throws Exception {
+        String code = createTypeWithFields("PATCHNOSENS", """
+                [
+                  {"name": "montant", "label": "Montant", "type": "NUMBER", "required": false, "options": [], "group": "d"},
+                  {"name": "ssn", "label": "SSN", "type": "STRING", "required": false, "options": [], "sensitive": true}
+                ]
+                """);
+        grant(code, "manager-patch-nosensitive", "EDIT");
+        DossierFixture dossier = createDossierWithFields(
+                code, "manager-patch-nosensitive", "No sensitive change dossier",
+                "{\"montant\":100,\"ssn\":\"111-11-1111\"}");
+
+        ListAppender<ILoggingEvent> appender = attachSecurityAuditAppender();
+        try {
+            mockMvc.perform(patch("/api/dossiers/{id}/fields", dossier.id())
+                            .with(user("manager-patch-nosensitive"))
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "fields": {"montant": 200}
+                                    }
+                                    """))
+                    .andExpect(status().isOk());
+        } finally {
+            detachSecurityAuditAppender(appender);
+        }
+
+        assertThat(appender.list)
+                .noneMatch(event -> event.getFormattedMessage().contains("event=sensitive_field_changed"));
+    }
+
+    @Test
+    void updateFields_sensitiveFieldStillRedactedForNonAdminAfterPatch() throws Exception {
+        String code = createTypeWithFields("PATCHREDACT", """
+                [{"name": "ssn", "label": "SSN", "type": "STRING", "required": false, "options": [], "sensitive": true}]
+                """);
+        grant(code, "manager-patch-redact", "EDIT");
+        DossierFixture dossier = createDossierWithFields(
+                code, "manager-patch-redact", "Redact after patch dossier", "{\"ssn\":\"111-11-1111\"}");
+
+        mockMvc.perform(patch("/api/dossiers/{id}/fields", dossier.id())
+                        .with(user("manager-patch-redact"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "fields": {"ssn": "222-22-2222"}
+                                }
+                                """))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/dossiers/{id}", dossier.id()).with(user("manager-patch-redact")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fields.ssn").doesNotExist());
+    }
+
+    @Test
+    void updateFields_thenListSortedByUpdatedAtDesc_bringsEditedDossierToTop() throws Exception {
+        String code = createTypeWithFields("PATCHSORT", """
+                [{"name": "note", "label": "Note", "type": "STRING", "required": false, "options": [], "group": "d"}]
+                """);
+        grant(code, "manager-patch-sort", "EDIT");
+        DossierFixture older = createDossier(code, "manager-patch-sort", "Older dossier");
+        DossierFixture newer = createDossier(code, "manager-patch-sort", "Newer dossier");
+
+        mockMvc.perform(patch("/api/dossiers/{id}/fields", older.id())
+                        .with(user("manager-patch-sort"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "fields": {"note": "bumped"}
+                                }
+                                """))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/dossiers")
+                        .param("sort", "updatedAt,desc")
+                        .param("dossierTypeCode", code)
+                        .with(user("manager-patch-sort")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].id").value(older.id()));
+    }
+
+    private void transitionStatus(String dossierId, String userId, String status) throws Exception {
+        mockMvc.perform(patch("/api/dossiers/{id}/status", dossierId)
+                        .with(user(userId))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "status": "%s"
+                                }
+                                """.formatted(status)))
+                .andExpect(status().isOk());
+    }
+
+    private DossierFixture createDossierWithFields(String code, String userId, String label, String fields)
+            throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/dossiers")
+                        .with(user(userId))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(dossierPayload(code, label, fields)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String body = result.getResponse().getContentAsString();
+        return new DossierFixture(
+                extractString(body, "id"),
+                extractString(body, "reference"),
+                extractLong(body, "version"));
+    }
+
+    private static ListAppender<ILoggingEvent> attachSecurityAuditAppender() {
+        Logger logger = (Logger) LoggerFactory.getLogger("SECURITY_AUDIT");
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        return appender;
+    }
+
+    private static void detachSecurityAuditAppender(ListAppender<ILoggingEvent> appender) {
+        Logger logger = (Logger) LoggerFactory.getLogger("SECURITY_AUDIT");
+        logger.detachAppender(appender);
+        appender.stop();
     }
 
     @Test

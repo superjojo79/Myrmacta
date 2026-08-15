@@ -55,6 +55,8 @@ record CreateDossierRequest(String dossierTypeCode, String label, Map<String, Ob
 
 record UpdateDossierStatusRequest(DossierStatus status, Long expectedVersion) {}
 
+record UpdateDossierFieldsRequest(Map<String, Object> fields, Long expectedVersion) {}
+
 record DossierResponse(
         UUID id,
         String tenantId,

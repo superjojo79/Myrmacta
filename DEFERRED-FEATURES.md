@@ -70,7 +70,7 @@ pièces jointes, purge §22), introduire un **port abstrait** avec adaptateur
 | Éléments de dossier (`DossierElement`) | Lot suivant — fichiers / MinIO |
 | Relations entre dossiers | **Livré** — feature `relations-dossiers` (API + UI + ServiceTask) |
 | `DossierWorkflowLink` + AttachWorkflow | Lot `workflow-engine` |
-| PATCH fields dossier | Extension API (point 24) |
+| PATCH fields dossier | **Livré** — feature `patch-dossier-fields` (fusion + audit `sensitive`) |
 | Liste / recherche / pagination dossiers | **Livré** — feature `pagination-dossiers` (API + Supervision) |
 | Index Liquibase `(tenant_id, dossier_type_code)` | Nice-to-have |
 | CHECK SQL `permission ∈ {VIEW,EDIT}` | Nice-to-have |

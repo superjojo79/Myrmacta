@@ -11,8 +11,11 @@ import com.flowforge.domain.dossier.port.in.GetDossierUseCase;
 import com.flowforge.domain.dossier.port.in.ListDossierElementsUseCase;
 import com.flowforge.domain.dossier.port.in.ListDossierRelationsUseCase;
 import com.flowforge.domain.dossier.port.in.SearchDossiersUseCase;
+import com.flowforge.domain.dossier.port.in.UpdateDossierFieldsUseCase;
 import com.flowforge.domain.dossier.port.in.UpdateDossierStatusUseCase;
 import com.flowforge.infrastructure.config.TenantProperties;
+import com.flowforge.infrastructure.security.SecurityAuditLog;
+import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +40,7 @@ public class DossierController {
     private final GetDossierUseCase getDossierUseCase;
     private final ListDossierElementsUseCase listDossierElementsUseCase;
     private final UpdateDossierStatusUseCase updateDossierStatusUseCase;
+    private final UpdateDossierFieldsUseCase updateDossierFieldsUseCase;
     private final SearchDossiersUseCase searchDossiersUseCase;
     private final CreateDossierRelationUseCase createDossierRelationUseCase;
     private final ListDossierRelationsUseCase listDossierRelationsUseCase;
@@ -48,6 +52,7 @@ public class DossierController {
             GetDossierUseCase getDossierUseCase,
             ListDossierElementsUseCase listDossierElementsUseCase,
             UpdateDossierStatusUseCase updateDossierStatusUseCase,
+            UpdateDossierFieldsUseCase updateDossierFieldsUseCase,
             SearchDossiersUseCase searchDossiersUseCase,
             CreateDossierRelationUseCase createDossierRelationUseCase,
             ListDossierRelationsUseCase listDossierRelationsUseCase,
@@ -57,6 +62,7 @@ public class DossierController {
         this.getDossierUseCase = getDossierUseCase;
         this.listDossierElementsUseCase = listDossierElementsUseCase;
         this.updateDossierStatusUseCase = updateDossierStatusUseCase;
+        this.updateDossierFieldsUseCase = updateDossierFieldsUseCase;
         this.searchDossiersUseCase = searchDossiersUseCase;
         this.createDossierRelationUseCase = createDossierRelationUseCase;
         this.listDossierRelationsUseCase = listDossierRelationsUseCase;
@@ -177,6 +183,29 @@ public class DossierController {
                         actor.userId(),
                         request.expectedVersion()),
                 actor));
+    }
+
+    @PatchMapping("/{id}/fields")
+    public DossierResponse updateFields(
+            @PathVariable UUID id,
+            @RequestBody UpdateDossierFieldsRequest request,
+            HttpServletRequest httpRequest,
+            Authentication authentication) {
+        AccessContext.User actor = accessContextFactory.user(authentication);
+        if (request.fields() == null || request.fields().isEmpty()) {
+            throw new IllegalArgumentException("fields is required");
+        }
+        UpdateDossierFieldsUseCase.UpdateDossierFieldsResult result = updateDossierFieldsUseCase.update(
+                new UpdateDossierFieldsUseCase.UpdateDossierFieldsCommand(
+                        id,
+                        request.fields(),
+                        actor.userId(),
+                        request.expectedVersion()),
+                actor);
+        for (String field : result.sensitiveFieldsChanged()) {
+            SecurityAuditLog.sensitiveFieldChanged(httpRequest, authentication, id, field);
+        }
+        return DossierResponse.from(result.dossier());
     }
 
     private static String required(String value, String field) {

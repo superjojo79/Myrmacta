@@ -15,6 +15,7 @@ import com.flowforge.domain.dossier.port.in.ListDossierRelationsUseCase;
 import com.flowforge.domain.dossier.port.in.ListDossierTypesUseCase;
 import com.flowforge.domain.dossier.port.in.RevokeDossierTypeAccessUseCase;
 import com.flowforge.domain.dossier.port.in.SearchDossiersUseCase;
+import com.flowforge.domain.dossier.port.in.UpdateDossierFieldsUseCase;
 import com.flowforge.domain.dossier.port.in.UpdateDossierStatusUseCase;
 import com.flowforge.domain.dossier.port.in.UpdateDossierTypeUseCase;
 import com.flowforge.domain.dossier.port.out.DossierElementRepository;
@@ -37,6 +38,7 @@ import com.flowforge.domain.dossier.usecase.ListDossierRelationsUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.ListDossierTypesUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.RevokeDossierTypeAccessUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.SearchDossiersUseCaseImpl;
+import com.flowforge.domain.dossier.usecase.UpdateDossierFieldsUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.UpdateDossierStatusUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.UpdateDossierTypeUseCaseImpl;
 import org.springframework.context.annotation.Bean;
@@ -135,6 +137,14 @@ public class DossierConfig {
             DossierRepository dossierRepository,
             DossierAccessPolicy accessPolicy) {
         return new UpdateDossierStatusUseCaseImpl(dossierRepository, accessPolicy);
+    }
+
+    @Bean
+    UpdateDossierFieldsUseCase updateDossierFieldsUseCase(
+            DossierRepository dossierRepository,
+            DossierTypeRepository typeRepository,
+            DossierAccessPolicy accessPolicy) {
+        return new UpdateDossierFieldsUseCaseImpl(dossierRepository, typeRepository, accessPolicy);
     }
 
     @Bean

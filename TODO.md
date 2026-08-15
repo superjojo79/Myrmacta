@@ -96,8 +96,10 @@ couvert aujourd'hui, même partiellement.
 ### [~] 24. Contrat d'API — surface incomplète et format d'erreur non normalisé
 
 **Partiel (2026-08-13 — feature `pagination-dossiers`) :** liste/recherche/pagination
-dossiers + envelope page + Supervision FE livrés. **Reste ouvert :** OpenAPI formel,
-pagination des autres ressources, surface admin exhaustive.
+dossiers + envelope page + Supervision FE livrés. **Partiel (2026-08-15 — feature
+`patch-dossier-fields`) :** `PATCH /api/dossiers/{id}/fields` (fusion, verrou optimiste,
+gate statut, audit `sensitive`) livré. **Reste ouvert :** OpenAPI formel, pagination des
+autres ressources, surface admin exhaustive.
 
 **Énoncé :** aucun endpoint de création, recherche, liste ou mise à jour de dossier n'est documenté,
 pas plus que l'administration des `DossierType`, `ConnectorInstance` et templates. Les listes

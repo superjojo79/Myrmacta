@@ -3,9 +3,13 @@ package com.flowforge.infrastructure.web.dossier;
 import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierElementView;
+import com.flowforge.domain.dossier.model.DossierRelation;
+import com.flowforge.domain.dossier.model.DossierRelationView;
+import com.flowforge.domain.dossier.port.in.CreateDossierRelationUseCase;
 import com.flowforge.domain.dossier.port.in.CreateDossierUseCase;
 import com.flowforge.domain.dossier.port.in.GetDossierUseCase;
 import com.flowforge.domain.dossier.port.in.ListDossierElementsUseCase;
+import com.flowforge.domain.dossier.port.in.ListDossierRelationsUseCase;
 import com.flowforge.domain.dossier.port.in.SearchDossiersUseCase;
 import com.flowforge.domain.dossier.port.in.UpdateDossierStatusUseCase;
 import com.flowforge.infrastructure.config.TenantProperties;
@@ -34,6 +38,8 @@ public class DossierController {
     private final ListDossierElementsUseCase listDossierElementsUseCase;
     private final UpdateDossierStatusUseCase updateDossierStatusUseCase;
     private final SearchDossiersUseCase searchDossiersUseCase;
+    private final CreateDossierRelationUseCase createDossierRelationUseCase;
+    private final ListDossierRelationsUseCase listDossierRelationsUseCase;
     private final AccessContextFactory accessContextFactory;
 
     public DossierController(
@@ -43,6 +49,8 @@ public class DossierController {
             ListDossierElementsUseCase listDossierElementsUseCase,
             UpdateDossierStatusUseCase updateDossierStatusUseCase,
             SearchDossiersUseCase searchDossiersUseCase,
+            CreateDossierRelationUseCase createDossierRelationUseCase,
+            ListDossierRelationsUseCase listDossierRelationsUseCase,
             AccessContextFactory accessContextFactory) {
         this.tenantProperties = tenantProperties;
         this.createDossierUseCase = createDossierUseCase;
@@ -50,6 +58,8 @@ public class DossierController {
         this.listDossierElementsUseCase = listDossierElementsUseCase;
         this.updateDossierStatusUseCase = updateDossierStatusUseCase;
         this.searchDossiersUseCase = searchDossiersUseCase;
+        this.createDossierRelationUseCase = createDossierRelationUseCase;
+        this.listDossierRelationsUseCase = listDossierRelationsUseCase;
         this.accessContextFactory = accessContextFactory;
     }
 
@@ -110,6 +120,45 @@ public class DossierController {
             @PathVariable UUID id,
             Authentication authentication) {
         return listDossierElementsUseCase.list(id, accessContextFactory.user(authentication));
+    }
+
+    @GetMapping("/{id}/relations")
+    public List<DossierRelationResponse> listRelations(
+            @PathVariable UUID id,
+            Authentication authentication) {
+        return listDossierRelationsUseCase.list(id, accessContextFactory.user(authentication)).stream()
+                .map(DossierRelationResponse::from)
+                .toList();
+    }
+
+    @PostMapping("/{id}/relations")
+    public ResponseEntity<DossierRelationResponse> createRelation(
+            @PathVariable UUID id,
+            @RequestBody CreateDossierRelationRequest request,
+            Authentication authentication) {
+        AccessContext.User actor = accessContextFactory.user(authentication);
+        if (request == null || request.targetDossierId() == null) {
+            throw new IllegalArgumentException("targetDossierId is required");
+        }
+        if (request.type() == null) {
+            throw new IllegalArgumentException("type is required");
+        }
+        DossierRelation created = createDossierRelationUseCase.create(
+                new CreateDossierRelationUseCase.CreateDossierRelationCommand(
+                        tenantProperties.id(),
+                        id,
+                        request.targetDossierId(),
+                        request.type(),
+                        actor.userId(),
+                        null),
+                actor);
+        DossierRelationView view = listDossierRelationsUseCase.list(id, actor).stream()
+                .filter(item -> item.id().equals(created.id()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("Created relation not visible: " + created.id()));
+        return ResponseEntity
+                .created(URI.create("/api/dossiers/" + id + "/relations/" + created.id()))
+                .body(DossierRelationResponse.from(view));
     }
 
     @PatchMapping("/{id}/status")

@@ -285,6 +285,52 @@ class WorkflowApiTest {
     }
 
     @Test
+    void visualizationDossierPanelIncludesRealRelations() throws Exception {
+        String processKey = "smokeProcess";
+        createWorkflowConfig(processKey);
+        String sourceType = createType();
+        String targetType = createType();
+        grant(sourceType, "rel-viz", "EDIT");
+        grant(targetType, "rel-viz", "EDIT");
+        String sourceId = createDossier(sourceType, "rel-viz");
+        String targetId = createDossier(targetType, "rel-viz");
+
+        mockMvc.perform(post("/api/dossiers/{id}/relations", sourceId)
+                        .with(user("rel-viz"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "targetDossierId": "%s",
+                                  "type": "LINKED"
+                                }
+                                """.formatted(targetId)))
+                .andExpect(status().isCreated());
+
+        MvcResult startResult = mockMvc.perform(post("/api/dossiers/{id}/workflows", sourceId)
+                        .with(user("rel-viz"))
+                        .with(csrf())
+                        .header("Idempotency-Key", "idem-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "processDefinitionKey": "%s"
+                                }
+                                """.formatted(processKey)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String linkId = extractString(startResult.getResponse().getContentAsString(), "id");
+
+        mockMvc.perform(get("/api/workflow-links/{id}/dossier", linkId)
+                        .with(user("rel-viz")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.dossier.id").value(sourceId))
+                .andExpect(jsonPath("$.relations", hasSize(1)))
+                .andExpect(jsonPath("$.relations[0].type").value("LINKED"))
+                .andExpect(jsonPath("$.relations[0].relatedDossier.id").value(targetId));
+    }
+
+    @Test
     void workflowTypeConfigObserverUserIdsRoundTripAndAuthorizeVisualization() throws Exception {
         String processKey = "smokeProcess";
         createWorkflowConfig(processKey);

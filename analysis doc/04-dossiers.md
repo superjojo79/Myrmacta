@@ -404,7 +404,11 @@ public record DossierRelation(
     // MERGED_INTO   — dossier fusionné dans un autre
 
     String  createdBy,
-    Instant createdAt
+    Instant createdAt,
+    String  idempotencyKey
+    // null si créée manuellement ; sinon "processInstanceId:activityId"
+    // du ServiceTask (D-IDEMPOTENCY). Unicité (tenant_id, source, key)
+    // via contrainte UNIQUE — NULLs distincts (H2 n'accepte pas l'index partiel).
 ) {}
 ```
 

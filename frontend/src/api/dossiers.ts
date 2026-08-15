@@ -4,7 +4,9 @@ import type {
   DossierElementView,
   DossierListParams,
   DossierPage,
+  DossierRelation,
   DossierStatus,
+  RelationType,
   WorkflowLink,
 } from './types'
 
@@ -48,6 +50,19 @@ export async function updateDossierStatus(
     status,
     expectedVersion,
   })
+  return data
+}
+
+export async function listDossierRelations(id: string): Promise<DossierRelation[]> {
+  const { data } = await axios.get<DossierRelation[]>(`/api/dossiers/${id}/relations`)
+  return data
+}
+
+export async function createDossierRelation(
+  id: string,
+  payload: { targetDossierId: string; type: RelationType },
+): Promise<DossierRelation> {
+  const { data } = await axios.post<DossierRelation>(`/api/dossiers/${id}/relations`, payload)
   return data
 }
 

@@ -2,9 +2,11 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import {
   createDossier,
+  createDossierRelation,
   getDossierById,
   getDossierByRef,
   listDossierElements,
+  listDossierRelations,
   listDossierWorkflows,
   startDossierWorkflow,
   updateDossierStatus,
@@ -22,8 +24,10 @@ import type {
   ActivityHistoryEntry,
   Dossier,
   DossierElementView,
+  DossierRelation,
   DossierStatus,
   DossierType,
+  RelationType,
   WorkflowDiagram,
   WorkflowLink,
   WorkflowTaskView,
@@ -34,6 +38,7 @@ export const useDossierStore = defineStore('dossier', () => {
   const dossierType = ref<DossierType | null>(null)
   const workflows = ref<WorkflowLink[]>([])
   const elements = ref<DossierElementView[]>([])
+  const relations = ref<DossierRelation[]>([])
   const diagram = ref<WorkflowDiagram | null>(null)
   const history = ref<ActivityHistoryEntry[]>([])
   const tasks = ref<WorkflowTaskView[]>([])
@@ -72,10 +77,11 @@ export const useDossierStore = defineStore('dossier', () => {
   async function refreshRelated(): Promise<void> {
     if (!dossier.value) return
     const current = dossier.value
-    ;[dossierType.value, workflows.value, elements.value] = await Promise.all([
+    ;[dossierType.value, workflows.value, elements.value, relations.value] = await Promise.all([
       getDossierType(current.dossierTypeCode),
       listDossierWorkflows(current.id),
       listDossierElements(current.id),
+      listDossierRelations(current.id),
     ])
     diagram.value = null
     history.value = []
@@ -114,6 +120,13 @@ export const useDossierStore = defineStore('dossier', () => {
     return created
   }
 
+  async function linkDossier(targetDossierId: string, type: RelationType): Promise<DossierRelation> {
+    if (!dossier.value) throw new Error('No dossier loaded')
+    const created = await createDossierRelation(dossier.value.id, { targetDossierId, type })
+    relations.value = [created, ...relations.value.filter((item) => item.id !== created.id)]
+    return created
+  }
+
   async function patchStatus(status: DossierStatus): Promise<void> {
     if (!dossier.value) return
     dossier.value = await updateDossierStatus(dossier.value.id, status, dossier.value.version)
@@ -149,6 +162,7 @@ export const useDossierStore = defineStore('dossier', () => {
     dossierType,
     workflows,
     elements,
+    relations,
     diagram,
     history,
     tasks,
@@ -158,6 +172,7 @@ export const useDossierStore = defineStore('dossier', () => {
     loadById,
     loadByRef,
     create,
+    linkDossier,
     patchStatus,
     startWorkflow,
     complete,

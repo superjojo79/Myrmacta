@@ -3,6 +3,7 @@ package com.flowforge.infrastructure.config;
 import com.flowforge.domain.dossier.DossierAccessPolicy;
 import com.flowforge.domain.dossier.TenantAdminGuard;
 import com.flowforge.domain.dossier.port.in.AddDossierElementUseCase;
+import com.flowforge.domain.dossier.port.in.CreateDossierRelationUseCase;
 import com.flowforge.domain.dossier.port.in.CreateDossierTypeUseCase;
 import com.flowforge.domain.dossier.port.in.CreateDossierUseCase;
 import com.flowforge.domain.dossier.port.in.GetDossierElementUseCase;
@@ -10,6 +11,7 @@ import com.flowforge.domain.dossier.port.in.GetDossierTypeUseCase;
 import com.flowforge.domain.dossier.port.in.GetDossierUseCase;
 import com.flowforge.domain.dossier.port.in.GrantDossierTypeAccessUseCase;
 import com.flowforge.domain.dossier.port.in.ListDossierElementsUseCase;
+import com.flowforge.domain.dossier.port.in.ListDossierRelationsUseCase;
 import com.flowforge.domain.dossier.port.in.ListDossierTypesUseCase;
 import com.flowforge.domain.dossier.port.in.RevokeDossierTypeAccessUseCase;
 import com.flowforge.domain.dossier.port.in.SearchDossiersUseCase;
@@ -17,11 +19,13 @@ import com.flowforge.domain.dossier.port.in.UpdateDossierStatusUseCase;
 import com.flowforge.domain.dossier.port.in.UpdateDossierTypeUseCase;
 import com.flowforge.domain.dossier.port.out.DossierElementRepository;
 import com.flowforge.domain.dossier.port.out.DossierReferenceGenerator;
+import com.flowforge.domain.dossier.port.out.DossierRelationRepository;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.dossier.port.out.DossierSearchPort;
 import com.flowforge.domain.dossier.port.out.DossierTypeAclRepository;
 import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
 import com.flowforge.domain.dossier.usecase.AddDossierElementUseCaseImpl;
+import com.flowforge.domain.dossier.usecase.CreateDossierRelationUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.CreateDossierTypeUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.CreateDossierUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.GetDossierElementUseCaseImpl;
@@ -29,6 +33,7 @@ import com.flowforge.domain.dossier.usecase.GetDossierTypeUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.GetDossierUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.GrantDossierTypeAccessUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.ListDossierElementsUseCaseImpl;
+import com.flowforge.domain.dossier.usecase.ListDossierRelationsUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.ListDossierTypesUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.RevokeDossierTypeAccessUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.SearchDossiersUseCaseImpl;
@@ -150,5 +155,24 @@ public class DossierConfig {
             DossierAccessPolicy accessPolicy) {
         return new GetDossierElementUseCaseImpl(
                 tenantProperties.id(), dossierElementRepository, dossierRepository, accessPolicy);
+    }
+
+    @Bean
+    CreateDossierRelationUseCase createDossierRelationUseCase(
+            DossierRepository dossierRepository,
+            DossierRelationRepository dossierRelationRepository,
+            DossierAccessPolicy accessPolicy) {
+        return new CreateDossierRelationUseCaseImpl(
+                dossierRepository, dossierRelationRepository, accessPolicy);
+    }
+
+    @Bean
+    ListDossierRelationsUseCase listDossierRelationsUseCase(
+            DossierRepository dossierRepository,
+            DossierRelationRepository dossierRelationRepository,
+            DossierTypeRepository typeRepository,
+            DossierAccessPolicy accessPolicy) {
+        return new ListDossierRelationsUseCaseImpl(
+                dossierRepository, dossierRelationRepository, typeRepository, accessPolicy);
     }
 }

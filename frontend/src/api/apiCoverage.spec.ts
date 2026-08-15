@@ -2,9 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import axios from 'axios'
 import {
   createDossier,
+  createDossierRelation,
   getDossierById,
   getDossierByRef,
   listDossierElements,
+  listDossierRelations,
   listDossierWorkflows,
   startDossierWorkflow,
   updateDossierStatus,
@@ -55,6 +57,8 @@ describe('api coverage', () => {
     await getDossierByRef('DOS-1')
     await updateDossierStatus('d1', 'OUVERT', 1)
     await listDossierElements('d1')
+    await listDossierRelations('d1')
+    await createDossierRelation('d1', { targetDossierId: 'd2', type: 'LINKED' })
     await listDossierWorkflows('d1')
     await startDossierWorkflow('d1', 'wf', {}, 'k')
     expect(axios.get).toHaveBeenCalled()

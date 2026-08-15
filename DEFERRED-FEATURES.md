@@ -68,7 +68,7 @@ pièces jointes, purge §22), introduire un **port abstrait** avec adaptateur
 | Item | Notes |
 |---|---|
 | Éléments de dossier (`DossierElement`) | Lot suivant — fichiers / MinIO |
-| Relations entre dossiers | Lot suivant |
+| Relations entre dossiers | **Livré** — feature `relations-dossiers` (API + UI + ServiceTask) |
 | `DossierWorkflowLink` + AttachWorkflow | Lot `workflow-engine` |
 | PATCH fields dossier | Extension API (point 24) |
 | Liste / recherche / pagination dossiers | **Livré** — feature `pagination-dossiers` (API + Supervision) |

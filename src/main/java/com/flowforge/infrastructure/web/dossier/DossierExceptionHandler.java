@@ -4,6 +4,7 @@ import com.flowforge.domain.dossier.model.AccessDeniedException;
 import com.flowforge.domain.dossier.model.DossierConflictException;
 import com.flowforge.domain.dossier.model.DossierFieldValidationException;
 import com.flowforge.domain.dossier.model.DossierNotFoundException;
+import com.flowforge.domain.dossier.model.DuplicateDossierRelationException;
 import com.flowforge.domain.dossier.model.IllegalDossierStatusTransitionException;
 import com.flowforge.domain.dossier.model.InactiveDossierTypeException;
 import com.flowforge.infrastructure.security.SecurityAuditLog;
@@ -42,6 +43,7 @@ public class DossierExceptionHandler {
     @ExceptionHandler({
             IllegalDossierStatusTransitionException.class,
             DossierConflictException.class,
+            DuplicateDossierRelationException.class,
             InactiveDossierTypeException.class,
             ObjectOptimisticLockingFailureException.class,
             OptimisticLockException.class
@@ -50,6 +52,12 @@ public class DossierExceptionHandler {
         return problem(HttpStatus.CONFLICT, "Dossier conflict", ex.getMessage());
     }
 
+    // Deliberately generic: maps any otherwise-unhandled integrity violation to 409, including
+    // a hypothetical FK violation on dossier_relation (source/target dossier gone). Not worth
+    // distinguishing UK from FK here — dossiers are never hard-deleted in this app and both
+    // sides of a relation are validated to exist immediately before the insert, so an FK
+    // violation on this path is unreachable in practice; parsing constraint names to split the
+    // two cases would just be fragile, DB-specific code for a case that can't occur.
     @ExceptionHandler(DataIntegrityViolationException.class)
     ProblemDetail handleDataIntegrity(DataIntegrityViolationException ex) {
         return problem(HttpStatus.CONFLICT, "Dossier conflict", "Unique constraint or data integrity violation");

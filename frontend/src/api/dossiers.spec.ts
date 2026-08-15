@@ -1,6 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import axios from 'axios'
-import { createDossier, listDossiers, startDossierWorkflow, updateDossierStatus } from './dossiers'
+import {
+  createDossier,
+  createDossierRelation,
+  listDossierRelations,
+  listDossiers,
+  startDossierWorkflow,
+  updateDossierStatus,
+} from './dossiers'
 
 vi.mock('axios')
 
@@ -56,6 +63,20 @@ describe('dossiers api client', () => {
     expect(axios.patch).toHaveBeenCalledWith('/api/dossiers/d1/status', {
       status: 'OUVERT',
       expectedVersion: 1,
+    })
+  })
+
+  it('lists and creates dossier relations', async () => {
+    vi.mocked(axios.get).mockResolvedValue({ data: [] })
+    await listDossierRelations('d1')
+    expect(axios.get).toHaveBeenCalledWith('/api/dossiers/d1/relations')
+    vi.mocked(axios.post).mockResolvedValue({
+      data: { id: 'r1', type: 'LINKED', direction: 'OUTGOING' },
+    })
+    await createDossierRelation('d1', { targetDossierId: 'd2', type: 'LINKED' })
+    expect(axios.post).toHaveBeenCalledWith('/api/dossiers/d1/relations', {
+      targetDossierId: 'd2',
+      type: 'LINKED',
     })
   })
 

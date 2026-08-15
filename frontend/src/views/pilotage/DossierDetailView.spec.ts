@@ -63,6 +63,7 @@ describe('DossierDetailView phase 8', () => {
     })
     vi.mocked(dossiersApi.listDossierWorkflows).mockResolvedValue([])
     vi.mocked(dossiersApi.listDossierElements).mockResolvedValue([])
+    vi.mocked(dossiersApi.listDossierRelations).mockResolvedValue([])
     vi.mocked(workflowsApi.getWorkflowDiagram).mockResolvedValue({
       bpmnXml: '<xml/>',
       activeIds: [],
@@ -142,6 +143,17 @@ describe('DossierDetailView phase 8', () => {
     await admin.get('.reassign button').trigger('click')
     await flushPromises()
     expect(workflowsApi.reassignWorkflowTask).toHaveBeenCalledWith('link-1', 'task-1', 'user-2')
+  })
+
+  it('shows link action for manager and hides it for viewer', async () => {
+    const manager = await mountDetail(['DOSSIER_MANAGER'])
+    expect(manager.text()).toContain('Dossiers liés')
+    expect(manager.text()).toContain('Lier un dossier')
+    manager.unmount()
+
+    const viewer = await mountDetail(['DOSSIER_VIEWER'])
+    expect(viewer.text()).toContain('Dossiers liés')
+    expect(viewer.text()).not.toContain('Lier un dossier')
   })
 
   it('surfaces ProblemDetail when status patch fails', async () => {

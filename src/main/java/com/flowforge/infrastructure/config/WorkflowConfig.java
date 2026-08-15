@@ -3,6 +3,7 @@ package com.flowforge.infrastructure.config;
 import com.flowforge.application.workflow.ManualStartOrchestrator;
 import com.flowforge.domain.dossier.DossierAccessPolicy;
 import com.flowforge.domain.dossier.port.in.AttachWorkflowUseCase;
+import com.flowforge.domain.dossier.port.in.ListDossierRelationsUseCase;
 import com.flowforge.domain.dossier.port.out.DossierElementRepository;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
@@ -86,6 +87,7 @@ public class WorkflowConfig {
             DossierRepository dossierRepository,
             DossierTypeRepository dossierTypeRepository,
             DossierElementRepository elementRepository,
+            ListDossierRelationsUseCase listDossierRelationsUseCase,
             WorkflowVisualizationPort visualizationPort,
             WorkflowParticipantPort participantPort,
             DossierAccessPolicy dossierAccessPolicy) {
@@ -95,6 +97,7 @@ public class WorkflowConfig {
                 dossierRepository,
                 dossierTypeRepository,
                 elementRepository,
+                listDossierRelationsUseCase,
                 visualizationPort,
                 participantPort,
                 dossierAccessPolicy);

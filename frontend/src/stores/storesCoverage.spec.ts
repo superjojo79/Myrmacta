@@ -49,6 +49,7 @@ describe('stores remaining coverage', () => {
     })
     vi.mocked(dossiersApi.listDossierWorkflows).mockResolvedValue([])
     vi.mocked(dossiersApi.listDossierElements).mockResolvedValue([])
+    vi.mocked(dossiersApi.listDossierRelations).mockResolvedValue([])
     vi.mocked(workflowsApi.getWorkflowDiagram).mockResolvedValue({
       bpmnXml: '<xml/>',
       activeIds: ['a'],

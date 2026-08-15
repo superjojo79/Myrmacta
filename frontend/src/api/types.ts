@@ -74,6 +74,32 @@ export interface DossierPage {
   totalPages: number
 }
 
+export type RelationType =
+  | 'PARENT_CHILD'
+  | 'SUBSEQUENT'
+  | 'LINKED'
+  | 'DUPLICATE'
+  | 'MERGED_INTO'
+
+export type RelationDirection = 'OUTGOING' | 'INCOMING'
+
+export interface DossierRelation {
+  id: string
+  type: RelationType
+  direction: RelationDirection
+  relatedDossier: DossierListItem
+  createdBy: string
+  createdAt: string
+}
+
+export const RELATION_TYPES: RelationType[] = [
+  'PARENT_CHILD',
+  'SUBSEQUENT',
+  'LINKED',
+  'DUPLICATE',
+  'MERGED_INTO',
+]
+
 export interface DossierListParams {
   page?: number
   size?: number

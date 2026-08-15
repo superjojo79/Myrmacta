@@ -2,13 +2,14 @@ package com.flowforge.domain.workflow.model;
 
 import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierElement;
+import com.flowforge.domain.dossier.model.DossierRelationView;
 import java.util.List;
 import java.util.Objects;
 
 public record WorkflowLinkDossierView(
         Dossier dossier,
         List<DossierElement> elements,
-        List<Object> relations
+        List<DossierRelationView> relations
 ) {
     public WorkflowLinkDossierView {
         Objects.requireNonNull(dossier, "dossier");

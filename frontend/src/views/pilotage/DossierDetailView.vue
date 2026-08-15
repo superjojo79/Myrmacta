@@ -5,10 +5,12 @@ import { storeToRefs } from 'pinia'
 import { useDossierStore } from '@/stores/dossier'
 import { useAuthStore } from '@/stores/auth'
 import { toProblemDetail } from '@/api/http'
-import type { DossierStatus } from '@/api/types'
+import type { DossierStatus, RelationType } from '@/api/types'
 import DynamicFields from '@/components/dossier/DynamicFields.vue'
 import StatusSelect from '@/components/dossier/StatusSelect.vue'
 import ElementsList from '@/components/dossier/ElementsList.vue'
+import RelationsList from '@/components/dossier/RelationsList.vue'
+import LinkDossierDialog from '@/components/dossier/LinkDossierDialog.vue'
 import BpmnViewer from '@/components/workflow/BpmnViewer.vue'
 import TaskList from '@/components/workflow/TaskList.vue'
 import HistoryTimeline from '@/components/workflow/HistoryTimeline.vue'
@@ -21,6 +23,7 @@ const {
   dossier,
   dossierType,
   elements,
+  relations,
   diagram,
   history,
   tasks,
@@ -28,15 +31,19 @@ const {
   error,
   diagramUnavailable,
 } = storeToRefs(store)
-const { isTenantAdmin, isWorkflowAdmin } = storeToRefs(auth)
+const { isTenantAdmin, isWorkflowAdmin, roles } = storeToRefs(auth)
 
 const statusDraft = ref<DossierStatus>('DRAFT')
 const startOpen = ref(false)
+const linkOpen = ref(false)
 const reassignTaskId = ref<string | null>(null)
 const reassignUserId = ref('')
 const actionError = ref<string | null>(null)
 
 const canReassign = computed(() => isTenantAdmin.value || isWorkflowAdmin.value)
+const canLink = computed(
+  () => isTenantAdmin.value || isWorkflowAdmin.value || roles.value.includes('DOSSIER_MANAGER'),
+)
 const linkId = computed(() => dossier.value?.currentWorkflowLinkId)
 
 watch(
@@ -71,6 +78,16 @@ async function saveStatus() {
     await store.patchStatus(statusDraft.value)
   } catch (err) {
     actionError.value = toProblemDetail(err).detail ?? 'Mise à jour statut impossible'
+  }
+}
+
+async function onLink(payload: { targetDossierId: string; type: RelationType }) {
+  actionError.value = null
+  try {
+    await store.linkDossier(payload.targetDossierId, payload.type)
+    linkOpen.value = false
+  } catch (err) {
+    actionError.value = toProblemDetail(err).detail ?? 'Liaison impossible'
   }
 }
 
@@ -128,6 +145,18 @@ async function confirmReassign() {
     />
 
     <ElementsList :elements="elements" />
+
+    <RelationsList :relations="relations">
+      <template #actions>
+        <button v-if="canLink" type="button" @click="linkOpen = true">Lier un dossier</button>
+      </template>
+    </RelationsList>
+    <LinkDossierDialog
+      :open="linkOpen"
+      :current-dossier-id="dossier.id"
+      @close="linkOpen = false"
+      @submit="onLink"
+    />
 
     <BpmnViewer :diagram="diagram" :unavailable="diagramUnavailable || !linkId" />
     <HistoryTimeline :history="history" />

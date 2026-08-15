@@ -14,12 +14,17 @@ import com.flowforge.domain.dossier.model.AccessDeniedException;
 import com.flowforge.domain.dossier.model.DossierWorkflowLinkNotFoundException;
 import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierElement;
+import com.flowforge.domain.dossier.model.DossierListItem;
+import com.flowforge.domain.dossier.model.DossierRelationView;
 import com.flowforge.domain.dossier.model.DossierStatus;
 import com.flowforge.domain.dossier.model.DossierType;
+import com.flowforge.domain.dossier.model.RelationDirection;
+import com.flowforge.domain.dossier.model.RelationType;
 import com.flowforge.domain.dossier.model.DossierWorkflowLink;
 import com.flowforge.domain.dossier.model.ElementType;
 import com.flowforge.domain.dossier.model.FieldDefinition;
 import com.flowforge.domain.dossier.model.FieldType;
+import com.flowforge.domain.dossier.port.in.ListDossierRelationsUseCase;
 import com.flowforge.domain.dossier.port.out.DossierElementRepository;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
@@ -46,6 +51,7 @@ class WorkflowLinkVisualizationUseCaseImplTest {
     private DossierRepository dossierRepository;
     private DossierTypeRepository dossierTypeRepository;
     private DossierElementRepository elementRepository;
+    private ListDossierRelationsUseCase listDossierRelationsUseCase;
     private WorkflowVisualizationPort visualizationPort;
     private WorkflowParticipantPort participantPort;
     private DossierAccessPolicy dossierAccessPolicy;
@@ -57,6 +63,9 @@ class WorkflowLinkVisualizationUseCaseImplTest {
         dossierRepository = mock(DossierRepository.class);
         dossierTypeRepository = mock(DossierTypeRepository.class);
         elementRepository = mock(DossierElementRepository.class);
+        listDossierRelationsUseCase = mock(ListDossierRelationsUseCase.class);
+        when(listDossierRelationsUseCase.list(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(List.of());
         visualizationPort = mock(WorkflowVisualizationPort.class);
         participantPort = mock(WorkflowParticipantPort.class);
         dossierAccessPolicy = mock(DossierAccessPolicy.class);
@@ -67,6 +76,7 @@ class WorkflowLinkVisualizationUseCaseImplTest {
                 dossierRepository,
                 dossierTypeRepository,
                 elementRepository,
+                listDossierRelationsUseCase,
                 visualizationPort,
                 participantPort,
                 dossierAccessPolicy);
@@ -157,7 +167,39 @@ class WorkflowLinkVisualizationUseCaseImplTest {
         assertThat(result.dossier()).isEqualTo(dossier);
         assertThat(result.elements()).containsExactly(older, newer);
         assertThat(result.relations()).isEmpty();
+        verify(listDossierRelationsUseCase).list(link.dossierId(), user("starter-sub"));
         verify(dossierAccessPolicy).assertCanView(dossier, user("starter-sub"));
+    }
+
+    @Test
+    void getDossier_includesRelationsReturnedByListUseCase() {
+        DossierWorkflowLink link = reservedLink();
+        Dossier dossier = dossier(link.dossierId());
+        DossierListItem related = new DossierListItem(
+                UUID.randomUUID(),
+                "DOS-2",
+                "Related",
+                "FAC",
+                "Facture",
+                DossierStatus.OUVERT,
+                Instant.parse("2026-08-02T09:00:00Z"),
+                Instant.parse("2026-08-02T09:00:00Z"));
+        DossierRelationView view = new DossierRelationView(
+                UUID.randomUUID(),
+                RelationType.LINKED,
+                RelationDirection.OUTGOING,
+                related,
+                "starter-sub",
+                Instant.parse("2026-08-15T08:00:00Z"));
+        when(linkRepository.findById(link.id())).thenReturn(Optional.of(link));
+        when(participantPort.findParticipantUserIds(link)).thenReturn(List.of("starter-sub"));
+        when(dossierRepository.findById(link.dossierId())).thenReturn(Optional.of(dossier));
+        when(elementRepository.findByDossierIdOrderByAddedAtAsc(link.dossierId())).thenReturn(List.of());
+        when(listDossierRelationsUseCase.list(link.dossierId(), user("starter-sub"))).thenReturn(List.of(view));
+
+        var result = useCase.getDossier(link.id(), user("starter-sub"));
+
+        assertThat(result.relations()).containsExactly(view);
     }
 
     @Test

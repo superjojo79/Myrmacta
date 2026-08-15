@@ -2,9 +2,9 @@
 phase: planning
 title: Project Planning & Task Breakdown
 description: Break down work into actionable tasks and estimate timeline
-status: draft
+status: reviewed
 created: 2026-08-14
-updated: 2026-08-14
+updated: 2026-08-15
 feature: relations-dossiers
 design_aligned: 2026-08-14
 phase4: 2026-08-14
@@ -16,14 +16,14 @@ sequencing: layered
 ## Milestones
 **What are the major checkpoints?**
 
-- [ ] **M1 — Domaine** : records `DossierRelation`/`RelationType`/`DossierRelationView`/`RelationDirection` + ports in/out
-- [ ] **M2 — Persistence** : Liquibase `dossier_relation` (+ `idempotency_key` + index unique partiel), entité/adaptateur JPA
-- [ ] **M3 — Use cases manuels** : création (ACL EDIT+VIEW), liste bidirectionnelle (ACL filtrée), wiring `DossierConfig`
-- [ ] **M4 — API REST** : DTOs + `DossierController` (`POST`/`GET .../relations`) + mapping 409
-- [ ] **M5 — Panneau `WorkflowLinkDossierView`** : ferme le gap `relations: []` en dur (endpoint existant, non consommé par le FE actuel mais objectif primaire du scope)
-- [ ] **M6 — ServiceTask BPMN** : `ChildDossierRelationConfirmer` (idempotence) + `CreateChildDossierDelegate`
-- [ ] **M7 — Frontend** : section "Dossiers liés" + "Lier un dossier" dans `DossierDetailView.vue` (page unique — voir note de découverte ci-dessous)
-- [ ] **M8 — Preuves & docs** : suite de tests verte, `DEFERRED-FEATURES.md` §1.4 mis à jour
+- [x] **M1 — Domaine** : records `DossierRelation`/`RelationType`/`DossierRelationView`/`RelationDirection` + ports in/out
+- [x] **M2 — Persistence** : Liquibase `dossier_relation` (+ `idempotency_key` + index unique partiel), entité/adaptateur JPA
+- [x] **M3 — Use cases manuels** : création (ACL EDIT+VIEW), liste bidirectionnelle (ACL filtrée), wiring `DossierConfig`
+- [x] **M4 — API REST** : DTOs + `DossierController` (`POST`/`GET .../relations`) + mapping 409
+- [x] **M5 — Panneau `WorkflowLinkDossierView`** : ferme le gap `relations: []` en dur (endpoint existant, non consommé par le FE actuel mais objectif primaire du scope)
+- [x] **M6 — ServiceTask BPMN** : `ChildDossierRelationConfirmer` (idempotence) + `CreateChildDossierDelegate`
+- [x] **M7 — Frontend** : section "Dossiers liés" + "Lier un dossier" dans `DossierDetailView.vue` (page unique — voir note de découverte ci-dessous)
+- [x] **M8 — Preuves & docs** : suite de tests verte, `DEFERRED-FEATURES.md` §1.4 mis à jour
 
 ### Note de découverte (impacte le séquencement)
 
@@ -52,14 +52,14 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M1 — Domaine
 
-- [ ] **T1. Records domaine `DossierRelation`/`RelationType`/`DossierRelationView`/`RelationDirection`**
+- [x] **T1. Records domaine `DossierRelation`/`RelationType`/`DossierRelationView`/`RelationDirection`**
   - **Outcome :** `domain/dossier/model/{DossierRelation, RelationType, DossierRelationView, RelationDirection}.java` — pur Java, aucune annotation Spring/JPA/Flowable. `DossierRelation` inclut `idempotencyKey` nullable. `DossierRelationView.relatedDossier` de type `DossierListItem` (existant, `pagination-dossiers`).
   - **Outcome :** `domain/dossier/model/DuplicateDossierRelationException.java` — exception domaine pour le mapping 409 (violation de contrainte unique mappée par l'adaptateur JPA, voir T4).
   - **Depends on :** —
   - **Validation :** compile ; ArchUnit `domain_has_no_framework_dependency` / `domain_never_depends_on_infrastructure`.
   - **Tests liés :** `DossierRelation` (domaine) — auto-relation, ArchUnit.
 
-- [ ] **T2. Ports `DossierRelationRepository` / `CreateDossierRelationUseCase` / `ListDossierRelationsUseCase`**
+- [x] **T2. Ports `DossierRelationRepository` / `CreateDossierRelationUseCase` / `ListDossierRelationsUseCase`**
   - **Outcome :** `domain/dossier/port/out/DossierRelationRepository.java`
     (`save`, `findByDossier(String tenantId, UUID dossierId)`,
     `findByIdempotencyKey(String tenantId, UUID sourceDossierId, String idempotencyKey)`) ;
@@ -70,13 +70,13 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M2 — Persistence
 
-- [ ] **T3. Liquibase `009-dossier-relation-tables.yaml`**
+- [x] **T3. Liquibase `009-dossier-relation-tables.yaml`**
   - **Outcome :** table `dossier_relation` (FK `dossier(id)` ×2, `CHECK` anti-auto-relation, `UNIQUE(tenant_id, source_dossier_id, target_dossier_id, type)`, colonne `idempotency_key` nullable) + 2 index (`source`, `target`) + index unique partiel `uq_dossier_relation_idempotency` (`WHERE idempotency_key IS NOT NULL`) ; `include` dans `db.changelog-master.yaml`.
   - **Depends on :** —
   - **Validation :** boot H2 (MODE=PostgreSQL) + IT schema.
   - **Tests liés :** IT persistence (schema).
 
-- [ ] **T4. `DossierRelationJpaEntity` + `SpringDataDossierRelationRepository` + `DossierRelationJpaAdapter`**
+- [x] **T4. `DossierRelationJpaEntity` + `SpringDataDossierRelationRepository` + `DossierRelationJpaAdapter`**
   - **Outcome :** entité JPA ; repo Spring Data (`findBy(tenantId, sourceDossierId OR targetDossierId)`, `findByTenantIdAndSourceDossierIdAndIdempotencyKey`) ; adaptateur implémentant `DossierRelationRepository`. `save()` catch `DataIntegrityViolationException` (contrainte `uq_dossier_relation`) → relance `DuplicateDossierRelationException` (T1).
   - **Depends on :** T2, T3
   - **Validation :** IT persistence (save, findByDossier bidirectionnel, findByIdempotencyKey, violation unique → exception domaine).
@@ -84,19 +84,19 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M3 — Use cases manuels
 
-- [ ] **T5. `CreateDossierRelationUseCaseImpl`**
+- [x] **T5. `CreateDossierRelationUseCaseImpl`**
   - **Outcome :** valide `source != target` (400, `IllegalArgumentException`) ; charge source (404 si absent/hors tenant via `DossierNotFoundException`) ; `assertCanEdit` source (403) ; charge cible (404) ; `assertCanView` cible (403, D-CREATE-ACL) ; construit `DossierRelation` (`idempotencyKey = null`, création manuelle) ; `save()`.
   - **Depends on :** T2, T4
   - **Validation :** unitaires verts (mocks repository/policy).
   - **Tests liés :** `CreateDossierRelationUseCaseImpl` — tous scénarios testing §.
 
-- [ ] **T6. `ListDossierRelationsUseCaseImpl`**
+- [x] **T6. `ListDossierRelationsUseCaseImpl`**
   - **Outcome :** `assertCanView` sur le dossier interrogé ; `repository.findByDossier(tenantId, dossierId)` ; pour chaque relation, détermine `direction` (comparaison UUID) et l'"autre" dossier ; **nouveau** petit mapper `Dossier` → `DossierListItem` (le mapper existant vit dans `JpaDossierSearchAdapter.toItem`, construit depuis une projection JPA brute — ici on part d'un `Dossier` domaine déjà chargé via `DossierRepository.findById`, donc un mapper dédié `DossierListItem.from(Dossier, String dossierTypeLabel)` ou équivalent) ; résout `dossierTypeLabel` via `DossierTypeRepository.findByCode` (par relation — volume faible, pas de batching nécessaire en V1, cohérent avec l'hypothèse Scalabilité du design) ; filtre silencieusement (omission) les relations dont l'"autre" dossier n'est pas VIEW-accessible (D-ACL) ; bypass admin via `DossierAccessPolicy` existant.
   - **Depends on :** T2, T4
   - **Validation :** unitaires verts.
   - **Tests liés :** `ListDossierRelationsUseCaseImpl` — tous scénarios testing §.
 
-- [ ] **T7. Wiring `DossierConfig`**
+- [x] **T7. Wiring `DossierConfig`**
   - **Outcome :** beans `DossierRelationRepository` (adaptateur), `CreateDossierRelationUseCase`, `ListDossierRelationsUseCase`.
   - **Depends on :** T4, T5, T6
   - **Validation :** contexte Spring monte (IT boot existante).
@@ -104,13 +104,13 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M4 — API REST
 
-- [ ] **T8. DTOs + mapping exception**
+- [x] **T8. DTOs + mapping exception**
   - **Outcome :** `infrastructure/web/dossier/{DossierRelationResponse, CreateDossierRelationRequest}.java` (response inclut `relatedDossier` au format déjà utilisé par `DossierPageResponse`/`DossierListItem` — pas de nouveau format). `DossierExceptionHandler` : `DuplicateDossierRelationException` → 409 `ProblemDetail`.
   - **Depends on :** T1
   - **Validation :** unit mapping.
   - **Tests liés :** —
 
-- [ ] **T9. `DossierController` — `POST`/`GET .../relations`**
+- [x] **T9. `DossierController` — `POST`/`GET .../relations`**
   - **Outcome :** `@PostMapping("/{id}/relations")` (`assertCanEdit` implicite via use case) ; `@GetMapping("/{id}/relations")`. Auth via `AccessContextFactory.user` (même patron que `listElements`).
   - **Depends on :** T7, T8
   - **Validation :** MockMvc.
@@ -118,7 +118,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M5 — Panneau `WorkflowLinkDossierView`
 
-- [ ] **T10. `WorkflowLinkVisualizationUseCaseImpl.getDossier()` — peupler `relations`**
+- [x] **T10. `WorkflowLinkVisualizationUseCaseImpl.getDossier()` — peupler `relations`**
   - **Outcome :** `WorkflowLinkDossierView.relations` retype `List<Object>` → `List<DossierRelationView>` ; `getDossier()` appelle `ListDossierRelationsUseCase.list(dossierId, actor)` au lieu de `List.of()`. Mise à jour `WorkflowConfig` (injection du nouveau port).
   - **Depends on :** T2, T6, T7
   - **Validation :** IT — `WorkflowApiTest` ou test dédié.
@@ -126,19 +126,19 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M6 — ServiceTask BPMN
 
-- [ ] **T11. `ChildDossierRelationConfirmer` (infrastructure/dossier, `@Transactional`)**
+- [x] **T11. `ChildDossierRelationConfirmer` (infrastructure/dossier, `@Transactional`)**
   - **Outcome :** lookup `findByIdempotencyKey` → si trouvé, renvoie `childDossierId` existant (aucune écriture) ; sinon, `CreateDossierUseCase.create(...)` puis `CreateDossierRelationUseCase.create(...)` (avec `idempotencyKey`), les deux dans la même transaction (propagation `REQUIRED` par défaut, rejoint les `@Transactional` des adaptateurs JPA) ; appelle les deux use cases avec `AccessContext.system("flowable-delegate")`.
   - **Depends on :** T4, T5, T7
   - **Validation :** unitaires (mock use cases + repository) — replay, création, course concurrente (contrainte unique).
   - **Tests liés :** `ChildDossierRelationConfirmer` — tous scénarios testing §.
 
-- [ ] **T12. `CreateChildDossierDelegate` (infrastructure/flowable, bean `createChildDossierTask`)**
+- [x] **T12. `CreateChildDossierDelegate` (infrastructure/flowable, bean `createChildDossierTask`)**
   - **Outcome :** lit les variables de process (`dossierId`, `childDossierTypeCode`, `childDossierLabel`, `childDossierFields`, `relationType`, `workflowProcessKey`, `childWorkflowVariables`) ; valide `relationType ∈ {PARENT_CHILD, SUBSEQUENT}` (échec explicite sinon) ; dérive `idempotencyKey = processInstanceId + ":" + activityId` ; appelle `ChildDossierRelationConfirmer` puis `ManualStartOrchestrator.start(childDossierId, workflowProcessKey, childWorkflowVariables, idempotencyKey, "workflow")`.
   - **Depends on :** T11
   - **Validation :** unitaires (mock delegate execution).
   - **Tests liés :** `CreateChildDossierDelegate` — tous scénarios testing §.
 
-- [ ] **T13. Process BPMN de test + IT bout en bout**
+- [x] **T13. Process BPMN de test + IT bout en bout**
   - **Outcome :** fixture process BPMN dédiée (classpath test) exerçant `createChildDossierTask` ; IT vérifiant dossier enfant + relation + `DossierWorkflowLink` actif créés, et qu'un rejeu ne duplique rien.
   - **Depends on :** T12
   - **Validation :** IT Flowable verte.
@@ -146,25 +146,25 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M7 — Frontend
 
-- [ ] **T14. Client API `listRelations`/`createRelation` + types**
+- [x] **T14. Client API `listRelations`/`createRelation` + types**
   - **Outcome :** extension `frontend/src/api/dossiers.ts` + types (`DossierRelation`, `RelationDirection`, `RelationType`) alignés sur le contrat JSON de T8/T9.
   - **Depends on :** T9 (contrat) — peut stubber en parallèle
   - **Validation :** Vitest client.
   - **Tests liés :** FE — client API relations.
 
-- [ ] **T15. `RelationsList.vue`**
+- [x] **T15. `RelationsList.vue`**
   - **Outcome :** affichage lecture (type, direction/libellé inversé, résumé dossier lié, lien vers `/dossiers/{id}`).
   - **Depends on :** T14
   - **Validation :** Vitest composant.
   - **Tests liés :** FE — affichage, libellés par type/direction.
 
-- [ ] **T16. `LinkDossierDialog.vue`**
+- [x] **T16. `LinkDossierDialog.vue`**
   - **Outcome :** formulaire de création — recherche du dossier cible via `GET /api/dossiers` (réutilise le store/composant de recherche `pagination-dossiers`), sélection `type` (5 valeurs), soumission `POST .../relations`, erreurs (400/403/404/409) affichées.
   - **Depends on :** T14
   - **Validation :** Vitest composant.
   - **Tests liés :** FE — soumission, erreurs, résultat inséré sans reload.
 
-- [ ] **T17. Intégration `DossierDetailView.vue`**
+- [x] **T17. Intégration `DossierDetailView.vue`**
   - **Outcome :** section "Dossiers liés" (`RelationsList`) + action "Lier un dossier" (`LinkDossierDialog`, visible seulement si l'utilisateur a EDIT sur le type du dossier courant) ajoutées à côté d'`ElementsList` (voir note de découverte — page unique, pas de second point d'intégration).
   - **Depends on :** T15, T16
   - **Validation :** Vitest vue + Playwright.
@@ -172,13 +172,13 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M8 — Preuves & docs
 
-- [ ] **T18. Suite de tests complète + couverture**
+- [x] **T18. Suite de tests complète + couverture**
   - **Outcome :** `./mvnw test` vert (module `dossier` + `flowable`) ; `npm run test` / `npm run test:e2e` verts ; Jacoco/Vitest ≥ 80 % zones touchées ; checklist testing doc cochée ou justifiée.
   - **Depends on :** T3–T17
   - **Validation :** commandes CI locales.
   - **Tests liés :** tous scénarios testing restants.
 
-- [ ] **T19. Docs implementation + `DEFERRED-FEATURES.md`**
+- [x] **T19. Docs implementation + `DEFERRED-FEATURES.md`**
   - **Outcome :** notes `docs/ai/implementation/2026-08-14-feature-relations-dossiers.md` ; `DEFERRED-FEATURES.md` §1.4 (relations livrées, retirer "lot suivant") ; `analysis doc/04-dossiers.md` synchronisé si le modèle livré diverge du modèle documenté (colonne `idempotency_key` notamment, absente du doc d'origine).
   - **Depends on :** T18
   - **Validation :** `lint --feature relations-dossiers`.
@@ -250,6 +250,39 @@ T1 → T8 ↗
 - Worktree `feature-relations-dossiers` (déjà en place) + JDK 25 + Node FE
 - Skills : `tdd`, `verify`, `vue`/`vitest`/`vue-testing-best-practices` pour M7, `playwright-best-practices` pour T13/T17/T18
 - Docs requirements/design `reviewed` (Phases 1–3 closes) ; testing doc comme référence de scénarios
+
+## Progress (Phase 6 — 2026-08-15)
+
+T1–T19 implémentés sur `cursor/relations-dossiers-impl-5f98`. Écarts notés :
+- unicité `idempotency_key` via contrainte UNIQUE (NULLs distincts) plutôt qu'index partiel `WHERE` — H2 2.4 refuse la syntaxe partielle ;
+- le `ServiceTask` ouvre un enfant `DRAFT` → `OUVERT` avant `ManualStartOrchestrator` (les configs workflow existantes n'autorisent pas `DRAFT`).
+
+Compléments Phase 5 (enchaînement) :
+- IT T10 : `WorkflowApiTest.visualizationDossierPanelIncludesRealRelations` + unitaire `getDossier_includesRelationsReturnedByListUseCase` ;
+- persistence : deux relations manuelles (`idempotency_key` NULL) depuis la même source ;
+- E2E-14 : section « Dossiers liés » visible avec un lien workflow actif.
+
+Preuves T18 (session) :
+- `./mvnw test -Dskip.frontend=true -Dmaven.compiler.release=21` — exit 0
+- `cd frontend && npm run test` — 75/75
+- `cd frontend && npm run test:e2e` — 15/15 (E2E-11 locator resserré sur `strong` « Lié »)
+- `npx ai-devkit@latest lint --feature relations-dossiers` — OK
+
+Phase 7 (2026-08-15) : check implementation **reviewed**. Aligné design/requirements.
+Écarts documentés (aucun majeur) : UNIQUE vs index partiel ; DRAFT→OUVERT ; SPA
+n'appelle pas `GET .../workflow-links/{id}/dossier` ; `canLink` basé sur le rôle.
+Preuves relancées : 640 / 75 / 15.
+
+Phase 8 (2026-08-15) : testing **reviewed**. Gaps unitaires fermés
+(validations create/list, parse ServiceTask, course confirmer, labels FE).
+Jacoco zones relations 100 % (204/204) ; Vitest 78/78, coverage lines 88.32 % ;
+Playwright 15/15.
+
+Phase 9 (2026-08-15) : code review **passée**. Aucun blocker. Findings basses
+documentées (409 générique, `canLink` rôle, BPMN smoke en main, N+1 V1).
+Preuves relancées : 644 / 78 / 15.
+
+Lifecycle feature `relations-dossiers` : Phases 1–9 closes. Prêt pour revue humaine.
 
 ## Sequencing notes
 

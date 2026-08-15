@@ -652,6 +652,114 @@ class DossierApiTest {
                 .andExpect(jsonPath("$.content").doesNotExist());
     }
 
+    @Test
+    void createAndListRelations_bidirectionalAclAndDuplicate409() throws Exception {
+        String sourceType = createType(true);
+        String targetType = createType(true);
+        grant(sourceType, "rel-editor", "EDIT");
+        grant(targetType, "rel-editor", "VIEW");
+        grant(sourceType, "rel-viewer", "VIEW");
+        DossierFixture source = createDossier(sourceType, "rel-editor", "Source dossier");
+        DossierFixture target = createDossier(sourceType, "rel-editor", "Target dossier");
+
+        mockMvc.perform(post("/api/dossiers/{id}/relations", source.id())
+                        .with(user("rel-editor"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "targetDossierId": "%s",
+                                  "type": "PARENT_CHILD"
+                                }
+                                """.formatted(target.id())))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.type").value("PARENT_CHILD"))
+                .andExpect(jsonPath("$.direction").value("OUTGOING"))
+                .andExpect(jsonPath("$.relatedDossier.id").value(target.id()))
+                .andExpect(jsonPath("$.relatedDossier", not(hasKey("fields"))));
+
+        mockMvc.perform(get("/api/dossiers/{id}/relations", target.id())
+                        .with(user("rel-editor")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].direction").value("INCOMING"))
+                .andExpect(jsonPath("$[0].relatedDossier.id").value(source.id()));
+
+        mockMvc.perform(post("/api/dossiers/{id}/relations", source.id())
+                        .with(user("rel-editor"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "targetDossierId": "%s",
+                                  "type": "PARENT_CHILD"
+                                }
+                                """.formatted(target.id())))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409));
+
+        mockMvc.perform(post("/api/dossiers/{id}/relations", source.id())
+                        .with(user("rel-viewer"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "targetDossierId": "%s",
+                                  "type": "LINKED"
+                                }
+                                """.formatted(target.id())))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/dossiers/{id}/elements", source.id())
+                        .with(user("rel-editor")))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/dossiers")
+                        .param("reference", "DOS")
+                        .with(user("rel-editor")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray());
+    }
+
+    @Test
+    void createRelation_withoutViewOnTarget_returns403() throws Exception {
+        String sourceType = createType(true);
+        String hiddenType = createType(true);
+        grant(sourceType, "rel-partial", "EDIT");
+        grant(hiddenType, "other-owner", "EDIT");
+        DossierFixture source = createDossier(sourceType, "rel-partial", "Editable source");
+        DossierFixture hidden = createDossier(hiddenType, "other-owner", "Hidden target");
+
+        mockMvc.perform(post("/api/dossiers/{id}/relations", source.id())
+                        .with(user("rel-partial"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "targetDossierId": "%s",
+                                  "type": "LINKED"
+                                }
+                                """.formatted(hidden.id())))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void createRelation_selfLink_returns400() throws Exception {
+        String code = createType(true);
+        grant(code, "rel-self", "EDIT");
+        DossierFixture dossier = createDossier(code, "rel-self", "Self");
+
+        mockMvc.perform(post("/api/dossiers/{id}/relations", dossier.id())
+                        .with(user("rel-self"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "targetDossierId": "%s",
+                                  "type": "LINKED"
+                                }
+                                """.formatted(dossier.id())))
+                .andExpect(status().isBadRequest());
+    }
+
     private String createType(boolean active) throws Exception {
         String code = uniqueCode(active ? "ACTIVE" : "INACTIVE");
         mockMvc.perform(post("/api/dossier-types")

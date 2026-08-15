@@ -4,7 +4,7 @@ title: Requirements & Problem Understanding
 description: Clarify the problem space, gather requirements, and define success criteria
 status: reviewed
 created: 2026-08-14
-updated: 2026-08-14
+updated: 2026-08-15
 feature: relations-dossiers
 stakeholder_decisions: 2026-08-14
 phase2: 2026-08-14
@@ -176,22 +176,22 @@ construit la vue avec `List.of()` (`WorkflowLinkVisualizationUseCaseImpl.java:94
 ## Success Criteria
 **How will we know when we're done?**
 
-- [ ] `POST /api/dossiers/{id}/relations` crée la relation et renvoie 201.
-- [ ] `GET /api/dossiers/{id}/relations` renvoie les relations
+- [x] `POST /api/dossiers/{id}/relations` crée la relation et renvoie 201.
+- [x] `GET /api/dossiers/{id}/relations` renvoie les relations
       bidirectionnelles filtrées par ACL (D-ACL), avec sens/libellé corrects.
-- [ ] `WorkflowLinkDossierView.relations` n'est plus jamais `[]` en dur —
+- [x] `WorkflowLinkDossierView.relations` n'est plus jamais `[]` en dur —
       alimenté par les vraies relations du dossier, avec le même filtrage ACL.
-- [ ] `DossierDetailView.vue` affiche une section « Dossiers liés » + action
+- [x] `DossierDetailView.vue` affiche une section « Dossiers liés » + action
       « Lier un dossier » fonctionnelle (recherche via `GET /api/dossiers`).
-- [ ] `createChildDossierTask` (ServiceTask) crée dossier + relation +
+- [x] `createChildDossierTask` (ServiceTask) crée dossier + relation +
       démarre le workflow dédié dans un test d'intégration BPMN, et un
       rejeu de la même activité ne crée pas de doublon (D-IDEMPOTENCY).
-- [ ] `POST .../relations` refuse (403) une cible hors du périmètre VIEW de
+- [x] `POST .../relations` refuse (403) une cible hors du périmètre VIEW de
       l'actor, même avec EDIT sur la source (D-CREATE-ACL).
-- [ ] Régression : aucun endpoint existant (`elements`, `status`, liste
+- [x] Régression : aucun endpoint existant (`elements`, `status`, liste
       paginée) n'est impacté.
-- [ ] `./mvnw test` (zones touchées) + `frontend` Vitest/Playwright OK.
-- [ ] `DEFERRED-FEATURES.md` §1.4 mis à jour (relations livrées).
+- [x] `./mvnw test` (zones touchées) + `frontend` Vitest/Playwright OK.
+- [x] `DEFERRED-FEATURES.md` §1.4 mis à jour (relations livrées).
 
 ## Constraints & Assumptions
 **What limitations do we need to work within?**

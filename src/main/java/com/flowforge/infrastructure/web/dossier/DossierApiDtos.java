@@ -2,9 +2,12 @@ package com.flowforge.infrastructure.web.dossier;
 
 import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierPermission;
+import com.flowforge.domain.dossier.model.DossierRelationView;
 import com.flowforge.domain.dossier.model.DossierStatus;
 import com.flowforge.domain.dossier.model.DossierType;
 import com.flowforge.domain.dossier.model.FieldDefinition;
+import com.flowforge.domain.dossier.model.RelationDirection;
+import com.flowforge.domain.dossier.model.RelationType;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -111,6 +114,27 @@ record DossierListItemResponse(
                 item.status(),
                 item.createdAt(),
                 item.updatedAt());
+    }
+}
+
+record CreateDossierRelationRequest(UUID targetDossierId, RelationType type) {}
+
+record DossierRelationResponse(
+        UUID id,
+        RelationType type,
+        RelationDirection direction,
+        DossierListItemResponse relatedDossier,
+        String createdBy,
+        Instant createdAt) {
+
+    static DossierRelationResponse from(DossierRelationView view) {
+        return new DossierRelationResponse(
+                view.id(),
+                view.type(),
+                view.direction(),
+                DossierListItemResponse.from(view.relatedDossier()),
+                view.createdBy(),
+                view.createdAt());
     }
 }
 

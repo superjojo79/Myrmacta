@@ -29,4 +29,17 @@ public record DossierListItem(
         return new DossierListItem(
                 id, reference, label, dossierTypeCode, typeLabel, status, createdAt, updatedAt);
     }
+
+    public static DossierListItem from(Dossier dossier, String dossierTypeLabel) {
+        Instant updatedAt = dossier.updatedAt() != null ? dossier.updatedAt() : dossier.createdAt();
+        return new DossierListItem(
+                dossier.id(),
+                dossier.reference(),
+                dossier.label(),
+                dossier.dossierTypeCode(),
+                dossierTypeLabel,
+                dossier.status(),
+                dossier.createdAt(),
+                updatedAt);
+    }
 }

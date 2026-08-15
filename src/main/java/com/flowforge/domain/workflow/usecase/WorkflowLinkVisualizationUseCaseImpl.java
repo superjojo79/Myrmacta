@@ -10,6 +10,7 @@ import com.flowforge.domain.dossier.model.DossierType;
 import com.flowforge.domain.dossier.model.DossierWorkflowLink;
 import com.flowforge.domain.dossier.model.DossierWorkflowLinkNotFoundException;
 import com.flowforge.domain.dossier.model.FieldDefinition;
+import com.flowforge.domain.dossier.port.in.ListDossierRelationsUseCase;
 import com.flowforge.domain.dossier.port.out.DossierElementRepository;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
@@ -42,6 +43,7 @@ public final class WorkflowLinkVisualizationUseCaseImpl implements
     private final DossierRepository dossierRepository;
     private final DossierTypeRepository dossierTypeRepository;
     private final DossierElementRepository elementRepository;
+    private final ListDossierRelationsUseCase listDossierRelationsUseCase;
     private final WorkflowVisualizationPort visualizationPort;
     private final WorkflowParticipantPort participantPort;
     private final DossierAccessPolicy dossierAccessPolicy;
@@ -52,6 +54,7 @@ public final class WorkflowLinkVisualizationUseCaseImpl implements
             DossierRepository dossierRepository,
             DossierTypeRepository dossierTypeRepository,
             DossierElementRepository elementRepository,
+            ListDossierRelationsUseCase listDossierRelationsUseCase,
             WorkflowVisualizationPort visualizationPort,
             WorkflowParticipantPort participantPort,
             DossierAccessPolicy dossierAccessPolicy) {
@@ -60,6 +63,8 @@ public final class WorkflowLinkVisualizationUseCaseImpl implements
         this.dossierRepository = Objects.requireNonNull(dossierRepository, "dossierRepository");
         this.dossierTypeRepository = Objects.requireNonNull(dossierTypeRepository, "dossierTypeRepository");
         this.elementRepository = Objects.requireNonNull(elementRepository, "elementRepository");
+        this.listDossierRelationsUseCase =
+                Objects.requireNonNull(listDossierRelationsUseCase, "listDossierRelationsUseCase");
         this.visualizationPort = Objects.requireNonNull(visualizationPort, "visualizationPort");
         this.participantPort = Objects.requireNonNull(participantPort, "participantPort");
         this.dossierAccessPolicy = Objects.requireNonNull(dossierAccessPolicy, "dossierAccessPolicy");
@@ -91,7 +96,8 @@ public final class WorkflowLinkVisualizationUseCaseImpl implements
                 .orElseThrow(() -> new DossierNotFoundException("Dossier not found: " + link.dossierId()));
         dossierAccessPolicy.assertCanView(dossier, actor);
         var elements = elementRepository.findByDossierIdOrderByAddedAtAsc(link.dossierId());
-        return new WorkflowLinkDossierView(redactSensitiveFields(dossier, actor), elements, List.of());
+        var relations = listDossierRelationsUseCase.list(link.dossierId(), actor);
+        return new WorkflowLinkDossierView(redactSensitiveFields(dossier, actor), elements, relations);
     }
 
     private Dossier redactSensitiveFields(Dossier dossier, AccessContext.User actor) {

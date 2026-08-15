@@ -46,11 +46,57 @@ describe('dossier store', () => {
     })
     vi.mocked(dossiersApi.listDossierWorkflows).mockResolvedValue([])
     vi.mocked(dossiersApi.listDossierElements).mockResolvedValue([])
+    vi.mocked(dossiersApi.listDossierRelations).mockResolvedValue([])
 
     const store = useDossierStore()
     await store.loadById('d1')
     expect(store.dossier?.reference).toBe('DOS-1')
     expect(store.dossierType?.workflowKey).toBe('wf')
+  })
+
+  it('linkDossier prepends the created relation without reload', async () => {
+    const store = useDossierStore()
+    store.dossier = {
+      id: 'd1',
+      tenantId: 't',
+      reference: 'DOS-1',
+      dossierTypeCode: 'CLAIM',
+      label: 'L',
+      status: 'DRAFT',
+      fields: {},
+      currentWorkflowLinkId: null,
+      version: 1,
+      createdBy: 'u',
+      createdAt: '',
+      updatedBy: 'u',
+      updatedAt: '',
+      closedBy: null,
+      closedAt: null,
+    }
+    store.relations = []
+    vi.mocked(dossiersApi.createDossierRelation).mockResolvedValue({
+      id: 'r1',
+      type: 'LINKED',
+      direction: 'OUTGOING',
+      relatedDossier: {
+        id: 'd2',
+        reference: 'DOS-2',
+        label: 'Other',
+        dossierTypeCode: 'FAC',
+        dossierTypeLabel: 'Facture',
+        status: 'OUVERT',
+        createdAt: '',
+        updatedAt: '',
+      },
+      createdBy: 'u',
+      createdAt: '',
+    })
+    await store.linkDossier('d2', 'LINKED')
+    expect(dossiersApi.createDossierRelation).toHaveBeenCalledWith('d1', {
+      targetDossierId: 'd2',
+      type: 'LINKED',
+    })
+    expect(store.relations[0]?.id).toBe('r1')
   })
 
   it('patches status with expectedVersion from current dossier', async () => {
@@ -166,6 +212,7 @@ describe('dossier store', () => {
     })
     vi.mocked(dossiersApi.listDossierWorkflows).mockResolvedValue([])
     vi.mocked(dossiersApi.listDossierElements).mockResolvedValue([])
+    vi.mocked(dossiersApi.listDossierRelations).mockResolvedValue([])
     vi.mocked(workflowsApi.getWorkflowDiagram).mockResolvedValue({
       bpmnXml: '<xml/>',
       activeIds: [],

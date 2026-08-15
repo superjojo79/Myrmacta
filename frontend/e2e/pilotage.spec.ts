@@ -146,6 +146,57 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
       })
       return
     }
+    if (url.includes('/relations') && method === 'POST') {
+      const posted = route.request().postDataJSON() as { targetDossierId: string; type: string }
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'rel-1',
+          type: posted.type,
+          direction: 'OUTGOING',
+          relatedDossier: {
+            id: posted.targetDossierId,
+            reference: 'DOS-2',
+            label: 'Dossier lié',
+            dossierTypeCode: 'FAC',
+            dossierTypeLabel: 'Facture',
+            status: 'OUVERT',
+            createdAt: '2026-08-15T00:00:00Z',
+            updatedAt: '2026-08-15T00:00:00Z',
+          },
+          createdBy: 'user-1',
+          createdAt: '2026-08-15T00:00:00Z',
+        }),
+      })
+      return
+    }
+    if (url.includes('/relations')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          {
+            id: 'rel-existing',
+            type: 'PARENT_CHILD',
+            direction: 'INCOMING',
+            relatedDossier: {
+              id: '33333333-3333-3333-3333-333333333333',
+              reference: 'DOS-2',
+              label: 'Dossier lié',
+              dossierTypeCode: 'FAC',
+              dossierTypeLabel: 'Facture',
+              status: 'OUVERT',
+              createdAt: '2026-08-15T00:00:00Z',
+              updatedAt: '2026-08-15T00:00:00Z',
+            },
+            createdBy: 'user-1',
+            createdAt: '2026-08-15T00:00:00Z',
+          },
+        ]),
+      })
+      return
+    }
     if (url.includes('/elements')) {
       await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
       return
@@ -201,10 +252,20 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
                 createdAt: body.createdAt,
                 updatedAt: body.updatedAt,
               },
+              {
+                id: '33333333-3333-3333-3333-333333333333',
+                reference: 'DOS-2',
+                label: 'Dossier lié',
+                dossierTypeCode: 'FAC',
+                dossierTypeLabel: 'Facture',
+                status: 'OUVERT',
+                createdAt: body.createdAt,
+                updatedAt: body.updatedAt,
+              },
             ],
             page: Number(parsed.searchParams.get('page') ?? 0),
             size: Number(parsed.searchParams.get('size') ?? 20),
-            totalElements: 1,
+            totalElements: 2,
             totalPages: 1,
           }),
         })
@@ -383,6 +444,48 @@ test('E2E-9 supervision has no fake KPI and no Rapports', async ({ page }) => {
   await expect(page.getByText('DOS-1')).toBeVisible()
   await expect(page.getByText('Rapports')).toHaveCount(0)
   await expect(page.getByText('KPI')).toHaveCount(0)
+})
+
+test('E2E-11 link dossier from detail without reload', async ({ page }) => {
+  await mockSession(page)
+  await openApp(page)
+  await createAndOpenDossier(page)
+  await expect(page.getByRole('heading', { name: 'Dossiers liés' })).toBeVisible()
+  await expect(page.getByText('Dossier lié')).toBeVisible()
+  await page.getByRole('button', { name: 'Lier un dossier' }).click()
+  await expect(page.getByRole('heading', { name: 'Lier un dossier' })).toBeVisible()
+  await page.getByPlaceholder('préfixe DOS-…').fill('DOS')
+  await page.getByRole('button', { name: 'Rechercher' }).click()
+  await page.getByRole('button', { name: /Dossier lié · DOS-2/ }).click()
+  await page.locator('.dialog select').selectOption('LINKED')
+  await page.locator('.dialog button.primary').click()
+  await expect(page.locator('.relations-list strong', { hasText: /^Lié$/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Lier un dossier' })).toHaveCount(0)
+})
+
+test('E2E-12 navigate to related dossier from relations list', async ({ page }) => {
+  await mockSession(page)
+  await openApp(page)
+  await createAndOpenDossier(page)
+  await page.getByRole('link', { name: 'Dossier lié' }).click()
+  await expect(page).toHaveURL(/dossiers\/33333333/)
+})
+
+test('E2E-13 viewer cannot link a dossier', async ({ page }) => {
+  await mockSession(page, { roles: ['DOSSIER_VIEWER'] })
+  await openApp(page)
+  await createAndOpenDossier(page)
+  await expect(page.getByRole('heading', { name: 'Dossiers liés' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Lier un dossier' })).toHaveCount(0)
+})
+
+test('E2E-14 workflow visualization page still shows related dossiers', async ({ page }) => {
+  await mockSession(page, { withActiveLink: true })
+  await openApp(page)
+  await createAndOpenDossier(page)
+  await expect(page.getByRole('heading', { name: 'Dossiers liés' })).toBeVisible()
+  await expect(page.getByText('Parent')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Dossier lié' })).toBeVisible()
 })
 
 test('E2E-10 admin types smoke', async ({ page }) => {

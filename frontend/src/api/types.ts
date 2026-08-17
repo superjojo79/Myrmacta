@@ -159,7 +159,9 @@ export interface MyWorkflowTask {
   linkId: string | null
 }
 
-export type ElementType = 'PRODUCED_DOC' | 'ATTACHMENT' | 'NOTE' | 'EXTERNAL_REF'
+export type ElementType = 'PRODUCED_DOC' | 'ATTACHMENT' | 'INFORMATION' | 'NOTE' | 'LINK'
+
+export const MANUAL_ELEMENT_TYPES: ElementType[] = ['ATTACHMENT', 'INFORMATION', 'NOTE', 'LINK']
 
 export interface DossierElementView {
   id: string

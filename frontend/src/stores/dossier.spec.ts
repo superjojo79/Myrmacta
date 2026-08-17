@@ -4,11 +4,13 @@ import { useDossierStore } from './dossier'
 import * as dossiersApi from '@/api/dossiers'
 import * as typesApi from '@/api/dossierTypes'
 import * as workflowsApi from '@/api/workflows'
+import * as elementsApi from '@/api/elements'
 
 vi.mock('@/api/dossiers')
 vi.mock('@/api/dossierTypes')
 vi.mock('@/api/workflows')
 vi.mock('@/api/tasks')
+vi.mock('@/api/elements')
 
 describe('dossier store', () => {
   beforeEach(() => {
@@ -97,6 +99,83 @@ describe('dossier store', () => {
       type: 'LINKED',
     })
     expect(store.relations[0]?.id).toBe('r1')
+  })
+
+  it('addElement appends the created element without reload', async () => {
+    const store = useDossierStore()
+    store.dossier = {
+      id: 'd1',
+      tenantId: 't',
+      reference: 'DOS-1',
+      dossierTypeCode: 'CLAIM',
+      label: 'L',
+      status: 'OUVERT',
+      fields: {},
+      currentWorkflowLinkId: null,
+      version: 1,
+      createdBy: 'u',
+      createdAt: '',
+      updatedBy: 'u',
+      updatedAt: '',
+      closedBy: null,
+      closedAt: null,
+    }
+    store.elements = []
+    vi.mocked(dossiersApi.addDossierElement).mockResolvedValue({
+      id: 'e1',
+      type: 'NOTE',
+      label: 'Rappel',
+      addedBy: 'u',
+      addedAt: '',
+      workflowStepId: null,
+      metadata: { text: 'x' },
+      downloadable: false,
+    })
+    await store.addElement('NOTE', 'Rappel', { text: 'x' })
+    expect(dossiersApi.addDossierElement).toHaveBeenCalledWith('d1', {
+      type: 'NOTE',
+      label: 'Rappel',
+      metadata: { text: 'x' },
+    })
+    expect(store.elements).toHaveLength(1)
+    expect(store.elements[0]?.id).toBe('e1')
+  })
+
+  it('addAttachment appends the created element without reload', async () => {
+    const store = useDossierStore()
+    store.dossier = {
+      id: 'd1',
+      tenantId: 't',
+      reference: 'DOS-1',
+      dossierTypeCode: 'CLAIM',
+      label: 'L',
+      status: 'OUVERT',
+      fields: {},
+      currentWorkflowLinkId: null,
+      version: 1,
+      createdBy: 'u',
+      createdAt: '',
+      updatedBy: 'u',
+      updatedAt: '',
+      closedBy: null,
+      closedAt: null,
+    }
+    store.elements = []
+    const file = new File(['%PDF'], 'doc.pdf', { type: 'application/pdf' })
+    vi.mocked(elementsApi.uploadAttachment).mockResolvedValue({
+      id: 'e2',
+      type: 'ATTACHMENT',
+      label: 'Justificatif',
+      addedBy: 'u',
+      addedAt: '',
+      workflowStepId: null,
+      metadata: { filename: 'doc.pdf', contentType: 'application/pdf', sizeBytes: 4 },
+      downloadable: true,
+    })
+    await store.addAttachment(file, 'Justificatif')
+    expect(elementsApi.uploadAttachment).toHaveBeenCalledWith('d1', file, 'Justificatif')
+    expect(store.elements).toHaveLength(1)
+    expect(store.elements[0]?.id).toBe('e2')
   })
 
   it('patches status with expectedVersion from current dossier', async () => {

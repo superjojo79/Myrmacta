@@ -27,7 +27,7 @@ public record DossierElementView(
 
     public static DossierElementView from(DossierElement element) {
         Objects.requireNonNull(element, "element");
-        boolean downloadable = element.type() == ElementType.PRODUCED_DOC
+        boolean downloadable = (element.type() == ElementType.PRODUCED_DOC || element.type() == ElementType.ATTACHMENT)
                 && element.storageRef() != null
                 && !element.storageRef().isBlank();
         return new DossierElementView(

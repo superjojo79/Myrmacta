@@ -135,6 +135,53 @@ class DossierElementContentApiTest {
                 .andExpect(status().isConflict());
     }
 
+    @Test
+    void download_attachment_returnsOriginalContentTypeAndFilename() throws Exception {
+        String code = createType("EL_ATT_OK");
+        grant(code, "mgr-att-ok", "EDIT");
+        String dossierId = createDossier(code, "mgr-att-ok");
+        String ref = documentStoragePort.store(
+                TENANT_ID, "image/png", "PNGDATA".getBytes(StandardCharsets.UTF_8));
+        var element = addDossierElementUseCase.add(
+                new AddDossierElementUseCase.AddCommand(
+                        UUID.fromString(dossierId),
+                        ElementType.ATTACHMENT,
+                        "Justificatif",
+                        ref,
+                        Map.of("filename", "justificatif.png", "contentType", "image/png"),
+                        "mgr-att-ok",
+                        null),
+                AccessContext.user("mgr-att-ok", java.util.Set.of("DOSSIER_MANAGER")));
+
+        mockMvc.perform(get("/api/dossier-elements/{id}/content", element.id())
+                        .with(user("mgr-att-ok", "DOSSIER_MANAGER")))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.IMAGE_PNG))
+                .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("justificatif.png")))
+                .andExpect(content().bytes("PNGDATA".getBytes(StandardCharsets.UTF_8)));
+    }
+
+    @Test
+    void download_informationNoteOrLink_hasNoDownloadableContent() throws Exception {
+        String code = createType("EL_NODL");
+        grant(code, "mgr-nodl", "EDIT");
+        String dossierId = createDossier(code, "mgr-nodl");
+        var element = addDossierElementUseCase.add(
+                new AddDossierElementUseCase.AddCommand(
+                        UUID.fromString(dossierId),
+                        ElementType.NOTE,
+                        "Note",
+                        null,
+                        Map.of("text", "x"),
+                        "mgr-nodl",
+                        null),
+                AccessContext.user("mgr-nodl", java.util.Set.of("DOSSIER_MANAGER")));
+
+        mockMvc.perform(get("/api/dossier-elements/{id}/content", element.id())
+                        .with(user("mgr-nodl", "DOSSIER_MANAGER")))
+                .andExpect(status().isConflict());
+    }
+
     private Fixture prepareProducedDoc(String suffix, boolean storeBytes) throws Exception {
         String code = createType("EL_" + suffix);
         grant(code, "mgr-" + suffix, "EDIT");

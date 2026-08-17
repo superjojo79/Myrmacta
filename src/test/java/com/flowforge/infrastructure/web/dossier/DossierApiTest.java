@@ -1064,6 +1064,213 @@ class DossierApiTest {
     }
 
     @Test
+    void addElement_note_returns201WithView() throws Exception {
+        String code = createType(true);
+        grant(code, "mgr-add-note", "EDIT");
+        DossierFixture dossier = createDossier(code, "mgr-add-note", "Note dossier");
+
+        mockMvc.perform(post("/api/dossiers/{id}/elements", dossier.id())
+                        .with(user("mgr-add-note"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "type": "NOTE",
+                                  "label": "Rappel client",
+                                  "metadata": {"text": "A relancer le 20/08"}
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.type").value("NOTE"))
+                .andExpect(jsonPath("$.label").value("Rappel client"))
+                .andExpect(jsonPath("$.downloadable").value(false))
+                .andExpect(jsonPath("$.metadata.text").value("A relancer le 20/08"));
+    }
+
+    @Test
+    void addElement_information_returns201() throws Exception {
+        String code = createType(true);
+        grant(code, "mgr-add-info", "EDIT");
+        DossierFixture dossier = createDossier(code, "mgr-add-info", "Info dossier");
+
+        mockMvc.perform(post("/api/dossiers/{id}/elements", dossier.id())
+                        .with(user("mgr-add-info"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "type": "INFORMATION",
+                                  "label": "Verification externe",
+                                  "metadata": {"statut": "confirme"}
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.type").value("INFORMATION"));
+    }
+
+    @Test
+    void addElement_link_returns201() throws Exception {
+        String code = createType(true);
+        grant(code, "mgr-add-link", "EDIT");
+        DossierFixture dossier = createDossier(code, "mgr-add-link", "Link dossier");
+
+        mockMvc.perform(post("/api/dossiers/{id}/elements", dossier.id())
+                        .with(user("mgr-add-link"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "type": "LINK",
+                                  "label": "Ticket externe",
+                                  "metadata": {"url": "https://example.com/ticket/1"}
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.type").value("LINK"));
+    }
+
+    @Test
+    void addElement_invalidMetadataForType_returns400() throws Exception {
+        String code = createType(true);
+        grant(code, "mgr-add-invalid", "EDIT");
+        DossierFixture dossier = createDossier(code, "mgr-add-invalid", "Invalid dossier");
+
+        mockMvc.perform(post("/api/dossiers/{id}/elements", dossier.id())
+                        .with(user("mgr-add-invalid"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "type": "LINK",
+                                  "label": "Bad link",
+                                  "metadata": {"url": "not a url"}
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    void addElement_typeProducedDocOrAttachment_returns400() throws Exception {
+        String code = createType(true);
+        grant(code, "mgr-add-wrong-endpoint", "EDIT");
+        DossierFixture dossier = createDossier(code, "mgr-add-wrong-endpoint", "Wrong endpoint dossier");
+
+        mockMvc.perform(post("/api/dossiers/{id}/elements", dossier.id())
+                        .with(user("mgr-add-wrong-endpoint"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "type": "ATTACHMENT",
+                                  "label": "Should be rejected"
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void addElement_viewerWithoutEditAcl_returns403() throws Exception {
+        String code = createType(true);
+        grant(code, "viewer-add-denied", "VIEW");
+        grant(code, "creator-add-denied", "EDIT");
+        DossierFixture dossier = createDossier(code, "creator-add-denied", "Denied add dossier");
+
+        mockMvc.perform(post("/api/dossiers/{id}/elements", dossier.id())
+                        .with(user("viewer-add-denied"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "type": "NOTE",
+                                  "label": "Denied",
+                                  "metadata": {"text": "x"}
+                                }
+                                """))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void addElement_unknownDossier_returns404() throws Exception {
+        mockMvc.perform(post("/api/dossiers/{id}/elements", UUID.randomUUID())
+                        .with(user("mgr-add-404", "DOSSIER_MANAGER"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "type": "NOTE",
+                                  "label": "Nowhere",
+                                  "metadata": {"text": "x"}
+                                }
+                                """))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void addElement_statusCloture_returns409() throws Exception {
+        String code = createType(true);
+        grant(code, "mgr-add-cloture", "EDIT");
+        DossierFixture dossier = createDossier(code, "mgr-add-cloture", "Cloture add dossier");
+        transitionStatus(dossier.id(), "mgr-add-cloture", "OUVERT");
+        transitionStatus(dossier.id(), "mgr-add-cloture", "CLOTURE");
+
+        mockMvc.perform(post("/api/dossiers/{id}/elements", dossier.id())
+                        .with(user("mgr-add-cloture"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "type": "NOTE",
+                                  "label": "Too late",
+                                  "metadata": {"text": "x"}
+                                }
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409));
+    }
+
+    @Test
+    void listElements_mixedTypes_downloadableCorrectPerType() throws Exception {
+        String code = createType(true);
+        grant(code, "mgr-mixed-elements", "EDIT");
+        DossierFixture dossier = createDossier(code, "mgr-mixed-elements", "Mixed elements dossier");
+        addDossierElementUseCase.add(
+                new AddDossierElementUseCase.AddCommand(
+                        UUID.fromString(dossier.id()),
+                        ElementType.PRODUCED_DOC,
+                        "Rapport PDF",
+                        TENANT_ID + "/secret-path/mixed.pdf",
+                        Map.of(),
+                        "system",
+                        "step-1"),
+                AccessContext.system("test"));
+        mockMvc.perform(post("/api/dossiers/{id}/elements", dossier.id())
+                        .with(user("mgr-mixed-elements"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"type": "NOTE", "label": "Note", "metadata": {"text": "x"}}
+                                """))
+                .andExpect(status().isCreated());
+        mockMvc.perform(post("/api/dossiers/{id}/elements", dossier.id())
+                        .with(user("mgr-mixed-elements"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"type": "LINK", "label": "Link", "metadata": {"url": "https://example.com"}}
+                                """))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/dossiers/{id}/elements", dossier.id())
+                        .with(user("mgr-mixed-elements")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(3))
+                .andExpect(jsonPath("$[?(@.type=='PRODUCED_DOC')].downloadable").value(true))
+                .andExpect(jsonPath("$[?(@.type=='NOTE')].downloadable").value(false))
+                .andExpect(jsonPath("$[?(@.type=='LINK')].downloadable").value(false));
+    }
+
+    @Test
     void listDossiers_admin_returnsEnvelopeWithTypeLabelAndNoFields() throws Exception {
         String code = createType(true);
         grant(code, "mgr-list", "EDIT");

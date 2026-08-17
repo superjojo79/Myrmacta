@@ -98,8 +98,12 @@ couvert aujourd'hui, même partiellement.
 **Partiel (2026-08-13 — feature `pagination-dossiers`) :** liste/recherche/pagination
 dossiers + envelope page + Supervision FE livrés. **Partiel (2026-08-15 — feature
 `patch-dossier-fields`) :** `PATCH /api/dossiers/{id}/fields` (fusion, verrou optimiste,
-gate statut, audit `sensitive`) livré. **Reste ouvert :** OpenAPI formel, pagination des
-autres ressources, surface admin exhaustive.
+gate statut, audit `sensitive`) livré. **Partiel (2026-08-16 — feature `elements-dossier`) :**
+`POST /api/dossiers/{id}/elements` (JSON, `INFORMATION`/`NOTE`/`LINK`) et
+`POST /api/dossiers/{id}/elements/attachment` (multipart, `ATTACHMENT`) livrés, avec la
+même gate de statut `CLOTURE`/`ARCHIVE` que le point précédent (scopée au chemin humain).
+**Reste ouvert :** OpenAPI formel, pagination des autres ressources, surface admin
+exhaustive.
 
 **Énoncé :** aucun endpoint de création, recherche, liste ou mise à jour de dossier n'est documenté,
 pas plus que l'administration des `DossierType`, `ConnectorInstance` et templates. Les listes

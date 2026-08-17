@@ -6,13 +6,22 @@ defineProps<{
   elements: DossierElementView[]
 }>()
 
+function attachmentFilename(element: DossierElementView): string {
+  const metaFilename = element.metadata?.filename
+  return typeof metaFilename === 'string' && metaFilename.trim() !== ''
+    ? metaFilename
+    : element.type === 'PRODUCED_DOC'
+      ? `${element.label}.pdf`
+      : element.label
+}
+
 async function download(element: DossierElementView) {
   if (!element.downloadable) return
   const blob = await downloadElementContent(element.id)
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `${element.label}.pdf`
+  a.download = attachmentFilename(element)
   a.click()
   URL.revokeObjectURL(url)
 }
@@ -22,7 +31,7 @@ async function download(element: DossierElementView) {
   <section class="elements-list">
     <header class="elements-list__header">
       <h2>Éléments</h2>
-      <button type="button" disabled title="Ajout manuel hors scope V1">Ajouter</button>
+      <slot name="actions" />
     </header>
     <p v-if="elements.length === 0" class="elements-list__empty">Aucun élément.</p>
     <ul v-else>
@@ -30,6 +39,16 @@ async function download(element: DossierElementView) {
         <div>
           <strong>{{ el.label }}</strong>
           <span class="elements-list__meta">{{ el.type }} · {{ el.addedBy }}</span>
+          <span v-if="el.type === 'NOTE'" class="elements-list__note">{{ el.metadata?.text }}</span>
+          <a
+            v-else-if="el.type === 'LINK'"
+            class="elements-list__link"
+            :href="String(el.metadata?.url ?? '')"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {{ el.metadata?.url }}
+          </a>
         </div>
         <a
           v-if="el.downloadable"
@@ -68,6 +87,15 @@ async function download(element: DossierElementView) {
 }
 .elements-list__empty {
   opacity: 0.7;
+}
+.elements-list__note {
+  display: block;
+  font-size: 0.9rem;
+  white-space: pre-wrap;
+}
+.elements-list__link {
+  display: block;
+  font-size: 0.9rem;
 }
 button:disabled {
   opacity: 0.55;

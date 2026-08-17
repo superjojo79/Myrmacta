@@ -7,6 +7,7 @@ import com.flowforge.domain.dossier.model.DossierNotFoundException;
 import com.flowforge.domain.dossier.model.DuplicateDossierRelationException;
 import com.flowforge.domain.dossier.model.IllegalDossierStatusTransitionException;
 import com.flowforge.domain.dossier.model.InactiveDossierTypeException;
+import com.flowforge.domain.dossier.model.InvalidDossierElementException;
 import com.flowforge.infrastructure.security.SecurityAuditLog;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,6 +19,7 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 @RestControllerAdvice(basePackages = "com.flowforge.infrastructure.web.dossier")
 public class DossierExceptionHandler {
@@ -38,6 +40,16 @@ public class DossierExceptionHandler {
     @ExceptionHandler(DossierNotFoundException.class)
     ProblemDetail handleNotFound(DossierNotFoundException ex) {
         return problem(HttpStatus.NOT_FOUND, "Dossier resource not found", ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidDossierElementException.class)
+    ProblemDetail handleInvalidElement(InvalidDossierElementException ex) {
+        return problem(HttpStatus.BAD_REQUEST, "Invalid dossier element", ex.getMessage());
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    ProblemDetail handleUploadTooLarge(MaxUploadSizeExceededException ex) {
+        return problem(HttpStatus.PAYLOAD_TOO_LARGE, "Upload too large", "The uploaded file exceeds the maximum allowed size");
     }
 
     @ExceptionHandler({

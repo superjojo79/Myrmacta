@@ -5,10 +5,11 @@ import { storeToRefs } from 'pinia'
 import { useDossierStore } from '@/stores/dossier'
 import { useAuthStore } from '@/stores/auth'
 import { toProblemDetail } from '@/api/http'
-import type { DossierStatus, RelationType } from '@/api/types'
+import type { DossierStatus, ElementType, RelationType } from '@/api/types'
 import DynamicFields from '@/components/dossier/DynamicFields.vue'
 import StatusSelect from '@/components/dossier/StatusSelect.vue'
 import ElementsList from '@/components/dossier/ElementsList.vue'
+import AddElementDialog from '@/components/dossier/AddElementDialog.vue'
 import RelationsList from '@/components/dossier/RelationsList.vue'
 import LinkDossierDialog from '@/components/dossier/LinkDossierDialog.vue'
 import BpmnViewer from '@/components/workflow/BpmnViewer.vue'
@@ -36,14 +37,16 @@ const { isTenantAdmin, isWorkflowAdmin, roles } = storeToRefs(auth)
 const statusDraft = ref<DossierStatus>('DRAFT')
 const startOpen = ref(false)
 const linkOpen = ref(false)
+const addElementOpen = ref(false)
 const reassignTaskId = ref<string | null>(null)
 const reassignUserId = ref('')
 const actionError = ref<string | null>(null)
 
 const canReassign = computed(() => isTenantAdmin.value || isWorkflowAdmin.value)
-const canLink = computed(
+const canEditDossier = computed(
   () => isTenantAdmin.value || isWorkflowAdmin.value || roles.value.includes('DOSSIER_MANAGER'),
 )
+const canLink = canEditDossier
 const linkId = computed(() => dossier.value?.currentWorkflowLinkId)
 
 watch(
@@ -88,6 +91,26 @@ async function onLink(payload: { targetDossierId: string; type: RelationType }) 
     linkOpen.value = false
   } catch (err) {
     actionError.value = toProblemDetail(err).detail ?? 'Liaison impossible'
+  }
+}
+
+async function onAddElement(payload: { type: ElementType; label: string; metadata: Record<string, unknown> }) {
+  actionError.value = null
+  try {
+    await store.addElement(payload.type, payload.label, payload.metadata)
+    addElementOpen.value = false
+  } catch (err) {
+    actionError.value = toProblemDetail(err).detail ?? 'Ajout impossible'
+  }
+}
+
+async function onAddAttachment(payload: { file: File; label: string }) {
+  actionError.value = null
+  try {
+    await store.addAttachment(payload.file, payload.label)
+    addElementOpen.value = false
+  } catch (err) {
+    actionError.value = toProblemDetail(err).detail ?? 'Ajout impossible'
   }
 }
 
@@ -144,7 +167,17 @@ async function confirmReassign() {
       readonly
     />
 
-    <ElementsList :elements="elements" />
+    <ElementsList :elements="elements">
+      <template #actions>
+        <button v-if="canEditDossier" type="button" @click="addElementOpen = true">Ajouter</button>
+      </template>
+    </ElementsList>
+    <AddElementDialog
+      :open="addElementOpen"
+      @close="addElementOpen = false"
+      @submit-element="onAddElement"
+      @submit-attachment="onAddAttachment"
+    />
 
     <RelationsList :relations="relations">
       <template #actions>

@@ -116,12 +116,29 @@ inline testée via le contrôleur)
 
 ## Test Reporting & Coverage
 
-- `./mvnw verify` (Jacoco, seuil existant du projet) + ArchUnit (aucune nouvelle violation de
-  frontière domaine/infrastructure attendue).
-- `cd frontend && npm run test -- --coverage` pour les composants FE touchés.
-- `cd frontend && npm run test:e2e` (ou `test:all`) obligatoire avant de clore la Phase 8/9
-  (rappel `flowforge-conventions` : interdit de déclarer Playwright hors scope ici, le SPA et son
-  contrat API sont directement impactés).
+**Preuves fraîches (Phase 8, 2026-08-17) :**
+
+- `./mvnw verify` — **BUILD SUCCESS**, 729 tests backend (0 échec, 0 erreur), ArchUnit 3/3,
+  Jacoco (couverture `INSTRUCTION` sur `jacoco.csv`) sur les classes touchées par cette feature :
+
+  | Classe | Couverture |
+  |---|---|
+  | `AddDossierElementUseCaseImpl` | 93.1 % (257/276 instructions), 96.1 % lignes |
+  | `DossierElementView` | 97.9 % |
+  | `DossierController` | 92.2 % |
+  | `DossierElementUploadController` (nouveau) | 91.7 % |
+  | `DossierExceptionHandler` | 100 % |
+  | `DossierElementContentController` | 96.1 % |
+  | `AttachmentUploadProperties` (nouveau) | 94.6 % |
+
+  Toutes ≥ 80 % (seuil du projet).
+- `cd frontend && npx vitest run` — 87/87 tests verts (32 fichiers), `vue-tsc -b --pretty false`
+  propre, `eslint` propre sur tous les fichiers touchés.
+- `cd frontend && npx playwright test` — 20/20 scénarios verts (14 préexistants inchangés + 6
+  nouveaux pour `elements-dossier` : E2E-15 à E2E-19). Nécessite un Chromium compatible avec la
+  version de `@playwright/test` du projet ; dans ce bac à sable, exécuté via
+  `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test` (voir
+  `playwright.config.ts`, opt-in par variable d'environnement, sans effet en CI).
 
 ## Manual Testing
 

@@ -32,18 +32,21 @@ public class DossierElementUploadController {
     private final TenantProperties tenantProperties;
     private final AccessContextFactory accessContextFactory;
     private final AttachmentUploadProperties uploadProperties;
+    private final DossierAccessGuard accessGuard;
 
     public DossierElementUploadController(
             DocumentStoragePort documentStoragePort,
             AddDossierElementUseCase addDossierElementUseCase,
             TenantProperties tenantProperties,
             AccessContextFactory accessContextFactory,
-            AttachmentUploadProperties uploadProperties) {
+            AttachmentUploadProperties uploadProperties,
+            DossierAccessGuard accessGuard) {
         this.documentStoragePort = documentStoragePort;
         this.addDossierElementUseCase = addDossierElementUseCase;
         this.tenantProperties = tenantProperties;
         this.accessContextFactory = accessContextFactory;
         this.uploadProperties = uploadProperties;
+        this.accessGuard = accessGuard;
     }
 
     @PostMapping(path = "/{id}/elements/attachment", consumes = "multipart/form-data")
@@ -53,6 +56,10 @@ public class DossierElementUploadController {
             @RequestParam("label") String label,
             Authentication authentication) {
         AccessContext.User actor = accessContextFactory.user(authentication);
+        // ACL checked before any storage write, so a caller without EDIT on this dossier's type
+        // never causes an object to be stored just to be rejected afterwards — AddDossierElementUseCase
+        // re-checks the same ACL internally (cheap, in-memory), so this is not a second source of truth.
+        accessGuard.requireEditable(id, actor);
         if (file == null || file.isEmpty()) {
             throw new InvalidDossierElementException("file is required");
         }

@@ -2,12 +2,11 @@
 phase: requirements
 title: Requirements & Problem Understanding
 description: Clarify the problem space, gather requirements, and define success criteria
-status: reviewed
+status: draft
 created: 2026-08-17
 updated: 2026-08-17
 feature: preview-documents
-stakeholder_decisions: 2026-08-17
-phase2: 2026-08-17
+phase1: 2026-08-17
 todo_ref: D-PREVIEW (templates-documents / generation-documents) · analysis doc/07
 ---
 
@@ -27,8 +26,8 @@ et **administrer des templates Thymeleaf** (`/admin/templates`), mais un
 administrateur ne peut **pas voir le rendu pendant la saisie**. L'écran admin
 n'expose qu'un `<textarea>` brut. Pour valider mise en page, variables
 Thymeleaf et pagination A4, il faut activer le template puis appeler
-`/generate` — lent, sans simulation écran, et le PDF renvoyé a
-`Content-Disposition` par défaut (téléchargement, pas iframe).
+`/generate` — lent, sans simulation écran, et le PDF de `/generate` n'offre pas d'enveloppe HTML A4 ni d'UI
+d'aperçu pendant la saisie.
 
 - **Affectés :** `TENANT_ADMIN` (auteur de templates), `WORKFLOW_ADMIN` /
   `DOSSIER_MANAGER` (déjà autorisés à générer un PDF pour valider un modèle).
@@ -52,8 +51,8 @@ Thymeleaf et pagination A4, il faut activer le template puis appeler
 - **Source live** (D-SOURCE) : le body peut fournir `htmlContent` (saisie en
   cours, template non enregistré) **ou** `templateKey` (résolution ACTIVE,
   même cascade que generate). Si les deux sont présents, `htmlContent` gagne.
-- **Authz** identique à generate : `TENANT_ADMIN` | `WORKFLOW_ADMIN` |
-  `DOSSIER_MANAGER` ; CSRF ; session BFF.
+- **Authz** : CSRF + session BFF ; granularité des rôles **à trancher**
+  (D-AUTHZ, question ouverte Phase 2).
 - **UI admin templates** : panneau d'aperçu à côté du formulaire de saisie
   (`TemplatePreviewPanel`) — HTML rafraîchi avec debounce 400 ms, PDF sur
   action explicite.
@@ -97,9 +96,10 @@ Thymeleaf et pagination A4, il faut activer le template puis appeler
    sans enregistrer ni activer.
 2. **En tant que** `TENANT_ADMIN`, **je veux** un aperçu PDF dans un iframe,
    **afin de** valider le rendu Flying Saucer avant activation.
-3. **En tant que** `DOSSIER_MANAGER` / `WORKFLOW_ADMIN`, **je veux** prévisualiser
+3. **En tant que** appelant autorisé (selon D-AUTHZ), **je veux** prévisualiser
    un template ACTIVE (`templateKey`) avec des variables d'échantillon, **afin
-   de** vérifier un modèle sans démarrer un workflow.
+   de** vérifier un modèle sans démarrer un workflow. (L'UI V1 reste
+   `/admin/templates`, aujourd'hui `TENANT_ADMIN` seulement.)
 4. **En tant qu'** ops, **je veux** que preview ne stocke rien, **afin de** ne
    pas créer d'objets orphelins (aligné D-HTTP-STORE).
 
@@ -128,7 +128,8 @@ Thymeleaf et pagination A4, il faut activer le template puis appeler
       `Content-Disposition: inline` ; commence par `%PDF` ; aucun store.
 - [ ] Live `htmlContent` évalué sans passer par `ResolveDocumentTemplateUseCase`.
 - [ ] `templateKey` sans `htmlContent` suit la cascade ACTIVE existante.
-- [ ] Authz identique à generate (rôles autorisés / VIEWER 403 / anonyme 401).
+- [ ] Authz conforme à D-AUTHZ (rôles retenus → 200 ; autres authentifiés →
+      403 ; anonyme → 401).
 - [ ] Rate limit + taille max étendus aux deux chemins preview.
 - [ ] Admin templates : aperçu HTML après saisie (debounce) + bouton PDF.
 - [ ] Iframe HTML `sandbox` (pas de scripts).
@@ -158,7 +159,7 @@ Thymeleaf et pagination A4, il faut activer le template puis appeler
 |---|---|---|
 | **D-SCOPE** | Modes d'aperçu | **Hybride** HTML temps réel + PDF inline (analyse 07) |
 | **D-SOURCE** | Source du HTML | `htmlContent` live **ou** resolve `templateKey` ; live gagne si les deux |
-| **D-AUTHZ** | Rôles | Identiques à `/generate` : TA / WA / DM |
+| **D-AUTHZ** | Rôles | **Ouvert — Phase 2** (voir Questions) |
 | **D-STORE** | Persistance | **Jamais** (mémoire uniquement) |
 | **D-HTML-UX** | Rafraîchissement HTML | Debounce **400 ms**, iframe `srcdoc` + `sandbox` |
 | **D-PDF-UX** | Rafraîchissement PDF | **Bouton** « Aperçu PDF » (pas à chaque frappe) |
@@ -169,6 +170,20 @@ Thymeleaf et pagination A4, il faut activer le template puis appeler
 
 ## Questions & Open Items
 
-Aucun point ouvert bloquant — D-PREVIEW était déjà spécifié ; les arbitrages
-ci-dessus ferment le lot. Suivi non bloquant : preview depuis le détail
-dossier (hors V1).
+### Q1 — D-AUTHZ (bloque la clôture Phase 2)
+
+`/generate` accepte `TENANT_ADMIN` | `WORKFLOW_ADMIN` | `DOSSIER_MANAGER`, mais
+uniquement pour un **template ACTIVE déjà enregistré**. Le preview **live**
+(`htmlContent`) permet de faire évaluer du Thymeleaf / Flying Saucer **sans**
+passer par l'admin templates. L'écran `/admin/templates` est déjà restreint
+à `TENANT_ADMIN`.
+
+| Option | Principe | Trade-off |
+|---|---|---|
+| **A** | Les deux endpoints = `TENANT_ADMIN` seulement | Aligné UI V1 ; WA/DM gardent `/generate` |
+| **B** (reco) | `htmlContent` live → `TENANT_ADMIN` ; `templateKey` seul → TA \| WA \| DM (comme generate) | Live = privilège auteur ; preview d'un modèle publié reste possible via API |
+| **C** | Les deux endpoints = TA \| WA \| DM (comme generate) | Simple ; un manager peut poster du HTML arbitraire, ce que generate interdit |
+
+Recommandation : **B**.
+
+Suivi non bloquant (hors V1) : preview depuis le détail dossier.

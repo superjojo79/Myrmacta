@@ -115,6 +115,7 @@ Seuils : Jacoco projet (≥ 80 %) ; Vitest lines ≥ 80 % ; Playwright 0 fail.
 - `./mvnw test -Dskip.frontend=true -Dmaven.compiler.release=21 -Dtest=PrintPreviewHtmlTest,DocumentGenerationBodySizeLimitFilterTest,DocumentPreviewHtmlRateLimiterTest,DocumentGenerationRateLimiterTest,DocumentPreviewApiTest,DocumentGenerationApiTest` — **33** tests, exit 0.
 - `cd frontend && npm run test` — **93** tests, 34 files, exit 0.
 - `cd frontend && npm run build && npm run test:e2e` — **21** passed (E2E-20 preview), exit 0. Playwright sert `dist/` : rebuild obligatoire après changement FE.
+- `./mvnw verify -Dmaven.compiler.release=21` — **762** tests, Failures 0, Jacoco checks met, BUILD SUCCESS.
 
 ## Manual Testing
 

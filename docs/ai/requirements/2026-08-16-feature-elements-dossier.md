@@ -127,8 +127,8 @@ uniquement), via un chemin système (`AccessContext.system(...)`). Aucune voie h
 - Upload d'un type MIME hors allowlist → rejet explicite (400).
 - `dossierId` inexistant ou d'un autre tenant → 404 (comportement déjà garanti par
   `AddDossierElementUseCaseImpl`, à conserver pour les nouveaux types).
-- Dossier dans un statut terminal (`CLOTURE`/`ARCHIVE`) : faut-il encore permettre l'ajout
-  manuel ? → voir Questions & Open Items.
+- Dossier dans un statut terminal (`CLOTURE`/`ARCHIVE`) : ajout manuel refusé (`DossierConflictException`
+  → 409), par cohérence avec `UpdateDossierFieldsUseCaseImpl` — voir Questions & Open Items (résolu).
 - `LINK` avec une URL malformée → validation basique côté serveur (format URI), mais **aucune
   résolution/fetch**.
 
@@ -153,6 +153,9 @@ uniquement), via un chemin système (`AccessContext.system(...)`). Aucune voie h
 - `./mvnw verify` (ArchUnit + Jacoco ≥ seuil existant) vert ; aucune exception d'autoconfig ni de
   couplage domaine → framework introduite.
 - Aucune régression sur `AttachGeneratedDocumentTask` / flux `PRODUCED_DOC` existant.
+- Ajout manuel (`ATTACHMENT`/`INFORMATION`/`NOTE`/`LINK`) sur un dossier `CLOTURE`/`ARCHIVE` →
+  409 (`DossierConflictException`), test dédié ; `PRODUCED_DOC` via `ServiceTask` non concerné par
+  cette garde (non-régression du flux workflow existant).
 
 ## Constraints & Assumptions
 **What limitations do we need to work within?**
@@ -202,11 +205,16 @@ uniquement), via un chemin système (`AccessContext.system(...)`). Aucune voie h
 ## Questions & Open Items
 **What do we still need to clarify?**
 
-- **Ajout autorisé sur un dossier `CLOTURE`/`ARCHIVE` ?** Aucune règle existante ne restreint
-  aujourd'hui `AddDossierElementUseCaseImpl` par statut de dossier. Décision par défaut proposée
-  pour le design : autoriser (un justificatif peut arriver après clôture), sauf si le design
-  identifie un besoin métier contraire — **à confirmer en Phase 2 (review requirements) ou en
-  design si aucun signal supplémentaire n'émerge d'ici là**.
+- ~~**Ajout autorisé sur un dossier `CLOTURE`/`ARCHIVE` ?**~~ **Résolu (Phase 2 — review
+  requirements) :** refuser, par cohérence avec le précédent direct déjà livré dans le code —
+  `UpdateDossierFieldsUseCaseImpl` bloque déjà toute modification des champs d'un dossier en
+  statut `CLOTURE`/`ARCHIVE` (liste `BLOCKED_STATUSES`, `DossierConflictException` → 409). Un
+  dossier terminal ne doit pas rester modifiable par un autre chemin (ajout d'élément) alors que
+  ses champs sont verrouillés — incohérence évitée en réutilisant la même garde. `PRODUCED_DOC`
+  (chemin `ServiceTask`, `AccessContext.system(...)`) n'est **pas** concerné par cette garde : un
+  workflow déjà démarré doit pouvoir terminer normalement même si le dossier atteint `CLOTURE`
+  entre-temps — la garde s'applique uniquement au chemin humain (`ATTACHMENT`/`INFORMATION`/
+  `NOTE`/`LINK`).
 - **Valeurs exactes** de la taille max et de l'allowlist MIME — laissées à la phase design
   (proposition de départ ci-dessus), pas un point bloquant pour la suite du requirements.
 - ~~Contrainte SQL existante sur `dossier_element.type`~~ **Résolu** — vérifié dans

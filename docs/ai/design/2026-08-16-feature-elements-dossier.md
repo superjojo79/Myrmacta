@@ -117,7 +117,8 @@ nullable, `metadata` jsonb déjà présents).
 ```
 
 Rejette `type=PRODUCED_DOC` et `type=ATTACHMENT` (400 — orientés vers leurs endpoints dédiés :
-ServiceTask / upload multipart respectivement).
+ServiceTask / upload multipart respectivement). Rejette (409) si le dossier est `CLOTURE`/`ARCHIVE`
+(décision n°6).
 
 **2. `POST /api/dossiers/{id}/elements/attachment`** (nouveau, `multipart/form-data`, nouveau
 `DossierElementUploadController`) — `ATTACHMENT` uniquement.
@@ -130,6 +131,10 @@ Content-Type: multipart/form-data
 
 → `201 Created`, corps `DossierElementView`. Rejette fichier absent, taille hors borne, type MIME
 hors allowlist (`InvalidDossierElementException` → 400/413, voir Non-Functional Requirements).
+Rejette (409) si le dossier est `CLOTURE`/`ARCHIVE` (décision n°6) — le fichier est néanmoins déjà
+stocké au moment où le 409 est levé (le contrôleur stocke avant d'appeler le use case, voir
+Fiabilité) ; extension acceptée du risque d'objet orphelin déjà toléré pour `PRODUCED_DOC`, pas de
+vérification de statut ajoutée en amont du `store(...)` pour éviter une double lecture dossier.
 
 **3. `GET /api/dossier-elements/{id}/content`** (existant, `DossierElementContentController`,
 généralisé) : sert désormais `PRODUCED_DOC` **et** `ATTACHMENT`, avec le `Content-Type` et le nom
@@ -147,7 +152,8 @@ endpoints d'ajout, `assertCanView` sur lecture/liste/téléchargement (déjà le
 
 - `domain.dossier.model.ElementType` — 4 nouvelles valeurs.
 - `domain.dossier.usecase.AddDossierElementUseCaseImpl` — validation par type (remplace la garde
-  `PRODUCED_DOC`-only).
+  `PRODUCED_DOC`-only) ; garde de statut `CLOTURE`/`ARCHIVE` → `DossierConflictException` (409),
+  appliquée uniquement quand `ctx instanceof AccessContext.User` (voir Design Decisions n°6).
 - `domain.dossier.model.DossierElementView#from` — `downloadable` généralisé à `ATTACHMENT`.
 - `infrastructure.web.dossier.DossierController` — nouvel endpoint JSON `POST .../elements`.
 - `infrastructure.web.dossier.DossierElementUploadController` (nouveau) — endpoint multipart,
@@ -204,6 +210,17 @@ endpoints d'ajout, `assertCanView` sur lecture/liste/téléchargement (déjà le
 5. **Pas de schéma de validation pour `INFORMATION`** (contrairement à `FieldDefinition` sur
    `DossierType`) — cohérent avec la nature "libre" documentée dans l'analyse doc ; seule une
    borne de taille anti-abus s'applique (NFR).
+6. **Ajout manuel refusé sur dossier `CLOTURE`/`ARCHIVE` (409).** Résolu en Phase 2 (review
+   requirements) par cohérence avec `UpdateDossierFieldsUseCaseImpl` (même liste
+   `BLOCKED_STATUSES`, même `DossierConflictException`) — un dossier clos ne doit pas rester
+   modifiable par un chemin (élément) alors qu'il est verrouillé par un autre (champs).
+   Implémentation : la garde dans `AddDossierElementUseCaseImpl` se déclenche sur
+   `ctx instanceof AccessContext.User` — discriminant naturel déjà disponible, puisque
+   `PRODUCED_DOC` est toujours ajouté via `AccessContext.System` (`AttachGeneratedDocumentTask`)
+   et jamais par un `User`. Un workflow déjà démarré peut donc toujours attacher son document
+   généré même si le dossier atteint `CLOTURE` entre-temps, sans condition explicite sur
+   `ElementType` — pas de duplication de la liste des 4 types humains à maintenir en synchronisation
+   avec `ElementType`.
 
 ## Non-Functional Requirements
 
@@ -235,3 +252,10 @@ endpoints d'ajout, `assertCanView` sur lecture/liste/téléchargement (déjà le
   après un `store(...)` réussi laisse un objet orphelin dans le storage. **Risque déjà accepté
   pour `PRODUCED_DOC`** (même schéma) — pas de compensation transactionnelle introduite par cette
   feature ; un futur job de nettoyage relèverait de TODO §22 (purge), non traité ici.
+- La garde de statut (décision n°6) élargit prévisiblement ce risque pour `ATTACHMENT` : tenter un
+  upload sur un dossier `CLOTURE`/`ARCHIVE` stocke systématiquement le fichier avant que le 409 ne
+  soit levé (contrairement au cas `store` réussi + `add` en échec, qui est rare/accidentel, celui-ci
+  est déterministe à chaque tentative sur un dossier clos). Accepté pour cette feature — vérifier le
+  statut dans le contrôleur avant `store(...)` ajouterait une lecture dossier dupliquée avec celle du
+  use case pour un cas d'usage attendu comme rare (dossier déjà clos), au bénéfice d'un futur job de
+  purge (TODO §22) plutôt que d'une optimisation immédiate.

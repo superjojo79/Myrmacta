@@ -40,6 +40,7 @@ import {
 } from './admin'
 import { downloadElementContent } from './elements'
 import { completeTask, listMyTasks } from './tasks'
+import { previewHtml, previewPdf } from './documents'
 
 vi.mock('axios')
 
@@ -113,6 +114,8 @@ describe('api coverage', () => {
     await listMyTasks()
     await completeTask('t')
     await downloadElementContent('e1')
+    await previewHtml({ htmlContent: '<p/>' })
+    await previewPdf({ htmlContent: '<p/>' })
     expect(axios.delete).toHaveBeenCalled()
   })
 })

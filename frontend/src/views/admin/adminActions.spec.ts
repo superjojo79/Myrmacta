@@ -11,6 +11,10 @@ import * as typesApi from '@/api/dossierTypes'
 vi.mock('@/api/admin')
 vi.mock('@/api/workflows')
 vi.mock('@/api/dossierTypes')
+vi.mock('@/api/documents', () => ({
+  previewHtml: vi.fn().mockResolvedValue('<p>ok</p>'),
+  previewPdf: vi.fn().mockResolvedValue(new Blob()),
+}))
 
 describe('admin actions coverage', () => {
   beforeEach(() => {

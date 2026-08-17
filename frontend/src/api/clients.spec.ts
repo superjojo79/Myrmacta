@@ -5,6 +5,7 @@ import { listDossierTypes, grantDossierTypeAcl } from './dossierTypes'
 import { getWorkflowDiagram, listWorkflowTypeConfigs } from './workflows'
 import { listConnectors, listDocumentTemplates } from './admin'
 import { downloadElementContent, elementContentUrl } from './elements'
+import { previewHtml, previewPdf } from './documents'
 import { toProblemDetail, configureHttpClient, resolveApiBaseUrl } from './http'
 
 vi.mock('axios')
@@ -42,6 +43,23 @@ describe('api modules', () => {
     vi.mocked(axios.get).mockResolvedValue({ data: new Blob() })
     await downloadElementContent('e1')
     expect(elementContentUrl('e1')).toContain('/api/dossier-elements/e1/content')
+  })
+
+  it('documents preview client posts html and pdf', async () => {
+    vi.mocked(axios.post).mockResolvedValueOnce({ data: '<p>ok</p>' })
+    await previewHtml({ htmlContent: '<p>x</p>', variables: { title: 'T' } })
+    expect(axios.post).toHaveBeenCalledWith(
+      '/api/documents/preview',
+      { htmlContent: '<p>x</p>', variables: { title: 'T' } },
+      { responseType: 'text', signal: undefined },
+    )
+    vi.mocked(axios.post).mockResolvedValueOnce({ data: new Blob() })
+    await previewPdf({ htmlContent: '<p>x</p>' })
+    expect(axios.post).toHaveBeenCalledWith(
+      '/api/documents/preview/pdf',
+      { htmlContent: '<p>x</p>' },
+      { responseType: 'blob' },
+    )
   })
 
   it('maps ProblemDetail and configures http', () => {

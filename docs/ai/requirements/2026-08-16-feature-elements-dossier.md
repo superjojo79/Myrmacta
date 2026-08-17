@@ -206,15 +206,17 @@ uniquement), via un chemin système (`AccessContext.system(...)`). Aucune voie h
 **What do we still need to clarify?**
 
 - ~~**Ajout autorisé sur un dossier `CLOTURE`/`ARCHIVE` ?**~~ **Résolu (Phase 2 — review
-  requirements) :** refuser, par cohérence avec le précédent direct déjà livré dans le code —
-  `UpdateDossierFieldsUseCaseImpl` bloque déjà toute modification des champs d'un dossier en
-  statut `CLOTURE`/`ARCHIVE` (liste `BLOCKED_STATUSES`, `DossierConflictException` → 409). Un
-  dossier terminal ne doit pas rester modifiable par un autre chemin (ajout d'élément) alors que
-  ses champs sont verrouillés — incohérence évitée en réutilisant la même garde. `PRODUCED_DOC`
-  (chemin `ServiceTask`, `AccessContext.system(...)`) n'est **pas** concerné par cette garde : un
-  workflow déjà démarré doit pouvoir terminer normalement même si le dossier atteint `CLOTURE`
-  entre-temps — la garde s'applique uniquement au chemin humain (`ATTACHMENT`/`INFORMATION`/
-  `NOTE`/`LINK`).
+  requirements, confirmé avec l'utilisateur) :** refuser, par cohérence avec le précédent direct
+  déjà livré dans le code — `UpdateDossierFieldsUseCaseImpl` bloque déjà toute modification des
+  champs d'un dossier en statut `CLOTURE`/`ARCHIVE` (liste `BLOCKED_STATUSES`,
+  `DossierConflictException` → 409). Un dossier terminal ne doit pas rester modifiable par un
+  autre chemin (ajout d'élément) alors que ses champs sont verrouillés — incohérence évitée en
+  réutilisant la même garde. `PRODUCED_DOC` (chemin `ServiceTask`, `AccessContext.system(...)`)
+  n'est **pas** concerné par cette garde : un workflow déjà démarré doit pouvoir terminer
+  normalement même si le dossier atteint `CLOTURE` entre-temps — la garde s'applique uniquement
+  au chemin humain (`ATTACHMENT`/`INFORMATION`/`NOTE`/`LINK`), implémentée en conditionnant sur
+  `ctx instanceof AccessContext.User` plutôt que sur le type de l'élément (design doc, Design
+  Decisions §6) — évite d'énumérer les 4 types humains dans la garde elle-même.
 - **Valeurs exactes** de la taille max et de l'allowlist MIME — laissées à la phase design
   (proposition de départ ci-dessus), pas un point bloquant pour la suite du requirements.
 - ~~Contrainte SQL existante sur `dossier_element.type`~~ **Résolu** — vérifié dans

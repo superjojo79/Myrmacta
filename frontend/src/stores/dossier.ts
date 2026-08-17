@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import {
+  addDossierElement,
   createDossier,
   createDossierRelation,
   getDossierById,
@@ -12,6 +13,7 @@ import {
   updateDossierStatus,
 } from '@/api/dossiers'
 import { getDossierType } from '@/api/dossierTypes'
+import { uploadAttachment } from '@/api/elements'
 import {
   getWorkflowDiagram,
   getWorkflowHistory,
@@ -27,6 +29,7 @@ import type {
   DossierRelation,
   DossierStatus,
   DossierType,
+  ElementType,
   RelationType,
   WorkflowDiagram,
   WorkflowLink,
@@ -127,6 +130,24 @@ export const useDossierStore = defineStore('dossier', () => {
     return created
   }
 
+  async function addElement(
+    type: ElementType,
+    label: string,
+    metadata: Record<string, unknown>,
+  ): Promise<DossierElementView> {
+    if (!dossier.value) throw new Error('No dossier loaded')
+    const created = await addDossierElement(dossier.value.id, { type, label, metadata })
+    elements.value = [...elements.value, created]
+    return created
+  }
+
+  async function addAttachment(file: File, label: string): Promise<DossierElementView> {
+    if (!dossier.value) throw new Error('No dossier loaded')
+    const created = await uploadAttachment(dossier.value.id, file, label)
+    elements.value = [...elements.value, created]
+    return created
+  }
+
   async function patchStatus(status: DossierStatus): Promise<void> {
     if (!dossier.value) return
     dossier.value = await updateDossierStatus(dossier.value.id, status, dossier.value.version)
@@ -173,6 +194,8 @@ export const useDossierStore = defineStore('dossier', () => {
     loadByRef,
     create,
     linkDossier,
+    addElement,
+    addAttachment,
     patchStatus,
     startWorkflow,
     complete,

@@ -20,7 +20,7 @@ sequencing: layered
   `AddDossierElementUseCaseImpl`, `downloadable` généralisé
 - [x] **M2 — API REST backend** : 2 nouveaux endpoints d'ajout, généralisation du endpoint de
   contenu, mapping d'exception, bornes upload (taille/MIME)
-- [ ] **M3 — Frontend** : `ElementsList.vue` avec formulaire "Ajouter" par type, client API,
+- [x] **M3 — Frontend** : `ElementsList.vue` avec formulaire "Ajouter" par type, client API,
   correction d'une dérive de typage FE découverte pendant la planification
 - [ ] **M4 — Preuves & docs** : suite de tests complète (unit/intégration/Vitest/Playwright),
   `DEFERRED-FEATURES.md`/`TODO.md` mis à jour
@@ -144,7 +144,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M3 — Frontend
 
-- [ ] **T10. Correction dérive `ElementType` côté FE (bug trouvé en planification)**
+- [x] **T10. Correction dérive `ElementType` côté FE (bug trouvé en planification)**
   - **Outcome :** `frontend/src/api/types.ts` déclare aujourd'hui
     `'PRODUCED_DOC' | 'ATTACHMENT' | 'NOTE' | 'EXTERNAL_REF'` — ni aligné sur le backend actuel
     (`PRODUCED_DOC` seul en V1) ni sur la cible de cette feature (`LINK`, pas `EXTERNAL_REF` ;
@@ -157,7 +157,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Tests liés :** couvert indirectement par T13/T15 (aucun scénario n'exercerait
     `EXTERNAL_REF`, qui disparaît).
 
-- [ ] **T11. Client API FE — `addElement` (JSON) et `uploadAttachment` (multipart)**
+- [x] **T11. Client API FE — `addElement` (JSON) et `uploadAttachment` (multipart)**
   - **Outcome :** `addElement(dossierId, {type, label, metadata})` ajouté dans
     `frontend/src/api/dossiers.ts` (à côté de `listDossierElements`, pas dans `api/elements.ts`
     qui ne contient aujourd'hui que le téléchargement de contenu — correction du design doc,
@@ -168,7 +168,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Validation :** compile + Vitest (mock axios).
   - **Tests liés :** testing § — couverture indirecte via T15 (composant) et T16 (e2e).
 
-- [ ] **T12. `stores/dossier.ts` — actions d'ajout**
+- [x] **T12. `stores/dossier.ts` — actions d'ajout**
   - **Outcome :** `addElement`/`uploadAttachment` : appellent le client API (T11) puis
     `refreshRelated()` (pattern déjà existant après `createDossierRelation`) pour rafraîchir
     `elements`. Propagation d'erreur via `toProblemDetail` (pattern existant).
@@ -176,7 +176,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Validation :** Vitest store.
   - **Tests liés :** testing § — rafraîchissement de la liste après ajout (composant/e2e).
 
-- [ ] **T13. `ElementsList.vue` — formulaire "Ajouter" activé**
+- [x] **T13. `ElementsList.vue` — formulaire "Ajouter" activé**
   - **Outcome :** bouton "Ajouter" activé (retrait du `disabled`) ; sélecteur de type → 4
     sous-formulaires (file picker `ATTACHMENT`+label, clé/valeur libre `INFORMATION`, zone de
     texte `NOTE`, URL+description `LINK`) ; état de chargement/erreur (pattern existant du

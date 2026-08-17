@@ -2,11 +2,13 @@
 phase: requirements
 title: Requirements & Problem Understanding
 description: Clarify the problem space, gather requirements, and define success criteria
-status: draft
+status: reviewed
 created: 2026-08-17
 updated: 2026-08-17
 feature: preview-documents
 phase1: 2026-08-17
+phase2: 2026-08-17
+stakeholder_decisions: 2026-08-17
 todo_ref: D-PREVIEW (templates-documents / generation-documents) · analysis doc/07
 ---
 
@@ -51,8 +53,11 @@ d'aperçu pendant la saisie.
 - **Source live** (D-SOURCE) : le body peut fournir `htmlContent` (saisie en
   cours, template non enregistré) **ou** `templateKey` (résolution ACTIVE,
   même cascade que generate). Si les deux sont présents, `htmlContent` gagne.
-- **Authz** : CSRF + session BFF ; granularité des rôles **à trancher**
-  (D-AUTHZ, question ouverte Phase 2).
+- **Authz** (D-AUTHZ = **B**) : les deux endpoints exigent une session BFF +
+  CSRF et l'un de `TENANT_ADMIN` | `WORKFLOW_ADMIN` | `DOSSIER_MANAGER`.
+  **En plus**, si la source retenue est le live (`htmlContent` non blank —
+  D-SOURCE), seul `TENANT_ADMIN` est accepté (sinon 403). Un `templateKey`
+  seul reste ouvert aux trois rôles, comme `/generate`.
 - **UI admin templates** : panneau d'aperçu à côté du formulaire de saisie
   (`TemplatePreviewPanel`) — HTML rafraîchi avec debounce 400 ms, PDF sur
   action explicite.
@@ -86,7 +91,7 @@ d'aperçu pendant la saisie.
 | HTML seul vs PDF seul vs hybride analyse 07 | HTML = itération rapide ; PDF = vérité A4 | **Hybride** (D-SCOPE) |
 | Preview uniquement template sauvé vs htmlContent live | Sauvé = round-trip activate ; live = « pendant la saisie » | **Live + resolve** (D-SOURCE) |
 | Étendre `/generate` (query `inline`) vs endpoints dédiés | `/generate` déjà rate-limité et testé ; mélange HTML/PDF | **Endpoints dédiés** `/preview` + `/preview/pdf` |
-| Authz TENANT_ADMIN seul vs mêmes rôles que generate | Admin UI = TA ; generate déjà ouvert aux managers | **Mêmes rôles que generate** (D-AUTHZ) |
+| Authz live vs template publié | Live = HTML arbitraire ; generate n'accepte qu'un ACTIVE | **B** (D-AUTHZ) — live = TA ; `templateKey` = TA/WA/DM |
 | PDF à chaque frappe vs bouton | Flying Saucer coûteux | **HTML debounce / PDF on-demand** (D-PDF-UX) |
 
 ## User Stories & Use Cases
@@ -96,10 +101,11 @@ d'aperçu pendant la saisie.
    sans enregistrer ni activer.
 2. **En tant que** `TENANT_ADMIN`, **je veux** un aperçu PDF dans un iframe,
    **afin de** valider le rendu Flying Saucer avant activation.
-3. **En tant que** appelant autorisé (selon D-AUTHZ), **je veux** prévisualiser
-   un template ACTIVE (`templateKey`) avec des variables d'échantillon, **afin
-   de** vérifier un modèle sans démarrer un workflow. (L'UI V1 reste
-   `/admin/templates`, aujourd'hui `TENANT_ADMIN` seulement.)
+3. **En tant que** `TENANT_ADMIN` / `WORKFLOW_ADMIN` / `DOSSIER_MANAGER`,
+   **je veux** prévisualiser un template ACTIVE (`templateKey` seul) avec des
+   variables d'échantillon, **afin de** vérifier un modèle publié sans
+   démarrer un workflow. (L'UI V1 reste `/admin/templates`, `TENANT_ADMIN`
+   seulement ; WA/DM passent par l'API.)
 4. **En tant qu'** ops, **je veux** que preview ne stocke rien, **afin de** ne
    pas créer d'objets orphelins (aligné D-HTTP-STORE).
 
@@ -113,7 +119,11 @@ d'aperçu pendant la saisie.
 - `htmlContent` > 5 Mio (même borne que create/update template) → 400.
 - Corps HTTP au-delà de `app.documents.generate.max-body-bytes` → 413 (filtre).
 - Burst au-delà du rate limit generate → 429.
-- `DOSSIER_VIEWER` / anonyme → 403 / 401.
+- `DOSSIER_VIEWER` / anonyme → 403 / 401 (aucun des deux endpoints).
+- `WORKFLOW_ADMIN` / `DOSSIER_MANAGER` avec `htmlContent` non blank → **403**
+  (chemin live, D-AUTHZ B), même si `templateKey` est aussi fourni (D-SOURCE :
+  le live gagne, donc la gate TA s'applique).
+- `TENANT_ADMIN` avec `htmlContent` non blank → 200 (chemin live).
 - Variables `null` → `{}` ; clés plateforme filtrées.
 - `javascript:` / HTML script dans le template : l'iframe HTML est `sandbox`
   sans scripts (défense UI) ; le PDF reste protégé par
@@ -128,8 +138,8 @@ d'aperçu pendant la saisie.
       `Content-Disposition: inline` ; commence par `%PDF` ; aucun store.
 - [ ] Live `htmlContent` évalué sans passer par `ResolveDocumentTemplateUseCase`.
 - [ ] `templateKey` sans `htmlContent` suit la cascade ACTIVE existante.
-- [ ] Authz conforme à D-AUTHZ (rôles retenus → 200 ; autres authentifiés →
-      403 ; anonyme → 401).
+- [ ] Authz D-AUTHZ B : TA live → 200 ; WA/DM live → 403 ; TA/WA/DM
+      `templateKey` seul → 200 ; VIEWER → 403 ; anonyme → 401.
 - [ ] Rate limit + taille max étendus aux deux chemins preview.
 - [ ] Admin templates : aperçu HTML après saisie (debounce) + bouton PDF.
 - [ ] Iframe HTML `sandbox` (pas de scripts).
@@ -159,7 +169,7 @@ d'aperçu pendant la saisie.
 |---|---|---|
 | **D-SCOPE** | Modes d'aperçu | **Hybride** HTML temps réel + PDF inline (analyse 07) |
 | **D-SOURCE** | Source du HTML | `htmlContent` live **ou** resolve `templateKey` ; live gagne si les deux |
-| **D-AUTHZ** | Rôles | **Ouvert — Phase 2** (voir Questions) |
+| **D-AUTHZ** | Rôles | **B** — live `htmlContent` = `TENANT_ADMIN` ; `templateKey` seul = TA \| WA \| DM |
 | **D-STORE** | Persistance | **Jamais** (mémoire uniquement) |
 | **D-HTML-UX** | Rafraîchissement HTML | Debounce **400 ms**, iframe `srcdoc` + `sandbox` |
 | **D-PDF-UX** | Rafraîchissement PDF | **Bouton** « Aperçu PDF » (pas à chaque frappe) |
@@ -170,20 +180,9 @@ d'aperçu pendant la saisie.
 
 ## Questions & Open Items
 
-### Q1 — D-AUTHZ (bloque la clôture Phase 2)
+**Q1 — D-AUTHZ : clos (2026-08-17), option B.** Gate supplémentaire sur le
+chemin live ; pas de nouvel endpoint. Ordre : déterminer la source (D-SOURCE)
+puis appliquer la gate (live → TA).
 
-`/generate` accepte `TENANT_ADMIN` | `WORKFLOW_ADMIN` | `DOSSIER_MANAGER`, mais
-uniquement pour un **template ACTIVE déjà enregistré**. Le preview **live**
-(`htmlContent`) permet de faire évaluer du Thymeleaf / Flying Saucer **sans**
-passer par l'admin templates. L'écran `/admin/templates` est déjà restreint
-à `TENANT_ADMIN`.
-
-| Option | Principe | Trade-off |
-|---|---|---|
-| **A** | Les deux endpoints = `TENANT_ADMIN` seulement | Aligné UI V1 ; WA/DM gardent `/generate` |
-| **B** (reco) | `htmlContent` live → `TENANT_ADMIN` ; `templateKey` seul → TA \| WA \| DM (comme generate) | Live = privilège auteur ; preview d'un modèle publié reste possible via API |
-| **C** | Les deux endpoints = TA \| WA \| DM (comme generate) | Simple ; un manager peut poster du HTML arbitraire, ce que generate interdit |
-
-Recommandation : **B**.
-
-Suivi non bloquant (hors V1) : preview depuis le détail dossier.
+Aucun autre point ouvert bloquant. Suivi non bloquant (hors V1) : preview
+depuis le détail dossier.

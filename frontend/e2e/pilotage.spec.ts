@@ -53,6 +53,7 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
       createTime: '2026-08-12T00:00:00Z',
     },
   ]
+  let elements: Array<Record<string, unknown>> = []
 
   await page.route('**/api/auth/me', async (route) => {
     await route.fulfill({
@@ -197,8 +198,46 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
       })
       return
     }
+    if (url.endsWith('/elements/attachment') && method === 'POST') {
+      const raw = route.request().postData() ?? ''
+      const labelMatch = raw.match(/name="label"\r?\n\r?\n([^\r\n]*)/)
+      const filenameMatch = raw.match(/filename="([^"]*)"/)
+      const created = {
+        id: `att-${elements.length + 1}`,
+        type: 'ATTACHMENT',
+        label: labelMatch?.[1] ?? 'Pièce jointe',
+        addedBy: 'user-1',
+        addedAt: '2026-08-16T00:00:00Z',
+        workflowStepId: null,
+        metadata: { filename: filenameMatch?.[1] ?? 'file.pdf', contentType: 'application/pdf', sizeBytes: 4 },
+        downloadable: true,
+      }
+      elements = [...elements, created]
+      await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(created) })
+      return
+    }
+    if (/\/elements$/.test(new URL(url).pathname) && method === 'POST') {
+      const posted = route.request().postDataJSON() as {
+        type: string
+        label: string
+        metadata: Record<string, unknown>
+      }
+      const created = {
+        id: `el-${elements.length + 1}`,
+        type: posted.type,
+        label: posted.label,
+        addedBy: 'user-1',
+        addedAt: '2026-08-16T00:00:00Z',
+        workflowStepId: null,
+        metadata: posted.metadata,
+        downloadable: false,
+      }
+      elements = [...elements, created]
+      await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(created) })
+      return
+    }
     if (url.includes('/elements')) {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(elements) })
       return
     }
     if (url.includes('/workflows') && method === 'GET') {
@@ -469,6 +508,84 @@ test('E2E-12 navigate to related dossier from relations list', async ({ page }) 
   await createAndOpenDossier(page)
   await page.getByRole('link', { name: 'Dossier lié' }).click()
   await expect(page).toHaveURL(/dossiers\/33333333/)
+})
+
+test('E2E-15 add a NOTE element from detail without reload', async ({ page }) => {
+  await mockSession(page)
+  await openApp(page)
+  await createAndOpenDossier(page)
+  await expect(page.getByRole('heading', { name: 'Éléments' })).toBeVisible()
+  await page.getByRole('button', { name: 'Ajouter' }).click()
+  await expect(page.getByRole('heading', { name: 'Ajouter un élément' })).toBeVisible()
+  await page.locator('.dialog select').selectOption('NOTE')
+  await page.locator('.dialog input[type="text"]').first().fill('Rappel client')
+  await page.locator('.dialog textarea').fill('A relancer le 20/08')
+  await page.locator('.dialog button.primary').click()
+  await expect(page.getByRole('heading', { name: 'Ajouter un élément' })).toHaveCount(0)
+  await expect(page.locator('.elements-list strong', { hasText: 'Rappel client' })).toBeVisible()
+  await expect(page.getByText('A relancer le 20/08')).toBeVisible()
+})
+
+test('E2E-16 add a LINK element shows the URL without fetching it', async ({ page }) => {
+  await mockSession(page)
+  await openApp(page)
+  await createAndOpenDossier(page)
+  await page.getByRole('button', { name: 'Ajouter' }).click()
+  await page.locator('.dialog select').selectOption('LINK')
+  await page.locator('.dialog input[type="text"]').first().fill('Ticket externe')
+  await page.locator('.dialog input[type="url"]').fill('https://example.com/ticket/1')
+  await page.locator('.dialog button.primary').click()
+  const link = page.locator('.elements-list a.elements-list__link')
+  await expect(link).toBeVisible()
+  await expect(link).toHaveAttribute('href', 'https://example.com/ticket/1')
+})
+
+test('E2E-17 upload an ATTACHMENT element from detail', async ({ page }) => {
+  await mockSession(page)
+  await openApp(page)
+  await createAndOpenDossier(page)
+  await page.getByRole('button', { name: 'Ajouter' }).click()
+  await page.locator('.dialog input[type="text"]').first().fill('Justificatif')
+  await page.locator('.dialog input[type="file"]').setInputFiles({
+    name: 'justificatif.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from('%PDF-content'),
+  })
+  await page.locator('.dialog button.primary').click()
+  await expect(page.getByRole('heading', { name: 'Ajouter un élément' })).toHaveCount(0)
+  await expect(page.locator('.elements-list strong', { hasText: 'Justificatif' })).toBeVisible()
+  await expect(page.locator('.elements-list li', { hasText: 'Justificatif' }).getByText('Télécharger')).toBeVisible()
+})
+
+test('E2E-19 oversized attachment upload shows an error, no crash', async ({ page }) => {
+  await mockSession(page)
+  await openApp(page)
+  await createAndOpenDossier(page)
+  await page.route('**/api/dossiers/**/elements/attachment', async (route) => {
+    await route.fulfill({
+      status: 413,
+      contentType: 'application/problem+json',
+      body: JSON.stringify({ status: 413, title: 'Upload too large', detail: 'The uploaded file exceeds the maximum allowed size' }),
+    })
+  })
+  await page.getByRole('button', { name: 'Ajouter' }).click()
+  await page.locator('.dialog input[type="text"]').first().fill('Trop gros')
+  await page.locator('.dialog input[type="file"]').setInputFiles({
+    name: 'big.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from('%PDF-content'),
+  })
+  await page.locator('.dialog button.primary').click()
+  await expect(page.getByText('The uploaded file exceeds the maximum allowed size')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Ajouter un élément' })).toBeVisible()
+})
+
+test('E2E-18 viewer cannot add an element', async ({ page }) => {
+  await mockSession(page, { roles: ['DOSSIER_VIEWER'] })
+  await openApp(page)
+  await createAndOpenDossier(page)
+  await expect(page.getByRole('heading', { name: 'Éléments' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Ajouter' })).toHaveCount(0)
 })
 
 test('E2E-13 viewer cannot link a dossier', async ({ page }) => {

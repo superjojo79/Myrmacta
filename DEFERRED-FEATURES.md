@@ -67,7 +67,7 @@ pièces jointes, purge §22), introduire un **port abstrait** avec adaptateur
 
 | Item | Notes |
 |---|---|
-| Éléments de dossier (`DossierElement`) | Lot suivant — fichiers / MinIO |
+| Éléments de dossier (`DossierElement`) | **Livré** — feature `elements-dossier` (extension `PRODUCED_DOC`→`ATTACHMENT`/`INFORMATION`/`NOTE`/`LINK`, API + UI, réutilisation stricte de `DocumentStoragePort`/`DossierAccessPolicy` existants, aucun couplage MinIO en dur — conforme §0) |
 | Relations entre dossiers | **Livré** — feature `relations-dossiers` (API + UI + ServiceTask) |
 | `DossierWorkflowLink` + AttachWorkflow | Lot `workflow-engine` |
 | PATCH fields dossier | **Livré** — feature `patch-dossier-fields` (fusion + audit `sensitive`) |

@@ -22,7 +22,7 @@ sequencing: layered
   contenu, mapping d'exception, bornes upload (taille/MIME)
 - [x] **M3 — Frontend** : `ElementsList.vue` avec formulaire "Ajouter" par type, client API,
   correction d'une dérive de typage FE découverte pendant la planification
-- [ ] **M4 — Preuves & docs** : suite de tests complète (unit/intégration/Vitest/Playwright),
+- [x] **M4 — Preuves & docs** : suite de tests complète (unit/intégration/Vitest/Playwright),
   `DEFERRED-FEATURES.md`/`TODO.md` mis à jour
 
 ## Task Breakdown
@@ -189,20 +189,20 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M4 — Preuves & docs
 
-- [ ] **T14. Suite backend complète**
+- [x] **T14. Suite backend complète**
   - **Outcome :** `./mvnw verify` vert (tests + ArchUnit + Jacoco ≥ seuil existant), tous les
     scénarios unit/intégration du testing doc couverts.
   - **Depends on :** T1–T9
   - **Validation :** commande CI locale.
   - **Tests liés :** tous scénarios backend restants.
 
-- [ ] **T15. Suite frontend Vitest**
+- [x] **T15. Suite frontend Vitest**
   - **Outcome :** `cd frontend && npm run test -- --coverage` vert.
   - **Depends on :** T10–T13
   - **Validation :** commande CI locale.
   - **Tests liés :** tous scénarios Vitest listés.
 
-- [ ] **T16. Playwright e2e**
+- [x] **T16. Playwright e2e**
   - **Outcome :** `cd frontend && npm run test:e2e` vert — parcours ajout pièce jointe/note/lien,
     régression téléchargement `PRODUCED_DOC`, message d'erreur upload trop volumineux. Rappel
     `flowforge-conventions` : obligatoire ici (SPA + contrat API touchés), pas un nice-to-have.
@@ -210,7 +210,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Validation :** commande CI locale.
   - **Tests liés :** tous scénarios Playwright listés.
 
-- [ ] **T17. Docs implementation + `DEFERRED-FEATURES.md`/`TODO.md`**
+- [x] **T17. Docs implementation + `DEFERRED-FEATURES.md`/`TODO.md`**
   - **Outcome :** notes `docs/ai/implementation/2026-08-16-feature-elements-dossier.md` ;
     `DEFERRED-FEATURES.md` §1.4 (« Éléments de dossier » → Livré, décrire le périmètre couvert
     et les non-goals reportés) ; `TODO.md` — pas de point directement clos (rétention/purge/TODO
@@ -301,3 +301,31 @@ T10 → T11 → T12 → T13 → T15 → T17
   `claude/next-feature-review-nk0tr3` (contrainte d'environnement CCR), pas sur un worktree
   `feature-elements-dossier` séparé comme le préconiserait `dev-worktree` par défaut — isolation
   réduite, assumé pour cette session.
+
+## Phase 6 — Update Planning (clôture)
+
+**T1–T17 tous `[x]`.** Un blocage rencontré et résolu en cours de route (pas un abandon) : la
+double borne de taille anticipée dans Risks (T9) s'est effectivement matérialisée pendant
+l'implémentation (400 au lieu de 413 constaté par `upload_tooLarge_returns413`) — corrigée en
+retirant `AttachmentUploadProperties.maxSizeBytes`, `spring.servlet.multipart.*` reste l'unique
+source de vérité. Un écart de scope positif : convergence détectée avec une session parallèle sur
+la même feature (même session sous-jacente, invocation concurrente) via `git merge` — sa
+trouvaille (ACL avant écriture storage dans `DossierElementUploadController`) a été reprise après
+fusion, voir implementation doc § Deviations.
+
+Ordre d'exécution réel : T1→T2→T3 (domaine) → T4/T7/T9 (indépendants) → T5/T6/T8 (backend
+API) → T10→T11→T12→T13 (frontend, séquentiel) → T14 (`./mvnw verify`, 729 tests verts) → T15
+(Vitest, 87 tests verts) → T16 (Playwright, 20 scénarios verts, incluant 5 nouveaux pour
+elements-dossier) → T17 (docs). Conforme au graphe de dépendances du plan initial, aucune tâche
+abandonnée.
+
+Preuves fraîches à chaque étape : `AddDossierElementUseCaseImplTest` 16/16,
+`DossierElementViewTest` 5/5, `DossierApiTest` 65/65 (11 nouveaux scénarios `elements-dossier` +
+54 existants inchangés), `DossierElementUploadApiTest` 4/4, `DossierElementUploadControllerTest`
+1/1, `DossierElementContentApiTest` 10/10, `DossierExceptionHandlerTest` 4/4, `ArchitectureRulesTest`
+3/3, suite backend complète `./mvnw verify` 729/729 (Jacoco + ArchUnit inclus). Frontend :
+`vue-tsc -b` propre, `eslint` propre, Vitest 87/87 (32 fichiers), Playwright 20/20 (6 nouveaux
+scénarios `elements-dossier`, dont 1 sur le message d'erreur 413 côté client).
+
+Prochaine étape : Phase 9 (`dev-review`) — Phase 7 (Check Implementation) déjà couverte dans
+l'implementation doc (§ Phase 7).

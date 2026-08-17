@@ -626,7 +626,7 @@ test('E2E-10 admin types smoke', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Types de dossier' })).toBeVisible()
 })
 
-test('E2E-11 template preview html and pdf', async ({ page }) => {
+test('E2E-20 template preview html and pdf', async ({ page }) => {
   await mockSession(page)
   await openApp(page)
   await page.getByRole('link', { name: 'Templates' }).click()

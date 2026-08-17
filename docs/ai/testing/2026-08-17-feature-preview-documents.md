@@ -61,8 +61,11 @@ feature: preview-documents
       `inline` ; pas de store
 - [ ] POST `/preview` template inconnu → 404
 - [ ] POST `/preview` body vide → 400
-- [ ] rôles : TA / WA / DM → 200 ; VIEWER → 403 ; anonyme → 401 (un des deux
-      endpoints suffit si le même `@PreAuthorize` classe/méthode)
+- [ ] `@PreAuthorize` : VIEWER → 403 ; anonyme → 401 (un des deux endpoints)
+- [ ] D-AUTHZ B live : TA + `htmlContent` → 200 ; WA + `htmlContent` → 403 ;
+      DM + `htmlContent` → 403 (aucun process / store)
+- [ ] D-AUTHZ B live gagne : DM + `htmlContent` **et** `templateKey` → 403
+- [ ] D-AUTHZ B publié : TA / WA / DM + `templateKey` seul → 200
 - [ ] Thymeleaf cassé → 400
 - [ ] generate existant toujours 200 PDF **sans** `inline` obligatoire
       (non-régression Content-Disposition)

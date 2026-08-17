@@ -135,10 +135,14 @@ Content-Type: multipart/form-data
 
 → `201 Created`, corps `DossierElementView`. Rejette fichier absent, taille hors borne, type MIME
 hors allowlist (`InvalidDossierElementException` → 400/413, voir Non-Functional Requirements).
-Rejette (409) si le dossier est `CLOTURE`/`ARCHIVE` (décision n°6) — le fichier est néanmoins déjà
-stocké au moment où le 409 est levé (le contrôleur stocke avant d'appeler le use case, voir
-Fiabilité) ; extension acceptée du risque d'objet orphelin déjà toléré pour `PRODUCED_DOC`, pas de
-vérification de statut ajoutée en amont du `store(...)` pour éviter une double lecture dossier.
+Rejette (409) si le dossier est `CLOTURE`/`ARCHIVE` (décision n°6) — **corrigé en revue de code
+post-merge (PR #51)** : le contrôleur vérifie désormais `dossier.status().blocksMutation()`
+immédiatement après `DossierAccessGuard.requireEditable(...)`, **avant** tout appel à
+`DocumentStoragePort.store(...)`. La version initialement mergée stockait le fichier avant ce
+check et tolérait un objet orphelin en cas de rejet — ce risque n'est plus accepté pour
+`ATTACHMENT` (le coût d'une lecture dossier déjà faite par le guard ACL est nul, `requireEditable`
+retourne le `Dossier` chargé). `PRODUCED_DOC` reste inchangé (hors de cette garde, voir Design
+Decisions §6).
 
 **3. `GET /api/dossier-elements/{id}/content`** (existant, `DossierElementContentController`,
 généralisé) : sert désormais `PRODUCED_DOC` **et** `ATTACHMENT`, avec le `Content-Type` et le nom
@@ -265,13 +269,15 @@ endpoints d'ajout, `assertCanView` sur lecture/liste/téléchargement (déjà le
 
 - Séquence `store` puis `add` (non transactionnelle entre les deux, comme pour
   `AttachGeneratedDocumentTask` aujourd'hui) : un échec de `AddDossierElementUseCase.add(...)`
-  après un `store(...)` réussi laisse un objet orphelin dans le storage. **Risque déjà accepté
-  pour `PRODUCED_DOC`** (même schéma) — pas de compensation transactionnelle introduite par cette
-  feature ; un futur job de nettoyage relèverait de TODO §22 (purge), non traité ici.
-- La garde de statut (décision n°6) élargit prévisiblement ce risque pour `ATTACHMENT` : tenter un
-  upload sur un dossier `CLOTURE`/`ARCHIVE` stocke systématiquement le fichier avant que le 409 ne
-  soit levé (contrairement au cas `store` réussi + `add` en échec, qui est rare/accidentel, celui-ci
-  est déterministe à chaque tentative sur un dossier clos). Accepté pour cette feature — vérifier le
-  statut dans le contrôleur avant `store(...)` ajouterait une lecture dossier dupliquée avec celle du
-  use case pour un cas d'usage attendu comme rare (dossier déjà clos), au bénéfice d'un futur job de
-  purge (TODO §22) plutôt que d'une optimisation immédiate.
+  après un `store(...)` réussi laisse un objet orphelin dans le storage. **Risque résiduel
+  accepté pour `PRODUCED_DOC`** (même schéma, chemin `ServiceTask` non modifié par cette feature)
+  et pour les cas d'échec réellement imprévisibles côté `ATTACHMENT` (ex. panne base de données
+  entre le `store` et le `save` de l'élément) — pas de compensation transactionnelle introduite ;
+  un futur job de nettoyage relèverait de TODO §22 (purge), non traité ici.
+- **Corrigé en revue de code post-merge (PR #51)** : le cas *déterministe* (dossier
+  `CLOTURE`/`ARCHIVE`, garde de statut décision n°6) n'est plus dans ce risque résiduel — la
+  version initialement mergée stockait systématiquement le fichier avant que le 409 ne soit levé
+  sur un dossier déjà clos. `DossierAccessGuard.requireEditable(...)` charge déjà le `Dossier`
+  pour le check ACL ; le check de statut dans le contrôleur, juste après, ne coûte donc **aucune**
+  lecture dossier supplémentaire — l'argument initial ("lecture dupliquée") était une fausse
+  économie, pas un vrai compromis.

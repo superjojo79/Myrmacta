@@ -8,7 +8,6 @@ import com.flowforge.domain.dossier.model.DossierConflictException;
 import com.flowforge.domain.dossier.model.DossierFieldValidationException;
 import com.flowforge.domain.dossier.model.DossierFieldValidator;
 import com.flowforge.domain.dossier.model.DossierNotFoundException;
-import com.flowforge.domain.dossier.model.DossierStatus;
 import com.flowforge.domain.dossier.model.DossierType;
 import com.flowforge.domain.dossier.port.in.UpdateDossierFieldsUseCase;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
@@ -19,8 +18,6 @@ import java.util.Map;
 import java.util.Objects;
 
 public final class UpdateDossierFieldsUseCaseImpl implements UpdateDossierFieldsUseCase {
-
-    private static final List<DossierStatus> BLOCKED_STATUSES = List.of(DossierStatus.CLOTURE, DossierStatus.ARCHIVE);
 
     private final DossierRepository dossierRepository;
     private final DossierTypeRepository typeRepository;
@@ -55,7 +52,7 @@ public final class UpdateDossierFieldsUseCaseImpl implements UpdateDossierFields
 
         accessPolicy.assertCanEdit(dossier, ctx);
 
-        if (BLOCKED_STATUSES.contains(dossier.status())) {
+        if (dossier.status().blocksMutation()) {
             throw new DossierConflictException("Dossier fields cannot be edited in status " + dossier.status());
         }
         if (command.expectedVersion() != null && command.expectedVersion() != dossier.version()) {

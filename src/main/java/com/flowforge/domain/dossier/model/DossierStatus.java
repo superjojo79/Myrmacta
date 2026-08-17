@@ -6,5 +6,10 @@ public enum DossierStatus {
     EN_COURS,
     SUSPENDU,
     CLOTURE,
-    ARCHIVE
+    ARCHIVE;
+
+    /** True once a dossier is closed/archived and human-initiated mutations must be rejected. */
+    public boolean blocksMutation() {
+        return this == CLOTURE || this == ARCHIVE;
+    }
 }

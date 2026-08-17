@@ -64,4 +64,30 @@ describe('ElementsList', () => {
     expect(link.attributes('href')).toBe('https://example.com/1')
     expect(wrapper.findAll('a').every((a) => a.text() !== 'Télécharger')).toBe(true)
   })
+
+  it('shows an INFORMATION element as key/value pairs, not downloadable', () => {
+    const wrapper = mount(ElementsList, {
+      props: {
+        elements: [
+          {
+            id: 'e-info',
+            type: 'INFORMATION',
+            label: 'Vérification externe',
+            addedBy: 'u',
+            addedAt: '2026-08-16T00:00:00Z',
+            workflowStepId: null,
+            metadata: { statut: 'confirmé', score: 42 },
+            downloadable: false,
+          },
+        ],
+      },
+    })
+    const dl = wrapper.find('dl.elements-list__information')
+    expect(dl.exists()).toBe(true)
+    expect(dl.text()).toContain('statut')
+    expect(dl.text()).toContain('confirmé')
+    expect(dl.text()).toContain('score')
+    expect(dl.text()).toContain('42')
+    expect(wrapper.findAll('a').every((a) => a.text() !== 'Télécharger')).toBe(true)
+  })
 })

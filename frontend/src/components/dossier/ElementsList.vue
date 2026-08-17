@@ -49,6 +49,12 @@ async function download(element: DossierElementView) {
           >
             {{ el.metadata?.url }}
           </a>
+          <dl v-else-if="el.type === 'INFORMATION'" class="elements-list__information">
+            <template v-for="(value, key) in el.metadata" :key="key">
+              <dt>{{ key }}</dt>
+              <dd>{{ value }}</dd>
+            </template>
+          </dl>
         </div>
         <a
           v-if="el.downloadable"
@@ -96,6 +102,19 @@ async function download(element: DossierElementView) {
 .elements-list__link {
   display: block;
   font-size: 0.9rem;
+}
+.elements-list__information {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0 0.5rem;
+  margin: 0;
+  font-size: 0.9rem;
+}
+.elements-list__information dt {
+  font-weight: 600;
+}
+.elements-list__information dd {
+  margin: 0;
 }
 button:disabled {
   opacity: 0.55;

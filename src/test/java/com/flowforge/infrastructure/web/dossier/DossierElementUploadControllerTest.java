@@ -10,10 +10,14 @@ import static org.mockito.Mockito.when;
 
 import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.AccessDeniedException;
+import com.flowforge.domain.dossier.model.Dossier;
+import com.flowforge.domain.dossier.model.DossierConflictException;
+import com.flowforge.domain.dossier.model.DossierStatus;
 import com.flowforge.domain.document.port.out.DocumentStoragePort;
 import com.flowforge.domain.dossier.port.in.AddDossierElementUseCase;
 import com.flowforge.infrastructure.config.AttachmentUploadProperties;
 import com.flowforge.infrastructure.config.TenantProperties;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -77,5 +81,40 @@ class DossierElementUploadControllerTest {
 
         verify(documentStoragePort, never()).store(anyString(), anyString(), any());
         verify(addDossierElementUseCase, never()).add(any(), any());
+    }
+
+    @Test
+    void upload_dossierClotureOrArchive_neverWritesToStorage() {
+        UUID dossierId = UUID.randomUUID();
+        AccessContext.User actor = AccessContext.user("u1", java.util.Set.of("DOSSIER_MANAGER"));
+        when(accessContextFactory.user(authentication)).thenReturn(actor);
+        when(accessGuard.requireEditable(dossierId, actor)).thenReturn(closedDossier(dossierId));
+        MockMultipartFile file = new MockMultipartFile("file", "doc.pdf", "application/pdf", new byte[] {1, 2, 3});
+
+        assertThatThrownBy(() -> controller.upload(dossierId, file, "label", authentication))
+                .isInstanceOf(DossierConflictException.class);
+
+        verify(documentStoragePort, never()).store(anyString(), anyString(), any());
+        verify(addDossierElementUseCase, never()).add(any(), any());
+    }
+
+    private static Dossier closedDossier(UUID id) {
+        Instant now = Instant.now();
+        return new Dossier(
+                id,
+                "tenant1",
+                "DOS-000001",
+                "TYPE",
+                "label",
+                DossierStatus.CLOTURE,
+                java.util.Map.of(),
+                null,
+                0L,
+                "creator",
+                now,
+                "creator",
+                now,
+                "creator",
+                now);
     }
 }

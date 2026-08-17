@@ -1,6 +1,8 @@
 package com.flowforge.infrastructure.web.dossier;
 
 import com.flowforge.domain.dossier.model.AccessContext;
+import com.flowforge.domain.dossier.model.Dossier;
+import com.flowforge.domain.dossier.model.DossierConflictException;
 import com.flowforge.domain.dossier.model.DossierElement;
 import com.flowforge.domain.dossier.model.DossierElementView;
 import com.flowforge.domain.dossier.model.ElementType;
@@ -56,11 +58,15 @@ public class DossierElementUploadController {
             @RequestParam("label") String label,
             Authentication authentication) {
         AccessContext.User actor = accessContextFactory.user(authentication);
-        // ACL checked before any storage write, so a caller without EDIT on this dossier's type
-        // never causes an object to be stored just to be rejected afterwards. AddDossierElementUseCase
-        // re-checks the same ACL internally, which costs one extra findById + ACL query — accepted
-        // trade-off, not a second source of truth (same policy, same rule).
-        accessGuard.requireEditable(id, actor);
+        // ACL and status checked before any storage write, so a caller without EDIT on this
+        // dossier's type, or targeting a CLOTURE/ARCHIVE dossier, never causes an object to be
+        // stored just to be rejected afterwards. AddDossierElementUseCase re-checks both
+        // internally, which costs one extra findById + checks — accepted trade-off, not a second
+        // source of truth (same policy, same rule, same DossierStatus.blocksMutation()).
+        Dossier dossier = accessGuard.requireEditable(id, actor);
+        if (dossier.status().blocksMutation()) {
+            throw new DossierConflictException("Dossier elements cannot be added in status " + dossier.status());
+        }
         if (file == null || file.isEmpty()) {
             throw new InvalidDossierElementException("file is required");
         }

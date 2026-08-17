@@ -6,7 +6,6 @@ import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierConflictException;
 import com.flowforge.domain.dossier.model.DossierElement;
 import com.flowforge.domain.dossier.model.DossierNotFoundException;
-import com.flowforge.domain.dossier.model.DossierStatus;
 import com.flowforge.domain.dossier.model.ElementType;
 import com.flowforge.domain.dossier.model.InvalidDossierElementException;
 import com.flowforge.domain.dossier.port.in.AddDossierElementUseCase;
@@ -15,14 +14,11 @@ import com.flowforge.domain.dossier.port.out.DossierRepository;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Instant;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
 public final class AddDossierElementUseCaseImpl implements AddDossierElementUseCase {
-
-    private static final List<DossierStatus> BLOCKED_STATUSES = List.of(DossierStatus.CLOTURE, DossierStatus.ARCHIVE);
 
     private final String tenantId;
     private final DossierRepository dossierRepository;
@@ -57,7 +53,7 @@ public final class AddDossierElementUseCaseImpl implements AddDossierElementUseC
             throw new DossierNotFoundException("Dossier not found: " + command.dossierId());
         }
         accessPolicy.assertCanEdit(dossier, ctx);
-        if (ctx instanceof AccessContext.User && BLOCKED_STATUSES.contains(dossier.status())) {
+        if (ctx instanceof AccessContext.User && dossier.status().blocksMutation()) {
             throw new DossierConflictException("Dossier elements cannot be added in status " + dossier.status());
         }
 

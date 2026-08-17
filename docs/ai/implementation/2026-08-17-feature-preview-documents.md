@@ -29,10 +29,12 @@ Fichiers prévus (créés au fil des tâches) :
 
 - `domain/document/port/in/PreviewDocumentUseCase.java`
 - `domain/document/usecase/PreviewDocumentUseCaseImpl.java`
-- `infrastructure/config/DocumentConfig.java` (bean)
+- `infrastructure/config/DocumentConfig.java` (bean use case)
+- `infrastructure/config/DocumentPreviewProperties.java` (rate-limit HTML 120)
 - `infrastructure/web/document/PrintPreviewHtml.java`
-- `infrastructure/web/document/DocumentGenerationController.java` (étendu)
+- `infrastructure/web/document/DocumentGenerationController.java` (étendu : gate + 2 POST)
 - `infrastructure/web/document/DocumentGenerationBodySizeLimitFilter.java` (matcher)
+- Limiter HTML dédié (2ᵉ instance du même algorithme que generate)
 
 **Frontend**
 
@@ -46,17 +48,21 @@ Fichiers prévus (créés au fil des tâches) :
 
 ### Core Features
 
-- **D-SOURCE :** `htmlContent` non blank (après trim) court-circuite resolve.
+- **D-SOURCE :** `PreviewCommand.isLive()` court-circuite resolve.
+- **D-AUTHZ B :** gate contrôleur si `isLive()` et pas `ROLE_TENANT_ADMIN`
+  → Spring `AccessDeniedException` **avant** limiter et use case.
 - **Taille HTML live :** `DocumentTemplateSupport.assertHtmlSize` +
-  `DocumentConfig.MAX_HTML_BYTES` (5 Mio), identique create/update template.
+  `DocumentConfig.MAX_HTML_BYTES` (5 Mio). Plafond HTTP réel = filtre 256 Kio.
 - **PDF :** `pdfRenderer.render(processedHtml)` — **pas** le HTML wrappé CSS.
 - **HTML HTTP :** `PrintPreviewHtml.wrap(processedHtml)` puis
   `text/html;charset=UTF-8`.
-- **Rate limit :** `rateLimiter.tryConsume` sur les deux nouveaux POST,
-  même quota que generate (fenêtre partagée par principal).
-- **FE :** pas de `v-html` ; iframe `sandbox` (attribut vide) + `srcdoc`.
-- **Debounce :** 400 ms dans le composable, `AbortController` sur le fetch
-  HTML. PDF uniquement via action explicite.
+- **D-RATE-SPLIT C :** `/preview` → limiter HTML 120/min (**autre
+  instance** / autre `ConcurrentHashMap`) ; `/preview/pdf` → limiter
+  generate 30/min (partagé avec `/generate`). Ne pas réutiliser le
+  `@Component` generate pour l'HTML : `tryConsume` est keyé uniquement
+  par principal.
+- **FE :** pas de `v-html` ; iframe `sandbox=""` + `srcdoc`.
+- **Debounce :** 400 ms ; `AbortController` sur le fetch HTML. PDF on-demand.
 - **Variables JSON :** parse local ; JSON invalide → message, pas d'HTTP.
 
 ### Patterns
@@ -91,8 +97,9 @@ HTML = Thymeleaf only. PDF on-demand. Debounce + abort. Pas de store.
 
 ## Security Notes
 
-- `@PreAuthorize` identique generate.
+- `@PreAuthorize` identique generate, **plus** gate live TA (D-AUTHZ B).
 - CSRF BFF.
 - Iframe sandbox (pas de scripts).
 - SSRF PDF : `RestrictedResourceUserAgent` inchangé.
+- 403 live : `MethodSecurityExceptionHandler` (Spring `AccessDeniedException`).
 - Pas de secrets dans les templates preview (même surface admin existante).

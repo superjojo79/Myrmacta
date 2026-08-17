@@ -67,10 +67,14 @@ feature: preview-documents
 - [ ] D-AUTHZ B live gagne : DM + `htmlContent` **et** `templateKey` → 403
 - [ ] D-AUTHZ B publié : TA / WA / DM + `templateKey` seul → 200
 - [ ] Thymeleaf cassé → 400
-- [ ] D-RATE-SPLIT : 120 POST `/preview` HTML (même principal) puis 429 ; un
-      `/generate` intercalé **ne** consomme **pas** ce quota HTML
-- [ ] D-RATE-SPLIT : 30 POST `/preview/pdf` **ou** mélange pdf+generate
-      (même principal) puis 429 sur l'un ou l'autre
+- [ ] D-RATE-SPLIT HTML : `@TestPropertySource`
+      `app.document.preview.rate-limit-per-minute=2` — 2 POST `/preview`
+      OK puis 429 ; un `/generate` intercalé **ne** consomme **pas** ce
+      quota HTML. Ne pas envoyer 120 POST en CI.
+- [ ] D-RATE-SPLIT PDF partagé : `@TestPropertySource`
+      `app.document.generate.rate-limit-per-minute=2` — mélange
+      `/preview/pdf` + `/generate` (même principal) puis 429 sur l'un
+      ou l'autre. Ne pas envoyer 30 POST en CI.
 - [ ] generate existant toujours 200 PDF **sans** `inline` obligatoire
       (non-régression Content-Disposition)
 
@@ -92,6 +96,8 @@ feature: preview-documents
   generate
 - Playwright : `page.route('**/api/documents/preview/pdf**')` **avant**
   `**/api/documents/preview**` (préfixe) pour ne pas avaler le PDF
+- MockMvc rate-limit : `@TestPropertySource` avec limites = 2 (les
+  défauts 120 / 30 restent la config runtime, pas l'objectif CI)
 
 ## Test Reporting & Coverage
 

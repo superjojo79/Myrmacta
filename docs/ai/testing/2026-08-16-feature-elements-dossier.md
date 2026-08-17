@@ -33,6 +33,11 @@ description: Define testing approach, test cases, and quality assurance
 - [ ] Dossier introuvable / autre tenant → `DossierNotFoundException` (même comportement pour les
       4 nouveaux types que pour `PRODUCED_DOC`)
 - [ ] Acteur sans ACL `EDIT` sur le type de dossier → `AccessDeniedException` (chacun des 4 types)
+- [ ] Dossier en statut `CLOTURE` ou `ARCHIVE` → `DossierConflictException` pour chacun des 4
+      nouveaux types (même garde que `UpdateDossierFieldsUseCaseImpl`)
+- [ ] Dossier en statut `CLOTURE` ou `ARCHIVE` → `PRODUCED_DOC` via le chemin `ServiceTask`
+      (`AccessContext.System`) **toujours accepté** — non-régression explicite, la garde de statut
+      ne s'applique pas à ce type
 
 ### `DossierElementView.from(...)` (extension du test existant)
 - [ ] `downloadable=true` pour `ATTACHMENT` avec `storageRef` renseigné

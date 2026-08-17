@@ -202,11 +202,14 @@ uniquement), via un chemin système (`AccessContext.system(...)`). Aucune voie h
 ## Questions & Open Items
 **What do we still need to clarify?**
 
-- **Ajout autorisé sur un dossier `CLOTURE`/`ARCHIVE` ?** Aucune règle existante ne restreint
-  aujourd'hui `AddDossierElementUseCaseImpl` par statut de dossier. Décision par défaut proposée
-  pour le design : autoriser (un justificatif peut arriver après clôture), sauf si le design
-  identifie un besoin métier contraire — **à confirmer en Phase 2 (review requirements) ou en
-  design si aucun signal supplémentaire n'émerge d'ici là**.
+- ~~Ajout autorisé sur un dossier `CLOTURE`/`ARCHIVE` ?~~ **Résolu en Phase 2** — l'ajout manuel
+  des 4 nouveaux types (`ATTACHMENT`/`INFORMATION`/`NOTE`/`LINK`) est **bloqué** sur un dossier
+  `CLOTURE`/`ARCHIVE`, par cohérence avec `UpdateDossierFieldsUseCaseImpl` (`PATCH /fields`) qui
+  applique déjà la même règle (`BLOCKED_STATUSES = {CLOTURE, ARCHIVE}` →
+  `DossierConflictException` → 409). **`PRODUCED_DOC` reste explicitement hors de cette garde** —
+  le chemin `ServiceTask`/`AccessContext.System` existant n'est pas modifié, pour respecter le
+  non-goal "aucune régression sur `PRODUCED_DOC`" (détail d'implémentation dans le design doc,
+  Design Decisions §6).
 - **Valeurs exactes** de la taille max et de l'allowlist MIME — laissées à la phase design
   (proposition de départ ci-dessus), pas un point bloquant pour la suite du requirements.
 - ~~Contrainte SQL existante sur `dossier_element.type`~~ **Résolu** — vérifié dans

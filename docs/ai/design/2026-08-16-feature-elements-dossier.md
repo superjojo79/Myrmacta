@@ -42,8 +42,9 @@ graph TD
     end
 
     CtrlAdd --> UC
-    CtrlAttach -->|store bytes d'abord| Port
-    CtrlAttach --> UC
+    CtrlAttach -->|1: ACL check| Guard[DossierAccessGuard<br/>existant, réutilisé]
+    CtrlAttach -->|2: store bytes| Port
+    CtrlAttach -->|3: add élément| UC
     UC --> Policy
     UC --> Model
     Port --> S3
@@ -55,10 +56,13 @@ graph TD
 **Composants clés**
 
 - **`DossierElementUploadController`** (nouveau, `web.dossier`) : seul point d'entrée
-  `multipart/form-data`, dédié à `ATTACHMENT`. Écrit d'abord le fichier via
-  `DocumentStoragePort.store(tenantId, contentType, bytes)`, obtient un `storageRef` opaque, puis
-  appelle `AddDossierElementUseCase.add(...)` avec ce `storageRef` — même séquence que
-  `AttachGeneratedDocumentTask` aujourd'hui pour `PRODUCED_DOC`.
+  `multipart/form-data`, dédié à `ATTACHMENT`. Vérifie d'abord l'ACL via
+  `DossierAccessGuard.requireEditable(dossierId, ctx)` (helper existant, déjà utilisé par les
+  contrôleurs dossier — évite d'écrire un fichier en storage avant de savoir si la requête est
+  autorisée), **puis** écrit le fichier via `DocumentStoragePort.store(tenantId, contentType,
+  bytes)`, obtient un `storageRef` opaque, puis appelle `AddDossierElementUseCase.add(...)` avec
+  ce `storageRef` (qui revalide l'ACL en interne — acceptable, double-check bon marché en mémoire,
+  déjà le pattern des autres use cases appelés depuis un contrôleur ayant lui-même un guard).
 - **`DossierController`** (existant, étendu) : nouvel endpoint JSON
   `POST /api/dossiers/{id}/elements` pour `INFORMATION` / `NOTE` / `LINK` — pas de fichier, pas
   de `storageRef`.
@@ -151,7 +155,8 @@ endpoints d'ajout, `assertCanView` sur lecture/liste/téléchargement (déjà le
 - `domain.dossier.model.DossierElementView#from` — `downloadable` généralisé à `ATTACHMENT`.
 - `infrastructure.web.dossier.DossierController` — nouvel endpoint JSON `POST .../elements`.
 - `infrastructure.web.dossier.DossierElementUploadController` (nouveau) — endpoint multipart,
-  orchestration `DocumentStoragePort.store` → `AddDossierElementUseCase.add`.
+  orchestration `DossierAccessGuard.requireEditable` (existant, réutilisé) →
+  `DocumentStoragePort.store` → `AddDossierElementUseCase.add`.
 - `infrastructure.web.dossier.DossierExceptionHandler` — ajout du mapping
   `InvalidDossierElementException` → 400 (absent aujourd'hui pour ce package, seul
   `DocumentGenerationExceptionHandler` le gère actuellement côté `web.document`).
@@ -204,6 +209,18 @@ endpoints d'ajout, `assertCanView` sur lecture/liste/téléchargement (déjà le
 5. **Pas de schéma de validation pour `INFORMATION`** (contrairement à `FieldDefinition` sur
    `DossierType`) — cohérent avec la nature "libre" documentée dans l'analyse doc ; seule une
    borne de taille anti-abus s'applique (NFR).
+6. **Gate de statut `CLOTURE`/`ARCHIVE` — scopé aux 4 nouveaux types uniquement.** Résolu en
+   Phase 2 (review requirements) : par cohérence avec `UpdateDossierFieldsUseCaseImpl`
+   (`BLOCKED_STATUSES = {CLOTURE, ARCHIVE}` → `DossierConflictException` → 409), l'ajout manuel
+   d'un `ATTACHMENT`/`INFORMATION`/`NOTE`/`LINK` est rejeté sur un dossier `CLOTURE`/`ARCHIVE`.
+   **`PRODUCED_DOC` reste explicitement hors de cette garde** — comportement actuel
+   (`AttachGeneratedDocumentTask`, appelé en `AccessContext.System` depuis un `ServiceTask`
+   Flowable) inchangé, pour respecter le non-goal "aucune régression sur `PRODUCED_DOC`" plutôt
+   que d'introduire une distinction acteur système/humain non demandée. Implémentation : la garde
+   `BLOCKED_STATUSES.contains(dossier.status())` dans `AddDossierElementUseCaseImpl` est
+   conditionnée à `command.type() != ElementType.PRODUCED_DOC`, réutilisant la même constante que
+   `UpdateDossierFieldsUseCaseImpl` (à extraire en constante partagée si un troisième usage
+   apparaît — YAGNI pour l'instant, deux occurrences ne justifient pas une extraction).
 
 ## Non-Functional Requirements
 

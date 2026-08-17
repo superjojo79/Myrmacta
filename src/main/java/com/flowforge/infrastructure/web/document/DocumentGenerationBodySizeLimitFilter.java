@@ -5,10 +5,11 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Set;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * Rejects an oversized {@code POST /api/documents/generate} request via {@code Content-Length}
+ * Rejects an oversized POST on generate / preview / preview PDF via {@code Content-Length}
  * before Spring reads the body into memory. PDF rendering is the costliest operation exposed to
  * the least-privileged role allowed here (DOSSIER_MANAGER), and unlike template creation
  * ({@code DocumentTemplateSupport.assertHtmlSize}) the caller-supplied {@code variables} map had
@@ -19,7 +20,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
  */
 public class DocumentGenerationBodySizeLimitFilter extends OncePerRequestFilter {
 
-    private static final String PATH = "/api/documents/generate";
+    private static final Set<String> PATHS = Set.of(
+            "/api/documents/generate", "/api/documents/preview", "/api/documents/preview/pdf");
 
     private final long maxBodyBytes;
 
@@ -29,7 +31,7 @@ public class DocumentGenerationBodySizeLimitFilter extends OncePerRequestFilter 
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !("POST".equalsIgnoreCase(request.getMethod()) && PATH.equals(request.getRequestURI()));
+        return !("POST".equalsIgnoreCase(request.getMethod()) && PATHS.contains(request.getRequestURI()));
     }
 
     @Override

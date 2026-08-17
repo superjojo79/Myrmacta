@@ -149,8 +149,8 @@ public class SecurityConfig {
                         .csrfTokenRequestHandler(csrfHandler))
                 .addFilterAfter(new CsrfCookieEagerLoadFilter(), BasicAuthenticationFilter.class)
                 .addFilterAfter(tenantResolutionFilter, SecurityContextHolderFilter.class)
-                // Rejette une génération de document trop volumineuse avant bufférisation —
-                // seul POST /api/documents/generate est concerné (voir shouldNotFilter).
+                // Rejette un body trop volumineux avant bufférisation —
+                // POST /api/documents/generate, /preview et /preview/pdf (voir shouldNotFilter).
                 .addFilterBefore(
                         new DocumentGenerationBodySizeLimitFilter(documentGenerationProperties.maxBodyBytes()),
                         SecurityContextHolderFilter.class)

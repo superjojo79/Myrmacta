@@ -41,10 +41,12 @@ import com.flowforge.domain.dossier.usecase.SearchDossiersUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.UpdateDossierFieldsUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.UpdateDossierStatusUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.UpdateDossierTypeUseCaseImpl;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
+@EnableConfigurationProperties(AttachmentUploadProperties.class)
 public class DossierConfig {
 
     @Bean

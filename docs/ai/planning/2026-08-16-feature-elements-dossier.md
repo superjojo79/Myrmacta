@@ -16,9 +16,9 @@ sequencing: layered
 ## Milestones
 **What are the major checkpoints?**
 
-- [ ] **M1 — Domaine** : `ElementType` élargi, garde de statut + validation par type dans
+- [x] **M1 — Domaine** : `ElementType` élargi, garde de statut + validation par type dans
   `AddDossierElementUseCaseImpl`, `downloadable` généralisé
-- [ ] **M2 — API REST backend** : 2 nouveaux endpoints d'ajout, généralisation du endpoint de
+- [x] **M2 — API REST backend** : 2 nouveaux endpoints d'ajout, généralisation du endpoint de
   contenu, mapping d'exception, bornes upload (taille/MIME)
 - [ ] **M3 — Frontend** : `ElementsList.vue` avec formulaire "Ajouter" par type, client API,
   correction d'une dérive de typage FE découverte pendant la planification
@@ -32,7 +32,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M1 — Domaine
 
-- [ ] **T1. `ElementType` — 4 nouvelles valeurs**
+- [x] **T1. `ElementType` — 4 nouvelles valeurs**
   - **Outcome :** `domain/dossier/model/ElementType.java` passe de
     `{PRODUCED_DOC}` à `{PRODUCED_DOC, ATTACHMENT, INFORMATION, NOTE, LINK}`. Aucune migration
     Liquibase (colonne `varchar(32)` sans `CHECK`, vérifié en Phase 1).
@@ -40,7 +40,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Validation :** compile.
   - **Tests liés :** —
 
-- [ ] **T2. `AddDossierElementUseCaseImpl` — validation par type + garde de statut**
+- [x] **T2. `AddDossierElementUseCaseImpl` — validation par type + garde de statut**
   - **Outcome :** remplace la garde `Only PRODUCED_DOC is supported in V1` par une validation par
     type : `ATTACHMENT` (storageRef requis, tenant-préfixé — réutilise
     `requireValidStorageRef` existant), `INFORMATION` (metadata non vide), `NOTE`
@@ -56,7 +56,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
     `PRODUCED_DOC` (tests existants).
   - **Tests liés :** `AddDossierElementUseCaseImplTest` — tous scénarios testing § (unit tests).
 
-- [ ] **T3. `DossierElementView.from(...)` — `downloadable` généralisé**
+- [x] **T3. `DossierElementView.from(...)` — `downloadable` généralisé**
   - **Outcome :** `downloadable = (type == PRODUCED_DOC || type == ATTACHMENT) && storageRef
     non vide` (au lieu du seul `PRODUCED_DOC`).
   - **Depends on :** T1
@@ -65,7 +65,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M2 — API REST backend
 
-- [ ] **T4. DTO `AddDossierElementRequest`**
+- [x] **T4. DTO `AddDossierElementRequest`**
   - **Outcome :** `record AddDossierElementRequest(ElementType type, String label,
     Map<String,Object> metadata)` dans `infrastructure/web/dossier/DossierApiDtos.java`, même
     fichier que les autres DTOs `Dossier*Request`.
@@ -73,7 +73,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Validation :** compile.
   - **Tests liés :** —
 
-- [ ] **T5. `DossierController` — `POST /{id}/elements` (JSON)**
+- [x] **T5. `DossierController` — `POST /{id}/elements` (JSON)**
   - **Outcome :** nouvel endpoint pour `INFORMATION`/`NOTE`/`LINK`. Rejette (400,
     `IllegalArgumentException` → géré par le handler générique existant, cohérent avec
     `createRelation`) `type=PRODUCED_DOC`/`ATTACHMENT` avant même d'appeler le use case — message
@@ -84,7 +84,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Validation :** MockMvc.
   - **Tests liés :** MockMvc — 201/400/403/404/409, régression `GET .../elements`.
 
-- [ ] **T6. `DossierElementUploadController` (nouveau, multipart) — `POST /{id}/elements/attachment`**
+- [x] **T6. `DossierElementUploadController` (nouveau, multipart) — `POST /{id}/elements/attachment`**
   - **Outcome :** nouveau contrôleur `infrastructure/web/dossier`, injecte
     `DocumentStoragePort`, `AddDossierElementUseCase`, `TenantProperties`,
     `AccessContextFactory`, propriétés d'allowlist MIME (T9). Valide `file` (présent, taille via
@@ -95,10 +95,15 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
     {"filename": ..., "contentType": ..., "sizeBytes": ...}`. Renvoie `201` + `DossierElementView`.
   - **Depends on :** T2, T9
   - **Validation :** MockMvc multipart.
-  - **Tests liés :** MockMvc — upload réussi, fichier absent, taille hors borne (413), MIME
-    refusé (400), 403/409, `metadata` correct.
+  - **Tests liés :** MockMvc — upload réussi, fichier absent, MIME refusé (400), 403/409,
+    `metadata` correct. Taille hors borne (413) **non couverte en MockMvc** — le contrôleur ne
+    fait volontairement aucune vérification applicative de taille redondante avec
+    `spring.servlet.multipart.max-file-size` (évite les deux bornes divergentes anticipées dans
+    Risks) ; `MockMvcRequestBuilders.multipart(...).file(...)` construit une requête déjà parsée
+    qui ne traverse jamais l'enforcement Tomcat réel — mapping 413 vérifié directement en test
+    unitaire sur `DossierExceptionHandler.handleUploadTooLarge`.
 
-- [ ] **T7. `DossierExceptionHandler` — mapping `InvalidDossierElementException` + `MaxUploadSizeExceededException`**
+- [x] **T7. `DossierExceptionHandler` — mapping `InvalidDossierElementException` + `MaxUploadSizeExceededException`**
   - **Outcome :** ajoute `@ExceptionHandler(InvalidDossierElementException.class)` → 400 (absent
     aujourd'hui pour `web.dossier`, seul `DocumentGenerationExceptionHandler` le gérait côté
     `web.document`) et `@ExceptionHandler(MaxUploadSizeExceededException.class)` → 413.
@@ -107,7 +112,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
     testing doc).
   - **Tests liés :** testing § — mapping 400/413 dédié.
 
-- [ ] **T8. `DossierElementContentController` — généralisation `Content-Type`/nom de fichier**
+- [x] **T8. `DossierElementContentController` — généralisation `Content-Type`/nom de fichier**
   - **Outcome :** sert désormais `PRODUCED_DOC` (inchangé, `application/pdf` en dur, nom
     `<label>.pdf`) **et** `ATTACHMENT` (Content-Type et nom de fichier tirés de
     `metadata.contentType`/`metadata.filename`, fallback `application/octet-stream` /
@@ -117,18 +122,25 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Validation :** MockMvc — non-régression `PRODUCED_DOC` + nouveau cas `ATTACHMENT`.
   - **Tests liés :** testing § — content endpoint, tous les cas listés.
 
-- [ ] **T9. Bornes upload — propriétés Spring + allowlist MIME configurable**
+- [x] **T9. Bornes upload — propriétés Spring + allowlist MIME configurable**
   - **Outcome :** `spring.servlet.multipart.max-file-size=25MB` /
-    `max-request-size=25MB` dans `application.yml` (propriété, pas de filtre dédié — décision
-    design n°3). Nouveau `@ConfigurationProperties(prefix = "app.dossier.attachment")`
-    (`AttachmentUploadProperties`, record `maxSizeBytes`/`allowedContentTypes`, defaults 25 Mo +
-    allowlist du design) dans `infrastructure.config`, même patron que `StorageProperties`.
-    Wiring `DossierConfig` : bean `DossierElementUploadController` (ou `@RestController` +
-    `@ConfigurationPropertiesScan` déjà actif — à vérifier en implémentation) reçoit
-    `AttachmentUploadProperties`.
+    `max-request-size=25MB` + `resolve-lazily: true` dans `application.yml` (propriété, pas de
+    filtre dédié — décision design n°3 ; `resolve-lazily` nécessaire pour que
+    `MaxUploadSizeExceededException` soit levée depuis l'intérieur du contrôleur, dans le scope du
+    `DossierExceptionHandler` `basePackages`-scopé, plutôt que pendant le dispatch avant résolution
+    du handler). Nouveau `@ConfigurationProperties(prefix = "app.dossier.attachment")`
+    (`AttachmentUploadProperties`, record **`allowedContentTypes` seul** — pas de `maxSizeBytes`
+    dupliqué : écarté en cours d'implémentation après avoir constaté que le contrôleur ne doit
+    faire *aucune* vérification de taille applicative redondante avec la config Spring, exactement
+    le risque de double seuil anticipé dans la table Risks) dans `infrastructure.config`, même
+    patron que `StorageProperties`. Wiring `DossierConfig` :
+    `@EnableConfigurationProperties(AttachmentUploadProperties.class)` ;
+    `DossierElementUploadController` est un `@RestController` auto-détecté, pas un bean manuel.
   - **Depends on :** —
-  - **Validation :** contexte Spring monte (IT boot existante) ; test dédié valeurs par défaut.
-  - **Tests liés :** testing § — rejet taille/MIME.
+  - **Validation :** contexte Spring monte (IT boot existante).
+  - **Tests liés :** testing § — rejet MIME (400, MockMvc) ; rejet taille (413) vérifié en
+    isolation sur `DossierExceptionHandler.handleUploadTooLarge` (non couvrable en MockMvc, voir
+    T6).
 
 ### M3 — Frontend
 
@@ -265,7 +277,7 @@ T10 → T11 → T12 → T13 → T15 → T17
 |---|---|
 | Dérive de typage FE déjà présente (`EXTERNAL_REF` au lieu de `LINK`, `INFORMATION` manquant) masque une régression si elle n'est pas corrigée avant d'écrire le nouveau formulaire | T10 dédié, en amont de T11-T13 |
 | Fichier stocké (`store(...)` réussi) puis rejet 409 (dossier clos) ou échec `add(...)` → objet orphelin | Risque déjà accepté pour `PRODUCED_DOC` (design NFR Fiabilité) ; pas de compensation transactionnelle dans cette feature — job de purge futur (TODO §22) |
-| `spring.servlet.multipart.max-file-size` mal alignée avec `AttachmentUploadProperties.maxSizeBytes` (deux bornes de taille distinctes, l'une infra Spring, l'autre applicative) source de confusion sur le message d'erreur retourné | T9 garde les deux bornes identiques (25 Mo) par défaut et documente pourquoi les deux existent (Spring = rejet précoce niveau requête, applicative = message métier cohérent) ; test dédié sur les deux chemins |
+| `spring.servlet.multipart.max-file-size` mal alignée avec une borne applicative dupliquée | **Matérialisé puis éliminé en T9** — la première version du contrôleur vérifiait `file.getSize()` en plus de la config Spring, produisant 400 au lieu du 413 attendu par le design sur un fichier trop volumineux (`upload_tooLarge_returns413` a échoué en run réel : 400 reçu). Corrigé en retirant la vérification applicative — `spring.servlet.multipart.max-file-size`/`max-request-size` reste l'unique source de vérité pour la taille |
 | Allowlist MIME contournable par un `Content-Type` client falsifié (le navigateur/le client HTTP décide de la valeur) | Accepté en V1 — même limitation que tout endpoint upload sans inspection du contenu (magic bytes) ; antivirus/inspection de contenu restent hors scope (TODO §30), pas à trancher silencieusement ici |
 | `DossierElementUploadController` dupliquant de la logique déjà dans `AddDossierElementUseCaseImpl` (validation du `storageRef`) | La validation de forme du `storageRef` reste dans le use case (`requireValidStorageRef`, réutilisé tel quel) ; le contrôleur ne valide que ce qui est spécifique à HTTP/multipart (fichier, MIME, taille) |
 

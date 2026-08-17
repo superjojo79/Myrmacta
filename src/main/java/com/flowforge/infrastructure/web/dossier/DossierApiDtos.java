@@ -2,6 +2,7 @@ package com.flowforge.infrastructure.web.dossier;
 
 import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierPermission;
+import com.flowforge.domain.dossier.model.ElementType;
 import com.flowforge.domain.dossier.model.DossierRelationView;
 import com.flowforge.domain.dossier.model.DossierStatus;
 import com.flowforge.domain.dossier.model.DossierType;
@@ -120,6 +121,8 @@ record DossierListItemResponse(
 }
 
 record CreateDossierRelationRequest(UUID targetDossierId, RelationType type) {}
+
+record AddDossierElementRequest(ElementType type, String label, Map<String, Object> metadata) {}
 
 record DossierRelationResponse(
         UUID id,

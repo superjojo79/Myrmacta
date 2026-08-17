@@ -39,6 +39,15 @@ spring:
   mail:
     host: ${MAIL_HOST:localhost}
     port: ${MAIL_PORT:587}
+  servlet:
+    multipart:
+      max-file-size: ${APP_DOSSIER_ATTACHMENT_MAX_SIZE_MB:25}MB
+      max-request-size: ${APP_DOSSIER_ATTACHMENT_MAX_SIZE_MB:25}MB
+      # Defers multipart parsing until the controller reads the file parameter, so a
+      # MaxUploadSizeExceededException is thrown from inside DossierElementUploadController
+      # instead of during dispatch (handler not yet resolved) — required for the
+      # basePackage-scoped DossierExceptionHandler @ExceptionHandler to catch it (design T7/T9).
+      resolve-lazily: true
   security:
     oauth2:
       client:
@@ -107,6 +116,12 @@ app:
       bucket: ${APP_STORAGE_S3_BUCKET:}
       region: ${APP_STORAGE_S3_REGION:us-east-1}
       endpoint: ${APP_STORAGE_S3_ENDPOINT:}
+  dossier:
+    attachment:
+      # Taille max : app.storage n'a pas de borne dédiée, la seule limite est
+      # spring.servlet.multipart.max-file-size/max-request-size ci-dessus — une seule source de
+      # vérité, pas de second seuil applicatif à garder synchronisé.
+      allowed-content-types: ${APP_DOSSIER_ATTACHMENT_ALLOWED_TYPES:application/pdf,image/png,image/jpeg,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain}
       access-key-id: ${APP_STORAGE_S3_ACCESS_KEY:}
       secret-access-key: ${APP_STORAGE_S3_SECRET_KEY:}
 

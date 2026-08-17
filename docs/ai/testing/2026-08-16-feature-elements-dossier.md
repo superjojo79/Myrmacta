@@ -66,8 +66,12 @@ inline testée via le contrôleur)
 - [ ] `GET /api/dossier-elements/{id}/content` sur un `PRODUCED_DOC` → **non-régression**, toujours
       `application/pdf`
 - [ ] `GET /api/dossier-elements/{id}/content` sur `INFORMATION`/`NOTE`/`LINK` →
-      `InvalidDossierElementException` → 400 ("no downloadable content", comportement déjà
-      existant pour un élément sans `storageRef`)
+      `InvalidDossierElementException` → **409** ("no downloadable content" — corrigé en Phase 5,
+      c'est le comportement déjà existant et testé, `DossierElementContentApiTest`, pas 400 comme
+      indiqué initialement ; `DocumentGenerationExceptionHandler` mappe `InvalidDossierElementException`
+      → 409 pour ce contrôleur précis, différent du mapping 400 posé pour `DossierController`/
+      `DossierElementUploadController` dans `DossierExceptionHandler` — deux contrôleurs, deux
+      advices, pas une incohérence)
 - [ ] `GET /api/dossiers/{id}/elements` — liste mixte des 5 types, `downloadable` correct pour
       chacun
 - [ ] `InvalidDossierElementException` levée depuis `DossierController`/

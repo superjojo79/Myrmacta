@@ -5,6 +5,8 @@ import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierElementView;
 import com.flowforge.domain.dossier.model.DossierRelation;
 import com.flowforge.domain.dossier.model.DossierRelationView;
+import com.flowforge.domain.dossier.model.ElementType;
+import com.flowforge.domain.dossier.port.in.AddDossierElementUseCase;
 import com.flowforge.domain.dossier.port.in.CreateDossierRelationUseCase;
 import com.flowforge.domain.dossier.port.in.CreateDossierUseCase;
 import com.flowforge.domain.dossier.port.in.GetDossierUseCase;
@@ -39,6 +41,7 @@ public class DossierController {
     private final CreateDossierUseCase createDossierUseCase;
     private final GetDossierUseCase getDossierUseCase;
     private final ListDossierElementsUseCase listDossierElementsUseCase;
+    private final AddDossierElementUseCase addDossierElementUseCase;
     private final UpdateDossierStatusUseCase updateDossierStatusUseCase;
     private final UpdateDossierFieldsUseCase updateDossierFieldsUseCase;
     private final SearchDossiersUseCase searchDossiersUseCase;
@@ -51,6 +54,7 @@ public class DossierController {
             CreateDossierUseCase createDossierUseCase,
             GetDossierUseCase getDossierUseCase,
             ListDossierElementsUseCase listDossierElementsUseCase,
+            AddDossierElementUseCase addDossierElementUseCase,
             UpdateDossierStatusUseCase updateDossierStatusUseCase,
             UpdateDossierFieldsUseCase updateDossierFieldsUseCase,
             SearchDossiersUseCase searchDossiersUseCase,
@@ -61,6 +65,7 @@ public class DossierController {
         this.createDossierUseCase = createDossierUseCase;
         this.getDossierUseCase = getDossierUseCase;
         this.listDossierElementsUseCase = listDossierElementsUseCase;
+        this.addDossierElementUseCase = addDossierElementUseCase;
         this.updateDossierStatusUseCase = updateDossierStatusUseCase;
         this.updateDossierFieldsUseCase = updateDossierFieldsUseCase;
         this.searchDossiersUseCase = searchDossiersUseCase;
@@ -126,6 +131,28 @@ public class DossierController {
             @PathVariable UUID id,
             Authentication authentication) {
         return listDossierElementsUseCase.list(id, accessContextFactory.user(authentication));
+    }
+
+    @PostMapping("/{id}/elements")
+    public ResponseEntity<DossierElementView> addElement(
+            @PathVariable UUID id,
+            @RequestBody AddDossierElementRequest request,
+            Authentication authentication) {
+        AccessContext.User actor = accessContextFactory.user(authentication);
+        if (request.type() == null) {
+            throw new IllegalArgumentException("type is required");
+        }
+        if (request.type() == ElementType.PRODUCED_DOC || request.type() == ElementType.ATTACHMENT) {
+            throw new IllegalArgumentException(
+                    "type " + request.type() + " must be added via its dedicated endpoint");
+        }
+        var element = addDossierElementUseCase.add(
+                new AddDossierElementUseCase.AddCommand(
+                        id, request.type(), request.label(), null, request.metadata(), actor.userId(), null),
+                actor);
+        return ResponseEntity
+                .created(URI.create("/api/dossiers/" + id + "/elements/" + element.id()))
+                .body(DossierElementView.from(element));
     }
 
     @GetMapping("/{id}/relations")

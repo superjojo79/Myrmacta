@@ -44,9 +44,10 @@ public class DossierElementContentController {
     public ResponseEntity<byte[]> content(@PathVariable UUID id, Authentication authentication) {
         DossierElement element =
                 getDossierElementUseCase.get(id, accessContextFactory.user(authentication));
-        if (element.type() != ElementType.PRODUCED_DOC
-                || element.storageRef() == null
-                || element.storageRef().isBlank()) {
+        boolean downloadable = (element.type() == ElementType.PRODUCED_DOC || element.type() == ElementType.ATTACHMENT)
+                && element.storageRef() != null
+                && !element.storageRef().isBlank();
+        if (!downloadable) {
             throw new InvalidDossierElementException("Element has no downloadable content");
         }
         byte[] bytes;
@@ -55,9 +56,21 @@ public class DossierElementContentController {
         } catch (DocumentStorageException ex) {
             throw ex;
         }
-        String filename = sanitizeFilename(element.label()) + ".pdf";
+        String contentType;
+        String filename;
+        if (element.type() == ElementType.ATTACHMENT) {
+            Object metaContentType = element.metadata().get("contentType");
+            Object metaFilename = element.metadata().get("filename");
+            contentType = metaContentType instanceof String s && !s.isBlank()
+                    ? s
+                    : MediaType.APPLICATION_OCTET_STREAM_VALUE;
+            filename = metaFilename instanceof String s && !s.isBlank() ? s : sanitizeFilename(element.label());
+        } else {
+            contentType = MediaType.APPLICATION_PDF_VALUE;
+            filename = sanitizeFilename(element.label()) + ".pdf";
+        }
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
+                .header(HttpHeaders.CONTENT_TYPE, contentType)
                 .header(
                         HttpHeaders.CONTENT_DISPOSITION,
                         ContentDisposition.attachment()

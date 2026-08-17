@@ -267,6 +267,25 @@ class AddDossierElementUseCaseImplTest {
     }
 
     @Test
+    void add_linkWithJavascriptScheme_throws() {
+        // ElementsList.vue renders LINK.metadata.url as a clickable <a href> — a non-http(s)
+        // scheme like javascript: would let a stored LINK execute in a viewer's session on click.
+        UUID dossierId = UUID.randomUUID();
+
+        assertThatThrownBy(() -> useCase.add(
+                        new AddDossierElementUseCase.AddCommand(
+                                dossierId,
+                                ElementType.LINK,
+                                "label",
+                                null,
+                                Map.of("url", "javascript:alert(1)"),
+                                "user",
+                                null),
+                        AccessContext.user("u1", Set.of("DOSSIER_MANAGER"))))
+                .isInstanceOf(InvalidDossierElementException.class);
+    }
+
+    @Test
     void add_humanElementOnClosedDossier_throwsConflict() {
         UUID dossierId = UUID.randomUUID();
         when(dossierRepository.findById(dossierId)).thenReturn(Optional.of(dossier(dossierId, DossierStatus.CLOTURE)));

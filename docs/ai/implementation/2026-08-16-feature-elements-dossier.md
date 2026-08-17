@@ -81,8 +81,14 @@ Aucun nouveau package. Fichiers créés/modifiés :
   `DossierAccessGuard.requireEditable(id, actor)` appelé avant
   `DocumentStoragePort.store(...)`, pour qu'un utilisateur sans `EDIT` ne
   cause jamais l'écriture d'un fichier avant son rejet en 403.
-  `AddDossierElementUseCase` revalide la même ACL en interne (bon marché,
-  en mémoire) — pas une seconde source de vérité.
+  `AddDossierElementUseCase` revalide la même ACL en interne — vérifié en
+  Phase 9 que ce n'est **pas** gratuit comme d'abord documenté :
+  `AddDossierElementUseCaseImpl.add()` refait son propre `findById`, et
+  `DossierAccessPolicy.assertCanEdit` interroge elle-même
+  `DossierTypeAclRepository` (sauf acteur `TENANT_ADMIN`/`WORKFLOW_ADMIN`).
+  Coût réel : un `findById` + une requête ACL indexée en plus par upload,
+  pas un vrai second I/O de fichier — accepté, même politique/règle des
+  deux côtés, pas une seconde source de vérité.
 - **Taille d'upload — une seule source de vérité :** `spring.servlet
   .multipart.max-file-size`/`max-request-size` (+ `resolve-lazily: true`,
   nécessaire pour que `MaxUploadSizeExceededException` remonte depuis
@@ -231,3 +237,82 @@ juste après cette section).
 (bornes de taille dupliquées, convergence avec la session parallèle) ont
 été détectés et corrigés pendant l'implémentation elle-même, pas laissés
 en dette. Prêt pour Phase 9 (`dev-review`).
+
+## Phase 9 — Revue de code finale (holistique)
+
+**Méthode :** relecture fraîche des fichiers de production (pas seulement
+des diffs), traçage des appelants pour les signatures changées
+(`DossierController` constructeur — aucune instanciation manuelle en test,
+uniquement via le contexte Spring), recherche de motifs `console.log`/
+`System.out.println`/`TODO`/`FIXME`/`debugger` sur tout le diff (aucun),
+comparaison avec `DossierElementContentApiTest`/`DossierApiTest` pour la
+cohérence des patrons de test, vérification qu'`ElementsList` n'a qu'un
+seul appelant (`DossierDetailView.vue`).
+
+**Trouvé et corrigé (bloquant, sécurité) :** `AddDossierElementUseCaseImpl
+.isAbsoluteUri` acceptait n'importe quel schéma d'URI absolue pour `LINK`,
+y compris `javascript:`. `ElementsList.vue` rend `LINK.metadata.url` en
+`<a href>` cliquable (`target="_blank"`) — un acteur disposant de `EDIT`
+sur le type de dossier aurait pu stocker un `LINK` dont le clic exécute du
+JavaScript dans la session d'un autre utilisateur consultant le même
+dossier (stored-XSS via un vecteur non-HTML). Aucune interpolation
+`v-html` n'est utilisée nulle part dans le nouveau code frontend (vérifié
+par grep) — le seul vecteur restant était le schéma d'URI. Corrigé en
+restreignant `isAbsoluteUri` aux schémas `http`/`https` ; test dédié
+ajouté (`add_linkWithJavascriptScheme_throws`). N'affecte pas le non-goal
+"aucune résolution serveur de `LINK`" — c'est une validation de forme,
+pas une résolution.
+
+**Trouvé et corrigé (mineur, exactitude de la documentation) :** le
+commentaire de code et l'implementation doc affirmaient que la
+revalidation ACL dans `AddDossierElementUseCaseImpl` (après le
+`DossierAccessGuard.requireEditable` du contrôleur) était [1]"bon marché,
+en mémoire". Vérifié faux par lecture de `DossierAccessPolicy.assertCanEdit`
+: elle interroge `DossierTypeAclRepository` (sauf acteur
+`TENANT_ADMIN`/`WORKFLOW_ADMIN`), et `AddDossierElementUseCaseImpl.add()`
+refait son propre `findById`. Corrigé aux deux endroits (commentaire Java
++ § Implementation Notes) pour décrire le coût réel : un `findById` + une
+requête ACL indexée en plus par upload — accepté, mais plus précisément
+documenté.
+
+**Observations non-bloquantes (pas introduites par cette feature) :**
+- `INFORMATION` côté frontend n'accepte qu'une seule paire clé/valeur par
+  ajout (`AddElementDialog.vue`), alors que le concept documenté est un
+  "bloc de données structurées" plus général. Le design ne spécifiait pas
+  de cardinalité, et aucun scénario de testing doc n'exige plusieurs
+  paires — traité comme une simplification acceptable de V1, pas un écart
+  de scope. Le backend, lui, accepte déjà n'importe quel `Map<String,Object>`
+  non vide ; un futur besoin multi-paires n'exigerait qu'un changement
+  frontend.
+- `DossierController` a maintenant 11 dépendances injectées au
+  constructeur (10 avant cette feature) — tendance déjà relevée comme
+  dette préexistante par la feature précédente (`patch-dossier-fields`),
+  accentuée mais pas causée ici.
+
+**Sécurité (bilan) :** ACL réutilisée + durcie par l'ordre ACL-avant-storage
+sur l'endpoint d'upload ; aucune nouvelle surface SSRF (`LINK` jamais
+résolu serveur) ; schéma d'URI restreint http(s) (trouvaille ci-dessus,
+corrigée) ; aucune fuite de `storageRef` dans les réponses API
+(`DossierElementView` ne l'expose jamais, comportement hérité inchangé) ;
+isolation tenant inchangée.
+
+**Checklist finale :**
+- [x] Correspondance avec le design — vérifiée fichier par fichier
+      (Phase 7), un écart de sécurité trouvé et corrigé ici (Phase 9), pas
+      un écart de design.
+- [x] Aucun trou de logique bloquant restant.
+- [x] Sécurité traitée (ACL durcie, pas de nouvelle surface SSRF, schéma
+      d'URI restreint, isolation tenant).
+- [x] Points d'intégration vérifiés (wiring Spring, routes existantes non
+      affectées, `ElementsList` à appelant unique).
+- [x] Tests couvrent les changements (729 backend + 87 frontend Vitest +
+      20 Playwright, tous verts après le correctif de sécurité).
+- [x] Docs à jour (les 7 docs `ai-devkit`, `DEFERRED-FEATURES.md`,
+      `TODO.md`).
+
+**Verdict :** prête à pousser. Aucune PR créée — en attente d'une demande
+explicite de l'utilisateur.
+
+[1]: Formulation initialement reprise telle quelle d'un message de commit
+d'une session parallèle sur la même feature, sans revérification contre le
+code réel — corrigée ici après vérification.

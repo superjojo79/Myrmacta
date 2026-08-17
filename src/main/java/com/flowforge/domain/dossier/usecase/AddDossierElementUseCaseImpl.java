@@ -105,9 +105,15 @@ public final class AddDossierElementUseCaseImpl implements AddDossierElementUseC
         return command.metadata() == null ? null : command.metadata().get(key);
     }
 
+    // Restricted to http(s): ElementsList.vue renders LINK.metadata.url as a clickable <a href>,
+    // so a scheme like javascript: would let anyone with EDIT on the dossier type store a link
+    // that executes in a viewer's session on click. LINK is never fetched server-side either way;
+    // this only tightens what counts as a "valid absolute URI" for this element type.
     private static boolean isAbsoluteUri(String value) {
         try {
-            return new URI(value.trim()).isAbsolute();
+            URI uri = new URI(value.trim());
+            String scheme = uri.getScheme();
+            return uri.isAbsolute() && ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme));
         } catch (URISyntaxException e) {
             return false;
         }

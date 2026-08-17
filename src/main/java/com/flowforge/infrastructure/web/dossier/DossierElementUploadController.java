@@ -57,8 +57,9 @@ public class DossierElementUploadController {
             Authentication authentication) {
         AccessContext.User actor = accessContextFactory.user(authentication);
         // ACL checked before any storage write, so a caller without EDIT on this dossier's type
-        // never causes an object to be stored just to be rejected afterwards — AddDossierElementUseCase
-        // re-checks the same ACL internally (cheap, in-memory), so this is not a second source of truth.
+        // never causes an object to be stored just to be rejected afterwards. AddDossierElementUseCase
+        // re-checks the same ACL internally, which costs one extra findById + ACL query — accepted
+        // trade-off, not a second source of truth (same policy, same rule).
         accessGuard.requireEditable(id, actor);
         if (file == null || file.isEmpty()) {
             throw new InvalidDossierElementException("file is required");

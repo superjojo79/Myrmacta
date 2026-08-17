@@ -211,7 +211,12 @@ endpoints d'ajout, `assertCanView` sur lecture/liste/téléchargement (déjà le
    ressources).
 4. **`LINK` jamais résolu côté serveur.** Élimine par construction toute nouvelle surface SSRF —
    pas de `RestrictedResourceUserAgent`/`OutboundUrlGuard` à étendre à ce type. Seule une
-   validation de forme (URI bien formée) est faite côté serveur.
+   validation de forme est faite côté serveur : URI absolue **restreinte aux schémas `http`/
+   `https`** (durci en Phase 9/revue de code — une première version acceptait tout schéma d'URI
+   absolue ; `ElementsList.vue` rend `LINK.metadata.url` en `<a href>` cliquable, donc un schéma
+   `javascript:` aurait permis à quiconque dispose de `EDIT` sur le type de dossier de stocker un
+   lien exécutant du JS dans la session d'un autre utilisateur au clic — un vecteur de stored-XSS
+   via un contenu jamais interprété comme du HTML mais rendu comme un lien cliquable).
 5. **Pas de schéma de validation pour `INFORMATION`** (contrairement à `FieldDefinition` sur
    `DossierType`) — cohérent avec la nature "libre" documentée dans l'analyse doc ; seule une
    borne de taille anti-abus s'applique (NFR).

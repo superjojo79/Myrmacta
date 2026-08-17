@@ -2,7 +2,7 @@
 phase: implementation
 title: Implementation Guide
 description: Technical implementation notes, patterns, and code guidelines
-status: draft
+status: completed
 created: 2026-08-17
 updated: 2026-08-17
 feature: preview-documents
@@ -115,3 +115,34 @@ HTML = Thymeleaf only. PDF on-demand. Debounce + abort. Pas de store.
 - Bean `previewDocumentUseCase` dans `DocumentConfig` (`MAX_HTML_BYTES`).
 - Tests : `PreviewDocumentUseCaseImplTest` (11 cas).
 - Écart design : aucun.
+
+### T4–T8 (M2)
+
+- `PrintPreviewHtml` : fragment → `.page` ; document complet → `<style>`
+  dans `<head>` (créé au besoin).
+- Filtre taille : égalités exactes generate / preview / preview/pdf.
+- `SlidingWindowRateLimiter` extrait ; `DocumentPreviewHtmlRateLimiter`
+  instance séparée ; `app.document.preview.rate-limit-per-minute=120`.
+- Gate live TA avant limiter ; 403 Spring `AccessDeniedException`.
+- `POST /preview` (`text/html`) et `/preview/pdf` (`inline; filename="preview.pdf"`).
+
+### T9–T13 (M3–M4)
+
+- `api/documents.ts`, `useTemplatePreview` (400 ms, abort, revoke URL),
+  `TemplatePreviewPanel` (iframe `sandbox=""`, JSON local),
+  `TemplatesAdminView` composition.
+- Playwright E2E-20 ; mocks `/preview/pdf` avant `/preview` dans
+  `mockSession`. `npm run build` requis avant `vite preview` (port 4173).
+
+### T14
+
+- Docs cochés ; D-PREVIEW marqué livré dans `DEFERRED-FEATURES.md`.
+- Écarts : aucun. Hors scope respecté.
+
+## Phase 7 / 9 — alignment
+
+- Design D-SOURCE / D-AUTHZ B / D-RATE-SPLIT C / D-CSS-WEB respectés.
+- `GenerateDocumentUseCase` et `POST /generate` inchangés (Disposition non inline).
+- Pas de Liquibase, pas de store, pas de `v-html`.
+- Finding bloquant : aucun. Suivi non bloquant : preview depuis le détail
+  dossier (hors V1).

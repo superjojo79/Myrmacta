@@ -119,7 +119,7 @@ Ordre indicatif aligné sur l’analyse et les dépendances techniques :
 | — | `notifications` | **Complete** (main) |
 | — | `visualisation-workflow` | **Complete** (main) — API diagram/history/tasks/reassign + participants + SSE |
 | — | `frontend` | **Complete** (main, PR #38) — vague 1 : socle + auth(`sub`) + CRUD parcours dossier/viz/SSE ; vague 2 : admin types/ACL/templates/connectors/WF configs ; UX = maquette HTML (décision n° 27) |
-| 1 | `preview-documents` | **En cours** (`cursor/preview-documents-dbc9`) — lot D-PREVIEW (HTML temps réel + PDF inline, admin templates). Différé depuis `templates-documents` / `generation-documents` / `frontend`. |
+| — | `preview-documents` | **Complete** (`cursor/preview-documents-dbc9`) — lot D-PREVIEW livré : HTML temps réel + PDF inline, admin templates, D-AUTHZ B, D-RATE-SPLIT C. |
 
 ---
 

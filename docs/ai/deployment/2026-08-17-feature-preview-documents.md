@@ -2,7 +2,7 @@
 phase: deployment
 title: Deployment Strategy
 description: Define deployment process, infrastructure, and release procedures
-status: draft
+status: ready
 created: 2026-08-17
 updated: 2026-08-17
 feature: preview-documents

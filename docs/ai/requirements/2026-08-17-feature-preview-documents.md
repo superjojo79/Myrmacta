@@ -134,20 +134,20 @@ d'aperçu pendant la saisie.
 ## Success Criteria
 **How will we know when we're done?**
 
-- [ ] `POST /api/documents/preview` : 200 `text/html` ; CSS print-preview
+- [x] `POST /api/documents/preview` : 200 `text/html` ; CSS print-preview
       présent ; aucun appel `DocumentStoragePort`.
-- [ ] `POST /api/documents/preview/pdf` : 200 `application/pdf` ;
+- [x] `POST /api/documents/preview/pdf` : 200 `application/pdf` ;
       `Content-Disposition: inline` ; commence par `%PDF` ; aucun store.
-- [ ] Live `htmlContent` évalué sans passer par `ResolveDocumentTemplateUseCase`.
-- [ ] `templateKey` sans `htmlContent` suit la cascade ACTIVE existante.
-- [ ] Authz D-AUTHZ B : TA live → 200 ; WA/DM live → 403 ; TA/WA/DM
+- [x] Live `htmlContent` évalué sans passer par `ResolveDocumentTemplateUseCase`.
+- [x] `templateKey` sans `htmlContent` suit la cascade ACTIVE existante.
+- [x] Authz D-AUTHZ B : TA live → 200 ; WA/DM live → 403 ; TA/WA/DM
       `templateKey` seul → 200 ; VIEWER → 403 ; anonyme → 401.
-- [ ] Rate limit + taille max étendus aux deux chemins preview.
-- [ ] Admin templates : aperçu HTML après saisie (debounce) + bouton PDF.
-- [ ] Iframe HTML `sandbox` (pas de scripts).
-- [ ] `./mvnw verify` vert ; Vitest vert ; Playwright vert (nouveau scénario
+- [x] Rate limit + taille max étendus aux deux chemins preview.
+- [x] Admin templates : aperçu HTML après saisie (debounce) + bouton PDF.
+- [x] Iframe HTML `sandbox` (pas de scripts).
+- [x] `./mvnw verify` vert ; Vitest vert ; Playwright vert (nouveau scénario
       admin templates + mocks preview).
-- [ ] `DEFERRED-FEATURES.md` : D-PREVIEW marqué livré.
+- [x] `DEFERRED-FEATURES.md` : D-PREVIEW marqué livré.
 
 ## Constraints & Assumptions
 

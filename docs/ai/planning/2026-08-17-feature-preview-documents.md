@@ -2,7 +2,7 @@
 phase: planning
 title: Project Planning & Task Breakdown
 description: Break down work into actionable tasks and estimate timeline
-status: ready
+status: done
 created: 2026-08-17
 updated: 2026-08-17
 feature: preview-documents
@@ -10,6 +10,9 @@ sequencing: layered
 phase4: 2026-08-17
 phase5: 2026-08-17
 phase6: 2026-08-17
+phase7: 2026-08-17
+phase8: 2026-08-17
+phase9: 2026-08-17
 design_aligned: 2026-08-17
 ---
 
@@ -21,10 +24,10 @@ Plan initial Phase 4, calé sur requirements `reviewed` et design `reviewed`
 ## Milestones
 
 - [x] **M1 — Domaine** : `PreviewDocumentUseCase` + `isLive()` (sans rôles)
-- [ ] **M2 — API REST** : wrap CSS, filtre taille, limiter HTML 120/min,
+- [x] **M2 — API REST** : wrap CSS, filtre taille, limiter HTML 120/min,
       endpoints + gate live TA, PDF sur limiter generate
-- [ ] **M3 — Frontend** : client, composable debounce, panneau, admin
-- [ ] **M4 — Preuves & docs** : verify + Vitest + Playwright, DEFERRED
+- [x] **M3 — Frontend** : client, composable debounce, panneau, admin
+- [x] **M4 — Preuves & docs** : verify + Vitest + Playwright, DEFERRED
 
 ## Task Breakdown
 
@@ -57,14 +60,14 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M2 — API REST
 
-- [ ] **T4. `PrintPreviewHtml` (TDD)**
+- [x] **T4. `PrintPreviewHtml` (TDD)**
   - **Outcome :** CSS analyse 07 ; fragment → `.page` ; document complet →
     `<style>` dans `<head>`.
   - **Depends on :** —
   - **Validation :** `PrintPreviewHtmlTest`.
   - **Tests liés :** testing § `PrintPreviewHtml`.
 
-- [ ] **T5. Filtre taille — matcher preview**
+- [x] **T5. Filtre taille — matcher preview**
   - **Outcome :** `DocumentGenerationBodySizeLimitFilter` : remplacer le
     `PATH` unique par un ensemble d'égalités exactes —
     `/api/documents/generate` | `/api/documents/preview` |
@@ -78,7 +81,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
     (preview, preview/pdf, generate, other path).
   - **Tests liés :** testing § filter (4 cas).
 
-- [ ] **T6. Limiter HTML dédié (D-RATE-SPLIT C)**
+- [x] **T6. Limiter HTML dédié (D-RATE-SPLIT C)**
   - **Outcome :** `DocumentPreviewProperties` prefix
     `app.document.preview` ; `application.yml` frère de `generate` :
     `preview.rate-limit-per-minute: 120`. `@EnableConfigurationProperties`
@@ -96,7 +99,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
     `@TestPropertySource` limites = 2 (pas 120 POST en CI).
   - **Tests liés :** testing § D-RATE-SPLIT (les deux cas intégration).
 
-- [ ] **T7. Gate live D-AUTHZ B (contrôleur, avant limiter)**
+- [x] **T7. Gate live D-AUTHZ B (contrôleur, avant limiter)**
   - **Outcome :** helper web : si `command.isLive()` et pas
     `ROLE_TENANT_ADMIN` → `org.springframework.security.access.AccessDeniedException`
     (« Live preview requires TENANT_ADMIN ») **avant** `tryConsume` et use
@@ -105,7 +108,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Validation :** MockMvc T8 (WA/DM live 403 ; DM live+key 403).
   - **Tests liés :** testing § D-AUTHZ B.
 
-- [ ] **T8. Endpoints `POST /preview` et `/preview/pdf`**
+- [x] **T8. Endpoints `POST /preview` et `/preview/pdf`**
   - **Outcome :** `DocumentGenerationController` : record `PreviewRequest` ;
     même `@PreAuthorize` que generate ; ordre parse → gate T7 → limiter
     (HTML T6 / PDF generate) → use case → `PrintPreviewHtml` si HTML ;
@@ -120,7 +123,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M3 — Frontend
 
-- [ ] **T9. Client `frontend/src/api/documents.ts`**
+- [x] **T9. Client `frontend/src/api/documents.ts`**
   - **Outcome :** nouveau module (n'existe pas). `previewHtml({ htmlContent,
     variables })` → string HTML (`responseType` text) ;
     `previewPdf(...)` → `Blob`. UI n'envoie pas `templateKey` (TA live).
@@ -129,7 +132,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Depends on :** T8 (contrat)
   - **Validation :** spec Vitest axios.
 
-- [ ] **T10. `useTemplatePreview` (TDD Vitest)**
+- [x] **T10. `useTemplatePreview` (TDD Vitest)**
   - **Outcome :** debounce **400 ms** sur `htmlContent`+`variables` ; abort
     du fetch HTML précédent ; `previewPdf()` on-demand ; revoke object URL
     au remplacement et unmount. JSON variables invalidé **en amont** du
@@ -138,14 +141,14 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Validation :** fake timers.
   - **Tests liés :** testing FE composable / debounce.
 
-- [ ] **T11. `TemplatePreviewPanel.vue`**
+- [x] **T11. `TemplatePreviewPanel.vue`**
   - **Outcome :** iframe `sandbox=""` + `srcdoc` ; bouton « Aperçu PDF » ;
     textarea variables JSON (parse local, erreur sans HTTP).
   - **Depends on :** T10
   - **Validation :** Vitest mount (iframe sandbox, bouton).
   - **Tests liés :** testing FE panneau.
 
-- [ ] **T12. Brancher `TemplatesAdminView`**
+- [x] **T12. Brancher `TemplatesAdminView`**
   - **Outcome :** panneau à côté du formulaire create ; `htmlContent` du
     form en prop. CRUD existant inchangé.
   - **Depends on :** T11
@@ -153,7 +156,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M4 — Preuves & docs
 
-- [ ] **T13. Playwright**
+- [x] **T13. Playwright**
   - **Outcome :** `page.route` `/preview/pdf` **avant** `/preview` ; scénario
     admin templates (saisie → iframe HTML ; clic PDF). Specs existantes
     vertes.
@@ -161,7 +164,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Validation :** `cd frontend && npm run test:e2e`.
   - **Tests liés :** testing § E2E.
 
-- [ ] **T14. Verify + docs de clôture**
+- [x] **T14. Verify + docs de clôture**
   - **Outcome :** `./mvnw verify` ; `npm run test` ; testing doc coché ;
     implementation notes ; `DEFERRED-FEATURES.md` D-PREVIEW livré.
   - **Depends on :** T1–T13
@@ -236,13 +239,10 @@ Phase 7 quand T1–T12 `[x]`. Phase 8/9 après T13–T14.
 
 ## Progress (Phase 6)
 
-M1 livré (T1–T3). Use case domaine sans rôles ; `isLive()` = `htmlContent`
-non blank ; PDF rend l'HTML évalué. Preuve :
-`./mvnw test -Dskip.frontend=true -Dmaven.compiler.release=21 -Dtest=PreviewDocumentUseCaseImplTest`
-— 11 tests, 0 failure. Task tracing indisponible.
+T1–T14 `[x]`. M1–M4 livrés. Écarts design : aucun. Task tracing indisponible.
 
-**Prochaines tâches :** T4 (`PrintPreviewHtml` TDD) · T5 (filtre taille) ·
-T6 (limiter HTML dédié). T4–T6 restent parallèles. Pas de nouveau scope.
+Preuves session : `PreviewDocumentUseCaseImplTest` 11/11 ; M2 MockMvc 33/33 ;
+Vitest 93/93 ; Playwright 21/21 (E2E-20 preview). `./mvnw verify` en T14.
 
 ## Phase 4 — clôture
 

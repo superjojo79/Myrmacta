@@ -2,7 +2,7 @@
 phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
-status: draft
+status: reviewed
 created: 2026-08-17
 updated: 2026-08-17
 feature: preview-documents
@@ -39,55 +39,55 @@ feature: preview-documents
 
 ### `PrintPreviewHtml`
 
-- [ ] fragment → document avec CSS analyse 07 et wrapper `.page`
-- [ ] document complet (`<html>`) → `<style>` injecté, contenu conservé
+- [x] fragment → document avec CSS analyse 07 et wrapper `.page`
+- [x] document complet (`<html>`) → `<style>` injecté, contenu conservé
 
 ### `DocumentGenerationBodySizeLimitFilter`
 
-- [ ] POST `/api/documents/preview` oversized → 413
-- [ ] POST `/api/documents/preview/pdf` oversized → 413
-- [ ] POST `/api/documents/generate` oversized → 413 (non-régression)
-- [ ] autre path oversized → chain continues
+- [x] POST `/api/documents/preview` oversized → 413
+- [x] POST `/api/documents/preview/pdf` oversized → 413
+- [x] POST `/api/documents/generate` oversized → 413 (non-régression)
+- [x] autre path oversized → chain continues
 
 ## Integration Tests
 
 Étendre `DocumentGenerationApiTest` (ou classe sœur `DocumentPreviewApiTest`) :
 
-- [ ] POST `/preview` live `htmlContent` + variable → 200 `text/html` ; body
+- [x] POST `/preview` live `htmlContent` + variable → 200 `text/html` ; body
       contient le texte mergé **et** le CSS print-preview ; `countStoredFiles`
       inchangé
-- [ ] POST `/preview` `templateKey` ACTIVE → 200 ; contenu issu du template
-- [ ] POST `/preview/pdf` → 200 PDF `%PDF` ; `Content-Disposition` contient
+- [x] POST `/preview` `templateKey` ACTIVE → 200 ; contenu issu du template
+- [x] POST `/preview/pdf` → 200 PDF `%PDF` ; `Content-Disposition` contient
       `inline` ; pas de store
-- [ ] POST `/preview` template inconnu → 404
-- [ ] POST `/preview` body vide → 400
-- [ ] `@PreAuthorize` : VIEWER → 403 ; anonyme → 401 (un des deux endpoints)
-- [ ] D-AUTHZ B live : TA + `htmlContent` → 200 ; WA + `htmlContent` → 403 ;
+- [x] POST `/preview` template inconnu → 404
+- [x] POST `/preview` body vide → 400
+- [x] `@PreAuthorize` : VIEWER → 403 ; anonyme → 401 (un des deux endpoints)
+- [x] D-AUTHZ B live : TA + `htmlContent` → 200 ; WA + `htmlContent` → 403 ;
       DM + `htmlContent` → 403 (aucun process / store)
-- [ ] D-AUTHZ B live gagne : DM + `htmlContent` **et** `templateKey` → 403
-- [ ] D-AUTHZ B publié : TA / WA / DM + `templateKey` seul → 200
-- [ ] Thymeleaf cassé → 400
-- [ ] D-RATE-SPLIT HTML : `@TestPropertySource`
+- [x] D-AUTHZ B live gagne : DM + `htmlContent` **et** `templateKey` → 403
+- [x] D-AUTHZ B publié : TA / WA / DM + `templateKey` seul → 200
+- [x] Thymeleaf cassé → 400
+- [x] D-RATE-SPLIT HTML : `@TestPropertySource`
       `app.document.preview.rate-limit-per-minute=2` — 2 POST `/preview`
       OK puis 429 ; un `/generate` intercalé **ne** consomme **pas** ce
       quota HTML. Ne pas envoyer 120 POST en CI.
-- [ ] D-RATE-SPLIT PDF partagé : `@TestPropertySource`
+- [x] D-RATE-SPLIT PDF partagé : `@TestPropertySource`
       `app.document.generate.rate-limit-per-minute=2` — mélange
       `/preview/pdf` + `/generate` (même principal) puis 429 sur l'un
       ou l'autre. Ne pas envoyer 30 POST en CI.
-- [ ] generate existant toujours 200 PDF **sans** `inline` obligatoire
+- [x] generate existant toujours 200 PDF **sans** `inline` obligatoire
       (non-régression Content-Disposition)
 
 ## End-to-End Tests
 
-- [ ] E2E admin templates : ouvrir `/admin/templates`, saisir HTML dans le
+- [x] E2E admin templates : ouvrir `/admin/templates`, saisir HTML dans le
       formulaire, attendre l'aperçu (mock `POST **/api/documents/preview**`
       → HTML), iframe visible
-- [ ] E2E bouton « Aperçu PDF » mocke `POST **/api/documents/preview/pdf**`
+- [x] E2E bouton « Aperçu PDF » mocke `POST **/api/documents/preview/pdf**`
       (blob) — le bouton est cliqué, pas d'erreur UI
-- [ ] Mocks globaux `mockSession` : les nouveaux paths ne tombent pas dans un
+- [x] Mocks globaux `mockSession` : les nouveaux paths ne tombent pas dans un
       catch-all qui casserait les specs existantes
-- [ ] Specs E2E existantes toujours vertes
+- [x] Specs E2E existantes toujours vertes
 
 ## Test Data
 
@@ -109,6 +109,12 @@ cd frontend && npm run test:e2e
 ```
 
 Seuils : Jacoco projet (≥ 80 %) ; Vitest lines ≥ 80 % ; Playwright 0 fail.
+
+## Session evidence (Phase 8)
+
+- `./mvnw test -Dskip.frontend=true -Dmaven.compiler.release=21 -Dtest=PrintPreviewHtmlTest,DocumentGenerationBodySizeLimitFilterTest,DocumentPreviewHtmlRateLimiterTest,DocumentGenerationRateLimiterTest,DocumentPreviewApiTest,DocumentGenerationApiTest` — **33** tests, exit 0.
+- `cd frontend && npm run test` — **93** tests, 34 files, exit 0.
+- `cd frontend && npm run build && npm run test:e2e` — **21** passed (E2E-20 preview), exit 0. Playwright sert `dist/` : rebuild obligatoire après changement FE.
 
 ## Manual Testing
 

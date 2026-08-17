@@ -2,13 +2,12 @@
 phase: design
 title: System Design & Architecture
 description: Define the technical architecture, components, and data models
-status: draft
+status: reviewed
 created: 2026-08-17
 updated: 2026-08-17
 feature: preview-documents
 phase3: 2026-08-17
 requirements_aligned: 2026-08-17
-open_question: D-RATE-SPLIT
 ---
 
 # System Design & Architecture — `preview-documents`
@@ -36,7 +35,8 @@ flowchart TB
     Gate["Live gate — TENANT_ADMIN si isLive"]
     Ctrl[DocumentGenerationController]
     Wrap[PrintPreviewHtml]
-    Limiter[DocumentGenerationRateLimiter]
+    LimiterHtml[DocumentPreviewHtmlRateLimiter 120/min]
+    LimiterPdf[DocumentGenerationRateLimiter 30/min — partagé generate]
     Size[DocumentGenerationBodySizeLimitFilter]
   end
 
@@ -53,7 +53,8 @@ flowchart TB
   Api -->|POST /preview/pdf| Size
   Size --> PreAuth --> Ctrl
   Ctrl --> Gate
-  Gate --> Limiter
+  Gate -->|POST /preview| LimiterHtml
+  Gate -->|POST /preview/pdf| LimiterPdf
   Ctrl --> PreviewUC
   Ctrl -->|HTML only| Wrap
   PreviewUC -->|not live| Resolve
@@ -158,7 +159,8 @@ Erreurs : mappings generate inchangés (`DocumentGenerationExceptionHandler`).
 **Pas de store** : aucun `DocumentStoragePort` (asserté en test).
 
 **Ordre dans la méthode controller :** parse body → `PreviewCommand` →
-gate live → `rateLimiter.tryConsume` → use case → wrap CSS si HTML.
+gate live → limiter (HTML : preview 120/min ; PDF : generate 30/min partagé)
+→ use case → wrap CSS si HTML.
 
 ## Component Breakdown
 
@@ -172,6 +174,9 @@ gate live → `rateLimiter.tryConsume` → use case → wrap CSS si HTML.
 - `DocumentGenerationBodySizeLimitFilter` — `POST` dont l'URI vaut
   `/api/documents/generate` **ou** `/api/documents/preview` **ou**
   `/api/documents/preview/pdf` (égalité, pas un glob trop large)
+- `app.document.preview.rate-limit-per-minute` (défaut 120) + bean limiter
+  HTML dédié (même classe/algorithme que generate, autre instance / fenêtre)
+- `/preview/pdf` réutilise le bean limiter generate existant
 
 ### Frontend
 
@@ -208,7 +213,7 @@ nouveau guard FE.
 | D-AUTHZ-GATE | Où ? | **Contrôleur** (rôles Spring) ; domaine sans `AccessContext` | `TenantAdminGuard` dans le use case document |
 | D-PDF-UX | Bouton | CPU Flying Saucer | Debounce PDF |
 | D-IFRAME | `sandbox=""` | Défense XSS | `v-html` |
-| D-RATE-SPLIT | Quota HTML vs PDF | **Ouvert — voir Questions** | — |
+| D-RATE-SPLIT | Quota HTML vs PDF | **C** — `/preview` HTML 120/min dédié ; `/preview/pdf` partage le 30/min generate | A (tout à 30) ; B (debounce 2 s) |
 
 CSS injecté (analyse 07, réponse HTML seulement) :
 
@@ -236,7 +241,7 @@ Fragment → document + `<div class="page">`. Document complet (`<!DOCTYPE` /
 | UI admin debounce 400 ms + bouton PDF | `useTemplatePreview` + `TemplatePreviewPanel` |
 | Variables filtrées | `DocumentVariableFilter` |
 | Body size 413 | Filtre étendu aux deux paths |
-| Rate limit 429 | **Q2 ci-dessous** — 30/min generate vs debounce 400 ms |
+| Rate limit 429 | D-RATE-SPLIT C : HTML 120/min dédié ; PDF partage generate 30/min |
 | Iframe sandbox | `sandbox=""` |
 | Hexagone | Rôles au web ; Thymeleaf/FS hors domain |
 | Non-goals (generate inchangé, pas de store, pas de détail dossier) | Respectés |
@@ -244,6 +249,8 @@ Fragment → document + `<div class="page">`. Document complet (`<!DOCTYPE` /
 ## Non-Functional Requirements
 
 - **Perf :** HTML = Thymeleaf only. Debounce 400 ms + abort. PDF on-demand.
+  Quota HTML 120/min (400 ms → ~150/min théorique en frappe continue : le
+  429 reste un filet, pas le chemin nominal d'une pause entre frappes).
 - **Sécurité :** CSRF ; D-AUTHZ B (gate avant rendu) ; body size ; iframe
   sandbox ; `RestrictedResourceUserAgent` sur le PDF ; pas de log du HTML /
   variables. Images externes dans `srcdoc` : accepté V1 (l'auteur preview
@@ -254,19 +261,14 @@ Fragment → document + `<div class="page">`. Document complet (`<!DOCTYPE` /
 
 ## Questions & Open Items
 
-### Q2 — D-RATE-SPLIT (bloque la clôture Phase 3)
+**Q2 — D-RATE-SPLIT : clos (2026-08-17), option C.**
 
-`app.document.generate.rate-limit-per-minute` = **30**. Un debounce HTML à
-**400 ms** fait ~150 req/min pendant la saisie → 429 au bout de ~12 s.
-Les requirements disent « réutiliser le rate limiter de generate ».
+- Nouvelle propriété `app.document.preview.rate-limit-per-minute` (défaut
+  **120**). Limiter **dédié** (même algorithme fenêtre in-memory que
+  generate, **autre** compteur / bean).
+- `POST /api/documents/preview/pdf` appelle le limiter **existant** de
+  generate (`app.document.generate.rate-limit-per-minute` = 30, même clé
+  principal, même fenêtre) — un PDF preview compte comme un generate.
+- Filtre taille 256 Kio **partagé** generate + les deux preview.
 
-| Option | Principe | Trade-off |
-|---|---|---|
-| **A** | Même compteur 30/min pour generate + preview HTML/PDF | Conforme au texte D-RATE ; casse D-HTML-UX |
-| **B** | Debounce 2 s pour tenir dans 30/min | UX dégradée vs analyse 07 |
-| **C** (reco) | Mécanisme identique (fenêtre in-memory), **quotas séparés** : HTML `/preview` = **120/min** (comme webhooks) ; `/preview/pdf` **partage** le 30/min de generate (même coût Flying Saucer) | Esprit anti-abus conservé ; debounce 400 ms tenable ; PDF reste cher |
-
-Recommandation : **C**. Nouvelle propriété
-`app.document.preview.rate-limit-per-minute` (défaut 120). Le PDF preview
-appelle le limiter generate existant (même clé principal, même fenêtre).
-Le filtre **taille** 256 Kio reste partagé (D-RATE taille, pas de conflit).
+Aucun autre point ouvert bloquant. Prochaine phase : 4 (plan de tâches).

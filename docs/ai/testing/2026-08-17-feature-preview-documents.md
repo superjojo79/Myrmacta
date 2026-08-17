@@ -67,6 +67,10 @@ feature: preview-documents
 - [ ] D-AUTHZ B live gagne : DM + `htmlContent` **et** `templateKey` → 403
 - [ ] D-AUTHZ B publié : TA / WA / DM + `templateKey` seul → 200
 - [ ] Thymeleaf cassé → 400
+- [ ] D-RATE-SPLIT : 120 POST `/preview` HTML (même principal) puis 429 ; un
+      `/generate` intercalé **ne** consomme **pas** ce quota HTML
+- [ ] D-RATE-SPLIT : 30 POST `/preview/pdf` **ou** mélange pdf+generate
+      (même principal) puis 429 sur l'un ou l'autre
 - [ ] generate existant toujours 200 PDF **sans** `inline` obligatoire
       (non-régression Content-Disposition)
 

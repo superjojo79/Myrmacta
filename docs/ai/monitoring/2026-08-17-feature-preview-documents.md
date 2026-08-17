@@ -15,8 +15,9 @@ pas de métriques Micrometer dédiées.
 
 ## Key Metrics
 
-- Réutiliser implicitement : 429 rate-limit generate/preview (même limiter),
-  413 body size, latence HTTP des deux POST.
+- 429 HTML : quota `app.document.preview.rate-limit-per-minute` (120).
+- 429 PDF preview / generate : quota generate partagé (30).
+- 413 body size (filtre partagé).
 - Âge outbox / jobs Flowable : hors scope (inchangé).
 
 ## Logging Strategy

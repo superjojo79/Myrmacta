@@ -22,9 +22,10 @@ Build existant : `./mvnw verify` (frontend-maven-plugin → `static/`) + job CI
 
 ## Environment Configuration
 
-Réutilise `app.documents.generate.rate-limit-per-minute` et
-`app.documents.generate.max-body-bytes` — les chemins preview y sont soumis.
-Pas de nouvelle propriété obligatoire.
+Réutilise `app.document.generate.max-body-bytes` (filtre taille partagé).
+Nouvelle propriété optionnelle `app.document.preview.rate-limit-per-minute`
+(défaut **120**). `/preview/pdf` continue d'utiliser
+`app.document.generate.rate-limit-per-minute` (30).
 
 ## Deployment Steps
 

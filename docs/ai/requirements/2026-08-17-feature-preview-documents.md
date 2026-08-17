@@ -66,8 +66,9 @@ d'aperçu pendant la saisie.
 
 - Variables d'échantillon (`variables` JSON) pour un rendu réaliste, filtrées
   par `DocumentVariableFilter` (mêmes clés plateforme exclues que generate).
-- Réutiliser rate limiter + plafond de taille déjà posés sur `/generate`
-  (TODO §30 partiel) — étendre le filtre de taille aux chemins preview.
+- Réutiliser le **mécanisme** anti-abus de generate (fenêtre in-memory +
+  filtre taille 256 Kio). **D-RATE-SPLIT = C :** quota HTML `/preview`
+  dédié 120/min ; `/preview/pdf` partage le 30/min de `/generate`.
 - Couverture Jacoco / Vitest projet (≥ 80 % zones touchées) + Playwright
   (contrat API consommé par le SPA).
 
@@ -118,7 +119,8 @@ d'aperçu pendant la saisie.
 - Rendu PDF en échec → 400 `DocumentRenderException` (même mapping generate).
 - `htmlContent` > 5 Mio (même borne que create/update template) → 400.
 - Corps HTTP au-delà de `app.documents.generate.max-body-bytes` → 413 (filtre).
-- Burst au-delà du rate limit generate → 429.
+- Burst HTML au-delà de `app.document.preview.rate-limit-per-minute` (120) →
+  429. Burst PDF preview **ou** generate au-delà de 30/min **cumulés** → 429.
 - `DOSSIER_VIEWER` / anonyme → 403 / 401 (aucun des deux endpoints).
 - `WORKFLOW_ADMIN` / `DOSSIER_MANAGER` avec `htmlContent` non blank → **403**
   (chemin live, D-AUTHZ B), même si `templateKey` est aussi fourni (D-SOURCE :
@@ -174,15 +176,14 @@ d'aperçu pendant la saisie.
 | **D-HTML-UX** | Rafraîchissement HTML | Debounce **400 ms**, iframe `srcdoc` + `sandbox` |
 | **D-PDF-UX** | Rafraîchissement PDF | **Bouton** « Aperçu PDF » (pas à chaque frappe) |
 | **D-CSS** | CSS A4 | Injecté sur la réponse HTML seulement, extrait analyse 07 |
-| **D-RATE** | Abuse | Réutiliser rate limiter + body-size de generate |
+| **D-RATE** | Abuse | Filtre taille partagé ; D-RATE-SPLIT **C** — HTML 120/min dédié ; PDF preview partage generate 30/min |
 | **D-UI** | Surface | `TemplatesAdminView` + `TemplatePreviewPanel` (pas le détail dossier) |
 | **D-ENDPOINTS** | URLs | `POST /api/documents/preview` et `POST /api/documents/preview/pdf` |
 
 ## Questions & Open Items
 
-**Q1 — D-AUTHZ : clos (2026-08-17), option B.** Gate supplémentaire sur le
-chemin live ; pas de nouvel endpoint. Ordre : déterminer la source (D-SOURCE)
-puis appliquer la gate (live → TA).
+**Q1 — D-AUTHZ : clos (2026-08-17), option B.**
+**Q2 — D-RATE-SPLIT : clos (2026-08-17), option C** (détail dans le design).
 
 Aucun autre point ouvert bloquant. Suivi non bloquant (hors V1) : preview
 depuis le détail dossier.

@@ -6,6 +6,7 @@ status: draft
 created: 2026-08-17
 updated: 2026-08-17
 feature: preview-documents
+phase5_m1: 2026-08-17
 ---
 
 # Implementation Guide — `preview-documents`
@@ -103,3 +104,14 @@ HTML = Thymeleaf only. PDF on-demand. Debounce + abort. Pas de store.
 - SSRF PDF : `RestrictedResourceUserAgent` inchangé.
 - 403 live : `MethodSecurityExceptionHandler` (Spring `AccessDeniedException`).
 - Pas de secrets dans les templates preview (même surface admin existante).
+
+## Implementation log
+
+### T1–T3 (M1)
+
+- `PreviewDocumentUseCase` + `PreviewCommand.isLive()` (trim/`isBlank`).
+- `PreviewDocumentUseCaseImpl` : D-SOURCE, `assertHtmlSize`,
+  `DocumentVariableFilter`, `resolveHtml` partagé. Aucun rôle.
+- Bean `previewDocumentUseCase` dans `DocumentConfig` (`MAX_HTML_BYTES`).
+- Tests : `PreviewDocumentUseCaseImplTest` (11 cas).
+- Écart design : aucun.

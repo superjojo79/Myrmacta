@@ -8,6 +8,8 @@ updated: 2026-08-17
 feature: preview-documents
 sequencing: layered
 phase4: 2026-08-17
+phase5: 2026-08-17
+phase6: 2026-08-17
 design_aligned: 2026-08-17
 ---
 
@@ -18,7 +20,7 @@ Plan initial Phase 4, calé sur requirements `reviewed` et design `reviewed`
 
 ## Milestones
 
-- [ ] **M1 — Domaine** : `PreviewDocumentUseCase` + `isLive()` (sans rôles)
+- [x] **M1 — Domaine** : `PreviewDocumentUseCase` + `isLive()` (sans rôles)
 - [ ] **M2 — API REST** : wrap CSS, filtre taille, limiter HTML 120/min,
       endpoints + gate live TA, PDF sur limiter generate
 - [ ] **M3 — Frontend** : client, composable debounce, panneau, admin
@@ -30,7 +32,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M1 — Domaine
 
-- [ ] **T1. Port `PreviewDocumentUseCase` + `PreviewCommand.isLive()`**
+- [x] **T1. Port `PreviewDocumentUseCase` + `PreviewCommand.isLive()`**
   - **Outcome :** `domain/document/port/in/PreviewDocumentUseCase.java` —
     `previewHtml` / `previewPdf` ; record `PreviewCommand` avec
     `isLive()` = `htmlContent` non blank après trim.
@@ -38,16 +40,16 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Validation :** compile.
   - **Tests liés :** couverts via T2.
 
-- [ ] **T2. `PreviewDocumentUseCaseImpl` (TDD)**
+- [x] **T2. `PreviewDocumentUseCaseImpl` (TDD)**
   - **Outcome :** D-SOURCE ; `assertHtmlSize(MAX_HTML_BYTES)` sur live ;
     `DocumentVariableFilter` ; `resolveHtml` partagé. **Aucun** rôle /
     `AccessContext`. `previewPdf` rend l'HTML évalué (pas le wrapper CSS).
   - **Depends on :** T1
   - **Validation :** `PreviewDocumentUseCaseImplTest` (testing § unit use case,
-    9 cas).
+    11 cas, exit 0).
   - **Tests liés :** testing § `PreviewDocumentUseCaseImpl`.
 
-- [ ] **T3. Bean Spring use case**
+- [x] **T3. Bean Spring use case**
   - **Outcome :** `DocumentConfig` câble `PreviewDocumentUseCase` (resolve +
     processor + renderer + `MAX_HTML_BYTES`).
   - **Depends on :** T2
@@ -231,6 +233,16 @@ Phase 5. **Ne pas** enchaîner T1–T14 dans un seul sprint agent sans
 repasser par le rythme phase-par-phase convenu avec l'utilisateur.
 
 Phase 7 quand T1–T12 `[x]`. Phase 8/9 après T13–T14.
+
+## Progress (Phase 6)
+
+M1 livré (T1–T3). Use case domaine sans rôles ; `isLive()` = `htmlContent`
+non blank ; PDF rend l'HTML évalué. Preuve :
+`./mvnw test -Dskip.frontend=true -Dmaven.compiler.release=21 -Dtest=PreviewDocumentUseCaseImplTest`
+— 11 tests, 0 failure. Task tracing indisponible.
+
+**Prochaines tâches :** T4 (`PrintPreviewHtml` TDD) · T5 (filtre taille) ·
+T6 (limiter HTML dédié). T4–T6 restent parallèles. Pas de nouveau scope.
 
 ## Phase 4 — clôture
 

@@ -26,16 +26,16 @@ feature: preview-documents
 
 ### `PreviewDocumentUseCaseImpl`
 
-- [ ] `htmlContent` live → process sans appeler resolve ; HTML évalué retourné
-- [ ] `htmlContent` live + `templateKey` → resolve **non** appelé (live gagne)
-- [ ] `templateKey` seul → resolve + process `template.htmlContent()`
-- [ ] les deux blank → `TemplateValidationException`
-- [ ] template manquant → `TemplateNotFoundException` propagée
-- [ ] `previewPdf` appelle `pdfRenderer.render` avec l'HTML évalué (pas le wrapper CSS)
-- [ ] clés plateforme (`dossierId`, …) absentes du map passé au processor
-- [ ] `variables` null → process avec map vide
-- [ ] `htmlContent` au-delà de `MAX_HTML_BYTES` → `TemplateValidationException`
-- [ ] `htmlContent` blank (espaces) + `templateKey` valide → chemin resolve
+- [x] `htmlContent` live → process sans appeler resolve ; HTML évalué retourné
+- [x] `htmlContent` live + `templateKey` → resolve **non** appelé (live gagne)
+- [x] `templateKey` seul → resolve + process `template.htmlContent()`
+- [x] les deux blank → `TemplateValidationException`
+- [x] template manquant → `TemplateNotFoundException` propagée
+- [x] `previewPdf` appelle `pdfRenderer.render` avec l'HTML évalué (pas le wrapper CSS)
+- [x] clés plateforme (`dossierId`, …) absentes du map passé au processor
+- [x] `variables` null → process avec map vide
+- [x] `htmlContent` au-delà de `MAX_HTML_BYTES` → `TemplateValidationException`
+- [x] `htmlContent` blank (espaces) + `templateKey` valide → chemin resolve
 
 ### `PrintPreviewHtml`
 

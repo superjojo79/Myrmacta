@@ -2,12 +2,10 @@
 phase: design
 title: System Design & Architecture
 description: Define the technical architecture, components, and data models
-status: reviewed
+status: draft
 created: 2026-08-17
 updated: 2026-08-17
 feature: preview-documents
-requirements_aligned: 2026-08-17
-phase3: 2026-08-17
 ---
 
 # System Design & Architecture — `preview-documents`

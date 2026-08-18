@@ -46,7 +46,7 @@ const { html, pdfUrl, loading, error, previewPdf } = useTemplatePreview({
     <p v-else-if="error" class="preview-panel__error">{{ error }}</p>
     <p v-if="loading" class="preview-panel__status">Chargement…</p>
     <iframe class="preview-panel__html" sandbox="" title="Aperçu HTML" :srcdoc="html" />
-    <button type="button" @click="previewPdf">Aperçu PDF</button>
+    <button type="button" :disabled="parseError !== null" @click="previewPdf">Aperçu PDF</button>
     <iframe v-if="pdfUrl" class="preview-panel__pdf" title="Aperçu PDF" :src="pdfUrl" />
   </aside>
 </template>

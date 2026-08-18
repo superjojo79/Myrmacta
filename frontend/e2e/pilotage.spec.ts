@@ -636,3 +636,15 @@ test('E2E-20 template preview html and pdf', async ({ page }) => {
   await page.getByRole('button', { name: 'Aperçu PDF' }).click()
   await expect(page.locator('iframe[title="Aperçu PDF"]')).toBeVisible()
 })
+
+test('E2E-21 invalid variables JSON does not request PDF preview', async ({ page }) => {
+  await mockSession(page)
+  await openApp(page)
+  await page.getByRole('link', { name: 'Templates' }).click()
+  await expect(page.getByRole('heading', { name: 'Templates documents' })).toBeVisible()
+  await page.locator('form textarea').fill('<p>Bonjour</p>')
+  await page.getByLabel('Variables JSON').fill('{not-json')
+  await expect(page.getByText('JSON invalide')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Aperçu PDF' })).toBeDisabled()
+  await expect(page.locator('iframe[title="Aperçu PDF"]')).toHaveCount(0)
+})

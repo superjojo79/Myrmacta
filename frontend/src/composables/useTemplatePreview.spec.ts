@@ -60,15 +60,30 @@ describe('useTemplatePreview', () => {
     wrapper.unmount()
     expect(URL.revokeObjectURL).toHaveBeenCalled()
   })
+
+  it('does not request a PDF when preview is disabled', async () => {
+    const htmlContent = shallowRef('<p>x</p>')
+    const { wrapper, preview } = mountPreview(htmlContent, { enabled: () => false })
+
+    await preview.previewPdf()
+    await flushPromises()
+
+    expect(previewPdf).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
 })
 
-function mountPreview(htmlContent: ReturnType<typeof shallowRef<string>>) {
+function mountPreview(
+  htmlContent: ReturnType<typeof shallowRef<string>>,
+  extra: { enabled?: () => boolean } = {},
+) {
   let preview!: ReturnType<typeof useTemplatePreview>
   const Comp = defineComponent({
     setup() {
       preview = useTemplatePreview({
         htmlContent,
         variables: () => ({}),
+        enabled: extra.enabled,
       })
       return preview
     },

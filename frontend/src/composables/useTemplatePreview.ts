@@ -17,12 +17,16 @@ export function useTemplatePreview(options: {
   let timer: ReturnType<typeof setTimeout> | undefined
   let abort: AbortController | undefined
 
+  function isEnabled(): boolean {
+    return options.enabled === undefined ? true : toValue(options.enabled)
+  }
+
   watch(
     () =>
       [
         toValue(options.htmlContent),
         toValue(options.variables),
-        options.enabled === undefined ? true : toValue(options.enabled),
+        isEnabled(),
       ] as const,
     ([, , enabled]) => {
       if (timer !== undefined) {
@@ -70,6 +74,9 @@ export function useTemplatePreview(options: {
   }
 
   async function requestPdf(): Promise<void> {
+    if (!isEnabled()) {
+      return
+    }
     const source = toValue(options.htmlContent)
     if (!source.trim()) {
       return

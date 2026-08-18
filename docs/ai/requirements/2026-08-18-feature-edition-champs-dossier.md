@@ -101,16 +101,16 @@ réparable que hors UI.
 ## Success Criteria
 **How will we know when we're done?**
 
-- [ ] Le détail affiche un bouton « Enregistrer les champs » pour
+- [x] Le détail affiche un bouton « Enregistrer les champs » pour
       `canEditDossier` sur un dossier non clos.
-- [ ] Un changement de champ envoie `PATCH .../fields` avec uniquement
+- [x] Un changement de champ envoie `PATCH .../fields` avec uniquement
       ce champ + `expectedVersion`.
-- [ ] Viewer : pas de bouton, `DynamicFields` readonly.
-- [ ] `CLOTURE`/`ARCHIVE` : readonly, pas de bouton.
-- [ ] Champ `sensitive` redacté non envoyé si non touché.
-- [ ] Erreur API affichée (ProblemDetail).
-- [ ] Vitest + Playwright verts ; mocks E2E `PATCH .../fields`.
-- [ ] `DEFERRED-FEATURES.md` mis à jour.
+- [x] Viewer : pas de bouton, `DynamicFields` readonly.
+- [x] `CLOTURE`/`ARCHIVE` : readonly, pas de bouton.
+- [x] Champ `sensitive` redacté non envoyé si non touché.
+- [x] Erreur API affichée (ProblemDetail).
+- [x] Vitest + Playwright verts ; mocks E2E `PATCH .../fields`.
+- [x] `DEFERRED-FEATURES.md` mis à jour.
 
 ## Constraints & Assumptions
 

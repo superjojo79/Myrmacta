@@ -4,9 +4,10 @@ title: Implementation Guide
 description: Technical implementation notes, patterns, and code guidelines
 status: completed
 created: 2026-08-17
-updated: 2026-08-17
+updated: 2026-08-18
 feature: preview-documents
 phase5_m1: 2026-08-17
+phase7: 2026-08-18
 ---
 
 # Implementation Guide — `preview-documents`
@@ -137,12 +138,58 @@ HTML = Thymeleaf only. PDF on-demand. Debounce + abort. Pas de store.
 ### T14
 
 - Docs cochés ; D-PREVIEW marqué livré dans `DEFERRED-FEATURES.md`.
-- Écarts : aucun. Hors scope respecté.
+- Écarts bloquants : aucun (détail Phase 7).
 
-## Phase 7 / 9 — alignment
+## Phase 7 — Check Implementation (2026-08-18)
 
-- Design D-SOURCE / D-AUTHZ B / D-RATE-SPLIT C / D-CSS-WEB respectés.
-- `GenerateDocumentUseCase` et `POST /generate` inchangés (Disposition non inline).
-- Pas de Liquibase, pas de store, pas de `v-html`.
-- Finding bloquant : aucun. Suivi non bloquant : preview depuis le détail
-  dossier (hors V1).
+Revue fichier par fichier contre design `reviewed` et requirements
+`reviewed`. Lint feature : docs OK ; worktree `feature-preview-documents`
+MISS attendu (branche Cloud Agent). Task tracing indisponible.
+
+### Intent design (rappel)
+
+Hybride HTML+PDF, D-SOURCE live-gagne, D-AUTHZ B (gate contrôleur),
+D-RATE-SPLIT C (HTML 120 dédié / PDF = generate 30), wrapper CSS web-only,
+pas de store, pas de changement `GenerateDocumentUseCase`.
+
+### Fichier par fichier
+
+| Fichier | Verdict |
+|---|---|
+| `PreviewDocumentUseCase` + `isLive()` | Conforme. Domaine sans Spring. |
+| `PreviewDocumentUseCaseImpl` | D-SOURCE, `assertHtmlSize`, `DocumentVariableFilter`, PDF sans CSS. |
+| `DocumentConfig` | Bean câblé avec `MAX_HTML_BYTES`. Generate inchangé. |
+| `DocumentGenerationController` | Ordre parse → gate → limiter → use case → wrap. Message 403 exact. |
+| `PrintPreviewHtml` | CSS analyse 07 ; fragment `.page` ; document → `<style>` head. |
+| `DocumentGenerationBodySizeLimitFilter` | Égalités exactes generate / preview / preview/pdf. |
+| `DocumentPreviewHtmlRateLimiter` + `SlidingWindowRateLimiter` | Instance séparée ; PDF/generate partagent l'autre bean. |
+| `DocumentPreviewProperties` + `application.yml` | `app.document.preview.rate-limit-per-minute=120`. |
+| `GenerateDocumentUseCaseImpl` | **Aucun diff** vs `main`. |
+| `api/documents.ts` | `htmlContent`+`variables` seulement (UI TA). |
+| `useTemplatePreview` | Debounce 400 ms, abort, revoke URL. |
+| `TemplatePreviewPanel.vue` | iframe `sandbox=""` + `srcdoc` ; pas de `v-html`. |
+| `TemplatesAdminView.vue` | Composition : prop `htmlContent` du form. CRUD inchangé. |
+| Liquibase / `DocumentStoragePort` | Absents du diff preview. |
+
+### Coverage requirements
+
+Tous les success criteria ont un artefact : MockMvc (`DocumentPreviewApiTest`
+13 cas), unitaires use case (11), filtre, `PrintPreviewHtml`, Vitest panneau
+/ composable, Playwright E2E-20.
+
+### Écarts
+
+| Sévérité | Écart | Reco |
+|---|---|---|
+| Basse | Bouton « Aperçu PDF » n'est pas gated par `parseError` : un clic avec JSON invalide POSTe encore les **dernières** variables valides. Le debounce HTML, lui, est coupé (`enabled`). | Désactiver le bouton ou no-op `previewPdf` si `parseError`. Non bloquant V1. |
+| Basse | Message 429 HTML réutilise « Document generation rate limit exceeded ». | Cosmétique. |
+| Info | Filtre 413 ignore le body chunked sans `Content-Length` — **préexistant** generate, documenté sur le filtre. | Inchangé. |
+
+Aucun écart bloquant. Aucune déviation d'architecture (hexagone, rôles au
+web, Thymeleaf/FS hors domain).
+
+### Suites
+
+Phase 8 (`dev-testing`) : confirmer la couverture et les preuves fraîches.
+Phase 9 (`dev-review`) ensuite. Suivi produit hors V1 : preview détail
+dossier.

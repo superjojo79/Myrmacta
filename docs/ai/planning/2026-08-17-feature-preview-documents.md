@@ -4,15 +4,13 @@ title: Project Planning & Task Breakdown
 description: Break down work into actionable tasks and estimate timeline
 status: done
 created: 2026-08-17
-updated: 2026-08-17
+updated: 2026-08-18
 feature: preview-documents
 sequencing: layered
 phase4: 2026-08-17
 phase5: 2026-08-17
 phase6: 2026-08-17
-phase7: 2026-08-17
-phase8: 2026-08-17
-phase9: 2026-08-17
+phase7: 2026-08-18
 design_aligned: 2026-08-17
 ---
 
@@ -239,10 +237,9 @@ Phase 7 quand T1–T12 `[x]`. Phase 8/9 après T13–T14.
 
 ## Progress (Phase 6)
 
-T1–T14 `[x]`. M1–M4 livrés. Écarts design : aucun. Task tracing indisponible.
-
-Preuves session : `PreviewDocumentUseCaseImplTest` 11/11 ; M2 MockMvc 33/33 ;
-Vitest 93/93 ; Playwright 21/21 (E2E-20 preview). `./mvnw verify` en T14.
+T1–T14 `[x]`. M1–M4 livrés. **Phase 7 close (2026-08-18)** : code aligné
+design/requirements ; 2 écarts bas (PDF si JSON invalide ; libellé 429).
+Aucun bloquant. Prochaine phase : **8** (testing / preuves).
 
 ## Phase 4 — clôture
 

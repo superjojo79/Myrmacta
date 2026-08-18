@@ -12,6 +12,7 @@ phase5: 2026-08-17
 phase6: 2026-08-17
 phase7: 2026-08-18
 phase8: 2026-08-18
+phase9: 2026-08-18
 design_aligned: 2026-08-17
 ---
 
@@ -240,9 +241,10 @@ Phase 7 quand T1–T12 `[x]`. Phase 8/9 après T13–T14.
 
 T1–T14 `[x]`. M1–M4 livrés. **Phase 7 close (2026-08-18)** : code aligné
 design/requirements. **Phase 8 close (2026-08-18)** : écart PDF/JSON
-invalide corrigé et testé (Vitest + E2E-21) ; preuves fraîches Vitest 94,
-Playwright 22, `./mvnw verify` 762 Jacoco met. Libellé 429 HTML inchangé
-(cosmétique). Prochaine phase : **9** (`dev-review`).
+invalide corrigé (Vitest + E2E-21). **Phase 9 close (2026-08-18) — READY**
+: revue holistique sans bloquant ; preuves fraîches Vitest 94, Playwright
+22, `./mvnw verify` 762 Jacoco met. Follow-ups basses : libellé 429 HTML,
+iframe PDF sans sandbox (design), course object URL si double-clic PDF.
 
 ## Phase 4 — clôture
 

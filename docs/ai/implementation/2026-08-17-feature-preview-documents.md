@@ -9,6 +9,7 @@ feature: preview-documents
 phase5_m1: 2026-08-17
 phase7: 2026-08-18
 phase8: 2026-08-18
+phase9: 2026-08-18
 ---
 
 # Implementation Guide — `preview-documents`
@@ -191,5 +192,76 @@ web, Thymeleaf/FS hors domain).
 
 ### Suites
 
-**Phase 8 close (2026-08-18).** Phase 9 (`dev-review`) ensuite. Suivi
-produit hors V1 : preview détail dossier.
+**Phase 8 close (2026-08-18).** **Phase 9 close (2026-08-18) — READY.**
+Aucun bloquant. Suivi produit hors V1 : preview détail dossier.
+
+## Phase 9 — Revue de code finale (holistique)
+
+**Méthode :** lint `--feature preview-documents` (docs OK ; git worktree
+`feature-preview-documents` MISS attendu). Diff `origin/main...HEAD`
+(36 fichiers, +2557/−39). Relecture des fichiers de production (pas
+seulement le diff), traçage des appelants, comparaison avec
+`GenerateDocumentUseCaseImpl` / `POST /generate`, grep `v-html` / `TODO` /
+`FIXME` / `System.out` (aucun dans le code preview). Task tracing
+indisponible (`ai-devkit task` unknown command). Branche **0** commit
+derrière `origin/main`.
+
+**Alignement design :** D-SOURCE (`isLive()` gagne), D-AUTHZ B (gate
+contrôleur `ROLE_TENANT_ADMIN` **avant** limiter/use case), D-RATE-SPLIT C
+(limiter HTML **autre** `ConcurrentHashMap` ; PDF partage generate),
+D-CSS-WEB (`PrintPreviewHtml` hors domaine), D-IFRAME (`sandbox=""` +
+`srcdoc`, pas de `v-html`), D-PDF-UX (bouton). `GenerateDocumentUseCaseImpl`
+**aucun diff** vs `main`. Pas de Liquibase, pas de nouvelle dépendance
+Maven/npm, pas de store.
+
+**Appelants :** `PreviewDocumentUseCase` → bean `DocumentConfig` →
+uniquement `DocumentGenerationController`. `PrintPreviewHtml` package-private
+(contrôleur + tests). `TemplatePreviewPanel` → seul
+`TemplatesAdminView`. `useTemplatePreview` → seul le panneau.
+
+### Findings (par sévérité)
+
+Aucun **Critical** / **High** / **Medium**. Aucune chaîne d'attaque.
+
+| Sévérité | Fichier | Issue | Reco |
+|---|---|---|---|
+| Basse | `DocumentGenerationRateLimitExceededException` | 429 HTML réutilise le libellé generate | Cosmétique ; hors V1 |
+| Info | `DocumentGenerationBodySizeLimitFilter` | 413 ignore body chunked sans `Content-Length` | Préexistant generate ; CSRF + session |
+| Basse | `TemplatePreviewPanel.vue` iframe PDF | Pas de `sandbox` sur l'iframe blob PDF | Design : sandbox HTML seulement ; `RestrictedResourceUserAgent` côté rendu |
+| Basse | `useTemplatePreview.requestPdf` | Double-clic concurrent possible (course object URL) | Nice-to-have : ignorer si `loading` |
+| Basse | `toProblemDetail` + `responseType: 'blob'` | 4xx PDF peu lisible (body blob) | Même limite que download pièces jointes |
+
+**Faux positifs :** HTML live Thymeleaf ≠ XSS SPA — auteur = TA (déjà
+autorisé à enregistrer des templates) ; iframe `sandbox=""` ; CSRF header
+axios (`configureHttpClient`). SSRF PDF bloqué par
+`RestrictedResourceUserAgent` (`data:` only) — réutilisé, pas affaibli.
+
+### Sécurité (checklist)
+
+- Secrets : aucun.
+- Authz : `@PreAuthorize` TA\|WA\|DM + gate live TA ; VIEWER 403 ;
+  anonyme 401 (MockMvc). CSRF BFF inchangé.
+- Injection / XSS : pas de `v-html` ; HTML dans `srcdoc` sandboxé.
+- SSRF : PDF via user-agent restreint existant.
+- Exhaustion : filtre 256 Kio ; HTML 120/min dédié ; PDF 30/min partagé.
+- Logging : pas de log `htmlContent` / `variables`.
+- Rollback : revert git, aucun état persistant.
+
+### Checklist finale
+
+- [x] Correspondance design (D-* ci-dessus)
+- [x] Aucun trou de logique bloquant
+- [x] Sécurité traitée (authz B, CSRF, sandbox, SSRF PDF, quotas)
+- [x] Intégrations : generate inchangé ; filtre étendu par égalité exacte
+- [x] Tests : preuves fraîches Phase 9 (ci-dessous)
+- [x] Docs lifecycle + `DEFERRED-FEATURES.md` (`preview-documents` Complete)
+
+**Preuves Phase 9 (2026-08-18, cette session) :**
+
+- `cd frontend && npm run test` — **94** passed, exit 0
+- `cd frontend && npm run build && npm run test:e2e` — **22** passed
+  (E2E-20 + E2E-21), exit 0
+- `./mvnw verify -Dmaven.compiler.release=21` — **762** tests, Failures 0,
+  Jacoco met, BUILD SUCCESS
+
+**Verdict :** READY. PR à marquer prête pour revue humaine.

@@ -39,4 +39,16 @@ describe('DynamicFields', () => {
     const last = wrapper.emitted('update:modelValue')?.at(-1)?.[0] as Record<string, unknown>
     expect(last.priority).toBe('HIGH')
   })
+
+  it('does not apply defaults when applyDefaults is false', () => {
+    setActivePinia(createPinia())
+    const wrapper = mount(DynamicFields, {
+      props: {
+        definitions: defs,
+        modelValue: {},
+        applyDefaults: false,
+      },
+    })
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+  })
 })

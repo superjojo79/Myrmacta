@@ -207,6 +207,36 @@ describe('dossier store', () => {
     expect(store.dossier?.version).toBe(4)
   })
 
+  it('patches fields with expectedVersion from current dossier', async () => {
+    const store = useDossierStore()
+    store.dossier = {
+      id: 'd1',
+      tenantId: 't',
+      reference: 'DOS-1',
+      dossierTypeCode: 'CLAIM',
+      label: 'L',
+      status: 'DRAFT',
+      fields: { priority: 'NORMAL' },
+      currentWorkflowLinkId: null,
+      version: 3,
+      createdBy: 'u',
+      createdAt: '',
+      updatedBy: 'u',
+      updatedAt: '',
+      closedBy: null,
+      closedAt: null,
+    }
+    vi.mocked(dossiersApi.updateDossierFields).mockResolvedValue({
+      ...store.dossier,
+      fields: { priority: 'HIGH' },
+      version: 4,
+    })
+    await store.patchFields({ priority: 'HIGH' })
+    expect(dossiersApi.updateDossierFields).toHaveBeenCalledWith('d1', { priority: 'HIGH' }, 3)
+    expect(store.dossier?.fields).toEqual({ priority: 'HIGH' })
+    expect(store.dossier?.version).toBe(4)
+  })
+
   it('marks diagram unavailable on 409', async () => {
     vi.mocked(workflowsApi.getWorkflowDiagram).mockRejectedValue({
       response: { status: 409, data: { status: 409, detail: 'no PI' } },

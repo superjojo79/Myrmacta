@@ -54,6 +54,18 @@ export async function updateDossierStatus(
   return data
 }
 
+export async function updateDossierFields(
+  id: string,
+  fields: Record<string, unknown>,
+  expectedVersion: number,
+): Promise<Dossier> {
+  const { data } = await axios.patch<Dossier>(`/api/dossiers/${id}/fields`, {
+    fields,
+    expectedVersion,
+  })
+  return data
+}
+
 export async function listDossierRelations(id: string): Promise<DossierRelation[]> {
   const { data } = await axios.get<DossierRelation[]>(`/api/dossiers/${id}/relations`)
   return data

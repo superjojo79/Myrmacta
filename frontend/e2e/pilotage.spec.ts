@@ -102,7 +102,18 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
             workflowKey: 'claimWorkflow',
             active: true,
             allowUnknownFields: false,
-            fieldDefinitions: [],
+            fieldDefinitions: [
+              {
+                name: 'priority',
+                label: 'Priority',
+                type: 'STRING',
+                required: true,
+                defaultValue: 'NORMAL',
+                options: [],
+                group: null,
+                sensitive: false,
+              },
+            ],
           },
         ]),
       })
@@ -122,7 +133,18 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
         workflowKey: 'claimWorkflow',
         active: true,
         allowUnknownFields: false,
-        fieldDefinitions: [],
+        fieldDefinitions: [
+          {
+            name: 'priority',
+            label: 'Priority',
+            type: 'STRING',
+            required: true,
+            defaultValue: 'NORMAL',
+            options: [],
+            group: null,
+            sensitive: false,
+          },
+        ],
       }),
     })
   })
@@ -281,6 +303,24 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify(dossierBody({ status: 'OUVERT', version: 1, currentWorkflowLinkId: linkId })),
+      })
+      return
+    }
+    if (url.includes('/fields') && method === 'PATCH') {
+      const posted = route.request().postDataJSON() as {
+        fields: Record<string, unknown>
+        expectedVersion: number
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(
+          dossierBody({
+            fields: { ...dossierBody().fields, ...posted.fields },
+            version: posted.expectedVersion + 1,
+            currentWorkflowLinkId: linkId,
+          }),
+        ),
       })
       return
     }
@@ -647,4 +687,29 @@ test('E2E-21 invalid variables JSON does not request PDF preview', async ({ page
   await expect(page.getByText('JSON invalide')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Aperçu PDF' })).toBeDisabled()
   await expect(page.locator('iframe[title="Aperçu PDF"]')).toHaveCount(0)
+})
+
+test('E2E-22 manager patches dossier fields from detail', async ({ page }) => {
+  await mockSession(page)
+  await openApp(page)
+  await createAndOpenDossier(page)
+  const fieldsRequest = page.waitForRequest(
+    (req) => req.method() === 'PATCH' && req.url().includes('/fields'),
+  )
+  await page.locator('.dossier-fields-editor input').fill('HIGH')
+  await page.getByRole('button', { name: 'Enregistrer les champs' }).click()
+  const request = await fieldsRequest
+  expect(request.postDataJSON()).toEqual({
+    fields: { priority: 'HIGH' },
+    expectedVersion: 0,
+  })
+  await expect(page.locator('.dossier-fields-editor input')).toHaveValue('HIGH')
+})
+
+test('E2E-23 viewer cannot edit dossier fields', async ({ page }) => {
+  await mockSession(page, { roles: ['DOSSIER_VIEWER'] })
+  await openApp(page)
+  await createAndOpenDossier(page)
+  await expect(page.getByRole('heading', { name: 'Champs' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Enregistrer les champs' })).toHaveCount(0)
 })

@@ -2,10 +2,11 @@
 phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
-status: reviewed
+status: verified
 created: 2026-08-17
-updated: 2026-08-17
+updated: 2026-08-18
 feature: preview-documents
+phase8: 2026-08-18
 ---
 
 # Testing Strategy — `preview-documents`
@@ -18,8 +19,9 @@ feature: preview-documents
   non-persistance, 400/404.
 - Filtre taille : unitaires sur matcher preview.
 - Frontend : composable debounce (fake timers), panneau iframe sandbox,
-  vue admin câblée.
-- E2E Playwright : parcours admin templates, mocks des nouveaux POST.
+  vue admin câblée, JSON invalide → pas d'HTTP HTML **ni** PDF.
+- E2E Playwright : parcours admin templates, mocks des nouveaux POST,
+  E2E-21 JSON invalide.
 - Aligné requirements success criteria et design D-*.
 
 ## Unit Tests
@@ -48,6 +50,15 @@ feature: preview-documents
 - [x] POST `/api/documents/preview/pdf` oversized → 413
 - [x] POST `/api/documents/generate` oversized → 413 (non-régression)
 - [x] autre path oversized → chain continues
+
+### Frontend — `useTemplatePreview` / `TemplatePreviewPanel`
+
+- [x] debounce HTML 400 ms + abort du fetch précédent
+- [x] PDF : createObjectURL + revoke à la 2e requête et au unmount
+- [x] `enabled: false` → `previewPdf()` no-op (aucun HTTP)
+- [x] iframe `sandbox=""` + bouton « Aperçu PDF »
+- [x] JSON invalide → message, pas d'appel `previewHtml` / `previewPdf` ;
+      bouton PDF `disabled`
 
 ## Integration Tests
 
@@ -85,6 +96,8 @@ feature: preview-documents
       → HTML), iframe visible
 - [x] E2E bouton « Aperçu PDF » mocke `POST **/api/documents/preview/pdf**`
       (blob) — le bouton est cliqué, pas d'erreur UI
+- [x] E2E-21 : JSON variables invalide → « JSON invalide », bouton PDF
+      disabled, pas d'iframe PDF
 - [x] Mocks globaux `mockSession` : les nouveaux paths ne tombent pas dans un
       catch-all qui casserait les specs existantes
 - [x] Specs E2E existantes toujours vertes
@@ -110,12 +123,23 @@ cd frontend && npm run test:e2e
 
 Seuils : Jacoco projet (≥ 80 %) ; Vitest lines ≥ 80 % ; Playwright 0 fail.
 
-## Session evidence (Phase 8)
+Couverture Vitest (2026-08-18) : lines **86.68 %** (seuil 80 %). Branches
+globales 74.93 % — `useTemplatePreview` branches 53 % (chemins abort /
+erreur HTTP) ; panneau lignes 19–20 (`JSON objet requis`) non exercées.
+Acceptable V1 : le contrat JSON invalide / PDF gated est couvert.
 
-- `./mvnw test -Dskip.frontend=true -Dmaven.compiler.release=21 -Dtest=PrintPreviewHtmlTest,DocumentGenerationBodySizeLimitFilterTest,DocumentPreviewHtmlRateLimiterTest,DocumentGenerationRateLimiterTest,DocumentPreviewApiTest,DocumentGenerationApiTest` — **33** tests, exit 0.
-- `cd frontend && npm run test` — **93** tests, 34 files, exit 0.
-- `cd frontend && npm run build && npm run test:e2e` — **21** passed (E2E-20 preview), exit 0. Playwright sert `dist/` : rebuild obligatoire après changement FE.
-- `./mvnw verify -Dmaven.compiler.release=21` — **762** tests, Failures 0, Jacoco checks met, BUILD SUCCESS.
+## Session evidence (Phase 8 — 2026-08-18)
+
+Preuves **fraîches** de cette session (pas de cache Phase 7) :
+
+- TDD red : Vitest panneau + composable échouent (PDF encore appelé /
+  bouton non `disabled`) avant le garde `isEnabled()` + `:disabled`.
+- TDD green : `npx vitest run src/composables/useTemplatePreview.spec.ts src/components/document/TemplatePreviewPanel.spec.ts` — **5** passed, exit 0.
+- `cd frontend && npm run test` — **94** tests, 34 files, exit 0.
+- `./mvnw test -Dskip.frontend=true -Dmaven.compiler.release=21 -Dtest=PreviewDocumentUseCaseImplTest,PrintPreviewHtmlTest,DocumentGenerationBodySizeLimitFilterTest,DocumentPreviewHtmlRateLimiterTest,DocumentGenerationRateLimiterTest,DocumentPreviewApiTest,DocumentGenerationApiTest` — **44** tests, Failures 0, BUILD SUCCESS.
+- `cd frontend && npm run build && npm run test:e2e` — **22** passed (E2E-20 + E2E-21), exit 0. Playwright sert `dist/` : rebuild obligatoire après changement FE.
+- `./mvnw verify -Dmaven.compiler.release=21` — **762** tests, Failures 0, Errors 0, Jacoco « All coverage checks have been met », BUILD SUCCESS.
+- `cd frontend && npm run test:coverage` — **94** tests, lines 86.68 %, exit 0.
 
 ## Manual Testing
 

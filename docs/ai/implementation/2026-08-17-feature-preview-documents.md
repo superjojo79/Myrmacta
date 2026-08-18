@@ -8,6 +8,7 @@ updated: 2026-08-18
 feature: preview-documents
 phase5_m1: 2026-08-17
 phase7: 2026-08-18
+phase8: 2026-08-18
 ---
 
 # Implementation Guide — `preview-documents`
@@ -166,8 +167,8 @@ pas de store, pas de changement `GenerateDocumentUseCase`.
 | `DocumentPreviewProperties` + `application.yml` | `app.document.preview.rate-limit-per-minute=120`. |
 | `GenerateDocumentUseCaseImpl` | **Aucun diff** vs `main`. |
 | `api/documents.ts` | `htmlContent`+`variables` seulement (UI TA). |
-| `useTemplatePreview` | Debounce 400 ms, abort, revoke URL. |
-| `TemplatePreviewPanel.vue` | iframe `sandbox=""` + `srcdoc` ; pas de `v-html`. |
+| `useTemplatePreview` | Debounce 400 ms, abort, revoke URL ; `requestPdf` no-op si `enabled === false`. |
+| `TemplatePreviewPanel.vue` | iframe `sandbox=""` + `srcdoc` ; pas de `v-html` ; bouton PDF disabled si JSON invalide. |
 | `TemplatesAdminView.vue` | Composition : prop `htmlContent` du form. CRUD inchangé. |
 | Liquibase / `DocumentStoragePort` | Absents du diff preview. |
 
@@ -175,13 +176,13 @@ pas de store, pas de changement `GenerateDocumentUseCase`.
 
 Tous les success criteria ont un artefact : MockMvc (`DocumentPreviewApiTest`
 13 cas), unitaires use case (11), filtre, `PrintPreviewHtml`, Vitest panneau
-/ composable, Playwright E2E-20.
+/ composable (PDF gated), Playwright E2E-20 + E2E-21.
 
 ### Écarts
 
 | Sévérité | Écart | Reco |
 |---|---|---|
-| Basse | Bouton « Aperçu PDF » n'est pas gated par `parseError` : un clic avec JSON invalide POSTe encore les **dernières** variables valides. Le debounce HTML, lui, est coupé (`enabled`). | Désactiver le bouton ou no-op `previewPdf` si `parseError`. Non bloquant V1. |
+| — | ~~Bouton « Aperçu PDF » n'est pas gated par `parseError`~~ | **Corrigé Phase 8** : `isEnabled()` dans `requestPdf` + bouton `:disabled`. Vitest + E2E-21. |
 | Basse | Message 429 HTML réutilise « Document generation rate limit exceeded ». | Cosmétique. |
 | Info | Filtre 413 ignore le body chunked sans `Content-Length` — **préexistant** generate, documenté sur le filtre. | Inchangé. |
 
@@ -190,6 +191,5 @@ web, Thymeleaf/FS hors domain).
 
 ### Suites
 
-Phase 8 (`dev-testing`) : confirmer la couverture et les preuves fraîches.
-Phase 9 (`dev-review`) ensuite. Suivi produit hors V1 : preview détail
-dossier.
+**Phase 8 close (2026-08-18).** Phase 9 (`dev-review`) ensuite. Suivi
+produit hors V1 : preview détail dossier.

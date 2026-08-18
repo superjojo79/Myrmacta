@@ -2,6 +2,7 @@ package com.flowforge.infrastructure.config;
 
 import com.flowforge.domain.document.port.in.ActivateDocumentTemplateUseCase;
 import com.flowforge.domain.document.port.in.GenerateDocumentUseCase;
+import com.flowforge.domain.document.port.in.PreviewDocumentUseCase;
 import com.flowforge.domain.document.port.in.ResolveDocumentTemplateUseCase;
 import com.flowforge.domain.document.port.out.DocumentTemplateRepository;
 import com.flowforge.domain.document.port.out.HtmlTemplateProcessor;
@@ -14,6 +15,7 @@ import com.flowforge.domain.document.usecase.GenerateDocumentUseCaseImpl;
 import com.flowforge.domain.document.usecase.GetDocumentTemplateUseCaseImpl;
 import com.flowforge.domain.document.usecase.ListDocumentTemplateUseCaseImpl;
 import com.flowforge.domain.document.usecase.NewDocumentTemplateVersionUseCaseImpl;
+import com.flowforge.domain.document.usecase.PreviewDocumentUseCaseImpl;
 import com.flowforge.domain.document.usecase.ResolveDocumentTemplateUseCaseImpl;
 import com.flowforge.domain.document.usecase.UpdateDocumentTemplateUseCaseImpl;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -23,7 +25,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @Configuration
-@EnableConfigurationProperties(DocumentGenerationProperties.class)
+@EnableConfigurationProperties({DocumentGenerationProperties.class, DocumentPreviewProperties.class})
 public class DocumentConfig {
 
     public static final int MAX_HTML_BYTES = 5 * 1024 * 1024;
@@ -93,5 +95,14 @@ public class DocumentConfig {
             PdfRenderer pdfRenderer) {
         return new GenerateDocumentUseCaseImpl(
                 resolveDocumentTemplateUseCase, htmlTemplateProcessor, pdfRenderer);
+    }
+
+    @Bean
+    PreviewDocumentUseCase previewDocumentUseCase(
+            ResolveDocumentTemplateUseCase resolveDocumentTemplateUseCase,
+            HtmlTemplateProcessor htmlTemplateProcessor,
+            PdfRenderer pdfRenderer) {
+        return new PreviewDocumentUseCaseImpl(
+                resolveDocumentTemplateUseCase, htmlTemplateProcessor, pdfRenderer, MAX_HTML_BYTES);
     }
 }

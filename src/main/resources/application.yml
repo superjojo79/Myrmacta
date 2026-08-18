@@ -97,6 +97,8 @@ app:
     generate:
       max-body-bytes: 262144
       rate-limit-per-minute: 30
+    preview:
+      rate-limit-per-minute: 120
   notification:
     outbox:
       batch-size: 20

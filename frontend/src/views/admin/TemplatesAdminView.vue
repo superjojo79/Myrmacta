@@ -10,6 +10,7 @@ import {
 } from '@/api/admin'
 import type { DocumentTemplate } from '@/api/types'
 import { toProblemDetail } from '@/api/http'
+import TemplatePreviewPanel from '@/components/document/TemplatePreviewPanel.vue'
 
 const templates = ref<DocumentTemplate[]>([])
 const error = ref<string | null>(null)
@@ -66,12 +67,15 @@ async function newVersion(template: DocumentTemplate) {
   <section>
     <h1>Templates documents</h1>
     <p v-if="error" class="error">{{ error }}</p>
-    <form class="admin-form" @submit.prevent="create">
-      <input v-model="form.templateKey" placeholder="templateKey" required />
-      <input v-model="form.label" placeholder="libellé" required />
-      <textarea v-model="form.htmlContent" rows="4" />
-      <button type="submit">Créer</button>
-    </form>
+    <div class="templates-layout">
+      <form class="admin-form" @submit.prevent="create">
+        <input v-model="form.templateKey" placeholder="templateKey" required />
+        <input v-model="form.label" placeholder="libellé" required />
+        <textarea v-model="form.htmlContent" rows="4" />
+        <button type="submit">Créer</button>
+      </form>
+      <TemplatePreviewPanel :html-content="form.htmlContent" />
+    </div>
     <ul>
       <li v-for="tpl in templates" :key="tpl.id">
         <div>
@@ -89,11 +93,16 @@ async function newVersion(template: DocumentTemplate) {
 </template>
 
 <style scoped>
+.templates-layout {
+  display: grid;
+  grid-template-columns: minmax(16rem, 32rem) minmax(16rem, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+  margin-bottom: 1rem;
+}
 .admin-form {
   display: grid;
   gap: 0.5rem;
-  max-width: 520px;
-  margin-bottom: 1rem;
 }
 ul {
   list-style: none;

@@ -44,6 +44,16 @@ class DocumentGenerationBodySizeLimitFilterTest {
     }
 
     @Test
+    void rejectsOversizedPreviewRequest() throws Exception {
+        assertRejected("POST", "/api/documents/preview");
+    }
+
+    @Test
+    void rejectsOversizedPreviewPdfRequest() throws Exception {
+        assertRejected("POST", "/api/documents/preview/pdf");
+    }
+
+    @Test
     void ignoresOversizedRequestsOnOtherPaths() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/dossiers");
         request.setContentType("application/json");
@@ -69,5 +79,18 @@ class DocumentGenerationBodySizeLimitFilterTest {
 
         assertThat(response.getStatus()).isEqualTo(200);
         verify(chain).doFilter(request, response);
+    }
+
+    private void assertRejected(String method, String path) throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest(method, path);
+        request.setContentType("application/json");
+        request.setContent(new byte[2_000]);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        FilterChain chain = mock(FilterChain.class);
+
+        filter.doFilter(request, response, chain);
+
+        assertThat(response.getStatus()).isEqualTo(413);
+        verify(chain, never()).doFilter(request, response);
     }
 }

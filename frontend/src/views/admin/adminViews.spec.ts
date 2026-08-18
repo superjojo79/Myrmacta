@@ -8,6 +8,10 @@ import * as workflowsApi from '@/api/workflows'
 
 vi.mock('@/api/admin')
 vi.mock('@/api/workflows')
+vi.mock('@/api/documents', () => ({
+  previewHtml: vi.fn().mockResolvedValue('<p>ok</p>'),
+  previewPdf: vi.fn().mockResolvedValue(new Blob()),
+}))
 
 describe('admin views smoke', () => {
   beforeEach(() => {
@@ -34,6 +38,7 @@ describe('admin views smoke', () => {
     const wrapper = mount(TemplatesAdminView)
     await flushPromises()
     expect(wrapper.text()).toContain('Templates documents')
+    expect(wrapper.text()).toContain('Aperçu')
   })
 
   it('renders connectors with secretConfigured', async () => {

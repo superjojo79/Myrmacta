@@ -55,6 +55,20 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
   ]
   let elements: Array<Record<string, unknown>> = []
 
+  await page.route('**/api/documents/preview/pdf**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/pdf',
+      body: Buffer.from('%PDF-1.4 preview'),
+    })
+  })
+  await page.route('**/api/documents/preview**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/html;charset=UTF-8',
+      body: '<html><body><div class="page">Aperçu mock</div></body></html>',
+    })
+  })
   await page.route('**/api/auth/me', async (route) => {
     await route.fulfill({
       status: 200,
@@ -610,4 +624,27 @@ test('E2E-10 admin types smoke', async ({ page }) => {
   await openApp(page)
   await page.getByRole('link', { name: 'Types' }).click()
   await expect(page.getByRole('heading', { name: 'Types de dossier' })).toBeVisible()
+})
+
+test('E2E-20 template preview html and pdf', async ({ page }) => {
+  await mockSession(page)
+  await openApp(page)
+  await page.getByRole('link', { name: 'Templates' }).click()
+  await expect(page.getByRole('heading', { name: 'Templates documents' })).toBeVisible()
+  await page.locator('form textarea').fill('<p>Bonjour</p>')
+  await expect(page.locator('iframe[title="Aperçu HTML"]')).toBeVisible()
+  await page.getByRole('button', { name: 'Aperçu PDF' }).click()
+  await expect(page.locator('iframe[title="Aperçu PDF"]')).toBeVisible()
+})
+
+test('E2E-21 invalid variables JSON does not request PDF preview', async ({ page }) => {
+  await mockSession(page)
+  await openApp(page)
+  await page.getByRole('link', { name: 'Templates' }).click()
+  await expect(page.getByRole('heading', { name: 'Templates documents' })).toBeVisible()
+  await page.locator('form textarea').fill('<p>Bonjour</p>')
+  await page.getByLabel('Variables JSON').fill('{not-json')
+  await expect(page.getByText('JSON invalide')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Aperçu PDF' })).toBeDisabled()
+  await expect(page.locator('iframe[title="Aperçu PDF"]')).toHaveCount(0)
 })

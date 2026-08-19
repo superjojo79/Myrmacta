@@ -55,15 +55,19 @@ phase8: 2026-08-19
 
 - [x] Extension `purgeEligibleAt` sur copie immuable (withRetentionArchive…).
 
+### Job (`EvaluateDossierRetentionJobTest`)
+
+- [x] Délègue `tenantId` + `batchSize` au use case.
+- [x] Settings absent (`settingsAbsent`) — run complète sans exception.
+
 ## Integration Tests
 
 ### Persistence / Liquibase
 
-- [x] Migration `010-retention-tables` appliquée au démarrage SpringBootTest
-      (H2 MODE=PostgreSQL) — colonnes type/dossier + `purge_outbox` +
-      `tenant_retention_settings` (pas d’IT Liquibase dédiée hors changelog).
-- [ ] Round-trip persistence IT dédié settings + type + outbox (hors MockMvc) —
-      **gap volontaire Phase 7** ; couverture via domaine + MockMvc.
+- [x] `RetentionSchemaIT` — tables/colonnes `tenant_retention_settings`,
+      `dossier_type.retention_*`, `dossier.purge_eligible_at`, `purge_outbox` + UNIQUE.
+- [x] `RetentionPersistenceIT` — round-trip settings + type NEVER ; insert outbox
+      idempotent (exists) ; seed `CLOTURE` expiré → evaluate → `ARCHIVE` + outbox.
 
 ### MockMvc (`RetentionApiTest`)
 
@@ -74,12 +78,15 @@ phase8: 2026-08-19
 
 ### Job (slice / IT)
 
-- [x] Use case unitaire : `CLOTURE` expiré → `ARCHIVE` + outbox ; settings absent
-      → `settingsAbsent=true`.
-- [x] Job log.warn D-BOOTSTRAP observé au démarrage contexte test (scheduler).
-- [ ] IT scheduler seed `CLOTURE` expiré → outbox (hors unit) — **gap volontaire**.
+- [x] Use case unitaire + `EvaluateDossierRetentionJobTest`.
+- [x] `RetentionPersistenceIT.evaluate_seededExpiredCloture_*` — chemin job via UC
+      réel (repos JPA), sans attendre le scheduler.
 
 ## End-to-End Tests
+
+Fichiers : `frontend/e2e/pilotage.spec.ts` (E2E-RET-*),
+`frontend/src/api/retentionSettings.spec.ts`,
+`frontend/src/views/admin/DossierTypesAdminView.spec.ts`.
 
 - [x] **E2E-RET-1** : admin ouvre settings rétention, PUT durée, reload GET OK.
 - [x] **E2E-RET-2** : admin crée/édite un type avec override jours ou NEVER ;
@@ -100,12 +107,12 @@ Mocks Playwright : handlers `/api/tenant/retention-settings` +
 
 ## Test Reporting & Coverage
 
-À remplir Phase 8 avec sorties fraîches :
+Phase 8 — commandes :
 
 ```text
 ./mvnw verify -Dmaven.compiler.release=21
 cd frontend && npm run test
-cd frontend && npm run test:e2e
+cd frontend && CI=1 npm run test:e2e
 ```
 
 ## Manual Testing
@@ -120,7 +127,6 @@ Scan indexé borné par `batch-size` ; pas de charge Flowable dédiée ici.
 
 `TODO.md` §22 pour la consommation outbox ; pas de fermeture §22 dans ce lot.
 
-
 ## Phase 5 evidence (2026-08-19)
 
 ```text
@@ -133,3 +139,7 @@ cd frontend && npm run test
 cd frontend && CI=1 npm run test:e2e
 # 27 passed including E2E-RET-1/2/3
 ```
+
+## Phase 8 evidence (pending fresh run)
+
+À remplir après `./mvnw verify` + Vitest + Playwright dans cette session.

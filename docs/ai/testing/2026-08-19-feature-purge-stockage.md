@@ -13,8 +13,8 @@ todo_ref: TODO.md §22 · requirements purge-stockage (Q1 ouvert)
 # Testing Strategy — `purge-stockage`
 
 > Scénarios **stables** ci-dessous. Les cas job/claim/statuts se
-> précisent **après Q1**. Playwright : obligatoire si SPA ou contrat API
-> consommé par le SPA change (Q10) ; sinon non-régression suite existante.
+> précisent **après Q1**. **Q6 = B** : SPA admin lecture → Vitest +
+> Playwright **obligatoires** (détail specs Q10).
 
 ## Test Coverage Goals
 

@@ -12,32 +12,21 @@ todo_ref: TODO.md §22 · requirements purge-stockage (Q1 ouvert)
 
 # System Design & Architecture — `purge-stockage`
 
-> Squelette Phase 1. L’architecture cible **dépend de Q1** (transaction vs
-> job vs soft-delete + balayage). Ne pas traiter ce document comme revue
-> Phase 3 tant que les requirements ne sont pas `reviewed`.
+> Squelette Phase 1. **Q1 = B** (job outbox). Le reste (Q2+) n’est pas
+> tranché. Pas une revue Phase 3.
 
 ## Architecture Overview
 
-Trois formes possibles selon Q1 :
+Contrainte Phase 1 : **Q1 = B** — worker / scheduler sur `purge_outbox`.
 
 ```mermaid
 flowchart TD
-  subgraph optB [Option B - job outbox]
-    ob[purge_outbox PENDING] --> job[Worker / scheduler]
-    job --> storeB[DocumentStoragePort]
-    job --> pgB[(PostgreSQL tenant)]
-  end
-  subgraph optA [Option A - transaction applicative]
-    trigA[Déclencheur synchrone] --> tx[TX app]
-    tx --> storeA[DocumentStoragePort]
-    tx --> pgA[(PostgreSQL tenant)]
-  end
-  subgraph optC [Option C - soft-delete + GC]
-    mark[ARCHIVE + purgeEligibleAt] --> gc[Balayage ultérieur]
-    gc --> storeC[DocumentStoragePort]
-    gc --> pgC[(PostgreSQL tenant)]
-  end
+  ob[purge_outbox PENDING] --> job[Job de réconciliation]
+  job --> store[DocumentStoragePort]
+  job --> pg[(PostgreSQL tenant)]
 ```
+
+Les options A (TX unique) et C (soft-delete + GC only) sont **écartées**.
 
 Stack inchangée : Java / Spring Boot / PostgreSQL+Liquibase / port S3|FS
 déjà présents. Hexagone : use case domaine, adapters infrastructure.

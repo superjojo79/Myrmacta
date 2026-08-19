@@ -54,8 +54,8 @@ TODO §22.
   absents = succès, pas d’état « à moitié purgé » durable sans retry.
 - Respecter DEFERRED §0 : port abstrait **S3 + filesystem**, aucun
   couplage MinIO.
-- Consommer le signal déjà produit par §21 (`purge_outbox`) — sauf si un
-  arbitrage Phase 1 choisit explicitement un autre déclencheur.
+- Consommer `purge_outbox` (`DOSSIER_PURGE_REQUESTED`) via un **job de
+  réconciliation** idempotent (**Q1 = B**).
 
 ### Secondary goals
 
@@ -72,23 +72,19 @@ TODO §22.
 - Changer la politique de rétention ou l’UI admin types (déjà §21).
 - Observabilité MDC complète (§29).
 
-Les non-goals **liés à §22** (UI file, API d’effacement manuel, purge
-tenant automatisée, orphelins hors outbox, mécanisme exact) sont des
-**questions ouvertes**, pas des exclusions actées.
+Les non-goals **liés à §22** restants (UI file, API d’effacement manuel,
+purge tenant automatisée, orphelins hors outbox) sont encore des
+**questions ouvertes** (Q6–Q9). Le mécanisme (Q1) est tranché : **B**.
 
 ## Alternatives considérées (mécanisme — TODO §22)
 
-Trois options nommées par TODO.md / FILE-ATTENTE / REVUE §9. **Aucun
-verdict Phase 1 tant que Q1 n’est pas tranchée.**
+Trois options nommées par TODO.md / FILE-ATTENTE / REVUE §9.
 
-| Id | Approche | Trade-off |
-|---|---|---|
-| A | **Transaction applicative** unique PG + store | Simple à raisonner ; pas de XA : S3/FS non transactionnel → orphelins ou rollback partiel |
-| B | **Job de réconciliation** sur `purge_outbox` | Réutilise §21 ; rejeu ; latence asynchrone ; besoin de claim / statuts |
-| C | **Suppression logique + balayage** | §21 a déjà `ARCHIVE` + `purgeEligibleAt` ; sans delete physique, l’effacement n’est pas réel |
-
-Recommandation **à confirmer** : **B** (le job consomme l’outbox déjà
-livrée). A est fragile cross-store. C ne clôt pas le droit à l’effacement.
+| Id | Approche | Trade-off | Verdict |
+|---|---|---|---|
+| A | **Transaction applicative** unique PG + store | Pas de XA : S3/FS non transactionnel | **Écarté** |
+| B | **Job de réconciliation** sur `purge_outbox` | Réutilise §21 ; rejeu ; latence asynchrone | **Retenu (Q1, 2026-08-19)** |
+| C | **Suppression logique + balayage** | Marquage §21 déjà là ; pas d’effacement réel | **Écarté** |
 
 ## User Stories & Use Cases
 
@@ -103,7 +99,7 @@ livrée). A est fragile cross-store. C ne clôt pas le droit à l’effacement.
 4. **En tant que** ops, **je veux** distinguer purge dossier et
    décommission tenant, **afin de** ne pas utiliser le mauvais outil.
 
-### Edge cases (à figer après Q1)
+### Edge cases (à préciser avec Q2–Q5 ; le déclencheur est le job outbox)
 
 - Objet store déjà absent.
 - Dossier PG déjà partiellement supprimé.
@@ -132,8 +128,12 @@ Critères **stables** (indépendants du mécanisme exact) :
 - [ ] `./mvnw verify` vert ; FE selon impact SPA (Vitest + Playwright si
       contrat/UI touchés).
 
-Critères **dépendants de Q1** (à réécrire une fois tranché) : job vs
-transaction vs balayage ; cycle de statuts outbox ; surface HTTP/UI.
+Critères **dépendants de Q1=B** (détail cycle/claim en Phase 3) :
+
+- [ ] Job planifié borné consomme `PENDING` jusqu’à un état terminal
+      (succès ou échec rejouable).
+
+Reste dépendant de Q6–Q10 : surface HTTP/UI / E2E.
 
 ## Constraints & Assumptions
 
@@ -149,17 +149,23 @@ transaction vs balayage ; cycle de statuts outbox ; surface HTTP/UI.
 - Branche Cloud : `cursor/purge-stockage-05b8` (lint `feature-*` = MISS
   attendu).
 
-**Pas d’assumption produit sur le mécanisme** tant que Q1 n’est pas
-tranchée. Ne pas traiter la mémoire « job + delete acté Phase 2 » comme
-une décision stakeholder.
+**Q1 actée :** mécanisme = job consommateur `purge_outbox` (pas XA, pas
+balayage-only). Le `delete` store (Q2) n’est **pas** encore tranché.
 
 ## Questions & Open Items
 
-À trancher **une par une** (Phase 1). Rien n’est clos.
+À trancher **une par une** (Phase 1).
+
+### Clos
+
+| Id | Décision | Choix |
+|---|---|---|
+| **Q1 / D-MECH** | Mécanisme PG + store | **B** — job de réconciliation sur `purge_outbox` (2026-08-19) |
+
+### Ouvertes (prochaine = Q2 uniquement)
 
 | Id | Question | Pourquoi ça compte | Options | Reco |
 |---|---|---|---|---|
-| **Q1 / D-MECH** | Quel mécanisme pour la cohérence PG + store ? | Cœur de TODO §22 | A transaction · B job outbox · C soft-delete + balayage | **B** |
 | **Q2 / D-PORT** | Comment supprimer un objet ? | DEFERRED §0 | Étendre `DocumentStoragePort.delete` · nouveau port | Étendre le port existant |
 | **Q3 / D-ORDER** | Ordre d’effacement store vs PG ? | Orphelins / retry | Store puis PG · PG puis store · best-effort parallèle | Store puis PG |
 | **Q4 / D-SCOPE-PG** | Quel graphe PG supprimer ? | FK / RGPD | Dossier seul · + éléments/relations/links | Graphe complet du dossier |
@@ -176,11 +182,11 @@ OpenAPI §24, observabilité §29, antivirus, `http-rest` SERVICE.
 
 ## Phase 1 — clarification en cours
 
-Shared understanding **avant** toute clôture :
+Shared understanding :
 
 - Nom : `purge-stockage`.
 - Problème : outbox §21 sans effacement physique.
 - Objectif : cohérence PostgreSQL + object store.
-- Mécanisme **non tranché** (Q1).
+- **Q1 = B :** job consommateur `purge_outbox`.
 
-Prochaine clarification : **Q1 / D-MECH** uniquement.
+Prochaine clarification : **Q2 / D-PORT** uniquement.

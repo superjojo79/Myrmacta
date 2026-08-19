@@ -7,12 +7,12 @@ created: 2026-08-19
 updated: 2026-08-19
 feature: purge-stockage
 phase1: 2026-08-19
-todo_ref: TODO.md §22 · requirements purge-stockage (Q1–Q7 actées)
+todo_ref: TODO.md §22 · requirements purge-stockage (Q1–Q8 actées)
 ---
 
 # System Design & Architecture — `purge-stockage`
 
-> Squelette Phase 1. **Q1–Q7** actées. Q8+ ouvertes. Pas une revue Phase 3.
+> Squelette Phase 1. **Q1–Q8** actées. Q9–Q10 ouvertes. Pas une revue Phase 3.
 
 ## Architecture Overview
 
@@ -45,7 +45,8 @@ déjà présents. Hexagone : use case domaine, adapters infrastructure.
 
 ## API Design
 
-- **Externe lecture file :** GET admin (Q6=B). Mutation d’effacement : Q7.
+- **Externe :** GET file (Q6) + mutation enqueue (Q7=B), `TENANT_ADMIN`.
+  Pas de purge dans le thread HTTP.
 - **Ports domaine :** à figer en Phase 3 après Q1–Q5.
 
 ## Component Breakdown
@@ -59,9 +60,9 @@ déjà présents. Hexagone : use case domaine, adapters infrastructure.
 
 ## Design Decisions
 
-Contraintes Phase 1 déjà actées (Q1–Q5) : job outbox, `delete` sur le
-port existant, ordre store→PG, graphe dossier complet, Flowable
-best-effort, écran lecture file. Q7–Q10 ouvertes.
+Contraintes Phase 1 déjà actées (Q1–Q8) : job, `delete`, store→PG, graphe
+complet, Flowable best-effort, écran lecture, enqueue HTTP, tenant hors
+code. Q9–Q10 ouvertes.
 
 ## Non-Functional Requirements
 

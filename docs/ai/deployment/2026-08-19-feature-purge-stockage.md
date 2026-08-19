@@ -11,18 +11,25 @@ phase1: 2026-08-19
 
 # Deployment & Release — `purge-stockage`
 
-> À détailler après Q1 (migration Liquibase / scheduler / flag).
+> Détail Liquibase / scheduler en Phase 3. **Q8 = A** : pas d’automatisation
+> tenant dans l’app.
 
 ## Application release
 
-- Rolling restart probable.
-- Config store S3/FS inchangée (seul `delete` pourrait s’ajouter — Q2).
+- Rolling restart ; job `app.purge.*` ; `DocumentStoragePort.delete`.
+- Config S3/FS inchangée (credentials / root).
 
-## Runbook tenant (brouillon, Q8)
+## Runbook — suppression de tenant (Q8 = A, hors code app)
 
-Si Q8 = hors code : décommission instance → `DROP SCHEMA` → purge préfixe
-`tenantId/` (S3 ou FS). Ne pas confondre avec la purge dossier unitaire.
+Conformément à la décision n° 13 (1 instance = 1 tenant) :
+
+1. Décommissionner l’instance Spring Boot (retirer du reverse-proxy).
+2. `DROP SCHEMA <tenant> CASCADE` (tables métier + `ACT_*` du schéma).
+3. Purger le préfixe `s3://<bucket>/<tenantId>/` **ou** `<root>/<tenantId>/`.
+4. Révoquer client OIDC / secrets connecteurs du tenant.
+5. Ne **pas** utiliser le job `purge-stockage` (périmètre = dossiers
+   unitaires via outbox).
 
 ## Rollback
 
-Dépend du mécanisme (Q1) : désactiver worker vs revert TX.
+Désactiver le job (delay / flag) laisse les `PENDING` intacts.

@@ -192,4 +192,5 @@ La documentation d'architecture est disponible dans le répertoire `analysis doc
 
 La documentation d'architecture a fait l'objet d'une [revue pré-implémentation](REVUE-PRE-IMPLEMENTATION.md)
 qui en détaille les points restant à trancher. Ces points, ainsi que les décisions déjà actées, sont
-suivis dans [TODO.md](TODO.md).
+suivis dans [TODO.md](TODO.md). L'ordre des prochaines features est dans
+[FILE-ATTENTE.md](FILE-ATTENTE.md).

@@ -4,6 +4,7 @@
 > (`architecture-hexagonale`, `multi-tenant`, `authentification`, `dossiers`).
 >
 > - Les **points ouverts à trancher** restent dans [TODO.md](TODO.md).
+> - L’**ordre de la prochaine feature** est dans [FILE-ATTENTE.md](FILE-ATTENTE.md).
 > - Le détail par feature reste dans `docs/ai/**/2026-*-feature-*.md`
 >   (sections Non-goals, Différé, Follow-ups).
 > - Ce fichier consolide le **chemin d’implémentation restant** pour ne pas le
@@ -160,6 +161,7 @@ Voir le détail et les options dans [TODO.md](TODO.md) et
 
 | Source | Usage |
 |---|---|
+| [FILE-ATTENTE.md](FILE-ATTENTE.md) | Prochaine feature + critères de sélection |
 | [TODO.md](TODO.md) | Points ouverts + décisions actées |
 | `docs/ai/**/2026-*-feature-*.md` | Non-goals, Différé, Follow-ups lifecycle |
 | [11-frontend.md](analysis%20doc/11-frontend.md) | Stack FE + packaging + maquette |

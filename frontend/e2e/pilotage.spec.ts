@@ -25,6 +25,7 @@ function dossierBody(overrides: Record<string, unknown> = {}) {
     updatedAt: '2026-08-12T00:00:00Z',
     closedBy: null,
     closedAt: null,
+    purgeEligibleAt: null,
     ...overrides,
   }
 }
@@ -102,6 +103,8 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
             workflowKey: 'claimWorkflow',
             active: true,
             allowUnknownFields: false,
+            retentionDays: null,
+            retentionNever: false,
             fieldDefinitions: [
               {
                 name: 'priority',
@@ -120,6 +123,35 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
       return
     }
     await route.fulfill({ status: 201, contentType: 'application/json', body: '{}' })
+  })
+  await page.route('**/api/tenant/retention-settings', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          title: 'Not found',
+          status: 404,
+          detail: 'Retention settings not found',
+        }),
+      })
+      return
+    }
+    if (route.request().method() === 'PUT') {
+      const body = route.request().postDataJSON() as { defaultRetentionDays: number }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          tenantId: 'tenant_dev',
+          defaultRetentionDays: body.defaultRetentionDays,
+          updatedAt: '2026-08-19T00:00:00Z',
+          updatedBy: 'admin',
+        }),
+      })
+      return
+    }
+    await route.fulfill({ status: 405, body: '' })
   })
   await page.route('**/api/dossier-types/CLAIM', async (route) => {
     await route.fulfill({
@@ -664,6 +696,59 @@ test('E2E-10 admin types smoke', async ({ page }) => {
   await openApp(page)
   await page.getByRole('link', { name: 'Types' }).click()
   await expect(page.getByRole('heading', { name: 'Types de dossier' })).toBeVisible()
+})
+
+test('E2E-RET-1 admin saves tenant retention default', async ({ page }) => {
+  await mockSession(page)
+  await openApp(page)
+  await page.getByRole('link', { name: 'Types' }).click()
+  await expect(page.getByRole('heading', { name: 'Rétention tenant' })).toBeVisible()
+  await page.getByTestId('retention-default-days').fill('90')
+  await page.getByTestId('retention-save').click()
+  await expect(page.getByText('Défaut actuel : 90 jours')).toBeVisible()
+})
+
+test('E2E-RET-2 admin creates type with NEVER retention', async ({ page }) => {
+  let createdBody: Record<string, unknown> | null = null
+  await mockSession(page)
+  await page.route('**/api/dossier-types', async (route) => {
+    if (route.request().method() === 'POST') {
+      createdBody = route.request().postDataJSON() as Record<string, unknown>
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 't2',
+          tenantId: 'tenant_dev',
+          code: createdBody.code,
+          label: createdBody.label,
+          workflowKey: createdBody.workflowKey,
+          active: true,
+          allowUnknownFields: false,
+          retentionDays: null,
+          retentionNever: true,
+          fieldDefinitions: [],
+        }),
+      })
+      return
+    }
+    await route.fallback()
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Types' }).click()
+  const createForm = page.locator('form.admin-form').nth(1)
+  await createForm.getByPlaceholder('code').fill('LEGAL')
+  await createForm.getByPlaceholder('libellé').fill('Legal')
+  await createForm.getByPlaceholder('workflowKey').fill('wf-legal')
+  await page.getByTestId('type-retention-mode').selectOption('never')
+  await createForm.getByRole('button', { name: 'Créer' }).click()
+  await expect.poll(() => createdBody?.retentionNever).toBe(true)
+})
+
+test('E2E-RET-3 non-admin does not see Types admin nav', async ({ page }) => {
+  await mockSession(page, { roles: ['DOSSIER_VIEWER'] })
+  await openApp(page)
+  await expect(page.getByRole('link', { name: 'Types' })).toHaveCount(0)
 })
 
 test('E2E-20 template preview html and pdf', async ({ page }) => {

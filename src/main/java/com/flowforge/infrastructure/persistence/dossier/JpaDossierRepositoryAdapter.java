@@ -1,9 +1,12 @@
 package com.flowforge.infrastructure.persistence.dossier;
 
 import com.flowforge.domain.dossier.model.Dossier;
+import com.flowforge.domain.dossier.model.DossierStatus;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,5 +36,15 @@ public class JpaDossierRepositoryAdapter implements DossierRepository {
     @Transactional(readOnly = true)
     public Optional<Dossier> findByReference(String tenantId, String reference) {
         return repository.findByTenantIdAndReference(tenantId, reference).map(DossierJpaEntity::toDomain);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Dossier> findClosedForRetention(int limit) {
+        return repository
+                .findClosedForRetention(DossierStatus.CLOTURE, PageRequest.of(0, limit))
+                .stream()
+                .map(DossierJpaEntity::toDomain)
+                .toList();
     }
 }

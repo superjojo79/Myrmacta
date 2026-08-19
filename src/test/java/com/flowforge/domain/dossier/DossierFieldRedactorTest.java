@@ -89,6 +89,7 @@ class DossierFieldRedactorTest {
                 "creator",
                 Instant.parse("2026-08-02T09:00:00Z"),
                 null,
+                null,
                 null);
     }
 }

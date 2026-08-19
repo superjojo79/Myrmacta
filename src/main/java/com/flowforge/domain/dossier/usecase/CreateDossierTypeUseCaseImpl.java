@@ -32,7 +32,9 @@ public final class CreateDossierTypeUseCaseImpl implements CreateDossierTypeUseC
                 command.workflowKey(),
                 command.active(),
                 command.allowUnknownFields(),
-                command.fieldDefinitions());
+                command.fieldDefinitions(),
+                command.retentionDays(),
+                command.retentionNever());
         repository.save(type);
         return type;
     }

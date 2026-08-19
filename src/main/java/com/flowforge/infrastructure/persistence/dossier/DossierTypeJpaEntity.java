@@ -46,6 +46,12 @@ public class DossierTypeJpaEntity {
     @Column(name = "field_definitions", nullable = false, columnDefinition = "json")
     private List<FieldDefinition> fieldDefinitions = List.of();
 
+    @Column(name = "retention_days")
+    private Integer retentionDays;
+
+    @Column(name = "retention_never", nullable = false)
+    private boolean retentionNever;
+
     protected DossierTypeJpaEntity() {
         // JPA
     }
@@ -58,7 +64,9 @@ public class DossierTypeJpaEntity {
             String workflowKey,
             boolean active,
             boolean allowUnknownFields,
-            List<FieldDefinition> fieldDefinitions) {
+            List<FieldDefinition> fieldDefinitions,
+            Integer retentionDays,
+            boolean retentionNever) {
         this.id = id;
         this.tenantId = tenantId;
         this.code = code;
@@ -67,6 +75,8 @@ public class DossierTypeJpaEntity {
         this.active = active;
         this.allowUnknownFields = allowUnknownFields;
         this.fieldDefinitions = List.copyOf(fieldDefinitions);
+        this.retentionDays = retentionDays;
+        this.retentionNever = retentionNever;
     }
 
     static DossierTypeJpaEntity fromDomain(DossierType type) {
@@ -78,7 +88,9 @@ public class DossierTypeJpaEntity {
                 type.workflowKey(),
                 type.active(),
                 type.allowUnknownFields(),
-                type.fieldDefinitions());
+                type.fieldDefinitions(),
+                type.retentionDays(),
+                type.retentionNever());
     }
 
     DossierType toDomain() {
@@ -90,6 +102,8 @@ public class DossierTypeJpaEntity {
                 workflowKey,
                 active,
                 allowUnknownFields,
-                fieldDefinitions);
+                fieldDefinitions,
+                retentionDays,
+                retentionNever);
     }
 }

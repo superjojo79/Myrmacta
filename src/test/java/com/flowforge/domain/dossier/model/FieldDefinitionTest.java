@@ -37,7 +37,7 @@ class FieldDefinitionTest {
                 "name", "Name", FieldType.STRING, true, null, List.of(), null);
         var secret = new FieldDefinition(
                 "ssn", "SSN", FieldType.STRING, false, null, List.of(), null, true);
-        var type = new DossierType(
+        var type = DossierType.inherit(
                 java.util.UUID.randomUUID(),
                 "tenant_dev",
                 "T1",
@@ -47,7 +47,7 @@ class FieldDefinitionTest {
                 false,
                 List.of(plain, secret));
         assertThat(type.hasSensitiveFields()).isTrue();
-        assertThat(new DossierType(
+        assertThat(DossierType.inherit(
                         type.id(),
                         type.tenantId(),
                         type.code(),

@@ -63,7 +63,7 @@ class ListDossierTypesUseCaseImplTest {
     }
 
     private static DossierType type(String code) {
-        return new DossierType(UUID.randomUUID(), TENANT, code, code, "wf-" + code,
+        return DossierType.inherit(UUID.randomUUID(), TENANT, code, code, "wf-" + code,
                 true, false, List.of());
     }
 

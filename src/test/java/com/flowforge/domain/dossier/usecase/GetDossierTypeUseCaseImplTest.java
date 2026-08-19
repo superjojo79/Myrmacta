@@ -73,7 +73,7 @@ class GetDossierTypeUseCaseImplTest {
     }
 
     private static DossierType type() {
-        return new DossierType(UUID.randomUUID(), TENANT, TYPE_CODE, "Sinistre", "wf-sinistre",
+        return DossierType.inherit(UUID.randomUUID(), TENANT, TYPE_CODE, "Sinistre", "wf-sinistre",
                 true, false, List.of());
     }
 }

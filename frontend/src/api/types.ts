@@ -35,6 +35,8 @@ export interface DossierType {
   active: boolean
   allowUnknownFields: boolean
   fieldDefinitions: FieldDefinition[]
+  retentionDays?: number | null
+  retentionNever?: boolean
 }
 
 export interface Dossier {
@@ -53,6 +55,7 @@ export interface Dossier {
   updatedAt: string
   closedBy: string | null
   closedAt: string | null
+  purgeEligibleAt?: string | null
 }
 
 export interface DossierListItem {

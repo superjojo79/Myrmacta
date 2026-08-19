@@ -2,7 +2,7 @@
 phase: requirements
 title: Requirements & Problem Understanding
 description: Clarify the problem space, gather requirements, and define success criteria
-status: reviewed
+status: implemented
 created: 2026-08-19
 updated: 2026-08-19
 feature: retention-dossier-type
@@ -117,22 +117,22 @@ existent, mais sans horloge métier ni file pour une purge ultérieure.
 ## Success Criteria
 **How will we know when we're done?**
 
-- [ ] `PUT` settings tenant accepte seulement `defaultRetentionDays > 0` ;
+- [x] `PUT` settings tenant accepte seulement `defaultRetentionDays > 0` ;
       `GET` reflète la valeur (404 si jamais configuré — D-BOOTSTRAP).
-- [ ] `DossierType` : héritage / jours / `NEVER` via API create/update/get/list.
-- [ ] Job : `CLOTURE` expiré → `ARCHIVE` + `purgeEligibleAt` + **une** ligne
+- [x] `DossierType` : héritage / jours / `NEVER` via API create/update/get/list.
+- [x] Job : `CLOTURE` expiré → `ARCHIVE` + `purgeEligibleAt` + **une** ligne
       `purge_outbox` `DOSSIER_PURGE_REQUESTED` `PENDING` (contrainte
       d’unicité métier par dossier).
-- [ ] Job idempotent ; `NEVER` / non-clos / `closedAt` null / settings absents
+- [x] Job idempotent ; `NEVER` / non-clos / `closedAt` null / settings absents
       exclus ou no-op.
-- [ ] UI admin : bloc rétention sur / près de `DossierTypesAdminView` +
+- [x] UI admin : bloc rétention sur / près de `DossierTypesAdminView` +
       champs rétention sur types (**D-UI-LOC**).
-- [ ] Transition BPMN/API vers `ARCHIVE` sans job ≠ outbox purge ; non
+- [x] Transition BPMN/API vers `ARCHIVE` sans job ≠ outbox purge ; non
       reprise ultérieure par le job.
-- [ ] Aucune suppression objet stockage / DROP données dossier.
-- [ ] Tests domaine + IT/MockMvc + Vitest + Playwright verts ;
+- [x] Aucune suppression objet stockage / DROP données dossier.
+- [x] Tests domaine + IT/MockMvc + Vitest + Playwright verts ;
       `./mvnw verify` non-régression.
-- [ ] Décisions §21 documentées (déjà) ; FILE-ATTENTE / DEFERRED à jour en
+- [x] Décisions §21 documentées (déjà) ; FILE-ATTENTE / DEFERRED à jour en
       fin d’implémentation ; §22 reste ouvert pour `purge-stockage`.
 
 ## Constraints & Assumptions

@@ -20,7 +20,8 @@ public record Dossier(
         String updatedBy,
         Instant updatedAt,
         String closedBy,
-        Instant closedAt
+        Instant closedAt,
+        Instant purgeEligibleAt
 ) {
     public Dossier {
         Objects.requireNonNull(id, "id");
@@ -56,7 +57,31 @@ public record Dossier(
                 updatedBy,
                 at,
                 nextClosedBy,
-                nextClosedAt);
+                nextClosedAt,
+                purgeEligibleAt);
+    }
+
+    public Dossier withRetentionArchive(String updatedBy, Instant at) {
+        Objects.requireNonNull(updatedBy, "updatedBy");
+        Objects.requireNonNull(at, "at");
+        DossierStatusTransitions.assertCanTransition(status, DossierStatus.ARCHIVE);
+        return new Dossier(
+                id,
+                tenantId,
+                reference,
+                dossierTypeCode,
+                label,
+                DossierStatus.ARCHIVE,
+                fields,
+                currentWorkflowLinkId,
+                version,
+                createdBy,
+                createdAt,
+                updatedBy,
+                at,
+                closedBy,
+                closedAt,
+                at);
     }
 
     public Dossier withFields(Map<String, Object> newFields) {
@@ -75,7 +100,8 @@ public record Dossier(
                 updatedBy,
                 updatedAt,
                 closedBy,
-                closedAt);
+                closedAt,
+                purgeEligibleAt);
     }
 
     public Dossier withFields(Map<String, Object> newFields, String updatedBy, Instant at) {
@@ -94,7 +120,8 @@ public record Dossier(
                 updatedBy,
                 at,
                 closedBy,
-                closedAt);
+                closedAt,
+                purgeEligibleAt);
     }
 
     public Dossier withVersion(long version) {
@@ -113,7 +140,8 @@ public record Dossier(
                 updatedBy,
                 updatedAt,
                 closedBy,
-                closedAt);
+                closedAt,
+                purgeEligibleAt);
     }
 
     public Dossier withCurrentWorkflowLinkId(UUID workflowLinkId, String updatedBy, Instant at) {
@@ -132,6 +160,7 @@ public record Dossier(
                 updatedBy,
                 at,
                 closedBy,
-                closedAt);
+                closedAt,
+                purgeEligibleAt);
     }
 }

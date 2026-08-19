@@ -8,8 +8,8 @@
 > - Inventaire follow-ups / lots : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md)
 > - Séquencement « avant prod » : [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md) §9
 >
-> **Dernière mise à jour :** 2026-08-19 (Phase 1 `retention-dossier-type` —
-> décisions §21 actées ; docs lifecycle initialisées).
+> **Dernière mise à jour :** 2026-08-19 (`retention-dossier-type` implémenté —
+> Phase 5 ; prochain produit = `purge-stockage` §22).
 
 ## Comment s’en servir
 
@@ -37,6 +37,7 @@ Même grille que pour `preview-documents` puis `edition-champs-dossier` :
 |---|---|---|
 | `preview-documents` | PR #52, lot D-PREVIEW | Aperçu HTML/PDF admin templates |
 | `edition-champs-dossier` | PR #53 | UI `PATCH /api/dossiers/{id}/fields` sur le détail (D-DIFF, D-DEFAULTS) |
+| `retention-dossier-type` | PR #55 (en cours), TODO §21 | Défaut tenant + override type ; job ARCHIVE + `purge_outbox` ; UI admin |
 
 Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relations, PATCH fields API, éléments) : voir [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §2.
 
@@ -44,20 +45,16 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 
 | Priorité | Feature / lot kebab-case | Pourquoi ce n’est pas (encore) le suivant immédiat — ou pourquoi ça l’est |
 |---|---|---|
-| **1 — en cours (Phase 1)** | `retention-dossier-type` (TODO §21) puis `purge-stockage` (§22) | **Décisions §21 actées** (2026-08-19) : défaut tenant + override type (jours/`NEVER`) ; expiration → `ARCHIVE` + `purgeEligibleAt` + `purge_outbox` ; horloge = `closedAt`/`CLOTURE` ; UI admin config ; pas de purge physique. Suite §22 toujours ouverte (mécanisme purge PG/object store, port S3/FS — DEFERRED §0). |
+| **1 — prochain** | `purge-stockage` (TODO §22) | Consommer `purge_outbox` (`DOSSIER_PURGE_REQUESTED`) produit par `retention-dossier-type`. **Arbitrages encore ouverts** : transaction vs job vs soft-delete ; port S3/FS (DEFERRED §0). Démarrer = phase requirements pour trancher. |
 | **2** | `openapi-pagination-admin` (reste TODO §24) | Contrat transverse : OpenAPI formel, pagination des **autres** ressources, surface admin exhaustive. Pas un parcours métier. `ProblemDetail` et pagination dossiers déjà livrés. |
 | **3** | `observabilite` (TODO §29) | Docs `docs/ai/monitoring/**` encore `deferred` / squelettes. MDC `tenantId`/`dossierId`/`processInstanceId`, Micrometer (âge outbox, jobs Flowable, PDF, webhooks DLQ, SSE). |
 | **Hors V1** | Rapports / SLA ; connecteur `http-rest` **SERVICE** ; antivirus pièces jointes | Explicitement reportés (maquette UI / TODO §30 / connecteurs V1 = TRIGGER). |
 
-### Alternative si on refuse d’ouvrir §22 / la rétention maintenant
+### Alternative si on refuse d’ouvrir §22 maintenant
 
-Le n°1 (`retention-dossier-type`) a ses **arbitrages §21 actés** ; il reste
-à implémenter via le lifecycle. §22 (`purge-stockage`) reste ouvert pour le
-lot suivant.
-
-Si l’on **reporte** l’implémentation rétention, le premier lot
-**implémentable sans arbitrage §22** hors rétention est le **n°2**
-(`openapi-pagination-admin`).
+Le n°1 (`purge-stockage`) est **bloqué** tant que les arbitrages §22 ne sont
+pas tranchés. Dans ce cas le premier lot **implémentable sans arbitrage** est
+le **n°2** (`openapi-pagination-admin`).
 
 ## Hors file produit (ne pas traiter comme « prochaine feature »)
 
@@ -87,4 +84,4 @@ Si l’on **reporte** l’implémentation rétention, le premier lot
 | 2026-08-17 | `preview-documents` | Dernier lot nommé D-PREVIEW ; pas de point TODO bloquant |
 | 2026-08-18 | `edition-champs-dossier` | Plus de lot nommé ; trou API-sans-UI ; §21 toujours « à décider » |
 | 2026-08-19 | file ci-dessus | `edition-champs-dossier` en revue (PR #53) ; prochain = §21 si on tranche, sinon §24 |
-| 2026-08-19 | `retention-dossier-type` Phase 1 | §21 tranché avec stakeholders ; docs lifecycle créées ; §22 reporté |
+| 2026-08-19 | `retention-dossier-type` Phase 5 | Implémenté (settings + job + outbox + UI) ; prochain = `purge-stockage` §22 |

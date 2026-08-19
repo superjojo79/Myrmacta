@@ -104,7 +104,7 @@ class CreateChildDossierTaskIT {
     }
 
     private static DossierType type(String tenantId, String code, String label) {
-        return new DossierType(UUID.randomUUID(), tenantId, code, label, "wf-" + code, true, false, List.of());
+        return DossierType.inherit(UUID.randomUUID(), tenantId, code, label, "wf-" + code, true, false, List.of());
     }
 
     private static WorkflowTypeConfig smokeConfig(String tenantId, String workflowKey) {
@@ -138,6 +138,7 @@ class CreateChildDossierTaskIT {
                 now,
                 "creator",
                 now,
+                null,
                 null,
                 null);
     }

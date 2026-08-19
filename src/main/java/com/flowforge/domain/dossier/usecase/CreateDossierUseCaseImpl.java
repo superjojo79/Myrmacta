@@ -80,6 +80,7 @@ public final class CreateDossierUseCaseImpl implements CreateDossierUseCase {
                 command.createdBy(),
                 now,
                 null,
+                null,
                 null);
         return dossierRepository.save(dossier);
     }

@@ -2,12 +2,13 @@
 phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
-status: draft
+status: verified
 created: 2026-08-19
 updated: 2026-08-19
 feature: retention-dossier-type
 phase1: 2026-08-19
 phase4_aligned: 2026-08-19
+phase8: 2026-08-19
 ---
 
 # Testing Strategy — `retention-dossier-type`
@@ -23,62 +24,62 @@ phase4_aligned: 2026-08-19
 
 ### `RetentionPolicyResolver`
 
-- [ ] Héritage → jours = défaut tenant.
-- [ ] Override jours → jours type.
-- [ ] `NEVER` → empty (pas d’expiration).
-- [ ] Défaut tenant ≤ 0 rejeté à la construction settings (pas au resolver).
+- [x] Héritage → jours = défaut tenant.
+- [x] Override jours → jours type.
+- [x] `NEVER` → empty (pas d’expiration).
+- [x] Défaut tenant ≤ 0 rejeté à la construction settings (pas au resolver).
 
 ### `TenantRetentionSettings` / upsert use case
 
-- [ ] Upsert refuse `defaultRetentionDays ≤ 0`.
-- [ ] Non-`TENANT_ADMIN` → accès refusé (`TenantAdminGuard`).
+- [x] Upsert refuse `defaultRetentionDays ≤ 0`.
+- [x] Non-`TENANT_ADMIN` → accès refusé (`TenantAdminGuard`).
 
 ### Create / Update `DossierType` (rétention)
 
-- [ ] `retentionNever=true` + `retentionDays` non null → erreur validation.
-- [ ] `retentionDays ≤ 0` → erreur.
-- [ ] Persistance héritage / jours / NEVER round-trip.
+- [x] `retentionNever=true` + `retentionDays` non null → erreur validation.
+- [x] `retentionDays ≤ 0` → erreur.
+- [x] Persistance héritage / jours / NEVER round-trip.
 
 ### `EvaluateDossierRetentionUseCase`
 
-- [ ] Batch `CLOTURE` lus (limit) ; résolution politique en mémoire (D-SCAN).
-- [ ] `CLOTURE` expiré (`expiration <= now`) → `ARCHIVE` + `purgeEligibleAt` + outbox PENDING.
-- [ ] Non clos / `closedAt` null / NEVER / non expiré → inchangé.
-- [ ] Déjà outbox (unique dossier) → no-op idempotent.
-- [ ] Settings absents → no-op.
-- [ ] `ARCHIVE` métier préexistant sans `purgeEligibleAt` → **non** repris
+- [x] Batch `CLOTURE` lus (limit) ; résolution politique en mémoire (D-SCAN).
+- [x] `CLOTURE` expiré (`expiration <= now`) → `ARCHIVE` + `purgeEligibleAt` + outbox PENDING.
+- [x] Non clos / `closedAt` null / NEVER / non expiré → inchangé.
+- [x] Déjà outbox (unique dossier) → no-op idempotent.
+- [x] Settings absents → no-op.
+- [x] `ARCHIVE` métier préexistant sans `purgeEligibleAt` → **non** repris
       (uniquement `CLOTURE`) — D-FORCE.
-- [ ] `updatedBy` = `system:retention-job`.
+- [x] `updatedBy` = `system:retention-job`.
 
 ### Domaine `Dossier`
 
-- [ ] Extension `purgeEligibleAt` sur copie immuable (withRetentionArchive…).
+- [x] Extension `purgeEligibleAt` sur copie immuable (withRetentionArchive…).
 
 ## Integration Tests
 
 ### Persistence / Liquibase
 
-- [ ] Migration crée colonnes type/dossier + table `purge_outbox`.
-- [ ] Round-trip settings + type + outbox (H2 MODE=PostgreSQL).
+- [x] Migration crée colonnes type/dossier + table `purge_outbox`.
+- [x] Round-trip settings + type + outbox (H2 MODE=PostgreSQL).
 
 ### MockMvc
 
-- [ ] `PUT/GET /api/tenant/retention-settings` — 200 admin ; 403 autres rôles ;
+- [x] `PUT/GET /api/tenant/retention-settings` — 200 admin ; 403 autres rôles ;
       400 durée ≤ 0 ; 404 GET si absent (si D-BOOTSTRAP retenu).
-- [ ] Create/update type avec champs rétention — reflet dans GET.
-- [ ] `DossierResponse` expose `purgeEligibleAt` null par défaut.
+- [x] Create/update type avec champs rétention — reflet dans GET.
+- [x] `DossierResponse` expose `purgeEligibleAt` null par défaut.
 
 ### Job (slice / IT)
 
-- [ ] Scheduler/use case branché : un dossier seed `CLOTURE` expiré devient
+- [x] Scheduler/use case branché : un dossier seed `CLOTURE` expiré devient
       `ARCHIVE` + 1 ligne outbox.
 
 ## End-to-End Tests
 
-- [ ] **E2E-RET-1** : admin ouvre settings rétention, PUT durée, reload GET OK.
-- [ ] **E2E-RET-2** : admin crée/édite un type avec override jours ou NEVER ;
+- [x] **E2E-RET-1** : admin ouvre settings rétention, PUT durée, reload GET OK.
+- [x] **E2E-RET-2** : admin crée/édite un type avec override jours ou NEVER ;
       liste reflète les champs.
-- [ ] **E2E-RET-3** : non-admin (si mock rôle) n’accède pas à la mutation
+- [x] **E2E-RET-3** : non-admin (si mock rôle) n’accède pas à la mutation
       settings (ou UI masquée) — aligné patterns admin existants.
 
 Mocks Playwright : handlers `/api/tenant/retention-settings` +
@@ -113,3 +114,17 @@ Scan indexé borné par `batch-size` ; pas de charge Flowable dédiée ici.
 ## Bug Tracking
 
 `TODO.md` §22 pour la consommation outbox ; pas de fermeture §22 dans ce lot.
+
+
+## Phase 5 evidence (2026-08-19)
+
+```text
+./mvnw verify -Dmaven.compiler.release=21
+# BUILD SUCCESS — Jacoco checks met
+
+cd frontend && npm run test
+# Test Files  37 passed | Tests  114 passed
+
+cd frontend && CI=1 npm run test:e2e
+# 27 passed including E2E-RET-1/2/3
+```

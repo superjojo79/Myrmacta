@@ -8,6 +8,8 @@ import com.flowforge.domain.dossier.model.DuplicateDossierRelationException;
 import com.flowforge.domain.dossier.model.IllegalDossierStatusTransitionException;
 import com.flowforge.domain.dossier.model.InactiveDossierTypeException;
 import com.flowforge.domain.dossier.model.InvalidDossierElementException;
+import com.flowforge.domain.dossier.model.InvalidRetentionPolicyException;
+import com.flowforge.domain.dossier.model.TenantRetentionSettingsNotFoundException;
 import com.flowforge.infrastructure.security.SecurityAuditLog;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -42,9 +44,19 @@ public class DossierExceptionHandler {
         return problem(HttpStatus.NOT_FOUND, "Dossier resource not found", ex.getMessage());
     }
 
+    @ExceptionHandler(TenantRetentionSettingsNotFoundException.class)
+    ProblemDetail handleRetentionSettingsNotFound(TenantRetentionSettingsNotFoundException ex) {
+        return problem(HttpStatus.NOT_FOUND, "Retention settings not found", ex.getMessage());
+    }
+
     @ExceptionHandler(InvalidDossierElementException.class)
     ProblemDetail handleInvalidElement(InvalidDossierElementException ex) {
         return problem(HttpStatus.BAD_REQUEST, "Invalid dossier element", ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidRetentionPolicyException.class)
+    ProblemDetail handleInvalidRetentionPolicy(InvalidRetentionPolicyException ex) {
+        return problem(HttpStatus.BAD_REQUEST, "Invalid retention policy", ex.getMessage());
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)

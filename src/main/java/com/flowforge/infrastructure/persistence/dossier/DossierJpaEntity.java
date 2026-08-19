@@ -73,6 +73,9 @@ public class DossierJpaEntity {
     @Column(name = "closed_at")
     private Instant closedAt;
 
+    @Column(name = "purge_eligible_at")
+    private Instant purgeEligibleAt;
+
     protected DossierJpaEntity() {
         // JPA
     }
@@ -92,7 +95,8 @@ public class DossierJpaEntity {
             String updatedBy,
             Instant updatedAt,
             String closedBy,
-            Instant closedAt) {
+            Instant closedAt,
+            Instant purgeEligibleAt) {
         this.id = id;
         this.tenantId = tenantId;
         this.reference = reference;
@@ -108,6 +112,7 @@ public class DossierJpaEntity {
         this.updatedAt = updatedAt;
         this.closedBy = closedBy;
         this.closedAt = closedAt;
+        this.purgeEligibleAt = purgeEligibleAt;
     }
 
     static DossierJpaEntity fromDomain(Dossier dossier) {
@@ -126,7 +131,8 @@ public class DossierJpaEntity {
                 dossier.updatedBy(),
                 dossier.updatedAt(),
                 dossier.closedBy(),
-                dossier.closedAt());
+                dossier.closedAt(),
+                dossier.purgeEligibleAt());
     }
 
     Dossier toDomain() {
@@ -145,6 +151,7 @@ public class DossierJpaEntity {
                 updatedBy,
                 updatedAt,
                 closedBy,
-                closedAt);
+                closedAt,
+                purgeEligibleAt);
     }
 }

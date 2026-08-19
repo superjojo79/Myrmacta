@@ -118,6 +118,9 @@ app:
       bucket: ${APP_STORAGE_S3_BUCKET:}
       region: ${APP_STORAGE_S3_REGION:us-east-1}
       endpoint: ${APP_STORAGE_S3_ENDPOINT:}
+  retention:
+    poll-delay: 1h
+    batch-size: 100
   dossier:
     attachment:
       # Taille max : app.storage n'a pas de borne dédiée, la seule limite est

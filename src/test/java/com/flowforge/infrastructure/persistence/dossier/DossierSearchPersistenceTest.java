@@ -105,6 +105,7 @@ class DossierSearchPersistenceTest {
                 "creator",
                 updatedAt,
                 null,
+                null,
                 null);
         return dossierRepository.save(dossier);
     }

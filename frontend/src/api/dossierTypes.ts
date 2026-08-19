@@ -18,6 +18,8 @@ export async function createDossierType(payload: {
   active?: boolean
   allowUnknownFields?: boolean
   fieldDefinitions?: FieldDefinition[]
+  retentionDays?: number | null
+  retentionNever?: boolean
 }): Promise<DossierType> {
   const { data } = await axios.post<DossierType>('/api/dossier-types', payload)
   return data
@@ -31,6 +33,8 @@ export async function updateDossierType(
     active: boolean
     allowUnknownFields: boolean
     fieldDefinitions: FieldDefinition[]
+    retentionDays: number | null
+    retentionNever: boolean
   }>,
 ): Promise<DossierType> {
   const { data } = await axios.patch<DossierType>(`/api/dossier-types/${code}`, payload)

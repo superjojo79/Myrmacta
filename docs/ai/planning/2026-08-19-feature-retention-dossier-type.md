@@ -2,13 +2,15 @@
 phase: planning
 title: Project Planning & Task Breakdown
 description: Break down work into actionable tasks and estimate timeline
-status: ready
+status: done
 created: 2026-08-19
 updated: 2026-08-19
 feature: retention-dossier-type
 sequencing: layered
 phase1: 2026-08-19
 phase4: 2026-08-19
+phase5: 2026-08-19
+phase6: 2026-08-19
 design_aligned: 2026-08-19
 requirements_ref: docs/ai/requirements/2026-08-19-feature-retention-dossier-type.md
 design_ref: docs/ai/design/2026-08-19-feature-retention-dossier-type.md
@@ -26,12 +28,12 @@ TDD obligatoire (skill `tdd`) : test rouge → code → vert. Avant claim :
 
 ## Milestones
 
-- [ ] **M1 — Settings tenant (domaine + persist + API)**
-- [ ] **M2 — Override `DossierType` + resolver**
-- [ ] **M3 — Dossier `purgeEligibleAt` + `purge_outbox`**
-- [ ] **M4 — `EvaluateDossierRetention` + job**
-- [ ] **M5 — Admin SPA + E2E**
-- [ ] **M6 — Docs produit + verify final**
+- [x] **M1 — Settings tenant (domaine + persist + API)**
+- [x] **M2 — Override `DossierType` + resolver**
+- [x] **M3 — Dossier `purgeEligibleAt` + `purge_outbox`**
+- [x] **M4 — `EvaluateDossierRetention` + job**
+- [x] **M5 — Admin SPA + E2E**
+- [x] **M6 — Docs produit + verify final**
 
 ## Task Breakdown
 
@@ -39,21 +41,21 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M1 — Settings tenant
 
-- [ ] **T1. Domaine settings + use cases (TDD)**
+- [x] **T1. Domaine settings + use cases (TDD)**
   - **Outcome :** `TenantRetentionSettings` ; `Get` / `UpsertTenantRetentionSettingsUseCase` ;
     `TenantAdminGuard` ; refuse `defaultRetentionDays ≤ 0`.
   - **Depends on :** —
   - **Validation :** tests unitaires use case (403 non-admin, 400 ≤ 0).
   - **Tests liés :** testing § `TenantRetentionSettings` / upsert.
 
-- [ ] **T2. Liquibase + JPA settings**
+- [x] **T2. Liquibase + JPA settings**
   - **Outcome :** table singleton `tenant_retention_settings` (PK `tenant_id`) ;
     adapter port out ; pas de seed (D-BOOTSTRAP).
   - **Depends on :** T1
   - **Validation :** IT persistence round-trip H2 MODE=PostgreSQL.
   - **Tests liés :** testing § Persistence settings.
 
-- [ ] **T3. API `GET/PUT /api/tenant/retention-settings` (TDD MockMvc)**
+- [x] **T3. API `GET/PUT /api/tenant/retention-settings` (TDD MockMvc)**
   - **Outcome :** controller + DTOs ; GET **404** si absent ; PUT upsert ;
     `@PreAuthorize TENANT_ADMIN`.
   - **Depends on :** T2
@@ -62,20 +64,20 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M2 — Override type + politique
 
-- [ ] **T4. Étendre `DossierType` + validation rétention (TDD)**
+- [x] **T4. Étendre `DossierType` + validation rétention (TDD)**
   - **Outcome :** `retentionDays` / `retentionNever` ; validation exclusivité ;
     create/update use cases + patch héritage (A-PATCH-INHERIT).
   - **Depends on :** —
   - **Validation :** tests create/update (NEVER+days invalide, days ≤ 0).
   - **Tests liés :** testing § Create/Update `DossierType`.
 
-- [ ] **T5. `RetentionPolicyResolver` (TDD)**
+- [x] **T5. `RetentionPolicyResolver` (TDD)**
   - **Outcome :** héritage / jours / NEVER → `OptionalInt`.
   - **Depends on :** T4
   - **Validation :** 3 cas unitaires (+ settings ≤ 0 hors resolver).
   - **Tests liés :** testing § `RetentionPolicyResolver`.
 
-- [ ] **T6. Liquibase/JPA colonnes type + DTOs/API type**
+- [x] **T6. Liquibase/JPA colonnes type + DTOs/API type**
   - **Outcome :** colonnes + migration héritage ; `DossierTypeResponse` /
     create/patch exposent toujours les champs (D-TYPE-VIS).
   - **Depends on :** T4
@@ -84,21 +86,21 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M3 — Dossier + outbox
 
-- [ ] **T7. Étendre `Dossier` — `purgeEligibleAt` + `withRetentionArchive` (TDD)**
+- [x] **T7. Étendre `Dossier` — `purgeEligibleAt` + `withRetentionArchive` (TDD)**
   - **Outcome :** champ + méthode domaine `CLOTURE`→`ARCHIVE` +
     `purgeEligibleAt` ; acteur passé en param (D-JOB-ACTOR au call site).
   - **Depends on :** —
   - **Validation :** tests record / transition refusée si pas CLOTURE.
   - **Tests liés :** testing § Domaine `Dossier`.
 
-- [ ] **T8. `purge_outbox` + port (TDD)**
+- [x] **T8. `purge_outbox` + port (TDD)**
   - **Outcome :** `PurgeOutboxRecord` ; repo insert/exists ; Liquibase table
     **UNIQUE(`dossier_id`)** (D-OUTBOX-UNIQ) ; status `PENDING`.
   - **Depends on :** —
   - **Validation :** IT insert + conflit unique.
   - **Tests liés :** testing § Persistence outbox.
 
-- [ ] **T9. Exposer `purgeEligibleAt` sur `DossierResponse` + mapping JPA dossier**
+- [x] **T9. Exposer `purgeEligibleAt` sur `DossierResponse` + mapping JPA dossier**
   - **Outcome :** colonne dossier + DTO toujours présent nullable (D-PURGE-FIELD).
   - **Depends on :** T7
   - **Validation :** MockMvc GET dossier `purgeEligibleAt: null` par défaut ;
@@ -107,13 +109,13 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M4 — Évaluation + job
 
-- [ ] **T10. Port `findClosedForRetention(limit)` + adapter (TDD/IT)**
+- [x] **T10. Port `findClosedForRetention(limit)` + adapter (TDD/IT)**
   - **Outcome :** `CLOTURE` + `closed_at IS NOT NULL`, `ORDER BY closed_at, id`,
     limit ; index `(status, closed_at)` (D-SCAN, A-BATCH-COUNT).
   - **Depends on :** T7, T9
   - **Validation :** IT requête / ordre / limit.
 
-- [ ] **T11. `EvaluateDossierRetentionUseCase` (TDD)**
+- [x] **T11. `EvaluateDossierRetentionUseCase` (TDD)**
   - **Outcome :** settings absents → no-op ; resolve mémoire ; archive +
     outbox en **une** transaction ; idempotence unique ; D-FORCE ;
     `updatedBy=system:retention-job` ; **pas** `UpdateDossierStatusUseCase`
@@ -122,7 +124,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Validation :** tous les cas testing § Evaluate… .
   - **Tests liés :** testing § `EvaluateDossierRetentionUseCase`.
 
-- [ ] **T12. Job `@Scheduled` + yaml (TDD/IT slice)**
+- [x] **T12. Job `@Scheduled` + yaml (TDD/IT slice)**
   - **Outcome :** `app.retention.poll-delay` défaut `1h` ;
     `app.retention.batch-size` défaut `100` (D-SCHED) ; câblage Spring.
   - **Depends on :** T11
@@ -131,21 +133,21 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M5 — Frontend
 
-- [ ] **T13. Clients API + types TS (TDD Vitest)**
+- [x] **T13. Clients API + types TS (TDD Vitest)**
   - **Outcome :** `retentionSettings` GET/PUT ; champs rétention sur types
     dossier ; type `purgeEligibleAt` sur dossier si types partagés.
   - **Depends on :** T3, T6, T9 (contrats)
   - **Validation :** `cd frontend && npm run test` (specs clients).
   - **Tests liés :** support E2E-RET-* .
 
-- [ ] **T14. UI admin — bloc rétention + champs type (TDD Vitest)**
+- [x] **T14. UI admin — bloc rétention + champs type (TDD Vitest)**
   - **Outcome :** bloc sur / près de `DossierTypesAdminView` (D-UI-LOC) ;
     create/edit type jours / NEVER / héritage ; gestion 404 settings.
   - **Depends on :** T13
   - **Validation :** specs composants / vue admin.
   - **Tests liés :** parcours UI unitaires.
 
-- [ ] **T15. Playwright E2E-RET-1/2/3**
+- [x] **T15. Playwright E2E-RET-1/2/3**
   - **Outcome :** mocks settings + dossier-types ; admin config ; override
     type ; non-admin sans mutation settings.
   - **Depends on :** T14
@@ -154,7 +156,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ### M6 — Clôture docs
 
-- [ ] **T16. Docs produit + success criteria + verify**
+- [x] **T16. Docs produit + success criteria + verify**
   - **Outcome :** cocher success criteria requirements ; maj FILE-ATTENTE /
     DEFERRED (feature implémentée ; §22 suivant) ; TODO §21 → implémenté /
     quasi clos ; evidence verify.

@@ -120,6 +120,7 @@ class ChildDossierRelationConfirmerTest {
                 "workflow",
                 T0,
                 null,
+                null,
                 null);
     }
 }

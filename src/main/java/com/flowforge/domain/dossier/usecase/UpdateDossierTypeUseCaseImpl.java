@@ -32,7 +32,9 @@ public final class UpdateDossierTypeUseCaseImpl implements UpdateDossierTypeUseC
                 command.workflowKey(),
                 command.active(),
                 command.allowUnknownFields(),
-                command.fieldDefinitions());
+                command.fieldDefinitions(),
+                command.retentionDays(),
+                command.retentionNever());
         repository.save(updated);
         return updated;
     }

@@ -344,6 +344,7 @@ class WorkflowLinkVisualizationUseCaseImplTest {
                 "starter-sub",
                 Instant.parse("2026-08-02T09:00:00Z"),
                 null,
+                null,
                 null);
     }
 
@@ -363,11 +364,12 @@ class WorkflowLinkVisualizationUseCaseImplTest {
                 "starter-sub",
                 Instant.parse("2026-08-02T09:00:00Z"),
                 null,
+                null,
                 null);
     }
 
     private static DossierType dossierTypeWithSensitiveSsn() {
-        return new DossierType(
+        return DossierType.inherit(
                 UUID.randomUUID(),
                 TENANT,
                 "WF",

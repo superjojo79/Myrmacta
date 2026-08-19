@@ -115,6 +115,7 @@ class DossierElementUploadControllerTest {
                 "creator",
                 now,
                 "creator",
-                now);
+                now,
+                null);
     }
 }

@@ -15,5 +15,7 @@ public interface CreateDossierTypeUseCase {
             String workflowKey,
             boolean active,
             boolean allowUnknownFields,
-            List<FieldDefinition> fieldDefinitions) {}
+            List<FieldDefinition> fieldDefinitions,
+            Integer retentionDays,
+            boolean retentionNever) {}
 }

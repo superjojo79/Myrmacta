@@ -183,6 +183,7 @@ class CreateChildDossierDelegateTest {
                 "workflow",
                 now,
                 null,
+                null,
                 null);
     }
 }

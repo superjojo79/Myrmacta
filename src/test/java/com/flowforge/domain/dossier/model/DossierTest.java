@@ -1,6 +1,7 @@
 package com.flowforge.domain.dossier.model;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
 import java.util.Map;
@@ -10,6 +11,33 @@ import org.junit.jupiter.api.Test;
 class DossierTest {
 
     private static final Instant CREATED_AT = Instant.parse("2026-08-02T09:00:00Z");
+
+    @Test
+    void withRetentionArchive_fromClotureSetsArchiveStatusAndPurgeEligibleAt() {
+        Instant closedAt = Instant.parse("2026-08-10T00:00:00Z");
+        Dossier dossier = dossier().withStatus(DossierStatus.CLOTURE, "closer", closedAt);
+        Instant at = Instant.parse("2026-09-09T00:00:00Z");
+
+        Dossier archived = dossier.withRetentionArchive("system:retention-job", at);
+
+        assertThat(archived.status()).isEqualTo(DossierStatus.ARCHIVE);
+        assertThat(archived.purgeEligibleAt()).isEqualTo(at);
+        assertThat(archived.updatedBy()).isEqualTo("system:retention-job");
+        assertThat(archived.updatedAt()).isEqualTo(at);
+        assertThat(archived.closedBy()).isEqualTo("closer");
+        assertThat(archived.closedAt()).isEqualTo(closedAt);
+        // Original stays untouched — immutable copy.
+        assertThat(dossier.status()).isEqualTo(DossierStatus.CLOTURE);
+        assertThat(dossier.purgeEligibleAt()).isNull();
+    }
+
+    @Test
+    void withRetentionArchive_rejectsTransitionWhenNotCloture() {
+        Dossier dossier = dossier();
+
+        assertThatThrownBy(() -> dossier.withRetentionArchive("system:retention-job", Instant.now()))
+                .isInstanceOf(IllegalDossierStatusTransitionException.class);
+    }
 
     @Test
     void withFields_threeArg_setsFieldsUpdatedByAndUpdatedAt() {
@@ -64,6 +92,7 @@ class DossierTest {
                 CREATED_AT,
                 "creator",
                 CREATED_AT,
+                null,
                 null,
                 null);
     }

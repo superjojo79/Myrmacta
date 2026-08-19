@@ -38,7 +38,7 @@ class DossierPersistenceTest {
 
     @Test
     void savesAndLoadsDossierTypeWithFieldDefinitions() {
-        var type = new DossierType(
+        var type = DossierType.inherit(
                 UUID.randomUUID(),
                 "tenant_dev",
                 "SINISTRE",
@@ -119,6 +119,7 @@ class DossierPersistenceTest {
                 now,
                 "creator",
                 now,
+                null,
                 null,
                 null);
     }

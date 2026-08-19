@@ -183,7 +183,7 @@ outbox dans **une transaction**.
 | Settings en base | Pas seulement `application.yml` | UI `TENANT_ADMIN` (D-UI) |
 | `retentionNever` bool + `retentionDays` | Simple JSON API | Évite enum FE complexe |
 | ARCHIVE métier sans outbox | Respect D-FORCE | RGPD ≠ archivage process |
-| Pas de seed durée | Force décision admin | Évite faux sentiment de conformité |
+| Pas de seed durée | Force décision admin | **D-BOOTSTRAP** (Phase 2) |
 
 ## Non-Functional Requirements
 

@@ -4,6 +4,8 @@
 
 > **Démarrage local :** voir [GETTING-STARTED.md](GETTING-STARTED.md) — infrastructure Docker/Podman
 > (PostgreSQL, Keycloak, stockage S3-compatible en option) + lancement backend/frontend, config minimale incluse.
+>  **Utilisation de l'UI :** voir [GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md) — créer un dossier,
+> démarrer/suivre un workflow, configurer un connecteur ou un template de document.
 
 ------
 
@@ -168,7 +170,8 @@ charge le justifie.
 
 ## Documentation technique
 
-Mise en place et utilisation en local : [GETTING-STARTED.md](GETTING-STARTED.md).
+Mise en place et utilisation en local : [GETTING-STARTED.md](GETTING-STARTED.md). Prise en main
+de l'UI (dossiers, workflows, connecteurs, templates) : [GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md).
 
 La documentation d'architecture est disponible dans le répertoire `analysis doc` :
 

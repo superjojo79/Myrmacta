@@ -10,6 +10,7 @@ import com.flowforge.domain.dossier.TenantAdminGuard;
 import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.AccessDeniedException;
 import com.flowforge.domain.dossier.model.DossierType;
+import com.flowforge.domain.dossier.model.InvalidRetentionPolicyException;
 import com.flowforge.domain.dossier.port.in.CreateDossierTypeUseCase;
 import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
 import java.util.List;
@@ -39,15 +40,95 @@ class CreateDossierTypeUseCaseImplTest {
                         "wf-claim",
                         true,
                         false,
-                        List.of()),
+                        List.of(),
+                        null,
+                        false),
                 AccessContext.user("admin", Set.of("TENANT_ADMIN")));
 
         assertThat(created.code()).isEqualTo("CLAIM");
         assertThat(created.tenantId()).isEqualTo("tenant_dev");
+        assertThat(created.retentionDays()).isNull();
+        assertThat(created.retentionNever()).isFalse();
 
         ArgumentCaptor<DossierType> saved = ArgumentCaptor.forClass(DossierType.class);
         verify(repository).save(saved.capture());
         assertThat(saved.getValue()).isEqualTo(created);
+    }
+
+    @Test
+    void create_persistsRetentionOverrideDays() {
+        DossierType created = useCase.create(
+                new CreateDossierTypeUseCase.CreateDossierTypeCommand(
+                        "tenant_dev",
+                        "LEGAL",
+                        "Legal",
+                        "wf-legal",
+                        true,
+                        false,
+                        List.of(),
+                        365,
+                        false),
+                AccessContext.user("admin", Set.of("TENANT_ADMIN")));
+
+        assertThat(created.retentionDays()).isEqualTo(365);
+        assertThat(created.retentionNever()).isFalse();
+    }
+
+    @Test
+    void create_persistsRetentionNever() {
+        DossierType created = useCase.create(
+                new CreateDossierTypeUseCase.CreateDossierTypeCommand(
+                        "tenant_dev",
+                        "LOG",
+                        "Log",
+                        "wf-log",
+                        true,
+                        false,
+                        List.of(),
+                        null,
+                        true),
+                AccessContext.user("admin", Set.of("TENANT_ADMIN")));
+
+        assertThat(created.retentionDays()).isNull();
+        assertThat(created.retentionNever()).isTrue();
+    }
+
+    @Test
+    void create_rejectsRetentionNeverWithDaysSet() {
+        assertThatThrownBy(() -> useCase.create(
+                        new CreateDossierTypeUseCase.CreateDossierTypeCommand(
+                                "tenant_dev",
+                                "LOG",
+                                "Log",
+                                "wf-log",
+                                true,
+                                false,
+                                List.of(),
+                                30,
+                                true),
+                        AccessContext.user("admin", Set.of("TENANT_ADMIN"))))
+                .isInstanceOf(InvalidRetentionPolicyException.class);
+
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void create_rejectsNonPositiveRetentionDays() {
+        assertThatThrownBy(() -> useCase.create(
+                        new CreateDossierTypeUseCase.CreateDossierTypeCommand(
+                                "tenant_dev",
+                                "LEGAL",
+                                "Legal",
+                                "wf-legal",
+                                true,
+                                false,
+                                List.of(),
+                                0,
+                                false),
+                        AccessContext.user("admin", Set.of("TENANT_ADMIN"))))
+                .isInstanceOf(InvalidRetentionPolicyException.class);
+
+        verifyNoInteractions(repository);
     }
 
     @Test
@@ -60,7 +141,9 @@ class CreateDossierTypeUseCaseImplTest {
                                 "wf-claim",
                                 true,
                                 false,
-                                List.of()),
+                                List.of(),
+                                null,
+                                false),
                         AccessContext.user("manager", Set.of("DOSSIER_MANAGER"))))
                 .isInstanceOf(AccessDeniedException.class);
 

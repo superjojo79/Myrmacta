@@ -2,13 +2,16 @@ package com.flowforge.infrastructure.config;
 
 import com.flowforge.domain.dossier.DossierAccessPolicy;
 import com.flowforge.domain.dossier.TenantAdminGuard;
+import com.flowforge.domain.dossier.model.RetentionPolicyResolver;
 import com.flowforge.domain.dossier.port.in.AddDossierElementUseCase;
 import com.flowforge.domain.dossier.port.in.CreateDossierRelationUseCase;
 import com.flowforge.domain.dossier.port.in.CreateDossierTypeUseCase;
 import com.flowforge.domain.dossier.port.in.CreateDossierUseCase;
+import com.flowforge.domain.dossier.port.in.EvaluateDossierRetentionUseCase;
 import com.flowforge.domain.dossier.port.in.GetDossierElementUseCase;
 import com.flowforge.domain.dossier.port.in.GetDossierTypeUseCase;
 import com.flowforge.domain.dossier.port.in.GetDossierUseCase;
+import com.flowforge.domain.dossier.port.in.GetTenantRetentionSettingsUseCase;
 import com.flowforge.domain.dossier.port.in.GrantDossierTypeAccessUseCase;
 import com.flowforge.domain.dossier.port.in.ListDossierElementsUseCase;
 import com.flowforge.domain.dossier.port.in.ListDossierRelationsUseCase;
@@ -18,6 +21,7 @@ import com.flowforge.domain.dossier.port.in.SearchDossiersUseCase;
 import com.flowforge.domain.dossier.port.in.UpdateDossierFieldsUseCase;
 import com.flowforge.domain.dossier.port.in.UpdateDossierStatusUseCase;
 import com.flowforge.domain.dossier.port.in.UpdateDossierTypeUseCase;
+import com.flowforge.domain.dossier.port.in.UpsertTenantRetentionSettingsUseCase;
 import com.flowforge.domain.dossier.port.out.DossierElementRepository;
 import com.flowforge.domain.dossier.port.out.DossierReferenceGenerator;
 import com.flowforge.domain.dossier.port.out.DossierRelationRepository;
@@ -25,13 +29,17 @@ import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.dossier.port.out.DossierSearchPort;
 import com.flowforge.domain.dossier.port.out.DossierTypeAclRepository;
 import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
+import com.flowforge.domain.dossier.port.out.PurgeOutboxRepository;
+import com.flowforge.domain.dossier.port.out.TenantRetentionSettingsRepository;
 import com.flowforge.domain.dossier.usecase.AddDossierElementUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.CreateDossierRelationUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.CreateDossierTypeUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.CreateDossierUseCaseImpl;
+import com.flowforge.domain.dossier.usecase.EvaluateDossierRetentionUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.GetDossierElementUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.GetDossierTypeUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.GetDossierUseCaseImpl;
+import com.flowforge.domain.dossier.usecase.GetTenantRetentionSettingsUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.GrantDossierTypeAccessUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.ListDossierElementsUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.ListDossierRelationsUseCaseImpl;
@@ -41,12 +49,13 @@ import com.flowforge.domain.dossier.usecase.SearchDossiersUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.UpdateDossierFieldsUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.UpdateDossierStatusUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.UpdateDossierTypeUseCaseImpl;
+import com.flowforge.domain.dossier.usecase.UpsertTenantRetentionSettingsUseCaseImpl;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@EnableConfigurationProperties(AttachmentUploadProperties.class)
+@EnableConfigurationProperties({AttachmentUploadProperties.class, RetentionProperties.class})
 public class DossierConfig {
 
     @Bean
@@ -186,5 +195,37 @@ public class DossierConfig {
             DossierAccessPolicy accessPolicy) {
         return new ListDossierRelationsUseCaseImpl(
                 dossierRepository, dossierRelationRepository, typeRepository, accessPolicy);
+    }
+
+    @Bean
+    RetentionPolicyResolver retentionPolicyResolver() {
+        return new RetentionPolicyResolver();
+    }
+
+    @Bean
+    GetTenantRetentionSettingsUseCase getTenantRetentionSettingsUseCase(
+            TenantRetentionSettingsRepository repository, TenantAdminGuard tenantAdminGuard) {
+        return new GetTenantRetentionSettingsUseCaseImpl(repository, tenantAdminGuard);
+    }
+
+    @Bean
+    UpsertTenantRetentionSettingsUseCase upsertTenantRetentionSettingsUseCase(
+            TenantRetentionSettingsRepository repository, TenantAdminGuard tenantAdminGuard) {
+        return new UpsertTenantRetentionSettingsUseCaseImpl(repository, tenantAdminGuard);
+    }
+
+    @Bean
+    EvaluateDossierRetentionUseCase evaluateDossierRetentionUseCase(
+            DossierRepository dossierRepository,
+            DossierTypeRepository typeRepository,
+            TenantRetentionSettingsRepository settingsRepository,
+            PurgeOutboxRepository purgeOutboxRepository,
+            RetentionPolicyResolver retentionPolicyResolver) {
+        return new EvaluateDossierRetentionUseCaseImpl(
+                dossierRepository,
+                typeRepository,
+                settingsRepository,
+                purgeOutboxRepository,
+                retentionPolicyResolver);
     }
 }

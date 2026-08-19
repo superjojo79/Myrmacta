@@ -183,7 +183,7 @@ class SearchDossiersUseCaseImplTest {
     }
 
     private static DossierType type(String code, String label) {
-        return new DossierType(
+        return DossierType.inherit(
                 UUID.randomUUID(), TENANT, code, label, "wf", true, false, List.of());
     }
 

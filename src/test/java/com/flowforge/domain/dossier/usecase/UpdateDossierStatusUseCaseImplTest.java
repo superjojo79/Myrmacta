@@ -139,6 +139,7 @@ class UpdateDossierStatusUseCaseImplTest {
                 "creator",
                 createdAt,
                 null,
+                null,
                 null);
     }
 }

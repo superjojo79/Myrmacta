@@ -15,6 +15,7 @@ import com.flowforge.domain.dossier.model.DossierNotFoundException;
 import com.flowforge.domain.dossier.model.DossierType;
 import com.flowforge.domain.dossier.model.FieldDefinition;
 import com.flowforge.domain.dossier.model.FieldType;
+import com.flowforge.domain.dossier.model.InvalidRetentionPolicyException;
 import com.flowforge.domain.dossier.port.in.UpdateDossierTypeUseCase;
 import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
 import java.util.List;
@@ -47,7 +48,7 @@ class UpdateDossierTypeUseCaseImplTest {
 
         DossierType updated = useCase.update(
                 new UpdateDossierTypeUseCase.UpdateDossierTypeCommand(
-                        TENANT, TYPE_CODE, "New label", "wf-new", false, true, newFields),
+                        TENANT, TYPE_CODE, "New label", "wf-new", false, true, newFields, null, false),
                 admin());
 
         assertThat(updated.id()).isEqualTo(existing.id());
@@ -58,10 +59,54 @@ class UpdateDossierTypeUseCaseImplTest {
         assertThat(updated.active()).isFalse();
         assertThat(updated.allowUnknownFields()).isTrue();
         assertThat(updated.fieldDefinitions()).isEqualTo(newFields);
+        assertThat(updated.retentionDays()).isNull();
+        assertThat(updated.retentionNever()).isFalse();
 
         ArgumentCaptor<DossierType> saved = ArgumentCaptor.forClass(DossierType.class);
         verify(repository).save(saved.capture());
         assertThat(saved.getValue()).isEqualTo(updated);
+    }
+
+    @Test
+    void update_persistsRetentionOverride() {
+        DossierType existing = type("Old label", true, List.of());
+        when(repository.findByCode(TENANT, TYPE_CODE)).thenReturn(Optional.of(existing));
+
+        DossierType updated = useCase.update(
+                new UpdateDossierTypeUseCase.UpdateDossierTypeCommand(
+                        TENANT, TYPE_CODE, "Old label", "wf-old", true, false, List.of(), 90, false),
+                admin());
+
+        assertThat(updated.retentionDays()).isEqualTo(90);
+        assertThat(updated.retentionNever()).isFalse();
+    }
+
+    @Test
+    void update_rejectsRetentionNeverWithDaysSet() {
+        DossierType existing = type("Old label", true, List.of());
+        when(repository.findByCode(TENANT, TYPE_CODE)).thenReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> useCase.update(
+                        new UpdateDossierTypeUseCase.UpdateDossierTypeCommand(
+                                TENANT, TYPE_CODE, "Old label", "wf-old", true, false, List.of(), 30, true),
+                        admin()))
+                .isInstanceOf(InvalidRetentionPolicyException.class);
+
+        verify(repository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void update_rejectsNonPositiveRetentionDays() {
+        DossierType existing = type("Old label", true, List.of());
+        when(repository.findByCode(TENANT, TYPE_CODE)).thenReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> useCase.update(
+                        new UpdateDossierTypeUseCase.UpdateDossierTypeCommand(
+                                TENANT, TYPE_CODE, "Old label", "wf-old", true, false, List.of(), -1, false),
+                        admin()))
+                .isInstanceOf(InvalidRetentionPolicyException.class);
+
+        verify(repository, never()).save(org.mockito.ArgumentMatchers.any());
     }
 
     @Test
@@ -85,7 +130,7 @@ class UpdateDossierTypeUseCaseImplTest {
 
     private static UpdateDossierTypeUseCase.UpdateDossierTypeCommand command() {
         return new UpdateDossierTypeUseCase.UpdateDossierTypeCommand(
-                TENANT, TYPE_CODE, "New label", "wf-new", false, false, List.of());
+                TENANT, TYPE_CODE, "New label", "wf-new", false, false, List.of(), null, false);
     }
 
     private static AccessContext.User admin() {
@@ -93,7 +138,7 @@ class UpdateDossierTypeUseCaseImplTest {
     }
 
     private static DossierType type(String label, boolean active, List<FieldDefinition> fields) {
-        return new DossierType(UUID.randomUUID(), TENANT, TYPE_CODE, label, "wf-old", active, false, fields);
+        return DossierType.inherit(UUID.randomUUID(), TENANT, TYPE_CODE, label, "wf-old", active, false, fields);
     }
 
     private static FieldDefinition field(String name, FieldType type) {

@@ -92,6 +92,7 @@ class ListDossierElementsUseCaseImplTest {
                 "user-1",
                 Instant.parse("2026-08-01T00:00:00Z"),
                 null,
+                null,
                 null);
     }
 }

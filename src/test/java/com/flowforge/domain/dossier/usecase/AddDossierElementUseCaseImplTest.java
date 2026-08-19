@@ -386,6 +386,7 @@ class AddDossierElementUseCaseImplTest {
                 null,
                 null,
                 null,
+                null,
                 null);
     }
 }

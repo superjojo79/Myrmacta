@@ -184,6 +184,7 @@ class CreateDossierRelationUseCaseImplTest {
                 "u1",
                 now,
                 null,
+                null,
                 null);
     }
 }

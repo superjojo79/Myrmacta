@@ -7,10 +7,12 @@ import DossierTypesAdminView from './DossierTypesAdminView.vue'
 import * as adminApi from '@/api/admin'
 import * as workflowsApi from '@/api/workflows'
 import * as typesApi from '@/api/dossierTypes'
+import * as retentionApi from '@/api/retentionSettings'
 
 vi.mock('@/api/admin')
 vi.mock('@/api/workflows')
 vi.mock('@/api/dossierTypes')
+vi.mock('@/api/retentionSettings')
 vi.mock('@/api/documents', () => ({
   previewHtml: vi.fn().mockResolvedValue('<p>ok</p>'),
   previewPdf: vi.fn().mockResolvedValue(new Blob()),
@@ -69,8 +71,13 @@ describe('admin actions coverage', () => {
         active: true,
         allowUnknownFields: false,
         fieldDefinitions: [],
+        retentionDays: null,
+        retentionNever: false,
       },
     ])
+    vi.mocked(retentionApi.getRetentionSettings).mockRejectedValue({
+      response: { status: 404, data: { detail: 'not found', status: 404 } },
+    })
   })
 
   it('templates rename create and lifecycle actions', async () => {
@@ -139,13 +146,14 @@ describe('admin actions coverage', () => {
     await types.get('td button').trigger('click')
     await flushPromises()
     expect(typesApi.updateDossierType).toHaveBeenCalled()
-    const aclInputs = types.findAll('form')[1].findAll('input')
+    const aclForm = types.findAll('form')[2]
+    const aclInputs = aclForm.findAll('input')
     await aclInputs[0].setValue('CLAIM')
     await aclInputs[1].setValue('u1')
-    await types.findAll('form')[1].trigger('submit.prevent')
+    await aclForm.trigger('submit.prevent')
     await flushPromises()
     expect(typesApi.grantDossierTypeAcl).toHaveBeenCalled()
-    await types.findAll('form')[1].findAll('button')[1].trigger('click')
+    await aclForm.findAll('button')[1].trigger('click')
     await flushPromises()
     expect(typesApi.revokeDossierTypeAcl).toHaveBeenCalled()
   })

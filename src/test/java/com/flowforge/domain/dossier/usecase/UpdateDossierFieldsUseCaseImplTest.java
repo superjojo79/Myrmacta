@@ -292,6 +292,7 @@ class UpdateDossierFieldsUseCaseImplTest {
                 "creator",
                 createdAt,
                 null,
+                null,
                 null);
     }
 
@@ -300,13 +301,13 @@ class UpdateDossierFieldsUseCaseImplTest {
     }
 
     private static DossierType type(boolean allowUnknownFields, FieldDefinition... definitions) {
-        return new DossierType(
+        return DossierType.inherit(
                 UUID.randomUUID(), TENANT, TYPE_CODE, "Sinistre", "sinistre-workflow", true, allowUnknownFields,
                 List.of(definitions));
     }
 
     private static DossierType inactiveType(FieldDefinition... definitions) {
-        return new DossierType(
+        return DossierType.inherit(
                 UUID.randomUUID(), TENANT, TYPE_CODE, "Sinistre", "sinistre-workflow", false, true,
                 List.of(definitions));
     }

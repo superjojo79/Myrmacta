@@ -113,7 +113,7 @@ class CreateDossierUseCaseImplTest {
     }
 
     private static DossierType type(boolean active, boolean allowUnknownFields, List<FieldDefinition> fields) {
-        return new DossierType(UUID.randomUUID(), TENANT, TYPE_CODE, "Sinistre", "wf-sinistre",
+        return DossierType.inherit(UUID.randomUUID(), TENANT, TYPE_CODE, "Sinistre", "wf-sinistre",
                 active, allowUnknownFields, fields);
     }
 

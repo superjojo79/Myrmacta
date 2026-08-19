@@ -124,7 +124,7 @@ class GetDossierUseCaseImplTest {
     }
 
     private static DossierType typeWithSensitiveSsn() {
-        return new DossierType(
+        return DossierType.inherit(
                 UUID.randomUUID(),
                 TENANT,
                 TYPE_CODE,
@@ -152,6 +152,7 @@ class GetDossierUseCaseImplTest {
                 Instant.parse("2026-08-02T09:00:00Z"),
                 "u1",
                 Instant.parse("2026-08-02T09:00:00Z"),
+                null,
                 null,
                 null);
     }

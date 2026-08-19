@@ -173,6 +173,7 @@ class WorkflowPersistenceTest {
                 "creator",
                 now,
                 null,
+                null,
                 null);
     }
 }

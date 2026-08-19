@@ -20,14 +20,18 @@ record CreateDossierTypeRequest(
         String workflowKey,
         Boolean active,
         Boolean allowUnknownFields,
-        List<FieldDefinition> fieldDefinitions) {}
+        List<FieldDefinition> fieldDefinitions,
+        Integer retentionDays,
+        Boolean retentionNever) {}
 
 record UpdateDossierTypeRequest(
         String label,
         String workflowKey,
         Boolean active,
         Boolean allowUnknownFields,
-        List<FieldDefinition> fieldDefinitions) {}
+        List<FieldDefinition> fieldDefinitions,
+        Integer retentionDays,
+        Boolean retentionNever) {}
 
 record DossierTypeResponse(
         UUID id,
@@ -37,7 +41,9 @@ record DossierTypeResponse(
         String workflowKey,
         boolean active,
         boolean allowUnknownFields,
-        List<FieldDefinition> fieldDefinitions) {
+        List<FieldDefinition> fieldDefinitions,
+        Integer retentionDays,
+        boolean retentionNever) {
 
     static DossierTypeResponse from(DossierType type) {
         return new DossierTypeResponse(
@@ -48,7 +54,9 @@ record DossierTypeResponse(
                 type.workflowKey(),
                 type.active(),
                 type.allowUnknownFields(),
-                type.fieldDefinitions());
+                type.fieldDefinitions(),
+                type.retentionDays(),
+                type.retentionNever());
     }
 }
 
@@ -73,7 +81,8 @@ record DossierResponse(
         String updatedBy,
         Instant updatedAt,
         String closedBy,
-        Instant closedAt) {
+        Instant closedAt,
+        Instant purgeEligibleAt) {
 
     static DossierResponse from(Dossier dossier) {
         return new DossierResponse(
@@ -91,7 +100,8 @@ record DossierResponse(
                 dossier.updatedBy(),
                 dossier.updatedAt(),
                 dossier.closedBy(),
-                dossier.closedAt());
+                dossier.closedAt(),
+                dossier.purgeEligibleAt());
     }
 }
 

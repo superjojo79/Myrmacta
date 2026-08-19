@@ -40,7 +40,7 @@ class GrantDossierTypeAccessUseCaseImplTest {
     @Test
     void grant_persistsWhenTypeExistsAndActorIsAdmin() {
         when(typeRepository.findByCode("tenant_dev", "SINISTRE"))
-                .thenReturn(Optional.of(new DossierType(
+                .thenReturn(Optional.of(DossierType.inherit(
                         UUID.randomUUID(),
                         "tenant_dev",
                         "SINISTRE",

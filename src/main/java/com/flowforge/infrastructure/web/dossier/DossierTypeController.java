@@ -61,7 +61,9 @@ public class DossierTypeController {
                         required(request.workflowKey(), "workflowKey"),
                         request.active() == null || request.active(),
                         Boolean.TRUE.equals(request.allowUnknownFields()),
-                        listOrEmpty(request.fieldDefinitions())),
+                        listOrEmpty(request.fieldDefinitions()),
+                        request.retentionDays(),
+                        Boolean.TRUE.equals(request.retentionNever())),
                 actor);
         return ResponseEntity
                 .created(URI.create("/api/dossier-types/" + type.code()))
@@ -76,6 +78,9 @@ public class DossierTypeController {
             Authentication authentication) {
         AccessContext.User actor = accessContextFactory.user(authentication);
         DossierType existing = getDossierTypeUseCase.getByCode(tenantProperties.id(), code, actor);
+        // A-PATCH-INHERIT: only both retention fields absent keeps the existing policy; any
+        // explicit value (including retentionNever=false + retentionDays=null) overrides it.
+        boolean keepExistingRetention = request.retentionNever() == null && request.retentionDays() == null;
         DossierType type = updateDossierTypeUseCase.update(
                 new UpdateDossierTypeUseCase.UpdateDossierTypeCommand(
                         tenantProperties.id(),
@@ -90,7 +95,11 @@ public class DossierTypeController {
                                 : request.allowUnknownFields(),
                         request.fieldDefinitions() == null
                                 ? existing.fieldDefinitions()
-                                : listOrEmpty(request.fieldDefinitions())),
+                                : listOrEmpty(request.fieldDefinitions()),
+                        keepExistingRetention ? existing.retentionDays() : request.retentionDays(),
+                        keepExistingRetention
+                                ? existing.retentionNever()
+                                : Boolean.TRUE.equals(request.retentionNever())),
                 actor);
         return ResponseEntity.ok(DossierTypeResponse.from(type));
     }

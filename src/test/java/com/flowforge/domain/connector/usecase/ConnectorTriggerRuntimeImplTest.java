@@ -168,6 +168,7 @@ class ConnectorTriggerRuntimeImplTest {
                 null,
                 null,
                 null,
+                null,
                 null);
     }
 }

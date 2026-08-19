@@ -163,10 +163,11 @@ class ListDossierRelationsUseCaseImplTest {
                 "u1",
                 T0,
                 null,
+                null,
                 null);
     }
 
     private static DossierType type(String code, String label) {
-        return new DossierType(UUID.randomUUID(), TENANT, code, label, "wf", true, false, List.of());
+        return DossierType.inherit(UUID.randomUUID(), TENANT, code, label, "wf", true, false, List.of());
     }
 }

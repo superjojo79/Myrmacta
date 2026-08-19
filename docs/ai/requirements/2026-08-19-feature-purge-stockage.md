@@ -2,21 +2,21 @@
 phase: requirements
 title: Requirements & Problem Understanding
 description: Clarify the problem space, gather requirements, and define success criteria
-status: draft
+status: reviewed
 created: 2026-08-19
 updated: 2026-08-19
 feature: purge-stockage
 phase1: 2026-08-19
 phase2: 2026-08-19
-phase2_status: in-review
+stakeholder_decisions: 2026-08-19
 todo_ref: TODO.md §22 · FILE-ATTENTE.md · DEFERRED-FEATURES.md §0 · suite de retention-dossier-type
 ---
 
 # Requirements & Problem Understanding — `purge-stockage`
 
 > Feature produit après `retention-dossier-type` (PR #55). Lot « avant
-> prod » REVUE §9 / TODO §22. **Q1–Q10 actées** (Phase 1). Phase 2 :
-> revue — **une** question produit restante (**Q11**) bloque `reviewed`.
+> prod » REVUE §9 / TODO §22. **Q1–Q11 actées.** Requirements **reviewed**
+> (Phase 2). Prochaine étape cycle : Phase 3 (revue design).
 
 ## Problem Statement
 **What problem are we solving?**
@@ -102,9 +102,10 @@ Trois options nommées par TODO.md / FILE-ATTENTE / REVUE §9.
    purge (compteurs / liste lecture), **afin de** savoir si le job
    décroche — **sans** bouton force purge dans l’UI.
 6. **En tant que** `TENANT_ADMIN`, **je veux** demander l’effacement d’un
-   dossier via API (enfilement outbox), **afin de** honorer un droit à
-   l’effacement sans attendre l’horloge rétention — le job exécute
-   ensuite.
+   dossier `CLOTURE` ou `ARCHIVE` via API (enfilement outbox), **afin de**
+   honorer un droit à l’effacement **sans** attendre les jours de
+   rétention — le job exécute ensuite. Un dossier encore ouvert est
+   **refusé**.
 
 ### Edge cases
 
@@ -115,7 +116,10 @@ Trois options nommées par TODO.md / FILE-ATTENTE / REVUE §9.
 - Relations source **ou** cible.
 - Process Flowable vivant → Q5 best-effort.
 - Deux workers → claim atomique (A-CLAIM, Phase 3).
-- `purgeEligibleAt` dans le futur vs enqueue Q7 → **Q11** (ouverte).
+- Enqueue admin (**Q11 = B**) : seulement `CLOTURE` | `ARCHIVE` ; sinon
+  409/400. Le job **ne skip pas** ces lignes pour horloge.
+- Events issus du job rétention §21 : skip si `purgeEligibleAt > now`
+  (donnée incohérente).
 
 ## Success Criteria
 **How will we know when we're done?**
@@ -150,6 +154,8 @@ Critères **dépendants de Q7=B** :
 - [ ] Mutation admin (`TENANT_ADMIN`) enfile `PENDING` (202 / 204 /
       équivalent) ; **pas** de purge synchrone dans la requête.
 - [ ] Idempotent si une ligne outbox existe déjà pour le dossier.
+- [ ] Enqueue **Q11 = B** : `CLOTURE`/`ARCHIVE` → 2xx ; statut ouvert →
+      4xx ; le worker purge sans attendre `purgeEligibleAt`.
 
 ## Constraints & Assumptions
 
@@ -165,11 +171,9 @@ Critères **dépendants de Q7=B** :
 - Branche Cloud : `cursor/purge-stockage-05b8` (lint `feature-*` = MISS
   attendu).
 
-**Q1–Q10 actées.** Phase 2 en revue : **Q11 ouverte** (périmètre enqueue
-vs garde `purgeEligibleAt`). Assumptions techniques proposées ci-dessous
-— non bloquantes si Q11 est tranchée.
+**Q1–Q11 actées.** Phase 2 **reviewed**.
 
-**Assumptions techniques (A-*, à confirmer en Phase 3 si besoin) :**
+**Assumptions techniques (A-*, détail Phase 3) :**
 
 - **A-STATUS :** `PENDING` / `PROCESSING` / `COMPLETED` / `FAILED`.
 - **A-CLAIM :** update atomique vers `PROCESSING` (anti double-purge).
@@ -178,10 +182,12 @@ vs garde `purgeEligibleAt`). Assumptions techniques proposées ci-dessous
 - **A-AUTHZ :** `TENANT_ADMIN` pour GET file + mutation enqueue.
 - **A-ENQUEUE-UI :** enqueue = API seulement (pas de bouton sur l’écran
   file, Q6).
+- **A-ELIGIBLE-GUARD :** skip horloge seulement pour l’origine rétention ;
+  origine admin (Q11) = traiter dès `PENDING`.
 
 ## Questions & Open Items
 
-À trancher **une par une**. Q1–Q10 clos (Phase 1).
+Q1–Q11 **clos**. Aucune question produit ouverte.
 
 ### Clos
 
@@ -196,30 +202,24 @@ vs garde `purgeEligibleAt`). Assumptions techniques proposées ci-dessous
 | **Q7 / D-HTTP** | Mutation d’effacement | **B** — POST/DELETE admin qui **enfile** un event `PENDING` ; le job exécute (pas de purge synchrone HTTP) |
 | **Q8 / D-TENANT** | Purge tenant | **A** — hors code ; runbook ops (décommission + `DROP SCHEMA` + préfixe store) |
 | **Q9 / D-ORPHAN** | Orphelins hors outbox | **A** — hors V1 ; seulement ce que `purge_outbox` pointe |
-| **Q10 / D-FE** | Tests FE | **B** — specs Playwright dédiés (lecture file + AuthZ + enqueue API/mock) + suite existante verte |
+| **Q11 / D-ENQUEUE-SCOPE** | Périmètre enqueue | **B** — `CLOTURE` \| `ARCHIVE` seulement ; job ignore l’horloge pour ces lignes ; dossier ouvert → 4xx |
 
-### Ouvertes (Phase 2 — une à la fois)
+### Ouvertes
 
-| Id | Question | Pourquoi ça bloque | Options | Reco |
-|---|---|---|---|---|
-| **Q11 / D-ENQUEUE-SCOPE** | Quels dossiers l’admin peut-il enfiler, et le job honore-t-il `purgeEligibleAt` ? | Contradiction story Q7 (« sans attendre l’horloge ») vs edge « eligible dans le futur → skip » | Voir message Phase 2 | **B** |
+Aucune. Prochaine étape cycle : **Phase 3** (revue design).
 
 ### Hors file (pas des questions de ce lot)
 
 OpenAPI §24, observabilité §29, antivirus, `http-rest` SERVICE.
 
-## Phase 2 — revue (2026-08-19)
+## Phase 2 — revue close (2026-08-19)
 
-Template README : sections présentes (problem, goals, stories, success,
-constraints, questions).
+Template README : OK.
 
-**Validé :** Q1–Q10 cohérents entre elles ; non-goals alignés ; stories
-1–6 couvertes par success criteria (sauf Q11).
+**Validé :** Q1–Q11 ; non-goals ; stories 1–6 ; success criteria.
 
-**Écart trouvé :** story 6 / Q7 (« sans attendre l’horloge ») vs garde
-« `purgeEligibleAt` futur → skip ». Bloque `reviewed` jusqu’à **Q11**.
+**Q11 = B** lève la contradiction horloge / enqueue.
 
-A-* techniques listés plus haut : pas de question produit supplémentaire
-si Q11 est tranchée.
+A-* techniques reportées en Phase 3 (pas de nouvelle question produit).
 
-Status : `draft` / `phase2_status: in-review`.
+Status : **`reviewed`**.

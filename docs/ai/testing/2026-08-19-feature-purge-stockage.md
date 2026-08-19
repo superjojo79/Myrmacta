@@ -51,7 +51,8 @@ todo_ref: TODO.md §22 · requirements purge-stockage (Q1–Q10 actées)
       / liste PENDING/FAILED/COMPLETED).
 - [ ] **E2E-PURGE-2 :** non-admin : pas d’accès mutation / écran file.
 - [ ] **E2E-PURGE-3 :** pas de bouton force purge (Q6).
-- [ ] **E2E-PURGE-4 :** enqueue API/mock → ligne PENDING visible (Q7).
+- [ ] **E2E-PURGE-4 :** enqueue `CLOTURE`/`ARCHIVE` → PENDING visible.
+- [ ] **E2E-PURGE-5 :** enqueue dossier ouvert → 4xx (Q11).
 - [ ] Suite existante (dont E2E-RET-*) verte.
 
 ## Test Data

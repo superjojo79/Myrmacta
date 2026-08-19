@@ -7,13 +7,13 @@ created: 2026-08-19
 updated: 2026-08-19
 feature: purge-stockage
 phase1: 2026-08-19
-todo_ref: TODO.md §22 · requirements purge-stockage (Q1–Q10 actées)
+todo_ref: TODO.md §22 · requirements purge-stockage (reviewed, Q1–Q11)
 ---
 
 # System Design & Architecture — `purge-stockage`
 
-> Squelette Phase 1. **Q1–Q10 actées.** Revue design = Phase 3 (après
-> Phase 2 requirements).
+> Squelette. Requirements **reviewed**. Revue design = **Phase 3**
+> (en attente d’accord). **Q11 = B** : enqueue `CLOTURE`/`ARCHIVE` only.
 
 ## Architecture Overview
 

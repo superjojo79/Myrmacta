@@ -10,6 +10,7 @@ import {
   updateDocumentTemplate,
 } from './admin'
 import { toProblemDetail, resolveApiBaseUrl } from './http'
+import { asPage } from './page'
 
 vi.mock('axios')
 

@@ -5,8 +5,10 @@ Golden file for the FlowForge HTTP surface (except SSE, multipart attachment upl
 
 ## Flag
 
-`app.openapi.enabled` defaults to `false`. When `true`, `/v3/api-docs` and Swagger UI are available
-to `TENANT_ADMIN` and `WORKFLOW_ADMIN` only.
+`app.openapi.enabled` defaults to `false` (and `springdoc.api-docs.enabled` / `swagger-ui.enabled`
+are off). Set `app.openapi.enabled=true` to turn docs on; an environment post-processor mirrors
+that flag onto springdoc. `/v3/api-docs` and Swagger UI are then available to `TENANT_ADMIN` and
+`WORKFLOW_ADMIN` only.
 
 ## Regenerate the golden YAML
 

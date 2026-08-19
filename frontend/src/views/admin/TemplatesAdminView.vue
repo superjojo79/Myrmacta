@@ -28,7 +28,6 @@ async function refresh() {
   const result = await listDocumentTemplates(undefined, false, { page: page.value, size: size.value })
   templates.value = result.content
   totalPages.value = result.totalPages
-  page.value = result.page
 }
 
 watch(

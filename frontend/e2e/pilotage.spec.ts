@@ -149,7 +149,7 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
       body: 'data: {"id":"n1","title":"Ping","body":"hello"}\n\n',
     })
   })
-  await page.route('**/api/dossier-types', async (route) => {
+  await page.route(/\/api\/dossier-types(?:\?|$)/, async (route) => {
     if (route.request().method() === 'GET') {
       await route.fulfill({
         status: 200,
@@ -513,21 +513,21 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
     mineTasks = []
     await route.fulfill({ status: 204, body: '' })
   })
-  await page.route('**/api/workflow-type-configs', async (route) => {
+  await page.route(/\/api\/workflow-type-configs(?:\?|$)/, async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify(envelope([OTHER_WORKFLOW])),
     })
   })
-  await page.route('**/api/document-templates', async (route) => {
+  await page.route(/\/api\/document-templates(?:\?|$)/, async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify(envelope([])),
     })
   })
-  await page.route('**/api/connectors', async (route) => {
+  await page.route(/\/api\/connectors(?:\?|$)/, async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -550,7 +550,7 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
       updatedAt: '2026-08-19T10:00:00Z',
     },
   ]
-  await page.route('**/api/notification-webhooks', async (route) => {
+  await page.route(/\/api\/notification-webhooks(?:\?|$)/, async (route) => {
     const method = route.request().method()
     if (method === 'GET') {
       await route.fulfill({
@@ -810,13 +810,13 @@ test('E2E-10 admin types smoke', async ({ page }) => {
   await openApp(page)
   await page.getByRole('link', { name: 'Types' }).click()
   await expect(page.getByRole('heading', { name: 'Types de dossier' })).toBeVisible()
-  await expect(page.getByText('CLAIM')).toBeVisible()
+  await expect(page.getByRole('cell', { name: 'CLAIM', exact: true })).toBeVisible()
   await expect(page.getByTestId('admin-pager-prev')).toBeDisabled()
 })
 
 test('E2E-PAGE-1 admin types pager writes page query', async ({ page }) => {
   await mockSession(page)
-  await page.route('**/api/dossier-types', async (route) => {
+  await page.route(/\/api\/dossier-types(?:\?|$)/, async (route) => {
     if (route.request().method() !== 'GET') {
       await route.fallback()
       return
@@ -837,10 +837,10 @@ test('E2E-PAGE-1 admin types pager writes page query', async ({ page }) => {
   })
   await openApp(page)
   await page.getByRole('link', { name: 'Types' }).click()
-  await expect(page.getByText('CLAIM')).toBeVisible()
+  await expect(page.getByRole('cell', { name: 'CLAIM', exact: true })).toBeVisible()
   await page.getByTestId('admin-pager-next').click()
   await expect(page).toHaveURL(/[?&]page=1/)
-  await expect(page.getByText('FAC')).toBeVisible()
+  await expect(page.getByRole('cell', { name: 'FAC', exact: true })).toBeVisible()
 })
 
 test('E2E-RET-1 admin saves tenant retention default', async ({ page }) => {
@@ -856,7 +856,7 @@ test('E2E-RET-1 admin saves tenant retention default', async ({ page }) => {
 test('E2E-RET-2 admin creates type with NEVER retention', async ({ page }) => {
   let createdBody: Record<string, unknown> | null = null
   await mockSession(page)
-  await page.route('**/api/dossier-types', async (route) => {
+  await page.route(/\/api\/dossier-types(?:\?|$)/, async (route) => {
     if (route.request().method() === 'POST') {
       createdBody = route.request().postDataJSON() as Record<string, unknown>
       await route.fulfill({

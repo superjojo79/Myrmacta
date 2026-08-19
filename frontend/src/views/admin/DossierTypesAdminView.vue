@@ -40,7 +40,6 @@ async function refresh() {
   const result = await listDossierTypes({ page: page.value, size: size.value })
   types.value = result.content
   totalPages.value = result.totalPages
-  page.value = result.page
   try {
     const settings = await getRetentionSettings()
     retentionConfigured.value = true

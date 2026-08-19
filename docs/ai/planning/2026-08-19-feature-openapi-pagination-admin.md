@@ -16,22 +16,22 @@ stakeholder_decisions: 2026-08-19
 # Project Planning & Task Breakdown — `openapi-pagination-admin`
 
 > Phase 4 **ready** — figé contre requirements/design/testing reviewed.
-> TDD : test rouge → code → preuve ciblée ; `./mvnw verify` + Vitest +
-> Playwright avant claim T14/T15.
+> Phase 5 **done** (T1–T15). Preuve : `./mvnw verify -Dskip.frontend=true -Dmaven.compiler.release=21`
+> → 870 tests, Jacoco OK ; `cd frontend && npm run test` → 129 ; `npm run test:e2e` → 35.
 > Task tracing `ai-devkit task` : **indisponible**.
 
 ## Milestones
 
-- [ ] **M1** — Socle page + parser + envelope HTTP (T1–T3)
-- [ ] **M2** — Six listes admin paginées API (T4–T9)
-- [ ] **M3** — springdoc + YAML + CI diff + sécu flag/rôles (T12–T13)
-- [ ] **M4** — SPA pagers + catalogues + écran webhooks + E2E (T7b, T10, T11, T14)
-- [ ] **M5** — Docs produit TODO/DEFERRED/FILE-ATTENTE (T15)
+- [x] **M1** — Socle page + parser + envelope HTTP (T1–T3)
+- [x] **M2** — Six listes admin paginées API (T4–T9)
+- [x] **M3** — springdoc + YAML + CI diff + sécu flag/rôles (T12–T13)
+- [x] **M4** — SPA pagers + catalogues + écran webhooks + E2E (T7b, T10, T11, T14)
+- [x] **M5** — Docs produit TODO/DEFERRED/FILE-ATTENTE (T15)
 
 ## Task Breakdown
 
 ### T1 — `PageResult` / `PageQuery` domaine
-- **Status :** todo
+- **Status :** done
 - **Outcome :** `com.flowforge.domain.shared.PageResult<T>` + `PageQuery`
   (MAX_SIZE=100, MAX_PAGE=MAX_INT/100) ; `of` / `empty` / `slice` ; pas Spring.
 - **Deps :** aucune
@@ -39,7 +39,7 @@ stakeholder_decisions: 2026-08-19
 - **Tests :** totaux/pages, content immuable, totalElements&lt;0, slice offset
 
 ### T2 — `PageQueryParser` infra
-- **Status :** todo
+- **Status :** done
 - **Outcome :** parse `page`/`size`/`sort` allow-list ; défauts 0/20 ; 400 via
   `IllegalArgumentException` existant. `DossierListQueryParser` réutilise
   MAX_* (refactor mineur OK).
@@ -48,7 +48,7 @@ stakeholder_decisions: 2026-08-19
 - **Tests :** défauts, bornes, sort exact vs autre
 
 ### T3 — DTO `PageResponse<T>`
-- **Status :** todo
+- **Status :** done
 - **Outcome :** record infra `{ content, page, size, totalElements, totalPages }`
   + `from(PageResult)` ; JSON identique `DossierPageResponse`.
 - **Deps :** T1
@@ -56,7 +56,7 @@ stakeholder_decisions: 2026-08-19
 - **Tests :** mapping Jackson champs envelope
 
 ### T4 — Paginer `GET /api/dossier-types`
-- **Status :** todo
+- **Status :** done
 - **Outcome :** `list(tenant, ctx, PageQuery)` → `PageResult` **après** ACL
   VIEW (A-ACL-PAGE) ; `code,asc` ; MockMvc envelope ; client FE `Page<T>`.
 - **Deps :** T2, T3
@@ -65,7 +65,7 @@ stakeholder_decisions: 2026-08-19
   envelope MockMvc ; pas de régression `GET /{code}`
 
 ### T5 — Paginer `GET /api/document-templates`
-- **Status :** todo
+- **Status :** done
 - **Outcome :** `updatedAt,desc` + `templateKey` + `includeContent` (HTML
   page courante seulement).
 - **Deps :** T2, T3
@@ -73,21 +73,21 @@ stakeholder_decisions: 2026-08-19
 - **Tests :** filtre avant COUNT, includeContent false strip, envelope
 
 ### T6 — Paginer `GET /api/connectors`
-- **Status :** todo
+- **Status :** done
 - **Outcome :** `name,asc` ; soft-deleted exclus ; masque secrets.
 - **Deps :** T2, T3
 - **Validation :** `./mvnw test -Dtest=ConnectorAdminApiTest`
 - **Tests :** list envelope `content` ; restore/soft-delete toujours hors liste
 
 ### T7 — Paginer `GET /api/workflow-type-configs`
-- **Status :** todo
+- **Status :** done
 - **Outcome :** `workflowKey,asc` ; GET liste OIDC inchangé.
 - **Deps :** T2, T3
 - **Validation :** tests MockMvc workflow-type-configs existants + envelope
 - **Tests :** envelope, sort 400
 
 ### T7b — Helper FE `listAllPages`
-- **Status :** todo
+- **Status :** done
 - **Outcome :** `frontend/src/api/page.ts` ; `size=100` ; stop page vide ;
   `listAllDossierTypes` / `listAllWorkflowTypeConfigs`.
 - **Deps :** type `Page<T>`
@@ -95,14 +95,14 @@ stakeholder_decisions: 2026-08-19
 - **Tests :** 2 pages concaténées ; stop page vide
 
 ### T8 — Paginer `GET /api/notification-webhooks`
-- **Status :** todo
+- **Status :** done
 - **Outcome :** `name,asc` ; secret masqué ; soft-deleted exclus.
 - **Deps :** T2, T3
 - **Validation :** MockMvc notification webhook list tests
 - **Tests :** envelope + mask
 
 ### T9 — Paginer `GET /api/purge-outbox`
-- **Status :** todo
+- **Status :** done
 - **Outcome :** envelope + `counts` globaux (4 statuts, ignore `status` et
   page) ; `createdAt,desc` ; size 20/100 (plus limit 50/200).
 - **Deps :** T2, T3
@@ -110,7 +110,7 @@ stakeholder_decisions: 2026-08-19
 - **Tests :** counts vs filtre, tri desc, size 101 → 400
 
 ### T10 — Pager UI + sync URL
-- **Status :** todo
+- **Status :** done
 - **Outcome :** `AdminPager` + `useAdminListQuery` (`page`, `size` si ≠ 20)
   sur types, templates, connectors, workflow-types, purge, webhooks.
 - **Deps :** clients T4–T9
@@ -118,7 +118,7 @@ stakeholder_decisions: 2026-08-19
 - **Tests :** pager bornes, `router.replace` `?page=`
 
 ### T11 — Écran `/admin/notification-webhooks`
-- **Status :** todo
+- **Status :** done
 - **Outcome :** route, nav TENANT_ADMIN, create/toggle/delete, secret
   write-only, pager (D-WEBHOOK-UX A).
 - **Deps :** T8, T10
@@ -126,7 +126,7 @@ stakeholder_decisions: 2026-08-19
 - **Tests :** create, ProblemDetail, pas d’affichage secret
 
 ### T12 — springdoc + `app.openapi.enabled`
-- **Status :** todo
+- **Status :** done
 - **Outcome :** `springdoc-openapi-starter-webmvc-ui` **3.1.0** (Boot 4.1) ;
   défaut flag false ; rôles admin si on ; `@Hidden` SSE / multipart
   attachment / webhook ingress ; secrets writeOnly.
@@ -136,7 +136,7 @@ stakeholder_decisions: 2026-08-19
   admin → 200 ; operations hidden absentes
 
 ### T13 — `openapi/openapi.yaml` + fail-on-diff
-- **Status :** todo
+- **Status :** done
 - **Outcome :** golden repo ; `OpenApiContractIT` diff ; CI couvert par
   `./mvnw verify` ; `openapi/README.md` régénération.
 - **Deps :** T12
@@ -144,7 +144,7 @@ stakeholder_decisions: 2026-08-19
 - **Tests :** YAML identique (LF)
 
 ### T14 — Playwright + Vitest complets
-- **Status :** todo
+- **Status :** done
 - **Outcome :** mocks envelope 6 GET ; webhooks admin E2E ; pager URL ;
   catalogues CreateDossier/Supervision.
 - **Deps :** T7b, T10, T11
@@ -152,7 +152,7 @@ stakeholder_decisions: 2026-08-19
 - **Tests :** E2E-PURGE adaptés `content`+`counts` ; nav webhooks
 
 ### T15 — Docs produit
-- **Status :** todo
+- **Status :** done
 - **Outcome :** TODO §24 reste (codegen B/C, nested, SSE spec) noté partiel
   clos pour OpenAPI+pagination admin ; DEFERRED follow-ups ; FILE-ATTENTE
   prochain = `observabilite`.
@@ -204,3 +204,8 @@ T7b + T10 + T11 → T14 → T15
 
 - MockMvc admin existants, Jacoco, job CI `frontend` (verify inclut IT contrat).
 - Index `idx_purge_outbox_status_created_at`.
+
+## Progress (Phase 5)
+
+T1–T15 **done**. Preuve 2026-08-19 : Maven 870 tests + Jacoco ; Vitest 129 ;
+Playwright 35 ; lint FE OK. Prochain produit = `observabilite`.

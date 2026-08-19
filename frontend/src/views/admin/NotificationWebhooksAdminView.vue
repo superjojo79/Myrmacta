@@ -26,7 +26,6 @@ async function refresh() {
   const result = await listNotificationWebhooks({ page: page.value, size: size.value })
   webhooks.value = result.content
   totalPages.value = result.totalPages
-  page.value = result.page
 }
 
 watch(

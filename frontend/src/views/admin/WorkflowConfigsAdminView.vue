@@ -24,7 +24,6 @@ async function refresh() {
   const result = await listWorkflowTypeConfigs({ page: page.value, size: size.value })
   configs.value = result.content
   totalPages.value = result.totalPages
-  page.value = result.page
 }
 
 watch(

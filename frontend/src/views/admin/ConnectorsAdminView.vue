@@ -36,7 +36,6 @@ async function refresh() {
   ])
   connectors.value = result.content
   totalPages.value = result.totalPages
-  page.value = result.page
   definitions.value = defs
   if (!form.value.connectorType && definitions.value[0]) {
     form.value.connectorType = definitions.value[0].type

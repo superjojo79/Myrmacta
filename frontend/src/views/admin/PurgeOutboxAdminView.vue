@@ -18,7 +18,6 @@ watch(
     loading.value = true
     try {
       list.value = await listPurgeOutbox({ page: page.value, size: size.value })
-      page.value = list.value.page
     } catch (err) {
       error.value = toProblemDetail(err).detail ?? 'Impossible de charger la file de purge'
     } finally {

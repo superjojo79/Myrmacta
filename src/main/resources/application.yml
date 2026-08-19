@@ -140,9 +140,9 @@ flowable:
 
 springdoc:
   api-docs:
-    enabled: ${app.openapi.enabled:false}
+    enabled: false
   swagger-ui:
-    enabled: ${app.openapi.enabled:false}
+    enabled: false
 
 # Cible multi-tenant (non actif) — décommenter avec datasource / reverse-proxy :
 # server:

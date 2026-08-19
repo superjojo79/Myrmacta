@@ -29,7 +29,9 @@ app:
     enabled: false   # true en local/CI export seulement
 ```
 
-Override local documenté dans README ou ce fichier au moment de T12.
+Override local : `app.openapi.enabled=true` (le post-processor active springdoc).
+Ne pas s’appuyer uniquement sur un placeholder YAML `${app.openapi.enabled}` — springdoc
+reste on par défaut (`matchIfMissing=true`).
 
 ## Rollback
 

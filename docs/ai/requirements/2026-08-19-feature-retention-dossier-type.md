@@ -108,9 +108,9 @@ existent, mais sans horloge métier ni file pour une purge ultérieure.
 - Settings absents : job **no-op** (warn) jusqu’au premier PUT — D-BOOTSTRAP.
 - Types existants après migration : colonnes rétention = héritage
   (A-MIGRATE-TYPES).
-- Changement de politique (raccourcir / allonger / NEVER↔jours) : s’applique
-  au **prochain** run pour les `CLOTURE` encore non éligibles ;
-  dossiers déjà `ARCHIVE`+outbox **inchangés** (A-POLICY-CHANGE).
+- Changement de politique (raccourcir / allonger / NEVER↔jours) :
+  **D-POLICY-CHANGE** — recalcul au prochain job pour `CLOTURE` encore non
+  éligibles ; `ARCHIVE`+outbox **immutables**.
 - Réouverture depuis `CLOTURE` : **pas de transition autorisée aujourd’hui**
   (A-REOPEN) ; règle métier figée pour plus tard.
 
@@ -125,8 +125,8 @@ existent, mais sans horloge métier ni file pour une purge ultérieure.
       d’unicité métier par dossier).
 - [ ] Job idempotent ; `NEVER` / non-clos / `closedAt` null / settings absents
       exclus ou no-op.
-- [ ] UI admin : section défaut tenant + champs rétention sur types
-      (A-UI-LOC).
+- [ ] UI admin : bloc rétention sur / près de `DossierTypesAdminView` +
+      champs rétention sur types (**D-UI-LOC**).
 - [ ] Transition BPMN/API vers `ARCHIVE` sans job ≠ outbox purge ; non
       reprise ultérieure par le job.
 - [ ] Aucune suppression objet stockage / DROP données dossier.
@@ -143,7 +143,7 @@ existent, mais sans horloge métier ni file pour une purge ultérieure.
 - Unité de durée : **jours calendaires entiers > 0** (A-UNIT).
 - Rôles : config rétention (settings + champs type) réservée à
   **`TENANT_ADMIN`** (A-AUTHZ). Les autres rôles n’administrent pas la
-  politique ; le job est un acteur système (A-JOB-ACTOR).
+  politique ; le job utilise **D-JOB-ACTOR** (`system:retention-job`).
 - SPA même origine + CSRF (décisions n° 15 / 27).
 - Port stockage abstrait S3/FS déjà figé pour §22 (DEFERRED §0) — hors code
   ici.
@@ -155,14 +155,8 @@ existent, mais sans horloge métier ni file pour une purge ultérieure.
 - **A-NULL-CLOSEDAT :** `CLOTURE` + `closedAt == null` → skip job.
 - **A-MIGRATE-TYPES :** migration ajoute colonnes avec défaut héritage
   (`retentionNever=false`, `retentionDays=null`).
-- **A-POLICY-CHANGE :** config mutable ; éligibilité déjà matérialisée
-  (`ARCHIVE`+outbox) non recalculée / non annulée.
-- **A-JOB-ACTOR :** `updatedBy` / audit de l’archivage rétention =
-  identifiant système stable (ex. `system:retention-job`), pas un user OIDC.
-- **A-UI-LOC :** UI = bloc « Rétention tenant » accessible depuis l’admin
-  (même zone que les types ou entrée admin dédiée minimale) + champs sur
-  create/edit type dans `DossierTypesAdminView` (ou sous-composant). Pas de
-  nouvelle app shell.
+- **D-POLICY-CHANGE / D-UI-LOC / D-JOB-ACTOR / D-BOOTSTRAP :** voir table
+  décisions (tranchés stakeholders Phase 2).
 - Task tracing `ai-devkit task` indisponible (`unknown command 'task'`).
 - Branche Cloud : `cursor/retention-dossier-type-9ed2` (lint worktree
   `feature-*` = MISS attendu).
@@ -180,13 +174,22 @@ existent, mais sans horloge métier ni file pour une purge ultérieure.
 | **D-REOPEN** | Réouverture | Règle documentée ; pas d’implémentation de transition |
 | **D-FORCE** | Archivage anticipé rétention | Hors scope ; `ARCHIVE` métier ≠ éligibilité ; job ne reprend pas ces dossiers |
 | **D-BOOTSTRAP** | Settings initiaux | **Pas de seed** ; GET 404 si absent ; job no-op jusqu’au premier PUT admin |
+| **D-UI-LOC** | Emplacement UI | Bloc rétention **sur / près de** `DossierTypesAdminView` + champs type (pas de page dédiée) |
+| **D-JOB-ACTOR** | Audit job | `updatedBy` = `system:retention-job` |
+| **D-POLICY-CHANGE** | Changement config | Recalcul au prochain job pour `CLOTURE` non éligibles ; `ARCHIVE`+outbox **immutables** (pas de cancel si NEVER / allongement) |
 
 ## Questions & Open Items
 
-### Clos Phase 2 (2026-08-19)
+### Clos Phase 2 (2026-08-19) — stakeholders
 
-Toutes les décisions D-* (stakeholders Phase 1 + **D-BOOTSTRAP** tranché
-en revue). Assumptions A-* ci-dessus — aucune question produit ouverte.
+Décisions D-* Phase 1 + revue Phase 2 : **D-BOOTSTRAP**, **D-UI-LOC**,
+**D-JOB-ACTOR**, **D-POLICY-CHANGE** (toutes option **A**).
+
+### Assumptions techniques restantes (pas de question produit)
+
+- **A-UNIT**, **A-AUTHZ**, **A-REOPEN**, **A-CLOCK**, **A-NULL-CLOSEDAT**,
+  **A-MIGRATE-TYPES** — inchangées ; A-UI-LOC / A-JOB-ACTOR / A-POLICY-CHANGE
+  sont **promues** en D-* ci-dessus.
 
 ### Reporté hors feature
 

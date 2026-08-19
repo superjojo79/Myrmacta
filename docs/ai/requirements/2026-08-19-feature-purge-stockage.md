@@ -7,16 +7,16 @@ created: 2026-08-19
 updated: 2026-08-19
 feature: purge-stockage
 phase1: 2026-08-19
+phase2: 2026-08-19
+phase2_status: in-review
 todo_ref: TODO.md §22 · FILE-ATTENTE.md · DEFERRED-FEATURES.md §0 · suite de retention-dossier-type
 ---
 
 # Requirements & Problem Understanding — `purge-stockage`
 
-> Feature produit après `retention-dossier-type` (PR #55), selon
-> [FILE-ATTENTE.md](../../../FILE-ATTENTE.md). Lot « avant prod » REVUE §9 /
-> TODO **§22 encore ouvert**. Phase 1 = capturer le problème et **trancher**
-> les arbitrages ; rien n’est acté tant que les questions ci-dessous n’ont
-> pas de réponse stakeholder.
+> Feature produit après `retention-dossier-type` (PR #55). Lot « avant
+> prod » REVUE §9 / TODO §22. **Q1–Q10 actées** (Phase 1). Phase 2 :
+> revue — **une** question produit restante (**Q11**) bloque `reviewed`.
 
 ## Problem Statement
 **What problem are we solving?**
@@ -64,17 +64,17 @@ TODO §22.
 - Laisser des logs / accroches métriques utilisables par `observabilite`
   (§29) sans livrer ce lot.
 
-### Non-goals (hors débat §22 — déjà hors V1 produit)
+### Non-goals (actés)
 
 - OpenAPI exhaustif / pagination admin large (§24).
 - Antivirus pièces jointes.
 - Connecteur `http-rest` SERVICE ; rapports / SLA.
 - Changer la politique de rétention ou l’UI admin types (déjà §21).
 - Observabilité MDC complète (§29).
-
-Les non-goals **liés à §22** restants (UI file, API d’effacement manuel,
-purge tenant automatisée, orphelins hors outbox) sont encore des
-**questions ouvertes** (Q6–Q9). Le mécanisme (Q1) est tranché : **B**.
+- Purge tenant automatisée (**Q8 = A**).
+- GC orphelins store hors outbox (**Q9 = A**).
+- Purge synchrone dans la requête HTTP (**Q7 ≠ C**).
+- Bouton force purge / retry sur l’écran file (**Q6 = B**).
 
 ## Alternatives considérées (mécanisme — TODO §22)
 
@@ -106,18 +106,16 @@ Trois options nommées par TODO.md / FILE-ATTENTE / REVUE §9.
    l’effacement sans attendre l’horloge rétention — le job exécute
    ensuite.
 
-### Edge cases (à préciser avec Q2–Q5 ; le déclencheur est le job outbox)
+### Edge cases
 
-- Objet store déjà absent.
-- Dossier PG déjà partiellement supprimé.
-- Échec mid-flight (store OK, PG KO ou l’inverse).
-- Éléments sans `storageRef` (`NOTE`, `INFORMATION`, `LINK`).
-- Relations où le dossier est source **ou** cible.
-- Process Flowable encore vivant lié au dossier.
-- Deux workers concurrents sur la même ligne outbox.
-- `purgeEligibleAt` dans le futur (donnée incohérente).
-- Droit à l’effacement hors horloge : **Q7 = B** — enfilement outbox
-  (idempotent si déjà `PENDING` / déjà purgé).
+- Objet store déjà absent → succès idempotent.
+- Dossier PG déjà partiellement supprimé → finaliser outbox terminal.
+- Échec mid-flight → pas de `COMPLETED` ; retry job.
+- Éléments sans `storageRef` → skip store, supprimer lignes PG.
+- Relations source **ou** cible.
+- Process Flowable vivant → Q5 best-effort.
+- Deux workers → claim atomique (A-CLAIM, Phase 3).
+- `purgeEligibleAt` dans le futur vs enqueue Q7 → **Q11** (ouverte).
 
 ## Success Criteria
 **How will we know when we're done?**
@@ -167,12 +165,23 @@ Critères **dépendants de Q7=B** :
 - Branche Cloud : `cursor/purge-stockage-05b8` (lint `feature-*` = MISS
   attendu).
 
-**Q1–Q10 actées.** Clarifications Phase 1 **terminées**. Revue = Phase 2
-(pas démarrée).
+**Q1–Q10 actées.** Phase 2 en revue : **Q11 ouverte** (périmètre enqueue
+vs garde `purgeEligibleAt`). Assumptions techniques proposées ci-dessous
+— non bloquantes si Q11 est tranchée.
+
+**Assumptions techniques (A-*, à confirmer en Phase 3 si besoin) :**
+
+- **A-STATUS :** `PENDING` / `PROCESSING` / `COMPLETED` / `FAILED`.
+- **A-CLAIM :** update atomique vers `PROCESSING` (anti double-purge).
+- **A-RETRY :** `FAILED` repris au batch suivant (pas de bouton UI).
+- **A-KEEP-OUTBOX :** ligne `COMPLETED` conservée (UNIQUE `dossier_id`).
+- **A-AUTHZ :** `TENANT_ADMIN` pour GET file + mutation enqueue.
+- **A-ENQUEUE-UI :** enqueue = API seulement (pas de bouton sur l’écran
+  file, Q6).
 
 ## Questions & Open Items
 
-À trancher **une par une** (Phase 1).
+À trancher **une par une**. Q1–Q10 clos (Phase 1).
 
 ### Clos
 
@@ -189,32 +198,28 @@ Critères **dépendants de Q7=B** :
 | **Q9 / D-ORPHAN** | Orphelins hors outbox | **A** — hors V1 ; seulement ce que `purge_outbox` pointe |
 | **Q10 / D-FE** | Tests FE | **B** — specs Playwright dédiés (lecture file + AuthZ + enqueue API/mock) + suite existante verte |
 
-### Ouvertes
+### Ouvertes (Phase 2 — une à la fois)
 
-Aucune. Prochaine étape cycle : **Phase 2** (revue requirements).
+| Id | Question | Pourquoi ça bloque | Options | Reco |
+|---|---|---|---|---|
+| **Q11 / D-ENQUEUE-SCOPE** | Quels dossiers l’admin peut-il enfiler, et le job honore-t-il `purgeEligibleAt` ? | Contradiction story Q7 (« sans attendre l’horloge ») vs edge « eligible dans le futur → skip » | Voir message Phase 2 | **B** |
 
 ### Hors file (pas des questions de ce lot)
 
 OpenAPI §24, observabilité §29, antivirus, `http-rest` SERVICE.
 
-## Phase 1 — clarifications terminées (2026-08-19)
+## Phase 2 — revue (2026-08-19)
 
-Shared understanding (Q1–Q10) :
+Template README : sections présentes (problem, goals, stories, success,
+constraints, questions).
 
-- Nom : `purge-stockage`.
-- Problème : outbox §21 sans effacement physique.
-- Objectif : cohérence PostgreSQL + object store.
-- **Q1 = B :** job consommateur `purge_outbox`.
-- **Q2 = A :** `DocumentStoragePort.delete` (adapters existants).
-- **Q3 = A :** store puis PostgreSQL (retry relit les `storageRef`).
-- **Q4 = A :** graphe PG = dossier + éléments + relations src\|tgt +
-  workflow links.
-- **Q5 = A :** Flowable runtime best-effort ; historique ACT_HI_*
-  résiduel acceptable V1.
-- **Q6 = B :** écran admin lecture de la file ; pas de bouton force/retry.
-- **Q7 = B :** mutation admin qui enfile un `PENDING` ; le job purge.
-- **Q8 = A :** suppression de tenant hors code ; runbook ops uniquement.
-- **Q9 = A :** pas de GC des orphelins store hors outbox (V1).
-- **Q10 = B :** Playwright dédié (lecture + AuthZ + enqueue) + non-régression.
+**Validé :** Q1–Q10 cohérents entre elles ; non-goals alignés ; stories
+1–6 couvertes par success criteria (sauf Q11).
 
-Status doc : `draft` jusqu’à la **Phase 2** (revue requirements).
+**Écart trouvé :** story 6 / Q7 (« sans attendre l’horloge ») vs garde
+« `purgeEligibleAt` futur → skip ». Bloque `reviewed` jusqu’à **Q11**.
+
+A-* techniques listés plus haut : pas de question produit supplémentaire
+si Q11 est tranchée.
+
+Status : `draft` / `phase2_status: in-review`.

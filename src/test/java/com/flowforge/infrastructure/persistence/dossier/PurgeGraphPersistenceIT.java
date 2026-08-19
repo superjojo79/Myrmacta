@@ -17,6 +17,7 @@ import com.flowforge.domain.dossier.port.out.DossierRelationRepository;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
 import com.flowforge.domain.dossier.port.out.PurgeOutboxRepository;
+import com.flowforge.domain.shared.PageQuery;
 import com.flowforge.support.OidcClientTestConfiguration;
 import java.time.Instant;
 import java.util.Map;
@@ -117,7 +118,8 @@ class PurgeGraphPersistenceIT {
         assertThat(relationRepository.findByDossier(TENANT, other.id())).isEmpty();
         assertThat(linkRepository.findByDossierIdOrderBySequence(dossier.id())).isEmpty();
         assertThat(dossierRepository.findById(dossier.id())).isEmpty();
-        assertThat(purgeOutboxRepository.list(PurgeOutboxStatus.COMPLETED, 50)).isNotEmpty();
+        assertThat(purgeOutboxRepository.page(PurgeOutboxStatus.COMPLETED, PageQuery.defaults()).content())
+                .isNotEmpty();
         assertThat(purgeOutboxRepository.existsByDossierId(dossier.id())).isTrue();
     }
 

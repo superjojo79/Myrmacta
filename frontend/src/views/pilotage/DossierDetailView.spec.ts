@@ -16,7 +16,7 @@ vi.mock('@/api/workflows', () => ({
   getWorkflowDiagram: vi.fn(),
   getWorkflowHistory: vi.fn().mockResolvedValue([]),
   getWorkflowTasks: vi.fn().mockResolvedValue([]),
-  listWorkflowTypeConfigs: vi.fn().mockResolvedValue([]),
+  listAllWorkflowTypeConfigs: vi.fn().mockResolvedValue([]),
   reassignWorkflowTask: vi.fn().mockResolvedValue(undefined),
 }))
 vi.mock('@/api/tasks')

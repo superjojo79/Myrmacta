@@ -7,6 +7,7 @@ import { listConnectors, listDocumentTemplates } from './admin'
 import { downloadElementContent, elementContentUrl } from './elements'
 import { previewHtml, previewPdf } from './documents'
 import { toProblemDetail, configureHttpClient, resolveApiBaseUrl } from './http'
+import { asPage } from './page'
 
 vi.mock('axios')
 
@@ -26,18 +27,18 @@ describe('api modules', () => {
   })
 
   it('dossierTypes and workflows clients', async () => {
-    vi.mocked(axios.get).mockResolvedValue({ data: [] })
+    vi.mocked(axios.get).mockResolvedValue({ data: asPage([]) })
     vi.mocked(axios.post).mockResolvedValue({})
     await listDossierTypes()
     await grantDossierTypeAcl('CLAIM', 'u1', 'VIEW')
     await getWorkflowDiagram('l1')
     await listWorkflowTypeConfigs()
-    expect(axios.get).toHaveBeenCalledWith('/api/dossier-types')
+    expect(axios.get).toHaveBeenCalledWith('/api/dossier-types', { params: {} })
     expect(axios.get).toHaveBeenCalledWith('/api/workflow-links/l1/diagram')
   })
 
   it('admin and elements clients', async () => {
-    vi.mocked(axios.get).mockResolvedValue({ data: [] })
+    vi.mocked(axios.get).mockResolvedValue({ data: asPage([]) })
     await listConnectors()
     await listDocumentTemplates()
     vi.mocked(axios.get).mockResolvedValue({ data: new Blob() })

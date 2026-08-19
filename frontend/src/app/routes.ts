@@ -52,4 +52,10 @@ export const routes: RouteRecordRaw[] = [
     meta: { roles: ['TENANT_ADMIN'] },
     component: () => import('@/views/admin/PurgeOutboxAdminView.vue'),
   },
+  {
+    path: '/admin/notification-webhooks',
+    name: 'admin-notification-webhooks',
+    meta: { roles: ['TENANT_ADMIN'] },
+    component: () => import('@/views/admin/NotificationWebhooksAdminView.vue'),
+  },
 ]

@@ -49,5 +49,6 @@ describe('AppShell', () => {
     expect(wrapper.text()).toContain('Types')
     expect(wrapper.text()).toContain('Connecteurs')
     expect(wrapper.text()).toContain('File purge')
+    expect(wrapper.text()).toContain('Webhooks')
   })
 })

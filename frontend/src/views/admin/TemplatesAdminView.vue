@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { ref, watch } from 'vue'
 import {
   activateDocumentTemplate,
   archiveDocumentTemplate,
@@ -11,8 +11,12 @@ import {
 import type { DocumentTemplate } from '@/api/types'
 import { toProblemDetail } from '@/api/http'
 import TemplatePreviewPanel from '@/components/document/TemplatePreviewPanel.vue'
+import AdminPager from '@/components/admin/AdminPager.vue'
+import { useAdminListQuery } from '@/composables/useAdminListQuery'
 
+const { page, size } = useAdminListQuery()
 const templates = ref<DocumentTemplate[]>([])
+const totalPages = ref(0)
 const error = ref<string | null>(null)
 const form = ref({
   templateKey: '',
@@ -21,14 +25,21 @@ const form = ref({
 })
 
 async function refresh() {
-  templates.value = await listDocumentTemplates(undefined, false)
+  const result = await listDocumentTemplates(undefined, false, { page: page.value, size: size.value })
+  templates.value = result.content
+  totalPages.value = result.totalPages
+  page.value = result.page
 }
 
-onMounted(() => {
-  void refresh().catch((err) => {
-    error.value = toProblemDetail(err).detail ?? 'Chargement impossible'
-  })
-})
+watch(
+  [page, size],
+  () => {
+    void refresh().catch((err) => {
+      error.value = toProblemDetail(err).detail ?? 'Chargement impossible'
+    })
+  },
+  { immediate: true },
+)
 
 async function create() {
   try {
@@ -89,6 +100,7 @@ async function newVersion(template: DocumentTemplate) {
         </div>
       </li>
     </ul>
+    <AdminPager v-model="page" :total-pages="totalPages" />
   </section>
 </template>
 

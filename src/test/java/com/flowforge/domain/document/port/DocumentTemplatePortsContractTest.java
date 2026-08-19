@@ -15,6 +15,8 @@ import com.flowforge.domain.document.port.in.ResolveDocumentTemplateUseCase;
 import com.flowforge.domain.document.port.in.UpdateDocumentTemplateUseCase;
 import com.flowforge.domain.document.port.out.DocumentTemplateRepository;
 import com.flowforge.domain.document.port.out.TemplateSyntaxChecker;
+import com.flowforge.domain.shared.PageQuery;
+import com.flowforge.domain.shared.PageResult;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -83,8 +85,8 @@ class DocumentTemplatePortsContractTest {
         ActivateDocumentTemplateUseCase activate = (templateId, tenantId, updatedBy) -> template;
         ArchiveDocumentTemplateUseCase archive = (templateId, tenantId, updatedBy) -> template;
         NewDocumentTemplateVersionUseCase newVersion = (templateId, tenantId, updatedBy) -> template;
-        ListDocumentTemplateUseCase list =
-                (tenantId, templateKey, includeContent) -> List.of(template);
+        ListDocumentTemplateUseCase list = (tenantId, templateKey, includeContent, query) ->
+                PageResult.of(List.of(template), query.page(), query.size(), 1);
         GetDocumentTemplateUseCase get = (templateId, tenantId) -> template;
         ResolveDocumentTemplateUseCase resolve = request -> template;
 
@@ -101,7 +103,8 @@ class DocumentTemplatePortsContractTest {
         assertThat(activate.activate(id, "tenant_dev", "admin")).isEqualTo(template);
         assertThat(archive.archive(id, "tenant_dev", "admin")).isEqualTo(template);
         assertThat(newVersion.newVersion(id, "tenant_dev", "admin")).isEqualTo(template);
-        assertThat(list.list("tenant_dev", "contrat", false)).containsExactly(template);
+        assertThat(list.list("tenant_dev", "contrat", false, PageQuery.defaults()).content())
+                .containsExactly(template);
         assertThat(get.get(id, "tenant_dev")).isEqualTo(template);
         assertThat(resolve.resolve(new TemplateResolutionRequest("contrat", "premium", "fr")))
                 .isEqualTo(template);

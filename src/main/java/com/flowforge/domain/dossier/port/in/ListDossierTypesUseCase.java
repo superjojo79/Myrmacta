@@ -2,8 +2,9 @@ package com.flowforge.domain.dossier.port.in;
 
 import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.DossierType;
-import java.util.List;
+import com.flowforge.domain.shared.PageQuery;
+import com.flowforge.domain.shared.PageResult;
 
 public interface ListDossierTypesUseCase {
-    List<DossierType> list(String tenantId, AccessContext ctx);
+    PageResult<DossierType> list(String tenantId, AccessContext ctx, PageQuery query);
 }

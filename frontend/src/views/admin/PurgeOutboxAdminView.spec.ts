@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+import { createMemoryHistory, createRouter } from 'vue-router'
 import PurgeOutboxAdminView from './PurgeOutboxAdminView.vue'
 import * as api from '@/api/purgeOutbox'
+import { routes } from '@/app/routes'
+import { asPage } from '@/api/page'
 
 vi.mock('@/api/purgeOutbox')
 
@@ -12,7 +15,7 @@ describe('PurgeOutboxAdminView', () => {
 
   it('renders counts and queue without a force button', async () => {
     vi.mocked(api.listPurgeOutbox).mockResolvedValue({
-      items: [
+      ...asPage([
         {
           id: '1',
           dossierId: 'd1',
@@ -22,10 +25,13 @@ describe('PurgeOutboxAdminView', () => {
           createdAt: '2026-08-19T12:00:00Z',
           lastError: 'S3 down',
         },
-      ],
+      ]),
       counts: { pending: 0, processing: 0, failed: 1, completed: 4 },
     })
-    const wrapper = mount(PurgeOutboxAdminView)
+    const router = createRouter({ history: createMemoryHistory(), routes })
+    await router.push('/admin/purge-outbox')
+    await router.isReady()
+    const wrapper = mount(PurgeOutboxAdminView, { global: { plugins: [router] } })
     await flushPromises()
     expect(wrapper.text()).toContain('File de purge')
     expect(wrapper.text()).toContain('FAILED : 1')

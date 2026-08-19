@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
-import { listWorkflowTypeConfigs } from '@/api/workflows'
+import { listAllWorkflowTypeConfigs } from '@/api/workflows'
 import type { WorkflowTypeConfig } from '@/api/types'
 
 const props = defineProps<{
@@ -38,7 +38,7 @@ watch(
 onMounted(async () => {
   loading.value = true
   try {
-    configs.value = await listWorkflowTypeConfigs()
+    configs.value = await listAllWorkflowTypeConfigs()
   } finally {
     loading.value = false
   }

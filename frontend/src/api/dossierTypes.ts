@@ -1,9 +1,22 @@
 import axios from 'axios'
 import type { DossierPermission, DossierType, FieldDefinition } from './types'
+import { listAllPages, type Page } from './page'
 
-export async function listDossierTypes(): Promise<DossierType[]> {
-  const { data } = await axios.get<DossierType[]>('/api/dossier-types')
+export interface AdminListParams {
+  page?: number
+  size?: number
+}
+
+export async function listDossierTypes(params: AdminListParams = {}): Promise<Page<DossierType>> {
+  const query: Record<string, number> = {}
+  if (params.page != null) query.page = params.page
+  if (params.size != null) query.size = params.size
+  const { data } = await axios.get<Page<DossierType>>('/api/dossier-types', { params: query })
   return data
+}
+
+export async function listAllDossierTypes(): Promise<DossierType[]> {
+  return listAllPages((page, size) => listDossierTypes({ page, size }))
 }
 
 export async function getDossierType(code: string): Promise<DossierType> {

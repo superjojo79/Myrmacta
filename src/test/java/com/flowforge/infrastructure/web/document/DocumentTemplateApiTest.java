@@ -56,15 +56,17 @@ class DocumentTemplateApiTest {
                         .param("templateKey", key)
                         .with(admin()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].htmlContent").value(""))
-                .andExpect(jsonPath("$[0].templateKey").value(key));
+                .andExpect(jsonPath("$.content[0].htmlContent").value(""))
+                .andExpect(jsonPath("$.content[0].templateKey").value(key))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20));
 
         mockMvc.perform(get("/api/document-templates")
                         .param("templateKey", key)
                         .param("includeContent", "true")
                         .with(admin()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].htmlContent").value(org.hamcrest.Matchers.containsString("th:text")));
+                .andExpect(jsonPath("$.content[0].htmlContent").value(org.hamcrest.Matchers.containsString("th:text")));
 
         mockMvc.perform(post("/api/document-templates/" + id + "/activate")
                         .with(admin())
@@ -132,6 +134,11 @@ class DocumentTemplateApiTest {
 
         mockMvc.perform(get("/api/document-templates").with(user("viewer", "DOSSIER_VIEWER")))
                 .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/document-templates")
+                        .param("size", "101")
+                        .with(admin()))
+                .andExpect(status().isBadRequest());
 
         mockMvc.perform(get("/api/document-templates")).andExpect(status().isUnauthorized());
 

@@ -3,6 +3,9 @@ package com.flowforge.infrastructure.persistence.connector;
 import com.flowforge.domain.connector.model.ConnectorInstanceData;
 import com.flowforge.domain.connector.port.out.ConnectorInstanceRepository;
 import com.flowforge.domain.connector.port.out.ConnectorSecretCipher;
+import com.flowforge.domain.shared.PageQuery;
+import com.flowforge.domain.shared.PageResult;
+import com.flowforge.infrastructure.persistence.SpringPages;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -56,6 +59,14 @@ public class JpaConnectorInstanceRepositoryAdapter implements ConnectorInstanceR
         return repository.findByTenantIdAndDeletedAtIsNullOrderByNameAsc(tenantId).stream()
                 .map(this::toDomain)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<ConnectorInstanceData> pageByTenantId(String tenantId, PageQuery query) {
+        return SpringPages.map(
+                repository.findByTenantIdAndDeletedAtIsNullOrderByNameAsc(tenantId, SpringPages.of(query)),
+                this::toDomain);
     }
 
     @Override

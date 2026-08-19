@@ -1,0 +1,2442 @@
+openapi: 3.1.0
+info:
+  title: OpenAPI definition
+  version: v0
+servers:
+- url: http://localhost
+  description: Generated server url
+paths:
+  /api/tenant/retention-settings:
+    get:
+      tags:
+      - tenant-retention-settings-controller
+      operationId: get
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TenantRetentionSettingsResponse"
+    put:
+      tags:
+      - tenant-retention-settings-controller
+      operationId: upsert
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertTenantRetentionSettingsRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TenantRetentionSettingsResponse"
+  /api/workflow-type-configs:
+    get:
+      tags:
+      - workflow-type-config-controller
+      operationId: list
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageResponseWorkflowTypeConfigResponse"
+    post:
+      tags:
+      - workflow-type-config-controller
+      operationId: create
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkflowTypeConfigRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/WorkflowTypeConfigResponse"
+  /api/workflow-tasks/{taskId}/complete:
+    post:
+      tags:
+      - workflow-task-controller
+      operationId: complete
+      parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompleteTaskRequest"
+      responses:
+        "200":
+          description: OK
+  /api/workflow-links/{linkId}/tasks/{taskId}/reassign:
+    post:
+      tags:
+      - workflow-link-visualization-controller
+      operationId: reassign
+      parameters:
+      - name: linkId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReassignWorkflowTaskRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+  /api/notifications/send:
+    post:
+      tags:
+      - notification-send-controller
+      operationId: send
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendNotificationRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SendNotificationResponse"
+  /api/notification-webhooks:
+    get:
+      tags:
+      - notification-webhook-admin-controller
+      operationId: list_1
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageResponseNotificationWebhookResponse"
+    post:
+      tags:
+      - notification-webhook-admin-controller
+      operationId: create_1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateNotificationWebhookRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/NotificationWebhookResponse"
+  /api/m2m/connectors/{id}/execute:
+    post:
+      tags:
+      - m-2m-connector-execute-controller
+      operationId: execute
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExecuteConnectorRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+                additionalProperties: {}
+  /api/dossiers:
+    get:
+      tags:
+      - dossier-controller
+      operationId: list_2
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: dossierTypeCode
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: reference
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: ref
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                oneOf:
+                - $ref: "#/components/schemas/DossierResponse"
+                - $ref: "#/components/schemas/DossierPageResponse"
+    post:
+      tags:
+      - dossier-controller
+      operationId: create_2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDossierRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DossierResponse"
+  /api/dossiers/{id}/workflows:
+    get:
+      tags:
+      - dossier-workflow-controller
+      operationId: history
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WorkflowLinkResponse"
+    post:
+      tags:
+      - dossier-workflow-controller
+      operationId: start
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: Idempotency-Key
+        in: header
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartWorkflowRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/WorkflowLinkResponse"
+  /api/dossiers/{id}/relations:
+    get:
+      tags:
+      - dossier-controller
+      operationId: listRelations
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DossierRelationResponse"
+    post:
+      tags:
+      - dossier-controller
+      operationId: createRelation
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDossierRelationRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DossierRelationResponse"
+  /api/dossiers/{id}/purge-requests:
+    post:
+      tags:
+      - purge-outbox-controller
+      operationId: enqueue
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+  /api/dossiers/{id}/elements:
+    get:
+      tags:
+      - dossier-controller
+      operationId: listElements
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DossierElementView"
+    post:
+      tags:
+      - dossier-controller
+      operationId: addElement
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddDossierElementRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DossierElementView"
+  /api/dossier-types:
+    get:
+      tags:
+      - dossier-type-controller
+      operationId: list_3
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageResponseDossierTypeResponse"
+    post:
+      tags:
+      - dossier-type-controller
+      operationId: create_3
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDossierTypeRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DossierTypeResponse"
+  /api/dossier-types/{code}/acl:
+    post:
+      tags:
+      - dossier-type-acl-controller
+      operationId: grant
+      parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GrantDossierTypeAccessRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+  /api/documents/preview:
+    post:
+      tags:
+      - document-generation-controller
+      operationId: previewHtml
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PreviewRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            text/html:
+              schema:
+                type: string
+  /api/documents/preview/pdf:
+    post:
+      tags:
+      - document-generation-controller
+      operationId: previewPdf
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PreviewRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: byte
+  /api/documents/generate:
+    post:
+      tags:
+      - document-generation-controller
+      operationId: generate
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: byte
+  /api/document-templates:
+    get:
+      tags:
+      - document-template-controller
+      operationId: list_4
+      parameters:
+      - name: templateKey
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: includeContent
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageResponseTemplateResponse"
+    post:
+      tags:
+      - document-template-controller
+      operationId: create_4
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TemplateResponse"
+  /api/document-templates/{id}/new-version:
+    post:
+      tags:
+      - document-template-controller
+      operationId: newVersion
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TemplateResponse"
+  /api/document-templates/{id}/archive:
+    post:
+      tags:
+      - document-template-controller
+      operationId: archive
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TemplateResponse"
+  /api/document-templates/{id}/activate:
+    post:
+      tags:
+      - document-template-controller
+      operationId: activate
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TemplateResponse"
+  /api/connectors:
+    get:
+      tags:
+      - connector-admin-controller
+      operationId: list_5
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageResponseConnectorResponse"
+    post:
+      tags:
+      - connector-admin-controller
+      operationId: create_5
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateConnectorRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ConnectorResponse"
+  /api/connectors/{id}/execute:
+    post:
+      tags:
+      - connector-execute-controller
+      operationId: execute_1
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExecuteConnectorRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+                additionalProperties: {}
+  /api/workflow-type-configs/{workflowKey}:
+    get:
+      tags:
+      - workflow-type-config-controller
+      operationId: get_1
+      parameters:
+      - name: workflowKey
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/WorkflowTypeConfigResponse"
+    patch:
+      tags:
+      - workflow-type-config-controller
+      operationId: update
+      parameters:
+      - name: workflowKey
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkflowTypeConfigRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/WorkflowTypeConfigResponse"
+  /api/notification-webhooks/{id}:
+    get:
+      tags:
+      - notification-webhook-admin-controller
+      operationId: get_2
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/NotificationWebhookResponse"
+    delete:
+      tags:
+      - notification-webhook-admin-controller
+      operationId: softDelete
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+    patch:
+      tags:
+      - notification-webhook-admin-controller
+      operationId: update_1
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateNotificationWebhookRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/NotificationWebhookResponse"
+  /api/dossiers/{id}/status:
+    patch:
+      tags:
+      - dossier-controller
+      operationId: updateStatus
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDossierStatusRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DossierResponse"
+  /api/dossiers/{id}/fields:
+    patch:
+      tags:
+      - dossier-controller
+      operationId: updateFields
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDossierFieldsRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DossierResponse"
+  /api/dossier-types/{code}:
+    get:
+      tags:
+      - dossier-type-controller
+      operationId: getByCode
+      parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DossierTypeResponse"
+    patch:
+      tags:
+      - dossier-type-controller
+      operationId: update_2
+      parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDossierTypeRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DossierTypeResponse"
+  /api/document-templates/{id}:
+    get:
+      tags:
+      - document-template-controller
+      operationId: get_3
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TemplateResponse"
+    patch:
+      tags:
+      - document-template-controller
+      operationId: update_3
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TemplateResponse"
+  /api/connectors/{id}:
+    get:
+      tags:
+      - connector-admin-controller
+      operationId: get_4
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ConnectorResponse"
+    delete:
+      tags:
+      - connector-admin-controller
+      operationId: softDelete_1
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+    patch:
+      tags:
+      - connector-admin-controller
+      operationId: update_4
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateConnectorRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ConnectorResponse"
+  /api/workflow-tasks/mine:
+    get:
+      tags:
+      - workflow-task-controller
+      operationId: mine
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MyWorkflowTaskResponse"
+  /api/workflow-links/{linkId}/tasks:
+    get:
+      tags:
+      - workflow-link-visualization-controller
+      operationId: tasks
+      parameters:
+      - name: linkId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WorkflowTaskView"
+  /api/workflow-links/{linkId}/history:
+    get:
+      tags:
+      - workflow-link-visualization-controller
+      operationId: history_1
+      parameters:
+      - name: linkId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityHistoryEntry"
+  /api/workflow-links/{linkId}/dossier:
+    get:
+      tags:
+      - workflow-link-visualization-controller
+      operationId: dossier
+      parameters:
+      - name: linkId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/WorkflowLinkDossierView"
+  /api/workflow-links/{linkId}/diagram:
+    get:
+      tags:
+      - workflow-link-visualization-controller
+      operationId: diagram
+      parameters:
+      - name: linkId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/WorkflowDiagramView"
+  /api/purge-outbox:
+    get:
+      tags:
+      - purge-outbox-controller
+      operationId: list_6
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - PENDING
+          - PROCESSING
+          - COMPLETED
+          - FAILED
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PurgeOutboxPageResponse"
+  /api/dossiers/{id}:
+    get:
+      tags:
+      - dossier-controller
+      operationId: getById
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DossierResponse"
+  /api/dossier-elements/{id}/content:
+    get:
+      tags:
+      - dossier-element-content-controller
+      operationId: content
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: byte
+  /api/document-templates/resolve:
+    get:
+      tags:
+      - document-template-controller
+      operationId: resolve
+      parameters:
+      - name: templateKey
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: variantKey
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: locale
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TemplateResponse"
+  /api/connector-definitions:
+    get:
+      tags:
+      - connector-definition-controller
+      operationId: list_7
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ConnectorDefinitionResponse"
+  /api/auth/me:
+    get:
+      tags:
+      - auth-controller
+      operationId: me
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AuthUserResponse"
+  /api/dossier-types/{code}/acl/{userId}:
+    delete:
+      tags:
+      - dossier-type-acl-controller
+      operationId: revoke
+      parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+components:
+  schemas:
+    UpsertTenantRetentionSettingsRequest:
+      type: object
+      properties:
+        defaultRetentionDays:
+          type: integer
+          format: int32
+    TenantRetentionSettingsResponse:
+      type: object
+      properties:
+        tenantId:
+          type: string
+        defaultRetentionDays:
+          type: integer
+          format: int32
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+    WorkflowStatusDefinitionRequest:
+      type: object
+      properties:
+        code:
+          type: string
+        label:
+          type: string
+        initial:
+          type: boolean
+        outcome:
+          type: string
+          enum:
+          - NONE
+          - COMPLETED
+          - CANCELLED
+          - FAILED
+    WorkflowTypeConfigRequest:
+      type: object
+      properties:
+        workflowKey:
+          type: string
+        label:
+          type: string
+        statusDefinitions:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkflowStatusDefinitionRequest"
+        allowedDossierStatuses:
+          type: array
+          items:
+            type: string
+            enum:
+            - DRAFT
+            - OUVERT
+            - EN_COURS
+            - SUSPENDU
+            - CLOTURE
+            - ARCHIVE
+        onStartDossierStatus:
+          type: string
+          enum:
+          - DRAFT
+          - OUVERT
+          - EN_COURS
+          - SUSPENDU
+          - CLOTURE
+          - ARCHIVE
+        observerUserIds:
+          type: array
+          items:
+            type: string
+    WorkflowStatusDefinition:
+      type: object
+      properties:
+        code:
+          type: string
+        label:
+          type: string
+        initial:
+          type: boolean
+        outcome:
+          type: string
+          enum:
+          - NONE
+          - COMPLETED
+          - CANCELLED
+          - FAILED
+    WorkflowTypeConfigResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+        workflowKey:
+          type: string
+        label:
+          type: string
+        statusDefinitions:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkflowStatusDefinition"
+        allowedDossierStatuses:
+          type: array
+          items:
+            type: string
+            enum:
+            - DRAFT
+            - OUVERT
+            - EN_COURS
+            - SUSPENDU
+            - CLOTURE
+            - ARCHIVE
+        onStartDossierStatus:
+          type: string
+          enum:
+          - DRAFT
+          - OUVERT
+          - EN_COURS
+          - SUSPENDU
+          - CLOTURE
+          - ARCHIVE
+        observerUserIds:
+          type: array
+          items:
+            type: string
+    CompleteTaskRequest:
+      type: object
+      properties:
+        variables:
+          type: object
+          additionalProperties: {}
+    ReassignWorkflowTaskRequest:
+      type: object
+      properties:
+        assigneeId:
+          type: string
+    SendNotificationRequest:
+      type: object
+      properties:
+        channels:
+          type: array
+          items:
+            type: string
+        to:
+          type: string
+        subject:
+          type: string
+        body:
+          type: string
+        userId:
+          type: string
+        webhookConfigId:
+          type: string
+          format: uuid
+        payload:
+          type: object
+          additionalProperties: {}
+    SendNotificationResponse:
+      type: object
+      properties:
+        outboxIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+    CreateNotificationWebhookRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        targetUrl:
+          type: string
+        secret:
+          type: string
+          writeOnly: true
+        enabled:
+          type: boolean
+    NotificationWebhookResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+        name:
+          type: string
+        targetUrl:
+          type: string
+        secret:
+          type: string
+        secretConfigured:
+          type: boolean
+        enabled:
+          type: boolean
+        deletedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ExecuteConnectorRequest:
+      type: object
+      properties:
+        signalName:
+          type: string
+        processInstanceId:
+          type: string
+        variables:
+          type: object
+          additionalProperties: {}
+    CreateDossierRequest:
+      type: object
+      properties:
+        dossierTypeCode:
+          type: string
+        label:
+          type: string
+        fields:
+          type: object
+          additionalProperties: {}
+    DossierResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+        reference:
+          type: string
+        dossierTypeCode:
+          type: string
+        label:
+          type: string
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - OUVERT
+          - EN_COURS
+          - SUSPENDU
+          - CLOTURE
+          - ARCHIVE
+        fields:
+          type: object
+          additionalProperties: {}
+        currentWorkflowLinkId:
+          type: string
+          format: uuid
+        version:
+          type: integer
+          format: int64
+        createdBy:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        closedBy:
+          type: string
+        closedAt:
+          type: string
+          format: date-time
+        purgeEligibleAt:
+          type: string
+          format: date-time
+    StartWorkflowRequest:
+      type: object
+      properties:
+        processDefinitionKey:
+          type: string
+        variables:
+          type: object
+          additionalProperties: {}
+    WorkflowLinkResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        dossierId:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+        processInstanceId:
+          type: string
+        processDefinitionKey:
+          type: string
+        sequence:
+          type: integer
+          format: int32
+        status:
+          type: string
+        triggerRef:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        endedAt:
+          type: string
+          format: date-time
+        endReason:
+          type: string
+        startedBy:
+          type: string
+    CreateDossierRelationRequest:
+      type: object
+      properties:
+        targetDossierId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum:
+          - PARENT_CHILD
+          - SUBSEQUENT
+          - LINKED
+          - DUPLICATE
+          - MERGED_INTO
+    DossierListItemResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        reference:
+          type: string
+        label:
+          type: string
+        dossierTypeCode:
+          type: string
+        dossierTypeLabel:
+          type: string
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - OUVERT
+          - EN_COURS
+          - SUSPENDU
+          - CLOTURE
+          - ARCHIVE
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    DossierRelationResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum:
+          - PARENT_CHILD
+          - SUBSEQUENT
+          - LINKED
+          - DUPLICATE
+          - MERGED_INTO
+        direction:
+          type: string
+          enum:
+          - OUTGOING
+          - INCOMING
+        relatedDossier:
+          $ref: "#/components/schemas/DossierListItemResponse"
+        createdBy:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    AddDossierElementRequest:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+          - PRODUCED_DOC
+          - ATTACHMENT
+          - INFORMATION
+          - NOTE
+          - LINK
+        label:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: {}
+    DossierElementView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum:
+          - PRODUCED_DOC
+          - ATTACHMENT
+          - INFORMATION
+          - NOTE
+          - LINK
+        label:
+          type: string
+        addedBy:
+          type: string
+        addedAt:
+          type: string
+          format: date-time
+        workflowStepId:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: {}
+        downloadable:
+          type: boolean
+    CreateDossierTypeRequest:
+      type: object
+      properties:
+        code:
+          type: string
+        label:
+          type: string
+        workflowKey:
+          type: string
+        active:
+          type: boolean
+        allowUnknownFields:
+          type: boolean
+        fieldDefinitions:
+          type: array
+          items:
+            $ref: "#/components/schemas/FieldDefinition"
+        retentionDays:
+          type: integer
+          format: int32
+        retentionNever:
+          type: boolean
+    FieldDefinition:
+      type: object
+      properties:
+        name:
+          type: string
+        label:
+          type: string
+        type:
+          type: string
+          enum:
+          - STRING
+          - NUMBER
+          - DATE
+          - BOOLEAN
+          - SELECT
+          - FILE
+        required:
+          type: boolean
+        defaultValue:
+          type: string
+        options:
+          type: array
+          items:
+            type: string
+        group:
+          type: string
+        sensitive:
+          type: boolean
+    DossierTypeResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+        code:
+          type: string
+        label:
+          type: string
+        workflowKey:
+          type: string
+        active:
+          type: boolean
+        allowUnknownFields:
+          type: boolean
+        fieldDefinitions:
+          type: array
+          items:
+            $ref: "#/components/schemas/FieldDefinition"
+        retentionDays:
+          type: integer
+          format: int32
+        retentionNever:
+          type: boolean
+    GrantDossierTypeAccessRequest:
+      type: object
+      properties:
+        subjectUserId:
+          type: string
+        permission:
+          type: string
+          enum:
+          - VIEW
+          - EDIT
+    PreviewRequest:
+      type: object
+      properties:
+        htmlContent:
+          type: string
+        templateKey:
+          type: string
+        variantKey:
+          type: string
+        locale:
+          type: string
+        variables:
+          type: object
+          additionalProperties: {}
+    GenerateRequest:
+      type: object
+      properties:
+        templateKey:
+          type: string
+        variantKey:
+          type: string
+        locale:
+          type: string
+        variables:
+          type: object
+          additionalProperties: {}
+    CreateRequest:
+      type: object
+      properties:
+        templateKey:
+          type: string
+        variantKey:
+          type: string
+        locale:
+          type: string
+        label:
+          type: string
+        htmlContent:
+          type: string
+    TemplateResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        templateKey:
+          type: string
+        variantKey:
+          type: string
+        locale:
+          type: string
+        label:
+          type: string
+        version:
+          type: integer
+          format: int32
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - ACTIVE
+          - ARCHIVED
+        htmlContent:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+    CreateConnectorRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        connectorType:
+          type: string
+        enabled:
+          type: boolean
+        config:
+          type: object
+          additionalProperties: {}
+    ConnectorResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+        name:
+          type: string
+        connectorType:
+          type: string
+        enabled:
+          type: boolean
+        config:
+          type: object
+          additionalProperties: {}
+        secretConfigured:
+          type: object
+          additionalProperties:
+            type: boolean
+    UpdateNotificationWebhookRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        targetUrl:
+          type: string
+        secret:
+          type: string
+          writeOnly: true
+        enabled:
+          type: boolean
+        restore:
+          type: boolean
+    UpdateDossierStatusRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - OUVERT
+          - EN_COURS
+          - SUSPENDU
+          - CLOTURE
+          - ARCHIVE
+        expectedVersion:
+          type: integer
+          format: int64
+    UpdateDossierFieldsRequest:
+      type: object
+      properties:
+        fields:
+          type: object
+          additionalProperties: {}
+        expectedVersion:
+          type: integer
+          format: int64
+    UpdateDossierTypeRequest:
+      type: object
+      properties:
+        label:
+          type: string
+        workflowKey:
+          type: string
+        active:
+          type: boolean
+        allowUnknownFields:
+          type: boolean
+        fieldDefinitions:
+          type: array
+          items:
+            $ref: "#/components/schemas/FieldDefinition"
+        retentionDays:
+          type: integer
+          format: int32
+        retentionNever:
+          type: boolean
+    UpdateRequest:
+      type: object
+      properties:
+        label:
+          type: string
+        htmlContent:
+          type: string
+    UpdateConnectorRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        enabled:
+          type: boolean
+        config:
+          type: object
+          additionalProperties: {}
+        restore:
+          type: boolean
+    PageResponseWorkflowTypeConfigResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkflowTypeConfigResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    MyWorkflowTaskResponse:
+      type: object
+      properties:
+        taskId:
+          type: string
+        name:
+          type: string
+        assigneeId:
+          type: string
+        createdAt:
+          type: string
+        processInstanceId:
+          type: string
+        dossierId:
+          type: string
+          format: uuid
+        dossierReference:
+          type: string
+        linkId:
+          type: string
+          format: uuid
+    WorkflowTaskView:
+      type: object
+      properties:
+        taskId:
+          type: string
+        name:
+          type: string
+        assignee:
+          type: string
+        taskDefinitionKey:
+          type: string
+        createTime:
+          type: string
+          format: date-time
+    ActivityHistoryEntry:
+      type: object
+      properties:
+        activityId:
+          type: string
+        name:
+          type: string
+        assignee:
+          type: string
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        durationMs:
+          type: integer
+          format: int64
+    Dossier:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+        reference:
+          type: string
+        dossierTypeCode:
+          type: string
+        label:
+          type: string
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - OUVERT
+          - EN_COURS
+          - SUSPENDU
+          - CLOTURE
+          - ARCHIVE
+        fields:
+          type: object
+          additionalProperties: {}
+        currentWorkflowLinkId:
+          type: string
+          format: uuid
+        version:
+          type: integer
+          format: int64
+        createdBy:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        closedBy:
+          type: string
+        closedAt:
+          type: string
+          format: date-time
+        purgeEligibleAt:
+          type: string
+          format: date-time
+    DossierElement:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        dossierId:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+        type:
+          type: string
+          enum:
+          - PRODUCED_DOC
+          - ATTACHMENT
+          - INFORMATION
+          - NOTE
+          - LINK
+        label:
+          type: string
+        storageRef:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: {}
+        addedBy:
+          type: string
+        addedAt:
+          type: string
+          format: date-time
+        workflowStepId:
+          type: string
+    DossierListItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        reference:
+          type: string
+        label:
+          type: string
+        dossierTypeCode:
+          type: string
+        dossierTypeLabel:
+          type: string
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - OUVERT
+          - EN_COURS
+          - SUSPENDU
+          - CLOTURE
+          - ARCHIVE
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    DossierRelationView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum:
+          - PARENT_CHILD
+          - SUBSEQUENT
+          - LINKED
+          - DUPLICATE
+          - MERGED_INTO
+        direction:
+          type: string
+          enum:
+          - OUTGOING
+          - INCOMING
+        relatedDossier:
+          $ref: "#/components/schemas/DossierListItem"
+        createdBy:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    WorkflowLinkDossierView:
+      type: object
+      properties:
+        dossier:
+          $ref: "#/components/schemas/Dossier"
+        elements:
+          type: array
+          items:
+            $ref: "#/components/schemas/DossierElement"
+        relations:
+          type: array
+          items:
+            $ref: "#/components/schemas/DossierRelationView"
+    WorkflowDiagramView:
+      type: object
+      properties:
+        bpmnXml:
+          type: string
+        activeIds:
+          type: array
+          items:
+            type: string
+        completedIds:
+          type: array
+          items:
+            type: string
+        failedIds:
+          type: array
+          items:
+            type: string
+    Counts:
+      type: object
+      properties:
+        pending:
+          type: integer
+          format: int64
+        processing:
+          type: integer
+          format: int64
+        failed:
+          type: integer
+          format: int64
+        completed:
+          type: integer
+          format: int64
+    PurgeOutboxItemResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        dossierId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+          - PENDING
+          - PROCESSING
+          - COMPLETED
+          - FAILED
+        origin:
+          type: string
+          enum:
+          - RETENTION
+          - ADMIN
+        eventType:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        lastError:
+          type: string
+    PurgeOutboxPageResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/PurgeOutboxItemResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        counts:
+          $ref: "#/components/schemas/Counts"
+    PageResponseNotificationWebhookResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/NotificationWebhookResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    DossierPageResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/DossierListItemResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    PageResponseDossierTypeResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/DossierTypeResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    PageResponseTemplateResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/TemplateResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    PageResponseConnectorResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/ConnectorResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    ConfigField:
+      type: object
+      properties:
+        name:
+          type: string
+        label:
+          type: string
+        type:
+          type: string
+          enum:
+          - STRING
+          - PASSWORD
+          - URL
+          - INTEGER
+          - BOOLEAN
+          - SELECT
+        required:
+          type: boolean
+        defaultValue:
+          type: string
+        options:
+          type: array
+          items:
+            type: string
+        helpText:
+          type: string
+    ConnectorDefinitionResponse:
+      type: object
+      properties:
+        type:
+          type: string
+        label:
+          type: string
+        capability:
+          type: string
+          enum:
+          - TRIGGER
+          - SERVICE
+          - BOTH
+        configSchema:
+          type: array
+          items:
+            $ref: "#/components/schemas/ConfigField"
+    AuthUserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string

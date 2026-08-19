@@ -55,7 +55,14 @@ class PurgeOutboxApiTest {
                 .andExpect(jsonPath("$.counts.processing").exists())
                 .andExpect(jsonPath("$.counts.failed").exists())
                 .andExpect(jsonPath("$.counts.completed").exists())
-                .andExpect(jsonPath("$.items").isArray());
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20));
+
+        mockMvc.perform(get("/api/purge-outbox")
+                        .param("size", "101")
+                        .with(user("admin-purge", "TENANT_ADMIN")))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -90,8 +97,8 @@ class PurgeOutboxApiTest {
                         .param("status", "PENDING")
                         .with(user("admin-enq-ok", "TENANT_ADMIN")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.items[*].dossierId").value(org.hamcrest.Matchers.hasItem(dossierId)))
-                .andExpect(jsonPath("$.items[*].origin").value(org.hamcrest.Matchers.hasItem("ADMIN")));
+                .andExpect(jsonPath("$.content[*].dossierId").value(org.hamcrest.Matchers.hasItem(dossierId)))
+                .andExpect(jsonPath("$.content[*].origin").value(org.hamcrest.Matchers.hasItem("ADMIN")));
     }
 
     @Test
@@ -120,8 +127,8 @@ class PurgeOutboxApiTest {
                         .param("status", "PENDING")
                         .with(user("admin-enq-arch", "TENANT_ADMIN")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.items[*].dossierId").value(org.hamcrest.Matchers.hasItem(dossierId)))
-                .andExpect(jsonPath("$.items[*].origin").value(org.hamcrest.Matchers.hasItem("ADMIN")));
+                .andExpect(jsonPath("$.content[*].dossierId").value(org.hamcrest.Matchers.hasItem(dossierId)))
+                .andExpect(jsonPath("$.content[*].origin").value(org.hamcrest.Matchers.hasItem("ADMIN")));
     }
 
     @Test

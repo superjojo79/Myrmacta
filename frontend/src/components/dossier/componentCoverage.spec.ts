@@ -33,7 +33,7 @@ describe('component coverage extras', () => {
     await fields.get('select').setValue('A')
     expect(fields.emitted('update:modelValue')?.length).toBeGreaterThan(0)
 
-    vi.mocked(workflowsApi.listWorkflowTypeConfigs).mockResolvedValue([
+    vi.mocked(workflowsApi.listAllWorkflowTypeConfigs).mockResolvedValue([
       {
         id: '1',
         tenantId: 't',

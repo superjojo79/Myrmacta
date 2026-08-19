@@ -120,7 +120,12 @@ class ConnectorAdminApiTest {
         mockMvc.perform(get("/api/connectors")
                         .with(user("connector-admin", "TENANT_ADMIN")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[*].name", not(hasItem(name))));
+                .andExpect(jsonPath("$.content[*].name", not(hasItem(name))));
+
+        mockMvc.perform(get("/api/connectors")
+                        .param("sort", "name,desc")
+                        .with(user("connector-admin", "TENANT_ADMIN")))
+                .andExpect(status().isBadRequest());
 
         mockMvc.perform(patch("/api/connectors/{id}", id)
                         .with(user("connector-admin", "TENANT_ADMIN"))

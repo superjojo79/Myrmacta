@@ -6,6 +6,8 @@ import com.flowforge.domain.notification.model.NotificationWebhookConfig;
 import com.flowforge.domain.notification.model.NotificationWebhookNotFoundException;
 import com.flowforge.domain.notification.port.in.ManageNotificationWebhookUseCase;
 import com.flowforge.domain.notification.port.out.NotificationWebhookRepository;
+import com.flowforge.domain.shared.PageQuery;
+import com.flowforge.domain.shared.PageResult;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
@@ -56,8 +58,8 @@ public final class ManageNotificationWebhookUseCaseImpl implements ManageNotific
     }
 
     @Override
-    public List<NotificationWebhookConfig> list(String tenantId) {
-        return repository.listByTenantId(tenantId);
+    public PageResult<NotificationWebhookConfig> list(String tenantId, PageQuery query) {
+        return repository.pageByTenantId(tenantId, query);
     }
 
     @Override

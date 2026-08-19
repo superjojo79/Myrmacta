@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { ref, watch } from 'vue'
 import {
   createDossierType,
   listDossierTypes,
@@ -10,8 +10,12 @@ import {
 import { getRetentionSettings, upsertRetentionSettings } from '@/api/retentionSettings'
 import type { DossierPermission, DossierType } from '@/api/types'
 import { toProblemDetail } from '@/api/http'
+import AdminPager from '@/components/admin/AdminPager.vue'
+import { useAdminListQuery } from '@/composables/useAdminListQuery'
 
+const { page, size } = useAdminListQuery()
 const types = ref<DossierType[]>([])
+const totalPages = ref(0)
 const error = ref<string | null>(null)
 const retentionDaysDefault = ref<number | null>(null)
 const retentionConfigured = ref(false)
@@ -33,7 +37,10 @@ function retentionLabel(type: DossierType): string {
 }
 
 async function refresh() {
-  types.value = await listDossierTypes()
+  const result = await listDossierTypes({ page: page.value, size: size.value })
+  types.value = result.content
+  totalPages.value = result.totalPages
+  page.value = result.page
   try {
     const settings = await getRetentionSettings()
     retentionConfigured.value = true
@@ -50,11 +57,15 @@ async function refresh() {
   }
 }
 
-onMounted(() => {
-  void refresh().catch((err) => {
-    error.value = toProblemDetail(err).detail ?? 'Chargement impossible'
-  })
-})
+watch(
+  [page, size],
+  () => {
+    void refresh().catch((err) => {
+      error.value = toProblemDetail(err).detail ?? 'Chargement impossible'
+    })
+  },
+  { immediate: true },
+)
 
 async function saveRetention() {
   error.value = null
@@ -201,6 +212,7 @@ async function revoke() {
         </tr>
       </tbody>
     </table>
+    <AdminPager v-model="page" :total-pages="totalPages" />
 
     <h2>ACL</h2>
     <form class="admin-form" @submit.prevent="grant">

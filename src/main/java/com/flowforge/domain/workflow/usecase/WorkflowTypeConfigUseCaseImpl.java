@@ -4,7 +4,8 @@ import com.flowforge.domain.workflow.model.WorkflowTypeConfig;
 import com.flowforge.domain.workflow.port.in.GetWorkflowTypeConfigUseCase;
 import com.flowforge.domain.workflow.port.in.SaveWorkflowTypeConfigUseCase;
 import com.flowforge.domain.workflow.port.out.WorkflowTypeConfigRepository;
-import java.util.List;
+import com.flowforge.domain.shared.PageQuery;
+import com.flowforge.domain.shared.PageResult;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -35,7 +36,7 @@ public final class WorkflowTypeConfigUseCaseImpl
     }
 
     @Override
-    public List<WorkflowTypeConfig> list() {
-        return repository.findAll(tenantId);
+    public PageResult<WorkflowTypeConfig> list(PageQuery query) {
+        return repository.page(tenantId, query);
     }
 }

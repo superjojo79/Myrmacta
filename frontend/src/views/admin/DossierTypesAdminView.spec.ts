@@ -1,29 +1,41 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+import { createMemoryHistory, createRouter } from 'vue-router'
 import DossierTypesAdminView from './DossierTypesAdminView.vue'
 import * as api from '@/api/dossierTypes'
 import * as retentionApi from '@/api/retentionSettings'
+import { routes } from '@/app/routes'
+import { asPage } from '@/api/page'
+import type { Component } from 'vue'
 
 vi.mock('@/api/dossierTypes')
 vi.mock('@/api/retentionSettings')
 
+const sampleType = {
+  id: '1',
+  tenantId: 't',
+  code: 'CLAIM',
+  label: 'Sinistre',
+  workflowKey: 'wf',
+  active: true,
+  allowUnknownFields: false,
+  fieldDefinitions: [],
+  retentionDays: null,
+  retentionNever: false,
+}
+
+async function mountView(component: Component, path = '/admin/dossier-types') {
+  const router = createRouter({ history: createMemoryHistory(), routes })
+  await router.push(path)
+  await router.isReady()
+  const wrapper = mount(component, { global: { plugins: [router] } })
+  return { wrapper, router }
+}
+
 describe('DossierTypesAdminView', () => {
   beforeEach(() => {
     vi.resetAllMocks()
-    vi.mocked(api.listDossierTypes).mockResolvedValue([
-      {
-        id: '1',
-        tenantId: 't',
-        code: 'CLAIM',
-        label: 'Sinistre',
-        workflowKey: 'wf',
-        active: true,
-        allowUnknownFields: false,
-        fieldDefinitions: [],
-        retentionDays: null,
-        retentionNever: false,
-      },
-    ])
+    vi.mocked(api.listDossierTypes).mockResolvedValue(asPage([sampleType]))
     vi.mocked(retentionApi.getRetentionSettings).mockRejectedValue({
       response: { status: 404, data: { detail: 'not found', status: 404 } },
     })
@@ -42,7 +54,7 @@ describe('DossierTypesAdminView', () => {
       retentionDays: null,
       retentionNever: false,
     })
-    const wrapper = mount(DossierTypesAdminView)
+    const { wrapper } = await mountView(DossierTypesAdminView)
     await flushPromises()
     expect(wrapper.text()).toContain('CLAIM')
     expect(wrapper.text()).toContain('Rétention tenant')
@@ -80,11 +92,22 @@ describe('DossierTypesAdminView', () => {
         updatedAt: '2026-01-01T00:00:00Z',
         updatedBy: 'admin',
       })
-    const wrapper = mount(DossierTypesAdminView)
+    const { wrapper } = await mountView(DossierTypesAdminView)
     await flushPromises()
     await wrapper.get('[data-testid="retention-default-days"]').setValue('90')
     await wrapper.find('form.admin-form').trigger('submit.prevent')
     await flushPromises()
     expect(retentionApi.upsertRetentionSettings).toHaveBeenCalledWith(90)
+  })
+
+  it('updates page query when clicking next', async () => {
+    vi.mocked(api.listDossierTypes).mockResolvedValue(
+      asPage([sampleType], { page: 0, size: 20, totalElements: 40, totalPages: 2 }),
+    )
+    const { wrapper, router } = await mountView(DossierTypesAdminView)
+    await flushPromises()
+    await wrapper.get('[data-testid="admin-pager-next"]').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.query.page).toBe('1')
   })
 })

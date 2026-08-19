@@ -42,12 +42,13 @@ import { downloadElementContent } from './elements'
 import { completeTask, listMyTasks } from './tasks'
 import { previewHtml, previewPdf } from './documents'
 import { enqueueDossierPurge, listPurgeOutbox } from './purgeOutbox'
+import { asPage } from './page'
 
 vi.mock('axios')
 
 describe('api coverage', () => {
   beforeEach(() => {
-    vi.mocked(axios.get).mockReset().mockResolvedValue({ data: {} })
+    vi.mocked(axios.get).mockReset().mockResolvedValue({ data: asPage([]) })
     vi.mocked(axios.post).mockReset().mockResolvedValue({ data: {} })
     vi.mocked(axios.patch).mockReset().mockResolvedValue({ data: {} })
     vi.mocked(axios.delete).mockReset().mockResolvedValue({})

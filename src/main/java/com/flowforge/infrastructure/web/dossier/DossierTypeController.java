@@ -8,6 +8,9 @@ import com.flowforge.domain.dossier.port.in.GetDossierTypeUseCase;
 import com.flowforge.domain.dossier.port.in.ListDossierTypesUseCase;
 import com.flowforge.domain.dossier.port.in.UpdateDossierTypeUseCase;
 import com.flowforge.infrastructure.config.TenantProperties;
+import com.flowforge.infrastructure.web.AdminListSorts;
+import com.flowforge.infrastructure.web.PageQueryParser;
+import com.flowforge.infrastructure.web.PageResponse;
 import java.net.URI;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +22,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -105,13 +109,17 @@ public class DossierTypeController {
     }
 
     @GetMapping
-    public List<DossierTypeResponse> list(Authentication authentication) {
-        return listDossierTypesUseCase.list(
+    public PageResponse<DossierTypeResponse> list(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) String sort,
+            Authentication authentication) {
+        return PageResponse.from(listDossierTypesUseCase
+                .list(
                         tenantProperties.id(),
-                        accessContextFactory.user(authentication))
-                .stream()
-                .map(DossierTypeResponse::from)
-                .toList();
+                        accessContextFactory.user(authentication),
+                        PageQueryParser.parse(page, size, sort, AdminListSorts.DOSSIER_TYPES))
+                .map(DossierTypeResponse::from));
     }
 
     @GetMapping("/{code}")

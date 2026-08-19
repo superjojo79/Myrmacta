@@ -340,6 +340,17 @@ class WorkflowApiTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.observerUserIds[0]").value("observer-sub"));
 
+        mockMvc.perform(get("/api/workflow-type-configs").with(user("reader")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[?(@.workflowKey=='%s')]".formatted(processKey)).isNotEmpty())
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20));
+
+        mockMvc.perform(get("/api/workflow-type-configs")
+                        .param("sort", "label,asc")
+                        .with(user("reader")))
+                .andExpect(status().isBadRequest());
+
         String typeCode = createType();
         grant(typeCode, "observer-starter", "EDIT");
         String dossierId = createDossier(typeCode, "observer-starter");

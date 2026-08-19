@@ -1,7 +1,10 @@
 package com.flowforge.infrastructure.persistence.workflow;
 
+import com.flowforge.domain.shared.PageQuery;
+import com.flowforge.domain.shared.PageResult;
 import com.flowforge.domain.workflow.model.WorkflowTypeConfig;
 import com.flowforge.domain.workflow.port.out.WorkflowTypeConfigRepository;
+import com.flowforge.infrastructure.persistence.SpringPages;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Component;
@@ -35,5 +38,13 @@ class JpaWorkflowTypeConfigRepositoryAdapter implements WorkflowTypeConfigReposi
         return repository.findByTenantIdOrderByWorkflowKeyAsc(tenantId).stream()
                 .map(WorkflowTypeConfigJpaEntity::toDomain)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WorkflowTypeConfig> page(String tenantId, PageQuery query) {
+        return SpringPages.map(
+                repository.findByTenantIdOrderByWorkflowKeyAsc(tenantId, SpringPages.of(query)),
+                WorkflowTypeConfigJpaEntity::toDomain);
     }
 }

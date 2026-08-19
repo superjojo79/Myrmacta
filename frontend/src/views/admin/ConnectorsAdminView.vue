@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { ref, watch } from 'vue'
 import {
   createConnector,
   deleteConnector,
@@ -9,8 +9,12 @@ import {
 } from '@/api/admin'
 import type { Connector } from '@/api/types'
 import { toProblemDetail } from '@/api/http'
+import AdminPager from '@/components/admin/AdminPager.vue'
+import { useAdminListQuery } from '@/composables/useAdminListQuery'
 
+const { page, size } = useAdminListQuery()
 const connectors = ref<Connector[]>([])
+const totalPages = ref(0)
 const definitions = ref<Array<{ type: string; label?: string }>>([])
 const error = ref<string | null>(null)
 const form = ref({
@@ -21,25 +25,33 @@ const form = ref({
 })
 
 async function refresh() {
-  ;[connectors.value, definitions.value] = await Promise.all([
-    listConnectors(),
-    listConnectorDefinitions().then((defs) =>
-      defs.map((d) => ({
+  const [result, defs] = await Promise.all([
+    listConnectors({ page: page.value, size: size.value }),
+    listConnectorDefinitions().then((items) =>
+      items.map((d) => ({
         type: String(d.type ?? d.connectorType ?? ''),
         label: d.label ? String(d.label) : undefined,
       })),
     ),
   ])
+  connectors.value = result.content
+  totalPages.value = result.totalPages
+  page.value = result.page
+  definitions.value = defs
   if (!form.value.connectorType && definitions.value[0]) {
     form.value.connectorType = definitions.value[0].type
   }
 }
 
-onMounted(() => {
-  void refresh().catch((err) => {
-    error.value = toProblemDetail(err).detail ?? 'Chargement impossible'
-  })
-})
+watch(
+  [page, size],
+  () => {
+    void refresh().catch((err) => {
+      error.value = toProblemDetail(err).detail ?? 'Chargement impossible'
+    })
+  },
+  { immediate: true },
+)
 
 async function create() {
   try {
@@ -106,6 +118,7 @@ async function remove(connector: Connector) {
         </div>
       </li>
     </ul>
+    <AdminPager v-model="page" :total-pages="totalPages" />
   </section>
 </template>
 

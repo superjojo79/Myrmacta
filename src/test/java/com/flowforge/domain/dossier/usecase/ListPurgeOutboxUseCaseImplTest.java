@@ -15,6 +15,8 @@ import com.flowforge.domain.dossier.model.PurgeOutboxRecord;
 import com.flowforge.domain.dossier.model.PurgeOutboxStatus;
 import com.flowforge.domain.dossier.port.in.ListPurgeOutboxUseCase;
 import com.flowforge.domain.dossier.port.out.PurgeOutboxRepository;
+import com.flowforge.domain.shared.PageQuery;
+import com.flowforge.domain.shared.PageResult;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
@@ -42,16 +44,16 @@ class ListPurgeOutboxUseCaseImplTest {
                 PurgeOutboxOrigin.ADMIN,
                 "{}",
                 Instant.parse("2026-08-19T12:00:00Z"));
-        when(repository.list(null, 50)).thenReturn(List.of(item));
+        when(repository.page(null, PageQuery.defaults())).thenReturn(PageResult.of(List.of(item), 0, 20, 1));
         when(repository.countByStatus(PurgeOutboxStatus.PENDING)).thenReturn(1L);
         when(repository.countByStatus(PurgeOutboxStatus.PROCESSING)).thenReturn(0L);
         when(repository.countByStatus(PurgeOutboxStatus.FAILED)).thenReturn(2L);
         when(repository.countByStatus(PurgeOutboxStatus.COMPLETED)).thenReturn(3L);
 
         ListPurgeOutboxUseCase.Page page =
-                useCase.list(AccessContext.user("admin", Set.of("TENANT_ADMIN")), null, 0);
+                useCase.list(AccessContext.user("admin", Set.of("TENANT_ADMIN")), null, PageQuery.defaults());
 
-        assertThat(page.items()).containsExactly(item);
+        assertThat(page.result().content()).containsExactly(item);
         assertThat(page.counts().pending()).isEqualTo(1);
         assertThat(page.counts().processing()).isEqualTo(0);
         assertThat(page.counts().failed()).isEqualTo(2);
@@ -59,22 +61,27 @@ class ListPurgeOutboxUseCaseImplTest {
     }
 
     @Test
-    void list_clampsLimitTo200() {
-        when(repository.list(null, 200)).thenReturn(List.of());
-        when(repository.countByStatus(PurgeOutboxStatus.PENDING)).thenReturn(0L);
-        when(repository.countByStatus(PurgeOutboxStatus.PROCESSING)).thenReturn(0L);
-        when(repository.countByStatus(PurgeOutboxStatus.FAILED)).thenReturn(0L);
-        when(repository.countByStatus(PurgeOutboxStatus.COMPLETED)).thenReturn(0L);
+    void list_countsIgnoreStatusFilter() {
+        PageQuery query = PageQuery.of(0, 20);
+        when(repository.page(PurgeOutboxStatus.FAILED, query)).thenReturn(PageResult.empty(0, 20));
+        when(repository.countByStatus(PurgeOutboxStatus.PENDING)).thenReturn(4L);
+        when(repository.countByStatus(PurgeOutboxStatus.PROCESSING)).thenReturn(1L);
+        when(repository.countByStatus(PurgeOutboxStatus.FAILED)).thenReturn(2L);
+        when(repository.countByStatus(PurgeOutboxStatus.COMPLETED)).thenReturn(8L);
 
-        useCase.list(AccessContext.user("admin", Set.of("TENANT_ADMIN")), null, 999);
+        ListPurgeOutboxUseCase.Page page = useCase.list(
+                AccessContext.user("admin", Set.of("TENANT_ADMIN")), PurgeOutboxStatus.FAILED, query);
 
-        verify(repository).list(null, 200);
+        assertThat(page.counts().pending()).isEqualTo(4);
+        assertThat(page.counts().failed()).isEqualTo(2);
+        verify(repository).page(PurgeOutboxStatus.FAILED, query);
     }
 
     @Test
     void list_nonAdminDenied() {
         assertThatThrownBy(
-                        () -> useCase.list(AccessContext.user("mgr", Set.of("DOSSIER_MANAGER")), null, 50))
+                        () -> useCase.list(
+                                AccessContext.user("mgr", Set.of("DOSSIER_MANAGER")), null, PageQuery.defaults()))
                 .isInstanceOf(AccessDeniedException.class);
         verifyNoInteractions(repository);
     }

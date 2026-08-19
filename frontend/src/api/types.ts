@@ -77,6 +77,8 @@ export interface DossierPage {
   totalPages: number
 }
 
+export type { Page } from './page'
+
 export type RelationType =
   | 'PARENT_CHILD'
   | 'SUBSEQUENT'

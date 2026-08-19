@@ -3,6 +3,9 @@ package com.flowforge.infrastructure.persistence.document;
 import com.flowforge.domain.document.model.DocumentTemplate;
 import com.flowforge.domain.document.model.TemplateStatus;
 import com.flowforge.domain.document.port.out.DocumentTemplateRepository;
+import com.flowforge.domain.shared.PageQuery;
+import com.flowforge.domain.shared.PageResult;
+import com.flowforge.infrastructure.persistence.SpringPages;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -46,6 +49,16 @@ public class JpaDocumentTemplateRepositoryAdapter implements DocumentTemplateRep
                 ? repository.findByTenantIdOrderByTemplateKeyAscVersionDesc(tenantId)
                 : repository.findByTenantIdAndTemplateKeyOrderByVersionDesc(tenantId, templateKey);
         return entities.stream().map(DocumentTemplateJpaEntity::toDomain).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<DocumentTemplate> pageByTenantId(String tenantId, String templateKey, PageQuery query) {
+        var pageable = SpringPages.of(query);
+        var page = templateKey == null || templateKey.isBlank()
+                ? repository.findByTenantIdOrderByUpdatedAtDesc(tenantId, pageable)
+                : repository.findByTenantIdAndTemplateKeyOrderByUpdatedAtDesc(tenantId, templateKey, pageable);
+        return SpringPages.map(page, DocumentTemplateJpaEntity::toDomain);
     }
 
     @Override

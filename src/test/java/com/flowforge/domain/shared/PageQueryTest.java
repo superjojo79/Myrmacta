@@ -35,4 +35,12 @@ class PageQueryTest {
         assertThatThrownBy(() -> PageQuery.of(0, PageQuery.MAX_SIZE + 1))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void defaults_arePageZeroAndSizeTwenty() {
+        PageQuery query = PageQuery.defaults();
+        assertThat(query.page()).isZero();
+        assertThat(query.size()).isEqualTo(PageQuery.DEFAULT_SIZE);
+        assertThat(query.offset()).isZero();
+    }
 }

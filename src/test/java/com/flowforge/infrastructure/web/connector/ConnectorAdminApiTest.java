@@ -162,6 +162,23 @@ class ConnectorAdminApiTest {
     }
 
     @Test
+    void listConnectors_returnsEnvelopeDefaultsAndRejectsOversizedPage() throws Exception {
+        mockMvc.perform(get("/api/connectors")
+                        .with(user("connector-admin", "TENANT_ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20))
+                .andExpect(jsonPath("$.totalElements").value(org.hamcrest.Matchers.greaterThanOrEqualTo(0)))
+                .andExpect(jsonPath("$.totalPages").value(org.hamcrest.Matchers.greaterThanOrEqualTo(0)));
+
+        mockMvc.perform(get("/api/connectors")
+                        .param("size", "101")
+                        .with(user("connector-admin", "TENANT_ADMIN")))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void patchRestore_nonAdmin_returns403() throws Exception {
         String id = createHttpRest("Restore denied " + UUID.randomUUID());
         mockMvc.perform(delete("/api/connectors/{id}", id)

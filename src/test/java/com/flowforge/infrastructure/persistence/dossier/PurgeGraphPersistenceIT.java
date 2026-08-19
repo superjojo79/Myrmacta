@@ -18,6 +18,7 @@ import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
 import com.flowforge.domain.dossier.port.out.PurgeOutboxRepository;
 import com.flowforge.domain.shared.PageQuery;
+import com.flowforge.domain.shared.PageResult;
 import com.flowforge.support.OidcClientTestConfiguration;
 import java.time.Instant;
 import java.util.Map;
@@ -121,6 +122,46 @@ class PurgeGraphPersistenceIT {
         assertThat(purgeOutboxRepository.page(PurgeOutboxStatus.COMPLETED, PageQuery.defaults()).content())
                 .isNotEmpty();
         assertThat(purgeOutboxRepository.existsByDossierId(dossier.id())).isTrue();
+    }
+
+    @Test
+    void page_ordersCreatedAtDescAndCountsStayGlobalAcrossPages() {
+        Instant older = Instant.parse("2099-01-01T00:00:00Z");
+        Instant newer = Instant.parse("2099-01-02T00:00:00Z");
+        UUID olderId = UUID.randomUUID();
+        UUID newerId = UUID.randomUUID();
+        purgeOutboxRepository.insert(PurgeOutboxRecord.pending(
+                olderId,
+                UUID.randomUUID(),
+                "DOSSIER_PURGE_REQUESTED",
+                PurgeOutboxOrigin.ADMIN,
+                "{}",
+                older));
+        purgeOutboxRepository.insert(PurgeOutboxRecord.pending(
+                newerId,
+                UUID.randomUUID(),
+                "DOSSIER_PURGE_REQUESTED",
+                PurgeOutboxOrigin.ADMIN,
+                "{}",
+                newer));
+
+        long pending = purgeOutboxRepository.countByStatus(PurgeOutboxStatus.PENDING);
+        PageResult<PurgeOutboxRecord> page0 =
+                purgeOutboxRepository.page(PurgeOutboxStatus.PENDING, PageQuery.of(0, 1));
+        assertThat(page0.totalElements()).isEqualTo(pending);
+        assertThat(page0.content()).hasSize(1);
+        assertThat(page0.content().getFirst().id()).isEqualTo(newerId);
+        assertThat(page0.content().getFirst().createdAt()).isEqualTo(newer);
+
+        PageResult<PurgeOutboxRecord> unfiltered =
+                purgeOutboxRepository.page(null, PageQuery.of(0, 1));
+        assertThat(unfiltered.content().getFirst().createdAt()).isAfterOrEqualTo(newer);
+        assertThat(purgeOutboxRepository.countByStatus(PurgeOutboxStatus.PENDING)).isEqualTo(pending);
+
+        PageResult<PurgeOutboxRecord> pastEnd =
+                purgeOutboxRepository.page(PurgeOutboxStatus.PENDING, PageQuery.of(9_999, 20));
+        assertThat(pastEnd.content()).isEmpty();
+        assertThat(pastEnd.totalElements()).isEqualTo(pending);
     }
 
     private static Dossier dossier(String suffix) {

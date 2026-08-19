@@ -10,6 +10,7 @@ import com.flowforge.domain.dossier.port.in.AttachWorkflowUseCase;
 import com.flowforge.domain.dossier.port.in.GetDossierWorkflowHistoryUseCase;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
+import com.flowforge.domain.shared.PageQuery;
 import com.flowforge.domain.workflow.model.OutboxStatus;
 import com.flowforge.domain.workflow.model.StatusOutcome;
 import com.flowforge.domain.workflow.model.TriggerOutboxPayload;
@@ -65,6 +66,27 @@ class WorkflowPersistenceTest {
 
         assertThat(configRepository.findByWorkflowKey("tenant_dev", config.workflowKey()))
                 .contains(config);
+    }
+
+    @Test
+    void page_ordersByWorkflowKeyAndKeepsTotalsPastEnd() {
+        String token = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        configRepository.save(smokeConfig("zza-page-" + token));
+        configRepository.save(smokeConfig("zzc-page-" + token));
+        configRepository.save(smokeConfig("zzb-page-" + token));
+
+        var page0 = configRepository.page("tenant_dev", PageQuery.of(0, 100));
+        List<String> keys = page0.content().stream()
+                .map(WorkflowTypeConfig::workflowKey)
+                .filter(key -> key.endsWith(token))
+                .toList();
+        assertThat(keys)
+                .containsExactly("zza-page-" + token, "zzb-page-" + token, "zzc-page-" + token);
+        assertThat(page0.content().stream().map(WorkflowTypeConfig::workflowKey).toList()).isSorted();
+
+        var pastEnd = configRepository.page("tenant_dev", PageQuery.of(9_999, 20));
+        assertThat(pastEnd.content()).isEmpty();
+        assertThat(pastEnd.totalElements()).isEqualTo(page0.totalElements());
     }
 
     @Test

@@ -80,7 +80,14 @@ class NotificationWebhookAdminApiTest {
                         .with(user("admin", "TENANT_ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray())
-                .andExpect(jsonPath("$.page").value(0));
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20))
+                .andExpect(jsonPath("$.totalElements").value(org.hamcrest.Matchers.greaterThanOrEqualTo(0)));
+
+        mockMvc.perform(get("/api/notification-webhooks")
+                        .param("size", "101")
+                        .with(user("admin", "TENANT_ADMIN")))
+                .andExpect(status().isBadRequest());
 
         mockMvc.perform(patch("/api/notification-webhooks/{id}", id)
                         .with(user("admin", "TENANT_ADMIN"))

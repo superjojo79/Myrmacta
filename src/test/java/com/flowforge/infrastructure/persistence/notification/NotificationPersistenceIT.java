@@ -10,6 +10,7 @@ import com.flowforge.domain.notification.model.NotificationWebhookConfig;
 import com.flowforge.domain.notification.port.out.NotificationOutboxRepository;
 import com.flowforge.domain.notification.port.out.NotificationWebhookRepository;
 import com.flowforge.domain.notification.port.out.PendingOutboxWrite;
+import com.flowforge.domain.shared.PageQuery;
 import com.flowforge.support.OidcClientTestConfiguration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -195,5 +196,51 @@ class NotificationPersistenceIT {
                 now);
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> webhooks.save(duplicate))
                 .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void pageByTenantId_ordersByNameExcludesDeletedAndKeepsTotalsPastEnd() {
+        String token = UUID.randomUUID().toString().substring(0, 8);
+        Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+        UUID deletedId = UUID.randomUUID();
+        webhooks.save(webhook("aaa-hook-" + token, now));
+        webhooks.save(webhook("mmm-hook-" + token, now));
+        webhooks.save(webhook("zzz-hook-" + token, now));
+        webhooks.save(new NotificationWebhookConfig(
+                deletedId,
+                "tenant_dev",
+                "del-hook-" + token,
+                "https://example.com/del-" + token,
+                null,
+                true,
+                null,
+                now,
+                now));
+        webhooks.softDelete(deletedId, "tenant_dev", now.plusSeconds(1));
+
+        var page0 = webhooks.pageByTenantId("tenant_dev", PageQuery.of(0, 100));
+        List<String> names = page0.content().stream()
+                .map(NotificationWebhookConfig::name)
+                .filter(name -> name.endsWith(token))
+                .toList();
+        assertThat(names).containsExactly("aaa-hook-" + token, "mmm-hook-" + token, "zzz-hook-" + token);
+        assertThat(page0.content()).noneMatch(hook -> hook.id().equals(deletedId));
+
+        var pastEnd = webhooks.pageByTenantId("tenant_dev", PageQuery.of(9_999, 20));
+        assertThat(pastEnd.content()).isEmpty();
+        assertThat(pastEnd.totalElements()).isEqualTo(page0.totalElements());
+    }
+
+    private static NotificationWebhookConfig webhook(String name, Instant now) {
+        return new NotificationWebhookConfig(
+                UUID.randomUUID(),
+                "tenant_dev",
+                name,
+                "https://example.com/" + name,
+                null,
+                true,
+                null,
+                now,
+                now);
     }
 }

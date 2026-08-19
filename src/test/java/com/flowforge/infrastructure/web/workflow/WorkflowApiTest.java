@@ -347,6 +347,11 @@ class WorkflowApiTest {
                 .andExpect(jsonPath("$.size").value(20));
 
         mockMvc.perform(get("/api/workflow-type-configs")
+                        .param("size", "101")
+                        .with(user("reader")))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(get("/api/workflow-type-configs")
                         .param("sort", "label,asc")
                         .with(user("reader")))
                 .andExpect(status().isBadRequest());

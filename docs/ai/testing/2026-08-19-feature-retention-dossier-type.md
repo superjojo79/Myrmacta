@@ -140,6 +140,20 @@ cd frontend && CI=1 npm run test:e2e
 # 27 passed including E2E-RET-1/2/3
 ```
 
-## Phase 8 evidence (pending fresh run)
+## Phase 8 evidence (2026-08-19)
 
-À remplir après `./mvnw verify` + Vitest + Playwright dans cette session.
+```text
+./mvnw verify -Dmaven.compiler.release=21
+# BUILD SUCCESS — Tests run: 799, Failures: 0, Errors: 0
+
+cd frontend && npm run test -- --pool=forks --maxWorkers=2
+# Test Files  37 passed | Tests  114 passed
+
+cd frontend && CI=1 npm run test:e2e
+# 27 passed (incl. E2E-RET-1/2/3)
+```
+
+### Files added Phase 8
+- `src/test/java/com/flowforge/infrastructure/persistence/dossier/RetentionSchemaIT.java`
+- `src/test/java/com/flowforge/infrastructure/persistence/dossier/RetentionPersistenceIT.java`
+- `src/test/java/com/flowforge/infrastructure/dossier/EvaluateDossierRetentionJobTest.java`

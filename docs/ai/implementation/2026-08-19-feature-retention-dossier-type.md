@@ -26,28 +26,31 @@ phase7: 2026-08-19
 - Champs rétention create/edit type
 - Vitest + Playwright E2E-RET-1/2/3
 
-## Design deviations (Phase 7)
+## Phase 7 remediations (2026-08-19)
+
+| Gap | Fix |
+|---|---|
+| D-BOOTSTRAP warn | `EvaluationResult.settingsAbsent` + job `log.warn` when settings missing |
+| D-OUTBOX-UNIQ + PG TX | Removed catch of `DataIntegrityViolationException` in joining TX; exists-check then insert; rare race rolls back batch and retries next run |
+| MockMvc overclaim | Added `RetentionApiTest` (settings 404/403/400/round-trip, type NEVER + inherit patch, `purgeEligibleAt` null) |
+
+## Design deviations (residual)
 
 | Id | Severity | Note |
 |---|---|---|
-| D-ARCHIVE-PATH / TX | low | Job wraps **entire batch** in one `@Transactional` (documented on job) vs design wording of one TX per dossier+outbox pair. Safer rollback semantics; may hold locks longer. |
-| D-BOOTSTRAP warn | low | Settings-absent path is no-op but **no warn log** (requirements edge case said warn). |
-| D-OUTBOX-UNIQ + PG | med | `insert` catches `DataIntegrityViolationException` inside a joining `@Transactional`; on PostgreSQL a unique violation can abort the **outer** batch TX. Prefer `REQUIRES_NEW` or native upsert for true concurrent idempotence. |
+| D-ARCHIVE-PATH / TX | low | Job wraps **entire batch** in one `@Transactional` (documented on job) vs design wording of one TX per dossier+outbox pair. Safer rollback; may hold locks longer. |
+| Job IT / dedicated Liquibase IT | low | Covered indirectly by domain unit + MockMvc + global Liquibase on SpringBootTest; no dedicated scheduler IT. |
 
 ## Phase 7 alignment (2026-08-19)
 
-Verdict: **implementation covers all D-\* / A-\* decisions in code**; residual gaps are mostly **tests vs testing-doc claims** and the TX/logging notes above.
+Verdict: **implementation covers all D-\* / A-\* decisions**; remediations close bootstrap warn + outbox TX poison; MockMvc coverage added.
 
 ### Coverage (summary)
-- ALIGNED: D-SCAN, D-ARCHIVE-PATH (UC path), D-TYPE-VIS, D-SCHED, D-PURGE-FIELD, D-FORCE, D-JOB-ACTOR, D-POLICY-CHANGE, D-UI-LOC, A-CLOCK, A-NULL-CLOSEDAT, A-PATCH-INHERIT, A-BATCH-COUNT, D-OUTBOX-UNIQ (schema + attempt), D-BOOTSTRAP (GET 404 + job no-op, minus warn).
+- ALIGNED: D-SCAN, D-ARCHIVE-PATH (UC path + batch TX), D-TYPE-VIS, D-SCHED, D-PURGE-FIELD, D-FORCE, D-JOB-ACTOR, D-POLICY-CHANGE, D-UI-LOC, A-CLOCK, A-NULL-CLOSEDAT, A-PATCH-INHERIT, A-BATCH-COUNT, D-OUTBOX-UNIQ (schema + exists + fail-closed race), D-BOOTSTRAP (GET 404 + job no-op **with warn**).
 - Security: `@PreAuthorize TENANT_ADMIN` + `TenantAdminGuard` on settings/mutations.
 - `UpdateDossierStatusUseCase` bypassed for retention archive (`withRetentionArchive`).
 - Physical purge / S3 delete: **absent** (correct non-goal).
 
-### Test gaps vs testing doc
-Testing doc marks MockMvc / Liquibase IT / Job IT as `[x]`, but repo has **domain unit + FE only** for retention — no `*Retention*ApiTest`, no purge_outbox persistence IT, no job IT. Correct testing doc checkboxes or add those tests before claiming Phase 8 complete.
-
 ## Evidence
-- `./mvnw verify -Dmaven.compiler.release=21` → BUILD SUCCESS (Jacoco OK) — Phase 5
-- `cd frontend && npm run test` → 114 passed — Phase 5
-- `cd frontend && CI=1 npm run test:e2e` → 27 passed — Phase 5
+- Phase 5: `./mvnw verify -Dmaven.compiler.release=21` SUCCESS; Vitest 114; Playwright 27 (E2E-RET-1/2/3)
+- Phase 7 remediations: `./mvnw -Dmaven.compiler.release=21 -Dtest=RetentionApiTest,EvaluateDossierRetentionUseCaseImplTest test` → 16 tests, 0 failures

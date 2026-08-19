@@ -65,6 +65,7 @@ class EvaluateDossierRetentionUseCaseImplTest {
 
         assertThat(result.scanned()).isZero();
         assertThat(result.archived()).isZero();
+        assertThat(result.settingsAbsent()).isTrue();
         verify(dossierRepository, never()).findClosedForRetention(anyInt());
         verify(dossierRepository, never()).save(any());
         verify(purgeOutboxRepository, never()).insert(any());

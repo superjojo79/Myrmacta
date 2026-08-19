@@ -46,7 +46,7 @@ phase8: 2026-08-19
 - [x] `CLOTURE` expiré (`expiration <= now`) → `ARCHIVE` + `purgeEligibleAt` + outbox PENDING.
 - [x] Non clos / `closedAt` null / NEVER / non expiré → inchangé.
 - [x] Déjà outbox (unique dossier) → no-op idempotent.
-- [x] Settings absents → no-op.
+- [x] Settings absents → no-op + `settingsAbsent=true` (job warn D-BOOTSTRAP).
 - [x] `ARCHIVE` métier préexistant sans `purgeEligibleAt` → **non** repris
       (uniquement `CLOTURE`) — D-FORCE.
 - [x] `updatedBy` = `system:retention-job`.
@@ -59,20 +59,25 @@ phase8: 2026-08-19
 
 ### Persistence / Liquibase
 
-- [x] Migration crée colonnes type/dossier + table `purge_outbox`.
-- [x] Round-trip settings + type + outbox (H2 MODE=PostgreSQL).
+- [x] Migration `010-retention-tables` appliquée au démarrage SpringBootTest
+      (H2 MODE=PostgreSQL) — colonnes type/dossier + `purge_outbox` +
+      `tenant_retention_settings` (pas d’IT Liquibase dédiée hors changelog).
+- [ ] Round-trip persistence IT dédié settings + type + outbox (hors MockMvc) —
+      **gap volontaire Phase 7** ; couverture via domaine + MockMvc.
 
-### MockMvc
+### MockMvc (`RetentionApiTest`)
 
 - [x] `PUT/GET /api/tenant/retention-settings` — 200 admin ; 403 autres rôles ;
-      400 durée ≤ 0 ; 404 GET si absent (si D-BOOTSTRAP retenu).
-- [x] Create/update type avec champs rétention — reflet dans GET.
+      400 durée ≤ 0 ; 404 GET si absent (D-BOOTSTRAP).
+- [x] Create/update type avec champs rétention — reflet dans GET (TENANT_ADMIN).
 - [x] `DossierResponse` expose `purgeEligibleAt` null par défaut.
 
 ### Job (slice / IT)
 
-- [x] Scheduler/use case branché : un dossier seed `CLOTURE` expiré devient
-      `ARCHIVE` + 1 ligne outbox.
+- [x] Use case unitaire : `CLOTURE` expiré → `ARCHIVE` + outbox ; settings absent
+      → `settingsAbsent=true`.
+- [x] Job log.warn D-BOOTSTRAP observé au démarrage contexte test (scheduler).
+- [ ] IT scheduler seed `CLOTURE` expiré → outbox (hors unit) — **gap volontaire**.
 
 ## End-to-End Tests
 

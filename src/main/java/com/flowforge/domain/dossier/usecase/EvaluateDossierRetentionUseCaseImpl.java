@@ -54,13 +54,13 @@ public final class EvaluateDossierRetentionUseCaseImpl implements EvaluateDossie
     public EvaluationResult evaluate(String tenantId, int batchSize) {
         Objects.requireNonNull(tenantId, "tenantId");
         if (batchSize <= 0) {
-            return new EvaluationResult(0, 0);
+            return EvaluationResult.of(0, 0);
         }
 
         // D-BOOTSTRAP: no tenant settings configured yet ⇒ no-op, not an error.
         Optional<TenantRetentionSettings> settings = settingsRepository.findByTenantId(tenantId);
         if (settings.isEmpty()) {
-            return new EvaluationResult(0, 0);
+            return EvaluationResult.absentSettings();
         }
 
         List<Dossier> candidates = dossierRepository.findClosedForRetention(batchSize);
@@ -71,7 +71,7 @@ public final class EvaluateDossierRetentionUseCaseImpl implements EvaluateDossie
                 archived++;
             }
         }
-        return new EvaluationResult(candidates.size(), archived);
+        return EvaluationResult.of(candidates.size(), archived);
     }
 
     private boolean archiveIfExpired(Dossier dossier, TenantRetentionSettings settings, Instant now) {

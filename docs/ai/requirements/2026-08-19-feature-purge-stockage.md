@@ -132,8 +132,9 @@ Critères **stables** (indépendants du mécanisme exact) :
 - [ ] Aucun couplage MinIO ; hexagone / ArchUnit respectés.
 - [ ] TODO §22 / FILE-ATTENTE / DEFERRED mis à jour **après** arbitrages
       + implémentation.
-- [ ] `./mvnw verify` vert ; Vitest + Playwright pour l’écran admin file
-      (Q6 = B, SPA touché).
+- [ ] `./mvnw verify` vert.
+- [ ] Vitest + Playwright : specs dédiés lecture file + AuthZ + enqueue
+      (Q10 = B) ; suite existante (E2E-RET-*) verte.
 
 Critères **dépendants de Q1=B** (détail cycle/claim en Phase 3) :
 
@@ -166,10 +167,8 @@ Critères **dépendants de Q7=B** :
 - Branche Cloud : `cursor/purge-stockage-05b8` (lint `feature-*` = MISS
   attendu).
 
-**Q1–Q9 actées :** job outbox ; `delete` ; store puis PG ; graphe dossier
-complet ; Flowable best-effort ; écran lecture ; enqueue HTTP ; tenant
-hors code ; orphelins hors outbox **hors V1**. Q10 (E2E) n’est pas
-tranchée.
+**Q1–Q10 actées.** Clarifications Phase 1 **terminées**. Revue = Phase 2
+(pas démarrée).
 
 ## Questions & Open Items
 
@@ -188,20 +187,19 @@ tranchée.
 | **Q7 / D-HTTP** | Mutation d’effacement | **B** — POST/DELETE admin qui **enfile** un event `PENDING` ; le job exécute (pas de purge synchrone HTTP) |
 | **Q8 / D-TENANT** | Purge tenant | **A** — hors code ; runbook ops (décommission + `DROP SCHEMA` + préfixe store) |
 | **Q9 / D-ORPHAN** | Orphelins hors outbox | **A** — hors V1 ; seulement ce que `purge_outbox` pointe |
+| **Q10 / D-FE** | Tests FE | **B** — specs Playwright dédiés (lecture file + AuthZ + enqueue API/mock) + suite existante verte |
 
-### Ouvertes (prochaine = Q10 uniquement)
+### Ouvertes
 
-| Id | Question | Pourquoi ça compte | Options | Reco |
-|---|---|---|---|---|
-| **Q10 / D-FE** | Nouveaux E2E Playwright ? | Conventions FE | Non-régression seule · specs dédiés lecture + enqueue | Specs dédiés (SPA touché) |
+Aucune. Prochaine étape cycle : **Phase 2** (revue requirements).
 
 ### Hors file (pas des questions de ce lot)
 
 OpenAPI §24, observabilité §29, antivirus, `http-rest` SERVICE.
 
-## Phase 1 — clarification en cours
+## Phase 1 — clarifications terminées (2026-08-19)
 
-Shared understanding :
+Shared understanding (Q1–Q10) :
 
 - Nom : `purge-stockage`.
 - Problème : outbox §21 sans effacement physique.
@@ -217,5 +215,6 @@ Shared understanding :
 - **Q7 = B :** mutation admin qui enfile un `PENDING` ; le job purge.
 - **Q8 = A :** suppression de tenant hors code ; runbook ops uniquement.
 - **Q9 = A :** pas de GC des orphelins store hors outbox (V1).
+- **Q10 = B :** Playwright dédié (lecture + AuthZ + enqueue) + non-régression.
 
-Prochaine clarification : **Q10 / D-FE** uniquement.
+Status doc : `draft` jusqu’à la **Phase 2** (revue requirements).

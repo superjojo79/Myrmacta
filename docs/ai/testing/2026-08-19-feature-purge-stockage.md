@@ -7,22 +7,20 @@ created: 2026-08-19
 updated: 2026-08-19
 feature: purge-stockage
 phase1: 2026-08-19
-todo_ref: TODO.md §22 · requirements purge-stockage (Q1 ouvert)
+todo_ref: TODO.md §22 · requirements purge-stockage (Q1–Q10 actées)
 ---
 
 # Testing Strategy — `purge-stockage`
 
-> Scénarios **stables** ci-dessous. Les cas job/claim/statuts se
-> précisent **après Q1**. **Q6 = B** : SPA admin lecture → Vitest +
-> Playwright **obligatoires** (détail specs Q10).
+> Scénarios alignés Q1–Q10. **Q10 = B** : specs Playwright dédiés + suite
+> existante.
 
 ## Test Coverage Goals
 
 - Unitaires domaine + adapters `delete` (Q2).
 - IT persistence : graphe PG + idempotence + échec mid-flight.
 - `./mvnw verify` (ArchUnit inclus).
-- FE : `npm run test` + `npm run test:e2e` si impact SPA / mocks ; sinon
-  preuve de non-régression suite existante (Q10).
+- FE : `cd frontend && npm run test` **et** `npm run test:e2e` (Q10=B).
 
 ## Unit Tests
 
@@ -49,7 +47,11 @@ todo_ref: TODO.md §22 · requirements purge-stockage (Q1 ouvert)
 
 ## End-to-End Tests
 
-- [ ] Q10 : pas de nouveau spec **sauf** impact SPA.
+- [ ] **E2E-PURGE-1 :** `TENANT_ADMIN` voit l’écran lecture file (compteurs
+      / liste PENDING/FAILED/COMPLETED).
+- [ ] **E2E-PURGE-2 :** non-admin : pas d’accès mutation / écran file.
+- [ ] **E2E-PURGE-3 :** pas de bouton force purge (Q6).
+- [ ] **E2E-PURGE-4 :** enqueue API/mock → ligne PENDING visible (Q7).
 - [ ] Suite existante (dont E2E-RET-*) verte.
 
 ## Test Data

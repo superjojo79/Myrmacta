@@ -7,12 +7,13 @@ created: 2026-08-19
 updated: 2026-08-19
 feature: purge-stockage
 phase1: 2026-08-19
-todo_ref: TODO.md §22 · requirements purge-stockage (Q1–Q9 actées)
+todo_ref: TODO.md §22 · requirements purge-stockage (Q1–Q10 actées)
 ---
 
 # System Design & Architecture — `purge-stockage`
 
-> Squelette Phase 1. **Q1–Q9** actées. Q10 ouverte. Pas une revue Phase 3.
+> Squelette Phase 1. **Q1–Q10 actées.** Revue design = Phase 3 (après
+> Phase 2 requirements).
 
 ## Architecture Overview
 
@@ -62,7 +63,8 @@ déjà présents. Hexagone : use case domaine, adapters infrastructure.
 
 Contraintes Phase 1 déjà actées (Q1–Q8) : job, `delete`, store→PG, graphe
 complet, Flowable best-effort, écran lecture, enqueue HTTP, tenant hors
-code. Orphelins hors outbox hors V1. Q10 ouverte.
+code. Orphelins hors outbox hors V1. Playwright dédié (Q10=B). Prêt pour
+Phase 2.
 
 ## Non-Functional Requirements
 

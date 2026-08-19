@@ -96,9 +96,15 @@ Trois options nommées par TODO.md / FILE-ATTENTE / REVUE §9.
 3. **En tant que** conformité, **je veux** qu’après purge réussie le
    dossier ne soit plus lisible via l’API, **afin de** prouver
    l’effacement.
+4. **En tant que** ops, **je veux** distinguer purge dossier et
+   décommission tenant, **afin de** ne pas utiliser le mauvais outil.
 5. **En tant que** `TENANT_ADMIN`, **je veux** voir l’état de la file de
    purge (compteurs / liste lecture), **afin de** savoir si le job
-   décroche — **sans** forcer une purge depuis l’UI.
+   décroche — **sans** bouton force purge dans l’UI.
+6. **En tant que** `TENANT_ADMIN`, **je veux** demander l’effacement d’un
+   dossier via API (enfilement outbox), **afin de** honorer un droit à
+   l’effacement sans attendre l’horloge rétention — le job exécute
+   ensuite.
 
 ### Edge cases (à préciser avec Q2–Q5 ; le déclencheur est le job outbox)
 
@@ -110,8 +116,8 @@ Trois options nommées par TODO.md / FILE-ATTENTE / REVUE §9.
 - Process Flowable encore vivant lié au dossier.
 - Deux workers concurrents sur la même ligne outbox.
 - `purgeEligibleAt` dans le futur (donnée incohérente).
-- Droit à l’effacement **sans** passer par l’horloge rétention (si Q
-  « erasure » = in scope).
+- Droit à l’effacement hors horloge : **Q7 = B** — enfilement outbox
+  (idempotent si déjà `PENDING` / déjà purgé).
 
 ## Success Criteria
 **How will we know when we're done?**
@@ -138,8 +144,13 @@ Critères **dépendants de Q6=B** :
 
 - [ ] UI admin lecture : compteurs (et/ou liste) `PENDING` / `FAILED` /
       `COMPLETED` ; pas d’action force/retry ; rôle `TENANT_ADMIN`.
-- [ ] API **lecture** de la file (nécessaire au SPA). L’API d’**écriture**
-      d’effacement reste Q7.
+- [ ] API **lecture** de la file (nécessaire au SPA).
+
+Critères **dépendants de Q7=B** :
+
+- [ ] Mutation admin (`TENANT_ADMIN`) enfile `PENDING` (202 / 204 /
+      équivalent) ; **pas** de purge synchrone dans la requête.
+- [ ] Idempotent si une ligne outbox existe déjà pour le dossier.
 
 ## Constraints & Assumptions
 
@@ -155,9 +166,10 @@ Critères **dépendants de Q6=B** :
 - Branche Cloud : `cursor/purge-stockage-05b8` (lint `feature-*` = MISS
   attendu).
 
-**Q1–Q6 actées :** job outbox ; `delete` ; store puis PG ; graphe dossier
-complet ; Flowable best-effort ; écran admin **lecture** de la file (pas
-de force purge). Q7 (API d’effacement) n’est pas tranchée.
+**Q1–Q7 actées :** job outbox ; `delete` ; store puis PG ; graphe dossier
+complet ; Flowable best-effort ; écran lecture ; mutation admin
+**enqueue** (pas de purge HTTP synchrone). Q8 (tenant) n’est pas
+tranchée.
 
 ## Questions & Open Items
 
@@ -171,13 +183,14 @@ de force purge). Q7 (API d’effacement) n’est pas tranchée.
 | **Q2 / D-PORT** | Suppression objet | **A** — étendre `DocumentStoragePort.delete` (S3 + FS) |
 | **Q3 / D-ORDER** | Ordre d’effacement | **A** — store d’abord, puis PostgreSQL |
 | **Q4 / D-SCOPE-PG** | Graphe PG | **A** — dossier + éléments + relations src\|tgt + workflow links |
+| **Q5 / D-WF** | Flowable | **A** — best-effort delete PI runtime ; link métier toujours supprimé ; ACT_HI_* résiduel OK V1 |
 | **Q6 / D-UI** | Surface admin | **B** — écran lecture (compteurs / liste) ; pas de force purge |
+| **Q7 / D-HTTP** | Mutation d’effacement | **B** — POST/DELETE admin qui **enfile** un event `PENDING` ; le job exécute (pas de purge synchrone HTTP) |
 
-### Ouvertes (prochaine = Q7 uniquement)
+### Ouvertes (prochaine = Q8 uniquement)
 
 | Id | Question | Pourquoi ça compte | Options | Reco |
 |---|---|---|---|---|
-| **Q7 / D-HTTP** | API d’effacement immédiat ? | Droit à l’effacement hors rétention | Aucune mutation · `DELETE` admin · job only | Aucune mutation V1 |
 | **Q8 / D-TENANT** | Purge tenant dans ce lot ? | §22 mélange dossier et `DROP SCHEMA` | Hors code + runbook · automatiser | Hors code + runbook |
 | **Q9 / D-ORPHAN** | Balayer orphelins hors outbox ? | Uploads échoués | Hors V1 · job séparé | Hors V1 |
 | **Q10 / D-FE** | Nouveaux E2E Playwright ? | Conventions FE | Exemption si zéro SPA · specs dédiés | Non-régression suite existante |
@@ -200,6 +213,7 @@ Shared understanding :
   workflow links.
 - **Q5 = A :** Flowable runtime best-effort ; historique ACT_HI_*
   résiduel acceptable V1.
-- **Q6 = B :** écran admin lecture de la file ; pas d’action force/retry.
+- **Q6 = B :** écran admin lecture de la file ; pas de bouton force/retry.
+- **Q7 = B :** mutation admin qui enfile un `PENDING` ; le job purge.
 
-Prochaine clarification : **Q7 / D-HTTP** uniquement.
+Prochaine clarification : **Q8 / D-TENANT** uniquement.

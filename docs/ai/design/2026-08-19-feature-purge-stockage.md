@@ -7,12 +7,12 @@ created: 2026-08-19
 updated: 2026-08-19
 feature: purge-stockage
 phase1: 2026-08-19
-todo_ref: TODO.md §22 · requirements purge-stockage (Q1–Q6 actées)
+todo_ref: TODO.md §22 · requirements purge-stockage (Q1–Q7 actées)
 ---
 
 # System Design & Architecture — `purge-stockage`
 
-> Squelette Phase 1. **Q1–Q6** actées. Q7+ ouvertes. Pas une revue Phase 3.
+> Squelette Phase 1. **Q1–Q7** actées. Q8+ ouvertes. Pas une revue Phase 3.
 
 ## Architecture Overview
 
@@ -20,7 +20,8 @@ Contrainte Phase 1 : **Q1 = B** — worker / scheduler sur `purge_outbox`.
 
 ```mermaid
 flowchart TD
-  ob[purge_outbox PENDING] --> job[Job de réconciliation]
+  admin[TENANT_ADMIN enqueue API] --> ob[purge_outbox PENDING]
+  ob --> job[Job de réconciliation]
   job --> store[DocumentStoragePort.delete]
   store --> pg[Hard-delete graphe PG dossier]
 ```

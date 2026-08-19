@@ -6,7 +6,7 @@ import { useDossierStore } from '@/stores/dossier'
 import { useAuthStore } from '@/stores/auth'
 import { toProblemDetail } from '@/api/http'
 import type { DossierStatus, ElementType, RelationType } from '@/api/types'
-import DynamicFields from '@/components/dossier/DynamicFields.vue'
+import DossierFieldsEditor from '@/components/dossier/DossierFieldsEditor.vue'
 import StatusSelect from '@/components/dossier/StatusSelect.vue'
 import ElementsList from '@/components/dossier/ElementsList.vue'
 import AddElementDialog from '@/components/dossier/AddElementDialog.vue'
@@ -46,6 +46,9 @@ const canReassign = computed(() => isTenantAdmin.value || isWorkflowAdmin.value)
 const canEditDossier = computed(
   () => isTenantAdmin.value || isWorkflowAdmin.value || roles.value.includes('DOSSIER_MANAGER'),
 )
+const fieldsLocked = computed(
+  () => dossier.value?.status === 'CLOTURE' || dossier.value?.status === 'ARCHIVE',
+)
 const canLink = canEditDossier
 const linkId = computed(() => dossier.value?.currentWorkflowLinkId)
 
@@ -81,6 +84,15 @@ async function saveStatus() {
     await store.patchStatus(statusDraft.value)
   } catch (err) {
     actionError.value = toProblemDetail(err).detail ?? 'Mise à jour statut impossible'
+  }
+}
+
+async function saveFields(patch: Record<string, unknown>) {
+  actionError.value = null
+  try {
+    await store.patchFields(patch)
+  } catch (err) {
+    actionError.value = toProblemDetail(err).detail ?? 'Mise à jour champs impossible'
   }
 }
 
@@ -160,11 +172,13 @@ async function confirmReassign() {
     </header>
     <p v-if="actionError" class="error">{{ actionError }}</p>
 
-    <DynamicFields
+    <DossierFieldsEditor
       v-if="dossierType"
       :definitions="dossierType.fieldDefinitions"
-      :model-value="dossier.fields"
-      readonly
+      :fields="dossier.fields"
+      :can-edit="canEditDossier"
+      :locked="fieldsLocked"
+      @save="saveFields"
     />
 
     <ElementsList :elements="elements">

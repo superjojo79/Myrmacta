@@ -59,7 +59,9 @@ describe('DossierDetailView phase 8', () => {
       workflowKey: 'wf',
       active: true,
       allowUnknownFields: false,
-      fieldDefinitions: [],
+      fieldDefinitions: [
+        { name: 'priority', label: 'Priority', type: 'STRING' as const, required: true },
+      ],
     })
     vi.mocked(dossiersApi.listDossierWorkflows).mockResolvedValue([])
     vi.mocked(dossiersApi.listDossierElements).mockResolvedValue([])
@@ -164,5 +166,25 @@ describe('DossierDetailView phase 8', () => {
     await wrapper.get('button').trigger('click')
     await flushPromises()
     expect(wrapper.text()).toContain('stale version')
+  })
+
+  it('shows field save for manager and hides it for viewer', async () => {
+    const manager = await mountDetail(['DOSSIER_MANAGER'])
+    expect(manager.text()).toContain('Enregistrer les champs')
+    manager.unmount()
+
+    const viewer = await mountDetail(['DOSSIER_VIEWER'])
+    expect(viewer.text()).not.toContain('Enregistrer les champs')
+  })
+
+  it('surfaces ProblemDetail when fields patch fails', async () => {
+    vi.mocked(dossiersApi.updateDossierFields).mockRejectedValue({
+      response: { status: 400, data: { detail: 'invalid field', status: 400 } },
+    })
+    const wrapper = await mountDetail(['TENANT_ADMIN'])
+    await wrapper.get('.dossier-fields-editor input').setValue('HIGH')
+    await wrapper.get('.dossier-fields-editor button').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('invalid field')
   })
 })

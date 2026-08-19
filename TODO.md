@@ -13,6 +13,9 @@
 > **Reste à implémenter (features / lots différés) :** synthèse consolidée dans
 > [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) — follow-ups des tranches livrées, features
 > lifecycle non démarrées, et mapping vers les points ouverts ci-dessous.
+>
+> **Prochaine feature (file d’attente) :** [FILE-ATTENTE.md](FILE-ATTENTE.md) — ordre
+> recommandé et critères de sélection.
 
 ---
 

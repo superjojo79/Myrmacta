@@ -10,6 +10,7 @@ import {
   listDossierRelations,
   listDossierWorkflows,
   startDossierWorkflow,
+  updateDossierFields,
   updateDossierStatus,
 } from '@/api/dossiers'
 import { getDossierType } from '@/api/dossierTypes'
@@ -153,6 +154,11 @@ export const useDossierStore = defineStore('dossier', () => {
     dossier.value = await updateDossierStatus(dossier.value.id, status, dossier.value.version)
   }
 
+  async function patchFields(fields: Record<string, unknown>): Promise<void> {
+    if (!dossier.value) return
+    dossier.value = await updateDossierFields(dossier.value.id, fields, dossier.value.version)
+  }
+
   async function startWorkflow(
     processDefinitionKey: string,
     variables: Record<string, unknown> = {},
@@ -197,6 +203,7 @@ export const useDossierStore = defineStore('dossier', () => {
     addElement,
     addAttachment,
     patchStatus,
+    patchFields,
     startWorkflow,
     complete,
     reassign,

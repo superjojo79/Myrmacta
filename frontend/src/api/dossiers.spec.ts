@@ -6,6 +6,7 @@ import {
   listDossierRelations,
   listDossiers,
   startDossierWorkflow,
+  updateDossierFields,
   updateDossierStatus,
 } from './dossiers'
 
@@ -62,6 +63,17 @@ describe('dossiers api client', () => {
     await updateDossierStatus('d1', 'OUVERT', 1)
     expect(axios.patch).toHaveBeenCalledWith('/api/dossiers/d1/status', {
       status: 'OUVERT',
+      expectedVersion: 1,
+    })
+  })
+
+  it('patches fields with expectedVersion', async () => {
+    vi.mocked(axios.patch).mockResolvedValue({
+      data: { id: 'd1', fields: { priority: 'HIGH' }, version: 2 },
+    })
+    await updateDossierFields('d1', { priority: 'HIGH' }, 1)
+    expect(axios.patch).toHaveBeenCalledWith('/api/dossiers/d1/fields', {
+      fields: { priority: 'HIGH' },
       expectedVersion: 1,
     })
   })

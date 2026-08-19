@@ -70,7 +70,7 @@ Référence : `analysis doc/11-frontend.md`.
 
 ## Workflow de feature (AI DevKit)
 
-1. Lire `DEFERRED-FEATURES.md` + docs `docs/ai/**` de la feature.
+1. Lire `FILE-ATTENTE.md` (prochaine feature) + `DEFERRED-FEATURES.md` + docs `docs/ai/**` de la feature.
 2. Suivre `dev-lifecycle` (requirements → design → planning → implementation → testing → review → PR).
 3. Implémentation en **TDD** (`tdd` + `verify`) : test qui échoue → code → `./mvnw verify` (ou scope de tests ciblé puis verify avant claim).
 4. Pour le FE : **Vitest et Playwright sont tous les deux obligatoires** dès qu’une
@@ -102,6 +102,7 @@ npx ai-devkit@latest skill list              # skills installés
 |--------|---------|
 | Vision / stack | `README.md` |
 | Décisions & points ouverts | `TODO.md` |
+| Prochaine feature (file d’attente) | `FILE-ATTENTE.md` |
 | Backlog différé | `DEFERRED-FEATURES.md` |
 | Architecture détaillée | `analysis doc/*.md` |
 | Artefacts lifecycle feature | `docs/ai/{requirements,design,planning,implementation,testing,...}/` |

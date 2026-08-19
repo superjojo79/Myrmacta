@@ -3,11 +3,15 @@ import { computed, watch } from 'vue'
 import type { FieldDefinition } from '@/api/types'
 import SensitiveValue from './SensitiveValue.vue'
 
-const props = defineProps<{
-  definitions: FieldDefinition[]
-  modelValue: Record<string, unknown>
-  readonly?: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    definitions: FieldDefinition[]
+    modelValue: Record<string, unknown>
+    readonly?: boolean
+    applyDefaults?: boolean
+  }>(),
+  { applyDefaults: true },
+)
 
 const emit = defineEmits<{
   'update:modelValue': [Record<string, unknown>]
@@ -27,7 +31,7 @@ const groups = computed(() => {
 watch(
   () => props.definitions,
   (defs) => {
-    if (props.readonly) return
+    if (props.readonly || !props.applyDefaults) return
     const next = { ...props.modelValue }
     let changed = false
     for (const def of defs) {

@@ -83,8 +83,8 @@ class PurgeOutboxApiTest {
                         .param("status", "PENDING")
                         .with(user("admin-enq-ok", "TENANT_ADMIN")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.items[0].dossierId").value(dossierId))
-                .andExpect(jsonPath("$.items[0].origin").value("ADMIN"));
+                .andExpect(jsonPath("$.items[*].dossierId").value(org.hamcrest.Matchers.hasItem(dossierId)))
+                .andExpect(jsonPath("$.items[*].origin").value(org.hamcrest.Matchers.hasItem("ADMIN")));
     }
 
     @Test

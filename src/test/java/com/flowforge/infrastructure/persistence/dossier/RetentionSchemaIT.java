@@ -84,8 +84,9 @@ class RetentionSchemaIT {
     void purgeOutbox_hasStatusCreatedIndex() {
         Integer indexes = jdbcTemplate.queryForObject(
                 """
-                SELECT COUNT(*) FROM pg_indexes
-                WHERE lower(indexname) = 'idx_purge_outbox_status_created_at'
+                SELECT COUNT(*) FROM information_schema.indexes
+                WHERE lower(table_name) = 'purge_outbox'
+                  AND lower(index_name) = 'idx_purge_outbox_status_created_at'
                 """,
                 Integer.class);
         assertThat(indexes).isGreaterThanOrEqualTo(1);

@@ -8,8 +8,8 @@
 > - Inventaire follow-ups / lots : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md)
 > - Séquencement « avant prod » : [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md) §9
 >
-> **Dernière mise à jour :** 2026-08-19 (`retention-dossier-type` implémenté —
-> Phase 5 ; prochain produit = `purge-stockage` §22).
+> **Dernière mise à jour :** 2026-08-19 (`retention-dossier-type` Phase 9 READY —
+> PR #55 ; prochain produit = `purge-stockage` §22).
 
 ## Comment s’en servir
 
@@ -84,4 +84,4 @@ le **n°2** (`openapi-pagination-admin`).
 | 2026-08-17 | `preview-documents` | Dernier lot nommé D-PREVIEW ; pas de point TODO bloquant |
 | 2026-08-18 | `edition-champs-dossier` | Plus de lot nommé ; trou API-sans-UI ; §21 toujours « à décider » |
 | 2026-08-19 | file ci-dessus | `edition-champs-dossier` en revue (PR #53) ; prochain = §21 si on tranche, sinon §24 |
-| 2026-08-19 | `retention-dossier-type` Phase 5 | Implémenté (settings + job + outbox + UI) ; prochain = `purge-stockage` §22 |
+| 2026-08-19 | `retention-dossier-type` Phase 9 READY | PR #55 ; prochain = `purge-stockage` §22 |

@@ -8,6 +8,8 @@ updated: 2026-08-19
 feature: retention-dossier-type
 phase5: 2026-08-19
 phase7: 2026-08-19
+phase8: 2026-08-19
+phase9: 2026-08-19
 ---
 
 # Implementation — `retention-dossier-type`
@@ -56,3 +58,56 @@ Verdict: **implementation covers all D-\* / A-\* decisions**; remediations close
 - Phase 7 remediations: `./mvnw -Dmaven.compiler.release=21 -Dtest=RetentionApiTest,EvaluateDossierRetentionUseCaseImplTest test` → 16 tests, 0 failures
 - Phase 7 gate: `./mvnw verify -Dmaven.compiler.release=21` → **BUILD SUCCESS**, Tests run: **797**, Failures: 0
 - Phase 8: `./mvnw verify` → **799** tests SUCCESS; Vitest **114**; Playwright **27** (E2E-RET-1/2/3)
+
+## Phase 9 — Revue de code finale (2026-08-19)
+
+**Verdict : READY** (follow-ups non bloquants).
+
+### Alignement design
+
+| Décision | Statut |
+|---|---|
+| D-DURATION / D-NEVER / resolver | OK |
+| D-ACTION / D-OUTBOX / UNIQUE | OK |
+| D-CLOCK / A-NULL-CLOSEDAT | OK |
+| D-BOOTSTRAP (404 + job warn) | OK |
+| D-FORCE (CLOTURE only) | OK |
+| D-JOB-ACTOR | OK |
+| D-ARCHIVE-PATH (UC dédié, pas UpdateStatus) | OK |
+| D-SCAN / A-BATCH-COUNT (lectures) | OK |
+| D-SCHED (1h / 100) | OK |
+| D-TYPE-VIS / D-PURGE-FIELD / D-UI-LOC | OK |
+| Non-goal purge physique | OK (aucun port S3 delete) |
+
+### Findings
+
+Aucun Critical / High. Sécurité : pas de finding medium+ (auth double couche settings/types, job non exposé HTTP, payload outbox sans secrets, migration additive).
+
+| Sévérité | Issue | Impact | Reco |
+|---|---|---|---|
+| Low | TX batch entière vs TX par dossier (doc Phase 7) | Locks plus longs sous charge | Accepté V1 ; surveiller en prod |
+| Low | D-SCAN : beaucoup de `CLOTURE` NEVER/non-expirés consomment le budget lecture | Possible famine de candidats plus récents | Filtrer NEVER / expiration côté SQL en §22 ou itération |
+| Info | `findClosedForRetention` sans `tenantId` | OK schéma-par-tenant | Filtre ceinture optionnel |
+| Info | Doc deploy mentionnait `cron` | Confusion ops | Corrigé → `poll-delay` |
+
+### Checklist
+
+- [x] Design match
+- [x] Pas de trou logique bloquant
+- [x] Sécurité (TENANT_ADMIN + Guard, CSRF BFF, pas d’API purge_outbox)
+- [x] Intégrations (Liquibase 010, job scheduling, FE admin route)
+- [x] Tests Phase 8 + re-verify Phase 9
+- [x] Docs (implementation / testing / deployment)
+
+### Preuves Phase 9 (cette session)
+
+```text
+./mvnw verify -Dmaven.compiler.release=21
+# BUILD SUCCESS — Tests run: 799, Failures: 0
+
+cd frontend && npm run test -- --pool=forks --maxWorkers=2
+# Test Files  37 passed | Tests  114 passed
+
+cd frontend && CI=1 npm run test:e2e
+# 27 passed (E2E-RET-1/2/3)
+```

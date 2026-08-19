@@ -9,6 +9,7 @@ feature: retention-dossier-type
 phase1: 2026-08-19
 phase4_aligned: 2026-08-19
 phase8: 2026-08-19
+phase9: 2026-08-19
 ---
 
 # Testing Strategy — `retention-dossier-type`
@@ -157,3 +158,22 @@ cd frontend && CI=1 npm run test:e2e
 - `src/test/java/com/flowforge/infrastructure/persistence/dossier/RetentionSchemaIT.java`
 - `src/test/java/com/flowforge/infrastructure/persistence/dossier/RetentionPersistenceIT.java`
 - `src/test/java/com/flowforge/infrastructure/dossier/EvaluateDossierRetentionJobTest.java`
+
+## Phase 9 — Code Review (2026-08-19)
+
+**Verdict : READY** — voir implementation § Phase 9.
+
+### Preuves re-verify (cette session)
+
+```text
+./mvnw verify -Dmaven.compiler.release=21
+# BUILD SUCCESS — 799 tests, 0 failures
+
+cd frontend && npm run test -- --pool=forks --maxWorkers=2
+# 37 files / 114 tests passed
+
+cd frontend && CI=1 npm run test:e2e
+# 27 passed (E2E-RET-1/2/3)
+```
+
+Playwright mocks `/api/tenant/retention-settings` + types à jour ; pas de gap E2E bloquant.

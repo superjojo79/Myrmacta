@@ -303,7 +303,7 @@ pourquoi les requêtes de job planifié dérogent au pattern des requêtes serva
 
 ---
 
-### [ ] 38. `PurgeOutboxPayloads.json` — échappement JSON incomplet + `DossierType.code` sans validation de format
+### [x] 38. `PurgeOutboxPayloads.json` — échappement JSON incomplet + `DossierType.code` sans validation de format
 
 **Constat (revue PR #55, `retention-dossier-type`) :** `EvaluateDossierRetentionUseCaseImpl.payloadJson`
 construisait le JSON de `purge_outbox.payload_json` à la main, avec un échappement limité à `\` et `"`
@@ -329,13 +329,26 @@ Auto-infligé (seul un `TENANT_ADMIN` peut définir `code`), donc pas un vecteur
 mais un point de robustesse réel, susceptible de stopper silencieusement un mécanisme de
 conformité RGPD (rétention **et**, désormais, droit à l'effacement à la demande).
 
-**À décider / produire :** soit valider `DossierType.code` contre un charset restreint (ex.
-`^[A-Za-z0-9_-]+$`) à la création/mise à jour, soit remplacer `PurgeOutboxPayloads` par un
-sérialiseur/parseur JSON réel (Jackson, déjà une dépendance transitive Spring Boot) qui échappe
-correctement tous les caractères de contrôle en écriture et parse réellement en lecture.
+**Corrigé (2026-08-19, cette session) :** les deux options envisagées ont été retenues ensemble,
+sans introduire Jackson dans le domaine — `PurgeOutboxPayloads` porte déjà le commentaire délibéré
+« no Jackson in domain » et `mvn dependency:tree` confirme qu'aucun module Jackson n'est même
+résolu dans ce projet (Spring Boot 4.1 / `spring-boot-starter-web` ne l'entraîne pas ici) ; le
+remplacer aurait ajouté une dépendance, pas seulement corrigé un bug.
 
-**Impacte :** `PurgeOutboxPayloads.java`, `EvaluateDossierRetentionUseCaseImpl.java`,
-`EnqueueDossierPurgeUseCaseImpl.java`, `DossierType.java`,
+- `PurgeOutboxPayloads.escape()` réécrit pour échapper tous les caractères de contrôle RFC 8259
+  (formes courtes `\n \r \t \b \f`, repli `\u00XX` pour le reste de la plage `< 0x20`) — la
+  lecture (`parseEligibleAt`/`parseTenantId`) n'a pas eu besoin de changer, l'écriture était le
+  seul point de rupture.
+- `DossierType` valide désormais `code` contre `^[A-Za-z0-9_-]+$` dans le constructeur compact du
+  record (même point que `validateRetention`) — défense en profondeur, cohérent avec l'usage réel
+  (`CLAIM`, `LEGAL`, `LOG`…) et avec son usage en `@PathVariable` (`DossierTypeController`).
+- Tests neufs : `PurgeOutboxPayloadsTest` (échappement `\`/`"`, formes courtes, repli `\u00XX`,
+  absence de tout caractère de contrôle brut en sortie, round-trip lecture) ;
+  `DossierTypeTest` (code valide accepté, code avec espace/contrôle/vide rejeté).
+- `./mvnw verify -Dmaven.compiler.release=21` : 848 tests (839 + 9 nouveaux), 0 échec, ArchUnit et
+  couverture Jacoco au vert — aucune régression, aucun `code` existant en base/tests hors charset.
+
+**Impacte :** `PurgeOutboxPayloads.java`, `DossierType.java`,
 [04-dossiers.md](analysis%20doc/04-dossiers.md).
 
 ---

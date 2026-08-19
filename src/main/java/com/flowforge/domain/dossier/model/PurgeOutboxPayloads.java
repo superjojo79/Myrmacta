@@ -48,7 +48,33 @@ public final class PurgeOutboxPayloads {
         return json.substring(start, end);
     }
 
+    /**
+     * Escapes {@code raw} for embedding in a JSON string per RFC 8259 — {@code \} and {@code "},
+     * plus every control character (0x00-0x1F), which the spec requires to be escaped and which
+     * a raw, unescaped occurrence would otherwise turn into a syntactically invalid JSON document
+     * (and, for the retention job's single-transaction batch, a silent tenant-wide stall).
+     */
     private static String escape(String raw) {
-        return raw.replace("\\", "\\\\").replace("\"", "\\\"");
+        StringBuilder sb = new StringBuilder(raw.length() + 16);
+        for (int i = 0; i < raw.length(); i++) {
+            char c = raw.charAt(i);
+            switch (c) {
+                case '\\' -> sb.append("\\\\");
+                case '"' -> sb.append("\\\"");
+                case '\n' -> sb.append("\\n");
+                case '\r' -> sb.append("\\r");
+                case '\t' -> sb.append("\\t");
+                case '\b' -> sb.append("\\b");
+                case '\f' -> sb.append("\\f");
+                default -> {
+                    if (c < 0x20) {
+                        sb.append(String.format("\\u%04x", (int) c));
+                    } else {
+                        sb.append(c);
+                    }
+                }
+            }
+        }
+        return sb.toString();
     }
 }

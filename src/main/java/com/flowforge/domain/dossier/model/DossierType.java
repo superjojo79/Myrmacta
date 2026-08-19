@@ -3,6 +3,7 @@ package com.flowforge.domain.dossier.model;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 public record DossierType(
         UUID id,
@@ -16,12 +17,22 @@ public record DossierType(
         Integer retentionDays,
         boolean retentionNever
 ) {
+    // Deliberately restrictive: `code` is embedded verbatim in purge_outbox.payload_json
+    // (PurgeOutboxPayloads) and used as a URL path segment (DossierTypeController) — this charset
+    // is safe in both contexts without further escaping, and matches every code value already in
+    // use (e.g. CLAIM, LEGAL, LOG).
+    private static final Pattern CODE_PATTERN = Pattern.compile("^[A-Za-z0-9_-]+$");
+
     public DossierType {
         Objects.requireNonNull(id, "id");
         Objects.requireNonNull(tenantId, "tenantId");
         Objects.requireNonNull(code, "code");
         Objects.requireNonNull(label, "label");
         Objects.requireNonNull(workflowKey, "workflowKey");
+        if (!CODE_PATTERN.matcher(code).matches()) {
+            throw new IllegalArgumentException(
+                    "code must match " + CODE_PATTERN.pattern() + ", was: " + code);
+        }
         fieldDefinitions = fieldDefinitions == null ? List.of() : List.copyOf(fieldDefinitions);
         validateRetention(retentionDays, retentionNever);
     }

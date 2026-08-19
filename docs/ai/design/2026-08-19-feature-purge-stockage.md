@@ -7,13 +7,13 @@ created: 2026-08-19
 updated: 2026-08-19
 feature: purge-stockage
 phase1: 2026-08-19
-todo_ref: TODO.md §22 · requirements purge-stockage (Q1–Q3 actées)
+todo_ref: TODO.md §22 · requirements purge-stockage (Q1–Q4 actées)
 ---
 
 # System Design & Architecture — `purge-stockage`
 
-> Squelette Phase 1. **Q1 = B**, **Q2 = A**, **Q3 = A** (store puis PG).
-> Q4+ ouvertes. Pas une revue Phase 3.
+> Squelette Phase 1. **Q1–Q4** actées (job, `delete`, store→PG, graphe
+> dossier complet). Q5+ ouvertes. Pas une revue Phase 3.
 
 ## Architecture Overview
 
@@ -23,7 +23,7 @@ Contrainte Phase 1 : **Q1 = B** — worker / scheduler sur `purge_outbox`.
 flowchart TD
   ob[purge_outbox PENDING] --> job[Job de réconciliation]
   job --> store[DocumentStoragePort.delete]
-  store --> pg[Hard-delete graphe PG]
+  store --> pg[Hard-delete graphe PG dossier]
 ```
 
 **Q3 = A :** store puis PostgreSQL (les `storageRef` restent lisibles pour un retry). Options PG-d’abord et parallèle écartées.
@@ -35,7 +35,9 @@ déjà présents. Hexagone : use case domaine, adapters infrastructure.
 
 ## Data Models
 
-- Réutiliser `purge_outbox` + `Dossier` / `DossierElement.storageRef`.
+- Graphe PG **Q4 = A :** `dossier_element`, `dossier_relation` (source
+  ou cible), `dossier_workflow_link`, puis `dossier`. Ligne outbox
+  conservée pour audit (détail Phase 3).
 - Évolution des **statuts** outbox et colonnes (`last_error`, index) :
   **si Q1 = B**. Sinon à redéfinir.
 - `DocumentStoragePort.delete` : **Q2 = A** — étendre le port existant
@@ -57,8 +59,8 @@ déjà présents. Hexagone : use case domaine, adapters infrastructure.
 
 ## Design Decisions
 
-Contraintes Phase 1 déjà actées (Q1–Q3) : job outbox, `delete` sur le
-port existant, ordre store→PG. Q4–Q10 encore ouvertes.
+Contraintes Phase 1 déjà actées (Q1–Q4) : job outbox, `delete` sur le
+port existant, ordre store→PG, graphe dossier complet. Q5–Q10 ouvertes.
 
 ## Non-Functional Requirements
 

@@ -49,4 +49,29 @@ class FlowableWorkflowEngineAdapter implements WorkflowEnginePort {
         Object value = runtimeService.getVariable(processInstanceId, "dossierId");
         return Optional.ofNullable(value).map(Object::toString);
     }
+
+    @Override
+    public void deleteProcessInstanceBestEffort(String processInstanceId) {
+        if (processInstanceId == null || processInstanceId.isBlank()) {
+            return;
+        }
+        try {
+            runtimeService.deleteProcessInstance(processInstanceId, "purge");
+        } catch (RuntimeException ex) {
+            if (isMissingProcessInstance(ex)) {
+                return;
+            }
+            org.slf4j.LoggerFactory.getLogger(FlowableWorkflowEngineAdapter.class)
+                    .warn("Best-effort process instance delete failed for {}: {}", processInstanceId, ex.toString());
+        }
+    }
+
+    private static boolean isMissingProcessInstance(RuntimeException ex) {
+        String name = ex.getClass().getSimpleName();
+        if (name.contains("ObjectNotFound") || name.contains("NotFound")) {
+            return true;
+        }
+        String message = ex.getMessage();
+        return message != null && message.toLowerCase().contains("does not exist");
+    }
 }

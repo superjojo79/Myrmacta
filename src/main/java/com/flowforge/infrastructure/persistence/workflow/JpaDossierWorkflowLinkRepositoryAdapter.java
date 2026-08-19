@@ -73,4 +73,10 @@ class JpaDossierWorkflowLinkRepositoryAdapter implements DossierWorkflowLinkRepo
                 .map(DossierWorkflowLinkJpaEntity::toDomain)
                 .toList();
     }
+
+    @Override
+    @Transactional
+    public void deleteAllByDossierId(UUID dossierId) {
+        repository.deleteByDossierId(dossierId);
+    }
 }

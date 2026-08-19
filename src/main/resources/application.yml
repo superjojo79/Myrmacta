@@ -121,6 +121,9 @@ app:
   retention:
     poll-delay: 1h
     batch-size: 100
+  purge:
+    poll-delay: 1h
+    batch-size: 50
   dossier:
     attachment:
       # Taille max : app.storage n'a pas de borne dédiée, la seule limite est

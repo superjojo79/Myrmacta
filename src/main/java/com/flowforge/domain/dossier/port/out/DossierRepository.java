@@ -19,4 +19,6 @@ public interface DossierRepository {
      * {@code limit} reads (A-BATCH-COUNT).
      */
     List<Dossier> findClosedForRetention(int limit);
+
+    void deleteById(UUID id);
 }

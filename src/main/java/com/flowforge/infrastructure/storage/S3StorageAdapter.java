@@ -6,6 +6,7 @@ import java.util.Objects;
 import java.util.UUID;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
@@ -70,6 +71,21 @@ public class S3StorageAdapter implements DocumentStoragePort {
                 return false;
             }
             throw new DocumentStorageException("Failed to check document: " + storageRef, ex);
+        }
+    }
+
+    @Override
+    public void delete(String tenantId, String storageRef) {
+        validateRef(tenantId, storageRef);
+        try {
+            s3Client.deleteObject(DeleteObjectRequest.builder().bucket(bucket).key(storageRef).build());
+        } catch (NoSuchKeyException ex) {
+            // Missing key is success (idempotent purge).
+        } catch (S3Exception ex) {
+            if (ex.statusCode() == 404) {
+                return;
+            }
+            throw new DocumentStorageException("Failed to delete document: " + storageRef, ex);
         }
     }
 

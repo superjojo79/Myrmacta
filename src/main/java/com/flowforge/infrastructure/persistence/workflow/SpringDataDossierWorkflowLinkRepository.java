@@ -25,4 +25,6 @@ interface SpringDataDossierWorkflowLinkRepository extends JpaRepository<DossierW
 
     List<DossierWorkflowLinkJpaEntity> findByEndedAtIsNullAndProcessInstanceIdIsNullAndStartedAtBefore(
             Instant olderThan);
+
+    void deleteByDossierId(UUID dossierId);
 }

@@ -41,6 +41,7 @@ import {
 import { downloadElementContent } from './elements'
 import { completeTask, listMyTasks } from './tasks'
 import { previewHtml, previewPdf } from './documents'
+import { enqueueDossierPurge, listPurgeOutbox } from './purgeOutbox'
 
 vi.mock('axios')
 
@@ -116,6 +117,8 @@ describe('api coverage', () => {
     await downloadElementContent('e1')
     await previewHtml({ htmlContent: '<p/>' })
     await previewPdf({ htmlContent: '<p/>' })
+    await listPurgeOutbox()
+    await enqueueDossierPurge('d1')
     expect(axios.delete).toHaveBeenCalled()
   })
 })

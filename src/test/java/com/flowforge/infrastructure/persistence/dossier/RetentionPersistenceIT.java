@@ -5,8 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierStatus;
 import com.flowforge.domain.dossier.model.DossierType;
+import com.flowforge.domain.dossier.model.PurgeOutboxOrigin;
 import com.flowforge.domain.dossier.model.PurgeOutboxRecord;
-import com.flowforge.domain.dossier.model.PurgeOutboxStatus;
 import com.flowforge.domain.dossier.model.RetentionActors;
 import com.flowforge.domain.dossier.model.TenantRetentionSettings;
 import com.flowforge.domain.dossier.port.in.EvaluateDossierRetentionUseCase;
@@ -84,21 +84,21 @@ class RetentionPersistenceIT {
     void purgeOutbox_insertIsIdempotentOnExists() {
         UUID dossierId = UUID.randomUUID();
         Instant now = Instant.parse("2026-08-19T12:00:00Z");
-        PurgeOutboxRecord first = new PurgeOutboxRecord(
+        PurgeOutboxRecord first = PurgeOutboxRecord.pending(
                 UUID.randomUUID(),
                 dossierId,
                 "DOSSIER_PURGE_REQUESTED",
-                PurgeOutboxStatus.PENDING,
+                PurgeOutboxOrigin.RETENTION,
                 "{\"dossierId\":\"" + dossierId + "\"}",
                 now);
         purgeOutboxRepository.insert(first);
         assertThat(purgeOutboxRepository.existsByDossierId(dossierId)).isTrue();
 
-        PurgeOutboxRecord duplicate = new PurgeOutboxRecord(
+        PurgeOutboxRecord duplicate = PurgeOutboxRecord.pending(
                 UUID.randomUUID(),
                 dossierId,
                 "DOSSIER_PURGE_REQUESTED",
-                PurgeOutboxStatus.PENDING,
+                PurgeOutboxOrigin.RETENTION,
                 "{\"dossierId\":\"" + dossierId + "\"}",
                 now);
         purgeOutboxRepository.insert(duplicate);

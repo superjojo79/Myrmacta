@@ -7,15 +7,18 @@ import com.flowforge.domain.dossier.port.in.AddDossierElementUseCase;
 import com.flowforge.domain.dossier.port.in.CreateDossierRelationUseCase;
 import com.flowforge.domain.dossier.port.in.CreateDossierTypeUseCase;
 import com.flowforge.domain.dossier.port.in.CreateDossierUseCase;
+import com.flowforge.domain.dossier.port.in.EnqueueDossierPurgeUseCase;
 import com.flowforge.domain.dossier.port.in.EvaluateDossierRetentionUseCase;
 import com.flowforge.domain.dossier.port.in.GetDossierElementUseCase;
 import com.flowforge.domain.dossier.port.in.GetDossierTypeUseCase;
 import com.flowforge.domain.dossier.port.in.GetDossierUseCase;
+import com.flowforge.domain.dossier.port.in.ProcessPurgeOutboxUseCase;
 import com.flowforge.domain.dossier.port.in.GetTenantRetentionSettingsUseCase;
 import com.flowforge.domain.dossier.port.in.GrantDossierTypeAccessUseCase;
 import com.flowforge.domain.dossier.port.in.ListDossierElementsUseCase;
 import com.flowforge.domain.dossier.port.in.ListDossierRelationsUseCase;
 import com.flowforge.domain.dossier.port.in.ListDossierTypesUseCase;
+import com.flowforge.domain.dossier.port.in.ListPurgeOutboxUseCase;
 import com.flowforge.domain.dossier.port.in.RevokeDossierTypeAccessUseCase;
 import com.flowforge.domain.dossier.port.in.SearchDossiersUseCase;
 import com.flowforge.domain.dossier.port.in.UpdateDossierFieldsUseCase;
@@ -29,12 +32,14 @@ import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.dossier.port.out.DossierSearchPort;
 import com.flowforge.domain.dossier.port.out.DossierTypeAclRepository;
 import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
+import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
 import com.flowforge.domain.dossier.port.out.PurgeOutboxRepository;
 import com.flowforge.domain.dossier.port.out.TenantRetentionSettingsRepository;
 import com.flowforge.domain.dossier.usecase.AddDossierElementUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.CreateDossierRelationUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.CreateDossierTypeUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.CreateDossierUseCaseImpl;
+import com.flowforge.domain.dossier.usecase.EnqueueDossierPurgeUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.EvaluateDossierRetentionUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.GetDossierElementUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.GetDossierTypeUseCaseImpl;
@@ -44,18 +49,22 @@ import com.flowforge.domain.dossier.usecase.GrantDossierTypeAccessUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.ListDossierElementsUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.ListDossierRelationsUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.ListDossierTypesUseCaseImpl;
+import com.flowforge.domain.dossier.usecase.ListPurgeOutboxUseCaseImpl;
+import com.flowforge.domain.dossier.usecase.ProcessPurgeOutboxUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.RevokeDossierTypeAccessUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.SearchDossiersUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.UpdateDossierFieldsUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.UpdateDossierStatusUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.UpdateDossierTypeUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.UpsertTenantRetentionSettingsUseCaseImpl;
+import com.flowforge.domain.document.port.out.DocumentStoragePort;
+import com.flowforge.domain.workflow.port.out.WorkflowEnginePort;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@EnableConfigurationProperties({AttachmentUploadProperties.class, RetentionProperties.class})
+@EnableConfigurationProperties({AttachmentUploadProperties.class, RetentionProperties.class, PurgeProperties.class})
 public class DossierConfig {
 
     @Bean
@@ -227,5 +236,38 @@ public class DossierConfig {
                 settingsRepository,
                 purgeOutboxRepository,
                 retentionPolicyResolver);
+    }
+
+    @Bean
+    ProcessPurgeOutboxUseCase processPurgeOutboxUseCase(
+            PurgeOutboxRepository purgeOutboxRepository,
+            DossierRepository dossierRepository,
+            DossierElementRepository dossierElementRepository,
+            DossierRelationRepository dossierRelationRepository,
+            DossierWorkflowLinkRepository dossierWorkflowLinkRepository,
+            DocumentStoragePort documentStoragePort,
+            WorkflowEnginePort workflowEnginePort) {
+        return new ProcessPurgeOutboxUseCaseImpl(
+                purgeOutboxRepository,
+                dossierRepository,
+                dossierElementRepository,
+                dossierRelationRepository,
+                dossierWorkflowLinkRepository,
+                documentStoragePort,
+                workflowEnginePort);
+    }
+
+    @Bean
+    EnqueueDossierPurgeUseCase enqueueDossierPurgeUseCase(
+            DossierRepository dossierRepository,
+            PurgeOutboxRepository purgeOutboxRepository,
+            TenantAdminGuard tenantAdminGuard) {
+        return new EnqueueDossierPurgeUseCaseImpl(dossierRepository, purgeOutboxRepository, tenantAdminGuard);
+    }
+
+    @Bean
+    ListPurgeOutboxUseCase listPurgeOutboxUseCase(
+            PurgeOutboxRepository purgeOutboxRepository, TenantAdminGuard tenantAdminGuard) {
+        return new ListPurgeOutboxUseCaseImpl(purgeOutboxRepository, tenantAdminGuard);
     }
 }

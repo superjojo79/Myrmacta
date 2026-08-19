@@ -27,6 +27,9 @@ const { user, isTenantAdmin, isWorkflowAdmin } = storeToRefs(auth)
         <RouterLink v-if="isTenantAdmin" class="app-shell__link" to="/admin/connectors">
           Connecteurs
         </RouterLink>
+        <RouterLink v-if="isTenantAdmin" class="app-shell__link" to="/admin/purge-outbox">
+          File purge
+        </RouterLink>
         <RouterLink
           v-if="isTenantAdmin || isWorkflowAdmin"
           class="app-shell__link"

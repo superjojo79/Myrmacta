@@ -49,4 +49,28 @@ class FilesystemStorageAdapterTest {
         assertThatThrownBy(() -> storage.retrieve("tenant_dev", "tenant_dev/nope.pdf"))
                 .isInstanceOf(DocumentStorageException.class);
     }
+
+    @Test
+    void delete_removesStoredObject() {
+        byte[] pdf = "%PDF-demo".getBytes(StandardCharsets.UTF_8);
+        String ref = storage.store("tenant_dev", "application/pdf", pdf);
+
+        storage.delete("tenant_dev", ref);
+
+        assertThat(storage.exists("tenant_dev", ref)).isFalse();
+    }
+
+    @Test
+    void delete_missing_isSuccess() {
+        storage.delete("tenant_dev", "tenant_dev/already-gone.pdf");
+        assertThat(storage.exists("tenant_dev", "tenant_dev/already-gone.pdf")).isFalse();
+    }
+
+    @Test
+    void delete_invalidRef_throws() {
+        assertThatThrownBy(() -> storage.delete("tenant_dev", "tenant_dev/../secret.pdf"))
+                .isInstanceOf(DocumentStorageException.class);
+        assertThatThrownBy(() -> storage.delete("tenant_dev", "other_tenant/doc.pdf"))
+                .isInstanceOf(DocumentStorageException.class);
+    }
 }

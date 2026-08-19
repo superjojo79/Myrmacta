@@ -20,6 +20,9 @@ vi.mock('@/api/workflows', () => ({
   reassignWorkflowTask: vi.fn().mockResolvedValue(undefined),
 }))
 vi.mock('@/api/tasks')
+vi.mock('@/api/purgeOutbox', () => ({
+  enqueueDossierPurge: vi.fn().mockResolvedValue(undefined),
+}))
 vi.mock('bpmn-js/lib/NavigatedViewer', () => ({
   default: class {
     importXML = vi.fn().mockResolvedValue(undefined)
@@ -186,5 +189,14 @@ describe('DossierDetailView phase 8', () => {
     await wrapper.get('.dossier-fields-editor button').trigger('click')
     await flushPromises()
     expect(wrapper.text()).toContain('invalid field')
+  })
+
+  it('shows purge request for tenant admin only', async () => {
+    const admin = await mountDetail(['TENANT_ADMIN'])
+    expect(admin.text()).toContain('Demander la purge')
+    admin.unmount()
+
+    const manager = await mountDetail(['DOSSIER_MANAGER'])
+    expect(manager.text()).not.toContain('Demander la purge')
   })
 })

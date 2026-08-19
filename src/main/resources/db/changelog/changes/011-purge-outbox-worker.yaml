@@ -1,0 +1,43 @@
+databaseChangeLog:
+  - changeSet:
+      id: 011-purge-outbox-origin-and-error
+      author: flowforge
+      changes:
+        - addColumn:
+            tableName: purge_outbox
+            columns:
+              - column:
+                  name: origin
+                  type: varchar(32)
+                  defaultValue: RETENTION
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_error
+                  type: varchar(1024)
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: purge_outbox
+            columnName: last_error
+        - dropColumn:
+            tableName: purge_outbox
+            columnName: origin
+
+  - changeSet:
+      id: 011-purge-outbox-status-created-index
+      author: flowforge
+      changes:
+        - createIndex:
+            tableName: purge_outbox
+            indexName: idx_purge_outbox_status_created_at
+            columns:
+              - column:
+                  name: status
+              - column:
+                  name: created_at
+      rollback:
+        - dropIndex:
+            tableName: purge_outbox
+            indexName: idx_purge_outbox_status_created_at

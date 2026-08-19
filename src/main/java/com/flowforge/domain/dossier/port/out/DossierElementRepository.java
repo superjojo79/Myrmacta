@@ -12,4 +12,6 @@ public interface DossierElementRepository {
     Optional<DossierElement> findByIdAndTenantId(UUID id, String tenantId);
 
     List<DossierElement> findByDossierIdOrderByAddedAtAsc(UUID dossierId);
+
+    void deleteAllByDossierId(UUID dossierId);
 }

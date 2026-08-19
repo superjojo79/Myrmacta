@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test'
 type MockOpts = {
   roles?: string[]
   withActiveLink?: boolean
+  dossierStatus?: string
 }
 
 const DOSSIER_ID = '11111111-1111-1111-1111-111111111111'
@@ -32,6 +33,18 @@ function dossierBody(overrides: Record<string, unknown> = {}) {
 
 async function mockSession(page: Page, opts: MockOpts = {}) {
   const roles = opts.roles ?? ['TENANT_ADMIN', 'WORKFLOW_ADMIN', 'DOSSIER_MANAGER']
+  let dossierStatus = opts.dossierStatus ?? 'DRAFT'
+  let purgeItems: Array<Record<string, unknown>> = [
+    {
+      id: 'po-1',
+      dossierId: DOSSIER_ID,
+      status: 'FAILED',
+      origin: 'RETENTION',
+      eventType: 'DOSSIER_PURGE_REQUESTED',
+      createdAt: '2026-08-19T10:00:00Z',
+      lastError: 'S3 timeout',
+    },
+  ]
   let linkId: string | null = opts.withActiveLink ? LINK_ID : null
   let mineTasks = [
     {
@@ -153,6 +166,25 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
     }
     await route.fulfill({ status: 405, body: '' })
   })
+  await page.route('**/api/purge-outbox**', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          items: purgeItems,
+          counts: {
+            pending: purgeItems.filter((i) => i.status === 'PENDING').length,
+            processing: 0,
+            failed: purgeItems.filter((i) => i.status === 'FAILED').length,
+            completed: 2,
+          },
+        }),
+      })
+      return
+    }
+    await route.fulfill({ status: 405, body: '' })
+  })
   await page.route('**/api/dossier-types/CLAIM', async (route) => {
     await route.fulfill({
       status: 200,
@@ -183,6 +215,34 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
   await page.route('**/api/dossiers**', async (route) => {
     const url = route.request().url()
     const method = route.request().method()
+    if (method === 'POST' && /\/api\/dossiers\/[^/]+\/purge-requests$/.test(new URL(url).pathname)) {
+      if (dossierStatus !== 'CLOTURE' && dossierStatus !== 'ARCHIVE') {
+        await route.fulfill({
+          status: 409,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            title: 'Dossier conflict',
+            status: 409,
+            detail: `Purge enqueue requires CLOTURE or ARCHIVE, was ${dossierStatus}`,
+          }),
+        })
+        return
+      }
+      purgeItems = [
+        {
+          id: 'po-admin',
+          dossierId: DOSSIER_ID,
+          status: 'PENDING',
+          origin: 'ADMIN',
+          eventType: 'DOSSIER_PURGE_REQUESTED',
+          createdAt: '2026-08-19T12:00:00Z',
+          lastError: null,
+        },
+        ...purgeItems,
+      ]
+      await route.fulfill({ status: 201, body: '' })
+      return
+    }
     if (method === 'POST' && /\/api\/dossiers\/[^/]+\/workflows$/.test(new URL(url).pathname)) {
       const key = route.request().headers()['idempotency-key']
       expect(key).toBeTruthy()
@@ -211,7 +271,7 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
       await route.fulfill({
         status: 201,
         contentType: 'application/json',
-        body: JSON.stringify(dossierBody()),
+        body: JSON.stringify(dossierBody({ status: dossierStatus, currentWorkflowLinkId: linkId })),
       })
       return
     }
@@ -331,10 +391,12 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
       return
     }
     if (url.includes('/status') && method === 'PATCH') {
+      const posted = route.request().postDataJSON() as { status?: string }
+      if (posted.status) dossierStatus = posted.status
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(dossierBody({ status: 'OUVERT', version: 1, currentWorkflowLinkId: linkId })),
+        body: JSON.stringify(dossierBody({ status: dossierStatus, version: 1, currentWorkflowLinkId: linkId })),
       })
       return
     }
@@ -349,6 +411,7 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
         body: JSON.stringify(
           dossierBody({
             fields: { ...dossierBody().fields, ...posted.fields },
+            status: dossierStatus,
             version: posted.expectedVersion + 1,
             currentWorkflowLinkId: linkId,
           }),
@@ -361,7 +424,7 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
       const path = parsed.pathname.replace(/\/$/, '')
       // Paginated list: GET /api/dossiers (no id, no ?ref=)
       if (path.endsWith('/api/dossiers') && !parsed.searchParams.has('ref')) {
-        const body = dossierBody({ currentWorkflowLinkId: linkId })
+        const body = dossierBody({ status: dossierStatus, currentWorkflowLinkId: linkId })
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -399,7 +462,7 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(dossierBody({ currentWorkflowLinkId: linkId })),
+        body: JSON.stringify(dossierBody({ status: dossierStatus, currentWorkflowLinkId: linkId })),
       })
       return
     }
@@ -797,4 +860,47 @@ test('E2E-23 viewer cannot edit dossier fields', async ({ page }) => {
   await createAndOpenDossier(page)
   await expect(page.getByRole('heading', { name: 'Champs' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Enregistrer les champs' })).toHaveCount(0)
+})
+
+test('E2E-PURGE-1 admin sees purge queue counts and list', async ({ page }) => {
+  await mockSession(page)
+  await openApp(page)
+  await page.getByRole('link', { name: 'File purge' }).click()
+  await expect(page.getByRole('heading', { name: 'File de purge' })).toBeVisible()
+  await expect(page.getByTestId('purge-outbox-counts')).toContainText('FAILED : 1')
+  await expect(page.getByTestId('purge-outbox-counts')).toContainText('PROCESSING : 0')
+  await expect(page.getByTestId('purge-outbox-queue')).toContainText('S3 timeout')
+})
+
+test('E2E-PURGE-2 non-admin does not see purge queue nav', async ({ page }) => {
+  await mockSession(page, { roles: ['DOSSIER_VIEWER'] })
+  await openApp(page)
+  await expect(page.getByRole('link', { name: 'File purge' })).toHaveCount(0)
+})
+
+test('E2E-PURGE-3 purge queue has no force button', async ({ page }) => {
+  await mockSession(page)
+  await openApp(page)
+  await page.getByRole('link', { name: 'File purge' }).click()
+  await expect(page.getByRole('heading', { name: 'File de purge' })).toBeVisible()
+  await expect(page.getByRole('button', { name: /force|forcer|relancer/i })).toHaveCount(0)
+})
+
+test('E2E-PURGE-4 enqueue CLOTURE shows PENDING in queue', async ({ page }) => {
+  await mockSession(page, { dossierStatus: 'CLOTURE' })
+  await openApp(page)
+  await createAndOpenDossier(page)
+  await page.getByTestId('dossier-purge-request').click()
+  await expect(page.getByText('Demande enregistrée')).toBeVisible()
+  await page.getByRole('link', { name: 'File purge' }).click()
+  await expect(page.getByTestId('purge-outbox-queue')).toContainText('PENDING')
+  await expect(page.getByTestId('purge-outbox-queue')).toContainText('ADMIN')
+})
+
+test('E2E-PURGE-5 enqueue open dossier returns 4xx', async ({ page }) => {
+  await mockSession(page)
+  await openApp(page)
+  await createAndOpenDossier(page)
+  await page.getByTestId('dossier-purge-request').click()
+  await expect(page.getByText(/CLOTURE or ARCHIVE/)).toBeVisible()
 })

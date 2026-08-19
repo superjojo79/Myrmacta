@@ -36,6 +36,11 @@ class DocumentGenerationPortsContractTest {
             public boolean exists(String tenantId, String storageRef) {
                 return last != null;
             }
+
+            @Override
+            public void delete(String tenantId, String storageRef) {
+                last = null;
+            }
         };
 
         byte[] pdf = pdfRenderer.render("<html/>");
@@ -47,6 +52,10 @@ class DocumentGenerationPortsContractTest {
         assertThat(ref).isEqualTo("tenant_dev/doc.pdf");
         assertThat(storage.exists("tenant_dev", ref)).isTrue();
         assertThat(storage.retrieve("tenant_dev", ref)).isEqualTo(pdf);
+
+        storage.delete("tenant_dev", ref);
+        assertThat(storage.exists("tenant_dev", ref)).isFalse();
+        storage.delete("tenant_dev", "tenant_dev/already-gone.pdf");
     }
 
     @Test

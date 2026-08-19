@@ -20,4 +20,8 @@ interface SpringDataDossierRelationRepository extends JpaRepository<DossierRelat
 
     Optional<DossierRelationJpaEntity> findByTenantIdAndSourceDossierIdAndIdempotencyKey(
             String tenantId, UUID sourceDossierId, String idempotencyKey);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("delete from DossierRelationJpaEntity r where r.sourceDossierId = :id or r.targetDossierId = :id")
+    void deleteTouching(@Param("id") UUID id);
 }

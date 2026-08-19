@@ -1,0 +1,13 @@
+-- Exécuté une seule fois, au premier démarrage du conteneur PostgreSQL
+-- (répertoire /docker-entrypoint-initdb.d, uniquement si le volume de données est vide).
+--
+-- L'application ne crée jamais le schéma tenant elle-même : elle exécute uniquement
+-- `SET search_path TO <app.tenant.id>, public` à la connexion (voir application.yml,
+-- hikari.connection-init-sql). Si le schéma n'existe pas encore, PostgreSQL retombe
+-- silencieusement sur `public` et Liquibase y crée les tables — ce qui fonctionne, mais
+-- ne démontre pas l'isolation par schéma. On crée donc explicitement le schéma par défaut
+-- (tenant_dev, cf. application.yml) pour un getting-started fidèle au modèle multi-tenant.
+--
+-- Pour ajouter un second tenant local : dupliquer cette ligne avec un autre nom de schéma,
+-- puis démarrer une seconde instance de l'application avec APP_TENANT_ID=<autre_schema>.
+CREATE SCHEMA IF NOT EXISTS tenant_dev;

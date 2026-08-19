@@ -195,6 +195,44 @@ incluse) ; journal d'audit sécurité structuré sur les 403 (`SecurityAuditLog`
 
 ---
 
+### [ ] 35. Modélisation et déploiement des diagrammes BPMN — écart vision / implémentation
+
+**Constat :** [05-workflow-engine.md](analysis%20doc/05-workflow-engine.md) retient « Designer visuel :
+Flowable UI (web, embarqué) » et « Monitoring instances : Flowable UI Cockpit » ; le `README.md`
+reprend cette vision (« designer visuel intégré », « déployés sans redémarrage », « supervisés via le
+cockpit Flowable »). En pratique, `pom.xml` ne dépend que de `flowable-spring-boot-starter` (le moteur
+d'exécution) — aucune des applications web Flowable UI (Modeler, Cockpit, Task, IDM) n'est intégrée, et
+`application.yml` exclut explicitement leurs autoconfigurations (REST API, sécurité, app engine).
+
+Le volet **Cockpit** a déjà une décision tracée : `DEFERRED-FEATURES.md` le classe « Hors scope
+produit », remplacé par le viewer lecture seule Vue/`bpmn-js` (`BpmnViewer.vue`, déjà livré). Le volet
+**Modeler / déploiement** n'a en revanche **aucune décision équivalente** — c'est un écart de fait, pas
+un choix assumé. Le déploiement réel des diagrammes se fait par scan classpath au démarrage
+(`TenantProcessDeployment`, `classpath*:/processes/**/*.bpmn20.xml`) : pas de hot-deploy, pas d'écran
+d'upload ou de design dans l'UI FlowForge — le `.bpmn20.xml` est modélisé en externe puis déposé dans le
+dépôt backend par l'équipe technique (documenté comme limite actuelle dans
+[GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md)).
+
+**À décider :** trois options, non exclusives dans le temps (V1 minimaliste puis cible plus tard) :
+
+- **(a) Acter l'état actuel comme cible V1.** Modélisation externe (Flowable Modeler autonome ou tout
+  éditeur BPMN 2.0) + dépôt du fichier dans le repo backend + déploiement au build/redémarrage reste le
+  mécanisme définitif. Impose de corriger `README.md` / `05-workflow-engine.md` (retirer « designer
+  visuel intégré » et « sans redémarrage », qui décrivent une fonctionnalité non livrée).
+- **(b) Intégrer Flowable Modeler** (webapp séparée) pour permettre le design et le déploiement en base
+  depuis un navigateur, avec rechargement à chaud des déploiements Flowable
+  (`RepositoryService.createDeployment()`) — récupère la vision initiale, mais ajoute une app tierce à
+  opérer/sécuriser par tenant (probablement hors scope au vu de la décision Cockpit ci-dessus).
+- **(c) Écran d'upload minimal dans FlowForge.** Upload d'un `.bpmn20.xml` validé (schéma BPMN 2.0,
+  `processDefinitionKey` cohérent avec la config workflow) via l'API FlowForge existante, déploiement
+  via `RepositoryService` — sans réintroduire toute la stack Flowable UI ni son coût opérationnel.
+
+**Impacte :** [05-workflow-engine.md](analysis%20doc/05-workflow-engine.md), `README.md` (sections
+Proposition de valeur et Fonctionnalités principales), [GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md),
+`TenantProcessDeployment.java`.
+
+---
+
 ## Processus
 
 ### [ ] 31. Découpage en lots d'implémentation

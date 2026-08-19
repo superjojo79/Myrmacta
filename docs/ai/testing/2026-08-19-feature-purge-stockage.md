@@ -129,7 +129,19 @@ Targeted (avant verify) :
 # Tests run: 27, Failures: 0 — BUILD SUCCESS
 ```
 
-Full gate : à renseigner après `./mvnw verify` + Vitest + Playwright de cette session.
+Full gate (cette session) :
+
+```text
+./mvnw verify -Dmaven.compiler.release=21
+# BUILD SUCCESS — Tests run: 839, Failures: 0
+# jacoco: All coverage checks have been met.
+
+cd frontend && npm run test -- --pool=forks --maxWorkers=2
+# Test Files  40 passed | Tests  120 passed
+
+cd frontend && CI=1 npm run test:e2e
+# 32 passed (E2E-PURGE-1..5)
+```
 
 ## Manual Testing
 

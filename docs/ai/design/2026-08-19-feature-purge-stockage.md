@@ -12,8 +12,8 @@ todo_ref: TODO.md §22 · requirements purge-stockage (Q1 ouvert)
 
 # System Design & Architecture — `purge-stockage`
 
-> Squelette Phase 1. **Q1 = B** (job outbox). Le reste (Q2+) n’est pas
-> tranché. Pas une revue Phase 3.
+> Squelette Phase 1. **Q1 = B** (job outbox), **Q2 = A** (`delete` sur
+> le port existant). Q3+ ouvertes. Pas une revue Phase 3.
 
 ## Architecture Overview
 
@@ -36,7 +36,8 @@ déjà présents. Hexagone : use case domaine, adapters infrastructure.
 - Réutiliser `purge_outbox` + `Dossier` / `DossierElement.storageRef`.
 - Évolution des **statuts** outbox et colonnes (`last_error`, index) :
   **si Q1 = B**. Sinon à redéfinir.
-- `DocumentStoragePort.delete` : probable quelle que soit Q1 (Q2).
+- `DocumentStoragePort.delete` : **Q2 = A** — étendre le port existant
+  (adapters S3 + filesystem). Missing object = succès (à figer avec Q3).
 
 ## API Design
 

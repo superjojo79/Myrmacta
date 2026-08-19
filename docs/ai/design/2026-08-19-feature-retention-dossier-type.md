@@ -118,13 +118,9 @@ Expiration : `closedAt.plus(Period.ofDays(days)).isBefore(now)` (UTC).
 | `GET` | `/api/tenant/retention-settings` | `TENANT_ADMIN` | `{ defaultRetentionDays }` |
 | `PUT` | `/api/tenant/retention-settings` | `TENANT_ADMIN` | idem ; 400 si ≤ 0 |
 
-Bootstrap : au premier GET, si aucune ligne → **404** ou création lazy
-imposant un PUT préalable (préférer **404 jusqu’au premier PUT** pour forcer
-une config explicite — **D-BOOTSTRAP**). Alternative acceptable en
-implémentation : seed Liquibase `defaultRetentionDays=2555` (~7 ans) —
-trancher en Phase 3 si besoin ; défaut design = **pas de seed**, PUT
-obligatoire avant que le job traite des dossiers (job no-op si settings
-absents + métrique/warn).
+Bootstrap (**D-BOOTSTRAP**, figé Phase 2) : **pas de seed** Liquibase.
+`GET` → **404** tant qu’aucun `PUT` ; job **no-op** (warn) si settings
+absents.
 
 ### `DossierType` — étendu
 

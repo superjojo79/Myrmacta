@@ -10,6 +10,7 @@ phase1: 2026-08-19
 phase5: 2026-08-19
 phase7: 2026-08-19
 phase8: 2026-08-19
+phase9: 2026-08-19
 planning_ref: docs/ai/planning/2026-08-19-feature-purge-stockage.md
 design_ref: docs/ai/design/2026-08-19-feature-purge-stockage.md
 ---
@@ -156,6 +157,66 @@ cd frontend && CI=1 npm run test:e2e
 
 ## Follow-ups (hors Phase 7–8)
 
-- Phase 9 review.
 - Recovery `PROCESSING` coincé ; backoff `nextAttemptAt` ; logs par `outboxId`
   (§29).
+
+## Phase 9 — Revue de code finale (2026-08-19)
+
+**Verdict : READY** (follow-ups non bloquants).
+
+### Alignement design
+
+| Décision | Statut |
+|---|---|
+| Q1 D-MECH job outbox | OK |
+| Q2 D-PORT `delete` S3+FS | OK — jamais MinIO |
+| Q3 D-ORDER store → PG | OK |
+| Q4 D-SCOPE-PG graphe | OK — src **et** tgt |
+| Q5 D-WF best-effort | OK |
+| Q6 D-UI lecture | OK — enqueue hors file |
+| Q7 POST enqueue async | OK |
+| Q8 runbook tenant | OK — pas d’API destroy |
+| Q9 pas de GC orphelins | OK |
+| Q10 E2E-PURGE-1..5 | OK |
+| Q11 CLOTURE/ARCHIVE + ADMIN ignore horloge | OK |
+| D-CLAIM / D-KEEP-OUTBOX / D-SCHED | OK |
+| Hexagone / ArchUnit | OK (verify) |
+
+### Findings
+
+Aucun Critical / High / Medium. Sécurité : double couche `TENANT_ADMIN`
+(`@PreAuthorize` + `TenantAdminGuard`), CSRF POST, route SPA `meta.roles`,
+`storageRef` canonicalisé, JPQL paramétré, Liquibase 011 additive, pas de FK
+`purge_outbox.dossier_id` (D-KEEP-OUTBOX + hard-delete dossier possible).
+
+| Sévérité | Issue | Impact | Reco |
+|---|---|---|---|
+| Low | Ligne `PROCESSING` coincée après crash JVM | File figée jusqu’à ops | Accepté V1 ; recovery hors design |
+| Low | `last_error` peut contenir `storageRef` (`FilesystemStorageAdapter` / `S3StorageAdapter`) | Exposé à `TENANT_ADMIN` via GET file | Aligné D-ERROR-COL ; pas de dump logs job |
+| Low | Job logue le compte, pas `outboxId`/`dossierId` | NFR logs | `observabilite` §29 |
+| Info | Course enqueue UNIQUE → 409 générique | Rare vs 200 idempotent | Contrainte UNIQUE tient |
+| Info | HTTP idempotent 200 (pas 204) | Contrat | Design autorisait les deux |
+| Info | Pas de CHECK SQL sur `status` | Dépend de l’enum JPA | Accepté (010 varchar) |
+
+### Checklist
+
+- [x] Design match
+- [x] Pas de trou logique bloquant
+- [x] Sécurité (TENANT_ADMIN + Guard, CSRF BFF, pas d’API destroy-tenant)
+- [x] Intégrations (Liquibase 011, job `app.purge`, FE `/admin/purge-outbox`)
+- [x] Tests Phase 8 + re-verify Phase 9
+- [x] Docs (implementation / testing / FILE-ATTENTE / TODO §22)
+
+### Preuves Phase 9 (cette session)
+
+```text
+./mvnw verify -Dmaven.compiler.release=21
+# BUILD SUCCESS — Tests run: 839, Failures: 0
+# jacoco: All coverage checks have been met.
+
+cd frontend && npm run test -- --pool=forks --maxWorkers=2
+# Test Files  40 passed | Tests  120 passed
+
+cd frontend && CI=1 npm run test:e2e
+# 32 passed (E2E-PURGE-1..5)
+```

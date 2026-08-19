@@ -207,7 +207,7 @@ Q1–Q11 **clos**. Aucune question produit ouverte.
 
 ### Ouvertes
 
-Aucune. Prochaine étape cycle : **Phase 4** (plan d’implémentation).
+Aucune. Lifecycle **Phase 9 READY** (PR #56).
 
 ### Hors file (pas des questions de ce lot)
 

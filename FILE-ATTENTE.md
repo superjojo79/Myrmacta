@@ -8,8 +8,8 @@
 > - Inventaire follow-ups / lots : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md)
 > - Séquencement « avant prod » : [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md) §9
 >
-> **Dernière mise à jour :** 2026-08-19 (`purge-stockage` Phase 5 — PR #56 ;
-> prochain produit = `openapi-pagination-admin` §24).
+> **Dernière mise à jour :** 2026-08-19 (`purge-stockage` Phase 9 READY —
+> PR #56 ; prochain produit = `openapi-pagination-admin` §24).
 
 ## Comment s’en servir
 
@@ -38,7 +38,7 @@ Même grille que pour `preview-documents` puis `edition-champs-dossier` :
 | `preview-documents` | PR #52, lot D-PREVIEW | Aperçu HTML/PDF admin templates |
 | `edition-champs-dossier` | PR #53 | UI `PATCH /api/dossiers/{id}/fields` sur le détail (D-DIFF, D-DEFAULTS) |
 | `retention-dossier-type` | PR #55, TODO §21 | Défaut tenant + override type ; job ARCHIVE + `purge_outbox` ; UI admin |
-| `purge-stockage` | PR #56 (en revue), TODO §22 | Job `purge_outbox` store+PG ; `DocumentStoragePort.delete` ; file admin lecture + enqueue |
+| `purge-stockage` | PR #56, TODO §22 | Job `purge_outbox` store+PG ; `DocumentStoragePort.delete` ; file admin lecture + enqueue |
 
 Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relations, PATCH fields API, éléments) : voir [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §2.
 
@@ -80,4 +80,4 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 | 2026-08-18 | `edition-champs-dossier` | Plus de lot nommé ; trou API-sans-UI ; §21 toujours « à décider » |
 | 2026-08-19 | file ci-dessus | `edition-champs-dossier` en revue (PR #53) ; prochain = §21 si on tranche, sinon §24 |
 | 2026-08-19 | `retention-dossier-type` Phase 9 READY | PR #55 ; prochain = `purge-stockage` §22 |
-| 2026-08-19 | `purge-stockage` Phase 5 | PR #56 ; prochain = `openapi-pagination-admin` §24 |
+| 2026-08-19 | `purge-stockage` Phase 9 READY | PR #56 ; prochain = `openapi-pagination-admin` §24 |

@@ -24,10 +24,9 @@ maquette
 
 ## 0. Stockage objet (contrainte transversale)
 
-**Ne pas coupler à MinIO.** Quand le stockage objet arrivera (`generation-documents`,
-pièces jointes, purge §22), introduire un **port abstrait** avec adaptateur
-**S3** (cible) et **filesystem** (alternative). Aucun port code dans
-`autorisation-conformite` (doc seule).
+**Ne pas coupler à MinIO.** Port abstrait `DocumentStoragePort` (adaptateurs
+**S3** cible + **filesystem**) déjà livré (`generation-documents`, pièces
+jointes). `delete` livré avec `purge-stockage` (§22). Aucun couplage MinIO.
 
 ---
 
@@ -123,6 +122,7 @@ Ordre indicatif aligné sur l’analyse et les dépendances techniques :
 | — | `preview-documents` | **Complete** (`cursor/preview-documents-dbc9`) — lot D-PREVIEW livré : HTML temps réel + PDF inline, admin templates, D-AUTHZ B, D-RATE-SPLIT C. |
 | — | `edition-champs-dossier` | **Complete** (PR #53) — UI `PATCH /api/dossiers/{id}/fields` sur le détail (D-DIFF, D-DEFAULTS). |
 | — | `retention-dossier-type` | **Complete** (PR #55) — settings tenant + override type ; job ARCHIVE + `purge_outbox` ; UI admin. |
+| — | `purge-stockage` | **Complete** Phase 5 (PR #56) — job `purge_outbox` store+PG ; `DocumentStoragePort.delete` ; UI file lecture + enqueue admin. |
 
 ---
 
@@ -134,8 +134,8 @@ Voir le détail et les options dans [TODO.md](TODO.md) et
 | Point | Titre | État après tranches livrées |
 |---|---|---|
 | 19 | Granularité rôles RBAC | **Clos V1** — cinq rôles + mapping `ROLE_*` ; ACL type |
-| 21 | Rétention par `DossierType` | **Livré** (2026-08-19) — `retention-dossier-type` ; suite purge = §22 |
-| 22 | Purge PostgreSQL / object store | **Ouvert** — consommer `purge_outbox` ; port S3/FS ; pas MinIO en dur |
+| 21 | Rétention par `DossierType` | **Livré** (2026-08-19) — `retention-dossier-type` |
+| 22 | Purge PostgreSQL / object store | **Livré** (2026-08-19) — `purge-stockage` PR #56 ; Q1–Q11 |
 | 23 | `FieldDefinition.sensitive` | **Quasi clos** — flag meta + masquage serveur livrés (`DossierFieldRedactor`, D-SENSITIVE = A) sur `GET /api/dossiers/**` et le panneau dossier de la visualisation ; reste masquage sur d'éventuels futurs exports (CSV, etc.) |
 | 24 | Contrat d’API complet | **Partiel** — surface dossiers minimale + `ProblemDetail` ; reste listes, pagination, OpenAPI, autres ressources — **impacte Supervision FE** |
 | 25 | Modèle physique consolidé (ERD) | **Partiel** — tables dossiers livrées ; reste ERD global, `platform.*`, ACT_*, outbox, etc. |

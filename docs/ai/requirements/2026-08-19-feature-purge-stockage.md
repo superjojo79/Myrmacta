@@ -16,7 +16,7 @@ todo_ref: TODO.md §22 · FILE-ATTENTE.md · DEFERRED-FEATURES.md §0 · suite d
 
 > Feature produit après `retention-dossier-type` (PR #55). Lot « avant
 > prod » REVUE §9 / TODO §22. **Q1–Q11 actées.** Requirements **reviewed**
-> (Phase 2). Prochaine étape cycle : Phase 3 (revue design).
+> (Phase 2). Design Phase 3 **reviewed**. Phase 4–5 livrées (PR #56).
 
 ## Problem Statement
 **What problem are we solving?**
@@ -126,35 +126,35 @@ Trois options nommées par TODO.md / FILE-ATTENTE / REVUE §9.
 
 Critères **stables** (indépendants du mécanisme exact) :
 
-- [ ] Un dossier éligible + PJ/PDF : objets absents du store **et**
+- [x] Un dossier éligible + PJ/PDF : objets absents du store **et**
       lignes dossier / éléments / relations le touchant / workflow links
       absentes ; `GET /api/dossiers/{id}` → 404.
-- [ ] Rejeu : 2ᵉ passe sans corruption (idempotente).
-- [ ] Échec store ou PG : pas de succès terminal prématuré ; retry possible.
-- [ ] Aucun couplage MinIO ; hexagone / ArchUnit respectés.
-- [ ] TODO §22 / FILE-ATTENTE / DEFERRED mis à jour **après** arbitrages
+- [x] Rejeu : 2ᵉ passe sans corruption (idempotente).
+- [x] Échec store ou PG : pas de succès terminal prématuré ; retry possible.
+- [x] Aucun couplage MinIO ; hexagone / ArchUnit respectés.
+- [x] TODO §22 / FILE-ATTENTE / DEFERRED mis à jour **après** arbitrages
       + implémentation.
-- [ ] `./mvnw verify` vert.
-- [ ] Vitest + Playwright : specs dédiés lecture file + AuthZ + enqueue
+- [x] `./mvnw verify` vert.
+- [x] Vitest + Playwright : specs dédiés lecture file + AuthZ + enqueue
       (Q10 = B) ; suite existante (E2E-RET-*) verte.
 
 Critères **dépendants de Q1=B** (détail cycle/claim en Phase 3) :
 
-- [ ] Job planifié borné consomme `PENDING` jusqu’à un état terminal
+- [x] Job planifié borné consomme `PENDING` jusqu’à un état terminal
       (succès ou échec rejouable).
 
 Critères **dépendants de Q6=B** :
 
-- [ ] UI admin lecture : compteurs (et/ou liste) `PENDING` / `FAILED` /
+- [x] UI admin lecture : compteurs (et/ou liste) `PENDING` / `FAILED` /
       `COMPLETED` ; pas d’action force/retry ; rôle `TENANT_ADMIN`.
-- [ ] API **lecture** de la file (nécessaire au SPA).
+- [x] API **lecture** de la file (nécessaire au SPA).
 
 Critères **dépendants de Q7=B** :
 
-- [ ] Mutation admin (`TENANT_ADMIN`) enfile `PENDING` (202 / 204 /
+- [x] Mutation admin (`TENANT_ADMIN`) enfile `PENDING` (202 / 204 /
       équivalent) ; **pas** de purge synchrone dans la requête.
-- [ ] Idempotent si une ligne outbox existe déjà pour le dossier.
-- [ ] Enqueue **Q11 = B** : `CLOTURE`/`ARCHIVE` → 2xx ; statut ouvert →
+- [x] Idempotent si une ligne outbox existe déjà pour le dossier.
+- [x] Enqueue **Q11 = B** : `CLOTURE`/`ARCHIVE` → 2xx ; statut ouvert →
       4xx ; le worker purge sans attendre `purgeEligibleAt`.
 
 ## Constraints & Assumptions

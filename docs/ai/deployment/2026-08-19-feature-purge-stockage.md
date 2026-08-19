@@ -11,13 +11,17 @@ phase1: 2026-08-19
 
 # Deployment & Release — `purge-stockage`
 
-> Détail Liquibase / scheduler en Phase 3. **Q8 = A** : pas d’automatisation
-> tenant dans l’app.
+> **Q8 = A** : pas d’automatisation tenant dans l’app. Phase 5 livrée.
 
 ## Application release
 
-- Rolling restart ; job `app.purge.*` ; `DocumentStoragePort.delete`.
+- Rolling restart ; job `PurgeOutboxJob` (`app.purge.poll-delay` défaut **1h**,
+  `app.purge.batch-size` **50**) ; `DocumentStoragePort.delete`.
+- Liquibase **011** : colonnes `purge_outbox.origin`, `last_error` ;
+  index `idx_purge_outbox_status_created_at`.
 - Config S3/FS inchangée (credentials / root).
+- APIs `TENANT_ADMIN` : `GET /api/purge-outbox`,
+  `POST /api/dossiers/{id}/purge-requests`.
 
 ## Runbook — suppression de tenant (Q8 = A, hors code app)
 

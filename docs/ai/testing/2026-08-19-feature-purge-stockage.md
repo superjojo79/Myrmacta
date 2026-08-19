@@ -7,12 +7,15 @@ created: 2026-08-19
 updated: 2026-08-19
 feature: purge-stockage
 phase1: 2026-08-19
+phase5: 2026-08-19
 todo_ref: TODO.md §22 · design Phase 3 reviewed
 ---
 
 # Testing Strategy — `purge-stockage`
 
 > Aligné design Phase 3. **Q10 = B** : E2E-PURGE-1..5 + suite existante.
+> Couverture Phase 5 cochée (preuve `verify` ci-dessous). Phase 8 non
+> encore exécutée.
 
 ## Test Coverage Goals
 
@@ -25,37 +28,37 @@ todo_ref: TODO.md §22 · design Phase 3 reviewed
 
 ### Port stockage (probable Q2)
 
-- [ ] `delete` objet présent → absent.
-- [ ] `delete` objet déjà absent → succès.
-- [ ] `delete` ref invalide (tenant / `..`) → erreur.
+- [x] `delete` objet présent → absent.
+- [x] `delete` objet déjà absent → succès.
+- [x] `delete` ref invalide (tenant / `..`) → erreur.
 
 ### Use case purge (après Q1)
 
-- [ ] Happy path : store + PG + signal de fin.
-- [ ] Idempotence 2ᵉ passe.
-- [ ] Échec store → pas de succès terminal.
-- [ ] Éléments sans `storageRef` → skip store, PG ok.
-- [ ] Relations source et cible.
-- [ ] Garde `purgeEligibleAt` : skip **origin RETENTION** si futur ; origin
+- [x] Happy path : store + PG + signal de fin.
+- [x] Idempotence 2ᵉ passe.
+- [x] Échec store → pas de succès terminal.
+- [x] Éléments sans `storageRef` → skip store, PG ok.
+- [x] Relations source et cible.
+- [x] Garde `purgeEligibleAt` : skip **origin RETENTION** si futur ; origin
       ADMIN traité tout de suite (Q11).
 
 ## Integration Tests
 
-- [ ] Liquibase si migration.
-- [ ] GET dossier 404 après purge réussie.
-- [ ] Enqueue CLOTURE/ARCHIVE → PENDING origin ADMIN ; ouvert → 4xx.
-- [ ] GET `/api/purge-outbox` 200 admin / 403 autres.
-- [ ] Non-régression `retention-dossier-type` (insert `PENDING`).
+- [x] Liquibase si migration.
+- [x] GET dossier 404 après purge réussie.
+- [x] Enqueue CLOTURE/ARCHIVE → PENDING origin ADMIN ; ouvert → 4xx.
+- [x] GET `/api/purge-outbox` 200 admin / 403 autres.
+- [x] Non-régression `retention-dossier-type` (insert `PENDING`).
 
 ## End-to-End Tests
 
-- [ ] **E2E-PURGE-1 :** `TENANT_ADMIN` voit l’écran lecture file (compteurs
+- [x] **E2E-PURGE-1 :** `TENANT_ADMIN` voit l’écran lecture file (compteurs
       / liste PENDING/FAILED/COMPLETED).
-- [ ] **E2E-PURGE-2 :** non-admin : pas d’accès mutation / écran file.
-- [ ] **E2E-PURGE-3 :** pas de bouton force purge (Q6).
-- [ ] **E2E-PURGE-4 :** enqueue `CLOTURE`/`ARCHIVE` → PENDING visible.
-- [ ] **E2E-PURGE-5 :** enqueue dossier ouvert → 4xx (Q11).
-- [ ] Suite existante (dont E2E-RET-*) verte.
+- [x] **E2E-PURGE-2 :** non-admin : pas d’accès mutation / écran file.
+- [x] **E2E-PURGE-3 :** pas de bouton force purge (Q6).
+- [x] **E2E-PURGE-4 :** enqueue `CLOTURE`/`ARCHIVE` → PENDING visible.
+- [x] **E2E-PURGE-5 :** enqueue dossier ouvert → 4xx (Q11).
+- [x] Suite existante (dont E2E-RET-*) verte.
 
 ## Test Data
 
@@ -72,6 +75,20 @@ cd frontend && npm run test
 cd frontend && npm run test:e2e
 ```
 
+Phase 5 (2026-08-19) :
+
+```text
+./mvnw verify -Dmaven.compiler.release=21
+# BUILD SUCCESS — Tests run: 832, Failures: 0
+# jacoco: All coverage checks have been met.
+
+cd frontend && npm run test -- --pool=forks --maxWorkers=2
+# Test Files  40 passed | Tests  120 passed
+
+cd frontend && CI=1 npm run test:e2e
+# 32 passed
+```
+
 ## Manual Testing
 
 - Smoke rétention courte → purge → FS/S3 + PG.
@@ -85,3 +102,6 @@ Hors scope charge V1 ; batch borné si job (Q1=B).
 
 - Orphelin store après succès terminal = blocker.
 - Régression insert outbox §21 = blocker.
+- `RetentionSchemaIT` : ne pas utiliser `pg_indexes` (tests H2) —
+  `information_schema.indexes`.
+- Liste MockMvc : `hasItem` plutôt que `items[0]` (autres PENDING).

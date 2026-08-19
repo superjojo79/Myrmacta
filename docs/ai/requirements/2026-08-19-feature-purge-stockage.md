@@ -202,11 +202,12 @@ Q1–Q11 **clos**. Aucune question produit ouverte.
 | **Q7 / D-HTTP** | Mutation d’effacement | **B** — POST/DELETE admin qui **enfile** un event `PENDING` ; le job exécute (pas de purge synchrone HTTP) |
 | **Q8 / D-TENANT** | Purge tenant | **A** — hors code ; runbook ops (décommission + `DROP SCHEMA` + préfixe store) |
 | **Q9 / D-ORPHAN** | Orphelins hors outbox | **A** — hors V1 ; seulement ce que `purge_outbox` pointe |
+| **Q10 / D-FE** | Tests FE | **B** — specs Playwright dédiés (lecture + AuthZ + enqueue) + suite existante |
 | **Q11 / D-ENQUEUE-SCOPE** | Périmètre enqueue | **B** — `CLOTURE` \| `ARCHIVE` seulement ; job ignore l’horloge pour ces lignes ; dossier ouvert → 4xx |
 
 ### Ouvertes
 
-Aucune. Prochaine étape cycle : **Phase 3** (revue design).
+Aucune. Prochaine étape cycle : **Phase 4** (plan d’implémentation).
 
 ### Hors file (pas des questions de ce lot)
 

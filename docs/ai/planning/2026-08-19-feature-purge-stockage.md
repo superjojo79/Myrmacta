@@ -11,9 +11,8 @@ phase1: 2026-08-19
 
 # Project Planning & Task Breakdown — `purge-stockage`
 
-> Phase 1 : clarifications **Q1–Q10 terminées**. **Pas de plan
-> d’implémentation figé** tant que Phase 2 (revue) et Phase 3 (design)
-> ne sont pas faites.
+> Requirements + design **reviewed**. Plan T1… = **Phase 4** (pas encore
+> exécutée).
 
 ## Milestones
 

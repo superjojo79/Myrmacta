@@ -7,13 +7,12 @@ created: 2026-08-19
 updated: 2026-08-19
 feature: purge-stockage
 phase1: 2026-08-19
-todo_ref: TODO.md §22 · requirements purge-stockage (Q1–Q10 actées)
+todo_ref: TODO.md §22 · design Phase 3 reviewed
 ---
 
 # Testing Strategy — `purge-stockage`
 
-> Scénarios alignés Q1–Q10. **Q10 = B** : specs Playwright dédiés + suite
-> existante.
+> Aligné design Phase 3. **Q10 = B** : E2E-PURGE-1..5 + suite existante.
 
 ## Test Coverage Goals
 
@@ -37,12 +36,15 @@ todo_ref: TODO.md §22 · requirements purge-stockage (Q1–Q10 actées)
 - [ ] Échec store → pas de succès terminal.
 - [ ] Éléments sans `storageRef` → skip store, PG ok.
 - [ ] Relations source et cible.
-- [ ] Garde `purgeEligibleAt` (si retenue).
+- [ ] Garde `purgeEligibleAt` : skip **origin RETENTION** si futur ; origin
+      ADMIN traité tout de suite (Q11).
 
 ## Integration Tests
 
 - [ ] Liquibase si migration.
 - [ ] GET dossier 404 après purge réussie.
+- [ ] Enqueue CLOTURE/ARCHIVE → PENDING origin ADMIN ; ouvert → 4xx.
+- [ ] GET `/api/purge-outbox` 200 admin / 403 autres.
 - [ ] Non-régression `retention-dossier-type` (insert `PENDING`).
 
 ## End-to-End Tests

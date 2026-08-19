@@ -257,6 +257,78 @@ Proposition de valeur et Fonctionnalités principales), [GUIDE-UTILISATEUR.md](G
 
 ---
 
+### [ ] 36. `canEditDossier` (frontend) ne reflète pas la vraie règle d'autorisation backend
+
+**Constat (revue PR #53, `edition-champs-dossier`) :** le frontend calcule `canEditDossier` comme
+`isTenantAdmin || isWorkflowAdmin || roles.includes('DOSSIER_MANAGER')` — un simple rôle
+`DOSSIER_MANAGER` suffit à afficher les actions d'édition (champs dynamiques depuis PR #53,
+« Ajouter » élément, « Lier » dossier). Or `DossierAccessPolicy.assertCanEdit`, le contrôle
+réellement appliqué côté serveur, ne laisse passer automatiquement que `TENANT_ADMIN` et
+`WORKFLOW_ADMIN` — un `DOSSIER_MANAGER` seul doit en plus détenir une entrée
+`DossierTypeAclEntry(EDIT)` explicite pour ce type de dossier (décision n° 20). Sans cette ACL, le
+frontend affiche donc une UI éditable qui échoue systématiquement en 403 à l'enregistrement.
+
+**Pas une faille de sécurité** — le backend refuse proprement et aucune donnée n'est exposée ou
+modifiée sans autorisation — mais un écart de fidélité UI/backend, présent avant PR #53
+(« Ajouter »/« Lier ») et désormais étendu à l'édition des champs.
+
+**À décider :** soit exposer la permission effective de l'utilisateur pour le type de dossier
+courant (ex. champ dans la réponse `GET /api/dossiers/{id}` ou `GET /api/dossier-types/{code}`) et
+aligner `canEditDossier` dessus, soit documenter explicitement que `DOSSIER_MANAGER` nécessite une
+ACL `EDIT` complémentaire (aide contextuelle UI) pour éviter la confusion.
+
+**Impacte :** `frontend/src/views/pilotage/DossierDetailView.vue` (`canEditDossier`),
+`DossierAccessPolicy.java`, [12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md).
+
+---
+
+### [ ] 37. `findClosedForRetention` sans `tenantId` explicite — rupture du pattern « ceinture et bretelles »
+
+**Constat (revue PR #55, `retention-dossier-type`) :** `SpringDataDossierRepository` scope déjà
+certaines requêtes par isolation de schéma **et** par `tenantId` explicite en paramètre (ex.
+`findByTenantIdAndReference(tenantId, reference)`) — double barrière conforme à la décision n° 1.
+La nouvelle requête `findClosedForRetention(status, pageable)`, ajoutée pour le job de rétention,
+ne prend **pas** de `tenantId` et s'appuie uniquement sur l'isolation par schéma
+(`search_path`, décision n° 13/14). Non exploitable aujourd'hui — une instance Spring Boot = un
+tenant, donc aucune fuite inter-tenant possible en pratique — mais l'incohérence de pattern dans le
+même fichier est un piège si ce postulat d'architecture évolue un jour (ex. pooling de connexions
+multi-tenant).
+
+**À décider :** aligner `findClosedForRetention` sur le pattern existant (paramètre `tenantId`
+explicite, même redondant avec le schéma) par cohérence défensive, ou documenter explicitement
+pourquoi les requêtes de job planifié dérogent au pattern des requêtes servant des requêtes HTTP.
+
+**Impacte :** `SpringDataDossierRepository.java`, `JpaDossierRepositoryAdapter.java`,
+[02-multi-tenant.md](analysis%20doc/02-multi-tenant.md).
+
+---
+
+### [ ] 38. `payloadJson` du job de rétention — échappement JSON incomplet + `DossierType.code` sans validation de format
+
+**Constat (revue PR #55, `retention-dossier-type`) :** `EvaluateDossierRetentionUseCaseImpl.payloadJson`
+construit le JSON de `purge_outbox.payload_json` à la main, avec un échappement limité à `\` et `"`
+— les caractères de contrôle (ex. saut de ligne) que RFC 8259 impose d'échapper dans une chaîne
+JSON ne le sont pas. Or `DossierType.code`, injecté tel quel dans ce payload, n'a **aucune
+validation de format/charset** dans le domaine (`DossierType` ne fait qu'un `requireNonNull`).
+`purge_outbox.payload_json` est une colonne `json` PostgreSQL : un `code` contenant un caractère de
+contrôle brut ferait échouer l'`INSERT`, et comme le job entier tourne dans une seule transaction
+(`EvaluateDossierRetentionJob.evaluate`), **tout le lot serait annulé** — bloquant silencieusement
+la rétention pour l'ensemble du tenant jusqu'à correction du type fautif.
+
+Auto-infligé (seul un `TENANT_ADMIN` peut définir `code`), donc pas un vecteur d'attaque externe —
+mais un point de robustesse réel, susceptible de stopper silencieusement un mécanisme de
+conformité RGPD.
+
+**À décider / produire :** soit valider `DossierType.code` contre un charset restreint (ex.
+`^[A-Za-z0-9_-]+$`) à la création/mise à jour, soit remplacer le constructeur JSON manuel de
+`payloadJson` par un sérialiseur JSON réel (Jackson, déjà une dépendance transitive Spring Boot)
+qui échappe correctement tous les caractères de contrôle.
+
+**Impacte :** `EvaluateDossierRetentionUseCaseImpl.java`, `DossierType.java`,
+[04-dossiers.md](analysis%20doc/04-dossiers.md).
+
+---
+
 ## Processus
 
 ### [ ] 31. Découpage en lots d'implémentation

@@ -166,9 +166,10 @@ Critères **dépendants de Q7=B** :
 - Branche Cloud : `cursor/purge-stockage-05b8` (lint `feature-*` = MISS
   attendu).
 
-**Q1–Q8 actées :** job outbox ; `delete` ; store puis PG ; graphe dossier
-complet ; Flowable best-effort ; écran lecture ; enqueue HTTP ; purge
-tenant **hors code** (runbook). Q9 (orphelins) n’est pas tranchée.
+**Q1–Q9 actées :** job outbox ; `delete` ; store puis PG ; graphe dossier
+complet ; Flowable best-effort ; écran lecture ; enqueue HTTP ; tenant
+hors code ; orphelins hors outbox **hors V1**. Q10 (E2E) n’est pas
+tranchée.
 
 ## Questions & Open Items
 
@@ -184,14 +185,15 @@ tenant **hors code** (runbook). Q9 (orphelins) n’est pas tranchée.
 | **Q4 / D-SCOPE-PG** | Graphe PG | **A** — dossier + éléments + relations src\|tgt + workflow links |
 | **Q5 / D-WF** | Flowable | **A** — best-effort delete PI runtime ; link métier toujours supprimé ; ACT_HI_* résiduel OK V1 |
 | **Q6 / D-UI** | Surface admin | **B** — écran lecture (compteurs / liste) ; pas de force purge |
+| **Q7 / D-HTTP** | Mutation d’effacement | **B** — POST/DELETE admin qui **enfile** un event `PENDING` ; le job exécute (pas de purge synchrone HTTP) |
 | **Q8 / D-TENANT** | Purge tenant | **A** — hors code ; runbook ops (décommission + `DROP SCHEMA` + préfixe store) |
+| **Q9 / D-ORPHAN** | Orphelins hors outbox | **A** — hors V1 ; seulement ce que `purge_outbox` pointe |
 
-### Ouvertes (prochaine = Q9 uniquement)
+### Ouvertes (prochaine = Q10 uniquement)
 
 | Id | Question | Pourquoi ça compte | Options | Reco |
 |---|---|---|---|---|
-| **Q9 / D-ORPHAN** | Balayer orphelins hors outbox ? | Uploads échoués | Hors V1 · job séparé | Hors V1 |
-| **Q10 / D-FE** | Nouveaux E2E Playwright ? | Conventions FE | Exemption si zéro SPA · specs dédiés | Non-régression suite existante |
+| **Q10 / D-FE** | Nouveaux E2E Playwright ? | Conventions FE | Non-régression seule · specs dédiés lecture + enqueue | Specs dédiés (SPA touché) |
 
 ### Hors file (pas des questions de ce lot)
 
@@ -214,5 +216,6 @@ Shared understanding :
 - **Q6 = B :** écran admin lecture de la file ; pas de bouton force/retry.
 - **Q7 = B :** mutation admin qui enfile un `PENDING` ; le job purge.
 - **Q8 = A :** suppression de tenant hors code ; runbook ops uniquement.
+- **Q9 = A :** pas de GC des orphelins store hors outbox (V1).
 
-Prochaine clarification : **Q9 / D-ORPHAN** uniquement.
+Prochaine clarification : **Q10 / D-FE** uniquement.

@@ -149,9 +149,8 @@ Reste dépendant de Q6–Q10 : surface HTTP/UI / E2E.
 - Branche Cloud : `cursor/purge-stockage-05b8` (lint `feature-*` = MISS
   attendu).
 
-**Q1–Q2 actées :** job `purge_outbox` ; suppression via
-`DocumentStoragePort.delete` (pas de nouveau port). L’ordre store vs PG
-(Q3) n’est **pas** encore tranché.
+**Q1–Q3 actées :** job outbox ; `DocumentStoragePort.delete` ; ordre
+**store puis PG**. Le graphe PG (Q4) n’est **pas** encore tranché.
 
 ## Questions & Open Items
 
@@ -163,12 +162,12 @@ Reste dépendant de Q6–Q10 : surface HTTP/UI / E2E.
 |---|---|---|
 | **Q1 / D-MECH** | Mécanisme PG + store | **B** — job de réconciliation sur `purge_outbox` (2026-08-19) |
 | **Q2 / D-PORT** | Suppression objet | **A** — étendre `DocumentStoragePort.delete` (S3 + FS) |
+| **Q3 / D-ORDER** | Ordre d’effacement | **A** — store d’abord, puis PostgreSQL |
 
-### Ouvertes (prochaine = Q3 uniquement)
+### Ouvertes (prochaine = Q4 uniquement)
 
 | Id | Question | Pourquoi ça compte | Options | Reco |
 |---|---|---|---|---|
-| **Q3 / D-ORDER** | Ordre d’effacement store vs PG ? | Orphelins / retry | Store puis PG · PG puis store · best-effort parallèle | Store puis PG |
 | **Q4 / D-SCOPE-PG** | Quel graphe PG supprimer ? | FK / RGPD | Dossier seul · + éléments/relations/links | Graphe complet du dossier |
 | **Q5 / D-WF** | Que faire des process Flowable ? | Runtime vs historique | Best-effort runtime · bloquer si PI vivante · ignorer | Best-effort runtime |
 | **Q6 / D-UI** | Surface admin file / force purge ? | Parcours utilisateur | Aucune · écran lecture · force admin | Aucune V1 (aligné §21) |
@@ -190,5 +189,6 @@ Shared understanding :
 - Objectif : cohérence PostgreSQL + object store.
 - **Q1 = B :** job consommateur `purge_outbox`.
 - **Q2 = A :** `DocumentStoragePort.delete` (adapters existants).
+- **Q3 = A :** store puis PostgreSQL (retry relit les `storageRef`).
 
-Prochaine clarification : **Q3 / D-ORDER** uniquement.
+Prochaine clarification : **Q4 / D-SCOPE-PG** uniquement.

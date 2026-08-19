@@ -7,13 +7,13 @@ created: 2026-08-19
 updated: 2026-08-19
 feature: purge-stockage
 phase1: 2026-08-19
-todo_ref: TODO.md §22 · requirements purge-stockage (Q1 ouvert)
+todo_ref: TODO.md §22 · requirements purge-stockage (Q1–Q3 actées)
 ---
 
 # System Design & Architecture — `purge-stockage`
 
-> Squelette Phase 1. **Q1 = B** (job outbox), **Q2 = A** (`delete` sur
-> le port existant). Q3+ ouvertes. Pas une revue Phase 3.
+> Squelette Phase 1. **Q1 = B**, **Q2 = A**, **Q3 = A** (store puis PG).
+> Q4+ ouvertes. Pas une revue Phase 3.
 
 ## Architecture Overview
 
@@ -22,9 +22,11 @@ Contrainte Phase 1 : **Q1 = B** — worker / scheduler sur `purge_outbox`.
 ```mermaid
 flowchart TD
   ob[purge_outbox PENDING] --> job[Job de réconciliation]
-  job --> store[DocumentStoragePort]
-  job --> pg[(PostgreSQL tenant)]
+  job --> store[DocumentStoragePort.delete]
+  store --> pg[Hard-delete graphe PG]
 ```
+
+**Q3 = A :** store puis PostgreSQL (les `storageRef` restent lisibles pour un retry). Options PG-d’abord et parallèle écartées.
 
 Les options A (TX unique) et C (soft-delete + GC only) sont **écartées**.
 
@@ -37,7 +39,7 @@ déjà présents. Hexagone : use case domaine, adapters infrastructure.
 - Évolution des **statuts** outbox et colonnes (`last_error`, index) :
   **si Q1 = B**. Sinon à redéfinir.
 - `DocumentStoragePort.delete` : **Q2 = A** — étendre le port existant
-  (adapters S3 + filesystem). Missing object = succès (à figer avec Q3).
+  (adapters S3 + filesystem). Missing object = succès (idempotent).
 
 ## API Design
 
@@ -55,8 +57,8 @@ déjà présents. Hexagone : use case domaine, adapters infrastructure.
 
 ## Design Decisions
 
-Aucune décision de design **actée**. Les D-* du tour précédent sont
-invalidées : à reposer en Phase 2/3 après Q1+.
+Contraintes Phase 1 déjà actées (Q1–Q3) : job outbox, `delete` sur le
+port existant, ordre store→PG. Q4–Q10 encore ouvertes.
 
 ## Non-Functional Requirements
 

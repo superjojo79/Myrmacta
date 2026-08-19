@@ -40,14 +40,14 @@ phase1: 2026-08-19
 
 ### `EvaluateDossierRetentionUseCase`
 
-- [ ] `CLOTURE` expiré → `ARCHIVE` + `purgeEligibleAt` + outbox PENDING.
-- [ ] Non clos → inchangé.
-- [ ] Type `NEVER` → inchangé.
-- [ ] Pas encore expiré → inchangé.
-- [ ] Déjà éligible (idempotence) → pas de 2ᵉ outbox.
-- [ ] Settings absents → aucun candidat traité (no-op documenté).
+- [ ] Batch `CLOTURE` lus (limit) ; résolution politique en mémoire (D-SCAN).
+- [ ] `CLOTURE` expiré (`expiration <= now`) → `ARCHIVE` + `purgeEligibleAt` + outbox PENDING.
+- [ ] Non clos / `closedAt` null / NEVER / non expiré → inchangé.
+- [ ] Déjà outbox (unique dossier) → no-op idempotent.
+- [ ] Settings absents → no-op.
 - [ ] `ARCHIVE` métier préexistant sans `purgeEligibleAt` → **non** repris
-      par le job (uniquement `CLOTURE` expirés) — D-FORCE.
+      (uniquement `CLOTURE`) — D-FORCE.
+- [ ] `updatedBy` = `system:retention-job`.
 
 ### Domaine `Dossier`
 

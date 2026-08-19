@@ -2,11 +2,12 @@
 phase: design
 title: System Design & Architecture
 description: Define the technical architecture, components, and data models
-status: draft
+status: reviewed
 created: 2026-08-19
 updated: 2026-08-19
 feature: retention-dossier-type
 phase1: 2026-08-19
+phase3: 2026-08-19
 ---
 
 # System Design & Architecture — `retention-dossier-type`
@@ -18,13 +19,13 @@ scope (§22 consommera `purge_outbox`).
 
 ```mermaid
 graph TD
-  AdminUI[Admin SPA rétention] --> TenantAPI["GET/PUT /api/tenant/retention-settings"]
-  AdminUI --> TypeAPI["POST/PUT /api/dossier-types"]
+  AdminUI[DossierTypesAdminView + bloc rétention] --> TenantAPI["GET/PUT /api/tenant/retention-settings"]
+  AdminUI --> TypeAPI["POST/PATCH /api/dossier-types"]
   TenantAPI --> UpsertSettings[UpsertTenantRetentionSettingsUseCase]
   TypeAPI --> CreateUpdateType[Create/UpdateDossierTypeUseCase]
   UpsertSettings --> SettingsRepo[TenantRetentionSettingsRepository]
   CreateUpdateType --> TypeRepo[DossierTypeRepository]
-  Job[EvaluateDossierRetentionJob] --> EvalUC[EvaluateDossierRetentionUseCase]
+  Job["EvaluateDossierRetentionJob fixedDelay"] --> EvalUC[EvaluateDossierRetentionUseCase]
   EvalUC --> DossierRepo[DossierRepository]
   EvalUC --> TypeRepo
   EvalUC --> SettingsRepo
@@ -40,11 +41,25 @@ graph TD
 | Composant | Responsabilité |
 |---|---|
 | `TenantRetentionSettings` | Défaut tenant (`defaultRetentionDays > 0`) |
-| `RetentionPolicy` (domaine) | Résoudre durée effective type × défaut ; `NEVER` |
-| `EvaluateDossierRetentionUseCase` | Batch : candidats `CLOTURE` expirés → ARCHIVE + outbox |
-| `EvaluateDossierRetentionJob` | Scheduler infra (polling / cron configurable) |
-| `PurgeOutboxRepository` | Append-only événements `DOSSIER_PURGE_REQUESTED` |
-| Admin FE | Section settings + champs sur `DossierTypesAdminView` |
+| `RetentionPolicyResolver` | Durée effective type × défaut ; `NEVER` → empty |
+| `EvaluateDossierRetentionUseCase` | Batch dédié : candidats → ARCHIVE + `purgeEligibleAt` + outbox (**sans** ACL user) |
+| `EvaluateDossierRetentionJob` | `@Scheduled(fixedDelay…)` infra |
+| `PurgeOutboxRepository` | Insert `DOSSIER_PURGE_REQUESTED` ; UNIQUE `dossier_id` |
+| Admin FE | Bloc rétention sur / près de `DossierTypesAdminView` + champs type |
+
+## Requirements coverage
+
+| Requirements | Design |
+|---|---|
+| D-DURATION / D-NEVER | Settings + champs type + resolver |
+| D-ACTION / D-OUTBOX | Use case dédié + `purge_outbox` |
+| D-CLOCK / A-NULL-CLOSEDAT | `closedAt` + skip null ; `expiration <= now` |
+| D-BOOTSTRAP | Pas de seed ; GET 404 ; job no-op |
+| D-FORCE | Job ne traite que `CLOTURE` ; ARCHIVE métier sans outbox |
+| D-JOB-ACTOR | `system:retention-job` |
+| D-POLICY-CHANGE | Pas de cancel outbox ; recalcul seulement `CLOTURE` |
+| D-UI / D-UI-LOC | Bloc + champs types admin |
+| Non-goal purge physique | Aucun port S3/FS / delete |
 
 ## Data Models
 
@@ -59,10 +74,11 @@ public record TenantRetentionSettings(
 ) {}
 ```
 
+Table : PK `tenant_id` (singleton aligné `app.tenant.id`).
+
 ### Extension `DossierType`
 
 ```java
-// Ajouts immuables sur le record existant
 Integer retentionDays,     // null si INHERIT ou NEVER
 boolean retentionNever     // true ⇒ NEVER ; exclusif avec retentionDays != null
 ```
@@ -73,123 +89,155 @@ Validation create/update :
 - `retentionNever=false` et `retentionDays != null` ⇒ `retentionDays > 0`.
 - sinon ⇒ héritage.
 
+Migration (A-MIGRATE-TYPES) : `retention_never=false`, `retention_days=null`.
+
 ### Extension `Dossier`
 
 ```java
-Instant purgeEligibleAt  // nullable ; posé uniquement par le job rétention
+Instant purgeEligibleAt  // nullable ; posé uniquement par EvaluateDossierRetentionUseCase
 ```
 
-`closedAt` / `closedBy` : déjà posés à `CLOTURE` via `withStatus`.  
-**A-REOPEN :** pas de clear dans ce lot (pas de transition de réouverture).
+Méthode domaine dédiée (ex. `withRetentionArchive(updatedBy, at)`) :
+`assertCanTransition(CLOTURE→ARCHIVE)`, pose status ARCHIVE, `purgeEligibleAt=at`,
+`updatedBy`/`updatedAt` ; **ne** passe **pas** par `UpdateDossierStatusUseCase`
+(D-ARCHIVE-PATH).
 
 ### `PurgeOutboxRecord`
 
 ```java
 public record PurgeOutboxRecord(
     UUID id,
-    UUID dossierId,
+    UUID dossierId,        // UNIQUE
     String eventType,      // "DOSSIER_PURGE_REQUESTED"
-    String status,         // PENDING | … (§22 pourra étendre)
-    String payloadJson,    // dossierId, typeCode, purgeEligibleAt, tenantId
+    String status,         // PENDING (§22 pourra étendre)
+    String payloadJson,    // tenantId, dossierId, typeCode, purgeEligibleAt
     Instant createdAt
 ) {}
 ```
 
-Table Liquibase `purge_outbox` (schéma tenant). **Aucun relay** dans ce lot.
+Contrainte **UNIQUE(`dossier_id`)** (D-OUTBOX-UNIQ). Insert conflict → no-op
+idempotent. **Aucun relay** dans ce lot.
 
 ### Résolution politique
 
 ```java
 public final class RetentionPolicyResolver {
   public OptionalInt effectiveDays(DossierType type, TenantRetentionSettings settings);
-  // empty = NEVER (pas d'expiration)
-  // sinon jours > 0
+  // empty = NEVER
 }
 ```
 
-Expiration : `closedAt.plus(Period.ofDays(days)).isBefore(now)` (UTC).
+Candidat expiré (A-CLOCK) :  
+`!closedAt.plus(Period.ofDays(days)).isAfter(now)` ⇔ `expiration <= now` (UTC).
+
+### Sélection candidats (D-SCAN)
+
+Port sortant ex. :
+
+```java
+List<Dossier> findClosedForRetention(int limit);
+// status = CLOTURE AND closed_at IS NOT NULL
+// ORDER BY closed_at ASC, id ASC
+```
+
+Le use case charge settings (absent → no-op), types, résout politique en
+mémoire, ignore NEVER / non expirés / déjà traités, traite jusqu’à
+`batch-size` **archivages réussis** ou épuisement du batch lu (préciser en
+implémentation : compter les updates ou les lectures — **A-BATCH-COUNT** :
+compter les **lectures** du port `limit`, une passe).
+
+Index Liquibase : `(status, closed_at)`.
 
 ## API Design
 
-### Settings tenant — nouveau
+### Settings tenant
 
-| Méthode | Path | Auth | Body / réponse |
+| Méthode | Path | Auth | Comportement |
 |---|---|---|---|
-| `GET` | `/api/tenant/retention-settings` | `TENANT_ADMIN` | `{ defaultRetentionDays }` |
-| `PUT` | `/api/tenant/retention-settings` | `TENANT_ADMIN` | idem ; 400 si ≤ 0 |
-
-Bootstrap (**D-BOOTSTRAP**, figé Phase 2) : **pas de seed** Liquibase.
-`GET` → **404** tant qu’aucun `PUT` ; job **no-op** (warn) si settings
-absents.
+| `GET` | `/api/tenant/retention-settings` | `TENANT_ADMIN` | `{ defaultRetentionDays }` ou **404** |
+| `PUT` | `/api/tenant/retention-settings` | `TENANT_ADMIN` | upsert ; **400** si ≤ 0 |
 
 ### `DossierType` — étendu
 
-`CreateDossierTypeRequest` / `UpdateDossierTypeRequest` /
-`DossierTypeResponse` :
+`Create` / `Patch` / réponses : `retentionDays`, `retentionNever`.
 
-```json
-{
-  "retentionDays": 365,
-  "retentionNever": false
-}
-```
+- Patch : même sémantique null-means-keep que les autres champs ; pour forcer
+  héritage depuis un override : envoyer `retentionNever=false` et
+  `retentionDays=null` explicitement (**A-PATCH-INHERIT**).
+- **D-TYPE-VIS :** champs toujours sérialisés pour tout lecteur authentifié
+  des types.
 
-Héritage : omettre les deux ou `retentionDays: null`, `retentionNever: false`.
+### `DossierResponse`
 
-### Dossier response
-
-Ajouter `purgeEligibleAt` (nullable) sur `DossierResponse` pour transparence
-admin / debug ; pas d’UI supervision dans ce lot.
+**D-PURGE-FIELD :** `purgeEligibleAt` (nullable) toujours exposé aux lecteurs
+autorisés du dossier.
 
 ### Statut
 
-Transitions inchangées (`CLOTURE`→`ARCHIVE` seule sortie de `CLOTURE`).
-Le job utilise le même garde-fou de transition + pose `purgeEligibleAt` +
-outbox dans **une transaction**.
+Transitions inchangées. Archivage rétention = use case dédié + une
+**transaction** (dossier + outbox).
 
 ## Component Breakdown
 
 ### Backend (domaine)
 
-- `domain.dossier.model.TenantRetentionSettings`
-- `domain.dossier.model.RetentionPolicyResolver`
-- `domain.dossier.port.in.Get/UpsertTenantRetentionSettingsUseCase`
-- `domain.dossier.port.in.EvaluateDossierRetentionUseCase` (+ Impl)
-- `domain.dossier.port.out.TenantRetentionSettingsRepository`
-- `domain.dossier.port.out.PurgeOutboxRepository`
-- Extension `Dossier` / `DossierType` / use cases create-update type
+- `TenantRetentionSettings`, `RetentionPolicyResolver`, `PurgeOutboxRecord`
+- Ports in : Get/Upsert settings, `EvaluateDossierRetentionUseCase`
+- Ports out : settings repo, purge outbox, `findClosedForRetention`
+- Extension `Dossier` / `DossierType` + create/update type
 
 ### Backend (infra)
 
-- JPA entities + adapters + Liquibase (`tenant-migration`)
+- JPA + Liquibase `tenant-migration`
 - `TenantRetentionSettingsController`
-- Extension DTOs `DossierType*` / `DossierResponse`
-- `EvaluateDossierRetentionJob` (`@Scheduled` ou équivalent Boot)
-- Propriétés `app.retention.batch-size`, `app.retention.cron` (yaml)
+- DTOs étendus
+- `EvaluateDossierRetentionJob` :
+  - `app.retention.poll-delay` défaut **1h**
+  - `app.retention.batch-size` défaut **100**
+  (D-SCHED)
 
 ### Frontend
 
-- Types + client `retentionSettings.ts` / extension `dossierTypes.ts`
-- Vue admin : section « Rétention » (défaut tenant) + champs sur formulaire
-  type (`DossierTypesAdminView` ou sous-composant)
-- Vitest composants / clients ; Playwright admin
+- Client settings + extension `dossierTypes`
+- Bloc rétention + champs type sur `DossierTypesAdminView` (D-UI-LOC)
+- Vitest + Playwright
 
 ## Design Decisions
 
 | Id | Choix | Pourquoi |
 |---|---|---|
-| Outbox dédiée `purge_outbox` | Ne pas réutiliser `outbox_event` workflow | Payloads / cycle de vie distincts ; §22 clair |
-| Job applicatif | Pas Flowable | Pas un processus métier BPMN |
-| Settings en base | Pas seulement `application.yml` | UI `TENANT_ADMIN` (D-UI) |
-| `retentionNever` bool + `retentionDays` | Simple JSON API | Évite enum FE complexe |
-| ARCHIVE métier sans outbox | Respect D-FORCE | RGPD ≠ archivage process |
-| Pas de seed durée | Force décision admin | **D-BOOTSTRAP** (Phase 2) |
+| **D-SCAN** | Batch `CLOTURE` + resolve mémoire | Simple, correct V1 |
+| **D-OUTBOX-UNIQ** | UNIQUE(`dossier_id`) | Idempotence sous concurrence |
+| **D-ARCHIVE-PATH** | Use case dédié sans ACL | Pas de half-update via status UC |
+| **D-TYPE-VIS** | Champs type toujours visibles | Pas sensible ; API simple |
+| **D-SCHED** | `fixedDelay` 1h + batch 100 | Aligné relays outbox |
+| **D-PURGE-FIELD** | `purgeEligibleAt` toujours sur dossier | Observable sans écran file |
+| Outbox dédiée | ≠ `outbox_event` workflow | Cycle §22 distinct |
+| Settings en base | Pas yaml-only | UI admin |
+| Pas de seed | D-BOOTSTRAP | Config explicite |
 
 ## Non-Functional Requirements
 
-- Job : batch borné (`batch-size`), idempotent, pas de purge I/O objet.
-- Secrets : aucun dans outbox payload.
-- AuthZ : settings + mutation type = `TenantAdminGuard` / rôle existant.
-- SSRF N/A ; pas d’URL externes.
-- Perf : index utile `(status, closed_at)` pour le scan job (Liquibase).
-- Tests : Jacoco domaines touchés ; FE Vitest + Playwright obligatoires.
+- Job borné, idempotent, zéro I/O object store.
+- Payload outbox sans secrets.
+- AuthZ settings / mutation type : `TENANT_ADMIN` + `TenantAdminGuard`.
+- Index `(status, closed_at)`.
+- Tests : domaine + IT/MockMvc + Vitest + Playwright ; `./mvnw verify`.
+
+## Assumptions techniques Phase 3
+
+- **A-BATCH-COUNT :** une passe = jusqu’à `limit` dossiers **lus** ; les
+  non-candidats (NEVER, non expirés) consomment le budget de lecture.
+- **A-PATCH-INHERIT :** retour héritage via patch explicite
+  `retentionNever=false` + `retentionDays=null`.
+
+## Questions & Open Items
+
+### Clos Phase 3 (stakeholders)
+
+D-SCAN, D-OUTBOX-UNIQ, D-ARCHIVE-PATH, D-TYPE-VIS, D-SCHED, D-PURGE-FIELD —
+toutes **option A**.
+
+### Reporté
+
+- Consommation `purge_outbox` / port S3-FS → `purge-stockage` (§22).

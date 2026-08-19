@@ -7,6 +7,7 @@ created: 2026-08-19
 updated: 2026-08-19
 feature: retention-dossier-type
 phase1: 2026-08-19
+phase4_aligned: 2026-08-19
 ---
 
 # Testing Strategy — `retention-dossier-type`

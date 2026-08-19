@@ -72,6 +72,15 @@ class PurgeGraphPersistenceIT {
                 "user",
                 NOW,
                 null));
+        relationRepository.save(new DossierRelation(
+                UUID.randomUUID(),
+                other.id(),
+                dossier.id(),
+                TENANT,
+                RelationType.SUBSEQUENT,
+                "user",
+                NOW,
+                null));
         linkRepository.save(new DossierWorkflowLink(
                 UUID.randomUUID(),
                 dossier.id(),
@@ -105,6 +114,7 @@ class PurgeGraphPersistenceIT {
 
         assertThat(elementRepository.findByDossierIdOrderByAddedAtAsc(dossier.id())).isEmpty();
         assertThat(relationRepository.findByDossier(TENANT, dossier.id())).isEmpty();
+        assertThat(relationRepository.findByDossier(TENANT, other.id())).isEmpty();
         assertThat(linkRepository.findByDossierIdOrderBySequence(dossier.id())).isEmpty();
         assertThat(dossierRepository.findById(dossier.id())).isEmpty();
         assertThat(purgeOutboxRepository.list(PurgeOutboxStatus.COMPLETED, 50)).isNotEmpty();

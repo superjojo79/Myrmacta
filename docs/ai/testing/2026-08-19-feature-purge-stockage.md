@@ -2,20 +2,20 @@
 phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
-status: draft
+status: verified
 created: 2026-08-19
 updated: 2026-08-19
 feature: purge-stockage
 phase1: 2026-08-19
 phase5: 2026-08-19
+phase8: 2026-08-19
 todo_ref: TODO.md §22 · design Phase 3 reviewed
 ---
 
 # Testing Strategy — `purge-stockage`
 
 > Aligné design Phase 3. **Q10 = B** : E2E-PURGE-1..5 + suite existante.
-> Couverture Phase 5 cochée (preuve `verify` ci-dessous). Phase 8 non
-> encore exécutée.
+> Phase 8 exécutée (trous Phase 7 refermés + preuves `verify`).
 
 ## Test Coverage Goals
 
@@ -47,7 +47,8 @@ todo_ref: TODO.md §22 · design Phase 3 reviewed
 - [x] Liquibase si migration.
 - [x] GET dossier 404 après purge réussie.
 - [x] Enqueue CLOTURE/ARCHIVE → PENDING origin ADMIN ; ouvert → 4xx.
-- [x] GET `/api/purge-outbox` 200 admin / 403 autres.
+- [x] GET `/api/purge-outbox` 200 admin / 403 autres ; `counts.processing`.
+- [x] CSRF absent sur POST enqueue → 403.
 - [x] Non-régression `retention-dossier-type` (insert `PENDING`).
 
 ## End-to-End Tests
@@ -88,6 +89,47 @@ cd frontend && npm run test -- --pool=forks --maxWorkers=2
 cd frontend && CI=1 npm run test:e2e
 # 32 passed
 ```
+
+## Phase 8 — files & gaps closed
+
+Unitaires :
+
+- `src/test/java/com/flowforge/domain/dossier/usecase/ProcessPurgeOutboxUseCaseImplTest.java`
+  (happy path, skip RETENTION, ADMIN ignore clock, store fail, idempotence,
+  claim perdu, échec PG après store)
+- `src/test/java/com/flowforge/domain/dossier/usecase/EnqueueDossierPurgeUseCaseImplTest.java`
+  (CLOTURE, ARCHIVE, UNIQUE, ouvert, 404, non-admin)
+- `src/test/java/com/flowforge/domain/dossier/usecase/ListPurgeOutboxUseCaseImplTest.java`
+  (counts dont processing, clamp 200, 403)
+- `src/test/java/com/flowforge/infrastructure/storage/FilesystemStorageAdapterTest.java`
+- `src/test/java/com/flowforge/infrastructure/storage/S3StorageAdapterTest.java`
+- `src/test/java/com/flowforge/infrastructure/flowable/FlowableWorkflowEngineAdapterDeleteTest.java`
+- `src/test/java/com/flowforge/infrastructure/dossier/PurgeOutboxJobTest.java`
+
+IT / MockMvc :
+
+- `src/test/java/com/flowforge/infrastructure/web/dossier/PurgeOutboxApiTest.java`
+- `src/test/java/com/flowforge/infrastructure/persistence/dossier/PurgeGraphPersistenceIT.java`
+- `src/test/java/com/flowforge/infrastructure/persistence/dossier/RetentionSchemaIT.java`
+
+Frontend :
+
+- `frontend/src/api/purgeOutbox.spec.ts`
+- `frontend/src/views/admin/PurgeOutboxAdminView.spec.ts`
+- `frontend/src/components/dossier/DossierPurgeRequestButton.spec.ts`
+- `frontend/e2e/pilotage.spec.ts` (E2E-PURGE-1..5)
+
+## Phase 8 evidence (2026-08-19)
+
+Targeted (avant verify) :
+
+```text
+./mvnw -Dmaven.compiler.release=21 -Dskip.frontend=true \
+  -Dtest=ProcessPurgeOutboxUseCaseImplTest,ListPurgeOutboxUseCaseImplTest,EnqueueDossierPurgeUseCaseImplTest,PurgeGraphPersistenceIT,PurgeOutboxApiTest test
+# Tests run: 27, Failures: 0 — BUILD SUCCESS
+```
+
+Full gate : à renseigner après `./mvnw verify` + Vitest + Playwright de cette session.
 
 ## Manual Testing
 

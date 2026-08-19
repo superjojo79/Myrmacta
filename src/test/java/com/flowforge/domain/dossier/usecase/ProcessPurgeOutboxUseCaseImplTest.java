@@ -161,6 +161,42 @@ class ProcessPurgeOutboxUseCaseImplTest {
         verify(outbox, never()).findRetryable(anyInt());
     }
 
+    @Test
+    void processBatch_claimLost_skipsWithoutDeletes() {
+        UUID dossierId = UUID.randomUUID();
+        PurgeOutboxRecord record = pending(dossierId, PurgeOutboxOrigin.ADMIN, NOW);
+        when(outbox.findRetryable(10)).thenReturn(List.of(record));
+        when(outbox.claim(record.id())).thenReturn(false);
+
+        int processed = useCase.processBatch(NOW, 10);
+
+        assertThat(processed).isZero();
+        verify(storage, never()).delete(any(), any());
+        verify(outbox, never()).markCompleted(any());
+        verify(outbox, never()).markFailed(any(), any());
+    }
+
+    @Test
+    void processBatch_postgresFailureAfterStore_marksFailed() {
+        UUID dossierId = UUID.randomUUID();
+        PurgeOutboxRecord record = pending(dossierId, PurgeOutboxOrigin.ADMIN, NOW);
+        when(outbox.findRetryable(10)).thenReturn(List.of(record));
+        when(dossiers.findById(dossierId)).thenReturn(Optional.of(archived(dossierId)));
+        when(elements.findByDossierIdOrderByAddedAtAsc(dossierId))
+                .thenReturn(List.of(element(dossierId, TENANT + "/doc.pdf")));
+        org.mockito.Mockito.doThrow(new IllegalStateException("constraint"))
+                .when(elements)
+                .deleteAllByDossierId(dossierId);
+
+        int processed = useCase.processBatch(NOW, 10);
+
+        assertThat(processed).isEqualTo(1);
+        verify(storage).delete(TENANT, TENANT + "/doc.pdf");
+        verify(outbox).markFailed(eq(record.id()), eq("constraint"));
+        verify(dossiers, never()).deleteById(any());
+        verify(outbox, never()).markCompleted(any());
+    }
+
     private static PurgeOutboxRecord pending(UUID dossierId, PurgeOutboxOrigin origin, Instant eligibleAt) {
         return PurgeOutboxRecord.pending(
                 UUID.randomUUID(),

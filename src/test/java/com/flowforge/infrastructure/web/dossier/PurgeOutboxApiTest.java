@@ -1,5 +1,6 @@
 package com.flowforge.infrastructure.web.dossier;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oidcLogin;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -7,7 +8,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.flowforge.domain.dossier.port.in.ProcessPurgeOutboxUseCase;
 import com.flowforge.support.OidcClientTestConfiguration;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -35,6 +38,9 @@ class PurgeOutboxApiTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private ProcessPurgeOutboxUseCase processPurgeOutboxUseCase;
+
     @Test
     void getPurgeOutbox_nonAdmin_returns403() throws Exception {
         mockMvc.perform(get("/api/purge-outbox").with(user("mgr-purge", "DOSSIER_MANAGER")))
@@ -46,6 +52,7 @@ class PurgeOutboxApiTest {
         mockMvc.perform(get("/api/purge-outbox").with(user("admin-purge", "TENANT_ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.counts.pending").exists())
+                .andExpect(jsonPath("$.counts.processing").exists())
                 .andExpect(jsonPath("$.counts.failed").exists())
                 .andExpect(jsonPath("$.counts.completed").exists())
                 .andExpect(jsonPath("$.items").isArray());
@@ -95,6 +102,43 @@ class PurgeOutboxApiTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void enqueuePurge_withoutCsrf_returns403() throws Exception {
+        mockMvc.perform(post("/api/dossiers/{id}/purge-requests", UUID.randomUUID())
+                        .with(user("admin-csrf", "TENANT_ADMIN")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void enqueuePurge_archive_returns201() throws Exception {
+        String dossierId = createArchiveDossier();
+        mockMvc.perform(post("/api/dossiers/{id}/purge-requests", dossierId)
+                        .with(user("admin-enq-arch", "TENANT_ADMIN"))
+                        .with(csrf()))
+                .andExpect(status().isCreated());
+        mockMvc.perform(get("/api/purge-outbox")
+                        .param("status", "PENDING")
+                        .with(user("admin-enq-arch", "TENANT_ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[*].dossierId").value(org.hamcrest.Matchers.hasItem(dossierId)))
+                .andExpect(jsonPath("$.items[*].origin").value(org.hamcrest.Matchers.hasItem("ADMIN")));
+    }
+
+    @Test
+    void enqueueThenProcess_getDossierReturns404() throws Exception {
+        String dossierId = createClotureDossier();
+        mockMvc.perform(post("/api/dossiers/{id}/purge-requests", dossierId)
+                        .with(user("admin-purge-run", "TENANT_ADMIN"))
+                        .with(csrf()))
+                .andExpect(status().isCreated());
+
+        int processed = processPurgeOutboxUseCase.processBatch(Instant.now(), 2000);
+        assertThat(processed).isGreaterThanOrEqualTo(1);
+
+        mockMvc.perform(get("/api/dossiers/{id}", dossierId).with(user("admin-purge-run", "TENANT_ADMIN")))
+                .andExpect(status().isNotFound());
+    }
+
     private String createOpenDossier() throws Exception {
         String code = "PO" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         createTypeAndAcl(code, "mgr-open-purge");
@@ -125,6 +169,30 @@ class PurgeOutboxApiTest {
         String id = idFrom(created);
         jdbcTemplate.update("UPDATE dossier SET status = 'CLOTURE', closed_at = now(), closed_by = ? WHERE id = ?",
                 "mgr-cloture-purge",
+                UUID.fromString(id));
+        return id;
+    }
+
+    private String createArchiveDossier() throws Exception {
+        String code = "PA" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        createTypeAndAcl(code, "mgr-archive-purge");
+        MvcResult created = mockMvc.perform(post("/api/dossiers")
+                        .with(user("mgr-archive-purge"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"dossierTypeCode":"%s","label":"Archived purge","fields":{}}
+                                """.formatted(code)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String id = idFrom(created);
+        jdbcTemplate.update(
+                """
+                UPDATE dossier
+                   SET status = 'ARCHIVE', closed_at = now(), closed_by = ?, purge_eligible_at = now()
+                 WHERE id = ?
+                """,
+                "mgr-archive-purge",
                 UUID.fromString(id));
         return id;
     }

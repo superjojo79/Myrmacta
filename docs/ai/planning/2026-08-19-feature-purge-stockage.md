@@ -11,6 +11,8 @@ phase1: 2026-08-19
 phase4: 2026-08-19
 phase5: 2026-08-19
 phase6: 2026-08-19
+phase7: 2026-08-19
+phase8: 2026-08-19
 design_aligned: 2026-08-19
 requirements_ref: docs/ai/requirements/2026-08-19-feature-purge-stockage.md
 design_ref: docs/ai/design/2026-08-19-feature-purge-stockage.md
@@ -161,5 +163,5 @@ T1∥T4∥T6∥T7 → T5 → T8/T9 → T10/T11 → T12–T14 → T15.
 
 ## Progress (Phase 6)
 
-Toutes les tâches T1–T15 **done**. Suite cycle : Phase 7 (check
-implementation) puis Phase 8 / 9.
+Toutes les tâches T1–T15 **done**. Phase 7 alignée design ; Phase 8 tests
+de couverture ajoutés. Suite cycle : Phase 9 (revue).

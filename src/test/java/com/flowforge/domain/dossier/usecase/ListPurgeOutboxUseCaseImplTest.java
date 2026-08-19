@@ -3,6 +3,7 @@ package com.flowforge.domain.dossier.usecase;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -52,8 +53,22 @@ class ListPurgeOutboxUseCaseImplTest {
 
         assertThat(page.items()).containsExactly(item);
         assertThat(page.counts().pending()).isEqualTo(1);
+        assertThat(page.counts().processing()).isEqualTo(0);
         assertThat(page.counts().failed()).isEqualTo(2);
         assertThat(page.counts().completed()).isEqualTo(3);
+    }
+
+    @Test
+    void list_clampsLimitTo200() {
+        when(repository.list(null, 200)).thenReturn(List.of());
+        when(repository.countByStatus(PurgeOutboxStatus.PENDING)).thenReturn(0L);
+        when(repository.countByStatus(PurgeOutboxStatus.PROCESSING)).thenReturn(0L);
+        when(repository.countByStatus(PurgeOutboxStatus.FAILED)).thenReturn(0L);
+        when(repository.countByStatus(PurgeOutboxStatus.COMPLETED)).thenReturn(0L);
+
+        useCase.list(AccessContext.user("admin", Set.of("TENANT_ADMIN")), null, 999);
+
+        verify(repository).list(null, 200);
     }
 
     @Test

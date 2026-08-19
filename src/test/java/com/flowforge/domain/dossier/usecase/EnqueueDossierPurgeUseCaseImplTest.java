@@ -62,6 +62,21 @@ class EnqueueDossierPurgeUseCaseImplTest {
     }
 
     @Test
+    void enqueue_archive_insertsAdminPending() {
+        UUID id = UUID.randomUUID();
+        when(dossiers.findById(id)).thenReturn(Optional.of(dossier(id, DossierStatus.ARCHIVE)));
+        when(outbox.existsByDossierId(id)).thenReturn(false);
+
+        EnqueueDossierPurgeUseCase.Result result =
+                useCase.enqueue(id, AccessContext.user("admin", Set.of("TENANT_ADMIN")));
+
+        assertThat(result).isEqualTo(EnqueueDossierPurgeUseCase.Result.CREATED);
+        ArgumentCaptor<PurgeOutboxRecord> captor = ArgumentCaptor.forClass(PurgeOutboxRecord.class);
+        verify(outbox).insert(captor.capture());
+        assertThat(captor.getValue().origin()).isEqualTo(PurgeOutboxOrigin.ADMIN);
+    }
+
+    @Test
     void enqueue_alreadyPresent_isIdempotent() {
         UUID id = UUID.randomUUID();
         when(dossiers.findById(id)).thenReturn(Optional.of(dossier(id, DossierStatus.ARCHIVE)));

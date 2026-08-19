@@ -30,6 +30,7 @@ describe('PurgeOutboxAdminView', () => {
     expect(wrapper.text()).toContain('File de purge')
     expect(wrapper.text()).toContain('FAILED : 1')
     expect(wrapper.text()).toContain('COMPLETED : 4')
+    expect(wrapper.text()).toContain('PROCESSING : 0')
     expect(wrapper.text()).toContain('d1')
     expect(wrapper.text()).toContain('S3 down')
     expect(wrapper.text()).not.toContain('Forcer')

@@ -868,6 +868,7 @@ test('E2E-PURGE-1 admin sees purge queue counts and list', async ({ page }) => {
   await page.getByRole('link', { name: 'File purge' }).click()
   await expect(page.getByRole('heading', { name: 'File de purge' })).toBeVisible()
   await expect(page.getByTestId('purge-outbox-counts')).toContainText('FAILED : 1')
+  await expect(page.getByTestId('purge-outbox-counts')).toContainText('PROCESSING : 0')
   await expect(page.getByTestId('purge-outbox-queue')).toContainText('S3 timeout')
 })
 

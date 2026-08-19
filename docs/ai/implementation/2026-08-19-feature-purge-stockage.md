@@ -8,6 +8,8 @@ updated: 2026-08-19
 feature: purge-stockage
 phase1: 2026-08-19
 phase5: 2026-08-19
+phase7: 2026-08-19
+phase8: 2026-08-19
 planning_ref: docs/ai/planning/2026-08-19-feature-purge-stockage.md
 design_ref: docs/ai/design/2026-08-19-feature-purge-stockage.md
 ---
@@ -82,44 +84,67 @@ design_ref: docs/ai/design/2026-08-19-feature-purge-stockage.md
 - Playwright E2E-PURGE-1..5 dans `frontend/e2e/pilotage.spec.ts`.
 - Route `/admin/workflow-types` conservée.
 
-## Design deviations
+## Phase 7 remediations (2026-08-19)
+
+Revue fichier-par-fichier vs design reviewed. Pas de trou logique bloquant.
+Tests manquants (overclaim Phase 5) ajoutés en Phase 8 :
+
+| Gap | Fix |
+|---|---|
+| GET dossier 404 après purge | `PurgeOutboxApiTest.enqueueThenProcess_getDossierReturns404` |
+| Relation **cible** | `PurgeGraphPersistenceIT` : relation inverse `other → dossier` |
+| Enqueue `ARCHIVE` HTTP | `enqueuePurge_archive_returns201` + unit `enqueue_archive_*` |
+| CSRF POST | `enqueuePurge_withoutCsrf_returns403` |
+| `counts.processing` | assertion MockMvc + Vitest + E2E-PURGE-1 |
+| Claim perdu / échec PG après store | unit `ProcessPurgeOutboxUseCaseImplTest` |
+| Limite liste 200 | `ListPurgeOutboxUseCaseImplTest.list_clampsLimitTo200` |
+
+## Design deviations (residual)
 
 | Id | Severity | Note |
 |---|---|---|
 | HTTP idempotent | info | Design 204 **ou** 200 ; livré **200** si UNIQUE déjà présent. |
-| PROCESSING crash | low | Claim sans recovery V1 : une ligne peut rester `PROCESSING` après crash JVM. Accepté (hors design recovery). |
-| Enqueue UI | info | Bouton sur le **détail dossier**, pas sur la page file (Q6 lecture seule). |
-| CHECK status | info | `status` reste `varchar(32)` sans CHECK DB (010) ; élargissement applicatif seulement. |
+| PROCESSING crash | low | Claim sans recovery V1 : une ligne peut rester `PROCESSING` après crash JVM. Accepté. |
+| Enqueue UI | info | Bouton sur le **détail dossier**, pas sur la page file (Q6 lecture seule ; A-ENQUEUE-UI). |
+| CHECK status | info | `status` reste `varchar(32)` sans CHECK DB (010) ; élargissement applicatif seulement. Design mentionnait « CHECK/enum élargi ». |
+| Controllers | info | Design « 2 controllers » ; livré **1** `PurgeOutboxController` (GET + POST). |
+| Logs NFR | low | Job logue le **compte** traité, pas `outboxId`/`dossierId` par ligne. Pas de dump `storageRef`. Accepté V1 (`observabilite` §29). |
 
-## Alignment (Phase 5)
+## Phase 7 alignment (2026-08-19)
 
-Verdict : **couvre Q1–Q11 / D-\*** du design reviewed.
+Verdict : **implementation covers all Q1–Q11 / D-\*** ; remediations = tests, pas de changement produit.
 
-- ALIGNED : D-MECH, D-PORT, D-ORDER, D-SCOPE-PG, D-WF, D-UI, D-ENQUEUE-HTTP,
-  D-STATUS, D-ORIGIN, D-CLAIM, D-RETRY, D-KEEP-OUTBOX, D-ERROR-COL, D-SCHED,
-  D-LIST, D-UI-LOC, D-ELIGIBLE-GUARD.
-- Sécurité : `@PreAuthorize TENANT_ADMIN` + `TenantAdminGuard` ; CSRF BFF.
-- Hexagone : domaine pur ; adapters infra ; ArchUnit CI.
+| Décision | Statut |
+|---|---|
+| Q1 D-MECH job outbox | OK — `PurgeOutboxJob` → `processBatch` |
+| Q2 D-PORT `delete` S3+FS | OK — missing = succès ; jamais MinIO |
+| Q3 D-ORDER store → PG | OK — store fail → pas de deletes PG |
+| Q4 D-SCOPE-PG graphe | OK — éléments, relations src\|tgt, links, dossier |
+| Q5 D-WF best-effort | OK — adapter Flowable ; links toujours supprimés |
+| Q6 D-UI lecture | OK — pas de force/retry ; enqueue hors file |
+| Q7 POST enqueue | OK — pas de purge dans le thread HTTP |
+| Q8 runbook tenant | OK — pas d’API destroy ; doc deployment |
+| Q9 pas de GC orphelins | OK |
+| Q10 E2E-PURGE-1..5 | OK |
+| Q11 CLOTURE/ARCHIVE + ADMIN ignore horloge | OK |
+| D-STATUS / D-ORIGIN / D-CLAIM / D-RETRY | OK |
+| D-KEEP-OUTBOX / D-ERROR-COL / D-SCHED | OK |
+| D-ELIGIBLE-GUARD skip RETENTION only | OK — skip **avant** claim |
+| Hexagone | OK — domaine sans Spring ; beans `DossierConfig` |
 
-## Evidence (Phase 5, 2026-08-19)
+Sécurité : `@PreAuthorize("hasRole('TENANT_ADMIN')")` + `TenantAdminGuard` ;
+CSRF BFF sur POST ; `storageRef` validé (tenant / `..`) ; liste bornée 200 ;
+`last_error` trunc 1024. Pas d’IDOR cross-tenant (schéma instance).
 
-```text
-./mvnw verify -Dmaven.compiler.release=21
-# BUILD SUCCESS — Tests run: 832, Failures: 0
-# jacoco: All coverage checks have been met.
+## Evidence
 
-cd frontend && npm run test -- --pool=forks --maxWorkers=2
-# Test Files  40 passed | Tests  120 passed
+- Phase 5 : `./mvnw verify -Dmaven.compiler.release=21` SUCCESS — **832** tests.
+- Phase 7/8 targeted : `ProcessPurgeOutboxUseCaseImplTest`,
+  `ListPurgeOutboxUseCaseImplTest`, `EnqueueDossierPurgeUseCaseImplTest`,
+  `PurgeGraphPersistenceIT`, `PurgeOutboxApiTest` → **27** tests, 0 failures.
 
-cd frontend && CI=1 npm run test:e2e
-# 32 passed (E2E-PURGE-1..5 + suite existante dont E2E-RET-*)
-```
+## Follow-ups (hors Phase 7–8)
 
-IT ciblés (H2 index + API) : `RetentionSchemaIT`, `RetentionPersistenceIT`,
-`PurgeGraphPersistenceIT`, `PurgeOutboxApiTest` → 15 tests, 0 failures.
-
-## Follow-ups (hors Phase 5)
-
-- Phase 7 check implementation / Phase 8 testing / Phase 9 review.
-- Recovery `PROCESSING` coincé ; GC orphelins store (Q9 = non) ;
-  backoff `nextAttemptAt`.
+- Phase 9 review.
+- Recovery `PROCESSING` coincé ; backoff `nextAttemptAt` ; logs par `outboxId`
+  (§29).

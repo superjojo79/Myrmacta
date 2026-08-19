@@ -122,7 +122,7 @@ Ordre indicatif aligné sur l’analyse et les dépendances techniques :
 | — | `preview-documents` | **Complete** (`cursor/preview-documents-dbc9`) — lot D-PREVIEW livré : HTML temps réel + PDF inline, admin templates, D-AUTHZ B, D-RATE-SPLIT C. |
 | — | `edition-champs-dossier` | **Complete** (PR #53) — UI `PATCH /api/dossiers/{id}/fields` sur le détail (D-DIFF, D-DEFAULTS). |
 | — | `retention-dossier-type` | **Complete** (PR #55) — settings tenant + override type ; job ARCHIVE + `purge_outbox` ; UI admin. |
-| — | `purge-stockage` | **Complete** Phase 5 (PR #56) — job `purge_outbox` store+PG ; `DocumentStoragePort.delete` ; UI file lecture + enqueue admin. |
+| — | `purge-stockage` | **Complete** Phase 9 READY (PR #56) — job `purge_outbox` store+PG ; `DocumentStoragePort.delete` ; UI file lecture + enqueue admin. |
 
 ---
 

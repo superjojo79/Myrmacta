@@ -7,14 +7,14 @@ created: 2026-08-19
 updated: 2026-08-19
 feature: openapi-pagination-admin
 phase1: 2026-08-19
+phase2_sync: 2026-08-19
 stakeholder_decisions: 2026-08-19
 ---
 
 # Project Planning & Task Breakdown — `openapi-pagination-admin`
 
-> Découpage initial Phase 1 (sera figé en Phase 4 après revue
-> requirements/design). TDD : test rouge → code → preuve `verify` / Vitest /
-> Playwright.
+> Découpage initial (Phase 1+2). Figé en Phase 4 après revue design.
+> TDD : test rouge → code → preuve `verify` / Vitest / Playwright.
 
 ## Milestones
 
@@ -41,7 +41,8 @@ stakeholder_decisions: 2026-08-19
 
 ### T4 — Paginer `GET /api/dossier-types`
 - **Outcome :** use case + adapter SQL `code ASC` ; MockMvc envelope ;
-  FE client + vue + E2E mock.
+  FE client paginé + vue admin + E2E mock ; `CreateDossierView` /
+  `SupervisionView` via `listAllPages` (D-CATALOG).
 - **Deps :** T2, T3.
 
 ### T5 — Paginer `GET /api/document-templates`
@@ -54,8 +55,13 @@ stakeholder_decisions: 2026-08-19
 - **Deps :** T2, T3.
 
 ### T7 — Paginer `GET /api/workflow-type-configs`
-- **Outcome :** `workflowKey ASC` ; FE configs.
+- **Outcome :** `workflowKey ASC` ; FE admin + `StartWorkflowDialog`
+  via `listAllPages`.
 - **Deps :** T2, T3.
+
+### T7b — Helper FE `listAllPages`
+- **Outcome :** utilitaire testé (Vitest) ; `size=100` ; stop si page vide.
+- **Deps :** type `Page<T>` (avec T4/T7 clients).
 
 ### T8 — Paginer `GET /api/notification-webhooks`
 - **Outcome :** `name ASC` ; masque secret ; API seulement d’abord.
@@ -99,9 +105,10 @@ stakeholder_decisions: 2026-08-19
 
 ```text
 T1 → T2 → T3 → T4..T9 (parallélisables)
+T4 / T7 → T7b → CreateDossier / Supervision / StartWorkflow
 T4..T9 → T10 → T11
 T4..T9 → T12 → T13
-T10, T11 → T14 → T15
+T10, T11, T7b → T14 → T15
 ```
 
 ## Timeline & Estimates

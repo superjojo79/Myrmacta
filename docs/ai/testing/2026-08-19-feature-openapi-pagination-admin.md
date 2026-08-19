@@ -9,6 +9,7 @@ feature: openapi-pagination-admin
 design_aligned: 2026-08-19
 stakeholder_decisions: 2026-08-19
 phase1: 2026-08-19
+phase2_sync: 2026-08-19
 ---
 
 # Testing Strategy — `openapi-pagination-admin`
@@ -61,6 +62,10 @@ phase1: 2026-08-19
 - [ ] Purge : plus de `limit` ; lit `content` + `counts`
 - [ ] Client webhooks : list envelope, create, toggle, delete ; secret
       jamais relu depuis GET
+- [ ] `listAllPages` : 2 pages `size=100` → tableau concaténé = `totalElements`
+- [ ] `listAllPages` : page vide avant la fin → stop sans boucle infinie
+- [ ] `CreateDossierView` / `SupervisionView` / `StartWorkflowDialog` utilisent
+      le helper (pas seulement `content` de la page 0)
 
 ### Vues admin
 - [ ] Pager Précédent/Suivant désactivé aux bornes

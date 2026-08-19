@@ -9,6 +9,7 @@ feature: openapi-pagination-admin
 requirements_aligned: 2026-08-19
 stakeholder_decisions: 2026-08-19
 phase1: 2026-08-19
+phase2_sync: 2026-08-19
 ---
 
 # System Design & Architecture — `openapi-pagination-admin`
@@ -211,8 +212,12 @@ CRUD hors liste : inchangé (POST/PATCH/DELETE webhooks déjà là).
   aligné).
 - Clients : `dossierTypes.ts`, `admin.ts`, `workflows.ts`, `purgeOutbox.ts`,
   nouveau `notificationWebhooks.ts`.
+- Helper **`listAllPages`** (**D-CATALOG = B**) : `size=100`, concatène
+  `content` jusqu’à `totalElements`. Utilisé par `CreateDossierView`,
+  `SupervisionView` (filtre type), `StartWorkflowDialog`. Les vues **admin**
+  n’utilisent **pas** ce helper (une page + pager).
 - Composant pager réutilisable (Précédent / Suivant / « Page x / y (n) »)
-  + `useAdminListQuery` (hydratation `page`/`size`/filtres depuis la route).
+  + `useAdminListQuery` (hydratation `page` / `size` optionnel depuis la route).
 - Vues : `DossierTypesAdminView`, `TemplatesAdminView`, `ConnectorsAdminView`,
   `WorkflowConfigsAdminView`, `PurgeOutboxAdminView` + **nouvelle**
   `NotificationWebhooksAdminView`.
@@ -248,6 +253,7 @@ CRUD hors liste : inchangé (POST/PATCH/DELETE webhooks déjà là).
 | D-SECRETS | Spec | writeOnly + masque actuel | Strip GET secrets |
 | D-FILTERS | Filtres | Existants seulement | `q=` / `enabled` |
 | D-OPENAPI-DEFAULT | Flag | `app.openapi.enabled=false` | Profil `dev` implicite |
+| D-CATALOG | Dropdowns | Concaténer les pages (`size=100` / round-trip) | `size=100` unique / `?all=` |
 
 **Pagination SQL vs mémoire :** SQL `LIMIT/OFFSET` partout pour un contrat
 uniforme (templates / purge peuvent croître). Catalogues petits : coût négligeable.

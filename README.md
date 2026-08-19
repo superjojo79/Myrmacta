@@ -2,6 +2,9 @@
 > Plateforme de gestion de flux métier, de dossiers et de génération de documents.
 >  Solution SaaS multi-tenant, extensible par design.
 
+> **Démarrage local :** voir [GETTING-STARTED.md](GETTING-STARTED.md) — infrastructure Docker/Podman
+> (PostgreSQL, Keycloak, stockage S3-compatible en option) + lancement backend/frontend, config minimale incluse.
+
 ------
 
 ## Vision produit
@@ -164,6 +167,8 @@ charge le justifie.
 ------
 
 ## Documentation technique
+
+Mise en place et utilisation en local : [GETTING-STARTED.md](GETTING-STARTED.md).
 
 La documentation d'architecture est disponible dans le répertoire `analysis doc` :
 

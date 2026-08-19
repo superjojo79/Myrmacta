@@ -1,0 +1,134 @@
+# Infrastructure locale minimale pour FlowForge : PostgreSQL + Keycloak (toujours démarrés)
+# et un backend de stockage objet compatible S3, au choix via profil Compose.
+#
+# Compatible `docker compose` et `podman compose` (ou `podman-compose`) sans modification —
+# voir GETTING-STARTED.md pour le choix du runtime conteneur selon l'OS.
+#
+# Démarrage minimal (stockage filesystem, aucun conteneur objet requis) :
+#   docker compose up -d
+#
+# Avec stockage S3-compatible (un seul profil à la fois) :
+#   docker compose --profile minio     up -d
+#   docker compose --profile rustfs    up -d
+#   docker compose --profile seaweedfs up -d
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME:-flowforge}
+      POSTGRES_USER: ${DB_USERNAME:-flowforge}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-flowforge}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-flowforge}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.1
+    command: start-dev --import-realm
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+    ports:
+      - "${KEYCLOAK_PORT:-8081}:8080"
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+      - ./docker/keycloak/import:/opt/keycloak/data/import:ro
+
+  # --- Stockage objet compatible S3 — un seul backend à la fois, activé par profil ---
+
+  minio:
+    image: minio/minio:latest
+    profiles: ["minio"]
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-flowforge}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-flowforge123}
+    ports:
+      - "9000:9000"   # API S3
+      - "9001:9001"   # Console web
+    volumes:
+      - minio_data:/data
+
+  minio-init:
+    image: minio/mc:latest
+    profiles: ["minio"]
+    depends_on: [minio]
+    environment:
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-flowforge}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-flowforge123}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME:-flowforge-documents}
+    entrypoint: >
+      sh -c "
+      until mc alias set local http://minio:9000 \"$$S3_ACCESS_KEY\" \"$$S3_SECRET_KEY\"; do sleep 1; done;
+      mc mb --ignore-existing local/$$S3_BUCKET_NAME
+      "
+
+  rustfs:
+    image: rustfs/rustfs:latest
+    profiles: ["rustfs"]
+    environment:
+      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY:-flowforge}
+      RUSTFS_SECRET_KEY: ${S3_SECRET_KEY:-flowforge123}
+      RUSTFS_ADDRESS: "0.0.0.0:9000"
+      RUSTFS_CONSOLE_ADDRESS: "0.0.0.0:9001"
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_VOLUMES: /data/rustfs0
+    ports:
+      - "9000:9000"   # API S3
+      - "9001:9001"   # Console web
+    volumes:
+      - rustfs_data:/data
+
+  rustfs-init:
+    image: minio/mc:latest
+    profiles: ["rustfs"]
+    depends_on: [rustfs]
+    environment:
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-flowforge}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-flowforge123}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME:-flowforge-documents}
+    entrypoint: >
+      sh -c "
+      until mc alias set local http://rustfs:9000 \"$$S3_ACCESS_KEY\" \"$$S3_SECRET_KEY\"; do sleep 1; done;
+      mc mb --ignore-existing local/$$S3_BUCKET_NAME
+      "
+
+  seaweedfs:
+    image: chrislusf/seaweedfs:latest
+    profiles: ["seaweedfs"]
+    # `server -s3` démarre master + volume + filer + s3 dans un seul processus — suffisant
+    # pour du dev local. Seul le port S3 (8333) doit être publié vers l'hôte.
+    command: server -dir=/data -s3 -ip.bind=0.0.0.0
+    ports:
+      - "8333:8333"   # API S3
+    volumes:
+      - seaweedfs_data:/data
+
+  seaweedfs-init:
+    image: minio/mc:latest
+    profiles: ["seaweedfs"]
+    depends_on: [seaweedfs]
+    environment:
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME:-flowforge-documents}
+    # SeaweedFS n'a pas de notion de clé d'accès par défaut en mode dev local (auth désactivée) —
+    # `mc alias set` accepte des identifiants factices tant que le serveur n'exige pas d'IAM.
+    entrypoint: >
+      sh -c "
+      until mc alias set local http://seaweedfs:8333 any any; do sleep 1; done;
+      mc mb --ignore-existing local/$$S3_BUCKET_NAME
+      "
+
+volumes:
+  pg_data:
+  keycloak_data:
+  minio_data:
+  rustfs_data:
+  seaweedfs_data:

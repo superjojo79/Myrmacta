@@ -1,0 +1,46 @@
+{
+  "realm": "flowforge",
+  "enabled": true,
+  "sslRequired": "none",
+  "clients": [
+    {
+      "clientId": "mon-app",
+      "name": "FlowForge BFF (dev local)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "dev-secret-change-me",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["http://localhost:8080/*"],
+      "webOrigins": ["http://localhost:8080"],
+      "attributes": {
+        "post.logout.redirect.uris": "http://localhost:8080/*"
+      }
+    }
+  ],
+  "roles": {
+    "realm": [
+      { "name": "TENANT_ADMIN" },
+      { "name": "WORKFLOW_ADMIN" },
+      { "name": "DOSSIER_MANAGER" },
+      { "name": "DOSSIER_VIEWER" }
+    ]
+  },
+  "users": [
+    {
+      "username": "demo",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Demo",
+      "lastName": "User",
+      "email": "demo@flowforge.local",
+      "credentials": [
+        { "type": "password", "value": "demo", "temporary": false }
+      ],
+      "realmRoles": ["TENANT_ADMIN", "WORKFLOW_ADMIN"]
+    }
+  ]
+}

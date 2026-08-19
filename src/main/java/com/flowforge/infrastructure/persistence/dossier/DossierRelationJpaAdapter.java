@@ -45,4 +45,10 @@ public class DossierRelationJpaAdapter implements DossierRelationRepository {
                 .findByTenantIdAndSourceDossierIdAndIdempotencyKey(tenantId, sourceDossierId, idempotencyKey)
                 .map(DossierRelationJpaEntity::toDomain);
     }
+
+    @Override
+    @Transactional
+    public void deleteRelationsTouching(UUID dossierId) {
+        repository.deleteTouching(dossierId);
+    }
 }

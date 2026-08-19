@@ -1,13 +1,20 @@
 package com.flowforge.infrastructure.persistence.dossier;
 
 import com.flowforge.domain.dossier.model.PurgeOutboxRecord;
+import com.flowforge.domain.dossier.model.PurgeOutboxStatus;
 import com.flowforge.domain.dossier.port.out.PurgeOutboxRepository;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
 public class JpaPurgeOutboxRepositoryAdapter implements PurgeOutboxRepository {
+
+    private static final Set<PurgeOutboxStatus> RETRYABLE =
+            Set.of(PurgeOutboxStatus.PENDING, PurgeOutboxStatus.FAILED);
 
     private final SpringDataPurgeOutboxRepository repository;
 
@@ -18,11 +25,6 @@ public class JpaPurgeOutboxRepositoryAdapter implements PurgeOutboxRepository {
     @Override
     @Transactional
     public void insert(PurgeOutboxRecord record) {
-        // D-OUTBOX-UNIQ: rely on UNIQUE(dossier_id) + exists check in the use case.
-        // Do not catch DataIntegrityViolationException inside a joining TX — on PostgreSQL that
-        // marks the session aborted and would poison the outer retention batch (Phase 7).
-        // A rare concurrent conflict rolls back the whole unit (dossier+outbox); the next job
-        // run retries safely.
         if (repository.existsByDossierId(record.dossierId())) {
             return;
         }
@@ -33,5 +35,53 @@ public class JpaPurgeOutboxRepositoryAdapter implements PurgeOutboxRepository {
     @Transactional(readOnly = true)
     public boolean existsByDossierId(UUID dossierId) {
         return repository.existsByDossierId(dossierId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PurgeOutboxRecord> findRetryable(int limit) {
+        return repository
+                .findByStatusInOrderByCreatedAtAsc(RETRYABLE, PageRequest.of(0, Math.max(limit, 1)))
+                .stream()
+                .map(PurgeOutboxJpaEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public boolean claim(UUID id) {
+        return repository.claim(id, PurgeOutboxStatus.PROCESSING, RETRYABLE) == 1;
+    }
+
+    @Override
+    @Transactional
+    public void markCompleted(UUID id) {
+        repository.markCompleted(id, PurgeOutboxStatus.COMPLETED);
+    }
+
+    @Override
+    @Transactional
+    public void markFailed(UUID id, String error) {
+        String trimmed = error == null ? "purge failed" : error;
+        if (trimmed.length() > 1024) {
+            trimmed = trimmed.substring(0, 1024);
+        }
+        repository.markFailed(id, PurgeOutboxStatus.FAILED, trimmed);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PurgeOutboxRecord> list(PurgeOutboxStatus statusFilter, int limit) {
+        var page = PageRequest.of(0, Math.max(limit, 1));
+        List<PurgeOutboxJpaEntity> rows = statusFilter == null
+                ? repository.findAllByOrderByCreatedAtAsc(page)
+                : repository.findByStatusOrderByCreatedAtAsc(statusFilter, page);
+        return rows.stream().map(PurgeOutboxJpaEntity::toDomain).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countByStatus(PurgeOutboxStatus status) {
+        return repository.countByStatus(status);
     }
 }

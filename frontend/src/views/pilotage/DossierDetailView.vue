@@ -16,6 +16,7 @@ import BpmnViewer from '@/components/workflow/BpmnViewer.vue'
 import TaskList from '@/components/workflow/TaskList.vue'
 import HistoryTimeline from '@/components/workflow/HistoryTimeline.vue'
 import StartWorkflowDialog from '@/components/workflow/StartWorkflowDialog.vue'
+import DossierPurgeRequestButton from '@/components/dossier/DossierPurgeRequestButton.vue'
 
 const route = useRoute()
 const store = useDossierStore()
@@ -168,6 +169,7 @@ async function confirmReassign() {
         <StatusSelect v-model="statusDraft" />
         <button type="button" @click="saveStatus">Enregistrer statut</button>
         <button type="button" class="primary" @click="startOpen = true">Démarrer workflow</button>
+        <DossierPurgeRequestButton v-if="isTenantAdmin" :dossier-id="dossier.id" />
       </div>
     </header>
     <p v-if="actionError" class="error">{{ actionError }}</p>

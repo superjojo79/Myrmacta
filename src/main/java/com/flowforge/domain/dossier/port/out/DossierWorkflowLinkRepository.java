@@ -23,4 +23,6 @@ public interface DossierWorkflowLinkRepository {
     int nextSequence(UUID dossierId);
 
     List<DossierWorkflowLink> findOrphanReserved(Instant olderThan);
+
+    void deleteAllByDossierId(UUID dossierId);
 }

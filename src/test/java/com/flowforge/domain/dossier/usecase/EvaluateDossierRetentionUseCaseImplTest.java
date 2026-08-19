@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierStatus;
 import com.flowforge.domain.dossier.model.DossierType;
+import com.flowforge.domain.dossier.model.PurgeOutboxOrigin;
 import com.flowforge.domain.dossier.model.PurgeOutboxRecord;
 import com.flowforge.domain.dossier.model.RetentionActors;
 import com.flowforge.domain.dossier.model.RetentionPolicyResolver;
@@ -94,6 +95,7 @@ class EvaluateDossierRetentionUseCaseImplTest {
         verify(purgeOutboxRepository).insert(outboxCaptor.capture());
         assertThat(outboxCaptor.getValue().dossierId()).isEqualTo(expired.id());
         assertThat(outboxCaptor.getValue().eventType()).isEqualTo("DOSSIER_PURGE_REQUESTED");
+        assertThat(outboxCaptor.getValue().origin()).isEqualTo(PurgeOutboxOrigin.RETENTION);
     }
 
     @Test

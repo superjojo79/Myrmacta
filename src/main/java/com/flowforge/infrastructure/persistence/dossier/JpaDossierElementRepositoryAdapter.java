@@ -36,4 +36,10 @@ public class JpaDossierElementRepositoryAdapter implements DossierElementReposit
                 .map(DossierElementJpaEntity::toDomain)
                 .toList();
     }
+
+    @Override
+    @Transactional
+    public void deleteAllByDossierId(UUID dossierId) {
+        repository.deleteByDossierId(dossierId);
+    }
 }

@@ -1,5 +1,6 @@
 package com.flowforge.infrastructure.persistence.dossier;
 
+import com.flowforge.domain.dossier.model.PurgeOutboxOrigin;
 import com.flowforge.domain.dossier.model.PurgeOutboxRecord;
 import com.flowforge.domain.dossier.model.PurgeOutboxStatus;
 import jakarta.persistence.Column;
@@ -36,12 +37,19 @@ class PurgeOutboxJpaEntity {
     @Column(nullable = false, length = 32)
     private PurgeOutboxStatus status;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32)
+    private PurgeOutboxOrigin origin;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "payload_json", nullable = false, columnDefinition = "json")
     private String payloadJson;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
+
+    @Column(name = "last_error", length = 1024)
+    private String lastError;
 
     protected PurgeOutboxJpaEntity() {
         // JPA
@@ -52,14 +60,18 @@ class PurgeOutboxJpaEntity {
             UUID dossierId,
             String eventType,
             PurgeOutboxStatus status,
+            PurgeOutboxOrigin origin,
             String payloadJson,
-            Instant createdAt) {
+            Instant createdAt,
+            String lastError) {
         this.id = id;
         this.dossierId = dossierId;
         this.eventType = eventType;
         this.status = status;
+        this.origin = origin;
         this.payloadJson = payloadJson;
         this.createdAt = createdAt;
+        this.lastError = lastError;
     }
 
     static PurgeOutboxJpaEntity fromDomain(PurgeOutboxRecord record) {
@@ -68,11 +80,14 @@ class PurgeOutboxJpaEntity {
                 record.dossierId(),
                 record.eventType(),
                 record.status(),
+                record.origin(),
                 record.payloadJson(),
-                record.createdAt());
+                record.createdAt(),
+                record.lastError());
     }
 
     PurgeOutboxRecord toDomain() {
-        return new PurgeOutboxRecord(id, dossierId, eventType, status, payloadJson, createdAt);
+        return new PurgeOutboxRecord(
+                id, dossierId, eventType, status, origin, payloadJson, createdAt, lastError);
     }
 }

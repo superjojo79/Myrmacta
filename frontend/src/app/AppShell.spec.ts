@@ -48,5 +48,6 @@ describe('AppShell', () => {
     const wrapper = mount(AppShell, { global: { plugins: [router] } })
     expect(wrapper.text()).toContain('Types')
     expect(wrapper.text()).toContain('Connecteurs')
+    expect(wrapper.text()).toContain('File purge')
   })
 })

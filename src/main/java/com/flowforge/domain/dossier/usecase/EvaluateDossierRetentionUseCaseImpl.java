@@ -3,8 +3,9 @@ package com.flowforge.domain.dossier.usecase;
 import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierStatus;
 import com.flowforge.domain.dossier.model.DossierType;
+import com.flowforge.domain.dossier.model.PurgeOutboxOrigin;
+import com.flowforge.domain.dossier.model.PurgeOutboxPayloads;
 import com.flowforge.domain.dossier.model.PurgeOutboxRecord;
-import com.flowforge.domain.dossier.model.PurgeOutboxStatus;
 import com.flowforge.domain.dossier.model.RetentionActors;
 import com.flowforge.domain.dossier.model.RetentionPolicyResolver;
 import com.flowforge.domain.dossier.model.TenantRetentionSettings;
@@ -100,28 +101,14 @@ public final class EvaluateDossierRetentionUseCaseImpl implements EvaluateDossie
 
         Dossier archived = dossier.withRetentionArchive(RetentionActors.JOB, now);
         Dossier saved = dossierRepository.save(archived);
-        purgeOutboxRepository.insert(new PurgeOutboxRecord(
+        purgeOutboxRepository.insert(PurgeOutboxRecord.pending(
                 UUID.randomUUID(),
                 saved.id(),
                 EVENT_TYPE,
-                PurgeOutboxStatus.PENDING,
-                payloadJson(saved, type.get()),
+                PurgeOutboxOrigin.RETENTION,
+                PurgeOutboxPayloads.json(
+                        saved.tenantId(), saved.id(), type.get().code(), saved.purgeEligibleAt()),
                 now));
         return true;
-    }
-
-    private static String payloadJson(Dossier dossier, DossierType type) {
-        StringBuilder sb = new StringBuilder(128);
-        sb.append('{');
-        sb.append("\"tenantId\":\"").append(escape(dossier.tenantId())).append("\",");
-        sb.append("\"dossierId\":\"").append(dossier.id()).append("\",");
-        sb.append("\"typeCode\":\"").append(escape(type.code())).append("\",");
-        sb.append("\"purgeEligibleAt\":\"").append(dossier.purgeEligibleAt()).append("\"");
-        sb.append('}');
-        return sb.toString();
-    }
-
-    private static String escape(String raw) {
-        return raw.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 }

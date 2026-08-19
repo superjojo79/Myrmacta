@@ -38,15 +38,19 @@ class DossierExceptionHandlerTest {
 
     @Test
     void handleUploadTooLarge_mapsTo413() {
-        // Not exercisable end-to-end via MockMvc: MockMvcRequestBuilders.multipart(...).file(...)
-        // builds an already-parsed MockMultipartHttpServletRequest, bypassing the container-level
-        // (Tomcat) multipart size enforcement that throws this exception in production — same
-        // category of gap as the project's other "smoke réel hors CI" items. Verified here as a
-        // direct unit test of the mapping instead.
         var problem = new DossierExceptionHandler()
                 .handleUploadTooLarge(new MaxUploadSizeExceededException(26_214_400L));
 
         assertThat(problem.getStatus()).isEqualTo(413);
         assertThat(problem.getTitle()).isEqualTo("Upload too large");
+    }
+
+    @Test
+    void handleConflict_mapsDossierNotEligibleForPurgeTo409() {
+        var problem = new DossierExceptionHandler()
+                .handleConflict(new com.flowforge.domain.dossier.model.DossierNotEligibleForPurgeException(
+                        "Purge enqueue requires CLOTURE or ARCHIVE, was OUVERT"));
+
+        assertThat(problem.getStatus()).isEqualTo(409);
     }
 }

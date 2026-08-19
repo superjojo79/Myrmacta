@@ -56,6 +56,16 @@ public class FilesystemStorageAdapter implements DocumentStoragePort {
         }
     }
 
+    @Override
+    public void delete(String tenantId, String storageRef) {
+        Path target = resolveSafe(tenantId, storageRef);
+        try {
+            Files.deleteIfExists(target);
+        } catch (IOException ex) {
+            throw new DocumentStorageException("Failed to delete document: " + storageRef, ex);
+        }
+    }
+
     private Path resolveSafe(String tenantId, String storageRef) {
         Objects.requireNonNull(tenantId, "tenantId");
         Objects.requireNonNull(storageRef, "storageRef");

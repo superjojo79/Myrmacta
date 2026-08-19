@@ -17,4 +17,11 @@ public interface DocumentStoragePort {
     byte[] retrieve(String tenantId, String storageRef) throws DocumentStorageException;
 
     boolean exists(String tenantId, String storageRef);
+
+    /**
+     * Deletes the object at {@code storageRef}. Missing object is success (idempotent).
+     *
+     * @throws DocumentStorageException on invalid ref (tenant mismatch / path traversal) or I/O failure
+     */
+    void delete(String tenantId, String storageRef) throws DocumentStorageException;
 }

@@ -13,4 +13,6 @@ public interface DossierRelationRepository {
 
     Optional<DossierRelation> findByIdempotencyKey(
             String tenantId, UUID sourceDossierId, String idempotencyKey);
+
+    void deleteRelationsTouching(UUID dossierId);
 }

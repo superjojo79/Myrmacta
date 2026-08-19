@@ -10,4 +10,6 @@ public interface SpringDataDossierElementRepository extends JpaRepository<Dossie
     Optional<DossierElementJpaEntity> findByIdAndTenantId(UUID id, String tenantId);
 
     List<DossierElementJpaEntity> findByDossierIdOrderByAddedAtAsc(UUID dossierId);
+
+    void deleteByDossierId(UUID dossierId);
 }

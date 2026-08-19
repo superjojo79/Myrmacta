@@ -19,3 +19,5 @@ databaseChangeLog:
       file: db/changelog/changes/009-dossier-relation-tables.yaml
   - include:
       file: db/changelog/changes/010-retention-tables.yaml
+  - include:
+      file: db/changelog/changes/011-purge-outbox-worker.yaml

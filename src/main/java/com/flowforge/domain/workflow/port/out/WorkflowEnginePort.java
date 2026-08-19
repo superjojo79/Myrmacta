@@ -15,4 +15,10 @@ public interface WorkflowEnginePort {
     Optional<String> findProcessInstanceIdByBusinessKey(String businessKey);
 
     Optional<String> findDossierIdVariable(String processInstanceId);
+
+    /**
+     * Best-effort runtime process-instance delete. Missing PI is a no-op. Failures must not
+     * propagate (ACT_HI residual is acceptable).
+     */
+    void deleteProcessInstanceBestEffort(String processInstanceId);
 }

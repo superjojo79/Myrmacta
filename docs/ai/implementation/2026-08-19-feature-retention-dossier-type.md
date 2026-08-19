@@ -54,3 +54,4 @@ Verdict: **implementation covers all D-\* / A-\* decisions**; remediations close
 ## Evidence
 - Phase 5: `./mvnw verify -Dmaven.compiler.release=21` SUCCESS; Vitest 114; Playwright 27 (E2E-RET-1/2/3)
 - Phase 7 remediations: `./mvnw -Dmaven.compiler.release=21 -Dtest=RetentionApiTest,EvaluateDossierRetentionUseCaseImplTest test` → 16 tests, 0 failures
+- Phase 7 gate: `./mvnw verify -Dmaven.compiler.release=21` → **BUILD SUCCESS**, Tests run: **797**, Failures: 0

@@ -10,6 +10,7 @@ design_aligned: 2026-08-19
 stakeholder_decisions: 2026-08-19
 phase1: 2026-08-19
 phase2_sync: 2026-08-19
+phase3_sync: 2026-08-19
 ---
 
 # Testing Strategy — `openapi-pagination-admin`
@@ -41,8 +42,13 @@ phase2_sync: 2026-08-19
 ### Use cases list paginés
 - [ ] Offset : page 1 size 2 sur 5 éléments → 2 items, totaux 5 / 3 pages
 - [ ] Filtre templates `templateKey` appliqué **avant** COUNT
-- [ ] Filtre purge `status` + COUNT globaux `counts` **non** filtrés par page
-      (counts = toute la file ; content = page filtrée)
+- [ ] Filtre purge `status` : `content` filtré ; `counts` **toujours** les 4
+      totaux tenant (ignore `status` et `page`)
+- [ ] Purge tri `createdAt` **desc** (plus récent d’abord) ; plus de défaut
+      `limit=50` / max 200
+- [ ] Types : User sans grant → page vide sans appel search ; User VIEW →
+      uniquement codes accordés (pas de « trous » de page dus à un filtre
+      après OFFSET)
 - [ ] `includeContent=false` : pas de HTML template dans les items
 - [ ] ACL / rôles : pas de changement sémantique vs listes actuelles
       (types visibles selon règles existantes)

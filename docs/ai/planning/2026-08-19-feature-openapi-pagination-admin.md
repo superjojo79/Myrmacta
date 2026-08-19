@@ -8,6 +8,7 @@ updated: 2026-08-19
 feature: openapi-pagination-admin
 phase1: 2026-08-19
 phase2_sync: 2026-08-19
+phase3_sync: 2026-08-19
 stakeholder_decisions: 2026-08-19
 ---
 
@@ -40,9 +41,8 @@ stakeholder_decisions: 2026-08-19
 - **Deps :** T1.
 
 ### T4 — Paginer `GET /api/dossier-types`
-- **Outcome :** use case + adapter SQL `code ASC` ; MockMvc envelope ;
-  FE client paginé + vue admin + E2E mock ; `CreateDossierView` /
-  `SupervisionView` via `listAllPages` (D-CATALOG).
+- **Outcome :** page **après** ACL VIEW (A-ACL-PAGE) ; `code ASC` ; MockMvc ;
+  FE admin + `listAllPages` pour CreateDossier / Supervision.
 - **Deps :** T2, T3.
 
 ### T5 — Paginer `GET /api/document-templates`
@@ -68,8 +68,9 @@ stakeholder_decisions: 2026-08-19
 - **Deps :** T2, T3.
 
 ### T9 — Paginer `GET /api/purge-outbox`
-- **Outcome :** envelope + `counts` globaux ; `createdAt DESC` ; plus `limit`/`items` ;
-  FE purge + E2E-PURGE.
+- **Outcome :** envelope + `counts` globaux (4 statuts, ignore filtre
+  `status`) ; `createdAt DESC` (plus l’ASC actuel) ; `page`/`size` 20/100
+  (plus `limit` 50/200) ; FE + E2E-PURGE.
 - **Deps :** T2, T3.
 
 ### T10 — Pager UI partagé + sync URL

@@ -21,6 +21,8 @@ Pas encore de code livré (Phase 1 docs). Suivre T1–T15 du planning, TDD.
 - `PageResult` partagé domaine ; `Page` Spring Data **infra only**.
 - Parser sort : égalité exacte de chaîne (`code,asc`), comme
   `DossierListQueryParser` / `updatedAt,desc`.
+- **Ne pas** fusionner `DossierPage` dans `PageResult` (A-PAGE-TYPE).
+- Purge : remplacer `limit` 50/200 et tri ASC par D-PAGE + `createdAt,desc`.
 - Régénérer `openapi/openapi.yaml` dans le même commit que tout changement
   de contrôleur/DTO listé par springdoc.
 - Playwright : mettre à jour **tous** les `page.route` des listes admin

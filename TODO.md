@@ -57,10 +57,22 @@ d’autres rôles.
 
 ---
 
-### [ ] 21. Politique de rétention par `DossierType`
+### [~] 21. Politique de rétention par `DossierType`
 
-**À décider :** durée de conservation configurable par tenant et par type, action à expiration
-(archivage puis purge), et articulation avec les statuts `CLOTURE` / `ARCHIVE` existants.
+**Décisions produit actées (2026-08-19 — Phase 1 `retention-dossier-type`) :**
+
+| Sujet | Choix |
+|---|---|
+| Durée | Défaut **tenant obligatoire** (> 0 jours) + override **par type** (jours \| `NEVER` \| héritage) |
+| À expiration | `ARCHIVE` + `purgeEligibleAt` + event **`purge_outbox`** (`DOSSIER_PURGE_REQUESTED`) ; **pas** de purge physique |
+| Horloge | Depuis **`closedAt`** à l’entrée en **`CLOTURE`** ; non clos = pas d’expiration |
+| Réouverture | Si un jour autorisée depuis `CLOTURE` : reset horloge ; `ARCHIVE`/outbox déjà écrits = immutables. **Pas** de nouvelle transition dans ce lot (`DossierStatusTransitions` inchangé) |
+| UI | Config défaut tenant + champs sur admin `DossierType` ; pas d’écran file de purge |
+| Hors scope lot | Archivage anticipé « force purge » ; `ARCHIVE` métier (BPMN/API) ≠ éligibilité purge |
+
+**Reste :** implémentation feature `retention-dossier-type` (docs
+`docs/ai/**/2026-08-19-feature-retention-dossier-type.md`). Purge physique
+PG + object store → point **22** / feature `purge-stockage`.
 
 **Impacte :** [04-dossiers.md](analysis%20doc/04-dossiers.md),
 [12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md).

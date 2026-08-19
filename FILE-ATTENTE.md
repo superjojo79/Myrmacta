@@ -8,7 +8,8 @@
 > - Inventaire follow-ups / lots : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md)
 > - Séquencement « avant prod » : [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md) §9
 >
-> **Dernière mise à jour :** 2026-08-19 (après `edition-champs-dossier`, PR #53).
+> **Dernière mise à jour :** 2026-08-19 (Phase 1 `retention-dossier-type` —
+> décisions §21 actées ; docs lifecycle initialisées).
 
 ## Comment s’en servir
 
@@ -43,18 +44,19 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 
 | Priorité | Feature / lot kebab-case | Pourquoi ce n’est pas (encore) le suivant immédiat — ou pourquoi ça l’est |
 |---|---|---|
-| **1 — prochain** | `retention-dossier-type` (TODO §21) puis `purge-stockage` (§22) | Séquencement « avant prod » de la revue. **Arbitrages produit encore ouverts** : durée par tenant/type, action à expiration, lien `CLOTURE`/`ARCHIVE` ; pour §22 : transaction vs job vs suppression logique, purge conjointe PostgreSQL / object store (port S3/FS, **pas MinIO en dur** — DEFERRED §0). Démarrer = **phase requirements** pour trancher, pas implémenter en silence. |
+| **1 — en cours (Phase 1)** | `retention-dossier-type` (TODO §21) puis `purge-stockage` (§22) | **Décisions §21 actées** (2026-08-19) : défaut tenant + override type (jours/`NEVER`) ; expiration → `ARCHIVE` + `purgeEligibleAt` + `purge_outbox` ; horloge = `closedAt`/`CLOTURE` ; UI admin config ; pas de purge physique. Suite §22 toujours ouverte (mécanisme purge PG/object store, port S3/FS — DEFERRED §0). |
 | **2** | `openapi-pagination-admin` (reste TODO §24) | Contrat transverse : OpenAPI formel, pagination des **autres** ressources, surface admin exhaustive. Pas un parcours métier. `ProblemDetail` et pagination dossiers déjà livrés. |
 | **3** | `observabilite` (TODO §29) | Docs `docs/ai/monitoring/**` encore `deferred` / squelettes. MDC `tenantId`/`dossierId`/`processInstanceId`, Micrometer (âge outbox, jobs Flowable, PDF, webhooks DLQ, SSE). |
 | **Hors V1** | Rapports / SLA ; connecteur `http-rest` **SERVICE** ; antivirus pièces jointes | Explicitement reportés (maquette UI / TODO §30 / connecteurs V1 = TRIGGER). |
 
-### Alternative si on refuse d’ouvrir §21 maintenant
+### Alternative si on refuse d’ouvrir §22 / la rétention maintenant
 
-Le n°1 reste le prochain **produit**, mais il est **bloqué** tant que les
-questions §21/§22 ne sont pas tranchées (conventions : ne pas décider un
-point ouvert en silence).
+Le n°1 (`retention-dossier-type`) a ses **arbitrages §21 actés** ; il reste
+à implémenter via le lifecycle. §22 (`purge-stockage`) reste ouvert pour le
+lot suivant.
 
-Dans ce cas le premier lot **implémentable sans arbitrage** est le **n°2**
+Si l’on **reporte** l’implémentation rétention, le premier lot
+**implémentable sans arbitrage §22** hors rétention est le **n°2**
 (`openapi-pagination-admin`).
 
 ## Hors file produit (ne pas traiter comme « prochaine feature »)
@@ -65,22 +67,18 @@ Dans ce cas le premier lot **implémentable sans arbitrage** est le **n°2**
 - Follow-ups ops (ex. DEV-PURGE : rétention outbox / TTL idempotency non schedulées)
 - Chore `com.monapp` résiduel dans `analysis doc/`
 
-## Décisions §21 / §22 encore ouvertes (rappel)
+## Décisions §21 / §22 (rappel)
 
-À clôturer **avant** ou **pendant** la phase requirements de
-`retention-dossier-type` :
+**§21 — Rétention par `DossierType` — acté 2026-08-19** (voir TODO §21 et
+`docs/ai/requirements/2026-08-19-feature-retention-dossier-type.md`).
 
-**§21 — Rétention par `DossierType`**
-
-- Durée configurable par tenant et par type ?
-- Action à expiration (archivage puis purge) ?
-- Articulation avec les statuts `CLOTURE` / `ARCHIVE` déjà existants ?
-
-**§22 — Purge PostgreSQL / object store**
+**§22 — Purge PostgreSQL / object store — encore ouvert** (feature
+`purge-stockage`, après rétention) :
 
 - Transaction applicative, job de réconciliation, ou suppression logique + balayage ?
 - Port stockage abstrait S3 + filesystem (DEFERRED §0) — jamais MinIO couplé en dur.
 - Suppression de tenant = décommission instance (décision n° 13) + `DROP SCHEMA` + purge objets.
+- Consommation de `purge_outbox` (`DOSSIER_PURGE_REQUESTED`) produite par §21.
 
 ## Historique court des choix « prochaine feature »
 
@@ -89,3 +87,4 @@ Dans ce cas le premier lot **implémentable sans arbitrage** est le **n°2**
 | 2026-08-17 | `preview-documents` | Dernier lot nommé D-PREVIEW ; pas de point TODO bloquant |
 | 2026-08-18 | `edition-champs-dossier` | Plus de lot nommé ; trou API-sans-UI ; §21 toujours « à décider » |
 | 2026-08-19 | file ci-dessus | `edition-champs-dossier` en revue (PR #53) ; prochain = §21 si on tranche, sinon §24 |
+| 2026-08-19 | `retention-dossier-type` Phase 1 | §21 tranché avec stakeholders ; docs lifecycle créées ; §22 reporté |

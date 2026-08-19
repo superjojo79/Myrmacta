@@ -133,7 +133,7 @@ Voir le détail et les options dans [TODO.md](TODO.md) et
 | Point | Titre | État après tranches livrées |
 |---|---|---|
 | 19 | Granularité rôles RBAC | **Clos V1** — cinq rôles + mapping `ROLE_*` ; ACL type |
-| 21 | Rétention par `DossierType` | **Ouvert** — hors tranche authz |
+| 21 | Rétention par `DossierType` | **Décisions actées** (2026-08-19) — feature `retention-dossier-type` en Phase 1 (docs) ; implémentation à venir |
 | 22 | Purge PostgreSQL / object store | **Ouvert** — port S3/FS à venir ; pas MinIO en dur |
 | 23 | `FieldDefinition.sensitive` | **Quasi clos** — flag meta + masquage serveur livrés (`DossierFieldRedactor`, D-SENSITIVE = A) sur `GET /api/dossiers/**` et le panneau dossier de la visualisation ; reste masquage sur d'éventuels futurs exports (CSV, etc.) |
 | 24 | Contrat d’API complet | **Partiel** — surface dossiers minimale + `ProblemDetail` ; reste listes, pagination, OpenAPI, autres ressources — **impacte Supervision FE** |

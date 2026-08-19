@@ -303,28 +303,39 @@ pourquoi les requêtes de job planifié dérogent au pattern des requêtes serva
 
 ---
 
-### [ ] 38. `payloadJson` du job de rétention — échappement JSON incomplet + `DossierType.code` sans validation de format
+### [ ] 38. `PurgeOutboxPayloads.json` — échappement JSON incomplet + `DossierType.code` sans validation de format
 
 **Constat (revue PR #55, `retention-dossier-type`) :** `EvaluateDossierRetentionUseCaseImpl.payloadJson`
-construit le JSON de `purge_outbox.payload_json` à la main, avec un échappement limité à `\` et `"`
+construisait le JSON de `purge_outbox.payload_json` à la main, avec un échappement limité à `\` et `"`
 — les caractères de contrôle (ex. saut de ligne) que RFC 8259 impose d'échapper dans une chaîne
 JSON ne le sont pas. Or `DossierType.code`, injecté tel quel dans ce payload, n'a **aucune
 validation de format/charset** dans le domaine (`DossierType` ne fait qu'un `requireNonNull`).
 `purge_outbox.payload_json` est une colonne `json` PostgreSQL : un `code` contenant un caractère de
-contrôle brut ferait échouer l'`INSERT`, et comme le job entier tourne dans une seule transaction
-(`EvaluateDossierRetentionJob.evaluate`), **tout le lot serait annulé** — bloquant silencieusement
-la rétention pour l'ensemble du tenant jusqu'à correction du type fautif.
+contrôle brut ferait échouer l'`INSERT`.
+
+**Mise à jour (revue PR #56, `purge-stockage`) :** le constructeur JSON manuel a été mutualisé dans
+`PurgeOutboxPayloads.json()` (`domain/dossier/model/`), désormais utilisé à la fois par le job de
+rétention (§21) **et** par le nouvel enqueue admin `EnqueueDossierPurgeUseCaseImpl` (§22,
+`POST /api/dossiers/{id}/purge-requests`) — l'échappement lui-même n'a **pas** été corrigé lors de
+cette mutualisation (`escape()` copié tel quel). Le rayon d'impact est donc plus large qu'au constat
+initial : un `code` mal formé bloque désormais aussi l'enqueue admin, pas seulement le job planifié.
+Le job de rétention reste en outre le plus exposé : il tourne dans une seule transaction
+(`EvaluateDossierRetentionJob.evaluate`), donc un `INSERT` en échec y annule **tout le lot**,
+bloquant silencieusement la rétention pour l'ensemble du tenant jusqu'à correction du type fautif.
+`PurgeOutboxPayloads` fait aussi de l'extraction JSON manuelle en lecture (`parseEligibleAt`,
+`parseTenantId` — `indexOf`/`substring`, pas un vrai parseur), même famille de fragilité.
 
 Auto-infligé (seul un `TENANT_ADMIN` peut définir `code`), donc pas un vecteur d'attaque externe —
 mais un point de robustesse réel, susceptible de stopper silencieusement un mécanisme de
-conformité RGPD.
+conformité RGPD (rétention **et**, désormais, droit à l'effacement à la demande).
 
 **À décider / produire :** soit valider `DossierType.code` contre un charset restreint (ex.
-`^[A-Za-z0-9_-]+$`) à la création/mise à jour, soit remplacer le constructeur JSON manuel de
-`payloadJson` par un sérialiseur JSON réel (Jackson, déjà une dépendance transitive Spring Boot)
-qui échappe correctement tous les caractères de contrôle.
+`^[A-Za-z0-9_-]+$`) à la création/mise à jour, soit remplacer `PurgeOutboxPayloads` par un
+sérialiseur/parseur JSON réel (Jackson, déjà une dépendance transitive Spring Boot) qui échappe
+correctement tous les caractères de contrôle en écriture et parse réellement en lecture.
 
-**Impacte :** `EvaluateDossierRetentionUseCaseImpl.java`, `DossierType.java`,
+**Impacte :** `PurgeOutboxPayloads.java`, `EvaluateDossierRetentionUseCaseImpl.java`,
+`EnqueueDossierPurgeUseCaseImpl.java`, `DossierType.java`,
 [04-dossiers.md](analysis%20doc/04-dossiers.md).
 
 ---

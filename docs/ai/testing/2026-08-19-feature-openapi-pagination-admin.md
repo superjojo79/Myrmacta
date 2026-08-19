@@ -11,6 +11,7 @@ stakeholder_decisions: 2026-08-19
 phase1: 2026-08-19
 phase2_sync: 2026-08-19
 phase3_sync: 2026-08-19
+phase8: 2026-08-19
 ---
 
 # Testing Strategy — `openapi-pagination-admin`
@@ -33,11 +34,14 @@ phase3_sync: 2026-08-19
 - [x] `size` 0 / 101 → 400 ; 1 et 100 OK
 - [x] `sort` absent → défaut ressource ; `sort` exact OK
 - [x] `sort` autre (ex. `name,desc` si seul `name,asc`) → 400
+- [x] `AdminListSorts` fige les 6 tris design
+- [x] `SpringPages.of` / `map` copient page, size, totaux
 
 ### `PageResult`
 - [x] `totalPages` = ceil(totalElements / size)
 - [x] `content` immuable / null → liste vide
 - [x] `totalElements < 0` rejeté
+- [x] `PageQuery.defaults()` = 0 / 20
 
 ### Use cases list paginés
 - [x] Offset : page 1 size 2 sur 5 éléments → 2 items, totaux 5 / 3 pages
@@ -89,12 +93,16 @@ phase3_sync: 2026-08-19
 - [x] Purge : `counts.pending` etc. indépendants de `page`/`size`
 - [x] Templates `templateKey` + pagination combinés
 
+Fichiers : `DocumentTemplatePersistenceIT`, `ConnectorPersistenceIT`,
+`NotificationPersistenceIT`, `DossierPersistenceTest`,
+`WorkflowPersistenceTest`, `PurgeGraphPersistenceIT`.
+
 ### MockMvc
 - [x] Chaque liste D-LISTS : 200 envelope ; item 0 dans `content`
 - [x] Régression : `GET /api/dossiers` envelope inchangée
 - [x] Régression : `GET /api/dossiers?ref=` **pas** une page
 - [x] `GET /api/connector-definitions` **array** (non paginé)
-- [x] Params invalides → 400 ProblemDetail
+- [x] Params invalides → 400 ProblemDetail (`size=101` sur les 6 GET)
 - [x] 403 rôles insuffisants (inchangé)
 - [x] `app.openapi.enabled=false` : `/v3/api-docs` et `/swagger-ui.html`
       non accessibles (401/403/404 selon impl, **pas 200** anonyme)
@@ -141,14 +149,16 @@ cd frontend && npm run test:e2e
 - Enregistrer commandes + codes sortie avant claim Phase 8.
 - Playwright : counts passed/failed du rapport.
 
-### Preuve 2026-08-19 (Phase 5)
+### Preuve 2026-08-19 (Phase 8 — session fraîche)
 
-| Commande | Résultat |
-|---|---|
-| `./mvnw verify -Dskip.frontend=true -Dmaven.compiler.release=21` | BUILD SUCCESS, **870** tests, Jacoco OK |
-| `cd frontend && npm run test` | **129** passed (45 files) |
-| `cd frontend && npm run lint` | exit 0 |
-| `cd frontend && npm run test:e2e` | **35** passed |
+| Commande | Exit | Résultat |
+|---|---|---|
+| `./mvnw verify -Dskip.frontend=true -Dmaven.compiler.release=21` | 0 | BUILD SUCCESS, **877** tests, Jacoco « All coverage checks have been met » |
+| `cd frontend && npm run test` | 0 | **129** passed (45 files) |
+| `cd frontend && npm run lint` | 0 | eslint clean |
+| `cd frontend && npm run test:e2e` | 0 | **35** passed (Playwright chromium, 2 workers) |
+
+Le flag `maven.compiler.release=21` est local (JDK 21 sur l’agent). La CI JDK 25 n’en a pas besoin.
 
 ## Manual Testing
 

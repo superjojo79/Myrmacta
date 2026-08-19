@@ -10,6 +10,8 @@ phase1: 2026-08-19
 planning_ref: docs/ai/planning/2026-08-19-feature-openapi-pagination-admin.md
 design_ref: docs/ai/design/2026-08-19-feature-openapi-pagination-admin.md
 phase7: 2026-08-19
+phase8: 2026-08-19
+phase9: 2026-08-19
 ---
 
 # Implementation — `openapi-pagination-admin`
@@ -77,22 +79,55 @@ Breaking JSON sur les 6 GET admin uniquement ; `GET /api/dossiers` reste
   (`********`). Hors spec OpenAPI V1 (D-SECRETS vise surtout le secret
   webhook notification).
 
-## Follow-ups Phase 8 (couverture, pas de refactor)
+## Follow-ups Phase 8
 
-- Tests unitaires dédiés `AdminListSorts` / `SpringPages`.
-- MockMvc pagination connecteurs / webhooks : défauts `page=0` `size=20` et
-  `size=101` → 400 (déjà présent types/templates/purge/wf).
-- IT persistence COUNT/OFFSET + ordre du tri sur adapters (templates,
-  connectors, webhooks, wf configs, types, purge) — revendiqué dans la
-  testing doc, partiellement couvert via MockMvc seulement.
+Clos dans cette session : `AdminListSortsTest`, `SpringPagesTest`, MockMvc
+`size=101` connecteurs/webhooks/wf, IT COUNT/OFFSET + tri sur adapters.
 
-## Preuve Phase 5 (session antérieure — **non fraîche** pour 7/8/9)
+## Preuve Phase 8 (session fraîche 2026-08-19)
 
-- `./mvnw verify -Dskip.frontend=true -Dmaven.compiler.release=21` — 870 tests, Jacoco OK
-- `cd frontend && npm run test` — 129
-- `cd frontend && npm run lint` — OK
-- `cd frontend && npm run test:e2e` — 35 (JDK local 21 : flag `maven.compiler.release=21`)
+| Commande | Exit | Résultat |
+|---|---|---|
+| `./mvnw verify -Dskip.frontend=true -Dmaven.compiler.release=21` | 0 | BUILD SUCCESS, **877** tests, Jacoco OK |
+| `cd frontend && npm run test` | 0 | **129** passed (45 files) |
+| `cd frontend && npm run lint` | 0 | OK |
+| `cd frontend && npm run test:e2e` | 0 | **35** passed |
 
-Task tracing `npx ai-devkit@latest task` : **indisponible** (`unknown command`).
+## Phase 9 — revue finale
+
+**Checklist :** design match · pas de trou logique bloquant · sécu ·
+intégration SPA · tests · docs.
+
+### Findings
+
+Aucun finding bloquant.
+
+| Sévérité | Sujet | Recommandation |
+|---|---|---|
+| Low | `config.webhookSecret` connecteur = map OpenAPI, pas `writeOnly` | Masquage runtime déjà testé ; schema map hors V1 |
+| Low | `EnvironmentPostProcessor` deprecated Boot 4 | Même pattern que `TenantIdEnvironmentValidator` ; follow-up Boot |
+| Info | `listAllPages` s’arrête sur page vide / `totalElements` | Catalogues admin petits ; plafond API 100 |
+
+### Sécurité
+
+- Pas de `permitAll` **nouveau** (`/api/webhooks/**` HMAC préexistant).
+- `/v3/api-docs` + `/swagger-ui/**` : `TENANT_ADMIN` ou `WORKFLOW_ADMIN`.
+- Flag `app.openapi.enabled` false par défaut + EPP miroir springdoc.
+- Page size max 100 (`PageQuery`).
+- Secrets webhook `writeOnly` + masque `********` ; connecteurs masqués en runtime.
+- SSRF webhooks : `OutboundUrlGuard` inchangé.
+- ArchUnit : domain sans springdoc / `io.swagger`.
+
+### Breaking change / rollback
+
+- Breaking JSON **in-repo** uniquement (SPA). Callers FE + E2E mis à jour.
+- Pas de changeset Liquibase : rollback = redeploy de l’artefact précédent.
+
+### Intégration
+
+Callers `listAll*` : `CreateDossierView`, `SupervisionView`,
+`StartWorkflowDialog`. Nested arrays et `GET /api/dossiers` inchangés.
+
+Task tracing `npx ai-devkit@latest task` : **indisponible**.
 Lint feature : OK (warning worktree hors nom `feature-openapi-pagination-admin`
 car branche `cursor/openapi-pagination-admin-55ec`).

@@ -2,193 +2,185 @@
 phase: requirements
 title: Requirements & Problem Understanding
 description: Clarify the problem space, gather requirements, and define success criteria
-status: reviewed
+status: draft
 created: 2026-08-19
 updated: 2026-08-19
 feature: purge-stockage
 phase1: 2026-08-19
-phase2: 2026-08-19
-stakeholder_decisions: 2026-08-19
 todo_ref: TODO.md §22 · FILE-ATTENTE.md · DEFERRED-FEATURES.md §0 · suite de retention-dossier-type
 ---
 
 # Requirements & Problem Understanding — `purge-stockage`
 
-> Prochaine feature produit après `retention-dossier-type` (PR #55), selon
+> Feature produit après `retention-dossier-type` (PR #55), selon
 > [FILE-ATTENTE.md](../../../FILE-ATTENTE.md). Lot « avant prod » REVUE §9 /
-> TODO §22. Consomme `purge_outbox` (`DOSSIER_PURGE_REQUESTED`) produit par §21.
+> TODO **§22 encore ouvert**. Phase 1 = capturer le problème et **trancher**
+> les arbitrages ; rien n’est acté tant que les questions ci-dessous n’ont
+> pas de réponse stakeholder.
 
 ## Problem Statement
 **What problem are we solving?**
 
-La rétention (§21) archive les dossiers expirés et écrit une ligne
-`purge_outbox` `PENDING`, **sans** supprimer les lignes PostgreSQL ni les
-objets du stockage. Sans consommateur, les données personnelles et fichiers
-restent indéfiniment — non conforme au droit à l’effacement / fin de
-conservation.
+La rétention (§21) archive les dossiers expirés (`ARCHIVE` +
+`purgeEligibleAt`) et écrit une ligne `purge_outbox`
+(`DOSSIER_PURGE_REQUESTED`, `PENDING`). **Aucun consommateur** n’efface les
+lignes PostgreSQL ni les objets du store. Les données personnelles et
+fichiers restent donc indéfiniment après la fin de conservation.
 
-- **Affectés :** conformité / RGPD, ops (espace object store), `TENANT_ADMIN`
-  (politique déjà configurée en §21).
-- **Situation actuelle :** `DocumentStoragePort` (S3 + filesystem) existe ;
-  `delete` **absent** ; `PurgeOutboxStatus` = `PENDING` seul ; aucun job
-  consommateur ; FK métier (éléments, relations, workflow links) sans
-  cascade de purge applicative.
-- **Réf. :** TODO §22, DEFERRED §0, `analysis doc/12-autorisation-conformite.md`,
-  design `retention-dossier-type` (outbox reportée à §22).
+Le même écart existe pour le **droit à l’effacement** et pour la
+**suppression d’un tenant** (`DROP SCHEMA` + objets), énoncés ensemble dans
+TODO §22.
+
+- **Affectés :** conformité / RGPD ; ops (espace object store) ;
+  `TENANT_ADMIN` (politique déjà configurable en §21).
+- **Situation actuelle :**
+  - `DocumentStoragePort` (adapters **S3** + **filesystem**) : `store` /
+    `retrieve` / `exists` — **pas de `delete`**.
+  - `PurgeOutboxStatus` = `PENDING` seulement ; UNIQUE(`dossier_id`).
+  - Pas de cascade applicative (éléments, relations, workflow links).
+- **Réf. :** TODO §22, DEFERRED §0 (jamais MinIO en dur),
+  `analysis doc/12-autorisation-conformite.md`,
+  `analysis doc/07-generation-documents.md`.
 
 ## Goals & Objectives
 **What do we want to achieve?**
 
 ### Primary goals
 
-- Consommer `purge_outbox` (`DOSSIER_PURGE_REQUESTED`, `PENDING`) via un
-  **job planifié idempotent**.
-- Purger **symétriquement** : objets `DocumentStoragePort` (refs des
-  éléments `ATTACHMENT` / `PRODUCED_DOC`) **puis** graphe PostgreSQL du
-  dossier (éléments, relations source/cible, workflow links, dossier,
-  ligne outbox terminée).
-- Étendre le port stockage avec **`delete(tenantId, storageRef)`**
-  (adapters S3 + filesystem) — **jamais** MinIO couplé en dur (DEFERRED §0).
-- Étendre le cycle outbox : `PENDING` → `PROCESSING` → `COMPLETED` |
-  `FAILED` (rejeu sûr).
-- Garantir l’**idempotence** : objet déjà absent = succès ; dossier déjà
-  absent = succès ; rejeu `PROCESSING`/`FAILED` borné.
+- Effacer **conjointement** le graphe PostgreSQL d’un dossier éligible et
+  les objets de stockage correspondants (`storageRef` des éléments
+  `ATTACHMENT` / `PRODUCED_DOC`).
+- Rendre l’opération **rejouable** (idempotente) : objet ou ligne déjà
+  absents = succès, pas d’état « à moitié purgé » durable sans retry.
+- Respecter DEFERRED §0 : port abstrait **S3 + filesystem**, aucun
+  couplage MinIO.
+- Consommer le signal déjà produit par §21 (`purge_outbox`) — sauf si un
+  arbitrage Phase 1 choisit explicitement un autre déclencheur.
 
 ### Secondary goals
 
-- Métriques / logs structurés (âge outbox, succès/échec) prêts pour §29
-  sans livrer tout le lot observabilité.
-- Documenter le runbook **suppression de tenant** (décommission instance +
-  `DROP SCHEMA` + purge préfixe/bucket) — **hors code** de ce lot.
-- Vitest + Playwright **uniquement si** le SPA ou un contrat API consommé
-  par le SPA change ; sinon documenter l’exemption Phase 8 avec preuve
-  qu’aucune surface FE n’est touchée.
+- Documenter (runbook) la purge **tenant** vs purge **dossier** pour ne
+  pas les confondre (décision n° 13 : 1 instance = 1 tenant).
+- Laisser des logs / accroches métriques utilisables par `observabilite`
+  (§29) sans livrer ce lot.
 
-### Non-goals
+### Non-goals (hors débat §22 — déjà hors V1 produit)
 
-- Transaction atomique unique PG + object store (impossible cross-store).
-- Soft-delete supplémentaire (déjà `ARCHIVE` + `purgeEligibleAt` en §21).
-- Suppression de tenant automatisée / `DROP SCHEMA` applicatif.
-- API HTTP « droit à l’effacement immédiat » / force purge admin.
-- Écran supervision de la file outbox (aligné non-goal §21).
-- Balayage orphelins stockage hors outbox (uploads échoués, etc.).
-- OpenAPI exhaustif (§24), antivirus PJ, connecteur `http-rest` SERVICE.
-- Changement de politique rétention / UI admin types (déjà §21).
+- OpenAPI exhaustif / pagination admin large (§24).
+- Antivirus pièces jointes.
+- Connecteur `http-rest` SERVICE ; rapports / SLA.
+- Changer la politique de rétention ou l’UI admin types (déjà §21).
+- Observabilité MDC complète (§29).
 
-## Alternatives considérées
+Les non-goals **liés à §22** (UI file, API d’effacement manuel, purge
+tenant automatisée, orphelins hors outbox, mécanisme exact) sont des
+**questions ouvertes**, pas des exclusions actées.
 
-| Approche | Trade-off | Verdict |
+## Alternatives considérées (mécanisme — TODO §22)
+
+Trois options nommées par TODO.md / FILE-ATTENTE / REVUE §9. **Aucun
+verdict Phase 1 tant que Q1 n’est pas tranchée.**
+
+| Id | Approche | Trade-off |
 |---|---|---|
-| Transaction applicative unique PG+S3 | Pas de XA fiable ; S3 non transactionnel | **Écarté** |
-| Soft-delete + balayage seul | §21 a déjà marqué ; pas d’effacement effectif | **Écarté** pour le cœur |
-| Job de réconciliation sur `purge_outbox` | Réutilise §21 ; ordre objets→PG ; rejeu | **Retenu (D-MECH)** |
-| Nouveau port « ObjectStore » séparé de `DocumentStoragePort` | Double abstraction | **Écarté** — étendre le port existant (D-PORT) |
-| Purge synchrone dans le job rétention | Couple §21/§22 ; I/O store dans scan rétention | **Écarté** — outbox dédiée déjà choisie |
+| A | **Transaction applicative** unique PG + store | Simple à raisonner ; pas de XA : S3/FS non transactionnel → orphelins ou rollback partiel |
+| B | **Job de réconciliation** sur `purge_outbox` | Réutilise §21 ; rejeu ; latence asynchrone ; besoin de claim / statuts |
+| C | **Suppression logique + balayage** | §21 a déjà `ARCHIVE` + `purgeEligibleAt` ; sans delete physique, l’effacement n’est pas réel |
+
+Recommandation **à confirmer** : **B** (le job consomme l’outbox déjà
+livrée). A est fragile cross-store. C ne clôt pas le droit à l’effacement.
 
 ## User Stories & Use Cases
 
-1. **En tant que** plateforme, **je veux** qu’un dossier `PENDING` dans
-   `purge_outbox` soit physiquement effacé (fichiers + lignes), **afin de**
-   honorer la fin de rétention.
-2. **En tant que** ops, **je veux** que le job soit idempotent et borné,
-   **afin de** pouvoir le rejouer sans corruption ni timeout.
-3. **En tant que** conformité, **je veux** qu’après `COMPLETED` le dossier
-   ne soit plus lisible via l’API (404), **afin de** prouver l’effacement.
-4. **En tant que** ops tenant, **je veux** un runbook documenté pour
-   décommissionner une instance (schéma + objets), **afin de** ne pas
-   confondre purge dossier et purge tenant.
+1. **En tant que** plateforme, **je veux** qu’un dossier en fin de
+   rétention disparaisse réellement (fichiers + lignes), **afin de**
+   honorer la conservation limitée.
+2. **En tant que** ops, **je veux** pouvoir rejouer un échec de purge,
+   **afin de** ne pas laisser d’orphelins silencieux.
+3. **En tant que** conformité, **je veux** qu’après purge réussie le
+   dossier ne soit plus lisible via l’API, **afin de** prouver
+   l’effacement.
+4. **En tant que** ops, **je veux** distinguer purge dossier et
+   décommission tenant, **afin de** ne pas utiliser le mauvais outil.
 
-### Edge cases
+### Edge cases (à figer après Q1)
 
-- Objet stockage déjà absent → continuer (idempotent).
-- Dossier PG déjà absent / partiellement purgé → finaliser outbox
-  `COMPLETED` sans erreur bloquante.
-- Échec mid-flight (ex. S3 down après N deletes) → `FAILED` + retry
-  ultérieur ; ne pas marquer `COMPLETED`.
-- Éléments sans `storageRef` (`NOTE`, `INFORMATION`, `LINK`) → skip store,
-  supprimer lignes PG.
-- Relations où le dossier est **source ou cible** → supprimer les deux
-  côtés pour éviter FK orphelines.
-- Workflow link avec process Flowable encore vivant → terminer/supprimer
-  l’instance runtime si possible, puis supprimer le link (D-WF).
-- Concurrent claim du même `PENDING` → claim atomique `PENDING`→`PROCESSING`
-  (une seule victoire).
-- `purgeEligibleAt` dans le futur (données incohérentes) → **ne pas**
-  purger ; laisser `PENDING` (A-ELIGIBLE-GUARD) ou skip jusqu’à éligibilité.
-- Payload outbox incomplet → `FAILED` + log ; pas de delete partiel
-  silencieux sur mauvais `dossierId`.
+- Objet store déjà absent.
+- Dossier PG déjà partiellement supprimé.
+- Échec mid-flight (store OK, PG KO ou l’inverse).
+- Éléments sans `storageRef` (`NOTE`, `INFORMATION`, `LINK`).
+- Relations où le dossier est source **ou** cible.
+- Process Flowable encore vivant lié au dossier.
+- Deux workers concurrents sur la même ligne outbox.
+- `purgeEligibleAt` dans le futur (donnée incohérente).
+- Droit à l’effacement **sans** passer par l’horloge rétention (si Q
+  « erasure » = in scope).
 
 ## Success Criteria
 **How will we know when we're done?**
 
-- [ ] Job planifié consomme `PENDING` → `PROCESSING` → `COMPLETED` (happy
-      path) avec batch borné.
-- [ ] Pour un dossier avec PJ/PDF : objets absents du store **et** lignes
-      dossier/éléments/relations/links absentes ; GET dossier → 404.
-- [ ] `DocumentStoragePort.delete` implémenté FS + S3 ; tests adaptateurs.
-- [ ] Rejeu idempotent (2ᵉ passe no-op / `COMPLETED` stable).
-- [ ] Échec store → `FAILED` ; pas de `COMPLETED` prématuré ; retry ok.
-- [ ] Aucun couplage MinIO ; ArchUnit / hexagone respectés.
-- [ ] TODO §22 / FILE-ATTENTE / DEFERRED mis à jour en fin de lot.
-- [ ] `./mvnw verify` vert ; FE (Vitest+Playwright) si SPA touché, sinon
-      exemption documentée Phase 8.
-- [ ] Runbook tenant-delete documenté (deployment doc).
+Critères **stables** (indépendants du mécanisme exact) :
+
+- [ ] Un dossier éligible + PJ/PDF : objets absents du store **et**
+      lignes dossier / éléments / relations le touchant / workflow links
+      absentes ; `GET /api/dossiers/{id}` → 404.
+- [ ] Rejeu : 2ᵉ passe sans corruption (idempotente).
+- [ ] Échec store ou PG : pas de succès terminal prématuré ; retry possible.
+- [ ] Aucun couplage MinIO ; hexagone / ArchUnit respectés.
+- [ ] TODO §22 / FILE-ATTENTE / DEFERRED mis à jour **après** arbitrages
+      + implémentation.
+- [ ] `./mvnw verify` vert ; FE selon impact SPA (Vitest + Playwright si
+      contrat/UI touchés).
+
+Critères **dépendants de Q1** (à réécrire une fois tranché) : job vs
+transaction vs balayage ; cycle de statuts outbox ; surface HTTP/UI.
 
 ## Constraints & Assumptions
 
-- Hexagone : domaine pur ; JPA / S3 SDK dans infrastructure ; ArchUnit CI.
-- Une instance Boot = un tenant (`app.tenant.id`) — schéma courant uniquement.
-- Port stockage déjà présent (`FilesystemStorageAdapter`, `S3StorageAdapter`)
-  — **D-PORT** = extension, pas nouveau port.
-- Outbox §21 : UNIQUE(`dossier_id`) ; payload JSON
-  `{tenantId,dossierId,typeCode,purgeEligibleAt}` — réutiliser.
-- SPA même origine + CSRF ; **pas de nouvelle UI** (D-UI).
-- Job actor audit : `system:purge-job` (D-JOB-ACTOR).
-- **A-ELIGIBLE-GUARD :** ne purger que si `purgeEligibleAt == null` **ou**
-  `purgeEligibleAt <= now` (UTC) ; sinon skip (reste `PENDING`).
-- **A-ORDER :** storage deletes → graphe PG → statut outbox terminal.
-- Task tracing `ai-devkit task` indisponible (`unknown command 'task'`).
-- Branche Cloud : `cursor/purge-stockage-05b8` (lint worktree `feature-*` =
-  MISS attendu, comme rétention).
+**Contraintes stables (déjà actées ailleurs) :**
 
-## Stakeholder decisions
+- Hexagone : domaine pur ; JPA / SDK S3 dans infrastructure.
+- Une instance Boot = un tenant (`app.tenant.id`) — schéma courant.
+- DEFERRED §0 : adapters S3 + filesystem existants ; pas MinIO en dur.
+- Outbox §21 : UNIQUE(`dossier_id`) ; payload
+  `{tenantId,dossierId,typeCode,purgeEligibleAt}`.
+- SPA même origine + CSRF (décisions n° 15 / 27).
+- Task tracing `ai-devkit task` indisponible.
+- Branche Cloud : `cursor/purge-stockage-05b8` (lint `feature-*` = MISS
+  attendu).
 
-| Id | Décision | Choix |
-|---|---|---|
-| **D-MECH** | Mécanisme §22 | Job consommateur `purge_outbox` (réconciliation) |
-| **D-ORDER** | Ordre d’effacement | Objets store d’abord, puis PG, puis statut terminal |
-| **D-PORT** | Stockage | Étendre `DocumentStoragePort.delete` ; adapters S3+FS |
-| **D-STATUS** | Cycle outbox | `PENDING` / `PROCESSING` / `COMPLETED` / `FAILED` |
-| **D-SCOPE-PG** | Graphe PG | Éléments + relations (src\|tgt) + workflow links + dossier + finaliser outbox |
-| **D-WF** | Flowable | Best-effort delete/terminate PI runtime liée ; toujours supprimer `dossier_workflow_link` |
-| **D-WF-HIST** | Historique ACT_HI_* | Résiduel acceptable V1 si delete runtime échoue (Q-WF-DEPTH → A) |
-| **D-UI** | Surface UI | Aucune (pas d’écran file / force admin) |
-| **D-HTTP** | API purge | Aucune en V1 (job only) |
-| **D-FE** | Tests FE | Pas de nouveau parcours SPA ; Phase 8 = non-régression suite E2E existante + exemption nouveaux specs (Q-FE → A) |
-| **D-TENANT** | Suppression tenant | Hors code ; runbook ops uniquement |
-| **D-ERASURE** | Droit à l’effacement manuel | Hors scope V1 (seulement file rétention) |
-| **D-ORPHAN** | Orphelins hors outbox | Hors scope V1 |
-| **D-JOB-ACTOR** | Audit | `system:purge-job` |
-| **D-CLAIM** | Concurrence | Update atomique `PENDING`→`PROCESSING` |
-| **D-GRACE** | Délai extra | Aucun au-delà de `purgeEligibleAt` (§21) |
+**Pas d’assumption produit sur le mécanisme** tant que Q1 n’est pas
+tranchée. Ne pas traiter la mémoire « job + delete acté Phase 2 » comme
+une décision stakeholder.
 
 ## Questions & Open Items
 
-### Clos Phase 2 (2026-08-19)
+À trancher **une par une** (Phase 1). Rien n’est clos.
 
-Toutes les décisions D-* ci-dessus **actées** (option A / recommandations
-Phase 1), y compris **D-WF-HIST** et **D-FE**.
+| Id | Question | Pourquoi ça compte | Options | Reco |
+|---|---|---|---|---|
+| **Q1 / D-MECH** | Quel mécanisme pour la cohérence PG + store ? | Cœur de TODO §22 | A transaction · B job outbox · C soft-delete + balayage | **B** |
+| **Q2 / D-PORT** | Comment supprimer un objet ? | DEFERRED §0 | Étendre `DocumentStoragePort.delete` · nouveau port | Étendre le port existant |
+| **Q3 / D-ORDER** | Ordre d’effacement store vs PG ? | Orphelins / retry | Store puis PG · PG puis store · best-effort parallèle | Store puis PG |
+| **Q4 / D-SCOPE-PG** | Quel graphe PG supprimer ? | FK / RGPD | Dossier seul · + éléments/relations/links | Graphe complet du dossier |
+| **Q5 / D-WF** | Que faire des process Flowable ? | Runtime vs historique | Best-effort runtime · bloquer si PI vivante · ignorer | Best-effort runtime |
+| **Q6 / D-UI** | Surface admin file / force purge ? | Parcours utilisateur | Aucune · écran lecture · force admin | Aucune V1 (aligné §21) |
+| **Q7 / D-HTTP** | API d’effacement immédiat ? | Droit à l’effacement hors rétention | Aucune · `DELETE` admin · job only | Aucune V1 |
+| **Q8 / D-TENANT** | Purge tenant dans ce lot ? | §22 mélange dossier et `DROP SCHEMA` | Hors code + runbook · automatiser | Hors code + runbook |
+| **Q9 / D-ORPHAN** | Balayer orphelins hors outbox ? | Uploads échoués | Hors V1 · job séparé | Hors V1 |
+| **Q10 / D-FE** | Nouveaux E2E Playwright ? | Conventions FE | Exemption si zéro SPA · specs dédiés | Non-régression suite existante |
 
-### Assumptions techniques restantes (pas de question produit)
+### Hors file (pas des questions de ce lot)
 
-- **A-ELIGIBLE-GUARD**, **A-ORDER**, payload outbox §21, branche Cloud
-  `cursor/purge-stockage-05b8`.
+OpenAPI §24, observabilité §29, antivirus, `http-rest` SERVICE.
 
-### Reporté hors feature
+## Phase 1 — clarification en cours
 
-- Observabilité MDC complète (§29).
-- OpenAPI / pagination admin (§24).
-- Force purge / écran supervision.
-- Purge tenant automatisée.
-- Balayage orphelins stockage.
-- TTL lignes `COMPLETED` outbox (DEV-PURGE).
+Shared understanding **avant** toute clôture :
+
+- Nom : `purge-stockage`.
+- Problème : outbox §21 sans effacement physique.
+- Objectif : cohérence PostgreSQL + object store.
+- Mécanisme **non tranché** (Q1).
+
+Prochaine clarification : **Q1 / D-MECH** uniquement.

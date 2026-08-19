@@ -11,27 +11,21 @@ phase1: 2026-08-19
 
 # Monitoring & Observability — `purge-stockage`
 
-> Socle minimal V1 ; lot complet = TODO §29 `observabilite`.
+> Socle minimal ; lot complet = TODO §29.
 
 ## Logs
 
-- Par claim : `outboxId`, `dossierId`, résultat (`COMPLETED`/`FAILED`),
-  durée.
-- Erreurs : message court dans `last_error` + log WARN/ERROR sans payload
-  massif.
+- Identifiants `dossierId` / outbox si job ; résultat succès/échec.
+- Pas de payload massif ni secrets.
 
-## Metrics (prépare §29)
+## Metrics
 
-- Compteur `purge.outbox.completed` / `purge.outbox.failed`.
-- Gauge / timer âge du plus vieux `PENDING` (si Micrometer déjà présent ;
-  sinon TODO §29).
+À figer après Q1 (compteurs completed/failed, âge PENDING, etc.).
 
-## Alerts (ops)
+## Alerts
 
-- Croissance soutenue de `PENDING` / `FAILED` → investigation store ou PG.
-- Job silent (pas de run) → scheduler / instance down.
+Croissance d’échecs ou file qui ne décroît pas → store ou PG.
 
 ## Hors scope
 
-- MDC complet `tenantId`/`dossierId`/`processInstanceId` (§29).
-- Dashboard supervision UI.
+MDC complet (§29), dashboard UI (Q6).

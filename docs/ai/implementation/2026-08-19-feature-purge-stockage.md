@@ -11,9 +11,10 @@ phase1: 2026-08-19
 
 # Implementation — `purge-stockage`
 
-> Pas encore d’implémentation code. Phase 5 après planning (Phase 4).
+> Phase 1 : pas de code. Le `delete()` commencé puis reverté n’est **pas**
+> dans la branche.
 
 ## Status
 
-- Docs Phase 1 : requirements / design / testing rédigés.
-- Code : non démarré.
+- Docs Phase 1 : requirements en `draft` ; Q1+ ouvertes.
+- Code : aucun changement applicatif.

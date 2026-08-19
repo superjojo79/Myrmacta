@@ -149,8 +149,8 @@ Reste dépendant de Q6–Q10 : surface HTTP/UI / E2E.
 - Branche Cloud : `cursor/purge-stockage-05b8` (lint `feature-*` = MISS
   attendu).
 
-**Q1–Q4 actées :** job outbox ; `DocumentStoragePort.delete` ; store puis
-PG ; graphe dossier complet. Flowable (Q5) n’est **pas** encore tranché.
+**Q1–Q5 actées :** job outbox ; `delete` ; store puis PG ; graphe dossier
+complet ; Flowable runtime **best-effort**. Q6 (UI) n’est pas tranchée.
 
 ## Questions & Open Items
 
@@ -162,13 +162,14 @@ PG ; graphe dossier complet. Flowable (Q5) n’est **pas** encore tranché.
 |---|---|---|
 | **Q1 / D-MECH** | Mécanisme PG + store | **B** — job de réconciliation sur `purge_outbox` (2026-08-19) |
 | **Q2 / D-PORT** | Suppression objet | **A** — étendre `DocumentStoragePort.delete` (S3 + FS) |
+| **Q3 / D-ORDER** | Ordre d’effacement | **A** — store d’abord, puis PostgreSQL |
 | **Q4 / D-SCOPE-PG** | Graphe PG | **A** — dossier + éléments + relations src\|tgt + workflow links |
+| **Q5 / D-WF** | Flowable | **A** — best-effort delete PI runtime ; link métier toujours supprimé ; ACT_HI_* résiduel OK V1 |
 
-### Ouvertes (prochaine = Q5 uniquement)
+### Ouvertes (prochaine = Q6 uniquement)
 
 | Id | Question | Pourquoi ça compte | Options | Reco |
 |---|---|---|---|---|
-| **Q5 / D-WF** | Que faire des process Flowable ? | Runtime vs historique | Best-effort runtime · bloquer si PI vivante · ignorer | Best-effort runtime |
 | **Q6 / D-UI** | Surface admin file / force purge ? | Parcours utilisateur | Aucune · écran lecture · force admin | Aucune V1 (aligné §21) |
 | **Q7 / D-HTTP** | API d’effacement immédiat ? | Droit à l’effacement hors rétention | Aucune · `DELETE` admin · job only | Aucune V1 |
 | **Q8 / D-TENANT** | Purge tenant dans ce lot ? | §22 mélange dossier et `DROP SCHEMA` | Hors code + runbook · automatiser | Hors code + runbook |
@@ -191,5 +192,7 @@ Shared understanding :
 - **Q3 = A :** store puis PostgreSQL (retry relit les `storageRef`).
 - **Q4 = A :** graphe PG = dossier + éléments + relations src\|tgt +
   workflow links.
+- **Q5 = A :** Flowable runtime best-effort ; historique ACT_HI_*
+  résiduel acceptable V1.
 
-Prochaine clarification : **Q5 / D-WF** uniquement.
+Prochaine clarification : **Q6 / D-UI** uniquement.

@@ -7,13 +7,12 @@ created: 2026-08-19
 updated: 2026-08-19
 feature: purge-stockage
 phase1: 2026-08-19
-todo_ref: TODO.md §22 · requirements purge-stockage (Q1–Q4 actées)
+todo_ref: TODO.md §22 · requirements purge-stockage (Q1–Q5 actées)
 ---
 
 # System Design & Architecture — `purge-stockage`
 
-> Squelette Phase 1. **Q1–Q4** actées (job, `delete`, store→PG, graphe
-> dossier complet). Q5+ ouvertes. Pas une revue Phase 3.
+> Squelette Phase 1. **Q1–Q5** actées. Q6+ ouvertes. Pas une revue Phase 3.
 
 ## Architecture Overview
 
@@ -55,12 +54,13 @@ déjà présents. Hexagone : use case domaine, adapters infrastructure.
 | Backend | Use case purge + adapters store/PG ; job **seulement si Q1=B** |
 | Frontend | Aucun jusqu’à Q6 |
 | Liquibase | Probable si statuts / index outbox |
-| Flowable | Q5 |
+| Flowable | **Q5 = A** best-effort `WorkflowEnginePort` ; ACT_HI_* résiduel OK |
 
 ## Design Decisions
 
-Contraintes Phase 1 déjà actées (Q1–Q4) : job outbox, `delete` sur le
-port existant, ordre store→PG, graphe dossier complet. Q5–Q10 ouvertes.
+Contraintes Phase 1 déjà actées (Q1–Q5) : job outbox, `delete` sur le
+port existant, ordre store→PG, graphe dossier complet, Flowable
+best-effort. Q6–Q10 ouvertes.
 
 ## Non-Functional Requirements
 

@@ -7,12 +7,12 @@ created: 2026-08-19
 updated: 2026-08-19
 feature: purge-stockage
 phase1: 2026-08-19
-todo_ref: TODO.md §22 · requirements purge-stockage (Q1–Q5 actées)
+todo_ref: TODO.md §22 · requirements purge-stockage (Q1–Q6 actées)
 ---
 
 # System Design & Architecture — `purge-stockage`
 
-> Squelette Phase 1. **Q1–Q5** actées. Q6+ ouvertes. Pas une revue Phase 3.
+> Squelette Phase 1. **Q1–Q6** actées. Q7+ ouvertes. Pas une revue Phase 3.
 
 ## Architecture Overview
 
@@ -44,7 +44,7 @@ déjà présents. Hexagone : use case domaine, adapters infrastructure.
 
 ## API Design
 
-- **Externe :** dépend de Q6/Q7 (aucune vs `DELETE` vs UI).
+- **Externe lecture file :** GET admin (Q6=B). Mutation d’effacement : Q7.
 - **Ports domaine :** à figer en Phase 3 après Q1–Q5.
 
 ## Component Breakdown
@@ -52,7 +52,7 @@ déjà présents. Hexagone : use case domaine, adapters infrastructure.
 | Zone | Notes Phase 1 |
 |---|---|
 | Backend | Use case purge + adapters store/PG ; job **seulement si Q1=B** |
-| Frontend | Aucun jusqu’à Q6 |
+| Frontend | Écran admin lecture file (Q6=B) ; AuthZ `TENANT_ADMIN` |
 | Liquibase | Probable si statuts / index outbox |
 | Flowable | **Q5 = A** best-effort `WorkflowEnginePort` ; ACT_HI_* résiduel OK |
 
@@ -60,7 +60,7 @@ déjà présents. Hexagone : use case domaine, adapters infrastructure.
 
 Contraintes Phase 1 déjà actées (Q1–Q5) : job outbox, `delete` sur le
 port existant, ordre store→PG, graphe dossier complet, Flowable
-best-effort. Q6–Q10 ouvertes.
+best-effort, écran lecture file. Q7–Q10 ouvertes.
 
 ## Non-Functional Requirements
 

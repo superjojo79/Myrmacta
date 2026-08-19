@@ -96,8 +96,9 @@ Trois options nommées par TODO.md / FILE-ATTENTE / REVUE §9.
 3. **En tant que** conformité, **je veux** qu’après purge réussie le
    dossier ne soit plus lisible via l’API, **afin de** prouver
    l’effacement.
-4. **En tant que** ops, **je veux** distinguer purge dossier et
-   décommission tenant, **afin de** ne pas utiliser le mauvais outil.
+5. **En tant que** `TENANT_ADMIN`, **je veux** voir l’état de la file de
+   purge (compteurs / liste lecture), **afin de** savoir si le job
+   décroche — **sans** forcer une purge depuis l’UI.
 
 ### Edge cases (à préciser avec Q2–Q5 ; le déclencheur est le job outbox)
 
@@ -125,15 +126,20 @@ Critères **stables** (indépendants du mécanisme exact) :
 - [ ] Aucun couplage MinIO ; hexagone / ArchUnit respectés.
 - [ ] TODO §22 / FILE-ATTENTE / DEFERRED mis à jour **après** arbitrages
       + implémentation.
-- [ ] `./mvnw verify` vert ; FE selon impact SPA (Vitest + Playwright si
-      contrat/UI touchés).
+- [ ] `./mvnw verify` vert ; Vitest + Playwright pour l’écran admin file
+      (Q6 = B, SPA touché).
 
 Critères **dépendants de Q1=B** (détail cycle/claim en Phase 3) :
 
 - [ ] Job planifié borné consomme `PENDING` jusqu’à un état terminal
       (succès ou échec rejouable).
 
-Reste dépendant de Q6–Q10 : surface HTTP/UI / E2E.
+Critères **dépendants de Q6=B** :
+
+- [ ] UI admin lecture : compteurs (et/ou liste) `PENDING` / `FAILED` /
+      `COMPLETED` ; pas d’action force/retry ; rôle `TENANT_ADMIN`.
+- [ ] API **lecture** de la file (nécessaire au SPA). L’API d’**écriture**
+      d’effacement reste Q7.
 
 ## Constraints & Assumptions
 
@@ -149,8 +155,9 @@ Reste dépendant de Q6–Q10 : surface HTTP/UI / E2E.
 - Branche Cloud : `cursor/purge-stockage-05b8` (lint `feature-*` = MISS
   attendu).
 
-**Q1–Q5 actées :** job outbox ; `delete` ; store puis PG ; graphe dossier
-complet ; Flowable runtime **best-effort**. Q6 (UI) n’est pas tranchée.
+**Q1–Q6 actées :** job outbox ; `delete` ; store puis PG ; graphe dossier
+complet ; Flowable best-effort ; écran admin **lecture** de la file (pas
+de force purge). Q7 (API d’effacement) n’est pas tranchée.
 
 ## Questions & Open Items
 
@@ -164,14 +171,13 @@ complet ; Flowable runtime **best-effort**. Q6 (UI) n’est pas tranchée.
 | **Q2 / D-PORT** | Suppression objet | **A** — étendre `DocumentStoragePort.delete` (S3 + FS) |
 | **Q3 / D-ORDER** | Ordre d’effacement | **A** — store d’abord, puis PostgreSQL |
 | **Q4 / D-SCOPE-PG** | Graphe PG | **A** — dossier + éléments + relations src\|tgt + workflow links |
-| **Q5 / D-WF** | Flowable | **A** — best-effort delete PI runtime ; link métier toujours supprimé ; ACT_HI_* résiduel OK V1 |
+| **Q6 / D-UI** | Surface admin | **B** — écran lecture (compteurs / liste) ; pas de force purge |
 
-### Ouvertes (prochaine = Q6 uniquement)
+### Ouvertes (prochaine = Q7 uniquement)
 
 | Id | Question | Pourquoi ça compte | Options | Reco |
 |---|---|---|---|---|
-| **Q6 / D-UI** | Surface admin file / force purge ? | Parcours utilisateur | Aucune · écran lecture · force admin | Aucune V1 (aligné §21) |
-| **Q7 / D-HTTP** | API d’effacement immédiat ? | Droit à l’effacement hors rétention | Aucune · `DELETE` admin · job only | Aucune V1 |
+| **Q7 / D-HTTP** | API d’effacement immédiat ? | Droit à l’effacement hors rétention | Aucune mutation · `DELETE` admin · job only | Aucune mutation V1 |
 | **Q8 / D-TENANT** | Purge tenant dans ce lot ? | §22 mélange dossier et `DROP SCHEMA` | Hors code + runbook · automatiser | Hors code + runbook |
 | **Q9 / D-ORPHAN** | Balayer orphelins hors outbox ? | Uploads échoués | Hors V1 · job séparé | Hors V1 |
 | **Q10 / D-FE** | Nouveaux E2E Playwright ? | Conventions FE | Exemption si zéro SPA · specs dédiés | Non-régression suite existante |
@@ -194,5 +200,6 @@ Shared understanding :
   workflow links.
 - **Q5 = A :** Flowable runtime best-effort ; historique ACT_HI_*
   résiduel acceptable V1.
+- **Q6 = B :** écran admin lecture de la file ; pas d’action force/retry.
 
-Prochaine clarification : **Q6 / D-UI** uniquement.
+Prochaine clarification : **Q7 / D-HTTP** uniquement.

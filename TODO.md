@@ -199,19 +199,12 @@ workflow actif » en parallèle réel. Décider également des seuils de couvert
 
 ### [ ] 29. Observabilité
 
-**Décision Phase 2 (2026-08-20 — feature `observabilite`, PR #59) :**
-requirements **reviewed**. Implémentation encore à faire.
+**Phase 2 en cours (2026-08-20 — PR #59) :** Q1–Q6 **pas actées**.
+Q1 (lectures, document `12`) posée au stakeholder.
 
-| Sujet | Choix |
-|---|---|
-| Socle | Logs JSON + MDC `tenantId` / `dossierId` / `processInstanceId` ; Micrometer Prometheus |
-| Outbox (âge) | Déclenchement seulement (santé n° 1) |
-| Autres SLI | Jobs Flowable failed/DLQ ; timer PDF ; webhooks `WEBHOOK`+`DEAD` ; jauge `SseEmitter` |
-| Actuator | `health` + `prometheus` sur **port management** (non public) |
-| UI admin | `/admin/observabilite` — cartes KPI lecture, `TENANT_ADMIN`, `GET /api/observability` |
-| Lectures (`12`) | **B** — `SECURITY_AUDIT` INFO sur GET dossier (id/`ref`) et content élément **réussis** ; pas de table ni d’écran d’audit |
-
-**À produire :** voir `docs/ai/requirements/2026-08-20-feature-observabilite.md`.
+Périmètre visé (reco, non figé) : logs JSON + MDC ; Micrometer ;
+écran admin `/admin/observabilite`. Détail :
+`docs/ai/requirements/2026-08-20-feature-observabilite.md`.
 
 ---
 

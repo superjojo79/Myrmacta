@@ -13,8 +13,7 @@ todo_ref: TODO.md §29 · Q1–Q6 reviewed
 
 # System Design & Architecture — `observabilite`
 
-> Draft Phase 1/2. Requirements **reviewed** (Q1–Q6). **Revue design =
-> Phase 3** — figer noms Prometheus, seuils, API Flowable, format JSON.
+> Draft. Requirements **pas reviewed** : Q1–Q6 ouvertes. D-FE acté.
 
 ## Architecture Overview
 

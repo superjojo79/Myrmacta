@@ -2,7 +2,7 @@
 phase: requirements
 title: Requirements & Problem Understanding
 description: Clarify the problem space, gather requirements, and define success criteria
-status: reviewed
+status: draft
 created: 2026-08-20
 updated: 2026-08-20
 feature: observabilite
@@ -14,9 +14,9 @@ todo_ref: TODO.md §29 · FILE-ATTENTE.md · REVUE-PRE-IMPLEMENTATION.md §29 ·
 
 # Requirements & Problem Understanding — `observabilite`
 
-> Feature produit TODO **§29** / [FILE-ATTENTE.md](../../../FILE-ATTENTE.md)
-> après `openapi-pagination-admin` (PR #58). **D-FE** acté stakeholder
-> (écran admin). **Q1–Q6 actées** Phase 2. Requirements **reviewed**.
+> Feature produit TODO **§29**. **D-FE** acté (écran admin). Phase 2
+> **en cours** : Q1–Q6 à valider **une à une** (pas actées). Recos
+> Phase 1 conservées jusqu’à réponse. Status **draft**.
 
 ## Problem Statement
 **What problem are we solving?**
@@ -179,7 +179,7 @@ Le `TENANT_ADMIN` n’a pas non plus de vue santé dans le SPA.
 - Branche Cloud : `cursor/observabilite-9800` (lint `feature-*` = MISS
   attendu).
 
-**Décisions produit (Phase 2 — 2026-08-20) :**
+**Recommandations Phase 2 (en attente de validation, Q1 d’abord) :**
 
 | Id | Sujet | Choix |
 |---|---|---|
@@ -218,44 +218,35 @@ Le `TENANT_ADMIN` n’a pas non plus de vue santé dans le SPA.
 
 ### Clos
 
-| Id | Décision | Choix | Pourquoi |
+| Id | Décision | Choix |
+|---|---|---|
+| **D-FE** | Écran admin | Acté stakeholder 2026-08-20 — `/admin/observabilite` lecture |
+
+### Ouvertes (Phase 2 — une à la fois)
+
+| Id | Question | Options | Reco |
 |---|---|---|---|
-| **Q1 / D-AUDIT-READ** | Lectures | **B** — `SECURITY_AUDIT` INFO sur `GET /api/dossiers/{id}`, `GET /api/dossiers?ref=`, `GET /api/dossier-elements/{id}/content` (succès seulement) | §29 exige une **décision** ; A laisse le trou `12` ; C = nouvelle feature UI/table. B réutilise le logger déjà livré, sans PII. |
-| **Q2 / D-MGMT** | Scrape | **A** — `management.server.port` ; reverse-proxy public **ne route pas** ce port ; **aucun** `/actuator` sur le BFF | OIDC inadapté à Prometheus (B) ; C expose des métriques sur internet ; D ajoute un secret. |
-| **Q3 / D-OUTBOX** | Quelles outbox | **A** — déclenchement seulement | §29 : santé n° 1 du **déclenchement**. Notification/purge = follow-up. |
-| **Q4** | Forme UI | **A** — cartes KPI + sévérité, snapshot | Stakeholder veut une visualisation admin ; B/C = graphe/historique hors V1. Timer PDF reste un histogramme **Prometheus**. |
-| **Q5** | Rôle | **A** — `TENANT_ADMIN` | Aligné File purge / Webhooks. Santé d’instance ≠ config workflow. |
-| **Q6** | Refresh | **A** — load + Rafraîchir | Aligné File purge ; pas de poll (charge, pas de WS). |
-| **D-FE** | Écran | Acté stakeholder 2026-08-20 | Complète le critère FILE-ATTENTE « API + UI ». |
-| **D-API-UI** | Path | `GET /api/observability` | Même style que `/api/purge-outbox` ; pas `/actuator`. |
+| **Q1** | Traçabilité des accès en lecture (`12`) | **A** hors V1 · **B** logs `SECURITY_AUDIT` INFO (GET dossier id/`ref` + content, succès seulement) · **C** table + écran audit | **B** |
+| **Q2** | Qui scrape Prometheus ? | **A** port management non public · **B** même port `TENANT_ADMIN` · **C** anonyme sur le BFF · **D** basic-auth | **A** |
+| **Q3** | Quelles outbox pour l’âge ? | **A** déclenchement seul · **B** + notification + purge | **A** |
+| **Q4** | Forme UI | **A** cartes KPI + sévérité · **B** + Chart.js · **C** historique persisté | **A** |
+| **Q5** | Rôle écran / GET | **A** `TENANT_ADMIN` · **B** + `WORKFLOW_ADMIN` | **A** |
+| **Q6** | Rafraîchissement | **A** load + Rafraîchir · **B** + poll 30 s | **A** |
 
-### Ouvertes
-
-Aucune question **produit**. Restes **A-*** = design Phase 3.
+Posée maintenant : **Q1**. Les autres attendent.
 
 ### Hors file
 
 Rapports/SLA, OTel, Grafana-as-code, codegen, antivirus, `http-rest`
 SERVICE, Testcontainers §28.
 
-## Phase 2 — revue close (2026-08-20)
+## Phase 2 — revue en cours (2026-08-20)
 
-Template README : OK (problem, goals/non-goals, stories, success,
-constraints, questions).
+Template README : OK.
 
-**Validé :** D-APPROACH = B + D-FE ; Q1–Q6 ; non-goals ; stories 1–8
-(story 3 corrigée : timer Prometheus ≠ graphe SPA) ; critères de
-succès ; path `GET /api/observability` ; nav « Observabilité ».
+Les reco Q1–Q6 **ne sont pas actées** : validation stakeholder une
+question à la fois. **D-FE** seul est clos.
 
-**Contradictions levées :**
+Status : **`draft`**.
 
-- « Histogramme PDF » vs Q4 = A → histogramme scrape seulement.
-- FILE-ATTENTE « Rapports/SLA hors V1 » vs écran admin → santé
-  instance ≠ rapports.
-- Actuator vs SPA → JSON BFF ; Q2 = A.
-
-A-* reportées en Phase 3.
-
-Status : **`reviewed`**.
-
-**Prochaine phase :** `dev-design` Phase 3.
+**En cours :** Q1 (lectures).

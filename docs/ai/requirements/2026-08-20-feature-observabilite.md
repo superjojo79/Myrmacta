@@ -270,4 +270,4 @@ DD-THRESHOLDS, DD-EMPTY-AGE, DD-HEALTH, …).
 
 Status : **`reviewed`**.
 
-**Prochaine phase :** `dev-planning` Phase 4.
+**Prochaine phase :** `dev-implementation` Phase 5 (plan Phase 4 reviewed).

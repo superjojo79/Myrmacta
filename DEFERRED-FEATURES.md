@@ -151,7 +151,7 @@ Voir le détail et les options dans [TODO.md](TODO.md) et
 | 25 | Modèle physique consolidé (ERD) | **Partiel** — tables dossiers livrées ; reste ERD global, `platform.*`, ACT_*, outbox, etc. |
 | 26 | Concurrence dossier / référence | **Partiel / quasi clos en B** — `@Version` + `dossier_reference_seq` + format UTC ; reste smoke PG multi-pods |
 | 28 | Stratégie de test | **Partiel** — ArchUnit + Jacoco ≥ 80 % + H2 ; reste Testcontainers / charge Flowable / outbox ; FE = Vitest + Playwright, câblés en CI (job `frontend`, `.github/workflows/ci.yml`) |
-| 29 | Observabilité | **Requirements reviewed** (2026-08-20) — Q1–Q6 actées (`observabilite` PR #59) ; implémentation en attente |
+| 29 | Observabilité | **Design reviewed** (2026-08-20) — Q1–Q6 + DD-* (`observabilite` PR #59) ; implémentation en attente (Phase 4+) |
 | 30 | Durcissement entrées exposées | **Partiel** — rate limit + taille max sur webhooks entrants et `POST /api/documents/generate` ; SSRF (PDF + webhooks sortants) fermé ; reste antivirus PJ, upload générique… |
 | 31 | Découpage en lots / provisioning | **Partiel** — lots lifecycle démarrés ; outillage provisioning ops encore à produire |
 
@@ -162,7 +162,7 @@ Voir le détail et les options dans [TODO.md](TODO.md) et
 - Provisioning tenant : schéma PG, instance Boot, bloc proxy, secrets OIDC
 - Surcharge prod de `app.tenant.id` (ne jamais laisser `tenant_dev`)
 - Smoke manuel : Keycloak réel, PostgreSQL réel
-- Observabilité : MDC + Micrometer + UI admin (TODO §29, requirements reviewed PR #59)
+- Observabilité : MDC + Micrometer + UI admin (TODO §29, design reviewed PR #59)
 - Chore docs : `com.monapp` résiduel dans `analysis doc/`
 - Build FE : `npm run build` → copie vers `src/main/resources/static/` (Maven plugin ou CI)
 

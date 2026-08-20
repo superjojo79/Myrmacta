@@ -7,44 +7,49 @@ created: 2026-08-20
 updated: 2026-08-20
 feature: observabilite
 phase1: 2026-08-20
+phase3: 2026-08-20
 ---
 
 # Project Planning & Task Breakdown — `observabilite`
 
-> Squelette. Remplir en Phase 4 après design **reviewed**. Q1–Q6
-> **actées**. Ne pas implémenter depuis cette page.
+> Squelette. **Remplir en Phase 4** maintenant que le design est
+> **reviewed**. Ne pas implémenter depuis cette page.
 
-## Milestones (prévisionnel)
+## Milestones (prévisionnel — détailler Phase 4)
 
-- [ ] M1 — Actuator + logs JSON + MDC `tenantId`
-- [ ] M2 — Cinq métriques §29
-- [ ] M3 — Q1 (audit lecture) selon décision Phase 2
-- [ ] M4 — SPA `/admin/observabilite` + GET snapshot (D-FE)
-- [ ] M5 — Tests + ArchUnit + Vitest + Playwright
+- [ ] M1 — Actuator port management + logs ECS + MDC `tenantId`
+- [ ] M2 — Ports lecture + binders (3 âges, Flowable ×2, PDF, webhook
+      DEAD, SSE)
+- [ ] M3 — Q1 audit lecture `SECURITY_AUDIT`
+- [ ] M4 — `GET /api/observability` + SPA `/admin/observabilite`
+- [ ] M5 — ArchUnit + Vitest + Playwright + OpenAPI
 
 ## Task Breakdown
 
-À détailler en Phase 4 (TDD, fichiers, commandes `verify`).
+À détailler en Phase 4 (TDD, fichiers, commandes `verify`). Design
+figé : `docs/ai/design/2026-08-20-feature-observabilite.md`.
 
 ## Dependencies
 
-- Q1–Q6 **actées** (Phase 2). Design Phase 3 : noms métriques, seuils,
-  API Flowable, format JSON logs.
+- Q1–Q6 actées (Phase 2).
+- A-* figés Phase 3 (DD-JSON=ecs, DD-PROM-NAMES, DD-FLOWABLE-API,
+  DD-THRESHOLDS, DD-EMPTY-AGE, DD-HEALTH, DD-INDEX-NOTIF).
 
 ## Timeline & Estimates
 
-Pas d’estimation calendaire. Enchaînement : 2 → 3 → 4 → 5…
+Pas d’estimation calendaire. Enchaînement : 3 → **4** → 5…
 
 ## Risks & Mitigation
 
 | Risque | Mitigation |
 |---|---|
-| Prometheus vs OIDC BFF | **Q2 = A** (port management) |
-| Fuite MDC thread pool jobs | try/finally + tests |
-| Cardinalité labels | pas de `dossierId` en label Prometheus |
+| Prometheus vs OIDC BFF | **Q2 = A** + chaîne Order 0 |
+| Fuite MDC thread pool | `MdcScope` try/finally + tests |
+| Cardinalité labels | pas de `dossierId` / `tenant` Prometheus |
+| API Flowable 8 vs javadoc | DD-FLOWABLE-API ; vérifier `ExecuteAsyncRunnable` en TDD |
 
 ## Resources Needed
 
-- Docs §29 / FILE-ATTENTE.
+- Design reviewed, testing, monitoring.
 - Tests existants `SecurityAuditLogTest`, `SseNotificationAdapterTest`,
-  `WorkflowPersistenceTest`.
+  `WorkflowPersistenceTest`, `OpenApiEnabledApiTest`.

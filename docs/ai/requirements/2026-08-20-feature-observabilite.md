@@ -8,6 +8,7 @@ updated: 2026-08-20
 feature: observabilite
 phase1: 2026-08-20
 phase2: 2026-08-20
+phase3: 2026-08-20
 stakeholder_decisions: 2026-08-20
 todo_ref: TODO.md §29 · FILE-ATTENTE.md · REVUE-PRE-IMPLEMENTATION.md §29 · DEFERRED-FEATURES.md
 ---
@@ -15,7 +16,8 @@ todo_ref: TODO.md §29 · FILE-ATTENTE.md · REVUE-PRE-IMPLEMENTATION.md §29 ·
 # Requirements & Problem Understanding — `observabilite`
 
 > Feature produit TODO **§29**. **D-FE** et **Q1–Q6 actés**. Phase 2
-> **reviewed**. Prochaine : Phase 3 design.
+> **reviewed**. Design Phase 3 **reviewed** (A-* = DD-*). Prochaine :
+> Phase 4 planning.
 
 ## Problem Statement
 **What problem are we solving?**
@@ -204,19 +206,23 @@ Le `TENANT_ADMIN` n’a pas non plus de vue santé dans le SPA.
 | **Q5** | Rôle | **A acté** — `TENANT_ADMIN` seul |
 | **Q6** | Refresh | **A acté** — ouverture + bouton Rafraîchir |
 
-**Assumptions techniques (A-*, détail Phase 3) :**
+**Assumptions techniques (A-* → DD-* Phase 3, figées) :**
 
-- **A-BINDER :** `MeterBinder` / gauges ; pas d’annotation domaine.
-- **A-PORT-AGE :** lecture âge sur les trois ports outbox
-  (déclenchement, notification, purge).
-- **A-EMPTY-AGE :** outbox vide → `0` secondes.
-- **A-HEALTH :** probes Boot sur le port management ; pas de DOWN métier.
-- **A-JSON :** `ecs` vs `logstash` — choix Boot 4.1 en Phase 3.
-- **A-THRESHOLDS :** seuils ok/warn/crit des cartes (alignés runbook).
-- **A-FLOWABLE-API :** failed vs dead-letter Flowable 8.
-- **A-PROM-NAMES :** noms métriques + **aucun** label `dossierId`.
-- **A-UI-COMP :** `ObservabilityAdminView` + grille KPI +
-  `api/observability.ts` ; Composition API ; PrimeVue existant.
+- **A-BINDER / DD-NO-DOMAIN-UC :** `MeterBinder` infra ; pas d’annotation
+  domaine ; pas de use case observabilité.
+- **A-PORT-AGE :** lecture âge sur les trois ports outbox existants.
+- **A-EMPTY-AGE / DD-EMPTY-AGE :** outbox vide → `0` secondes.
+- **A-HEALTH / DD-HEALTH :** probes Boot sur le port management ; pas de
+  DOWN métier.
+- **A-JSON / DD-JSON :** `logging.structured.format.console=ecs`.
+- **A-THRESHOLDS / DD-THRESHOLDS :** âges 60s/300s ; DLQ 0/1–9/≥10 ;
+  webhook 0/1–4/≥5 ; PDF mean 2s/5s ; SSE 50/200 — calcul serveur.
+- **A-FLOWABLE-API / DD-FLOWABLE-API :** dead-letter **et**
+  `withException` (job + timer) ; pas de `FailedJobQuery` Community 8.
+- **A-PROM-NAMES / DD-PROM-NAMES :** préfixe `flowforge.*` ; aucun label
+  `tenant` / `dossierId`.
+- **A-UI-COMP / DD-UI-WIDGETS :** vue + grille + cartes HTML ; pas
+  Chart.js.
 - **A-UI-ACTION :** lecture seule.
 
 ## Questions & Open Items
@@ -235,7 +241,7 @@ Le `TENANT_ADMIN` n’a pas non plus de vue santé dans le SPA.
 
 ### Ouvertes
 
-Aucune question **produit**. Restes **A-*** = design Phase 3.
+Aucune. A-* figés en Phase 3 (`docs/ai/design/2026-08-20-feature-observabilite.md`).
 
 ### Hors file
 
@@ -259,8 +265,9 @@ stories ; critères de succès ; `GET /api/observability` ; nav
 | Q5 | **A** — `TENANT_ADMIN` seul |
 | Q6 | **A** — load + Rafraîchir |
 
-A-* reportées en Phase 3.
+A-* figés Phase 3 (DD-JSON, DD-PROM-NAMES, DD-FLOWABLE-API,
+DD-THRESHOLDS, DD-EMPTY-AGE, DD-HEALTH, …).
 
 Status : **`reviewed`**.
 
-**Prochaine phase :** `dev-design` Phase 3.
+**Prochaine phase :** `dev-planning` Phase 4.

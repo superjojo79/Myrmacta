@@ -58,13 +58,15 @@ Pas de nouvelle table métier (**Q1 = B**, pas C).
 
 ### Métriques (noms provisoires — figer Phase 3)
 
-| SLI §29 | Type | Source |
+| SLI | Type | Source |
 |---|---|---|
-| Âge plus ancien PENDING outbox déclenchement | Gauge (secondes) | Nouvelle lecture `OutboxRepository` |
+| Âge PENDING outbox **déclenchement** | Gauge (s) | `OutboxRepository` |
+| Âge PENDING outbox **notification** | Gauge (s) | `NotificationOutboxRepository` (**Q3 = B**) |
+| Âge PENDING/non traité outbox **purge** | Gauge (s) | `PurgeOutboxRepository` (**Q3 = B**) |
 | Jobs Flowable en échec | Gauge (count) | `ManagementService` dead-letter (+ failed si distinct) |
 | Durée rendu PDF | Timer | `PdfRenderer` adapter |
 | Webhooks DLQ | Gauge (count) | Count `WEBHOOK`+`DEAD` |
-| `SseEmitter` actifs | Gauge (count) | Somme des sets dans `SseNotificationAdapter` |
+| `SseEmitter` actifs | Gauge (count) | Somme des emitters |
 
 ### Audit lecture (**Q1 = B**)
 
@@ -103,6 +105,8 @@ Forme provisoire (figer Phase 3) :
   "tenantId": "tenant_dev",
   "observedAt": "2026-08-20T07:41:00Z",
   "triggerOutboxOldestPendingAgeSeconds": 12.5,
+  "notificationOutboxOldestPendingAgeSeconds": 0,
+  "purgeOutboxOldestPendingAgeSeconds": 3600,
   "flowableFailedJobCount": 0,
   "pdfRender": { "count": 10, "meanMs": 80.0, "maxMs": 200.0 },
   "webhookDeadCount": 2,
@@ -118,7 +122,7 @@ Lecture seule. 403 si rôle insuffisant.
 |---|---|
 | `MdcTenantFilter` (web) | Put/clear `tenantId` ; clear all en finally |
 | Helpers MDC dossier/PI | Try/finally autour des controllers / relays concernés |
-| `OutboxAgeMeterBinder` | Gauge âge PENDING déclenchement |
+| `OutboxAgeMeterBinder` | Trois gauges d’âge (**Q3 = B**) |
 | `FlowableJobMetrics` | Gauges failed / DLQ |
 | `NotificationDlqMeterBinder` | Gauge WEBHOOK DEAD |
 | Timer PDF | Micrometer autour de `render` |
@@ -134,7 +138,7 @@ Lecture seule. 403 si rôle insuffisant.
 | Route `/admin/observabilite` | `meta.roles: ['TENANT_ADMIN']` (**Q5 = A**) |
 | `AppShell` | Lien Admin « Observabilité » si `isTenantAdmin` |
 | `ObservabilityAdminView` | Chargement, erreur, bouton Rafraîchir (**Q6 = A**) |
-| `ObservabilityKpiGrid` | Grille des cinq SLI |
+| `ObservabilityKpiGrid` | Grille SLI + trois âges outbox |
 | `ObservabilityKpiCard` | Une métrique + sévérité (**Q4 = A**) |
 | `api/observability.ts` | Client GET snapshot |
 | `useObservabilitySnapshot` | Fetch / état (pas de store Pinia global sauf besoin) |

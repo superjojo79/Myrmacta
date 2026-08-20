@@ -34,7 +34,8 @@ requirements_ref: docs/ai/requirements/2026-08-20-feature-observabilite.md
 
 - RPS HTTP générique, heap, GC : métriques JVM Micrometer **si**
   actuator les expose par défaut — bonus, pas un objectif produit.
-- Âge outbox notification / purge : **Q3 = A** hors lot.
+- Âge outbox notification / purge : **Q3 = B** (jauges dédiées, en plus
+  du déclenchement).
 
 ## Monitoring Tools
 

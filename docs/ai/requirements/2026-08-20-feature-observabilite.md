@@ -14,8 +14,8 @@ todo_ref: TODO.md §29 · FILE-ATTENTE.md · REVUE-PRE-IMPLEMENTATION.md §29 ·
 
 # Requirements & Problem Understanding — `observabilite`
 
-> Feature produit TODO **§29**. **D-FE**, **Q1 = B**, **Q2 = A** actés.
-> Phase 2 **en cours** : Q3–Q6 à valider **une à une**. Status **draft**.
+> Feature produit TODO **§29**. **D-FE**, **Q1 = B**, **Q2 = A**,
+> **Q3 = B** actés. Phase 2 **en cours** : Q4–Q6. Status **draft**.
 
 ## Problem Statement
 **What problem are we solving?**
@@ -51,14 +51,16 @@ Le `TENANT_ADMIN` n’a pas non plus de vue santé dans le SPA.
 - Logs **structurés** avec MDC `tenantId`, `dossierId`,
   `processInstanceId`.
 - Métriques **Micrometer** scrapeables Prometheus :
-  1. âge du plus ancien PENDING de l’outbox **déclenchement** (**Q3 = A**) ;
+  1. âge du plus ancien événement **non traité** de **chaque** outbox
+     (**Q3 = B**) : déclenchement, notification, purge — trois jauges
+     distinctes ;
   2. jobs Flowable en échec (dead-letter / failed) ;
   3. durée des rendus PDF (timer — histogramme **Prometheus**, pas UI) ;
   4. webhooks sortants `WEBHOOK` + `DEAD` ;
   5. nombre d’`SseEmitter` actifs.
 - Écran admin lecture **`/admin/observabilite`** (**D-FE**) : cartes
-  KPI + sévérité (**Q4 = A**), rôle **`TENANT_ADMIN`** (**Q5 = A**),
-  refresh manuel (**Q6 = A**), contrat **`GET /api/observability`**.
+  KPI + sévérité (**Q4** reco A), y compris **les trois âges
+  d’outbox** ; rôle / refresh encore Q5–Q6.
 - Traçabilité lectures **Q1 = B** : logs `SECURITY_AUDIT` INFO sur
   les GET dossier détail et contenu binaire (pas de table, pas d’UI
   d’audit).
@@ -77,7 +79,7 @@ Le `TENANT_ADMIN` n’a pas non plus de vue santé dans le SPA.
 - Chart.js, histogramme UI, historique / time-series persisté (**Q4 ≠ B/C**).
 - SPA scrape `/actuator/prometheus`.
 - Actuator sur le port BFF public (**Q2 = A**).
-- Âge des outbox notification / purge (**Q3 = A**).
+- Une seule jauge d’âge « outbox générique » (**Q3 ≠ A**).
 - Poll automatique de l’écran (**Q6 ≠ B**).
 - Accès `WORKFLOW_ADMIN` à l’écran (**Q5 ≠ B**).
 - Table d’audit + écran d’audit lecture (**Q1 ≠ C**).
@@ -102,9 +104,9 @@ Le `TENANT_ADMIN` n’a pas non plus de vue santé dans le SPA.
 
 ## User Stories & Use Cases
 
-1. **En tant qu’** ops, **je veux** scraper Prometheus (port
-   management) et lire l’âge de l’outbox déclenchement, **afin de**
-   détecter un relais coincé.
+1. **En tant qu’** ops, **je veux** scraper l’âge de **chaque** outbox
+   (déclenchement, notification, purge), **afin de** voir quel relais
+   décroche sans tout mélanger.
 2. **En tant qu’** ops, **je veux** `tenantId` (et dossier / PI quand
    connus) sur chaque ligne de log HTTP et job, **afin de** filtrer
    un incident.
@@ -116,7 +118,7 @@ Le `TENANT_ADMIN` n’a pas non plus de vue santé dans le SPA.
 5. **En tant qu’** ops, **je veux** le nombre d’`SseEmitter` vivants,
    **afin de** voir si le canal navigateur sature la JVM.
 6. **En tant que** `TENANT_ADMIN`, **je veux** `/admin/observabilite`
-   avec cinq cartes KPI (snapshot + sévérité + Rafraîchir), **afin de**
+   avec les SLI §29 **et** les trois âges d’outbox, **afin de**
    juger la santé **sans** Prometheus.
 7. **En tant que** `WORKFLOW_ADMIN` / `DOSSIER_MANAGER` /
    `DOSSIER_VIEWER`, **je ne veux pas** cet écran ni le lien nav.
@@ -130,7 +132,7 @@ Le `TENANT_ADMIN` n’a pas non plus de vue santé dans le SPA.
 - Requête sans dossier / PI : MDC `tenantId` seul ; pas de clés
   fantômes.
 - Jobs : put/clear par item de batch (pas de fuite thread pool).
-- Outbox vide : âge `0` (**A-EMPTY-AGE**).
+- Outbox vide (chacune) : âge `0` (**A-EMPTY-AGE**).
 - PDF jamais rendu : `pdfRender.count = 0` ; UI mean/max = **n/a**.
 - PDF en erreur : timer observé (succès et échec).
 - SSE timeout / erreur : jauge suit `unregister`.
@@ -148,15 +150,15 @@ Le `TENANT_ADMIN` n’a pas non plus de vue santé dans le SPA.
 - [ ] Logs JSON stdout avec `tenantId` ; `dossierId` /
       `processInstanceId` quand le contexte les connaît.
 - [ ] MDC nettoyé en `finally` (HTTP + jobs).
-- [ ] Cinq métriques §29 scrapeables sur le **port management**
-      uniquement (`health` + `prometheus` ; **Q2 = A**).
+- [ ] SLI §29 **plus** trois jauges d’âge outbox (déclenchement,
+      notification, purge — **Q3 = B**) scrapeables sur le **port
+      management** uniquement (`health` + `prometheus` ; **Q2 = A**).
 - [ ] Domaine pur : zéro MDC / Micrometer / actuator ; ArchUnit vert.
 - [ ] Aucune valeur sensible dans les logs.
-- [ ] `GET /api/observability` : `TENANT_ADMIN` → 200 + cinq SLI ;
-      autre rôle → 403.
-- [ ] SPA `/admin/observabilite` : nav « Observabilité » pour
-      `TENANT_ADMIN` seulement ; cinq cartes KPI + sévérité ; bouton
-      Rafraîchir ; **aucun** bouton métier.
+- [ ] `GET /api/observability` : `TENANT_ADMIN` → 200 + SLI dont **trois
+      âges** ; autre rôle → 403.
+- [ ] SPA `/admin/observabilite` : nav « Observabilité » (`TENANT_ADMIN`)
+      ; cartes KPI des SLI + trois âges ; **aucun** bouton métier.
 - [ ] Q1 = B implémenté (GET détail dossier + content, succès
       seulement).
 - [ ] Vitest (vue + nav AuthZ) **et** Playwright (admin voit /
@@ -178,7 +180,7 @@ Le `TENANT_ADMIN` n’a pas non plus de vue santé dans le SPA.
 - Branche Cloud : `cursor/observabilite-9800` (lint `feature-*` = MISS
   attendu).
 
-**Recommandations Phase 2 (en attente de validation, Q1 d’abord) :**
+**Recommandations Phase 2 (Q4–Q6 encore ouvertes) :**
 
 | Id | Sujet | Choix |
 |---|---|---|
@@ -187,7 +189,7 @@ Le `TENANT_ADMIN` n’a pas non plus de vue santé dans le SPA.
 | **D-API-UI** | Contrat | `GET /api/observability` JSON BFF |
 | **D-LOG** | Format | JSON structuré Boot (`logging.structured.format.console`) |
 | **D-MDC** | Clés | `tenantId` / `dossierId` / `processInstanceId` |
-| **D-OUTBOX** / **Q3** | Âge | Outbox **déclenchement** seulement |
+| **D-OUTBOX** / **Q3** | Âge | **B acté** — trois jauges (déclenchement, notification, purge) |
 | **D-DLQ** | Webhooks | `WEBHOOK` + `DEAD` |
 | **D-PDF** | Timer | Autour de `PdfRenderer.render` ; UI = count/mean/max |
 | **D-SSE** | Jauge | Somme des emitters |
@@ -202,7 +204,8 @@ Le `TENANT_ADMIN` n’a pas non plus de vue santé dans le SPA.
 **Assumptions techniques (A-*, détail Phase 3) :**
 
 - **A-BINDER :** `MeterBinder` / gauges ; pas d’annotation domaine.
-- **A-PORT-AGE :** lecture âge sur `OutboxRepository`.
+- **A-PORT-AGE :** lecture âge sur les trois ports outbox
+  (déclenchement, notification, purge).
 - **A-EMPTY-AGE :** outbox vide → `0` secondes.
 - **A-HEALTH :** probes Boot sur le port management ; pas de DOWN métier.
 - **A-JSON :** `ecs` vs `logstash` — choix Boot 4.1 en Phase 3.
@@ -222,17 +225,17 @@ Le `TENANT_ADMIN` n’a pas non plus de vue santé dans le SPA.
 | **D-FE** | Écran admin | Acté stakeholder 2026-08-20 — `/admin/observabilite` lecture |
 | **Q1 / D-AUDIT-READ** | Lectures | **B** (2026-08-20) — `SECURITY_AUDIT` INFO sur GET dossier id/`ref` et GET content **réussis** ; pas de table ni d’écran d’audit |
 | **Q2 / D-MGMT** | Scrape Prometheus | **A** (2026-08-20) — `management.server.port` ; reverse-proxy public ne route pas ce port ; aucun `/actuator` sur le BFF |
+| **Q3 / D-OUTBOX** | Âge outbox | **B** (2026-08-20) — trois jauges distinctes : déclenchement, notification, purge |
 
 ### Ouvertes (Phase 2 — une à la fois)
 
 | Id | Question | Options | Reco |
 |---|---|---|---|
-| **Q3** | Quelles outbox pour l’âge ? | **A** déclenchement seul · **B** + notification + purge | **A** |
 | **Q4** | Forme UI | **A** cartes KPI + sévérité · **B** + Chart.js · **C** historique persisté | **A** |
 | **Q5** | Rôle écran / GET | **A** `TENANT_ADMIN` · **B** + `WORKFLOW_ADMIN` | **A** |
 | **Q6** | Rafraîchissement | **A** load + Rafraîchir · **B** + poll 30 s | **A** |
 
-Posée maintenant : **Q3**. Q4–Q6 attendent.
+Posée maintenant : **Q4**. Q5–Q6 attendent.
 
 ### Hors file
 
@@ -243,9 +246,9 @@ SERVICE, Testcontainers §28.
 
 Template README : OK.
 
-Les reco Q3–Q6 **ne sont pas actées**. Clos : **D-FE**, **Q1 = B**,
-**Q2 = A**.
+Les reco Q4–Q6 **ne sont pas actées**. Clos : **D-FE**, **Q1 = B**,
+**Q2 = A**, **Q3 = B**.
 
 Status : **`draft`**.
 
-**En cours :** Q3 (périmètre âge outbox).
+**En cours :** Q4 (forme UI).

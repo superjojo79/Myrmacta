@@ -50,7 +50,7 @@ requirements_ref: docs/ai/requirements/2026-08-20-feature-observabilite.md
 
 ### Snapshot API
 
-- [ ] `GET /api/observability` : `TENANT_ADMIN` → 200 + cinq SLI.
+- [ ] `GET /api/observability` : `TENANT_ADMIN` → 200 + SLI **et trois âges**.
 - [ ] `DOSSIER_MANAGER` / `WORKFLOW_ADMIN` / viewer → 403.
 - [ ] Corps sans secrets / payloads.
 
@@ -74,7 +74,7 @@ requirements_ref: docs/ai/requirements/2026-08-20-feature-observabilite.md
 
 ### Frontend Vitest
 
-- [ ] `ObservabilityAdminView` affiche les cinq KPI (mock API).
+- [ ] `ObservabilityAdminView` affiche les KPI y compris trois âges (mock API).
 - [ ] État erreur ProblemDetail.
 - [ ] Bouton Rafraîchir re-fetch (**Q6 = A**).
 - [ ] `AppShell` : lien « Observabilité » si `TENANT_ADMIN` ; absent
@@ -85,8 +85,7 @@ requirements_ref: docs/ai/requirements/2026-08-20-feature-observabilite.md
 ## Integration Tests
 
 - [ ] MockMvc snapshot + MDC pendant un GET dossier.
-- [ ] Persistence : requête âge outbox sur H2 MODE=PostgreSQL
-      (pattern `WorkflowPersistenceTest`).
+- [ ] Persistence : requête âge sur les **trois** outbox (H2 MODE=PostgreSQL).
 - [ ] ArchUnit étendu : `..domain..` ↛ `io.micrometer..`,
       `org.slf4j.MDC`, `org.springframework.boot.actuate..`.
 
@@ -107,7 +106,7 @@ Pattern File purge (`E2E-PURGE-*` dans `frontend/e2e/pilotage.spec.ts`) :
 - Notification outbox : mix EMAIL/WEBHOOK × PENDING/DEAD.
 - PDF : HTML minimal déjà utilisé par les tests de rendu.
 - SSE : emitters mockés (`SseNotificationAdapterTest`).
-- Snapshot FE : fixture JSON des cinq SLI.
+- Snapshot FE : fixture JSON SLI + trois âges.
 - Audit : utilisateur `oidcLogin()` existant.
 
 ## Test Reporting & Coverage

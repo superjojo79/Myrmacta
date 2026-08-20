@@ -200,8 +200,8 @@ workflow actif » en parallèle réel. Décider également des seuils de couvert
 ### [ ] 29. Observabilité
 
 **Phase 2 en cours (2026-08-20 — PR #59) :** Q1 = B ; Q2 = A ;
-**Q3 = B** (trois jauges d’âge : déclenchement, notification, purge).
-Q4–Q6 ouvertes. Q4 posée (forme UI).
+Q3 = B ; **Q4 = A** (cartes KPI, pas Chart.js). Q5–Q6 ouvertes.
+Q5 posée (rôle).
 
 Périmètre visé (reco, non figé) : logs JSON + MDC ; Micrometer ;
 écran admin `/admin/observabilite`. Détail :

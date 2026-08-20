@@ -94,7 +94,7 @@ requirements_ref: docs/ai/requirements/2026-08-20-feature-observabilite.md
 Pattern File purge (`E2E-PURGE-*` dans `frontend/e2e/pilotage.spec.ts`) :
 
 - [ ] Admin : nav « Observabilité » → heading visible ; KPI mockés
-      (âge outbox, jobs, PDF, webhooks DEAD, SSE) via `page.route`.
+      (trois âges outbox, jobs, PDF, webhooks DEAD, SSE) via `page.route`.
 - [ ] Non-admin : pas de lien nav ; pas d’écran.
 - [ ] Pas de bouton d’action métier (force / relancer).
 - [ ] Régression suite existante verte.

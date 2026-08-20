@@ -15,7 +15,8 @@ todo_ref: TODO.md §29 · FILE-ATTENTE.md · REVUE-PRE-IMPLEMENTATION.md §29 ·
 # Requirements & Problem Understanding — `observabilite`
 
 > Feature produit TODO **§29**. **D-FE**, **Q1 = B**, **Q2 = A**,
-> **Q3 = B** actés. Phase 2 **en cours** : Q4–Q6. Status **draft**.
+> **Q3 = B**, **Q4 = A** actés. Phase 2 **en cours** : Q5–Q6.
+> Status **draft**.
 
 ## Problem Statement
 **What problem are we solving?**
@@ -59,7 +60,7 @@ Le `TENANT_ADMIN` n’a pas non plus de vue santé dans le SPA.
   4. webhooks sortants `WEBHOOK` + `DEAD` ;
   5. nombre d’`SseEmitter` actifs.
 - Écran admin lecture **`/admin/observabilite`** (**D-FE**) : cartes
-  KPI + sévérité (**Q4** reco A), y compris **les trois âges
+  KPI + sévérité (**Q4 = A**), y compris **les trois âges
   d’outbox** ; rôle / refresh encore Q5–Q6.
 - Traçabilité lectures **Q1 = B** : logs `SECURITY_AUDIT` INFO sur
   les GET dossier détail et contenu binaire (pas de table, pas d’UI
@@ -76,12 +77,10 @@ Le `TENANT_ADMIN` n’a pas non plus de vue santé dans le SPA.
 
 - OpenTelemetry / APM ; Grafana-as-code ; Alertmanager in-repo.
 - **Rapports / SLA** (FILE-ATTENTE hors V1).
-- Chart.js, histogramme UI, historique / time-series persisté (**Q4 ≠ B/C**).
+- Chart.js, histogramme UI, historique / time-series persisté (**Q4 = A**).
 - SPA scrape `/actuator/prometheus`.
 - Actuator sur le port BFF public (**Q2 = A**).
 - Une seule jauge d’âge « outbox générique » (**Q3 ≠ A**).
-- Poll automatique de l’écran (**Q6 ≠ B**).
-- Accès `WORKFLOW_ADMIN` à l’écran (**Q5 ≠ B**).
 - Table d’audit + écran d’audit lecture (**Q1 ≠ C**).
 - Codegen OpenAPI, antivirus PJ, `http-rest` SERVICE.
 - `platform.tenant_migration_status`.
@@ -180,7 +179,7 @@ Le `TENANT_ADMIN` n’a pas non plus de vue santé dans le SPA.
 - Branche Cloud : `cursor/observabilite-9800` (lint `feature-*` = MISS
   attendu).
 
-**Recommandations Phase 2 (Q4–Q6 encore ouvertes) :**
+**Recommandations Phase 2 (Q5–Q6 encore ouvertes) :**
 
 | Id | Sujet | Choix |
 |---|---|---|
@@ -197,7 +196,7 @@ Le `TENANT_ADMIN` n’a pas non plus de vue santé dans le SPA.
 | **D-AUDIT-READ** / **Q1** | Lectures | **B acté** — logs `SECURITY_AUDIT` |
 | **D-ACTUATOR** | Surface | `health` + `prometheus` |
 | **D-MGMT** / **Q2** | Scrape | **A acté** — port management séparé, non public |
-| **Q4** | UI | Cartes KPI + sévérité ; pas Chart.js |
+| **Q4** | UI | **A acté** — cartes KPI + sévérité ; pas Chart.js |
 | **Q5** | Rôle | `TENANT_ADMIN` seul |
 | **Q6** | Refresh | Ouverture + bouton Rafraîchir |
 
@@ -226,16 +225,16 @@ Le `TENANT_ADMIN` n’a pas non plus de vue santé dans le SPA.
 | **Q1 / D-AUDIT-READ** | Lectures | **B** (2026-08-20) — `SECURITY_AUDIT` INFO sur GET dossier id/`ref` et GET content **réussis** ; pas de table ni d’écran d’audit |
 | **Q2 / D-MGMT** | Scrape Prometheus | **A** (2026-08-20) — `management.server.port` ; reverse-proxy public ne route pas ce port ; aucun `/actuator` sur le BFF |
 | **Q3 / D-OUTBOX** | Âge outbox | **B** (2026-08-20) — trois jauges distinctes : déclenchement, notification, purge |
+| **Q4** | Forme UI | **A** (2026-08-20) — cartes KPI + sévérité (ok/warn/crit), snapshot ; pas Chart.js ni historique |
 
 ### Ouvertes (Phase 2 — une à la fois)
 
 | Id | Question | Options | Reco |
 |---|---|---|---|
-| **Q4** | Forme UI | **A** cartes KPI + sévérité · **B** + Chart.js · **C** historique persisté | **A** |
 | **Q5** | Rôle écran / GET | **A** `TENANT_ADMIN` · **B** + `WORKFLOW_ADMIN` | **A** |
 | **Q6** | Rafraîchissement | **A** load + Rafraîchir · **B** + poll 30 s | **A** |
 
-Posée maintenant : **Q4**. Q5–Q6 attendent.
+Posée maintenant : **Q5**. Q6 attend.
 
 ### Hors file
 
@@ -246,9 +245,9 @@ SERVICE, Testcontainers §28.
 
 Template README : OK.
 
-Les reco Q4–Q6 **ne sont pas actées**. Clos : **D-FE**, **Q1 = B**,
-**Q2 = A**, **Q3 = B**.
+Les reco Q5–Q6 **ne sont pas actées**. Clos : **D-FE**, **Q1 = B**,
+**Q2 = A**, **Q3 = B**, **Q4 = A**.
 
 Status : **`draft`**.
 
-**En cours :** Q4 (forme UI).
+**En cours :** Q5 (rôle de l’écran / GET).

@@ -35,6 +35,7 @@ describe('dossier store', () => {
       updatedAt: '',
       closedBy: null,
       closedAt: null,
+      canEdit: true,
     })
     vi.mocked(typesApi.getDossierType).mockResolvedValue({
       id: 't1',
@@ -74,6 +75,7 @@ describe('dossier store', () => {
       updatedAt: '',
       closedBy: null,
       closedAt: null,
+      canEdit: true,
     }
     store.relations = []
     vi.mocked(dossiersApi.createDossierRelation).mockResolvedValue({
@@ -119,6 +121,7 @@ describe('dossier store', () => {
       updatedAt: '',
       closedBy: null,
       closedAt: null,
+      canEdit: true,
     }
     store.elements = []
     vi.mocked(dossiersApi.addDossierElement).mockResolvedValue({
@@ -159,6 +162,7 @@ describe('dossier store', () => {
       updatedAt: '',
       closedBy: null,
       closedAt: null,
+      canEdit: true,
     }
     store.elements = []
     const file = new File(['%PDF'], 'doc.pdf', { type: 'application/pdf' })
@@ -196,6 +200,7 @@ describe('dossier store', () => {
       updatedAt: '',
       closedBy: null,
       closedAt: null,
+      canEdit: true,
     }
     vi.mocked(dossiersApi.updateDossierStatus).mockResolvedValue({
       ...store.dossier,
@@ -225,6 +230,7 @@ describe('dossier store', () => {
       updatedAt: '',
       closedBy: null,
       closedAt: null,
+      canEdit: true,
     }
     vi.mocked(dossiersApi.updateDossierFields).mockResolvedValue({
       ...store.dossier,
@@ -277,6 +283,7 @@ describe('dossier store', () => {
       updatedAt: '',
       closedBy: null,
       closedAt: null,
+      canEdit: true,
     })
     vi.mocked(dossiersApi.startDossierWorkflow).mockResolvedValue({
       id: 'link-1',
@@ -308,6 +315,7 @@ describe('dossier store', () => {
       updatedAt: '',
       closedBy: null,
       closedAt: null,
+      canEdit: true,
     })
     vi.mocked(typesApi.getDossierType).mockResolvedValue({
       id: 't1',

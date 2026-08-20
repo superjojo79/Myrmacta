@@ -82,9 +82,10 @@ record DossierResponse(
         Instant updatedAt,
         String closedBy,
         Instant closedAt,
-        Instant purgeEligibleAt) {
+        Instant purgeEligibleAt,
+        boolean canEdit) {
 
-    static DossierResponse from(Dossier dossier) {
+    static DossierResponse from(Dossier dossier, boolean canEdit) {
         return new DossierResponse(
                 dossier.id(),
                 dossier.tenantId(),
@@ -101,7 +102,8 @@ record DossierResponse(
                 dossier.updatedAt(),
                 dossier.closedBy(),
                 dossier.closedAt(),
-                dossier.purgeEligibleAt());
+                dossier.purgeEligibleAt(),
+                canEdit);
     }
 }
 

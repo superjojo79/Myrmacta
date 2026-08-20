@@ -56,6 +56,7 @@ export interface Dossier {
   closedBy: string | null
   closedAt: string | null
   purgeEligibleAt?: string | null
+  canEdit: boolean
 }
 
 export interface DossierListItem {

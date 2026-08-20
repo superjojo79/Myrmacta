@@ -36,6 +36,7 @@ describe('stores remaining coverage', () => {
       updatedAt: '',
       closedBy: null,
       closedAt: null,
+      canEdit: true,
     })
     vi.mocked(typesApi.getDossierType).mockResolvedValue({
       id: 't1',
@@ -76,6 +77,7 @@ describe('stores remaining coverage', () => {
       updatedAt: '',
       closedBy: null,
       closedAt: null,
+      canEdit: true,
     })
 
     const store = useDossierStore()

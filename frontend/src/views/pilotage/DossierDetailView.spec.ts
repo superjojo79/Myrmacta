@@ -47,6 +47,7 @@ const baseDossier = {
   updatedAt: '',
   closedBy: null,
   closedAt: null,
+  canEdit: false,
 }
 
 describe('DossierDetailView phase 8', () => {
@@ -102,9 +103,10 @@ describe('DossierDetailView phase 8', () => {
     vi.mocked(tasksApi.completeTask).mockResolvedValue(undefined)
   })
 
-  async function mountDetail(roles: string[]) {
+  async function mountDetail(roles: string[], canEdit = false) {
     const auth = useAuthStore()
     auth.user = { id: 'u', name: 'Ada', email: null, roles }
+    vi.mocked(dossiersApi.getDossierById).mockResolvedValue({ ...baseDossier, canEdit })
     const router = createRouter({ history: createMemoryHistory(), routes })
     await router.push('/dossiers/d1')
     await router.isReady()
@@ -150,8 +152,24 @@ describe('DossierDetailView phase 8', () => {
     expect(workflowsApi.reassignWorkflowTask).toHaveBeenCalledWith('link-1', 'task-1', 'user-2')
   })
 
+  it('follows the server-computed canEdit flag rather than the role alone (TODO §36)', async () => {
+    // A DOSSIER_MANAGER without an EDIT ACL entry on the dossier type sees canEdit=false from
+    // the API — the frontend must not re-derive edit rights from the role, or it would show an
+    // editable UI that then fails with 403 on save (the bug this closes).
+    const manager = await mountDetail(['DOSSIER_MANAGER'], false)
+    expect(manager.text()).not.toContain('Lier un dossier')
+    expect(manager.text()).not.toContain('Enregistrer les champs')
+    manager.unmount()
+
+    // Conversely, a role with no special claim (VIEWER) but canEdit=true from the server must
+    // see the editable UI.
+    const viewerWithGrant = await mountDetail(['DOSSIER_VIEWER'], true)
+    expect(viewerWithGrant.text()).toContain('Lier un dossier')
+    expect(viewerWithGrant.text()).toContain('Enregistrer les champs')
+  })
+
   it('shows link action for manager and hides it for viewer', async () => {
-    const manager = await mountDetail(['DOSSIER_MANAGER'])
+    const manager = await mountDetail(['DOSSIER_MANAGER'], true)
     expect(manager.text()).toContain('Dossiers liés')
     expect(manager.text()).toContain('Lier un dossier')
     manager.unmount()
@@ -172,7 +190,7 @@ describe('DossierDetailView phase 8', () => {
   })
 
   it('shows field save for manager and hides it for viewer', async () => {
-    const manager = await mountDetail(['DOSSIER_MANAGER'])
+    const manager = await mountDetail(['DOSSIER_MANAGER'], true)
     expect(manager.text()).toContain('Enregistrer les champs')
     manager.unmount()
 
@@ -184,7 +202,7 @@ describe('DossierDetailView phase 8', () => {
     vi.mocked(dossiersApi.updateDossierFields).mockRejectedValue({
       response: { status: 400, data: { detail: 'invalid field', status: 400 } },
     })
-    const wrapper = await mountDetail(['TENANT_ADMIN'])
+    const wrapper = await mountDetail(['TENANT_ADMIN'], true)
     await wrapper.get('.dossier-fields-editor input').setValue('HIGH')
     await wrapper.get('.dossier-fields-editor button').trigger('click')
     await flushPromises()

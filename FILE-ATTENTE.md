@@ -48,7 +48,7 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 
 | Priorité | Feature / lot kebab-case | Pourquoi ce n’est pas (encore) le suivant immédiat — ou pourquoi ça l’est |
 |---|---|---|
-| **(vide V1 nommé)** | — | Pas de lot produit V1 nommé après `observabilite`. Reste TODO hygiène (§28 tests, §35 BPMN, §36 `canEditDossier`) — pas FILE-ATTENTE. |
+| **(vide V1 nommé)** | — | Pas de lot produit V1 nommé après `observabilite`. Reste TODO hygiène (§28 tests, §35 BPMN) — pas FILE-ATTENTE. §36 `canEditDossier` clos le 2026-08-20 (`canEdit` exposé par `GET /api/dossiers/{id}`). |
 | **Hors V1** | Rapports / SLA ; connecteur `http-rest` **SERVICE** ; antivirus pièces jointes ; codegen OpenAPI | Explicitement reportés (maquette UI / TODO §30 / connecteurs V1 = TRIGGER / §24 reste codegen). |
 
 ## Hors file produit (ne pas traiter comme « prochaine feature »)

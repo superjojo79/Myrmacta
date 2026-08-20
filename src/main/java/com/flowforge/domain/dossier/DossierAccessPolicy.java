@@ -32,27 +32,41 @@ public final class DossierAccessPolicy {
         assertCanEditType(dossier.tenantId(), dossier.dossierTypeCode(), ctx);
     }
 
+    /**
+     * Non-throwing mirror of {@link #assertCanEdit(Dossier, AccessContext)}, for callers that need
+     * to expose the effective permission to the caller (e.g. an API response field) rather than
+     * reject the request.
+     */
+    public boolean canEdit(Dossier dossier, AccessContext ctx) {
+        return hasPermission(dossier.tenantId(), dossier.dossierTypeCode(), ctx, DossierPermission.EDIT);
+    }
+
     private void assertPermission(
+            String tenantId, String dossierTypeCode, AccessContext ctx, DossierPermission required) {
+        if (ctx instanceof AccessContext.Service) {
+            throw new AccessDeniedException("Service context cannot access dossiers");
+        }
+        if (!hasPermission(tenantId, dossierTypeCode, ctx, required)) {
+            throw new AccessDeniedException("Access denied for permission " + required);
+        }
+    }
+
+    private boolean hasPermission(
             String tenantId, String dossierTypeCode, AccessContext ctx, DossierPermission required) {
         Objects.requireNonNull(tenantId, "tenantId");
         Objects.requireNonNull(dossierTypeCode, "dossierTypeCode");
         Objects.requireNonNull(ctx, "ctx");
-        switch (ctx) {
-            case AccessContext.System ignored -> {
-                return;
-            }
-            case AccessContext.Service ignored -> throw new AccessDeniedException(
-                    "Service context cannot access dossiers");
+        return switch (ctx) {
+            case AccessContext.System ignored -> true;
+            case AccessContext.Service ignored -> false;
             case AccessContext.User user -> {
                 if (user.hasRole("TENANT_ADMIN") || user.hasRole("WORKFLOW_ADMIN")) {
-                    return;
+                    yield true;
                 }
                 DossierTypeAclEntry entry =
                         aclRepository.find(tenantId, dossierTypeCode, user.userId()).orElse(null);
-                if (entry == null || !entry.permission().implies(required)) {
-                    throw new AccessDeniedException("Access denied for permission " + required);
-                }
+                yield entry != null && entry.permission().implies(required);
             }
-        }
+        };
     }
 }

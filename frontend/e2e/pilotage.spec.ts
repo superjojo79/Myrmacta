@@ -80,6 +80,11 @@ function dossierBody(overrides: Record<string, unknown> = {}) {
 
 async function mockSession(page: Page, opts: MockOpts = {}) {
   const roles = opts.roles ?? ['TENANT_ADMIN', 'WORKFLOW_ADMIN', 'DOSSIER_MANAGER']
+  // TODO §36: the mocked backend now mirrors DossierAccessPolicy — canEdit is a server-computed
+  // flag, not re-derived from the role on the frontend. Approximate it here the same way the
+  // fixture ACLs would: TENANT_ADMIN/WORKFLOW_ADMIN always bypass, DOSSIER_MANAGER acts as if it
+  // held an EDIT grant (no ACL model in these mocks), everything else (viewers) cannot edit.
+  const canEdit = roles.some((role) => ['TENANT_ADMIN', 'WORKFLOW_ADMIN', 'DOSSIER_MANAGER'].includes(role))
   let dossierStatus = opts.dossierStatus ?? 'DRAFT'
   let purgeItems: Array<Record<string, unknown>> = [
     {
@@ -309,7 +314,7 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
       await route.fulfill({
         status: 201,
         contentType: 'application/json',
-        body: JSON.stringify(dossierBody({ status: dossierStatus, currentWorkflowLinkId: linkId })),
+        body: JSON.stringify(dossierBody({ status: dossierStatus, currentWorkflowLinkId: linkId, canEdit })),
       })
       return
     }
@@ -434,7 +439,9 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(dossierBody({ status: dossierStatus, version: 1, currentWorkflowLinkId: linkId })),
+        body: JSON.stringify(
+          dossierBody({ status: dossierStatus, version: 1, currentWorkflowLinkId: linkId, canEdit }),
+        ),
       })
       return
     }
@@ -452,6 +459,7 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
             status: dossierStatus,
             version: posted.expectedVersion + 1,
             currentWorkflowLinkId: linkId,
+            canEdit,
           }),
         ),
       })
@@ -462,7 +470,7 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
       const path = parsed.pathname.replace(/\/$/, '')
       // Paginated list: GET /api/dossiers (no id, no ?ref=)
       if (path.endsWith('/api/dossiers') && !parsed.searchParams.has('ref')) {
-        const body = dossierBody({ status: dossierStatus, currentWorkflowLinkId: linkId })
+        const body = dossierBody({ status: dossierStatus, currentWorkflowLinkId: linkId, canEdit })
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -500,7 +508,7 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(dossierBody({ status: dossierStatus, currentWorkflowLinkId: linkId })),
+        body: JSON.stringify(dossierBody({ status: dossierStatus, currentWorkflowLinkId: linkId, canEdit })),
       })
       return
     }

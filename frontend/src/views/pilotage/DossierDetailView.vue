@@ -33,7 +33,7 @@ const {
   error,
   diagramUnavailable,
 } = storeToRefs(store)
-const { isTenantAdmin, isWorkflowAdmin, roles } = storeToRefs(auth)
+const { isTenantAdmin, isWorkflowAdmin } = storeToRefs(auth)
 
 const statusDraft = ref<DossierStatus>('DRAFT')
 const startOpen = ref(false)
@@ -44,9 +44,8 @@ const reassignUserId = ref('')
 const actionError = ref<string | null>(null)
 
 const canReassign = computed(() => isTenantAdmin.value || isWorkflowAdmin.value)
-const canEditDossier = computed(
-  () => isTenantAdmin.value || isWorkflowAdmin.value || roles.value.includes('DOSSIER_MANAGER'),
-)
+// TODO §36: server-computed effective permission (DossierAccessPolicy.canEdit), not a role guess.
+const canEditDossier = computed(() => dossier.value?.canEdit ?? false)
 const fieldsLocked = computed(
   () => dossier.value?.status === 'CLOTURE' || dossier.value?.status === 'ARCHIVE',
 )

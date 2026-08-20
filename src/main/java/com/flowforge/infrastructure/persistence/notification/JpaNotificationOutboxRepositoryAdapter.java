@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
@@ -89,5 +90,17 @@ public class JpaNotificationOutboxRepositoryAdapter implements NotificationOutbo
     public int purgeTerminalOlderThan(Instant cutoff) {
         return repository.deleteTerminalOlderThan(
                 List.of(NotificationOutboxStatus.PROCESSED, NotificationOutboxStatus.DEAD), cutoff);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Instant> oldestPendingCreatedAt() {
+        return repository.findOldestCreatedAtByStatus(NotificationOutboxStatus.PENDING);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countByChannelAndStatus(NotificationChannel channel, NotificationOutboxStatus status) {
+        return repository.countByChannelAndStatus(channel, status);
     }
 }

@@ -11,6 +11,7 @@ import com.flowforge.infrastructure.web.connector.WebhookBodySizeLimitFilter;
 import com.flowforge.infrastructure.web.document.DocumentGenerationBodySizeLimitFilter;
 import java.nio.charset.StandardCharsets;
 import javax.crypto.spec.SecretKeySpec;
+import org.springframework.boot.security.autoconfigure.actuate.web.servlet.EndpointRequest;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
@@ -82,6 +83,15 @@ public class SecurityConfig {
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
         converter.setJwtGrantedAuthoritiesConverter(new M2mJwtAuthoritiesConverter());
         return converter;
+    }
+
+    @Bean
+    @Order(0)
+    SecurityFilterChain actuatorSecurityFilterChain(HttpSecurity http) throws Exception {
+        http.securityMatcher(EndpointRequest.toAnyEndpoint())
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+        return http.build();
     }
 
     @Bean

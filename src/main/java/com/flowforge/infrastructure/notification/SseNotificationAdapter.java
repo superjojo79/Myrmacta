@@ -71,6 +71,10 @@ public class SseNotificationAdapter implements BrowserPushPort {
         return anySucceeded;
     }
 
+    public int activeEmitterCount() {
+        return emittersByUser.values().stream().mapToInt(Set::size).sum();
+    }
+
     @Scheduled(fixedDelayString = "${app.notification.sse.heartbeat-interval:15s}")
     void sendHeartbeats() {
         for (Map.Entry<String, Set<SseEmitter>> entry : emittersByUser.entrySet()) {

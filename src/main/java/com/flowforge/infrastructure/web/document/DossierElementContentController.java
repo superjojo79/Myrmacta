@@ -7,7 +7,10 @@ import com.flowforge.domain.dossier.port.in.GetDossierElementUseCase;
 import com.flowforge.domain.document.model.DocumentStorageException;
 import com.flowforge.domain.document.port.out.DocumentStoragePort;
 import com.flowforge.infrastructure.config.TenantProperties;
+import com.flowforge.infrastructure.observability.MdcScope;
+import com.flowforge.infrastructure.security.SecurityAuditLog;
 import com.flowforge.infrastructure.web.dossier.AccessContextFactory;
+import jakarta.servlet.http.HttpServletRequest;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import org.springframework.http.ContentDisposition;
@@ -41,7 +44,8 @@ public class DossierElementContentController {
     }
 
     @GetMapping("/{id}/content")
-    public ResponseEntity<byte[]> content(@PathVariable UUID id, Authentication authentication) {
+    public ResponseEntity<byte[]> content(
+            @PathVariable UUID id, Authentication authentication, HttpServletRequest httpRequest) {
         DossierElement element =
                 getDossierElementUseCase.get(id, accessContextFactory.user(authentication));
         boolean downloadable = (element.type() == ElementType.PRODUCED_DOC || element.type() == ElementType.ATTACHMENT)
@@ -51,10 +55,14 @@ public class DossierElementContentController {
             throw new InvalidDossierElementException("Element has no downloadable content");
         }
         byte[] bytes;
-        try {
-            bytes = documentStoragePort.retrieve(tenantProperties.id(), element.storageRef());
-        } catch (DocumentStorageException ex) {
-            throw ex;
+        try (MdcScope ignored =
+                MdcScope.tenant(tenantProperties.id()).dossier(element.dossierId())) {
+            try {
+                bytes = documentStoragePort.retrieve(tenantProperties.id(), element.storageRef());
+            } catch (DocumentStorageException ex) {
+                throw ex;
+            }
+            SecurityAuditLog.elementContentRead(httpRequest, authentication, id);
         }
         String contentType;
         String filename;

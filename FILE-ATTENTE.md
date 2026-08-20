@@ -8,8 +8,8 @@
 > - Inventaire follow-ups / lots : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md)
 > - Séquencement « avant prod » : [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md) §9
 >
-> **Dernière mise à jour :** 2026-08-19 (`openapi-pagination-admin` Phase 5 livrée —
-> PR #58 ; prochain produit = `observabilite` §29).
+> **Dernière mise à jour :** 2026-08-20 (`observabilite` Phase 9
+> **READY** — PR #59).
 
 ## Comment s’en servir
 
@@ -40,6 +40,7 @@ Même grille que pour `preview-documents` puis `edition-champs-dossier` :
 | `retention-dossier-type` | PR #55, TODO §21 | Défaut tenant + override type ; job ARCHIVE + `purge_outbox` ; UI admin |
 | `purge-stockage` | PR #56, TODO §22 | Job `purge_outbox` store+PG ; `DocumentStoragePort.delete` ; file admin lecture + enqueue |
 | `openapi-pagination-admin` | PR #58, TODO §24 | Envelope 6 GET admin ; OpenAPI golden + flag off ; pagers SPA ; écran webhooks |
+| `observabilite` | PR #59, TODO §29 | ECS + MDC ; Micrometer port management ; snapshot + SPA admin |
 
 Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relations, PATCH fields API, éléments) : voir [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §2.
 
@@ -47,7 +48,7 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 
 | Priorité | Feature / lot kebab-case | Pourquoi ce n’est pas (encore) le suivant immédiat — ou pourquoi ça l’est |
 |---|---|---|
-| **1 — prochain** | `observabilite` (TODO §29) | Docs `docs/ai/monitoring/**` encore `deferred` / squelettes. MDC `tenantId`/`dossierId`/`processInstanceId`, Micrometer (âge outbox, jobs Flowable, PDF, webhooks DLQ, SSE). |
+| **(vide V1 nommé)** | — | Pas de lot produit V1 nommé après `observabilite`. Reste TODO hygiène (§28 tests, §35 BPMN, §36 `canEditDossier`) — pas FILE-ATTENTE. |
 | **Hors V1** | Rapports / SLA ; connecteur `http-rest` **SERVICE** ; antivirus pièces jointes ; codegen OpenAPI | Explicitement reportés (maquette UI / TODO §30 / connecteurs V1 = TRIGGER / §24 reste codegen). |
 
 ## Hors file produit (ne pas traiter comme « prochaine feature »)
@@ -82,3 +83,8 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 | 2026-08-19 | `retention-dossier-type` Phase 9 READY | PR #55 ; prochain = `purge-stockage` §22 |
 | 2026-08-19 | `purge-stockage` Phase 9 READY | PR #56 ; prochain = `openapi-pagination-admin` §24 |
 | 2026-08-19 | `openapi-pagination-admin` Phase 5 | PR #58 ; §24 partiel clos ; prochain = `observabilite` §29 |
+| 2026-08-20 | `observabilite` Phase 1 | Stakeholder : UI admin (D-FE) ; Rapports/SLA hors V1 |
+| 2026-08-20 | `observabilite` Phase 2 reviewed | Q1=B ; Q2=A ; Q3=B ; Q4=A ; Q5=A ; Q6=A |
+| 2026-08-20 | `observabilite` Phase 3 reviewed | DD-JSON=ecs ; DD-PROM-NAMES ; DD-FLOWABLE-API ; DD-THRESHOLDS |
+| 2026-08-20 | `observabilite` Phase 5 done | M1–M5 ; verify 906 + Vitest 135 + Playwright 39 |
+| 2026-08-20 | `observabilite` Phase 9 READY | PR #59 ; file V1 sans lot nommé suivant |

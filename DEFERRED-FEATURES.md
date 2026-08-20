@@ -78,7 +78,7 @@ jointes). `delete` livré avec `purge-stockage` (§22). Aucun couplage MinIO.
 | Smoke PostgreSQL réel | Hors CI (IT actuelles = H2 MODE=PostgreSQL) |
 | OpenAPI formel | **Partiel clos** — `openapi-pagination-admin` (PR #58) : springdoc + YAML CI ; reste codegen |
 | Rétention / purge / `sensitive` | TODO §21–23 |
-| Observabilité MDC dossiers | TODO §29 |
+| Observabilité MDC dossiers | **Livré** — `observabilite` PR #59 |
 
 **Déjà couvert en B (ne pas replanifier) :** types + dossiers CRUD minimal,
 validation champs, références séquentielles, `@Version`, ACL type, API REST
@@ -112,6 +112,15 @@ consomme `GET …/diagram`).
 | Spec SSE / multipart / webhook ingress | Volontairement `@Hidden` (D-SPEC) |
 | Fusion `DossierPage` → `PageResult` | Non — A-PAGE-TYPE |
 
+### 1.8 `observabilite` (PR #59)
+
+| Item | Notes |
+|---|---|
+| Wrapper MDC async executor Flowable Community 8 | Hors V1 — fallback jobs applicatifs ; PI après start outbox |
+| `dossierId` MDC par item de purge | Use case domaine pur ; job enveloppe le batch `tenantId` |
+| IT stdout ECS `tenantId` | Config `ecs` livrée ; smoke manuel |
+| OTel / Grafana-as-code / Alertmanager | Hors V1 |
+
 ---
 
 ## 2. Features lifecycle
@@ -133,6 +142,7 @@ Ordre indicatif aligné sur l’analyse et les dépendances techniques :
 | — | `retention-dossier-type` | **Complete** (PR #55) — settings tenant + override type ; job ARCHIVE + `purge_outbox` ; UI admin. |
 | — | `purge-stockage` | **Complete** Phase 9 READY (PR #56) — job `purge_outbox` store+PG ; `DocumentStoragePort.delete` ; UI file lecture + enqueue admin. |
 | — | `openapi-pagination-admin` | **Complete** Phase 5 (PR #58) — envelope 6 GET admin ; OpenAPI golden ; pagers + webhooks admin ; catalogues `listAllPages`. |
+| — | `observabilite` | **Complete** Phase 9 READY (PR #59) — ECS + MDC ; Micrometer port management ; snapshot + SPA `/admin/observabilite`. |
 
 ---
 
@@ -151,7 +161,7 @@ Voir le détail et les options dans [TODO.md](TODO.md) et
 | 25 | Modèle physique consolidé (ERD) | **Partiel** — tables dossiers livrées ; reste ERD global, `platform.*`, ACT_*, outbox, etc. |
 | 26 | Concurrence dossier / référence | **Partiel / quasi clos en B** — `@Version` + `dossier_reference_seq` + format UTC ; reste smoke PG multi-pods |
 | 28 | Stratégie de test | **Partiel** — ArchUnit + Jacoco ≥ 80 % + H2 ; reste Testcontainers / charge Flowable / outbox ; FE = Vitest + Playwright, câblés en CI (job `frontend`, `.github/workflows/ci.yml`) |
-| 29 | Observabilité | **Ouvert** — monitoring features = `deferred` |
+| 29 | Observabilité | **Livré** (2026-08-20) — `observabilite` PR #59 Phase 9 READY ; Q1–Q6 |
 | 30 | Durcissement entrées exposées | **Partiel** — rate limit + taille max sur webhooks entrants et `POST /api/documents/generate` ; SSRF (PDF + webhooks sortants) fermé ; reste antivirus PJ, upload générique… |
 | 31 | Découpage en lots / provisioning | **Partiel** — lots lifecycle démarrés ; outillage provisioning ops encore à produire |
 
@@ -162,7 +172,7 @@ Voir le détail et les options dans [TODO.md](TODO.md) et
 - Provisioning tenant : schéma PG, instance Boot, bloc proxy, secrets OIDC
 - Surcharge prod de `app.tenant.id` (ne jamais laisser `tenant_dev`)
 - Smoke manuel : Keycloak réel, PostgreSQL réel
-- Observabilité : MDC `tenantId` / `dossierId` / `processInstanceId`, métriques Micrometer (TODO §29)
+- Observabilité : **livré** — MDC + Micrometer + UI admin (TODO §29, PR #59)
 - Chore docs : `com.monapp` résiduel dans `analysis doc/`
 - Build FE : `npm run build` → copie vers `src/main/resources/static/` (Maven plugin ou CI)
 

@@ -16,6 +16,7 @@ import com.flowforge.domain.dossier.port.in.SearchDossiersUseCase;
 import com.flowforge.domain.dossier.port.in.UpdateDossierFieldsUseCase;
 import com.flowforge.domain.dossier.port.in.UpdateDossierStatusUseCase;
 import com.flowforge.infrastructure.config.TenantProperties;
+import com.flowforge.infrastructure.observability.MdcScope;
 import com.flowforge.infrastructure.security.SecurityAuditLog;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
@@ -110,20 +111,29 @@ public class DossierController {
     @GetMapping("/{id}")
     public DossierResponse getById(
             @PathVariable UUID id,
+            HttpServletRequest httpRequest,
             Authentication authentication) {
-        return DossierResponse.from(getDossierUseCase.get(
-                id,
-                accessContextFactory.user(authentication)));
+        try (MdcScope ignored = MdcScope.tenant(tenantProperties.id()).dossier(id)) {
+            DossierResponse response = DossierResponse.from(getDossierUseCase.get(
+                    id, accessContextFactory.user(authentication)));
+            SecurityAuditLog.dossierRead(httpRequest, authentication, id);
+            return response;
+        }
     }
 
     @GetMapping(params = "ref")
     public DossierResponse getByReference(
             @RequestParam("ref") String reference,
+            HttpServletRequest httpRequest,
             Authentication authentication) {
-        return DossierResponse.from(getDossierUseCase.getByReference(
+        Dossier dossier = getDossierUseCase.getByReference(
                 tenantProperties.id(),
                 required(reference, "ref"),
-                accessContextFactory.user(authentication)));
+                accessContextFactory.user(authentication));
+        try (MdcScope ignored = MdcScope.tenant(tenantProperties.id()).dossier(dossier.id())) {
+            SecurityAuditLog.dossierRead(httpRequest, authentication, dossier.id());
+            return DossierResponse.from(dossier);
+        }
     }
 
     @GetMapping("/{id}/elements")

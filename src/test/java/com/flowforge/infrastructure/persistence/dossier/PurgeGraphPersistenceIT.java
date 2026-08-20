@@ -164,6 +164,20 @@ class PurgeGraphPersistenceIT {
         assertThat(pastEnd.totalElements()).isEqualTo(pending);
     }
 
+    @Test
+    void oldestUnfinishedCreatedAt_includesProcessingAndFailed() {
+        UUID dossierId = UUID.randomUUID();
+        Instant created = Instant.parse("2026-08-01T00:00:00Z");
+        purgeOutboxRepository.insert(PurgeOutboxRecord.pending(
+                UUID.randomUUID(),
+                dossierId,
+                "DOSSIER_PURGE_REQUESTED",
+                PurgeOutboxOrigin.ADMIN,
+                "{}",
+                created));
+        assertThat(purgeOutboxRepository.oldestUnfinishedCreatedAt()).contains(created);
+    }
+
     private static Dossier dossier(String suffix) {
         UUID id = UUID.randomUUID();
         return new Dossier(

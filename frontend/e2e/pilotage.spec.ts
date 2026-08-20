@@ -208,6 +208,41 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
     }
     await route.fulfill({ status: 405, body: '' })
   })
+  let observabilityGets = 0
+  await page.route('**/api/observability**', async (route) => {
+    if (route.request().method() === 'GET') {
+      observabilityGets += 1
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          tenantId: 'tenant_dev',
+          observedAt: '2026-08-20T07:41:00Z',
+          triggerOutboxOldestPendingAgeSeconds: 12,
+          notificationOutboxOldestPendingAgeSeconds: 0,
+          purgeOutboxOldestUnfinishedAgeSeconds: 3600,
+          flowableDeadLetterJobCount: 0,
+          flowableExceptionJobCount: 1,
+          pdfRender: { count: 0, meanMs: null, maxMs: null },
+          webhookDeadCount: 2,
+          sseActiveCount: 3,
+          severity: {
+            triggerOutboxOldestPendingAge: 'ok',
+            notificationOutboxOldestPendingAge: 'ok',
+            purgeOutboxOldestUnfinishedAge: 'crit',
+            flowableDeadLetterJobs: 'ok',
+            flowableExceptionJobs: 'warn',
+            pdfRender: 'ok',
+            webhookDead: 'warn',
+            sseActive: 'ok',
+          },
+          _gets: observabilityGets,
+        }),
+      })
+      return
+    }
+    await route.fulfill({ status: 405, body: '' })
+  })
   await page.route('**/api/dossier-types/CLAIM', async (route) => {
     await route.fulfill({
       status: 200,
@@ -1007,3 +1042,44 @@ test('E2E-WEBHOOK-2 non-admin does not see webhooks nav', async ({ page }) => {
   await openApp(page)
   await expect(page.getByRole('link', { name: 'Webhooks' })).toHaveCount(0)
 })
+
+test('E2E-OBS-1 admin sees observability kpis', async ({ page }) => {
+  await mockSession(page)
+  await openApp(page)
+  await page.getByRole('link', { name: 'Observabilité' }).click()
+  await expect(page.getByRole('heading', { name: 'Observabilité' })).toBeVisible()
+  await expect(page.getByTestId('kpi-trigger-outbox-age')).toContainText('12 s')
+  await expect(page.getByTestId('kpi-notification-outbox-age')).toContainText('0 s')
+  await expect(page.getByTestId('kpi-purge-outbox-age')).toContainText('3600 s')
+  await expect(page.getByTestId('kpi-flowable-dlq')).toBeVisible()
+  await expect(page.getByTestId('kpi-pdf-render')).toContainText('n/a')
+  await expect(page.getByTestId('kpi-webhook-dead')).toContainText('2')
+  await expect(page.getByTestId('kpi-sse-active')).toContainText('3')
+})
+
+test('E2E-OBS-2 non-admin does not see observability nav', async ({ page }) => {
+  await mockSession(page, { roles: ['DOSSIER_VIEWER'] })
+  await openApp(page)
+  await expect(page.getByRole('link', { name: 'Observabilité' })).toHaveCount(0)
+  await page.goto('/admin/observabilite')
+  await expect(page.getByRole('heading', { name: 'Observabilité' })).toHaveCount(0)
+})
+
+test('E2E-OBS-3 observability has no force button', async ({ page }) => {
+  await mockSession(page)
+  await openApp(page)
+  await page.getByRole('link', { name: 'Observabilité' }).click()
+  await expect(page.getByRole('heading', { name: 'Observabilité' })).toBeVisible()
+  await expect(page.getByRole('button', { name: /force|forcer|relancer/i })).toHaveCount(0)
+})
+
+test('E2E-OBS-4 refresh triggers a second get', async ({ page }) => {
+  await mockSession(page)
+  await openApp(page)
+  await page.getByRole('link', { name: 'Observabilité' }).click()
+  await expect(page.getByTestId('observability-page')).toBeVisible()
+  const refresh = page.waitForRequest((req) => req.url().includes('/api/observability') && req.method() === 'GET')
+  await page.getByTestId('observability-refresh').click()
+  await refresh
+})
+

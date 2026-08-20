@@ -7,8 +7,11 @@ import com.flowforge.domain.workflow.model.OutboxEvent;
 import com.flowforge.domain.workflow.port.out.OutboxRepository;
 import com.flowforge.domain.workflow.port.out.WorkflowEnginePort;
 import com.flowforge.domain.workflow.WorkflowVariables;
+import com.flowforge.infrastructure.config.TenantProperties;
 import com.flowforge.infrastructure.config.WorkflowProperties;
+import com.flowforge.infrastructure.observability.MdcScope;
 import java.util.Map;
+import java.util.UUID;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -21,26 +24,37 @@ class OutboxRelayScheduler {
     private final AttachWorkflowUseCase attachWorkflow;
     private final WorkflowEnginePort workflowEnginePort;
     private final WorkflowProperties properties;
+    private final TenantProperties tenantProperties;
 
     OutboxRelayScheduler(
             OutboxRepository outboxRepository,
             AttachWorkflowUseCase attachWorkflow,
             WorkflowEnginePort workflowEnginePort,
-            WorkflowProperties properties) {
+            WorkflowProperties properties,
+            TenantProperties tenantProperties) {
         this.outboxRepository = outboxRepository;
         this.attachWorkflow = attachWorkflow;
         this.workflowEnginePort = workflowEnginePort;
         this.properties = properties;
+        this.tenantProperties = tenantProperties;
     }
 
     @Scheduled(fixedDelayString = "${app.workflow.outbox.poll-delay:1s}")
     void relayPendingEvents() {
-        for (OutboxEvent event : outboxRepository.lockNextPending(properties.outbox().batchSize())) {
-            processOne(event);
+        try (MdcScope ignored = MdcScope.tenant(tenantProperties.id())) {
+            for (OutboxEvent event : outboxRepository.lockNextPending(properties.outbox().batchSize())) {
+                processOne(event);
+            }
         }
     }
 
     void processOne(OutboxEvent event) {
+        try (MdcScope ignored = MdcScope.tenant(tenantProperties.id()).dossier(event.payload().dossierId())) {
+            processOneInternal(event);
+        }
+    }
+
+    private void processOneInternal(OutboxEvent event) {
         try {
             try {
                 WorkflowVariables.assertNoReservedKeys(event.payload().variables());
@@ -55,26 +69,43 @@ class OutboxRelayScheduler {
                     event.payload().triggerRef(),
                     SYSTEM_OUTBOX_STARTED_BY);
             if (link.isActive()) {
-                outboxRepository.markProcessed(event.eventId());
+                markProcessedWithProcessInstance(event, link.processInstanceId());
                 return;
             }
 
             var existing = workflowEnginePort.findProcessInstanceIdByBusinessKey(link.id().toString());
             if (existing.isPresent()) {
-                attachWorkflow.confirmStarted(link.id(), existing.get());
-                outboxRepository.markProcessed(event.eventId());
+                confirmAndMarkProcessed(event, link.id(), existing.get());
                 return;
             }
 
             Map<String, Object> variables = WorkflowVariables.withPlatformVariables(event.payload().variables(), link);
             String processInstanceId = workflowEnginePort.start(
                     link.processDefinitionKey(), link.tenantId(), link.id().toString(), variables);
-            attachWorkflow.confirmStarted(link.id(), processInstanceId);
-            outboxRepository.markProcessed(event.eventId());
+            confirmAndMarkProcessed(event, link.id(), processInstanceId);
         } catch (WorkflowAlreadyRunningException ex) {
             outboxRepository.markDead(event.eventId(), ex.getMessage());
         } catch (RuntimeException ex) {
             outboxRepository.recordFailure(event.eventId(), ex.getMessage(), properties.outbox().maxAttempts());
         }
+    }
+
+    private void confirmAndMarkProcessed(OutboxEvent event, UUID linkId, String processInstanceId) {
+        try (MdcScope ignored = itemScope(event, processInstanceId)) {
+            attachWorkflow.confirmStarted(linkId, processInstanceId);
+            outboxRepository.markProcessed(event.eventId());
+        }
+    }
+
+    private void markProcessedWithProcessInstance(OutboxEvent event, String processInstanceId) {
+        try (MdcScope ignored = itemScope(event, processInstanceId)) {
+            outboxRepository.markProcessed(event.eventId());
+        }
+    }
+
+    private MdcScope itemScope(OutboxEvent event, String processInstanceId) {
+        return MdcScope.tenant(tenantProperties.id())
+                .dossier(event.payload().dossierId())
+                .processInstance(processInstanceId);
     }
 }

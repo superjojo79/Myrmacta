@@ -4,7 +4,9 @@ import com.flowforge.domain.dossier.model.PurgeOutboxRecord;
 import com.flowforge.domain.dossier.model.PurgeOutboxStatus;
 import com.flowforge.domain.shared.PageQuery;
 import com.flowforge.domain.shared.PageResult;
+import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface PurgeOutboxRepository {
@@ -27,4 +29,7 @@ public interface PurgeOutboxRepository {
     PageResult<PurgeOutboxRecord> page(PurgeOutboxStatus statusFilter, PageQuery query);
 
     long countByStatus(PurgeOutboxStatus status);
+
+    /** Oldest {@code PENDING} ∪ {@code PROCESSING} ∪ {@code FAILED} row. */
+    Optional<Instant> oldestUnfinishedCreatedAt();
 }

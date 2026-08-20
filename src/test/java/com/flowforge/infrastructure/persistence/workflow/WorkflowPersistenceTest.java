@@ -133,6 +133,14 @@ class WorkflowPersistenceTest {
     }
 
     @Test
+    void oldestPendingCreatedAt_emptyAndPending() {
+        var event = outboxRepository.savePending(new TriggerOutboxPayload(
+                UUID.randomUUID(), null, "smokeProcess", Map.of(), "trigger-age"));
+        assertThat(event.eventId()).isNotNull();
+        assertThat(outboxRepository.oldestPendingCreatedAt()).isPresent();
+    }
+
+    @Test
     void reserveConfirmAndAbortMaintainDossierCurrentWorkflowLink() {
         String processKey = "smokeProcess-" + UUID.randomUUID();
         configRepository.save(smokeConfig(processKey));

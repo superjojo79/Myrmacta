@@ -21,15 +21,19 @@ import com.flowforge.domain.notification.port.out.NotificationOutboxRepository;
 import com.flowforge.domain.notification.port.out.NotificationWebhookRepository;
 import com.flowforge.domain.notification.port.out.WebhookPort;
 import com.flowforge.infrastructure.config.NotificationProperties;
+import com.flowforge.infrastructure.observability.MdcScope;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.slf4j.MDC;
 import tools.jackson.databind.json.JsonMapper;
 
 class NotificationOutboxRelayTest {
@@ -41,6 +45,11 @@ class NotificationOutboxRelayTest {
     private BrowserPushPort browserPushPort;
     private ConnectorSecretCipher cipher;
     private NotificationOutboxRelay relay;
+
+    @AfterEach
+    void clearMdc() {
+        MDC.clear();
+    }
 
     @BeforeEach
     void setUp() {
@@ -79,6 +88,35 @@ class NotificationOutboxRelayTest {
         verify(emailPort).send("a@example.com", "Hi", "Body");
         verify(outboxRepository).markProcessed(record.id(), now);
         verify(outboxRepository).purgeTerminalOlderThan(now.minus(Duration.ofDays(7)));
+    }
+
+    @Test
+    void relay_putsDossierIdFromPayloadThenClearsMdc() {
+        Instant now = Instant.parse("2026-08-07T12:00:00Z");
+        UUID dossierId = UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
+        NotificationOutboxRecord record = pending(
+                NotificationChannel.EMAIL,
+                "{\"to\":\"a@example.com\",\"subject\":\"Hi\",\"body\":\"Body\",\"dossierId\":\""
+                        + dossierId
+                        + "\"}",
+                now);
+        when(outboxRepository.lockNextPending(20, now)).thenReturn(List.of(record));
+        AtomicReference<String> tenantDuring = new AtomicReference<>();
+        AtomicReference<String> dossierDuring = new AtomicReference<>();
+        org.mockito.Mockito.doAnswer(invocation -> {
+                    tenantDuring.set(MDC.get(MdcScope.TENANT_ID));
+                    dossierDuring.set(MDC.get(MdcScope.DOSSIER_ID));
+                    return null;
+                })
+                .when(emailPort)
+                .send(anyString(), anyString(), anyString());
+
+        relay.relayPending(now);
+
+        org.assertj.core.api.Assertions.assertThat(tenantDuring.get()).isEqualTo("tenant_dev");
+        org.assertj.core.api.Assertions.assertThat(dossierDuring.get()).isEqualTo(dossierId.toString());
+        org.assertj.core.api.Assertions.assertThat(MDC.get(MdcScope.TENANT_ID)).isNull();
+        org.assertj.core.api.Assertions.assertThat(MDC.get(MdcScope.DOSSIER_ID)).isNull();
     }
 
     @Test

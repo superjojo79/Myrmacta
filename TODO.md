@@ -197,13 +197,21 @@ workflow actif » en parallèle réel. Décider également des seuils de couvert
 
 ---
 
-### [ ] 29. Observabilité
+### [x] 29. Observabilité
 
-**À produire :** logs structurés avec `tenantId`, `dossierId` et `processInstanceId` en MDC ; métriques
-Micrometer sur l'âge du plus ancien événement non traité de l'outbox — indicateur de santé principal
-du déclenchement —, les jobs Flowable en échec, la durée des rendus PDF, les webhooks en dead-letter
-et le nombre d'`SseEmitter` actifs ; et une décision sur la traçabilité des accès en lecture, laissée
-ouverte par le document `12`.
+**Livré (2026-08-20 — feature `observabilite`, PR #59, Phase 9 READY) :**
+logs ECS + MDC (`tenantId` / `dossierId` / `processInstanceId`) ;
+Micrometer `flowforge.*` (3 âges outbox, Flowable DLQ+exception, timer
+PDF, webhooks DEAD, SSE) sur le **port management** ; audit lecture
+`SECURITY_AUDIT` Q1=B ; `GET /api/observability` + SPA
+`/admin/observabilite` (`TENANT_ADMIN`). Voir
+`docs/ai/implementation/2026-08-20-feature-observabilite.md`.
+
+Follow-ups non bloquants : wrapper MDC async Flowable Community 8 ;
+`dossierId` MDC par item de purge.
+
+Périmètre figé : logs ECS + MDC ; Micrometer (`flowforge.*`) ; écran
+admin `/admin/observabilite`. Détail : requirements + design.
 
 ---
 

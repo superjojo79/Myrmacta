@@ -517,6 +517,52 @@ class DossierApiTest {
     }
 
     @Test
+    void getDossier_byIdAndRef_emitsDossierReadAudit_listDoesNot() throws Exception {
+        String code = createType(true);
+        grant(code, "manager-read-audit", "EDIT");
+        DossierFixture dossier = createDossier(code, "manager-read-audit", "Audit read dossier");
+
+        ListAppender<ILoggingEvent> appender = attachSecurityAuditAppender();
+        try {
+            mockMvc.perform(get("/api/dossiers/{id}", dossier.id()).with(user("manager-read-audit")))
+                    .andExpect(status().isOk());
+            mockMvc.perform(get("/api/dossiers").param("ref", dossier.reference()).with(user("manager-read-audit")))
+                    .andExpect(status().isOk());
+            mockMvc.perform(get("/api/dossiers").with(user("manager-read-audit")))
+                    .andExpect(status().isOk());
+        } finally {
+            detachSecurityAuditAppender(appender);
+        }
+
+        List<String> reads = appender.list.stream()
+                .map(ILoggingEvent::getFormattedMessage)
+                .filter(msg -> msg.contains("event=dossier_read"))
+                .toList();
+        assertThat(reads).hasSize(2);
+        assertThat(reads).allMatch(msg -> msg.contains("dossierId=" + dossier.id()));
+        assertThat(reads).noneMatch(msg -> msg.contains("fields="));
+    }
+
+    @Test
+    void getDossier_forbidden_doesNotEmitDossierRead() throws Exception {
+        String code = createType(true);
+        grant(code, "owner-read-audit", "EDIT");
+        DossierFixture dossier = createDossier(code, "owner-read-audit", "Denied read dossier");
+
+        ListAppender<ILoggingEvent> appender = attachSecurityAuditAppender();
+        try {
+            mockMvc.perform(get("/api/dossiers/{id}", dossier.id()).with(user("stranger-read-audit")))
+                    .andExpect(status().isForbidden());
+        } finally {
+            detachSecurityAuditAppender(appender);
+        }
+
+        assertThat(appender.list)
+                .extracting(ILoggingEvent::getFormattedMessage)
+                .noneMatch(msg -> msg.contains("event=dossier_read"));
+    }
+
+    @Test
     void updateStatus_staleExpectedVersion_returns409() throws Exception {
         String code = createType(true);
         grant(code, "manager-version", "EDIT");

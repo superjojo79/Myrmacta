@@ -2,6 +2,8 @@ package com.flowforge.infrastructure.dossier;
 
 import com.flowforge.domain.dossier.port.in.ProcessPurgeOutboxUseCase;
 import com.flowforge.infrastructure.config.PurgeProperties;
+import com.flowforge.infrastructure.config.TenantProperties;
+import com.flowforge.infrastructure.observability.MdcScope;
 import java.time.Instant;
 import java.util.Objects;
 import org.slf4j.Logger;
@@ -16,18 +18,25 @@ class PurgeOutboxJob {
 
     private final ProcessPurgeOutboxUseCase processPurgeOutboxUseCase;
     private final PurgeProperties purgeProperties;
+    private final TenantProperties tenantProperties;
 
-    PurgeOutboxJob(ProcessPurgeOutboxUseCase processPurgeOutboxUseCase, PurgeProperties purgeProperties) {
+    PurgeOutboxJob(
+            ProcessPurgeOutboxUseCase processPurgeOutboxUseCase,
+            PurgeProperties purgeProperties,
+            TenantProperties tenantProperties) {
         this.processPurgeOutboxUseCase =
                 Objects.requireNonNull(processPurgeOutboxUseCase, "processPurgeOutboxUseCase");
         this.purgeProperties = Objects.requireNonNull(purgeProperties, "purgeProperties");
+        this.tenantProperties = Objects.requireNonNull(tenantProperties, "tenantProperties");
     }
 
     @Scheduled(fixedDelayString = "${app.purge.poll-delay:1h}")
     void process() {
-        int processed = processPurgeOutboxUseCase.processBatch(Instant.now(), purgeProperties.batchSize());
-        if (processed > 0) {
-            log.info("Purge outbox job processed {} row(s)", processed);
+        try (MdcScope ignored = MdcScope.tenant(tenantProperties.id())) {
+            int processed = processPurgeOutboxUseCase.processBatch(Instant.now(), purgeProperties.batchSize());
+            if (processed > 0) {
+                log.info("Purge outbox job processed {} row(s)", processed);
+            }
         }
     }
 }

@@ -22,7 +22,10 @@ class ArchitectureRulesTest {
                     "jakarta.persistence..",
                     "org.flowable..",
                     "org.springdoc..",
-                    "io.swagger..");
+                    "io.swagger..",
+                    "io.micrometer..",
+                    "org.slf4j..",
+                    "org.springframework.boot.actuate..");
 
     @ArchTest
     static final ArchRule domain_never_depends_on_infrastructure = noClasses()

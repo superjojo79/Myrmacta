@@ -39,6 +39,7 @@ class OpenApiEnabledApiTest {
                 .andExpect(jsonPath("$.paths['/api/workflow-type-configs']").exists())
                 .andExpect(jsonPath("$.paths['/api/notification-webhooks']").exists())
                 .andExpect(jsonPath("$.paths['/api/purge-outbox']").exists())
+                .andExpect(jsonPath("$.paths['/api/observability']").exists())
                 .andExpect(jsonPath("$.paths['/api/notifications/stream']").doesNotExist())
                 .andExpect(jsonPath("$.paths", not(hasKey("/api/webhooks/{id}"))))
                 .andExpect(jsonPath("$.paths", not(hasKey("/api/dossiers/{id}/elements/attachment"))));

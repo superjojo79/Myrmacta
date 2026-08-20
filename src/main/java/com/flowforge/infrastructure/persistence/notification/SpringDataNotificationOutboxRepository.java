@@ -1,9 +1,11 @@
 package com.flowforge.infrastructure.persistence.notification;
 
+import com.flowforge.domain.notification.model.NotificationChannel;
 import com.flowforge.domain.notification.model.NotificationOutboxStatus;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -35,4 +37,9 @@ interface SpringDataNotificationOutboxRepository extends JpaRepository<Notificat
     int deleteTerminalOlderThan(
             @Param("statuses") Collection<NotificationOutboxStatus> statuses,
             @Param("cutoff") Instant cutoff);
+
+    @Query("select min(e.createdAt) from NotificationOutboxJpaEntity e where e.status = :status")
+    Optional<Instant> findOldestCreatedAtByStatus(@Param("status") NotificationOutboxStatus status);
+
+    long countByChannelAndStatus(NotificationChannel channel, NotificationOutboxStatus status);
 }

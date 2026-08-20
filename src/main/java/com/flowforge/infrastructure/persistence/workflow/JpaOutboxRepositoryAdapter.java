@@ -7,6 +7,7 @@ import com.flowforge.domain.workflow.port.out.OutboxRepository;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -62,5 +63,11 @@ class JpaOutboxRepositoryAdapter implements OutboxRepository {
     public int purgeProcessedOlderThanDays(int days) {
         return repository.deleteByStatusAndProcessedAtBefore(
                 OutboxStatus.PROCESSED, Instant.now().minus(days, ChronoUnit.DAYS));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Instant> oldestPendingCreatedAt() {
+        return repository.findOldestCreatedAtByStatus(OutboxStatus.PENDING);
     }
 }

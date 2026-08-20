@@ -49,6 +49,28 @@ describe('AppShell', () => {
     expect(wrapper.text()).toContain('Types')
     expect(wrapper.text()).toContain('Connecteurs')
     expect(wrapper.text()).toContain('File purge')
+    expect(wrapper.text()).toContain('Observabilité')
     expect(wrapper.text()).toContain('Webhooks')
+  })
+
+  it('hides observability link for workflow admin', async () => {
+    const auth = useAuthStore()
+    auth.user = { id: 'w', name: 'Wf', email: null, roles: ['WORKFLOW_ADMIN'] }
+    const router = createRouter({ history: createMemoryHistory(), routes })
+    await router.push('/supervision')
+    await router.isReady()
+    const wrapper = mount(AppShell, { global: { plugins: [router] } })
+    expect(wrapper.text()).toContain('Workflows')
+    expect(wrapper.text()).not.toContain('Observabilité')
+  })
+
+  it('hides observability link for dossier viewer', async () => {
+    const auth = useAuthStore()
+    auth.user = { id: 'v', name: 'Viewer', email: null, roles: ['DOSSIER_VIEWER'] }
+    const router = createRouter({ history: createMemoryHistory(), routes })
+    await router.push('/supervision')
+    await router.isReady()
+    const wrapper = mount(AppShell, { global: { plugins: [router] } })
+    expect(wrapper.text()).not.toContain('Observabilité')
   })
 })

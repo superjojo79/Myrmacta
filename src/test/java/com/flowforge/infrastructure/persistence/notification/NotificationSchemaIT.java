@@ -64,6 +64,18 @@ class NotificationSchemaIT {
     }
 
     @Test
+    void notificationOutbox_hasStatusCreatedIndex() {
+        Integer count = jdbc.queryForObject(
+                """
+                SELECT COUNT(*) FROM information_schema.indexes
+                WHERE lower(table_name) = 'notification_outbox'
+                  AND lower(index_name) = 'ix_notification_outbox_status_created_at'
+                """,
+                Integer.class);
+        assertThat(count).isGreaterThanOrEqualTo(1);
+    }
+
+    @Test
     void notificationWebhook_hasActiveNameUniqueIndex() {
         Integer count = jdbc.queryForObject(
                 """

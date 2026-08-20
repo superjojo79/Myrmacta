@@ -9,14 +9,17 @@ feature: observabilite
 phase1: 2026-08-20
 phase3: 2026-08-20
 phase5: 2026-08-20
+phase7: 2026-08-20
 requirements_ref: docs/ai/requirements/2026-08-20-feature-observabilite.md
 design_ref: docs/ai/design/2026-08-20-feature-observabilite.md
+planning_ref: docs/ai/planning/2026-08-20-feature-observabilite.md
 ---
 
 # Implementation Guide — `observabilite`
 
-Phase 5 livrée (M1–M5). Hexagone : Micrometer / MDC / actuator uniquement
-dans `infrastructure`.
+Phase 5 livrée (M1–M5). Phase 7 (contrôle vs design/requirements)
+**alignée** (écarts bas documentés, non bloquants). Hexagone :
+Micrometer / MDC / actuator uniquement dans `infrastructure`.
 
 ## Development Setup
 
@@ -60,8 +63,11 @@ SPA : `ObservabilityAdminView`, `ObservabilityKpiCard`/`Grid`,
 
 | Id | Écart | Sévérité |
 |---|---|---|
-| T2.4 Flowable async MDC | Pas d’API Community 8 pour un `FlowableMdcConfigurer` ; MDC posé sur les jobs applicatifs (relais outbox, purge, rétention). | Faible — noté, fallback prévu au plan |
-| Unexposed actuator | `beans`/`env`/`heapdump` : 302 OIDC ou 404, jamais JSON actuator. | Faible — objectif « non exposé » respecté |
+| T2.4 Flowable async MDC | Pas d’API Community 8 pour un `FlowableMdcConfigurer` ; MDC posé sur les jobs applicatifs (relais outbox, purge, rétention). Relais déclenchement pose `processInstanceId` **après** `start` / confirm. | Faible — fallback prévu au plan |
+| Purge `dossierId` par item | `PurgeOutboxJob` enveloppe le **batch** avec `tenantId` seulement. `ProcessPurgeOutboxUseCaseImpl` est du domaine → MDC interdit. | Faible — même famille que fallback Flowable |
+| Unexposed actuator | `beans`/`env`/`heapdump` : 302 OIDC ou 404, jamais JSON actuator. Port app `/actuator/prometheus` : SPA 200 HTML sans `flowforge_*`. | Faible — objectif « non exposé » respecté |
+| Filtre MDC servlet | `MdcTenantFilter` `@Order(HIGHEST_PRECEDENCE)` auto-servlet, pas seulement « après tenant » dans la chaîne BFF. | Faible — `tenantId` présent plus tôt, pas de fuite (`finally`) |
+| Test ECS stdout | `MdcTenantFilterTest` vérifie MDC pendant la chaîne, pas une ligne JSON ECS `tenantId`. | Faible — format `ecs` configuré ; smoke manuel reste |
 
 ## Implementation Notes
 
@@ -70,6 +76,10 @@ SPA : `ObservabilityAdminView`, `ObservabilityKpiCard`/`Grid`,
 - Binders : catch `RuntimeException` → WARN + `0`.
 - `MdcScope` restaure seulement les clés posées (pas de `MDC.clear()`).
 - Port management : `EndpointRequest.toAnyEndpoint()` permitAll.
+- Timer PDF : `Timer.Sample` + `finally` (succès **et** exception).
+- `NotificationOutboxRelay.dossierIdFromPayload` parse le JSON payload
+  par index (évite d’échouer le relais si le tree Jackson n’est pas
+  encore lu).
 
 ## Error Handling
 
@@ -84,3 +94,44 @@ Timer PDF uniquement.
 
 Port management non routé publiquement. Q1=B : ids seulement, pas de
 log read si 403. Snapshot sans secrets.
+
+## Phase 7 — revue fichier par fichier
+
+| Zone | Verdict | Preuve |
+|---|---|---|
+| Hexagone : pas de Micrometer / MDC / actuator dans `domain` | MATCH | `ArchitectureRulesTest` ban `io.micrometer..`, `org.slf4j..`, `org.springframework.boot.actuate..` |
+| `MdcScope` put/clear clés posées, ignore null/blank | MATCH | `MdcScope.java`, `MdcScopeTest` |
+| Filtre HTTP `tenantId` + `finally` | MATCH | `MdcTenantFilter` |
+| MDC jobs : relais déclenchement (tenant + dossier + PI après start) | MATCH | `OutboxRelayScheduler` + tests MDC |
+| MDC jobs : relais notification (tenant + dossierId payload) | MATCH | `NotificationOutboxRelay` |
+| MDC jobs : purge / rétention (tenant batch) | ÉCART BAS | `PurgeOutboxJob`, `EvaluateDossierRetentionJob` — pas de `dossierId` par item |
+| Flowable async executor MDC | ÉCART BAS | Pas de `FlowableMdcConfigurer` (API Community 8) — fallback documenté |
+| Ports lecture âge / counts (pas de use case observabilité) | MATCH | `oldestPendingCreatedAt`, `oldestUnfinishedCreatedAt`, `countByChannelAndStatus` |
+| Index notification `(status, created_at)` | MATCH | `012-observability-indexes.yaml` |
+| Noms Prometheus `flowforge.*` sans label tenant/dossierId | MATCH | binders + `ObservabilityActuatorIT` |
+| Âge vide → `0` ; purge PENDING∪PROCESSING∪FAILED | MATCH | `OutboxAgeMeterBinder.ageSeconds` ; adapter purge unfinished |
+| Flowable DLQ + `withException` (job + timer) | MATCH | `FlowableJobMetricsBinder` |
+| Timer PDF succès et exception | MATCH | `FlyingSaucerPdfAdapter.render` `finally` |
+| Jauge SSE `activeEmitterCount` | MATCH | `ObservabilityMeterConfig.SSE_ACTIVE` |
+| Seuils serveur DD-THRESHOLDS | MATCH | `ObservabilityThresholds` |
+| Snapshot JSON figé + `TENANT_ADMIN` 403 autres | MATCH | `ObservabilitySnapshotResponse`, `ObservabilityApiTest` |
+| Actuator port management `health`+`prometheus`, permitAll Order 0 | MATCH | `application.yml`, `SecurityConfig` Order 0, IT |
+| Endpoints sensibles non exposés | MATCH* | Jamais JSON actuator ; statut 302/404 (pas 404 strict) |
+| Port app ne sert pas les métriques | MATCH* | Body sans `flowforge_*` (SPA peut répondre 200 HTML) |
+| Audit Q1=B après succès, pas sur liste / 403 | MATCH | `DossierController`, `DossierElementContentController`, `SecurityAuditLog` |
+| OpenAPI `GET /api/observability` si flag on | MATCH | `OpenApiEnabledApiTest` |
+| SPA route / nav / cartes / refresh / pas d’action métier | MATCH | `routes.ts`, `AppShell`, `ObservabilityAdminView`, `ObservabilityKpiCard` `kpi-card--ok\|warn\|crit` |
+| Playwright E2E-OBS-1..4 | MATCH | `frontend/e2e/pilotage.spec.ts` mock `**/api/observability**` |
+| Logs ECS configurés | MATCH | `logging.structured.format.console=ecs` |
+
+**Pas d’écart fonctionnel bloquant.** Pas de retour Phase 3/5.
+
+### Follow-ups (non bloquants)
+
+1. Wrapper Flowable async (`ExecuteAsyncRunnable`) si une API Community
+   stable apparaît — aujourd’hui jobs applicatifs seulement.
+2. `dossierId` MDC par item de purge : exigerait d’itérer les records
+   côté job infra (le use case domaine ne doit pas poser le MDC).
+3. IT stdout ECS : assert qu’une ligne JSON contient `tenantId`.
+4. Contrôleurs workflow HTTP (`WorkflowTaskController.complete`) : PI
+   connu mais pas encore poussé dans le MDC (filtre `tenantId` seulement).

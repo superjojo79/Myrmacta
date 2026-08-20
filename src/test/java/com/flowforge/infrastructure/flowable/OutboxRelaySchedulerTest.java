@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -161,6 +162,7 @@ class OutboxRelaySchedulerTest {
             org.assertj.core.api.Assertions.assertThat(MDC.get(MdcScope.TENANT_ID)).isEqualTo("tenant_dev");
             org.assertj.core.api.Assertions.assertThat(MDC.get(MdcScope.DOSSIER_ID))
                     .isEqualTo(event.payload().dossierId().toString());
+            org.assertj.core.api.Assertions.assertThat(MDC.get(MdcScope.PROCESS_INSTANCE_ID)).isNull();
             return active;
         });
 
@@ -168,6 +170,30 @@ class OutboxRelaySchedulerTest {
 
         org.assertj.core.api.Assertions.assertThat(MDC.get(MdcScope.DOSSIER_ID)).isNull();
         org.assertj.core.api.Assertions.assertThat(MDC.get(MdcScope.TENANT_ID)).isNull();
+        org.assertj.core.api.Assertions.assertThat(MDC.get(MdcScope.PROCESS_INSTANCE_ID)).isNull();
+    }
+
+    @Test
+    void processOne_putsProcessInstanceIdAfterStartThenClears() {
+        OutboxEvent event = pendingEvent();
+        DossierWorkflowLink reserved = reservedLink(event.payload().dossierId());
+        when(attachWorkflow.reserveOrResume(any(), any(), any(), any())).thenReturn(reserved);
+        when(workflowEnginePort.findProcessInstanceIdByBusinessKey(reserved.id().toString()))
+                .thenReturn(Optional.empty());
+        when(workflowEnginePort.start(anyString(), anyString(), anyString(), anyMap())).thenReturn("proc-1");
+        doAnswer(invocation -> {
+            org.assertj.core.api.Assertions.assertThat(MDC.get(MdcScope.PROCESS_INSTANCE_ID)).isEqualTo("proc-1");
+            org.assertj.core.api.Assertions.assertThat(MDC.get(MdcScope.DOSSIER_ID))
+                    .isEqualTo(event.payload().dossierId().toString());
+            return null;
+        })
+                .when(attachWorkflow)
+                .confirmStarted(reserved.id(), "proc-1");
+
+        scheduler.processOne(event);
+
+        org.assertj.core.api.Assertions.assertThat(MDC.get(MdcScope.PROCESS_INSTANCE_ID)).isNull();
+        verify(outboxRepository).markProcessed(event.eventId());
     }
 
     private static OutboxEvent pendingEvent() {

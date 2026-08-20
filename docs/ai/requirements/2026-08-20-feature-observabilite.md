@@ -7,6 +7,7 @@ created: 2026-08-20
 updated: 2026-08-20
 feature: observabilite
 phase1: 2026-08-20
+stakeholder_decisions: 2026-08-20
 todo_ref: TODO.md §29 · FILE-ATTENTE.md · REVUE-PRE-IMPLEMENTATION.md §29 · DEFERRED-FEATURES.md
 ---
 
@@ -14,8 +15,10 @@ todo_ref: TODO.md §29 · FILE-ATTENTE.md · REVUE-PRE-IMPLEMENTATION.md §29 ·
 
 > Prochaine feature produit ([FILE-ATTENTE.md](../../../FILE-ATTENTE.md),
 > 2026-08-19) après `openapi-pagination-admin` (PR #58). Lot TODO **§29**.
-> Phase 1 **draft** — recommandations ci-dessous, pas encore actées
-> (Phase 2). Ne pas trancher silencieusement un point ouvert de `TODO.md`.
+> Phase 1 **draft**. **D-FE acté** (2026-08-20) : visualisation dans
+> l’UI admin **dans le périmètre**. Q1–Q3 et Q4–Q6 encore ouvertes
+> (Phase 2). Ne pas trancher silencieusement un point ouvert de
+> `TODO.md`.
 
 ## Problem Statement
 **What problem are we solving?**
@@ -25,9 +28,10 @@ dossier ou à l’instance Flowable, ni mesurer la santé du déclenchement.
 Aucun document d’analyse ne traitait l’observabilité ; la revue
 pré-implémentation (point 29) a listé le minimum, encore **non livré**.
 
-- **Affectés :** ops / SRE (scraping, logs) ; support (corrélation
-  d’incident) ; conformité (traçabilité des lectures — encore ouverte) ;
-  la plateforme elle-même (détection d’une outbox coincée).
+- **Affectés :** ops / SRE (scraping, logs) ; **`TENANT_ADMIN`**
+  (écran admin de santé) ; support (corrélation d’incident) ;
+  conformité (traçabilité des lectures — encore ouverte) ; la
+  plateforme elle-même (détection d’une outbox coincée).
 - **Situation actuelle :**
   - Pas de `spring-boot-starter-actuator` ni de registre Prometheus
     (`pom.xml`).
@@ -46,8 +50,11 @@ pré-implémentation (point 29) a listé le minimum, encore **non livré**.
     **pas** de jauge.
   - Jobs Flowable : `async-executor-activate: true` — **pas** de
     métrique d’échecs / dead-letter.
+  - SPA admin : Types, Templates, Connecteurs, File purge, Webhooks,
+    Workflows — **aucun** écran de santé instance.
 - **Réf. :** TODO §29, REVUE §29, `analysis doc/12` (lectures),
-  `07` (PDF), `09` (webhooks DLQ / SSE), DEFERRED §1.2 / §4.
+  `07` (PDF), `09` (webhooks DLQ / SSE), `11-frontend.md` (PrimeVue /
+  même origine), DEFERRED §1.2 / §4.
 
 ## Goals & Objectives
 **What do we want to achieve?**
@@ -64,8 +71,11 @@ pré-implémentation (point 29) a listé le minimum, encore **non livré**.
   4. webhooks sortants en dead-letter (`notification_outbox` `WEBHOOK`
      + `DEAD`) ;
   5. nombre d’`SseEmitter` actifs.
-- Trancher **Q1** (traçabilité des lectures) en Phase 2 — options
-  ci-dessous, recommandation **B**.
+- Écran admin **lecture** des cinq SLI §29 (**D-FE** acté) : route
+  `/admin/observabilite`, nav Admin, contrat JSON BFF (pas le scrape
+  Prometheus dans le browser).
+- Trancher **Q1** (traçabilité des lectures) et **Q4–Q6** (forme UI,
+  rôle exact, rafraîchissement) en Phase 2.
 
 ### Secondary goals
 
@@ -73,12 +83,18 @@ pré-implémentation (point 29) a listé le minimum, encore **non livré**.
   de jobs), pas depuis un claim par requête.
 - Noms de métriques / runbook scrape documentés (doc monitoring).
 - ArchUnit : Micrometer / MDC **hors domaine**.
+- OpenAPI : documenter le GET snapshot si `app.openapi.enabled`
+  (même discipline que les GET admin §24).
 
 ### Non-goals (proposés)
 
 - Traces distribuées OpenTelemetry / APM (Datadog, New Relic, etc.).
 - Dashboards Grafana-as-code, Alertmanager dans le dépôt.
-- Écran SPA « métriques » / Rapports / SLA (hors V1, FILE-ATTENTE).
+- **Rapports / SLA** (maquette FILE-ATTENTE, hors V1) — distincts de
+  l’écran admin de **santé instance**.
+- Historique / time-series persisté, Chart.js / librairie graphe
+  (sauf si Q4 = B en Phase 2).
+- Le SPA ne scrape **pas** `/actuator/prometheus`.
 - Codegen OpenAPI, antivirus PJ, `http-rest` SERVICE.
 - `platform.tenant_migration_status` (provisioning, DEFERRED §1.2).
 - Testcontainers / charge Flowable (TODO §28).
@@ -92,8 +108,9 @@ pré-implémentation (point 29) a listé le minimum, encore **non livré**.
 | Id | Approche | Trade-off | Verdict Phase 1 |
 |---|---|---|---|
 | A | Logs MDC seuls | Corrélation OK, pas de SLI scrapeable | Écarté — §29 exige Micrometer |
-| B | **MDC + Micrometer/Prometheus + actuator** | Aligné §29 ; scrape ops standard Spring | **Recommandé (D-APPROACH)** |
+| B | **MDC + Micrometer/Prometheus + actuator** | Aligné §29 ; scrape ops standard Spring | **Recommandé (D-APPROACH)** — **complété par D-FE** |
 | C | APM / OTel + Grafana-as-code | Lourd, hors liste §29, stack non figée | Écarté V1 |
+| D | SPA admin **uniquement** (pas Prometheus) | TENANT_ADMIN voit la santé ; ops sans scrape | Écarté — §29 exige Micrometer **et** D-FE exige l’UI |
 
 ## User Stories & Use Cases
 
@@ -111,10 +128,17 @@ pré-implémentation (point 29) a listé le minimum, encore **non livré**.
 5. **En tant qu’** ops, **je veux** le nombre d’`SseEmitter` vivants,
    **afin de** voir si le canal navigateur sature la JVM (décision
    n° 13 : une réplique).
-6. **En tant que** conformité (si **Q1 = B**), **je veux** un
+6. **En tant que** `TENANT_ADMIN`, **je veux** un écran admin qui
+   visualise les cinq SLI §29 (âge outbox déclenchement, jobs
+   Flowable en échec, durée PDF, webhooks DEAD, SSE actifs), **afin
+   de** juger la santé de l’instance **sans** accès Prometheus.
+7. **En tant que** `DOSSIER_MANAGER` / `DOSSIER_VIEWER`, **je ne
+   veux pas** voir cet écran ni l’entrée de nav, **afin de** garder
+   l’admin réservé (même pattern que File purge).
+8. **En tant que** conformité (si **Q1 = B**), **je veux** un
    événement d’audit structuré quand un utilisateur **lit** un dossier
    ou un contenu de pièce, **afin de** répondre aux exigences
-   assurance / secteur public **sans** écran dédié.
+   assurance / secteur public **sans** écran d’audit dédié.
 
 ### Edge cases
 
@@ -129,6 +153,11 @@ pré-implémentation (point 29) a listé le minimum, encore **non livré**.
 - PDF en erreur : timer enregistré (succès **et** échec).
 - Lecture liste dossiers (`GET /api/dossiers` paginé) : **hors** audit
   lecture V1 si Q1 = B (bruit) ; seulement détail + contenu binaire.
+- Snapshot API : valeurs absentes / timer PDF jamais observé → `0` ou
+  `null` documenté (Phase 3) ; l’UI affiche un état « n/a » pas un
+  crash.
+- 403 sur GET snapshot pour non-`TENANT_ADMIN` (Q5 reco A).
+- SPA : **pas** d’appel à `/actuator/**` (port management hors BFF).
 
 ## Success Criteria
 **How will we know when we're done?**
@@ -148,10 +177,14 @@ pré-implémentation (point 29) a listé le minimum, encore **non livré**.
 - [ ] Aucune valeur sensible dans les logs (aligné `SecurityAuditLog`).
 - [ ] Q1 tranchée en Phase 2 et implémentée (ou explicitement hors
       lot).
+- [ ] `GET` snapshot JSON des cinq SLI, session BFF, **TENANT_ADMIN**
+      (Q5 reco A) ; 403 sinon.
+- [ ] SPA `/admin/observabilite` : nav Admin, lecture seule, les cinq
+      indicateurs visibles (forme Q4) ; **aucun** bouton d’action
+      métier (pas de retry job / purge webhook).
+- [ ] Vitest : vue + AuthZ nav. Playwright : spec dédié (admin voit,
+      non-admin ne voit pas) **et** régression suite existante.
 - [ ] `./mvnw verify` vert.
-- [ ] SPA non modifié : pas de nouveau contrat consommé par le
-      frontend ; Playwright = **régression** suite existante (pas de
-      spec actuator). Vitest inchangé.
 
 ## Constraints & Assumptions
 
@@ -160,7 +193,8 @@ pré-implémentation (point 29) a listé le minimum, encore **non livré**.
 - Hexagone : infrastructure → domain. Micrometer / logback / Flowable
   `ManagementService` = adapters.
 - Une instance = un tenant (`app.tenant.id`).
-- BFF + SPA même origine ; actuator **n’est pas** un API métier SPA.
+- BFF + SPA même origine ; actuator **n’est pas** un API métier SPA ;
+  le snapshot JSON **l’est**.
 - Secrets / payloads : jamais dans les logs (TODO §30 partiel).
 - Stack figée : pas de Redis, pas d’APM hors Boot/Micrometer.
 - Task tracing `ai-devkit task` **indisponible** (`task` unknown).
@@ -179,7 +213,8 @@ pré-implémentation (point 29) a listé le minimum, encore **non livré**.
 | **D-PDF** | Timer | Autour de `PdfRenderer.render` (adapter) |
 | **D-SSE** | Jauge | `SseNotificationAdapter` (somme des emitters) |
 | **D-FLOWABLE** | Jobs | Dead-letter + failed via API Flowable **infra** |
-| **D-FE** | SPA | Aucun écran / contrat ; E2E = régression |
+| **D-FE** | SPA | **Acté 2026-08-20** — écran admin lecture `/admin/observabilite` |
+| **D-API-UI** | Contrat SPA | `GET` JSON BFF (pas Prometheus text) |
 | **D-AUDIT-READ** | Lectures | **B** si Q1 confirmée (voir ouvertures) |
 | **D-ACTUATOR** | Surface | `health` + `prometheus` uniquement |
 | **D-MGMT** | Auth scrape | **A** — port management séparé, scrape réseau |
@@ -196,6 +231,12 @@ pré-implémentation (point 29) a listé le minimum, encore **non livré**.
   outbox.
 - **A-JSON :** format `ecs` ou `logstash` (choix exact Phase 3 selon
   Boot 4.1).
+- **A-UI-COMP :** vue `ObservabilityAdminView` + grille de KPI
+  (composants enfants) + `frontend/src/api/observability.ts` ;
+  Composition API `<script setup lang="ts">` ; PrimeVue existant
+  (**pas** de nouvelle lib graphe si Q4 = A).
+- **A-UI-ACTION :** lecture seule — pas de retry Flowable / replay
+  webhook depuis cet écran.
 
 ## Questions & Open Items
 
@@ -209,22 +250,25 @@ Recommandations Phase 1 ci-dessous ; **pas actées**.
 | **Q1** | Traçabilité des **accès en lecture** (`12` l. 79-81 / 214-216) | TODO §29 la laisse ouverte ; assurance / secteur public | **A** hors V1 (écritures + 403 seulement) · **B** log `SECURITY_AUDIT` INFO sur `GET /api/dossiers/{id}` (et `?ref=`) + `GET /api/dossier-elements/{id}/content` — pas de table, pas d’UI, pas la liste paginée · **C** table d’audit + écran admin | **B** — minimum conformité sans nouvelle feature UI |
 | **Q2** | Qui peut scraper Prometheus ? | Le BFF est internet-facing ; OIDC inadapté à Prometheus | **A** `management.server.port` distinct, endpoints non exposés par le reverse-proxy public · **B** même port, `TENANT_ADMIN` seulement · **C** même port, `prometheus`+`health` anonymes · **D** basic-auth scrape | **A** — scrape ops sans ouvrir l’internet |
 | **Q3** | Faut-il aussi l’âge des outbox **notification** et **purge** ? | §29 dit « l’outbox » au singulier = déclenchement | **A** déclenchement seul · **B** trois jauges | **A** — rester sur la liste §29 ; B = follow-up |
+| **Q4** | Forme de la visualisation admin | « Visualisation » ≠ Rapports/SLA ; pas de TSDB in-app | **A** cartes KPI + sévérité (ok/warn/crit) PrimeVue, snapshot courant (pattern File purge) · **B** + Chart.js / histogramme PDF · **C** historique persisté | **A** — pas de nouvelle dépendance graphe ; C hors V1 |
+| **Q5** | Rôle de l’écran / GET | Alignement nav admin existante | **A** `TENANT_ADMIN` seul (comme File purge / Webhooks) · **B** + `WORKFLOW_ADMIN` | **A** |
+| **Q6** | Rafraîchissement | Données live vs charge API | **A** chargement à l’ouverture + bouton Rafraîchir · **B** + poll automatique (ex. 30 s) | **A** — comme File purge ; B = nice-to-have Phase 3 |
 
 ### Clos (hors Phase 2 — déjà actés ailleurs)
 
 | Id | Décision | Choix |
 |---|---|---|
 | Décision n° 13 | Tenant | Constante d’instance — MDC `tenantId` = `app.tenant.id` |
-| FILE-ATTENTE | SPA métriques / SLA | Hors V1 |
+| **D-FE** (stakeholder 2026-08-20) | UI admin | Visualisation santé **dans** `observabilite` ; Rapports/SLA restent hors V1 |
 | DEFERRED §0 | MinIO | Toujours pas |
 
 ## Phase 1 — synthèse
 
-**Compréhension partagée :** livrer le **socle ops** de §29 (logs MDC
-structurés + cinq métriques Micrometer + actuator restreint), sans
-parcours SPA. La seule décision produit encore ouverte **dans TODO**
-est **Q1** (lectures). **Q2** et **Q3** sont des précisions d’implémentation
-/ périmètre métriques à figer en revue requirements.
+**Compréhension partagée :** livrer le socle §29 (logs MDC structurés
++ cinq métriques Micrometer + actuator) **et** un parcours admin
+lecture (`GET` JSON + `/admin/observabilite`) pour visualiser ces
+cinq SLI. Rapports/SLA hors V1. **Q1** reste le point TODO ouvert.
+**Q2–Q6** à figer en revue requirements.
 
 **Prochaine phase :** `dev-requirements` Phase 2 (revue) — confirmer
-Q1–Q3 puis passer le status à `reviewed`.
+Q1–Q6 puis passer le status à `reviewed`.

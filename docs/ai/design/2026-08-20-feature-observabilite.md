@@ -13,9 +13,8 @@ todo_ref: TODO.md §29
 
 # System Design & Architecture — `observabilite`
 
-> Draft Phase 1 (esquisse). **Revue design = Phase 3** après
-> requirements `reviewed`. Aligné sur les recommandations D-* ; Q1–Q3
-> encore ouvertes.
+> Draft Phase 1 (esquisse). **D-FE acté** : écran admin. Revue design =
+> Phase 3 après requirements `reviewed`. Q1–Q6 encore ouvertes.
 
 ## Architecture Overview
 
@@ -35,6 +34,8 @@ flowchart LR
   notifDlq[(notification_outbox WEBHOOK DEAD)] --> binders
   registry --> prom["/actuator/prometheus"]
   scrape[Prometheus ops] --> prom
+  spa[Admin SPA /admin/observabilite] --> snapApi["GET /api/observability"]
+  snapApi --> registry
 ```
 
 - **Couche :** tout dans `com.flowforge.infrastructure` (observability,
@@ -85,10 +86,30 @@ contenu ni les `fields`.
 - **Port management** distinct (`management.server.port`) : scrape
   Prometheus **sans** OIDC ; le reverse-proxy public **ne route pas**
   ce port.
-- `GET /api/**` inchangé. OpenAPI : actuator **hors** spec SPA
-  (springdoc déjà gated).
+- `GET /api/**` métier : **+** snapshot JSON pour le SPA (D-API-UI).
+  OpenAPI : inclure ce GET si flag on (discipline §24).
 
-Pas de nouvel endpoint métier.
+### Snapshot SPA (D-FE, D-API-UI)
+
+`GET /api/observability` — `@PreAuthorize("hasRole('TENANT_ADMIN')")`
+(Q5 reco A). Même origine, CSRF session BFF. **Pas** de texte
+Prometheus.
+
+Forme provisoire (figer Phase 3) :
+
+```json
+{
+  "tenantId": "tenant_dev",
+  "observedAt": "2026-08-20T07:41:00Z",
+  "triggerOutboxOldestPendingAgeSeconds": 12.5,
+  "flowableFailedJobCount": 0,
+  "pdfRender": { "count": 10, "meanMs": 80.0, "maxMs": 200.0 },
+  "webhookDeadCount": 2,
+  "sseActiveCount": 3
+}
+```
+
+Lecture seule. 403 si rôle insuffisant.
 
 ## Component Breakdown
 
@@ -101,10 +122,24 @@ Pas de nouvel endpoint métier.
 | `NotificationDlqMeterBinder` | Gauge WEBHOOK DEAD |
 | Timer PDF | Micrometer autour de `render` |
 | Jauge SSE | `activeEmitterCount()` sur l’adapter existant |
+| `ObservabilityController` | GET snapshot — mappe registry / ports → JSON |
 | `SecurityAuditLog` | + méthodes read si Q1 = B |
 | `SecurityConfig` | Ne pas authentifier le port management comme le BFF |
 
-Frontend : **aucun** composant.
+### Frontend (D-FE) — carte composants
+
+| Pièce | Responsabilité |
+|---|---|
+| Route `/admin/observabilite` | `meta.roles: ['TENANT_ADMIN']` (Q5 reco A) |
+| `AppShell` | Lien Admin « Observabilité » si `isTenantAdmin` |
+| `ObservabilityAdminView` | Surface de composition : chargement, erreur, refresh |
+| `ObservabilityKpiGrid` | Grille des cinq SLI |
+| `ObservabilityKpiCard` | Une métrique + sévérité visuelle (Q4 reco A) |
+| `api/observability.ts` | Client GET snapshot |
+| `useObservabilitySnapshot` | Fetch / état (pas de store Pinia global sauf besoin) |
+
+Pas de `chart.js` si Q4 = A. PrimeVue déjà dans le projet (Tag /
+Message / Card — choix exact Phase 3, aligné maquette `11`).
 
 ## Design Decisions
 
@@ -115,6 +150,8 @@ Frontend : **aucun** composant.
 | Flowable | Adapter infra seulement | Port domaine « JobMetrics » (YAGNI) |
 | Logs | Structured logging Boot natif | logstash-logback-encoder additionnel |
 | Q1 | Reco B logs | Table d’audit (C) trop large pour §29 |
+| D-FE | Écran admin snapshot | SPA scrape Prometheus (casse Q2 / CORS / auth) |
+| D-API-UI | JSON BFF | Exposer actuator sur le port app pour le SPA |
 
 ## Non-Functional Requirements
 
@@ -135,3 +172,5 @@ Frontend : **aucun** composant.
 - Exact failed vs dead-letter Flowable 8 API.
 - Format JSON `ecs` vs `logstash`.
 - Comportement jauge outbox vide (0 vs NaN).
+- Seuils ok/warn/crit des cartes (alignés runbook monitoring).
+- Path exact `GET /api/observability` vs `/api/admin/observability`.

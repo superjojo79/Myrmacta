@@ -12,10 +12,9 @@ requirements_ref: docs/ai/requirements/2026-08-20-feature-observabilite.md
 
 # Testing Strategy — `observabilite`
 
-> Draft Phase 1. Cases dérivés des success criteria §29. SPA **non**
-> touché : Playwright = régression suite existante, **pas** « hors
-> scope » pour contourner Phase 8 — simplement **aucun nouveau** spec
-> actuator (contrat non consommé par le SPA).
+> Draft Phase 1. **D-FE acté** : Vitest **et** Playwright **obligatoires**
+> (écran admin + contrat API consommé par le SPA). Ne pas déclarer
+> Playwright hors scope.
 
 ## Test Coverage Goals
 
@@ -23,8 +22,9 @@ requirements_ref: docs/ai/requirements/2026-08-20-feature-observabilite.md
   (`./mvnw test` / `verify`).
 - ArchUnit : domaine sans Micrometer / MDC / actuator (étendre la
   règle existante si besoin).
-- Frontend unit : Vitest inchangé (`cd frontend && npm run test`).
-- Frontend E2E : `cd frontend && npm run test:e2e` vert (régression).
+- Frontend unit : `cd frontend && npm run test` (vue KPI + nav AuthZ).
+- Frontend E2E : `cd frontend && npm run test:e2e` — **nouveau** spec
+  admin + régression.
 
 ## Unit Tests
 
@@ -48,6 +48,12 @@ requirements_ref: docs/ai/requirements/2026-08-20-feature-observabilite.md
 - [ ] Flowable : gauge reflète le count dead-letter (mock
       `ManagementService`).
 
+### Snapshot API
+
+- [ ] `GET /api/observability` : `TENANT_ADMIN` → 200 + cinq SLI.
+- [ ] `DOSSIER_MANAGER` / viewer → 403.
+- [ ] Corps sans secrets / payloads.
+
 ### Audit lecture (si Q1 = B)
 
 - [ ] GET dossier par id / par ref → `SECURITY_AUDIT`
@@ -64,10 +70,18 @@ requirements_ref: docs/ai/requirements/2026-08-20-feature-observabilite.md
 - [ ] Q2 = A : scrape sur port management **sans** session OIDC ;
       port applicatif ne sert pas prometheus (ou le refuse).
 
+### Frontend Vitest
+
+- [ ] `ObservabilityAdminView` affiche les cinq KPI (mock API).
+- [ ] État erreur ProblemDetail.
+- [ ] Bouton Rafraîchir re-fetch (Q6 reco A).
+- [ ] `AppShell` : lien « Observabilité » si `TENANT_ADMIN` ; absent
+      sinon (étendre `AppShell.spec.ts`).
+- [ ] Aucun bouton retry/force.
+
 ## Integration Tests
 
-- [ ] MockMvc (ou test Boot) : une requête dossier pose MDC observable
-      via appender **pendant** l’appel.
+- [ ] MockMvc snapshot + MDC pendant un GET dossier.
 - [ ] Persistence : requête âge outbox sur H2 MODE=PostgreSQL
       (pattern `WorkflowPersistenceTest`).
 - [ ] ArchUnit étendu : `..domain..` ↛ `io.micrometer..`,
@@ -75,10 +89,14 @@ requirements_ref: docs/ai/requirements/2026-08-20-feature-observabilite.md
 
 ## End-to-End Tests
 
-- [ ] Régression Playwright existante verte (`npm run test:e2e`).
-- [ ] **Pas** de nouveau spec SPA (D-FE).
-- [ ] Mocks `frontend/e2e/**` inchangés (pas de nouveau shape API
-      métier).
+Pattern File purge (`E2E-PURGE-*` dans `frontend/e2e/pilotage.spec.ts`) :
+
+- [ ] Admin : nav « Observabilité » → heading visible ; KPI mockés
+      (âge outbox, jobs, PDF, webhooks DEAD, SSE) via `page.route`.
+- [ ] Non-admin : pas de lien nav ; pas d’écran.
+- [ ] Pas de bouton d’action métier (force / relancer).
+- [ ] Régression suite existante verte.
+- [ ] Mock `**/api/observability**` aligné sur le contrat réel.
 
 ## Test Data
 
@@ -86,6 +104,7 @@ requirements_ref: docs/ai/requirements/2026-08-20-feature-observabilite.md
 - Notification outbox : mix EMAIL/WEBHOOK × PENDING/DEAD.
 - PDF : HTML minimal déjà utilisé par les tests de rendu.
 - SSE : emitters mockés (`SseNotificationAdapterTest`).
+- Snapshot FE : fixture JSON des cinq SLI.
 - Audit : utilisateur `oidcLogin()` existant.
 
 ## Test Reporting & Coverage
@@ -96,24 +115,26 @@ cd frontend && npm run test
 cd frontend && npm run test:e2e
 ```
 
-Phase 8 : coller les sorties fraîches (counts). Jacoco : justifier
-tout fichier infra nouveau sous le seuil.
+Phase 8 : coller les sorties fraîches (counts Vitest **et**
+Playwright). Jacoco : justifier tout fichier infra nouveau sous le
+seuil.
 
 ## Manual Testing
 
 - Scrape local `curl` prometheus (port management).
-- Une génération PDF + une notif webhook forcée DEAD → métriques
-  bougent.
+- UI admin : valeurs bougent après une génération PDF / webhook DEAD.
 - Grep logs JSON : `tenantId` présent.
+- Vérifier qu’aucun appel réseau SPA n’atteint `/actuator`.
 
 Hors CI : Keycloak / PG réels (comme les autres lots).
 
 ## Performance Testing
 
 Hors lot (§28). Smoke : binder n’exécute pas de full table scan
-non borné (vérifier le SQL en revue design).
+non borné (vérifier le SQL en revue design). GET snapshot = lectures
+bornées, pas de N+1.
 
 ## Bug Tracking
 
-Écarts vs §29 = bugs bloquants Phase 9. Fuite MDC = bloquant
-sécurité/corrélation.
+Écarts vs §29 = bugs bloquants Phase 9. Fuite MDC = bloquant.
+Écran admin sans Playwright = non-prêt Phase 8/9.

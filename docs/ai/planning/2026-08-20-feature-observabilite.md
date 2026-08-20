@@ -20,7 +20,8 @@ phase1: 2026-08-20
 - [ ] M1 — Actuator + logs JSON + MDC `tenantId`
 - [ ] M2 — Cinq métriques §29
 - [ ] M3 — Q1 (audit lecture) selon décision Phase 2
-- [ ] M4 — Tests + ArchUnit + régression Playwright
+- [ ] M4 — SPA `/admin/observabilite` + GET snapshot (D-FE)
+- [ ] M5 — Tests + ArchUnit + Vitest + Playwright
 
 ## Task Breakdown
 
@@ -28,7 +29,7 @@ phase1: 2026-08-20
 
 ## Dependencies
 
-- Q1–Q3 confirmées (Phase 2).
+- Q1–Q6 confirmées (Phase 2).
 - Design Phase 3 : noms métriques, port management, API Flowable.
 
 ## Timeline & Estimates

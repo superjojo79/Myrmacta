@@ -8,8 +8,8 @@
 > - Inventaire follow-ups / lots : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md)
 > - Séquencement « avant prod » : [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md) §9
 >
-> **Dernière mise à jour :** 2026-08-19 (`openapi-pagination-admin` Phase 5 livrée —
-> PR #58 ; prochain produit = `observabilite` §29).
+> **Dernière mise à jour :** 2026-08-20 (`observabilite` Phase 1 : écran admin
+> **inclus** — stakeholder ; PR #59).
 
 ## Comment s’en servir
 
@@ -47,7 +47,7 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 
 | Priorité | Feature / lot kebab-case | Pourquoi ce n’est pas (encore) le suivant immédiat — ou pourquoi ça l’est |
 |---|---|---|
-| **1 — prochain** | `observabilite` (TODO §29) | Docs `docs/ai/monitoring/**` encore `deferred` / squelettes. MDC `tenantId`/`dossierId`/`processInstanceId`, Micrometer (âge outbox, jobs Flowable, PDF, webhooks DLQ, SSE). |
+| **1 — en cours** | `observabilite` (TODO §29) | MDC + Micrometer (âge outbox déclenchement, jobs Flowable, PDF, webhooks DLQ, SSE) **et** visualisation admin lecture (`/admin/observabilite`, **D-FE** acté 2026-08-20). Rapports/SLA restent hors V1. |
 | **Hors V1** | Rapports / SLA ; connecteur `http-rest` **SERVICE** ; antivirus pièces jointes ; codegen OpenAPI | Explicitement reportés (maquette UI / TODO §30 / connecteurs V1 = TRIGGER / §24 reste codegen). |
 
 ## Hors file produit (ne pas traiter comme « prochaine feature »)
@@ -82,3 +82,4 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 | 2026-08-19 | `retention-dossier-type` Phase 9 READY | PR #55 ; prochain = `purge-stockage` §22 |
 | 2026-08-19 | `purge-stockage` Phase 9 READY | PR #56 ; prochain = `openapi-pagination-admin` §24 |
 | 2026-08-19 | `openapi-pagination-admin` Phase 5 | PR #58 ; §24 partiel clos ; prochain = `observabilite` §29 |
+| 2026-08-20 | `observabilite` Phase 1 | Stakeholder : visualisation **UI admin** dans le périmètre (D-FE) ; Rapports/SLA hors V1 |

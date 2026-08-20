@@ -12,8 +12,9 @@ requirements_ref: docs/ai/requirements/2026-08-20-feature-observabilite.md
 
 # Monitoring & Observability — `observabilite`
 
-> Ce lot **est** le socle §29. Noms Prometheus définitifs = Phase 3.
-> Alerting = runbook ops, **pas** Alertmanager dans le dépôt (non-goal).
+> Ce lot **est** le socle §29 **plus** l’écran admin (D-FE). Noms
+> Prometheus définitifs = Phase 3. Alerting externe = runbook, **pas**
+> Alertmanager dans le dépôt.
 
 ## Key Metrics
 
@@ -41,6 +42,8 @@ requirements_ref: docs/ai/requirements/2026-08-20-feature-observabilite.md
 - **Logs :** stdout JSON (D-LOG) → agrégateur du tenant ops (hors
   dépôt).
 - **Métriques :** Prometheus scrape du **port management** (Q2 reco A).
+- **UI :** snapshot JSON dans `/admin/observabilite` (même SLI, pas un
+  second système de vérité).
 - **Pas** d’APM / Grafana-as-code dans ce repo.
 
 ## Logging Strategy
@@ -67,8 +70,9 @@ Pas d’alerte in-app.
 
 ## Dashboards
 
-Hors dépôt. Documenter les noms de métriques pour un dashboard ops
-externe après Phase 3.
+Hors dépôt Grafana. L’écran admin **est** le dashboard produit V1
+(cartes KPI, Q4 reco A). Documenter les noms Prometheus pour un
+dashboard ops externe après Phase 3.
 
 ## Incident Response
 

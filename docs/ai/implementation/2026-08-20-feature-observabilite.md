@@ -18,7 +18,8 @@ phase1: 2026-08-20
 
 - Java 25 / Boot 4.1 / `./mvnw` — ajouter actuator + registry
   Prometheus **en Phase 5**, pas avant design reviewed.
-- Frontend : aucun `npm` métier attendu.
+- Frontend : Vue 3 `<script setup lang="ts">`, Vitest + Playwright
+  (D-FE). Pas de `chart.js` si Q4 = A.
 
 ## Code Structure (cible)
 
@@ -33,6 +34,10 @@ com.flowforge.infrastructure
 
 Domaine : au plus une méthode lecture âge sur `OutboxRepository`.
 
+SPA : `frontend/src/views/admin/ObservabilityAdminView.vue`,
+`frontend/src/components/admin/observability/`,
+`frontend/src/api/observability.ts`, route + `AppShell`.
+
 ## Implementation Notes
 
 Voir design draft. Interdit : `@Timed` / `MDC` dans `domain`.
@@ -41,7 +46,8 @@ Voir design draft. Interdit : `@Timed` / `MDC` dans `domain`.
 
 - `TenantProperties`, `OutboxRelayScheduler`,
   `NotificationOutboxRelay`, `SseNotificationAdapter`,
-  `FlyingSaucerPdfAdapter`, `SecurityAuditLog`, `SecurityConfig`.
+  `FlyingSaucerPdfAdapter`, `SecurityAuditLog`, `SecurityConfig`,
+  GET snapshot + SPA admin.
 
 ## Error Handling
 

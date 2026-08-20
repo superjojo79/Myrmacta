@@ -19,7 +19,8 @@ phase1: 2026-08-20
 Une JVM / tenant (décision n° 13). Ajout prévu :
 
 - Port **management** (Q2 reco A) scrape Prometheus interne.
-- Reverse-proxy public : **ne pas** publier ce port.
+- Reverse-proxy public : SPA `/admin/observabilite` via BFF (session) ;
+  **ne pas** publier le port management.
 - Logs stdout JSON → stack logs existante du hébergeur.
 
 ## Deployment Pipeline
@@ -51,6 +52,7 @@ Prod : `app.tenant.id` obligatoire (déjà).
 1. Ouvrir le port management **réseau interne** seulement.
 2. Ajouter le scrape Prometheus (instance / tenant).
 3. Vérifier `tenantId` dans un log de smoke.
+4. Smoke UI : `TENANT_ADMIN` ouvre `/admin/observabilite`.
 
 ## Database Migrations
 

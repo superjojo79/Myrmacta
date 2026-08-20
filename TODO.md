@@ -199,9 +199,9 @@ workflow actif » en parallèle réel. Décider également des seuils de couvert
 
 ### [ ] 29. Observabilité
 
-**Phase 2 en cours (2026-08-20 — PR #59) :** **Q1 = B** (logs
-`SECURITY_AUDIT` sur lectures dossier/content réussies). Q2–Q6
-ouvertes. Q2 posée (scrape Prometheus).
+**Phase 2 en cours (2026-08-20 — PR #59) :** Q1 = B ; **Q2 = A** (port
+management, Prometheus non public). Q3–Q6 ouvertes. Q3 posée (âge
+outbox).
 
 Périmètre visé (reco, non figé) : logs JSON + MDC ; Micrometer ;
 écran admin `/admin/observabilite`. Détail :

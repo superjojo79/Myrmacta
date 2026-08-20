@@ -14,8 +14,8 @@ todo_ref: TODO.md §29 · FILE-ATTENTE.md · REVUE-PRE-IMPLEMENTATION.md §29 ·
 
 # Requirements & Problem Understanding — `observabilite`
 
-> Feature produit TODO **§29**. **D-FE** et **Q1 = B** actés. Phase 2
-> **en cours** : Q2–Q6 à valider **une à une**. Status **draft**.
+> Feature produit TODO **§29**. **D-FE**, **Q1 = B**, **Q2 = A** actés.
+> Phase 2 **en cours** : Q3–Q6 à valider **une à une**. Status **draft**.
 
 ## Problem Statement
 **What problem are we solving?**
@@ -194,7 +194,7 @@ Le `TENANT_ADMIN` n’a pas non plus de vue santé dans le SPA.
 | **D-FLOWABLE** | Jobs | Dead-letter + failed, adapter infra |
 | **D-AUDIT-READ** / **Q1** | Lectures | **B acté** — logs `SECURITY_AUDIT` |
 | **D-ACTUATOR** | Surface | `health` + `prometheus` |
-| **D-MGMT** / **Q2** | Scrape | Port management séparé, non public |
+| **D-MGMT** / **Q2** | Scrape | **A acté** — port management séparé, non public |
 | **Q4** | UI | Cartes KPI + sévérité ; pas Chart.js |
 | **Q5** | Rôle | `TENANT_ADMIN` seul |
 | **Q6** | Refresh | Ouverture + bouton Rafraîchir |
@@ -221,18 +221,18 @@ Le `TENANT_ADMIN` n’a pas non plus de vue santé dans le SPA.
 |---|---|---|
 | **D-FE** | Écran admin | Acté stakeholder 2026-08-20 — `/admin/observabilite` lecture |
 | **Q1 / D-AUDIT-READ** | Lectures | **B** (2026-08-20) — `SECURITY_AUDIT` INFO sur GET dossier id/`ref` et GET content **réussis** ; pas de table ni d’écran d’audit |
+| **Q2 / D-MGMT** | Scrape Prometheus | **A** (2026-08-20) — `management.server.port` ; reverse-proxy public ne route pas ce port ; aucun `/actuator` sur le BFF |
 
 ### Ouvertes (Phase 2 — une à la fois)
 
 | Id | Question | Options | Reco |
 |---|---|---|---|
-| **Q2** | Qui scrape Prometheus ? | **A** port management non public · **B** même port `TENANT_ADMIN` · **C** anonyme sur le BFF · **D** basic-auth | **A** |
 | **Q3** | Quelles outbox pour l’âge ? | **A** déclenchement seul · **B** + notification + purge | **A** |
 | **Q4** | Forme UI | **A** cartes KPI + sévérité · **B** + Chart.js · **C** historique persisté | **A** |
 | **Q5** | Rôle écran / GET | **A** `TENANT_ADMIN` · **B** + `WORKFLOW_ADMIN` | **A** |
 | **Q6** | Rafraîchissement | **A** load + Rafraîchir · **B** + poll 30 s | **A** |
 
-Posée maintenant : **Q2**. Q3–Q6 attendent.
+Posée maintenant : **Q3**. Q4–Q6 attendent.
 
 ### Hors file
 
@@ -243,8 +243,9 @@ SERVICE, Testcontainers §28.
 
 Template README : OK.
 
-Les reco Q2–Q6 **ne sont pas actées**. Clos : **D-FE**, **Q1 = B**.
+Les reco Q3–Q6 **ne sont pas actées**. Clos : **D-FE**, **Q1 = B**,
+**Q2 = A**.
 
 Status : **`draft`**.
 
-**En cours :** Q2 (scrape Prometheus).
+**En cours :** Q3 (périmètre âge outbox).

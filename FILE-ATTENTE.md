@@ -8,8 +8,8 @@
 > - Inventaire follow-ups / lots : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md)
 > - Séquencement « avant prod » : [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md) §9
 >
-> **Dernière mise à jour :** 2026-08-20 (`observabilite` Phase 9
-> **READY** — PR #59).
+> **Dernière mise à jour :** 2026-08-20 (§36 `canEditDossier` clos, PR #60 ;
+> points TODO restants regroupés en 5 features candidates ci-dessous).
 
 ## Comment s’en servir
 
@@ -46,16 +46,31 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 
 ## File d’attente
 
-| Priorité | Feature / lot kebab-case | Pourquoi ce n’est pas (encore) le suivant immédiat — ou pourquoi ça l’est |
-|---|---|---|
-| **(vide V1 nommé)** | — | Pas de lot produit V1 nommé après `observabilite`. Reste TODO hygiène (§28 tests, §35 BPMN) — pas FILE-ATTENTE. §36 `canEditDossier` clos le 2026-08-20 (`canEdit` exposé par `GET /api/dossiers/{id}`). |
-| **Hors V1** | Rapports / SLA ; connecteur `http-rest` **SERVICE** ; antivirus pièces jointes ; codegen OpenAPI | Explicitement reportés (maquette UI / TODO §30 / connecteurs V1 = TRIGGER / §24 reste codegen). |
+Plus de lot produit V1 nommé après `observabilite` : les points TODO hygiène
+restants (§23 reste, §24 reste, §25, §26 reste, §28, §30 reste, §35, §37)
+sont regroupés en 5 features candidates (regroupement validé 2026-08-20).
+§31 (« découpage en lots ») est clos ci-dessous plutôt que transformé en
+feature — le process `dev-lifecycle` + ce fichier + `DEFERRED-FEATURES.md`
+le remplit déjà en pratique à chaque lot livré.
+
+| Priorité | Feature / lot kebab-case | TODO couverts | Contenu | Pourquoi cet ordre |
+|---|---|---|---|---|
+| 1 | `durcissement-donnees-sensibles` | §23 (reste), §30 (reste) | Antivirus / limites de taille et types sur pièces jointes & upload générique · masquage des champs sensibles dans les exports (CSV…) · protection SSRF sur le futur connecteur `http-rest` en rôle SERVICE · prévention des fuites de secrets déchiffrés via logs et API d’administration | Aucune décision ouverte ; prolonge directement §30 déjà entamé cette session (rate limiting, SSRF PDF/webhooks, audit sécurité) |
+| 2 | `contrat-api-client` | §24 (reste) | Codegen client OpenAPI (typescript-axios ou équivalent) · pagination des listes imbriquées (relations, tasks, `connector-definitions`…) · spec formelle SSE / multipart attachment / webhook ingress (actuellement `@Hidden`) | Aucune décision ouverte ; clôture définitivement le point 24 |
+| 3 | `fiabilisation-tests-plateforme` | §28, §26 (reste), §37 | Testcontainers (étanchéité `search_path`) · test de charge Flowable (dimensionnement verrous) · tests du relais outbox (rejeu, idempotence, crash entre publication et marquage) · migration Liquibase multi-schéma avec échec partiel · seuils de couverture · smoke PostgreSQL réel multi-pods (référence séquentielle) · `findClosedForRetention` aligné sur le pattern `tenantId` explicite | Seuils de couverture à trancher (mineur) — sinon prêt à démarrer |
+| 4 | `deploiement-bpmn` | §35 | Trancher (a) acter l’état actuel + corriger doc, (b) intégrer Flowable Modeler, ou (c) écran d’upload BPMN minimal FlowForge — puis livrer l’option retenue | **Bloqué** : décision produit à trancher avant tout dev (critère 2) |
+| 5 | `modele-physique-consolide` | §25 | ERD/DDL consolidé, répartition schéma tenant / `platform`, description `TenantRegistry` + politique de rafraîchissement du cache | Doc pure (aucune décision ouverte) mais sans parcours métier utilisateur direct (critère 3) — reste en dernier |
+
+**Hors V1 (reporté, pas dans cette file) :** Rapports / SLA (maquette UI de
+référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même
+(V1 = TRIGGER uniquement — seul le hardening SSRF de la feature 1 est
+pré-positionné, pas le connecteur).
 
 ## Hors file produit (ne pas traiter comme « prochaine feature »)
 
 - Provisioning tenant (schéma PG, instance Boot, bloc proxy, `app.tenant.id`)
-- Smoke Keycloak / PostgreSQL réels
-- Testcontainers / charge Flowable (reste TODO §28)
+- Smoke Keycloak réel (environnement manuel — distinct du smoke PostgreSQL/Testcontainers
+  automatisé désormais dans `fiabilisation-tests-plateforme`, §26/§28)
 - Follow-ups ops (ex. DEV-PURGE : rétention outbox / TTL idempotency non schedulées ; recovery `PROCESSING` coincé)
 - Chore `com.monapp` résiduel dans `analysis doc/`
 
@@ -88,3 +103,5 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 | 2026-08-20 | `observabilite` Phase 3 reviewed | DD-JSON=ecs ; DD-PROM-NAMES ; DD-FLOWABLE-API ; DD-THRESHOLDS |
 | 2026-08-20 | `observabilite` Phase 5 done | M1–M5 ; verify 906 + Vitest 135 + Playwright 39 |
 | 2026-08-20 | `observabilite` Phase 9 READY | PR #59 ; file V1 sans lot nommé suivant |
+| 2026-08-20 | §36 `canEditDossier` clos | PR #60 ; frontend aligné sur `DossierAccessPolicy` via `canEdit` |
+| 2026-08-20 | Regroupement TODO restants en 5 features | `durcissement-donnees-sensibles`, `contrat-api-client`, `fiabilisation-tests-plateforme`, `deploiement-bpmn`, `modele-physique-consolide` ; §31 clos (process déjà en pratique) |

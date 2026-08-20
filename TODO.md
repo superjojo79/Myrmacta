@@ -395,14 +395,22 @@ remplacer aurait ajouté une dépendance, pas seulement corrigé un bug.
 
 ## Processus
 
-### [ ] 31. Découpage en lots d'implémentation
+### [x] 31. Découpage en lots d'implémentation
 
-**Énoncé :** la documentation décrit une cible, pas un chemin — il n'existe ni lots, ni séquencement,
-ni critères d'acceptation.
+**Énoncé initial :** la documentation décrivait une cible, pas un chemin — il n'existait ni lots,
+ni séquencement, ni critères d'acceptation.
 
-**À produire :** le découpage en lots et son séquencement, en s'appuyant sur l'ordre recommandé en
-section 9 de [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md). Le support de ce plan reste
-à choisir (`docs/ai/planning` n'est pas utilisé à ce stade).
+**Clos (2026-08-20) :** le découpage en lots se fait en pratique, en continu, via le trio
+[FILE-ATTENTE.md](FILE-ATTENTE.md) (ordre recommandé + critères de sélection) /
+[DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) (inventaire consolidé) / `docs/ai/{requirements,
+design, planning, …}` par feature (support `dev-lifecycle`, un lot = un dossier daté) — quatorze
+lots lifecycle (`workflow-engine` → `observabilite`) puis six features de suivi livrées à ce jour
+(voir `FILE-ATTENTE.md` § Récemment livré, [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §2). Pas
+de plan statique unique à produire en plus : le séquencement de
+[REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md) §9 reste la référence pour l'ordre
+initial, `FILE-ATTENTE.md` prend le relais pour la suite et se met à jour à chaque clôture.
+
+**Documenté dans :** [FILE-ATTENTE.md](FILE-ATTENTE.md), [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md).
 
 ---
 

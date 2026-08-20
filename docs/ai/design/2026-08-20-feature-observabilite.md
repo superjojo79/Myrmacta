@@ -8,13 +8,13 @@ updated: 2026-08-20
 feature: observabilite
 phase1: 2026-08-20
 requirements_ref: docs/ai/requirements/2026-08-20-feature-observabilite.md
-todo_ref: TODO.md §29
+todo_ref: TODO.md §29 · Q1–Q6 reviewed
 ---
 
 # System Design & Architecture — `observabilite`
 
-> Draft Phase 1 (esquisse). **D-FE acté** : écran admin. Revue design =
-> Phase 3 après requirements `reviewed`. Q1–Q6 encore ouvertes.
+> Draft Phase 1/2. Requirements **reviewed** (Q1–Q6). **Revue design =
+> Phase 3** — figer noms Prometheus, seuils, API Flowable, format JSON.
 
 ## Architecture Overview
 
@@ -47,7 +47,7 @@ flowchart LR
 
 ## Data Models
 
-Pas de nouvelle table métier **sauf si Q1 = C** (écarté en reco).
+Pas de nouvelle table métier (**Q1 = B**, pas C).
 
 ### MDC
 
@@ -67,19 +67,21 @@ Pas de nouvelle table métier **sauf si Q1 = C** (écarté en reco).
 | Webhooks DLQ | Gauge (count) | Count `WEBHOOK`+`DEAD` |
 | `SseEmitter` actifs | Gauge (count) | Somme des sets dans `SseNotificationAdapter` |
 
-### Audit lecture (si Q1 = B)
+### Audit lecture (**Q1 = B**)
 
 Événement `SECURITY_AUDIT` INFO, même logger que les 403 :
 
-- `event=dossier_read` — `GET /api/dossiers/{id}` et `?ref=`
+- `event=dossier_read` — `GET /api/dossiers/{id}` et `?ref=` **si 2xx**
 - `event=element_content_read` — `GET /api/dossier-elements/{id}/content`
+  **si le contenu est servi**
 
 Champs : `principal`, `path`, `dossierId` / `elementId`. **Jamais** le
-contenu ni les `fields`.
+contenu ni les `fields`. Pas de log read si 403 (`access_denied`
+suffit).
 
 ## API Design
 
-### Actuator (D-ACTUATOR, Q2 reco A)
+### Actuator (D-ACTUATOR, **Q2 = A**)
 
 - Exposer uniquement `health`, `prometheus`.
 - Probes `liveness` / `readiness` Boot.
@@ -92,8 +94,8 @@ contenu ni les `fields`.
 ### Snapshot SPA (D-FE, D-API-UI)
 
 `GET /api/observability` — `@PreAuthorize("hasRole('TENANT_ADMIN')")`
-(Q5 reco A). Même origine, CSRF session BFF. **Pas** de texte
-Prometheus.
+(**Q5 = A**). Même origine, session BFF. **Pas** de texte Prometheus.
+`pdfRender.count = 0` → mean/max absents ou 0 ; UI **n/a**.
 
 Forme provisoire (figer Phase 3) :
 
@@ -123,23 +125,23 @@ Lecture seule. 403 si rôle insuffisant.
 | Timer PDF | Micrometer autour de `render` |
 | Jauge SSE | `activeEmitterCount()` sur l’adapter existant |
 | `ObservabilityController` | GET snapshot — mappe registry / ports → JSON |
-| `SecurityAuditLog` | + méthodes read si Q1 = B |
+| `SecurityAuditLog` | + `dossier_read` / `element_content_read` (**Q1 = B**) |
 | `SecurityConfig` | Ne pas authentifier le port management comme le BFF |
 
 ### Frontend (D-FE) — carte composants
 
 | Pièce | Responsabilité |
 |---|---|
-| Route `/admin/observabilite` | `meta.roles: ['TENANT_ADMIN']` (Q5 reco A) |
+| Route `/admin/observabilite` | `meta.roles: ['TENANT_ADMIN']` (**Q5 = A**) |
 | `AppShell` | Lien Admin « Observabilité » si `isTenantAdmin` |
-| `ObservabilityAdminView` | Surface de composition : chargement, erreur, refresh |
+| `ObservabilityAdminView` | Chargement, erreur, bouton Rafraîchir (**Q6 = A**) |
 | `ObservabilityKpiGrid` | Grille des cinq SLI |
-| `ObservabilityKpiCard` | Une métrique + sévérité visuelle (Q4 reco A) |
+| `ObservabilityKpiCard` | Une métrique + sévérité (**Q4 = A**) |
 | `api/observability.ts` | Client GET snapshot |
 | `useObservabilitySnapshot` | Fetch / état (pas de store Pinia global sauf besoin) |
 
-Pas de `chart.js` si Q4 = A. PrimeVue déjà dans le projet (Tag /
-Message / Card — choix exact Phase 3, aligné maquette `11`).
+Pas de `chart.js` (**Q4 = A**). PrimeVue existant (Tag / Message /
+Card — widgets exacts Phase 3, alignés maquette `11`).
 
 ## Design Decisions
 
@@ -149,8 +151,10 @@ Message / Card — choix exact Phase 3, aligné maquette `11`).
 | Âge outbox | Port lecture + binder | SQL natif dans le binder sans port |
 | Flowable | Adapter infra seulement | Port domaine « JobMetrics » (YAGNI) |
 | Logs | Structured logging Boot natif | logstash-logback-encoder additionnel |
-| Q1 | Reco B logs | Table d’audit (C) trop large pour §29 |
-| D-FE | Écran admin snapshot | SPA scrape Prometheus (casse Q2 / CORS / auth) |
+| Q1 | **B** logs `SECURITY_AUDIT` | Table d’audit (C) ; hors V1 (A) |
+| Q2 | Port management | Actuator public / OIDC scrape |
+| Q4 | Cartes KPI | Chart.js / historique |
+| D-FE | Écran admin snapshot | SPA scrape Prometheus |
 | D-API-UI | JSON BFF | Exposer actuator sur le port app pour le SPA |
 
 ## Non-Functional Requirements
@@ -159,7 +163,7 @@ Message / Card — choix exact Phase 3, aligné maquette `11`).
   MIN(`created_at`) bornées, intervalle d’échantillonnage Micrometer
   par défaut. Timer PDF : une observation / rendu.
 - **Sécurité :** pas de secrets dans les labels/logs ; prometheus
-  non public (Q2). SSRF / PJ hors lot.
+  non public (**Q2 = A**). SSRF / PJ hors lot.
 - **Fiabilité :** échec d’une collecte de jauge = log WARN, pas de
   crash du relais métier.
 - **Scalabilité :** une JVM / tenant (décision n° 13) — jauge SSE
@@ -172,5 +176,5 @@ Message / Card — choix exact Phase 3, aligné maquette `11`).
 - Exact failed vs dead-letter Flowable 8 API.
 - Format JSON `ecs` vs `logstash`.
 - Comportement jauge outbox vide (0 vs NaN).
-- Seuils ok/warn/crit des cartes (alignés runbook monitoring).
-- Path exact `GET /api/observability` vs `/api/admin/observability`.
+- Seuils ok/warn/crit des cartes (**A-THRESHOLDS**).
+- `GET /api/observability` est **figé** (plus un point ouvert).

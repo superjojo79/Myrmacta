@@ -11,14 +11,14 @@ phase1: 2026-08-20
 
 # Deployment Strategy — `observabilite`
 
-> Notes ops Phase 1. Pas de nouvelle migration Liquibase attendue
-> (sauf Q1 = C, non recommandé).
+> Notes ops. **Q1 = B** : pas de migration Liquibase. **Q2 = A** : port
+> management.
 
 ## Infrastructure
 
 Une JVM / tenant (décision n° 13). Ajout prévu :
 
-- Port **management** (Q2 reco A) scrape Prometheus interne.
+- Port **management** (**Q2 = A**) scrape Prometheus interne.
 - Reverse-proxy public : SPA `/admin/observabilite` via BFF (session) ;
   **ne pas** publier le port management.
 - Logs stdout JSON → stack logs existante du hébergeur.
@@ -56,12 +56,11 @@ Prod : `app.tenant.id` obligatoire (déjà).
 
 ## Database Migrations
 
-Aucune prévue pour reco Q1 = A ou B.
+Aucune (**Q1 = B**).
 
 ## Secrets Management
 
-Pas de nouveau secret applicatif si Q2 = A. Q2 = D (basic-auth)
-introduirait un secret scrape — non recommandé.
+Pas de nouveau secret applicatif (**Q2 = A**).
 
 ## Rollback Plan
 

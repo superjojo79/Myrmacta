@@ -7,14 +7,14 @@ created: 2026-08-20
 updated: 2026-08-20
 feature: observabilite
 phase1: 2026-08-20
+phase2: 2026-08-20
 requirements_ref: docs/ai/requirements/2026-08-20-feature-observabilite.md
 ---
 
 # Testing Strategy — `observabilite`
 
-> Draft Phase 1. **D-FE acté** : Vitest **et** Playwright **obligatoires**
-> (écran admin + contrat API consommé par le SPA). Ne pas déclarer
-> Playwright hors scope.
+> Draft aligné requirements **reviewed**. Vitest **et** Playwright
+> **obligatoires** (D-FE). Q1 = B, Q4–Q6 = A.
 
 ## Test Coverage Goals
 
@@ -51,32 +51,35 @@ requirements_ref: docs/ai/requirements/2026-08-20-feature-observabilite.md
 ### Snapshot API
 
 - [ ] `GET /api/observability` : `TENANT_ADMIN` → 200 + cinq SLI.
-- [ ] `DOSSIER_MANAGER` / viewer → 403.
+- [ ] `DOSSIER_MANAGER` / `WORKFLOW_ADMIN` / viewer → 403.
 - [ ] Corps sans secrets / payloads.
 
-### Audit lecture (si Q1 = B)
+### Audit lecture (**Q1 = B**)
 
 - [ ] GET dossier par id / par ref → `SECURITY_AUDIT`
       `event=dossier_read` (ListAppender, pattern existant
       `DossierApiTest`).
-- [ ] GET content élément → `element_content_read`.
+- [ ] GET content élément **servi** → `element_content_read`.
 - [ ] GET liste paginée dossiers : **pas** d’événement read.
+- [ ] 403 dossier : `access_denied` seulement (pas de `dossier_read`).
+- [ ] Content non téléchargeable : pas de `element_content_read`.
 - [ ] Pas de valeur de champ / bytes dans le message.
 
 ### Actuator
 
 - [ ] `prometheus` contient les noms de métriques §29.
 - [ ] Endpoints non listés (`beans`, `env`, `heapdump`) → 404.
-- [ ] Q2 = A : scrape sur port management **sans** session OIDC ;
-      port applicatif ne sert pas prometheus (ou le refuse).
+- [ ] **Q2 = A** : scrape sur port management **sans** session OIDC ;
+      port applicatif ne sert pas `/actuator/prometheus`.
 
 ### Frontend Vitest
 
 - [ ] `ObservabilityAdminView` affiche les cinq KPI (mock API).
 - [ ] État erreur ProblemDetail.
-- [ ] Bouton Rafraîchir re-fetch (Q6 reco A).
+- [ ] Bouton Rafraîchir re-fetch (**Q6 = A**).
 - [ ] `AppShell` : lien « Observabilité » si `TENANT_ADMIN` ; absent
-      sinon (étendre `AppShell.spec.ts`).
+      pour `WORKFLOW_ADMIN` et viewer (étendre `AppShell.spec.ts`).
+- [ ] `count = 0` PDF → affichage n/a (pas de crash).
 - [ ] Aucun bouton retry/force.
 
 ## Integration Tests

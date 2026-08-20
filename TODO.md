@@ -199,11 +199,19 @@ workflow actif » en parallèle réel. Décider également des seuils de couvert
 
 ### [ ] 29. Observabilité
 
-**À produire :** logs structurés avec `tenantId`, `dossierId` et `processInstanceId` en MDC ; métriques
-Micrometer sur l'âge du plus ancien événement non traité de l'outbox — indicateur de santé principal
-du déclenchement —, les jobs Flowable en échec, la durée des rendus PDF, les webhooks en dead-letter
-et le nombre d'`SseEmitter` actifs ; et une décision sur la traçabilité des accès en lecture, laissée
-ouverte par le document `12`.
+**Décision Phase 2 (2026-08-20 — feature `observabilite`, PR #59) :**
+requirements **reviewed**. Implémentation encore à faire.
+
+| Sujet | Choix |
+|---|---|
+| Socle | Logs JSON + MDC `tenantId` / `dossierId` / `processInstanceId` ; Micrometer Prometheus |
+| Outbox (âge) | Déclenchement seulement (santé n° 1) |
+| Autres SLI | Jobs Flowable failed/DLQ ; timer PDF ; webhooks `WEBHOOK`+`DEAD` ; jauge `SseEmitter` |
+| Actuator | `health` + `prometheus` sur **port management** (non public) |
+| UI admin | `/admin/observabilite` — cartes KPI lecture, `TENANT_ADMIN`, `GET /api/observability` |
+| Lectures (`12`) | **B** — `SECURITY_AUDIT` INFO sur GET dossier (id/`ref`) et content élément **réussis** ; pas de table ni d’écran d’audit |
+
+**À produire :** voir `docs/ai/requirements/2026-08-20-feature-observabilite.md`.
 
 ---
 

@@ -19,14 +19,14 @@ phase1: 2026-08-20
 - Java 25 / Boot 4.1 / `./mvnw` — ajouter actuator + registry
   Prometheus **en Phase 5**, pas avant design reviewed.
 - Frontend : Vue 3 `<script setup lang="ts">`, Vitest + Playwright
-  (D-FE). Pas de `chart.js` si Q4 = A.
+  (D-FE). Pas de `chart.js` (**Q4 = A**).
 
 ## Code Structure (cible)
 
 ```
 com.flowforge.infrastructure
 ├── observability/     # binders, config actuator/MDC
-├── web/               # filtre MDC ; audit GET si Q1=B
+├── web/               # filtre MDC ; audit GET Q1=B
 ├── pdf/               # timer autour de render
 ├── notification/      # jauge SSE + count DLQ
 └── flowable/          # métriques jobs

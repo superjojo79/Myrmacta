@@ -29,8 +29,8 @@ phase1: 2026-08-20
 
 ## Dependencies
 
-- Q1–Q6 confirmées (Phase 2).
-- Design Phase 3 : noms métriques, port management, API Flowable.
+- Q1–Q6 **actées** (Phase 2). Design Phase 3 : noms métriques, seuils,
+  API Flowable, format JSON logs.
 
 ## Timeline & Estimates
 
@@ -40,7 +40,7 @@ Pas d’estimation calendaire. Enchaînement : 2 → 3 → 4 → 5…
 
 | Risque | Mitigation |
 |---|---|
-| Prometheus vs OIDC BFF | Q2 reco A (port management) |
+| Prometheus vs OIDC BFF | **Q2 = A** (port management) |
 | Fuite MDC thread pool jobs | try/finally + tests |
 | Cardinalité labels | pas de `dossierId` en label Prometheus |
 

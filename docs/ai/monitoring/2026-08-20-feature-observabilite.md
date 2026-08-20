@@ -12,9 +12,8 @@ requirements_ref: docs/ai/requirements/2026-08-20-feature-observabilite.md
 
 # Monitoring & Observability — `observabilite`
 
-> Ce lot **est** le socle §29 **plus** l’écran admin (D-FE). Noms
-> Prometheus définitifs = Phase 3. Alerting externe = runbook, **pas**
-> Alertmanager dans le dépôt.
+> Requirements **reviewed** (Q1–Q6). Ce lot **est** le socle §29 **plus**
+> l’écran admin (D-FE). Noms Prometheus / seuils = Phase 3.
 
 ## Key Metrics
 
@@ -35,13 +34,13 @@ requirements_ref: docs/ai/requirements/2026-08-20-feature-observabilite.md
 
 - RPS HTTP générique, heap, GC : métriques JVM Micrometer **si**
   actuator les expose par défaut — bonus, pas un objectif produit.
-- Âge outbox notification / purge : **Q3** reco A = hors lot.
+- Âge outbox notification / purge : **Q3 = A** hors lot.
 
 ## Monitoring Tools
 
 - **Logs :** stdout JSON (D-LOG) → agrégateur du tenant ops (hors
   dépôt).
-- **Métriques :** Prometheus scrape du **port management** (Q2 reco A).
+- **Métriques :** Prometheus scrape du **port management** (**Q2 = A**).
 - **UI :** snapshot JSON dans `/admin/observabilite` (même SLI, pas un
   second système de vérité).
 - **Pas** d’APM / Grafana-as-code dans ce repo.
@@ -71,7 +70,7 @@ Pas d’alerte in-app.
 ## Dashboards
 
 Hors dépôt Grafana. L’écran admin **est** le dashboard produit V1
-(cartes KPI, Q4 reco A). Documenter les noms Prometheus pour un
+(cartes KPI, **Q4 = A**). Documenter les noms Prometheus pour un
 dashboard ops externe après Phase 3.
 
 ## Incident Response

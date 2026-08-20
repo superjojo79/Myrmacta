@@ -11,11 +11,13 @@ import com.flowforge.domain.document.port.in.NewDocumentTemplateVersionUseCase;
 import com.flowforge.domain.document.port.in.ResolveDocumentTemplateUseCase;
 import com.flowforge.domain.document.port.in.UpdateDocumentTemplateUseCase;
 import com.flowforge.infrastructure.config.TenantProperties;
+import com.flowforge.infrastructure.web.AdminListSorts;
+import com.flowforge.infrastructure.web.PageQueryParser;
+import com.flowforge.infrastructure.web.PageResponse;
 import com.flowforge.infrastructure.web.document.DocumentTemplateDtos.CreateRequest;
 import com.flowforge.infrastructure.web.document.DocumentTemplateDtos.TemplateResponse;
 import com.flowforge.infrastructure.web.document.DocumentTemplateDtos.UpdateRequest;
 import java.net.URI;
-import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -66,12 +68,19 @@ public class DocumentTemplateController {
     }
 
     @GetMapping
-    public List<TemplateResponse> list(
+    public PageResponse<TemplateResponse> list(
             @RequestParam(required = false) String templateKey,
-            @RequestParam(defaultValue = "false") boolean includeContent) {
-        return listUseCase.list(tenantProperties.id(), templateKey, includeContent).stream()
-                .map(TemplateResponse::from)
-                .toList();
+            @RequestParam(defaultValue = "false") boolean includeContent,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) String sort) {
+        return PageResponse.from(listUseCase
+                .list(
+                        tenantProperties.id(),
+                        templateKey,
+                        includeContent,
+                        PageQueryParser.parse(page, size, sort, AdminListSorts.DOCUMENT_TEMPLATES))
+                .map(TemplateResponse::from));
     }
 
     @GetMapping("/resolve")

@@ -19,6 +19,8 @@ import com.flowforge.domain.document.port.in.CreateDocumentTemplateUseCase;
 import com.flowforge.domain.document.port.in.UpdateDocumentTemplateUseCase;
 import com.flowforge.domain.document.port.out.DocumentTemplateRepository;
 import com.flowforge.domain.document.port.out.TemplateSyntaxChecker;
+import com.flowforge.domain.shared.PageQuery;
+import com.flowforge.domain.shared.PageResult;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -228,11 +230,12 @@ class DocumentTemplateUseCasesTest {
     @Test
     void list_stripsHtmlUnlessIncludeContent() {
         UUID id = UUID.randomUUID();
-        when(repository.listByTenantId(TENANT, "contrat"))
-                .thenReturn(List.of(sample(id, TemplateStatus.DRAFT, 1)));
+        when(repository.pageByTenantId(TENANT, "contrat", PageQuery.defaults()))
+                .thenReturn(PageResult.of(List.of(sample(id, TemplateStatus.DRAFT, 1)), 0, 20, 1));
 
-        assertThat(list.list(TENANT, "contrat", false).getFirst().htmlContent()).isEmpty();
-        assertThat(list.list(TENANT, "contrat", true).getFirst().htmlContent())
+        assertThat(list.list(TENANT, "contrat", false, PageQuery.defaults()).content().getFirst().htmlContent())
+                .isEmpty();
+        assertThat(list.list(TENANT, "contrat", true, PageQuery.defaults()).content().getFirst().htmlContent())
                 .contains("th:text");
     }
 

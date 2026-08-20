@@ -21,7 +21,7 @@ vi.mock('@/api/dossierTypes')
 describe('SupervisionView', () => {
   beforeEach(() => {
     vi.mocked(dossiersApi.listDossiers).mockReset()
-    vi.mocked(dossierTypesApi.listDossierTypes).mockReset()
+    vi.mocked(dossierTypesApi.listAllDossierTypes).mockReset()
     vi.mocked(dossiersApi.listDossiers).mockResolvedValue({
       content: [
         {
@@ -40,7 +40,7 @@ describe('SupervisionView', () => {
       totalElements: 1,
       totalPages: 1,
     })
-    vi.mocked(dossierTypesApi.listDossierTypes).mockResolvedValue([
+    vi.mocked(dossierTypesApi.listAllDossierTypes).mockResolvedValue([
       {
         id: 't1',
         tenantId: 'tenant_dev',

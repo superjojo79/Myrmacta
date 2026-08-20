@@ -2,8 +2,12 @@ package com.flowforge.infrastructure.persistence.dossier;
 
 import com.flowforge.domain.dossier.model.DossierType;
 import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
+import com.flowforge.domain.shared.PageQuery;
+import com.flowforge.domain.shared.PageResult;
+import com.flowforge.infrastructure.persistence.SpringPages;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,5 +45,18 @@ public class JpaDossierTypeRepositoryAdapter implements DossierTypeRepository {
         return repository.findAllByTenantIdOrderByCode(tenantId).stream()
                 .map(DossierTypeJpaEntity::toDomain)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<DossierType> page(String tenantId, Set<String> allowedCodes, PageQuery query) {
+        if (allowedCodes != null && allowedCodes.isEmpty()) {
+            return PageResult.empty(query.page(), query.size());
+        }
+        var pageable = SpringPages.of(query);
+        var page = allowedCodes == null
+                ? repository.findAllByTenantIdOrderByCodeAsc(tenantId, pageable)
+                : repository.findAllByTenantIdAndCodeInOrderByCodeAsc(tenantId, allowedCodes, pageable);
+        return SpringPages.map(page, DossierTypeJpaEntity::toDomain);
     }
 }

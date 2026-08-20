@@ -5,12 +5,10 @@ import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.PurgeOutboxStatus;
 import com.flowforge.domain.dossier.port.in.ListPurgeOutboxUseCase;
 import com.flowforge.domain.dossier.port.out.PurgeOutboxRepository;
+import com.flowforge.domain.shared.PageQuery;
 import java.util.Objects;
 
 public final class ListPurgeOutboxUseCaseImpl implements ListPurgeOutboxUseCase {
-
-    private static final int DEFAULT_LIMIT = 50;
-    private static final int MAX_LIMIT = 200;
 
     private final PurgeOutboxRepository purgeOutboxRepository;
     private final TenantAdminGuard tenantAdminGuard;
@@ -22,14 +20,14 @@ public final class ListPurgeOutboxUseCaseImpl implements ListPurgeOutboxUseCase 
     }
 
     @Override
-    public Page list(AccessContext.User actor, PurgeOutboxStatus statusFilter, int limit) {
+    public Page list(AccessContext.User actor, PurgeOutboxStatus statusFilter, PageQuery query) {
         tenantAdminGuard.requireTenantAdmin(actor);
-        int effectiveLimit = limit <= 0 ? DEFAULT_LIMIT : Math.min(limit, MAX_LIMIT);
+        Objects.requireNonNull(query, "query");
         Counts counts = new Counts(
                 purgeOutboxRepository.countByStatus(PurgeOutboxStatus.PENDING),
                 purgeOutboxRepository.countByStatus(PurgeOutboxStatus.PROCESSING),
                 purgeOutboxRepository.countByStatus(PurgeOutboxStatus.FAILED),
                 purgeOutboxRepository.countByStatus(PurgeOutboxStatus.COMPLETED));
-        return new Page(purgeOutboxRepository.list(statusFilter, effectiveLimit), counts);
+        return new Page(purgeOutboxRepository.page(statusFilter, query), counts);
     }
 }

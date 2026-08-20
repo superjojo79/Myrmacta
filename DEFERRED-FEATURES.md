@@ -76,7 +76,7 @@ jointes). `delete` livré avec `purge-stockage` (§22). Aucun couplage MinIO.
 | CHECK SQL `permission ∈ {VIEW,EDIT}` | Nice-to-have |
 | `Long version` / `Persistable` pour `isNew()` | Nice-to-have JPA |
 | Smoke PostgreSQL réel | Hors CI (IT actuelles = H2 MODE=PostgreSQL) |
-| OpenAPI formel | Point 24 |
+| OpenAPI formel | **Partiel clos** — `openapi-pagination-admin` (PR #58) : springdoc + YAML CI ; reste codegen |
 | Rétention / purge / `sensitive` | TODO §21–23 |
 | Observabilité MDC dossiers | TODO §29 |
 
@@ -103,6 +103,15 @@ consomme `GET …/diagram`).
 | Liste / recherche / pagination dossiers (Supervision complet) | **Livré** — `pagination-dossiers` |
 | `npm run test` / `lint` / `test:e2e` en CI | Câblé (`.github/workflows/ci.yml`, job `frontend`) |
 
+### 1.7 `openapi-pagination-admin` (PR #58)
+
+| Item | Notes |
+|---|---|
+| Codegen client OpenAPI (typescript-axios, etc.) | Hors V1 — SPA reste écrite à la main ; golden YAML = contrat |
+| Pagination nested lists | `GET /api/connector-definitions`, relations, tasks, éléments restent des arrays |
+| Spec SSE / multipart / webhook ingress | Volontairement `@Hidden` (D-SPEC) |
+| Fusion `DossierPage` → `PageResult` | Non — A-PAGE-TYPE |
+
 ---
 
 ## 2. Features lifecycle
@@ -123,6 +132,7 @@ Ordre indicatif aligné sur l’analyse et les dépendances techniques :
 | — | `edition-champs-dossier` | **Complete** (PR #53) — UI `PATCH /api/dossiers/{id}/fields` sur le détail (D-DIFF, D-DEFAULTS). |
 | — | `retention-dossier-type` | **Complete** (PR #55) — settings tenant + override type ; job ARCHIVE + `purge_outbox` ; UI admin. |
 | — | `purge-stockage` | **Complete** Phase 9 READY (PR #56) — job `purge_outbox` store+PG ; `DocumentStoragePort.delete` ; UI file lecture + enqueue admin. |
+| — | `openapi-pagination-admin` | **Complete** Phase 5 (PR #58) — envelope 6 GET admin ; OpenAPI golden ; pagers + webhooks admin ; catalogues `listAllPages`. |
 
 ---
 
@@ -137,7 +147,7 @@ Voir le détail et les options dans [TODO.md](TODO.md) et
 | 21 | Rétention par `DossierType` | **Livré** (2026-08-19) — `retention-dossier-type` |
 | 22 | Purge PostgreSQL / object store | **Livré** (2026-08-19) — `purge-stockage` PR #56 ; Q1–Q11 |
 | 23 | `FieldDefinition.sensitive` | **Quasi clos** — flag meta + masquage serveur livrés (`DossierFieldRedactor`, D-SENSITIVE = A) sur `GET /api/dossiers/**` et le panneau dossier de la visualisation ; reste masquage sur d'éventuels futurs exports (CSV, etc.) |
-| 24 | Contrat d’API complet | **Partiel** — surface dossiers minimale + `ProblemDetail` ; reste listes, pagination, OpenAPI, autres ressources — **impacte Supervision FE** |
+| 24 | Contrat d’API complet | **Partiel clos** (2026-08-19) — OpenAPI + pagination admin + webhooks UI (`openapi-pagination-admin` PR #58). Reste codegen, nested lists, spec SSE/multipart/ingress |
 | 25 | Modèle physique consolidé (ERD) | **Partiel** — tables dossiers livrées ; reste ERD global, `platform.*`, ACT_*, outbox, etc. |
 | 26 | Concurrence dossier / référence | **Partiel / quasi clos en B** — `@Version` + `dossier_reference_seq` + format UTC ; reste smoke PG multi-pods |
 | 28 | Stratégie de test | **Partiel** — ArchUnit + Jacoco ≥ 80 % + H2 ; reste Testcontainers / charge Flowable / outbox ; FE = Vitest + Playwright, câblés en CI (job `frontend`, `.github/workflows/ci.yml`) |

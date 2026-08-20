@@ -4,6 +4,7 @@ import com.flowforge.domain.dossier.model.PurgeOutboxStatus;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -19,6 +20,10 @@ interface SpringDataPurgeOutboxRepository extends JpaRepository<PurgeOutboxJpaEn
     List<PurgeOutboxJpaEntity> findByStatusOrderByCreatedAtAsc(PurgeOutboxStatus status, Pageable pageable);
 
     List<PurgeOutboxJpaEntity> findAllByOrderByCreatedAtAsc(Pageable pageable);
+
+    Page<PurgeOutboxJpaEntity> findAllByOrderByCreatedAtDesc(Pageable pageable);
+
+    Page<PurgeOutboxJpaEntity> findByStatusOrderByCreatedAtDesc(PurgeOutboxStatus status, Pageable pageable);
 
     long countByStatus(PurgeOutboxStatus status);
 

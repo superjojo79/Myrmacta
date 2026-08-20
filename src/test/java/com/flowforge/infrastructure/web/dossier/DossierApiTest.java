@@ -81,6 +81,28 @@ class DossierApiTest {
     }
 
     @Test
+    void listDossierTypes_returnsEnvelopeAndRejectsInvalidSort() throws Exception {
+        String code = createType(true);
+
+        mockMvc.perform(get("/api/dossier-types").with(user("admin-list-types", "TENANT_ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[?(@.code=='%s')]".formatted(code)).isNotEmpty())
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20))
+                .andExpect(jsonPath("$.totalElements").value(org.hamcrest.Matchers.greaterThanOrEqualTo(1)));
+
+        mockMvc.perform(get("/api/dossier-types")
+                        .param("sort", "name,desc")
+                        .with(user("admin-list-types", "TENANT_ADMIN")))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(get("/api/dossier-types")
+                        .param("size", "101")
+                        .with(user("admin-list-types", "TENANT_ADMIN")))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void updateType_tenantAdminCanPatchLabelAndActive() throws Exception {
         String code = createType(true);
 

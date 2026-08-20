@@ -7,6 +7,7 @@ import com.flowforge.domain.document.model.TemplateStatus;
 import com.flowforge.domain.document.port.in.ActivateDocumentTemplateUseCase;
 import com.flowforge.domain.document.port.in.CreateDocumentTemplateUseCase;
 import com.flowforge.domain.document.port.out.DocumentTemplateRepository;
+import com.flowforge.domain.shared.PageQuery;
 import com.flowforge.support.OidcClientTestConfiguration;
 import java.time.Instant;
 import java.util.UUID;
@@ -95,6 +96,51 @@ class DocumentTemplatePersistenceIT {
         save(key, "std", "fr", 2, TemplateStatus.ARCHIVED);
         assertThat(repository.nextVersion("tenant_dev", key, "std", "fr")).isEqualTo(3);
         assertThat(repository.nextVersion("tenant_dev", key, null, null)).isEqualTo(1);
+    }
+
+    @Test
+    void pageByTenantId_filtersByKeyOrdersUpdatedAtDescAndOffsets() {
+        String key = "page-" + UUID.randomUUID();
+        Instant t1 = Instant.parse("2026-01-01T00:00:00Z");
+        Instant t2 = Instant.parse("2026-06-01T00:00:00Z");
+        Instant t3 = Instant.parse("2026-12-01T00:00:00Z");
+        UUID oldest = saveAt(key, 1, t1);
+        UUID middle = saveAt(key, 2, t2);
+        UUID newest = saveAt(key, 3, t3);
+
+        var page0 = repository.pageByTenantId("tenant_dev", key, PageQuery.of(0, 1));
+        assertThat(page0.totalElements()).isEqualTo(3);
+        assertThat(page0.totalPages()).isEqualTo(3);
+        assertThat(page0.content()).extracting(DocumentTemplate::id).containsExactly(newest);
+
+        var page1 = repository.pageByTenantId("tenant_dev", key, PageQuery.of(1, 1));
+        assertThat(page1.content()).extracting(DocumentTemplate::id).containsExactly(middle);
+        assertThat(page1.totalElements()).isEqualTo(3);
+
+        var page2 = repository.pageByTenantId("tenant_dev", key, PageQuery.of(2, 1));
+        assertThat(page2.content()).extracting(DocumentTemplate::id).containsExactly(oldest);
+
+        var pastEnd = repository.pageByTenantId("tenant_dev", key, PageQuery.of(5, 1));
+        assertThat(pastEnd.content()).isEmpty();
+        assertThat(pastEnd.totalElements()).isEqualTo(3);
+    }
+
+    private UUID saveAt(String key, int version, Instant updatedAt) {
+        UUID id = UUID.randomUUID();
+        repository.save(new DocumentTemplate(
+                id,
+                key,
+                "std",
+                "fr",
+                "label",
+                version,
+                TemplateStatus.DRAFT,
+                "<p>ok</p>",
+                "tenant_dev",
+                updatedAt,
+                updatedAt,
+                "test"));
+        return id;
     }
 
     private void saveActive(String key, String variant, String locale, int version) {

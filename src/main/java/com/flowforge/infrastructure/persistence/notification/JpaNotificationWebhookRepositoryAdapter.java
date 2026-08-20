@@ -3,6 +3,9 @@ package com.flowforge.infrastructure.persistence.notification;
 import com.flowforge.domain.connector.port.out.ConnectorSecretCipher;
 import com.flowforge.domain.notification.model.NotificationWebhookConfig;
 import com.flowforge.domain.notification.port.out.NotificationWebhookRepository;
+import com.flowforge.domain.shared.PageQuery;
+import com.flowforge.domain.shared.PageResult;
+import com.flowforge.infrastructure.persistence.SpringPages;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -58,6 +61,14 @@ public class JpaNotificationWebhookRepositoryAdapter implements NotificationWebh
         return repository.findByTenantIdAndDeletedAtIsNullOrderByNameAsc(tenantId).stream()
                 .map(NotificationWebhookJpaEntity::toDomain)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<NotificationWebhookConfig> pageByTenantId(String tenantId, PageQuery query) {
+        return SpringPages.map(
+                repository.findByTenantIdAndDeletedAtIsNullOrderByNameAsc(tenantId, SpringPages.of(query)),
+                NotificationWebhookJpaEntity::toDomain);
     }
 
     @Override

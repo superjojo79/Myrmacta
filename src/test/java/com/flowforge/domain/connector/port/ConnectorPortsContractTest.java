@@ -8,6 +8,8 @@ import com.flowforge.domain.connector.port.in.ManageConnectorInstanceUseCase;
 import com.flowforge.domain.connector.port.out.ConnectorInstanceRepository;
 import com.flowforge.domain.connector.port.out.ConnectorSecretCipher;
 import com.flowforge.domain.connector.port.out.WebhookIdempotencyStore;
+import com.flowforge.domain.shared.PageQuery;
+import com.flowforge.domain.shared.PageResult;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -101,8 +103,8 @@ class ConnectorPortsContractTest {
             }
 
             @Override
-            public List<ConnectorInstanceData> list(String tenantId) {
-                return List.of(instance);
+            public PageResult<ConnectorInstanceData> list(String tenantId, PageQuery query) {
+                return PageResult.of(List.of(instance), query.page(), query.size(), 1);
             }
 
             @Override

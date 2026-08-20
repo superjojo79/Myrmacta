@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
-import { listDossierTypes } from '@/api/dossierTypes'
+import { listAllDossierTypes } from '@/api/dossierTypes'
 import { listDossiers } from '@/api/dossiers'
 import { toProblemDetail } from '@/api/http'
 import type { DossierListItem, DossierStatus, DossierType } from '@/api/types'
@@ -119,7 +119,7 @@ async function openDossier() {
 onMounted(async () => {
   readFiltersFromRoute()
   try {
-    types.value = await listDossierTypes()
+    types.value = await listAllDossierTypes()
   } catch {
     types.value = []
   }

@@ -129,8 +129,24 @@ gate statut, audit `sensitive`) livré. **Partiel (2026-08-16 — feature `eleme
 `POST /api/dossiers/{id}/elements` (JSON, `INFORMATION`/`NOTE`/`LINK`) et
 `POST /api/dossiers/{id}/elements/attachment` (multipart, `ATTACHMENT`) livrés, avec la
 même gate de statut `CLOTURE`/`ARCHIVE` que le point précédent (scopée au chemin humain).
-**Reste ouvert :** OpenAPI formel, pagination des autres ressources, surface admin
-exhaustive.
+**Partiel clos (2026-08-19 — feature `openapi-pagination-admin`) :** OpenAPI formel
+(springdoc 3.1.0, golden `openapi/openapi.yaml`, fail-on-diff CI) ; pagination envelope
+des 6 GET admin (types, templates, connectors, workflow-type-configs, webhooks, purge) ;
+pagers SPA + écran `/admin/notification-webhooks` ; catalogues via `listAllPages`.
+`ProblemDetail` déjà livré (tranches dossiers).
+
+**Reste ouvert :** codegen client (hors V1) ; pagination des listes nested (relations,
+tâches, `connector-definitions`, etc.) ; spec SSE / multipart attachment / webhook
+ingress (volontairement `@Hidden`).
+
+**Énoncé :** aucun endpoint de création, recherche, liste ou mise à jour de dossier n'est documenté,
+pas plus que l'administration des `DossierType`, `ConnectorInstance` et templates. Les listes
+impliquent pagination, tri et filtres, non abordés. Les exceptions métier existent déjà avec des
+sémantiques HTTP précises, mais sans format pivot.
+
+**À produire :** la surface d'API complète avec schémas de requête et de réponse ; un format d'erreur
+normalisé (`ProblemDetail` / RFC 7807 est le candidat naturel) et le `@RestControllerAdvice` associé ;
+une décision sur la génération OpenAPI et son statut de contrat vis-à-vis du frontend.
 
 **Énoncé :** aucun endpoint de création, recherche, liste ou mise à jour de dossier n'est documenté,
 pas plus que l'administration des `DossierType`, `ConnectorInstance` et templates. Les listes

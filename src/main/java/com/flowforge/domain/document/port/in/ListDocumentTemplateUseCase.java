@@ -1,9 +1,11 @@
 package com.flowforge.domain.document.port.in;
 
 import com.flowforge.domain.document.model.DocumentTemplate;
-import java.util.List;
+import com.flowforge.domain.shared.PageQuery;
+import com.flowforge.domain.shared.PageResult;
 
 public interface ListDocumentTemplateUseCase {
 
-    List<DocumentTemplate> list(String tenantId, String templateKey, boolean includeContent);
+    PageResult<DocumentTemplate> list(
+            String tenantId, String templateKey, boolean includeContent, PageQuery query);
 }

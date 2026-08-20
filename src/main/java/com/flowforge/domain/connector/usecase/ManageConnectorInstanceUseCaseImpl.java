@@ -6,6 +6,8 @@ import com.flowforge.domain.connector.model.ConnectorInstanceNotFoundException;
 import com.flowforge.domain.connector.port.in.ManageConnectorInstanceUseCase;
 import com.flowforge.domain.connector.port.out.ConnectorCatalog;
 import com.flowforge.domain.connector.port.out.ConnectorInstanceRepository;
+import com.flowforge.domain.shared.PageQuery;
+import com.flowforge.domain.shared.PageResult;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -84,8 +86,8 @@ public final class ManageConnectorInstanceUseCaseImpl implements ManageConnector
     }
 
     @Override
-    public List<ConnectorInstanceData> list(String tenantId) {
-        return repository.listByTenantId(tenantId);
+    public PageResult<ConnectorInstanceData> list(String tenantId, PageQuery query) {
+        return repository.pageByTenantId(tenantId, query);
     }
 
     @Override

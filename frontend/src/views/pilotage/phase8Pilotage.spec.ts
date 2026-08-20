@@ -18,7 +18,7 @@ describe('phase 8 pilotage edge cases', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.resetAllMocks()
-    vi.mocked(typesApi.listDossierTypes).mockResolvedValue([
+    vi.mocked(typesApi.listAllDossierTypes).mockResolvedValue([
       {
         id: 't1',
         tenantId: 't',

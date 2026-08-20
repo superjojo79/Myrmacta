@@ -11,11 +11,13 @@ import com.flowforge.domain.dossier.model.FieldType;
 import com.flowforge.domain.dossier.port.out.DossierReferenceGenerator;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
+import com.flowforge.domain.shared.PageQuery;
 import com.flowforge.support.OidcClientTestConfiguration;
 import jakarta.persistence.OptimisticLockException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -78,6 +80,47 @@ class DossierPersistenceTest {
                 .isEqualTo(true);
         assertThat(dossierTypeRepository.findAll("tenant_dev"))
                 .contains(type);
+    }
+
+    @Test
+    void page_filtersAllowedCodesOrdersByCodeAndOffsetsWithoutHoles() {
+        String token = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        String codeC = "ZZC" + token;
+        String codeA = "ZZA" + token;
+        String codeB = "ZZB" + token;
+        dossierTypeRepository.save(type(codeC, "C " + token));
+        dossierTypeRepository.save(type(codeA, "A " + token));
+        dossierTypeRepository.save(type(codeB, "B " + token));
+
+        Set<String> allowed = Set.of(codeA, codeB, codeC);
+        var page0 = dossierTypeRepository.page("tenant_dev", allowed, PageQuery.of(0, 2));
+        assertThat(page0.totalElements()).isEqualTo(3);
+        assertThat(page0.totalPages()).isEqualTo(2);
+        assertThat(page0.content()).extracting(DossierType::code).containsExactly(codeA, codeB);
+
+        var page1 = dossierTypeRepository.page("tenant_dev", allowed, PageQuery.of(1, 2));
+        assertThat(page1.content()).extracting(DossierType::code).containsExactly(codeC);
+        assertThat(page1.totalElements()).isEqualTo(3);
+
+        var emptyAcl = dossierTypeRepository.page("tenant_dev", Set.of(), PageQuery.of(0, 20));
+        assertThat(emptyAcl.content()).isEmpty();
+        assertThat(emptyAcl.totalElements()).isZero();
+
+        var pastEnd = dossierTypeRepository.page("tenant_dev", allowed, PageQuery.of(9, 20));
+        assertThat(pastEnd.content()).isEmpty();
+        assertThat(pastEnd.totalElements()).isEqualTo(3);
+    }
+
+    private static DossierType type(String code, String label) {
+        return DossierType.inherit(
+                UUID.randomUUID(),
+                "tenant_dev",
+                code,
+                label,
+                "sinistre-process",
+                true,
+                false,
+                List.of());
     }
 
     @Test

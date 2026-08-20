@@ -8,7 +8,8 @@ import com.flowforge.domain.dossier.model.DossierTypeAclEntry;
 import com.flowforge.domain.dossier.port.in.ListDossierTypesUseCase;
 import com.flowforge.domain.dossier.port.out.DossierTypeAclRepository;
 import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
-import java.util.List;
+import com.flowforge.domain.shared.PageQuery;
+import com.flowforge.domain.shared.PageResult;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -26,33 +27,28 @@ public final class ListDossierTypesUseCaseImpl implements ListDossierTypesUseCas
     }
 
     @Override
-    public List<DossierType> list(String tenantId, AccessContext ctx) {
+    public PageResult<DossierType> list(String tenantId, AccessContext ctx, PageQuery query) {
         Objects.requireNonNull(tenantId, "tenantId");
         Objects.requireNonNull(ctx, "ctx");
+        Objects.requireNonNull(query, "query");
 
         return switch (ctx) {
-            case AccessContext.System ignored -> typeRepository.findAll(tenantId);
+            case AccessContext.System ignored -> typeRepository.page(tenantId, null, query);
             case AccessContext.Service ignored -> throw new AccessDeniedException(
                     "Service context cannot access dossiers");
-            case AccessContext.User user -> listForUser(tenantId, user);
+            case AccessContext.User user -> listForUser(tenantId, user, query);
         };
     }
 
-    private List<DossierType> listForUser(String tenantId, AccessContext.User user) {
+    private PageResult<DossierType> listForUser(String tenantId, AccessContext.User user, PageQuery query) {
         if (user.hasRole("TENANT_ADMIN") || user.hasRole("WORKFLOW_ADMIN")) {
-            return typeRepository.findAll(tenantId);
+            return typeRepository.page(tenantId, null, query);
         }
 
         Set<String> visibleCodes = aclRepository.findBySubject(tenantId, user.userId()).stream()
                 .filter(entry -> entry.permission().implies(DossierPermission.VIEW))
                 .map(DossierTypeAclEntry::dossierTypeCode)
                 .collect(Collectors.toSet());
-        if (visibleCodes.isEmpty()) {
-            return List.of();
-        }
-
-        return typeRepository.findAll(tenantId).stream()
-                .filter(type -> visibleCodes.contains(type.code()))
-                .toList();
+        return typeRepository.page(tenantId, visibleCodes, query);
     }
 }

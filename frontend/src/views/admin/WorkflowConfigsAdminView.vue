@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { ref, watch } from 'vue'
 import {
   createWorkflowTypeConfig,
   listWorkflowTypeConfigs,
@@ -7,8 +7,12 @@ import {
 } from '@/api/workflows'
 import type { WorkflowTypeConfig } from '@/api/types'
 import { toProblemDetail } from '@/api/http'
+import AdminPager from '@/components/admin/AdminPager.vue'
+import { useAdminListQuery } from '@/composables/useAdminListQuery'
 
+const { page, size } = useAdminListQuery()
 const configs = ref<WorkflowTypeConfig[]>([])
+const totalPages = ref(0)
 const error = ref<string | null>(null)
 const form = ref({
   workflowKey: '',
@@ -17,14 +21,20 @@ const form = ref({
 })
 
 async function refresh() {
-  configs.value = await listWorkflowTypeConfigs()
+  const result = await listWorkflowTypeConfigs({ page: page.value, size: size.value })
+  configs.value = result.content
+  totalPages.value = result.totalPages
 }
 
-onMounted(() => {
-  void refresh().catch((err) => {
-    error.value = toProblemDetail(err).detail ?? 'Chargement impossible'
-  })
-})
+watch(
+  [page, size],
+  () => {
+    void refresh().catch((err) => {
+      error.value = toProblemDetail(err).detail ?? 'Chargement impossible'
+    })
+  },
+  { immediate: true },
+)
 
 async function create() {
   try {
@@ -66,6 +76,7 @@ async function rename(cfg: WorkflowTypeConfig) {
         <button type="button" @click="rename(cfg)">Renommer</button>
       </li>
     </ul>
+    <AdminPager v-model="page" :total-pages="totalPages" />
   </section>
 </template>
 

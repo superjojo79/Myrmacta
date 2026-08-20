@@ -12,7 +12,7 @@ describe('purgeOutbox api', () => {
   it('lists purge outbox with optional status', async () => {
     vi.mocked(axios.get).mockResolvedValue({
       data: {
-        items: [
+        content: [
           {
             id: '1',
             dossierId: 'd1',
@@ -23,15 +23,19 @@ describe('purgeOutbox api', () => {
             lastError: null,
           },
         ],
+        page: 0,
+        size: 20,
+        totalElements: 1,
+        totalPages: 1,
         counts: { pending: 1, processing: 0, failed: 0, completed: 2 },
       },
     })
-    const page = await listPurgeOutbox({ status: 'PENDING', limit: 20 })
+    const page = await listPurgeOutbox({ status: 'PENDING', page: 0, size: 20 })
     expect(axios.get).toHaveBeenCalledWith('/api/purge-outbox', {
-      params: { status: 'PENDING', limit: 20 },
+      params: { status: 'PENDING', page: 0, size: 20 },
     })
     expect(page.counts.pending).toBe(1)
-    expect(page.items[0].origin).toBe('ADMIN')
+    expect(page.content[0].origin).toBe('ADMIN')
   })
 
   it('enqueues a dossier purge request', async () => {

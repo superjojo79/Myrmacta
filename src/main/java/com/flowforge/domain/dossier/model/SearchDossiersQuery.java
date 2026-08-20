@@ -1,5 +1,6 @@
 package com.flowforge.domain.dossier.model;
 
+import com.flowforge.domain.shared.PageQuery;
 import java.util.Objects;
 
 public record SearchDossiersQuery(
@@ -10,13 +11,13 @@ public record SearchDossiersQuery(
         int size) {
 
     /** Largest size accepted — also the divisor used to derive {@link #MAX_PAGE}. */
-    public static final int MAX_SIZE = 100;
+    public static final int MAX_SIZE = PageQuery.MAX_SIZE;
 
     /**
      * Largest page accepted, chosen so {@code page * size} can never overflow {@code int} —
      * the persistence adapter multiplies the two to compute the query offset.
      */
-    public static final int MAX_PAGE = Integer.MAX_VALUE / MAX_SIZE;
+    public static final int MAX_PAGE = PageQuery.MAX_PAGE;
 
     public SearchDossiersQuery {
         if (page < 0 || page > MAX_PAGE) {

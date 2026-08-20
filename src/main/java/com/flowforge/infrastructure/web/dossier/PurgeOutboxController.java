@@ -6,6 +6,8 @@ import com.flowforge.domain.dossier.model.PurgeOutboxRecord;
 import com.flowforge.domain.dossier.model.PurgeOutboxStatus;
 import com.flowforge.domain.dossier.port.in.EnqueueDossierPurgeUseCase;
 import com.flowforge.domain.dossier.port.in.ListPurgeOutboxUseCase;
+import com.flowforge.infrastructure.web.AdminListSorts;
+import com.flowforge.infrastructure.web.PageQueryParser;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -40,7 +42,24 @@ record PurgeOutboxItemResponse(
     }
 }
 
-record PurgeOutboxListResponse(List<PurgeOutboxItemResponse> items, ListPurgeOutboxUseCase.Counts counts) {}
+record PurgeOutboxPageResponse(
+        List<PurgeOutboxItemResponse> content,
+        int page,
+        int size,
+        long totalElements,
+        int totalPages,
+        ListPurgeOutboxUseCase.Counts counts) {
+
+    static PurgeOutboxPageResponse from(ListPurgeOutboxUseCase.Page page) {
+        return new PurgeOutboxPageResponse(
+                page.result().content().stream().map(PurgeOutboxItemResponse::from).toList(),
+                page.result().page(),
+                page.result().size(),
+                page.result().totalElements(),
+                page.result().totalPages(),
+                page.counts());
+    }
+}
 
 @RestController
 public class PurgeOutboxController {
@@ -60,14 +79,15 @@ public class PurgeOutboxController {
 
     @GetMapping("/api/purge-outbox")
     @PreAuthorize("hasRole('TENANT_ADMIN')")
-    public PurgeOutboxListResponse list(
+    public PurgeOutboxPageResponse list(
             @RequestParam(required = false) PurgeOutboxStatus status,
-            @RequestParam(defaultValue = "50") int limit,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) String sort,
             Authentication authentication) {
         AccessContext.User actor = accessContextFactory.user(authentication);
-        ListPurgeOutboxUseCase.Page page = listPurgeOutboxUseCase.list(actor, status, limit);
-        return new PurgeOutboxListResponse(
-                page.items().stream().map(PurgeOutboxItemResponse::from).toList(), page.counts());
+        return PurgeOutboxPageResponse.from(listPurgeOutboxUseCase.list(
+                actor, status, PageQueryParser.parse(page, size, sort, AdminListSorts.PURGE_OUTBOX)));
     }
 
     @PostMapping("/api/dossiers/{id}/purge-requests")

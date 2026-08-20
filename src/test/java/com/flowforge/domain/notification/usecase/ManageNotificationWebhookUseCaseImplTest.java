@@ -15,6 +15,8 @@ import com.flowforge.domain.notification.model.NotificationWebhookConflictExcept
 import com.flowforge.domain.notification.model.NotificationWebhookNotFoundException;
 import com.flowforge.domain.notification.port.in.ManageNotificationWebhookUseCase;
 import com.flowforge.domain.notification.port.out.NotificationWebhookRepository;
+import com.flowforge.domain.shared.PageQuery;
+import com.flowforge.domain.shared.PageResult;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -104,9 +106,10 @@ class ManageNotificationWebhookUseCaseImplTest {
                 null,
                 now,
                 now);
-        when(repository.listByTenantId("tenant_dev")).thenReturn(List.of(config));
+        when(repository.pageByTenantId("tenant_dev", PageQuery.defaults()))
+                .thenReturn(PageResult.of(List.of(config), 0, 20, 1));
 
-        assertThat(useCase.list("tenant_dev")).containsExactly(config);
+        assertThat(useCase.list("tenant_dev", PageQuery.defaults()).content()).containsExactly(config);
     }
 
     @Test

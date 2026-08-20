@@ -1,7 +1,8 @@
 package com.flowforge.domain.connector.port.in;
 
 import com.flowforge.domain.connector.model.ConnectorInstanceData;
-import java.util.List;
+import com.flowforge.domain.shared.PageQuery;
+import com.flowforge.domain.shared.PageResult;
 import java.util.Map;
 import java.util.UUID;
 
@@ -13,7 +14,7 @@ public interface ManageConnectorInstanceUseCase {
 
     ConnectorInstanceData get(UUID id, String tenantId);
 
-    List<ConnectorInstanceData> list(String tenantId);
+    PageResult<ConnectorInstanceData> list(String tenantId, PageQuery query);
 
     void softDelete(UUID id, String tenantId);
 

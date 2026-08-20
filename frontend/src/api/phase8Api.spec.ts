@@ -10,12 +10,13 @@ import {
   updateDocumentTemplate,
 } from './admin'
 import { toProblemDetail, resolveApiBaseUrl } from './http'
+import { asPage } from './page'
 
 vi.mock('axios')
 
 describe('phase 8 api gaps', () => {
   beforeEach(() => {
-    vi.mocked(axios.get).mockReset().mockResolvedValue({ data: [] })
+    vi.mocked(axios.get).mockReset().mockResolvedValue({ data: asPage([]) })
     vi.mocked(axios.post).mockReset().mockResolvedValue({ data: { id: '1' } })
     vi.mocked(axios.patch).mockReset().mockResolvedValue({ data: { id: '1' } })
   })

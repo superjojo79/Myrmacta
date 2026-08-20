@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { listDossierTypes } from '@/api/dossierTypes'
+import { listAllDossierTypes } from '@/api/dossierTypes'
 import { useDossierStore } from '@/stores/dossier'
 import { toProblemDetail } from '@/api/http'
 import type { DossierType } from '@/api/types'
@@ -20,7 +20,7 @@ const submitting = ref(false)
 const selectedType = () => types.value.find((t) => t.code === dossierTypeCode.value) ?? null
 
 onMounted(async () => {
-  types.value = (await listDossierTypes()).filter((t) => t.active)
+  types.value = (await listAllDossierTypes()).filter((t) => t.active)
   if (types.value[0]) dossierTypeCode.value = types.value[0].code
 })
 

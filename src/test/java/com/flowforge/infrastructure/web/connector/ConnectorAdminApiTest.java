@@ -120,7 +120,12 @@ class ConnectorAdminApiTest {
         mockMvc.perform(get("/api/connectors")
                         .with(user("connector-admin", "TENANT_ADMIN")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[*].name", not(hasItem(name))));
+                .andExpect(jsonPath("$.content[*].name", not(hasItem(name))));
+
+        mockMvc.perform(get("/api/connectors")
+                        .param("sort", "name,desc")
+                        .with(user("connector-admin", "TENANT_ADMIN")))
+                .andExpect(status().isBadRequest());
 
         mockMvc.perform(patch("/api/connectors/{id}", id)
                         .with(user("connector-admin", "TENANT_ADMIN"))
@@ -154,6 +159,23 @@ class ConnectorAdminApiTest {
                         .content(httpRestPayload(name, "SHARED_SECRET_TOKEN")))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.name").value(name));
+    }
+
+    @Test
+    void listConnectors_returnsEnvelopeDefaultsAndRejectsOversizedPage() throws Exception {
+        mockMvc.perform(get("/api/connectors")
+                        .with(user("connector-admin", "TENANT_ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20))
+                .andExpect(jsonPath("$.totalElements").value(org.hamcrest.Matchers.greaterThanOrEqualTo(0)))
+                .andExpect(jsonPath("$.totalPages").value(org.hamcrest.Matchers.greaterThanOrEqualTo(0)));
+
+        mockMvc.perform(get("/api/connectors")
+                        .param("size", "101")
+                        .with(user("connector-admin", "TENANT_ADMIN")))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

@@ -9,6 +9,53 @@ type MockOpts = {
 const DOSSIER_ID = '11111111-1111-1111-1111-111111111111'
 const LINK_ID = '22222222-2222-2222-2222-222222222222'
 
+function envelope(content: unknown[], extras: Record<string, number> = {}) {
+  const size = extras.size ?? 20
+  const totalElements = extras.totalElements ?? content.length
+  return {
+    content,
+    page: extras.page ?? 0,
+    size,
+    totalElements,
+    totalPages: extras.totalPages ?? (totalElements === 0 ? 0 : Math.ceil(totalElements / size)),
+  }
+}
+
+const CLAIM_TYPE = {
+  id: 't1',
+  tenantId: 'tenant_dev',
+  code: 'CLAIM',
+  label: 'Sinistre',
+  workflowKey: 'claimWorkflow',
+  active: true,
+  allowUnknownFields: false,
+  retentionDays: null,
+  retentionNever: false,
+  fieldDefinitions: [
+    {
+      name: 'priority',
+      label: 'Priority',
+      type: 'STRING',
+      required: true,
+      defaultValue: 'NORMAL',
+      options: [],
+      group: null,
+      sensitive: false,
+    },
+  ],
+}
+
+const OTHER_WORKFLOW = {
+  id: '1',
+  tenantId: 'tenant_dev',
+  workflowKey: 'otherWorkflow',
+  label: 'Autre',
+  statusDefinitions: [],
+  allowedDossierStatuses: [],
+  onStartDossierStatus: null,
+  observerUserIds: [],
+}
+
 function dossierBody(overrides: Record<string, unknown> = {}) {
   return {
     id: DOSSIER_ID,
@@ -102,36 +149,12 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
       body: 'data: {"id":"n1","title":"Ping","body":"hello"}\n\n',
     })
   })
-  await page.route('**/api/dossier-types', async (route) => {
+  await page.route(/\/api\/dossier-types(?:\?|$)/, async (route) => {
     if (route.request().method() === 'GET') {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([
-          {
-            id: 't1',
-            tenantId: 'tenant_dev',
-            code: 'CLAIM',
-            label: 'Sinistre',
-            workflowKey: 'claimWorkflow',
-            active: true,
-            allowUnknownFields: false,
-            retentionDays: null,
-            retentionNever: false,
-            fieldDefinitions: [
-              {
-                name: 'priority',
-                label: 'Priority',
-                type: 'STRING',
-                required: true,
-                defaultValue: 'NORMAL',
-                options: [],
-                group: null,
-                sensitive: false,
-              },
-            ],
-          },
-        ]),
+        body: JSON.stringify(envelope([CLAIM_TYPE])),
       })
       return
     }
@@ -172,7 +195,7 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          items: purgeItems,
+          ...envelope(purgeItems),
           counts: {
             pending: purgeItems.filter((i) => i.status === 'PENDING').length,
             processing: 0,
@@ -189,27 +212,7 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({
-        id: 't1',
-        tenantId: 'tenant_dev',
-        code: 'CLAIM',
-        label: 'Sinistre',
-        workflowKey: 'claimWorkflow',
-        active: true,
-        allowUnknownFields: false,
-        fieldDefinitions: [
-          {
-            name: 'priority',
-            label: 'Priority',
-            type: 'STRING',
-            required: true,
-            defaultValue: 'NORMAL',
-            options: [],
-            group: null,
-            sensitive: false,
-          },
-        ],
-      }),
+      body: JSON.stringify(CLAIM_TYPE),
     })
   })
   await page.route('**/api/dossiers**', async (route) => {
@@ -510,32 +513,80 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
     mineTasks = []
     await route.fulfill({ status: 204, body: '' })
   })
-  await page.route('**/api/workflow-type-configs**', async (route) => {
+  await page.route(/\/api\/workflow-type-configs(?:\?|$)/, async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify([
-        {
-          id: '1',
-          tenantId: 'tenant_dev',
-          workflowKey: 'otherWorkflow',
-          label: 'Autre',
-          statusDefinitions: [],
-          allowedDossierStatuses: [],
-          onStartDossierStatus: null,
-          observerUserIds: [],
-        },
-      ]),
+      body: JSON.stringify(envelope([OTHER_WORKFLOW])),
     })
   })
-  await page.route('**/api/document-templates**', async (route) => {
+  await page.route(/\/api\/document-templates(?:\?|$)/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(envelope([])),
+    })
+  })
+  await page.route(/\/api\/connectors(?:\?|$)/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(envelope([])),
+    })
+  })
+  await page.route('**/api/connector-definitions', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
   })
-  await page.route('**/api/connectors**', async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
-  })
-  await page.route('**/api/connector-definitions**', async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
+  let webhooks: Array<Record<string, unknown>> = [
+    {
+      id: 'wh-1',
+      tenantId: 'tenant_dev',
+      name: 'Hook A',
+      targetUrl: 'https://example.com/hook',
+      secret: null,
+      secretConfigured: true,
+      enabled: true,
+      createdAt: '2026-08-19T10:00:00Z',
+      updatedAt: '2026-08-19T10:00:00Z',
+    },
+  ]
+  await page.route(/\/api\/notification-webhooks(?:\?|$)/, async (route) => {
+    const method = route.request().method()
+    if (method === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(envelope(webhooks)),
+      })
+      return
+    }
+    if (method === 'POST') {
+      const posted = route.request().postDataJSON() as {
+        name: string
+        targetUrl: string
+        secret?: string
+        enabled?: boolean
+      }
+      const created = {
+        id: `wh-${webhooks.length + 1}`,
+        tenantId: 'tenant_dev',
+        name: posted.name,
+        targetUrl: posted.targetUrl,
+        secret: null,
+        secretConfigured: Boolean(posted.secret),
+        enabled: posted.enabled !== false,
+        createdAt: '2026-08-19T12:00:00Z',
+        updatedAt: '2026-08-19T12:00:00Z',
+      }
+      webhooks = [...webhooks, created]
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify(created),
+      })
+      return
+    }
+    await route.fulfill({ status: 405, body: '' })
   })
 }
 
@@ -759,6 +810,37 @@ test('E2E-10 admin types smoke', async ({ page }) => {
   await openApp(page)
   await page.getByRole('link', { name: 'Types' }).click()
   await expect(page.getByRole('heading', { name: 'Types de dossier' })).toBeVisible()
+  await expect(page.getByRole('cell', { name: 'CLAIM', exact: true })).toBeVisible()
+  await expect(page.getByTestId('admin-pager-prev')).toBeDisabled()
+})
+
+test('E2E-PAGE-1 admin types pager writes page query', async ({ page }) => {
+  await mockSession(page)
+  await page.route(/\/api\/dossier-types(?:\?|$)/, async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.fallback()
+      return
+    }
+    const url = new URL(route.request().url())
+    const pageNo = Number(url.searchParams.get('page') || '0')
+    const type = {
+      ...CLAIM_TYPE,
+      id: pageNo === 0 ? 't1' : 't2',
+      code: pageNo === 0 ? 'CLAIM' : 'FAC',
+      label: pageNo === 0 ? 'Sinistre' : 'Facture',
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(envelope([type], { page: pageNo, size: 20, totalElements: 21, totalPages: 2 })),
+    })
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Types' }).click()
+  await expect(page.getByRole('cell', { name: 'CLAIM', exact: true })).toBeVisible()
+  await page.getByTestId('admin-pager-next').click()
+  await expect(page).toHaveURL(/[?&]page=1/)
+  await expect(page.getByRole('cell', { name: 'FAC', exact: true })).toBeVisible()
 })
 
 test('E2E-RET-1 admin saves tenant retention default', async ({ page }) => {
@@ -774,7 +856,7 @@ test('E2E-RET-1 admin saves tenant retention default', async ({ page }) => {
 test('E2E-RET-2 admin creates type with NEVER retention', async ({ page }) => {
   let createdBody: Record<string, unknown> | null = null
   await mockSession(page)
-  await page.route('**/api/dossier-types', async (route) => {
+  await page.route(/\/api\/dossier-types(?:\?|$)/, async (route) => {
     if (route.request().method() === 'POST') {
       createdBody = route.request().postDataJSON() as Record<string, unknown>
       await route.fulfill({
@@ -903,4 +985,25 @@ test('E2E-PURGE-5 enqueue open dossier returns 4xx', async ({ page }) => {
   await createAndOpenDossier(page)
   await page.getByTestId('dossier-purge-request').click()
   await expect(page.getByText(/CLOTURE or ARCHIVE/)).toBeVisible()
+})
+
+test('E2E-WEBHOOK-1 tenant admin lists and creates a notification webhook', async ({ page }) => {
+  await mockSession(page)
+  await openApp(page)
+  await page.getByRole('link', { name: 'Webhooks' }).click()
+  await expect(page.getByRole('heading', { name: 'Webhooks de notification' })).toBeVisible()
+  await expect(page.getByTestId('webhook-list')).toContainText('Hook A')
+  await expect(page.getByTestId('webhook-list')).toContainText('secret configuré')
+  await page.getByTestId('webhook-name').fill('Ops')
+  await page.getByTestId('webhook-url').fill('https://example.com/ops')
+  await page.getByTestId('webhook-secret').fill('plain-secret')
+  await page.getByTestId('webhook-create-form').getByRole('button', { name: 'Créer' }).click()
+  await expect(page.getByTestId('webhook-list')).toContainText('Ops')
+  await expect(page.getByTestId('webhook-secret')).toHaveValue('')
+})
+
+test('E2E-WEBHOOK-2 non-admin does not see webhooks nav', async ({ page }) => {
+  await mockSession(page, { roles: ['DOSSIER_VIEWER'] })
+  await openApp(page)
+  await expect(page.getByRole('link', { name: 'Webhooks' })).toHaveCount(0)
 })

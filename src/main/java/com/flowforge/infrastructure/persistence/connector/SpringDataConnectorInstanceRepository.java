@@ -3,6 +3,8 @@ package com.flowforge.infrastructure.persistence.connector;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 interface SpringDataConnectorInstanceRepository extends JpaRepository<ConnectorInstanceJpaEntity, UUID> {
@@ -12,4 +14,7 @@ interface SpringDataConnectorInstanceRepository extends JpaRepository<ConnectorI
     Optional<ConnectorInstanceJpaEntity> findByIdAndTenantId(UUID id, String tenantId);
 
     List<ConnectorInstanceJpaEntity> findByTenantIdAndDeletedAtIsNullOrderByNameAsc(String tenantId);
+
+    Page<ConnectorInstanceJpaEntity> findByTenantIdAndDeletedAtIsNullOrderByNameAsc(
+            String tenantId, Pageable pageable);
 }

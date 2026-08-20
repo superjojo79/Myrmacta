@@ -3,8 +3,10 @@ package com.flowforge.infrastructure.web.connector;
 import com.flowforge.domain.connector.model.ConnectorInstanceData;
 import com.flowforge.domain.connector.port.in.ManageConnectorInstanceUseCase;
 import com.flowforge.infrastructure.config.TenantProperties;
+import com.flowforge.infrastructure.web.AdminListSorts;
+import com.flowforge.infrastructure.web.PageQueryParser;
+import com.flowforge.infrastructure.web.PageResponse;
 import java.net.URI;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /** CRUD administrateur des connecteurs (BFF Order 3, {@code TENANT_ADMIN} + CSRF). */
@@ -47,10 +50,15 @@ public class ConnectorAdminController {
     }
 
     @GetMapping
-    public List<ConnectorResponse> list() {
-        return manageUseCase.list(tenantProperties.id()).stream()
-                .map(ConnectorResponse::from)
-                .toList();
+    public PageResponse<ConnectorResponse> list(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) String sort) {
+        return PageResponse.from(manageUseCase
+                .list(
+                        tenantProperties.id(),
+                        PageQueryParser.parse(page, size, sort, AdminListSorts.CONNECTORS))
+                .map(ConnectorResponse::from));
     }
 
     @GetMapping("/{id}")

@@ -7,12 +7,20 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 record CreateNotificationWebhookRequest(
-        String name, String targetUrl, String secret, Boolean enabled) {}
+        String name,
+        String targetUrl,
+        @Schema(writeOnly = true) String secret,
+        Boolean enabled) {}
 
 record UpdateNotificationWebhookRequest(
-        String name, String targetUrl, String secret, Boolean enabled, Boolean restore) {}
+        String name,
+        String targetUrl,
+        @Schema(writeOnly = true) String secret,
+        Boolean enabled,
+        Boolean restore) {}
 
 record NotificationWebhookResponse(
         UUID id,

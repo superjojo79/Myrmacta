@@ -2,6 +2,8 @@ package com.flowforge.domain.dossier.port.out;
 
 import com.flowforge.domain.dossier.model.PurgeOutboxRecord;
 import com.flowforge.domain.dossier.model.PurgeOutboxStatus;
+import com.flowforge.domain.shared.PageQuery;
+import com.flowforge.domain.shared.PageResult;
 import java.util.List;
 import java.util.UUID;
 
@@ -22,7 +24,7 @@ public interface PurgeOutboxRepository {
 
     void markFailed(UUID id, String error);
 
-    List<PurgeOutboxRecord> list(PurgeOutboxStatus statusFilter, int limit);
+    PageResult<PurgeOutboxRecord> page(PurgeOutboxStatus statusFilter, PageQuery query);
 
     long countByStatus(PurgeOutboxStatus status);
 }

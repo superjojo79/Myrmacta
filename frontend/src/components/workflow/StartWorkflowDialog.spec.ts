@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils'
 import StartWorkflowDialog from './StartWorkflowDialog.vue'
 
 vi.mock('@/api/workflows', () => ({
-  listWorkflowTypeConfigs: vi.fn().mockResolvedValue([
+  listAllWorkflowTypeConfigs: vi.fn().mockResolvedValue([
     {
       id: '1',
       tenantId: 't',

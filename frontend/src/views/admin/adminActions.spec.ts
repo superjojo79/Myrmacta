@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+import { createMemoryHistory, createRouter } from 'vue-router'
 import TemplatesAdminView from './TemplatesAdminView.vue'
 import ConnectorsAdminView from './ConnectorsAdminView.vue'
 import WorkflowConfigsAdminView from './WorkflowConfigsAdminView.vue'
@@ -8,6 +9,9 @@ import * as adminApi from '@/api/admin'
 import * as workflowsApi from '@/api/workflows'
 import * as typesApi from '@/api/dossierTypes'
 import * as retentionApi from '@/api/retentionSettings'
+import { routes } from '@/app/routes'
+import { asPage } from '@/api/page'
+import type { Component } from 'vue'
 
 vi.mock('@/api/admin')
 vi.mock('@/api/workflows')
@@ -18,63 +22,78 @@ vi.mock('@/api/documents', () => ({
   previewPdf: vi.fn().mockResolvedValue(new Blob()),
 }))
 
+async function mountView(component: Component, path: string) {
+  const router = createRouter({ history: createMemoryHistory(), routes })
+  await router.push(path)
+  await router.isReady()
+  return mount(component, { global: { plugins: [router] } })
+}
+
 describe('admin actions coverage', () => {
   beforeEach(() => {
     vi.resetAllMocks()
     vi.stubGlobal('prompt', vi.fn().mockReturnValue('Renamed'))
-    vi.mocked(adminApi.listDocumentTemplates).mockResolvedValue([
-      {
-        id: 'tpl1',
-        templateKey: 'k',
-        variantKey: null,
-        locale: null,
-        label: 'Old',
-        version: 1,
-        status: 'DRAFT',
-        htmlContent: null,
-        createdAt: '',
-        updatedAt: '',
-        updatedBy: null,
-      },
-    ])
-    vi.mocked(adminApi.listConnectors).mockResolvedValue([
-      {
-        id: 'c1',
-        tenantId: 't',
-        name: 'Hook',
-        connectorType: 'HTTP',
-        enabled: true,
-        config: {},
-        secretConfigured: {},
-      },
-    ])
+    vi.mocked(adminApi.listDocumentTemplates).mockResolvedValue(
+      asPage([
+        {
+          id: 'tpl1',
+          templateKey: 'k',
+          variantKey: null,
+          locale: null,
+          label: 'Old',
+          version: 1,
+          status: 'DRAFT',
+          htmlContent: null,
+          createdAt: '',
+          updatedAt: '',
+          updatedBy: null,
+        },
+      ]),
+    )
+    vi.mocked(adminApi.listConnectors).mockResolvedValue(
+      asPage([
+        {
+          id: 'c1',
+          tenantId: 't',
+          name: 'Hook',
+          connectorType: 'HTTP',
+          enabled: true,
+          config: {},
+          secretConfigured: {},
+        },
+      ]),
+    )
     vi.mocked(adminApi.listConnectorDefinitions).mockResolvedValue([{ type: 'HTTP', label: 'HTTP' }])
-    vi.mocked(workflowsApi.listWorkflowTypeConfigs).mockResolvedValue([
-      {
-        id: '1',
-        tenantId: 't',
-        workflowKey: 'wf',
-        label: 'WF',
-        statusDefinitions: [],
-        allowedDossierStatuses: [],
-        onStartDossierStatus: null,
-        observerUserIds: [],
-      },
-    ])
-    vi.mocked(typesApi.listDossierTypes).mockResolvedValue([
-      {
-        id: '1',
-        tenantId: 't',
-        code: 'CLAIM',
-        label: 'Sinistre',
-        workflowKey: 'wf',
-        active: true,
-        allowUnknownFields: false,
-        fieldDefinitions: [],
-        retentionDays: null,
-        retentionNever: false,
-      },
-    ])
+    vi.mocked(workflowsApi.listWorkflowTypeConfigs).mockResolvedValue(
+      asPage([
+        {
+          id: '1',
+          tenantId: 't',
+          workflowKey: 'wf',
+          label: 'WF',
+          statusDefinitions: [],
+          allowedDossierStatuses: [],
+          onStartDossierStatus: null,
+          observerUserIds: [],
+        },
+      ]),
+    )
+    vi.mocked(typesApi.listDossierTypes).mockResolvedValue(
+      asPage([
+        {
+          id: '1',
+          tenantId: 't',
+          code: 'CLAIM',
+          label: 'Sinistre',
+          workflowKey: 'wf',
+          active: true,
+          allowUnknownFields: false,
+          fieldDefinitions: [],
+          retentionDays: null,
+          retentionNever: false,
+        },
+      ]),
+    )
     vi.mocked(retentionApi.getRetentionSettings).mockRejectedValue({
       response: { status: 404, data: { detail: 'not found', status: 404 } },
     })
@@ -86,7 +105,7 @@ describe('admin actions coverage', () => {
     vi.mocked(adminApi.activateDocumentTemplate).mockResolvedValue({} as never)
     vi.mocked(adminApi.archiveDocumentTemplate).mockResolvedValue({} as never)
     vi.mocked(adminApi.newDocumentTemplateVersion).mockResolvedValue({} as never)
-    const wrapper = mount(TemplatesAdminView)
+    const wrapper = await mountView(TemplatesAdminView, '/admin/templates')
     await flushPromises()
     const buttons = wrapper.findAll('li button')
     await buttons[0].trigger('click') // Renommer
@@ -110,7 +129,7 @@ describe('admin actions coverage', () => {
     vi.mocked(adminApi.createConnector).mockResolvedValue({} as never)
     vi.mocked(adminApi.updateConnector).mockResolvedValue({} as never)
     vi.mocked(adminApi.deleteConnector).mockResolvedValue(undefined)
-    const wrapper = mount(ConnectorsAdminView)
+    const wrapper = await mountView(ConnectorsAdminView, '/admin/connectors')
     await flushPromises()
     const buttons = wrapper.findAll('li button')
     await buttons[0].trigger('click')
@@ -130,7 +149,7 @@ describe('admin actions coverage', () => {
     vi.mocked(typesApi.updateDossierType).mockResolvedValue({} as never)
     vi.mocked(typesApi.grantDossierTypeAcl).mockResolvedValue(undefined)
     vi.mocked(typesApi.revokeDossierTypeAcl).mockResolvedValue(undefined)
-    const wf = mount(WorkflowConfigsAdminView)
+    const wf = await mountView(WorkflowConfigsAdminView, '/admin/workflow-types')
     await flushPromises()
     await wf.get('li button').trigger('click')
     await flushPromises()
@@ -141,7 +160,7 @@ describe('admin actions coverage', () => {
     await flushPromises()
     expect(workflowsApi.createWorkflowTypeConfig).toHaveBeenCalled()
 
-    const types = mount(DossierTypesAdminView)
+    const types = await mountView(DossierTypesAdminView, '/admin/dossier-types')
     await flushPromises()
     await types.get('td button').trigger('click')
     await flushPromises()

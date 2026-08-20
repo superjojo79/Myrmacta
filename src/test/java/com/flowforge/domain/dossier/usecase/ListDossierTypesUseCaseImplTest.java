@@ -10,6 +10,7 @@ import com.flowforge.domain.dossier.model.DossierType;
 import com.flowforge.domain.dossier.model.DossierTypeAclEntry;
 import com.flowforge.domain.dossier.port.out.DossierTypeAclRepository;
 import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
+import com.flowforge.domain.shared.PageQuery;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -41,25 +42,47 @@ class ListDossierTypesUseCaseImplTest {
         aclRepository.save(new DossierTypeAclEntry(TENANT, "VIEWABLE", "u1", DossierPermission.VIEW));
         aclRepository.save(new DossierTypeAclEntry(TENANT, "EDITABLE", "u1", DossierPermission.EDIT));
 
-        var result = useCase.list(TENANT, AccessContext.user("u1", Set.of("DOSSIER_MANAGER")));
+        var result = useCase.list(TENANT, AccessContext.user("u1", Set.of("DOSSIER_MANAGER")), PageQuery.defaults());
 
-        assertThat(result).extracting(DossierType::code).containsExactly("VIEWABLE", "EDITABLE");
+        assertThat(result.content()).extracting(DossierType::code).containsExactly("VIEWABLE", "EDITABLE");
+        assertThat(result.totalElements()).isEqualTo(2);
     }
 
     @Test
     void list_adminAndSystemSeeAllTypes() {
-        assertThat(useCase.list(TENANT, AccessContext.user("admin", Set.of("TENANT_ADMIN"))))
+        assertThat(useCase.list(TENANT, AccessContext.user("admin", Set.of("TENANT_ADMIN")), PageQuery.defaults())
+                        .content())
                 .extracting(DossierType::code)
                 .containsExactly("VIEWABLE", "EDITABLE", "HIDDEN");
-        assertThat(useCase.list(TENANT, AccessContext.system("batch")))
+        assertThat(useCase.list(TENANT, AccessContext.system("batch"), PageQuery.defaults()).content())
                 .extracting(DossierType::code)
                 .containsExactly("VIEWABLE", "EDITABLE", "HIDDEN");
     }
 
     @Test
     void list_serviceContextIsDenied() {
-        assertThatThrownBy(() -> useCase.list(TENANT, AccessContext.service("client")))
+        assertThatThrownBy(() -> useCase.list(TENANT, AccessContext.service("client"), PageQuery.defaults()))
                 .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void list_userWithoutGrantsGetsEmptyPageWithoutHoles() {
+        var result = useCase.list(TENANT, AccessContext.user("u1", Set.of("DOSSIER_MANAGER")), PageQuery.defaults());
+        assertThat(result.content()).isEmpty();
+        assertThat(result.totalElements()).isZero();
+        assertThat(result.totalPages()).isZero();
+    }
+
+    @Test
+    void list_pagesAfterAclFilter() {
+        aclRepository.save(new DossierTypeAclEntry(TENANT, "VIEWABLE", "u1", DossierPermission.VIEW));
+        aclRepository.save(new DossierTypeAclEntry(TENANT, "EDITABLE", "u1", DossierPermission.EDIT));
+
+        var result = useCase.list(TENANT, AccessContext.user("u1", Set.of("DOSSIER_MANAGER")), PageQuery.of(1, 1));
+
+        assertThat(result.content()).extracting(DossierType::code).containsExactly("EDITABLE");
+        assertThat(result.totalElements()).isEqualTo(2);
+        assertThat(result.totalPages()).isEqualTo(2);
     }
 
     private static DossierType type(String code) {

@@ -5,7 +5,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.flowforge.domain.connector.model.ConnectorInstanceData;
 import com.flowforge.domain.connector.port.out.ConnectorInstanceRepository;
 import com.flowforge.domain.connector.port.out.WebhookIdempotencyStore;
+import com.flowforge.domain.shared.PageQuery;
 import com.flowforge.support.OidcClientTestConfiguration;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -77,5 +79,34 @@ class ConnectorPersistenceIT {
         assertThat(idempotencyStore.findResponseStatus(instanceId, "delivery-1")).contains(202);
         assertThat(idempotencyStore.beginOrGetCompleted(instanceId, "delivery-1")).contains(202);
         assertThat(idempotencyStore.findResponseStatus(instanceId, "missing")).isEmpty();
+    }
+
+    @Test
+    void pageByTenantId_ordersByNameExcludesDeletedAndKeepsTotalsPastEnd() {
+        String token = UUID.randomUUID().toString().substring(0, 8);
+        UUID deletedId = UUID.randomUUID();
+        instances.save(new ConnectorInstanceData(
+                UUID.randomUUID(), "tenant_dev", "aaa-page-" + token, "http-rest", true, Map.of()));
+        instances.save(new ConnectorInstanceData(
+                UUID.randomUUID(), "tenant_dev", "mmm-page-" + token, "http-rest", true, Map.of()));
+        instances.save(new ConnectorInstanceData(
+                UUID.randomUUID(), "tenant_dev", "zzz-page-" + token, "http-rest", true, Map.of()));
+        instances.save(new ConnectorInstanceData(
+                deletedId, "tenant_dev", "del-page-" + token, "http-rest", true, Map.of()));
+        instances.softDelete(deletedId, "tenant_dev");
+
+        var page0 = instances.pageByTenantId("tenant_dev", PageQuery.of(0, 100));
+        List<String> names = page0.content().stream()
+                .map(ConnectorInstanceData::name)
+                .filter(name -> name.endsWith(token))
+                .toList();
+        assertThat(names).containsExactly("aaa-page-" + token, "mmm-page-" + token, "zzz-page-" + token);
+        assertThat(page0.content()).noneMatch(data -> data.id().equals(deletedId));
+        assertThat(page0.content().stream().map(ConnectorInstanceData::name).toList()).isSorted();
+
+        var pastEnd = instances.pageByTenantId("tenant_dev", PageQuery.of(9_999, 20));
+        assertThat(pastEnd.content()).isEmpty();
+        assertThat(pastEnd.totalElements()).isEqualTo(page0.totalElements());
+        assertThat(pastEnd.size()).isEqualTo(20);
     }
 }

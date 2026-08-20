@@ -161,7 +161,16 @@ public class SecurityConfig {
                         .logoutSuccessHandler(oidcLogoutSuccessHandler(clientRegistrationRepository))
                         .invalidateHttpSession(true)
                         .deleteCookies("JSESSIONID"))
-                .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(
+                                "/v3/api-docs",
+                                "/v3/api-docs/**",
+                                "/v3/api-docs.yaml",
+                                "/swagger-ui.html",
+                                "/swagger-ui/**")
+                        .hasAnyRole("TENANT_ADMIN", "WORKFLOW_ADMIN")
+                        .anyRequest()
+                        .authenticated())
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(
                         new ApiAuthenticationEntryPoint(loginEntryPoint)));
 

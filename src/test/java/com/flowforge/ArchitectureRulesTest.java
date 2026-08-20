@@ -20,7 +20,9 @@ class ArchitectureRulesTest {
             .should().dependOnClassesThat().resideInAnyPackage(
                     "org.springframework..",
                     "jakarta.persistence..",
-                    "org.flowable..");
+                    "org.flowable..",
+                    "org.springdoc..",
+                    "io.swagger..");
 
     @ArchTest
     static final ArchRule domain_never_depends_on_infrastructure = noClasses()

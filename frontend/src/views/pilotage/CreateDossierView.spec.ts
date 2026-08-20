@@ -17,7 +17,7 @@ describe('CreateDossierView', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.resetAllMocks()
-    vi.mocked(typesApi.listDossierTypes).mockResolvedValue([
+    vi.mocked(typesApi.listAllDossierTypes).mockResolvedValue([
       {
         id: 't1',
         tenantId: 't',

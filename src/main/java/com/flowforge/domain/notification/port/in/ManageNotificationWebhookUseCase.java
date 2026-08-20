@@ -1,7 +1,8 @@
 package com.flowforge.domain.notification.port.in;
 
 import com.flowforge.domain.notification.model.NotificationWebhookConfig;
-import java.util.List;
+import com.flowforge.domain.shared.PageQuery;
+import com.flowforge.domain.shared.PageResult;
 import java.util.UUID;
 
 public interface ManageNotificationWebhookUseCase {
@@ -10,7 +11,7 @@ public interface ManageNotificationWebhookUseCase {
 
     NotificationWebhookConfig get(UUID id, String tenantId);
 
-    List<NotificationWebhookConfig> list(String tenantId);
+    PageResult<NotificationWebhookConfig> list(String tenantId, PageQuery query);
 
     NotificationWebhookConfig update(UpdateCommand command);
 

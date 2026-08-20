@@ -20,7 +20,7 @@ describe('pilotage remaining coverage', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.resetAllMocks()
-    vi.mocked(dossierTypesApi.listDossierTypes).mockResolvedValue([])
+    vi.mocked(dossierTypesApi.listAllDossierTypes).mockResolvedValue([])
     vi.mocked(dossiersApi.listDossiers).mockResolvedValue({
       content: [],
       page: 0,

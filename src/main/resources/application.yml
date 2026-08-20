@@ -124,6 +124,8 @@ app:
   purge:
     poll-delay: 1h
     batch-size: 50
+  openapi:
+    enabled: false
   dossier:
     attachment:
       # Taille max : app.storage n'a pas de borne dédiée, la seule limite est
@@ -135,6 +137,12 @@ app:
 
 flowable:
   async-executor-activate: true
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
 
 # Cible multi-tenant (non actif) — décommenter avec datasource / reverse-proxy :
 # server:

@@ -16,6 +16,8 @@ import com.flowforge.domain.connector.model.ConnectorInstanceNotFoundException;
 import com.flowforge.domain.connector.port.in.ManageConnectorInstanceUseCase;
 import com.flowforge.domain.connector.port.out.ConnectorCatalog;
 import com.flowforge.domain.connector.port.out.ConnectorInstanceRepository;
+import com.flowforge.domain.shared.PageQuery;
+import com.flowforge.domain.shared.PageResult;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -140,8 +142,9 @@ class ManageConnectorInstanceUseCaseImplTest {
     void list_delegatesToRepository() {
         ConnectorInstanceData instance = new ConnectorInstanceData(
                 UUID.randomUUID(), "tenant_dev", "Claims", "http-rest", true, Map.of());
-        when(repository.listByTenantId("tenant_dev")).thenReturn(List.of(instance));
+        when(repository.pageByTenantId("tenant_dev", PageQuery.defaults()))
+                .thenReturn(PageResult.of(List.of(instance), 0, 20, 1));
 
-        assertThat(useCase.list("tenant_dev")).containsExactly(instance);
+        assertThat(useCase.list("tenant_dev", PageQuery.defaults()).content()).containsExactly(instance);
     }
 }

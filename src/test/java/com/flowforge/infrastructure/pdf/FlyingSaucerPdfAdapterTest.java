@@ -2,6 +2,8 @@ package com.flowforge.infrastructure.pdf;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.flowforge.infrastructure.pdf.FlyingSaucerPdfAdapter;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.io.IOException;
 import java.util.Set;
 import java.util.TreeSet;
@@ -12,7 +14,8 @@ import org.openpdf.text.pdf.PdfReader;
 
 class FlyingSaucerPdfAdapterTest {
 
-    private final FlyingSaucerPdfAdapter adapter = new FlyingSaucerPdfAdapter();
+    private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+    private final FlyingSaucerPdfAdapter adapter = new FlyingSaucerPdfAdapter(meterRegistry);
 
     @Test
     void rendersSimpleHtml5_toPdfMagic() {
@@ -66,6 +69,18 @@ class FlyingSaucerPdfAdapterTest {
         assertThat(pdf).startsWith("%PDF".getBytes());
         assertThat(baseFonts(pdf))
                 .anyMatch(name -> name.contains("LiberationSans"));
+    }
+
+    @Test
+    void render_successAndNull_areBothTimed() {
+        adapter.render("<html><body><p>timed</p></body></html>");
+        assertThat(meterRegistry.get(FlyingSaucerPdfAdapter.PDF_RENDER_TIMER).timer().count()).isEqualTo(1);
+        try {
+            adapter.render(null);
+        } catch (NullPointerException ignored) {
+            // expected
+        }
+        assertThat(meterRegistry.get(FlyingSaucerPdfAdapter.PDF_RENDER_TIMER).timer().count()).isEqualTo(2);
     }
 
     private static Set<String> baseFonts(byte[] pdf) throws IOException {

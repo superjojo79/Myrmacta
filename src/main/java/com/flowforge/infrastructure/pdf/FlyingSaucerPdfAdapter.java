@@ -2,6 +2,8 @@ package com.flowforge.infrastructure.pdf;
 
 import com.flowforge.domain.document.model.DocumentRenderException;
 import com.flowforge.domain.document.port.out.PdfRenderer;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import java.io.ByteArrayOutputStream;
 import java.util.Objects;
 import org.jsoup.Jsoup;
@@ -13,13 +15,31 @@ import org.xhtmlrenderer.pdf.ITextRenderer;
 @Component
 public class FlyingSaucerPdfAdapter implements PdfRenderer {
 
+    public static final String PDF_RENDER_TIMER = "flowforge.pdf.render";
+
     private static final ClasspathFontRegistrar CLASSPATH_FONTS = new ClasspathFontRegistrar();
 
     private final ThreadLocal<ITextRenderer> renderers = ThreadLocal.withInitial(FlyingSaucerPdfAdapter::newRenderer);
+    private final MeterRegistry meterRegistry;
+    private final Timer pdfRenderTimer;
+
+    public FlyingSaucerPdfAdapter(MeterRegistry meterRegistry) {
+        this.meterRegistry = Objects.requireNonNull(meterRegistry, "meterRegistry");
+        this.pdfRenderTimer = Timer.builder(PDF_RENDER_TIMER).register(meterRegistry);
+    }
 
     @Override
     public byte[] render(String html) {
-        Objects.requireNonNull(html, "html");
+        Timer.Sample sample = Timer.start(meterRegistry);
+        try {
+            Objects.requireNonNull(html, "html");
+            return doRender(html);
+        } finally {
+            sample.stop(pdfRenderTimer);
+        }
+    }
+
+    private byte[] doRender(String html) {
         try {
             String xhtml = toXhtml(html);
             ITextRenderer renderer = renderers.get();

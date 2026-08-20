@@ -170,6 +170,32 @@ class NotificationPersistenceIT {
     }
 
     @Test
+    void oldestPendingAndWebhookDeadCount() {
+        Instant now = Instant.parse("2026-08-20T10:00:00Z");
+        UUID pending = outbox.savePending(
+                "tenant_dev",
+                NotificationChannel.EMAIL,
+                "{\"to\":\"a@b.c\",\"subject\":\"s\",\"body\":\"b\"}",
+                now);
+        assertThat(outbox.oldestPendingCreatedAt()).contains(now);
+        UUID webhookDead = outbox.savePending(
+                "tenant_dev",
+                NotificationChannel.WEBHOOK,
+                "{\"webhookConfigId\":\"" + UUID.randomUUID() + "\",\"payload\":{}}",
+                now.plusSeconds(1));
+        outbox.markDead(webhookDead, "target down", now.plusSeconds(2));
+        UUID emailDead = outbox.savePending(
+                "tenant_dev",
+                NotificationChannel.EMAIL,
+                "{\"to\":\"a@b.c\",\"subject\":\"s\",\"body\":\"b\"}",
+                now.plusSeconds(3));
+        outbox.markDead(emailDead, "smtp", now.plusSeconds(4));
+        assertThat(outbox.countByChannelAndStatus(NotificationChannel.WEBHOOK, NotificationOutboxStatus.DEAD))
+                .isGreaterThanOrEqualTo(1);
+        assertThat(pending).isNotNull();
+    }
+
+    @Test
     void webhook_activeNameUniquePerTenant() {
         Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
         String name = "UniqueHook " + UUID.randomUUID();

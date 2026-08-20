@@ -117,6 +117,16 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- Observabilité §29 — actuator + Prometheus (port management) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+
         <!-- OpenAPI / Swagger UI — gated by app.openapi.enabled (default false) -->
         <dependency>
             <groupId>org.springdoc</groupId>

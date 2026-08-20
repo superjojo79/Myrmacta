@@ -55,4 +55,23 @@ public final class SecurityAuditLog {
                 dossierId,
                 field);
     }
+
+    public static void dossierRead(HttpServletRequest request, Authentication authentication, UUID dossierId) {
+        LOGGER.info(
+                "event=dossier_read method={} path={} principal={} dossierId={}",
+                request.getMethod(),
+                request.getRequestURI(),
+                authentication == null ? "anonymous" : authentication.getName(),
+                dossierId);
+    }
+
+    public static void elementContentRead(
+            HttpServletRequest request, Authentication authentication, UUID elementId) {
+        LOGGER.info(
+                "event=element_content_read method={} path={} principal={} elementId={}",
+                request.getMethod(),
+                request.getRequestURI(),
+                authentication == null ? "anonymous" : authentication.getName(),
+                elementId);
+    }
 }

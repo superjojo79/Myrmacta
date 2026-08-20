@@ -55,4 +55,22 @@ class SecurityAuditLogTest {
         assertThatCode(() -> SecurityAuditLog.sensitiveFieldChanged(request, null, UUID.randomUUID(), "ssn"))
                 .doesNotThrowAnyException();
     }
+
+    @Test
+    void dossierRead_doesNotThrow() {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/dossiers/1");
+        Authentication authentication = mock(Authentication.class);
+        when(authentication.getName()).thenReturn("u1");
+
+        assertThatCode(() -> SecurityAuditLog.dossierRead(request, authentication, UUID.randomUUID()))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void elementContentRead_doesNotThrow() {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/dossier-elements/1/content");
+
+        assertThatCode(() -> SecurityAuditLog.elementContentRead(request, null, UUID.randomUUID()))
+                .doesNotThrowAnyException();
+    }
 }

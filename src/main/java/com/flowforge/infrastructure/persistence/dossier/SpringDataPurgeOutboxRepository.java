@@ -1,8 +1,10 @@
 package com.flowforge.infrastructure.persistence.dossier;
 
 import com.flowforge.domain.dossier.model.PurgeOutboxStatus;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,6 +28,9 @@ interface SpringDataPurgeOutboxRepository extends JpaRepository<PurgeOutboxJpaEn
     Page<PurgeOutboxJpaEntity> findByStatusOrderByCreatedAtDesc(PurgeOutboxStatus status, Pageable pageable);
 
     long countByStatus(PurgeOutboxStatus status);
+
+    @Query("select min(e.createdAt) from PurgeOutboxJpaEntity e where e.status in :statuses")
+    Optional<Instant> findOldestCreatedAtByStatusIn(@Param("statuses") Collection<PurgeOutboxStatus> statuses);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(

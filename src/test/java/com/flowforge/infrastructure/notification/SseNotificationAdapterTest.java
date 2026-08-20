@@ -96,5 +96,18 @@ class SseNotificationAdapterTest {
 
         completion.getValue().run();
         assertThat(adapter.push("user-1", Map.of("x", 1))).isFalse();
+        assertThat(adapter.activeEmitterCount()).isZero();
+    }
+
+    @Test
+    void activeEmitterCount_followsRegisterAndUnregister() {
+        assertThat(adapter.activeEmitterCount()).isZero();
+        SseEmitter first = mock(SseEmitter.class);
+        SseEmitter second = mock(SseEmitter.class);
+        adapter.register("user-1", first);
+        adapter.register("user-2", second);
+        assertThat(adapter.activeEmitterCount()).isEqualTo(2);
+        adapter.unregister("user-1", first);
+        assertThat(adapter.activeEmitterCount()).isEqualTo(1);
     }
 }

@@ -7,7 +7,9 @@ import com.flowforge.domain.workflow.model.OutboxEvent;
 import com.flowforge.domain.workflow.port.out.OutboxRepository;
 import com.flowforge.domain.workflow.port.out.WorkflowEnginePort;
 import com.flowforge.domain.workflow.WorkflowVariables;
+import com.flowforge.infrastructure.config.TenantProperties;
 import com.flowforge.infrastructure.config.WorkflowProperties;
+import com.flowforge.infrastructure.observability.MdcScope;
 import java.util.Map;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -21,26 +23,37 @@ class OutboxRelayScheduler {
     private final AttachWorkflowUseCase attachWorkflow;
     private final WorkflowEnginePort workflowEnginePort;
     private final WorkflowProperties properties;
+    private final TenantProperties tenantProperties;
 
     OutboxRelayScheduler(
             OutboxRepository outboxRepository,
             AttachWorkflowUseCase attachWorkflow,
             WorkflowEnginePort workflowEnginePort,
-            WorkflowProperties properties) {
+            WorkflowProperties properties,
+            TenantProperties tenantProperties) {
         this.outboxRepository = outboxRepository;
         this.attachWorkflow = attachWorkflow;
         this.workflowEnginePort = workflowEnginePort;
         this.properties = properties;
+        this.tenantProperties = tenantProperties;
     }
 
     @Scheduled(fixedDelayString = "${app.workflow.outbox.poll-delay:1s}")
     void relayPendingEvents() {
-        for (OutboxEvent event : outboxRepository.lockNextPending(properties.outbox().batchSize())) {
-            processOne(event);
+        try (MdcScope ignored = MdcScope.tenant(tenantProperties.id())) {
+            for (OutboxEvent event : outboxRepository.lockNextPending(properties.outbox().batchSize())) {
+                processOne(event);
+            }
         }
     }
 
     void processOne(OutboxEvent event) {
+        try (MdcScope ignored = MdcScope.tenant(tenantProperties.id()).dossier(event.payload().dossierId())) {
+            processOneInternal(event);
+        }
+    }
+
+    private void processOneInternal(OutboxEvent event) {
         try {
             try {
                 WorkflowVariables.assertNoReservedKeys(event.payload().variables());

@@ -6,7 +6,9 @@ import com.flowforge.domain.dossier.port.out.PurgeOutboxRepository;
 import com.flowforge.domain.shared.PageQuery;
 import com.flowforge.domain.shared.PageResult;
 import com.flowforge.infrastructure.persistence.SpringPages;
+import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
@@ -18,6 +20,8 @@ public class JpaPurgeOutboxRepositoryAdapter implements PurgeOutboxRepository {
 
     private static final Set<PurgeOutboxStatus> RETRYABLE =
             Set.of(PurgeOutboxStatus.PENDING, PurgeOutboxStatus.FAILED);
+    private static final Set<PurgeOutboxStatus> UNFINISHED =
+            Set.of(PurgeOutboxStatus.PENDING, PurgeOutboxStatus.PROCESSING, PurgeOutboxStatus.FAILED);
 
     private final SpringDataPurgeOutboxRepository repository;
 
@@ -86,5 +90,11 @@ public class JpaPurgeOutboxRepositoryAdapter implements PurgeOutboxRepository {
     @Transactional(readOnly = true)
     public long countByStatus(PurgeOutboxStatus status) {
         return repository.countByStatus(status);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Instant> oldestUnfinishedCreatedAt() {
+        return repository.findOldestCreatedAtByStatusIn(UNFINISHED);
     }
 }

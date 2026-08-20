@@ -1,5 +1,6 @@
 package com.flowforge.infrastructure.web.document;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oidcLogin;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -15,12 +16,16 @@ import com.flowforge.domain.dossier.port.in.AddDossierElementUseCase;
 import com.flowforge.domain.dossier.port.out.DossierElementRepository;
 import com.flowforge.domain.document.port.out.DocumentStoragePort;
 import com.flowforge.support.OidcClientTestConfiguration;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -61,6 +66,50 @@ class DossierElementContentApiTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PDF))
                 .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("attachment")))
                 .andExpect(content().bytes("%PDF-content".getBytes(StandardCharsets.UTF_8)));
+    }
+
+    @Test
+    void download_success_emitsElementContentRead_andNonDownloadableDoesNot() throws Exception {
+        Fixture fixture = prepareProducedDoc("viewer-audit-ok", true);
+        grant(fixture.typeCode(), "viewer-audit-ok", "VIEW");
+        ListAppender<ILoggingEvent> appender = attachSecurityAuditAppender();
+        try {
+            mockMvc.perform(get("/api/dossier-elements/{id}/content", fixture.elementId())
+                            .with(user("viewer-audit-ok", "DOSSIER_VIEWER")))
+                    .andExpect(status().isOk());
+        } finally {
+            detachSecurityAuditAppender(appender);
+        }
+        assertThat(appender.list)
+                .extracting(ILoggingEvent::getFormattedMessage)
+                .anyMatch(msg -> msg.contains("event=element_content_read")
+                        && msg.contains("elementId=" + fixture.elementId()));
+
+        String code = createType("EL_note_audit");
+        grant(code, "mgr-note-audit", "EDIT");
+        String dossierId = createDossier(code, "mgr-note-audit");
+        DossierElement note = dossierElementRepository.save(new DossierElement(
+                UUID.randomUUID(),
+                UUID.fromString(dossierId),
+                TENANT_ID,
+                ElementType.NOTE,
+                "Note",
+                null,
+                Map.of(),
+                "system",
+                Instant.parse("2026-08-04T05:00:00Z"),
+                null));
+        appender = attachSecurityAuditAppender();
+        try {
+            mockMvc.perform(get("/api/dossier-elements/{id}/content", note.id())
+                            .with(user("admin-note-audit", "TENANT_ADMIN")))
+                    .andExpect(status().isConflict());
+        } finally {
+            detachSecurityAuditAppender(appender);
+        }
+        assertThat(appender.list)
+                .extracting(ILoggingEvent::getFormattedMessage)
+                .noneMatch(msg -> msg.contains("event=element_content_read"));
     }
 
     @Test
@@ -257,6 +306,20 @@ class DossierElementContentApiTest {
             throw new AssertionError("missing dossier id");
         }
         return matcher.group(1);
+    }
+
+    private static ListAppender<ILoggingEvent> attachSecurityAuditAppender() {
+        Logger logger = (Logger) LoggerFactory.getLogger("SECURITY_AUDIT");
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        return appender;
+    }
+
+    private static void detachSecurityAuditAppender(ListAppender<ILoggingEvent> appender) {
+        Logger logger = (Logger) LoggerFactory.getLogger("SECURITY_AUDIT");
+        logger.detachAppender(appender);
+        appender.stop();
     }
 
     private static RequestPostProcessor user(String subject, String... roles) {

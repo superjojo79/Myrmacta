@@ -2,8 +2,10 @@ package com.flowforge.domain.notification.port.out;
 
 import com.flowforge.domain.notification.model.NotificationChannel;
 import com.flowforge.domain.notification.model.NotificationOutboxRecord;
+import com.flowforge.domain.notification.model.NotificationOutboxStatus;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface NotificationOutboxRepository {
@@ -31,4 +33,8 @@ public interface NotificationOutboxRepository {
 
     /** Deletes PROCESSED and DEAD rows older than {@code cutoff}. */
     int purgeTerminalOlderThan(Instant cutoff);
+
+    Optional<Instant> oldestPendingCreatedAt();
+
+    long countByChannelAndStatus(NotificationChannel channel, NotificationOutboxStatus status);
 }

@@ -42,6 +42,7 @@ import { downloadElementContent } from './elements'
 import { completeTask, listMyTasks } from './tasks'
 import { previewHtml, previewPdf } from './documents'
 import { enqueueDossierPurge, listPurgeOutbox } from './purgeOutbox'
+import { getObservabilitySnapshot } from './observability'
 import { asPage } from './page'
 
 vi.mock('axios')
@@ -120,6 +121,7 @@ describe('api coverage', () => {
     await previewPdf({ htmlContent: '<p/>' })
     await listPurgeOutbox()
     await enqueueDossierPurge('d1')
+    await getObservabilitySnapshot()
     expect(axios.delete).toHaveBeenCalled()
   })
 })

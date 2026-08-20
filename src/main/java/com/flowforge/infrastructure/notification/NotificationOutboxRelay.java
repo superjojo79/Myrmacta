@@ -11,6 +11,7 @@ import com.flowforge.domain.notification.port.out.NotificationOutboxRepository;
 import com.flowforge.domain.notification.port.out.NotificationWebhookRepository;
 import com.flowforge.domain.notification.port.out.WebhookPort;
 import com.flowforge.infrastructure.config.NotificationProperties;
+import com.flowforge.infrastructure.observability.MdcScope;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -75,6 +76,12 @@ public class NotificationOutboxRelay {
     }
 
     void processOne(NotificationOutboxRecord record, Instant now) {
+        try (MdcScope ignored = MdcScope.tenant(record.tenantId()).dossier(dossierIdFromPayload(record.payloadJson()))) {
+            processOneInternal(record, now);
+        }
+    }
+
+    private void processOneInternal(NotificationOutboxRecord record, Instant now) {
         try {
             switch (record.channel()) {
                 case EMAIL -> dispatchEmail(record, now);
@@ -166,5 +173,23 @@ public class NotificationOutboxRelay {
             throw new IllegalArgumentException(field + " is required in outbox payload");
         }
         return value.asText();
+    }
+
+    private static String dossierIdFromPayload(String json) {
+        if (json == null || json.isBlank()) {
+            return null;
+        }
+        int key = json.indexOf("\"dossierId\"");
+        if (key < 0) {
+            return null;
+        }
+        int colon = json.indexOf(':', key);
+        int quote = json.indexOf('"', colon + 1);
+        int end = json.indexOf('"', quote + 1);
+        if (quote < 0 || end < 0) {
+            return null;
+        }
+        String value = json.substring(quote + 1, end);
+        return value.isBlank() ? null : value;
     }
 }

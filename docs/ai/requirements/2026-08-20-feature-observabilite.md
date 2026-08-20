@@ -16,8 +16,8 @@ todo_ref: TODO.md §29 · FILE-ATTENTE.md · REVUE-PRE-IMPLEMENTATION.md §29 ·
 # Requirements & Problem Understanding — `observabilite`
 
 > Feature produit TODO **§29**. **D-FE** et **Q1–Q6 actés**. Phase 2
-> **reviewed**. Design Phase 3 **reviewed** (A-* = DD-*). Prochaine :
-> Phase 4 planning.
+> **reviewed**. Design Phase 3 **reviewed** (A-* = DD-*). Phases 7–9
+> **fermées** (PR #59).
 
 ## Problem Statement
 **What problem are we solving?**
@@ -151,25 +151,25 @@ Le `TENANT_ADMIN` n’a pas non plus de vue santé dans le SPA.
 ## Success Criteria
 **How will we know when we're done?**
 
-- [ ] Logs JSON stdout avec `tenantId` ; `dossierId` /
+- [x] Logs JSON stdout avec `tenantId` ; `dossierId` /
       `processInstanceId` quand le contexte les connaît.
-- [ ] MDC nettoyé en `finally` (HTTP + jobs).
-- [ ] SLI §29 **plus** trois jauges d’âge outbox (déclenchement,
+- [x] MDC nettoyé en `finally` (HTTP + jobs).
+- [x] SLI §29 **plus** trois jauges d’âge outbox (déclenchement,
       notification, purge — **Q3 = B**) scrapeables sur le **port
       management** uniquement (`health` + `prometheus` ; **Q2 = A**).
-- [ ] Domaine pur : zéro MDC / Micrometer / actuator ; ArchUnit vert.
-- [ ] Aucune valeur sensible dans les logs.
-- [ ] `GET /api/observability` : `TENANT_ADMIN` → 200 + SLI dont **trois
+- [x] Domaine pur : zéro MDC / Micrometer / actuator ; ArchUnit vert.
+- [x] Aucune valeur sensible dans les logs.
+- [x] `GET /api/observability` : `TENANT_ADMIN` → 200 + SLI dont **trois
       âges** ; autre rôle → 403.
-- [ ] SPA `/admin/observabilite` : nav « Observabilité » (`TENANT_ADMIN`)
+- [x] SPA `/admin/observabilite` : nav « Observabilité » (`TENANT_ADMIN`)
       ; cartes KPI des SLI + trois âges ; bouton Rafraîchir ; **aucun**
       bouton métier.
-- [ ] Q1 = B implémenté (GET détail dossier + content, succès
+- [x] Q1 = B implémenté (GET détail dossier + content, succès
       seulement).
-- [ ] Vitest (vue + nav AuthZ) **et** Playwright (admin voit /
+- [x] Vitest (vue + nav AuthZ) **et** Playwright (admin voit /
       non-admin ne voit pas + régression).
-- [ ] `./mvnw verify` vert.
-- [ ] TODO §29 / FILE-ATTENTE / DEFERRED mis à jour **après**
+- [x] `./mvnw verify` vert.
+- [x] TODO §29 / FILE-ATTENTE / DEFERRED mis à jour **après**
       implémentation.
 
 ## Constraints & Assumptions
@@ -268,6 +268,4 @@ stories ; critères de succès ; `GET /api/observability` ; nav
 A-* figés Phase 3 (DD-JSON, DD-PROM-NAMES, DD-FLOWABLE-API,
 DD-THRESHOLDS, DD-EMPTY-AGE, DD-HEALTH, …).
 
-Status : **`reviewed`**.
-
-**Prochaine phase :** `dev-implementation` Phase 5 (plan Phase 4 reviewed).
+Status : **`reviewed`**. Phases 7–9 **fermées** (2026-08-20, PR #59).

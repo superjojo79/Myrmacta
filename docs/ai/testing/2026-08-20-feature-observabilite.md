@@ -2,13 +2,14 @@
 phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
-status: draft
+status: complete
 created: 2026-08-20
 updated: 2026-08-20
 feature: observabilite
 phase1: 2026-08-20
 phase2: 2026-08-20
 phase3: 2026-08-20
+phase8: 2026-08-20
 requirements_ref: docs/ai/requirements/2026-08-20-feature-observabilite.md
 design_ref: docs/ai/design/2026-08-20-feature-observabilite.md
 ---
@@ -16,7 +17,7 @@ design_ref: docs/ai/design/2026-08-20-feature-observabilite.md
 # Testing Strategy — `observabilite`
 
 > Aligné design **reviewed**. Vitest **et** Playwright **obligatoires**
-> (D-FE). Contrat snapshot **figé**.
+> (D-FE). Contrat snapshot **figé**. Phase 8 **complete**.
 
 ## Test Coverage Goals
 
@@ -90,8 +91,10 @@ figé, y compris `severity` et `purgeOutboxOldestUnfinishedAgeSeconds`).
       `flowforge_notification_webhook_dead`,
       `flowforge_sse_emitters_active`.
 - [x] `health/liveness` et `health/readiness` → 2xx sans auth.
-- [x] `beans` / `env` / `heapdump` → 404.
-- [x] Port applicatif : `/actuator/prometheus` → 404.
+- [x] `beans` / `env` / `heapdump` → **non exposés** (302 OIDC ou 404 ;
+      jamais JSON actuator `"contexts"`).
+- [x] Port applicatif : `/actuator/prometheus` **ne sert pas** les
+      métriques `flowforge_*` (SPA peut répondre 200 HTML).
 - [x] Scrape management **sans** session OIDC.
 
 ### Frontend Vitest
@@ -147,15 +150,17 @@ cd frontend && npm run test
 cd frontend && npm run test:e2e
 ```
 
-Phase 8 : coller les sorties fraîches. Jacoco : justifier tout fichier
-infra nouveau sous le seuil.
+Phase 8 : evidence fraîche collée ci-dessous. Jacoco : bundle ≥ 80 % ;
+classes observabilité nouvelles à 100 % lignes.
 
-Evidence Phase 5 (2026-08-20) :
+Evidence Phase 8 (2026-08-20) :
 
-- `./mvnw verify -Dmaven.compiler.release=21 -Dskip.frontend=true` → BUILD SUCCESS, Tests run 906, Failures 0, Jacoco check met.
-- `cd frontend && npm run test` → 47 files, 135 tests.
-- `cd frontend && npm run test:e2e` → 39 passed (E2E-OBS-1..4 inclus).
+- `./mvnw verify -Dmaven.compiler.release=21 -Dskip.frontend=true` → BUILD SUCCESS, Tests run **908**, Failures 0, Jacoco check met.
+- `cd frontend && npm run test` → 47 files, **135** tests.
+- `cd frontend && npm run lint` → OK.
+- `cd frontend && npm run test:e2e` → **39** passed (E2E-OBS-1..4 inclus).
 - Actuator non exposé (`beans`/`env`/`heapdump`) : 302 OIDC ou 404, jamais JSON actuator.
+- Port app `/actuator/prometheus` : body sans `flowforge_*`.
 
 ## Manual Testing
 

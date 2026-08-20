@@ -197,12 +197,18 @@ workflow actif » en parallèle réel. Décider également des seuils de couvert
 
 ---
 
-### [ ] 29. Observabilité
+### [x] 29. Observabilité
 
-**Phase 5 done (2026-08-20 — PR #59) :** M1–M5 livrés (actuator, MDC,
-Micrometer, audit lecture Q1=B, snapshot + SPA). Voir
-`docs/ai/planning/2026-08-20-feature-observabilite.md`. Phase 7–9
-restent (check implementation / testing doc / review).
+**Livré (2026-08-20 — feature `observabilite`, PR #59, Phase 9 READY) :**
+logs ECS + MDC (`tenantId` / `dossierId` / `processInstanceId`) ;
+Micrometer `flowforge.*` (3 âges outbox, Flowable DLQ+exception, timer
+PDF, webhooks DEAD, SSE) sur le **port management** ; audit lecture
+`SECURITY_AUDIT` Q1=B ; `GET /api/observability` + SPA
+`/admin/observabilite` (`TENANT_ADMIN`). Voir
+`docs/ai/implementation/2026-08-20-feature-observabilite.md`.
+
+Follow-ups non bloquants : wrapper MDC async Flowable Community 8 ;
+`dossierId` MDC par item de purge.
 
 Périmètre figé : logs ECS + MDC ; Micrometer (`flowforge.*`) ; écran
 admin `/admin/observabilite`. Détail : requirements + design.

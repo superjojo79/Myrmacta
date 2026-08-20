@@ -22,4 +22,13 @@ class NotificationDlqMeterBinderTest {
         binder.bindTo(registry);
         assertThat(registry.get(NotificationDlqMeterBinder.WEBHOOK_DEAD).gauge().value()).isEqualTo(4.0);
     }
+
+    @Test
+    void collectionFailure_returnsZero() {
+        NotificationOutboxRepository repository = mock(NotificationOutboxRepository.class);
+        when(repository.countByChannelAndStatus(NotificationChannel.WEBHOOK, NotificationOutboxStatus.DEAD))
+                .thenThrow(new IllegalStateException("db"));
+        NotificationDlqMeterBinder binder = new NotificationDlqMeterBinder(repository);
+        assertThat(binder.deadCount()).isZero();
+    }
 }

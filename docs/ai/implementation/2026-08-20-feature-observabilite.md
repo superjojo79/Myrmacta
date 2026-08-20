@@ -2,7 +2,7 @@
 phase: implementation
 title: Implementation Guide
 description: Technical implementation notes, patterns, and code guidelines
-status: draft
+status: complete
 created: 2026-08-20
 updated: 2026-08-20
 feature: observabilite
@@ -10,6 +10,8 @@ phase1: 2026-08-20
 phase3: 2026-08-20
 phase5: 2026-08-20
 phase7: 2026-08-20
+phase8: 2026-08-20
+phase9: 2026-08-20
 requirements_ref: docs/ai/requirements/2026-08-20-feature-observabilite.md
 design_ref: docs/ai/design/2026-08-20-feature-observabilite.md
 planning_ref: docs/ai/planning/2026-08-20-feature-observabilite.md
@@ -17,8 +19,8 @@ planning_ref: docs/ai/planning/2026-08-20-feature-observabilite.md
 
 # Implementation Guide — `observabilite`
 
-Phase 5 livrée (M1–M5). Phase 7 (contrôle vs design/requirements)
-**alignée** (écarts bas documentés, non bloquants). Hexagone :
+Phase 5 livrée (M1–M5). Phases 7–9 **fermées** : alignement design,
+evidence tests fraîche, revue finale sans finding bloquant. Hexagone :
 Micrometer / MDC / actuator uniquement dans `infrastructure`.
 
 ## Development Setup
@@ -135,3 +137,64 @@ log read si 403. Snapshot sans secrets.
 3. IT stdout ECS : assert qu’une ligne JSON contient `tenantId`.
 4. Contrôleurs workflow HTTP (`WorkflowTaskController.complete`) : PI
    connu mais pas encore poussé dans le MDC (filtre `tenantId` seulement).
+
+## Preuve Phase 8 (session fraîche 2026-08-20)
+
+| Commande | Exit | Résultat |
+|---|---|---|
+| `./mvnw verify -Dskip.frontend=true -Dmaven.compiler.release=21` | 0 | BUILD SUCCESS, **908** tests, Jacoco bundle ≥ 80 % met |
+| `cd frontend && npm run test` | 0 | **135** passed (47 files) |
+| `cd frontend && npm run lint` | 0 | OK |
+| `cd frontend && npm run test:e2e` | 0 | **39** passed (E2E-OBS-1..4 inclus) |
+
+Jacoco classes observabilité nouvelles : 100 % lignes (binders, façade,
+filtre, seuils, controller, `OutboxRelayScheduler`). Binder webhook
+DEAD : branche catch WARN couverte.
+
+## Phase 9 — revue finale
+
+**Checklist :** design match · pas de trou logique bloquant · sécu ·
+intégration SPA · tests · docs.
+
+### Findings
+
+Aucun finding bloquant.
+
+| Sévérité | Sujet | Recommandation |
+|---|---|---|
+| Low | Pas de `FlowableMdcConfigurer` async Community 8 | Fallback jobs applicatifs + PI après start outbox ; follow-up si API stable |
+| Low | Purge MDC `tenantId` batch, pas `dossierId` par item | Use case domaine pur ; itérer côté job infra si besoin ops |
+| Low | Actuator `beans`/`env`/`heapdump` 302/404 ; port app SPA 200 HTML | Objectif « pas de JSON actuator » tenu ; 404 strict non garanti avec SPA |
+| Low | `MdcTenantFilter` servlet `HIGHEST_PRECEDENCE` | `tenantId` plus tôt que « après tenant BFF » ; `finally` OK |
+| Info | `WorkflowTaskController.complete` ne pose pas PI dans le MDC | Filtre tenant seulement ; hors chemin critique outbox |
+
+### Sécurité
+
+- Port management `EndpointRequest` `permitAll` : **Q2 = A**, protection
+  **réseau** (reverse-proxy public ne route pas `8081`). Residual : un
+  scrape interne sans OIDC est voulu.
+- `GET /api/observability` : `@PreAuthorize TENANT_ADMIN` + CSRF GET
+  (méthode sûre) ; FE `meta.roles` + lien AppShell `isTenantAdmin`.
+- Audit lecture : ids seulement (`dossierId` / `elementId`), pas de
+  bytes / fields / payloads. Pas de log read si 403.
+- Snapshot JSON : compteurs et sévérités, **aucun** secret.
+- MDC : `tenantId` / `dossierId` / `processInstanceId` — pas de payload
+  outbox ni HMAC.
+- SSRF PDF / webhooks : inchangé (`RestrictedResourceUserAgent`,
+  `OutboundUrlGuard`).
+- ArchUnit : domaine ↛ micrometer / slf4j / actuator.
+- Index Liquibase lecture seule (pas de table d’audit, **Q1 = B**).
+
+### Breaking change / rollback
+
+- Additive (deps actuator, index notification, nouvelles routes).
+- Rollback = redeploy artefact précédent ; l’index peut rester.
+
+### Intégration
+
+SPA `/admin/observabilite` consomme uniquement `GET /api/observability`
+(même origine). Aucun appel `/actuator/**` depuis le frontend.
+
+Task tracing `npx ai-devkit@latest task` : **indisponible**.
+Lint feature : docs OK (warning worktree hors nom `feature-observabilite`
+car branche `cursor/observabilite-9800`).

@@ -10,6 +10,8 @@ phase1: 2026-08-20
 phase3: 2026-08-20
 phase4: 2026-08-20
 phase5: 2026-08-20
+phase8: 2026-08-20
+phase9: 2026-08-20
 requirements_ref: docs/ai/requirements/2026-08-20-feature-observabilite.md
 design_ref: docs/ai/design/2026-08-20-feature-observabilite.md
 testing_ref: docs/ai/testing/2026-08-20-feature-observabilite.md
@@ -17,7 +19,8 @@ testing_ref: docs/ai/testing/2026-08-20-feature-observabilite.md
 
 # Project Planning & Task Breakdown — `observabilite`
 
-> Phase 4 **reviewed**. Phase 5 **done** (T1.1–T5.2). Design figé.
+> Phase 4 **reviewed**. Phase 5 **done** (T1.1–T5.2). Phases 7–9
+> **fermées**. Design figé.
 
 ## Milestones
 
@@ -222,6 +225,6 @@ File purge SPA comme patron UI/E2E.
 
 Toutes les tâches T1.1–T5.2 **done** (2026-08-20).
 
-- Backend : `./mvnw verify -Dmaven.compiler.release=21 -Dskip.frontend=true` → **BUILD SUCCESS**, Tests run **906**, Failures **0**, Jacoco check met.
-- Frontend : `npm run test` → 47 files / 135 tests ; `npm run test:e2e` → 39 passed (dont E2E-OBS-1..4).
+- Backend : `./mvnw verify -Dmaven.compiler.release=21 -Dskip.frontend=true` → **BUILD SUCCESS**, Tests run **908**, Failures **0**, Jacoco check met (Phase 8).
+- Frontend : `npm run test` → 47 files / 135 tests ; `npm run lint` OK ; `npm run test:e2e` → 39 passed (dont E2E-OBS-1..4).
 - Écart noté : pas de `FlowableMdcConfigurer` async (API Community 8) — MDC jobs applicatifs seulement (`implementation.md`).

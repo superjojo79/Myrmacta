@@ -199,9 +199,10 @@ workflow actif » en parallèle réel. Décider également des seuils de couvert
 
 ### [ ] 29. Observabilité
 
-**Phase 4 reviewed (2026-08-20 — PR #59) :** plan M1–M5. Voir
-`docs/ai/planning/2026-08-20-feature-observabilite.md`. Phase 5 en
-cours.
+**Phase 5 done (2026-08-20 — PR #59) :** M1–M5 livrés (actuator, MDC,
+Micrometer, audit lecture Q1=B, snapshot + SPA). Voir
+`docs/ai/planning/2026-08-20-feature-observabilite.md`. Phase 7–9
+restent (check implementation / testing doc / review).
 
 Périmètre figé : logs ECS + MDC ; Micrometer (`flowforge.*`) ; écran
 admin `/admin/observabilite`. Détail : requirements + design.

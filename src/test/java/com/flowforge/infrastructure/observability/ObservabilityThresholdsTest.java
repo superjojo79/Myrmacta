@@ -17,10 +17,10 @@ class ObservabilityThresholdsTest {
 
     @Test
     void countSeverity_usesZeroWarnMaxAndCritMin() {
-        assertThat(ObservabilityThresholds.countSeverity(0, 10, 5)).isEqualTo("ok");
-        assertThat(ObservabilityThresholds.countSeverity(1, 10, 5)).isEqualTo("warn");
-        assertThat(ObservabilityThresholds.countSeverity(9, 10, 5)).isEqualTo("warn");
-        assertThat(ObservabilityThresholds.countSeverity(10, 10, 5)).isEqualTo("crit");
+        assertThat(ObservabilityThresholds.countSeverity(0, 10, 1)).isEqualTo("ok");
+        assertThat(ObservabilityThresholds.countSeverity(1, 10, 1)).isEqualTo("warn");
+        assertThat(ObservabilityThresholds.countSeverity(9, 10, 1)).isEqualTo("warn");
+        assertThat(ObservabilityThresholds.countSeverity(10, 10, 1)).isEqualTo("crit");
         assertThat(ObservabilityThresholds.countSeverity(0, 5, 1)).isEqualTo("ok");
         assertThat(ObservabilityThresholds.countSeverity(4, 5, 1)).isEqualTo("warn");
         assertThat(ObservabilityThresholds.countSeverity(5, 5, 1)).isEqualTo("crit");

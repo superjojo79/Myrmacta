@@ -63,4 +63,14 @@ describe('AppShell', () => {
     expect(wrapper.text()).toContain('Workflows')
     expect(wrapper.text()).not.toContain('Observabilité')
   })
+
+  it('hides observability link for dossier viewer', async () => {
+    const auth = useAuthStore()
+    auth.user = { id: 'v', name: 'Viewer', email: null, roles: ['DOSSIER_VIEWER'] }
+    const router = createRouter({ history: createMemoryHistory(), routes })
+    await router.push('/supervision')
+    await router.isReady()
+    const wrapper = mount(AppShell, { global: { plugins: [router] } })
+    expect(wrapper.text()).not.toContain('Observabilité')
+  })
 })

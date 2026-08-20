@@ -9,6 +9,7 @@ feature: observabilite
 phase1: 2026-08-20
 phase3: 2026-08-20
 phase4: 2026-08-20
+phase5: 2026-08-20
 requirements_ref: docs/ai/requirements/2026-08-20-feature-observabilite.md
 design_ref: docs/ai/design/2026-08-20-feature-observabilite.md
 testing_ref: docs/ai/testing/2026-08-20-feature-observabilite.md
@@ -16,15 +17,15 @@ testing_ref: docs/ai/testing/2026-08-20-feature-observabilite.md
 
 # Project Planning & Task Breakdown — `observabilite`
 
-> Phase 4 **reviewed**. Exécution = Phase 5 (TDD). Design figé.
+> Phase 4 **reviewed**. Phase 5 **done** (T1.1–T5.2). Design figé.
 
 ## Milestones
 
-- [ ] **M1** — Actuator port management + logs ECS + MDC `tenantId`
-- [ ] **M2** — Ports lecture + binders (3 âges, Flowable ×2, PDF, webhook DEAD, SSE) + MDC jobs
-- [ ] **M3** — Q1 audit lecture `SECURITY_AUDIT`
-- [ ] **M4** — `GET /api/observability` + SPA `/admin/observabilite`
-- [ ] **M5** — ArchUnit + OpenAPI + `./mvnw verify` + Vitest + Playwright
+- [x] **M1** — Actuator port management + logs ECS + MDC `tenantId`
+- [x] **M2** — Ports lecture + binders (3 âges, Flowable ×2, PDF, webhook DEAD, SSE) + MDC jobs
+- [x] **M3** — Q1 audit lecture `SECURITY_AUDIT`
+- [x] **M4** — `GET /api/observability` + SPA `/admin/observabilite`
+- [x] **M5** — ArchUnit + OpenAPI + `./mvnw verify` + Vitest + Playwright
 
 ## Task Breakdown
 
@@ -39,14 +40,14 @@ TDD : test rouge → code → vert. Validation : commandes ci-dessous.
   `MANAGEMENT_PORT=-1` (mock) ; IT dédié `MANAGEMENT_PORT=0`.
 - **Deps :** aucune.
 - **Tests :** T1.3, T5.2.
-- **Status :** todo
+- **Status :** done
 
 #### T1.2 `MdcScope` (infra)
 - **Outcome :** `AutoCloseable` put/clear **uniquement** des clés posées ;
   ignore valeurs null ; pas de `MDC.clear()` global.
 - **Deps :** aucune.
 - **Tests :** `MdcScopeTest` (parent scope préservé ; null non posé).
-- **Status :** todo
+- **Status :** done
 
 #### T1.3 Filtre HTTP `tenantId` + chaîne management
 - **Outcome :** `MdcTenantFilter` (`tenantId` = `TenantProperties`) en
@@ -57,7 +58,7 @@ TDD : test rouge → code → vert. Validation : commandes ci-dessous.
   vide après, y compris exception) ; `ObservabilityActuatorIT` (prometheus
   sans OIDC sur port management ; 404 prometheus sur port app ;
   health liveness/readiness ; beans/env 404).
-- **Status :** todo
+- **Status :** done
 
 ### M2 — Métriques
 
@@ -73,7 +74,7 @@ TDD : test rouge → code → vert. Validation : commandes ci-dessous.
 - **Tests :** étendre `WorkflowPersistenceTest`,
   `NotificationPersistenceIT`, `PurgeGraphPersistenceIT` /
   `RetentionSchemaIT` (index) ; vide → empty Optional ; count WEBHOOK+DEAD.
-- **Status :** todo
+- **Status :** done
 
 #### T2.2 `ObservabilityThresholds` + binders âge
 - **Outcome :** constantes DD-THRESHOLDS ; `OutboxAgeMeterBinder` trois
@@ -82,7 +83,7 @@ TDD : test rouge → code → vert. Validation : commandes ci-dessous.
 - **Deps :** T2.1, T1.1.
 - **Tests :** `ObservabilityThresholdsTest` ; `OutboxAgeMeterBinderTest`
   (SimpleMeterRegistry + mocks ports).
-- **Status :** todo
+- **Status :** done
 
 #### T2.3 Flowable jobs + webhook DLQ + SSE + PDF timer
 - **Outcome :**
@@ -97,7 +98,7 @@ TDD : test rouge → code → vert. Validation : commandes ci-dessous.
   `NotificationDlqMeterBinderTest` ; `SseNotificationAdapterTest` count
   register/unregister ; `FlyingSaucerPdfAdapterTest` timer count (succès +
   HTML invalide / exception).
-- **Status :** todo
+- **Status :** done
 
 #### T2.4 MDC jobs
 - **Outcome :** `MdcScope` autour de `OutboxRelayScheduler.processOne`
@@ -109,7 +110,7 @@ TDD : test rouge → code → vert. Validation : commandes ci-dessous.
 - **Tests :** `OutboxRelaySchedulerTest` / `NotificationOutboxRelayTest`
   — MDC vide après item (spy MDC via test dédié `JobMdcTest` si plus
   simple).
-- **Status :** todo
+- **Status :** done
 
 ### M3 — Audit lecture
 
@@ -123,7 +124,7 @@ TDD : test rouge → code → vert. Validation : commandes ci-dessous.
   sans read ; 403 sans `dossier_read`) ; `DossierElementContentApiTest`
   (content servi → `element_content_read` ; non downloadable sans event) ;
   `SecurityAuditLogTest` (pas de throw, message sans bytes).
-- **Status :** todo
+- **Status :** done
 
 ### M4 — Snapshot + SPA
 
@@ -135,14 +136,14 @@ TDD : test rouge → code → vert. Validation : commandes ci-dessous.
 - **Tests :** `ObservabilityApiTest` (admin 200 + champs ; manager /
   workflow admin / viewer 403 ; pas de payload secret) ;
   `ObservabilitySnapshotFacadeTest` (seuils, pdf n/a).
-- **Status :** todo
+- **Status :** done
 
 #### T4.2 OpenAPI
 - **Outcome :** chemin documenté via springdoc ; assertion
   `OpenApiEnabledApiTest` `$.paths['/api/observability']`.
 - **Deps :** T4.1.
 - **Tests :** `OpenApiEnabledApiTest`.
-- **Status :** todo
+- **Status :** done
 
 #### T4.3 SPA admin
 - **Outcome :** `api/observability.ts`, `useObservabilitySnapshot`,
@@ -155,7 +156,7 @@ TDD : test rouge → code → vert. Validation : commandes ci-dessous.
   `apiCoverage.spec.ts`.
 - **Tests Playwright :** E2E-OBS-1..4 dans `pilotage.spec.ts` (mock
   `**/api/observability**`).
-- **Status :** todo
+- **Status :** done
 
 ### M5 — Qualité
 
@@ -164,14 +165,14 @@ TDD : test rouge → code → vert. Validation : commandes ci-dessous.
   `org.springframework.boot.actuate..`.
 - **Deps :** tout le code domaine.
 - **Tests :** `ArchitectureRulesTest`.
-- **Status :** todo
+- **Status :** done
 
 #### T5.2 Verify
 - **Outcome :** `./mvnw verify -Dmaven.compiler.release=21` ;
   `cd frontend && npm run test` ; `cd frontend && npm run test:e2e`.
 - **Deps :** M1–M4, T5.1.
 - **Tests :** evidence Phase 5/8.
-- **Status :** todo
+- **Status :** done
 
 ## Mapping tests ↔ tâches
 
@@ -219,4 +220,8 @@ File purge SPA comme patron UI/E2E.
 
 ## Progress (Phase 5)
 
-Mise à jour au fil de l’eau. Départ : toutes les tâches **todo**.
+Toutes les tâches T1.1–T5.2 **done** (2026-08-20).
+
+- Backend : `./mvnw verify -Dmaven.compiler.release=21 -Dskip.frontend=true` → **BUILD SUCCESS**, Tests run **906**, Failures **0**, Jacoco check met.
+- Frontend : `npm run test` → 47 files / 135 tests ; `npm run test:e2e` → 39 passed (dont E2E-OBS-1..4).
+- Écart noté : pas de `FlowableMdcConfigurer` async (API Community 8) — MDC jobs applicatifs seulement (`implementation.md`).

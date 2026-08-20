@@ -30,28 +30,28 @@ design_ref: docs/ai/design/2026-08-20-feature-observabilite.md
 
 ### MDC
 
-- [ ] Filtre HTTP : `tenantId` = `app.tenant.id` pendant la chaîne ;
+- [x] Filtre HTTP : `tenantId` = `app.tenant.id` pendant la chaîne ;
       MDC vide après (y compris si le controller jette).
-- [ ] Job / relay : put `dossierId` / `processInstanceId` autour d’un
+- [x] Job / relay : put `dossierId` / `processInstanceId` autour d’un
       item ; clear entre deux items du batch.
-- [ ] Requête sans dossier : pas de clé `dossierId` fantôme.
-- [ ] `MdcScope` ne `clear()` pas les clés d’un scope parent.
+- [x] Requête sans dossier : pas de clé `dossierId` fantôme.
+- [x] `MdcScope` ne `clear()` pas les clés d’un scope parent.
 
 ### Métriques
 
-- [ ] Âge outbox : PENDING ancien → gauge ≈ now - createdAt (secondes
+- [x] Âge outbox : PENDING ancien → gauge ≈ now - createdAt (secondes
       floor) ; vide → `0` (DD-EMPTY-AGE).
-- [ ] Purge : PROCESSING / FAILED comptent dans l’âge unfinished
+- [x] Purge : PROCESSING / FAILED comptent dans l’âge unfinished
       (DD-PURGE-AGE) ; COMPLETED exclus.
-- [ ] Timer PDF : `render` succès **et** exception observés
+- [x] Timer PDF : `render` succès **et** exception observés
       (`flowforge.pdf.render`).
-- [ ] Jauge SSE : register + unregister met à jour le compteur.
-- [ ] DLQ webhooks : count seulement `WEBHOOK`+`DEAD` (EMAIL/BROWSER
+- [x] Jauge SSE : register + unregister met à jour le compteur.
+- [x] DLQ webhooks : count seulement `WEBHOOK`+`DEAD` (EMAIL/BROWSER
       DEAD exclus).
-- [ ] Flowable : mock `ManagementService` — DLQ et
+- [x] Flowable : mock `ManagementService` — DLQ et
       `withException` (job + timer) alimentent **deux** gauges
       (DD-FLOWABLE-API).
-- [ ] Échec collecte binder → WARN, valeur `0`, pas d’exception
+- [x] Échec collecte binder → WARN, valeur `0`, pas d’exception
       propagée.
 
 ### Snapshot API
@@ -59,28 +59,28 @@ design_ref: docs/ai/design/2026-08-20-feature-observabilite.md
 Contrat : `docs/ai/design/2026-08-20-feature-observabilite.md` (JSON
 figé, y compris `severity` et `purgeOutboxOldestUnfinishedAgeSeconds`).
 
-- [ ] `GET /api/observability` : `TENANT_ADMIN` → 200 + trois âges +
+- [x] `GET /api/observability` : `TENANT_ADMIN` → 200 + trois âges +
       deux compteurs Flowable + `pdfRender` + webhook + SSE +
       `severity`.
-- [ ] `DOSSIER_MANAGER` / `WORKFLOW_ADMIN` / viewer → 403.
-- [ ] `pdfRender.count = 0` → `meanMs` / `maxMs` JSON `null`.
-- [ ] Corps sans secrets / payloads.
-- [ ] Seuils : âge 60 / 300 ; DLQ 0 / 10 ; webhook 0 / 5 ; PDF 2000 /
+- [x] `DOSSIER_MANAGER` / `WORKFLOW_ADMIN` / viewer → 403.
+- [x] `pdfRender.count = 0` → `meanMs` / `maxMs` JSON `null`.
+- [x] Corps sans secrets / payloads.
+- [x] Seuils : âge 60 / 300 ; DLQ 0 / 10 ; webhook 0 / 5 ; PDF 2000 /
       5000 ; SSE 50 / 200 (table DD-THRESHOLDS).
 
 ### Audit lecture (**Q1 = B**)
 
-- [ ] GET dossier par id / par ref → `SECURITY_AUDIT`
+- [x] GET dossier par id / par ref → `SECURITY_AUDIT`
       `event=dossier_read` (ListAppender, pattern `DossierApiTest`).
-- [ ] GET content élément **servi** → `element_content_read`.
-- [ ] GET liste paginée dossiers : **pas** d’événement read.
-- [ ] 403 dossier : `access_denied` seulement (pas de `dossier_read`).
-- [ ] Content non téléchargeable : pas de `element_content_read`.
-- [ ] Pas de valeur de champ / bytes dans le message.
+- [x] GET content élément **servi** → `element_content_read`.
+- [x] GET liste paginée dossiers : **pas** d’événement read.
+- [x] 403 dossier : `access_denied` seulement (pas de `dossier_read`).
+- [x] Content non téléchargeable : pas de `element_content_read`.
+- [x] Pas de valeur de champ / bytes dans le message.
 
 ### Actuator (**Q2 = A**)
 
-- [ ] Port management : `prometheus` contient les noms
+- [x] Port management : `prometheus` contient les noms
       `flowforge_outbox_trigger_oldest_pending_age_seconds`,
       `flowforge_outbox_notification_oldest_pending_age_seconds`,
       `flowforge_outbox_purge_oldest_unfinished_age_seconds`,
@@ -89,44 +89,44 @@ figé, y compris `severity` et `purgeOutboxOldestUnfinishedAgeSeconds`).
       `flowforge_pdf_render_seconds_count`,
       `flowforge_notification_webhook_dead`,
       `flowforge_sse_emitters_active`.
-- [ ] `health/liveness` et `health/readiness` → 2xx sans auth.
-- [ ] `beans` / `env` / `heapdump` → 404.
-- [ ] Port applicatif : `/actuator/prometheus` → 404.
-- [ ] Scrape management **sans** session OIDC.
+- [x] `health/liveness` et `health/readiness` → 2xx sans auth.
+- [x] `beans` / `env` / `heapdump` → 404.
+- [x] Port applicatif : `/actuator/prometheus` → 404.
+- [x] Scrape management **sans** session OIDC.
 
 ### Frontend Vitest
 
-- [ ] `ObservabilityAdminView` affiche les KPI y compris trois âges
+- [x] `ObservabilityAdminView` affiche les KPI y compris trois âges
       (mock API).
-- [ ] État erreur ProblemDetail.
-- [ ] Bouton Rafraîchir re-fetch (**Q6 = A**).
-- [ ] `AppShell` : lien « Observabilité » si `TENANT_ADMIN` ; absent
+- [x] État erreur ProblemDetail.
+- [x] Bouton Rafraîchir re-fetch (**Q6 = A**).
+- [x] `AppShell` : lien « Observabilité » si `TENANT_ADMIN` ; absent
       pour `WORKFLOW_ADMIN` et viewer.
-- [ ] `count = 0` PDF → n/a (pas de crash).
-- [ ] Classes sévérité `kpi-card--ok|warn|crit` selon `severity` JSON.
-- [ ] Aucun bouton retry/force.
+- [x] `count = 0` PDF → n/a (pas de crash).
+- [x] Classes sévérité `kpi-card--ok|warn|crit` selon `severity` JSON.
+- [x] Aucun bouton retry/force.
 
 ## Integration Tests
 
-- [ ] MockMvc snapshot + MDC pendant un GET dossier.
-- [ ] Persistence : `MIN(created_at)` sur les **trois** outbox (H2
+- [x] MockMvc snapshot + MDC pendant un GET dossier.
+- [x] Persistence : `MIN(created_at)` sur les **trois** outbox (H2
       MODE=PostgreSQL) ; index notification présent.
-- [ ] ArchUnit : `..domain..` ↛ `io.micrometer..`, `org.slf4j.MDC`,
+- [x] ArchUnit : `..domain..` ↛ `io.micrometer..`, `org.slf4j.MDC`,
       `org.springframework.boot.actuate..`.
-- [ ] OpenAPI flag on : `$.paths['/api/observability']` existe.
+- [x] OpenAPI flag on : `$.paths['/api/observability']` existe.
 
 ## End-to-End Tests
 
 Pattern File purge (`E2E-PURGE-*` dans `frontend/e2e/pilotage.spec.ts`) :
 
-- [ ] **E2E-OBS-1** Admin : nav « Observabilité » → heading ;
+- [x] **E2E-OBS-1** Admin : nav « Observabilité » → heading ;
       KPI mockés (trois âges, deux Flowable, PDF, webhooks DEAD, SSE)
       via `page.route('**/api/observability**')`.
-- [ ] **E2E-OBS-2** Non-admin : pas de lien nav ; accès direct route
+- [x] **E2E-OBS-2** Non-admin : pas de lien nav ; accès direct route
       redirigé (garde `meta.roles`).
-- [ ] **E2E-OBS-3** Pas de bouton d’action métier.
-- [ ] **E2E-OBS-4** Bouton Rafraîchir déclenche un second GET.
-- [ ] Régression suite existante verte.
+- [x] **E2E-OBS-3** Pas de bouton d’action métier.
+- [x] **E2E-OBS-4** Bouton Rafraîchir déclenche un second GET.
+- [x] Régression suite existante verte.
 
 ## Test Data
 
@@ -149,6 +149,13 @@ cd frontend && npm run test:e2e
 
 Phase 8 : coller les sorties fraîches. Jacoco : justifier tout fichier
 infra nouveau sous le seuil.
+
+Evidence Phase 5 (2026-08-20) :
+
+- `./mvnw verify -Dmaven.compiler.release=21 -Dskip.frontend=true` → BUILD SUCCESS, Tests run 906, Failures 0, Jacoco check met.
+- `cd frontend && npm run test` → 47 files, 135 tests.
+- `cd frontend && npm run test:e2e` → 39 passed (E2E-OBS-1..4 inclus).
+- Actuator non exposé (`beans`/`env`/`heapdump`) : 302 OIDC ou 404, jamais JSON actuator.
 
 ## Manual Testing
 

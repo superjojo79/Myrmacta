@@ -11,6 +11,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -24,6 +25,7 @@ public class ObservabilitySnapshotFacade {
     private final MeterRegistry meterRegistry;
     private final Clock clock;
 
+    @Autowired
     public ObservabilitySnapshotFacade(
             TenantProperties tenantProperties,
             OutboxAgeMeterBinder outboxAgeMeterBinder,

@@ -11,9 +11,8 @@ phase1: 2026-08-20
 
 # Project Planning & Task Breakdown — `observabilite`
 
-> Squelette Phase 1. **Remplir en Phase 4** (`dev-planning`) après
-> requirements **reviewed** et design **reviewed**. Ne pas implémenter
-> depuis cette page.
+> Squelette. Remplir en Phase 4 après design **reviewed**. Q1–Q6
+> **actées**. Ne pas implémenter depuis cette page.
 
 ## Milestones (prévisionnel)
 

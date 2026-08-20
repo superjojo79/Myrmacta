@@ -2,7 +2,7 @@
 phase: requirements
 title: Requirements & Problem Understanding
 description: Clarify the problem space, gather requirements, and define success criteria
-status: draft
+status: reviewed
 created: 2026-08-20
 updated: 2026-08-20
 feature: observabilite
@@ -14,9 +14,8 @@ todo_ref: TODO.md §29 · FILE-ATTENTE.md · REVUE-PRE-IMPLEMENTATION.md §29 ·
 
 # Requirements & Problem Understanding — `observabilite`
 
-> Feature produit TODO **§29**. **D-FE**, **Q1 = B**, **Q2 = A**,
-> **Q3 = B**, **Q4 = A**, **Q5 = A** actés. Phase 2 **en cours** : Q6.
-> Status **draft**.
+> Feature produit TODO **§29**. **D-FE** et **Q1–Q6 actés**. Phase 2
+> **reviewed**. Prochaine : Phase 3 design.
 
 ## Problem Statement
 **What problem are we solving?**
@@ -61,7 +60,8 @@ Le `TENANT_ADMIN` n’a pas non plus de vue santé dans le SPA.
   5. nombre d’`SseEmitter` actifs.
 - Écran admin lecture **`/admin/observabilite`** (**D-FE**) : cartes
   KPI + sévérité (**Q4 = A**), y compris **les trois âges
-  d’outbox** ; rôle **`TENANT_ADMIN`** (**Q5 = A**) ; refresh encore Q6.
+  d’outbox** ; rôle **`TENANT_ADMIN`** (**Q5 = A**) ; ouverture +
+  bouton Rafraîchir (**Q6 = A**).
 - Traçabilité lectures **Q1 = B** : logs `SECURITY_AUDIT` INFO sur
   les GET dossier détail et contenu binaire (pas de table, pas d’UI
   d’audit).
@@ -82,6 +82,7 @@ Le `TENANT_ADMIN` n’a pas non plus de vue santé dans le SPA.
 - Actuator sur le port BFF public (**Q2 = A**).
 - Une seule jauge d’âge « outbox générique » (**Q3 ≠ A**).
 - Accès `WORKFLOW_ADMIN` à l’écran / GET (**Q5 ≠ B**).
+- Poll automatique de l’écran (**Q6 ≠ B**).
 - Table d’audit + écran d’audit lecture (**Q1 ≠ C**).
 - Codegen OpenAPI, antivirus PJ, `http-rest` SERVICE.
 - `platform.tenant_migration_status`.
@@ -118,8 +119,9 @@ Le `TENANT_ADMIN` n’a pas non plus de vue santé dans le SPA.
 5. **En tant qu’** ops, **je veux** le nombre d’`SseEmitter` vivants,
    **afin de** voir si le canal navigateur sature la JVM.
 6. **En tant que** `TENANT_ADMIN`, **je veux** `/admin/observabilite`
-   avec les SLI §29 **et** les trois âges d’outbox, **afin de**
-   juger la santé **sans** Prometheus.
+   avec les SLI §29 **et** les trois âges d’outbox, plus un bouton
+   **Rafraîchir** (**Q6 = A**), **afin de** juger la santé **sans**
+   Prometheus.
 7. **En tant que** `WORKFLOW_ADMIN` / `DOSSIER_MANAGER` /
    `DOSSIER_VIEWER`, **je ne veux pas** cet écran ni le lien nav.
 8. **En tant que** conformité, **je veux** un log `SECURITY_AUDIT`
@@ -158,7 +160,8 @@ Le `TENANT_ADMIN` n’a pas non plus de vue santé dans le SPA.
 - [ ] `GET /api/observability` : `TENANT_ADMIN` → 200 + SLI dont **trois
       âges** ; autre rôle → 403.
 - [ ] SPA `/admin/observabilite` : nav « Observabilité » (`TENANT_ADMIN`)
-      ; cartes KPI des SLI + trois âges ; **aucun** bouton métier.
+      ; cartes KPI des SLI + trois âges ; bouton Rafraîchir ; **aucun**
+      bouton métier.
 - [ ] Q1 = B implémenté (GET détail dossier + content, succès
       seulement).
 - [ ] Vitest (vue + nav AuthZ) **et** Playwright (admin voit /
@@ -180,7 +183,7 @@ Le `TENANT_ADMIN` n’a pas non plus de vue santé dans le SPA.
 - Branche Cloud : `cursor/observabilite-9800` (lint `feature-*` = MISS
   attendu).
 
-**Recommandations Phase 2 (Q6 encore ouverte) :**
+**Décisions produit Phase 2 (toutes actées) :**
 
 | Id | Sujet | Choix |
 |---|---|---|
@@ -199,7 +202,7 @@ Le `TENANT_ADMIN` n’a pas non plus de vue santé dans le SPA.
 | **D-MGMT** / **Q2** | Scrape | **A acté** — port management séparé, non public |
 | **Q4** | UI | **A acté** — cartes KPI + sévérité ; pas Chart.js |
 | **Q5** | Rôle | **A acté** — `TENANT_ADMIN` seul |
-| **Q6** | Refresh | Ouverture + bouton Rafraîchir |
+| **Q6** | Refresh | **A acté** — ouverture + bouton Rafraîchir |
 
 **Assumptions techniques (A-*, détail Phase 3) :**
 
@@ -228,27 +231,36 @@ Le `TENANT_ADMIN` n’a pas non plus de vue santé dans le SPA.
 | **Q3 / D-OUTBOX** | Âge outbox | **B** (2026-08-20) — trois jauges distinctes : déclenchement, notification, purge |
 | **Q4** | Forme UI | **A** (2026-08-20) — cartes KPI + sévérité (ok/warn/crit), snapshot ; pas Chart.js ni historique |
 | **Q5** | Rôle écran / GET | **A** (2026-08-20) — `TENANT_ADMIN` seul ; `WORKFLOW_ADMIN` exclus |
+| **Q6** | Rafraîchissement | **A** (2026-08-20) — chargement à l’ouverture + bouton Rafraîchir ; pas de poll |
 
-### Ouvertes (Phase 2 — une à la fois)
+### Ouvertes
 
-| Id | Question | Options | Reco |
-|---|---|---|---|
-| **Q6** | Rafraîchissement | **A** load + Rafraîchir · **B** + poll 30 s | **A** |
-
-Posée maintenant : **Q6**.
+Aucune question **produit**. Restes **A-*** = design Phase 3.
 
 ### Hors file
 
 Rapports/SLA, OTel, Grafana-as-code, codegen, antivirus, `http-rest`
 SERVICE, Testcontainers §28.
 
-## Phase 2 — revue en cours (2026-08-20)
+## Phase 2 — revue close (2026-08-20)
 
 Template README : OK.
 
-La reco Q6 **n’est pas actée**. Clos : **D-FE**, **Q1 = B**,
-**Q2 = A**, **Q3 = B**, **Q4 = A**, **Q5 = A**.
+**Validé :** D-APPROACH = B + D-FE ; Q1–Q6 (une à une) ; non-goals ;
+stories ; critères de succès ; `GET /api/observability` ; nav
+« Observabilité ».
 
-Status : **`draft`**.
+| Id | Choix |
+|---|---|
+| Q1 | **B** — logs `SECURITY_AUDIT` lectures réussies |
+| Q2 | **A** — port management, Prometheus non public |
+| Q3 | **B** — trois jauges d’âge outbox |
+| Q4 | **A** — cartes KPI + sévérité |
+| Q5 | **A** — `TENANT_ADMIN` seul |
+| Q6 | **A** — load + Rafraîchir |
 
-**En cours :** Q6 (rafraîchissement).
+A-* reportées en Phase 3.
+
+Status : **`reviewed`**.
+
+**Prochaine phase :** `dev-design` Phase 3.

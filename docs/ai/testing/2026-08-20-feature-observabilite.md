@@ -14,7 +14,7 @@ requirements_ref: docs/ai/requirements/2026-08-20-feature-observabilite.md
 # Testing Strategy — `observabilite`
 
 > Draft aligné requirements **reviewed**. Vitest **et** Playwright
-> **obligatoires** (D-FE). Q1 = B, Q4–Q6 = A.
+> **obligatoires** (D-FE). Q1–Q6 actées.
 
 ## Test Coverage Goals
 

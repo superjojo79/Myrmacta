@@ -13,7 +13,7 @@ todo_ref: TODO.md §29 · Q1–Q6 reviewed
 
 # System Design & Architecture — `observabilite`
 
-> Draft. Requirements **pas reviewed** : Q1–Q6 ouvertes. D-FE acté.
+> Draft. Requirements **reviewed** (Q1–Q6). **Revue design = Phase 3**.
 
 ## Architecture Overview
 

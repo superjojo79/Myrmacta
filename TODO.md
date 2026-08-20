@@ -199,9 +199,9 @@ workflow actif » en parallèle réel. Décider également des seuils de couvert
 
 ### [ ] 29. Observabilité
 
-**Phase 2 en cours (2026-08-20 — PR #59) :** Q1 = B ; Q2 = A ;
-Q3 = B ; Q4 = A ; **Q5 = A** (`TENANT_ADMIN` seul). Q6 ouverte,
-posée (rafraîchissement).
+**Phase 2 reviewed (2026-08-20 — PR #59) :** Q1–Q6 actées. Voir
+`docs/ai/requirements/2026-08-20-feature-observabilite.md`.
+Implémentation encore à faire (Phase 3 design ensuite).
 
 Périmètre visé (reco, non figé) : logs JSON + MDC ; Micrometer ;
 écran admin `/admin/observabilite`. Détail :

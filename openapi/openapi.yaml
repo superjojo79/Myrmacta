@@ -1174,6 +1174,18 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/PurgeOutboxPageResponse"
+  /api/observability:
+    get:
+      tags:
+      - observability-controller
+      operationId: get_5
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ObservabilitySnapshotResponse"
   /api/dossiers/{id}:
     get:
       tags:
@@ -1563,6 +1575,8 @@ components:
         purgeEligibleAt:
           type: string
           format: date-time
+        canEdit:
+          type: boolean
     StartWorkflowRequest:
       type: object
       properties:
@@ -2289,6 +2303,70 @@ components:
           format: int32
         counts:
           $ref: "#/components/schemas/Counts"
+    ObservabilitySeverityMap:
+      type: object
+      properties:
+        triggerOutboxOldestPendingAge:
+          type: string
+        notificationOutboxOldestPendingAge:
+          type: string
+        purgeOutboxOldestUnfinishedAge:
+          type: string
+        flowableDeadLetterJobs:
+          type: string
+        flowableExceptionJobs:
+          type: string
+        pdfRender:
+          type: string
+        webhookDead:
+          type: string
+        sseActive:
+          type: string
+    ObservabilitySnapshotResponse:
+      type: object
+      properties:
+        tenantId:
+          type: string
+        observedAt:
+          type: string
+          format: date-time
+        triggerOutboxOldestPendingAgeSeconds:
+          type: integer
+          format: int64
+        notificationOutboxOldestPendingAgeSeconds:
+          type: integer
+          format: int64
+        purgeOutboxOldestUnfinishedAgeSeconds:
+          type: integer
+          format: int64
+        flowableDeadLetterJobCount:
+          type: integer
+          format: int64
+        flowableExceptionJobCount:
+          type: integer
+          format: int64
+        pdfRender:
+          $ref: "#/components/schemas/PdfRenderStats"
+        webhookDeadCount:
+          type: integer
+          format: int64
+        sseActiveCount:
+          type: integer
+          format: int64
+        severity:
+          $ref: "#/components/schemas/ObservabilitySeverityMap"
+    PdfRenderStats:
+      type: object
+      properties:
+        count:
+          type: integer
+          format: int64
+        meanMs:
+          type: number
+          format: double
+        maxMs:
+          type: number
+          format: double
     PageResponseNotificationWebhookResponse:
       type: object
       properties:

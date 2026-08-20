@@ -255,7 +255,8 @@ class DossierApiTest {
                 .andExpect(jsonPath("$.label").value("Manager dossier"))
                 .andExpect(jsonPath("$.status").value("DRAFT"))
                 .andExpect(jsonPath("$.createdBy").value("manager-create"))
-                .andExpect(jsonPath("$.updatedBy").value("manager-create"));
+                .andExpect(jsonPath("$.updatedBy").value("manager-create"))
+                .andExpect(jsonPath("$.canEdit").value(true));
     }
 
     @Test
@@ -371,7 +372,8 @@ class DossierApiTest {
                         .with(user("viewer-with-grant", "DOSSIER_VIEWER")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(dossier.id()))
-                .andExpect(jsonPath("$.dossierTypeCode").value(code));
+                .andExpect(jsonPath("$.dossierTypeCode").value(code))
+                .andExpect(jsonPath("$.canEdit").value(false));
     }
 
     @Test
@@ -383,7 +385,38 @@ class DossierApiTest {
         mockMvc.perform(get("/api/dossiers/{id}", dossier.id())
                         .with(user("workflow-bypass", "WORKFLOW_ADMIN")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(dossier.id()));
+                .andExpect(jsonPath("$.id").value(dossier.id()))
+                .andExpect(jsonPath("$.canEdit").value(true));
+    }
+
+    @Test
+    void getDossier_editAcl_canEditTrue() throws Exception {
+        // TODO §36: canEdit reflects the actual DossierAccessPolicy.assertCanEdit outcome —
+        // DOSSIER_MANAGER with an explicit EDIT grant may edit.
+        String code = createType(true);
+        grant(code, "manager-can-edit", "EDIT");
+        DossierFixture dossier = createDossier(code, "manager-can-edit", "Editable dossier");
+
+        mockMvc.perform(get("/api/dossiers/{id}", dossier.id())
+                        .with(user("manager-can-edit", "DOSSIER_MANAGER")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.canEdit").value(true));
+    }
+
+    @Test
+    void getDossier_dossierManagerWithoutEditAcl_canEditFalse() throws Exception {
+        // TODO §36: a bare DOSSIER_MANAGER role without an EDIT ACL entry must not be told it
+        // can edit — the frontend used to compute this from the role alone and mismatched the
+        // server-side DossierAccessPolicy, showing an editable UI that then failed with 403.
+        String code = createType(true);
+        grant(code, "manager-view-owner", "EDIT");
+        DossierFixture dossier = createDossier(code, "manager-view-owner", "View only dossier");
+        grant(code, "manager-view-only", "VIEW");
+
+        mockMvc.perform(get("/api/dossiers/{id}", dossier.id())
+                        .with(user("manager-view-only", "DOSSIER_MANAGER")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.canEdit").value(false));
     }
 
     @Test

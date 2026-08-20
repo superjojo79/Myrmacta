@@ -1,5 +1,6 @@
 package com.flowforge.infrastructure.web.dossier;
 
+import com.flowforge.domain.dossier.DossierAccessPolicy;
 import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierElementView;
@@ -49,6 +50,7 @@ public class DossierController {
     private final CreateDossierRelationUseCase createDossierRelationUseCase;
     private final ListDossierRelationsUseCase listDossierRelationsUseCase;
     private final AccessContextFactory accessContextFactory;
+    private final DossierAccessPolicy accessPolicy;
 
     public DossierController(
             TenantProperties tenantProperties,
@@ -61,7 +63,8 @@ public class DossierController {
             SearchDossiersUseCase searchDossiersUseCase,
             CreateDossierRelationUseCase createDossierRelationUseCase,
             ListDossierRelationsUseCase listDossierRelationsUseCase,
-            AccessContextFactory accessContextFactory) {
+            AccessContextFactory accessContextFactory,
+            DossierAccessPolicy accessPolicy) {
         this.tenantProperties = tenantProperties;
         this.createDossierUseCase = createDossierUseCase;
         this.getDossierUseCase = getDossierUseCase;
@@ -73,6 +76,7 @@ public class DossierController {
         this.createDossierRelationUseCase = createDossierRelationUseCase;
         this.listDossierRelationsUseCase = listDossierRelationsUseCase;
         this.accessContextFactory = accessContextFactory;
+        this.accessPolicy = accessPolicy;
     }
 
     @PostMapping
@@ -90,7 +94,7 @@ public class DossierController {
                 actor);
         return ResponseEntity
                 .created(URI.create("/api/dossiers/" + dossier.id()))
-                .body(DossierResponse.from(dossier));
+                .body(DossierResponse.from(dossier, accessPolicy.canEdit(dossier, actor)));
     }
 
     @GetMapping
@@ -113,9 +117,10 @@ public class DossierController {
             @PathVariable UUID id,
             HttpServletRequest httpRequest,
             Authentication authentication) {
+        AccessContext.User actor = accessContextFactory.user(authentication);
         try (MdcScope ignored = MdcScope.tenant(tenantProperties.id()).dossier(id)) {
-            DossierResponse response = DossierResponse.from(getDossierUseCase.get(
-                    id, accessContextFactory.user(authentication)));
+            Dossier dossier = getDossierUseCase.get(id, actor);
+            DossierResponse response = DossierResponse.from(dossier, accessPolicy.canEdit(dossier, actor));
             SecurityAuditLog.dossierRead(httpRequest, authentication, id);
             return response;
         }
@@ -126,13 +131,14 @@ public class DossierController {
             @RequestParam("ref") String reference,
             HttpServletRequest httpRequest,
             Authentication authentication) {
+        AccessContext.User actor = accessContextFactory.user(authentication);
         Dossier dossier = getDossierUseCase.getByReference(
                 tenantProperties.id(),
                 required(reference, "ref"),
-                accessContextFactory.user(authentication));
+                actor);
         try (MdcScope ignored = MdcScope.tenant(tenantProperties.id()).dossier(dossier.id())) {
             SecurityAuditLog.dossierRead(httpRequest, authentication, dossier.id());
-            return DossierResponse.from(dossier);
+            return DossierResponse.from(dossier, accessPolicy.canEdit(dossier, actor));
         }
     }
 
@@ -213,13 +219,14 @@ public class DossierController {
         if (request.status() == null) {
             throw new IllegalArgumentException("status is required");
         }
-        return DossierResponse.from(updateDossierStatusUseCase.update(
+        Dossier dossier = updateDossierStatusUseCase.update(
                 new UpdateDossierStatusUseCase.UpdateDossierStatusCommand(
                         id,
                         request.status(),
                         actor.userId(),
                         request.expectedVersion()),
-                actor));
+                actor);
+        return DossierResponse.from(dossier, accessPolicy.canEdit(dossier, actor));
     }
 
     @PatchMapping("/{id}/fields")
@@ -242,7 +249,7 @@ public class DossierController {
         for (String field : result.sensitiveFieldsChanged()) {
             SecurityAuditLog.sensitiveFieldChanged(httpRequest, authentication, id, field);
         }
-        return DossierResponse.from(result.dossier());
+        return DossierResponse.from(result.dossier(), accessPolicy.canEdit(result.dossier(), actor));
     }
 
     private static String required(String value, String field) {

@@ -56,6 +56,7 @@ describe('CreateDossierView', () => {
       updatedAt: '',
       closedBy: null,
       closedAt: null,
+      canEdit: true,
     })
     const router = createRouter({ history: createMemoryHistory(), routes })
     const push = vi.spyOn(router, 'push')

@@ -14,9 +14,8 @@ todo_ref: TODO.md §29 · FILE-ATTENTE.md · REVUE-PRE-IMPLEMENTATION.md §29 ·
 
 # Requirements & Problem Understanding — `observabilite`
 
-> Feature produit TODO **§29**. **D-FE** acté (écran admin). Phase 2
-> **en cours** : Q1–Q6 à valider **une à une** (pas actées). Recos
-> Phase 1 conservées jusqu’à réponse. Status **draft**.
+> Feature produit TODO **§29**. **D-FE** et **Q1 = B** actés. Phase 2
+> **en cours** : Q2–Q6 à valider **une à une**. Status **draft**.
 
 ## Problem Statement
 **What problem are we solving?**
@@ -193,7 +192,7 @@ Le `TENANT_ADMIN` n’a pas non plus de vue santé dans le SPA.
 | **D-PDF** | Timer | Autour de `PdfRenderer.render` ; UI = count/mean/max |
 | **D-SSE** | Jauge | Somme des emitters |
 | **D-FLOWABLE** | Jobs | Dead-letter + failed, adapter infra |
-| **D-AUDIT-READ** / **Q1** | Lectures | **B** — logs `SECURITY_AUDIT` |
+| **D-AUDIT-READ** / **Q1** | Lectures | **B acté** — logs `SECURITY_AUDIT` |
 | **D-ACTUATOR** | Surface | `health` + `prometheus` |
 | **D-MGMT** / **Q2** | Scrape | Port management séparé, non public |
 | **Q4** | UI | Cartes KPI + sévérité ; pas Chart.js |
@@ -221,19 +220,19 @@ Le `TENANT_ADMIN` n’a pas non plus de vue santé dans le SPA.
 | Id | Décision | Choix |
 |---|---|---|
 | **D-FE** | Écran admin | Acté stakeholder 2026-08-20 — `/admin/observabilite` lecture |
+| **Q1 / D-AUDIT-READ** | Lectures | **B** (2026-08-20) — `SECURITY_AUDIT` INFO sur GET dossier id/`ref` et GET content **réussis** ; pas de table ni d’écran d’audit |
 
 ### Ouvertes (Phase 2 — une à la fois)
 
 | Id | Question | Options | Reco |
 |---|---|---|---|
-| **Q1** | Traçabilité des accès en lecture (`12`) | **A** hors V1 · **B** logs `SECURITY_AUDIT` INFO (GET dossier id/`ref` + content, succès seulement) · **C** table + écran audit | **B** |
 | **Q2** | Qui scrape Prometheus ? | **A** port management non public · **B** même port `TENANT_ADMIN` · **C** anonyme sur le BFF · **D** basic-auth | **A** |
 | **Q3** | Quelles outbox pour l’âge ? | **A** déclenchement seul · **B** + notification + purge | **A** |
 | **Q4** | Forme UI | **A** cartes KPI + sévérité · **B** + Chart.js · **C** historique persisté | **A** |
 | **Q5** | Rôle écran / GET | **A** `TENANT_ADMIN` · **B** + `WORKFLOW_ADMIN` | **A** |
 | **Q6** | Rafraîchissement | **A** load + Rafraîchir · **B** + poll 30 s | **A** |
 
-Posée maintenant : **Q1**. Les autres attendent.
+Posée maintenant : **Q2**. Q3–Q6 attendent.
 
 ### Hors file
 
@@ -244,9 +243,8 @@ SERVICE, Testcontainers §28.
 
 Template README : OK.
 
-Les reco Q1–Q6 **ne sont pas actées** : validation stakeholder une
-question à la fois. **D-FE** seul est clos.
+Les reco Q2–Q6 **ne sont pas actées**. Clos : **D-FE**, **Q1 = B**.
 
 Status : **`draft`**.
 
-**En cours :** Q1 (lectures).
+**En cours :** Q2 (scrape Prometheus).

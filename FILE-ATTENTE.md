@@ -8,8 +8,8 @@
 > - Inventaire follow-ups / lots : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md)
 > - Séquencement « avant prod » : [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md) §9
 >
-> **Dernière mise à jour :** 2026-08-20 (`observabilite` Phase 2 en
-> cours — Q1 posée ; PR #59).
+> **Dernière mise à jour :** 2026-08-20 (`observabilite` Phase 2 —
+> Q1 = B ; Q2 posée ; PR #59).
 
 ## Comment s’en servir
 
@@ -83,4 +83,4 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 | 2026-08-19 | `purge-stockage` Phase 9 READY | PR #56 ; prochain = `openapi-pagination-admin` §24 |
 | 2026-08-19 | `openapi-pagination-admin` Phase 5 | PR #58 ; §24 partiel clos ; prochain = `observabilite` §29 |
 | 2026-08-20 | `observabilite` Phase 1 | Stakeholder : UI admin (D-FE) ; Rapports/SLA hors V1 |
-| 2026-08-20 | `observabilite` Phase 2 en cours | Q1–Q6 rouvertes ; validation une à une ; D-FE seul acté |
+| 2026-08-20 | `observabilite` Phase 2 | Q1 = **B** (audit lectures logs) ; Q2 posée |

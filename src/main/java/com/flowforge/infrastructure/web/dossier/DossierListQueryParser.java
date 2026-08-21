@@ -28,15 +28,17 @@ final class DossierListQueryParser {
             throw new IllegalArgumentException("unsupported sort: only updatedAt,desc is allowed");
         }
 
-        DossierStatus resolvedStatus = null;
-        if (status != null && !status.isBlank()) {
-            try {
-                resolvedStatus = DossierStatus.valueOf(status.trim());
-            } catch (IllegalArgumentException ex) {
-                throw new IllegalArgumentException("invalid status: " + status);
-            }
-        }
+        return SearchDossiersQuery.of(parseStatus(status), dossierTypeCode, reference, resolvedPage, resolvedSize);
+    }
 
-        return SearchDossiersQuery.of(resolvedStatus, dossierTypeCode, reference, resolvedPage, resolvedSize);
+    static DossierStatus parseStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return null;
+        }
+        try {
+            return DossierStatus.valueOf(status.trim());
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("invalid status: " + status);
+        }
     }
 }

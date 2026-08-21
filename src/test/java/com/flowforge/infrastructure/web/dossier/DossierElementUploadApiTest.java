@@ -77,6 +77,24 @@ class DossierElementUploadApiTest {
     // DossierExceptionHandlerTest#handleUploadTooLarge_mapsTo413.
 
     @Test
+    void upload_contentDoesNotMatchDeclaredPdfType_returns400() throws Exception {
+        String code = createType("UPL_SNIFF");
+        grant(code, "mgr-upload-sniff", "EDIT");
+        String dossierId = createDossier(code, "mgr-upload-sniff");
+        // Declared application/pdf but the bytes are not a PDF signature (e.g. a renamed file).
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "fake.pdf", "application/pdf", "not-a-pdf".getBytes(StandardCharsets.UTF_8));
+
+        mockMvc.perform(multipart("/api/dossiers/{id}/elements/attachment", dossierId)
+                        .file(file)
+                        .param("label", "Fake")
+                        .with(user("mgr-upload-sniff"))
+                        .with(csrf()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
     void upload_emptyFile_returns400() throws Exception {
         String code = createType("UPL_EMPTY");
         grant(code, "mgr-upload-empty", "EDIT");

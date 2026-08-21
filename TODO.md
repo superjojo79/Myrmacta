@@ -107,8 +107,12 @@ backoff `nextAttemptAt` ; GC orphelins store.
 
 **Partiel (2026-08-03 — feature `autorisation-conformite`) :** flag
 `FieldDefinition.sensitive` livré (métadonnée JSON, défaut false, API types).
-**Reste ouvert :** masquage à l'affichage, exclusion des exports / logs /
-webhooks sortants.
+**Partiel (2026-08-21 — feature `durcissement-donnees-sensibles`) :**
+masquage à l'affichage déjà en place (`DossierFieldRedactor`) désormais
+également appliqué à l'export CSV (`GET /api/dossiers/export.csv`, même
+règle : masqué pour tout acteur non `TENANT_ADMIN`).
+**Reste ouvert :** exclusion des valeurs de champs sensibles des logs
+applicatifs et des payloads de webhooks sortants (notification).
 
 **Impacte :** [04-dossiers.md](analysis%20doc/04-dossiers.md),
 [12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md).
@@ -215,27 +219,39 @@ admin `/admin/observabilite`. Détail : requirements + design.
 
 ---
 
-### [~] 30. Durcissement des points d'entrée exposés
+### [x] 30. Durcissement des points d'entrée exposés
 
-**Livré (audit sécurité, cette session) :** rate limiting + plafond de taille en mémoire sur
+**Livré (audit sécurité, session 2026-08-20) :** rate limiting + plafond de taille en mémoire sur
 `/api/webhooks/**` (`WebhookRequestRateLimiter`, `WebhookBodySizeLimitFilter`) et sur
 `POST /api/documents/generate` (`DocumentGenerationRateLimiter`,
 `DocumentGenerationBodySizeLimitFilter`) ; protection SSRF sur le rendu PDF
 (`RestrictedResourceUserAgent`) et les webhooks sortants (`OutboundUrlGuard`, résolution DNS
 incluse) ; journal d'audit sécurité structuré sur les 403 (`SecurityAuditLog`).
 
-**Reste ouvert / reporté :**
-- **Rate limiter distribué (Redis ou équivalent).** Les deux limiteurs ci-dessus sont en mémoire
-  locale (`ConcurrentHashMap` par JVM) — corrects pour le modèle retenu (décision n° 13, une
-  instance par tenant), mais chaque réplique aurait son propre compteur si un tenant était un jour
-  scalé horizontalement, multipliant de facto la limite effective. **Décision : ne pas ajouter Redis
-  maintenant** — aucun déploiement multi-réplique n'est prévu à court terme, et cela introduirait une
-  dépendance d'infrastructure hors stack figée sans besoin actuel. À réactiver si/quand un tenant est
-  effectivement scalé horizontalement.
-- Taille, types et analyse antivirale des pièces jointes / uploads génériques.
-- Protection SSRF sur le connecteur `http-rest` en rôle SERVICE (V1 = TRIGGER uniquement, non
-  concerné aujourd'hui).
-- Prévention des fuites de secrets déchiffrés via les logs et les API d'administration.
+**Livré (feature `durcissement-donnees-sensibles`, 2026-08-21) :**
+- Pièces jointes : validation du contenu réel (magic-bytes,
+  `AttachmentContentSniffer`) en complément de l'allowlist MIME déclarative
+  existante ; port `AttachmentScanPort` pluggable avec adaptateur no-op
+  (aucun moteur antivirus dans la stack figée — le contrat est prêt pour un
+  futur adaptateur, ex. ClamAV, décision explicite de ne pas l'intégrer
+  maintenant, cf. `durcissement-donnees-sensibles` design D-AV).
+- SSRF sur `http-rest` en rôle SERVICE : skeleton `HttpRestServiceConnector`
+  réutilisant `OutboundUrlGuard`, non enregistré dans le `ConnectorRegistry`
+  (connecteur SERVICE lui-même hors V1, cf. FILE-ATTENTE) — prouve la
+  réutilisabilité du guard, prêt à activer sans redévelopper.
+- Fuites de secrets déchiffrés : audit des endpoints admin connecteurs et
+  webhooks de notification (déjà masqués, confirmé sain) + garde-fou
+  anti-régression (`ConnectorResponseSecretMaskingTest`,
+  `NotificationWebhookResponseSecretMaskingTest`).
+
+**Décision : rate limiter distribué (Redis ou équivalent) non ajouté.** Les
+deux limiteurs ci-dessus sont en mémoire locale (`ConcurrentHashMap` par
+JVM) — corrects pour le modèle retenu (décision n° 13, une instance par
+tenant), mais chaque réplique aurait son propre compteur si un tenant était
+un jour scalé horizontalement. Aucun déploiement multi-réplique n'est prévu
+à court terme, et Redis introduirait une dépendance d'infrastructure hors
+stack figée sans besoin actuel. À réactiver si/quand un tenant est
+effectivement scalé horizontalement.
 
 **Impacte :** [06-connecteurs.md](analysis%20doc/06-connecteurs.md),
 [09-notifications.md](analysis%20doc/09-notifications.md),

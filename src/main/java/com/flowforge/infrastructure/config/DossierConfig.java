@@ -9,6 +9,7 @@ import com.flowforge.domain.dossier.port.in.CreateDossierTypeUseCase;
 import com.flowforge.domain.dossier.port.in.CreateDossierUseCase;
 import com.flowforge.domain.dossier.port.in.EnqueueDossierPurgeUseCase;
 import com.flowforge.domain.dossier.port.in.EvaluateDossierRetentionUseCase;
+import com.flowforge.domain.dossier.port.in.ExportDossiersUseCase;
 import com.flowforge.domain.dossier.port.in.GetDossierElementUseCase;
 import com.flowforge.domain.dossier.port.in.GetDossierTypeUseCase;
 import com.flowforge.domain.dossier.port.in.GetDossierUseCase;
@@ -25,7 +26,9 @@ import com.flowforge.domain.dossier.port.in.UpdateDossierFieldsUseCase;
 import com.flowforge.domain.dossier.port.in.UpdateDossierStatusUseCase;
 import com.flowforge.domain.dossier.port.in.UpdateDossierTypeUseCase;
 import com.flowforge.domain.dossier.port.in.UpsertTenantRetentionSettingsUseCase;
+import com.flowforge.domain.dossier.port.out.AttachmentScanPort;
 import com.flowforge.domain.dossier.port.out.DossierElementRepository;
+import com.flowforge.domain.dossier.port.out.DossierExportPort;
 import com.flowforge.domain.dossier.port.out.DossierReferenceGenerator;
 import com.flowforge.domain.dossier.port.out.DossierRelationRepository;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
@@ -41,6 +44,7 @@ import com.flowforge.domain.dossier.usecase.CreateDossierTypeUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.CreateDossierUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.EnqueueDossierPurgeUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.EvaluateDossierRetentionUseCaseImpl;
+import com.flowforge.domain.dossier.usecase.ExportDossiersUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.GetDossierElementUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.GetDossierTypeUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.GetDossierUseCaseImpl;
@@ -59,6 +63,7 @@ import com.flowforge.domain.dossier.usecase.UpdateDossierTypeUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.UpsertTenantRetentionSettingsUseCaseImpl;
 import com.flowforge.domain.document.port.out.DocumentStoragePort;
 import com.flowforge.domain.workflow.port.out.WorkflowEnginePort;
+import com.flowforge.infrastructure.dossier.NoOpAttachmentScanAdapter;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -70,6 +75,11 @@ public class DossierConfig {
     @Bean
     TenantAdminGuard tenantAdminGuard() {
         return new TenantAdminGuard();
+    }
+
+    @Bean
+    AttachmentScanPort attachmentScanPort() {
+        return new NoOpAttachmentScanAdapter();
     }
 
     @Bean
@@ -141,6 +151,14 @@ public class DossierConfig {
             DossierTypeAclRepository aclRepository,
             DossierTypeRepository typeRepository) {
         return new SearchDossiersUseCaseImpl(dossierSearchPort, aclRepository, typeRepository);
+    }
+
+    @Bean
+    ExportDossiersUseCase exportDossiersUseCase(
+            DossierTypeRepository typeRepository,
+            DossierExportPort dossierExportPort,
+            DossierAccessPolicy accessPolicy) {
+        return new ExportDossiersUseCaseImpl(typeRepository, dossierExportPort, accessPolicy);
     }
 
     @Bean

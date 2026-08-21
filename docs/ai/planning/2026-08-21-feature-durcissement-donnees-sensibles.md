@@ -9,6 +9,7 @@ feature: durcissement-donnees-sensibles
 phase1: 2026-08-21
 phase3: 2026-08-21
 phase4: 2026-08-21
+phase5: 2026-08-21
 requirements_ref: docs/ai/requirements/2026-08-21-feature-durcissement-donnees-sensibles.md
 design_ref: docs/ai/design/2026-08-21-feature-durcissement-donnees-sensibles.md
 testing_ref: docs/ai/testing/2026-08-21-feature-durcissement-donnees-sensibles.md
@@ -22,11 +23,11 @@ testing_ref: docs/ai/testing/2026-08-21-feature-durcissement-donnees-sensibles.m
 
 ## Milestones
 
-- [ ] **M1** — Upload durci (sniffer + port scan pluggable)
-- [ ] **M2** — Export CSV masqué (port + use case + contrôleur)
-- [ ] **M3** — Skeleton `ServiceConnector` `http-rest` non enregistré
-- [ ] **M4** — Audit + garde-fou anti-fuite de secrets
-- [ ] **M5** — Qualité (ArchUnit, OpenAPI, `./mvnw verify`, mise à jour TODO/FILE-ATTENTE)
+- [x] **M1** — Upload durci (sniffer + port scan pluggable)
+- [x] **M2** — Export CSV masqué (port + use case + contrôleur)
+- [x] **M3** — Skeleton `ServiceConnector` `http-rest` non enregistré
+- [x] **M4** — Audit + garde-fou anti-fuite de secrets
+- [x] **M5** — Qualité (ArchUnit, OpenAPI, `./mvnw verify`, mise à jour TODO/FILE-ATTENTE)
 
 Les 4 milestones M1–M4 sont indépendants entre eux (aucune dépendance
 croisée) — ordre d'exécution libre, M5 les valide tous en fin de lot.
@@ -45,16 +46,16 @@ TDD : test rouge → code → vert. Validation : commandes en fin de document.
 - **Tests :** scénarios `AttachmentContentSniffer` du testing doc (PDF/PNG/
   JPEG/OOXML valides, PNG renommé `.pdf`, binaire déclaré texte, texte
   légitime, contenu vide, type non reconnu).
-- **Status :** todo
+- **Status :** done
 
 #### T1.2 `AttachmentScanPort` + `NoOpAttachmentScanAdapter`
 - **Outcome :** `AttachmentScanResult` (record) + interface
   `domain.dossier.port.out.AttachmentScanPort` ; adaptateur
-  `infrastructure` retournant toujours `clean()`, javadoc documentant le
+  `infrastructure` retournant toujours propre, javadoc documentant le
   contrat pour un futur moteur AV.
 - **Deps :** aucune.
 - **Tests :** scénario `NoOpAttachmentScanAdapter` du testing doc.
-- **Status :** todo
+- **Status :** done
 
 #### T1.3 Intégration `DossierElementUploadController`
 - **Outcome :** lecture unique des bytes, ordre : check MIME déclaré
@@ -64,7 +65,7 @@ TDD : test rouge → code → vert. Validation : commandes en fin de document.
 - **Tests :** scénarios `DossierElementUploadController` du testing doc
   (rejet magic-bytes, rejet scan infecté, upload valide inchangé, lecture
   unique du fichier).
-- **Status :** todo
+- **Status :** done
 
 ### M2 — Export CSV masqué
 
@@ -77,7 +78,7 @@ TDD : test rouge → code → vert. Validation : commandes en fin de document.
 - **Tests :** scénario "flux fermé même en cas d'exception" du testing
   doc ; test d'intégration JPA de base (stream non vide, colonnes
   attendues).
-- **Status :** todo
+- **Status :** done
 
 #### T2.2 `ExportDossiersUseCase` (+ Impl)
 - **Outcome :** port.in `domain.dossier.port.in.ExportDossiersUseCase` +
@@ -90,7 +91,7 @@ TDD : test rouge → code → vert. Validation : commandes en fin de document.
   manquant/inconnu, accès refusé/autorisé, admin non restreint, filtres
   status/reference, masquage sensible, type sans dossiers, champ dynamique
   supprimé).
-- **Status :** todo
+- **Status :** done
 
 #### T2.3 `DossierExportController` + `CsvWriter`
 - **Outcome :** contrôleur dédié `GET /api/dossiers/export.csv`
@@ -103,14 +104,14 @@ TDD : test rouge → code → vert. Validation : commandes en fin de document.
   doc (en-têtes colonnes, échappement, content-type/disposition, cellule
   vide sur masquage) + test d'intégration MockMvc bout en bout (admin vs
   viewer avec/sans droit).
-- **Status :** todo
+- **Status :** done
 
 #### T2.4 OpenAPI
 - **Outcome :** `GET /api/dossiers/export.csv` documenté (springdoc,
   `produces = "text/csv"`), golden `openapi/openapi.yaml` régénéré.
 - **Deps :** T2.3.
 - **Tests :** scénario OpenAPI golden du testing doc.
-- **Status :** todo
+- **Status :** done
 
 ### M3 — Skeleton `ServiceConnector` `http-rest`
 
@@ -124,7 +125,7 @@ TDD : test rouge → code → vert. Validation : commandes en fin de document.
 - **Tests :** scénarios `HttpRestServiceConnector` du testing doc (guard
   bloque avant appel, guard passe → appel tenté, pas de secret recopié
   dans le résultat, absence d'implémentation de `ConnectorDefinition`).
-- **Status :** todo
+- **Status :** done
 
 ### M4 — Audit + garde-fou anti-fuite de secrets
 
@@ -137,7 +138,7 @@ TDD : test rouge → code → vert. Validation : commandes en fin de document.
 - **Deps :** aucune.
 - **Tests :** aucun test dédié (vérification manuelle documentée dans
   `implementation.md`).
-- **Status :** todo
+- **Status :** done
 
 #### T4.2 Test garde-fou anti-régression
 - **Outcome :** test unitaire ciblé sérialisant `ConnectorResponse` et
@@ -145,7 +146,7 @@ TDD : test rouge → code → vert. Validation : commandes en fin de document.
   assertant l'absence de cette valeur en clair dans le JSON produit.
 - **Deps :** T4.1.
 - **Tests :** scénarios "Garde-fou anti-fuite de secrets" du testing doc.
-- **Status :** todo
+- **Status :** done
 
 ### M5 — Qualité
 
@@ -156,7 +157,7 @@ TDD : test rouge → code → vert. Validation : commandes en fin de document.
   écart apparaît.
 - **Deps :** M1, M2.
 - **Tests :** `ArchitectureRulesTest` (existant).
-- **Status :** todo
+- **Status :** done
 
 #### T5.2 Verify + mise à jour docs produit
 - **Outcome :** `./mvnw verify -Dmaven.compiler.release=21` vert ;
@@ -164,7 +165,7 @@ TDD : test rouge → code → vert. Validation : commandes en fin de document.
   et `DEFERRED-FEATURES.md` mis à jour après implémentation.
 - **Deps :** M1–M4, T5.1.
 - **Tests :** evidence Phase 8 collée dans le testing doc.
-- **Status :** todo
+- **Status :** done
 
 ## Mapping tests ↔ tâches
 
@@ -211,8 +212,19 @@ Design reviewed, testing doc scénarisé, ports/adapters existants
 (`OutboundUrlGuard`, `DossierFieldRedactor`, `DossierTypeAclRepository`),
 `DossierElementUploadController` comme point d'intégration M1.
 
-## Progress (Phase 4)
+## Progress (Phase 5)
 
-Plan initial créé, aucune tâche démarrée. Prochaine étape : `dev-implementation`
-(Phase 5), en TDD, milestone par milestone (ordre libre M1–M4, M5 en
-clôture).
+Toutes les tâches T1.1–T5.2 **done** (2026-08-21), TDD strict (rouge → vert
+sur chaque nouvelle classe de production).
+
+- Backend : `./mvnw verify -Dmaven.compiler.release=21` → **BUILD SUCCESS**,
+  Tests run **960**, Failures **0**, Jacoco check met.
+- Frontend : `npm run test` → 47 files / **136** tests ; `npm run test:e2e`
+  (`PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium`, cache Playwright
+  local à une version antérieure — cf. note environnement) → **39** passed.
+  Aucun changement `frontend/` dans cette feature (D-CSV-UI) : régression
+  complète du projet demandée explicitement, pas un critère de cette feature.
+- `TODO.md` §23 (reste réduit) et §30 (clos) mis à jour ; `FILE-ATTENTE.md`
+  daté avec l'évidence Phase 5.
+- Prochaine étape : `dev-planning` Phase 6 / `dev-implementation` Phase 7
+  (Check Implementation) puis `dev-testing` Phase 8 et `dev-review` Phase 9.

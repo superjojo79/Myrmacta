@@ -1,5 +1,7 @@
 package com.flowforge.infrastructure.flowable;
 
+import com.flowforge.domain.shared.PageQuery;
+import com.flowforge.domain.shared.PageResult;
 import com.flowforge.domain.workflow.model.ActivityHistoryEntry;
 import com.flowforge.domain.workflow.model.WorkflowDiagramView;
 import com.flowforge.domain.workflow.model.WorkflowProcessInstanceNotFoundException;
@@ -72,29 +74,39 @@ class FlowableWorkflowVisualizationAdapter implements WorkflowVisualizationPort 
     }
 
     @Override
-    public List<ActivityHistoryEntry> getHistory(String processInstanceId, String tenantId) {
+    public PageResult<ActivityHistoryEntry> getHistory(String processInstanceId, String tenantId, PageQuery query) {
         requireProcess(processInstanceId, tenantId);
-        return historyService.createHistoricActivityInstanceQuery()
+        long total = historyService.createHistoricActivityInstanceQuery()
+                .processInstanceId(processInstanceId)
+                .activityTenantId(tenantId)
+                .count();
+        var content = historyService.createHistoricActivityInstanceQuery()
                 .processInstanceId(processInstanceId)
                 .activityTenantId(tenantId)
                 .orderByHistoricActivityInstanceStartTime()
                 .asc()
-                .list()
+                .listPage(query.offset(), query.size())
                 .stream()
                 .map(FlowableWorkflowVisualizationAdapter::toHistoryEntry)
                 .toList();
+        return PageResult.of(content, query.page(), query.size(), total);
     }
 
     @Override
-    public List<WorkflowTaskView> listActiveTasks(String processInstanceId, String tenantId) {
+    public PageResult<WorkflowTaskView> listActiveTasks(String processInstanceId, String tenantId, PageQuery query) {
         requireProcess(processInstanceId, tenantId);
-        return taskService.createTaskQuery()
+        long total = taskService.createTaskQuery()
                 .processInstanceId(processInstanceId)
                 .taskTenantId(tenantId)
-                .list()
+                .count();
+        var content = taskService.createTaskQuery()
+                .processInstanceId(processInstanceId)
+                .taskTenantId(tenantId)
+                .listPage(query.offset(), query.size())
                 .stream()
                 .map(FlowableWorkflowVisualizationAdapter::toTaskView)
                 .toList();
+        return PageResult.of(content, query.page(), query.size(), total);
     }
 
     @Override

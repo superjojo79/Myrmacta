@@ -8,9 +8,13 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.flowforge.domain.shared.PageQuery;
+import com.flowforge.domain.shared.PageResult;
+import com.flowforge.domain.workflow.model.ActivityHistoryEntry;
 import com.flowforge.domain.workflow.model.WorkflowDiagramView;
 import com.flowforge.domain.workflow.model.WorkflowProcessInstanceNotFoundException;
 import com.flowforge.domain.workflow.model.WorkflowTaskNotFoundException;
+import com.flowforge.domain.workflow.model.WorkflowTaskView;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
@@ -93,6 +97,55 @@ class FlowableWorkflowVisualizationAdapterTest {
 
         assertThatThrownBy(() -> adapter.getDiagram(PI, TENANT))
                 .isInstanceOf(WorkflowProcessInstanceNotFoundException.class);
+    }
+
+    @Test
+    void getHistory_usesNativeListPageAndCount_notFullList() {
+        stubActiveProcess();
+        HistoricActivityInstanceQuery countQuery = mock(HistoricActivityInstanceQuery.class);
+        when(countQuery.processInstanceId(PI)).thenReturn(countQuery);
+        when(countQuery.activityTenantId(TENANT)).thenReturn(countQuery);
+        when(countQuery.count()).thenReturn(42L);
+
+        HistoricActivityInstanceQuery listQuery = mock(HistoricActivityInstanceQuery.class);
+        when(listQuery.processInstanceId(PI)).thenReturn(listQuery);
+        when(listQuery.activityTenantId(TENANT)).thenReturn(listQuery);
+        when(listQuery.orderByHistoricActivityInstanceStartTime()).thenReturn(listQuery);
+        when(listQuery.asc()).thenReturn(listQuery);
+        HistoricActivityInstance historicActivity = activity("start", null, new Date(), null);
+        when(listQuery.listPage(20, 20)).thenReturn(List.of(historicActivity));
+
+        when(historyService.createHistoricActivityInstanceQuery()).thenReturn(countQuery, listQuery);
+
+        PageResult<ActivityHistoryEntry> page = adapter.getHistory(PI, TENANT, PageQuery.of(1, 20));
+
+        assertThat(page.totalElements()).isEqualTo(42);
+        assertThat(page.content()).hasSize(1);
+        verify(countQuery, never()).listPage(any(Integer.class), any(Integer.class));
+    }
+
+    @Test
+    void listActiveTasks_usesNativeListPageAndCount_notFullList() {
+        stubActiveProcess();
+        TaskQuery countQuery = mock(TaskQuery.class);
+        when(countQuery.processInstanceId(PI)).thenReturn(countQuery);
+        when(countQuery.taskTenantId(TENANT)).thenReturn(countQuery);
+        when(countQuery.count()).thenReturn(7L);
+
+        TaskQuery listQuery = mock(TaskQuery.class);
+        when(listQuery.processInstanceId(PI)).thenReturn(listQuery);
+        when(listQuery.taskTenantId(TENANT)).thenReturn(listQuery);
+        Task task = mock(Task.class);
+        when(task.getId()).thenReturn("task-1");
+        when(listQuery.listPage(0, 10)).thenReturn(List.of(task));
+
+        when(taskService.createTaskQuery()).thenReturn(countQuery, listQuery);
+
+        PageResult<WorkflowTaskView> page = adapter.listActiveTasks(PI, TENANT, PageQuery.of(0, 10));
+
+        assertThat(page.totalElements()).isEqualTo(7);
+        assertThat(page.content()).hasSize(1);
+        verify(countQuery, never()).listPage(any(Integer.class), any(Integer.class));
     }
 
     @Test

@@ -5,9 +5,11 @@ import com.flowforge.domain.workflow.model.WorkflowTaskNotFoundException;
 import com.flowforge.domain.workflow.port.in.CompleteTaskUseCase;
 import com.flowforge.domain.workflow.port.in.ListMyTasksUseCase;
 import com.flowforge.domain.workflow.port.out.WorkflowEnginePort;
+import com.flowforge.infrastructure.web.ListSorts;
+import com.flowforge.infrastructure.web.PageQueryParser;
+import com.flowforge.infrastructure.web.PageResponse;
 import com.flowforge.infrastructure.web.dossier.AccessContextFactory;
 import com.flowforge.infrastructure.web.dossier.DossierAccessGuard;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -43,11 +46,15 @@ class WorkflowTaskController {
     }
 
     @GetMapping("/mine")
-    List<MyWorkflowTaskResponse> mine(Authentication authentication) {
+    PageResponse<MyWorkflowTaskResponse> mine(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) String sort,
+            Authentication authentication) {
         var actor = accessContextFactory.user(authentication);
-        return listMyTasksUseCase.listMine(actor.userId()).stream()
-                .map(MyWorkflowTaskResponse::from)
-                .toList();
+        return PageResponse.from(listMyTasksUseCase
+                .listMine(actor.userId(), PageQueryParser.parse(page, size, sort, ListSorts.MY_WORKFLOW_TASKS))
+                .map(MyWorkflowTaskResponse::from));
     }
 
     @PostMapping("/{taskId}/complete")

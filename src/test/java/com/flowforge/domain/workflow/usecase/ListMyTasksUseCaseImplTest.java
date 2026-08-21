@@ -1,7 +1,6 @@
 package com.flowforge.domain.workflow.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
@@ -10,6 +9,8 @@ import com.flowforge.domain.dossier.model.DossierStatus;
 import com.flowforge.domain.dossier.model.DossierWorkflowLink;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
+import com.flowforge.domain.shared.PageQuery;
+import com.flowforge.domain.shared.PageResult;
 import com.flowforge.domain.workflow.model.MyWorkflowTask;
 import com.flowforge.domain.workflow.port.out.WorkflowEnginePort;
 import com.flowforge.domain.workflow.port.out.WorkflowTaskInboxPort;
@@ -44,11 +45,14 @@ class ListMyTasksUseCaseImplTest {
         UUID dossierId = UUID.fromString("11111111-1111-1111-1111-111111111111");
         UUID linkId = UUID.fromString("22222222-2222-2222-2222-222222222222");
 
-        when(inboxPort.findActiveAssignedTo(eq(SUB), anyInt())).thenReturn(List.of(
-                new WorkflowTaskInboxPort.ActiveTaskSnapshot(
-                        "task-ok", "Instruction", SUB, created, "pi-1"),
-                new WorkflowTaskInboxPort.ActiveTaskSnapshot(
-                        "task-skip", "Orphan", SUB, created, "pi-2")));
+        PageQuery query = PageQuery.of(0, 20);
+        when(inboxPort.findActiveAssignedTo(eq(SUB), eq(query))).thenReturn(PageResult.of(
+                List.of(
+                        new WorkflowTaskInboxPort.ActiveTaskSnapshot(
+                                "task-ok", "Instruction", SUB, created, "pi-1"),
+                        new WorkflowTaskInboxPort.ActiveTaskSnapshot(
+                                "task-skip", "Orphan", SUB, created, "pi-2")),
+                0, 20, 2));
         when(workflowEnginePort.findDossierIdVariable("pi-1")).thenReturn(Optional.of(dossierId.toString()));
         when(workflowEnginePort.findDossierIdVariable("pi-2")).thenReturn(Optional.empty());
         when(linkRepository.findByProcessInstanceId(TENANT, "pi-1")).thenReturn(Optional.of(link(linkId, dossierId)));
@@ -57,9 +61,9 @@ class ListMyTasksUseCaseImplTest {
         ListMyTasksUseCaseImpl useCase = new ListMyTasksUseCaseImpl(
                 TENANT, inboxPort, workflowEnginePort, linkRepository, dossierRepository);
 
-        List<MyWorkflowTask> result = useCase.listMine(SUB);
+        PageResult<MyWorkflowTask> result = useCase.listMine(SUB, query);
 
-        assertThat(result).containsExactly(new MyWorkflowTask(
+        assertThat(result.content()).containsExactly(new MyWorkflowTask(
                 "task-ok",
                 "Instruction",
                 SUB,

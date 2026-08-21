@@ -98,7 +98,12 @@ TDD : test rouge → code → vert. Validation : commandes en fin de document.
 - **Deps :** T1.1.
 - **Tests :** scénarios `FlowableWorkflowTaskInboxAdapter.findActiveAssignedTo`
   + intégration `GET /api/workflow-tasks/mine` (> 100 tâches) du testing doc.
-- **Status :** not started
+- **Status :** done (2026-08-21) — `FlowableWorkflowTaskInboxAdapterTest`
+  2/2 (nouveau, mocks purs `TaskService`/`TaskQuery`, pattern
+  `FlowableWorkflowVisualizationAdapterTest`), `ListMyTasksUseCaseImplTest`
+  1/1, `WorkflowApiTest` 9/9 (assertion `/mine` ajoutée). Note documentée
+  en javadoc : le filtrage post-pagination des tâches orphelines peut
+  rendre `content().size() < size` sans invalider la page.
 
 #### T3.2 `WorkflowVisualizationPort.getHistory` / `.listActiveTasks` (signature `PageQuery`)
 - **Outcome :** port modifié, `FlowableWorkflowVisualizationAdapter`
@@ -110,7 +115,11 @@ TDD : test rouge → code → vert. Validation : commandes en fin de document.
 - **Tests :** scénarios `FlowableWorkflowVisualizationAdapter` +
   intégration `GET /api/workflow-links/{linkId}/history` et `.../tasks`
   du testing doc.
-- **Status :** not started
+- **Status :** done (2026-08-21) — `WorkflowLinkVisualizationUseCaseImplTest`
+  18/18 (2 nouveaux), `FlowableWorkflowVisualizationAdapterTest` 7/7
+  (2 nouveaux, vérifient `listPage`/`count` natifs et non `.list()`
+  complet), `WorkflowApiTest` 9/9 (3 assertions JSON adaptées à
+  `PageResponse`).
 
 ### M4 — Pagination mémoire
 

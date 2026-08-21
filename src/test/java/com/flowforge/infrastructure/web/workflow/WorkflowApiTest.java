@@ -108,13 +108,13 @@ class WorkflowApiTest {
         mockMvc.perform(get("/api/workflow-links/{id}/history", linkId)
                         .with(user("workflow-editor")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[*].activityId", hasItem("startEvent")));
+                .andExpect(jsonPath("$.content[*].activityId", hasItem("startEvent")));
 
         mockMvc.perform(get("/api/workflow-links/{id}/tasks", linkId)
                         .with(user("workflow-editor")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].taskId").value(taskId))
-                .andExpect(jsonPath("$[0].name").value("Smoke Task"));
+                .andExpect(jsonPath("$.content[0].taskId").value(taskId))
+                .andExpect(jsonPath("$.content[0].name").value("Smoke Task"));
 
         mockMvc.perform(get("/api/workflow-links/{id}/dossier", linkId)
                         .with(user("workflow-editor")))
@@ -175,7 +175,15 @@ class WorkflowApiTest {
         mockMvc.perform(get("/api/workflow-links/{id}/tasks", linkId)
                         .with(user("assignee-sub")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].assignee").value("assignee-sub"));
+                .andExpect(jsonPath("$.content[0].assignee").value("assignee-sub"));
+
+        mockMvc.perform(get("/api/workflow-tasks/mine")
+                        .with(user("assignee-sub")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].taskId").value(taskId))
+                .andExpect(jsonPath("$.content[0].assigneeId").value("assignee-sub"))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.totalElements").value(1));
 
         mockMvc.perform(post("/api/workflow-tasks/{taskId}/complete", taskId)
                         .with(user("workflow-editor"))

@@ -8,15 +8,18 @@ updated: 2026-08-21
 feature: durcissement-donnees-sensibles
 phase5: 2026-08-21
 phase7: 2026-08-21
+phase9: 2026-08-21
 planning_ref: docs/ai/planning/2026-08-21-feature-durcissement-donnees-sensibles.md
 ---
 
 # Implementation Guide — `durcissement-donnees-sensibles`
 
-> Phase 5 **done**, Phase 7 (Check Implementation) **done** — un écart de
-> sécurité trouvé et corrigé (injection de formule CSV). `./mvnw verify`
+> Phase 5 **done**, Phase 7 **done** (injection de formule CSV trouvée et
+> corrigée), Phase 9 (revue finale) **done** — aucun blocage. `./mvnw verify`
 > 964 tests (0 échec) + Jacoco OK ; Vitest 136 + Playwright 39 (feature
-> backend-only, régression complète explicitement demandée).
+> backend-only, régression complète explicitement demandée). PR #62 prête
+> pour revue humaine (CI indisponible : crédits GitHub Actions épuisés,
+> confirmé hors de notre contrôle, suite validée localement).
 
 ## Development Setup
 
@@ -222,3 +225,48 @@ nécessaire (déjà verts en Phase 5 sur un état sans risque frontend).
 
 Next : `dev-testing` (Phase 8, déjà couvert en pratique par le testing doc
 tenu à jour au fil de l'eau) puis `dev-review` (Phase 9).
+
+## Phase 9 — Revue finale (2026-08-21)
+
+Revue holistique (au-delà du fichier-par-fichier de Phase 7) :
+
+- **Traçage des appelants** de chaque frontière publique modifiée :
+  `DossierElementUploadController` (constructeur changé — seul
+  `DossierElementUploadControllerTest` l'instancie directement, déjà mis à
+  jour ; le reste passe par le component-scan Spring) ;
+  `DossierListQueryParser.parseStatus` (2 appelants : `parse()` existant,
+  `DossierExportController` nouveau) ; `AttachmentScanPort` /
+  `DossierExportPort` / `ExportDossiersUseCase` (chacun un seul
+  implémenteur, un seul point de câblage dans `DossierConfig`, pas de
+  double enregistrement de bean).
+- **Cohérence avec des modules similaires** : `JpaDossierExportAdapter`
+  suit le pattern `@Component` de `JpaDossierSearchAdapter`/
+  `JpaDossierRepositoryAdapter` ; `NoOpAttachmentScanAdapter` suit le
+  pattern `@Bean` manuel de `FilesystemStorageAdapter`/`S3StorageAdapter`
+  (pas de `@Component`, câblage explicite dans `DossierConfig`).
+- **Réutilisation** : aucune utilité CSV préexistante dans le dépôt
+  (vérifié par grep) — `CsvWriter` n'est pas une duplication.
+- **Dépendances** : `pom.xml` inchangé (aucune nouvelle dépendance ajoutée,
+  conforme au design).
+- **Rollback** : aucune migration Liquibase dans ce lot — rien
+  d'irréversible à risque.
+- **Breaking changes** : le seul changement de signature publique
+  (constructeur `DossierElementUploadController`) est interne au dépôt,
+  tous les appelants mis à jour dans le même commit.
+
+**Checklist finale :**
+- [x] Correspondance design ↔ implémentation (Phase 7 + Phase 9)
+- [x] Aucun gap logique restant
+- [x] Sécurité traitée (magic-bytes, garde-fou secrets, injection CSV
+      trouvée et corrigée)
+- [x] Points d'intégration vérifiés (wiring `DossierConfig`, pas de bean
+      dupliqué)
+- [x] Tests couvrent les changements (964 backend, régression frontend
+      complète)
+- [x] Docs à jour (requirements/design/planning/implementation/testing,
+      TODO.md, FILE-ATTENTE.md)
+
+**Aucun blocage.** Feature prête — PR #62 déjà ouverte et à jour
+(commit `284345c`). CI GitHub Actions indisponible pour raison externe
+(crédits épuisés, confirmé par l'utilisateur) — n'empêche pas la revue
+humaine ni le merge une fois les crédits reconstitués.

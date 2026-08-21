@@ -9,7 +9,7 @@
 > - Séquencement « avant prod » : [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md) §9
 >
 > **Dernière mise à jour :** 2026-08-21 (`durcissement-donnees-sensibles`
-> Phase 7 done — injection de formule CSV trouvée et corrigée en revue).
+> Phase 9 READY — PR #62 à jour, aucun blocage ; en attente de revue/merge).
 
 ## Comment s’en servir
 
@@ -110,3 +110,4 @@ pré-positionné, pas le connecteur).
 | 2026-08-21 | `durcissement-donnees-sensibles` Phase 4 reviewed | 5 milestones (M1 upload, M2 export CSV, M3 skeleton connecteur, M4 audit secrets, M5 qualité) ; M1–M4 sans dépendance croisée ; D-CSV-UI=pas d'écran SPA V1 (feature backend seul) |
 | 2026-08-21 | `durcissement-donnees-sensibles` Phase 5 done | M1–M5 en TDD ; `./mvnw verify` 960 tests (0 échec) + Jacoco OK ; Vitest 136 + Playwright 39 (feature backend-only, régression complète) ; TODO §23 reste réduit, §30 clos |
 | 2026-08-21 | `durcissement-donnees-sensibles` Phase 7 done | Revue fichier par fichier ; injection de formule CSV trouvée sur `CsvWriter` (labels/champs dynamiques exportés non protégés) et corrigée en TDD ; `./mvnw verify` 964 tests (0 échec) |
+| 2026-08-21 | `durcissement-donnees-sensibles` Phase 9 READY | Revue finale : traçage appelants, cohérence modules similaires, pas de duplication, pas de migration à risque ; aucun blocage ; PR #62 (commit `284345c`) prête pour revue humaine |

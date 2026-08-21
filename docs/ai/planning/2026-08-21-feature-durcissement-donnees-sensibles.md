@@ -10,6 +10,8 @@ phase1: 2026-08-21
 phase3: 2026-08-21
 phase4: 2026-08-21
 phase5: 2026-08-21
+phase7: 2026-08-21
+phase9: 2026-08-21
 requirements_ref: docs/ai/requirements/2026-08-21-feature-durcissement-donnees-sensibles.md
 design_ref: docs/ai/design/2026-08-21-feature-durcissement-donnees-sensibles.md
 testing_ref: docs/ai/testing/2026-08-21-feature-durcissement-donnees-sensibles.md

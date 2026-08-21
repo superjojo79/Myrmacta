@@ -8,9 +8,11 @@
 > - Inventaire follow-ups / lots : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md)
 > - Séquencement « avant prod » : [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md) §9
 >
-> **Dernière mise à jour :** 2026-08-21 (`contrat-api-client` Phase 4
-> reviewed — planning figé, 7 milestones / 9 tâches tracées, aucune
-> tâche commencée).
+> **Dernière mise à jour :** 2026-08-21 (`contrat-api-client` Phase 9
+> revue — implémentation complète (7 milestones, 9 tâches), 2 bugs réels
+> trouvés et corrigés en Phase 7 (tri déclaré/réel), 2 régressions e2e
+> réelles trouvées et corrigées en Phase 8 ; prête pour PR, pas encore
+> mergée).
 
 ## Comment s’en servir
 
@@ -58,7 +60,7 @@ le remplit déjà en pratique à chaque lot livré. `durcissement-donnees-sensib
 
 | Priorité | Feature / lot kebab-case | TODO couverts | Contenu | Pourquoi cet ordre |
 |---|---|---|---|---|
-| 1 | `contrat-api-client` | §24 (reste) | Codegen client OpenAPI (typescript-axios ou équivalent) · pagination des listes imbriquées (relations, tasks, `connector-definitions`…) · spec formelle SSE / multipart attachment / webhook ingress (actuellement `@Hidden`) | Aucune décision ouverte ; clôture définitivement le point 24 |
+| 1 | `contrat-api-client` — **implémentation complète, prête pour PR** | §24 (clos) | 6 listes non-admin migrées vers `PageResponse` (elements, dossiers/workflows, workflow-tasks/mine, connector-definitions, workflow-links history+tasks) ; 3 endpoints `@Hidden` documentés (SSE, multipart, webhook) ; codegen client resté hors V1 (décision assumée) | Branche `claude/queue-next-feature-8r054i` poussée, `./mvnw verify` + `npm run test`/`test:e2e` verts — en attente de PR |
 | 2 | `fiabilisation-tests-plateforme` | §28, §26 (reste), §37 | Testcontainers (étanchéité `search_path`) · test de charge Flowable (dimensionnement verrous) · tests du relais outbox (rejeu, idempotence, crash entre publication et marquage) · migration Liquibase multi-schéma avec échec partiel · seuils de couverture · smoke PostgreSQL réel multi-pods (référence séquentielle) · `findClosedForRetention` aligné sur le pattern `tenantId` explicite | Seuils de couverture à trancher (mineur) — sinon prêt à démarrer |
 | 3 | `deploiement-bpmn` | §35 | Trancher (a) acter l’état actuel + corriger doc, (b) intégrer Flowable Modeler, ou (c) écran d’upload BPMN minimal FlowForge — puis livrer l’option retenue | **Bloqué** : décision produit à trancher avant tout dev (critère 2) |
 | 4 | `modele-physique-consolide` | §25 | ERD/DDL consolidé, répartition schéma tenant / `platform`, description `TenantRegistry` + politique de rafraîchissement du cache | Doc pure (aucune décision ouverte) mais sans parcours métier utilisateur direct (critère 3) — reste en dernier |
@@ -119,3 +121,7 @@ référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même
 | 2026-08-21 | `contrat-api-client` Phase 1+2 reviewed | D-CODEGEN=exclu (contradiction FILE-ATTENTE/TODO résolue en faveur de TODO) ; D-RELATIONS=pas de pagination (décision existante respectée) ; D-PAGINATION-SCOPE=6 listes (elements, workflow-tasks/mine, connector-definitions, dossiers/{id}/workflows, workflow-links history+tasks) ; D-HIDDEN-SPEC=documentation complète SSE/multipart/webhook |
 | 2026-08-21 | `contrat-api-client` Phase 3 reviewed | Mécanisme par source : JPA `Pageable` (elements, dossiers/{id}/workflows), Flowable `listPage`/`count` natif (workflow-tasks/mine, workflow-links history+tasks — remplace `DEFAULT_LIMIT=100`), slice mémoire `PageResult.slice` (connector-definitions) ; `AdminListSorts` renommé `ListSorts` (générique) ; SPA adapté via `listAllPages` existant, zéro changement de composant Vue ; 3 endpoints `@Hidden` documentés sans changement de comportement |
 | 2026-08-21 | `contrat-api-client` Phase 4 reviewed | 7 milestones (M1 `ListSorts`, M2 pagination JPA, M3 pagination Flowable native, M4 pagination mémoire, M5 doc OpenAPI `@Hidden`, M6 adaptation SPA, M7 qualité), 9 tâches, testing doc scénarisé (aucun scénario orphelin) ; toutes les tâches `not started` — Phase 5 pas encore démarrée |
+| 2026-08-21 | `contrat-api-client` Phase 5 exécutée (TDD) | 9 tâches (T1.1–T7.2) implémentées, rouge confirmé avant chaque nouvelle méthode de port/adaptateur ; `./mvnw verify` 986 tests (0 échec), Jacoco met ; golden OpenAPI régénéré (6 endpoints paginés + 3 `@Hidden` retirés) |
+| 2026-08-21 | `contrat-api-client` Phase 7 (check implementation) | Relecture fichier par fichier : 2 bugs réels trouvés et corrigés — `ListSorts.MY_WORKFLOW_TASKS` déclarait `createdAt,asc` alors que l'adaptateur trie `.desc()` (constante corrigée, comportement préservé) ; `listActiveTasks` n'appliquait aucun `ORDER BY` avant `.listPage` (pagination non déterministe, vrai bug — `.orderByTaskCreateTime().asc()` ajouté) |
+| 2026-08-21 | `contrat-api-client` Phase 8 (régression complète) | `npm run test` 136/136, `typecheck`/`lint` propres, `npm run test:e2e` 39/39 après correction de 2 régressions SPA réelles dans `frontend/e2e/pilotage.spec.ts` (mocks non enveloppés `PageResponse` + pattern glob Playwright ne matchant plus l'URL avec `?page=&size=`) ; non-déterminisme du golden OpenAPI trouvé et corrigé (`HttpHeaders` exposé par le webhook, `@Parameter(hidden = true)` ajouté) |
+| 2026-08-21 | `contrat-api-client` Phase 9 revue | Revue holistique fichier par fichier : alignement design confirmé, breaking changes de ports tous traités atomiquement (appelants en repo mis à jour), aucun changement de sécurité/autorisation, rollback sûr (aucune migration DB). Aucun problème bloquant nouveau (les 2 trouvés en Phase 7 déjà corrigés). Implémentation complète, TODO §24 clos, en attente de PR |

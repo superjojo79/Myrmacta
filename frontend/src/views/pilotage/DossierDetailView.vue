@@ -9,6 +9,7 @@ import type { DossierStatus, ElementType, RelationType } from '@/api/types'
 import DossierFieldsEditor from '@/components/dossier/DossierFieldsEditor.vue'
 import StatusSelect from '@/components/dossier/StatusSelect.vue'
 import ElementsList from '@/components/dossier/ElementsList.vue'
+import WorkflowLinksList from '@/components/dossier/WorkflowLinksList.vue'
 import AddElementDialog from '@/components/dossier/AddElementDialog.vue'
 import RelationsList from '@/components/dossier/RelationsList.vue'
 import LinkDossierDialog from '@/components/dossier/LinkDossierDialog.vue'
@@ -24,11 +25,20 @@ const auth = useAuthStore()
 const {
   dossier,
   dossierType,
+  workflows,
+  workflowsPage,
+  workflowsTotalPages,
   elements,
+  elementsPage,
+  elementsTotalPages,
   relations,
   diagram,
   history,
+  historyPage,
+  historyTotalPages,
   tasks,
+  tasksPage,
+  tasksTotalPages,
   loading,
   error,
   diagramUnavailable,
@@ -182,11 +192,22 @@ async function confirmReassign() {
       @save="saveFields"
     />
 
-    <ElementsList :elements="elements">
+    <ElementsList
+      :elements="elements"
+      :page="elementsPage"
+      :total-pages="elementsTotalPages"
+      @update:page="store.loadElementsPage($event)"
+    >
       <template #actions>
         <button v-if="canEditDossier" type="button" @click="addElementOpen = true">Ajouter</button>
       </template>
     </ElementsList>
+    <WorkflowLinksList
+      :workflows="workflows"
+      :page="workflowsPage"
+      :total-pages="workflowsTotalPages"
+      @update:page="store.loadWorkflowsPage($event)"
+    />
     <AddElementDialog
       :open="addElementOpen"
       @close="addElementOpen = false"
@@ -207,12 +228,20 @@ async function confirmReassign() {
     />
 
     <BpmnViewer :diagram="diagram" :unavailable="diagramUnavailable || !linkId" />
-    <HistoryTimeline :history="history" />
+    <HistoryTimeline
+      :history="history"
+      :page="historyPage"
+      :total-pages="historyTotalPages"
+      @update:page="store.loadHistoryPage($event)"
+    />
     <TaskList
       :tasks="tasks"
       :can-reassign="canReassign"
+      :page="tasksPage"
+      :total-pages="tasksTotalPages"
       @complete="onComplete"
       @reassign="reassignTaskId = $event"
+      @update:page="store.loadTasksPage($event)"
     />
 
     <div v-if="reassignTaskId" class="reassign">

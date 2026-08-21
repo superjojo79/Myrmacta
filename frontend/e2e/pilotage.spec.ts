@@ -1093,3 +1093,32 @@ test('E2E-OBS-4 refresh triggers a second get', async ({ page }) => {
   await refresh
 })
 
+test('E2E-PAGE-2 tasks inbox pager writes page query', async ({ page }) => {
+  await mockSession(page)
+  await page.route('**/api/workflow-tasks/mine*', async (route) => {
+    const url = new URL(route.request().url())
+    const pageNo = Number(url.searchParams.get('page') || '0')
+    const task = {
+      taskId: pageNo === 0 ? 'task-1' : 'task-2',
+      name: pageNo === 0 ? 'Valider' : 'Vérifier',
+      assigneeId: 'user-1',
+      createdAt: '2026-08-12T00:00:00Z',
+      processInstanceId: 'pi-1',
+      dossierId: DOSSIER_ID,
+      dossierReference: 'DOS-1',
+      linkId: LINK_ID,
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(envelope([task], { page: pageNo, size: 20, totalElements: 21, totalPages: 2 })),
+    })
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Tâches' }).click()
+  await expect(page.getByText('Valider')).toBeVisible()
+  await page.getByTestId('admin-pager-next').click()
+  await expect(page).toHaveURL(/[?&]page=1/)
+  await expect(page.getByText('Vérifier')).toBeVisible()
+})
+

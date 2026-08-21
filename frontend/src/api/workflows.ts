@@ -13,20 +13,24 @@ export async function getWorkflowDiagram(linkId: string): Promise<WorkflowDiagra
   return data
 }
 
-export async function getWorkflowHistory(linkId: string): Promise<ActivityHistoryEntry[]> {
-  return listAllPages((page, size) =>
-    axios
-      .get<Page<ActivityHistoryEntry>>(`/api/workflow-links/${linkId}/history`, { params: { page, size } })
-      .then((response) => response.data),
-  )
+export async function getWorkflowHistory(
+  linkId: string,
+  params: { page?: number; size?: number } = {},
+): Promise<Page<ActivityHistoryEntry>> {
+  const { data } = await axios.get<Page<ActivityHistoryEntry>>(`/api/workflow-links/${linkId}/history`, {
+    params: { page: params.page, size: params.size },
+  })
+  return data
 }
 
-export async function getWorkflowTasks(linkId: string): Promise<WorkflowTaskView[]> {
-  return listAllPages((page, size) =>
-    axios
-      .get<Page<WorkflowTaskView>>(`/api/workflow-links/${linkId}/tasks`, { params: { page, size } })
-      .then((response) => response.data),
-  )
+export async function getWorkflowTasks(
+  linkId: string,
+  params: { page?: number; size?: number } = {},
+): Promise<Page<WorkflowTaskView>> {
+  const { data } = await axios.get<Page<WorkflowTaskView>>(`/api/workflow-links/${linkId}/tasks`, {
+    params: { page: params.page, size: params.size },
+  })
+  return data
 }
 
 export async function reassignWorkflowTask(

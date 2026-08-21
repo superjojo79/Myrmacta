@@ -210,3 +210,33 @@ et alternatives, exigences non-fonctionnelles, couverture requirements —
 tous couverts. Aucune question ouverte bloquante.
 
 Status : **`reviewed`**. Prochaine phase : `dev-planning` (Phase 4).
+
+## Addendum — D-SPA-ADAPT rejouée après coup (2026-08-21)
+
+Cette phase de design a été exécutée **sans poser les questions
+matérielles à l'utilisateur**, en violation du contrat de la skill
+`dev-design` (« ask one decision at a time »). Après coup, l'utilisateur
+a rejoué explicitement les 3 décisions les plus significatives via
+`AskUserQuestion`. Verdict :
+
+| Décision | Verdict rejoué | Détail |
+|---|---|---|
+| D-TASK-LIMIT | **Confirmée telle quelle** | Suppression du plafond dur maintenue |
+| D-SORT-CONST | **Confirmée telle quelle** | Renommage `ListSorts` maintenu |
+| D-SPA-ADAPT | **Inversée** | Pagination visible en UI demandée à la place de `listAllPages` silencieux |
+
+**D-SPA-ADAPT révisée**, par liste (le périmètre s'est affiné en creusant
+l'usage réel de chaque liste côté SPA, chaque affinement validé
+explicitement) :
+
+| Liste | Décision finale | Raison |
+|---|---|---|
+| `dossiers/{id}/elements` | Pager visible (`ElementsList.vue`) | Sous-section de `DossierDetailView`, état local (pas d'URL — 4 pagers coexistent sur la même page) |
+| `dossiers/{id}/workflows` | Pager visible **+ nouvel affichage** (`WorkflowLinksList.vue`) | Cette liste était chargée mais **jamais affichée** avant cet addendum (constat fait en creusant, pas anticipé en design initial) — l'utilisateur a demandé d'ajouter l'affichage en plus du pager, élargissant légèrement le périmètre au-delà du contrat API pur |
+| `workflow-tasks/mine` | Pager visible, **synchronisé à l'URL** (`useAdminListQuery`, comme les listes admin) | Vue dédiée `/tasks`, pas de collision d'état possible |
+| `workflow-links/{linkId}/history` | Pager visible (`HistoryTimeline.vue`) | État local, même raison que `elements` |
+| `workflow-links/{linkId}/tasks` | Pager visible (`TaskList.vue`) | État local, même raison que `elements` |
+| `connector-definitions` | **`listAllPages` maintenu, pas de pager** | Ce n'est pas une liste parcourue — `ConnectorsAdminView.vue` l'utilise pour peupler un menu déroulant de types de connecteur à la création (une poignée de types codés en dur). Une pagination visible y casserait l'UX (le formulaire a besoin de tous les types) |
+
+Voir `docs/ai/implementation/2026-08-21-feature-contrat-api-client.md`,
+section « Addendum D-SPA-ADAPT », pour le détail de l'implémentation.

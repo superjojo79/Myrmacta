@@ -293,3 +293,29 @@ nouvelle).
 Aucune régression restante. Prochaine étape : `dev-testing` (Phase 8,
 scénarios déjà documentés et exécutés — à formaliser) puis `dev-review`
 (Phase 9, revue finale avant merge).
+
+## Addendum — 9 tâches supplémentaires (D-SPA-ADAPT rejouée)
+
+Après la clôture ci-dessus, l'utilisateur a signalé que la Phase 3
+n'avait posé aucune question matérielle (violation du contrat
+`dev-design`). Les 3 décisions de design les plus significatives ont été
+rejouées via `AskUserQuestion` : D-TASK-LIMIT et D-SORT-CONST confirmées
+telles quelles, **D-SPA-ADAPT inversée** — pagination visible en UI
+demandée pour 5 des 6 listes (`connector-definitions` reste
+`listAllPages`, ce n'est pas une liste parcourue).
+
+9 tâches supplémentaires exécutées en TDD (rouge confirmé avant chaque
+implémentation) : revert des 4 wrappers API vers `Page<T>` brut, store
+`tasks.ts` (page/totalPages), store `dossier.ts` (pagination par
+section : elements/workflows/history/tasks), pagers dans
+`ElementsList`/`HistoryTimeline`/`TaskList`, nouveau composant
+`WorkflowLinksList.vue` (liste jamais affichée avant, ajout demandé
+explicitement), câblage `DossierDetailView.vue`, mise à jour des specs
+Vitest, régression e2e complète (+1 nouveau scénario `E2E-PAGE-2`).
+
+Détail complet : `docs/ai/implementation/2026-08-21-feature-contrat-api-client.md`,
+section « Addendum D-SPA-ADAPT ».
+
+**Preuves :** `npm run test` 153/153 (+17 vs avant l'addendum),
+`typecheck`/`lint` propres, `npm run test:e2e` 40/40 (+1). Aucun fichier
+backend touché (les endpoints exposaient déjà `page`/`size`/`sort`).

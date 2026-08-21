@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import type { DossierElementView } from '@/api/types'
 import { downloadElementContent, elementContentUrl } from '@/api/elements'
+import AdminPager from '@/components/admin/AdminPager.vue'
 
 defineProps<{
   elements: DossierElementView[]
+  totalPages?: number
 }>()
+
+const page = defineModel<number>('page', { default: 0 })
 
 function attachmentFilename(element: DossierElementView): string {
   const metaFilename = element.metadata?.filename
@@ -65,6 +69,7 @@ async function download(element: DossierElementView) {
         </a>
       </li>
     </ul>
+    <AdminPager v-if="(totalPages ?? 1) > 1" v-model="page" :total-pages="totalPages ?? 1" />
   </section>
 </template>
 

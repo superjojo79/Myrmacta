@@ -1,17 +1,23 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { RouterLink } from 'vue-router'
 import { useTasksStore } from '@/stores/tasks'
 import { toProblemDetail } from '@/api/http'
-import { ref } from 'vue'
+import { useAdminListQuery } from '@/composables/useAdminListQuery'
+import AdminPager from '@/components/admin/AdminPager.vue'
 
 const store = useTasksStore()
-const { tasks, loading, error } = storeToRefs(store)
+const { tasks, totalPages, loading, error } = storeToRefs(store)
+const { page, size } = useAdminListQuery()
 const actionError = ref<string | null>(null)
 
 onMounted(() => {
-  void store.refresh()
+  void store.refresh(page.value, size.value)
+})
+
+watch([page, size], ([nextPage, nextSize]) => {
+  void store.refresh(nextPage, nextSize)
 })
 
 async function complete(taskId: string) {
@@ -44,6 +50,7 @@ async function complete(taskId: string) {
         </div>
       </li>
     </ul>
+    <AdminPager v-if="tasks.length > 0" v-model="page" :total-pages="totalPages" />
     <p v-if="actionError" class="error">{{ actionError }}</p>
   </section>
 </template>

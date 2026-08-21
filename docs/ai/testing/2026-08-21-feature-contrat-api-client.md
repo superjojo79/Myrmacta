@@ -242,3 +242,41 @@ inspection du diff.
    **Corrigé** : le test (renommé
    `..._previouslyHiddenOperationsNowDocumented`) vérifie désormais leur
    présence.
+
+## Addendum — pagination UI (D-SPA-ADAPT rejouée)
+
+Nouveaux tests ajoutés en TDD (rouge confirmé avant chaque
+implémentation), suite à la décision de rendre la pagination visible en
+UI pour 5 des 6 listes (détail : implementation doc, section « Addendum
+D-SPA-ADAPT ») :
+
+- `stores/tasks.spec.ts` — `refresh(page, size)` stocke `totalPages`.
+- `stores/dossier.spec.ts` — `loadElementsPage` stocke content/page/totalPages ;
+  `loadVisualization` mémorise `linkId` pour permettre à
+  `loadHistoryPage`/`loadTasksPage` de re-paginer.
+- `views/pilotage/MobileTasksView.spec.ts` — le pager s'affiche et
+  déclenche `store.refresh` au clic.
+- `components/dossier/ElementsList.spec.ts` (+2), `components/workflow/HistoryTimeline.spec.ts`
+  (nouveau, 4), `components/workflow/TaskList.spec.ts` (nouveau, 4),
+  `components/dossier/WorkflowLinksList.spec.ts` (nouveau, 4) — pager
+  affiché seulement si `totalPages > 1`, émet `update:page` au clic.
+- `views/pilotage/DossierDetailView.spec.ts` — 9/9 existants toujours
+  verts après adaptation des mocks (`Page<T>` au lieu de tableaux bruts).
+
+**E2E :** nouveau scénario `E2E-PAGE-2` (`frontend/e2e/pilotage.spec.ts`)
+prouvant le pager de la page Tâches de bout en bout dans un vrai
+navigateur — clic → URL `?page=1` → contenu de la page 2 affiché, même
+pattern que `E2E-PAGE-1` (admin types). Commande :
+`PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run
+test:e2e` → `40 passed`, exit code `0`.
+
+**Écart assumé :** les 4 pagers embarqués dans `DossierDetailView`
+(elements/workflows/history/tasks) n'ont pas de scénario e2e dédié — les
+fixtures existantes ont 1-3 éléments par section (`totalPages` reste à
+1, aucun pager ne s'affiche dans les parcours e2e actuels). Couverts
+unitairement (Vitest) uniquement.
+
+**Preuves finales :** `npm run test` 153/153, `npm run typecheck` et
+`npm run lint` propres, `npm run test:e2e` 40/40. Aucun changement
+backend (`./mvnw verify` non re-exécuté, aucun fichier `src/` touché par
+cet addendum — confirmé par `git status`).

@@ -7,7 +7,7 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import { routes } from '@/app/routes'
 
 vi.mock('@/api/tasks', () => ({
-  listMyTasks: vi.fn().mockResolvedValue([]),
+  listMyTasks: vi.fn().mockResolvedValue({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }),
   completeTask: vi.fn().mockResolvedValue(undefined),
 }))
 
@@ -25,5 +25,34 @@ describe('MobileTasksView', () => {
     store.loading = false
     const wrapper = mount(MobileTasksView, { global: { plugins: [router] } })
     expect(wrapper.text()).toContain('Aucune tâche assignée')
+  })
+
+  it('shows the pager and refreshes on page change', async () => {
+    const router = createRouter({ history: createMemoryHistory(), routes })
+    await router.push('/tasks')
+    await router.isReady()
+    const store = useTasksStore()
+    const refreshSpy = vi.spyOn(store, 'refresh').mockResolvedValue()
+    store.tasks = [
+      {
+        taskId: 't1',
+        name: 'Review',
+        assigneeId: 'u1',
+        createdAt: null,
+        processInstanceId: 'pi',
+        dossierId: 'd1',
+        dossierReference: 'DOS-1',
+        linkId: 'l1',
+      },
+    ]
+    store.totalPages = 2
+    store.loading = false
+    const wrapper = mount(MobileTasksView, { global: { plugins: [router] } })
+    await wrapper.vm.$nextTick()
+
+    expect(refreshSpy).toHaveBeenCalled()
+    await wrapper.get('[data-testid="admin-pager-next"]').trigger('click')
+    await wrapper.vm.$nextTick()
+    expect(refreshSpy.mock.calls.length).toBeGreaterThan(1)
   })
 })

@@ -147,3 +147,80 @@ JPA/Flowable réellement exécutée.
   corps de la requête, lui, reste documenté) — aucun changement de
   comportement runtime, uniquement une exclusion de la doc pour un type
   Spring interne non pertinent au contrat.
+
+## Addendum D-SPA-ADAPT — pagination UI ajoutée après coup (2026-08-21)
+
+La Phase 3 (design) avait auto-décidé D-SPA-ADAPT (pas de pagination
+visible, `listAllPages` silencieux côté SPA) sans poser la question à
+l'utilisateur — écart signalé par l'utilisateur, décision rejouée
+explicitement (cf. design doc, addendum). Verdict : pagination visible
+demandée pour 5 des 6 listes ; `connector-definitions` reste
+`listAllPages` (c'est un menu déroulant de types, pas une liste
+parcourue).
+
+**Backend :** aucun changement (les endpoints exposaient déjà
+`page`/`size`/`sort`).
+
+**Frontend — fichiers modifiés :**
+
+- `api/tasks.ts`, `api/dossiers.ts` (`listDossierElements`,
+  `listDossierWorkflows`), `api/workflows.ts` (`getWorkflowHistory`,
+  `getWorkflowTasks`) : reviennent sur `listAllPages`, retournent
+  désormais `Page<T>` brut avec `params: {page, size}`.
+  `api/admin.ts` (`listConnectorDefinitions`) **inchangé**.
+- `stores/tasks.ts` : `refresh(page, size)` (au lieu de `refresh()`),
+  `totalPages` exposé.
+- `stores/dossier.ts` : état de pagination **par section**
+  (`elementsPage`/`elementsTotalPages`, `workflowsPage`/`...TotalPages`,
+  `historyPage`/`...TotalPages`, `tasksPage`/`...TotalPages`) + méthodes
+  `loadElementsPage`/`loadWorkflowsPage`/`loadHistoryPage`/`loadTasksPage`.
+  Nouveau `currentLinkId` interne pour permettre de re-paginer
+  history/tasks sans redemander `linkId` à l'appelant.
+- `components/admin/AdminPager.vue` **réutilisé tel quel** (déjà
+  générique malgré son nom — aucun changement).
+- `components/dossier/ElementsList.vue`, `components/workflow/HistoryTimeline.vue`,
+  `components/workflow/TaskList.vue` : ajout `page`/`totalPages` props +
+  `defineModel('page')`, rendent `<AdminPager>` si `totalPages > 1`.
+- `components/dossier/WorkflowLinksList.vue` **(nouveau)** : la liste
+  `dossiers/{id}/workflows` était chargée dans le store mais **jamais
+  affichée** dans `DossierDetailView.vue` avant cet addendum (constat
+  fait en creusant le scope, pas anticipé) — nouveau composant
+  d'affichage + pager, créé avec l'accord explicite de l'utilisateur qui
+  élargit légèrement le périmètre au-delà du contrat API pur.
+- `views/pilotage/MobileTasksView.vue` : pagination **synchronisée à
+  l'URL** via `useAdminListQuery` (même pattern que les vues admin) —
+  seule vue dédiée parmi les 5, donc pas de risque de collision entre
+  plusieurs pagers sur la même page.
+- `views/pilotage/DossierDetailView.vue` : câble les 4 sections
+  embarquées (elements, workflows, history, tasks) avec un état **local,
+  non synchronisé à l'URL** (`:page`/`@update:page` explicites vers les
+  méthodes du store, pas de `v-model` générique) — 4 pagers sur la même
+  page rendent le pattern `useAdminListQuery` (URL globale) inutilisable
+  ici.
+
+**Pourquoi `:page`/`@update:page` explicites plutôt que `v-model`
+générique dans `DossierDetailView` :** un `watch` générique sur un ref
+lié en v-model aurait pu se redéclencher quand le store remet la page à
+0 en interne (changement de dossier), provoquant un double fetch inutile.
+Câbler `@update:page` directement vers `store.loadXxxPage` élimine ce
+risque : seul un clic utilisateur sur le pager déclenche un rechargement.
+
+**Tests :** TDD strict (rouge confirmé avant chaque implémentation) sur
+tous les nouveaux comportements — `tasks store` (+1), `dossier store`
+(+2), `MobileTasksView` (+1), `ElementsList` (+2), `HistoryTimeline`
+(nouveau fichier, 4 tests), `TaskList` (nouveau fichier, 4 tests),
+`WorkflowLinksList` (nouveau fichier, 4 tests), `DossierDetailView`
+(9/9 existants toujours verts après adaptation des mocks). `npm run
+test` 153/153, `typecheck` et `lint` propres. `npm run test:e2e` 40/40
+(39 existants inchangés + 1 nouveau `E2E-PAGE-2` prouvant que le pager
+de la page Tâches fonctionne réellement dans un navigateur : clic →
+URL `?page=1` → contenu de la page 2 affiché).
+
+**Non testé en e2e :** les 4 pagers embarqués dans `DossierDetailView`
+(elements/workflows/history/tasks) n'ont pas de scénario e2e dédié
+prouvant le clic-pager de bout en bout, contrairement à `workflow-tasks/mine`
+(`E2E-PAGE-2`) — les fixtures e2e existantes ont toutes 1-3 éléments par
+section, donc `totalPages` reste à 1 et aucun pager ne s'affiche dans
+les scénarios actuels. Couvert unitairement (Vitest) mais pas en
+navigateur réel — écart mineur assumé, à combler si un scénario e2e
+avec volume réel devient nécessaire.

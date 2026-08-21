@@ -9,9 +9,8 @@
 > - Séquencement « avant prod » : [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md) §9
 >
 > **Dernière mise à jour :** 2026-08-21 (`durcissement-donnees-sensibles`
-> Phase 9 corrigée après relecture Jacoco correcte : 4 lacunes réelles
-> supplémentaires comblées, 973 tests ; PR #62 à jour, en attente de
-> revue/merge).
+> **livrée** — PR #62 mergée sur `main` ; prochain = `contrat-api-client`
+> §24 reste).
 
 ## Comment s’en servir
 
@@ -43,6 +42,7 @@ Même grille que pour `preview-documents` puis `edition-champs-dossier` :
 | `purge-stockage` | PR #56, TODO §22 | Job `purge_outbox` store+PG ; `DocumentStoragePort.delete` ; file admin lecture + enqueue |
 | `openapi-pagination-admin` | PR #58, TODO §24 | Envelope 6 GET admin ; OpenAPI golden + flag off ; pagers SPA ; écran webhooks |
 | `observabilite` | PR #59, TODO §29 | ECS + MDC ; Micrometer port management ; snapshot + SPA admin |
+| `durcissement-donnees-sensibles` | PR #62, TODO §23 (reste réduit)/§30 (clos) | Magic-bytes + `AttachmentScanPort` no-op sur upload ; export CSV masqué (`GET /api/dossiers/export.csv`) ; skeleton `HttpRestServiceConnector` non enregistré ; garde-fous anti-fuite secrets ; injection de formule CSV trouvée et corrigée en revue |
 
 Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relations, PATCH fields API, éléments) : voir [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §2.
 
@@ -50,23 +50,23 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 
 Plus de lot produit V1 nommé après `observabilite` : les points TODO hygiène
 restants (§23 reste, §24 reste, §25, §26 reste, §28, §30 reste, §35, §37)
-sont regroupés en 5 features candidates (regroupement validé 2026-08-20).
+ont été regroupés en 5 features candidates (regroupement validé 2026-08-20).
 §31 (« découpage en lots ») est clos ci-dessous plutôt que transformé en
 feature — le process `dev-lifecycle` + ce fichier + `DEFERRED-FEATURES.md`
-le remplit déjà en pratique à chaque lot livré.
+le remplit déjà en pratique à chaque lot livré. `durcissement-donnees-sensibles`
+(priorité 1) livrée le 2026-08-21 (PR #62) — file renumérotée.
 
 | Priorité | Feature / lot kebab-case | TODO couverts | Contenu | Pourquoi cet ordre |
 |---|---|---|---|---|
-| 1 | `durcissement-donnees-sensibles` | §23 (reste), §30 (reste) | Antivirus / limites de taille et types sur pièces jointes & upload générique · masquage des champs sensibles dans les exports (CSV…) · protection SSRF sur le futur connecteur `http-rest` en rôle SERVICE · prévention des fuites de secrets déchiffrés via logs et API d’administration | Aucune décision ouverte ; prolonge directement §30 déjà entamé cette session (rate limiting, SSRF PDF/webhooks, audit sécurité) |
-| 2 | `contrat-api-client` | §24 (reste) | Codegen client OpenAPI (typescript-axios ou équivalent) · pagination des listes imbriquées (relations, tasks, `connector-definitions`…) · spec formelle SSE / multipart attachment / webhook ingress (actuellement `@Hidden`) | Aucune décision ouverte ; clôture définitivement le point 24 |
-| 3 | `fiabilisation-tests-plateforme` | §28, §26 (reste), §37 | Testcontainers (étanchéité `search_path`) · test de charge Flowable (dimensionnement verrous) · tests du relais outbox (rejeu, idempotence, crash entre publication et marquage) · migration Liquibase multi-schéma avec échec partiel · seuils de couverture · smoke PostgreSQL réel multi-pods (référence séquentielle) · `findClosedForRetention` aligné sur le pattern `tenantId` explicite | Seuils de couverture à trancher (mineur) — sinon prêt à démarrer |
-| 4 | `deploiement-bpmn` | §35 | Trancher (a) acter l’état actuel + corriger doc, (b) intégrer Flowable Modeler, ou (c) écran d’upload BPMN minimal FlowForge — puis livrer l’option retenue | **Bloqué** : décision produit à trancher avant tout dev (critère 2) |
-| 5 | `modele-physique-consolide` | §25 | ERD/DDL consolidé, répartition schéma tenant / `platform`, description `TenantRegistry` + politique de rafraîchissement du cache | Doc pure (aucune décision ouverte) mais sans parcours métier utilisateur direct (critère 3) — reste en dernier |
+| 1 | `contrat-api-client` | §24 (reste) | Codegen client OpenAPI (typescript-axios ou équivalent) · pagination des listes imbriquées (relations, tasks, `connector-definitions`…) · spec formelle SSE / multipart attachment / webhook ingress (actuellement `@Hidden`) | Aucune décision ouverte ; clôture définitivement le point 24 |
+| 2 | `fiabilisation-tests-plateforme` | §28, §26 (reste), §37 | Testcontainers (étanchéité `search_path`) · test de charge Flowable (dimensionnement verrous) · tests du relais outbox (rejeu, idempotence, crash entre publication et marquage) · migration Liquibase multi-schéma avec échec partiel · seuils de couverture · smoke PostgreSQL réel multi-pods (référence séquentielle) · `findClosedForRetention` aligné sur le pattern `tenantId` explicite | Seuils de couverture à trancher (mineur) — sinon prêt à démarrer |
+| 3 | `deploiement-bpmn` | §35 | Trancher (a) acter l’état actuel + corriger doc, (b) intégrer Flowable Modeler, ou (c) écran d’upload BPMN minimal FlowForge — puis livrer l’option retenue | **Bloqué** : décision produit à trancher avant tout dev (critère 2) |
+| 4 | `modele-physique-consolide` | §25 | ERD/DDL consolidé, répartition schéma tenant / `platform`, description `TenantRegistry` + politique de rafraîchissement du cache | Doc pure (aucune décision ouverte) mais sans parcours métier utilisateur direct (critère 3) — reste en dernier |
 
 **Hors V1 (reporté, pas dans cette file) :** Rapports / SLA (maquette UI de
 référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même
-(V1 = TRIGGER uniquement — seul le hardening SSRF de la feature 1 est
-pré-positionné, pas le connecteur).
+(V1 = TRIGGER uniquement — le hardening SSRF est pré-positionné depuis
+`durcissement-donnees-sensibles`, pas le connecteur).
 
 ## Hors file produit (ne pas traiter comme « prochaine feature »)
 
@@ -115,3 +115,4 @@ pré-positionné, pas le connecteur).
 | 2026-08-21 | `durcissement-donnees-sensibles` Phase 9 READY | Revue finale : traçage appelants, cohérence modules similaires, pas de duplication, pas de migration à risque ; aucun blocage ; PR #62 (commit `284345c`) prête pour revue humaine |
 | 2026-08-21 | `durcissement-donnees-sensibles` Phase 8 rejouée | Relecture Jacoco classe par classe (pas juste le total bundle) ; 2 lacunes réelles comblées (`HttpRestServiceConnector` chemin d'erreur, `AttachmentContentSniffer` texte vide) ; `./mvnw verify` 969 tests (0 échec) |
 | 2026-08-21 | `durcissement-donnees-sensibles` Phase 9 re-vérifiée | Utilisateur : « la phase 9 a-t-elle été correctement exécutée ? » → non totalement ; balayage Jacoco corrigé (motif CSS `pc bpc` raté au 1er passage) sur les 15 fichiers modifiés, 4 lacunes réelles trouvées et comblées (`DossierExportController` closedAt, `AttachmentContentSniffer` null, `parseStatus` blanc, `CsvWriter` \r isolé) ; `./mvnw verify` 973 tests (0 échec) |
+| 2026-08-21 | `durcissement-donnees-sensibles` livrée | PR #62 mergée sur `main` (commit `a4443e5`) ; TODO §23 reste réduit, §30 clos ; prochain = `contrat-api-client` §24 (reste) |

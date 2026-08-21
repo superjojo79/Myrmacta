@@ -9,7 +9,7 @@
 > - Séquencement « avant prod » : [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md) §9
 >
 > **Dernière mise à jour :** 2026-08-21 (`durcissement-donnees-sensibles`
-> Phase 3 reviewed — design figé, aucune question ouverte bloquante).
+> Phase 4 reviewed — plan de tâches figé, prêt pour l'implémentation).
 
 ## Comment s’en servir
 
@@ -107,3 +107,4 @@ pré-positionné, pas le connecteur).
 | 2026-08-20 | Regroupement TODO restants en 5 features | `durcissement-donnees-sensibles`, `contrat-api-client`, `fiabilisation-tests-plateforme`, `deploiement-bpmn`, `modele-physique-consolide` ; §31 clos (process déjà en pratique) |
 | 2026-08-21 | `durcissement-donnees-sensibles` Phase 1+2 reviewed | D-AV=B (magic-bytes + port no-op) ; D-CSV-SCOPE=A (export construit) ; D-CSV-ROLE=lecture liste ; D-SERVICE-HTTP=skeleton non enregistré ; D-SECRETS-AUDIT=exhaustif |
 | 2026-08-21 | `durcissement-donnees-sensibles` Phase 3 reviewed | AttachmentContentSniffer+AttachmentScanPort ; DossierExportPort streamé + ExportDossiersUseCase ; HttpRestServiceConnector non-`ConnectorDefinition` (double garde registry) ; garde-fou secrets = test unitaire ciblé |
+| 2026-08-21 | `durcissement-donnees-sensibles` Phase 4 reviewed | 5 milestones (M1 upload, M2 export CSV, M3 skeleton connecteur, M4 audit secrets, M5 qualité) ; M1–M4 sans dépendance croisée ; D-CSV-UI=pas d'écran SPA V1 (feature backend seul) |

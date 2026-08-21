@@ -256,6 +256,19 @@ exposant potentiellement un champ secret (`ConnectorResponse`,
 d'ArchUnit ici (une règle structurelle ne peut pas vérifier une valeur
 runtime), un test unitaire ciblé suffit et est plus lisible.
 
+### D-CSV-UI — Pas d'écran SPA en V1
+
+| Id | Approche | Trade-off | Verdict |
+|---|---|---|---|
+| A | **Endpoint seul, pas de composant SPA** | L'acteur authentifié (cookie de session BFF même origine) ouvre l'URL directement dans le navigateur ; aucune découvrabilité dans l'UI | **Retenu** |
+| B | Bouton « Exporter CSV » sur l'écran liste dossiers | Découvrable, mais ajoute une surface SPA → Vitest **et** Playwright deviennent obligatoires (convention projet) pour un lot cadré comme du hardening | Écarté V1 |
+
+Cohérent avec les non-goals déjà actés (« pas de nouvelle table d'audit ou
+d'écran dédié à l'export CSV »). Le feature reste **backend uniquement** :
+aucun changement `frontend/`, donc pas d'obligation Playwright/Vitest pour
+cette feature (la règle « Vitest et Playwright obligatoires dès qu'une
+feature touche le SPA » ne s'applique pas faute de code SPA touché).
+
 ## Non-Functional Requirements
 **How should the system perform?**
 

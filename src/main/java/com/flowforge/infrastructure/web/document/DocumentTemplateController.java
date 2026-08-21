@@ -11,7 +11,7 @@ import com.flowforge.domain.document.port.in.NewDocumentTemplateVersionUseCase;
 import com.flowforge.domain.document.port.in.ResolveDocumentTemplateUseCase;
 import com.flowforge.domain.document.port.in.UpdateDocumentTemplateUseCase;
 import com.flowforge.infrastructure.config.TenantProperties;
-import com.flowforge.infrastructure.web.AdminListSorts;
+import com.flowforge.infrastructure.web.ListSorts;
 import com.flowforge.infrastructure.web.PageQueryParser;
 import com.flowforge.infrastructure.web.PageResponse;
 import com.flowforge.infrastructure.web.document.DocumentTemplateDtos.CreateRequest;
@@ -79,7 +79,7 @@ public class DocumentTemplateController {
                         tenantProperties.id(),
                         templateKey,
                         includeContent,
-                        PageQueryParser.parse(page, size, sort, AdminListSorts.DOCUMENT_TEMPLATES))
+                        PageQueryParser.parse(page, size, sort, ListSorts.DOCUMENT_TEMPLATES))
                 .map(TemplateResponse::from));
     }
 

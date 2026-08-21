@@ -51,7 +51,8 @@ TDD : test rouge → code → vert. Validation : commandes en fin de document.
 - **Deps :** aucune.
 - **Tests :** scénario `ListSorts` du testing doc (constantes existantes
   + 6 nouvelles).
-- **Status :** not started
+- **Status :** done (2026-08-21) — `ListSortsTest` 2/2 verts, 6 appelants
+  existants renommés, compile propre.
 
 ### M2 — Pagination JPA
 
@@ -61,11 +62,17 @@ TDD : test rouge → code → vert. Validation : commandes en fin de document.
   (pattern `SpringPages.of`/`SpringPages.map`, cf. `JpaDossierTypeRepositoryAdapter`).
   `ListDossierElementsUseCaseImpl.list` migré vers `PageResult<DossierElementView>`.
   `DossierController.listElements` expose `page`/`size`/`sort` →
-  `PageResponse<DossierElementView>`.
+  `PageResponse<DossierElementView>`. Ancienne méthode
+  `findByDossierIdOrderByAddedAtAsc(UUID)` **conservée** (réutilisée par
+  `WorkflowLinkVisualizationUseCaseImpl` et `ProcessPurgeOutboxUseCaseImpl`,
+  non touchés par cette feature).
 - **Deps :** T1.1.
 - **Tests :** scénarios `JpaDossierElementRepositoryAdapter.pageByDossierId`
   + intégration `GET /api/dossiers/{id}/elements` du testing doc.
-- **Status :** not started
+- **Status :** done (2026-08-21) — `DossierElementPersistenceTest` 4/4,
+  `ListDossierElementsUseCaseImplTest` 2/2, `DossierApiTest` 71/71
+  (3 tests JSON adaptés à l'enveloppe `PageResponse`, 1 nouveau test
+  page/size/sort invalide).
 
 #### T2.2 `DossierWorkflowLinkRepository.pageByDossierId`
 - **Outcome :** nouvelle méthode `PageResult<DossierWorkflowLink>
@@ -75,7 +82,9 @@ TDD : test rouge → code → vert. Validation : commandes en fin de document.
 - **Deps :** T1.1.
 - **Tests :** scénarios `JpaDossierWorkflowLinkRepositoryAdapter.pageByDossierId`
   + intégration `GET /api/dossiers/{id}/workflows` du testing doc.
-- **Status :** not started
+- **Status :** done (2026-08-21) — `AttachWorkflowUseCaseImplTest` 5/5,
+  `WorkflowPersistenceTest` 7/7, `WorkflowApiTest` 9/9, `OutboxRelayIT`
+  2/2 (tous les appelants `getHistory` migrés vers `PageQuery`/`PageResult`).
 
 ### M3 — Pagination Flowable native
 

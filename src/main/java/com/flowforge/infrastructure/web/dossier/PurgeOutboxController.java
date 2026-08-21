@@ -6,7 +6,7 @@ import com.flowforge.domain.dossier.model.PurgeOutboxRecord;
 import com.flowforge.domain.dossier.model.PurgeOutboxStatus;
 import com.flowforge.domain.dossier.port.in.EnqueueDossierPurgeUseCase;
 import com.flowforge.domain.dossier.port.in.ListPurgeOutboxUseCase;
-import com.flowforge.infrastructure.web.AdminListSorts;
+import com.flowforge.infrastructure.web.ListSorts;
 import com.flowforge.infrastructure.web.PageQueryParser;
 import java.time.Instant;
 import java.util.List;
@@ -87,7 +87,7 @@ public class PurgeOutboxController {
             Authentication authentication) {
         AccessContext.User actor = accessContextFactory.user(authentication);
         return PurgeOutboxPageResponse.from(listPurgeOutboxUseCase.list(
-                actor, status, PageQueryParser.parse(page, size, sort, AdminListSorts.PURGE_OUTBOX)));
+                actor, status, PageQueryParser.parse(page, size, sort, ListSorts.PURGE_OUTBOX)));
     }
 
     @PostMapping("/api/dossiers/{id}/purge-requests")

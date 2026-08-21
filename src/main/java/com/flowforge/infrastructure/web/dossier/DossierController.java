@@ -19,6 +19,9 @@ import com.flowforge.domain.dossier.port.in.UpdateDossierStatusUseCase;
 import com.flowforge.infrastructure.config.TenantProperties;
 import com.flowforge.infrastructure.observability.MdcScope;
 import com.flowforge.infrastructure.security.SecurityAuditLog;
+import com.flowforge.infrastructure.web.ListSorts;
+import com.flowforge.infrastructure.web.PageQueryParser;
+import com.flowforge.infrastructure.web.PageResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.util.List;
@@ -143,10 +146,16 @@ public class DossierController {
     }
 
     @GetMapping("/{id}/elements")
-    public List<DossierElementView> listElements(
+    public PageResponse<DossierElementView> listElements(
             @PathVariable UUID id,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) String sort,
             Authentication authentication) {
-        return listDossierElementsUseCase.list(id, accessContextFactory.user(authentication));
+        return PageResponse.from(listDossierElementsUseCase.list(
+                id,
+                accessContextFactory.user(authentication),
+                PageQueryParser.parse(page, size, sort, ListSorts.DOSSIER_ELEMENTS)));
     }
 
     @PostMapping("/{id}/elements")

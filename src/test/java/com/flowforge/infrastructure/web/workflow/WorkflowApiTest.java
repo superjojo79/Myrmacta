@@ -90,8 +90,8 @@ class WorkflowApiTest {
         mockMvc.perform(get("/api/dossiers/{id}/workflows", dossierId)
                         .with(user("workflow-editor")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].dossierId").value(dossierId))
-                .andExpect(jsonPath("$[0].sequence").value(1));
+                .andExpect(jsonPath("$.content[0].dossierId").value(dossierId))
+                .andExpect(jsonPath("$.content[0].sequence").value(1));
 
         String processInstanceId = extractString(startResult.getResponse().getContentAsString(), "processInstanceId");
         String taskId = taskService.createTaskQuery()
@@ -193,8 +193,8 @@ class WorkflowApiTest {
         mockMvc.perform(get("/api/dossiers/{id}/workflows", dossierId)
                         .with(user("workflow-editor")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].status").value("COMPLETED"))
-                .andExpect(jsonPath("$[0].endReason").value("COMPLETED"));
+                .andExpect(jsonPath("$.content[0].status").value("COMPLETED"))
+                .andExpect(jsonPath("$.content[0].endReason").value("COMPLETED"));
     }
 
     @Test

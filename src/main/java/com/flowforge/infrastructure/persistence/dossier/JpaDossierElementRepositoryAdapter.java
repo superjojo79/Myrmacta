@@ -2,6 +2,9 @@ package com.flowforge.infrastructure.persistence.dossier;
 
 import com.flowforge.domain.dossier.model.DossierElement;
 import com.flowforge.domain.dossier.port.out.DossierElementRepository;
+import com.flowforge.domain.shared.PageQuery;
+import com.flowforge.domain.shared.PageResult;
+import com.flowforge.infrastructure.persistence.SpringPages;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -35,6 +38,13 @@ public class JpaDossierElementRepositoryAdapter implements DossierElementReposit
         return repository.findByDossierIdOrderByAddedAtAsc(dossierId).stream()
                 .map(DossierElementJpaEntity::toDomain)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<DossierElement> pageByDossierId(UUID dossierId, PageQuery query) {
+        var page = repository.findByDossierIdOrderByAddedAtAsc(dossierId, SpringPages.of(query));
+        return SpringPages.map(page, DossierElementJpaEntity::toDomain);
     }
 
     @Override

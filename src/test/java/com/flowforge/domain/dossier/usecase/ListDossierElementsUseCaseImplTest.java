@@ -15,6 +15,8 @@ import com.flowforge.domain.dossier.model.DossierStatus;
 import com.flowforge.domain.dossier.model.ElementType;
 import com.flowforge.domain.dossier.port.out.DossierElementRepository;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
+import com.flowforge.domain.shared.PageQuery;
+import com.flowforge.domain.shared.PageResult;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -43,25 +45,28 @@ class ListDossierElementsUseCaseImplTest {
     void list_mapsViewsWithoutStorageRefAndMarksDownloadable() {
         when(dossierRepository.findById(DOSSIER_ID)).thenReturn(Optional.of(dossier()));
         UUID elementId = UUID.fromString("33333333-3333-3333-3333-333333333333");
-        when(elementRepository.findByDossierIdOrderByAddedAtAsc(DOSSIER_ID)).thenReturn(List.of(
-                new DossierElement(
-                        elementId,
-                        DOSSIER_ID,
-                        "tenant_dev",
-                        ElementType.PRODUCED_DOC,
-                        "Rapport",
-                        "tenant_dev/docs/1",
-                        Map.of("k", "v"),
-                        "user-1",
-                        Instant.parse("2026-08-12T10:00:00Z"),
-                        "step-1")));
+        PageQuery query = PageQuery.defaults();
+        DossierElement element = new DossierElement(
+                elementId,
+                DOSSIER_ID,
+                "tenant_dev",
+                ElementType.PRODUCED_DOC,
+                "Rapport",
+                "tenant_dev/docs/1",
+                Map.of("k", "v"),
+                "user-1",
+                Instant.parse("2026-08-12T10:00:00Z"),
+                "step-1");
+        when(elementRepository.pageByDossierId(DOSSIER_ID, query))
+                .thenReturn(PageResult.of(List.of(element), 0, 20, 1));
 
         var useCase = new ListDossierElementsUseCaseImpl(dossierRepository, elementRepository, accessPolicy);
-        List<DossierElementView> views = useCase.list(DOSSIER_ID, ACTOR);
+        PageResult<DossierElementView> page = useCase.list(DOSSIER_ID, ACTOR, query);
 
         verify(accessPolicy).assertCanView(dossier(), ACTOR);
-        assertThat(views).hasSize(1);
-        DossierElementView view = views.getFirst();
+        assertThat(page.content()).hasSize(1);
+        assertThat(page.totalElements()).isEqualTo(1);
+        DossierElementView view = page.content().getFirst();
         assertThat(view.id()).isEqualTo(elementId);
         assertThat(view.downloadable()).isTrue();
         assertThat(view.metadata()).containsEntry("k", "v");
@@ -72,7 +77,7 @@ class ListDossierElementsUseCaseImplTest {
     void list_unknownDossier_throws() {
         when(dossierRepository.findById(DOSSIER_ID)).thenReturn(Optional.empty());
         var useCase = new ListDossierElementsUseCaseImpl(dossierRepository, elementRepository, accessPolicy);
-        assertThatThrownBy(() -> useCase.list(DOSSIER_ID, ACTOR))
+        assertThatThrownBy(() -> useCase.list(DOSSIER_ID, ACTOR, PageQuery.defaults()))
                 .isInstanceOf(DossierNotFoundException.class);
     }
 

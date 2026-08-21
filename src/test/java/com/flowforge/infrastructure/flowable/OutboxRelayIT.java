@@ -6,6 +6,7 @@ import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierStatus;
 import com.flowforge.domain.dossier.port.in.GetDossierWorkflowHistoryUseCase;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
+import com.flowforge.domain.shared.PageQuery;
 import com.flowforge.domain.workflow.model.StatusOutcome;
 import com.flowforge.domain.workflow.model.TriggerOutboxPayload;
 import com.flowforge.domain.workflow.model.WorkflowStatusDefinition;
@@ -53,7 +54,7 @@ class OutboxRelayIT {
 
         relayScheduler.processOne(event);
 
-        var history = historyUseCase.getHistory(dossier.id());
+        var history = historyUseCase.getHistory(dossier.id(), PageQuery.defaults()).content();
         assertThat(history).hasSize(1);
         assertThat(history.getFirst().isActive()).isTrue();
         assertThat(history.getFirst().processInstanceId()).isNotBlank();
@@ -81,7 +82,7 @@ class OutboxRelayIT {
         assertThat(outboxRepository.lockNextPending(50))
                 .extracting(e -> e.eventId())
                 .doesNotContain(event.eventId());
-        assertThat(historyUseCase.getHistory(dossier.id())).isEmpty();
+        assertThat(historyUseCase.getHistory(dossier.id(), PageQuery.defaults()).content()).isEmpty();
     }
 
     private void ensureConfig(String workflowKey) {

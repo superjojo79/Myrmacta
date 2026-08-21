@@ -8,7 +8,7 @@ import com.flowforge.domain.dossier.port.in.GetDossierTypeUseCase;
 import com.flowforge.domain.dossier.port.in.ListDossierTypesUseCase;
 import com.flowforge.domain.dossier.port.in.UpdateDossierTypeUseCase;
 import com.flowforge.infrastructure.config.TenantProperties;
-import com.flowforge.infrastructure.web.AdminListSorts;
+import com.flowforge.infrastructure.web.ListSorts;
 import com.flowforge.infrastructure.web.PageQueryParser;
 import com.flowforge.infrastructure.web.PageResponse;
 import java.net.URI;
@@ -118,7 +118,7 @@ public class DossierTypeController {
                 .list(
                         tenantProperties.id(),
                         accessContextFactory.user(authentication),
-                        PageQueryParser.parse(page, size, sort, AdminListSorts.DOSSIER_TYPES))
+                        PageQueryParser.parse(page, size, sort, ListSorts.DOSSIER_TYPES))
                 .map(DossierTypeResponse::from));
     }
 

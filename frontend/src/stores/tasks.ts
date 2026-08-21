@@ -6,14 +6,19 @@ import type { MyWorkflowTask } from '@/api/types'
 
 export const useTasksStore = defineStore('tasks', () => {
   const tasks = ref<MyWorkflowTask[]>([])
+  const totalPages = ref(0)
+  const page = ref(0)
   const loading = ref(false)
   const error = ref<string | null>(null)
 
-  async function refresh(): Promise<void> {
+  async function refresh(nextPage = page.value, size = 20): Promise<void> {
     loading.value = true
     error.value = null
     try {
-      tasks.value = await listMyTasks()
+      const result = await listMyTasks({ page: nextPage, size })
+      tasks.value = result.content
+      totalPages.value = result.totalPages
+      page.value = nextPage
     } catch (err) {
       error.value = toProblemDetail(err).detail ?? 'Impossible de charger les tâches'
       throw err
@@ -27,5 +32,5 @@ export const useTasksStore = defineStore('tasks', () => {
     await refresh()
   }
 
-  return { tasks, loading, error, refresh, complete }
+  return { tasks, totalPages, page, loading, error, refresh, complete }
 })

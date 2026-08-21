@@ -90,6 +90,24 @@ class WorkflowPersistenceTest {
     }
 
     @Test
+    void pageByDossierId_ordersBySequenceAndKeepsTotal() {
+        Dossier dossier = dossier(DossierStatus.OUVERT);
+        dossierRepository.save(dossier);
+        linkRepository.save(new com.flowforge.domain.dossier.model.DossierWorkflowLink(
+                UUID.randomUUID(), dossier.id(), "tenant_dev", "proc-1", "procA", 1, "COMPLETED", "manual",
+                Instant.parse("2026-08-02T10:00:00Z"), Instant.parse("2026-08-02T10:04:00Z"), "COMPLETED",
+                "starter"));
+        linkRepository.save(new com.flowforge.domain.dossier.model.DossierWorkflowLink(
+                UUID.randomUUID(), dossier.id(), "tenant_dev", null, "procA", 2, "STARTED", "manual",
+                Instant.parse("2026-08-02T10:05:00Z"), null, null, "starter"));
+
+        var page = linkRepository.pageByDossierId(dossier.id(), PageQuery.of(0, 20));
+
+        assertThat(page.totalElements()).isEqualTo(2);
+        assertThat(page.content()).extracting(link -> link.sequence()).containsExactly(1, 2);
+    }
+
+    @Test
     void outboxRepositoryStoresAndMarksEvents() {
         var payload = new TriggerOutboxPayload(
                 UUID.randomUUID(),
@@ -164,7 +182,7 @@ class WorkflowPersistenceTest {
         assertThatThrownBy(() -> attachWorkflow.reserve(dossier.id(), processKey, "manual-2", "starter-sub"))
                 .isInstanceOf(WorkflowAlreadyRunningException.class);
 
-        assertThat(historyUseCase.getHistory(dossier.id()))
+        assertThat(historyUseCase.getHistory(dossier.id(), PageQuery.defaults()).content())
                 .hasSize(1)
                 .first()
                 .extracting(link -> link.sequence())

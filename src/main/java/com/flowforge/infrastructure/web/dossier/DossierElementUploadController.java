@@ -26,7 +26,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-import io.swagger.v3.oas.annotations.Hidden;
 
 /** Dedicated multipart entry point for {@link ElementType#ATTACHMENT} — see design decision n°1. */
 @RestController
@@ -58,7 +57,6 @@ public class DossierElementUploadController {
         this.attachmentScanPort = attachmentScanPort;
     }
 
-    @Hidden
     @PostMapping(path = "/{id}/elements/attachment", consumes = "multipart/form-data")
     public ResponseEntity<DossierElementView> upload(
             @PathVariable UUID id,

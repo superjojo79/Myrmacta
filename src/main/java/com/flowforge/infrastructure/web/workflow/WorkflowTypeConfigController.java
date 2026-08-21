@@ -5,7 +5,7 @@ import com.flowforge.domain.workflow.model.WorkflowTypeConfigNotFoundException;
 import com.flowforge.domain.workflow.port.in.GetWorkflowTypeConfigUseCase;
 import com.flowforge.domain.workflow.port.in.SaveWorkflowTypeConfigUseCase;
 import com.flowforge.infrastructure.config.TenantProperties;
-import com.flowforge.infrastructure.web.AdminListSorts;
+import com.flowforge.infrastructure.web.ListSorts;
 import com.flowforge.infrastructure.web.PageQueryParser;
 import com.flowforge.infrastructure.web.PageResponse;
 import com.flowforge.infrastructure.web.dossier.AccessContextFactory;
@@ -76,7 +76,7 @@ class WorkflowTypeConfigController {
             Authentication authentication) {
         accessContextFactory.requireOidcPrincipal(authentication);
         return PageResponse.from(getUseCase
-                .list(PageQueryParser.parse(page, size, sort, AdminListSorts.WORKFLOW_TYPE_CONFIGS))
+                .list(PageQueryParser.parse(page, size, sort, ListSorts.WORKFLOW_TYPE_CONFIGS))
                 .map(WorkflowTypeConfigResponse::from));
     }
 

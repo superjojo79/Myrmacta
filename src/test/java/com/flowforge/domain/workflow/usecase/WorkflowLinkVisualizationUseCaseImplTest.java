@@ -152,6 +152,40 @@ class WorkflowLinkVisualizationUseCaseImplTest {
     }
 
     @Test
+    void getHistory_allowsParticipantAndDelegatesToVisualizationPortWithPageQuery() {
+        DossierWorkflowLink link = activeLink("proc-1");
+        com.flowforge.domain.shared.PageQuery query = com.flowforge.domain.shared.PageQuery.of(0, 20);
+        var entry = new com.flowforge.domain.workflow.model.ActivityHistoryEntry(
+                "start", "Start", null, Instant.parse("2026-08-02T10:00:00Z"), null, null);
+        when(linkRepository.findById(link.id())).thenReturn(Optional.of(link));
+        when(participantPort.findParticipantUserIds(link)).thenReturn(List.of("starter-sub"));
+        when(visualizationPort.getHistory("proc-1", TENANT, query))
+                .thenReturn(com.flowforge.domain.shared.PageResult.of(List.of(entry), 0, 20, 1));
+
+        var result = useCase.getHistory(link.id(), user("starter-sub"), query);
+
+        assertThat(result.content()).containsExactly(entry);
+        assertThat(result.totalElements()).isEqualTo(1);
+    }
+
+    @Test
+    void getTasks_allowsParticipantAndDelegatesToVisualizationPortWithPageQuery() {
+        DossierWorkflowLink link = activeLink("proc-1");
+        com.flowforge.domain.shared.PageQuery query = com.flowforge.domain.shared.PageQuery.of(0, 20);
+        var task = new com.flowforge.domain.workflow.model.WorkflowTaskView(
+                "task-1", "Do it", null, "taskKey", Instant.parse("2026-08-02T10:00:00Z"));
+        when(linkRepository.findById(link.id())).thenReturn(Optional.of(link));
+        when(participantPort.findParticipantUserIds(link)).thenReturn(List.of("starter-sub"));
+        when(visualizationPort.listActiveTasks("proc-1", TENANT, query))
+                .thenReturn(com.flowforge.domain.shared.PageResult.of(List.of(task), 0, 20, 1));
+
+        var result = useCase.getTasks(link.id(), user("starter-sub"), query);
+
+        assertThat(result.content()).containsExactly(task);
+        assertThat(result.totalElements()).isEqualTo(1);
+    }
+
+    @Test
     void getDossier_allowsReservedLinkAndLoadsDossierPanelDirectlyFromRepositories() {
         DossierWorkflowLink link = reservedLink();
         Dossier dossier = dossier(link.dossierId());

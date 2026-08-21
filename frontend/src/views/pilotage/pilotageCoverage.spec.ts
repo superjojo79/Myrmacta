@@ -10,6 +10,7 @@ import { useTasksStore } from '@/stores/tasks'
 import * as tasksApi from '@/api/tasks'
 import * as dossiersApi from '@/api/dossiers'
 import * as dossierTypesApi from '@/api/dossierTypes'
+import { asPage } from '@/api/page'
 
 vi.mock('@/api/tasks')
 vi.mock('@/api/dossiers')
@@ -50,18 +51,20 @@ describe('pilotage remaining coverage', () => {
   })
 
   it('MobileTasksView completes a task', async () => {
-    vi.mocked(tasksApi.listMyTasks).mockResolvedValue([
-      {
-        taskId: 't1',
-        name: 'Review',
-        assigneeId: 'u',
-        createdAt: null,
-        processInstanceId: 'pi',
-        dossierId: 'd1',
-        dossierReference: 'DOS-1',
-        linkId: 'l1',
-      },
-    ])
+    vi.mocked(tasksApi.listMyTasks).mockResolvedValue(
+      asPage([
+        {
+          taskId: 't1',
+          name: 'Review',
+          assigneeId: 'u',
+          createdAt: null,
+          processInstanceId: 'pi',
+          dossierId: 'd1',
+          dossierReference: 'DOS-1',
+          linkId: 'l1',
+        },
+      ]),
+    )
     vi.mocked(tasksApi.completeTask).mockResolvedValue(undefined)
     const router = createRouter({ history: createMemoryHistory(), routes })
     await router.push('/tasks')

@@ -5,6 +5,7 @@ import * as dossiersApi from '@/api/dossiers'
 import * as typesApi from '@/api/dossierTypes'
 import * as workflowsApi from '@/api/workflows'
 import * as elementsApi from '@/api/elements'
+import { asPage } from '@/api/page'
 
 vi.mock('@/api/dossiers')
 vi.mock('@/api/dossierTypes')
@@ -47,8 +48,8 @@ describe('dossier store', () => {
       allowUnknownFields: false,
       fieldDefinitions: [],
     })
-    vi.mocked(dossiersApi.listDossierWorkflows).mockResolvedValue([])
-    vi.mocked(dossiersApi.listDossierElements).mockResolvedValue([])
+    vi.mocked(dossiersApi.listDossierWorkflows).mockResolvedValue(asPage([]))
+    vi.mocked(dossiersApi.listDossierElements).mockResolvedValue(asPage([]))
     vi.mocked(dossiersApi.listDossierRelations).mockResolvedValue([])
 
     const store = useDossierStore()
@@ -247,8 +248,8 @@ describe('dossier store', () => {
     vi.mocked(workflowsApi.getWorkflowDiagram).mockRejectedValue({
       response: { status: 409, data: { status: 409, detail: 'no PI' } },
     })
-    vi.mocked(workflowsApi.getWorkflowHistory).mockResolvedValue([])
-    vi.mocked(workflowsApi.getWorkflowTasks).mockResolvedValue([])
+    vi.mocked(workflowsApi.getWorkflowHistory).mockResolvedValue(asPage([]))
+    vi.mocked(workflowsApi.getWorkflowTasks).mockResolvedValue(asPage([]))
     const store = useDossierStore()
     await store.loadVisualization('link-1')
     expect(store.diagramUnavailable).toBe(true)
@@ -327,8 +328,8 @@ describe('dossier store', () => {
       allowUnknownFields: false,
       fieldDefinitions: [],
     })
-    vi.mocked(dossiersApi.listDossierWorkflows).mockResolvedValue([])
-    vi.mocked(dossiersApi.listDossierElements).mockResolvedValue([])
+    vi.mocked(dossiersApi.listDossierWorkflows).mockResolvedValue(asPage([]))
+    vi.mocked(dossiersApi.listDossierElements).mockResolvedValue(asPage([]))
     vi.mocked(dossiersApi.listDossierRelations).mockResolvedValue([])
     vi.mocked(workflowsApi.getWorkflowDiagram).mockResolvedValue({
       bpmnXml: '<xml/>',
@@ -336,13 +337,75 @@ describe('dossier store', () => {
       completedIds: [],
       failedIds: [],
     })
-    vi.mocked(workflowsApi.getWorkflowHistory).mockResolvedValue([])
-    vi.mocked(workflowsApi.getWorkflowTasks).mockResolvedValue([])
+    vi.mocked(workflowsApi.getWorkflowHistory).mockResolvedValue(asPage([]))
+    vi.mocked(workflowsApi.getWorkflowTasks).mockResolvedValue(asPage([]))
 
     const store = useDossierStore()
     await store.create({ dossierTypeCode: 'CLAIM', label: 'L', fields: {} })
     await store.startWorkflow('wf')
     expect(dossiersApi.startDossierWorkflow).toHaveBeenCalled()
     expect(store.dossier?.currentWorkflowLinkId).toBe('link-1')
+  })
+
+  it('loadElementsPage stores content, page and totalPages', async () => {
+    const store = useDossierStore()
+    store.dossier = {
+      id: 'd1',
+      tenantId: 't',
+      reference: 'DOS-1',
+      dossierTypeCode: 'CLAIM',
+      label: 'L',
+      status: 'DRAFT',
+      fields: {},
+      currentWorkflowLinkId: null,
+      version: 1,
+      createdBy: 'u',
+      createdAt: '',
+      updatedBy: 'u',
+      updatedAt: '',
+      closedBy: null,
+      closedAt: null,
+      canEdit: true,
+    }
+    vi.mocked(dossiersApi.listDossierElements).mockResolvedValue(
+      asPage(
+        [
+          {
+            id: 'e1',
+            type: 'NOTE',
+            label: 'x',
+            addedBy: 'u',
+            addedAt: '',
+            workflowStepId: null,
+            metadata: {},
+            downloadable: false,
+          },
+        ],
+        { page: 1, totalPages: 3 },
+      ),
+    )
+    await store.loadElementsPage(1, 20)
+    expect(dossiersApi.listDossierElements).toHaveBeenCalledWith('d1', { page: 1, size: 20 })
+    expect(store.elements).toHaveLength(1)
+    expect(store.elementsPage).toBe(1)
+    expect(store.elementsTotalPages).toBe(3)
+  })
+
+  it('loadVisualization remembers the linkId so loadHistoryPage/loadTasksPage can re-paginate', async () => {
+    vi.mocked(workflowsApi.getWorkflowDiagram).mockResolvedValue({
+      bpmnXml: '<xml/>',
+      activeIds: [],
+      completedIds: [],
+      failedIds: [],
+    })
+    vi.mocked(workflowsApi.getWorkflowHistory).mockResolvedValue(asPage([], { totalPages: 2 }))
+    vi.mocked(workflowsApi.getWorkflowTasks).mockResolvedValue(asPage([], { totalPages: 2 }))
+    const store = useDossierStore()
+    await store.loadVisualization('link-1')
+
+    vi.mocked(workflowsApi.getWorkflowHistory).mockResolvedValue(asPage([], { page: 1, totalPages: 2 }))
+    await store.loadHistoryPage(1, 20)
+    expect(workflowsApi.getWorkflowHistory).toHaveBeenCalledWith('link-1', { page: 1, size: 20 })
+    expect(store.historyPage).toBe(1)
   })
 })

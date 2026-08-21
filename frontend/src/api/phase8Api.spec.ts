@@ -35,7 +35,7 @@ describe('phase 8 api gaps', () => {
 
   it('lists connector definitions', async () => {
     await listConnectorDefinitions()
-    expect(axios.get).toHaveBeenCalledWith('/api/connector-definitions')
+    expect(axios.get).toHaveBeenCalledWith('/api/connector-definitions', { params: { page: 0, size: 100 } })
   })
 
   it('maps unknown errors to ProblemDetail fallback', () => {

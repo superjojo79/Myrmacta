@@ -3,10 +3,12 @@ package com.flowforge.infrastructure.web.workflow;
 import com.flowforge.application.workflow.ManualStartOrchestrator;
 import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.port.in.GetDossierWorkflowHistoryUseCase;
+import com.flowforge.infrastructure.web.ListSorts;
+import com.flowforge.infrastructure.web.PageQueryParser;
+import com.flowforge.infrastructure.web.PageResponse;
 import com.flowforge.infrastructure.web.dossier.AccessContextFactory;
 import com.flowforge.infrastructure.web.dossier.DossierAccessGuard;
 import java.net.URI;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -64,10 +67,17 @@ class DossierWorkflowController {
     }
 
     @GetMapping
-    List<WorkflowLinkResponse> history(@PathVariable("id") UUID dossierId, Authentication authentication) {
+    PageResponse<WorkflowLinkResponse> history(
+            @PathVariable("id") UUID dossierId,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) String sort,
+            Authentication authentication) {
         AccessContext.User actor = accessContextFactory.user(authentication);
         accessGuard.requireViewable(dossierId, actor);
-        return historyUseCase.getHistory(dossierId).stream().map(WorkflowLinkResponse::from).toList();
+        return PageResponse.from(historyUseCase
+                .getHistory(dossierId, PageQueryParser.parse(page, size, sort, ListSorts.DOSSIER_WORKFLOWS))
+                .map(WorkflowLinkResponse::from));
     }
 
     private static String required(String value, String field) {

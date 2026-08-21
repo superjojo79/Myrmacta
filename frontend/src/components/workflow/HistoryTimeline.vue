@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import type { ActivityHistoryEntry } from '@/api/types'
+import AdminPager from '@/components/admin/AdminPager.vue'
 
 defineProps<{
   history: ActivityHistoryEntry[]
+  totalPages?: number
 }>()
+
+const page = defineModel<number>('page', { default: 0 })
 </script>
 
 <template>
@@ -16,6 +20,7 @@ defineProps<{
       </li>
     </ol>
     <p v-if="history.length === 0">Pas encore d’activité.</p>
+    <AdminPager v-if="(totalPages ?? 1) > 1" v-model="page" :total-pages="totalPages ?? 1" />
   </section>
 </template>
 

@@ -3,7 +3,7 @@ package com.flowforge.infrastructure.web.connector;
 import com.flowforge.domain.connector.model.ConnectorInstanceData;
 import com.flowforge.domain.connector.port.in.ManageConnectorInstanceUseCase;
 import com.flowforge.infrastructure.config.TenantProperties;
-import com.flowforge.infrastructure.web.AdminListSorts;
+import com.flowforge.infrastructure.web.ListSorts;
 import com.flowforge.infrastructure.web.PageQueryParser;
 import com.flowforge.infrastructure.web.PageResponse;
 import java.net.URI;
@@ -57,7 +57,7 @@ public class ConnectorAdminController {
         return PageResponse.from(manageUseCase
                 .list(
                         tenantProperties.id(),
-                        PageQueryParser.parse(page, size, sort, AdminListSorts.CONNECTORS))
+                        PageQueryParser.parse(page, size, sort, ListSorts.CONNECTORS))
                 .map(ConnectorResponse::from));
     }
 

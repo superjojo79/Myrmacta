@@ -4,7 +4,7 @@ import com.flowforge.domain.notification.model.NotificationWebhookConfig;
 import com.flowforge.domain.notification.port.in.ManageNotificationWebhookUseCase;
 import com.flowforge.infrastructure.config.TenantProperties;
 import com.flowforge.infrastructure.notification.OutboundUrlGuard;
-import com.flowforge.infrastructure.web.AdminListSorts;
+import com.flowforge.infrastructure.web.ListSorts;
 import com.flowforge.infrastructure.web.PageQueryParser;
 import com.flowforge.infrastructure.web.PageResponse;
 import java.net.URI;
@@ -65,7 +65,7 @@ public class NotificationWebhookAdminController {
         return PageResponse.from(manageUseCase
                 .list(
                         tenantProperties.id(),
-                        PageQueryParser.parse(page, size, sort, AdminListSorts.NOTIFICATION_WEBHOOKS))
+                        PageQueryParser.parse(page, size, sort, ListSorts.NOTIFICATION_WEBHOOKS))
                 .map(NotificationWebhookResponse::from));
     }
 

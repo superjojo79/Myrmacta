@@ -2,6 +2,9 @@ package com.flowforge.infrastructure.persistence.workflow;
 
 import com.flowforge.domain.dossier.model.DossierWorkflowLink;
 import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
+import com.flowforge.domain.shared.PageQuery;
+import com.flowforge.domain.shared.PageResult;
+import com.flowforge.infrastructure.persistence.SpringPages;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -58,6 +61,13 @@ class JpaDossierWorkflowLinkRepositoryAdapter implements DossierWorkflowLinkRepo
         return repository.findByDossierIdOrderBySequenceAsc(dossierId).stream()
                 .map(DossierWorkflowLinkJpaEntity::toDomain)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<DossierWorkflowLink> pageByDossierId(UUID dossierId, PageQuery query) {
+        var page = repository.findByDossierIdOrderBySequenceAsc(dossierId, SpringPages.of(query));
+        return SpringPages.map(page, DossierWorkflowLinkJpaEntity::toDomain);
     }
 
     @Override

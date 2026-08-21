@@ -9,13 +9,14 @@ import * as typesApi from '@/api/dossierTypes'
 import * as workflowsApi from '@/api/workflows'
 import * as tasksApi from '@/api/tasks'
 import { useAuthStore } from '@/stores/auth'
+import { asPage } from '@/api/page'
 
 vi.mock('@/api/dossiers')
 vi.mock('@/api/dossierTypes')
 vi.mock('@/api/workflows', () => ({
   getWorkflowDiagram: vi.fn(),
-  getWorkflowHistory: vi.fn().mockResolvedValue([]),
-  getWorkflowTasks: vi.fn().mockResolvedValue([]),
+  getWorkflowHistory: vi.fn().mockResolvedValue({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }),
+  getWorkflowTasks: vi.fn().mockResolvedValue({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }),
   listAllWorkflowTypeConfigs: vi.fn().mockResolvedValue([]),
   reassignWorkflowTask: vi.fn().mockResolvedValue(undefined),
 }))
@@ -67,8 +68,8 @@ describe('DossierDetailView phase 8', () => {
         { name: 'priority', label: 'Priority', type: 'STRING' as const, required: true },
       ],
     })
-    vi.mocked(dossiersApi.listDossierWorkflows).mockResolvedValue([])
-    vi.mocked(dossiersApi.listDossierElements).mockResolvedValue([])
+    vi.mocked(dossiersApi.listDossierWorkflows).mockResolvedValue(asPage([]))
+    vi.mocked(dossiersApi.listDossierElements).mockResolvedValue(asPage([]))
     vi.mocked(dossiersApi.listDossierRelations).mockResolvedValue([])
     vi.mocked(workflowsApi.getWorkflowDiagram).mockResolvedValue({
       bpmnXml: '<xml/>',
@@ -76,16 +77,18 @@ describe('DossierDetailView phase 8', () => {
       completedIds: [],
       failedIds: [],
     })
-    vi.mocked(workflowsApi.getWorkflowHistory).mockResolvedValue([])
-    vi.mocked(workflowsApi.getWorkflowTasks).mockResolvedValue([
-      {
-        taskId: 'task-1',
-        name: 'Review',
-        assignee: 'u',
-        taskDefinitionKey: 'k',
-        createTime: null,
-      },
-    ])
+    vi.mocked(workflowsApi.getWorkflowHistory).mockResolvedValue(asPage([]))
+    vi.mocked(workflowsApi.getWorkflowTasks).mockResolvedValue(
+      asPage([
+        {
+          taskId: 'task-1',
+          name: 'Review',
+          assignee: 'u',
+          taskDefinitionKey: 'k',
+          createTime: null,
+        },
+      ]),
+    )
     vi.mocked(dossiersApi.startDossierWorkflow).mockResolvedValue({
       id: 'link-1',
       dossierId: 'd1',

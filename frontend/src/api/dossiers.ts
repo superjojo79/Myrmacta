@@ -10,6 +10,7 @@ import type {
   RelationType,
   WorkflowLink,
 } from './types'
+import type { Page } from './page'
 
 export async function createDossier(payload: {
   dossierTypeCode: string
@@ -79,8 +80,13 @@ export async function createDossierRelation(
   return data
 }
 
-export async function listDossierElements(id: string): Promise<DossierElementView[]> {
-  const { data } = await axios.get<DossierElementView[]>(`/api/dossiers/${id}/elements`)
+export async function listDossierElements(
+  id: string,
+  params: { page?: number; size?: number } = {},
+): Promise<Page<DossierElementView>> {
+  const { data } = await axios.get<Page<DossierElementView>>(`/api/dossiers/${id}/elements`, {
+    params: { page: params.page, size: params.size },
+  })
   return data
 }
 
@@ -92,8 +98,13 @@ export async function addDossierElement(
   return data
 }
 
-export async function listDossierWorkflows(id: string): Promise<WorkflowLink[]> {
-  const { data } = await axios.get<WorkflowLink[]>(`/api/dossiers/${id}/workflows`)
+export async function listDossierWorkflows(
+  id: string,
+  params: { page?: number; size?: number } = {},
+): Promise<Page<WorkflowLink>> {
+  const { data } = await axios.get<Page<WorkflowLink>>(`/api/dossiers/${id}/workflows`, {
+    params: { page: params.page, size: params.size },
+  })
   return data
 }
 

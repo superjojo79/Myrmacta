@@ -15,6 +15,8 @@ import com.flowforge.domain.dossier.port.out.DossierElementRepository;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
 import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
+import com.flowforge.domain.shared.PageQuery;
+import com.flowforge.domain.shared.PageResult;
 import com.flowforge.domain.workflow.model.ActivityHistoryEntry;
 import com.flowforge.domain.workflow.model.WorkflowDiagramView;
 import com.flowforge.domain.workflow.model.WorkflowLinkDossierView;
@@ -77,15 +79,15 @@ public final class WorkflowLinkVisualizationUseCaseImpl implements
     }
 
     @Override
-    public List<ActivityHistoryEntry> getHistory(UUID linkId, AccessContext.User actor) {
+    public PageResult<ActivityHistoryEntry> getHistory(UUID linkId, AccessContext.User actor, PageQuery query) {
         DossierWorkflowLink link = requireReadableLink(linkId, actor);
-        return visualizationPort.getHistory(requireProcessInstance(link), tenantId);
+        return visualizationPort.getHistory(requireProcessInstance(link), tenantId, query);
     }
 
     @Override
-    public List<WorkflowTaskView> getTasks(UUID linkId, AccessContext.User actor) {
+    public PageResult<WorkflowTaskView> getTasks(UUID linkId, AccessContext.User actor, PageQuery query) {
         DossierWorkflowLink link = requireReadableLink(linkId, actor);
-        return visualizationPort.listActiveTasks(requireProcessInstance(link), tenantId);
+        return visualizationPort.listActiveTasks(requireProcessInstance(link), tenantId, query);
     }
 
     @Override

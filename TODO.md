@@ -124,7 +124,7 @@ applicatifs et des payloads de webhooks sortants (notification).
 Ces points ne bloquent pas le démarrage, mais ils doivent être planifiés explicitement : aucun n'est
 couvert aujourd'hui, même partiellement.
 
-### [~] 24. Contrat d'API — surface incomplète et format d'erreur non normalisé
+### [x] 24. Contrat d'API — surface incomplète et format d'erreur non normalisé
 
 **Partiel (2026-08-13 — feature `pagination-dossiers`) :** liste/recherche/pagination
 dossiers + envelope page + Supervision FE livrés. **Partiel (2026-08-15 — feature
@@ -139,9 +139,16 @@ des 6 GET admin (types, templates, connectors, workflow-type-configs, webhooks, 
 pagers SPA + écran `/admin/notification-webhooks` ; catalogues via `listAllPages`.
 `ProblemDetail` déjà livré (tranches dossiers).
 
-**Reste ouvert :** codegen client (hors V1) ; pagination des listes nested (relations,
-tâches, `connector-definitions`, etc.) ; spec SSE / multipart attachment / webhook
-ingress (volontairement `@Hidden`).
+**Clos (2026-08-21 — feature `contrat-api-client`) :** les 6 listes non-admin restantes
+migrées vers `PageResponse<T>` (`dossiers/{id}/elements`, `dossiers/{id}/workflows`,
+`workflow-tasks/mine`, `connector-definitions`, `workflow-links/{linkId}/history`,
+`workflow-links/{linkId}/tasks`) — mécanisme JPA `Pageable`, Flowable `listPage`/`count`
+natif ou slice mémoire selon la source ; `DEFAULT_LIMIT=100` de `ListMyTasksUseCaseImpl`
+supprimé au profit du contrat `page`/`size`. Les 3 endpoints `@Hidden` (SSE, multipart
+attachment, webhook ingress) documentés dans le golden sans changement de comportement.
+`dossiers/{id}/relations` volontairement non touché (décision `relations-dossiers`
+respectée). SPA adapté via `listAllPages` existant, zéro composant Vue modifié. Codegen
+client reste explicitement hors V1 (décision assumée, pas un gap).
 
 **Énoncé :** aucun endpoint de création, recherche, liste ou mise à jour de dossier n'est documenté,
 pas plus que l'administration des `DossierType`, `ConnectorInstance` et templates. Les listes

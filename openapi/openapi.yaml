@@ -127,6 +127,28 @@ paths:
       responses:
         "200":
           description: OK
+  /api/webhooks/{instanceId}:
+    post:
+      tags:
+      - webhook-controller
+      operationId: receive
+      parameters:
+      - name: instanceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+              format: byte
+        required: true
+      responses:
+        "200":
+          description: OK
   /api/notifications/send:
     post:
       tags:
@@ -298,15 +320,30 @@ paths:
         schema:
           type: string
           format: uuid
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
       responses:
         "200":
           description: OK
           content:
             '*/*':
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/WorkflowLinkResponse"
+                $ref: "#/components/schemas/PageResponseWorkflowLinkResponse"
     post:
       tags:
       - dossier-workflow-controller
@@ -408,15 +445,30 @@ paths:
         schema:
           type: string
           format: uuid
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
       responses:
         "200":
           description: OK
           content:
             '*/*':
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/DossierElementView"
+                $ref: "#/components/schemas/PageResponseDossierElementView"
     post:
       tags:
       - dossier-controller
@@ -434,6 +486,41 @@ paths:
             schema:
               $ref: "#/components/schemas/AddDossierElementRequest"
         required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DossierElementView"
+  /api/dossiers/{id}/elements/attachment:
+    post:
+      tags:
+      - dossier-element-upload-controller
+      operationId: upload
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: label
+        in: query
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+              - file
       responses:
         "200":
           description: OK
@@ -1045,15 +1132,31 @@ paths:
       tags:
       - workflow-task-controller
       operationId: mine
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
       responses:
         "200":
           description: OK
           content:
             '*/*':
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/MyWorkflowTaskResponse"
+                $ref: "#/components/schemas/PageResponseMyWorkflowTaskResponse"
   /api/workflow-links/{linkId}/tasks:
     get:
       tags:
@@ -1066,15 +1169,30 @@ paths:
         schema:
           type: string
           format: uuid
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
       responses:
         "200":
           description: OK
           content:
             '*/*':
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/WorkflowTaskView"
+                $ref: "#/components/schemas/PageResponseWorkflowTaskView"
   /api/workflow-links/{linkId}/history:
     get:
       tags:
@@ -1087,15 +1205,30 @@ paths:
         schema:
           type: string
           format: uuid
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
       responses:
         "200":
           description: OK
           content:
             '*/*':
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/ActivityHistoryEntry"
+                $ref: "#/components/schemas/PageResponseActivityHistoryEntry"
   /api/workflow-links/{linkId}/dossier:
     get:
       tags:
@@ -1186,6 +1319,18 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ObservabilitySnapshotResponse"
+  /api/notifications/stream:
+    get:
+      tags:
+      - notification-sse-controller
+      operationId: stream
+      responses:
+        "200":
+          description: OK
+          content:
+            text/event-stream:
+              schema:
+                $ref: "#/components/schemas/SseEmitter"
   /api/dossiers/{id}:
     get:
       tags:
@@ -1282,15 +1427,31 @@ paths:
       tags:
       - connector-definition-controller
       operationId: list_7
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
       responses:
         "200":
           description: OK
           content:
             '*/*':
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/ConnectorDefinitionResponse"
+                $ref: "#/components/schemas/PageResponseConnectorDefinitionResponse"
   /api/auth/me:
     get:
       tags:
@@ -2063,6 +2224,44 @@ components:
         linkId:
           type: string
           format: uuid
+    PageResponseMyWorkflowTaskResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyWorkflowTaskResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    PageResponseWorkflowTaskView:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkflowTaskView"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
     WorkflowTaskView:
       type: object
       properties:
@@ -2095,6 +2294,25 @@ components:
         durationMs:
           type: integer
           format: int64
+    PageResponseActivityHistoryEntry:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActivityHistoryEntry"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
     Dossier:
       type: object
       properties:
@@ -2391,6 +2609,12 @@ components:
         maxMs:
           type: number
           format: double
+    SseEmitter:
+      type: object
+      properties:
+        timeout:
+          type: integer
+          format: int64
     PageResponseNotificationWebhookResponse:
       type: object
       properties:
@@ -2417,6 +2641,44 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DossierListItemResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    PageResponseWorkflowLinkResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkflowLinkResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    PageResponseDossierElementView:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/DossierElementView"
         page:
           type: integer
           format: int32
@@ -2529,6 +2791,25 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ConfigField"
+    PageResponseConnectorDefinitionResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/ConnectorDefinitionResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
     AuthUserResponse:
       type: object
       properties:

@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import type { WorkflowTaskView } from '@/api/types'
+import AdminPager from '@/components/admin/AdminPager.vue'
 
 defineProps<{
   tasks: WorkflowTaskView[]
   canReassign?: boolean
+  totalPages?: number
 }>()
+
+const page = defineModel<number>('page', { default: 0 })
 
 const emit = defineEmits<{
   complete: [taskId: string]
@@ -34,6 +38,7 @@ const emit = defineEmits<{
         </div>
       </li>
     </ul>
+    <AdminPager v-if="(totalPages ?? 1) > 1" v-model="page" :total-pages="totalPages ?? 1" />
   </section>
 </template>
 

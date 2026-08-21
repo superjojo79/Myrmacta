@@ -9,8 +9,10 @@ import com.flowforge.domain.workflow.port.in.GetWorkflowHistoryUseCase;
 import com.flowforge.domain.workflow.port.in.GetWorkflowLinkDossierUseCase;
 import com.flowforge.domain.workflow.port.in.GetWorkflowTasksUseCase;
 import com.flowforge.domain.workflow.port.in.ReassignWorkflowTaskUseCase;
+import com.flowforge.infrastructure.web.ListSorts;
+import com.flowforge.infrastructure.web.PageQueryParser;
+import com.flowforge.infrastructure.web.PageResponse;
 import com.flowforge.infrastructure.web.dossier.AccessContextFactory;
-import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -53,13 +56,29 @@ class WorkflowLinkVisualizationController {
     }
 
     @GetMapping("/history")
-    List<ActivityHistoryEntry> history(@PathVariable UUID linkId, Authentication authentication) {
-        return getHistoryUseCase.getHistory(linkId, accessContextFactory.user(authentication));
+    PageResponse<ActivityHistoryEntry> history(
+            @PathVariable UUID linkId,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) String sort,
+            Authentication authentication) {
+        return PageResponse.from(getHistoryUseCase.getHistory(
+                linkId,
+                accessContextFactory.user(authentication),
+                PageQueryParser.parse(page, size, sort, ListSorts.WORKFLOW_LINK_HISTORY)));
     }
 
     @GetMapping("/tasks")
-    List<WorkflowTaskView> tasks(@PathVariable UUID linkId, Authentication authentication) {
-        return getTasksUseCase.getTasks(linkId, accessContextFactory.user(authentication));
+    PageResponse<WorkflowTaskView> tasks(
+            @PathVariable UUID linkId,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) String sort,
+            Authentication authentication) {
+        return PageResponse.from(getTasksUseCase.getTasks(
+                linkId,
+                accessContextFactory.user(authentication),
+                PageQueryParser.parse(page, size, sort, ListSorts.WORKFLOW_LINK_TASKS)));
     }
 
     @GetMapping("/dossier")

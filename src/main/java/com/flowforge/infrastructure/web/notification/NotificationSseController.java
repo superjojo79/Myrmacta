@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-import io.swagger.v3.oas.annotations.Hidden;
 
 @RestController
 @RequestMapping("/api/notifications")
@@ -23,7 +22,6 @@ public class NotificationSseController {
         this.sseNotificationAdapter = sseNotificationAdapter;
     }
 
-    @Hidden
     @GetMapping(path = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter stream(@AuthenticationPrincipal OidcUser user) {
         if (user == null || user.getSubject() == null || user.getSubject().isBlank()) {

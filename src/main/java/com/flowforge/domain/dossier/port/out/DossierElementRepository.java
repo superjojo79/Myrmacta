@@ -1,6 +1,8 @@
 package com.flowforge.domain.dossier.port.out;
 
 import com.flowforge.domain.dossier.model.DossierElement;
+import com.flowforge.domain.shared.PageQuery;
+import com.flowforge.domain.shared.PageResult;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -12,6 +14,8 @@ public interface DossierElementRepository {
     Optional<DossierElement> findByIdAndTenantId(UUID id, String tenantId);
 
     List<DossierElement> findByDossierIdOrderByAddedAtAsc(UUID dossierId);
+
+    PageResult<DossierElement> pageByDossierId(UUID dossierId, PageQuery query);
 
     void deleteAllByDossierId(UUID dossierId);
 }

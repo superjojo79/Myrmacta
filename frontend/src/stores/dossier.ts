@@ -37,15 +37,26 @@ import type {
   WorkflowTaskView,
 } from '@/api/types'
 
+const DEFAULT_SIZE = 20
+
 export const useDossierStore = defineStore('dossier', () => {
   const dossier = ref<Dossier | null>(null)
   const dossierType = ref<DossierType | null>(null)
   const workflows = ref<WorkflowLink[]>([])
+  const workflowsPage = ref(0)
+  const workflowsTotalPages = ref(0)
   const elements = ref<DossierElementView[]>([])
+  const elementsPage = ref(0)
+  const elementsTotalPages = ref(0)
   const relations = ref<DossierRelation[]>([])
   const diagram = ref<WorkflowDiagram | null>(null)
   const history = ref<ActivityHistoryEntry[]>([])
+  const historyPage = ref(0)
+  const historyTotalPages = ref(0)
   const tasks = ref<WorkflowTaskView[]>([])
+  const tasksPage = ref(0)
+  const tasksTotalPages = ref(0)
+  const currentLinkId = ref<string | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
   const diagramUnavailable = ref(false)
@@ -80,36 +91,80 @@ export const useDossierStore = defineStore('dossier', () => {
 
   async function refreshRelated(): Promise<void> {
     if (!dossier.value) return
-    const current = dossier.value
-    ;[dossierType.value, workflows.value, elements.value, relations.value] = await Promise.all([
-      getDossierType(current.dossierTypeCode),
-      listDossierWorkflows(current.id),
-      listDossierElements(current.id),
-      listDossierRelations(current.id),
+    ;[dossierType.value] = await Promise.all([
+      getDossierType(dossier.value.dossierTypeCode),
+      loadWorkflowsPage(0, DEFAULT_SIZE),
+      loadElementsPage(0, DEFAULT_SIZE),
+      listDossierRelations(dossier.value.id).then((result) => {
+        relations.value = result
+      }),
     ])
     diagram.value = null
     history.value = []
+    historyPage.value = 0
+    historyTotalPages.value = 0
     tasks.value = []
+    tasksPage.value = 0
+    tasksTotalPages.value = 0
+    currentLinkId.value = null
     diagramUnavailable.value = false
-    if (current.currentWorkflowLinkId) {
-      await loadVisualization(current.currentWorkflowLinkId)
+    if (dossier.value.currentWorkflowLinkId) {
+      await loadVisualization(dossier.value.currentWorkflowLinkId)
     }
   }
 
+  async function loadElementsPage(page = 0, size = DEFAULT_SIZE): Promise<void> {
+    if (!dossier.value) return
+    const result = await listDossierElements(dossier.value.id, { page, size })
+    elements.value = result.content
+    elementsPage.value = result.page
+    elementsTotalPages.value = result.totalPages
+  }
+
+  async function loadWorkflowsPage(page = 0, size = DEFAULT_SIZE): Promise<void> {
+    if (!dossier.value) return
+    const result = await listDossierWorkflows(dossier.value.id, { page, size })
+    workflows.value = result.content
+    workflowsPage.value = result.page
+    workflowsTotalPages.value = result.totalPages
+  }
+
+  async function loadHistoryPage(page = 0, size = DEFAULT_SIZE): Promise<void> {
+    if (!currentLinkId.value) return
+    const result = await getWorkflowHistory(currentLinkId.value, { page, size })
+    history.value = result.content
+    historyPage.value = result.page
+    historyTotalPages.value = result.totalPages
+  }
+
+  async function loadTasksPage(page = 0, size = DEFAULT_SIZE): Promise<void> {
+    if (!currentLinkId.value) return
+    const result = await getWorkflowTasks(currentLinkId.value, { page, size })
+    tasks.value = result.content
+    tasksPage.value = result.page
+    tasksTotalPages.value = result.totalPages
+  }
+
   async function loadVisualization(linkId: string): Promise<void> {
+    currentLinkId.value = linkId
     try {
-      ;[diagram.value, history.value, tasks.value] = await Promise.all([
+      const [diagramResult] = await Promise.all([
         getWorkflowDiagram(linkId),
-        getWorkflowHistory(linkId),
-        getWorkflowTasks(linkId),
+        loadHistoryPage(0, DEFAULT_SIZE),
+        loadTasksPage(0, DEFAULT_SIZE),
       ])
+      diagram.value = diagramResult
       diagramUnavailable.value = false
     } catch (err) {
       // Soft-fail viz (409 sans PI, 403 non-participant, 5xx) — ne pas masquer le dossier.
       diagramUnavailable.value = true
       diagram.value = null
-      history.value = await getWorkflowHistory(linkId).catch(() => [])
-      tasks.value = await getWorkflowTasks(linkId).catch(() => [])
+      await loadHistoryPage(0, DEFAULT_SIZE).catch(() => {
+        history.value = []
+      })
+      await loadTasksPage(0, DEFAULT_SIZE).catch(() => {
+        tasks.value = []
+      })
       void err
     }
   }
@@ -188,16 +243,28 @@ export const useDossierStore = defineStore('dossier', () => {
     dossier,
     dossierType,
     workflows,
+    workflowsPage,
+    workflowsTotalPages,
     elements,
+    elementsPage,
+    elementsTotalPages,
     relations,
     diagram,
     history,
+    historyPage,
+    historyTotalPages,
     tasks,
+    tasksPage,
+    tasksTotalPages,
     loading,
     error,
     diagramUnavailable,
     loadById,
     loadByRef,
+    loadElementsPage,
+    loadWorkflowsPage,
+    loadHistoryPage,
+    loadTasksPage,
     create,
     linkDossier,
     addElement,

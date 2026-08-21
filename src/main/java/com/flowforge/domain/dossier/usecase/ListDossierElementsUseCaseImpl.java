@@ -8,7 +8,8 @@ import com.flowforge.domain.dossier.model.DossierNotFoundException;
 import com.flowforge.domain.dossier.port.in.ListDossierElementsUseCase;
 import com.flowforge.domain.dossier.port.out.DossierElementRepository;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
-import java.util.List;
+import com.flowforge.domain.shared.PageQuery;
+import com.flowforge.domain.shared.PageResult;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -28,13 +29,13 @@ public final class ListDossierElementsUseCaseImpl implements ListDossierElements
     }
 
     @Override
-    public List<DossierElementView> list(UUID dossierId, AccessContext ctx) {
+    public PageResult<DossierElementView> list(UUID dossierId, AccessContext ctx, PageQuery query) {
         Dossier dossier = dossierRepository
                 .findById(Objects.requireNonNull(dossierId, "dossierId"))
                 .orElseThrow(() -> new DossierNotFoundException("Dossier not found: " + dossierId));
         accessPolicy.assertCanView(dossier, ctx);
-        return elementRepository.findByDossierIdOrderByAddedAtAsc(dossierId).stream()
-                .map(DossierElementView::from)
-                .toList();
+        return elementRepository
+                .pageByDossierId(dossierId, Objects.requireNonNull(query, "query"))
+                .map(DossierElementView::from);
     }
 }

@@ -1,12 +1,13 @@
 package com.flowforge.domain.workflow.port.out;
 
+import com.flowforge.domain.shared.PageQuery;
+import com.flowforge.domain.shared.PageResult;
 import java.time.Instant;
-import java.util.List;
 import java.util.Objects;
 
 public interface WorkflowTaskInboxPort {
 
-    List<ActiveTaskSnapshot> findActiveAssignedTo(String assigneeId, int limit);
+    PageResult<ActiveTaskSnapshot> findActiveAssignedTo(String assigneeId, PageQuery query);
 
     record ActiveTaskSnapshot(
             String taskId,

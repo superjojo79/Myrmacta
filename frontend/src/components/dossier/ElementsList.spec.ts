@@ -90,4 +90,20 @@ describe('ElementsList', () => {
     expect(dl.text()).toContain('42')
     expect(wrapper.findAll('a').every((a) => a.text() !== 'Télécharger')).toBe(true)
   })
+
+  it('shows the pager when there is more than one page and emits update:page', async () => {
+    const wrapper = mount(ElementsList, {
+      props: { elements: [], page: 0, totalPages: 3 },
+    })
+    expect(wrapper.find('[data-testid="admin-pager-next"]').exists()).toBe(true)
+    await wrapper.get('[data-testid="admin-pager-next"]').trigger('click')
+    expect(wrapper.emitted('update:page')?.[0]).toEqual([1])
+  })
+
+  it('hides the pager when there is a single page', () => {
+    const wrapper = mount(ElementsList, {
+      props: { elements: [], page: 0, totalPages: 1 },
+    })
+    expect(wrapper.find('[data-testid="admin-pager-next"]').exists()).toBe(false)
+  })
 })

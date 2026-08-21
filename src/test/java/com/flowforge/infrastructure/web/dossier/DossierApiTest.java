@@ -1158,10 +1158,44 @@ class DossierApiTest {
         mockMvc.perform(get("/api/dossiers/{id}/elements", dossier.id())
                         .with(user("mgr-elements")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].label").value("Rapport PDF"))
-                .andExpect(jsonPath("$[0].downloadable").value(true))
-                .andExpect(jsonPath("$[0].type").value("PRODUCED_DOC"))
-                .andExpect(jsonPath("$[0]", not(hasKey("storageRef"))));
+                .andExpect(jsonPath("$.content[0].label").value("Rapport PDF"))
+                .andExpect(jsonPath("$.content[0].downloadable").value(true))
+                .andExpect(jsonPath("$.content[0].type").value("PRODUCED_DOC"))
+                .andExpect(jsonPath("$.content[0]", not(hasKey("storageRef"))))
+                .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
+    void listElements_pageAndSizeRespected() throws Exception {
+        String code = createType(true);
+        grant(code, "mgr-elements-page", "EDIT");
+        DossierFixture dossier = createDossier(code, "mgr-elements-page", "Paged elements dossier");
+        for (int i = 0; i < 3; i++) {
+            addDossierElementUseCase.add(
+                    new AddDossierElementUseCase.AddCommand(
+                            UUID.fromString(dossier.id()),
+                            ElementType.NOTE,
+                            "Note " + i,
+                            null,
+                            Map.of("text", "x"),
+                            "system",
+                            null),
+                    AccessContext.system("test"));
+        }
+
+        mockMvc.perform(get("/api/dossiers/{id}/elements", dossier.id())
+                        .param("page", "0")
+                        .param("size", "2")
+                        .with(user("mgr-elements-page")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(2))
+                .andExpect(jsonPath("$.totalElements").value(3))
+                .andExpect(jsonPath("$.totalPages").value(2));
+
+        mockMvc.perform(get("/api/dossiers/{id}/elements", dossier.id())
+                        .param("sort", "unsupported,asc")
+                        .with(user("mgr-elements-page")))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -1365,10 +1399,10 @@ class DossierApiTest {
         mockMvc.perform(get("/api/dossiers/{id}/elements", dossier.id())
                         .with(user("mgr-mixed-elements")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(3))
-                .andExpect(jsonPath("$[?(@.type=='PRODUCED_DOC')].downloadable").value(true))
-                .andExpect(jsonPath("$[?(@.type=='NOTE')].downloadable").value(false))
-                .andExpect(jsonPath("$[?(@.type=='LINK')].downloadable").value(false));
+                .andExpect(jsonPath("$.content.length()").value(3))
+                .andExpect(jsonPath("$.content[?(@.type=='PRODUCED_DOC')].downloadable").value(true))
+                .andExpect(jsonPath("$.content[?(@.type=='NOTE')].downloadable").value(false))
+                .andExpect(jsonPath("$.content[?(@.type=='LINK')].downloadable").value(false));
     }
 
     @Test

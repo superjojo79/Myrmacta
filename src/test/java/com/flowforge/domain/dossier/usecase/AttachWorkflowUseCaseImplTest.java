@@ -14,6 +14,8 @@ import com.flowforge.domain.dossier.model.DossierWorkflowLink;
 import com.flowforge.domain.dossier.model.WorkflowAlreadyRunningException;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
+import com.flowforge.domain.shared.PageQuery;
+import com.flowforge.domain.shared.PageResult;
 import com.flowforge.domain.workflow.model.StatusOutcome;
 import com.flowforge.domain.workflow.model.WorkflowStatusDefinition;
 import com.flowforge.domain.workflow.model.WorkflowTypeConfig;
@@ -118,6 +120,20 @@ class AttachWorkflowUseCaseImplTest {
         DossierWorkflowLink reserved = useCase.reserve(dossierId, PROCESS, "manual:idem", "starter-sub");
 
         assertThat(reserved.startedBy()).isEqualTo("starter-sub");
+    }
+
+    @Test
+    void getHistory_delegatesToPagedRepositoryMethod() {
+        UUID dossierId = UUID.randomUUID();
+        PageQuery query = PageQuery.of(0, 20);
+        DossierWorkflowLink link = reservedLink(dossierId);
+        when(linkRepository.pageByDossierId(dossierId, query))
+                .thenReturn(PageResult.of(List.of(link), 0, 20, 1));
+
+        PageResult<DossierWorkflowLink> page = useCase.getHistory(dossierId, query);
+
+        assertThat(page.content()).containsExactly(link);
+        assertThat(page.totalElements()).isEqualTo(1);
     }
 
     private static WorkflowTypeConfig config() {

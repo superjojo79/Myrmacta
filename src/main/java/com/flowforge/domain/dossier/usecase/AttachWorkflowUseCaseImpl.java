@@ -10,6 +10,8 @@ import com.flowforge.domain.dossier.port.in.AttachWorkflowUseCase;
 import com.flowforge.domain.dossier.port.in.GetDossierWorkflowHistoryUseCase;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
+import com.flowforge.domain.shared.PageQuery;
+import com.flowforge.domain.shared.PageResult;
 import com.flowforge.domain.workflow.model.WorkflowTypeConfig;
 import com.flowforge.domain.workflow.model.WorkflowTypeConfigNotFoundException;
 import com.flowforge.domain.workflow.port.out.WorkflowTypeConfigRepository;
@@ -98,7 +100,7 @@ public final class AttachWorkflowUseCaseImpl implements AttachWorkflowUseCase, G
     }
 
     @Override
-    public List<DossierWorkflowLink> getHistory(UUID dossierId) {
-        return linkRepository.findByDossierIdOrderBySequence(dossierId);
+    public PageResult<DossierWorkflowLink> getHistory(UUID dossierId, PageQuery query) {
+        return linkRepository.pageByDossierId(dossierId, query);
     }
 }

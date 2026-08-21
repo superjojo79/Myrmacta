@@ -408,7 +408,7 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
       return
     }
     if (url.includes('/elements')) {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(elements) })
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(envelope(elements)) })
       return
     }
     if (url.includes('/workflows') && method === 'GET') {
@@ -416,19 +416,21 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify(
-          linkId
-            ? [
-                {
-                  id: linkId,
-                  dossierId: DOSSIER_ID,
-                  tenantId: 'tenant_dev',
-                  processInstanceId: 'pi-1',
-                  processDefinitionKey: 'claimWorkflow',
-                  sequence: 1,
-                  status: 'ACTIVE',
-                },
-              ]
-            : [],
+          envelope(
+            linkId
+              ? [
+                  {
+                    id: linkId,
+                    dossierId: DOSSIER_ID,
+                    tenantId: 'tenant_dev',
+                    processInstanceId: 'pi-1',
+                    processDefinitionKey: 'claimWorkflow',
+                    sequence: 1,
+                    status: 'ACTIVE',
+                  },
+                ]
+              : [],
+          ),
         ),
       })
       return
@@ -531,7 +533,7 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
       return
     }
     if (url.includes('/history')) {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(envelope([])) })
       return
     }
     if (url.includes('/reassign') && route.request().method() === 'POST') {
@@ -539,16 +541,16 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
       return
     }
     if (url.includes('/tasks')) {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(tasks) })
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(envelope(tasks)) })
       return
     }
     await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
   })
-  await page.route('**/api/workflow-tasks/mine', async (route) => {
+  await page.route('**/api/workflow-tasks/mine*', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify(mineTasks),
+      body: JSON.stringify(envelope(mineTasks)),
     })
   })
   await page.route('**/api/workflow-tasks/*/complete', async (route) => {
@@ -577,8 +579,8 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
       body: JSON.stringify(envelope([])),
     })
   })
-  await page.route('**/api/connector-definitions', async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
+  await page.route('**/api/connector-definitions*', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(envelope([])) })
   })
   let webhooks: Array<Record<string, unknown>> = [
     {
@@ -1089,5 +1091,34 @@ test('E2E-OBS-4 refresh triggers a second get', async ({ page }) => {
   const refresh = page.waitForRequest((req) => req.url().includes('/api/observability') && req.method() === 'GET')
   await page.getByTestId('observability-refresh').click()
   await refresh
+})
+
+test('E2E-PAGE-2 tasks inbox pager writes page query', async ({ page }) => {
+  await mockSession(page)
+  await page.route('**/api/workflow-tasks/mine*', async (route) => {
+    const url = new URL(route.request().url())
+    const pageNo = Number(url.searchParams.get('page') || '0')
+    const task = {
+      taskId: pageNo === 0 ? 'task-1' : 'task-2',
+      name: pageNo === 0 ? 'Valider' : 'Vérifier',
+      assigneeId: 'user-1',
+      createdAt: '2026-08-12T00:00:00Z',
+      processInstanceId: 'pi-1',
+      dossierId: DOSSIER_ID,
+      dossierReference: 'DOS-1',
+      linkId: LINK_ID,
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(envelope([task], { page: pageNo, size: 20, totalElements: 21, totalPages: 2 })),
+    })
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Tâches' }).click()
+  await expect(page.getByText('Valider')).toBeVisible()
+  await page.getByTestId('admin-pager-next').click()
+  await expect(page).toHaveURL(/[?&]page=1/)
+  await expect(page.getByText('Vérifier')).toBeVisible()
 })
 

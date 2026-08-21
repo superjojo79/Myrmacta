@@ -134,6 +134,11 @@ design_ref: docs/ai/design/2026-08-21-feature-contrat-api-client.md
 - [x] Régression complète du projet exécutée : `npm run test` (136/136),
       `npm run typecheck`, `npm run lint`, `npm run test:e2e` (39/39).
 
+**Commande exacte (Phase 8) :**
+`PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e`
+→ `39 passed (24.6s)`, exit code `0`. Exécutée deux fois (avant/après
+correction des mocks) — 3 échecs → 0 échec.
+
 ## Test Data
 
 Fixtures existantes réutilisées ; aucun nouveau jeu de données partagé
@@ -220,7 +225,16 @@ inspection du diff.
    `@Parameter(hidden = true)` sur ce seul paramètre (le schema du corps
    de requête reste documenté) ; déterminisme reconfirmé sur 2
    régénérations consécutives identiques après correction.
-4. **`OpenApiEnabledApiTest` obsolète.** Le test
+4. **Tri déclaré vs tri réel (trouvé en Phase 7, corrigé avant clôture
+   Phase 8).** `ListSorts.MY_WORKFLOW_TASKS` déclarait `createdAt,asc`
+   alors que l'adaptateur trie en `.desc()` (comportement pré-existant
+   préservé) — constante corrigée. `listActiveTasks`
+   (`workflow-links/{linkId}/tasks`) n'appliquait **aucun** `ORDER BY`
+   avant `.listPage` — pagination non déterministe, vrai bug corrigé par
+   ajout de `.orderByTaskCreateTime().asc()`. Tests dédiés ajoutés
+   (`verify(listQuery).orderByTaskCreateTime()`/`.asc()`) — voir
+   implementation doc, section « Trouvaille Phase 7 ».
+5. **`OpenApiEnabledApiTest` obsolète.** Le test
    `adminCanReadDocs_managerIsForbidden_hiddenOperationsAbsent`
    affirmait explicitement l'absence des 3 chemins désormais documentés
    — sans cette correction, `./mvnw verify` aurait échoué sur un test

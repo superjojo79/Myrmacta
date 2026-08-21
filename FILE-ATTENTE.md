@@ -8,9 +8,9 @@
 > - Inventaire follow-ups / lots : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md)
 > - Séquencement « avant prod » : [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md) §9
 >
-> **Dernière mise à jour :** 2026-08-21 (`contrat-api-client` Phase 3
-> reviewed — design figé, mécanisme de pagination tranché par source de
-> données).
+> **Dernière mise à jour :** 2026-08-21 (`contrat-api-client` Phase 4
+> reviewed — planning figé, 7 milestones / 9 tâches tracées, aucune
+> tâche commencée).
 
 ## Comment s’en servir
 
@@ -118,3 +118,4 @@ référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même
 | 2026-08-21 | `durcissement-donnees-sensibles` livrée | PR #62 mergée sur `main` (commit `a4443e5`) ; TODO §23 reste réduit, §30 clos ; prochain = `contrat-api-client` §24 (reste) |
 | 2026-08-21 | `contrat-api-client` Phase 1+2 reviewed | D-CODEGEN=exclu (contradiction FILE-ATTENTE/TODO résolue en faveur de TODO) ; D-RELATIONS=pas de pagination (décision existante respectée) ; D-PAGINATION-SCOPE=6 listes (elements, workflow-tasks/mine, connector-definitions, dossiers/{id}/workflows, workflow-links history+tasks) ; D-HIDDEN-SPEC=documentation complète SSE/multipart/webhook |
 | 2026-08-21 | `contrat-api-client` Phase 3 reviewed | Mécanisme par source : JPA `Pageable` (elements, dossiers/{id}/workflows), Flowable `listPage`/`count` natif (workflow-tasks/mine, workflow-links history+tasks — remplace `DEFAULT_LIMIT=100`), slice mémoire `PageResult.slice` (connector-definitions) ; `AdminListSorts` renommé `ListSorts` (générique) ; SPA adapté via `listAllPages` existant, zéro changement de composant Vue ; 3 endpoints `@Hidden` documentés sans changement de comportement |
+| 2026-08-21 | `contrat-api-client` Phase 4 reviewed | 7 milestones (M1 `ListSorts`, M2 pagination JPA, M3 pagination Flowable native, M4 pagination mémoire, M5 doc OpenAPI `@Hidden`, M6 adaptation SPA, M7 qualité), 9 tâches, testing doc scénarisé (aucun scénario orphelin) ; toutes les tâches `not started` — Phase 5 pas encore démarrée |

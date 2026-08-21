@@ -74,4 +74,9 @@ class DossierListQueryParserTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("status");
     }
+
+    @Test
+    void parseStatus_blankNonNullStatus_treatedAsAbsent() {
+        assertThat(DossierListQueryParser.parseStatus("   ")).isNull();
+    }
 }

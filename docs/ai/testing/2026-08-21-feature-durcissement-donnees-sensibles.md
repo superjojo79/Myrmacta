@@ -238,15 +238,54 @@ méthode n'a pas été modifiée par cette feature (vérifié via
 `git diff origin/main...HEAD` sur le fichier) ; corriger un gap de
 couverture pré-existant hors périmètre relève d'un autre lot.
 
-**Evidence fraîche post-correction :**
+**Evidence post-première-correction (969 tests) :** incomplète — un premier
+balayage du HTML Jacoco utilisait un motif de classe CSS incorrect
+(`class="pc"` exact au lieu de `class="pc bpc"`), qui a fait passer sous le
+radar plusieurs branches réellement non couvertes. Relecture correcte
+(grep sur `title="… branches missed."` au lieu du nom de classe CSS) sur
+les **15 fichiers `src/main` modifiés**, avec 4 lacunes réelles
+supplémentaires trouvées et comblées :
+
+- `DossierExportController` ligne `dossier.closedAt() == null ? "" : …` :
+  le côté « dossier clôturé, `closedAt` renseigné » n'était jamais
+  exercé (tous les tests existants portaient sur des dossiers non
+  clôturés). Ajout de `exportCsv_closedDossier_populatesClosedAtColumn`
+  (transition OUVERT → CLOTURE puis export, assertion sur la colonne
+  `closedAt`).
+- `AttachmentContentSniffer.matchesDeclaredType` : le cas `content == null`
+  pour un type déclaré **reconnu** n'était pas couvert (seul le cas
+  contenu vide `new byte[0]` l'était, chemin différent). Ajout de
+  `matchesDeclaredType_recognizedTypeWithNullContent_returnsFalse`.
+- `DossierListQueryParser.parseStatus` : le cas statut non-null mais
+  blanc (`"   "`) n'était pas couvert. Ajout de
+  `parseStatus_blankNonNullStatus_treatedAsAbsent`.
+- `CsvWriter.escape` : la branche `contains("\r")` de la chaîne de `||`
+  n'était atteignable que si le caractère `\r` apparaît **seul** (sans
+  virgule, guillemet, ni `\n` avant) — jamais testé isolément. Ajout de
+  `writeRow_quotesFieldContainingBareCarriageReturn`.
+
+**Lacunes de branche restantes, vérifiées légitimement hors scope :**
+- `JpaDossierExportAdapter` : `if (predicate != null)` — `DossierSpecifications.forSearch`
+  ajoute toujours au moins le prédicat `tenantId`, donc `predicate` n'est
+  jamais réellement `null` par ce chemin ; code défensif identique à celui
+  déjà accepté dans `JpaDossierSearchAdapter` (même pattern préexistant).
+- `DossierListQueryParser` ligne 27 (validation `sort`) et
+  `DossierElementUploadController` lignes 78/96 (fichier `null`/vide,
+  `getOriginalFilename() == null`) : logique préexistante, non modifiée
+  par cette feature (vérifié par `git diff origin/main...HEAD` sur ces
+  fichiers) — hors périmètre.
+
+**Evidence finale (2026-08-21) :**
 `./mvnw -Dmaven.compiler.release=21 verify` → **BUILD SUCCESS**, Tests run
-**969** (+9 vs les 960 initiaux : +3 `HttpRestServiceConnectorTest`,
-+1 `AttachmentContentSnifferTest`, +1 `CsvWriterTest`, +4 déjà ajoutés en
-Phase 7 pour l'injection de formule CSV), Failures **0**, Jacoco : « All
-coverage checks have been met. » Aucun changement `frontend/` dans ce
-lot de tests supplémentaires — pas de nouveau run Vitest/Playwright requis
-(évidence Phase 5 toujours valide, aucune surface FE ni contrat API
-impacté).
+**973** (+13 vs les 960 initiaux), Failures **0**, Jacoco : « All coverage
+checks have been met. » Toutes les classes substantiellement nouvelles ou
+modifiées par cette feature (`AttachmentContentSniffer`, `CsvWriter`,
+`DossierExportController`, `HttpRestServiceConnector`,
+`DossierListQueryParser.parseStatus`) sont désormais à **0 ligne et 0
+branche manquée** dans le rapport Jacoco. Aucun changement `frontend/`
+dans ce lot de tests supplémentaires — pas de nouveau run
+Vitest/Playwright requis (évidence Phase 5 toujours valide, aucune surface
+FE ni contrat API impacté).
 
 ## Manual Testing
 

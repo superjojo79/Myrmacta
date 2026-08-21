@@ -28,6 +28,11 @@ class CsvWriterTest {
     }
 
     @Test
+    void writeRow_quotesFieldContainingBareCarriageReturn() {
+        assertThat(CsvWriter.writeRow(List.of("a\rb"))).isEqualTo("\"a\rb\"\r\n");
+    }
+
+    @Test
     void writeRow_treatsEmptyStringFieldAsEmpty() {
         assertThat(CsvWriter.writeRow(List.of("a", "", "c"))).isEqualTo("a,,c\r\n");
     }

@@ -261,8 +261,11 @@ Revue holistique (au-delà du fichier-par-fichier de Phase 7) :
       trouvée et corrigée)
 - [x] Points d'intégration vérifiés (wiring `DossierConfig`, pas de bean
       dupliqué)
-- [x] Tests couvrent les changements (964 backend, régression frontend
-      complète)
+- [x] Tests couvrent les changements — **re-vérifié avec une évidence
+      correcte** après que le premier passage se soit avéré, lui aussi,
+      basé sur une lecture superficielle (973 backend, 100% lignes/branches
+      sur les classes substantiellement nouvelles/modifiées ; régression
+      frontend complète)
 - [x] Docs à jour (requirements/design/planning/implementation/testing,
       TODO.md, FILE-ATTENTE.md)
 
@@ -296,6 +299,28 @@ détail ligne par ligne) :
 (`catch IOException`) — méthode non modifiée par cette feature (vérifié
 par `git diff origin/main...HEAD`), hors périmètre.
 
-**Verify Phase 8 :** `./mvnw -Dmaven.compiler.release=21 verify` → **969**
-tests (+5 vs les 964 de fin de Phase 7), 0 échec, Jacoco OK. Pas de
-changement `frontend/`, pas de nouveau run Vitest/Playwright nécessaire.
+**Verify Phase 8 (premier passage) :** `./mvnw -Dmaven.compiler.release=21 verify`
+→ **969** tests, 0 échec, Jacoco OK.
+
+**Correction Phase 9 (à la demande explicite de l'utilisateur — « la phase
+9 a-t-elle été correctement exécutée ? ») :** non, pas totalement. La
+checklist Phase 9 « tests couvrent les changements » avait été cochée sur
+la base du même type d'évidence superficielle (bundle Jacoco global) que
+le premier passage de Phase 8 — exactement le défaut que la reprise de
+Phase 8 était censée corriger. Un balayage plus rigoureux (grep sur
+`title="… branches missed."` au lieu d'un motif de classe CSS incorrect
+qui ratait `class="pc bpc"`) sur les 15 fichiers `src/main` modifiés a
+trouvé **4 lacunes réelles supplémentaires**, toutes comblées (voir
+testing doc pour le détail) :
+`DossierExportController` (branche `closedAt` non-null jamais exercée),
+`AttachmentContentSniffer` (contenu `null` pour un type reconnu),
+`DossierListQueryParser.parseStatus` (statut blanc non-null),
+`CsvWriter` (retour chariot isolé). 3 branches restantes confirmées hors
+scope (code défensif inatteignable identique à un pattern déjà accepté,
+ou logique préexistante non touchée par cette feature).
+
+**Verify final :** `./mvnw -Dmaven.compiler.release=21 verify` → **973**
+tests (+13 vs les 960 de fin de Phase 5), 0 échec, Jacoco OK. Toutes les
+classes substantiellement nouvelles/modifiées par la feature sont à 0
+ligne et 0 branche manquée. Pas de changement `frontend/`, pas de nouveau
+run Vitest/Playwright nécessaire.

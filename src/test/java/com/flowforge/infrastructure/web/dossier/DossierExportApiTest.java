@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oidcLogin;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -11,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.flowforge.support.OidcClientTestConfiguration;
 import java.util.Arrays;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -19,6 +21,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 @SpringBootTest
@@ -85,6 +88,27 @@ class DossierExportApiTest {
     }
 
     @Test
+    void exportCsv_closedDossier_populatesClosedAtColumn() throws Exception {
+        String code = createTypeWithSensitiveField("EXP_CLOSED");
+        String dossierId = createDossierAndGetId(code, "admin-export-closed", fieldsJson("LOW", "000-00-0000"));
+        transitionStatus(dossierId, "admin-export-closed", "OUVERT");
+        transitionStatus(dossierId, "admin-export-closed", "CLOTURE");
+
+        var result = mockMvc.perform(get("/api/dossiers/export.csv")
+                        .param("dossierTypeCode", code)
+                        .with(user("admin-export-closed", "TENANT_ADMIN")))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String body = result.getResponse().getContentAsString();
+        String[] lines = body.split("\r\n");
+        assertThat(lines).hasSize(2);
+        String[] row = lines[1].split(",");
+        assertThat(row[2]).isEqualTo("CLOTURE"); // status
+        assertThat(row[5]).isNotBlank(); // closedAt must not be empty for a closed dossier
+    }
+
+    @Test
     void exportCsv_missingDossierTypeCode_returns400() throws Exception {
         mockMvc.perform(get("/api/dossiers/export.csv")
                         .with(user("admin-missing", "TENANT_ADMIN")))
@@ -142,6 +166,41 @@ class DossierExportApiTest {
                                 }
                                 """.formatted(code, code, fieldsJson)))
                 .andExpect(status().isCreated());
+    }
+
+    private String createDossierAndGetId(String code, String userId, String fieldsJson) throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/dossiers")
+                        .with(user(userId, "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "dossierTypeCode": "%s",
+                                  "label": "Dossier %s",
+                                  "fields": %s
+                                }
+                                """.formatted(code, code, fieldsJson)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        var matcher = Pattern.compile("\"id\"\\s*:\\s*\"([^\"]+)\"")
+                .matcher(result.getResponse().getContentAsString());
+        if (!matcher.find()) {
+            throw new AssertionError("missing dossier id");
+        }
+        return matcher.group(1);
+    }
+
+    private void transitionStatus(String dossierId, String userId, String status) throws Exception {
+        mockMvc.perform(patch("/api/dossiers/{id}/status", dossierId)
+                        .with(user(userId, "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "status": "%s"
+                                }
+                                """.formatted(status)))
+                .andExpect(status().isOk());
     }
 
     private static String fieldsJson(String priority, String ssn) {

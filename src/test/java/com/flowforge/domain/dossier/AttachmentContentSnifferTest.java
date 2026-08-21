@@ -70,6 +70,11 @@ class AttachmentContentSnifferTest {
     }
 
     @Test
+    void matchesDeclaredType_recognizedTypeWithNullContent_returnsFalse() {
+        assertThat(AttachmentContentSniffer.matchesDeclaredType(null, "application/pdf")).isFalse();
+    }
+
+    @Test
     void matchesDeclaredType_passesThroughUnrecognizedDeclaredType() {
         byte[] content = bytes(0x01, 0x02, 0x03);
 

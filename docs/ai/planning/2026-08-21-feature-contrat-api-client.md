@@ -7,6 +7,8 @@ created: 2026-08-21
 updated: 2026-08-21
 feature: contrat-api-client
 phase4: 2026-08-21
+phase5: 2026-08-21
+phase7: 2026-08-21
 requirements_ref: docs/ai/requirements/2026-08-21-feature-contrat-api-client.md
 design_ref: docs/ai/design/2026-08-21-feature-contrat-api-client.md
 testing_ref: docs/ai/testing/2026-08-21-feature-contrat-api-client.md
@@ -21,13 +23,13 @@ testing_ref: docs/ai/testing/2026-08-21-feature-contrat-api-client.md
 
 ## Milestones
 
-- [ ] **M1** — Renommage `AdminListSorts` → `ListSorts` + 6 constantes
-- [ ] **M2** — Pagination JPA (`dossiers/{id}/elements`, `dossiers/{id}/workflows`)
-- [ ] **M3** — Pagination Flowable native (`workflow-tasks/mine`, `workflow-links/{id}/history`, `.../tasks`)
-- [ ] **M4** — Pagination mémoire (`connector-definitions`)
-- [ ] **M5** — Documentation OpenAPI des 3 endpoints `@Hidden`
-- [ ] **M6** — Adaptation SPA (`api/*.ts` via `listAllPages`) + tests Vitest
-- [ ] **M7** — Qualité (ArchUnit, OpenAPI golden, `./mvnw verify`, régression frontend complète, mise à jour TODO/FILE-ATTENTE)
+- [x] **M1** — Renommage `AdminListSorts` → `ListSorts` + 6 constantes
+- [x] **M2** — Pagination JPA (`dossiers/{id}/elements`, `dossiers/{id}/workflows`)
+- [x] **M3** — Pagination Flowable native (`workflow-tasks/mine`, `workflow-links/{id}/history`, `.../tasks`)
+- [x] **M4** — Pagination mémoire (`connector-definitions`)
+- [x] **M5** — Documentation OpenAPI des 3 endpoints `@Hidden`
+- [x] **M6** — Adaptation SPA (`api/*.ts` via `listAllPages`) + tests Vitest
+- [x] **M7** — Qualité (ArchUnit, OpenAPI golden, `./mvnw verify`, régression frontend complète, mise à jour TODO/FILE-ATTENTE)
 
 M1 est un pré-requis pour M2–M5 (constantes de tri). M2, M3, M4, M5 sont
 indépendants entre eux. M6 dépend de M2–M5 (les endpoints doivent exposer
@@ -186,7 +188,9 @@ TDD : test rouge → code → vert. Validation : commandes en fin de document.
   écart apparaît.
 - **Deps :** M1–M5.
 - **Tests :** `ArchitectureRulesTest` (existant).
-- **Status :** not started
+- **Status :** done (2026-08-21) — 3/3 verts, `grep` de contrôle confirme
+  aucun import `org.springframework.data`/`org.flowable` dans
+  `domain/`.
 
 #### T7.2 OpenAPI golden + Verify + mise à jour docs produit
 - **Outcome :** `openapi/openapi.yaml` régénéré
@@ -197,7 +201,15 @@ TDD : test rouge → code → vert. Validation : commandes en fin de document.
   et `DEFERRED-FEATURES.md` mis à jour après implémentation.
 - **Deps :** M1–M6, T7.1.
 - **Tests :** evidence Phase 8 collée dans le testing doc.
-- **Status :** not started
+- **Status :** done (2026-08-21) — `./mvnw verify` : **BUILD SUCCESS**,
+  986 tests, 0 échec, Jacoco met. Golden régénéré et stabilité
+  déterministe confirmée après correction d'un non-déterminisme de
+  schema (`HttpHeaders` sur `WebhookController`). `npm run test` 136/136,
+  `typecheck`/`lint` propres, `npm run test:e2e` 39/39 après correction
+  de 2 régressions réelles trouvées par l'exécution complète (mocks
+  Playwright non enveloppés + pattern glob obsolète — détail dans le
+  testing doc, section « Trouvailles Phase 8 »). `TODO.md` §24 clos,
+  `FILE-ATTENTE.md` mis à jour.
 
 ## Mapping tests ↔ tâches
 
@@ -245,12 +257,33 @@ Design reviewed, testing doc scénarisé, ports/adapters existants
 (`SpringPages`, `PageResult.slice`, `listAllPages` frontend) — aucune
 nouvelle dépendance.
 
-## Progress (Phase 4)
+## Progress (Phase 7 — check implementation, clôture des tâches)
 
-Planning initial complet : 7 milestones (M1–M7), 9 tâches (T1.1–T7.2),
-toutes tracées et mappées aux scénarios testing (aucun scénario orphelin).
-Aucune tâche commencée — l'implémentation (Phase 5) n'a pas encore
-démarré, tous les statuts sont `not started`.
+Toutes les tâches T1.1–T7.2 **done** (2026-08-21), TDD strict (rouge
+confirmé avant chaque implémentation de méthode de port/adaptateur
+nouvelle).
 
-Prochaine étape : `dev-implementation` (Phase 5, TDD strict — rouge avant
-vert sur chaque nouvelle classe/méthode de production).
+- Backend : `./mvnw verify -Dmaven.compiler.release=21` → **BUILD
+  SUCCESS**, Tests run **986**, Failures **0**, Jacoco check met. Sweep
+  Jacoco par classe (13 fichiers substantiellement modifiés) : 100% du
+  code nouveau/modifié couvert ; toutes les branches encore signalées
+  « missed » vérifiées pré-existantes (comparaison `git show` ligne par
+  ligne), hors périmètre de cette feature.
+- Frontend : `npm run test` → 47 fichiers / **136** tests ; `npm run
+  typecheck` et `npm run lint` propres ; `npm run test:e2e`
+  (`PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium`) → **39**
+  passed, après correction de **2 régressions SPA réelles** trouvées par
+  l'exécution complète de la suite (détail : testing doc, section
+  « Trouvailles Phase 8 »).
+- **1 non-déterminisme du golden OpenAPI** trouvé et corrigé
+  (`@RequestHeader HttpHeaders` exposait un schema Spring dont l'ordre
+  de propriétés varie d'une régénération à l'autre) — déterminisme
+  reconfirmé sur 2 régénérations consécutives identiques.
+- **1 test obsolète corrigé** (`OpenApiEnabledApiTest` affirmait
+  l'absence des 3 opérations désormais volontairement documentées).
+- `TODO.md` §24 clos ; `FILE-ATTENTE.md` mis à jour (feature déplacée
+  vers « Récemment livré », file d'attente renumérotée).
+
+Aucune régression restante. Prochaine étape : `dev-testing` (Phase 8,
+scénarios déjà documentés et exécutés — à formaliser) puis `dev-review`
+(Phase 9, revue finale avant merge).

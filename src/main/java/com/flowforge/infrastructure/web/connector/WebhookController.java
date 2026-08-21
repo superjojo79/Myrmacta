@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.Parameter;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
@@ -59,7 +60,7 @@ class WebhookController {
     @PostMapping("/{instanceId}")
     ResponseEntity<Void> receive(
             @PathVariable UUID instanceId,
-            @RequestHeader HttpHeaders headers,
+            @Parameter(hidden = true) @RequestHeader HttpHeaders headers,
             @RequestBody byte[] rawBody) {
         byte[] body = rawBody == null ? new byte[0] : rawBody;
         if (body.length > connectorProperties.webhook().maxBodyBytes()) {

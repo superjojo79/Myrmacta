@@ -1,7 +1,5 @@
 package com.flowforge.infrastructure.web.openapi;
 
-import static org.hamcrest.Matchers.not;
-import static org.hamcrest.Matchers.hasKey;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oidcLogin;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -27,7 +25,7 @@ class OpenApiEnabledApiTest {
     private MockMvc mockMvc;
 
     @Test
-    void adminCanReadDocs_managerIsForbidden_hiddenOperationsAbsent() throws Exception {
+    void adminCanReadDocs_managerIsForbidden_previouslyHiddenOperationsNowDocumented() throws Exception {
         mockMvc.perform(get("/v3/api-docs").with(user("mgr", "DOSSIER_MANAGER")))
                 .andExpect(status().isForbidden());
 
@@ -40,9 +38,10 @@ class OpenApiEnabledApiTest {
                 .andExpect(jsonPath("$.paths['/api/notification-webhooks']").exists())
                 .andExpect(jsonPath("$.paths['/api/purge-outbox']").exists())
                 .andExpect(jsonPath("$.paths['/api/observability']").exists())
-                .andExpect(jsonPath("$.paths['/api/notifications/stream']").doesNotExist())
-                .andExpect(jsonPath("$.paths", not(hasKey("/api/webhooks/{id}"))))
-                .andExpect(jsonPath("$.paths", not(hasKey("/api/dossiers/{id}/elements/attachment"))));
+                // Documentés depuis contrat-api-client (D-HIDDEN-SPEC) — plus @Hidden.
+                .andExpect(jsonPath("$.paths['/api/notifications/stream']").exists())
+                .andExpect(jsonPath("$.paths['/api/webhooks/{instanceId}']").exists())
+                .andExpect(jsonPath("$.paths['/api/dossiers/{id}/elements/attachment']").exists());
 
         mockMvc.perform(get("/v3/api-docs.yaml").with(user("wf", "WORKFLOW_ADMIN")))
                 .andExpect(status().isOk());

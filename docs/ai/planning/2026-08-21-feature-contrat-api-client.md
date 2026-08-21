@@ -131,19 +131,30 @@ TDD : test rouge → code → vert. Validation : commandes en fin de document.
 - **Deps :** T1.1.
 - **Tests :** scénarios `ConnectorDefinitionController.list` + intégration
   `GET /api/connector-definitions` du testing doc.
-- **Status :** not started
+- **Status :** done (2026-08-21) — `ConnectorAdminApiTest` 10/10
+  (2 nouveaux : tri déterministe par type, size respecté, sort invalide
+  → 400).
 
 ### M5 — Documentation OpenAPI des 3 endpoints `@Hidden`
 
 #### T5.1 SSE, multipart, webhook
 - **Outcome :** retrait `@Hidden` sur `NotificationSseController`,
-  `DossierElementUploadController`, `WebhookController` ; annotations
-  springdoc minimales par endpoint (cf. design, tableau API Design).
-  Aucun changement de comportement runtime.
+  `DossierElementUploadController`, `WebhookController`. Aucune
+  annotation OpenAPI supplémentaire nécessaire : SSE documente déjà
+  `produces = TEXT_EVENT_STREAM_VALUE` (springdoc l'infère automatiquement),
+  multipart documente déjà `consumes = "multipart/form-data"` sur un
+  `MultipartFile`, webhook expose `@RequestBody byte[]` — springdoc génère
+  nativement un schema `string`/`format: byte` (déviation mineure vs le
+  schema `object` libre envisagé en design : le handler consomme des
+  octets bruts, pas un JSON parsé, donc `byte[]` est le contrat réel et
+  plus honnête). Aucun changement de comportement runtime.
 - **Deps :** aucune (indépendant de M1–M4).
 - **Tests :** scénarios "endpoints `@Hidden`" du testing doc (non-régression
-  fonctionnelle + présence dans le golden après régénération).
-- **Status :** not started
+  fonctionnelle + présence dans le golden après régénération — vérifié en
+  T7.2).
+- **Status :** done (2026-08-21) — compilation propre, comportement
+  runtime inchangé (aucun test fonctionnel existant modifié) ; présence
+  dans le golden OpenAPI vérifiée en T7.2.
 
 ### M6 — Adaptation SPA
 
@@ -159,7 +170,13 @@ TDD : test rouge → code → vert. Validation : commandes en fin de document.
 - **Tests :** mise à jour des mocks Vitest existants
   (`phase8Api.spec.ts`, `apiCoverage.spec.ts`, `clients.spec.ts`,
   `dossiers.spec.ts`) pour renvoyer une `Page<T>` au lieu d'un tableau brut.
-- **Status :** not started
+- **Status :** done (2026-08-21) — seuls 2 tests mockant `axios.get`
+  directement ont dû être ajustés (`clients.spec.ts`, `phase8Api.spec.ts` :
+  assertion `{params:{page,size}}` ajoutée) ; les autres fichiers listés
+  en prévision (`apiCoverage.spec.ts`, `dossiers.spec.ts`,
+  stores/vues) mockent au niveau wrapper, donc non affectés. `npm run
+  test` 136/136, `npm run typecheck` et `npm run lint` propres. Aucun
+  composant Vue modifié.
 
 ### M7 — Qualité
 

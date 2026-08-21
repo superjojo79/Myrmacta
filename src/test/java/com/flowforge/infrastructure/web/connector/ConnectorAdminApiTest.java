@@ -40,8 +40,47 @@ class ConnectorAdminApiTest {
         mockMvc.perform(get("/api/connector-definitions")
                         .with(user("connector-admin", "TENANT_ADMIN")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[*].type", hasItem("http-rest")))
-                .andExpect(jsonPath("$[*].type", hasItem("flowable-signal")));
+                .andExpect(jsonPath("$.content[*].type", hasItem("http-rest")))
+                .andExpect(jsonPath("$.content[*].type", hasItem("flowable-signal")))
+                .andExpect(jsonPath("$.content", isSortedByTypeAscending()));
+    }
+
+    @Test
+    void listDefinitions_sizeRespectedAndSortRejectsUnsupportedValue() throws Exception {
+        mockMvc.perform(get("/api/connector-definitions")
+                        .param("page", "0")
+                        .param("size", "1")
+                        .with(user("connector-admin", "TENANT_ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.size").value(1));
+
+        mockMvc.perform(get("/api/connector-definitions")
+                        .param("sort", "label,asc")
+                        .with(user("connector-admin", "TENANT_ADMIN")))
+                .andExpect(status().isBadRequest());
+    }
+
+    private static org.hamcrest.Matcher<Iterable<? extends java.util.Map<String, Object>>> isSortedByTypeAscending() {
+        return new org.hamcrest.TypeSafeMatcher<>() {
+            @Override
+            protected boolean matchesSafely(Iterable<? extends java.util.Map<String, Object>> items) {
+                String previous = null;
+                for (var item : items) {
+                    String type = String.valueOf(item.get("type"));
+                    if (previous != null && previous.compareTo(type) > 0) {
+                        return false;
+                    }
+                    previous = type;
+                }
+                return true;
+            }
+
+            @Override
+            public void describeTo(org.hamcrest.Description description) {
+                description.appendText("content sorted by type ascending");
+            }
+        };
     }
 
     @Test

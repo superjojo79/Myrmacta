@@ -22,7 +22,7 @@ describe('api modules', () => {
     vi.mocked(axios.post).mockResolvedValue({})
     await listMyTasks()
     await completeTask('t1', {})
-    expect(axios.get).toHaveBeenCalledWith('/api/workflow-tasks/mine')
+    expect(axios.get).toHaveBeenCalledWith('/api/workflow-tasks/mine', { params: { page: 0, size: 100 } })
     expect(axios.post).toHaveBeenCalledWith('/api/workflow-tasks/t1/complete', { variables: {} })
   })
 

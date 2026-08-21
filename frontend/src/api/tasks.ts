@@ -1,9 +1,13 @@
 import axios from 'axios'
 import type { MyWorkflowTask } from './types'
+import { listAllPages, type Page } from './page'
 
 export async function listMyTasks(): Promise<MyWorkflowTask[]> {
-  const { data } = await axios.get<MyWorkflowTask[]>('/api/workflow-tasks/mine')
-  return data
+  return listAllPages((page, size) =>
+    axios
+      .get<Page<MyWorkflowTask>>('/api/workflow-tasks/mine', { params: { page, size } })
+      .then((response) => response.data),
+  )
 }
 
 export async function completeTask(

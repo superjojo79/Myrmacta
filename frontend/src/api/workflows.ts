@@ -14,13 +14,19 @@ export async function getWorkflowDiagram(linkId: string): Promise<WorkflowDiagra
 }
 
 export async function getWorkflowHistory(linkId: string): Promise<ActivityHistoryEntry[]> {
-  const { data } = await axios.get<ActivityHistoryEntry[]>(`/api/workflow-links/${linkId}/history`)
-  return data
+  return listAllPages((page, size) =>
+    axios
+      .get<Page<ActivityHistoryEntry>>(`/api/workflow-links/${linkId}/history`, { params: { page, size } })
+      .then((response) => response.data),
+  )
 }
 
 export async function getWorkflowTasks(linkId: string): Promise<WorkflowTaskView[]> {
-  const { data } = await axios.get<WorkflowTaskView[]>(`/api/workflow-links/${linkId}/tasks`)
-  return data
+  return listAllPages((page, size) =>
+    axios
+      .get<Page<WorkflowTaskView>>(`/api/workflow-links/${linkId}/tasks`, { params: { page, size } })
+      .then((response) => response.data),
+  )
 }
 
 export async function reassignWorkflowTask(

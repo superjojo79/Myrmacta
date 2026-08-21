@@ -1,7 +1,7 @@
 import axios from 'axios'
 import type { Connector, DocumentTemplate } from './types'
 import type { AdminListParams } from './dossierTypes'
-import { type Page } from './page'
+import { listAllPages, type Page } from './page'
 
 export async function listDocumentTemplates(
   templateKey?: string,
@@ -53,11 +53,14 @@ export async function newDocumentTemplateVersion(id: string): Promise<DocumentTe
   return data
 }
 
-export async function listConnectorDefinitions(): Promise<
-  Array<{ type: string; label?: string; [key: string]: unknown }>
-> {
-  const { data } = await axios.get('/api/connector-definitions')
-  return data
+type ConnectorDefinitionItem = { type: string; label?: string; [key: string]: unknown }
+
+export async function listConnectorDefinitions(): Promise<ConnectorDefinitionItem[]> {
+  return listAllPages((page, size) =>
+    axios
+      .get<Page<ConnectorDefinitionItem>>('/api/connector-definitions', { params: { page, size } })
+      .then((response) => response.data),
+  )
 }
 
 export async function listConnectors(params: AdminListParams = {}): Promise<Page<Connector>> {

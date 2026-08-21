@@ -135,6 +135,8 @@ class FlowableWorkflowVisualizationAdapterTest {
         TaskQuery listQuery = mock(TaskQuery.class);
         when(listQuery.processInstanceId(PI)).thenReturn(listQuery);
         when(listQuery.taskTenantId(TENANT)).thenReturn(listQuery);
+        when(listQuery.orderByTaskCreateTime()).thenReturn(listQuery);
+        when(listQuery.asc()).thenReturn(listQuery);
         Task task = mock(Task.class);
         when(task.getId()).thenReturn("task-1");
         when(listQuery.listPage(0, 10)).thenReturn(List.of(task));
@@ -146,6 +148,8 @@ class FlowableWorkflowVisualizationAdapterTest {
         assertThat(page.totalElements()).isEqualTo(7);
         assertThat(page.content()).hasSize(1);
         verify(countQuery, never()).listPage(any(Integer.class), any(Integer.class));
+        verify(listQuery).orderByTaskCreateTime();
+        verify(listQuery).asc();
     }
 
     @Test

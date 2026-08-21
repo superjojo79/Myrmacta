@@ -19,7 +19,7 @@ class ListSortsTest {
     @Test
     void allowListCoversContratApiClientResources() {
         assertThat(ListSorts.DOSSIER_ELEMENTS).isEqualTo("addedAt,asc");
-        assertThat(ListSorts.MY_WORKFLOW_TASKS).isEqualTo("createdAt,asc");
+        assertThat(ListSorts.MY_WORKFLOW_TASKS).isEqualTo("createdAt,desc");
         assertThat(ListSorts.CONNECTOR_DEFINITIONS).isEqualTo("type,asc");
         assertThat(ListSorts.DOSSIER_WORKFLOWS).isEqualTo("sequence,asc");
         assertThat(ListSorts.WORKFLOW_LINK_HISTORY).isEqualTo("startedAt,asc");

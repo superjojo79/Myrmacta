@@ -10,7 +10,7 @@ public final class ListSorts {
     public static final String PURGE_OUTBOX = "createdAt,desc";
 
     public static final String DOSSIER_ELEMENTS = "addedAt,asc";
-    public static final String MY_WORKFLOW_TASKS = "createdAt,asc";
+    public static final String MY_WORKFLOW_TASKS = "createdAt,desc";
     public static final String CONNECTOR_DEFINITIONS = "type,asc";
     public static final String DOSSIER_WORKFLOWS = "sequence,asc";
     public static final String WORKFLOW_LINK_HISTORY = "startedAt,asc";

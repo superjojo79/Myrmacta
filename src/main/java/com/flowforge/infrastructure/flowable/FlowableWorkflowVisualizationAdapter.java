@@ -102,6 +102,8 @@ class FlowableWorkflowVisualizationAdapter implements WorkflowVisualizationPort 
         var content = taskService.createTaskQuery()
                 .processInstanceId(processInstanceId)
                 .taskTenantId(tenantId)
+                .orderByTaskCreateTime()
+                .asc()
                 .listPage(query.offset(), query.size())
                 .stream()
                 .map(FlowableWorkflowVisualizationAdapter::toTaskView)

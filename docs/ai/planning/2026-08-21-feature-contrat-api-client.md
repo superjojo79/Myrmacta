@@ -45,7 +45,7 @@ TDD : test rouge → code → vert. Validation : commandes en fin de document.
 - **Outcome :** classe `infrastructure.web.ListSorts` (renommage
   mécanique, tous les appelants existants mis à jour), + 6 nouvelles
   constantes (`DOSSIER_ELEMENTS = "addedAt,asc"`,
-  `MY_WORKFLOW_TASKS = "createdAt,asc"`,
+  `MY_WORKFLOW_TASKS = "createdAt,desc"` (corrigé en Phase 7, cf. T3.1),
   `CONNECTOR_DEFINITIONS = "type,asc"`,
   `DOSSIER_WORKFLOWS = "sequence,asc"`,
   `WORKFLOW_LINK_HISTORY = "startedAt,asc"`,
@@ -105,7 +105,10 @@ TDD : test rouge → code → vert. Validation : commandes en fin de document.
   `FlowableWorkflowVisualizationAdapterTest`), `ListMyTasksUseCaseImplTest`
   1/1, `WorkflowApiTest` 9/9 (assertion `/mine` ajoutée). Note documentée
   en javadoc : le filtrage post-pagination des tâches orphelines peut
-  rendre `content().size() < size` sans invalider la page.
+  rendre `content().size() < size` sans invalider la page. **Correctif
+  Phase 7 :** `ListSorts.MY_WORKFLOW_TASKS` déclarait `createdAt,asc`
+  alors que l'adaptateur trie en `.desc()` (comportement pré-existant
+  préservé) — constante corrigée pour refléter la réalité.
 
 #### T3.2 `WorkflowVisualizationPort.getHistory` / `.listActiveTasks` (signature `PageQuery`)
 - **Outcome :** port modifié, `FlowableWorkflowVisualizationAdapter`
@@ -121,7 +124,10 @@ TDD : test rouge → code → vert. Validation : commandes en fin de document.
   18/18 (2 nouveaux), `FlowableWorkflowVisualizationAdapterTest` 7/7
   (2 nouveaux, vérifient `listPage`/`count` natifs et non `.list()`
   complet), `WorkflowApiTest` 9/9 (3 assertions JSON adaptées à
-  `PageResponse`).
+  `PageResponse`). **Correctif Phase 7 :** `listActiveTasks` n'appliquait
+  aucun `ORDER BY` explicite avant `.listPage` (pagination non
+  déterministe, vrai bug) — ajout de `.orderByTaskCreateTime().asc()`,
+  aligné sur `ListSorts.WORKFLOW_LINK_TASKS` déjà déclaré.
 
 ### M4 — Pagination mémoire
 

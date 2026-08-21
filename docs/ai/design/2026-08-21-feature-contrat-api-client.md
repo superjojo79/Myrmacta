@@ -112,7 +112,7 @@ une seule valeur, défaut = valeur de tri actuelle implicite) ; réponse
 | # | Endpoint | Tri par défaut (allow-list unique) | Mécanisme |
 |---|---|---|---|
 | 1 | `GET /api/dossiers/{id}/elements` | `addedAt,asc` | JPA `Pageable` |
-| 2 | `GET /api/workflow-tasks/mine` | `createdAt,asc` | Flowable `TaskQuery.listPage/count` |
+| 2 | `GET /api/workflow-tasks/mine` | `createdAt,desc` (préserve l'ordre implicite pré-existant, corrigé en Phase 7 — cf. implementation doc) | Flowable `TaskQuery.listPage/count` |
 | 3 | `GET /api/connector-definitions` | `type,asc` | Slice mémoire `PageResult.slice` |
 | 4 | `GET /api/dossiers/{id}/workflows` | `sequence,asc` | JPA `Pageable` |
 | 5 | `GET /api/workflow-links/{linkId}/history` | `startedAt,asc` | Flowable `HistoricActivityInstanceQuery.listPage/count` |

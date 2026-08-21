@@ -104,6 +104,30 @@ Aucun changement d'autorisation sur les 6 endpoints migrés
 la pagination ne modifie que le découpage des données déjà autorisées,
 jamais leur périmètre.
 
+## Trouvaille Phase 7 (check implementation)
+
+La relecture fichier par fichier a révélé une incohérence tri
+déclaré/tri réel introduite pendant l'implémentation, invisible aux
+tests fonctionnels existants (aucun ne vérifiait l'ordre exact) :
+
+- **`workflow-tasks/mine` :** `ListSorts.MY_WORKFLOW_TASKS` déclarait
+  `"createdAt,asc"` alors que `FlowableWorkflowTaskInboxAdapter` trie en
+  `.desc()` (comportement pré-existant, volontairement préservé — le
+  design visait « tri par défaut = valeur actuelle implicite »).
+  **Corrigé** : constante alignée sur `"createdAt,desc"` (aucun
+  changement de comportement runtime, seule la déclaration était fausse).
+- **`workflow-links/{linkId}/tasks` :** `listActiveTasks` n'appliquait
+  **aucun** `ORDER BY` explicite avant `.listPage(offset, size)` — un
+  vrai bug de pagination (ordre non garanti stable entre deux pages
+  consécutives côté moteur, risque de doublons/omissions). **Corrigé** :
+  ajout de `.orderByTaskCreateTime().asc()`, aligné sur
+  `ListSorts.WORKFLOW_LINK_TASKS = "createdAt,asc"` déjà déclaré.
+
+Aucun autre écart trouvé sur les 4 autres mappings tri déclaré/tri réel
+(`DOSSIER_ELEMENTS`, `DOSSIER_WORKFLOWS`, `CONNECTOR_DEFINITIONS`,
+`WORKFLOW_LINK_HISTORY`) — vérifiés correspondre exactement à la requête
+JPA/Flowable réellement exécutée.
+
 ## Écarts vs design
 
 - **D-HIDDEN-ANNOTATIONS (webhook ingress) :** le design envisageait un

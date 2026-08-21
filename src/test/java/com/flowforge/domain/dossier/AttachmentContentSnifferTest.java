@@ -65,6 +65,11 @@ class AttachmentContentSnifferTest {
     }
 
     @Test
+    void matchesDeclaredType_rejectsEmptyContentDeclaredAsPlainText() {
+        assertThat(AttachmentContentSniffer.matchesDeclaredType(new byte[0], "text/plain")).isFalse();
+    }
+
+    @Test
     void matchesDeclaredType_passesThroughUnrecognizedDeclaredType() {
         byte[] content = bytes(0x01, 0x02, 0x03);
 

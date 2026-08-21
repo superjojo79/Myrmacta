@@ -28,6 +28,11 @@ class CsvWriterTest {
     }
 
     @Test
+    void writeRow_treatsEmptyStringFieldAsEmpty() {
+        assertThat(CsvWriter.writeRow(List.of("a", "", "c"))).isEqualTo("a,,c\r\n");
+    }
+
+    @Test
     void writeRow_treatsNullFieldAsEmpty() {
         assertThat(CsvWriter.writeRow(java.util.Arrays.asList("a", null, "c"))).isEqualTo("a,,c\r\n");
     }

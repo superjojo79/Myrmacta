@@ -197,6 +197,57 @@ Evidence Phase 8 (2026-08-21) :
   n'imposait pas Vitest/Playwright, mais la suite complète a été exécutée et
   est verte).
 
+### Analyse de couverture réelle (Phase 8, `dev-testing`, 2026-08-21)
+
+Le paragraphe ci-dessus citait un « 960 » global (Jacoco bundle ≥ 80 %) sans
+relecture ligne par ligne des classes de la feature. Reprise complète :
+génération du rapport (`target/site/jacoco/jacoco.csv` + HTML, produit par
+`./mvnw verify`) et relecture classe par classe des fichiers créés/modifiés
+par cette feature.
+
+**Deux lacunes réelles trouvées et comblées :**
+
+- `HttpRestServiceConnector` : **0 % du chemin d'erreur testé**
+  (`BRANCH_MISSED=3/4`, `LINE_MISSED=5/17`). Ni le rejet `url` absent
+  (`IllegalArgumentException`), ni le wrapping `IOException`/
+  `InterruptedException` → `IllegalStateException` (y compris la
+  restauration du flag d'interruption) n'étaient exercés par
+  `HttpRestServiceConnectorTest`. Ajout de 3 tests
+  (`execute_missingUrl_throwsWithoutCallingHttpClient`,
+  `execute_httpClientThrowsIOException_wrapsInIllegalStateException`,
+  `execute_httpClientInterrupted_restoresInterruptFlagAndWraps`). Après
+  correction : `BRANCH_MISSED=0`, `LINE_MISSED=0`.
+- `AttachmentContentSniffer` : le cas contenu vide déclaré `text/plain`
+  (`looksLikeText`, ligne `content.length == 0 → return false`) n'était
+  couvert que côté `application/pdf` (chemin `isPdf`/`startsWith`, code
+  différent). Ajout de
+  `matchesDeclaredType_rejectsEmptyContentDeclaredAsPlainText`. Après
+  correction : `LINE_MISSED=0` (1 branche encore non couverte, qui
+  n'apparaît sur aucune ligne "partiellement couverte" dans le rapport
+  HTML — probablement un artefact JaCoCo sur l'initialisation statique de
+  la `Map` de signatures, pas un chemin de code testable manquant).
+- `CsvWriter` : ajout de `writeRow_treatsEmptyStringFieldAsEmpty` pour
+  couvrir explicitement la branche chaîne vide de
+  `neutralizeFormulaTrigger` (jusque-là seul le cas `null` était testé
+  directement, la chaîne vide n'étant atteinte qu'indirectement).
+
+**Lacune identifiée mais volontairement non comblée** (hors scope,
+pré-existante) : `DossierElementUploadController.readBytes` — la branche
+`catch (IOException ex)` (lignes 112-113) n'est pas couverte, mais cette
+méthode n'a pas été modifiée par cette feature (vérifié via
+`git diff origin/main...HEAD` sur le fichier) ; corriger un gap de
+couverture pré-existant hors périmètre relève d'un autre lot.
+
+**Evidence fraîche post-correction :**
+`./mvnw -Dmaven.compiler.release=21 verify` → **BUILD SUCCESS**, Tests run
+**969** (+9 vs les 960 initiaux : +3 `HttpRestServiceConnectorTest`,
++1 `AttachmentContentSnifferTest`, +1 `CsvWriterTest`, +4 déjà ajoutés en
+Phase 7 pour l'injection de formule CSV), Failures **0**, Jacoco : « All
+coverage checks have been met. » Aucun changement `frontend/` dans ce
+lot de tests supplémentaires — pas de nouveau run Vitest/Playwright requis
+(évidence Phase 5 toujours valide, aucune surface FE ni contrat API
+impacté).
+
 ## Manual Testing
 
 - Ouvrir `GET /api/dossiers/export.csv?dossierTypeCode=...` directement

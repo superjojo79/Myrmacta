@@ -270,3 +270,32 @@ Revue holistique (au-delà du fichier-par-fichier de Phase 7) :
 (commit `284345c`). CI GitHub Actions indisponible pour raison externe
 (crédits épuisés, confirmé par l'utilisateur) — n'empêche pas la revue
 humaine ni le merge une fois les crédits reconstitués.
+
+## Phase 8 — Écriture de tests / couverture réelle (2026-08-21)
+
+Exécutée après la Phase 9 à la demande explicite de l'utilisateur (« joue
+quand même la phase 8 ») — la mention « Phase 8 » dans le testing doc en
+fin de Phase 5 citait un total global sans relecture ligne par ligne.
+Reprise complète via `dev-testing` : génération du rapport Jacoco
+(`target/site/jacoco/jacoco.csv` + HTML) et relecture classe par classe de
+tous les fichiers créés/modifiés par la feature.
+
+**2 lacunes réelles trouvées et comblées** (voir le testing doc pour le
+détail ligne par ligne) :
+- `HttpRestServiceConnector` : chemin d'erreur (`url` absent,
+  `IOException`/`InterruptedException` wrappés) totalement non testé — 3
+  tests ajoutés, couverture désormais 100 % lignes/branches sur cette
+  classe.
+- `AttachmentContentSniffer` : cas contenu vide déclaré `text/plain` non
+  testé (chemin `looksLikeText`, distinct du chemin PDF déjà couvert) — 1
+  test ajouté.
+- `CsvWriter` : 1 test ajouté pour couvrir explicitement la branche chaîne
+  vide de la neutralisation anti-formule.
+
+**1 lacune identifiée, volontairement non comblée** : `DossierElementUploadController.readBytes`
+(`catch IOException`) — méthode non modifiée par cette feature (vérifié
+par `git diff origin/main...HEAD`), hors périmètre.
+
+**Verify Phase 8 :** `./mvnw -Dmaven.compiler.release=21 verify` → **969**
+tests (+5 vs les 964 de fin de Phase 7), 0 échec, Jacoco OK. Pas de
+changement `frontend/`, pas de nouveau run Vitest/Playwright nécessaire.

@@ -8,8 +8,10 @@
 > - Inventaire follow-ups / lots : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md)
 > - Séquencement « avant prod » : [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md) §9
 >
-> **Dernière mise à jour :** 2026-08-20 (§36 `canEditDossier` clos, PR #60 ;
-> points TODO restants regroupés en 5 features candidates ci-dessous).
+> **Dernière mise à jour :** 2026-08-21 (`durcissement-donnees-sensibles`
+> Phase 9 corrigée après relecture Jacoco correcte : 4 lacunes réelles
+> supplémentaires comblées, 973 tests ; PR #62 à jour, en attente de
+> revue/merge).
 
 ## Comment s’en servir
 
@@ -105,3 +107,11 @@ pré-positionné, pas le connecteur).
 | 2026-08-20 | `observabilite` Phase 9 READY | PR #59 ; file V1 sans lot nommé suivant |
 | 2026-08-20 | §36 `canEditDossier` clos | PR #60 ; frontend aligné sur `DossierAccessPolicy` via `canEdit` |
 | 2026-08-20 | Regroupement TODO restants en 5 features | `durcissement-donnees-sensibles`, `contrat-api-client`, `fiabilisation-tests-plateforme`, `deploiement-bpmn`, `modele-physique-consolide` ; §31 clos (process déjà en pratique) |
+| 2026-08-21 | `durcissement-donnees-sensibles` Phase 1+2 reviewed | D-AV=B (magic-bytes + port no-op) ; D-CSV-SCOPE=A (export construit) ; D-CSV-ROLE=lecture liste ; D-SERVICE-HTTP=skeleton non enregistré ; D-SECRETS-AUDIT=exhaustif |
+| 2026-08-21 | `durcissement-donnees-sensibles` Phase 3 reviewed | AttachmentContentSniffer+AttachmentScanPort ; DossierExportPort streamé + ExportDossiersUseCase ; HttpRestServiceConnector non-`ConnectorDefinition` (double garde registry) ; garde-fou secrets = test unitaire ciblé |
+| 2026-08-21 | `durcissement-donnees-sensibles` Phase 4 reviewed | 5 milestones (M1 upload, M2 export CSV, M3 skeleton connecteur, M4 audit secrets, M5 qualité) ; M1–M4 sans dépendance croisée ; D-CSV-UI=pas d'écran SPA V1 (feature backend seul) |
+| 2026-08-21 | `durcissement-donnees-sensibles` Phase 5 done | M1–M5 en TDD ; `./mvnw verify` 960 tests (0 échec) + Jacoco OK ; Vitest 136 + Playwright 39 (feature backend-only, régression complète) ; TODO §23 reste réduit, §30 clos |
+| 2026-08-21 | `durcissement-donnees-sensibles` Phase 7 done | Revue fichier par fichier ; injection de formule CSV trouvée sur `CsvWriter` (labels/champs dynamiques exportés non protégés) et corrigée en TDD ; `./mvnw verify` 964 tests (0 échec) |
+| 2026-08-21 | `durcissement-donnees-sensibles` Phase 9 READY | Revue finale : traçage appelants, cohérence modules similaires, pas de duplication, pas de migration à risque ; aucun blocage ; PR #62 (commit `284345c`) prête pour revue humaine |
+| 2026-08-21 | `durcissement-donnees-sensibles` Phase 8 rejouée | Relecture Jacoco classe par classe (pas juste le total bundle) ; 2 lacunes réelles comblées (`HttpRestServiceConnector` chemin d'erreur, `AttachmentContentSniffer` texte vide) ; `./mvnw verify` 969 tests (0 échec) |
+| 2026-08-21 | `durcissement-donnees-sensibles` Phase 9 re-vérifiée | Utilisateur : « la phase 9 a-t-elle été correctement exécutée ? » → non totalement ; balayage Jacoco corrigé (motif CSS `pc bpc` raté au 1er passage) sur les 15 fichiers modifiés, 4 lacunes réelles trouvées et comblées (`DossierExportController` closedAt, `AttachmentContentSniffer` null, `parseStatus` blanc, `CsvWriter` \r isolé) ; `./mvnw verify` 973 tests (0 échec) |

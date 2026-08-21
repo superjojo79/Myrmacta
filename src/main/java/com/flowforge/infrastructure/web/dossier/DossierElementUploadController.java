@@ -1,5 +1,6 @@
 package com.flowforge.infrastructure.web.dossier;
 
+import com.flowforge.domain.dossier.AttachmentContentSniffer;
 import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierConflictException;
@@ -8,6 +9,8 @@ import com.flowforge.domain.dossier.model.DossierElementView;
 import com.flowforge.domain.dossier.model.ElementType;
 import com.flowforge.domain.dossier.model.InvalidDossierElementException;
 import com.flowforge.domain.dossier.port.in.AddDossierElementUseCase;
+import com.flowforge.domain.dossier.port.out.AttachmentScanPort;
+import com.flowforge.domain.dossier.port.out.AttachmentScanResult;
 import com.flowforge.domain.document.port.out.DocumentStoragePort;
 import com.flowforge.infrastructure.config.AttachmentUploadProperties;
 import com.flowforge.infrastructure.config.TenantProperties;
@@ -36,6 +39,7 @@ public class DossierElementUploadController {
     private final AccessContextFactory accessContextFactory;
     private final AttachmentUploadProperties uploadProperties;
     private final DossierAccessGuard accessGuard;
+    private final AttachmentScanPort attachmentScanPort;
 
     public DossierElementUploadController(
             DocumentStoragePort documentStoragePort,
@@ -43,13 +47,15 @@ public class DossierElementUploadController {
             TenantProperties tenantProperties,
             AccessContextFactory accessContextFactory,
             AttachmentUploadProperties uploadProperties,
-            DossierAccessGuard accessGuard) {
+            DossierAccessGuard accessGuard,
+            AttachmentScanPort attachmentScanPort) {
         this.documentStoragePort = documentStoragePort;
         this.addDossierElementUseCase = addDossierElementUseCase;
         this.tenantProperties = tenantProperties;
         this.accessContextFactory = accessContextFactory;
         this.uploadProperties = uploadProperties;
         this.accessGuard = accessGuard;
+        this.attachmentScanPort = attachmentScanPort;
     }
 
     @Hidden
@@ -76,8 +82,16 @@ public class DossierElementUploadController {
         if (!uploadProperties.isAllowed(contentType)) {
             throw new InvalidDossierElementException("content type not allowed: " + contentType);
         }
+        byte[] content = readBytes(file);
+        if (!AttachmentContentSniffer.matchesDeclaredType(content, contentType)) {
+            throw new InvalidDossierElementException("file content does not match declared type: " + contentType);
+        }
+        AttachmentScanResult scanResult = attachmentScanPort.scan(content, contentType);
+        if (!scanResult.clean()) {
+            throw new InvalidDossierElementException("attachment rejected: " + scanResult.reason());
+        }
 
-        String storageRef = documentStoragePort.store(tenantProperties.id(), contentType, readBytes(file));
+        String storageRef = documentStoragePort.store(tenantProperties.id(), contentType, content);
         Map<String, Object> metadata = Map.of(
                 "filename", file.getOriginalFilename() == null ? "" : file.getOriginalFilename(),
                 "contentType", contentType,

@@ -7,14 +7,16 @@ created: 2026-08-21
 updated: 2026-08-21
 feature: durcissement-donnees-sensibles
 phase5: 2026-08-21
+phase7: 2026-08-21
 planning_ref: docs/ai/planning/2026-08-21-feature-durcissement-donnees-sensibles.md
 ---
 
 # Implementation Guide — `durcissement-donnees-sensibles`
 
-> Phase 5 **done** — M1–M5 livrés en TDD strict. `./mvnw verify` 960 tests
-> (0 échec) + Jacoco OK ; Vitest 136 + Playwright 39 (feature backend-only,
-> régression complète explicitement demandée).
+> Phase 5 **done**, Phase 7 (Check Implementation) **done** — un écart de
+> sécurité trouvé et corrigé (injection de formule CSV). `./mvnw verify`
+> 964 tests (0 échec) + Jacoco OK ; Vitest 136 + Playwright 39 (feature
+> backend-only, régression complète explicitement demandée).
 
 ## Development Setup
 
@@ -86,7 +88,15 @@ planning_ref: docs/ai/planning/2026-08-21-feature-durcissement-donnees-sensibles
   package-private réutilisable (évite de dupliquer le parsing de
   `DossierStatus` entre les deux contrôleurs).
 - `CsvWriter` (`infrastructure.web.dossier`, package-private) :
-  échappement RFC4180 minimal, aucune dépendance externe.
+  échappement RFC4180 minimal, aucune dépendance externe. **Corrigé en
+  Phase 7** : neutralisation d'injection de formule CSV (préfixe `'` sur
+  toute cellule commençant par `= + - @` ou tabulation) — `label` et les
+  champs dynamiques exportés sont saisis par l'utilisateur, un tableur
+  ouvrant le CSV évaluerait sinon une valeur comme `=cmd|calc!A0` comme
+  formule. Effet de bord attendu et documenté : une valeur numérique
+  négative légitime (ex. `-42`) apparaît préfixée d'une apostrophe dans le
+  CSV brut — comportement standard de cette mitigation OWASP, pas une
+  régression.
 - OpenAPI golden régénéré via `-Dopenapi.update=true` sur `OpenApiContractIT` ;
   springdoc documente correctement l'endpoint malgré son retour `void`
   (réponse `200` générique, sans schéma de corps — acceptable, pas de
@@ -172,3 +182,43 @@ planning_ref: docs/ai/planning/2026-08-21-feature-durcissement-donnees-sensibles
 
 - M1 : le scan reste no-op en V1 (documenté), la vraie protection actuelle
   vient du sniffer magic-bytes + de l'allowlist MIME existante.
+- M2 (trouvé et corrigé en Phase 7) : injection de formule CSV — voir
+  `CsvWriter` ci-dessus.
+
+## Phase 7 — Check Implementation (2026-08-21)
+
+Revue fichier par fichier de tout le diff M1–M5 contre le design
+(`docs/ai/design/2026-08-21-feature-durcissement-donnees-sensibles.md`) et
+les requirements.
+
+**Alignement :** conforme sur les 4 lots — aucun écart entre le design et
+le code livré (ports, contrôleurs, use cases, wiring `DossierConfig`, tous
+tels que spécifiés en Phase 3/4).
+
+**Écart trouvé (sécurité, corrigé avant clôture de la phase) :**
+`CsvWriter` n'avait pas de neutralisation d'injection de formule CSV —
+`label` et les champs dynamiques exportés sont saisis par l'utilisateur,
+donc une valeur comme `=cmd|calc!A0` aurait été évaluée comme formule par
+un tableur ouvrant l'export. Ni les requirements ni le design ne
+l'avaient anticipé. Corrigé en TDD (`CsvWriterTest` +4 cas) : préfixe `'`
+sur toute cellule commençant par `= + - @` ou tabulation, avant
+l'échappement RFC4180. Design/testing docs mis à jour rétroactivement.
+
+**Pas d'autre écart, gap logique ou lacune de test identifié** lors de la
+relecture des points suivants : ordre ACL/statut/scan de
+`DossierElementUploadController` ; frontière transactionnelle de
+`DossierExportController` (aucun `@Transactional` sur l'adaptateur/use
+case, conforme au design) ; non-atteignabilité structurelle de
+`HttpRestServiceConnector` (double garde vérifiée par test) ; sûreté du
+`Content-Disposition` (le `dossierTypeCode` qui y figure a nécessairement
+passé le pattern `DossierType.CODE_PATTERN` à la création, sinon
+`typeRepository.findByCode` aurait déjà renvoyé 404 avant d'atteindre
+l'en-tête — pas de risque d'injection d'en-tête HTTP).
+
+**Verify Phase 7 :** `./mvnw -Dmaven.compiler.release=21 verify` → **964**
+tests (+4 vs Phase 5, `CsvWriterTest`), 0 échec, Jacoco OK. Pas de
+changement `frontend/` dans le correctif, pas de re-run Vitest/Playwright
+nécessaire (déjà verts en Phase 5 sur un état sans risque frontend).
+
+Next : `dev-testing` (Phase 8, déjà couvert en pratique par le testing doc
+tenu à jour au fil de l'eau) puis `dev-review` (Phase 9).

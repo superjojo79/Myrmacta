@@ -219,6 +219,14 @@ Le flux JPA (`getResultStream()`) doit rester ouvert pendant toute
 l'écriture HTTP — `@Transactional(readOnly = true)` au niveau du use case,
 `try-with-resources` sur le `Stream<Dossier>` dans le contrôleur.
 
+**Ajout Phase 7 (revue implémentation) : neutralisation d'injection de
+formule CSV.** `label` et les champs dynamiques exportés sont saisis par
+l'utilisateur. Sans traitement, une valeur comme `=cmd|'/c calc'!A0`
+serait évaluée comme formule par un tableur ouvrant l'export — `CsvWriter`
+préfixe d'une apostrophe toute cellule commençant par `= + - @` ou une
+tabulation (mitigation OWASP CSV Injection standard), en plus de
+l'échappement RFC4180 déjà prévu.
+
 ### D-SERVICE-HTTP — Non-enregistrement structurel, pas seulement documentaire
 
 `HttpRestServiceConnector` n'implémente **que** `ServiceConnector`, jamais

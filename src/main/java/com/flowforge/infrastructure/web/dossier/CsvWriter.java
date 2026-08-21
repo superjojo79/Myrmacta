@@ -2,8 +2,15 @@ package com.flowforge.infrastructure.web.dossier;
 
 import java.util.List;
 
-/** Minimal RFC4180 field escaping — no external CSV dependency (stack conventions). */
+/**
+ * Minimal RFC4180 field escaping — no external CSV dependency (stack conventions). Also
+ * neutralizes leading {@code = + - @} and tab (OWASP CSV/formula injection): dossier labels and
+ * dynamic field values are user-controlled, and a spreadsheet app opening this export would
+ * otherwise evaluate a value like {@code =cmd|'/c calc'!A0} as a formula.
+ */
 final class CsvWriter {
+
+    private static final String FORMULA_TRIGGER_CHARS = "=+-@\t";
 
     private CsvWriter() {}
 
@@ -23,10 +30,21 @@ final class CsvWriter {
         if (value == null) {
             return "";
         }
-        boolean needsQuoting = value.contains(",") || value.contains("\"") || value.contains("\n") || value.contains("\r");
+        String neutralized = neutralizeFormulaTrigger(value);
+        boolean needsQuoting = neutralized.contains(",")
+                || neutralized.contains("\"")
+                || neutralized.contains("\n")
+                || neutralized.contains("\r");
         if (!needsQuoting) {
-            return value;
+            return neutralized;
         }
-        return "\"" + value.replace("\"", "\"\"") + "\"";
+        return "\"" + neutralized.replace("\"", "\"\"") + "\"";
+    }
+
+    private static String neutralizeFormulaTrigger(String value) {
+        if (!value.isEmpty() && FORMULA_TRIGGER_CHARS.indexOf(value.charAt(0)) >= 0) {
+            return "'" + value;
+        }
+        return value;
     }
 }

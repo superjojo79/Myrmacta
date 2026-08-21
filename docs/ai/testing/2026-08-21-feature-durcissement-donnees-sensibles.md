@@ -106,6 +106,11 @@ déjà ce cas par construction, comme pour un champ jamais renseigné.
       présents sur la réponse.
 - [x] Champ `sensitive` masqué → cellule vide dans le CSV produit (pas de
       valeur, pas de `null` littéral).
+- [x] **Injection de formule CSV (trouvé en Phase 7)** : une valeur
+      commençant par `=`, `+`, `-`, `@` ou une tabulation (ex. `label`
+      dossier = `=cmd|calc!A0`) est préfixée d'une apostrophe avant tout
+      échappement RFC4180 — `CsvWriterTest` (6 cas, dont le cumul
+      neutralisation + guillemets RFC4180).
 
 ### `HttpRestServiceConnector` (skeleton, tests directs uniquement)
 

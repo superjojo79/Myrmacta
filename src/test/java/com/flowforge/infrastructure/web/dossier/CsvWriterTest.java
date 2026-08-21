@@ -36,4 +36,30 @@ class CsvWriterTest {
     void writeRow_doesNotQuotePlainField() {
         assertThat(CsvWriter.writeRow(List.of("plain"))).isEqualTo("plain\r\n");
     }
+
+    @Test
+    void writeRow_neutralizesLeadingEqualsToPreventFormulaInjection() {
+        assertThat(CsvWriter.writeRow(List.of("=cmd|calc!A0")))
+                .isEqualTo("'=cmd|calc!A0\r\n");
+    }
+
+    @Test
+    void writeRow_neutralizesAndStillQuotesWhenFieldAlsoNeedsRfc4180Escaping() {
+        assertThat(CsvWriter.writeRow(List.of("=A1,B1")))
+                .isEqualTo("\"'=A1,B1\"\r\n");
+    }
+
+    @Test
+    void writeRow_neutralizesLeadingPlusMinusAtAndTab() {
+        assertThat(CsvWriter.writeRow(List.of("+1+1"))).isEqualTo("'+1+1\r\n");
+        assertThat(CsvWriter.writeRow(List.of("-1-1"))).isEqualTo("'-1-1\r\n");
+        assertThat(CsvWriter.writeRow(List.of("@SUM(A1)"))).isEqualTo("'@SUM(A1)\r\n");
+        assertThat(CsvWriter.writeRow(List.of("\tHYPERLINK"))).isEqualTo("'\tHYPERLINK\r\n");
+    }
+
+    @Test
+    void writeRow_doesNotNeutralizeANormalNumberOrDate() {
+        assertThat(CsvWriter.writeRow(List.of("-42"))).isEqualTo("'-42\r\n");
+        assertThat(CsvWriter.writeRow(List.of("2026-08-21"))).isEqualTo("2026-08-21\r\n");
+    }
 }

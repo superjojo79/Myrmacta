@@ -8,8 +8,8 @@
 > - Inventaire follow-ups / lots : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md)
 > - Séquencement « avant prod » : [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md) §9
 >
-> **Dernière mise à jour :** 2026-08-20 (§36 `canEditDossier` clos, PR #60 ;
-> points TODO restants regroupés en 5 features candidates ci-dessous).
+> **Dernière mise à jour :** 2026-08-21 (`durcissement-donnees-sensibles`
+> Phase 1+2 reviewed — requirements figées, 5 décisions produit actées).
 
 ## Comment s’en servir
 
@@ -105,3 +105,4 @@ pré-positionné, pas le connecteur).
 | 2026-08-20 | `observabilite` Phase 9 READY | PR #59 ; file V1 sans lot nommé suivant |
 | 2026-08-20 | §36 `canEditDossier` clos | PR #60 ; frontend aligné sur `DossierAccessPolicy` via `canEdit` |
 | 2026-08-20 | Regroupement TODO restants en 5 features | `durcissement-donnees-sensibles`, `contrat-api-client`, `fiabilisation-tests-plateforme`, `deploiement-bpmn`, `modele-physique-consolide` ; §31 clos (process déjà en pratique) |
+| 2026-08-21 | `durcissement-donnees-sensibles` Phase 1+2 reviewed | D-AV=B (magic-bytes + port no-op) ; D-CSV-SCOPE=A (export construit) ; D-CSV-ROLE=lecture liste ; D-SERVICE-HTTP=skeleton non enregistré ; D-SECRETS-AUDIT=exhaustif |

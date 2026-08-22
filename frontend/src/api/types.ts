@@ -137,6 +137,18 @@ export interface WorkflowDiagram {
   failedIds: string[]
 }
 
+export interface ProcessDeploymentInfo {
+  processDefinitionKey: string
+  latestVersion: number
+  activeInstanceCount: number
+}
+
+export interface BpmnDeploymentResult {
+  processDefinitionKey: string
+  deployedVersion: number
+  deploymentId: string
+}
+
 export interface WorkflowTaskView {
   taskId: string
   name: string | null

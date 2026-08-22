@@ -1,6 +1,8 @@
 import axios from 'axios'
 import type {
   ActivityHistoryEntry,
+  BpmnDeploymentResult,
+  ProcessDeploymentInfo,
   WorkflowDiagram,
   WorkflowTaskView,
   WorkflowTypeConfig,
@@ -77,5 +79,24 @@ export async function updateWorkflowTypeConfig(
     `/api/workflow-type-configs/${workflowKey}`,
     payload,
   )
+  return data
+}
+
+export async function getBpmnDeploymentInfo(
+  processDefinitionKey: string,
+): Promise<ProcessDeploymentInfo | null> {
+  const { data, status } = await axios.get<ProcessDeploymentInfo>(
+    '/api/workflow-bpmn-deployments/info',
+    { params: { processDefinitionKey } },
+  )
+  return status === 204 ? null : data
+}
+
+export async function deployBpmn(file: File): Promise<BpmnDeploymentResult> {
+  const form = new FormData()
+  form.append('file', file)
+  const { data } = await axios.post<BpmnDeploymentResult>('/api/workflow-bpmn-deployments', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
   return data
 }

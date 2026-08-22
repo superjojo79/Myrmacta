@@ -21,6 +21,8 @@ import {
 } from './dossierTypes'
 import {
   createWorkflowTypeConfig,
+  deployBpmn,
+  getBpmnDeploymentInfo,
   getWorkflowDiagram,
   getWorkflowHistory,
   getWorkflowTasks,
@@ -103,6 +105,8 @@ describe('api coverage', () => {
       onStartDossierStatus: null,
       observerUserIds: [],
     })
+    await getBpmnDeploymentInfo('wf')
+    await deployBpmn(new File(['<definitions/>'], 'diagram.bpmn20.xml', { type: 'application/xml' }))
     expect(axios.patch).toHaveBeenCalled()
   })
 

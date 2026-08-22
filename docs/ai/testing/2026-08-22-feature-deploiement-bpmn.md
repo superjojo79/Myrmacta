@@ -2,7 +2,7 @@
 phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
-status: draft
+status: done
 created: 2026-08-22
 updated: 2026-08-22
 feature: deploiement-bpmn
@@ -84,11 +84,11 @@ design_ref: docs/ai/design/2026-08-22-feature-deploiement-bpmn.md
 
 ## End-to-End Tests (Playwright — obligatoire, feature touche le frontend)
 
-- [ ] Parcours complet : navigation vers `/admin/workflow-types` → sélection fichier BPMN valide → prévisualisation affichée → confirmation → déploiement réussi affiché
-- [ ] Fichier BPMN invalide → erreur affichée, pas de déploiement
-- [ ] Redéploiement d'une clé existante → info version/instances actives affichée avant confirmation
-- [ ] Mocks/assertions `frontend/e2e/**` mis à jour pour les nouvelles routes API (`GET .../info`, `POST /api/workflow-bpmn-deployments`)
-- [ ] `cd frontend && npm run test:e2e` (ou `test:all`) exécuté avec preuve fraîche (commande, code de sortie, compte de passes) consignée ici en fin de Phase 8
+- [x] Parcours complet : navigation vers `/admin/workflow-types` → sélection fichier BPMN valide → prévisualisation affichée → confirmation → déploiement réussi affiché (`E2E-BPMN-1`)
+- [x] Fichier BPMN invalide → erreur affichée, pas de déploiement (`E2E-BPMN-2`)
+- [x] Redéploiement d'une clé existante → info version/instances actives affichée avant confirmation (`E2E-BPMN-3`)
+- [x] Mocks/assertions `frontend/e2e/**` mis à jour pour les nouvelles routes API (`GET .../info`, `POST /api/workflow-bpmn-deployments`)
+- [x] `cd frontend && PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test` exécuté — **43 passed (26.0s)**, exit code 0, 0 régression sur les 40 scénarios existants, 3 nouveaux (`E2E-BPMN-1/2/3`) verts. Preuve fraîche : 2026-08-22, cette session.
 
 ## Test Data
 

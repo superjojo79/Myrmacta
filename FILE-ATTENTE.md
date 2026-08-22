@@ -9,8 +9,7 @@
 > - Séquencement « avant prod » : [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md) §9
 >
 > **Dernière mise à jour :** 2026-08-22 (`fiabilisation-tests-plateforme`
-> implémentation terminée — TODO §26/§28/§37 clos, `./mvnw verify` 1050
-> tests (0 échec), en attente de PR).
+> livrée — PR #66 mergée sur `main`, TODO §26/§28/§37 clos).
 
 ## Comment s’en servir
 
@@ -44,7 +43,7 @@ Même grille que pour `preview-documents` puis `edition-champs-dossier` :
 | `observabilite` | PR #59, TODO §29 | ECS + MDC ; Micrometer port management ; snapshot + SPA admin |
 | `durcissement-donnees-sensibles` | PR #62, TODO §23 (reste réduit)/§30 (clos) | Magic-bytes + `AttachmentScanPort` no-op sur upload ; export CSV masqué (`GET /api/dossiers/export.csv`) ; skeleton `HttpRestServiceConnector` non enregistré ; garde-fous anti-fuite secrets ; injection de formule CSV trouvée et corrigée en revue |
 | `contrat-api-client` | PR #65, TODO §24 (clos) | 6 listes non-admin migrées vers `PageResponse` (elements, dossiers/workflows, workflow-tasks/mine, connector-definitions, workflow-links history+tasks) ; 3 endpoints `@Hidden` documentés (SSE, multipart, webhook) ; pagination rendue visible en UI pour 5/6 listes (`WorkflowLinksList.vue` nouveau — liste jamais affichée avant) ; codegen client resté hors V1 ; 2 bugs réels trouvés et corrigés en Phase 7 (tri déclaré/réel) ; 2 régressions e2e réelles trouvées et corrigées en Phase 8 ; D-SPA-ADAPT rejouée avec l'utilisateur après un manquement Phase 3 (aucune question matérielle posée) |
-| `fiabilisation-tests-plateforme` | TODO §26 (clos), §28 (clos), §37 (clos) — PR à ouvrir | Testcontainers ciblé (isolation `search_path`, séquence multi-pods — écrits/compilés, non exécutés dans ce bac à sable sans Docker, CI seulement) ; verrous Flowable + réservation workflow concurrente sous H2 + vrais threads (bug réel trouvé et corrigé : `DataIntegrityViolationException` brute traitée comme retry transitoire au lieu de dead-letter) ; migration Liquibase en échec partiel mono-schéma (portée corrigée — pas de job multi-schéma en réalité) ; règle ArchUnit `usecase.*Impl`→`port.in` ; cascade de résolution de templates (JPA réel) ; seuils Jacoco relevés (LINE 85%, nouvelle règle BRANCH 75%) — écart de couverture réel trouvé (73%) et comblé par 8 classes jamais testées (`StorageConfig`, adaptateurs idempotence webhook/workflow, delegate Flowable, etc.) |
+| `fiabilisation-tests-plateforme` | PR #66, TODO §26 (clos), §28 (clos), §37 (clos) | Testcontainers ciblé (isolation `search_path`, séquence multi-pods — écrits/compilés, non exécutés dans ce bac à sable sans Docker, CI seulement) ; verrous Flowable + réservation workflow concurrente sous H2 + vrais threads (bug réel trouvé et corrigé : `DataIntegrityViolationException` brute traitée comme retry transitoire au lieu de dead-letter) ; migration Liquibase en échec partiel mono-schéma (portée corrigée — pas de job multi-schéma en réalité) ; règle ArchUnit `usecase.*Impl`→`port.in` ; cascade de résolution de templates (JPA réel) ; seuils Jacoco relevés (LINE 85%, nouvelle règle BRANCH 75%) — écart de couverture réel trouvé (73%) et comblé par 8 classes jamais testées (`StorageConfig`, adaptateurs idempotence webhook/workflow, delegate Flowable, etc.) |
 
 Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relations, PATCH fields API, éléments) : voir [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §2.
 
@@ -57,7 +56,7 @@ ont été regroupés en 5 features candidates (regroupement validé 2026-08-20).
 feature — le process `dev-lifecycle` + ce fichier + `DEFERRED-FEATURES.md`
 le remplit déjà en pratique à chaque lot livré. `durcissement-donnees-sensibles`
 (PR #62), `contrat-api-client` (PR #65) et `fiabilisation-tests-plateforme`
-(implémentation terminée, PR à ouvrir) livrées — file renumérotée.
+(PR #66) livrées — file renumérotée.
 
 | Priorité | Feature / lot kebab-case | TODO couverts | Contenu | Pourquoi cet ordre |
 |---|---|---|---|---|

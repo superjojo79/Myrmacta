@@ -12,8 +12,12 @@ planning_ref: docs/ai/planning/2026-08-22-feature-fiabilisation-tests-plateforme
 
 # Implementation Guide — `fiabilisation-tests-plateforme`
 
-15 tâches planifiées (T1.1–T5.4) exécutées en TDD. `./mvnw verify` final :
-**1050 tests, 0 échec**, LINE 93.7% (seuil 85%), BRANCH 75.0% (seuil 75%).
+15 tâches planifiées (T1.1–T5.4) exécutées en TDD, plus Phase 6
+(planning reconcilié) et Phase 7 (check implementation — revue fichier
+par fichier, 1 fuite de ressource trouvée et corrigée). `./mvnw verify`
+final : **1050 tests, 0 échec**, LINE 93.7% (seuil 85%), BRANCH 75.0%
+(seuil 75%). Statut : implémentation **terminée et revue** ; prochaine
+étape `dev-testing` (Phase 8) puis `dev-review` (Phase 9).
 
 ## Development Setup
 
@@ -113,7 +117,19 @@ planning_ref: docs/ai/planning/2026-08-22-feature-fiabilisation-tests-plateforme
    partagé migrant plusieurs schémas — la prémisse « multi-schéma » du
    TODO §28 ne correspond à rien en production. Le test couvre l'échec
    partiel **mono-schéma** + reprise idempotente, le risque réel.
-3. **Écart de couverture BRANCH découvert et comblé en 3 vagues** — non
+3. **Revue Phase 7 (Check Implementation) — 1 vraie fuite de ressource trouvée
+   et corrigée** : `PostgresTestContainerSupport.dataSourceForSchema()`
+   créait un `HikariDataSource` jamais fermé par les appelants
+   (`TenantSchemaIsolationIT` : 2 pools, `SequentialReferenceMultiPodIT` :
+   8 pools) sur le conteneur Postgres singleton partagé — accumulation
+   inutile de connexions entre exécutions. `dataSourceForSchema()` retourne
+   désormais `HikariDataSource` (pas `DataSource`) pour que l'appelant
+   ferme explicitement ; les deux tests ferment leurs pools en `finally`.
+   Reste du fichier par fichier : aucune autre déviation, gap logique, ou
+   problème de sécurité trouvé (traduction d'exception cohérente avec le
+   pattern existant, aucun appelant de port cassé, requêtes SQL de test
+   paramétrées ou sur littéraux internes uniquement).
+4. **Écart de couverture BRANCH découvert et comblé en 3 vagues** — non
    planifié dans le testing doc initial (M1–M5 ne listaient pas ces
    classes). `./mvnw verify` complet a montré BRANCH réel à 73.0%, sous
    le seuil D-COVERAGE (75%) décidé en Phase 1. Question posée à

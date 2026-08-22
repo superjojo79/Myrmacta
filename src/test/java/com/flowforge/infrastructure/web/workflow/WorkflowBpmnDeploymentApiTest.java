@@ -83,6 +83,18 @@ class WorkflowBpmnDeploymentApiTest {
     }
 
     @Test
+    void deploy_disallowedContentType_returns400() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "diagram.bpmn20.xml", "application/x-sh", "echo hi".getBytes(StandardCharsets.UTF_8));
+
+        mockMvc.perform(multipart("/api/workflow-bpmn-deployments")
+                        .file(file)
+                        .with(user("admin-mime", "TENANT_ADMIN"))
+                        .with(csrf()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void deploy_unknownWorkflowKey_returns404() throws Exception {
         MockMultipartFile file = bpmnFile("apiUnknown" + System.nanoTime());
 

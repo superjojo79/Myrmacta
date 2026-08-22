@@ -2,7 +2,7 @@
 phase: planning
 title: Project Planning & Task Breakdown
 description: Break down work into actionable tasks and estimate timeline
-status: draft
+status: done
 created: 2026-08-22
 updated: 2026-08-22
 feature: modele-physique-consolide
@@ -14,39 +14,39 @@ testing_ref: docs/ai/testing/2026-08-22-feature-modele-physique-consolide.md
 
 ## Milestones
 
-- [ ] M1: Rédaction `13-modele-physique.md` (ERD + 7 sections du design doc)
-- [ ] M2: Intégration (`00-index.md`, liens croisés)
-- [ ] M3: Vérification factuelle + clôture (TODO §25, FILE-ATTENTE.md)
+- [x] M1: Rédaction `13-modele-physique.md` (ERD + 7 sections du design doc)
+- [x] M2: Intégration (`00-index.md`, liens croisés)
+- [x] M3: Vérification factuelle + clôture (TODO §25, FILE-ATTENTE.md)
 
 ## Task Breakdown
 
 ### M1: Rédaction du document
 
-- [ ] T1.1 — Section intro + ERD mermaid (17 tables groupées par domaine, PK/FK logique vs DB)
+- [x] T1.1 — Section intro + ERD mermaid (17 tables groupées par domaine, PK/FK logique vs DB)
   - Dépend de : rien (contenu déjà extrait en Phase 3)
   - Validation : les 17 `tableName:` des changelogs apparaissent toutes dans l'ERD (scénario testing doc)
-- [ ] T1.2 — Section index uniques partiels critiques (tableau des 4 index + invariant)
+- [x] T1.2 — Section index uniques partiels critiques (tableau des 4 index + invariant)
   - Dépend de : T1.1
   - Validation : les 4 conditions `WHERE`/colonnes générées correspondent aux changelogs
-- [ ] T1.3 — Section répartition tenant/`platform` + tables notables (`dossier_type_acl`, `tenant_connector_dek`, `outbox_event`)
+- [x] T1.3 — Section répartition tenant/`platform` + tables notables (`dossier_type_acl`, `tenant_connector_dek`, `outbox_event`)
   - Dépend de : rien
   - Validation : colonnes réelles, renvois vers décisions n° 20/n° 4 corrects
-- [ ] T1.4 — Section tables Flowable (mention sans énumération) + section "écart de documentation corrigé"
+- [x] T1.4 — Section tables Flowable (mention sans énumération) + section "écart de documentation corrigé"
   - Dépend de : rien
   - Validation : aucune mention active de `TenantRegistry`/contextes Liquibase séparés (D-MPC-SCOPE)
 
 ### M2: Intégration
 
-- [ ] T2.1 — Ajouter la ligne 13 dans `00-index.md`
+- [x] T2.1 — Ajouter la ligne 13 dans `00-index.md`
   - Dépend de : T1.1–T1.4 (document complet avant de le référencer)
   - Validation : tableau `00-index.md` cohérent, lien valide
 
 ### M3: Vérification et clôture
 
-- [ ] T3.1 — Revue factuelle ligne par ligne contre les changelogs (Phase 7)
+- [x] T3.1 — Revue factuelle ligne par ligne contre les changelogs (Phase 7)
   - Dépend de : M1, M2
   - Validation : checklist "Vérification de contenu" du testing doc entièrement cochée
-- [ ] T3.2 — Clore TODO §25 + mettre à jour `FILE-ATTENTE.md`
+- [x] T3.2 — Clore TODO §25 + mettre à jour `FILE-ATTENTE.md`
   - Dépend de : T3.1
   - Validation : revue manuelle, cohérence avec l'état réel du document
 

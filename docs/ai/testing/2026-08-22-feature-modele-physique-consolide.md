@@ -2,7 +2,7 @@
 phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
-status: draft
+status: done
 created: 2026-08-22
 updated: 2026-08-22
 feature: modele-physique-consolide
@@ -53,11 +53,11 @@ non-régression du reste de la documentation.
 - [x] Les liens croisés vers `02-multi-tenant.md`, `04-dossiers.md`,
       `05-workflow-engine.md` résolvent vers des ancres/fichiers
       existants
-- [ ] `TODO.md` §25 : passage à `[x]`, note de résolution cohérente
+- [x] `TODO.md` §25 : passage à `[x]`, note de résolution cohérente
       avec le contenu réel du nouveau document (pas de promesse non
       tenue)
 - [ ] `FILE-ATTENTE.md` : feature déplacée vers "Récemment livré" avec
-      la bonne référence TODO/PR une fois mergée
+      la bonne référence TODO/PR une fois mergée (en attente de PR)
 
 ## Test Data
 

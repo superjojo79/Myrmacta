@@ -8,8 +8,8 @@
 > - Inventaire follow-ups / lots : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md)
 > - Séquencement « avant prod » : [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md) §9
 >
-> **Dernière mise à jour :** 2026-08-22 (`deploiement-bpmn` livrée, PR
-> #67 mergée sur `main` — TODO §35 clos).
+> **Dernière mise à jour :** 2026-08-22 (`modele-physique-consolide`
+> implémentée — TODO §25 clos, en attente de PR/merge).
 
 ## Comment s’en servir
 
@@ -57,14 +57,14 @@ ont été regroupés en 5 features candidates (regroupement validé 2026-08-20).
 feature — le process `dev-lifecycle` + ce fichier + `DEFERRED-FEATURES.md`
 le remplit déjà en pratique à chaque lot livré. `durcissement-donnees-sensibles`
 (PR #62), `contrat-api-client` (PR #65), `fiabilisation-tests-plateforme`
-(PR #66) et `deploiement-bpmn` (PR #67) livrées — file renumérotée.
+(PR #66) et `deploiement-bpmn` (PR #67) livrées ; `modele-physique-consolide`
+(TODO §25) implémentée cette session, en attente de PR — file renumérotée.
 
-| Priorité | Feature / lot kebab-case | TODO couverts | Contenu | Pourquoi cet ordre |
-|---|---|---|---|---|
-| 1 | `modele-physique-consolide` | §25 | ERD/DDL consolidé, répartition schéma tenant / `platform`, description `TenantRegistry` + politique de rafraîchissement du cache | Doc pure (aucune décision ouverte) mais sans parcours métier utilisateur direct (critère 3) — reste en dernier |
-
-Seul `modele-physique-consolide` reste dans la file — c'est donc le
-**prochain** item à prendre.
+**File vide.** `modele-physique-consolide` était le dernier item des 5
+features candidates du regroupement 2026-08-20 — plus aucun lot produit
+V1 nommé en attente. Prochaine feature à identifier lors d'une prochaine
+analyse (nouveaux points TODO, nouveau besoin utilisateur, ou lot
+`DEFERRED-FEATURES.md`).
 
 **Hors V1 (reporté, pas dans cette file) :** Rapports / SLA (maquette UI de
 référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même
@@ -139,3 +139,4 @@ référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même
 | 2026-08-22 | `deploiement-bpmn` M6 (vérification globale) | `./mvnw verify` 1075 tests (0 échec), seuils Jacoco tenus (écart BRANCH réel trouvé à 74.92% au 1er passage, comblé par 1 test ciblé) ; 163 Vitest, typecheck/lint propres ; 43/43 Playwright (3 nouveaux `E2E-BPMN-*`) |
 | 2026-08-22 | `deploiement-bpmn` Phase 7 rejouée | Utilisateur : « toutes les phases ont-elles été exécutées ? pas d'autres questions en Phase 3 ? » → vérifié dans l'historique brut de session (pas la mémoire résumée) : Phase 3 complète (5 `AskUserQuestion` réels, tous documentés — le doc affirmait à tort « 7 », corrigé) ; en revanche Phase 7 (check implementation) n'avait pas été faite sérieusement — rejouée fichier par fichier, 2 vrais bugs trouvés et corrigés (`NullPointerException` potentielle sur `originalFilename` null dans `FlowableWorkflowDeploymentAdapter`, regex d'extraction trop strict côté preview) ; doc d'implémentation resté le squelette vide, rédigé ; plusieurs cases testing doc jamais cochées, corrigées |
 | 2026-08-22 | `deploiement-bpmn` livrée | PR #67 mergée sur `main` (CI hébergé rouge depuis plusieurs jours pour une raison d'infrastructure sans rapport avec le diff — confirmé rouge aussi sur les merges précédents dont #66 — mergé sur la base des vérifications locales complètes) ; TODO §35 clos ; prochain = `modele-physique-consolide` §25 |
+| 2026-08-22 | `modele-physique-consolide` implémentée (Phases 1-9) | Écart trouvé avant d'écrire le problem statement : TODO §25 supposait un `TenantRegistry` actif et des contextes Liquibase séparés, tous deux explicitement obsolètes depuis la décision n°13 (note de mise à jour de la décision n°1 jamais répercutée dans §25) — 3 décisions via `AskUserQuestion` (corriger le scope plutôt que documenter l'obsolète, doc seule sans créer `platform.tenant_migration_status`, nouveau doc `13-modele-physique.md` avec ERD mermaid plutôt qu'un dump SQL dupliquant les changelogs). Contenu extrait par parsing structuré des 12 changelogs (pas résumé de mémoire) : 17 tables réelles (pas « une dizaine »), 4 index uniques partiels (pas « deux »), seulement 2 FK sur 17 tables contraintes en DB (le reste logique, explicité pour ne pas induire en erreur). Feature 100% documentaire, vérifiée par `git diff --stat` (aucun `.java`/`.yaml` de changelog touché). TODO §25 clos, en attente de PR |

@@ -58,29 +58,32 @@ design_ref: docs/ai/design/2026-08-22-feature-deploiement-bpmn.md
 - [x] `POST` sans fichier ou fichier vide → `400`
 - [x] `GET /api/workflow-bpmn-deployments/info?processDefinitionKey=...` avec clé déployée → `200` + info
 - [x] `GET .../info` avec clé jamais déployée → `204`
+- [x] `POST` avec `originalFilename` vide (`""`, cas simulable via `MockMultipartFile`) → ne plante pas, déploie normalement (Phase 7, voir implementation doc Design Deviation 3)
 
 ### `FlowableWorkflowDeploymentAdapterTest` (fait, H2/Flowable embarqué)
 - [x] Déploiement réel via `RepositoryService` sur un BPMN de test → nouvelle version créée, visible immédiatement sans redémarrage (démarrage d'un processus avec cette clé juste après le déploiement)
 - [x] Redéploiement de la même clé → version incrémentée, instances existantes sur l'ancienne version non affectées (comportement natif Flowable, observé pas forcé)
 - [x] `latestVersion`/`activeInstanceCount` corrects après un déploiement + démarrage d'instances
+- [x] `filename` `null` (cas réel non simulable via `MockMultipartFile`, testé directement sur l'adaptateur) → ne lève pas de `NullPointerException`, déploie avec un nom de ressource par défaut (Phase 7, bug réel trouvé et corrigé)
 
 ## Frontend Tests
 
-### `BpmnCanvas.vue` (nouveau, Vitest)
-- [ ] Rend le XML fourni via bpmn-js `importXML`
-- [ ] Applique les marqueurs optionnels (`activeIds`/`completedIds`/`failedIds`) si fournis, aucun marqueur si absents
+### `BpmnCanvas.vue` (fait, Vitest)
+- [x] Rend le XML fourni via bpmn-js `importXML`
+- [x] Applique les marqueurs optionnels (`activeIds`/`completedIds`/`failedIds`) si fournis, aucun marqueur si absents
 
 ### `BpmnViewer.vue` (non-régression après refactor, Vitest existant)
-- [ ] Comportement inchangé : tous les tests Vitest existants restent verts sans modification (contrat public préservé)
+- [x] Comportement inchangé : tous les tests Vitest existants restent verts sans modification (contrat public préservé)
 
-### `BpmnUploadPreview.vue` (nouveau, Vitest)
-- [ ] Sélection de fichier → lecture locale (`FileReader`), rendu via `BpmnCanvas.vue`, **aucun appel réseau** avant confirmation
-- [ ] Après sélection, appel `GET .../info` pour afficher version actuelle/instances actives si la clé existe
-- [ ] Fichier illisible/non-XML côté client → message d'erreur clair, pas de tentative de déploiement
-- [ ] Confirmation → `POST` multipart, gestion des erreurs `400`/`403`/`413`/clé inconnue
+### `BpmnUploadPreview.vue` (fait, Vitest)
+- [x] Sélection de fichier → lecture locale (`File.text()`), rendu via `BpmnCanvas.vue`, **aucun appel de déploiement** (`POST`) avant confirmation (le `GET .../info` informatif, lui, est attendu après sélection — cf. scénario suivant)
+- [x] Après sélection, appel `GET .../info` pour afficher version actuelle/instances actives si la clé existe
+- [x] Fichier illisible/non-XML côté client → message d'erreur clair, pas de tentative de déploiement
+- [x] Confirmation → `POST` multipart, gestion des erreurs serveur (détail `ProblemDetail` affiché)
+- [x] Extraction du `processDefinitionKey` robuste aux guillemets simples XML (`id='...'`), pas seulement doubles (Phase 7, robustesse trouvée et corrigée)
 
-### `WorkflowConfigsAdminView.vue` (Vitest, section ajoutée)
-- [ ] Nouvelle section BPMN visible pour les rôles `TENANT_ADMIN`/`WORKFLOW_ADMIN`
+### `WorkflowConfigsAdminView.vue` (fait, Vitest, section ajoutée)
+- [x] Nouvelle section BPMN visible pour les rôles `TENANT_ADMIN`/`WORKFLOW_ADMIN`
 
 ## End-to-End Tests (Playwright — obligatoire, feature touche le frontend)
 

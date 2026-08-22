@@ -57,11 +57,12 @@ class FlowableWorkflowDeploymentAdapter implements WorkflowDeploymentPort {
     }
 
     private static String bpmnResourceName(String filename) {
+        String name = filename == null ? "" : filename;
         for (String suffix : BPMN_RESOURCE_SUFFIXES) {
-            if (filename.endsWith(suffix)) {
-                return filename;
+            if (name.endsWith(suffix)) {
+                return name;
             }
         }
-        return filename + ".bpmn20.xml";
+        return name + ".bpmn20.xml";
     }
 }

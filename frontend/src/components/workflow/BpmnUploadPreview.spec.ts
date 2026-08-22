@@ -14,6 +14,7 @@ vi.mock('bpmn-js/lib/NavigatedViewer', () => ({
 }))
 
 const VALID_BPMN = '<?xml version="1.0"?><definitions><process id="testProcess"><startEvent id="s"/></process></definitions>'
+const VALID_BPMN_SINGLE_QUOTES = "<?xml version='1.0'?><definitions><process id='testProcess'><startEvent id='s'/></process></definitions>"
 const NON_BPMN_XML = '<?xml version="1.0"?><root><child/></root>'
 
 async function selectFile(wrapper: ReturnType<typeof mount>, file: File) {
@@ -55,6 +56,19 @@ describe('BpmnUploadPreview', () => {
     })
     expect(wrapper.text()).toContain('Version actuelle déployée : 3')
     expect(wrapper.text()).toContain('instances actives : 12')
+  })
+
+  it('extracts the process id when the XML uses single-quoted attributes', async () => {
+    vi.mocked(axios.get).mockResolvedValue({ status: 204, data: '' })
+    const wrapper = mount(BpmnUploadPreview)
+    const file = new File([VALID_BPMN_SINGLE_QUOTES], 'diagram.bpmn20.xml', { type: 'application/xml' })
+
+    await selectFile(wrapper, file)
+
+    expect(wrapper.text()).toContain('testProcess')
+    expect(axios.get).toHaveBeenCalledWith('/api/workflow-bpmn-deployments/info', {
+      params: { processDefinitionKey: 'testProcess' },
+    })
   })
 
   it('shows a client-side error for a non-BPMN file and never attempts deployment', async () => {

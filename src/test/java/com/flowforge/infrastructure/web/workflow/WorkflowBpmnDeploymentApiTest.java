@@ -106,6 +106,24 @@ class WorkflowBpmnDeploymentApiTest {
     }
 
     @Test
+    void deploy_blankOriginalFilename_stillDeploysInsteadOfCrashing() throws Exception {
+        String key = "apiBlankFilename" + System.nanoTime();
+        createWorkflowTypeConfig(key);
+        // MockMultipartFile normalizes a null originalFilename to "" — this reproduces the blank case;
+        // a real servlet-backed multipart request can hand the controller an actual null (Content-Disposition
+        // "filename" parameter omitted), which the adapter must equally not crash on.
+        MockMultipartFile file = new MockMultipartFile("file", null, "application/xml",
+                BPMN.formatted(key).getBytes(StandardCharsets.UTF_8));
+
+        mockMvc.perform(multipart("/api/workflow-bpmn-deployments")
+                        .file(file)
+                        .with(user("admin-blank-filename", "TENANT_ADMIN"))
+                        .with(csrf()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.processDefinitionKey").value(key));
+    }
+
+    @Test
     void deploy_emptyFile_returns400() throws Exception {
         MockMultipartFile file = new MockMultipartFile("file", "empty.bpmn20.xml", "application/xml", new byte[0]);
 

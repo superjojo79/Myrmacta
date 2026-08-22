@@ -66,6 +66,16 @@ class FlowableWorkflowDeploymentAdapterTest {
     }
 
     @Test
+    void deploy_nullFilename_doesNotThrowAndDeploysWithDefaultResourceName() {
+        String key = "adapterNullFilename" + System.nanoTime();
+
+        BpmnDeploymentResult result = adapter.deploy(tenantProperties.id(), null, bpmn(key));
+
+        assertThat(result.processDefinitionKey()).isEqualTo(key);
+        assertThat(result.deployedVersion()).isEqualTo(1);
+    }
+
+    @Test
     void deploy_sameKeyTwice_incrementsVersionWithoutAffectingExistingInstances() {
         String key = "adapterRedeploy" + System.nanoTime();
 

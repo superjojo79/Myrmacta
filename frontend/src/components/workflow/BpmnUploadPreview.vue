@@ -17,7 +17,7 @@ const deploying = ref(false)
 const deployedResult = ref<BpmnDeploymentResult | null>(null)
 
 function extractProcessDefinitionKey(xml: string): string | null {
-  const match = xml.match(/<(?:[\w-]+:)?process\b[^>]*\bid="([^"]+)"/)
+  const match = xml.match(/<(?:[\w-]+:)?process\b[^>]*\bid\s*=\s*["']([^"']+)["']/)
   return match ? match[1] : null
 }
 

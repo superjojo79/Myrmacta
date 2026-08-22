@@ -12,9 +12,9 @@ requirements_ref: docs/ai/requirements/2026-08-22-feature-deploiement-bpmn.md
 
 # System Design & Architecture — `deploiement-bpmn`
 
-> Design **reviewed** (Phase 3). 7 décisions techniques actées via
-> `AskUserQuestion` (mécanisme, le périmètre était déjà figé en Phase 2).
-> Aucun point ouvert bloquant.
+> Design **reviewed** (Phase 3). 5 décisions techniques actées via
+> `AskUserQuestion` en Phase 3 (mécanisme, le périmètre était déjà figé
+> en Phase 2 avec 2 décisions produit). Aucun point ouvert bloquant.
 
 ## Architecture Overview
 
@@ -209,7 +209,7 @@ couverture design explicite ci-dessus ; aucun gap.
 
 ## Phase 3 — revue close (2026-08-22)
 
-7 décisions techniques actées via `AskUserQuestion` (une à la fois) :
+5 décisions techniques actées via `AskUserQuestion` (une à la fois) :
 D-BPMN-PREVIEW-COMPONENT, D-BPMN-KEY-VALIDATION, D-BPMN-REDEPLOY-INFO,
 D-BPMN-UPLOAD-SIZE (corrigée après découverte d'une convention
 existante — « une seule source de vérité » pour la taille d'upload,

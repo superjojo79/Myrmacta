@@ -213,20 +213,15 @@ réellement à faire :**
 
 ### Ouvertes
 
-Aucune décision produit ouverte. Points techniques à trancher en design
-(mécanisme, pas périmètre) :
-- Le test de dimensionnement des verrous Flowable sous charge a-t-il
-  besoin de Testcontainers ou peut-il tourner sur l'embedded Flowable
-  actuel avec des threads concurrents réels (H2 supporte des
-  transactions concurrentes en mémoire) ?
-- Le test « un seul workflow actif » sous parallélisme réel a-t-il
-  besoin d'un vrai PostgreSQL (verrouillage réel au niveau ligne) ou
-  H2 + vrais threads suffit-il à prouver la garantie transactionnelle ?
-- Le test de migration Liquibase multi-schéma avec échec partiel :
-  mécanisme exact (comment simuler un échec partiel de façon
-  déterministe et reproductible) ?
-- Isolation du conteneur Testcontainers entre les 2 tests qui l'utilisent
-  (conteneur partagé vs dédié par test).
+Aucune décision produit ouverte. Les 4 points techniques listés en
+Phase 2 (mécanisme, pas périmètre) ont été tranchés en Phase 3 — voir
+`docs/ai/design/2026-08-22-feature-fiabilisation-tests-plateforme.md`,
+section « Design Decisions » : `D-FLOWABLE-LOCK-TEST` (H2 + threads
+réels), `D-PARALLELISM-TEST` (H2 + threads réels), `D-LIQUIBASE-TEST`
+(échec partiel mono-schéma + reprise idempotente — la « migration
+multi-schéma » envisagée initialement ne correspond pas à l'architecture
+réelle, un schéma par instance), `D-CONTAINER-REUSE` (conteneur
+Testcontainers singleton statique partagé).
 
 ### Hors file
 

@@ -8,12 +8,14 @@ import {
 import type { WorkflowTypeConfig } from '@/api/types'
 import { toProblemDetail } from '@/api/http'
 import AdminPager from '@/components/admin/AdminPager.vue'
+import BpmnUploadPreview from '@/components/workflow/BpmnUploadPreview.vue'
 import { useAdminListQuery } from '@/composables/useAdminListQuery'
 
 const { page, size } = useAdminListQuery()
 const configs = ref<WorkflowTypeConfig[]>([])
 const totalPages = ref(0)
 const error = ref<string | null>(null)
+const bpmnDeployedMessage = ref<string | null>(null)
 const form = ref({
   workflowKey: '',
   label: '',
@@ -59,6 +61,10 @@ async function rename(cfg: WorkflowTypeConfig) {
   await updateWorkflowTypeConfig(cfg.workflowKey, { ...cfg, label })
   await refresh()
 }
+
+function onBpmnDeployed() {
+  bpmnDeployedMessage.value = 'Diagramme déployé avec succès.'
+}
 </script>
 
 <template>
@@ -77,6 +83,9 @@ async function rename(cfg: WorkflowTypeConfig) {
       </li>
     </ul>
     <AdminPager v-model="page" :total-pages="totalPages" />
+
+    <BpmnUploadPreview @deployed="onBpmnDeployed" />
+    <p v-if="bpmnDeployedMessage" class="bpmn-deployed-message">{{ bpmnDeployedMessage }}</p>
   </section>
 </template>
 
@@ -97,5 +106,8 @@ li {
 }
 .error {
   color: #c92a2a;
+}
+.bpmn-deployed-message {
+  color: #2f9e44;
 }
 </style>

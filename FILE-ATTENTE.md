@@ -8,8 +8,8 @@
 > - Inventaire follow-ups / lots : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md)
 > - Séquencement « avant prod » : [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md) §9
 >
-> **Dernière mise à jour :** 2026-08-22 (`deploiement-bpmn` — M1 à M5
-> implémentés (backend + frontend + doc), M6 vérification globale en cours).
+> **Dernière mise à jour :** 2026-08-22 (`deploiement-bpmn` livrée, PR
+> #67 mergée sur `main` — TODO §35 clos).
 
 ## Comment s’en servir
 
@@ -44,6 +44,7 @@ Même grille que pour `preview-documents` puis `edition-champs-dossier` :
 | `durcissement-donnees-sensibles` | PR #62, TODO §23 (reste réduit)/§30 (clos) | Magic-bytes + `AttachmentScanPort` no-op sur upload ; export CSV masqué (`GET /api/dossiers/export.csv`) ; skeleton `HttpRestServiceConnector` non enregistré ; garde-fous anti-fuite secrets ; injection de formule CSV trouvée et corrigée en revue |
 | `contrat-api-client` | PR #65, TODO §24 (clos) | 6 listes non-admin migrées vers `PageResponse` (elements, dossiers/workflows, workflow-tasks/mine, connector-definitions, workflow-links history+tasks) ; 3 endpoints `@Hidden` documentés (SSE, multipart, webhook) ; pagination rendue visible en UI pour 5/6 listes (`WorkflowLinksList.vue` nouveau — liste jamais affichée avant) ; codegen client resté hors V1 ; 2 bugs réels trouvés et corrigés en Phase 7 (tri déclaré/réel) ; 2 régressions e2e réelles trouvées et corrigées en Phase 8 ; D-SPA-ADAPT rejouée avec l'utilisateur après un manquement Phase 3 (aucune question matérielle posée) |
 | `fiabilisation-tests-plateforme` | PR #66, TODO §26 (clos), §28 (clos), §37 (clos) | Testcontainers ciblé (isolation `search_path`, séquence multi-pods — écrits/compilés, non exécutés dans ce bac à sable sans Docker, CI seulement) ; verrous Flowable + réservation workflow concurrente sous H2 + vrais threads (bug réel trouvé et corrigé : `DataIntegrityViolationException` brute traitée comme retry transitoire au lieu de dead-letter) ; migration Liquibase en échec partiel mono-schéma (portée corrigée — pas de job multi-schéma en réalité) ; règle ArchUnit `usecase.*Impl`→`port.in` ; cascade de résolution de templates (JPA réel) ; seuils Jacoco relevés (LINE 85%, nouvelle règle BRANCH 75%) — écart de couverture réel trouvé (73%) et comblé par 8 classes jamais testées (`StorageConfig`, adaptateurs idempotence webhook/workflow, delegate Flowable, etc.) |
+| `deploiement-bpmn` | PR #67, TODO §35 (clos) | Écran d'upload BPMN admin (`/admin/workflow-types`, option (c) — pas de Flowable Modeler/Cockpit) avec prévisualisation obligatoire avant import (`BpmnCanvas.vue` extrait de `BpmnViewer.vue`) ; endpoint `WorkflowBpmnDeploymentController` (déploiement réel `RepositoryService`, clé de processus sans `WorkflowTypeConfig` → rejet strict 404) ; `BpmnParserPort` extrait en Phase 5 après violation ArchUnit détectée (domaine dépendait de `org.flowable..`) ; 2 vrais bugs trouvés et corrigés en Phase 7 (`NullPointerException` potentielle sur `originalFilename` null, regex d'extraction trop strict côté preview) ; `README.md`/`05-workflow-engine.md` corrigés (mentions non livrées retirées) |
 
 Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relations, PATCH fields API, éléments) : voir [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §2.
 
@@ -55,14 +56,15 @@ ont été regroupés en 5 features candidates (regroupement validé 2026-08-20).
 §31 (« découpage en lots ») est clos ci-dessous plutôt que transformé en
 feature — le process `dev-lifecycle` + ce fichier + `DEFERRED-FEATURES.md`
 le remplit déjà en pratique à chaque lot livré. `durcissement-donnees-sensibles`
-(PR #62), `contrat-api-client` (PR #65) et `fiabilisation-tests-plateforme`
-(PR #66) livrées — file renumérotée.
+(PR #62), `contrat-api-client` (PR #65), `fiabilisation-tests-plateforme`
+(PR #66) et `deploiement-bpmn` (PR #67) livrées — file renumérotée.
 
 | Priorité | Feature / lot kebab-case | TODO couverts | Contenu | Pourquoi cet ordre |
 |---|---|---|---|---|
 | 1 | `modele-physique-consolide` | §25 | ERD/DDL consolidé, répartition schéma tenant / `platform`, description `TenantRegistry` + politique de rafraîchissement du cache | Doc pure (aucune décision ouverte) mais sans parcours métier utilisateur direct (critère 3) — reste en dernier |
 
-`deploiement-bpmn` (§35, clos dans `TODO.md`) est la feature **active** (M1-M5 implémentés, M6 vérification globale en cours) — plus dans cette table tant qu'elle n'est pas livrée (PR).
+Seul `modele-physique-consolide` reste dans la file — c'est donc le
+**prochain** item à prendre.
 
 **Hors V1 (reporté, pas dans cette file) :** Rapports / SLA (maquette UI de
 référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même
@@ -134,3 +136,6 @@ référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même
 | 2026-08-22 | `deploiement-bpmn` Phase 3 reviewed | 5 décisions design actées via `AskUserQuestion` : D-BPMN-PREVIEW-COMPONENT=extraction `BpmnCanvas.vue` partagé (utilisateur n'a **pas** suivi la recommandation, a choisi l'extraction plutôt que la réutilisation directe de `BpmnViewer.vue`) ; D-BPMN-KEY-VALIDATION=rejet strict clé inconnue ; D-BPMN-REDEPLOY-INFO=afficher version+instances actives avant confirmation ; D-BPMN-UPLOAD-SIZE=réutilise le seuil global (revirement après qu'une contradiction avec la convention « source de vérité unique » déjà établie pour les pièces jointes ait été trouvée et signalée avant de trancher) ; D-BPMN-UPLOAD-CONTENT-TYPE=nouvelle classe dédiée sans champ de taille |
 | 2026-08-22 | `deploiement-bpmn` Phase 4 (planning) | 6 milestones, 20 tâches ; testing doc scénarisé (traçabilité requirements→tests) |
 | 2026-08-22 | `deploiement-bpmn` Phase 5 (implémentation) | 20 tâches en TDD, M1→M5 (backend domaine/Flowable/endpoint, frontend `BpmnCanvas.vue`+`BpmnUploadPreview.vue`+intégration admin, doc). Écart réel trouvé en implémentation (pas en revue) : `BpmnXMLConverter` appelé directement dans le use case domaine violait `ArchitectureRulesTest.domain_has_no_framework_dependency` — extrait en `BpmnParserPort`/`FlowableBpmnParserAdapter`, pas prévu au design initial. Backend : `./mvnw verify` ciblé vert (ArchUnit, OpenAPI golden régénéré, tous les nouveaux tests) ; frontend : 162 tests Vitest (0 échec), typecheck/lint propres, coverage au-dessus des seuils. TODO §35 clos |
+| 2026-08-22 | `deploiement-bpmn` M6 (vérification globale) | `./mvnw verify` 1075 tests (0 échec), seuils Jacoco tenus (écart BRANCH réel trouvé à 74.92% au 1er passage, comblé par 1 test ciblé) ; 163 Vitest, typecheck/lint propres ; 43/43 Playwright (3 nouveaux `E2E-BPMN-*`) |
+| 2026-08-22 | `deploiement-bpmn` Phase 7 rejouée | Utilisateur : « toutes les phases ont-elles été exécutées ? pas d'autres questions en Phase 3 ? » → vérifié dans l'historique brut de session (pas la mémoire résumée) : Phase 3 complète (5 `AskUserQuestion` réels, tous documentés — le doc affirmait à tort « 7 », corrigé) ; en revanche Phase 7 (check implementation) n'avait pas été faite sérieusement — rejouée fichier par fichier, 2 vrais bugs trouvés et corrigés (`NullPointerException` potentielle sur `originalFilename` null dans `FlowableWorkflowDeploymentAdapter`, regex d'extraction trop strict côté preview) ; doc d'implémentation resté le squelette vide, rédigé ; plusieurs cases testing doc jamais cochées, corrigées |
+| 2026-08-22 | `deploiement-bpmn` livrée | PR #67 mergée sur `main` (CI hébergé rouge depuis plusieurs jours pour une raison d'infrastructure sans rapport avec le diff — confirmé rouge aussi sur les merges précédents dont #66 — mergé sur la base des vérifications locales complètes) ; TODO §35 clos ; prochain = `modele-physique-consolide` §25 |

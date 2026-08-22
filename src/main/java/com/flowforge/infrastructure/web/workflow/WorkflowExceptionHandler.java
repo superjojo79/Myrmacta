@@ -4,6 +4,8 @@ import com.flowforge.domain.dossier.model.AccessDeniedException;
 import com.flowforge.domain.dossier.model.DossierNotFoundException;
 import com.flowforge.domain.dossier.model.DossierWorkflowLinkNotFoundException;
 import com.flowforge.domain.dossier.model.WorkflowAlreadyRunningException;
+import com.flowforge.domain.workflow.model.InvalidBpmnException;
+import com.flowforge.domain.workflow.model.UnknownWorkflowKeyException;
 import com.flowforge.domain.workflow.model.WorkflowProcessInstanceMissingException;
 import com.flowforge.domain.workflow.model.WorkflowProcessInstanceNotFoundException;
 import com.flowforge.domain.workflow.model.WorkflowTaskNotFoundException;
@@ -36,7 +38,8 @@ class WorkflowExceptionHandler {
             DossierWorkflowLinkNotFoundException.class,
             WorkflowProcessInstanceNotFoundException.class,
             WorkflowTypeConfigNotFoundException.class,
-            WorkflowTaskNotFoundException.class
+            WorkflowTaskNotFoundException.class,
+            UnknownWorkflowKeyException.class
     })
     ProblemDetail handleWorkflowResourceNotFound(RuntimeException ex) {
         return problem(HttpStatus.NOT_FOUND, "Workflow resource not found", ex.getMessage());
@@ -62,7 +65,7 @@ class WorkflowExceptionHandler {
         return problem(HttpStatus.CONFLICT, "Workflow conflict", ex.getMessage());
     }
 
-    @ExceptionHandler({IllegalArgumentException.class, HttpMessageNotReadableException.class})
+    @ExceptionHandler({IllegalArgumentException.class, HttpMessageNotReadableException.class, InvalidBpmnException.class})
     ProblemDetail handleBadRequest(Exception ex) {
         return problem(HttpStatus.BAD_REQUEST, "Bad request", ex.getMessage());
     }

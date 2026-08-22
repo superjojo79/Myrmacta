@@ -10,9 +10,13 @@ import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
 import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
 import com.flowforge.domain.dossier.usecase.AttachWorkflowUseCaseImpl;
 import com.flowforge.domain.workflow.port.in.CompleteTaskUseCase;
+import com.flowforge.domain.workflow.port.in.DeployBpmnProcessUseCase;
+import com.flowforge.domain.workflow.port.in.GetProcessDeploymentInfoUseCase;
 import com.flowforge.domain.workflow.port.in.ListMyTasksUseCase;
 import com.flowforge.domain.workflow.port.in.UpdateWorkflowLinkStatusUseCase;
+import com.flowforge.domain.workflow.port.out.BpmnParserPort;
 import com.flowforge.domain.workflow.port.out.IdempotencyStore;
+import com.flowforge.domain.workflow.port.out.WorkflowDeploymentPort;
 import com.flowforge.domain.workflow.port.out.WorkflowParticipantPort;
 import com.flowforge.domain.workflow.port.out.WorkflowEnginePort;
 import com.flowforge.domain.workflow.port.out.WorkflowEventPublisher;
@@ -20,6 +24,8 @@ import com.flowforge.domain.workflow.port.out.WorkflowTaskInboxPort;
 import com.flowforge.domain.workflow.port.out.WorkflowTypeConfigRepository;
 import com.flowforge.domain.workflow.port.out.WorkflowVisualizationPort;
 import com.flowforge.domain.workflow.usecase.CompleteTaskUseCaseImpl;
+import com.flowforge.domain.workflow.usecase.DeployBpmnProcessUseCaseImpl;
+import com.flowforge.domain.workflow.usecase.GetProcessDeploymentInfoUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.ListMyTasksUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.UpdateWorkflowLinkStatusUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.WorkflowLinkVisualizationUseCaseImpl;
@@ -120,6 +126,21 @@ public class WorkflowConfig {
                 idempotencyStore,
                 workflowStartConfirmer,
                 eventPublisher);
+    }
+
+    @Bean
+    DeployBpmnProcessUseCase deployBpmnProcessUseCase(
+            TenantProperties tenantProperties,
+            WorkflowDeploymentPort deploymentPort,
+            WorkflowTypeConfigRepository configRepository,
+            BpmnParserPort bpmnParserPort) {
+        return new DeployBpmnProcessUseCaseImpl(tenantProperties.id(), deploymentPort, configRepository, bpmnParserPort);
+    }
+
+    @Bean
+    GetProcessDeploymentInfoUseCase getProcessDeploymentInfoUseCase(
+            TenantProperties tenantProperties, WorkflowDeploymentPort deploymentPort) {
+        return new GetProcessDeploymentInfoUseCaseImpl(tenantProperties.id(), deploymentPort);
     }
 
     @Bean

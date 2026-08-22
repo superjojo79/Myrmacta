@@ -15,6 +15,7 @@ import com.flowforge.domain.workflow.model.StatusOutcome;
 import com.flowforge.domain.workflow.model.UnknownWorkflowKeyException;
 import com.flowforge.domain.workflow.model.WorkflowStatusDefinition;
 import com.flowforge.domain.workflow.model.WorkflowTypeConfig;
+import com.flowforge.domain.workflow.port.out.BpmnParserPort;
 import com.flowforge.domain.workflow.port.out.WorkflowDeploymentPort;
 import com.flowforge.domain.workflow.port.out.WorkflowTypeConfigRepository;
 import java.nio.charset.StandardCharsets;
@@ -26,62 +27,44 @@ import org.junit.jupiter.api.Test;
 class DeployBpmnProcessUseCaseImplTest {
 
     private static final String TENANT = "tenant_dev";
-
-    private static final String VALID_BPMN = """
-            <?xml version="1.0" encoding="UTF-8"?>
-            <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
-                         xmlns:flowable="http://flowable.org/bpmn"
-                         targetNamespace="http://flowforge/test">
-              <process id="testProcess" isExecutable="true">
-                <startEvent id="start"/>
-                <endEvent id="end"/>
-                <sequenceFlow id="flow1" sourceRef="start" targetRef="end"/>
-              </process>
-            </definitions>
-            """;
-
-    private static final String MALFORMED_XML = "<not-even-xml";
-
-    private static final String NON_BPMN_XML = "<root><child/></root>";
+    private static final byte[] BPMN_BYTES = "<bpmn/>".getBytes(StandardCharsets.UTF_8);
 
     private final WorkflowDeploymentPort deploymentPort = mock(WorkflowDeploymentPort.class);
     private final WorkflowTypeConfigRepository configRepository = mock(WorkflowTypeConfigRepository.class);
+    private final BpmnParserPort bpmnParserPort = mock(BpmnParserPort.class);
     private final DeployBpmnProcessUseCaseImpl useCase =
-            new DeployBpmnProcessUseCaseImpl(TENANT, deploymentPort, configRepository);
+            new DeployBpmnProcessUseCaseImpl(TENANT, deploymentPort, configRepository, bpmnParserPort);
 
     @Test
     void deploy_validBpmnWithKnownKey_delegatesToDeploymentPort() {
+        when(bpmnParserPort.extractProcessDefinitionKey(BPMN_BYTES)).thenReturn("testProcess");
         when(configRepository.findByWorkflowKey(TENANT, "testProcess")).thenReturn(Optional.of(smokeConfig()));
         BpmnDeploymentResult expected = new BpmnDeploymentResult("testProcess", 1, "deployment-1");
-        when(deploymentPort.deploy(TENANT, "diagram.bpmn20.xml", VALID_BPMN.getBytes(StandardCharsets.UTF_8)))
-                .thenReturn(expected);
+        when(deploymentPort.deploy(TENANT, "diagram.bpmn20.xml", BPMN_BYTES)).thenReturn(expected);
 
-        BpmnDeploymentResult result = useCase.deploy("diagram.bpmn20.xml", VALID_BPMN.getBytes(StandardCharsets.UTF_8));
+        BpmnDeploymentResult result = useCase.deploy("diagram.bpmn20.xml", BPMN_BYTES);
 
         assertThat(result).isEqualTo(expected);
     }
 
     @Test
-    void deploy_malformedXml_throwsInvalidBpmnAndNeverCallsDeploymentPort() {
-        assertThatThrownBy(() -> useCase.deploy("diagram.bpmn20.xml", MALFORMED_XML.getBytes(StandardCharsets.UTF_8)))
+    void deploy_invalidBpmn_propagatesParserExceptionAndNeverCallsDeploymentPort() {
+        when(bpmnParserPort.extractProcessDefinitionKey(BPMN_BYTES))
+                .thenThrow(new InvalidBpmnException("not valid BPMN"));
+
+        assertThatThrownBy(() -> useCase.deploy("diagram.bpmn20.xml", BPMN_BYTES))
                 .isInstanceOf(InvalidBpmnException.class);
 
         verify(deploymentPort, never()).deploy(any(), any(), any());
-    }
-
-    @Test
-    void deploy_wellFormedButNotBpmn_throwsInvalidBpmnAndNeverCallsDeploymentPort() {
-        assertThatThrownBy(() -> useCase.deploy("diagram.bpmn20.xml", NON_BPMN_XML.getBytes(StandardCharsets.UTF_8)))
-                .isInstanceOf(InvalidBpmnException.class);
-
-        verify(deploymentPort, never()).deploy(any(), any(), any());
+        verify(configRepository, never()).findByWorkflowKey(any(), any());
     }
 
     @Test
     void deploy_unknownWorkflowKey_throwsUnknownWorkflowKeyAndNeverCallsDeploymentPort() {
+        when(bpmnParserPort.extractProcessDefinitionKey(BPMN_BYTES)).thenReturn("testProcess");
         when(configRepository.findByWorkflowKey(TENANT, "testProcess")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> useCase.deploy("diagram.bpmn20.xml", VALID_BPMN.getBytes(StandardCharsets.UTF_8)))
+        assertThatThrownBy(() -> useCase.deploy("diagram.bpmn20.xml", BPMN_BYTES))
                 .isInstanceOf(UnknownWorkflowKeyException.class);
 
         verify(deploymentPort, never()).deploy(any(), any(), any());

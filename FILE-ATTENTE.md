@@ -8,8 +8,8 @@
 > - Inventaire follow-ups / lots : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md)
 > - Séquencement « avant prod » : [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md) §9
 >
-> **Dernière mise à jour :** 2026-08-22 (`deploiement-bpmn` Phase 1+2
-> reviewed — décision produit débloquée, 3 décisions actées).
+> **Dernière mise à jour :** 2026-08-22 (`deploiement-bpmn` — M1 à M5
+> implémentés (backend + frontend + doc), M6 vérification globale en cours).
 
 ## Comment s’en servir
 
@@ -62,7 +62,7 @@ le remplit déjà en pratique à chaque lot livré. `durcissement-donnees-sensib
 |---|---|---|---|---|
 | 1 | `modele-physique-consolide` | §25 | ERD/DDL consolidé, répartition schéma tenant / `platform`, description `TenantRegistry` + politique de rafraîchissement du cache | Doc pure (aucune décision ouverte) mais sans parcours métier utilisateur direct (critère 3) — reste en dernier |
 
-`deploiement-bpmn` (§35) est la feature **active** (Phase 1+2 reviewed) — plus dans cette table tant qu'elle n'est pas livrée.
+`deploiement-bpmn` (§35, clos dans `TODO.md`) est la feature **active** (M1-M5 implémentés, M6 vérification globale en cours) — plus dans cette table tant qu'elle n'est pas livrée (PR).
 
 **Hors V1 (reporté, pas dans cette file) :** Rapports / SLA (maquette UI de
 référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même
@@ -131,3 +131,6 @@ référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même
 | 2026-08-22 | `fiabilisation-tests-plateforme` Phase 5 (implémentation) | 15 tâches en TDD (H2 exécuté et vert ; Testcontainers écrit/compilé, SKIPPED proprement ici via `Assumptions.assumeTrue`/`isDockerAvailable()`, CI seulement) ; 1 bug réel trouvé et corrigé (`DataIntegrityViolationException` brute au lieu de `WorkflowAlreadyRunningException`, traitée à tort comme retry transitoire par `OutboxRelayScheduler`) ; JDK 25 installé dans le bac à sable (requis par `pom.xml`, absent au démarrage du container) ; couverture BRANCH réelle 73% trouvée sous le seuil D-COVERAGE 75% décidé en Phase 1 — question posée à l'utilisateur (`AskUserQuestion`), réponse = combler par des tests ciblés ; 8 classes jamais testées comblées en 3 vagues (73%→74%→75.03%) ; `./mvnw verify` final : 1050 tests (0 échec), LINE 93.7%, BRANCH 75.0% ; TODO §26/§28/§37 clos |
 | 2026-08-22 | `fiabilisation-tests-plateforme` livrée | PR #66 mergée sur `main` ; TODO §26/§28/§37 clos ; prochain = `deploiement-bpmn` §35 |
 | 2026-08-22 | `deploiement-bpmn` Phase 1+2 reviewed | Décision produit débloquée via `AskUserQuestion` : D-BPMN-TARGET=option (c) écran d'upload minimal (pas Modeler ni Cockpit) ; précision demandée explicitement par l'utilisateur → D-BPMN-PREVIEW=prévisualisation obligatoire du diagramme avant import, réutilisant le rendu `bpmn-js` de `BpmnViewer.vue` ; D-BPMN-PLACEMENT=nouvelle section dans `/admin/workflow-types` existant (rôles `TENANT_ADMIN`/`WORKFLOW_ADMIN` déjà en place), pas de nouvel écran. Précédents de code identifiés avant de trancher (`DossierElementUploadController` comme patron d'upload multipart) |
+| 2026-08-22 | `deploiement-bpmn` Phase 3 reviewed | 5 décisions design actées via `AskUserQuestion` : D-BPMN-PREVIEW-COMPONENT=extraction `BpmnCanvas.vue` partagé (utilisateur n'a **pas** suivi la recommandation, a choisi l'extraction plutôt que la réutilisation directe de `BpmnViewer.vue`) ; D-BPMN-KEY-VALIDATION=rejet strict clé inconnue ; D-BPMN-REDEPLOY-INFO=afficher version+instances actives avant confirmation ; D-BPMN-UPLOAD-SIZE=réutilise le seuil global (revirement après qu'une contradiction avec la convention « source de vérité unique » déjà établie pour les pièces jointes ait été trouvée et signalée avant de trancher) ; D-BPMN-UPLOAD-CONTENT-TYPE=nouvelle classe dédiée sans champ de taille |
+| 2026-08-22 | `deploiement-bpmn` Phase 4 (planning) | 6 milestones, 20 tâches ; testing doc scénarisé (traçabilité requirements→tests) |
+| 2026-08-22 | `deploiement-bpmn` Phase 5 (implémentation) | 20 tâches en TDD, M1→M5 (backend domaine/Flowable/endpoint, frontend `BpmnCanvas.vue`+`BpmnUploadPreview.vue`+intégration admin, doc). Écart réel trouvé en implémentation (pas en revue) : `BpmnXMLConverter` appelé directement dans le use case domaine violait `ArchitectureRulesTest.domain_has_no_framework_dependency` — extrait en `BpmnParserPort`/`FlowableBpmnParserAdapter`, pas prévu au design initial. Backend : `./mvnw verify` ciblé vert (ArchUnit, OpenAPI golden régénéré, tous les nouveaux tests) ; frontend : 162 tests Vitest (0 échec), typecheck/lint propres, coverage au-dessus des seuils. TODO §35 clos |

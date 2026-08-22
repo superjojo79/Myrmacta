@@ -226,3 +226,41 @@ Aucun changement de sécurité/autorisation. Le changelog de test
 `failure-injection/` est isolé (répertoire dédié, jamais référencé par
 `db.changelog-master.yaml`), sans risque d'interférer avec la migration
 de production.
+
+## Phase 9 — revue finale (2026-08-22)
+
+Revue holistique (au-delà du fichier-par-fichier de Phase 7) :
+
+- **Alignement design** : les 10 success criteria du requirements doc et
+  les 4 décisions techniques du design doc sont tous couverts (tableaux
+  de traçabilité dans design/testing docs). Aucun écart.
+- **Cohérence avec modules similaires** : traduction d'exception suit le
+  pattern déjà établi (`DossierRelationJpaAdapter`) ; tests de persistence
+  suivent le style existant (`WorkflowPersistenceTest`/`DossierPersistenceTest`) ;
+  tests Flowable suivent le style existant (`SignalSmokeIT`) ; convention
+  de nommage `*IT` pour les tests d'intégration plus lourds confirmée
+  sur 8 précédents dans le repo (`OutboxRelayIT`, `RetentionPersistenceIT`,
+  etc.) — aucune divergence introduite.
+- **Duplication** : aucun helper Testcontainers pré-existant à réutiliser
+  (confirmé par grep en Phase 1) ; `PostgresTestContainerSupport` est la
+  première introduction, pas une duplication.
+- **Rupture de contrat** : `DossierRepository.findClosedForRetention`
+  (port `out`) change de signature — appelant unique en repo
+  (`EvaluateDossierRetentionUseCaseImpl`), mis à jour atomiquement dans
+  le même commit. Pas d'API externe/publique impactée.
+- **Sécurité rollback** : aucune migration de production ajoutée (seuls
+  changelogs de test, isolés) ; `pom.xml` (seuils Jacoco, dépendance
+  Testcontainers) est un revert trivial si nécessaire ; aucun changement
+  de données irréversible.
+- **Dépendances** : `testcontainers-junit-jupiter`/`testcontainers-postgresql`
+  résolues sans conflit via le BOM `spring-boot-dependencies` (confirmé
+  par builds répétés sans erreur de résolution).
+
+**Checklist finale :** design ✅ · pas de gap logique ✅ (1 trouvé et
+corrigé en Phase 7) · sécurité ✅ · points d'intégration vérifiés ✅ ·
+tests couvrent les changements ✅ · docs à jour ✅ (requirements, design,
+planning, implementation, testing, TODO.md, FILE-ATTENTE.md).
+
+**Aucun blocage.** Feature prête à être poussée / PR à ouvrir sur
+demande explicite de l'utilisateur (convention établie cette session :
+implémentation complète, rapport, attente d'un « ouvre la PR »).

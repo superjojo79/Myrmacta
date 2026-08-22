@@ -3,6 +3,7 @@ package com.flowforge.infrastructure.persistence.dossier;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.flowforge.support.PostgresTestContainerSupport;
+import com.zaxxer.hikari.HikariDataSource;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -54,12 +55,14 @@ class SequentialReferenceMultiPodIT {
         PostgresTestContainerSupport.createSchema(schema);
         PostgresTestContainerSupport.migrateSchema(schema);
 
+        List<HikariDataSource> dataSources = new ArrayList<>();
         try {
             List<TransactionTemplate> pods = new ArrayList<>();
             List<SequentialReferenceGenerator> generators = new ArrayList<>();
             Clock fixedClock = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC);
             for (int i = 0; i < PODS; i++) {
-                DataSource dataSource = PostgresTestContainerSupport.dataSourceForSchema(schema);
+                HikariDataSource dataSource = PostgresTestContainerSupport.dataSourceForSchema(schema);
+                dataSources.add(dataSource);
                 JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
                 pods.add(new TransactionTemplate(new DataSourceTransactionManager(dataSource)));
                 generators.add(new SequentialReferenceGenerator(jdbcTemplate, fixedClock));
@@ -102,6 +105,7 @@ class SequentialReferenceMultiPodIT {
                 pool.shutdownNow();
             }
         } finally {
+            dataSources.forEach(HikariDataSource::close);
             PostgresTestContainerSupport.dropSchema(schema);
         }
     }

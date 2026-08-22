@@ -3,6 +3,7 @@ package com.flowforge.infrastructure.tenant;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.flowforge.support.PostgresTestContainerSupport;
+import com.zaxxer.hikari.HikariDataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -37,10 +38,8 @@ class TenantSchemaIsolationIT {
         PostgresTestContainerSupport.migrateSchema(schemaA);
         PostgresTestContainerSupport.migrateSchema(schemaB);
 
-        try {
-            DataSource dataSourceA = PostgresTestContainerSupport.dataSourceForSchema(schemaA);
-            DataSource dataSourceB = PostgresTestContainerSupport.dataSourceForSchema(schemaB);
-
+        try (HikariDataSource dataSourceA = PostgresTestContainerSupport.dataSourceForSchema(schemaA);
+                HikariDataSource dataSourceB = PostgresTestContainerSupport.dataSourceForSchema(schemaB)) {
             UUID dossierInA = insertDossier(dataSourceA, "DOS-ISO-A-1");
             UUID dossierInB = insertDossier(dataSourceB, "DOS-ISO-B-1");
 

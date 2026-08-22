@@ -6,7 +6,6 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
-import javax.sql.DataSource;
 import liquibase.Liquibase;
 import liquibase.database.Database;
 import liquibase.database.DatabaseFactory;
@@ -89,8 +88,13 @@ public final class PostgresTestContainerSupport {
         }
     }
 
-    /** DataSource dont chaque connexion fixe search_path sur ce schéma — mirroir de {@code application.yml}. */
-    public static DataSource dataSourceForSchema(String schemaName) {
+    /**
+     * DataSource dont chaque connexion fixe search_path sur ce schéma — mirroir de
+     * {@code application.yml}. Type concret {@link HikariDataSource} (pas {@code DataSource})
+     * pour que l'appelant puisse la fermer explicitement ({@link HikariDataSource#close()}) et
+     * éviter d'accumuler des pools de connexions non fermés sur le conteneur singleton partagé.
+     */
+    public static HikariDataSource dataSourceForSchema(String schemaName) {
         PostgreSQLContainer<?> postgres = container();
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl(postgres.getJdbcUrl());

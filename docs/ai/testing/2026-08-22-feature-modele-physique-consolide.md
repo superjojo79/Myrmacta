@@ -19,38 +19,38 @@ non-régression du reste de la documentation.
 ## Vérification de contenu (remplace Unit/Integration Tests)
 
 ### Exactitude factuelle de `13-modele-physique.md`
-- [ ] Les 17 tables listées dans l'ERD correspondent exactement aux
+- [x] Les 17 tables listées dans l'ERD correspondent exactement aux
       `tableName:` des changelogs (`grep tableName: db/changelog/changes/*.yaml`,
       pas de table oubliée ni inventée)
-- [ ] Les 4 index uniques partiels documentés correspondent aux `CREATE
+- [x] Les 4 index uniques partiels documentés correspondent aux `CREATE
       UNIQUE INDEX ... WHERE`/colonnes générées réels (pas de 5e index
       oublié, pas de description erronée de la condition)
-- [ ] La distinction FK DB-contrainte (2, sur `dossier_relation`
+- [x] La distinction FK DB-contrainte (2, sur `dossier_relation`
       seulement) vs FK logique (le reste) est correcte — vérifiée
       contre les seuls `addForeignKeyConstraint` réellement présents
-- [ ] `dossier_type_acl`, `tenant_connector_dek`, `outbox_event` sont
+- [x] `dossier_type_acl`, `tenant_connector_dek`, `outbox_event` sont
       décrites avec leurs colonnes réelles, pas approximées
 
 ### Cohérence avec les décisions actées (Phase 1)
-- [ ] Aucune mention d'un `TenantRegistry` actif ou consulté à chaque
+- [x] Aucune mention d'un `TenantRegistry` actif ou consulté à chaque
       requête (D-MPC-SCOPE)
-- [ ] Aucune mention de contextes Liquibase `tenant-init`/`tenant-migration`
+- [x] Aucune mention de contextes Liquibase `tenant-init`/`tenant-migration`
       séparés comme s'ils existaient (D-MPC-SCOPE)
-- [ ] `platform.tenant_migration_status` présentée comme option non
+- [x] `platform.tenant_migration_status` présentée comme option non
       retenue, pas comme une table existante (D-MPC-PLATFORM)
-- [ ] Aucun changelog Liquibase, aucune classe Java ajoutée ou modifiée
+- [x] Aucun changelog Liquibase, aucune classe Java ajoutée ou modifiée
       (feature doc pure — vérifié par `git diff --stat` avant de
       clore la feature)
 
 ## Non-régression documentaire (remplace End-to-End Tests)
 
-- [ ] `00-index.md` référence le nouveau `13-modele-physique.md` sans
+- [x] `00-index.md` référence le nouveau `13-modele-physique.md` sans
       casser le tableau existant (12 lignes → 13, numérotation
       cohérente)
-- [ ] Le diagramme mermaid est syntaxiquement valide (rendu sans erreur
+- [x] Le diagramme mermaid est syntaxiquement valide (rendu sans erreur
       — vérifié visuellement, pas d'outil de lint mermaid dans ce
       projet)
-- [ ] Les liens croisés vers `02-multi-tenant.md`, `04-dossiers.md`,
+- [x] Les liens croisés vers `02-multi-tenant.md`, `04-dossiers.md`,
       `05-workflow-engine.md` résolvent vers des ancres/fichiers
       existants
 - [ ] `TODO.md` §25 : passage à `[x]`, note de résolution cohérente

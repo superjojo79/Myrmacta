@@ -14,8 +14,8 @@ testing_ref: docs/ai/testing/2026-08-22-feature-deploiement-bpmn.md
 
 ## Milestones
 
-- [ ] M1: Domaine backend (use cases, port out, exceptions, value objects)
-- [ ] M2: Adaptateur Flowable + endpoint web
+- [x] M1: Domaine backend (use cases, port out, exceptions, value objects)
+- [x] M2: Adaptateur Flowable + endpoint web
 - [ ] M3: Frontend — `BpmnCanvas.vue` (extraction) + refactor `BpmnViewer.vue`
 - [ ] M4: Frontend — `BpmnUploadPreview.vue` + intégration dans `WorkflowConfigsAdminView.vue`
 - [ ] M5: Documentation (`README.md`, `05-workflow-engine.md`, `GUIDE-UTILISATEUR.md`) + TODO §35
@@ -25,31 +25,36 @@ testing_ref: docs/ai/testing/2026-08-22-feature-deploiement-bpmn.md
 
 ### M1: Domaine backend
 
-- [ ] T1.1 — `ProcessDeploymentInfo`, `InvalidBpmnException`, `UnknownWorkflowKeyException` (domain model)
+- [x] T1.1 — `ProcessDeploymentInfo`, `InvalidBpmnException`, `UnknownWorkflowKeyException` (domain model)
   - Dépend de : rien
-  - Validation : compile, tests unitaires triviaux si logique non-trivale (sinon simples records/exceptions)
-- [ ] T1.2 — `WorkflowDeploymentPort` (port out) : `findDeploymentInfo(tenantId, key)`, `deploy(tenantId, filename, bytes)`
+  - Validation : compile ✓
+- [x] T1.2 — `WorkflowDeploymentPort` (port out) : `findDeploymentInfo(tenantId, key)`, `deploy(tenantId, filename, bytes)`
   - Dépend de : T1.1
-  - Validation : compile
-- [ ] T1.3 — `DeployBpmnProcessUseCase` (port in) + `DeployBpmnProcessUseCaseImpl` : parse via `BpmnXMLConverter`, vérifie `WorkflowTypeConfigRepository.findByWorkflowKey`, délègue au port out
+  - Validation : compile ✓
+- [x] T1.3 — `DeployBpmnProcessUseCase` (port in) + `DeployBpmnProcessUseCaseImpl` : vérifie `WorkflowTypeConfigRepository.findByWorkflowKey`, délègue au port out
   - Dépend de : T1.1, T1.2
-  - Validation : `DeployBpmnProcessUseCaseImplTest` (4 scénarios testing doc) exécuté et vert
-- [ ] T1.4 — `GetProcessDeploymentInfoUseCase` (port in) + Impl
+  - Validation : `DeployBpmnProcessUseCaseImplTest` (3 scénarios) exécuté et vert
+  - **Écart découvert en implémentation** : le parsing BPMN (`BpmnXMLConverter`) ne pouvait pas rester
+    inline dans `DeployBpmnProcessUseCaseImpl` — `ArchitectureRulesTest.domain_has_no_framework_dependency`
+    l'a détecté (le domaine ne doit pas dépendre de `org.flowable..`). Extrait en `BpmnParserPort`
+    (port out, nouveau, non prévu au design initial) + `FlowableBpmnParserAdapter` (infrastructure).
+    Couvert par `FlowableBpmnParserAdapterTest` (3 scénarios : BPMN valide, XML malformé, XML non-BPMN).
+- [x] T1.4 — `GetProcessDeploymentInfoUseCase` (port in) + Impl
   - Dépend de : T1.1, T1.2
   - Validation : `GetProcessDeploymentInfoUseCaseImplTest` (2 scénarios) exécuté et vert
 
 ### M2: Adaptateur Flowable + endpoint web
 
-- [ ] T2.1 — `FlowableWorkflowDeploymentAdapter implements WorkflowDeploymentPort` (`RepositoryService`/`RuntimeService`)
+- [x] T2.1 — `FlowableWorkflowDeploymentAdapter implements WorkflowDeploymentPort` (`RepositoryService`/`RuntimeService`)
   - Dépend de : T1.2
-  - Validation : `FlowableWorkflowDeploymentAdapterTest` (3 scénarios, déploiement réel H2/Flowable embarqué) exécuté et vert
-- [ ] T2.2 — `BpmnUploadProperties` (config content-type, sans champ de taille — D-BPMN-UPLOAD-SIZE)
+  - Validation : `FlowableWorkflowDeploymentAdapterTest` (4 scénarios, déploiement réel H2/Flowable embarqué) exécuté et vert
+- [x] T2.2 — `BpmnUploadProperties` (config content-type, sans champ de taille — D-BPMN-UPLOAD-SIZE)
   - Dépend de : rien
-  - Validation : tests unitaires (3 scénarios testing doc)
-- [ ] T2.3 — `WorkflowBpmnDeploymentController` (`GET .../info`, `POST` multipart), `@PreAuthorize` même pattern que `WorkflowTypeConfigController`
+  - Validation : `BpmnUploadPropertiesTest` (3 scénarios) exécuté et vert
+- [x] T2.3 — `WorkflowBpmnDeploymentController` (`GET .../info`, `POST` multipart), `@PreAuthorize` même pattern que `WorkflowTypeConfigController`
   - Dépend de : T1.3, T1.4, T2.2
-  - Validation : test d'intégration (7 scénarios testing doc, y compris `403`) exécuté et vert
-- [ ] T2.4 — Gestion d'erreurs dans `WorkflowExceptionHandler` (existant) : `InvalidBpmnException` → `400`, `UnknownWorkflowKeyException` → code à trancher en implémentation
+  - Validation : `WorkflowBpmnDeploymentApiTest` (7 scénarios testing doc, y compris `403`) exécuté et vert ; golden OpenAPI régénéré
+- [x] T2.4 — Gestion d'erreurs dans `WorkflowExceptionHandler` (existant) : `InvalidBpmnException` → `400`, `UnknownWorkflowKeyException` → `404` (groupé avec `WorkflowTypeConfigNotFoundException`, symétrie avec `AttachWorkflowUseCase` déjà actée en design)
   - Dépend de : T1.1, T2.3
   - Validation : couvert par les tests d'intégration T2.3
 
@@ -132,12 +137,11 @@ E2E) — pas d'estimation en jours demandée, séquencement par dépendance
   réel, ou l'inverse. **Mitigation** : `FlowableWorkflowDeploymentAdapterTest`
   exerce le vrai déploiement Flowable, pas seulement le parsing
   préalable — écart détecté par les tests, pas supposé.
-- **Risque** : code HTTP pour `UnknownWorkflowKeyException` pas
-  explicitement tranché en design (400 vs 409 vs 422). **Mitigation** :
-  décision différée à l'implémentation (T2.4), en cohérence avec les
-  codes déjà utilisés par `WorkflowExceptionHandler` pour des erreurs de
-  validation similaires — pas un blocage, un détail à trancher en
-  cours de route sans redemander à l'utilisateur (pas un choix produit).
+- **Risque** (résolu) : code HTTP pour `UnknownWorkflowKeyException` pas
+  explicitement tranché en design. **Résolution (T2.4)** : `404`, groupé
+  avec `WorkflowTypeConfigNotFoundException` dans `WorkflowExceptionHandler`
+  — même condition métier (clé sans `WorkflowTypeConfig`), déjà mappée à
+  404 ailleurs ; pas un nouveau choix produit.
 - **Risque** : E2E Playwright doit mocker un upload de fichier réel —
   pattern potentiellement nouveau dans `frontend/e2e/`. **Mitigation** :
   vérifier en implémentation s'il existe déjà un précédent d'upload de

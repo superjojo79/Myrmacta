@@ -26,36 +26,43 @@ design_ref: docs/ai/design/2026-08-22-feature-deploiement-bpmn.md
 
 ## Unit Tests
 
-### `DeployBpmnProcessUseCaseImplTest` (nouveau)
-- [ ] BPMN valide + `processDefinitionKey` connu (`WorkflowTypeConfig` existant) → déploiement délégué au port out, retourne la version déployée
-- [ ] XML malformé (non bien formé) → `InvalidBpmnException`, port out jamais appelé
-- [ ] XML bien formé mais pas un BPMN 2.0 valide (namespace incorrect) → `InvalidBpmnException`, port out jamais appelé
-- [ ] `processDefinitionKey` extrait sans `WorkflowTypeConfig` correspondant pour le tenant → `UnknownWorkflowKeyException`, port out jamais appelé (D-BPMN-KEY-VALIDATION)
+### `DeployBpmnProcessUseCaseImplTest` (fait)
+- [x] BPMN valide + `processDefinitionKey` connu (`WorkflowTypeConfig` existant) → déploiement délégué au port out, retourne la version déployée
+- [x] `BpmnParserPort` lève `InvalidBpmnException` → propagée, port out et repository jamais appelés
+- [x] `processDefinitionKey` extrait sans `WorkflowTypeConfig` correspondant pour le tenant → `UnknownWorkflowKeyException`, port out jamais appelé (D-BPMN-KEY-VALIDATION)
+- Note d'implémentation : le parsing BPMN a été extrait dans un port dédié (`BpmnParserPort`, voir
+  ci-dessous) pour respecter la règle ArchUnit domaine-sans-dépendance-framework ; les scénarios XML
+  malformé / XML bien formé mais non-BPMN sont donc couverts au niveau de l'adaptateur, pas du use case.
 
-### `GetProcessDeploymentInfoUseCaseImplTest` (nouveau)
-- [ ] Clé déjà déployée → retourne version actuelle + nombre d'instances actives
-- [ ] Clé jamais déployée → résultat vide (pas d'erreur)
+### `FlowableBpmnParserAdapterTest` (nouveau, non prévu au testing doc initial — découvert en implémentation)
+- [x] BPMN valide → retourne l'id du process principal
+- [x] XML malformé (non bien formé) → `InvalidBpmnException`
+- [x] XML bien formé mais pas un BPMN 2.0 valide (namespace incorrect) → `InvalidBpmnException`
 
-### `BpmnUploadProperties` (nouveau)
-- [ ] Content-type dans l'allowlist → autorisé
-- [ ] Content-type hors allowlist → refusé
-- [ ] Défauts appliqués si aucune config fournie (`application/xml`, `text/xml`)
+### `GetProcessDeploymentInfoUseCaseImplTest` (fait)
+- [x] Clé déjà déployée → retourne version actuelle + nombre d'instances actives
+- [x] Clé jamais déployée → résultat vide (pas d'erreur)
+
+### `BpmnUploadProperties` (fait)
+- [x] Content-type dans l'allowlist → autorisé
+- [x] Content-type hors allowlist → refusé
+- [x] Défauts appliqués si aucune config fournie (`application/xml`, `text/xml`)
 
 ## Integration Tests
 
-### `WorkflowBpmnDeploymentControllerTest` ou test d'intégration H2 (nouveau)
-- [ ] `POST /api/workflow-bpmn-deployments` sans rôle `TENANT_ADMIN`/`WORKFLOW_ADMIN` → `403`
-- [ ] `POST` avec BPMN valide + clé connue → `201`, corps avec `processDefinitionKey`/`deployedVersion`/`deploymentId`
-- [ ] `POST` avec BPMN invalide → `400`
-- [ ] `POST` avec clé inconnue → code d'erreur approprié (à trancher en implémentation, cohérent avec `WorkflowExceptionHandler`)
-- [ ] `POST` sans fichier ou fichier vide → `400`
-- [ ] `GET /api/workflow-bpmn-deployments/info?processDefinitionKey=...` avec clé déployée → `200` + info
-- [ ] `GET .../info` avec clé jamais déployée → `204`
+### `WorkflowBpmnDeploymentApiTest` (fait)
+- [x] `POST /api/workflow-bpmn-deployments` sans rôle `TENANT_ADMIN`/`WORKFLOW_ADMIN` → `403`
+- [x] `POST` avec BPMN valide + clé connue → `201`, corps avec `processDefinitionKey`/`deployedVersion`/`deploymentId`
+- [x] `POST` avec BPMN invalide → `400`
+- [x] `POST` avec clé inconnue → `404` (groupé avec `WorkflowTypeConfigNotFoundException`)
+- [x] `POST` sans fichier ou fichier vide → `400`
+- [x] `GET /api/workflow-bpmn-deployments/info?processDefinitionKey=...` avec clé déployée → `200` + info
+- [x] `GET .../info` avec clé jamais déployée → `204`
 
-### `FlowableWorkflowDeploymentAdapterTest` (nouveau, H2/Flowable embarqué)
-- [ ] Déploiement réel via `RepositoryService` sur un BPMN de test → nouvelle version créée, visible immédiatement sans redémarrage (démarrage d'un processus avec cette clé juste après le déploiement)
-- [ ] Redéploiement de la même clé → version incrémentée, instances existantes sur l'ancienne version non affectées (comportement natif Flowable, à observer pas à forcer)
-- [ ] `latestVersion`/`activeInstanceCount` corrects après un déploiement + démarrage d'instances
+### `FlowableWorkflowDeploymentAdapterTest` (fait, H2/Flowable embarqué)
+- [x] Déploiement réel via `RepositoryService` sur un BPMN de test → nouvelle version créée, visible immédiatement sans redémarrage (démarrage d'un processus avec cette clé juste après le déploiement)
+- [x] Redéploiement de la même clé → version incrémentée, instances existantes sur l'ancienne version non affectées (comportement natif Flowable, observé pas forcé)
+- [x] `latestVersion`/`activeInstanceCount` corrects après un déploiement + démarrage d'instances
 
 ## Frontend Tests
 

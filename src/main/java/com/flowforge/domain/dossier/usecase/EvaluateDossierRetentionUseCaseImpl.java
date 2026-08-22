@@ -64,7 +64,7 @@ public final class EvaluateDossierRetentionUseCaseImpl implements EvaluateDossie
             return EvaluationResult.absentSettings();
         }
 
-        List<Dossier> candidates = dossierRepository.findClosedForRetention(batchSize);
+        List<Dossier> candidates = dossierRepository.findClosedForRetention(tenantId, batchSize);
         Instant now = Instant.now();
         int archived = 0;
         for (Dossier dossier : candidates) {

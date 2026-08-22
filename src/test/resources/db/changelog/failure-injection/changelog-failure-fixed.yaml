@@ -1,0 +1,65 @@
+# Même changelog que changelog-failure.yaml, avec le changeset 003 corrigé — utilisé par
+# LiquibasePartialFailureIT pour simuler le "redémarrage" après correction (D-LIQUIBASE-TEST).
+# Les changesets 001/002 sont déjà suivis dans DATABASECHANGELOG (id+author+file identiques) et
+# ne sont donc pas rejoués — seule la reprise à partir de 003 est exercée.
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-probe-table
+      author: test
+      logicalFilePath: db/changelog/failure-injection/changelog-failure.yaml
+      changes:
+        - createTable:
+            tableName: failure_injection_probe
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: label
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: 002-insert-first-row
+      author: test
+      logicalFilePath: db/changelog/failure-injection/changelog-failure.yaml
+      changes:
+        - insert:
+            tableName: failure_injection_probe
+            columns:
+              - column:
+                  name: id
+                  valueNumeric: 1
+              - column:
+                  name: label
+                  value: "committed-before-failure"
+  - changeSet:
+      id: 003-fails-on-not-null
+      author: test
+      logicalFilePath: db/changelog/failure-injection/changelog-failure.yaml
+      changes:
+        - insert:
+            tableName: failure_injection_probe
+            columns:
+              - column:
+                  name: id
+                  valueNumeric: 2
+              - column:
+                  name: label
+                  value: "fixed-on-restart"
+  - changeSet:
+      id: 004-never-reached
+      author: test
+      logicalFilePath: db/changelog/failure-injection/changelog-failure.yaml
+      changes:
+        - insert:
+            tableName: failure_injection_probe
+            columns:
+              - column:
+                  name: id
+                  valueNumeric: 3
+              - column:
+                  name: label
+                  value: "should-not-run-until-003-is-fixed"

@@ -1,6 +1,7 @@
 package com.flowforge.infrastructure.persistence.workflow;
 
 import com.flowforge.domain.dossier.model.DossierWorkflowLink;
+import com.flowforge.domain.dossier.model.WorkflowAlreadyRunningException;
 import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
 import com.flowforge.domain.shared.PageQuery;
 import com.flowforge.domain.shared.PageResult;
@@ -9,6 +10,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,7 +26,15 @@ class JpaDossierWorkflowLinkRepositoryAdapter implements DossierWorkflowLinkRepo
     @Override
     @Transactional
     public DossierWorkflowLink save(DossierWorkflowLink link) {
-        return repository.saveAndFlush(DossierWorkflowLinkJpaEntity.fromDomain(link)).toDomain();
+        try {
+            return repository.saveAndFlush(DossierWorkflowLinkJpaEntity.fromDomain(link)).toDomain();
+        } catch (DataIntegrityViolationException ex) {
+            // uq_dossier_workflow_link_active : un second reserve() concurrent sur le même
+            // dossier perd la course au niveau DB — traduit en exception domaine pour que les
+            // appelants (ex. OutboxRelayScheduler) la traitent comme WorkflowAlreadyRunningException,
+            // pas comme un échec transitoire à retenter.
+            throw new WorkflowAlreadyRunningException(link.dossierId(), ex);
+        }
     }
 
     @Override

@@ -40,9 +40,9 @@ public class JpaDossierRepositoryAdapter implements DossierRepository {
 
     @Override
     @Transactional(readOnly = true)
-    public List<Dossier> findClosedForRetention(int limit) {
+    public List<Dossier> findClosedForRetention(String tenantId, int limit) {
         return repository
-                .findClosedForRetention(DossierStatus.CLOTURE, PageRequest.of(0, limit))
+                .findClosedForRetention(tenantId, DossierStatus.CLOTURE, PageRequest.of(0, limit))
                 .stream()
                 .map(DossierJpaEntity::toDomain)
                 .toList();

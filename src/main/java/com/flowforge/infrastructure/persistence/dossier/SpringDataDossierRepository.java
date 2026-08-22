@@ -14,7 +14,7 @@ interface SpringDataDossierRepository
     Optional<DossierJpaEntity> findByTenantIdAndReference(String tenantId, String reference);
 
     @Query("select d from DossierJpaEntity d "
-            + "where d.status = :status and d.closedAt is not null "
+            + "where d.tenantId = :tenantId and d.status = :status and d.closedAt is not null "
             + "order by d.closedAt asc, d.id asc")
-    List<DossierJpaEntity> findClosedForRetention(DossierStatus status, Pageable pageable);
+    List<DossierJpaEntity> findClosedForRetention(String tenantId, DossierStatus status, Pageable pageable);
 }

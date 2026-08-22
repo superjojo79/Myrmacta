@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             targetNamespace="http://flowforge/processes/test">
+  <!--
+    Process de test dédié à FlowableLockDimensioningTest (fiabilisation-tests-plateforme,
+    D-FLOWABLE-LOCK-TEST) : la seule tâche est asynchrone (flowable:async="true"), ce qui
+    crée une ligne ACT_RU_JOB au démarrage — la cible réelle du test de verrouillage.
+    Sous src/test/resources, donc jamais déployé en production.
+  -->
+  <process id="asyncLockDimensioningTest" name="Async Lock Dimensioning Test" isExecutable="true">
+    <startEvent id="startEvent" name="Start" />
+    <sequenceFlow id="flow_start_task" sourceRef="startEvent" targetRef="asyncTask" />
+
+    <serviceTask id="asyncTask" name="Async no-op" flowable:async="true" flowable:expression="${true}" />
+    <sequenceFlow id="flow_task_end" sourceRef="asyncTask" targetRef="endEvent" />
+
+    <endEvent id="endEvent" name="End" />
+  </process>
+</definitions>

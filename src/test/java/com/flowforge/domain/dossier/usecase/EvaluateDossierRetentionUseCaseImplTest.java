@@ -3,6 +3,7 @@ package com.flowforge.domain.dossier.usecase;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -67,7 +68,7 @@ class EvaluateDossierRetentionUseCaseImplTest {
         assertThat(result.scanned()).isZero();
         assertThat(result.archived()).isZero();
         assertThat(result.settingsAbsent()).isTrue();
-        verify(dossierRepository, never()).findClosedForRetention(anyInt());
+        verify(dossierRepository, never()).findClosedForRetention(anyString(), anyInt());
         verify(dossierRepository, never()).save(any());
         verify(purgeOutboxRepository, never()).insert(any());
     }
@@ -76,7 +77,7 @@ class EvaluateDossierRetentionUseCaseImplTest {
     void evaluate_expiredClotureDossierIsArchivedWithOutbox() {
         settings(30);
         Dossier expired = dossier("CLAIM", NOW.minus(java.time.Duration.ofDays(31)));
-        when(dossierRepository.findClosedForRetention(100)).thenReturn(List.of(expired));
+        when(dossierRepository.findClosedForRetention(TENANT, 100)).thenReturn(List.of(expired));
         when(typeRepository.findByCode(TENANT, "CLAIM")).thenReturn(Optional.of(inheritType("CLAIM")));
 
         EvaluateDossierRetentionUseCase.EvaluationResult result = evaluateAt(NOW);
@@ -102,7 +103,7 @@ class EvaluateDossierRetentionUseCaseImplTest {
     void evaluate_notYetExpiredDossierIsUnchanged() {
         settings(30);
         Dossier recent = dossier("CLAIM", NOW.minus(java.time.Duration.ofDays(1)));
-        when(dossierRepository.findClosedForRetention(100)).thenReturn(List.of(recent));
+        when(dossierRepository.findClosedForRetention(TENANT, 100)).thenReturn(List.of(recent));
         when(typeRepository.findByCode(TENANT, "CLAIM")).thenReturn(Optional.of(inheritType("CLAIM")));
 
         EvaluateDossierRetentionUseCase.EvaluationResult result = evaluateAt(NOW);
@@ -117,7 +118,7 @@ class EvaluateDossierRetentionUseCaseImplTest {
     void evaluate_retentionNeverTypeIsNeverArchived() {
         settings(30);
         Dossier expired = dossier("LOG", NOW.minus(java.time.Duration.ofDays(365)));
-        when(dossierRepository.findClosedForRetention(100)).thenReturn(List.of(expired));
+        when(dossierRepository.findClosedForRetention(TENANT, 100)).thenReturn(List.of(expired));
         when(typeRepository.findByCode(TENANT, "LOG")).thenReturn(Optional.of(neverType("LOG")));
 
         EvaluateDossierRetentionUseCase.EvaluationResult result = evaluateAt(NOW);
@@ -133,7 +134,7 @@ class EvaluateDossierRetentionUseCaseImplTest {
         Dossier noClosedAt = new Dossier(
                 UUID.randomUUID(), TENANT, "DOS-1", "CLAIM", "Dossier", DossierStatus.CLOTURE,
                 Map.of(), null, 0, "creator", NOW, "creator", NOW, null, null, null);
-        when(dossierRepository.findClosedForRetention(100)).thenReturn(List.of(noClosedAt));
+        when(dossierRepository.findClosedForRetention(TENANT, 100)).thenReturn(List.of(noClosedAt));
 
         EvaluateDossierRetentionUseCase.EvaluationResult result = evaluateAt(NOW);
 
@@ -146,7 +147,7 @@ class EvaluateDossierRetentionUseCaseImplTest {
     void evaluate_alreadyInOutboxIsIdempotentNoOp() {
         settings(30);
         Dossier expired = dossier("CLAIM", NOW.minus(java.time.Duration.ofDays(31)));
-        when(dossierRepository.findClosedForRetention(100)).thenReturn(List.of(expired));
+        when(dossierRepository.findClosedForRetention(TENANT, 100)).thenReturn(List.of(expired));
         when(purgeOutboxRepository.existsByDossierId(expired.id())).thenReturn(true);
 
         EvaluateDossierRetentionUseCase.EvaluationResult result = evaluateAt(NOW);
@@ -165,7 +166,7 @@ class EvaluateDossierRetentionUseCaseImplTest {
                 UUID.randomUUID(), TENANT, "DOS-2", "CLAIM", "Dossier", DossierStatus.ARCHIVE,
                 Map.of(), null, 0, "creator", NOW, "someone", NOW,
                 "someone", NOW.minus(java.time.Duration.ofDays(400)), null);
-        when(dossierRepository.findClosedForRetention(100)).thenReturn(List.of(alreadyArchived));
+        when(dossierRepository.findClosedForRetention(TENANT, 100)).thenReturn(List.of(alreadyArchived));
         when(typeRepository.findByCode(TENANT, "CLAIM")).thenReturn(Optional.of(inheritType("CLAIM")));
 
         EvaluateDossierRetentionUseCase.EvaluationResult result = evaluateAt(NOW);
@@ -179,11 +180,11 @@ class EvaluateDossierRetentionUseCaseImplTest {
     void evaluate_passesLimitThroughToPort() {
         when(settingsRepository.findByTenantId(TENANT)).thenReturn(Optional.of(
                 new TenantRetentionSettings(TENANT, 30, NOW, "admin")));
-        when(dossierRepository.findClosedForRetention(7)).thenReturn(List.of());
+        when(dossierRepository.findClosedForRetention(TENANT, 7)).thenReturn(List.of());
 
         useCase.evaluate(TENANT, 7);
 
-        verify(dossierRepository).findClosedForRetention(7);
+        verify(dossierRepository).findClosedForRetention(TENANT, 7);
     }
 
     private void settings(int defaultRetentionDays) {

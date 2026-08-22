@@ -15,10 +15,12 @@ public interface DossierRepository {
 
     /**
      * Candidates for retention evaluation (D-SCAN): {@code status = CLOTURE} and
-     * {@code closedAt IS NOT NULL}, ordered by {@code closedAt ASC, id ASC}, capped at
-     * {@code limit} reads (A-BATCH-COUNT).
+     * {@code closedAt IS NOT NULL} for {@code tenantId}, ordered by {@code closedAt ASC, id ASC},
+     * capped at {@code limit} reads (A-BATCH-COUNT). {@code tenantId} is redundant with the
+     * schema-per-tenant connection (TODO §37) but kept explicit for defense in depth, matching
+     * {@link #findByReference}.
      */
-    List<Dossier> findClosedForRetention(int limit);
+    List<Dossier> findClosedForRetention(String tenantId, int limit);
 
     void deleteById(UUID id);
 }

@@ -3,6 +3,11 @@ package com.flowforge;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
+import com.tngtech.archunit.core.domain.JavaClass;
+import com.tngtech.archunit.lang.ArchCondition;
+import com.tngtech.archunit.lang.ConditionEvents;
+import com.tngtech.archunit.lang.SimpleConditionEvent;
+
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
@@ -38,4 +43,26 @@ class ArchitectureRulesTest {
             .and().areTopLevelClasses()
             .and().areNotInterfaces()
             .should().haveSimpleNameEndingWith("Impl");
+
+    @ArchTest
+    static final ArchRule usecase_impl_implements_port_in = classes()
+            .that().resideInAPackage("..usecase..")
+            .and().areTopLevelClasses()
+            .and().areNotInterfaces()
+            .and().haveSimpleNameEndingWith("Impl")
+            .should(implementAnInterfaceFromPortIn());
+
+    private static ArchCondition<JavaClass> implementAnInterfaceFromPortIn() {
+        return new ArchCondition<>("implement an interface residing in a ..port.in.. package") {
+            @Override
+            public void check(JavaClass javaClass, ConditionEvents events) {
+                boolean implementsPortIn = javaClass.getInterfaces().stream()
+                        .anyMatch(itf -> itf.toErasure().getPackageName().contains(".port.in"));
+                if (!implementsPortIn) {
+                    events.add(SimpleConditionEvent.violated(javaClass,
+                            javaClass.getFullName() + " does not implement any interface from a ..port.in.. package"));
+                }
+            }
+        };
+    }
 }

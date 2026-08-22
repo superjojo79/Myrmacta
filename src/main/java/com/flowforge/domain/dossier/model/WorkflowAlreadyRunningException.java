@@ -11,6 +11,11 @@ public class WorkflowAlreadyRunningException extends RuntimeException {
         this.dossierId = dossierId;
     }
 
+    public WorkflowAlreadyRunningException(UUID dossierId, Throwable cause) {
+        super("A workflow is already active for dossier " + dossierId, cause);
+        this.dossierId = dossierId;
+    }
+
     public UUID dossierId() {
         return dossierId;
     }

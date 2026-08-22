@@ -145,6 +145,58 @@ class DossierPersistenceTest {
                 .isInstanceOfAny(ObjectOptimisticLockingFailureException.class, OptimisticLockException.class);
     }
 
+    @Test
+    void findClosedForRetention_isScopedToTenantAndOrdersByClosedAtAsc() {
+        // §37 : findClosedForRetention prend désormais tenantId explicitement (aligné sur
+        // findByReference) — ce test prouve l'isolation, même si en déploiement réel une seule
+        // instance ne voit jamais qu'un schéma/tenant (search_path, 02-multi-tenant.md).
+        String otherTenant = "tenant-other-" + UUID.randomUUID();
+        Instant closedEarlier = Instant.parse("2026-08-01T00:00:00Z");
+        Instant closedLater = Instant.parse("2026-08-10T00:00:00Z");
+
+        Dossier tenantDevLater = closedDossier("tenant_dev", closedLater);
+        Dossier tenantDevEarlier = closedDossier("tenant_dev", closedEarlier);
+        Dossier otherTenantDossier = closedDossier(otherTenant, closedEarlier);
+        dossierRepository.save(tenantDevLater);
+        dossierRepository.save(tenantDevEarlier);
+        dossierRepository.save(otherTenantDossier);
+
+        List<Dossier> candidates = dossierRepository.findClosedForRetention("tenant_dev", 100);
+
+        assertThat(candidates)
+                .extracting(Dossier::id)
+                .contains(tenantDevEarlier.id(), tenantDevLater.id())
+                .doesNotContain(otherTenantDossier.id());
+        assertThat(candidates).extracting(Dossier::tenantId).containsOnly("tenant_dev");
+        int earlierIndex = candidates.indexOf(candidates.stream()
+                .filter(d -> d.id().equals(tenantDevEarlier.id())).findFirst().orElseThrow());
+        int laterIndex = candidates.indexOf(candidates.stream()
+                .filter(d -> d.id().equals(tenantDevLater.id())).findFirst().orElseThrow());
+        assertThat(earlierIndex).isLessThan(laterIndex);
+    }
+
+    private static Dossier closedDossier(String tenantId, Instant closedAt) {
+        UUID id = UUID.randomUUID();
+        Instant now = Instant.parse("2026-07-31T12:00:00Z");
+        return new Dossier(
+                id,
+                tenantId,
+                "DOS-RETENTION-" + id.toString().replace("-", "").substring(0, 12),
+                "STALE",
+                "Retention scan dossier",
+                DossierStatus.CLOTURE,
+                Map.of(),
+                null,
+                0,
+                "creator",
+                now,
+                "creator",
+                now,
+                "creator",
+                closedAt,
+                null);
+    }
+
     private static Dossier dossier(long version, DossierStatus status) {
         UUID id = UUID.randomUUID();
         Instant now = Instant.parse("2026-07-31T12:00:00Z");

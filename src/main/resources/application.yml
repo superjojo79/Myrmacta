@@ -103,6 +103,12 @@ app:
       max-attempts: 5
       poll-delay: 1s
       processed-retention: 7d
+    bpmn-upload:
+      # Taille max : pas de borne dédiée ici, la seule limite est
+      # spring.servlet.multipart.max-file-size/max-request-size ci-dessus — une seule source de
+      # vérité, pas de second seuil applicatif à garder synchronisé (même convention que
+      # app.dossier.attachment).
+      allowed-content-types: ${APP_WORKFLOW_BPMN_UPLOAD_ALLOWED_TYPES:application/xml,text/xml}
   connector:
     crypto:
       master-key: ${APP_CONNECTOR_MASTER_KEY:}

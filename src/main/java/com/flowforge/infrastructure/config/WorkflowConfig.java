@@ -34,7 +34,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @Configuration
 @EnableScheduling
-@EnableConfigurationProperties(WorkflowProperties.class)
+@EnableConfigurationProperties({WorkflowProperties.class, BpmnUploadProperties.class})
 public class WorkflowConfig {
 
     @Bean

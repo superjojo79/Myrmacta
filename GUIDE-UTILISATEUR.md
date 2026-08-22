@@ -4,9 +4,9 @@ Ce guide décrit, écran par écran, comment créer un dossier, démarrer/suivre
 configurer un connecteur et configurer un template de document **depuis l'interface web**.
 Pour installer et lancer l'environnement, voir [GETTING-STARTED.md](GETTING-STARTED.md).
 
-> Certaines opérations décrites ci-dessous (le dépôt du diagramme BPMN lui-même, notamment) ne
-> sont **pas encore** exposées dans l'UI à ce stade du projet — c'est signalé explicitement à
-> chaque fois plutôt que passé sous silence.
+> FlowForge ne propose ni designer graphique ni éditeur BPMN — un diagramme se modélise toujours
+> avec un outil externe. Son **dépôt** côté moteur Flowable, en revanche, est possible depuis
+> l'UI (§3) depuis cette feature ; ce n'était pas le cas auparavant.
 
 ------
 
@@ -81,34 +81,48 @@ Le dossier est créé puis la page bascule automatiquement sur sa fiche détail
 
 ## 3. Démarrer et suivre un workflow BPMN
 
-### Ce que l'UI ne fait pas (à savoir avant de commencer)
+### Déployer un diagramme BPMN
 
-FlowForge ne propose **aucun écran pour dessiner ou déposer un fichier `.bpmn`** — ni designer
-graphique intégré, ni bouton d'upload. Le diagramme est visualisable en lecture seule une fois
-qu'une instance tourne, mais son **dépôt côté moteur Flowable est une opération technique**,
-réalisée par l'équipe de développement/exploitation :
+FlowForge ne propose **aucun écran pour dessiner un diagramme** — le fichier `.bpmn20.xml` est
+toujours modélisé avec un outil externe (ex. Camunda Modeler). Une fois ce fichier obtenu, deux
+mécanismes de dépôt côté moteur Flowable coexistent :
 
-1. Le diagramme BPMN 2.0 est modélisé avec un outil externe (Flowable Modeler ou tout éditeur
-   BPMN produisant un `.bpmn20.xml` valide).
-2. Le fichier est déposé dans le dépôt backend (`src/main/resources/processes/`).
-3. Au redémarrage de l'application, le processus est automatiquement déployé dans Flowable pour
-   le tenant courant.
+**Au build/démarrage (référence CI/exploitation)** — le fichier est déposé dans le dépôt backend
+(`src/main/resources/processes/`) ; au démarrage de l'application, tous les processus de ce
+dossier sont automatiquement déployés dans Flowable pour le tenant courant
+(`TenantProcessDeployment`). C'est le mécanisme à utiliser pour tout processus destiné à être
+versionné avec le code.
 
-Si le workflow qu'il vous faut n'existe pas encore, il faut passer par cette étape technique
-avant de pouvoir continuer ci-dessous — ce n'est pas une action disponible depuis le navigateur.
+**À chaud, depuis l'UI (complément)** — écran **Admin → Workflows**
+(`/admin/workflow-types`, `TENANT_ADMIN` ou `WORKFLOW_ADMIN`), section **Déployer un diagramme
+BPMN** en bas de page :
 
-### Une fois le processus déployé côté moteur — associer une config workflow
+1. Sélectionner le fichier `.bpmn20.xml` — il est lu localement et son diagramme s'affiche en
+   prévisualisation (rendu `bpmn-js`, aucun appel réseau de déploiement à ce stade).
+2. Si la clé du processus (`process id` du XML) correspond à un déploiement déjà existant, la
+   version actuelle et le nombre d'instances actives sont affichés — redéployer crée une nouvelle
+   version sans affecter les instances déjà en cours (comportement natif Flowable).
+3. Bouton **Confirmer le déploiement** — le fichier est revalidé côté serveur (BPMN 2.0 bien
+   formé, clé de processus correspondant à une config workflow existante) puis déployé. Un
+   déploiement est **rejeté** si la clé du processus ne correspond à **aucune** config workflow
+   existante : contrairement au scan classpath, ce chemin exige que la config workflow (section
+   suivante) soit créée **avant** l'upload.
+
+Ce mécanisme ne remplace pas le scan classpath au démarrage — c'est un complément pour déployer
+une nouvelle version sans redémarrer l'application.
+
+### Associer une config workflow
 
 Écran **Admin → Workflows** (`/admin/workflow-types`, `TENANT_ADMIN` ou `WORKFLOW_ADMIN`) :
 
 | Champ | Rôle |
 |---|---|
-| `workflowKey` | doit être **identique** à la clé du processus BPMN déployé (`process id` dans le XML) |
+| `workflowKey` | doit être **identique** à la clé du processus BPMN (`process id` dans le XML) — que le processus soit déjà déployé (scan classpath) ou pas encore (upload UI, voir ci-dessus) |
 | `libellé` | nom affiché |
 
 Cet écran ne configure que la **métadonnée applicative** (statuts de dossier autorisés, statut
-appliqué au démarrage du workflow, etc.) — pas le diagramme lui-même, qui est déjà déployé côté
-moteur à ce stade. Une fois créée, la config peut être renommée depuis le tableau.
+appliqué au démarrage du workflow, etc.) — pas le diagramme lui-même, qui se dépose séparément
+(section précédente). Une fois créée, la config peut être renommée depuis le tableau.
 
 ### Démarrer une instance sur un dossier
 

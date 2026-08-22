@@ -84,8 +84,12 @@ l'utilisateur avant d'élargir le périmètre, voir implementation doc) :
 
 ## End-to-End Tests
 
-Non applicable — feature backend pure, aucun flux utilisateur ni
-interface modifiés. Pas de scénario Playwright associé.
+Non applicable — vérifié explicitement (Phase 8), pas supposé par
+défaut : `git diff` sur `frontend/` entre le début de cette feature et
+l'état final est **vide**, aucun fichier frontend touché, aucun contrat
+d'API modifié (seul un port interne, `DossierRepository.findClosedForRetention`,
+change de signature — jamais exposé côté HTTP/SPA). Pas de scénario
+Playwright associé, pas de régression e2e possible.
 
 ## Test Data
 
@@ -131,3 +135,13 @@ terminée).
 | §37 `tenantId` explicite | `SpringDataDossierRepository`/`JpaDossierRepositoryAdapter` tests |
 | Seuils Jacoco LINE 85% / BRANCH 75% | `pom.xml` + `./mvnw verify` global |
 | TODO.md §26/§28/§37 mis à jour | Hors tests — mise à jour doc post-implémentation |
+
+## Phase 8 — clôture (2026-08-22)
+
+Tous les scénarios ci-dessus vérifiés dans la dernière exécution
+`./mvnw verify` (post-Phase 7, après correction de la fuite
+`HikariDataSource`) : 1050 tests, 0 échec, LINE 93.7%, BRANCH 75.0%,
+« All coverage checks have been met. » Aucun gap de couverture restant.
+Frontend/E2E vérifié explicitement hors périmètre (voir « End-to-End
+Tests » ci-dessus). Status : **`done`**. Prochaine phase : `dev-review`
+(Phase 9).

@@ -8,8 +8,8 @@
 > - Inventaire follow-ups / lots : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md)
 > - Séquencement « avant prod » : [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md) §9
 >
-> **Dernière mise à jour :** 2026-08-21 (`contrat-api-client` livrée,
-> PR #65 mergée sur `main`).
+> **Dernière mise à jour :** 2026-08-22 (`fiabilisation-tests-plateforme`
+> Phase 1+2 reviewed — requirements figées, 6 décisions produit actées).
 
 ## Comment s’en servir
 
@@ -123,3 +123,4 @@ référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même
 | 2026-08-21 | `contrat-api-client` Phase 8 (régression complète) | `npm run test` 136/136, `typecheck`/`lint` propres, `npm run test:e2e` 39/39 après correction de 2 régressions SPA réelles dans `frontend/e2e/pilotage.spec.ts` (mocks non enveloppés `PageResponse` + pattern glob Playwright ne matchant plus l'URL avec `?page=&size=`) ; non-déterminisme du golden OpenAPI trouvé et corrigé (`HttpHeaders` exposé par le webhook, `@Parameter(hidden = true)` ajouté) |
 | 2026-08-21 | `contrat-api-client` Phase 9 revue | Revue holistique fichier par fichier : alignement design confirmé, breaking changes de ports tous traités atomiquement (appelants en repo mis à jour), aucun changement de sécurité/autorisation, rollback sûr (aucune migration DB). Aucun problème bloquant nouveau (les 2 trouvés en Phase 7 déjà corrigés). Implémentation complète, TODO §24 clos, en attente de PR |
 | 2026-08-21 | `contrat-api-client` — D-SPA-ADAPT rejouée | Utilisateur : Phase 3 n'avait posé aucune question matérielle (violation du contrat `dev-design`). 3 décisions rejouées via `AskUserQuestion` : D-TASK-LIMIT et D-SORT-CONST confirmées, **D-SPA-ADAPT inversée** — pagination visible ajoutée pour 5/6 listes (`connector-definitions` reste `listAllPages`, menu déroulant pas une liste parcourue) ; `dossiers/{id}/workflows` gagne un affichage qui n'existait pas avant (constat fait en creusant, ajout validé explicitement). 9 tâches TDD supplémentaires, `npm run test` 153/153, `test:e2e` 40/40, aucun fichier backend touché |
+| 2026-08-22 | `fiabilisation-tests-plateforme` Phase 1+2 reviewed | 6 décisions actées via `AskUserQuestion` (une à la fois, conformément au contrat `dev-requirements`) : D-SCOPE=une feature, D-TESTCONTAINERS=adoption ciblée (isolation `search_path` + séquence multi-pods uniquement), D-TESTCONTAINERS-EXEC=tests écrits mais étiquetés « non exécutés ici » (Docker inaccessible dans ce bac à sable, vérifié par `docker info`), D-COVERAGE=LINE 85%/BRANCH 75% BUNDLE, D-TENANT-ID-37=alignement `tenantId` explicite, D-ARCHUNIT-RULE=`usecase.*Impl`→`port.in`. 3 corrections factuelles trouvées avant de demander : `@Version` déjà en place sur `Dossier`, bug `Instant`/`%tY` cité au TODO §26 inexistant dans le code actuel, couverture outbox déjà substantielle — évite de refaire un travail déjà fait |

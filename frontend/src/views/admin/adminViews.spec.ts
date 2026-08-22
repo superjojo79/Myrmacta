@@ -65,5 +65,6 @@ describe('admin views smoke', () => {
     const wrapper = await mountView(WorkflowConfigsAdminView, '/admin/workflow-types')
     await flushPromises()
     expect(wrapper.text()).toContain('Configurations workflow')
+    expect(wrapper.text()).toContain('Déployer un diagramme BPMN')
   })
 })

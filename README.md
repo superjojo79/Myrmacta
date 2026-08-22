@@ -47,7 +47,7 @@ Entité métier centrale de la plateforme. Chaque dossier est constitué d'un **
 
 ### Moteur de workflow BPMN 2.0
 
-Orchestration des flux métier via **Flowable** — standard industriel ouvert. Les processus sont dessinés dans le designer visuel intégré, déployés sans redémarrage, et supervisés via le cockpit Flowable. Support des gateways, tâches humaines, règles DMN et événements de signal.
+Orchestration des flux métier via **Flowable** — standard industriel ouvert. Les processus sont modélisés en BPMN 2.0 avec un outil externe (pas de designer visuel ni de cockpit Flowable intégrés à FlowForge), puis déployés soit au build/démarrage (scan classpath), soit à chaud depuis l'écran d'administration `/admin/workflow-types` (upload avec prévisualisation). Support des gateways, tâches humaines, règles DMN et événements de signal.
 
 ### Système de connecteurs
 

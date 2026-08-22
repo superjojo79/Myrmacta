@@ -1122,3 +1122,85 @@ test('E2E-PAGE-2 tasks inbox pager writes page query', async ({ page }) => {
   await expect(page.getByText('Vérifier')).toBeVisible()
 })
 
+const BPMN_FOR_OTHER_WORKFLOW = `<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" targetNamespace="http://flowforge/e2e">
+  <process id="otherWorkflow" isExecutable="true">
+    <startEvent id="start"/>
+    <userTask id="wait" name="Wait"/>
+    <endEvent id="end"/>
+    <sequenceFlow id="flow1" sourceRef="start" targetRef="wait"/>
+    <sequenceFlow id="flow2" sourceRef="wait" targetRef="end"/>
+  </process>
+</definitions>`
+
+test('E2E-BPMN-1 deploy a valid BPMN diagram: preview then confirm', async ({ page }) => {
+  await mockSession(page)
+  await page.route('**/api/workflow-bpmn-deployments/info*', async (route) => {
+    await route.fulfill({ status: 204, body: '' })
+  })
+  await page.route('**/api/workflow-bpmn-deployments', async (route) => {
+    await route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify({ processDefinitionKey: 'otherWorkflow', deployedVersion: 1, deploymentId: 'dep-1' }),
+    })
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Workflows' }).click()
+  await expect(page.getByRole('heading', { name: 'Déployer un diagramme BPMN' })).toBeVisible()
+
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'diagram.bpmn20.xml',
+    mimeType: 'application/xml',
+    buffer: Buffer.from(BPMN_FOR_OTHER_WORKFLOW),
+  })
+  const section = page.locator('.bpmn-upload-preview')
+  await expect(section.getByText('otherWorkflow')).toBeVisible()
+  await expect(section.getByText('Aucune version déployée pour cette clé pour l\'instant.')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Confirmer le déploiement' }).click()
+  await expect(page.getByText(/Déployé : version 1/)).toBeVisible()
+  await expect(page.getByText('Diagramme déployé avec succès.')).toBeVisible()
+})
+
+test('E2E-BPMN-2 invalid BPMN file shows a client-side error, never calls deploy', async ({ page }) => {
+  await mockSession(page)
+  let deployCalled = false
+  await page.route('**/api/workflow-bpmn-deployments', async (route) => {
+    deployCalled = true
+    await route.fulfill({ status: 201, contentType: 'application/json', body: '{}' })
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Workflows' }).click()
+
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'not-bpmn.xml',
+    mimeType: 'application/xml',
+    buffer: Buffer.from('<?xml version="1.0"?><root><child/></root>'),
+  })
+  await expect(page.getByText(/non reconnu comme un diagramme BPMN valide/)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Confirmer le déploiement' })).toHaveCount(0)
+  expect(deployCalled).toBe(false)
+})
+
+test('E2E-BPMN-3 redeploying an existing key shows current version and active instances', async ({ page }) => {
+  await mockSession(page)
+  await page.route('**/api/workflow-bpmn-deployments/info*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ processDefinitionKey: 'otherWorkflow', latestVersion: 3, activeInstanceCount: 12 }),
+    })
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Workflows' }).click()
+
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'diagram.bpmn20.xml',
+    mimeType: 'application/xml',
+    buffer: Buffer.from(BPMN_FOR_OTHER_WORKFLOW),
+  })
+  await expect(page.getByText('Version actuelle déployée : 3')).toBeVisible()
+  await expect(page.getByText(/instances actives : 12/)).toBeVisible()
+})
+

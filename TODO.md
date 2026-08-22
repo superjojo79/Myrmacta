@@ -293,7 +293,7 @@ effectivement scalé horizontalement.
 
 ---
 
-### [ ] 35. Modélisation et déploiement des diagrammes BPMN — écart vision / implémentation
+### [x] 35. Modélisation et déploiement des diagrammes BPMN — écart vision / implémentation
 
 **Constat :** [05-workflow-engine.md](analysis%20doc/05-workflow-engine.md) retient « Designer visuel :
 Flowable UI (web, embarqué) » et « Monitoring instances : Flowable UI Cockpit » ; le `README.md`
@@ -328,6 +328,33 @@ dépôt backend par l'équipe technique (documenté comme limite actuelle dans
 **Impacte :** [05-workflow-engine.md](analysis%20doc/05-workflow-engine.md), `README.md` (sections
 Proposition de valeur et Fonctionnalités principales), [GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md),
 `TenantProcessDeployment.java`.
+
+**Résolu (2026-08-22, feature `deploiement-bpmn`) :** option **(c)** retenue — écran d'upload
+minimal dans FlowForge, sans Flowable Modeler ni Cockpit (décision produit tranchée directement,
+cette session) — plus prévisualisation obligatoire du diagramme avant tout import (réutilisation du
+rendu `bpmn-js`, décision complémentaire non envisagée par les 3 options initiales).
+
+- Backend : `DeployBpmnProcessUseCase`/`GetProcessDeploymentInfoUseCase` (domaine),
+  `BpmnParserPort`/`FlowableBpmnParserAdapter` (parsing/validation BPMN 2.0, extraits en port pour
+  respecter la règle ArchUnit domaine-sans-framework), `WorkflowDeploymentPort`/
+  `FlowableWorkflowDeploymentAdapter` (`RepositoryService`/`RuntimeService`),
+  `WorkflowBpmnDeploymentController` (`GET .../info`, `POST` multipart,
+  `@PreAuthorize` `TENANT_ADMIN`/`WORKFLOW_ADMIN`). Clé de processus sans `WorkflowTypeConfig`
+  correspondante → rejet strict (`UnknownWorkflowKeyException` → 404, symétrique
+  `WorkflowTypeConfigNotFoundException`).
+- Frontend : `BpmnCanvas.vue` (rendu bpmn-js bas niveau, extrait de `BpmnViewer.vue` qui le
+  réutilise désormais en interne, contrat public inchangé) ; `BpmnUploadPreview.vue` (lecture
+  locale, prévisualisation, info de redéploiement, confirmation explicite avant tout appel de
+  déploiement) ; nouvelle section dans `/admin/workflow-types` (pas de nouvel écran dédié).
+- Le scan classpath au démarrage (`TenantProcessDeployment`) n'est **pas remplacé** — l'upload
+  admin est un mécanisme complémentaire de déploiement à chaud.
+- Taille d'upload : pas de nouvelle propriété — réutilise le seuil global
+  `spring.servlet.multipart.max-file-size` existant (convention « source de vérité unique » déjà
+  établie pour les pièces jointes dossier, découverte en implémentation et signalée avant de
+  trancher plutôt que silencieusement contournée).
+- `README.md` et `05-workflow-engine.md` corrigés (retrait des mentions non livrées : designer
+  visuel intégré, cockpit Flowable) ; `GUIDE-UTILISATEUR.md` §3 documente les deux mécanismes de
+  déploiement qui coexistent.
 
 ---
 

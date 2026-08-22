@@ -184,27 +184,54 @@ Liquibase correspondants avec leurs contextes `tenant-init` / `tenant-migration`
 
 ---
 
-### [ ] 26. Concurrence sur le dossier et unicité de la référence
+### [x] 26. Concurrence sur le dossier et unicité de la référence
 
-**À décider :** verrouillage optimiste (`@Version`) sur `Dossier`, écrit concurremment par les
-`ServiceTask` et les utilisateurs ; contrainte d'unicité et mécanisme de séquence pour
-`Dossier.reference` en déploiement multi-pods (le `nextSequence(...)` n'est pas spécifié) ; fuseau
-horaire de référence pour le millésime de la numérotation annuelle. L'extrait actuel de
-`SequentialReferenceGenerator` échoue en outre à l'exécution — `Instant` ne supporte pas le champ
-`YEAR` requis par la conversion `%tY`.
+**Constat révisé (feature `fiabilisation-tests-plateforme`, 2026-08-22) :** relecture du code avant
+implémentation a montré que 2 des 3 points listés ici étaient déjà résolus et jamais mis à jour :
+verrouillage optimiste `@Version` déjà présent sur `Dossier` (`DossierJpaEntity.java`) ; le bug
+allégué (`Instant` ne supporte pas `%tY`) n'existe pas dans `SequentialReferenceGenerator.java`
+(utilise `clock.instant().atZone(ZoneOffset.UTC).getYear()`, un `int`). Seul le 3ᵉ point —
+`Dossier.reference` sous accès concurrent multi-pods réel — restait ouvert.
+
+**Livré (2026-08-22 — feature `fiabilisation-tests-plateforme`) :** `SequentialReferenceMultiPodIT`
+(Testcontainers PostgreSQL, 8 pods simulés par 8 `DataSource`/`TransactionTemplate` indépendants,
+80 générations concurrentes) prouve l'absence de doublon et de trou dans la séquence sous charge
+réelle. Écrit et compilé ; non exécuté dans le bac à sable de développement (Docker absent) —
+exécution/vérification en CI (`ubuntu-latest`, Docker natif). Voir
+`docs/ai/testing/2026-08-22-feature-fiabilisation-tests-plateforme.md`.
 
 **Impacte :** [04-dossiers.md](analysis%20doc/04-dossiers.md).
 
 ---
 
-### [ ] 28. Stratégie de test
+### [x] 28. Stratégie de test
 
-**À produire :** l'outillage et l'exécution en CI des tests déjà nommés par la documentation (étanchéité
-du `search_path` avec Testcontainers, dimensionnement des verrous Flowable en charge, migration
-Liquibase multi-schéma avec échec partiel), complétés par ArchUnit pour rendre exécutables la règle de
-dépendance et la convention `port/in` / `usecase`, les tests du relais outbox (rejeu, idempotence,
-crash entre publication et marquage), la résolution en cascade des templates, et la règle « un seul
-workflow actif » en parallèle réel. Décider également des seuils de couverture.
+**Livré (2026-08-22 — feature `fiabilisation-tests-plateforme`) :**
+
+- Étanchéité `search_path` par tenant : `TenantSchemaIsolationIT` (Testcontainers PostgreSQL réel,
+  2 schémas). Écrit/compilé, non exécuté ici (Docker absent) — CI seulement.
+- Dimensionnement des verrous Flowable sous charge : `FlowableLockDimensioningTest` — H2 + threads
+  réels (le verrouillage Flowable est un mécanisme SQL portable, pas Postgres-spécifique), exercice
+  direct de `AcquireJobsCmd` et `ResetExpiredJobsCmd`. Exécuté et vert.
+- Migration Liquibase en échec partiel : `LiquibasePartialFailureIT` — portée mono-schéma (pas
+  multi-schéma : l'architecture réelle est « un schéma par instance », voir
+  `02-multi-tenant.md`), H2, reprise idempotente via `DATABASECHANGELOG`. Exécuté et vert.
+- ArchUnit : règle `..usecase..*Impl` → doit implémenter une interface de `..port.in..` ajoutée à
+  `ArchitectureRulesTest`. Exécutée et verte.
+- Relais outbox (rejeu, idempotence, crash) : couverture déjà substantielle avant cette feature
+  (`OutboxRelaySchedulerTest`, `OutboxRelayIT`) — pas un trou réel, pas de nouveau test nécessaire.
+- Résolution en cascade des templates : `ResolveDocumentTemplateUseCaseImplTest` (JPA réel, pas de
+  mock — la cascade est implémentée dans la requête native `findBestActive`). Exécuté et vert.
+- « Un seul workflow actif » sous parallélisme réel : `ConcurrentWorkflowReservationTest` — H2 +
+  threads réels sur `AttachWorkflowUseCase.reserve`. A révélé et corrigé un bug réel : le perdant
+  de la course recevait une `DataIntegrityViolationException` brute au lieu de
+  `WorkflowAlreadyRunningException`, traitée par erreur comme un échec transitoire par
+  `OutboxRelayScheduler` (retry) au lieu d'un dead-letter. Exécuté et vert.
+- Seuils de couverture : Jacoco `BUNDLE` LINE 85% (était 80%), nouvelle règle BRANCH 75% (n'existait
+  pas). `./mvnw verify` vert avec 1050 tests (0 échec), LINE 93.7%, BRANCH 75.0%.
+
+Détails complets (décisions techniques, requirements coverage) :
+`docs/ai/design/2026-08-22-feature-fiabilisation-tests-plateforme.md`.
 
 ---
 
@@ -345,7 +372,7 @@ désormais exposée par le backend plutôt que redocumentée côté UI.
 
 ---
 
-### [ ] 37. `findClosedForRetention` sans `tenantId` explicite — rupture du pattern « ceinture et bretelles »
+### [x] 37. `findClosedForRetention` sans `tenantId` explicite — rupture du pattern « ceinture et bretelles »
 
 **Constat (revue PR #55, `retention-dossier-type`) :** `SpringDataDossierRepository` scope déjà
 certaines requêtes par isolation de schéma **et** par `tenantId` explicite en paramètre (ex.
@@ -357,9 +384,12 @@ tenant, donc aucune fuite inter-tenant possible en pratique — mais l'incohére
 même fichier est un piège si ce postulat d'architecture évolue un jour (ex. pooling de connexions
 multi-tenant).
 
-**À décider :** aligner `findClosedForRetention` sur le pattern existant (paramètre `tenantId`
-explicite, même redondant avec le schéma) par cohérence défensive, ou documenter explicitement
-pourquoi les requêtes de job planifié dérogent au pattern des requêtes servant des requêtes HTTP.
+**Livré (2026-08-22 — feature `fiabilisation-tests-plateforme`) :** `findClosedForRetention` aligné
+sur le pattern existant — `tenantId` explicite ajouté au port (`DossierRepository`), à l'adaptateur
+JPA (`JpaDossierRepositoryAdapter`) et à la requête (`SpringDataDossierRepository`, `and
+d.tenantId = :tenantId`) ; `EvaluateDossierRetentionUseCaseImpl` propage le `tenantId` déjà en
+paramètre de `evaluate(...)`. Test de non-régression (seul appelant existant) + nouveau test
+d'isolation multi-tenant dans `DossierPersistenceTest`.
 
 **Impacte :** `SpringDataDossierRepository.java`, `JpaDossierRepositoryAdapter.java`,
 [02-multi-tenant.md](analysis%20doc/02-multi-tenant.md).

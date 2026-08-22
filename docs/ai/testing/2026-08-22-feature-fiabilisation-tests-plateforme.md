@@ -2,7 +2,7 @@
 phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
-status: draft
+status: done
 created: 2026-08-22
 updated: 2026-08-22
 feature: fiabilisation-tests-plateforme
@@ -33,41 +33,54 @@ design (`Component Breakdown`, `Requirements Coverage`).
 ## Unit Tests
 
 ### `ResolveDocumentTemplateUseCaseImplTest` (nouveau)
-- [ ] Résolution exacte : `variantKey` + `locale` fournis et présents → template exact retourné
-- [ ] Fallback locale : `locale` absent en base pour ce variant → repli sur le template sans locale
-- [ ] Fallback variant : `variantKey` absent en base → repli sur le template par défaut (sans variant)
-- [ ] Cascade complète : ni variant ni locale ne matchent → repli sur le template par défaut du `templateKey`
-- [ ] Aucun template actif ne matche après cascade → `TemplateNotFoundException`
-- [ ] `templateKey` blanc/null → `IllegalArgumentException` (via `DocumentTemplateSupport.requireText`)
+- [x] Résolution exacte : `variantKey` + `locale` fournis et présents → template exact retourné
+- [x] Fallback locale : `locale` absent en base pour ce variant → repli sur le template sans locale
+- [x] Fallback variant : `variantKey` absent en base → repli sur le template par défaut (sans variant)
+- [x] Cascade complète : ni variant ni locale ne matchent → repli sur le template par défaut du `templateKey`
+- [x] Aucun template actif ne matche après cascade → `TemplateNotFoundException`
+- [x] `templateKey` blanc/null → `TemplateValidationException` (scénario révisé : `DocumentTemplateSupport.requireText` lève `TemplateValidationException`, pas `IllegalArgumentException` comme prévu initialement)
 
 ### `ArchitectureRulesTest` (règle ajoutée)
-- [ ] `usecase_impl_implements_port_in` : toute classe `..usecase..*Impl` implémente au moins une interface de `..port.in..` — vert sur le code existant (aucune classe en violation)
+- [x] `usecase_impl_implements_port_in` : toute classe `..usecase..*Impl` implémente au moins une interface de `..port.in..` — vert sur le code existant (aucune classe en violation)
 
 ### `SpringDataDossierRepository` / `JpaDossierRepositoryAdapter` (§37, modifié)
-- [ ] `findClosedForRetention(tenantId, limit)` ne retourne que les dossiers du tenant demandé (test avec 2 tenants, dossiers clôturés dans chacun)
-- [ ] Non-régression : `EvaluateDossierRetentionUseCaseImpl` (seul appelant) continue de fonctionner avec la nouvelle signature — test existant adapté, pas de comportement observable changé pour un tenant unique
+- [x] `findClosedForRetention(tenantId, limit)` ne retourne que les dossiers du tenant demandé (test avec 2 tenants, dossiers clôturés dans chacun)
+- [x] Non-régression : `EvaluateDossierRetentionUseCaseImpl` (seul appelant) continue de fonctionner avec la nouvelle signature — test existant adapté, pas de comportement observable changé pour un tenant unique
 
 ## Integration Tests
 
 ### `FlowableLockDimensioningTest` (nouveau — H2 + threads réels, D-FLOWABLE-LOCK-TEST)
-- [ ] N threads réels tentent d'acquérir le même job Flowable simultanément → un seul thread obtient le verrou (`lockOwner` unique observé)
-- [ ] Le verrou expiré (`lockExpirationTime` dépassé) redevient acquérable par un autre thread
+- [x] N threads réels tentent d'acquérir le même job Flowable simultanément → un seul thread obtient le verrou (`lockOwner` unique observé)
+- [x] Le verrou expiré (`lockExpirationTime` dépassé) redevient acquérable par un autre thread (via le vrai `ResetExpiredJobsCmd` de Flowable, pas une simulation ad hoc)
 
 ### `ConcurrentWorkflowReservationTest` (nouveau — H2 + threads réels, D-PARALLELISM-TEST)
-- [ ] N threads réels appellent `AttachWorkflowUseCaseImpl.reserve()` simultanément sur le même dossier → une seule réservation réussit, les autres lèvent `WorkflowAlreadyRunningException` (pas de `DataIntegrityViolationException` qui fuite)
-- [ ] Après clôture (`abortReserved`) de la réservation active, une nouvelle réservation concurrente redevient possible
+- [x] N threads réels appellent `AttachWorkflowUseCaseImpl.reserve()` simultanément sur le même dossier → une seule réservation réussit, les autres lèvent `WorkflowAlreadyRunningException` (pas de `DataIntegrityViolationException` qui fuite) — **a révélé un bug réel** (voir implementation doc, Design Deviations) corrigé avant que ce test passe
+- [x] Après clôture (`abortReserved`) de la réservation active, une nouvelle réservation concurrente redevient possible
 
 ### `LiquibasePartialFailureIT` (nouveau — H2, D-LIQUIBASE-TEST)
-- [ ] Changelog de test avec un changeset en échec après N changesets réussis → l'exécution de `liquibase.update()` lève une exception, les N changesets précédents restent appliqués (pas de rollback silencieux inattendu)
-- [ ] Relancer `liquibase.update()` sur le même schéma (nouveau "démarrage") reprend au changeset en échec et termine avec succès une fois le changeset corrigé (`DATABASECHANGELOG` empêche la ré-application des changesets déjà réussis)
+- [x] Changelog de test avec un changeset en échec après N changesets réussis → l'exécution de `liquibase.update()` lève une exception, les N changesets précédents restent appliqués (pas de rollback silencieux inattendu)
+- [x] Relancer `liquibase.update()` sur le même schéma (nouveau "démarrage") reprend au changeset en échec et termine avec succès une fois le changeset corrigé (`DATABASECHANGELOG` empêche la ré-application des changesets déjà réussis)
 
 ### `TenantSchemaIsolationIT` (nouveau — Testcontainers Postgres, D-CONTAINER-REUSE)
-- [ ] Deux schémas tenants créés sur le même conteneur Postgres, `search_path` fixé par connexion → une requête sur le schéma A ne retourne jamais de lignes du schéma B
-- [ ] ⚠️ Non exécuté dans ce bac à sable (Docker absent) — écrit et compilé ; exécution/vérification en CI (`ubuntu-latest`, Docker natif)
+- [x] Deux schémas tenants créés sur le même conteneur Postgres, `search_path` fixé par connexion → une requête sur le schéma A ne retourne jamais de lignes du schéma B (scénario écrit, voir statut d'exécution ci-dessous)
+- ⚠️ Non exécuté dans ce bac à sable (Docker absent) — écrit et compilé, `SKIPPED` proprement via `Assumptions.assumeTrue`/`isDockerAvailable()` (confirmé : `./mvnw verify` complet ne bloque ni n'échoue) ; exécution/vérification en CI (`ubuntu-latest`, Docker natif)
 
 ### `SequentialReferenceMultiPodIT` (nouveau — Testcontainers Postgres, D-CONTAINER-REUSE)
-- [ ] N threads réels simulant N pods appellent `SequentialReferenceGenerator` concurremment sur le même `(tenant_id, dossier_type_code, year)` → séquence générée sans doublon et sans trou
-- [ ] ⚠️ Non exécuté dans ce bac à sable (Docker absent) — écrit et compilé ; exécution/vérification en CI
+- [x] N threads réels simulant N pods appellent `SequentialReferenceGenerator` concurremment sur le même `(tenant_id, dossier_type_code, year)` → séquence générée sans doublon et sans trou (scénario écrit, voir statut d'exécution ci-dessous)
+- ⚠️ Non exécuté dans ce bac à sable (Docker absent) — écrit et compilé, `SKIPPED` proprement ; exécution/vérification en CI
+
+### Addendum — écart de couverture BRANCH comblé (découvert en Phase 5, hors scénarios initiaux)
+
+`./mvnw verify` complet a montré BRANCH réel à 73.0%, sous le seuil
+D-COVERAGE (75%). 8 classes jamais testées comblées (question posée à
+l'utilisateur avant d'élargir le périmètre, voir implementation doc) :
+- [x] `M2mJwtAuthoritiesConverterTest` — toutes les branches du convertisseur JWT M2M
+- [x] `WebhookIdempotencyJpaEntityTest` — `equals`/`hashCode` de la clé composite `Pk`
+- [x] `WorkflowIdempotencyJpaEntityTest` — `equals`/`hashCode` de la clé composite `IdempotencyId`
+- [x] `StorageConfigTest` — beans S3 (`s3Client`, `s3DocumentStoragePort`) jamais instanciés par le contexte de test filesystem-only
+- [x] `JpaWebhookIdempotencyStoreAdapterTest` — claim, course PK concurrente, expiration, in-flight, complete
+- [x] `UpdateDossierStatusDelegateTest` — `JavaDelegate` Flowable jamais testé
+- [x] `JpaDocumentTemplateRepositoryAdapterTest` — `listByTenantId`/`pageByTenantId` (filtre nul/vide vs présent), `save` chemin update
 
 ## End-to-End Tests
 
@@ -82,9 +95,9 @@ interface modifiés. Pas de scénario Playwright associé.
 
 ## Test Reporting & Coverage
 
-- Commande : `./mvnw verify` (Jacoco `BUNDLE` LINE ≥ 85%, BRANCH ≥ 75% après cette feature).
-- Les 2 tests Testcontainers sont **exclus de la preuve de vert locale** dans ce bac à sable (Docker absent) — leur statut réel (écrit/compilé vs exécuté/vert) sera consigné explicitement dans le testing doc et l'implementation doc à la fin de la Phase 5, pas affirmé par défaut.
-- Tous les autres tests listés ci-dessus doivent être verts et vérifiés dans cette session (TDD : rouge avant l'implémentation correspondante quand c'est possible).
+- Commande : `./mvnw verify`. **État final :** 1050 tests, 0 échec ; LINE 93.7% (seuil 85%) ; BRANCH 75.0% (seuil 75%).
+- Les 2 tests Testcontainers sont **exclus de la preuve de vert locale** dans ce bac à sable (Docker absent), `SKIPPED` proprement — statut réel consigné dans l'implementation doc, pas affirmé « vert » sans preuve.
+- Tous les autres tests listés ci-dessus sont verts et vérifiés dans cette session (TDD : rouge avant l'implémentation correspondante à chaque fois que c'était possible, notamment pour `ConcurrentWorkflowReservationTest` qui a d'abord échoué avec `DataIntegrityViolationException` avant la correction de l'adaptateur).
 
 ## Manual Testing
 

@@ -9,7 +9,8 @@
 > - Séquencement « avant prod » : [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md) §9
 >
 > **Dernière mise à jour :** 2026-08-22 (`fiabilisation-tests-plateforme`
-> Phase 1+2 reviewed — requirements figées, 6 décisions produit actées).
+> implémentation terminée — TODO §26/§28/§37 clos, `./mvnw verify` 1050
+> tests (0 échec), en attente de PR).
 
 ## Comment s’en servir
 
@@ -43,6 +44,7 @@ Même grille que pour `preview-documents` puis `edition-champs-dossier` :
 | `observabilite` | PR #59, TODO §29 | ECS + MDC ; Micrometer port management ; snapshot + SPA admin |
 | `durcissement-donnees-sensibles` | PR #62, TODO §23 (reste réduit)/§30 (clos) | Magic-bytes + `AttachmentScanPort` no-op sur upload ; export CSV masqué (`GET /api/dossiers/export.csv`) ; skeleton `HttpRestServiceConnector` non enregistré ; garde-fous anti-fuite secrets ; injection de formule CSV trouvée et corrigée en revue |
 | `contrat-api-client` | PR #65, TODO §24 (clos) | 6 listes non-admin migrées vers `PageResponse` (elements, dossiers/workflows, workflow-tasks/mine, connector-definitions, workflow-links history+tasks) ; 3 endpoints `@Hidden` documentés (SSE, multipart, webhook) ; pagination rendue visible en UI pour 5/6 listes (`WorkflowLinksList.vue` nouveau — liste jamais affichée avant) ; codegen client resté hors V1 ; 2 bugs réels trouvés et corrigés en Phase 7 (tri déclaré/réel) ; 2 régressions e2e réelles trouvées et corrigées en Phase 8 ; D-SPA-ADAPT rejouée avec l'utilisateur après un manquement Phase 3 (aucune question matérielle posée) |
+| `fiabilisation-tests-plateforme` | TODO §26 (clos), §28 (clos), §37 (clos) — PR à ouvrir | Testcontainers ciblé (isolation `search_path`, séquence multi-pods — écrits/compilés, non exécutés dans ce bac à sable sans Docker, CI seulement) ; verrous Flowable + réservation workflow concurrente sous H2 + vrais threads (bug réel trouvé et corrigé : `DataIntegrityViolationException` brute traitée comme retry transitoire au lieu de dead-letter) ; migration Liquibase en échec partiel mono-schéma (portée corrigée — pas de job multi-schéma en réalité) ; règle ArchUnit `usecase.*Impl`→`port.in` ; cascade de résolution de templates (JPA réel) ; seuils Jacoco relevés (LINE 85%, nouvelle règle BRANCH 75%) — écart de couverture réel trouvé (73%) et comblé par 8 classes jamais testées (`StorageConfig`, adaptateurs idempotence webhook/workflow, delegate Flowable, etc.) |
 
 Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relations, PATCH fields API, éléments) : voir [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §2.
 
@@ -54,13 +56,13 @@ ont été regroupés en 5 features candidates (regroupement validé 2026-08-20).
 §31 (« découpage en lots ») est clos ci-dessous plutôt que transformé en
 feature — le process `dev-lifecycle` + ce fichier + `DEFERRED-FEATURES.md`
 le remplit déjà en pratique à chaque lot livré. `durcissement-donnees-sensibles`
-(PR #62) et `contrat-api-client` (PR #65) livrées — file renumérotée.
+(PR #62), `contrat-api-client` (PR #65) et `fiabilisation-tests-plateforme`
+(implémentation terminée, PR à ouvrir) livrées — file renumérotée.
 
 | Priorité | Feature / lot kebab-case | TODO couverts | Contenu | Pourquoi cet ordre |
 |---|---|---|---|---|
-| 1 | `fiabilisation-tests-plateforme` | §28, §26 (reste), §37 | Testcontainers (étanchéité `search_path`) · test de charge Flowable (dimensionnement verrous) · tests du relais outbox (rejeu, idempotence, crash entre publication et marquage) · migration Liquibase multi-schéma avec échec partiel · seuils de couverture · smoke PostgreSQL réel multi-pods (référence séquentielle) · `findClosedForRetention` aligné sur le pattern `tenantId` explicite | Seuils de couverture à trancher (mineur) — sinon prêt à démarrer |
-| 2 | `deploiement-bpmn` | §35 | Trancher (a) acter l’état actuel + corriger doc, (b) intégrer Flowable Modeler, ou (c) écran d’upload BPMN minimal FlowForge — puis livrer l’option retenue | **Bloqué** : décision produit à trancher avant tout dev (critère 2) |
-| 3 | `modele-physique-consolide` | §25 | ERD/DDL consolidé, répartition schéma tenant / `platform`, description `TenantRegistry` + politique de rafraîchissement du cache | Doc pure (aucune décision ouverte) mais sans parcours métier utilisateur direct (critère 3) — reste en dernier |
+| 1 | `deploiement-bpmn` | §35 | Trancher (a) acter l’état actuel + corriger doc, (b) intégrer Flowable Modeler, ou (c) écran d’upload BPMN minimal FlowForge — puis livrer l’option retenue | **Bloqué** : décision produit à trancher avant tout dev (critère 2) |
+| 2 | `modele-physique-consolide` | §25 | ERD/DDL consolidé, répartition schéma tenant / `platform`, description `TenantRegistry` + politique de rafraîchissement du cache | Doc pure (aucune décision ouverte) mais sans parcours métier utilisateur direct (critère 3) — reste en dernier |
 
 **Hors V1 (reporté, pas dans cette file) :** Rapports / SLA (maquette UI de
 référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même
@@ -124,3 +126,6 @@ référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même
 | 2026-08-21 | `contrat-api-client` Phase 9 revue | Revue holistique fichier par fichier : alignement design confirmé, breaking changes de ports tous traités atomiquement (appelants en repo mis à jour), aucun changement de sécurité/autorisation, rollback sûr (aucune migration DB). Aucun problème bloquant nouveau (les 2 trouvés en Phase 7 déjà corrigés). Implémentation complète, TODO §24 clos, en attente de PR |
 | 2026-08-21 | `contrat-api-client` — D-SPA-ADAPT rejouée | Utilisateur : Phase 3 n'avait posé aucune question matérielle (violation du contrat `dev-design`). 3 décisions rejouées via `AskUserQuestion` : D-TASK-LIMIT et D-SORT-CONST confirmées, **D-SPA-ADAPT inversée** — pagination visible ajoutée pour 5/6 listes (`connector-definitions` reste `listAllPages`, menu déroulant pas une liste parcourue) ; `dossiers/{id}/workflows` gagne un affichage qui n'existait pas avant (constat fait en creusant, ajout validé explicitement). 9 tâches TDD supplémentaires, `npm run test` 153/153, `test:e2e` 40/40, aucun fichier backend touché |
 | 2026-08-22 | `fiabilisation-tests-plateforme` Phase 1+2 reviewed | 6 décisions actées via `AskUserQuestion` (une à la fois, conformément au contrat `dev-requirements`) : D-SCOPE=une feature, D-TESTCONTAINERS=adoption ciblée (isolation `search_path` + séquence multi-pods uniquement), D-TESTCONTAINERS-EXEC=tests écrits mais étiquetés « non exécutés ici » (Docker inaccessible dans ce bac à sable, vérifié par `docker info`), D-COVERAGE=LINE 85%/BRANCH 75% BUNDLE, D-TENANT-ID-37=alignement `tenantId` explicite, D-ARCHUNIT-RULE=`usecase.*Impl`→`port.in`. 3 corrections factuelles trouvées avant de demander : `@Version` déjà en place sur `Dossier`, bug `Instant`/`%tY` cité au TODO §26 inexistant dans le code actuel, couverture outbox déjà substantielle — évite de refaire un travail déjà fait |
+| 2026-08-22 | `fiabilisation-tests-plateforme` Phase 3 reviewed | 4 décisions techniques actées via `AskUserQuestion` (mécanisme, périmètre déjà figé en Phase 2) : D-FLOWABLE-LOCK-TEST=H2+threads réels, D-PARALLELISM-TEST=H2+threads réels, D-LIQUIBASE-TEST=échec partiel mono-schéma (la prémisse multi-schéma du TODO §28 ne correspond pas à l'architecture réelle), D-CONTAINER-REUSE=conteneur Testcontainers singleton statique |
+| 2026-08-22 | `fiabilisation-tests-plateforme` Phase 4 (planning) | 15 tâches sur 5 milestones ; testing doc scénarisé (traçabilité requirements→tests complète) |
+| 2026-08-22 | `fiabilisation-tests-plateforme` Phase 5 (implémentation) | 15 tâches en TDD (H2 exécuté et vert ; Testcontainers écrit/compilé, SKIPPED proprement ici via `Assumptions.assumeTrue`/`isDockerAvailable()`, CI seulement) ; 1 bug réel trouvé et corrigé (`DataIntegrityViolationException` brute au lieu de `WorkflowAlreadyRunningException`, traitée à tort comme retry transitoire par `OutboxRelayScheduler`) ; JDK 25 installé dans le bac à sable (requis par `pom.xml`, absent au démarrage du container) ; couverture BRANCH réelle 73% trouvée sous le seuil D-COVERAGE 75% décidé en Phase 1 — question posée à l'utilisateur (`AskUserQuestion`), réponse = combler par des tests ciblés ; 8 classes jamais testées comblées en 3 vagues (73%→74%→75.03%) ; `./mvnw verify` final : 1050 tests (0 échec), LINE 93.7%, BRANCH 75.0% ; TODO §26/§28/§37 clos |

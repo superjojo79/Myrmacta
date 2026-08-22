@@ -8,8 +8,8 @@
 > - Inventaire follow-ups / lots : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md)
 > - Séquencement « avant prod » : [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md) §9
 >
-> **Dernière mise à jour :** 2026-08-22 (`fiabilisation-tests-plateforme`
-> livrée — PR #66 mergée sur `main`, TODO §26/§28/§37 clos).
+> **Dernière mise à jour :** 2026-08-22 (`deploiement-bpmn` Phase 1+2
+> reviewed — décision produit débloquée, 3 décisions actées).
 
 ## Comment s’en servir
 
@@ -60,8 +60,9 @@ le remplit déjà en pratique à chaque lot livré. `durcissement-donnees-sensib
 
 | Priorité | Feature / lot kebab-case | TODO couverts | Contenu | Pourquoi cet ordre |
 |---|---|---|---|---|
-| 1 | `deploiement-bpmn` | §35 | Trancher (a) acter l’état actuel + corriger doc, (b) intégrer Flowable Modeler, ou (c) écran d’upload BPMN minimal FlowForge — puis livrer l’option retenue | **Bloqué** : décision produit à trancher avant tout dev (critère 2) |
-| 2 | `modele-physique-consolide` | §25 | ERD/DDL consolidé, répartition schéma tenant / `platform`, description `TenantRegistry` + politique de rafraîchissement du cache | Doc pure (aucune décision ouverte) mais sans parcours métier utilisateur direct (critère 3) — reste en dernier |
+| 1 | `modele-physique-consolide` | §25 | ERD/DDL consolidé, répartition schéma tenant / `platform`, description `TenantRegistry` + politique de rafraîchissement du cache | Doc pure (aucune décision ouverte) mais sans parcours métier utilisateur direct (critère 3) — reste en dernier |
+
+`deploiement-bpmn` (§35) est la feature **active** (Phase 1+2 reviewed) — plus dans cette table tant qu'elle n'est pas livrée.
 
 **Hors V1 (reporté, pas dans cette file) :** Rapports / SLA (maquette UI de
 référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même
@@ -128,3 +129,5 @@ référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même
 | 2026-08-22 | `fiabilisation-tests-plateforme` Phase 3 reviewed | 4 décisions techniques actées via `AskUserQuestion` (mécanisme, périmètre déjà figé en Phase 2) : D-FLOWABLE-LOCK-TEST=H2+threads réels, D-PARALLELISM-TEST=H2+threads réels, D-LIQUIBASE-TEST=échec partiel mono-schéma (la prémisse multi-schéma du TODO §28 ne correspond pas à l'architecture réelle), D-CONTAINER-REUSE=conteneur Testcontainers singleton statique |
 | 2026-08-22 | `fiabilisation-tests-plateforme` Phase 4 (planning) | 15 tâches sur 5 milestones ; testing doc scénarisé (traçabilité requirements→tests complète) |
 | 2026-08-22 | `fiabilisation-tests-plateforme` Phase 5 (implémentation) | 15 tâches en TDD (H2 exécuté et vert ; Testcontainers écrit/compilé, SKIPPED proprement ici via `Assumptions.assumeTrue`/`isDockerAvailable()`, CI seulement) ; 1 bug réel trouvé et corrigé (`DataIntegrityViolationException` brute au lieu de `WorkflowAlreadyRunningException`, traitée à tort comme retry transitoire par `OutboxRelayScheduler`) ; JDK 25 installé dans le bac à sable (requis par `pom.xml`, absent au démarrage du container) ; couverture BRANCH réelle 73% trouvée sous le seuil D-COVERAGE 75% décidé en Phase 1 — question posée à l'utilisateur (`AskUserQuestion`), réponse = combler par des tests ciblés ; 8 classes jamais testées comblées en 3 vagues (73%→74%→75.03%) ; `./mvnw verify` final : 1050 tests (0 échec), LINE 93.7%, BRANCH 75.0% ; TODO §26/§28/§37 clos |
+| 2026-08-22 | `fiabilisation-tests-plateforme` livrée | PR #66 mergée sur `main` ; TODO §26/§28/§37 clos ; prochain = `deploiement-bpmn` §35 |
+| 2026-08-22 | `deploiement-bpmn` Phase 1+2 reviewed | Décision produit débloquée via `AskUserQuestion` : D-BPMN-TARGET=option (c) écran d'upload minimal (pas Modeler ni Cockpit) ; précision demandée explicitement par l'utilisateur → D-BPMN-PREVIEW=prévisualisation obligatoire du diagramme avant import, réutilisant le rendu `bpmn-js` de `BpmnViewer.vue` ; D-BPMN-PLACEMENT=nouvelle section dans `/admin/workflow-types` existant (rôles `TENANT_ADMIN`/`WORKFLOW_ADMIN` déjà en place), pas de nouvel écran. Précédents de code identifiés avant de trancher (`DossierElementUploadController` comme patron d'upload multipart) |

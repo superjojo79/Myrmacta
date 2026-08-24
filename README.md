@@ -29,7 +29,7 @@ L'idée centrale : un dossier métier suit un workflow adapté à son type, déc
 
 | Besoin                                 | Réponse FlowForge                                            |
 | -------------------------------------- | ------------------------------------------------------------ |
-| Modéliser un processus sans coder      | Designer BPMN 2.0 visuel (Flowable UI)                       |
+| Modéliser un processus sans coder      | Éditeur BPMN 2.0 visuel intégré (`bpmn-js`, écran admin FlowForge) |
 | Gérer des dossiers structurés          | Entité dossier avec signalétique et champs dynamiques par type |
 | Produire des documents automatiquement | Génération PDF à partir de templates Thymeleaf versionnés    |
 | Intégrer des systèmes existants        | Système de connecteurs extensible (REST, Kafka, scheduler, ERP…) |
@@ -47,7 +47,7 @@ Entité métier centrale de la plateforme. Chaque dossier est constitué d'un **
 
 ### Moteur de workflow BPMN 2.0
 
-Orchestration des flux métier via **Flowable** — standard industriel ouvert. Les processus sont modélisés en BPMN 2.0 avec un outil externe (pas de designer visuel ni de cockpit Flowable intégrés à FlowForge), puis déployés soit au build/démarrage (scan classpath), soit à chaud depuis l'écran d'administration `/admin/workflow-types` (upload avec prévisualisation). Support des gateways, tâches humaines, règles DMN et événements de signal.
+Orchestration des flux métier via **Flowable** — standard industriel ouvert (pas de cockpit Flowable intégré à FlowForge, `DEFERRED-FEATURES.md` §1.5). Les processus se modélisent directement dans FlowForge (éditeur `bpmn-js` intégré à `/admin/bpmn-editor` — création, import, édition d'un diagramme déjà déployé, brouillon persisté) ou avec un outil externe, puis se déploient soit au build/démarrage (scan classpath), soit à chaud depuis l'écran d'administration `/admin/workflow-types` (upload avec prévisualisation) ou directement depuis l'éditeur. Support des gateways, tâches humaines, règles DMN et événements de signal.
 
 ### Système de connecteurs
 
@@ -113,14 +113,14 @@ L'application est construite sur le modèle **Ports & Adapters (hexagonal)** —
 | Couche            | Technologie                     | Choix                                           |
 | ----------------- | ------------------------------- | ----------------------------------------------- |
 | Backend           | Java 25 LTS · Spring Boot 4.1.x | Virtual Threads, ecosystem mature               |
-| Workflow          | Flowable 8.0.x Community        | BPMN 2.0, Apache 2.0, designer intégré          |
+| Workflow          | Flowable 8.0.x Community        | BPMN 2.0, Apache 2.0, moteur d'exécution seul (pas de Flowable UI) |
 | Persistence       | PostgreSQL + Spring Data JPA    | JSONB pour champs dynamiques, schéma par tenant |
 | Génération PDF    | Flying Saucer 10.4.x + jsoup 1.22.x | LGPL, sans licence commerciale              |
 | Sécurité          | Spring Security 7 + OAuth2 Client | BFF intégré, provider-agnostique              |
 | Frontend          | Vue 3 + Vite + TypeScript + PrimeVue (embarqué `static/`) | SPA même origine, typage statique aligné sur le contrat API, composants métier riches |
 | State management  | Pinia                           | Store réactif Vue 3                             |
 | Tests frontend    | Vitest + Playwright + ESLint/Prettier | Unitaire/composants **et** e2e (`npm run test:all`) obligatoires pour features FE ; aligné job CI `frontend` |
-| BPMN viewer       | bpmn-js                         | Rendu fidèle, overlays d'état                   |
+| BPMN viewer/éditeur | bpmn-js + bpmn-js-properties-panel | Rendu fidèle, overlays d'état, édition (Modeler + panel de propriétés Flowable custom) |
 | Stockage fichiers | MinIO                           | Compatible S3, self-hosted, Apache 2.0          |
 | Auth server       | Keycloak 26.7.x                 | Self-hosted, OIDC/OAuth2, LDAP                  |
 | Build             | Maven mono-module + ArchUnit    | Règle domaine vérifiée en CI                    |

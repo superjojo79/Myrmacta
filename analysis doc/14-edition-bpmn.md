@@ -1,15 +1,15 @@
 # Construction/édition de diagrammes BPMN dans FlowForge
 
-> **Statut : planning Phase 4 close — non implémenté.** Ce document
-> capture l'orientation technique retenue pour couvrir TODO §39. Le cycle
-> `dev-lifecycle` est lancé (Phase 2 le 2026-08-24, 7 décisions produit ;
-> Phase 3 le même jour, 3 décisions techniques ; Phase 4 le même jour,
-> plan en 8 milestones), mais la Phase 5 (implémentation) n'a pas
-> démarré ; rien de décrit ici n'existe encore dans le code. Voir les
-> documents de travail détaillés :
+> **Statut : implémenté (2026-08-24), TODO §39 clos.** Ce document
+> capture l'orientation technique retenue et l'implémentation livrée pour
+> couvrir TODO §39. Cycle `dev-lifecycle` complet (Phase 2 requirements,
+> Phase 3 design, Phase 4 planning, Phase 5 implémentation — voir
+> « Implémentation livrée » ci-dessous). Voir les documents de travail
+> détaillés :
 > [docs/ai/requirements/2026-08-24-feature-edition-bpmn.md](../docs/ai/requirements/2026-08-24-feature-edition-bpmn.md),
-> [docs/ai/design/2026-08-24-feature-edition-bpmn.md](../docs/ai/design/2026-08-24-feature-edition-bpmn.md) et
-> [docs/ai/planning/2026-08-24-feature-edition-bpmn.md](../docs/ai/planning/2026-08-24-feature-edition-bpmn.md).
+> [docs/ai/design/2026-08-24-feature-edition-bpmn.md](../docs/ai/design/2026-08-24-feature-edition-bpmn.md),
+> [docs/ai/planning/2026-08-24-feature-edition-bpmn.md](../docs/ai/planning/2026-08-24-feature-edition-bpmn.md) et
+> [docs/ai/implementation/2026-08-24-feature-edition-bpmn.md](../docs/ai/implementation/2026-08-24-feature-edition-bpmn.md).
 
 ## Constat
 
@@ -157,7 +157,42 @@ dépendance frontend) → M6 composables partagés (`useBpmnDraft`,
 vérification globale (4 nouveaux scénarios E2E). Couverture
 testing→planning vérifiée exhaustive, aucun scénario orphelin.
 
+## Implémentation livrée (Phase 5, 2026-08-24)
+
+M1-M4 (backend) et M5-M7 (frontend, hors E2E) implémentés **en
+parallèle** par deux agents dans des worktrees git isolés (contrat API
+déjà figé par le design), fusionnés puis M8 (vérification globale +
+E2E) exécuté par l'orchestrateur sur l'arbre fusionné.
+
+- **Backend** : `BpmnDraft`/`BpmnDraftRepository`/`SaveBpmnDraftUseCase`/
+  `GetBpmnDraftUseCase` (domaine pur), `BpmnDraftJpaEntity` (clé
+  composite `@IdClass`), `BpmnDraftController`
+  (`GET`/`PUT /api/workflow-bpmn-drafts/{key}`),
+  `WorkflowDeploymentPort.findDeployedXml` +
+  `GET /api/workflow-bpmn-deployments/{key}/xml`,
+  `DeployBpmnProcessUseCaseImpl` modifié (supprime le brouillon après
+  déploiement réussi).
+- **Frontend** : `BpmnEditorCanvas.vue` (`bpmn-js` Modeler +
+  `bpmn-js-properties-panel` + `flowablePropertiesProvider.ts` custom),
+  composables `useBpmnDraft.ts`/`useBpmnDeployment.ts` (ce dernier
+  extrait de `BpmnUploadPreview.vue`, contrat public inchangé),
+  `BpmnEditorView.vue` (route `/admin/bpmn-editor`), lien « Éditer »
+  dans `WorkflowConfigsAdminView.vue`.
+- **2 bugs réels trouvés et corrigés** (voir le doc implementation pour
+  le détail) : `modeler.get('commandStack').on(...)` — `CommandStack`
+  de diagram-js n'a pas de `.on()` propre (événements via l'`eventBus`),
+  masqué par des tests Vitest mockant entièrement `bpmn-js`, trouvé en
+  écrivant l'E2E (vrai navigateur) ; race condition de montage
+  `BpmnEditorCanvas`/`useBpmnDraft.load()`, trouvée et corrigée en TDD.
+- **Validation** : `./mvnw verify` — 1106 tests, 0 échec, LINE
+  93.86%/BRANCH 77.14%. Frontend — 193 tests Vitest, typecheck/lint
+  propres, 47/47 Playwright (4 nouveaux `E2E-EDIT-BPMN-1..4`).
+- `README.md`, `05-workflow-engine.md` (ce même dossier) et
+  `GUIDE-UTILISATEUR.md` corrigés — retrait des mentions « pas de
+  designer visuel/éditeur BPMN » devenues fausses, nouveau mécanisme
+  documenté.
+
 ## Prochaine étape
 
-Phase 5 (`dev-implementation`) : exécuter le plan en TDD (skill `tdd` +
-`verify`). Voir TODO §39 et `FILE-ATTENTE.md` pour le suivi.
+TODO §39 clos. Prochaine étape sur demande explicite de l'utilisateur :
+`dev-review` (Phase 9), puis PR. Voir `FILE-ATTENTE.md` pour le suivi.

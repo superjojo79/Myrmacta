@@ -488,7 +488,7 @@ remplacer aurait ajouté une dépendance, pas seulement corrigé un bug.
 
 ---
 
-### [ ] 39. Construction de diagrammes BPMN dans FlowForge — écart restant après §35
+### [x] 39. Construction de diagrammes BPMN dans FlowForge — écart restant après §35
 
 **Constat :** §35 (`deploiement-bpmn`, PR #67) a livré l'upload + prévisualisation d'un
 `.bpmn20.xml` **déjà modélisé en externe**, avec comme non-goal explicite « pas d'édition/design
@@ -546,7 +546,36 @@ M5 canvas éditeur (`bpmn-js` Modeler + `bpmn-js-properties-panel`), M6 composab
 (4 nouveaux scénarios E2E). Couverture testing→planning vérifiée exhaustive. Détail :
 [docs/ai/testing/2026-08-24-feature-edition-bpmn.md](docs/ai/testing/2026-08-24-feature-edition-bpmn.md),
 [docs/ai/planning/2026-08-24-feature-edition-bpmn.md](docs/ai/planning/2026-08-24-feature-edition-bpmn.md).
-Prochaine phase : `dev-implementation` (Phase 5).
+
+**Résolu (2026-08-24, feature `edition-bpmn`) :** Phase 5 (implémentation) exécutée en TDD, M1-M4
+(backend) et M5-M7 (frontend) en parallèle par deux agents dans des worktrees git isolés (contrat
+API déjà figé par le design), fusionnés puis M8 (vérification globale) exécuté par l'orchestrateur.
+
+- Backend : `BpmnDraft`/`BpmnDraftRepository`/`SaveBpmnDraftUseCase`/`GetBpmnDraftUseCase`
+  (domaine), `BpmnDraftJpaEntity` (clé composite `@IdClass`, même pattern que
+  `WorkflowIdempotencyJpaEntity`), `BpmnDraftController` (`GET`/`PUT /api/workflow-bpmn-drafts/{key}`),
+  `WorkflowDeploymentPort.findDeployedXml` (+`GET /api/workflow-bpmn-deployments/{key}/xml`),
+  `DeployBpmnProcessUseCaseImpl` modifié (supprime le brouillon après déploiement réussi).
+- Frontend : `BpmnEditorCanvas.vue` (`bpmn-js` Modeler + `bpmn-js-properties-panel` +
+  `flowablePropertiesProvider.ts` custom limité aux attributs réellement utilisés), composables
+  `useBpmnDraft.ts`/`useBpmnDeployment.ts` (ce dernier extrait de `BpmnUploadPreview.vue`, contrat
+  public inchangé), `BpmnEditorView.vue` (route `/admin/bpmn-editor`), lien « Éditer » dans
+  `WorkflowConfigsAdminView.vue`.
+- Le mécanisme de déploiement existant (§35) reste inchangé et réutilisé tel quel ; aucune
+  application Flowable UI tierce introduite.
+- **2 bugs réels trouvés et corrigés en Phase 5/8** : `modeler.get('commandStack').on(...)` —
+  `CommandStack` de diagram-js n'a pas de `.on()` propre (événements via l'`eventBus`), masqué par
+  des tests Vitest mockant entièrement `bpmn-js`, trouvé en écrivant l'E2E (Playwright, vrai
+  navigateur) ; race condition de montage `BpmnEditorCanvas`/`useBpmnDraft.load()`, trouvée et
+  corrigée en TDD par l'agent frontend.
+- `./mvnw verify` : **1106 tests, 0 échec**, LINE 93.86%/BRANCH 77.14% (≥ seuils). Frontend : **193
+  tests Vitest** (0 échec), typecheck/lint propres, **47/47 Playwright** (43 existants non
+  régressés + 4 nouveaux `E2E-EDIT-BPMN-1..4`).
+- `README.md`, `05-workflow-engine.md`, `GUIDE-UTILISATEUR.md` corrigés (mentions « pas de designer
+  visuel/éditeur BPMN » retirées, nouveau mécanisme documenté).
+
+Détail complet : [docs/ai/implementation/2026-08-24-feature-edition-bpmn.md](docs/ai/implementation/2026-08-24-feature-edition-bpmn.md).
+Prochaine étape (sur demande explicite de l'utilisateur) : `dev-review` (Phase 9), puis PR.
 
 **Impacte :** `frontend/src/components/workflow/BpmnCanvas.vue`, `BpmnUploadPreview.vue`,
 `WorkflowBpmnDeploymentController` (endpoint de déploiement potentiellement réutilisable tel

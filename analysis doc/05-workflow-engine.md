@@ -13,8 +13,8 @@
 | Standard | BPMN 2.0 + DMN |
 | Licence | Apache 2.0 |
 | Intégration Spring Boot | `flowable-spring-boot-starter` |
-| Designer visuel | Aucun — modélisation externe (ex. Camunda Modeler), Flowable UI/Modeler/Cockpit hors scope produit (`DEFERRED-FEATURES.md` §1.5) |
-| Déploiement des processus | Scan classpath au build/démarrage (`TenantProcessDeployment`) **+** upload admin à chaud avec prévisualisation (`/admin/workflow-types`, feature `deploiement-bpmn`) |
+| Designer visuel | Éditeur intégré FlowForge (`bpmn-js` Modeler + panel de propriétés Flowable custom, `/admin/bpmn-editor`, feature `edition-bpmn`) — pas Flowable UI/Modeler/Cockpit, explicitement hors scope produit (`DEFERRED-FEATURES.md` §1.5) |
+| Déploiement des processus | Scan classpath au build/démarrage (`TenantProcessDeployment`) **+** upload admin à chaud avec prévisualisation (`/admin/workflow-types`, feature `deploiement-bpmn`) **+** déploiement direct depuis l'éditeur (`/admin/bpmn-editor`, feature `edition-bpmn`) |
 | Monitoring instances | Viewer intégré FlowForge (`bpmn-js`, `GET …/diagram`) — pas de cockpit Flowable |
 
 ### Dépendance Maven

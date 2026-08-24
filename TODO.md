@@ -514,9 +514,10 @@ volet Cockpit (`DEFERRED-FEATURES.md` §1.5, hors scope produit, non remis en ca
   actée d'exclure les apps Flowable UI (§35, `DEFERRED-FEATURES.md` §1.5).
 
 **Recommandation actée :** option **(b)**. Analyse détaillée :
+[analysis doc/14-edition-bpmn.md](analysis%20doc/14-edition-bpmn.md) et
 [docs/ai/requirements/2026-08-24-feature-edition-bpmn.md](docs/ai/requirements/2026-08-24-feature-edition-bpmn.md)
 (Phase 1 uniquement — statut `draft`, périmètre exact et écran d'accueil à confirmer en Phase 2/3
-avant lancement de l'implémentation).
+avant lancement de l'implémentation ; cycle de dev pas démarré à la demande de l'utilisateur).
 
 **Impacte :** `frontend/src/components/workflow/BpmnCanvas.vue`, `BpmnUploadPreview.vue`,
 `WorkflowBpmnDeploymentController` (endpoint de déploiement potentiellement réutilisable tel

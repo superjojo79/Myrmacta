@@ -6,7 +6,7 @@ status: draft
 created: 2026-08-24
 updated: 2026-08-24
 feature: edition-bpmn
-todo_ref: TODO.md §39 (nouveau) · FILE-ATTENTE.md (à requalifier — file actuellement vide)
+todo_ref: TODO.md §39 (nouveau) · FILE-ATTENTE.md (candidat, cycle de dev pas démarré) · analysis doc/14-edition-bpmn.md
 ---
 
 # Requirements & Problem Understanding — `edition-bpmn`

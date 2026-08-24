@@ -23,6 +23,7 @@
 | 11 | Frontend — Vue 3 + PrimeVue | [11-frontend.md](11-frontend.md) |
 | 12 | Autorisation (RBAC) & conformité des données | [12-autorisation-conformite.md](12-autorisation-conformite.md) |
 | 13 | Modèle physique de données consolidé | [13-modele-physique.md](13-modele-physique.md) |
+| 14 | Construction/édition de diagrammes BPMN — **analyse, non implémenté** | [14-edition-bpmn.md](14-edition-bpmn.md) |
 
 ---
 

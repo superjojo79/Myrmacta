@@ -1,11 +1,13 @@
 # Construction/édition de diagrammes BPMN dans FlowForge
 
-> **Statut : requirements Phase 2 close — non implémenté.** Ce document
-> capture l'orientation technique retenue pour couvrir TODO §39. Le cycle
+> **Statut : design Phase 3 close — non implémenté.** Ce document capture
+> l'orientation technique retenue pour couvrir TODO §39. Le cycle
 > `dev-lifecycle` est lancé (Phase 2 revue le 2026-08-24, 7 décisions
-> actées), mais la Phase 3 (design) n'a pas démarré ; rien de décrit ici
-> n'existe encore dans le code. Voir le document de travail détaillé :
-> [docs/ai/requirements/2026-08-24-feature-edition-bpmn.md](../docs/ai/requirements/2026-08-24-feature-edition-bpmn.md).
+> produit actées ; Phase 3 revue le même jour, 3 décisions techniques
+> actées), mais la Phase 4 (planning) n'a pas démarré ; rien de décrit ici
+> n'existe encore dans le code. Voir les documents de travail détaillés :
+> [docs/ai/requirements/2026-08-24-feature-edition-bpmn.md](../docs/ai/requirements/2026-08-24-feature-edition-bpmn.md)
+> et [docs/ai/design/2026-08-24-feature-edition-bpmn.md](../docs/ai/design/2026-08-24-feature-edition-bpmn.md).
 
 ## Constat
 
@@ -108,22 +110,40 @@ requirements pour le détail) :
   optimiste ; dernier « Enregistrer » gagne).
 - Pas d'autosave périodique.
 
-## Points ouverts restants (Phase 3 — design, mécanisme pas périmètre)
+## Architecture retenue (Phase 3, 2026-08-24)
 
-- Nom exact de la route/écran dédié et libellé du lien d'accès depuis
-  `/admin/workflow-types`.
-- Forme exacte du composant backend brouillon (entité/table, endpoint(s)
-  REST, DTO) — architecture hexagonale et isolation multi-tenant par
-  schéma inchangées.
-- Mécanisme d'extraction de la logique de confirmation/déploiement
-  partagée entre `BpmnUploadPreview.vue` et le nouvel écran (composant vs
-  composable Vue).
-- Comportement du moddle `bpmn-js` sur un attribut `flowable:*` non
-  couvert par le provider custom (à vérifier empiriquement).
+Trois décisions techniques actées via `AskUserQuestion` (détail : doc
+design) :
+
+- **D-DESIGN-DRAFT-KEY** — clé composite `(tenant_id,
+  process_definition_key)` via `@IdClass` sur `BpmnDraftJpaEntity`, même
+  pattern que `WorkflowIdempotencyJpaEntity`/`WebhookIdempotencyJpaEntity`
+  (déjà utilisé 2x dans le dépôt) — pas d'UUID généré + contrainte
+  unique.
+- **D-DESIGN-ROUTE** — une seule route SPA `/admin/bpmn-editor` avec
+  `processDefinitionKey` en query param optionnel (pas de routes
+  séparées création/édition).
+- **D-DESIGN-DRAFT-LIFECYCLE** — le brouillon est supprimé
+  automatiquement après un déploiement réussi de sa clé (évite une
+  divergence silencieuse entre un brouillon oublié et ce qui est
+  réellement déployé).
+
+**Gap réel trouvé en exploration** (pas supposé) : aucun mécanisme
+existant ne renvoyait le XML brut d'une définition de process déployée
+par clé (`GET .../info`, §35, ne renvoie que des métadonnées). Nouvelle
+méthode `WorkflowDeploymentPort.findDeployedXml` (implémentée via
+`RepositoryService.getProcessModel`), nécessaire pour le 3ᵉ point
+d'entrée de l'éditeur (édition d'un diagramme déjà déployé).
+
+**Composants principaux** (détail complet, mermaid, DTOs : doc design) :
+`BpmnEditorView.vue` + `BpmnEditorCanvas.vue` (Modeler + properties
+panel) côté frontend ; `BpmnDraftController` +
+`SaveBpmnDraftUseCase`/`GetBpmnDraftUseCase` +
+`BpmnDraftRepository`/`BpmnDraftJpaEntity` (nouveau, architecture
+hexagonale respectée) côté backend ; `DeployBpmnProcessUseCaseImpl`
+modifié pour supprimer le brouillon après déploiement réussi.
 
 ## Prochaine étape
 
-Phase 3 (`dev-design`) : traduire les 7 décisions ci-dessus en
-architecture concrète (composants Vue, ports/adaptateurs backend,
-migration Liquibase) avant la planification (Phase 4). Voir TODO §39 et
-`FILE-ATTENTE.md` pour le suivi.
+Phase 4 (`dev-planning`) : découper l'architecture ci-dessus en tâches
+d'implémentation TDD. Voir TODO §39 et `FILE-ATTENTE.md` pour le suivi.

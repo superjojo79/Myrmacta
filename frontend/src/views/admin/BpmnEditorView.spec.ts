@@ -19,7 +19,7 @@ vi.mock('bpmn-js/lib/Modeler', () => ({
     destroy = destroy
     get = (name: string) => {
       if (name === 'canvas') return { zoom }
-      if (name === 'commandStack') return { on: vi.fn() }
+      if (name === 'eventBus') return { on: vi.fn() }
       return {}
     }
   },

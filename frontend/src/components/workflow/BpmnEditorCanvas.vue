@@ -54,8 +54,11 @@ async function render() {
       additionalModules: [BpmnPropertiesPanelModule, BpmnPropertiesProviderModule, FlowablePropertiesProviderModule],
     })
 
-    const commandStack = modeler.get('commandStack') as { on: (event: string, handler: () => void) => void }
-    commandStack.on('commandStack.changed', () => {
+    // diagram-js's CommandStack has no .on() of its own — events are fired
+    // through the eventBus (real bpmn-js behaviour, not reflected by a
+    // mocked commandStack in unit tests).
+    const eventBus = modeler.get('eventBus') as { on: (event: string, handler: () => void) => void }
+    eventBus.on('commandStack.changed', () => {
       emit('dirty')
     })
   }

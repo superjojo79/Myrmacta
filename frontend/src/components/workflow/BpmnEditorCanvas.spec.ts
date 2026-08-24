@@ -15,7 +15,7 @@ vi.mock('bpmn-js/lib/Modeler', () => ({
     destroy = destroy
     get = (name: string) => {
       if (name === 'canvas') return { zoom }
-      if (name === 'commandStack') {
+      if (name === 'eventBus') {
         return {
           on: (event: string, handler: () => void) => {
             if (event === 'commandStack.changed') commandStackChangedHandler = handler

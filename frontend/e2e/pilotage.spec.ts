@@ -1204,3 +1204,265 @@ test('E2E-BPMN-3 redeploying an existing key shows current version and active in
   await expect(page.getByText(/instances actives : 12/)).toBeVisible()
 })
 
+// The editor renders with a real bpmn-js Modeler (unlike the read-only
+// preview in BpmnUploadPreview.vue), which requires
+// bpmndi:BPMNDiagram/DI layout information to import successfully.
+const BPMN_IMPORTED = `<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+             xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+             targetNamespace="http://flowforge/e2e">
+  <process id="importedProcess" isExecutable="true">
+    <startEvent id="start"/>
+    <endEvent id="end"/>
+    <sequenceFlow id="flow1" sourceRef="start" targetRef="end"/>
+  </process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="importedProcess">
+      <bpmndi:BPMNShape id="start_di" bpmnElement="start">
+        <dc:Bounds x="150" y="100" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end_di" bpmnElement="end">
+        <dc:Bounds x="300" y="100" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow1_di" bpmnElement="flow1">
+        <di:waypoint x="186" y="118"/>
+        <di:waypoint x="300" y="118"/>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>`
+
+// Same "otherWorkflow" process as BPMN_FOR_OTHER_WORKFLOW above, but with
+// DI — that one has none and throws "no diagram to display" if fed to the
+// editor's Modeler (it works for BpmnUploadPreview.vue only because that
+// component never asserts the render actually succeeded).
+const BPMN_FOR_OTHER_WORKFLOW_EDITABLE = `<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+             xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+             targetNamespace="http://flowforge/e2e">
+  <process id="otherWorkflow" isExecutable="true">
+    <startEvent id="start"/>
+    <userTask id="wait" name="Wait"/>
+    <endEvent id="end"/>
+    <sequenceFlow id="flow1" sourceRef="start" targetRef="wait"/>
+    <sequenceFlow id="flow2" sourceRef="wait" targetRef="end"/>
+  </process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="otherWorkflow">
+      <bpmndi:BPMNShape id="start_di" bpmnElement="start">
+        <dc:Bounds x="150" y="100" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="wait_di" bpmnElement="wait">
+        <dc:Bounds x="250" y="80" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end_di" bpmnElement="end">
+        <dc:Bounds x="420" y="100" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow1_di" bpmnElement="flow1">
+        <di:waypoint x="186" y="118"/>
+        <di:waypoint x="250" y="120"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow2_di" bpmnElement="flow2">
+        <di:waypoint x="350" y="120"/>
+        <di:waypoint x="420" y="118"/>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>`
+
+// NOTE: navigation to the BPMN editor always goes through the "Éditer"
+// link on /admin/workflow-types (client-side router push), never a direct
+// page.goto('/admin/bpmn-editor...'). This app's production build uses
+// relative asset paths (decision n°27, same-origin embedded SPA) — a full
+// page load of a nested route resolves "./assets/…" against that nested
+// path and 404s the JS bundle. Every other test in this file already
+// avoids this by navigating via link clicks; the BPMN editor tests follow
+// the same proven pattern rather than hitting a pre-existing, unrelated
+// deep-link limitation.
+async function openBpmnEditor(page: Page) {
+  await page.getByRole('link', { name: 'Workflows' }).click()
+  await page.getByRole('link', { name: 'Éditer' }).click()
+  await expect(page.getByRole('heading', { name: 'Éditeur de diagramme BPMN' })).toBeVisible()
+  // The Modeler is constructed via dynamic import, then importXML runs
+  // asynchronously — the palette appears as soon as the Modeler is built,
+  // *before* importXML resolves, so it isn't enough on its own. Wait for an
+  // actually rendered diagram element instead, otherwise saveXML() races
+  // ahead of the import and returns an empty/invalid document.
+  await expect(page.locator('.djs-element').first()).toBeVisible()
+}
+
+test('E2E-EDIT-BPMN-1 blank diagram (no draft, not yet deployed): save creates the draft', async ({ page }) => {
+  await mockSession(page)
+  await page.route('**/api/workflow-bpmn-drafts/otherWorkflow', async (route) => {
+    await route.fulfill({ status: 204, body: '' })
+  })
+  await page.route('**/api/workflow-bpmn-deployments/otherWorkflow/xml', async (route) => {
+    await route.fulfill({ status: 204, body: '' })
+  })
+  let putCalled = false
+  await page.route('**/api/workflow-bpmn-drafts/Process_1', async (route) => {
+    putCalled = true
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        processDefinitionKey: 'Process_1',
+        xml: '<definitions/>',
+        updatedAt: '2026-08-24T00:00:00Z',
+        updatedBy: 'user-1',
+      }),
+    })
+  })
+  await openApp(page)
+  await openBpmnEditor(page)
+  await expect(page.getByText(/reconnu comme un diagramme BPMN valide/)).toHaveCount(0)
+
+  // The blank starter template's own process id (bpmn.io's default,
+  // "Process_1") drives the save key — not the URL's processDefinitionKey
+  // (édition d'un diagramme sans clé encore définie, cf. requirements doc).
+  await page.getByRole('button', { name: 'Enregistrer le brouillon' }).click()
+  expect(putCalled).toBe(true)
+})
+
+test('E2E-EDIT-BPMN-2 edit an already-deployed diagram (no draft) then deploy', async ({ page }) => {
+  await mockSession(page)
+  await page.route('**/api/workflow-bpmn-drafts/otherWorkflow', async (route) => {
+    await route.fulfill({ status: 204, body: '' })
+  })
+  let deployedXmlFetched = false
+  await page.route('**/api/workflow-bpmn-deployments/otherWorkflow/xml', async (route) => {
+    deployedXmlFetched = true
+    await route.fulfill({ status: 200, contentType: 'text/xml', body: BPMN_FOR_OTHER_WORKFLOW_EDITABLE })
+  })
+  await page.route('**/api/workflow-bpmn-deployments/info*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ processDefinitionKey: 'otherWorkflow', latestVersion: 2, activeInstanceCount: 4 }),
+    })
+  })
+  await page.route('**/api/workflow-bpmn-deployments', async (route) => {
+    await route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify({ processDefinitionKey: 'otherWorkflow', deployedVersion: 3, deploymentId: 'dep-9' }),
+    })
+  })
+  await openApp(page)
+  await openBpmnEditor(page)
+  expect(deployedXmlFetched).toBe(true)
+  await expect(page.getByText(/reconnu comme un diagramme BPMN valide/)).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Déployer' }).click()
+  await expect(page.getByText('Version actuelle déployée : 2 — instances actives : 4')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Confirmer le déploiement' }).click()
+  await expect(page.getByText(/Déployé : version 3/)).toBeVisible()
+})
+
+test('E2E-EDIT-BPMN-3 import a local BPMN file into the editor', async ({ page }) => {
+  await mockSession(page)
+  await page.route('**/api/workflow-bpmn-drafts/otherWorkflow', async (route) => {
+    await route.fulfill({ status: 204, body: '' })
+  })
+  await page.route('**/api/workflow-bpmn-deployments/otherWorkflow/xml', async (route) => {
+    await route.fulfill({ status: 204, body: '' })
+  })
+  let putCalled = false
+  await page.route('**/api/workflow-bpmn-drafts/importedProcess', async (route) => {
+    putCalled = true
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        processDefinitionKey: 'importedProcess',
+        xml: BPMN_IMPORTED,
+        updatedAt: '2026-08-24T00:00:00Z',
+        updatedBy: 'user-1',
+      }),
+    })
+  })
+  await openApp(page)
+  await openBpmnEditor(page)
+
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'imported.bpmn20.xml',
+    mimeType: 'application/xml',
+    buffer: Buffer.from(BPMN_IMPORTED),
+  })
+  // The re-import into the already-constructed Modeler is async too — wait
+  // for the imported diagram's own element (distinct id from the blank
+  // template's "StartEvent_1") to actually be rendered.
+  await expect(page.locator('[data-element-id="start"]')).toBeVisible()
+  await expect(page.locator('[data-element-id="StartEvent_1"]')).toHaveCount(0)
+  await expect(page.getByText(/reconnu comme un diagramme BPMN valide/)).toHaveCount(0)
+
+  // The imported file's own process id ("importedProcess") drives the save
+  // key, proving import → re-render → key extraction all wired correctly.
+  await page.getByRole('button', { name: 'Enregistrer le brouillon' }).click()
+  expect(putCalled).toBe(true)
+})
+
+test('E2E-EDIT-BPMN-4 draft takes priority over the deployed diagram, deploy then reopen falls back to it', async ({
+  page,
+}) => {
+  await mockSession(page)
+  let draftDeleted = false
+  await page.route('**/api/workflow-bpmn-drafts/otherWorkflow', async (route) => {
+    if (draftDeleted) {
+      await route.fulfill({ status: 204, body: '' })
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        processDefinitionKey: 'otherWorkflow',
+        xml: BPMN_FOR_OTHER_WORKFLOW_EDITABLE,
+        updatedAt: '2026-08-24T00:00:00Z',
+        updatedBy: 'user-1',
+      }),
+    })
+  })
+  let deployedXmlFetchCount = 0
+  await page.route('**/api/workflow-bpmn-deployments/otherWorkflow/xml', async (route) => {
+    deployedXmlFetchCount += 1
+    await route.fulfill({ status: 200, contentType: 'text/xml', body: BPMN_FOR_OTHER_WORKFLOW_EDITABLE })
+  })
+  await page.route('**/api/workflow-bpmn-deployments/info*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ processDefinitionKey: 'otherWorkflow', latestVersion: 1, activeInstanceCount: 0 }),
+    })
+  })
+  await page.route('**/api/workflow-bpmn-deployments', async (route) => {
+    draftDeleted = true // D-DESIGN-DRAFT-LIFECYCLE: the backend deletes the draft on success
+    await route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify({ processDefinitionKey: 'otherWorkflow', deployedVersion: 2, deploymentId: 'dep-42' }),
+    })
+  })
+  await openApp(page)
+
+  // First visit: the draft exists, so it takes priority over the deployed diagram.
+  await openBpmnEditor(page)
+  expect(deployedXmlFetchCount).toBe(0)
+
+  await page.getByRole('button', { name: 'Déployer' }).click()
+  await expect(page.getByText('Version actuelle déployée : 1 — instances actives : 0')).toBeVisible()
+  await page.getByRole('button', { name: 'Confirmer le déploiement' }).click()
+  await expect(page.getByText(/Déployé : version 2/)).toBeVisible()
+
+  // Reopening the editor on the same key (leave, come back): the backend
+  // reports no draft anymore, so the frontend correctly falls back to the
+  // deployed diagram instead of showing stale client-side state.
+  await openBpmnEditor(page)
+  expect(deployedXmlFetchCount).toBe(1)
+})
+

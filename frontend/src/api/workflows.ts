@@ -2,6 +2,7 @@ import axios from 'axios'
 import type {
   ActivityHistoryEntry,
   BpmnDeploymentResult,
+  BpmnDraft,
   ProcessDeploymentInfo,
   WorkflowDiagram,
   WorkflowTaskView,
@@ -99,4 +100,21 @@ export async function deployBpmn(file: File): Promise<BpmnDeploymentResult> {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
   return data
+}
+
+export async function getBpmnDraft(processDefinitionKey: string): Promise<BpmnDraft | null> {
+  const { data, status } = await axios.get<BpmnDraft>(`/api/workflow-bpmn-drafts/${processDefinitionKey}`)
+  return status === 204 ? null : data
+}
+
+export async function saveBpmnDraft(processDefinitionKey: string, xml: string): Promise<BpmnDraft> {
+  const { data } = await axios.put<BpmnDraft>(`/api/workflow-bpmn-drafts/${processDefinitionKey}`, { xml })
+  return data
+}
+
+export async function getDeployedBpmnXml(processDefinitionKey: string): Promise<string | null> {
+  const { data, status } = await axios.get<string>(
+    `/api/workflow-bpmn-deployments/${processDefinitionKey}/xml`,
+  )
+  return status === 204 ? null : data
 }

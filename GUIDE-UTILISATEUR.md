@@ -4,9 +4,9 @@ Ce guide décrit, écran par écran, comment créer un dossier, démarrer/suivre
 configurer un connecteur et configurer un template de document **depuis l'interface web**.
 Pour installer et lancer l'environnement, voir [GETTING-STARTED.md](GETTING-STARTED.md).
 
-> FlowForge ne propose ni designer graphique ni éditeur BPMN — un diagramme se modélise toujours
-> avec un outil externe. Son **dépôt** côté moteur Flowable, en revanche, est possible depuis
-> l'UI (§3) depuis cette feature ; ce n'était pas le cas auparavant.
+> Un diagramme BPMN peut être construit ou modifié directement dans FlowForge (éditeur intégré,
+> §3) — sans dépendre d'un outil externe ni d'une application Flowable UI tierce (Modeler,
+> Cockpit restent hors scope produit).
 
 ------
 
@@ -81,10 +81,33 @@ Le dossier est créé puis la page bascule automatiquement sur sa fiche détail
 
 ## 3. Démarrer et suivre un workflow BPMN
 
-### Déployer un diagramme BPMN
+### Construire ou modifier un diagramme BPMN
 
-FlowForge ne propose **aucun écran pour dessiner un diagramme** — le fichier `.bpmn20.xml` est
-toujours modélisé avec un outil externe (ex. Camunda Modeler). Une fois ce fichier obtenu, deux
+Écran **Éditeur BPMN** (`/admin/bpmn-editor`, `TENANT_ADMIN` ou `WORKFLOW_ADMIN`), accessible
+depuis le bouton **Éditer** en face de chaque config workflow sur l'écran **Admin → Workflows**
+(`/admin/workflow-types`) :
+
+1. **Trois points d'entrée** : diagramme vierge (aucune clé encore associée), import d'un fichier
+   `.bpmn20.xml` local, ou édition d'un diagramme déjà déployé pour la clé de la config workflow
+   choisie (le diagramme réellement en cours d'exécution est rechargé automatiquement).
+2. **Palette d'édition** (`bpmn-js`) — glisser-déposer des éléments BPMN standard (tâches,
+   passerelles, événements). Le **panel de propriétés** à droite permet d'éditer les propriétés
+   BPMN standard, ainsi que les attributs Flowable spécifiques aux tâches de service
+   (`asynchrone`, `delegate expression`, `expression`) et aux signaux (`scope`).
+3. Bouton **Enregistrer le brouillon** — persiste l'état courant côté serveur, un brouillon par
+   clé de processus (le dernier enregistrement écrase le précédent, pas d'historique). Rouvrir
+   l'éditeur sur la même clé reprend ce brouillon.
+4. Bouton **Déployer** — même flux de confirmation que l'upload ci-dessous (affichage de la
+   version actuelle/instances actives si la clé existe déjà, confirmation explicite). Un
+   déploiement réussi **supprime le brouillon** de cette clé (le diagramme réellement déployé
+   redevient la référence à la prochaine ouverture de l'éditeur).
+
+Un diagramme peut aussi toujours être modélisé avec un outil externe (ex. Camunda Modeler) puis
+importé/déployé via cet écran ou via l'upload ci-dessous.
+
+### Déployer un diagramme BPMN (upload direct)
+
+Une fois un fichier `.bpmn20.xml` obtenu (édité dans FlowForge ou avec un outil externe), deux
 mécanismes de dépôt côté moteur Flowable coexistent :
 
 **Au build/démarrage (référence CI/exploitation)** — le fichier est déposé dans le dépôt backend

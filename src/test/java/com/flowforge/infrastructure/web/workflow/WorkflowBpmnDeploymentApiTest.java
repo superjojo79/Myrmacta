@@ -5,6 +5,8 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -157,6 +159,60 @@ class WorkflowBpmnDeploymentApiTest {
         mockMvc.perform(get("/api/workflow-bpmn-deployments/info")
                         .param("processDefinitionKey", "apiNeverDeployed" + System.nanoTime())
                         .with(user("admin-info-empty", "TENANT_ADMIN")))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void deployedXml_deployedKey_returns200WithXmlBody() throws Exception {
+        String key = "apiXml" + System.nanoTime();
+        createWorkflowTypeConfig(key);
+        mockMvc.perform(multipart("/api/workflow-bpmn-deployments")
+                        .file(bpmnFile(key))
+                        .with(user("admin-xml", "TENANT_ADMIN"))
+                        .with(csrf()))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/workflow-bpmn-deployments/{key}/xml", key)
+                        .with(user("admin-xml-get", "TENANT_ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_XML))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"" + key + "\"")));
+    }
+
+    @Test
+    void deployedXml_neverDeployedKey_returns204() throws Exception {
+        mockMvc.perform(get("/api/workflow-bpmn-deployments/{key}/xml", "apiXmlNeverDeployed" + System.nanoTime())
+                        .with(user("admin-xml-empty", "TENANT_ADMIN")))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void deployedXml_withoutAdminRole_returns403() throws Exception {
+        mockMvc.perform(get("/api/workflow-bpmn-deployments/{key}/xml", "apiXmlDenied" + System.nanoTime())
+                        .with(user("plain-user-xml")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void deploy_successfulOnKeyWithExistingDraft_deletesTheDraft() throws Exception {
+        String key = "apiDeployDeletesDraft" + System.nanoTime();
+        createWorkflowTypeConfig(key);
+        mockMvc.perform(put("/api/workflow-bpmn-drafts/{key}", key)
+                        .with(user("admin-draft-before-deploy", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"xml\": \"" + BPMN.formatted(key).replace("\n", "\\n").replace("\"", "\\\"")
+                                + "\"}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(multipart("/api/workflow-bpmn-deployments")
+                        .file(bpmnFile(key))
+                        .with(user("admin-deploy-deletes-draft", "TENANT_ADMIN"))
+                        .with(csrf()))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/workflow-bpmn-drafts/{key}", key)
+                        .with(user("admin-draft-after-deploy", "TENANT_ADMIN")))
                 .andExpect(status().isNoContent());
     }
 

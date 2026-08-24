@@ -19,6 +19,9 @@ buildNumber.properties
 # Local / AI DevKit feature worktrees
 .worktrees/
 
+# Agent tool isolated worktrees (parallel background agents)
+.claude/worktrees/
+
 # Frontend (Vite)
 frontend/node_modules/
 frontend/dist/

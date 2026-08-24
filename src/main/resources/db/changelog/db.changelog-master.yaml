@@ -23,3 +23,5 @@ databaseChangeLog:
       file: db/changelog/changes/011-purge-outbox-worker.yaml
   - include:
       file: db/changelog/changes/012-observability-indexes.yaml
+  - include:
+      file: db/changelog/changes/013-bpmn-draft-tables.yaml

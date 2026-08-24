@@ -1,20 +1,17 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import BpmnCanvas from './BpmnCanvas.vue'
-import { deployBpmn, getBpmnDeploymentInfo } from '@/api/workflows'
-import type { BpmnDeploymentResult, ProcessDeploymentInfo } from '@/api/types'
-import { toProblemDetail } from '@/api/http'
+import type { BpmnDeploymentResult } from '@/api/types'
+import { useBpmnDeployment } from '@/composables/useBpmnDeployment'
 
 const emit = defineEmits<{ deployed: [result: BpmnDeploymentResult] }>()
+
+const deployment = useBpmnDeployment()
 
 const selectedFile = ref<File | null>(null)
 const bpmnXml = ref<string | null>(null)
 const processDefinitionKey = ref<string | null>(null)
-const deploymentInfo = ref<ProcessDeploymentInfo | null>(null)
 const readError = ref<string | null>(null)
-const deployError = ref<string | null>(null)
-const deploying = ref(false)
-const deployedResult = ref<BpmnDeploymentResult | null>(null)
 
 function extractProcessDefinitionKey(xml: string): string | null {
   const match = xml.match(/<(?:[\w-]+:)?process\b[^>]*\bid\s*=\s*["']([^"']+)["']/)
@@ -24,10 +21,8 @@ function extractProcessDefinitionKey(xml: string): string | null {
 function reset() {
   bpmnXml.value = null
   processDefinitionKey.value = null
-  deploymentInfo.value = null
   readError.value = null
-  deployError.value = null
-  deployedResult.value = null
+  deployment.reset()
 }
 
 async function onFileChange(event: Event) {
@@ -53,25 +48,14 @@ async function onFileChange(event: Event) {
 
   bpmnXml.value = text
   processDefinitionKey.value = key
-  try {
-    deploymentInfo.value = await getBpmnDeploymentInfo(key)
-  } catch {
-    deploymentInfo.value = null
-  }
+  await deployment.loadInfo(key)
 }
 
 async function confirm() {
   if (!selectedFile.value || !bpmnXml.value) return
-  deploying.value = true
-  deployError.value = null
-  try {
-    const result = await deployBpmn(selectedFile.value)
-    deployedResult.value = result
+  const result = await deployment.deploy(selectedFile.value)
+  if (result) {
     emit('deployed', result)
-  } catch (err) {
-    deployError.value = toProblemDetail(err).detail ?? 'Déploiement impossible'
-  } finally {
-    deploying.value = false
   }
 }
 </script>
@@ -86,19 +70,22 @@ async function confirm() {
     <template v-if="bpmnXml && processDefinitionKey">
       <BpmnCanvas :bpmn-xml="bpmnXml" />
       <p>Clé du processus : <strong>{{ processDefinitionKey }}</strong></p>
-      <p v-if="deploymentInfo">
-        Version actuelle déployée : {{ deploymentInfo.latestVersion }} —
-        instances actives : {{ deploymentInfo.activeInstanceCount }}
+      <p v-if="deployment.deploymentInfo.value">
+        Version actuelle déployée : {{ deployment.deploymentInfo.value.latestVersion }} —
+        instances actives : {{ deployment.deploymentInfo.value.activeInstanceCount }}
       </p>
       <p v-else>Aucune version déployée pour cette clé pour l'instant.</p>
 
-      <p v-if="deployError" class="bpmn-upload-preview__error">{{ deployError }}</p>
-      <p v-if="deployedResult" class="bpmn-upload-preview__success">
-        Déployé : version {{ deployedResult.deployedVersion }} (dépôt {{ deployedResult.deploymentId }}).
+      <p v-if="deployment.deployError.value" class="bpmn-upload-preview__error">
+        {{ deployment.deployError.value }}
+      </p>
+      <p v-if="deployment.deployedResult.value" class="bpmn-upload-preview__success">
+        Déployé : version {{ deployment.deployedResult.value.deployedVersion }} (dépôt
+        {{ deployment.deployedResult.value.deploymentId }}).
       </p>
 
-      <button type="button" :disabled="deploying" @click="confirm">
-        {{ deploying ? 'Déploiement en cours…' : 'Confirmer le déploiement' }}
+      <button type="button" :disabled="deployment.deploying.value" @click="confirm">
+        {{ deployment.deploying.value ? 'Déploiement en cours…' : 'Confirmer le déploiement' }}
       </button>
     </template>
   </section>

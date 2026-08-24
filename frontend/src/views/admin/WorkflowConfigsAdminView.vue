@@ -80,6 +80,12 @@ function onBpmnDeployed() {
       <li v-for="cfg in configs" :key="cfg.workflowKey">
         <strong>{{ cfg.workflowKey }}</strong> — {{ cfg.label }}
         <button type="button" @click="rename(cfg)">Renommer</button>
+        <router-link
+          class="workflow-config-edit-link"
+          :to="{ path: '/admin/bpmn-editor', query: { processDefinitionKey: cfg.workflowKey } }"
+        >
+          Éditer
+        </router-link>
       </li>
     </ul>
     <AdminPager v-model="page" :total-pages="totalPages" />

@@ -3,12 +3,16 @@ package com.flowforge.infrastructure.web.workflow;
 import com.flowforge.domain.workflow.model.BpmnDeploymentResult;
 import com.flowforge.domain.workflow.port.in.DeployBpmnProcessUseCase;
 import com.flowforge.domain.workflow.port.in.GetProcessDeploymentInfoUseCase;
+import com.flowforge.domain.workflow.port.out.WorkflowDeploymentPort;
 import com.flowforge.infrastructure.config.BpmnUploadProperties;
+import com.flowforge.infrastructure.config.TenantProperties;
 import java.io.IOException;
 import java.net.URI;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -22,15 +26,29 @@ class WorkflowBpmnDeploymentController {
 
     private final DeployBpmnProcessUseCase deployUseCase;
     private final GetProcessDeploymentInfoUseCase infoUseCase;
+    private final WorkflowDeploymentPort deploymentPort;
+    private final TenantProperties tenantProperties;
     private final BpmnUploadProperties uploadProperties;
 
     WorkflowBpmnDeploymentController(
             DeployBpmnProcessUseCase deployUseCase,
             GetProcessDeploymentInfoUseCase infoUseCase,
+            WorkflowDeploymentPort deploymentPort,
+            TenantProperties tenantProperties,
             BpmnUploadProperties uploadProperties) {
         this.deployUseCase = deployUseCase;
         this.infoUseCase = infoUseCase;
+        this.deploymentPort = deploymentPort;
+        this.tenantProperties = tenantProperties;
         this.uploadProperties = uploadProperties;
+    }
+
+    @GetMapping("/{processDefinitionKey}/xml")
+    ResponseEntity<byte[]> deployedXml(@PathVariable String processDefinitionKey) {
+        return deploymentPort
+                .findDeployedXml(tenantProperties.id(), processDefinitionKey)
+                .map(xml -> ResponseEntity.ok().contentType(MediaType.TEXT_XML).body(xml))
+                .orElseGet(() -> ResponseEntity.noContent().build());
     }
 
     @GetMapping("/info")

@@ -15,4 +15,18 @@ public record NotificationEvent(
         String body,
         String userId,
         UUID webhookConfigId,
-        Map<String, Object> payload) {}
+        Map<String, Object> payload,
+        DossierFieldsSnapshot dossierFieldsSnapshot) {
+
+    /** Convenience — no dossier fields carried in the payload (today's only producers). */
+    public NotificationEvent(
+            List<NotificationChannel> channels,
+            String to,
+            String subject,
+            String body,
+            String userId,
+            UUID webhookConfigId,
+            Map<String, Object> payload) {
+        this(channels, to, subject, body, userId, webhookConfigId, payload, null);
+    }
+}

@@ -13,12 +13,19 @@
 **Statut lifecycle (check-status) :** `architecture-hexagonale`, `multi-tenant`,
 `authentification`, `dossiers`, `workflow-engine`, `autorisation-conformite`,
 `connecteurs`, `templates-documents`, `generation-documents`, `notifications`,
-`visualisation-workflow`, `frontend`, `pagination-dossiers` (en cours de merge) sont **Complete**/lifecycle advanced (mergés — `frontend` via
+`visualisation-workflow`, `frontend`, `pagination-dossiers`, `preview-documents`,
+`edition-champs-dossier`, `retention-dossier-type`, `purge-stockage`,
+`openapi-pagination-admin`, `observabilite`, `durcissement-donnees-sensibles`,
+`contrat-api-client`, `fiabilisation-tests-plateforme`, `deploiement-bpmn`,
+`modele-physique-consolide` sont **Complete** (mergées sur `main` — `frontend` via
 PR #38 `cursor/feature-frontend-21f2`, vague 1 instructeur + vague 2 admin
 types/templates/connectors/workflow-configs ; packaging Maven→`static/` ;
 maquette
 [FlowForge - Maquettes UI.html](analysis%20doc/FlowForge%20-%20Maquettes%20UI.html)
-= référence UX ; pas Rapports/SLA ni liste dossiers tant que TODO §24).
+= référence UX). Détail des 5 dernières (regroupement 2026-08-20) en §2.
+**File d'attente vide** (`FILE-ATTENTE.md`) au 2026-08-22 — prochaine feature à
+identifier lors d'une prochaine analyse ; seul reliquat non-feature substantiel :
+outillage provisioning ops (TODO §31, voir §3/§4).
 
 ---
 
@@ -47,7 +54,7 @@ jointes). `delete` livré avec `purge-stockage` (§22). Aucun couplage MinIO.
 |---|---|
 | Activation `server.servlet.context-path` | Routage par chemin (décision n° 14) — yaml encore commenté |
 | Datasource + search_path runtime | Partiellement amorcé avec `dossiers` ; hardening ops |
-| Bootstrap Liquibase / schéma tenant | Ops + contextes `tenant-init` / `tenant-migration` (décision n° 10) |
+| Bootstrap Liquibase / schéma tenant | Ops (bootstrap du schéma au provisioning). **Obsolète :** les contextes `tenant-init`/`tenant-migration` séparés évoqués ici (décision n° 10) n'existent pas dans le code — la décision n° 1 porte une note explicite disant qu'ils « n'ont plus lieu d'être » depuis la décision n° 13 (instance dédiée par tenant, changelog unique appliqué à chaque démarrage). Confirmé par `modele-physique-consolide` (PR #68, TODO §25). |
 | Outillage provisioning | Schéma, instance, bloc reverse-proxy, surcharge obligatoire `app.tenant.id` (voir TODO §31 / docs feature) |
 | `platform.tenant_migration_status` | Observabilité migration (lié TODO §29) |
 | Injecter `TenantProperties.id()` aux adaptateurs HTTP | Dès premiers controllers métier (déjà fait pour dossiers) |
@@ -76,8 +83,8 @@ jointes). `delete` livré avec `purge-stockage` (§22). Aucun couplage MinIO.
 | CHECK SQL `permission ∈ {VIEW,EDIT}` | Nice-to-have |
 | `Long version` / `Persistable` pour `isNew()` | Nice-to-have JPA |
 | Smoke PostgreSQL réel | Hors CI (IT actuelles = H2 MODE=PostgreSQL) |
-| OpenAPI formel | **Partiel clos** — `openapi-pagination-admin` (PR #58) : springdoc + YAML CI ; reste codegen |
-| Rétention / purge / `sensitive` | TODO §21–23 |
+| OpenAPI formel | **Clos** — `openapi-pagination-admin` (PR #58) : springdoc + YAML CI ; complété par `contrat-api-client` (PR #65, TODO §24 clos) : 6 listes non-admin paginées, golden OpenAPI régénéré. Reste hors scope assumé : codegen client (décision D-CODEGEN) |
+| Rétention / purge / `sensitive` | §21/§22 livrés ; §23 reste réduit (voir §3 ci-dessous) |
 | Observabilité MDC dossiers | **Livré** — `observabilite` PR #59 |
 
 **Déjà couvert en B (ne pas replanifier) :** types + dossiers CRUD minimal,
@@ -143,6 +150,11 @@ Ordre indicatif aligné sur l’analyse et les dépendances techniques :
 | — | `purge-stockage` | **Complete** Phase 9 READY (PR #56) — job `purge_outbox` store+PG ; `DocumentStoragePort.delete` ; UI file lecture + enqueue admin. |
 | — | `openapi-pagination-admin` | **Complete** Phase 5 (PR #58) — envelope 6 GET admin ; OpenAPI golden ; pagers + webhooks admin ; catalogues `listAllPages`. |
 | — | `observabilite` | **Complete** Phase 9 READY (PR #59) — ECS + MDC ; Micrometer port management ; snapshot + SPA `/admin/observabilite`. |
+| — | `durcissement-donnees-sensibles` | **Complete** (PR #62) — magic-bytes + `AttachmentScanPort` no-op sur upload ; export CSV masqué + anti-injection formule ; skeleton `HttpRestServiceConnector` ; garde-fous anti-fuite secrets. TODO §23 reste réduit, §30 clos. |
+| — | `contrat-api-client` | **Complete** (PR #65) — 6 listes non-admin paginées (elements, workflow-tasks/mine, connector-definitions, dossiers/{id}/workflows, workflow-links history+tasks) ; golden OpenAPI régénéré. TODO §24 clos. |
+| — | `fiabilisation-tests-plateforme` | **Complete** (PR #66) — Testcontainers PostgreSQL, `SequentialReferenceMultiPodIT`, `TenantSchemaIsolationIT`, `LiquibasePartialFailureIT`, seuils Jacoco relevés. TODO §26/§28/§37 clos. |
+| — | `deploiement-bpmn` | **Complete** (PR #67) — écran admin d'upload BPMN avec prévisualisation (`BpmnUploadPreview.vue`), `DeployBpmnProcessUseCase`, `FlowableWorkflowDeploymentAdapter`. TODO §35 clos. |
+| — | `modele-physique-consolide` | **Complete** (PR #68) — ERD consolidé [13-modele-physique.md](analysis%20doc/13-modele-physique.md) (17 tables, 4 index uniques partiels, 2 FK DB) ; correction de la prémisse obsolète `TenantRegistry`/contextes Liquibase séparés. TODO §25 clos. |
 
 ---
 
@@ -156,14 +168,14 @@ Voir le détail et les options dans [TODO.md](TODO.md) et
 | 19 | Granularité rôles RBAC | **Clos V1** — cinq rôles + mapping `ROLE_*` ; ACL type |
 | 21 | Rétention par `DossierType` | **Livré** (2026-08-19) — `retention-dossier-type` |
 | 22 | Purge PostgreSQL / object store | **Livré** (2026-08-19) — `purge-stockage` PR #56 ; Q1–Q11 |
-| 23 | `FieldDefinition.sensitive` | **Quasi clos** — flag meta + masquage serveur livrés (`DossierFieldRedactor`, D-SENSITIVE = A) sur `GET /api/dossiers/**` et le panneau dossier de la visualisation ; reste masquage sur d'éventuels futurs exports (CSV, etc.) |
-| 24 | Contrat d’API complet | **Partiel clos** (2026-08-19) — OpenAPI + pagination admin + webhooks UI (`openapi-pagination-admin` PR #58). Reste codegen, nested lists, spec SSE/multipart/ingress |
-| 25 | Modèle physique consolidé (ERD) | **Partiel** — tables dossiers livrées ; reste ERD global, `platform.*`, ACT_*, outbox, etc. |
-| 26 | Concurrence dossier / référence | **Partiel / quasi clos en B** — `@Version` + `dossier_reference_seq` + format UTC ; reste smoke PG multi-pods |
-| 28 | Stratégie de test | **Partiel** — ArchUnit + Jacoco ≥ 80 % + H2 ; reste Testcontainers / charge Flowable / outbox ; FE = Vitest + Playwright, câblés en CI (job `frontend`, `.github/workflows/ci.yml`) |
+| 23 | `FieldDefinition.sensitive` | **Reste réduit** (2026-08-21, `durcissement-donnees-sensibles` PR #62) — masquage serveur livré (`DossierFieldRedactor`, D-SENSITIVE = A) sur `GET /api/dossiers/**`, le panneau dossier de la visualisation **et l'export CSV** (`GET /api/dossiers/export.csv`, anti-injection formule inclus). Seul point encore ouvert : exclusion des valeurs sensibles des **logs applicatifs** et des **payloads de webhooks sortants** (notification) |
+| 24 | Contrat d’API complet | **Clos** (2026-08-21, `contrat-api-client` PR #65) — en plus de `openapi-pagination-admin` (PR #58), 6 listes non-admin paginées, golden OpenAPI régénéré. Codegen client explicitement exclu (décision D-CODEGEN) |
+| 25 | Modèle physique consolidé (ERD) | **Clos** (2026-08-22, `modele-physique-consolide` PR #68) — [13-modele-physique.md](analysis%20doc/13-modele-physique.md) : ERD des 17 tables réelles, 4 index uniques partiels, répartition tenant/`platform`. L'énoncé d'origine était en partie obsolète (`TenantRegistry`, contextes Liquibase séparés — n'existent plus depuis la décision n° 13), corrigé dans le nouveau document |
+| 26 | Concurrence dossier / référence | **Clos** (2026-08-22, `fiabilisation-tests-plateforme` PR #66) — `SequentialReferenceMultiPodIT` (Testcontainers PostgreSQL, 8 pods simulés, 80 générations concurrentes) prouve l'absence de doublon/trou sous charge réelle |
+| 28 | Stratégie de test | **Clos** (2026-08-22, `fiabilisation-tests-plateforme` PR #66) — Testcontainers PostgreSQL ajoutés (`TenantSchemaIsolationIT`, `LiquibasePartialFailureIT`, `SequentialReferenceMultiPodIT`), seuils Jacoco relevés ; FE = Vitest + Playwright, câblés en CI (job `frontend`, `.github/workflows/ci.yml`) |
 | 29 | Observabilité | **Livré** (2026-08-20) — `observabilite` PR #59 Phase 9 READY ; Q1–Q6 |
-| 30 | Durcissement entrées exposées | **Partiel** — rate limit + taille max sur webhooks entrants et `POST /api/documents/generate` ; SSRF (PDF + webhooks sortants) fermé ; reste antivirus PJ, upload générique… |
-| 31 | Découpage en lots / provisioning | **Partiel** — lots lifecycle démarrés ; outillage provisioning ops encore à produire |
+| 30 | Durcissement entrées exposées | **Clos** (2026-08-21, `durcissement-donnees-sensibles` PR #62) — en plus du rate limit/taille max/SSRF déjà livrés, validation magic-bytes des pièces jointes + port `AttachmentScanPort` pluggable (adaptateur no-op, pas d'antivirus dans la stack figée — décision explicite, contrat prêt pour un futur adaptateur type ClamAV) + audit anti-fuite de secrets déchiffrés |
+| 31 | Découpage en lots / provisioning | **Partiel** — lots lifecycle démarrés (5 features du regroupement 2026-08-20 toutes livrées) ; outillage provisioning ops (schéma/instance/proxy/secrets) encore à produire — seul point du §3 encore réellement ouvert |
 
 ---
 

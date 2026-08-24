@@ -594,7 +594,8 @@ API déjà figé par le design), fusionnés puis M8 (vérification globale) exé
   47 Playwright, tous verts.
 
 Détail complet : [docs/ai/implementation/2026-08-24-feature-edition-bpmn.md](docs/ai/implementation/2026-08-24-feature-edition-bpmn.md).
-Prochaine étape (sur demande explicite de l'utilisateur) : `dev-review` (Phase 9), puis PR.
+Phase 9 (revue finale) close, PR ouverte sur demande explicite de l'utilisateur :
+[PR #71](https://github.com/superjojo79/FlowForge/pull/71).
 
 **Impacte :** `frontend/src/components/workflow/BpmnCanvas.vue`, `BpmnUploadPreview.vue`,
 `WorkflowBpmnDeploymentController` (endpoint de déploiement potentiellement réutilisable tel

@@ -488,6 +488,42 @@ remplacer aurait ajouté une dépendance, pas seulement corrigé un bug.
 
 ---
 
+### [ ] 39. Construction de diagrammes BPMN dans FlowForge — écart restant après §35
+
+**Constat :** §35 (`deploiement-bpmn`, PR #67) a livré l'upload + prévisualisation d'un
+`.bpmn20.xml` **déjà modélisé en externe**, avec comme non-goal explicite « pas d'édition/design
+de diagramme dans FlowForge ». Le besoin métier sous-jacent (pouvoir construire/modifier un
+diagramme BPMN *depuis* FlowForge) reste donc un écart réel, pas un choix assumé — distinct du
+volet Cockpit (`DEFERRED-FEATURES.md` §1.5, hors scope produit, non remis en cause ici).
+
+**Options analysées (2026-08-24, discussion utilisateur) :**
+
+- **(a) `bpmn-js` Modeler seul.** Bascule de `NavigatedViewer` vers le bundle `Modeler` du même
+  package déjà en dépendance (`bpmn-js` `^18.24.0`, `frontend/package.json`) — palette
+  drag-and-drop, `saveXML()`. Zéro nouvelle dépendance, mais pas d'édition des attributs
+  `flowable:*` (assignee, `formKey`, listeners…) utilisés par les process réels
+  (`smoke-process.bpmn20.xml` etc.) via la palette générique.
+- **(b) `bpmn-js` Modeler + `bpmn-js-properties-panel` avec provider custom Flowable — retenue.**
+  Même socle que (a), plus le panel de propriétés officiel de l'écosystème bpmn.io (MIT, même
+  éditeur que Camunda Modeler mais embarqué en lib, pas d'app tierce) étendu par un provider
+  custom pour exposer les extensions `flowable:*` réellement utilisées dans les diagrammes du
+  dépôt.
+- **(c) `diagram-js` bas niveau, éditeur maison.** Écarté — réinvente ce que `bpmn-js` fait déjà.
+- **(d) Flowable Modeler (webapp séparée).** Dernier recours explicitement écarté par
+  l'utilisateur — app tierce à opérer/sécuriser par tenant, contradictoire avec la décision déjà
+  actée d'exclure les apps Flowable UI (§35, `DEFERRED-FEATURES.md` §1.5).
+
+**Recommandation actée :** option **(b)**. Analyse détaillée :
+[docs/ai/requirements/2026-08-24-feature-edition-bpmn.md](docs/ai/requirements/2026-08-24-feature-edition-bpmn.md)
+(Phase 1 uniquement — statut `draft`, périmètre exact et écran d'accueil à confirmer en Phase 2/3
+avant lancement de l'implémentation).
+
+**Impacte :** `frontend/src/components/workflow/BpmnCanvas.vue`, `BpmnUploadPreview.vue`,
+`WorkflowBpmnDeploymentController` (endpoint de déploiement potentiellement réutilisable tel
+quel), [05-workflow-engine.md](analysis%20doc/05-workflow-engine.md), `README.md`.
+
+---
+
 ## Processus
 
 ### [x] 31. Découpage en lots d'implémentation

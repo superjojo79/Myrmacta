@@ -24,6 +24,9 @@ public final class SaveBpmnDraftUseCaseImpl implements SaveBpmnDraftUseCase {
 
     @Override
     public BpmnDraft save(String processDefinitionKey, String xml, String updatedBy) {
+        if (xml == null || xml.isBlank()) {
+            throw new InvalidBpmnException("xml is required");
+        }
         String extractedKey = bpmnParserPort.extractProcessDefinitionKey(xml.getBytes(StandardCharsets.UTF_8));
         if (!extractedKey.equals(processDefinitionKey)) {
             throw new InvalidBpmnException("processDefinitionKey in path ('" + processDefinitionKey

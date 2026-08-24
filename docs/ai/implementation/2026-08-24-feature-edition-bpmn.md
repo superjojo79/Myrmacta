@@ -23,11 +23,14 @@ autre feature non liée y avait été mergée entre-temps ; seuls les 3
 commits M5/M6/M7, strictement scopés à `frontend/**`, ont été repris,
 sans importer l'historique non lié). M8 (vérification globale + E2E)
 exécuté par l'orchestrateur sur l'arbre fusionné — 1 bug réel trouvé et
-corrigé à cette étape (voir Design Deviations).
+corrigé à cette étape (voir Design Deviations). Phase 7 (revue fichier
+par fichier, dédiée) a trouvé et corrigé 1 bug réel supplémentaire (voir
+Design Deviation 6).
 
-`./mvnw verify` final : **1106 tests, 0 échec**, LINE 93.86% / BRANCH
-77.14% (≥ seuils 85%/75%). Frontend **193 tests Vitest, 0 échec**,
-typecheck/lint propres. **47/47 Playwright** (43 existants non régressés
+`./mvnw verify` final : **1110 tests, 0 échec** (1106 + 4 en Phase 7),
+LINE 93.84% / BRANCH 75.27% (≥ seuils 85%/75%). Frontend **193 tests
+Vitest, 0 échec**, typecheck/lint propres. **47/47 Playwright** (43
+existants non régressés
 + 4 nouveaux `E2E-EDIT-BPMN-*`). Statut : implémentation **terminée**.
 Phase 7 (check implementation) intégrée ci-dessous. Prochaine étape :
 `dev-review` (Phase 9), non lancée à ce stade.
@@ -193,13 +196,45 @@ de version).
      (`"no diagram to display"`). Fixtures dédiées avec DI complète
      ajoutées pour les tests de l'éditeur, sans toucher aux fixtures
      partagées existantes.
+6. **Bug réel trouvé et corrigé en Phase 7 (revue fichier par fichier
+   dédiée, pas M8)** : `SaveBpmnDraftUseCaseImpl.save()` appelait
+   `xml.getBytes(...)` sans garde contre `xml` `null` — un `PUT
+   /api/workflow-bpmn-drafts/{key}` avec un corps `{}` (champ `xml`
+   manquant, désérialisation Jackson d'un `record` sans validation)
+   levait une `NullPointerException` non gérée (aucun
+   `@ExceptionHandler` ne la catch dans `WorkflowExceptionHandler`),
+   renvoyant `500` au lieu d'un `400` contrôlé. **Même classe de bug que
+   celle déjà trouvée et corrigée en Phase 7 de `deploiement-bpmn`**
+   (NPE sur `originalFilename` `null`) — le précédent n'a pas empêché la
+   récurrence côté brouillon, code écrit indépendamment. Corrigé par une
+   garde explicite (`xml == null || xml.isBlank()` → `InvalidBpmnException`,
+   déjà mappée en `400`) en tête de `save()`, **avant** tout appel au
+   parser BPMN. Couvert par 2 nouveaux scénarios unitaires
+   (`SaveBpmnDraftUseCaseImplTest`) et 1 nouveau scénario API
+   (`BpmnDraftApiTest.put_missingXmlField_returns400`) ; un second
+   scénario API ajouté au passage (`put_withoutAdminRole_returns403`,
+   couverture explicite d'un cas déjà protégé par `@PreAuthorize`
+   classe mais jamais testé explicitement pour `PUT`).
+
+**Point ouvert non corrigé, signalé plutôt que tranché silencieusement**
+(sévérité plus faible, UX pas sécurité/intégrité) : `useBpmnDraft.load()`
+n'a pas de `try/catch` — si `getBpmnDraft`/`getDeployedBpmnXml` échoue
+pour une raison réseau (pas un `204`, une vraie erreur HTTP/réseau),
+l'exception remonte et interrompt le `onMounted` de `BpmnEditorView.vue`
+avant que `ready.value = true` ne soit atteint : l'éditeur reste bloqué
+sur une page vide, sans message d'erreur ni option de réessayer. Pas
+corrigé dans cette session — périmètre au-delà des success criteria
+actés (aucun scénario requirements/testing ne couvre ce cas), à trancher
+explicitement si l'utilisateur veut l'ajouter (nouveau ticket ou
+extension mineure de `useBpmnDraft.ts`/`BpmnEditorView.vue`).
 
 ## Coverage
 
 Aucun changement aux seuils Jacoco existants (LINE 85%, BRANCH 75%). État
-final (`./mvnw verify`, 1106 tests) : LINE 93.86%, BRANCH 77.14%, tous
-seuils tenus sans avoir eu besoin de test ciblé supplémentaire pour les
-atteindre.
+final (`./mvnw verify`, 1110 tests, après Phase 7) : LINE 93.84%, BRANCH
+75.27% — tous seuils tenus, aucun test ciblé supplémentaire nécessaire
+pour les atteindre (BRANCH reste proche du seuil, à surveiller si de
+nouvelles branches non testées sont ajoutées plus tard sur ce module).
 
 ## Files Changed
 
@@ -263,7 +298,9 @@ contrat public préservé, 5 tests Vitest existants inchangés et verts.
 
 `SaveBpmnDraftUseCaseImpl` : XML malformé →`InvalidBpmnException` →
 `400` (même mapping que `deploiement-bpmn`) ; clé chemin/XML incohérente
-→ `400`. `BpmnDraftController`/`WorkflowBpmnDeploymentController` :
+→ `400` ; `xml` `null`/blanc (champ manquant du corps JSON) → `400`
+plutôt qu'une `NullPointerException` non gérée (Design Deviation 6,
+trouvée en Phase 7). `BpmnDraftController`/`WorkflowBpmnDeploymentController` :
 `204` pour une absence de brouillon/déploiement (pas une erreur — état
 normal). Toute validation reproduite côté serveur, jamais confiance dans
 l'éditeur frontend.
@@ -287,12 +324,22 @@ chaud.
   présents. Côté frontend, seule nouvelle dépendance
   (`bpmn-js-properties-panel`) — licence MIT vérifiée avant usage (Design
   Deviation 2).
+- **Robustesse** : voir Design Deviation 6 (NPE potentielle sur `xml`
+  `null`/manquant trouvée et corrigée — corps de requête `{}` renvoyait
+  `500` au lieu de `400`).
 
-## Phase 7 — check implementation (2026-08-24)
+## Phase 7 — check implementation
 
-Revue fichier par fichier de l'ensemble des fichiers créés/modifiés
-(backend + frontend), au-delà de la revue faite par chaque agent dans
-son propre worktree :
+**Correction** : la version précédente de cette section datait le
+« Phase 7 » du travail fait pendant M8 (fusion + vérification globale).
+En réalité, les 2 bugs trouvés à cette étape (`eventBus`/`commandStack`,
+race condition de montage) l'ont été respectivement en écrivant l'E2E et
+en TDD par l'agent frontend — pas via une revue fichier par fichier
+dédiée. Cette section documente maintenant la **vraie** Phase 7,
+exécutée séparément sur demande explicite de l'utilisateur, avec relecture
+systématique de chacun des 45 fichiers du diff (`git diff a56ceb7~1
+7aa31d5 --stat`), au-delà de la revue faite par chaque agent dans son
+propre worktree.
 
 - **Alignement design** : les 7 décisions Phase 2 et les 3 décisions
   Phase 3 sont toutes couvertes (tableaux de traçabilité requirements→design
@@ -300,26 +347,47 @@ son propre worktree :
 - **Cohérence avec modules similaires** : `@IdClass` suit
   `WorkflowIdempotencyJpaEntity` (vérifié explicitement, pas supposé) ;
   injection `tenantId` suit `DeployBpmnProcessUseCaseImpl` ; composable
-  plutôt que composant suit les conventions `vue-best-practices`.
+  plutôt que composant suit les conventions `vue-best-practices` ;
+  `WorkflowBpmnDeploymentController` dépendant directement d'un port
+  (Design Deviation 1) vérifié contre le précédent réel
+  `WorkflowTaskController`/`WorkflowEnginePort` (lu, pas supposé).
 - **Duplication** : aucune — `useBpmnDeployment.ts` élimine la
   duplication potentielle entre `BpmnUploadPreview.vue` et
   `BpmnEditorView.vue` (c'était l'objectif explicite de D-EDIT-DEPLOY-FLOW).
+  Le refactor de `BpmnUploadPreview.vue` relu ligne à ligne : comportement
+  observable strictement identique, confirmé par les 5 tests existants
+  inchangés.
 - **Rupture de contrat** : aucune — `WorkflowDeploymentPort` étendu de
-  façon additive ; `BpmnUploadPreview.vue` garde son contrat public.
-- **2 vrais bugs trouvés et corrigés à cette étape** (Design Deviations
-  3-4) : `eventBus`/`commandStack` (trouvé en écrivant l'E2E, corrigé
-  dans le code de production **et** les mocks Vitest) ; race condition
-  de montage `BpmnEditorCanvas`/`useBpmnDraft.load()` (trouvé en TDD par
-  l'agent frontend, corrigé avant même d'atteindre M8). Aucun autre bug
-  trouvé après relecture complète.
+  façon additive ; `BpmnUploadPreview.vue` garde son contrat public ;
+  `openapi.yaml` inchangé par le correctif de cette phase (pas de
+  nouveau champ/endpoint, juste un code de retour resserré sur un cas déjà
+  documenté comme `400` pour XML invalide).
+- **Persistence** : `JpaBpmnDraftRepositoryAdapter.save()` relu — `save()`
+  sur une entité à clé assignée (non générée) déclenche un `merge`
+  Hibernate côté Spring Data (pas un `persist`), donc l'upsert fonctionne
+  correctement même si les champs `@Id` ne sont jamais `null` ; confirmé
+  par `JpaBpmnDraftRepositoryAdapterTest` (round-trip + écrasement réels).
+- **1 bug réel trouvé et corrigé à cette étape** (Design Deviation 6) :
+  `SaveBpmnDraftUseCaseImpl.save()` levait une `NullPointerException` non
+  gérée (→ `500`) sur un `xml` `null`/manquant, aucun `@ExceptionHandler`
+  ne la catch — même classe de défaut que le bug déjà trouvé en Phase 7
+  de `deploiement-bpmn` (NPE sur `originalFilename`), réapparu ici dans
+  du code écrit indépendamment. Corrigé en TDD (2 tests unitaires + 2
+  tests API, dont un profitant du passage pour couvrir `PUT` sans rôle
+  admin, jamais testé explicitement malgré une garde `@PreAuthorize`
+  classe déjà correcte).
+- **1 point ouvert signalé, non corrigé** (sévérité UX, pas
+  sécurité/intégrité) : absence de gestion d'erreur réseau dans
+  `useBpmnDraft.load()` — voir Design Deviations pour le détail. Hors
+  scope des success criteria actés, laissé à la décision de l'utilisateur.
 
-**Checklist :** design ✅ · pas de gap logique ✅ (2 bugs trouvés et
-corrigés) · sécurité ✅ · points d'intégration vérifiés ✅ · tests
-couvrent les changements ✅ (1106 backend + 193 frontend + 47 Playwright,
+**Checklist :** design ✅ · pas de gap logique ✅ (1 bug trouvé et
+corrigé cette étape, 2 autres trouvés et corrigés en M8/TDD avant) ·
+sécurité ✅ (le bug corrigé était justement un point de robustesse/sécurité —
+un `500` non contrôlé) · points d'intégration vérifiés ✅ · tests
+couvrent les changements ✅ (1110 backend + 193 frontend + 47 Playwright,
 tous verts) · docs à jour ✅ (requirements, design, planning, testing,
-implementation ; TODO/FILE-ATTENTE/analysis doc restent à faire — voir
-prochaine étape).
+implementation, TODO §39, FILE-ATTENTE.md, `analysis doc/14`).
 
-**Aucun blocage.** Prochaine étape : mise à jour TODO.md/FILE-ATTENTE.md/
-`analysis doc/14` (hors de ce document), puis `dev-review` (Phase 9) sur
-demande explicite de l'utilisateur.
+**Aucun blocage.** Prochaine étape, sur demande explicite de
+l'utilisateur : `dev-review` (Phase 9), puis PR.

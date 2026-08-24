@@ -568,9 +568,15 @@ API déjà figé par le design), fusionnés puis M8 (vérification globale) exé
   des tests Vitest mockant entièrement `bpmn-js`, trouvé en écrivant l'E2E (Playwright, vrai
   navigateur) ; race condition de montage `BpmnEditorCanvas`/`useBpmnDraft.load()`, trouvée et
   corrigée en TDD par l'agent frontend.
-- `./mvnw verify` : **1106 tests, 0 échec**, LINE 93.86%/BRANCH 77.14% (≥ seuils). Frontend : **193
+- `./mvnw verify` : **1110 tests, 0 échec**, LINE 93.84%/BRANCH 75.27% (≥ seuils). Frontend : **193
   tests Vitest** (0 échec), typecheck/lint propres, **47/47 Playwright** (43 existants non
   régressés + 4 nouveaux `E2E-EDIT-BPMN-1..4`).
+- **Phase 7 (check implementation, revue dédiée) : 1 bug réel supplémentaire trouvé et corrigé** —
+  `SaveBpmnDraftUseCaseImpl.save()` levait une `NullPointerException` non gérée (→ 500) sur un `xml`
+  `null`/manquant dans le corps de la requête `PUT /api/workflow-bpmn-drafts/{key}` ; même classe de
+  défaut que la NPE déjà trouvée et corrigée en Phase 7 de §35 (`originalFilename` null), réapparue
+  ici indépendamment. Corrigé par une garde explicite → `InvalidBpmnException` → `400`, couvert par
+  4 nouveaux tests (2 unitaires, 2 API dont un `PUT` sans rôle admin jamais testé explicitement).
 - `README.md`, `05-workflow-engine.md`, `GUIDE-UTILISATEUR.md` corrigés (mentions « pas de designer
   visuel/éditeur BPMN » retirées, nouveau mécanisme documenté).
 

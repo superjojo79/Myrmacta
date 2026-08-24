@@ -100,6 +100,26 @@ class BpmnDraftApiTest {
     }
 
     @Test
+    void put_withoutAdminRole_returns403() throws Exception {
+        mockMvc.perform(put("/api/workflow-bpmn-drafts/{key}", "draftPutDenied" + System.nanoTime())
+                        .with(user("plain-user"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"xml\": \"<definitions/>\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void put_missingXmlField_returns400() throws Exception {
+        mockMvc.perform(put("/api/workflow-bpmn-drafts/{key}", "draftNoXml" + System.nanoTime())
+                        .with(user("admin-draft-noxml", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void put_pathKeyDoesNotMatchXmlProcessId_returns400() throws Exception {
         String pathKey = "draftMismatchPath" + System.nanoTime();
         String xmlKey = "draftMismatchXml" + System.nanoTime();

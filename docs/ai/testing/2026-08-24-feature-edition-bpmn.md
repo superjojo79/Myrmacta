@@ -17,8 +17,8 @@ design_ref: docs/ai/design/2026-08-24-feature-edition-bpmn.md
 
 ## Test Coverage Goals
 
-- Jacoco `BUNDLE` LINE ≥ 85% / BRANCH ≥ 75% — **atteint : LINE 93.86% /
-  BRANCH 77.14%** sur l'arbre fusionné (backend M1-M4).
+- Jacoco `BUNDLE` LINE ≥ 85% / BRANCH ≥ 75% — **atteint : LINE 93.84% /
+  BRANCH 75.27%** (état final après Phase 7, 1110 tests).
 - Chaque nouveau composant backend couvert par au moins un test direct —
   atteint (voir détail par classe ci-dessous).
 - Frontend : Vitest sur tous les nouveaux composants/composables + 0
@@ -28,11 +28,13 @@ design_ref: docs/ai/design/2026-08-24-feature-edition-bpmn.md
 
 ## Unit Tests
 
-### `SaveBpmnDraftUseCaseImplTest` (nouveau, 3 scénarios)
+### `SaveBpmnDraftUseCaseImplTest` (nouveau, 5 scénarios — +2 trouvés en Phase 7)
 - [x] XML bien formé BPMN 2.0 → délégué au port out (`save`), retourne le `BpmnDraft` avec `updatedAt`/`updatedBy`
 - [x] XML malformé → `BpmnParserPort` lève `InvalidBpmnException`, propagée, port out jamais appelé
 - [x] `processDefinitionKey` du chemin ≠ id du process extrait du XML → rejet (D-EDIT-XML-KEY-MATCH), port out jamais appelé
 - [x] **Pas** de vérification `WorkflowTypeConfigRepository` (contrairement à `DeployBpmnProcessUseCaseImplTest`) — un brouillon peut exister sans config workflow correspondante
+- [x] `xml` `null` → `InvalidBpmnException` (pas `NullPointerException`), `BpmnParserPort`/port out jamais appelés — **bug réel trouvé en Phase 7**, voir doc implementation
+- [x] `xml` blanc (`"   "`) → même rejet contrôlé
 
 ### `GetBpmnDraftUseCaseImplTest` (nouveau, 2 scénarios)
 - [x] Brouillon existant pour la clé → retourné
@@ -53,13 +55,15 @@ design_ref: docs/ai/design/2026-08-24-feature-edition-bpmn.md
 
 ## Integration Tests
 
-### `BpmnDraftApiTest` (nouveau, 6 scénarios)
+### `BpmnDraftApiTest` (nouveau, 8 scénarios — +2 trouvés en Phase 7)
 - [x] `GET /api/workflow-bpmn-drafts/{key}` sans rôle `TENANT_ADMIN`/`WORKFLOW_ADMIN` → `403`
 - [x] `GET .../{key}` avec brouillon existant → `200` + corps (`processDefinitionKey`, `xml`, `updatedAt`, `updatedBy`)
 - [x] `GET .../{key}` sans brouillon → `204`
 - [x] `PUT .../{key}` avec XML valide et clé cohérente → `200`, upsert (écrase un brouillon existant pour la même clé)
 - [x] `PUT .../{key}` avec XML malformé → `400`
 - [x] `PUT .../{key}` avec clé du chemin ≠ id du process dans le XML → `400`
+- [x] `PUT .../{key}` sans rôle requis → `403` (couvert implicitement par `@PreAuthorize` classe, testé explicitement en Phase 7)
+- [x] `PUT .../{key}` avec corps `{}` (champ `xml` manquant) → `400`, pas `500` — **bug réel trouvé en Phase 7**
 
 ### `WorkflowBpmnDeploymentApiTest` (modifié, +4 scénarios)
 - [x] `GET /api/workflow-bpmn-deployments/{key}/xml` avec version déployée → `200`, corps `text/xml`
@@ -174,8 +178,9 @@ trouvé et corrigé à cette étape.
 
 ## Test Reporting & Coverage
 
-- Backend : `./mvnw verify` — **1106 tests, 0 échec**, Jacoco `BUNDLE`
-  LINE 93.86% / BRANCH 77.14% (≥ 85%/75%).
+- Backend : `./mvnw verify` — **1110 tests, 0 échec** (1106 + 4 ajoutés en
+  Phase 7 pour le bug `xml` `null`/manquant), Jacoco `BUNDLE`
+  LINE 93.84% / BRANCH 75.27% (≥ 85%/75%).
 - Frontend : `npm run test` — **193/193** ; `npm run typecheck` — propre ;
   `npm run lint` — propre ; `npm run test:e2e` — **47/47**. Preuves
   fraîches consignées ci-dessus, 2026-08-24.

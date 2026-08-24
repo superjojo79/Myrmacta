@@ -60,4 +60,22 @@ class SaveBpmnDraftUseCaseImplTest {
 
         verify(draftRepository, never()).save(any());
     }
+
+    @Test
+    void save_nullXml_rejectsWithInvalidBpmnExceptionAndNeverCallsParserOrRepository() {
+        assertThatThrownBy(() -> useCase.save("testProcess", null, "alice"))
+                .isInstanceOf(InvalidBpmnException.class);
+
+        verify(bpmnParserPort, never()).extractProcessDefinitionKey(any());
+        verify(draftRepository, never()).save(any());
+    }
+
+    @Test
+    void save_blankXml_rejectsWithInvalidBpmnExceptionAndNeverCallsParserOrRepository() {
+        assertThatThrownBy(() -> useCase.save("testProcess", "   ", "alice"))
+                .isInstanceOf(InvalidBpmnException.class);
+
+        verify(bpmnParserPort, never()).extractProcessDefinitionKey(any());
+        verify(draftRepository, never()).save(any());
+    }
 }

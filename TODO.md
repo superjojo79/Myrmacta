@@ -586,6 +586,12 @@ API déjà figé par le design), fusionnés puis M8 (vérification globale) exé
   (193 + 3), `test:coverage` 86.84%/77.59%/86.05%/88.71% (≥ seuils 80/75/70/60), **47/47 Playwright**.
 - `README.md`, `05-workflow-engine.md`, `GUIDE-UTILISATEUR.md` corrigés (mentions « pas de designer
   visuel/éditeur BPMN » retirées, nouveau mécanisme documenté).
+- **Phase 9 (revue finale) close** : diff complet vérifié (65 fichiers, strictement scopé), contrat
+  OpenAPI relu (2 nouveaux chemins + 2 schémas, 1 imprécision cosmétique mineure relevée — `format:
+  byte` documenté au lieu de `text/xml` réel, non bloquant), rollback de migration confirmé,
+  aucun breaking change, aucun secret/debug résiduel. **4 bugs réels trouvés et corrigés au total**
+  sur la feature (Phases 5 et 7). Preuve fraîche re-vérifiée avant PR : 1110 backend + 196 Vitest +
+  47 Playwright, tous verts.
 
 Détail complet : [docs/ai/implementation/2026-08-24-feature-edition-bpmn.md](docs/ai/implementation/2026-08-24-feature-edition-bpmn.md).
 Prochaine étape (sur demande explicite de l'utilisateur) : `dev-review` (Phase 9), puis PR.

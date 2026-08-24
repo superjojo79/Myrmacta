@@ -418,5 +418,54 @@ backend touché) ; frontend `npm run test` **196/196** (193 + 3),
 86.05%/lines 88.71% (≥ seuils 80/75/70/60), typecheck/lint propres,
 `npx playwright test` **47/47** (0 régression).
 
-Prochaine étape, sur demande explicite de l'utilisateur : `dev-review`
-(Phase 9), puis PR.
+## Phase 9 — revue finale (2026-08-24)
+
+Revue holistique (au-delà du fichier-par-fichier de Phase 7 et de la
+couverture de Phase 8), sur demande explicite de l'utilisateur :
+
+- **Diff complet vérifié** (`git diff --stat origin/main...HEAD`) : 65
+  fichiers, strictement scopé à `edition-bpmn` (+ `.gitignore`,
+  `TODO.md`/`FILE-ATTENTE.md`/`README.md`/`GUIDE-UTILISATEUR.md`/
+  `analysis doc/**` — documentation liée à cette feature uniquement).
+  Aucun fichier hors scope.
+- **Contrat API** (`openapi/openapi.yaml`) : 2 nouveaux chemins
+  (`/api/workflow-bpmn-drafts/{key}`, `/api/workflow-bpmn-deployments/{key}/xml`)
+  + 2 nouveaux schémas (`SaveBpmnDraftRequest`, `BpmnDraftResponse`)
+  documentés correctement. Renumérotation cosmétique des `operationId`
+  dupliqués (`get` → `get_1` etc., mécanique springdoc à l'ajout d'un
+  nouveau contrôleur avec une méthode `get`) — sans impact, le codegen
+  client reste hors scope (D-CODEGEN, `contrat-api-client`).
+  **Point mineur relevé** : `deployedXml` est documenté
+  `type: string, format: byte` (springdoc infère `byte[]` en base64) alors
+  que la réponse réelle est du texte brut (`Content-Type: text/xml`) —
+  imprécision cosmétique de la doc OpenAPI générée, comportement réel
+  déjà vérifié par les tests (`WorkflowBpmnDeploymentApiTest`), pas un
+  bug fonctionnel, pas bloquant.
+- **Dépendance santé** : `bpmn-js-properties-panel@^5.65.0` (MIT), peer
+  `camunda-bpmn-js-behaviors@1.18.0` auto-installé mais jamais importé —
+  aucun conflit de version avec `bpmn-js@^18.24.0` déjà fixé, confirmé
+  par un build/test complet vert.
+- **Rollback** : migration `013-bpmn-draft-tables.yaml` avec bloc
+  `rollback: dropTable` explicite ; aucune modification de table
+  existante, aucune migration de données. Revert trivial si nécessaire.
+- **Breaking changes** : aucun — `WorkflowDeploymentPort` étendu de façon
+  additive (nouvelle méthode) ; `BpmnUploadPreview.vue` garde son
+  contrat public (5 tests existants inchangés) ; aucune signature
+  publique modifiée.
+- **Secrets/debug** : diff scanné (`console.log`/`debugger`/`TODO:`/
+  `.only(`/`.skip(`/patterns de secrets) — rien trouvé.
+- **Preuve E2E fraîche exigée par cette phase** : confirmée dans cette
+  session (voir Validation finale ci-dessus et re-vérifiée à l'instant,
+  47/47).
+
+**Checklist finale :** design ✅ · pas de gap logique ✅ (4 bugs réels
+trouvés et corrigés au total sur la feature — Phases 5/7 — tous
+documentés) · sécurité ✅ · points d'intégration vérifiés ✅ (contrat
+API, dépendances, migration) · tests couvrent les changements ✅ (1110
+backend + 196 frontend + 47 Playwright, tous verts, preuve fraîche
+cette session) · docs à jour ✅ (les 7 docs du cycle + TODO §39 +
+FILE-ATTENTE.md + `analysis doc/14` + `README.md`/`05-workflow-engine.md`/
+`GUIDE-UTILISATEUR.md`).
+
+**Aucun blocage.** Feature prête à être poussée / PR à créer (demande
+explicite de l'utilisateur, cette session).

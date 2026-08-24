@@ -1,10 +1,10 @@
 # Construction/édition de diagrammes BPMN dans FlowForge
 
-> **Statut : analyse — non implémenté.** Ce document capture l'orientation
-> technique retenue pour couvrir TODO §39. Le cycle de développement
-> (`dev-lifecycle`, Phases 2 à 9) n'a pas démarré ; rien de décrit ici
-> n'existe encore dans le code. Voir aussi le document de travail Phase 1
-> détaillé :
+> **Statut : requirements Phase 2 close — non implémenté.** Ce document
+> capture l'orientation technique retenue pour couvrir TODO §39. Le cycle
+> `dev-lifecycle` est lancé (Phase 2 revue le 2026-08-24, 7 décisions
+> actées), mais la Phase 3 (design) n'a pas démarré ; rien de décrit ici
+> n'existe encore dans le code. Voir le document de travail détaillé :
 > [docs/ai/requirements/2026-08-24-feature-edition-bpmn.md](../docs/ai/requirements/2026-08-24-feature-edition-bpmn.md).
 
 ## Constat
@@ -66,47 +66,64 @@ présent ; `bpmn-js-properties-panel` est un ajout, du même éditeur, même
 licence (MIT), même modèle de consommation (librairie front, pas de
 service à déployer).
 
-## Portée proposée
+## Portée retenue (Phase 2, 2026-08-24)
 
-**Inclus (à confirmer en Phase 2) :**
+Sept décisions actées via `AskUserQuestion` (une à la fois, cf. doc
+requirements pour le détail) :
 
-- Création d'un diagramme vierge et édition d'un diagramme importé (upload
-  ou déjà déployé, via l'endpoint `GET .../info` existant).
-- Édition des attributs BPMN standard et des extensions `flowable:*`
-  effectivement utilisées dans le dépôt.
-- Réutilisation du flux prévisualisation → confirmation → déploiement de
-  `deploiement-bpmn`.
+- **D-EDIT-PLACEMENT** — nouvel écran dédié (pas une section de
+  `/admin/workflow-types` : `BpmnCanvas.vue` a une hauteur fixe 360px,
+  pensée pour une preview d'upload, pas pour un éditeur).
+- **D-EDIT-ENTRYPOINT** — 3 points d'entrée en V1 : création vierge,
+  import fichier local, édition d'un diagramme déjà déployé (`GET
+  .../info`).
+- **D-EDIT-SCOPE** — provider custom limité aux attributs `flowable:*`
+  réellement utilisés dans le dépôt : `async`, `delegateExpression`,
+  `expression` (`serviceTask`), `scope` (`signal`). Pas
+  d'`assignee`/`candidateGroups`/`formKey` — l'assignation de tâche
+  humaine reste gérée au runtime (`TaskService.setAssignee`), pas
+  déclarée en BPMN.
+- **D-EDIT-SAVE** — brouillon **persisté côté backend** (écart par
+  rapport à la recommandation initiale d'export fichier local). Élargit
+  le scope à un nouveau composant backend (domaine, port, adaptateur,
+  migration, endpoint).
+- **D-EDIT-DRAFT-MODEL** — un brouillon par clé de process
+  (`processDefinitionKey`), écrasé à chaque sauvegarde, pas d'historique.
+- **D-EDIT-DEPLOY-FLOW** — bouton « Déployer » intégré à l'éditeur ; la
+  logique de confirmation/redéploiement de `BpmnUploadPreview.vue` est
+  extraite et partagée (pas dupliquée) plutôt que ré-écrite.
+- **D-EDIT-UNSAVED** — sauvegarde explicite du brouillon + confirmation
+  navigateur (`beforeunload`) si des modifications ne sont pas
+  enregistrées ; pas d'autosave périodique.
 
-**Non-goals proposés :**
+**Non-goals actés :**
 
 - Pas de Flowable Modeler ni de Cockpit (cohérent avec §35 et
   `DEFERRED-FEATURES.md` §1.5).
 - Pas de simulation/exécution de process depuis l'éditeur.
-- Pas de gestion de versions/branches de diagramme dans FlowForge
-  au-delà du versionnement natif Flowable
-  (`RepositoryService.createDeployment()`, déjà couvert par §35).
-- Pas de collaboration temps réel multi-utilisateur.
+- Pas d'**historique** de versions de brouillons (un slot unique par clé
+  de process) — le seul vrai versionnement reste celui de Flowable au
+  déploiement (§35).
+- Pas de collaboration temps réel multi-utilisateur (pas de verrouillage
+  optimiste ; dernier « Enregistrer » gagne).
+- Pas d'autosave périodique.
 
-## Points ouverts (Phase 2)
+## Points ouverts restants (Phase 3 — design, mécanisme pas périmètre)
 
-Non tranchés — à lever via `AskUserQuestion`, un point à la fois, avant
-tout design/implémentation :
-
-- **D-EDIT-SCOPE** — inventaire exact des attributs `flowable:*` à
-  exposer dans le provider custom.
-- **D-EDIT-PLACEMENT** — nouvel écran dédié vs nouvelle section dans
-  `/admin/workflow-types` (comme pour l'upload, §35).
-- **D-EDIT-ENTRYPOINT** — création vierge / édition d'un import / édition
-  d'un diagramme déjà déployé : un seul point d'entrée ou plusieurs en V1 ?
-- **D-EDIT-SAVE** — « enregistrer » avant déploiement = export fichier
-  local uniquement, ou brouillon persistant côté backend (notion
-  nouvelle, hors scope actuel) ?
-- **D-EDIT-DEPLOY-FLOW** — réutilisation directe de
-  `BpmnUploadPreview.vue`/`BpmnCanvas.vue` en étape finale, ou nouveau
-  composant dédié ?
+- Nom exact de la route/écran dédié et libellé du lien d'accès depuis
+  `/admin/workflow-types`.
+- Forme exacte du composant backend brouillon (entité/table, endpoint(s)
+  REST, DTO) — architecture hexagonale et isolation multi-tenant par
+  schéma inchangées.
+- Mécanisme d'extraction de la logique de confirmation/déploiement
+  partagée entre `BpmnUploadPreview.vue` et le nouvel écran (composant vs
+  composable Vue).
+- Comportement du moddle `bpmn-js` sur un attribut `flowable:*` non
+  couvert par le provider custom (à vérifier empiriquement).
 
 ## Prochaine étape
 
-Phase 2 du cycle `dev-lifecycle` (revue requirements) — non démarrée à la
-date de ce document. Voir TODO §39 pour le suivi de la décision et
-`FILE-ATTENTE.md` pour le statut de file d'attente produit.
+Phase 3 (`dev-design`) : traduire les 7 décisions ci-dessus en
+architecture concrète (composants Vue, ports/adaptateurs backend,
+migration Liquibase) avant la planification (Phase 4). Voir TODO §39 et
+`FILE-ATTENTE.md` pour le suivi.

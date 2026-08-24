@@ -515,9 +515,19 @@ volet Cockpit (`DEFERRED-FEATURES.md` §1.5, hors scope produit, non remis en ca
 
 **Recommandation actée :** option **(b)**. Analyse détaillée :
 [analysis doc/14-edition-bpmn.md](analysis%20doc/14-edition-bpmn.md) et
-[docs/ai/requirements/2026-08-24-feature-edition-bpmn.md](docs/ai/requirements/2026-08-24-feature-edition-bpmn.md)
-(Phase 1 uniquement — statut `draft`, périmètre exact et écran d'accueil à confirmer en Phase 2/3
-avant lancement de l'implémentation ; cycle de dev pas démarré à la demande de l'utilisateur).
+[docs/ai/requirements/2026-08-24-feature-edition-bpmn.md](docs/ai/requirements/2026-08-24-feature-edition-bpmn.md).
+
+**Cycle `dev-lifecycle` lancé (2026-08-24), Phase 2 (requirements) close** — 7 décisions actées via
+`AskUserQuestion` (une à la fois) : D-EDIT-SCOPE=provider custom limité aux attributs `flowable:*`
+réellement utilisés (`async`/`delegateExpression`/`expression`/`scope`) ; D-EDIT-PLACEMENT=nouvel
+écran dédié (pas une section de `/admin/workflow-types`) ; D-EDIT-ENTRYPOINT=3 points d'entrée
+(création vierge, import fichier, édition d'un diagramme déjà déployé) ; D-EDIT-SAVE=brouillon
+**persisté côté backend** (écart par rapport à la recommandation initiale d'export fichier local —
+élargit le scope à un nouveau composant backend) ; D-EDIT-DRAFT-MODEL=un brouillon par clé de
+process, écrasé à chaque sauvegarde, pas d'historique ; D-EDIT-DEPLOY-FLOW=bouton déployer
+intégré, logique de confirmation/déploiement de `BpmnUploadPreview.vue` extraite et partagée (pas
+dupliquée) ; D-EDIT-UNSAVED=sauvegarde explicite + confirmation navigateur `beforeunload`, pas
+d'autosave. Prochaine phase : `dev-design` (Phase 3).
 
 **Impacte :** `frontend/src/components/workflow/BpmnCanvas.vue`, `BpmnUploadPreview.vue`,
 `WorkflowBpmnDeploymentController` (endpoint de déploiement potentiellement réutilisable tel

@@ -8,9 +8,9 @@
 > - Inventaire follow-ups / lots : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md)
 > - Séquencement « avant prod » : [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md) §9
 >
-> **Dernière mise à jour :** 2026-08-24 (nouveau candidat identifié —
-> `edition-bpmn`, TODO §39, analyse initiale actée mais cycle de dev pas
-> démarré à la demande de l'utilisateur).
+> **Dernière mise à jour :** 2026-08-24 (`edition-bpmn`, TODO §39, cycle
+> `dev-lifecycle` lancé — Phase 2 requirements close, 7 décisions actées ;
+> prochaine phase = `dev-design`).
 
 ## Comment s’en servir
 
@@ -65,12 +65,12 @@ sont maintenant toutes livrées.
 
 | Feature | Réf. | Statut |
 |---|---|---|
-| `edition-bpmn` | TODO §39 (nouveau) | **Candidat, pas démarré.** Construction/édition de diagrammes BPMN dans FlowForge (écart restant après `deploiement-bpmn`, §35, qui excluait explicitement l'édition). Analyse initiale actée avec l'utilisateur (2026-08-24) : option retenue = `bpmn-js` Modeler (déjà en dépendance) + `bpmn-js-properties-panel` avec provider custom pour les attributs `flowable:*`, sans app tierce (Flowable Modeler écarté). Voir [analysis doc/14-edition-bpmn.md](analysis%20doc/14-edition-bpmn.md) et [docs/ai/requirements/2026-08-24-feature-edition-bpmn.md](docs/ai/requirements/2026-08-24-feature-edition-bpmn.md). **Décision explicite de l'utilisateur : ne pas lancer le cycle `dev-lifecycle` maintenant** — Phase 2 (revue des points ouverts D-EDIT-SCOPE/PLACEMENT/ENTRYPOINT/SAVE/DEPLOY-FLOW) reste à faire avant tout démarrage. |
+| `edition-bpmn` | TODO §39 | **Phase 2 (requirements) close — Phase 3 (design) pas démarrée.** Construction/édition de diagrammes BPMN dans FlowForge (écart restant après `deploiement-bpmn`, §35, qui excluait explicitement l'édition). Approche : `bpmn-js` Modeler (déjà en dépendance) + `bpmn-js-properties-panel` avec provider custom pour les attributs `flowable:*` réellement utilisés, sans app tierce (Flowable Modeler écarté). 7 décisions actées via `AskUserQuestion` (une à la fois) — notamment brouillon **persisté côté backend** (nouveau composant backend à concevoir en Phase 3, écart vs. la recommandation initiale d'export fichier local). Voir [analysis doc/14-edition-bpmn.md](analysis%20doc/14-edition-bpmn.md) et [docs/ai/requirements/2026-08-24-feature-edition-bpmn.md](docs/ai/requirements/2026-08-24-feature-edition-bpmn.md). |
 
-Critère 2 (« pas de décision produit encore ouverte ») n'est pas encore
-rempli pour `edition-bpmn` : les points ci-dessus doivent être levés via
-`AskUserQuestion` en Phase 2 avant que cette feature puisse être prise
-comme *prochain* lot au sens strict de la grille de sélection.
+Critère 2 (« pas de décision produit encore ouverte ») est maintenant
+rempli pour `edition-bpmn` — seuls des points de mécanisme (pas de
+périmètre) restent à trancher en Phase 3. C'est la candidate naturelle
+pour la prochaine session de `dev-design`.
 
 **Hors V1 (reporté, pas dans cette file) :** Rapports / SLA (maquette UI de
 référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même
@@ -146,5 +146,6 @@ référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même
 | 2026-08-22 | `deploiement-bpmn` Phase 7 rejouée | Utilisateur : « toutes les phases ont-elles été exécutées ? pas d'autres questions en Phase 3 ? » → vérifié dans l'historique brut de session (pas la mémoire résumée) : Phase 3 complète (5 `AskUserQuestion` réels, tous documentés — le doc affirmait à tort « 7 », corrigé) ; en revanche Phase 7 (check implementation) n'avait pas été faite sérieusement — rejouée fichier par fichier, 2 vrais bugs trouvés et corrigés (`NullPointerException` potentielle sur `originalFilename` null dans `FlowableWorkflowDeploymentAdapter`, regex d'extraction trop strict côté preview) ; doc d'implémentation resté le squelette vide, rédigé ; plusieurs cases testing doc jamais cochées, corrigées |
 | 2026-08-22 | `deploiement-bpmn` livrée | PR #67 mergée sur `main` (CI hébergé rouge depuis plusieurs jours pour une raison d'infrastructure sans rapport avec le diff — confirmé rouge aussi sur les merges précédents dont #66 — mergé sur la base des vérifications locales complètes) ; TODO §35 clos ; prochain = `modele-physique-consolide` §25 |
 | 2026-08-24 | `edition-bpmn` — analyse initiale (hors cycle formel) | Question ouverte de l'utilisateur (« comment construire un BPMN dans l'app, sans dépendance à une app connexe ») comparée à 4 options ; option `bpmn-js` Modeler + `bpmn-js-properties-panel` (provider custom Flowable) retenue, Flowable Modeler explicitement écarté comme dernier recours par l'utilisateur. TODO §39 ouvert, [analysis doc/14-edition-bpmn.md](analysis%20doc/14-edition-bpmn.md) + doc requirements Phase 1 créés. **Cycle `dev-lifecycle` volontairement pas démarré** (demande explicite utilisateur) — Phase 2 (points ouverts D-EDIT-*) reste à faire avant tout passage en implémentation. |
+| 2026-08-24 | `edition-bpmn` cycle `dev-lifecycle` lancé, Phase 2 reviewed | Setup vérifié (`skill list` 28/28, `lint`/`lint --feature` verts, `task` indisponible dans cette install — continué sans traçage). Mode **no-worktree** retenu (session CCR verrouillée sur `claude/awesome-dirac-h6zc7u`, une seule feature active — isolation worktree sans intérêt ici). Recherche mémoire vide (sujet neuf). Inventaire de code fait avant de poser les questions (attributs `flowable:*` réellement utilisés via `grep`, hauteur fixe 360px de `BpmnCanvas.vue`, `TaskService.setAssignee` au runtime). 7 décisions actées via `AskUserQuestion` (une à la fois) : D-EDIT-SCOPE, D-EDIT-PLACEMENT=nouvel écran dédié, D-EDIT-ENTRYPOINT=3 points d'entrée, D-EDIT-SAVE=brouillon persisté backend (**l'utilisateur n'a pas suivi la recommandation** d'export fichier local — élargit le scope à un nouveau composant backend), D-EDIT-DRAFT-MODEL=un brouillon par clé de process sans historique, D-EDIT-DEPLOY-FLOW=bouton déployer intégré avec logique partagée extraite de `BpmnUploadPreview.vue`, D-EDIT-UNSAVED=sauvegarde explicite + `beforeunload`. Décisions stockées dans la mémoire AI DevKit (`repo:flowforge`). Prochain : `dev-design` Phase 3. |
 | 2026-08-22 | `modele-physique-consolide` implémentée (Phases 1-9) | Écart trouvé avant d'écrire le problem statement : TODO §25 supposait un `TenantRegistry` actif et des contextes Liquibase séparés, tous deux explicitement obsolètes depuis la décision n°13 (note de mise à jour de la décision n°1 jamais répercutée dans §25) — 3 décisions via `AskUserQuestion` (corriger le scope plutôt que documenter l'obsolète, doc seule sans créer `platform.tenant_migration_status`, nouveau doc `13-modele-physique.md` avec ERD mermaid plutôt qu'un dump SQL dupliquant les changelogs). Contenu extrait par parsing structuré des 12 changelogs (pas résumé de mémoire) : 17 tables réelles (pas « une dizaine »), 4 index uniques partiels (pas « deux »), seulement 2 FK sur 17 tables contraintes en DB (le reste logique, explicité pour ne pas induire en erreur). Feature 100% documentaire, vérifiée par `git diff --stat` (aucun `.java`/`.yaml` de changelog touché). TODO §25 clos, en attente de PR |
 | 2026-08-22 | `modele-physique-consolide` livrée | PR #68 mergée sur `main` (CI hébergé rouge en ~2s, même signature d'infrastructure que sur les merges précédents #66/#67, sans rapport avec un diff 100% documentaire — mergé sur la base des vérifications factuelles locales) ; TODO §25 clos ; file d'attente vide — les 5 features du regroupement 2026-08-20 sont toutes livrées, prochaine feature à identifier lors d'une prochaine analyse |

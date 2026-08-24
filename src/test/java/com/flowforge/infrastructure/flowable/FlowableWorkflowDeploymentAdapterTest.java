@@ -118,6 +118,25 @@ class FlowableWorkflowDeploymentAdapterTest {
         assertThat(info).isEmpty();
     }
 
+    @Test
+    void findDeployedXml_deployedKey_returnsLatestVersionXml() {
+        String key = "adapterXml" + System.nanoTime();
+        adapter.deploy(tenantProperties.id(), "diagram.bpmn20.xml", bpmn(key));
+
+        Optional<byte[]> xml = adapter.findDeployedXml(tenantProperties.id(), key);
+
+        assertThat(xml).isPresent();
+        assertThat(new String(xml.get(), StandardCharsets.UTF_8)).contains("id=\"" + key + "\"");
+    }
+
+    @Test
+    void findDeployedXml_keyNeverDeployed_returnsEmpty() {
+        Optional<byte[]> xml =
+                adapter.findDeployedXml(tenantProperties.id(), "neverDeployedXmlKey" + System.nanoTime());
+
+        assertThat(xml).isEmpty();
+    }
+
     private static byte[] bpmn(String key) {
         return BPMN.formatted(key).getBytes(StandardCharsets.UTF_8);
     }

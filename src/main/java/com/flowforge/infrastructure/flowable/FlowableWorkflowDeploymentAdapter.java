@@ -3,6 +3,9 @@ package com.flowforge.infrastructure.flowable;
 import com.flowforge.domain.workflow.model.BpmnDeploymentResult;
 import com.flowforge.domain.workflow.model.ProcessDeploymentInfo;
 import com.flowforge.domain.workflow.port.out.WorkflowDeploymentPort;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.util.Objects;
 import java.util.Optional;
 import org.flowable.engine.RepositoryService;
@@ -54,6 +57,23 @@ class FlowableWorkflowDeploymentAdapter implements WorkflowDeploymentPort {
                 .deploymentId(deployment.getId())
                 .singleResult();
         return new BpmnDeploymentResult(definition.getKey(), definition.getVersion(), deployment.getId());
+    }
+
+    @Override
+    public Optional<byte[]> findDeployedXml(String tenantId, String processDefinitionKey) {
+        ProcessDefinition latest = repositoryService.createProcessDefinitionQuery()
+                .processDefinitionKey(processDefinitionKey)
+                .processDefinitionTenantId(tenantId)
+                .latestVersion()
+                .singleResult();
+        if (latest == null) {
+            return Optional.empty();
+        }
+        try (InputStream in = repositoryService.getProcessModel(latest.getId())) {
+            return Optional.of(in.readAllBytes());
+        } catch (IOException ex) {
+            throw new UncheckedIOException(ex);
+        }
     }
 
     private static String bpmnResourceName(String filename) {

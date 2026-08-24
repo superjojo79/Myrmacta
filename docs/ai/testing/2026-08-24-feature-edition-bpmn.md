@@ -11,20 +11,41 @@ design_ref: docs/ai/design/2026-08-24-feature-edition-bpmn.md
 
 # Testing Strategy — `edition-bpmn`
 
-> Scénarios exécutés (Phase 5/8, 2026-08-24). Preuves fraîches
+> Scénarios exécutés (Phase 5/7/8, 2026-08-24). Preuves fraîches
 > consignées ci-dessous (`./mvnw verify`, `npm run test`/`typecheck`/
-> `lint`, `npx playwright test`), cette session.
+> `lint`/`test:coverage`, `npx playwright test`), cette session.
 
 ## Test Coverage Goals
 
 - Jacoco `BUNDLE` LINE ≥ 85% / BRANCH ≥ 75% — **atteint : LINE 93.84% /
-  BRANCH 75.27%** (état final après Phase 7, 1110 tests).
+  BRANCH 75.27%** (état final après Phase 7, 1110 tests). Coverage
+  par classe vérifiée en Phase 8 (`jacoco.csv`) pour toutes les classes
+  `edition-bpmn` : 100% sur la quasi-totalité, seuls 2 blocs `catch
+  (IOException)` défensifs restent non couverts (`WorkflowBpmnDeploymentController`
+  — code préexistant de `deploiement-bpmn`, hors scope ; `FlowableWorkflowDeploymentAdapter.findDeployedXml`
+  — traduction d'exception non-branchante, difficile à déclencher avec
+  un moteur Flowable réel sans corrompre le stockage interne, jugé
+  acceptable).
 - Chaque nouveau composant backend couvert par au moins un test direct —
   atteint (voir détail par classe ci-dessous).
 - Frontend : Vitest sur tous les nouveaux composants/composables + 0
   régression sur `BpmnUploadPreview.vue` après extraction du composable ;
-  Playwright sur le parcours complet — **193 tests Vitest, 47 scénarios
-  Playwright, tous verts**.
+  Playwright sur le parcours complet — **196 tests Vitest, 47 scénarios
+  Playwright, tous verts**. Coverage frontend (`npm run test:coverage`) :
+  **statements 86.84% / branches 77.59% / functions 86.05% / lines
+  88.71%** (≥ seuils configurés 80/75/70/60). **Écart réel trouvé et
+  comblé en Phase 8** : `flowablePropertiesProvider.ts` — les 5 tests
+  initiaux ne couvraient que `getGroups()` (quels groupes pour quel
+  type d'élément), pas les fonctions `getValue`/`setValue` de chaque
+  entrée (33% branch coverage) — c'est-à-dire le pont lecture/écriture
+  réel entre l'UI et les attributs `flowable:*`, la logique la plus
+  spécifique de cette feature (D-EDIT-SCOPE). 3 tests ajoutés
+  (`Async`, `flowable:delegateExpression`, `flowable:scope` —
+  `getValue`/`setValue` invoqués directement via les mocks
+  `CheckboxEntry`/`TextFieldEntry` capturant leurs props), tous verts
+  du premier coup (pas de bug trouvé, juste une confiance manquante sur
+  du code jamais réellement exercé) → **100% lines/branches/functions/statements**
+  sur ce fichier.
 
 ## Unit Tests
 
@@ -80,11 +101,14 @@ design_ref: docs/ai/design/2026-08-24-feature-edition-bpmn.md
 
 ## Frontend Tests
 
-### `flowablePropertiesProvider.ts` (nouveau, Vitest, 5 scénarios)
+### `flowablePropertiesProvider.ts` (nouveau, Vitest, 8 scénarios — +3 en Phase 8)
 - [x] Élément `serviceTask` → expose les champs `async`, `delegateExpression`, `expression` dans le panel
 - [x] Élément `signal` → expose le champ `scope`
 - [x] Élément sans attribut `flowable:*` pertinent (ex. `startEvent`) → aucun groupe custom ajouté
 - [x] Attribut `flowable:*` présent dans le XML importé mais non couvert par le provider → préservé après `saveXML()` — **risque du design levé empiriquement** : le moddle `bpmn-js` préserve génériquement les attributs d'extension inconnus (`$attrs`/`get()`/`set()`, re-sérialisés verbatim), pas besoin d'extension moddle dédiée.
+- [x] `flowable-async` : `getValue()` lit `flowable:async` comme booléen (`'true'` → `true`, absent → `false`), `setValue()` écrit `'true'`/`undefined` — **écart de couverture réel trouvé et comblé en Phase 8** (33% branch avant, 100% après)
+- [x] `flowable:delegateExpression` : `getValue()`/`setValue()` lisent/écrivent l'attribut, `''` → `undefined` (suppression)
+- [x] `flowable:scope` : `getValue()` retourne `''` par défaut si l'attribut est absent
 
 ### `BpmnEditorCanvas.vue` (nouveau, Vitest, 3 scénarios)
 - [x] Monte `bpmn-js` `Modeler` (pas `NavigatedViewer`) et importe le XML fourni
@@ -181,9 +205,12 @@ trouvé et corrigé à cette étape.
 - Backend : `./mvnw verify` — **1110 tests, 0 échec** (1106 + 4 ajoutés en
   Phase 7 pour le bug `xml` `null`/manquant), Jacoco `BUNDLE`
   LINE 93.84% / BRANCH 75.27% (≥ 85%/75%).
-- Frontend : `npm run test` — **193/193** ; `npm run typecheck` — propre ;
-  `npm run lint` — propre ; `npm run test:e2e` — **47/47**. Preuves
-  fraîches consignées ci-dessus, 2026-08-24.
+- Frontend : `npm run test` — **196/196** (193 + 3 ajoutés en Phase 8 sur
+  `flowablePropertiesProvider.ts`) ; `npm run test:coverage` —
+  statements 86.84% / branches 77.59% / functions 86.05% / lines 88.71%
+  (≥ seuils 80/75/70/60) ; `npm run typecheck` — propre ; `npm run lint`
+  — propre ; `npm run test:e2e` — **47/47**. Preuves fraîches consignées
+  ci-dessus, 2026-08-24.
 
 ## Manual Testing
 
@@ -196,12 +223,17 @@ brouillon est un `text` unique par clé (pas de volumétrie particulière).
 
 ## Bug Tracking
 
-Aucun processus dédié. 3 bugs réels trouvés et corrigés en TDD/E2E durant
-cette feature (tous documentés ci-dessus et dans le doc planning) :
-`eventBus`/`commandStack` (frontend, trouvé en E2E), race condition de
-montage `BpmnEditorCanvas`/`useBpmnDraft.load()` (frontend, trouvé en
-TDD), fixtures BPMN sans DI incompatibles avec le `Modeler` réel (tests,
-trouvé en écrivant l'E2E).
+Aucun processus dédié. 4 bugs réels trouvés et corrigés durant cette
+feature (tous documentés ci-dessus et dans le doc implementation) :
+`eventBus`/`commandStack` (frontend, trouvé en écrivant l'E2E),
+race condition de montage `BpmnEditorCanvas`/`useBpmnDraft.load()`
+(frontend, trouvé en TDD), `NullPointerException` sur `xml`
+`null`/manquant → `500` au lieu de `400` (backend, trouvé en Phase 7,
+revue fichier par fichier dédiée), plus 1 défaut de fixture de test
+(BPMN sans DI incompatible avec le `Modeler` réel, trouvé en écrivant
+l'E2E — pas un bug de production). Phase 8 : pas de nouveau bug, mais un
+écart de couverture réel comblé (`flowablePropertiesProvider.ts`, voir
+Test Coverage Goals).
 
 ## Requirements → Tests traceability
 

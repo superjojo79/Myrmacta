@@ -389,5 +389,34 @@ couvrent les changements ✅ (1110 backend + 193 frontend + 47 Playwright,
 tous verts) · docs à jour ✅ (requirements, design, planning, testing,
 implementation, TODO §39, FILE-ATTENTE.md, `analysis doc/14`).
 
-**Aucun blocage.** Prochaine étape, sur demande explicite de
-l'utilisateur : `dev-review` (Phase 9), puis PR.
+**Aucun blocage.**
+
+## Phase 8 — write tests (2026-08-24)
+
+Coverage vérifiée par classe/fichier (`jacoco.csv` backend,
+`test:coverage` frontend), pas seulement à l'agrégat `BUNDLE`. Backend :
+tous les fichiers `edition-bpmn` à 100% sauf 2 blocs `catch (IOException)`
+défensifs (1 préexistant à `deploiement-bpmn`, 1 nouveau — traduction
+d'exception non-branchante, jugés acceptables, non testés).
+
+**Écart de couverture réel trouvé et comblé** (pas un bug — code déjà
+correct, juste jamais exercé) : `flowablePropertiesProvider.ts` était à
+33% branch coverage — les 5 tests initiaux ne couvraient que
+`getGroups()` (quels groupes pour quel type d'élément), jamais les
+fonctions `getValue`/`setValue` de chaque entrée, c'est-à-dire le pont
+lecture/écriture réel entre le panel de propriétés et les attributs
+`flowable:*` — la logique la plus spécifique de toute la feature
+(D-EDIT-SCOPE). 3 tests ajoutés en invoquant directement `getValue`/
+`setValue` (mocks `CheckboxEntry`/`TextFieldEntry` réécrits pour capturer
+leurs props plutôt que de les avaler) : tous verts du premier coup,
+confirmant que l'implémentation suit correctement l'API `modeling.updateModdleProperties`
+documentée par bpmn.io → **100% sur les 4 métriques** pour ce fichier.
+
+Validation finale : `./mvnw verify` 1110 tests (inchangé, pas de code
+backend touché) ; frontend `npm run test` **196/196** (193 + 3),
+`test:coverage` statements 86.84%/branches 77.59%/functions
+86.05%/lines 88.71% (≥ seuils 80/75/70/60), typecheck/lint propres,
+`npx playwright test` **47/47** (0 régression).
+
+Prochaine étape, sur demande explicite de l'utilisateur : `dev-review`
+(Phase 9), puis PR.

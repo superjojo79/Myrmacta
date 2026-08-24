@@ -537,7 +537,16 @@ optionnel ; D-DESIGN-DRAFT-LIFECYCLE=le brouillon est supprimé automatiquement 
 réussi. Gap réel trouvé en exploration (pas supposé) : aucun mécanisme existant ne renvoyait le XML brut
 d'une définition de process par clé — nouvelle méthode `WorkflowDeploymentPort.findDeployedXml`. Détail :
 [docs/ai/design/2026-08-24-feature-edition-bpmn.md](docs/ai/design/2026-08-24-feature-edition-bpmn.md).
-Prochaine phase : `dev-planning` (Phase 4).
+
+**Phase 4 (planning) close** — testing doc créé (comblant l'étape sautée en Phase 1 initiale) puis plan en
+8 milestones / ~20 tâches : M1 domaine backend brouillon, M2 persistence (migration
+`013-bpmn-draft-tables.yaml`), M3 `findDeployedXml`, M4 endpoint brouillon + suppression post-déploiement,
+M5 canvas éditeur (`bpmn-js` Modeler + `bpmn-js-properties-panel`), M6 composables partagés
+(`useBpmnDraft`/`useBpmnDeployment`), M7 écran dédié + intégration admin, M8 vérification globale
+(4 nouveaux scénarios E2E). Couverture testing→planning vérifiée exhaustive. Détail :
+[docs/ai/testing/2026-08-24-feature-edition-bpmn.md](docs/ai/testing/2026-08-24-feature-edition-bpmn.md),
+[docs/ai/planning/2026-08-24-feature-edition-bpmn.md](docs/ai/planning/2026-08-24-feature-edition-bpmn.md).
+Prochaine phase : `dev-implementation` (Phase 5).
 
 **Impacte :** `frontend/src/components/workflow/BpmnCanvas.vue`, `BpmnUploadPreview.vue`,
 `WorkflowBpmnDeploymentController` (endpoint de déploiement potentiellement réutilisable tel

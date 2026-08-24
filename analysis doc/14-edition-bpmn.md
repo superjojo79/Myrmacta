@@ -1,13 +1,15 @@
 # Construction/édition de diagrammes BPMN dans FlowForge
 
-> **Statut : design Phase 3 close — non implémenté.** Ce document capture
-> l'orientation technique retenue pour couvrir TODO §39. Le cycle
-> `dev-lifecycle` est lancé (Phase 2 revue le 2026-08-24, 7 décisions
-> produit actées ; Phase 3 revue le même jour, 3 décisions techniques
-> actées), mais la Phase 4 (planning) n'a pas démarré ; rien de décrit ici
-> n'existe encore dans le code. Voir les documents de travail détaillés :
-> [docs/ai/requirements/2026-08-24-feature-edition-bpmn.md](../docs/ai/requirements/2026-08-24-feature-edition-bpmn.md)
-> et [docs/ai/design/2026-08-24-feature-edition-bpmn.md](../docs/ai/design/2026-08-24-feature-edition-bpmn.md).
+> **Statut : planning Phase 4 close — non implémenté.** Ce document
+> capture l'orientation technique retenue pour couvrir TODO §39. Le cycle
+> `dev-lifecycle` est lancé (Phase 2 le 2026-08-24, 7 décisions produit ;
+> Phase 3 le même jour, 3 décisions techniques ; Phase 4 le même jour,
+> plan en 8 milestones), mais la Phase 5 (implémentation) n'a pas
+> démarré ; rien de décrit ici n'existe encore dans le code. Voir les
+> documents de travail détaillés :
+> [docs/ai/requirements/2026-08-24-feature-edition-bpmn.md](../docs/ai/requirements/2026-08-24-feature-edition-bpmn.md),
+> [docs/ai/design/2026-08-24-feature-edition-bpmn.md](../docs/ai/design/2026-08-24-feature-edition-bpmn.md) et
+> [docs/ai/planning/2026-08-24-feature-edition-bpmn.md](../docs/ai/planning/2026-08-24-feature-edition-bpmn.md).
 
 ## Constat
 
@@ -143,7 +145,19 @@ panel) côté frontend ; `BpmnDraftController` +
 hexagonale respectée) côté backend ; `DeployBpmnProcessUseCaseImpl`
 modifié pour supprimer le brouillon après déploiement réussi.
 
+## Plan d'implémentation (Phase 4, 2026-08-24)
+
+8 milestones séquencés par dépendance (détail complet : doc planning) :
+M1 domaine backend brouillon → M2 persistence (migration
+`013-bpmn-draft-tables.yaml`) → M3 `findDeployedXml` / M4 endpoint
+brouillon + suppression post-déploiement (parallélisables) → M5 canvas
+éditeur (`bpmn-js` Modeler + `bpmn-js-properties-panel`, nouvelle
+dépendance frontend) → M6 composables partagés (`useBpmnDraft`,
+`useBpmnDeployment`) → M7 écran dédié + intégration admin → M8
+vérification globale (4 nouveaux scénarios E2E). Couverture
+testing→planning vérifiée exhaustive, aucun scénario orphelin.
+
 ## Prochaine étape
 
-Phase 4 (`dev-planning`) : découper l'architecture ci-dessus en tâches
-d'implémentation TDD. Voir TODO §39 et `FILE-ATTENTE.md` pour le suivi.
+Phase 5 (`dev-implementation`) : exécuter le plan en TDD (skill `tdd` +
+`verify`). Voir TODO §39 et `FILE-ATTENTE.md` pour le suivi.

@@ -17,7 +17,9 @@
 `edition-champs-dossier`, `retention-dossier-type`, `purge-stockage`,
 `openapi-pagination-admin`, `observabilite`, `durcissement-donnees-sensibles`,
 `contrat-api-client`, `fiabilisation-tests-plateforme`, `deploiement-bpmn`,
-`modele-physique-consolide` sont **Complete** (mergées sur `main` — `frontend` via
+`modele-physique-consolide`, `masquage-donnees-sensibles-logs-webhooks`
+(implémentée, en attente de PR) sont **Complete** (mergées sur `main` sauf
+mention contraire — `frontend` via
 PR #38 `cursor/feature-frontend-21f2`, vague 1 instructeur + vague 2 admin
 types/templates/connectors/workflow-configs ; packaging Maven→`static/` ;
 maquette
@@ -155,6 +157,7 @@ Ordre indicatif aligné sur l’analyse et les dépendances techniques :
 | — | `fiabilisation-tests-plateforme` | **Complete** (PR #66) — Testcontainers PostgreSQL, `SequentialReferenceMultiPodIT`, `TenantSchemaIsolationIT`, `LiquibasePartialFailureIT`, seuils Jacoco relevés. TODO §26/§28/§37 clos. |
 | — | `deploiement-bpmn` | **Complete** (PR #67) — écran admin d'upload BPMN avec prévisualisation (`BpmnUploadPreview.vue`), `DeployBpmnProcessUseCase`, `FlowableWorkflowDeploymentAdapter`. TODO §35 clos. |
 | — | `modele-physique-consolide` | **Complete** (PR #68) — ERD consolidé [13-modele-physique.md](analysis%20doc/13-modele-physique.md) (17 tables, 4 index uniques partiels, 2 FK DB) ; correction de la prémisse obsolète `TenantRegistry`/contextes Liquibase séparés. TODO §25 clos. |
+| — | `masquage-donnees-sensibles-logs-webhooks` | **Complete**, en attente de PR (2026-08-24) — audit préalable : aucune fuite active trouvée (logs/webhooks), protection préventive ajoutée : `toString()` sûr sur `Dossier`/`FieldDefinition` + liste blanche ArchUnit ; `SendNotificationUseCaseImpl` masque automatiquement les champs sensibles avant écriture outbox. TODO §23 clos. |
 
 ---
 
@@ -168,7 +171,7 @@ Voir le détail et les options dans [TODO.md](TODO.md) et
 | 19 | Granularité rôles RBAC | **Clos V1** — cinq rôles + mapping `ROLE_*` ; ACL type |
 | 21 | Rétention par `DossierType` | **Livré** (2026-08-19) — `retention-dossier-type` |
 | 22 | Purge PostgreSQL / object store | **Livré** (2026-08-19) — `purge-stockage` PR #56 ; Q1–Q11 |
-| 23 | `FieldDefinition.sensitive` | **Reste réduit** (2026-08-21, `durcissement-donnees-sensibles` PR #62) — masquage serveur livré (`DossierFieldRedactor`, D-SENSITIVE = A) sur `GET /api/dossiers/**`, le panneau dossier de la visualisation **et l'export CSV** (`GET /api/dossiers/export.csv`, anti-injection formule inclus). Seul point encore ouvert : exclusion des valeurs sensibles des **logs applicatifs** et des **payloads de webhooks sortants** (notification) |
+| 23 | `FieldDefinition.sensitive` | **Clos** (2026-08-24, `masquage-donnees-sensibles-logs-webhooks`) — en plus du masquage serveur déjà livré (`DossierFieldRedactor` sur `GET /api/dossiers/**`, panneau visualisation, export CSV), audit préalable : aucune fuite active trouvée dans les logs ni les webhooks (risque latent, pas un incident). Protection préventive ajoutée : `toString()` sûr sur `Dossier`/`FieldDefinition`, liste blanche ArchUnit sur `Dossier.fields()`/`FieldDefinition.defaultValue()`, masquage automatique dans `SendNotificationUseCaseImpl` avant écriture outbox (webhook + browser) |
 | 24 | Contrat d’API complet | **Clos** (2026-08-21, `contrat-api-client` PR #65) — en plus de `openapi-pagination-admin` (PR #58), 6 listes non-admin paginées, golden OpenAPI régénéré. Codegen client explicitement exclu (décision D-CODEGEN) |
 | 25 | Modèle physique consolidé (ERD) | **Clos** (2026-08-22, `modele-physique-consolide` PR #68) — [13-modele-physique.md](analysis%20doc/13-modele-physique.md) : ERD des 17 tables réelles, 4 index uniques partiels, répartition tenant/`platform`. L'énoncé d'origine était en partie obsolète (`TenantRegistry`, contextes Liquibase séparés — n'existent plus depuis la décision n° 13), corrigé dans le nouveau document |
 | 26 | Concurrence dossier / référence | **Clos** (2026-08-22, `fiabilisation-tests-plateforme` PR #66) — `SequentialReferenceMultiPodIT` (Testcontainers PostgreSQL, 8 pods simulés, 80 générations concurrentes) prouve l'absence de doublon/trou sous charge réelle |

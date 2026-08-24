@@ -77,6 +77,31 @@ class DossierTest {
         assertThat(updated.updatedAt()).isEqualTo(dossier.updatedAt());
     }
 
+    @Test
+    void toString_neverPrintsFieldValuesOrKeys() {
+        // D-LOG-GUARD: toString() must stay safe unconditionally — it cannot know which
+        // fields are sensitive (Dossier does not carry FieldDefinition), so it omits the
+        // whole fields map rather than filtering selectively.
+        Dossier dossier = dossier();
+
+        String text = dossier.toString();
+
+        assertThat(text).doesNotContain("montant");
+        assertThat(text).doesNotContain("100");
+    }
+
+    @Test
+    void toString_staysUsefulForDebugging() {
+        Dossier dossier = dossier();
+
+        String text = dossier.toString();
+
+        assertThat(text).contains(dossier.id().toString());
+        assertThat(text).contains("DOS-1");
+        assertThat(text).contains("SINISTRE");
+        assertThat(text).contains("fields=<1 entries redacted>");
+    }
+
     private static Dossier dossier() {
         return new Dossier(
                 UUID.randomUUID(),

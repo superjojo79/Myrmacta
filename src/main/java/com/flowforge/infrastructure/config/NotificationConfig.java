@@ -1,5 +1,6 @@
 package com.flowforge.infrastructure.config;
 
+import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
 import com.flowforge.domain.notification.port.in.ManageNotificationWebhookUseCase;
 import com.flowforge.domain.notification.port.in.SendNotificationUseCase;
 import com.flowforge.domain.notification.port.out.NotificationOutboxRepository;
@@ -30,8 +31,9 @@ public class NotificationConfig {
     @Bean
     SendNotificationUseCase sendNotificationUseCase(
             NotificationOutboxRepository outboxRepository,
-            NotificationWebhookRepository webhookRepository) {
-        return new SendNotificationUseCaseImpl(outboxRepository, webhookRepository);
+            NotificationWebhookRepository webhookRepository,
+            DossierTypeRepository dossierTypeRepository) {
+        return new SendNotificationUseCaseImpl(outboxRepository, webhookRepository, dossierTypeRepository);
     }
 
     @Bean

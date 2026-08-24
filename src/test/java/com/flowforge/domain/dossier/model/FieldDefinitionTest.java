@@ -32,6 +32,21 @@ class FieldDefinitionTest {
     }
 
     @Test
+    void toString_neverPrintsDefaultValue() {
+        // D-LOG-GUARD: defaultValue can itself carry a business-prefilled value on a
+        // sensitive field — never print it, unconditionally (same "always safe" policy
+        // as Dossier.toString()).
+        var def = new FieldDefinition(
+                "ssn", "N° sécu", FieldType.STRING, false, "SECRET-DEFAULT", List.of(), null, true);
+
+        String text = def.toString();
+
+        assertThat(text).doesNotContain("SECRET-DEFAULT");
+        assertThat(text).contains("ssn");
+        assertThat(text).contains("sensitive=true");
+    }
+
+    @Test
     void dossierType_hasSensitiveFields_usesIsSensitive() {
         var plain = new FieldDefinition(
                 "name", "Name", FieldType.STRING, true, null, List.of(), null);

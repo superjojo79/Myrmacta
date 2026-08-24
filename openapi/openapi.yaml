@@ -6,11 +6,52 @@ servers:
 - url: http://localhost
   description: Generated server url
 paths:
+  /api/workflow-bpmn-drafts/{processDefinitionKey}:
+    get:
+      tags:
+      - bpmn-draft-controller
+      operationId: get
+      parameters:
+      - name: processDefinitionKey
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/BpmnDraftResponse"
+    put:
+      tags:
+      - bpmn-draft-controller
+      operationId: save
+      parameters:
+      - name: processDefinitionKey
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveBpmnDraftRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/BpmnDraftResponse"
   /api/tenant/retention-settings:
     get:
       tags:
       - tenant-retention-settings-controller
-      operationId: get
+      operationId: get_1
       responses:
         "200":
           description: OK
@@ -865,7 +906,7 @@ paths:
     get:
       tags:
       - workflow-type-config-controller
-      operationId: get_1
+      operationId: get_2
       parameters:
       - name: workflowKey
         in: path
@@ -906,7 +947,7 @@ paths:
     get:
       tags:
       - notification-webhook-admin-controller
-      operationId: get_2
+      operationId: get_3
       parameters:
       - name: id
         in: path
@@ -1054,7 +1095,7 @@ paths:
     get:
       tags:
       - document-template-controller
-      operationId: get_3
+      operationId: get_4
       parameters:
       - name: id
         in: path
@@ -1097,7 +1138,7 @@ paths:
     get:
       tags:
       - connector-admin-controller
-      operationId: get_4
+      operationId: get_5
       parameters:
       - name: id
         in: path
@@ -1290,6 +1331,25 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/WorkflowDiagramView"
+  /api/workflow-bpmn-deployments/{processDefinitionKey}/xml:
+    get:
+      tags:
+      - workflow-bpmn-deployment-controller
+      operationId: deployedXml
+      parameters:
+      - name: processDefinitionKey
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: byte
   /api/workflow-bpmn-deployments/info:
     get:
       tags:
@@ -1352,7 +1412,7 @@ paths:
     get:
       tags:
       - observability-controller
-      operationId: get_5
+      operationId: get_6
       responses:
         "200":
           description: OK
@@ -1526,6 +1586,23 @@ paths:
           description: OK
 components:
   schemas:
+    SaveBpmnDraftRequest:
+      type: object
+      properties:
+        xml:
+          type: string
+    BpmnDraftResponse:
+      type: object
+      properties:
+        processDefinitionKey:
+          type: string
+        xml:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
     UpsertTenantRetentionSettingsRequest:
       type: object
       properties:

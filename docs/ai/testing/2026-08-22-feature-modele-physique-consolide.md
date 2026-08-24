@@ -56,8 +56,8 @@ non-régression du reste de la documentation.
 - [x] `TODO.md` §25 : passage à `[x]`, note de résolution cohérente
       avec le contenu réel du nouveau document (pas de promesse non
       tenue)
-- [ ] `FILE-ATTENTE.md` : feature déplacée vers "Récemment livré" avec
-      la bonne référence TODO/PR une fois mergée (en attente de PR)
+- [x] `FILE-ATTENTE.md` : feature déplacée vers "Récemment livré" avec
+      la bonne référence TODO/PR (PR #68 mergée)
 
 ## Test Data
 

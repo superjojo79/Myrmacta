@@ -38,4 +38,22 @@ public record FieldDefinition(
     public boolean isSensitive() {
         return Boolean.TRUE.equals(sensitive);
     }
+
+    /**
+     * D-LOG-GUARD: never prints {@code defaultValue} — it can itself carry a business-prefilled
+     * value on a field marked {@link #isSensitive()}. Everything else here is metadata (names,
+     * type, flags), safe to print.
+     */
+    @Override
+    public String toString() {
+        return "FieldDefinition[name=" + name
+                + ", label=" + label
+                + ", type=" + type
+                + ", required=" + required
+                + ", defaultValue=" + (defaultValue == null ? "null" : "<redacted>")
+                + ", options=" + options
+                + ", group=" + group
+                + ", sensitive=" + sensitive
+                + "]";
+    }
 }

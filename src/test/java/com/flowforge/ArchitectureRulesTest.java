@@ -3,10 +3,14 @@ package com.flowforge;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
+import com.flowforge.domain.dossier.model.Dossier;
+import com.flowforge.domain.dossier.model.FieldDefinition;
+import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.lang.SimpleConditionEvent;
+import java.util.Set;
 
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
@@ -51,6 +55,53 @@ class ArchitectureRulesTest {
             .and().areNotInterfaces()
             .and().haveSimpleNameEndingWith("Impl")
             .should(implementAnInterfaceFromPortIn());
+
+    /**
+     * D-LOG-GUARD (masquage-donnees-sensibles-logs-webhooks): {@code Dossier.fields()} exposes
+     * raw field values verbatim, which may include values of fields marked
+     * {@link FieldDefinition#isSensitive()} — {@code Dossier} itself cannot filter them (it does
+     * not carry {@code FieldDefinition}s), so access is restricted to an explicit allowlist of
+     * classes that are known to handle the raw map responsibly (redaction, persistence,
+     * validated API responses) rather than left open to any future caller (e.g. a stray
+     * {@code log.info}). ArchUnit cannot detect "was this value logged" (no call-site dataflow
+     * analysis over erased/widened parameter types) — restricting the read itself is the
+     * property that is actually statically verifiable.
+     */
+    private static final Set<String> DOSSIER_FIELDS_READ_ALLOWLIST = Set.of(
+            "com.flowforge.domain.dossier.DossierFieldRedactor",
+            "com.flowforge.domain.dossier.usecase.UpdateDossierFieldsUseCaseImpl",
+            "com.flowforge.infrastructure.persistence.dossier.DossierJpaEntity",
+            "com.flowforge.infrastructure.web.dossier.DossierResponse",
+            "com.flowforge.infrastructure.web.dossier.DossierExportController");
+
+    /** Same rationale as {@link #DOSSIER_FIELDS_READ_ALLOWLIST}, for {@code FieldDefinition.defaultValue()}. */
+    private static final Set<String> FIELD_DEFINITION_DEFAULT_VALUE_READ_ALLOWLIST = Set.of(
+            "com.flowforge.domain.dossier.model.DossierFieldValidator");
+
+    @ArchTest
+    static final ArchRule only_allowlisted_classes_read_raw_dossier_fields = noClasses()
+            .that(notIn(DOSSIER_FIELDS_READ_ALLOWLIST))
+            .should().callMethod(Dossier.class, "fields")
+            .because("Dossier.fields() may expose sensitive values — extend "
+                    + "ArchitectureRulesTest.DOSSIER_FIELDS_READ_ALLOWLIST deliberately rather than "
+                    + "letting a new, unreviewed call site appear");
+
+    @ArchTest
+    static final ArchRule only_allowlisted_classes_read_field_definition_default_value = noClasses()
+            .that(notIn(FIELD_DEFINITION_DEFAULT_VALUE_READ_ALLOWLIST))
+            .should().callMethod(FieldDefinition.class, "defaultValue")
+            .because("FieldDefinition.defaultValue() may carry a sensitive prefilled value — extend "
+                    + "ArchitectureRulesTest.FIELD_DEFINITION_DEFAULT_VALUE_READ_ALLOWLIST deliberately "
+                    + "rather than letting a new, unreviewed call site appear");
+
+    private static DescribedPredicate<JavaClass> notIn(Set<String> allowlist) {
+        return new DescribedPredicate<>("not in the allowlist " + allowlist) {
+            @Override
+            public boolean test(JavaClass javaClass) {
+                return !allowlist.contains(javaClass.getFullName());
+            }
+        };
+    }
 
     private static ArchCondition<JavaClass> implementAnInterfaceFromPortIn() {
         return new ArchCondition<>("implement an interface residing in a ..port.in.. package") {

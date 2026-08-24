@@ -144,6 +144,34 @@ public record Dossier(
                 purgeEligibleAt);
     }
 
+    /**
+     * D-LOG-GUARD: never prints {@code fields} — a record-generated {@code toString()} would
+     * dump the raw map verbatim, including values of fields marked {@link FieldDefinition#isSensitive()}.
+     * {@code Dossier} does not carry the {@link FieldDefinition}s needed to filter selectively, so
+     * this stays unconditionally safe (entry count only) rather than attempting to distinguish
+     * sensitive from non-sensitive keys here.
+     */
+    @Override
+    public String toString() {
+        return "Dossier[id=" + id
+                + ", tenantId=" + tenantId
+                + ", reference=" + reference
+                + ", dossierTypeCode=" + dossierTypeCode
+                + ", label=" + label
+                + ", status=" + status
+                + ", fields=<" + fields.size() + " entries redacted>"
+                + ", currentWorkflowLinkId=" + currentWorkflowLinkId
+                + ", version=" + version
+                + ", createdBy=" + createdBy
+                + ", createdAt=" + createdAt
+                + ", updatedBy=" + updatedBy
+                + ", updatedAt=" + updatedAt
+                + ", closedBy=" + closedBy
+                + ", closedAt=" + closedAt
+                + ", purgeEligibleAt=" + purgeEligibleAt
+                + "]";
+    }
+
     public Dossier withCurrentWorkflowLinkId(UUID workflowLinkId, String updatedBy, Instant at) {
         return new Dossier(
                 id,

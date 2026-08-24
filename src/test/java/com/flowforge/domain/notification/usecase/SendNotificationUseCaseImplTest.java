@@ -10,6 +10,11 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.flowforge.domain.dossier.model.DossierType;
+import com.flowforge.domain.dossier.model.FieldDefinition;
+import com.flowforge.domain.dossier.model.FieldType;
+import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
+import com.flowforge.domain.notification.model.DossierFieldsSnapshot;
 import com.flowforge.domain.notification.model.NotificationChannel;
 import com.flowforge.domain.notification.model.NotificationEvent;
 import com.flowforge.domain.notification.model.NotificationValidationException;
@@ -31,13 +36,15 @@ class SendNotificationUseCaseImplTest {
 
     private NotificationOutboxRepository outboxRepository;
     private NotificationWebhookRepository webhookRepository;
+    private DossierTypeRepository dossierTypeRepository;
     private SendNotificationUseCase useCase;
 
     @BeforeEach
     void setUp() {
         outboxRepository = mock(NotificationOutboxRepository.class);
         webhookRepository = mock(NotificationWebhookRepository.class);
-        useCase = new SendNotificationUseCaseImpl(outboxRepository, webhookRepository);
+        dossierTypeRepository = mock(DossierTypeRepository.class);
+        useCase = new SendNotificationUseCaseImpl(outboxRepository, webhookRepository, dossierTypeRepository);
         when(outboxRepository.savePendingBatch(anyString(), any(), any()))
                 .thenAnswer(invocation -> {
                     @SuppressWarnings("unchecked")
@@ -272,6 +279,121 @@ class SendNotificationUseCaseImplTest {
         assertThat(json).contains("\"subject\":\"Hello \\\"world\\\"\"");
         assertThat(json).contains("\"body\":\"Line\\n2\"");
         assertThat(json).doesNotContain("ignored");
+    }
+
+    @Test
+    void send_noDossierFieldsSnapshot_neverQueriesDossierTypeRepository() {
+        // D-WEBHOOK-MASK: the lookup only happens if a producer opts in — today's 2 real
+        // producers never do, so this is the 100%-of-traffic non-regression case.
+        UUID webhookId = UUID.randomUUID();
+        stubActiveWebhook(webhookId);
+        NotificationEvent event = new NotificationEvent(
+                List.of(NotificationChannel.WEBHOOK), null, null, null, null, webhookId, Map.of("k", "v"));
+
+        useCase.send(event, "tenant_dev");
+
+        verify(dossierTypeRepository, never()).findByCode(any(), any());
+    }
+
+    @Test
+    void send_dossierFieldsSnapshotWithSensitiveField_valueStrippedFromPayload() {
+        UUID webhookId = UUID.randomUUID();
+        stubActiveWebhook(webhookId);
+        stubDossierType("CLAIM", List.of(
+                new FieldDefinition("ssn", "SSN", FieldType.STRING, false, null, List.of(), null, true)));
+        NotificationEvent event = new NotificationEvent(
+                List.of(NotificationChannel.WEBHOOK),
+                null, null, null, null, webhookId,
+                Map.of(),
+                new DossierFieldsSnapshot("CLAIM", Map.of("ssn", "SECRET-VALUE-DO-NOT-LEAK")));
+
+        useCase.send(event, "tenant_dev");
+
+        String json = capturePayloadJson();
+        assertThat(json).doesNotContain("SECRET-VALUE-DO-NOT-LEAK");
+    }
+
+    @Test
+    void send_dossierFieldsSnapshotWithNonSensitiveField_valueKeptInPayload() {
+        UUID webhookId = UUID.randomUUID();
+        stubActiveWebhook(webhookId);
+        stubDossierType("CLAIM", List.of(
+                new FieldDefinition("montant", "Montant", FieldType.NUMBER, false, null, List.of(), null)));
+        NotificationEvent event = new NotificationEvent(
+                List.of(NotificationChannel.WEBHOOK),
+                null, null, null, null, webhookId,
+                Map.of(),
+                new DossierFieldsSnapshot("CLAIM", Map.of("montant", 42)));
+
+        useCase.send(event, "tenant_dev");
+
+        String json = capturePayloadJson();
+        assertThat(json).contains("\"montant\":42");
+    }
+
+    @Test
+    void send_dossierFieldsSnapshotWithUnknownDossierType_omitsDossierFieldsWithoutThrowing() {
+        UUID webhookId = UUID.randomUUID();
+        stubActiveWebhook(webhookId);
+        when(dossierTypeRepository.findByCode("tenant_dev", "GHOST")).thenReturn(Optional.empty());
+        NotificationEvent event = new NotificationEvent(
+                List.of(NotificationChannel.WEBHOOK),
+                null, null, null, null, webhookId,
+                Map.of(),
+                new DossierFieldsSnapshot("GHOST", Map.of("ssn", "SECRET-VALUE-DO-NOT-LEAK")));
+
+        useCase.send(event, "tenant_dev");
+
+        String json = capturePayloadJson();
+        assertThat(json).doesNotContain("SECRET-VALUE-DO-NOT-LEAK").doesNotContain("dossierFields");
+    }
+
+    @Test
+    void send_dossierFieldsSnapshotWithSensitiveFieldAbsentFromValues_doesNotThrow() {
+        // Sensitive per the type's FieldDefinition, but simply not present in this dossier's
+        // field map (matches the "absent key, not a null value" convention used elsewhere —
+        // e.g. DossierFieldMerger, DossierFieldRedactor).
+        UUID webhookId = UUID.randomUUID();
+        stubActiveWebhook(webhookId);
+        stubDossierType("CLAIM", List.of(
+                new FieldDefinition("ssn", "SSN", FieldType.STRING, false, null, List.of(), null, true)));
+        NotificationEvent event = new NotificationEvent(
+                List.of(NotificationChannel.WEBHOOK),
+                null, null, null, null, webhookId,
+                Map.of(),
+                new DossierFieldsSnapshot("CLAIM", Map.of("other", "x")));
+
+        useCase.send(event, "tenant_dev");
+
+        String json = capturePayloadJson();
+        assertThat(json).contains("\"other\":\"x\"");
+    }
+
+    @Test
+    void send_browserChannelWithDossierFieldsSnapshot_alsoMasked() {
+        stubDossierType("CLAIM", List.of(
+                new FieldDefinition("ssn", "SSN", FieldType.STRING, false, null, List.of(), null, true)));
+        NotificationEvent event = new NotificationEvent(
+                List.of(NotificationChannel.BROWSER),
+                null, null, null, "user-1", null,
+                Map.of(),
+                new DossierFieldsSnapshot("CLAIM", Map.of("ssn", "SECRET-VALUE-DO-NOT-LEAK")));
+
+        useCase.send(event, "tenant_dev");
+
+        String json = capturePayloadJson();
+        assertThat(json).doesNotContain("SECRET-VALUE-DO-NOT-LEAK");
+    }
+
+    private void stubDossierType(String code, List<FieldDefinition> definitions) {
+        when(dossierTypeRepository.findByCode("tenant_dev", code)).thenReturn(Optional.of(
+                DossierType.inherit(UUID.randomUUID(), "tenant_dev", code, code, "wf", true, true, definitions)));
+    }
+
+    private String capturePayloadJson() {
+        ArgumentCaptor<List<PendingOutboxWrite>> writesCaptor = ArgumentCaptor.forClass(List.class);
+        verify(outboxRepository).savePendingBatch(eq("tenant_dev"), writesCaptor.capture(), any());
+        return writesCaptor.getValue().getFirst().payloadJson();
     }
 
     private void stubActiveWebhook(UUID webhookId) {

@@ -8,8 +8,8 @@
 > - Inventaire follow-ups / lots : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md)
 > - Séquencement « avant prod » : [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md) §9
 >
-> **Dernière mise à jour :** 2026-08-22 (`modele-physique-consolide`
-> livrée, PR #68 mergée sur `main` — TODO §25 clos, file d'attente vide).
+> **Dernière mise à jour :** 2026-08-24 (`masquage-donnees-sensibles-logs-webhooks`
+> implémentée — TODO §23 clos, en attente de PR).
 
 ## Comment s’en servir
 
@@ -62,11 +62,14 @@ le remplit déjà en pratique à chaque lot livré. `durcissement-donnees-sensib
 (PR #68) livrées — les 5 features candidates du regroupement 2026-08-20
 sont maintenant toutes livrées.
 
-**File vide.** `modele-physique-consolide` était le dernier item des 5
-features candidates du regroupement 2026-08-20 — plus aucun lot produit
-V1 nommé en attente. Prochaine feature à identifier lors d'une prochaine
-analyse (nouveaux points TODO, nouveau besoin utilisateur, ou lot
-`DEFERRED-FEATURES.md`).
+Après les 5 features du regroupement 2026-08-20, `masquage-donnees-sensibles-logs-webhooks`
+(TODO §23 reste) a été identifiée et implémentée le 2026-08-24 — voir
+« Récemment livré » une fois la PR mergée. **File de nouveau vide** après
+cette feature : plus aucun lot produit V1 nommé en attente. Seul
+reliquat non-feature substantiel : outillage provisioning (TODO §31,
+hors file produit — voir section dédiée ci-dessous). Prochaine feature à
+identifier lors d'une prochaine analyse (nouveaux points TODO, nouveau
+besoin utilisateur, ou lot `DEFERRED-FEATURES.md`).
 
 **Hors V1 (reporté, pas dans cette file) :** Rapports / SLA (maquette UI de
 référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même
@@ -143,3 +146,8 @@ référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même
 | 2026-08-22 | `deploiement-bpmn` livrée | PR #67 mergée sur `main` (CI hébergé rouge depuis plusieurs jours pour une raison d'infrastructure sans rapport avec le diff — confirmé rouge aussi sur les merges précédents dont #66 — mergé sur la base des vérifications locales complètes) ; TODO §35 clos ; prochain = `modele-physique-consolide` §25 |
 | 2026-08-22 | `modele-physique-consolide` implémentée (Phases 1-9) | Écart trouvé avant d'écrire le problem statement : TODO §25 supposait un `TenantRegistry` actif et des contextes Liquibase séparés, tous deux explicitement obsolètes depuis la décision n°13 (note de mise à jour de la décision n°1 jamais répercutée dans §25) — 3 décisions via `AskUserQuestion` (corriger le scope plutôt que documenter l'obsolète, doc seule sans créer `platform.tenant_migration_status`, nouveau doc `13-modele-physique.md` avec ERD mermaid plutôt qu'un dump SQL dupliquant les changelogs). Contenu extrait par parsing structuré des 12 changelogs (pas résumé de mémoire) : 17 tables réelles (pas « une dizaine »), 4 index uniques partiels (pas « deux »), seulement 2 FK sur 17 tables contraintes en DB (le reste logique, explicité pour ne pas induire en erreur). Feature 100% documentaire, vérifiée par `git diff --stat` (aucun `.java`/`.yaml` de changelog touché). TODO §25 clos, en attente de PR |
 | 2026-08-22 | `modele-physique-consolide` livrée | PR #68 mergée sur `main` (CI hébergé rouge en ~2s, même signature d'infrastructure que sur les merges précédents #66/#67, sans rapport avec un diff 100% documentaire — mergé sur la base des vérifications factuelles locales) ; TODO §25 clos ; file d'attente vide — les 5 features du regroupement 2026-08-20 sont toutes livrées, prochaine feature à identifier lors d'une prochaine analyse |
+| 2026-08-24 | `DEFERRED-FEATURES.md` resynchronisé | PR #69 mergée sur `main` — §3 corrigé (5 lignes stales : §23/24/25/26/28/30), §2 complété avec les 5 features du regroupement, §1.2 note obsolète corrigée (contextes Liquibase tenant-init/tenant-migration) |
+| 2026-08-24 | `masquage-donnees-sensibles-logs-webhooks` Phase 1 reviewed | Audit avant rédaction : contrairement à l'énoncé TODO §23, **aucune fuite active trouvée** (ni logs, ni webhooks — vérifié par grep exhaustif sur le code et les `.bpmn20.xml`) ; reformulé en risque latent sans garde-fou. D-SCOPE=garde-fou complet (logs + webhook), décision actée via `AskUserQuestion` |
+| 2026-08-24 | `masquage-donnees-sensibles-logs-webhooks` Phase 3 reviewed | 2 décisions techniques actées via `AskUserQuestion` : D-LOG-GUARD=toString() sûr + règle ArchUnit, D-WEBHOOK-MASK=contexte dossier optionnel + lookup `FieldDefinition` dans `SendNotificationUseCaseImpl` |
+| 2026-08-24 | `masquage-donnees-sensibles-logs-webhooks` T1.3 corrigée en implémentation | La règle ArchUnit envisagée (détection de logging) s'est avérée irréalisable (ArchUnit ne fait pas d'analyse de flux de valeurs — signature bytecode identique quel que soit le type réel de l'argument d'un `Logger.info(String, Object)`) ; vérifié avant de coder, pas supposé. Remplacée par une liste blanche des classes autorisées à lire `Dossier.fields()`/`FieldDefinition.defaultValue()`, déterminée en faisant tourner la règle contre le code réel (pas devinée par `grep`, qui remontait des faux positifs `command.fields()`/`request.fields()`) ; décision validée via `AskUserQuestion` |
+| 2026-08-24 | `masquage-donnees-sensibles-logs-webhooks` implémentée (Phases 1-9) | 10 tâches TDD sur 3 milestones (M1 garde-fou logs, M2 masquage webhook, M3 vérification+clôture). `SendNotificationUseCaseImpl` masque automatiquement les valeurs sensibles avant toute écriture outbox, pour tous les canaux, sans dépendre d'un futur producteur. Preuve bout en bout réelle (`SendNotificationUseCaseImpl` → `NotificationOutboxRelay` → `WebhookRestAdapter`, corps HTTP capturé) + 2 contrôles mutants manuels (masquage désactivé temporairement, tests confirmés en échec, code restauré) prouvant que les tests détectent vraiment une régression. `./mvnw verify` final : 1088 tests (0 échec), Jacoco tenu. Zéro fichier frontend touché. TODO §23 clos avec note honnête (pas de fuite active, protection préventive), en attente de PR |

@@ -143,6 +143,13 @@ export interface ProcessDeploymentInfo {
   activeInstanceCount: number
 }
 
+export interface BpmnDraft {
+  processDefinitionKey: string
+  xml: string
+  updatedAt: string
+  updatedBy: string
+}
+
 export interface BpmnDeploymentResult {
   processDefinitionKey: string
   deployedVersion: number

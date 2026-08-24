@@ -15,6 +15,7 @@ import com.flowforge.domain.workflow.model.StatusOutcome;
 import com.flowforge.domain.workflow.model.UnknownWorkflowKeyException;
 import com.flowforge.domain.workflow.model.WorkflowStatusDefinition;
 import com.flowforge.domain.workflow.model.WorkflowTypeConfig;
+import com.flowforge.domain.workflow.port.out.BpmnDraftRepository;
 import com.flowforge.domain.workflow.port.out.BpmnParserPort;
 import com.flowforge.domain.workflow.port.out.WorkflowDeploymentPort;
 import com.flowforge.domain.workflow.port.out.WorkflowTypeConfigRepository;
@@ -32,8 +33,9 @@ class DeployBpmnProcessUseCaseImplTest {
     private final WorkflowDeploymentPort deploymentPort = mock(WorkflowDeploymentPort.class);
     private final WorkflowTypeConfigRepository configRepository = mock(WorkflowTypeConfigRepository.class);
     private final BpmnParserPort bpmnParserPort = mock(BpmnParserPort.class);
+    private final BpmnDraftRepository draftRepository = mock(BpmnDraftRepository.class);
     private final DeployBpmnProcessUseCaseImpl useCase =
-            new DeployBpmnProcessUseCaseImpl(TENANT, deploymentPort, configRepository, bpmnParserPort);
+            new DeployBpmnProcessUseCaseImpl(TENANT, deploymentPort, configRepository, bpmnParserPort, draftRepository);
 
     @Test
     void deploy_validBpmnWithKnownKey_delegatesToDeploymentPort() {
@@ -68,6 +70,29 @@ class DeployBpmnProcessUseCaseImplTest {
                 .isInstanceOf(UnknownWorkflowKeyException.class);
 
         verify(deploymentPort, never()).deploy(any(), any(), any());
+    }
+
+    @Test
+    void deploy_success_deletesExistingDraftForDeployedKey() {
+        when(bpmnParserPort.extractProcessDefinitionKey(BPMN_BYTES)).thenReturn("testProcess");
+        when(configRepository.findByWorkflowKey(TENANT, "testProcess")).thenReturn(Optional.of(smokeConfig()));
+        when(deploymentPort.deploy(TENANT, "diagram.bpmn20.xml", BPMN_BYTES))
+                .thenReturn(new BpmnDeploymentResult("testProcess", 1, "deployment-1"));
+
+        useCase.deploy("diagram.bpmn20.xml", BPMN_BYTES);
+
+        verify(draftRepository).deleteByTenantIdAndProcessDefinitionKey(TENANT, "testProcess");
+    }
+
+    @Test
+    void deploy_failure_keepsExistingDraftForKey() {
+        when(bpmnParserPort.extractProcessDefinitionKey(BPMN_BYTES))
+                .thenThrow(new InvalidBpmnException("not valid BPMN"));
+
+        assertThatThrownBy(() -> useCase.deploy("diagram.bpmn20.xml", BPMN_BYTES))
+                .isInstanceOf(InvalidBpmnException.class);
+
+        verify(draftRepository, never()).deleteByTenantIdAndProcessDefinitionKey(any(), any());
     }
 
     private static WorkflowTypeConfig smokeConfig() {

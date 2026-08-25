@@ -13,9 +13,8 @@ requirements_ref: docs/ai/requirements/2026-08-25-feature-durcissement-securite-
 
 ## Phase 3: Review Design (en cours)
 
-Réécrit pour **D-40-ALLOW = B2** (pas le brouillon A/B1). `status: draft`.
-Pas reviewed tant que DD-THYME-B2, DD-SSTI-FAIL et DD-DENYLIST ne sont
-pas tranchés. Une question à la fois.
+Réécrit pour **D-40-ALLOW = B2**. DD-THYME-B2 = **E**. `status: draft`.
+Pas reviewed tant que DD-SSTI-FAIL et DD-DENYLIST ne sont pas tranchés.
 
 Couverture requirements : 5 goals, A-PIN-CALLERS, A-NO-SPA, hexagone.
 
@@ -32,7 +31,7 @@ flowchart TB
     chk[ThymeleafTemplateSyntaxChecker]
     proc[ThymeleafHtmlTemplateProcessor]
     eng[TemplateEngine + StandardDialect]
-    ev[IStandardVariableExpressionEvaluator — DD-THYME-B2 ouvert]
+    ev[IStandardVariableExpressionEvaluator B2 — E]
     gen --> proc --> eng --> ev
     chk --> eng
   end
@@ -100,7 +99,7 @@ pin, pas de connect.
 | Composant | Rôle vs requirements |
 |---|---|
 | `ThymeleafHtmlTemplateProcessor` + `ThymeleafTemplateSyntaxChecker` | Même factory moteur (goal 1) |
-| Évaluateur B2 | **DD-THYME-B2** — pas l'ébauche `${ident.prop}` seule |
+| Évaluateur B2 | **DD-THYME-B2 = E** — `TemplateEngine` + `StandardDialect` sans SpEL ; chemins modèle + `#dates` `#numbers` `#strings` `#lists` `#vars` (allowlist de méthodes) ; étendre l'ébauche, ne pas la livrer telle quelle |
 | `01-init-tenant-schema.sql` + Compose `POSTGRES_USER` vs `DB_USERNAME` | D-41 A / S |
 | `TenantRoleIsolationIT` | T-GRANT (SKIPPED sans Docker) |
 | `application.yml` `management.server.address` / `MANAGEMENT_PORT:8090` | D-42 L |
@@ -128,41 +127,43 @@ Frontend : aucun (A-NO-SPA).
 | DD-PIN-CALLERS | A-PIN-CALLERS | Webhook + skeleton SERVICE ; admin `assertSafe` sans connect |
 | DD-STRICT-SHAPE | D-43 F | EPP relâché si profil `local` ou `test` ; sinon fail-fast |
 
+### Tranchés Phase 3
+
+| ID | Choix |
+|---|---|
+| **DD-THYME-B2** | **E** — `TemplateEngine` + `StandardDialect` sans SpEL ; évaluateur custom B2. Écarté : S (SimpleEvaluationContext), R (denylist chaîne). |
+
 ### Ouverts (Phase 3)
 
 | ID | Point | Statut |
 |---|---|---|
-| **DD-THYME-B2** | Mécanisme allowlist B2 (A-SSTI-ENGINE) | **posée maintenant** |
-| DD-SSTI-FAIL | HTTP / exception vs texte brut (A-SSTI-FAIL) | après DD-THYME-B2 |
+| **DD-SSTI-FAIL** | HTTP / exception vs texte brut (A-SSTI-FAIL) | **posée maintenant** |
 | DD-DENYLIST | Ensemble exact des mots de passe interdits (A-DENYLIST) | après DD-SSTI-FAIL |
 
-### Question actuelle — DD-THYME-B2 (seule question de ce tour)
+### Question actuelle — DD-SSTI-FAIL (seule question de ce tour)
 
-**Pourquoi ça compte :** B2 exige `#vars` / `#dates` / `#numbers` /
-`#strings` / `#lists` **et** le refus de `T()` / `#beans`. L'ébauche
-regex `${ident.prop}` est A/B1. Le mécanisme fixe la surface d'attaque
-et les tests T-SSTI.
+**Pourquoi ça compte :** T-SSTI exige « non évalué ». Aujourd'hui
+`TemplateProcessingException` → **400** au generate/preview
+(`DocumentGenerationExceptionHandler`) ;
+`InvalidTemplateSyntaxException` → **400** à l'enregistrement
+(`DocumentTemplateExceptionHandler`). Le checker actuel **parse** le
+HTML, il n'évalue pas : un template avec `T()` peut être sauvé puis
+échouer au generate. B2 + E + « même allowlist checker » pousse à
+refuser aussi à l'enregistrement.
 
 **Options :**
 
-- **E** — `org.thymeleaf.TemplateEngine` + `StandardDialect` **sans**
-  `SpringTemplateEngine` / SpEL. `IStandardVariableExpressionEvaluator`
-  custom : chemins de propriétés du modèle ; objets d'expression
-  Thymeleaf `#dates` / `#numbers` / `#strings` / `#lists` / `#vars`
-  (instances `org.thymeleaf.expression.*`) avec **allowlist de méthodes**
-  publiques de ces objets ; refus `T()`, `new`, `#beans`, request/servlet.
-  Même factory pour processor et syntax checker. Étend l'ébauche, ne la
-  livre pas telle quelle.
-- **S** — garder `SpringTemplateEngine` / SpEL avec
-  `SimpleEvaluationContext` (pas de `T()` / types). Surface SpEL encore
-  présente ; la revue juge B « facile à rater ».
-- **R** — denylist de motifs (`T(`, `#beans`) sur la chaîne brute, reste
-  de SpringEL intact. Équivalent B3, écarté en requirements.
+- **C** — fail closed partout : generate/preview **et** enregistrement
+  / syntax check refusent les expressions hors allowlist → 400 (handlers
+  existants). Reco (aligné goal 1 « même moteur / allowlist »).
+- **X** — 400 au generate/preview seulement ; l'enregistrement accepte
+  un template qui cassera plus tard.
+- **P** — generate/preview **200**, expression non évaluée (texte brut /
+  placeholder). Pas d'erreur HTTP ; plus facile à rater en audit.
 
-**Recommandation : E** — aligné B2, pas de SpEL sur le chemin templates,
-allowlist explicite des 5 objets.
+**Recommandation : C.**
 
-Ne pas répondre à DD-SSTI-FAIL ni DD-DENYLIST dans ce tour.
+Ne pas répondre à DD-DENYLIST dans ce tour.
 
 ## Non-Functional Requirements
 **How should the system perform?**
@@ -179,9 +180,8 @@ Ne pas répondre à DD-SSTI-FAIL ni DD-DENYLIST dans ce tour.
 
 ## Security Notes
 
-- B2 coupe `T()` mais l'allowlist de méthodes sur `#strings` etc. doit
-  exclure tout pont vers `Runtime` / classloading (d'où **E** + allowlist
-  de méthodes, pas S/R).
+- B2 coupe `T()` via **E** ; l'allowlist de méthodes sur `#strings` etc.
+  ne doit pas pont vers `Runtime` / classloading.
 - D-41 limite le blast radius SQL même si l'allowlist fuit.
 - HMAC M2M reste autorisé en profil `test` (IT M2M existants).
 - `HttpURLConnection` (ébauche webhook) : le JDK `HttpClient` restreint
@@ -191,7 +191,7 @@ Ne pas répondre à DD-SSTI-FAIL ni DD-DENYLIST dans ce tour.
 
 | Goal / critère | Design |
 |---|---|
-| 1 B2 generate + preview + checker | Processor + checker + DD-THYME-B2 |
+| 1 B2 generate + preview + checker | Processor + checker + **E** |
 | 2 GRANT + runbook + IT | init SQL, Compose, IT, T-DOCS |
 | 3 actuator L | yaml bind/port, permitAll |
 | 4 secrets F | EPP + profil `local` ; DD-DENYLIST ouvert |

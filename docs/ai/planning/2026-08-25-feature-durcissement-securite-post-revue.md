@@ -10,6 +10,7 @@ phase4: 2026-08-25
 phase5: 2026-08-25
 phase7: 2026-08-25
 phase8: 2026-08-25
+phase9: 2026-08-25
 requirements_ref: docs/ai/requirements/2026-08-25-feature-durcissement-securite-post-revue.md
 design_ref: docs/ai/design/2026-08-25-feature-durcissement-securite-post-revue.md
 testing_ref: docs/ai/testing/2026-08-25-feature-durcissement-securite-post-revue.md
@@ -177,6 +178,8 @@ Pas d'estimation calendaire. Une passe TDD Phase 5, une tâche à la fois
 
 Phase 5 **done** (2026-08-25). Phase 7 **checked** (2026-08-25). Phase 8
 **verified** (2026-08-25) : couverture classe par classe + generate HTTP
-`T()` 400. Preuves : `./mvnw verify` **1185** tests, 0 échec, Jacoco
-LINE 93,52 % / BRANCH 75,57 % ; Vitest 199/199 ; Playwright 47/47.
-Suite lifecycle : Phase 9 (`dev-review`) — **non commencée**.
+`T()` 400. Phase 9 **reviewed** (2026-08-25) : revue holistique, aucun
+blocage. Preuves Phase 9 (cette session) : `./mvnw verify` **1186** tests,
+0 échec, Jacoco LINE 93,52 % / BRANCH 75,57 % ; Vitest 199/199 ;
+Playwright 47/47. Suite : merge humain [PR #76](https://github.com/superjojo79/FlowForge/pull/76).
+**Ne pas enchaîner** d’autre feature.

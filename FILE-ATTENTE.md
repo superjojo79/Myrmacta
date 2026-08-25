@@ -11,10 +11,11 @@
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
 > **Dernière mise à jour :** 2026-08-25 — cycle `durcissement-securite-post-revue`
-> **Phase 8 verified** sur [PR #76](https://github.com/superjojo79/FlowForge/pull/76)
-> (Phase 5 M1–M7 done, Phase 7 checked). Suite : Phase 9 **non commencée**.
-> Preuves : `./mvnw verify` **1185** tests (0 échec), Jacoco BRANCH 75,57 % ;
-> Vitest 199 + Playwright 47.
+> **Phase 9 READY** sur [PR #76](https://github.com/superjojo79/FlowForge/pull/76)
+> (Phase 5 M1–M7 done, Phase 7 checked, Phase 8 verified). Prêt pour merge
+> humain — **ne pas merger** depuis l’agent, **ne pas enchaîner** d’autre
+> feature. Preuves Phase 9 : `./mvnw verify` **1186** tests (0 échec),
+> Jacoco BRANCH 75,57 % / LINE 93,52 % ; Vitest 199 + Playwright 47.
 > `derive-documentaire` TODO §45 clos, [PR #75](https://github.com/superjojo79/FlowForge/pull/75) ;
 > `edition-bpmn` TODO §39 clos, [PR #71](https://github.com/superjojo79/FlowForge/pull/71) **mergée**.
 > `masquage-donnees-sensibles-logs-webhooks` PR #70 mergée. Hors cycle
@@ -74,15 +75,15 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 Plus de lot produit V1 **nommé** hors sécurité : `derive-documentaire`
 (PR #75) est mergée. Le cycle **`durcissement-securite-post-revue`**
 (TODO §40–44) : D-* tranchés, Phases 2–4 **reviewed**, Phase 5 **done**
-(M1–M7), Phase 7 **checked**, Phase 8 **verified**. Reliquat ops hors file : provisioning tenant
+(M1–M7), Phase 7 **checked**, Phase 8 **verified**, Phase 9 **reviewed**. Reliquat ops hors file : provisioning tenant
 (CLI / orchestrateur — hors cette feature). §46 hors périmètre.
 
 **Regroupement (2026-08-25) :** les 5 findings sécurité (§4) forment
-cette feature. D-* clos en Phase 1/2. Phase 8 **verified**.
+cette feature. D-* clos en Phase 1/2. Phase 9 **READY**.
 
 | Priorité | Item | Notes |
 |---|---|---|
-| **En cours — Phase 8 verified** | `durcissement-securite-post-revue` (TODO §40–44) | Couverture + generate HTTP 400. [PR #76](https://github.com/superjojo79/FlowForge/pull/76). Suite Phase 9. |
+| **En revue — Phase 9 READY** | `durcissement-securite-post-revue` (TODO §40–44) | Revue holistique, aucun blocage. [PR #76](https://github.com/superjojo79/FlowForge/pull/76). Merge humain. |
 | **Hors périmètre de la feature sécurité** | TODO §46 (ArchUnit `application`) | Architecture, pas sécurité au sens de la revue — point séparé, non bloquant. |
 
 Détail et options : [TODO.md](TODO.md) §40–46,
@@ -90,8 +91,10 @@ Détail et options : [TODO.md](TODO.md) §40–46,
 
 ## En revue
 
-*Cycle Phase 8 **verified*** — [PR #76](https://github.com/superjojo79/FlowForge/pull/76)
-(`durcissement-securite-post-revue`). Phase 9 non commencée.
+*Cycle Phase 9 **READY*** — [PR #76](https://github.com/superjojo79/FlowForge/pull/76)
+(`durcissement-securite-post-revue`). Revue holistique close, aucun
+blocage. Ne pas merger depuis l’agent. Ne pas déplacer vers « Récemment
+livré » tant que non mergée.
 PR #75 (`derive-documentaire`) **mergée**.
 **Hors V1 (reporté, pas dans cette file) :** Rapports / SLA (maquette UI de
 référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même
@@ -213,4 +216,5 @@ Vérifié : `./mvnw verify` 1136 tests (0 échec), Jacoco OK ; frontend `npm run
 | 2026-08-25 | `durcissement-securite-post-revue` Phase 5 done | M1–M7 TDD. `./mvnw verify` 1173 tests (0 échec), Jacoco BRANCH 75,03 % / LINE 93,3 % ; Vitest 199 + Playwright 47. `ObservabilityActuatorIT` vert ; `TenantRoleIsolationIT` SKIPPED sans Docker. SSTI 400 à l'activation (pas au POST draft). [PR #76](https://github.com/superjojo79/FlowForge/pull/76). |
 | 2026-08-25 | `durcissement-securite-post-revue` Phase 7 checked | Revue fichier par fichier vs design. Aligné D-40 B2 / E, D-41 A/S, D-42 L, D-43 F, D-44 P. Écarts notés (Host JDK restricted headers ; « enregistrement » = activation). Pas de relock D-*, pas de retour Phase 5. 130 tests ciblés, 0 échec. |
 | 2026-08-25 | `durcissement-securite-post-revue` Phase 8 verified | Jacoco classe par classe. Generate HTTP `T()` 400. `./mvnw verify` 1185 tests (0 échec), BRANCH 75,57 % ; Vitest 199 + Playwright 47. Suite : Phase 9. |
+| 2026-08-25 | `durcissement-securite-post-revue` Phase 9 READY | Revue holistique : 42 fichiers, pas de pom/OpenAPI/Liquibase/SPA/domain ; ports inchangés ; sonde SSTI inlining/th:if/preprocess. Findings non bloquants (Host JDK restricted headers, IT hors surefire). `./mvnw verify` **1186** tests (0 échec), Jacoco LINE 93,52 % / BRANCH 75,57 % ; Vitest 199 + Playwright 47. [PR #76](https://github.com/superjojo79/FlowForge/pull/76). Merge humain. |
 

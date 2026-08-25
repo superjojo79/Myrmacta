@@ -8,12 +8,14 @@ updated: 2026-08-25
 feature: durcissement-securite-post-revue
 verified: 2026-08-25
 phase8: 2026-08-25
+phase9: 2026-08-25
 ---
 
 # Testing Strategy — `durcissement-securite-post-revue`
 
 Scénarios dérivés des success criteria (Phase 2) et du design (Phase 3).
 Phase 5 TDD **done**. Phase 7 **checked**. Phase 8 **verified** 2026-08-25.
+Phase 9 **reviewed** 2026-08-25.
 
 TDD obligatoire (skill `tdd`). Playwright = **régression** SPA (A-NO-SPA).
 
@@ -99,6 +101,22 @@ mkdir -p target/classes/static && cp -a frontend/dist/. target/classes/static/
 ```
 
 **1185** tests, 0 échec, exit 0. Jacoco BUNDLE LINE **93,52 %** (6490/6940),
+BRANCH **75,57 %** (1958/2591) — `All coverage checks have been met`.
+
+`cd frontend && npm run test` → 199/199. `npm run test:e2e` → 47/47.
+
+## Phase 9 — sonde SSTI + verify (cette session)
+
+Test ajouté `ThymeleafHtmlTemplateProcessorTest.inlinedIfAndPreprocessedSpel_throwTemplateProcessingException`
+(commit `18bf98f`) : `[[${T(...)}]]`, `th:if="${T(...)}"`, `__${T(...)}__`
+→ `TemplateProcessingException`.
+
+```
+mkdir -p target/classes/static && cp -a frontend/dist/. target/classes/static/
+./mvnw -Dskip.frontend=true -Dmaven.compiler.release=21 verify
+```
+
+**1186** tests, 0 échec, exit 0. Jacoco BUNDLE LINE **93,52 %** (6490/6940),
 BRANCH **75,57 %** (1958/2591) — `All coverage checks have been met`.
 
 `cd frontend && npm run test` → 199/199. `npm run test:e2e` → 47/47.

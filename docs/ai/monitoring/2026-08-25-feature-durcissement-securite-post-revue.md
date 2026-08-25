@@ -9,9 +9,9 @@ feature: durcissement-securite-post-revue
 
 # Monitoring & Observability — `durcissement-securite-post-revue`
 
-> **Hors phase.** Le port 8090 / bind localhost dépend de D-42 (ouvert).
+> D-42 = **L** (bind `127.0.0.1`, port **8090**). Notes alignées Phase 9.
 
-## Notes prématurées (non opposables)
+## Notes
 
 Scrape Prometheus : `http://127.0.0.1:8090/actuator/prometheus` (défaut).
 Chemins et métriques `flowforge_*` inchangés. DD-MGMT-SEC : toujours

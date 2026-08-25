@@ -13,8 +13,8 @@ requirements_ref: docs/ai/requirements/2026-08-25-feature-durcissement-securite-
 
 ## Phase 3: Review Design (en cours)
 
-Réécrit pour **D-40-ALLOW = B2**. DD-THYME-B2 = **E**. `status: draft`.
-Pas reviewed tant que DD-SSTI-FAIL et DD-DENYLIST ne sont pas tranchés.
+Réécrit pour **D-40-ALLOW = B2**. DD-THYME-B2 = **E**, DD-SSTI-FAIL = **C**.
+`status: draft`. Pas reviewed tant que DD-DENYLIST n'est pas tranché.
 
 Couverture requirements : 5 goals, A-PIN-CALLERS, A-NO-SPA, hexagone.
 
@@ -131,39 +131,36 @@ Frontend : aucun (A-NO-SPA).
 
 | ID | Choix |
 |---|---|
-| **DD-THYME-B2** | **E** — `TemplateEngine` + `StandardDialect` sans SpEL ; évaluateur custom B2. Écarté : S (SimpleEvaluationContext), R (denylist chaîne). |
+| **DD-THYME-B2** | **E** — `TemplateEngine` + `StandardDialect` sans SpEL ; évaluateur custom B2. Écarté : S, R. |
+| **DD-SSTI-FAIL** | **C** — 400 generate/preview **et** enregistrement (hors allowlist). Écarté : X (generate only), P (200 + placeholder). Checker : même allowlist, pas parse HTML seul. |
 
 ### Ouverts (Phase 3)
 
 | ID | Point | Statut |
 |---|---|---|
-| **DD-SSTI-FAIL** | HTTP / exception vs texte brut (A-SSTI-FAIL) | **posée maintenant** |
-| DD-DENYLIST | Ensemble exact des mots de passe interdits (A-DENYLIST) | après DD-SSTI-FAIL |
+| **DD-DENYLIST** | Ensemble exact des mots de passe interdits (A-DENYLIST) | **posée maintenant** |
 
-### Question actuelle — DD-SSTI-FAIL (seule question de ce tour)
+### Question actuelle — DD-DENYLIST (seule question de ce tour)
 
-**Pourquoi ça compte :** T-SSTI exige « non évalué ». Aujourd'hui
-`TemplateProcessingException` → **400** au generate/preview
-(`DocumentGenerationExceptionHandler`) ;
-`InvalidTemplateSyntaxException` → **400** à l'enregistrement
-(`DocumentTemplateExceptionHandler`). Le checker actuel **parse** le
-HTML, il n'évalue pas : un template avec `T()` peut être sauvé puis
-échouer au generate. B2 + E + « même allowlist checker » pousse à
-refuser aussi à l'enregistrement.
+**Pourquoi ça compte :** D-43 = F impose un fail-fast hors `local`/`test`
+si `DB_PASSWORD` est vide ou « défaut connu ». A-DENYLIST fixe le **plancher**
+(`flowforge` + vide). La liste exacte change le risque de faux positifs
+(prod légitime avec `admin`) vs le trou (Compose `postgres` / `password`
+encore acceptés). Master-key vide, `OIDC_CLIENT_SECRET` vide et HMAC M2M
+non vide sont **déjà** dans F, hors de cette liste.
 
 **Options :**
 
-- **C** — fail closed partout : generate/preview **et** enregistrement
-  / syntax check refusent les expressions hors allowlist → 400 (handlers
-  existants). Reco (aligné goal 1 « même moteur / allowlist »).
-- **X** — 400 au generate/preview seulement ; l'enregistrement accepte
-  un template qui cassera plus tard.
-- **P** — generate/preview **200**, expression non évaluée (texte brut /
-  placeholder). Pas d'erreur HTTP ; plus facile à rater en audit.
+- **M** — plancher seulement : vide + `flowforge`.
+- **L** — vide + `flowforge`, `postgres`, `admin`, `password` (défauts
+  cités par la revue S-4 / Compose). Reco.
+- **W** — liste large (`changeme`, `secret`, `root`, `test`, …). Plus de
+  faux positifs, entretien d'une wordlist.
 
-**Recommandation : C.**
+**Recommandation : L.**
 
-Ne pas répondre à DD-DENYLIST dans ce tour.
+Après DD-DENYLIST, les DD Phase 3 seront clos — on **ne** passe **pas**
+à Phase 4 dans ce tour.
 
 ## Non-Functional Requirements
 **How should the system perform?**
@@ -197,4 +194,4 @@ Ne pas répondre à DD-DENYLIST dans ce tour.
 | 4 secrets F | EPP + profil `local` ; DD-DENYLIST ouvert |
 | 5 pin P | `resolveSafe` + callers A-PIN-CALLERS |
 | A-NO-SPA | aucun composant FE |
-| T-SSTI fail HTTP | DD-SSTI-FAIL ouvert |
+| T-SSTI fail HTTP | **C** — 400 generate + enregistrement |

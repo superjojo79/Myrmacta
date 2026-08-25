@@ -199,6 +199,42 @@ class OutboundUrlGuardTest {
     }
 
     @Test
+    void ftpAndFileSchemes_rejected() {
+        assertThatThrownBy(() -> strict.assertSafe("ftp://hooks.example.com/hook"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("https");
+        assertThatThrownBy(() -> strict.assertSafe("file:///etc/passwd"))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void unknownHost_isRejected() {
+        assertThatThrownBy(() -> strict.assertSafe("https://no-such.example/hook"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cannot be resolved");
+    }
+
+    @Test
+    void emptyDnsAnswer_isRejected() {
+        OutboundUrlGuard guard = new OutboundUrlGuard(false, host -> new InetAddress[0]);
+        assertThatThrownBy(() -> guard.assertSafe("https://hooks.example.com/hook"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cannot be resolved");
+        OutboundUrlGuard nullGuard = new OutboundUrlGuard(false, host -> null);
+        assertThatThrownBy(() -> nullGuard.assertSafe("https://hooks.example.com/hook"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cannot be resolved");
+    }
+
+    @Test
+    void resolveSafe_preservesUserInfoQueryAndFragmentOnPinnedUrl() {
+        OutboundUrlGuard.PinnedEndpoint pinned =
+                strict.resolveSafe("https://user:pass@hooks.example.com/notify?x=1#frag");
+        assertThat(pinned.requestUrl()).isEqualTo("https://user:pass@93.184.216.34/notify?x=1#frag");
+        assertThat(pinned.originalHost()).isEqualTo("hooks.example.com");
+    }
+
+    @Test
     void resolveSafe_ipv6Literal_wrapsHostInRequestUrl() {
         OutboundUrlGuard.PinnedEndpoint pinned = strict.resolveSafe("https://[2001:4860:4860::8888]/hook");
         assertThat(pinned.requestUrl()).isEqualTo("https://[2001:4860:4860:0:0:0:0:8888]/hook");

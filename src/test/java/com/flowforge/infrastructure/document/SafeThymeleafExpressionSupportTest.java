@@ -125,6 +125,62 @@ class SafeThymeleafExpressionSupportTest {
                 .isInstanceOf(TemplateProcessingException.class);
     }
 
+    @Test
+    void evaluate_nestedVarsAndMapNullAndBeanGetter() {
+        Context context = context();
+        context.setVariable("dossier", Map.of("reference", "DOS-9"));
+        context.setVariable("named", new NamedBean("Ada"));
+        java.util.HashMap<String, Object> withNull = new java.util.HashMap<>();
+        withNull.put("empty", null);
+        context.setVariable("hole", withNull);
+        assertThat(SafeThymeleafExpressionSupport.evaluate(context, "#vars.dossier.reference"))
+                .isEqualTo("DOS-9");
+        assertThat(SafeThymeleafExpressionSupport.evaluate(context, "named.label")).isEqualTo("Ada");
+        assertThatThrownBy(() -> SafeThymeleafExpressionSupport.evaluate(context, "hole.empty"))
+                .isInstanceOf(TemplateProcessingException.class);
+        assertThatThrownBy(() -> SafeThymeleafExpressionSupport.evaluate(context, "named.missing"))
+                .isInstanceOf(TemplateProcessingException.class);
+        assertThatThrownBy(() -> SafeThymeleafExpressionSupport.evaluate(context, "#vars.dossier.reference()"))
+                .isInstanceOf(TemplateProcessingException.class);
+    }
+
+    @Test
+    void extract_nestedBracesInStringsAndStarOnly() {
+        assertThat(SafeThymeleafExpressionSupport.extractVariableExpressions(
+                        "<p th:text=\"${#dates.format(now, '{yyyy}')}\">x</p>"))
+                .containsExactly("#dates.format(now, '{yyyy}')");
+        assertThat(SafeThymeleafExpressionSupport.extractVariableExpressions(
+                        "<span th:text=\"*{ref}\">y</span>"))
+                .containsExactly("ref");
+        assertThat(SafeThymeleafExpressionSupport.extractVariableExpressions(
+                        "<p th:text=\"${'a\\\"b'}\">x</p>"))
+                .containsExactly("'a\\\"b'");
+    }
+
+    @Test
+    void evaluate_unclosedStringAndBareMinusAndLongLiteral() {
+        assertThatThrownBy(() -> SafeThymeleafExpressionSupport.evaluate(context(), "'oops"))
+                .isInstanceOf(TemplateProcessingException.class);
+        assertThatThrownBy(() -> SafeThymeleafExpressionSupport.evaluate(context(), "-"))
+                .isInstanceOf(TemplateProcessingException.class);
+        assertThat(SafeThymeleafExpressionSupport.evaluate(context(), "2147483648")).isEqualTo(2147483648L);
+        assertThatThrownBy(() -> SafeThymeleafExpressionSupport.assertAllowed("title.wait"))
+                .isInstanceOf(TemplateProcessingException.class);
+        assertThatThrownBy(() -> SafeThymeleafExpressionSupport.assertAllowed("title.notify"))
+                .isInstanceOf(TemplateProcessingException.class);
+    }
+
+    @Test
+    void evaluate_datesFromDateAndListsContains() {
+        Context context = context();
+        Date now = Date.from(Instant.parse("2026-06-15T12:00:00Z"));
+        context.setVariable("now", now);
+        context.setVariable("items", List.of("a", "b"));
+        assertThat(SafeThymeleafExpressionSupport.evaluate(context, "#dates.format(now, 'yyyy')")).isEqualTo("2026");
+        assertThat(SafeThymeleafExpressionSupport.evaluate(context, "#lists.contains(items, 'a')")).isEqualTo(true);
+        assertThat(SafeThymeleafExpressionSupport.evaluate(context, "#strings.concat('x', 'y')")).isEqualTo("xy");
+    }
+
     private static Context context() {
         return new Context();
     }
@@ -152,6 +208,18 @@ class SafeThymeleafExpressionSupportTest {
 
         public boolean isActive() {
             return active;
+        }
+    }
+
+    public static final class NamedBean {
+        private final String label;
+
+        public NamedBean(String label) {
+            this.label = label;
+        }
+
+        public String getLabel() {
+            return label;
         }
     }
 }

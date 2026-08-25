@@ -84,6 +84,12 @@ class ThymeleafHtmlTemplateProcessorTest {
     }
 
     @Test
+    void process_nullVariables_stillRendersStaticMarkup() {
+        String out = processor.process("<html><body><p>static</p></body></html>", null);
+        assertThat(out).contains("static");
+    }
+
+    @Test
     void thEachAndThText_iterateModelList() {
         String html =
                 """

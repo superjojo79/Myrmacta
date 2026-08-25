@@ -111,6 +111,11 @@ class DocumentTemplateApiTest {
     }
 
     @Test
+    void createDraft_spelTypeExpression_returns201() throws Exception {
+        createDraftRaw("ssti-draft-" + UUID.randomUUID(), "<p th:text=\"${T(java.lang.Runtime).getRuntime()}\">x</p>");
+    }
+
+    @Test
     void activate_spelTypeExpression_returns400() throws Exception {
         String id = createDraftRaw(
                 "ssti-" + UUID.randomUUID(),

@@ -32,6 +32,16 @@ class SecretsEnvironmentPostProcessorTest {
     }
 
     @Test
+    void prodProfile_isNotRelaxedAndRejectsDefaultDbPassword() {
+        MockEnvironment environment = prodLike();
+        environment.setActiveProfiles("prod");
+        environment.setProperty("spring.datasource.password", "flowforge");
+        assertThatThrownBy(() -> processor.postProcessEnvironment(environment, application))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("DB_PASSWORD");
+    }
+
+    @Test
     void noProfile_rejectsDefaultDbPassword() {
         MockEnvironment environment = prodLike();
         environment.setProperty("spring.datasource.password", "flowforge");

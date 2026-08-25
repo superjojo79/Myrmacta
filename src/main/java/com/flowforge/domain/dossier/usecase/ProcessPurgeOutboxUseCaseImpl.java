@@ -75,6 +75,12 @@ public final class ProcessPurgeOutboxUseCaseImpl implements ProcessPurgeOutboxUs
         return processed;
     }
 
+    @Override
+    public int recoverStaleProcessing(Instant olderThan) {
+        Objects.requireNonNull(olderThan, "olderThan");
+        return purgeOutboxRepository.requeueStaleProcessing(olderThan);
+    }
+
     private static boolean shouldSkipClock(PurgeOutboxRecord record, Instant now) {
         if (record.origin() != PurgeOutboxOrigin.RETENTION) {
             return false;

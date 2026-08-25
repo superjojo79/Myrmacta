@@ -7,6 +7,7 @@ import { getBpmnDraft, getDeployedBpmnXml, saveBpmnDraft } from '@/api/workflows
 export function useBpmnDraft() {
   const xml = ref<string | null>(null)
   const loading = ref(false)
+  const loadError = ref<string | null>(null)
   const hasUnsavedChanges = ref(false)
 
   function beforeUnloadHandler(event: BeforeUnloadEvent) {
@@ -23,13 +24,16 @@ export function useBpmnDraft() {
 
   async function load(processDefinitionKey: string): Promise<void> {
     loading.value = true
+    loadError.value = null
     try {
       const draft = await getBpmnDraft(processDefinitionKey)
       xml.value = draft ? draft.xml : await getDeployedBpmnXml(processDefinitionKey)
+      hasUnsavedChanges.value = false
+    } catch (error) {
+      loadError.value = error instanceof Error ? error.message : String(error)
     } finally {
       loading.value = false
     }
-    hasUnsavedChanges.value = false
   }
 
   async function save(processDefinitionKey: string, newXml: string): Promise<void> {
@@ -42,5 +46,5 @@ export function useBpmnDraft() {
     hasUnsavedChanges.value = true
   }
 
-  return { xml, loading, hasUnsavedChanges, load, save, markDirty }
+  return { xml, loading, loadError, hasUnsavedChanges, load, save, markDirty }
 }

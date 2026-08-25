@@ -108,6 +108,9 @@ async function confirmDeploy() {
       <button type="button" class="bpmn-editor__deploy" @click="prepareDeploy">Déployer</button>
     </div>
 
+    <p v-if="draft.loadError.value" class="bpmn-editor__error">
+      Impossible de charger le diagramme : {{ draft.loadError.value }}
+    </p>
     <p v-if="readError" class="bpmn-editor__error">{{ readError }}</p>
     <p v-if="saveError" class="bpmn-editor__error">{{ saveError }}</p>
     <p v-if="draft.hasUnsavedChanges.value" class="bpmn-editor__unsaved">Modifications non enregistrées.</p>

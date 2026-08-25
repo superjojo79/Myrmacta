@@ -1,0 +1,38 @@
+databaseChangeLog:
+  - changeSet:
+      id: 015-purge-outbox-updated-at
+      author: flowforge
+      changes:
+        - addColumn:
+            tableName: purge_outbox
+            columns:
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+        - sql:
+            sql: UPDATE purge_outbox SET updated_at = created_at WHERE updated_at IS NULL
+        - addNotNullConstraint:
+            tableName: purge_outbox
+            columnName: updated_at
+            columnDataType: timestamp with time zone
+      rollback:
+        - dropColumn:
+            tableName: purge_outbox
+            columnName: updated_at
+
+  - changeSet:
+      id: 015-purge-outbox-status-updated-index
+      author: flowforge
+      changes:
+        - createIndex:
+            tableName: purge_outbox
+            indexName: idx_purge_outbox_status_updated_at
+            columns:
+              - column:
+                  name: status
+              - column:
+                  name: updated_at
+      rollback:
+        - dropIndex:
+            tableName: purge_outbox
+            indexName: idx_purge_outbox_status_updated_at

@@ -36,31 +36,52 @@ interface SpringDataPurgeOutboxRepository extends JpaRepository<PurgeOutboxJpaEn
     @Query(
             """
             update PurgeOutboxJpaEntity e
-               set e.status = :processing
+               set e.status = :processing, e.updatedAt = :now
              where e.id = :id
                and e.status in :retryable
             """)
     int claim(
             @Param("id") UUID id,
             @Param("processing") PurgeOutboxStatus processing,
-            @Param("retryable") Collection<PurgeOutboxStatus> retryable);
+            @Param("retryable") Collection<PurgeOutboxStatus> retryable,
+            @Param("now") Instant now);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(
             """
             update PurgeOutboxJpaEntity e
-               set e.status = :completed, e.lastError = null
+               set e.status = :completed, e.lastError = null, e.updatedAt = :now
              where e.id = :id
             """)
-    int markCompleted(@Param("id") UUID id, @Param("completed") PurgeOutboxStatus completed);
+    int markCompleted(
+            @Param("id") UUID id, @Param("completed") PurgeOutboxStatus completed, @Param("now") Instant now);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(
             """
             update PurgeOutboxJpaEntity e
-               set e.status = :failed, e.lastError = :error
+               set e.status = :failed, e.lastError = :error, e.updatedAt = :now
              where e.id = :id
             """)
     int markFailed(
-            @Param("id") UUID id, @Param("failed") PurgeOutboxStatus failed, @Param("error") String error);
+            @Param("id") UUID id,
+            @Param("failed") PurgeOutboxStatus failed,
+            @Param("error") String error,
+            @Param("now") Instant now);
+
+    /** Requeues rows stuck in {@code PROCESSING} since before {@code threshold} back to {@code FAILED}. */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(
+            """
+            update PurgeOutboxJpaEntity e
+               set e.status = :failed, e.lastError = :error, e.updatedAt = :now
+             where e.status = :processing
+               and e.updatedAt < :threshold
+            """)
+    int requeueStaleProcessing(
+            @Param("failed") PurgeOutboxStatus failed,
+            @Param("processing") PurgeOutboxStatus processing,
+            @Param("error") String error,
+            @Param("now") Instant now,
+            @Param("threshold") Instant threshold);
 }

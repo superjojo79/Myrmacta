@@ -8,13 +8,16 @@
 > - Inventaire follow-ups / lots : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md)
 > - Séquencement « avant prod » : [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md) §9
 >
-> **Dernière mise à jour :** 2026-08-24 (`edition-bpmn`, TODO §39 clos,
-> implémentation terminée et vérifiée, Phase 7 (check implementation)
-> Phase 9 (revue finale) close — 1110 tests backend + 196 Vitest + 47
-> Playwright, tous verts ; PR #71 ouverte sur demande explicite de
-> l'utilisateur : https://github.com/superjojo79/FlowForge/pull/71.
-> `masquage-donnees-sensibles-logs-webhooks` — TODO §23 clos — mergée sur
-> `main` entre-temps via PR #70).
+> **Dernière mise à jour :** 2026-08-25 (`edition-bpmn`, TODO §39 clos,
+> [PR #71](https://github.com/superjojo79/FlowForge/pull/71) **mergée sur
+> `main`**. `masquage-donnees-sensibles-logs-webhooks` — TODO §23 clos —
+> mergée sur `main` entre-temps via PR #70. Même jour, hors cycle
+> `dev-lifecycle` formel : DEV-PURGE (rétention outbox + TTL idempotency)
+> et recovery `purge_outbox` `PROCESSING` clos, `CHECK` SQL
+> `dossier_type_acl.permission`, chore `com.monapp`, gestion d'erreur
+> réseau `useBpmnDraft.load()` — voir « Hors file produit » ci-dessous.
+> `./mvnw verify` 1136 tests (0 échec) ; frontend 199 Vitest + 47
+> Playwright, tous verts.
 
 ## Comment s’en servir
 
@@ -52,6 +55,7 @@ Même grille que pour `preview-documents` puis `edition-champs-dossier` :
 | `deploiement-bpmn` | PR #67, TODO §35 (clos) | Écran d'upload BPMN admin (`/admin/workflow-types`, option (c) — pas de Flowable Modeler/Cockpit) avec prévisualisation obligatoire avant import (`BpmnCanvas.vue` extrait de `BpmnViewer.vue`) ; endpoint `WorkflowBpmnDeploymentController` (déploiement réel `RepositoryService`, clé de processus sans `WorkflowTypeConfig` → rejet strict 404) ; `BpmnParserPort` extrait en Phase 5 après violation ArchUnit détectée (domaine dépendait de `org.flowable..`) ; 2 vrais bugs trouvés et corrigés en Phase 7 (`NullPointerException` potentielle sur `originalFilename` null, regex d'extraction trop strict côté preview) ; `README.md`/`05-workflow-engine.md` corrigés (mentions non livrées retirées) |
 | `modele-physique-consolide` | PR #68, TODO §25 (clos) | Nouveau [13-modele-physique.md](analysis%20doc/13-modele-physique.md) : ERD mermaid des 17 tables métier réelles (pas « une dizaine »), 4 index uniques partiels critiques avec invariant métier (pas « deux »), seulement 2 FK sur 17 tables contraintes en DB (le reste logique, explicité) ; feature 100% documentaire, écart trouvé en Phase 1 avant même d'écrire le problem statement (TODO §25 documentait un `TenantRegistry` et des contextes Liquibase `tenant-init`/`tenant-migration` explicitement obsolètes depuis la décision n°13 — jamais répercuté depuis la note de mise à jour de la décision n°1) |
 | `masquage-donnees-sensibles-logs-webhooks` | PR #70, TODO §23 (clos) | Aucune fuite active trouvée (vérifié par audit exhaustif) — reformulé en risque latent sans garde-fou ; `SendNotificationUseCaseImpl` masque automatiquement les valeurs sensibles avant écriture outbox pour tous les canaux ; règle ArchUnit de détection écartée (ArchUnit ne fait pas d'analyse de flux de valeurs) au profit d'une liste blanche des classes autorisées à lire `Dossier.fields()`/`FieldDefinition.defaultValue()` ; preuve bout en bout réelle + 2 contrôles mutants manuels ; zéro fichier frontend touché |
+| `edition-bpmn` | [PR #71](https://github.com/superjojo79/FlowForge/pull/71), TODO §39 (clos) | Construction/édition de diagrammes BPMN dans FlowForge (écart restant après `deploiement-bpmn`, §35, qui excluait explicitement l'édition). `bpmn-js` Modeler + `bpmn-js-properties-panel` avec provider custom pour les attributs `flowable:*` réellement utilisés, sans app tierce (Flowable Modeler écarté). Brouillon **persisté côté backend** (`BpmnDraftRepository`/`BpmnDraftJpaEntity`, clé composite `@IdClass`), supprimé après déploiement réussi (D-DESIGN-DRAFT-LIFECYCLE) ; nouvelle méthode `WorkflowDeploymentPort.findDeployedXml`. M1-M4 (backend) et M5-M7 (frontend) implémentés **en parallèle** par deux agents en worktrees isolés, fusionnés puis M8 (vérification globale) par l'orchestrateur. **4 vrais bugs trouvés et corrigés** au total : `eventBus`/`commandStack` (masqué par des mocks Vitest, trouvé en E2E vrai navigateur), race condition de montage `BpmnEditorCanvas`/`useBpmnDraft.load()` (TDD), `NullPointerException` sur `xml` `null`/manquant → 500 au lieu de 400 (Phase 7, revue dédiée fichier par fichier), écart de couverture réel comblé sur le panel de propriétés custom (Phase 8). `./mvnw verify` 1110 tests (0 échec) ; 196 Vitest + 47 Playwright (0 échec). `README.md`/`05-workflow-engine.md`/`GUIDE-UTILISATEUR.md` corrigés. **Mergée sur `main`** (2026-08-25). |
 
 Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relations, PATCH fields API, éléments) : voir [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §2.
 
@@ -70,20 +74,15 @@ sont maintenant toutes livrées.
 
 Après les 5 features du regroupement 2026-08-20, `masquage-donnees-sensibles-logs-webhooks`
 (TODO §23 reste) a été identifiée, implémentée et mergée sur `main`
-(PR #70 — voir « Récemment livré » ci-dessus). **File vide** de tout
-autre lot produit V1 nommé — `edition-bpmn` (TODO §39) est implémentée,
-vérifiée et en revue (voir *En revue* ci-dessous). Seul reliquat
-non-feature substantiel : outillage provisioning (TODO §31, hors file
-produit — voir section dédiée ci-dessous). Prochaine feature à
-identifier lors d'une prochaine analyse une fois `edition-bpmn` mergée
-(nouveaux points TODO, nouveau besoin utilisateur, ou lot
+(PR #70 — voir « Récemment livré » ci-dessus). `edition-bpmn` (TODO §39)
+a ensuite été implémentée, vérifiée et mergée sur `main` via
+[PR #71](https://github.com/superjojo79/FlowForge/pull/71) (2026-08-25,
+voir « Récemment livré » ci-dessus). **File vide** de tout lot produit
+V1 nommé. Seul reliquat non-feature substantiel : outillage
+provisioning (TODO §31, hors file produit — voir section dédiée
+ci-dessous). Prochaine feature à identifier lors d'une prochaine
+analyse (nouveaux points TODO, nouveau besoin utilisateur, ou lot
 `DEFERRED-FEATURES.md`).
-
-## En revue
-
-| Feature | Réf. | Notes |
-|---|---|---|
-| `edition-bpmn` | [PR #71](https://github.com/superjojo79/FlowForge/pull/71), TODO §39 (clos) | Construction/édition de diagrammes BPMN dans FlowForge (écart restant après `deploiement-bpmn`, §35, qui excluait explicitement l'édition). `bpmn-js` Modeler + `bpmn-js-properties-panel` avec provider custom pour les attributs `flowable:*` réellement utilisés, sans app tierce (Flowable Modeler écarté). Brouillon **persisté côté backend** (`BpmnDraftRepository`/`BpmnDraftJpaEntity`, clé composite `@IdClass`), supprimé après déploiement réussi (D-DESIGN-DRAFT-LIFECYCLE) ; nouvelle méthode `WorkflowDeploymentPort.findDeployedXml`. M1-M4 (backend) et M5-M7 (frontend) implémentés **en parallèle** par deux agents en worktrees isolés, fusionnés puis M8 (vérification globale) par l'orchestrateur. **4 vrais bugs trouvés et corrigés** au total : `eventBus`/`commandStack` (masqué par des mocks Vitest, trouvé en E2E vrai navigateur), race condition de montage `BpmnEditorCanvas`/`useBpmnDraft.load()` (TDD), `NullPointerException` sur `xml` `null`/manquant → 500 au lieu de 400 (Phase 7, revue dédiée fichier par fichier), écart de couverture réel comblé sur le panel de propriétés custom (Phase 8). `./mvnw verify` 1110 tests (0 échec) ; 196 Vitest + 47 Playwright (0 échec). `README.md`/`05-workflow-engine.md`/`GUIDE-UTILISATEUR.md` corrigés. **PR #71 ouverte** sur demande explicite de l'utilisateur. |
 
 **Hors V1 (reporté, pas dans cette file) :** Rapports / SLA (maquette UI de
 référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même
@@ -95,8 +94,34 @@ référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même
 - Provisioning tenant (schéma PG, instance Boot, bloc proxy, `app.tenant.id`)
 - Smoke Keycloak réel (environnement manuel — distinct du smoke PostgreSQL/Testcontainers
   automatisé désormais dans `fiabilisation-tests-plateforme`, §26/§28)
-- Follow-ups ops (ex. DEV-PURGE : rétention outbox / TTL idempotency non schedulées ; recovery `PROCESSING` coincé)
-- Chore `com.monapp` résiduel dans `analysis doc/`
+
+**Clos (2026-08-25, hors cycle `dev-lifecycle` formel — corrections/hygiène ponctuelles) :**
+
+- DEV-PURGE (`workflow-engine`) : `OutboxRepository.purgeProcessedOlderThanDays` et
+  `IdempotencyStore.purgeExpired` existaient mais n'étaient appelés par aucun job —
+  nouveau `WorkflowRetentionJob` planifié (`app.workflow.retention.poll-delay`, 1j par
+  défaut) ; `purgeExpired()` implémenté pour de vrai (était un stub `return 0`),
+  TTL `app.workflow.idempotency-retention` (7j par défaut, aligné sur
+  `outbox.processed-retention`).
+- Recovery `purge_outbox` bloqué en `PROCESSING` : colonne `updated_at` ajoutée
+  (migration `015-purge-outbox-updated-at.yaml`), avancée sur `claim`/`markCompleted`/
+  `markFailed` ; nouvelle méthode de port `requeueStaleProcessing` qui repasse en
+  `FAILED` (donc re-tentable) tout item resté en `PROCESSING` au-delà de
+  `app.purge.processing-timeout` (2h par défaut) ; appelée par `PurgeOutboxJob` avant
+  chaque batch.
+- Chore `com.monapp` résiduel dans `analysis doc/01-architecture-hexagonale.md` (3
+  occurrences) → `com.flowforge`.
+- Nice-to-have vérifiés lors de cette passe (`DEFERRED-FEATURES.md` §1) : index
+  `(tenant_id, dossier_type_code)` déjà couvert par `idx_dossier_type_updated_at`
+  (008) — **pas de migration ajoutée**, item corrigé en stale ; `CHECK`
+  `dossier_type_acl.permission ∈ {VIEW,EDIT}` réellement manquant → migration
+  `014-dossier-type-acl-permission-check.yaml`.
+- `useBpmnDraft.load()` (point ouvert signalé en Phase 7 de `edition-bpmn`, PR #71) :
+  gestion d'erreur réseau ajoutée (`loadError`), affichée dans `BpmnEditorView.vue` au
+  lieu de bloquer l'éditeur sur une page vide sans message.
+
+Vérifié : `./mvnw verify` 1136 tests (0 échec), Jacoco OK ; frontend `npm run test`
+199/199, `typecheck`/`lint` propres, `npx playwright test` 47/47.
 
 ## Décisions §21 / §22 (rappel)
 

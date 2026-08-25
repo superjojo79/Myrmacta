@@ -197,6 +197,17 @@ class ProcessPurgeOutboxUseCaseImplTest {
         verify(outbox, never()).markCompleted(any());
     }
 
+    @Test
+    void recoverStaleProcessing_delegatesToRepository() {
+        Instant threshold = NOW.minusSeconds(7200);
+        when(outbox.requeueStaleProcessing(threshold)).thenReturn(2);
+
+        int recovered = useCase.recoverStaleProcessing(threshold);
+
+        assertThat(recovered).isEqualTo(2);
+        verify(outbox).requeueStaleProcessing(threshold);
+    }
+
     private static PurgeOutboxRecord pending(UUID dossierId, PurgeOutboxOrigin origin, Instant eligibleAt) {
         return PurgeOutboxRecord.pending(
                 UUID.randomUUID(),

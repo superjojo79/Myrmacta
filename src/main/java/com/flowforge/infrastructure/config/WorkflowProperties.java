@@ -4,7 +4,7 @@ import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "app.workflow")
-public record WorkflowProperties(Duration reserveTimeout, Outbox outbox) {
+public record WorkflowProperties(Duration reserveTimeout, Outbox outbox, Duration idempotencyRetention) {
 
     public WorkflowProperties {
         if (reserveTimeout == null) {
@@ -12,6 +12,9 @@ public record WorkflowProperties(Duration reserveTimeout, Outbox outbox) {
         }
         if (outbox == null) {
             outbox = new Outbox(20, 5, Duration.ofSeconds(1), Duration.ofDays(7));
+        }
+        if (idempotencyRetention == null) {
+            idempotencyRetention = Duration.ofDays(7);
         }
     }
 

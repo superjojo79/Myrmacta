@@ -20,10 +20,27 @@ class PurgeOutboxJobTest {
         ProcessPurgeOutboxUseCase useCase = mock(ProcessPurgeOutboxUseCase.class);
         when(useCase.processBatch(any(Instant.class), eq(50))).thenReturn(2);
         PurgeOutboxJob job = new PurgeOutboxJob(
-                useCase, new PurgeProperties(Duration.ofHours(1), 50), new TenantProperties("tenant_dev"));
+                useCase,
+                new PurgeProperties(Duration.ofHours(1), 50, Duration.ofHours(2)),
+                new TenantProperties("tenant_dev"));
 
         job.process();
 
         verify(useCase).processBatch(any(Instant.class), eq(50));
+    }
+
+    @Test
+    void process_recoversStaleProcessingBeforeProcessingBatch() {
+        ProcessPurgeOutboxUseCase useCase = mock(ProcessPurgeOutboxUseCase.class);
+        when(useCase.recoverStaleProcessing(any(Instant.class))).thenReturn(1);
+        when(useCase.processBatch(any(Instant.class), eq(50))).thenReturn(0);
+        PurgeOutboxJob job = new PurgeOutboxJob(
+                useCase,
+                new PurgeProperties(Duration.ofHours(1), 50, Duration.ofHours(2)),
+                new TenantProperties("tenant_dev"));
+
+        job.process();
+
+        verify(useCase).recoverStaleProcessing(any(Instant.class));
     }
 }

@@ -45,6 +45,35 @@ describe('useBpmnDraft', () => {
     expect(draft.xml.value).toBeNull()
   })
 
+  it('load(key) network failure exposes loadError instead of throwing', async () => {
+    vi.mocked(workflowsApi.getBpmnDraft).mockRejectedValue(new Error('network down'))
+
+    const draft = useBpmnDraft()
+    await expect(draft.load('wf')).resolves.toBeUndefined()
+
+    expect(draft.loadError.value).toBe('network down')
+    expect(draft.xml.value).toBeNull()
+    expect(draft.loading.value).toBe(false)
+  })
+
+  it('load(key) clears a previous loadError on a subsequent successful call', async () => {
+    vi.mocked(workflowsApi.getBpmnDraft).mockRejectedValueOnce(new Error('network down'))
+    const draft = useBpmnDraft()
+    await draft.load('wf')
+    expect(draft.loadError.value).toBe('network down')
+
+    vi.mocked(workflowsApi.getBpmnDraft).mockResolvedValue({
+      processDefinitionKey: 'wf',
+      xml: '<draft/>',
+      updatedAt: '2026-01-01T00:00:00Z',
+      updatedBy: 'admin',
+    })
+    await draft.load('wf')
+
+    expect(draft.loadError.value).toBeNull()
+    expect(draft.xml.value).toBe('<draft/>')
+  })
+
   it('save(key, xml) calls PUT and resets the unsaved-changes state', async () => {
     vi.mocked(workflowsApi.getBpmnDraft).mockResolvedValue(null)
     vi.mocked(workflowsApi.getDeployedBpmnXml).mockResolvedValue(null)

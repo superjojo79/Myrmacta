@@ -8,6 +8,7 @@ updated: 2026-08-25
 feature: durcissement-securite-post-revue
 phase5: 2026-08-25
 phase7: 2026-08-25
+phase8: 2026-08-25
 checked: 2026-08-25
 ---
 
@@ -129,3 +130,26 @@ Vitest 199 ; Playwright 47.
 
 Next : `dev-testing` (Phase 8), puis `dev-review` (Phase 9). **Non
 enchaîné.**
+
+## Phase 8 — Write Tests (2026-08-25)
+
+Couverture relue **classe par classe** (`jacoco.csv` + HTML), pas le
+seul agrégat BUNDLE.
+
+**Lacunes comblées :** nested `#vars` / extract / long literal / getter
+bean ; `process(…, null)` ; EPP profil `prod` ; DNS vide + schémas
+`ftp`/`file` + userInfo sur URI pinnée ; **generate HTTP `T()` → 400**
+(follow-up Phase 7) ; POST draft `T()` → 201.
+
+**100 %** ligne/branche : factory, évaluateur, processor, EPP, skeleton
+SERVICE.
+
+**Laissé :** catch checker `InvalidTemplateSyntaxException` (mort) ;
+coerce primitifs du parser ; `extractAuthorityHost` préexistant ;
+Jackson/HMAC/TLS HTTPS webhook.
+
+**Verify (cette session) :** `./mvnw verify` **1185** tests, 0 échec,
+Jacoco LINE 93,52 % / BRANCH 75,57 %. Vitest **199/199**. Playwright
+**47/47**.
+
+Next : `dev-review` (Phase 9). **Non enchaîné.**

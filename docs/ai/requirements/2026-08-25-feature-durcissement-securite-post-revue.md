@@ -15,10 +15,10 @@ todo_ref: TODO.md §40–44 · FILE-ATTENTE.md · REVUE-ALIGNEMENT-SECURITE.md
 ## Phase 1: New Requirement
 
 **Statut : brouillon.** Phase 2 n'est pas ouverte. D-40 = **B**,
-D-40-ALLOW = **B2**. Les autres D-* restent ouverts. Une ébauche de code
-existe déjà sur le working tree (hors phase) : elle coupe SpEL (proche
-de A / B1) et **diverge** de B2 ; elle sera réalignée ou revertée après
-Phase 2–4.
+D-40-ALLOW = **B2**, D-41 = **A**. Les autres D-* restent ouverts. Une
+ébauche de code existe déjà sur le working tree (hors phase) : elle
+coupe SpEL (proche de A / B1) et **diverge** de B2 ; elle sera réalignée
+ou revertée après Phase 2–4.
 
 Les autres fichiers `docs/ai/{design,planning,testing,implementation,deployment,monitoring}/`
 de cette feature ont été remplis trop tôt. Ils sont **hors phase** et
@@ -58,7 +58,9 @@ Objectifs **candidats** (dépendent des D-* encore ouverts) :
 1. Restreindre SpEL dans les templates stockés par **allowlist B2**
    (D-40 = B, D-40-ALLOW = B2) : modèle + `#vars` + `#dates` / `#numbers` /
    `#strings` / `#lists` ; refus `T()`, `new`, `#beans`, request/servlet.
-2. Réduire le blast radius SQL inter-schémas, selon D-41 / D-41-SCOPE.
+2. Isolation SQL par **rôle PG LOGIN par schéma tenant** (D-41 = A). Le
+   périmètre livré (init local + runbook vs CLI générique) est D-41-SCOPE
+   (ouvert).
 3. Rendre l'actuator non exposé par défaut hors loopback / départager le
    port Keycloak, selon D-42.
 4. Empêcher un boot prod avec secrets de démo ou HMAC M2M, selon D-43.
@@ -68,11 +70,11 @@ Objectifs **candidats** (dépendent des D-* encore ouverts) :
 
 - Activer `http-rest` SERVICE, DMN, Kafka, AV, headers CSP/HSTS, rate-limit
   distribué, ArchUnit `application` (§46).
-- Database-par-tenant **sauf si D-41 = B**.
+- Database-par-tenant (D-41 ≠ B).
 - Proxy egress allowlist **sauf si D-44 choisit cette option**.
 - Changer le modèle « une instance = un tenant » (décision 13).
-- Outillage CLI provisioning générique (TODO §31) — **sauf si D-41-SCOPE
-  l'inclut** ; question posée après D-41, pas maintenant.
+- Outillage CLI / orchestrateur de provisioning tenant (hors file produit)
+  — **sauf si D-41-SCOPE l'inclut**.
 
 ## User Stories & Use Cases
 
@@ -95,8 +97,8 @@ D-* tranchés :
 - [ ] **T-SSTI** (D-40 = B, D-40-ALLOW = B2) : `${T(java.lang.Runtime)}` et
       `#beans` → exception ou texte non évalué ; `th:text="${title}"`,
       `#vars`, `#dates` / `#numbers` / `#strings` / `#lists` évalués.
-- [ ] **T-GRANT** (si D-41 = A ou B) : le rôle d'application ne `SELECT`
-      pas un autre schéma tenant (IT Testcontainers, SKIPPED sans Docker).
+- [ ] **T-GRANT** (D-41 = A) : le rôle d'application ne `SELECT` pas un
+      autre schéma tenant (IT Testcontainers, SKIPPED sans Docker).
 - [ ] **T-MGMT** : plus de conflit de port avec Keycloak 8081 en local ;
       surface management documentée selon D-42.
 - [ ] **T-SECRETS** : hors profils de démo, secrets connus / HMAC M2M
@@ -137,8 +139,8 @@ Lot unique 40–44 : reco FILE-ATTENTE, pas contestée à ce stade.
 |---|---|---|---|
 | D-40 | SSTI Thymeleaf / SpEL | **B** | Allowlist SpEL (pas A sans SpEL, pas C confiance admin) |
 | D-40-ALLOW | Périmètre de l'allowlist | **B2** | B1 + `#dates` `#numbers` `#strings` `#lists` ; refus `T()` / `#beans` |
-| D-41 | Isolation PG inter-schémas | **posée maintenant** | A rôle LOGIN par schéma ; B database/tenant ; C confiance réseau |
-| D-41-SCOPE | Périmètre provisioning (§31) | en attente (après D-41) | init local + runbook vs CLI générique |
+| D-41 | Isolation PG inter-schémas | **A** | Rôle LOGIN par schéma ; écarté B database/tenant, C confiance réseau |
+| D-41-SCOPE | Périmètre provisioning | **posée maintenant** | S / C / L ci-dessous |
 | D-42 | Actuator bind / port / `permitAll` | en attente | bind localhost ; mTLS ; ne pas publier ; départager 8081 |
 | D-43 | Secrets défaut + HMAC M2M | en attente | fail-fast hors `local`/`test` ; HMAC interdit hors ces profils ; secrets Compose obligatoires |
 | D-44 | SSRF DNS TOCTOU | en attente | pin IP ; proxy egress allowlist |
@@ -147,29 +149,32 @@ Lot unique 40–44 : reco FILE-ATTENTE, pas contestée à ce stade.
 
 - **D-40 = B** — allowlist SpEL. Écarté : A, C. Reco revue était A.
 - **D-40-ALLOW = B2** — modèle + `#vars` + utilitaires dialecte standard
-  (`#dates`, `#numbers`, `#strings`, `#lists`). Écarté : B1 (trop étroit
-  pour motiver B), B3 (denylist SpringEL, surface revue « facile à rater »).
-  L'ébauche hors phase (interpolation seule) **diverge** toujours : il
-  manque `#vars` / `#dates` etc.
+  (`#dates`, `#numbers`, `#strings`, `#lists`). Écarté : B1, B3.
+  L'ébauche hors phase (interpolation seule) **diverge** toujours.
+- **D-41 = A** — un rôle PG LOGIN par schéma tenant. Écarté : B (database
+  par tenant), C (confiance réseau). Reco revue S-2.
 
-### Question actuelle — D-41 (seule question de ce tour)
+### Question actuelle — D-41-SCOPE (seule question de ce tour)
 
-**Pourquoi ça compte :** D-40 = B2 coupe `T()` mais ne supprime pas toute
-RCE future (bug allowlist, autre vecteur). Sans isolation SQL, un RCE ou
-une injection sur une instance lit `tenant_b.*` via le même rôle PG.
-Décision 13 isole les **processus**, pas les **privilèges SQL**. C est
-incompatible SaaS si on durcit S-1 (choix déjà fait).
+**Pourquoi ça compte :** D-41 = A exige CREATE ROLE + GRANT au
+provisioning. FILE-ATTENTE place l'outillage tenant (schéma, instance
+Boot, bloc proxy, `app.tenant.id`) **hors file produit**. Si on tire un
+CLI générique dans cette feature, on élargit le lot. Si on ne livre que
+le SQL local sans runbook, TODO §41 (« décision + runbook + IT ») n'est
+pas couvert pour un vrai tenant.
 
 **Options :**
 
-- **A** — un rôle PG LOGIN par schéma tenant (`CONNECT` + `USAGE`/`CRUD`
-  sur son schéma uniquement). Reco revue S-2.
-- **B** — une database PostgreSQL par tenant (plus fort, plus cher ops ;
-  s'écarte du « cluster PG partagé » actuel).
-- **C** — assumer la confiance réseau d'instances (pas de GRANT par
-  tenant).
+- **S** — **cette feature** : init SQL Compose (`tenant_dev` + rôle LOGIN
+  dédié, superuser bootstrap ≠ user app) + runbook ops (GETTING-STARTED /
+  `02-multi-tenant.md` : CREATE ROLE / GRANT pour un nouveau schéma) +
+  IT Testcontainers. **Pas** de CLI/orchestrateur tenant.
+- **C** — S + CLI/script de provisioning générique dans cette feature
+  (élargit le hors-file).
+- **L** — SQL local seulement, runbook reporté (insuffisant vs TODO §41).
 
-**Recommandation revue : A.**
+**Recommandation : S** — ferme S-2 pour le V1 local + le mode ops manuel
+déjà décrit (décision 13 / hors file), sans ouvrir une feature
+provisioning.
 
-Le détail provisioning (init local + runbook vs CLI §31) est **D-41-SCOPE**,
-posé seulement après D-41. Ne pas y répondre maintenant.
+Ne pas répondre à D-42 ni aux autres D-* dans ce tour.

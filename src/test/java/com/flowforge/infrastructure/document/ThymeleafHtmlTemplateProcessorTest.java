@@ -77,6 +77,19 @@ class ThymeleafHtmlTemplateProcessorTest {
     }
 
     @Test
+    void inlinedIfAndPreprocessedSpel_throwTemplateProcessingException() {
+        assertThatThrownBy(() -> processor.process(
+                        "<html><body><p>[[${T(java.lang.Runtime).getRuntime()}]]</p></body></html>", Map.of()))
+                .isInstanceOf(TemplateProcessingException.class);
+        assertThatThrownBy(() -> processor.process(
+                        "<html><body><p th:if=\"${T(java.lang.Runtime)}\">x</p></body></html>", Map.of()))
+                .isInstanceOf(TemplateProcessingException.class);
+        assertThatThrownBy(() -> processor.process(
+                        "<html><body><p th:text=\"__${T(java.lang.Runtime)}__\">x</p></body></html>", Map.of()))
+                .isInstanceOf(TemplateProcessingException.class);
+    }
+
+    @Test
     void invalidExpression_throwsTemplateProcessingException() {
         String html = "<html><body><span th:text=\"${missing.property.x}\">x</span></body></html>";
         assertThatThrownBy(() -> processor.process(html, Map.of()))

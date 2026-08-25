@@ -223,6 +223,20 @@ class DocumentPreviewApiTest {
     }
 
     @Test
+    void previewHtml_spelTypeExpression_returns400() throws Exception {
+        mockMvc.perform(post("/api/documents/preview")
+                        .with(user("preview-ssti", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "htmlContent": "<p th:text=\\"${T(java.lang.Runtime).getRuntime()}\\">x</p>"
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void previewHtml_rateLimitIsDedicated_generateDoesNotConsumeIt() throws Exception {
         String caller = "html-quota-" + UUID.randomUUID();
         String live = """

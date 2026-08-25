@@ -49,9 +49,9 @@ class WebhookRestAdapterTest {
         guardCalls = new AtomicInteger();
         guard = new OutboundUrlGuard(false, FAKE_RESOLVER) {
             @Override
-            public void assertSafe(String url) {
+            public PinnedEndpoint resolveSafe(String url) {
                 guardCalls.incrementAndGet();
-                super.assertSafe(url);
+                return super.resolveSafe(url);
             }
         };
         posts = new ArrayList<>();
@@ -76,7 +76,8 @@ class WebhookRestAdapterTest {
         assertThat(guardCalls).hasValue(1);
         assertThat(posts).hasSize(1);
         CapturedPost post = posts.getFirst();
-        assertThat(post.url()).isEqualTo("https://hooks.example.com/notify");
+        assertThat(post.url()).isEqualTo("https://93.184.216.34/notify");
+        assertThat(post.headers()).containsEntry("Host", "hooks.example.com");
         assertThat(post.headers()).containsEntry("Content-Type", "application/json");
 
         JsonNode envelope = MAPPER.readTree(post.body());
@@ -140,6 +141,34 @@ class WebhookRestAdapterTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("upstream 500");
         assertThat(attempts).hasValue(1);
+    }
+
+    @Test
+    void send_usesFirstPinnedIpWhenDnsWouldRebindOnSecondLookup() {
+        AtomicInteger lookups = new AtomicInteger();
+        OutboundUrlGuard.HostResolver flipping = host -> {
+            int n = lookups.incrementAndGet();
+            if (n == 1) {
+                return new InetAddress[] {literalAddress("93.184.216.34")};
+            }
+            return new InetAddress[] {literalAddress("198.51.100.10")};
+        };
+        adapter = new WebhookRestAdapter(
+                new OutboundUrlGuard(false, flipping),
+                MAPPER,
+                (url, body, headers) -> posts.add(new CapturedPost(url, body, Map.copyOf(headers))));
+
+        adapter.send(new WebhookDeliveryCommand(
+                "https://hooks.example.com/notify",
+                null,
+                UUID.randomUUID(),
+                Instant.parse("2026-08-07T12:00:00Z"),
+                Map.of()));
+
+        assertThat(lookups).hasValue(1);
+        assertThat(posts).hasSize(1);
+        assertThat(posts.getFirst().url()).isEqualTo("https://93.184.216.34/notify");
+        assertThat(posts.getFirst().headers()).containsEntry("Host", "hooks.example.com");
     }
 
     private static InetAddress literalAddress(String literalIp) {

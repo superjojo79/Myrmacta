@@ -61,6 +61,10 @@ cp .env.example .env
 [`.env.example`](.env.example) documente chaque variable. Les valeurs par défaut suffisent pour un
 premier démarrage — rien à modifier pour suivre ce guide tel quel.
 
+Le profil Spring **`local`** (`SPRING_PROFILES_ACTIVE=local` dans `.env.example`) autorise les
+secrets de démo et le HMAC M2M. Hors `local`/`test`, le boot refuse `DB_PASSWORD` dans la denylist
+(`flowforge`, `postgres`, `admin`, `password`, vide) et tout `M2M_JWT_SECRET` non vide.
+
 `docker compose` lit `.env` automatiquement. Le backend Spring Boot, lui, tourne sur l'hôte (pas
 en conteneur) et ne lit **pas** `.env` nativement : avant `./mvnw spring-boot:run`, charger les
 variables dans le shell courant :
@@ -86,6 +90,8 @@ profils, voir §5 — inactifs par défaut). Au premier démarrage :
   [`docker/postgres/init/01-init-tenant-schema.sql`](docker/postgres/init/01-init-tenant-schema.sql))
   — nécessaire car l'application ne fait que `SET search_path` à la connexion, elle ne crée jamais
   le schéma elle-même (décision n° 13, [analysis doc/02-multi-tenant.md](analysis%20doc/02-multi-tenant.md)).
+  Le superuser du conteneur (`POSTGRES_USER`, défaut `flowforge`) n'est **pas** le user JDBC de
+  l'app (`DB_USERNAME=flowforge_tenant_dev`) : ce rôle LOGIN n'a de droits que sur `tenant_dev`.
 - Keycloak importe un realm `flowforge` préconfiguré
   ([`docker/keycloak/import/flowforge-realm.json`](docker/keycloak/import/flowforge-realm.json)) :
   client `mon-app` (celui attendu par `application.yml`) et un utilisateur de test
@@ -149,10 +155,15 @@ Ne jamais coder un client spécifique à MinIO/RustFS/SeaweedFS dans l'applicati
 Sert l'API sur `http://localhost:8080`. Si `src/main/resources/static/` est vide (frontend pas
 encore buildé), les routes `/api/**` répondent mais l'UI ne s'affiche pas — voir §7.
 
+Actuator (health / Prometheus) : **`http://127.0.0.1:8090`** (`MANAGEMENT_ADDRESS` /
+`MANAGEMENT_PORT`, D-42). Keycloak reste sur **`:8081`**. `permitAll` sur le port management
+est conservé parce que le bind est loopback.
+
 Test rapide sans frontend :
 
 ```bash
 curl -i http://localhost:8080/api/auth/me   # doit rediriger vers Keycloak (302) si pas de session
+curl -s http://127.0.0.1:8090/actuator/health
 ```
 
 ------
@@ -206,8 +217,8 @@ docker compose down -v         # + supprime les volumes (base, realm Keycloak, b
 | Boucle de redirection vers Keycloak, jamais authentifié, sur `http://localhost` | `app.security.cookie.secure=true` (défaut) exige HTTPS ; le navigateur rejette le cookie de session sur HTTP | Vérifier `APP_SECURITY_COOKIE_SECURE=false` dans `.env`, variables bien rechargées dans le shell avant `spring-boot:run` |
 | Erreur `app.storage.s3.bucket is required` au démarrage | `APP_STORAGE_TYPE=s3` sans bucket configuré | Renseigner `APP_STORAGE_S3_BUCKET` (déjà positionné dans `.env.example`) |
 | `NoSuchBucket` / erreurs S3 à l'upload | Le profil Compose du backend de stockage n'est pas démarré, ou le service `*-init` n'a pas encore créé le bucket | `docker compose --profile <minio\|rustfs\|seaweedfs> up -d`, puis `docker compose logs <backend>-init` |
-| Tables créées dans `public` au lieu du schéma tenant | Le schéma `tenant_dev` n'existait pas avant le premier démarrage de PostgreSQL (le script d'init ne s'exécute qu'une fois, sur un volume vide) | `docker compose down -v` puis `docker compose up -d` pour repartir d'un volume vierge |
-| Port déjà utilisé (`8080`, `5432`, `8081`, `9000`…) | Conflit avec un service local existant | Adapter les ports dans `.env` (`DB_PORT`, `KEYCLOAK_PORT`) ou dans `docker-compose.yml` pour le stockage objet |
+| Tables créées dans `public` au lieu du schéma tenant | Le schéma `tenant_dev` n'existait pas avant le premier démarrage de PostgreSQL (le script d'init ne s'exécute qu'une fois, sur un volume vide) | `docker compose down -v` puis `docker compose up -d` pour repartir d'un volume vierge — **aussi** après un changement du rôle LOGIN / GRANT (D-41) |
+| Port déjà utilisé (`8080`, `5432`, `8081`, `8090`, `9000`…) | Conflit avec un service local existant | Adapter les ports dans `.env` (`DB_PORT`, `KEYCLOAK_PORT`, `MANAGEMENT_PORT`) ou dans `docker-compose.yml` pour le stockage objet |
 | `OIDC_CLIENT_SECRET` vide au démarrage backend | `.env` non chargé dans le shell avant `spring-boot:run` | Refaire `set -a; source .env; set +a` dans le même terminal que la commande Maven |
 
 ------

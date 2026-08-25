@@ -111,6 +111,22 @@ class DocumentTemplateApiTest {
     }
 
     @Test
+    void createDraft_spelTypeExpression_returns201() throws Exception {
+        createDraftRaw("ssti-draft-" + UUID.randomUUID(), "<p th:text=\"${T(java.lang.Runtime).getRuntime()}\">x</p>");
+    }
+
+    @Test
+    void activate_spelTypeExpression_returns400() throws Exception {
+        String id = createDraftRaw(
+                "ssti-" + UUID.randomUUID(),
+                "<p th:text=\"${T(java.lang.Runtime).getRuntime()}\">x</p>");
+        mockMvc.perform(post("/api/document-templates/" + id + "/activate")
+                        .with(admin())
+                        .with(csrf()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void archiveAndNewVersion_andSecurity() throws Exception {
         String key = "life-" + UUID.randomUUID();
         String id = createDraft(key);

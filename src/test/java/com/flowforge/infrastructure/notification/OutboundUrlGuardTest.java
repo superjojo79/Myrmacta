@@ -1,5 +1,6 @@
 package com.flowforge.infrastructure.notification;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -8,6 +9,7 @@ import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
@@ -197,9 +199,79 @@ class OutboundUrlGuardTest {
     }
 
     @Test
-    void unresolvableHostname_isRejected() {
-        assertThatThrownBy(() -> strict.assertSafe("https://does-not-exist.invalid/hook"))
+    void ftpAndFileSchemes_rejected() {
+        assertThatThrownBy(() -> strict.assertSafe("ftp://hooks.example.com/hook"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("https");
+        assertThatThrownBy(() -> strict.assertSafe("file:///etc/passwd"))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void unknownHost_isRejected() {
+        assertThatThrownBy(() -> strict.assertSafe("https://no-such.example/hook"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("cannot be resolved");
+    }
+
+    @Test
+    void emptyDnsAnswer_isRejected() {
+        OutboundUrlGuard guard = new OutboundUrlGuard(false, host -> new InetAddress[0]);
+        assertThatThrownBy(() -> guard.assertSafe("https://hooks.example.com/hook"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cannot be resolved");
+        OutboundUrlGuard nullGuard = new OutboundUrlGuard(false, host -> null);
+        assertThatThrownBy(() -> nullGuard.assertSafe("https://hooks.example.com/hook"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cannot be resolved");
+    }
+
+    @Test
+    void resolveSafe_preservesUserInfoQueryAndFragmentOnPinnedUrl() {
+        OutboundUrlGuard.PinnedEndpoint pinned =
+                strict.resolveSafe("https://user:pass@hooks.example.com/notify?x=1#frag");
+        assertThat(pinned.requestUrl()).isEqualTo("https://user:pass@93.184.216.34/notify?x=1#frag");
+        assertThat(pinned.originalHost()).isEqualTo("hooks.example.com");
+    }
+
+    @Test
+    void resolveSafe_ipv6Literal_wrapsHostInRequestUrl() {
+        OutboundUrlGuard.PinnedEndpoint pinned = strict.resolveSafe("https://[2001:4860:4860::8888]/hook");
+        assertThat(pinned.requestUrl()).isEqualTo("https://[2001:4860:4860:0:0:0:0:8888]/hook");
+        assertThat(pinned.originalHost()).isEqualTo("[2001:4860:4860::8888]");
+    }
+
+    @Test
+    void resolveSafe_pinsValidatedDnsAddressWithoutSecondLookup() {
+        AtomicInteger lookups = new AtomicInteger();
+        OutboundUrlGuard.HostResolver counting = host -> {
+            lookups.incrementAndGet();
+            return FAKE_RESOLVER.resolve(host);
+        };
+        OutboundUrlGuard guard = new OutboundUrlGuard(false, counting);
+        OutboundUrlGuard.PinnedEndpoint pinned = guard.resolveSafe("https://hooks.example.com/notify");
+        assertThat(lookups).hasValue(1);
+        assertThat(pinned.address().getHostAddress()).isEqualTo("93.184.216.34");
+        assertThat(pinned.requestUrl()).isEqualTo("https://93.184.216.34/notify");
+        assertThat(pinned.originalHost()).isEqualTo("hooks.example.com");
+    }
+
+    @Test
+    void resolveSafe_rebindingSecondLookupDoesNotChangePinnedIp() throws Exception {
+        AtomicInteger lookups = new AtomicInteger();
+        OutboundUrlGuard.HostResolver flipping = host -> {
+            int n = lookups.incrementAndGet();
+            if (n == 1) {
+                return addresses("93.184.216.34");
+            }
+            return addresses("198.51.100.10");
+        };
+        OutboundUrlGuard guard = new OutboundUrlGuard(false, flipping);
+        OutboundUrlGuard.PinnedEndpoint first = guard.resolveSafe("https://hooks.example.com/notify");
+        OutboundUrlGuard.PinnedEndpoint second = guard.resolveSafe("https://hooks.example.com/notify");
+        assertThat(first.address().getHostAddress()).isEqualTo("93.184.216.34");
+        assertThat(second.address().getHostAddress()).isEqualTo("198.51.100.10");
+        assertThat(first.requestUrl()).isEqualTo("https://93.184.216.34/notify");
+        assertThat(lookups).hasValue(2);
     }
 }

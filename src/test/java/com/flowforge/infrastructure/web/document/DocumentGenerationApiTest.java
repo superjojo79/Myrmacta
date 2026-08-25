@@ -7,10 +7,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.flowforge.domain.document.model.DocumentTemplate;
+import com.flowforge.domain.document.model.TemplateStatus;
 import com.flowforge.domain.document.port.out.DocumentStoragePort;
+import com.flowforge.domain.document.port.out.DocumentTemplateRepository;
 import com.flowforge.support.OidcClientTestConfiguration;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,8 +41,39 @@ class DocumentGenerationApiTest {
     @Autowired
     private DocumentStoragePort documentStoragePort;
 
+    @Autowired
+    private DocumentTemplateRepository documentTemplateRepository;
+
     @Value("${app.storage.filesystem.root}")
     private String storageRoot;
+
+    @Test
+    void generate_spelTypeExpression_returns400() throws Exception {
+        String key = "ssti-gen-" + UUID.randomUUID();
+        Instant now = Instant.parse("2026-08-25T12:00:00Z");
+        documentTemplateRepository.save(new DocumentTemplate(
+                UUID.randomUUID(),
+                key,
+                null,
+                null,
+                "ssti",
+                1,
+                TemplateStatus.ACTIVE,
+                "<html><body><span th:text=\"${T(java.lang.Runtime).getRuntime()}\">x</span></body></html>",
+                TENANT_ID,
+                now,
+                now,
+                "admin"));
+
+        mockMvc.perform(post("/api/documents/generate")
+                        .with(user("gen-ssti", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "templateKey": "%s", "variables": {} }
+                                """.formatted(key)))
+                .andExpect(status().isBadRequest());
+    }
 
     @Test
     void generate_returnsPdf_withoutStoring() throws Exception {

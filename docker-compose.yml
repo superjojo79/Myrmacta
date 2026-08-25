@@ -17,15 +17,15 @@ services:
     image: postgres:17-alpine
     environment:
       POSTGRES_DB: ${DB_NAME:-flowforge}
-      POSTGRES_USER: ${DB_USERNAME:-flowforge}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-flowforge}
+      POSTGRES_USER: ${POSTGRES_USER:-flowforge}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-${DB_PASSWORD:-flowforge}}
     ports:
       - "${DB_PORT:-5432}:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
       - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-flowforge}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-flowforge}"]
       interval: 5s
       timeout: 5s
       retries: 10

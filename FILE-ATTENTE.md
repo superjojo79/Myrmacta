@@ -10,9 +10,14 @@
 >   (rétention / purge / sensible — **livré**) ; revue post-implémentation 2026-08-25 :
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
-> **Dernière mise à jour :** 2026-08-25 — `derive-documentaire` TODO §45 clos,
-> [PR #75](https://github.com/superjojo79/FlowForge/pull/75) ; `edition-bpmn` TODO §39 clos,
-> [PR #71](https://github.com/superjojo79/FlowForge/pull/71) **mergée** ;
+> **Dernière mise à jour :** 2026-08-25 — cycle `durcissement-securite-post-revue`
+> **Phase 9 READY** sur [PR #76](https://github.com/superjojo79/FlowForge/pull/76)
+> (Phase 5 M1–M7 done, Phase 7 checked, Phase 8 verified). Prêt pour merge
+> humain — **ne pas merger** depuis l’agent, **ne pas enchaîner** d’autre
+> feature. Preuves Phase 9 : `./mvnw verify` **1186** tests (0 échec),
+> Jacoco BRANCH 75,57 % / LINE 93,52 % ; Vitest 199 + Playwright 47.
+> `derive-documentaire` TODO §45 clos, [PR #75](https://github.com/superjojo79/FlowForge/pull/75) ;
+> `edition-bpmn` TODO §39 clos, [PR #71](https://github.com/superjojo79/FlowForge/pull/71) **mergée**.
 > `masquage-donnees-sensibles-logs-webhooks` PR #70 mergée. Hors cycle
 > `dev-lifecycle` (PR #72) : DEV-PURGE, recovery `purge_outbox`
 > `PROCESSING`, `CHECK` SQL `dossier_type_acl.permission`, chore
@@ -67,33 +72,18 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 
 ## File d’attente
 
-Plus de lot produit V1 **nommé** : les 5 features du regroupement
-2026-08-20, puis `masquage-donnees-sensibles-logs-webhooks` (PR #70),
-`edition-bpmn` (PR #71) et `derive-documentaire` (PR #75, chore §45)
-sont mergées ou en revue. Pas de chore restant **sans** décision produit.
-Pas de lot produit V1 nommé suivant **tant que** les points de sécurité
-40–44 n'ont pas d'arbitrage (critère 2 : ne pas trancher silencieusement).
-Reliquat ops hors file : provisioning (TODO §31).
+Plus de lot produit V1 **nommé** hors sécurité : `derive-documentaire`
+(PR #75) est mergée. Le cycle **`durcissement-securite-post-revue`**
+(TODO §40–44) : D-* tranchés, Phases 2–4 **reviewed**, Phase 5 **done**
+(M1–M7), Phase 7 **checked**, Phase 8 **verified**, Phase 9 **reviewed**. Reliquat ops hors file : provisioning tenant
+(CLI / orchestrateur — hors cette feature). §46 hors périmètre.
 
-**Regroupement acté (2026-08-25, hors cycle `dev-lifecycle` — scoping
-seulement, pas d'arbitrage) :** les 5 findings sécurité de la revue (§4 —
-High/Medium, pas les points 45/46 qui n'en sont pas au sens de la revue)
-forment une seule feature candidate **`durcissement-securite-post-revue`**,
-plutôt que 4 lots séparés. Justification : 40+41 sont une chaîne d'attaque
-unique documentée par la revue (§5) — les trancher isolément n'a pas de
-sens ; 42/43 sont le même type de durcissement (fail-fast config/secrets
-hors profil `local`) ; 44 est indépendant mais de la même famille (défense
-SSRF). **Aucune des options A/B/C par point n'est tranchée par ce
-regroupement** — ça reste à faire en Phase 1/2 `dev-requirements`, une
-décision à la fois via `AskUserQuestion`, comme pour les features
-précédentes. §45 (chore doc) est **clos** (PR #75). §46 (hygiène ArchUnit
-`application`) reste volontairement **hors** de cette feature : c'est une
-question d'architecture, pas un finding sécurité au sens de la revue
-(§7 la classe « Low / Architecture », pas « Sécurité »).
+**Regroupement (2026-08-25) :** les 5 findings sécurité (§4) forment
+cette feature. D-* clos en Phase 1/2. Phase 9 **READY**.
 
 | Priorité | Item | Notes |
 |---|---|---|
-| **Prochain (bloqué — arbitrages A/B/C)** | Feature candidate `durcissement-securite-post-revue` : TODO §40 (SSTI Thymeleaf), §41 (GRANT PG), §42 (actuator), §43 (secrets/HMAC), §44 (SSRF TOCTOU) | Regroupés en une feature (voir note ci-dessus) ; séquencement interne : 40+41 (chaîne d'attaque) → 42+43 (provisioning/secrets, avec point 31) → 44 (indépendant). Chaque option A/B/C reste à trancher en `dev-requirements`. |
+| **En revue — Phase 9 READY** | `durcissement-securite-post-revue` (TODO §40–44) | Revue holistique, aucun blocage. [PR #76](https://github.com/superjojo79/FlowForge/pull/76). Merge humain. |
 | **Hors périmètre de la feature sécurité** | TODO §46 (ArchUnit `application`) | Architecture, pas sécurité au sens de la revue — point séparé, non bloquant. |
 
 Détail et options : [TODO.md](TODO.md) §40–46,
@@ -101,7 +91,11 @@ Détail et options : [TODO.md](TODO.md) §40–46,
 
 ## En revue
 
-[PR #75](https://github.com/superjojo79/FlowForge/pull/75) (`derive-documentaire`, TODO §45).
+*Cycle Phase 9 **READY*** — [PR #76](https://github.com/superjojo79/FlowForge/pull/76)
+(`durcissement-securite-post-revue`). Revue holistique close, aucun
+blocage. Ne pas merger depuis l’agent. Ne pas déplacer vers « Récemment
+livré » tant que non mergée.
+PR #75 (`derive-documentaire`) **mergée**.
 **Hors V1 (reporté, pas dans cette file) :** Rapports / SLA (maquette UI de
 référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même
 (V1 = TRIGGER uniquement — le hardening SSRF est pré-positionné depuis
@@ -218,5 +212,9 @@ Vérifié : `./mvnw verify` 1136 tests (0 échec), Jacoco OK ; frontend `npm run
 | 2026-08-24 | `masquage-donnees-sensibles-logs-webhooks` implémentée (Phases 1-9) | 10 tâches TDD sur 3 milestones (M1 garde-fou logs, M2 masquage webhook, M3 vérification+clôture). `SendNotificationUseCaseImpl` masque automatiquement les valeurs sensibles avant toute écriture outbox, pour tous les canaux, sans dépendre d'un futur producteur. Preuve bout en bout réelle (`SendNotificationUseCaseImpl` → `NotificationOutboxRelay` → `WebhookRestAdapter`, corps HTTP capturé) + 2 contrôles mutants manuels (masquage désactivé temporairement, tests confirmés en échec, code restauré) prouvant que les tests détectent vraiment une régression. `./mvnw verify` final : 1088 tests (0 échec), Jacoco tenu. Zéro fichier frontend touché. TODO §23 clos avec note honnête (pas de fuite active, protection préventive), en attente de PR |
 | 2026-08-25 | Revue alignement × sécurité | [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) ; TODO §40–46 ouverts (SSTI, GRANT PG, actuator, secrets, SSRF TOCTOU, dérive docs, ArchUnit `application`). `edition-bpmn` PR #71 mergée ; follow-ups ops PR #72 (DEV-PURGE, recovery PROCESSING, `com.monapp` dans `01`). Prochain sans décision : chore §45. |
 | 2026-08-25 | Points sécurité 40–44 regroupés en feature candidate | Demande utilisateur : rassembler les points pertinents de la revue en une feature de durcissement sécurité. Regroupement `durcissement-securite-post-revue` = TODO §40+41 (chaîne SSTI→PG partagé) + §42+43 (config/secrets) + §44 (SSRF TOCTOU), séquencés dans cet ordre. §45 (chore doc, pas d'arbitrage) et §46 (ArchUnit `application`, classé Architecture pas Sécurité par la revue §7) restent hors périmètre. Scoping seul — options A/B/C par point toujours à trancher en `dev-requirements` (`AskUserQuestion`, une décision à la fois), pas de cycle `dev-lifecycle` lancé sur demande explicite de l'utilisateur. |
-| 2026-08-25 | `derive-documentaire` Phase 9 READY | PR #75 ; TODO §45 clos. README / analyse / yaml alignés sur le V1 réel. Prochain = `durcissement-securite-post-revue` **bloqué** par les arbitrages A/B/C (§40–44). |
+| 2026-08-25 | `durcissement-securite-post-revue` cycle démarré | Demande utilisateur : démarrer le lifecycle. Phases 1–2 : D-* = recommandations revue (pas d'AskUserQuestion en agent cloud). §46 hors scope. |
+| 2026-08-25 | `durcissement-securite-post-revue` Phase 5 done | M1–M7 TDD. `./mvnw verify` 1173 tests (0 échec), Jacoco BRANCH 75,03 % / LINE 93,3 % ; Vitest 199 + Playwright 47. `ObservabilityActuatorIT` vert ; `TenantRoleIsolationIT` SKIPPED sans Docker. SSTI 400 à l'activation (pas au POST draft). [PR #76](https://github.com/superjojo79/FlowForge/pull/76). |
+| 2026-08-25 | `durcissement-securite-post-revue` Phase 7 checked | Revue fichier par fichier vs design. Aligné D-40 B2 / E, D-41 A/S, D-42 L, D-43 F, D-44 P. Écarts notés (Host JDK restricted headers ; « enregistrement » = activation). Pas de relock D-*, pas de retour Phase 5. 130 tests ciblés, 0 échec. |
+| 2026-08-25 | `durcissement-securite-post-revue` Phase 8 verified | Jacoco classe par classe. Generate HTTP `T()` 400. `./mvnw verify` 1185 tests (0 échec), BRANCH 75,57 % ; Vitest 199 + Playwright 47. Suite : Phase 9. |
+| 2026-08-25 | `durcissement-securite-post-revue` Phase 9 READY | Revue holistique : 42 fichiers, pas de pom/OpenAPI/Liquibase/SPA/domain ; ports inchangés ; sonde SSTI inlining/th:if/preprocess. Findings non bloquants (Host JDK restricted headers, IT hors surefire). `./mvnw verify` **1186** tests (0 échec), Jacoco LINE 93,52 % / BRANCH 75,57 % ; Vitest 199 + Playwright 47. [PR #76](https://github.com/superjojo79/FlowForge/pull/76). Merge humain. |
 

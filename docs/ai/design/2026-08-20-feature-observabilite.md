@@ -182,7 +182,8 @@ par la façade snapshot. Runbook ops = les mêmes chiffres.
 ```yaml
 management:
   server:
-    port: ${MANAGEMENT_PORT:8081}
+    address: ${MANAGEMENT_ADDRESS:127.0.0.1}
+    port: ${MANAGEMENT_PORT:8090}
   endpoints:
     web:
       exposure:
@@ -197,6 +198,11 @@ logging:
       console: ecs
 ```
 
+> **Note (D-42, `durcissement-securite-post-revue`, 2026-08-25) :** le défaut d'origine
+> `8081` entrait en conflit avec Keycloak local. Bind loopback, port défaut **8090**.
+> `permitAll` (DD-MGMT-SEC) conservé **parce que** loopback. Source de vérité :
+> `application.yml`.
+
 - Probes Boot : `/actuator/health/liveness`, `/actuator/health/readiness`.
 - **Pas** de `HealthIndicator` métier (lag outbox ≠ DOWN).
 - Endpoints non listés (`beans`, `env`, `heapdump`, …) → 404.
@@ -204,7 +210,8 @@ logging:
   dédié). Tests : `@LocalManagementPort` + 404 sur le port app.
 - `SecurityFilterChain` `@Order(0)`, matcher
   `EndpointRequest.toAnyEndpoint()`, `permitAll()` — scrape **sans**
-  OIDC. Le reverse-proxy **public** ne route pas `8081`.
+  OIDC. Le reverse-proxy **public** ne route pas le port management
+  (`8090` depuis D-42 ; `8081` était le défaut d'origine, occupé par Keycloak).
 - Tests : `management.server.port=0` (port aléatoire) pour éviter un
   bind fixe en CI.
 

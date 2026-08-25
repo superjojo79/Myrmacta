@@ -186,3 +186,18 @@ public interface DocumentTemplateRepository {
 > La génération PDF et le stockage passent par `GenerateDocumentUseCase` /
 > `DocumentStoragePort` (voir [07-generation-documents.md](07-generation-documents.md),
 > décision n° 18) — pas par des « Services » hors hexagone.
+
+### Rendu Thymeleaf — allowlist B2 (D-40)
+
+Les templates stockés sont rendus par `TemplateEngine` + `StandardDialect` **sans** SpEL Spring
+(pas l'option A « moteur sans aucune expression utilitaire »). L'évaluateur custom autorise :
+
+- les chemins de propriétés du modèle (`${title}`, `${dossier.reference}`) ;
+- `#vars`, `#dates`, `#numbers`, `#strings`, `#lists` — uniquement les méthodes **déclarées**
+  sur les objets Thymeleaf correspondants (pas `Object.getClass` / `wait` / `notify`).
+
+Sont refusés (`TemplateProcessingException` / `InvalidTemplateSyntaxException` → **400** à
+generate/preview **et** à l'**activation**) : `T()`, `#beans`, `new`, `#request`, et tout
+objet d'expression hors allowlist. Le POST draft reste 201 (le checker métier s'exécute à
+l'activation, pas à la création). Le checker valide la même allowlist **sans** exécuter le
+template (les variables métier absentes à l'activation ne font pas échouer la syntaxe).

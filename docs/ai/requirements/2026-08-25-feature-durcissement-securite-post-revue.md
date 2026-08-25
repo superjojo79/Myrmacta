@@ -15,7 +15,7 @@ todo_ref: TODO.md §40–44 · FILE-ATTENTE.md · REVUE-ALIGNEMENT-SECURITE.md
 ## Phase 1: New Requirement
 
 **Statut : brouillon.** Phase 2 n'est pas ouverte. D-40 = **B** / **B2**,
-D-41 = **A**, D-41-SCOPE = **S**. Les autres D-* restent ouverts. Une
+D-41 = **A** / **S**, D-42 = **L**. D-43 et D-44 restent ouverts. Une
 ébauche de code existe déjà sur le working tree (hors phase) : elle
 coupe SpEL (proche de A / B1) et **diverge** de B2 ; elle sera réalignée
 ou revertée après Phase 2–4.
@@ -61,8 +61,8 @@ Objectifs **candidats** (dépendent des D-* encore ouverts) :
 2. Isolation SQL par **rôle PG LOGIN par schéma tenant** (D-41 = A,
    D-41-SCOPE = S) : init Compose `tenant_dev` + runbook ops + IT
    Testcontainers. Pas de CLI/orchestrateur tenant.
-3. Rendre l'actuator non exposé par défaut hors loopback / départager le
-   port Keycloak, selon D-42.
+3. Actuator bound **localhost**, port management défaut **8090** (Keycloak
+   reste 8081), `permitAll` conservé (D-42 = L / DD-MGMT-SEC).
 4. Empêcher un boot prod avec secrets de démo ou HMAC M2M, selon D-43.
 5. Empêcher le rebinding DNS sur les sorties HTTP déjà gardées, selon D-44.
 
@@ -86,8 +86,10 @@ Objectifs **candidats** (dépendent des D-* encore ouverts) :
   HMAC M2M) laisse l'instance démarrer.
 
 Cas limites restants : volume PG Compose existant (init SQL non rejouée) ;
-scrape Prometheus hors localhost. `#dates` / `#numbers` / `#strings` /
-`#lists` sont **dans** l'allowlist (D-40-ALLOW = B2) ; `T()` / `#beans` hors.
+scrape Prometheus hors loopback seulement si ops surcharge
+`MANAGEMENT_ADDRESS` (D-42 = L, défaut `127.0.0.1`). `#dates` / `#numbers`
+/ `#strings` / `#lists` sont **dans** l'allowlist (D-40-ALLOW = B2) ;
+`T()` / `#beans` hors.
 
 ## Success Criteria
 
@@ -99,8 +101,9 @@ D-* tranchés :
       `#vars`, `#dates` / `#numbers` / `#strings` / `#lists` évalués.
 - [ ] **T-GRANT** (D-41 = A) : le rôle d'application ne `SELECT` pas un
       autre schéma tenant (IT Testcontainers, SKIPPED sans Docker).
-- [ ] **T-MGMT** : plus de conflit de port avec Keycloak 8081 en local ;
-      surface management documentée selon D-42.
+- [ ] **T-MGMT** (D-42 = L) : `management.server.address` = `127.0.0.1` ;
+      défaut de port **8090** ; `ObservabilityActuatorIT` reste vert
+      (`MANAGEMENT_PORT=0`).
 - [ ] **T-SECRETS** : hors profils de démo, secrets connus / HMAC M2M
       selon D-43 → fail-fast ; profil `test` inchangé.
 - [ ] **T-PIN** (si D-44 = pin IP) : le client HTTP contacte l'IP validée,
@@ -141,8 +144,8 @@ Lot unique 40–44 : reco FILE-ATTENTE, pas contestée à ce stade.
 | D-40-ALLOW | Périmètre de l'allowlist | **B2** | B1 + `#dates` `#numbers` `#strings` `#lists` ; refus `T()` / `#beans` |
 | D-41 | Isolation PG inter-schémas | **A** | Rôle LOGIN par schéma ; écarté B database/tenant, C confiance réseau |
 | D-41-SCOPE | Périmètre provisioning | **S** | Init Compose + runbook + IT ; pas de CLI tenant |
-| D-42 | Actuator bind / port / `permitAll` | **posée maintenant** | L / M / N ci-dessous |
-| D-43 | Secrets défaut + HMAC M2M | en attente | fail-fast hors `local`/`test` ; HMAC interdit hors ces profils ; secrets Compose obligatoires |
+| D-42 | Actuator bind / port / `permitAll` | **L** | Bind `127.0.0.1`, port 8090, `permitAll` conservé |
+| D-43 | Secrets défaut + HMAC M2M | **posée maintenant** | F / H / R ci-dessous |
 | D-44 | SSRF DNS TOCTOU | en attente | pin IP ; proxy egress allowlist |
 
 ### Décisions enregistrées
@@ -158,24 +161,29 @@ Lot unique 40–44 : reco FILE-ATTENTE, pas contestée à ce stade.
   Volume PG existant : l'init ne se rejoue pas (`compose down -v`) —
   à documenter dans le runbook.
 
-### Question actuelle — D-42 (seule question de ce tour)
+- **D-42 = L** — bind `127.0.0.1` ; `MANAGEMENT_PORT` défaut **8090** ;
+  `permitAll` conservé (DD-MGMT-SEC). Écarté : M (mTLS), N (ne pas
+  publier). Keycloak reste 8081.
 
-**Pourquoi ça compte :** `permitAll` sur le port management est une
-décision assumée (`observabilite` DD-MGMT-SEC, scrape Prometheus sans
-OIDC), pas un accident. Sans bind, 8081 écoute toutes les interfaces.
-En local, Keycloak occupe déjà l'hôte **8081**. mTLS change DD-MGMT-SEC.
-Ne plus publier le port casse le scrape et `ObservabilityActuatorIT`.
+### Question actuelle — D-43 (seule question de ce tour)
 
-**Options (paquets, pas des flags indépendants) :**
+**Pourquoi ça compte :** fallbacks `${DB_PASSWORD:flowforge}` et HMAC
+`M2M_JWT_SECRET` acceptent un artefact copié en prod sans override, ou
+un HMAC qui remplace l'issuer OIDC. OK en local. `permitAll` actuator
+est déjà borné au loopback (D-42) ; les secrets JDBC/OIDC/HMAC restent
+la porte d'entrée si le boot réussit.
 
-- **L** — bind `127.0.0.1` + défaut de port **≠ 8081** (proposition
-  **8090**) + `permitAll` **conservé** (DD-MGMT-SEC) parce que non
-  routable hors loopback par défaut. Keycloak reste 8081.
-- **M** — mTLS / auth sur l'actuator ; le bind peut rester large ;
-  change DD-MGMT-SEC ; plus d'ops.
-- **N** — ne pas publier le port management par défaut (scrape et IT
-  observabilité à revoir).
+**Options :**
 
-**Recommandation revue : L.**
+- **F** — fail-fast **hors** profils `local`/`test` si secrets défaut ou
+  absents (`DB_PASSWORD` denylist type `flowforge` / vide, master-key
+  connecteur vide, `OIDC_CLIENT_SECRET` vide) **et** HMAC M2M **interdit**
+  hors ces profils. Local/test inchangés (démo + HMAC de test). Compose
+  peut garder des secrets de démo pour la stack locale.
+- **H** — fail-fast JDBC/OIDC comme F, mais HMAC M2M encore autorisé en
+  prod s'il est posé (la revue juge ça dangereux).
+- **D** — documentation seulement, pas de fail-fast au boot.
 
-Ne pas répondre à D-43 ni D-44 dans ce tour.
+**Recommandation revue : F.**
+
+Ne pas répondre à D-44 dans ce tour.

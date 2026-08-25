@@ -26,7 +26,8 @@ TDD : tests processor B2 d'abord (rouge sur l'ébauche A/B1 : `#dates` /
 - `ThymeleafHtmlTemplateProcessor` / `ThymeleafTemplateSyntaxChecker` — même factory ;
   checker `parseString` + allowlist **sans** `process()`
 - Tests : `ThymeleafHtmlTemplateProcessorTest`, `ThymeleafTemplateSyntaxCheckerTest`,
-  `DocumentPreviewApiTest` (400 `T()`), `DocumentTemplateApiTest` (400 enregistrement)
+  `DocumentPreviewApiTest` (400 `T()` live), `DocumentTemplateApiTest` (400 à
+  l'**activation** — le checker métier existant, pas au POST draft)
 
 ### Pin (M2)
 

@@ -71,8 +71,8 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 Plus de lot produit V1 **nommé** hors sécurité : `derive-documentaire`
 (PR #75) est mergée. Le cycle **`durcissement-securite-post-revue`**
 (TODO §40–44) est **en Phase 1** (requirements brouillon). D-40/B2 et
-D-41 = A enregistrés ; D-41-SCOPE…D-44 ouverts. Reliquat ops hors file :
-provisioning tenant (pas TODO §31, qui est le découpage en lots, clos).
+D-41 = A / **S** enregistrés ; D-42…D-44 ouverts. Reliquat ops hors file :
+provisioning tenant (CLI / orchestrateur — hors cette feature).
 
 **Regroupement candidat (2026-08-25) :** les 5 findings sécurité (§4)
 forment une feature candidate unique. Ce n'est **pas** un lock des
@@ -80,7 +80,7 @@ options A/B/C de TODO §40–44. §46 hors périmètre de cette feature.
 
 | Priorité | Item | Notes |
 |---|---|---|
-| **En cours — Phase 1** | `durcissement-securite-post-revue` (TODO §40–44) | Requirements **draft**. D-40 = B / B2, D-41 = **A**. Question actuelle : D-41-SCOPE. D-42…D-44 ouverts. Ne pas implémenter. [PR #76](https://github.com/superjojo79/FlowForge/pull/76). §46 hors périmètre. |
+| **En cours — Phase 1** | `durcissement-securite-post-revue` (TODO §40–44) | Requirements **draft**. D-40 = B / B2, D-41 = A / **S**. Question actuelle : D-42. D-43…D-44 ouverts. Ne pas implémenter. [PR #76](https://github.com/superjojo79/FlowForge/pull/76). §46 hors périmètre. |
 | **Hors périmètre de la feature sécurité** | TODO §46 (ArchUnit `application`) | Architecture, pas sécurité au sens de la revue — point séparé, non bloquant. |
 
 Détail et options : [TODO.md](TODO.md) §40–46,
@@ -89,7 +89,7 @@ Détail et options : [TODO.md](TODO.md) §40–46,
 ## En revue
 
 *Cycle en Phase 1* — [PR #76](https://github.com/superjojo79/FlowForge/pull/76)
-(`durcissement-securite-post-revue`, D-40 = B / B2, D-41 = A, D-41-SCOPE ouverte).
+(`durcissement-securite-post-revue`, D-40 = B / B2, D-41 = A / S, D-42 ouverte).
 PR #75 (`derive-documentaire`) **mergée**.
 **Hors V1 (reporté, pas dans cette file) :** Rapports / SLA (maquette UI de
 référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même

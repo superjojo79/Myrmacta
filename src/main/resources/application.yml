@@ -103,6 +103,9 @@ app:
       max-attempts: 5
       poll-delay: 1s
       processed-retention: 7d
+    idempotency-retention: 7d
+    retention:
+      poll-delay: 1d
     bpmn-upload:
       # Taille max : pas de borne dédiée ici, la seule limite est
       # spring.servlet.multipart.max-file-size/max-request-size ci-dessus — une seule source de
@@ -147,6 +150,7 @@ app:
   purge:
     poll-delay: 1h
     batch-size: 50
+    processing-timeout: 2h
   openapi:
     enabled: false
   dossier:

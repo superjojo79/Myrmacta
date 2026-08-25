@@ -57,13 +57,13 @@ public class JpaPurgeOutboxRepositoryAdapter implements PurgeOutboxRepository {
     @Override
     @Transactional
     public boolean claim(UUID id) {
-        return repository.claim(id, PurgeOutboxStatus.PROCESSING, RETRYABLE) == 1;
+        return repository.claim(id, PurgeOutboxStatus.PROCESSING, RETRYABLE, Instant.now()) == 1;
     }
 
     @Override
     @Transactional
     public void markCompleted(UUID id) {
-        repository.markCompleted(id, PurgeOutboxStatus.COMPLETED);
+        repository.markCompleted(id, PurgeOutboxStatus.COMPLETED, Instant.now());
     }
 
     @Override
@@ -73,7 +73,18 @@ public class JpaPurgeOutboxRepositoryAdapter implements PurgeOutboxRepository {
         if (trimmed.length() > 1024) {
             trimmed = trimmed.substring(0, 1024);
         }
-        repository.markFailed(id, PurgeOutboxStatus.FAILED, trimmed);
+        repository.markFailed(id, PurgeOutboxStatus.FAILED, trimmed, Instant.now());
+    }
+
+    @Override
+    @Transactional
+    public int requeueStaleProcessing(Instant olderThan) {
+        return repository.requeueStaleProcessing(
+                PurgeOutboxStatus.FAILED,
+                PurgeOutboxStatus.PROCESSING,
+                "Stuck in PROCESSING past the recovery timeout; requeued for retry.",
+                Instant.now(),
+                olderThan);
     }
 
     @Override

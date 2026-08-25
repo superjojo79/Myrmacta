@@ -47,7 +47,7 @@ jointes). `delete` livré avec `purge-stockage` (§22). Aucun couplage MinIO.
 |---|---|
 | Remplacer stubs in-memory | `WorkflowInstanceRepository` / `WorkflowEventPublisher` → JPA + Flowable (`workflow-engine`) |
 | Retirer exclusions autoconfig restantes | Flowable (et tout résidu) feature par feature |
-| Sync lexicale `com.monapp` → `com.flowforge` | Chore dans `analysis doc/` |
+| Sync lexicale `com.monapp` → `com.flowforge` | **Clos** (2026-08-25) — 3 occurrences dans `analysis doc/01-architecture-hexagonale.md` corrigées |
 | Validation blank `processKey` / `tenantId` | Nice-to-have modèle |
 
 ### 1.2 `multi-tenant`
@@ -81,7 +81,7 @@ jointes). `delete` livré avec `purge-stockage` (§22). Aucun couplage MinIO.
 | `DossierWorkflowLink` + AttachWorkflow | Lot `workflow-engine` |
 | PATCH fields dossier | **Livré** — feature `patch-dossier-fields` (fusion + audit `sensitive`) ; **UI détail** — feature `edition-champs-dossier` |
 | Liste / recherche / pagination dossiers | **Livré** — feature `pagination-dossiers` (API + Supervision) |
-| Index Liquibase `(tenant_id, dossier_type_code)` | Nice-to-have |
+| Index Liquibase `(tenant_id, dossier_type_code)` | **Déjà couvert** (vérifié 2026-08-25) — `idx_dossier_type_updated_at ON dossier (dossier_type_code, updated_at DESC)` existe depuis `008-dossier-list-indexes.yaml` ; `tenant_id` en tête serait redondant (cardinalité 1 par schéma, une instance = un tenant, décision n° 13) |
 | CHECK SQL `permission ∈ {VIEW,EDIT}` | Nice-to-have |
 | `Long version` / `Persistable` pour `isNew()` | Nice-to-have JPA |
 | Smoke PostgreSQL réel | Hors CI (IT actuelles = H2 MODE=PostgreSQL) |
@@ -188,7 +188,7 @@ Voir le détail et les options dans [TODO.md](TODO.md) et
 - Surcharge prod de `app.tenant.id` (ne jamais laisser `tenant_dev`)
 - Smoke manuel : Keycloak réel, PostgreSQL réel
 - Observabilité : **livré** — MDC + Micrometer + UI admin (TODO §29, PR #59)
-- Chore docs : `com.monapp` résiduel dans `analysis doc/`
+- Chore docs : `com.monapp` résiduel dans `analysis doc/` — **clos** (2026-08-25)
 - Build FE : `npm run build` → copie vers `src/main/resources/static/` (Maven plugin ou CI)
 
 ---

@@ -48,6 +48,9 @@ class PurgeOutboxJpaEntity {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
+
     @Column(name = "last_error", length = 1024)
     private String lastError;
 
@@ -63,6 +66,7 @@ class PurgeOutboxJpaEntity {
             PurgeOutboxOrigin origin,
             String payloadJson,
             Instant createdAt,
+            Instant updatedAt,
             String lastError) {
         this.id = id;
         this.dossierId = dossierId;
@@ -71,6 +75,7 @@ class PurgeOutboxJpaEntity {
         this.origin = origin;
         this.payloadJson = payloadJson;
         this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
         this.lastError = lastError;
     }
 
@@ -82,6 +87,7 @@ class PurgeOutboxJpaEntity {
                 record.status(),
                 record.origin(),
                 record.payloadJson(),
+                record.createdAt(),
                 record.createdAt(),
                 record.lastError());
     }

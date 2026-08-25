@@ -1,6 +1,7 @@
 package com.flowforge.infrastructure.persistence.workflow;
 
 import com.flowforge.domain.workflow.port.out.IdempotencyStore;
+import com.flowforge.infrastructure.config.WorkflowProperties;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -11,9 +12,11 @@ import org.springframework.transaction.annotation.Transactional;
 class JpaIdempotencyStoreAdapter implements IdempotencyStore {
 
     private final SpringDataWorkflowIdempotencyRepository repository;
+    private final WorkflowProperties properties;
 
-    JpaIdempotencyStoreAdapter(SpringDataWorkflowIdempotencyRepository repository) {
+    JpaIdempotencyStoreAdapter(SpringDataWorkflowIdempotencyRepository repository, WorkflowProperties properties) {
         this.repository = repository;
+        this.properties = properties;
     }
 
     @Override
@@ -34,7 +37,8 @@ class JpaIdempotencyStoreAdapter implements IdempotencyStore {
     }
 
     @Override
+    @Transactional
     public int purgeExpired() {
-        return 0;
+        return repository.deleteByCreatedAtBefore(Instant.now().minus(properties.idempotencyRetention()));
     }
 }

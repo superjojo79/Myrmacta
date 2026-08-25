@@ -33,7 +33,13 @@ class PurgeOutboxJob {
     @Scheduled(fixedDelayString = "${app.purge.poll-delay:1h}")
     void process() {
         try (MdcScope ignored = MdcScope.tenant(tenantProperties.id())) {
-            int processed = processPurgeOutboxUseCase.processBatch(Instant.now(), purgeProperties.batchSize());
+            Instant now = Instant.now();
+            int recovered = processPurgeOutboxUseCase.recoverStaleProcessing(
+                    now.minus(purgeProperties.processingTimeout()));
+            if (recovered > 0) {
+                log.warn("Purge outbox job recovered {} row(s) stuck in PROCESSING", recovered);
+            }
+            int processed = processPurgeOutboxUseCase.processBatch(now, purgeProperties.batchSize());
             if (processed > 0) {
                 log.info("Purge outbox job processed {} row(s)", processed);
             }

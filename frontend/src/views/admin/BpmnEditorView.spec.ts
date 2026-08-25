@@ -84,6 +84,16 @@ describe('BpmnEditorView', () => {
     expect(importXML).toHaveBeenCalledWith('<definitions><process id="wf"/></definitions>')
   })
 
+  it('shows an error message and still mounts a blank canvas when loading the draft fails', async () => {
+    vi.mocked(workflowsApi.getBpmnDraft).mockRejectedValue(new Error('network down'))
+
+    const wrapper = await mountView('/admin/bpmn-editor?processDefinitionKey=wf')
+    await flushPromises()
+
+    expect(wrapper.get('.bpmn-editor__error').text()).toContain('network down')
+    expect(importXML).toHaveBeenCalledWith(expect.stringContaining('Process_1'))
+  })
+
   it('loads a locally selected file into the canvas', async () => {
     const wrapper = await mountView('/admin/bpmn-editor')
     await flushPromises()

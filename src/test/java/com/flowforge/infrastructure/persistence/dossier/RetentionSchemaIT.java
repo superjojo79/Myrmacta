@@ -68,7 +68,9 @@ class RetentionSchemaIT {
                 """,
                 String.class);
         assertThat(columns)
-                .contains("id", "dossier_id", "event_type", "status", "payload_json", "created_at", "origin", "last_error");
+                .contains(
+                        "id", "dossier_id", "event_type", "status", "payload_json", "created_at",
+                        "updated_at", "origin", "last_error");
 
         Integer uniqueConstraints = jdbcTemplate.queryForObject(
                 """
@@ -87,6 +89,18 @@ class RetentionSchemaIT {
                 SELECT COUNT(*) FROM information_schema.indexes
                 WHERE lower(table_name) = 'purge_outbox'
                   AND lower(index_name) = 'idx_purge_outbox_status_created_at'
+                """,
+                Integer.class);
+        assertThat(indexes).isGreaterThanOrEqualTo(1);
+    }
+
+    @Test
+    void purgeOutbox_hasStatusUpdatedIndex() {
+        Integer indexes = jdbcTemplate.queryForObject(
+                """
+                SELECT COUNT(*) FROM information_schema.indexes
+                WHERE lower(table_name) = 'purge_outbox'
+                  AND lower(index_name) = 'idx_purge_outbox_status_updated_at'
                 """,
                 Integer.class);
         assertThat(indexes).isGreaterThanOrEqualTo(1);

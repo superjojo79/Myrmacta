@@ -48,7 +48,8 @@ class OutboxRelaySchedulerTest {
         workflowEnginePort = mock(WorkflowEnginePort.class);
         WorkflowProperties properties = new WorkflowProperties(
                 Duration.ofMinutes(5),
-                new WorkflowProperties.Outbox(20, 5, Duration.ofSeconds(1), Duration.ofDays(7)));
+                new WorkflowProperties.Outbox(20, 5, Duration.ofSeconds(1), Duration.ofDays(7)),
+                Duration.ofDays(7));
         scheduler = new OutboxRelayScheduler(
                 outboxRepository,
                 attachWorkflow,

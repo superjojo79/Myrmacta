@@ -25,3 +25,7 @@ databaseChangeLog:
       file: db/changelog/changes/012-observability-indexes.yaml
   - include:
       file: db/changelog/changes/013-bpmn-draft-tables.yaml
+  - include:
+      file: db/changelog/changes/014-dossier-type-acl-permission-check.yaml
+  - include:
+      file: db/changelog/changes/015-purge-outbox-updated-at.yaml

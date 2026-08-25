@@ -32,4 +32,12 @@ public interface PurgeOutboxRepository {
 
     /** Oldest {@code PENDING} ∪ {@code PROCESSING} ∪ {@code FAILED} row. */
     Optional<Instant> oldestUnfinishedCreatedAt();
+
+    /**
+     * Requeues rows stuck in {@code PROCESSING} since before {@code olderThan} (crash mid-purge,
+     * no completion/failure recorded) back to {@code FAILED} so they re-enter the retry cycle.
+     *
+     * @return number of rows requeued
+     */
+    int requeueStaleProcessing(Instant olderThan);
 }

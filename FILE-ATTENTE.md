@@ -81,7 +81,7 @@ options A/B/C de TODO §40–44. §46 hors périmètre de cette feature.
 
 | Priorité | Item | Notes |
 |---|---|---|
-| **En cours — Phase 2 reviewed / attente Phase 3** | `durcissement-securite-post-revue` (TODO §40–44) | Requirements **reviewed**. D-* : B/B2, A/S, L, F, P. Design hors phase (brouillon prématuré). Ne pas implémenter. [PR #76](https://github.com/superjojo79/FlowForge/pull/76). §46 hors périmètre. |
+| **En cours — Phase 3 draft** | `durcissement-securite-post-revue` (TODO §40–44) | Requirements **reviewed**. Design **draft**, DD-THYME-B2 posée. Ne pas implémenter. [PR #76](https://github.com/superjojo79/FlowForge/pull/76). |
 | **Hors périmètre de la feature sécurité** | TODO §46 (ArchUnit `application`) | Architecture, pas sécurité au sens de la revue — point séparé, non bloquant. |
 
 Détail et options : [TODO.md](TODO.md) §40–46,
@@ -89,8 +89,8 @@ Détail et options : [TODO.md](TODO.md) §40–46,
 
 ## En revue
 
-*Cycle Phase 2 reviewed* — [PR #76](https://github.com/superjojo79/FlowForge/pull/76)
-(`durcissement-securite-post-revue`, requirements reviewed, Phase 3 non commencée).
+*Cycle Phase 3* — [PR #76](https://github.com/superjojo79/FlowForge/pull/76)
+(`durcissement-securite-post-revue`, design draft, DD-THYME-B2 ouverte).
 PR #75 (`derive-documentaire`) **mergée**.
 **Hors V1 (reporté, pas dans cette file) :** Rapports / SLA (maquette UI de
 référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même

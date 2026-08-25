@@ -70,14 +70,12 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 
 Plus de lot produit V1 **nommé** hors sécurité : `derive-documentaire`
 (PR #75) est mergée. Le cycle **`durcissement-securite-post-revue`**
-(TODO §40–44) est **en Phase 1** (requirements brouillon). D-40/B2 et
-D-40…D-44 **tranchés**. Phase 2 **reviewed** 2026-08-25. Phase 3 non commencée.
-Reliquat ops hors file :
-provisioning tenant (CLI / orchestrateur — hors cette feature).
+(TODO §40–44) : D-* tranchés, Phase 2 **reviewed**, Phase 3 **draft**
+(DD-THYME-B2 ouverte). Reliquat ops hors file : provisioning tenant
+(CLI / orchestrateur — hors cette feature). §46 hors périmètre.
 
-**Regroupement candidat (2026-08-25) :** les 5 findings sécurité (§4)
-forment une feature candidate unique. Ce n'est **pas** un lock des
-options A/B/C de TODO §40–44. §46 hors périmètre de cette feature.
+**Regroupement (2026-08-25) :** les 5 findings sécurité (§4) forment
+cette feature. D-* clos en Phase 1/2.
 
 | Priorité | Item | Notes |
 |---|---|---|

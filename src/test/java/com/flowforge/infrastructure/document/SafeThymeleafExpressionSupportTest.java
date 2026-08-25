@@ -93,7 +93,23 @@ class SafeThymeleafExpressionSupportTest {
         assertThat(SafeThymeleafExpressionSupport.extractVariableExpressions(
                         "<p th:text=\"${title}\">x</p><span th:text=\"*{ref}\">y</span>"))
                 .containsExactly("title", "ref");
+        assertThat(SafeThymeleafExpressionSupport.extractVariableExpressions("")).isEmpty();
         assertThatThrownBy(() -> SafeThymeleafExpressionSupport.extractVariableExpressions("${unclosed"))
+                .isInstanceOf(TemplateProcessingException.class);
+    }
+
+    @Test
+    void evaluate_nullExpression_isRejected() {
+        assertThatThrownBy(() -> SafeThymeleafExpressionSupport.evaluate(context(), null))
+                .isInstanceOf(TemplateProcessingException.class);
+    }
+
+    @Test
+    void evaluator_rejectsNullAndBlankRawExpression() {
+        var evaluator = SafeThymeleafVariableExpressionEvaluator.INSTANCE;
+        assertThatThrownBy(() -> evaluator.evaluate(null, expression(null), null))
+                .isInstanceOf(TemplateProcessingException.class);
+        assertThatThrownBy(() -> evaluator.evaluate(null, expression("  "), null))
                 .isInstanceOf(TemplateProcessingException.class);
     }
 
@@ -111,6 +127,20 @@ class SafeThymeleafExpressionSupportTest {
 
     private static Context context() {
         return new Context();
+    }
+
+    private static org.thymeleaf.standard.expression.IStandardVariableExpression expression(String raw) {
+        return new org.thymeleaf.standard.expression.IStandardVariableExpression() {
+            @Override
+            public String getExpression() {
+                return raw;
+            }
+
+            @Override
+            public boolean getUseSelectionAsRoot() {
+                return false;
+            }
+        };
     }
 
     public static final class FlagBean {

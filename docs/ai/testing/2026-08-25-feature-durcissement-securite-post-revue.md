@@ -13,7 +13,7 @@ feature: durcissement-securite-post-revue
 Scénarios dérivés des success criteria (Phase 2) et du design (Phase 3).
 Phase 5 TDD **done**. Preuves M7 (cette session) : `./mvnw verify`
 1173 tests, 0 échec, Jacoco BRANCH 75,03 % ; Vitest 199 ; Playwright 47.
-Phase 8 lifecycle formelle **non commencée**.
+Phase 8 lifecycle formelle **non commencée**. Phase 7 **checked** 2026-08-25.
 
 TDD obligatoire (skill `tdd`). Playwright = **régression** SPA (A-NO-SPA).
 

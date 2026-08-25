@@ -197,6 +197,7 @@ Les templates stockés sont rendus par `TemplateEngine` + `StandardDialect` **sa
   sur les objets Thymeleaf correspondants (pas `Object.getClass` / `wait` / `notify`).
 
 Sont refusés (`TemplateProcessingException` / `InvalidTemplateSyntaxException` → **400** à
-generate/preview **et** à l'enregistrement) : `T()`, `#beans`, `new`, `#request`, et tout
-objet d'expression hors allowlist. Le checker valide la même allowlist **sans** exécuter le
-template (les variables métier absentes à l'enregistrement ne font pas échouer la syntaxe).
+generate/preview **et** à l'**activation**) : `T()`, `#beans`, `new`, `#request`, et tout
+objet d'expression hors allowlist. Le POST draft reste 201 (le checker métier s'exécute à
+l'activation, pas à la création). Le checker valide la même allowlist **sans** exécuter le
+template (les variables métier absentes à l'activation ne font pas échouer la syntaxe).

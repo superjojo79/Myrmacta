@@ -637,7 +637,7 @@ tranchés. Ne pas les implémenter en choisissant une option silencieusement.
 [PR #76](https://github.com/superjojo79/FlowForge/pull/76)) — évaluateur allowlist
 (`#vars` / `#dates` / `#numbers` / `#strings` / `#lists` + chemins modèle), pas
 l'option A « sans SpEL » au sens moteur nu. `T()` / `#beans` / `new` / `getClass`
-→ 400 generate/preview **et** enregistrement.
+→ 400 generate/preview **et** activation (le POST draft reste 201).
 
 **Énoncé :** `ThymeleafHtmlTemplateProcessor` utilise `SpringTemplateEngine`
 (SpringEL). Un `TENANT_ADMIN` peut faire exécuter `${T(java.lang.Runtime)…}`

@@ -8,6 +8,7 @@ updated: 2026-08-25
 feature: durcissement-securite-post-revue
 phase4: 2026-08-25
 phase5: 2026-08-25
+phase7: 2026-08-25
 requirements_ref: docs/ai/requirements/2026-08-25-feature-durcissement-securite-post-revue.md
 design_ref: docs/ai/design/2026-08-25-feature-durcissement-securite-post-revue.md
 testing_ref: docs/ai/testing/2026-08-25-feature-durcissement-securite-post-revue.md
@@ -173,8 +174,10 @@ Pas d'estimation calendaire. Une passe TDD Phase 5, une tâche à la fois
 | T-VERIFY | T7.1 |
 | T-FE | T7.2 |
 
-Phase 5 **done** (2026-08-25). Preuves M7 : `./mvnw verify` 1173 tests,
-0 échec, Jacoco BRANCH 75,03 % / LINE 93,3 % ; Vitest 199/199 ;
+Phase 5 **done** (2026-08-25). Phase 7 **checked** (2026-08-25) : alignement
+design confirmé, écarts Host-fil-d'air / activation-vs-POST-draft notés,
+pas de relock D-*, pas de retour Phase 5. Preuves M7 : `./mvnw verify`
+1173 tests, 0 échec, Jacoco BRANCH 75,03 % / LINE 93,3 % ; Vitest 199/199 ;
 Playwright 47/47. `ObservabilityActuatorIT` vert (`MANAGEMENT_PORT=0`) ;
-`TenantRoleIsolationIT` SKIPPED sans Docker. Suite lifecycle : Phase 7
-(check implementation) puis 8/9 — **non commencée**.
+`TenantRoleIsolationIT` SKIPPED sans Docker. Preuve Phase 7 : 130 tests
+ciblés, 0 échec. Suite lifecycle : Phase 8 (`dev-testing`) — **non commencée**.

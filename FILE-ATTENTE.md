@@ -7,15 +7,18 @@
 > - Points ouverts à trancher : [TODO.md](TODO.md)
 > - Inventaire follow-ups / lots : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md)
 > - Séquencement « avant prod » : [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md) §9
+>   (rétention / purge / sensible — **livré**) ; revue post-implémentation 2026-08-25 :
+>   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
-> **Dernière mise à jour :** 2026-08-25 (`edition-bpmn`, TODO §39 clos,
-> [PR #71](https://github.com/superjojo79/FlowForge/pull/71) **mergée sur
-> `main`**. `masquage-donnees-sensibles-logs-webhooks` — TODO §23 clos —
-> mergée sur `main` entre-temps via PR #70. Même jour, hors cycle
-> `dev-lifecycle` formel : DEV-PURGE (rétention outbox + TTL idempotency)
-> et recovery `purge_outbox` `PROCESSING` clos, `CHECK` SQL
-> `dossier_type_acl.permission`, chore `com.monapp`, gestion d'erreur
-> réseau `useBpmnDraft.load()` — voir « Hors file produit » ci-dessous.
+> **Dernière mise à jour :** 2026-08-25 — `edition-bpmn` TODO §39 clos,
+> [PR #71](https://github.com/superjojo79/FlowForge/pull/71) **mergée** ;
+> `masquage-donnees-sensibles-logs-webhooks` PR #70 mergée. Hors cycle
+> `dev-lifecycle` (PR #72) : DEV-PURGE, recovery `purge_outbox`
+> `PROCESSING`, `CHECK` SQL `dossier_type_acl.permission`, chore
+> `com.monapp` dans `01-architecture-hexagonale.md`, gestion d'erreur
+> `useBpmnDraft.load()` — voir « Hors file produit ». Revue alignement ×
+> sécurité actée (TODO §40–46,
+> [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md)).
 > `./mvnw verify` 1136 tests (0 échec) ; frontend 199 Vitest + 47
 > Playwright, tous verts.
 
@@ -61,29 +64,26 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 
 ## File d’attente
 
-Plus de lot produit V1 nommé après `observabilite` : les points TODO hygiène
-restants (§23 reste, §24 reste, §25, §26 reste, §28, §30 reste, §35, §37)
-ont été regroupés en 5 features candidates (regroupement validé 2026-08-20).
-§31 (« découpage en lots ») est clos ci-dessous plutôt que transformé en
-feature — le process `dev-lifecycle` + ce fichier + `DEFERRED-FEATURES.md`
-le remplit déjà en pratique à chaque lot livré. `durcissement-donnees-sensibles`
-(PR #62), `contrat-api-client` (PR #65), `fiabilisation-tests-plateforme`
-(PR #66), `deploiement-bpmn` (PR #67) et `modele-physique-consolide`
-(PR #68) livrées — les 5 features candidates du regroupement 2026-08-20
-sont maintenant toutes livrées.
+Plus de lot produit V1 **nommé** : les 5 features du regroupement
+2026-08-20, puis `masquage-donnees-sensibles-logs-webhooks` (PR #70) et
+`edition-bpmn` (PR #71) sont mergées. Pas de lot produit V1 nommé suivant
+**tant que** les points de sécurité 40–44 n'ont pas d'arbitrage (critère 2 :
+ne pas trancher silencieusement). Reliquat ops hors file : provisioning
+(TODO §31).
 
-Après les 5 features du regroupement 2026-08-20, `masquage-donnees-sensibles-logs-webhooks`
-(TODO §23 reste) a été identifiée, implémentée et mergée sur `main`
-(PR #70 — voir « Récemment livré » ci-dessus). `edition-bpmn` (TODO §39)
-a ensuite été implémentée, vérifiée et mergée sur `main` via
-[PR #71](https://github.com/superjojo79/FlowForge/pull/71) (2026-08-25,
-voir « Récemment livré » ci-dessus). **File vide** de tout lot produit
-V1 nommé. Seul reliquat non-feature substantiel : outillage
-provisioning (TODO §31, hors file produit — voir section dédiée
-ci-dessous). Prochaine feature à identifier lors d'une prochaine
-analyse (nouveaux points TODO, nouveau besoin utilisateur, ou lot
-`DEFERRED-FEATURES.md`).
+| Priorité | Item | Notes |
+|---|---|---|
+| **Prochain (chore, pas de décision produit)** | TODO §45 — dérive documentaire | README / `analysis doc/` vs code (hors `com.monapp` dans `01`, clos PR #72). Ne pas élargir le V1 (DMN, connecteurs SERVICE). |
+| **À trancher avant implémentation sécu** | TODO §40 (SSTI Thymeleaf), §41 (GRANT PG) | Chaîne High→Critical SaaS — [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) §5 |
+| **Provisioning / ops** | TODO §42 (actuator), §43 (secrets/HMAC), point 31 | Avec le runbook tenant |
+| **Defense in depth** | TODO §44 (SSRF TOCTOU), §46 (ArchUnit `application`) | Non bloquant immédiat |
 
+Détail et options : [TODO.md](TODO.md) §40–46,
+[REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md).
+
+## En revue
+
+*Aucune feature en revue.* PR #71 (`edition-bpmn`) mergée sur `main`.
 **Hors V1 (reporté, pas dans cette file) :** Rapports / SLA (maquette UI de
 référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même
 (V1 = TRIGGER uniquement — le hardening SSRF est pré-positionné depuis
@@ -95,7 +95,7 @@ référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même
 - Smoke Keycloak réel (environnement manuel — distinct du smoke PostgreSQL/Testcontainers
   automatisé désormais dans `fiabilisation-tests-plateforme`, §26/§28)
 
-**Clos (2026-08-25, hors cycle `dev-lifecycle` formel — corrections/hygiène ponctuelles) :**
+**Clos (2026-08-25, hors cycle `dev-lifecycle` formel — corrections/hygiène ponctuelles, PR #72) :**
 
 - DEV-PURGE (`workflow-engine`) : `OutboxRepository.purgeProcessedOlderThanDays` et
   `IdempotencyStore.purgeExpired` existaient mais n'étaient appelés par aucun job —
@@ -198,3 +198,5 @@ Vérifié : `./mvnw verify` 1136 tests (0 échec), Jacoco OK ; frontend `npm run
 | 2026-08-24 | `masquage-donnees-sensibles-logs-webhooks` Phase 3 reviewed | 2 décisions techniques actées via `AskUserQuestion` : D-LOG-GUARD=toString() sûr + règle ArchUnit, D-WEBHOOK-MASK=contexte dossier optionnel + lookup `FieldDefinition` dans `SendNotificationUseCaseImpl` |
 | 2026-08-24 | `masquage-donnees-sensibles-logs-webhooks` T1.3 corrigée en implémentation | La règle ArchUnit envisagée (détection de logging) s'est avérée irréalisable (ArchUnit ne fait pas d'analyse de flux de valeurs — signature bytecode identique quel que soit le type réel de l'argument d'un `Logger.info(String, Object)`) ; vérifié avant de coder, pas supposé. Remplacée par une liste blanche des classes autorisées à lire `Dossier.fields()`/`FieldDefinition.defaultValue()`, déterminée en faisant tourner la règle contre le code réel (pas devinée par `grep`, qui remontait des faux positifs `command.fields()`/`request.fields()`) ; décision validée via `AskUserQuestion` |
 | 2026-08-24 | `masquage-donnees-sensibles-logs-webhooks` implémentée (Phases 1-9) | 10 tâches TDD sur 3 milestones (M1 garde-fou logs, M2 masquage webhook, M3 vérification+clôture). `SendNotificationUseCaseImpl` masque automatiquement les valeurs sensibles avant toute écriture outbox, pour tous les canaux, sans dépendre d'un futur producteur. Preuve bout en bout réelle (`SendNotificationUseCaseImpl` → `NotificationOutboxRelay` → `WebhookRestAdapter`, corps HTTP capturé) + 2 contrôles mutants manuels (masquage désactivé temporairement, tests confirmés en échec, code restauré) prouvant que les tests détectent vraiment une régression. `./mvnw verify` final : 1088 tests (0 échec), Jacoco tenu. Zéro fichier frontend touché. TODO §23 clos avec note honnête (pas de fuite active, protection préventive), en attente de PR |
+| 2026-08-25 | Revue alignement × sécurité | [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) ; TODO §40–46 ouverts (SSTI, GRANT PG, actuator, secrets, SSRF TOCTOU, dérive docs, ArchUnit `application`). `edition-bpmn` PR #71 mergée ; follow-ups ops PR #72 (DEV-PURGE, recovery PROCESSING, `com.monapp` dans `01`). Prochain sans décision : chore §45. |
+

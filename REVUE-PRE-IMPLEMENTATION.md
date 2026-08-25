@@ -7,6 +7,10 @@
 > raison pour laquelle le point bloque, options envisageables et documents impactés.
 > [TODO.md](TODO.md) porte l'**énoncé et le suivi** de ces mêmes points. Les deux se lisent ensemble :
 > le TODO dit *quoi trancher*, la revue dit *pourquoi* et *avec quelles options*.
+>
+> **Suite (2026-08-25) :** revue post-implémentation alignement × sécurité — points **40–46**
+> dans [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md). Ne pas fusionner les deux
+> revues : celle-ci est figée sur l'état documentaire au commit `1d3d9eb`.
 
 ---
 

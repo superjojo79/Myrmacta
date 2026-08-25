@@ -3,6 +3,11 @@
 > Projet : activité indépendante complémentaire  
 > Stack de base : Java 25 LTS · Spring Boot 4.1.x · PostgreSQL · Vue 3  
 > Build : mono-module Maven · frontend embarqué (`static/`) — décision n° 27
+>
+> **Revues :** pré-implémentation (docs, points 1–39) —
+> [REVUE-PRE-IMPLEMENTATION.md](../REVUE-PRE-IMPLEMENTATION.md) ;
+> post-implémentation alignement × sécurité (2026-08-25, points 40–46) —
+> [REVUE-ALIGNEMENT-SECURITE.md](../REVUE-ALIGNEMENT-SECURITE.md).
 
 ---
 

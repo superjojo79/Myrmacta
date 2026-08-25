@@ -102,6 +102,7 @@ npx ai-devkit@latest skill list              # skills installés
 |--------|---------|
 | Vision / stack | `README.md` |
 | Décisions & points ouverts | `TODO.md` |
+| Revues (pré-code / post-implémentation) | `REVUE-PRE-IMPLEMENTATION.md`, `REVUE-ALIGNEMENT-SECURITE.md` |
 | Prochaine feature (file d’attente) | `FILE-ATTENTE.md` |
 | Backlog différé | `DEFERRED-FEATURES.md` |
 | Architecture détaillée | `analysis doc/*.md` |

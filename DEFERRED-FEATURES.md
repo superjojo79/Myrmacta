@@ -18,16 +18,16 @@
 `openapi-pagination-admin`, `observabilite`, `durcissement-donnees-sensibles`,
 `contrat-api-client`, `fiabilisation-tests-plateforme`, `deploiement-bpmn`,
 `modele-physique-consolide`, `masquage-donnees-sensibles-logs-webhooks`
-(implémentée, en attente de PR) sont **Complete** (mergées sur `main` sauf
+(PR #70), `edition-bpmn` (PR #71) sont **Complete** (mergées sur `main` sauf
 mention contraire — `frontend` via
 PR #38 `cursor/feature-frontend-21f2`, vague 1 instructeur + vague 2 admin
 types/templates/connectors/workflow-configs ; packaging Maven→`static/` ;
 maquette
 [FlowForge - Maquettes UI.html](analysis%20doc/FlowForge%20-%20Maquettes%20UI.html)
 = référence UX). Détail des 5 dernières (regroupement 2026-08-20) en §2.
-**File d'attente vide** (`FILE-ATTENTE.md`) au 2026-08-22 — prochaine feature à
-identifier lors d'une prochaine analyse ; seul reliquat non-feature substantiel :
-outillage provisioning ops (TODO §31, voir §3/§4).
+**File d'attente (2026-08-25) :** chore docs TODO §45 ; sécurité §40–44 à
+trancher — [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md).
+Reliquat ops : provisioning (TODO §31).
 
 ---
 
@@ -157,14 +157,16 @@ Ordre indicatif aligné sur l’analyse et les dépendances techniques :
 | — | `fiabilisation-tests-plateforme` | **Complete** (PR #66) — Testcontainers PostgreSQL, `SequentialReferenceMultiPodIT`, `TenantSchemaIsolationIT`, `LiquibasePartialFailureIT`, seuils Jacoco relevés. TODO §26/§28/§37 clos. |
 | — | `deploiement-bpmn` | **Complete** (PR #67) — écran admin d'upload BPMN avec prévisualisation (`BpmnUploadPreview.vue`), `DeployBpmnProcessUseCase`, `FlowableWorkflowDeploymentAdapter`. TODO §35 clos. |
 | — | `modele-physique-consolide` | **Complete** (PR #68) — ERD consolidé [13-modele-physique.md](analysis%20doc/13-modele-physique.md) (17 tables, 4 index uniques partiels, 2 FK DB) ; correction de la prémisse obsolète `TenantRegistry`/contextes Liquibase séparés. TODO §25 clos. |
-| — | `masquage-donnees-sensibles-logs-webhooks` | **Complete**, en attente de PR (2026-08-24) — audit préalable : aucune fuite active trouvée (logs/webhooks), protection préventive ajoutée : `toString()` sûr sur `Dossier`/`FieldDefinition` + liste blanche ArchUnit ; `SendNotificationUseCaseImpl` masque automatiquement les champs sensibles avant écriture outbox. TODO §23 clos. |
+| — | `masquage-donnees-sensibles-logs-webhooks` | **Complete** (PR #70) — audit préalable : aucune fuite active trouvée (logs/webhooks), protection préventive ajoutée : `toString()` sûr sur `Dossier`/`FieldDefinition` + liste blanche ArchUnit ; `SendNotificationUseCaseImpl` masque automatiquement les champs sensibles avant écriture outbox. TODO §23 clos. |
+| — | `edition-bpmn` | **Complete** (PR #71) — éditeur `bpmn-js` Modeler + panel Flowable custom ; brouillon persisté ; TODO §39 clos. |
 
 ---
 
 ## 3. Points TODO encore ouverts (mapping)
 
-Voir le détail et les options dans [TODO.md](TODO.md) et
-[REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md).
+Voir le détail et les options dans [TODO.md](TODO.md),
+[REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md) (points 1–39) et
+[REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (points 40–46).
 
 | Point | Titre | État après tranches livrées |
 |---|---|---|
@@ -178,7 +180,14 @@ Voir le détail et les options dans [TODO.md](TODO.md) et
 | 28 | Stratégie de test | **Clos** (2026-08-22, `fiabilisation-tests-plateforme` PR #66) — Testcontainers PostgreSQL ajoutés (`TenantSchemaIsolationIT`, `LiquibasePartialFailureIT`, `SequentialReferenceMultiPodIT`), seuils Jacoco relevés ; FE = Vitest + Playwright, câblés en CI (job `frontend`, `.github/workflows/ci.yml`) |
 | 29 | Observabilité | **Livré** (2026-08-20) — `observabilite` PR #59 Phase 9 READY ; Q1–Q6 |
 | 30 | Durcissement entrées exposées | **Clos** (2026-08-21, `durcissement-donnees-sensibles` PR #62) — en plus du rate limit/taille max/SSRF déjà livrés, validation magic-bytes des pièces jointes + port `AttachmentScanPort` pluggable (adaptateur no-op, pas d'antivirus dans la stack figée — décision explicite, contrat prêt pour un futur adaptateur type ClamAV) + audit anti-fuite de secrets déchiffrés |
-| 31 | Découpage en lots / provisioning | **Partiel** — lots lifecycle démarrés (5 features du regroupement 2026-08-20 toutes livrées) ; outillage provisioning ops (schéma/instance/proxy/secrets) encore à produire — seul point du §3 encore réellement ouvert |
+| 31 | Découpage en lots / provisioning | **Partiel** — lots lifecycle démarrés (5 features du regroupement 2026-08-20 toutes livrées) ; outillage provisioning ops (schéma/instance/proxy/secrets) encore à produire |
+| 40 | SSTI Thymeleaf / SpEL | **Ouvert** (2026-08-25) — [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) S-1 ; à trancher A/B/C |
+| 41 | Isolation PG sans GRANT par tenant | **Ouvert** (2026-08-25) — S-2 ; chaîne avec §40 |
+| 42 | Actuator `permitAll` / port 8081 | **Ouvert** (2026-08-25) — S-3 ; DD-MGMT-SEC à durcir ops |
+| 43 | Secrets défaut + HMAC M2M | **Ouvert** (2026-08-25) — S-4 |
+| 44 | SSRF sortant DNS TOCTOU | **Ouvert** (2026-08-25) — S-5 |
+| 45 | Dérive documentaire README / analyse | **Ouvert** (2026-08-25) — chore, pas de décision produit |
+| 46 | ArchUnit couche `application` | **Ouvert** (2026-08-25) — hygiène hexagone |
 
 ---
 
@@ -188,8 +197,11 @@ Voir le détail et les options dans [TODO.md](TODO.md) et
 - Surcharge prod de `app.tenant.id` (ne jamais laisser `tenant_dev`)
 - Smoke manuel : Keycloak réel, PostgreSQL réel
 - Observabilité : **livré** — MDC + Micrometer + UI admin (TODO §29, PR #59)
-- Chore docs : `com.monapp` résiduel dans `analysis doc/` — **clos** (2026-08-25)
+- Chore docs : `com.monapp` dans `analysis doc/01` — **clos** (2026-08-25, PR #72) ;
+  reste la dérive README / `analysis doc/` (TODO §45)
 - Build FE : `npm run build` → copie vers `src/main/resources/static/` (Maven plugin ou CI)
+- Reliquats sécu V1 assumés (pas rouverts) : AV no-op, rate-limit JVM, headers HTTP —
+  [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) §4 Low
 
 ---
 
@@ -199,6 +211,7 @@ Voir le détail et les options dans [TODO.md](TODO.md) et
 |---|---|
 | [FILE-ATTENTE.md](FILE-ATTENTE.md) | Prochaine feature + critères de sélection |
 | [TODO.md](TODO.md) | Points ouverts + décisions actées |
+| [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) | Revue 2026-08-25 alignement × sécurité (points 40–46) |
 | `docs/ai/**/2026-*-feature-*.md` | Non-goals, Différé, Follow-ups lifecycle |
 | [11-frontend.md](analysis%20doc/11-frontend.md) | Stack FE + packaging + maquette |
 | [FlowForge - Maquettes UI.html](analysis%20doc/FlowForge%20-%20Maquettes%20UI.html) | Référence UX / écrans |

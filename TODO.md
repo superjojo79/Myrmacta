@@ -2,10 +2,12 @@
 
 > Registre de suivi du projet. Il comporte deux parties :
 >
-> - **[Points ouverts](#points-ouverts)** — issus de la revue pré-implémentation de la documentation
->   d'architecture. Ils ne sont **pas** tranchés. Le contexte détaillé de chacun (constat, extraits
->   concernés, options envisageables, documents impactés) est dans
->   [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md), sous le même numéro de point.
+> - **[Points ouverts](#points-ouverts)** — ils ne sont **pas** tranchés. Le contexte détaillé
+>   (constat, extraits concernés, options envisageables, documents impactés) est dans :
+>   - [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md) pour les points **1–39**
+>     (revue de la documentation d'architecture avant le premier code) ;
+>   - [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) pour les points **40–46**
+>     (revue post-implémentation 2026-08-25 : alignement spec → AI-devkit → code, et sécurité).
 > - **[Décisions actées](#décisions-actées)** — décisions prises lors de la revue de conception
 >   initiale, déjà répercutées dans `analysis doc/`. Elles font office de journal ; ne les rouvrir
 >   qu'avec une raison explicite.
@@ -620,6 +622,156 @@ Phase 9 (revue finale) close, PR ouverte sur demande explicite de l'utilisateur 
 **Impacte :** `frontend/src/components/workflow/BpmnCanvas.vue`, `BpmnUploadPreview.vue`,
 `WorkflowBpmnDeploymentController` (endpoint de déploiement potentiellement réutilisable tel
 quel), [05-workflow-engine.md](analysis%20doc/05-workflow-engine.md), `README.md`.
+
+---
+
+## Alignement post-implémentation et sécurité (2026-08-25)
+
+Points identifiés par
+[REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md). Ils ne sont **pas**
+tranchés. Ne pas les implémenter en choisissant une option silencieusement.
+
+### [ ] 40. SSTI Thymeleaf / SpEL dans les templates stockés
+
+**Énoncé :** `ThymeleafHtmlTemplateProcessor` utilise `SpringTemplateEngine`
+(SpringEL). Un `TENANT_ADMIN` peut faire exécuter `${T(java.lang.Runtime)…}`
+sur la JVM via generate / live preview. L'iframe SPA `sandbox=""` ne couvre
+que le XSS navigateur. Le sandboxing Thymeleaf avancé a été reporté dès
+`templates-documents`.
+
+**Options :** (A) `StandardTemplateEngine` sans SpEL — recommandée ;
+(B) allowlist SpEL ; (C) assumer `TENANT_ADMIN` = opérateur de confiance
+(incompatible SaaS si le point 41 reste ouvert).
+
+**À produire :** décision A/B/C puis tests d'exploit qui doivent échouer
+(`${T(java.lang.Runtime)}` → 400 / non évalué).
+
+**Impacte :** `ThymeleafHtmlTemplateProcessor`,
+[08-templates-documents.md](analysis%20doc/08-templates-documents.md).
+
+**Détail :** [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) §4 S-1.
+
+---
+
+### [ ] 41. Isolation PostgreSQL par schéma sans GRANT par tenant
+
+**Énoncé :** `search_path` n'est pas une barrière. Un seul rôle PG (Compose :
+superuser de la base `flowforge`) peut lire les autres schémas du cluster
+partagé. Combiné au point 40 : RCE sur une instance → données des autres
+tenants.
+
+**Options :** (A) un rôle PG par tenant au provisioning — recommandée ;
+(B) une database par tenant ; (C) assumer la confiance réseau d'instances.
+
+**À produire :** décision + runbook provisioning (point 31) + IT « user A ne
+`SELECT` pas `tenant_b` ».
+
+**Impacte :** [02-multi-tenant.md](analysis%20doc/02-multi-tenant.md),
+`docker/postgres/init/`, point 31.
+
+**Détail :** [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) §4 S-2.
+
+---
+
+### [ ] 42. Actuator `permitAll` et conflit de port 8081
+
+**Énoncé :** chaîne Security Order 0 `permitAll` sur le port management
+(`health` + `prometheus`), décision assumée `observabilite` DD-MGMT-SEC.
+Aucun `management.server.address`. En local, Keycloak occupe déjà l'hôte
+**8081**.
+
+**Options :** bind localhost / réseau scrape ; mTLS ; ne pas publier 8081 ;
+départager `MANAGEMENT_PORT` et `KEYCLOAK_PORT`.
+
+**À produire :** durcissement ops documenté (GETTING-STARTED + runbook) et/ou
+changement de défaut yaml.
+
+**Impacte :** `SecurityConfig`, `application.yml`,
+`docs/ai/design/2026-08-20-feature-observabilite.md`, `GETTING-STARTED.md`.
+
+**Détail :** [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) §4 S-3.
+
+---
+
+### [ ] 43. Secrets par défaut et HMAC M2M hors profil local
+
+**Énoncé :** fallback `${DB_PASSWORD:flowforge}` ; Compose Postgres / Keycloak /
+MinIO avec mots de passe connus ; `M2M_JWT_SECRET` HMAC HS256 optionnel accepte
+des JWT `API_SERVICE` sur `/api/m2m/**`.
+
+**Options :** fail-fast hors `local`/`test` si secrets / issuer absents ;
+refuser HMAC hors ces profils ; secrets Compose obligatoires.
+
+**À produire :** décision profil / fail-fast + tests de démarrage.
+
+**Impacte :** `application.yml`, `docker-compose.yml`, `SecurityConfig`.
+
+**Détail :** [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) §4 S-4.
+
+---
+
+### [ ] 44. SSRF webhook sortant — DNS TOCTOU
+
+**Énoncé :** `OutboundUrlGuard` bloque privé/metadata après résolution DNS,
+mais le client HTTP n'est pas pinté sur l'IP vérifiée (javadoc explicite).
+
+**Options :** pin IP sur le `HttpClient` ; proxy egress allowlist.
+
+**À produire :** décision + tests de rebinding.
+
+**Impacte :** `OutboundUrlGuard`, `WebhookRestAdapter`,
+[09-notifications.md](analysis%20doc/09-notifications.md).
+
+**Détail :** [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) §4 S-5.
+
+---
+
+### [ ] 45. Dérive documentaire analyse / README / code
+
+**Énoncé :** le code suit les décisions 13–15, 17, 27 ; plusieurs docs
+décrivent encore l'ancien modèle ou un périmètre non livré.
+
+À corriger (liste exhaustive dans la revue §3.3) :
+
+- `README.md` : tenant « résolu depuis le token OIDC à chaque requête » ;
+  DMN / Kafka / catalogue connecteurs / MinIO en dur vs V1 réelle
+- `analysis doc/01` : `com.monapp` — **clos** 2026-08-25 (PR #72, 3
+  occurrences → `com.flowforge`) ; ne plus replanifier
+- `analysis doc/12` : « cockpit Flowable » pour `WORKFLOW_ADMIN`
+- jsoup `1.22.x` vs `pom.xml` `1.23.1`
+- `application.yml` L1–3 : commentaire autoconfig périmé
+- `context-path` : rester commenté mais le README ne doit pas le présenter
+  comme actif
+
+`FILE-ATTENTE.md` / `DEFERRED-FEATURES.md` (édition-bpmn / masquage encore
+« en revue » / « en attente de PR ») sont resynchronisés avec cette revue.
+
+**À produire :** chore docs, sans arbitrage produit (le code est la source
+de vérité). Ne pas élargir silencieusement le V1 (DMN, connecteurs SERVICE).
+
+**Impacte :** `README.md`, `analysis doc/06` `12`, `application.yml`.
+
+**Détail :** [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) §3.3.
+
+---
+
+### [ ] 46. Couche `application` non gardée par ArchUnit
+
+**Énoncé :** `ManualStartOrchestrator` (`com.flowforge.application`) importe
+`infrastructure.workflow.WorkflowStartConfirmer`. ArchUnit ne contraint que
+`domain` (pas `application`). Contraint aux conventions
+(`infrastructure → domain`, jamais l'inverse) au sens strict.
+
+**Options :** (A) extraire `WorkflowStartConfirmer` derrière un port domaine ;
+(B) règle ArchUnit `application` ↛ `infrastructure` + déplacer l'orchestrateur
+en infra ; (C) documenter l'exception (orchestration légère assumée).
+
+**À produire :** décision A/B/C. Pas bloquant prod.
+
+**Impacte :** `ManualStartOrchestrator`, `ArchitectureRulesTest`,
+[01-architecture-hexagonale.md](analysis%20doc/01-architecture-hexagonale.md).
+
+**Détail :** [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) §3.3 / §7.
 
 ---
 

@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import org.thymeleaf.context.IExpressionContext;
+import org.thymeleaf.context.IContext;
 import org.thymeleaf.exceptions.TemplateProcessingException;
 import org.thymeleaf.expression.Dates;
 import org.thymeleaf.expression.Lists;
@@ -34,7 +34,7 @@ final class SafeThymeleafExpressionSupport {
         new Parser(raw, null).parseTop();
     }
 
-    static Object evaluate(IExpressionContext context, String raw) {
+    static Object evaluate(IContext context, String raw) {
         return new Parser(raw, context).parseTop();
     }
 
@@ -113,10 +113,10 @@ final class SafeThymeleafExpressionSupport {
 
     private static final class Parser {
         private final String source;
-        private final IExpressionContext context;
+        private final IContext context;
         private int index;
 
-        private Parser(String raw, IExpressionContext context) {
+        private Parser(String raw, IContext context) {
             this.source = raw == null ? "" : raw.trim();
             this.context = context;
             this.index = 0;

@@ -199,6 +199,13 @@ class OutboundUrlGuardTest {
     }
 
     @Test
+    void resolveSafe_ipv6Literal_wrapsHostInRequestUrl() {
+        OutboundUrlGuard.PinnedEndpoint pinned = strict.resolveSafe("https://[2001:4860:4860::8888]/hook");
+        assertThat(pinned.requestUrl()).isEqualTo("https://[2001:4860:4860:0:0:0:0:8888]/hook");
+        assertThat(pinned.originalHost()).isEqualTo("[2001:4860:4860::8888]");
+    }
+
+    @Test
     void resolveSafe_pinsValidatedDnsAddressWithoutSecondLookup() {
         AtomicInteger lookups = new AtomicInteger();
         OutboundUrlGuard.HostResolver counting = host -> {

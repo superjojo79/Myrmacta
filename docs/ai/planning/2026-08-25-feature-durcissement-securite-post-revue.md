@@ -7,6 +7,7 @@ created: 2026-08-25
 updated: 2026-08-25
 feature: durcissement-securite-post-revue
 phase4: 2026-08-25
+phase5: 2026-08-25
 requirements_ref: docs/ai/requirements/2026-08-25-feature-durcissement-securite-post-revue.md
 design_ref: docs/ai/design/2026-08-25-feature-durcissement-securite-post-revue.md
 testing_ref: docs/ai/testing/2026-08-25-feature-durcissement-securite-post-revue.md
@@ -16,19 +17,18 @@ testing_ref: docs/ai/testing/2026-08-25-feature-durcissement-securite-post-revue
 
 ## Phase 4: Create Initial Plan
 
-Plan **reviewed** 2026-08-25. Phase 5 : M1–M6 implémentés (TDD). M7 preuve
-`./mvnw verify` + FE en cours.
+Plan **reviewed** 2026-08-25. Phase 5 **done** : M1–M7 (TDD + preuves).
 
 ## Milestones
 **What are the major checkpoints?**
 
 - [x] **M1** SSTI B2 + fail 400 (DD-THYME-B2 = E, DD-SSTI-FAIL = C)
 - [x] **M2** Pin IP outbound (D-44 = P, A-PIN-CALLERS)
-- [ ] **M3** Actuator localhost:8090 (D-42 = L)
+- [x] **M3** Actuator localhost:8090 (D-42 = L)
 - [x] **M4** Secrets fail-fast + denylist L + HMAC (D-43 = F)
 - [x] **M5** Rôle PG LOGIN + IT + Compose (D-41 = A/S)
 - [x] **M6** Docs T-DOCS + clôture TODO §40–44
-- [ ] **M7** Preuve `./mvnw verify` + régression FE
+- [x] **M7** Preuve `./mvnw verify` + régression FE
 
 ## Task Breakdown
 **What specific work needs to be done?**
@@ -72,7 +72,7 @@ TDD : test rouge → code → vert. Validation = scénario testing doc.
 - [x] **T3.1** `management.server.address` `${MANAGEMENT_ADDRESS:127.0.0.1}`,
       port `${MANAGEMENT_PORT:8090}` ; `permitAll` inchangé.
       **Deps :** aucune. **Scénarios :** T-MGMT.
-- [ ] **T3.2** `ObservabilityActuatorIT` vert (`MANAGEMENT_PORT=0`).
+- [x] **T3.2** `ObservabilityActuatorIT` vert (`MANAGEMENT_PORT=0`).
       **Deps :** T3.1. **Scénarios :** T-MGMT.
 
 ### M4 — Secrets
@@ -111,9 +111,9 @@ TDD : test rouge → code → vert. Validation = scénario testing doc.
 
 ### M7 — Preuve
 
-- [ ] **T7.1** `./mvnw verify` (Jacoco bundle tenu). **Deps :** M1–M5.
+- [x] **T7.1** `./mvnw verify` (Jacoco bundle tenu). **Deps :** M1–M5.
       **Scénarios :** T-VERIFY.
-- [ ] **T7.2** `cd frontend && npm run test` + Playwright (A-NO-SPA,
+- [x] **T7.2** `cd frontend && npm run test` + Playwright (A-NO-SPA,
       régression). **Deps :** aucune (SPA non touchée). **Scénarios :**
       T-FE.
 
@@ -173,4 +173,8 @@ Pas d'estimation calendaire. Une passe TDD Phase 5, une tâche à la fois
 | T-VERIFY | T7.1 |
 | T-FE | T7.2 |
 
-Prochaine étape **en cours** : Phase 5 M7 `./mvnw verify` + Vitest/Playwright.
+Phase 5 **done** (2026-08-25). Preuves M7 : `./mvnw verify` 1173 tests,
+0 échec, Jacoco BRANCH 75,03 % / LINE 93,3 % ; Vitest 199/199 ;
+Playwright 47/47. `ObservabilityActuatorIT` vert (`MANAGEMENT_PORT=0`) ;
+`TenantRoleIsolationIT` SKIPPED sans Docker. Suite lifecycle : Phase 7
+(check implementation) puis 8/9 — **non commencée**.

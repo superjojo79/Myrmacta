@@ -11,7 +11,9 @@
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
 > **Dernière mise à jour :** 2026-08-25 — cycle `durcissement-securite-post-revue`
-> **Phase 5** (implémentation M1–M7) sur [PR #76](https://github.com/superjojo79/FlowForge/pull/76).
+> **Phase 5 done** (M1–M7) sur [PR #76](https://github.com/superjojo79/FlowForge/pull/76).
+> Preuves : `./mvnw verify` 1173 tests (0 échec), Jacoco BRANCH 75,03 % ;
+> Vitest 199 + Playwright 47. Suite : Phase 7–9 **non commencée**.
 > `derive-documentaire` TODO §45 clos, [PR #75](https://github.com/superjojo79/FlowForge/pull/75) ;
 > `edition-bpmn` TODO §39 clos, [PR #71](https://github.com/superjojo79/FlowForge/pull/71) **mergée**.
 > `masquage-donnees-sensibles-logs-webhooks` PR #70 mergée. Hors cycle
@@ -70,7 +72,7 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 
 Plus de lot produit V1 **nommé** hors sécurité : `derive-documentaire`
 (PR #75) est mergée. Le cycle **`durcissement-securite-post-revue`**
-(TODO §40–44) : D-* tranchés, Phases 2–4 **reviewed**, Phase 5 **en cours**
+(TODO §40–44) : D-* tranchés, Phases 2–4 **reviewed**, Phase 5 **done**
 (M1–M7). Reliquat ops hors file : provisioning tenant
 (CLI / orchestrateur — hors cette feature). §46 hors périmètre.
 
@@ -79,7 +81,7 @@ cette feature. D-* clos en Phase 1/2.
 
 | Priorité | Item | Notes |
 |---|---|---|
-| **En cours — Phase 5** | `durcissement-securite-post-revue` (TODO §40–44) | Implémentation TDD M1–M7. [PR #76](https://github.com/superjojo79/FlowForge/pull/76). |
+| **En cours — Phase 5 done** | `durcissement-securite-post-revue` (TODO §40–44) | M1–M7 TDD + preuves. [PR #76](https://github.com/superjojo79/FlowForge/pull/76). Suite Phase 7–9. |
 | **Hors périmètre de la feature sécurité** | TODO §46 (ArchUnit `application`) | Architecture, pas sécurité au sens de la revue — point séparé, non bloquant. |
 
 Détail et options : [TODO.md](TODO.md) §40–46,
@@ -87,8 +89,8 @@ Détail et options : [TODO.md](TODO.md) §40–46,
 
 ## En revue
 
-*Cycle Phase 5* — [PR #76](https://github.com/superjojo79/FlowForge/pull/76)
-(`durcissement-securite-post-revue`).
+*Cycle Phase 5 **done*** — [PR #76](https://github.com/superjojo79/FlowForge/pull/76)
+(`durcissement-securite-post-revue`). Phase 7–9 non commencée.
 PR #75 (`derive-documentaire`) **mergée**.
 **Hors V1 (reporté, pas dans cette file) :** Rapports / SLA (maquette UI de
 référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même
@@ -207,4 +209,5 @@ Vérifié : `./mvnw verify` 1136 tests (0 échec), Jacoco OK ; frontend `npm run
 | 2026-08-25 | Revue alignement × sécurité | [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) ; TODO §40–46 ouverts (SSTI, GRANT PG, actuator, secrets, SSRF TOCTOU, dérive docs, ArchUnit `application`). `edition-bpmn` PR #71 mergée ; follow-ups ops PR #72 (DEV-PURGE, recovery PROCESSING, `com.monapp` dans `01`). Prochain sans décision : chore §45. |
 | 2026-08-25 | Points sécurité 40–44 regroupés en feature candidate | Demande utilisateur : rassembler les points pertinents de la revue en une feature de durcissement sécurité. Regroupement `durcissement-securite-post-revue` = TODO §40+41 (chaîne SSTI→PG partagé) + §42+43 (config/secrets) + §44 (SSRF TOCTOU), séquencés dans cet ordre. §45 (chore doc, pas d'arbitrage) et §46 (ArchUnit `application`, classé Architecture pas Sécurité par la revue §7) restent hors périmètre. Scoping seul — options A/B/C par point toujours à trancher en `dev-requirements` (`AskUserQuestion`, une décision à la fois), pas de cycle `dev-lifecycle` lancé sur demande explicite de l'utilisateur. |
 | 2026-08-25 | `durcissement-securite-post-revue` cycle démarré | Demande utilisateur : démarrer le lifecycle. Phases 1–2 : D-* = recommandations revue (pas d'AskUserQuestion en agent cloud). §46 hors scope. |
+| 2026-08-25 | `durcissement-securite-post-revue` Phase 5 done | M1–M7 TDD. `./mvnw verify` 1173 tests (0 échec), Jacoco BRANCH 75,03 % / LINE 93,3 % ; Vitest 199 + Playwright 47. `ObservabilityActuatorIT` vert ; `TenantRoleIsolationIT` SKIPPED sans Docker. SSTI 400 à l'activation (pas au POST draft). [PR #76](https://github.com/superjojo79/FlowForge/pull/76). Phase 7–9 non commencée. |
 

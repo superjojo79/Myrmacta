@@ -38,8 +38,8 @@
 
 | Composant | Librairie | Rôle |
 |---|---|---|
-| Workflow engine | Flowable 8.0.x | BPMN 2.0 + DMN, triggers, tasks |
-| Génération PDF | Flying Saucer 10.4.x + OpenPDF + jsoup 1.22.x | Thymeleaf → HTML → PDF |
+| Workflow engine | Flowable 8.0.x | BPMN 2.0 (DMN auto-config **exclue** en V1), triggers, tasks |
+| Génération PDF | Flying Saucer 10.4.x + OpenPDF + jsoup 1.23.1 | Thymeleaf → HTML → PDF |
 | Sécurité | Spring Security 7 + OAuth2 Client | BFF, session httpOnly |
 | Persistence | Spring Data JPA + PostgreSQL | Données métier + Flowable |
 | Notifications | Spring Mail + Spring Retry | Email, webhook, SSE |
@@ -60,7 +60,7 @@
 | Composant | Technologie |
 |---|---|
 | Base de données | PostgreSQL (schéma par tenant) |
-| Stockage fichiers | MinIO (compatible S3) |
+| Stockage fichiers | Port S3-compatible / filesystem (MinIO possible en local) |
 | Auth server | Keycloak 26.7.x (ou provider OIDC externe) |
 | Build | Maven mono-module (ArchUnit pour la règle domaine) |
 
@@ -85,7 +85,7 @@
 <dependency>
     <groupId>org.jsoup</groupId>
     <artifactId>jsoup</artifactId>
-    <version>1.22.x</version>
+    <version>1.23.1</version>
 </dependency>
 
 <!-- Templates -->

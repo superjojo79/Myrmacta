@@ -32,7 +32,7 @@ L'idée centrale : un dossier métier suit un workflow adapté à son type, déc
 | Modéliser un processus sans coder      | Éditeur BPMN 2.0 visuel intégré (`bpmn-js`, écran admin FlowForge) |
 | Gérer des dossiers structurés          | Entité dossier avec signalétique et champs dynamiques par type |
 | Produire des documents automatiquement | Génération PDF à partir de templates Thymeleaf versionnés    |
-| Intégrer des systèmes existants        | Système de connecteurs extensible (REST, Kafka, scheduler, ERP…) |
+| Intégrer des systèmes existants        | Système de connecteurs extensible (V1 : webhook REST trigger, signal Flowable ; cible : Kafka, scheduler, ERP…) |
 | Adapter à chaque client                | Architecture multi-tenant — schéma de données isolé par organisation |
 | Intégrer les outils noCode             | Webhooks sortants compatibles Make, n8n, Zapier              |
 | Suivre l'avancement en temps réel      | Visualisation BPMN avec coloration des étapes + notifications navigateur |
@@ -47,11 +47,11 @@ Entité métier centrale de la plateforme. Chaque dossier est constitué d'un **
 
 ### Moteur de workflow BPMN 2.0
 
-Orchestration des flux métier via **Flowable** — standard industriel ouvert (pas de cockpit Flowable intégré à FlowForge, `DEFERRED-FEATURES.md` §1.5). Les processus se modélisent directement dans FlowForge (éditeur `bpmn-js` intégré à `/admin/bpmn-editor` — création, import, édition d'un diagramme déjà déployé, brouillon persisté) ou avec un outil externe, puis se déploient soit au build/démarrage (scan classpath), soit à chaud depuis l'écran d'administration `/admin/workflow-types` (upload avec prévisualisation) ou directement depuis l'éditeur. Support des gateways, tâches humaines, règles DMN et événements de signal.
+Orchestration des flux métier via **Flowable** — standard industriel ouvert (pas de cockpit Flowable intégré à FlowForge, `DEFERRED-FEATURES.md` §1.5). Les processus se modélisent directement dans FlowForge (éditeur `bpmn-js` intégré à `/admin/bpmn-editor` — création, import, édition d'un diagramme déjà déployé, brouillon persisté) ou avec un outil externe, puis se déploient soit au build/démarrage (scan classpath), soit à chaud depuis l'écran d'administration `/admin/workflow-types` (upload avec prévisualisation) ou directement depuis l'éditeur. Support des gateways, tâches humaines et événements de signal. Le moteur DMN Flowable n'est **pas activé** en V1 (auto-config exclue).
 
 ### Système de connecteurs
 
-Architecture extensible permettant d'intégrer n'importe quelle source ou destination. Un connecteur peut jouer le rôle de **trigger** (déclenche un workflow sur événement entrant) ou de **service** (exécute un traitement dans le workflow). Des connecteurs de base sont fournis ; des connecteurs custom peuvent être ajoutés au classpath sans modifier le core. Exemples : webhook REST entrant/sortant, import de fichier batch, appel ERP/D365, scheduler cron.
+Architecture extensible permettant d'intégrer n'importe quelle source ou destination. Un connecteur peut jouer le rôle de **trigger** (déclenche un workflow sur événement entrant) ou de **service** (exécute un traitement dans le workflow). En V1 le catalogue livré est `http-rest` (**TRIGGER** seulement — le rôle SERVICE est un skeleton non enregistré) et `flowable-signal` (TRIGGER + SERVICE). Les types cible `scheduler`, `smtp`, `s3-minio`, Kafka, import batch, ERP restent hors V1 ; des connecteurs custom peuvent être ajoutés au classpath sans modifier le core.
 
 ### Génération de documents
 
@@ -67,7 +67,7 @@ Email, webhook sortant et notification navigateur (SSE) — configurables par te
 
 ### Multi-tenant
 
-Chaque organisation dispose d'un schéma PostgreSQL dédié — isolation forte des données, migration indépendante, facturation séparée. Le tenant est résolu depuis le token OIDC à chaque requête.
+Chaque organisation dispose d'un schéma PostgreSQL dédié — isolation forte des données, migration indépendante, facturation séparée. **Une instance Spring Boot = un tenant** : `app.tenant.id` est fixé au démarrage (décision n° 13), jamais résolu dynamiquement par requête. Le claim OIDC `tenant_id` sert de **garde d'appartenance** : il doit correspondre à l'instance, sinon la requête est refusée. Voir [02-multi-tenant.md](analysis%20doc/02-multi-tenant.md).
 
 ### Authentification flexible
 
@@ -86,14 +86,15 @@ L'application est construite sur le modèle **Ports & Adapters (hexagonal)** —
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │  Connecteurs (triggers entrants)                                │
-│  REST webhook · Kafka · Scheduler · Import fichier · ERP        │
+│  V1 : REST webhook · signal Flowable                            │
+│  Cible (hors V1) : Kafka · Scheduler · Import fichier · ERP     │
 └───────────────────────────┬─────────────────────────────────────┘
                             │ événements
                             ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  Moteur de workflow — Flowable BPMN 2.0                         │
 │  ┌──────────────┐  ┌─────────────┐  ┌──────────┐  ┌─────────┐ │
-│  │ Service Tasks│  │ User Tasks  │  │ Gateways │  │ DMN     │ │
+│  │ Service Tasks│  │ User Tasks  │  │ Gateways │  │DMN hors │ │
 │  └──────┬───────┘  └──────┬──────┘  └──────────┘  └─────────┘ │
 └─────────┼─────────────────┼───────────────────────────────────-─┘
           │                 │
@@ -104,8 +105,8 @@ L'application est construite sur le modèle **Ports & Adapters (hexagonal)** —
 └──────┬──────────────┬───────────────────┬───────────────────────┘
        │              │                   │
        ▼              ▼                   ▼
-  PostgreSQL      MinIO / S3       Notifications
-  (schéma/tenant) (documents)      Email · SSE · Webhook
+  PostgreSQL      Stockage objet   Notifications
+  (schéma/tenant) S3 / filesystem  Email · SSE · Webhook
 ```
 
 ### Stack technique
@@ -115,13 +116,13 @@ L'application est construite sur le modèle **Ports & Adapters (hexagonal)** —
 | Backend           | Java 25 LTS · Spring Boot 4.1.x | Virtual Threads, ecosystem mature               |
 | Workflow          | Flowable 8.0.x Community        | BPMN 2.0, Apache 2.0, moteur d'exécution seul (pas de Flowable UI) |
 | Persistence       | PostgreSQL + Spring Data JPA    | JSONB pour champs dynamiques, schéma par tenant |
-| Génération PDF    | Flying Saucer 10.4.x + jsoup 1.22.x | LGPL, sans licence commerciale              |
+| Génération PDF    | Flying Saucer 10.4.x + jsoup 1.23.1 | LGPL, sans licence commerciale              |
 | Sécurité          | Spring Security 7 + OAuth2 Client | BFF intégré, provider-agnostique              |
 | Frontend          | Vue 3 + Vite + TypeScript + PrimeVue (embarqué `static/`) | SPA même origine, typage statique aligné sur le contrat API, composants métier riches |
 | State management  | Pinia                           | Store réactif Vue 3                             |
 | Tests frontend    | Vitest + Playwright + ESLint/Prettier | Unitaire/composants **et** e2e (`npm run test:all`) obligatoires pour features FE ; aligné job CI `frontend` |
 | BPMN viewer/éditeur | bpmn-js + bpmn-js-properties-panel | Rendu fidèle, overlays d'état, édition (Modeler + panel de propriétés Flowable custom) |
-| Stockage fichiers | MinIO                           | Compatible S3, self-hosted, Apache 2.0          |
+| Stockage fichiers | Port S3 / filesystem             | `DocumentStoragePort` ; MinIO possible en local (pas de couplage) |
 | Auth server       | Keycloak 26.7.x                 | Self-hosted, OIDC/OAuth2, LDAP                  |
 | Build             | Maven mono-module + ArchUnit    | Règle domaine vérifiée en CI                    |
 
@@ -140,7 +141,9 @@ Boot dédiée**, configurée avec son identifiant de tenant au démarrage (voir
 également le frontend Vue 3 dans `static/` (décision n° 27) — même origine API / SPA. Toutes les
 instances partagent la même base PostgreSQL (isolation par schéma dédié) et le même serveur Keycloak
 (realm partagé). Le routage vers la bonne instance est assuré par un reverse-proxy Apache à
-configuration statique (décision n° 14). Le déploiement cible des environnements conteneurisés
+configuration statique (décision n° 14). Le `server.servlet.context-path` (`/${app.tenant.id}`)
+est la **cible** alignée sur ce préfixe ; il reste commenté dans `application.yml` tant que le
+provisioning n'est pas en place (TODO §31). Le déploiement cible des environnements conteneurisés
 (Docker / Kubernetes) ; une instance de tenant peut être scalée indépendamment des autres si sa
 charge le justifie.
 
@@ -160,10 +163,10 @@ charge le justifie.
                   │ tenant_n   │            └──────────────┘
                   └─────┬──────┘
                         ▼
-                  ┌──────────┐
-                  │  MinIO   │
-                  │ (S3)     │
-                  └──────────┘
+                  ┌──────────────┐
+                  │ Object store │
+                  │ S3 / filesys │
+                  └──────────────┘
 ```
 
 ------

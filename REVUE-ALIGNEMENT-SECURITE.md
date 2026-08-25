@@ -94,7 +94,9 @@ Voir point **45** pour le suivi. Synthèse :
 7. **MinIO** — README stack encore couplé MinIO ; le code expose `DocumentStoragePort` S3/filesystem (conforme conventions).
 8. **Couche `application`** — voir point **46**.
 
-Les artefacts AI-devkit des features livrées sont globalement **fidèles au code** (écarts de scope explicités en Non-goals / décisions D-\*). La Phase 9 n'a pas de dossier `docs/ai/review/` ; plusieurs lots ont malgré tout trouvé de vrais bugs en revue (injection de formule CSV, NPE BPMN, pagination non déterministe).
+Les écarts 1 et 3–7 sont **clos** par `derive-documentaire`
+([PR #75](https://github.com/superjojo79/FlowForge/pull/75), TODO §45).
+L'écart 2 (`com.monapp`) était déjà clos PR #72. L'écart 8 reste le point **46**.
 
 ---
 
@@ -281,7 +283,7 @@ allowlist possible plus tard, pas un finding High.
 | 42 | Actuator `permitAll` + port 8081 | Config — à durcir ops | Medium | `SecurityConfig`, `application.yml`, design `observabilite`, GETTING-STARTED |
 | 43 | Secrets défaut + HMAC M2M | Secrets — fail-fast | Medium | `application.yml`, `docker-compose.yml`, `SecurityConfig` |
 | 44 | SSRF sortant DNS TOCTOU | SSRF — pin IP | Medium | `OutboundUrlGuard`, `WebhookRestAdapter`, `06` / `09` |
-| 45 | Dérive documentaire analyse / README / code | Docs — chore | — | `README.md`, `analysis doc/01` `06` `12`, `application.yml` L1, `FILE-ATTENTE` / `DEFERRED` (resync partielle faite avec cette revue) |
+| 45 | Dérive documentaire analyse / README / code | Docs — **clos** PR #75 | — | `README.md`, `analysis doc/00` `06` `07` `11` `12`, `application.yml` L1 (`01` `com.monapp` déjà PR #72) |
 | 46 | Couche `application` non gardée par ArchUnit | Architecture | Low | `ManualStartOrchestrator`, `ArchitectureRulesTest`, `01-architecture-hexagonale.md` |
 
 Reliquats S-6…S-10 : pas de nouveau point — [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §4.
@@ -292,7 +294,7 @@ Reliquats S-6…S-10 : pas de nouveau point — [DEFERRED-FEATURES.md](DEFERRED-
 
 | Étape | Points | Justification |
 |---|---|---|
-| **Sans arbitrage produit** | 45 | Le code est la source de vérité ; aligner README / `analysis doc/` évite de réintroduire le tenant-par-requête |
+| **Sans arbitrage produit** | 45 | **Clos** PR #75 (`derive-documentaire`) |
 | **Avant exposition internet multi-tenant** | 40, 41 | Chaîne RCE → PG partagé |
 | **Au provisioning (point 31)** | 42, 43 | Bind actuator, secrets, issuer M2M, rôle PG |
 | **Defense in depth** | 44, 46 | Pin IP ; règle ArchUnit `application` ↛ `infrastructure` (ou port domaine pour `WorkflowStartConfirmer`) |

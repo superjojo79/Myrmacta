@@ -10,7 +10,8 @@
 >   (rétention / purge / sensible — **livré**) ; revue post-implémentation 2026-08-25 :
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
-> **Dernière mise à jour :** 2026-08-25 — `edition-bpmn` TODO §39 clos,
+> **Dernière mise à jour :** 2026-08-25 — `derive-documentaire` TODO §45 clos,
+> [PR #75](https://github.com/superjojo79/FlowForge/pull/75) ; `edition-bpmn` TODO §39 clos,
 > [PR #71](https://github.com/superjojo79/FlowForge/pull/71) **mergée** ;
 > `masquage-donnees-sensibles-logs-webhooks` PR #70 mergée. Hors cycle
 > `dev-lifecycle` (PR #72) : DEV-PURGE, recovery `purge_outbox`
@@ -67,11 +68,12 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 ## File d’attente
 
 Plus de lot produit V1 **nommé** : les 5 features du regroupement
-2026-08-20, puis `masquage-donnees-sensibles-logs-webhooks` (PR #70) et
-`edition-bpmn` (PR #71) sont mergées. Pas de lot produit V1 nommé suivant
-**tant que** les points de sécurité 40–44 n'ont pas d'arbitrage (critère 2 :
-ne pas trancher silencieusement). Reliquat ops hors file : provisioning
-(TODO §31).
+2026-08-20, puis `masquage-donnees-sensibles-logs-webhooks` (PR #70),
+`edition-bpmn` (PR #71) et `derive-documentaire` (PR #75, chore §45)
+sont mergées ou en revue. Pas de chore restant **sans** décision produit.
+Pas de lot produit V1 nommé suivant **tant que** les points de sécurité
+40–44 n'ont pas d'arbitrage (critère 2 : ne pas trancher silencieusement).
+Reliquat ops hors file : provisioning (TODO §31).
 
 **Regroupement acté (2026-08-25, hors cycle `dev-lifecycle` — scoping
 seulement, pas d'arbitrage) :** les 5 findings sécurité de la revue (§4 —
@@ -84,16 +86,14 @@ hors profil `local`) ; 44 est indépendant mais de la même famille (défense
 SSRF). **Aucune des options A/B/C par point n'est tranchée par ce
 regroupement** — ça reste à faire en Phase 1/2 `dev-requirements`, une
 décision à la fois via `AskUserQuestion`, comme pour les features
-précédentes. §45 (chore doc) et §46 (hygiène ArchUnit `application`) restent
-volontairement **hors** de cette feature : §45 n'a pas d'arbitrage produit et
-peut partir seul avant ; §46 est une question d'architecture, pas un finding
-sécurité au sens de la revue (§7 la classe « Low / Architecture », pas
-« Sécurité »).
+précédentes. §45 (chore doc) est **clos** (PR #75). §46 (hygiène ArchUnit
+`application`) reste volontairement **hors** de cette feature : c'est une
+question d'architecture, pas un finding sécurité au sens de la revue
+(§7 la classe « Low / Architecture », pas « Sécurité »).
 
 | Priorité | Item | Notes |
 |---|---|---|
-| **Prochain (chore, pas de décision produit)** | TODO §45 — dérive documentaire | README / `analysis doc/` vs code (hors `com.monapp` dans `01`, clos PR #72). Ne pas élargir le V1 (DMN, connecteurs SERVICE). |
-| **Feature candidate `durcissement-securite-post-revue`** | TODO §40 (SSTI Thymeleaf), §41 (GRANT PG), §42 (actuator), §43 (secrets/HMAC), §44 (SSRF TOCTOU) | Regroupés en une feature (voir note ci-dessus) ; séquencement interne : 40+41 (chaîne d'attaque) → 42+43 (provisioning/secrets, avec point 31) → 44 (indépendant). Chaque option A/B/C reste à trancher en `dev-requirements`. |
+| **Prochain (bloqué — arbitrages A/B/C)** | Feature candidate `durcissement-securite-post-revue` : TODO §40 (SSTI Thymeleaf), §41 (GRANT PG), §42 (actuator), §43 (secrets/HMAC), §44 (SSRF TOCTOU) | Regroupés en une feature (voir note ci-dessus) ; séquencement interne : 40+41 (chaîne d'attaque) → 42+43 (provisioning/secrets, avec point 31) → 44 (indépendant). Chaque option A/B/C reste à trancher en `dev-requirements`. |
 | **Hors périmètre de la feature sécurité** | TODO §46 (ArchUnit `application`) | Architecture, pas sécurité au sens de la revue — point séparé, non bloquant. |
 
 Détail et options : [TODO.md](TODO.md) §40–46,
@@ -101,7 +101,7 @@ Détail et options : [TODO.md](TODO.md) §40–46,
 
 ## En revue
 
-*Aucune feature en revue.* PR #71 (`edition-bpmn`) mergée sur `main`.
+[PR #75](https://github.com/superjojo79/FlowForge/pull/75) (`derive-documentaire`, TODO §45).
 **Hors V1 (reporté, pas dans cette file) :** Rapports / SLA (maquette UI de
 référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même
 (V1 = TRIGGER uniquement — le hardening SSRF est pré-positionné depuis
@@ -218,4 +218,5 @@ Vérifié : `./mvnw verify` 1136 tests (0 échec), Jacoco OK ; frontend `npm run
 | 2026-08-24 | `masquage-donnees-sensibles-logs-webhooks` implémentée (Phases 1-9) | 10 tâches TDD sur 3 milestones (M1 garde-fou logs, M2 masquage webhook, M3 vérification+clôture). `SendNotificationUseCaseImpl` masque automatiquement les valeurs sensibles avant toute écriture outbox, pour tous les canaux, sans dépendre d'un futur producteur. Preuve bout en bout réelle (`SendNotificationUseCaseImpl` → `NotificationOutboxRelay` → `WebhookRestAdapter`, corps HTTP capturé) + 2 contrôles mutants manuels (masquage désactivé temporairement, tests confirmés en échec, code restauré) prouvant que les tests détectent vraiment une régression. `./mvnw verify` final : 1088 tests (0 échec), Jacoco tenu. Zéro fichier frontend touché. TODO §23 clos avec note honnête (pas de fuite active, protection préventive), en attente de PR |
 | 2026-08-25 | Revue alignement × sécurité | [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) ; TODO §40–46 ouverts (SSTI, GRANT PG, actuator, secrets, SSRF TOCTOU, dérive docs, ArchUnit `application`). `edition-bpmn` PR #71 mergée ; follow-ups ops PR #72 (DEV-PURGE, recovery PROCESSING, `com.monapp` dans `01`). Prochain sans décision : chore §45. |
 | 2026-08-25 | Points sécurité 40–44 regroupés en feature candidate | Demande utilisateur : rassembler les points pertinents de la revue en une feature de durcissement sécurité. Regroupement `durcissement-securite-post-revue` = TODO §40+41 (chaîne SSTI→PG partagé) + §42+43 (config/secrets) + §44 (SSRF TOCTOU), séquencés dans cet ordre. §45 (chore doc, pas d'arbitrage) et §46 (ArchUnit `application`, classé Architecture pas Sécurité par la revue §7) restent hors périmètre. Scoping seul — options A/B/C par point toujours à trancher en `dev-requirements` (`AskUserQuestion`, une décision à la fois), pas de cycle `dev-lifecycle` lancé sur demande explicite de l'utilisateur. |
+| 2026-08-25 | `derive-documentaire` Phase 9 READY | PR #75 ; TODO §45 clos. README / analyse / yaml alignés sur le V1 réel. Prochain = `durcissement-securite-post-revue` **bloqué** par les arbitrages A/B/C (§40–44). |
 

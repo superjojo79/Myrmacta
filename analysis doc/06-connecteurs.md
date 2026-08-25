@@ -65,13 +65,17 @@ public class ConfigField {
 
 ### Catalogue de connecteurs fournis
 
-| Type | Capacité | Description |
-|---|---|---|
-| `http-rest` | TRIGGER + SERVICE | Réception webhook entrant / appel REST sortant |
-| `scheduler` | TRIGGER | Déclenchement planifié (cron) |
-| `smtp` | SERVICE | Envoi email |
-| `s3-minio` | SERVICE | Lecture / écriture fichiers |
-| `flowable-signal` | TRIGGER + SERVICE | Émet ou reçoit un signal Flowable |
+La colonne **Cible** est le catalogue d'analyse (cible produit). La colonne
+**V1 livré** décrit ce qui est réellement enregistré dans `ConnectorRegistry`
+aujourd'hui. Ne pas implémenter silencieusement un type « Non ».
+
+| Type | Cible | V1 livré | Description |
+|---|---|---|---|
+| `http-rest` | TRIGGER + SERVICE | **TRIGGER** seulement (`HttpRestTriggerConnector`) ; skeleton SERVICE (`HttpRestServiceConnector`) **non enregistré** | Réception webhook entrant / appel REST sortant |
+| `scheduler` | TRIGGER | Non | Déclenchement planifié (cron) |
+| `smtp` | SERVICE | Non (l'email V1 passe par les notifications Spring Mail, pas ce type catalogue) | Envoi email |
+| `s3-minio` | SERVICE | Non (stockage via `DocumentStoragePort` S3/filesystem, pas un connecteur) | Lecture / écriture fichiers |
+| `flowable-signal` | TRIGGER + SERVICE | Oui (`FlowableSignalConnector`) | Émet ou reçoit un signal Flowable |
 
 ### Ajout d'un connecteur custom — classpath
 

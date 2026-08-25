@@ -726,30 +726,21 @@ mais le client HTTP n'est pas pinté sur l'IP vérifiée (javadoc explicite).
 
 ---
 
-### [ ] 45. Dérive documentaire analyse / README / code
+### [x] 45. Dérive documentaire analyse / README / code
 
-**Énoncé :** le code suit les décisions 13–15, 17, 27 ; plusieurs docs
-décrivent encore l'ancien modèle ou un périmètre non livré.
+**Clos** (2026-08-25, `derive-documentaire`, [PR #75](https://github.com/superjojo79/FlowForge/pull/75)) — chore docs, code = source de vérité. `com.monapp` dans `01` déjà clos PR #72. Ne pas élargir le V1 (DMN, connecteurs SERVICE).
 
-À corriger (liste exhaustive dans la revue §3.3) :
+**Énoncé (historique) :** le code suit les décisions 13–15, 17, 27 ; plusieurs docs
+décrivaient encore l'ancien modèle ou un périmètre non livré.
 
-- `README.md` : tenant « résolu depuis le token OIDC à chaque requête » ;
-  DMN / Kafka / catalogue connecteurs / MinIO en dur vs V1 réelle
-- `analysis doc/01` : `com.monapp` — **clos** 2026-08-25 (PR #72, 3
-  occurrences → `com.flowforge`) ; ne plus replanifier
-- `analysis doc/12` : « cockpit Flowable » pour `WORKFLOW_ADMIN`
-- jsoup `1.22.x` vs `pom.xml` `1.23.1`
-- `application.yml` L1–3 : commentaire autoconfig périmé
-- `context-path` : rester commenté mais le README ne doit pas le présenter
-  comme actif
+Corrigé (liste revue §3.3) :
 
-`FILE-ATTENTE.md` / `DEFERRED-FEATURES.md` (édition-bpmn / masquage encore
-« en revue » / « en attente de PR ») sont resynchronisés avec cette revue.
-
-**À produire :** chore docs, sans arbitrage produit (le code est la source
-de vérité). Ne pas élargir silencieusement le V1 (DMN, connecteurs SERVICE).
-
-**Impacte :** `README.md`, `analysis doc/06` `12`, `application.yml`.
+- `README.md` : tenant instance (`app.tenant.id`) + garde OIDC `tenant_id` ; DMN hors V1 ; catalogue connecteurs V1 vs cible ; stockage port S3 ; jsoup 1.23.1 ; `context-path` cible (yaml commenté)
+- `analysis doc/12` : `WORKFLOW_ADMIN` → `/admin/bpmn-editor` (plus « accès au cockpit Flowable »)
+- `analysis doc/06` : colonnes Cible / V1 livré
+- `analysis doc/00` / `07` : jsoup 1.23.1 ; stockage
+- `analysis doc/11` : `context-path` = cible ops
+- `application.yml` : commentaire d'en-tête Flowable V1 (plus « until real adapters land »)
 
 **Détail :** [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) §3.3.
 

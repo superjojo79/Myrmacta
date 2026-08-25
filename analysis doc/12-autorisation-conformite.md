@@ -22,7 +22,7 @@ Les rôles sont portés par le claim `realm_access.roles` du token OIDC (voir ex
 | Rôle | Portée | Capacités typiques |
 |---|---|---|
 | `TENANT_ADMIN` | Tenant entier | Configuration des `DossierType`, `ConnectorInstance`, templates, utilisateurs du tenant |
-| `WORKFLOW_ADMIN` | Tenant entier | Déploiement de processus BPMN, réassignation de tâches, accès au cockpit Flowable |
+| `WORKFLOW_ADMIN` | Tenant entier | Déploiement de processus BPMN, réassignation de tâches, éditeur `/admin/bpmn-editor` |
 | `DOSSIER_MANAGER` | Dossiers assignés / de son périmètre | Création, instruction, clôture de dossiers ; ajout d'éléments |
 | `DOSSIER_VIEWER` | Dossiers de son périmètre | Lecture seule — dossier, historique, documents |
 | `API_SERVICE` | Machine-to-machine | Appel des endpoints connecteurs (`/api/connectors/{id}/execute`) sans session utilisateur — flux `client_credentials` par tenant, voir [03-authentification.md](03-authentification.md#authentification-machine-to-machine--client_credentials) |

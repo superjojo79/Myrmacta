@@ -16,7 +16,7 @@ Thymeleaf  →  HTML  →  jsoup (XHTML)  →  Flying Saucer  →  OpenPDF
 | Librairie | Rôle | Licence |
 |---|---|---|
 | Thymeleaf | Fusion template + données | Apache 2.0 |
-| jsoup 1.22.x | HTML5 → XHTML strict | MIT |
+| jsoup 1.23.1 | HTML5 → XHTML strict | MIT |
 | Flying Saucer (`flying-saucer-pdf` 10.4.x) | Rendu XHTML → PDF layout | LGPL |
 | OpenPDF | Écriture PDF (transitively via `flying-saucer-pdf`) | LGPL / MPL |
 
@@ -31,7 +31,7 @@ Thymeleaf  →  HTML  →  jsoup (XHTML)  →  Flying Saucer  →  OpenPDF
 <dependency>
     <groupId>org.jsoup</groupId>
     <artifactId>jsoup</artifactId>
-    <version>1.22.x</version>
+    <version>1.23.1</version>
 </dependency>
 ```
 
@@ -149,7 +149,8 @@ inputs.forEach(el => el.addEventListener('input', () => {
 
 ## Stockage des documents générés
 
-**Recommandation : MinIO** (compatible S3, self-hosted)
+**Recommandation : stockage objet S3-compatible** (MinIO possible en local ;
+pas de couplage MinIO dans le code — port `DocumentStoragePort` S3 + filesystem)
 
 - Auto-hébergeable, licence Apache 2.0
 - API S3 standard → migration AWS S3 transparente si nécessaire

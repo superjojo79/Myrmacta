@@ -1,6 +1,7 @@
-# Temporary — disable infra autoconfig until real adapters land (design phase 3).
-# Remove entries feature-by-feature (JPA, Security, Flowable, …).
-# Security / OAuth2 client exclusions removed — feature authentification (TODO 32 partiel).
+# Flowable V1 = moteur BPMN uniquement. Auto-config exclue : JPA, Security,
+# App Engine, DMN, IDM, Event Registry, CMMN, REST API, actuator Flowable, LDAP
+# (voir spring.autoconfigure.exclude). Les exclusions Spring Security / OAuth2
+# Client ont été retirées (feature authentification).
 spring:
   application:
     name: flowforge

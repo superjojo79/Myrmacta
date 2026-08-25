@@ -25,8 +25,10 @@ types/templates/connectors/workflow-configs ; packaging Maven→`static/` ;
 maquette
 [FlowForge - Maquettes UI.html](analysis%20doc/FlowForge%20-%20Maquettes%20UI.html)
 = référence UX). Détail des 5 dernières (regroupement 2026-08-20) en §2.
-**File d'attente (2026-08-25) :** chore docs TODO §45 ; sécurité §40–44 à
-trancher — [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md).
+**File d'attente (2026-08-25) :** sécurité §40–44 à trancher
+(`durcissement-securite-post-revue`) — chore docs TODO §45 **clos**
+([PR #75](https://github.com/superjojo79/FlowForge/pull/75)).
+[REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md).
 Reliquat ops : provisioning (TODO §31).
 
 ---
@@ -186,7 +188,7 @@ Voir le détail et les options dans [TODO.md](TODO.md),
 | 42 | Actuator `permitAll` / port 8081 | **Ouvert** (2026-08-25) — S-3 ; DD-MGMT-SEC à durcir ops |
 | 43 | Secrets défaut + HMAC M2M | **Ouvert** (2026-08-25) — S-4 |
 | 44 | SSRF sortant DNS TOCTOU | **Ouvert** (2026-08-25) — S-5 |
-| 45 | Dérive documentaire README / analyse | **Ouvert** (2026-08-25) — chore, pas de décision produit |
+| 45 | Dérive documentaire README / analyse | **Clos** (2026-08-25, `derive-documentaire` [PR #75](https://github.com/superjojo79/FlowForge/pull/75)) |
 | 46 | ArchUnit couche `application` | **Ouvert** (2026-08-25) — hygiène hexagone |
 
 ---
@@ -198,7 +200,7 @@ Voir le détail et les options dans [TODO.md](TODO.md),
 - Smoke manuel : Keycloak réel, PostgreSQL réel
 - Observabilité : **livré** — MDC + Micrometer + UI admin (TODO §29, PR #59)
 - Chore docs : `com.monapp` dans `analysis doc/01` — **clos** (2026-08-25, PR #72) ;
-  reste la dérive README / `analysis doc/` (TODO §45)
+  dérive README / `analysis doc/` (TODO §45) — **clos** (PR #75)
 - Build FE : `npm run build` → copie vers `src/main/resources/static/` (Maven plugin ou CI)
 - Reliquats sécu V1 assumés (pas rouverts) : AV no-op, rate-limit JVM, headers HTTP —
   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) §4 Low

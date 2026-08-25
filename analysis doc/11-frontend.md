@@ -73,7 +73,9 @@ Le frontend n'est **pas** déployé séparément. Le pipeline de build :
 2. le contenu est copié (Maven `frontend-maven-plugin` ou étape CI) vers
    `src/main/resources/static/` ;
 3. chaque instance Spring Boot dédiée à un tenant (décision n° 13) sert à la fois l'API/BFF et les
-   assets statiques sous son `server.servlet.context-path` (`/{tenantId}/`).
+   assets statiques. Le `server.servlet.context-path` (`/{tenantId}/`) est la **cible ops**
+   (décision n° 14, TODO §31) : il reste commenté dans `application.yml` ; en V1 l'instance
+   sert à la racine (`/`) derrière le reverse-proxy.
 
 Conséquences actées : pas de configuration CORS ; cookie de session et CSRF en `SameSite=Lax`
 (décision n° 15) ; N instances embarquent le même artefact front (acceptable — simplicité

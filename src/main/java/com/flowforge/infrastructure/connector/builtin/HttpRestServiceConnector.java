@@ -40,9 +40,8 @@ public class HttpRestServiceConnector implements ServiceConnector {
         if (!(url instanceof String urlString)) {
             throw new IllegalArgumentException("url is required");
         }
-        outboundUrlGuard.assertSafe(urlString);
-
-        HttpRequest request = HttpRequest.newBuilder(URI.create(urlString)).GET().build();
+        OutboundUrlGuard.PinnedEndpoint pinned = outboundUrlGuard.resolveSafe(urlString);
+        HttpRequest request = HttpRequest.newBuilder(URI.create(pinned.requestUrl())).GET().build();
         HttpResponse<String> response;
         try {
             response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());

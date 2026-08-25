@@ -16,21 +16,18 @@ testing_ref: docs/ai/testing/2026-08-25-feature-durcissement-securite-post-revue
 
 ## Phase 4: Create Initial Plan
 
-Plan **reviewed** 2026-08-25. TDD (skill `tdd`) en Phase 5. L'ébauche
-hors phase n'est **pas** une tâche done : M1 doit la réécrire (B2, pas
-A/B1). M2–M4 peuvent réutiliser ce qui colle déjà au design.
-
-Aucune tâche marquée done. Phase 5 non commencée.
+Plan **reviewed** 2026-08-25. Phase 5 : M1–M6 implémentés (TDD). M7 preuve
+`./mvnw verify` + FE en cours.
 
 ## Milestones
 **What are the major checkpoints?**
 
-- [ ] **M1** SSTI B2 + fail 400 (DD-THYME-B2 = E, DD-SSTI-FAIL = C)
-- [ ] **M2** Pin IP outbound (D-44 = P, A-PIN-CALLERS)
+- [x] **M1** SSTI B2 + fail 400 (DD-THYME-B2 = E, DD-SSTI-FAIL = C)
+- [x] **M2** Pin IP outbound (D-44 = P, A-PIN-CALLERS)
 - [ ] **M3** Actuator localhost:8090 (D-42 = L)
-- [ ] **M4** Secrets fail-fast + denylist L + HMAC (D-43 = F)
-- [ ] **M5** Rôle PG LOGIN + IT + Compose (D-41 = A/S)
-- [ ] **M6** Docs T-DOCS + clôture TODO §40–44
+- [x] **M4** Secrets fail-fast + denylist L + HMAC (D-43 = F)
+- [x] **M5** Rôle PG LOGIN + IT + Compose (D-41 = A/S)
+- [x] **M6** Docs T-DOCS + clôture TODO §40–44
 - [ ] **M7** Preuve `./mvnw verify` + régression FE
 
 ## Task Breakdown
@@ -40,39 +37,39 @@ TDD : test rouge → code → vert. Validation = scénario testing doc.
 
 ### M1 — SSTI B2 + C
 
-- [ ] **T1.1** Tests processor : `${title}` OK ; `#vars` / `#dates` /
+- [x] **T1.1** Tests processor : `${title}` OK ; `#vars` / `#dates` /
       `#numbers` / `#strings` / `#lists` évalués (méthode déclarée sur
       l'objet Thymeleaf) ; `${T(...)}` et `#beans` / `new` / request
       → `TemplateProcessingException` ; `Object.getClass` refusé
       (A-EXPR-METHODS). **Deps :** aucune. **Scénarios :** T-SSTI-PROC.
-- [ ] **T1.2** Évaluateur B2 (étendre l'ébauche, ne pas livrer le regex
+- [x] **T1.2** Évaluateur B2 (étendre l'ébauche, ne pas livrer le regex
       `${ident.prop}` seul) + même `SafeHtmlTemplateEngineFactory` pour
       processor. **Deps :** T1.1. **Scénarios :** T-SSTI-PROC.
-- [ ] **T1.3** Checker : expressions hors allowlist →
+- [x] **T1.3** Checker : expressions hors allowlist →
       `InvalidTemplateSyntaxException` (pas parse HTML seul). **Deps :**
       T1.2. **Scénarios :** T-SSTI-CHECK.
-- [ ] **T1.4** Preuve HTTP : generate/preview et enregistrement → **400**
+- [x] **T1.4** Preuve HTTP : generate/preview et enregistrement → **400**
       (handlers existants, DD-SSTI-FAIL = C) — test API ou handler.
       **Deps :** T1.2, T1.3. **Scénarios :** T-SSTI-HTTP.
-- [ ] **T1.5** `th:each` / `th:text` non régression. **Deps :** T1.2.
+- [x] **T1.5** `th:each` / `th:text` non régression. **Deps :** T1.2.
       **Scénarios :** T-SSTI-EACH.
 
 ### M2 — Pin IP
 
-- [ ] **T2.1** `resolveSafe` : un lookup ; `PinnedEndpoint` ; test
+- [x] **T2.1** `resolveSafe` : un lookup ; `PinnedEndpoint` ; test
       rebinding (2e résolution ≠ 1re, client utilise la 1re). **Deps :**
       aucune. **Scénarios :** T-PIN-GUARD.
-- [ ] **T2.2** `WebhookRestAdapter` : POST URI IP, header `Host` =
+- [x] **T2.2** `WebhookRestAdapter` : POST URI IP, header `Host` =
       hostname d'origine, TLS verify hostname d'origine, redirects
       `NEVER`. **Deps :** T2.1. **Scénarios :** T-PIN-WH.
-- [ ] **T2.3** `HttpRestServiceConnector` (skeleton) : même pin, pas
+- [x] **T2.3** `HttpRestServiceConnector` (skeleton) : même pin, pas
       d'enregistrement SERVICE. **Deps :** T2.1. **Scénarios :** T-PIN-SK.
-- [ ] **T2.4** Admin webhook reste `assertSafe` (pas de connect).
+- [x] **T2.4** Admin webhook reste `assertSafe` (pas de connect).
       **Deps :** T2.1. **Scénarios :** T-PIN-ADMIN.
 
 ### M3 — Actuator
 
-- [ ] **T3.1** `management.server.address` `${MANAGEMENT_ADDRESS:127.0.0.1}`,
+- [x] **T3.1** `management.server.address` `${MANAGEMENT_ADDRESS:127.0.0.1}`,
       port `${MANAGEMENT_PORT:8090}` ; `permitAll` inchangé.
       **Deps :** aucune. **Scénarios :** T-MGMT.
 - [ ] **T3.2** `ObservabilityActuatorIT` vert (`MANAGEMENT_PORT=0`).
@@ -80,36 +77,36 @@ TDD : test rouge → code → vert. Validation = scénario testing doc.
 
 ### M4 — Secrets
 
-- [ ] **T4.1** EPP : hors `local`/`test`, denylist L (vide + `flowforge` /
+- [x] **T4.1** EPP : hors `local`/`test`, denylist L (vide + `flowforge` /
       `postgres` / `admin` / `password`, trim, casse ignorée) ;
       master-key vide ; `OIDC_CLIENT_SECRET` vide → fail-fast.
       **Deps :** aucune. **Scénarios :** T-SECRETS.
-- [ ] **T4.2** HMAC M2M non vide hors `local`/`test` → fail-fast ; profil
+- [x] **T4.2** HMAC M2M non vide hors `local`/`test` → fail-fast ; profil
       `test` inchangé. **Deps :** T4.1. **Scénarios :** T-HMAC.
-- [ ] **T4.3** `application-local.yml` + doc profil `local` (A-LOCAL-DOC,
+- [x] **T4.3** `application-local.yml` + doc profil `local` (A-LOCAL-DOC,
       partie GETTING-STARTED reportée M6). **Deps :** T4.1. **Scénarios :**
       T-SECRETS.
 
 ### M5 — GRANT PG
 
-- [ ] **T5.1** Init SQL : rôle `flowforge_tenant_dev` LOGIN, GRANT schéma
+- [x] **T5.1** Init SQL : rôle `flowforge_tenant_dev` LOGIN, GRANT schéma
       `tenant_dev` seul, REVOKE PUBLIC. **Deps :** aucune. **Scénarios :**
       T-GRANT.
-- [ ] **T5.2** Compose : `POSTGRES_USER` superuser ≠ `DB_USERNAME` app.
+- [x] **T5.2** Compose : `POSTGRES_USER` superuser ≠ `DB_USERNAME` app.
       **Deps :** T5.1. **Scénarios :** T-GRANT.
-- [ ] **T5.3** `TenantRoleIsolationIT` : SELECT propre schéma OK ; autre
+- [x] **T5.3** `TenantRoleIsolationIT` : SELECT propre schéma OK ; autre
       schéma → permission denied ; SKIPPED sans Docker. **Deps :** T5.1.
       **Scénarios :** T-GRANT.
 
 ### M6 — Docs
 
-- [ ] **T6.1** GETTING-STARTED : profil `local`, actuator `:8090`, Keycloak
+- [x] **T6.1** GETTING-STARTED : profil `local`, actuator `:8090`, Keycloak
       `:8081`, rôle PG, `compose down -v`. `.env.example`. **Deps :**
       M3–M5 yaml. **Scénarios :** T-DOCS.
-- [ ] **T6.2** `02-multi-tenant.md` (rôle PG), `08-templates-documents.md`
+- [x] **T6.2** `02-multi-tenant.md` (rôle PG), `08-templates-documents.md`
       (B2, pas « sans SpEL » au sens A), `09-notifications.md` (pin).
       **Deps :** M1, M2, M5. **Scénarios :** T-DOCS.
-- [ ] **T6.3** TODO §40–44 `[x]` ; FILE-ATTENTE ; note design observabilite
+- [x] **T6.3** TODO §40–44 `[x]` ; FILE-ATTENTE ; note design observabilite
       port 8090. **Deps :** T6.1, T6.2. **Scénarios :** T-DOCS.
 
 ### M7 — Preuve
@@ -176,5 +173,4 @@ Pas d'estimation calendaire. Une passe TDD Phase 5, une tâche à la fois
 | T-VERIFY | T7.1 |
 | T-FE | T7.2 |
 
-Prochaine étape **proposée**, pas exécutée : Phase 5 `dev-implementation`
-T1.1 (test rouge B2).
+Prochaine étape **en cours** : Phase 5 M7 `./mvnw verify` + Vitest/Playwright.

@@ -194,6 +194,16 @@ il n'existe plus de scénario où une connexion pourrait être rendue avec le `s
 tenant, puisqu'aucun autre tenant n'est jamais atteint par cette instance. La configuration Hibernate
 redevient une configuration JPA ordinaire, sans multi-tenancy.
 
+`search_path` n'est **pas** une barrière d'autorisation. Un rôle PostgreSQL superuser (ou un rôle
+avec `USAGE` sur tous les schémas) peut lire un autre schéma même si son `search_path` pointe
+ailleurs. **D-41 :** chaque tenant a un rôle **LOGIN** dédié, avec `GRANT` uniquement sur son
+schéma. Le superuser du conteneur (`POSTGRES_USER`, défaut `flowforge` en local) sert au bootstrap
+(init SQL, éventuellement ops) ; l'application se connecte avec `DB_USERNAME`
+(`flowforge_tenant_dev` en local). Voir
+[`docker/postgres/init/01-init-tenant-schema.sql`](../docker/postgres/init/01-init-tenant-schema.sql).
+Un volume Postgres déjà initialisé **ne rejoue pas** ce script : `docker compose down -v` puis
+`up -d`. Le provisioning d'un second tenant (CLI / orchestrateur) reste hors V1 (point 31).
+
 ### Validation du `tenantId` — au provisioning, plus à chaque requête
 
 **Contexte.** Dans le modèle abandonné, le `tenantId` porté par le claim JWT était utilisé pour

@@ -111,6 +111,22 @@ class DocumentTemplateApiTest {
     }
 
     @Test
+    void create_spelTypeExpression_returns400() throws Exception {
+        mockMvc.perform(post("/api/document-templates")
+                        .with(admin())
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "templateKey": "ssti-%s",
+                                  "label": "label",
+                                  "htmlContent": "<p th:text=\\"${T(java.lang.Runtime).getRuntime()}\\">x</p>"
+                                }
+                                """.formatted(UUID.randomUUID())))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void archiveAndNewVersion_andSecurity() throws Exception {
         String key = "life-" + UUID.randomUUID();
         String id = createDraft(key);

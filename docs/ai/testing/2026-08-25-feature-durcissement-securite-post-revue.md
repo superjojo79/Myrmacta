@@ -17,27 +17,27 @@ TDD obligatoire (skill `tdd`). Playwright = **régression** SPA (A-NO-SPA).
 
 ## Contrôles
 
-- [ ] **T-SSTI-PROC** Processor : `${title}` OK ; `#vars` / `#dates` /
+- [x] **T-SSTI-PROC** Processor : `${title}` OK ; `#vars` / `#dates` /
       `#numbers` / `#strings` / `#lists` (méthode déclarée) OK ;
       `T()` / `#beans` / `new` / request / `getClass` →
       `TemplateProcessingException`.
-- [ ] **T-SSTI-CHECK** Checker : hors allowlist →
+- [x] **T-SSTI-CHECK** Checker : hors allowlist →
       `InvalidTemplateSyntaxException`.
 - [ ] **T-SSTI-HTTP** Generate/preview **et** enregistrement → **400**.
-- [ ] **T-SSTI-EACH** `th:each` + `th:text` non régression.
-- [ ] **T-PIN-GUARD** Un lookup ; URI client = IP validée ; rebinding.
-- [ ] **T-PIN-WH** Webhook : URI IP + `Host` + TLS hostname d'origine.
-- [ ] **T-PIN-SK** Skeleton SERVICE pinné, non enregistré.
-- [ ] **T-PIN-ADMIN** `assertSafe` à l'enregistrement, pas de connect.
+- [x] **T-SSTI-EACH** `th:each` + `th:text` non régression.
+- [x] **T-PIN-GUARD** Un lookup ; URI client = IP validée ; rebinding.
+- [x] **T-PIN-WH** Webhook : URI IP + `Host` + TLS hostname d'origine.
+- [x] **T-PIN-SK** Skeleton SERVICE pinné, non enregistré.
+- [x] **T-PIN-ADMIN** `assertSafe` à l'enregistrement, pas de connect.
 - [ ] **T-MGMT** Address `127.0.0.1`, port défaut 8090 ;
       `ObservabilityActuatorIT` (`MANAGEMENT_PORT=0`).
-- [ ] **T-SECRETS** Hors local/test : denylist L (vide, `flowforge`,
+- [x] **T-SECRETS** Hors local/test : denylist L (vide, `flowforge`,
       `postgres`, `admin`, `password`, casse ignorée), master-key vide,
       OIDC secret vide → fail-fast ; profil `test` OK.
-- [ ] **T-HMAC** `M2M_JWT_SECRET` posé hors local/test → fail-fast.
-- [ ] **T-GRANT** Rôle app SELECT son schéma OK ; autre schéma denied
+- [x] **T-HMAC** `M2M_JWT_SECRET` posé hors local/test → fail-fast.
+- [x] **T-GRANT** Rôle app SELECT son schéma OK ; autre schéma denied
       (Testcontainers, SKIPPED sans Docker).
-- [ ] **T-DOCS** GETTING-STARTED / `.env.example` / `02` / `08` / `09` /
+- [x] **T-DOCS** GETTING-STARTED / `.env.example` / `02` / `08` / `09` /
       TODO §40–44.
 - [ ] **T-VERIFY** `./mvnw verify` vert, Jacoco tenu.
 - [ ] **T-FE** Vitest + Playwright régression.

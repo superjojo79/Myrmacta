@@ -20,14 +20,15 @@ import org.springframework.util.StringUtils;
  * same private/loopback/link-local ranges — a literal-only hostname check would let an
  * attacker point a public-looking domain at an internal address (DNS rebinding) and sail
  * straight through. This narrows, but does not eliminate, TOCTOU rebinding between this
- * check and the actual connection (no IP pinning on the HTTP client).
+ * check and the actual connection; {@link #resolveSafe} returns the validated
+ * {@link PinnedEndpoint} so callers can connect to that IP only (D-44).
  */
 public class OutboundUrlGuard {
 
     private static final Set<String> LOOPBACK_HOSTS = Set.of("localhost", "127.0.0.1", "::1");
 
     @FunctionalInterface
-    interface HostResolver {
+    public interface HostResolver {
         InetAddress[] resolve(String host) throws UnknownHostException;
     }
 
@@ -38,12 +39,45 @@ public class OutboundUrlGuard {
         this(allowLocalHttp, InetAddress::getAllByName);
     }
 
-    OutboundUrlGuard(boolean allowLocalHttp, HostResolver resolver) {
+    public OutboundUrlGuard(boolean allowLocalHttp, HostResolver resolver) {
         this.allowLocalHttp = allowLocalHttp;
         this.resolver = Objects.requireNonNull(resolver, "resolver");
     }
 
+    public record PinnedEndpoint(URI original, InetAddress address) {
+        public String originalHost() {
+            return original.getHost();
+        }
+
+        public String requestUrl() {
+            String host = address.getHostAddress();
+            if (address instanceof java.net.Inet6Address && !host.startsWith("[")) {
+                host = "[" + host + "]";
+            }
+            try {
+                return new URI(
+                                original.getScheme(),
+                                original.getUserInfo(),
+                                host,
+                                original.getPort(),
+                                original.getPath(),
+                                original.getQuery(),
+                                original.getFragment())
+                        .toString();
+            } catch (java.net.URISyntaxException ex) {
+                throw new IllegalArgumentException("Webhook URL is malformed", ex);
+            }
+        }
+    }
+
     public void assertSafe(String url) {
+        resolveSafe(url);
+    }
+
+    /**
+     * Validates the URL then returns the IP chosen for the connection (D-44 pin).
+     */
+    public PinnedEndpoint resolveSafe(String url) {
         if (!StringUtils.hasText(url)) {
             throw new IllegalArgumentException("Webhook URL must not be null or blank");
         }
@@ -66,7 +100,6 @@ public class OutboundUrlGuard {
 
         String host = uri.getHost();
         if (host == null || host.isBlank()) {
-            // Decimal / non-standard hosts may appear as URI path authority edge cases
             host = extractAuthorityHost(url.trim());
         }
         if (host == null || host.isBlank()) {
@@ -82,22 +115,30 @@ public class OutboundUrlGuard {
                                 ? "Webhook http URL is only allowed for localhost in test/local profiles"
                                 : "Webhook URL must use https");
             }
-            return;
+            return new PinnedEndpoint(uri, loopbackAddress(normalizedHost));
         }
 
         if (isBlockedHost(normalizedHost)) {
             throw new IllegalArgumentException("Webhook URL host is not allowed");
         }
-        if (!isLiteralAddress(normalizedHost)) {
-            assertResolvedAddressesSafe(normalizedHost);
+        if (isLiteralAddress(normalizedHost)) {
+            try {
+                return new PinnedEndpoint(uri, InetAddress.getByName(normalizedHost));
+            } catch (UnknownHostException ex) {
+                throw new IllegalArgumentException("Webhook URL host cannot be resolved: " + host, ex);
+            }
         }
+        InetAddress[] addresses = resolveAll(normalizedHost);
+        for (InetAddress address : addresses) {
+            if (isBlockedResolvedAddress(address)) {
+                throw new IllegalArgumentException(
+                        "Webhook URL host resolves to a disallowed network: " + host);
+            }
+        }
+        return new PinnedEndpoint(uri, addresses[0]);
     }
 
-    private static boolean isLiteralAddress(String normalizedHost) {
-        return normalizedHost.contains(":") || extractIpv4(normalizedHost) != null;
-    }
-
-    private void assertResolvedAddressesSafe(String host) {
+    private InetAddress[] resolveAll(String host) {
         InetAddress[] addresses;
         try {
             addresses = resolver.resolve(host);
@@ -107,12 +148,22 @@ public class OutboundUrlGuard {
         if (addresses == null || addresses.length == 0) {
             throw new IllegalArgumentException("Webhook URL host cannot be resolved: " + host);
         }
-        for (InetAddress address : addresses) {
-            if (isBlockedResolvedAddress(address)) {
-                throw new IllegalArgumentException(
-                        "Webhook URL host resolves to a disallowed network: " + host);
+        return addresses;
+    }
+
+    private static InetAddress loopbackAddress(String normalizedHost) {
+        try {
+            if ("::1".equals(normalizedHost)) {
+                return InetAddress.getByName("::1");
             }
+            return InetAddress.getByName("127.0.0.1");
+        } catch (UnknownHostException ex) {
+            throw new IllegalStateException(ex);
         }
+    }
+
+    private static boolean isLiteralAddress(String normalizedHost) {
+        return normalizedHost.contains(":") || extractIpv4(normalizedHost) != null;
     }
 
     private static boolean isBlockedResolvedAddress(InetAddress address) {

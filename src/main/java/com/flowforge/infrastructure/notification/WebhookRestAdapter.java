@@ -3,7 +3,10 @@ package com.flowforge.infrastructure.notification;
 import com.flowforge.domain.notification.model.WebhookDeliveryCommand;
 import com.flowforge.domain.notification.port.out.WebhookPort;
 import com.flowforge.infrastructure.config.NotificationProperties;
-import java.net.http.HttpClient;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
@@ -11,12 +14,11 @@ import java.util.Map;
 import java.util.Objects;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import javax.net.ssl.HttpsURLConnection;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
-import org.springframework.web.client.RestClient;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
@@ -40,7 +42,7 @@ public class WebhookRestAdapter implements WebhookPort {
             OutboundUrlGuard urlGuard,
             ObjectMapper objectMapper,
             NotificationProperties properties) {
-        this(urlGuard, objectMapper, restClientSender(createRestClient(properties)));
+        this(urlGuard, objectMapper, urlConnectionSender(properties));
     }
 
     WebhookRestAdapter(OutboundUrlGuard urlGuard, ObjectMapper objectMapper, HttpSender httpSender) {
@@ -52,7 +54,7 @@ public class WebhookRestAdapter implements WebhookPort {
     @Override
     public void send(WebhookDeliveryCommand command) {
         Objects.requireNonNull(command, "command");
-        urlGuard.assertSafe(command.targetUrl());
+        OutboundUrlGuard.PinnedEndpoint pinned = urlGuard.resolveSafe(command.targetUrl());
 
         Map<String, Object> envelope = new LinkedHashMap<>();
         envelope.put("type", "notification");
@@ -69,36 +71,46 @@ public class WebhookRestAdapter implements WebhookPort {
 
         Map<String, String> headers = new LinkedHashMap<>();
         headers.put("Content-Type", MediaType.APPLICATION_JSON_VALUE);
+        headers.put("Host", pinned.originalHost());
         if (StringUtils.hasText(command.secretPlain())) {
             headers.put(SIGNATURE_HEADER, SIGNATURE_PREFIX + hmacHex(command.secretPlain(), body));
         }
 
-        httpSender.post(command.targetUrl(), body, headers);
+        httpSender.post(pinned.requestUrl(), body, headers);
     }
 
-    private static RestClient createRestClient(NotificationProperties properties) {
-        HttpClient httpClient = HttpClient.newBuilder()
-                .followRedirects(HttpClient.Redirect.NEVER)
-                .connectTimeout(properties.webhook().connectTimeout())
-                .build();
-        JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
-        factory.setReadTimeout(properties.webhook().readTimeout());
-        return RestClient.builder().requestFactory(factory).build();
-    }
-
-    private static HttpSender restClientSender(RestClient restClient) {
+    private static HttpSender urlConnectionSender(NotificationProperties properties) {
+        int connectMs = Math.toIntExact(properties.webhook().connectTimeout().toMillis());
+        int readMs = Math.toIntExact(properties.webhook().readTimeout().toMillis());
         return (url, body, headers) -> {
-            RestClient.RequestBodySpec spec = restClient
-                    .post()
-                    .uri(url)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(body);
-            headers.forEach((name, value) -> {
-                if (!"Content-Type".equalsIgnoreCase(name)) {
-                    spec.header(name, value);
+            HttpURLConnection connection = null;
+            try {
+                connection = (HttpURLConnection) URI.create(url).toURL().openConnection();
+                connection.setConnectTimeout(connectMs);
+                connection.setReadTimeout(readMs);
+                connection.setInstanceFollowRedirects(false);
+                connection.setRequestMethod("POST");
+                connection.setDoOutput(true);
+                String originalHost = headers.get("Host");
+                if (connection instanceof HttpsURLConnection https && originalHost != null) {
+                    https.setHostnameVerifier((hostname, session) ->
+                            HttpsURLConnection.getDefaultHostnameVerifier().verify(originalHost, session));
                 }
-            });
-            spec.retrieve().toBodilessEntity();
+                headers.forEach(connection::setRequestProperty);
+                try (OutputStream output = connection.getOutputStream()) {
+                    output.write(body);
+                }
+                int status = connection.getResponseCode();
+                if (status >= 400) {
+                    throw new IllegalStateException("Webhook HTTP " + status);
+                }
+            } catch (IOException ex) {
+                throw new IllegalStateException("Webhook delivery failed: " + ex.getMessage(), ex);
+            } finally {
+                if (connection != null) {
+                    connection.disconnect();
+                }
+            }
         };
     }
 

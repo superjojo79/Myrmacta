@@ -105,6 +105,18 @@ public final class PostgresTestContainerSupport {
         return new HikariDataSource(config);
     }
 
+    public static String jdbcUrl() {
+        return container().getJdbcUrl();
+    }
+
+    public static String adminUsername() {
+        return container().getUsername();
+    }
+
+    public static String adminPassword() {
+        return container().getPassword();
+    }
+
     private static Connection adminConnection() throws SQLException {
         PostgreSQLContainer<?> postgres = container();
         return DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());

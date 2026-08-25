@@ -57,7 +57,12 @@ du `pom.xml` (jamais utilisée, cf. décision n° 33).
 
 Chaque webhook est configurable par tenant : URL cible, secret HMAC (chiffré au repos), format du
 payload JSON. Toute URL cible passe par `OutboundUrlGuard` (résolution DNS + blocage des plages
-privées/loopback/link-local/métadonnées cloud) avant l'envoi.
+privées/loopback/link-local/métadonnées cloud) **avant** l'envoi. **D-44 :** `resolveSafe`
+effectue **un** lookup et retourne un `PinnedEndpoint` (IP validée + hostname d'origine).
+`WebhookRestAdapter` POST sur l'URI IP, envoie `Host` = hostname d'origine, vérifie le certificat
+TLS contre ce hostname (pas l'IP), et refuse les redirects (`NEVER`). L'admin webhook appelle
+seulement `assertSafe` (pas de connexion). Le skeleton `HttpRestServiceConnector` (rôle SERVICE,
+non enregistré) réutilise le même pin.
 
 ### Notifications navigateur — SSE
 

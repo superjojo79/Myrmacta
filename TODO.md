@@ -631,7 +631,13 @@ Points identifiés par
 [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md). Ils ne sont **pas**
 tranchés. Ne pas les implémenter en choisissant une option silencieusement.
 
-### [ ] 40. SSTI Thymeleaf / SpEL dans les templates stockés
+### [x] 40. SSTI Thymeleaf / SpEL dans les templates stockés
+
+**Clos** (2026-08-25, `durcissement-securite-post-revue`, D-40 = **B** / B2,
+[PR #76](https://github.com/superjojo79/FlowForge/pull/76)) — évaluateur allowlist
+(`#vars` / `#dates` / `#numbers` / `#strings` / `#lists` + chemins modèle), pas
+l'option A « sans SpEL » au sens moteur nu. `T()` / `#beans` / `new` / `getClass`
+→ 400 generate/preview **et** enregistrement.
 
 **Énoncé :** `ThymeleafHtmlTemplateProcessor` utilise `SpringTemplateEngine`
 (SpringEL). Un `TENANT_ADMIN` peut faire exécuter `${T(java.lang.Runtime)…}`
@@ -653,7 +659,12 @@ que le XSS navigateur. Le sandboxing Thymeleaf avancé a été reporté dès
 
 ---
 
-### [ ] 41. Isolation PostgreSQL par schéma sans GRANT par tenant
+### [x] 41. Isolation PostgreSQL par schéma sans GRANT par tenant
+
+**Clos** (2026-08-25, `durcissement-securite-post-revue`, D-41 = **A** / scope **S**,
+[PR #76](https://github.com/superjojo79/FlowForge/pull/76)) — rôle LOGIN
+`flowforge_tenant_dev` dans l'init Compose, superuser `POSTGRES_USER` distinct,
+IT `TenantRoleIsolationIT` (SKIPPED sans Docker). Pas de CLI provisioning tenant.
 
 **Énoncé :** `search_path` n'est pas une barrière. Un seul rôle PG (Compose :
 superuser de la base `flowforge`) peut lire les autres schémas du cluster
@@ -673,7 +684,12 @@ tenants.
 
 ---
 
-### [ ] 42. Actuator `permitAll` et conflit de port 8081
+### [x] 42. Actuator `permitAll` et conflit de port 8081
+
+**Clos** (2026-08-25, `durcissement-securite-post-revue`, D-42 = **L**,
+[PR #76](https://github.com/superjojo79/FlowForge/pull/76)) — bind `127.0.0.1`,
+port défaut **8090**, `permitAll` conservé (DD-MGMT-SEC) parce que loopback.
+Keycloak reste `:8081`.
 
 **Énoncé :** chaîne Security Order 0 `permitAll` sur le port management
 (`health` + `prometheus`), décision assumée `observabilite` DD-MGMT-SEC.
@@ -693,7 +709,12 @@ changement de défaut yaml.
 
 ---
 
-### [ ] 43. Secrets par défaut et HMAC M2M hors profil local
+### [x] 43. Secrets par défaut et HMAC M2M hors profil local
+
+**Clos** (2026-08-25, `durcissement-securite-post-revue`, D-43 = **F**,
+DD-DENYLIST = **L**, [PR #76](https://github.com/superjojo79/FlowForge/pull/76)) —
+fail-fast hors `local`/`test` ; denylist vide + `flowforge`/`postgres`/`admin`/
+`password` (trim, casse ignorée) ; HMAC M2M interdit hors ces profils.
 
 **Énoncé :** fallback `${DB_PASSWORD:flowforge}` ; Compose Postgres / Keycloak /
 MinIO avec mots de passe connus ; `M2M_JWT_SECRET` HMAC HS256 optionnel accepte
@@ -710,7 +731,12 @@ refuser HMAC hors ces profils ; secrets Compose obligatoires.
 
 ---
 
-### [ ] 44. SSRF webhook sortant — DNS TOCTOU
+### [x] 44. SSRF webhook sortant — DNS TOCTOU
+
+**Clos** (2026-08-25, `durcissement-securite-post-revue`, D-44 = **P**,
+[PR #76](https://github.com/superjojo79/FlowForge/pull/76)) — pin IP
+(`resolveSafe` un lookup, POST URI IP + `Host` / TLS hostname d'origine,
+redirects NEVER). Pas de proxy egress.
 
 **Énoncé :** `OutboundUrlGuard` bloque privé/metadata après résolution DNS,
 mais le client HTTP n'est pas pinté sur l'IP vérifiée (javadoc explicite).

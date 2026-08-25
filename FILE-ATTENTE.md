@@ -70,8 +70,8 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 
 Plus de lot produit V1 **nommé** hors sécurité : `derive-documentaire`
 (PR #75) est mergée. Le cycle **`durcissement-securite-post-revue`**
-(TODO §40–44) : D-* tranchés, Phase 2 **reviewed**, Phase 3 **draft**
-(Phase 3 **reviewed**). Reliquat ops hors file : provisioning tenant
+(TODO §40–44) : D-* tranchés, Phase 2 **reviewed**, Phase 3 **reviewed**.
+Reliquat ops hors file : provisioning tenant
 (CLI / orchestrateur — hors cette feature). §46 hors périmètre.
 
 **Regroupement (2026-08-25) :** les 5 findings sécurité (§4) forment

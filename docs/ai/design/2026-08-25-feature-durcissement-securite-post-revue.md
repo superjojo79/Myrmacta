@@ -10,8 +10,9 @@ feature: durcissement-securite-post-revue
 
 # System Design — `durcissement-securite-post-revue`
 
-> **Hors phase.** Rédigé trop tôt, avant clôture des D-* Phase 1/2.
-> `status: draft`. Non reviewed. Non opposable. À réécrire en Phase 3.
+> **Hors phase.** Brouillon prématuré (avant Phase 3). Requirements sont
+> désormais **reviewed** (B2, pas A). Ne pas traiter ce fichier comme
+> design validé. À réécrire en Phase 3.
 
 ## Phase 3: Review Design — non commencée
 

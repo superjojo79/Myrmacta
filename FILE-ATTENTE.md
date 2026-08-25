@@ -71,7 +71,7 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 Plus de lot produit V1 **nommé** hors sécurité : `derive-documentaire`
 (PR #75) est mergée. Le cycle **`durcissement-securite-post-revue`**
 (TODO §40–44) est **en Phase 1** (requirements brouillon). D-40/B2 et
-D-40…D-44 **tranchés** (Phase 1 questions closes). Phase 2 non commencée.
+D-40…D-44 **tranchés**. Phase 2 **reviewed** 2026-08-25. Phase 3 non commencée.
 Reliquat ops hors file :
 provisioning tenant (CLI / orchestrateur — hors cette feature).
 
@@ -81,7 +81,7 @@ options A/B/C de TODO §40–44. §46 hors périmètre de cette feature.
 
 | Priorité | Item | Notes |
 |---|---|---|
-| **En cours — Phase 1 close / attente Phase 2** | `durcissement-securite-post-revue` (TODO §40–44) | D-* tranchés (B/B2, A/S, L, F, P). Requirements **draft**, pas reviewed. Ne pas implémenter. [PR #76](https://github.com/superjojo79/FlowForge/pull/76). §46 hors périmètre. |
+| **En cours — Phase 2 reviewed / attente Phase 3** | `durcissement-securite-post-revue` (TODO §40–44) | Requirements **reviewed**. D-* : B/B2, A/S, L, F, P. Design hors phase (brouillon prématuré). Ne pas implémenter. [PR #76](https://github.com/superjojo79/FlowForge/pull/76). §46 hors périmètre. |
 | **Hors périmètre de la feature sécurité** | TODO §46 (ArchUnit `application`) | Architecture, pas sécurité au sens de la revue — point séparé, non bloquant. |
 
 Détail et options : [TODO.md](TODO.md) §40–46,
@@ -89,9 +89,8 @@ Détail et options : [TODO.md](TODO.md) §40–46,
 
 ## En revue
 
-*Cycle Phase 1 questions closes* — [PR #76](https://github.com/superjojo79/FlowForge/pull/76)
-(`durcissement-securite-post-revue`, D-40 = B / B2, D-41 = A / S, D-42 = L, D-43 = F, D-44 = P).
-Phase 2 non commencée.
+*Cycle Phase 2 reviewed* — [PR #76](https://github.com/superjojo79/FlowForge/pull/76)
+(`durcissement-securite-post-revue`, requirements reviewed, Phase 3 non commencée).
 PR #75 (`derive-documentaire`) **mergée**.
 **Hors V1 (reporté, pas dans cette file) :** Rapports / SLA (maquette UI de
 référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même

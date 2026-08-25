@@ -2,29 +2,32 @@
 phase: requirements
 title: Requirements & Problem Understanding
 description: Clarify the problem space, gather requirements, and define success criteria
-status: draft
+status: reviewed
 created: 2026-08-25
 updated: 2026-08-25
 feature: durcissement-securite-post-revue
 phase1: 2026-08-25
+phase2: 2026-08-25
+stakeholder_decisions: 2026-08-25
 todo_ref: TODO.md §40–44 · FILE-ATTENTE.md · REVUE-ALIGNEMENT-SECURITE.md
 ---
 
 # Requirements & Problem Understanding — `durcissement-securite-post-revue`
 
-## Phase 1: New Requirement
+## Phase 2: Review requirements
 
-**Statut : brouillon.** Questions Phase 1 **closes**. Phase 2 (review
-requirements) **non commencée** — attendre accord. Une ébauche de code
-existe déjà sur le working tree (hors phase) : elle coupe SpEL (proche
-de A / B1) et **diverge** de B2 ; le pin IP est partiellement ébauché
-(proche de D-44 = P). Réaligner ou reverter après Phase 2–4.
+Revue 2026-08-25. D-* tranchés en Phase 1 par l'utilisateur (pas par la
+reco revue seule : D-40 = B alors que la revue recommandait A). Aucune
+question ouverte. Hypothèses restantes **nommées** (A-*) — pas des D-*.
+Design / planning / testing remplis trop tôt : **hors phase** jusqu'à
+Phase 3+.
 
-Les autres fichiers `docs/ai/{design,planning,testing,implementation,deployment,monitoring}/`
-de cette feature ont été remplis trop tôt. Ils sont **hors phase** et
-non opposables.
+Ébauche de code hors phase : **diverge** de D-40-ALLOW = B2 (SpEL coupé,
+proche A/B1). Pin IP partiellement proche de D-44 = P. Le code suivra
+les D-*, pas l'inverse.
 
 ## Problem Statement
+**What problem are we solving?**
 
 Cinq findings de la revue post-implémentation 2026-08-25
 ([REVUE-ALIGNEMENT-SECURITE.md](../../../REVUE-ALIGNEMENT-SECURITE.md) §4,
@@ -47,27 +50,38 @@ mais la surface d'attaque SaaS n'est pas au niveau visé :
 5. **SSRF TOCTOU (S-5 / §44)** — `OutboundUrlGuard` résout le DNS puis le
    client HTTP se reconnecte sans pin IP (rebinding).
 
-**Hors feature (déjà acté par FILE-ATTENTE / revue, pas un D-* de cette
-Phase 1) :** TODO §45 (clos PR #75), TODO §46 (ArchUnit `application`),
-reliquats S-6…S-10, DMN, connecteur `http-rest` en rôle SERVICE.
+- **Affectés :** ops SaaS (blast radius inter-tenant) ; `TENANT_ADMIN`
+  (templates / preview) ; dev local (Keycloak vs actuator, secrets démo) ;
+  prod (boot avec secrets oubliés).
+- **Situation actuelle :** findings ouverts dans TODO §40–44 ; aucune
+  mitigation produit livrée sur `main` pour ces cinq points.
+
+**Hors feature :** TODO §45 (clos PR #75), TODO §46 (ArchUnit
+`application`), reliquats S-6…S-10, DMN, connecteur `http-rest` en rôle
+SERVICE (le skeleton existant n'est pas activé ; le pin D-44 s'applique
+quand même à ses appels HTTP, A-PIN-CALLERS).
 
 ## Goals & Objectives
+**What do we want to achieve?**
 
-Objectifs (D-* tranchés) :
+### Primary goals
 
-1. Restreindre SpEL dans les templates stockés par **allowlist B2**
-   (D-40 = B, D-40-ALLOW = B2) : modèle + `#vars` + `#dates` / `#numbers` /
-   `#strings` / `#lists` ; refus `T()`, `new`, `#beans`, request/servlet.
-2. Isolation SQL par **rôle PG LOGIN par schéma tenant** (D-41 = A,
-   D-41-SCOPE = S) : init Compose `tenant_dev` + runbook ops + IT
-   Testcontainers. Pas de CLI/orchestrateur tenant.
-3. Actuator bound **localhost**, port management défaut **8090** (Keycloak
-   reste 8081), `permitAll` conservé (D-42 = L / DD-MGMT-SEC).
-4. Fail-fast hors profils `local`/`test` si secrets défaut ou absents, et
-   HMAC M2M interdit hors ces profils (D-43 = F).
-5. Pin IP sur les sorties HTTP déjà gardées (webhooks ; skeleton SERVICE
-   si le même garde s'applique) : un lookup, connexion à l'IP validée,
-   `Host` + TLS sur le hostname d'origine (D-44 = P). Redirects `NEVER`
+1. Allowlist SpEL **B2** (D-40 = B, D-40-ALLOW = B2) sur generate **et**
+   live preview : modèle + `#vars` + `#dates` / `#numbers` / `#strings` /
+   `#lists` ; refus `T()`, `new`, `#beans`, request/servlet. Même moteur
+   / allowlist pour le syntax checker (pas d'écart generate vs check).
+2. Isolation SQL : rôle PG LOGIN par schéma (D-41 = A, D-41-SCOPE = S) —
+   init Compose `tenant_dev` (superuser bootstrap ≠ user app) + runbook
+   ops (GETTING-STARTED / `02-multi-tenant.md`) + IT Testcontainers.
+   Pas de CLI/orchestrateur tenant.
+3. Actuator : bind `127.0.0.1`, port défaut **8090**, `permitAll` conservé
+   (D-42 = L / DD-MGMT-SEC). Keycloak reste 8081.
+4. Fail-fast hors `local`/`test` si secrets défaut ou absents, HMAC M2M
+   interdit hors ces profils (D-43 = F). GETTING-STARTED documente le
+   profil `local` pour la démo.
+5. Pin IP (D-44 = P) sur les clients HTTP qui appellent le garde puis
+   connectent (A-PIN-CALLERS) : un lookup ; connexion à l'IP validée ;
+   `Host` + SNI / vérif TLS sur le hostname d'origine ; redirects `NEVER`
    inchangé.
 
 ### Non-goals
@@ -76,105 +90,111 @@ Objectifs (D-* tranchés) :
   distribué, ArchUnit `application` (§46).
 - Database-par-tenant (D-41 ≠ B).
 - Proxy egress allowlist (D-44 ≠ X).
+- mTLS actuator (D-42 ≠ M).
 - Changer le modèle « une instance = un tenant » (décision 13).
-- Outillage CLI / orchestrateur de provisioning tenant (hors file produit ;
-  D-41-SCOPE = S).
+- Outillage CLI / orchestrateur de provisioning tenant (D-41-SCOPE = S).
+- Changer la SPA (aucune route / store / écran visé).
 
 ## User Stories & Use Cases
+**How will users interact with the solution?**
 
 - En tant qu'**ops SaaS**, je ne veux pas qu'un `TENANT_ADMIN` compromis
-  obtienne une RCE JVM **et** lise `tenant_b` via le même user PG.
-- En tant que **dev local**, je veux que Keycloak et l'actuator ne se
-  marchent pas dessus, et que le profil de démo reste utilisable.
-- En tant que **prod**, je ne veux pas qu'un oubli de secret (`flowforge`,
-  HMAC M2M) laisse l'instance démarrer.
+  obtienne une RCE JVM via `T()` **et** lise `tenant_b` via le même user PG.
+- En tant que **`TENANT_ADMIN`**, je peux toujours interpoler le modèle et
+  formater via `#dates` / `#numbers` / `#strings` / `#lists` / `#vars` ;
+  un template avec `T()` ou `#beans` ne s'évalue pas.
+- En tant que **dev local**, Keycloak `:8081` et l'actuator `:8090` ne se
+  marchent pas dessus ; `spring.profiles.active=local` conserve les secrets
+  de démo.
+- En tant que **prod**, un oubli `DB_PASSWORD=flowforge` ou un HMAC M2M
+  empêche le boot.
 
-Cas limites restants : volume PG Compose existant (init SQL non rejouée) ;
-scrape Prometheus hors loopback seulement si ops surcharge
-`MANAGEMENT_ADDRESS` (D-42 = L, défaut `127.0.0.1`). `#dates` / `#numbers`
-/ `#strings` / `#lists` sont **dans** l'allowlist (D-40-ALLOW = B2) ;
-`T()` / `#beans` hors.
+**Cas limites :**
+
+- Volume PG Compose existant : init SQL non rejouée → documenter
+  `compose down -v` dans le runbook (D-41-SCOPE).
+- Scrape Prometheus hors loopback : seulement si ops surcharge
+  `MANAGEMENT_ADDRESS` (défaut `127.0.0.1`).
+- Templates existants qui utiliseraient `T()` / `#beans` : cassent
+  volontairement (T-SSTI).
+- Validation URL webhook admin (`assertSafe` à l'enregistrement) : pas
+  de connect HTTP, donc pas de pin (A-PIN-CALLERS).
 
 ## Success Criteria
+**How will we know when we're done?**
 
-Critères à valider en Phase 2 (plus de D-* ouverts) :
-
-- [ ] **T-SSTI** (D-40 = B, D-40-ALLOW = B2) : `${T(java.lang.Runtime)}` et
-      `#beans` → exception ou texte non évalué ; `th:text="${title}"`,
-      `#vars`, `#dates` / `#numbers` / `#strings` / `#lists` évalués.
-- [ ] **T-GRANT** (D-41 = A) : le rôle d'application ne `SELECT` pas un
-      autre schéma tenant (IT Testcontainers, SKIPPED sans Docker).
-- [ ] **T-MGMT** (D-42 = L) : `management.server.address` = `127.0.0.1` ;
-      défaut de port **8090** ; `ObservabilityActuatorIT` reste vert
-      (`MANAGEMENT_PORT=0`).
-- [ ] **T-SECRETS** (D-43 = F) : hors `local`/`test`, `DB_PASSWORD` denylist
-      / master-key vide / `OIDC_CLIENT_SECRET` vide / HMAC M2M posé →
-      fail-fast au boot ; profil `test` inchangé.
-- [ ] **T-PIN** (D-44 = P) : le client HTTP contacte l'IP validée, pas un
-      second lookup (test de rebinding) ; `Host` / SNI = hostname d'origine.
+- [ ] **T-SSTI** — generate et live preview : `${T(java.lang.Runtime)}` et
+      `#beans` → non évalués (exception ou texte brut, A-SSTI-FAIL) ;
+      `${title}`, `#vars`, `#dates` / `#numbers` / `#strings` / `#lists`
+      évalués. Syntax checker aligné (même allowlist).
+- [ ] **T-GRANT** — rôle app : `SELECT` sur son schéma OK ; `SELECT` sur
+      un autre schéma tenant → permission denied (Testcontainers,
+      SKIPPED sans Docker).
+- [ ] **T-MGMT** — `management.server.address` = `127.0.0.1` ; défaut
+      port **8090** ; `ObservabilityActuatorIT` vert (`MANAGEMENT_PORT=0`).
+- [ ] **T-SECRETS** — hors `local`/`test` : denylist `DB_PASSWORD` (au
+      moins `flowforge` / vide), master-key vide, `OIDC_CLIENT_SECRET`
+      vide, HMAC M2M posé → fail-fast au boot ; profil `test` inchangé.
+- [ ] **T-PIN** — un lookup DNS ; URI contactée = IP validée ; `Host` /
+      SNI = hostname d'origine ; test de rebinding. Callers A-PIN-CALLERS.
+- [ ] **T-DOCS** — GETTING-STARTED : profil `local`, actuator `:8090`,
+      rôle PG `tenant_dev`, volume `down -v` ; notes `02` / `08` / `09`
+      alignées ; TODO §40–44 clos à la fin du cycle.
 - [ ] `./mvnw verify` vert ; Vitest + Playwright de non-régression (SPA
       non visée).
 
 ## Constraints & Assumptions
+**What limitations do we need to work within?**
 
-- Décision 13 inchangée. Hexagone inchangé (`domain` pur).
-- Branche cloud `cursor/durcissement-securite-post-revue-a95d` (pas
-  `feature-<name>` — contrainte environnement ; lint git `[MISS]` accepté).
-- Pas de worktree isolé (un seul workspace cloud).
-- `npx ai-devkit@latest task` indisponible (`unknown command 'task'`).
-- Testcontainers : même contrat que `fiabilisation-tests-plateforme`
-  (écrits/compilés, SKIPPED sans Docker).
-- FILE-ATTENTE : ne **pas** trancher silencieusement un point TODO
-  « à décider ». Phase 1 questions closes. Phase 2 seulement sur accord
-  utilisateur.
-- L'ébauche de code hors phase n'est **pas** une contrainte : si un D-*
-  diverge, le code suit le D-*, pas l'inverse.
+### Constraints
 
-## Alternatives (brainstorm Phase 1)
+- Décision 13 inchangée. Hexagone inchangé (`domain` pur ; durcissements
+  dans `infrastructure`).
+- Branche cloud `cursor/durcissement-securite-post-revue-a95d` (lint git
+  `[MISS]` `feature-*` accepté).
+- Pas de worktree isolé. `npx ai-devkit@latest task` indisponible.
+- Testcontainers : même contrat que `fiabilisation-tests-plateforme`.
+- Jacoco bundle existant tenu (nouvelles classes au-dessus des seuils).
+- JDK d'itération cloud : **21** si 25 absent (`-Dmaven.compiler.release=21`,
+  `-Dskip.frontend=true` en itération) ; CI / `verify` selon le JDK du
+  job.
 
-| Approche | Trade-off | Reco |
+### Named assumptions (Phase 2)
+
+| ID | Hypothèse | Si faux |
 |---|---|---|
-| A — Un seul lot 40–44 | Une PR, chaîne S-1+S-2 traitée ensemble | **Recommandée** (nom de feature FILE-ATTENTE) |
-| B — 40 seul, 41+ plus tard | Chaîne Critical reste ouverte | Non recommandée |
-| C — Docs / runbooks only | SSTI et TOCTOU restent exploitables | Non recommandée |
+| A-PIN-CALLERS | Pin sur les adaptateurs qui **connectent** après le garde : `WebhookRestAdapter` et `HttpRestServiceConnector` (skeleton). L'admin webhook (`assertSafe` à l'enregistrement) ne connecte pas. | Phase 3 revoit les call sites |
+| A-SSTI-FAIL | « Non évalué » = exception **ou** texte brut ; le code HTTP exact (400 vs 200 + placeholder) est un DD Phase 3 | Si le métier exige 400 strict, le poser en Phase 3 |
+| A-SSTI-ENGINE | Mécanisme B2 (évaluateur custom vs sandbox SpringEL) = design Phase 3 | — |
+| A-DENYLIST | Liste exacte des mots de passe interdits hors local/test = design ; le minimum produit est `flowforge` et vide | — |
+| A-LOCAL-DOC | GETTING-STARTED documente `--spring.profiles.active=local` (ou équivalent) pour la démo | Boot local sans profil = fail-fast D-43 |
+| A-NO-SPA | Zéro fichier `frontend/**` attendu | Toute UI actuator/secrets serait hors scope |
 
-Lot unique 40–44 : reco FILE-ATTENTE, non contestée.
+## Alternatives (Phase 1, revalidées Phase 2)
+
+| Approche | Trade-off | Verdict |
+|---|---|---|
+| A — Un seul lot 40–44 | Une PR, chaîne S-1+S-2 ensemble | **Retenue** (nom de feature, non contestée) |
+| B — 40 seul, 41+ plus tard | Chaîne Critical ouverte | Écartée |
+| C — Docs / runbooks only | SSTI / TOCTOU exploitables | Écartée |
+
+Écart volontaire vs reco revue : **D-40 = B** (revue : A). Conservé.
 
 ## Questions & Open Items
+**What do we still need to clarify?**
 
-**Aucune question ouverte.** Phase 2 non commencée.
+**Aucune question ouverte.** Toutes closes ou nommées (A-*).
 
-| ID | Point | Statut | Choix |
-|---|---|---|---|
-| D-40 | SSTI Thymeleaf / SpEL | **B** | Allowlist SpEL (pas A sans SpEL, pas C confiance admin) |
-| D-40-ALLOW | Périmètre de l'allowlist | **B2** | B1 + `#dates` `#numbers` `#strings` `#lists` ; refus `T()` / `#beans` |
-| D-41 | Isolation PG inter-schémas | **A** | Rôle LOGIN par schéma ; écarté B database/tenant, C confiance réseau |
-| D-41-SCOPE | Périmètre provisioning | **S** | Init Compose + runbook + IT ; pas de CLI tenant |
-| D-42 | Actuator bind / port / `permitAll` | **L** | Bind `127.0.0.1`, port 8090, `permitAll` conservé |
-| D-43 | Secrets défaut + HMAC M2M | **F** | Fail-fast hors local/test ; HMAC M2M interdit hors ces profils |
-| D-44 | SSRF DNS TOCTOU | **P** | Pin IP ; écarté X proxy egress, N javadoc only |
+| ID | Point | Choix |
+|---|---|---|
+| D-40 | SSTI Thymeleaf / SpEL | **B** allowlist (écarté A, C) |
+| D-40-ALLOW | Périmètre allowlist | **B2** modèle + `#vars` + `#dates` `#numbers` `#strings` `#lists` ; refus `T()` `#beans` `new` request (écarté B1, B3) |
+| D-41 | Isolation PG | **A** rôle LOGIN par schéma (écarté B database, C réseau) |
+| D-41-SCOPE | Provisioning | **S** init Compose + runbook + IT ; pas de CLI (écarté C, L) |
+| D-42 | Actuator | **L** `127.0.0.1:8090`, `permitAll` conservé (écarté M, N) |
+| D-43 | Secrets / HMAC | **F** fail-fast hors local/test ; HMAC interdit hors ces profils (écarté H, R) |
+| D-44 | SSRF TOCTOU | **P** pin IP (écarté X, N) |
 
-### Décisions enregistrées
-
-- **D-40 = B** — allowlist SpEL. Écarté : A, C. Reco revue était A.
-- **D-40-ALLOW = B2** — modèle + `#vars` + utilitaires dialecte standard
-  (`#dates`, `#numbers`, `#strings`, `#lists`). Écarté : B1, B3.
-  L'ébauche hors phase (interpolation seule) **diverge** toujours.
-- **D-41 = A** — un rôle PG LOGIN par schéma tenant. Écarté : B, C.
-- **D-41-SCOPE = S** — init SQL Compose (`tenant_dev`, superuser bootstrap
-  ≠ user app) + runbook GETTING-STARTED / `02-multi-tenant.md` + IT
-  Testcontainers. Écarté : C (CLI générique), L (SQL local sans runbook).
-  Volume PG existant : l'init ne se rejoue pas (`compose down -v`) —
-  à documenter dans le runbook.
-- **D-42 = L** — bind `127.0.0.1` ; `MANAGEMENT_PORT` défaut **8090** ;
-  `permitAll` conservé (DD-MGMT-SEC). Écarté : M (mTLS), N (ne pas
-  publier). Keycloak reste 8081.
-- **D-43 = F** — fail-fast hors `local`/`test` si secrets défaut ou
-  absents **et** HMAC M2M interdit hors ces profils. Écarté : H, R.
-  Compose peut garder des secrets de démo pour la stack locale.
-- **D-44 = P** — pin IP (un lookup ; connexion à l'IP validée ; `Host` +
-  SNI / vérif TLS sur le hostname d'origine ; redirects `NEVER`
-  inchangé). Écarté : X (proxy egress), N (javadoc only).
-
-Prochaine étape **proposée**, pas exécutée : Phase 2 `dev-requirements`
-review (cohérence, template, success criteria, pas de D-* implicite).
+Prochaine étape **proposée**, pas exécutée : Phase 3 `dev-design` (réécrire
+le design hors phase pour coller à B2 + A-* ; ne pas recycler l'ébauche
+A/B1 comme reviewed).

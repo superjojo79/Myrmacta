@@ -24,7 +24,7 @@
         <flying-saucer.version>10.5.0</flying-saucer.version>
         <jsoup.version>1.23.1</jsoup.version>
         <archunit.version>1.5.0</archunit.version>
-        <aws.sdk.version>2.51.4</aws.sdk.version>
+        <aws.sdk.version>2.53.2</aws.sdk.version>
         <skip.frontend>false</skip.frontend>
     </properties>
 

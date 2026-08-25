@@ -79,7 +79,7 @@ options A/B/C de TODO §40–44. §46 hors périmètre de cette feature.
 
 | Priorité | Item | Notes |
 |---|---|---|
-| **En cours — Phase 1** | `durcissement-securite-post-revue` (TODO §40–44) | Requirements **draft**. D-40 posée, D-41…D-44 ouvertes. Ne pas implémenter ni lock silencieusement. [PR #76](https://github.com/superjojo79/FlowForge/pull/76). §46 hors périmètre. |
+| **En cours — Phase 1** | `durcissement-securite-post-revue` (TODO §40–44) | Requirements **draft**. D-40 = **B** (allowlist SpEL). Question actuelle : D-40-ALLOW. D-41…D-44 ouverts. Ne pas implémenter. [PR #76](https://github.com/superjojo79/FlowForge/pull/76). §46 hors périmètre. |
 | **Hors périmètre de la feature sécurité** | TODO §46 (ArchUnit `application`) | Architecture, pas sécurité au sens de la revue — point séparé, non bloquant. |
 
 Détail et options : [TODO.md](TODO.md) §40–46,
@@ -88,7 +88,7 @@ Détail et options : [TODO.md](TODO.md) §40–46,
 ## En revue
 
 *Cycle en Phase 1* — [PR #76](https://github.com/superjojo79/FlowForge/pull/76)
-(`durcissement-securite-post-revue`, requirements draft, D-* ouverts).
+(`durcissement-securite-post-revue`, D-40 = B, D-40-ALLOW ouverte).
 PR #75 (`derive-documentaire`) **mergée**.
 **Hors V1 (reporté, pas dans cette file) :** Rapports / SLA (maquette UI de
 référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même

@@ -15,7 +15,7 @@ todo_ref: TODO.md §40–44 · FILE-ATTENTE.md · REVUE-ALIGNEMENT-SECURITE.md
 ## Phase 1: New Requirement
 
 **Statut : brouillon.** Phase 2 n'est pas ouverte. D-40 = **B** / **B2**,
-D-41 = **A** / **S**, D-42 = **L**. D-43 et D-44 restent ouverts. Une
+D-41 = **A** / **S**, D-42 = **L**, D-43 = **F**. D-44 reste ouvert. Une
 ébauche de code existe déjà sur le working tree (hors phase) : elle
 coupe SpEL (proche de A / B1) et **diverge** de B2 ; elle sera réalignée
 ou revertée après Phase 2–4.
@@ -63,7 +63,8 @@ Objectifs **candidats** (dépendent des D-* encore ouverts) :
    Testcontainers. Pas de CLI/orchestrateur tenant.
 3. Actuator bound **localhost**, port management défaut **8090** (Keycloak
    reste 8081), `permitAll` conservé (D-42 = L / DD-MGMT-SEC).
-4. Empêcher un boot prod avec secrets de démo ou HMAC M2M, selon D-43.
+4. Fail-fast hors profils `local`/`test` si secrets défaut ou absents, et
+   HMAC M2M interdit hors ces profils (D-43 = F).
 5. Empêcher le rebinding DNS sur les sorties HTTP déjà gardées, selon D-44.
 
 ### Non-goals
@@ -104,8 +105,9 @@ D-* tranchés :
 - [ ] **T-MGMT** (D-42 = L) : `management.server.address` = `127.0.0.1` ;
       défaut de port **8090** ; `ObservabilityActuatorIT` reste vert
       (`MANAGEMENT_PORT=0`).
-- [ ] **T-SECRETS** : hors profils de démo, secrets connus / HMAC M2M
-      selon D-43 → fail-fast ; profil `test` inchangé.
+- [ ] **T-SECRETS** (D-43 = F) : hors `local`/`test`, `DB_PASSWORD` denylist
+      / master-key vide / `OIDC_CLIENT_SECRET` vide / HMAC M2M posé →
+      fail-fast au boot ; profil `test` inchangé.
 - [ ] **T-PIN** (si D-44 = pin IP) : le client HTTP contacte l'IP validée,
       pas un second lookup.
 - [ ] `./mvnw verify` vert ; Vitest + Playwright de non-régression (SPA
@@ -145,8 +147,8 @@ Lot unique 40–44 : reco FILE-ATTENTE, pas contestée à ce stade.
 | D-41 | Isolation PG inter-schémas | **A** | Rôle LOGIN par schéma ; écarté B database/tenant, C confiance réseau |
 | D-41-SCOPE | Périmètre provisioning | **S** | Init Compose + runbook + IT ; pas de CLI tenant |
 | D-42 | Actuator bind / port / `permitAll` | **L** | Bind `127.0.0.1`, port 8090, `permitAll` conservé |
-| D-43 | Secrets défaut + HMAC M2M | **posée maintenant** | F / H / R ci-dessous |
-| D-44 | SSRF DNS TOCTOU | en attente | pin IP ; proxy egress allowlist |
+| D-43 | Secrets défaut + HMAC M2M | **F** | Fail-fast hors local/test ; HMAC M2M interdit hors ces profils |
+| D-44 | SSRF DNS TOCTOU | **posée maintenant** | P / X / N ci-dessous |
 
 ### Décisions enregistrées
 
@@ -165,25 +167,29 @@ Lot unique 40–44 : reco FILE-ATTENTE, pas contestée à ce stade.
   `permitAll` conservé (DD-MGMT-SEC). Écarté : M (mTLS), N (ne pas
   publier). Keycloak reste 8081.
 
-### Question actuelle — D-43 (seule question de ce tour)
+- **D-43 = F** — fail-fast hors `local`/`test` si secrets défaut ou
+  absents **et** HMAC M2M interdit hors ces profils. Écarté : H (HMAC
+  prod), R (docs only). Compose peut garder des secrets de démo pour
+  la stack locale.
 
-**Pourquoi ça compte :** fallbacks `${DB_PASSWORD:flowforge}` et HMAC
-`M2M_JWT_SECRET` acceptent un artefact copié en prod sans override, ou
-un HMAC qui remplace l'issuer OIDC. OK en local. `permitAll` actuator
-est déjà borné au loopback (D-42) ; les secrets JDBC/OIDC/HMAC restent
-la porte d'entrée si le boot réussit.
+### Question actuelle — D-44 (seule question de ce tour)
+
+**Pourquoi ça compte :** `OutboundUrlGuard` bloque privé/metadata après
+un lookup DNS, mais le client HTTP se reconnecte sans pin IP. Un DNS
+qui bascule entre une IP publique (passe `assertSafe`) et
+`169.254.169.254` au `connect` contourne la garde (TOCTOU / rebinding).
+Un proxy egress déplace le contrôle vers l'ops (hors stack actuelle).
 
 **Options :**
 
-- **F** — fail-fast **hors** profils `local`/`test` si secrets défaut ou
-  absents (`DB_PASSWORD` denylist type `flowforge` / vide, master-key
-  connecteur vide, `OIDC_CLIENT_SECRET` vide) **et** HMAC M2M **interdit**
-  hors ces profils. Local/test inchangés (démo + HMAC de test). Compose
-  peut garder des secrets de démo pour la stack locale.
-- **H** — fail-fast JDBC/OIDC comme F, mais HMAC M2M encore autorisé en
-  prod s'il est posé (la revue juge ça dangereux).
-- **R** — documentation seulement, pas de fail-fast au boot.
+- **P** — pin IP : un seul lookup ; le client HTTP contacte l'IP déjà
+  validée ; header `Host` + SNI / vérif TLS sur le **hostname d'origine**.
+  Reco revue S-5. Redirects `NEVER` inchangé.
+- **X** — proxy egress allowlist (contrôle ops, plus cher, pas dans la
+  stack V1).
+- **N** — ne pas changer le client (javadoc seulement).
 
-**Recommandation revue : F.**
+**Recommandation revue : P.**
 
-Ne pas répondre à D-44 dans ce tour.
+Après D-44, toutes les questions Phase 1 seront closes — on **ne**
+passe **pas** à Phase 2 dans ce tour.

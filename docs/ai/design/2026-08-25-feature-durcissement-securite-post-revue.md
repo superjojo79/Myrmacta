@@ -2,19 +2,21 @@
 phase: design
 title: System Design & Architecture
 description: Define the technical architecture, components, and data models
-status: draft
+status: reviewed
 created: 2026-08-25
 updated: 2026-08-25
 feature: durcissement-securite-post-revue
+phase3: 2026-08-25
 requirements_ref: docs/ai/requirements/2026-08-25-feature-durcissement-securite-post-revue.md
 ---
 
 # System Design & Architecture — `durcissement-securite-post-revue`
 
-## Phase 3: Review Design (en cours)
+## Phase 3: Review Design
 
-Réécrit pour **D-40-ALLOW = B2**. DD-THYME-B2 = **E**, DD-SSTI-FAIL = **C**.
-`status: draft`. Pas reviewed tant que DD-DENYLIST n'est pas tranché.
+Revue close 2026-08-25. DD-THYME-B2 = **E**, DD-SSTI-FAIL = **C**,
+DD-DENYLIST = **L**. Aucune question ouverte. Hypothèses A-EXPR-METHODS
+et A-DENY-CASE nommées ci-dessous.
 
 Couverture requirements : 5 goals, A-PIN-CALLERS, A-NO-SPA, hexagone.
 
@@ -56,8 +58,8 @@ flowchart TB
 ```
 
 **Stack :** Java / Spring Boot existants ; Thymeleaf déjà via
-`spring-boot-starter-thymeleaf` ; pas de nouvelle dépendance si DD-THYME-B2
-= E. PostgreSQL rôles dans l'init Compose. EPP Spring Boot existant
+`spring-boot-starter-thymeleaf` ; pas de nouvelle dépendance (DD-THYME-B2
+= E). PostgreSQL rôles dans l'init Compose. EPP Spring Boot existant
 (`TenantIdEnvironmentValidator` comme voisin).
 
 **Hexagone :** processeur / checker / garde URL / sender HTTP /
@@ -87,8 +89,8 @@ webhooks / actuator **inchangés** (chemins, authz).
 
 - Actuator : mêmes chemins `health` / `prometheus`, bind/port D-42.
 - Fail-fast secrets : pas d'API, refus au **boot** (EPP).
-- SSTI : même `TemplateProcessingException` / `InvalidTemplateSyntaxException`
-  existants ; le mapping HTTP exact est **DD-SSTI-FAIL** (pas encore posé).
+- SSTI : `TemplateProcessingException` / `InvalidTemplateSyntaxException`
+  existants → **400** generate/preview **et** enregistrement (DD-SSTI-FAIL = C).
 
 Admin webhook : `assertSafe` à l'enregistrement (A-PIN-CALLERS) — pas de
 pin, pas de connect.
@@ -103,7 +105,7 @@ pin, pas de connect.
 | `01-init-tenant-schema.sql` + Compose `POSTGRES_USER` vs `DB_USERNAME` | D-41 A / S |
 | `TenantRoleIsolationIT` | T-GRANT (SKIPPED sans Docker) |
 | `application.yml` `management.server.address` / `MANAGEMENT_PORT:8090` | D-42 L |
-| `application-local.yml` + EPP | D-43 F ; T-SECRETS ; A-LOCAL-DOC |
+| `application-local.yml` + EPP | D-43 F ; DD-DENYLIST = L (`flowforge`, `postgres`, `admin`, `password` + vide) |
 | `OutboundUrlGuard.resolveSafe` → `PinnedEndpoint` | D-44 P |
 | `WebhookRestAdapter` | POST URI IP + `Host` + TLS hostname d'origine (A-PIN-CALLERS) |
 | `HttpRestServiceConnector` | Même pin (skeleton, pas d'activation SERVICE) |
@@ -132,35 +134,19 @@ Frontend : aucun (A-NO-SPA).
 | ID | Choix |
 |---|---|
 | **DD-THYME-B2** | **E** — `TemplateEngine` + `StandardDialect` sans SpEL ; évaluateur custom B2. Écarté : S, R. |
-| **DD-SSTI-FAIL** | **C** — 400 generate/preview **et** enregistrement (hors allowlist). Écarté : X (generate only), P (200 + placeholder). Checker : même allowlist, pas parse HTML seul. |
+| **DD-SSTI-FAIL** | **C** — 400 generate/preview **et** enregistrement (hors allowlist). Écarté : X, P. Checker : même allowlist. |
+| **DD-DENYLIST** | **L** — vide + `flowforge`, `postgres`, `admin`, `password`. Écarté : M (plancher seul), W (wordlist large). |
 
-### Ouverts (Phase 3)
+### Named assumptions (Phase 3)
 
-| ID | Point | Statut |
-|---|---|---|
-| **DD-DENYLIST** | Ensemble exact des mots de passe interdits (A-DENYLIST) | **posée maintenant** |
+| ID | Hypothèse |
+|---|---|
+| A-EXPR-METHODS | Méthodes invocables sur `#dates` / `#numbers` / `#strings` / `#lists` / `#vars` = celles **déclarées** sur `org.thymeleaf.expression.{Dates,Numbers,Strings,Lists}` et l'objet Vars ; **pas** `Object.getClass` / `wait` / `notify` ni pont `Class`. |
+| A-DENY-CASE | Comparaison denylist après trim, **insensible à la casse**. |
 
-### Question actuelle — DD-DENYLIST (seule question de ce tour)
+Aucune question ouverte.
 
-**Pourquoi ça compte :** D-43 = F impose un fail-fast hors `local`/`test`
-si `DB_PASSWORD` est vide ou « défaut connu ». A-DENYLIST fixe le **plancher**
-(`flowforge` + vide). La liste exacte change le risque de faux positifs
-(prod légitime avec `admin`) vs le trou (Compose `postgres` / `password`
-encore acceptés). Master-key vide, `OIDC_CLIENT_SECRET` vide et HMAC M2M
-non vide sont **déjà** dans F, hors de cette liste.
-
-**Options :**
-
-- **M** — plancher seulement : vide + `flowforge`.
-- **L** — vide + `flowforge`, `postgres`, `admin`, `password` (défauts
-  cités par la revue S-4 / Compose). Reco.
-- **W** — liste large (`changeme`, `secret`, `root`, `test`, …). Plus de
-  faux positifs, entretien d'une wordlist.
-
-**Recommandation : L.**
-
-Après DD-DENYLIST, les DD Phase 3 seront clos — on **ne** passe **pas**
-à Phase 4 dans ce tour.
+Prochaine étape **proposée**, pas exécutée : Phase 4 `dev-planning` (jalons TDD M1 B2+C, M2 pin, M3 actuator, M4 EPP+L, M5 GRANT, M6 docs, M7 verify). L'ébauche hors phase sera réalignée en Phase 5, pas livrée telle quelle.
 
 ## Non-Functional Requirements
 **How should the system perform?**
@@ -191,7 +177,7 @@ Après DD-DENYLIST, les DD Phase 3 seront clos — on **ne** passe **pas**
 | 1 B2 generate + preview + checker | Processor + checker + **E** |
 | 2 GRANT + runbook + IT | init SQL, Compose, IT, T-DOCS |
 | 3 actuator L | yaml bind/port, permitAll |
-| 4 secrets F | EPP + profil `local` ; DD-DENYLIST ouvert |
+| 4 secrets F | EPP + profil `local` ; denylist **L** |
 | 5 pin P | `resolveSafe` + callers A-PIN-CALLERS |
 | A-NO-SPA | aucun composant FE |
 | T-SSTI fail HTTP | **C** — 400 generate + enregistrement |

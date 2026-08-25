@@ -71,7 +71,7 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 Plus de lot produit V1 **nommé** hors sécurité : `derive-documentaire`
 (PR #75) est mergée. Le cycle **`durcissement-securite-post-revue`**
 (TODO §40–44) : D-* tranchés, Phase 2 **reviewed**, Phase 3 **draft**
-(DD-THYME-B2 = E, DD-SSTI-FAIL = C, DD-DENYLIST ouverte). Reliquat ops hors file : provisioning tenant
+(Phase 3 **reviewed**). Reliquat ops hors file : provisioning tenant
 (CLI / orchestrateur — hors cette feature). §46 hors périmètre.
 
 **Regroupement (2026-08-25) :** les 5 findings sécurité (§4) forment
@@ -79,7 +79,7 @@ cette feature. D-* clos en Phase 1/2.
 
 | Priorité | Item | Notes |
 |---|---|---|
-| **En cours — Phase 3 draft** | `durcissement-securite-post-revue` (TODO §40–44) | Requirements **reviewed**. Design **draft**, DD-THYME-B2 = E, DD-SSTI-FAIL = **C**. Question : DD-DENYLIST. Ne pas implémenter. [PR #76](https://github.com/superjojo79/FlowForge/pull/76). |
+| **En cours — Phase 3 reviewed / attente Phase 4** | `durcissement-securite-post-revue` (TODO §40–44) | Requirements + design **reviewed**. DD : E, C, L. Ne pas implémenter. [PR #76](https://github.com/superjojo79/FlowForge/pull/76). |
 | **Hors périmètre de la feature sécurité** | TODO §46 (ArchUnit `application`) | Architecture, pas sécurité au sens de la revue — point séparé, non bloquant. |
 
 Détail et options : [TODO.md](TODO.md) §40–46,
@@ -88,7 +88,7 @@ Détail et options : [TODO.md](TODO.md) §40–46,
 ## En revue
 
 *Cycle Phase 3* — [PR #76](https://github.com/superjojo79/FlowForge/pull/76)
-(`durcissement-securite-post-revue`, design draft, DD-THYME-B2 = E, DD-SSTI-FAIL = C, DD-DENYLIST ouverte).
+(`durcissement-securite-post-revue`, design **reviewed**, Phase 4 non commencée).
 PR #75 (`derive-documentaire`) **mergée**.
 **Hors V1 (reporté, pas dans cette file) :** Rapports / SLA (maquette UI de
 référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même

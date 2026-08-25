@@ -14,10 +14,11 @@ todo_ref: TODO.md §40–44 · FILE-ATTENTE.md · REVUE-ALIGNEMENT-SECURITE.md
 
 ## Phase 1: New Requirement
 
-**Statut : brouillon.** Phase 2 n'est pas ouverte. D-40 = **B** (allowlist
-SpEL). Les autres D-* restent ouverts. Une ébauche de code existe déjà sur
-le working tree (hors phase) : elle coupe SpEL (proche de A) et **diverge**
-de D-40 = B ; elle sera réalignée ou revertée après Phase 2–4.
+**Statut : brouillon.** Phase 2 n'est pas ouverte. D-40 = **B**,
+D-40-ALLOW = **B2**. Les autres D-* restent ouverts. Une ébauche de code
+existe déjà sur le working tree (hors phase) : elle coupe SpEL (proche
+de A / B1) et **diverge** de B2 ; elle sera réalignée ou revertée après
+Phase 2–4.
 
 Les autres fichiers `docs/ai/{design,planning,testing,implementation,deployment,monitoring}/`
 de cette feature ont été remplis trop tôt. Ils sont **hors phase** et
@@ -54,9 +55,9 @@ reliquats S-6…S-10, DMN, connecteur `http-rest` en rôle SERVICE.
 
 Objectifs **candidats** (dépendent des D-* encore ouverts) :
 
-1. Restreindre SpEL dans les templates stockés par **allowlist** (D-40 = B) :
-   `T()` / RCE refusés ; le périmètre exact des expressions autorisées est
-   D-40-ALLOW (ouvert).
+1. Restreindre SpEL dans les templates stockés par **allowlist B2**
+   (D-40 = B, D-40-ALLOW = B2) : modèle + `#vars` + `#dates` / `#numbers` /
+   `#strings` / `#lists` ; refus `T()`, `new`, `#beans`, request/servlet.
 2. Réduire le blast radius SQL inter-schémas, selon D-41 / D-41-SCOPE.
 3. Rendre l'actuator non exposé par défaut hors loopback / départager le
    port Keycloak, selon D-42.
@@ -82,19 +83,18 @@ Objectifs **candidats** (dépendent des D-* encore ouverts) :
 - En tant que **prod**, je ne veux pas qu'un oubli de secret (`flowforge`,
   HMAC M2M) laisse l'instance démarrer.
 
-Cas limites à trancher avec les D-* : templates qui utiliseraient déjà
-`T()`, `#beans`, `#dates` ; volume PG Compose existant (init SQL non
-rejouée) ; scrape Prometheus hors localhost.
+Cas limites restants : volume PG Compose existant (init SQL non rejouée) ;
+scrape Prometheus hors localhost. `#dates` / `#numbers` / `#strings` /
+`#lists` sont **dans** l'allowlist (D-40-ALLOW = B2) ; `T()` / `#beans` hors.
 
 ## Success Criteria
 
 Critères **candidats** — à confirmer / ajuster en Phase 2 une fois les
 D-* tranchés :
 
-- [ ] **T-SSTI** (D-40 = B) : `${T(java.lang.Runtime)}` et expressions hors
-      allowlist → exception ou texte non évalué ; `th:text="${title}"`
-      conservé ; les expressions **dans** l'allowlist (D-40-ALLOW) restent
-      évaluées.
+- [ ] **T-SSTI** (D-40 = B, D-40-ALLOW = B2) : `${T(java.lang.Runtime)}` et
+      `#beans` → exception ou texte non évalué ; `th:text="${title}"`,
+      `#vars`, `#dates` / `#numbers` / `#strings` / `#lists` évalués.
 - [ ] **T-GRANT** (si D-41 = A ou B) : le rôle d'application ne `SELECT`
       pas un autre schéma tenant (IT Testcontainers, SKIPPED sans Docker).
 - [ ] **T-MGMT** : plus de conflit de port avec Keycloak 8081 en local ;
@@ -136,36 +136,40 @@ Lot unique 40–44 : reco FILE-ATTENTE, pas contestée à ce stade.
 | ID | Point | Statut | Choix / options |
 |---|---|---|---|
 | D-40 | SSTI Thymeleaf / SpEL | **B** | Allowlist SpEL (pas A sans SpEL, pas C confiance admin) |
-| D-40-ALLOW | Périmètre de l'allowlist | **posée maintenant** | B1 / B2 / B3 ci-dessous |
-| D-41 | Isolation PG inter-schémas | en attente | A rôle LOGIN par schéma ; B database/tenant ; C confiance réseau |
+| D-40-ALLOW | Périmètre de l'allowlist | **B2** | B1 + `#dates` `#numbers` `#strings` `#lists` ; refus `T()` / `#beans` |
+| D-41 | Isolation PG inter-schémas | **posée maintenant** | A rôle LOGIN par schéma ; B database/tenant ; C confiance réseau |
 | D-41-SCOPE | Périmètre provisioning (§31) | en attente (après D-41) | init local + runbook vs CLI générique |
 | D-42 | Actuator bind / port / `permitAll` | en attente | bind localhost ; mTLS ; ne pas publier ; départager 8081 |
 | D-43 | Secrets défaut + HMAC M2M | en attente | fail-fast hors `local`/`test` ; HMAC interdit hors ces profils ; secrets Compose obligatoires |
 | D-44 | SSRF DNS TOCTOU | en attente | pin IP ; proxy egress allowlist |
 
-### Décision enregistrée — D-40
+### Décisions enregistrées
 
-**B** — allowlist d'expressions / sandbox SpEL. Écarté : A (couper SpEL),
-C (confiance `TENANT_ADMIN`). Reco revue était A ; choix utilisateur = B.
-Conséquence : l'ébauche hors phase (évaluateur `${ident.prop}` seul) n'est
-**pas** le design cible.
+- **D-40 = B** — allowlist SpEL. Écarté : A, C. Reco revue était A.
+- **D-40-ALLOW = B2** — modèle + `#vars` + utilitaires dialecte standard
+  (`#dates`, `#numbers`, `#strings`, `#lists`). Écarté : B1 (trop étroit
+  pour motiver B), B3 (denylist SpringEL, surface revue « facile à rater »).
+  L'ébauche hors phase (interpolation seule) **diverge** toujours : il
+  manque `#vars` / `#dates` etc.
 
-### Question actuelle — D-40-ALLOW (seule question de ce tour)
+### Question actuelle — D-41 (seule question de ce tour)
 
-**Pourquoi ça compte :** « allowlist SpEL » sans liste est un trou : trop
-large = RCE encore possible (`T()`, `#beans`) ; trop étroite = B se
-comporte comme A. La revue note B « facile à rater ».
+**Pourquoi ça compte :** D-40 = B2 coupe `T()` mais ne supprime pas toute
+RCE future (bug allowlist, autre vecteur). Sans isolation SQL, un RCE ou
+une injection sur une instance lit `tenant_b.*` via le même rôle PG.
+Décision 13 isole les **processus**, pas les **privilèges SQL**. C est
+incompatible SaaS si on durcit S-1 (choix déjà fait).
 
 **Options :**
 
-- **B1** — modèle + `#vars` uniquement : `${ident.prop}`, `#vars`. Refus
-  `T()`, `new`, `#beans`, request/servlet, appels de méthodes arbitraires.
-- **B2** — B1 + utilitaires dialecte standard Thymeleaf (`#dates`,
-  `#numbers`, `#strings`, `#lists`). Toujours refus `T()` / `#beans`.
-- **B3** — denylist seulement (`T()`, `#beans`, …) en gardant le reste de
-  SpringEL. Surface large, celle que la revue juge risquée.
+- **A** — un rôle PG LOGIN par schéma tenant (`CONNECT` + `USAGE`/`CRUD`
+  sur son schéma uniquement). Reco revue S-2.
+- **B** — une database PostgreSQL par tenant (plus fort, plus cher ops ;
+  s'écarte du « cluster PG partagé » actuel).
+- **C** — assumer la confiance réseau d'instances (pas de GRANT par
+  tenant).
 
-**Recommandation :** **B2** — motive le choix B (`#vars` + formatage dates /
-nombres utile en templates) sans rouvrir `T()` / beans Spring.
+**Recommandation revue : A.**
 
-Ne pas répondre à D-41 ni aux autres D-* dans ce tour.
+Le détail provisioning (init local + runbook vs CLI §31) est **D-41-SCOPE**,
+posé seulement après D-41. Ne pas y répondre maintenant.

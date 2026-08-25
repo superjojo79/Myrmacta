@@ -2,20 +2,21 @@
 phase: design
 title: System Design & Architecture
 description: Define the technical architecture, components, and data models
-status: reviewed
+status: draft
 created: 2026-08-25
 updated: 2026-08-25
 feature: durcissement-securite-post-revue
-phase3: 2026-08-25
-requirements_aligned: 2026-08-25
 ---
 
 # System Design — `durcissement-securite-post-revue`
 
-## Phase 3: Review Design
+> **Hors phase.** Rédigé trop tôt, avant clôture des D-* Phase 1/2.
+> `status: draft`. Non reviewed. Non opposable. À réécrire en Phase 3.
 
-Couverture 1:1 des D-* requirements. Aucun nouveau endpoint métier.
-Aucun changement SPA.
+## Phase 3: Review Design — non commencée
+
+Notes prématurées ci-dessous (hypothèses D-40 A / D-41 A / …). À jeter
+ou réécrire une fois les requirements reviewed.
 
 ## Architecture Overview
 

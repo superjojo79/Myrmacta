@@ -10,9 +10,10 @@
 >   (rétention / purge / sensible — **livré**) ; revue post-implémentation 2026-08-25 :
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
-> **Dernière mise à jour :** 2026-08-25 — `derive-documentaire` TODO §45 clos,
-> [PR #75](https://github.com/superjojo79/FlowForge/pull/75) ; `edition-bpmn` TODO §39 clos,
-> [PR #71](https://github.com/superjojo79/FlowForge/pull/71) **mergée** ;
+> **Dernière mise à jour :** 2026-08-25 — cycle `durcissement-securite-post-revue`
+> **repris en Phase 1** (D-* rouverts, [PR #76](https://github.com/superjojo79/FlowForge/pull/76)).
+> `derive-documentaire` TODO §45 clos, [PR #75](https://github.com/superjojo79/FlowForge/pull/75) ;
+> `edition-bpmn` TODO §39 clos, [PR #71](https://github.com/superjojo79/FlowForge/pull/71) **mergée**.
 > `masquage-donnees-sensibles-logs-webhooks` PR #70 mergée. Hors cycle
 > `dev-lifecycle` (PR #72) : DEV-PURGE, recovery `purge_outbox`
 > `PROCESSING`, `CHECK` SQL `dossier_type_acl.permission`, chore
@@ -69,17 +70,16 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 
 Plus de lot produit V1 **nommé** hors sécurité : `derive-documentaire`
 (PR #75) est mergée. Le cycle **`durcissement-securite-post-revue`**
-(TODO §40–44) est **démarré** : D-* = recommandations de la revue
-(voir tableau). Reliquat ops hors file : provisioning (TODO §31).
+(TODO §40–44) est **en Phase 1** (requirements brouillon). Aucun D-*
+n'est tranché. Reliquat ops hors file : provisioning (TODO §31).
 
-**Regroupement acté (2026-08-25) :** les 5 findings sécurité (§4) forment
-une seule feature. Phase 1/2 close : D-40 A, D-41 A (sans CLI provisioning),
-D-42 bind localhost + port 8090, D-43 fail-fast hors `local`/`test`,
-D-44 pin IP. §46 hors périmètre.
+**Regroupement candidat (2026-08-25) :** les 5 findings sécurité (§4)
+forment une feature candidate unique. Ce n'est **pas** un lock des
+options A/B/C de TODO §40–44. §46 hors périmètre de cette feature.
 
 | Priorité | Item | Notes |
 |---|---|---|
-| **En cours** | `durcissement-securite-post-revue` (TODO §40–44) | Cycle démarré 2026-08-25. D-* = options **recommandées revue** (D-40 A sans SpEL, D-41 A rôle PG, D-42 bind localhost + port 8090, D-43 fail-fast hors local/test, D-44 pin IP). §46 hors périmètre. |
+| **En cours — Phase 1** | `durcissement-securite-post-revue` (TODO §40–44) | Requirements **draft**. D-40 posée, D-41…D-44 ouvertes. Ne pas implémenter ni lock silencieusement. [PR #76](https://github.com/superjojo79/FlowForge/pull/76). §46 hors périmètre. |
 | **Hors périmètre de la feature sécurité** | TODO §46 (ArchUnit `application`) | Architecture, pas sécurité au sens de la revue — point séparé, non bloquant. |
 
 Détail et options : [TODO.md](TODO.md) §40–46,
@@ -87,7 +87,8 @@ Détail et options : [TODO.md](TODO.md) §40–46,
 
 ## En revue
 
-*Cycle en cours* — `durcissement-securite-post-revue` (PR à ouvrir).
+*Cycle en Phase 1* — [PR #76](https://github.com/superjojo79/FlowForge/pull/76)
+(`durcissement-securite-post-revue`, requirements draft, D-* ouverts).
 PR #75 (`derive-documentaire`) **mergée**.
 **Hors V1 (reporté, pas dans cette file) :** Rapports / SLA (maquette UI de
 référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même

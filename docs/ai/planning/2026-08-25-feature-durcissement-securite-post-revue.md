@@ -2,7 +2,7 @@
 phase: planning
 title: Project Planning & Task Breakdown
 description: Break down work into actionable tasks
-status: in-progress
+status: draft
 created: 2026-08-25
 updated: 2026-08-25
 feature: durcissement-securite-post-revue
@@ -10,7 +10,11 @@ feature: durcissement-securite-post-revue
 
 # Planning — `durcissement-securite-post-revue`
 
-## Phase 4: Create Initial Plan
+> **Hors phase.** Brouillon prématuré (avant Phase 1/2). Non opposable.
+> Phase 4 n'est pas ouverte. Les cases ci-dessous ne sont pas un plan
+> d'exécution autorisé.
+
+## Phase 4: Create Initial Plan — non commencée
 
 ## Milestones
 

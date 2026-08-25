@@ -2,7 +2,7 @@
 phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
-status: planned
+status: draft
 created: 2026-08-25
 updated: 2026-08-25
 feature: durcissement-securite-post-revue
@@ -10,7 +10,10 @@ feature: durcissement-securite-post-revue
 
 # Testing Strategy — `durcissement-securite-post-revue`
 
-## Phase 8: Write tests
+> **Hors phase.** Scénarios candidats rédigés trop tôt. Phase 8 non
+> ouverte. À dériver des success criteria **après** Phase 2.
+
+## Phase 8: Write tests — non commencée
 
 TDD obligatoire (skill `tdd`). Playwright = **régression** SPA non modifiée,
 pas un contournement.

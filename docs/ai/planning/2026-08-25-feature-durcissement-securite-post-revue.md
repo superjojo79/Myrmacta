@@ -2,91 +2,179 @@
 phase: planning
 title: Project Planning & Task Breakdown
 description: Break down work into actionable tasks
-status: draft
+status: reviewed
 created: 2026-08-25
 updated: 2026-08-25
 feature: durcissement-securite-post-revue
+phase4: 2026-08-25
+requirements_ref: docs/ai/requirements/2026-08-25-feature-durcissement-securite-post-revue.md
+design_ref: docs/ai/design/2026-08-25-feature-durcissement-securite-post-revue.md
+testing_ref: docs/ai/testing/2026-08-25-feature-durcissement-securite-post-revue.md
 ---
 
-# Planning — `durcissement-securite-post-revue`
+# Project Planning & Task Breakdown — `durcissement-securite-post-revue`
 
-> **Hors phase.** Brouillon prématuré (avant Phase 1/2). Non opposable.
-> Phase 4 n'est pas ouverte. Les cases ci-dessous ne sont pas un plan
-> d'exécution autorisé.
+## Phase 4: Create Initial Plan
 
-## Phase 4: Create Initial Plan — non commencée
+Plan **reviewed** 2026-08-25. TDD (skill `tdd`) en Phase 5. L'ébauche
+hors phase n'est **pas** une tâche done : M1 doit la réécrire (B2, pas
+A/B1). M2–M4 peuvent réutiliser ce qui colle déjà au design.
+
+Aucune tâche marquée done. Phase 5 non commencée.
 
 ## Milestones
+**What are the major checkpoints?**
 
-- [ ] **M1** SSTI Thymeleaf (D-40)
-- [ ] **M2** Pin IP outbound (D-44)
-- [ ] **M3** Actuator bind/port (D-42)
-- [ ] **M4** Secrets fail-fast + HMAC (D-43)
-- [ ] **M5** Rôle PG + runbook (D-41)
-- [ ] **M6** Docs analysis / GETTING-STARTED + clôture TODO §40–44
-- [ ] **M7** `./mvnw verify` + régression FE
+- [ ] **M1** SSTI B2 + fail 400 (DD-THYME-B2 = E, DD-SSTI-FAIL = C)
+- [ ] **M2** Pin IP outbound (D-44 = P, A-PIN-CALLERS)
+- [ ] **M3** Actuator localhost:8090 (D-42 = L)
+- [ ] **M4** Secrets fail-fast + denylist L + HMAC (D-43 = F)
+- [ ] **M5** Rôle PG LOGIN + IT + Compose (D-41 = A/S)
+- [ ] **M6** Docs T-DOCS + clôture TODO §40–44
+- [ ] **M7** Preuve `./mvnw verify` + régression FE
 
 ## Task Breakdown
+**What specific work needs to be done?**
 
-### M1 — SSTI
+TDD : test rouge → code → vert. Validation = scénario testing doc.
 
-- [ ] **T1.1** Test rouge : payload `${T(java.lang.Runtime)}` encore évaluable
-      aujourd'hui (ou contenu dangereux). Validation : T-SSTI.
-- [ ] **T1.2** Remplacer `SpringTemplateEngine` par `TemplateEngine`.
-      `th:text="${title}"` vert. Validation : T-SSTI.
+### M1 — SSTI B2 + C
 
-### M2 — SSRF pin
+- [ ] **T1.1** Tests processor : `${title}` OK ; `#vars` / `#dates` /
+      `#numbers` / `#strings` / `#lists` évalués (méthode déclarée sur
+      l'objet Thymeleaf) ; `${T(...)}` et `#beans` / `new` / request
+      → `TemplateProcessingException` ; `Object.getClass` refusé
+      (A-EXPR-METHODS). **Deps :** aucune. **Scénarios :** T-SSTI-PROC.
+- [ ] **T1.2** Évaluateur B2 (étendre l'ébauche, ne pas livrer le regex
+      `${ident.prop}` seul) + même `SafeHtmlTemplateEngineFactory` pour
+      processor. **Deps :** T1.1. **Scénarios :** T-SSTI-PROC.
+- [ ] **T1.3** Checker : expressions hors allowlist →
+      `InvalidTemplateSyntaxException` (pas parse HTML seul). **Deps :**
+      T1.2. **Scénarios :** T-SSTI-CHECK.
+- [ ] **T1.4** Preuve HTTP : generate/preview et enregistrement → **400**
+      (handlers existants, DD-SSTI-FAIL = C) — test API ou handler.
+      **Deps :** T1.2, T1.3. **Scénarios :** T-SSTI-HTTP.
+- [ ] **T1.5** `th:each` / `th:text` non régression. **Deps :** T1.2.
+      **Scénarios :** T-SSTI-EACH.
 
-- [ ] **T2.1** `PinnedEndpoint` + test rebinding (resolver 2e appel ≠ 1er).
-      Validation : T-PIN.
-- [ ] **T2.2** `WebhookRestAdapter` / `HttpRestServiceConnector` utilisent
-      l'URI pinnée. Redirects `NEVER` inchangé.
+### M2 — Pin IP
+
+- [ ] **T2.1** `resolveSafe` : un lookup ; `PinnedEndpoint` ; test
+      rebinding (2e résolution ≠ 1re, client utilise la 1re). **Deps :**
+      aucune. **Scénarios :** T-PIN-GUARD.
+- [ ] **T2.2** `WebhookRestAdapter` : POST URI IP, header `Host` =
+      hostname d'origine, TLS verify hostname d'origine, redirects
+      `NEVER`. **Deps :** T2.1. **Scénarios :** T-PIN-WH.
+- [ ] **T2.3** `HttpRestServiceConnector` (skeleton) : même pin, pas
+      d'enregistrement SERVICE. **Deps :** T2.1. **Scénarios :** T-PIN-SK.
+- [ ] **T2.4** Admin webhook reste `assertSafe` (pas de connect).
+      **Deps :** T2.1. **Scénarios :** T-PIN-ADMIN.
 
 ### M3 — Actuator
 
-- [ ] **T3.1** `application.yml` : `address: ${MANAGEMENT_ADDRESS:127.0.0.1}`,
-      `port: ${MANAGEMENT_PORT:8090}`. Validation : T-MGMT.
-- [ ] **T3.2** GETTING-STARTED / `.env.example` / note observabilite.
+- [ ] **T3.1** `management.server.address` `${MANAGEMENT_ADDRESS:127.0.0.1}`,
+      port `${MANAGEMENT_PORT:8090}` ; `permitAll` inchangé.
+      **Deps :** aucune. **Scénarios :** T-MGMT.
+- [ ] **T3.2** `ObservabilityActuatorIT` vert (`MANAGEMENT_PORT=0`).
+      **Deps :** T3.1. **Scénarios :** T-MGMT.
 
 ### M4 — Secrets
 
-- [ ] **T4.1** `SecretsEnvironmentPostProcessor` + tests (profil vide vs
-      `test`). Validation : T-SECRETS.
-- [ ] **T4.2** HMAC M2M : EPP refuse `jwt-secret` hors local/test.
+- [ ] **T4.1** EPP : hors `local`/`test`, denylist L (vide + `flowforge` /
+      `postgres` / `admin` / `password`, trim, casse ignorée) ;
+      master-key vide ; `OIDC_CLIENT_SECRET` vide → fail-fast.
+      **Deps :** aucune. **Scénarios :** T-SECRETS.
+- [ ] **T4.2** HMAC M2M non vide hors `local`/`test` → fail-fast ; profil
+      `test` inchangé. **Deps :** T4.1. **Scénarios :** T-HMAC.
+- [ ] **T4.3** `application-local.yml` + doc profil `local` (A-LOCAL-DOC,
+      partie GETTING-STARTED reportée M6). **Deps :** T4.1. **Scénarios :**
+      T-SECRETS.
 
-### M5 — GRANT
+### M5 — GRANT PG
 
-- [ ] **T5.1** Init SQL rôle `flowforge_tenant_dev` + GRANTs.
-- [ ] **T5.2** IT Testcontainers : user A ne `SELECT` pas schéma B.
-      Validation : T-GRANT.
-- [ ] **T5.3** `application.yml` username défaut + compose / `.env.example`.
+- [ ] **T5.1** Init SQL : rôle `flowforge_tenant_dev` LOGIN, GRANT schéma
+      `tenant_dev` seul, REVOKE PUBLIC. **Deps :** aucune. **Scénarios :**
+      T-GRANT.
+- [ ] **T5.2** Compose : `POSTGRES_USER` superuser ≠ `DB_USERNAME` app.
+      **Deps :** T5.1. **Scénarios :** T-GRANT.
+- [ ] **T5.3** `TenantRoleIsolationIT` : SELECT propre schéma OK ; autre
+      schéma → permission denied ; SKIPPED sans Docker. **Deps :** T5.1.
+      **Scénarios :** T-GRANT.
 
-### M6 — Docs clôture
+### M6 — Docs
 
-- [ ] **T6.1** `08-templates-documents.md`, `09-notifications.md`,
-      `02-multi-tenant.md` (rôle PG).
-- [ ] **T6.2** TODO §40–44 `[x]` ; FILE-ATTENTE ; DEFERRED ; revue §7.
+- [ ] **T6.1** GETTING-STARTED : profil `local`, actuator `:8090`, Keycloak
+      `:8081`, rôle PG, `compose down -v`. `.env.example`. **Deps :**
+      M3–M5 yaml. **Scénarios :** T-DOCS.
+- [ ] **T6.2** `02-multi-tenant.md` (rôle PG), `08-templates-documents.md`
+      (B2, pas « sans SpEL » au sens A), `09-notifications.md` (pin).
+      **Deps :** M1, M2, M5. **Scénarios :** T-DOCS.
+- [ ] **T6.3** TODO §40–44 `[x]` ; FILE-ATTENTE ; note design observabilite
+      port 8090. **Deps :** T6.1, T6.2. **Scénarios :** T-DOCS.
 
 ### M7 — Preuve
 
-- [ ] **T7.1** `./mvnw verify`.
-- [ ] **T7.2** `cd frontend && npm run test` + `npx playwright test`
-      (régression ; SPA non touchée).
+- [ ] **T7.1** `./mvnw verify` (Jacoco bundle tenu). **Deps :** M1–M5.
+      **Scénarios :** T-VERIFY.
+- [ ] **T7.2** `cd frontend && npm run test` + Playwright (A-NO-SPA,
+      régression). **Deps :** aucune (SPA non touchée). **Scénarios :**
+      T-FE.
 
 ## Dependencies
+**What needs to happen in what order?**
 
-M1 ∥ M2 ∥ M3 ∥ M4 (fichiers surtout disjoints) → M5 (compose/yml) → M6 → M7.
+M1 ∥ M2 ∥ M3 ∥ M4 (fichiers surtout disjoints). M3+M4+M5 touchent
+`application.yml` / Compose : fusionner yaml dans un commit cohérent.
+M5 après ou parallèle M4 (username défaut). M6 après M1–M5. M7 dernier.
 
-M3/M4 touchent `application.yml` : fusionner dans le même commit de yaml.
+T1.4 peut être un test MVC existant generate/template plutôt qu'un nouvel
+endpoint.
 
-## Risks
+## Timeline & Estimates
+**When will things be done?**
 
-- Thymeleaf sans SpEL casse un template qui utilisait `#dates` / beans Spring
-  — grep `th:` métier = interpolation simple.
-- Init SQL ne rejoue pas sur volume PG existant — documenter `down -v`.
-- Pin TLS hostname vs IP : tests unitaires sur l'URI envoyée ; handshake TLS
-  réel hors bac si pas de serveur HTTPS.
+Pas d'estimation calendaire. Une passe TDD Phase 5, une tâche à la fois
+(Phase 6 après chaque tâche done).
 
-## Timeline
+## Risks & Mitigation
+**What could go wrong?**
 
-N/A — une passe TDD.
+| Risque | Mitigation |
+|---|---|
+| `#dates.format(...)` parsing sans SpEL/OGNL | T1.1 rouge d'abord ; parser/dispatch dans l'évaluateur |
+| `th:each` casse | T1.5 |
+| Volume PG existant | T6.1 `down -v` |
+| Header `Host` (JDK HttpClient) | garder `HttpURLConnection` côté webhook (design) |
+| IT GRANT SKIPPED ici | compilé + CI Docker |
+| Ébauche A/B1 livrée par erreur | M1 ne coche pas T1.2 tant que `#dates` n'est pas vert |
+
+## Resources Needed
+**What do we need to succeed?**
+
+- JDK 21 d'itération si 25 absent (`-Dmaven.compiler.release=21`,
+  `-Dskip.frontend=true` hors T7.2)
+- Docker pour T5.3 en CI
+- Skills `tdd` + `verify` en Phase 5/7
+
+## Traceability (scénario → tâche)
+
+| Scénario testing | Tâches |
+|---|---|
+| T-SSTI-PROC | T1.1, T1.2 |
+| T-SSTI-CHECK | T1.3 |
+| T-SSTI-HTTP | T1.4 |
+| T-SSTI-EACH | T1.5 |
+| T-PIN-GUARD | T2.1 |
+| T-PIN-WH | T2.2 |
+| T-PIN-SK | T2.3 |
+| T-PIN-ADMIN | T2.4 |
+| T-MGMT | T3.1, T3.2 |
+| T-SECRETS | T4.1, T4.3 |
+| T-HMAC | T4.2 |
+| T-GRANT | T5.1, T5.2, T5.3 |
+| T-DOCS | T6.1, T6.2, T6.3 |
+| T-VERIFY | T7.1 |
+| T-FE | T7.2 |
+
+Prochaine étape **proposée**, pas exécutée : Phase 5 `dev-implementation`
+T1.1 (test rouge B2).

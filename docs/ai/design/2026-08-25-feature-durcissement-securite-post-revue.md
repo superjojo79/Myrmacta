@@ -146,7 +146,8 @@ Frontend : aucun (A-NO-SPA).
 
 Aucune question ouverte.
 
-Prochaine étape **proposée**, pas exécutée : Phase 4 `dev-planning` (jalons TDD M1 B2+C, M2 pin, M3 actuator, M4 EPP+L, M5 GRANT, M6 docs, M7 verify). L'ébauche hors phase sera réalignée en Phase 5, pas livrée telle quelle.
+Prochaine étape **proposée**, pas exécutée : Phase 5 `dev-implementation`
+(T1.1). Le plan est en `docs/ai/planning/2026-08-25-feature-durcissement-securite-post-revue.md`.
 
 ## Non-Functional Requirements
 **How should the system perform?**

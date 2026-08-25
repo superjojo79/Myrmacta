@@ -70,8 +70,8 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 
 Plus de lot produit V1 **nommé** hors sécurité : `derive-documentaire`
 (PR #75) est mergée. Le cycle **`durcissement-securite-post-revue`**
-(TODO §40–44) : D-* tranchés, Phase 2 **reviewed**, Phase 3 **reviewed**.
-Reliquat ops hors file : provisioning tenant
+(TODO §40–44) : D-* tranchés, Phases 2–4 **reviewed**. Phase 5 non
+commencée. Reliquat ops hors file : provisioning tenant
 (CLI / orchestrateur — hors cette feature). §46 hors périmètre.
 
 **Regroupement (2026-08-25) :** les 5 findings sécurité (§4) forment
@@ -79,7 +79,7 @@ cette feature. D-* clos en Phase 1/2.
 
 | Priorité | Item | Notes |
 |---|---|---|
-| **En cours — Phase 3 reviewed / attente Phase 4** | `durcissement-securite-post-revue` (TODO §40–44) | Requirements + design **reviewed**. DD : E, C, L. Ne pas implémenter. [PR #76](https://github.com/superjojo79/FlowForge/pull/76). |
+| **En cours — Phase 4 reviewed / attente Phase 5** | `durcissement-securite-post-revue` (TODO §40–44) | Plan TDD M1–M7. Ne pas implémenter tant que Phase 5 n'est pas accordée. [PR #76](https://github.com/superjojo79/FlowForge/pull/76). |
 | **Hors périmètre de la feature sécurité** | TODO §46 (ArchUnit `application`) | Architecture, pas sécurité au sens de la revue — point séparé, non bloquant. |
 
 Détail et options : [TODO.md](TODO.md) §40–46,
@@ -87,8 +87,8 @@ Détail et options : [TODO.md](TODO.md) §40–46,
 
 ## En revue
 
-*Cycle Phase 3* — [PR #76](https://github.com/superjojo79/FlowForge/pull/76)
-(`durcissement-securite-post-revue`, design **reviewed**, Phase 4 non commencée).
+*Cycle Phase 4 reviewed* — [PR #76](https://github.com/superjojo79/FlowForge/pull/76)
+(`durcissement-securite-post-revue`, planning reviewed, Phase 5 non commencée).
 PR #75 (`derive-documentaire`) **mergée**.
 **Hors V1 (reporté, pas dans cette file) :** Rapports / SLA (maquette UI de
 référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même

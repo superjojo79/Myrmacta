@@ -182,7 +182,7 @@ la porte d'entrée si le boot réussit.
   peut garder des secrets de démo pour la stack locale.
 - **H** — fail-fast JDBC/OIDC comme F, mais HMAC M2M encore autorisé en
   prod s'il est posé (la revue juge ça dangereux).
-- **D** — documentation seulement, pas de fail-fast au boot.
+- **R** — documentation seulement, pas de fail-fast au boot.
 
 **Recommandation revue : F.**
 

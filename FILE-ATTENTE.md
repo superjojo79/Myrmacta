@@ -18,7 +18,9 @@
 > `com.monapp` dans `01-architecture-hexagonale.md`, gestion d'erreur
 > `useBpmnDraft.load()` — voir « Hors file produit ». Revue alignement ×
 > sécurité actée (TODO §40–46,
-> [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md)).
+> [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md)). Points
+> 40–44 regroupés en une feature candidate `durcissement-securite-post-revue`
+> (scoping seul, aucun arbitrage tranché) — voir § *File d'attente*.
 > `./mvnw verify` 1136 tests (0 échec) ; frontend 199 Vitest + 47
 > Playwright, tous verts.
 
@@ -71,12 +73,28 @@ Plus de lot produit V1 **nommé** : les 5 features du regroupement
 ne pas trancher silencieusement). Reliquat ops hors file : provisioning
 (TODO §31).
 
+**Regroupement acté (2026-08-25, hors cycle `dev-lifecycle` — scoping
+seulement, pas d'arbitrage) :** les 5 findings sécurité de la revue (§4 —
+High/Medium, pas les points 45/46 qui n'en sont pas au sens de la revue)
+forment une seule feature candidate **`durcissement-securite-post-revue`**,
+plutôt que 4 lots séparés. Justification : 40+41 sont une chaîne d'attaque
+unique documentée par la revue (§5) — les trancher isolément n'a pas de
+sens ; 42/43 sont le même type de durcissement (fail-fast config/secrets
+hors profil `local`) ; 44 est indépendant mais de la même famille (défense
+SSRF). **Aucune des options A/B/C par point n'est tranchée par ce
+regroupement** — ça reste à faire en Phase 1/2 `dev-requirements`, une
+décision à la fois via `AskUserQuestion`, comme pour les features
+précédentes. §45 (chore doc) et §46 (hygiène ArchUnit `application`) restent
+volontairement **hors** de cette feature : §45 n'a pas d'arbitrage produit et
+peut partir seul avant ; §46 est une question d'architecture, pas un finding
+sécurité au sens de la revue (§7 la classe « Low / Architecture », pas
+« Sécurité »).
+
 | Priorité | Item | Notes |
 |---|---|---|
 | **Prochain (chore, pas de décision produit)** | TODO §45 — dérive documentaire | README / `analysis doc/` vs code (hors `com.monapp` dans `01`, clos PR #72). Ne pas élargir le V1 (DMN, connecteurs SERVICE). |
-| **À trancher avant implémentation sécu** | TODO §40 (SSTI Thymeleaf), §41 (GRANT PG) | Chaîne High→Critical SaaS — [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) §5 |
-| **Provisioning / ops** | TODO §42 (actuator), §43 (secrets/HMAC), point 31 | Avec le runbook tenant |
-| **Defense in depth** | TODO §44 (SSRF TOCTOU), §46 (ArchUnit `application`) | Non bloquant immédiat |
+| **Feature candidate `durcissement-securite-post-revue`** | TODO §40 (SSTI Thymeleaf), §41 (GRANT PG), §42 (actuator), §43 (secrets/HMAC), §44 (SSRF TOCTOU) | Regroupés en une feature (voir note ci-dessus) ; séquencement interne : 40+41 (chaîne d'attaque) → 42+43 (provisioning/secrets, avec point 31) → 44 (indépendant). Chaque option A/B/C reste à trancher en `dev-requirements`. |
+| **Hors périmètre de la feature sécurité** | TODO §46 (ArchUnit `application`) | Architecture, pas sécurité au sens de la revue — point séparé, non bloquant. |
 
 Détail et options : [TODO.md](TODO.md) §40–46,
 [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md).
@@ -199,4 +217,5 @@ Vérifié : `./mvnw verify` 1136 tests (0 échec), Jacoco OK ; frontend `npm run
 | 2026-08-24 | `masquage-donnees-sensibles-logs-webhooks` T1.3 corrigée en implémentation | La règle ArchUnit envisagée (détection de logging) s'est avérée irréalisable (ArchUnit ne fait pas d'analyse de flux de valeurs — signature bytecode identique quel que soit le type réel de l'argument d'un `Logger.info(String, Object)`) ; vérifié avant de coder, pas supposé. Remplacée par une liste blanche des classes autorisées à lire `Dossier.fields()`/`FieldDefinition.defaultValue()`, déterminée en faisant tourner la règle contre le code réel (pas devinée par `grep`, qui remontait des faux positifs `command.fields()`/`request.fields()`) ; décision validée via `AskUserQuestion` |
 | 2026-08-24 | `masquage-donnees-sensibles-logs-webhooks` implémentée (Phases 1-9) | 10 tâches TDD sur 3 milestones (M1 garde-fou logs, M2 masquage webhook, M3 vérification+clôture). `SendNotificationUseCaseImpl` masque automatiquement les valeurs sensibles avant toute écriture outbox, pour tous les canaux, sans dépendre d'un futur producteur. Preuve bout en bout réelle (`SendNotificationUseCaseImpl` → `NotificationOutboxRelay` → `WebhookRestAdapter`, corps HTTP capturé) + 2 contrôles mutants manuels (masquage désactivé temporairement, tests confirmés en échec, code restauré) prouvant que les tests détectent vraiment une régression. `./mvnw verify` final : 1088 tests (0 échec), Jacoco tenu. Zéro fichier frontend touché. TODO §23 clos avec note honnête (pas de fuite active, protection préventive), en attente de PR |
 | 2026-08-25 | Revue alignement × sécurité | [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) ; TODO §40–46 ouverts (SSTI, GRANT PG, actuator, secrets, SSRF TOCTOU, dérive docs, ArchUnit `application`). `edition-bpmn` PR #71 mergée ; follow-ups ops PR #72 (DEV-PURGE, recovery PROCESSING, `com.monapp` dans `01`). Prochain sans décision : chore §45. |
+| 2026-08-25 | Points sécurité 40–44 regroupés en feature candidate | Demande utilisateur : rassembler les points pertinents de la revue en une feature de durcissement sécurité. Regroupement `durcissement-securite-post-revue` = TODO §40+41 (chaîne SSTI→PG partagé) + §42+43 (config/secrets) + §44 (SSRF TOCTOU), séquencés dans cet ordre. §45 (chore doc, pas d'arbitrage) et §46 (ArchUnit `application`, classé Architecture pas Sécurité par la revue §7) restent hors périmètre. Scoping seul — options A/B/C par point toujours à trancher en `dev-requirements` (`AskUserQuestion`, une décision à la fois), pas de cycle `dev-lifecycle` lancé sur demande explicite de l'utilisateur. |
 

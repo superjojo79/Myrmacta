@@ -14,11 +14,11 @@ todo_ref: TODO.md §40–44 · FILE-ATTENTE.md · REVUE-ALIGNEMENT-SECURITE.md
 
 ## Phase 1: New Requirement
 
-**Statut : brouillon.** Phase 2 n'est pas ouverte. D-40 = **B** / **B2**,
-D-41 = **A** / **S**, D-42 = **L**, D-43 = **F**. D-44 reste ouvert. Une
-ébauche de code existe déjà sur le working tree (hors phase) : elle
-coupe SpEL (proche de A / B1) et **diverge** de B2 ; elle sera réalignée
-ou revertée après Phase 2–4.
+**Statut : brouillon.** Questions Phase 1 **closes**. Phase 2 (review
+requirements) **non commencée** — attendre accord. Une ébauche de code
+existe déjà sur le working tree (hors phase) : elle coupe SpEL (proche
+de A / B1) et **diverge** de B2 ; le pin IP est partiellement ébauché
+(proche de D-44 = P). Réaligner ou reverter après Phase 2–4.
 
 Les autres fichiers `docs/ai/{design,planning,testing,implementation,deployment,monitoring}/`
 de cette feature ont été remplis trop tôt. Ils sont **hors phase** et
@@ -53,7 +53,7 @@ reliquats S-6…S-10, DMN, connecteur `http-rest` en rôle SERVICE.
 
 ## Goals & Objectives
 
-Objectifs **candidats** (dépendent des D-* encore ouverts) :
+Objectifs (D-* tranchés) :
 
 1. Restreindre SpEL dans les templates stockés par **allowlist B2**
    (D-40 = B, D-40-ALLOW = B2) : modèle + `#vars` + `#dates` / `#numbers` /
@@ -65,14 +65,17 @@ Objectifs **candidats** (dépendent des D-* encore ouverts) :
    reste 8081), `permitAll` conservé (D-42 = L / DD-MGMT-SEC).
 4. Fail-fast hors profils `local`/`test` si secrets défaut ou absents, et
    HMAC M2M interdit hors ces profils (D-43 = F).
-5. Empêcher le rebinding DNS sur les sorties HTTP déjà gardées, selon D-44.
+5. Pin IP sur les sorties HTTP déjà gardées (webhooks ; skeleton SERVICE
+   si le même garde s'applique) : un lookup, connexion à l'IP validée,
+   `Host` + TLS sur le hostname d'origine (D-44 = P). Redirects `NEVER`
+   inchangé.
 
 ### Non-goals
 
 - Activer `http-rest` SERVICE, DMN, Kafka, AV, headers CSP/HSTS, rate-limit
   distribué, ArchUnit `application` (§46).
 - Database-par-tenant (D-41 ≠ B).
-- Proxy egress allowlist **sauf si D-44 choisit cette option**.
+- Proxy egress allowlist (D-44 ≠ X).
 - Changer le modèle « une instance = un tenant » (décision 13).
 - Outillage CLI / orchestrateur de provisioning tenant (hors file produit ;
   D-41-SCOPE = S).
@@ -94,8 +97,7 @@ scrape Prometheus hors loopback seulement si ops surcharge
 
 ## Success Criteria
 
-Critères **candidats** — à confirmer / ajuster en Phase 2 une fois les
-D-* tranchés :
+Critères à valider en Phase 2 (plus de D-* ouverts) :
 
 - [ ] **T-SSTI** (D-40 = B, D-40-ALLOW = B2) : `${T(java.lang.Runtime)}` et
       `#beans` → exception ou texte non évalué ; `th:text="${title}"`,
@@ -108,8 +110,8 @@ D-* tranchés :
 - [ ] **T-SECRETS** (D-43 = F) : hors `local`/`test`, `DB_PASSWORD` denylist
       / master-key vide / `OIDC_CLIENT_SECRET` vide / HMAC M2M posé →
       fail-fast au boot ; profil `test` inchangé.
-- [ ] **T-PIN** (si D-44 = pin IP) : le client HTTP contacte l'IP validée,
-      pas un second lookup.
+- [ ] **T-PIN** (D-44 = P) : le client HTTP contacte l'IP validée, pas un
+      second lookup (test de rebinding) ; `Host` / SNI = hostname d'origine.
 - [ ] `./mvnw verify` vert ; Vitest + Playwright de non-régression (SPA
       non visée).
 
@@ -123,8 +125,8 @@ D-* tranchés :
 - Testcontainers : même contrat que `fiabilisation-tests-plateforme`
   (écrits/compilés, SKIPPED sans Docker).
 - FILE-ATTENTE : ne **pas** trancher silencieusement un point TODO
-  « à décider ». Une question à la fois. Phase 2 seulement quand toutes
-  les questions matérielles sont closes par l'utilisateur.
+  « à décider ». Phase 1 questions closes. Phase 2 seulement sur accord
+  utilisateur.
 - L'ébauche de code hors phase n'est **pas** une contrainte : si un D-*
   diverge, le code suit le D-*, pas l'inverse.
 
@@ -136,11 +138,13 @@ D-* tranchés :
 | B — 40 seul, 41+ plus tard | Chaîne Critical reste ouverte | Non recommandée |
 | C — Docs / runbooks only | SSTI et TOCTOU restent exploitables | Non recommandée |
 
-Lot unique 40–44 : reco FILE-ATTENTE, pas contestée à ce stade.
+Lot unique 40–44 : reco FILE-ATTENTE, non contestée.
 
 ## Questions & Open Items
 
-| ID | Point | Statut | Choix / options |
+**Aucune question ouverte.** Phase 2 non commencée.
+
+| ID | Point | Statut | Choix |
 |---|---|---|---|
 | D-40 | SSTI Thymeleaf / SpEL | **B** | Allowlist SpEL (pas A sans SpEL, pas C confiance admin) |
 | D-40-ALLOW | Périmètre de l'allowlist | **B2** | B1 + `#dates` `#numbers` `#strings` `#lists` ; refus `T()` / `#beans` |
@@ -148,7 +152,7 @@ Lot unique 40–44 : reco FILE-ATTENTE, pas contestée à ce stade.
 | D-41-SCOPE | Périmètre provisioning | **S** | Init Compose + runbook + IT ; pas de CLI tenant |
 | D-42 | Actuator bind / port / `permitAll` | **L** | Bind `127.0.0.1`, port 8090, `permitAll` conservé |
 | D-43 | Secrets défaut + HMAC M2M | **F** | Fail-fast hors local/test ; HMAC M2M interdit hors ces profils |
-| D-44 | SSRF DNS TOCTOU | **posée maintenant** | P / X / N ci-dessous |
+| D-44 | SSRF DNS TOCTOU | **P** | Pin IP ; écarté X proxy egress, N javadoc only |
 
 ### Décisions enregistrées
 
@@ -162,34 +166,15 @@ Lot unique 40–44 : reco FILE-ATTENTE, pas contestée à ce stade.
   Testcontainers. Écarté : C (CLI générique), L (SQL local sans runbook).
   Volume PG existant : l'init ne se rejoue pas (`compose down -v`) —
   à documenter dans le runbook.
-
 - **D-42 = L** — bind `127.0.0.1` ; `MANAGEMENT_PORT` défaut **8090** ;
   `permitAll` conservé (DD-MGMT-SEC). Écarté : M (mTLS), N (ne pas
   publier). Keycloak reste 8081.
-
 - **D-43 = F** — fail-fast hors `local`/`test` si secrets défaut ou
-  absents **et** HMAC M2M interdit hors ces profils. Écarté : H (HMAC
-  prod), R (docs only). Compose peut garder des secrets de démo pour
-  la stack locale.
+  absents **et** HMAC M2M interdit hors ces profils. Écarté : H, R.
+  Compose peut garder des secrets de démo pour la stack locale.
+- **D-44 = P** — pin IP (un lookup ; connexion à l'IP validée ; `Host` +
+  SNI / vérif TLS sur le hostname d'origine ; redirects `NEVER`
+  inchangé). Écarté : X (proxy egress), N (javadoc only).
 
-### Question actuelle — D-44 (seule question de ce tour)
-
-**Pourquoi ça compte :** `OutboundUrlGuard` bloque privé/metadata après
-un lookup DNS, mais le client HTTP se reconnecte sans pin IP. Un DNS
-qui bascule entre une IP publique (passe `assertSafe`) et
-`169.254.169.254` au `connect` contourne la garde (TOCTOU / rebinding).
-Un proxy egress déplace le contrôle vers l'ops (hors stack actuelle).
-
-**Options :**
-
-- **P** — pin IP : un seul lookup ; le client HTTP contacte l'IP déjà
-  validée ; header `Host` + SNI / vérif TLS sur le **hostname d'origine**.
-  Reco revue S-5. Redirects `NEVER` inchangé.
-- **X** — proxy egress allowlist (contrôle ops, plus cher, pas dans la
-  stack V1).
-- **N** — ne pas changer le client (javadoc seulement).
-
-**Recommandation revue : P.**
-
-Après D-44, toutes les questions Phase 1 seront closes — on **ne**
-passe **pas** à Phase 2 dans ce tour.
+Prochaine étape **proposée**, pas exécutée : Phase 2 `dev-requirements`
+review (cohérence, template, success criteria, pas de D-* implicite).

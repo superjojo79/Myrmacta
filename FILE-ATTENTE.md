@@ -71,7 +71,8 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 Plus de lot produit V1 **nommé** hors sécurité : `derive-documentaire`
 (PR #75) est mergée. Le cycle **`durcissement-securite-post-revue`**
 (TODO §40–44) est **en Phase 1** (requirements brouillon). D-40/B2 et
-D-41 = A / **S**, D-42 = **L**, D-43 = **F** enregistrés ; D-44 ouvert. Reliquat ops hors file :
+D-40…D-44 **tranchés** (Phase 1 questions closes). Phase 2 non commencée.
+Reliquat ops hors file :
 provisioning tenant (CLI / orchestrateur — hors cette feature).
 
 **Regroupement candidat (2026-08-25) :** les 5 findings sécurité (§4)
@@ -80,7 +81,7 @@ options A/B/C de TODO §40–44. §46 hors périmètre de cette feature.
 
 | Priorité | Item | Notes |
 |---|---|---|
-| **En cours — Phase 1** | `durcissement-securite-post-revue` (TODO §40–44) | Requirements **draft**. D-40 = B / B2, D-41 = A / S, D-42 = L, D-43 = **F**. Question actuelle : D-44. Ne pas implémenter. [PR #76](https://github.com/superjojo79/FlowForge/pull/76). §46 hors périmètre. |
+| **En cours — Phase 1 close / attente Phase 2** | `durcissement-securite-post-revue` (TODO §40–44) | D-* tranchés (B/B2, A/S, L, F, P). Requirements **draft**, pas reviewed. Ne pas implémenter. [PR #76](https://github.com/superjojo79/FlowForge/pull/76). §46 hors périmètre. |
 | **Hors périmètre de la feature sécurité** | TODO §46 (ArchUnit `application`) | Architecture, pas sécurité au sens de la revue — point séparé, non bloquant. |
 
 Détail et options : [TODO.md](TODO.md) §40–46,
@@ -88,8 +89,9 @@ Détail et options : [TODO.md](TODO.md) §40–46,
 
 ## En revue
 
-*Cycle en Phase 1* — [PR #76](https://github.com/superjojo79/FlowForge/pull/76)
-(`durcissement-securite-post-revue`, D-40 = B / B2, D-41 = A / S, D-42 = L, D-43 = F, D-44 ouverte).
+*Cycle Phase 1 questions closes* — [PR #76](https://github.com/superjojo79/FlowForge/pull/76)
+(`durcissement-securite-post-revue`, D-40 = B / B2, D-41 = A / S, D-42 = L, D-43 = F, D-44 = P).
+Phase 2 non commencée.
 PR #75 (`derive-documentaire`) **mergée**.
 **Hors V1 (reporté, pas dans cette file) :** Rapports / SLA (maquette UI de
 référence uniquement) ; connecteur `http-rest` en rôle **SERVICE** lui-même

@@ -8,6 +8,12 @@
 > consommateur, portée d'écriture V1, sens du mot « dossier », granularité
 > de l'insertion BPMN, intégration technique et modèle d'authentification —
 > voir [Décisions de cadrage](#décisions-de-cadrage) ci-dessous.
+>
+> **Extension du périmètre (2026-08-26) :** quatre tools de lecture à
+> faible risque ajoutés au V1 (§ [Capacités en périmètre V1](#capacités-en-périmètre-v1),
+> points 4 à 7) ; quatre tools d'écriture à risque modéré identifiés et
+> placés en [backlog](#backlog--extensions-futures-envisageables-hors-v1),
+> pas retenus pour le V1.
 
 ---
 
@@ -104,6 +110,46 @@ dossier, ses `DossierElement`, son historique `DossierWorkflowLink` et ses
 `DossierRelation`. Soumis à `DossierAccessPolicy` comme tout appelant —
 voir [Authentification et RBAC](#authentification-et-rbac).
 
+### 4. Lecture d'un type de dossier
+
+Lecture seule — pendant naturel de `define_dossier_type` (permet à l'agent
+de consulter un schéma existant avant de proposer une modification, sans
+avoir à la deviner). Mappe sur `DossierTypeRepository`
+([04-dossiers.md](04-dossiers.md#dossiertype--schéma-dynamique-par-tenant)).
+
+Outils envisagés : `get_dossier_type` (par `code`) et `list_dossier_types`
+(catalogue des types actifs/inactifs du tenant).
+
+### 5. Liste des types de workflow
+
+Lecture seule. Permet à l'agent de connaître les `WorkflowTypeConfig`
+existants (`workflowKey`, `statusDefinitions`) avant un `deploy_workflow`,
+plutôt que de risquer une incohérence de clé ou de statuts —
+[05-workflow-engine.md](05-workflow-engine.md#statuts-métier-configurables-par-workflow--workflowtypeconfig).
+
+Outil envisagé : `list_workflow_types`.
+
+### 6. Recherche de dossiers par critères
+
+Lecture seule, **sans agrégats** — à ne pas confondre avec le point 4
+initial (statistiques), qui reste hors périmètre et dépendant du cadrage
+reporting/SLA (voir [Dépendance reporting/SLA](#dépendance-reporting--sla-point-4)
+ci-dessous, inchangée par cet ajout). Ce tool ne fait que filtrer/lister,
+sans calculer de métrique. Mappe sur la recherche/pagination déjà livrée
+(`pagination-dossiers`).
+
+Outil envisagé : `search_dossiers` — filtres `dossierTypeCode`, `status`,
+plage de dates (`createdAt`/`closedAt`), pagination ; retourne une liste de
+résumés de dossiers (pas le détail complet, réservé à `get_dossier`).
+
+### 7. Liste des templates de documents
+
+Lecture seule. Permet à l'agent de connaître les templates disponibles
+avant, potentiellement, de proposer une génération de document (tool en
+backlog, voir plus bas) — [08-templates-documents.md](08-templates-documents.md).
+
+Outil envisagé : `list_document_templates`.
+
 ---
 
 ## Hors périmètre V1
@@ -129,9 +175,10 @@ plutôt que d'improviser des agrégats ad hoc non réutilisables.
 - Pas de consommation par des tenants ou systèmes tiers en V1 (voir
   [Décisions de cadrage](#décisions-de-cadrage)) — pas de durcissement
   multi-tenant spécifique au MCP au-delà de l'existant.
-- Pas de création d'instances `Dossier` via MCP (réservé à une itération
-  ultérieure si le besoin est confirmé — voir
-  [Questions ouvertes](#questions-ouvertes)).
+- Pas de création d'instances `Dossier` ni d'autres écritures à risque
+  modéré via MCP en V1 (`create_dossier`, `add_dossier_element`,
+  `start_workflow`, `generate_document`) — identifiées et détaillées en
+  [backlog](#backlog--extensions-futures-envisageables-hors-v1).
 - Pas de Flowable Modeler/Cockpit ni d'édition visuelle de BPMN via MCP —
   déjà écarté du produit ([DEFERRED-FEATURES.md](../DEFERRED-FEATURES.md) §1.5).
 
@@ -148,9 +195,14 @@ infrastructure
 └── mcp
     ├── McpServerConfig            # câblage du serveur MCP (transport, outils exposés)
     ├── tool
-    │   ├── DefineDossierTypeTool  # → CreateDossierTypeUseCase / UpdateDossierTypeUseCase (port.in existant ou à créer)
-    │   ├── DeployWorkflowTool     # → use case déploiement BPMN (deploiement-bpmn) + WorkflowTypeConfig upsert
-    │   └── GetDossierTool         # → GetDossierUseCase / GetDossierWorkflowHistoryUseCase
+    │   ├── DefineDossierTypeTool     # → CreateDossierTypeUseCase / UpdateDossierTypeUseCase (port.in existant ou à créer)
+    │   ├── DeployWorkflowTool        # → use case déploiement BPMN (deploiement-bpmn) + WorkflowTypeConfig upsert
+    │   ├── GetDossierTool            # → GetDossierUseCase / GetDossierWorkflowHistoryUseCase
+    │   ├── GetDossierTypeTool        # → DossierTypeRepository.findByCode (lecture seule)
+    │   ├── ListDossierTypesTool      # → DossierTypeRepository.findAll (lecture seule)
+    │   ├── ListWorkflowTypesTool     # → WorkflowTypeConfigRepository (lecture seule)
+    │   ├── SearchDossiersTool        # → recherche/pagination existante (pagination-dossiers, lecture seule)
+    │   └── ListDocumentTemplatesTool # → repository templates (08-templates-documents, lecture seule)
     └── security
         └── McpAuthenticationFilter  # valide le credential API_SERVICE dédié
 ```
@@ -222,13 +274,51 @@ analyse validée :
    (au-delà des champs `createdBy`/`updatedBy` déjà portés par les entités),
    pour distinguer un changement fait par un agent IA d'un changement fait
    depuis l'UI admin ?
-6. **Périmètre futur** — si le besoin de créer des instances `Dossier` via
-   MCP (et non plus seulement leur type) se confirme, ce sera une itération
-   séparée nécessitant sa propre analyse (validation des champs dynamiques,
-   création depuis trigger vs MCP, etc. — voir
+6. **Périmètre futur** — les tools d'écriture à risque modéré identifiés
+   (`create_dossier`, `add_dossier_element`, `start_workflow`,
+   `generate_document`, voir [backlog](#backlog--extensions-futures-envisageables-hors-v1))
+   nécessiteront chacun leur propre analyse avant d'être retenus pour une
+   itération ultérieure (validation des champs dynamiques, création depuis
+   trigger vs MCP, etc. — voir
    [04-dossiers.md](04-dossiers.md#création-depuis-un-trigger--unitaire-et-batch)).
 7. **Reporting/SLA (point 4)** — reste bloqué sur l'analyse dédiée
    mentionnée plus haut ; à revisiter une fois ce cadrage disponible.
+8. **Pagination/volumétrie de `search_dossiers`** — reprendre telles
+   quelles les bornes déjà actées pour `pagination-dossiers` (taille de
+   page max, tri par défaut) plutôt que d'introduire un contrat de
+   pagination MCP spécifique.
+
+---
+
+## Backlog — extensions futures envisageables (hors V1)
+
+> Tools d'écriture à **risque modéré** identifiés lors du cadrage — utiles,
+> mais pas retenus pour le V1 car ils touchent des données métier au-delà
+> de la configuration (dossier type / workflow) déjà en périmètre. Chacun
+> nécessiterait sa propre analyse avant d'être implémenté (validation,
+> audit, prévisualisation — mêmes réserves que les tools V1 en écriture,
+> voir [Risques et points de vigilance](#risques-et-points-de-vigilance)).
+
+| Tool candidat | Use case existant réutilisable | Remarque |
+|---|---|---|
+| `create_dossier` | `CreateDossierUseCase` / `CreateDossierBatchUseCase` | Passe par `DossierFieldValidator` comme toute création — voir [04-dossiers.md](04-dossiers.md#validation-des-champs-dynamiques). |
+| `add_dossier_element` | `AddDossierElementUseCase` | Ajout d'une note/pièce/lien à un dossier existant ; ne couvre pas l'upload de fichier binaire (canal MCP mal adapté à un flux multipart). |
+| `start_workflow` | `AttachWorkflowUseCase.reserve` / `confirmStarted` | Équivalent MCP du démarrage manuel déjà exposé en REST ([04-dossiers.md](04-dossiers.md#1-déclenchement-manuel--api--ui)) ; soumis à la même règle de concurrence (un seul workflow actif par dossier). |
+| `generate_document` | Génération PDF (voir [07-generation-documents.md](07-generation-documents.md)) | Déclenche une génération à partir d'un template pour un dossier donné ; dépend du point 7 (liste des templates) pour que l'agent sache quoi proposer. |
+
+### Exclusions explicites (risque jugé trop élevé pour un MCP interne)
+
+Ces capacités existent dans FlowForge mais ne sont **pas** candidates à un
+tool MCP, même en backlog, au vu de leur impact :
+
+- **Gestion des ACL** (`grant/revoke_dossier_type_access`,
+  [12-autorisation-conformite.md](12-autorisation-conformite.md)) — impact
+  sécurité transverse, à réserver à l'UI admin humaine.
+- **Purge** (`purge-stockage`, TODO §22) — opération destructive par
+  nature (suppression PostgreSQL + object store).
+- **Mise à jour directe du statut d'un `DossierWorkflowLink`** — c'est un
+  rôle de `ServiceTask` piloté par le processus BPMN lui-même
+  (`UpdateWorkflowLinkStatusTask`), pas un point d'entrée externe légitime.
 
 ---
 

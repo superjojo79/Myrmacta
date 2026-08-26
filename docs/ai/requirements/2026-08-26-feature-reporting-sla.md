@@ -16,9 +16,9 @@ todo_ref: DEFERRED-FEATURES.md §1.6 · FILE-ATTENTE.md · analysis doc/16-repor
 
 Phase 1 **relancée**. Actés : **D-APPROACH = A+B**, **D-AUTHZ = C**,
 **D-SLA-HOURS = B**, **D-AT-RISK = A**, **D-GROUPBY = B**,
-**D-SLA-CLOCK = A**, **D-PERIOD = A**. Les autres D-* restent des
-propositions tant qu'ils n'ont pas été tranchés ici, une décision à
-la fois.
+**D-SLA-CLOCK = A**, **D-PERIOD = A**, **D-SETTINGS = A**. Les autres
+D-* restent des propositions tant qu'ils n'ont pas été tranchés ici,
+une décision à la fois.
 
 Workspace : branche `cursor/reporting-sla-9009`, no-worktree (VM cloud).
 Task tracing indisponible (`unknown command 'task'`). Lint feature :
@@ -72,13 +72,13 @@ dossiers.
 | **D-GROUPBY = B** | Summary V1 : `groupBy=dossierTypeCode\|status` seulement. La période `from`/`to` est un **filtre**, pas des seaux calendaires. Jour / semaine / mois **hors V1** (le MCP rappelle le summary avec une autre fenêtre ; le snapshot garde le delta vs période précédente). | Stakeholder 2026-08-26 |
 | **D-SLA-CLOCK = A** | Horloge **dossier** : début = `createdAt` ; fin = `closedAt` si clos (`CLOTURE` / `ARCHIVE`), sinon `now`. Hors délai / `BREACHED` ssi durée **>** `slaTargetHours`. Pas de `dueDate` Flowable. `ARCHIVE` sans `closedAt` : fin = `updatedAt` (**A-ARCHIVE-CLOCK**). Inbox : `slaRemainingHours = slaTargetHours - elapsed(createdAt, now)`. | Stakeholder 2026-08-26 |
 | **D-PERIOD = A** | Cohorte = `createdAt ∈ [from, to]`. Défaut **30 jours** glissants UTC si `from`/`to` omis ; max **366 jours** ; `from >= to` ou trop large → 400. `to` exclusif (minuit du jour civil suivant si date seule). Tendance = même durée **immédiatement avant** `from`. Un dossier créé hors fenêtre n'entre pas dans le snapshot/summary (reste visible via l'inbox). | Stakeholder 2026-08-26 |
+| **D-SETTINGS = A** | Objectif de conformité **paramétrable** : `TenantSlaSettings.complianceTargetPercent` (1–100). GET 404 si absent ; le calcul du snapshot utilise alors **95**. PUT upsert **TA only**. Singleton par schéma. **Pas** de `slaTargetHours` tenant ni de `atRiskPercent`. | Stakeholder 2026-08-26 |
 
 Conséquences immédiates (tant que non démenties par une question suivante) :
 
 - CSV **dans** V1 (B) malgré le hors-périmètre analyse.
 - Inbox `slaRemainingHours` **dans** V1 (B) — uniquement si le type a une cible.
 - Statut ternaire SLA **dans** V1 (A) avec seuil 80 % figé (**D-AT-RISK**), elapsed selon **D-SLA-CLOCK**.
-- `TenantSlaSettings` ne porte **pas** un `slaTargetHours` défaut ni un `atRiskPercent` (l'objectif % conformité, D-SETTINGS, est une autre question).
 
 ### Propositions (non verrouillées)
 
@@ -92,7 +92,6 @@ suit surtout **B** ; A (summary + `AT_RISK`) n'y est pas encore.
 | **D-EXPORT = A** | `GET /api/reports/sla.csv` mêmes filtres/authz ; `CsvWriter` anti-formule. Agrégats seulement — **pas** de champs dossier. |
 | **D-SCHEDULE = C** | Bouton « Planifier l'envoi » **visible désactivé** (« bientôt ») — envoi planifié hors scope. |
 | **D-TASK-SLA = A** | Champ calculé `slaRemainingHours` (nullable) sur `GET /api/workflow-tasks/mine` quand le type du dossier a une cible. |
-| **D-SETTINGS = A** | `TenantSlaSettings.complianceTargetPercent` uniquement (1–100, défaut **95** si GET 404). **Pas** de `slaTargetHours` tenant (**D-SLA-HOURS = B**) ni de `atRiskPercent` (**D-AT-RISK = A**). Singleton par schéma. |
 | **D-COMPUTE = A** | Agrégation **à la volée** (SQL + Flowable history). Pas de table snapshot matérialisée V1. |
 | **D-NAV = A** | Lien Pilotage « Rapports & SLA » pour TA / WA / DM. Masqué pour `DOSSIER_VIEWER`. E2E-9 mis à jour (plus « zéro Rapports »). |
 | **D-INDEX = A** | Index lecture `(created_at)` sur `dossier` pour le filtre période. |
@@ -170,6 +169,7 @@ suit surtout **B** ; A (summary + `AT_RISK`) n'y est pas encore.
 | Graphiques | A CSS / B Chart.js / C images serveur | **A** |
 | Envoi planifié | A V1 mail / B hors scope hidden / C bouton disabled | **C** |
 | Inbox SLA | A remainingHours / B hors V1 / C dueDate Flowable | **A** |
+| Objectif conformité | A settings 1–100 défaut 95 / B pas d'objectif / C fixe 95 % | **A** |
 
 ## User Stories & Use Cases
 
@@ -264,7 +264,7 @@ suit surtout **B** ; A (summary + `AT_RISK`) n'y est pas encore.
 
 Phase 1 en cours. Actés : **D-APPROACH = A+B**, **D-AUTHZ = C**,
 **D-SLA-HOURS = B**, **D-AT-RISK = A**, **D-GROUPBY = B**,
-**D-SLA-CLOCK = A**, **D-PERIOD = A**. Reste :
+**D-SLA-CLOCK = A**, **D-PERIOD = A**, **D-SETTINGS = A**. Reste :
 
 1. ~~Forme produit~~ **A+B**.
 2. ~~RBAC exact~~ **C**.
@@ -272,7 +272,8 @@ Phase 1 en cours. Actés : **D-APPROACH = A+B**, **D-AUTHZ = C**,
 4. ~~Seuil `AT_RISK`~~ **A**.
 5. ~~`groupBy`~~ **B**.
 6. ~~Horloge SLA~~ **A**.
-7. ~~Période~~ **A** (`createdAt ∈ [from, to]`, défaut 30 j, max 366 j).
-8. **Objectif de conformité tenant** (settings 95 % vs fixe vs absent). ← **en cours**
-9. Autres D-* proposés (charts, schedule, compute)
-   une fois 8 tranché.
+7. ~~Période~~ **A**.
+8. ~~Objectif conformité~~ **A** (settings `complianceTargetPercent`, défaut 95).
+9. **Calcul des agrégats** (à la volée vs table de faits vs cache). ← **en cours**
+10. Autres D-* proposés (charts, schedule)
+    une fois 9 tranché.

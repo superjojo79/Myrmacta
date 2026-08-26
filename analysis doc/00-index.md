@@ -29,6 +29,8 @@
 | 12 | Autorisation (RBAC) & conformité des données | [12-autorisation-conformite.md](12-autorisation-conformite.md) |
 | 13 | Modèle physique de données consolidé | [13-modele-physique.md](13-modele-physique.md) |
 | 14 | Construction/édition de diagrammes BPMN | [14-edition-bpmn.md](14-edition-bpmn.md) |
+| 15 | Serveur MCP (Model Context Protocol) — analyse initiale | [15-serveur-mcp.md](15-serveur-mcp.md) |
+| 16 | Reporting & SLA — analyse initiale (prérequis au MCP) | [16-reporting-sla.md](16-reporting-sla.md) |
 
 ---
 

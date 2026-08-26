@@ -16,8 +16,9 @@ todo_ref: DEFERRED-FEATURES.md §1.6 · FILE-ATTENTE.md · analysis doc/16-repor
 
 Phase 1 **relancée**. Actés : **D-APPROACH = A+B**, **D-AUTHZ = C**,
 **D-SLA-HOURS = B**, **D-AT-RISK = A**, **D-GROUPBY = B**,
-**D-SLA-CLOCK = A**. Les autres D-* restent des propositions tant
-qu'ils n'ont pas été tranchés ici, une décision à la fois.
+**D-SLA-CLOCK = A**, **D-PERIOD = A**. Les autres D-* restent des
+propositions tant qu'ils n'ont pas été tranchés ici, une décision à
+la fois.
 
 Workspace : branche `cursor/reporting-sla-9009`, no-worktree (VM cloud).
 Task tracing indisponible (`unknown command 'task'`). Lint feature :
@@ -70,6 +71,7 @@ dossiers.
 | **D-AT-RISK = A** | Convention **fixe 80 %** du délai. Dossier **ouvert** avec cible : `ON_TRACK` si `elapsed < 0,8 × slaTargetHours` ; `AT_RISK` si `0,8 × slaTargetHours ≤ elapsed ≤ slaTargetHours` ; `BREACHED` si `elapsed > slaTargetHours`. Dossier **clos** : seulement `ON_TRACK` / `BREACHED` (pas d'`AT_RISK`). Sans cible : statut `null`. Pas de champ `atRiskPercent` tenant. | Stakeholder 2026-08-26 |
 | **D-GROUPBY = B** | Summary V1 : `groupBy=dossierTypeCode\|status` seulement. La période `from`/`to` est un **filtre**, pas des seaux calendaires. Jour / semaine / mois **hors V1** (le MCP rappelle le summary avec une autre fenêtre ; le snapshot garde le delta vs période précédente). | Stakeholder 2026-08-26 |
 | **D-SLA-CLOCK = A** | Horloge **dossier** : début = `createdAt` ; fin = `closedAt` si clos (`CLOTURE` / `ARCHIVE`), sinon `now`. Hors délai / `BREACHED` ssi durée **>** `slaTargetHours`. Pas de `dueDate` Flowable. `ARCHIVE` sans `closedAt` : fin = `updatedAt` (**A-ARCHIVE-CLOCK**). Inbox : `slaRemainingHours = slaTargetHours - elapsed(createdAt, now)`. | Stakeholder 2026-08-26 |
+| **D-PERIOD = A** | Cohorte = `createdAt ∈ [from, to]`. Défaut **30 jours** glissants UTC si `from`/`to` omis ; max **366 jours** ; `from >= to` ou trop large → 400. `to` exclusif (minuit du jour civil suivant si date seule). Tendance = même durée **immédiatement avant** `from`. Un dossier créé hors fenêtre n'entre pas dans le snapshot/summary (reste visible via l'inbox). | Stakeholder 2026-08-26 |
 
 Conséquences immédiates (tant que non démenties par une question suivante) :
 
@@ -86,7 +88,6 @@ suit surtout **B** ; A (summary + `AT_RISK`) n'y est pas encore.
 | Id | Proposition |
 |---|---|
 | **D-SCOPE** | Écran maquette + API summary + statut SLA + cible par type + objectif % tenant + inbox (conséquence de A+B). |
-| **D-PERIOD = A** | Filtre `createdAt ∈ [from, to]` ; défaut **30 jours** glissants UTC ; max **366 jours** ; `to` exclusif minuit jour suivant si date civile. |
 | **D-CHARTS = A** | Barres CSS / tableaux PrimeVue-alignés maquette. **Pas** Chart.js (cohérent observabilité Q4). |
 | **D-EXPORT = A** | `GET /api/reports/sla.csv` mêmes filtres/authz ; `CsvWriter` anti-formule. Agrégats seulement — **pas** de champs dossier. |
 | **D-SCHEDULE = C** | Bouton « Planifier l'envoi » **visible désactivé** (« bientôt ») — envoi planifié hors scope. |
@@ -162,7 +163,7 @@ suit surtout **B** ; A (summary + `AT_RISK`) n'y est pas encore.
 |---|---|---|
 | Horloge SLA | A created→closed/now / B closedAt only / C Flowable dueDate | **A** |
 | `slaTargetHours` | A défaut tenant + NEVER / B par type optionnel (exclu %) / C obligatoire chaque type | **B** |
-| Période | A createdAt range / B closedAt range / C updatedAt | **A** |
+| Période | A createdAt range / B closedAt range / C recouvrement | **A** |
 | Authz lecture | A TA only / B TA+WA / C TA+WA+DM(ACL) | **C** |
 | Seuil `AT_RISK` | A fixe 80 % / B paramétrable tenant / C pas de AT_RISK V1 | **A** |
 | `groupBy` | A jour/semaine/mois / B type\|statut seulement / C mois seul | **B** |
@@ -255,7 +256,7 @@ suit surtout **B** ; A (summary + `AT_RISK`) n'y est pas encore.
 | **A-MEDIAN** | Médiane des durées (heures) convertie en jours (1 décimale), cohorte période. |
 | **A-DELTA-MEAN** | `meanDays - previousMeanDays` (négatif = plus rapide, maquette « −0,8 j »). |
 | **A-HOURS** | `slaTargetHours` en heures entières (maquette mixte j / h ; une unité côté API). Affichage UI : jours si ≥ 24 h. |
-| **A-DEFAULT-PERIOD** | Si `from`/`to` omis : `[now-30d, now]`. |
+| **A-DEFAULT-PERIOD** | Confirmé avec **D-PERIOD = A** : si `from`/`to` omis : `[now-30d, now]` UTC. |
 | **A-TASK-REMAINING** | `slaRemainingHours = slaTargetHours - elapsedHours(createdAt, now)` ; négatif si dépassé. |
 | **A-AT-RISK-CMP** | Comparaison anti-flottant : `AT_RISK` ssi `elapsedHours * 5 >= slaTargetHours * 4` **et** `elapsedHours <= slaTargetHours` (dossier ouvert, cible présente). |
 
@@ -263,14 +264,15 @@ suit surtout **B** ; A (summary + `AT_RISK`) n'y est pas encore.
 
 Phase 1 en cours. Actés : **D-APPROACH = A+B**, **D-AUTHZ = C**,
 **D-SLA-HOURS = B**, **D-AT-RISK = A**, **D-GROUPBY = B**,
-**D-SLA-CLOCK = A**. Reste :
+**D-SLA-CLOCK = A**, **D-PERIOD = A**. Reste :
 
 1. ~~Forme produit~~ **A+B**.
 2. ~~RBAC exact~~ **C**.
 3. ~~`slaTargetHours`~~ **B**.
 4. ~~Seuil `AT_RISK`~~ **A**.
 5. ~~`groupBy`~~ **B**.
-6. ~~Horloge SLA~~ **A** (`createdAt` → `closedAt`/`now` ; `ARCHIVE` sans `closedAt` → `updatedAt`).
-7. **Période du rapport** (filtre `createdAt` vs `closedAt` vs recouvrement). ← **en cours**
-8. Autres D-* proposés (charts, schedule, settings, compute)
-   une fois 7 tranché.
+6. ~~Horloge SLA~~ **A**.
+7. ~~Période~~ **A** (`createdAt ∈ [from, to]`, défaut 30 j, max 366 j).
+8. **Objectif de conformité tenant** (settings 95 % vs fixe vs absent). ← **en cours**
+9. Autres D-* proposés (charts, schedule, compute)
+   une fois 8 tranché.

@@ -28,6 +28,14 @@ public class WebhookRestAdapter implements WebhookPort {
     private static final String SIGNATURE_HEADER = "X-FlowForge-Signature";
     private static final String SIGNATURE_PREFIX = "sha256=";
 
+    static {
+        // Must run before the JDK's sun.net.www.protocol.http.HttpURLConnection class
+        // initializes (it caches this flag in a static field on first load). Without it,
+        // HttpURLConnection silently drops the restricted "Host" header we set below,
+        // sending the pinned IP as Host instead of the original webhook hostname (D-44).
+        System.setProperty("sun.net.http.allowRestrictedHeaders", "true");
+    }
+
     @FunctionalInterface
     public interface HttpSender {
         void post(String url, byte[] body, Map<String, String> headers);

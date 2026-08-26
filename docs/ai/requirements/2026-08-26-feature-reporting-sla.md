@@ -24,11 +24,9 @@ Workspace : branche `cursor/reporting-sla-9009`, no-worktree (VM cloud).
 Task tracing indisponible (`unknown command 'task'`). Lint feature :
 docs OK ; check branche `feature-reporting-sla` = MISS attendu.
 
-Écart connu pour la **Phase 3** : le design/planning du premier jet
-est **stale** vs ces D-* (authz encore « A » dans le design, pas
-d'API summary / `AT_RISK`, `D-SLA-NULL` vs **D-SLA-HOURS = B**). Ne
-pas traiter ce design comme aligned tant que Phase 3 ne l'a pas
-réécrit.
+Écart connu **clos en Phase 3** : le design a été réécrit (summary,
+`AT_RISK`, **D-AUTHZ = C**, **DD-CLEAR-FLAG**). Le planning/testing du
+premier jet restent à réaligner en Phase 4 / 8.
 
 ### Décisions déjà actées hors de cette phase
 
@@ -325,8 +323,8 @@ les A-* ci-dessus et corrigé le libellé ACL (par **type**).
 - Chart.js ; table de faits ; `API_SERVICE` / MCP authz.
 - Alerte proactive de dépassement (notifications).
 
-### À traiter en Phase 3 (design), pas ici
+### Clos Phase 3 (design, 2026-08-26)
 
-- Réaligner design/planning/testing du premier jet sur ces D-*.
-- Contrat PATCH pour **A-CLEAR-HOURS**.
-- Shape JSON exact du snapshot et du summary.
+- Contrat PATCH **A-CLEAR-HOURS** → **DD-CLEAR-FLAG** (`clearSlaTargetHours`).
+- Shape snapshot = `SlaReport` ; summary = `SlaSummary` + buckets.
+- Design réaligné sur les D-* Phase 1–2.

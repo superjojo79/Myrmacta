@@ -15,7 +15,8 @@ public record DossierType(
         boolean allowUnknownFields,
         List<FieldDefinition> fieldDefinitions,
         Integer retentionDays,
-        boolean retentionNever
+        boolean retentionNever,
+        Integer slaTargetHours
 ) {
     // Deliberately restrictive: `code` is embedded verbatim in purge_outbox.payload_json
     // (PurgeOutboxPayloads) and used as a URL path segment (DossierTypeController) — this charset
@@ -35,6 +36,7 @@ public record DossierType(
         }
         fieldDefinitions = fieldDefinitions == null ? List.of() : List.copyOf(fieldDefinitions);
         validateRetention(retentionDays, retentionNever);
+        validateSlaTargetHours(slaTargetHours);
     }
 
     public static void validateRetention(Integer retentionDays, boolean retentionNever) {
@@ -44,6 +46,12 @@ public record DossierType(
         }
         if (!retentionNever && retentionDays != null && retentionDays <= 0) {
             throw new InvalidRetentionPolicyException("retentionDays must be > 0 when set");
+        }
+    }
+
+    public static void validateSlaTargetHours(Integer slaTargetHours) {
+        if (slaTargetHours != null && slaTargetHours <= 0) {
+            throw new IllegalArgumentException("slaTargetHours must be > 0 when set");
         }
     }
 
@@ -67,7 +75,8 @@ public record DossierType(
                 allowUnknownFields,
                 fieldDefinitions,
                 null,
-                false);
+                false,
+                null);
     }
 
     public DossierType withUpdate(
@@ -77,7 +86,8 @@ public record DossierType(
             boolean allowUnknownFields,
             List<FieldDefinition> fieldDefinitions,
             Integer retentionDays,
-            boolean retentionNever) {
+            boolean retentionNever,
+            Integer slaTargetHours) {
         return new DossierType(
                 id,
                 tenantId,
@@ -88,7 +98,8 @@ public record DossierType(
                 allowUnknownFields,
                 fieldDefinitions,
                 retentionDays,
-                retentionNever);
+                retentionNever,
+                slaTargetHours);
     }
 
     /** Metadata only — true if any field is marked sensitive (no redaction yet). */

@@ -55,4 +55,30 @@ describe('MobileTasksView', () => {
     await wrapper.vm.$nextTick()
     expect(refreshSpy.mock.calls.length).toBeGreaterThan(1)
   })
+
+  it('shows SLA remaining hours when provided', async () => {
+    const router = createRouter({ history: createMemoryHistory(), routes })
+    await router.push('/tasks')
+    await router.isReady()
+    const store = useTasksStore()
+    vi.spyOn(store, 'refresh').mockResolvedValue()
+    store.tasks = [
+      {
+        taskId: 't1',
+        name: 'Review',
+        assigneeId: 'u1',
+        createdAt: null,
+        processInstanceId: 'pi',
+        dossierId: 'd1',
+        dossierReference: 'DOS-1',
+        linkId: 'l1',
+        slaRemainingHours: 12,
+      },
+    ]
+    store.loading = false
+    const wrapper = mount(MobileTasksView, { global: { plugins: [router] } })
+    await wrapper.vm.$nextTick()
+    expect(wrapper.get('[data-testid="task-sla"]').text()).toContain('SLA')
+    expect(wrapper.get('[data-testid="task-sla"]').text()).toContain('12')
+  })
 })

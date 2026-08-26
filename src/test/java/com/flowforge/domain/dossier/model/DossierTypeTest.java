@@ -40,4 +40,21 @@ class DossierTypeTest {
                         () -> DossierType.inherit(ID, TENANT, "", "Claim", "wf-claim", true, false, List.of()))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void constructor_rejectsNonPositiveSlaTargetHours() {
+        assertThatThrownBy(() -> new DossierType(
+                        ID, TENANT, "CLAIM", "Claim", "wf-claim", true, false, List.of(), null, false, 0))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("slaTargetHours");
+        assertThatThrownBy(() -> new DossierType(
+                        ID, TENANT, "CLAIM", "Claim", "wf-claim", true, false, List.of(), null, false, -8))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void inherit_leavesSlaTargetHoursNull() {
+        DossierType type = DossierType.inherit(ID, TENANT, "CLAIM", "Claim", "wf-claim", true, false, List.of());
+        assertThat(type.slaTargetHours()).isNull();
+    }
 }

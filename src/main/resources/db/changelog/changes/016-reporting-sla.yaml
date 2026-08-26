@@ -1,0 +1,64 @@
+databaseChangeLog:
+  - changeSet:
+      id: 016-dossier-type-sla-target-hours
+      author: flowforge
+      changes:
+        - addColumn:
+            tableName: dossier_type
+            columns:
+              - column:
+                  name: sla_target_hours
+                  type: int
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: dossier_type
+            columnName: sla_target_hours
+
+  - changeSet:
+      id: 016-tenant-sla-settings
+      author: flowforge
+      changes:
+        - createTable:
+            tableName: tenant_sla_settings
+            columns:
+              - column:
+                  name: tenant_id
+                  type: varchar(64)
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_tenant_sla_settings
+                    nullable: false
+              - column:
+                  name: compliance_target_percent
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_by
+                  type: varchar(128)
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: tenant_sla_settings
+
+  - changeSet:
+      id: 016-dossier-created-at-index
+      author: flowforge
+      changes:
+        - sql:
+            dbms: postgresql,h2
+            sql: |
+              CREATE INDEX IF NOT EXISTS idx_dossier_created_at ON dossier (created_at);
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: |
+              DROP INDEX IF EXISTS idx_dossier_created_at;

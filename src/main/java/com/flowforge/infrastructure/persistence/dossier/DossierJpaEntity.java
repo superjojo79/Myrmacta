@@ -135,6 +135,30 @@ public class DossierJpaEntity {
                 dossier.purgeEligibleAt());
     }
 
+    UUID id() {
+        return id;
+    }
+
+    String dossierTypeCode() {
+        return dossierTypeCode;
+    }
+
+    Instant createdAt() {
+        return createdAt;
+    }
+
+    Instant closedAt() {
+        return closedAt;
+    }
+
+    Instant updatedAt() {
+        return updatedAt;
+    }
+
+    DossierStatus status() {
+        return status;
+    }
+
     Dossier toDomain() {
         return new Dossier(
                 id,

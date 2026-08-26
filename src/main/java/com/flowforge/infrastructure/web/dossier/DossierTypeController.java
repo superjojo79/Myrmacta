@@ -67,7 +67,8 @@ public class DossierTypeController {
                         Boolean.TRUE.equals(request.allowUnknownFields()),
                         listOrEmpty(request.fieldDefinitions()),
                         request.retentionDays(),
-                        Boolean.TRUE.equals(request.retentionNever())),
+                        Boolean.TRUE.equals(request.retentionNever()),
+                        request.slaTargetHours()),
                 actor);
         return ResponseEntity
                 .created(URI.create("/api/dossier-types/" + type.code()))
@@ -103,7 +104,11 @@ public class DossierTypeController {
                         keepExistingRetention ? existing.retentionDays() : request.retentionDays(),
                         keepExistingRetention
                                 ? existing.retentionNever()
-                                : Boolean.TRUE.equals(request.retentionNever())),
+                                : Boolean.TRUE.equals(request.retentionNever()),
+                        SlaTargetHoursPatch.resolve(
+                                existing.slaTargetHours(),
+                                request.slaTargetHours(),
+                                request.clearSlaTargetHours())),
                 actor);
         return ResponseEntity.ok(DossierTypeResponse.from(type));
     }

@@ -19,6 +19,7 @@ le permet — l'affichage du menu est indicatif, le contrôle réel se fait côt
 |---|---|---|---|
 | Pilotage | Supervision | `/supervision` | tout utilisateur authentifié |
 | Pilotage | Tâches (mes tâches) | `/tasks` | tout utilisateur authentifié |
+| Pilotage | Rapports & SLA | `/rapports` | `TENANT_ADMIN`, `WORKFLOW_ADMIN`, `DOSSIER_MANAGER` |
 | Pilotage | Nouveau dossier | `/dossiers/new` | tout utilisateur authentifié |
 | Admin | Types (de dossier) | `/admin/dossier-types` | `TENANT_ADMIN` |
 | Admin | Templates | `/admin/templates` | `TENANT_ADMIN` |
@@ -43,6 +44,7 @@ Formulaire de création :
 | `code` | identifiant technique du type (utilisé partout ensuite : création de dossier, config workflow…) |
 | `libellé` | nom affiché à l'utilisateur |
 | `workflowKey` | clé du workflow qui sera proposé par défaut à l'ouverture d'un dossier de ce type — doit correspondre à une config workflow existante (§3) |
+| `SLA heures` | objectif de traitement optionnel (heures). Vide = le type n'entre pas dans le % de conformité SLA |
 
 > **Limite actuelle de l'écran :** ce formulaire ne permet pas de définir les **champs
 > dynamiques** du type (signalétique métier propre au dossier) — le type est créé avec une liste
@@ -258,13 +260,19 @@ Dans le tableau des templates existants (`templateKey` — libellé — version 
 
 ------
 
-## 6. Suivre l'activité — Supervision et Mes tâches
+## 6. Suivre l'activité — Supervision, Mes tâches et Rapports
 
 - **Supervision** (`/supervision`) — tableau de bord de tous les dossiers, filtrable par statut,
   type et préfixe de référence (filtres reflétés dans l'URL, donc partageables en lien). Recherche
   rapide d'un dossier par référence ou identifiant. Lien direct vers **Nouveau dossier**.
 - **Tâches** (`/tasks`) — vue personnelle des tâches actuellement assignées à l'utilisateur
-  connecté, avec accès direct au dossier concerné et bouton **Compléter**.
+  connecté, avec accès direct au dossier concerné, bouton **Compléter**, et un rappel SLA
+  (`dans N h` / `dépassée`) lorsque le type de dossier a un objectif en heures.
+- **Rapports & SLA** (`/rapports`) — snapshot de conformité et de délais sur une période
+  (défaut 30 jours). Visible pour `TENANT_ADMIN`, `WORKFLOW_ADMIN` et `DOSSIER_MANAGER`
+  (ce dernier ne voit que les types pour lesquels il a VIEW). Export CSV disponible ;
+  la planification d'envoi n'est pas encore activée. L'objectif de conformité tenant
+  (défaut 95 %) se configure dans **Admin → Types**.
 
 Sur la fiche d'un dossier (`/dossiers/{id}`), en plus du suivi de workflow (§3), on trouve aussi :
 

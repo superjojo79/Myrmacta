@@ -4,12 +4,14 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import DossierTypesAdminView from './DossierTypesAdminView.vue'
 import * as api from '@/api/dossierTypes'
 import * as retentionApi from '@/api/retentionSettings'
+import * as slaApi from '@/api/slaSettings'
 import { routes } from '@/app/routes'
 import { asPage } from '@/api/page'
 import type { Component } from 'vue'
 
 vi.mock('@/api/dossierTypes')
 vi.mock('@/api/retentionSettings')
+vi.mock('@/api/slaSettings')
 
 const sampleType = {
   id: '1',
@@ -22,6 +24,7 @@ const sampleType = {
   fieldDefinitions: [],
   retentionDays: null,
   retentionNever: false,
+  slaTargetHours: 48,
 }
 
 async function mountView(component: Component, path = '/admin/dossier-types') {
@@ -37,6 +40,9 @@ describe('DossierTypesAdminView', () => {
     vi.resetAllMocks()
     vi.mocked(api.listDossierTypes).mockResolvedValue(asPage([sampleType]))
     vi.mocked(retentionApi.getRetentionSettings).mockRejectedValue({
+      response: { status: 404, data: { detail: 'not found', status: 404 } },
+    })
+    vi.mocked(slaApi.getSlaSettings).mockRejectedValue({
       response: { status: 404, data: { detail: 'not found', status: 404 } },
     })
   })
@@ -59,7 +65,7 @@ describe('DossierTypesAdminView', () => {
     expect(wrapper.text()).toContain('CLAIM')
     expect(wrapper.text()).toContain('Rétention tenant')
     expect(wrapper.text()).toContain('héritage')
-    const createForm = wrapper.findAll('form.admin-form')[1]
+    const createForm = wrapper.get('[data-testid="type-create-form"]')
     const inputs = createForm.findAll('input')
     await inputs[0].setValue('NEW')
     await inputs[1].setValue('New')
@@ -71,8 +77,37 @@ describe('DossierTypesAdminView', () => {
         code: 'NEW',
         retentionDays: null,
         retentionNever: false,
+        slaTargetHours: null,
       }),
     )
+  })
+
+  it('clears type SLA hours via clearSlaTargetHours', async () => {
+    vi.mocked(api.updateDossierType).mockResolvedValue({
+      ...sampleType,
+      slaTargetHours: null,
+    })
+    const { wrapper } = await mountView(DossierTypesAdminView)
+    await flushPromises()
+    await wrapper.get('[data-testid="type-clear-sla"]').trigger('click')
+    await flushPromises()
+    expect(api.updateDossierType).toHaveBeenCalledWith('CLAIM', { clearSlaTargetHours: true })
+  })
+
+  it('saves tenant SLA compliance target', async () => {
+    vi.mocked(slaApi.upsertSlaSettings).mockResolvedValue({
+      tenantId: 't',
+      complianceTargetPercent: 90,
+      updatedAt: '2026-01-01T00:00:00Z',
+      updatedBy: 'admin',
+    })
+    const { wrapper } = await mountView(DossierTypesAdminView)
+    await flushPromises()
+    expect(wrapper.text()).toContain('Objectif SLA tenant')
+    await wrapper.get('[data-testid="sla-target-percent"]').setValue('90')
+    await wrapper.get('[data-testid="sla-settings-form"]').trigger('submit.prevent')
+    await flushPromises()
+    expect(slaApi.upsertSlaSettings).toHaveBeenCalledWith(90)
   })
 
   it('saves tenant retention default', async () => {

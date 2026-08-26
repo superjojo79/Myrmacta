@@ -42,6 +42,9 @@ async function complete(taskId: string) {
           <strong>{{ task.name || task.taskId }}</strong>
           <span>
             {{ task.dossierReference || task.dossierId }}
+            <em v-if="task.slaRemainingHours != null" data-testid="task-sla">
+              SLA {{ task.slaRemainingHours > 0 ? `dans ${task.slaRemainingHours} h` : `dépassée` }}
+            </em>
           </span>
         </div>
         <div class="tasks-view__actions">

@@ -25,6 +25,9 @@ export const useAuthStore = defineStore('auth', () => {
   const isWorkflowAdmin = computed(
     () => roles.value.includes('WORKFLOW_ADMIN') || roles.value.includes('TENANT_ADMIN'),
   )
+  const canSeeReports = computed(
+    () => isWorkflowAdmin.value || roles.value.includes('DOSSIER_MANAGER'),
+  )
 
   async function init(): Promise<void> {
     bootError.value = null
@@ -71,6 +74,7 @@ export const useAuthStore = defineStore('auth', () => {
     roles,
     isTenantAdmin,
     isWorkflowAdmin,
+    canSeeReports,
     init,
     logout,
   }

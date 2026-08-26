@@ -47,11 +47,40 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/BpmnDraftResponse"
+  /api/tenant/sla-settings:
+    get:
+      tags:
+      - tenant-sla-settings-controller
+      operationId: get_1
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TenantSlaSettingsResponse"
+    put:
+      tags:
+      - tenant-sla-settings-controller
+      operationId: upsert
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertTenantSlaSettingsRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TenantSlaSettingsResponse"
   /api/tenant/retention-settings:
     get:
       tags:
       - tenant-retention-settings-controller
-      operationId: get_1
+      operationId: get_2
       responses:
         "200":
           description: OK
@@ -62,7 +91,7 @@ paths:
     put:
       tags:
       - tenant-retention-settings-controller
-      operationId: upsert
+      operationId: upsert_1
       requestBody:
         content:
           application/json:
@@ -906,7 +935,7 @@ paths:
     get:
       tags:
       - workflow-type-config-controller
-      operationId: get_2
+      operationId: get_3
       parameters:
       - name: workflowKey
         in: path
@@ -947,7 +976,7 @@ paths:
     get:
       tags:
       - notification-webhook-admin-controller
-      operationId: get_3
+      operationId: get_4
       parameters:
       - name: id
         in: path
@@ -1095,7 +1124,7 @@ paths:
     get:
       tags:
       - document-template-controller
-      operationId: get_4
+      operationId: get_5
       parameters:
       - name: id
         in: path
@@ -1138,7 +1167,7 @@ paths:
     get:
       tags:
       - connector-admin-controller
-      operationId: get_5
+      operationId: get_6
       parameters:
       - name: id
         in: path
@@ -1368,6 +1397,91 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ProcessDeploymentInfoResponse"
+  /api/reports/sla:
+    get:
+      tags:
+      - sla-report-controller
+      operationId: get_7
+      parameters:
+      - name: from
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: to
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: dossierTypeCode
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SlaReport"
+  /api/reports/sla/summary:
+    get:
+      tags:
+      - sla-report-controller
+      operationId: summary
+      parameters:
+      - name: from
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: to
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: dossierTypeCode
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: groupBy
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SlaSummary"
+  /api/reports/sla.csv:
+    get:
+      tags:
+      - sla-report-export-controller
+      operationId: exportCsv
+      parameters:
+      - name: from
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: to
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: dossierTypeCode
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
   /api/purge-outbox:
     get:
       tags:
@@ -1412,7 +1526,7 @@ paths:
     get:
       tags:
       - observability-controller
-      operationId: get_6
+      operationId: get_8
       responses:
         "200":
           description: OK
@@ -1455,7 +1569,7 @@ paths:
     get:
       tags:
       - dossier-export-controller
-      operationId: exportCsv
+      operationId: exportCsv_1
       parameters:
       - name: dossierTypeCode
         in: query
@@ -1598,6 +1712,25 @@ components:
           type: string
         xml:
           type: string
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+    UpsertTenantSlaSettingsRequest:
+      type: object
+      properties:
+        complianceTargetPercent:
+          type: integer
+          format: int32
+    TenantSlaSettingsResponse:
+      type: object
+      properties:
+        tenantId:
+          type: string
+        complianceTargetPercent:
+          type: integer
+          format: int32
         updatedAt:
           type: string
           format: date-time
@@ -2065,6 +2198,9 @@ components:
           format: int32
         retentionNever:
           type: boolean
+        slaTargetHours:
+          type: integer
+          format: int32
     FieldDefinition:
       type: object
       properties:
@@ -2120,6 +2256,9 @@ components:
           format: int32
         retentionNever:
           type: boolean
+        slaTargetHours:
+          type: integer
+          format: int32
     GrantDossierTypeAccessRequest:
       type: object
       properties:
@@ -2293,6 +2432,11 @@ components:
           format: int32
         retentionNever:
           type: boolean
+        slaTargetHours:
+          type: integer
+          format: int32
+        clearSlaTargetHours:
+          type: boolean
     UpdateRequest:
       type: object
       properties:
@@ -2352,6 +2496,9 @@ components:
         linkId:
           type: string
           format: uuid
+        slaRemainingHours:
+          type: number
+          format: double
     PageResponseMyWorkflowTaskResponse:
       type: object
       properties:
@@ -2620,6 +2767,153 @@ components:
         activeInstanceCount:
           type: integer
           format: int64
+    ManagerLoad:
+      type: object
+      properties:
+        assigneeId:
+          type: string
+        displayName:
+          type: string
+        inProgress:
+          type: integer
+          format: int64
+        overdue:
+          type: integer
+          format: int64
+        slaPercent:
+          type: number
+          format: double
+    SlaReport:
+      type: object
+      properties:
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+        complianceTargetPercent:
+          type: integer
+          format: int32
+        compliancePercent:
+          type: number
+          format: double
+        overdueCount:
+          type: integer
+          format: int64
+        meanProcessingDays:
+          type: number
+          format: double
+        medianProcessingDays:
+          type: number
+          format: double
+        meanDeltaVsPreviousDays:
+          type: number
+          format: double
+        typeShares:
+          type: array
+          items:
+            $ref: "#/components/schemas/TypeShare"
+        stepDurationsHours:
+          type: array
+          items:
+            $ref: "#/components/schemas/StepDuration"
+        managerLoads:
+          type: array
+          items:
+            $ref: "#/components/schemas/ManagerLoad"
+        types:
+          type: array
+          items:
+            $ref: "#/components/schemas/TypeBreakdown"
+    StepDuration:
+      type: object
+      properties:
+        name:
+          type: string
+        meanHours:
+          type: number
+          format: double
+    TypeBreakdown:
+      type: object
+      properties:
+        typeCode:
+          type: string
+        typeLabel:
+          type: string
+        workflowKey:
+          type: string
+        volume:
+          type: integer
+          format: int64
+        meanDays:
+          type: number
+          format: double
+        slaPercent:
+          type: number
+          format: double
+        producedDocCount:
+          type: integer
+          format: int64
+        volumeTrendPercent:
+          type: number
+          format: double
+    TypeShare:
+      type: object
+      properties:
+        code:
+          type: string
+        label:
+          type: string
+        volume:
+          type: integer
+          format: int64
+        percent:
+          type: number
+          format: double
+    SlaSummary:
+      type: object
+      properties:
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+        groupBy:
+          type: string
+        buckets:
+          type: array
+          items:
+            $ref: "#/components/schemas/SlaSummaryBucket"
+    SlaSummaryBucket:
+      type: object
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        volume:
+          type: integer
+          format: int64
+        onTrack:
+          type: integer
+          format: int64
+        atRisk:
+          type: integer
+          format: int64
+        breached:
+          type: integer
+          format: int64
+        unscored:
+          type: integer
+          format: int64
+        meanDurationHours:
+          type: number
+          format: double
+        medianDurationHours:
+          type: number
+          format: double
     Counts:
       type: object
       properties:

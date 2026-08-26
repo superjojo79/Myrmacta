@@ -42,7 +42,8 @@ class CreateDossierTypeUseCaseImplTest {
                         false,
                         List.of(),
                         null,
-                        false),
+                        false,
+                        null),
                 AccessContext.user("admin", Set.of("TENANT_ADMIN")));
 
         assertThat(created.code()).isEqualTo("CLAIM");
@@ -67,11 +68,31 @@ class CreateDossierTypeUseCaseImplTest {
                         false,
                         List.of(),
                         365,
-                        false),
+                        false,
+                        null),
                 AccessContext.user("admin", Set.of("TENANT_ADMIN")));
 
         assertThat(created.retentionDays()).isEqualTo(365);
         assertThat(created.retentionNever()).isFalse();
+    }
+
+    @Test
+    void create_persistsSlaTargetHours() {
+        DossierType created = useCase.create(
+                new CreateDossierTypeUseCase.CreateDossierTypeCommand(
+                        "tenant_dev",
+                        "SIN",
+                        "Sinistre",
+                        "wf-sin",
+                        true,
+                        false,
+                        List.of(),
+                        null,
+                        false,
+                        48),
+                AccessContext.user("admin", Set.of("TENANT_ADMIN")));
+
+        assertThat(created.slaTargetHours()).isEqualTo(48);
     }
 
     @Test
@@ -86,7 +107,8 @@ class CreateDossierTypeUseCaseImplTest {
                         false,
                         List.of(),
                         null,
-                        true),
+                        true,
+                        null),
                 AccessContext.user("admin", Set.of("TENANT_ADMIN")));
 
         assertThat(created.retentionDays()).isNull();
@@ -105,7 +127,8 @@ class CreateDossierTypeUseCaseImplTest {
                                 false,
                                 List.of(),
                                 30,
-                                true),
+                                true,
+                        null),
                         AccessContext.user("admin", Set.of("TENANT_ADMIN"))))
                 .isInstanceOf(InvalidRetentionPolicyException.class);
 
@@ -124,7 +147,8 @@ class CreateDossierTypeUseCaseImplTest {
                                 false,
                                 List.of(),
                                 0,
-                                false),
+                                false,
+                        null),
                         AccessContext.user("admin", Set.of("TENANT_ADMIN"))))
                 .isInstanceOf(InvalidRetentionPolicyException.class);
 
@@ -143,7 +167,8 @@ class CreateDossierTypeUseCaseImplTest {
                                 false,
                                 List.of(),
                                 null,
-                                false),
+                                false,
+                        null),
                         AccessContext.user("manager", Set.of("DOSSIER_MANAGER"))))
                 .isInstanceOf(AccessDeniedException.class);
 

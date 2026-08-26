@@ -39,6 +39,26 @@ describe('AppShell', () => {
     expect(wrapper.text()).not.toContain('Rapports')
   })
 
+  it('shows Rapports for tenant admin', async () => {
+    const auth = useAuthStore()
+    auth.user = { id: 'a', name: 'Admin', email: null, roles: ['TENANT_ADMIN'] }
+    const router = createRouter({ history: createMemoryHistory(), routes })
+    await router.push('/supervision')
+    await router.isReady()
+    const wrapper = mount(AppShell, { global: { plugins: [router] } })
+    expect(wrapper.text()).toContain('Rapports')
+  })
+
+  it('shows Rapports for dossier manager', async () => {
+    const auth = useAuthStore()
+    auth.user = { id: 'm', name: 'Mgr', email: null, roles: ['DOSSIER_MANAGER'] }
+    const router = createRouter({ history: createMemoryHistory(), routes })
+    await router.push('/supervision')
+    await router.isReady()
+    const wrapper = mount(AppShell, { global: { plugins: [router] } })
+    expect(wrapper.text()).toContain('Rapports')
+  })
+
   it('shows admin links for tenant admin', async () => {
     const auth = useAuthStore()
     auth.user = { id: 'a', name: 'Admin', email: null, roles: ['TENANT_ADMIN'] }
@@ -72,5 +92,6 @@ describe('AppShell', () => {
     await router.isReady()
     const wrapper = mount(AppShell, { global: { plugins: [router] } })
     expect(wrapper.text()).not.toContain('Observabilité')
+    expect(wrapper.text()).not.toContain('Rapports')
   })
 })

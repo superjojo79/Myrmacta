@@ -8,6 +8,7 @@ import {
   revokeDossierTypeAcl,
 } from '@/api/dossierTypes'
 import { getRetentionSettings, upsertRetentionSettings } from '@/api/retentionSettings'
+import { getSlaSettings, upsertSlaSettings } from '@/api/slaSettings'
 import type { DossierPermission, DossierType } from '@/api/types'
 import { toProblemDetail } from '@/api/http'
 import AdminPager from '@/components/admin/AdminPager.vue'
@@ -20,6 +21,8 @@ const error = ref<string | null>(null)
 const retentionDaysDefault = ref<number | null>(null)
 const retentionConfigured = ref(false)
 const retentionDraft = ref(365)
+const slaTargetPercent = ref(95)
+const slaConfigured = ref(false)
 const form = ref({
   code: '',
   label: '',
@@ -27,6 +30,7 @@ const form = ref({
   active: true,
   retentionMode: 'inherit' as 'inherit' | 'days' | 'never',
   retentionDays: 365,
+  slaTargetHours: null as number | null,
 })
 const acl = ref({ code: '', subjectUserId: '', permission: 'VIEW' as DossierPermission })
 
@@ -54,6 +58,18 @@ async function refresh() {
       throw err
     }
   }
+  try {
+    const sla = await getSlaSettings()
+    slaConfigured.value = true
+    slaTargetPercent.value = sla.complianceTargetPercent
+  } catch (err) {
+    const status = toProblemDetail(err).status
+    if (status === 404) {
+      slaConfigured.value = false
+    } else {
+      throw err
+    }
+  }
 }
 
 watch(
@@ -77,6 +93,17 @@ async function saveRetention() {
   }
 }
 
+async function saveSla() {
+  error.value = null
+  try {
+    const saved = await upsertSlaSettings(slaTargetPercent.value)
+    slaConfigured.value = true
+    slaTargetPercent.value = saved.complianceTargetPercent
+  } catch (err) {
+    error.value = toProblemDetail(err).detail ?? 'Enregistrement SLA impossible'
+  }
+}
+
 function retentionPayload() {
   if (form.value.retentionMode === 'never') {
     return { retentionDays: null, retentionNever: true }
@@ -96,6 +123,7 @@ async function create() {
       workflowKey: form.value.workflowKey,
       active: form.value.active,
       fieldDefinitions: [],
+      slaTargetHours: form.value.slaTargetHours || null,
       ...retentionPayload(),
     })
     form.value = {
@@ -105,6 +133,7 @@ async function create() {
       active: true,
       retentionMode: 'inherit',
       retentionDays: 365,
+      slaTargetHours: null,
     }
     await refresh()
   } catch (err) {
@@ -125,6 +154,16 @@ async function setTypeNever(type: DossierType) {
 async function setTypeInherit(type: DossierType) {
   await updateDossierType(type.code, { retentionNever: false, retentionDays: null })
   await refresh()
+}
+
+async function clearTypeSla(type: DossierType) {
+  error.value = null
+  try {
+    await updateDossierType(type.code, { clearSlaTargetHours: true })
+    await refresh()
+  } catch (err) {
+    error.value = toProblemDetail(err).detail ?? 'Retrait SLA impossible'
+  }
 }
 
 async function grant() {
@@ -165,7 +204,26 @@ async function revoke() {
       </form>
     </section>
 
-    <form class="admin-form" @submit.prevent="create">
+    <section class="retention-block" aria-labelledby="sla-heading">
+      <h2 id="sla-heading">Objectif SLA tenant</h2>
+      <p v-if="!slaConfigured" class="hint">Aucune cible configurée (GET 404) — le rapport utilise 95 %.</p>
+      <form class="admin-form" data-testid="sla-settings-form" @submit.prevent="saveSla">
+        <label>
+          Objectif de conformité (%)
+          <input
+            v-model.number="slaTargetPercent"
+            type="number"
+            min="1"
+            max="100"
+            required
+            data-testid="sla-target-percent"
+          />
+        </label>
+        <button type="submit" data-testid="sla-save">Enregistrer l'objectif SLA</button>
+      </form>
+    </section>
+
+    <form class="admin-form" data-testid="type-create-form" @submit.prevent="create">
       <input v-model="form.code" placeholder="code" required />
       <input v-model="form.label" placeholder="libellé" required />
       <input v-model="form.workflowKey" placeholder="workflowKey" required />
@@ -182,6 +240,13 @@ async function revoke() {
         placeholder="jours"
         data-testid="type-retention-days"
         required
+      />
+      <input
+        v-model.number="form.slaTargetHours"
+        type="number"
+        min="1"
+        placeholder="SLA heures"
+        data-testid="type-sla-hours"
       />
       <button type="submit">Créer</button>
     </form>
@@ -207,6 +272,14 @@ async function revoke() {
             <button type="button" @click="toggleActive(type)">Basculer</button>
             <button type="button" @click="setTypeNever(type)">NEVER</button>
             <button type="button" @click="setTypeInherit(type)">Héritage</button>
+            <button
+              v-if="type.slaTargetHours != null"
+              type="button"
+              data-testid="type-clear-sla"
+              @click="clearTypeSla(type)"
+            >
+              Retirer le SLA
+            </button>
           </td>
         </tr>
       </tbody>
@@ -214,7 +287,7 @@ async function revoke() {
     <AdminPager v-model="page" :total-pages="totalPages" />
 
     <h2>ACL</h2>
-    <form class="admin-form" @submit.prevent="grant">
+    <form class="admin-form" data-testid="acl-form" @submit.prevent="grant">
       <input v-model="acl.code" placeholder="code type" required />
       <input v-model="acl.subjectUserId" placeholder="userId" required />
       <select v-model="acl.permission">

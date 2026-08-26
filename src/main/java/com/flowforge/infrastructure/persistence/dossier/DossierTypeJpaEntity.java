@@ -52,6 +52,9 @@ public class DossierTypeJpaEntity {
     @Column(name = "retention_never", nullable = false)
     private boolean retentionNever;
 
+    @Column(name = "sla_target_hours")
+    private Integer slaTargetHours;
+
     protected DossierTypeJpaEntity() {
         // JPA
     }
@@ -66,7 +69,8 @@ public class DossierTypeJpaEntity {
             boolean allowUnknownFields,
             List<FieldDefinition> fieldDefinitions,
             Integer retentionDays,
-            boolean retentionNever) {
+            boolean retentionNever,
+            Integer slaTargetHours) {
         this.id = id;
         this.tenantId = tenantId;
         this.code = code;
@@ -77,6 +81,7 @@ public class DossierTypeJpaEntity {
         this.fieldDefinitions = List.copyOf(fieldDefinitions);
         this.retentionDays = retentionDays;
         this.retentionNever = retentionNever;
+        this.slaTargetHours = slaTargetHours;
     }
 
     static DossierTypeJpaEntity fromDomain(DossierType type) {
@@ -90,7 +95,8 @@ public class DossierTypeJpaEntity {
                 type.allowUnknownFields(),
                 type.fieldDefinitions(),
                 type.retentionDays(),
-                type.retentionNever());
+                type.retentionNever(),
+                type.slaTargetHours());
     }
 
     DossierType toDomain() {
@@ -104,6 +110,7 @@ public class DossierTypeJpaEntity {
                 allowUnknownFields,
                 fieldDefinitions,
                 retentionDays,
-                retentionNever);
+                retentionNever,
+                slaTargetHours);
     }
 }

@@ -163,12 +163,13 @@ scope V1 produit (mock UI de référence uniquement) — le même constat
 s'applique ici : sans modèle de métriques/agrégats ni définition de SLA
 actée, un outil MCP de « stats » n'aurait pas de contrat stable à exposer.
 
-**Prérequis avant de rouvrir ce point :** une analyse dédiée
-« reporting & SLA » doit d'abord définir le modèle de métriques (quels
-agrégats, quelles dimensions de filtrage, notion de SLA ou non). Cette
-feature MCP pourra alors exposer un outil de lecture (`query_dossiers` /
-`get_workflow_stats` ou équivalent) qui consomme ce modèle une fois stable,
-plutôt que d'improviser des agrégats ad hoc non réutilisables.
+**Prérequis avant de rouvrir ce point :** une analyse dédiée « reporting &
+SLA » a été produite — voir [16-reporting-sla.md](16-reporting-sla.md).
+Elle propose un découpage en deux lots (Lot 1 — comptages/durées, Lot 2 —
+seuils SLA et statut de conformité) et doit être **actée puis livrée**
+avant que cette feature MCP n'expose un outil de lecture (`query_dossiers` /
+`get_workflow_stats` ou équivalent) consommant ce modèle, plutôt que
+d'improviser des agrégats ad hoc non réutilisables.
 
 ### Autres exclusions actées
 
@@ -281,8 +282,10 @@ analyse validée :
    itération ultérieure (validation des champs dynamiques, création depuis
    trigger vs MCP, etc. — voir
    [04-dossiers.md](04-dossiers.md#création-depuis-un-trigger--unitaire-et-batch)).
-7. **Reporting/SLA (point 4)** — reste bloqué sur l'analyse dédiée
-   mentionnée plus haut ; à revisiter une fois ce cadrage disponible.
+7. **Reporting/SLA (point 4)** — analyse disponible
+   ([16-reporting-sla.md](16-reporting-sla.md)) ; reste bloqué sur sa
+   validation et sa livraison (Lot 1 au minimum) avant de rouvrir ce point
+   côté MCP.
 8. **Pagination/volumétrie de `search_dossiers`** — reprendre telles
    quelles les bornes déjà actées pour `pagination-dossiers` (taille de
    page max, tri par défaut) plutôt que d'introduire un contrat de

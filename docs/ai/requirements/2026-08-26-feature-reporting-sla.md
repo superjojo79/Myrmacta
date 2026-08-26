@@ -14,10 +14,9 @@ todo_ref: DEFERRED-FEATURES.md §1.6 · FILE-ATTENTE.md · analysis doc/16-repor
 
 ## Phase 1 : New Requirement (relancée)
 
-Phase 1 **relancée** à la demande du stakeholder : les D-* ci-dessous
-sont des **propositions** issues d'un premier jet (code et docs
-conservés). **Aucune n'est actée** tant qu'elle n'a pas été tranchée
-ici, une décision à la fois.
+Phase 1 **relancée**. Actés : **D-APPROACH = A+B**, **D-AUTHZ = C**.
+Les autres D-* restent des propositions tant qu'ils n'ont pas été
+tranchés ici, une décision à la fois.
 
 Workspace : branche `cursor/reporting-sla-9009`, no-worktree (VM cloud).
 Task tracing indisponible (`unknown command 'task'`). Lint feature :
@@ -65,6 +64,7 @@ dossiers.
 | Id | Décision | Source |
 |---|---|---|
 | **D-APPROACH = A+B** | Les **deux** formes : (A) API summary analyse (`groupBy`, durées, statut `ON_TRACK` / `AT_RISK` / `BREACHED`) **et** (B) snapshot maquette `/rapports` (KPI conformité, délai moyen, parts, temps/étape, charge gestionnaires, CSV, inbox remaining). BC domaine `reporting` + BFF. Pas Grafana, pas de recopie des KPI observabilité. | Stakeholder 2026-08-26 |
+| **D-AUTHZ = C** | Lecture snapshot **et** summary : `TENANT_ADMIN` / `WORKFLOW_ADMIN` tout le tenant ; `DOSSIER_MANAGER` filtré ACL VIEW (même split que `SearchDossiersUseCase`) ; `DOSSIER_VIEWER` / `API_SERVICE` → 403. Écriture `slaTargetHours` + settings : **`TENANT_ADMIN` uniquement**. | Stakeholder 2026-08-26 |
 
 Conséquences immédiates (tant que non démenties par une question suivante) :
 
@@ -84,7 +84,6 @@ suit surtout **B** ; A (summary + `AT_RISK`) n'y est pas encore.
 | **D-SLA-CLOCK = A** | Horloge dossier : `createdAt` → `closedAt` si clos (`CLOTURE`/`ARCHIVE`), sinon `now`. Hors délai ssi durée > `slaTargetHours`. |
 | **D-SLA-NULL = A** | Type sans `slaTargetHours` : **exclu** du % de conformité (cellule « — », comme « Non assignés » dans la maquette). |
 | **D-PERIOD = A** | Filtre `createdAt ∈ [from, to]` ; défaut **30 jours** glissants UTC ; max **366 jours** ; `to` exclusif minuit jour suivant si date civile. |
-| **D-AUTHZ = A** | Lecture rapport : `TENANT_ADMIN` / `WORKFLOW_ADMIN` tout le tenant ; `DOSSIER_MANAGER` filtré ACL VIEW (même règle que `SearchDossiersUseCase`) ; `DOSSIER_VIEWER` / `API_SERVICE` → 403. Écriture settings + `slaTargetHours` : **`TENANT_ADMIN` uniquement**. |
 | **D-CHARTS = A** | Barres CSS / tableaux PrimeVue-alignés maquette. **Pas** Chart.js (cohérent observabilité Q4). |
 | **D-EXPORT = A** | `GET /api/reports/sla.csv` mêmes filtres/authz ; `CsvWriter` anti-formule. Agrégats seulement — **pas** de champs dossier. |
 | **D-SCHEDULE = C** | Bouton « Planifier l'envoi » **visible désactivé** (« bientôt ») — envoi planifié hors scope. |
@@ -246,15 +245,15 @@ suit surtout **B** ; A (summary + `AT_RISK`) n'y est pas encore.
 
 ## Questions & Open Items
 
-Phase 1 en cours. **D-APPROACH = A+B** acté. Reste :
+Phase 1 en cours. Actés : **D-APPROACH = A+B**, **D-AUTHZ = C**. Reste :
 
 1. ~~Forme produit~~ **A+B**.
-2. **RBAC exact** — TA seul / TA+WA / TA+WA+DM(ACL). ← **en cours**
+2. ~~RBAC exact~~ **C** (TA/WA unrestricted ; DM filtré ACL VIEW ; viewer / API_SERVICE 403 ; écriture TA only).
 3. **`slaTargetHours` obligatoire ou optionnel** (héritage défaut
-   tenant vs SLA off tant que non configuré).
+   tenant vs SLA off tant que non configuré). ← **en cours**
 4. **Seuil `AT_RISK`** — fixe, paramétrable par tenant, ou convention
    nommée (ex. 80 %) — désormais **in scope** à cause de A.
 5. **Granularité `groupBy`** (jour/semaine/mois) dès V1 ou uniquement
    type/statut.
 6. Autres D-* proposés (horloge, période, charts, schedule, settings)
-   une fois 2–5 tranchés.
+   une fois 3–5 tranchés.

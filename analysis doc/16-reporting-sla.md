@@ -11,6 +11,11 @@
 > (stats) du [serveur MCP](15-serveur-mcp.md#dépendance-reporting--sla-point-4)
 > — elle doit être analysée, actée puis **livrée** avant que le MCP
 > n'expose un outil de statistiques.
+>
+> **Décision de cadrage (2026-08-26) :** les **deux lots** (Reporting **et**
+> SLA) sont requis pour débloquer le MCP à coup sûr — voir
+> [Proposition de découpage en deux lots](#proposition-de-découpage-en-deux-lots).
+> Question ouverte n° 1 tranchée en ce sens.
 
 ---
 
@@ -46,13 +51,15 @@ lot plus structurant, plutôt qu'une feature monolithique.
 
 | Lot | Contenu | Nécessaire pour débloquer le MCP (point 4) ? |
 |---|---|---|
-| **Lot 1 — Reporting** | Comptages et durées, calculés à la volée, sans notion de seuil | **Oui** — c'est le socle minimal que `get_workflow_stats`/`query_dossiers` (MCP) consommerait |
-| **Lot 2 — SLA** | Seuils configurables par type de dossier + statut de conformité (respecté/à risque/dépassé) | Optionnel pour le MCP V1 — à confirmer en [Questions ouvertes](#questions-ouvertes) |
+| **Lot 1 — Reporting** | Comptages et durées, calculés à la volée, sans notion de seuil | **Oui** — c'est le socle minimal que `query_dossiers` (MCP) consommerait |
+| **Lot 2 — SLA** | Seuils configurables par type de dossier + statut de conformité (respecté/à risque/dépassé) | **Oui** — tranché (2026-08-26) : le MCP doit pouvoir exposer un statut de conformité (`get_workflow_stats` ou équivalent), pas seulement des comptages bruts. Les deux lots sont donc requis avant de rouvrir le point 4 côté MCP. |
 
-Recommandation : cadrer les deux lots dans cette même analyse (cohérent
-avec la demande « reports **et** SLA »), mais garder la possibilité de
-livrer le Lot 1 seul si le Lot 2 s'avère plus long à faire converger côté
-produit (seuils par type, politique d'alerte).
+**Décision :** les deux lots sont dans le périmètre à livrer avant le MCP —
+pas de version dégradée « Lot 1 seul » pour débloquer le MCP. Ils restent
+néanmoins deux livraisons séquencées (Lot 1 puis Lot 2), sur le modèle
+rétention → purge, pour limiter la taille de chaque itération ; c'est
+l'ensemble des deux qui conditionne la levée de la dépendance MCP, pas
+chacun indépendamment.
 
 ---
 
@@ -210,8 +217,10 @@ comptage) — voir [Questions ouvertes](#questions-ouvertes).
 
 ## Questions ouvertes
 
-1. **Le Lot 1 seul suffit-il** à débloquer le point 4 du MCP, ou le MCP a
-   besoin du statut SLA (Lot 2) dès sa première itération de lecture ?
+1. ~~Le Lot 1 seul suffit-il à débloquer le point 4 du MCP, ou le MCP a
+   besoin du statut SLA (Lot 2) dès sa première itération de lecture ?~~
+   **Tranché (2026-08-26) : les deux lots sont requis** — voir
+   [Proposition de découpage en deux lots](#proposition-de-découpage-en-deux-lots).
 2. **Seuil d'alerte `AT_RISK`** — pourcentage fixe (ex. 80 %) ou
    paramétrable par tenant ?
 3. **RBAC exact** — `TENANT_ADMIN` seul, `+ WORKFLOW_ADMIN`, ou scoping

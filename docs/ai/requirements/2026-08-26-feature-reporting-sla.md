@@ -16,9 +16,9 @@ todo_ref: DEFERRED-FEATURES.md §1.6 · FILE-ATTENTE.md · analysis doc/16-repor
 
 Phase 1 **relancée**. Actés : **D-APPROACH = A+B**, **D-AUTHZ = C**,
 **D-SLA-HOURS = B**, **D-AT-RISK = A**, **D-GROUPBY = B**,
-**D-SLA-CLOCK = A**, **D-PERIOD = A**, **D-SETTINGS = A**. Les autres
-D-* restent des propositions tant qu'ils n'ont pas été tranchés ici,
-une décision à la fois.
+**D-SLA-CLOCK = A**, **D-PERIOD = A**, **D-SETTINGS = A**,
+**D-COMPUTE = A**. Les autres D-* restent des propositions tant
+qu'ils n'ont pas été tranchés ici, une décision à la fois.
 
 Workspace : branche `cursor/reporting-sla-9009`, no-worktree (VM cloud).
 Task tracing indisponible (`unknown command 'task'`). Lint feature :
@@ -73,6 +73,7 @@ dossiers.
 | **D-SLA-CLOCK = A** | Horloge **dossier** : début = `createdAt` ; fin = `closedAt` si clos (`CLOTURE` / `ARCHIVE`), sinon `now`. Hors délai / `BREACHED` ssi durée **>** `slaTargetHours`. Pas de `dueDate` Flowable. `ARCHIVE` sans `closedAt` : fin = `updatedAt` (**A-ARCHIVE-CLOCK**). Inbox : `slaRemainingHours = slaTargetHours - elapsed(createdAt, now)`. | Stakeholder 2026-08-26 |
 | **D-PERIOD = A** | Cohorte = `createdAt ∈ [from, to]`. Défaut **30 jours** glissants UTC si `from`/`to` omis ; max **366 jours** ; `from >= to` ou trop large → 400. `to` exclusif (minuit du jour civil suivant si date seule). Tendance = même durée **immédiatement avant** `from`. Un dossier créé hors fenêtre n'entre pas dans le snapshot/summary (reste visible via l'inbox). | Stakeholder 2026-08-26 |
 | **D-SETTINGS = A** | Objectif de conformité **paramétrable** : `TenantSlaSettings.complianceTargetPercent` (1–100). GET 404 si absent ; le calcul du snapshot utilise alors **95**. PUT upsert **TA only**. Singleton par schéma. **Pas** de `slaTargetHours` tenant ni de `atRiskPercent`. | Stakeholder 2026-08-26 |
+| **D-COMPUTE = A** | Agrégats **à la volée** (SQL + historique Flowable). Pas de table de faits, pas de job nuit, pas de cache TTL V1. Garde-fou : 400 si cohorte > **10 000** dossiers (**A-COHORT-CAP**). Index lecture `(created_at)` attendu (**D-INDEX**, à confirmer comme A-* si non tranché). | Stakeholder 2026-08-26 |
 
 Conséquences immédiates (tant que non démenties par une question suivante) :
 
@@ -92,7 +93,6 @@ suit surtout **B** ; A (summary + `AT_RISK`) n'y est pas encore.
 | **D-EXPORT = A** | `GET /api/reports/sla.csv` mêmes filtres/authz ; `CsvWriter` anti-formule. Agrégats seulement — **pas** de champs dossier. |
 | **D-SCHEDULE = C** | Bouton « Planifier l'envoi » **visible désactivé** (« bientôt ») — envoi planifié hors scope. |
 | **D-TASK-SLA = A** | Champ calculé `slaRemainingHours` (nullable) sur `GET /api/workflow-tasks/mine` quand le type du dossier a une cible. |
-| **D-COMPUTE = A** | Agrégation **à la volée** (SQL + Flowable history). Pas de table snapshot matérialisée V1. |
 | **D-NAV = A** | Lien Pilotage « Rapports & SLA » pour TA / WA / DM. Masqué pour `DOSSIER_VIEWER`. E2E-9 mis à jour (plus « zéro Rapports »). |
 | **D-INDEX = A** | Index lecture `(created_at)` sur `dossier` pour le filtre période. |
 
@@ -138,7 +138,7 @@ suit surtout **B** ; A (summary + `AT_RISK`) n'y est pas encore.
 - Envoi planifié / cron mail du rapport (**D-SCHEDULE = C**).
 - Chart.js, Grafana, Alertmanager, time-series persistée.
 - SLA **par étape** (cibles) — le temps/étape est **observationnel**.
-- Recalcul matérialisé / job nuit.
+- Recalcul matérialisé / job nuit / cache TTL (**D-COMPUTE = A**).
 - Champs dossier dans l'export rapport (l'export métier reste
   `GET /api/dossiers/export.csv`).
 - Changer Observabilité / Micrometer (pas de métrique Prometheus SLA
@@ -170,6 +170,7 @@ suit surtout **B** ; A (summary + `AT_RISK`) n'y est pas encore.
 | Envoi planifié | A V1 mail / B hors scope hidden / C bouton disabled | **C** |
 | Inbox SLA | A remainingHours / B hors V1 / C dueDate Flowable | **A** |
 | Objectif conformité | A settings 1–100 défaut 95 / B pas d'objectif / C fixe 95 % | **A** |
+| Calcul agrégats | A à la volée / B table de faits / C cache TTL | **A** |
 
 ## User Stories & Use Cases
 
@@ -219,7 +220,8 @@ suit surtout **B** ; A (summary + `AT_RISK`) n'y est pas encore.
 - [ ] `TenantSlaSettings` GET 404 si absent ; PUT upsert TA ; défaut
       calcul 95.
 - [ ] `GET /api/reports/sla` 200 JSON maquette-compatible (champs
-      documentés en design) ; 403 viewer/service ; 400 période.
+      documentés en design) ; 403 viewer/service ; 400 période ou
+      cohorte > 10 000.
 - [ ] CSV export 200, `CsvWriter`, pas de champs métier.
 - [ ] SPA `/rapports` réelle (plus de masquage D-MOCKGAP).
 - [ ] Inbox `slaRemainingHours` null si pas de cible.
@@ -259,12 +261,14 @@ suit surtout **B** ; A (summary + `AT_RISK`) n'y est pas encore.
 | **A-DEFAULT-PERIOD** | Confirmé avec **D-PERIOD = A** : si `from`/`to` omis : `[now-30d, now]` UTC. |
 | **A-TASK-REMAINING** | `slaRemainingHours = slaTargetHours - elapsedHours(createdAt, now)` ; négatif si dépassé. |
 | **A-AT-RISK-CMP** | Comparaison anti-flottant : `AT_RISK` ssi `elapsedHours * 5 >= slaTargetHours * 4` **et** `elapsedHours <= slaTargetHours` (dossier ouvert, cible présente). |
+| **A-COHORT-CAP** | Confirmé avec **D-COMPUTE = A** : 400 `SLA_COHORT_TOO_LARGE` si plus de 10 000 dossiers dans `[from, to]` (après filtre ACL). |
 
 ## Questions & Open Items
 
 Phase 1 en cours. Actés : **D-APPROACH = A+B**, **D-AUTHZ = C**,
 **D-SLA-HOURS = B**, **D-AT-RISK = A**, **D-GROUPBY = B**,
-**D-SLA-CLOCK = A**, **D-PERIOD = A**, **D-SETTINGS = A**. Reste :
+**D-SLA-CLOCK = A**, **D-PERIOD = A**, **D-SETTINGS = A**,
+**D-COMPUTE = A**. Reste :
 
 1. ~~Forme produit~~ **A+B**.
 2. ~~RBAC exact~~ **C**.
@@ -273,7 +277,8 @@ Phase 1 en cours. Actés : **D-APPROACH = A+B**, **D-AUTHZ = C**,
 5. ~~`groupBy`~~ **B**.
 6. ~~Horloge SLA~~ **A**.
 7. ~~Période~~ **A**.
-8. ~~Objectif conformité~~ **A** (settings `complianceTargetPercent`, défaut 95).
-9. **Calcul des agrégats** (à la volée vs table de faits vs cache). ← **en cours**
-10. Autres D-* proposés (charts, schedule)
-    une fois 9 tranché.
+8. ~~Objectif conformité~~ **A**.
+9. ~~Calcul agrégats~~ **A** (à la volée ; cap 10k ; pas de table de faits).
+10. **Graphiques** (CSS/tableaux vs Chart.js vs images serveur). ← **en cours**
+11. Autres D-* proposés (schedule, export, nav, index)
+    une fois 10 tranché.

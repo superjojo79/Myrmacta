@@ -17,5 +17,6 @@ public interface CreateDossierTypeUseCase {
             boolean allowUnknownFields,
             List<FieldDefinition> fieldDefinitions,
             Integer retentionDays,
-            boolean retentionNever) {}
+            boolean retentionNever,
+            Integer slaTargetHours) {}
 }

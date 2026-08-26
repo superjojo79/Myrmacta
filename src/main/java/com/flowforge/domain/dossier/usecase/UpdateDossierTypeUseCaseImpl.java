@@ -34,7 +34,8 @@ public final class UpdateDossierTypeUseCaseImpl implements UpdateDossierTypeUseC
                 command.allowUnknownFields(),
                 command.fieldDefinitions(),
                 command.retentionDays(),
-                command.retentionNever());
+                command.retentionNever(),
+                command.slaTargetHours());
         repository.save(updated);
         return updated;
     }

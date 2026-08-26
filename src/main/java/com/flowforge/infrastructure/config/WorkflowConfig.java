@@ -74,13 +74,16 @@ public class WorkflowConfig {
             WorkflowTaskInboxPort inboxPort,
             WorkflowEnginePort workflowEnginePort,
             DossierWorkflowLinkRepository linkRepository,
-            DossierRepository dossierRepository) {
+            DossierRepository dossierRepository,
+            DossierTypeRepository typeRepository) {
         return new ListMyTasksUseCaseImpl(
                 tenantProperties.id(),
                 inboxPort,
                 workflowEnginePort,
                 linkRepository,
-                dossierRepository);
+                dossierRepository,
+                typeRepository,
+                java.time.Clock.systemUTC());
     }
 
     @Bean

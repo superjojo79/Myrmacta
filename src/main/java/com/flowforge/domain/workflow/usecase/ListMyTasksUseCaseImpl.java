@@ -1,13 +1,17 @@
 package com.flowforge.domain.workflow.usecase;
 
 import com.flowforge.domain.dossier.port.out.DossierRepository;
+import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
 import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
+import com.flowforge.domain.reporting.model.DossierSlaRow;
+import com.flowforge.domain.reporting.model.SlaReportAssembler;
 import com.flowforge.domain.shared.PageQuery;
 import com.flowforge.domain.shared.PageResult;
 import com.flowforge.domain.workflow.model.MyWorkflowTask;
 import com.flowforge.domain.workflow.port.in.ListMyTasksUseCase;
 import com.flowforge.domain.workflow.port.out.WorkflowEnginePort;
 import com.flowforge.domain.workflow.port.out.WorkflowTaskInboxPort;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -20,18 +24,24 @@ public final class ListMyTasksUseCaseImpl implements ListMyTasksUseCase {
     private final WorkflowEnginePort workflowEnginePort;
     private final DossierWorkflowLinkRepository linkRepository;
     private final DossierRepository dossierRepository;
+    private final DossierTypeRepository typeRepository;
+    private final Clock clock;
 
     public ListMyTasksUseCaseImpl(
             String tenantId,
             WorkflowTaskInboxPort inboxPort,
             WorkflowEnginePort workflowEnginePort,
             DossierWorkflowLinkRepository linkRepository,
-            DossierRepository dossierRepository) {
+            DossierRepository dossierRepository,
+            DossierTypeRepository typeRepository,
+            Clock clock) {
         this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
         this.inboxPort = Objects.requireNonNull(inboxPort, "inboxPort");
         this.workflowEnginePort = Objects.requireNonNull(workflowEnginePort, "workflowEnginePort");
         this.linkRepository = Objects.requireNonNull(linkRepository, "linkRepository");
         this.dossierRepository = Objects.requireNonNull(dossierRepository, "dossierRepository");
+        this.typeRepository = Objects.requireNonNull(typeRepository, "typeRepository");
+        this.clock = Objects.requireNonNull(clock, "clock");
     }
 
     /**
@@ -68,6 +78,18 @@ public final class ListMyTasksUseCaseImpl implements ListMyTasksUseCase {
             if (dossier.isEmpty()) {
                 continue;
             }
+            var loaded = dossier.get();
+            Integer slaHours = typeRepository
+                    .findByCode(tenantId, loaded.dossierTypeCode())
+                    .map(type -> type.slaTargetHours())
+                    .orElse(null);
+            DossierSlaRow slaRow = new DossierSlaRow(
+                    loaded.id(),
+                    loaded.dossierTypeCode(),
+                    loaded.createdAt(),
+                    loaded.closedAt(),
+                    loaded.updatedAt(),
+                    loaded.status());
             result.add(new MyWorkflowTask(
                     task.taskId(),
                     task.name(),
@@ -75,8 +97,9 @@ public final class ListMyTasksUseCaseImpl implements ListMyTasksUseCase {
                     task.createdAt(),
                     task.processInstanceId(),
                     dossierId,
-                    dossier.get().reference(),
-                    link.get().id()));
+                    loaded.reference(),
+                    link.get().id(),
+                    SlaReportAssembler.remainingHoursFor(slaRow, slaHours, clock.instant())));
         }
         return PageResult.of(List.copyOf(result), page.page(), page.size(), page.totalElements());
     }

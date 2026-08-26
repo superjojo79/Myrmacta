@@ -22,7 +22,8 @@ record CreateDossierTypeRequest(
         Boolean allowUnknownFields,
         List<FieldDefinition> fieldDefinitions,
         Integer retentionDays,
-        Boolean retentionNever) {}
+        Boolean retentionNever,
+        Integer slaTargetHours) {}
 
 record UpdateDossierTypeRequest(
         String label,
@@ -31,7 +32,8 @@ record UpdateDossierTypeRequest(
         Boolean allowUnknownFields,
         List<FieldDefinition> fieldDefinitions,
         Integer retentionDays,
-        Boolean retentionNever) {}
+        Boolean retentionNever,
+        Integer slaTargetHours) {}
 
 record DossierTypeResponse(
         UUID id,
@@ -43,7 +45,8 @@ record DossierTypeResponse(
         boolean allowUnknownFields,
         List<FieldDefinition> fieldDefinitions,
         Integer retentionDays,
-        boolean retentionNever) {
+        boolean retentionNever,
+        Integer slaTargetHours) {
 
     static DossierTypeResponse from(DossierType type) {
         return new DossierTypeResponse(
@@ -56,7 +59,8 @@ record DossierTypeResponse(
                 type.allowUnknownFields(),
                 type.fieldDefinitions(),
                 type.retentionDays(),
-                type.retentionNever());
+                type.retentionNever(),
+                type.slaTargetHours());
     }
 }
 

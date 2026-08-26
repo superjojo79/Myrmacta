@@ -110,7 +110,7 @@ consomme `GET …/diagram`).
 
 | Item | Notes |
 |---|---|
-| Écrans Rapports / SLA | Hors scope V1 (mock UI de référence uniquement) |
+| Écrans Rapports / SLA | **En revue** — feature `reporting-sla` (BC `reporting`, SPA `/rapports`) |
 | Liste / recherche / pagination dossiers (Supervision complet) | **Livré** — `pagination-dossiers` |
 | `npm run test` / `lint` / `test:e2e` en CI | Câblé (`.github/workflows/ci.yml`, job `frontend`) |
 

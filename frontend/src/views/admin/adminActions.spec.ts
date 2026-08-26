@@ -9,6 +9,7 @@ import * as adminApi from '@/api/admin'
 import * as workflowsApi from '@/api/workflows'
 import * as typesApi from '@/api/dossierTypes'
 import * as retentionApi from '@/api/retentionSettings'
+import * as slaApi from '@/api/slaSettings'
 import { routes } from '@/app/routes'
 import { asPage } from '@/api/page'
 import type { Component } from 'vue'
@@ -17,6 +18,7 @@ vi.mock('@/api/admin')
 vi.mock('@/api/workflows')
 vi.mock('@/api/dossierTypes')
 vi.mock('@/api/retentionSettings')
+vi.mock('@/api/slaSettings')
 vi.mock('@/api/documents', () => ({
   previewHtml: vi.fn().mockResolvedValue('<p>ok</p>'),
   previewPdf: vi.fn().mockResolvedValue(new Blob()),
@@ -97,6 +99,9 @@ describe('admin actions coverage', () => {
     vi.mocked(retentionApi.getRetentionSettings).mockRejectedValue({
       response: { status: 404, data: { detail: 'not found', status: 404 } },
     })
+    vi.mocked(slaApi.getSlaSettings).mockRejectedValue({
+      response: { status: 404, data: { detail: 'not found', status: 404 } },
+    })
   })
 
   it('templates rename create and lifecycle actions', async () => {
@@ -165,7 +170,7 @@ describe('admin actions coverage', () => {
     await types.get('td button').trigger('click')
     await flushPromises()
     expect(typesApi.updateDossierType).toHaveBeenCalled()
-    const aclForm = types.findAll('form')[2]
+    const aclForm = types.get('[data-testid="acl-form"]')
     const aclInputs = aclForm.findAll('input')
     await aclInputs[0].setValue('CLAIM')
     await aclInputs[1].setValue('u1')

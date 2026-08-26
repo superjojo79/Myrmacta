@@ -214,6 +214,6 @@ class EvaluateDossierRetentionUseCaseImplTest {
     private static DossierType neverType(String code) {
         return new DossierType(
                 UUID.randomUUID(), TENANT, code, code, "wf-" + code.toLowerCase(), true, false,
-                List.of(), null, true);
+                List.of(), null, true, null);
     }
 }

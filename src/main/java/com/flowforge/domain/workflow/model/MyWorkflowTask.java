@@ -12,7 +12,8 @@ public record MyWorkflowTask(
         String processInstanceId,
         UUID dossierId,
         String dossierReference,
-        UUID linkId) {
+        UUID linkId,
+        Double slaRemainingHours) {
 
     public MyWorkflowTask {
         Objects.requireNonNull(taskId, "taskId");

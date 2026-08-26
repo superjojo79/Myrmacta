@@ -43,6 +43,35 @@ const CLAIM_TYPE = {
       sensitive: false,
     },
   ],
+  slaTargetHours: 48,
+}
+
+const SLA_REPORT = {
+  from: '2026-02-13T00:00:00Z',
+  to: '2026-03-15T00:00:00Z',
+  complianceTargetPercent: 95,
+  compliancePercent: 94.2,
+  overdueCount: 148,
+  meanProcessingDays: 6.4,
+  medianProcessingDays: 4.1,
+  meanDeltaVsPreviousDays: -0.8,
+  typeShares: [{ code: 'CLAIM', label: 'Sinistre', volume: 10, percent: 100 }],
+  stepDurationsHours: [{ name: 'Instruction', meanHours: 37.6 }],
+  managerLoads: [
+    { assigneeId: null, displayName: 'Non assignés', inProgress: 48, overdue: 11, slaPercent: null },
+  ],
+  types: [
+    {
+      typeCode: 'CLAIM',
+      typeLabel: 'Sinistre auto',
+      workflowKey: 'instruction-sinistre',
+      volume: 1042,
+      meanDays: 7.1,
+      slaPercent: 92.4,
+      producedDocCount: 2108,
+      volumeTrendPercent: 4,
+    },
+  ],
 }
 
 const OTHER_WORKFLOW = {
@@ -108,6 +137,7 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
       dossierId: DOSSIER_ID,
       dossierReference: 'DOS-1',
       linkId: LINK_ID,
+      slaRemainingHours: 12,
     },
   ]
   let tasks = [
@@ -193,6 +223,52 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
       return
     }
     await route.fulfill({ status: 405, body: '' })
+  })
+  await page.route('**/api/tenant/sla-settings', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          title: 'SLA settings not found',
+          status: 404,
+          detail: 'SLA settings not found for tenant: tenant_dev',
+        }),
+      })
+      return
+    }
+    if (route.request().method() === 'PUT') {
+      const body = route.request().postDataJSON() as { complianceTargetPercent: number }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          tenantId: 'tenant_dev',
+          complianceTargetPercent: body.complianceTargetPercent,
+          updatedAt: '2026-08-26T00:00:00Z',
+          updatedBy: 'admin',
+        }),
+      })
+      return
+    }
+    await route.fulfill({ status: 405, body: '' })
+  })
+  await page.route('**/api/reports/sla**', async (route) => {
+    const url = route.request().url()
+    if (url.includes('sla.csv')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/csv;charset=UTF-8',
+        headers: { 'Content-Disposition': 'attachment; filename="sla-report.csv"' },
+        body: '# compliance=94.2; target=95; overdue=148; meanDays=6.4\r\ntype,workflow,volume\r\n',
+      })
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(SLA_REPORT),
+    })
   })
   await page.route('**/api/purge-outbox**', async (route) => {
     if (route.request().method() === 'GET') {
@@ -719,14 +795,13 @@ test('E2E-8 notifications drawer', async ({ page }) => {
   await expect(page.getByText('Ping')).toBeVisible()
 })
 
-test('E2E-9 supervision has no fake KPI and no Rapports', async ({ page }) => {
+test('E2E-9 supervision has no fake KPI', async ({ page }) => {
   await mockSession(page)
   await openApp(page)
   await page.getByRole('link', { name: 'Supervision' }).click()
   await expect(page.getByRole('heading', { name: 'Supervision' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Filtrer' })).toBeVisible()
   await expect(page.getByText('DOS-1')).toBeVisible()
-  await expect(page.getByText('Rapports')).toHaveCount(0)
   await expect(page.getByText('KPI')).toHaveCount(0)
 })
 
@@ -1464,5 +1539,45 @@ test('E2E-EDIT-BPMN-4 draft takes priority over the deployed diagram, deploy the
   // deployed diagram instead of showing stale client-side state.
   await openBpmnEditor(page)
   expect(deployedXmlFetchCount).toBe(1)
+})
+
+test('E2E-SLA-1 reports page shows KPI cards for manager', async ({ page }) => {
+  await mockSession(page, { roles: ['DOSSIER_MANAGER'] })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Rapports & SLA' }).click()
+  await expect(page.getByRole('heading', { name: 'Rapports & SLA' })).toBeVisible()
+  await expect(page.getByTestId('kpi-compliance')).toContainText('94.2 %')
+  await expect(page.getByText('6.4 j')).toBeVisible()
+})
+
+test('E2E-SLA-2 export triggers CSV download request', async ({ page }) => {
+  await mockSession(page)
+  await openApp(page)
+  await page.getByRole('link', { name: 'Rapports & SLA' }).click()
+  await expect(page.getByRole('heading', { name: 'Rapports & SLA' })).toBeVisible()
+  const csvRequest = page.waitForRequest((request) => request.url().includes('/api/reports/sla.csv'))
+  await page.getByTestId('rapports-export').click()
+  await csvRequest
+})
+
+test('E2E-SLA-3 schedule send is disabled', async ({ page }) => {
+  await mockSession(page)
+  await openApp(page)
+  await page.getByRole('link', { name: 'Rapports & SLA' }).click()
+  await expect(page.getByTestId('rapports-schedule')).toBeDisabled()
+})
+
+test('E2E-SLA-4 viewer has no reports link', async ({ page }) => {
+  await mockSession(page, { roles: ['DOSSIER_VIEWER'] })
+  await openApp(page)
+  await expect(page.getByRole('link', { name: 'Rapports & SLA' })).toHaveCount(0)
+})
+
+test('E2E-SLA-5 inbox shows remaining SLA hours', async ({ page }) => {
+  await mockSession(page)
+  await openApp(page)
+  await page.getByRole('link', { name: 'Tâches' }).click()
+  await expect(page.getByTestId('task-sla')).toContainText('SLA')
+  await expect(page.getByTestId('task-sla')).toContainText('12')
 })
 

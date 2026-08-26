@@ -29,3 +29,5 @@ databaseChangeLog:
       file: db/changelog/changes/014-dossier-type-acl-permission-check.yaml
   - include:
       file: db/changelog/changes/015-purge-outbox-updated-at.yaml
+  - include:
+      file: db/changelog/changes/016-reporting-sla.yaml

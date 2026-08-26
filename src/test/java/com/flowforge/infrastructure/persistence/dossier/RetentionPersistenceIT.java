@@ -69,7 +69,7 @@ class RetentionPersistenceIT {
                 false,
                 List.of(),
                 null,
-                true);
+                true, null);
         typeRepository.save(neverType);
 
         assertThat(typeRepository.findByCode(TENANT, code))

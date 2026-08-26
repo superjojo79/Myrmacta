@@ -10,11 +10,10 @@
 >   (rétention / purge / sensible — **livré**) ; revue post-implémentation 2026-08-25 :
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
-> **Dernière mise à jour :** 2026-08-26 — `durcissement-securite-post-revue`
-> **livrée** ([PR #76](https://github.com/superjojo79/FlowForge/pull/76)
-> mergée sur `main`, merge humain) : TODO §40–44 clos. Preuves Phase 9 :
-> `./mvnw verify` **1186** tests (0 échec), Jacoco BRANCH 75,57 % / LINE
-> 93,52 % ; Vitest 199 + Playwright 47.
+> **Dernière mise à jour :** 2026-08-26 — `reporting-sla` **en revue**
+> (branche `cursor/reporting-sla-9009`) : BC `reporting`, snapshot
+> `/api/reports/sla`, SPA `/rapports`, objectif SLA tenant, inbox
+> `slaRemainingHours`. **Prochain après merge :** `serveur-mcp`.
 >
 > Deux analyses initiales produites et mergées
 > ([PR #78](https://github.com/superjojo79/FlowForge/pull/78)) — aucune
@@ -80,23 +79,14 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 
 ## File d’attente
 
-`durcissement-securite-post-revue` (TODO §40–44) est **livrée** ([PR #76](https://github.com/superjojo79/FlowForge/pull/76),
-mergée sur `main`). Plus aucun lot sécurité en attente — §46 (ArchUnit
-`application`) reste explicitement hors périmètre de cette feature
-(architecture, pas sécurité), non bloquant.
-
-Deux analyses initiales (documentation seule, aucun arbitrage
-d'implémentation tranché au-delà du périmètre lui-même) ont été produites
-et mergées ([PR #78](https://github.com/superjojo79/FlowForge/pull/78)) :
-`serveur-mcp` et son prérequis `reporting-sla`. Décision actée (2026-08-26) :
-les deux lots de `reporting-sla` (Lot 1 — comptages/durées, Lot 2 — seuils
-SLA) sont **nécessaires** pour débloquer le point stats du MCP — pas de
-version dégradée avec un seul lot.
+`reporting-sla` est **en revue** (lifecycle phases 1–7 exécutées, verify
+global en cours sur la PR). Les deux lots (comptages/durées + seuils SLA)
+sont dans le livrable. `serveur-mcp` reste bloqué jusqu'au merge.
 
 | Priorité | Item | Notes |
 |---|---|---|
-| **Prochain** | `reporting-sla` (analyse : [16-reporting-sla.md](analysis%20doc/16-reporting-sla.md)) | Cycle `dev-lifecycle` pas encore démarré. Questions ouvertes laissées pour la phase requirements formelle : seuil d'alerte `AT_RISK`, RBAC exact, granularité `groupBy`, caractère obligatoire de `slaTargetHours`. Les deux lots (Reporting + SLA) sont dans le périmètre à livrer. |
-| **Bloqué par `reporting-sla`** | `serveur-mcp` (analyse : [15-serveur-mcp.md](analysis%20doc/15-serveur-mcp.md)) | 3 tools d'écriture + 4 tools de lecture cadrés en V1, backlog de 4 tools à risque modéré identifié. Le point stats (tools de lecture consommant le modèle reporting/SLA) ne peut pas s'ouvrir avant que `reporting-sla` soit livrée. |
+| **En revue** | `reporting-sla` (analyse : [16-reporting-sla.md](analysis%20doc/16-reporting-sla.md)) | Snapshot BFF, SPA `/rapports`, settings tenant, inbox remaining. |
+| **Prochain** | `serveur-mcp` (analyse : [15-serveur-mcp.md](analysis%20doc/15-serveur-mcp.md)) | Bloqué par le merge de `reporting-sla`. 3 tools d'écriture + 4 tools de lecture cadrés en V1. |
 | **Hors périmètre de la feature sécurité** | TODO §46 (ArchUnit `application`) | Architecture, pas sécurité au sens de la revue — point séparé, non bloquant. |
 
 Détail et options : [TODO.md](TODO.md) §40–46,
@@ -104,7 +94,11 @@ Détail et options : [TODO.md](TODO.md) §40–46,
 
 ## En revue
 
-Rien en revue actuellement. `durcissement-securite-post-revue`
+`reporting-sla` — écran Rapports & SLA, snapshot `/api/reports/sla`,
+settings tenant, inbox remaining. Hors V1 reporté : planification d'envoi
+(bouton disabled), Chart.js, codegen client.
+
+`durcissement-securite-post-revue`
 ([PR #76](https://github.com/superjojo79/FlowForge/pull/76)) et les
 analyses `serveur-mcp`/`reporting-sla`
 ([PR #78](https://github.com/superjojo79/FlowForge/pull/78)) sont
@@ -112,8 +106,7 @@ analyses `serveur-mcp`/`reporting-sla`
 **Hors V1 (reporté, pas dans cette file) :** connecteur `http-rest` en
 rôle **SERVICE** lui-même (V1 = TRIGGER uniquement — le hardening SSRF
 est pré-positionné depuis `durcissement-donnees-sensibles`, pas le
-connecteur). Rapports/SLA n'est **plus** dans cette liste — cadré et
-positionné ci-dessus (`reporting-sla`).
+connecteur).
 
 ## Hors file produit (ne pas traiter comme « prochaine feature »)
 

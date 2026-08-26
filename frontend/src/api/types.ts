@@ -37,6 +37,7 @@ export interface DossierType {
   fieldDefinitions: FieldDefinition[]
   retentionDays?: number | null
   retentionNever?: boolean
+  slaTargetHours?: number | null
 }
 
 export interface Dossier {
@@ -182,6 +183,7 @@ export interface MyWorkflowTask {
   dossierId: string
   dossierReference: string | null
   linkId: string | null
+  slaRemainingHours?: number | null
 }
 
 export type ElementType = 'PRODUCED_DOC' | 'ATTACHMENT' | 'INFORMATION' | 'NOTE' | 'LINK'

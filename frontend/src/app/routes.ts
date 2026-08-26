@@ -13,6 +13,11 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/views/pilotage/MobileTasksView.vue'),
   },
   {
+    path: '/rapports',
+    name: 'rapports',
+    component: () => import('@/views/pilotage/RapportsView.vue'),
+  },
+  {
     path: '/dossiers/new',
     name: 'dossier-create',
     component: () => import('@/views/pilotage/CreateDossierView.vue'),

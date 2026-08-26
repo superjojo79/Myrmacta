@@ -79,7 +79,8 @@ class WorkflowTaskController {
             String processInstanceId,
             UUID dossierId,
             String dossierReference,
-            UUID linkId) {
+            UUID linkId,
+            Double slaRemainingHours) {
 
         static MyWorkflowTaskResponse from(MyWorkflowTask task) {
             return new MyWorkflowTaskResponse(
@@ -90,7 +91,8 @@ class WorkflowTaskController {
                     task.processInstanceId(),
                     task.dossierId(),
                     task.dossierReference(),
-                    task.linkId());
+                    task.linkId(),
+                    task.slaRemainingHours());
         }
     }
 }

@@ -15,8 +15,9 @@ todo_ref: DEFERRED-FEATURES.md §1.6 · FILE-ATTENTE.md · analysis doc/16-repor
 ## Phase 1 : New Requirement (relancée)
 
 Phase 1 **relancée**. Actés : **D-APPROACH = A+B**, **D-AUTHZ = C**,
-**D-SLA-HOURS = B**. Les autres D-* restent des propositions tant
-qu'ils n'ont pas été tranchés ici, une décision à la fois.
+**D-SLA-HOURS = B**, **D-AT-RISK = A**. Les autres D-* restent des
+propositions tant qu'ils n'ont pas été tranchés ici, une décision à
+la fois.
 
 Workspace : branche `cursor/reporting-sla-9009`, no-worktree (VM cloud).
 Task tracing indisponible (`unknown command 'task'`). Lint feature :
@@ -66,14 +67,15 @@ dossiers.
 | **D-APPROACH = A+B** | Les **deux** formes : (A) API summary analyse (`groupBy`, durées, statut `ON_TRACK` / `AT_RISK` / `BREACHED`) **et** (B) snapshot maquette `/rapports` (KPI conformité, délai moyen, parts, temps/étape, charge gestionnaires, CSV, inbox remaining). BC domaine `reporting` + BFF. Pas Grafana, pas de recopie des KPI observabilité. | Stakeholder 2026-08-26 |
 | **D-AUTHZ = C** | Lecture snapshot **et** summary : `TENANT_ADMIN` / `WORKFLOW_ADMIN` tout le tenant ; `DOSSIER_MANAGER` filtré ACL VIEW (même split que `SearchDossiersUseCase`) ; `DOSSIER_VIEWER` / `API_SERVICE` → 403. Écriture `slaTargetHours` + settings : **`TENANT_ADMIN` uniquement**. | Stakeholder 2026-08-26 |
 | **D-SLA-HOURS = B** | Cible **uniquement par type**, **optionnelle**. Pas de défaut tenant heures, pas de sentinelle `NEVER` (contrairement à la rétention, décision n° 21). `null` = pas de SLA pour ce type : **exclu** du % de conformité (cellule « — »). Validation `> 0` si présent. | Stakeholder 2026-08-26 |
+| **D-AT-RISK = A** | Convention **fixe 80 %** du délai. Dossier **ouvert** avec cible : `ON_TRACK` si `elapsed < 0,8 × slaTargetHours` ; `AT_RISK` si `0,8 × slaTargetHours ≤ elapsed ≤ slaTargetHours` ; `BREACHED` si `elapsed > slaTargetHours`. Dossier **clos** : seulement `ON_TRACK` / `BREACHED` (pas d'`AT_RISK`). Sans cible : statut `null`. Pas de champ `atRiskPercent` tenant. | Stakeholder 2026-08-26 |
 
 Conséquences immédiates (tant que non démenties par une question suivante) :
 
 - CSV **dans** V1 (B) malgré le hors-périmètre analyse.
 - Inbox `slaRemainingHours` **dans** V1 (B) — uniquement si le type a une cible.
-- Statut ternaire SLA **dans** V1 (A) — le seuil `AT_RISK` reste à trancher ; sans cible le statut est `null`.
+- Statut ternaire SLA **dans** V1 (A) avec seuil 80 % figé (**D-AT-RISK**).
 - `groupBy` période (jour/semaine/mois) reste à trancher (question analyse n° 4).
-- `TenantSlaSettings` ne porte **pas** un `slaTargetHours` défaut (l'objectif % conformité, D-SETTINGS, est une autre question).
+- `TenantSlaSettings` ne porte **pas** un `slaTargetHours` défaut ni un `atRiskPercent` (l'objectif % conformité, D-SETTINGS, est une autre question).
 
 ### Propositions (non verrouillées)
 
@@ -89,7 +91,7 @@ suit surtout **B** ; A (summary + `AT_RISK`) n'y est pas encore.
 | **D-EXPORT = A** | `GET /api/reports/sla.csv` mêmes filtres/authz ; `CsvWriter` anti-formule. Agrégats seulement — **pas** de champs dossier. |
 | **D-SCHEDULE = C** | Bouton « Planifier l'envoi » **visible désactivé** (« bientôt ») — envoi planifié hors scope. |
 | **D-TASK-SLA = A** | Champ calculé `slaRemainingHours` (nullable) sur `GET /api/workflow-tasks/mine` quand le type du dossier a une cible. |
-| **D-SETTINGS = A** | `TenantSlaSettings.complianceTargetPercent` uniquement (1–100, défaut **95** si GET 404). **Pas** de `slaTargetHours` tenant (**D-SLA-HOURS = B**). Singleton par schéma. |
+| **D-SETTINGS = A** | `TenantSlaSettings.complianceTargetPercent` uniquement (1–100, défaut **95** si GET 404). **Pas** de `slaTargetHours` tenant (**D-SLA-HOURS = B**) ni de `atRiskPercent` (**D-AT-RISK = A**). Singleton par schéma. |
 | **D-COMPUTE = A** | Agrégation **à la volée** (SQL + Flowable history). Pas de table snapshot matérialisée V1. |
 | **D-NAV = A** | Lien Pilotage « Rapports & SLA » pour TA / WA / DM. Masqué pour `DOSSIER_VIEWER`. E2E-9 mis à jour (plus « zéro Rapports »). |
 | **D-INDEX = A** | Index lecture `(created_at)` sur `dossier` pour le filtre période. |
@@ -119,7 +121,9 @@ suit surtout **B** ; A (summary + `AT_RISK`) n'y est pas encore.
 5. **SPA** `/rapports` : période, filtres type, cartes, tableaux, export,
    bouton planifier disabled.
 6. **Inbox** : badge reste SLA quand la cible existe.
-7. **Qualité** : TDD ; `./mvnw verify` ; Vitest **et** Playwright
+7. **API summary** `GET /api/reports/sla/summary` : agrégats + statut
+   `ON_TRACK` / `AT_RISK` / `BREACHED` selon **D-AT-RISK = A** (80 %).
+8. **Qualité** : TDD ; `./mvnw verify` ; Vitest **et** Playwright
    (contrat flowforge-conventions FE).
 
 ### Secondary goals
@@ -158,6 +162,7 @@ suit surtout **B** ; A (summary + `AT_RISK`) n'y est pas encore.
 | `slaTargetHours` | A défaut tenant + NEVER / B par type optionnel (exclu %) / C obligatoire chaque type | **B** |
 | Période | A createdAt range / B closedAt range / C updatedAt | **A** |
 | Authz lecture | A TA only / B TA+WA / C TA+WA+DM(ACL) | **C** |
+| Seuil `AT_RISK` | A fixe 80 % / B paramétrable tenant / C pas de AT_RISK V1 | **A** |
 | Graphiques | A CSS / B Chart.js / C images serveur | **A** |
 | Envoi planifié | A V1 mail / B hors scope hidden / C bouton disabled | **C** |
 | Inbox SLA | A remainingHours / B hors V1 / C dueDate Flowable | **A** |
@@ -188,6 +193,9 @@ suit surtout **B** ; A (summary + `AT_RISK`) n'y est pas encore.
 - Aucun dossier dans la période : KPI  « n/a » / 0, pas de division
   par zéro (A-EMPTY).
 - Tous les types sans cible : conformité `null`, count hors délai 0.
+- Dossier ouvert à exactement 80 % du délai : `AT_RISK` ; à exactement
+  100 % : encore `AT_RISK` ; au-delà : `BREACHED` (**D-AT-RISK**).
+- Dossier clos : jamais `AT_RISK` (respecté ou dépassé seulement).
 - Dossier `DRAFT`/`OUVERT`/`EN_COURS`/`SUSPENDU` : durée jusqu'`now`.
 - `ARCHIVE` : traité comme clos (`closedAt` si présent, sinon `updatedAt`
   — **A-ARCHIVE-CLOCK**).
@@ -211,6 +219,8 @@ suit surtout **B** ; A (summary + `AT_RISK`) n'y est pas encore.
 - [ ] CSV export 200, `CsvWriter`, pas de champs métier.
 - [ ] SPA `/rapports` réelle (plus de masquage D-MOCKGAP).
 - [ ] Inbox `slaRemainingHours` null si pas de cible.
+- [ ] `GET /api/reports/sla/summary` expose `ON_TRACK` / `AT_RISK` /
+      `BREACHED` (80 % fixe, clos sans `AT_RISK`) ; statut `null` sans cible.
 - [ ] `./mvnw verify` vert + Jacoco seuils tenus.
 - [ ] Vitest + Playwright verts ; E2E-9 actualisé ; nouveaux E2E-SLA-*.
 - [ ] OpenAPI golden à jour.
@@ -243,17 +253,18 @@ suit surtout **B** ; A (summary + `AT_RISK`) n'y est pas encore.
 | **A-HOURS** | `slaTargetHours` en heures entières (maquette mixte j / h ; une unité côté API). Affichage UI : jours si ≥ 24 h. |
 | **A-DEFAULT-PERIOD** | Si `from`/`to` omis : `[now-30d, now]`. |
 | **A-TASK-REMAINING** | `slaRemainingHours = slaTargetHours - elapsedHours(createdAt, now)` ; négatif si dépassé. |
+| **A-AT-RISK-CMP** | Comparaison anti-flottant : `AT_RISK` ssi `elapsedHours * 5 >= slaTargetHours * 4` **et** `elapsedHours <= slaTargetHours` (dossier ouvert, cible présente). |
 
 ## Questions & Open Items
 
-Phase 1 en cours. Actés : **D-APPROACH = A+B**, **D-AUTHZ = C**. Reste :
+Phase 1 en cours. Actés : **D-APPROACH = A+B**, **D-AUTHZ = C**,
+**D-SLA-HOURS = B**, **D-AT-RISK = A**. Reste :
 
 1. ~~Forme produit~~ **A+B**.
 2. ~~RBAC exact~~ **C** (TA/WA unrestricted ; DM filtré ACL VIEW ; viewer / API_SERVICE 403 ; écriture TA only).
 3. ~~`slaTargetHours` obligatoire ou optionnel~~ **B** (par type, nullable ; pas de défaut tenant heures ; type sans cible exclu du %).
-4. **Seuil `AT_RISK`** — fixe, paramétrable par tenant, ou convention
-   nommée (ex. 80 %) — désormais **in scope** à cause de A. ← **en cours**
+4. ~~Seuil `AT_RISK`~~ **A** (convention fixe 80 % ; clos = ON_TRACK/BREACHED seulement).
 5. **Granularité `groupBy`** (jour/semaine/mois) dès V1 ou uniquement
-   type/statut.
+   type/statut. ← **en cours**
 6. Autres D-* proposés (horloge, période, charts, schedule, settings)
-   une fois 4–5 tranchés.
+   une fois 5 tranché.

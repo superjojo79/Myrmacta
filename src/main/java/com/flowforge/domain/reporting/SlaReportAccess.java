@@ -1,4 +1,4 @@
-package com.flowforge.domain.reporting.usecase;
+package com.flowforge.domain.reporting;
 
 import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.AccessDeniedException;
@@ -9,14 +9,15 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-final class SlaReportAccess {
+public final class SlaReportAccess {
 
     private SlaReportAccess() {}
 
     /**
      * {@code null} = unrestricted (TA/WA/system). Empty = no visible types.
      */
-    static Set<String> allowedTypeCodes(DossierTypeAclRepository aclRepository, String tenantId, AccessContext ctx) {
+    public static Set<String> allowedTypeCodes(
+            DossierTypeAclRepository aclRepository, String tenantId, AccessContext ctx) {
         Objects.requireNonNull(aclRepository, "aclRepository");
         Objects.requireNonNull(tenantId, "tenantId");
         Objects.requireNonNull(ctx, "ctx");
@@ -39,7 +40,7 @@ final class SlaReportAccess {
         };
     }
 
-    static Set<String> typeFilter(Set<String> allowed, String dossierTypeCode) {
+    public static Set<String> typeFilter(Set<String> allowed, String dossierTypeCode) {
         if (allowed != null && allowed.isEmpty()) {
             return Set.of();
         }

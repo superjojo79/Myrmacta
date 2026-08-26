@@ -26,7 +26,8 @@ com.flowforge.domain.reporting
   model/          SlaClock, SlaStatus, SlaPeriod, SlaReport*, SlaSummary*
   port.in/        GetSlaReportUseCase, GetSlaSummaryUseCase, settings
   port.out/       SlaReportQueryPort, TenantSlaSettingsRepository
-  usecase/        *Impl + SlaReportAccess (ACL partagée)
+  usecase/        *Impl
+  SlaReportAccess.java  ACL partagée (hors package usecase — ArchUnit *Impl)
 com.flowforge.infrastructure
   config/ReportingConfig
   persistence/dossier/  sla hours + TenantSlaSettingsJpa*

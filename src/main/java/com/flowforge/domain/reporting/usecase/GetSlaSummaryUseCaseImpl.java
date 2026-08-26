@@ -4,6 +4,7 @@ import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.DossierType;
 import com.flowforge.domain.dossier.port.out.DossierTypeAclRepository;
 import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
+import com.flowforge.domain.reporting.SlaReportAccess;
 import com.flowforge.domain.reporting.model.DossierSlaRow;
 import com.flowforge.domain.reporting.model.SlaCohortTooLargeException;
 import com.flowforge.domain.reporting.model.SlaPeriod;

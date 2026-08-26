@@ -2,26 +2,33 @@
 phase: requirements
 title: Requirements & Problem Understanding
 description: Clarify the problem space, gather requirements, and define success criteria
-status: in-progress
+status: reviewed
 created: 2026-08-26
 updated: 2026-08-26
 feature: reporting-sla
 phase1: 2026-08-26
+phase2: 2026-08-26
 todo_ref: DEFERRED-FEATURES.md §1.6 · FILE-ATTENTE.md · analysis doc/16-reporting-sla.md · maquette UI
 ---
 
 # Requirements & Problem Understanding — `reporting-sla`
 
-## Phase 1 : New Requirement (relancée)
+## Phase 2 : Review Requirements
 
-Phase 1 **relancée**. Décisions stakeholder tranchées une à une
-(voir tableau Actées). Les restes non votés sont des **conséquences**
-de ces décisions ou des **A-*** nommées — plus de proposition ouverte.
+Phase 2 **reviewed** (2026-08-26). Template README OK (problem, goals,
+stories, success, constraints, open items). Décisions Phase 1
+conservées. Clarifications ci-dessous = **A-*** / précisions de
+libellé, pas de nouveaux votes stakeholder.
 
 Workspace : branche `cursor/reporting-sla-9009`, no-worktree (VM cloud).
 Task tracing indisponible (`unknown command 'task'`). Lint feature :
-docs OK ; le check de branche `feature-reporting-sla` échoue (contrainte
-cloud `cursor/…-9009`).
+docs OK ; check branche `feature-reporting-sla` = MISS attendu.
+
+Écart connu pour la **Phase 3** : le design/planning du premier jet
+est **stale** vs ces D-* (authz encore « A » dans le design, pas
+d'API summary / `AT_RISK`, `D-SLA-NULL` vs **D-SLA-HOURS = B**). Ne
+pas traiter ce design comme aligned tant que Phase 3 ne l'a pas
+réécrit.
 
 ### Décisions déjà actées hors de cette phase
 
@@ -64,7 +71,7 @@ dossiers.
 | Id | Décision | Source |
 |---|---|---|
 | **D-APPROACH = A+B** | Les **deux** formes : (A) API summary analyse (`groupBy`, durées, statut `ON_TRACK` / `AT_RISK` / `BREACHED`) **et** (B) snapshot maquette `/rapports` (KPI conformité, délai moyen, parts, temps/étape, charge gestionnaires, CSV, inbox remaining). BC domaine `reporting` + BFF. Pas Grafana, pas de recopie des KPI observabilité. | Stakeholder 2026-08-26 |
-| **D-AUTHZ = C** | Lecture snapshot **et** summary : `TENANT_ADMIN` / `WORKFLOW_ADMIN` tout le tenant ; `DOSSIER_MANAGER` filtré ACL VIEW (même split que `SearchDossiersUseCase`) ; `DOSSIER_VIEWER` / `API_SERVICE` → 403. Écriture `slaTargetHours` + settings : **`TENANT_ADMIN` uniquement**. | Stakeholder 2026-08-26 |
+| **D-AUTHZ = C** | Lecture snapshot, CSV **et** summary : `TENANT_ADMIN` / `WORKFLOW_ADMIN` tout le tenant ; `DOSSIER_MANAGER` limité aux **types** avec ACL VIEW (même split que `SearchDossiersUseCaseImpl` : `DossierTypeAclEntry`, pas une ACL par dossier) ; `DOSSIER_VIEWER` / `API_SERVICE` → 403. Écriture `slaTargetHours` + settings : **`TENANT_ADMIN` uniquement** (déjà le cas des PATCH types). | Stakeholder 2026-08-26 |
 | **D-SLA-HOURS = B** | Cible **uniquement par type**, **optionnelle**. Pas de défaut tenant heures, pas de sentinelle `NEVER` (contrairement à la rétention, décision n° 21). `null` = pas de SLA pour ce type : **exclu** du % de conformité (cellule « — »). Validation `> 0` si présent. | Stakeholder 2026-08-26 |
 | **D-AT-RISK = A** | Convention **fixe 80 %** du délai. Dossier **ouvert** avec cible : `ON_TRACK` si `elapsed < 0,8 × slaTargetHours` ; `AT_RISK` si `0,8 × slaTargetHours ≤ elapsed ≤ slaTargetHours` ; `BREACHED` si `elapsed > slaTargetHours`. Dossier **clos** : seulement `ON_TRACK` / `BREACHED` (pas d'`AT_RISK`). Sans cible : statut `null`. Pas de champ `atRiskPercent` tenant. | Stakeholder 2026-08-26 |
 | **D-GROUPBY = B** | Summary V1 : `groupBy=dossierTypeCode\|status` seulement. La période `from`/`to` est un **filtre**, pas des seaux calendaires. Jour / semaine / mois **hors V1** (le MCP rappelle le summary avec une autre fenêtre ; le snapshot garde le delta vs période précédente). | Stakeholder 2026-08-26 |
@@ -115,7 +122,8 @@ Conséquences toujours valides :
      documents `PRODUCED_DOC`, tendance volume vs période précédente
 4. **Export CSV** du tableau types + ligne KPI.
 5. **SPA** `/rapports` : période, filtres type, cartes, tableaux, export,
-   bouton planifier disabled.
+   bouton planifier disabled. Barres CSS (**D-CHARTS**). Route existante
+   maquette, pas `/admin/reporting`.
 6. **Inbox** : badge reste SLA quand la cible existe.
 7. **API summary** `GET /api/reports/sla/summary` : agrégats + statut
    `ON_TRACK` / `AT_RISK` / `BREACHED` selon **D-AT-RISK = A** (80 %) ;
@@ -159,7 +167,7 @@ Conséquences toujours valides :
 | Horloge SLA | A created→closed/now / B closedAt only / C Flowable dueDate | **A** |
 | `slaTargetHours` | A défaut tenant + NEVER / B par type optionnel (exclu %) / C obligatoire chaque type | **B** |
 | Période | A createdAt range / B closedAt range / C recouvrement | **A** |
-| Authz lecture | A TA only / B TA+WA / C TA+WA+DM(ACL) | **C** |
+| Authz lecture | A TA only / B TA+WA / C TA+WA+DM(ACL **type** VIEW) | **C** |
 | Seuil `AT_RISK` | A fixe 80 % / B paramétrable tenant / C pas de AT_RISK V1 | **A** |
 | `groupBy` | A jour/semaine/mois / B type\|statut seulement / C mois seul | **B** |
 | Graphiques | A CSS / B Chart.js / C images serveur | **A** |
@@ -167,6 +175,7 @@ Conséquences toujours valides :
 | Inbox SLA | A remainingHours / B hors V1 / C dueDate Flowable | **A** |
 | Objectif conformité | A settings 1–100 défaut 95 / B pas d'objectif / C fixe 95 % | **A** |
 | Calcul agrégats | A à la volée / B table de faits / C cache TTL | **A** |
+| Formule conformité | A non-BREACHED / avec cible (AT_RISK OK) / B ON_TRACK only / C clos only | **A** (A-COMPLIANCE) |
 
 ## User Stories & Use Cases
 
@@ -188,21 +197,33 @@ Conséquences toujours valides :
    « Mes tâches » **afin de** prioriser (maquette mobile).
 7. **En tant que** `DOSSIER_VIEWER`, **je ne dois pas** voir le lien ni
    l'API rapport.
+8. **En tant que** `WORKFLOW_ADMIN`, **je peux** lire Rapports et
+   summary **sans** pouvoir PUT settings ni PATCH `slaTargetHours`.
+9. **En tant que** `TENANT_ADMIN`, **je veux** **retirer** une cible
+   SLA d'un type (**A-CLEAR-HOURS**) **afin de** l'exclure à nouveau
+   du %.
 
 ### Edge cases
 
 - Aucun dossier dans la période : KPI  « n/a » / 0, pas de division
   par zéro (A-EMPTY).
 - Tous les types sans cible : conformité `null`, count hors délai 0.
+- Conformité (**A-COMPLIANCE**) : dénominateur = dossiers de la cohorte
+  dont le type a une cible ; numérateur = ceux qui ne sont **pas**
+  `BREACHED` (`AT_RISK` compte comme conforme).
 - Dossier ouvert à exactement 80 % du délai : `AT_RISK` ; à exactement
   100 % : encore `AT_RISK` ; au-delà : `BREACHED` (**D-AT-RISK**).
 - Dossier clos : jamais `AT_RISK` (respecté ou dépassé seulement).
-- Dossier `DRAFT`/`OUVERT`/`EN_COURS`/`SUSPENDU` : durée jusqu'`now`.
+- Tous les statuts avec `createdAt` dans la fenêtre (**A-COHORT-STATUS**),
+  y compris `DRAFT` / `SUSPENDU` ; l'horloge **ne pause pas**.
 - `ARCHIVE` : traité comme clos (`closedAt` si présent, sinon `updatedAt`
   — **A-ARCHIVE-CLOCK**).
 - Période `from >= to` ou > 366 j : **400**.
-- `dossierTypeCode` inconnu ou hors ACL : snapshot vide (comme search),
-  pas 404.
+- Cohorte > 10 000 (après filtre ACL) : **400** `SLA_COHORT_TOO_LARGE`.
+- `dossierTypeCode` inconnu ou hors ACL : snapshot / summary **vides**
+  (comme search), pas 404.
+- `groupBy` omis sur le summary : défaut `dossierTypeCode`
+  (**A-GROUPBY-DEFAULT**) ; `day`/`week`/`month` → 400.
 - Activité Flowable sans `endTime` : exclue de la moyenne d'étape.
 - Gestionnaire = `assignee` de la userTask **courante** (dossiers non
   clos). Clos : non comptés dans « En cours ».
@@ -212,18 +233,21 @@ Conséquences toujours valides :
 ## Success Criteria
 
 - [ ] `slaTargetHours` persisté, validé `> 0` ou null, exposé
-      POST/PATCH/GET types.
-- [ ] `TenantSlaSettings` GET 404 si absent ; PUT upsert TA ; défaut
-      calcul 95.
+      POST/PATCH/GET types ; TA peut **effacer** la cible (**A-CLEAR-HOURS**).
+- [ ] `TenantSlaSettings` GET 404 si absent ; PUT upsert **TA** ; 403 WA/DM/viewer ;
+      défaut calcul 95.
 - [ ] `GET /api/reports/sla` 200 JSON maquette-compatible (champs
       documentés en design) ; 403 viewer/service ; 400 période ou
-      cohorte > 10 000.
-- [ ] CSV export 200, `CsvWriter`, pas de champs métier.
-- [ ] SPA `/rapports` réelle (plus de masquage D-MOCKGAP).
+      cohorte > 10 000 ; DM filtré types VIEW (vide = 200 vide, pas 403).
+- [ ] CSV export 200, `CsvWriter`, pas de champs métier ; même authz.
+- [ ] SPA `/rapports` réelle (plus de masquage D-MOCKGAP) ; barres CSS ;
+      bouton planifier visible disabled.
 - [ ] Inbox `slaRemainingHours` null si pas de cible.
 - [ ] `GET /api/reports/sla/summary` expose `ON_TRACK` / `AT_RISK` /
       `BREACHED` (80 % fixe, clos sans `AT_RISK`) ; statut `null` sans cible ;
-      `groupBy` limité à `dossierTypeCode` / `status` (400 si `day`/`week`/`month`).
+      `groupBy` `dossierTypeCode` / `status` (défaut type ; 400 si
+      `day`/`week`/`month`) ; même authz que le snapshot.
+- [ ] Conformité = non-`BREACHED` / dossiers avec cible (**A-COMPLIANCE**).
 - [ ] `./mvnw verify` vert + Jacoco seuils tenus.
 - [ ] Vitest + Playwright verts ; E2E-9 actualisé ; nouveaux E2E-SLA-*.
 - [ ] OpenAPI golden à jour.
@@ -236,10 +260,18 @@ Conséquences toujours valides :
 
 - Hexagone : domaine pur ; JPA / Flowable dans infrastructure.
 - Multi-tenant décision n° 13 : `app.tenant.id`, schéma dédié.
-- BFF session ; pas de JWT browser.
+- BFF session ; pas de JWT browser. `API_SERVICE` n'accède pas aux
+  rapports V1 (le MCP aura sa propre story d'authz plus tard).
 - `CsvWriter` anti-formule obligatoire (précédent §23).
 - FE : Vue 3 Composition API + TypeScript + PrimeVue patterns existants.
 - Vitest **et** Playwright obligatoires.
+- Séquencement FILE-ATTENTE : livrer **avant** `serveur-mcp`.
+- Perf : calcul à la volée borné par 366 j et cap 10k (**D-COMPUTE**,
+  **D-PERIOD**).
+- Pas de feature flag : activé au merge (migration Liquibase schéma
+  tenant).
+- Branche Cloud `cursor/…-9009` (lint worktree `feature-*` = MISS
+  attendu). Task tracing `ai-devkit task` indisponible.
 
 ### Assumptions (A-*)
 
@@ -259,26 +291,42 @@ Conséquences toujours valides :
 | **A-AT-RISK-CMP** | Comparaison anti-flottant : `AT_RISK` ssi `elapsedHours * 5 >= slaTargetHours * 4` **et** `elapsedHours <= slaTargetHours` (dossier ouvert, cible présente). |
 | **A-COHORT-CAP** | Confirmé avec **D-COMPUTE = A** : 400 `SLA_COHORT_TOO_LARGE` si plus de 10 000 dossiers dans `[from, to]` (après filtre ACL). |
 | **A-INDEX** | Index `(created_at)` sur `dossier` (schéma tenant) pour le filtre **D-PERIOD**. Pas d'index composite V1 tant que les plans d'exécution ne le justifient pas. |
+| **A-COMPLIANCE** | `compliancePercent` = 100 × (dossiers avec cible et statut ≠ `BREACHED`) / (dossiers avec cible). `AT_RISK` est conforme. Types sans cible exclus. |
+| **A-COHORT-STATUS** | Aucun filtre de statut métier : tout `createdAt ∈ [from, to]`. `SUSPENDU` / `DRAFT` : horloge continue. |
+| **A-GROUPBY-DEFAULT** | Summary : `groupBy` omis → `dossierTypeCode`. |
+| **A-CLEAR-HOURS** | TA peut remettre `slaTargetHours` à « pas de SLA » (null). Le contrat PATCH (JsonNullable vs sentinelle) est **design** — le premier jet `null = keep` est **insuffisant** s'il n'offre pas d'autre chemin d'effacement. |
+| **A-NO-FLAG** | Pas de flag runtime ; rollout = merge + migration. |
 
 ## Questions & Open Items
 
-Phase 1 : toutes les questions d'analyse (forme, RBAC, heures, `AT_RISK`,
-`groupBy`, horloge, période, settings, compute, charts, schedule) sont
-**tranchées**. Restes nommés : **D-EXPORT**, **D-TASK-SLA**, **D-NAV**,
-**D-SCOPE** (conséquences) ; **A-INDEX**.
+**Aucune question produit ouverte.** Phase 1 tranchée ; Phase 2 a nommé
+les A-* ci-dessus et corrigé le libellé ACL (par **type**).
 
-1. ~~Forme produit~~ **A+B**.
-2. ~~RBAC exact~~ **C**.
-3. ~~`slaTargetHours`~~ **B**.
-4. ~~Seuil `AT_RISK`~~ **A**.
-5. ~~`groupBy`~~ **B**.
-6. ~~Horloge SLA~~ **A**.
-7. ~~Période~~ **A**.
-8. ~~Objectif conformité~~ **A**.
-9. ~~Calcul agrégats~~ **A**.
-10. ~~Graphiques~~ **A**.
-11. ~~Envoi planifié~~ **C** (bouton visible désactivé).
-12. ~~Export / inbox / nav / index~~ conséquences **D-EXPORT**, **D-TASK-SLA**, **D-NAV** + **A-INDEX**.
+### Clos Phase 2 (2026-08-26)
 
-**À confirmer :** aucun autre item matériel à trancher avant la relecture
-Phase 2. Si un A-* ou une conséquence doit encore être un vote, le nommer.
+1. ~~Forme produit~~ **D-APPROACH = A+B**.
+2. ~~RBAC~~ **D-AUTHZ = C** (ACL **type** VIEW, comme search).
+3. ~~`slaTargetHours`~~ **D-SLA-HOURS = B**.
+4. ~~`AT_RISK`~~ **D-AT-RISK = A**.
+5. ~~`groupBy`~~ **D-GROUPBY = B**.
+6. ~~Horloge~~ **D-SLA-CLOCK = A**.
+7. ~~Période~~ **D-PERIOD = A**.
+8. ~~Objectif conformité~~ **D-SETTINGS = A**.
+9. ~~Calcul~~ **D-COMPUTE = A**.
+10. ~~Graphiques~~ **D-CHARTS = A**.
+11. ~~Envoi planifié~~ **D-SCHEDULE = C**.
+12. ~~Export / inbox / nav~~ **D-EXPORT / D-TASK-SLA / D-NAV**.
+13. ~~Formule % / cohorte statuts / clear hours / groupBy défaut~~ **A-COMPLIANCE**, **A-COHORT-STATUS**, **A-CLEAR-HOURS**, **A-GROUPBY-DEFAULT**.
+
+### Reporté hors feature (pas bloquant)
+
+- Seaux `groupBy` jour / semaine / mois.
+- Mail / cron « Planifier l'envoi ».
+- Chart.js ; table de faits ; `API_SERVICE` / MCP authz.
+- Alerte proactive de dépassement (notifications).
+
+### À traiter en Phase 3 (design), pas ici
+
+- Réaligner design/planning/testing du premier jet sur ces D-*.
+- Contrat PATCH pour **A-CLEAR-HOURS**.
+- Shape JSON exact du snapshot et du summary.

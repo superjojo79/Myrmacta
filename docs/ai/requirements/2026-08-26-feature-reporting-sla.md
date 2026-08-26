@@ -2,33 +2,33 @@
 phase: requirements
 title: Requirements & Problem Understanding
 description: Clarify the problem space, gather requirements, and define success criteria
-status: reviewed
+status: in-progress
 created: 2026-08-26
 updated: 2026-08-26
 feature: reporting-sla
 phase1: 2026-08-26
-phase2: 2026-08-26
-stakeholder_decisions: 2026-08-26
-todo_ref: DEFERRED-FEATURES.md §1.6 · FILE-ATTENTE.md hors V1 · maquette UI · D-MOCKGAP
+todo_ref: DEFERRED-FEATURES.md §1.6 · FILE-ATTENTE.md · analysis doc/16-reporting-sla.md · maquette UI
 ---
 
 # Requirements & Problem Understanding — `reporting-sla`
 
-## Phase 2: Review requirements
+## Phase 1 : New Requirement (relancée)
 
-Revue 2026-08-26. Feature extraite du hors-V1 (FILE-ATTENTE / DEFERRED
-§1.6) **sur demande explicite** de lancer le lifecycle — le lot
-`durcissement-securite-post-revue` (PR #76) reste en revue humaine et
-n'est pas mergé par cet agent.
+Phase 1 **relancée** à la demande du stakeholder : les D-* ci-dessous
+sont des **propositions** issues d'un premier jet (code et docs
+conservés). **Aucune n'est actée** tant qu'elle n'a pas été tranchée
+ici, une décision à la fois.
 
-D-* tranchés en Phase 1/2 par **recommandations cloud** (pas
-d'`AskUserQuestion` dans cet environnement). Un humain peut relocker
-n'importe quel D-* avant merge. Aucune question ouverte matérielle :
-les hypothèses restantes sont **nommées** (A-*).
+Workspace : branche `cursor/reporting-sla-9009`, no-worktree (VM cloud).
+Task tracing indisponible (`unknown command 'task'`). Lint feature :
+docs OK ; le check de branche `feature-reporting-sla` échoue (contrainte
+cloud `cursor/…-9009`).
 
-Task tracing : `npx ai-devkit@latest task` = `unknown command 'task'`
-— continué sans traçage. Agent list vide. Mode **no-worktree** (VM
-cloud isolée ; branche PR `cursor/reporting-sla-9009`).
+### Décisions déjà actées hors de cette phase
+
+- Les **deux lots** Reporting **et** SLA sont dans le périmètre
+  (analyse [16-reporting-sla.md](../../../analysis%20doc/16-reporting-sla.md),
+  2026-08-26) — pas de version dégradée Lot 1 seul pour le MCP.
 
 ## Problem Statement
 **What problem are we solving?**
@@ -60,7 +60,11 @@ dossiers.
 
 ## Stakeholder decisions
 
-### Phase 1 / 2 (2026-08-26) — recommandations cloud
+### Propositions (non verrouillées — Phase 1 relancée)
+
+À confirmer ou remplacer, une question à la fois. Le code existant
+suit ces propositions ; un choix différent sera reporté en design /
+implémentation.
 
 | Id | Décision |
 |---|---|
@@ -231,5 +235,15 @@ dossiers.
 
 ## Questions & Open Items
 
-Aucune question matérielle ouverte. Relock humain possible sur D-*
-avant merge. Suivi hors feature : envoi planifié (D-SCHEDULE).
+Phase 1 en cours. Questions matérielles à trancher **une par une**
+(analyse § Questions ouvertes + écart maquette vs analyse) :
+
+1. **Forme produit** — snapshot maquette `/rapports` vs API summary
+   analyse Lot 1/2 (counts, durées, statut ON_TRACK/AT_RISK/BREACHED).
+2. **RBAC exact** — TA seul / TA+WA / TA+WA+DM(ACL).
+3. **`slaTargetHours` obligatoire ou optionnel** (héritage défaut
+   tenant vs SLA off tant que non configuré).
+4. **Seuil `AT_RISK`** — fixe, paramétrable, ou hors V1.
+5. **Granularité `groupBy`** (jour/semaine/mois) dès V1 ou non.
+6. Autres D-* proposés (horloge, période, CSV, inbox, charts, nav)
+   une fois 1–5 tranchés.

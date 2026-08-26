@@ -17,8 +17,9 @@ todo_ref: DEFERRED-FEATURES.md §1.6 · FILE-ATTENTE.md · analysis doc/16-repor
 Phase 1 **relancée**. Actés : **D-APPROACH = A+B**, **D-AUTHZ = C**,
 **D-SLA-HOURS = B**, **D-AT-RISK = A**, **D-GROUPBY = B**,
 **D-SLA-CLOCK = A**, **D-PERIOD = A**, **D-SETTINGS = A**,
-**D-COMPUTE = A**. Les autres D-* restent des propositions tant
-qu'ils n'ont pas été tranchés ici, une décision à la fois.
+**D-COMPUTE = A**, **D-CHARTS = A**. Les autres D-* restent des
+propositions tant qu'ils n'ont pas été tranchés ici, une décision à
+la fois.
 
 Workspace : branche `cursor/reporting-sla-9009`, no-worktree (VM cloud).
 Task tracing indisponible (`unknown command 'task'`). Lint feature :
@@ -74,6 +75,7 @@ dossiers.
 | **D-PERIOD = A** | Cohorte = `createdAt ∈ [from, to]`. Défaut **30 jours** glissants UTC si `from`/`to` omis ; max **366 jours** ; `from >= to` ou trop large → 400. `to` exclusif (minuit du jour civil suivant si date seule). Tendance = même durée **immédiatement avant** `from`. Un dossier créé hors fenêtre n'entre pas dans le snapshot/summary (reste visible via l'inbox). | Stakeholder 2026-08-26 |
 | **D-SETTINGS = A** | Objectif de conformité **paramétrable** : `TenantSlaSettings.complianceTargetPercent` (1–100). GET 404 si absent ; le calcul du snapshot utilise alors **95**. PUT upsert **TA only**. Singleton par schéma. **Pas** de `slaTargetHours` tenant ni de `atRiskPercent`. | Stakeholder 2026-08-26 |
 | **D-COMPUTE = A** | Agrégats **à la volée** (SQL + historique Flowable). Pas de table de faits, pas de job nuit, pas de cache TTL V1. Garde-fou : 400 si cohorte > **10 000** dossiers (**A-COHORT-CAP**). Index lecture `(created_at)` attendu (**D-INDEX**, à confirmer comme A-* si non tranché). | Stakeholder 2026-08-26 |
+| **D-CHARTS = A** | `/rapports` : barres **CSS** + tableaux PrimeVue (tokens existants). **Pas** Chart.js, **pas** d'images serveur. | Stakeholder 2026-08-26 |
 
 Conséquences immédiates (tant que non démenties par une question suivante) :
 
@@ -89,7 +91,6 @@ suit surtout **B** ; A (summary + `AT_RISK`) n'y est pas encore.
 | Id | Proposition |
 |---|---|
 | **D-SCOPE** | Écran maquette + API summary + statut SLA + cible par type + objectif % tenant + inbox (conséquence de A+B). |
-| **D-CHARTS = A** | Barres CSS / tableaux PrimeVue-alignés maquette. **Pas** Chart.js (cohérent observabilité Q4). |
 | **D-EXPORT = A** | `GET /api/reports/sla.csv` mêmes filtres/authz ; `CsvWriter` anti-formule. Agrégats seulement — **pas** de champs dossier. |
 | **D-SCHEDULE = C** | Bouton « Planifier l'envoi » **visible désactivé** (« bientôt ») — envoi planifié hors scope. |
 | **D-TASK-SLA = A** | Champ calculé `slaRemainingHours` (nullable) sur `GET /api/workflow-tasks/mine` quand le type du dossier a une cible. |
@@ -136,7 +137,7 @@ suit surtout **B** ; A (summary + `AT_RISK`) n'y est pas encore.
 ### Non-goals (actés)
 
 - Envoi planifié / cron mail du rapport (**D-SCHEDULE = C**).
-- Chart.js, Grafana, Alertmanager, time-series persistée.
+- Chart.js, Grafana, Alertmanager, time-series persistée (**D-CHARTS = A**).
 - SLA **par étape** (cibles) — le temps/étape est **observationnel**.
 - Recalcul matérialisé / job nuit / cache TTL (**D-COMPUTE = A**).
 - Champs dossier dans l'export rapport (l'export métier reste
@@ -268,7 +269,7 @@ suit surtout **B** ; A (summary + `AT_RISK`) n'y est pas encore.
 Phase 1 en cours. Actés : **D-APPROACH = A+B**, **D-AUTHZ = C**,
 **D-SLA-HOURS = B**, **D-AT-RISK = A**, **D-GROUPBY = B**,
 **D-SLA-CLOCK = A**, **D-PERIOD = A**, **D-SETTINGS = A**,
-**D-COMPUTE = A**. Reste :
+**D-COMPUTE = A**, **D-CHARTS = A**. Reste :
 
 1. ~~Forme produit~~ **A+B**.
 2. ~~RBAC exact~~ **C**.
@@ -279,6 +280,7 @@ Phase 1 en cours. Actés : **D-APPROACH = A+B**, **D-AUTHZ = C**,
 7. ~~Période~~ **A**.
 8. ~~Objectif conformité~~ **A**.
 9. ~~Calcul agrégats~~ **A** (à la volée ; cap 10k ; pas de table de faits).
-10. **Graphiques** (CSS/tableaux vs Chart.js vs images serveur). ← **en cours**
-11. Autres D-* proposés (schedule, export, nav, index)
-    une fois 10 tranché.
+10. ~~Graphiques~~ **A** (CSS + tableaux PrimeVue, pas Chart.js).
+11. **Envoi planifié** (mail V1 vs bouton caché vs bouton disabled). ← **en cours**
+12. Autres D-* proposés (export, nav, index)
+    une fois 11 tranché.

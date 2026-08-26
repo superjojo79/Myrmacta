@@ -24,10 +24,12 @@ import tools.jackson.databind.json.JsonMapper;
  * Exercises the production {@link HttpURLConnection} sender (not the unit-test mock),
  * including HTTP 200, HTTP ≥ 400, and I/O failure wrapping.
  *
- * <p>The adapter always puts {@code Host} on the request-property map (covered by
- * {@link WebhookRestAdapterTest}). JDK {@code HttpURLConnection} may still replace
- * restricted {@code Host} with the pinned IP unless
+ * <p>The adapter puts {@code Host} on the request-property map (covered by
+ * {@link WebhookRestAdapterTest}) — but the JDK's {@code HttpURLConnection} silently
+ * drops that restricted header (replacing it with the pinned IP) unless
  * {@code sun.net.http.allowRestrictedHeaders=true} is set before that class loads.
+ * {@link WebhookRestAdapter}'s static initializer sets it; this test proves the real
+ * wire request actually carries the original hostname, not just the pinned IP.
  */
 class WebhookRestAdapterUrlConnectionTest {
 
@@ -50,7 +52,9 @@ class WebhookRestAdapterUrlConnectionTest {
             int port = server.getAddress().getPort();
             WebhookRestAdapter adapter = adapterPinnedTo(port);
             adapter.send(command());
-            assertThat(receivedHost.get()).isNotBlank();
+            // Proves the fix: without allowRestrictedHeaders, this would be the pinned
+            // 127.0.0.1 (+ port), not the original webhook hostname.
+            assertThat(receivedHost.get()).isEqualTo("hooks.example.com");
             assertThat(receivedBody.get()).contains("\"type\":\"notification\"");
         } finally {
             server.stop(0);

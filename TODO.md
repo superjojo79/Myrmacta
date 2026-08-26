@@ -639,6 +639,16 @@ tranchés. Ne pas les implémenter en choisissant une option silencieusement.
 l'option A « sans SpEL » au sens moteur nu. `T()` / `#beans` / `new` / `getClass`
 → 400 generate/preview **et** activation (le POST draft reste 201).
 
+**Durci (revue post-merge, 2026-08-26) :** le finding « Basse » de la Phase 9
+(`readProperty` via `setAccessible(true)` + méthode "bare name" arbitraire,
+y compris privée) était sans pont vers `Runtime` mais dépassait le contrat
+« accès lecture seule aux propriétés » voulu. `readProperty` n'accepte
+désormais que les getters JavaBean publics et les accesseurs canoniques de
+`record` (via `Class#getRecordComponents()`) — plus de `setAccessible`, plus
+de méthode privée/non-conventionnelle atteignable. Détail :
+`docs/ai/implementation/2026-08-25-feature-durcissement-securite-post-revue.md`
+§ Findings.
+
 **Énoncé :** `ThymeleafHtmlTemplateProcessor` utilise `SpringTemplateEngine`
 (SpringEL). Un `TENANT_ADMIN` peut faire exécuter `${T(java.lang.Runtime)…}`
 sur la JVM via generate / live preview. L'iframe SPA `sandbox=""` ne couvre
@@ -737,6 +747,20 @@ refuser HMAC hors ces profils ; secrets Compose obligatoires.
 [PR #76](https://github.com/superjojo79/FlowForge/pull/76)) — pin IP
 (`resolveSafe` un lookup, POST URI IP + `Host` / TLS hostname d'origine,
 redirects NEVER). Pas de proxy egress.
+
+**Durci (revue post-merge, 2026-08-26) :** le finding « Moyenne » de la
+Phase 9 était réel — la JDK `HttpURLConnection` droppe silencieusement le
+header `Host` restreint et envoie l'IP pinnée à la place (observé : test
+`WebhookRestAdapterUrlConnectionTest` rouge en suite complète, vert en
+isolation — la course entre forks Surefire réutilisés déterminait quelle
+classe chargeait `HttpURLConnection` en premier). Corrigé par
+`sun.net.http.allowRestrictedHeaders=true`, posé au plus tôt à trois
+endroits complémentaires (`FlowForgeApplication.main`, static init
+`WebhookRestAdapter`, `systemPropertyVariables` Surefire pour les forks de
+test) — le pin IP / TOCTOU (D-44 lui-même) n'était pas affecté, seul le
+header `Host` du serveur cible l'était. Détail :
+`docs/ai/implementation/2026-08-25-feature-durcissement-securite-post-revue.md`
+§ Findings.
 
 **Énoncé :** `OutboundUrlGuard` bloque privé/metadata après résolution DNS,
 mais le client HTTP n'est pas pinté sur l'IP vérifiée (javadoc explicite).

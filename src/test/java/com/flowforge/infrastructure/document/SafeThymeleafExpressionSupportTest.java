@@ -145,6 +145,35 @@ class SafeThymeleafExpressionSupportTest {
     }
 
     @Test
+    void evaluate_recordCanonicalAccessor_worksViaBareName() {
+        Context context = context();
+        context.setVariable("dossier", new ReferenceRecord("DOS-42"));
+        assertThat(SafeThymeleafExpressionSupport.evaluate(context, "dossier.reference")).isEqualTo("DOS-42");
+    }
+
+    @Test
+    void evaluate_nonRecordBareNameMethod_isRejected_evenIfPublic() {
+        // Follow-up to D-40 Phase 9 finding: readProperty must not call an arbitrary
+        // public no-arg method by its exact name on a plain (non-record) object — only
+        // get/is-convention getters, or a record's own canonical accessors.
+        Context context = context();
+        context.setVariable("target", new DangerousBean());
+        assertThatThrownBy(() -> SafeThymeleafExpressionSupport.evaluate(context, "target.delete"))
+                .isInstanceOf(TemplateProcessingException.class);
+    }
+
+    @Test
+    void evaluate_privateGetter_isNeverInvoked() {
+        // Follow-up to D-40 Phase 9 finding: no setAccessible(true) — a private method
+        // must stay unreachable regardless of naming convention.
+        Context context = context();
+        context.setVariable("target", new PrivateSecretBean());
+        assertThatThrownBy(() -> SafeThymeleafExpressionSupport.evaluate(context, "target.secret"))
+                .isInstanceOf(TemplateProcessingException.class);
+        assertThat(SafeThymeleafExpressionSupport.evaluate(context, "target.publicField")).isEqualTo("ok");
+    }
+
+    @Test
     void extract_nestedBracesInStringsAndStarOnly() {
         assertThat(SafeThymeleafExpressionSupport.extractVariableExpressions(
                         "<p th:text=\"${#dates.format(now, '{yyyy}')}\">x</p>"))
@@ -220,6 +249,24 @@ class SafeThymeleafExpressionSupportTest {
 
         public String getLabel() {
             return label;
+        }
+    }
+
+    public record ReferenceRecord(String reference) {}
+
+    public static final class DangerousBean {
+        public boolean delete() {
+            throw new AssertionError("must never be invoked by the template evaluator");
+        }
+    }
+
+    public static final class PrivateSecretBean {
+        private String getSecret() {
+            throw new AssertionError("must never be invoked by the template evaluator");
+        }
+
+        public String getPublicField() {
+            return "ok";
         }
     }
 }

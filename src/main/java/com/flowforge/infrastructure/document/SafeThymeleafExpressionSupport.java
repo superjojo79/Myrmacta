@@ -2,6 +2,8 @@ package com.flowforge.infrastructure.document;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.lang.reflect.RecordComponent;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
@@ -560,6 +562,18 @@ final class SafeThymeleafExpressionSupport {
         }
     }
 
+    /**
+     * Read-only property access (follow-up to D-40 Phase 9 finding). Only two shapes are
+     * allowed, both {@code public} — no {@code setAccessible}, no arbitrary bare-name
+     * method, no private/package/protected member reachable regardless of naming:
+     *
+     * <ul>
+     *   <li>JavaBean getters — {@code get<Name>()} / {@code is<Name>()};
+     *   <li>Java record canonical accessors — {@code <name>()}, resolved via
+     *       {@link Class#getRecordComponents()} rather than by matching an arbitrary
+     *       method name, so a record's own extra methods aren't reachable this way.
+     * </ul>
+     */
     private static Object readProperty(Object target, String name, String fullExpression) {
         assertNotBlocked(name);
         if (target instanceof Map<?, ?> map) {
@@ -572,19 +586,14 @@ final class SafeThymeleafExpressionSupport {
             }
             return value;
         }
-        Method method = findNoArg(target.getClass(), name);
-        if (method == null) {
-            String cap = name.substring(0, 1).toUpperCase(Locale.ROOT) + name.substring(1);
-            method = findNoArg(target.getClass(), "get" + cap);
-            if (method == null) {
-                method = findNoArg(target.getClass(), "is" + cap);
-            }
+        Method method = beanGetter(target.getClass(), name);
+        if (method == null && target.getClass().isRecord()) {
+            method = recordAccessor(target.getClass(), name);
         }
         if (method == null) {
             throw new TemplateProcessingException("Unknown template property: " + fullExpression);
         }
         try {
-            method.setAccessible(true);
             Object value = method.invoke(target);
             if (value == null) {
                 throw new TemplateProcessingException("Unknown template property: " + fullExpression);
@@ -597,12 +606,31 @@ final class SafeThymeleafExpressionSupport {
         }
     }
 
-    private static Method findNoArg(Class<?> type, String methodName) {
+    private static Method beanGetter(Class<?> type, String name) {
+        String cap = name.substring(0, 1).toUpperCase(Locale.ROOT) + name.substring(1);
+        Method method = findPublicNoArg(type, "get" + cap);
+        if (method == null) {
+            method = findPublicNoArg(type, "is" + cap);
+        }
+        return method;
+    }
+
+    private static Method recordAccessor(Class<?> type, String name) {
+        for (RecordComponent component : type.getRecordComponents()) {
+            if (component.getName().equals(name)) {
+                return component.getAccessor();
+            }
+        }
+        return null;
+    }
+
+    private static Method findPublicNoArg(Class<?> type, String methodName) {
         Class<?> current = type;
         while (current != null && current != Object.class) {
             for (Method method : current.getDeclaredMethods()) {
                 if (!method.isSynthetic()
                         && !method.isBridge()
+                        && Modifier.isPublic(method.getModifiers())
                         && method.getName().equals(methodName)
                         && method.getParameterCount() == 0) {
                     return method;

@@ -234,6 +234,21 @@
                 </configuration>
             </plugin>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- D-44 follow-up: must be a forked-JVM startup property, not a
+                         System.setProperty() call in application code — Surefire reuses
+                         JVM forks across test classes, and whichever test happens to
+                         touch java.net.HttpURLConnection first wins the race otherwise
+                         (WebhookRestAdapter's own static initializer is too late once
+                         another test class has already loaded it first in the same fork). -->
+                    <systemPropertyVariables>
+                        <sun.net.http.allowRestrictedHeaders>true</sun.net.http.allowRestrictedHeaders>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+            <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>0.8.15</version>

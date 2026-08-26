@@ -25,9 +25,9 @@ verify global en dernier.
 - [x] **M5** Inbox `slaRemainingHours`
 - [x] **M6** SPA Rapports + nav + admin types/settings
 - [x] **M7** Inbox UI + E2E snapshot + docs produit (texte « en revue »)
-- [ ] **M9** Domaine summary : `SlaStatus`, `SlaPeriod`, assembleur, use case
-- [ ] **M10** HTTP summary + PATCH `clearSlaTargetHours` + OpenAPI
-- [ ] **M11** Admin FE clear SLA + clients TS + Vitest
+- [x] **M9** Domaine summary : `SlaStatus`, `SlaPeriod`, assembleur, use case
+- [x] **M10** HTTP summary + PATCH `clearSlaTargetHours` + OpenAPI
+- [x] **M11** Admin FE clear SLA + clients TS + Vitest
 - [ ] **M8** `./mvnw verify` + Vitest + Playwright globaux
 
 ## Task Breakdown
@@ -39,41 +39,41 @@ sauf régression.
 
 ### M9 — Domaine summary / statut / période
 
-- [ ] **T9.1** `SlaStatus` + tests UT-STATUS-*  
+- [x] **T9.1** `SlaStatus` + tests UT-STATUS-*  
       Outcome : `ON_TRACK` / `AT_RISK` / `BREACHED` / `null` selon
       D-AT-RISK + A-AT-RISK-CMP ; clos sans AT_RISK.  
       Dépend : T1.1  
       Tests : UT-STATUS-1..4
-- [ ] **T9.2** `SlaPeriod` parse Instant ISO **ou** date civile UTC
+- [x] **T9.2** `SlaPeriod` parse Instant ISO **ou** date civile UTC
       (`to` exclusif minuit suivant) ; défaut 30 j ; max 366.  
       Tests : UT-PERIOD-1..4  
       Design : DD-PERIOD-PARSE
-- [ ] **T9.3** `SlaSummary` + `SlaSummaryAssembler` groupBy type/statut  
+- [x] **T9.3** `SlaSummary` + `SlaSummaryAssembler` groupBy type/statut  
       Tests : UT-SUM-1..3  
       Dépend : T9.1
-- [ ] **T9.4** `GetSlaSummaryUseCaseImpl` authz/cap/groupBy défaut/400  
+- [x] **T9.4** `GetSlaSummaryUseCaseImpl` authz/cap/groupBy défaut/400  
       Tests : UT-SUM-UC-1..5  
       Dépend : T9.2, T9.3, T4.1 (même port/ACL)
 
 ### M10 — API + PATCH clear
 
-- [ ] **T10.1** `GET /api/reports/sla/summary` + 400 groupBy invalide  
+- [x] **T10.1** `GET /api/reports/sla/summary` + 400 groupBy invalide  
       Tests : IT-API-8, IT-API-9  
       Dépend : T9.4
-- [ ] **T10.2** Snapshot/CSV : accepter `from`/`to` date civile via `SlaPeriod`  
+- [x] **T10.2** Snapshot/CSV : accepter `from`/`to` date civile via `SlaPeriod`  
       Tests : IT-API-10  
       Dépend : T9.2
-- [ ] **T10.3** PATCH `clearSlaTargetHours` (DD-CLEAR-FLAG) ; 400 si flag+valeur  
+- [x] **T10.3** PATCH `clearSlaTargetHours` (DD-CLEAR-FLAG) ; 400 si flag+valeur  
       Tests : IT-API-11, UT-TYPE-2  
       Dépend : T4.5
-- [ ] **T10.4** OpenAPI golden : summary + `clearSlaTargetHours`  
+- [x] **T10.4** OpenAPI golden : summary + `clearSlaTargetHours`  
       Tests : IT-API-7 étendu (`-Dopenapi.update=true` si besoin)
 
 ### M11 — Frontend admin
 
-- [ ] **T11.1** `updateDossierType` accepte `clearSlaTargetHours`  
+- [x] **T11.1** `updateDossierType` accepte `clearSlaTargetHours`  
       Tests : dossierTypes.spec si existant, sinon DossierTypesAdminView.spec
-- [ ] **T11.2** Bouton « Retirer le SLA » sur une ligne type (clear flag)  
+- [x] **T11.2** Bouton « Retirer le SLA » sur une ligne type (clear flag)  
       Tests : Vitest admin  
       Dépend : T10.3, T11.1
 
@@ -135,5 +135,5 @@ SPA admin petit ; snapshot déjà livré.
 
 ## Progress
 
-Phase 4 **complete** (2026-08-26) : plan M9–M11 + M8 aligné design.
-Prochaine action : Phase 5 T9.1 (TDD `SlaStatus`).
+Phase 4 **complete**. Phase 5 M9–M11 **done**. Prochaine action : M8
+(`./mvnw verify` + Vitest + Playwright).

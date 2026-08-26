@@ -39,6 +39,7 @@ class SlaReportApiTest {
 
     @Test
     void tenantAdmin_receivesSnapshot() throws Exception {
+        jdbcTemplate.update("DELETE FROM tenant_sla_settings WHERE tenant_id = ?", "tenant_dev");
         mockMvc.perform(get("/api/reports/sla").with(user("sla-admin", "TENANT_ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.complianceTargetPercent").value(95))

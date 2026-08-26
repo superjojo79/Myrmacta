@@ -50,6 +50,7 @@ export async function updateDossierType(
     retentionDays: number | null
     retentionNever: boolean
     slaTargetHours: number | null
+    clearSlaTargetHours: boolean
   }>,
 ): Promise<DossierType> {
   const { data } = await axios.patch<DossierType>(`/api/dossier-types/${code}`, payload)

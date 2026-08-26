@@ -34,6 +34,12 @@ public final class SlaClock {
         return Duration.between(createdAt, end);
     }
 
+    /** Truncated whole hours ({@code millis / 3_600_000}), same unit as integer targets. */
+    public static long elapsedHoursInt(Duration elapsed) {
+        Objects.requireNonNull(elapsed, "elapsed");
+        return elapsed.toMillis() / 3_600_000;
+    }
+
     public static boolean overdue(Duration elapsed, Integer slaTargetHours) {
         Objects.requireNonNull(elapsed, "elapsed");
         if (slaTargetHours == null) {

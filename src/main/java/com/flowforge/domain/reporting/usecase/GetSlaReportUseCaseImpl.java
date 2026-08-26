@@ -1,14 +1,12 @@
 package com.flowforge.domain.reporting.usecase;
 
 import com.flowforge.domain.dossier.model.AccessContext;
-import com.flowforge.domain.dossier.model.AccessDeniedException;
-import com.flowforge.domain.dossier.model.DossierPermission;
 import com.flowforge.domain.dossier.model.DossierType;
-import com.flowforge.domain.dossier.model.DossierTypeAclEntry;
 import com.flowforge.domain.dossier.port.out.DossierTypeAclRepository;
 import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
 import com.flowforge.domain.reporting.model.DossierSlaRow;
 import com.flowforge.domain.reporting.model.SlaCohortTooLargeException;
+import com.flowforge.domain.reporting.model.SlaPeriod;
 import com.flowforge.domain.reporting.model.SlaReport;
 import com.flowforge.domain.reporting.model.SlaReportAssembler;
 import com.flowforge.domain.reporting.model.TenantSlaSettings;
@@ -51,26 +49,15 @@ public final class GetSlaReportUseCaseImpl implements GetSlaReportUseCase {
         Objects.requireNonNull(query, "query");
         Objects.requireNonNull(ctx, "ctx");
         Instant now = clock.instant();
-        Instant from = query.from() == null ? now.minus(Duration.ofDays(DEFAULT_PERIOD_DAYS)) : query.from();
-        Instant to = query.to() == null ? now : query.to();
-        if (!from.isBefore(to)) {
-            throw new IllegalArgumentException("from must be before to");
-        }
-        if (Duration.between(from, to).toDays() > MAX_PERIOD_DAYS) {
-            throw new IllegalArgumentException("period must be at most " + MAX_PERIOD_DAYS + " days");
-        }
+        SlaPeriod period = SlaPeriod.resolve(query.from(), query.to(), now);
+        Instant from = period.from();
+        Instant to = period.to();
 
-        Set<String> allowed = allowedTypeCodes(query.tenantId(), ctx);
-        if (allowed != null && allowed.isEmpty()) {
+        Set<String> typeFilter = SlaReportAccess.typeFilter(
+                SlaReportAccess.allowedTypeCodes(aclRepository, query.tenantId(), ctx), query.dossierTypeCode());
+        if (typeFilter != null && typeFilter.isEmpty()) {
             return empty(from, to, targetPercent(query.tenantId()));
         }
-        if (query.dossierTypeCode() != null) {
-            if (allowed != null && !allowed.contains(query.dossierTypeCode())) {
-                return empty(from, to, targetPercent(query.tenantId()));
-            }
-            allowed = Set.of(query.dossierTypeCode());
-        }
-        final Set<String> typeFilter = allowed;
 
         long count = queryPort.countDossiers(query.tenantId(), from, to, typeFilter);
         if (count > MAX_COHORT) {
@@ -101,26 +88,6 @@ public final class GetSlaReportUseCaseImpl implements GetSlaReportUseCase {
                 queryPort.findActiveTasks(query.tenantId(), typeFilter),
                 queryPort.findCompletedUserTaskDurations(ids),
                 now);
-    }
-
-    private Set<String> allowedTypeCodes(String tenantId, AccessContext ctx) {
-        return switch (ctx) {
-            case AccessContext.System ignored -> null;
-            case AccessContext.Service ignored -> throw new AccessDeniedException(
-                    "Service context cannot access SLA reports");
-            case AccessContext.User user -> {
-                if (user.hasRole("TENANT_ADMIN") || user.hasRole("WORKFLOW_ADMIN")) {
-                    yield null;
-                }
-                if (!user.hasRole("DOSSIER_MANAGER")) {
-                    throw new AccessDeniedException("Access denied for SLA reports");
-                }
-                yield aclRepository.findBySubject(tenantId, user.userId()).stream()
-                        .filter(entry -> entry.permission().implies(DossierPermission.VIEW))
-                        .map(DossierTypeAclEntry::dossierTypeCode)
-                        .collect(Collectors.toSet());
-            }
-        };
     }
 
     private int targetPercent(String tenantId) {

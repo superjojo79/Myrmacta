@@ -33,7 +33,8 @@ record UpdateDossierTypeRequest(
         List<FieldDefinition> fieldDefinitions,
         Integer retentionDays,
         Boolean retentionNever,
-        Integer slaTargetHours) {}
+        Integer slaTargetHours,
+        Boolean clearSlaTargetHours) {}
 
 record DossierTypeResponse(
         UUID id,

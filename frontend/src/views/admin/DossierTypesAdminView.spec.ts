@@ -24,6 +24,7 @@ const sampleType = {
   fieldDefinitions: [],
   retentionDays: null,
   retentionNever: false,
+  slaTargetHours: 48,
 }
 
 async function mountView(component: Component, path = '/admin/dossier-types') {
@@ -79,6 +80,18 @@ describe('DossierTypesAdminView', () => {
         slaTargetHours: null,
       }),
     )
+  })
+
+  it('clears type SLA hours via clearSlaTargetHours', async () => {
+    vi.mocked(api.updateDossierType).mockResolvedValue({
+      ...sampleType,
+      slaTargetHours: null,
+    })
+    const { wrapper } = await mountView(DossierTypesAdminView)
+    await flushPromises()
+    await wrapper.get('[data-testid="type-clear-sla"]').trigger('click')
+    await flushPromises()
+    expect(api.updateDossierType).toHaveBeenCalledWith('CLAIM', { clearSlaTargetHours: true })
   })
 
   it('saves tenant SLA compliance target', async () => {

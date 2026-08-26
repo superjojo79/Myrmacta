@@ -133,10 +133,9 @@ class GetSlaReportUseCaseImplTest {
 
     @Test
     void invertedPeriod_rejected() {
-        Instant from = Instant.parse("2026-03-10T00:00:00Z");
-        Instant to = Instant.parse("2026-03-01T00:00:00Z");
         assertThatThrownBy(() -> useCase.get(
-                        new GetSlaReportUseCase.Query(TENANT, from, to, null),
+                        new GetSlaReportUseCase.Query(
+                                TENANT, "2026-03-10T00:00:00Z", "2026-03-01T00:00:00Z", null),
                         AccessContext.user("admin", Set.of("TENANT_ADMIN"))))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("from must be before to");
@@ -144,10 +143,9 @@ class GetSlaReportUseCaseImplTest {
 
     @Test
     void periodTooLong_rejected() {
-        Instant from = Instant.parse("2024-01-01T00:00:00Z");
-        Instant to = Instant.parse("2026-03-15T00:00:00Z");
         assertThatThrownBy(() -> useCase.get(
-                        new GetSlaReportUseCase.Query(TENANT, from, to, null),
+                        new GetSlaReportUseCase.Query(
+                                TENANT, "2024-01-01T00:00:00Z", "2026-03-15T00:00:00Z", null),
                         AccessContext.user("admin", Set.of("TENANT_ADMIN"))))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("366");

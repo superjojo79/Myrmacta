@@ -203,6 +203,71 @@ class SlaReportApiTest {
                 .andExpect(jsonPath("$.types[0].volume").value(1));
     }
 
+    @Test
+    void summary_returnsBucketsGroupedByType() throws Exception {
+        mockMvc.perform(get("/api/reports/sla/summary").with(user("sla-admin", "TENANT_ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.groupBy").value("dossierTypeCode"))
+                .andExpect(jsonPath("$.buckets").isArray())
+                .andExpect(jsonPath("$.from").isNotEmpty())
+                .andExpect(jsonPath("$.to").isNotEmpty());
+    }
+
+    @Test
+    void summary_rejectsCalendarGroupBy() throws Exception {
+        mockMvc.perform(get("/api/reports/sla/summary")
+                        .param("groupBy", "week")
+                        .with(user("sla-admin", "TENANT_ADMIN")))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void snapshot_acceptsCivilDateBounds() throws Exception {
+        mockMvc.perform(get("/api/reports/sla")
+                        .param("from", "2026-03-01")
+                        .param("to", "2026-03-15")
+                        .with(user("sla-admin", "TENANT_ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.from").value("2026-03-01T00:00:00Z"))
+                .andExpect(jsonPath("$.to").value("2026-03-16T00:00:00Z"));
+    }
+
+    @Test
+    void patchType_clearSlaTargetHours_setsNull() throws Exception {
+        String code = "CLR" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        mockMvc.perform(post("/api/dossier-types")
+                        .with(user("sla-admin", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "code": "%s",
+                                  "label": "Label %s",
+                                  "workflowKey": "wf-%s",
+                                  "active": true,
+                                  "allowUnknownFields": false,
+                                  "fieldDefinitions": [],
+                                  "slaTargetHours": 48
+                                }
+                                """.formatted(code, code, code.toLowerCase())))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(patch("/api/dossier-types/{code}", code)
+                        .with(user("sla-admin", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clearSlaTargetHours\": true}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.slaTargetHours").value(Matchers.nullValue()));
+
+        mockMvc.perform(patch("/api/dossier-types/{code}", code)
+                        .with(user("sla-admin", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clearSlaTargetHours\": true, \"slaTargetHours\": 24}"))
+                .andExpect(status().isBadRequest());
+    }
+
     private static RequestPostProcessor user(String userId, String... roles) {
         return oidcLogin()
                 .idToken(token -> token

@@ -9,7 +9,6 @@ import com.flowforge.infrastructure.web.dossier.AccessContextFactory;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.time.Instant;
 import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -36,8 +35,8 @@ public class SlaReportExportController {
     @GetMapping(path = "/api/reports/sla.csv", produces = "text/csv")
     @PreAuthorize("hasAnyRole('TENANT_ADMIN','WORKFLOW_ADMIN','DOSSIER_MANAGER')")
     public void exportCsv(
-            @RequestParam(required = false) Instant from,
-            @RequestParam(required = false) Instant to,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to,
             @RequestParam(required = false) String dossierTypeCode,
             HttpServletResponse response,
             Authentication authentication)

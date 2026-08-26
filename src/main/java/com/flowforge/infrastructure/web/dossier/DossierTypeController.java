@@ -105,9 +105,10 @@ public class DossierTypeController {
                         keepExistingRetention
                                 ? existing.retentionNever()
                                 : Boolean.TRUE.equals(request.retentionNever()),
-                        request.slaTargetHours() == null
-                                ? existing.slaTargetHours()
-                                : request.slaTargetHours()),
+                        SlaTargetHoursPatch.resolve(
+                                existing.slaTargetHours(),
+                                request.slaTargetHours(),
+                                request.clearSlaTargetHours())),
                 actor);
         return ResponseEntity.ok(DossierTypeResponse.from(type));
     }

@@ -156,6 +156,16 @@ async function setTypeInherit(type: DossierType) {
   await refresh()
 }
 
+async function clearTypeSla(type: DossierType) {
+  error.value = null
+  try {
+    await updateDossierType(type.code, { clearSlaTargetHours: true })
+    await refresh()
+  } catch (err) {
+    error.value = toProblemDetail(err).detail ?? 'Retrait SLA impossible'
+  }
+}
+
 async function grant() {
   await grantDossierTypeAcl(acl.value.code, acl.value.subjectUserId, acl.value.permission)
   acl.value.subjectUserId = ''
@@ -262,6 +272,14 @@ async function revoke() {
             <button type="button" @click="toggleActive(type)">Basculer</button>
             <button type="button" @click="setTypeNever(type)">NEVER</button>
             <button type="button" @click="setTypeInherit(type)">Héritage</button>
+            <button
+              v-if="type.slaTargetHours != null"
+              type="button"
+              data-testid="type-clear-sla"
+              @click="clearTypeSla(type)"
+            >
+              Retirer le SLA
+            </button>
           </td>
         </tr>
       </tbody>

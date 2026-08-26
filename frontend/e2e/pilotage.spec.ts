@@ -934,6 +934,32 @@ test('E2E-10 admin types smoke', async ({ page }) => {
   await expect(page.getByTestId('admin-pager-prev')).toBeDisabled()
 })
 
+test('E2E-SLA-6 admin clears type SLA hours', async ({ page }) => {
+  let patched: Record<string, unknown> | null = null
+  await mockSession(page)
+  await page.route('**/api/dossier-types/CLAIM', async (route) => {
+    if (route.request().method() === 'PATCH') {
+      patched = route.request().postDataJSON() as Record<string, unknown>
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ...CLAIM_TYPE, slaTargetHours: null }),
+      })
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(CLAIM_TYPE),
+    })
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Types' }).click()
+  await expect(page.getByTestId('type-clear-sla')).toBeVisible()
+  await page.getByTestId('type-clear-sla').click()
+  await expect.poll(() => patched).toEqual({ clearSlaTargetHours: true })
+})
+
 test('E2E-PAGE-1 admin types pager writes page query', async ({ page }) => {
   await mockSession(page)
   await page.route(/\/api\/dossier-types(?:\?|$)/, async (route) => {

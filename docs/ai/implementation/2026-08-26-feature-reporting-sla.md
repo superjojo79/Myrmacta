@@ -8,6 +8,8 @@ updated: 2026-08-26
 feature: reporting-sla
 phase5: 2026-08-26
 phase7: 2026-08-26
+phase8: 2026-08-26
+phase9: 2026-08-26
 ---
 
 # Implementation Guide — `reporting-sla`
@@ -23,10 +25,8 @@ indisponible (`unknown command 'task'`).
 + PATCH clear + SPA `/rapports` + inbox). Aucun écart d’architecture
 (hexagone, ACL type VIEW, pas Chart.js, pas de table de faits).
 
-Deux écarts **moyens** sur la SPA (période custom + filtre type) —
-API complète, UI partielle. Pas de retour Phase 3 : le design est
-juste ; ce sont des restes d’implémentation, non bloquants pour le
-contrat MCP (`GET /summary`).
+Phase 8 a fermé les deux écarts SPA moyens (filtre type + Instant UTC)
+et le code ProblemDetail `SLA_COHORT_TOO_LARGE`. Pas de retour Phase 3.
 
 ## Development Setup
 
@@ -65,9 +65,9 @@ db/changelog/changes/016-reporting-sla.yaml
 ```
 
 Frontend : `RapportsView.vue` (KPI + barres CSS inlinés),
-`api/slaReport.ts`, `api/slaSettings.ts`, `DossierTypesAdminView`
-(heures + Retirer le SLA), `AppShell` `canSeeReports`,
-`MobileTasksView` badge.
+`api/slaPeriod.ts` (`toSlaPeriodParam`), `api/slaReport.ts`,
+`api/slaSettings.ts`, `DossierTypesAdminView` (heures + Retirer le SLA),
+`AppShell` `canSeeReports`, `MobileTasksView` badge.
 
 ## File-by-file vs design
 
@@ -89,7 +89,7 @@ Frontend : `RapportsView.vue` (KPI + barres CSS inlinés),
 | `SlaReportQueryFacade` + Flowable adapter | DD-FACADE ; WARN + listes vides si Flowable down |
 | `ListMyTasksUseCaseImpl` | remaining via `SlaClock` + now (pas dueDate) |
 | OpenAPI golden | `/api/reports/sla/summary`, `clearSlaTargetHours` |
-| `RapportsView` | Cartes, barres CSS, CSV, planifier disabled ; **pas** de filtre type ; `datetime-local` brut |
+| `RapportsView` | Cartes, barres CSS, CSV, planifier disabled ; filtre type ; `toSlaPeriodParam` (datetime-local → Instant UTC) |
 | Admin types | Bouton « Retirer le SLA » (flag) + objectif % |
 | Nav / inbox UI | `canSeeReports` ; badge remaining |
 
@@ -97,14 +97,16 @@ Frontend : `RapportsView.vue` (KPI + barres CSS inlinés),
 
 | Sévérité | Écart | Traitement |
 |---|---|---|
-| **Moyenne** | SPA `/rapports` : aucun filtre `dossierTypeCode` alors que l’API et le design (« filtres ») le prévoient. | Follow-up UI (API déjà là). Non bloquant MCP. |
-| **Moyenne** | Inputs `datetime-local` envoyés tels quels (`YYYY-MM-DDTHH:mm`, sans offset). `SlaPeriod` n’accepte que Instant ISO ou `YYYY-MM-DD`. Période **custom** SPA peut 400. Défaut 30 j (champs vides) OK. | Follow-up : convertir en Instant UTC ou dates civiles avant GET. |
+| Clos (P8) | SPA filtre `dossierTypeCode` | Select types + E2E-SLA-8. |
+| Clos (P8) | `datetime-local` brut → 400 | `toSlaPeriodParam` → Instant UTC ; E2E-SLA-7. |
+| Clos (P8) | ProblemDetail sans `code` cohorte | `SlaCohortTooLargeException.CODE`. |
 | Basse | KPI/barres inlinés dans `RapportsView` au lieu des composants `SlaKpiCards` / etc. | Cosmétique ; comportement identique. |
 | Basse | Clear SLA = bouton ligne, pas « vider le champ en édition ». | A-CLEAR-HOURS couvert. |
-| Basse | 400 cohorte : detail `SLA cohort too large: N`, pas de propriété ProblemDetail `code=SLA_COHORT_TOO_LARGE`. | HTTP 400 présent ; code nommé optionnel. |
 | Basse | `SlaReportAccess` hors package `usecase` (ArchUnit `*Impl`). | Documenté ; domaine pur. |
 | Accepté (DD) | Port out multi-méthodes ; `Clock.systemUTC()` inline `ReportingConfig`. | DD-FACADE. |
 | Basse | Inbox affiche des **heures**, pas « jours si ≥ 24 h » (A-HOURS). | Snapshot déjà en jours. |
+| Basse | `datetime-local` interprété comme UTC (pas fuseau navigateur). | Cohérent avec `Clock.systemUTC()`. |
+| Basse | `/rapports` sans `meta.roles` (comme `/supervision`) ; lien masqué, API 403. | Pattern SPA existant. |
 
 ## Edge cases handled
 
@@ -128,26 +130,55 @@ Frontend : `RapportsView.vue` (KPI + barres CSS inlinés),
 ## Security Notes
 
 - Pas de `fields` dossier dans JSON/CSV rapport.
-- CSV anti-formule.
-- Settings write **et** GET : TA only.
-- DM : agrégats types VIEW seulement.
-- `API_SERVICE` : 403 Spring sur les routes rapport.
+- CSV anti-formule (`CsvWriter` public + délégation dossier).
+- Settings write **et** GET : TA only (`@PreAuthorize`).
+- Snapshot/summary/CSV : TA/WA/DM Spring + ACL VIEW domaine (D-AUTHZ C).
+- DM filtre type inconnu / hors ACL → cohorte vide 200, pas 403.
+- `API_SERVICE` / viewer : 403.
+- JPQL paramétré (`:tenantId`, `:from`, `:to`, `:codes`).
+- Cap 10k avant `findDossiers`.
 
-## Follow-ups (hors Phase 7)
+## Phase 9 Code Review (2026-08-26)
 
-1. SPA : filtre type + normalisation `from`/`to` (civil ou Instant UTC).
-2. Optionnel : `ProblemDetail.code = SLA_COHORT_TOO_LARGE`.
-3. Phase 8 lifecycle (`dev-testing`) si demandée — preuves M8 déjà
-   dans le testing doc (session précédente) ; rejouer verify en Phase 8.
-4. FILE-ATTENTE / DEFERRED : « en revue » jusqu’au merge (A-NO-FLAG).
+Revue holistique du diff `origin/main...HEAD` + checklist sécurité.
+**Aucun finding bloquant.** Prêt pour revue humaine (PR draft, pas de merge).
 
-## Success criteria (code review, pas re-verify)
+### Checklist
 
-Couverts par le code : persist hours + clear ; settings TA 404/PUT ;
-snapshot/CSV/summary authz ; SPA réelle CSS + schedule disabled ;
-inbox remaining ; OpenAPI ; Liquibase 016.
+| Critère | Verdict |
+|---|---|
+| Design match | Aligné A+B, D-AUTHZ C, D-PERIOD, DD-CLEAR-FLAG, DD-CAP-10K |
+| Logic gaps | Période + filtre SPA fermés en Phase 8 |
+| Security | Authz endpoints + ACL ; pas de fuite `fields` ; CSV anti-formule |
+| Integration | Liquibase 016 additive (colonne nullable, table settings, index) |
+| Tests | Preuves Phase 8 fraîches (1263 / 213 / 55) |
+| Docs | requirements/design reviewed ; testing/implementation complete |
 
-Partiels : filtre type SPA ; date picker format.
+### Findings (non bloquants)
 
-Non rejoué ici : `./mvnw verify` / Vitest / Playwright (M8 session
-précédente — Phase 8 les reprend).
+| Sévérité | Fichier | Issue | Recommandation |
+|---|---|---|---|
+| Basse | `FlowableSlaReportAdapter` | `taskService.createTaskQuery().active().list()` puis filtre tenant | Accepté V1 (D-COMPUTE A) ; pager Flowable plus tard |
+| Basse | `RapportsView.vue` | KPI/barres inlinés | Extraire `SlaKpiCards` si la vue grossit |
+| Basse | `slaPeriod.ts` | datetime-local = UTC | Documenté ; pas de TZ navigateur |
+| Info | branche vs `origin/main` | `main` a avancé (`f65afe5`) depuis la base | Rebase/merge `main` avant merge humain |
+
+### Security scan (catégories applicables)
+
+Secrets : aucun. Injection : JPQL paramétré. Authz : PreAuthorize + domaine.
+Logique : cap 10k, clear flag 400, DM type hors ACL → vide.
+Exposition : agrégats seulement. Ressources : max 366 j + 10k. CSV anti-formule.
+
+## Follow-ups
+
+1. Rebase sur `main` avant merge si la base a divergé.
+2. FILE-ATTENTE / DEFERRED : rester « en revue » jusqu’au merge (A-NO-FLAG).
+3. Optionnel : extraire cartes KPI ; afficher remaining en jours si ≥ 24 h.
+
+## Success criteria
+
+Couverts : persist hours + clear ; settings TA 404/PUT ; snapshot/CSV/summary
+authz ; SPA CSS + schedule disabled + filtre type + Instant UTC ; inbox
+remaining ; OpenAPI ; Liquibase 016 ; code cohorte.
+
+Verify Phase 8 (cette session) : `./mvnw verify` 1263, Vitest 213, Playwright 55.

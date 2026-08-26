@@ -2,10 +2,11 @@
 phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
-status: in-progress
+status: complete
 created: 2026-08-26
 updated: 2026-08-26
 feature: reporting-sla
+phase8: 2026-08-26
 ---
 
 # Testing Strategy — `reporting-sla`
@@ -47,6 +48,7 @@ feature: reporting-sla
 - [x] **UT-PERIOD-2** Date civile UTC : `from` minuit, `to` minuit suivant.
 - [x] **UT-PERIOD-3** Instant ISO passthrough.
 - [x] **UT-PERIOD-4** Inversé / > 366 j / parse invalide → IAE.
+- [x] **UT-PERIOD-5** `datetime-local` sans offset (`YYYY-MM-DDTHH:mm`) rejeté par `SlaPeriod` (contrat : SPA convertit via `toSlaPeriodParam`).
 - [x] **UT-SUM-1** Groupement type + unscored.
 - [x] **UT-SUM-2** Groupement statut (clé = nom d'enum).
 - [x] **UT-SUM-3** `groupBy=day` rejeté.
@@ -70,6 +72,7 @@ feature: reporting-sla
 - [x] **UT-SET-2** percent 0 ou 101 rejeté.
 - [x] **UT-TYPE-1** Create/Update accepte slaTargetHours > 0 et null ; rejette 0 et négatif.
 - [x] **UT-TYPE-2** `SlaTargetHoursPatch` keep / set / clear / 400 flag+valeur.
+- [x] **UT-COHORT-CODE** ProblemDetail 400 cohorte expose `code=SLA_COHORT_TOO_LARGE`.
 
 ### Inbox remaining
 
@@ -101,9 +104,12 @@ feature: reporting-sla
 - [x] **E2E-SLA-4** Viewer : pas de lien Rapports.
 - [x] **E2E-SLA-5** Inbox affiche « SLA » remaining quand le mock tâche le fournit.
 - [x] **E2E-SLA-6** Admin « Retirer le SLA » envoie `{ clearSlaTargetHours: true }`.
+- [x] **E2E-SLA-7** Période custom `datetime-local` → query `from`/`to` Instant UTC (`…:00Z`).
+- [x] **E2E-SLA-8** Filtre type → `dossierTypeCode`.
 - [x] **E2E-9** **mis à jour** : Supervision toujours sans faux KPI ; **ne plus** exiger l'absence totale de « Rapports » (le lien existe). Conserver l'absence de KPI **sur Supervision**.
 
-Vitest : `dossierTypes.spec.ts` (clear flag) + `DossierTypesAdminView.spec.ts`.
+Vitest : `slaPeriod.spec.ts`, `slaReport.spec.ts`, `RapportsView.spec.ts`,
+`dossierTypes.spec.ts` (clear flag) + `DossierTypesAdminView.spec.ts`.
 
 ## Test Data
 
@@ -122,17 +128,19 @@ cd frontend && npm run test:e2e
 Jacoco classe par classe sur `domain/reporting/**` et contrôleurs
 `reports` / `sla-settings`. Frontend coverage seuils existants.
 
-M8 (2026-08-26) :
+Phase 8 (2026-08-26, cette session) :
 
-- `./mvnw verify -Dmaven.compiler.release=21` — BUILD SUCCESS, Jacoco OK.
-- `cd frontend && npm run test` — 62 files, 206 tests, exit 0.
-- `cd frontend && npm run test:e2e` — 53 passed, exit 0.
+- `./mvnw verify -Dmaven.compiler.release=21` — **BUILD SUCCESS**,
+  Tests run: **1263**, Failures: 0, Jacoco « All coverage checks have been met ».
+- `cd frontend && npm run test` — **64 files / 213 tests**, exit 0.
+- `cd frontend && npm run test:e2e` — **55 passed**, exit 0
+  (dont E2E-SLA-7, E2E-SLA-8).
 
 ## Manual Testing
 
-- Période custom dans le date picker SPA.
-- Type filter.
-- Viewer 403 network.
+- Viewer 403 network (API) — E2E-SLA-4 couvre l’absence de lien.
+
+Période custom et filtre type : **automatisés** (E2E-SLA-7/8).
 
 ## Performance Testing
 

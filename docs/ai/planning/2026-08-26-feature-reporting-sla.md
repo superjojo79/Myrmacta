@@ -144,6 +144,6 @@ Preuves M8 (2026-08-26) :
 - `cd frontend && npm run test` → 62 files / 206 tests passed.
 - `cd frontend && npm run test:e2e` → 53 passed (dont E2E-SLA-6).
 
-Prochaine étape lifecycle : Phase 7 **complete** (2026-08-26) —
-alignement design OK, 2 écarts SPA moyens documentés (filtre type,
-`datetime-local`). Ensuite : Phase 8 testing si demandée.
+Prochaine étape lifecycle : Phase 8 **complete** (2026-08-26) puis
+Phase 9 **complete**. Preuves Phase 8 : `./mvnw verify` 1263 tests,
+Jacoco OK ; Vitest 64/213 ; Playwright 55 passed.

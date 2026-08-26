@@ -79,9 +79,9 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 
 ## File d’attente
 
-`reporting-sla` est **en revue** (lifecycle phases 1–7 exécutées).
+`reporting-sla` est **en revue** (lifecycle phases 1–9 exécutées).
 Les deux lots (comptages/durées + seuils SLA) sont dans le livrable.
-Écarts SPA notés en Phase 7 (filtre type, format période). `serveur-mcp`
+Phase 8 a fermé les écarts SPA (filtre type, Instant UTC). `serveur-mcp`
 reste bloqué jusqu'au merge.
 
 | Priorité | Item | Notes |

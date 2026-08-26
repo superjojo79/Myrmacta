@@ -2,165 +2,138 @@
 phase: planning
 title: Project Planning & Task Breakdown
 description: Break down work into actionable tasks and estimate timeline
-status: planned
+status: complete
 created: 2026-08-26
 updated: 2026-08-26
 feature: reporting-sla
+phase4: 2026-08-26
 ---
 
 # Project Planning & Task Breakdown — `reporting-sla`
 
+Phase 4 **réalignée** sur requirements Phase 2 + design Phase 3.
+M1–M7 = premier jet (snapshot/SPA). **M9–M11** = écarts A+B
+(summary, `SlaStatus`, **DD-CLEAR-FLAG**, période civile). **M8** =
+verify global en dernier.
+
 ## Milestones
 
-- [x] **M1** Domaine SLA : clock, assembleur, settings, extension `DossierType`
-- [x] **M2** Persistence Liquibase 016 + JPA types/settings + query cohorte
-- [x] **M3** Port Flowable (tâches actives + historic userTasks) + façade
-- [x] **M4** Use cases + HTTP snapshot/CSV/settings + OpenAPI
+- [x] **M1** Domaine SLA snapshot : clock, assembleur, settings, `DossierType`
+- [x] **M2** Persistence Liquibase 016 + JPA + query cohorte
+- [x] **M3** Port Flowable + façade
+- [x] **M4** Use cases + HTTP snapshot/CSV/settings
 - [x] **M5** Inbox `slaRemainingHours`
 - [x] **M6** SPA Rapports + nav + admin types/settings
-- [x] **M7** Inbox UI + E2E + docs produit
+- [x] **M7** Inbox UI + E2E snapshot + docs produit (texte « en revue »)
+- [ ] **M9** Domaine summary : `SlaStatus`, `SlaPeriod`, assembleur, use case
+- [ ] **M10** HTTP summary + PATCH `clearSlaTargetHours` + OpenAPI
+- [ ] **M11** Admin FE clear SLA + clients TS + Vitest
 - [ ] **M8** `./mvnw verify` + Vitest + Playwright globaux
 
 ## Task Breakdown
 
-### M1 — Fondation domaine
+### M1–M7 — Premier jet (fait)
 
-- [x] **T1.1** `SlaClock` + tests UT-CLOCK-*  
-      Outcome : elapsed selon D-SLA-CLOCK / A-ARCHIVE-CLOCK.  
-      Validation : test unitaire rouge puis vert.  
-      Tests : UT-CLOCK-1..3
-- [x] **T1.2** `SlaReportAssembler` + tests UT-ASM-*  
-      Outcome : snapshot métier pur.  
-      Tests : UT-ASM-1..9
-- [x] **T1.3** `TenantSlaSettings` + validation 1..100  
-      Tests : inclus UT-SET-2 au niveau modèle
-- [x] **T1.4** `DossierType.slaTargetHours` + `inherit`/`withUpdate` + Create/Update commands  
-      Tests : UT-TYPE-1 + DossierTypeTest étendu  
-      Dépend : T1.3 non bloquant
+Voir l’historique : T1.*–T7.* cochés. Conservés. Ne pas retravailler
+sauf régression.
 
-### M2 — Persistence
+### M9 — Domaine summary / statut / période
 
-- [x] **T2.1** Changelog `016-reporting-sla.yaml` (colonne, table, index) + master  
-      Tests : context Spring existant charge Liquibase (IT persistence)
-- [x] **T2.2** JPA `DossierType` mappe `slaTargetHours`  
-      Tests : round-trip persistence type (étendre test existant)
-- [x] **T2.3** `TenantSlaSettings` repo + entity  
-      Dépend : T2.1
-- [x] **T2.4** `SlaReportQuery` JPA : cohorte createdAt + count PRODUCED_DOC  
-      Tests : IT-JPA-1  
-      Dépend : T2.1
+- [ ] **T9.1** `SlaStatus` + tests UT-STATUS-*  
+      Outcome : `ON_TRACK` / `AT_RISK` / `BREACHED` / `null` selon
+      D-AT-RISK + A-AT-RISK-CMP ; clos sans AT_RISK.  
+      Dépend : T1.1  
+      Tests : UT-STATUS-1..4
+- [ ] **T9.2** `SlaPeriod` parse Instant ISO **ou** date civile UTC
+      (`to` exclusif minuit suivant) ; défaut 30 j ; max 366.  
+      Tests : UT-PERIOD-1..4  
+      Design : DD-PERIOD-PARSE
+- [ ] **T9.3** `SlaSummary` + `SlaSummaryAssembler` groupBy type/statut  
+      Tests : UT-SUM-1..3  
+      Dépend : T9.1
+- [ ] **T9.4** `GetSlaSummaryUseCaseImpl` authz/cap/groupBy défaut/400  
+      Tests : UT-SUM-UC-1..5  
+      Dépend : T9.2, T9.3, T4.1 (même port/ACL)
 
-### M3 — Flowable
+### M10 — API + PATCH clear
 
-- [x] **T3.1** Adapter tâches actives (assignee, dossierId via variables/lien)  
-      Tests : unit mock History/TaskService
-- [x] **T3.2** Adapter historic userTask durations  
-      Tests : unit mock
-- [x] **T3.3** `SlaReportQueryFacade` compose JPA+Flowable ; dégrade Flowable (DD-FLOWABLE-DEGRADE)  
-      Dépend : T2.4, T3.1, T3.2
+- [ ] **T10.1** `GET /api/reports/sla/summary` + 400 groupBy invalide  
+      Tests : IT-API-8, IT-API-9  
+      Dépend : T9.4
+- [ ] **T10.2** Snapshot/CSV : accepter `from`/`to` date civile via `SlaPeriod`  
+      Tests : IT-API-10  
+      Dépend : T9.2
+- [ ] **T10.3** PATCH `clearSlaTargetHours` (DD-CLEAR-FLAG) ; 400 si flag+valeur  
+      Tests : IT-API-11, UT-TYPE-2  
+      Dépend : T4.5
+- [ ] **T10.4** OpenAPI golden : summary + `clearSlaTargetHours`  
+      Tests : IT-API-7 étendu (`-Dopenapi.update=true` si besoin)
 
-### M4 — API
+### M11 — Frontend admin
 
-- [x] **T4.1** `GetSlaReportUseCaseImpl` authz/période/cap/défaut 95  
-      Tests : UT-GET-1..8  
-      Dépend : T1.2, T3.3
-- [x] **T4.2** Get/Upsert settings use cases + controller  
-      Tests : UT-SET-1, IT-API-5
-- [x] **T4.3** `SlaReportController` JSON  
-      Tests : IT-API-1..3
-- [x] **T4.4** Extraire `CsvWriter` + `SlaReportExportController`  
-      Tests : IT-API-4  
-      Dépend : T4.1
-- [x] **T4.5** DTOs types `slaTargetHours` + OpenAPI golden  
-      Tests : IT-API-6, IT-API-7  
-      Dépend : T1.4, T2.2
-- [x] **T4.6** `ReportingConfig` beans + exception handler 400
-
-### M5 — Inbox
-
-- [x] **T5.1** Calcul remaining + DTO  
-      Tests : UT-INBOX-1..3, IT-INBOX-1  
-      Dépend : T1.1, T1.4
-
-### M6 — SPA rapports + admin
-
-- [x] **T6.1** API clients + types TS  
-- [x] **T6.2** `RapportsView` + sous-composants + Vitest  
-      Tests : coverage page  
-      Dépend : T6.1
-- [x] **T6.3** Nav + route ; `isDossierManager`  
-      Tests : AppShell.spec (lien visible DM/TA, caché viewer)
-- [x] **T6.4** Admin types champ SLA + bloc settings  
-      Tests : DossierTypesAdminView.spec  
-      Dépend : T4.2, T4.5
-
-### M7 — Inbox UI + E2E + docs
-
-- [x] **T7.1** Badge SLA `MobileTasksView`  
-      Tests : MobileTasksView.spec
-- [x] **T7.2** Playwright E2E-SLA-1..5 + E2E-9 actualisé  
-      Tests : testing doc E2E-*
-- [x] **T7.3** FILE-ATTENTE / DEFERRED / GUIDE-UTILISATEUR — écran Rapports en revue
+- [ ] **T11.1** `updateDossierType` accepte `clearSlaTargetHours`  
+      Tests : dossierTypes.spec si existant, sinon DossierTypesAdminView.spec
+- [ ] **T11.2** Bouton « Retirer le SLA » sur une ligne type (clear flag)  
+      Tests : Vitest admin  
+      Dépend : T10.3, T11.1
 
 ### M8 — Vérification globale
 
-- [ ] **T8.1** `./mvnw verify`  
-- [ ] **T8.2** `cd frontend && npm run test` + `test:e2e`  
-      Dépend : T7.2
+- [ ] **T8.1** `./mvnw verify -Dmaven.compiler.release=21` (ou JAVA_HOME JDK 25 + release 21)
+- [ ] **T8.2** `cd frontend && npm run test` **et** `npm run test:e2e`  
+      Dépend : T7.2, T11.2
+- [ ] **T8.3** Docs planning/implementation/testing à jour (Phase 6 continue)
 
 ## Dependencies
 
 ```
-T1.1 → T1.2 → T4.1
-T1.3 → T2.3 → T4.2
-T1.4 → T2.2 → T4.5
-T2.1 → T2.2, T2.3, T2.4
-T2.4 + T3.1 + T3.2 → T3.3 → T4.1 → T4.3, T4.4
-T4.1 + T6.1 → T6.2
-T5.1 → T7.1
-T6.2 + T6.3 + T7.1 → T7.2 → T8.*
+T1.1 → T9.1 → T9.3 → T9.4 → T10.1
+T9.2 → T9.4, T10.2
+T4.5 → T10.3 → T11.1 → T11.2
+T10.1 + T10.3 → T10.4
+T11.2 + T7.2 → T8.2
+T10.* + T9.* → T8.1
 ```
-
-M1–M3 surtout backend ; M6 parallèle dès que le JSON snapshot est figé (design).
 
 ## Timeline & Estimates
 
-Pas de calendrier. Ordre technique ci-dessus. Effort : BC neuf + SPA
-complète + extension types/inbox — invasif modéré (record `DossierType`
-touché partout, tests à recompiler).
+Pas de calendrier. Ordre : M9 → M10 → M11 → M8.
+Effort : invasif **modéré** — nouveau use case + DTO PATCH + OpenAPI ;
+SPA admin petit ; snapshot déjà livré.
 
 ## Risks & Mitigation
 
 | Risque | Mitigation |
 |---|---|
-| `DossierType` record : nombreux `new` tests | Factory `inherit` déjà là ; ajouter overload / dernier champ |
-| Flowable lien tâche → dossier | Réutiliser le mapping existant inbox (`WorkflowEnginePort`) |
-| H2 vs PG percentiles | Assembleur Java (**DD-ASSEMBLE-DOMAIN**) |
-| E2E-9 casse | Actualiser explicitement, pas skip |
-| CSV package-private | Extraire avant le 2e appelant |
-| Cohorte mémoire | Cap 10k |
+| Instant vs date civile MockMvc | Tests ISO **et** `YYYY-MM-DD` |
+| OpenAPI golden drift | `openapi.update=true` une fois, commit golden |
+| PATCH keep vs clear | Tests keep-on-omit **et** clear flag |
+| Jacoco seuils | Couvrir `SlaStatus` / `SlaPeriod` / summary UC |
+| Playwright flaky | Mocks E2E inchangés pour snapshot ; pas de page summary V1 |
 
 ## Resources Needed
 
-- JDK / Maven wrapper du dépôt ; Node frontend.
-- Pas Docker requis (H2 + mocks Flowable).
-- Maquette HTML = référence UX.
+- JDK du snapshot (`JAVA_HOME` si besoin `/tmp/jdk/...`) ; `./mvnw`.
+- Node `frontend/` ; Playwright Chromium.
+- Task tracing indisponible.
 
 ## Traceability testing → tasks
 
 | Scénario | Tâche |
 |---|---|
-| UT-CLOCK-* | T1.1 |
-| UT-ASM-* | T1.2 |
-| UT-TYPE-1 | T1.4 |
-| UT-SET-* | T1.3, T4.2 |
-| UT-GET-* | T4.1 |
-| IT-JPA-1 | T2.4 |
-| IT-API-1..3 | T4.3 |
-| IT-API-4 | T4.4 |
-| IT-API-5 | T4.2 |
-| IT-API-6..7 | T4.5 |
-| UT/IT-INBOX | T5.1 |
-| E2E-SLA-* / E2E-9 | T7.2 |
-| Vitest SPA | T6.2, T6.3, T6.4, T7.1 |
-| verify global | T8.1, T8.2 |
+| UT-CLOCK-* / UT-ASM-* | T1.1, T1.2 (fait) |
+| UT-STATUS-* | T9.1 |
+| UT-PERIOD-* | T9.2 |
+| UT-SUM-* / UT-SUM-UC-* | T9.3, T9.4 |
+| UT-GET-* / IT-API-1..6 | M4 (fait) |
+| IT-API-8..11 | T10.1–T10.3 |
+| IT-API-7 OpenAPI | T10.4 |
+| UT-TYPE-2 clear | T10.3 |
+| Vitest admin clear | T11.2 |
+| E2E-SLA-* / E2E-9 | T7.2 (fait) |
+| verify | T8.1, T8.2 |
+
+## Progress
+
+Phase 4 **complete** (2026-08-26) : plan M9–M11 + M8 aligné design.
+Prochaine action : Phase 5 T9.1 (TDD `SlaStatus`).

@@ -122,7 +122,11 @@ cd frontend && npm run test:e2e
 Jacoco classe par classe sur `domain/reporting/**` et contrôleurs
 `reports` / `sla-settings`. Frontend coverage seuils existants.
 
-M8 : preuves fraîches de ces commandes avant de cocher Phase 8.
+M8 (2026-08-26) :
+
+- `./mvnw verify -Dmaven.compiler.release=21` — BUILD SUCCESS, Jacoco OK.
+- `cd frontend && npm run test` — 62 files, 206 tests, exit 0.
+- `cd frontend && npm run test:e2e` — 53 passed, exit 0.
 
 ## Manual Testing
 
@@ -138,3 +142,6 @@ Pas de bench CI. Cap 10k testé unitairement (exception), pas en charge.
 
 IT snapshot `complianceTargetPercent` : isolation `DELETE` settings
 avant assert 95 (ordre Surefire vs PUT 90).
+
+E2E-RET-2 : ne plus cibler `form.admin-form` par index (le formulaire
+SLA settings décale `nth(1)`) — utiliser `data-testid="type-create-form"`.

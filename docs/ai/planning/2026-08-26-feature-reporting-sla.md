@@ -28,7 +28,7 @@ verify global en dernier.
 - [x] **M9** Domaine summary : `SlaStatus`, `SlaPeriod`, assembleur, use case
 - [x] **M10** HTTP summary + PATCH `clearSlaTargetHours` + OpenAPI
 - [x] **M11** Admin FE clear SLA + clients TS + Vitest
-- [ ] **M8** `./mvnw verify` + Vitest + Playwright globaux
+- [x] **M8** `./mvnw verify` + Vitest + Playwright globaux
 
 ## Task Breakdown
 
@@ -79,10 +79,10 @@ sauf régression.
 
 ### M8 — Vérification globale
 
-- [ ] **T8.1** `./mvnw verify -Dmaven.compiler.release=21` (ou JAVA_HOME JDK 25 + release 21)
-- [ ] **T8.2** `cd frontend && npm run test` **et** `npm run test:e2e`  
+- [x] **T8.1** `./mvnw verify -Dmaven.compiler.release=21` (ou JAVA_HOME JDK 25 + release 21)
+- [x] **T8.2** `cd frontend && npm run test` **et** `npm run test:e2e`  
       Dépend : T7.2, T11.2
-- [ ] **T8.3** Docs planning/implementation/testing à jour (Phase 6 continue)
+- [x] **T8.3** Docs planning/implementation/testing à jour (Phase 6 continue)
 
 ## Dependencies
 
@@ -135,5 +135,13 @@ SPA admin petit ; snapshot déjà livré.
 
 ## Progress
 
-Phase 4 **complete**. Phase 5 M9–M11 **done**. Prochaine action : M8
-(`./mvnw verify` + Vitest + Playwright).
+Phase 4 **complete**. Phase 5 M9–M11 **et M8 complete**.
+
+Preuves M8 (2026-08-26) :
+
+- `./mvnw verify -Dmaven.compiler.release=21` → BUILD SUCCESS,
+  Jacoco « All coverage checks have been met », Tests run: 1262.
+- `cd frontend && npm run test` → 62 files / 206 tests passed.
+- `cd frontend && npm run test:e2e` → 53 passed (dont E2E-SLA-6).
+
+Prochaine étape lifecycle : Phase 7 Check Implementation (si demandée).

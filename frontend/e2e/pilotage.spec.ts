@@ -1027,7 +1027,7 @@ test('E2E-RET-2 admin creates type with NEVER retention', async ({ page }) => {
   })
   await openApp(page)
   await page.getByRole('link', { name: 'Types' }).click()
-  const createForm = page.locator('form.admin-form').nth(1)
+  const createForm = page.getByTestId('type-create-form')
   await createForm.getByPlaceholder('code').fill('LEGAL')
   await createForm.getByPlaceholder('libellé').fill('Legal')
   await createForm.getByPlaceholder('workflowKey').fill('wf-legal')

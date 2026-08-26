@@ -15,9 +15,9 @@ todo_ref: DEFERRED-FEATURES.md §1.6 · FILE-ATTENTE.md · analysis doc/16-repor
 ## Phase 1 : New Requirement (relancée)
 
 Phase 1 **relancée**. Actés : **D-APPROACH = A+B**, **D-AUTHZ = C**,
-**D-SLA-HOURS = B**, **D-AT-RISK = A**, **D-GROUPBY = B**. Les autres
-D-* restent des propositions tant qu'ils n'ont pas été tranchés ici,
-une décision à la fois.
+**D-SLA-HOURS = B**, **D-AT-RISK = A**, **D-GROUPBY = B**,
+**D-SLA-CLOCK = A**. Les autres D-* restent des propositions tant
+qu'ils n'ont pas été tranchés ici, une décision à la fois.
 
 Workspace : branche `cursor/reporting-sla-9009`, no-worktree (VM cloud).
 Task tracing indisponible (`unknown command 'task'`). Lint feature :
@@ -69,12 +69,13 @@ dossiers.
 | **D-SLA-HOURS = B** | Cible **uniquement par type**, **optionnelle**. Pas de défaut tenant heures, pas de sentinelle `NEVER` (contrairement à la rétention, décision n° 21). `null` = pas de SLA pour ce type : **exclu** du % de conformité (cellule « — »). Validation `> 0` si présent. | Stakeholder 2026-08-26 |
 | **D-AT-RISK = A** | Convention **fixe 80 %** du délai. Dossier **ouvert** avec cible : `ON_TRACK` si `elapsed < 0,8 × slaTargetHours` ; `AT_RISK` si `0,8 × slaTargetHours ≤ elapsed ≤ slaTargetHours` ; `BREACHED` si `elapsed > slaTargetHours`. Dossier **clos** : seulement `ON_TRACK` / `BREACHED` (pas d'`AT_RISK`). Sans cible : statut `null`. Pas de champ `atRiskPercent` tenant. | Stakeholder 2026-08-26 |
 | **D-GROUPBY = B** | Summary V1 : `groupBy=dossierTypeCode\|status` seulement. La période `from`/`to` est un **filtre**, pas des seaux calendaires. Jour / semaine / mois **hors V1** (le MCP rappelle le summary avec une autre fenêtre ; le snapshot garde le delta vs période précédente). | Stakeholder 2026-08-26 |
+| **D-SLA-CLOCK = A** | Horloge **dossier** : début = `createdAt` ; fin = `closedAt` si clos (`CLOTURE` / `ARCHIVE`), sinon `now`. Hors délai / `BREACHED` ssi durée **>** `slaTargetHours`. Pas de `dueDate` Flowable. `ARCHIVE` sans `closedAt` : fin = `updatedAt` (**A-ARCHIVE-CLOCK**). Inbox : `slaRemainingHours = slaTargetHours - elapsed(createdAt, now)`. | Stakeholder 2026-08-26 |
 
 Conséquences immédiates (tant que non démenties par une question suivante) :
 
 - CSV **dans** V1 (B) malgré le hors-périmètre analyse.
 - Inbox `slaRemainingHours` **dans** V1 (B) — uniquement si le type a une cible.
-- Statut ternaire SLA **dans** V1 (A) avec seuil 80 % figé (**D-AT-RISK**).
+- Statut ternaire SLA **dans** V1 (A) avec seuil 80 % figé (**D-AT-RISK**), elapsed selon **D-SLA-CLOCK**.
 - `TenantSlaSettings` ne porte **pas** un `slaTargetHours` défaut ni un `atRiskPercent` (l'objectif % conformité, D-SETTINGS, est une autre question).
 
 ### Propositions (non verrouillées)
@@ -85,7 +86,6 @@ suit surtout **B** ; A (summary + `AT_RISK`) n'y est pas encore.
 | Id | Proposition |
 |---|---|
 | **D-SCOPE** | Écran maquette + API summary + statut SLA + cible par type + objectif % tenant + inbox (conséquence de A+B). |
-| **D-SLA-CLOCK = A** | Horloge dossier : `createdAt` → `closedAt` si clos (`CLOTURE`/`ARCHIVE`), sinon `now`. Hors délai ssi durée > `slaTargetHours`. |
 | **D-PERIOD = A** | Filtre `createdAt ∈ [from, to]` ; défaut **30 jours** glissants UTC ; max **366 jours** ; `to` exclusif minuit jour suivant si date civile. |
 | **D-CHARTS = A** | Barres CSS / tableaux PrimeVue-alignés maquette. **Pas** Chart.js (cohérent observabilité Q4). |
 | **D-EXPORT = A** | `GET /api/reports/sla.csv` mêmes filtres/authz ; `CsvWriter` anti-formule. Agrégats seulement — **pas** de champs dossier. |
@@ -247,7 +247,7 @@ suit surtout **B** ; A (summary + `AT_RISK`) n'y est pas encore.
 | Id | Hypothèse |
 |---|---|
 | **A-EMPTY** | Division par zéro → `compliancePercent = null`, moyennes `null`, volumes 0. |
-| **A-ARCHIVE-CLOCK** | `ARCHIVE` sans `closedAt` : fin = `updatedAt` (rétention archive sans clôture métier). |
+| **A-ARCHIVE-CLOCK** | Confirmé avec **D-SLA-CLOCK = A** : `ARCHIVE` sans `closedAt` : fin = `updatedAt`. |
 | **A-NO-PROM** | Pas de jauge Micrometer SLA (observabilité reste ops). |
 | **A-STEP-NAME** | Clé d'étape = `activityName` Flowable, fallback `activityId`. |
 | **A-ASSIGNEE** | Charge = assignee de la userTask active du lien courant ; pas un champ dossier. |
@@ -262,13 +262,15 @@ suit surtout **B** ; A (summary + `AT_RISK`) n'y est pas encore.
 ## Questions & Open Items
 
 Phase 1 en cours. Actés : **D-APPROACH = A+B**, **D-AUTHZ = C**,
-**D-SLA-HOURS = B**, **D-AT-RISK = A**, **D-GROUPBY = B**. Reste :
+**D-SLA-HOURS = B**, **D-AT-RISK = A**, **D-GROUPBY = B**,
+**D-SLA-CLOCK = A**. Reste :
 
 1. ~~Forme produit~~ **A+B**.
 2. ~~RBAC exact~~ **C**.
 3. ~~`slaTargetHours`~~ **B**.
 4. ~~Seuil `AT_RISK`~~ **A**.
-5. ~~`groupBy`~~ **B** (type/statut ; seaux calendaires hors V1).
-6. **Horloge SLA** (`createdAt`→`closedAt`/`now` vs clos seulement vs Flowable). ← **en cours**
-7. Autres D-* proposés (période, charts, schedule, settings, compute)
-   une fois 6 tranché.
+5. ~~`groupBy`~~ **B**.
+6. ~~Horloge SLA~~ **A** (`createdAt` → `closedAt`/`now` ; `ARCHIVE` sans `closedAt` → `updatedAt`).
+7. **Période du rapport** (filtre `createdAt` vs `closedAt` vs recouvrement). ← **en cours**
+8. Autres D-* proposés (charts, schedule, settings, compute)
+   une fois 7 tranché.

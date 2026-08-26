@@ -60,16 +60,27 @@ dossiers.
 
 ## Stakeholder decisions
 
-### Propositions (non verrouillées — Phase 1 relancée)
+### Actées en Phase 1
+
+| Id | Décision | Source |
+|---|---|---|
+| **D-APPROACH = A+B** | Les **deux** formes : (A) API summary analyse (`groupBy`, durées, statut `ON_TRACK` / `AT_RISK` / `BREACHED`) **et** (B) snapshot maquette `/rapports` (KPI conformité, délai moyen, parts, temps/étape, charge gestionnaires, CSV, inbox remaining). BC domaine `reporting` + BFF. Pas Grafana, pas de recopie des KPI observabilité. | Stakeholder 2026-08-26 |
+
+Conséquences immédiates (tant que non démenties par une question suivante) :
+
+- CSV **dans** V1 (B) malgré le hors-périmètre analyse.
+- Inbox `slaRemainingHours` **dans** V1 (B).
+- Statut ternaire SLA **dans** V1 (A) — le seuil `AT_RISK` reste à trancher.
+- `groupBy` période (jour/semaine/mois) reste à trancher (question analyse n° 4).
+
+### Propositions (non verrouillées)
 
 À confirmer ou remplacer, une question à la fois. Le code existant
-suit ces propositions ; un choix différent sera reporté en design /
-implémentation.
+suit surtout **B** ; A (summary + `AT_RISK`) n'y est pas encore.
 
-| Id | Décision |
+| Id | Proposition |
 |---|---|
-| **D-APPROACH = B** | Bounded context domaine `reporting` + snapshot JSON BFF + SPA Pilotage. Pas Grafana, pas Chart.js, pas de recopie des KPI observabilité. |
-| **D-SCOPE = A** | Livrer l'écran maquette (KPI + répartition + temps/étape + charge gestionnaires + tableau types + export CSV) + cible SLA par type + objectif % tenant + reste SLA sur l'inbox. |
+| **D-SCOPE** | Écran maquette + API summary + statut SLA + cible par type + objectif % tenant + inbox (conséquence de A+B). |
 | **D-SLA-CLOCK = A** | Horloge dossier : `createdAt` → `closedAt` si clos (`CLOTURE`/`ARCHIVE`), sinon `now`. Hors délai ssi durée > `slaTargetHours`. |
 | **D-SLA-NULL = A** | Type sans `slaTargetHours` : **exclu** du % de conformité (cellule « — », comme « Non assignés » dans la maquette). |
 | **D-PERIOD = A** | Filtre `createdAt ∈ [from, to]` ; défaut **30 jours** glissants UTC ; max **366 jours** ; `to` exclusif minuit jour suivant si date civile. |
@@ -136,10 +147,10 @@ implémentation.
 
 | Id | Approche | Trade-off | Verdict |
 |---|---|---|---|
-| A | Brancher la SPA sur Grafana / Prometheus | SLA métier ≠ SLI ops ; pas de Grafana-as-code V1 | Écarté |
-| B | **BC domaine + snapshot BFF + SPA** | Calcul à la volée, un tenant = un schéma | **Retenu (D-APPROACH)** |
-| C | Table snapshot + job | Plus d'infra, trop tôt sans volume | Écarté V1 (**D-COMPUTE**) |
-| D | Mock data dans la SPA | Contredit D-MOCKGAP (on masquait justement les faux KPI) | Écarté |
+| A | API summary analyse + statut `ON_TRACK`/`AT_RISK`/`BREACHED` + UI sobre | Socle MCP ; s'écarte de la maquette | **Retenu avec B** |
+| B | Snapshot maquette `/rapports` (KPI, CSV, inbox) | Parcours utilisateur FILE-ATTENTE | **Retenu avec A** |
+| C | Hybride maquette sans CSV/inbox | Moins de surface, 2ᵉ feature ensuite | Écarté |
+| Grafana | Brancher la SPA sur Grafana / Prometheus | SLA métier ≠ SLI ops | Écarté |
 
 | Décision | Options | Retenu |
 |---|---|---|
@@ -235,15 +246,15 @@ implémentation.
 
 ## Questions & Open Items
 
-Phase 1 en cours. Questions matérielles à trancher **une par une**
-(analyse § Questions ouvertes + écart maquette vs analyse) :
+Phase 1 en cours. **D-APPROACH = A+B** acté. Reste :
 
-1. **Forme produit** — snapshot maquette `/rapports` vs API summary
-   analyse Lot 1/2 (counts, durées, statut ON_TRACK/AT_RISK/BREACHED).
-2. **RBAC exact** — TA seul / TA+WA / TA+WA+DM(ACL).
+1. ~~Forme produit~~ **A+B**.
+2. **RBAC exact** — TA seul / TA+WA / TA+WA+DM(ACL). ← **en cours**
 3. **`slaTargetHours` obligatoire ou optionnel** (héritage défaut
    tenant vs SLA off tant que non configuré).
-4. **Seuil `AT_RISK`** — fixe, paramétrable, ou hors V1.
-5. **Granularité `groupBy`** (jour/semaine/mois) dès V1 ou non.
-6. Autres D-* proposés (horloge, période, CSV, inbox, charts, nav)
-   une fois 1–5 tranchés.
+4. **Seuil `AT_RISK`** — fixe, paramétrable par tenant, ou convention
+   nommée (ex. 80 %) — désormais **in scope** à cause de A.
+5. **Granularité `groupBy`** (jour/semaine/mois) dès V1 ou uniquement
+   type/statut.
+6. Autres D-* proposés (horloge, période, charts, schedule, settings)
+   une fois 2–5 tranchés.

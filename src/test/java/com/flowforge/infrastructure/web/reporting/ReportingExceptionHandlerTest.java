@@ -36,10 +36,12 @@ class ReportingExceptionHandlerTest {
     @Test
     void mapsIllegalArgumentAndCohortTooLargeTo400() {
         var inverted = handler.handleBadRequest(new IllegalArgumentException("from must be before to"));
-        var tooLarge = handler.handleBadRequest(new SlaCohortTooLargeException(10_001));
+        var tooLarge = handler.handleCohortTooLarge(new SlaCohortTooLargeException(10_001));
 
         assertThat(inverted.getStatus()).isEqualTo(400);
         assertThat(tooLarge.getStatus()).isEqualTo(400);
         assertThat(tooLarge.getTitle()).isEqualTo("Bad request");
+        assertThat(tooLarge.getProperties()).containsEntry("code", "SLA_COHORT_TOO_LARGE");
+        assertThat(inverted.getProperties()).isNull();
     }
 }

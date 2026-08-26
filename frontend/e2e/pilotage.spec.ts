@@ -1607,3 +1607,39 @@ test('E2E-SLA-5 inbox shows remaining SLA hours', async ({ page }) => {
   await expect(page.getByTestId('task-sla')).toContainText('12')
 })
 
+test('E2E-SLA-7 custom period is sent as UTC Instant not datetime-local', async ({ page }) => {
+  await mockSession(page, { roles: ['DOSSIER_MANAGER'] })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Rapports & SLA' }).click()
+  await expect(page.getByTestId('kpi-compliance')).toBeVisible()
+  await page.getByTestId('rapports-from').fill('2026-03-01T00:00')
+  await page.getByTestId('rapports-to').fill('2026-03-15T23:59')
+  const snapshotRequest = page.waitForRequest(
+    (request) =>
+      request.url().includes('/api/reports/sla') &&
+      !request.url().includes('.csv') &&
+      request.url().includes('from='),
+  )
+  await page.getByTestId('rapports-refresh').click()
+  const url = new URL((await snapshotRequest).url())
+  expect(url.searchParams.get('from')).toBe('2026-03-01T00:00:00Z')
+  expect(url.searchParams.get('to')).toBe('2026-03-15T23:59:00Z')
+})
+
+test('E2E-SLA-8 type filter is forwarded as dossierTypeCode', async ({ page }) => {
+  await mockSession(page, { roles: ['DOSSIER_MANAGER'] })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Rapports & SLA' }).click()
+  await expect(page.getByTestId('rapports-type')).toBeVisible()
+  await page.getByTestId('rapports-type').selectOption('CLAIM')
+  const snapshotRequest = page.waitForRequest(
+    (request) =>
+      request.url().includes('/api/reports/sla') &&
+      !request.url().includes('.csv') &&
+      request.url().includes('dossierTypeCode='),
+  )
+  await page.getByTestId('rapports-refresh').click()
+  const url = new URL((await snapshotRequest).url())
+  expect(url.searchParams.get('dossierTypeCode')).toBe('CLAIM')
+})
+

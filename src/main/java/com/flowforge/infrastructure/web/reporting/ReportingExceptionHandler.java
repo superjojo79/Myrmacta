@@ -25,8 +25,15 @@ public class ReportingExceptionHandler {
         return problem(HttpStatus.NOT_FOUND, "SLA settings not found", ex.getMessage());
     }
 
-    @ExceptionHandler({IllegalArgumentException.class, SlaCohortTooLargeException.class})
-    ProblemDetail handleBadRequest(RuntimeException ex) {
+    @ExceptionHandler(SlaCohortTooLargeException.class)
+    ProblemDetail handleCohortTooLarge(SlaCohortTooLargeException ex) {
+        ProblemDetail problem = problem(HttpStatus.BAD_REQUEST, "Bad request", ex.getMessage());
+        problem.setProperty("code", SlaCohortTooLargeException.CODE);
+        return problem;
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    ProblemDetail handleBadRequest(IllegalArgumentException ex) {
         return problem(HttpStatus.BAD_REQUEST, "Bad request", ex.getMessage());
     }
 

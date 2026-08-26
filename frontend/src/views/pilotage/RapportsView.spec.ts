@@ -1,50 +1,69 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import RapportsView from './RapportsView.vue'
 import * as slaReport from '@/api/slaReport'
+import * as dossierTypes from '@/api/dossierTypes'
 
 vi.mock('@/api/slaReport', () => ({
   getSlaReport: vi.fn(),
   downloadSlaReportCsv: vi.fn(),
 }))
 
+vi.mock('@/api/dossierTypes', () => ({
+  listAllDossierTypes: vi.fn(),
+}))
+
+const snapshot = {
+  from: '2026-02-01T00:00:00Z',
+  to: '2026-03-16T00:00:00Z',
+  complianceTargetPercent: 95,
+  compliancePercent: 94.2,
+  overdueCount: 148,
+  meanProcessingDays: 6.4,
+  medianProcessingDays: 4.1,
+  meanDeltaVsPreviousDays: -0.8,
+  typeShares: [{ code: 'SIN', label: 'Sinistre', volume: 10, percent: 100 }],
+  stepDurationsHours: [{ name: 'Instruction', meanHours: 37.6 }],
+  managerLoads: [
+    { assigneeId: null, displayName: 'Non assignés', inProgress: 48, overdue: 11, slaPercent: null },
+  ],
+  types: [
+    {
+      typeCode: 'SIN',
+      typeLabel: 'Sinistre auto',
+      workflowKey: 'instruction-sinistre',
+      volume: 1042,
+      meanDays: 7.1,
+      slaPercent: 92.4,
+      producedDocCount: 2108,
+      volumeTrendPercent: 4,
+    },
+  ],
+}
+
 describe('RapportsView', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    vi.mocked(slaReport.getSlaReport).mockResolvedValue({
-      from: '2026-02-01T00:00:00Z',
-      to: '2026-03-16T00:00:00Z',
-      complianceTargetPercent: 95,
-      compliancePercent: 94.2,
-      overdueCount: 148,
-      meanProcessingDays: 6.4,
-      medianProcessingDays: 4.1,
-      meanDeltaVsPreviousDays: -0.8,
-      typeShares: [{ code: 'SIN', label: 'Sinistre', volume: 10, percent: 100 }],
-      stepDurationsHours: [{ name: 'Instruction', meanHours: 37.6 }],
-      managerLoads: [
-        { assigneeId: null, displayName: 'Non assignés', inProgress: 48, overdue: 11, slaPercent: null },
-      ],
-      types: [
-        {
-          typeCode: 'SIN',
-          typeLabel: 'Sinistre auto',
-          workflowKey: 'instruction-sinistre',
-          volume: 1042,
-          meanDays: 7.1,
-          slaPercent: 92.4,
-          producedDocCount: 2108,
-          volumeTrendPercent: 4,
-        },
-      ],
-    })
+    vi.mocked(slaReport.getSlaReport).mockResolvedValue(snapshot)
+    vi.mocked(slaReport.downloadSlaReportCsv).mockResolvedValue(undefined)
+    vi.mocked(dossierTypes.listAllDossierTypes).mockResolvedValue([
+      {
+        id: 't1',
+        tenantId: 'tenant_dev',
+        code: 'CLAIM',
+        label: 'Sinistre',
+        workflowKey: 'claimWorkflow',
+        active: true,
+        allowUnknownFields: false,
+        fieldDefinitions: [],
+      },
+    ])
   })
 
   it('renders KPI cards from the snapshot', async () => {
     const wrapper = mount(RapportsView)
-    await wrapper.vm.$nextTick()
-    await wrapper.vm.$nextTick()
+    await flushPromises()
     expect(wrapper.text()).toContain('Rapports & SLA')
     expect(wrapper.text()).toContain('94.2 %')
     expect(wrapper.text()).toContain('6.4 j')
@@ -53,5 +72,27 @@ describe('RapportsView', () => {
     expect(wrapper.get('[data-testid="rapports-schedule"]').attributes('disabled')).toBeDefined()
     expect(wrapper.text()).toContain('Sinistre')
     expect(wrapper.text()).toContain('100 %')
+  })
+
+  it('sends datetime-local bounds as UTC Instant and optional type filter', async () => {
+    const wrapper = mount(RapportsView)
+    await flushPromises()
+    expect(slaReport.getSlaReport).toHaveBeenCalledWith({
+      from: undefined,
+      to: undefined,
+      dossierTypeCode: undefined,
+    })
+
+    await wrapper.get('[data-testid="rapports-from"]').setValue('2026-03-01T00:00')
+    await wrapper.get('[data-testid="rapports-to"]').setValue('2026-03-15T23:59')
+    await wrapper.get('[data-testid="rapports-type"]').setValue('CLAIM')
+    await wrapper.get('[data-testid="rapports-refresh"]').trigger('click')
+    await flushPromises()
+
+    expect(slaReport.getSlaReport).toHaveBeenLastCalledWith({
+      from: '2026-03-01T00:00:00Z',
+      to: '2026-03-15T23:59:00Z',
+      dossierTypeCode: 'CLAIM',
+    })
   })
 })

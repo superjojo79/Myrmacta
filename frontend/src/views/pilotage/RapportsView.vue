@@ -1,22 +1,32 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { listAllDossierTypes } from '@/api/dossierTypes'
 import { getSlaReport, downloadSlaReportCsv, type SlaReport } from '@/api/slaReport'
+import { toSlaPeriodParam } from '@/api/slaPeriod'
 import { toProblemDetail } from '@/api/http'
+import type { DossierType } from '@/api/types'
 
 const report = ref<SlaReport | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
 const from = ref('')
 const to = ref('')
+const typeFilter = ref('')
+const types = ref<DossierType[]>([])
+
+function queryParams() {
+  return {
+    from: toSlaPeriodParam(from.value),
+    to: toSlaPeriodParam(to.value),
+    dossierTypeCode: typeFilter.value || undefined,
+  }
+}
 
 async function refresh() {
   loading.value = true
   error.value = null
   try {
-    report.value = await getSlaReport({
-      from: from.value || undefined,
-      to: to.value || undefined,
-    })
+    report.value = await getSlaReport(queryParams())
   } catch (err) {
     error.value = toProblemDetail(err).detail ?? 'Chargement impossible'
   } finally {
@@ -26,16 +36,20 @@ async function refresh() {
 
 async function exportCsv() {
   try {
-    await downloadSlaReportCsv({
-      from: from.value || undefined,
-      to: to.value || undefined,
-    })
+    await downloadSlaReportCsv(queryParams())
   } catch (err) {
     error.value = toProblemDetail(err).detail ?? 'Export impossible'
   }
 }
 
 onMounted(() => {
+  void listAllDossierTypes()
+    .then((items) => {
+      types.value = items
+    })
+    .catch(() => {
+      types.value = []
+    })
   void refresh()
 })
 </script>
@@ -53,11 +67,20 @@ onMounted(() => {
       <div class="rapports__actions">
         <label>
           Du
-          <input v-model="from" type="datetime-local" />
+          <input v-model="from" type="datetime-local" data-testid="rapports-from" />
         </label>
         <label>
           Au
-          <input v-model="to" type="datetime-local" />
+          <input v-model="to" type="datetime-local" data-testid="rapports-to" />
+        </label>
+        <label>
+          Type
+          <select v-model="typeFilter" data-testid="rapports-type">
+            <option value="">Tous les types</option>
+            <option v-for="item in types" :key="item.code" :value="item.code">
+              {{ item.label }}
+            </option>
+          </select>
         </label>
         <button type="button" data-testid="rapports-refresh" :disabled="loading" @click="refresh">
           Appliquer

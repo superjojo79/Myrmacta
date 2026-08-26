@@ -50,4 +50,11 @@ class SlaPeriodTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("invalid period");
     }
+
+    @Test
+    void datetimeLocalWithoutOffset_isRejected() {
+        assertThatThrownBy(() -> SlaPeriod.resolve("2026-03-01T00:00", "2026-03-15T23:59", NOW))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("invalid period instant");
+    }
 }

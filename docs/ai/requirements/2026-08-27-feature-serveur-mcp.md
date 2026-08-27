@@ -94,6 +94,7 @@ Voir tableau ci-dessus. Non renégociées en Phase 1.
 | **D-ENDPOINT = A** | Chemin **`/api/m2m/mcp`** sur le port HTTP de l'instance (matcher M2M existant). Si le starter MCP refuse ce path, Phase 3 élargit le matcher — **même JWT**, pas de 4ᵉ chaîne par défaut. | Stakeholder 2026-08-27 |
 | **D-CREDENTIAL = A** | JWT M2M existant seulement (`Authorization: Bearer`). Prod = `issuer-uri` OIDC ; local/test = HMAC `app.security.m2m.jwt-secret`. **Pas** de clé API MCP. Même client que `/api/m2m/connectors/**`. | Stakeholder 2026-08-27 |
 | **D-PREVIEW = A** | Paramètre optionnel **`dryRun`** (défaut **`false`**) sur `define_dossier_type` et `deploy_workflow`. `true` = valider + renvoyer le payload prévu, **sans** `save` ni `deploy`. | Stakeholder 2026-08-27 |
+| **D-DEPLOY-ORDER = A** | `deploy_workflow` : valider/parser le XML **puis** upsert `WorkflowTypeConfig` (création si la clé n'existe pas) **puis** `DeployBpmnProcessUseCase`. Redéploiement = nouvelle version Flowable (instances en cours inchangées). `statusDefinitions` = singleton non versionné (comme le PATCH REST). L'UI admin upload reste en 404 si config absente. | Stakeholder 2026-08-27 |
 
 ### File de décisions Phase 1 (reste)
 
@@ -101,8 +102,7 @@ Posées **une à la fois**.
 
 | Id | Statut |
 |---|---|
-| **D-DEPLOY-ORDER** | **posée** — upsert config si absente vs 404 admin (analyse Q4) |
-| D-SCHEMA-COMPAT | en attente (analyse Q3) |
+| **D-SCHEMA-COMPAT** | **posée** — update d'un type déjà utilisé (analyse Q3) |
 | D-AUDIT | en attente (analyse Q5) |
 | D-SEARCH / D-PAGE | en attente (analyse Q8) |
 | D-GET-SHAPE | en attente (agrégat dossier ; champs `sensitive`) |
@@ -118,7 +118,7 @@ Posées **une à la fois**.
    M2M `API_SERVICE` (**D-TRANSPORT/ENDPOINT/CREDENTIAL = A**).
 2. Tools d'écriture cadrage : `define_dossier_type` (**D-WRITE-GUARD = A**),
    `deploy_workflow` avec **`dryRun` défaut false** (**D-PREVIEW = A**)
-   (upsert config : pending **D-DEPLOY-ORDER**).
+   et **upsert config si absente** (**D-DEPLOY-ORDER = A**).
 3. Tools de lecture cadrage : `get_dossier`, `get_dossier_type`,
    `list_dossier_types`, `list_workflow_types`, `search_dossiers`,
    `list_document_templates`, **`query_sla_summary` (D-STATS = A)**.
@@ -170,8 +170,8 @@ Posées **une à la fois**.
 - `define_dossier_type` sur un `code` inconnu → create ; connu → update.
 - `deploy_workflow` : XML mal formé / clé extraite ≠ clé attendue →
   même rejet que l'upload admin (`BpmnParserPort`).
-- `deploy_workflow` clé inconnue : pending **D-DEPLOY-ORDER** (créer vs
-  404 comme l'upload admin).
+- `deploy_workflow` clé inconnue → **crée** la config puis déploie
+  (**D-DEPLOY-ORDER = A**). L'écran upload admin reste en 404.
 - `get_dossier` id inconnu → erreur métier (équivalent 404), pas un
   dump stack.
 - `query_sla_summary` cohorte > 10 000 → même
@@ -189,8 +189,9 @@ Posées **une à la fois**.
    **et** test d'application réelle (**D-PREVIEW = A**).
 3. `define_dossier_type` : `API_SERVICE` OK, `WORKFLOW_ADMIN` seul
    refusé (**D-WRITE-GUARD = A**) ; purge/ACL/rétention toujours TA.
-   `deploy_workflow` passe par les use cases domaine (ArchUnit : pas
-   de Spring AI / MCP dans `domain`).
+   `deploy_workflow` : XML d'abord, puis upsert config si absente, puis
+   deploy (**D-DEPLOY-ORDER = A**). ArchUnit : pas de Spring AI / MCP
+   dans `domain`.
 4. JWT M2M sur `/api/m2m/mcp` (**D-CREDENTIAL = A**) : happy path +
    rejet mauvais `tenant_id` + sans `API_SERVICE`.
 5. `get_dossier` respecte `DossierAccessPolicy` + redaction ; test
@@ -231,7 +232,7 @@ Posées **une à la fois**.
 | Q1 Transport | **D-TRANSPORT = A**, **D-ENDPOINT = A** (`/api/m2m/mcp`) — 2026-08-27 |
 | Q2 Credential | **D-CREDENTIAL = A** (JWT M2M, pas de clé API) — 2026-08-27 |
 | Q3 Compatibilité schéma | **D-SCHEMA-COMPAT** — en attente |
-| Q4 Versionnement Flowable + config | **D-DEPLOY-ORDER** — en attente |
+| Q4 Versionnement Flowable + config | **D-DEPLOY-ORDER = A** — 2026-08-27 |
 | Q5 Journal MCP dédié | **D-AUDIT** — en attente |
 | Q6 Backlog écritures métier | Hors V1 (inchangé) |
 | Q7 Stats reporting | **D-STATS = A** — actée 2026-08-27 |

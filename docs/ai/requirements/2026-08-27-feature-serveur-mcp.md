@@ -308,8 +308,9 @@ Hypothèses nommées Phase 2 (conséquences, pas des votes) :
 | **D-TYPE-FIELDS** | **A** — schéma seul |
 | Payload `deploy_workflow` | **A-WF-REST-PARITY** (hypothèse nommée) |
 
-Phase 2 **reviewed**. Phase 3 design **reviewed**. Prochain : Phase 4.
+Phase 2 **reviewed**. Phase 3 design **reviewed**. Phase 4 **planned**.
 
 ## Next phase
 
-`dev-planning` Phase 4 (tâches TDD). Pas d'implémentation avant.
+`dev-implementation` Phase 5, TDD **T1.1** (`DossierAccessPolicy` +
+`API_SERVICE`).

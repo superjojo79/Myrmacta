@@ -12,8 +12,8 @@
 >
 > **Dernière mise à jour :** 2026-08-27 — `reporting-sla` **livrée**
 > ([PR #80](https://github.com/superjojo79/FlowForge/pull/80), mergée
-> 2026-08-26). **En cours :** `serveur-mcp` Phases 1–3 reviewed
-> (branche `cursor/serveur-mcp-e12d`) — prochain : Phase 4 planning.
+> 2026-08-26). **En cours :** `serveur-mcp` Phases 1–4 planned
+> (branche `cursor/serveur-mcp-e12d`) — prochain : Phase 5 TDD (T1.1).
 >
 > `derive-documentaire` TODO §45 clos, [PR #75](https://github.com/superjojo79/FlowForge/pull/75) ;
 > `edition-bpmn` TODO §39 clos, [PR #71](https://github.com/superjojo79/FlowForge/pull/71) **mergée**.
@@ -72,12 +72,12 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 ## File d’attente
 
 `reporting-sla` est **livrée** ([PR #80](https://github.com/superjojo79/FlowForge/pull/80)).
-`serveur-mcp` n'est plus bloqué : Phases 1–3 **reviewed** (2026-08-27).
-Prochain : Phase 4 planning.
+`serveur-mcp` n'est plus bloqué : Phases 1–4 **planned/reviewed**
+(2026-08-27). Prochain : Phase 5 TDD **T1.1**.
 
 | Priorité | Item | Notes |
 |---|---|---|
-| **En cours** | `serveur-mcp` (analyse : [15-serveur-mcp.md](analysis%20doc/15-serveur-mcp.md)) | Phases 1–3 reviewed. `/api/m2m/mcp`, JWT M2M, 2 écritures + 7 lectures. **D-TYPE-FIELDS = A**, **D-SDK = A** (Spring AI 2.0.0 WebMVC). **D-SCHEMA-COMPAT = B**, **D-AUDIT = C**, **D-SPA = A**. |
+| **En cours** | `serveur-mcp` (analyse : [15-serveur-mcp.md](analysis%20doc/15-serveur-mcp.md)) | Phases 1–4 planned/reviewed. 9 milestones TDD (M1 gardes → M9 verify). **D-SDK = A**. Prochain : Phase 5 **T1.1**. |
 | **Hors périmètre de la feature sécurité** | TODO §46 (ArchUnit `application`) | Architecture, pas sécurité au sens de la revue — point séparé, non bloquant. |
 
 Détail et options : [TODO.md](TODO.md) §40–46,
@@ -220,4 +220,5 @@ Vérifié : `./mvnw verify` 1136 tests (0 échec), Jacoco OK ; frontend `npm run
 | 2026-08-26 | `reporting-sla` livrée | [PR #80](https://github.com/superjojo79/FlowForge/pull/80) mergée sur `main` ; lifecycle phases 1–9 closes ; TODO n/a (feature issue de l'analyse, pas d'un point TODO numéroté). Prérequis stats MCP débloqué. |
 | 2026-08-27 | `serveur-mcp` Phase 1 clarification **close** | **D-SPA = A** (pas de SPA). **D-ACTOR = A** (conséquence POLICY-AS). **D-SDK** reporté Phase 3. Prochain : Phase 2 review. |
 | 2026-08-27 | `serveur-mcp` Phases 2–3 reviewed | **D-TYPE-FIELDS = A** (schéma seul). **A-WF-REST-PARITY**. **D-SDK = A** (Spring AI 2.0.0 WebMVC, `/api/m2m/mcp`). Design réécrit (Liquibase 017, check schéma domaine, parse→upsert→deploy). Prochain : Phase 4 planning. |
+| 2026-08-27 | `serveur-mcp` Phase 4 planned | 9 milestones / 32 tâches TDD ; traçabilité complète testing → tasks ; M1 gardes domaine d'abord, M4 SDK, M9 verify+régression FE. Prochain : Phase 5 T1.1. |
 

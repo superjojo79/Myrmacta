@@ -8,6 +8,7 @@ updated: 2026-08-27
 feature: serveur-mcp
 phase1: 2026-08-27
 phase3: 2026-08-27
+phase4: 2026-08-27
 design_ref: docs/ai/design/2026-08-27-feature-serveur-mcp.md
 ---
 

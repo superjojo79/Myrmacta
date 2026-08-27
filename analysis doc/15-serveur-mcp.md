@@ -303,6 +303,6 @@ tool MCP, même en backlog, au vu de leur impact :
 
 ## Prochaines étapes
 
-Cycle `dev-lifecycle` : Phases 1–3 **reviewed** (2026-08-27). Prochain :
-Phase 4 planning, puis implémentation TDD. Spec :
-[`docs/ai/design/2026-08-27-feature-serveur-mcp.md`](../docs/ai/design/2026-08-27-feature-serveur-mcp.md).
+Cycle `dev-lifecycle` : Phases 1–4 (2026-08-27). Prochain : Phase 5
+TDD **T1.1**. Spec :
+[`docs/ai/planning/2026-08-27-feature-serveur-mcp.md`](../docs/ai/planning/2026-08-27-feature-serveur-mcp.md).

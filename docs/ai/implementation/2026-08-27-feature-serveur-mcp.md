@@ -8,12 +8,15 @@ updated: 2026-08-27
 feature: serveur-mcp
 phase1: 2026-08-27
 phase3: 2026-08-27
+phase4: 2026-08-27
 ---
 
 # Implementation Guide — `serveur-mcp`
 
-Pas d'implémentation avant Phase 4 (plan) puis Phase 5 TDD. Cible :
-design Phase 3 `docs/ai/design/2026-08-27-feature-serveur-mcp.md`.
+Pas d'implémentation avant Phase 5 TDD (plan Phase 4 :
+`docs/ai/planning/2026-08-27-feature-serveur-mcp.md`). Cible design :
+`docs/ai/design/2026-08-27-feature-serveur-mcp.md`. Première tâche :
+**T1.1**.
 
 ## Development Setup
 

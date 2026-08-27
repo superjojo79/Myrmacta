@@ -14,10 +14,7 @@ todo_ref: FILE-ATTENTE.md · analysis doc/15-serveur-mcp.md · analysis doc/16-r
 
 ## Phase 1 : New Requirement
 
-Phase 1 **en clarification** (2026-08-27). Contrat `dev-requirements` :
-une décision à la fois ; **aucune** D-* nouvelle n'est actée tant que
-le stakeholder n'a pas tranché. Les reco du premier jet (sans
-question) sont **des propositions**, pas des votes.
+Phase 1 **en clarification** (2026-08-27). Une décision à la fois.
 
 Workspace : branche `cursor/serveur-mcp-e12d`, no-worktree (VM cloud,
 préfixe de branche imposé). Task tracing indisponible
@@ -86,14 +83,19 @@ parcours navigateur.
 
 Voir tableau ci-dessus. Non renégociées en Phase 1.
 
-### File de décisions Phase 1 (aucune actée)
+### Actées en Phase 1
 
-Posées **une à la fois**. Reco du premier jet = hypothèse, pas un vote.
+| Id | Décision | Vote |
+|---|---|---|
+| **D-STATS = A** | Tool lecture **`query_sla_summary`** dans **cette** V1 → `GetSlaSummaryUseCase` (`groupBy=dossierTypeCode\|status`, `from`/`to`). Pas le snapshot maquette, pas le CSV, pas d'agrégat ad hoc. | Stakeholder 2026-08-27 |
+
+### File de décisions Phase 1 (reste)
+
+Posées **une à la fois**.
 
 | Id | Statut |
 |---|---|
-| **D-STATS** | **posée** — stats MCP maintenant que PR #80 est mergée |
-| D-POLICY-AS | en attente (RBAC `API_SERVICE` vs D-AUTHZ reporting C) |
+| **D-POLICY-AS** | **posée** — lecture `API_SERVICE` (dossiers + SLA) vs D-AUTHZ reporting C |
 | D-WRITE-GUARD | en attente (TA only vs TA\|API_SERVICE pour les types) |
 | D-TRANSPORT / D-ENDPOINT | en attente (analyse Q1) |
 | D-CREDENTIAL | en attente (analyse Q2) |
@@ -102,7 +104,7 @@ Posées **une à la fois**. Reco du premier jet = hypothèse, pas un vote.
 | D-SCHEMA-COMPAT | en attente (analyse Q3) |
 | D-AUDIT | en attente (analyse Q5) |
 | D-SEARCH / D-PAGE | en attente (analyse Q8) |
-| D-GET-SHAPE | en attente (agrégat dossier) |
+| D-GET-SHAPE | en attente (agrégat dossier ; champs `sensitive`) |
 | D-SPA | en attente (régression FE only vs écran MCP) |
 | D-SDK / D-ACTOR | plutôt Phase 3 ; à poser ici s'ils changent le produit |
 
@@ -117,7 +119,7 @@ Posées **une à la fois**. Reco du premier jet = hypothèse, pas un vote.
    (`dryRun` et upsert config : pending D-PREVIEW / D-DEPLOY-ORDER).
 3. Tools de lecture cadrage : `get_dossier`, `get_dossier_type`,
    `list_dossier_types`, `list_workflow_types`, `search_dossiers`,
-   `list_document_templates`. **`query_sla_summary` : pending D-STATS.**
+   `list_document_templates`, **`query_sla_summary` (D-STATS = A)**.
 4. Un serveur par instance tenant ; pas de `ThreadLocal` tenant.
 
 ### Secondary goals
@@ -133,9 +135,10 @@ Posées **une à la fois**. Reco du premier jet = hypothèse, pas un vote.
   `generate_document` (backlog analyse).
 - ACL, purge, mise à jour directe d'un `DossierWorkflowLink`.
 - Édition visuelle BPMN via MCP.
-- stdio / snapshot SLA / table d'audit MCP / SPA : **pending** les
-  D-* correspondantes (pas encore exclus définitivement par un vote
-  Phase 1, sauf cadrage déjà acté).
+- Snapshot `/api/reports/sla`, CSV, settings SLA, inbox remaining :
+  **hors MCP** (**D-STATS = A** — summary seulement).
+- stdio / table d'audit MCP / SPA : **pending** D-TRANSPORT / D-AUDIT /
+  D-SPA.
 - Codegen client, Chart.js, planification d'envoi.
 
 ## User Stories & Use Cases
@@ -187,8 +190,8 @@ Posées **une à la fois**. Reco du premier jet = hypothèse, pas un vote.
 4. JWT M2M : happy path + rejet mauvais tenant + rejet sans rôle.
 5. `get_dossier` respecte `DossierAccessPolicy` + redaction ; test
    mutant : un champ `sensitive` n'apparaît pas en clair.
-6. `query_sla_summary` : `API_SERVICE` non 403 ; `groupBy` invalide
-   rejeté ; cap 10k conservé.
+6. `query_sla_summary` : `groupBy` invalide rejeté ; cap 10k conservé.
+   Accès `API_SERVICE` : pending **D-POLICY-AS**.
 7. `./mvnw verify` vert (Jacoco BUNDLE tenus) ; frontend
    `npm run test` + `npm run test:e2e` **régression** (0 spec MCP,
    0 mock SPA cassé).
@@ -225,7 +228,7 @@ Posées **une à la fois**. Reco du premier jet = hypothèse, pas un vote.
 | Q4 Versionnement Flowable + config | **D-DEPLOY-ORDER** — en attente |
 | Q5 Journal MCP dédié | **D-AUDIT** — en attente |
 | Q6 Backlog écritures métier | Hors V1 (inchangé) |
-| Q7 Stats reporting | **D-STATS posée** — pas encore actée |
+| Q7 Stats reporting | **D-STATS = A** — actée 2026-08-27 |
 | Q8 Pagination search | **D-SEARCH / D-PAGE** — en attente |
 | Pin version Spring AI vs SDK nu | **D-SDK** — plutôt Phase 3 |
 | `includeContent` templates | à poser si on ouvre le contenu HTML |

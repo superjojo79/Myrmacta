@@ -1,11 +1,13 @@
 package com.flowforge.infrastructure.mcp.tool;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.flowforge.domain.reporting.model.SlaCohortTooLargeException;
 import com.flowforge.domain.reporting.model.SlaSummary;
 import com.flowforge.domain.reporting.port.in.GetSlaSummaryUseCase;
 import com.flowforge.infrastructure.config.TenantProperties;
@@ -59,5 +61,13 @@ class QuerySlaSummaryToolTest {
         assertThat(captor.getValue().to()).isEqualTo("2026-02-01T00:00:00Z");
         assertThat(captor.getValue().dossierTypeCode()).isEqualTo("SINISTRE");
         assertThat(captor.getValue().groupBy()).isEqualTo("status");
+    }
+
+    @Test
+    void cohortTooLarge_propagatesAsToolError() {
+        when(getSlaSummaryUseCase.get(any(), any())).thenThrow(new SlaCohortTooLargeException(10_001L));
+
+        assertThatThrownBy(() -> tool.querySlaSummary(null, null, null, null))
+                .isInstanceOf(SlaCohortTooLargeException.class);
     }
 }

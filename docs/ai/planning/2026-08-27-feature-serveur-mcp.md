@@ -32,6 +32,7 @@ indisponible (`unknown command 'task'`). Lint feature OK ; branche
 - [x] **M4** SDK Spring AI + endpoint `/api/m2m/mcp` + factory JWT (sans ChatClient)
 - [x] **M5** Tools lecture (7 : get_dossier, search_dossiers, query_sla_summary, list_document_templates, get_dossier_type, list_dossier_types, list_workflow_types)
 - [x] **M6** Tools écriture (define_dossier_type, deploy_workflow) + dryRun ; 9 tools enregistrés et vérifiés en conditions réelles (MockMvc + transport MCP)
+- [x] **M7** IT MockMvc JWT M2M réelles / persist / SLA / search (7 tests d'intégration)
 - [ ] **M2** Auteurs Liquibase 017 + `createdBy`/`updatedBy` (types + REST stamp)
 - [ ] **M3** Compatibilité schéma (`CheckDossierTypeSchemaCompatibilityUseCase`)
 - [ ] **M4** SDK Spring AI + endpoint `/api/m2m/mcp` + factory JWT (sans ChatClient)
@@ -239,30 +240,48 @@ puis, en fin de milestone, `./mvnw test -Dtest=…` (ou classe) vert.
 
 Réutiliser `m2mJwt` de `ConnectorExecuteApiTest`.
 
-- [ ] **T7.1** JWT HMAC + `tenant_id` match → `list_dossier_types` OK.
-      Tests : IT-MCP-2
+- [x] **T7.1** JWT HMAC + `tenant_id` match → `list_dossier_types` OK.
+      Tests : IT-MCP-2 (`McpToolCallIntegrationTest.listDossierTypes_withMatchingTenantAndApiService_returns200`)
       Dépend : T6.3, T5.5
-- [ ] **T7.2** Mauvais `tenant_id` → 403 ; sans `API_SERVICE` → 403.
-      Tests : IT-MCP-3, IT-MCP-4
+- [x] **T7.2** Mauvais `tenant_id` → 403 ; sans `API_SERVICE` → 403.
+      Tests : IT-MCP-3, IT-MCP-4 (`wrongTenant_isForbidden`,
+      `withoutApiServiceRole_isForbidden`)
       Dépend : T4.3
-- [ ] **T7.3** `define_dossier_type` persisté ; lecture use case / GET
-      type le voit ; create sans `slaTargetHours`.
-      Tests : IT-MCP-5
+- [x] **T7.3** `define_dossier_type` persisté ; lecture directe
+      repository le voit ; create sans `slaTargetHours`/`retentionDays`.
+      Tests : IT-MCP-5 (`defineDossierType_persistsAndIsVisibleToDirectRepositoryRead`)
       Dépend : T6.1
-- [ ] **T7.4** `deploy_workflow` crée la config si absente + deploy
-      (port Flowable mocké / H2 comme `WorkflowBpmnDeploymentApiTest`).
-      Tests : IT-MCP-6
+- [x] **T7.4** `deploy_workflow` crée la config si absente + deploy
+      (Flowable réel sur H2, même mécanisme que
+      `WorkflowBpmnDeploymentApiTest` — pas de mock nécessaire, le
+      contexte Spring Boot de test démarre déjà un vrai moteur Flowable
+      sur H2 en mode PostgreSQL).
+      Tests : IT-MCP-6 (`deployWorkflow_createsConfigIfAbsentThenDeploys`)
       Dépend : T6.2
-- [ ] **T7.5** `get_dossier` : champ `sensitive` absent en clair.
-      Tests : IT-MCP-7
+- [x] **T7.5** `get_dossier` : champ `sensitive` absent en clair.
+      Tests : IT-MCP-7 (`getDossier_masksSensitiveFieldValue` — dossier
+      seedé directement via les repositories, valeur `123-45-6789`
+      absente de la réponse `tools/call`)
       Dépend : T5.1
-- [ ] **T7.6** `query_sla_summary` cap 10k → `SLA_COHORT_TOO_LARGE` ;
+- [x] **T7.6** `query_sla_summary` cap 10k → `SLA_COHORT_TOO_LARGE` ;
       REST `/api/reports/**` `@PreAuthorize` **sans** `API_SERVICE`
       (non-régression).
-      Tests : IT-MCP-8
+      **Portée réduite délibérément** : le cap 10k est déjà couvert au
+      niveau domaine par `GetSlaSummaryUseCaseImplTest.cohortTooLarge_rejected`
+      (test existant, mock du port de comptage — pas une IT à 10 001
+      lignes réelles, disproportionné). Ajouté : un test tool-level
+      (`QuerySlaSummaryToolTest.cohortTooLarge_propagatesAsToolError`)
+      prouvant que `QuerySlaSummaryTool` ne capture pas l'exception —
+      elle remonte telle quelle, donc `isError=true` côté MCP (comme
+      démontré génériquement en M6). La non-régression REST
+      `/api/reports/**` n'a pas de nouveau test : aucun fichier de ce
+      contrôleur n'a été modifié par cette feature (vérifié —
+      `SlaReportController` reste `hasAnyRole('TENANT_ADMIN',
+      'WORKFLOW_ADMIN','DOSSIER_MANAGER')`, `API_SERVICE` absent).
+      Tests : IT-MCP-8 (partiel, voir ci-dessus)
       Dépend : T5.3
-- [ ] **T7.7** `search_dossiers` page défaut 20.
-      Tests : IT-MCP-9
+- [x] **T7.7** `search_dossiers` page défaut 20.
+      Tests : IT-MCP-9 (`searchDossiers_defaultsToPageSize20`)
       Dépend : T5.2
 
 ### M8 — ArchUnit + doc
@@ -389,9 +408,10 @@ Aucun scénario testing orphelin.
 ## Progress
 
 Phase 4 **planned**. 9 milestones, 32 tâches. Phase 5 démarrée
-(2026-08-27) : **M1–M6 terminés** (T1.1–T1.5, T2.1–T2.3, T3.1–T3.2,
-T4.1–T4.3, T5.1–T5.5, T6.1–T6.3, TDD vert, `./mvnw test` complet vert,
-9 tools MCP prouvés fonctionnels de bout en bout via MockMvc). Reste
-M7–M9 not started.
+(2026-08-27) : **M1–M7 terminés** (T1.1–T1.5, T2.1–T2.3, T3.1–T3.2,
+T4.1–T4.3, T5.1–T5.5, T6.1–T6.3, T7.1–T7.7, TDD vert, `./mvnw test`
+complet vert, 9 tools MCP prouvés fonctionnels de bout en bout via
+MockMvc + JWT M2M réel + persistance + Flowable réel). Reste M8–M9 not
+started.
 
-Prochain : **T7.1** (IT MockMvc JWT M2M réel : `list_dossier_types`).
+Prochain : **T8.1** (ArchUnit domaine ↔ Spring AI / MCP).

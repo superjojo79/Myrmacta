@@ -98,18 +98,21 @@ design. Cases `- [ ]` jusqu'à la Phase 8.
   `McpEndpointApiTest`). Étendu avec 2 tests `tools/call` réels
   (succès `dryRun` + erreur clé interdite) confirmant le contrat
   `isError` du SDK.
-- [ ] **IT-MCP-2** Bearer JWT HMAC local `API_SERVICE` + `tenant_id`
+- [x] **IT-MCP-2** Bearer JWT HMAC local `API_SERVICE` + `tenant_id`
   match → `list_dossier_types` OK (MockMvc chaîne M2M).
-- [ ] **IT-MCP-3** JWT `tenant_id` ≠ instance → 403 filtre existant.
-- [ ] **IT-MCP-4** sans `API_SERVICE` → 403.
-- [ ] **IT-MCP-5** `define_dossier_type` persisté ; GET type REST/use case
-  le voit.
-- [ ] **IT-MCP-6** `deploy_workflow` : config créée si absente +
-  déploiement (port Flowable mocké / H2 comme les tests deploy existants).
-- [ ] **IT-MCP-7** `get_dossier` champ `sensitive` masqué.
-- [ ] **IT-MCP-8** `query_sla_summary` cap 10k → erreur métier
-  `SLA_COHORT_TOO_LARGE`.
-- [ ] **IT-MCP-9** `search_dossiers` page défaut 20.
+- [x] **IT-MCP-3** JWT `tenant_id` ≠ instance → 403 filtre existant.
+- [x] **IT-MCP-4** sans `API_SERVICE` → 403.
+- [x] **IT-MCP-5** `define_dossier_type` persisté ; lecture directe
+  repository le voit.
+- [x] **IT-MCP-6** `deploy_workflow` : config créée si absente +
+  déploiement (Flowable réel sur H2, pas de mock nécessaire).
+- [x] **IT-MCP-7** `get_dossier` champ `sensitive` masqué.
+- [x] **IT-MCP-8** (partiel, portée réduite délibérément — voir doc
+  implementation M7) `query_sla_summary` cap 10k → erreur métier
+  `SLA_COHORT_TOO_LARGE` couvert au niveau domaine (existant) + relais
+  d'erreur au niveau tool (`QuerySlaSummaryToolTest`) ; pas de nouvelle
+  IT à 10 001 lignes réelles.
+- [x] **IT-MCP-9** `search_dossiers` page défaut 20.
 - [ ] **IT-ARCH** ArchUnit : `domain` n'importe pas
   `org.springframework.ai` / `io.modelcontextprotocol` ; tool MCP hors
   allowlist `Dossier.fields()` ; use case compatibilité **dans**

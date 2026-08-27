@@ -250,7 +250,45 @@ le SDK convertit toute exception non interceptée levée par un tool en
 `isError:true` avec le message de l'exception. Décision de M5
 confirmée, pas de composant à ajouter.
 
-Prochaine tâche : **T7.1** (IT MockMvc JWT M2M réel).
+## M7 — IT HTTP M2M (fait, 2026-08-27)
+
+Nouveau fichier `infrastructure/mcp/McpToolCallIntegrationTest.java`
+(7 tests, `@SpringBootTest` + `MockMvc`, réutilise le pattern `m2mJwt`
+de `ConnectorExecuteApiTest`) :
+
+- Auth : `list_dossier_types` OK avec JWT valide ; 403 si `tenant_id`
+  ne correspond pas à l'instance ; 403 sans rôle `API_SERVICE`.
+- `define_dossier_type` : persistance réelle vérifiée par lecture
+  directe du repository (pas seulement via un autre appel MCP), stamp
+  `createdBy` = `sub` du JWT.
+- `deploy_workflow` : config absente au départ, présente après l'appel
+  (`GetWorkflowTypeConfigUseCase.getByKey`) — aucun mock Flowable
+  nécessaire, le contexte `@SpringBootTest` démarre déjà un moteur
+  Flowable réel sur H2 (mode PostgreSQL), comme tous les autres tests
+  BPMN du projet.
+- `get_dossier` : dossier avec champ `sensitive=true` seedé directement
+  via `DossierTypeRepository`/`DossierRepository`, valeur absente de la
+  réponse `tools/call`.
+- `search_dossiers` : page par défaut 20 visible dans la réponse.
+
+**Portée volontairement réduite pour IT-MCP-8** (cap SLA 10k) : ajouter
+une vraie IT à 10 001 dossiers persistés serait disproportionné pour
+un comportement déjà couvert par un test domaine existant
+(`GetSlaSummaryUseCaseImplTest.cohortTooLarge_rejected`, mock du port
+de comptage, feature `reporting-sla`). À la place :
+`QuerySlaSummaryToolTest.cohortTooLarge_propagatesAsToolError` prouve
+que le tool ne capture pas `SlaCohortTooLargeException` — elle remonte
+telle quelle vers le mapping `isError` générique du SDK (M6). La
+non-régression REST `/api/reports/**` ne nécessite aucun nouveau test :
+aucun fichier de ce contrôleur n'a été touché (`SlaReportController`
+reste `hasAnyRole('TENANT_ADMIN','WORKFLOW_ADMIN','DOSSIER_MANAGER')`,
+sans `API_SERVICE`).
+
+Aucune déviation par rapport au design. Toutes les IT sont passées du
+premier coup grâce aux vérifications empiriques déjà faites en M4/M6
+(session MCP, auth, format de réponse).
+
+Prochaine tâche : **T8.1** (ArchUnit domaine ↔ Spring AI / MCP).
 
 ## Development Setup
 

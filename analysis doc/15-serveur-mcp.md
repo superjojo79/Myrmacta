@@ -1,9 +1,9 @@
 # Serveur MCP (Model Context Protocol)
 
-> **Statut : analyse initiale + cycle `dev-lifecycle` Phase 1 (2026-08-27).**
-> Ce document pose le cadrage validé en 2026-08-26. L'implémentation se
-> spécifie dans `docs/ai/**/2026-08-27-feature-serveur-mcp.md` — ne pas
-> lire cette analyse comme un design d'implémentation figé.
+> **Statut : analyse initiale + cycle `dev-lifecycle` Phase 3 reviewed
+> (2026-08-27).** Cadrage 2026-08-26 inchangé. Spec d'implémentation :
+> `docs/ai/**/2026-08-27-feature-serveur-mcp.md`. Ne pas lire cette
+> analyse comme un design figé.
 >
 > **Décisions de cadrage actées lors de cette analyse (2026-08-26) :**
 > consommateur, portée d'écriture V1, sens du mot « dossier », granularité
@@ -164,9 +164,8 @@ que reporting/SLA n'était pas livré. Ce prérequis est **clos** :
 2026-08-26) livre le summary `GetSlaSummaryUseCase`
 (`groupBy=dossierTypeCode|status`).
 
-**Phase 1 `serveur-mcp` (2026-08-27) :** reco **D-STATS = A** — tool
-`query_sla_summary` dans cette V1, qui appelle ce use case (pas le
-snapshot maquette, pas d'agrégats ad hoc). À confirmer en Phase 2.
+**Phase 2 `serveur-mcp` (2026-08-27) :** **D-STATS = A** confirmé —
+tool `query_sla_summary` dans cette V1.
 
 ### Autres exclusions actées
 
@@ -255,38 +254,18 @@ déploiement par instance tenant). À confirmer en design.
 
 ## Questions ouvertes
 
-Ces points restent à trancher en phase de conception, une fois cette
-analyse validée :
+Clos en Phases 1–3 `serveur-mcp` (2026-08-27) — détail dans
+`docs/ai/requirements` et `docs/ai/design` de la feature :
 
-1. **Transport MCP** — HTTP (Streamable HTTP) vs stdio ; exposition réseau
-   exacte (port dédié, chemin, filtrage réseau).
-2. **Mécanisme du credential `API_SERVICE`** — OAuth2 `client_credentials`
-   réutilisant le provider OIDC existant, ou clé API applicative dédiée.
-3. **Compatibilité ascendante de `DefineDossierTypeTool`** — bloquer,
-   avertir ou autoriser une modification de schéma impactant des dossiers
-   existants.
-4. **Interaction `deploy_workflow` / versionnement Flowable** — comportement
-   exact quand une nouvelle version de `WorkflowTypeConfig.statusDefinitions`
-   coexiste avec des `DossierWorkflowLink` actifs sur l'ancienne version.
-5. **Audit trail dédié** — faut-il un journal spécifique aux appels MCP
-   (au-delà des champs `createdBy`/`updatedBy` déjà portés par les entités),
-   pour distinguer un changement fait par un agent IA d'un changement fait
-   depuis l'UI admin ?
-6. **Périmètre futur** — les tools d'écriture à risque modéré identifiés
-   (`create_dossier`, `add_dossier_element`, `start_workflow`,
-   `generate_document`, voir [backlog](#backlog--extensions-futures-envisageables-hors-v1))
-   nécessiteront chacun leur propre analyse avant d'être retenus pour une
-   itération ultérieure (validation des champs dynamiques, création depuis
-   trigger vs MCP, etc. — voir
-   [04-dossiers.md](04-dossiers.md#création-depuis-un-trigger--unitaire-et-batch)).
-7. **Reporting/SLA (point 4)** — **prérequis livré**
-   ([PR #80](https://github.com/superjojo79/FlowForge/pull/80)). Reco
-   Phase 1 : tool `query_sla_summary` (**D-STATS = A**). Confirmer en
-   Phase 2 du cycle `serveur-mcp`.
-8. **Pagination/volumétrie de `search_dossiers`** — reprendre telles
-   quelles les bornes déjà actées pour `pagination-dossiers` (taille de
-   page max, tri par défaut) plutôt que d'introduire un contrat de
-   pagination MCP spécifique.
+1. Transport — **D-TRANSPORT/ENDPOINT = A** (`/api/m2m/mcp` STREAMABLE).
+2. Credential — **D-CREDENTIAL = A** (JWT M2M existant).
+3. Compatibilité schéma — **D-SCHEMA-COMPAT = B** (blocage MCP + compte).
+4. `statusDefinitions` — singleton non versionné comme REST
+   (**D-DEPLOY-ORDER**).
+5. Audit — **D-AUDIT = C** (`createdBy`/`updatedBy`, pas de table MCP).
+6. Backlog écritures métier — hors V1 (inchangé).
+7. Stats — **D-STATS = A** (`query_sla_summary`).
+8. Pagination search — **D-SEARCH/D-PAGE = A**.
 
 ---
 
@@ -324,7 +303,6 @@ tool MCP, même en backlog, au vu de leur impact :
 
 ## Prochaines étapes
 
-Cycle `dev-lifecycle` **démarré** (2026-08-27) : Phase 1 draft dans
-[`docs/ai/requirements/2026-08-27-feature-serveur-mcp.md`](../docs/ai/requirements/2026-08-27-feature-serveur-mcp.md).
-Les questions 1–4, 5, 7 et 8 ont des recommandations nommées (D-\*) à
-entériner en Phase 2, puis design Phase 3.
+Cycle `dev-lifecycle` : Phases 1–3 **reviewed** (2026-08-27). Prochain :
+Phase 4 planning, puis implémentation TDD. Spec :
+[`docs/ai/design/2026-08-27-feature-serveur-mcp.md`](../docs/ai/design/2026-08-27-feature-serveur-mcp.md).

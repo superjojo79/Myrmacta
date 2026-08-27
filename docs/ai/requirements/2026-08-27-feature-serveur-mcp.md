@@ -2,13 +2,13 @@
 phase: requirements
 title: Requirements & Problem Understanding
 description: Clarify the problem space, gather requirements, and define success criteria
-status: draft
+status: reviewed
 created: 2026-08-27
 updated: 2026-08-27
 feature: serveur-mcp
 phase1: 2026-08-27
 phase1_clarification: close
-phase2: in-progress
+phase2: 2026-08-27
 todo_ref: FILE-ATTENTE.md · analysis doc/15-serveur-mcp.md · analysis doc/16-reporting-sla.md · PR #80
 ---
 
@@ -16,25 +16,18 @@ todo_ref: FILE-ATTENTE.md · analysis doc/15-serveur-mcp.md · analysis doc/16-r
 
 ## Phase 2 : Review Requirements
 
-Phase 2 **en cours** (2026-08-27). Lint feature OK (branche
-`feature-serveur-mcp` = MISS attendu). Template README : problem,
-goals, stories, success, constraints, open items — présents.
-
-Décisions Phase 1 **conservées** (pas de re-vote). Écarts design
-draft (fichier design encore en jet Phase 1) à réécrire en Phase 3,
-pas ici : **D-AUDIT** y figure encore en B (voté **C**),
-**D-SCHEMA-COMPAT** y figure encore en A (voté **B**), ordre deploy
-y est « save puis deploy » (voté parse → upsert → deploy).
-
-Trou **D-TYPE-FIELDS = A** clos (2026-08-27). Trou suivant — **ne
-pas clore** la Phase 2 tant qu'il n'est pas voté :
-
-| Id | Trou |
-|---|---|
-| **D-WF-FIELDS** | Analyse §2 : `deploy_workflow` = XML + `processDefinitionKey` + `statusDefinitions`. `WorkflowTypeConfig` exige aussi `label`, `allowedDossierStatuses` (non vide), `onStartDossierStatus?`, `observerUserIds`. Un create MCP est impossible sans trancher ces champs. |
+Phase 2 **reviewed** (2026-08-27). Template README OK (problem, goals,
+stories, success, constraints, open items). Décisions Phase 1
+conservées. **D-TYPE-FIELDS = A** voté. Les autres trous Phase 2 sont
+des **A-*** (pas de nouveaux D-* stakeholder) : parité REST / cadrage
+déjà acté, demandée explicitement pour enchaîner Phase 3.
 
 Workspace : `cursor/serveur-mcp-e12d`, no-worktree. Task tracing
-indisponible (`unknown command 'task'`).
+indisponible (`unknown command 'task'`). Lint feature OK ; branche
+`feature-serveur-mcp` = MISS attendu.
+
+Écarts du jet design Phase 1 (D-AUDIT B, D-SCHEMA-COMPAT A, ordre
+deploy) **réécrits en Phase 3**.
 
 ## Phase 1 : New Requirement
 
@@ -134,12 +127,23 @@ Voir tableau ci-dessus. Non renégociées en Phase 1.
 |---|---|---|
 | **D-TYPE-FIELDS = A** | `define_dossier_type` écrit **seulement le schéma** : `code`, `label`, `workflowKey`, `active`, `allowUnknownFields`, `fieldDefinitions` (+ `dryRun`). **Pas** `retentionDays` / `retentionNever` / `slaTargetHours`. Create : défauts `DossierType.inherit` (`retentionDays=null`, `retentionNever=false`, `slaTargetHours=null`). Update : ces trois champs **conservés**. S'ils sont présents dans l'appel → **erreur** (pas d'ignore silencieux). Purge, ACL, PUT `TenantSlaSettings` hors MCP. REST PATCH types **inchangé** (TA peut toujours poser rétention / cible SLA). | Stakeholder 2026-08-27 |
 
+Hypothèses nommées Phase 2 (conséquences, pas des votes) :
+
+| Id | Hypothèse |
+|---|---|
+| **A-WF-REST-PARITY** | `deploy_workflow` écrit la **même** config que REST `SaveWorkflowTypeConfig` : `label`, `statusDefinitions`, `allowedDossierStatuses` (obligatoire), `onStartDossierStatus?`, `observerUserIds?`, plus XML UTF-8, `processDefinitionKey`, `dryRun`. Create et update = remplacement complet de la config (comme le body REST). Découle du cadrage « un tool = XML + upsert `WorkflowTypeConfig` » + **D-DEPLOY-ORDER** « comme le PATCH REST ». |
+| **A-SCHEMA-FULL** | Schéma MCP **exigé en entier** à chaque create/update (`label`, `workflowKey`, `active`, `allowUnknownFields`, `fieldDefinitions`). Pas d'omit-means-keep REST PATCH sur ces champs. |
+| **A-TPL-FORCE-FALSE** | `includeContent=true` **rejeté**. Le tool n'expose jamais le HTML. |
+| **A-GET-COMPLETE** | `get_dossier` pagine en interne (size 100) éléments et historique jusqu'à épuisement — pas de tools `list_elements` / `list_history` V1. Relations : liste complète existante. |
+| **A-LIST-PARITY** | `list_dossier_types` / `list_workflow_types` = mêmes pages que REST (actifs **et** inactifs). |
+
 ### Conséquences / report Phase 3 (plus de vote Phase 1)
 
 | Id | Statut |
 |---|---|
-| **D-SDK** | **Reporté Phase 3** — pin Spring AI 2.x WebMVC vs SDK MCP officiel si BOM trop lourd. Pas de `ChatClient`. Tools = infra → `port.in`. |
-| **A-TPL-META** | `list_document_templates` : `includeContent=false` (métadonnées seulement). |
+| **D-SDK** | **Phase 3** — pin Spring AI 2.x WebMVC vs SDK MCP officiel si BOM trop lourd. Pas de `ChatClient`. Tools = infra → `port.in`. |
+| **A-TPL-META** | Renforcé **A-TPL-FORCE-FALSE**. |
+| **A-WF-REST-PARITY** | Voir Phase 2. |
 
 ## Goals & Objectives
 **What do we want to achieve?**
@@ -188,8 +192,8 @@ Voir tableau ci-dessus. Non renégociées en Phase 1.
   mettre à jour un **schéma** (`code` = clé naturelle) sans toucher
   rétention ni cible SLA (**D-TYPE-FIELDS = A**).
 - En tant qu'agent, je veux `list_workflow_types` puis
-  `deploy_workflow` (XML + `statusDefinitions`) pour publier une
-  version Flowable et la config métier en un appel.
+  `deploy_workflow` (XML + config métier complète, **A-WF-REST-PARITY**)
+  pour publier une version Flowable et upsert la config en un appel.
 - En tant qu'agent, je veux `dryRun=true` pour valider un XML / un
   schéma **sans** écrire.
 - En tant qu'agent, je veux `get_dossier` par `id` **ou** `reference`
@@ -213,8 +217,11 @@ Voir tableau ci-dessus. Non renégociées en Phase 1.
   dans l'appel → erreur (**D-TYPE-FIELDS = A**), y compris en
   `dryRun`. Create n'écrit pas de cible SLA (null jusqu'à un PATCH
   REST TA).
-- `deploy_workflow` : XML mal formé / clé extraite ≠ clé attendue →
-  même rejet que l'upload admin (`BpmnParserPort`).
+- `deploy_workflow` : XML mal formé / clé extraite ≠ `processDefinitionKey`
+  attendu → même famille d'erreur que l'upload admin / draft
+  (`BpmnParserPort`, `InvalidBpmnException`).
+- `deploy_workflow` : `allowedDossierStatuses` vide ou absent → rejet
+  invariant existant (**A-WF-REST-PARITY**).
 - `deploy_workflow` clé inconnue → **crée** la config puis déploie
   (**D-DEPLOY-ORDER = A**). L'écran upload admin reste en 404.
 - `get_dossier` : les deux de `id`/`reference` ou aucun → erreur ;
@@ -272,7 +279,7 @@ Voir tableau ci-dessus. Non renégociées en Phase 1.
 
 ### Assumptions
 
-- A-TPL-META : `list_document_templates` sans corps HTML.
+- A-TPL-META / **A-TPL-FORCE-FALSE** : métadonnées seulement ; `true` rejeté.
 - A-NO-LLM : on n'active aucun modèle de chat Spring AI.
 - A-SYNC : serveur MCP **synchrone** (`type=SYNC`) ; tools courts
   (deploy BPMN = déjà le coût de l'upload admin).
@@ -280,6 +287,8 @@ Voir tableau ci-dessus. Non renégociées en Phase 1.
   matcher — même JWT (**D-ENDPOINT = A**).
 - A-TYPE-INHERIT : create MCP = `DossierType.inherit` pour rétention /
   SLA (**D-TYPE-FIELDS = A**).
+- **A-WF-REST-PARITY** / **A-SCHEMA-FULL** / **A-GET-COMPLETE** /
+  **A-LIST-PARITY** : voir tableau Phase 2.
 
 ## Questions & Open Items
 **What do we still need to clarify?**
@@ -294,15 +303,13 @@ Voir tableau ci-dessus. Non renégociées en Phase 1.
 | Q6 Backlog écritures métier | Hors V1 |
 | Q7 Stats | **D-STATS = A** |
 | Q8 Search | **D-SEARCH = A**, **D-PAGE = A** |
-| D-SDK | **Reporté Phase 3** |
-| `includeContent` templates | **A-TPL-META** (false) |
+| D-SDK | **Phase 3** (choix technique) |
+| `includeContent` templates | **A-TPL-FORCE-FALSE** |
 | **D-TYPE-FIELDS** | **A** — schéma seul |
-| **D-WF-FIELDS** | **Ouvert Phase 2** — payload `deploy_workflow` hors XML |
+| Payload `deploy_workflow` | **A-WF-REST-PARITY** (hypothèse nommée) |
 
-Phase 2 **non close** : attendre le vote **D-WF-FIELDS**.
+Phase 2 **reviewed**. Phase 3 design **reviewed**. Prochain : Phase 4.
 
 ## Next phase
 
-Terminer Phase 2 après **D-WF-FIELDS** (et tout autre trou
-matériel trouvé ensuite). Puis `dev-design` Phase 3 (**D-SDK** +
-réécriture des écarts draft).
+`dev-planning` Phase 4 (tâches TDD). Pas d'implémentation avant.

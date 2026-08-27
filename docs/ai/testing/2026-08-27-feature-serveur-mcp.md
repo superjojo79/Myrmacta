@@ -7,6 +7,8 @@ created: 2026-08-27
 updated: 2026-08-27
 feature: serveur-mcp
 phase1: 2026-08-27
+phase3: 2026-08-27
+design_ref: docs/ai/design/2026-08-27-feature-serveur-mcp.md
 ---
 
 # Testing Strategy — `serveur-mcp`
@@ -50,16 +52,26 @@ design. Cases `- [ ]` jusqu'à la Phase 8.
 - [ ] **UT-DEF-1** `code` inconnu → `CreateDossierTypeUseCase`.
 - [ ] **UT-DEF-2** `code` connu → `UpdateDossierTypeUseCase`.
 - [ ] **UT-DEF-3** `dryRun=true` → aucun `save`.
-- [ ] **UT-DEP-1** upsert config puis `deploy` (ordre).
+- [ ] **UT-DEF-4** `retentionDays` / `slaTargetHours` présents → erreur,
+  pas de save (**D-TYPE-FIELDS**).
+- [ ] **UT-DEF-5** update conserve rétention/SLA existants.
+- [ ] **UT-DEF-6** update incompatible → pas de save ; compte > 0
+  (**D-SCHEMA-COMPAT**).
+- [ ] **UT-DEP-1** parse OK → upsert config → `deploy` (ordre).
 - [ ] **UT-DEP-2** XML invalide **avant** save config (pas d'upsert).
 - [ ] **UT-DEP-3** `dryRun=true` → parse OK, pas de deploy ni save.
+- [ ] **UT-DEP-4** `processDefinitionKey` ≠ clé extraite → erreur.
+- [ ] **UT-DEP-5** `allowedDossierStatuses` vide → rejet invariant.
 - [ ] **UT-GET-1** `id` xor `reference` ; les deux ou aucun → erreur.
 - [ ] **UT-GET-2** agrège elements + history + relations.
 - [ ] **UT-GET-3** n'appelle pas `Dossier.fields()`.
 - [ ] **UT-SEARCH-1** relais `SearchDossiersQuery` (size 101 rejeté).
 - [ ] **UT-SLA-1** relais `GetSlaSummaryUseCase.Query`.
-- [ ] **UT-TPL-1** `includeContent` forcé / défaut false.
+- [ ] **UT-TPL-1** `includeContent` forcé / défaut false ; `true` rejeté.
 - [ ] **UT-ACTOR-1** JWT `sub` → `AccessContext.User` rôle `API_SERVICE`.
+- [ ] **UT-AUDIT-1** create/update réel stamp `createdBy`/`updatedBy` ;
+  `dryRun` ne stamp pas.
+- [ ] **UT-CTX-1** contexte Spring : **aucun** bean `ChatClient`.
 
 ## Integration Tests
 **How do we test component interactions?**
@@ -78,7 +90,11 @@ design. Cases `- [ ]` jusqu'à la Phase 8.
   `SLA_COHORT_TOO_LARGE`.
 - [ ] **IT-MCP-9** `search_dossiers` page défaut 20.
 - [ ] **IT-ARCH** ArchUnit : `domain` n'importe pas
-  `org.springframework.ai` / `io.modelcontextprotocol`.
+  `org.springframework.ai` / `io.modelcontextprotocol` ; tool MCP hors
+  allowlist `Dossier.fields()` ; use case compatibilité **dans**
+  l'allowlist.
+- [ ] **IT-LIQ** changelog 017 : colonnes `created_by`/`updated_by`
+  sur les deux tables.
 
 ## End-to-End Tests
 **What user flows need validation?**

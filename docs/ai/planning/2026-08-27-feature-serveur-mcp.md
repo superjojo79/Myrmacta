@@ -12,8 +12,8 @@ phase1: 2026-08-27
 # Project Planning & Task Breakdown — `serveur-mcp`
 
 Squelette **init-feature**. Le plan détaillé (milestones / tâches TDD)
-est la **Phase 4** (`dev-planning`), après Phase 2 (requirements
-reviewed) et Phase 3 (design reviewed).
+est la **Phase 4** (`dev-planning`) — requirements et design sont
+**reviewed**.
 
 Ne pas implémenter à partir de ce fichier.
 
@@ -38,7 +38,8 @@ Rempli en Phase 4. Toutes les tâches **not started**.
 
 - `reporting-sla` **livré** (PR #80) — plus un bloqueur.
 - Use cases existants listés au design.
-- Pin Spring AI (preuve BOM) en Phase 3.
+- **D-SDK = A** : Spring AI 2.0.0 WebMVC (repli DD-SDK-FALLBACK si
+  preuve ChatClient / BOM en Phase 5).
 
 ## Timeline & Estimates
 

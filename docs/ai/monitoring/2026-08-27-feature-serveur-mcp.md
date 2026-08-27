@@ -7,6 +7,7 @@ created: 2026-08-27
 updated: 2026-08-27
 feature: serveur-mcp
 phase1: 2026-08-27
+phase3: 2026-08-27
 ---
 
 # Monitoring & Observability — `serveur-mcp`

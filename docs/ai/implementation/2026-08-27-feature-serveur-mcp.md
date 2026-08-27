@@ -7,15 +7,17 @@ created: 2026-08-27
 updated: 2026-08-27
 feature: serveur-mcp
 phase1: 2026-08-27
+phase3: 2026-08-27
 ---
 
 # Implementation Guide — `serveur-mcp`
 
-Pas d'implémentation en Phase 1. Rédigé en Phases 5–7.
+Pas d'implémentation avant Phase 4 (plan) puis Phase 5 TDD. Cible :
+design Phase 3 `docs/ai/design/2026-08-27-feature-serveur-mcp.md`.
 
 ## Development Setup
 
-Workspace prévu : branche `cursor/serveur-mcp-e12d`, no-worktree.
+Workspace : branche `cursor/serveur-mcp-e12d`, no-worktree.
 Stack : Java 25 / Spring Boot 4.1. Commandes :
 
 ```bash
@@ -25,10 +27,14 @@ cd frontend && npm run test && npm run test:e2e
 
 ## Code Structure
 
-Cible : `com.flowforge.infrastructure.mcp` (voir design draft).
-Domaine : touches limitées aux gardes **D-POLICY-AS**.
+- `com.flowforge.infrastructure.mcp` — tools + factory JWT.
+- Domaine : gardes **D-POLICY-AS**, `requireTenantAdminOrApiService`,
+  `createdBy`/`updatedBy`, `CheckDossierTypeSchemaCompatibilityUseCase`.
+- Liquibase `017-mcp-audit-authors.yaml`.
+- `pom.xml` : BOM Spring AI 2.0.0 + starter MCP WebMVC.
 
 ## Implementation Notes
 
-Suivre TDD (`tdd` + `verify`). Ne pas lire `Dossier.fields()` depuis
-un tool MCP.
+TDD (`tdd` + `verify`). Ne pas lire `Dossier.fields()` depuis un tool
+MCP. Ne pas élargir `requireTenantAdmin`. Ne pas ajouter de starter
+chat.

@@ -7,6 +7,7 @@ created: 2026-08-27
 updated: 2026-08-27
 feature: serveur-mcp
 phase1: 2026-08-27
+phase1_clarification: close
 todo_ref: FILE-ATTENTE.md · analysis doc/15-serveur-mcp.md · analysis doc/16-reporting-sla.md · PR #80
 ---
 
@@ -14,7 +15,8 @@ todo_ref: FILE-ATTENTE.md · analysis doc/15-serveur-mcp.md · analysis doc/16-r
 
 ## Phase 1 : New Requirement
 
-Phase 1 **en clarification** (2026-08-27). Une décision à la fois.
+Phase 1 **clarification close** (2026-08-27). Toutes les D-* produit
+sont votées, reportées en Phase 3, ou nommées comme conséquence.
 
 Workspace : branche `cursor/serveur-mcp-e12d`, no-worktree (VM cloud,
 préfixe de branche imposé). Task tracing indisponible
@@ -100,15 +102,15 @@ Voir tableau ci-dessus. Non renégociées en Phase 1.
 | **D-SEARCH = A** | `search_dossiers` = `SearchDossiersQuery` tel quel : `status`, `dossierTypeCode`, `referencePrefix`, `page`/`size`. **Pas** de filtre dates (fenêtres = `query_sla_summary`). | Stakeholder 2026-08-27 |
 | **D-PAGE = A** | Bornes existantes `PageQuery` : défaut **20**, max **100** (search, list types, templates, workflow types). | Conséquence **D-SEARCH = A** |
 | **D-GET-SHAPE = A** | `get_dossier` : agrégat dossier **rédigé** + éléments + historique `DossierWorkflowLink` + relations. `id` **xor** `reference`. `API_SERVICE` ≠ TA → champs `sensitive` **masqués** (`DossierFieldRedactor`). L'adaptateur **n'appelle pas** `Dossier.fields()`. | Stakeholder 2026-08-27 |
+| **D-SPA = A** | **Zéro** changement SPA / contrat REST consommé par le SPA. Getting-started + README (URL, rôle, `Authorization: Bearer`). Playwright = **régression** de la suite actuelle (0 spec MCP). | Stakeholder 2026-08-27 |
+| **D-ACTOR = A** | Tools : `AccessContext.User(jwt.sub \| client_id, {API_SERVICE})`. Interdit `system(...)` et `Service` depuis MCP. | Conséquence **D-POLICY-AS = A** |
 
-### File de décisions Phase 1 (reste)
-
-Posées **une à la fois**.
+### Conséquences / report Phase 3 (plus de vote Phase 1)
 
 | Id | Statut |
 |---|---|
-| **D-SPA** | **posée** — écran SPA vs README seulement |
-| D-SDK / D-ACTOR | plutôt Phase 3 ; à poser ici s'ils changent le produit |
+| **D-SDK** | **Reporté Phase 3** — pin Spring AI 2.x WebMVC vs SDK MCP officiel si BOM trop lourd. Pas de `ChatClient`. Tools = infra → `port.in`. |
+| **A-TPL-META** | `list_document_templates` : `includeContent=false` (métadonnées seulement). |
 
 ## Goals & Objectives
 **What do we want to achieve?**
@@ -141,8 +143,8 @@ Posées **une à la fois**.
 - Snapshot `/api/reports/sla`, CSV, settings SLA, inbox remaining :
   **hors MCP** (**D-STATS = A** — summary seulement).
 - stdio (**D-TRANSPORT = A**).
-- Table journal MCP dédiée (**D-AUDIT = C** — colonnes auteur à la
-  place). SPA : pending D-SPA.
+- Table journal MCP dédiée (**D-AUDIT = C**).
+- Écran SPA MCP (**D-SPA = A**).
 - Codegen client, Chart.js, planification d'envoi.
 
 ## User Stories & Use Cases
@@ -230,32 +232,32 @@ Posées **une à la fois**.
 
 ### Assumptions
 
-- A-M2M-PATH : Spring AI (ou le SDK) permet de fixer l'endpoint à
-  `/api/m2m/mcp`. Sinon : matcher Security élargi en Phase 3, même JWT.
+- A-TPL-META : `list_document_templates` sans corps HTML.
 - A-NO-LLM : on n'active aucun modèle de chat Spring AI.
 - A-SYNC : serveur MCP **synchrone** (`type=SYNC`) ; tools courts
   (deploy BPMN = déjà le coût de l'upload admin).
+- A-M2M-PATH : si le starter refuse `/api/m2m/mcp`, Phase 3 élargit le
+  matcher — même JWT (**D-ENDPOINT = A**).
 
 ## Questions & Open Items
 **What do we still need to clarify?**
 
 | Item | Statut |
 |---|---|
-| Q1 Transport | **D-TRANSPORT = A**, **D-ENDPOINT = A** (`/api/m2m/mcp`) — 2026-08-27 |
-| Q2 Credential | **D-CREDENTIAL = A** (JWT M2M, pas de clé API) — 2026-08-27 |
-| Q3 Compatibilité schéma | **D-SCHEMA-COMPAT = B** (blocage MCP si dossiers invalides) — 2026-08-27 |
-| Q4 Versionnement Flowable + config | **D-DEPLOY-ORDER = A** — 2026-08-27 |
-| Q5 Journal MCP dédié | **D-AUDIT = C** (`createdBy`/`updatedBy` sur types, pas de table MCP) — 2026-08-27 |
-| Q6 Backlog écritures métier | Hors V1 (inchangé) |
-| Q7 Stats reporting | **D-STATS = A** — actée 2026-08-27 |
-| Q8 Pagination search | **D-SEARCH = A**, **D-PAGE = A** (20/100, pas de dates) — 2026-08-27 |
-| Pin version Spring AI vs SDK nu | **D-SDK** — plutôt Phase 3 |
-| `includeContent` templates | à poser si on ouvre le contenu HTML |
+| Q1 Transport | **D-TRANSPORT = A**, **D-ENDPOINT = A** |
+| Q2 Credential | **D-CREDENTIAL = A** |
+| Q3 Compatibilité schéma | **D-SCHEMA-COMPAT = B** |
+| Q4 Deploy + config | **D-DEPLOY-ORDER = A** |
+| Q5 Audit | **D-AUDIT = C** |
+| Q6 Backlog écritures métier | Hors V1 |
+| Q7 Stats | **D-STATS = A** |
+| Q8 Search | **D-SEARCH = A**, **D-PAGE = A** |
+| D-SDK | **Reporté Phase 3** |
+| `includeContent` templates | **A-TPL-META** (false) |
 
-Phase 1 **bloquée** tant que les D-* matérielles ne sont pas votées
-(une à une). Pas de passage Phase 2.
+Phase 1 **clarification close**. Prochain : Phase 2 review.
 
 ## Next phase
 
-Rester en Phase 1 jusqu'à épuisement des questions. Puis revue
-Phase 2, puis `dev-design` Phase 3.
+`dev-requirements` **Phase 2** (revue du doc vs template, pas de
+nouvelles D-* sauf trou trouvé). Puis `dev-design` Phase 3 (**D-SDK**).

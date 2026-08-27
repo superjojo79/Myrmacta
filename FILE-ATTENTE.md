@@ -15,7 +15,8 @@
 > 2026-08-26) : BC `reporting`, snapshot `/api/reports/sla`, summary
 > `/api/reports/sla/summary`, SPA `/rapports`, objectif SLA tenant,
 > inbox `slaRemainingHours`. **En cours :** `serveur-mcp` Phase 1
-> (branche `cursor/serveur-mcp-e12d`).
+> clarification close (branche `cursor/serveur-mcp-e12d`) — prochain :
+> Phase 2 review.
 >
 > `derive-documentaire` TODO §45 clos, [PR #75](https://github.com/superjojo79/FlowForge/pull/75) ;
 > `edition-bpmn` TODO §39 clos, [PR #71](https://github.com/superjojo79/FlowForge/pull/71) **mergée**.
@@ -74,11 +75,12 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 ## File d’attente
 
 `reporting-sla` est **livrée** ([PR #80](https://github.com/superjojo79/FlowForge/pull/80)).
-`serveur-mcp` n'est plus bloqué : Phase 1 démarrée (2026-08-27).
+`serveur-mcp` n'est plus bloqué : Phase 1 clarification **close**
+(2026-08-27). Prochain : Phase 2 review.
 
 | Priorité | Item | Notes |
 |---|---|---|
-| **En cours** | `serveur-mcp` (analyse : [15-serveur-mcp.md](analysis%20doc/15-serveur-mcp.md)) | Phase 1 draft — adaptateur `infrastructure.mcp`, JWT `API_SERVICE` sur `/api/m2m/mcp`. 2 tools d'écriture + 7 de lecture (dont `query_sla_summary`, prérequis SLA livré). |
+| **En cours** | `serveur-mcp` (analyse : [15-serveur-mcp.md](analysis%20doc/15-serveur-mcp.md)) | Phase 1 close. `/api/m2m/mcp`, JWT M2M, 2 écritures + 7 lectures (`query_sla_summary`). **D-SCHEMA-COMPAT = B**, **D-AUDIT = C**, **D-SPA = A**. |
 | **Hors périmètre de la feature sécurité** | TODO §46 (ArchUnit `application`) | Architecture, pas sécurité au sens de la revue — point séparé, non bloquant. |
 
 Détail et options : [TODO.md](TODO.md) §40–46,
@@ -219,5 +221,5 @@ Vérifié : `./mvnw verify` 1136 tests (0 échec), Jacoco OK ; frontend `npm run
 | 2026-08-26 | Analyse initiale `reporting-sla`, décision de séquencement | Prérequis du point stats de `serveur-mcp`. Périmètre proposé en deux lots (Lot 1 — comptages/durées à la volée sur `Dossier`/`DossierWorkflowLink`, sans nouvelle table de faits ; Lot 2 — seuils SLA par `DossierType` sur le patron déjà livré pour la rétention, décision n° 21) construit sans dupliquer l'observabilité technique déjà livrée (`observabilite`, PR #59). **Tranché à la demande de l'utilisateur : les deux lots sont requis** pour débloquer le MCP à coup sûr, pas de version dégradée avec le Lot 1 seul. 4 questions laissées pour la phase requirements formelle (seuil `AT_RISK`, RBAC exact, granularité `groupBy`, caractère obligatoire de `slaTargetHours`). [16-reporting-sla.md](analysis%20doc/16-reporting-sla.md), aucun code. |
 | 2026-08-26 | Analyses `serveur-mcp`/`reporting-sla` mergées, positionnement file d'attente | [PR #78](https://github.com/superjojo79/FlowForge/pull/78) mergée sur `main` (commit `3947ced`). `reporting-sla` positionnée en **Prochain** dans la file d'attente ; `serveur-mcp` marquée bloquée sur sa livraison complète (les deux lots). |
 | 2026-08-26 | `reporting-sla` livrée | [PR #80](https://github.com/superjojo79/FlowForge/pull/80) mergée sur `main` ; lifecycle phases 1–9 closes ; TODO n/a (feature issue de l'analyse, pas d'un point TODO numéroté). Prérequis stats MCP débloqué. |
-| 2026-08-27 | `serveur-mcp` Phase 1 (new requirement) | **D-GET-SHAPE = A** (agrégat rédigé, sensible masqué). Question suivante : **D-SPA**. |
+| 2026-08-27 | `serveur-mcp` Phase 1 clarification **close** | **D-SPA = A** (pas de SPA). **D-ACTOR = A** (conséquence POLICY-AS). **D-SDK** reporté Phase 3. Prochain : Phase 2 review. |
 

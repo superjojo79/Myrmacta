@@ -83,7 +83,7 @@ design. Cases `- [ ]` jusqu'à la Phase 8.
 ## End-to-End Tests
 **What user flows need validation?**
 
-Pas de parcours SPA nouveau.
+Pas de parcours SPA nouveau (**D-SPA = A**).
 
 - [ ] **E2E-REG-1** `cd frontend && npm run test:e2e` vert (suite actuelle).
 - [ ] **E2E-REG-2** `cd frontend && npm run test` vert.

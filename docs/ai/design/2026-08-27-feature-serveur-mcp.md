@@ -13,8 +13,8 @@ requirements_ref: docs/ai/requirements/2026-08-27-feature-serveur-mcp.md
 # System Design & Architecture — `serveur-mcp`
 
 Phase 1 **draft** (2026-08-27). Ce n'est **pas** une Phase 3 reviewed.
-Les D-* du premier jet sont des **hypothèses de travail** : Phase 1
-pose les questions une à une ; ne pas implémenter avant votes.
+Les D-* Phase 1 sont **votées** (voir requirements). **D-SDK** et le
+pin BOM se tranchent en Phase 3.
 
 Workspace : `cursor/serveur-mcp-e12d`, no-worktree. Task tracing
 indisponible.

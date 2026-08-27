@@ -306,8 +306,30 @@ premier coup grâce aux vérifications empiriques déjà faites en M4/M6
   `curl` d'un appel `initialize` avec JWT `Authorization: Bearer`.
   Aucun fichier `frontend/**` touché (confirmé par `git status`).
 
-Prochaine tâche : **T9.1** (`./mvnw verify`) puis **T9.2** (régression
-frontend).
+## M9 — Vérification globale (fait, 2026-08-27)
+
+- `./mvnw verify -Dmaven.compiler.release=21` : **succès**, Jacoco
+  BUNDLE (LINE ≥ 85 %, BRANCH ≥ 75 %) tenus sans dérogation malgré le
+  volume de code neuf (packages `infrastructure.mcp`,
+  `infrastructure.mcp.tool`, ~15 fichiers de test dédiés).
+- `cd frontend && npm run test` : **213/213** verts (Vitest).
+- `npx playwright test` : **55/55** verts. Nécessite
+  `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium` dans cet
+  environnement d'exécution sandboxé (le binaire `chrome-headless-shell`
+  attendu par la version de Playwright installée n'est pas celui
+  pré-installé côté conteneur) — particularité de l'environnement, pas
+  du code livré ; `playwright.config.ts` supporte déjà cette variable
+  nativement, aucun changement de configuration nécessaire.
+- Aucun fichier `frontend/**` modifié par cette feature (D-SPA) : 0
+  nouveau spec MCP, 0 mock `frontend/e2e/**` touché — confirmé par
+  `git status` sur toute la durée de la Phase 5.
+
+**Statut final Phase 5** : les 32 tâches des 9 milestones sont
+terminées, testées (TDD rouge → vert à chaque étape) et poussées sur
+`claude/pr-81-phase-5-bgd04q`. Le serveur MCP `/api/m2m/mcp` expose 9
+tools fonctionnels, authentifiés par le JWT M2M `API_SERVICE`
+existant, sans starter chat/model, sans nouvelle chaîne de sécurité,
+sans impact sur le SPA.
 
 ## Development Setup
 

@@ -2,13 +2,14 @@
 phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
-status: planned
+status: complete
 created: 2026-08-27
 updated: 2026-08-27
 feature: serveur-mcp
 phase1: 2026-08-27
 phase3: 2026-08-27
 phase4: 2026-08-27
+phase5: 2026-08-27
 design_ref: docs/ai/design/2026-08-27-feature-serveur-mcp.md
 ---
 
@@ -126,9 +127,13 @@ design. Cases `- [ ]` jusqu'à la Phase 8.
 
 Pas de parcours SPA nouveau (**D-SPA = A**).
 
-- [ ] **E2E-REG-1** `cd frontend && npm run test:e2e` vert (suite actuelle).
-- [ ] **E2E-REG-2** `cd frontend && npm run test` vert.
-- [ ] Mocks `frontend/e2e/**` **non** modifiés (contrat REST SPA inchangé).
+- [x] **E2E-REG-1** `npx playwright test` vert — **55/55** (suite
+  actuelle, aucun nouveau spec MCP).
+- [x] **E2E-REG-2** `cd frontend && npm run test` vert — **213/213**
+  (Vitest).
+- [x] Mocks `frontend/e2e/**` **non** modifiés (contrat REST SPA
+  inchangé) — confirmé, aucun fichier `frontend/**` touché par cette
+  feature.
 
 ## Test Data
 **What data do we use for testing?**

@@ -34,6 +34,7 @@ indisponible (`unknown command 'task'`). Lint feature OK ; branche
 - [x] **M6** Tools écriture (define_dossier_type, deploy_workflow) + dryRun ; 9 tools enregistrés et vérifiés en conditions réelles (MockMvc + transport MCP)
 - [x] **M7** IT MockMvc JWT M2M réelles / persist / SLA / search (7 tests d'intégration)
 - [x] **M8** ArchUnit (io.modelcontextprotocol dans domain interdit) + README/GETTING-STARTED §11
+- [x] **M9** `./mvnw verify` vert (Jacoco tenus) + régression FE 100 % verte (Vitest 213/213, Playwright 55/55)
 - [ ] **M2** Auteurs Liquibase 017 + `createdBy`/`updatedBy` (types + REST stamp)
 - [ ] **M3** Compatibilité schéma (`CheckDossierTypeSchemaCompatibilityUseCase`)
 - [ ] **M4** SDK Spring AI + endpoint `/api/m2m/mcp` + factory JWT (sans ChatClient)
@@ -310,15 +311,19 @@ Réutiliser `m2mJwt` de `ConnectorExecuteApiTest`.
 
 ### M9 — Vérification globale
 
-- [ ] **T9.1** `./mvnw verify -Dmaven.compiler.release=21` (Jacoco
-      BUNDLE tenus).
+- [x] **T9.1** `./mvnw verify -Dmaven.compiler.release=21` : **succès**,
+      Jacoco BUNDLE (LINE ≥ 85 %, BRANCH ≥ 75 %) tenus sans dérogation.
       Dépend : M1–M8
-- [ ] **T9.2** `cd frontend && npm run test` **et** `npm run test:e2e`
-      (régression ; 0 spec MCP ; 0 mock `frontend/e2e/**` modifié).
+- [x] **T9.2** `cd frontend && npm run test` **et** `npx playwright test`
+      (avec `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium`,
+      spécifique à cet environnement d'exécution sandboxé — sans
+      rapport avec le code livré) : Vitest **213/213** verts, Playwright
+      **55/55** verts. 0 spec MCP ajouté, 0 mock `frontend/e2e/**`
+      modifié (aucun fichier `frontend/**` touché par cette feature).
       Tests : E2E-REG-1, E2E-REG-2
       Dépend : T8.2
-- [ ] **T9.3** Docs planning/implementation à jour (Phase 6 à chaque
-      tâche Phase 5).
+- [x] **T9.3** Docs planning/implementation/testing tenues à jour à
+      chaque milestone (M1 à M9), pas seulement en fin de Phase 5.
 
 ## Dependencies
 
@@ -418,11 +423,15 @@ Aucun scénario testing orphelin.
 
 ## Progress
 
-Phase 4 **planned**. 9 milestones, 32 tâches. Phase 5 démarrée
-(2026-08-27) : **M1–M8 terminés** (T1.1–T1.5, T2.1–T2.3, T3.1–T3.2,
-T4.1–T4.3, T5.1–T5.5, T6.1–T6.3, T7.1–T7.7, T8.1–T8.2, TDD vert,
-`./mvnw test` complet vert, 9 tools MCP prouvés fonctionnels de bout en
-bout via MockMvc + JWT M2M réel + persistance + Flowable réel).
-Reste **M9** (vérification globale).
+Phase 4 **planned**. 9 milestones, 32 tâches — **toutes terminées**
+(2026-08-27). Phase 5 TDD intégralement exécutée : T1.1–T9.3, tous les
+milestones M1–M9 verts. `./mvnw verify` (backend + Jacoco BUNDLE) et
+la régression frontend complète (Vitest + Playwright) passent sans
+dérogation. 9 tools MCP (`define_dossier_type`, `deploy_workflow`,
+`get_dossier`, `get_dossier_type`, `list_dossier_types`,
+`list_workflow_types`, `list_document_templates`, `search_dossiers`,
+`query_sla_summary`) enregistrés et prouvés fonctionnels de bout en
+bout (JWT M2M réel, persistance réelle, Flowable réel).
 
-Prochain : **T9.1** (`./mvnw verify`) puis **T9.2** (régression FE).
+Prochaine étape : Phase 7 (dev-implementation « Check Implementation »)
+puis Phase 8/9 (dev-testing / dev-review) du cycle `dev-lifecycle`.

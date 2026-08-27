@@ -14,10 +14,10 @@ todo_ref: FILE-ATTENTE.md · analysis doc/15-serveur-mcp.md · analysis doc/16-r
 
 ## Phase 1 : New Requirement
 
-Phase 1 **draft** (2026-08-27). Agent cloud : pas d'`AskUserQuestion` ;
-les D-* ci-dessous sont des **recommandations de cadrage** (analyse
-[15-serveur-mcp.md](../../../analysis%20doc/15-serveur-mcp.md) + code
-vérifié) à valider en Phase 2.
+Phase 1 **en clarification** (2026-08-27). Contrat `dev-requirements` :
+une décision à la fois ; **aucune** D-* nouvelle n'est actée tant que
+le stakeholder n'a pas tranché. Les reco du premier jet (sans
+question) sont **des propositions**, pas des votes.
 
 Workspace : branche `cursor/serveur-mcp-e12d`, no-worktree (VM cloud,
 préfixe de branche imposé). Task tracing indisponible
@@ -78,7 +78,7 @@ parcours navigateur.
 | B | Sidecar MCP qui appelle l'API REST. | Double auth, duplication de DTOs, trop de surface HTTP. |
 | C | Serveur stdio lancé à côté de l'agent. | Incompatible avec « une instance = un tenant » (l'agent n'a pas le process Boot). |
 
-**D-APPROACH = A.**
+**D-APPROACH** : proposition A (alignée cadrage PR #78, pas re-votée ici).
 
 ## Stakeholder decisions
 
@@ -86,57 +86,56 @@ parcours navigateur.
 
 Voir tableau ci-dessus. Non renégociées en Phase 1.
 
-### Recommandations Phase 1 (à confirmer en Phase 2)
+### File de décisions Phase 1 (aucune actée)
 
-| Id | Décision | Pourquoi | Source |
-|---|---|---|---|
-| **D-STATS = A** | Tool lecture **`query_sla_summary`** dans **cette** V1, qui appelle `GetSlaSummaryUseCase` (`groupBy=dossierTypeCode\|status`, période `from`/`to`). Pas le snapshot maquette, pas de CSV. | Le séquencement `reporting-sla` → `serveur-mcp` n'avait d'autre objet que de débloquer le point stats. Le summary est le contrat BFF déjà prévu pour le MCP (design `reporting-sla`). | Analyse § dépendance + design reporting |
-| **D-TRANSPORT = A** | Streamable HTTP (WebMVC, pas WebFlux). **Pas** stdio en V1. | Le BFF cookie ne s'applique pas au M2M ; l'app est servlet. | Analyse Q1, reco HTTP |
-| **D-ENDPOINT = A** | Chemin **`/api/m2m/mcp`** (sous le `securityMatcher` M2M existant). | Réutilise JWT `API_SERVICE` + `M2mTenantValidationFilter` (`tenant_id` = `app.tenant.id`). Évite une 4ᵉ chaîne Security. | `SecurityConfig` Order 1 |
-| **D-CREDENTIAL = A** | JWT M2M existant (`issuer-uri` ou HMAC local `app.security.m2m.jwt-secret`). **Pas** de clé API applicative nouvelle. | Décision n° 14 déjà livrée ; une API key dupliquerait le secret HMAC. | Analyse Q2, `M2mSecurityProperties` |
-| **D-ACTOR = A** | Tools construisent `AccessContext.User(jwt.sub \| client_id, {API_SERVICE})`. **Interdit** `AccessContext.system(...)` et `AccessContext.Service` pour ces tools. | `DossierAccessPolicy` / `SlaReportAccess` rejettent `Service` ; `system` est réservé Flowable. | Analyse authz + code |
-| **D-POLICY-AS = A** | `API_SERVICE` = lecture **tenant-wide** (comme `WORKFLOW_ADMIN`) dans `DossierAccessPolicy` (VIEW) et `SlaReportAccess`. Écriture config : `Create`/`UpdateDossierTypeUseCase` acceptent `TENANT_ADMIN` **ou** `API_SERVICE` (nouvelle méthode de garde, **sans** élargir rétention / purge / ACL). REST `@PreAuthorize` **inchangé**. | Sinon `get_dossier` / `query_sla_summary` 403 (ACL vide, D-AUTHZ reporting = C refuse le service). | Écart code vs cadrage |
-| **D-SCHEMA-COMPAT = A** | `define_dossier_type` a le **même** comportement que POST/PATCH admin : pas de garde de compatibilité ascendante supplémentaire. | `UpdateDossierTypeUseCaseImpl` écrase déjà le schéma. Inventer un blocage MCP-only divergerait de l'UI. | Analyse Q3 + code |
-| **D-DEPLOY-ORDER = A** | `deploy_workflow` : upsert `WorkflowTypeConfig` (`SaveWorkflowTypeConfigUseCase`) **puis** `DeployBpmnProcessUseCase`. Création de config autorisée si la clé n'existe pas. Redéploiement = nouvelle version Flowable (instances en cours inchangées). `statusDefinitions` = singleton non versionné (comme le PATCH REST actuel). | Comble l'écart « config obligatoire avant deploy ». | Analyse Q4 + `DeployBpmnProcessUseCaseImpl` |
-| **D-AUDIT = B** | Pas de table journal MCP. `createdBy`/`updatedBy` = `sub` du JWT ; log ECS à l'adaptateur (`tool`, `actor`, succès/échec). | Suffisant pour un usage interne V1 ; une table dédiée est un BC à part. | Analyse Q5 |
-| **D-PREVIEW = A** | Paramètre optionnel `dryRun` (défaut `false`) sur les 2 tools d'écriture : validation + payload prévu, **sans** persister ni déployer. | Rayon d'action d'un agent IA (analyse risques). | Analyse risques |
-| **D-SEARCH = A** | `search_dossiers` reprend `SearchDossiersQuery` tel quel : `status`, `dossierTypeCode`, `referencePrefix`, `page`/`size`. **Pas** de filtre `createdAt`/`closedAt` nouveau (les dates restent sur `query_sla_summary`). | La recherche livrée n'a pas de plage de dates ; ne pas élargir `pagination-dossiers` dans cette feature. | Analyse Q8 + `SearchDossiersQuery` |
-| **D-PAGE = A** | Bornes `PageQuery` : défaut 20, max 100. | Contrat pagination déjà acté. | Analyse Q8 |
-| **D-SDK = A** | Starter **Spring AI 2.x** `spring-ai-starter-mcp-server-webmvc` (Streamable HTTP). Si le BOM tire un client LLM inutile / casse Jacoco, **repli** SDK MCP officiel câblé à la main (Phase 3 tranche). Tools = classes infra qui appellent `port.in` — **pas** de `@McpTool` dans `domain`. | Boot 4.1 / Java 25 aligné Spring AI 2 ; hexagone : SDK = infra. | Docs Spring AI 2.0 |
-| **D-SPA = A** | **Zéro** changement SPA / contrat REST consommé par le SPA. Playwright = régression uniquement. | Canal M2M distinct. | Conventions FE |
-| **D-GET-SHAPE = A** | `get_dossier` agrège `GetDossierUseCase` + `ListDossierElementsUseCase` + `GetDossierWorkflowHistoryUseCase` + `ListDossierRelationsUseCase`. Champs sensibles déjà rédigés par `DossierFieldRedactor`. L'adaptateur **ne lit pas** `Dossier.fields()` (allowlist ArchUnit). | Analyse point 3. | ArchUnit D-LOG-GUARD |
+Posées **une à la fois**. Reco du premier jet = hypothèse, pas un vote.
+
+| Id | Statut |
+|---|---|
+| **D-STATS** | **posée** — stats MCP maintenant que PR #80 est mergée |
+| D-POLICY-AS | en attente (RBAC `API_SERVICE` vs D-AUTHZ reporting C) |
+| D-WRITE-GUARD | en attente (TA only vs TA\|API_SERVICE pour les types) |
+| D-TRANSPORT / D-ENDPOINT | en attente (analyse Q1) |
+| D-CREDENTIAL | en attente (analyse Q2) |
+| D-PREVIEW | en attente (`dryRun`) |
+| D-DEPLOY-ORDER | en attente (analyse Q4 ; créer la config si absente ?) |
+| D-SCHEMA-COMPAT | en attente (analyse Q3) |
+| D-AUDIT | en attente (analyse Q5) |
+| D-SEARCH / D-PAGE | en attente (analyse Q8) |
+| D-GET-SHAPE | en attente (agrégat dossier) |
+| D-SPA | en attente (régression FE only vs écran MCP) |
+| D-SDK / D-ACTOR | plutôt Phase 3 ; à poser ici s'ils changent le produit |
 
 ## Goals & Objectives
 **What do we want to achieve?**
 
 ### Primary goals
 
-1. Serveur MCP interne sur `/api/m2m/mcp`, authentifié `API_SERVICE`.
-2. Tools d'écriture : `define_dossier_type`, `deploy_workflow` (`dryRun`
-   optionnel), via use cases existants (+ upsert config avant deploy).
-3. Tools de lecture : `get_dossier`, `get_dossier_type`,
+1. Serveur MCP interne, rôle `API_SERVICE` (chemin / transport :
+   pending D-TRANSPORT).
+2. Tools d'écriture cadrage : `define_dossier_type`, `deploy_workflow`
+   (`dryRun` et upsert config : pending D-PREVIEW / D-DEPLOY-ORDER).
+3. Tools de lecture cadrage : `get_dossier`, `get_dossier_type`,
    `list_dossier_types`, `list_workflow_types`, `search_dossiers`,
-   `list_document_templates`, `query_sla_summary`.
+   `list_document_templates`. **`query_sla_summary` : pending D-STATS.**
 4. Un serveur par instance tenant ; pas de `ThreadLocal` tenant.
 
 ### Secondary goals
 
-- Logs ECS des appels tools (acteur = JWT `sub`).
-- `dryRun` sur les écritures.
+- Logs ECS des appels tools (acteur JWT) — pending D-AUDIT.
+- `dryRun` — pending D-PREVIEW.
 - README / getting-started : comment pointer un client MCP interne.
 
 ### Non-goals (explicitly out of scope)
 
-- Consommation par un tenant ou un système tiers.
-- stdio.
+- Consommation par un tenant ou un système tiers (cadrage PR #78).
 - `create_dossier`, `add_dossier_element`, `start_workflow`,
   `generate_document` (backlog analyse).
 - ACL, purge, mise à jour directe d'un `DossierWorkflowLink`.
-- Snapshot `/api/reports/sla`, CSV, settings SLA, inbox
-  `slaRemainingHours` (déjà SPA ; MCP = summary seulement).
-- Nouvelle table d'audit MCP.
 - Édition visuelle BPMN via MCP.
-- Changement des `@PreAuthorize` REST / du SPA.
+- stdio / snapshot SLA / table d'audit MCP / SPA : **pending** les
+  D-* correspondantes (pas encore exclus définitivement par un vote
+  Phase 1, sauf cadrage déjà acté).
 - Codegen client, Chart.js, planification d'envoi.
 
 ## User Stories & Use Cases
@@ -206,7 +205,6 @@ Voir tableau ci-dessus. Non renégociées en Phase 1.
   XML parallèle, pas d'entités externes).
 - `WorkflowTypeConfig` : exactement un statut `initial` ; listes
   `allowedDossierStatuses` non vides (invariants existants).
-- Cloud agent : D-* = recommandations, Phase 2 les confirme.
 
 ### Assumptions
 
@@ -221,21 +219,21 @@ Voir tableau ci-dessus. Non renégociées en Phase 1.
 
 | Item | Statut |
 |---|---|
-| Q1 Transport | **D-TRANSPORT / D-ENDPOINT** — Phase 2 |
-| Q2 Credential | **D-CREDENTIAL** — Phase 2 |
-| Q3 Compatibilité schéma | **D-SCHEMA-COMPAT** — Phase 2 |
-| Q4 Versionnement Flowable + config | **D-DEPLOY-ORDER** — Phase 2 |
-| Q5 Journal MCP dédié | **D-AUDIT = B** — Phase 2 |
+| Q1 Transport | **D-TRANSPORT / D-ENDPOINT** — en attente |
+| Q2 Credential | **D-CREDENTIAL** — en attente |
+| Q3 Compatibilité schéma | **D-SCHEMA-COMPAT** — en attente |
+| Q4 Versionnement Flowable + config | **D-DEPLOY-ORDER** — en attente |
+| Q5 Journal MCP dédié | **D-AUDIT** — en attente |
 | Q6 Backlog écritures métier | Hors V1 (inchangé) |
-| Q7 Stats reporting | **D-STATS = A** (prérequis livré) — Phase 2 |
-| Q8 Pagination search | **D-SEARCH / D-PAGE** — Phase 2 |
-| Pin version Spring AI vs SDK nu | **D-SDK** — Phase 3 (preuve BOM) |
-| `includeContent` templates | défaut `false` ; pas d'ouverture V1 |
+| Q7 Stats reporting | **D-STATS posée** — pas encore actée |
+| Q8 Pagination search | **D-SEARCH / D-PAGE** — en attente |
+| Pin version Spring AI vs SDK nu | **D-SDK** — plutôt Phase 3 |
+| `includeContent` templates | à poser si on ouvre le contenu HTML |
 
-Aucun item bloquant pour rédiger le design de travail ; Phase 2 doit
-entériner les D-* avant implémentation.
+Phase 1 **bloquée** tant que les D-* matérielles ne sont pas votées
+(une à une). Pas de passage Phase 2.
 
 ## Next phase
 
-`dev-requirements` Phase 2 (review) puis `dev-design` Phase 3.
-Le planning (Phase 4) n'est **pas** commencé.
+Rester en Phase 1 jusqu'à épuisement des questions. Puis revue
+Phase 2, puis `dev-design` Phase 3.

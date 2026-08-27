@@ -88,6 +88,7 @@ Voir tableau ci-dessus. Non renégociées en Phase 1.
 | Id | Décision | Vote |
 |---|---|---|
 | **D-STATS = A** | Tool lecture **`query_sla_summary`** dans **cette** V1 → `GetSlaSummaryUseCase` (`groupBy=dossierTypeCode\|status`, `from`/`to`). Pas le snapshot maquette, pas le CSV, pas d'agrégat ad hoc. | Stakeholder 2026-08-27 |
+| **D-POLICY-AS = A** | Un `AccessContext.User` avec rôle `API_SERVICE` a une lecture **tenant-wide** (comme `WORKFLOW_ADMIN`) : `DossierAccessPolicy` VIEW + `SlaReportAccess` unrestricted. REST `@PreAuthorize` **inchangé** (`/api/reports/**` et listes SPA restent 403 pour ce rôle). Pas de `AccessContext.system` / `Service` depuis MCP. Champs `sensitive` : toujours masqués (redactor, pas TA) — **D-GET-SHAPE**. | Stakeholder 2026-08-27 |
 
 ### File de décisions Phase 1 (reste)
 
@@ -95,8 +96,7 @@ Posées **une à la fois**.
 
 | Id | Statut |
 |---|---|
-| **D-POLICY-AS** | **posée** — lecture `API_SERVICE` (dossiers + SLA) vs D-AUTHZ reporting C |
-| D-WRITE-GUARD | en attente (TA only vs TA\|API_SERVICE pour les types) |
+| **D-WRITE-GUARD** | **posée** — qui peut `define_dossier_type` |
 | D-TRANSPORT / D-ENDPOINT | en attente (analyse Q1) |
 | D-CREDENTIAL | en attente (analyse Q2) |
 | D-PREVIEW | en attente (`dryRun`) |
@@ -190,8 +190,9 @@ Posées **une à la fois**.
 4. JWT M2M : happy path + rejet mauvais tenant + rejet sans rôle.
 5. `get_dossier` respecte `DossierAccessPolicy` + redaction ; test
    mutant : un champ `sensitive` n'apparaît pas en clair.
-6. `query_sla_summary` : `groupBy` invalide rejeté ; cap 10k conservé.
-   Accès `API_SERVICE` : pending **D-POLICY-AS**.
+6. `query_sla_summary` : `API_SERVICE` non 403 (**D-POLICY-AS = A**) ;
+   `groupBy` invalide rejeté ; cap 10k conservé. REST `/api/reports/**`
+   reste sans `API_SERVICE` au `@PreAuthorize`.
 7. `./mvnw verify` vert (Jacoco BUNDLE tenus) ; frontend
    `npm run test` + `npm run test:e2e` **régression** (0 spec MCP,
    0 mock SPA cassé).

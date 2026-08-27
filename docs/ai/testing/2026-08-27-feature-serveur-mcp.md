@@ -60,8 +60,10 @@ design. Cases `- [ ]` jusqu'à la Phase 8.
 - [ ] **UT-DEF-4** `retentionDays` / `slaTargetHours` présents → erreur,
   pas de save (**D-TYPE-FIELDS**).
 - [ ] **UT-DEF-5** update conserve rétention/SLA existants.
-- [ ] **UT-DEF-6** update incompatible → pas de save ; compte > 0
-  (**D-SCHEMA-COMPAT**).
+- [x] **UT-DEF-6** (partie domaine, M3)
+  `CheckDossierTypeSchemaCompatibilityUseCaseImplTest` : count 0 vs > 0,
+  échantillon plafonné à 5. Partie MCP tool (pas de save si
+  incompatible) reportée à T6.1.
 - [ ] **UT-DEP-1** parse OK → upsert config → `deploy` (ordre).
 - [ ] **UT-DEP-2** XML invalide **avant** save config (pas d'upsert).
 - [ ] **UT-DEP-3** `dryRun=true` → parse OK, pas de deploy ni save.

@@ -28,6 +28,7 @@ indisponible (`unknown command 'task'`). Lint feature OK ; branche
 
 - [x] **M1** Gardes domaine `API_SERVICE` (policy, search, list types, SLA, write type)
 - [x] **M2** Auteurs Liquibase 017 + `createdBy`/`updatedBy` (types + REST stamp)
+- [x] **M3** Compatibilité schéma (`CheckDossierTypeSchemaCompatibilityUseCase`)
 - [ ] **M2** Auteurs Liquibase 017 + `createdBy`/`updatedBy` (types + REST stamp)
 - [ ] **M3** Compatibilité schéma (`CheckDossierTypeSchemaCompatibilityUseCase`)
 - [ ] **M4** SDK Spring AI + endpoint `/api/m2m/mcp` + factory JWT (sans ChatClient)
@@ -105,14 +106,15 @@ puis, en fin de milestone, `./mvnw test -Dtest=…` (ou classe) vert.
 
 ### M3 — Compatibilité schéma
 
-- [ ] **T3.1** `DossierRepository.findByDossierTypeCode(tenantId, code)`
-      + adaptateur JPA.
-      Tests : UT/IT repo (H2)
+- [x] **T3.1** `DossierRepository.findByDossierTypeCode(tenantId, code)`
+      + adaptateur JPA (`findByTenantIdAndDossierTypeCode`).
+      Tests : `DossierPersistenceTest.findByDossierTypeCode_isScopedToTenantAndType`
       Dépend : —
-- [ ] **T3.2** `CheckDossierTypeSchemaCompatibilityUseCase` :
+- [x] **T3.2** `CheckDossierTypeSchemaCompatibilityUseCase` :
       compte les dossiers qui échouent `DossierFieldValidator` ;
-      allowlist ArchUnit `Dossier.fields()` **+=** ce use case seulement.
-      Tests : UT-DEF-6 (domaine) — count 0 vs > 0
+      allowlist ArchUnit `Dossier.fields()` **+=** ce use case seulement
+      (`CheckDossierTypeSchemaCompatibilityUseCaseImpl`).
+      Tests : UT-DEF-6 (domaine) — count 0 vs > 0, plus cap échantillon à 5
       Dépend : T3.1
 
 ### M4 — SDK + transport
@@ -330,7 +332,8 @@ Aucun scénario testing orphelin.
 ## Progress
 
 Phase 4 **planned**. 9 milestones, 32 tâches. Phase 5 démarrée
-(2026-08-27) : **M1 et M2 terminés** (T1.1–T1.5, T2.1–T2.3, TDD vert,
-`./mvnw test` complet vert). Reste M3–M9 not started.
+(2026-08-27) : **M1, M2 et M3 terminés** (T1.1–T1.5, T2.1–T2.3,
+T3.1–T3.2, TDD vert, `./mvnw test` complet vert). Reste M4–M9 not
+started.
 
-Prochain : **T3.1** (`DossierRepository.findByDossierTypeCode`).
+Prochain : **T4.1** (BOM Spring AI 2.0.0 + starter MCP WebMVC).

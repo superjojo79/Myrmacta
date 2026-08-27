@@ -175,6 +175,44 @@ class DossierPersistenceTest {
         assertThat(earlierIndex).isLessThan(laterIndex);
     }
 
+    @Test
+    void findByDossierTypeCode_isScopedToTenantAndType() {
+        String type = "SCHEMA-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        String otherTenant = "tenant-other-" + UUID.randomUUID();
+        Dossier matching = typedDossier("tenant_dev", type);
+        Dossier otherType = typedDossier("tenant_dev", "OTHER-" + type);
+        Dossier otherTenantDossier = typedDossier(otherTenant, type);
+        dossierRepository.save(matching);
+        dossierRepository.save(otherType);
+        dossierRepository.save(otherTenantDossier);
+
+        List<Dossier> found = dossierRepository.findByDossierTypeCode("tenant_dev", type);
+
+        assertThat(found).extracting(Dossier::id).containsExactly(matching.id());
+    }
+
+    private static Dossier typedDossier(String tenantId, String dossierTypeCode) {
+        UUID id = UUID.randomUUID();
+        Instant now = Instant.parse("2026-07-31T12:00:00Z");
+        return new Dossier(
+                id,
+                tenantId,
+                "DOS-SCHEMA-" + id.toString().replace("-", "").substring(0, 12),
+                dossierTypeCode,
+                "Schema scan dossier",
+                DossierStatus.OUVERT,
+                Map.of(),
+                null,
+                0,
+                "creator",
+                now,
+                "creator",
+                now,
+                null,
+                null,
+                null);
+    }
+
     private static Dossier closedDossier(String tenantId, Instant closedAt) {
         UUID id = UUID.randomUUID();
         Instant now = Instant.parse("2026-07-31T12:00:00Z");

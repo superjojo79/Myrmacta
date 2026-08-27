@@ -92,7 +92,34 @@ l'appelant (contrôleur REST aujourd'hui, tool MCP `define_workflow`/
 conforme à l'esprit de la note design ("ajouter updatedBy... appelé
 depuis le contrôleur REST et le tool MCP").
 
-Prochaine tâche : **T3.1** (`DossierRepository.findByDossierTypeCode`).
+## M3 — Compatibilité schéma (fait, 2026-08-27)
+
+Fichiers touchés :
+
+- `domain/dossier/port/out/DossierRepository.java` — nouvelle méthode
+  `findByDossierTypeCode(tenantId, dossierTypeCode)`.
+- `infrastructure/persistence/dossier/SpringDataDossierRepository.java`
+  — dérivée `findByTenantIdAndDossierTypeCode`.
+- `infrastructure/persistence/dossier/JpaDossierRepositoryAdapter.java`
+  — implémentation.
+- `domain/dossier/port/in/CheckDossierTypeSchemaCompatibilityUseCase.java`
+  (nouveau) — `Query(tenantId, dossierTypeCode, newFieldDefinitions,
+  allowUnknownFields)` / `Result(incompatibleCount, sampleReferences)`.
+- `domain/dossier/usecase/CheckDossierTypeSchemaCompatibilityUseCaseImpl.java`
+  (nouveau) — charge tous les dossiers du type (pas de cap V1, conforme
+  design), valide chacun avec `DossierFieldValidator.validate(newFields,
+  dossier.fields(), allowUnknown)`, compte les échecs, échantillonne les
+  5 premières références incompatibles.
+- `ArchitectureRulesTest.DOSSIER_FIELDS_READ_ALLOWLIST` — ajout de
+  `CheckDossierTypeSchemaCompatibilityUseCaseImpl` (seul nouveau membre,
+  conforme design ; fait maintenant plutôt qu'en T8.1 car le code ne
+  compile/passe pas la suite ArchUnit sinon).
+
+Aucune déviation par rapport au design. `DefineDossierTypeTool` (T6.1)
+appellera ce use case avant l'update pour bloquer un changement de
+schéma incompatible.
+
+Prochaine tâche : **T4.1** (BOM Spring AI 2.0.0 + starter MCP WebMVC).
 
 ## Development Setup
 

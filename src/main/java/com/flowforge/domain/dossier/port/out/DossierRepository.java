@@ -22,5 +22,8 @@ public interface DossierRepository {
      */
     List<Dossier> findClosedForRetention(String tenantId, int limit);
 
+    /** All dossiers of {@code dossierTypeCode} for {@code tenantId} (schema compatibility scan, no cap V1). */
+    List<Dossier> findByDossierTypeCode(String tenantId, String dossierTypeCode);
+
     void deleteById(UUID id);
 }

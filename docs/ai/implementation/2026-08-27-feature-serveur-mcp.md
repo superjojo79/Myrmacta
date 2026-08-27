@@ -156,7 +156,58 @@ Fichiers touchés :
 scanner activé par `annotation-scanner.enabled=true`. Utilisés à partir
 de M5/M6 pour les 9 tools.
 
-Prochaine tâche : **T5.1** (`GetDossierTool`).
+## M5 — Tools lecture (fait, 2026-08-27)
+
+Package `com.flowforge.infrastructure.mcp.tool` créé avec 7 tools
+(`@Component` + méthode `@McpTool`, découverte par
+`annotation-scanner.enabled=true`) :
+
+- `GetDossierTool` (`get_dossier`) — xor `id`/`reference` ; acteur via
+  `McpAccessContextFactory.currentActor()` (lit
+  `SecurityContextHolder`, JWT déjà authentifié par la chaîne M2M avant
+  que le tool ne s'exécute — WebMVC `type: SYNC`, même thread) ;
+  agrège `GetDossierUseCase` (redaction déjà faite en interne via
+  `DossierFieldRedactor`, car l'acteur MCP n'a jamais le rôle
+  `TENANT_ADMIN`), pagine `ListDossierElements` /
+  `GetDossierWorkflowHistory` (size 100 jusqu'à épuisement), appelle
+  `ListDossierRelations` une fois. Nouveau DTO `DossierMcpView` (dans
+  `infrastructure.mcp.tool`, allowlist ArchUnit `Dossier.fields()`) —
+  le tool lui-même ne touche jamais les champs bruts.
+- `SearchDossiersTool` (`search_dossiers`), `QuerySlaSummaryTool`
+  (`query_sla_summary`) — relais direct vers `SearchDossiersUseCase` /
+  `GetSlaSummaryUseCase`, validation déjà portée par les compact
+  constructors domaine (`PageQuery`/`SearchDossiersQuery` rejettent
+  size > 100).
+- `ListDocumentTemplatesTool` (`list_document_templates`) —
+  `includeContent=true` rejeté **dans le tool** avant tout appel
+  use case (le use case honorerait `true` sans discuter, donc le
+  garde-fou MCP doit être une couche au-dessus).
+- `GetDossierTypeTool`, `ListDossierTypesTool`, `ListWorkflowTypesTool`
+  — relais directs, pas de logique propre.
+
+**Décision non prévue par le design (acteur MCP)** : le design ne
+précisait pas comment un `@McpTool` récupère l'identité de l'appelant.
+Choix : `McpAccessContextFactory.currentActor()` lit
+`SecurityContextHolder.getContext().getAuthentication()`, attend un
+`JwtAuthenticationToken` (posé par la chaîne Security M2M Order 1 avant
+que la requête n'atteigne le transport MCP), sinon lève
+`IllegalStateException`. Validé empiriquement par
+`McpEndpointApiTest` (T4.3) : l'authentification est bien active au
+moment où le transport traite la requête `initialize`. Sera revalidé
+de bout en bout avec un vrai appel de tool en M7 (IT-MCP-2..9).
+
+**Pas de `McpToolExceptionMapper` séparé** (composant envisagé au
+design) : les exceptions domaine (`IllegalArgumentException`,
+`AccessDeniedException`, `DossierNotFoundException`,
+`SlaCohortTooLargeException`, …) sont laissées remonter telles quelles
+— le SDK Spring AI MCP convertit une exception non interceptée
+provenant d'un tool en résultat `isError=true` avec le message de
+l'exception (comportement standard du SDK MCP côté serveur). À
+confirmer explicitement par un test d'erreur en M7 ; si le
+comportement observé diverge, un mapper dédié sera ajouté à ce
+moment-là plutôt que anticipé sans preuve.
+
+Prochaine tâche : **T6.1** (`DefineDossierTypeTool`).
 
 ## Development Setup
 

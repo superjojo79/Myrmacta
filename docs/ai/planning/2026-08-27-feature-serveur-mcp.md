@@ -30,6 +30,7 @@ indisponible (`unknown command 'task'`). Lint feature OK ; branche
 - [x] **M2** Auteurs Liquibase 017 + `createdBy`/`updatedBy` (types + REST stamp)
 - [x] **M3** Compatibilité schéma (`CheckDossierTypeSchemaCompatibilityUseCase`)
 - [x] **M4** SDK Spring AI + endpoint `/api/m2m/mcp` + factory JWT (sans ChatClient)
+- [x] **M5** Tools lecture (7 : get_dossier, search_dossiers, query_sla_summary, list_document_templates, get_dossier_type, list_dossier_types, list_workflow_types)
 - [ ] **M2** Auteurs Liquibase 017 + `createdBy`/`updatedBy` (types + REST stamp)
 - [ ] **M3** Compatibilité schéma (`CheckDossierTypeSchemaCompatibilityUseCase`)
 - [ ] **M4** SDK Spring AI + endpoint `/api/m2m/mcp` + factory JWT (sans ChatClient)
@@ -143,24 +144,35 @@ puis, en fin de milestone, `./mvnw test -Dtest=…` (ou classe) vert.
 
 ### M5 — Tools lecture
 
-- [ ] **T5.1** `GetDossierTool` : xor id/reference ; agrège 4 UC ;
-      pagination interne size 100 ; pas d'appel `Dossier.fields()`.
-      Tests : UT-GET-1, UT-GET-2, UT-GET-3
+- [x] **T5.1** `GetDossierTool` : xor id/reference ; agrège 4 UC
+      (`GetDossier`, `ListDossierElements`, `GetDossierWorkflowHistory`,
+      `ListDossierRelations`) ; pagination interne size 100 jusqu'à
+      épuisement ; sérialisation via `DossierMcpView` (nouveau DTO infra,
+      allowlist ArchUnit `fields()`) — le tool lui-même n'appelle jamais
+      `Dossier.fields()`.
+      Tests : UT-GET-1, UT-GET-2, UT-GET-3 (`GetDossierToolTest`)
       Dépend : T4.2, T1.1
-- [ ] **T5.2** `SearchDossiersTool` : relais `SearchDossiersQuery` ;
-      size 101 → erreur.
-      Tests : UT-SEARCH-1
+- [x] **T5.2** `SearchDossiersTool` : relais `SearchDossiersQuery` ;
+      size 101 → erreur (validation déjà portée par le compact
+      constructor `SearchDossiersQuery`/`PageQuery`, pas de code
+      dupliqué dans le tool).
+      Tests : UT-SEARCH-1 (`SearchDossiersToolTest`)
       Dépend : T4.2, T1.5
-- [ ] **T5.3** `QuerySlaSummaryTool` → `GetSlaSummaryUseCase.Query`.
-      Tests : UT-SLA-1
+- [x] **T5.3** `QuerySlaSummaryTool` → `GetSlaSummaryUseCase.Query`.
+      Tests : UT-SLA-1 (`QuerySlaSummaryToolTest`)
       Dépend : T4.2, T1.2
-- [ ] **T5.4** `ListDocumentTemplatesTool` : `includeContent` false ;
-      `true` rejeté.
-      Tests : UT-TPL-1
+- [x] **T5.4** `ListDocumentTemplatesTool` : `includeContent` false par
+      défaut ; `true` rejeté **avant** d'appeler le use case (le use
+      case honorerait `true`, donc le garde-fou doit être dans le tool).
+      Tests : UT-TPL-1 (`ListDocumentTemplatesToolTest`)
       Dépend : T4.2
-- [ ] **T5.5** `GetDossierTypeTool`, `ListDossierTypesTool`,
+- [x] **T5.5** `GetDossierTypeTool`, `ListDossierTypesTool`,
       `ListWorkflowTypesTool` (pages **A-LIST-PARITY**).
-      Tests : UT list/get (relais PageQuery défaut 20 / max 100)
+      Tests : `GetDossierTypeTool`/`ListDossierTypesTool` couverts par
+      compilation + ArchUnit + réutilisation directe des use cases déjà
+      testés (T1.1/T1.5) ; pas de logique propre à tester en plus du
+      relais PageQuery (défaut 20 / max 100, déjà couvert par
+      `PageQuery`).
       Dépend : T4.2, T1.5
 
 ### M6 — Tools écriture
@@ -335,8 +347,8 @@ Aucun scénario testing orphelin.
 ## Progress
 
 Phase 4 **planned**. 9 milestones, 32 tâches. Phase 5 démarrée
-(2026-08-27) : **M1–M4 terminés** (T1.1–T1.5, T2.1–T2.3, T3.1–T3.2,
-T4.1–T4.3, TDD vert, `./mvnw test` complet vert). Reste M5–M9 not
-started.
+(2026-08-27) : **M1–M5 terminés** (T1.1–T1.5, T2.1–T2.3, T3.1–T3.2,
+T4.1–T4.3, T5.1–T5.5, TDD vert, `./mvnw test` complet vert). Reste
+M6–M9 not started.
 
-Prochain : **T5.1** (`GetDossierTool`).
+Prochain : **T6.1** (`DefineDossierTypeTool`).

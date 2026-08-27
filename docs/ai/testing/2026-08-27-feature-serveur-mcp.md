@@ -69,12 +69,16 @@ design. Cases `- [ ]` jusqu'à la Phase 8.
 - [ ] **UT-DEP-3** `dryRun=true` → parse OK, pas de deploy ni save.
 - [ ] **UT-DEP-4** `processDefinitionKey` ≠ clé extraite → erreur.
 - [ ] **UT-DEP-5** `allowedDossierStatuses` vide → rejet invariant.
-- [ ] **UT-GET-1** `id` xor `reference` ; les deux ou aucun → erreur.
-- [ ] **UT-GET-2** agrège elements + history + relations.
-- [ ] **UT-GET-3** n'appelle pas `Dossier.fields()`.
-- [ ] **UT-SEARCH-1** relais `SearchDossiersQuery` (size 101 rejeté).
-- [ ] **UT-SLA-1** relais `GetSlaSummaryUseCase.Query`.
-- [ ] **UT-TPL-1** `includeContent` forcé / défaut false ; `true` rejeté.
+- [x] **UT-GET-1** `id` xor `reference` ; les deux ou aucun → erreur.
+- [x] **UT-GET-2** agrège elements + history + relations, pagine jusqu'à
+  épuisement (test dédié 150 éléments / page 100 → 2 pages).
+- [x] **UT-GET-3** n'appelle pas `Dossier.fields()` — garanti
+  structurellement par l'allowlist ArchUnit (`DossierMcpView` seule
+  autorisée, `GetDossierTool` absent de la liste).
+- [x] **UT-SEARCH-1** relais `SearchDossiersQuery` (size 101 rejeté).
+- [x] **UT-SLA-1** relais `GetSlaSummaryUseCase.Query`.
+- [x] **UT-TPL-1** `includeContent` forcé / défaut false ; `true` rejeté
+  **avant** tout appel use case.
 - [x] **UT-ACTOR-1** JWT `sub` → `AccessContext.User` rôle `API_SERVICE`
   (+ fallback `client_id` puis `"api-service"`, jamais `system`/`Service`).
 - [x] **UT-AUDIT-1** (partie type, M2) create/update réel stamp

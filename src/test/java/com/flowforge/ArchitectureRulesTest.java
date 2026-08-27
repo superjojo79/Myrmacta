@@ -73,7 +73,8 @@ class ArchitectureRulesTest {
             "com.flowforge.domain.dossier.usecase.CheckDossierTypeSchemaCompatibilityUseCaseImpl",
             "com.flowforge.infrastructure.persistence.dossier.DossierJpaEntity",
             "com.flowforge.infrastructure.web.dossier.DossierResponse",
-            "com.flowforge.infrastructure.web.dossier.DossierExportController");
+            "com.flowforge.infrastructure.web.dossier.DossierExportController",
+            "com.flowforge.infrastructure.mcp.tool.DossierMcpView");
 
     /** Same rationale as {@link #DOSSIER_FIELDS_READ_ALLOWLIST}, for {@code FieldDefinition.defaultValue()}. */
     private static final Set<String> FIELD_DEFINITION_DEFAULT_VALUE_READ_ALLOWLIST = Set.of(

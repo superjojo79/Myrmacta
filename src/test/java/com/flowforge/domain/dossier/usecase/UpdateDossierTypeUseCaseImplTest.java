@@ -110,6 +110,17 @@ class UpdateDossierTypeUseCaseImplTest {
     }
 
     @Test
+    void update_stampsUpdatedByWithActorAndKeepsCreatedBy() {
+        DossierType existing = type("Old label", true, List.of());
+        when(repository.findByCode(TENANT, TYPE_CODE)).thenReturn(Optional.of(existing));
+
+        DossierType updated = useCase.update(command(), admin());
+
+        assertThat(updated.createdBy()).isEqualTo(existing.createdBy());
+        assertThat(updated.updatedBy()).isEqualTo("admin");
+    }
+
+    @Test
     void update_apiServiceUpdatesType() {
         DossierType existing = type("Old label", true, List.of());
         when(repository.findByCode(TENANT, TYPE_CODE)).thenReturn(Optional.of(existing));

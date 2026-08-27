@@ -55,6 +55,12 @@ public class DossierTypeJpaEntity {
     @Column(name = "sla_target_hours")
     private Integer slaTargetHours;
 
+    @Column(name = "created_by", nullable = false, length = 128)
+    private String createdBy;
+
+    @Column(name = "updated_by", nullable = false, length = 128)
+    private String updatedBy;
+
     protected DossierTypeJpaEntity() {
         // JPA
     }
@@ -70,7 +76,9 @@ public class DossierTypeJpaEntity {
             List<FieldDefinition> fieldDefinitions,
             Integer retentionDays,
             boolean retentionNever,
-            Integer slaTargetHours) {
+            Integer slaTargetHours,
+            String createdBy,
+            String updatedBy) {
         this.id = id;
         this.tenantId = tenantId;
         this.code = code;
@@ -82,6 +90,8 @@ public class DossierTypeJpaEntity {
         this.retentionDays = retentionDays;
         this.retentionNever = retentionNever;
         this.slaTargetHours = slaTargetHours;
+        this.createdBy = createdBy;
+        this.updatedBy = updatedBy;
     }
 
     static DossierTypeJpaEntity fromDomain(DossierType type) {
@@ -96,7 +106,9 @@ public class DossierTypeJpaEntity {
                 type.fieldDefinitions(),
                 type.retentionDays(),
                 type.retentionNever(),
-                type.slaTargetHours());
+                type.slaTargetHours(),
+                type.createdBy(),
+                type.updatedBy());
     }
 
     DossierType toDomain() {
@@ -111,6 +123,8 @@ public class DossierTypeJpaEntity {
                 fieldDefinitions,
                 retentionDays,
                 retentionNever,
-                slaTargetHours);
+                slaTargetHours,
+                createdBy,
+                updatedBy);
     }
 }

@@ -35,7 +35,9 @@ public final class CreateDossierTypeUseCaseImpl implements CreateDossierTypeUseC
                 command.fieldDefinitions(),
                 command.retentionDays(),
                 command.retentionNever(),
-                command.slaTargetHours());
+                command.slaTargetHours(),
+                actor.userId(),
+                actor.userId());
         repository.save(type);
         return type;
     }

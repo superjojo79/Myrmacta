@@ -55,7 +55,7 @@ record WorkflowTypeConfigRequest(
         DossierStatus onStartDossierStatus,
         List<String> observerUserIds) {
 
-    WorkflowTypeConfig toDomain(String tenantId, UUID id, String keyOverride) {
+    WorkflowTypeConfig toDomain(String tenantId, UUID id, String keyOverride, String createdBy, String updatedBy) {
         String key = keyOverride == null ? workflowKey : keyOverride;
         return new WorkflowTypeConfig(
                 id,
@@ -67,7 +67,9 @@ record WorkflowTypeConfigRequest(
                         : statusDefinitions.stream().map(WorkflowStatusDefinitionRequest::toDomain).toList(),
                 allowedDossierStatuses == null ? List.of() : allowedDossierStatuses,
                 onStartDossierStatus,
-                observerUserIds);
+                observerUserIds,
+                createdBy,
+                updatedBy);
     }
 
     private static String required(String value, String field) {

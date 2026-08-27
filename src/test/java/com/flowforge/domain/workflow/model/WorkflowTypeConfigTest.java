@@ -128,6 +128,48 @@ class WorkflowTypeConfigTest {
         assertThat(config.observerUserIds()).containsExactly("user-a", "user-b");
     }
 
+    @Test
+    void eightArgConstructor_defaultsAuthorToSystem() {
+        WorkflowTypeConfig config = validConfig();
+
+        assertThat(config.createdBy()).isEqualTo("system");
+        assertThat(config.updatedBy()).isEqualTo("system");
+    }
+
+    @Test
+    void fullConstructor_stampsGivenAuthor() {
+        WorkflowTypeConfig config = new WorkflowTypeConfig(
+                UUID.randomUUID(),
+                "tenant_a",
+                "smokeProcess",
+                "Smoke",
+                List.of(new WorkflowStatusDefinition("INIT", "Init", true, StatusOutcome.NONE)),
+                List.of(DossierStatus.OUVERT),
+                null,
+                List.of(),
+                "alice",
+                "bob");
+
+        assertThat(config.createdBy()).isEqualTo("alice");
+        assertThat(config.updatedBy()).isEqualTo("bob");
+    }
+
+    @Test
+    void fullConstructor_rejectsNullAuthor() {
+        assertThatThrownBy(() -> new WorkflowTypeConfig(
+                        UUID.randomUUID(),
+                        "tenant_a",
+                        "smokeProcess",
+                        "Smoke",
+                        List.of(new WorkflowStatusDefinition("INIT", "Init", true, StatusOutcome.NONE)),
+                        List.of(DossierStatus.OUVERT),
+                        null,
+                        List.of(),
+                        null,
+                        "bob"))
+                .isInstanceOf(NullPointerException.class);
+    }
+
     private static WorkflowTypeConfig validConfig() {
         return new WorkflowTypeConfig(
                 UUID.randomUUID(),

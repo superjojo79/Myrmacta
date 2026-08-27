@@ -25,7 +25,8 @@ class RetentionPolicyResolverTest {
     @Test
     void effectiveDays_typeOverrideWinsOverTenantDefault() {
         DossierType type = new DossierType(
-                UUID.randomUUID(), TENANT, "LEGAL", "Legal", "wf-legal", true, false, List.of(), 365, false, null);
+                UUID.randomUUID(), TENANT, "LEGAL", "Legal", "wf-legal", true, false, List.of(), 365, false, null,
+                "system", "system");
         TenantRetentionSettings settings = settings(30);
 
         assertThat(resolver.effectiveDays(type, settings)).hasValue(365);
@@ -34,7 +35,8 @@ class RetentionPolicyResolverTest {
     @Test
     void effectiveDays_retentionNeverReturnsEmpty() {
         DossierType type = new DossierType(
-                UUID.randomUUID(), TENANT, "LOG", "Log", "wf-log", true, false, List.of(), null, true, null);
+                UUID.randomUUID(), TENANT, "LOG", "Log", "wf-log", true, false, List.of(), null, true, null,
+                "system", "system");
         TenantRetentionSettings settings = settings(30);
 
         assertThat(resolver.effectiveDays(type, settings)).isEmpty();

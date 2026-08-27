@@ -35,7 +35,8 @@ public final class UpdateDossierTypeUseCaseImpl implements UpdateDossierTypeUseC
                 command.fieldDefinitions(),
                 command.retentionDays(),
                 command.retentionNever(),
-                command.slaTargetHours());
+                command.slaTargetHours(),
+                actor.userId());
         repository.save(updated);
         return updated;
     }

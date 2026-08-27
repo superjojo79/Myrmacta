@@ -27,6 +27,7 @@ indisponible (`unknown command 'task'`). Lint feature OK ; branche
 **What are the major checkpoints?**
 
 - [x] **M1** Gardes domaine `API_SERVICE` (policy, search, list types, SLA, write type)
+- [x] **M2** Auteurs Liquibase 017 + `createdBy`/`updatedBy` (types + REST stamp)
 - [ ] **M2** Auteurs Liquibase 017 + `createdBy`/`updatedBy` (types + REST stamp)
 - [ ] **M3** Compatibilité schéma (`CheckDossierTypeSchemaCompatibilityUseCase`)
 - [ ] **M4** SDK Spring AI + endpoint `/api/m2m/mcp` + factory JWT (sans ChatClient)
@@ -74,19 +75,32 @@ puis, en fin de milestone, `./mvnw test -Dtest=…` (ou classe) vert.
 
 ### M2 — Audit auteurs
 
-- [ ] **T2.1** Liquibase `017-mcp-audit-authors.yaml` : `created_by` /
+- [x] **T2.1** Liquibase `017-mcp-audit-authors.yaml` : `created_by` /
       `updated_by` varchar(128) NOT NULL + backfill `'system'` sur
       `dossier_type` et `workflow_type_config`. Include master.
-      Tests : IT-LIQ (schema test existant / pattern 016)
+      Tests : IT-LIQ (`RetentionPersistenceIT` démarre le contexte avec
+      le changelog 017 appliqué)
       Dépend : —
-- [ ] **T2.2** `DossierType` + JPA + Create/Update : stamp `createdBy` /
-      `updatedBy`. Fixtures tests existants : `"system"` ou acteur.
-      REST `DossierTypeController` passe `OidcUser.subject`.
-      Tests : UT Create/Update étendus + UT-AUDIT-1 (partie type)
+- [x] **T2.2** `DossierType` + JPA + Create/Update : stamp `createdBy` /
+      `updatedBy`. Fixtures tests existants : `"system"` (via
+      `DossierType.inherit`, inchangé) ou acteur explicite pour les
+      appels directs au constructeur complet.
+      REST `DossierTypeController` passe déjà `OidcUser.subject` via
+      `AccessContextFactory.user(...).userId()` — aucun changement
+      contrôleur nécessaire.
+      Tests : UT Create/Update étendus (stamp createdBy/updatedBy,
+      update conserve createdBy) + UT-AUDIT-1 (partie type)
       Dépend : T2.1, T1.3
-- [ ] **T2.3** `WorkflowTypeConfig` + JPA + `SaveWorkflowTypeConfigUseCase`
-      create/update avec auteur. REST contrôleur stamp OIDC.
-      Tests : UT save config + IT workflow-config existants
+- [x] **T2.3** `WorkflowTypeConfig` + JPA + REST contrôleur stamp OIDC.
+      Constructeur canonique à 10 champs (+ createdBy/updatedBy) ;
+      constructeur de compatibilité à 8 champs conservé (défaut
+      `"system"`/`"system"`) pour ne pas casser les ~20 sites de test
+      existants. `SaveWorkflowTypeConfigUseCase` inchangée (create/update
+      reçoivent un `WorkflowTypeConfig` déjà stampé par l'appelant —
+      contrôleur REST aujourd'hui, tool MCP en M6).
+      Tests : `WorkflowTypeConfigTest` (constructeur complet, défaut
+      système, rejet null) + `WorkflowPersistenceTest` (round-trip
+      persistance déjà couvert par égalité totale du record)
       Dépend : T2.1
 
 ### M3 — Compatibilité schéma
@@ -316,7 +330,7 @@ Aucun scénario testing orphelin.
 ## Progress
 
 Phase 4 **planned**. 9 milestones, 32 tâches. Phase 5 démarrée
-(2026-08-27) : **M1 terminé** (T1.1–T1.5, TDD vert). Reste M2–M9 not
-started.
+(2026-08-27) : **M1 et M2 terminés** (T1.1–T1.5, T2.1–T2.3, TDD vert,
+`./mvnw test` complet vert). Reste M3–M9 not started.
 
-Prochain : **T2.1** (Liquibase `017-mcp-audit-authors.yaml`).
+Prochain : **T3.1** (`DossierRepository.findByDossierTypeCode`).

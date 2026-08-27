@@ -74,8 +74,10 @@ design. Cases `- [ ]` jusqu'à la Phase 8.
 - [ ] **UT-SLA-1** relais `GetSlaSummaryUseCase.Query`.
 - [ ] **UT-TPL-1** `includeContent` forcé / défaut false ; `true` rejeté.
 - [ ] **UT-ACTOR-1** JWT `sub` → `AccessContext.User` rôle `API_SERVICE`.
-- [ ] **UT-AUDIT-1** create/update réel stamp `createdBy`/`updatedBy` ;
-  `dryRun` ne stamp pas.
+- [x] **UT-AUDIT-1** (partie type, M2) create/update réel stamp
+  `createdBy`/`updatedBy` (`CreateDossierTypeUseCaseImplTest`,
+  `UpdateDossierTypeUseCaseImplTest`). Partie MCP (`dryRun` ne stamp
+  pas) reportée à T6.1.
 - [ ] **UT-CTX-1** contexte Spring : **aucun** bean `ChatClient`.
 
 ## Integration Tests
@@ -98,8 +100,9 @@ design. Cases `- [ ]` jusqu'à la Phase 8.
   `org.springframework.ai` / `io.modelcontextprotocol` ; tool MCP hors
   allowlist `Dossier.fields()` ; use case compatibilité **dans**
   l'allowlist.
-- [ ] **IT-LIQ** changelog 017 : colonnes `created_by`/`updated_by`
-  sur les deux tables.
+- [x] **IT-LIQ** changelog 017 : colonnes `created_by`/`updated_by`
+  sur les deux tables (vérifié via `RetentionPersistenceIT`, contexte
+  Spring Boot complet avec Liquibase).
 
 ## End-to-End Tests
 **What user flows need validation?**

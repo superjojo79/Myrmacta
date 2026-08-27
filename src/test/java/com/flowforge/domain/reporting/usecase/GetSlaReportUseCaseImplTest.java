@@ -162,7 +162,8 @@ class GetSlaReportUseCaseImplTest {
 
     private static DossierType type(String code, Integer hours) {
         return new DossierType(
-                UUID.randomUUID(), TENANT, code, code, "wf-" + code, true, false, List.of(), null, false, hours);
+                UUID.randomUUID(), TENANT, code, code, "wf-" + code, true, false, List.of(), null, false, hours,
+                "system", "system");
     }
 
     private static DossierSlaRow row(String type) {

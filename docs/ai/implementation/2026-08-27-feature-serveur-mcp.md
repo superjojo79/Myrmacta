@@ -42,8 +42,57 @@ Fichiers touchés :
   `CreateDossierTypeUseCaseImplTest`, `UpdateDossierTypeUseCaseImplTest`,
   `SearchDossiersUseCaseImplTest`, `ListDossierTypesUseCaseImplTest`.
 
-Aucune déviation par rapport au design. Prochaine tâche : **T2.1**
-(Liquibase `017-mcp-audit-authors.yaml`).
+Aucune déviation par rapport au design.
+
+## M2 — Audit auteurs (fait, 2026-08-27)
+
+Fichiers touchés :
+
+- `db/changelog/changes/017-mcp-audit-authors.yaml` (+ include master) :
+  `created_by`/`updated_by` varchar(128) NOT NULL sur `dossier_type` et
+  `workflow_type_config`, backfill `'system'`, pattern `addColumn` +
+  `sql` UPDATE + `addNotNullConstraint` (comme 015).
+- `domain/dossier/model/DossierType.java` — record étendu à 13
+  composants (`createdBy`, `updatedBy`). `inherit(...)` (8 args,
+  ~20 sites de test) inchangé en signature, stampe `"system"` en
+  interne. `withUpdate(...)` gagne un paramètre `updatedBy`, préserve
+  `createdBy` existant.
+- `domain/dossier/usecase/CreateDossierTypeUseCaseImpl.java` /
+  `UpdateDossierTypeUseCaseImpl.java` — stampent `actor.userId()`.
+  Aucun changement REST : `AccessContextFactory.user(...)` extrayait
+  déjà `OidcUser.getSubject()` comme `userId`.
+- `infrastructure/persistence/dossier/DossierTypeJpaEntity.java` —
+  colonnes + mapping `createdBy`/`updatedBy`.
+- 8 fichiers de test avec appel direct au constructeur 11-arg de
+  `DossierType` (hors `inherit`) mis à jour avec `"system", "system"`
+  littéraux (pas d'impact métier, ces tests ne portent pas sur l'audit).
+- `domain/workflow/model/WorkflowTypeConfig.java` — record étendu à 10
+  composants. **Constructeur canonique** requiert `createdBy`/
+  `updatedBy` non-null ; un **second constructeur** (les 8 anciens
+  paramètres) délègue avec `"system"/"system"` — décision prise pour
+  éviter de toucher ~20 fichiers de test qui construisent ce record
+  directement (pas de factory `inherit` préexistante ici, contrairement
+  à `DossierType`).
+- `infrastructure/persistence/workflow/WorkflowTypeConfigJpaEntity.java`
+  — colonnes + mapping.
+- `infrastructure/web/workflow/WorkflowApiDtos.java` —
+  `WorkflowTypeConfigRequest.toDomain(...)` gagne `createdBy`/
+  `updatedBy` en paramètres explicites.
+- `infrastructure/web/workflow/WorkflowTypeConfigController.java` —
+  `create` : `accessContextFactory.user(authentication).userId()` comme
+  `createdBy`/`updatedBy` (remplace `requireOidcPrincipal`, sémantique
+  équivalente + extraction du subject). `update` : préserve
+  `existing.createdBy()`, stampe `updatedBy` avec l'acteur courant.
+
+**Déviation mineure vs design** : `SaveWorkflowTypeConfigUseCase`
+(`create`/`update`) n'a **pas** gagné de paramètre acteur — le
+`WorkflowTypeConfig` passé en argument est déjà entièrement stampé par
+l'appelant (contrôleur REST aujourd'hui, tool MCP `define_workflow`/
+`deploy_workflow` en M6). Plus simple, testable au même niveau, et
+conforme à l'esprit de la note design ("ajouter updatedBy... appelé
+depuis le contrôleur REST et le tool MCP").
+
+Prochaine tâche : **T3.1** (`DossierRepository.findByDossierTypeCode`).
 
 ## Development Setup
 

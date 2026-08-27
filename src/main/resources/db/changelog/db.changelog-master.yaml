@@ -31,3 +31,5 @@ databaseChangeLog:
       file: db/changelog/changes/015-purge-outbox-updated-at.yaml
   - include:
       file: db/changelog/changes/016-reporting-sla.yaml
+  - include:
+      file: db/changelog/changes/017-mcp-audit-authors.yaml

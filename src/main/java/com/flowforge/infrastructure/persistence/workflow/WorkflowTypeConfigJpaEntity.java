@@ -52,6 +52,12 @@ class WorkflowTypeConfigJpaEntity {
     @Column(name = "observer_user_ids", nullable = false, columnDefinition = "json")
     private List<String> observerUserIds = List.of();
 
+    @Column(name = "created_by", nullable = false, length = 128)
+    private String createdBy;
+
+    @Column(name = "updated_by", nullable = false, length = 128)
+    private String updatedBy;
+
     protected WorkflowTypeConfigJpaEntity() {
         // JPA
     }
@@ -65,6 +71,8 @@ class WorkflowTypeConfigJpaEntity {
         this.allowedDossierStatuses = config.allowedDossierStatuses();
         this.onStartDossierStatus = config.onStartDossierStatus();
         this.observerUserIds = config.observerUserIds();
+        this.createdBy = config.createdBy();
+        this.updatedBy = config.updatedBy();
     }
 
     static WorkflowTypeConfigJpaEntity fromDomain(WorkflowTypeConfig config) {
@@ -80,6 +88,8 @@ class WorkflowTypeConfigJpaEntity {
                 statusDefinitions,
                 allowedDossierStatuses,
                 onStartDossierStatus,
-                observerUserIds == null ? List.of() : observerUserIds);
+                observerUserIds == null ? List.of() : observerUserIds,
+                createdBy,
+                updatedBy);
     }
 }

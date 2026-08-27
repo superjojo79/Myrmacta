@@ -93,6 +93,7 @@ Voir tableau ci-dessus. Non renégociées en Phase 1.
 | **D-TRANSPORT = A** | Streamable HTTP WebMVC seulement. **Pas** de stdio en V1. | Stakeholder 2026-08-27 |
 | **D-ENDPOINT = A** | Chemin **`/api/m2m/mcp`** sur le port HTTP de l'instance (matcher M2M existant). Si le starter MCP refuse ce path, Phase 3 élargit le matcher — **même JWT**, pas de 4ᵉ chaîne par défaut. | Stakeholder 2026-08-27 |
 | **D-CREDENTIAL = A** | JWT M2M existant seulement (`Authorization: Bearer`). Prod = `issuer-uri` OIDC ; local/test = HMAC `app.security.m2m.jwt-secret`. **Pas** de clé API MCP. Même client que `/api/m2m/connectors/**`. | Stakeholder 2026-08-27 |
+| **D-PREVIEW = A** | Paramètre optionnel **`dryRun`** (défaut **`false`**) sur `define_dossier_type` et `deploy_workflow`. `true` = valider + renvoyer le payload prévu, **sans** `save` ni `deploy`. | Stakeholder 2026-08-27 |
 
 ### File de décisions Phase 1 (reste)
 
@@ -100,8 +101,7 @@ Posées **une à la fois**.
 
 | Id | Statut |
 |---|---|
-| **D-PREVIEW** | **posée** — `dryRun` sur les tools d'écriture |
-| D-DEPLOY-ORDER | en attente (analyse Q4 ; créer la config si absente ?) |
+| **D-DEPLOY-ORDER** | **posée** — upsert config si absente vs 404 admin (analyse Q4) |
 | D-SCHEMA-COMPAT | en attente (analyse Q3) |
 | D-AUDIT | en attente (analyse Q5) |
 | D-SEARCH / D-PAGE | en attente (analyse Q8) |
@@ -117,8 +117,8 @@ Posées **une à la fois**.
 1. Serveur MCP interne : Streamable HTTP **`/api/m2m/mcp`** avec JWT
    M2M `API_SERVICE` (**D-TRANSPORT/ENDPOINT/CREDENTIAL = A**).
 2. Tools d'écriture cadrage : `define_dossier_type` (**D-WRITE-GUARD = A**),
-   `deploy_workflow` (`dryRun` / upsert config : pending D-PREVIEW /
-   D-DEPLOY-ORDER).
+   `deploy_workflow` avec **`dryRun` défaut false** (**D-PREVIEW = A**)
+   (upsert config : pending **D-DEPLOY-ORDER**).
 3. Tools de lecture cadrage : `get_dossier`, `get_dossier_type`,
    `list_dossier_types`, `list_workflow_types`, `search_dossiers`,
    `list_document_templates`, **`query_sla_summary` (D-STATS = A)**.
@@ -127,7 +127,7 @@ Posées **une à la fois**.
 ### Secondary goals
 
 - Logs ECS des appels tools (acteur JWT) — pending D-AUDIT.
-- `dryRun` — pending D-PREVIEW.
+- `dryRun` défaut `false` sur les 2 tools d'écriture (**D-PREVIEW = A**).
 - README / getting-started : comment pointer un client MCP interne.
 
 ### Non-goals (explicitly out of scope)
@@ -170,8 +170,8 @@ Posées **une à la fois**.
 - `define_dossier_type` sur un `code` inconnu → create ; connu → update.
 - `deploy_workflow` : XML mal formé / clé extraite ≠ clé attendue →
   même rejet que l'upload admin (`BpmnParserPort`).
-- `deploy_workflow` clé inconnue → **crée** la config puis déploie
-  (**D-DEPLOY-ORDER**), contrairement à l'écran upload qui 404.
+- `deploy_workflow` clé inconnue : pending **D-DEPLOY-ORDER** (créer vs
+  404 comme l'upload admin).
 - `get_dossier` id inconnu → erreur métier (équivalent 404), pas un
   dump stack.
 - `query_sla_summary` cohorte > 10 000 → même
@@ -185,8 +185,8 @@ Posées **une à la fois**.
 
 1. `tools/list` MCP annonce exactement les tools V1 ci-dessus
    (2 écriture + 7 lecture).
-2. Tools d'écriture : tests d'application réelle ; `dryRun` pending
-   **D-PREVIEW**.
+2. Chaque tool d'écriture : test `dryRun=true` (aucun `save`/`deploy`)
+   **et** test d'application réelle (**D-PREVIEW = A**).
 3. `define_dossier_type` : `API_SERVICE` OK, `WORKFLOW_ADMIN` seul
    refusé (**D-WRITE-GUARD = A**) ; purge/ACL/rétention toujours TA.
    `deploy_workflow` passe par les use cases domaine (ArchUnit : pas

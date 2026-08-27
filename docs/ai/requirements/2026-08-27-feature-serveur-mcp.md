@@ -95,6 +95,7 @@ Voir tableau ci-dessus. Non renégociées en Phase 1.
 | **D-CREDENTIAL = A** | JWT M2M existant seulement (`Authorization: Bearer`). Prod = `issuer-uri` OIDC ; local/test = HMAC `app.security.m2m.jwt-secret`. **Pas** de clé API MCP. Même client que `/api/m2m/connectors/**`. | Stakeholder 2026-08-27 |
 | **D-PREVIEW = A** | Paramètre optionnel **`dryRun`** (défaut **`false`**) sur `define_dossier_type` et `deploy_workflow`. `true` = valider + renvoyer le payload prévu, **sans** `save` ni `deploy`. | Stakeholder 2026-08-27 |
 | **D-DEPLOY-ORDER = A** | `deploy_workflow` : valider/parser le XML **puis** upsert `WorkflowTypeConfig` (création si la clé n'existe pas) **puis** `DeployBpmnProcessUseCase`. Redéploiement = nouvelle version Flowable (instances en cours inchangées). `statusDefinitions` = singleton non versionné (comme le PATCH REST). L'UI admin upload reste en 404 si config absente. | Stakeholder 2026-08-27 |
+| **D-SCHEMA-COMPAT = B** | `define_dossier_type` en **update** : **bloquer** si au moins un dossier existant du type échouerait `DossierFieldValidator` avec le nouveau schéma (compte dans l'erreur). Create (code nouveau) : pas de check. `dryRun=true` signale la même incompatibilité **sans** écrire. PATCH REST admin **inchangé** (pas de garde). | Stakeholder 2026-08-27 |
 
 ### File de décisions Phase 1 (reste)
 
@@ -102,8 +103,7 @@ Posées **une à la fois**.
 
 | Id | Statut |
 |---|---|
-| **D-SCHEMA-COMPAT** | **posée** — update d'un type déjà utilisé (analyse Q3) |
-| D-AUDIT | en attente (analyse Q5) |
+| **D-AUDIT** | **posée** — journal dédié vs createdBy + logs (analyse Q5) |
 | D-SEARCH / D-PAGE | en attente (analyse Q8) |
 | D-GET-SHAPE | en attente (agrégat dossier ; champs `sensitive`) |
 | D-SPA | en attente (régression FE only vs écran MCP) |
@@ -167,7 +167,10 @@ Posées **une à la fois**.
 
 - JWT sans `API_SERVICE` / `tenant_id` ≠ instance → 401/403 (filtre M2M
   existant).
-- `define_dossier_type` sur un `code` inconnu → create ; connu → update.
+- `define_dossier_type` sur un `code` inconnu → create ; connu → update
+  **sauf** incompatibilité (**D-SCHEMA-COMPAT = B**) : au moins un
+  dossier du type échouerait la validation → erreur + compte, pas de
+  save. `dryRun=true` : même diagnostic sans write. PATCH REST inchangé.
 - `deploy_workflow` : XML mal formé / clé extraite ≠ clé attendue →
   même rejet que l'upload admin (`BpmnParserPort`).
 - `deploy_workflow` clé inconnue → **crée** la config puis déploie
@@ -188,7 +191,9 @@ Posées **une à la fois**.
 2. Chaque tool d'écriture : test `dryRun=true` (aucun `save`/`deploy`)
    **et** test d'application réelle (**D-PREVIEW = A**).
 3. `define_dossier_type` : `API_SERVICE` OK, `WORKFLOW_ADMIN` seul
-   refusé (**D-WRITE-GUARD = A**) ; purge/ACL/rétention toujours TA.
+   refusé (**D-WRITE-GUARD = A**) ; update incompatible **bloqué**
+   (**D-SCHEMA-COMPAT = B**, REST PATCH non bloqué) ; purge/ACL/rétention
+   toujours TA.
    `deploy_workflow` : XML d'abord, puis upsert config si absente, puis
    deploy (**D-DEPLOY-ORDER = A**). ArchUnit : pas de Spring AI / MCP
    dans `domain`.
@@ -231,7 +236,7 @@ Posées **une à la fois**.
 |---|---|
 | Q1 Transport | **D-TRANSPORT = A**, **D-ENDPOINT = A** (`/api/m2m/mcp`) — 2026-08-27 |
 | Q2 Credential | **D-CREDENTIAL = A** (JWT M2M, pas de clé API) — 2026-08-27 |
-| Q3 Compatibilité schéma | **D-SCHEMA-COMPAT** — en attente |
+| Q3 Compatibilité schéma | **D-SCHEMA-COMPAT = B** (blocage MCP si dossiers invalides) — 2026-08-27 |
 | Q4 Versionnement Flowable + config | **D-DEPLOY-ORDER = A** — 2026-08-27 |
 | Q5 Journal MCP dédié | **D-AUDIT** — en attente |
 | Q6 Backlog écritures métier | Hors V1 (inchangé) |

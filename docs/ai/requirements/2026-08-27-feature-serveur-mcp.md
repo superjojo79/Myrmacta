@@ -26,12 +26,12 @@ pas ici : **D-AUDIT** y figure encore en B (voté **C**),
 **D-SCHEMA-COMPAT** y figure encore en A (voté **B**), ordre deploy
 y est « save puis deploy » (voté parse → upsert → deploy).
 
-Trou produit trouvé — **ne pas clore** la Phase 2 tant qu'il n'est
-pas voté :
+Trou **D-TYPE-FIELDS = A** clos (2026-08-27). Trou suivant — **ne
+pas clore** la Phase 2 tant qu'il n'est pas voté :
 
 | Id | Trou |
 |---|---|
-| **D-TYPE-FIELDS** | Contradiction **D-WRITE-GUARD = A** (« rétention, settings SLA restent TA ») vs `CreateDossierTypeCommand` / `UpdateDossierTypeCommand` qui portent `retentionDays`, `retentionNever`, `slaTargetHours`. L'analyse §1 liste seulement le schéma. |
+| **D-WF-FIELDS** | Analyse §2 : `deploy_workflow` = XML + `processDefinitionKey` + `statusDefinitions`. `WorkflowTypeConfig` exige aussi `label`, `allowedDossierStatuses` (non vide), `onStartDossierStatus?`, `observerUserIds`. Un create MCP est impossible sans trancher ces champs. |
 
 Workspace : `cursor/serveur-mcp-e12d`, no-worktree. Task tracing
 indisponible (`unknown command 'task'`).
@@ -128,6 +128,12 @@ Voir tableau ci-dessus. Non renégociées en Phase 1.
 | **D-SPA = A** | **Zéro** changement SPA / contrat REST consommé par le SPA. Getting-started + README (URL, rôle, `Authorization: Bearer`). Playwright = **régression** de la suite actuelle (0 spec MCP). | Stakeholder 2026-08-27 |
 | **D-ACTOR = A** | Tools : `AccessContext.User(jwt.sub \| client_id, {API_SERVICE})`. Interdit `system(...)` et `Service` depuis MCP. | Conséquence **D-POLICY-AS = A** |
 
+### Actées en Phase 2
+
+| Id | Décision | Vote |
+|---|---|---|
+| **D-TYPE-FIELDS = A** | `define_dossier_type` écrit **seulement le schéma** : `code`, `label`, `workflowKey`, `active`, `allowUnknownFields`, `fieldDefinitions` (+ `dryRun`). **Pas** `retentionDays` / `retentionNever` / `slaTargetHours`. Create : défauts `DossierType.inherit` (`retentionDays=null`, `retentionNever=false`, `slaTargetHours=null`). Update : ces trois champs **conservés**. S'ils sont présents dans l'appel → **erreur** (pas d'ignore silencieux). Purge, ACL, PUT `TenantSlaSettings` hors MCP. REST PATCH types **inchangé** (TA peut toujours poser rétention / cible SLA). | Stakeholder 2026-08-27 |
+
 ### Conséquences / report Phase 3 (plus de vote Phase 1)
 
 | Id | Statut |
@@ -142,9 +148,10 @@ Voir tableau ci-dessus. Non renégociées en Phase 1.
 
 1. Serveur MCP interne : Streamable HTTP **`/api/m2m/mcp`** avec JWT
    M2M `API_SERVICE` (**D-TRANSPORT/ENDPOINT/CREDENTIAL = A**).
-2. Tools d'écriture cadrage : `define_dossier_type` (**D-WRITE-GUARD = A**),
-   `deploy_workflow` avec **`dryRun` défaut false** (**D-PREVIEW = A**)
-   et **upsert config si absente** (**D-DEPLOY-ORDER = A**).
+2. Tools d'écriture cadrage : `define_dossier_type` (**D-WRITE-GUARD = A**,
+   schéma seul **D-TYPE-FIELDS = A**), `deploy_workflow` avec
+   **`dryRun` défaut false** (**D-PREVIEW = A**) et **upsert config
+   si absente** (**D-DEPLOY-ORDER = A**).
 3. Tools de lecture cadrage : `get_dossier`, `get_dossier_type`,
    `list_dossier_types`, `list_workflow_types`, `search_dossiers`,
    `list_document_templates`, **`query_sla_summary` (D-STATS = A)**.
@@ -162,6 +169,9 @@ Voir tableau ci-dessus. Non renégociées en Phase 1.
 - `create_dossier`, `add_dossier_element`, `start_workflow`,
   `generate_document` (backlog analyse).
 - ACL, purge, mise à jour directe d'un `DossierWorkflowLink`.
+- Écriture MCP de `retentionDays` / `retentionNever` /
+  `slaTargetHours` (**D-TYPE-FIELDS = A**) ; settings SLA tenant
+  (PUT `TenantSlaSettings`) hors MCP.
 - Édition visuelle BPMN via MCP.
 - Snapshot `/api/reports/sla`, CSV, settings SLA, inbox remaining :
   **hors MCP** (**D-STATS = A** — summary seulement).
@@ -175,7 +185,8 @@ Voir tableau ci-dessus. Non renégociées en Phase 1.
 
 - En tant qu'**agent interne** (`API_SERVICE`), je veux
   `list_dossier_types` puis `define_dossier_type` pour créer ou
-  mettre à jour un schéma (`code` = clé naturelle).
+  mettre à jour un **schéma** (`code` = clé naturelle) sans toucher
+  rétention ni cible SLA (**D-TYPE-FIELDS = A**).
 - En tant qu'agent, je veux `list_workflow_types` puis
   `deploy_workflow` (XML + `statusDefinitions`) pour publier une
   version Flowable et la config métier en un appel.
@@ -198,6 +209,10 @@ Voir tableau ci-dessus. Non renégociées en Phase 1.
   **sauf** incompatibilité (**D-SCHEMA-COMPAT = B**) : au moins un
   dossier du type échouerait la validation → erreur + compte, pas de
   save. `dryRun=true` : même diagnostic sans write. PATCH REST inchangé.
+  Présence de `retentionDays` / `retentionNever` / `slaTargetHours`
+  dans l'appel → erreur (**D-TYPE-FIELDS = A**), y compris en
+  `dryRun`. Create n'écrit pas de cible SLA (null jusqu'à un PATCH
+  REST TA).
 - `deploy_workflow` : XML mal formé / clé extraite ≠ clé attendue →
   même rejet que l'upload admin (`BpmnParserPort`).
 - `deploy_workflow` clé inconnue → **crée** la config puis déploie
@@ -219,7 +234,9 @@ Voir tableau ci-dessus. Non renégociées en Phase 1.
 2. Chaque tool d'écriture : test `dryRun=true` (aucun `save`/`deploy`)
    **et** test d'application réelle (**D-PREVIEW = A**).
 3. `define_dossier_type` : `API_SERVICE` OK, `WORKFLOW_ADMIN` seul
-   refusé (**D-WRITE-GUARD = A**) ; update incompatible **bloqué**
+   refusé (**D-WRITE-GUARD = A**) ; schéma seul (**D-TYPE-FIELDS = A**)
+   — create sans rétention/SLA, update les conserve, champs interdits
+   → erreur ; update incompatible **bloqué**
    (**D-SCHEMA-COMPAT = B**, REST PATCH non bloqué) ; purge/ACL/rétention
    toujours TA.
    `deploy_workflow` : XML d'abord, puis upsert config si absente, puis
@@ -261,6 +278,8 @@ Voir tableau ci-dessus. Non renégociées en Phase 1.
   (deploy BPMN = déjà le coût de l'upload admin).
 - A-M2M-PATH : si le starter refuse `/api/m2m/mcp`, Phase 3 élargit le
   matcher — même JWT (**D-ENDPOINT = A**).
+- A-TYPE-INHERIT : create MCP = `DossierType.inherit` pour rétention /
+  SLA (**D-TYPE-FIELDS = A**).
 
 ## Questions & Open Items
 **What do we still need to clarify?**
@@ -277,12 +296,13 @@ Voir tableau ci-dessus. Non renégociées en Phase 1.
 | Q8 Search | **D-SEARCH = A**, **D-PAGE = A** |
 | D-SDK | **Reporté Phase 3** |
 | `includeContent` templates | **A-TPL-META** (false) |
-| **D-TYPE-FIELDS** | **Ouvert Phase 2** — schéma seul vs rétention / `slaTargetHours` |
+| **D-TYPE-FIELDS** | **A** — schéma seul |
+| **D-WF-FIELDS** | **Ouvert Phase 2** — payload `deploy_workflow` hors XML |
 
-Phase 2 **non close** : attendre le vote **D-TYPE-FIELDS**.
+Phase 2 **non close** : attendre le vote **D-WF-FIELDS**.
 
 ## Next phase
 
-Terminer Phase 2 après **D-TYPE-FIELDS** (et tout autre trou
+Terminer Phase 2 après **D-WF-FIELDS** (et tout autre trou
 matériel trouvé ensuite). Puis `dev-design` Phase 3 (**D-SDK** +
 réécriture des écarts draft).

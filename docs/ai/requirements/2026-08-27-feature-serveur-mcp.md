@@ -97,6 +97,8 @@ Voir tableau ci-dessus. Non renégociées en Phase 1.
 | **D-DEPLOY-ORDER = A** | `deploy_workflow` : valider/parser le XML **puis** upsert `WorkflowTypeConfig` (création si la clé n'existe pas) **puis** `DeployBpmnProcessUseCase`. Redéploiement = nouvelle version Flowable (instances en cours inchangées). `statusDefinitions` = singleton non versionné (comme le PATCH REST). L'UI admin upload reste en 404 si config absente. | Stakeholder 2026-08-27 |
 | **D-SCHEMA-COMPAT = B** | `define_dossier_type` en **update** : **bloquer** si au moins un dossier existant du type échouerait `DossierFieldValidator` avec le nouveau schéma (compte dans l'erreur). Create (code nouveau) : pas de check. `dryRun=true` signale la même incompatibilité **sans** écrire. PATCH REST admin **inchangé** (pas de garde). | Stakeholder 2026-08-27 |
 | **D-AUDIT = C** | Colonnes **`createdBy` / `updatedBy`** sur `DossierType` et `WorkflowTypeConfig` (JWT `sub` côté MCP ; principal OIDC côté REST admin — mêmes colonnes, tous les writers). **Pas** de table journal MCP. Lectures non auditées en base. `dryRun` ne stamp pas. Migration Liquibase. | Stakeholder 2026-08-27 |
+| **D-SEARCH = A** | `search_dossiers` = `SearchDossiersQuery` tel quel : `status`, `dossierTypeCode`, `referencePrefix`, `page`/`size`. **Pas** de filtre dates (fenêtres = `query_sla_summary`). | Stakeholder 2026-08-27 |
+| **D-PAGE = A** | Bornes existantes `PageQuery` : défaut **20**, max **100** (search, list types, templates, workflow types). | Conséquence **D-SEARCH = A** |
 
 ### File de décisions Phase 1 (reste)
 
@@ -104,8 +106,7 @@ Posées **une à la fois**.
 
 | Id | Statut |
 |---|---|
-| **D-SEARCH** | **posée** — filtres de `search_dossiers` (analyse Q8) |
-| D-GET-SHAPE | en attente (agrégat dossier ; champs `sensitive`) |
+| **D-GET-SHAPE** | **posée** — agrégat `get_dossier` et champs `sensitive` |
 | D-SPA | en attente (régression FE only vs écran MCP) |
 | D-SDK / D-ACTOR | plutôt Phase 3 ; à poser ici s'ils changent le produit |
 
@@ -180,7 +181,8 @@ Posées **une à la fois**.
   dump stack.
 - `query_sla_summary` cohorte > 10 000 → même
   `SlaCohortTooLargeException` / code `SLA_COHORT_TOO_LARGE`.
-- `search_dossiers` size > 100 → erreur de validation (PageQuery).
+- `search_dossiers` size > 100 → erreur (`PageQuery`, **D-PAGE = A**).
+  Pas de `from`/`to` (**D-SEARCH = A**).
 - Champ `sensitive` : valeur masquée dans `get_dossier` ; l'adaptateur
   ne contourne pas le redactor.
 
@@ -245,7 +247,7 @@ Posées **une à la fois**.
 | Q5 Journal MCP dédié | **D-AUDIT = C** (`createdBy`/`updatedBy` sur types, pas de table MCP) — 2026-08-27 |
 | Q6 Backlog écritures métier | Hors V1 (inchangé) |
 | Q7 Stats reporting | **D-STATS = A** — actée 2026-08-27 |
-| Q8 Pagination search | **D-SEARCH / D-PAGE** — en attente |
+| Q8 Pagination search | **D-SEARCH = A**, **D-PAGE = A** (20/100, pas de dates) — 2026-08-27 |
 | Pin version Spring AI vs SDK nu | **D-SDK** — plutôt Phase 3 |
 | `includeContent` templates | à poser si on ouvre le contenu HTML |
 

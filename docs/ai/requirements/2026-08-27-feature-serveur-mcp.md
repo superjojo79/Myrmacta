@@ -88,7 +88,7 @@ Voir tableau ci-dessus. Non renégociées en Phase 1.
 | Id | Décision | Vote |
 |---|---|---|
 | **D-STATS = A** | Tool lecture **`query_sla_summary`** dans **cette** V1 → `GetSlaSummaryUseCase` (`groupBy=dossierTypeCode\|status`, `from`/`to`). Pas le snapshot maquette, pas le CSV, pas d'agrégat ad hoc. | Stakeholder 2026-08-27 |
-| **D-POLICY-AS = A** | Un `AccessContext.User` avec rôle `API_SERVICE` a une lecture **tenant-wide** (comme `WORKFLOW_ADMIN`) : `DossierAccessPolicy` VIEW + `SlaReportAccess` unrestricted. REST `@PreAuthorize` **inchangé** (`/api/reports/**` et listes SPA restent 403 pour ce rôle). Pas de `AccessContext.system` / `Service` depuis MCP. Champs `sensitive` : toujours masqués (redactor, pas TA) — **D-GET-SHAPE**. | Stakeholder 2026-08-27 |
+| **D-WRITE-GUARD = A** | Create/Update `DossierType` : `TENANT_ADMIN` **ou** `API_SERVICE` (nouvelle méthode de garde, **sans** élargir `requireTenantAdmin` : purge, ACL, rétention, settings SLA restent TA). REST `@PreAuthorize` des types **inchangé** (TA only). | Stakeholder 2026-08-27 |
 
 ### File de décisions Phase 1 (reste)
 
@@ -96,8 +96,8 @@ Posées **une à la fois**.
 
 | Id | Statut |
 |---|---|
-| **D-WRITE-GUARD** | **posée** — qui peut `define_dossier_type` |
-| D-TRANSPORT / D-ENDPOINT | en attente (analyse Q1) |
+| **D-TRANSPORT** | **posée** — HTTP Streamable vs stdio (analyse Q1) |
+| D-ENDPOINT | en attente (chemin / port, après D-TRANSPORT) |
 | D-CREDENTIAL | en attente (analyse Q2) |
 | D-PREVIEW | en attente (`dryRun`) |
 | D-DEPLOY-ORDER | en attente (analyse Q4 ; créer la config si absente ?) |
@@ -115,8 +115,9 @@ Posées **une à la fois**.
 
 1. Serveur MCP interne, rôle `API_SERVICE` (chemin / transport :
    pending D-TRANSPORT).
-2. Tools d'écriture cadrage : `define_dossier_type`, `deploy_workflow`
-   (`dryRun` et upsert config : pending D-PREVIEW / D-DEPLOY-ORDER).
+2. Tools d'écriture cadrage : `define_dossier_type` (**D-WRITE-GUARD = A**),
+   `deploy_workflow` (`dryRun` / upsert config : pending D-PREVIEW /
+   D-DEPLOY-ORDER).
 3. Tools de lecture cadrage : `get_dossier`, `get_dossier_type`,
    `list_dossier_types`, `list_workflow_types`, `search_dossiers`,
    `list_document_templates`, **`query_sla_summary` (D-STATS = A)**.
@@ -185,8 +186,10 @@ Posées **une à la fois**.
    (2 écriture + 7 lecture).
 2. Chaque tool d'écriture a un test `dryRun` (aucun `save` / `deploy`)
    et un test d'application réelle.
-3. `define_dossier_type` et `deploy_workflow` passent par les use
-   cases domaine (ArchUnit : `domain` n'importe pas Spring AI / MCP).
+3. `define_dossier_type` : `API_SERVICE` OK, `WORKFLOW_ADMIN` seul
+   refusé (**D-WRITE-GUARD = A**) ; purge/ACL/rétention toujours TA.
+   `deploy_workflow` passe par les use cases domaine (ArchUnit : pas
+   de Spring AI / MCP dans `domain`).
 4. JWT M2M : happy path + rejet mauvais tenant + rejet sans rôle.
 5. `get_dossier` respecte `DossierAccessPolicy` + redaction ; test
    mutant : un champ `sensitive` n'apparaît pas en clair.
@@ -223,7 +226,7 @@ Posées **une à la fois**.
 
 | Item | Statut |
 |---|---|
-| Q1 Transport | **D-TRANSPORT / D-ENDPOINT** — en attente |
+| Q1 Transport | **D-TRANSPORT** posée — endpoint encore en attente |
 | Q2 Credential | **D-CREDENTIAL** — en attente |
 | Q3 Compatibilité schéma | **D-SCHEMA-COMPAT** — en attente |
 | Q4 Versionnement Flowable + config | **D-DEPLOY-ORDER** — en attente |

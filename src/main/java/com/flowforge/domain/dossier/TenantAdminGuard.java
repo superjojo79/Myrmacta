@@ -13,4 +13,11 @@ public final class TenantAdminGuard {
             throw new AccessDeniedException("TENANT_ADMIN role required");
         }
     }
+
+    public void requireTenantAdminOrApiService(AccessContext.User actor) {
+        Objects.requireNonNull(actor, "actor");
+        if (!actor.hasRole("TENANT_ADMIN") && !actor.hasRole("API_SERVICE")) {
+            throw new AccessDeniedException("TENANT_ADMIN or API_SERVICE role required");
+        }
+    }
 }

@@ -110,6 +110,17 @@ class UpdateDossierTypeUseCaseImplTest {
     }
 
     @Test
+    void update_apiServiceUpdatesType() {
+        DossierType existing = type("Old label", true, List.of());
+        when(repository.findByCode(TENANT, TYPE_CODE)).thenReturn(Optional.of(existing));
+
+        DossierType updated = useCase.update(command(), AccessContext.user("svc", Set.of("API_SERVICE")));
+
+        assertThat(updated.label()).isEqualTo("New label");
+        verify(repository).save(updated);
+    }
+
+    @Test
     void update_nonAdminThrowsAccessDeniedWithoutRepositoryCall() {
         assertThatThrownBy(() -> useCase.update(command(), AccessContext.user("manager", Set.of("DOSSIER_MANAGER"))))
                 .isInstanceOf(AccessDeniedException.class);

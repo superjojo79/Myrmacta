@@ -2,21 +2,48 @@
 phase: implementation
 title: Implementation Guide
 description: Technical implementation notes, patterns, and code guidelines
-status: not-started
+status: in-progress
 created: 2026-08-27
 updated: 2026-08-27
 feature: serveur-mcp
 phase1: 2026-08-27
 phase3: 2026-08-27
 phase4: 2026-08-27
+phase5: 2026-08-27
 ---
 
 # Implementation Guide — `serveur-mcp`
 
-Pas d'implémentation avant Phase 5 TDD (plan Phase 4 :
+Phase 5 TDD démarrée (plan Phase 4 :
 `docs/ai/planning/2026-08-27-feature-serveur-mcp.md`). Cible design :
-`docs/ai/design/2026-08-27-feature-serveur-mcp.md`. Première tâche :
-**T1.1**.
+`docs/ai/design/2026-08-27-feature-serveur-mcp.md`.
+
+## M1 — Gardes domaine `API_SERVICE` (fait, 2026-08-27)
+
+Fichiers touchés :
+
+- `domain/dossier/DossierAccessPolicy.java` — `hasPermission` : ajout
+  `user.hasRole("API_SERVICE")` au fork TA/WA (VIEW/EDIT tenant-wide).
+- `domain/reporting/SlaReportAccess.java` — `allowedTypeCodes` : idem
+  → `null` (unrestricted) pour `API_SERVICE`.
+- `domain/dossier/TenantAdminGuard.java` — nouvelle méthode
+  `requireTenantAdminOrApiService` ; `requireTenantAdmin` **inchangée**
+  (purge / ACL / rétention / `TenantSlaSettings` continuent de la
+  refuser à `API_SERVICE`, non-régression T1.4 sans changement de code).
+- `domain/dossier/usecase/CreateDossierTypeUseCaseImpl.java` et
+  `UpdateDossierTypeUseCaseImpl.java` — appellent désormais
+  `requireTenantAdminOrApiService`.
+- `domain/dossier/usecase/SearchDossiersUseCaseImpl.java` et
+  `ListDossierTypesUseCaseImpl.java` — `API_SERVICE` ajouté au fork
+  unrestricted (**DD-POLICY-TRIPLE**).
+- Nouveau test `domain/reporting/SlaReportAccessTest.java` (pas de test
+  dédié existant pour cette classe utilitaire statique).
+- Tests étendus : `DossierAccessPolicyTest`, `TenantAdminGuardTest`,
+  `CreateDossierTypeUseCaseImplTest`, `UpdateDossierTypeUseCaseImplTest`,
+  `SearchDossiersUseCaseImplTest`, `ListDossierTypesUseCaseImplTest`.
+
+Aucune déviation par rapport au design. Prochaine tâche : **T2.1**
+(Liquibase `017-mcp-audit-authors.yaml`).
 
 ## Development Setup
 

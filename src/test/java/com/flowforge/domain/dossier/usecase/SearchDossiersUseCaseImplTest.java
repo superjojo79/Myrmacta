@@ -161,6 +161,22 @@ class SearchDossiersUseCaseImplTest {
     }
 
     @Test
+    void apiService_searchesWithoutTypeRestriction() {
+        when(searchPort.search(eq(TENANT), any(), eq(0), eq(20)))
+                .thenReturn(DossierPage.of(List.of(item("FAC")), 0, 20, 1));
+        when(typeRepository.findAll(TENANT)).thenReturn(List.of(type("FAC", "Facture")));
+
+        useCase.search(
+                TENANT,
+                SearchDossiersQuery.of(null, null, null, 0, 20),
+                AccessContext.user("svc", Set.of("API_SERVICE")));
+
+        ArgumentCaptor<DossierSearchPort.Filter> filter = ArgumentCaptor.forClass(DossierSearchPort.Filter.class);
+        verify(searchPort).search(eq(TENANT), filter.capture(), eq(0), eq(20));
+        assertThat(filter.getValue().dossierTypeCodes()).isNull();
+    }
+
+    @Test
     void serviceContext_denied() {
         assertThatThrownBy(() -> useCase.search(
                         TENANT,

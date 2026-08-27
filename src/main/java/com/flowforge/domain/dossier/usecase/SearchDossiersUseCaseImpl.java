@@ -48,7 +48,7 @@ public final class SearchDossiersUseCaseImpl implements SearchDossiersUseCase {
     }
 
     private DossierPage searchForUser(String tenantId, SearchDossiersQuery query, AccessContext.User user) {
-        if (user.hasRole("TENANT_ADMIN") || user.hasRole("WORKFLOW_ADMIN")) {
+        if (user.hasRole("TENANT_ADMIN") || user.hasRole("WORKFLOW_ADMIN") || user.hasRole("API_SERVICE")) {
             return searchUnrestricted(tenantId, query);
         }
 

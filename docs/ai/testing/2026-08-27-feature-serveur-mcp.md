@@ -34,19 +34,23 @@ design. Cases `- [ ]` jusqu'à la Phase 8.
 
 ### Policy / gardes (domaine)
 
-- [ ] **UT-POL-1** `DossierAccessPolicy` : `User` avec `API_SERVICE` → VIEW
+- [x] **UT-POL-1** `DossierAccessPolicy` : `User` avec `API_SERVICE` → VIEW
   autorisé sans ACL (D-POLICY-AS).
-- [ ] **UT-POL-2** `DossierAccessPolicy` : `Service` reste refusé.
-- [ ] **UT-POL-3** `SlaReportAccess` : `User` `API_SERVICE` → unrestricted ;
+- [x] **UT-POL-2** `DossierAccessPolicy` : `Service` reste refusé
+  (test préexistant `service_alwaysDenied`).
+- [x] **UT-POL-3** `SlaReportAccess` : `User` `API_SERVICE` → unrestricted ;
   `Service` toujours 403.
-- [ ] **UT-POL-4** `DOSSIER_VIEWER` sans ACL toujours refusé (non-régression
+- [x] **UT-POL-4** `DOSSIER_VIEWER` sans ACL toujours refusé (non-régression
   reporting D-AUTHZ C).
-- [ ] **UT-GUARD-1** Create/Update type : `TENANT_ADMIN` OK (non-régression).
-- [ ] **UT-GUARD-2** Create/Update type : `API_SERVICE` OK.
-- [ ] **UT-GUARD-3** Create/Update type : `WORKFLOW_ADMIN` seul toujours
+- [x] **UT-GUARD-1** Create/Update type : `TENANT_ADMIN` OK (non-régression,
+  tests préexistants).
+- [x] **UT-GUARD-2** Create/Update type : `API_SERVICE` OK.
+- [x] **UT-GUARD-3** Create/Update type : `WORKFLOW_ADMIN` seul toujours
   refusé (la garde d'écriture type reste TA | API_SERVICE).
-- [ ] **UT-GUARD-4** Upsert rétention / SLA settings / purge : `API_SERVICE`
-  toujours refusé (garde TA non élargie).
+- [x] **UT-GUARD-4** Upsert rétention / SLA settings / purge : `API_SERVICE`
+  toujours refusé (garde TA non élargie) — vérifié au niveau
+  `TenantAdminGuard.requireTenantAdmin` (tous ces use cases l'appellent
+  sans modification).
 
 ### Tools (infra, use cases mockés)
 

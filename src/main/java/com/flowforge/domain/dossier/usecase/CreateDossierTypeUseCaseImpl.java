@@ -22,7 +22,7 @@ public final class CreateDossierTypeUseCaseImpl implements CreateDossierTypeUseC
     @Override
     public DossierType create(CreateDossierTypeCommand command, AccessContext.User actor) {
         Objects.requireNonNull(command, "command");
-        tenantAdminGuard.requireTenantAdmin(actor);
+        tenantAdminGuard.requireTenantAdminOrApiService(actor);
 
         var type = new DossierType(
                 UUID.randomUUID(),

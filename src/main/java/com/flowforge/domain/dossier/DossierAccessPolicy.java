@@ -60,7 +60,7 @@ public final class DossierAccessPolicy {
             case AccessContext.System ignored -> true;
             case AccessContext.Service ignored -> false;
             case AccessContext.User user -> {
-                if (user.hasRole("TENANT_ADMIN") || user.hasRole("WORKFLOW_ADMIN")) {
+                if (user.hasRole("TENANT_ADMIN") || user.hasRole("WORKFLOW_ADMIN") || user.hasRole("API_SERVICE")) {
                     yield true;
                 }
                 DossierTypeAclEntry entry =

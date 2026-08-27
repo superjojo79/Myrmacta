@@ -60,6 +60,14 @@ class ListDossierTypesUseCaseImplTest {
     }
 
     @Test
+    void list_apiServiceSeesAllTypes() {
+        assertThat(useCase.list(TENANT, AccessContext.user("svc", Set.of("API_SERVICE")), PageQuery.defaults())
+                        .content())
+                .extracting(DossierType::code)
+                .containsExactly("VIEWABLE", "EDITABLE", "HIDDEN");
+    }
+
+    @Test
     void list_serviceContextIsDenied() {
         assertThatThrownBy(() -> useCase.list(TENANT, AccessContext.service("client"), PageQuery.defaults()))
                 .isInstanceOf(AccessDeniedException.class);

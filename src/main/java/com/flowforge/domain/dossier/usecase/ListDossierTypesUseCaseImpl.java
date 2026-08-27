@@ -41,7 +41,7 @@ public final class ListDossierTypesUseCaseImpl implements ListDossierTypesUseCas
     }
 
     private PageResult<DossierType> listForUser(String tenantId, AccessContext.User user, PageQuery query) {
-        if (user.hasRole("TENANT_ADMIN") || user.hasRole("WORKFLOW_ADMIN")) {
+        if (user.hasRole("TENANT_ADMIN") || user.hasRole("WORKFLOW_ADMIN") || user.hasRole("API_SERVICE")) {
             return typeRepository.page(tenantId, null, query);
         }
 

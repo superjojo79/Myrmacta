@@ -26,7 +26,7 @@ indisponible (`unknown command 'task'`). Lint feature OK ; branche
 
 **What are the major checkpoints?**
 
-- [ ] **M1** Gardes domaine `API_SERVICE` (policy, search, list types, SLA, write type)
+- [x] **M1** Gardes domaine `API_SERVICE` (policy, search, list types, SLA, write type)
 - [ ] **M2** Auteurs Liquibase 017 + `createdBy`/`updatedBy` (types + REST stamp)
 - [ ] **M3** Compatibilité schéma (`CheckDossierTypeSchemaCompatibilityUseCase`)
 - [ ] **M4** SDK Spring AI + endpoint `/api/m2m/mcp` + factory JWT (sans ChatClient)
@@ -48,26 +48,26 @@ puis, en fin de milestone, `./mvnw test -Dtest=…` (ou classe) vert.
 
 ### M1 — Gardes domaine
 
-- [ ] **T1.1** `DossierAccessPolicy` : `API_SERVICE` VIEW tenant-wide
+- [x] **T1.1** `DossierAccessPolicy` : `API_SERVICE` VIEW tenant-wide
       (comme WA) ; `Service` toujours refusé.
       Outcome : `hasRole("API_SERVICE")` → true comme TA/WA.
       Dépend : —
-      Tests : UT-POL-1, UT-POL-2
-- [ ] **T1.2** `SlaReportAccess` : `API_SERVICE` unrestricted (`null`) ;
+      Tests : UT-POL-1, UT-POL-2 (`DossierAccessPolicyTest.apiService_bypassesWithoutAcl`)
+- [x] **T1.2** `SlaReportAccess` : `API_SERVICE` unrestricted (`null`) ;
       `Service` / `DOSSIER_VIEWER` inchangés (D-AUTHZ C).
-      Tests : UT-POL-3, UT-POL-4
+      Tests : UT-POL-3, UT-POL-4 (nouveau `SlaReportAccessTest`)
       Dépend : —
-- [ ] **T1.3** `TenantAdminGuard.requireTenantAdminOrApiService` ;
+- [x] **T1.3** `TenantAdminGuard.requireTenantAdminOrApiService` ;
       Create/Update type l'utilisent. `requireTenantAdmin` **inchangé**.
       TA OK, `API_SERVICE` OK, WA seul refusé.
       Tests : UT-GUARD-1, UT-GUARD-2, UT-GUARD-3
       Dépend : —
-- [ ] **T1.4** Non-régression : purge / ACL / rétention tenant /
+- [x] **T1.4** Non-régression : purge / ACL / rétention tenant /
       `TenantSlaSettings` restent `requireTenantAdmin` — `API_SERVICE`
       refusé.
-      Tests : UT-GUARD-4
+      Tests : UT-GUARD-4 (`TenantAdminGuardTest.apiServiceAlone_isDeniedByRequireTenantAdmin`)
       Dépend : T1.3
-- [ ] **T1.5** `SearchDossiersUseCaseImpl` + `ListDossierTypesUseCaseImpl` :
+- [x] **T1.5** `SearchDossiersUseCaseImpl` + `ListDossierTypesUseCaseImpl` :
       `API_SERVICE` unrestricted comme WA (**DD-POLICY-TRIPLE**).
       Tests : étendre les UT search/list existants (cas `API_SERVICE`).
       Dépend : T1.1
@@ -315,7 +315,8 @@ Aucun scénario testing orphelin.
 
 ## Progress
 
-Phase 4 **planned**. 9 milestones, 32 tâches, toutes **not started**.
+Phase 4 **planned**. 9 milestones, 32 tâches. Phase 5 démarrée
+(2026-08-27) : **M1 terminé** (T1.1–T1.5, TDD vert). Reste M2–M9 not
+started.
 
-Prochain : Phase 5 TDD en commençant par **T1.1** (`DossierAccessPolicy`
-+ `API_SERVICE`).
+Prochain : **T2.1** (Liquibase `017-mcp-audit-authors.yaml`).

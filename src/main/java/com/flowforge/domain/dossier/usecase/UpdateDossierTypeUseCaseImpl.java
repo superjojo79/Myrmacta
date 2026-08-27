@@ -22,7 +22,7 @@ public final class UpdateDossierTypeUseCaseImpl implements UpdateDossierTypeUseC
     @Override
     public DossierType update(UpdateDossierTypeCommand command, AccessContext.User actor) {
         Objects.requireNonNull(command, "command");
-        tenantAdminGuard.requireTenantAdmin(actor);
+        tenantAdminGuard.requireTenantAdminOrApiService(actor);
 
         DossierType existing = repository.findByCode(command.tenantId(), command.code())
                 .orElseThrow(() -> new DossierNotFoundException(

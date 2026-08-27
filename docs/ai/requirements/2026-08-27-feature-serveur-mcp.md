@@ -99,6 +99,7 @@ Voir tableau ci-dessus. Non renégociées en Phase 1.
 | **D-AUDIT = C** | Colonnes **`createdBy` / `updatedBy`** sur `DossierType` et `WorkflowTypeConfig` (JWT `sub` côté MCP ; principal OIDC côté REST admin — mêmes colonnes, tous les writers). **Pas** de table journal MCP. Lectures non auditées en base. `dryRun` ne stamp pas. Migration Liquibase. | Stakeholder 2026-08-27 |
 | **D-SEARCH = A** | `search_dossiers` = `SearchDossiersQuery` tel quel : `status`, `dossierTypeCode`, `referencePrefix`, `page`/`size`. **Pas** de filtre dates (fenêtres = `query_sla_summary`). | Stakeholder 2026-08-27 |
 | **D-PAGE = A** | Bornes existantes `PageQuery` : défaut **20**, max **100** (search, list types, templates, workflow types). | Conséquence **D-SEARCH = A** |
+| **D-GET-SHAPE = A** | `get_dossier` : agrégat dossier **rédigé** + éléments + historique `DossierWorkflowLink` + relations. `id` **xor** `reference`. `API_SERVICE` ≠ TA → champs `sensitive` **masqués** (`DossierFieldRedactor`). L'adaptateur **n'appelle pas** `Dossier.fields()`. | Stakeholder 2026-08-27 |
 
 ### File de décisions Phase 1 (reste)
 
@@ -106,8 +107,7 @@ Posées **une à la fois**.
 
 | Id | Statut |
 |---|---|
-| **D-GET-SHAPE** | **posée** — agrégat `get_dossier` et champs `sensitive` |
-| D-SPA | en attente (régression FE only vs écran MCP) |
+| **D-SPA** | **posée** — écran SPA vs README seulement |
 | D-SDK / D-ACTOR | plutôt Phase 3 ; à poser ici s'ils changent le produit |
 
 ## Goals & Objectives
@@ -177,14 +177,14 @@ Posées **une à la fois**.
   même rejet que l'upload admin (`BpmnParserPort`).
 - `deploy_workflow` clé inconnue → **crée** la config puis déploie
   (**D-DEPLOY-ORDER = A**). L'écran upload admin reste en 404.
-- `get_dossier` id inconnu → erreur métier (équivalent 404), pas un
-  dump stack.
+- `get_dossier` : les deux de `id`/`reference` ou aucun → erreur ;
+  id/référence inconnus → erreur métier (pas un dump). Champ
+  `sensitive` masqué (**D-GET-SHAPE = A**) ; l'adaptateur ne contourne
+  pas le redactor.
 - `query_sla_summary` cohorte > 10 000 → même
   `SlaCohortTooLargeException` / code `SLA_COHORT_TOO_LARGE`.
 - `search_dossiers` size > 100 → erreur (`PageQuery`, **D-PAGE = A**).
   Pas de `from`/`to` (**D-SEARCH = A**).
-- Champ `sensitive` : valeur masquée dans `get_dossier` ; l'adaptateur
-  ne contourne pas le redactor.
 
 ## Success Criteria
 **How will we know when we're done?**
@@ -202,8 +202,9 @@ Posées **une à la fois**.
    dans `domain`.
 4. JWT M2M sur `/api/m2m/mcp` (**D-CREDENTIAL = A**) : happy path +
    rejet mauvais `tenant_id` + sans `API_SERVICE`.
-5. `get_dossier` respecte `DossierAccessPolicy` + redaction ; test
-   mutant : un champ `sensitive` n'apparaît pas en clair.
+5. `get_dossier` agrège 4 use cases (**D-GET-SHAPE = A**) ; `id` xor
+   `reference` ; mutant : champ `sensitive` absent en clair ;
+   ArchUnit : tool MCP hors allowlist `Dossier.fields()`.
 6. `query_sla_summary` : `API_SERVICE` non 403 (**D-POLICY-AS = A**) ;
    `groupBy` invalide rejeté ; cap 10k conservé. REST `/api/reports/**`
    reste sans `API_SERVICE` au `@PreAuthorize`.

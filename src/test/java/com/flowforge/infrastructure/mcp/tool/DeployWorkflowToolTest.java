@@ -160,6 +160,105 @@ class DeployWorkflowToolTest {
         assertThat(captor.getValue().updatedBy()).isEqualTo("agent-1");
     }
 
+    @Test
+    void onStartDossierStatusProvided_isAppliedToConfig() {
+        when(bpmnParserPort.extractProcessDefinitionKey(any())).thenReturn(KEY);
+        when(getWorkflowTypeConfigUseCase.getByKey(KEY)).thenReturn(Optional.empty());
+        when(saveWorkflowTypeConfigUseCase.create(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(deployBpmnProcessUseCase.deploy(any(), any())).thenReturn(new BpmnDeploymentResult(KEY, 1, "dep-1"));
+
+        Map<String, Object> args = baseArgs();
+        args.put("onStartDossierStatus", "OUVERT");
+        invoke(args);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(WorkflowTypeConfig.class);
+        org.mockito.Mockito.verify(saveWorkflowTypeConfigUseCase).create(captor.capture());
+        assertThat(captor.getValue().onStartDossierStatus()).isEqualTo(DossierStatus.OUVERT);
+    }
+
+    @Test
+    void xmlExceedingMaxSize_isRejectedBeforeParsing() {
+        DeployWorkflowTool tinyLimitTool = new DeployWorkflowTool(
+                bpmnParserPort,
+                getWorkflowTypeConfigUseCase,
+                saveWorkflowTypeConfigUseCase,
+                deployBpmnProcessUseCase,
+                new TenantProperties(TENANT),
+                new McpAccessContextFactory(),
+                JsonMapper.builder().build(),
+                DataSize.ofBytes(4));
+
+        Map<String, Object> args = baseArgs();
+        assertThatThrownBy(() -> tinyLimitTool.deployWorkflow(request(args), null, null, null, null, null, null, null, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("exceeds max size");
+        verifyNoInteractions(bpmnParserPort, getWorkflowTypeConfigUseCase, saveWorkflowTypeConfigUseCase, deployBpmnProcessUseCase);
+    }
+
+    @Test
+    void statusDefinitionsEmpty_isRejected() {
+        when(bpmnParserPort.extractProcessDefinitionKey(any())).thenReturn(KEY);
+
+        Map<String, Object> args = baseArgs();
+        args.put("statusDefinitions", List.of());
+
+        assertThatThrownBy(() -> invoke(args))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("statusDefinitions");
+    }
+
+    @Test
+    void statusDefinitionsWrongType_isRejected() {
+        when(bpmnParserPort.extractProcessDefinitionKey(any())).thenReturn(KEY);
+
+        Map<String, Object> args = baseArgs();
+        args.put("statusDefinitions", "not-a-list");
+
+        assertThatThrownBy(() -> invoke(args))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("statusDefinitions");
+    }
+
+    @Test
+    void allowedDossierStatusesWrongType_isRejected() {
+        when(bpmnParserPort.extractProcessDefinitionKey(any())).thenReturn(KEY);
+
+        Map<String, Object> args = baseArgs();
+        args.put("allowedDossierStatuses", "not-a-list");
+
+        assertThatThrownBy(() -> invoke(args))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("allowedDossierStatuses");
+    }
+
+    @Test
+    void observerUserIdsProvided_isRelayedToConfig() {
+        when(bpmnParserPort.extractProcessDefinitionKey(any())).thenReturn(KEY);
+        when(getWorkflowTypeConfigUseCase.getByKey(KEY)).thenReturn(Optional.empty());
+        when(saveWorkflowTypeConfigUseCase.create(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(deployBpmnProcessUseCase.deploy(any(), any())).thenReturn(new BpmnDeploymentResult(KEY, 1, "dep-1"));
+
+        Map<String, Object> args = baseArgs();
+        args.put("observerUserIds", List.of("user-1", "user-2"));
+        invoke(args);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(WorkflowTypeConfig.class);
+        org.mockito.Mockito.verify(saveWorkflowTypeConfigUseCase).create(captor.capture());
+        assertThat(captor.getValue().observerUserIds()).containsExactly("user-1", "user-2");
+    }
+
+    @Test
+    void observerUserIdsWrongType_isRejected() {
+        when(bpmnParserPort.extractProcessDefinitionKey(any())).thenReturn(KEY);
+
+        Map<String, Object> args = baseArgs();
+        args.put("observerUserIds", "not-a-list");
+
+        assertThatThrownBy(() -> invoke(args))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("observerUserIds");
+    }
+
     private static Map<String, Object> baseArgs() {
         Map<String, Object> args = new HashMap<>();
         args.put("processDefinitionKey", KEY);

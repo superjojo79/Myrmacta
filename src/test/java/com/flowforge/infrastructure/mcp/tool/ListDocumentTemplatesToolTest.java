@@ -62,6 +62,16 @@ class ListDocumentTemplatesToolTest {
         verify(listDocumentTemplateUseCase).list(TENANT, null, false, PageQuery.of(0, 20));
     }
 
+    @Test
+    void pageAndSizeProvided_relayedAsGiven() {
+        when(listDocumentTemplateUseCase.list(eq(TENANT), eq(null), eq(false), eq(PageQuery.of(2, 5))))
+                .thenReturn(PageResult.empty(2, 5));
+
+        tool.listDocumentTemplates(null, null, 2, 5);
+
+        verify(listDocumentTemplateUseCase).list(TENANT, null, false, PageQuery.of(2, 5));
+    }
+
     private static DocumentTemplate template() {
         Instant now = Instant.parse("2026-08-27T00:00:00Z");
         return new DocumentTemplate(

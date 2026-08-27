@@ -10,6 +10,7 @@ phase1: 2026-08-27
 phase3: 2026-08-27
 phase4: 2026-08-27
 phase5: 2026-08-27
+phase8: 2026-08-27
 design_ref: docs/ai/design/2026-08-27-feature-serveur-mcp.md
 ---
 
@@ -176,3 +177,83 @@ cd frontend && npm run test:e2e
 - Bugs trouvés en Phase 5/7/8 : TDD + note implementation.
 - Non-régression reporting D-AUTHZ C (viewer/service REST) = bloquant
   si cassée.
+
+## Phase 8 — Write Tests (comblement des trous Jacoco)
+
+Point de départ : `./mvnw verify` (Phase 5/7) était déjà vert sur les
+seuils **BUNDLE** (LINE ≥ 85 %, BRANCH ≥ 75 %), mais le rapport HTML
+Jacoco par classe montrait des trous de couverture branches
+localisés dans `infrastructure.mcp.tool`, tous des branches
+défensives déjà correctes (aucun bug de production trouvé) mais
+jamais exercées par un test dédié :
+
+| Classe | Avant (branches) | Trou identifié |
+|---|---|---|
+| `ListWorkflowTypesTool` | 0 % | méthode jamais invoquée dans un test |
+| `GetDossierTypeTool` | n/a (65 % instructions) | méthode jamais invoquée dans un test |
+| `ListDossierTypesTool` | ~50 % | seule la branche « page et size absents » testée |
+| `McpArgs` | non testée directement | branches d'échec de `requireString`/`requireBoolean` jamais exercées |
+| `DeployWorkflowTool` | 6 branches non couvertes | `onStartDossierStatus` non-null, XML trop volumineux, `statusDefinitions`/`allowedDossierStatuses`/`observerUserIds` de type ou forme inattendus |
+| `DefineDossierTypeTool` | 3 branches non couvertes | `dryRun=true` sur le chemin UPDATE, `fieldDefinitions` omis, `fieldDefinitions` de mauvais type |
+
+En creusant la même analyse par classe, deux classes déjà testées
+montraient aussi des branches non couvertes (non identifiées dans le
+scope initial mais fermées par la même occasion, coût marginal) :
+
+| Classe | Avant (branches) | Trou identifié |
+|---|---|---|
+| `SearchDossiersTool` | 62 % (1 sur 4 branches testée) | `status` blank et `status` valide jamais testés (seul `status=null`) |
+| `ListDocumentTemplatesTool` | 66 % (2 sur 4 branches testées) | `page`/`size` explicites jamais testés (seul le défaut `null`) |
+
+### Tests ajoutés/étendus
+
+- **Nouveau** `ListWorkflowTypesToolTest` (4 tests) : page/size absents,
+  fournis, page seul, size seul.
+- **Nouveau** `GetDossierTypeToolTest` (2 tests) : relais happy path,
+  propagation `DossierNotFoundException`.
+- **Nouveau** `ListDossierTypesToolTest` (4 tests) : mêmes 4 combinaisons
+  page/size que `ListWorkflowTypesToolTest`.
+- **Nouveau** `McpArgsTest` (8 tests) : `requireString`
+  (présent, absent, null, blank, mauvais type) et `requireBoolean`
+  (présent, absent, mauvais type).
+- **Étendu** `DeployWorkflowToolTest` (+7 tests, total 13) :
+  `onStartDossierStatus` fourni, XML dépassant la taille max (tool
+  construit avec une `DataSize` minuscule dédiée au test),
+  `statusDefinitions` vide, `statusDefinitions` mauvais type,
+  `allowedDossierStatuses` mauvais type, `observerUserIds` fourni
+  (relayé au config), `observerUserIds` mauvais type.
+- **Étendu** `DefineDossierTypeToolTest` (+4 tests, total 11) : `dryRun=true`
+  sur le chemin UPDATE (aucun `update` appelé), `fieldDefinitions` omis
+  (défaut liste vide), `fieldDefinitions` non-vide (parsing réellement
+  exercé), `fieldDefinitions` mauvais type.
+- **Étendu** `SearchDossiersToolTest` (+2 tests, total 4) : `status` blank
+  traité comme absent, `status` valide parsé en `DossierStatus`.
+- **Étendu** `ListDocumentTemplatesToolTest` (+1 test, total 4) :
+  `page`/`size` explicites relayés tels quels.
+
+Aucun changement de comportement métier : uniquement des tests
+supplémentaires sur du code déjà correct.
+
+### Résultat (preuve fraîche)
+
+```bash
+./mvnw -q -Dmaven.compiler.release=21 verify
+```
+
+- Build **vert** (exit 0), seuils Jacoco BUNDLE toujours respectés.
+- `com.flowforge.infrastructure.mcp.tool` (rapport Jacoco HTML,
+  régénéré après les nouveaux tests) : **100 % instructions
+  (0 sur 1 220 manquées)**, **97 % branches (2 sur 82 manquées)** —
+  contre 98 %/91 % avant Phase 8. Les 2 branches restantes sont dans
+  `GetDossierTool` (85 % branches), hors périmètre identifié pour
+  cette phase (déjà correctement testé en Phase 5, non un trou
+  nouveau).
+- Toutes les classes listées dans le tableau ci-dessus sont désormais
+  à **100 % branches** (ou n/a quand la méthode n'a pas de branche,
+  ex. `GetDossierTypeTool`, `QuerySlaSummaryTool`).
+- Compte de tests par classe (surefire, preuve fraîche) :
+  `DefineDossierTypeToolTest` 11, `DeployWorkflowToolTest` 13,
+  `GetDossierTypeToolTest` 2, `ListDossierTypesToolTest` 4,
+  `ListWorkflowTypesToolTest` 4, `McpArgsTest` 8,
+  `SearchDossiersToolTest` 4, `ListDocumentTemplatesToolTest` 4 —
+  tous verts, 0 échec, 0 skip.

@@ -66,4 +66,26 @@ class SearchDossiersToolTest {
         assertThatThrownBy(() -> tool.searchDossiers(null, null, null, 0, 101))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void blankStatus_isTreatedAsNoFilter() {
+        when(searchDossiersUseCase.search(eq(TENANT), any(), any())).thenReturn(DossierPage.empty(0, 20));
+
+        tool.searchDossiers("   ", null, null, null, null);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(SearchDossiersQuery.class);
+        verify(searchDossiersUseCase).search(eq(TENANT), captor.capture(), any());
+        assertThat(captor.getValue().status()).isNull();
+    }
+
+    @Test
+    void validStatus_isParsedIntoQuery() {
+        when(searchDossiersUseCase.search(eq(TENANT), any(), any())).thenReturn(DossierPage.empty(0, 20));
+
+        tool.searchDossiers("OUVERT", null, null, null, null);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(SearchDossiersQuery.class);
+        verify(searchDossiersUseCase).search(eq(TENANT), captor.capture(), any());
+        assertThat(captor.getValue().status()).isEqualTo(com.flowforge.domain.dossier.model.DossierStatus.OUVERT);
+    }
 }

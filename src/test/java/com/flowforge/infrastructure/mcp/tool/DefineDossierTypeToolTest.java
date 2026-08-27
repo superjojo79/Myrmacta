@@ -160,6 +160,65 @@ class DefineDossierTypeToolTest {
         verify(updateDossierTypeUseCase, never()).update(any(), any());
     }
 
+    @Test
+    void dryRun_onUpdatePath_doesNotSave() {
+        DossierType existing = type("CLAIM");
+        when(getDossierTypeUseCase.getByCode(any(), any(), any())).thenReturn(existing);
+        when(checkCompatibilityUseCase.check(any()))
+                .thenReturn(new CheckDossierTypeSchemaCompatibilityUseCase.Result(0, List.of()));
+
+        Map<String, Object> args = baseArgs("CLAIM");
+        args.put("dryRun", true);
+        Map<String, Object> result = invoke(args);
+
+        assertThat(result.get("operation")).isEqualTo("update");
+        assertThat(result.get("dryRun")).isEqualTo(true);
+        verifyNoInteractions(updateDossierTypeUseCase);
+    }
+
+    @Test
+    void fieldDefinitionsOmitted_defaultsToEmptyList() {
+        when(getDossierTypeUseCase.getByCode(any(), any(), any()))
+                .thenThrow(new DossierNotFoundException("nope"));
+        when(createDossierTypeUseCase.create(any(), any())).thenReturn(type("CLAIM"));
+
+        Map<String, Object> args = baseArgs("CLAIM");
+        args.remove("fieldDefinitions");
+        invoke(args);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(CreateDossierTypeUseCase.CreateDossierTypeCommand.class);
+        verify(createDossierTypeUseCase).create(captor.capture(), any());
+        assertThat(captor.getValue().fieldDefinitions()).isEmpty();
+    }
+
+    @Test
+    void fieldDefinitionsNonEmpty_areParsedAndRelayed() {
+        when(getDossierTypeUseCase.getByCode(any(), any(), any()))
+                .thenThrow(new DossierNotFoundException("nope"));
+        when(createDossierTypeUseCase.create(any(), any())).thenReturn(type("CLAIM"));
+
+        Map<String, Object> args = baseArgs("CLAIM");
+        args.put("fieldDefinitions", List.of(Map.of(
+                "name", "amount", "label", "Amount", "type", "NUMBER", "required", true)));
+        invoke(args);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(CreateDossierTypeUseCase.CreateDossierTypeCommand.class);
+        verify(createDossierTypeUseCase).create(captor.capture(), any());
+        assertThat(captor.getValue().fieldDefinitions()).hasSize(1);
+        assertThat(captor.getValue().fieldDefinitions().get(0).name()).isEqualTo("amount");
+    }
+
+    @Test
+    void fieldDefinitionsWrongType_isRejected() {
+        Map<String, Object> args = baseArgs("CLAIM");
+        args.put("fieldDefinitions", "not-a-list");
+
+        assertThatThrownBy(() -> invoke(args))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("fieldDefinitions");
+        verifyNoInteractions(getDossierTypeUseCase, createDossierTypeUseCase, updateDossierTypeUseCase);
+    }
+
     private static Map<String, Object> baseArgs(String code) {
         var args = new java.util.HashMap<String, Object>();
         args.put("code", code);

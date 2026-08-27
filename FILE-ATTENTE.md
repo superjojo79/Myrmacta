@@ -10,19 +10,12 @@
 >   (rétention / purge / sensible — **livré**) ; revue post-implémentation 2026-08-25 :
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
-> **Dernière mise à jour :** 2026-08-26 — `reporting-sla` **en revue**
-> (branche `cursor/reporting-sla-9009`) : BC `reporting`, snapshot
-> `/api/reports/sla`, SPA `/rapports`, objectif SLA tenant, inbox
-> `slaRemainingHours`. **Prochain après merge :** `serveur-mcp`.
->
-> Deux analyses initiales produites et mergées
-> ([PR #78](https://github.com/superjojo79/FlowForge/pull/78)) — aucune
-> implémentation, documentation seule : `serveur-mcp`
-> ([15-serveur-mcp.md](analysis%20doc/15-serveur-mcp.md)) et son prérequis
-> `reporting-sla` ([16-reporting-sla.md](analysis%20doc/16-reporting-sla.md)),
-> les deux lots (comptages/durées puis seuils SLA) étant tranchés comme
-> **nécessaires** pour débloquer le point stats du MCP. **Prochain :**
-> `reporting-sla` — voir § *File d'attente*.
+> **Dernière mise à jour :** 2026-08-27 — `reporting-sla` **livrée**
+> ([PR #80](https://github.com/superjojo79/FlowForge/pull/80), mergée
+> 2026-08-26) : BC `reporting`, snapshot `/api/reports/sla`, summary
+> `/api/reports/sla/summary`, SPA `/rapports`, objectif SLA tenant,
+> inbox `slaRemainingHours`. **En cours :** `serveur-mcp` Phase 1
+> (branche `cursor/serveur-mcp-e12d`).
 >
 > `derive-documentaire` TODO §45 clos, [PR #75](https://github.com/superjojo79/FlowForge/pull/75) ;
 > `edition-bpmn` TODO §39 clos, [PR #71](https://github.com/superjojo79/FlowForge/pull/71) **mergée**.
@@ -74,20 +67,18 @@ Même grille que pour `preview-documents` puis `edition-champs-dossier` :
 | `masquage-donnees-sensibles-logs-webhooks` | PR #70, TODO §23 (clos) | Aucune fuite active trouvée (vérifié par audit exhaustif) — reformulé en risque latent sans garde-fou ; `SendNotificationUseCaseImpl` masque automatiquement les valeurs sensibles avant écriture outbox pour tous les canaux ; règle ArchUnit de détection écartée (ArchUnit ne fait pas d'analyse de flux de valeurs) au profit d'une liste blanche des classes autorisées à lire `Dossier.fields()`/`FieldDefinition.defaultValue()` ; preuve bout en bout réelle + 2 contrôles mutants manuels ; zéro fichier frontend touché |
 | `edition-bpmn` | [PR #71](https://github.com/superjojo79/FlowForge/pull/71), TODO §39 (clos) | Construction/édition de diagrammes BPMN dans FlowForge (écart restant après `deploiement-bpmn`, §35, qui excluait explicitement l'édition). `bpmn-js` Modeler + `bpmn-js-properties-panel` avec provider custom pour les attributs `flowable:*` réellement utilisés, sans app tierce (Flowable Modeler écarté). Brouillon **persisté côté backend** (`BpmnDraftRepository`/`BpmnDraftJpaEntity`, clé composite `@IdClass`), supprimé après déploiement réussi (D-DESIGN-DRAFT-LIFECYCLE) ; nouvelle méthode `WorkflowDeploymentPort.findDeployedXml`. M1-M4 (backend) et M5-M7 (frontend) implémentés **en parallèle** par deux agents en worktrees isolés, fusionnés puis M8 (vérification globale) par l'orchestrateur. **4 vrais bugs trouvés et corrigés** au total : `eventBus`/`commandStack` (masqué par des mocks Vitest, trouvé en E2E vrai navigateur), race condition de montage `BpmnEditorCanvas`/`useBpmnDraft.load()` (TDD), `NullPointerException` sur `xml` `null`/manquant → 500 au lieu de 400 (Phase 7, revue dédiée fichier par fichier), écart de couverture réel comblé sur le panel de propriétés custom (Phase 8). `./mvnw verify` 1110 tests (0 échec) ; 196 Vitest + 47 Playwright (0 échec). `README.md`/`05-workflow-engine.md`/`GUIDE-UTILISATEUR.md` corrigés. **Mergée sur `main`** (2026-08-25). |
 | `durcissement-securite-post-revue` | [PR #76](https://github.com/superjojo79/FlowForge/pull/76), TODO §40–44 (clos) | Regroupement des 5 findings de la revue alignement × sécurité (chaîne SSTI→GRANT PG partagé §40+41, config/secrets §42+43, SSRF TOCTOU §44). `TemplateEngine`+`StandardDialect` sans SpEL (SSTI) ; GRANT PG `LOGIN` par tenant ; actuator `127.0.0.1:8090` ; secrets fail-fast hors `local`/`test` ; pin IP webhook sortant. `./mvnw verify` 1186 tests (0 échec), Jacoco LINE 93,52 %/BRANCH 75,57 % ; Vitest 199 + Playwright 47. §46 (ArchUnit `application`) explicitement hors périmètre. **Mergée sur `main`** (2026-08-25, merge humain). |
+| `reporting-sla` | [PR #80](https://github.com/superjojo79/FlowForge/pull/80), analyse [16-reporting-sla.md](analysis%20doc/16-reporting-sla.md) | Écran Rapports & SLA (`/rapports`), snapshot `GET /api/reports/sla`, summary `GET /api/reports/sla/summary` (`ON_TRACK`/`AT_RISK`/`BREACHED`), cible `DossierType.slaTargetHours`, settings `complianceTargetPercent`, inbox `slaRemainingHours`. Authz **D-AUTHZ = C**. `./mvnw verify` 1263 tests (0 échec) ; Vitest 213 ; Playwright 55. Hors V1 reporté : planification d'envoi, Chart.js, codegen client. **Mergée sur `main`** (2026-08-26). |
 
 Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relations, PATCH fields API, éléments) : voir [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §2.
 
 ## File d’attente
 
-`reporting-sla` est **en revue** (lifecycle phases 1–9 exécutées).
-Les deux lots (comptages/durées + seuils SLA) sont dans le livrable.
-Phase 8 a fermé les écarts SPA (filtre type, Instant UTC). `serveur-mcp`
-reste bloqué jusqu'au merge.
+`reporting-sla` est **livrée** ([PR #80](https://github.com/superjojo79/FlowForge/pull/80)).
+`serveur-mcp` n'est plus bloqué : Phase 1 démarrée (2026-08-27).
 
 | Priorité | Item | Notes |
 |---|---|---|
-| **En revue** | `reporting-sla` (analyse : [16-reporting-sla.md](analysis%20doc/16-reporting-sla.md)) | Snapshot BFF, SPA `/rapports`, settings tenant, inbox remaining. |
-| **Prochain** | `serveur-mcp` (analyse : [15-serveur-mcp.md](analysis%20doc/15-serveur-mcp.md)) | Bloqué par le merge de `reporting-sla`. 3 tools d'écriture + 4 tools de lecture cadrés en V1. |
+| **En cours** | `serveur-mcp` (analyse : [15-serveur-mcp.md](analysis%20doc/15-serveur-mcp.md)) | Phase 1 draft — adaptateur `infrastructure.mcp`, JWT `API_SERVICE` sur `/api/m2m/mcp`. 2 tools d'écriture + 7 de lecture (dont `query_sla_summary`, prérequis SLA livré). |
 | **Hors périmètre de la feature sécurité** | TODO §46 (ArchUnit `application`) | Architecture, pas sécurité au sens de la revue — point séparé, non bloquant. |
 
 Détail et options : [TODO.md](TODO.md) §40–46,
@@ -95,9 +86,7 @@ Détail et options : [TODO.md](TODO.md) §40–46,
 
 ## En revue
 
-`reporting-sla` — écran Rapports & SLA, snapshot `/api/reports/sla`,
-settings tenant, inbox remaining. Hors V1 reporté : planification d'envoi
-(bouton disabled), Chart.js, codegen client.
+Aucune feature produit en revue.
 
 `durcissement-securite-post-revue`
 ([PR #76](https://github.com/superjojo79/FlowForge/pull/76)) et les
@@ -229,4 +218,6 @@ Vérifié : `./mvnw verify` 1136 tests (0 échec), Jacoco OK ; frontend `npm run
 | 2026-08-26 | Analyse initiale `serveur-mcp` | Cadrage d'un serveur MCP interne : consommateur (outillage interne uniquement), 3 tools d'écriture (définition de type de dossier, insertion BPMN + `WorkflowTypeConfig`, lecture dossier) + 4 tools de lecture faible risque ajoutés après examen (types de dossier, types de workflow, recherche sans agrégats, templates documents) ; backlog de 4 tools à risque modéré (création dossier, ajout d'élément, démarrage workflow, génération document) ; exclusions explicites actées (ACL, purge, statut workflow link). Intégration = nouvel adaptateur `infrastructure.mcp` dans le monolithe, auth = rôle `API_SERVICE`. Point stats identifié comme dépendant d'une feature reporting/SLA à cadrer séparément. [15-serveur-mcp.md](analysis%20doc/15-serveur-mcp.md), aucun code. |
 | 2026-08-26 | Analyse initiale `reporting-sla`, décision de séquencement | Prérequis du point stats de `serveur-mcp`. Périmètre proposé en deux lots (Lot 1 — comptages/durées à la volée sur `Dossier`/`DossierWorkflowLink`, sans nouvelle table de faits ; Lot 2 — seuils SLA par `DossierType` sur le patron déjà livré pour la rétention, décision n° 21) construit sans dupliquer l'observabilité technique déjà livrée (`observabilite`, PR #59). **Tranché à la demande de l'utilisateur : les deux lots sont requis** pour débloquer le MCP à coup sûr, pas de version dégradée avec le Lot 1 seul. 4 questions laissées pour la phase requirements formelle (seuil `AT_RISK`, RBAC exact, granularité `groupBy`, caractère obligatoire de `slaTargetHours`). [16-reporting-sla.md](analysis%20doc/16-reporting-sla.md), aucun code. |
 | 2026-08-26 | Analyses `serveur-mcp`/`reporting-sla` mergées, positionnement file d'attente | [PR #78](https://github.com/superjojo79/FlowForge/pull/78) mergée sur `main` (commit `3947ced`). `reporting-sla` positionnée en **Prochain** dans la file d'attente ; `serveur-mcp` marquée bloquée sur sa livraison complète (les deux lots). |
+| 2026-08-26 | `reporting-sla` livrée | [PR #80](https://github.com/superjojo79/FlowForge/pull/80) mergée sur `main` ; lifecycle phases 1–9 closes ; TODO n/a (feature issue de l'analyse, pas d'un point TODO numéroté). Prérequis stats MCP débloqué. |
+| 2026-08-27 | `serveur-mcp` Phase 1 (new requirement) | Cadrage PR #78 conservé. Reco cloud (pas d'AskUserQuestion) : **D-STATS = A** (`query_sla_summary`), **D-TRANSPORT/D-ENDPOINT** Streamable HTTP `/api/m2m/mcp`, **D-CREDENTIAL** JWT M2M existant, **D-POLICY-AS** lecture tenant-wide pour `API_SERVICE`. Docs `docs/ai/**/2026-08-27-feature-serveur-mcp.md`. Prochain : Phase 2 review. |
 

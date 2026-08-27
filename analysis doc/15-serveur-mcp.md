@@ -1,8 +1,9 @@
 # Serveur MCP (Model Context Protocol)
 
-> **Statut : analyse initiale — cadrage, aucune décision actée.** Ce document
-> pose le périmètre et les questions à trancher avant design. Il ne décrit
-> pas une implémentation retenue et ne doit pas être lu comme telle.
+> **Statut : analyse initiale + cycle `dev-lifecycle` Phase 1 (2026-08-27).**
+> Ce document pose le cadrage validé en 2026-08-26. L'implémentation se
+> spécifie dans `docs/ai/**/2026-08-27-feature-serveur-mcp.md` — ne pas
+> lire cette analyse comme un design d'implémentation figé.
 >
 > **Décisions de cadrage actées lors de cette analyse (2026-08-26) :**
 > consommateur, portée d'écriture V1, sens du mot « dossier », granularité
@@ -157,21 +158,15 @@ Outil envisagé : `list_document_templates`.
 ### Dépendance reporting / SLA (point 4)
 
 Le point « informations et statistiques sur des dossiers et instances de
-workflow selon des critères fournis » n'est **pas traité dans cette V1**.
-`DEFERRED-FEATURES.md` classe déjà les écrans Rapports/SLA comme hors
-scope V1 produit (mock UI de référence uniquement) — le même constat
-s'applique ici : sans modèle de métriques/agrégats ni définition de SLA
-actée, un outil MCP de « stats » n'aurait pas de contrat stable à exposer.
+workflow selon des critères fournis » **n'était pas** dans le V1 MCP tant
+que reporting/SLA n'était pas livré. Ce prérequis est **clos** :
+[PR #80](https://github.com/superjojo79/FlowForge/pull/80) (`reporting-sla`,
+2026-08-26) livre le summary `GetSlaSummaryUseCase`
+(`groupBy=dossierTypeCode|status`).
 
-**Prérequis avant de rouvrir ce point :** une analyse dédiée « reporting &
-SLA » a été produite — voir [16-reporting-sla.md](16-reporting-sla.md).
-Elle propose un découpage en deux lots (Lot 1 — comptages/durées, Lot 2 —
-seuils SLA et statut de conformité) et **tranche (2026-08-26) que les deux
-lots sont requis** pour débloquer ce point à coup sûr — pas de version
-dégradée avec le Lot 1 seul. Les deux doivent être **actés puis livrés**
-avant que cette feature MCP n'expose un outil de lecture (`query_dossiers` /
-`get_workflow_stats` ou équivalent) consommant ce modèle, plutôt que
-d'improviser des agrégats ad hoc non réutilisables.
+**Phase 1 `serveur-mcp` (2026-08-27) :** reco **D-STATS = A** — tool
+`query_sla_summary` dans cette V1, qui appelle ce use case (pas le
+snapshot maquette, pas d'agrégats ad hoc). À confirmer en Phase 2.
 
 ### Autres exclusions actées
 
@@ -284,11 +279,10 @@ analyse validée :
    itération ultérieure (validation des champs dynamiques, création depuis
    trigger vs MCP, etc. — voir
    [04-dossiers.md](04-dossiers.md#création-depuis-un-trigger--unitaire-et-batch)).
-7. **Reporting/SLA (point 4)** — analyse disponible
-   ([16-reporting-sla.md](16-reporting-sla.md)), qui tranche que les
-   **deux lots** (Reporting et SLA) sont requis ; reste bloqué sur leur
-   validation et leur livraison complète avant de rouvrir ce point côté
-   MCP.
+7. **Reporting/SLA (point 4)** — **prérequis livré**
+   ([PR #80](https://github.com/superjojo79/FlowForge/pull/80)). Reco
+   Phase 1 : tool `query_sla_summary` (**D-STATS = A**). Confirmer en
+   Phase 2 du cycle `serveur-mcp`.
 8. **Pagination/volumétrie de `search_dossiers`** — reprendre telles
    quelles les bornes déjà actées pour `pagination-dossiers` (taille de
    page max, tri par défaut) plutôt que d'introduire un contrat de
@@ -330,9 +324,7 @@ tool MCP, même en backlog, au vu de leur impact :
 
 ## Prochaines étapes
 
-Cette analyse initiale ne déclenche pas encore le cycle `dev-lifecycle`
-(requirements → design → planning → implementation). Avant de créer une
-entrée dans `docs/ai/requirements/` et de la positionner dans
-[FILE-ATTENTE.md](../FILE-ATTENTE.md), il est recommandé de faire valider
-les décisions de cadrage ci-dessus et de lever au moins les questions
-ouvertes n° 1 à 4, qui conditionnent la faisabilité technique du design.
+Cycle `dev-lifecycle` **démarré** (2026-08-27) : Phase 1 draft dans
+[`docs/ai/requirements/2026-08-27-feature-serveur-mcp.md`](../docs/ai/requirements/2026-08-27-feature-serveur-mcp.md).
+Les questions 1–4, 5, 7 et 8 ont des recommandations nommées (D-\*) à
+entériner en Phase 2, puis design Phase 3.

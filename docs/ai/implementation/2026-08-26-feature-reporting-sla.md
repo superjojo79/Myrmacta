@@ -4,15 +4,21 @@ title: Implementation Guide
 description: Technical implementation notes, patterns, and code guidelines
 status: complete
 created: 2026-08-26
-updated: 2026-08-26
+updated: 2026-08-27
 feature: reporting-sla
 phase5: 2026-08-26
 phase7: 2026-08-26
 phase8: 2026-08-26
 phase9: 2026-08-26
+merged: 2026-08-26
+pr: 80
 ---
 
 # Implementation Guide — `reporting-sla`
+
+**Livrée** — [PR #80](https://github.com/superjojo79/FlowForge/pull/80)
+mergée sur `main` (2026-08-26). Lifecycle clos ; file d'attente mise à
+jour 2026-08-27.
 
 Phase 7 **Check Implementation** (2026-08-26) contre design Phase 3
 (`reviewed`) et requirements Phase 2 (`reviewed`). Lint feature docs

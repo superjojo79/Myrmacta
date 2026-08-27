@@ -88,7 +88,9 @@ Voir tableau ci-dessus. Non renégociées en Phase 1.
 | Id | Décision | Vote |
 |---|---|---|
 | **D-STATS = A** | Tool lecture **`query_sla_summary`** dans **cette** V1 → `GetSlaSummaryUseCase` (`groupBy=dossierTypeCode\|status`, `from`/`to`). Pas le snapshot maquette, pas le CSV, pas d'agrégat ad hoc. | Stakeholder 2026-08-27 |
+| **D-POLICY-AS = A** | Un `AccessContext.User` avec rôle `API_SERVICE` a une lecture **tenant-wide** (comme `WORKFLOW_ADMIN`) : `DossierAccessPolicy` VIEW + `SlaReportAccess` unrestricted. REST `@PreAuthorize` **inchangé**. Pas de `AccessContext.system` / `Service` depuis MCP. Champs `sensitive` : masqués (redactor) — **D-GET-SHAPE**. | Stakeholder 2026-08-27 |
 | **D-WRITE-GUARD = A** | Create/Update `DossierType` : `TENANT_ADMIN` **ou** `API_SERVICE` (nouvelle méthode de garde, **sans** élargir `requireTenantAdmin` : purge, ACL, rétention, settings SLA restent TA). REST `@PreAuthorize` des types **inchangé** (TA only). | Stakeholder 2026-08-27 |
+| **D-TRANSPORT = A** | Streamable HTTP WebMVC seulement. **Pas** de stdio en V1. | Stakeholder 2026-08-27 |
 
 ### File de décisions Phase 1 (reste)
 
@@ -96,8 +98,7 @@ Posées **une à la fois**.
 
 | Id | Statut |
 |---|---|
-| **D-TRANSPORT** | **posée** — HTTP Streamable vs stdio (analyse Q1) |
-| D-ENDPOINT | en attente (chemin / port, après D-TRANSPORT) |
+| **D-ENDPOINT** | **posée** — chemin / port sous HTTP |
 | D-CREDENTIAL | en attente (analyse Q2) |
 | D-PREVIEW | en attente (`dryRun`) |
 | D-DEPLOY-ORDER | en attente (analyse Q4 ; créer la config si absente ?) |
@@ -113,8 +114,8 @@ Posées **une à la fois**.
 
 ### Primary goals
 
-1. Serveur MCP interne, rôle `API_SERVICE` (chemin / transport :
-   pending D-TRANSPORT).
+1. Serveur MCP interne, Streamable HTTP (**D-TRANSPORT = A**), rôle
+   `API_SERVICE` (chemin : pending **D-ENDPOINT**).
 2. Tools d'écriture cadrage : `define_dossier_type` (**D-WRITE-GUARD = A**),
    `deploy_workflow` (`dryRun` / upsert config : pending D-PREVIEW /
    D-DEPLOY-ORDER).
@@ -138,8 +139,8 @@ Posées **une à la fois**.
 - Édition visuelle BPMN via MCP.
 - Snapshot `/api/reports/sla`, CSV, settings SLA, inbox remaining :
   **hors MCP** (**D-STATS = A** — summary seulement).
-- stdio / table d'audit MCP / SPA : **pending** D-TRANSPORT / D-AUDIT /
-  D-SPA.
+- stdio (**D-TRANSPORT = A**).
+- Table d'audit MCP / SPA : pending D-AUDIT / D-SPA.
 - Codegen client, Chart.js, planification d'envoi.
 
 ## User Stories & Use Cases
@@ -226,7 +227,7 @@ Posées **une à la fois**.
 
 | Item | Statut |
 |---|---|
-| Q1 Transport | **D-TRANSPORT** posée — endpoint encore en attente |
+| Q1 Transport | **D-TRANSPORT = A** (HTTP Streamable, pas stdio). **D-ENDPOINT** posée. |
 | Q2 Credential | **D-CREDENTIAL** — en attente |
 | Q3 Compatibilité schéma | **D-SCHEMA-COMPAT** — en attente |
 | Q4 Versionnement Flowable + config | **D-DEPLOY-ORDER** — en attente |

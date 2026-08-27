@@ -92,6 +92,7 @@ Voir tableau ci-dessus. Non renégociées en Phase 1.
 | **D-WRITE-GUARD = A** | Create/Update `DossierType` : `TENANT_ADMIN` **ou** `API_SERVICE` (nouvelle méthode de garde, **sans** élargir `requireTenantAdmin` : purge, ACL, rétention, settings SLA restent TA). REST `@PreAuthorize` des types **inchangé** (TA only). | Stakeholder 2026-08-27 |
 | **D-TRANSPORT = A** | Streamable HTTP WebMVC seulement. **Pas** de stdio en V1. | Stakeholder 2026-08-27 |
 | **D-ENDPOINT = A** | Chemin **`/api/m2m/mcp`** sur le port HTTP de l'instance (matcher M2M existant). Si le starter MCP refuse ce path, Phase 3 élargit le matcher — **même JWT**, pas de 4ᵉ chaîne par défaut. | Stakeholder 2026-08-27 |
+| **D-CREDENTIAL = A** | JWT M2M existant seulement (`Authorization: Bearer`). Prod = `issuer-uri` OIDC ; local/test = HMAC `app.security.m2m.jwt-secret`. **Pas** de clé API MCP. Même client que `/api/m2m/connectors/**`. | Stakeholder 2026-08-27 |
 
 ### File de décisions Phase 1 (reste)
 
@@ -99,8 +100,7 @@ Posées **une à la fois**.
 
 | Id | Statut |
 |---|---|
-| **D-CREDENTIAL** | **posée** — JWT M2M existant vs clé API (analyse Q2) |
-| D-PREVIEW | en attente (`dryRun`) |
+| **D-PREVIEW** | **posée** — `dryRun` sur les tools d'écriture |
 | D-DEPLOY-ORDER | en attente (analyse Q4 ; créer la config si absente ?) |
 | D-SCHEMA-COMPAT | en attente (analyse Q3) |
 | D-AUDIT | en attente (analyse Q5) |
@@ -114,9 +114,8 @@ Posées **une à la fois**.
 
 ### Primary goals
 
-1. Serveur MCP interne : Streamable HTTP **`/api/m2m/mcp`**
-   (**D-TRANSPORT = A**, **D-ENDPOINT = A**), rôle `API_SERVICE`
-   (mécanisme du jeton : pending **D-CREDENTIAL**).
+1. Serveur MCP interne : Streamable HTTP **`/api/m2m/mcp`** avec JWT
+   M2M `API_SERVICE` (**D-TRANSPORT/ENDPOINT/CREDENTIAL = A**).
 2. Tools d'écriture cadrage : `define_dossier_type` (**D-WRITE-GUARD = A**),
    `deploy_workflow` (`dryRun` / upsert config : pending D-PREVIEW /
    D-DEPLOY-ORDER).
@@ -186,14 +185,14 @@ Posées **une à la fois**.
 
 1. `tools/list` MCP annonce exactement les tools V1 ci-dessus
    (2 écriture + 7 lecture).
-2. Chaque tool d'écriture a un test `dryRun` (aucun `save` / `deploy`)
-   et un test d'application réelle.
+2. Tools d'écriture : tests d'application réelle ; `dryRun` pending
+   **D-PREVIEW**.
 3. `define_dossier_type` : `API_SERVICE` OK, `WORKFLOW_ADMIN` seul
    refusé (**D-WRITE-GUARD = A**) ; purge/ACL/rétention toujours TA.
    `deploy_workflow` passe par les use cases domaine (ArchUnit : pas
    de Spring AI / MCP dans `domain`).
-4. Auth `/api/m2m/mcp` : pending **D-CREDENTIAL** (happy path + rejet
-   mauvais tenant + sans rôle).
+4. JWT M2M sur `/api/m2m/mcp` (**D-CREDENTIAL = A**) : happy path +
+   rejet mauvais `tenant_id` + sans `API_SERVICE`.
 5. `get_dossier` respecte `DossierAccessPolicy` + redaction ; test
    mutant : un champ `sensitive` n'apparaît pas en clair.
 6. `query_sla_summary` : `API_SERVICE` non 403 (**D-POLICY-AS = A**) ;
@@ -230,7 +229,7 @@ Posées **une à la fois**.
 | Item | Statut |
 |---|---|
 | Q1 Transport | **D-TRANSPORT = A**, **D-ENDPOINT = A** (`/api/m2m/mcp`) — 2026-08-27 |
-| Q2 Credential | **D-CREDENTIAL** — en attente |
+| Q2 Credential | **D-CREDENTIAL = A** (JWT M2M, pas de clé API) — 2026-08-27 |
 | Q3 Compatibilité schéma | **D-SCHEMA-COMPAT** — en attente |
 | Q4 Versionnement Flowable + config | **D-DEPLOY-ORDER** — en attente |
 | Q5 Journal MCP dédié | **D-AUDIT** — en attente |

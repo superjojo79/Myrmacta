@@ -96,6 +96,7 @@ Voir tableau ci-dessus. Non renégociées en Phase 1.
 | **D-PREVIEW = A** | Paramètre optionnel **`dryRun`** (défaut **`false`**) sur `define_dossier_type` et `deploy_workflow`. `true` = valider + renvoyer le payload prévu, **sans** `save` ni `deploy`. | Stakeholder 2026-08-27 |
 | **D-DEPLOY-ORDER = A** | `deploy_workflow` : valider/parser le XML **puis** upsert `WorkflowTypeConfig` (création si la clé n'existe pas) **puis** `DeployBpmnProcessUseCase`. Redéploiement = nouvelle version Flowable (instances en cours inchangées). `statusDefinitions` = singleton non versionné (comme le PATCH REST). L'UI admin upload reste en 404 si config absente. | Stakeholder 2026-08-27 |
 | **D-SCHEMA-COMPAT = B** | `define_dossier_type` en **update** : **bloquer** si au moins un dossier existant du type échouerait `DossierFieldValidator` avec le nouveau schéma (compte dans l'erreur). Create (code nouveau) : pas de check. `dryRun=true` signale la même incompatibilité **sans** écrire. PATCH REST admin **inchangé** (pas de garde). | Stakeholder 2026-08-27 |
+| **D-AUDIT = C** | Colonnes **`createdBy` / `updatedBy`** sur `DossierType` et `WorkflowTypeConfig` (JWT `sub` côté MCP ; principal OIDC côté REST admin — mêmes colonnes, tous les writers). **Pas** de table journal MCP. Lectures non auditées en base. `dryRun` ne stamp pas. Migration Liquibase. | Stakeholder 2026-08-27 |
 
 ### File de décisions Phase 1 (reste)
 
@@ -103,8 +104,7 @@ Posées **une à la fois**.
 
 | Id | Statut |
 |---|---|
-| **D-AUDIT** | **posée** — journal dédié vs createdBy + logs (analyse Q5) |
-| D-SEARCH / D-PAGE | en attente (analyse Q8) |
+| **D-SEARCH** | **posée** — filtres de `search_dossiers` (analyse Q8) |
 | D-GET-SHAPE | en attente (agrégat dossier ; champs `sensitive`) |
 | D-SPA | en attente (régression FE only vs écran MCP) |
 | D-SDK / D-ACTOR | plutôt Phase 3 ; à poser ici s'ils changent le produit |
@@ -126,7 +126,7 @@ Posées **une à la fois**.
 
 ### Secondary goals
 
-- Logs ECS des appels tools (acteur JWT) — pending D-AUDIT.
+- `createdBy` / `updatedBy` sur types dossier et workflow (**D-AUDIT = C**).
 - `dryRun` défaut `false` sur les 2 tools d'écriture (**D-PREVIEW = A**).
 - README / getting-started : comment pointer un client MCP interne.
 
@@ -140,7 +140,8 @@ Posées **une à la fois**.
 - Snapshot `/api/reports/sla`, CSV, settings SLA, inbox remaining :
   **hors MCP** (**D-STATS = A** — summary seulement).
 - stdio (**D-TRANSPORT = A**).
-- Table d'audit MCP / SPA : pending D-AUDIT / D-SPA.
+- Table journal MCP dédiée (**D-AUDIT = C** — colonnes auteur à la
+  place). SPA : pending D-SPA.
 - Codegen client, Chart.js, planification d'envoi.
 
 ## User Stories & Use Cases
@@ -207,7 +208,10 @@ Posées **une à la fois**.
 7. `./mvnw verify` vert (Jacoco BUNDLE tenus) ; frontend
    `npm run test` + `npm run test:e2e` **régression** (0 spec MCP,
    0 mock SPA cassé).
-8. README : URL `/api/m2m/mcp`, rôle, exemple d'en-tête `Authorization`.
+8. README : URL `/api/m2m/mcp`, rôle, exemple `Authorization: Bearer`.
+9. `DossierType` / `WorkflowTypeConfig` portent `createdBy`/`updatedBy`
+   (**D-AUDIT = C**) ; MCP `dryRun` ne stamp pas ; REST admin types et
+   workflow-configs stampent aussi le principal OIDC.
 
 ## Constraints & Assumptions
 **What limitations do we need to work within?**
@@ -238,7 +242,7 @@ Posées **une à la fois**.
 | Q2 Credential | **D-CREDENTIAL = A** (JWT M2M, pas de clé API) — 2026-08-27 |
 | Q3 Compatibilité schéma | **D-SCHEMA-COMPAT = B** (blocage MCP si dossiers invalides) — 2026-08-27 |
 | Q4 Versionnement Flowable + config | **D-DEPLOY-ORDER = A** — 2026-08-27 |
-| Q5 Journal MCP dédié | **D-AUDIT** — en attente |
+| Q5 Journal MCP dédié | **D-AUDIT = C** (`createdBy`/`updatedBy` sur types, pas de table MCP) — 2026-08-27 |
 | Q6 Backlog écritures métier | Hors V1 (inchangé) |
 | Q7 Stats reporting | **D-STATS = A** — actée 2026-08-27 |
 | Q8 Pagination search | **D-SEARCH / D-PAGE** — en attente |

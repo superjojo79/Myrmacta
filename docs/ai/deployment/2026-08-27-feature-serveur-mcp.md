@@ -11,8 +11,9 @@ phase1: 2026-08-27
 
 # Deployment Strategy — `serveur-mcp`
 
-Aucune migration Liquibase prévue. Le serveur MCP vit dans la JVM
-tenant existante.
+**D-AUDIT = C** : migration Liquibase — `created_by` / `updated_by`
+sur les tables `DossierType` et `WorkflowTypeConfig` (noms physiques
+à figer en Phase 3). Le serveur MCP vit dans la JVM tenant existante.
 
 ## Infrastructure
 
@@ -22,7 +23,7 @@ comme le reste de `/api/m2m/**`.
 
 ## Deployment Pipeline
 
-Merge → boot. Pas de changelog DB.
+Merge → Liquibase au boot (colonnes auteur) + JVM.
 
 ## Environment Configuration
 
@@ -31,7 +32,10 @@ Propriétés Spring AI MCP (nom, endpoint) à figer en Phase 3.
 
 ## Database Migrations
 
-Aucune.
+Changelog **D-AUDIT = C** : `created_by` / `updated_by` sur types
+dossier et workflow. Rollback = drop colonnes (Phase 3). Backfill :
+valeurs sentinelle pour les lignes existantes (ex. `system`) — détail
+Phase 3.
 
 ## Rollback Plan
 

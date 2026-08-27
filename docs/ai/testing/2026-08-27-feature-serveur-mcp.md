@@ -75,17 +75,21 @@ design. Cases `- [ ]` jusqu'à la Phase 8.
 - [ ] **UT-SEARCH-1** relais `SearchDossiersQuery` (size 101 rejeté).
 - [ ] **UT-SLA-1** relais `GetSlaSummaryUseCase.Query`.
 - [ ] **UT-TPL-1** `includeContent` forcé / défaut false ; `true` rejeté.
-- [ ] **UT-ACTOR-1** JWT `sub` → `AccessContext.User` rôle `API_SERVICE`.
+- [x] **UT-ACTOR-1** JWT `sub` → `AccessContext.User` rôle `API_SERVICE`
+  (+ fallback `client_id` puis `"api-service"`, jamais `system`/`Service`).
 - [x] **UT-AUDIT-1** (partie type, M2) create/update réel stamp
   `createdBy`/`updatedBy` (`CreateDossierTypeUseCaseImplTest`,
   `UpdateDossierTypeUseCaseImplTest`). Partie MCP (`dryRun` ne stamp
   pas) reportée à T6.1.
-- [ ] **UT-CTX-1** contexte Spring : **aucun** bean `ChatClient`.
+- [x] **UT-CTX-1** contexte Spring : **aucun** bean `ChatClient` (classe
+  absente du classpath — preuve plus forte que « pas de bean »).
 
 ## Integration Tests
 **How do we test component interactions?**
 
 - [ ] **IT-MCP-1** `initialize` + `tools/list` : 9 tools nommés.
+  Amorce (T4.3) faite : `initialize` répond < 400 sur `/api/m2m/mcp`.
+  `tools/list` = 9 tools reporté à T6.3 (tools pas encore enregistrés).
 - [ ] **IT-MCP-2** Bearer JWT HMAC local `API_SERVICE` + `tenant_id`
   match → `list_dossier_types` OK (MockMvc chaîne M2M).
 - [ ] **IT-MCP-3** JWT `tenant_id` ≠ instance → 403 filtre existant.

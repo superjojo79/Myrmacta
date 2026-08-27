@@ -29,6 +29,7 @@ indisponible (`unknown command 'task'`). Lint feature OK ; branche
 - [x] **M1** Gardes domaine `API_SERVICE` (policy, search, list types, SLA, write type)
 - [x] **M2** Auteurs Liquibase 017 + `createdBy`/`updatedBy` (types + REST stamp)
 - [x] **M3** Compatibilité schéma (`CheckDossierTypeSchemaCompatibilityUseCase`)
+- [x] **M4** SDK Spring AI + endpoint `/api/m2m/mcp` + factory JWT (sans ChatClient)
 - [ ] **M2** Auteurs Liquibase 017 + `createdBy`/`updatedBy` (types + REST stamp)
 - [ ] **M3** Compatibilité schéma (`CheckDossierTypeSchemaCompatibilityUseCase`)
 - [ ] **M4** SDK Spring AI + endpoint `/api/m2m/mcp` + factory JWT (sans ChatClient)
@@ -119,23 +120,25 @@ puis, en fin de milestone, `./mvnw test -Dtest=…` (ou classe) vert.
 
 ### M4 — SDK + transport
 
-- [ ] **T4.1** `pom.xml` : BOM `spring-ai-bom:2.0.0` +
+- [x] **T4.1** `pom.xml` : BOM `spring-ai-bom:2.0.0` +
       `spring-ai-starter-mcp-server-webmvc`. YAML STREAMABLE,
       `mcp-endpoint=/api/m2m/mcp`, capabilities tool only, pas de
       starter chat. IT contexte : **aucun** bean `ChatClient`.
-      Si ChatClient ou BOM cassé → **DD-SDK-FALLBACK** (noter
-      implementation, ne pas improviser un 3ᵉ SDK).
-      Tests : UT-CTX-1
+      **DD-SDK-FALLBACK non déclenché** : le BOM résout proprement, la
+      classe `ChatClient` n'existe même pas sur le classpath (aucun
+      starter chat/model tiré transitivement).
+      Tests : UT-CTX-1 (`McpServerContextTest`)
       Dépend : —
-- [ ] **T4.2** `McpAccessContextFactory` : JWT `sub` sinon `client_id`
+- [x] **T4.2** `McpAccessContextFactory` : JWT `sub` sinon `client_id`
       sinon `"api-service"` ; rôles `{API_SERVICE}`. Jamais `system` /
       `Service`.
-      Tests : UT-ACTOR-1
+      Tests : UT-ACTOR-1 (`McpAccessContextFactoryTest`)
       Dépend : T4.1
-- [ ] **T4.3** Preuve que POST `/api/m2m/mcp` est l'endpoint MCP
-      (initialize). Si le starter n'écoute que `/mcp` : **A-M2M-PATH**
-      (élargir matcher, **même** JWT).
-      Tests : IT-MCP-1 (amorce)
+- [x] **T4.3** Preuve que POST `/api/m2m/mcp` est l'endpoint MCP
+      (initialize). **A-M2M-PATH non déclenché** : le starter respecte
+      `streamable-http.mcp-endpoint` tel que configuré, réponse < 400
+      dès le premier essai, sous la chaîne M2M existante (même JWT).
+      Tests : IT-MCP-1 (amorce, `McpEndpointApiTest`)
       Dépend : T4.1, T4.2
 
 ### M5 — Tools lecture
@@ -332,8 +335,8 @@ Aucun scénario testing orphelin.
 ## Progress
 
 Phase 4 **planned**. 9 milestones, 32 tâches. Phase 5 démarrée
-(2026-08-27) : **M1, M2 et M3 terminés** (T1.1–T1.5, T2.1–T2.3,
-T3.1–T3.2, TDD vert, `./mvnw test` complet vert). Reste M4–M9 not
+(2026-08-27) : **M1–M4 terminés** (T1.1–T1.5, T2.1–T2.3, T3.1–T3.2,
+T4.1–T4.3, TDD vert, `./mvnw test` complet vert). Reste M5–M9 not
 started.
 
-Prochain : **T4.1** (BOM Spring AI 2.0.0 + starter MCP WebMVC).
+Prochain : **T5.1** (`GetDossierTool`).

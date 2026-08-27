@@ -119,7 +119,44 @@ Aucune déviation par rapport au design. `DefineDossierTypeTool` (T6.1)
 appellera ce use case avant l'update pour bloquer un changement de
 schéma incompatible.
 
-Prochaine tâche : **T4.1** (BOM Spring AI 2.0.0 + starter MCP WebMVC).
+## M4 — SDK Spring AI + transport (fait, 2026-08-27)
+
+Fichiers touchés :
+
+- `pom.xml` — `dependencyManagement` import `spring-ai-bom:2.0.0` ;
+  dépendance `spring-ai-starter-mcp-server-webmvc` (pas de starter
+  chat/model). **Preuve runtime (open item design #1)** : le BOM
+  résout sans réseau restreint via le proxy agent ; la classe
+  `org.springframework.ai.chat.client.ChatClient` n'existe même pas
+  dans les jars résolus (`Class.forName` lève `ClassNotFoundException`)
+  — plus fort que « pas de bean », **DD-SDK-FALLBACK non nécessaire**.
+- `application.yml` — bloc `spring.ai.mcp.server` : `protocol:
+  STREAMABLE`, `type: SYNC`, `capabilities.tool: true` (resource/
+  prompt/completion `false`), `annotation-scanner.enabled: true`,
+  `streamable-http.mcp-endpoint: /api/m2m/mcp`. Propriété
+  `tool-callback-converter` du brouillon Phase 3 **n'existe pas** dans
+  les métadonnées de config 2.0.0 réelles — omise (le module
+  `ToolCallbackConverterAutoConfiguration` s'active par défaut).
+  Aucun changement `SecurityConfig` : `/api/m2m/mcp` tombe déjà sous
+  le matcher `/api/m2m/**` de la chaîne M2M Order 1 existante.
+- `infrastructure/mcp/McpAccessContextFactory.java` (nouveau) — JWT
+  `sub` → `client_id` → `"api-service"`, toujours rôle `{API_SERVICE}`.
+- `infrastructure/mcp/McpServerContextTest.java` (nouveau, UT-CTX-1) —
+  bean `io.modelcontextprotocol.server.McpSyncServer` présent + absence
+  de `ChatClient` sur le classpath.
+  `infrastructure/mcp/McpAccessContextFactoryTest.java` (UT-ACTOR-1).
+  `infrastructure/mcp/McpEndpointApiTest.java` (IT-MCP-1 amorce) —
+  MockMvc POST `/api/m2m/mcp` avec JWT M2M `API_SERVICE`, requête
+  JSON-RPC `initialize`, statut < 400 obtenu **sans** élargir le
+  matcher (**A-M2M-PATH non déclenché**).
+
+**Ouvert restant (design #2)** : les noms Java exacts des annotations
+2.0 sont confirmés par inspection des jars — `@McpTool` /
+`@McpToolParam` (package `org.springframework.ai.mcp.annotation`),
+scanner activé par `annotation-scanner.enabled=true`. Utilisés à partir
+de M5/M6 pour les 9 tools.
+
+Prochaine tâche : **T5.1** (`GetDossierTool`).
 
 ## Development Setup
 

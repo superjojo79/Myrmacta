@@ -433,5 +433,12 @@ dérogation. 9 tools MCP (`define_dossier_type`, `deploy_workflow`,
 `query_sla_summary`) enregistrés et prouvés fonctionnels de bout en
 bout (JWT M2M réel, persistance réelle, Flowable réel).
 
-Prochaine étape : Phase 7 (dev-implementation « Check Implementation »)
-puis Phase 8/9 (dev-testing / dev-review) du cycle `dev-lifecycle`.
+**Phase 7 (Check Implementation) faite** (2026-08-27) : revue fichier
+par fichier de tout le diff contre design/requirements, aucune
+déviation majeure ni défaut de correction/sécurité identifié — détail
+dans `docs/ai/implementation/2026-08-27-feature-serveur-mcp.md`
+§« Phase 7 ». [PR #82](https://github.com/superjojo79/FlowForge/pull/82)
+ouverte.
+
+Prochaine étape : Phase 8/9 (dev-testing / dev-review) du cycle
+`dev-lifecycle`.

@@ -2,7 +2,7 @@
 phase: implementation
 title: Implementation Guide
 description: Technical implementation notes, patterns, and code guidelines
-status: in-progress
+status: complete
 created: 2026-08-27
 updated: 2026-08-27
 feature: serveur-mcp
@@ -10,6 +10,7 @@ phase1: 2026-08-27
 phase3: 2026-08-27
 phase4: 2026-08-27
 phase5: 2026-08-27
+phase7: 2026-08-27
 ---
 
 # Implementation Guide — `serveur-mcp`
@@ -330,6 +331,73 @@ terminées, testées (TDD rouge → vert à chaque étape) et poussées sur
 tools fonctionnels, authentifiés par le JWT M2M `API_SERVICE`
 existant, sans starter chat/model, sans nouvelle chaîne de sécurité,
 sans impact sur le SPA.
+
+## Phase 7 — Check Implementation (revue d'alignement, 2026-08-27)
+
+Relecture fichier par fichier de tout le diff (79 fichiers vs `main`,
+[PR #82](https://github.com/superjojo79/FlowForge/pull/82)) contre le
+design et les requirements Phase 2/3, après redémarrage du conteneur
+de session : `./mvnw compile` + `./mvnw test` complet rejoués à froid,
+verts (aucune régression liée au redémarrage).
+
+**Couverture requirements** (table « Requirements coverage » du
+design) : les 22 lignes sont couvertes par le code livré, sans écart
+au-delà de ceux déjà consignés milestone par milestone ci-dessus
+(fallback SDK non déclenché, A-M2M-PATH non déclenché, tool-callback-converter
+absent des métadonnées 2.0.0 réelles, `deploy_workflow` fait plus que
+le flux REST existant par intention du design).
+
+**Points vérifiés spécifiquement lors de cette passe** :
+
+- **Ordre `GetDossierTool.drain()`** (pagination interne size 100) :
+  condition d'arrêt `page + 1 >= totalPages` revérifiée sur les cas
+  limites (0 élément, exactement 100, 101) — pas d'off-by-one, pas de
+  boucle infinie.
+- **`DeployWorkflowTool` — ordre parse → upsert → deploy** : la
+  validation XML (extraction de clé, levée d'`InvalidBpmnException` si
+  invalide) se fait avant toute écriture ; l'upsert `WorkflowTypeConfig`
+  se fait avant l'appel `DeployBpmnProcessUseCase.deploy`, conforme à
+  DD-DEPLOY-ORDER et A-NO-COMPENSATE (pas de rollback si le deploy
+  échoue après l'upsert — risque accepté et documenté au design).
+- **Autorisation de `SaveWorkflowTypeConfigUseCase`** (appelée par
+  `DeployWorkflowTool`) : cette use case ne porte **aucune** garde
+  interne (contrairement à `Create/UpdateDossierTypeUseCaseImpl`, qui
+  appellent `requireTenantAdminOrApiService`) — côté REST elle est
+  protégée uniquement par `@PreAuthorize` au contrôleur. Vérifié que ce
+  n'est **pas** une régression de sécurité : tout appelant MCP a déjà
+  dû franchir la chaîne Security M2M Order 1
+  (`hasAuthority("API_SERVICE")` sur `/api/m2m/**`) avant qu'un tool ne
+  s'exécute — il n'existe aucun chemin pour atteindre
+  `DeployWorkflowTool` sans ce rôle. Le point de contrôle unique est le
+  filtre de sécurité, pas une garde par use case ; comportement
+  identique à `M2mConnectorExecuteController`. Noté ici pour qu'un
+  futur lecteur ne le prenne pas pour un oubli.
+- **`McpAccessContextFactory.currentActor()`** : lève
+  `IllegalStateException` (fail-closed) si l'authentification courante
+  n'est pas un `JwtAuthenticationToken` — cohérent avec D-ACTOR (jamais
+  de repli silencieux vers un acteur `system`).
+- **Diffs domaine minimaux** (`DossierAccessPolicy`, `SlaReportAccess`,
+  `SearchDossiersUseCaseImpl`, `ListDossierTypesUseCaseImpl`,
+  `TenantAdminGuard`, `DossierType`, `WorkflowTypeConfig`) relus ligne à
+  ligne : chaque changement est chirurgical (un `||
+  user.hasRole("API_SERVICE")` par site, une méthode ajoutée, deux
+  composants de record ajoutés avec un constructeur de compatibilité
+  8/11-arg) — aucun effet de bord sur le comportement TA/WA/DOSSIER_MANAGER
+  existant, confirmé par les tests de non-régression déjà en place
+  (T1.4, suites `*UseCaseImplTest` étendues plutôt que remplacées).
+
+**Déviations mineures relevées, sans impact fonctionnel** :
+
+- Ordre des imports dans `DossierConfig.java` (nouvel import inséré au
+  milieu du bloc existant plutôt qu'en position alphabétique stricte) —
+  cosmétique, aucun outil de style (checkstyle/spotless) n'est
+  configuré dans ce dépôt pour l'imposer.
+
+**Verdict** : implémentation alignée avec le design et les
+requirements. Aucune déviation majeure, aucun défaut de correction ou
+de sécurité identifié. Prêt pour Phase 8 (dev-testing — déjà largement
+couverte de fait par le TDD de Phase 5, cf. `docs/ai/testing/...md`)
+et Phase 9 (dev-review).
 
 ## Development Setup
 

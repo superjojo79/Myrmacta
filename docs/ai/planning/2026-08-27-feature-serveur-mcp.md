@@ -33,6 +33,7 @@ indisponible (`unknown command 'task'`). Lint feature OK ; branche
 - [x] **M5** Tools lecture (7 : get_dossier, search_dossiers, query_sla_summary, list_document_templates, get_dossier_type, list_dossier_types, list_workflow_types)
 - [x] **M6** Tools écriture (define_dossier_type, deploy_workflow) + dryRun ; 9 tools enregistrés et vérifiés en conditions réelles (MockMvc + transport MCP)
 - [x] **M7** IT MockMvc JWT M2M réelles / persist / SLA / search (7 tests d'intégration)
+- [x] **M8** ArchUnit (io.modelcontextprotocol dans domain interdit) + README/GETTING-STARTED §11
 - [ ] **M2** Auteurs Liquibase 017 + `createdBy`/`updatedBy` (types + REST stamp)
 - [ ] **M3** Compatibilité schéma (`CheckDossierTypeSchemaCompatibilityUseCase`)
 - [ ] **M4** SDK Spring AI + endpoint `/api/m2m/mcp` + factory JWT (sans ChatClient)
@@ -286,15 +287,25 @@ Réutiliser `m2mJwt` de `ConnectorExecuteApiTest`.
 
 ### M8 — ArchUnit + doc
 
-- [ ] **T8.1** ArchUnit : `domain` n'importe pas
+- [x] **T8.1** ArchUnit : `domain` n'importe pas
       `org.springframework.ai` / `io.modelcontextprotocol` ; tools MCP
       hors allowlist `fields()` ; use case compat **dans** l'allowlist.
-      Tests : IT-ARCH
+      `org.springframework.ai..` était déjà bloqué par le motif
+      générique `org.springframework..` de la règle existante
+      `domain_has_no_framework_dependency` ; `io.modelcontextprotocol..`
+      ajouté explicitement à cette règle (défense en profondeur, motif
+      distinct). L'allowlist `Dossier.fields()` (M3/M5) garantit déjà
+      qu'aucun tool MCP hors `DossierMcpView`/
+      `CheckDossierTypeSchemaCompatibilityUseCaseImpl` ne peut appeler
+      `.fields()` — vérifié vert à chaque milestone depuis M3, pas de
+      nouvelle règle nécessaire au-delà de l'ajout `io.modelcontextprotocol..`.
+      Tests : IT-ARCH (`ArchitectureRulesTest`, déjà existant, étendu)
       Dépend : T3.2, T5.1, T4.1
-- [ ] **T8.2** README + getting-started : URL `/api/m2m/mcp`, rôle
-      `API_SERVICE`, exemple `Authorization: Bearer`. **Zéro** fichier
-      `frontend/**` (sauf si régression forcée — interdit par D-SPA).
-      Tests : relecture ; E2E-REG mocks non touchés
+- [x] **T8.2** README + `GETTING-STARTED.md` §11 : URL `/api/m2m/mcp`,
+      rôle `API_SERVICE`, exemple `curl` avec `Authorization: Bearer`.
+      **Zéro** fichier `frontend/**` (confirmé par `git status`).
+      Tests : relecture ; E2E-REG mocks non touchés (aucun fichier
+      `frontend/**` modifié, donc rien à régresser)
       Dépend : T4.3
 
 ### M9 — Vérification globale
@@ -408,10 +419,10 @@ Aucun scénario testing orphelin.
 ## Progress
 
 Phase 4 **planned**. 9 milestones, 32 tâches. Phase 5 démarrée
-(2026-08-27) : **M1–M7 terminés** (T1.1–T1.5, T2.1–T2.3, T3.1–T3.2,
-T4.1–T4.3, T5.1–T5.5, T6.1–T6.3, T7.1–T7.7, TDD vert, `./mvnw test`
-complet vert, 9 tools MCP prouvés fonctionnels de bout en bout via
-MockMvc + JWT M2M réel + persistance + Flowable réel). Reste M8–M9 not
-started.
+(2026-08-27) : **M1–M8 terminés** (T1.1–T1.5, T2.1–T2.3, T3.1–T3.2,
+T4.1–T4.3, T5.1–T5.5, T6.1–T6.3, T7.1–T7.7, T8.1–T8.2, TDD vert,
+`./mvnw test` complet vert, 9 tools MCP prouvés fonctionnels de bout en
+bout via MockMvc + JWT M2M réel + persistance + Flowable réel).
+Reste **M9** (vérification globale).
 
-Prochain : **T8.1** (ArchUnit domaine ↔ Spring AI / MCP).
+Prochain : **T9.1** (`./mvnw verify`) puis **T9.2** (régression FE).

@@ -288,7 +288,26 @@ Aucune déviation par rapport au design. Toutes les IT sont passées du
 premier coup grâce aux vérifications empiriques déjà faites en M4/M6
 (session MCP, auth, format de réponse).
 
-Prochaine tâche : **T8.1** (ArchUnit domaine ↔ Spring AI / MCP).
+## M8 — ArchUnit + doc (fait, 2026-08-27)
+
+- `ArchitectureRulesTest.domain_has_no_framework_dependency` — ajout de
+  `io.modelcontextprotocol..` à la liste des packages interdits dans
+  `..domain..`. `org.springframework.ai..` était déjà couvert par le
+  motif générique `org.springframework..` présent depuis l'origine de
+  cette règle — pas de changement nécessaire pour lui.
+  `only_allowlisted_classes_read_raw_dossier_fields` (existante) couvre
+  déjà tous les tools MCP par construction (aucun tool en dehors de
+  `DossierMcpView` n'est dans l'allowlist ; `CheckDossierTypeSchemaCompatibilityUseCaseImpl`
+  y est depuis M3).
+- `README.md` — nouvelle sous-section « Serveur MCP (outillage agent IA
+  interne) » dans « Fonctionnalités principales ».
+- `GETTING-STARTED.md` — nouvelle section §11 « Serveur MCP (outillage
+  agent IA) » : endpoint, chaîne de sécurité M2M réutilisée, exemple
+  `curl` d'un appel `initialize` avec JWT `Authorization: Bearer`.
+  Aucun fichier `frontend/**` touché (confirmé par `git status`).
+
+Prochaine tâche : **T9.1** (`./mvnw verify`) puis **T9.2** (régression
+frontend).
 
 ## Development Setup
 

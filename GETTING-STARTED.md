@@ -223,6 +223,37 @@ docker compose down -v         # + supprime les volumes (base, realm Keycloak, b
 
 ------
 
+## 11. Serveur MCP (outillage agent IA)
+
+FlowForge expose un serveur [MCP](https://modelcontextprotocol.io) pour un agent IA interne
+(Claude Code ou tout autre client MCP compatible Streamable HTTP) — 9 tools couvrant la
+définition de type de dossier, le déploiement de workflow BPMN, la lecture d'un dossier, la
+recherche de dossiers, les statistiques SLA, et la lecture des types/templates/workflows.
+
+Endpoint : `POST http://localhost:8080/api/m2m/mcp` — même chaîne de sécurité machine-à-machine
+que `/api/m2m/connectors/**` (aucune session navigateur, aucun cookie) : un JWT `Authorization:
+Bearer <token>` avec le rôle `API_SERVICE` et un claim `tenant_id` correspondant à
+`app.tenant.id` (`tenant_dev` par défaut en local, §3).
+
+En local (profil `local`, HMAC M2M déjà activé au §3), générer un JWT de test signé avec
+`M2M_JWT_SECRET` (voir `.env`) puis pointer un client MCP dessus :
+
+```bash
+curl -i http://localhost:8080/api/m2m/mcp \
+  -H "Authorization: Bearer $M2M_JWT" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"local-test","version":"0.1.0"}}}'
+```
+
+Une réponse `200` avec `"serverInfo":{"name":"flowforge",...}` confirme l'endpoint actif. La
+liste des 9 tools (`tools/list`) et leurs schémas d'entrée sont générés automatiquement depuis le
+code (`infrastructure.mcp.tool`) — pas de documentation à maintenir manuellement en plus de
+celle-ci. Aucune UI dédiée côté SPA : ce canal est réservé à l'outillage interne, pas aux
+utilisateurs finaux du tenant.
+
+------
+
 ## Pour aller plus loin
 
 - Architecture détaillée : [analysis doc/](analysis%20doc/00-index.md)

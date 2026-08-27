@@ -34,7 +34,11 @@ class ArchitectureRulesTest {
                     "io.swagger..",
                     "io.micrometer..",
                     "org.slf4j..",
-                    "org.springframework.boot.actuate..");
+                    "org.springframework.boot.actuate..",
+                    // serveur-mcp T8.1 : org.springframework.ai.. déjà couvert par
+                    // "org.springframework.." ci-dessus ; io.modelcontextprotocol.. (SDK MCP,
+                    // groupId différent) ajouté explicitement pour la même garantie.
+                    "io.modelcontextprotocol..");
 
     @ArchTest
     static final ArchRule domain_never_depends_on_infrastructure = noClasses()

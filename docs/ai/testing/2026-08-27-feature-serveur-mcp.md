@@ -113,7 +113,7 @@ design. Cases `- [ ]` jusqu'à la Phase 8.
   d'erreur au niveau tool (`QuerySlaSummaryToolTest`) ; pas de nouvelle
   IT à 10 001 lignes réelles.
 - [x] **IT-MCP-9** `search_dossiers` page défaut 20.
-- [ ] **IT-ARCH** ArchUnit : `domain` n'importe pas
+- [x] **IT-ARCH** ArchUnit : `domain` n'importe pas
   `org.springframework.ai` / `io.modelcontextprotocol` ; tool MCP hors
   allowlist `Dossier.fields()` ; use case compatibilité **dans**
   l'allowlist.
@@ -156,7 +156,7 @@ cd frontend && npm run test:e2e
 
 - Pointer Claude Code (ou un client MCP) vers
   `http://localhost:8080/api/m2m/mcp` avec un JWT local — hors CI,
-  getting-started.
+  documenté dans `GETTING-STARTED.md` §11 (T8.2, exemple `curl`).
 
 ## Performance Testing
 **How do we validate performance?**

@@ -73,6 +73,10 @@ Chaque organisation dispose d'un schéma PostgreSQL dédié — isolation forte 
 
 OAuth2/OIDC avec pattern BFF — le browser ne manipule jamais de token JWT. Le provider est interchangeable par configuration : Keycloak (self-hosted), Auth0, Microsoft Entra ID, Google.
 
+### Serveur MCP (outillage agent IA interne)
+
+Un serveur [MCP](https://modelcontextprotocol.io) (Model Context Protocol) expose un sous-ensemble des capacités métier à un agent IA interne (Claude Code ou tout autre client MCP) : définir un type de dossier, déployer un workflow BPMN, consulter un dossier, rechercher des dossiers, consulter les statistiques SLA. Transport Streamable HTTP sur `/api/m2m/mcp`, authentification par le même JWT machine-à-machine que les connecteurs (`Authorization: Bearer`, rôle `API_SERVICE`) — pas de nouveau mécanisme d'authentification, pas d'exposition tenant tierce. Voir [GETTING-STARTED.md](GETTING-STARTED.md#11-serveur-mcp-outillage-agent-ia) pour s'y connecter en local.
+
 ------
 
 ## Architecture technique

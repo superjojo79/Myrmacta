@@ -207,7 +207,50 @@ confirmer explicitement par un test d'erreur en M7 ; si le
 comportement observé diverge, un mapper dédié sera ajouté à ce
 moment-là plutôt que anticipé sans preuve.
 
-Prochaine tâche : **T6.1** (`DefineDossierTypeTool`).
+## M6 — Tools écriture (fait, 2026-08-27)
+
+Fichiers touchés :
+
+- `domain/dossier/model/DossierTypeSchemaIncompatibleException.java` —
+  nouvelle exception domaine (code `SCHEMA_INCOMPATIBLE`, même style
+  que `SlaCohortTooLargeException`), levée par le tool (pas par
+  `CheckDossierTypeSchemaCompatibilityUseCase`, qui reste un simple
+  compteur réutilisable pour d'autres appelants futurs).
+- `infrastructure/mcp/tool/McpArgs.java` (nouveau) — petit utilitaire
+  partagé `requireString`/`requireBoolean` sur `Map<String,Object>`,
+  extrait de la première version de `DefineDossierTypeTool`.
+- `infrastructure/mcp/tool/DefineDossierTypeTool.java` — `define_dossier_type`.
+- `infrastructure/mcp/tool/DeployWorkflowTool.java` — `deploy_workflow`.
+- `infrastructure/config/DossierConfig.java` — **bean manquant ajouté** :
+  `CheckDossierTypeSchemaCompatibilityUseCase` (créé en M3 mais jamais
+  câblé comme `@Bean` — l'omission ne s'est révélée qu'ici, au premier
+  point où quelque chose l'injecte réellement via le conteneur Spring ;
+  aucun test M3 ne chargeait le contexte complet).
+
+**Découverte non anticipée par le design, importante pour la suite** :
+un `@McpTool` prenant **seulement** `McpSchema.CallToolRequest` en
+paramètre génère un `inputSchema` **vide** (`McpJsonSchemaGenerator`
+exclut ce type de la génération de schéma — vérifié par désassemblage
+du jar 2.0.0, confirmé empiriquement via `tools/list` réel). Un agent
+appelant n'aurait aucune visibilité sur les arguments attendus. **Fix
+retenu** : déclarer *en plus* des `@McpToolParam` typés portant les
+mêmes noms que les clés JSON réellement lues dans
+`request.arguments()` — le générateur les inclut dans le schéma, le
+framework les injecte à l'appel, mais le corps de la méthode continue
+de tout relire depuis la map brute (seul chemin qui permet de rejeter
+les clés interdites de `define_dossier_type`, cf. M3/T6.1). Les
+variables locales issues de la map sont préfixées `raw*` pour éviter
+un conflit de nom Java avec les paramètres typés homonymes. Prouvé par
+un vrai appel `tools/call` `dryRun` (`isError:false`) et un appel avec
+`retentionDays` (`isError:true`, message d'exception, pas de stack
+trace) — voir `McpEndpointApiTest`.
+
+**Confirmation empirique (pas de `McpToolExceptionMapper` nécessaire)** :
+le SDK convertit toute exception non interceptée levée par un tool en
+`isError:true` avec le message de l'exception. Décision de M5
+confirmée, pas de composant à ajouter.
+
+Prochaine tâche : **T7.1** (IT MockMvc JWT M2M réel).
 
 ## Development Setup
 

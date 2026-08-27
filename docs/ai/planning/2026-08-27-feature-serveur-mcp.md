@@ -31,6 +31,7 @@ indisponible (`unknown command 'task'`). Lint feature OK ; branche
 - [x] **M3** Compatibilité schéma (`CheckDossierTypeSchemaCompatibilityUseCase`)
 - [x] **M4** SDK Spring AI + endpoint `/api/m2m/mcp` + factory JWT (sans ChatClient)
 - [x] **M5** Tools lecture (7 : get_dossier, search_dossiers, query_sla_summary, list_document_templates, get_dossier_type, list_dossier_types, list_workflow_types)
+- [x] **M6** Tools écriture (define_dossier_type, deploy_workflow) + dryRun ; 9 tools enregistrés et vérifiés en conditions réelles (MockMvc + transport MCP)
 - [ ] **M2** Auteurs Liquibase 017 + `createdBy`/`updatedBy` (types + REST stamp)
 - [ ] **M3** Compatibilité schéma (`CheckDossierTypeSchemaCompatibilityUseCase`)
 - [ ] **M4** SDK Spring AI + endpoint `/api/m2m/mcp` + factory JWT (sans ChatClient)
@@ -177,20 +178,61 @@ puis, en fin de milestone, `./mvnw test -Dtest=…` (ou classe) vert.
 
 ### M6 — Tools écriture
 
-- [ ] **T6.1** `DefineDossierTypeTool` : create vs update ; schéma
+- [x] **T6.1** `DefineDossierTypeTool` : create vs update ; schéma
       complet ; clés rétention/SLA → erreur ; update conserve
       rétention/SLA ; check compat avant save ; `dryRun` sans save /
-      sans stamp.
-      Tests : UT-DEF-1..6, UT-AUDIT-1 (MCP)
+      sans stamp. Prend le `McpSchema.CallToolRequest` brut (pas de
+      `@McpToolParam` typés) pour inspecter `arguments()` **avant**
+      tout binding — seul moyen de détecter une clé interdite
+      (`retentionDays`/`retentionNever`/`slaTargetHours`) qu'un
+      paramètre typé aurait silencieusement ignorée. Nouvelle exception
+      domaine `DossierTypeSchemaIncompatibleException` (code
+      `SCHEMA_INCOMPATIBLE`, même style que `SlaCohortTooLargeException`)
+      levée par le tool (pas par le use case de compat, qui reste un
+      simple compteur réutilisable).
+      Tests : UT-DEF-1..6 (`DefineDossierTypeToolTest`, 7 tests).
+      UT-AUDIT-1 (partie MCP) : couvert indirectement — `actor.userId()`
+      stampé par Create/UpdateDossierTypeUseCaseImpl (M2), `dryRun` ne
+      les appelle jamais donc ne stampe jamais (test `dryRun_doesNotSave`).
       Dépend : T2.2, T3.2, T4.2, T1.3
-- [ ] **T6.2** `DeployWorkflowTool` : UTF-8 ; taille ≤ multipart max ;
-      parse + clé match **puis** upsert **puis** deploy ; `dryRun` ;
-      `allowedDossierStatuses` vide → invariant.
-      Tests : UT-DEP-1..5
+- [x] **T6.2** `DeployWorkflowTool` : UTF-8 ; taille ≤
+      `spring.servlet.multipart.max-file-size` (lu via `@Value(...)
+      DataSize`, pas de second seuil) ; parse + clé match **puis**
+      upsert **puis** deploy ; `dryRun` ; `allowedDossierStatuses` vide
+      → invariant (porté par le compact constructor `WorkflowTypeConfig`,
+      déclenché même en dryRun car la config est construite avant le
+      test du flag).
+      **Écart vs le flux REST existant** (constaté en explorant le code) :
+      `POST /api/workflow-bpmn-deployments` exige aujourd'hui que le
+      `WorkflowTypeConfig` existe déjà (`UnknownWorkflowKeyException`
+      sinon) — il n'upserte jamais. Le tool MCP fait délibérément plus
+      (upsert + deploy en un seul appel), conforme à l'intention design
+      et à `analysis doc/15-serveur-mcp.md` ("un seul outil MCP couvre
+      déploiement + création/mise à jour du WorkflowTypeConfig").
+      Tests : UT-DEP-1..5 (`DeployWorkflowToolTest`, 6 tests)
       Dépend : T2.3, T4.2
-- [ ] **T6.3** Enregistrer exactement **9** tools (pas de
-      ToolCallback parasite).
-      Tests : IT-MCP-1 (complet)
+- [x] **T6.3** Enregistrer exactement **9** tools. Confirmé par les
+      logs Spring AI au démarrage (`Registered tools: 9`) et par
+      `tools/list` réel via MockMvc (`McpEndpointApiTest`).
+      **Découverte importante en cours de route** : `DefineDossierTypeTool`
+      et `DeployWorkflowTool` prenaient initialement **seulement** le
+      `McpSchema.CallToolRequest` brut en paramètre — le générateur de
+      schéma JSON (`McpJsonSchemaGenerator`, vérifié par désassemblage
+      du jar `spring-ai-mcp-annotations:2.0.0`) exclut ce type des
+      propriétés générées, donc `inputSchema` sortait vide
+      (`{"properties":{}}`), invisible pour un agent appelant. Fix :
+      les deux tools déclarent **aussi** des `@McpToolParam` typés
+      (mêmes noms que les clés JSON attendues) uniquement pour façonner
+      le schéma — le framework les exclut du binding-vs-schema mais les
+      passe quand même à la méthode ; le corps ignore ces valeurs et
+      relit tout depuis `request.arguments()` (chemin déjà testé).
+      Prouvé par un appel `tools/call` réel (`dryRun`) : réponse
+      `isError:false` avec le résultat attendu, et une clé interdite
+      (`retentionDays`) → `isError:true` avec le message d'exception —
+      confirme qu'**aucun `McpToolExceptionMapper` dédié n'est
+      nécessaire** (comportement par défaut du SDK).
+      Tests : IT-MCP-1 complet (`McpEndpointApiTest`, 4 tests :
+      initialize, tools/list = 9, tools/call succès, tools/call erreur)
       Dépend : T5.*, T6.1, T6.2, T4.3
 
 ### M7 — IT HTTP M2M
@@ -347,8 +389,9 @@ Aucun scénario testing orphelin.
 ## Progress
 
 Phase 4 **planned**. 9 milestones, 32 tâches. Phase 5 démarrée
-(2026-08-27) : **M1–M5 terminés** (T1.1–T1.5, T2.1–T2.3, T3.1–T3.2,
-T4.1–T4.3, T5.1–T5.5, TDD vert, `./mvnw test` complet vert). Reste
-M6–M9 not started.
+(2026-08-27) : **M1–M6 terminés** (T1.1–T1.5, T2.1–T2.3, T3.1–T3.2,
+T4.1–T4.3, T5.1–T5.5, T6.1–T6.3, TDD vert, `./mvnw test` complet vert,
+9 tools MCP prouvés fonctionnels de bout en bout via MockMvc). Reste
+M7–M9 not started.
 
-Prochain : **T6.1** (`DefineDossierTypeTool`).
+Prochain : **T7.1** (IT MockMvc JWT M2M réel : `list_dossier_types`).

@@ -54,21 +54,24 @@ design. Cases `- [ ]` jusqu'à la Phase 8.
 
 ### Tools (infra, use cases mockés)
 
-- [ ] **UT-DEF-1** `code` inconnu → `CreateDossierTypeUseCase`.
-- [ ] **UT-DEF-2** `code` connu → `UpdateDossierTypeUseCase`.
-- [ ] **UT-DEF-3** `dryRun=true` → aucun `save`.
-- [ ] **UT-DEF-4** `retentionDays` / `slaTargetHours` présents → erreur,
-  pas de save (**D-TYPE-FIELDS**).
-- [ ] **UT-DEF-5** update conserve rétention/SLA existants.
-- [x] **UT-DEF-6** (partie domaine, M3)
+- [x] **UT-DEF-1** `code` inconnu → `CreateDossierTypeUseCase`.
+- [x] **UT-DEF-2** `code` connu → `UpdateDossierTypeUseCase`.
+- [x] **UT-DEF-3** `dryRun=true` → aucun `save`.
+- [x] **UT-DEF-4** `retentionDays` / `slaTargetHours` présents → erreur,
+  pas de save (**D-TYPE-FIELDS**) — vérifié aussi en conditions réelles
+  via `tools/call` (`McpEndpointApiTest`, `isError:true`).
+- [x] **UT-DEF-5** update conserve rétention/SLA existants.
+- [x] **UT-DEF-6** (domaine M3 + tool M6)
   `CheckDossierTypeSchemaCompatibilityUseCaseImplTest` : count 0 vs > 0,
-  échantillon plafonné à 5. Partie MCP tool (pas de save si
-  incompatible) reportée à T6.1.
-- [ ] **UT-DEP-1** parse OK → upsert config → `deploy` (ordre).
-- [ ] **UT-DEP-2** XML invalide **avant** save config (pas d'upsert).
-- [ ] **UT-DEP-3** `dryRun=true` → parse OK, pas de deploy ni save.
-- [ ] **UT-DEP-4** `processDefinitionKey` ≠ clé extraite → erreur.
-- [ ] **UT-DEP-5** `allowedDossierStatuses` vide → rejet invariant.
+  échantillon plafonné à 5. `DefineDossierTypeToolTest.update_incompatibleSchema_isRejectedWithoutSaving` :
+  le tool lève `DossierTypeSchemaIncompatibleException` sans appeler
+  `update`.
+- [x] **UT-DEP-1** parse OK → upsert config → `deploy` (ordre, vérifié
+  par `InOrder`).
+- [x] **UT-DEP-2** XML invalide **avant** save config (pas d'upsert).
+- [x] **UT-DEP-3** `dryRun=true` → parse OK, pas de deploy ni save.
+- [x] **UT-DEP-4** `processDefinitionKey` ≠ clé extraite → erreur.
+- [x] **UT-DEP-5** `allowedDossierStatuses` vide → rejet invariant.
 - [x] **UT-GET-1** `id` xor `reference` ; les deux ou aucun → erreur.
 - [x] **UT-GET-2** agrège elements + history + relations, pagine jusqu'à
   épuisement (test dédié 150 éléments / page 100 → 2 pages).
@@ -91,9 +94,10 @@ design. Cases `- [ ]` jusqu'à la Phase 8.
 ## Integration Tests
 **How do we test component interactions?**
 
-- [ ] **IT-MCP-1** `initialize` + `tools/list` : 9 tools nommés.
-  Amorce (T4.3) faite : `initialize` répond < 400 sur `/api/m2m/mcp`.
-  `tools/list` = 9 tools reporté à T6.3 (tools pas encore enregistrés).
+- [x] **IT-MCP-1** `initialize` + `tools/list` : 9 tools nommés (T6.3,
+  `McpEndpointApiTest`). Étendu avec 2 tests `tools/call` réels
+  (succès `dryRun` + erreur clé interdite) confirmant le contrat
+  `isError` du SDK.
 - [ ] **IT-MCP-2** Bearer JWT HMAC local `API_SERVICE` + `tenant_id`
   match → `list_dossier_types` OK (MockMvc chaîne M2M).
 - [ ] **IT-MCP-3** JWT `tenant_id` ≠ instance → 403 filtre existant.

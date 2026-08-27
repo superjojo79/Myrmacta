@@ -8,10 +8,33 @@ updated: 2026-08-27
 feature: serveur-mcp
 phase1: 2026-08-27
 phase1_clarification: close
+phase2: in-progress
 todo_ref: FILE-ATTENTE.md · analysis doc/15-serveur-mcp.md · analysis doc/16-reporting-sla.md · PR #80
 ---
 
 # Requirements & Problem Understanding — `serveur-mcp`
+
+## Phase 2 : Review Requirements
+
+Phase 2 **en cours** (2026-08-27). Lint feature OK (branche
+`feature-serveur-mcp` = MISS attendu). Template README : problem,
+goals, stories, success, constraints, open items — présents.
+
+Décisions Phase 1 **conservées** (pas de re-vote). Écarts design
+draft (fichier design encore en jet Phase 1) à réécrire en Phase 3,
+pas ici : **D-AUDIT** y figure encore en B (voté **C**),
+**D-SCHEMA-COMPAT** y figure encore en A (voté **B**), ordre deploy
+y est « save puis deploy » (voté parse → upsert → deploy).
+
+Trou produit trouvé — **ne pas clore** la Phase 2 tant qu'il n'est
+pas voté :
+
+| Id | Trou |
+|---|---|
+| **D-TYPE-FIELDS** | Contradiction **D-WRITE-GUARD = A** (« rétention, settings SLA restent TA ») vs `CreateDossierTypeCommand` / `UpdateDossierTypeCommand` qui portent `retentionDays`, `retentionNever`, `slaTargetHours`. L'analyse §1 liste seulement le schéma. |
+
+Workspace : `cursor/serveur-mcp-e12d`, no-worktree. Task tracing
+indisponible (`unknown command 'task'`).
 
 ## Phase 1 : New Requirement
 
@@ -254,10 +277,12 @@ Voir tableau ci-dessus. Non renégociées en Phase 1.
 | Q8 Search | **D-SEARCH = A**, **D-PAGE = A** |
 | D-SDK | **Reporté Phase 3** |
 | `includeContent` templates | **A-TPL-META** (false) |
+| **D-TYPE-FIELDS** | **Ouvert Phase 2** — schéma seul vs rétention / `slaTargetHours` |
 
-Phase 1 **clarification close**. Prochain : Phase 2 review.
+Phase 2 **non close** : attendre le vote **D-TYPE-FIELDS**.
 
 ## Next phase
 
-`dev-requirements` **Phase 2** (revue du doc vs template, pas de
-nouvelles D-* sauf trou trouvé). Puis `dev-design` Phase 3 (**D-SDK**).
+Terminer Phase 2 après **D-TYPE-FIELDS** (et tout autre trou
+matériel trouvé ensuite). Puis `dev-design` Phase 3 (**D-SDK** +
+réécriture des écarts draft).

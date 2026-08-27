@@ -11,6 +11,7 @@ phase3: 2026-08-27
 phase4: 2026-08-27
 phase5: 2026-08-27
 phase7: 2026-08-27
+phase9: 2026-08-27
 ---
 
 # Implementation Guide — `serveur-mcp`
@@ -422,3 +423,69 @@ cd frontend && npm run test && npm run test:e2e
 TDD (`tdd` + `verify`). Ne pas lire `Dossier.fields()` depuis un tool
 MCP. Ne pas élargir `requireTenantAdmin`. Ne pas ajouter de starter
 chat.
+
+## Phase 9 — Revue finale pre-push (2026-08-27)
+
+Revue holistique du diff complet contre `main` (83 fichiers, +5286/-133,
+[PR #82](https://github.com/superjojo79/FlowForge/pull/82)), en
+complément de l'alignement design déjà vérifié en Phase 7 et de la
+fermeture des trous de couverture en Phase 8.
+
+**Points vérifiés spécifiquement lors de cette passe** :
+
+- **Dépendances** (`pom.xml`) : ajout minimal — un seul BOM
+  (`spring-ai-bom:2.0.0`, import scope) et un seul starter
+  (`spring-ai-starter-mcp-server-webmvc`), conforme à D-SDK=A (pas de
+  starter chat/model). Pas de conflit de version détecté (build vert).
+- **Sécurité rétrograde de la migration 017** : `addColumn` (nullable)
+  → backfill `UPDATE ... WHERE ... IS NULL` → `addNotNullConstraint`,
+  avec bloc `rollback` (`dropColumn`) sur les deux changesets. Pattern
+  identique à la migration 015 déjà en prod. Les deux `JpaEntity`
+  (`DossierTypeJpaEntity`, `WorkflowTypeConfigJpaEntity`) déclarent
+  `created_by`/`updated_by` `nullable = false` et les alimentent
+  systématiquement depuis le domaine (`fromDomain`) — aucun chemin
+  d'insertion ne peut laisser les colonnes nulles après le déploiement.
+- **Compatibilité ascendante des records** : `DossierType` (13
+  composants) et `WorkflowTypeConfig` (10, avec constructeur de
+  compatibilité 8-arg par défaut `"system"`) — tous les appelants
+  in-repo recompilent et passent (`./mvnw verify` vert), aucun
+  appelant externe/public concerné (records domaine internes).
+- **`git merge-base` vs `origin/main`** : aucune divergence, `main` n'a
+  pas bougé depuis la création de la branche — pas de conflit de merge
+  à résoudre.
+- **Revue GitHub** : 0 review thread ouvert sur la PR #82.
+- **CI** : `build` et `frontend` échouent sur le head commit, mais
+  confirmé **non lié à cette PR** — échec instantané (~2 s, aucun
+  runner jamais assigné) reproduit à l'identique sur un re-run manuel,
+  et identique sur tous les runs CI récents du dépôt y compris des
+  push directs sur `main` sans rapport avec cette feature (ex. le
+  merge de la PR #80). Problème d'infrastructure runner GitHub Actions
+  préexistant et hors du diff ; commentaire de statut posté sur la PR
+  avec les preuves locales (`./mvnw verify`, Vitest 213/213, Playwright
+  55/55).
+- **Frontend** : aucun fichier `frontend/**` touché par cette feature
+  (D-SPA=A) — pas d'obligation de preuve Playwright supplémentaire
+  pour cette phase au-delà de la régression déjà consignée en M9.
+
+**Checklist finale** :
+
+- [x] Correspondance design : 22/22 lignes de couverture requirements,
+  aucun écart non consigné (Phase 7).
+- [x] Pas de trou de logique identifié (Phase 7 + Phase 9).
+- [x] Sécurité traitée : chaîne JWT M2M réutilisée sans modification,
+  clés interdites retention/SLA bloquées avant toute écriture,
+  `McpAccessContextFactory.currentActor()` fail-closed, aucune fuite de
+  champ sensible (`get_dossier` masque `sensitive=true`, testé IT).
+- [x] Points d'intégration vérifiés : Liquibase 017 (colonnes NOT NULL
+  + backfill + rollback), ArchUnit (`io.modelcontextprotocol` interdit
+  en domaine), 9 tools enregistrés (`tools/list`).
+- [x] Tests couvrant les changements : `infrastructure.mcp.tool` à
+  100 % instructions / 97 % branches (Phase 8), 7 IT HTTP M2M réelles,
+  Jacoco BUNDLE (LINE ≥ 85 %, BRANCH ≥ 75 %) tenu.
+- [x] Docs à jour : requirements/design/planning/implementation/testing
+  tous datés 2026-08-27, phases 1-9 tracées.
+
+**Verdict** : feature prête à merger sur le fond (code, tests, docs).
+Seul point non résolu est le CI GitHub Actions cassé au niveau
+infrastructure du dépôt (hors scope de cette PR) — à surveiller côté
+mainteneur du dépôt, pas un blocage introduit par `serveur-mcp`.

@@ -8,6 +8,8 @@
 > démarrer/suivre un workflow, configurer un connecteur ou un template de document.
 >  **Déploiement :** voir [DEPLOIEMENT.md](DEPLOIEMENT.md) — au-delà du poste de dev : artefact,
 > reverse-proxy, provisioning d'un tenant, comptes Keycloak (portée manuelle, pas d'outillage à ce jour).
+>  **Concevoir un BPMN :** voir [GUIDE-CONCEPTION-BPMN.md](GUIDE-CONCEPTION-BPMN.md) — conventions,
+> champs dynamiques, connecteurs, intervenants, génération de documents depuis un diagramme.
 
 ------
 
@@ -183,7 +185,9 @@ Mise en place et utilisation en local : [GETTING-STARTED.md](GETTING-STARTED.md)
 de l'UI (dossiers, workflows, connecteurs, templates) : [GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md).
 Déploiement au-delà du poste de dev (reverse-proxy, provisioning tenant, comptes Keycloak) :
 [DEPLOIEMENT.md](DEPLOIEMENT.md). Historique synthétique des changements, par pull request :
-[CHANGELOG.md](CHANGELOG.md).
+[CHANGELOG.md](CHANGELOG.md). Conception d'un diagramme BPMN (conventions, `serviceTask`
+disponibles, champs dynamiques, connecteurs, intervenants) :
+[GUIDE-CONCEPTION-BPMN.md](GUIDE-CONCEPTION-BPMN.md).
 
 La documentation d'architecture est disponible dans le répertoire `analysis doc` :
 

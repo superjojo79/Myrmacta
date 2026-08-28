@@ -133,8 +133,8 @@ importé/déployé via cet écran ou via l'upload ci-dessous.
 
 > Pour les conventions de nommage, les `serviceTask` disponibles (génération de document,
 > connecteurs, notifications, chaînage de dossiers…) et la façon de référencer les champs
-> dynamiques ou les intervenants d'un dossier depuis le BPMN, voir le guide technique
-> [17-guide-conception-bpmn.md](analysis%20doc/17-guide-conception-bpmn.md).
+> dynamiques ou les intervenants d'un dossier depuis le BPMN, voir le guide pratique
+> [GUIDE-CONCEPTION-BPMN.md](GUIDE-CONCEPTION-BPMN.md).
 
 ### Déployer un diagramme BPMN (upload direct)
 

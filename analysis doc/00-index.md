@@ -31,7 +31,12 @@
 | 14 | Construction/édition de diagrammes BPMN | [14-edition-bpmn.md](14-edition-bpmn.md) |
 | 15 | Serveur MCP (Model Context Protocol) — Phase 4 planned | [15-serveur-mcp.md](15-serveur-mcp.md) |
 | 16 | Reporting & SLA — **livré** (PR #80) | [16-reporting-sla.md](16-reporting-sla.md) |
-| 17 | Guide de conception d'un diagramme BPMN — conventions, référence pratique | [17-guide-conception-bpmn.md](17-guide-conception-bpmn.md) |
+
+> Pour concevoir concrètement un diagramme BPMN pour FlowForge (conventions, référence des
+> `serviceTask` disponibles, champs dynamiques, connecteurs, intervenants, génération de
+> documents), voir le guide pratique [GUIDE-CONCEPTION-BPMN.md](../GUIDE-CONCEPTION-BPMN.md) à la
+> racine du dépôt — ce n'est pas un document d'analyse d'architecture, il n'a donc pas de numéro
+> dans la table ci-dessus.
 
 ---
 

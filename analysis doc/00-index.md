@@ -31,6 +31,7 @@
 | 14 | Construction/édition de diagrammes BPMN | [14-edition-bpmn.md](14-edition-bpmn.md) |
 | 15 | Serveur MCP (Model Context Protocol) — Phase 4 planned | [15-serveur-mcp.md](15-serveur-mcp.md) |
 | 16 | Reporting & SLA — **livré** (PR #80) | [16-reporting-sla.md](16-reporting-sla.md) |
+| 17 | Guide de conception d'un diagramme BPMN — conventions, référence pratique | [17-guide-conception-bpmn.md](17-guide-conception-bpmn.md) |
 
 ---
 

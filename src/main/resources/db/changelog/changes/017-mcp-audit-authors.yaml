@@ -12,10 +12,12 @@ databaseChangeLog:
               - column:
                   name: updated_by
                   type: varchar(128)
-        - sql:
-            sql: UPDATE dossier_type SET created_by = 'system' WHERE created_by IS NULL
-        - sql:
-            sql: UPDATE dossier_type SET updated_by = 'system' WHERE updated_by IS NULL
+        - sqlFile:
+            path: sql/017-dossier-type-audit-authors-backfill-created-by.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            path: sql/017-dossier-type-audit-authors-backfill-updated-by.sql
+            relativeToChangelogFile: true
         - addNotNullConstraint:
             tableName: dossier_type
             columnName: created_by
@@ -45,10 +47,12 @@ databaseChangeLog:
               - column:
                   name: updated_by
                   type: varchar(128)
-        - sql:
-            sql: UPDATE workflow_type_config SET created_by = 'system' WHERE created_by IS NULL
-        - sql:
-            sql: UPDATE workflow_type_config SET updated_by = 'system' WHERE updated_by IS NULL
+        - sqlFile:
+            path: sql/017-workflow-type-config-audit-authors-backfill-created-by.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            path: sql/017-workflow-type-config-audit-authors-backfill-updated-by.sql
+            relativeToChangelogFile: true
         - addNotNullConstraint:
             tableName: workflow_type_config
             columnName: created_by

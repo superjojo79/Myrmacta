@@ -65,22 +65,16 @@ databaseChangeLog:
                   name: dossier_id
               - column:
                   name: sequence
-        - sql:
+        - sqlFile:
+            path: sql/002-dossier-workflow-link-active-index-postgresql.sql
+            relativeToChangelogFile: true
             dbms: postgresql
             splitStatements: false
-            sql: |
-              CREATE UNIQUE INDEX uq_dossier_workflow_link_active
-              ON dossier_workflow_link (dossier_id)
-              WHERE ended_at IS NULL;
-        - sql:
+        - sqlFile:
+            path: sql/002-dossier-workflow-link-active-index-h2.sql
+            relativeToChangelogFile: true
             dbms: h2
             splitStatements: true
-            sql: |
-              ALTER TABLE dossier_workflow_link
-              ADD active_dossier_id uuid
-              GENERATED ALWAYS AS (CASE WHEN ended_at IS NULL THEN dossier_id ELSE NULL END);
-              CREATE UNIQUE INDEX uq_dossier_workflow_link_active
-              ON dossier_workflow_link (active_dossier_id);
 
   - changeSet:
       id: 002-workflow-type-config

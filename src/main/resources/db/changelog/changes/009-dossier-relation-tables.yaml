@@ -66,13 +66,7 @@ databaseChangeLog:
             tableName: dossier_relation
             columnNames: tenant_id, source_dossier_id, idempotency_key
             constraintName: uq_dossier_relation_idempotency
-        - sql:
+        - sqlFile:
+            path: sql/009-dossier-relation-constraints-indexes.sql
+            relativeToChangelogFile: true
             dbms: postgresql,h2
-            sql: |
-              ALTER TABLE dossier_relation
-                ADD CONSTRAINT chk_dossier_relation_not_self
-                CHECK (source_dossier_id <> target_dossier_id);
-              CREATE INDEX IF NOT EXISTS idx_dossier_relation_source
-                ON dossier_relation (tenant_id, source_dossier_id);
-              CREATE INDEX IF NOT EXISTS idx_dossier_relation_target
-                ON dossier_relation (tenant_id, target_dossier_id);

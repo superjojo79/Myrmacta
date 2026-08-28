@@ -43,3 +43,10 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 - **PR [#83](https://github.com/superjojo79/FlowForge/pull/83)** — Service `prometheus` optionnel
   dans `docker-compose.yml` (profil dédié, `network_mode: host` pour respecter le bind loopback
   du port management) : scrape local de `/actuator/prometheus`, déjà exposé par le backend.
+
+### Modifié
+
+- **PR [#84](https://github.com/superjojo79/FlowForge/pull/84)** — Le SQL brut des changelogs
+  Liquibase (blocs `sql:` en changes et rollback) est déporté dans des fichiers `.sql` importés
+  via `sqlFile:`, pour une meilleure lisibilité et un lint SQL possible. Aucun changement de
+  comportement des migrations.

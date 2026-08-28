@@ -1,0 +1,3 @@
+CREATE INDEX IF NOT EXISTS idx_dossier_updated_at ON dossier (updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_dossier_type_updated_at ON dossier (dossier_type_code, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_dossier_status_updated_at ON dossier (status, updated_at DESC);

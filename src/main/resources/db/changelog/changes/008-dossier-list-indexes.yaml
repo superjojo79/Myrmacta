@@ -3,9 +3,7 @@ databaseChangeLog:
       id: 008-dossier-list-indexes
       author: flowforge
       changes:
-        - sql:
+        - sqlFile:
+            path: sql/008-dossier-list-indexes.sql
+            relativeToChangelogFile: true
             dbms: postgresql,h2
-            sql: |
-              CREATE INDEX IF NOT EXISTS idx_dossier_updated_at ON dossier (updated_at DESC);
-              CREATE INDEX IF NOT EXISTS idx_dossier_type_updated_at ON dossier (dossier_type_code, updated_at DESC);
-              CREATE INDEX IF NOT EXISTS idx_dossier_status_updated_at ON dossier (status, updated_at DESC);

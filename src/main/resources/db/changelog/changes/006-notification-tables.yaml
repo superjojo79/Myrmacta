@@ -55,29 +55,25 @@ databaseChangeLog:
             columns:
               - column:
                   name: tenant_id
-        - sql:
+        - sqlFile:
+            path: sql/006-notification-webhook-active-index-postgresql.sql
+            relativeToChangelogFile: true
             dbms: postgresql
             splitStatements: false
-            sql: |
-              CREATE UNIQUE INDEX uq_notification_webhook_tenant_name_active
-              ON notification_webhook (tenant_id, name)
-              WHERE deleted_at IS NULL;
-        - sql:
+        - sqlFile:
+            path: sql/006-notification-webhook-active-index-h2.sql
+            relativeToChangelogFile: true
             dbms: h2
             splitStatements: true
-            sql: |
-              ALTER TABLE notification_webhook
-              ADD active_name varchar(255)
-              GENERATED ALWAYS AS (CASE WHEN deleted_at IS NULL THEN name ELSE NULL END);
-              CREATE UNIQUE INDEX uq_notification_webhook_tenant_name_active
-              ON notification_webhook (tenant_id, active_name);
       rollback:
-        - sql:
+        - sqlFile:
+            path: sql/006-notification-webhook-active-index-rollback-postgresql.sql
+            relativeToChangelogFile: true
             dbms: postgresql
-            sql: DROP INDEX IF EXISTS uq_notification_webhook_tenant_name_active;
-        - sql:
+        - sqlFile:
+            path: sql/006-notification-webhook-active-index-rollback-h2.sql
+            relativeToChangelogFile: true
             dbms: h2
-            sql: DROP INDEX IF EXISTS uq_notification_webhook_tenant_name_active;
         - dropTable:
             tableName: notification_webhook
 

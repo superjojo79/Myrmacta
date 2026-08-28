@@ -9,8 +9,9 @@ databaseChangeLog:
               - column:
                   name: updated_at
                   type: timestamp with time zone
-        - sql:
-            sql: UPDATE purge_outbox SET updated_at = created_at WHERE updated_at IS NULL
+        - sqlFile:
+            path: sql/015-purge-outbox-updated-at-backfill.sql
+            relativeToChangelogFile: true
         - addNotNullConstraint:
             tableName: purge_outbox
             columnName: updated_at

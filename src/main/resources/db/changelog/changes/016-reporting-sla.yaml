@@ -53,12 +53,12 @@ databaseChangeLog:
       id: 016-dossier-created-at-index
       author: flowforge
       changes:
-        - sql:
+        - sqlFile:
+            path: sql/016-dossier-created-at-index.sql
+            relativeToChangelogFile: true
             dbms: postgresql,h2
-            sql: |
-              CREATE INDEX IF NOT EXISTS idx_dossier_created_at ON dossier (created_at);
       rollback:
-        - sql:
+        - sqlFile:
+            path: sql/016-dossier-created-at-index-rollback.sql
+            relativeToChangelogFile: true
             dbms: postgresql,h2
-            sql: |
-              DROP INDEX IF EXISTS idx_dossier_created_at;

@@ -3,15 +3,12 @@ databaseChangeLog:
       id: 014-dossier-type-acl-permission-check
       author: flowforge
       changes:
-        - sql:
+        - sqlFile:
+            path: sql/014-dossier-type-acl-permission-check.sql
+            relativeToChangelogFile: true
             dbms: postgresql,h2
-            sql: |
-              ALTER TABLE dossier_type_acl
-                  ADD CONSTRAINT chk_dossier_type_acl_permission
-                  CHECK (permission IN ('VIEW', 'EDIT'));
       rollback:
-        - sql:
+        - sqlFile:
+            path: sql/014-dossier-type-acl-permission-check-rollback.sql
+            relativeToChangelogFile: true
             dbms: postgresql,h2
-            sql: |
-              ALTER TABLE dossier_type_acl
-                  DROP CONSTRAINT chk_dossier_type_acl_permission;

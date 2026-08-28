@@ -37,6 +37,11 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
   (reverse-proxy, provisioning manuel d'un tenant, gestion des utilisateurs/rôles Keycloak).
 - **PR [#83](https://github.com/superjojo79/FlowForge/pull/83)** — Ajout de ce fichier
   `CHANGELOG.md` et de la règle d'alimentation associée dans le skill `flowforge-conventions`.
+- **PR [#86](https://github.com/superjojo79/FlowForge/pull/86)** — Nouveau guide
+  `GUIDE-CONCEPTION-BPMN.md` (racine du dépôt) : conventions de nommage, catalogue des
+  `serviceTask` disponibles, référencement des champs dynamiques du dossier, instanciation d'un
+  service externe, référencement des intervenants, déclenchement de la génération de documents —
+  destiné à quiconque conçoit un diagramme BPMN pour FlowForge.
 
 ### Ajouté
 
@@ -50,3 +55,11 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
   Liquibase (blocs `sql:` en changes et rollback) est déporté dans des fichiers `.sql` importés
   via `sqlFile:`, pour une meilleure lisibilité et un lint SQL possible. Aucun changement de
   comportement des migrations.
+
+### Corrigé
+
+- **PR [#86](https://github.com/superjojo79/FlowForge/pull/86)** — Les champs dynamiques d'un
+  dossier (`Dossier.fields()`) sont désormais injectés automatiquement comme variable de
+  processus réservée `dossierFields` à chaque démarrage de workflow (API manuelle, relais
+  outbox, réconciliation). Auparavant invisibles depuis un `serviceTask` ou un template de
+  document sans propagation manuelle de chaque champ.

@@ -31,6 +31,7 @@
 | 14 | Construction/édition de diagrammes BPMN | [14-edition-bpmn.md](14-edition-bpmn.md) |
 | 15 | Serveur MCP (Model Context Protocol) — Phase 4 planned | [15-serveur-mcp.md](15-serveur-mcp.md) |
 | 16 | Reporting & SLA — **livré** (PR #80) | [16-reporting-sla.md](16-reporting-sla.md) |
+| 17 | Édition du schéma des champs dynamiques (admin `DossierType`) — analyse initiale | [17-schema-champs-dynamiques.md](17-schema-champs-dynamiques.md) |
 
 ---
 

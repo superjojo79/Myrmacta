@@ -26,7 +26,7 @@
         <archunit.version>1.5.0</archunit.version>
         <aws.sdk.version>2.53.2</aws.sdk.version>
         <!-- D-SDK=A (serveur-mcp) — Spring AI MCP server WebMVC starter, pas de starter chat/model -->
-        <spring-ai.version>2.0.0</spring-ai.version>
+        <spring-ai.version>2.0.1</spring-ai.version>
         <skip.frontend>false</skip.frontend>
     </properties>
 

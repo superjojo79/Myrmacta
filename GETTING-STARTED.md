@@ -3,8 +3,9 @@
 Ce guide construit un environnement FlowForge minimal en local : backend Spring Boot lancé sur
 l'hôte (`./mvnw spring-boot:run`) connecté à une infrastructure de support (PostgreSQL, Keycloak,
 et en option un stockage objet compatible S3) fournie par des conteneurs. Il ne couvre pas un
-déploiement de production — voir [README.md](README.md#modèle-de-déploiement) et
-[analysis doc/](analysis%20doc/00-index.md) pour l'architecture cible.
+déploiement de production — voir [DEPLOIEMENT.md](DEPLOIEMENT.md) pour la suite (artefact,
+reverse-proxy, provisioning tenant, comptes Keycloak), [README.md](README.md#modèle-de-déploiement)
+et [analysis doc/](analysis%20doc/00-index.md) pour l'architecture cible.
 
 ------
 
@@ -146,18 +147,62 @@ Ne jamais coder un client spécifique à MinIO/RustFS/SeaweedFS dans l'applicati
 
 ------
 
-## 6. Démarrer le backend
+## 6. Configurer le canal email (optionnel)
+
+Un des trois canaux de notification ([analysis doc/09-notifications.md](analysis%20doc/09-notifications.md))
+est l'email, envoyé via SMTP (`spring-boot-starter-mail`). **Aucun serveur SMTP n'est fourni par
+`docker-compose.yml`** — contrairement à PostgreSQL/Keycloak/stockage, ce n'est pas un prérequis
+pour démarrer : sans configuration, `MAIL_HOST` vaut `localhost:587`, les envois échoueront
+silencieusement (pas de service à l'écoute) et resteront en re-tentative dans
+`notification_outbox` jusqu'à passer en `DEAD` (voir l'écran **Observabilité**, §9 de
+[GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md)) — sans bloquer le workflow déclencheur ni les autres
+canaux (webhook, navigateur).
+
+Pour activer réellement l'envoi, renseigner dans `.env` un relais SMTP existant (fournisseur cloud,
+relais interne, ou un outil de capture d'email pour du test local type Mailpit/Mailhog — non
+fourni par ce dépôt) :
+
+```bash
+MAIL_HOST=smtp.example.com
+MAIL_PORT=587
+MAIL_USERNAME=un-compte-smtp
+MAIL_PASSWORD=un-mot-de-passe-smtp
+MAIL_SMTP_AUTH=true
+MAIL_SMTP_STARTTLS=true
+```
+
+puis recharger les variables dans le shell (§3) avant de (re)lancer le backend.
+
+> **Limite actuelle :** l'adaptateur d'envoi (`SmtpEmailAdapter`) ne positionne pas d'en-tête
+> `From` explicite — le comportement dépend alors entièrement des règles du relais SMTP configuré
+> (certains l'acceptent avec une valeur par défaut, d'autres rejettent l'envoi). Il n'y a pas non
+> plus, à ce jour, de compteur dédié aux échecs email dans **Observabilité** (`/admin/observabilite`)
+> comme il en existe un pour les webhooks (« Webhooks DEAD ») — un échec email n'est visible
+> qu'indirectement, via l'âge de l'outbox de notification.
+
+------
+
+## 7. Démarrer le backend
 
 ```bash
 ./mvnw spring-boot:run
 ```
 
 Sert l'API sur `http://localhost:8080`. Si `src/main/resources/static/` est vide (frontend pas
-encore buildé), les routes `/api/**` répondent mais l'UI ne s'affiche pas — voir §7.
+encore buildé), les routes `/api/**` répondent mais l'UI ne s'affiche pas — voir §8.
 
 Actuator (health / Prometheus) : **`http://127.0.0.1:8090`** (`MANAGEMENT_ADDRESS` /
 `MANAGEMENT_PORT`, D-42). Keycloak reste sur **`:8081`**. `permitAll` sur le port management
 est conservé parce que le bind est loopback.
+
+**Scraper avec Prometheus (optionnel).** `docker compose --profile prometheus up -d` démarre un
+Prometheus préconfiguré ([`docker/prometheus/prometheus.yml`](docker/prometheus/prometheus.yml))
+qui scrape `127.0.0.1:8090/actuator/prometheus` — UI sur http://localhost:9090. Le conteneur
+tourne en `network_mode: host` pour atteindre ce port loopback sans l'exposer plus largement
+(voir le commentaire du service `prometheus` dans `docker-compose.yml`) : fonctionne tel quel sous
+Linux (Docker Engine ou Podman rootless) ; sous macOS/Windows Docker Desktop, `network_mode: host`
+exige d'activer *Host networking* (Docker Desktop ≥ 4.34) — à défaut, se contenter de
+`curl http://127.0.0.1:8090/actuator/prometheus` sans ce conteneur.
 
 Test rapide sans frontend :
 
@@ -168,7 +213,7 @@ curl -s http://127.0.0.1:8090/actuator/health
 
 ------
 
-## 7. Démarrer le frontend
+## 8. Démarrer le frontend
 
 Deux modes, voir aussi [frontend/README.md](frontend/README.md) :
 
@@ -190,7 +235,7 @@ Deux modes, voir aussi [frontend/README.md](frontend/README.md) :
 
 ------
 
-## 8. Vérifier que tout fonctionne
+## 9. Vérifier que tout fonctionne
 
 1. Ouvrir http://localhost:8080 — redirection automatique vers Keycloak.
 2. Se connecter avec `demo` / `demo` (utilisateur importé au §4).
@@ -201,7 +246,7 @@ dépannage ci-dessous (cookie `Secure`).
 
 ------
 
-## 9. Arrêter / nettoyer
+## 10. Arrêter / nettoyer
 
 ```bash
 docker compose down            # arrête postgres + keycloak (+ profil actif si précisé)
@@ -210,7 +255,7 @@ docker compose down -v         # + supprime les volumes (base, realm Keycloak, b
 
 ------
 
-## 10. Dépannage
+## 11. Dépannage
 
 | Symptôme | Cause probable | Fix |
 |---|---|---|
@@ -223,7 +268,7 @@ docker compose down -v         # + supprime les volumes (base, realm Keycloak, b
 
 ------
 
-## 11. Serveur MCP (outillage agent IA)
+## 12. Serveur MCP (outillage agent IA)
 
 FlowForge expose un serveur [MCP](https://modelcontextprotocol.io) pour un agent IA interne
 (Claude Code ou tout autre client MCP compatible Streamable HTTP) — 9 tools couvrant la
@@ -256,6 +301,7 @@ utilisateurs finaux du tenant.
 
 ## Pour aller plus loin
 
+- Déploiement au-delà de ce guide (reverse-proxy, provisioning tenant, comptes Keycloak) : [DEPLOIEMENT.md](DEPLOIEMENT.md)
 - Architecture détaillée : [analysis doc/](analysis%20doc/00-index.md)
 - Décisions actées et points ouverts : [TODO.md](TODO.md)
 - Prochaine feature / backlog : [FILE-ATTENTE.md](FILE-ATTENTE.md), [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md)

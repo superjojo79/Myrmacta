@@ -6,6 +6,8 @@
 > (PostgreSQL, Keycloak, stockage S3-compatible en option) + lancement backend/frontend, config minimale incluse.
 >  **Utilisation de l'UI :** voir [GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md) — créer un dossier,
 > démarrer/suivre un workflow, configurer un connecteur ou un template de document.
+>  **Déploiement :** voir [DEPLOIEMENT.md](DEPLOIEMENT.md) — au-delà du poste de dev : artefact,
+> reverse-proxy, provisioning d'un tenant, comptes Keycloak (portée manuelle, pas d'outillage à ce jour).
 
 ------
 
@@ -75,7 +77,7 @@ OAuth2/OIDC avec pattern BFF — le browser ne manipule jamais de token JWT. Le 
 
 ### Serveur MCP (outillage agent IA interne)
 
-Un serveur [MCP](https://modelcontextprotocol.io) (Model Context Protocol) expose un sous-ensemble des capacités métier à un agent IA interne (Claude Code ou tout autre client MCP) : définir un type de dossier, déployer un workflow BPMN, consulter un dossier, rechercher des dossiers, consulter les statistiques SLA. Transport Streamable HTTP sur `/api/m2m/mcp`, authentification par le même JWT machine-à-machine que les connecteurs (`Authorization: Bearer`, rôle `API_SERVICE`) — pas de nouveau mécanisme d'authentification, pas d'exposition tenant tierce. Voir [GETTING-STARTED.md](GETTING-STARTED.md#11-serveur-mcp-outillage-agent-ia) pour s'y connecter en local.
+Un serveur [MCP](https://modelcontextprotocol.io) (Model Context Protocol) expose un sous-ensemble des capacités métier à un agent IA interne (Claude Code ou tout autre client MCP) : définir un type de dossier, déployer un workflow BPMN, consulter un dossier, rechercher des dossiers, consulter les statistiques SLA. Transport Streamable HTTP sur `/api/m2m/mcp`, authentification par le même JWT machine-à-machine que les connecteurs (`Authorization: Bearer`, rôle `API_SERVICE`) — pas de nouveau mécanisme d'authentification, pas d'exposition tenant tierce. Voir [GETTING-STARTED.md](GETTING-STARTED.md#12-serveur-mcp-outillage-agent-ia) pour s'y connecter en local.
 
 ------
 
@@ -179,6 +181,9 @@ charge le justifie.
 
 Mise en place et utilisation en local : [GETTING-STARTED.md](GETTING-STARTED.md). Prise en main
 de l'UI (dossiers, workflows, connecteurs, templates) : [GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md).
+Déploiement au-delà du poste de dev (reverse-proxy, provisioning tenant, comptes Keycloak) :
+[DEPLOIEMENT.md](DEPLOIEMENT.md). Historique synthétique des changements, par pull request :
+[CHANGELOG.md](CHANGELOG.md).
 
 La documentation d'architecture est disponible dans le répertoire `analysis doc` :
 

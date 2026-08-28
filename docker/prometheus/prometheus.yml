@@ -1,0 +1,18 @@
+# Scrape config minimale pour le dev local (docker-compose.yml, profil `prometheus`).
+#
+# Cible en dur `localhost:8090` : le conteneur Prometheus tourne en `network_mode: host`
+# (voir docker-compose.yml) et partage donc l'espace réseau de l'hôte — `localhost` désigne ici
+# la machine hôte elle-même, où le backend Spring Boot expose son port management
+# (MANAGEMENT_ADDRESS=127.0.0.1, MANAGEMENT_PORT=8090 par défaut, voir .env.example / D-42).
+#
+# Si MANAGEMENT_PORT est changé dans .env, adapter la cible ci-dessous en conséquence — ce
+# fichier est monté tel quel, il ne lit pas .env (Prometheus ne fait pas de substitution de
+# variables d'environnement dans sa config).
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: flowforge
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["localhost:8090"]

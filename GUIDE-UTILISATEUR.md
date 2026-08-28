@@ -25,9 +25,16 @@ le permet — l'affichage du menu est indicatif, le contrôle réel se fait côt
 | Admin | Templates | `/admin/templates` | `TENANT_ADMIN` |
 | Admin | Connecteurs | `/admin/connectors` | `TENANT_ADMIN` |
 | Admin | Workflows | `/admin/workflow-types` | `TENANT_ADMIN` ou `WORKFLOW_ADMIN` |
+| Admin | Webhooks (notification) | `/admin/notification-webhooks` | `TENANT_ADMIN` |
+| Admin | File purge | `/admin/purge-outbox` | `TENANT_ADMIN` |
+| Admin | Observabilité | `/admin/observabilite` | `TENANT_ADMIN` |
 
 Sans le rôle requis, l'entrée de menu correspondante n'apparaît simplement pas — pas besoin de la
 chercher.
+
+Ces rôles sont attribués côté Keycloak, pas dans FlowForge — voir
+[DEPLOIEMENT.md](DEPLOIEMENT.md#6-gérer-les-utilisateurs-et-leurs-rôles) pour créer un utilisateur
+et lui attribuer un rôle.
 
 ------
 
@@ -54,6 +61,23 @@ Formulaire de création :
 
 Une fois créé, le type apparaît dans le tableau avec un bouton **Basculer** pour l'activer/le
 désactiver — seuls les types actifs sont proposés à la création d'un dossier.
+
+### Rétention (conformité RGPD)
+
+En haut du même écran **Admin → Types**, deux réglages distincts de la politique de rétention :
+
+- **Rétention tenant** — une durée par défaut en jours, obligatoire pour que le job de rétention
+  s'active (tant qu'elle n'est jamais enregistrée, l'API renvoie 404 et le job ne fait rien).
+  S'applique à tout type de dossier qui n'a pas de réglage propre (mode **héritage**).
+- **Rétention par type** — dans le formulaire de création (ou via les boutons **NEVER**/**Héritage**
+  sur une ligne existante) : `héritage` (utilise le défaut tenant), `jours` (durée propre à ce
+  type), ou `NEVER` (le type n'est jamais éligible à la purge). La colonne **Rétention** du tableau
+  affiche le mode effectif de chaque type.
+
+Le décompte démarre à la **clôture** du dossier (passage au statut `CLOTURE`), pas à sa création —
+un dossier jamais clos n'expire jamais. À expiration, le dossier passe en `ARCHIVE` et une demande
+de purge est déposée dans la file (§8) ; **aucune donnée n'est supprimée automatiquement à ce
+stade**, la purge physique reste une étape distincte.
 
 La section du bas de l'écran gère les **droits d'accès (ACL)** par type de dossier : associer un
 `userId` à une permission `VIEW` (lecture seule) ou `EDIT` (modification), boutons
@@ -191,6 +215,12 @@ D'autres connecteurs custom peuvent être ajoutés au classpath backend sans mod
 [analysis doc/06-connecteurs.md](analysis%20doc/06-connecteurs.md)) — ils apparaîtront alors dans
 ce même catalogue.
 
+> **Ce que cet écran ne permet pas :** configurer un appel sortant générique vers un service tiers
+> depuis un workflow (rôle **service** d'un connecteur `http-rest`). Ce rôle existe dans le code
+> mais n'est pas enregistré en V1 — seul `flowable-signal` peut être appelé en tant que service
+> depuis un workflow aujourd'hui. Pour notifier un système externe en sortie, utiliser un webhook de
+> notification (§7) plutôt qu'un connecteur.
+
 ### Créer une instance de connecteur
 
 1. **Nom** — libellé libre de l'instance.
@@ -281,14 +311,86 @@ Sur la fiche d'un dossier (`/dossiers/{id}`), en plus du suivi de workflow (§3)
   ajout via un dialogue d'upload de fichier ;
 - ses **relations** vers d'autres dossiers (hiérarchie, subséquence, lien simple) via un
   dialogue de liaison dédié ;
-- le changement manuel de statut du dossier.
+- le changement manuel de statut du dossier ;
+- pour `TENANT_ADMIN`, un bouton **Demander la purge** qui dépose une demande dans la file de
+  purge (§8) indépendamment de l'échéance normale de rétention (§1).
+
+------
+
+## 7. Webhooks de notification (sortant)
+
+Écran **Admin → Webhooks** (`/admin/notification-webhooks`, `TENANT_ADMIN`).
+
+À ne pas confondre avec les connecteurs `http-rest` du §4, qui sont des webhooks **entrants**
+(ils déclenchent un workflow). Ici, la plateforme **appelle** une URL externe pour notifier un
+événement métier (voir [analysis doc/09-notifications.md](analysis%20doc/09-notifications.md)),
+typiquement pour rebrancher un outil noCode (Make, n8n, Zapier).
+
+| Champ | Rôle |
+|---|---|
+| `nom` | libellé libre de l'instance |
+| `URL cible` | endpoint HTTPS qui recevra le payload JSON |
+| `secret` | optionnel, champ écriture seule — utilisé pour signer le payload (HMAC) ; jamais réaffiché une fois enregistré, seul un badge « secret configuré » l'indique |
+
+Une fois créé, le webhook est actif par défaut. Boutons **Basculer** (activer/désactiver) et
+**Supprimer** dans la liste. L'URL cible passe systématiquement par une garde anti-SSRF (résolution
+DNS, blocage des plages privées/loopback/métadonnées cloud) avant tout envoi — une URL qui pointe
+vers une ressource interne sera refusée à l'appel, pas seulement à la création.
+
+L'envoi est asynchrone (file d'attente interne avec retry/backoff) : un échec temporaire de la
+cible ne bloque pas le workflow déclencheur et est rejoué automatiquement jusqu'à un nombre maximal
+de tentatives, avant de passer en échec définitif (visible dans **Observabilité**, §9, comme
+« Webhooks DEAD »).
+
+------
+
+## 8. File de purge (rétention / RGPD)
+
+Écran **Admin → File purge** (`/admin/purge-outbox`, `TENANT_ADMIN`), en lecture seule.
+
+Cette file recense les dossiers **candidats à la purge physique** — parce qu'ils ont expiré selon
+la politique de rétention (§1) ou qu'une purge a été demandée manuellement depuis leur fiche (§6).
+Deux blocs :
+
+- **Compteurs** par statut : `PENDING` (en attente), `PROCESSING` (en cours), `FAILED` (échec —
+  sera rejoué), `COMPLETED` (traité).
+- **Liste des entrées** : dossier concerné, statut, origine de la demande (échéance de rétention ou
+  demande manuelle), date de création, dernière erreur le cas échéant.
+
+La purge elle-même (suppression des données PostgreSQL et des fichiers de stockage objet) est un
+traitement de fond asynchrone — cet écran n'a pas de bouton pour la déclencher ou l'annuler ; il
+sert à vérifier que la file avance et à repérer les échecs répétés.
+
+------
+
+## 9. Observabilité
+
+Écran **Admin → Observabilité** (`/admin/observabilite`, `TENANT_ADMIN`) — tableau de bord
+technique en lecture seule, bouton **Rafraîchir** pour recharger un instantané à la demande.
+
+| Indicateur | Signification |
+|---|---|
+| Âge outbox déclenchement / notification / purge | Ancienneté du plus vieil enregistrement encore non traité dans chacune des trois files internes — une valeur qui grimpe signale un traitement de fond bloqué |
+| Jobs Flowable dead-letter / en exception | Jobs du moteur de workflow qui ont épuisé leurs tentatives ou sont en erreur |
+| Rendu PDF | Nombre de générations, durée moyenne et max |
+| Webhooks DEAD | Webhooks de notification (§7) définitivement en échec après épuisement des tentatives |
+| SSE actifs | Nombre de connexions de notification navigateur actuellement ouvertes |
+
+Chaque carte porte une sévérité (normal/alerte) calculée côté serveur selon des seuils fixes — cet
+écran est destiné à un diagnostic rapide, pas à de l'historique ou du graphique dans le temps (pas
+de série temporelle en V1 ; les mêmes métriques sont aussi exposées au format Prometheus sur le
+port management, voir [GETTING-STARTED.md](GETTING-STARTED.md#7-démarrer-le-backend), pour qui
+dispose déjà d'un outil de supervision externe).
 
 ------
 
 ## Pour aller plus loin
 
 - Mise en place de l'environnement : [GETTING-STARTED.md](GETTING-STARTED.md)
+- Déploiement, provisioning d'un tenant, gestion des utilisateurs/rôles Keycloak : [DEPLOIEMENT.md](DEPLOIEMENT.md)
 - Architecture des connecteurs : [analysis doc/06-connecteurs.md](analysis%20doc/06-connecteurs.md)
 - Architecture des templates/génération de documents : [analysis doc/07-generation-documents.md](analysis%20doc/07-generation-documents.md), [analysis doc/08-templates-documents.md](analysis%20doc/08-templates-documents.md)
 - Visualisation des workflows : [analysis doc/10-visualisation-workflow.md](analysis%20doc/10-visualisation-workflow.md)
+- Notifications (email, webhook, SSE) : [analysis doc/09-notifications.md](analysis%20doc/09-notifications.md)
+- Autorisation et conformité (rétention, RGPD) : [analysis doc/12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md)
 - Décisions ouvertes (dont les limites d'écran citées ci-dessus) : [TODO.md](TODO.md)

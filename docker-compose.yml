@@ -11,6 +11,9 @@
 #   docker compose --profile minio     up -d
 #   docker compose --profile rustfs    up -d
 #   docker compose --profile seaweedfs up -d
+#
+# Avec Prometheus (scrape local du endpoint /actuator/prometheus du backend) :
+#   docker compose --profile prometheus up -d
 
 services:
   postgres:
@@ -126,9 +129,32 @@ services:
       mc mb --ignore-existing local/$$S3_BUCKET_NAME
       "
 
+  # --- Observabilité — scrape local de /actuator/prometheus, exposé par le backend ---
+
+  prometheus:
+    image: prom/prometheus:latest
+    profiles: ["prometheus"]
+    # Le backend tourne sur l'hôte (pas en conteneur, voir GETTING-STARTED.md §7) et son port
+    # management est bindé en loopback (127.0.0.1:8090 par défaut, D-42, application.yml) —
+    # `permitAll` n'y est acceptable QUE parce qu'il n'est joignable que depuis la machine
+    # elle-même. `network_mode: host` fait partager à ce conteneur l'espace réseau de l'hôte :
+    # il atteint donc 127.0.0.1:8090 directement, sans exposer ce port au-delà du loopback ni
+    # affaiblir D-42. Fonctionne tel quel sous Linux (Docker Engine ou Podman rootless). Sous
+    # macOS/Windows Docker Desktop, `network_mode: host` exige d'activer "Host networking"
+    # (Docker Desktop ≥ 4.34, désactivé par défaut) — à défaut, interroger l'endpoint
+    # directement (`curl http://127.0.0.1:8090/actuator/prometheus`) sans ce conteneur.
+    network_mode: host
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --web.listen-address=:9090
+
 volumes:
   pg_data:
   keycloak_data:
   minio_data:
   rustfs_data:
   seaweedfs_data:
+  prometheus_data:

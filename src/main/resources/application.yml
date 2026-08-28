@@ -62,6 +62,26 @@ spring:
         provider:
           oidc:
             issuer-uri: ${OIDC_ISSUER_URI}
+  ai:
+    # Serveur MCP M2M (serveur-mcp, D-TRANSPORT/D-ENDPOINT=A) — outillage interne
+    # (API_SERVICE) sous la chaîne Security /api/m2m/** existante. Pas de starter
+    # chat/model : capabilities.tool seul, annotation-scanner détecte les @McpTool.
+    mcp:
+      server:
+        enabled: true
+        protocol: STREAMABLE
+        name: flowforge
+        version: 0.1.0
+        type: SYNC
+        capabilities:
+          tool: true
+          resource: false
+          prompt: false
+          completion: false
+        annotation-scanner:
+          enabled: true
+        streamable-http:
+          mcp-endpoint: /api/m2m/mcp
 
 management:
   server:

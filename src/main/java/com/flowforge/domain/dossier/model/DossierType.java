@@ -16,7 +16,9 @@ public record DossierType(
         List<FieldDefinition> fieldDefinitions,
         Integer retentionDays,
         boolean retentionNever,
-        Integer slaTargetHours
+        Integer slaTargetHours,
+        String createdBy,
+        String updatedBy
 ) {
     // Deliberately restrictive: `code` is embedded verbatim in purge_outbox.payload_json
     // (PurgeOutboxPayloads) and used as a URL path segment (DossierTypeController) — this charset
@@ -30,6 +32,8 @@ public record DossierType(
         Objects.requireNonNull(code, "code");
         Objects.requireNonNull(label, "label");
         Objects.requireNonNull(workflowKey, "workflowKey");
+        Objects.requireNonNull(createdBy, "createdBy");
+        Objects.requireNonNull(updatedBy, "updatedBy");
         if (!CODE_PATTERN.matcher(code).matches()) {
             throw new IllegalArgumentException(
                     "code must match " + CODE_PATTERN.pattern() + ", was: " + code);
@@ -55,7 +59,7 @@ public record DossierType(
         }
     }
 
-    /** Convenience for call sites without retention override (inherit). */
+    /** Convenience for call sites without retention override (inherit) or author (defaults to "system"). */
     public static DossierType inherit(
             UUID id,
             String tenantId,
@@ -76,7 +80,9 @@ public record DossierType(
                 fieldDefinitions,
                 null,
                 false,
-                null);
+                null,
+                "system",
+                "system");
     }
 
     public DossierType withUpdate(
@@ -87,7 +93,8 @@ public record DossierType(
             List<FieldDefinition> fieldDefinitions,
             Integer retentionDays,
             boolean retentionNever,
-            Integer slaTargetHours) {
+            Integer slaTargetHours,
+            String updatedBy) {
         return new DossierType(
                 id,
                 tenantId,
@@ -99,7 +106,9 @@ public record DossierType(
                 fieldDefinitions,
                 retentionDays,
                 retentionNever,
-                slaTargetHours);
+                slaTargetHours,
+                createdBy,
+                updatedBy);
     }
 
     /** Metadata only — true if any field is marked sensitive (no redaction yet). */

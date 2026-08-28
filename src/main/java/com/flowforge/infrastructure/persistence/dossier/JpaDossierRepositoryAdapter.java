@@ -49,6 +49,14 @@ public class JpaDossierRepositoryAdapter implements DossierRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<Dossier> findByDossierTypeCode(String tenantId, String dossierTypeCode) {
+        return repository.findByTenantIdAndDossierTypeCode(tenantId, dossierTypeCode).stream()
+                .map(DossierJpaEntity::toDomain)
+                .toList();
+    }
+
+    @Override
     @Transactional
     public void deleteById(UUID id) {
         repository.deleteById(id);

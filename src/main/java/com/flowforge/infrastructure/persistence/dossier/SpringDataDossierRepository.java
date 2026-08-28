@@ -13,6 +13,8 @@ interface SpringDataDossierRepository
         extends JpaRepository<DossierJpaEntity, UUID>, JpaSpecificationExecutor<DossierJpaEntity> {
     Optional<DossierJpaEntity> findByTenantIdAndReference(String tenantId, String reference);
 
+    List<DossierJpaEntity> findByTenantIdAndDossierTypeCode(String tenantId, String dossierTypeCode);
+
     @Query("select d from DossierJpaEntity d "
             + "where d.tenantId = :tenantId and d.status = :status and d.closedAt is not null "
             + "order by d.closedAt asc, d.id asc")

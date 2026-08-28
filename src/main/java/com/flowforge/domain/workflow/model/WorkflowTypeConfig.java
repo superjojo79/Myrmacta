@@ -16,13 +16,17 @@ public record WorkflowTypeConfig(
         List<WorkflowStatusDefinition> statusDefinitions,
         List<DossierStatus> allowedDossierStatuses,
         DossierStatus onStartDossierStatus,
-        List<String> observerUserIds
+        List<String> observerUserIds,
+        String createdBy,
+        String updatedBy
 ) {
     public WorkflowTypeConfig {
         Objects.requireNonNull(id, "id");
         Objects.requireNonNull(tenantId, "tenantId");
         Objects.requireNonNull(workflowKey, "workflowKey");
         Objects.requireNonNull(label, "label");
+        Objects.requireNonNull(createdBy, "createdBy");
+        Objects.requireNonNull(updatedBy, "updatedBy");
         statusDefinitions = List.copyOf(Objects.requireNonNull(statusDefinitions, "statusDefinitions"));
         allowedDossierStatuses =
                 List.copyOf(Objects.requireNonNull(allowedDossierStatuses, "allowedDossierStatuses"));
@@ -34,6 +38,29 @@ public record WorkflowTypeConfig(
             throw new IllegalArgumentException("statusDefinitions must contain exactly one initial status");
         }
         observerUserIds = normalizeObserverUserIds(observerUserIds);
+    }
+
+    /** Convenience for call sites without an author (defaults to {@code "system"}). */
+    public WorkflowTypeConfig(
+            UUID id,
+            String tenantId,
+            String workflowKey,
+            String label,
+            List<WorkflowStatusDefinition> statusDefinitions,
+            List<DossierStatus> allowedDossierStatuses,
+            DossierStatus onStartDossierStatus,
+            List<String> observerUserIds) {
+        this(
+                id,
+                tenantId,
+                workflowKey,
+                label,
+                statusDefinitions,
+                allowedDossierStatuses,
+                onStartDossierStatus,
+                observerUserIds,
+                "system",
+                "system");
     }
 
     private static List<String> normalizeObserverUserIds(List<String> raw) {

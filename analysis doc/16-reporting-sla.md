@@ -1,16 +1,13 @@
 # Reporting & SLA
 
-> **Statut : analyse initiale — proposition de périmètre, aucune décision
-> actée.** Ce document répond à un manque identifié en creux dans
-> plusieurs features déjà livrées : les écrans « Rapports / SLA » ne sont
-> aujourd'hui qu'une **maquette UI de référence**, jamais cadrés
-> fonctionnellement (`DEFERRED-FEATURES.md` §1.6, `FILE-ATTENTE.md`,
-> non-goal explicite de `observabilite`).
+> **Statut : livré** — feature `reporting-sla`
+> ([PR #80](https://github.com/superjojo79/FlowForge/pull/80), 2026-08-26).
+> Ce document reste l'analyse de cadrage d'origine ; le contrat acté est
+> dans `docs/ai/**/2026-08-26-feature-reporting-sla.md`.
 >
-> **Séquencement produit :** cette feature est un **prérequis** au point 4
-> (stats) du [serveur MCP](15-serveur-mcp.md#dépendance-reporting--sla-point-4)
-> — elle doit être analysée, actée puis **livrée** avant que le MCP
-> n'expose un outil de statistiques.
+> **Séquencement produit :** prérequis du point 4 (stats) du
+> [serveur MCP](15-serveur-mcp.md#dépendance-reporting--sla-point-4) —
+> **livré**, ce qui autorise `query_sla_summary` en Phase 1 MCP.
 >
 > **Décision de cadrage (2026-08-26) :** les **deux lots** (Reporting **et**
 > SLA) sont requis pour débloquer le MCP à coup sûr — voir

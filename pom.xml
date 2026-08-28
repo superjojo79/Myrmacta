@@ -25,8 +25,22 @@
         <jsoup.version>1.23.1</jsoup.version>
         <archunit.version>1.5.0</archunit.version>
         <aws.sdk.version>2.53.2</aws.sdk.version>
+        <!-- D-SDK=A (serveur-mcp) — Spring AI MCP server WebMVC starter, pas de starter chat/model -->
+        <spring-ai.version>2.0.0</spring-ai.version>
         <skip.frontend>false</skip.frontend>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-bom</artifactId>
+                <version>${spring-ai.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <!-- Web / API -->
@@ -132,6 +146,12 @@
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>3.1.0</version>
+        </dependency>
+
+        <!-- Serveur MCP M2M (serveur-mcp, D-SDK=A) — tool-only, pas de starter chat/model -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-mcp-server-webmvc</artifactId>
         </dependency>
 
         <!-- Tests -->

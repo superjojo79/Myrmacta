@@ -26,7 +26,7 @@ public final class SlaReportAccess {
             case AccessContext.Service ignored -> throw new AccessDeniedException(
                     "Service context cannot access SLA reports");
             case AccessContext.User user -> {
-                if (user.hasRole("TENANT_ADMIN") || user.hasRole("WORKFLOW_ADMIN")) {
+                if (user.hasRole("TENANT_ADMIN") || user.hasRole("WORKFLOW_ADMIN") || user.hasRole("API_SERVICE")) {
                     yield null;
                 }
                 if (!user.hasRole("DOSSIER_MANAGER")) {

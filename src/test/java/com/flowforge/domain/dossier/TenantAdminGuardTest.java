@@ -37,4 +37,31 @@ class TenantAdminGuardTest {
         assertThatThrownBy(() -> guard.requireTenantAdmin(AccessContext.user("a", Set.of())))
                 .isInstanceOf(AccessDeniedException.class);
     }
+
+    @Test
+    void apiServiceAlone_isDeniedByRequireTenantAdmin() {
+        assertThatThrownBy(() -> guard.requireTenantAdmin(AccessContext.user("svc", Set.of("API_SERVICE"))))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void requireTenantAdminOrApiService_tenantAdmin_doesNotThrow() {
+        assertThatCode(() -> guard.requireTenantAdminOrApiService(
+                        AccessContext.user("a", Set.of("TENANT_ADMIN"))))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void requireTenantAdminOrApiService_apiService_doesNotThrow() {
+        assertThatCode(() -> guard.requireTenantAdminOrApiService(
+                        AccessContext.user("svc", Set.of("API_SERVICE"))))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void requireTenantAdminOrApiService_workflowAdminAlone_isDenied() {
+        assertThatThrownBy(() -> guard.requireTenantAdminOrApiService(
+                        AccessContext.user("a", Set.of("WORKFLOW_ADMIN"))))
+                .isInstanceOf(AccessDeniedException.class);
+    }
 }

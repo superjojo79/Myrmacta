@@ -22,7 +22,7 @@ public final class CreateDossierTypeUseCaseImpl implements CreateDossierTypeUseC
     @Override
     public DossierType create(CreateDossierTypeCommand command, AccessContext.User actor) {
         Objects.requireNonNull(command, "command");
-        tenantAdminGuard.requireTenantAdmin(actor);
+        tenantAdminGuard.requireTenantAdminOrApiService(actor);
 
         var type = new DossierType(
                 UUID.randomUUID(),
@@ -35,7 +35,9 @@ public final class CreateDossierTypeUseCaseImpl implements CreateDossierTypeUseC
                 command.fieldDefinitions(),
                 command.retentionDays(),
                 command.retentionNever(),
-                command.slaTargetHours());
+                command.slaTargetHours(),
+                actor.userId(),
+                actor.userId());
         repository.save(type);
         return type;
     }

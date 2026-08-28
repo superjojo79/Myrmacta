@@ -1,8 +1,9 @@
 # Serveur MCP (Model Context Protocol)
 
-> **Statut : analyse initiale — cadrage, aucune décision actée.** Ce document
-> pose le périmètre et les questions à trancher avant design. Il ne décrit
-> pas une implémentation retenue et ne doit pas être lu comme telle.
+> **Statut : analyse initiale + cycle `dev-lifecycle` Phase 3 reviewed
+> (2026-08-27).** Cadrage 2026-08-26 inchangé. Spec d'implémentation :
+> `docs/ai/**/2026-08-27-feature-serveur-mcp.md`. Ne pas lire cette
+> analyse comme un design figé.
 >
 > **Décisions de cadrage actées lors de cette analyse (2026-08-26) :**
 > consommateur, portée d'écriture V1, sens du mot « dossier », granularité
@@ -157,21 +158,14 @@ Outil envisagé : `list_document_templates`.
 ### Dépendance reporting / SLA (point 4)
 
 Le point « informations et statistiques sur des dossiers et instances de
-workflow selon des critères fournis » n'est **pas traité dans cette V1**.
-`DEFERRED-FEATURES.md` classe déjà les écrans Rapports/SLA comme hors
-scope V1 produit (mock UI de référence uniquement) — le même constat
-s'applique ici : sans modèle de métriques/agrégats ni définition de SLA
-actée, un outil MCP de « stats » n'aurait pas de contrat stable à exposer.
+workflow selon des critères fournis » **n'était pas** dans le V1 MCP tant
+que reporting/SLA n'était pas livré. Ce prérequis est **clos** :
+[PR #80](https://github.com/superjojo79/FlowForge/pull/80) (`reporting-sla`,
+2026-08-26) livre le summary `GetSlaSummaryUseCase`
+(`groupBy=dossierTypeCode|status`).
 
-**Prérequis avant de rouvrir ce point :** une analyse dédiée « reporting &
-SLA » a été produite — voir [16-reporting-sla.md](16-reporting-sla.md).
-Elle propose un découpage en deux lots (Lot 1 — comptages/durées, Lot 2 —
-seuils SLA et statut de conformité) et **tranche (2026-08-26) que les deux
-lots sont requis** pour débloquer ce point à coup sûr — pas de version
-dégradée avec le Lot 1 seul. Les deux doivent être **actés puis livrés**
-avant que cette feature MCP n'expose un outil de lecture (`query_dossiers` /
-`get_workflow_stats` ou équivalent) consommant ce modèle, plutôt que
-d'improviser des agrégats ad hoc non réutilisables.
+**Phase 2 `serveur-mcp` (2026-08-27) :** **D-STATS = A** confirmé —
+tool `query_sla_summary` dans cette V1.
 
 ### Autres exclusions actées
 
@@ -260,39 +254,18 @@ déploiement par instance tenant). À confirmer en design.
 
 ## Questions ouvertes
 
-Ces points restent à trancher en phase de conception, une fois cette
-analyse validée :
+Clos en Phases 1–3 `serveur-mcp` (2026-08-27) — détail dans
+`docs/ai/requirements` et `docs/ai/design` de la feature :
 
-1. **Transport MCP** — HTTP (Streamable HTTP) vs stdio ; exposition réseau
-   exacte (port dédié, chemin, filtrage réseau).
-2. **Mécanisme du credential `API_SERVICE`** — OAuth2 `client_credentials`
-   réutilisant le provider OIDC existant, ou clé API applicative dédiée.
-3. **Compatibilité ascendante de `DefineDossierTypeTool`** — bloquer,
-   avertir ou autoriser une modification de schéma impactant des dossiers
-   existants.
-4. **Interaction `deploy_workflow` / versionnement Flowable** — comportement
-   exact quand une nouvelle version de `WorkflowTypeConfig.statusDefinitions`
-   coexiste avec des `DossierWorkflowLink` actifs sur l'ancienne version.
-5. **Audit trail dédié** — faut-il un journal spécifique aux appels MCP
-   (au-delà des champs `createdBy`/`updatedBy` déjà portés par les entités),
-   pour distinguer un changement fait par un agent IA d'un changement fait
-   depuis l'UI admin ?
-6. **Périmètre futur** — les tools d'écriture à risque modéré identifiés
-   (`create_dossier`, `add_dossier_element`, `start_workflow`,
-   `generate_document`, voir [backlog](#backlog--extensions-futures-envisageables-hors-v1))
-   nécessiteront chacun leur propre analyse avant d'être retenus pour une
-   itération ultérieure (validation des champs dynamiques, création depuis
-   trigger vs MCP, etc. — voir
-   [04-dossiers.md](04-dossiers.md#création-depuis-un-trigger--unitaire-et-batch)).
-7. **Reporting/SLA (point 4)** — analyse disponible
-   ([16-reporting-sla.md](16-reporting-sla.md)), qui tranche que les
-   **deux lots** (Reporting et SLA) sont requis ; reste bloqué sur leur
-   validation et leur livraison complète avant de rouvrir ce point côté
-   MCP.
-8. **Pagination/volumétrie de `search_dossiers`** — reprendre telles
-   quelles les bornes déjà actées pour `pagination-dossiers` (taille de
-   page max, tri par défaut) plutôt que d'introduire un contrat de
-   pagination MCP spécifique.
+1. Transport — **D-TRANSPORT/ENDPOINT = A** (`/api/m2m/mcp` STREAMABLE).
+2. Credential — **D-CREDENTIAL = A** (JWT M2M existant).
+3. Compatibilité schéma — **D-SCHEMA-COMPAT = B** (blocage MCP + compte).
+4. `statusDefinitions` — singleton non versionné comme REST
+   (**D-DEPLOY-ORDER**).
+5. Audit — **D-AUDIT = C** (`createdBy`/`updatedBy`, pas de table MCP).
+6. Backlog écritures métier — hors V1 (inchangé).
+7. Stats — **D-STATS = A** (`query_sla_summary`).
+8. Pagination search — **D-SEARCH/D-PAGE = A**.
 
 ---
 
@@ -330,9 +303,6 @@ tool MCP, même en backlog, au vu de leur impact :
 
 ## Prochaines étapes
 
-Cette analyse initiale ne déclenche pas encore le cycle `dev-lifecycle`
-(requirements → design → planning → implementation). Avant de créer une
-entrée dans `docs/ai/requirements/` et de la positionner dans
-[FILE-ATTENTE.md](../FILE-ATTENTE.md), il est recommandé de faire valider
-les décisions de cadrage ci-dessus et de lever au moins les questions
-ouvertes n° 1 à 4, qui conditionnent la faisabilité technique du design.
+Cycle `dev-lifecycle` : Phases 1–4 (2026-08-27). Prochain : Phase 5
+TDD **T1.1**. Spec :
+[`docs/ai/planning/2026-08-27-feature-serveur-mcp.md`](../docs/ai/planning/2026-08-27-feature-serveur-mcp.md).

@@ -1,0 +1,259 @@
+---
+phase: testing
+title: Testing Strategy
+description: Define testing approach, test cases, and quality assurance
+status: complete
+created: 2026-08-27
+updated: 2026-08-27
+feature: serveur-mcp
+phase1: 2026-08-27
+phase3: 2026-08-27
+phase4: 2026-08-27
+phase5: 2026-08-27
+phase8: 2026-08-27
+design_ref: docs/ai/design/2026-08-27-feature-serveur-mcp.md
+---
+
+# Testing Strategy — `serveur-mcp`
+
+Scénarios dérivés des success criteria requirements et des composants
+design. Cases `- [ ]` jusqu'à la Phase 8.
+
+## Test Coverage Goals
+**What level of testing do we aim for?**
+
+- Backend Jacoco **BUNDLE** LINE ≥ 85 % / BRANCH ≥ 75 % (`./mvnw verify`).
+- Nouvelles classes `infrastructure.mcp` + gardes domaine touchées :
+  viser les branches métier (dry-run, create vs update, JWT, policy).
+- Frontend : `npm run test` **et** `npm run test:e2e` en **régression**
+  uniquement (**D-SPA** : pas de nouveau spec Playwright MCP).
+  Ne pas déclarer Playwright hors scope : la suite existante doit rester
+  verte (contrat conventions FlowForge).
+- Pas de golden OpenAPI nouveau (pas d'endpoint springdoc).
+
+## Unit Tests
+**What individual components need testing?**
+
+### Policy / gardes (domaine)
+
+- [x] **UT-POL-1** `DossierAccessPolicy` : `User` avec `API_SERVICE` → VIEW
+  autorisé sans ACL (D-POLICY-AS).
+- [x] **UT-POL-2** `DossierAccessPolicy` : `Service` reste refusé
+  (test préexistant `service_alwaysDenied`).
+- [x] **UT-POL-3** `SlaReportAccess` : `User` `API_SERVICE` → unrestricted ;
+  `Service` toujours 403.
+- [x] **UT-POL-4** `DOSSIER_VIEWER` sans ACL toujours refusé (non-régression
+  reporting D-AUTHZ C).
+- [x] **UT-GUARD-1** Create/Update type : `TENANT_ADMIN` OK (non-régression,
+  tests préexistants).
+- [x] **UT-GUARD-2** Create/Update type : `API_SERVICE` OK.
+- [x] **UT-GUARD-3** Create/Update type : `WORKFLOW_ADMIN` seul toujours
+  refusé (la garde d'écriture type reste TA | API_SERVICE).
+- [x] **UT-GUARD-4** Upsert rétention / SLA settings / purge : `API_SERVICE`
+  toujours refusé (garde TA non élargie) — vérifié au niveau
+  `TenantAdminGuard.requireTenantAdmin` (tous ces use cases l'appellent
+  sans modification).
+
+### Tools (infra, use cases mockés)
+
+- [x] **UT-DEF-1** `code` inconnu → `CreateDossierTypeUseCase`.
+- [x] **UT-DEF-2** `code` connu → `UpdateDossierTypeUseCase`.
+- [x] **UT-DEF-3** `dryRun=true` → aucun `save`.
+- [x] **UT-DEF-4** `retentionDays` / `slaTargetHours` présents → erreur,
+  pas de save (**D-TYPE-FIELDS**) — vérifié aussi en conditions réelles
+  via `tools/call` (`McpEndpointApiTest`, `isError:true`).
+- [x] **UT-DEF-5** update conserve rétention/SLA existants.
+- [x] **UT-DEF-6** (domaine M3 + tool M6)
+  `CheckDossierTypeSchemaCompatibilityUseCaseImplTest` : count 0 vs > 0,
+  échantillon plafonné à 5. `DefineDossierTypeToolTest.update_incompatibleSchema_isRejectedWithoutSaving` :
+  le tool lève `DossierTypeSchemaIncompatibleException` sans appeler
+  `update`.
+- [x] **UT-DEP-1** parse OK → upsert config → `deploy` (ordre, vérifié
+  par `InOrder`).
+- [x] **UT-DEP-2** XML invalide **avant** save config (pas d'upsert).
+- [x] **UT-DEP-3** `dryRun=true` → parse OK, pas de deploy ni save.
+- [x] **UT-DEP-4** `processDefinitionKey` ≠ clé extraite → erreur.
+- [x] **UT-DEP-5** `allowedDossierStatuses` vide → rejet invariant.
+- [x] **UT-GET-1** `id` xor `reference` ; les deux ou aucun → erreur.
+- [x] **UT-GET-2** agrège elements + history + relations, pagine jusqu'à
+  épuisement (test dédié 150 éléments / page 100 → 2 pages).
+- [x] **UT-GET-3** n'appelle pas `Dossier.fields()` — garanti
+  structurellement par l'allowlist ArchUnit (`DossierMcpView` seule
+  autorisée, `GetDossierTool` absent de la liste).
+- [x] **UT-SEARCH-1** relais `SearchDossiersQuery` (size 101 rejeté).
+- [x] **UT-SLA-1** relais `GetSlaSummaryUseCase.Query`.
+- [x] **UT-TPL-1** `includeContent` forcé / défaut false ; `true` rejeté
+  **avant** tout appel use case.
+- [x] **UT-ACTOR-1** JWT `sub` → `AccessContext.User` rôle `API_SERVICE`
+  (+ fallback `client_id` puis `"api-service"`, jamais `system`/`Service`).
+- [x] **UT-AUDIT-1** (partie type, M2) create/update réel stamp
+  `createdBy`/`updatedBy` (`CreateDossierTypeUseCaseImplTest`,
+  `UpdateDossierTypeUseCaseImplTest`). Partie MCP (`dryRun` ne stamp
+  pas) reportée à T6.1.
+- [x] **UT-CTX-1** contexte Spring : **aucun** bean `ChatClient` (classe
+  absente du classpath — preuve plus forte que « pas de bean »).
+
+## Integration Tests
+**How do we test component interactions?**
+
+- [x] **IT-MCP-1** `initialize` + `tools/list` : 9 tools nommés (T6.3,
+  `McpEndpointApiTest`). Étendu avec 2 tests `tools/call` réels
+  (succès `dryRun` + erreur clé interdite) confirmant le contrat
+  `isError` du SDK.
+- [x] **IT-MCP-2** Bearer JWT HMAC local `API_SERVICE` + `tenant_id`
+  match → `list_dossier_types` OK (MockMvc chaîne M2M).
+- [x] **IT-MCP-3** JWT `tenant_id` ≠ instance → 403 filtre existant.
+- [x] **IT-MCP-4** sans `API_SERVICE` → 403.
+- [x] **IT-MCP-5** `define_dossier_type` persisté ; lecture directe
+  repository le voit.
+- [x] **IT-MCP-6** `deploy_workflow` : config créée si absente +
+  déploiement (Flowable réel sur H2, pas de mock nécessaire).
+- [x] **IT-MCP-7** `get_dossier` champ `sensitive` masqué.
+- [x] **IT-MCP-8** (partiel, portée réduite délibérément — voir doc
+  implementation M7) `query_sla_summary` cap 10k → erreur métier
+  `SLA_COHORT_TOO_LARGE` couvert au niveau domaine (existant) + relais
+  d'erreur au niveau tool (`QuerySlaSummaryToolTest`) ; pas de nouvelle
+  IT à 10 001 lignes réelles.
+- [x] **IT-MCP-9** `search_dossiers` page défaut 20.
+- [x] **IT-ARCH** ArchUnit : `domain` n'importe pas
+  `org.springframework.ai` / `io.modelcontextprotocol` ; tool MCP hors
+  allowlist `Dossier.fields()` ; use case compatibilité **dans**
+  l'allowlist.
+- [x] **IT-LIQ** changelog 017 : colonnes `created_by`/`updated_by`
+  sur les deux tables (vérifié via `RetentionPersistenceIT`, contexte
+  Spring Boot complet avec Liquibase).
+
+## End-to-End Tests
+**What user flows need validation?**
+
+Pas de parcours SPA nouveau (**D-SPA = A**).
+
+- [x] **E2E-REG-1** `npx playwright test` vert — **55/55** (suite
+  actuelle, aucun nouveau spec MCP).
+- [x] **E2E-REG-2** `cd frontend && npm run test` vert — **213/213**
+  (Vitest).
+- [x] Mocks `frontend/e2e/**` **non** modifiés (contrat REST SPA
+  inchangé) — confirmé, aucun fichier `frontend/**` touché par cette
+  feature.
+
+## Test Data
+**What data do we use for testing?**
+
+- JWT HMAC de test : même secret `app.security.m2m.jwt-secret` que les
+  IT M2M connecteur existantes (réutiliser le helper si présent).
+- Fixtures BPMN avec DI (précédent `deploiement-bpmn`).
+- `DossierType` + dossier avec champ `sensitive=true`.
+- H2 MODE=PostgreSQL ; pas de Testcontainers requis pour le MCP.
+
+## Test Reporting & Coverage
+**How do we verify and communicate test results?**
+
+```bash
+./mvnw verify -Dmaven.compiler.release=21
+cd frontend && npm run test
+cd frontend && npm run test:e2e
+```
+
+- Jacoco BUNDLE (LINE 85 / BRANCH 75).
+- Compter les tests MCP ajoutés ; 0 `.only` / `.skip` nouveau.
+
+## Manual Testing
+**What requires human validation?**
+
+- Pointer Claude Code (ou un client MCP) vers
+  `http://localhost:8080/api/m2m/mcp` avec un JWT local — hors CI,
+  documenté dans `GETTING-STARTED.md` §11 (T8.2, exemple `curl`).
+
+## Performance Testing
+**How do we validate performance?**
+
+- Pas de bench dédié V1. Cap SLA 10k déjà testé côté reporting.
+- Taille XML : même plafond que l'upload admin (IT de rejet trop gros
+  si le plafond est réutilisé).
+
+## Bug Tracking
+**How do we manage issues?**
+
+- Bugs trouvés en Phase 5/7/8 : TDD + note implementation.
+- Non-régression reporting D-AUTHZ C (viewer/service REST) = bloquant
+  si cassée.
+
+## Phase 8 — Write Tests (comblement des trous Jacoco)
+
+Point de départ : `./mvnw verify` (Phase 5/7) était déjà vert sur les
+seuils **BUNDLE** (LINE ≥ 85 %, BRANCH ≥ 75 %), mais le rapport HTML
+Jacoco par classe montrait des trous de couverture branches
+localisés dans `infrastructure.mcp.tool`, tous des branches
+défensives déjà correctes (aucun bug de production trouvé) mais
+jamais exercées par un test dédié :
+
+| Classe | Avant (branches) | Trou identifié |
+|---|---|---|
+| `ListWorkflowTypesTool` | 0 % | méthode jamais invoquée dans un test |
+| `GetDossierTypeTool` | n/a (65 % instructions) | méthode jamais invoquée dans un test |
+| `ListDossierTypesTool` | ~50 % | seule la branche « page et size absents » testée |
+| `McpArgs` | non testée directement | branches d'échec de `requireString`/`requireBoolean` jamais exercées |
+| `DeployWorkflowTool` | 6 branches non couvertes | `onStartDossierStatus` non-null, XML trop volumineux, `statusDefinitions`/`allowedDossierStatuses`/`observerUserIds` de type ou forme inattendus |
+| `DefineDossierTypeTool` | 3 branches non couvertes | `dryRun=true` sur le chemin UPDATE, `fieldDefinitions` omis, `fieldDefinitions` de mauvais type |
+
+En creusant la même analyse par classe, deux classes déjà testées
+montraient aussi des branches non couvertes (non identifiées dans le
+scope initial mais fermées par la même occasion, coût marginal) :
+
+| Classe | Avant (branches) | Trou identifié |
+|---|---|---|
+| `SearchDossiersTool` | 62 % (1 sur 4 branches testée) | `status` blank et `status` valide jamais testés (seul `status=null`) |
+| `ListDocumentTemplatesTool` | 66 % (2 sur 4 branches testées) | `page`/`size` explicites jamais testés (seul le défaut `null`) |
+
+### Tests ajoutés/étendus
+
+- **Nouveau** `ListWorkflowTypesToolTest` (4 tests) : page/size absents,
+  fournis, page seul, size seul.
+- **Nouveau** `GetDossierTypeToolTest` (2 tests) : relais happy path,
+  propagation `DossierNotFoundException`.
+- **Nouveau** `ListDossierTypesToolTest` (4 tests) : mêmes 4 combinaisons
+  page/size que `ListWorkflowTypesToolTest`.
+- **Nouveau** `McpArgsTest` (8 tests) : `requireString`
+  (présent, absent, null, blank, mauvais type) et `requireBoolean`
+  (présent, absent, mauvais type).
+- **Étendu** `DeployWorkflowToolTest` (+7 tests, total 13) :
+  `onStartDossierStatus` fourni, XML dépassant la taille max (tool
+  construit avec une `DataSize` minuscule dédiée au test),
+  `statusDefinitions` vide, `statusDefinitions` mauvais type,
+  `allowedDossierStatuses` mauvais type, `observerUserIds` fourni
+  (relayé au config), `observerUserIds` mauvais type.
+- **Étendu** `DefineDossierTypeToolTest` (+4 tests, total 11) : `dryRun=true`
+  sur le chemin UPDATE (aucun `update` appelé), `fieldDefinitions` omis
+  (défaut liste vide), `fieldDefinitions` non-vide (parsing réellement
+  exercé), `fieldDefinitions` mauvais type.
+- **Étendu** `SearchDossiersToolTest` (+2 tests, total 4) : `status` blank
+  traité comme absent, `status` valide parsé en `DossierStatus`.
+- **Étendu** `ListDocumentTemplatesToolTest` (+1 test, total 4) :
+  `page`/`size` explicites relayés tels quels.
+
+Aucun changement de comportement métier : uniquement des tests
+supplémentaires sur du code déjà correct.
+
+### Résultat (preuve fraîche)
+
+```bash
+./mvnw -q -Dmaven.compiler.release=21 verify
+```
+
+- Build **vert** (exit 0), seuils Jacoco BUNDLE toujours respectés.
+- `com.flowforge.infrastructure.mcp.tool` (rapport Jacoco HTML,
+  régénéré après les nouveaux tests) : **100 % instructions
+  (0 sur 1 220 manquées)**, **97 % branches (2 sur 82 manquées)** —
+  contre 98 %/91 % avant Phase 8. Les 2 branches restantes sont dans
+  `GetDossierTool` (85 % branches), hors périmètre identifié pour
+  cette phase (déjà correctement testé en Phase 5, non un trou
+  nouveau).
+- Toutes les classes listées dans le tableau ci-dessus sont désormais
+  à **100 % branches** (ou n/a quand la méthode n'a pas de branche,
+  ex. `GetDossierTypeTool`, `QuerySlaSummaryTool`).
+- Compte de tests par classe (surefire, preuve fraîche) :
+  `DefineDossierTypeToolTest` 11, `DeployWorkflowToolTest` 13,
+  `GetDossierTypeToolTest` 2, `ListDossierTypesToolTest` 4,
+  `ListWorkflowTypesToolTest` 4, `McpArgsTest` 8,
+  `SearchDossiersToolTest` 4, `ListDocumentTemplatesToolTest` 4 —
+  tous verts, 0 échec, 0 skip.

@@ -116,7 +116,9 @@ class ListMyTasksUseCaseImplTest {
                         List.of(),
                         null,
                         false,
-                        48)));
+                        48,
+                        "system",
+                        "system")));
 
         ListMyTasksUseCaseImpl useCase = new ListMyTasksUseCaseImpl(
                 TENANT,

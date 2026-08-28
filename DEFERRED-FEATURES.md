@@ -18,16 +18,17 @@
 `openapi-pagination-admin`, `observabilite`, `durcissement-donnees-sensibles`,
 `contrat-api-client`, `fiabilisation-tests-plateforme`, `deploiement-bpmn`,
 `modele-physique-consolide`, `masquage-donnees-sensibles-logs-webhooks`
-(PR #70), `edition-bpmn` (PR #71) sont **Complete** (mergées sur `main` sauf
-mention contraire — `frontend` via
+(PR #70), `edition-bpmn` (PR #71), `reporting-sla` (PR #80) sont
+**Complete** (mergées sur `main` sauf mention contraire — `frontend` via
 PR #38 `cursor/feature-frontend-21f2`, vague 1 instructeur + vague 2 admin
 types/templates/connectors/workflow-configs ; packaging Maven→`static/` ;
 maquette
 [FlowForge - Maquettes UI.html](analysis%20doc/FlowForge%20-%20Maquettes%20UI.html)
 = référence UX). Détail des 5 dernières (regroupement 2026-08-20) en §2.
-**File d'attente (2026-08-25) :** sécurité §40–44 à trancher
-(`durcissement-securite-post-revue`) — chore docs TODO §45 **clos**
-([PR #75](https://github.com/superjojo79/FlowForge/pull/75)).
+**File d'attente (2026-08-27) :** `serveur-mcp` Phase 1 en cours ;
+chore docs TODO §45 **clos**
+([PR #75](https://github.com/superjojo79/FlowForge/pull/75)). §46
+(ArchUnit `application`) hors file produit.
 [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md).
 Reliquat ops : provisioning (TODO §31).
 
@@ -110,7 +111,7 @@ consomme `GET …/diagram`).
 
 | Item | Notes |
 |---|---|
-| Écrans Rapports / SLA | **En revue** — feature `reporting-sla` (BC `reporting`, SPA `/rapports`) |
+| Écrans Rapports / SLA | **Livré** — feature `reporting-sla` ([PR #80](https://github.com/superjojo79/FlowForge/pull/80), BC `reporting`, SPA `/rapports`) |
 | Liste / recherche / pagination dossiers (Supervision complet) | **Livré** — `pagination-dossiers` |
 | `npm run test` / `lint` / `test:e2e` en CI | Câblé (`.github/workflows/ci.yml`, job `frontend`) |
 
@@ -161,6 +162,8 @@ Ordre indicatif aligné sur l’analyse et les dépendances techniques :
 | — | `modele-physique-consolide` | **Complete** (PR #68) — ERD consolidé [13-modele-physique.md](analysis%20doc/13-modele-physique.md) (17 tables, 4 index uniques partiels, 2 FK DB) ; correction de la prémisse obsolète `TenantRegistry`/contextes Liquibase séparés. TODO §25 clos. |
 | — | `masquage-donnees-sensibles-logs-webhooks` | **Complete** (PR #70) — audit préalable : aucune fuite active trouvée (logs/webhooks), protection préventive ajoutée : `toString()` sûr sur `Dossier`/`FieldDefinition` + liste blanche ArchUnit ; `SendNotificationUseCaseImpl` masque automatiquement les champs sensibles avant écriture outbox. TODO §23 clos. |
 | — | `edition-bpmn` | **Complete** (PR #71) — éditeur `bpmn-js` Modeler + panel Flowable custom ; brouillon persisté ; TODO §39 clos. |
+| — | `reporting-sla` | **Complete** (PR #80) — snapshot + summary SLA, cible par type, settings tenant, SPA `/rapports`, inbox remaining. |
+| … | `serveur-mcp` | **Phase 1** (2026-08-27) — adaptateur MCP interne ; plus bloqué par reporting. |
 
 ---
 

@@ -53,6 +53,12 @@ class DossierAccessPolicyTest {
     }
 
     @Test
+    void apiService_bypassesWithoutAcl() {
+        var user = AccessContext.user("svc", Set.of("API_SERVICE"));
+        assertThatCode(() -> policy.assertCanViewType(TENANT, "SINISTRE", user)).doesNotThrowAnyException();
+    }
+
+    @Test
     void editGrant_allowsViewAndEdit() {
         acl.grant("SINISTRE", "u1", DossierPermission.EDIT);
         var user = AccessContext.user("u1", Set.of("DOSSIER_MANAGER"));

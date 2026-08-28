@@ -5,6 +5,8 @@ import com.flowforge.domain.dossier.TenantAdminGuard;
 import com.flowforge.domain.dossier.model.RetentionPolicyResolver;
 import com.flowforge.domain.dossier.port.in.AddDossierElementUseCase;
 import com.flowforge.domain.dossier.port.in.CreateDossierRelationUseCase;
+import com.flowforge.domain.dossier.model.DossierFieldValidator;
+import com.flowforge.domain.dossier.port.in.CheckDossierTypeSchemaCompatibilityUseCase;
 import com.flowforge.domain.dossier.port.in.CreateDossierTypeUseCase;
 import com.flowforge.domain.dossier.port.in.CreateDossierUseCase;
 import com.flowforge.domain.dossier.port.in.EnqueueDossierPurgeUseCase;
@@ -39,6 +41,7 @@ import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
 import com.flowforge.domain.dossier.port.out.PurgeOutboxRepository;
 import com.flowforge.domain.dossier.port.out.TenantRetentionSettingsRepository;
 import com.flowforge.domain.dossier.usecase.AddDossierElementUseCaseImpl;
+import com.flowforge.domain.dossier.usecase.CheckDossierTypeSchemaCompatibilityUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.CreateDossierRelationUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.CreateDossierTypeUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.CreateDossierUseCaseImpl;
@@ -97,6 +100,12 @@ public class DossierConfig {
     UpdateDossierTypeUseCase updateDossierTypeUseCase(
             DossierTypeRepository typeRepository, TenantAdminGuard tenantAdminGuard) {
         return new UpdateDossierTypeUseCaseImpl(typeRepository, tenantAdminGuard);
+    }
+
+    @Bean
+    CheckDossierTypeSchemaCompatibilityUseCase checkDossierTypeSchemaCompatibilityUseCase(
+            DossierRepository dossierRepository) {
+        return new CheckDossierTypeSchemaCompatibilityUseCaseImpl(dossierRepository, new DossierFieldValidator());
     }
 
     @Bean

@@ -156,6 +156,46 @@ class CreateDossierTypeUseCaseImplTest {
     }
 
     @Test
+    void create_stampsCreatedByAndUpdatedByWithActor() {
+        DossierType created = useCase.create(
+                new CreateDossierTypeUseCase.CreateDossierTypeCommand(
+                        "tenant_dev",
+                        "CLAIM",
+                        "Claim",
+                        "wf-claim",
+                        true,
+                        false,
+                        List.of(),
+                        null,
+                        false,
+                        null),
+                AccessContext.user("admin", Set.of("TENANT_ADMIN")));
+
+        assertThat(created.createdBy()).isEqualTo("admin");
+        assertThat(created.updatedBy()).isEqualTo("admin");
+    }
+
+    @Test
+    void create_apiServicePersistsType() {
+        DossierType created = useCase.create(
+                new CreateDossierTypeUseCase.CreateDossierTypeCommand(
+                        "tenant_dev",
+                        "CLAIM",
+                        "Claim",
+                        "wf-claim",
+                        true,
+                        false,
+                        List.of(),
+                        null,
+                        false,
+                        null),
+                AccessContext.user("svc", Set.of("API_SERVICE")));
+
+        assertThat(created.code()).isEqualTo("CLAIM");
+        verify(repository).save(created);
+    }
+
+    @Test
     void create_nonAdminDeniedWithoutRepositoryCall() {
         assertThatThrownBy(() -> useCase.create(
                         new CreateDossierTypeUseCase.CreateDossierTypeCommand(

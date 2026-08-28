@@ -1,0 +1,66 @@
+databaseChangeLog:
+  - changeSet:
+      id: 017-dossier-type-audit-authors
+      author: flowforge
+      changes:
+        - addColumn:
+            tableName: dossier_type
+            columns:
+              - column:
+                  name: created_by
+                  type: varchar(128)
+              - column:
+                  name: updated_by
+                  type: varchar(128)
+        - sql:
+            sql: UPDATE dossier_type SET created_by = 'system' WHERE created_by IS NULL
+        - sql:
+            sql: UPDATE dossier_type SET updated_by = 'system' WHERE updated_by IS NULL
+        - addNotNullConstraint:
+            tableName: dossier_type
+            columnName: created_by
+            columnDataType: varchar(128)
+        - addNotNullConstraint:
+            tableName: dossier_type
+            columnName: updated_by
+            columnDataType: varchar(128)
+      rollback:
+        - dropColumn:
+            tableName: dossier_type
+            columnName: created_by
+        - dropColumn:
+            tableName: dossier_type
+            columnName: updated_by
+
+  - changeSet:
+      id: 017-workflow-type-config-audit-authors
+      author: flowforge
+      changes:
+        - addColumn:
+            tableName: workflow_type_config
+            columns:
+              - column:
+                  name: created_by
+                  type: varchar(128)
+              - column:
+                  name: updated_by
+                  type: varchar(128)
+        - sql:
+            sql: UPDATE workflow_type_config SET created_by = 'system' WHERE created_by IS NULL
+        - sql:
+            sql: UPDATE workflow_type_config SET updated_by = 'system' WHERE updated_by IS NULL
+        - addNotNullConstraint:
+            tableName: workflow_type_config
+            columnName: created_by
+            columnDataType: varchar(128)
+        - addNotNullConstraint:
+            tableName: workflow_type_config
+            columnName: updated_by
+            columnDataType: varchar(128)
+      rollback:
+        - dropColumn:
+            tableName: workflow_type_config
+            columnName: created_by
+        - dropColumn:
+            tableName: workflow_type_config
+            columnName: updated_by

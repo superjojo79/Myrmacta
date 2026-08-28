@@ -32,6 +32,10 @@ le permet — l'affichage du menu est indicatif, le contrôle réel se fait côt
 Sans le rôle requis, l'entrée de menu correspondante n'apparaît simplement pas — pas besoin de la
 chercher.
 
+Ces rôles sont attribués côté Keycloak, pas dans FlowForge — voir
+[DEPLOIEMENT.md](DEPLOIEMENT.md#6-gérer-les-utilisateurs-et-leurs-rôles) pour créer un utilisateur
+et lui attribuer un rôle.
+
 ------
 
 ## 1. Préalable — configurer un type de dossier
@@ -375,7 +379,7 @@ technique en lecture seule, bouton **Rafraîchir** pour recharger un instantané
 Chaque carte porte une sévérité (normal/alerte) calculée côté serveur selon des seuils fixes — cet
 écran est destiné à un diagnostic rapide, pas à de l'historique ou du graphique dans le temps (pas
 de série temporelle en V1 ; les mêmes métriques sont aussi exposées au format Prometheus sur le
-port management, voir [GETTING-STARTED.md](GETTING-STARTED.md#6-démarrer-le-backend), pour qui
+port management, voir [GETTING-STARTED.md](GETTING-STARTED.md#7-démarrer-le-backend), pour qui
 dispose déjà d'un outil de supervision externe).
 
 ------
@@ -383,6 +387,7 @@ dispose déjà d'un outil de supervision externe).
 ## Pour aller plus loin
 
 - Mise en place de l'environnement : [GETTING-STARTED.md](GETTING-STARTED.md)
+- Déploiement, provisioning d'un tenant, gestion des utilisateurs/rôles Keycloak : [DEPLOIEMENT.md](DEPLOIEMENT.md)
 - Architecture des connecteurs : [analysis doc/06-connecteurs.md](analysis%20doc/06-connecteurs.md)
 - Architecture des templates/génération de documents : [analysis doc/07-generation-documents.md](analysis%20doc/07-generation-documents.md), [analysis doc/08-templates-documents.md](analysis%20doc/08-templates-documents.md)
 - Visualisation des workflows : [analysis doc/10-visualisation-workflow.md](analysis%20doc/10-visualisation-workflow.md)

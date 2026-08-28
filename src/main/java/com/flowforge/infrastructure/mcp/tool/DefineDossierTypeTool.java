@@ -162,13 +162,18 @@ public class DefineDossierTypeTool {
             List<FieldDefinition> fieldDefinitions,
             boolean dryRun,
             AccessContext.User actor) {
-        var compatibility = checkCompatibilityUseCase.check(new CheckDossierTypeSchemaCompatibilityUseCase.Query(
-                existing.tenantId(), existing.code(), fieldDefinitions, allowUnknownFields));
-        if (!compatibility.compatible()) {
-            throw new DossierTypeSchemaIncompatibleException(
-                    compatibility.incompatibleCount(), compatibility.sampleReferences());
-        }
+        // D-DESIGN-CHECK-PLACEMENT: the real (non-dryRun) write path no longer checks
+        // compatibility here — UpdateDossierTypeUseCaseImpl does it itself (single source of
+        // truth shared with REST) and throws DossierTypeSchemaIncompatibleException, which
+        // propagates unchanged. dryRun must never call update() (nothing may persist), so it still
+        // needs its own explicit check call to preview compatibility.
         if (dryRun) {
+            var compatibility = checkCompatibilityUseCase.check(new CheckDossierTypeSchemaCompatibilityUseCase.Query(
+                    existing.tenantId(), existing.code(), fieldDefinitions, allowUnknownFields));
+            if (!compatibility.compatible()) {
+                throw new DossierTypeSchemaIncompatibleException(
+                        compatibility.incompatibleCount(), compatibility.sampleReferences());
+            }
             return result("update", true, existing.code(), null);
         }
         DossierType updated = updateDossierTypeUseCase.update(

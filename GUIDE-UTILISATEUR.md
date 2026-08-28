@@ -52,15 +52,28 @@ Formulaire de création :
 | `libellé` | nom affiché à l'utilisateur |
 | `workflowKey` | clé du workflow qui sera proposé par défaut à l'ouverture d'un dossier de ce type — doit correspondre à une config workflow existante (§3) |
 | `SLA heures` | objectif de traitement optionnel (heures). Vide = le type n'entre pas dans le % de conformité SLA |
+| **Autoriser les champs inconnus** | case à cocher — si activée, un dossier de ce type peut porter des champs absents du schéma déclaré ci-dessous (compatibilité ascendante volontaire) |
+| **Champs dynamiques** (`fieldDefinitions`) | éditeur de la liste des champs métier du type — voir ci-dessous |
 
-> **Limite actuelle de l'écran :** ce formulaire ne permet pas de définir les **champs
-> dynamiques** du type (signalétique métier propre au dossier) — le type est créé avec une liste
-> de champs vide. L'ajout de champs dynamiques (texte, nombre, date, booléen, liste, fichier)
-> n'est pas piloté depuis cet écran à ce jour ; s'adresser à l'équipe technique si un type a
-> besoin de champs métier spécifiques dès sa création.
+**Éditeur de champs dynamiques.** Le bouton **Ajouter un champ** insère une ligne éditable :
+`name` (clé technique, doit être unique dans le type), `label` (libellé affiché), `type`
+(`STRING`, `NUMBER`, `DATE`, `BOOLEAN`, `SELECT`, `FILE`), `required`, `defaultValue`, `options`
+(liste séparée par des virgules, uniquement pour `SELECT`), `group` (regroupement visuel sur
+l'écran dossier) et `sensible` (masquage à l'affichage/export pour tout acteur non
+`TENANT_ADMIN`). Boutons ↑/↓ pour réordonner, **Supprimer** pour retirer une ligne. La
+sauvegarde envoie la **liste complète** (pas un ajout unitaire) — même convention que l'outil MCP
+interne `define_dossier_type`.
 
 Une fois créé, le type apparaît dans le tableau avec un bouton **Basculer** pour l'activer/le
-désactiver — seuls les types actifs sont proposés à la création d'un dossier.
+désactiver — seuls les types actifs sont proposés à la création d'un dossier. Le bouton
+**Modifier les champs** ouvre le même éditeur, pré-rempli avec le schéma actuel, pour un type déjà
+créé. **Si la modification proposée rend des dossiers déjà existants de ce type invalides** (ex.
+un champ redevenu `required` mais absent, ou une valeur `SELECT` retirée des `options`), la
+sauvegarde est **refusée** (409) avec le nombre de dossiers concernés — la modification n'est pas
+appliquée ; il n'existe pas d'option de passage en force depuis cet écran.
+
+> Pour éditer les **valeurs** des champs sur un dossier existant (pas la définition du schéma), voir
+> l'écran détail dossier (§2).
 
 ### Rétention (conformité RGPD)
 

@@ -2,9 +2,11 @@ package com.flowforge.infrastructure.web.dossier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.flowforge.domain.dossier.model.DossierTypeSchemaIncompatibleException;
 import com.flowforge.domain.dossier.model.DuplicateDossierRelationException;
 import com.flowforge.domain.dossier.model.InvalidDossierElementException;
 import jakarta.persistence.OptimisticLockException;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
@@ -52,5 +54,25 @@ class DossierExceptionHandlerTest {
                         "Purge enqueue requires CLOTURE or ARCHIVE, was OUVERT"));
 
         assertThat(problem.getStatus()).isEqualTo(409);
+    }
+
+    @Test
+    void handleSchemaIncompatible_mapsTo409WithCountAndSamples() {
+        var problem = new DossierExceptionHandler().handleSchemaIncompatible(
+                new DossierTypeSchemaIncompatibleException(3, List.of("DOS-1", "DOS-2")));
+
+        assertThat(problem.getStatus()).isEqualTo(409);
+        assertThat(problem.getTitle()).isEqualTo("Dossier type schema incompatible");
+        assertThat(problem.getDetail()).contains("3").contains("DOS-1").contains("DOS-2");
+        assertThat(problem.getProperties()).containsEntry("incompatibleCount", 3);
+        assertThat(problem.getProperties()).containsEntry("sampleReferences", List.of("DOS-1", "DOS-2"));
+    }
+
+    @Test
+    void handleSchemaIncompatible_withoutSamples_omitsExampleSuffix() {
+        var problem = new DossierExceptionHandler().handleSchemaIncompatible(
+                new DossierTypeSchemaIncompatibleException(5, List.of()));
+
+        assertThat(problem.getDetail()).contains("5").doesNotContain("(ex.");
     }
 }

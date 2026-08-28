@@ -87,8 +87,6 @@ class DefineDossierTypeToolTest {
     void knownCode_update() {
         DossierType existing = type("CLAIM");
         when(getDossierTypeUseCase.getByCode(any(), any(), any())).thenReturn(existing);
-        when(checkCompatibilityUseCase.check(any()))
-                .thenReturn(new CheckDossierTypeSchemaCompatibilityUseCase.Result(0, List.of()));
         when(updateDossierTypeUseCase.update(any(), any())).thenReturn(existing);
 
         Map<String, Object> result = invoke(baseArgs("CLAIM"));
@@ -135,8 +133,6 @@ class DefineDossierTypeToolTest {
                 UUID.randomUUID(), TENANT, "CLAIM", "Old", "wf-old", true, false, List.of(),
                 30, false, 48, "system", "system");
         when(getDossierTypeUseCase.getByCode(any(), any(), any())).thenReturn(existing);
-        when(checkCompatibilityUseCase.check(any()))
-                .thenReturn(new CheckDossierTypeSchemaCompatibilityUseCase.Result(0, List.of()));
         when(updateDossierTypeUseCase.update(any(), any())).thenReturn(existing);
 
         invoke(baseArgs("CLAIM"));
@@ -150,14 +146,19 @@ class DefineDossierTypeToolTest {
 
     @Test
     void update_incompatibleSchema_isRejectedWithoutSaving() {
+        // D-DESIGN-CHECK-PLACEMENT: the compatibility check now runs inside
+        // UpdateDossierTypeUseCaseImpl itself (single source of truth for REST and MCP alike), so
+        // the tool no longer calls checkCompatibilityUseCase directly on the real (non-dryRun)
+        // path — it relies on updateDossierTypeUseCase.update() to throw.
         DossierType existing = type("CLAIM");
         when(getDossierTypeUseCase.getByCode(any(), any(), any())).thenReturn(existing);
-        when(checkCompatibilityUseCase.check(any()))
-                .thenReturn(new CheckDossierTypeSchemaCompatibilityUseCase.Result(3, List.of("REF-1")));
+        when(updateDossierTypeUseCase.update(any(), any()))
+                .thenThrow(new DossierTypeSchemaIncompatibleException(3, List.of("REF-1")));
 
         assertThatThrownBy(() -> invoke(baseArgs("CLAIM")))
                 .isInstanceOf(DossierTypeSchemaIncompatibleException.class);
-        verify(updateDossierTypeUseCase, never()).update(any(), any());
+        verify(updateDossierTypeUseCase).update(any(), any());
+        verifyNoInteractions(checkCompatibilityUseCase);
     }
 
     @Test

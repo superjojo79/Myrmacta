@@ -45,6 +45,11 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
+- **PR [#87](https://github.com/superjojo79/FlowForge/pull/87)** — Écran Admin → Types permet
+  désormais d'éditer le schéma des champs dynamiques (`fieldDefinitions`) d'un `DossierType`, en
+  création et en édition, ainsi que la bascule `allowUnknownFields`. Une modification qui rendrait
+  des dossiers existants incohérents avec le nouveau schéma est désormais refusée (409) plutôt
+  qu'acceptée silencieusement.
 - **PR [#83](https://github.com/superjojo79/FlowForge/pull/83)** — Service `prometheus` optionnel
   dans `docker-compose.yml` (profil dédié, `network_mode: host` pour respecter le bind loopback
   du port management) : scrape local de `/actuator/prometheus`, déjà exposé par le backend.

@@ -35,6 +35,38 @@ class DossierTypeTest {
     }
 
     @Test
+    void constructor_rejectsDuplicateFieldDefinitionNames() {
+        List<FieldDefinition> duplicated = List.of(
+                new FieldDefinition("priority", "Priority", FieldType.STRING, false, null, List.of(), null),
+                new FieldDefinition("priority", "Priority again", FieldType.NUMBER, false, null, List.of(), null));
+
+        assertThatThrownBy(() -> DossierType.inherit(
+                        ID, TENANT, "CLAIM", "Claim", "wf-claim", true, false, duplicated))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("priority");
+    }
+
+    @Test
+    void constructor_acceptsUniqueFieldDefinitionNames() {
+        List<FieldDefinition> fields = List.of(
+                new FieldDefinition("priority", "Priority", FieldType.STRING, false, null, List.of(), null),
+                new FieldDefinition("amount", "Amount", FieldType.NUMBER, false, null, List.of(), null));
+
+        DossierType type = DossierType.inherit(
+                ID, TENANT, "CLAIM", "Claim", "wf-claim", true, false, fields);
+
+        assertThat(type.fieldDefinitions()).isEqualTo(fields);
+    }
+
+    @Test
+    void constructor_acceptsEmptyFieldDefinitions() {
+        DossierType type = DossierType.inherit(
+                ID, TENANT, "CLAIM", "Claim", "wf-claim", true, false, List.of());
+
+        assertThat(type.fieldDefinitions()).isEmpty();
+    }
+
+    @Test
     void constructor_rejectsBlankCode() {
         assertThatThrownBy(
                         () -> DossierType.inherit(ID, TENANT, "", "Claim", "wf-claim", true, false, List.of()))

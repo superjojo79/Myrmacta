@@ -5,6 +5,7 @@ import com.flowforge.domain.dossier.model.DossierConflictException;
 import com.flowforge.domain.dossier.model.DossierFieldValidationException;
 import com.flowforge.domain.dossier.model.DossierNotEligibleForPurgeException;
 import com.flowforge.domain.dossier.model.DossierNotFoundException;
+import com.flowforge.domain.dossier.model.DossierTypeSchemaIncompatibleException;
 import com.flowforge.domain.dossier.model.DuplicateDossierRelationException;
 import com.flowforge.domain.dossier.model.IllegalDossierStatusTransitionException;
 import com.flowforge.domain.dossier.model.InactiveDossierTypeException;
@@ -58,6 +59,19 @@ public class DossierExceptionHandler {
     @ExceptionHandler(InvalidRetentionPolicyException.class)
     ProblemDetail handleInvalidRetentionPolicy(InvalidRetentionPolicyException ex) {
         return problem(HttpStatus.BAD_REQUEST, "Invalid retention policy", ex.getMessage());
+    }
+
+    @ExceptionHandler(DossierTypeSchemaIncompatibleException.class)
+    ProblemDetail handleSchemaIncompatible(DossierTypeSchemaIncompatibleException ex) {
+        String examples = ex.sampleReferences().isEmpty()
+                ? ""
+                : " (ex. " + String.join(", ", ex.sampleReferences()) + ")";
+        ProblemDetail problem = problem(HttpStatus.CONFLICT, "Dossier type schema incompatible",
+                "Cette modification rend " + ex.incompatibleCount()
+                        + " dossier(s) existant(s) incompatible(s) avec le nouveau schéma" + examples);
+        problem.setProperty("incompatibleCount", ex.incompatibleCount());
+        problem.setProperty("sampleReferences", ex.sampleReferences());
+        return problem;
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)

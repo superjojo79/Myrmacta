@@ -1,7 +1,9 @@
 package com.flowforge.domain.dossier.model;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -39,8 +41,22 @@ public record DossierType(
                     "code must match " + CODE_PATTERN.pattern() + ", was: " + code);
         }
         fieldDefinitions = fieldDefinitions == null ? List.of() : List.copyOf(fieldDefinitions);
+        requireUniqueFieldNames(fieldDefinitions);
         validateRetention(retentionDays, retentionNever);
         validateSlaTargetHours(slaTargetHours);
+    }
+
+    // D-NAME-UNIQUE — structural invariant of the schema itself, not a per-dossier value check
+    // (that's DossierFieldValidator's job), so it belongs here alongside the `code` validation.
+    // Covers all 3 write paths (REST create, REST update, MCP define_dossier_type) for free since
+    // they all construct a DossierType.
+    private static void requireUniqueFieldNames(List<FieldDefinition> fieldDefinitions) {
+        Set<String> seen = new HashSet<>();
+        for (FieldDefinition def : fieldDefinitions) {
+            if (!seen.add(def.name())) {
+                throw new IllegalArgumentException("Duplicate fieldDefinition name: " + def.name());
+            }
+        }
     }
 
     public static void validateRetention(Integer retentionDays, boolean retentionNever) {

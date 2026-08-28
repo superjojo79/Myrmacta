@@ -9,9 +9,11 @@ import {
 } from '@/api/dossierTypes'
 import { getRetentionSettings, upsertRetentionSettings } from '@/api/retentionSettings'
 import { getSlaSettings, upsertSlaSettings } from '@/api/slaSettings'
-import type { DossierPermission, DossierType } from '@/api/types'
+import type { DossierPermission, DossierType, FieldDefinition } from '@/api/types'
 import { toProblemDetail } from '@/api/http'
 import AdminPager from '@/components/admin/AdminPager.vue'
+import FieldDefinitionDefsEditor from '@/components/dossier/FieldDefinitionDefsEditor.vue'
+import { validateFieldDefinitions } from '@/dossier/validateFieldDefinitions'
 import { useAdminListQuery } from '@/composables/useAdminListQuery'
 
 const { page, size } = useAdminListQuery()
@@ -31,8 +33,17 @@ const form = ref({
   retentionMode: 'inherit' as 'inherit' | 'days' | 'never',
   retentionDays: 365,
   slaTargetHours: null as number | null,
+  allowUnknownFields: false,
+  fieldDefinitions: [] as FieldDefinition[],
 })
 const acl = ref({ code: '', subjectUserId: '', permission: 'VIEW' as DossierPermission })
+
+const editingCode = ref<string | null>(null)
+const editDraft = ref<{ allowUnknownFields: boolean; fieldDefinitions: FieldDefinition[] }>({
+  allowUnknownFields: false,
+  fieldDefinitions: [],
+})
+const editFieldErrors = ref<string[]>([])
 
 function retentionLabel(type: DossierType): string {
   if (type.retentionNever) return 'NEVER'
@@ -116,13 +127,19 @@ function retentionPayload() {
 
 async function create() {
   error.value = null
+  const fieldErrors = validateFieldDefinitions(form.value.fieldDefinitions)
+  if (fieldErrors.length > 0) {
+    error.value = fieldErrors.join(' ')
+    return
+  }
   try {
     await createDossierType({
       code: form.value.code,
       label: form.value.label,
       workflowKey: form.value.workflowKey,
       active: form.value.active,
-      fieldDefinitions: [],
+      allowUnknownFields: form.value.allowUnknownFields,
+      fieldDefinitions: form.value.fieldDefinitions,
       slaTargetHours: form.value.slaTargetHours || null,
       ...retentionPayload(),
     })
@@ -134,10 +151,45 @@ async function create() {
       retentionMode: 'inherit',
       retentionDays: 365,
       slaTargetHours: null,
+      allowUnknownFields: false,
+      fieldDefinitions: [],
     }
     await refresh()
   } catch (err) {
     error.value = toProblemDetail(err).detail ?? 'Création impossible'
+  }
+}
+
+function startEditFields(type: DossierType) {
+  editingCode.value = type.code
+  editDraft.value = {
+    allowUnknownFields: type.allowUnknownFields,
+    fieldDefinitions: [...type.fieldDefinitions],
+  }
+  editFieldErrors.value = []
+}
+
+function cancelEditFields() {
+  editingCode.value = null
+  editFieldErrors.value = []
+}
+
+async function saveEditFields() {
+  const fieldErrors = validateFieldDefinitions(editDraft.value.fieldDefinitions)
+  if (fieldErrors.length > 0) {
+    editFieldErrors.value = fieldErrors
+    return
+  }
+  try {
+    await updateDossierType(editingCode.value as string, {
+      allowUnknownFields: editDraft.value.allowUnknownFields,
+      fieldDefinitions: editDraft.value.fieldDefinitions,
+    })
+    editingCode.value = null
+    editFieldErrors.value = []
+    await refresh()
+  } catch (err) {
+    editFieldErrors.value = [toProblemDetail(err).detail ?? 'Enregistrement du schéma impossible']
   }
 }
 
@@ -248,6 +300,11 @@ async function revoke() {
         placeholder="SLA heures"
         data-testid="type-sla-hours"
       />
+      <label class="allow-unknown-fields">
+        <input v-model="form.allowUnknownFields" type="checkbox" data-testid="type-allow-unknown-fields" />
+        Autoriser les champs inconnus
+      </label>
+      <FieldDefinitionDefsEditor v-model="form.fieldDefinitions" />
       <button type="submit">Créer</button>
     </form>
     <table>
@@ -280,11 +337,28 @@ async function revoke() {
             >
               Retirer le SLA
             </button>
+            <button type="button" data-testid="type-edit-fields" @click="startEditFields(type)">
+              Modifier les champs
+            </button>
           </td>
         </tr>
       </tbody>
     </table>
     <AdminPager v-model="page" :total-pages="totalPages" />
+
+    <section v-if="editingCode" class="edit-fields-panel" data-testid="type-edit-fields-panel">
+      <h2>Modifier les champs — {{ editingCode }}</h2>
+      <p v-if="editFieldErrors.length" class="error">{{ editFieldErrors.join(' ') }}</p>
+      <label class="allow-unknown-fields">
+        <input v-model="editDraft.allowUnknownFields" type="checkbox" data-testid="type-allow-unknown-fields" />
+        Autoriser les champs inconnus
+      </label>
+      <FieldDefinitionDefsEditor v-model="editDraft.fieldDefinitions" />
+      <div class="edit-fields-panel__actions">
+        <button type="button" data-testid="type-edit-fields-save" @click="saveEditFields">Enregistrer</button>
+        <button type="button" data-testid="type-edit-fields-cancel" @click="cancelEditFields">Annuler</button>
+      </div>
+    </section>
 
     <h2>ACL</h2>
     <form class="admin-form" data-testid="acl-form" @submit.prevent="grant">
@@ -334,6 +408,21 @@ td {
 }
 .error {
   color: #c92a2a;
+}
+.allow-unknown-fields {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.4rem !important;
+}
+.edit-fields-panel {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #ddd;
+}
+.edit-fields-panel__actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
 }
 button,
 input,

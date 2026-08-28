@@ -98,8 +98,11 @@ public class DossierConfig {
 
     @Bean
     UpdateDossierTypeUseCase updateDossierTypeUseCase(
-            DossierTypeRepository typeRepository, TenantAdminGuard tenantAdminGuard) {
-        return new UpdateDossierTypeUseCaseImpl(typeRepository, tenantAdminGuard);
+            DossierTypeRepository typeRepository,
+            TenantAdminGuard tenantAdminGuard,
+            CheckDossierTypeSchemaCompatibilityUseCase checkDossierTypeSchemaCompatibilityUseCase) {
+        return new UpdateDossierTypeUseCaseImpl(
+                typeRepository, tenantAdminGuard, checkDossierTypeSchemaCompatibilityUseCase);
     }
 
     @Bean

@@ -123,6 +123,177 @@ class DossierApiTest {
     }
 
     @Test
+    void updateType_anonymous_returns401() throws Exception {
+        String code = createType(true);
+
+        mockMvc.perform(patch("/api/dossier-types/{code}", code)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "label": "Should not apply"
+                                }
+                                """))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void updateType_dossierManager_returns403ProblemDetail() throws Exception {
+        String code = createType(true);
+
+        mockMvc.perform(patch("/api/dossier-types/{code}", code)
+                        .with(user("manager-patch-denied", "DOSSIER_MANAGER"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "label": "Should not apply"
+                                }
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status").value(403))
+                .andExpect(jsonPath("$.title").value("Access denied"));
+    }
+
+    @Test
+    void createType_duplicateFieldName_returns400() throws Exception {
+        mockMvc.perform(post("/api/dossier-types")
+                        .with(user("admin-dup-field", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(typePayload(uniqueCode("DUPFIELD"), true, """
+                                [
+                                  {"name": "amount", "label": "Amount", "type": "NUMBER", "required": false, "options": []},
+                                  {"name": "amount", "label": "Amount again", "type": "STRING", "required": false, "options": []}
+                                ]
+                                """)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    void updateType_duplicateFieldName_returns400() throws Exception {
+        String code = createType(true);
+
+        mockMvc.perform(patch("/api/dossier-types/{code}", code)
+                        .with(user("admin-dup-field-update", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "fieldDefinitions": [
+                                    {"name": "amount", "label": "Amount", "type": "NUMBER", "required": false, "options": []},
+                                    {"name": "amount", "label": "Amount again", "type": "STRING", "required": false, "options": []}
+                                  ]
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    void updateType_incompatibleSchema_returns409AndLeavesTypeUnchanged() throws Exception {
+        String code = createTypeWithFields("SCHEMACOMPAT", """
+                [{
+                  "name": "status",
+                  "label": "Status",
+                  "type": "SELECT",
+                  "required": true,
+                  "options": ["A", "B"],
+                  "group": null,
+                  "sensitive": false
+                }]
+                """);
+        grant(code, "manager-schema-compat", "EDIT");
+        DossierFixture dossier = createDossierWithFields(
+                code, "manager-schema-compat", "Compat dossier", "{\"status\":\"A\"}");
+
+        mockMvc.perform(patch("/api/dossier-types/{code}", code)
+                        .with(user("admin-schema-compat", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "fieldDefinitions": [{
+                                    "name": "status",
+                                    "label": "Status",
+                                    "type": "SELECT",
+                                    "required": true,
+                                    "options": ["C", "D"],
+                                    "group": null,
+                                    "sensitive": false
+                                  }]
+                                }
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.title").value("Dossier type schema incompatible"))
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString(dossier.reference())))
+                .andExpect(jsonPath("$.incompatibleCount").value(1))
+                .andExpect(jsonPath("$.sampleReferences[0]").value(dossier.reference()));
+
+        mockMvc.perform(get("/api/dossier-types/{code}", code).with(user("admin-schema-compat", "TENANT_ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fieldDefinitions[0].options[0]").value("A"));
+    }
+
+    @Test
+    void updateType_compatibleSchemaChange_returns200AndPersists() throws Exception {
+        String code = createTypeWithFields("SCHEMAOK", """
+                [{
+                  "name": "priority",
+                  "label": "Priority",
+                  "type": "STRING",
+                  "required": false,
+                  "options": [],
+                  "group": null,
+                  "sensitive": false
+                }]
+                """);
+
+        mockMvc.perform(patch("/api/dossier-types/{code}", code)
+                        .with(user("admin-schema-ok", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "fieldDefinitions": [
+                                    {"name": "priority", "label": "Priority", "type": "STRING", "required": false, "options": []},
+                                    {"name": "amount", "label": "Amount", "type": "NUMBER", "required": false, "options": []}
+                                  ]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fieldDefinitions[1].name").value("amount"));
+    }
+
+    @Test
+    void createType_allowUnknownFieldsTrue_roundTrips() throws Exception {
+        String code = uniqueCode("ALLOWUNK");
+
+        mockMvc.perform(post("/api/dossier-types")
+                        .with(user("admin-allow-unknown", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "code": "%s",
+                                  "label": "Label %s",
+                                  "workflowKey": "workflow-%s",
+                                  "active": true,
+                                  "allowUnknownFields": true,
+                                  "fieldDefinitions": []
+                                }
+                                """.formatted(code, code, code.toLowerCase())))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.allowUnknownFields").value(true));
+
+        mockMvc.perform(get("/api/dossier-types/{code}", code).with(user("admin-allow-unknown", "TENANT_ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.allowUnknownFields").value(true));
+    }
+
+    @Test
     void createType_workflowAdmin_returns403ProblemDetail() throws Exception {
         mockMvc.perform(post("/api/dossier-types")
                         .with(user("workflow-admin", "WORKFLOW_ADMIN"))

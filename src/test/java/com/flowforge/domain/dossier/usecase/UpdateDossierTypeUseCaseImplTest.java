@@ -2,6 +2,7 @@ package com.flowforge.domain.dossier.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -13,9 +14,11 @@ import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.AccessDeniedException;
 import com.flowforge.domain.dossier.model.DossierNotFoundException;
 import com.flowforge.domain.dossier.model.DossierType;
+import com.flowforge.domain.dossier.model.DossierTypeSchemaIncompatibleException;
 import com.flowforge.domain.dossier.model.FieldDefinition;
 import com.flowforge.domain.dossier.model.FieldType;
 import com.flowforge.domain.dossier.model.InvalidRetentionPolicyException;
+import com.flowforge.domain.dossier.port.in.CheckDossierTypeSchemaCompatibilityUseCase;
 import com.flowforge.domain.dossier.port.in.UpdateDossierTypeUseCase;
 import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
 import java.util.List;
@@ -32,12 +35,16 @@ class UpdateDossierTypeUseCaseImplTest {
     private static final String TYPE_CODE = "SINISTRE";
 
     private DossierTypeRepository repository;
+    private CheckDossierTypeSchemaCompatibilityUseCase checkCompatibilityUseCase;
     private UpdateDossierTypeUseCase useCase;
 
     @BeforeEach
     void setUp() {
         repository = mock(DossierTypeRepository.class);
-        useCase = new UpdateDossierTypeUseCaseImpl(repository, new TenantAdminGuard());
+        checkCompatibilityUseCase = mock(CheckDossierTypeSchemaCompatibilityUseCase.class);
+        when(checkCompatibilityUseCase.check(any()))
+                .thenReturn(new CheckDossierTypeSchemaCompatibilityUseCase.Result(0, List.of()));
+        useCase = new UpdateDossierTypeUseCaseImpl(repository, new TenantAdminGuard(), checkCompatibilityUseCase);
     }
 
     @Test
@@ -137,6 +144,7 @@ class UpdateDossierTypeUseCaseImplTest {
                 .isInstanceOf(AccessDeniedException.class);
 
         verifyNoInteractions(repository);
+        verifyNoInteractions(checkCompatibilityUseCase);
     }
 
     @Test
@@ -148,6 +156,74 @@ class UpdateDossierTypeUseCaseImplTest {
 
         verify(repository).findByCode(TENANT, TYPE_CODE);
         verify(repository, never()).save(org.mockito.ArgumentMatchers.any());
+        verifyNoInteractions(checkCompatibilityUseCase);
+    }
+
+    @Test
+    void update_incompatibleSchema_throwsWithoutSaving() {
+        DossierType existing = type("Old label", true, List.of());
+        when(repository.findByCode(TENANT, TYPE_CODE)).thenReturn(Optional.of(existing));
+        when(checkCompatibilityUseCase.check(any()))
+                .thenReturn(new CheckDossierTypeSchemaCompatibilityUseCase.Result(3, List.of("REF-1", "REF-2")));
+
+        assertThatThrownBy(() -> useCase.update(command(), admin()))
+                .isInstanceOf(DossierTypeSchemaIncompatibleException.class)
+                .satisfies(ex -> {
+                    var incompatible = (DossierTypeSchemaIncompatibleException) ex;
+                    assertThat(incompatible.incompatibleCount()).isEqualTo(3);
+                    assertThat(incompatible.sampleReferences()).containsExactly("REF-1", "REF-2");
+                });
+
+        verify(repository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void update_checksCompatibilityWithNewSchemaBeforeSaving() {
+        DossierType existing = type("Old label", true, List.of(field("priority", FieldType.STRING)));
+        List<FieldDefinition> newFields = List.of(field("amount", FieldType.NUMBER));
+        when(repository.findByCode(TENANT, TYPE_CODE)).thenReturn(Optional.of(existing));
+
+        useCase.update(
+                new UpdateDossierTypeUseCase.UpdateDossierTypeCommand(
+                        TENANT, TYPE_CODE, "New label", "wf-new", false, true, newFields, null, false, null),
+                admin());
+
+        ArgumentCaptor<CheckDossierTypeSchemaCompatibilityUseCase.Query> captor =
+                ArgumentCaptor.forClass(CheckDossierTypeSchemaCompatibilityUseCase.Query.class);
+        verify(checkCompatibilityUseCase).check(captor.capture());
+        assertThat(captor.getValue().tenantId()).isEqualTo(TENANT);
+        assertThat(captor.getValue().dossierTypeCode()).isEqualTo(TYPE_CODE);
+        assertThat(captor.getValue().newFieldDefinitions()).isEqualTo(newFields);
+        assertThat(captor.getValue().allowUnknownFields()).isTrue();
+    }
+
+    @Test
+    void update_duplicateFieldName_failsFastWithoutQueryingCompatibility() {
+        DossierType existing = type("Old label", true, List.of());
+        when(repository.findByCode(TENANT, TYPE_CODE)).thenReturn(Optional.of(existing));
+        List<FieldDefinition> duplicated = List.of(
+                field("amount", FieldType.NUMBER), field("amount", FieldType.STRING));
+
+        assertThatThrownBy(() -> useCase.update(
+                        new UpdateDossierTypeUseCase.UpdateDossierTypeCommand(
+                                TENANT, TYPE_CODE, "New label", "wf-new", false, true, duplicated, null, false, null),
+                        admin()))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        verifyNoInteractions(checkCompatibilityUseCase);
+        verify(repository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void update_typeWithoutExistingDossiers_isAlwaysCompatible() {
+        DossierType existing = type("Old label", true, List.of());
+        when(repository.findByCode(TENANT, TYPE_CODE)).thenReturn(Optional.of(existing));
+        when(checkCompatibilityUseCase.check(any()))
+                .thenReturn(new CheckDossierTypeSchemaCompatibilityUseCase.Result(0, List.of()));
+
+        DossierType updated = useCase.update(command(), admin());
+
+        verify(repository).save(updated);
     }
 
     private static UpdateDossierTypeUseCase.UpdateDossierTypeCommand command() {

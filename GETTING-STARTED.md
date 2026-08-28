@@ -195,6 +195,15 @@ Actuator (health / Prometheus) : **`http://127.0.0.1:8090`** (`MANAGEMENT_ADDRES
 `MANAGEMENT_PORT`, D-42). Keycloak reste sur **`:8081`**. `permitAll` sur le port management
 est conservé parce que le bind est loopback.
 
+**Scraper avec Prometheus (optionnel).** `docker compose --profile prometheus up -d` démarre un
+Prometheus préconfiguré ([`docker/prometheus/prometheus.yml`](docker/prometheus/prometheus.yml))
+qui scrape `127.0.0.1:8090/actuator/prometheus` — UI sur http://localhost:9090. Le conteneur
+tourne en `network_mode: host` pour atteindre ce port loopback sans l'exposer plus largement
+(voir le commentaire du service `prometheus` dans `docker-compose.yml`) : fonctionne tel quel sous
+Linux (Docker Engine ou Podman rootless) ; sous macOS/Windows Docker Desktop, `network_mode: host`
+exige d'activer *Host networking* (Docker Desktop ≥ 4.34) — à défaut, se contenter de
+`curl http://127.0.0.1:8090/actuator/prometheus` sans ce conteneur.
+
 Test rapide sans frontend :
 
 ```bash

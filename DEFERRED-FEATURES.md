@@ -18,15 +18,16 @@
 `openapi-pagination-admin`, `observabilite`, `durcissement-donnees-sensibles`,
 `contrat-api-client`, `fiabilisation-tests-plateforme`, `deploiement-bpmn`,
 `modele-physique-consolide`, `masquage-donnees-sensibles-logs-webhooks`
-(PR #70), `edition-bpmn` (PR #71), `reporting-sla` (PR #80) sont
-**Complete** (mergées sur `main` sauf mention contraire — `frontend` via
-PR #38 `cursor/feature-frontend-21f2`, vague 1 instructeur + vague 2 admin
+(PR #70), `edition-bpmn` (PR #71), `reporting-sla` (PR #80), `serveur-mcp`
+(PR #82), `schema-champs-dynamiques` (PR #87) sont **Complete** (mergées
+sur `main` sauf mention contraire — `frontend` via PR #38
+`cursor/feature-frontend-21f2`, vague 1 instructeur + vague 2 admin
 types/templates/connectors/workflow-configs ; packaging Maven→`static/` ;
 maquette
 [FlowForge - Maquettes UI.html](analysis%20doc/FlowForge%20-%20Maquettes%20UI.html)
 = référence UX). Détail des 5 dernières (regroupement 2026-08-20) en §2.
-**File d'attente (2026-08-27) :** `serveur-mcp` Phase 1 en cours ;
-chore docs TODO §45 **clos**
+**File d'attente (2026-08-28) :** vide — `serveur-mcp` et
+`schema-champs-dynamiques` livrées ; chore docs TODO §45 **clos**
 ([PR #75](https://github.com/superjojo79/FlowForge/pull/75)). §46
 (ArchUnit `application`) hors file produit.
 [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md).
@@ -163,7 +164,8 @@ Ordre indicatif aligné sur l’analyse et les dépendances techniques :
 | — | `masquage-donnees-sensibles-logs-webhooks` | **Complete** (PR #70) — audit préalable : aucune fuite active trouvée (logs/webhooks), protection préventive ajoutée : `toString()` sûr sur `Dossier`/`FieldDefinition` + liste blanche ArchUnit ; `SendNotificationUseCaseImpl` masque automatiquement les champs sensibles avant écriture outbox. TODO §23 clos. |
 | — | `edition-bpmn` | **Complete** (PR #71) — éditeur `bpmn-js` Modeler + panel Flowable custom ; brouillon persisté ; TODO §39 clos. |
 | — | `reporting-sla` | **Complete** (PR #80) — snapshot + summary SLA, cible par type, settings tenant, SPA `/rapports`, inbox remaining. |
-| … | `serveur-mcp` | **Phase 1** (2026-08-27) — adaptateur MCP interne ; plus bloqué par reporting. |
+| — | `serveur-mcp` | **Complete** (PR #82) — serveur MCP interne, 9 tools (`get_dossier`, `search_dossiers`, `query_sla_summary`, `list_document_templates`, `get_dossier_type`, `list_dossier_types`, `list_workflow_types`, `define_dossier_type`, `deploy_workflow`) sur `POST /api/m2m/mcp` (Streamable HTTP, Spring AI 2.0.0), JWT M2M `API_SERVICE` réutilisé ; zéro fichier frontend touché. |
+| — | `schema-champs-dynamiques` | **Complete** (PR #87) — écran Admin → Types édite le schéma `fieldDefinitions` d'un `DossierType` (création + édition), blocage 409 sur schéma incompatible avec des dossiers existants. TODO §47 clos. |
 
 ---
 

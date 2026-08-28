@@ -78,7 +78,16 @@ class ArchitectureRulesTest {
             "com.flowforge.infrastructure.persistence.dossier.DossierJpaEntity",
             "com.flowforge.infrastructure.web.dossier.DossierResponse",
             "com.flowforge.infrastructure.web.dossier.DossierExportController",
-            "com.flowforge.infrastructure.mcp.tool.DossierMcpView");
+            "com.flowforge.infrastructure.mcp.tool.DossierMcpView",
+            // Les trois chemins de démarrage de workflow (API manuelle, relais outbox,
+            // réconciliation RESERVED) injectent Dossier.fields() dans la variable de processus
+            // réservée `dossierFields` (WorkflowVariables.withPlatformVariables) — comble l'écart
+            // DossierAwareTask identifié dans GUIDE-CONCEPTION-BPMN.md §3. Appelant système
+            // (AccessContext.System), même rationale que DossierFieldRedactor : la donnée brute
+            // est nécessaire au moteur de workflow, jamais renvoyée telle quelle à un navigateur.
+            "com.flowforge.application.workflow.ManualStartOrchestrator",
+            "com.flowforge.infrastructure.flowable.OutboxRelayScheduler",
+            "com.flowforge.infrastructure.flowable.ReservedReconcileJob");
 
     /** Same rationale as {@link #DOSSIER_FIELDS_READ_ALLOWLIST}, for {@code FieldDefinition.defaultValue()}. */
     private static final Set<String> FIELD_DEFINITION_DEFAULT_VALUE_READ_ALLOWLIST = Set.of(

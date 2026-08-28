@@ -1,5 +1,6 @@
 package com.flowforge.infrastructure.flowable;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -10,9 +11,13 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.flowforge.domain.dossier.model.Dossier;
+import com.flowforge.domain.dossier.model.DossierStatus;
 import com.flowforge.domain.dossier.model.DossierWorkflowLink;
 import com.flowforge.domain.dossier.model.WorkflowAlreadyRunningException;
 import com.flowforge.domain.dossier.port.in.AttachWorkflowUseCase;
+import com.flowforge.domain.dossier.port.out.DossierRepository;
+import com.flowforge.domain.workflow.WorkflowVariables;
 import com.flowforge.domain.workflow.model.OutboxEvent;
 import com.flowforge.domain.workflow.model.TriggerOutboxPayload;
 import com.flowforge.domain.workflow.port.out.OutboxRepository;
@@ -27,6 +32,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.slf4j.MDC;
 
 class OutboxRelaySchedulerTest {
@@ -34,6 +40,7 @@ class OutboxRelaySchedulerTest {
     private OutboxRepository outboxRepository;
     private AttachWorkflowUseCase attachWorkflow;
     private WorkflowEnginePort workflowEnginePort;
+    private DossierRepository dossierRepository;
     private OutboxRelayScheduler scheduler;
 
     @AfterEach
@@ -46,6 +53,7 @@ class OutboxRelaySchedulerTest {
         outboxRepository = mock(OutboxRepository.class);
         attachWorkflow = mock(AttachWorkflowUseCase.class);
         workflowEnginePort = mock(WorkflowEnginePort.class);
+        dossierRepository = mock(DossierRepository.class);
         WorkflowProperties properties = new WorkflowProperties(
                 Duration.ofMinutes(5),
                 new WorkflowProperties.Outbox(20, 5, Duration.ofSeconds(1), Duration.ofDays(7)),
@@ -54,8 +62,16 @@ class OutboxRelaySchedulerTest {
                 outboxRepository,
                 attachWorkflow,
                 workflowEnginePort,
+                dossierRepository,
                 properties,
                 new com.flowforge.infrastructure.config.TenantProperties("tenant_dev"));
+    }
+
+    private static Dossier dossier(UUID id, Map<String, Object> fields) {
+        Instant now = Instant.parse("2026-08-02T10:00:00Z");
+        return new Dossier(
+                id, "tenant_dev", "DOS-1", "WF", "Label", DossierStatus.OUVERT, fields, null, 0, "u1", now, "u1",
+                now, null, null, null);
     }
 
     @Test
@@ -70,12 +86,17 @@ class OutboxRelaySchedulerTest {
                 .thenReturn(reserved);
         when(workflowEnginePort.findProcessInstanceIdByBusinessKey(reserved.id().toString()))
                 .thenReturn(Optional.empty());
+        when(dossierRepository.findById(event.payload().dossierId()))
+                .thenReturn(Optional.of(dossier(event.payload().dossierId(), Map.of("montant", 42))));
         when(workflowEnginePort.start(anyString(), anyString(), anyString(), anyMap())).thenReturn("proc-1");
 
         scheduler.processOne(event);
 
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(workflowEnginePort)
-                .start(eq("smokeProcess"), eq("tenant_dev"), eq(reserved.id().toString()), anyMap());
+                .start(eq("smokeProcess"), eq("tenant_dev"), eq(reserved.id().toString()), captor.capture());
+        assertThat(captor.getValue()).containsEntry(WorkflowVariables.DOSSIER_FIELDS, Map.of("montant", 42));
         verify(attachWorkflow).confirmStarted(reserved.id(), "proc-1");
         verify(outboxRepository).markProcessed(event.eventId());
     }
@@ -120,6 +141,8 @@ class OutboxRelaySchedulerTest {
         when(attachWorkflow.reserveOrResume(any(), any(), any(), any())).thenReturn(reserved);
         when(workflowEnginePort.findProcessInstanceIdByBusinessKey(reserved.id().toString()))
                 .thenReturn(Optional.empty());
+        when(dossierRepository.findById(event.payload().dossierId()))
+                .thenReturn(Optional.of(dossier(event.payload().dossierId(), Map.of())));
         when(workflowEnginePort.start(anyString(), anyString(), anyString(), anyMap()))
                 .thenThrow(new IllegalStateException("temporary"));
 
@@ -128,6 +151,21 @@ class OutboxRelaySchedulerTest {
         verify(outboxRepository).recordFailure(event.eventId(), "temporary", 5);
         verify(outboxRepository, never()).markProcessed(any());
         verify(outboxRepository, never()).markDead(any(), any());
+    }
+
+    @Test
+    void processOne_recordsFailureWhenDossierMissingAtStart() {
+        OutboxEvent event = pendingEvent();
+        DossierWorkflowLink reserved = reservedLink(event.payload().dossierId());
+        when(attachWorkflow.reserveOrResume(any(), any(), any(), any())).thenReturn(reserved);
+        when(workflowEnginePort.findProcessInstanceIdByBusinessKey(reserved.id().toString()))
+                .thenReturn(Optional.empty());
+        when(dossierRepository.findById(event.payload().dossierId())).thenReturn(Optional.empty());
+
+        scheduler.processOne(event);
+
+        verify(outboxRepository).recordFailure(eq(event.eventId()), anyString(), eq(5));
+        verify(workflowEnginePort, never()).start(any(), any(), any(), any());
     }
 
     @Test
@@ -181,6 +219,8 @@ class OutboxRelaySchedulerTest {
         when(attachWorkflow.reserveOrResume(any(), any(), any(), any())).thenReturn(reserved);
         when(workflowEnginePort.findProcessInstanceIdByBusinessKey(reserved.id().toString()))
                 .thenReturn(Optional.empty());
+        when(dossierRepository.findById(event.payload().dossierId()))
+                .thenReturn(Optional.of(dossier(event.payload().dossierId(), Map.of())));
         when(workflowEnginePort.start(anyString(), anyString(), anyString(), anyMap())).thenReturn("proc-1");
         doAnswer(invocation -> {
             org.assertj.core.api.Assertions.assertThat(MDC.get(MdcScope.PROCESS_INSTANCE_ID)).isEqualTo("proc-1");

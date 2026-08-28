@@ -33,6 +33,12 @@
 | 16 | Reporting & SLA — **livré** (PR #80) | [16-reporting-sla.md](16-reporting-sla.md) |
 | 17 | Édition du schéma des champs dynamiques (admin `DossierType`) — analyse initiale | [17-schema-champs-dynamiques.md](17-schema-champs-dynamiques.md) |
 
+> Pour concevoir concrètement un diagramme BPMN pour FlowForge (conventions, référence des
+> `serviceTask` disponibles, champs dynamiques, connecteurs, intervenants, génération de
+> documents), voir le guide pratique [GUIDE-CONCEPTION-BPMN.md](../GUIDE-CONCEPTION-BPMN.md) à la
+> racine du dépôt — ce n'est pas un document d'analyse d'architecture, il n'a donc pas de numéro
+> dans la table ci-dessus.
+
 ---
 
 ## Stack synthétique

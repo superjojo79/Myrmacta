@@ -1,8 +1,10 @@
 package com.flowforge.infrastructure.flowable;
 
+import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierWorkflowLink;
 import com.flowforge.domain.dossier.model.WorkflowAlreadyRunningException;
 import com.flowforge.domain.dossier.port.in.AttachWorkflowUseCase;
+import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.workflow.model.OutboxEvent;
 import com.flowforge.domain.workflow.port.out.OutboxRepository;
 import com.flowforge.domain.workflow.port.out.WorkflowEnginePort;
@@ -23,6 +25,7 @@ class OutboxRelayScheduler {
     private final OutboxRepository outboxRepository;
     private final AttachWorkflowUseCase attachWorkflow;
     private final WorkflowEnginePort workflowEnginePort;
+    private final DossierRepository dossierRepository;
     private final WorkflowProperties properties;
     private final TenantProperties tenantProperties;
 
@@ -30,11 +33,13 @@ class OutboxRelayScheduler {
             OutboxRepository outboxRepository,
             AttachWorkflowUseCase attachWorkflow,
             WorkflowEnginePort workflowEnginePort,
+            DossierRepository dossierRepository,
             WorkflowProperties properties,
             TenantProperties tenantProperties) {
         this.outboxRepository = outboxRepository;
         this.attachWorkflow = attachWorkflow;
         this.workflowEnginePort = workflowEnginePort;
+        this.dossierRepository = dossierRepository;
         this.properties = properties;
         this.tenantProperties = tenantProperties;
     }
@@ -79,7 +84,11 @@ class OutboxRelayScheduler {
                 return;
             }
 
-            Map<String, Object> variables = WorkflowVariables.withPlatformVariables(event.payload().variables(), link);
+            Dossier dossier = dossierRepository.findById(event.payload().dossierId())
+                    .orElseThrow(() -> new IllegalStateException(
+                            "Dossier not found: " + event.payload().dossierId()));
+            Map<String, Object> variables = WorkflowVariables.withPlatformVariables(
+                    event.payload().variables(), link, dossier.fields());
             String processInstanceId = workflowEnginePort.start(
                     link.processDefinitionKey(), link.tenantId(), link.id().toString(), variables);
             confirmAndMarkProcessed(event, link.id(), processInstanceId);

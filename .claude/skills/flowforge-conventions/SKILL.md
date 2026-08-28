@@ -80,6 +80,16 @@ Référence : `analysis doc/11-frontend.md`.
    - Mettre à jour les mocks/assertions `frontend/e2e/**` quand les shapes API changent.
    - **Interdit** de déclarer Playwright « hors scope » pour contourner Phase 8/9.
 5. Points ouverts : `TODO.md` / `REVUE-PRE-IMPLEMENTATION.md` — ne pas « trancher » silencieusement une décision ouverte.
+6. **Doc admin/utilisateur à jour avant de clore une feature** — si la feature ajoute/modifie un
+   écran `/admin/**` ou change une variable lue par le backend au démarrage :
+   - nouvel écran ou champ visible en admin → section correspondante de `GUIDE-UTILISATEUR.md`
+     (et tableau de rôles §0 si le rôle requis ou la route sont nouveaux) ;
+   - nouvelle variable d'environnement consommée par l'app (`${MA_VAR}` dans `application.yml`)
+     → `.env.example` **et** `GETTING-STARTED.md` ;
+   - lister ces fichiers dans la section « Impacte » du point `TODO.md` de la feature, comme fait
+     pour le point 20 (workflow-engine) — les points 21/22/29 (rétention, purge, observabilité) ne
+     l'ont pas fait et ont laissé `GUIDE-UTILISATEUR.md` en retard sur l'UI réelle, ne pas répéter
+     cet oubli.
 
 ## Commandes utiles
 
@@ -118,3 +128,6 @@ npx ai-devkit@latest skill list              # skills installés
 - Claim « c’est bon » sans sortie fraîche de `./mvnw verify` / tests FE (skill `verify`).
 - Claim Phase 8/9 FE sans preuve Playwright (`npm run test:e2e` / `test:all`) alors
   que le SPA ou ses mocks E2E sont impactés.
+- Livrer un écran admin ou une variable d'environnement sans mettre à jour
+  `GUIDE-UTILISATEUR.md` / `GETTING-STARTED.md` / `.env.example` en conséquence (voir §
+  « Workflow de feature » point 6).

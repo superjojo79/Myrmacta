@@ -90,6 +90,16 @@ Référence : `analysis doc/11-frontend.md`.
      pour le point 20 (workflow-engine) — les points 21/22/29 (rétention, purge, observabilité) ne
      l'ont pas fait et ont laissé `GUIDE-UTILISATEUR.md` en retard sur l'UI réelle, ne pas répéter
      cet oubli.
+7. **`CHANGELOG.md` à jour avant d'ouvrir ou de mettre à jour une pull request** — toute PR qui
+   touche du code, de la configuration ou de la documentation utilisateur/admin ajoute (ou met à
+   jour si la PR est déjà ouverte) **une entrée** dans la section `[Non publié]` :
+   - format court : `- **PR #<numéro>** — résumé en une phrase, détail optionnel en une seconde` ;
+   - catégorie parmi Ajouté / Modifié / Corrigé / Sécurité / Documentation / Déprécié / Supprimé ;
+   - **synthétique** — 2 à 5 lignes maximum, lisible sans contexte projet ; le détail technique
+     (décisions, alternatives écartées, bugs trouvés) reste dans `TODO.md`/`FILE-ATTENTE.md`, pas
+     dans `CHANGELOG.md` ;
+   - une entrée par PR, pas par commit — regrouper les commits successifs d'une même PR sous sa
+     ligne existante plutôt que d'en ajouter une nouvelle à chaque push.
 
 ## Commandes utiles
 
@@ -117,6 +127,7 @@ npx ai-devkit@latest skill list              # skills installés
 | Backlog différé | `DEFERRED-FEATURES.md` |
 | Architecture détaillée | `analysis doc/*.md` |
 | Artefacts lifecycle feature | `docs/ai/{requirements,design,planning,implementation,testing,...}/` |
+| Historique synthétique par PR | `CHANGELOG.md` |
 
 ## Anti-patterns à refuser
 
@@ -131,3 +142,5 @@ npx ai-devkit@latest skill list              # skills installés
 - Livrer un écran admin ou une variable d'environnement sans mettre à jour
   `GUIDE-UTILISATEUR.md` / `GETTING-STARTED.md` / `.env.example` en conséquence (voir §
   « Workflow de feature » point 6).
+- Ouvrir ou merger une PR sans entrée `CHANGELOG.md` correspondante, ou y écrire un pavé
+  technique au lieu d'un résumé synthétique (voir § « Workflow de feature » point 7).

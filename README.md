@@ -182,7 +182,8 @@ charge le justifie.
 Mise en place et utilisation en local : [GETTING-STARTED.md](GETTING-STARTED.md). Prise en main
 de l'UI (dossiers, workflows, connecteurs, templates) : [GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md).
 Déploiement au-delà du poste de dev (reverse-proxy, provisioning tenant, comptes Keycloak) :
-[DEPLOIEMENT.md](DEPLOIEMENT.md).
+[DEPLOIEMENT.md](DEPLOIEMENT.md). Historique synthétique des changements, par pull request :
+[CHANGELOG.md](CHANGELOG.md).
 
 La documentation d'architecture est disponible dans le répertoire `analysis doc` :
 

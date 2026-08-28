@@ -65,7 +65,8 @@ public final class ManualStartOrchestrator {
 
         DossierWorkflowLink reserved = attachWorkflow.reserve(
                 dossierId, processDefinitionKey, "manual:" + idempotencyKey, startedBy);
-        Map<String, Object> engineVariables = WorkflowVariables.withPlatformVariables(variables, reserved);
+        Map<String, Object> engineVariables =
+                WorkflowVariables.withPlatformVariables(variables, reserved, dossier.fields());
 
         String processInstanceId;
         try {

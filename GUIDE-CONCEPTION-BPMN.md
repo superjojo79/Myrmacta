@@ -9,8 +9,15 @@
 > documente chacun sous son propre angle, sans jamais les rassembler du point de vue de
 > l'auteur d'un diagramme. Tous les noms de variables, de beans et d'attributs cités ci-dessous
 > sont vérifiés contre le code réel du dépôt (`src/main/java/com/flowforge/infrastructure/flowable/`),
-> pas seulement contre le pseudo-code des autres documents d'analyse — les deux écarts trouvés
-> sont signalés explicitement.
+> pas seulement contre le pseudo-code des autres documents d'analyse.
+>
+> **Mise à jour — écart `DossierAwareTask` comblé (§3).** Une première version de ce guide
+> signalait que les champs dynamiques du dossier n'étaient accessibles depuis aucun processus
+> sans câblage manuel de chaque champ. C'est désormais corrigé côté code (variable réservée
+> `dossierFields`, injectée automatiquement aux trois points de démarrage d'un workflow) — voir
+> §3 pour le détail et ses limites restantes (instantané non rafraîchi, non masqué). Le second
+> écart identifié (absence de `serviceTask` pour chaîner un nouveau workflow sur le **même**
+> dossier, §2) reste, lui, un simple contournement documenté — pas un défaut corrigé ici.
 
 ---
 
@@ -75,15 +82,17 @@ suivie par toutes les tâches livrées (voir catalogue §7) :
 - **Entrée vs sortie** : une tâche documente dans son nom de variable si elle la lit (entrée,
   fixée par le concepteur du diagramme ou une tâche précédente) ou l'écrit (sortie, à consommer
   par une tâche suivante) — voir la colonne dédiée du catalogue.
-- **Trois variables réservées**, injectées automatiquement par la plateforme au démarrage de
-  **toute** instance (jamais à fixer soi-même — une tentative lève `IllegalArgumentException`,
-  voir `WorkflowVariables.assertNoReservedKeys`) :
+- **Quatre variables réservées**, injectées automatiquement par la plateforme au démarrage de
+  **toute** instance, sur les trois chemins de démarrage (API manuelle, relais outbox,
+  réconciliation des liens `RESERVED` orphelins) — jamais à fixer soi-même, une tentative lève
+  `IllegalArgumentException` (voir `WorkflowVariables.assertNoReservedKeys`) :
 
   | Variable | Contenu |
   |---|---|
   | `dossierId` | UUID du dossier manipulé |
   | `dossierWorkflowLinkId` | UUID de l'exécution courante (`DossierWorkflowLink`) |
   | `tenantId` | tenant courant |
+  | `dossierFields` | instantané (`Map<String, Object>`) de `Dossier.fields()` **au moment du démarrage** — voir §3 |
 
   Toute tâche qui a besoin du dossier ou du tenant les lit sur `DelegateExecution`, jamais en
   paramètre statique du BPMN.
@@ -97,7 +106,7 @@ injectées, le reste des variables passées par l'appelant :
 
 | Origine | Mécanisme | Détail |
 |---|---|---|
-| **Connecteur externe** (webhook, signal Flowable…) | `TriggerConnector.onEvent(...)` → outbox → relais (`OutboxRelayScheduler`) | [06-connecteurs.md](analysis%20doc/06-connecteurs.md). `WorkflowTriggerEvent.variables()` devient les variables du processus — **pas** `dossierFields()` (voir §3, écart important) |
+| **Connecteur externe** (webhook, signal Flowable…) | `TriggerConnector.onEvent(...)` → outbox → relais (`OutboxRelayScheduler`) | [06-connecteurs.md](analysis%20doc/06-connecteurs.md). `WorkflowTriggerEvent.variables()` devient les variables du processus ; `WorkflowTriggerEvent.dossierFields()` sert à créer le `Dossier` puis revient automatiquement via la variable `dossierFields` (voir §3) — deux routes distinctes vers le même résultat |
 | **Manuel — API/UI** | `POST /api/dossiers/{id}/workflows` (en-tête `Idempotency-Key` obligatoire) → `ManualStartOrchestrator.start(...)` | Depuis la fiche dossier, bouton **Démarrer workflow** (`GUIDE-UTILISATEUR.md` §3) |
 | **Chaînage — dossier enfant/suite** | `serviceTask` `${createChildDossierTask}` (voir §7) — crée un dossier `PARENT_CHILD` ou `SUBSEQUENT` **et** démarre son workflow via le même `ManualStartOrchestrator` | [04-dossiers.md](analysis%20doc/04-dossiers.md) §« Démarrage d'un nouveau workflow sur un dossier existant » |
 
@@ -114,56 +123,61 @@ injectées, le reste des variables passées par l'appelant :
 
 ## 3. Référencer les champs dynamiques du dossier
 
-**Point le plus fréquemment mal compris : les champs dynamiques du dossier (`Dossier.fields`,
-schéma `DossierType.fieldDefinitions`) ne sont PAS automatiquement injectés comme variables de
-processus, ni automatiquement disponibles dans un template de document.** C'est un écart réel
-entre le pseudo-code de [04-dossiers.md](analysis%20doc/04-dossiers.md) (`DossierAwareTask`, chargement
-automatique du dossier avant chaque `ServiceTask`) et le code livré : cette classe **n'existe
-pas** dans `src/main/java`. Chaque tâche lit exactement les variables qu'elle déclare — rien de
-plus.
+**Résolu.** Les champs dynamiques du dossier (`Dossier.fields`, schéma
+`DossierType.fieldDefinitions`) sont **automatiquement disponibles** sous la variable réservée
+`dossierFields` (`Map<String, Object>`, voir §1) dès le démarrage de **toute** instance —
+appel manuel, connecteur/relais outbox, ou réconciliation d'un lien `RESERVED` orphelin.
+Accès depuis une expression BPMN ou un template Thymeleaf : `${dossierFields.montantSinistre}`.
 
-**Impact concret pour l'auteur d'un diagramme :** rien n'échoue à la conception ni au déploiement
-si un champ dynamique nécessaire n'est jamais propagé — l'erreur se révèle seulement à
-l'exécution, et pas toujours bruyamment. `ThymeleafHtmlTemplateProcessor` construit son contexte
-uniquement à partir des variables réellement présentes ; une variable scalaire absente
-(`${montantSinistre}` jamais fixée) est résolue à `null` par Thymeleaf et rendue silencieusement
-comme une chaîne vide dans le PDF — aucune exception, aucun log, juste un champ visiblement vide
-sur le document livré. Seule la navigation de propriété sur un objet composite absent
-(`${dossier.reference}` sans variable `dossier`) déclenche une `TemplateProcessingException` (500
-à la génération). Conséquence pratique : tester chaque template avec un jeu de variables réel
-avant mise en production, ne pas se fier à l'absence d'erreur en développement comme preuve que
-tous les champs sont bien câblés, et considérer que toute reprise du pseudo-code de
-[04-dossiers.md](analysis%20doc/04-dossiers.md) sur ce point précis (`DossierAwareTask`) décrit une intention non
-implémentée, pas le comportement réel.
+> **Historique — écart désormais comblé.** Cette section signalait jusqu'ici un écart réel entre
+> le pseudo-code de [04-dossiers.md](analysis%20doc/04-dossiers.md) (`DossierAwareTask`, chargement
+> automatique du dossier avant chaque `ServiceTask`) et le code livré, où cette classe n'existait
+> pas et où aucun champ dynamique n'était exposé sans câblage manuel. `WorkflowVariables
+> .withPlatformVariables(...)` (le point d'injection commun aux trois chemins de démarrage) porte
+> désormais un quatrième paramètre `dossierFields` — `DossierAwareTask` elle-même reste
+> volontairement non réintroduite (aucun `ServiceTask` n'en a besoin : l'exposition se fait au
+> niveau variable de processus, pas au niveau classe Java de base), mais l'écart fonctionnel
+> qu'elle devait couvrir est fermé.
 
-Concrètement :
+Deux limites à connaître :
 
-- **Au démarrage**, seul `WorkflowTriggerEvent.variables()` (chaîné trigger) ou
-  `StartWorkflowRequest.variables()` (API manuelle) devient des variables de processus.
-  `WorkflowTriggerEvent.dossierFields()` sert **uniquement** à peupler `Dossier.fields()` à la
-  création — ces valeurs ne traversent pas automatiquement vers Flowable.
-- **Pour qu'un champ dynamique (ex. `montantSinistre`, `dateIncident`) soit utilisable dans le
-  processus ou dans un template de document**, il faut explicitement :
-  1. soit le dupliquer dans `variables` au moment du déclenchement (connecteur ou appel manuel)
-     — le plus simple si le champ est connu à l'avance ;
-  2. soit écrire un `serviceTask` dédié qui appelle `GetDossierUseCase.get(dossierId, ...)`
-     et fait `execution.setVariable(...)` pour chaque champ à exposer — nécessaire si le
-     workflow doit refléter des champs modifiés après le démarrage (`PATCH` sur le dossier,
-     voir `UpdateDossierFieldsUseCaseImpl`).
-- **Dans un template Thymeleaf de document** (voir §5 et
-  [08-templates-documents.md](analysis%20doc/08-templates-documents.md)) : la syntaxe est `${nomDeLaVariable}`
-  — le moteur de rendu (`DocumentGenerationTask`) fusionne **toutes** les variables du processus
-  en cours (`execution.getVariables()`), moins une allowlist de clés plateforme filtrée par
-  `DocumentVariableFilter` (`dossierId`, `dossierWorkflowLinkId`, `tenantId`,
-  `generatedDocumentId`, `documentType`, `documentVariant`, `documentLocale`). Toute autre
-  variable — dont les champs dynamiques explicitement copiés à l'étape précédente — est
-  utilisable telle quelle dans le template : `${montantSinistre}`.
-- **Objet `dossier` en tant que tel** (`${dossier.reference}`, mentionné comme exemple générique
-  dans [08-templates-documents.md](analysis%20doc/08-templates-documents.md)) : n'existe **que** si une tâche du
-  processus a explicitement fait `execution.setVariable("dossier", ...)` avec un objet portant
-  ces accesseurs — ce n'est pas fourni nativement aujourd'hui. Préférer exposer les champs un par
-  un (`${dossierReference}`, `${montantSinistre}`…) tant qu'aucune tâche standard ne matérialise
-  cet objet.
+- **C'est un instantané pris au démarrage, jamais rafraîchi automatiquement.** Une modification
+  du dossier en cours de workflow (`PATCH` via `UpdateDossierFieldsUseCaseImpl`) n'est **pas**
+  répercutée sur `dossierFields` pour l'exécution déjà démarrée. Si un `serviceTask` a besoin de
+  la valeur la plus récente en cours de route, il doit encore appeler explicitement
+  `GetDossierUseCase.get(dossierId, ...)` et faire `execution.setVariable(...)` lui-même — ce
+  n'est plus le cas général, seulement le cas « valeur potentiellement modifiée après le
+  démarrage ». Dans ce cas précis : `Dossier.fields()` est protégé par un garde-fou ArchUnit
+  (`ArchitectureRulesTest.DOSSIER_FIELDS_READ_ALLOWLIST`, `only_allowlisted_classes_read_raw_
+  dossier_fields`) — seules les classes explicitement listées peuvent appeler cette méthode, pour
+  empêcher qu'un nouveau point de lecture des champs bruts (potentiellement sensibles) apparaisse
+  sans revue. Un nouveau `serviceTask` custom qui a besoin des champs bruts doit être ajouté à
+  cette allowlist (avec justification), sans quoi `./mvnw verify` échoue.
+- **Fields bruts, non masqués.** `dossierFields` transporte les valeurs réelles, y compris les
+  champs marqués `sensitive` sur le `DossierType` — cohérent avec le principe déjà appliqué à la
+  génération de document et aux triggers connecteurs (`AccessContext.System` voit les vraies
+  valeurs, voir `DossierFieldRedactor`). Ne pas reverser tel quel `${dossierFields}` dans
+  `notificationPayload`/`notificationBody` (§6c) sans réfléchir à l'exposition — ce chemin ne
+  passe **pas** par le masquage `DossierFieldsSnapshot` des notifications (voir §8).
+
+Dans un template Thymeleaf de document (voir §5 et
+[08-templates-documents.md](analysis%20doc/08-templates-documents.md)) : `DocumentGenerationTask`
+fusionne **toutes** les variables du processus en cours (`execution.getVariables()`, `dossierFields`
+compris), moins une allowlist de clés plateforme filtrée par `DocumentVariableFilter` (`dossierId`,
+`dossierWorkflowLinkId`, `tenantId`, `generatedDocumentId`, `documentType`, `documentVariant`,
+`documentLocale` — `dossierFields` n'y figure pas, il reste donc visible du template).
+
+**Objet `dossier` en tant que tel** (`${dossier.reference}`, mentionné comme exemple générique
+dans [08-templates-documents.md](analysis%20doc/08-templates-documents.md)) : reste **différent**
+de `dossierFields` et n'existe toujours pas nativement — c'est la signalétique du dossier
+(`reference`, `label`, `status`…), pas ses champs dynamiques. Une tâche qui en a besoin doit
+encore faire `execution.setVariable("dossier", ...)` explicitement.
+
+**Rappel utile malgré la correction :** un champ absent de `dossierFields` (parce qu'il n'a
+jamais été saisi sur ce dossier, ou que le nom est mal orthographié dans le template) continue de
+se résoudre silencieusement à une chaîne vide dans le PDF plutôt que de faire échouer la
+génération — Thymeleaf ne distingue pas « valeur vide » de « clé absente de la map ». Tester
+chaque template avec un jeu de champs réel reste la seule façon fiable de s'en assurer.
 
 ---
 
@@ -332,10 +346,18 @@ pseudo-code.
   infrastructure — ne jamais construire un appel HTTP direct dans un delegate custom sans
   réutiliser cette garde (protection SSRF, voir [06-connecteurs.md](analysis%20doc/06-connecteurs.md) et
   [09-notifications.md](analysis%20doc/09-notifications.md)).
-- **Champs sensibles** transmis en variables (ex. copiés depuis `Dossier.fields` pour un
-  template ou une notification) passent par le masquage prévu côté notification
-  (`DossierFieldsSnapshot`, redaction) — ne pas court-circuiter en composant soi-même une chaîne
-  contenant des données sensibles brutes dans `notificationBody`/`notificationPayload`.
+- **`dossierFields` (§3) est non masqué** — il porte les valeurs réelles, y compris les champs
+  `sensitive`, cohérent avec le fait que le contexte workflow est un appelant système
+  (`AccessContext.System`, voir `DossierFieldRedactor`). C'est le comportement voulu pour la
+  génération de document (un contrat doit pouvoir imprimer une donnée sensible), **pas** pour une
+  notification. Le domaine expose un mécanisme de masquage dédié (`DossierFieldsSnapshot`, résolu
+  dans `SendNotificationUseCaseImpl` contre les `FieldDefinition.isSensitive()` du `DossierType`),
+  mais **aucun producteur ne le câble aujourd'hui** — ni `NotificationDispatchTask` (le
+  `serviceTask` `${notificationDispatchTask}`, §6c) ni les autres émetteurs de `NotificationEvent`
+  du dépôt ne construisent d'instance avec ce paramètre renseigné. Conséquence pratique : ne
+  jamais copier `${dossierFields}` (ni un champ individuel potentiellement sensible) tel quel dans
+  `notificationBody`/`notificationPayload` depuis un diagramme — il n'existe aujourd'hui **aucun**
+  chemin BPMN qui applique le masquage avant l'envoi vers un canal (email, webhook, navigateur).
 - **Templates de document** : n'utiliser que `${...}` et les objets utilitaires Thymeleaf
   autorisés (`#dates`, `#numbers`, `#strings`, `#lists`) — `T()`, `#beans`, `new`, `#request`
   sont refusés à l'activation du template (décision **D-40**, voir
@@ -353,8 +375,9 @@ pseudo-code.
    premier déploiement via upload — voir `GUIDE-UTILISATEUR.md` §3).
 2. Chaque `serviceTask` référence un `delegateExpression` existant (catalogue §7) — jamais
    `flowable:class`.
-3. Les champs dynamiques nécessaires au processus ou aux templates sont explicitement propagés
-   en variables (§3) — ne pas supposer qu'ils sont disponibles par défaut.
+3. Les champs dynamiques du dossier sont lus via `${dossierFields.x}` (§3, injecté
+   automatiquement) — n'écrire un `serviceTask` de rafraîchissement explicite que si le workflow
+   a besoin d'une valeur modifiée **après** son démarrage.
 4. Les statuts posés par `targetDossierStatus`/`targetWorkflowStatus` existent bien dans
    `DossierStatus` / dans les `statusDefinitions` de la `WorkflowTypeConfig` du processus.
 5. Toute génération de document est suivie d'un rattachement (`attachGeneratedDocumentTask`),

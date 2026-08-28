@@ -19,6 +19,7 @@ import com.flowforge.domain.dossier.model.DossierWorkflowLink;
 import com.flowforge.domain.dossier.port.in.AttachWorkflowUseCase;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
+import com.flowforge.domain.workflow.WorkflowVariables;
 import com.flowforge.domain.workflow.port.out.IdempotencyStore;
 import com.flowforge.domain.workflow.port.out.WorkflowEnginePort;
 import com.flowforge.domain.workflow.port.out.WorkflowEventPublisher;
@@ -29,6 +30,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 class ManualStartOrchestratorTest {
 
@@ -86,6 +88,29 @@ class ManualStartOrchestratorTest {
         // TX2 (confirm + idempotency + onStart) est déléguée à un seul appel transactionnel.
         verify(workflowStartConfirmer).confirm(dossier, reserved, "proc-1", PROCESS, "idem-1");
         verify(eventPublisher).publish(any());
+    }
+
+    @Test
+    void start_injectsDossierFieldsSnapshotIntoEngineVariables() {
+        UUID dossierId = UUID.randomUUID();
+        Dossier dossier = dossier(dossierId, Map.of("montant", 42));
+        DossierWorkflowLink reserved = reservedLink(dossierId);
+        when(dossierRepository.findById(dossierId)).thenReturn(Optional.of(dossier));
+        when(idempotencyStore.findLinkId(TENANT, dossierId, "idem-1")).thenReturn(Optional.empty());
+        when(attachWorkflow.reserve(eq(dossierId), eq(PROCESS), anyString(), eq("starter-sub"))).thenReturn(reserved);
+        when(workflowEnginePort.start(eq(PROCESS), eq(TENANT), eq(reserved.id().toString()), anyMap()))
+                .thenReturn("proc-1");
+        when(linkRepository.findById(reserved.id()))
+                .thenReturn(Optional.of(reserved.withProcessInstance("proc-1")));
+
+        orchestrator.start(dossierId, PROCESS, Map.of("priority", "HIGH"), "idem-1", "starter-sub");
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(workflowEnginePort).start(eq(PROCESS), eq(TENANT), eq(reserved.id().toString()), captor.capture());
+        assertThat(captor.getValue())
+                .containsEntry(WorkflowVariables.DOSSIER_FIELDS, Map.of("montant", 42))
+                .containsEntry("priority", "HIGH");
     }
 
     @Test
@@ -153,6 +178,10 @@ class ManualStartOrchestratorTest {
     }
 
     private static Dossier dossier(UUID id) {
+        return dossier(id, Map.of());
+    }
+
+    private static Dossier dossier(UUID id, Map<String, Object> fields) {
         Instant now = Instant.parse("2026-08-02T10:00:00Z");
         return new Dossier(
                 id,
@@ -161,7 +190,7 @@ class ManualStartOrchestratorTest {
                 "WF",
                 "Label",
                 DossierStatus.OUVERT,
-                Map.of(),
+                fields,
                 null,
                 0,
                 "u1",

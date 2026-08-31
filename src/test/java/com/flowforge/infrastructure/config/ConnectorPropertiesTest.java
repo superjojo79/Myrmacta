@@ -47,4 +47,12 @@ class ConnectorPropertiesTest {
         assertThat(props.http().connectTimeout()).isEqualTo(Duration.ofSeconds(1));
         assertThat(props.http().requestTimeout()).isEqualTo(Duration.ofSeconds(5));
     }
+
+    @Test
+    void httpPartialOverride_fillsMissingConnectTimeoutWithDefault() {
+        var http = new ConnectorProperties.Http(null, Duration.ofSeconds(9));
+
+        assertThat(http.connectTimeout()).isEqualTo(Duration.ofSeconds(5));
+        assertThat(http.requestTimeout()).isEqualTo(Duration.ofSeconds(9));
+    }
 }

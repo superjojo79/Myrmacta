@@ -404,6 +404,21 @@ class HttpRestConnectorTest {
 
     @Test
     @SuppressWarnings("unchecked")
+    void execute_authHeaderValueBlank_noAuthorizationHeader() throws Exception {
+        stubResponse(200, "ok");
+        var instance = new ConnectorInstanceData(
+                UUID.randomUUID(), "tenant_dev", "http-rest-service", "http-rest", true,
+                Map.of("authHeaderValue", "   "));
+
+        connector.execute(instance, Map.of("url", "https://example.com/hook"));
+
+        ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
+        verify(httpClient).send(captor.capture(), any());
+        assertThat(captor.getValue().headers().firstValue("Authorization")).isEmpty();
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     void execute_authHeaderValueNeverLeaksInResult() throws Exception {
         stubResponse(200, "ok");
         var instance = new ConnectorInstanceData(

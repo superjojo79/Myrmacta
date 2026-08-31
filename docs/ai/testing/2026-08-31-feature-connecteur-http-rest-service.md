@@ -147,10 +147,31 @@ standard.
 cd frontend && npm run test && npm run test:e2e   # régression complète, aucun nouveau scénario attendu
 ```
 
-- Seuils Jacoco bundle existants (LINE ≥ 85% / BRANCH ≥ 75%) à tenir — aucun changement de seuil
-  attendu, contrairement à `fiabilisation-tests-plateforme` qui les avait relevés.
-- Coverage gaps : à balayer classe par classe en Phase 8 (pas juste le total bundle), même
-  discipline que les features précédentes (`durcissement-donnees-sensibles`, `schema-champs-dynamiques`).
+- Seuils Jacoco bundle existants (LINE ≥ 85% / BRANCH ≥ 75%) tenus — aucun changement de seuil,
+  contrairement à `fiabilisation-tests-plateforme` qui les avait relevés. `./mvnw verify` final :
+  **1420 tests, 0 échec**, `jacoco:check` vert.
+- **Balayage classe par classe (Phase 8), 3 lacunes réelles trouvées et comblées** (sur les
+  fichiers touchés par cette feature ; les branches manquantes dans `onEvent()`/`validate()`
+  — logique TRIGGER pré-existante, non touchée — restent hors périmètre) :
+  1. `HttpRestConnector.execute` L208 — `authHeaderValue` présent mais **blanc** (chaîne vide/espaces)
+     jamais testé (seuls « absent » et « valeur non vide » l'étaient). Ajouté
+     `execute_authHeaderValueBlank_noAuthorizationHeader`.
+  2. `ConnectorProperties.Http` L39 — branche `connectTimeout == null → true` jamais exercée : le
+     seul chemin testé pour les défauts (`ConnectorProperties(null,null,null)`) construit `Http`
+     avec les deux valeurs déjà résolues, sans jamais passer par le compact constructor de `Http`
+     lui-même avec `connectTimeout=null`. Ajouté `httpPartialOverride_fillsMissingConnectTimeoutWithDefault`
+     (miroir de `httpPartialOverride_fillsMissingFieldWithDefault`, qui ne couvrait que
+     `requestTimeout=null`).
+  3. `ExecuteConnectorRequest.toInputParams()` (`ConnectorApiDtos.java`) — **aucun test unitaire
+     dédié n'existait**, uniquement des vérifications indirectes via `ConnectorExecuteApiTest`
+     (MockMvc). `url`/`method`/`headers` (les 3 champs ajoutés par cette feature) n'étaient jamais
+     exercés en valeur blanche, et `headers` jamais exercé du tout. Nouveau fichier
+     `ConnectorApiDtosTest.java` (8 tests), couvre les 7 champs du DTO individuellement.
+- **1 lacune identifiée et sciemment laissée non couverte**, cohérent avec un précédent déjà
+  établi dans le dépôt : `HttpRestConnector.serializeBody` L252-253 (capture `JacksonException` →
+  `IllegalStateException`) — même pattern que `WebhookRestAdapter.send` (déjà en prod, jamais
+  testé non plus pour la même branche). Difficile à déclencher de façon fiable sans mocker
+  `ObjectMapper` pour un gain de couverture marginal sur du code strictement défensif.
 
 ## Manual Testing
 **What requires human validation?**

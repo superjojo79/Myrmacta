@@ -120,10 +120,10 @@ description: Break down work into actionable tasks and estimate timeline
   `ConnectorConfig`, `ConnectorProperties`, `HttpRestConnectorTest` contre le design ; chercher les
   écarts réels (pattern historique de ce projet : `edition-bpmn`, `schema-champs-dynamiques` ont
   tous trouvé 1-2 bugs réels à cette étape). Dépendance : M1–M6.
-- [ ] T7.2 : Phase 8 (couverture) — balayage Jacoco classe par classe (pas seulement le total
+- [x] T7.2 : Phase 8 (couverture) — balayage Jacoco classe par classe (pas seulement le total
   bundle) sur les 4 fichiers touchés/nouveaux ; combler les lacunes réelles trouvées. Dépendance :
   T7.1. Validation : seuils bundle maintenus (LINE ≥ 85% / BRANCH ≥ 75%).
-- [ ] T7.3 : régression frontend complète (`npm run test`, `npm run test:e2e`) — preuve de non-impact,
+- [x] T7.3 : régression frontend complète (`npm run test`, `npm run test:e2e`) — preuve de non-impact,
   pas de nouveau scénario attendu. Dépendance : T7.1.
 - [ ] T7.4 : Phase 9 (revue finale) — alignement design confirmé, pas de duplication, rollback sûr
   (aucune migration DB), `CHANGELOG.md` mis à jour (convention `flowforge-conventions` §7), PR prête.

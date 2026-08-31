@@ -121,11 +121,11 @@ description: Define testing approach, test cases, and quality assurance
 **What user flows need validation?**
 
 **Non applicable — feature backend-only confirmée (requirements Phase 2), zéro fichier
-`frontend/**` prévu.** Pas de nouveau scénario Playwright. La suite E2E existante (`npm run
-test:e2e`) doit rester verte en régression complète avant de clore Phase 8, comme preuve qu'aucun
-comportement frontend n'a été affecté — pas une obligation `flowforge-conventions` au sens strict
-ici (ni le SPA ni un contrat API qu'il consomme ne changent), mais une vérification de non-régression
-standard.
+`frontend/**` modifié.** Pas de nouveau scénario Playwright. Preuve de non-régression (Phase 8,
+2026-08-31) : `npm run test` → **247/247** ; `npm run test:e2e`
+(`PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium`, contournement sandbox — cf.
+`playwright.config.ts`) → **59/59**. Comptes identiques à l'état pré-feature, confirmant l'absence
+d'impact.
 
 ## Test Data
 **What data do we use for testing?**

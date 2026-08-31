@@ -20,7 +20,7 @@
 `modele-physique-consolide`, `masquage-donnees-sensibles-logs-webhooks`
 (PR #70), `edition-bpmn` (PR #71), `reporting-sla` (PR #80), `serveur-mcp`
 (PR #82), `schema-champs-dynamiques` (PR #87), `connecteur-http-rest-service`
-(TODO §48, PR pas encore ouverte) sont **Complete** (mergées sur `main` sauf
+(PR #95, TODO §48) sont **Complete** (mergées sur `main` sauf
 mention contraire — `frontend` via PR #38
 `cursor/feature-frontend-21f2`, vague 1 instructeur + vague 2 admin
 types/templates/connectors/workflow-configs ; packaging Maven→`static/` ;
@@ -165,7 +165,7 @@ Ordre indicatif aligné sur l’analyse et les dépendances techniques :
 | — | `reporting-sla` | **Complete** (PR #80) — snapshot + summary SLA, cible par type, settings tenant, SPA `/rapports`, inbox remaining. |
 | — | `serveur-mcp` | **Complete** (PR #82) — serveur MCP interne, 9 tools (`get_dossier`, `search_dossiers`, `query_sla_summary`, `list_document_templates`, `get_dossier_type`, `list_dossier_types`, `list_workflow_types`, `define_dossier_type`, `deploy_workflow`) sur `POST /api/m2m/mcp` (Streamable HTTP, Spring AI 2.0.0), JWT M2M `API_SERVICE` réutilisé ; zéro fichier frontend touché. |
 | — | `schema-champs-dynamiques` | **Complete** (PR #87) — écran Admin → Types édite le schéma `fieldDefinitions` d'un `DossierType` (création + édition), blocage 409 sur schéma incompatible avec des dossiers existants. TODO §47 clos. |
-| — | `connecteur-http-rest-service` | **Complete** (TODO §48, PR pas encore ouverte) — connecteur `http-rest` utilisable en rôle SERVICE (capability `BOTH`), fusion avec le skeleton `HttpRestServiceConnector` (supprimé) dans `HttpRestConnector` renommé. GET/POST/PUT dynamiques, `authHeaderValue` chiffré, nouveau bean `HttpClient`. TODO §48 clos. |
+| — | `connecteur-http-rest-service` | **Complete** ([PR #95](https://github.com/superjojo79/FlowForge/pull/95)) — connecteur `http-rest` utilisable en rôle SERVICE (capability `BOTH`), fusion avec le skeleton `HttpRestServiceConnector` (supprimé) dans `HttpRestConnector` renommé. GET/POST/PUT dynamiques, `authHeaderValue` chiffré, nouveau bean `HttpClient`. TODO §48 clos. |
 
 ---
 

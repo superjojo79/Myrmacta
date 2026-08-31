@@ -43,12 +43,17 @@ public interface ConnectorDefinition {
     String              getType();            // identifiant unique : "http-rest", "smtp"
     String              getLabel();           // libellé UI
     ConnectorCapability getCapability();      // TRIGGER, SERVICE, BOTH
-    List<ConfigField>   getConfigSchema();    // schéma pour génération du formulaire UI
+    List<ConfigField>   getConfigSchema();    // description déclarative des champs de config attendus
     void                validate(Map<String, Object> config);
 }
 ```
 
-Le schéma de configuration est déclaratif — l'UI génère le formulaire dynamiquement sans connaître le connecteur à l'avance :
+Le schéma de configuration est déclaratif — il décrit les champs attendus (nom, type, requis...) sans
+connaître le connecteur à l'avance. **Cible produit :** un formulaire d'admin généré dynamiquement à
+partir de ce schéma. **V1 livré :** `GET /api/connector-definitions` renvoie bien `configSchema` dans
+la réponse JSON (voir `ConnectorDefinitionResponse`), mais rien ne le consomme encore aujourd'hui —
+ni l'UI (voir « Écran d'admin » ci-dessous) ni la validation, qui reste un contrôle manuel indépendant
+écrit dans chaque `validate(config)` :
 
 ```java
 @Value @Builder
@@ -62,6 +67,16 @@ public class ConfigField {
     String        helpText;
 }
 ```
+
+### Écran d'admin (V1 livré)
+
+`ConnectorsAdminView.vue` liste les instances existantes et permet d'en créer une : un `<select>`
+alimenté par `GET /api/connector-definitions` pour choisir le type (le frontend n'en lit que `type`
+et `label` — `ConnectorDefinitionItem` dans `frontend/src/api/admin.ts` — et ignore le `configSchema`
+renvoyé par l'API), puis un simple `<textarea>` de JSON brut (`form.configJson`, parsé côté client
+avec `JSON.parse`) pour saisir la config, envoyée telle quelle au backend. C'est
+`ConnectorDefinition.validate(config)` qui la valide côté serveur — pas un formulaire généré à partir
+de `getConfigSchema()`.
 
 ### Catalogue de connecteurs fournis
 
@@ -405,8 +420,10 @@ public class WebhookController {
 
 Le champ `webhookAuthType` est un `ConfigField` SELECT du connecteur `http-rest` (valeurs
 `HMAC_SHA256` / `SHARED_SECRET_TOKEN` / `IP_ALLOWLIST`) — stocké dans `ConnectorInstanceData.config`,
-pas comme champ de premier niveau du record (décision n° 18). L'UI génère dynamiquement le formulaire
-de configuration correspondant (secret HMAC, token, ou liste d'IP autorisées).
+pas comme champ de premier niveau du record (décision n° 18). Comme le reste de la config
+(§ « Écran d'admin » plus haut), il se saisit en V1 dans le `<textarea>` JSON libre de
+`ConnectorsAdminView.vue` — pas dans un formulaire dédié (secret HMAC, token, ou liste d'IP
+autorisées) généré depuis ce schéma.
 
 **Résolution du tenant (décision n° 14, [02-multi-tenant.md](02-multi-tenant.md#routage-vers-linstance--chemin-par-tenant-reverse-proxy-statique)).**
 L'URL complète exposée au tiers pour configurer son webhook inclut le préfixe de chemin propre au

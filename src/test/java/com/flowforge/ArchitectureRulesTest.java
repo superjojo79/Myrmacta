@@ -45,6 +45,18 @@ class ArchitectureRulesTest {
             .that().resideInAPackage("..domain..")
             .should().dependOnClassesThat().resideInAPackage("..infrastructure..");
 
+    /**
+     * TODO §46 : la couche {@code application} (orchestration transversale légère, hors ports)
+     * n'était gardée par aucune règle ArchUnit — {@code ManualStartOrchestrator} dépendait
+     * directement de {@code infrastructure.workflow.WorkflowStartConfirmer}. Corrigé en extrayant
+     * {@link com.flowforge.domain.workflow.port.out.WorkflowStartConfirmationPort} ; cette règle
+     * empêche toute régression future du même type.
+     */
+    @ArchTest
+    static final ArchRule application_never_depends_on_infrastructure = noClasses()
+            .that().resideInAPackage("..application..")
+            .should().dependOnClassesThat().resideInAPackage("..infrastructure..");
+
     @ArchTest
     static final ArchRule usecase_impl_naming_convention = classes()
             .that().resideInAPackage("..usecase..")

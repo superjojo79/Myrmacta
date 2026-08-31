@@ -8,19 +8,22 @@ import com.flowforge.domain.dossier.port.in.UpdateDossierStatusUseCase;
 import com.flowforge.domain.workflow.model.WorkflowTypeConfig;
 import com.flowforge.domain.workflow.model.WorkflowTypeConfigNotFoundException;
 import com.flowforge.domain.workflow.port.out.IdempotencyStore;
+import com.flowforge.domain.workflow.port.out.WorkflowStartConfirmationPort;
 import com.flowforge.domain.workflow.port.out.WorkflowTypeConfigRepository;
 import java.util.Objects;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Frontière transactionnelle unique (DD-TX, TX2) pour la finalisation d'un démarrage Flowable
- * réussi : {@code confirmStarted} + mémorisation de l'idempotency-key + transition
+ * Adaptateur {@link WorkflowStartConfirmationPort} (TODO §46 : extrait derrière ce port pour que
+ * la couche {@code application} ne dépende plus directement de {@code infrastructure}). Frontière
+ * transactionnelle unique (DD-TX, TX2) pour la finalisation d'un démarrage Flowable réussi :
+ * {@code confirmStarted} + mémorisation de l'idempotency-key + transition
  * {@code onStartDossierStatus} optionnelle sont commis ou annulés ensemble. Appelé <b>après</b>
  * le {@code Flowable.start} (hors transaction JPA, DD-TX) — jamais avant.
  */
 @Component
-public class WorkflowStartConfirmer {
+public class WorkflowStartConfirmer implements WorkflowStartConfirmationPort {
 
     private final AttachWorkflowUseCase attachWorkflow;
     private final IdempotencyStore idempotencyStore;
@@ -39,6 +42,7 @@ public class WorkflowStartConfirmer {
         this.configRepository = Objects.requireNonNull(configRepository, "configRepository");
     }
 
+    @Override
     @Transactional
     public void confirm(
             Dossier dossier,

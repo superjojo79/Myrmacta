@@ -61,6 +61,13 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
   via `sqlFile:`, pour une meilleure lisibilité et un lint SQL possible. Aucun changement de
   comportement des migrations.
 
+### Modifié
+
+- **PR (à ouvrir)** — La couche `application` est désormais gardée par ArchUnit comme le
+  domaine (TODO §46). `ManualStartOrchestrator` dépend d'un nouveau port
+  `WorkflowStartConfirmationPort` au lieu de la classe infrastructure `WorkflowStartConfirmer`
+  directement ; aucun changement de comportement.
+
 ### Corrigé
 
 - **PR [#86](https://github.com/superjojo79/FlowForge/pull/86)** — Les champs dynamiques d'un

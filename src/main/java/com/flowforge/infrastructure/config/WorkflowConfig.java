@@ -23,6 +23,7 @@ import com.flowforge.domain.workflow.port.out.WorkflowDeploymentPort;
 import com.flowforge.domain.workflow.port.out.WorkflowParticipantPort;
 import com.flowforge.domain.workflow.port.out.WorkflowEnginePort;
 import com.flowforge.domain.workflow.port.out.WorkflowEventPublisher;
+import com.flowforge.domain.workflow.port.out.WorkflowStartConfirmationPort;
 import com.flowforge.domain.workflow.port.out.WorkflowTaskInboxPort;
 import com.flowforge.domain.workflow.port.out.WorkflowTypeConfigRepository;
 import com.flowforge.domain.workflow.port.out.WorkflowVisualizationPort;
@@ -36,7 +37,6 @@ import com.flowforge.domain.workflow.usecase.UpdateWorkflowLinkStatusUseCaseImpl
 import com.flowforge.domain.workflow.usecase.WorkflowLinkVisualizationUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.WorkflowTypeConfigUseCaseImpl;
 import com.flowforge.infrastructure.flowable.WorkflowStateEventListener;
-import com.flowforge.infrastructure.workflow.WorkflowStartConfirmer;
 import org.flowable.spring.boot.ProcessEngineConfigurationConfigurer;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -124,7 +124,7 @@ public class WorkflowConfig {
             AttachWorkflowUseCase attachWorkflow,
             WorkflowEnginePort workflowEnginePort,
             IdempotencyStore idempotencyStore,
-            WorkflowStartConfirmer workflowStartConfirmer,
+            WorkflowStartConfirmationPort workflowStartConfirmer,
             WorkflowEventPublisher eventPublisher) {
         return new ManualStartOrchestrator(
                 dossierRepository,

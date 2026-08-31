@@ -10,7 +10,11 @@
 >   (rétention / purge / sensible — **livré**) ; revue post-implémentation 2026-08-25 :
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
-> **Dernière mise à jour :** 2026-08-28 — `serveur-mcp` **livrée**
+> **Dernière mise à jour :** 2026-08-31 — TODO §46 (ArchUnit `application`)
+> **clos** hors cycle `dev-lifecycle` formel : port
+> `WorkflowStartConfirmationPort` extrait, règle ArchUnit
+> `application_never_depends_on_infrastructure` ajoutée. **Tous les points
+> TODO sont désormais clos.** `serveur-mcp` **livrée**
 > ([PR #82](https://github.com/superjojo79/FlowForge/pull/82), mergée,
 > Phases 5–9 complètes) et `schema-champs-dynamiques` **livrée**
 > ([PR #87](https://github.com/superjojo79/FlowForge/pull/87), mergée),
@@ -25,9 +29,7 @@
 > `com.monapp` dans `01-architecture-hexagonale.md`, gestion d'erreur
 > `useBpmnDraft.load()` — voir « Hors file produit ». Revue alignement ×
 > sécurité actée (TODO §40–46,
-> [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md)). §46
-> (ArchUnit `application`) reste hors périmètre de la feature sécurité,
-> non bloquant.
+> [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md)).
 
 ## Comment s’en servir
 
@@ -78,15 +80,13 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 `reporting-sla`, `serveur-mcp` et `schema-champs-dynamiques` sont toutes
 **livrées** ([PR #80](https://github.com/superjojo79/FlowForge/pull/80),
 [PR #82](https://github.com/superjojo79/FlowForge/pull/82),
-[PR #87](https://github.com/superjojo79/FlowForge/pull/87)). **File
-d'attente vide** — aucune feature nommée en cours ; prochaine feature à
-identifier lors d'une prochaine analyse (voir § Critères de sélection).
+[PR #87](https://github.com/superjojo79/FlowForge/pull/87)). TODO §46
+(ArchUnit `application`) **clos** hors cycle `dev-lifecycle` formel
+(2026-08-31, décision A via `AskUserQuestion`). **File d'attente vide** —
+aucune feature nommée en cours ; prochaine feature à identifier lors d'une
+prochaine analyse (voir § Critères de sélection).
 
-| Priorité | Item | Notes |
-|---|---|---|
-| **Hors périmètre de la feature sécurité** | TODO §46 (ArchUnit `application`) | Architecture, pas sécurité au sens de la revue — point séparé, non bloquant. |
-
-Détail et options : [TODO.md](TODO.md) §40–46,
+Détail : [TODO.md](TODO.md) §40–46,
 [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md).
 
 ## En revue

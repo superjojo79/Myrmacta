@@ -194,7 +194,7 @@ Voir le détail et les options dans [TODO.md](TODO.md),
 | 43 | Secrets défaut + HMAC M2M | **Ouvert** (2026-08-25) — S-4 |
 | 44 | SSRF sortant DNS TOCTOU | **Ouvert** (2026-08-25) — S-5 |
 | 45 | Dérive documentaire README / analyse | **Clos** (2026-08-25, `derive-documentaire` [PR #75](https://github.com/superjojo79/FlowForge/pull/75)) |
-| 46 | ArchUnit couche `application` | **Ouvert** (2026-08-25) — hygiène hexagone |
+| 46 | ArchUnit couche `application` | **Clos** (2026-08-31) — port `WorkflowStartConfirmationPort` extrait, règle ArchUnit `application_never_depends_on_infrastructure` ajoutée |
 
 ---
 

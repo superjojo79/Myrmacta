@@ -71,6 +71,14 @@ Tests :
 **What security measures are in place?**
 
 - SSRF : `OutboundUrlGuard.resolveSafe` inchangé, appelé pour toute méthode HTTP (pas seulement `GET`).
+- **Redirect policy explicite (trouvé en Phase 7, `ConnectorConfig.httpClient`)** : le bean
+  `HttpClient` fixe désormais `.followRedirects(HttpClient.Redirect.NEVER)` explicitement, plutôt
+  que de s'appuyer sur le défaut implicite de la JDK (qui est déjà `NEVER`, donc aucun changement
+  de comportement livré). Justification : une redirection suivie n'est jamais re-vérifiée contre
+  `OutboundUrlGuard` — un serveur externe validé pourrait rediriger vers une adresse interne et
+  contourner entièrement le pin d'IP. Rendu explicite avec commentaire + test dédié
+  (`httpClientBean_neverFollowsRedirects`) pour qu'un changement futur ne puisse pas régresser
+  cette garantie silencieusement.
 - Anti-fuite : `authHeaderValue` jamais échoé dans le résultat — prouvé par test dédié
   (`execute_authHeaderValueNeverLeaksInResult`), même contrat que l'ancien skeleton
   (`execute_neverEchoesInstanceConfigInResult`, conservé).
@@ -87,3 +95,35 @@ Aucun de ces écarts ne remet en cause une décision produit (D-CAPABILITY-SCOPE
 D-HTTP-CONFIG, D-HTTP-AUTH-SHAPE, D-HTTP-CONTENT-TYPE, D-HTTP-NAMING, D-HTTP-TESTS restent tous
 valides tels que tranchés) — uniquement des détails de câblage manqués en Phase 3, corrigés en
 TDD avec un test rouge avant chaque correction.
+
+## Phase 7 — Check Implementation
+
+**Relecture fichier par fichier** (`HttpRestConnector.java`, `ConnectorConfig.java`,
+`ConnectorProperties.java`, `ConnectorApiDtos.java`, `HttpRestConnectorTest.java`,
+`ConnectorConfigTest.java`, `ConnectorExecuteApiTest.java`) contre le design et les requirements.
+
+**1 écart réel trouvé** (sécurité, sévérité faible — pas d'impact comportemental livré) : bean
+`HttpClient` reposant sur le défaut implicite `Redirect.NEVER` de la JDK au lieu de le rendre
+explicite — voir « Security Notes » ci-dessus pour le détail et la correction (commentaire + test
+dédié, aucun changement de comportement).
+
+**Vérifications négatives effectuées** (rien trouvé, mentionné pour traçabilité) :
+- Recherche exhaustive des ~40 références à `"http-rest"` dans le reste de la base de tests —
+  toutes utilisent un `ConnectorDefinition` mocké/stubé (`ConnectorRegistryTest`,
+  `ConnectorTriggerRuntimeImplTest`, `ExecuteConnectorUseCaseImplTest`,
+  `ManageConnectorInstanceUseCaseImplTest`, etc.), aucune ne teste le vrai bean
+  `HttpRestConnector` — aucune ne pouvait donc être cassée par ce changement (confirmé par
+  `./mvnw verify` complet, 0 échec).
+- Confirmation que `ConnectorInstanceData.config()` n'est jamais `null` (compact constructor,
+  défaut `Map.of()`) — pas de risque de `NullPointerException` sur
+  `instance.config().get("authHeaderValue")`.
+- Confirmation que `ConnectorProperties.http()`/`Http.requestTimeout()` ne sont jamais `null`
+  (compact constructors en cascade) — pas de risque de `NullPointerException` sur
+  `HttpRequest.Builder.timeout(...)`.
+- Le risque déjà noté en design (§ Non-Functional Requirements) — connexion HTTPS vers l'IP
+  pinnée pouvant échouer la vérification TLS/SNI pour un hébergement virtuel — reste inchangé,
+  hérité du skeleton, non aggravé par cette feature ; pas retraité ici (déjà consciemment différé
+  au test manuel optionnel, `docs/ai/testing/**` § Manual Testing).
+
+**Alignement design/requirements : conforme.** Aucune déviation majeure, aucune décision produit
+remise en cause. `./mvnw verify` vert après correction (voir preuve de vérification ci-dessous).

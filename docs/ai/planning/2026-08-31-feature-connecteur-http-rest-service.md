@@ -116,7 +116,7 @@ description: Break down work into actionable tasks and estimate timeline
 
 ### M7 — Vérification globale + clôture (Phases 7–9)
 
-- [ ] T7.1 : Phase 7 (check implementation) — relecture fichier par fichier de `HttpRestConnector`,
+- [x] T7.1 : Phase 7 (check implementation) — relecture fichier par fichier de `HttpRestConnector`,
   `ConnectorConfig`, `ConnectorProperties`, `HttpRestConnectorTest` contre le design ; chercher les
   écarts réels (pattern historique de ce projet : `edition-bpmn`, `schema-champs-dynamiques` ont
   tous trouvé 1-2 bugs réels à cette étape). Dépendance : M1–M6.

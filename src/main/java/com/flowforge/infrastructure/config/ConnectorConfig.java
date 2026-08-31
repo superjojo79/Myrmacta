@@ -45,8 +45,13 @@ public class ConnectorConfig {
 
     @Bean
     HttpClient httpClient(ConnectorProperties properties) {
+        // D-44 / SSRF: never follow redirects — a redirect target is never re-checked against
+        // OutboundUrlGuard, so following one would silently bypass the pinned-IP validation
+        // done before this client is invoked (HttpRestConnector). Explicit rather than relying
+        // on the JDK's default (also NEVER) so this guarantee cannot regress unnoticed.
         return HttpClient.newBuilder()
                 .connectTimeout(properties.http().connectTimeout())
+                .followRedirects(HttpClient.Redirect.NEVER)
                 .build();
     }
 }

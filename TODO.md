@@ -695,6 +695,50 @@ backend, 247 Vitest + 59 Playwright) et 9 (revue finale, aucun blocage) closes.
 
 ---
 
+### [ ] 48. Activation du connecteur `http-rest` en rôle SERVICE
+
+**Constat :** [README.md](README.md) et [06-connecteurs.md](analysis%20doc/06-connecteurs.md)
+documentent déjà la limite : le catalogue V1 livré pour `http-rest` est **TRIGGER seulement** ; un
+skeleton `HttpRestServiceConnector`
+(`src/main/java/com/flowforge/infrastructure/connector/builtin/HttpRestServiceConnector.java`)
+existe depuis `durcissement-donnees-sensibles` (PR #62, réutilise `OutboundUrlGuard`, anti-fuite de
+secrets prouvée, 7 tests) mais n'implémente pas `ConnectorDefinition` et n'est enregistré nulle
+part — `ExecuteConnectorUseCaseImpl` rejette toute demande SERVICE sur ce type
+(`UnsupportedOperationException`).
+
+**Découverte notable :** toute la chaîne de consommation SERVICE (`ConnectorServiceTask`,
+`ConnectorExecuteController`, `M2mConnectorExecuteController`, doc `${connectorServiceTask}` déjà
+au catalogue §7 de `GUIDE-CONCEPTION-BPMN.md`) est déjà générique et en production via
+`flowable-signal` — rien à construire côté consommation. Le vrai obstacle est une **contrainte de
+modélisation** : `ConnectorCatalog` indexe par `ConnectorDefinition.getType()`, un seul bean peut
+porter `"http-rest"` — le skeleton (classe séparée) ne peut pas être enregistré tel quel à côté de
+`HttpRestTriggerConnector` (`@Component`, capability `TRIGGER`) sans conflit.
+
+**Points ouverts (à trancher en phase requirements/design, pas silencieusement) :**
+
+1. **D-CAPABILITY-SCOPE** — fusionner la capacité SERVICE dans `HttpRestTriggerConnector`
+   (capability → `BOTH`, toute instance sert aux deux rôles, cohérent avec `flowable-signal`) ou
+   introduire une capacité par instance (nouveau champ de config limitant le rôle, sans précédent
+   dans le code, scope plus large) ?
+2. **D-HTTP-METHODS** — GET seul (statu quo skeleton) ou élargir à POST/PUT/DELETE avec corps ?
+3. **D-HTTP-CONFIG** — champs de config par instance (URL de base, en-têtes par défaut, auth
+   sortante) ou tout piloté dynamiquement par `connectorInput` à chaque appel comme aujourd'hui ?
+4. **D-HTTP-NAMING** — renommer `HttpRestTriggerConnector` (ex. `HttpRestConnector`) ou garder le
+   nom et ajouter l'interface `ServiceConnector` ?
+5. **D-HTTP-TESTS** — sort des deux tests qui verrouillent explicitement l'état « non activé »
+   (`connector_doesNotImplementConnectorDefinition`, `connector_isNotASpringBean`).
+
+**À produire :** décisions ci-dessus, puis activation (fusion capacité + config schema le cas
+échéant), avec mise à jour de `06-connecteurs.md` (tableau catalogue), `README.md` (§ Système de
+connecteurs) et `DEFERRED-FEATURES.md`/`FILE-ATTENTE.md` une fois livrée.
+
+**Impacte :** `HttpRestTriggerConnector`, `HttpRestServiceConnector`,
+`HttpRestServiceConnectorTest`, `06-connecteurs.md`, `README.md`.
+
+**Détail :** [18-connecteur-http-rest-service.md](analysis%20doc/18-connecteur-http-rest-service.md).
+
+---
+
 ## Alignement post-implémentation et sécurité (2026-08-25)
 
 Points identifiés par

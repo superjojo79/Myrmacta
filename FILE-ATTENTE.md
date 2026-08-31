@@ -10,11 +10,19 @@
 >   (rétention / purge / sensible — **livré**) ; revue post-implémentation 2026-08-25 :
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
-> **Dernière mise à jour :** 2026-08-31 — TODO §46 (ArchUnit `application`)
-> **clos** hors cycle `dev-lifecycle` formel : port
-> `WorkflowStartConfirmationPort` extrait, règle ArchUnit
-> `application_never_depends_on_infrastructure` ajoutée. **Tous les points
-> TODO sont désormais clos.** `serveur-mcp` **livrée**
+> **Dernière mise à jour :** 2026-08-31 — TODO §48 **ouvert** : activation du
+> connecteur `http-rest` en rôle SERVICE, analyse initiale
+> [18-connecteur-http-rest-service.md](analysis%20doc/18-connecteur-http-rest-service.md)
+> créée. Choisie comme prochaine feature après épuisement du backlog V1 (voir
+> ci-dessous) parmi trois pistes proposées à l'utilisateur (les deux autres —
+> outillage provisioning, sweep tech-debt — restent en réserve,
+> `DEFERRED-FEATURES.md` §1/§4). Cycle `dev-lifecycle` en cours de démarrage
+> (Phase 1 `dev-requirements`).
+>
+> TODO §46 (ArchUnit `application`) **clos** hors cycle `dev-lifecycle`
+> formel : port `WorkflowStartConfirmationPort` extrait, règle ArchUnit
+> `application_never_depends_on_infrastructure` ajoutée. `serveur-mcp`
+> **livrée**
 > ([PR #82](https://github.com/superjojo79/FlowForge/pull/82), mergée,
 > Phases 5–9 complètes) et `schema-champs-dynamiques` **livrée**
 > ([PR #87](https://github.com/superjojo79/FlowForge/pull/87), mergée),
@@ -82,11 +90,14 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 [PR #82](https://github.com/superjojo79/FlowForge/pull/82),
 [PR #87](https://github.com/superjojo79/FlowForge/pull/87)). TODO §46
 (ArchUnit `application`) **clos** hors cycle `dev-lifecycle` formel
-(2026-08-31, décision A via `AskUserQuestion`). **File d'attente vide** —
-aucune feature nommée en cours ; prochaine feature à identifier lors d'une
-prochaine analyse (voir § Critères de sélection).
+(2026-08-31, décision A via `AskUserQuestion`) — à cette date, tous les
+points `TODO.md` étaient clos et la file était vide.
 
-Détail : [TODO.md](TODO.md) §40–46,
+| Priorité | Item | Notes |
+|---|---|---|
+| **Prochain** | `connecteur-http-rest-service` (nom provisoire), TODO §48 | Analyse initiale [18-connecteur-http-rest-service.md](analysis%20doc/18-connecteur-http-rest-service.md) ; 5 décisions ouvertes (D-CAPABILITY-SCOPE, D-HTTP-METHODS, D-HTTP-CONFIG, D-HTTP-NAMING, D-HTTP-TESTS) à trancher en Phase 1/2 `dev-lifecycle` avant tout code |
+
+Détail : [TODO.md](TODO.md) §40–46, §48,
 [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md).
 
 ## En revue

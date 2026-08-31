@@ -866,7 +866,7 @@ Corrigé (liste revue §3.3) :
 
 ---
 
-### [ ] 46. Couche `application` non gardée par ArchUnit
+### [x] 46. Couche `application` non gardée par ArchUnit
 
 **Énoncé :** `ManualStartOrchestrator` (`com.flowforge.application`) importe
 `infrastructure.workflow.WorkflowStartConfirmer`. ArchUnit ne contraint que
@@ -877,9 +877,20 @@ Corrigé (liste revue §3.3) :
 (B) règle ArchUnit `application` ↛ `infrastructure` + déplacer l'orchestrateur
 en infra ; (C) documenter l'exception (orchestration légère assumée).
 
-**À produire :** décision A/B/C. Pas bloquant prod.
+**Clos (2026-08-31) :** option **A** retenue, complétée par la garde
+structurelle envisagée en B (sans déplacer l'orchestrateur) : nouveau port
+`WorkflowStartConfirmationPort` (`domain.workflow.port.out`), implémenté par
+`WorkflowStartConfirmer` (`infrastructure.workflow`, inchangé sinon).
+`ManualStartOrchestrator` et le bean Spring `WorkflowConfig.manualStartOrchestrator`
+dépendent désormais du port, plus de la classe infra. Nouvelle règle ArchUnit
+`application_never_depends_on_infrastructure` (symétrique à la règle domaine
+existante) ajoutée à `ArchitectureRulesTest` — `application` ne compte qu'une
+seule classe (`ManualStartOrchestrator`), aucune autre violation trouvée.
+`./mvnw verify` vert (ArchUnit + suite complète).
 
-**Impacte :** `ManualStartOrchestrator`, `ArchitectureRulesTest`,
+**Impacte :** `ManualStartOrchestrator`, `WorkflowStartConfirmer`,
+`WorkflowStartConfirmationPort` (nouveau), `WorkflowConfig`,
+`ArchitectureRulesTest`,
 [01-architecture-hexagonale.md](analysis%20doc/01-architecture-hexagonale.md).
 
 **Détail :** [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) §3.3 / §7.

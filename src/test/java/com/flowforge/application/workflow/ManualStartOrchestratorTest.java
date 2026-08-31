@@ -23,7 +23,7 @@ import com.flowforge.domain.workflow.WorkflowVariables;
 import com.flowforge.domain.workflow.port.out.IdempotencyStore;
 import com.flowforge.domain.workflow.port.out.WorkflowEnginePort;
 import com.flowforge.domain.workflow.port.out.WorkflowEventPublisher;
-import com.flowforge.infrastructure.workflow.WorkflowStartConfirmer;
+import com.flowforge.domain.workflow.port.out.WorkflowStartConfirmationPort;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
@@ -42,7 +42,7 @@ class ManualStartOrchestratorTest {
     private AttachWorkflowUseCase attachWorkflow;
     private WorkflowEnginePort workflowEnginePort;
     private IdempotencyStore idempotencyStore;
-    private WorkflowStartConfirmer workflowStartConfirmer;
+    private WorkflowStartConfirmationPort workflowStartConfirmer;
     private WorkflowEventPublisher eventPublisher;
     private ManualStartOrchestrator orchestrator;
 
@@ -53,7 +53,7 @@ class ManualStartOrchestratorTest {
         attachWorkflow = mock(AttachWorkflowUseCase.class);
         workflowEnginePort = mock(WorkflowEnginePort.class);
         idempotencyStore = mock(IdempotencyStore.class);
-        workflowStartConfirmer = mock(WorkflowStartConfirmer.class);
+        workflowStartConfirmer = mock(WorkflowStartConfirmationPort.class);
         eventPublisher = mock(WorkflowEventPublisher.class);
         orchestrator = new ManualStartOrchestrator(
                 dossierRepository,

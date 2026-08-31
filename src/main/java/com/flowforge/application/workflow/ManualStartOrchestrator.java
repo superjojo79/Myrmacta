@@ -11,8 +11,8 @@ import com.flowforge.domain.workflow.model.WorkflowStartedEvent;
 import com.flowforge.domain.workflow.port.out.IdempotencyStore;
 import com.flowforge.domain.workflow.port.out.WorkflowEnginePort;
 import com.flowforge.domain.workflow.port.out.WorkflowEventPublisher;
+import com.flowforge.domain.workflow.port.out.WorkflowStartConfirmationPort;
 import com.flowforge.domain.workflow.WorkflowVariables;
-import com.flowforge.infrastructure.workflow.WorkflowStartConfirmer;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Objects;
@@ -25,7 +25,7 @@ public final class ManualStartOrchestrator {
     private final AttachWorkflowUseCase attachWorkflow;
     private final WorkflowEnginePort workflowEnginePort;
     private final IdempotencyStore idempotencyStore;
-    private final WorkflowStartConfirmer workflowStartConfirmer;
+    private final WorkflowStartConfirmationPort workflowStartConfirmer;
     private final WorkflowEventPublisher eventPublisher;
 
     public ManualStartOrchestrator(
@@ -34,7 +34,7 @@ public final class ManualStartOrchestrator {
             AttachWorkflowUseCase attachWorkflow,
             WorkflowEnginePort workflowEnginePort,
             IdempotencyStore idempotencyStore,
-            WorkflowStartConfirmer workflowStartConfirmer,
+            WorkflowStartConfirmationPort workflowStartConfirmer,
             WorkflowEventPublisher eventPublisher) {
         this.dossierRepository = Objects.requireNonNull(dossierRepository, "dossierRepository");
         this.linkRepository = Objects.requireNonNull(linkRepository, "linkRepository");

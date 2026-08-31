@@ -9,14 +9,14 @@ description: Break down work into actionable tasks and estimate timeline
 ## Milestones
 **What are the major checkpoints?**
 
-- [ ] M1 : Infra — nouveau bean `HttpClient` + `ConnectorProperties.Http` (timeouts)
-- [ ] M2 : Fusion structurelle — `HttpRestTriggerConnector` → `HttpRestConnector` (capability
+- [x] M1 : Infra — nouveau bean `HttpClient` + `ConnectorProperties.Http` (timeouts)
+- [x] M2 : Fusion structurelle — `HttpRestTriggerConnector` → `HttpRestConnector` (capability
   `BOTH`, parité GET avec le skeleton), suppression du skeleton, fusion des tests (dépend M1)
-- [ ] M3 : Comportement SERVICE étendu — méthode/corps dynamiques (D-HTTP-METHODS, dépend M2)
-- [ ] M4 : `authHeaderValue` — config schema + en-tête `Authorization` + précédence sur
+- [x] M3 : Comportement SERVICE étendu — méthode/corps dynamiques (D-HTTP-METHODS, dépend M2)
+- [x] M4 : `authHeaderValue` — config schema + en-tête `Authorization` + précédence sur
   `connectorInput.headers` (D-HTTP-CONFIG, D-HTTP-CONTENT-TYPE, dépend M2, parallélisable avec M3)
-- [ ] M5 : Tests d'intégration bout en bout (dépend M2–M4)
-- [ ] M6 : Documentation — `06-connecteurs.md`, `README.md` (dépend M2–M4, comportement final requis)
+- [x] M5 : Tests d'intégration bout en bout (dépend M2–M4)
+- [x] M6 : Documentation — `06-connecteurs.md`, `README.md` (dépend M2–M4, comportement final requis)
 - [ ] M7 : Vérification globale + clôture (Phases 7–9)
 
 ## Task Breakdown
@@ -24,20 +24,20 @@ description: Break down work into actionable tasks and estimate timeline
 
 ### M1 — Infra : `HttpClient` + timeouts configurables
 
-- [ ] T1.1 : `ConnectorProperties.java` — nouveau sous-record `Http(Duration connectTimeout,
+- [x] T1.1 : `ConnectorProperties.java` — nouveau sous-record `Http(Duration connectTimeout,
   Duration requestTimeout)`, défauts 5 s/5 s (même valeurs que `NotificationProperties.Webhook`).
   Dépendance : aucune. Validation : T-PROP-1, T-PROP-2.
-- [ ] T1.2 : `ConnectorConfig.java` — nouveau `@Bean HttpClient` construit avec
+- [x] T1.2 : `ConnectorConfig.java` — nouveau `@Bean HttpClient` construit avec
   `HttpClient.newBuilder().connectTimeout(properties.http().connectTimeout())...build()`.
   Dépendance : T1.1. Validation : T-CFG-1 (démarrage contexte Spring).
 
 ### M2 — Fusion structurelle (dépend de M1)
 
-- [ ] T2.1 : Renommage pur `HttpRestTriggerConnector.java` → `HttpRestConnector.java`
+- [x] T2.1 : Renommage pur `HttpRestTriggerConnector.java` → `HttpRestConnector.java`
   (`git mv` + mise à jour des imports/références, `HttpRestTriggerConnectorTest.java` renommé en
   écho). Aucun changement de comportement. Dépendance : aucune (peut précéder M1). Validation :
   T-CAP-5 (régression `getType()`), suite `HttpRestTriggerConnectorTest` renommée inchangée.
-- [ ] T2.2 : `HttpRestConnector` — ajoute `implements ServiceConnector`, `getCapability()` →
+- [x] T2.2 : `HttpRestConnector` — ajoute `implements ServiceConnector`, `getCapability()` →
   `BOTH`, constructeur étendu (`OutboundUrlGuard`, `HttpClient`, `ObjectMapper` en plus de
   `SimpleJsonPathMapper`), méthode `execute(...)` reprenant la logique GET du skeleton à
   l'identique (parité de comportement avant extension), `getConfigSchema()` gagne
@@ -48,7 +48,7 @@ description: Break down work into actionable tasks and estimate timeline
   `HttpClient`), T2.1. Validation : T-CAP-1 à T-CAP-4, T-CFG-2, T-EXEC-1/T-EXEC-2 (GET par défaut/explicite),
   T-SSRF-1..N (migrés depuis le skeleton, comportement identique), T-SCHEMA-1/T-SCHEMA-2,
   T-AUTH-2/T-AUTH-4 (pas d'en-tête auth encore ajouté à ce stade — régression de non-comportement).
-- [ ] T2.3 : Supprime `HttpRestServiceConnector.java` (logique absorbée par T2.2). Fusionne
+- [x] T2.3 : Supprime `HttpRestServiceConnector.java` (logique absorbée par T2.2). Fusionne
   `HttpRestServiceConnectorTest.java` dans `HttpRestConnectorTest.java` (renommé à T2.1) :
   `connector_doesNotImplementConnectorDefinition`/`connector_isNotASpringBean` inversés en
   assertions positives (déjà couvertes par T-CAP-1/T-CAP-4), reste des tests SSRF/anti-fuite migré
@@ -57,22 +57,22 @@ description: Break down work into actionable tasks and estimate timeline
 
 ### M3 — Comportement SERVICE étendu : méthode/corps (D-HTTP-METHODS, dépend de M2)
 
-- [ ] T3.1 : `HttpRestConnector.execute` — lit `method` (défaut `GET`, insensible à la casse),
+- [x] T3.1 : `HttpRestConnector.execute` — lit `method` (défaut `GET`, insensible à la casse),
   valide contre `{GET, POST, PUT}` (sinon `IllegalArgumentException`), construit la requête avec
   `HttpRequest.Builder.GET()`/`.POST(...)`/`.PUT(...)` selon le cas. Dépendance : T2.2/T2.3.
   Validation : T-EXEC-3 à T-EXEC-6.
-- [ ] T3.2 : `HttpRestConnector.execute` — lit `body` (optionnel), rejette avec `GET`
+- [x] T3.2 : `HttpRestConnector.execute` — lit `body` (optionnel), rejette avec `GET`
   (`IllegalArgumentException`), sérialise via `ObjectMapper.writeValueAsString` sauf si déjà une
   `String` (envoyée telle quelle), `BodyPublishers.noBody()` si absent sur `POST`/`PUT`.
   Dépendance : T3.1. Validation : T-EXEC-7, T-BODY-1 à T-BODY-3.
 
 ### M4 — `authHeaderValue` (D-HTTP-CONFIG, D-HTTP-CONTENT-TYPE, dépend de M2, parallélisable avec M3)
 
-- [ ] T4.1 : `HttpRestConnector.execute` — si `instance.config().get("authHeaderValue")` non
+- [x] T4.1 : `HttpRestConnector.execute` — si `instance.config().get("authHeaderValue")` non
   blanc, `HttpRequest.Builder.setHeader("Authorization", value)` **avant** l'application des
   `headers` de `connectorInput` (précédence design). Dépendance : T2.2/T2.3. Validation : T-AUTH-1
   (remplace le comportement encore no-op de T2.2).
-- [ ] T4.2 : `HttpRestConnector.execute` — lit `headers` (`Map<String,Object>` optionnel) depuis
+- [x] T4.2 : `HttpRestConnector.execute` — lit `headers` (`Map<String,Object>` optionnel) depuis
   `connectorInput`, applique chaque entrée via `.setHeader(...)` (peut écraser `Authorization` posé
   en T4.1), rejette si présent mais pas une `Map` (`IllegalArgumentException`). Aucun
   `Content-Type` par défaut ajouté (D-HTTP-CONTENT-TYPE — absence de comportement, pas de code
@@ -81,28 +81,37 @@ description: Break down work into actionable tasks and estimate timeline
 
 ### M5 — Tests d'intégration bout en bout (dépend de M2–M4)
 
-- [ ] T5.1 : `ExecuteConnectorUseCaseImplTest` (ou test dédié identifié en implémentation) —
+- [x] T5.1 : `ExecuteConnectorUseCaseImplTest` (ou test dédié identifié en implémentation) —
   instance `http-rest`, `execute(...)` réussit (ne lève plus `UnsupportedOperationException`).
   Dépendance : M2–M4. Validation : T-INT-1.
-- [ ] T5.2 : test JavaDelegate `ConnectorServiceTask` (ou IT Flowable existant étendu) — instance
+- [x] T5.2 : test JavaDelegate `ConnectorServiceTask` (ou IT Flowable existant étendu) — instance
   `http-rest`, `connectorResult` posé en variable de process. Dépendance : T5.1. Validation :
   T-INT-2.
-- [ ] T5.3 : tests `ConnectorExecuteController`/`M2mConnectorExecuteController` (MockMvc ou
+- [x] T5.3 : tests `ConnectorExecuteController`/`M2mConnectorExecuteController` (MockMvc ou
   équivalent déjà en place pour `flowable-signal`) — instance `http-rest` → `200` sur les deux
   contrôleurs ; `connectorInput` malformé → `400` (régression du gestionnaire générique).
   Dépendance : T5.1. Validation : T-INT-3 à T-INT-5.
-- [ ] T5.4 (régression croisée) : suite `flowable-signal` existante toujours verte après les
+- [x] T5.4 (régression croisée) : suite `flowable-signal` existante toujours verte après les
   changements de `ConnectorCatalog`/`ExecuteConnectorUseCaseImpl` (non modifiés, mais à vérifier
   explicitement). Dépendance : aucune (peut être vérifié à tout moment, formalisé ici). Validation :
   T-INT-6.
+- [x] T5.5 (**tâche découverte en implémentation, absente du plan initial**) : `ExecuteConnectorRequest`
+  (`ConnectorApiDtos.java`) étendu (`url`, `method`, `body`, `headers`) — le DTO REST du BFF/M2M
+  était câblé en dur sur les champs `flowable-signal`, rendant `http-rest` SERVICE inatteignable
+  via HTTP malgré la capacité activée côté connecteur. Trouvé par T5.3 (test délibérément conçu
+  pour distinguer « url reçue et bloquée » de « url jamais transmise »). Dépendance : T2.2/T2.3.
+  Validation : T-INT-7.
+- [x] T5.6 (conséquence de T5.5) : golden OpenAPI (`openapi/openapi.yaml`) régénéré
+  (`-Dopenapi.update=true`) — 4 propriétés optionnelles ajoutées au schéma de requête partagé par
+  les deux endpoints `execute`. Dépendance : T5.5. Validation : `OpenApiContractIT` vert.
 
 ### M6 — Documentation (dépend de M2–M4, comportement final requis)
 
-- [ ] T6.1 : `analysis doc/06-connecteurs.md` — tableau catalogue, colonne « V1 livré » pour
+- [x] T6.1 : `analysis doc/06-connecteurs.md` — tableau catalogue, colonne « V1 livré » pour
   `http-rest` : « TRIGGER seulement... skeleton SERVICE non enregistré » → « TRIGGER + SERVICE ».
   Dépendance : M2–M4 livrés (comportement final à décrire). Validation : revue manuelle, cohérence
   avec le design.
-- [ ] T6.2 : `README.md` — § Système de connecteurs, retire la mention « TRIGGER seulement » pour
+- [x] T6.2 : `README.md` — § Système de connecteurs, retire la mention « TRIGGER seulement » pour
   `http-rest`. Dépendance : T6.1 (même passage de revue). Validation : revue manuelle.
 
 ### M7 — Vérification globale + clôture (Phases 7–9)

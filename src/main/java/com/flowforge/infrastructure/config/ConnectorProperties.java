@@ -4,7 +4,7 @@ import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "app.connector")
-public record ConnectorProperties(Crypto crypto, Webhook webhook) {
+public record ConnectorProperties(Crypto crypto, Webhook webhook, Http http) {
 
     public ConnectorProperties {
         if (crypto == null) {
@@ -12,6 +12,9 @@ public record ConnectorProperties(Crypto crypto, Webhook webhook) {
         }
         if (webhook == null) {
             webhook = new Webhook(1_048_576L, 120, Duration.ofHours(24));
+        }
+        if (http == null) {
+            http = new Http(Duration.ofSeconds(5), Duration.ofSeconds(5));
         }
     }
 
@@ -27,6 +30,17 @@ public record ConnectorProperties(Crypto crypto, Webhook webhook) {
             }
             if (idempotencyTtl == null) {
                 idempotencyTtl = Duration.ofHours(24);
+            }
+        }
+    }
+
+    public record Http(Duration connectTimeout, Duration requestTimeout) {
+        public Http {
+            if (connectTimeout == null) {
+                connectTimeout = Duration.ofSeconds(5);
+            }
+            if (requestTimeout == null) {
+                requestTimeout = Duration.ofSeconds(5);
             }
         }
     }

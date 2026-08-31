@@ -6,24 +6,58 @@ import com.flowforge.domain.connector.model.ConnectorCapability;
 import com.flowforge.domain.connector.model.ConnectorDefinition;
 import com.flowforge.domain.connector.model.ConnectorInstanceData;
 import com.flowforge.domain.connector.model.ConnectorValidationException;
+import com.flowforge.domain.connector.model.ServiceConnector;
 import com.flowforge.domain.connector.model.TriggerConnector;
 import com.flowforge.domain.connector.model.WebhookAuthType;
 import com.flowforge.domain.connector.model.WorkflowTriggerEvent;
+import com.flowforge.infrastructure.config.ConnectorProperties;
 import com.flowforge.infrastructure.connector.mapping.SimpleJsonPathMapper;
+import com.flowforge.infrastructure.notification.OutboundUrlGuard;
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import org.springframework.stereotype.Component;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
+/**
+ * TODO §48 (connecteur-http-rest-service) : `http-rest` en rôle SERVICE en plus de TRIGGER —
+ * capability {@link ConnectorCapability#BOTH}. Fusionne l'ancien skeleton
+ * {@code HttpRestServiceConnector} (non enregistré, D-CAPABILITY-SCOPE) : le registre de
+ * connecteurs n'admet qu'un bean par {@link #getType()}, la capacité SERVICE doit donc être
+ * portée par cette même classe.
+ */
 @Component
-public class HttpRestTriggerConnector implements ConnectorDefinition, TriggerConnector {
+public class HttpRestConnector implements ConnectorDefinition, TriggerConnector, ServiceConnector {
+
+    private static final Set<String> SUPPORTED_METHODS = Set.of("GET", "POST", "PUT");
 
     private final SimpleJsonPathMapper mapper;
+    private final OutboundUrlGuard outboundUrlGuard;
+    private final HttpClient httpClient;
+    private final ObjectMapper objectMapper;
+    private final ConnectorProperties connectorProperties;
 
-    public HttpRestTriggerConnector(SimpleJsonPathMapper mapper) {
+    public HttpRestConnector(
+            SimpleJsonPathMapper mapper,
+            OutboundUrlGuard outboundUrlGuard,
+            HttpClient httpClient,
+            ObjectMapper objectMapper,
+            ConnectorProperties connectorProperties) {
         this.mapper = mapper;
+        this.outboundUrlGuard = Objects.requireNonNull(outboundUrlGuard, "outboundUrlGuard");
+        this.httpClient = Objects.requireNonNull(httpClient, "httpClient");
+        this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
+        this.connectorProperties = Objects.requireNonNull(connectorProperties, "connectorProperties");
     }
 
     @Override
@@ -33,12 +67,12 @@ public class HttpRestTriggerConnector implements ConnectorDefinition, TriggerCon
 
     @Override
     public String getLabel() {
-        return "HTTP REST (webhook trigger)";
+        return "HTTP REST (webhook trigger + outbound call)";
     }
 
     @Override
     public ConnectorCapability getCapability() {
-        return ConnectorCapability.TRIGGER;
+        return ConnectorCapability.BOTH;
     }
 
     @Override
@@ -77,7 +111,16 @@ public class HttpRestTriggerConnector implements ConnectorDefinition, TriggerCon
                         true,
                         null,
                         List.of(),
-                        null));
+                        null),
+                new ConfigField(
+                        "authHeaderValue",
+                        "Authorization header value",
+                        ConfigFieldType.PASSWORD,
+                        false,
+                        null,
+                        List.of(),
+                        "Sent verbatim as the Authorization header on SERVICE calls, "
+                                + "e.g. 'Bearer xxx' or 'Basic yyy'. Leave empty for no auth header."));
     }
 
     @Override
@@ -142,6 +185,86 @@ public class HttpRestTriggerConnector implements ConnectorDefinition, TriggerCon
             events.add(new WorkflowTriggerEvent(processKey, dossierType, fields, variables, existingRef));
         }
         return List.copyOf(events);
+    }
+
+    @Override
+    public Map<String, Object> execute(ConnectorInstanceData instance, Map<String, Object> inputParams) {
+        Objects.requireNonNull(inputParams, "inputParams");
+        Object url = inputParams.get("url");
+        if (!(url instanceof String urlString)) {
+            throw new IllegalArgumentException("url is required");
+        }
+        String method = parseMethod(inputParams);
+        Object body = inputParams.get("body");
+        if (body != null && "GET".equals(method)) {
+            throw new IllegalArgumentException("GET does not support a body");
+        }
+
+        OutboundUrlGuard.PinnedEndpoint pinned = outboundUrlGuard.resolveSafe(urlString);
+        HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(pinned.requestUrl()))
+                .timeout(connectorProperties.http().requestTimeout());
+
+        Object authHeaderValue = instance.config().get("authHeaderValue");
+        if (authHeaderValue instanceof String authValue && !authValue.isBlank()) {
+            builder.setHeader("Authorization", authValue);
+        }
+        applyHeaders(builder, inputParams.get("headers"));
+
+        HttpRequest.BodyPublisher bodyPublisher = body == null
+                ? HttpRequest.BodyPublishers.noBody()
+                : HttpRequest.BodyPublishers.ofString(serializeBody(body));
+        switch (method) {
+            case "POST" -> builder.POST(bodyPublisher);
+            case "PUT" -> builder.PUT(bodyPublisher);
+            default -> builder.GET();
+        }
+
+        HttpResponse<String> response;
+        try {
+            response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+        } catch (IOException | InterruptedException ex) {
+            if (ex instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+            throw new IllegalStateException("http-rest call failed: " + ex.getMessage(), ex);
+        }
+        return Map.of("status", response.statusCode(), "body", response.body());
+    }
+
+    private static String parseMethod(Map<String, Object> inputParams) {
+        Object method = inputParams.get("method");
+        if (method == null) {
+            return "GET";
+        }
+        String normalized = String.valueOf(method).toUpperCase(Locale.ROOT);
+        if (!SUPPORTED_METHODS.contains(normalized)) {
+            throw new IllegalArgumentException("Unsupported method: " + method);
+        }
+        return normalized;
+    }
+
+    private String serializeBody(Object body) {
+        if (body instanceof String text) {
+            return text;
+        }
+        try {
+            return objectMapper.writeValueAsString(body);
+        } catch (JacksonException ex) {
+            throw new IllegalStateException("Failed to serialize connector body: " + ex.getMessage(), ex);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void applyHeaders(HttpRequest.Builder builder, Object headers) {
+        if (headers == null) {
+            return;
+        }
+        if (!(headers instanceof Map<?, ?> headersMap)) {
+            throw new IllegalArgumentException("headers must be a map");
+        }
+        for (Map.Entry<String, Object> entry : ((Map<String, Object>) headersMap).entrySet()) {
+            builder.setHeader(entry.getKey(), String.valueOf(entry.getValue()));
+        }
     }
 
     private Map<String, Object> mapPaths(Object item, Map<String, Object> paths) {

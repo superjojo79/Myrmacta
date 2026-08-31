@@ -1961,6 +1961,14 @@ components:
         variables:
           type: object
           additionalProperties: {}
+        url:
+          type: string
+        method:
+          type: string
+        body: {}
+        headers:
+          type: object
+          additionalProperties: {}
     CreateDossierRequest:
       type: object
       properties:

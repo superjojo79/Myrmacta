@@ -24,90 +24,98 @@ description: Define testing approach, test cases, and quality assurance
 **What individual components need testing?**
 
 ### `HttpRestConnector` — capacité et enregistrement (D-CAPABILITY-SCOPE, D-HTTP-NAMING)
-- [ ] T-CAP-1 : implémente `ConnectorDefinition` (inversion de
+- [x] T-CAP-1 : implémente `ConnectorDefinition` (inversion de
       `connector_doesNotImplementConnectorDefinition`, D-HTTP-TESTS)
-- [ ] T-CAP-2 : implémente `ServiceConnector`
-- [ ] T-CAP-3 : `getCapability() == ConnectorCapability.BOTH`
-- [ ] T-CAP-4 : annoté `@Component` (inversion de `connector_isNotASpringBean`)
-- [ ] T-CAP-5 (régression) : `getType()` retourne toujours `"http-rest"`
+- [x] T-CAP-2 : implémente `ServiceConnector`
+- [x] T-CAP-3 : `getCapability() == ConnectorCapability.BOTH`
+- [x] T-CAP-4 : annoté `@Component` (inversion de `connector_isNotASpringBean`)
+- [x] T-CAP-5 (régression) : `getType()` retourne toujours `"http-rest"`
 
 ### `HttpRestConnector` — rôle TRIGGER (régression pure, comportement inchangé)
-- [ ] T-TRIG-1..N : tous les tests existants de `HttpRestTriggerConnectorTest` migrent tels quels
+- [x] T-TRIG-1..N : tous les tests existants de `HttpRestTriggerConnectorTest` migrent tels quels
       dans `HttpRestConnectorTest` et continuent de passer sans modification d'assertion
 
 ### `HttpRestConnector.execute` — méthode HTTP (D-HTTP-METHODS)
-- [ ] T-EXEC-1 (régression) : `method` absent → `GET` par défaut, comportement du skeleton inchangé
-- [ ] T-EXEC-2 : `method="GET"` explicite fonctionne
-- [ ] T-EXEC-3 : `method="POST"` + `body` → requête `POST` avec le corps
-- [ ] T-EXEC-4 : `method="PUT"` + `body` → requête `PUT` avec le corps
-- [ ] T-EXEC-5 : `method` insensible à la casse (`"post"` équivalent à `"POST"`)
-- [ ] T-EXEC-6 : `method` non supporté (ex. `"DELETE"`, `"PATCH"`) → `IllegalArgumentException`,
+- [x] T-EXEC-1 (régression) : `method` absent → `GET` par défaut, comportement du skeleton inchangé
+- [x] T-EXEC-2 : `method="GET"` explicite fonctionne
+- [x] T-EXEC-3 : `method="POST"` + `body` → requête `POST` avec le corps
+- [x] T-EXEC-4 : `method="PUT"` + `body` → requête `PUT` avec le corps
+- [x] T-EXEC-5 : `method` insensible à la casse (`"post"` équivalent à `"POST"`)
+- [x] T-EXEC-6 : `method` non supporté (ex. `"DELETE"`, `"PATCH"`) → `IllegalArgumentException`,
       aucun appel `httpClient.send`
-- [ ] T-EXEC-7 : `body` fourni avec `method="GET"` → `IllegalArgumentException`, aucun appel
+- [x] T-EXEC-7 : `body` fourni avec `method="GET"` → `IllegalArgumentException`, aucun appel
       `httpClient.send`
 
 ### `HttpRestConnector.execute` — sérialisation du corps
-- [ ] T-BODY-1 : `body` de type `Map`/objet → sérialisé en JSON via `ObjectMapper`
-- [ ] T-BODY-2 : `body` déjà une `String` → envoyé tel quel (pas de double-encodage JSON)
-- [ ] T-BODY-3 : `POST`/`PUT` sans `body` → corps vide (`HttpRequest.BodyPublishers.noBody()`)
+- [x] T-BODY-1 : `body` de type `Map`/objet → sérialisé en JSON via `ObjectMapper`
+- [x] T-BODY-2 : `body` déjà une `String` → envoyé tel quel (pas de double-encodage JSON)
+- [x] T-BODY-3 : `POST`/`PUT` sans `body` → corps vide (`HttpRequest.BodyPublishers.noBody()`)
 
 ### `HttpRestConnector.execute` — en-têtes (D-HTTP-CONTENT-TYPE)
-- [ ] T-HDR-1 : `connectorInput.headers` (`Map<String,Object>`) appliqués sur la requête
-- [ ] T-HDR-2 : `headers` présent mais pas une `Map` → `IllegalArgumentException`
-- [ ] T-HDR-3 : pas de clé `headers` → aucun en-tête supplémentaire (hormis `Authorization` si
+- [x] T-HDR-1 : `connectorInput.headers` (`Map<String,Object>`) appliqués sur la requête
+- [x] T-HDR-2 : `headers` présent mais pas une `Map` → `IllegalArgumentException`
+- [x] T-HDR-3 : pas de clé `headers` → aucun en-tête supplémentaire (hormis `Authorization` si
       `authHeaderValue` configuré)
-- [ ] T-HDR-4 : aucun `Content-Type` ajouté par défaut sur `POST`/`PUT` avec corps si non fourni
+- [x] T-HDR-4 : aucun `Content-Type` ajouté par défaut sur `POST`/`PUT` avec corps si non fourni
       explicitement dans `headers` (comportement D-HTTP-CONTENT-TYPE, pas une omission)
 
 ### `HttpRestConnector.execute` — `authHeaderValue` (D-HTTP-CONFIG, D-HTTP-AUTH-SHAPE)
-- [ ] T-AUTH-1 : `instance.config().authHeaderValue` renseigné → en-tête `Authorization` envoyé
+- [x] T-AUTH-1 : `instance.config().authHeaderValue` renseigné → en-tête `Authorization` envoyé
       avec exactement cette valeur
-- [ ] T-AUTH-2 (régression) : `authHeaderValue` absent/blanc → aucun en-tête `Authorization` ajouté
+- [x] T-AUTH-2 (régression) : `authHeaderValue` absent/blanc → aucun en-tête `Authorization` ajouté
       (rétrocompatible avec les instances TRIGGER-seules existantes)
-- [ ] T-AUTH-3 : `connectorInput.headers` fournit explicitement `Authorization` → écrase la valeur
+- [x] T-AUTH-3 : `connectorInput.headers` fournit explicitement `Authorization` → écrase la valeur
       issue de la config (précédence design)
-- [ ] T-AUTH-4 (anti-fuite) : `authHeaderValue` n'apparaît jamais dans le résultat retourné, quel
+- [x] T-AUTH-4 (anti-fuite) : `authHeaderValue` n'apparaît jamais dans le résultat retourné, quel
       que soit le chemin (extension de `execute_neverEchoesInstanceConfigInResult`)
 
 ### `HttpRestConnector.execute` — SSRF / `OutboundUrlGuard` (régression pure, inchangé)
-- [ ] T-SSRF-1..N : tous les tests SSRF/anti-fuite hérités de `HttpRestServiceConnectorTest`
+- [x] T-SSRF-1..N : tous les tests SSRF/anti-fuite hérités de `HttpRestServiceConnectorTest`
       (URL non sûre rejetée sans appel réseau, IP pinnée réutilisée sans second lookup, `url`
       manquant rejeté, `IOException`/`InterruptedException` correctement enveloppées) migrent
       inchangés — exercés pour `GET` **et** au moins un cas `POST`/`PUT` (le guard s'applique
       indépendamment de la méthode)
 
 ### `getConfigSchema()`
-- [ ] T-SCHEMA-1 (régression) : les 4 champs TRIGGER existants (`webhookAuthType`, `webhookSecret`,
+- [x] T-SCHEMA-1 (régression) : les 4 champs TRIGGER existants (`webhookAuthType`, `webhookSecret`,
       `processKey`, `dossierTypeCode`) inchangés
-- [ ] T-SCHEMA-2 : nouveau champ `authHeaderValue`, `type=PASSWORD`, `required=false`
+- [x] T-SCHEMA-2 : nouveau champ `authHeaderValue`, `type=PASSWORD`, `required=false`
 
 ### `ConnectorConfig` (câblage Spring)
-- [ ] T-CFG-1 : le contexte Spring démarre avec le nouveau bean `HttpClient`
-- [ ] T-CFG-2 : `HttpRestConnector` est construit avec ses 4 dépendances (`SimpleJsonPathMapper`,
+- [x] T-CFG-1 : le contexte Spring démarre avec le nouveau bean `HttpClient`
+- [x] T-CFG-2 : `HttpRestConnector` est construit avec ses 4 dépendances (`SimpleJsonPathMapper`,
       `OutboundUrlGuard`, `HttpClient`, `ObjectMapper`)
 
 ### `ConnectorProperties.Http` (nouveau)
-- [ ] T-PROP-1 : `connectTimeout`/`requestTimeout` par défaut = 5 s quand non configurés
-- [ ] T-PROP-2 : surchargeables via `app.connector.http.connect-timeout`/`request-timeout`
+- [x] T-PROP-1 : `connectTimeout`/`requestTimeout` par défaut = 5 s quand non configurés
+- [x] T-PROP-2 : surchargeables via `app.connector.http.connect-timeout`/`request-timeout`
 
 ## Integration Tests
 **How do we test component interactions?**
 
-- [ ] T-INT-1 : `ExecuteConnectorUseCaseImpl.execute(...)` sur une instance `http-rest` réussit —
-      ne lève plus `UnsupportedOperationException` (régression du comportement actuel, cœur de la
-      feature)
-- [ ] T-INT-2 : `ConnectorServiceTask` (JavaDelegate) bout-en-bout avec une instance `http-rest`
-      pose `connectorResult` en variable de process
-- [ ] T-INT-3 : `POST /api/connectors/{instanceId}/execute` (BFF, `ConnectorExecuteController`) sur
-      une instance `http-rest` → `200`
-- [ ] T-INT-4 : `POST /api/connectors/{instanceId}/execute` (M2M, `M2mConnectorExecuteController`)
-      sur une instance `http-rest` → `200`
-- [ ] T-INT-5 (régression) : `connectorInput` malformé (`url` invalide) → `400` via le gestionnaire
-      générique existant (`IllegalArgumentException` → `handleBadRequest`), aucun nouveau mapping
-      d'exception nécessaire
-- [ ] T-INT-6 (régression) : `flowable-signal` (seul autre connecteur `BOTH` aujourd'hui) continue
-      de fonctionner sans changement — aucune régression croisée introduite par la modification de
-      `ConnectorCatalog`/`ExecuteConnectorUseCaseImpl` (non modifiés, mais à vérifier explicitement)
+- [x] T-INT-1 : couvert par T-INT-3/T-INT-4 (`ConnectorExecuteApiTest`, exercent le vrai bean
+      `ExecuteConnectorUseCaseImpl` bout en bout) — pas de test unitaire dédié séparé, redondant
+- [x] T-INT-2 : `ConnectorServiceTaskTest` existant (mock générique de `ExecuteConnectorUseCase`,
+      indépendant du type de connecteur) reste vert sans modification — la logique de lecture des
+      variables de process ne dépend pas du type ; pas de nouveau test nécessaire
+- [x] T-INT-3 : `execute_bffHttpRestInstance_urlReachesConnector` (`ConnectorExecuteApiTest`) —
+      `url` transmis par le BFF atteint réellement `HttpRestConnector.execute` (prouvé par un
+      rejet SSRF déterministe distinguant « url reçue et bloquée » de « url jamais transmise »,
+      cf. T-INT-7 ci-dessous)
+- [x] T-INT-4 : `execute_m2mHttpRestInstance_urlReachesConnector` — idem via M2M, avec `method`/`body`
+- [x] T-INT-5 (régression) : `execute_bffHttpRestInstance_missingUrl_returns400WithUrlRequiredDetail`
+      → `400` via le gestionnaire générique existant (`IllegalArgumentException` →
+      `handleBadRequest`), aucun nouveau mapping d'exception nécessaire
+- [x] T-INT-6 (régression) : les 8 tests existants de `ConnectorExecuteApiTest` (tous sur
+      `flowable-signal`) restent verts sans modification
+- [x] T-INT-7 (**scénario découvert en implémentation, absent du plan initial**) :
+      `ExecuteConnectorRequest` (DTO REST BFF/M2M) était câblé en dur sur les champs
+      `flowable-signal` (`signalName`/`processInstanceId`/`variables`) — `url`/`method`/`body`/
+      `headers` n'existaient pas dans le DTO, donc silencieusement perdus avant d'atteindre
+      `connectorInput`. Sans ce test (`url` bloquée par SSRF ⇒ message "not allowed" distinct de
+      "url is required"), la régression aurait été invisible : les deux cas produisent un `400`,
+      seul le message `detail` diffère. Corrigé (`ConnectorApiDtos.java`), golden OpenAPI
+      régénéré (voir `docs/ai/implementation/**`).
 
 ## End-to-End Tests
 **What user flows need validation?**

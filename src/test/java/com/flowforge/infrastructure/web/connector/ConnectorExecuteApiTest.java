@@ -114,6 +114,48 @@ class ConnectorExecuteApiTest {
     }
 
     @Test
+    void execute_bffHttpRestInstance_urlReachesConnector() throws Exception {
+        String id = createHttpRestConnector();
+
+        mockMvc.perform(post("/api/connectors/{id}/execute", id)
+                        .with(oidcUser("exec-admin", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"url": "https://127.0.0.1/internal"}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("not allowed")));
+    }
+
+    @Test
+    void execute_m2mHttpRestInstance_urlReachesConnector() throws Exception {
+        String id = createHttpRestConnector();
+
+        mockMvc.perform(post("/api/m2m/connectors/{id}/execute", id)
+                        .with(m2mJwt(TENANT_ID, "API_SERVICE"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"url": "https://127.0.0.1/internal", "method": "POST", "body": {"k": "v"}}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("not allowed")));
+    }
+
+    @Test
+    void execute_bffHttpRestInstance_missingUrl_returns400WithUrlRequiredDetail() throws Exception {
+        String id = createHttpRestConnector();
+
+        mockMvc.perform(post("/api/connectors/{id}/execute", id)
+                        .with(oidcUser("exec-admin", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("url")));
+    }
+
+    @Test
     void execute_bffDisabledConnector_returns404() throws Exception {
         String id = createSignalConnector();
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
@@ -164,6 +206,33 @@ class ConnectorExecuteApiTest {
                                   "config": {
                                     "signalName": "connectorSmokeSignal",
                                     "processKey": "signalCatchSmoke",
+                                    "dossierTypeCode": "CLAIM"
+                                  }
+                                }
+                                """.formatted(name)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        return JsonMapper.builder().build()
+                .readTree(result.getResponse().getContentAsString())
+                .get("id")
+                .asText();
+    }
+
+    private String createHttpRestConnector() throws Exception {
+        String name = "HTTP REST exec " + UUID.randomUUID();
+        MvcResult result = mockMvc.perform(post("/api/connectors")
+                        .with(oidcUser("seed-admin", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "%s",
+                                  "connectorType": "http-rest",
+                                  "enabled": true,
+                                  "config": {
+                                    "webhookAuthType": "HMAC_SHA256",
+                                    "webhookSecret": "s",
+                                    "processKey": "smokeProcess",
                                     "dossierTypeCode": "CLAIM"
                                   }
                                 }

@@ -27,7 +27,8 @@ class EnvMasterKeyCipherTest {
         dekStore = new InMemoryDekStore();
         var props = new ConnectorProperties(
                 new ConnectorProperties.Crypto(MASTER_KEY_B64),
-                new ConnectorProperties.Webhook(1_048_576L, 120, Duration.ofHours(24)));
+                new ConnectorProperties.Webhook(1_048_576L, 120, Duration.ofHours(24)),
+                null);
         cipher = new EnvMasterKeyCipher(props, dekStore);
     }
 
@@ -67,7 +68,8 @@ class EnvMasterKeyCipherTest {
     void missingMasterKey_rejected() {
         var props = new ConnectorProperties(
                 new ConnectorProperties.Crypto(null),
-                new ConnectorProperties.Webhook(1_048_576L, 120, Duration.ofHours(24)));
+                new ConnectorProperties.Webhook(1_048_576L, 120, Duration.ofHours(24)),
+                null);
         var broken = new EnvMasterKeyCipher(props, dekStore);
         assertThatThrownBy(() -> broken.encryptPasswordFields("t", Map.of("webhookSecret", "x")))
                 .isInstanceOf(IllegalStateException.class)

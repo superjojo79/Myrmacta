@@ -136,10 +136,9 @@ Cas limites :
   `implements ConnectorDefinition`, POST/PUT avec corps, en-tête `Authorization` conditionnel.
 - `06-connecteurs.md` et `README.md` mis à jour (plus de mention « TRIGGER seulement » pour
   `http-rest`).
-- `./mvnw verify` vert. Feature backend seule (aucun écran frontend nouveau attendu d'après
-  l'analyse — à confirmer explicitement en phase design plutôt qu'assumé ici, cf. Questions & Open
-  Items) : si confirmé backend-only, `npm run test`/`test:e2e` restent verts en régression complète,
-  sans nouveau scénario E2E dédié.
+- `./mvnw verify` vert. Feature **confirmée backend seule** (vérifié en Phase 2 contre le code réel,
+  voir Constraints & Assumptions) : `npm run test`/`test:e2e` restent verts en régression complète,
+  sans nouveau scénario E2E dédié — zéro fichier `frontend/**` modifié.
 
 ## Constraints & Assumptions
 **What limitations do we need to work within?**
@@ -152,10 +151,16 @@ Cas limites :
   chiffré au repos par `ConnectorSecretCipher` comme tout autre secret de connecteur (même
   mécanisme que `webhookSecret`) — `authHeaderValue` suit cette convention sans nouveau mécanisme
   de chiffrement.
-- Écran d'admin connecteurs déjà générique (formulaire piloté par `ConnectorDefinition.getConfigSchema()`,
-  `GUIDE-CONCEPTION-BPMN.md` §4 « Étape 1 ») — l'ajout du champ `authHeaderValue` au schéma suffit
-  a priori à le faire apparaître dans le formulaire existant, sans nouveau composant Vue. À vérifier
-  explicitement en phase design (cf. Questions & Open Items), pas supposé acquis.
+- **Correction Phase 2 (vérifié contre le code, pas seulement contre la doc) :** l'écran d'admin
+  connecteurs (`ConnectorsAdminView.vue`) n'est **pas** piloté par `ConnectorDefinition.getConfigSchema()`
+  malgré ce que suggérait `GUIDE-CONCEPTION-BPMN.md` §4 « Étape 1 » (qui décrit le contrat déclaratif
+  côté backend, pas l'implémentation réelle de l'écran) — `GET /api/connector-definitions` n'expose
+  au frontend que `type`/`label` (`ConnectorDefinitionItem`, `frontend/src/api/admin.ts`). La saisie
+  de `config` est un simple `<textarea>` de JSON brut (`form.configJson`, parsé côté client puis
+  envoyé tel quel), agnostique de tout schéma. C'est déjà ainsi que `webhookSecret` est saisi
+  aujourd'hui pour une instance `http-rest` TRIGGER — `authHeaderValue` suivra exactement le même
+  chemin (aucun composant Vue à toucher), sans changement de comportement pour l'admin ni
+  dégradation par rapport à l'existant.
 - Renommage `HttpRestTriggerConnector` → `HttpRestConnector` : classe interne au package
   `infrastructure.connector.builtin`, aucun contrat REST/OpenAPI ni configuration externe (le champ
   `connectorType` stocké en base reste la chaîne `"http-rest"`, indépendante du nom de classe Java)
@@ -174,13 +179,17 @@ Décisions actées 2026-08-31 (`AskUserQuestion`, TODO §48) :
 - **D-HTTP-NAMING = renommage en `HttpRestConnector`** (option recommandée retenue).
 - **D-HTTP-TESTS = fusion dans `HttpRestConnectorTest`** (option recommandée retenue).
 
+Résolu en revue Phase 2 (2026-08-31) :
+
+- **Confirmation « backend-only »** — **confirmé backend seul**, vérifié contre le code réel de
+  `ConnectorsAdminView.vue` (pas seulement contre la doc conceptuelle) : l'écran est un formulaire
+  JSON brut agnostique de tout schéma, `authHeaderValue` sera saisissable dès l'ajout du champ côté
+  backend, sans aucun changement frontend. Voir Constraints & Assumptions pour le détail — cet écart
+  entre `GUIDE-CONCEPTION-BPMN.md` et le code réel est noté mais hors périmètre de correction pour
+  cette feature (pas une régression introduite ici).
+
 Restant à trancher en phase design (pas bloquant pour clore les requirements) :
 
-- **Confirmation « backend-only »** — l'analyse (§18) suppose qu'aucun changement frontend n'est
-  nécessaire (écran connecteurs déjà générique, piloté par `getConfigSchema()`). À vérifier
-  explicitement contre `ConnectorsAdminView.vue`/le composant de formulaire en phase design avant
-  de clore la Phase 8 (tests) comme backend-only — ne pas se contenter de l'assomption de ce
-  document.
 - **Nom exact du champ de config** — `authHeaderValue` est un nom de travail (valeur brute de
   l'en-tête `Authorization`, ex. `"Bearer xxx"`, laissée à la charge de l'admin plutôt que de
   distinguer un schéma `Bearer`/`Basic` dédié). À confirmer en design : champ unique libre vs.

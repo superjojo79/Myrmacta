@@ -695,7 +695,7 @@ backend, 247 Vitest + 59 Playwright) et 9 (revue finale, aucun blocage) closes.
 
 ---
 
-### [ ] 48. Activation du connecteur `http-rest` en rôle SERVICE
+### [x] 48. Activation du connecteur `http-rest` en rôle SERVICE
 
 **Constat :** [README.md](README.md) et [06-connecteurs.md](analysis%20doc/06-connecteurs.md)
 documentent déjà la limite : le catalogue V1 livré pour `http-rest` est **TRIGGER seulement** ; un
@@ -734,6 +734,26 @@ connecteurs) et `DEFERRED-FEATURES.md`/`FILE-ATTENTE.md` une fois livrée.
 
 **Impacte :** `HttpRestTriggerConnector`, `HttpRestServiceConnector`,
 `HttpRestServiceConnectorTest`, `06-connecteurs.md`, `README.md`.
+
+**Implémenté (2026-08-31, feature `connecteur-http-rest-service`, cycle `dev-lifecycle` complet) :**
+les 5 décisions ci-dessus tranchées via `AskUserQuestion` (une à la fois) : D-CAPABILITY-SCOPE=fusion
+au niveau du type (capability `BOTH`) ; D-HTTP-METHODS=GET+POST/PUT avec corps dynamique ;
+D-HTTP-CONFIG=en-tête `Authorization` statique en config (`authHeaderValue`, chiffré) ;
+D-HTTP-NAMING=renommage `HttpRestTriggerConnector`→`HttpRestConnector` ; D-HTTP-TESTS=fusion dans
+`HttpRestConnectorTest`. Complétées en design par D-HTTP-AUTH-SHAPE=valeur brute de l'en-tête et
+D-HTTP-CONTENT-TYPE=fourni dynamiquement par `connectorInput.headers` (pas de défaut).
+
+**2 écarts réels trouvés en implémentation (Phase 5), absents du design :** `ExecuteConnectorRequest`
+(DTO REST BFF/M2M) était câblé en dur sur les champs `flowable-signal` — `url`/`method`/`body`/
+`headers` n'existaient pas dans le DTO, rendant `http-rest` SERVICE inatteignable via HTTP malgré la
+capacité activée côté connecteur ; corrigé, golden OpenAPI régénéré en conséquence. **1 durcissement
+trouvé en Phase 7 :** bean `HttpClient` rendu explicitement `Redirect.NEVER` (défaut JDK déjà correct,
+mais implicite — une redirection suivie ne serait jamais re-vérifiée contre `OutboundUrlGuard`).
+
+`./mvnw verify` 1420 tests (0 échec), Jacoco bundle tenu (LINE ≥85 %/BRANCH ≥75 %, 3 lacunes réelles
+comblées en Phase 8 sur le code touché) ; Vitest 247/247, Playwright 59/59 (feature backend-only,
+zéro fichier `frontend/**` touché, régression complète). Doc à jour :
+`06-connecteurs.md`, `README.md`, `CHANGELOG.md`.
 
 **Détail :** [18-connecteur-http-rest-service.md](analysis%20doc/18-connecteur-http-rest-service.md).
 

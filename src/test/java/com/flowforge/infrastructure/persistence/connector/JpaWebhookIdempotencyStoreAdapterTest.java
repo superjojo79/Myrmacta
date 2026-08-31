@@ -29,7 +29,7 @@ class JpaWebhookIdempotencyStoreAdapterTest {
 
     private final SpringDataWebhookIdempotencyRepository repository = mock(SpringDataWebhookIdempotencyRepository.class);
     private final ConnectorProperties properties =
-            new ConnectorProperties(null, new ConnectorProperties.Webhook(1_048_576L, 120, Duration.ofHours(24)));
+            new ConnectorProperties(null, new ConnectorProperties.Webhook(1_048_576L, 120, Duration.ofHours(24)), null);
     private final JpaWebhookIdempotencyStoreAdapter adapter =
             new JpaWebhookIdempotencyStoreAdapter(repository, properties);
 

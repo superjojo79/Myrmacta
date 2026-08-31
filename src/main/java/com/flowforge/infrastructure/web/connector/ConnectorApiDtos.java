@@ -17,7 +17,13 @@ record CreateConnectorRequest(
 record UpdateConnectorRequest(String name, Boolean enabled, Map<String, Object> config, Boolean restore) {}
 
 record ExecuteConnectorRequest(
-        String signalName, String processInstanceId, Map<String, Object> variables) {
+        String signalName,
+        String processInstanceId,
+        Map<String, Object> variables,
+        String url,
+        String method,
+        Object body,
+        Map<String, Object> headers) {
 
     Map<String, Object> toInputParams() {
         Map<String, Object> params = new LinkedHashMap<>();
@@ -29,6 +35,18 @@ record ExecuteConnectorRequest(
         }
         if (variables != null) {
             params.put("variables", variables);
+        }
+        if (url != null && !url.isBlank()) {
+            params.put("url", url);
+        }
+        if (method != null && !method.isBlank()) {
+            params.put("method", method);
+        }
+        if (body != null) {
+            params.put("body", body);
+        }
+        if (headers != null) {
+            params.put("headers", headers);
         }
         return params;
     }

@@ -11,6 +11,7 @@ import com.flowforge.domain.connector.usecase.ManageConnectorInstanceUseCaseImpl
 import com.flowforge.domain.dossier.port.in.CreateDossierUseCase;
 import com.flowforge.domain.dossier.port.in.GetDossierUseCase;
 import com.flowforge.domain.workflow.port.out.OutboxRepository;
+import java.net.http.HttpClient;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -40,5 +41,17 @@ public class ConnectorConfig {
             ConnectorInstanceRepository repository,
             ConnectorCatalog catalog) {
         return new ExecuteConnectorUseCaseImpl(repository, catalog);
+    }
+
+    @Bean
+    HttpClient httpClient(ConnectorProperties properties) {
+        // D-44 / SSRF: never follow redirects — a redirect target is never re-checked against
+        // OutboundUrlGuard, so following one would silently bypass the pinned-IP validation
+        // done before this client is invoked (HttpRestConnector). Explicit rather than relying
+        // on the JDK's default (also NEVER) so this guarantee cannot regress unnoticed.
+        return HttpClient.newBuilder()
+                .connectTimeout(properties.http().connectTimeout())
+                .followRedirects(HttpClient.Redirect.NEVER)
+                .build();
     }
 }

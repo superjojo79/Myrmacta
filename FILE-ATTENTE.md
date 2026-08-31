@@ -10,11 +10,17 @@
 >   (rétention / purge / sensible — **livré**) ; revue post-implémentation 2026-08-25 :
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
-> **Dernière mise à jour :** 2026-08-31 — TODO §46 (ArchUnit `application`)
-> **clos** hors cycle `dev-lifecycle` formel : port
-> `WorkflowStartConfirmationPort` extrait, règle ArchUnit
-> `application_never_depends_on_infrastructure` ajoutée. **Tous les points
-> TODO sont désormais clos.** `serveur-mcp` **livrée**
+> **Dernière mise à jour :** 2026-08-31 — `connecteur-http-rest-service`
+> **livrée** (TODO §48 clos, cycle `dev-lifecycle` complet Phases 1–9 dans la
+> même session). Choisie comme prochaine feature après épuisement du backlog
+> V1 (voir ci-dessous) parmi trois pistes proposées à l'utilisateur (les deux
+> autres — outillage provisioning, sweep tech-debt — restent en réserve,
+> `DEFERRED-FEATURES.md` §1/§4). **File d'attente de nouveau vide.**
+>
+> TODO §46 (ArchUnit `application`) **clos** hors cycle `dev-lifecycle`
+> formel : port `WorkflowStartConfirmationPort` extrait, règle ArchUnit
+> `application_never_depends_on_infrastructure` ajoutée. `serveur-mcp`
+> **livrée**
 > ([PR #82](https://github.com/superjojo79/FlowForge/pull/82), mergée,
 > Phases 5–9 complètes) et `schema-champs-dynamiques` **livrée**
 > ([PR #87](https://github.com/superjojo79/FlowForge/pull/87), mergée),
@@ -72,36 +78,35 @@ Même grille que pour `preview-documents` puis `edition-champs-dossier` :
 | `reporting-sla` | [PR #80](https://github.com/superjojo79/FlowForge/pull/80), analyse [16-reporting-sla.md](analysis%20doc/16-reporting-sla.md) | Écran Rapports & SLA (`/rapports`), snapshot `GET /api/reports/sla`, summary `GET /api/reports/sla/summary` (`ON_TRACK`/`AT_RISK`/`BREACHED`), cible `DossierType.slaTargetHours`, settings `complianceTargetPercent`, inbox `slaRemainingHours`. Authz **D-AUTHZ = C**. `./mvnw verify` 1263 tests (0 échec) ; Vitest 213 ; Playwright 55. Hors V1 reporté : planification d'envoi, Chart.js, codegen client. **Mergée sur `main`** (2026-08-26). |
 | `serveur-mcp` | [PR #82](https://github.com/superjojo79/FlowForge/pull/82), analyse [15-serveur-mcp.md](analysis%20doc/15-serveur-mcp.md) | Serveur MCP interne, 9 tools (`get_dossier`, `search_dossiers`, `query_sla_summary`, `list_document_templates`, `get_dossier_type`, `list_dossier_types`, `list_workflow_types`, `define_dossier_type`, `deploy_workflow`) sur `POST /api/m2m/mcp` (Streamable HTTP, Spring AI 2.0.0), authentifiés par le JWT M2M `API_SERVICE` déjà existant — aucune nouvelle chaîne de sécurité, zéro fichier `frontend/**` touché. 9 milestones TDD (M1 gardes domaine → M9 vérification globale) ; Phases 7 (check implementation) et 8 (comblement de trous de couverture Jacoco) rejouées avant la revue finale (Phase 9) dans la même PR. `deploy_workflow` fait délibérément plus que le flux REST admin existant (upsert + deploy en un seul appel MCP), conforme au design. `./mvnw verify` vert (Jacoco LINE ≥85 %/BRANCH ≥75 % tenus) ; Vitest 213/213 ; Playwright 55/55 (régression complète, aucun fichier frontend modifié). **Mergée sur `main`** (2026-08-28). |
 | `schema-champs-dynamiques` | [PR #87](https://github.com/superjojo79/FlowForge/pull/87), analyse [17-schema-champs-dynamiques.md](analysis%20doc/17-schema-champs-dynamiques.md), TODO §47 (clos) | Écran Admin → Types édite désormais le schéma `fieldDefinitions` d'un `DossierType` (création + panneau d'édition inline, composant `FieldDefinitionDefsEditor.vue`) et la bascule `allowUnknownFields`. `UpdateDossierTypeUseCaseImpl` branche `CheckDossierTypeSchemaCompatibilityUseCase` (déjà écrit, jusqu'ici réservé au MCP) et bloque (409) tout schéma incompatible avec des dossiers existants — aligne REST sur le comportement déjà strict du MCP `define_dossier_type` (simplifié en conséquence). `DossierType` rejette un `name` dupliqué. **2 écarts réels trouvés et corrigés en TDD** : composant frontend lié sur la prop au lieu d'un état local réactif (Phase 5) ; ordre check DB/validation structurelle réordonné pour échec rapide (Phase 7). CI hébergé rouge de façon identique sur `main` (infra, pas ce diff) — mergée sur la base des vérifications locales. `./mvnw verify` 1383 tests (0 échec) ; Vitest 247 ; Playwright 59. **Mergée sur `main`** (2026-08-28). |
+| `connecteur-http-rest-service` | analyse [18-connecteur-http-rest-service.md](analysis%20doc/18-connecteur-http-rest-service.md), TODO §48 (clos) | Le connecteur `http-rest` devient utilisable en rôle **SERVICE** en plus de TRIGGER (capability `BOTH`) : `HttpRestTriggerConnector` renommé `HttpRestConnector`, fusionné avec le skeleton `HttpRestServiceConnector` (supprimé). `execute(...)` supporte GET/POST/PUT dynamiques, corps JSON ou brut, en-têtes arbitraires par appel, en-tête `Authorization` optionnel par instance (`authHeaderValue`, chiffré). Nouveau bean `HttpClient` (aucun n'existait), `ConnectorProperties.Http` (timeouts 5s/5s). **2 écarts réels trouvés en Phase 5** : `ExecuteConnectorRequest` (DTO REST BFF/M2M) câblé en dur sur `flowable-signal`, ne transmettait pas `url`/`method`/`body`/`headers` — `http-rest` SERVICE restait inatteignable via HTTP malgré la capacité activée côté connecteur (corrigé, golden OpenAPI régénéré). **1 durcissement en Phase 7** : `HttpClient.Redirect.NEVER` rendu explicite (défaut JDK déjà correct mais implicite — une redirection suivie contournerait `OutboundUrlGuard`). **3 lacunes de couverture réelles comblées en Phase 8** (`authHeaderValue` blanc, branche `connectTimeout==null`, `ExecuteConnectorRequest.toInputParams()` jamais testé unitairement). `./mvnw verify` 1420 tests (0 échec) ; Vitest 247 ; Playwright 59 (feature backend-only, zéro fichier frontend touché). Cycle `dev-lifecycle` Phases 1–9 complet dans la même session (2026-08-31). PR pas encore ouverte. |
 
 Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relations, PATCH fields API, éléments) : voir [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §2.
 
 ## File d’attente
 
-`reporting-sla`, `serveur-mcp` et `schema-champs-dynamiques` sont toutes
-**livrées** ([PR #80](https://github.com/superjojo79/FlowForge/pull/80),
+`reporting-sla`, `serveur-mcp`, `schema-champs-dynamiques` et
+`connecteur-http-rest-service` sont toutes **livrées**
+([PR #80](https://github.com/superjojo79/FlowForge/pull/80),
 [PR #82](https://github.com/superjojo79/FlowForge/pull/82),
-[PR #87](https://github.com/superjojo79/FlowForge/pull/87)). TODO §46
-(ArchUnit `application`) **clos** hors cycle `dev-lifecycle` formel
-(2026-08-31, décision A via `AskUserQuestion`). **File d'attente vide** —
-aucune feature nommée en cours ; prochaine feature à identifier lors d'une
-prochaine analyse (voir § Critères de sélection).
+[PR #87](https://github.com/superjojo79/FlowForge/pull/87), PR pas encore
+ouverte pour `connecteur-http-rest-service`). TODO §46 (ArchUnit
+`application`) et §48 (`http-rest` SERVICE) **clos** — à cette date, tous
+les points `TODO.md` sont clos et la file est vide. Prochaine feature à
+identifier lors d'une prochaine analyse (voir § Critères de sélection).
 
-Détail : [TODO.md](TODO.md) §40–46,
+Détail : [TODO.md](TODO.md) §40–46, §48,
 [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md).
 
 ## En revue
 
-Aucune feature produit en revue.
+Aucune feature produit en revue. `connecteur-http-rest-service` livrée
+(Phases 1–9 complètes), en attente d'ouverture de PR.
 
 `durcissement-securite-post-revue`
 ([PR #76](https://github.com/superjojo79/FlowForge/pull/76)) et les
 analyses `serveur-mcp`/`reporting-sla`
 ([PR #78](https://github.com/superjojo79/FlowForge/pull/78)) sont
 **mergées** sur `main`.
-**Hors V1 (reporté, pas dans cette file) :** connecteur `http-rest` en
-rôle **SERVICE** lui-même (V1 = TRIGGER uniquement — le hardening SSRF
-est pré-positionné depuis `durcissement-donnees-sensibles`, pas le
-connecteur).
 
 ## Hors file produit (ne pas traiter comme « prochaine feature »)
 

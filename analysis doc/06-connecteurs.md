@@ -86,7 +86,7 @@ aujourd'hui. Ne pas implémenter silencieusement un type « Non ».
 
 | Type | Cible | V1 livré | Description |
 |---|---|---|---|
-| `http-rest` | TRIGGER + SERVICE | **TRIGGER** seulement (`HttpRestTriggerConnector`) ; skeleton SERVICE (`HttpRestServiceConnector`) **non enregistré** | Réception webhook entrant / appel REST sortant |
+| `http-rest` | TRIGGER + SERVICE | **TRIGGER + SERVICE** (`HttpRestConnector`, capability `BOTH` — TODO §48) | Réception webhook entrant / appel REST sortant (GET/POST/PUT, en-tête `Authorization` optionnel via `authHeaderValue`) |
 | `scheduler` | TRIGGER | Non | Déclenchement planifié (cron) |
 | `smtp` | SERVICE | Non (l'email V1 passe par les notifications Spring Mail, pas ce type catalogue) | Envoi email |
 | `s3-minio` | SERVICE | Non (stockage via `DocumentStoragePort` S3/filesystem, pas un connecteur) | Lecture / écriture fichiers |

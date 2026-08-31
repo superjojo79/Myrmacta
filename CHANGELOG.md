@@ -45,7 +45,7 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
-- **PR (à ouvrir)** — Le connecteur `http-rest` est désormais utilisable en rôle **SERVICE** en
+- **PR [#95](https://github.com/superjojo79/FlowForge/pull/95)** — Le connecteur `http-rest` est désormais utilisable en rôle **SERVICE** en
   plus de TRIGGER (TODO §48) : un `serviceTask` BPMN ou un appel `POST
   /api/connectors/{id}/execute` (BFF/M2M) peut appeler un service REST externe (GET/POST/PUT,
   en-tête `Authorization` optionnel par instance), avec le même durcissement anti-SSRF que les
@@ -65,7 +65,7 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
   Liquibase (blocs `sql:` en changes et rollback) est déporté dans des fichiers `.sql` importés
   via `sqlFile:`, pour une meilleure lisibilité et un lint SQL possible. Aucun changement de
   comportement des migrations.
-- **PR (à ouvrir)** — La couche `application` est désormais gardée par ArchUnit comme le
+- **PR [#93](https://github.com/superjojo79/FlowForge/pull/93)** — La couche `application` est désormais gardée par ArchUnit comme le
   domaine (TODO §46). `ManualStartOrchestrator` dépend d'un nouveau port
   `WorkflowStartConfirmationPort` au lieu de la classe infrastructure `WorkflowStartConfirmer`
   directement ; aucun changement de comportement.

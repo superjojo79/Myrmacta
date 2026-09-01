@@ -42,6 +42,15 @@ description: Technical implementation notes, patterns, and code guidelines
   `"<champ> must not be blank"` (cohérent avec `DossierType.code`'s
   `"code must match ..., was: ..."` en substance, pas en forme exacte — pas de convention de message
   imposée trouvée dans le dépôt au-delà de nommer le champ).
+- **Trouvaille Phase 7 (hors périmètre, non corrigée ici)** : `WorkflowTriggerEvent.processKey`
+  (`domain/connector/model/WorkflowTriggerEvent.java`) porte le même gap (`requireNonNull` sans
+  garde blank) que les 4 records ciblés, mais n'était pas dans la liste D-BLANK-VALIDATION-SCOPE
+  tranchée en Phase 1/3. Vérifié non exploitable en pratique : son seul appelant
+  (`ConnectorTriggerRuntimeImpl.onIncomingEvent`) construit immédiatement un `TriggerOutboxPayload`
+  avec cette même valeur — la garde blank désormais présente sur `TriggerOutboxPayload.processKey`
+  intercepte donc déjà tout `processKey` blank transitant par ce chemin. Laissé tel quel
+  (defense-in-depth déjà réalisée un cran plus loin dans le flux), documenté ici plutôt que corrigé
+  silencieusement hors du périmètre décidé.
 - **D-MDC-DOSSIER-MECHANISM** : implémenté tel que conçu en Phase 3 — `Function<UUID, Runnable>`,
   callback enveloppe tout `purgeDossier(record)` via `finally`, pas seulement le `catch`. Le test
   d'intégration multi-items (`PurgeOutboxJobTest.process_multipleItems_...`) utilise le **vrai**

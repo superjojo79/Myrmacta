@@ -75,7 +75,7 @@ description: Break down work into actionable tasks and estimate timeline
 
 ### M4 — Vérification globale + clôture (Phases 7–9)
 
-- [ ] T4.1 : Phase 7 (check implementation) — relecture des 4 records + `ProcessPurgeOutboxUseCase`/
+- [x] T4.1 : Phase 7 (check implementation) — relecture des 4 records + `ProcessPurgeOutboxUseCase`/
       `ProcessPurgeOutboxUseCaseImpl`/`PurgeOutboxJob` contre le design ; chercher les écarts réels
       (pattern historique du dépôt : la plupart des features précédentes trouvent 1-2 écarts réels à
       cette étape, cf. `connecteur-http-rest-service`/T5.5). Dépendance : M1–M3.

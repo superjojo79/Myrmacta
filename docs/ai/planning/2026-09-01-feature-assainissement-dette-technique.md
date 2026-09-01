@@ -9,10 +9,10 @@ description: Break down work into actionable tasks and estimate timeline
 ## Milestones
 **What are the major checkpoints?**
 
-- [ ] M1 : Validation blank en domaine — 4 records (D-BLANK-VALIDATION-SCOPE)
-- [ ] M2 : Callback MDC par item de purge — port + use case + job (D-MDC-DOSSIER-MECHANISM, dépend M1
+- [x] M1 : Validation blank en domaine — 4 records (D-BLANK-VALIDATION-SCOPE)
+- [x] M2 : Callback MDC par item de purge — port + use case + job (D-MDC-DOSSIER-MECHANISM, dépend M1
       seulement pour l'ordre de commit, aucune dépendance technique réelle)
-- [ ] M3 : Nettoyage documentaire `DEFERRED-FEATURES.md` (dépend M1–M2 livrés, D-PERSISTABLE-CONFIRM
+- [x] M3 : Nettoyage documentaire `DEFERRED-FEATURES.md` (dépend M1–M2 livrés, D-PERSISTABLE-CONFIRM
       déjà fermé par preuve documentée en Phase 3 — pas de tâche de code)
 - [ ] M4 : Vérification globale + clôture (Phases 7–9)
 
@@ -21,54 +21,54 @@ description: Break down work into actionable tasks and estimate timeline
 
 ### M1 — Validation blank en domaine (D-BLANK-VALIDATION-SCOPE)
 
-- [ ] T1.1 : `WorkflowTypeConfig` — compact constructor : remplace/complète
+- [x] T1.1 : `WorkflowTypeConfig` — compact constructor : remplace/complète
       `Objects.requireNonNull(workflowKey, "workflowKey")` par une garde blank
       (`IllegalArgumentException` si `workflowKey.isBlank()`), sur le modèle
       `DossierType.code`/`CODE_PATTERN` (ici une simple garde `isBlank()`, pas de pattern de
       caractères — `workflowKey` n'a pas la même contrainte d'usage en URL/payload que `code`).
       Dépendance : aucune. Validation : T-BLANK-1, T-BLANK-5 (non-régression `null`).
-- [ ] T1.2 : `TriggerOutboxPayload` — même garde sur `processKey`. Dépendance : aucune (parallélisable
+- [x] T1.2 : `TriggerOutboxPayload` — même garde sur `processKey`. Dépendance : aucune (parallélisable
       avec T1.1). Validation : T-BLANK-2, T-BLANK-5.
-- [ ] T1.3 : `WorkflowStartedEvent` — même garde sur `processKey`. Dépendance : aucune. Validation :
+- [x] T1.3 : `WorkflowStartedEvent` — même garde sur `processKey`. Dépendance : aucune. Validation :
       T-BLANK-3, T-BLANK-5.
-- [ ] T1.4 : `DossierType` — même garde sur `workflowKey` (s'ajoute à côté de la garde `code`
+- [x] T1.4 : `DossierType` — même garde sur `workflowKey` (s'ajoute à côté de la garde `code`
       existante, dans le même compact constructor). Dépendance : aucune. Validation : T-BLANK-4,
       T-BLANK-5.
 
 ### M2 — Callback MDC par item de purge (D-MDC-DOSSIER-MECHANISM)
 
-- [ ] T2.1 : `ProcessPurgeOutboxUseCase` (port `in`) — signature étendue :
+- [x] T2.1 : `ProcessPurgeOutboxUseCase` (port `in`) — signature étendue :
       `int processBatch(Instant now, int limit, Function<UUID, Runnable> onItemStart)`. Dépendance :
       aucune. Validation : compilation (changement de contrat).
-- [ ] T2.2 : `ProcessPurgeOutboxUseCaseImpl.processBatch` — dans la boucle, juste avant
+- [x] T2.2 : `ProcessPurgeOutboxUseCaseImpl.processBatch` — dans la boucle, juste avant
       `purgeDossier(record)` : `Runnable closeScope = onItemStart.apply(record.dossierId())` ; ajoute
       un `finally { closeScope.run(); }` englobant le `try`/`catch (RuntimeException ex)` existant
       (le corps du `try`/`catch` ne change pas). Dépendance : T2.1. Validation : T-MDC-1, T-MDC-2,
       T-MDC-3, T-MDC-5.
-- [ ] T2.3 : `PurgeOutboxJob.process()` — fournit le callback à l'appel de `processBatch` :
+- [x] T2.3 : `PurgeOutboxJob.process()` — fournit le callback à l'appel de `processBatch` :
       `dossierId -> { MdcScope scope = MdcScope.dossier(dossierId); return scope::close; }` (lambda
       inline ou méthode privée si plus lisible). `recoverStaleProcessing` n'est pas concerné (pas
       d'item unitaire à corréler, reste sous `MdcScope.tenant` seul). Dépendance : T2.1, T2.2.
       Validation : T-JOB-1, T-JOB-2, T-JOB-3.
-- [ ] T2.4 (régression signature, 3 fichiers) : mise à jour des appels/mocks à 2 arguments trouvés en
+- [x] T2.4 (régression signature, 3 fichiers) : mise à jour des appels/mocks à 2 arguments trouvés en
       Phase 3 — `ProcessPurgeOutboxUseCaseImplTest` (appels directs), `PurgeOutboxJobTest` (mock du
       port), `PurgeOutboxApiTest` ligne ~142 (appel direct dans un test d'API HTTP). Dépendance :
       T2.1. Validation : T-MDC-5, T-JOB-3, T-API-1.
-- [ ] T2.5 : test d'intégration multi-items (2+ dossiers dans le même batch) prouvant l'absence de
+- [x] T2.5 : test d'intégration multi-items (2+ dossiers dans le même batch) prouvant l'absence de
       fuite de `dossierId` entre items. Dépendance : T2.2, T2.3. Validation : T-INT-1.
 
 ### M3 — Nettoyage documentaire `DEFERRED-FEATURES.md`
 
-- [ ] T3.1 : Retire de `DEFERRED-FEATURES.md` §1 les 2 lignes déjà closes : CHECK SQL
+- [x] T3.1 : Retire de `DEFERRED-FEATURES.md` §1 les 2 lignes déjà closes : CHECK SQL
       `dossier_type_acl.permission` (migration `014-dossier-type-acl-permission-check.yaml`, PR #72)
       et validation blank `tenantId` (`TenantProperties.id` `@NotBlank`). Dépendance : aucune
       (peut être fait à tout moment). Validation : revue manuelle (diff du fichier).
-- [ ] T3.2 : Retire (ou marque livrée avec référence à cette feature) la ligne validation blank
+- [x] T3.2 : Retire (ou marque livrée avec référence à cette feature) la ligne validation blank
       `processKey`/`workflowKey` (§1.1) une fois M1 livré. Dépendance : M1 (T1.1–T1.4). Validation :
       revue manuelle.
-- [ ] T3.3 : Retire (ou marque livrée) la ligne `dossierId` en MDC (§1.8) une fois M2 livré.
+- [x] T3.3 : Retire (ou marque livrée) la ligne `dossierId` en MDC (§1.8) une fois M2 livré.
       Dépendance : M2 (T2.1–T2.5). Validation : revue manuelle.
-- [ ] T3.4 : Retire la ligne `Persistable`/`isNew()` (§1.4), avec une note courte référençant la
+- [x] T3.4 : Retire la ligne `Persistable`/`isNew()` (§1.4), avec une note courte référençant la
       preuve documentée en Phase 3 (design doc, §Design Decisions) plutôt que de la répéter en
       entier. Dépendance : aucune (déjà tranché en Phase 3, tâche purement documentaire).
       Validation : revue manuelle.
@@ -157,3 +157,18 @@ T3.4 ── (indépendant, déjà tranché en Phase 3)
   pas une réutilisation d'un patron existant. `MdcScope.tenant(String)` (utilisé dans
   `PurgeOutboxJob.process()` actuel) reste la seule référence d'usage concrète du type dans le
   dépôt.
+
+## Statut (Phase 6, 2026-09-01)
+
+M1, M2 et M3 sont livrés — 14/14 tâches faites, `./mvnw verify` vert (1430 tests, ArchUnit compris,
+seuils Jacoco maintenus). Aucun risque identifié en planning ne s'est matérialisé : le callback
+enveloppe bien tout `purgeDossier(record)` (prouvé par le test d'intégration multi-items T2.5/T-INT-1
+avec le vrai `ProcessPurgeOutboxUseCaseImpl`, pas un mock), et les 3 fichiers de test à signature
+2 arguments ont tous été mis à jour dans le même geste que T2.1–T2.3 (aucune régression). Aucune
+tâche découverte hors plan, aucun blocage. Seul écart mineur : le séquencement TDD strict n'a pas
+été respecté sur le tout premier geste du changement de signature de port (comportement complet
+écrit avant test, corrigé en revenant à une base compilable puis en repilotant le vrai comportement
+par test rouge→vert) — documenté dans le doc implementation plutôt que masqué.
+
+Reste M4 (Phases 7–9 : check implementation, couverture Jacoco classe par classe, régression
+frontend, revue finale + PR) avant clôture complète.

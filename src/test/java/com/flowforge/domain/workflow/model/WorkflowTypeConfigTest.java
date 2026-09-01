@@ -22,6 +22,21 @@ class WorkflowTypeConfigTest {
     }
 
     @Test
+    void rejectsBlankWorkflowKey() {
+        assertThatThrownBy(() -> new WorkflowTypeConfig(
+                        UUID.randomUUID(),
+                        "tenant_a",
+                        "   ",
+                        "Smoke",
+                        List.of(new WorkflowStatusDefinition("INIT", "Init", true, StatusOutcome.NONE)),
+                        List.of(DossierStatus.OUVERT),
+                        null,
+                        List.of()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("workflowKey");
+    }
+
+    @Test
     void rejectsMissingInitialStatus() {
         assertThatThrownBy(() -> new WorkflowTypeConfig(
                         UUID.randomUUID(),

@@ -11,5 +11,8 @@ public record WorkflowStartedEvent(UUID workflowInstanceId, Instant occurredAt, 
         Objects.requireNonNull(workflowInstanceId, "workflowInstanceId");
         Objects.requireNonNull(occurredAt, "occurredAt");
         Objects.requireNonNull(processKey, "processKey");
+        if (processKey.isBlank()) {
+            throw new IllegalArgumentException("processKey must not be blank");
+        }
     }
 }

@@ -24,6 +24,9 @@ public record WorkflowTypeConfig(
         Objects.requireNonNull(id, "id");
         Objects.requireNonNull(tenantId, "tenantId");
         Objects.requireNonNull(workflowKey, "workflowKey");
+        if (workflowKey.isBlank()) {
+            throw new IllegalArgumentException("workflowKey must not be blank");
+        }
         Objects.requireNonNull(label, "label");
         Objects.requireNonNull(createdBy, "createdBy");
         Objects.requireNonNull(updatedBy, "updatedBy");

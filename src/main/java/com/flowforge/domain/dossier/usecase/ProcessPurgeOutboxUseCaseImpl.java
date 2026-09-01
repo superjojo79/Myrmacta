@@ -19,6 +19,7 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
 
 public final class ProcessPurgeOutboxUseCaseImpl implements ProcessPurgeOutboxUseCase {
 
@@ -50,8 +51,9 @@ public final class ProcessPurgeOutboxUseCaseImpl implements ProcessPurgeOutboxUs
     }
 
     @Override
-    public int processBatch(Instant now, int limit) {
+    public int processBatch(Instant now, int limit, Function<UUID, Runnable> onItemStart) {
         Objects.requireNonNull(now, "now");
+        Objects.requireNonNull(onItemStart, "onItemStart");
         if (limit <= 0) {
             return 0;
         }
@@ -63,6 +65,7 @@ public final class ProcessPurgeOutboxUseCaseImpl implements ProcessPurgeOutboxUs
             if (!purgeOutboxRepository.claim(record.id())) {
                 continue;
             }
+            Runnable closeItemScope = onItemStart.apply(record.dossierId());
             try {
                 purgeDossier(record);
                 purgeOutboxRepository.markCompleted(record.id());
@@ -70,6 +73,8 @@ public final class ProcessPurgeOutboxUseCaseImpl implements ProcessPurgeOutboxUs
             } catch (RuntimeException ex) {
                 purgeOutboxRepository.markFailed(record.id(), truncate(ex.getMessage()));
                 processed++;
+            } finally {
+                closeItemScope.run();
             }
         }
         return processed;

@@ -6,6 +6,7 @@ import com.flowforge.infrastructure.config.TenantProperties;
 import com.flowforge.infrastructure.observability.MdcScope;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -39,10 +40,16 @@ class PurgeOutboxJob {
             if (recovered > 0) {
                 log.warn("Purge outbox job recovered {} row(s) stuck in PROCESSING", recovered);
             }
-            int processed = processPurgeOutboxUseCase.processBatch(now, purgeProperties.batchSize());
+            int processed = processPurgeOutboxUseCase.processBatch(
+                    now, purgeProperties.batchSize(), this::openItemScope);
             if (processed > 0) {
                 log.info("Purge outbox job processed {} row(s)", processed);
             }
         }
+    }
+
+    private Runnable openItemScope(UUID dossierId) {
+        MdcScope scope = new MdcScope().dossier(dossierId);
+        return scope::close;
     }
 }

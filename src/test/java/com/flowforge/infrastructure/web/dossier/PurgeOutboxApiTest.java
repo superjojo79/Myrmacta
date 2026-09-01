@@ -139,7 +139,7 @@ class PurgeOutboxApiTest {
                         .with(csrf()))
                 .andExpect(status().isCreated());
 
-        int processed = processPurgeOutboxUseCase.processBatch(Instant.now(), 2000);
+        int processed = processPurgeOutboxUseCase.processBatch(Instant.now(), 2000, id -> () -> {});
         assertThat(processed).isGreaterThanOrEqualTo(1);
 
         mockMvc.perform(get("/api/dossiers/{id}", dossierId).with(user("admin-purge-run", "TENANT_ADMIN")))

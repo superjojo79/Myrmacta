@@ -51,7 +51,7 @@ jointes). `delete` livré avec `purge-stockage` (§22). Aucun couplage MinIO.
 | Remplacer stubs in-memory | `WorkflowInstanceRepository` / `WorkflowEventPublisher` → JPA + Flowable (`workflow-engine`) |
 | Retirer exclusions autoconfig restantes | Flowable (et tout résidu) feature par feature |
 | Sync lexicale `com.monapp` → `com.flowforge` | **Clos** (2026-08-25) — 3 occurrences dans `analysis doc/01-architecture-hexagonale.md` corrigées |
-| Validation blank `processKey` / `tenantId` | Nice-to-have modèle |
+| Validation blank `processKey` / `tenantId` | **Clos** — `tenantId` déjà validé (`TenantProperties.id` `@NotBlank`, code préexistant) ; `processKey`/`workflowKey` désormais gardés blank dans les records domaine (`WorkflowTypeConfig`, `TriggerOutboxPayload`, `WorkflowStartedEvent`, `DossierType`) — `assainissement-dette-technique` (TODO §49) |
 
 ### 1.2 `multi-tenant`
 
@@ -85,8 +85,8 @@ jointes). `delete` livré avec `purge-stockage` (§22). Aucun couplage MinIO.
 | PATCH fields dossier | **Livré** — feature `patch-dossier-fields` (fusion + audit `sensitive`) ; **UI détail** — feature `edition-champs-dossier` |
 | Liste / recherche / pagination dossiers | **Livré** — feature `pagination-dossiers` (API + Supervision) |
 | Index Liquibase `(tenant_id, dossier_type_code)` | **Déjà couvert** (vérifié 2026-08-25) — `idx_dossier_type_updated_at ON dossier (dossier_type_code, updated_at DESC)` existe depuis `008-dossier-list-indexes.yaml` ; `tenant_id` en tête serait redondant (cardinalité 1 par schéma, une instance = un tenant, décision n° 13) |
-| CHECK SQL `permission ∈ {VIEW,EDIT}` | Nice-to-have |
-| `Long version` / `Persistable` pour `isNew()` | Nice-to-have JPA |
+| CHECK SQL `permission ∈ {VIEW,EDIT}` | **Clos** — migration `014-dossier-type-acl-permission-check.yaml` (PR #72), livré hors cycle formel, jamais répercuté ici avant `assainissement-dette-technique` (TODO §49) |
+| `Long version` / `Persistable` pour `isNew()` | **Clos, vérifié non nécessaire** — `@Version private long` déjà sur `DossierJpaEntity`, comportement standard Spring Data JPA (`JpaMetamodelEntityInformation.isNew()`) suffit à distinguer persist/merge malgré l'UUID assigné côté application ; preuve documentée dans `docs/ai/design/2026-09-01-feature-assainissement-dette-technique.md` — `assainissement-dette-technique` (TODO §49) |
 | Smoke PostgreSQL réel | Hors CI (IT actuelles = H2 MODE=PostgreSQL) |
 | OpenAPI formel | **Clos** — `openapi-pagination-admin` (PR #58) : springdoc + YAML CI ; complété par `contrat-api-client` (PR #65, TODO §24 clos) : 6 listes non-admin paginées, golden OpenAPI régénéré. Reste hors scope assumé : codegen client (décision D-CODEGEN) |
 | Rétention / purge / `sensitive` | §21/§22 livrés ; §23 reste réduit (voir §3 ci-dessous) |
@@ -129,7 +129,7 @@ consomme `GET …/diagram`).
 | Item | Notes |
 |---|---|
 | Wrapper MDC async executor Flowable Community 8 | Hors V1 — fallback jobs applicatifs ; PI après start outbox |
-| `dossierId` MDC par item de purge | Use case domaine pur ; job enveloppe le batch `tenantId` |
+| `dossierId` MDC par item de purge | **Livré** — callback `Function<UUID, Runnable>` exposé par `ProcessPurgeOutboxUseCase`, `PurgeOutboxJob` ouvre/ferme `MdcScope.dossier(...)` par item sans dépendance MDC dans le domaine — `assainissement-dette-technique` (TODO §49) |
 | IT stdout ECS `tenantId` | Config `ecs` livrée ; smoke manuel |
 | OTel / Grafana-as-code / Alertmanager | Hors V1 |
 

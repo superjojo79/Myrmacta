@@ -66,7 +66,10 @@ graph TD
 **What are the major building blocks?**
 
 - `SchedulerConnector` (TRIGGER) — config schema `cronExpression` (STRING, requis) +
-  `dossierTypeCode` (STRING, requis, cohérent avec D-SCHEDULER-DOSSIER).
+  `processKey` (STRING, requis — **corrigé en Phase 4** : omis à tort du premier jet de ce design,
+  pourtant requis par `WorkflowTriggerEvent` et déjà présent dans `HttpRestConnector`/
+  `FlowableSignalConnector`) + `dossierTypeCode` (STRING, requis, cohérent avec
+  D-SCHEDULER-DOSSIER).
 - `SchedulerConnectorTriggerJob` (`@Scheduled`, infra) — liste les instances `scheduler` activées
   du tenant via `ConnectorInstanceRepository.listByTenantId` (**déjà** filtré
   `deletedAtIsNull` — confirmé en lisant `JpaConnectorInstanceRepositoryAdapter`, aucun filtre

@@ -119,3 +119,40 @@ description: Technical implementation notes, patterns, and code guidelines
    `OidcClientTestConfiguration` déjà présent dans le dépôt, importé dans `ConnectorExecuteApiTest`
    aux côtés de `OidcClientTestConfiguration`. Chemin de succès propre et déterministe, réutilisable
    pour tout futur test plein-contexte évitant un envoi d'e-mail réel.
+
+## Phase 7 — Revue d'implémentation (Check Implementation)
+
+**Relecture fichier par fichier contre le design, 2026-09-01.**
+
+- `SmtpConnector`/`DocumentStorageConnector`/`SchedulerConnector` : conformes au design (config
+  schema, capability, garde d'entrée). `SchedulerConnector.getConfigSchema()` expose bien
+  `cronExpression`+`processKey`+`dossierTypeCode`, tous requis — l'écart trouvé en Phase 4 (`processKey`
+  manquant du premier jet) est bien reflété dans le code livré.
+- `SchedulerConnectorTriggerJob.isDue` : vérifié contre `JpaConnectorInstanceRepositoryAdapter.
+  listByTenantId` — filtre bien `deletedAtIsNull` côté requête SQL (`findByTenantIdAndDeletedAtIsNullOrderByNameAsc`),
+  aucun filtre supplémentaire nécessaire côté job, confirmant la lecture faite en design (§Component
+  Breakdown). Un tir manqué n'est jamais rattrapé plus d'une fois par poll (`cron.next(lastFired)`
+  comparé à `now`) — cohérent avec "un dossier par tir", pas de rafale de rattrapage au redémarrage.
+- `connector_schedule_state` (migration 018) : clé naturelle `connector_instance_id` (PK+FK), pas de
+  `tenant_id` dupliqué — conforme à la décision de design (isolation portée par `connector_instance`).
+  Rollback `dropTable` explicite présent.
+- `ExecuteConnectorRequest`/`NoopEmailPortTestConfiguration` : écarts déjà documentés ci-dessus,
+  aucun autre écart de design trouvé en relecture.
+- Aucun changement à `ConnectorConfig` — les 3 connecteurs sont `@Component` et découverts
+  automatiquement par le scan `@PostConstruct` de `ConnectorRegistry` (vérifié : aucune référence à
+  `SmtpConnector`/`DocumentStorageConnector`/`SchedulerConnector` dans `ConnectorConfig.java`), donc
+  aucune tâche T1.4/T2.5/T3.7 « bean registration » distincte n'était réellement nécessaire au-delà de
+  l'annotation `@Component` déjà posée sur chaque classe.
+- `06-connecteurs.md`/`README.md` : diff relu ligne à ligne, plus aucune référence résiduelle à
+  `s3-minio`/« hors V1 » pour les 3 types livrés.
+
+**Alignement : conforme au design, aucune déviation majeure trouvée en Phase 7** au-delà des 2 déjà
+enregistrées en Phase 5 (DTO `ExecuteConnectorRequest`, `NoopEmailPortTestConfiguration`). Aucune
+faille de sécurité, aucun test manquant, aucune mise à jour de doc en retard identifiée.
+
+**Reste ouvert (hors périmètre Phase 7, prévu M5/T5.4 — Phase 9)** :
+- `CHANGELOG.md` — entrée à ajouter pour cette feature.
+- Confirmation finale de la sécurité du rollback de migration (018) en conditions réelles Postgres
+  (déjà vérifiée par construction — `dropTable` explicite — mais pas exercée en pratique dans cette
+  feature).
+- Régression frontend complète (`npm run test`/`npm run test:e2e`) — T5.3, pas encore lancée.

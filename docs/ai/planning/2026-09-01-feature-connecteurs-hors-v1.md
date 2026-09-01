@@ -93,10 +93,12 @@ description: Break down work into actionable tasks and estimate timeline
 
 ### M5 — Vérification globale + clôture (Phases 7–9)
 
-- [ ] T5.1 : Phase 7 (check implementation) — relecture fichier par fichier des 3 connecteurs +
+- [x] T5.1 : Phase 7 (check implementation) — relecture fichier par fichier des 3 connecteurs +
       job + repository d'état contre le design ; chercher les écarts réels (pattern historique du
       dépôt : la plupart des features précédentes trouvent 1-2 écarts réels à cette étape).
-      Dépendance : M1–M4.
+      Dépendance : M1–M4. **Fait** : aucun écart nouveau trouvé au-delà des 2 déjà enregistrés en
+      Phase 5 (DTO `ExecuteConnectorRequest`, `NoopEmailPortTestConfiguration`) — voir
+      implementation doc §Phase 7.
 - [ ] T5.2 : Phase 8 (couverture) — balayage Jacoco classe par classe sur les fichiers
       touchés/nouveaux, combler les lacunes réelles trouvées. Dépendance : T5.1. Validation :
       seuils bundle maintenus (LINE ≥ 85% / BRANCH ≥ 75%).

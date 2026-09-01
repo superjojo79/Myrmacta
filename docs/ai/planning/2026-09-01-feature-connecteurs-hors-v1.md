@@ -9,11 +9,11 @@ description: Break down work into actionable tasks and estimate timeline
 ## Milestones
 **What are the major checkpoints?**
 
-- [ ] M1 : `smtp` (SERVICE) — réutilise `EmailPort`, indépendant des autres milestones
-- [ ] M2 : `document-storage` (SERVICE) — réutilise `DocumentStoragePort`, indépendant
-- [ ] M3 : `scheduler` (TRIGGER) + `connector_schedule_state` + job de poll — le plus gros lot,
+- [x] M1 : `smtp` (SERVICE) — réutilise `EmailPort`, indépendant des autres milestones
+- [x] M2 : `document-storage` (SERVICE) — réutilise `DocumentStoragePort`, indépendant
+- [x] M3 : `scheduler` (TRIGGER) + `connector_schedule_state` + job de poll — le plus gros lot,
       seule migration Liquibase de la feature
-- [ ] M4 : Documentation — `06-connecteurs.md`, `README.md` (dépend M1–M3, comportement final requis)
+- [x] M4 : Documentation — `06-connecteurs.md`, `README.md` (dépend M1–M3, comportement final requis)
 - [ ] M5 : Vérification globale + clôture (Phases 7–9)
 
 ## Task Breakdown
@@ -21,74 +21,74 @@ description: Break down work into actionable tasks and estimate timeline
 
 ### M1 — `smtp` (SERVICE)
 
-- [ ] T1.1 : `SmtpConnector` — `implements ConnectorDefinition, ServiceConnector`, `getType() ==
+- [x] T1.1 : `SmtpConnector` — `implements ConnectorDefinition, ServiceConnector`, `getType() ==
       "smtp"`, `getConfigSchema()` vide (aucun champ requis), `validate(config)` no-op.
       Dépendance : aucune. Validation : T-SMTP-1.
-- [ ] T1.2 : `SmtpConnector.execute(instance, connectorInput)` — lit `to`/`subject`/`body`
+- [x] T1.2 : `SmtpConnector.execute(instance, connectorInput)` — lit `to`/`subject`/`body`
       (requis), garde `to` non-blank + contient « @ » (`IllegalArgumentException` sinon), appelle
       `EmailPort.send(to, subject, body)`, retourne `Map.of("sent", true)`. Dépendance : T1.1.
       Validation : T-SMTP-2 à T-SMTP-6.
-- [ ] T1.3 (régression anti-fuite) : `connectorResult` ne contient jamais `instance.config()` —
+- [x] T1.3 (régression anti-fuite) : `connectorResult` ne contient jamais `instance.config()` —
       même garantie que les autres connecteurs SERVICE. Dépendance : T1.2. Validation : T-SMTP-7.
-- [ ] T1.4 : `ConnectorConfig` — bean `SmtpConnector` (constructeur injecte `EmailPort`, déjà bean
+- [x] T1.4 : `ConnectorConfig` — bean `SmtpConnector` (constructeur injecte `EmailPort`, déjà bean
       Spring existant). Dépendance : T1.1–T1.2.
 
 ### M2 — `document-storage` (SERVICE)
 
-- [ ] T2.1 : `ConnectorProperties.DocumentStorage(long maxContentSize)` — nouveau sous-record,
+- [x] T2.1 : `ConnectorProperties.DocumentStorage(long maxContentSize)` — nouveau sous-record,
       défaut (ex. 5 Mo), même patron que `Webhook.maxBodyBytes`. Dépendance : aucune. Validation :
       T-PROP-1, T-PROP-2.
-- [ ] T2.2 : `DocumentStorageConnector` — `implements ConnectorDefinition, ServiceConnector`,
+- [x] T2.2 : `DocumentStorageConnector` — `implements ConnectorDefinition, ServiceConnector`,
       `getType() == "document-storage"`, `getConfigSchema()` vide. Dépendance : aucune. Validation :
       T-STORAGE-1.
-- [ ] T2.3 : `DocumentStorageConnector.execute` — lit `operation` (`STORE`/`RETRIEVE`/`EXISTS`/
+- [x] T2.3 : `DocumentStorageConnector.execute` — lit `operation` (`STORE`/`RETRIEVE`/`EXISTS`/
       `DELETE`, requis), `storageRef` (requis sauf `STORE`), `content`/`contentType` (requis pour
       `STORE`) ; route vers `DocumentStoragePort` correspondant, résultat en `connectorResult`
       (`storageRef` pour `STORE`, `content` base64 pour `RETRIEVE`, booléen pour `EXISTS`, ack pour
       `DELETE`). Dépendance : T2.2. Validation : T-STORAGE-2 à T-STORAGE-5, T-STORAGE-7, T-STORAGE-8.
-- [ ] T2.4 : garde de taille — rejette `STORE` si le contenu base64 décodé dépasse
+- [x] T2.4 : garde de taille — rejette `STORE` si le contenu base64 décodé dépasse
       `ConnectorProperties.DocumentStorage.maxContentSize`, avant tout appel au port. Dépendance :
       T2.1, T2.3. Validation : T-STORAGE-6.
-- [ ] T2.5 : `ConnectorConfig` — bean `DocumentStorageConnector` (injecte `DocumentStoragePort`,
+- [x] T2.5 : `ConnectorConfig` — bean `DocumentStorageConnector` (injecte `DocumentStoragePort`,
       `ConnectorProperties`). Dépendance : T2.1–T2.4.
 
 ### M3 — `scheduler` (TRIGGER) + état persistant + job de poll
 
-- [ ] T3.1 : migration Liquibase `018-connector-schedule-state.yaml` — table
+- [x] T3.1 : migration Liquibase `018-connector-schedule-state.yaml` — table
       `connector_schedule_state` (`connector_instance_id` UUID PK+FK → `connector_instance(id)`,
       `last_triggered_at` timestamp nullable), rollback `dropTable`. Dépendance : aucune.
-- [ ] T3.2 : `ConnectorScheduleStateRepository` (port `port.out`) — `findByConnectorInstanceId`,
+- [x] T3.2 : `ConnectorScheduleStateRepository` (port `port.out`) — `findByConnectorInstanceId`,
       `upsert(connectorInstanceId, triggeredAt)`. Dépendance : aucune (port peut précéder T3.1).
-- [ ] T3.3 : `JpaConnectorScheduleStateRepositoryAdapter` + entité JPA — implémente T3.2 contre la
+- [x] T3.3 : `JpaConnectorScheduleStateRepositoryAdapter` + entité JPA — implémente T3.2 contre la
       table de T3.1. Dépendance : T3.1, T3.2. Validation : T-STATE-1, T-STATE-2.
-- [ ] T3.4 : `SchedulerConnector` — `implements ConnectorDefinition, TriggerConnector`, `getType()
+- [x] T3.4 : `SchedulerConnector` — `implements ConnectorDefinition, TriggerConnector`, `getType()
       == "scheduler"`, `getConfigSchema()` = `cronExpression` + `processKey` + `dossierTypeCode`
       (tous requis — **`processKey` ajouté en Phase 4**, absent du design initial : `HttpRestConnector`
       et `FlowableSignalConnector` l'ont tous deux comme champ de config requis, indispensable pour
       construire un `WorkflowTriggerEvent`, qui le `requireNonNull`/garde blank), `validate(config)`
       rejette un cron invalide (`CronExpression.parse` échoue), `processKey` ou `dossierTypeCode`
       blank. Dépendance : aucune. Validation : T-SCHED-1 à T-SCHED-4.
-- [ ] T3.5 : `SchedulerConnector.onEvent(instance, rawPayload)` — retourne
+- [x] T3.5 : `SchedulerConnector.onEvent(instance, rawPayload)` — retourne
       `List.of(new WorkflowTriggerEvent(processKey, dossierTypeCode, dossierFields=Map.of(),
       variables=Map.of(), existingDossierReference=null))`, les deux valeurs lues depuis
       `instance.config()`. Dépendance : T3.4. Validation : T-SCHED-5.
-- [ ] T3.6 : `SchedulerConnectorTriggerJob` (`@Scheduled(fixedDelayString =
+- [x] T3.6 : `SchedulerConnectorTriggerJob` (`@Scheduled(fixedDelayString =
       "${app.connector.scheduler.poll-delay:1m}")`) — liste les instances `scheduler` activées via
       `ConnectorInstanceRepository.listByTenantId` (déjà filtré `deletedAtIsNull`), pour chacune :
       lit l'état via T3.2, évalue si due (`CronExpression`, absent = due), si oui appelle
       `ConnectorTriggerRuntime.onIncomingEvent(instance, Map.of())` puis `upsert`. Dépendance :
       T3.3, T3.4, T3.5. Validation : T-JOB-1 à T-JOB-6.
-- [ ] T3.7 : `ConnectorConfig` — bean `SchedulerConnector`. `ConnectorProperties` — nouveau
+- [x] T3.7 : `ConnectorConfig` — bean `SchedulerConnector`. `ConnectorProperties` — nouveau
       sous-champ `scheduler.pollDelay` si besoin de configuration au-delà du défaut YAML.
       Dépendance : T3.4–T3.6.
 
 ### M4 — Documentation
 
-- [ ] T4.1 : `06-connecteurs.md` — tableau catalogue : `scheduler`/`smtp` passent de `Non` à
+- [x] T4.1 : `06-connecteurs.md` — tableau catalogue : `scheduler`/`smtp` passent de `Non` à
       enregistrés ; `s3-minio` remplacé par `document-storage` avec description généralisée
       (réutilise `DocumentStoragePort`, pas de couplage S3). Dépendance : M1–M3 livrés
       (comportement final à décrire).
-- [ ] T4.2 : `README.md` § Système de connecteurs — retire les mentions `Non`/`s3-minio`.
+- [x] T4.2 : `README.md` § Système de connecteurs — retire les mentions `Non`/`s3-minio`.
       Dépendance : T4.1 (même passage de revue).
 
 ### M5 — Vérification globale + clôture (Phases 7–9)

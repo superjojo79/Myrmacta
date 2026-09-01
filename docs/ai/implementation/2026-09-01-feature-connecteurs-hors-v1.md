@@ -9,57 +9,113 @@ description: Technical implementation notes, patterns, and code guidelines
 ## Development Setup
 **How do we get started?**
 
-- Prerequisites and dependencies
-- Environment setup steps
-- Configuration needed
+- Aucun prérequis nouveau : `CronExpression` (Spring), `EmailPort`/`SmtpEmailAdapter` et
+  `DocumentStoragePort` sont déjà sur le classpath et déjà des beans configurés.
+- Migration Liquibase `018-connector-schedule-state.yaml` appliquée automatiquement au démarrage
+  (H2 en test, Postgres en tenant réel).
 
 ## Code Structure
 **How is the code organized?**
 
-- Directory structure
-- Module organization
-- Naming conventions
+- `infrastructure/connector/builtin/SmtpConnector.java` — `ConnectorDefinition` + `ServiceConnector`.
+- `infrastructure/connector/builtin/DocumentStorageConnector.java` — `ConnectorDefinition` +
+  `ServiceConnector`.
+- `infrastructure/connector/builtin/SchedulerConnector.java` — `ConnectorDefinition` +
+  `TriggerConnector`.
+- `infrastructure/connector/SchedulerConnectorTriggerJob.java` — job `@Scheduled`, placé directement
+  dans `infrastructure.connector` (pas `.builtin`) car c'est un appelant de
+  `ConnectorTriggerRuntime`, pas une définition de connecteur — même niveau que
+  `WebhookController`/`FlowableSignalEventListener`.
+- `domain/connector/port/out/ConnectorScheduleStateRepository.java` (port) +
+  `infrastructure/persistence/connector/{ConnectorScheduleStateJpaEntity,
+  SpringDataConnectorScheduleStateRepository, JpaConnectorScheduleStateRepositoryAdapter}.java`.
+- `infrastructure/config/ConnectorProperties.java` — 4ᵉ sous-record `DocumentStorage(long
+  maxContentSize)`, même patron que `Webhook.maxBodyBytes`.
 
 ## Implementation Notes
 **Key technical details to remember:**
 
 ### Core Features
-- Feature 1: Implementation approach
-- Feature 2: Implementation approach
-- Feature 3: Implementation approach
+- `smtp` : réutilise `EmailPort` tel quel (texte brut, aucune nouvelle config SMTP). Garde `to`
+  non-blank + contient « @ », `subject`/`body` requis, retourne `Map.of("sent", true)`.
+- `document-storage` : route sur `operation` (`STORE`/`RETRIEVE`/`EXISTS`/`DELETE`) vers
+  `DocumentStoragePort`. `STORE` décode le contenu base64, vérifie la taille contre
+  `ConnectorProperties.documentStorage().maxContentSize()` **avant** d'appeler le port.
+  Généralisation depuis le candidat initial « s3-minio » du catalogue — pas de couplage à MinIO/S3
+  (conforme `DEFERRED-FEATURES.md` §0).
+- `scheduler` : aucun changement à `ConnectorTriggerRuntimeImpl`/`ConnectorCatalog` — 3ᵉ appelant de
+  `onIncomingEvent`, après `WebhookController` (http-rest) et `FlowableSignalEventListener`
+  (flowable-signal). Le job (`SchedulerConnectorTriggerJob`) décide *quand* appeler ; toute la
+  mécanique dossier/outbox reste dans `ConnectorTriggerRuntimeImpl`, déjà testée une fois.
+- État de dernier tir : table `connector_schedule_state` à clé naturelle
+  (`connector_instance_id` PK+FK, pas d'UUID de substitution — relation strictement 1:1, même
+  patron que `bpmn_draft`). Upsert paresseux au premier tir plutôt que création à la création de
+  l'instance connecteur (aucun couplage à `ManageConnectorInstanceUseCaseImpl`).
 
 ### Patterns & Best Practices
-- Design patterns being used
-- Code style guidelines
-- Common utilities/helpers
+- Test « distinguishing failure » network-free pour prouver qu'un champ atteint `execute()` sans
+  dépendance externe réelle — deux variantes utilisées dans le dépôt : URL bloquée SSRF pour
+  `http-rest` (cycle précédent), bean de test `@Primary` no-op pour `smtp` (ce cycle, voir Design
+  Deviations).
+- Horloge explicite (`Instant now` en paramètre) pour `SchedulerConnectorTriggerJob.process`,
+  jamais `Instant.now()` global dans le corps testé — même patron que `PurgeOutboxJob`.
 
 ## Integration Points
 **How do pieces connect?**
 
-- API integration details
-- Database connections
-- Third-party service setup
+- `ConnectorConfig` (config Spring) enregistre les 3 nouveaux beans connecteur — aucun changement à
+  `ConnectorRegistry`/`ConnectorCatalog` eux-mêmes (mécanisme déjà générique par `getType()`).
+- `ExecuteConnectorRequest` (`infrastructure/web/connector/ConnectorApiDtos.java`) — DTO partagé par
+  `ConnectorExecuteController` (BFF) et `M2mConnectorExecuteController` (M2M) pour tous les
+  connecteurs SERVICE. Étendu de 7 à 13 champs (voir Design Deviations).
 
 ## Error Handling
 **How do we handle failures?**
 
-- Error handling strategy
-- Logging approach
-- Retry/fallback mechanisms
+- `smtp`/`document-storage` : `IllegalArgumentException` pour toute validation d'entrée manquante
+  (`to`/`subject`/`body`, `operation`/`storageRef`/`content`/`contentType` selon l'opération),
+  remontée en HTTP 400 par le mécanisme d'exception déjà existant des contrôleurs connecteur.
+  Aucun nouveau handler ajouté.
+- `scheduler` : `validate(config)` lève `ConnectorValidationException` si `cronExpression` n'est pas
+  parsable par `CronExpression.parse`, ou si `processKey`/`dossierTypeCode` est blank.
 
 ## Performance Considerations
 **How do we keep it fast?**
 
-- Optimization strategies
-- Caching approach
-- Query optimization
-- Resource management
+- Poll par défaut `1m` (`app.connector.scheduler.poll-delay`), configurable. `@Scheduled` Spring par
+  défaut n'exécute pas deux tirs du même job en parallèle (thread unique séquentiel) — pas de garde
+  supplémentaire ajoutée contre le double-tir concurrent, risque documenté en planning.
 
 ## Security Notes
 **What security measures are in place?**
 
-- Authentication/authorization
-- Input validation
-- Data encryption
-- Secrets management
+- `document-storage` : garde de taille (`maxContentSize`, défaut 5 Mo) avant tout appel au port,
+  empêche un contenu base64 surdimensionné d'atteindre le stockage.
+- Anti-fuite : `connectorResult` ne contient jamais `instance.config()` pour `smtp` (T-SMTP-7),
+  même garantie que les connecteurs SERVICE existants.
 
+## Design Deviations
+**Écarts trouvés en implémentation, non prévus par le design initial :**
+
+1. **`ExecuteConnectorRequest` incomplet pour les nouveaux types SERVICE** — le DTO partagé
+   (`ConnectorApiDtos.java`) ne portait que les champs `http-rest`/`flowable-signal`
+   (`signalName`, `processInstanceId`, `variables`, `url`, `method`, `body`, `headers`). Détecté par
+   un vrai rouge TDD en écrivant `ConnectorExecuteApiTest` pour `smtp`/`document-storage` (400 au
+   lieu de 200) avant de toucher le DTO. Corrigé en ajoutant 6 champs (`to`, `subject`, `operation`,
+   `storageRef`, `content`, `contentType`) et leur logique `toInputParams()` (même garde
+   blank-exclu que les champs existants). **C'est la deuxième occurrence du même écart** — le cycle
+   précédent (`connecteur-http-rest-service`) avait déjà dû étendre ce DTO pour `http-rest`. Ce DTO
+   « superset plat » est un point de couture récurrent à surveiller : chaque nouveau type SERVICE
+   avec des champs d'entrée propres devra probablement l'étendre à nouveau. Candidat à noter pour
+   une future checklist de revue de design (pas d'action prise au-delà de cette note).
+2. **Test SMTP full-context sans serveur SMTP réel** — `ConnectorExecuteApiTest` charge un contexte
+   Spring complet incluant un vrai `JavaMailSenderImpl` (aucun serveur SMTP de test type GreenMail
+   dans le dépôt). Un premier essai (attendre `5xxServerError`) a échoué : l'exception
+   (`MailSendException`/`ConnectException`) n'est pas convertie en réponse HTTP par
+   `ConnectorExceptionHandler` (aucun handler pour ce type) et remonte hors de
+   `mockMvc.perform()` lui-même (JUnit « Errors », pas « Failures », `.andExpect` jamais atteint).
+   Résolu par `src/test/java/com/flowforge/support/NoopEmailPortTestConfiguration.java` — un
+   `@TestConfiguration` avec `@Bean @Primary EmailPort emailPort()` no-op, même patron que
+   `OidcClientTestConfiguration` déjà présent dans le dépôt, importé dans `ConnectorExecuteApiTest`
+   aux côtés de `OidcClientTestConfiguration`. Chemin de succès propre et déterministe, réutilisable
+   pour tout futur test plein-contexte évitant un envoi d'e-mail réel.

@@ -87,9 +87,9 @@ aujourd'hui. Ne pas implémenter silencieusement un type « Non ».
 | Type | Cible | V1 livré | Description |
 |---|---|---|---|
 | `http-rest` | TRIGGER + SERVICE | **TRIGGER + SERVICE** (`HttpRestConnector`, capability `BOTH` — TODO §48) | Réception webhook entrant / appel REST sortant (GET/POST/PUT, en-tête `Authorization` optionnel via `authHeaderValue`) |
-| `scheduler` | TRIGGER | Non | Déclenchement planifié (cron) |
-| `smtp` | SERVICE | Non (l'email V1 passe par les notifications Spring Mail, pas ce type catalogue) | Envoi email |
-| `s3-minio` | SERVICE | Non (stockage via `DocumentStoragePort` S3/filesystem, pas un connecteur) | Lecture / écriture fichiers |
+| `scheduler` | TRIGGER | **Oui** (`SchedulerConnector` — TODO §50) | Déclenchement planifié (cron, config `cronExpression`/`processKey`/`dossierTypeCode`) ; un nouveau dossier est créé à chaque déclenchement — job dédié `SchedulerConnectorTriggerJob` (`app.connector.scheduler.poll-delay`, défaut 1 min) évalue le cron par instance via un état persistant (`connector_schedule_state`) |
+| `smtp` | SERVICE | **Oui** (`SmtpConnector` — TODO §50) | Envoi email ad hoc depuis un `serviceTask` (`to`/`subject`/`body` en `connectorInput`, texte brut), réutilise `EmailPort`/`SmtpEmailAdapter` déjà configuré — distinct du canal EMAIL des notifications (structuré/templé), pas une duplication |
+| `document-storage` | SERVICE | **Oui** (`DocumentStorageConnector` — TODO §50, généralisé depuis le candidat `s3-minio` du catalogue initial) | Lecture/écriture de contenu (`operation` STORE/RETRIEVE/EXISTS/DELETE en `connectorInput`) via `DocumentStoragePort` — agnostique S3/filesystem, pour du contenu **non lié** à un `Dossier`/`DossierElement` (déjà couvert par les pièces jointes) ; aucune purge automatique du `storageRef`, à la charge du process BPMN |
 | `flowable-signal` | TRIGGER + SERVICE | Oui (`FlowableSignalConnector`) | Émet ou reçoit un signal Flowable |
 
 ### Ajout d'un connecteur custom — classpath

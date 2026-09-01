@@ -1,0 +1,27 @@
+databaseChangeLog:
+  - changeSet:
+      id: 018-connector-schedule-state
+      author: flowforge
+      changes:
+        - createTable:
+            tableName: connector_schedule_state
+            columns:
+              - column:
+                  name: connector_instance_id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_connector_schedule_state
+                    nullable: false
+              - column:
+                  name: last_triggered_at
+                  type: timestamp with time zone
+        - addForeignKeyConstraint:
+            constraintName: fk_connector_schedule_state_instance
+            baseTableName: connector_schedule_state
+            baseColumnNames: connector_instance_id
+            referencedTableName: connector_instance
+            referencedColumnNames: id
+      rollback:
+        - dropTable:
+            tableName: connector_schedule_state

@@ -21,73 +21,81 @@ description: Define testing approach, test cases, and quality assurance
 **What individual components need testing?**
 
 ### SchedulerConnector
-- [ ] T-SCHED-1 : implémente `ConnectorDefinition`/`TriggerConnector`, `getType() == "scheduler"`
-- [ ] T-SCHED-2 : `getConfigSchema()` expose `cronExpression`/`dossierTypeCode` requis
-- [ ] T-SCHED-3 : `validate(config)` rejette un `cronExpression` invalide (format non-cron)
-- [ ] T-SCHED-4 : `validate(config)` rejette `dossierTypeCode` blank/absent
-- [ ] T-SCHED-5 : `onEvent(instance, rawPayload)` produit un `WorkflowTriggerEvent` avec
+- [x] T-SCHED-1 : implémente `ConnectorDefinition`/`TriggerConnector`, `getType() == "scheduler"`
+- [x] T-SCHED-2 : `getConfigSchema()` expose `cronExpression`/`dossierTypeCode` requis
+- [x] T-SCHED-3 : `validate(config)` rejette un `cronExpression` invalide (format non-cron)
+- [x] T-SCHED-4 : `validate(config)` rejette `dossierTypeCode` blank/absent
+- [x] T-SCHED-5 : `onEvent(instance, rawPayload)` produit un `WorkflowTriggerEvent` avec
       `dossierTypeCode` de la config, ignore `rawPayload` (même résultat `null`/`Map.of()`)
 
 ### SchedulerConnectorTriggerJob
-- [ ] T-JOB-1 : instance due (cron dû depuis `last_triggered_at`, ou jamais tirée) →
+- [x] T-JOB-1 : instance due (cron dû depuis `last_triggered_at`, ou jamais tirée) →
       `ConnectorTriggerRuntime.onIncomingEvent` appelé une fois
-- [ ] T-JOB-2 : instance non due → aucun appel `onIncomingEvent`
-- [ ] T-JOB-3 : instance désactivée (`enabled=false`) → jamais dans la liste évaluée (héritée de
+- [x] T-JOB-2 : instance non due → aucun appel `onIncomingEvent`
+- [x] T-JOB-3 : instance désactivée (`enabled=false`) → jamais dans la liste évaluée (héritée de
       `listByTenantId`, pas de filtre à écrire dans le job — non-régression, pas un nouveau test
       de filtre)
-- [ ] T-JOB-4 : premier tir (`connector_schedule_state` absent) → traité comme dû (pas de
+- [x] T-JOB-4 : premier tir (`connector_schedule_state` absent) → traité comme dû (pas de
       `NullPointerException`), upsert crée la ligne après le tir
-- [ ] T-JOB-5 : après un tir, `connector_schedule_state.last_triggered_at` mis à jour (upsert,
+- [x] T-JOB-5 : après un tir, `connector_schedule_state.last_triggered_at` mis à jour (upsert,
       pas un second insert)
-- [ ] T-JOB-6 : 2 instances `scheduler` distinctes dans le même tenant, l'une due l'autre non →
+- [x] T-JOB-6 : 2 instances `scheduler` distinctes dans le même tenant, l'une due l'autre non →
       seule celle due déclenche `onIncomingEvent`
 
 ### ConnectorScheduleStateRepository (adaptateur JPA)
-- [ ] T-STATE-1 : `findByConnectorInstanceId` — absent avant tout tir
-- [ ] T-STATE-2 : `upsert` — insert au premier appel, update (pas de conflit de clé) au second
+- [x] T-STATE-1 : `findByConnectorInstanceId` — absent avant tout tir
+- [x] T-STATE-2 : `upsert` — insert au premier appel, update (pas de conflit de clé) au second
 
 ### SmtpConnector
-- [ ] T-SMTP-1 : implémente `ConnectorDefinition`/`ServiceConnector`, `getType() == "smtp"`
-- [ ] T-SMTP-2 : `execute(instance, {to, subject, body})` appelle `EmailPort.send(to, subject,
+- [x] T-SMTP-1 : implémente `ConnectorDefinition`/`ServiceConnector`, `getType() == "smtp"`
+- [x] T-SMTP-2 : `execute(instance, {to, subject, body})` appelle `EmailPort.send(to, subject,
       body)` avec les arguments du `connectorInput`
-- [ ] T-SMTP-3 : `to` blank → `IllegalArgumentException`, `EmailPort.send` jamais appelé
-- [ ] T-SMTP-4 : `to` sans « @ » → `IllegalArgumentException`, `EmailPort.send` jamais appelé
-- [ ] T-SMTP-5 : `subject` absent → `IllegalArgumentException`
-- [ ] T-SMTP-6 : `body` absent → `IllegalArgumentException`
-- [ ] T-SMTP-7 (régression anti-fuite, même patron que `http-rest`) : `connectorResult` ne
+- [x] T-SMTP-3 : `to` blank → `IllegalArgumentException`, `EmailPort.send` jamais appelé
+- [x] T-SMTP-4 : `to` sans « @ » → `IllegalArgumentException`, `EmailPort.send` jamais appelé
+- [x] T-SMTP-5 : `subject` absent → `IllegalArgumentException`
+- [x] T-SMTP-6 : `body` absent → `IllegalArgumentException`
+- [x] T-SMTP-7 (régression anti-fuite, même patron que `http-rest`) : `connectorResult` ne
       contient jamais `instance.config()`
 
 ### DocumentStorageConnector
-- [ ] T-STORAGE-1 : implémente `ConnectorDefinition`/`ServiceConnector`,
+- [x] T-STORAGE-1 : implémente `ConnectorDefinition`/`ServiceConnector`,
       `getType() == "document-storage"`
-- [ ] T-STORAGE-2 : `operation=STORE` → `DocumentStoragePort.store` appelé, `storageRef` dans
+- [x] T-STORAGE-2 : `operation=STORE` → `DocumentStoragePort.store` appelé, `storageRef` dans
       `connectorResult`
-- [ ] T-STORAGE-3 : `operation=RETRIEVE` → `DocumentStoragePort.retrieve` appelé, contenu base64
+- [x] T-STORAGE-3 : `operation=RETRIEVE` → `DocumentStoragePort.retrieve` appelé, contenu base64
       dans `connectorResult`
-- [ ] T-STORAGE-4 : `operation=EXISTS` → délégation directe, booléen dans `connectorResult`
-- [ ] T-STORAGE-5 : `operation=DELETE` → délégation directe à `DocumentStoragePort.delete`
-- [ ] T-STORAGE-6 : `STORE` avec contenu base64 dépassant `maxContentSize` →
+- [x] T-STORAGE-4 : `operation=EXISTS` → délégation directe, booléen dans `connectorResult`
+- [x] T-STORAGE-5 : `operation=DELETE` → délégation directe à `DocumentStoragePort.delete`
+- [x] T-STORAGE-6 : `STORE` avec contenu base64 dépassant `maxContentSize` →
       `IllegalArgumentException`, `DocumentStoragePort.store` jamais appelé
-- [ ] T-STORAGE-7 : `operation` absent/invalide → `IllegalArgumentException`
-- [ ] T-STORAGE-8 : `RETRIEVE`/`EXISTS`/`DELETE` sans `storageRef` → `IllegalArgumentException`
+- [x] T-STORAGE-7 : `operation` absent/invalide → `IllegalArgumentException`
+- [x] T-STORAGE-8 : `RETRIEVE`/`EXISTS`/`DELETE` sans `storageRef` → `IllegalArgumentException`
       avant tout appel au port
 
 ### ConnectorProperties.DocumentStorage
-- [ ] T-PROP-1 : défaut `maxContentSize` appliqué si absent de la config
-- [ ] T-PROP-2 : override partiel — valeur fournie respectée, reste au défaut
+- [x] T-PROP-1 : défaut `maxContentSize` appliqué si absent de la config
+- [x] T-PROP-2 : override partiel — valeur fournie respectée, reste au défaut
 
 ## Integration Tests
 **How do we test component interactions?**
 
-- [ ] T-INT-1 : `scheduler` bout-en-bout — instance créée avec un cron, job de poll (horloge
-      contrôlée/injectée, pas un vrai sleep) → workflow démarré, `connector_schedule_state` à jour
-- [ ] T-INT-2 : `smtp`/`document-storage` via `${connectorServiceTask}` (JavaDelegate Flowable
-      réel), sur le modèle des tests d'intégration existants pour `http-rest`
-- [ ] T-INT-3 : `smtp`/`document-storage` via `ConnectorExecuteController`/
+- [x] T-INT-1 (**périmètre ajusté en implémentation** — voir Bug Tracking/note ci-dessous) :
+      `SchedulerConnectorTriggerJobTest` prouve déjà que le job appelle `ConnectorTriggerRuntime.
+      onIncomingEvent` avec la bonne instance au bon moment (T-JOB-1/4/5/6) — cohérent avec la
+      convention déjà établie du dépôt (`WebhookControllerTest`/`FlowableSignalEventListenerTest`)
+      où chaque connecteur teste sa propre frontière d'appel à `ConnectorTriggerRuntime`, sans
+      retester `ConnectorTriggerRuntimeImpl` (dossier + outbox) déjà couvert une fois dans
+      `ConnectorTriggerRuntimeImplTest`. Une IT bout-en-bout complète (workflow réellement démarré)
+      n'existe pour aucun connecteur existant — pas ajoutée ici pour rester cohérent.
+- [x] T-INT-2 (**satisfait sans nouveau test** — voir note) : `ConnectorServiceTaskTest` (JavaDelegate
+      Flowable) mocke déjà `ExecuteConnectorUseCase` de façon générique, agnostique du type de
+      connecteur — aucun test dédié par type n'existe pour `http-rest` non plus. Le mécanisme est
+      déjà prouvé, `smtp`/`document-storage` en héritent sans changement de code sur ce composant.
+- [x] T-INT-3 : `smtp`/`document-storage` via `ConnectorExecuteController`/
       `M2mConnectorExecuteController` (MockMvc, sur le modèle de `ConnectorExecuteApiTest`)
-- [ ] T-INT-4 (régression croisée) : `http-rest`/`flowable-signal` toujours fonctionnels après
+- [x] T-INT-4 (régression croisée) : `http-rest`/`flowable-signal` toujours fonctionnels après
       l'ajout des 3 nouveaux types — `ConnectorRegistry` sans conflit de type
-- [ ] T-INT-5 (régression globale) : `ArchitectureRulesTest` complet vert
+- [x] T-INT-5 (régression globale) : `ArchitectureRulesTest` complet vert
 
 ## End-to-End Tests
 **What user flows need validation?**

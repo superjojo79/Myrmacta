@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.flowforge.support.NoopEmailPortTestConfiguration;
 import com.flowforge.support.OidcClientTestConfiguration;
 import java.util.List;
 import java.util.UUID;
@@ -27,7 +28,7 @@ import tools.jackson.databind.json.JsonMapper;
  */
 @SpringBootTest(properties = "app.connector.crypto.master-key=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=")
 @AutoConfigureMockMvc
-@Import(OidcClientTestConfiguration.class)
+@Import({OidcClientTestConfiguration.class, NoopEmailPortTestConfiguration.class})
 class ConnectorExecuteApiTest {
 
     private static final String TENANT_ID = "tenant_dev";
@@ -156,6 +157,96 @@ class ConnectorExecuteApiTest {
     }
 
     @Test
+    void execute_bffSmtpInstance_validInput_returns200AndSendsEmail() throws Exception {
+        String id = createSmtpConnector();
+
+        mockMvc.perform(post("/api/connectors/{id}/execute", id)
+                        .with(oidcUser("exec-admin", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"to": "user@example.com", "subject": "Subject", "body": "Body"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sent").value(true));
+    }
+
+    @Test
+    void execute_m2mSmtpInstance_validInput_returns200() throws Exception {
+        String id = createSmtpConnector();
+
+        mockMvc.perform(post("/api/m2m/connectors/{id}/execute", id)
+                        .with(m2mJwt(TENANT_ID, "API_SERVICE"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"to": "user@example.com", "subject": "Subject", "body": "Body"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sent").value(true));
+    }
+
+    @Test
+    void execute_bffSmtpInstance_missingTo_returns400WithToRequiredDetail() throws Exception {
+        String id = createSmtpConnector();
+
+        mockMvc.perform(post("/api/connectors/{id}/execute", id)
+                        .with(oidcUser("exec-admin", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"subject": "Subject", "body": "Body"}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("to")));
+    }
+
+    @Test
+    void execute_bffDocumentStorageInstance_store_returns200WithStorageRef() throws Exception {
+        String id = createDocumentStorageConnector();
+        String content = java.util.Base64.getEncoder()
+                .encodeToString("hello".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+        mockMvc.perform(post("/api/connectors/{id}/execute", id)
+                        .with(oidcUser("exec-admin", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"operation": "STORE", "content": "%s", "contentType": "text/plain"}
+                                """.formatted(content)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.storageRef").isNotEmpty());
+    }
+
+    @Test
+    void execute_m2mDocumentStorageInstance_store_returns200() throws Exception {
+        String id = createDocumentStorageConnector();
+        String content = java.util.Base64.getEncoder()
+                .encodeToString("hello".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+        mockMvc.perform(post("/api/m2m/connectors/{id}/execute", id)
+                        .with(m2mJwt(TENANT_ID, "API_SERVICE"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"operation": "STORE", "content": "%s", "contentType": "text/plain"}
+                                """.formatted(content)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.storageRef").isNotEmpty());
+    }
+
+    @Test
+    void execute_bffDocumentStorageInstance_missingOperation_returns400WithOperationRequiredDetail() throws Exception {
+        String id = createDocumentStorageConnector();
+
+        mockMvc.perform(post("/api/connectors/{id}/execute", id)
+                        .with(oidcUser("exec-admin", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("operation")));
+    }
+
+    @Test
     void execute_bffDisabledConnector_returns404() throws Exception {
         String id = createSignalConnector();
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
@@ -235,6 +326,50 @@ class ConnectorExecuteApiTest {
                                     "processKey": "smokeProcess",
                                     "dossierTypeCode": "CLAIM"
                                   }
+                                }
+                                """.formatted(name)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        return JsonMapper.builder().build()
+                .readTree(result.getResponse().getContentAsString())
+                .get("id")
+                .asText();
+    }
+
+    private String createSmtpConnector() throws Exception {
+        String name = "SMTP exec " + UUID.randomUUID();
+        MvcResult result = mockMvc.perform(post("/api/connectors")
+                        .with(oidcUser("seed-admin", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "%s",
+                                  "connectorType": "smtp",
+                                  "enabled": true,
+                                  "config": {}
+                                }
+                                """.formatted(name)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        return JsonMapper.builder().build()
+                .readTree(result.getResponse().getContentAsString())
+                .get("id")
+                .asText();
+    }
+
+    private String createDocumentStorageConnector() throws Exception {
+        String name = "Document storage exec " + UUID.randomUUID();
+        MvcResult result = mockMvc.perform(post("/api/connectors")
+                        .with(oidcUser("seed-admin", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "%s",
+                                  "connectorType": "document-storage",
+                                  "enabled": true,
+                                  "config": {}
                                 }
                                 """.formatted(name)))
                 .andExpect(status().isCreated())

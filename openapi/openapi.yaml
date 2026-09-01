@@ -1969,6 +1969,18 @@ components:
         headers:
           type: object
           additionalProperties: {}
+        to:
+          type: string
+        subject:
+          type: string
+        operation:
+          type: string
+        storageRef:
+          type: string
+        content:
+          type: string
+        contentType:
+          type: string
     CreateDossierRequest:
       type: object
       properties:

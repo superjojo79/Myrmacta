@@ -6,8 +6,9 @@ description: Define the technical architecture, components, and data models
 
 # System Design & Architecture
 
-> Première passe (Phase 1), à affiner en Phase 3 (`dev-design`) — notamment le schéma exact de
-> `connector_schedule_state` et la confirmation "backend-only".
+> Phase 3 (`dev-design`) close — schéma de `connector_schedule_state`, noms de classes et
+> mécanique d'upsert résolus par exploration de code (précédents `bpmn_draft`,
+> `listByTenantId`), voir Design Decisions.
 
 ## Architecture Overview
 **What is the high-level system structure?**
@@ -41,8 +42,16 @@ graph TD
 ## Data Models
 **What data do we need to manage?**
 
-- Nouvelle table `connector_schedule_state` (migration Liquibase) : `connector_instance_id` (FK,
-  unique), `last_triggered_at` (Instant, nullable au premier tir).
+- Nouvelle table `connector_schedule_state` (migration Liquibase `018-connector-schedule-state.
+  yaml`, suite de `017-mcp-audit-authors.yaml`) — **clé naturelle, pas de surrogate UUID**, même
+  patron que `bpmn_draft` (013, clé composite `tenant_id`+`process_definition_key`) plutôt qu'un
+  `id` séparé :
+  ```yaml
+  connector_instance_id: uuid, PK, FK → connector_instance(id)
+  last_triggered_at: timestamp with time zone, nullable (absent avant le premier tir)
+  ```
+  Pas de colonne `tenant_id` sur cette table : l'isolation tenant est déjà portée par
+  `connector_instance` (1:1 via la FK), la dupliquer ici serait redondant.
 - Aucun changement de schéma pour `connector_instance`/`ConnectorInstanceData`.
 
 ## API Design
@@ -59,9 +68,16 @@ graph TD
 - `SchedulerConnector` (TRIGGER) — config schema `cronExpression` (STRING, requis) +
   `dossierTypeCode` (STRING, requis, cohérent avec D-SCHEDULER-DOSSIER).
 - `SchedulerConnectorTriggerJob` (`@Scheduled`, infra) — liste les instances `scheduler` activées
-  du tenant, évalue `CronExpression` contre `last_triggered_at`, appelle
-  `ConnectorTriggerRuntime.onIncomingEvent` si dû, met à jour `connector_schedule_state`.
-- `ConnectorScheduleStateRepository` (port) + adaptateur JPA.
+  du tenant via `ConnectorInstanceRepository.listByTenantId` (**déjà** filtré
+  `deletedAtIsNull` — confirmé en lisant `JpaConnectorInstanceRepositoryAdapter`, aucun filtre
+  supplémentaire à écrire pour exclure les instances supprimées), évalue `CronExpression` contre
+  `last_triggered_at`, appelle `ConnectorTriggerRuntime.onIncomingEvent` si dû, puis **upsert**
+  `connector_schedule_state` (créé au premier tir, mis à jour ensuite — pas de création lors de
+  la création de l'instance connecteur, `ManageConnectorInstanceUseCaseImpl` reste totalement
+  inchangé, aucun couplage nouveau).
+- `ConnectorScheduleStateRepository` (port `port.out`, méthodes `findByConnectorInstanceId`,
+  `upsert(connectorInstanceId, triggeredAt)`) + adaptateur JPA
+  (`JpaConnectorScheduleStateRepositoryAdapter`).
 - `SmtpConnector` (SERVICE) — pas de config schema requis, injecte `EmailPort`.
 - `DocumentStorageConnector` (SERVICE) — pas de config schema requis, injecte
   `DocumentStoragePort` + `ConnectorProperties.DocumentStorage.maxContentSize`.
@@ -83,6 +99,36 @@ graph TD
 - **D-STORAGE-REF-LIFECYCLE** : documenté comme choix assumé plutôt qu'implémenté — pas de nouveau
   mécanisme de purge sans besoin identifié (cohérent avec le principe du dépôt de ne pas construire
   au-delà du besoin confirmé).
+- **Schéma `connector_schedule_state` — clé naturelle `connector_instance_id`, pas de surrogate
+  `id`** (résolu en Phase 3) : suit le précédent `bpmn_draft` (013) plutôt que le patron
+  `connector_instance` (UUID généré côté application) — ici la relation est strictement 1:1 avec
+  `connector_instance`, une clé naturelle évite une colonne et un index inutiles.
+- **Upsert au premier tir plutôt que création à la création de l'instance** (résolu en Phase 3) :
+  garde `ManageConnectorInstanceUseCaseImpl`/`ConnectorInstanceRepository.save()` totalement
+  inchangés — le concept de planification reste isolé dans le job/port dédiés, cohérent avec la
+  décision D-SCHEDULER-LASTFIRED de ne pas coupler `ConnectorInstanceData`.
+- **Noms de classes confirmés** (résolu en Phase 3, pas de véritable alternative en jeu) :
+  `SchedulerConnector`, `SmtpConnector`, `DocumentStorageConnector`,
+  `SchedulerConnectorTriggerJob`, `ConnectorScheduleStateRepository`/
+  `JpaConnectorScheduleStateRepositoryAdapter` — cohérents avec les conventions de nommage
+  `*Connector`/`*Job`/`*Repository`/`Jpa*RepositoryAdapter` déjà établies dans le dépôt.
+- **Nommage du lot confirmé** : `connecteurs-hors-v1` (déjà utilisé pour les docs/analysis doc,
+  aucune alternative proposée).
+
+## Requirements Coverage (Phase 3 cross-check)
+
+| Requirement (doc requirements) | Couverture design |
+|---|---|
+| D-SCHEDULER-LASTFIRED (table dédiée) | §Data Models, §Component Breakdown — schéma résolu |
+| D-SCHEDULER-DOSSIER (un dossier par tir) | §Component Breakdown — `dossierTypeCode` requis en config |
+| D-SCHEDULER-POLL (1 min configurable) | À câbler via `ConnectorProperties`/`application.yml`, cf. patron `PurgeOutboxJob` — trivial, pas de section dédiée nécessaire |
+| D-SMTP-HTML / D-SMTP-VALIDATION | §Component Breakdown — `SmtpConnector` |
+| D-STORAGE-SIZE-LIMIT | §Component Breakdown — `ConnectorProperties.DocumentStorage` |
+| D-STORAGE-REF-LIFECYCLE | §Design Decisions — choix documenté, pas de nouveau composant |
+| Backend seul, aucun fichier `frontend/**` | Confirmé Phase 2 — aucun composant frontend dans Component Breakdown |
+| Aucune modification `ConnectorTriggerRuntimeImpl`/`ConnectorCatalog`/`ConnectorRegistry` | §Architecture Overview |
+
+Aucun goal/user story/contrainte des requirements sans couverture design identifiée.
 
 ## Non-Functional Requirements
 **How should the system perform?**

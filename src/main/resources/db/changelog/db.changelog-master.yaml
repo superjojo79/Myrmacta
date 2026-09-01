@@ -33,3 +33,5 @@ databaseChangeLog:
       file: db/changelog/changes/016-reporting-sla.yaml
   - include:
       file: db/changelog/changes/017-mcp-audit-authors.yaml
+  - include:
+      file: db/changelog/changes/018-connector-schedule-state.yaml

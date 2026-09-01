@@ -23,7 +23,13 @@ record ExecuteConnectorRequest(
         String url,
         String method,
         Object body,
-        Map<String, Object> headers) {
+        Map<String, Object> headers,
+        String to,
+        String subject,
+        String operation,
+        String storageRef,
+        String content,
+        String contentType) {
 
     Map<String, Object> toInputParams() {
         Map<String, Object> params = new LinkedHashMap<>();
@@ -47,6 +53,24 @@ record ExecuteConnectorRequest(
         }
         if (headers != null) {
             params.put("headers", headers);
+        }
+        if (to != null && !to.isBlank()) {
+            params.put("to", to);
+        }
+        if (subject != null && !subject.isBlank()) {
+            params.put("subject", subject);
+        }
+        if (operation != null && !operation.isBlank()) {
+            params.put("operation", operation);
+        }
+        if (storageRef != null && !storageRef.isBlank()) {
+            params.put("storageRef", storageRef);
+        }
+        if (content != null && !content.isBlank()) {
+            params.put("content", content);
+        }
+        if (contentType != null && !contentType.isBlank()) {
+            params.put("contentType", contentType);
         }
         return params;
     }

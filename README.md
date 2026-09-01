@@ -36,7 +36,7 @@ L'idée centrale : un dossier métier suit un workflow adapté à son type, déc
 | Modéliser un processus sans coder      | Éditeur BPMN 2.0 visuel intégré (`bpmn-js`, écran admin FlowForge) |
 | Gérer des dossiers structurés          | Entité dossier avec signalétique et champs dynamiques par type |
 | Produire des documents automatiquement | Génération PDF à partir de templates Thymeleaf versionnés    |
-| Intégrer des systèmes existants        | Système de connecteurs extensible (V1 : webhook REST trigger, signal Flowable ; cible : Kafka, scheduler, ERP…) |
+| Intégrer des systèmes existants        | Système de connecteurs extensible (V1 : REST/webhook, signal Flowable, cron, email ad hoc, stockage fichier ; cible : Kafka, import batch, ERP…) |
 | Adapter à chaque client                | Architecture multi-tenant — schéma de données isolé par organisation |
 | Intégrer les outils noCode             | Webhooks sortants compatibles Make, n8n, Zapier              |
 | Suivre l'avancement en temps réel      | Visualisation BPMN avec coloration des étapes + notifications navigateur |
@@ -55,7 +55,7 @@ Orchestration des flux métier via **Flowable** — standard industriel ouvert (
 
 ### Système de connecteurs
 
-Architecture extensible permettant d'intégrer n'importe quelle source ou destination. Un connecteur peut jouer le rôle de **trigger** (déclenche un workflow sur événement entrant) ou de **service** (exécute un traitement dans le workflow). En V1 le catalogue livré est `http-rest` (**TRIGGER + SERVICE**) et `flowable-signal` (TRIGGER + SERVICE). Les types cible `scheduler`, `smtp`, `s3-minio`, Kafka, import batch, ERP restent hors V1 ; des connecteurs custom peuvent être ajoutés au classpath sans modifier le core.
+Architecture extensible permettant d'intégrer n'importe quelle source ou destination. Un connecteur peut jouer le rôle de **trigger** (déclenche un workflow sur événement entrant) ou de **service** (exécute un traitement dans le workflow). En V1 le catalogue livré est `http-rest` (**TRIGGER + SERVICE**), `flowable-signal` (TRIGGER + SERVICE), `scheduler` (TRIGGER, déclenchement planifié par cron), `smtp` (SERVICE, envoi email ad hoc depuis un `serviceTask`) et `document-storage` (SERVICE, lecture/écriture de contenu hors dossier via `DocumentStoragePort`). Les types cible Kafka, import batch, ERP restent hors V1 ; des connecteurs custom peuvent être ajoutés au classpath sans modifier le core.
 
 ### Génération de documents
 

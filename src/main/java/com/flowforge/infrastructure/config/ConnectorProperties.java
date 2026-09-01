@@ -4,7 +4,7 @@ import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "app.connector")
-public record ConnectorProperties(Crypto crypto, Webhook webhook, Http http) {
+public record ConnectorProperties(Crypto crypto, Webhook webhook, Http http, DocumentStorage documentStorage) {
 
     public ConnectorProperties {
         if (crypto == null) {
@@ -15,6 +15,9 @@ public record ConnectorProperties(Crypto crypto, Webhook webhook, Http http) {
         }
         if (http == null) {
             http = new Http(Duration.ofSeconds(5), Duration.ofSeconds(5));
+        }
+        if (documentStorage == null) {
+            documentStorage = new DocumentStorage(5_242_880L);
         }
     }
 
@@ -41,6 +44,14 @@ public record ConnectorProperties(Crypto crypto, Webhook webhook, Http http) {
             }
             if (requestTimeout == null) {
                 requestTimeout = Duration.ofSeconds(5);
+            }
+        }
+    }
+
+    public record DocumentStorage(long maxContentSize) {
+        public DocumentStorage {
+            if (maxContentSize <= 0) {
+                maxContentSize = 5_242_880L;
             }
         }
     }

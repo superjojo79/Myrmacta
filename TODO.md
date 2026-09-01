@@ -761,7 +761,8 @@ zéro fichier `frontend/**` touché, régression complète). Doc à jour :
 
 ### [x] 49. Assainissement de la dette technique — reliquats `DEFERRED-FEATURES.md` §1
 
-**Clos** (2026-09-01, `assainissement-dette-technique`, PR (à ouvrir)) — cycle `dev-lifecycle`
+**Clos** (2026-09-01, `assainissement-dette-technique`,
+[PR #97](https://github.com/superjojo79/FlowForge/pull/97)) — cycle `dev-lifecycle`
 complet (Phases 1-9). Vérification item par item contre le code réel (2026-08-31) : **2 items
 étaient déjà clos, jamais répercutés dans le doc** (`CHECK SQL dossier_type_acl.permission` —
 migration `014` déjà livrée, PR #72 ; validation blank `tenantId` — `TenantProperties.id` porte

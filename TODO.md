@@ -812,6 +812,54 @@ en régression, zéro fichier `frontend/**` touché.
 
 ---
 
+### [ ] 50. Nouveaux connecteurs hors V1 — `scheduler`, `smtp`, `document-storage`
+
+**Constat :** `06-connecteurs.md` catalogue 5 types de connecteurs cibles, seuls `http-rest` et
+`flowable-signal` sont enregistrés dans `ConnectorRegistry` aujourd'hui. Les 3 restants
+(`scheduler`, `smtp`, `s3-minio`) étaient explicitement hors V1 à chaque cycle précédent. Choisi
+comme prochaine feature (2026-09-01) après épuisement complet de TODO.md (49/49), de la revue
+sécurité (§40–46) et du sweep de dette technique (§49), parmi deux pistes proposées à
+l'utilisateur (l'autre — outillage provisioning tenant — reste en réserve). Périmètre précisé par
+l'utilisateur : les 3 connecteurs, avec `s3-minio` **généralisé** en `document-storage` (réutilise
+le port `DocumentStoragePort` déjà agnostique S3/filesystem, cohérent avec le principe
+« ne pas coupler à MinIO » de `DEFERRED-FEATURES.md` §0) plutôt que couplé à un client S3 direct.
+
+**Mécanismes identifiés en analyse (pas supposés, vérifiés contre le code) :**
+
+- `scheduler` (TRIGGER) réutilise le pipeline trigger générique existant
+  (`ConnectorTriggerRuntimeImpl.onIncomingEvent`, déjà découplé de HTTP) — seule pièce nouvelle :
+  un job `@Scheduled` qui décide quand l'appeler pour chaque instance selon son `cronExpression`
+  (`org.springframework.scheduling.support.CronExpression`, déjà sur le classpath).
+- `smtp` (SERVICE) réutilise le port `EmailPort`/`SmtpEmailAdapter` déjà livré avec `notifications`
+  — envoi direct ad hoc depuis un `serviceTask`, distinct du pipeline notification
+  structuré/templé/outbox existant (pas une duplication).
+- `document-storage` (SERVICE) réutilise `DocumentStoragePort` (`store`/`retrieve`/`exists`/
+  `delete`) pour du contenu non lié à un `Dossier`/`DossierElement` (déjà couvert par les pièces
+  jointes existantes).
+
+**Points ouverts (à trancher en phase requirements/design, pas silencieusement) :**
+
+1. **D-SCHEDULER-LASTFIRED** — mémorisation du dernier déclenchement par instance (nouveau champ
+   persisté, table dédiée, ou tir manqué accepté au redémarrage).
+2. **D-SCHEDULER-DOSSIER** — un dossier créé par tir est le comportement actuel du pipeline trigger
+   partagé (`resolveOrCreateDossier` exige `dossierTypeCode`/`existingDossierReference`) ; faut-il
+   un mode « sans dossier », potentiellement un changement partagé avec les autres connecteurs ?
+3. **D-SCHEDULER-POLL** — fréquence du job de poll.
+4. **D-SMTP-HTML** — corps HTML ou texte brut seul (limite actuelle d'`EmailPort`).
+5. **D-SMTP-VALIDATION** — validation du format `to`.
+6. **D-STORAGE-SIZE-LIMIT** — limite de taille du contenu base64 en variable de process Flowable.
+7. **D-STORAGE-REF-LIFECYCLE** — confirmer l'absence de rattachement/purge automatique du
+   `storageRef` comme un choix assumé.
+
+**À produire :** décisions ci-dessus, puis les 3 connecteurs + job scheduler + doc catalogue à jour.
+
+**Impacte :** `ConnectorRegistry`, `06-connecteurs.md`, `README.md`, nouveaux fichiers
+`infrastructure/connector/builtin/{SchedulerConnector,SmtpConnector,DocumentStorageConnector}.java`.
+
+**Détail :** [20-connecteurs-hors-v1.md](analysis%20doc/20-connecteurs-hors-v1.md).
+
+---
+
 ## Alignement post-implémentation et sécurité (2026-08-25)
 
 Points identifiés par

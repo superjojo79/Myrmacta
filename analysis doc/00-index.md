@@ -29,11 +29,12 @@
 | 12 | Autorisation (RBAC) & conformité des données | [12-autorisation-conformite.md](12-autorisation-conformite.md) |
 | 13 | Modèle physique de données consolidé | [13-modele-physique.md](13-modele-physique.md) |
 | 14 | Construction/édition de diagrammes BPMN | [14-edition-bpmn.md](14-edition-bpmn.md) |
-| 15 | Serveur MCP (Model Context Protocol) — Phase 4 planned | [15-serveur-mcp.md](15-serveur-mcp.md) |
+| 15 | Serveur MCP (Model Context Protocol) — **livré** (PR #82) | [15-serveur-mcp.md](15-serveur-mcp.md) |
 | 16 | Reporting & SLA — **livré** (PR #80) | [16-reporting-sla.md](16-reporting-sla.md) |
-| 17 | Édition du schéma des champs dynamiques (admin `DossierType`) — analyse initiale | [17-schema-champs-dynamiques.md](17-schema-champs-dynamiques.md) |
+| 17 | Édition du schéma des champs dynamiques (admin `DossierType`) — **livré** (TODO §47, PR #87) | [17-schema-champs-dynamiques.md](17-schema-champs-dynamiques.md) |
 | 18 | Activation du connecteur `http-rest` en rôle SERVICE — **livré** (TODO §48, PR #95) | [18-connecteur-http-rest-service.md](18-connecteur-http-rest-service.md) |
-| 19 | Assainissement de la dette technique (reliquats `DEFERRED-FEATURES.md` §1) — **livré** (TODO §49) | [19-assainissement-dette-technique.md](19-assainissement-dette-technique.md) |
+| 19 | Assainissement de la dette technique (reliquats `DEFERRED-FEATURES.md` §1) — **livré** (TODO §49, PR #97) | [19-assainissement-dette-technique.md](19-assainissement-dette-technique.md) |
+| 20 | Nouveaux connecteurs hors V1 (`scheduler`, `smtp`, `document-storage`) — analyse initiale | [20-connecteurs-hors-v1.md](20-connecteurs-hors-v1.md) |
 
 > Pour concevoir concrètement un diagramme BPMN pour FlowForge (conventions, référence des
 > `serviceTask` disponibles, champs dynamiques, connecteurs, intervenants, génération de

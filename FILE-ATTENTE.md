@@ -10,11 +10,19 @@
 >   (rétention / purge / sensible — **livré**) ; revue post-implémentation 2026-08-25 :
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
-> **Dernière mise à jour :** 2026-09-01 — TODO §49 **clos** : `assainissement-dette-technique`
-> **livrée et mergée sur `main`**
-> ([PR #97](https://github.com/superjojo79/FlowForge/pull/97)), cycle `dev-lifecycle` Phases 1–9
-> complet dans la même session (voir *Récemment livré*). **File d'attente de nouveau vide** —
-> aucune feature en cours, prochaine feature à identifier lors d'une prochaine analyse.
+> **Dernière mise à jour :** 2026-09-01 — TODO §50 **ouvert** : nouveaux connecteurs hors V1
+> (`scheduler`, `smtp`, `document-storage`), analyse initiale
+> [20-connecteurs-hors-v1.md](analysis%20doc/20-connecteurs-hors-v1.md) créée — `s3-minio`
+> généralisé en `document-storage` (réutilise `DocumentStoragePort`, pas de couplage S3 direct,
+> demande explicite utilisateur). Choisie comme prochaine feature après nouvel épuisement du
+> backlog (TODO.md 49/49, revue sécurité §40–46 close, `assainissement-dette-technique` TODO §49
+> livrée [PR #97](https://github.com/superjojo79/FlowForge/pull/97)) parmi deux pistes proposées
+> à l'utilisateur (l'autre — outillage provisioning tenant — reste en réserve). Cycle
+> `dev-lifecycle` pas encore démarré.
+>
+> TODO §49 (`assainissement-dette-technique`) **clos**, cycle `dev-lifecycle` Phases 1–9 complet,
+> **mergée sur `main`** ([PR #97](https://github.com/superjojo79/FlowForge/pull/97),
+> [PR #98](https://github.com/superjojo79/FlowForge/pull/98) resync doc).
 >
 > TODO §46 (ArchUnit `application`) **clos** hors cycle `dev-lifecycle`
 > formel : port `WorkflowStartConfirmationPort` extrait, règle ArchUnit
@@ -94,10 +102,14 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 (ArchUnit `application`), §48 (`http-rest` SERVICE) et §49 (assainissement dette technique)
 **clos**.
 
-**File vide** — aucune feature en cours, prochaine feature à identifier lors d'une prochaine
-analyse (`lance une analyse pour identifier la prochaine feature`).
+| Priorité | Item | Notes |
+|---|---|---|
+| **Prochain** | Nouveaux connecteurs hors V1 (nom provisoire `connecteurs-hors-v1`), TODO §50 | Analyse initiale [20-connecteurs-hors-v1.md](analysis%20doc/20-connecteurs-hors-v1.md) — 3 connecteurs (`scheduler` TRIGGER, `smtp` SERVICE, `document-storage` SERVICE généralisé depuis `s3-minio`) ; 7 décisions ouvertes (D-SCHEDULER-LASTFIRED/DOSSIER/POLL, D-SMTP-HTML/VALIDATION, D-STORAGE-SIZE-LIMIT/REF-LIFECYCLE) à trancher en Phase 1/2 `dev-lifecycle` avant tout code |
 
-Détail : [TODO.md](TODO.md) §40–46, §48–49,
+En réserve (non retenu, aucune analyse écrite) : outillage provisioning tenant (schéma/instance/
+proxy/secrets, `DEFERRED-FEATURES.md` §1.2/§4).
+
+Détail : [TODO.md](TODO.md) §40–46, §48–50,
 [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md).
 
 ## En revue

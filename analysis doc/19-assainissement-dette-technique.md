@@ -1,8 +1,10 @@
 # Assainissement de la dette technique — reliquats `DEFERRED-FEATURES.md` §1
 
-> **Statut : première analyse fonctionnelle, aucune décision technique tranchée.** À affiner en
-> phase `dev-lifecycle` (requirements → design) avant tout code — voir « Points ouverts » en fin de
-> document. Choisi comme prochaine feature le 2026-08-31 : le backlog V1 (analyses 01–18 + tous les
+> **Statut : livré** (2026-09-01, TODO §49, cycle `dev-lifecycle` complet Phases 1-9). Les 3
+> décisions listées en « Points ouverts » ont été tranchées via `AskUserQuestion` (options
+> recommandées) — voir `docs/ai/requirements/2026-09-01-feature-assainissement-dette-technique.md`
+> et `docs/ai/design/2026-09-01-feature-assainissement-dette-technique.md` pour le détail. Choisi
+> comme prochaine feature le 2026-08-31 : le backlog V1 (analyses 01–18 + tous les
 > points `TODO.md`, y compris §48 `connecteur-http-rest-service` désormais livré) est de nouveau
 > entièrement épuisé, aucun autre skeleton pré-positionné n'existe dans le code (recherche
 > exhaustive de `skeleton`/`non enregistré`/références `TODO §` dans `src/main/java`). Retenu parmi

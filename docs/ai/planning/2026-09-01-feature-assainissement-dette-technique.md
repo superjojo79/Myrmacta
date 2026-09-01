@@ -14,7 +14,7 @@ description: Break down work into actionable tasks and estimate timeline
       seulement pour l'ordre de commit, aucune dépendance technique réelle)
 - [x] M3 : Nettoyage documentaire `DEFERRED-FEATURES.md` (dépend M1–M2 livrés, D-PERSISTABLE-CONFIRM
       déjà fermé par preuve documentée en Phase 3 — pas de tâche de code)
-- [ ] M4 : Vérification globale + clôture (Phases 7–9)
+- [x] M4 : Vérification globale + clôture (Phases 7–9)
 
 ## Task Breakdown
 **What specific work needs to be done?**
@@ -85,7 +85,7 @@ description: Break down work into actionable tasks and estimate timeline
 - [x] T4.3 : régression frontend complète (`npm run test`, `npm run test:e2e`) — preuve de non-impact
       (feature confirmée backend seul), aucun fichier `frontend/**` modifié attendu. Dépendance :
       T4.1.
-- [ ] T4.4 : Phase 9 (revue finale) — alignement design confirmé, `CHANGELOG.md` mis à jour
+- [x] T4.4 : Phase 9 (revue finale) — alignement design confirmé, `CHANGELOG.md` mis à jour
       (convention `flowforge-conventions` §7), `analysis doc/19-...md`/`00-index.md` marqués livrés,
       `DEFERRED-FEATURES.md` cohérent avec le code (T3.1–T3.4 vérifiées), PR prête. Dépendance :
       T4.1–T4.3.

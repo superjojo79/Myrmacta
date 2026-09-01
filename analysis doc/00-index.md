@@ -36,6 +36,7 @@
 | 19 | Assainissement de la dette technique (reliquats `DEFERRED-FEATURES.md` §1) — **livré** (TODO §49, PR #97) | [19-assainissement-dette-technique.md](19-assainissement-dette-technique.md) |
 | 20 | Nouveaux connecteurs hors V1 (`scheduler`, `smtp`, `document-storage`) — **livré** (TODO §50, PR #99) | [20-connecteurs-hors-v1.md](20-connecteurs-hors-v1.md) |
 | 21 | Corrélation par clé métier pour callbacks asynchrones (`http-rest`) — analyse initiale | [21-correlation-callback-async.md](21-correlation-callback-async.md) |
+| 22 | Formulaires dynamiques rattachés aux tâches BPMN (`userTask`) — analyse initiale | [22-formulaires-dynamiques-taches.md](22-formulaires-dynamiques-taches.md) |
 
 > Pour concevoir concrètement un diagramme BPMN pour FlowForge (conventions, référence des
 > `serviceTask` disponibles, champs dynamiques, connecteurs, intervenants, génération de

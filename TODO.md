@@ -937,6 +937,56 @@ implémentation Flowable, nouveau connecteur callback + endpoint HTTP authentifi
 
 ---
 
+### [ ] 52. Formulaires dynamiques rattachés aux tâches BPMN (`userTask`)
+
+**Constat :** le tuyau backend de complétion de tâche accepte déjà des variables
+(`POST /api/workflow-tasks/{taskId}/complete` → `{ variables: {...} }`, `CompleteTaskUseCaseImpl`),
+mais rien ne s'en sert : `MobileTasksView.vue` complète les tâches à l'aveugle, sans formulaire.
+Aucun concept de `formKey` n'existe sur `MyWorkflowTask`/`WorkflowTaskView`, ni dans l'éditeur BPMN
+visuel (`flowablePropertiesProvider.ts`). Origine : question utilisateur (2026-09-01), vérifiée
+contre le code réel avant de répondre. Les 2 cas cités (compléter les champs du dossier, déclencher
+une génération de documents) ne sont possibles aujourd'hui qu'en dehors du BPMN (fiche dossier pour
+l'édition de champs ; génération entièrement automatique via le `serviceTask`
+`${documentGenerationTask}`, jamais déclenchée par une saisie utilisateur en cours de process).
+
+**Mécanisme proposé (pas encore tranché) :** réutiliser `flowable:formKey`, attribut BPMN standard
+lu via `Task.getFormKey()` sur le moteur **cœur** (`flowable-engine`) — pas le module optionnel
+`flowable-form`, absent du classpath (`pom.xml` vérifié). Deux briques déjà réutilisables :
+`DynamicFields.vue` (composant générique `FieldDefinition[]` + `v-model`, déjà utilisé pour
+l'édition des champs dossier) et `PATCH /api/dossiers/{id}/fields` (permission + concurrence
+optimiste déjà gérées). Convention de 2 « kinds » fixes proposée, pas un schéma générique ouvert :
+`dossier-fields` (rend `DynamicFields.vue` contre le schéma `DossierType`, soumission via
+`PATCH .../fields` existant) et `document-generation` (nouveau petit composant de sélection
+template/variante/locale, soumission = variables de complétion de tâche lues par le
+`serviceTask` `${documentGenerationTask}` suivant — la génération reste où elle est, le formulaire
+ne fait que fournir l'entrée).
+
+**Points ouverts (à trancher en phase requirements/design, pas silencieusement) :**
+
+1. **D-FORM-KIND-SCOPE** — s'en tenir à ces 2 kinds fixes vs. prévoir un mécanisme extensible.
+2. **D-FORM-DOSSIER-FIELDS-PARTIAL** — schéma complet du `DossierType` à chaque tâche, ou
+   sous-ensemble de champs pertinent à l'étape (non supporté par `DynamicFields.vue` aujourd'hui).
+3. **D-FORM-DOCGEN-TEMPLATE-SCOPE** — tous les templates actifs du tenant, ou filtrés par type de
+   dossier (aucun lien `DossierType`↔`templateKey` dans le modèle actuel).
+4. **D-FORM-VALIDATION** — client seul (le serveur revalide déjà via `DossierFieldValidator` sur
+   `PATCH .../fields`, pas de nouvelle garde nécessaire pour `dossier-fields`).
+5. **D-FORM-BACKWARD-COMPAT** — tâche sans `formKey` = comportement actuel inchangé (à documenter
+   explicitement, pas un vrai point ouvert).
+6. **Vérification à faire en design, pas supposée** : confirmer `Task.getFormKey()` accessible sans
+   le module `flowable-form` sur la version Flowable 8.0.x réellement utilisée par ce dépôt.
+
+**À produire :** décisions ci-dessus, puis `formKey` sur `MyWorkflowTask`/`WorkflowTaskView` +
+lecture dans `FlowableWorkflowTaskInboxAdapter`, champ `flowable:formKey` dans l'éditeur BPMN
+(`flowablePropertiesProvider.ts`), rendu des 2 kinds côté frontend tâches.
+
+**Impacte :** `MyWorkflowTask`, `WorkflowTaskView`, `WorkflowTaskController`,
+`FlowableWorkflowTaskInboxAdapter`, `flowablePropertiesProvider.ts`, `MobileTasksView.vue`/
+`TaskList.vue`, nouveau composant sélection template/variante/locale.
+
+**Détail :** [22-formulaires-dynamiques-taches.md](analysis%20doc/22-formulaires-dynamiques-taches.md).
+
+---
+
 ## Alignement post-implémentation et sécurité (2026-08-25)
 
 Points identifiés par

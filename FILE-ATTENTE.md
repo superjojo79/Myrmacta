@@ -23,8 +23,13 @@
 > TODO §51 **ouvert** (2026-09-01) : corrélation par clé métier pour callbacks asynchrones sur
 > `http-rest`, analyse écrite
 > [21-correlation-callback-async.md](analysis%20doc/21-correlation-callback-async.md) — origine
-> question utilisateur, pas encore priorisé ni tranché en `dev-lifecycle`. File toujours vide,
-> aucune feature en cours.
+> question utilisateur, pas encore priorisé ni tranché en `dev-lifecycle`.
+>
+> TODO §52 **ouvert** (2026-09-01) : formulaires dynamiques rattachés aux tâches BPMN (`userTask`),
+> analyse écrite
+> [22-formulaires-dynamiques-taches.md](analysis%20doc/22-formulaires-dynamiques-taches.md) —
+> origine question utilisateur, pas encore priorisé ni tranché en `dev-lifecycle`. File toujours
+> vide, aucune feature en cours.
 >
 > TODO §49 (`assainissement-dette-technique`) **clos**, cycle `dev-lifecycle` Phases 1–9 complet,
 > **mergée sur `main`** ([PR #97](https://github.com/superjojo79/FlowForge/pull/97),
@@ -119,10 +124,15 @@ callbacks asynchrones sur `http-rest` (TODO §51,
 [21-correlation-callback-async.md](analysis%20doc/21-correlation-callback-async.md)) — origine
 question utilisateur (2026-09-01), pas encore de décision technique tranchée.
 
+En réserve (non retenu, analyse écrite mais pas encore priorisé) : formulaires dynamiques rattachés
+aux tâches BPMN (TODO §52,
+[22-formulaires-dynamiques-taches.md](analysis%20doc/22-formulaires-dynamiques-taches.md)) —
+origine question utilisateur (2026-09-01), pas encore de décision technique tranchée.
+
 En réserve (non retenu, aucune analyse écrite) : outillage provisioning tenant (schéma/instance/
 proxy/secrets, `DEFERRED-FEATURES.md` §1.2/§4).
 
-Détail : [TODO.md](TODO.md) §40–46, §48–51,
+Détail : [TODO.md](TODO.md) §40–46, §48–52,
 [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md).
 
 ## En revue

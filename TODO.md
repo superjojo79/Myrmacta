@@ -890,6 +890,53 @@ DocumentStorageConnector}.java`, `infrastructure/connector/SchedulerConnectorTri
 
 ---
 
+### [ ] 51. Corrélation par clé métier pour callbacks asynchrones (`http-rest`)
+
+**Constat :** ni le rôle SERVICE du connecteur `http-rest` (`HttpRestConnector.execute`, appel
+`httpClient.send(...)` bloquant, timeout fixe) ni son rôle TRIGGER (`WebhookController` →
+`ConnectorTriggerRuntimeImpl.onIncomingEvent`, qui crée/attache un dossier mais ne réveille jamais
+une instance de process en attente précise) ne permettent de recevoir un callback asynchrone
+corrélé à un appel sortant précis. Origine : question utilisateur (2026-09-01), vérifiée contre le
+code réel avant de répondre.
+
+**Mécanisme proposé (pas encore tranché) :** réutiliser la corrélation par message native de
+Flowable (`RuntimeService.createMessageCorrelation(messageName).processInstanceVariableEquals(...)
+.setVariables(...).correlate()`), déjà disponible sur le `RuntimeService` injecté dans
+`FlowableWorkflowEngineAdapter`, mais **jamais utilisée** dans le dépôt aujourd'hui (confirmé par
+grep). Résout l'instance de process en attente sur un `intermediateCatchEvent`/`receiveTask` dont
+une variable de process correspond à une clé de corrélation choisie par le concepteur BPMN — pas le
+`businessKey` du process (`link.id()`, déjà utilisé par `WorkflowEnginePort.start`), qui ne
+distingue pas plusieurs callbacks parallèles pour un même dossier.
+
+**Points ouverts (à trancher en phase requirements/design, pas silencieusement) :**
+
+1. **D-CALLBACK-RACE** — callback arrivé avant que l'instance atteigne le point d'attente
+   (`correlate()` lève) : rejet 404/409 (retry côté externe) vs file d'attente persistée.
+2. **D-CALLBACK-IDEMPOTENCE** — réutilisation du mécanisme d'idempotence déjà livré pour `http-rest`
+   TRIGGER (`webhook_idempotency`) à confirmer.
+3. **D-CALLBACK-MULTI-MATCH** — plusieurs instances en attente sur la même valeur de corrélation :
+   erreur remontée, pas de broadcast silencieux.
+4. **D-CALLBACK-MESSAGE-NAME** — `messageName` fixe par instance de connecteur vs dynamique par
+   appel.
+5. **Nom du connecteur/capability** — `CallbackConnector` (nom provisoire) : nouvelle valeur
+   `ConnectorCapability` ou sous-type de `TRIGGER`, à trancher explicitement.
+6. **Vérification à faire en design, pas supposée** : confirmer que
+   `DeployBpmnProcessUseCaseImpl`/`FlowableWorkflowDeploymentAdapter` déploient sans changement un
+   process contenant un `receiveTask`/`intermediateCatchEvent` à message (aucun process de ce type
+   dans `src/main/resources/processes/` aujourd'hui).
+
+**À produire :** décisions ci-dessus, puis `WorkflowEnginePort.correlateMessage(...)` +
+implémentation Flowable, nouveau connecteur callback + endpoint HTTP authentifié (HMAC, patron
+`WebhookController`), doc catalogue à jour.
+
+**Impacte :** `WorkflowEnginePort`, `FlowableWorkflowEngineAdapter`, nouveaux fichiers
+`domain/connector/model/CallbackConnector.java` (nom provisoire) + adaptateur infra dédié,
+`06-connecteurs.md`, `README.md`.
+
+**Détail :** [21-correlation-callback-async.md](analysis%20doc/21-correlation-callback-async.md).
+
+---
+
 ## Alignement post-implémentation et sécurité (2026-08-25)
 
 Points identifiés par

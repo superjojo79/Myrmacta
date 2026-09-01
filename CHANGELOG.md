@@ -69,7 +69,7 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
   domaine (TODO §46). `ManualStartOrchestrator` dépend d'un nouveau port
   `WorkflowStartConfirmationPort` au lieu de la classe infrastructure `WorkflowStartConfirmer`
   directement ; aucun changement de comportement.
-- **PR (à ouvrir)** — Assainissement de dette technique (TODO §49) : `processKey`/`workflowKey`
+- **PR [#97](https://github.com/superjojo79/FlowForge/pull/97)** — Assainissement de dette technique (TODO §49) : `processKey`/`workflowKey`
   blank désormais rejetés au niveau domaine (`WorkflowTypeConfig`, `TriggerOutboxPayload`,
   `WorkflowStartedEvent`, `DossierType`), et `dossierId` désormais présent en MDC pendant le
   traitement de chaque item du job de purge (auparavant seul `tenantId` du batch). Aucun changement

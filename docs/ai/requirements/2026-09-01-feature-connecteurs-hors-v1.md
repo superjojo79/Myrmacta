@@ -123,10 +123,9 @@ Cas limites :
   `EXISTS`/`DELETE` via `DocumentStoragePort`, résultat exposé en `connectorResult`.
 - `06-connecteurs.md` et `README.md` mis à jour (plus de `Non` pour `scheduler`/`smtp` ; `s3-minio`
   remplacé par `document-storage` avec la description généralisée).
-- `./mvnw verify` vert. Feature confirmée **backend seule** (à vérifier en Phase 2 contre le code
-  réel, comme fait pour `connecteur-http-rest-service`) : `npm run test`/`test:e2e` restent verts en
-  régression complète, sans nouveau scénario E2E dédié attendu (à confirmer — aucun écran admin
-  connecteur nouveau, le formulaire JSON brut existant couvre déjà la saisie de config).
+- `./mvnw verify` vert. Feature **confirmée backend seule** (vérifié en Phase 2 contre le code réel,
+  voir Constraints & Assumptions) : `npm run test`/`test:e2e` restent verts en régression complète,
+  sans nouveau scénario E2E dédié — zéro fichier `frontend/**` modifié.
 
 ## Constraints & Assumptions
 **What limitations do we need to work within?**
@@ -160,11 +159,20 @@ Décisions actées 2026-09-01 (`AskUserQuestion`, TODO §50) :
 - **D-STORAGE-SIZE-LIMIT = limite configurable** (option recommandée retenue).
 - **D-STORAGE-REF-LIFECYCLE = choix assumé, documenté** (option recommandée retenue).
 
+Résolu en revue Phase 2 (2026-09-01) :
+
+- **Confirmation « backend-only »** — **confirmé backend seul**, vérifié contre le code réel de
+  `ConnectorsAdminView.vue` (pas seulement contre l'analyse) : le `<select v-if="definitions.
+  length">` type est déjà alimenté dynamiquement par `GET /api/connector-definitions` (n'importe
+  quel nouveau type enregistré apparaît automatiquement, sans changement frontend) et le
+  `<textarea>` JSON brut couvre déjà la saisie de config pour tout type. Aucun endpoint HTTP dédié
+  au déclenchement n'est nécessaire pour `scheduler` — pattern déjà établi avec 2 précédents
+  (`WebhookController` pour `http-rest`, `FlowableSignalEventListener` pour `flowable-signal`,
+  tous deux appelant `ConnectorTriggerRuntime.onIncomingEvent` depuis l'infra) ; le nouveau job
+  `@Scheduled` en sera un 3e appelant du même type, pas un mécanisme inédit.
+
 Restant à trancher en phase design (pas bloquant pour clore les requirements) :
 
-- **Confirmation « backend-only »** — à vérifier contre le code réel de `ConnectorsAdminView.vue`
-  en Phase 2, comme fait pour `connecteur-http-rest-service` (l'écran JSON brut existant devrait
-  suffire, mais ne pas l'assumer sans revérifier).
 - **Forme exacte de la table `connector_schedule_state`** — schéma de colonnes précis, index,
   contrainte d'unicité sur `connector_instance_id`.
 - **Nom exact de la classe/bean pour chaque connecteur** — `SchedulerConnector`, `SmtpConnector`,

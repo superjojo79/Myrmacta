@@ -759,6 +759,40 @@ zéro fichier `frontend/**` touché, régression complète). Doc à jour :
 
 ---
 
+### [ ] 49. Assainissement de la dette technique — reliquats `DEFERRED-FEATURES.md` §1
+
+**Constat :** plusieurs lignes « Nice-to-have » de `DEFERRED-FEATURES.md` §1 n'ont jamais été
+reprises depuis leur identification initiale. Vérification item par item contre le code réel
+(2026-08-31) : **2 sont déjà closes, jamais répercutées dans le doc** (`CHECK SQL
+dossier_type_acl.permission` — migration `014` déjà livrée, PR #72 ; validation blank `tenantId` —
+`TenantProperties.id` porte déjà `@NotBlank`) ; **2 restent réellement ouvertes** (validation blank
+`processKey`/`workflowKey` — seul `Objects.requireNonNull` existe aujourd'hui, une chaîne vide
+passe ; `dossierId` en MDC par item du job de purge — seul le `tenantId` de batch est en contexte
+MDC aujourd'hui, `ProcessPurgeOutboxUseCaseImpl` est un use case domaine pur qui ne peut pas
+dépendre de SLF4J/MDC directement, contrainte ArchUnit) ; **1 probablement obsolète, à confirmer**
+(`Persistable`/`isNew()` sur `DossierJpaEntity` — `@Version` déjà présent, mécanisme standard
+Spring Data JPA qui rend `Persistable` redondant).
+
+**Points ouverts (à trancher en phase requirements/design, pas silencieusement) :**
+
+1. **D-BLANK-VALIDATION-SCOPE** — périmètre exact de la garde blank (`WorkflowTypeConfig.workflowKey`
+   seul, ou aussi `processKey` à tous ses points d'entrée externes, ex.
+   `ManualStartOrchestrator.start(...)`).
+2. **D-MDC-DOSSIER-MECHANISM** — callback/événement domaine piloté par l'infra (a), restructuration
+   du retour du use case pour logging côté infra (b), ou statu quo accepté (c).
+3. **D-PERSISTABLE-CONFIRM** — confirmer que `Persistable` est bien redondant avec `@Version` avant
+   de clore ce point sans code.
+
+**À produire :** décisions ci-dessus, puis correctifs ciblés (validation + MDC), avec nettoyage de
+`DEFERRED-FEATURES.md` §1 (retrait des 2 lignes déjà closes) une fois livré.
+
+**Impacte :** `WorkflowTypeConfig`, `PurgeOutboxJob`, `ProcessPurgeOutboxUseCaseImpl`,
+`DEFERRED-FEATURES.md`.
+
+**Détail :** [19-assainissement-dette-technique.md](analysis%20doc/19-assainissement-dette-technique.md).
+
+---
+
 ## Alignement post-implémentation et sécurité (2026-08-25)
 
 Points identifiés par

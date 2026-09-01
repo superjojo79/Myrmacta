@@ -10,12 +10,16 @@
 >   (rétention / purge / sensible — **livré**) ; revue post-implémentation 2026-08-25 :
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
-> **Dernière mise à jour :** 2026-08-31 — `connecteur-http-rest-service`
-> **livrée** (TODO §48 clos, cycle `dev-lifecycle` complet Phases 1–9 dans la
-> même session). Choisie comme prochaine feature après épuisement du backlog
-> V1 (voir ci-dessous) parmi trois pistes proposées à l'utilisateur (les deux
-> autres — outillage provisioning, sweep tech-debt — restent en réserve,
-> `DEFERRED-FEATURES.md` §1/§4). **File d'attente de nouveau vide.**
+> **Dernière mise à jour :** 2026-08-31 — TODO §49 **ouvert** : assainissement
+> de la dette technique (reliquats `DEFERRED-FEATURES.md` §1), analyse initiale
+> [19-assainissement-dette-technique.md](analysis%20doc/19-assainissement-dette-technique.md)
+> créée — vérification item par item a trouvé 2 lignes déjà closes (jamais
+> répercutées) et 2 réellement ouvertes. Choisie comme prochaine feature après
+> nouvel épuisement du backlog V1 (`connecteur-http-rest-service`, TODO §48,
+> livrée [PR #95](https://github.com/superjojo79/FlowForge/pull/95)) parmi
+> trois pistes proposées à l'utilisateur (les deux autres — outillage
+> provisioning, nouveau connecteur hors V1 — restent en réserve). Cycle
+> `dev-lifecycle` pas encore démarré.
 >
 > TODO §46 (ArchUnit `application`) **clos** hors cycle `dev-lifecycle`
 > formel : port `WorkflowStartConfirmationPort` extrait, règle ArchUnit
@@ -90,12 +94,13 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 [PR #82](https://github.com/superjojo79/FlowForge/pull/82),
 [PR #87](https://github.com/superjojo79/FlowForge/pull/87),
 [PR #95](https://github.com/superjojo79/FlowForge/pull/95)). TODO §46
-(ArchUnit `application`) et §48 (`http-rest` SERVICE) **clos** — à cette
-date, tous les points `TODO.md` sont clos et la file est vide. Prochaine
-feature à identifier lors d'une prochaine analyse (voir § Critères de
-sélection).
+(ArchUnit `application`) et §48 (`http-rest` SERVICE) **clos**.
 
-Détail : [TODO.md](TODO.md) §40–46, §48,
+| Priorité | Item | Notes |
+|---|---|---|
+| **Prochain** | `assainissement-dette-technique` (nom provisoire), TODO §49 | Analyse initiale [19-assainissement-dette-technique.md](analysis%20doc/19-assainissement-dette-technique.md) ; 3 décisions ouvertes (D-BLANK-VALIDATION-SCOPE, D-MDC-DOSSIER-MECHANISM, D-PERSISTABLE-CONFIRM) à trancher en Phase 1/2 `dev-lifecycle` avant tout code |
+
+Détail : [TODO.md](TODO.md) §40–46, §48–49,
 [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md).
 
 ## En revue

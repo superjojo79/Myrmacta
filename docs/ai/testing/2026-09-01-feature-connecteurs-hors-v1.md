@@ -100,7 +100,12 @@ description: Define testing approach, test cases, and quality assurance
 ## End-to-End Tests
 **What user flows need validation?**
 
-- Aucun — feature backend seule (confirmé Phase 2), aucun flux utilisateur visible modifié.
+- Aucun nouveau scénario — feature backend seule (confirmé Phase 2), aucun flux utilisateur visible
+  modifié, zéro fichier `frontend/**` touché (vérifié : `git diff --stat` entre le début et la fin de
+  la feature sur `frontend/**` est vide).
+- **Preuve de non-régression (Phase 8, 2026-09-01)** — suite E2E complète relancée à l'identique :
+  `cd frontend && PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e` → **59
+  passed (29.0s)**, 0 échec, aucun scénario modifié ni ajouté.
 
 ## Test Data
 **What data do we use for testing?**
@@ -114,9 +119,13 @@ description: Define testing approach, test cases, and quality assurance
 ## Test Reporting & Coverage
 **How do we verify and communicate test results?**
 
-- `./mvnw verify` (Jacoco) — vérifier que les nouvelles branches sont couvertes ; inspection
-  `target/site/jacoco/<pkg>/<Class>.java.html` si le bundle ne suffit pas à localiser un gap.
-- Pas de commande frontend concernée (feature backend seule).
+- `./mvnw -Dmaven.compiler.release=21 verify` (Jacoco) — exécuté en Phase 5 : **1486 tests, 0
+  échec/erreur, `All coverage checks have been met.`** (bundle LINE ≥85%/BRANCH ≥75% respecté sans
+  aucun gap à combler classe par classe).
+- Régression frontend (Phase 8, 2026-09-01, preuve de non-impact) :
+  - `cd frontend && npm run test -- --run` → **66 fichiers, 247 tests, tous verts**.
+  - `cd frontend && PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e` →
+    **59 passed**.
 
 ## Manual Testing
 **What requires human validation?**

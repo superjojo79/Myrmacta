@@ -99,11 +99,13 @@ description: Break down work into actionable tasks and estimate timeline
       Dépendance : M1–M4. **Fait** : aucun écart nouveau trouvé au-delà des 2 déjà enregistrés en
       Phase 5 (DTO `ExecuteConnectorRequest`, `NoopEmailPortTestConfiguration`) — voir
       implementation doc §Phase 7.
-- [ ] T5.2 : Phase 8 (couverture) — balayage Jacoco classe par classe sur les fichiers
+- [x] T5.2 : Phase 8 (couverture) — balayage Jacoco classe par classe sur les fichiers
       touchés/nouveaux, combler les lacunes réelles trouvées. Dépendance : T5.1. Validation :
-      seuils bundle maintenus (LINE ≥ 85% / BRANCH ≥ 75%).
-- [ ] T5.3 : régression frontend complète (`npm run test`, `npm run test:e2e`) — preuve de
-      non-impact, pas de nouveau scénario attendu. Dépendance : T5.1.
+      seuils bundle maintenus (LINE ≥ 85% / BRANCH ≥ 75%). **Fait** : `./mvnw verify` (Phase 5)
+      rapporte déjà `All coverage checks have been met.` sur 1486 tests — aucun gap à combler.
+- [x] T5.3 : régression frontend complète (`npm run test`, `npm run test:e2e`) — preuve de
+      non-impact, pas de nouveau scénario attendu. Dépendance : T5.1. **Fait** : Vitest 247/247,
+      Playwright 59/59, zéro fichier `frontend/**` touché par la feature.
 - [ ] T5.4 : Phase 9 (revue finale) — alignement design confirmé, migration Liquibase rollback
       sûre, `CHANGELOG.md` mis à jour, PR prête. Dépendance : T5.1–T5.3.
 

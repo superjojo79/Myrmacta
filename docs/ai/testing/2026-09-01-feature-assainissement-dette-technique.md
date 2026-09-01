@@ -6,8 +6,9 @@ description: Define testing approach, test cases, and quality assurance
 
 # Testing Strategy
 
-> Première passe (Phase 1), dérivée des Success Criteria des requirements — cases à cocher au fil
-> de Phase 8 (`dev-testing`), pas avant.
+> Deuxième passe (Phase 4, préparation planning) — cases identifiées avec des IDs stables
+> (`T-<PREFIX>-N`) pour traçabilité avec le plan de tâches ; cochées au fil de Phase 8
+> (`dev-testing`), pas avant.
 
 ## Test Coverage Goals
 **What level of testing do we aim for?**
@@ -20,36 +21,47 @@ description: Define testing approach, test cases, and quality assurance
 ## Unit Tests
 **What individual components need testing?**
 
-### Records domaine (validation blank)
-- [ ] `WorkflowTypeConfig` : `workflowKey` blank (`""`, `"   "`) → `IllegalArgumentException`
-- [ ] `TriggerOutboxPayload` : `processKey` blank → `IllegalArgumentException`
-- [ ] `WorkflowStartedEvent` : `processKey` blank → `IllegalArgumentException`
-- [ ] `DossierType` : `workflowKey` blank → `IllegalArgumentException`
-- [ ] Non-régression : `workflowKey`/`processKey` `null` → `NullPointerException` (comportement
-      `requireNonNull` inchangé) pour les 4 records
+### Records domaine — validation blank (D-BLANK-VALIDATION-SCOPE)
+- [ ] T-BLANK-1 : `WorkflowTypeConfig` — `workflowKey` blank (`""`, `"   "`) → `IllegalArgumentException`
+- [ ] T-BLANK-2 : `TriggerOutboxPayload` — `processKey` blank → `IllegalArgumentException`
+- [ ] T-BLANK-3 : `WorkflowStartedEvent` — `processKey` blank → `IllegalArgumentException`
+- [ ] T-BLANK-4 : `DossierType` — `workflowKey` blank → `IllegalArgumentException`
+- [ ] T-BLANK-5 (régression, ×4 records) : `workflowKey`/`processKey` `null` → `NullPointerException`
+      (comportement `requireNonNull` inchangé)
 
-### ProcessPurgeOutboxUseCaseImpl (callback MDC)
-- [ ] Callback invoqué exactement une fois par item traité, avec le `dossierId` correct, avant
-      `purgeDossier`
-- [ ] Callback invoqué même quand l'item échoue (`RuntimeException` catchée → `markFailed`)
-- [ ] Callback non invoqué pour un item skippé par `shouldSkipClock` ou non `claim()`é
-- [ ] Signature/port : `ProcessPurgeOutboxUseCase` reste sans dépendance `org.slf4j`/MDC
-      (vérifié par `ArchitectureRulesTest.domain_has_no_framework_dependency`, pas de nouveau test
-      dédié nécessaire)
+### ProcessPurgeOutboxUseCaseImpl — callback MDC (D-MDC-DOSSIER-MECHANISM)
+- [ ] T-MDC-1 : `onItemStart.apply(dossierId)` appelé exactement une fois par item traité, avec le
+      `dossierId` correct, avant `purgeDossier`
+- [ ] T-MDC-2 : le `Runnable` retourné par `onItemStart` est exécuté (`run()`) même quand l'item
+      échoue (`RuntimeException` catchée → `markFailed`) — via un `finally`
+- [ ] T-MDC-3 : callback non invoqué pour un item skippé par `shouldSkipClock` ou non `claim()`é
+- [ ] T-MDC-4 (régression) : `ArchitectureRulesTest.domain_has_no_framework_dependency` reste vert
+      (pas de nouveau test dédié — la règle existante suffit)
+- [ ] T-MDC-5 (régression signature) : `ProcessPurgeOutboxUseCaseImplTest` mis à jour pour le
+      3ᵉ paramètre (`processBatch(Instant, int, Function<UUID, Runnable>)`), tests existants
+      (happy path, skip, échec) continuent de passer avec un callback no-op par défaut
 
-### PurgeOutboxJob (intégration callback → MdcScope)
-- [ ] `dossierId` présent dans le MDC pendant l'exécution du callback pour un item donné
-- [ ] `dossierId` restauré (retiré ou valeur précédente) après le callback, `tenantId` toujours
-      présent (comportement `MdcScope` par pile, déjà testé pour `tenant`/`dossier` combinés
-      ailleurs)
+### PurgeOutboxJob — intégration callback → MdcScope
+- [ ] T-JOB-1 : `dossierId` présent dans le MDC pendant le traitement de l'item correspondant
+      (callback `dossierId -> { MdcScope ...; return scope::close; }`)
+- [ ] T-JOB-2 : `dossierId` retiré du MDC après l'item (le `Runnable` fermeur a été appelé),
+      `tenantId` toujours présent (comportement `MdcScope` empilé, cf. `MdcScope.and`/`close`)
+- [ ] T-JOB-3 (régression signature) : `PurgeOutboxJobTest` mis à jour — mock
+      `processBatch(any(Instant.class), eq(50), any())`
+
+### PurgeOutboxApiTest — régression signature
+- [ ] T-API-1 (régression) : `PurgeOutboxApiTest` ligne ~142, appel direct
+      `processPurgeOutboxUseCase.processBatch(Instant.now(), 2000)` mis à jour vers la signature à
+      3 arguments (callback no-op), test toujours vert
 
 ## Integration Tests
 **How do we test component interactions?**
 
-- [ ] `PurgeOutboxJob` bout-en-bout (ou test d'intégration existant étendu) : un batch de 2+ items
-      distincts voit chacun son propre `dossierId` en MDC au bon moment, pas de fuite entre items
-- [ ] `ArchitectureRulesTest` complet vert (pas seulement la règle domaine ciblée) — non-régression
-      globale
+- [ ] T-INT-1 : `PurgeOutboxJob` avec un batch de 2+ items distincts — chacun son propre `dossierId`
+      en MDC au bon moment, pas de fuite entre items (le fermeur du 1er item ne doit pas effacer le
+      `dossierId` du 2ᵉ si mal séquencé)
+- [ ] T-INT-2 (régression globale) : `ArchitectureRulesTest` complet vert, pas seulement la règle
+      domaine ciblée
 
 ## End-to-End Tests
 **What user flows need validation?**
@@ -61,8 +73,8 @@ description: Define testing approach, test cases, and quality assurance
 
 - Records domaine construits directement en test unitaire (pas de fixture DB nécessaire pour les
   gardes blank).
-- `PurgeOutboxRecord`/`Dossier` de test déjà existants dans les tests `ProcessPurgeOutboxUseCaseImpl`
-  actuels, réutilisés pour vérifier le callback.
+- `PurgeOutboxRecord`/`Dossier` de test déjà existants dans `ProcessPurgeOutboxUseCaseImplTest`,
+  réutilisés pour vérifier le callback (T-MDC-1 à T-MDC-3).
 
 ## Test Reporting & Coverage
 **How do we verify and communicate test results?**

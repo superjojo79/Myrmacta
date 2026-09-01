@@ -10,15 +10,14 @@
 >   (rétention / purge / sensible — **livré**) ; revue post-implémentation 2026-08-25 :
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
-> **Dernière mise à jour :** 2026-09-01 — TODO §50 **ouvert** : nouveaux connecteurs hors V1
-> (`scheduler`, `smtp`, `document-storage`), analyse initiale
-> [20-connecteurs-hors-v1.md](analysis%20doc/20-connecteurs-hors-v1.md) créée — `s3-minio`
-> généralisé en `document-storage` (réutilise `DocumentStoragePort`, pas de couplage S3 direct,
-> demande explicite utilisateur). Choisie comme prochaine feature après nouvel épuisement du
-> backlog (TODO.md 49/49, revue sécurité §40–46 close, `assainissement-dette-technique` TODO §49
-> livrée [PR #97](https://github.com/superjojo79/FlowForge/pull/97)) parmi deux pistes proposées
-> à l'utilisateur (l'autre — outillage provisioning tenant — reste en réserve). Cycle
-> `dev-lifecycle` pas encore démarré.
+> **Dernière mise à jour :** 2026-09-01 — TODO §50 **clos** : nouveaux connecteurs hors V1
+> (`scheduler`, `smtp`, `document-storage`) livrés, `connecteurs-hors-v1`, cycle `dev-lifecycle`
+> Phases 1–9 complet. `s3-minio` généralisé en `document-storage` (réutilise
+> `DocumentStoragePort`, pas de couplage S3 direct, demande explicite utilisateur). Choisie comme
+> feature après nouvel épuisement du backlog (TODO.md 49/49, revue sécurité §40–46 close,
+> `assainissement-dette-technique` TODO §49 livrée
+> [PR #97](https://github.com/superjojo79/FlowForge/pull/97)) parmi deux pistes proposées à
+> l'utilisateur (l'autre — outillage provisioning tenant — reste en réserve). PR pas encore créée.
 >
 > TODO §49 (`assainissement-dette-technique`) **clos**, cycle `dev-lifecycle` Phases 1–9 complet,
 > **mergée sur `main`** ([PR #97](https://github.com/superjojo79/FlowForge/pull/97),
@@ -87,24 +86,26 @@ Même grille que pour `preview-documents` puis `edition-champs-dossier` :
 | `schema-champs-dynamiques` | [PR #87](https://github.com/superjojo79/FlowForge/pull/87), analyse [17-schema-champs-dynamiques.md](analysis%20doc/17-schema-champs-dynamiques.md), TODO §47 (clos) | Écran Admin → Types édite désormais le schéma `fieldDefinitions` d'un `DossierType` (création + panneau d'édition inline, composant `FieldDefinitionDefsEditor.vue`) et la bascule `allowUnknownFields`. `UpdateDossierTypeUseCaseImpl` branche `CheckDossierTypeSchemaCompatibilityUseCase` (déjà écrit, jusqu'ici réservé au MCP) et bloque (409) tout schéma incompatible avec des dossiers existants — aligne REST sur le comportement déjà strict du MCP `define_dossier_type` (simplifié en conséquence). `DossierType` rejette un `name` dupliqué. **2 écarts réels trouvés et corrigés en TDD** : composant frontend lié sur la prop au lieu d'un état local réactif (Phase 5) ; ordre check DB/validation structurelle réordonné pour échec rapide (Phase 7). CI hébergé rouge de façon identique sur `main` (infra, pas ce diff) — mergée sur la base des vérifications locales. `./mvnw verify` 1383 tests (0 échec) ; Vitest 247 ; Playwright 59. **Mergée sur `main`** (2026-08-28). |
 | `connecteur-http-rest-service` | [PR #95](https://github.com/superjojo79/FlowForge/pull/95), analyse [18-connecteur-http-rest-service.md](analysis%20doc/18-connecteur-http-rest-service.md), TODO §48 (clos) | Le connecteur `http-rest` devient utilisable en rôle **SERVICE** en plus de TRIGGER (capability `BOTH`) : `HttpRestTriggerConnector` renommé `HttpRestConnector`, fusionné avec le skeleton `HttpRestServiceConnector` (supprimé). `execute(...)` supporte GET/POST/PUT dynamiques, corps JSON ou brut, en-têtes arbitraires par appel, en-tête `Authorization` optionnel par instance (`authHeaderValue`, chiffré). Nouveau bean `HttpClient` (aucun n'existait), `ConnectorProperties.Http` (timeouts 5s/5s). **2 écarts réels trouvés en Phase 5** : `ExecuteConnectorRequest` (DTO REST BFF/M2M) câblé en dur sur `flowable-signal`, ne transmettait pas `url`/`method`/`body`/`headers` — `http-rest` SERVICE restait inatteignable via HTTP malgré la capacité activée côté connecteur (corrigé, golden OpenAPI régénéré). **1 durcissement en Phase 7** : `HttpClient.Redirect.NEVER` rendu explicite (défaut JDK déjà correct mais implicite — une redirection suivie contournerait `OutboundUrlGuard`). **3 lacunes de couverture réelles comblées en Phase 8** (`authHeaderValue` blanc, branche `connectTimeout==null`, `ExecuteConnectorRequest.toInputParams()` jamais testé unitairement). `./mvnw verify` 1420 tests (0 échec) ; Vitest 247 ; Playwright 59 (feature backend-only, zéro fichier frontend touché). Cycle `dev-lifecycle` Phases 1–9 complet dans la même session (2026-08-31). **Mergée sur `main`** (2026-08-31). |
 | `assainissement-dette-technique` | [PR #97](https://github.com/superjojo79/FlowForge/pull/97), analyse [19-assainissement-dette-technique.md](analysis%20doc/19-assainissement-dette-technique.md), TODO §49 (clos) | Sweep de dette technique (reliquats `DEFERRED-FEATURES.md` §1) : validation blank `processKey`/`workflowKey` dans 4 records domaine (`WorkflowTypeConfig`, `TriggerOutboxPayload`, `WorkflowStartedEvent`, `DossierType`), défense en profondeur — tous les points d'entrée REST/MCP blank-checkaient déjà en amont. `dossierId` désormais en MDC par item du job de purge (`ProcessPurgeOutboxUseCase.processBatch` gagne un callback `Function<UUID, Runnable>`, `PurgeOutboxJob` ouvre/ferme `MdcScope.dossier(...)`) sans dépendance MDC dans le domaine. **Trouvaille en design** : le seul vrai `log.warn` par item existant (`FlowableWorkflowEngineAdapter.deleteProcessInstanceBestEffort`) avale son exception — le callback doit envelopper tout `purgeDossier(record)`, pas seulement le `catch`, prouvé par un test d'intégration multi-items avec le vrai use case (pas mocké). `Persistable`/`isNew()` confirmé redondant avec `@Version` par preuve documentée, sans code. `./mvnw verify` 1430 tests (0 échec) ; Vitest 247 ; Playwright 59 (feature backend-only, zéro fichier frontend touché). Cycle `dev-lifecycle` Phases 1–9 complet (2026-09-01). |
+| `connecteurs-hors-v1` | PR à ouvrir, analyse [20-connecteurs-hors-v1.md](analysis%20doc/20-connecteurs-hors-v1.md), TODO §50 (clos) | 3 derniers connecteurs du catalogue cible livrés, chacun réutilisant un mécanisme domaine déjà existant : `scheduler` (TRIGGER, cron via `SchedulerConnectorTriggerJob` + table `connector_schedule_state`, 3ᵉ appelant de `ConnectorTriggerRuntime.onIncomingEvent` après `WebhookController`/`FlowableSignalEventListener`) ; `smtp` (SERVICE, réutilise `EmailPort`/`SmtpEmailAdapter` déjà livré, texte brut) ; `document-storage` (SERVICE, réutilise `DocumentStoragePort`, **généralisé depuis le candidat `s3-minio`** du catalogue initial — demande explicite utilisateur, pas de couplage MinIO/S3). Zéro modification de `ConnectorTriggerRuntimeImpl`/`ConnectorCatalog`/`ConnectorRegistry`. **Écart de design corrigé en Phase 4** (avant code) : `processKey` manquant du config schema `SchedulerConnector`. **2 déviations trouvées en Phase 5, confirmées sans écart supplémentaire en Phase 7** : `ExecuteConnectorRequest` (DTO BFF/M2M) étendu de 6 champs (même point de couture que `http-rest`, TODO §48) ; `NoopEmailPortTestConfiguration` (patron `OidcClientTestConfiguration`) pour tester `smtp` sans serveur SMTP réel. `./mvnw verify` 1486 tests (0 échec, coverage Jacoco au vert) ; Vitest 247 ; Playwright 59 (feature backend-only confirmée en Phase 2, zéro fichier frontend touché). Cycle `dev-lifecycle` Phases 1–9 complet (2026-09-01). |
 
 Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relations, PATCH fields API, éléments) : voir [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §2.
 
 ## File d’attente
 
 `reporting-sla`, `serveur-mcp`, `schema-champs-dynamiques`,
-`connecteur-http-rest-service` et `assainissement-dette-technique` sont toutes **livrées**
+`connecteur-http-rest-service`, `assainissement-dette-technique` et `connecteurs-hors-v1` sont
+toutes **livrées**
 ([PR #80](https://github.com/superjojo79/FlowForge/pull/80),
 [PR #82](https://github.com/superjojo79/FlowForge/pull/82),
 [PR #87](https://github.com/superjojo79/FlowForge/pull/87),
 [PR #95](https://github.com/superjojo79/FlowForge/pull/95),
-[PR #97](https://github.com/superjojo79/FlowForge/pull/97)). TODO §46
-(ArchUnit `application`), §48 (`http-rest` SERVICE) et §49 (assainissement dette technique)
-**clos**.
+[PR #97](https://github.com/superjojo79/FlowForge/pull/97),
+PR à ouvrir pour `connecteurs-hors-v1`). TODO §46
+(ArchUnit `application`), §48 (`http-rest` SERVICE), §49 (assainissement dette technique) et §50
+(connecteurs hors V1) **clos**.
 
-| Priorité | Item | Notes |
-|---|---|---|
-| **Prochain** | Nouveaux connecteurs hors V1 (nom provisoire `connecteurs-hors-v1`), TODO §50 | Analyse initiale [20-connecteurs-hors-v1.md](analysis%20doc/20-connecteurs-hors-v1.md) — 3 connecteurs (`scheduler` TRIGGER, `smtp` SERVICE, `document-storage` SERVICE généralisé depuis `s3-minio`) ; 7 décisions ouvertes (D-SCHEDULER-LASTFIRED/DOSSIER/POLL, D-SMTP-HTML/VALIDATION, D-STORAGE-SIZE-LIMIT/REF-LIFECYCLE) à trancher en Phase 1/2 `dev-lifecycle` avant tout code |
+**File vide** — aucune feature en cours, prochaine feature à identifier lors d'une prochaine
+analyse.
 
 En réserve (non retenu, aucune analyse écrite) : outillage provisioning tenant (schéma/instance/
 proxy/secrets, `DEFERRED-FEATURES.md` §1.2/§4).

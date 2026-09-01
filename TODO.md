@@ -812,7 +812,12 @@ en régression, zéro fichier `frontend/**` touché.
 
 ---
 
-### [ ] 50. Nouveaux connecteurs hors V1 — `scheduler`, `smtp`, `document-storage`
+### [x] 50. Nouveaux connecteurs hors V1 — `scheduler`, `smtp`, `document-storage`
+
+**Clos** (2026-09-01, `connecteurs-hors-v1`, PR à ouvrir) — cycle `dev-lifecycle` complet
+(Phases 1-9). Les 3 connecteurs restants du catalogue cible livrés, chacun en réutilisant un
+mécanisme domaine déjà existant plutôt qu'un nouveau couplage technique — zéro modification de
+`ConnectorTriggerRuntimeImpl`/`ConnectorCatalog`/`ConnectorRegistry`.
 
 **Constat :** `06-connecteurs.md` catalogue 5 types de connecteurs cibles, seuls `http-rest` et
 `flowable-signal` sont enregistrés dans `ConnectorRegistry` aujourd'hui. Les 3 restants
@@ -837,24 +842,48 @@ le port `DocumentStoragePort` déjà agnostique S3/filesystem, cohérent avec le
   `delete`) pour du contenu non lié à un `Dossier`/`DossierElement` (déjà couvert par les pièces
   jointes existantes).
 
-**Points ouverts (à trancher en phase requirements/design, pas silencieusement) :**
+**Décisions actées (`AskUserQuestion`, options recommandées retenues) :**
 
-1. **D-SCHEDULER-LASTFIRED** — mémorisation du dernier déclenchement par instance (nouveau champ
-   persisté, table dédiée, ou tir manqué accepté au redémarrage).
-2. **D-SCHEDULER-DOSSIER** — un dossier créé par tir est le comportement actuel du pipeline trigger
-   partagé (`resolveOrCreateDossier` exige `dossierTypeCode`/`existingDossierReference`) ; faut-il
-   un mode « sans dossier », potentiellement un changement partagé avec les autres connecteurs ?
-3. **D-SCHEDULER-POLL** — fréquence du job de poll.
-4. **D-SMTP-HTML** — corps HTML ou texte brut seul (limite actuelle d'`EmailPort`).
-5. **D-SMTP-VALIDATION** — validation du format `to`.
-6. **D-STORAGE-SIZE-LIMIT** — limite de taille du contenu base64 en variable de process Flowable.
-7. **D-STORAGE-REF-LIFECYCLE** — confirmer l'absence de rattachement/purge automatique du
-   `storageRef` comme un choix assumé.
+1. **D-SCHEDULER-LASTFIRED = table dédiée** — `connector_schedule_state` (`connector_instance_id`
+   PK+FK, `last_triggered_at`), séparée de `ConnectorInstanceData` (record partagé par tous les
+   connecteurs).
+2. **D-SCHEDULER-DOSSIER = un dossier par tir, comportement existant** — `scheduler` exige
+   `dossierTypeCode` en config comme les autres connecteurs TRIGGER, zéro changement du pipeline
+   trigger partagé.
+3. **D-SCHEDULER-POLL = 1 minute par défaut, configurable** — `app.connector.scheduler.poll-delay`.
+4. **D-SMTP-HTML = texte brut seul** — `EmailPort.send(to, subject, body)` tel quel.
+5. **D-SMTP-VALIDATION = garde basique non-blank + « @ »**.
+6. **D-STORAGE-SIZE-LIMIT = limite configurable** — `ConnectorProperties.DocumentStorage.
+   maxContentSize` (même patron que `Webhook.maxBodyBytes`).
+7. **D-STORAGE-REF-LIFECYCLE = choix assumé, documenté** — aucune purge automatique du
+   `storageRef`, à la charge du process BPMN.
 
-**À produire :** décisions ci-dessus, puis les 3 connecteurs + job scheduler + doc catalogue à jour.
+**Écart de design trouvé et corrigé en planning (pas en Phase 7)** : le config schema initial de
+`SchedulerConnector` (`cronExpression`+`dossierTypeCode`) omettait `processKey`, pourtant requis
+par `WorkflowTriggerEvent` (`Objects.requireNonNull`) et déjà présent dans `HttpRestConnector`/
+`FlowableSignalConnector` — vérifié par grep avant d'écrire le code, pas découvert plus tard.
 
-**Impacte :** `ConnectorRegistry`, `06-connecteurs.md`, `README.md`, nouveaux fichiers
-`infrastructure/connector/builtin/{SchedulerConnector,SmtpConnector,DocumentStorageConnector}.java`.
+**Déviations trouvées en implémentation (Phase 5, confirmées en Phase 7)** :
+- `ExecuteConnectorRequest` (DTO partagé BFF/M2M) étendu de 6 champs (`to`, `subject`, `operation`,
+  `storageRef`, `content`, `contentType`) pour porter les entrées `smtp`/`document-storage` —
+  même point de couture déjà rencontré pour `http-rest` (TODO §48), 2ᵉ occurrence. OpenAPI golden
+  régénéré.
+- `NoopEmailPortTestConfiguration` (nouveau `@TestConfiguration`, patron `OidcClientTestConfiguration`)
+  pour tester `smtp` en contexte Spring complet sans serveur SMTP réel (aucun GreenMail dans le
+  dépôt).
+
+**Validation :** `./mvnw -Dmaven.compiler.release=21 verify` vert (**1486 tests**, `All coverage
+checks have been met.`, seuils Jacoco maintenus sans aucun gap à combler). Feature confirmée
+backend seule : `npm run test` (**247 tests**) et `npm run test:e2e` (**59 tests**) verts en
+régression, zéro fichier `frontend/**` touché. Revue Phase 7 (fichier par fichier contre le
+design) : aucun écart supplémentaire trouvé.
+
+**Impacte :** `ConnectorRegistry` (découverte automatique, aucune modification), `06-connecteurs.md`,
+`README.md`, nouveaux fichiers `infrastructure/connector/builtin/{SchedulerConnector,SmtpConnector,
+DocumentStorageConnector}.java`, `infrastructure/connector/SchedulerConnectorTriggerJob.java`,
+`domain/connector/port/out/ConnectorScheduleStateRepository.java`, migration Liquibase
+`018-connector-schedule-state.yaml`, `ConnectorProperties.DocumentStorage`,
+`ExecuteConnectorRequest`, `DEFERRED-FEATURES.md`, `CHANGELOG.md`.
 
 **Détail :** [20-connecteurs-hors-v1.md](analysis%20doc/20-connecteurs-hors-v1.md).
 

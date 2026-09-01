@@ -14,7 +14,7 @@ description: Break down work into actionable tasks and estimate timeline
 - [x] M3 : `scheduler` (TRIGGER) + `connector_schedule_state` + job de poll — le plus gros lot,
       seule migration Liquibase de la feature
 - [x] M4 : Documentation — `06-connecteurs.md`, `README.md` (dépend M1–M3, comportement final requis)
-- [ ] M5 : Vérification globale + clôture (Phases 7–9)
+- [x] M5 : Vérification globale + clôture (Phases 7–9)
 
 ## Task Breakdown
 **What specific work needs to be done?**
@@ -106,8 +106,11 @@ description: Break down work into actionable tasks and estimate timeline
 - [x] T5.3 : régression frontend complète (`npm run test`, `npm run test:e2e`) — preuve de
       non-impact, pas de nouveau scénario attendu. Dépendance : T5.1. **Fait** : Vitest 247/247,
       Playwright 59/59, zéro fichier `frontend/**` touché par la feature.
-- [ ] T5.4 : Phase 9 (revue finale) — alignement design confirmé, migration Liquibase rollback
-      sûre, `CHANGELOG.md` mis à jour, PR prête. Dépendance : T5.1–T5.3.
+- [x] T5.4 : Phase 9 (revue finale) — alignement design confirmé, migration Liquibase rollback
+      sûre, `CHANGELOG.md` mis à jour, PR prête. Dépendance : T5.1–T5.3. **Fait** : rollback 018
+      confirmé trivialement sûr (table neuve, aucune donnée préexistante) ; `CHANGELOG.md`/
+      `TODO.md` §50/`FILE-ATTENTE.md`/`DEFERRED-FEATURES.md` mis à jour ; working tree propre,
+      tout poussé — feature prête pour PR.
 
 ## Dependencies
 **What needs to happen in what order?**

@@ -150,9 +150,20 @@ description: Technical implementation notes, patterns, and code guidelines
 enregistrées en Phase 5 (DTO `ExecuteConnectorRequest`, `NoopEmailPortTestConfiguration`). Aucune
 faille de sécurité, aucun test manquant, aucune mise à jour de doc en retard identifiée.
 
-**Reste ouvert (hors périmètre Phase 7, prévu M5/T5.4 — Phase 9)** :
-- `CHANGELOG.md` — entrée à ajouter pour cette feature.
-- Confirmation finale de la sécurité du rollback de migration (018) en conditions réelles Postgres
-  (déjà vérifiée par construction — `dropTable` explicite — mais pas exercée en pratique dans cette
-  feature).
-- Régression frontend complète (`npm run test`/`npm run test:e2e`) — T5.3, pas encore lancée.
+## Phase 9 — Revue finale (Code Review)
+
+**Checklist final, 2026-09-01 :**
+
+- **Alignement design** : confirmé (Phase 7), aucun écart supplémentaire trouvé en Phase 9.
+- **Rollback de migration sûr** : `018-connector-schedule-state.yaml` crée une table entièrement
+  nouvelle (aucune colonne ajoutée à une table existante, aucune donnée préexistante à préserver) —
+  le `dropTable` explicite de son bloc `rollback` est trivialement sûr, sans perte de données
+  possible puisque la feature n'est pas encore en production.
+- **`CHANGELOG.md`** : entrée « Ajouté » consignée en `[Non publié]` (placeholder « PR (à ouvrir) »,
+  à resynchroniser vers le lien réel une fois la PR créée — même patron que
+  `assainissement-dette-technique`/PR #97→#98).
+- **TODO.md/FILE-ATTENTE.md/DEFERRED-FEATURES.md** : §50 clos avec décisions actées + déviations +
+  preuves de validation ; file d'attente vidée (« File vide ») ; catalogue §2/§3 de
+  `DEFERRED-FEATURES.md` mis à jour.
+- **PR prête** : working tree propre, tout poussé sur `claude/inspect-root-md-x43d24`, aucune tâche
+  M1–M5 restante.

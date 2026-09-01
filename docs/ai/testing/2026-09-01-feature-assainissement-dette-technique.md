@@ -79,10 +79,26 @@ description: Define testing approach, test cases, and quality assurance
 ## Test Reporting & Coverage
 **How do we verify and communicate test results?**
 
-- `./mvnw verify` (Jacoco) — vérifier que les nouvelles branches (gardes blank, callback) sont
-  couvertes ; inspection `target/site/jacoco/<pkg>/<Class>.java.html` si le bundle ne suffit pas à
-  localiser un gap.
-- Pas de commande frontend concernée.
+- `./mvnw verify` (Phase 5) : **BUILD SUCCESS**, 1430 tests, 0 échec, seuils Jacoco bundle maintenus
+  (LINE ≥85%/BRANCH ≥75%).
+- **Balayage Jacoco classe par classe (Phase 8)** sur les 6 fichiers touchés/modifiés — inspection
+  `target/site/jacoco/<pkg>/<Class>.java.html`, pas seulement le total bundle :
+  - `WorkflowStartedEvent`, `PurgeOutboxJob` : 100% lignes/branches, aucun gap.
+  - `WorkflowTypeConfig`, `TriggerOutboxPayload`, `DossierType`, `ProcessPurgeOutboxUseCaseImpl` :
+    gaps résiduels tous **pré-existants et hors périmètre** de cette feature (ex.
+    `normalizeObserverUserIds` dans `WorkflowTypeConfig` L75, ternaires `fieldDefinitions ==
+    null`/`variables == null`, branches `tenantId`/`ref`/`processInstanceId` null-checks dans
+    `purgeDossier`/`truncate`) — vérifiés ligne par ligne : aucun ne touche le code ajouté par cette
+    feature. Les 4 nouvelles gardes blank (`if (x.isBlank()) throw ...`) et tout le code du callback
+    MDC (`onItemStart.apply`, `finally { closeItemScope.run(); }`) sont chacun marqués **100%
+    couverts** (`fc`/`All 2 branches covered`) dans le rapport HTML.
+  - Aucune tâche de comblement de gap nécessaire — pas de dette de couverture introduite par cette
+    feature.
+- Frontend (Phase 8, preuve de non-impact — feature confirmée backend seul, 0 fichier `frontend/**`
+  modifié) :
+  - `npm run test -- --run` : **66 fichiers, 247 tests, 0 échec** (exit 0).
+  - `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e` : **59 tests passed**
+    (34.5s, exit 0).
 
 ## Manual Testing
 **What requires human validation?**

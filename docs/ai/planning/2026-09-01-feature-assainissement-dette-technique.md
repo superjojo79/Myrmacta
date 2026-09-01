@@ -79,10 +79,10 @@ description: Break down work into actionable tasks and estimate timeline
       `ProcessPurgeOutboxUseCaseImpl`/`PurgeOutboxJob` contre le design ; chercher les écarts réels
       (pattern historique du dépôt : la plupart des features précédentes trouvent 1-2 écarts réels à
       cette étape, cf. `connecteur-http-rest-service`/T5.5). Dépendance : M1–M3.
-- [ ] T4.2 : Phase 8 (couverture) — balayage Jacoco classe par classe sur les fichiers touchés,
+- [x] T4.2 : Phase 8 (couverture) — balayage Jacoco classe par classe sur les fichiers touchés,
       combler les lacunes réelles trouvées (au-delà du bundle global). Dépendance : T4.1. Validation :
       seuils bundle maintenus (LINE ≥ 85% / BRANCH ≥ 75%).
-- [ ] T4.3 : régression frontend complète (`npm run test`, `npm run test:e2e`) — preuve de non-impact
+- [x] T4.3 : régression frontend complète (`npm run test`, `npm run test:e2e`) — preuve de non-impact
       (feature confirmée backend seul), aucun fichier `frontend/**` modifié attendu. Dépendance :
       T4.1.
 - [ ] T4.4 : Phase 9 (revue finale) — alignement design confirmé, `CHANGELOG.md` mis à jour

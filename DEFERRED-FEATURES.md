@@ -20,17 +20,19 @@
 `modele-physique-consolide`, `masquage-donnees-sensibles-logs-webhooks`
 (PR #70), `edition-bpmn` (PR #71), `reporting-sla` (PR #80), `serveur-mcp`
 (PR #82), `schema-champs-dynamiques` (PR #87), `connecteur-http-rest-service`
-(PR #95, TODO §48) sont **Complete** (mergées sur `main` sauf
+(PR #95, TODO §48), `assainissement-dette-technique` (PR #97, TODO §49)
+sont **Complete** (mergées sur `main` sauf
 mention contraire — `frontend` via PR #38
 `cursor/feature-frontend-21f2`, vague 1 instructeur + vague 2 admin
 types/templates/connectors/workflow-configs ; packaging Maven→`static/` ;
 maquette
 [FlowForge - Maquettes UI.html](analysis%20doc/FlowForge%20-%20Maquettes%20UI.html)
 = référence UX). Détail des 5 dernières (regroupement 2026-08-20) en §2.
-**File d'attente (2026-08-31) :** vide — `connecteur-http-rest-service`
-livrée (TODO §48 clos) ; §46 (ArchUnit `application`) clos.
-[REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md).
-Reliquat ops : provisioning (TODO §31).
+**File d'attente (2026-09-01) :** vide — `assainissement-dette-technique`
+livrée (TODO §49 clos) ; TODO.md **entièrement clos** (49/49 points).
+[REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) intégralement
+close (§40–46). Reliquat ops : provisioning (schéma/instance/proxy/secrets,
+jamais numéroté formellement — voir §1.2/§4).
 
 ---
 
@@ -60,7 +62,7 @@ jointes). `delete` livré avec `purge-stockage` (§22). Aucun couplage MinIO.
 | Activation `server.servlet.context-path` | Routage par chemin (décision n° 14) — yaml encore commenté |
 | Datasource + search_path runtime | Partiellement amorcé avec `dossiers` ; hardening ops |
 | Bootstrap Liquibase / schéma tenant | Ops (bootstrap du schéma au provisioning). **Obsolète :** les contextes `tenant-init`/`tenant-migration` séparés évoqués ici (décision n° 10) n'existent pas dans le code — la décision n° 1 porte une note explicite disant qu'ils « n'ont plus lieu d'être » depuis la décision n° 13 (instance dédiée par tenant, changelog unique appliqué à chaque démarrage). Confirmé par `modele-physique-consolide` (PR #68, TODO §25). |
-| Outillage provisioning | Schéma, instance, bloc reverse-proxy, surcharge obligatoire `app.tenant.id` (voir TODO §31 / docs feature) |
+| Outillage provisioning | Schéma, instance, bloc reverse-proxy, surcharge obligatoire `app.tenant.id` — jamais numéroté en TODO.md à ce jour (TODO §31 porte sur le découpage en lots, **clos**, pas sur cet outillage) |
 | `platform.tenant_migration_status` | Observabilité migration (lié TODO §29) |
 | Injecter `TenantProperties.id()` aux adaptateurs HTTP | Dès premiers controllers métier (déjà fait pour dossiers) |
 
@@ -188,13 +190,14 @@ Voir le détail et les options dans [TODO.md](TODO.md),
 | 29 | Observabilité | **Livré** (2026-08-20) — `observabilite` PR #59 Phase 9 READY ; Q1–Q6 |
 | 30 | Durcissement entrées exposées | **Clos** (2026-08-21, `durcissement-donnees-sensibles` PR #62) — en plus du rate limit/taille max/SSRF déjà livrés, validation magic-bytes des pièces jointes + port `AttachmentScanPort` pluggable (adaptateur no-op, pas d'antivirus dans la stack figée — décision explicite, contrat prêt pour un futur adaptateur type ClamAV) + audit anti-fuite de secrets déchiffrés |
 | 31 | Découpage en lots / provisioning | **Partiel** — lots lifecycle démarrés (5 features du regroupement 2026-08-20 toutes livrées) ; outillage provisioning ops (schéma/instance/proxy/secrets) encore à produire |
-| 40 | SSTI Thymeleaf / SpEL | **Ouvert** (2026-08-25) — [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) S-1 ; à trancher A/B/C |
-| 41 | Isolation PG sans GRANT par tenant | **Ouvert** (2026-08-25) — S-2 ; chaîne avec §40 |
-| 42 | Actuator `permitAll` / port 8081 | **Ouvert** (2026-08-25) — S-3 ; DD-MGMT-SEC à durcir ops |
-| 43 | Secrets défaut + HMAC M2M | **Ouvert** (2026-08-25) — S-4 |
-| 44 | SSRF sortant DNS TOCTOU | **Ouvert** (2026-08-25) — S-5 |
+| 40 | SSTI Thymeleaf / SpEL | **Clos** (2026-08-25, `durcissement-securite-post-revue` PR #76) — évaluateur allowlist (`#vars`/`#dates`/`#numbers`/`#strings`/`#lists` + chemins modèle), D-40 = B/B2 |
+| 41 | Isolation PG sans GRANT par tenant | **Clos** (2026-08-25, PR #76) — GRANT PG `LOGIN` par tenant |
+| 42 | Actuator `permitAll` / port 8081 | **Clos** (2026-08-25, PR #76) — actuator bindé `127.0.0.1:8090` |
+| 43 | Secrets défaut + HMAC M2M | **Clos** (2026-08-25, PR #76) — secrets fail-fast hors profils `local`/`test` |
+| 44 | SSRF sortant DNS TOCTOU | **Clos** (2026-08-25, PR #76) — pin IP résolue sur le webhook sortant |
 | 45 | Dérive documentaire README / analyse | **Clos** (2026-08-25, `derive-documentaire` [PR #75](https://github.com/superjojo79/FlowForge/pull/75)) |
 | 46 | ArchUnit couche `application` | **Clos** (2026-08-31) — port `WorkflowStartConfirmationPort` extrait, règle ArchUnit `application_never_depends_on_infrastructure` ajoutée |
+| 49 | Assainissement dette technique | **Clos** (2026-09-01, `assainissement-dette-technique` [PR #97](https://github.com/superjojo79/FlowForge/pull/97)) — validation blank domaine (4 records), `dossierId` en MDC par item de purge, `Persistable` confirmé redondant |
 | 48 | Connecteur `http-rest` en rôle SERVICE | **Clos** (2026-08-31, `connecteur-http-rest-service`) — capability `BOTH`, fusion `HttpRestConnector`, `authHeaderValue`, nouveau bean `HttpClient` |
 
 ---

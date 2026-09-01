@@ -36,6 +36,9 @@ public record DossierType(
         Objects.requireNonNull(workflowKey, "workflowKey");
         Objects.requireNonNull(createdBy, "createdBy");
         Objects.requireNonNull(updatedBy, "updatedBy");
+        if (workflowKey.isBlank()) {
+            throw new IllegalArgumentException("workflowKey must not be blank");
+        }
         if (!CODE_PATTERN.matcher(code).matches()) {
             throw new IllegalArgumentException(
                     "code must match " + CODE_PATTERN.pattern() + ", was: " + code);

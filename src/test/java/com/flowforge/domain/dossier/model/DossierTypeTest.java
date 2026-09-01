@@ -74,6 +74,14 @@ class DossierTypeTest {
     }
 
     @Test
+    void constructor_rejectsBlankWorkflowKey() {
+        assertThatThrownBy(
+                        () -> DossierType.inherit(ID, TENANT, "CLAIM", "Claim", "   ", true, false, List.of()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("workflowKey");
+    }
+
+    @Test
     void constructor_rejectsNonPositiveSlaTargetHours() {
         assertThatThrownBy(() -> new DossierType(
                         ID, TENANT, "CLAIM", "Claim", "wf-claim", true, false, List.of(), null, false, 0,

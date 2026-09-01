@@ -14,6 +14,9 @@ public record TriggerOutboxPayload(
     public TriggerOutboxPayload {
         Objects.requireNonNull(dossierId, "dossierId");
         Objects.requireNonNull(processKey, "processKey");
+        if (processKey.isBlank()) {
+            throw new IllegalArgumentException("processKey must not be blank");
+        }
         Objects.requireNonNull(triggerRef, "triggerRef");
         variables = variables == null ? Map.of() : Map.copyOf(variables);
     }

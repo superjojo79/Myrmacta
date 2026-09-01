@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -37,6 +38,7 @@ class ProcessPurgeOutboxUseCaseImplTest {
 
     private static final Instant NOW = Instant.parse("2026-08-19T12:00:00Z");
     private static final String TENANT = "tenant_dev";
+    private static final Function<UUID, Runnable> NO_OP = id -> () -> {};
 
     private PurgeOutboxRepository outbox;
     private DossierRepository dossiers;
@@ -76,7 +78,7 @@ class ProcessPurgeOutboxUseCaseImplTest {
         when(elements.findByDossierIdOrderByAddedAtAsc(dossierId)).thenReturn(List.of(attachment, note));
         when(links.findByDossierIdOrderBySequence(dossierId)).thenReturn(List.of(link));
 
-        int processed = useCase.processBatch(NOW, 50);
+        int processed = useCase.processBatch(NOW, 50, NO_OP);
 
         assertThat(processed).isEqualTo(1);
         verify(storage).delete(TENANT, TENANT + "/doc.pdf");
@@ -89,13 +91,86 @@ class ProcessPurgeOutboxUseCaseImplTest {
         verify(outbox, never()).markFailed(any(), any());
     }
 
+    @SuppressWarnings("unchecked")
+    @Test
+    void processBatch_invokesOnItemStartWithDossierIdBeforePurgingThenRunsCloserAfterCompletion() {
+        UUID dossierId = UUID.randomUUID();
+        PurgeOutboxRecord record = pending(dossierId, PurgeOutboxOrigin.RETENTION, NOW.minusSeconds(60));
+        DossierWorkflowLink link = link(dossierId, "pi-1");
+        when(outbox.findRetryable(50)).thenReturn(List.of(record));
+        when(dossiers.findById(dossierId)).thenReturn(Optional.of(archived(dossierId)));
+        when(links.findByDossierIdOrderBySequence(dossierId)).thenReturn(List.of(link));
+        Function<UUID, Runnable> onItemStart = mock(Function.class);
+        Runnable closer = mock(Runnable.class);
+        when(onItemStart.apply(dossierId)).thenReturn(closer);
+
+        useCase.processBatch(NOW, 50, onItemStart);
+
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(onItemStart, engine, outbox, closer);
+        order.verify(onItemStart).apply(dossierId);
+        order.verify(engine).deleteProcessInstanceBestEffort("pi-1");
+        order.verify(outbox).markCompleted(record.id());
+        order.verify(closer).run();
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void processBatch_itemFails_stillRunsCloserAfterMarkFailed() {
+        UUID dossierId = UUID.randomUUID();
+        PurgeOutboxRecord record = pending(dossierId, PurgeOutboxOrigin.ADMIN, NOW);
+        when(outbox.findRetryable(10)).thenReturn(List.of(record));
+        when(dossiers.findById(dossierId)).thenReturn(Optional.of(archived(dossierId)));
+        when(elements.findByDossierIdOrderByAddedAtAsc(dossierId))
+                .thenReturn(List.of(element(dossierId, TENANT + "/doc.pdf")));
+        org.mockito.Mockito.doThrow(new DocumentStorageException("S3 down"))
+                .when(storage)
+                .delete(TENANT, TENANT + "/doc.pdf");
+        Function<UUID, Runnable> onItemStart = mock(Function.class);
+        Runnable closer = mock(Runnable.class);
+        when(onItemStart.apply(dossierId)).thenReturn(closer);
+
+        useCase.processBatch(NOW, 10, onItemStart);
+
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(onItemStart, outbox, closer);
+        order.verify(onItemStart).apply(dossierId);
+        order.verify(outbox).markFailed(eq(record.id()), eq("S3 down"));
+        order.verify(closer).run();
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void processBatch_itemSkippedByClock_neverInvokesOnItemStart() {
+        UUID dossierId = UUID.randomUUID();
+        PurgeOutboxRecord record = pending(dossierId, PurgeOutboxOrigin.RETENTION, NOW.plusSeconds(3600));
+        when(outbox.findRetryable(10)).thenReturn(List.of(record));
+        Function<UUID, Runnable> onItemStart = mock(Function.class);
+
+        useCase.processBatch(NOW, 10, onItemStart);
+
+        verify(onItemStart, never()).apply(any());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void processBatch_claimLost_neverInvokesOnItemStart() {
+        UUID dossierId = UUID.randomUUID();
+        PurgeOutboxRecord record = pending(dossierId, PurgeOutboxOrigin.ADMIN, NOW);
+        when(outbox.findRetryable(10)).thenReturn(List.of(record));
+        when(outbox.claim(record.id())).thenReturn(false);
+        Function<UUID, Runnable> onItemStart = mock(Function.class);
+
+        useCase.processBatch(NOW, 10, onItemStart);
+
+        verify(onItemStart, never()).apply(any());
+    }
+
     @Test
     void processBatch_retentionFutureEligibleAt_skipsWithoutClaim() {
         UUID dossierId = UUID.randomUUID();
         PurgeOutboxRecord record = pending(dossierId, PurgeOutboxOrigin.RETENTION, NOW.plusSeconds(3600));
         when(outbox.findRetryable(10)).thenReturn(List.of(record));
 
-        int processed = useCase.processBatch(NOW, 10);
+        int processed = useCase.processBatch(NOW, 10, NO_OP);
 
         assertThat(processed).isZero();
         verify(outbox, never()).claim(any());
@@ -110,7 +185,7 @@ class ProcessPurgeOutboxUseCaseImplTest {
         when(outbox.findRetryable(10)).thenReturn(List.of(record));
         when(dossiers.findById(dossierId)).thenReturn(Optional.of(archived(dossierId)));
 
-        int processed = useCase.processBatch(NOW, 10);
+        int processed = useCase.processBatch(NOW, 10, NO_OP);
 
         assertThat(processed).isEqualTo(1);
         verify(outbox).claim(record.id());
@@ -129,7 +204,7 @@ class ProcessPurgeOutboxUseCaseImplTest {
                 .when(storage)
                 .delete(TENANT, TENANT + "/doc.pdf");
 
-        int processed = useCase.processBatch(NOW, 10);
+        int processed = useCase.processBatch(NOW, 10, NO_OP);
 
         assertThat(processed).isEqualTo(1);
         verify(outbox).markFailed(eq(record.id()), eq("S3 down"));
@@ -145,7 +220,7 @@ class ProcessPurgeOutboxUseCaseImplTest {
         when(outbox.findRetryable(10)).thenReturn(List.of(record));
         when(dossiers.findById(dossierId)).thenReturn(Optional.empty());
 
-        int processed = useCase.processBatch(NOW, 10);
+        int processed = useCase.processBatch(NOW, 10, NO_OP);
 
         assertThat(processed).isEqualTo(1);
         verify(elements).deleteAllByDossierId(dossierId);
@@ -157,7 +232,7 @@ class ProcessPurgeOutboxUseCaseImplTest {
 
     @Test
     void processBatch_zeroLimit_isNoOp() {
-        assertThat(useCase.processBatch(NOW, 0)).isZero();
+        assertThat(useCase.processBatch(NOW, 0, NO_OP)).isZero();
         verify(outbox, never()).findRetryable(anyInt());
     }
 
@@ -168,7 +243,7 @@ class ProcessPurgeOutboxUseCaseImplTest {
         when(outbox.findRetryable(10)).thenReturn(List.of(record));
         when(outbox.claim(record.id())).thenReturn(false);
 
-        int processed = useCase.processBatch(NOW, 10);
+        int processed = useCase.processBatch(NOW, 10, NO_OP);
 
         assertThat(processed).isZero();
         verify(storage, never()).delete(any(), any());
@@ -188,7 +263,7 @@ class ProcessPurgeOutboxUseCaseImplTest {
                 .when(elements)
                 .deleteAllByDossierId(dossierId);
 
-        int processed = useCase.processBatch(NOW, 10);
+        int processed = useCase.processBatch(NOW, 10, NO_OP);
 
         assertThat(processed).isEqualTo(1);
         verify(storage).delete(TENANT, TENANT + "/doc.pdf");

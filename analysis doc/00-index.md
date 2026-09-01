@@ -32,7 +32,8 @@
 | 15 | Serveur MCP (Model Context Protocol) — Phase 4 planned | [15-serveur-mcp.md](15-serveur-mcp.md) |
 | 16 | Reporting & SLA — **livré** (PR #80) | [16-reporting-sla.md](16-reporting-sla.md) |
 | 17 | Édition du schéma des champs dynamiques (admin `DossierType`) — analyse initiale | [17-schema-champs-dynamiques.md](17-schema-champs-dynamiques.md) |
-| 18 | Activation du connecteur `http-rest` en rôle SERVICE — analyse initiale | [18-connecteur-http-rest-service.md](18-connecteur-http-rest-service.md) |
+| 18 | Activation du connecteur `http-rest` en rôle SERVICE — **livré** (TODO §48, PR #95) | [18-connecteur-http-rest-service.md](18-connecteur-http-rest-service.md) |
+| 19 | Assainissement de la dette technique (reliquats `DEFERRED-FEATURES.md` §1) — **livré** (TODO §49) | [19-assainissement-dette-technique.md](19-assainissement-dette-technique.md) |
 
 > Pour concevoir concrètement un diagramme BPMN pour FlowForge (conventions, référence des
 > `serviceTask` disponibles, champs dynamiques, connecteurs, intervenants, génération de

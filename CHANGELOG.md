@@ -58,7 +58,7 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 - **PR [#83](https://github.com/superjojo79/FlowForge/pull/83)** — Service `prometheus` optionnel
   dans `docker-compose.yml` (profil dédié, `network_mode: host` pour respecter le bind loopback
   du port management) : scrape local de `/actuator/prometheus`, déjà exposé par le backend.
-- **PR (à ouvrir)** — 3 nouveaux types de connecteurs (TODO §50) : `scheduler` (TRIGGER, démarre
+- **PR [#99](https://github.com/superjojo79/FlowForge/pull/99)** — 3 nouveaux types de connecteurs (TODO §50) : `scheduler` (TRIGGER, démarre
   un workflow à intervalle cron via un job de poll dédié), `smtp` (SERVICE, envoi email ad hoc
   depuis un `serviceTask`, réutilise `EmailPort`) et `document-storage` (SERVICE, lecture/écriture
   de contenu hors dossier via `DocumentStoragePort` — généralisé depuis le candidat `s3-minio`,

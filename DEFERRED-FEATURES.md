@@ -168,7 +168,7 @@ Ordre indicatif aligné sur l’analyse et les dépendances techniques :
 | — | `serveur-mcp` | **Complete** (PR #82) — serveur MCP interne, 9 tools (`get_dossier`, `search_dossiers`, `query_sla_summary`, `list_document_templates`, `get_dossier_type`, `list_dossier_types`, `list_workflow_types`, `define_dossier_type`, `deploy_workflow`) sur `POST /api/m2m/mcp` (Streamable HTTP, Spring AI 2.0.0), JWT M2M `API_SERVICE` réutilisé ; zéro fichier frontend touché. |
 | — | `schema-champs-dynamiques` | **Complete** (PR #87) — écran Admin → Types édite le schéma `fieldDefinitions` d'un `DossierType` (création + édition), blocage 409 sur schéma incompatible avec des dossiers existants. TODO §47 clos. |
 | — | `connecteur-http-rest-service` | **Complete** ([PR #95](https://github.com/superjojo79/FlowForge/pull/95)) — connecteur `http-rest` utilisable en rôle SERVICE (capability `BOTH`), fusion avec le skeleton `HttpRestServiceConnector` (supprimé) dans `HttpRestConnector` renommé. GET/POST/PUT dynamiques, `authHeaderValue` chiffré, nouveau bean `HttpClient`. TODO §48 clos. |
-| — | `connecteurs-hors-v1` | **Complete** (PR à ouvrir) — 3 derniers connecteurs du catalogue cible : `scheduler` (TRIGGER, cron via job `@Scheduled` + table `connector_schedule_state`), `smtp` (SERVICE, réutilise `EmailPort`), `document-storage` (SERVICE, généralisé depuis `s3-minio`, réutilise `DocumentStoragePort`). TODO §50 clos. |
+| — | `connecteurs-hors-v1` | **Complete** ([PR #99](https://github.com/superjojo79/FlowForge/pull/99)) — 3 derniers connecteurs du catalogue cible : `scheduler` (TRIGGER, cron via job `@Scheduled` + table `connector_schedule_state`), `smtp` (SERVICE, réutilise `EmailPort`), `document-storage` (SERVICE, généralisé depuis `s3-minio`, réutilise `DocumentStoragePort`). TODO §50 clos. |
 
 ---
 
@@ -199,7 +199,7 @@ Voir le détail et les options dans [TODO.md](TODO.md),
 | 45 | Dérive documentaire README / analyse | **Clos** (2026-08-25, `derive-documentaire` [PR #75](https://github.com/superjojo79/FlowForge/pull/75)) |
 | 46 | ArchUnit couche `application` | **Clos** (2026-08-31) — port `WorkflowStartConfirmationPort` extrait, règle ArchUnit `application_never_depends_on_infrastructure` ajoutée |
 | 49 | Assainissement dette technique | **Clos** (2026-09-01, `assainissement-dette-technique` [PR #97](https://github.com/superjojo79/FlowForge/pull/97)) — validation blank domaine (4 records), `dossierId` en MDC par item de purge, `Persistable` confirmé redondant |
-| 50 | Nouveaux connecteurs hors V1 (`scheduler`/`smtp`/`document-storage`) | **Clos** (2026-09-01, `connecteurs-hors-v1`, PR à ouvrir) — `scheduler` (TRIGGER, cron), `smtp` (SERVICE, réutilise `EmailPort`), `document-storage` (SERVICE, généralisé depuis `s3-minio` vers `DocumentStoragePort`, pas de couplage MinIO) |
+| 50 | Nouveaux connecteurs hors V1 (`scheduler`/`smtp`/`document-storage`) | **Clos** (2026-09-01, `connecteurs-hors-v1`, [PR #99](https://github.com/superjojo79/FlowForge/pull/99)) — `scheduler` (TRIGGER, cron), `smtp` (SERVICE, réutilise `EmailPort`), `document-storage` (SERVICE, généralisé depuis `s3-minio` vers `DocumentStoragePort`, pas de couplage MinIO) |
 | 48 | Connecteur `http-rest` en rôle SERVICE | **Clos** (2026-08-31, `connecteur-http-rest-service`) — capability `BOTH`, fusion `HttpRestConnector`, `authHeaderValue`, nouveau bean `HttpClient` |
 
 ---

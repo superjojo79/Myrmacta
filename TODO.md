@@ -814,7 +814,8 @@ en régression, zéro fichier `frontend/**` touché.
 
 ### [x] 50. Nouveaux connecteurs hors V1 — `scheduler`, `smtp`, `document-storage`
 
-**Clos** (2026-09-01, `connecteurs-hors-v1`, PR à ouvrir) — cycle `dev-lifecycle` complet
+**Clos** (2026-09-01, `connecteurs-hors-v1`,
+[PR #99](https://github.com/superjojo79/FlowForge/pull/99)) — cycle `dev-lifecycle` complet
 (Phases 1-9). Les 3 connecteurs restants du catalogue cible livrés, chacun en réutilisant un
 mécanisme domaine déjà existant plutôt qu'un nouveau couplage technique — zéro modification de
 `ConnectorTriggerRuntimeImpl`/`ConnectorCatalog`/`ConnectorRegistry`.

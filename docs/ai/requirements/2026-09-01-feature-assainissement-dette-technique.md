@@ -15,9 +15,11 @@ description: Clarify the problem space, gather requirements, and define success 
 - **Validation blank `processKey`/`workflowKey`** — les records domaine (`WorkflowTypeConfig`,
   `TriggerOutboxPayload`, `WorkflowStartedEvent`, `DossierType.workflowKey`) n'appliquent que
   `Objects.requireNonNull(...)`, jamais de garde blank, contrairement à `DossierType.code` qui a son
-  propre `CODE_PATTERN` dans le compact constructor. **Vérifié en Phase 1** : tous les points d'entrée
-  externes actuels (REST `WorkflowTypeConfigController`, `DossierWorkflowController`,
-  `DossierTypeController` ; MCP `DeployWorkflowTool`) bloquent déjà une valeur blank via un helper
+  propre `CODE_PATTERN` dans le compact constructor. **Vérifié en Phase 1, complété en Phase 2** :
+  tous les points d'entrée externes actuels (REST `WorkflowTypeConfigController`,
+  `DossierWorkflowController`, `DossierTypeController` ; MCP `DeployWorkflowTool` et
+  `DefineDossierTypeTool` — les 3 chemins d'écriture de `DossierType` mentionnés dans
+  `DossierType.requireUniqueFieldNames`, tous vérifiés) bloquent déjà une valeur blank via un helper
   `required()`/`requireString()` répété indépendamment à chaque frontière — donc aucune valeur blank
   n'est atteignable aujourd'hui par ces chemins. Le gap réel est l'absence de défense en profondeur
   dans le domaine lui-même : tout futur appelant qui construit directement un de ces records (job

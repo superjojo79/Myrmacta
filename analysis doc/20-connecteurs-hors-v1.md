@@ -1,11 +1,11 @@
 # Nouveaux connecteurs hors V1 — `scheduler`, `smtp`, `document-storage`
 
-> **Statut : première analyse fonctionnelle, aucune décision technique tranchée.** À affiner en
-> phase `dev-lifecycle` (requirements → design) avant tout code — voir « Points ouverts » en fin de
-> document. Choisi comme prochaine feature le 2026-09-01 : TODO.md (49/49), la revue sécurité
-> (§40–46) et le sweep de dette technique (§49) sont tous clos ; retenu par l'utilisateur parmi
-> deux pistes proposées (l'autre — outillage provisioning tenant — reste en réserve, aucune analyse
-> écrite). Périmètre précisé par l'utilisateur : les 3 connecteurs candidats du catalogue
+> **Statut : livré** (2026-09-01, `connecteurs-hors-v1`, TODO §50,
+> [PR #99](https://github.com/superjojo79/FlowForge/pull/99)). Les 3 connecteurs candidats
+> décrits ci-dessous ont été implémentés tels quels après tranchage des points ouverts en phase
+> `dev-lifecycle` (voir `docs/ai/{requirements,design}/2026-09-01-feature-connecteurs-hors-v1.md`
+> pour les décisions actées). Document conservé tel quel comme trace de l'analyse initiale.
+> Périmètre précisé par l'utilisateur : les 3 connecteurs candidats du catalogue
 > [06-connecteurs.md](06-connecteurs.md) (`scheduler`, `smtp`, `s3-minio`), avec `s3-minio`
 > **généralisé** en `document-storage` plutôt que couplé à S3 (cohérent avec `DEFERRED-FEATURES.md`
 > §0 : « Ne pas coupler à MinIO »).

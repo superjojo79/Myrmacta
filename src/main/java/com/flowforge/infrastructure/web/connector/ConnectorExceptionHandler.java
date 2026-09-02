@@ -1,5 +1,7 @@
 package com.flowforge.infrastructure.web.connector;
 
+import com.flowforge.domain.connector.model.CallbackAmbiguousCorrelationException;
+import com.flowforge.domain.connector.model.CallbackNoMatchingInstanceException;
 import com.flowforge.domain.connector.model.ConnectorInstanceNotFoundException;
 import com.flowforge.domain.connector.model.ConnectorValidationException;
 import com.flowforge.domain.connector.model.UnknownConnectorException;
@@ -46,6 +48,16 @@ public class ConnectorExceptionHandler {
                 HttpStatus.CONFLICT,
                 "Webhook delivery in progress",
                 ex.getMessage());
+    }
+
+    @ExceptionHandler(CallbackNoMatchingInstanceException.class)
+    ProblemDetail handleCallbackNoMatchingInstance(CallbackNoMatchingInstanceException ex) {
+        return problem(HttpStatus.NOT_FOUND, "No process waiting for this callback", ex.getMessage());
+    }
+
+    @ExceptionHandler(CallbackAmbiguousCorrelationException.class)
+    ProblemDetail handleCallbackAmbiguousCorrelation(CallbackAmbiguousCorrelationException ex) {
+        return problem(HttpStatus.CONFLICT, "Ambiguous callback correlation", ex.getMessage());
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

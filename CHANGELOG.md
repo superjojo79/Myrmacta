@@ -45,6 +45,12 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
+- **PR [#102](https://github.com/superjojo79/FlowForge/pull/102)** — Nouveau connecteur générique
+  `flowable-callback` (TODO §51, capability **CALLBACK**) : un process BPMN en attente sur un
+  `intermediateCatchEvent`/`receiveTask` à message peut désormais être réveillé par un callback
+  HTTP asynchrone (`POST /api/callbacks/{instanceId}`, même auth/idempotence que les webhooks
+  existants), corrélé par une valeur de clé métier extraite du payload — indépendant du connecteur
+  SERVICE ayant émis l'appel sortant initial.
 - **PR [#95](https://github.com/superjojo79/FlowForge/pull/95)** — Le connecteur `http-rest` est désormais utilisable en rôle **SERVICE** en
   plus de TRIGGER (TODO §48) : un `serviceTask` BPMN ou un appel `POST
   /api/connectors/{id}/execute` (BFF/M2M) peut appeler un service REST externe (GET/POST/PUT,

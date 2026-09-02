@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             targetNamespace="http://flowforge/processes">
+
+  <message id="connectorSmokeCallbackMessage" name="connectorSmokeCallbackMessage"/>
+
+  <!-- Waiting process: catches message correlated by the "correlationKey" process variable
+       (validates WorkflowEnginePort.correlateMessage / ExecutionQuery.processVariableValueEquals). -->
+  <process id="callbackWaitSmoke" name="Callback Wait Smoke" isExecutable="true">
+    <startEvent id="callbackStart" name="Start"/>
+    <sequenceFlow id="flow_callback_wait" sourceRef="callbackStart" targetRef="waitCallback"/>
+    <intermediateCatchEvent id="waitCallback" name="Wait connectorSmokeCallbackMessage">
+      <messageEventDefinition messageRef="connectorSmokeCallbackMessage"/>
+    </intermediateCatchEvent>
+    <sequenceFlow id="flow_callback_task" sourceRef="waitCallback" targetRef="afterCallbackTask"/>
+    <userTask id="afterCallbackTask" name="After callback (keeps variables inspectable)"/>
+    <sequenceFlow id="flow_callback_end" sourceRef="afterCallbackTask" targetRef="callbackEnd"/>
+    <endEvent id="callbackEnd" name="End"/>
+  </process>
+</definitions>

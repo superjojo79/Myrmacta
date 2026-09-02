@@ -1,0 +1,137 @@
+package com.flowforge.infrastructure.web.connector;
+
+import com.flowforge.domain.connector.model.ConnectorInstanceData;
+import com.flowforge.domain.connector.model.ConnectorValidationException;
+import com.flowforge.domain.connector.model.WebhookAuthType;
+import com.flowforge.domain.connector.port.in.CallbackConnectorRuntime;
+import com.flowforge.domain.connector.port.out.ConnectorInstanceRepository;
+import com.flowforge.domain.connector.port.out.WebhookIdempotencyStore;
+import com.flowforge.infrastructure.config.ConnectorProperties;
+import com.flowforge.infrastructure.config.TenantProperties;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.Parameter;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
+
+/**
+ * Entry point for the generic callback connector (D-CALLBACK, TODO §51) : separate from
+ * {@link WebhookController} because the semantics differ -- resumes an existing waiting process
+ * execution, never creates or attaches a dossier. Authentication, rate limiting and idempotence
+ * are the same shared components, reused by injection.
+ */
+@RestController
+@RequestMapping("/api/callbacks")
+class CallbackWebhookController {
+
+    private static final int ACCEPTED = 202;
+
+    private final TenantProperties tenantProperties;
+    private final ConnectorInstanceRepository instances;
+    private final WebhookIdempotencyStore idempotencyStore;
+    private final CallbackConnectorRuntime callbackRuntime;
+    private final ConnectorProperties connectorProperties;
+    private final ObjectMapper objectMapper;
+    private final WebhookRequestRateLimiter rateLimiter;
+    private final List<WebhookAuthenticator> authenticators;
+
+    CallbackWebhookController(
+            TenantProperties tenantProperties,
+            ConnectorInstanceRepository instances,
+            WebhookIdempotencyStore idempotencyStore,
+            CallbackConnectorRuntime callbackRuntime,
+            ConnectorProperties connectorProperties,
+            ObjectMapper objectMapper,
+            WebhookRequestRateLimiter rateLimiter,
+            List<WebhookAuthenticator> authenticators) {
+        this.tenantProperties = tenantProperties;
+        this.instances = instances;
+        this.idempotencyStore = idempotencyStore;
+        this.callbackRuntime = callbackRuntime;
+        this.connectorProperties = connectorProperties;
+        this.objectMapper = objectMapper;
+        this.rateLimiter = rateLimiter;
+        this.authenticators = List.copyOf(authenticators);
+    }
+
+    @PostMapping("/{instanceId}")
+    ResponseEntity<Void> receive(
+            @PathVariable UUID instanceId,
+            @Parameter(hidden = true) @RequestHeader HttpHeaders headers,
+            @RequestBody byte[] rawBody) {
+        byte[] body = rawBody == null ? new byte[0] : rawBody;
+        if (body.length > connectorProperties.webhook().maxBodyBytes()) {
+            throw new WebhookPayloadTooLargeException(connectorProperties.webhook().maxBodyBytes());
+        }
+        if (!rateLimiter.tryConsume(instanceId, connectorProperties.webhook().rateLimitPerMinute())) {
+            throw new WebhookRateLimitExceededException(instanceId);
+        }
+
+        String idempotencyKey = headers.getFirst("Idempotency-Key");
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            throw new IllegalArgumentException("Idempotency-Key header is required");
+        }
+
+        ConnectorInstanceData instance = instances
+                .findByIdAndTenantId(instanceId, tenantProperties.id())
+                .filter(ConnectorInstanceData::enabled)
+                .orElseThrow(() -> new WebhookEndpointNotFoundException(instanceId));
+
+        WebhookAuthType authType = authType(instance.config());
+        String secret = stringValue(instance.config().get("webhookSecret"), "webhookSecret");
+        authenticator(authType).authenticate(instance.id(), secret, body, headers);
+
+        return idempotencyStore.beginOrGetCompleted(instance.id(), idempotencyKey)
+                .map(status -> ResponseEntity.status(status).<Void>build())
+                .orElseGet(() -> {
+                    Object payload = readPayload(body);
+                    callbackRuntime.onIncomingCallback(instance, payload);
+                    idempotencyStore.complete(instance.id(), idempotencyKey, ACCEPTED);
+                    return ResponseEntity.accepted().build();
+                });
+    }
+
+    private WebhookAuthenticator authenticator(WebhookAuthType authType) {
+        return authenticators.stream()
+                .filter(authenticator -> authenticator.supports(authType))
+                .findFirst()
+                .orElseThrow(() -> new ConnectorValidationException(
+                        "Unsupported webhookAuthType: " + authType));
+    }
+
+    private Object readPayload(byte[] body) {
+        try {
+            return objectMapper.readValue(body, Object.class);
+        } catch (JacksonException ex) {
+            throw new IllegalArgumentException("Callback body must be valid JSON", ex);
+        }
+    }
+
+    private static WebhookAuthType authType(Map<String, Object> config) {
+        Object value = config.get("webhookAuthType");
+        if (value == null) {
+            throw new ConnectorValidationException("webhookAuthType is required");
+        }
+        try {
+            return WebhookAuthType.valueOf(String.valueOf(value));
+        } catch (IllegalArgumentException ex) {
+            throw new ConnectorValidationException("Unsupported webhookAuthType: " + value);
+        }
+    }
+
+    private static String stringValue(Object value, String field) {
+        if (!(value instanceof String text) || text.isBlank()) {
+            throw new ConnectorValidationException(field + " is required");
+        }
+        return text;
+    }
+}

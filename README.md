@@ -55,7 +55,7 @@ Orchestration des flux métier via **Flowable** — standard industriel ouvert (
 
 ### Système de connecteurs
 
-Architecture extensible permettant d'intégrer n'importe quelle source ou destination. Un connecteur peut jouer le rôle de **trigger** (déclenche un workflow sur événement entrant) ou de **service** (exécute un traitement dans le workflow). En V1 le catalogue livré est `http-rest` (**TRIGGER + SERVICE**), `flowable-signal` (TRIGGER + SERVICE), `scheduler` (TRIGGER, déclenchement planifié par cron), `smtp` (SERVICE, envoi email ad hoc depuis un `serviceTask`) et `document-storage` (SERVICE, lecture/écriture de contenu hors dossier via `DocumentStoragePort`). Les types cible Kafka, import batch, ERP restent hors V1 ; des connecteurs custom peuvent être ajoutés au classpath sans modifier le core.
+Architecture extensible permettant d'intégrer n'importe quelle source ou destination. Un connecteur peut jouer le rôle de **trigger** (déclenche un workflow sur événement entrant), de **service** (exécute un traitement dans le workflow) ou de **callback** (reprend un workflow en attente d'une réponse asynchrone). En V1 le catalogue livré est `http-rest` (**TRIGGER + SERVICE**), `flowable-signal` (TRIGGER + SERVICE), `scheduler` (TRIGGER, déclenchement planifié par cron), `smtp` (SERVICE, envoi email ad hoc depuis un `serviceTask`), `document-storage` (SERVICE, lecture/écriture de contenu hors dossier via `DocumentStoragePort`) et `flowable-callback` (**CALLBACK**, corrèle un callback HTTP asynchrone à un appel `serviceTask` antérieur, quel que soit le connecteur SERVICE utilisé). Les types cible Kafka, import batch, ERP restent hors V1 ; des connecteurs custom peuvent être ajoutés au classpath sans modifier le core.
 
 ### Génération de documents
 

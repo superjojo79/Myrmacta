@@ -1,13 +1,20 @@
 # Corrélation par clé métier pour callbacks asynchrones (`http-rest`)
 
-> **Statut : première analyse fonctionnelle, aucune décision technique tranchée.** À affiner en
-> phase `dev-lifecycle` (requirements → design) avant tout code — voir « Points ouverts » en fin de
-> document. Origine : question utilisateur (2026-09-01) — le connecteur `http-rest` (rôle SERVICE)
-> peut-il recevoir un callback pour un appel asynchrone ? Réponse vérifiée contre le code réel :
-> non, ni en SERVICE (appel `httpClient.send(...)` bloquant) ni en TRIGGER (`WebhookController`,
-> qui crée/attache un dossier mais ne réveille pas une instance de process en attente précise).
-> Analyse demandée pour évaluer la faisabilité d'une corrélation par clé métier. Aucune feature
-> ouverte à ce stade — cette analyse ne préjuge pas de la priorité dans la file d'attente.
+> **Statut (2026-09-02) : cycle `dev-lifecycle` en cours sur la feature `connecteur-callback`
+> (TODO §51), Phases 1–3 closes.** Origine : question utilisateur (2026-09-01) — le connecteur
+> `http-rest` (rôle SERVICE) peut-il recevoir un callback pour un appel asynchrone ? Réponse
+> vérifiée contre le code réel : non, ni en SERVICE (appel `httpClient.send(...)` bloquant) ni en
+> TRIGGER (`WebhookController`, qui crée/attache un dossier mais ne réveille pas une instance de
+> process en attente précise).
+>
+> **Correction factuelle importante (Phase 3, 2026-09-02)** : le mécanisme proposé en section 2
+> ci-dessous (`RuntimeService.createMessageCorrelation(...)`) **n'existe pas** sur `RuntimeService`
+> en Flowable 8.0.0 Community — vérifié en extrayant et lisant les sources réelles
+> (`flowable-engine-8.0.0-sources.jar`), pas supposé, pas recopié de doc en ligne. Section 2
+> corrigée en conséquence ; le mécanisme réellement retenu est équivalent en faisabilité mais
+> utilise `ExecutionQuery.messageEventSubscriptionName(...).processVariableValueEquals(...)` +
+> `RuntimeService.messageEventReceived(messageName, executionId, variables)`. Détail complet et
+> décisions de design : `docs/ai/design/2026-09-02-feature-connecteur-callback.md`.
 
 ---
 
@@ -38,28 +45,43 @@ dossier**, pas à un appel service précis — un même process peut faire plusi
 en parallèle (attendre 3 callbacks différents pour 3 systèmes externes), chacun avec sa propre clé
 de corrélation choisie par le concepteur BPMN. Le businessKey ne peut pas distinguer ces cas.
 
-### Le bon outil — `RuntimeService.createMessageCorrelation(...)`
+### Le bon outil — `ExecutionQuery` + `RuntimeService.messageEventReceived(...)`
 
-Flowable expose nativement, sur le `RuntimeService` déjà injecté dans
-`FlowableWorkflowEngineAdapter` :
+**Corrigé en Phase 3 (2026-09-02)** — la première version de cette section proposait
+`runtimeService.createMessageCorrelation(messageName).processInstanceVariableEquals(...)
+.setVariables(...).correlate()`. Cette méthode **n'existe pas** sur `RuntimeService` en
+Flowable 8.0.0 Community : confirmé par `javap` sur `flowable-engine-8.0.0.jar` (absente de
+l'interface) puis par lecture des sources réelles (`flowable-engine-8.0.0-sources.jar`,
+`org/flowable/engine/RuntimeService.java` et `org/flowable/engine/runtime/ExecutionQuery.java`).
+
+Le mécanisme réellement disponible dans cette version, tout aussi natif et sans nouvelle
+dépendance :
 
 ```java
-runtimeService.createMessageCorrelation(messageName)
-        .processInstanceVariableEquals(correlationKey, correlationValue)
-        .setVariables(payload)
-        .correlate();
+List<Execution> matches = runtimeService.createExecutionQuery()
+        .messageEventSubscriptionName(messageName)
+        .processVariableValueEquals(correlationKey, correlationValue)
+        .list();
+// 0 résultat -> pas d'exécution en attente (à traiter en erreur, cf. section 5)
+// >1 résultat -> ambiguïté de modélisation BPMN (à traiter en erreur, cf. section 5)
+// 1 résultat -> reprise :
+runtimeService.messageEventReceived(messageName, matches.get(0).getId(), payload);
 ```
 
-Ça résout **l'unique** instance de process en attente sur un `intermediateCatchEvent`/`receiveTask`
-dont une variable de process nommée `correlationKey` vaut `correlationValue`, et injecte `payload`
-comme variables au réveil. C'est le patron BPMN standard pour ce cas — rien à réinventer côté
-moteur.
+`messageEventSubscriptionName(String)` sélectionne les exécutions abonnées à ce message BPMN (nom
+de l'attribut `name` de l'élément `message` dans le XML). **`processVariableValueEquals`** (pas
+`variableValueEquals`, qui ne matche que les variables **locales** de l'exécution en attente) sur
+la variable de process posée par le concepteur BPMN. `messageEventReceived(messageName,
+executionId, variables)` réveille l'exécution ciblée avec les variables du callback. Contrairement
+au mécanisme initialement envisagé, la distinction 0/1/plusieurs se fait explicitement sur la
+liste retournée — pas en interprétant un type d'exception Flowable interne non documenté.
 
 Vérifié : `FlowableBpmnParserAdapter.extractProcessDefinitionKey` ne fait que
-`convertToBpmnModel` + extraire l'id du process, aucune restriction sur les éléments BPMN — un
-`receiveTask`/message event standard se déploierait et s'exécuterait sans changement du chemin de
-déploiement existant (`DeployBpmnProcessUseCaseImpl`/`FlowableWorkflowDeploymentAdapter`, à
-vérifier explicitement en design, pas supposé).
+`convertToBpmnModel` + extraire l'id du process, aucune restriction sur les éléments BPMN ;
+`FlowableWorkflowDeploymentAdapter.deploy(...)` fait un `repositoryService.createDeployment()
+.addBytes(...).deploy()` générique, aucune liste blanche d'éléments — un `receiveTask`/message
+event standard se déploierait et s'exécuterait sans changement du chemin de déploiement existant
+(`DeployBpmnProcessUseCaseImpl`), vérifié contre le code réel en Phase 3, pas supposé.
 
 ---
 
@@ -71,10 +93,10 @@ vérifier explicitement en design, pas supposé).
 void correlateMessage(String messageName, String correlationKey, Object correlationValue, Map<String, Object> variables);
 ```
 
-Implémentée dans `FlowableWorkflowEngineAdapter` via l'appel `RuntimeService` ci-dessus.
-`correlate()` (singulier, pas `correlateAll()`) : lève si 0 ou plus d'une instance en attente
-correspond — comportement voulu par défaut, une valeur de corrélation cible une reprise précise, pas
-un broadcast.
+Implémentée dans `FlowableWorkflowEngineAdapter` via `ExecutionQuery` + `messageEventReceived(...)`
+ci-dessus (section 2). 0 ou plusieurs exécutions correspondantes → erreur explicite levée par notre
+propre code sur la liste retournée — comportement voulu par défaut, une valeur de corrélation
+cible une reprise précise, jamais un broadcast.
 
 ### Un nouveau type de connecteur, pas une extension du `TriggerConnector` existant
 
@@ -119,30 +141,25 @@ process reprend exactement à `attenteCallback` avec les variables du callback.
 
 ---
 
-## 5. Points ouverts (à trancher en phase requirements/design)
+## 5. Points ouverts — tous tranchés en Phases 1–3 du cycle `dev-lifecycle` (2026-09-02)
 
-1. **D-CALLBACK-RACE** — le callback peut arriver avant que l'instance atteigne le
-   `receiveTask`/`intermediateCatchEvent` (le système externe répond plus vite que le process
-   n'avance). `correlate()` lève dans ce cas (`FlowableObjectNotFoundException` ou équivalent).
-   Options : (a) rejeter 404/409, le système externe doit retry (simple, cohérent avec le
-   comportement HTTP habituel d'un webhook) ; (b) file d'attente persistée de callbacks non
-   corrélés avec relance différée (scope nettement plus large, table dédiée + job, à ne considérer
-   que si un besoin réel est confirmé).
-2. **D-CALLBACK-IDEMPOTENCE** — un système externe qui retente un callback (à cause d'un 5xx
-   transitoire, timeout réseau) ne doit pas corréler deux fois. Réutilisation directe envisagée du
-   mécanisme d'idempotence déjà livré pour `http-rest` TRIGGER (`webhook_idempotency`,
-   `JpaWebhookIdempotencyStoreAdapter`) — même patron, pas de nouvelle table a priori.
-3. **D-CALLBACK-MULTI-MATCH** — plusieurs instances en attente avec la même valeur de corrélation :
-   `correlate()` lève (erreur de modélisation BPMN à remonter clairement, pas un cas à masquer
-   silencieusement en tombant sur `correlateAll()`).
-4. **D-CALLBACK-MESSAGE-NAME** — `messageName` fixe par instance de connecteur (cohérent avec
-   `signalName` de `flowable-signal`, un connecteur = un canal de callback) vs dynamique par appel
-   (plus flexible, plus complexe à valider/sécuriser).
-5. **Nom du connecteur/de la capability** — `CallbackConnector` est un nom provisoire, à confirmer
-   en design ; impact sur `ConnectorCapability` (nouvelle valeur d'enum ou réutilisation de
-   `TRIGGER` avec un sous-type ?) à trancher explicitement, pas par défaut.
-6. **Vérification à faire en design, pas supposée ici** : confirmer que
-   `DeployBpmnProcessUseCaseImpl`/`FlowableWorkflowDeploymentAdapter` déploient sans changement un
-   process contenant un `receiveTask`/`intermediateCatchEvent` à message (aucune raison de penser
-   le contraire vu le parsing générique, mais pas vérifié en pratique — pas de process de ce type
-   dans `src/main/resources/processes/` aujourd'hui).
+Détail complet et alternatives considérées : `docs/ai/requirements/` et `docs/ai/design/
+2026-09-02-feature-connecteur-callback.md`.
+
+1. **D-CALLBACK-RACE** — **tranché** : rejet HTTP 404/409 si le callback arrive avant que
+   l'exécution atteigne le `receiveTask`/`intermediateCatchEvent` (`ExecutionQuery` vide), le
+   système externe doit retenter. Pas de file d'attente persistée en V1.
+2. **D-CALLBACK-IDEMPOTENCE** — **tranché** : réutilisation telle quelle du mécanisme déjà livré
+   pour `http-rest` TRIGGER (`webhook_idempotency`, `JpaWebhookIdempotencyStoreAdapter`), aucune
+   nouvelle table.
+3. **D-CALLBACK-MULTI-MATCH** — **tranché** : plusieurs exécutions en attente avec la même valeur
+   de corrélation → erreur de modélisation BPMN remontée explicitement (409), jamais un
+   traitement silencieux du premier résultat.
+4. **D-CALLBACK-MESSAGE-NAME** — **tranché** : `messageName` fixe par instance de connecteur
+   (cohérent avec `signalName` de `flowable-signal`), pas dynamique par appel.
+5. **Nom du connecteur/de la capability** — **tranché** : `ConnectorCapability.CALLBACK`
+   (nouvelle valeur d'enum), pas un sous-type de `TRIGGER`.
+6. **Vérification déploiement BPMN** — **faite** : `DeployBpmnProcessUseCaseImpl`/
+   `FlowableWorkflowDeploymentAdapter` déploient de façon générique, aucune restriction sur les
+   éléments BPMN — un `receiveTask`/`intermediateCatchEvent` à message se déploierait sans
+   changement de code.

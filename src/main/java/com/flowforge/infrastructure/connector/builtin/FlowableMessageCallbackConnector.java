@@ -91,7 +91,11 @@ public class FlowableMessageCallbackConnector implements ConnectorDefinition, Ca
                         true,
                         null,
                         List.of(),
-                        "JSONPath into the callback payload yielding the correlation value, e.g. $.orderId"));
+                        "JSONPath into the callback payload yielding the correlation value, e.g. $.orderId."
+                                + " Authentication is per connector instance, not per correlation value: use a"
+                                + " high-entropy, non-sequential identifier (e.g. a UUID), never a guessable one"
+                                + " (sequential dossier number), or any caller holding this instance's secret could"
+                                + " correlate to an unrelated waiting process by guessing it"));
     }
 
     @Override

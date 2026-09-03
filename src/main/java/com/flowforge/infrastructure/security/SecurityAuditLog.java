@@ -74,4 +74,21 @@ public final class SecurityAuditLog {
                 authentication == null ? "anonymous" : authentication.getName(),
                 elementId);
     }
+
+    /**
+     * More than one process execution matched a callback correlation value -- always a BPMN
+     * modeling defect (D-CALLBACK-MULTI-MATCH), never resolved silently. Never logs
+     * {@code correlationValue} itself (caller-supplied business data), only the config-level
+     * {@code messageName}/{@code correlationKey} and how many executions matched.
+     */
+    public static void callbackAmbiguousCorrelation(
+            HttpServletRequest request, String messageName, String correlationKey, int matchCount) {
+        LOGGER.warn(
+                "event=callback_ambiguous_correlation method={} path={} messageName={} correlationKey={} matchCount={}",
+                request.getMethod(),
+                request.getRequestURI(),
+                messageName,
+                correlationKey,
+                matchCount);
+    }
 }

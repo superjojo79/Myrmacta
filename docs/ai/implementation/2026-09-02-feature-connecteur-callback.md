@@ -172,3 +172,65 @@ description: Technical implementation notes, patterns, and code guidelines
    `scheduler`, `smtp`, `document-storage`) mais n'avait pas été mis à jour avec `flowable-callback`
    — seul `analysis doc/06-connecteurs.md` l'avait été en Phase 7. Corrigé : `README.md` mentionne
    désormais le rôle **callback** et le connecteur `flowable-callback`.
+
+## Correctifs post-merge (passe de contrôle adversariale, 2026-09-02)
+
+Une revue adversariale demandée explicitement par l'utilisateur **après** le merge de PR #102 a
+trouvé 5 écarts réels sur le code déjà en production, tous corrigés dans le même correctif de
+suivi. Aucun n'avait été détecté par les 9 phases précédentes ni par les 1533 tests alors verts —
+détail de la cause racine ci-dessous, pas juste le symptôme.
+
+1. **F0 (critique) — `/api/callbacks/**` inatteignable par tout appelant externe réel.**
+   `SecurityConfig` définit 4 chaînes de filtres par `@Order` : `/api/m2m/**`, `/api/webhooks/**`
+   (anonyme, pas de CSRF — c'est là que vit `WebhookController`), puis un **catch-all** BFF
+   (`anyRequest().authenticated()`, CSRF actif, session OIDC requise). `/api/callbacks/**` n'a
+   jamais été ajouté au `securityMatcher` de la chaîne webhook — la requête tombait dans le
+   catch-all BFF et recevait un **403 CSRF, corps vide, avant même d'atteindre
+   `CallbackWebhookController`**. Prouvé empiriquement (`@SpringBootTest @AutoConfigureMockMvc`,
+   pas `MockMvc.standaloneSetup` qui contourne Spring Security entièrement) : `POST
+   /api/callbacks/{uuid}` anonyme → 403. **Aucun test du diff original ne faisait une vraie requête
+   HTTP à travers la vraie chaîne de sécurité** — `CallbackWebhookControllerTest` utilise
+   `standaloneSetup` (contourne Security), `CallbackEndToEndIT` appelle le use case directement
+   (contourne HTTP). Corrigé : `securityMatcher("/api/webhooks/**", "/api/callbacks/**")` sur la
+   même chaîne. Test de régression permanent ajouté :
+   `WebhookAndCallbackRoutesSecurityTest` (nouveau, `infrastructure/security`), qui couvre aussi
+   `/api/webhooks/**` (jamais testé contre la vraie chaîne non plus avant ce correctif).
+2. **F1 (haute) — pas de garde `Content-Length` sur `/api/callbacks/**`.**
+   `WebhookBodySizeLimitFilter` (javadoc explicite : *« sur cette chaîne anonyme exposée sur
+   internet, [le check applicatif seul] est un vecteur d'épuisement mémoire »*) n'était enregistré
+   que sur `/api/webhooks/**`. Corrigé par le même changement que F0 (même chaîne, même filtre).
+   Preuve dédiée : `callbacksEndpoint_oversizedDeclaredContentLength_rejectedBeforeBuffering` (413
+   avant bufférisation).
+3. **F2 (haute) — un callback échoué bloquait tout rejeu avec la même `Idempotency-Key` pendant
+   24 h.** `idempotencyStore.complete(...)` n'était appelé que sur le chemin de succès ; toute
+   exception laissait la ligne `IN_FLIGHT` en base, et un rejeu avec la même clé (pratique standard
+   de retry idempotent) levait `WebhookIdempotencyInFlightException` (409) au lieu d'être
+   retraité — annulant la garantie de fiabilité de D-CALLBACK-RACE (« le système externe doit
+   retenter »). Corrigé : `CallbackWebhookController.receive()` capture désormais toute
+   `RuntimeException`, appelle `idempotencyStore.complete(...)` avec le statut déterministe pour
+   les échecs dont l'issue est stable sur le même contenu de requête
+   (`CallbackNoMatchingInstanceException`→404, `CallbackAmbiguousCorrelationException`→409,
+   `ConnectorValidationException`/`IllegalArgumentException`→400), puis relance l'exception —
+   `ConnectorExceptionHandler` construit toujours le `ProblemDetail` normalement. Une exception non
+   reconnue reste volontairement `IN_FLIGHT` plutôt que de deviner un statut (testé explicitement :
+   `receive_unmappedRuntimeException_leavesClaimInFlightForFreshRetry`). **Même défaut latent
+   présent dans `WebhookController`** (composant `JpaWebhookIdempotencyStoreAdapter` partagé,
+   pattern identique) — pas corrigé ici (hors du périmètre F0–F4 explicitement approuvé), tracé en
+   dette dans `TODO.md`.
+4. **F3 (moyenne) — ambiguïté de corrélation totalement silencieuse côté serveur.** Le design doc
+   promettait *« loguée en ERROR »* ; le code livré ne loguait rien. Corrigé : nouvel événement
+   `SecurityAuditLog.callbackAmbiguousCorrelation(...)` (WARN, canal `SECURITY_AUDIT` déjà établi
+   dans le dépôt pour ce type d'événement), appelé depuis
+   `ConnectorExceptionHandler.handleCallbackAmbiguousCorrelation`. Ne logue jamais
+   `correlationValue` (donnée métier fournie par l'appelant), seulement `messageName`/
+   `correlationKey`/`matchCount` — testé explicitement par lecture du log capturé
+   (`ListAppender`, pattern déjà utilisé par `DossierApiTest`).
+5. **F4 (basse) — pas de garde-fou documenté sur l'entropie de `correlationValue`.**
+   L'authentification est par instance de connecteur, pas par transaction : un appelant légitime
+   pour une instance peut corréler vers n'importe quelle exécution en attente sur le même
+   `messageName` en devinant `correlationValue`. Corrigé : description du champ de config
+   `correlationValuePath` recommande désormais explicitement un identifiant à haute entropie
+   (UUID), jamais une valeur séquentielle/devinable. Documentation uniquement, pas de changement de
+   comportement.
+
+`./mvnw verify` après correctifs : **1539 tests, 0 échec** (+6 tests de régression permanents).

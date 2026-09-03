@@ -7,6 +7,8 @@ import com.flowforge.domain.connector.model.ConnectorValidationException;
 import com.flowforge.domain.connector.model.UnknownConnectorException;
 import com.flowforge.domain.connector.model.WebhookAuthenticationException;
 import com.flowforge.domain.connector.model.WebhookIdempotencyInFlightException;
+import com.flowforge.infrastructure.security.SecurityAuditLog;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -56,7 +58,9 @@ public class ConnectorExceptionHandler {
     }
 
     @ExceptionHandler(CallbackAmbiguousCorrelationException.class)
-    ProblemDetail handleCallbackAmbiguousCorrelation(CallbackAmbiguousCorrelationException ex) {
+    ProblemDetail handleCallbackAmbiguousCorrelation(CallbackAmbiguousCorrelationException ex, HttpServletRequest request) {
+        SecurityAuditLog.callbackAmbiguousCorrelation(
+                request, ex.messageName(), ex.correlationKey(), ex.matchCount());
         return problem(HttpStatus.CONFLICT, "Ambiguous callback correlation", ex.getMessage());
     }
 

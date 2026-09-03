@@ -1,5 +1,7 @@
 package com.flowforge.infrastructure.web.connector;
 
+import com.flowforge.domain.connector.model.CallbackAmbiguousCorrelationException;
+import com.flowforge.domain.connector.model.CallbackNoMatchingInstanceException;
 import com.flowforge.domain.connector.model.ConnectorInstanceData;
 import com.flowforge.domain.connector.model.ConnectorValidationException;
 import com.flowforge.domain.connector.model.WebhookAuthType;
@@ -93,11 +95,41 @@ class CallbackWebhookController {
         return idempotencyStore.beginOrGetCompleted(instance.id(), idempotencyKey)
                 .map(status -> ResponseEntity.status(status).<Void>build())
                 .orElseGet(() -> {
-                    Object payload = readPayload(body);
-                    callbackRuntime.onIncomingCallback(instance, payload);
+                    Object payload;
+                    try {
+                        payload = readPayload(body);
+                        callbackRuntime.onIncomingCallback(instance, payload);
+                    } catch (RuntimeException ex) {
+                        // D-CALLBACK-RACE (found in adversarial security review, post-merge) : a
+                        // failed attempt must still be recorded as complete(status), never left
+                        // IN_FLIGHT, or every retry with the same Idempotency-Key gets stuck on
+                        // WebhookIdempotencyInFlightException/409 for the full TTL -- defeating
+                        // the retry contract this endpoint's whole design relies on. Only for
+                        // exceptions whose outcome is deterministic on this request's own content
+                        // (so replaying the cached status on an exact-key retry is correct);
+                        // anything unmapped is left IN_FLIGHT rather than guessing a status.
+                        Integer failureStatus = deterministicFailureStatus(ex);
+                        if (failureStatus != null) {
+                            idempotencyStore.complete(instance.id(), idempotencyKey, failureStatus);
+                        }
+                        throw ex;
+                    }
                     idempotencyStore.complete(instance.id(), idempotencyKey, ACCEPTED);
                     return ResponseEntity.accepted().build();
                 });
+    }
+
+    private static Integer deterministicFailureStatus(RuntimeException ex) {
+        if (ex instanceof CallbackNoMatchingInstanceException) {
+            return 404;
+        }
+        if (ex instanceof CallbackAmbiguousCorrelationException) {
+            return 409;
+        }
+        if (ex instanceof ConnectorValidationException || ex instanceof IllegalArgumentException) {
+            return 400;
+        }
+        return null;
     }
 
     private WebhookAuthenticator authenticator(WebhookAuthType authType) {

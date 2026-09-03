@@ -1,5 +1,6 @@
 package com.flowforge.infrastructure.web.connector;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
@@ -11,6 +12,9 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.flowforge.domain.connector.model.CallbackAmbiguousCorrelationException;
 import com.flowforge.domain.connector.model.CallbackNoMatchingInstanceException;
 import com.flowforge.domain.connector.model.ConnectorInstanceData;
@@ -26,6 +30,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -171,6 +176,10 @@ class CallbackWebhookControllerTest {
 
     @Test
     void receive_noMatchingProcessInstanceReturns404() throws Exception {
+        // D-CALLBACK-RACE relies on the external caller retrying: the failed attempt must be
+        // recorded as complete(404), never left stuck at IN_FLIGHT (found in adversarial security
+        // review post-merge -- a stuck claim blocks every retry with the same Idempotency-Key for
+        // the full TTL via WebhookIdempotencyInFlightException/409, defeating the retry contract).
         ConnectorInstanceData instance = instance(true);
         when(instances.findByIdAndTenantId(INSTANCE_ID, "tenant_dev")).thenReturn(Optional.of(instance));
         when(idempotencyStore.beginOrGetCompleted(INSTANCE_ID, "idem-race")).thenReturn(Optional.empty());
@@ -185,7 +194,7 @@ class CallbackWebhookControllerTest {
                         .content("{\"orderId\":\"ORD-1\"}"))
                 .andExpect(status().isNotFound());
 
-        verify(idempotencyStore, never()).complete(any(), any(), anyInt());
+        verify(idempotencyStore).complete(INSTANCE_ID, "idem-race", 404);
     }
 
     @Test
@@ -203,6 +212,82 @@ class CallbackWebhookControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"orderId\":\"ORD-1\"}"))
                 .andExpect(status().isConflict());
+
+        verify(idempotencyStore).complete(INSTANCE_ID, "idem-ambiguous", 409);
+    }
+
+    @Test
+    void receive_ambiguousCorrelation_logsSecurityAuditEvent_withoutLoggingCorrelationValue() throws Exception {
+        // Found in adversarial security review: an ambiguous correlation is always a real BPMN
+        // modeling defect and was previously entirely silent server-side. correlationValue ("v")
+        // is caller-supplied business data and must never appear in the log line.
+        ConnectorInstanceData instance = instance(true);
+        when(instances.findByIdAndTenantId(INSTANCE_ID, "tenant_dev")).thenReturn(Optional.of(instance));
+        when(idempotencyStore.beginOrGetCompleted(INSTANCE_ID, "idem-audit")).thenReturn(Optional.empty());
+        doThrow(new CallbackAmbiguousCorrelationException(
+                        "callbackReceived", "correlationKey", "super-secret-order-id-999", 2))
+                .when(runtime)
+                .onIncomingCallback(eq(instance), any());
+
+        ListAppender<ILoggingEvent> appender = attachSecurityAuditAppender();
+        try {
+            mockMvc.perform(post("/api/callbacks/{instanceId}", INSTANCE_ID)
+                            .header("Idempotency-Key", "idem-audit")
+                            .header("X-Webhook-Token", "secret")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"orderId\":\"ORD-1\"}"))
+                    .andExpect(status().isConflict());
+        } finally {
+            detachSecurityAuditAppender(appender);
+        }
+
+        List<String> matches = appender.list.stream()
+                .map(ILoggingEvent::getFormattedMessage)
+                .filter(msg -> msg.contains("event=callback_ambiguous_correlation"))
+                .toList();
+        org.assertj.core.api.Assertions.assertThat(matches).hasSize(1);
+        String message = matches.get(0);
+        org.assertj.core.api.Assertions.assertThat(message)
+                .contains("messageName=callbackReceived")
+                .contains("correlationKey=correlationKey")
+                .contains("matchCount=2")
+                .doesNotContain("super-secret-order-id-999");
+    }
+
+    private static ListAppender<ILoggingEvent> attachSecurityAuditAppender() {
+        Logger logger = (Logger) LoggerFactory.getLogger("SECURITY_AUDIT");
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        return appender;
+    }
+
+    private static void detachSecurityAuditAppender(ListAppender<ILoggingEvent> appender) {
+        Logger logger = (Logger) LoggerFactory.getLogger("SECURITY_AUDIT");
+        logger.detachAppender(appender);
+        appender.stop();
+    }
+
+    @Test
+    void receive_unmappedRuntimeException_leavesClaimInFlightForFreshRetry() {
+        // An exception this endpoint doesn't recognize is not assumed deterministic on the exact
+        // same input -- conservatively left IN_FLIGHT rather than caching a guessed status, unlike
+        // the two domain exceptions above whose outcome is stable for the same request content.
+        // Unmapped by ConnectorExceptionHandler too, so it propagates raw here (no controller
+        // advice covers it) -- the point of this test is only the idempotency store interaction.
+        ConnectorInstanceData instance = instance(true);
+        when(instances.findByIdAndTenantId(INSTANCE_ID, "tenant_dev")).thenReturn(Optional.of(instance));
+        when(idempotencyStore.beginOrGetCompleted(INSTANCE_ID, "idem-unexpected")).thenReturn(Optional.empty());
+        doThrow(new IllegalStateException("boom"))
+                .when(runtime)
+                .onIncomingCallback(eq(instance), any());
+
+        assertThatThrownBy(() -> mockMvc.perform(post("/api/callbacks/{instanceId}", INSTANCE_ID)
+                        .header("Idempotency-Key", "idem-unexpected")
+                        .header("X-Webhook-Token", "secret")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"orderId\":\"ORD-1\"}")))
+                .hasRootCauseInstanceOf(IllegalStateException.class);
 
         verify(idempotencyStore, never()).complete(any(), any(), anyInt());
     }

@@ -120,7 +120,11 @@ public class SecurityConfig {
     SecurityFilterChain webhookSecurityFilterChain(HttpSecurity http, ConnectorProperties connectorProperties)
             throws Exception {
         // Auth métier (HMAC / token) réalisée dans les contrôleurs — pas d'OIDC ici.
-        http.securityMatcher("/api/webhooks/**")
+        // D-CALLBACK-ROUTE : /api/callbacks/** doit être anonyme comme /api/webhooks/** --
+        // absent d'ici, il tombe dans le chaînage BFF (@Order(3), anyRequest().authenticated())
+        // et n'atteint jamais CallbackWebhookController (trouvé en revue de sécurité
+        // adversariale post-merge, TODO §51).
+        http.securityMatcher("/api/webhooks/**", "/api/callbacks/**")
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())

@@ -45,8 +45,8 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
-- **PR #TBD** — Formulaires de tâche rattachés aux `userTask` BPMN (TODO §52, à resynchroniser
-  avec le vrai numéro de PR à l'ouverture) : un `userTask` peut désormais déclarer
+- **PR #107** — Formulaires de tâche rattachés aux `userTask` BPMN (TODO §52) : un `userTask`
+  peut désormais déclarer
   `flowable:formKey` (éditeur BPMN, groupe « Flowable ») pour afficher un formulaire avant
   complétion — édition des champs du dossier (`dossier-fields`) ou choix d'un document à générer
   parmi ceux associés au type de dossier (`document-generation`, nouvel écran Admin → Types).

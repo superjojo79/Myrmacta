@@ -47,6 +47,7 @@ public final class UpdateDossierTypeUseCaseImpl implements UpdateDossierTypeUseC
                 command.retentionDays(),
                 command.retentionNever(),
                 command.slaTargetHours(),
+                command.documentTemplateKeys(),
                 actor.userId());
 
         // D-UI-SCHEMA-COMPAT=block — single source of truth for both REST and MCP callers

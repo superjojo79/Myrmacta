@@ -8,9 +8,15 @@ public record WorkflowTaskView(
         String name,
         String assignee,
         String taskDefinitionKey,
-        Instant createTime
+        Instant createTime,
+        String formKey
 ) {
     public WorkflowTaskView {
         Objects.requireNonNull(taskId, "taskId");
+    }
+
+    /** Convenience for callers built before {@code formKey} existed (TODO §52) — defaults to no form. */
+    public WorkflowTaskView(String taskId, String name, String assignee, String taskDefinitionKey, Instant createTime) {
+        this(taskId, name, assignee, taskDefinitionKey, createTime, null);
     }
 }

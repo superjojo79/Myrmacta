@@ -1,5 +1,6 @@
 package com.flowforge.infrastructure.web.dossier;
 
+import com.flowforge.domain.document.model.DocumentTemplate;
 import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierPermission;
 import com.flowforge.domain.dossier.model.ElementType;
@@ -23,7 +24,8 @@ record CreateDossierTypeRequest(
         List<FieldDefinition> fieldDefinitions,
         Integer retentionDays,
         Boolean retentionNever,
-        Integer slaTargetHours) {}
+        Integer slaTargetHours,
+        List<String> documentTemplateKeys) {}
 
 record UpdateDossierTypeRequest(
         String label,
@@ -34,7 +36,8 @@ record UpdateDossierTypeRequest(
         Integer retentionDays,
         Boolean retentionNever,
         Integer slaTargetHours,
-        Boolean clearSlaTargetHours) {}
+        Boolean clearSlaTargetHours,
+        List<String> documentTemplateKeys) {}
 
 record DossierTypeResponse(
         UUID id,
@@ -47,7 +50,8 @@ record DossierTypeResponse(
         List<FieldDefinition> fieldDefinitions,
         Integer retentionDays,
         boolean retentionNever,
-        Integer slaTargetHours) {
+        Integer slaTargetHours,
+        List<String> documentTemplateKeys) {
 
     static DossierTypeResponse from(DossierType type) {
         return new DossierTypeResponse(
@@ -61,7 +65,21 @@ record DossierTypeResponse(
                 type.fieldDefinitions(),
                 type.retentionDays(),
                 type.retentionNever(),
-                type.slaTargetHours());
+                type.slaTargetHours(),
+                type.documentTemplateKeys());
+    }
+}
+
+/**
+ * TODO §52 -- deliberately omits {@code htmlContent}/{@code version}/{@code status}: this endpoint
+ * is reachable by any user who can view the dossier type (not just {@code TENANT_ADMIN}, unlike
+ * {@code GET /api/document-templates}), so it must never leak template content.
+ */
+record AllowedDocumentTemplateResponse(String templateKey, String variantKey, String locale, String label) {
+
+    static AllowedDocumentTemplateResponse from(DocumentTemplate template) {
+        return new AllowedDocumentTemplateResponse(
+                template.templateKey(), template.variantKey(), template.locale(), template.label());
     }
 }
 

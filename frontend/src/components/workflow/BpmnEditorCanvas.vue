@@ -9,8 +9,22 @@ const emit = defineEmits<{ dirty: [] }>()
 
 // Blank starter diagram (bpmn.io's standard "new diagram" template) used
 // when the parent has no XML to load yet (brand-new diagram entry point).
+//
+// D-FLOWABLE-NS (TODO §52, found while proving flowable:formKey round-trips to saveXML() in a
+// real E2E, not just get/set unit tests): no moddleExtensions are registered for the "flowable"
+// namespace in this app (see flowablePropertiesProvider.ts header) -- setting a flowable:*
+// attribute via the Modeling API only lands in the moddle element's generic $attrs bag, and
+// moddle-xml's writer can only re-emit it if it already knows a URI for the "flowable" prefix
+// from the parsed document. Without this xmlns:flowable declaration, the very first
+// async/delegateExpression/expression/scope/formKey ever set on a brand-new diagram round-trips
+// correctly through getValue()/setValue() (confirmed by reselecting the element) but is silently
+// dropped by saveXML() -- moddle-xml swallows the failed prefix resolution. Pre-declaring the
+// namespace here (harmless on an otherwise-unused prefix) fixes every diagram authored from
+// scratch in this editor. A diagram imported from an external tool that never used any
+// flowable:* attribute keeps the same residual risk this repo already had for
+// async/delegateExpression/expression/scope before this fix -- out of scope here.
 const EMPTY_BPMN_XML = `<?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn">
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:flowable="http://flowable.org/bpmn" id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn">
   <bpmn:process id="Process_1" isExecutable="false">
     <bpmn:startEvent id="StartEvent_1"/>
   </bpmn:process>

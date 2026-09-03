@@ -38,6 +38,7 @@ export interface DossierType {
   retentionDays?: number | null
   retentionNever?: boolean
   slaTargetHours?: number | null
+  documentTemplateKeys?: string[]
 }
 
 export interface Dossier {
@@ -163,6 +164,7 @@ export interface WorkflowTaskView {
   assignee: string | null
   taskDefinitionKey: string | null
   createTime: string | null
+  formKey?: string | null
 }
 
 export interface ActivityHistoryEntry {
@@ -184,6 +186,15 @@ export interface MyWorkflowTask {
   dossierReference: string | null
   linkId: string | null
   slaRemainingHours?: number | null
+  formKey?: string | null
+}
+
+/** TODO §52 -- picker source for the document-generation task form kind; never carries htmlContent. */
+export interface AllowedDocumentTemplate {
+  templateKey: string
+  variantKey: string | null
+  locale: string | null
+  label: string
 }
 
 export type ElementType = 'PRODUCED_DOC' | 'ATTACHMENT' | 'INFORMATION' | 'NOTE' | 'LINK'

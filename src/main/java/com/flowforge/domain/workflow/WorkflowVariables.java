@@ -13,6 +13,16 @@ public final class WorkflowVariables {
     public static final String TENANT_ID = "tenantId";
 
     /**
+     * Task-completion variable read by {@code DocumentGenerationTask} (the {@code
+     * ${documentGenerationTask} serviceTask}) to resolve which template to render — shared as a
+     * constant, rather than duplicated as a string literal on both sides, after a Phase 9
+     * adversarial review of TODO §52 found the frontend {@code document-generation} task form
+     * emitting a different name ({@code templateKey}) than the delegate read, silently breaking
+     * the whole kind.
+     */
+    public static final String DOCUMENT_TYPE = "documentType";
+
+    /**
      * Instantané des champs dynamiques du dossier (voir {@code Dossier.fields()}), injecté
      * automatiquement à chaque démarrage de workflow — comble l'écart identifié avec le
      * {@code DossierAwareTask} décrit (mais jamais implémenté) dans

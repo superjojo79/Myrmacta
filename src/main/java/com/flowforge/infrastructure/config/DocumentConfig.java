@@ -2,6 +2,7 @@ package com.flowforge.infrastructure.config;
 
 import com.flowforge.domain.document.port.in.ActivateDocumentTemplateUseCase;
 import com.flowforge.domain.document.port.in.GenerateDocumentUseCase;
+import com.flowforge.domain.document.port.in.ListDocumentTemplatesForDossierTypeUseCase;
 import com.flowforge.domain.document.port.in.PreviewDocumentUseCase;
 import com.flowforge.domain.document.port.in.ResolveDocumentTemplateUseCase;
 import com.flowforge.domain.document.port.out.DocumentTemplateRepository;
@@ -14,10 +15,12 @@ import com.flowforge.domain.document.usecase.CreateDocumentTemplateUseCaseImpl;
 import com.flowforge.domain.document.usecase.GenerateDocumentUseCaseImpl;
 import com.flowforge.domain.document.usecase.GetDocumentTemplateUseCaseImpl;
 import com.flowforge.domain.document.usecase.ListDocumentTemplateUseCaseImpl;
+import com.flowforge.domain.document.usecase.ListDocumentTemplatesForDossierTypeUseCaseImpl;
 import com.flowforge.domain.document.usecase.NewDocumentTemplateVersionUseCaseImpl;
 import com.flowforge.domain.document.usecase.PreviewDocumentUseCaseImpl;
 import com.flowforge.domain.document.usecase.ResolveDocumentTemplateUseCaseImpl;
 import com.flowforge.domain.document.usecase.UpdateDocumentTemplateUseCaseImpl;
+import com.flowforge.domain.dossier.port.in.GetDossierTypeUseCase;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -74,6 +77,15 @@ public class DocumentConfig {
     ListDocumentTemplateUseCaseImpl listDocumentTemplateUseCase(
             TenantProperties tenantProperties, DocumentTemplateRepository repository) {
         return new ListDocumentTemplateUseCaseImpl(tenantProperties.id(), repository);
+    }
+
+    @Bean
+    ListDocumentTemplatesForDossierTypeUseCase listDocumentTemplatesForDossierTypeUseCase(
+            TenantProperties tenantProperties,
+            GetDossierTypeUseCase getDossierTypeUseCase,
+            DocumentTemplateRepository repository) {
+        return new ListDocumentTemplatesForDossierTypeUseCaseImpl(
+                tenantProperties.id(), getDossierTypeUseCase, repository);
     }
 
     @Bean

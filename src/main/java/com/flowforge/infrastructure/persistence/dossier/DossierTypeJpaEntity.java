@@ -55,6 +55,10 @@ public class DossierTypeJpaEntity {
     @Column(name = "sla_target_hours")
     private Integer slaTargetHours;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "document_template_keys", nullable = false, columnDefinition = "json")
+    private List<String> documentTemplateKeys = List.of();
+
     @Column(name = "created_by", nullable = false, length = 128)
     private String createdBy;
 
@@ -77,6 +81,7 @@ public class DossierTypeJpaEntity {
             Integer retentionDays,
             boolean retentionNever,
             Integer slaTargetHours,
+            List<String> documentTemplateKeys,
             String createdBy,
             String updatedBy) {
         this.id = id;
@@ -90,6 +95,7 @@ public class DossierTypeJpaEntity {
         this.retentionDays = retentionDays;
         this.retentionNever = retentionNever;
         this.slaTargetHours = slaTargetHours;
+        this.documentTemplateKeys = List.copyOf(documentTemplateKeys);
         this.createdBy = createdBy;
         this.updatedBy = updatedBy;
     }
@@ -107,6 +113,7 @@ public class DossierTypeJpaEntity {
                 type.retentionDays(),
                 type.retentionNever(),
                 type.slaTargetHours(),
+                type.documentTemplateKeys(),
                 type.createdBy(),
                 type.updatedBy());
     }
@@ -124,6 +131,7 @@ public class DossierTypeJpaEntity {
                 retentionDays,
                 retentionNever,
                 slaTargetHours,
+                documentTemplateKeys,
                 createdBy,
                 updatedBy);
     }

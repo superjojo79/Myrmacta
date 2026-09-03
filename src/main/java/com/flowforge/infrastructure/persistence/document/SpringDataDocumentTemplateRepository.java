@@ -24,6 +24,9 @@ interface SpringDataDocumentTemplateRepository extends JpaRepository<DocumentTem
     Page<DocumentTemplateJpaEntity> findByTenantIdAndTemplateKeyOrderByUpdatedAtDesc(
             String tenantId, String templateKey, Pageable pageable);
 
+    List<DocumentTemplateJpaEntity> findByTenantIdAndTemplateKeyInAndStatus(
+            String tenantId, List<String> templateKeys, TemplateStatus status);
+
     @Query(
             """
             SELECT e FROM DocumentTemplateJpaEntity e

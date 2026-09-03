@@ -5,6 +5,7 @@ import DossierTypesAdminView from './DossierTypesAdminView.vue'
 import * as api from '@/api/dossierTypes'
 import * as retentionApi from '@/api/retentionSettings'
 import * as slaApi from '@/api/slaSettings'
+import * as adminApi from '@/api/admin'
 import { routes } from '@/app/routes'
 import { asPage } from '@/api/page'
 import type { Component } from 'vue'
@@ -12,6 +13,7 @@ import type { Component } from 'vue'
 vi.mock('@/api/dossierTypes')
 vi.mock('@/api/retentionSettings')
 vi.mock('@/api/slaSettings')
+vi.mock('@/api/admin')
 
 const sampleType = {
   id: '1',
@@ -45,6 +47,9 @@ describe('DossierTypesAdminView', () => {
     vi.mocked(slaApi.getSlaSettings).mockRejectedValue({
       response: { status: 404, data: { detail: 'not found', status: 404 } },
     })
+    vi.mocked(adminApi.listDocumentTemplates).mockResolvedValue(
+      asPage([{ templateKey: 'invoice', status: 'ACTIVE' } as never]),
+    )
   })
 
   it('lists types and can create with retention inherit', async () => {
@@ -242,6 +247,26 @@ describe('DossierTypesAdminView', () => {
     await flushPromises()
     expect(wrapper.text()).toContain('incompatible')
     expect(wrapper.find('[data-testid="type-edit-fields-panel"]').exists()).toBe(true)
+  })
+
+  it('saves documentTemplateKeys checked in the edit panel (TODO §52)', async () => {
+    vi.mocked(api.updateDossierType).mockResolvedValue({
+      ...sampleType,
+      documentTemplateKeys: ['invoice'],
+    })
+    const { wrapper } = await mountView(DossierTypesAdminView)
+    await flushPromises()
+    await wrapper.get('[data-testid="type-edit-fields"]').trigger('click')
+    await flushPromises()
+    await wrapper
+      .get('[data-testid="type-edit-fields-panel"] [data-testid="document-template-key-invoice"]')
+      .setValue(true)
+    await wrapper.get('[data-testid="type-edit-fields-save"]').trigger('click')
+    await flushPromises()
+    expect(api.updateDossierType).toHaveBeenCalledWith(
+      'CLAIM',
+      expect.objectContaining({ documentTemplateKeys: ['invoice'] }),
+    )
   })
 
   it('cancels the edit panel without calling the API', async () => {

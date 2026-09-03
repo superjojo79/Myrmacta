@@ -19,6 +19,7 @@ public record DossierType(
         Integer retentionDays,
         boolean retentionNever,
         Integer slaTargetHours,
+        List<String> documentTemplateKeys,
         String createdBy,
         String updatedBy
 ) {
@@ -44,9 +45,34 @@ public record DossierType(
                     "code must match " + CODE_PATTERN.pattern() + ", was: " + code);
         }
         fieldDefinitions = fieldDefinitions == null ? List.of() : List.copyOf(fieldDefinitions);
+        documentTemplateKeys = documentTemplateKeys == null ? List.of() : List.copyOf(documentTemplateKeys);
         requireUniqueFieldNames(fieldDefinitions);
         validateRetention(retentionDays, retentionNever);
         validateSlaTargetHours(slaTargetHours);
+    }
+
+    /**
+     * Convenience for callers built before {@code documentTemplateKeys} existed (TODO §52) —
+     * defaults it to {@code List.of()} (D-FORM-DOCGEN-TEMPLATE-SCOPE: empty = no template
+     * available for the {@code document-generation} task form kind, same semantics as a
+     * freshly-created type with no association configured yet).
+     */
+    public DossierType(
+            UUID id,
+            String tenantId,
+            String code,
+            String label,
+            String workflowKey,
+            boolean active,
+            boolean allowUnknownFields,
+            List<FieldDefinition> fieldDefinitions,
+            Integer retentionDays,
+            boolean retentionNever,
+            Integer slaTargetHours,
+            String createdBy,
+            String updatedBy) {
+        this(id, tenantId, code, label, workflowKey, active, allowUnknownFields, fieldDefinitions,
+                retentionDays, retentionNever, slaTargetHours, List.of(), createdBy, updatedBy);
     }
 
     // D-NAME-UNIQUE — structural invariant of the schema itself, not a per-dossier value check
@@ -113,6 +139,7 @@ public record DossierType(
             Integer retentionDays,
             boolean retentionNever,
             Integer slaTargetHours,
+            List<String> documentTemplateKeys,
             String updatedBy) {
         return new DossierType(
                 id,
@@ -126,6 +153,7 @@ public record DossierType(
                 retentionDays,
                 retentionNever,
                 slaTargetHours,
+                documentTemplateKeys,
                 createdBy,
                 updatedBy);
     }

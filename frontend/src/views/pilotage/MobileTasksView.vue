@@ -6,6 +6,7 @@ import { useTasksStore } from '@/stores/tasks'
 import { toProblemDetail } from '@/api/http'
 import { useAdminListQuery } from '@/composables/useAdminListQuery'
 import AdminPager from '@/components/admin/AdminPager.vue'
+import { resolveTaskFormComponent } from '@/components/workflow/task-forms/taskFormRegistry'
 
 const store = useTasksStore()
 const { tasks, totalPages, loading, error } = storeToRefs(store)
@@ -20,13 +21,17 @@ watch([page, size], ([nextPage, nextSize]) => {
   void store.refresh(nextPage, nextSize)
 })
 
-async function complete(taskId: string) {
+async function complete(taskId: string, variables: Record<string, unknown> = {}) {
   actionError.value = null
   try {
-    await store.complete(taskId)
+    await store.complete(taskId, variables)
   } catch (err) {
     actionError.value = toProblemDetail(err).detail ?? 'Complétion impossible'
   }
+}
+
+function onFormError(message: string) {
+  actionError.value = message
 }
 </script>
 
@@ -49,7 +54,21 @@ async function complete(taskId: string) {
         </div>
         <div class="tasks-view__actions">
           <RouterLink v-if="task.dossierId" :to="`/dossiers/${task.dossierId}`">Dossier</RouterLink>
-          <button type="button" @click="complete(task.taskId)">Compléter</button>
+          <component
+            :is="resolveTaskFormComponent(task.formKey)"
+            v-if="resolveTaskFormComponent(task.formKey)"
+            :dossier-id="task.dossierId"
+            @ready="complete(task.taskId, $event)"
+            @error="onFormError"
+          />
+          <button
+            v-else
+            type="button"
+            data-testid="complete-task"
+            @click="complete(task.taskId)"
+          >
+            Compléter
+          </button>
         </div>
       </li>
     </ul>

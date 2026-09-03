@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             targetNamespace="http://flowforge/processes">
+
+  <!-- Smoke process for TODO §52 (formulaires-dynamiques-taches) M0 spike: proves
+       flowable:formKey is readable via Task.getFormKey() on this repository's Flowable 8.0.0
+       engine without the optional flowable-form module on the classpath. See FormKeySmokeIT. -->
+  <process id="formKeySmoke" name="Form Key Smoke" isExecutable="true">
+    <startEvent id="formKeySmokeStart" name="Start"/>
+    <sequenceFlow id="flow_form_key_task" sourceRef="formKeySmokeStart" targetRef="formKeySmokeTask"/>
+    <userTask id="formKeySmokeTask" name="Form Key Smoke Task" flowable:formKey="dossier-fields"/>
+    <sequenceFlow id="flow_form_key_end" sourceRef="formKeySmokeTask" targetRef="formKeySmokeEnd"/>
+    <endEvent id="formKeySmokeEnd" name="End"/>
+  </process>
+</definitions>

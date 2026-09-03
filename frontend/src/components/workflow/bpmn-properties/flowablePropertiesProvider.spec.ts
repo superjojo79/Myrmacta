@@ -85,6 +85,21 @@ describe('FlowablePropertiesProvider', () => {
     expect(entryIds).toEqual(['flowable:scope'])
   })
 
+  it('exposes a formKey entry for a userTask', () => {
+    const panel = fakePropertiesPanel()
+    new (FlowablePropertiesProvider as unknown as new (p: unknown) => void)(panel)
+    const provider = panel.registered[0]!.provider as {
+      getGroups: (element: unknown) => (groups: unknown[]) => unknown[]
+    }
+
+    const element = fakeElement('bpmn:UserTask')
+    const groups = provider.getGroups(element)([])
+
+    expect(groups).toHaveLength(1)
+    const entryIds = (groups[0] as { entries: Array<{ id: string }> }).entries.map((e) => e.id)
+    expect(entryIds).toEqual(['flowable:formKey'])
+  })
+
   it('adds no custom group for an element without a relevant flowable:* attribute', () => {
     const panel = fakePropertiesPanel()
     new (FlowablePropertiesProvider as unknown as new (p: unknown) => void)(panel)
@@ -192,5 +207,32 @@ describe('FlowablePropertiesProvider entries — getValue/setValue', () => {
     const props = component({ element })
 
     expect((props.getValue as () => string)()).toBe('')
+  })
+
+  it('flowable:formKey: getValue reads the attribute, setValue writes it (undefined when cleared)', () => {
+    const updateModdleProperties = vi.fn()
+    vi.mocked(useService).mockImplementation(
+      (name: string) =>
+        (name === 'modeling'
+          ? { updateModdleProperties }
+          : name === 'debounceInput'
+            ? (fn: unknown) => fn
+            : undefined) as never,
+    )
+
+    const element = fakeElement('bpmn:UserTask', { 'flowable:formKey': 'dossier-fields' })
+    const { component } = entryComponent('bpmn:UserTask', 'flowable:formKey')
+    const props = component({ element })
+
+    expect((props.getValue as () => string)()).toBe('dossier-fields')
+
+    ;(props.setValue as (v: string | undefined) => void)('document-generation')
+    expect(updateModdleProperties).toHaveBeenCalledWith(element, element.businessObject, {
+      'flowable:formKey': 'document-generation',
+    })
+    ;(props.setValue as (v: string | undefined) => void)('')
+    expect(updateModdleProperties).toHaveBeenLastCalledWith(element, element.businessObject, {
+      'flowable:formKey': undefined,
+    })
   })
 })

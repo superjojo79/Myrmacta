@@ -180,7 +180,7 @@ public class DefineDossierTypeTool {
                 new UpdateDossierTypeUseCase.UpdateDossierTypeCommand(
                         existing.tenantId(), existing.code(), label, workflowKey, active, allowUnknownFields,
                         fieldDefinitions, existing.retentionDays(), existing.retentionNever(),
-                        existing.slaTargetHours()),
+                        existing.slaTargetHours(), existing.documentTemplateKeys()),
                 actor);
         return result("update", false, existing.code(), updated);
     }

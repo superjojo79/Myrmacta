@@ -84,4 +84,14 @@ public class JpaDocumentTemplateRepositoryAdapter implements DocumentTemplateRep
                 .findActiveExact(tenantId, templateKey, variantKey, locale, TemplateStatus.ACTIVE)
                 .map(DocumentTemplateJpaEntity::toDomain);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DocumentTemplate> findActiveByTemplateKeysIn(String tenantId, List<String> templateKeys) {
+        return repository
+                .findByTenantIdAndTemplateKeyInAndStatus(tenantId, templateKeys, TemplateStatus.ACTIVE)
+                .stream()
+                .map(DocumentTemplateJpaEntity::toDomain)
+                .toList();
+    }
 }

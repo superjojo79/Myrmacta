@@ -75,6 +75,15 @@ appliquée ; il n'existe pas d'option de passage en force depuis cet écran.
 > Pour éditer les **valeurs** des champs sur un dossier existant (pas la définition du schéma), voir
 > l'écran détail dossier (§2).
 
+**Templates de documents autorisés (TODO §52).** Dans le formulaire de création et dans le panneau
+**Modifier les champs**, une nouvelle section liste les templates de documents actifs (§5) sous
+forme de cases à cocher — cocher une clé l'ajoute aux templates que le formulaire de tâche
+`document-generation` (§3bis du [GUIDE-CONCEPTION-BPMN.md](GUIDE-CONCEPTION-BPMN.md)) proposera
+pour ce type de dossier. **Par défaut, aucun template n'est associé** : tant qu'aucune case n'est
+cochée ici, un `userTask` avec `flowable:formKey=document-generation` sur un dossier de ce type
+affiche un picker vide plutôt qu'un fallback « tous les templates » — associer explicitement les
+templates pertinents avant de déployer un process qui les utilise.
+
 ### Rétention (conformité RGPD)
 
 En haut du même écran **Admin → Types**, deux réglages distincts de la politique de rétention :
@@ -315,7 +324,11 @@ Dans le tableau des templates existants (`templateKey` — libellé — version 
   rapide d'un dossier par référence ou identifiant. Lien direct vers **Nouveau dossier**.
 - **Tâches** (`/tasks`) — vue personnelle des tâches actuellement assignées à l'utilisateur
   connecté, avec accès direct au dossier concerné, bouton **Compléter**, et un rappel SLA
-  (`dans N h` / `dépassée`) lorsque le type de dossier a un objectif en heures.
+  (`dans N h` / `dépassée`) lorsque le type de dossier a un objectif en heures. Depuis TODO §52,
+  une tâche dont le diagramme BPMN déclare un formulaire (voir
+  [GUIDE-CONCEPTION-BPMN.md](GUIDE-CONCEPTION-BPMN.md) §3bis) affiche ce formulaire à la place du
+  bouton nu — édition des champs du dossier, ou choix d'un document à générer parmi ceux autorisés
+  pour son type (§1). Une tâche sans formulaire déclaré garde le bouton **Compléter** habituel.
 - **Rapports & SLA** (`/rapports`) — snapshot de conformité et de délais sur une période
   (défaut 30 jours). Visible pour `TENANT_ADMIN`, `WORKFLOW_ADMIN` et `DOSSIER_MANAGER`
   (ce dernier ne voit que les types pour lesquels il a VIEW). Export CSV disponible ;

@@ -229,8 +229,8 @@ export const useDossierStore = defineStore('dossier', () => {
     return link
   }
 
-  async function complete(taskId: string): Promise<void> {
-    await completeTask(taskId, {})
+  async function complete(taskId: string, variables: Record<string, unknown> = {}): Promise<void> {
+    await completeTask(taskId, variables)
     if (dossier.value) await loadById(dossier.value.id)
   }
 

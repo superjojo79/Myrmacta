@@ -32,4 +32,11 @@ public interface DocumentTemplateRepository {
     /** Exact ACTIVE match for a combination (used when archiving current ACTIVE). */
     Optional<DocumentTemplate> findActiveExact(
             String tenantId, String templateKey, String variantKey, String locale);
+
+    /**
+     * TODO §52 -- ACTIVE templates whose {@code templateKey} is in {@code templateKeys}, scoped to
+     * {@code tenantId}. Empty input returns an empty list (caller's responsibility: this method
+     * itself does not special-case it, ListDocumentTemplatesForDossierTypeUseCaseImpl does).
+     */
+    List<DocumentTemplate> findActiveByTemplateKeysIn(String tenantId, List<String> templateKeys);
 }

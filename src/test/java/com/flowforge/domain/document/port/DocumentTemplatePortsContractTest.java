@@ -75,6 +75,11 @@ class DocumentTemplatePortsContractTest {
                     String tenantId, String templateKey, String variantKey, String locale) {
                 return Optional.empty();
             }
+
+            @Override
+            public List<DocumentTemplate> findActiveByTemplateKeysIn(String tenantId, List<String> templateKeys) {
+                return List.of(template);
+            }
         };
 
         TemplateSyntaxChecker checker = html -> {};
@@ -93,6 +98,7 @@ class DocumentTemplatePortsContractTest {
         assertThat(repo.findByIdAndTenantId(id, "tenant_dev")).contains(template);
         assertThat(repo.nextVersion("tenant_dev", "contrat", "premium", "fr")).isEqualTo(2);
         assertThat(repo.findBestActive("tenant_dev", "contrat", null, null)).contains(template);
+        assertThat(repo.findActiveByTemplateKeysIn("tenant_dev", List.of("contrat"))).containsExactly(template);
         checker.check("<p th:text=\"${x}\">x</p>");
         assertThat(create.create(new CreateDocumentTemplateUseCase.CreateCommand(
                         "contrat", "premium", "fr", "label", "<p>ok</p>", "admin")))

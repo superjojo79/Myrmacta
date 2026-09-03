@@ -13,6 +13,7 @@ import type { DossierPermission, DossierType, FieldDefinition } from '@/api/type
 import { toProblemDetail } from '@/api/http'
 import AdminPager from '@/components/admin/AdminPager.vue'
 import FieldDefinitionDefsEditor from '@/components/dossier/FieldDefinitionDefsEditor.vue'
+import DocumentTemplateKeysEditor from '@/components/dossier/DocumentTemplateKeysEditor.vue'
 import { validateFieldDefinitions } from '@/dossier/validateFieldDefinitions'
 import { useAdminListQuery } from '@/composables/useAdminListQuery'
 
@@ -35,13 +36,19 @@ const form = ref({
   slaTargetHours: null as number | null,
   allowUnknownFields: false,
   fieldDefinitions: [] as FieldDefinition[],
+  documentTemplateKeys: [] as string[],
 })
 const acl = ref({ code: '', subjectUserId: '', permission: 'VIEW' as DossierPermission })
 
 const editingCode = ref<string | null>(null)
-const editDraft = ref<{ allowUnknownFields: boolean; fieldDefinitions: FieldDefinition[] }>({
+const editDraft = ref<{
+  allowUnknownFields: boolean
+  fieldDefinitions: FieldDefinition[]
+  documentTemplateKeys: string[]
+}>({
   allowUnknownFields: false,
   fieldDefinitions: [],
+  documentTemplateKeys: [],
 })
 const editFieldErrors = ref<string[]>([])
 
@@ -141,6 +148,7 @@ async function create() {
       allowUnknownFields: form.value.allowUnknownFields,
       fieldDefinitions: form.value.fieldDefinitions,
       slaTargetHours: form.value.slaTargetHours || null,
+      documentTemplateKeys: form.value.documentTemplateKeys,
       ...retentionPayload(),
     })
     form.value = {
@@ -153,6 +161,7 @@ async function create() {
       slaTargetHours: null,
       allowUnknownFields: false,
       fieldDefinitions: [],
+      documentTemplateKeys: [],
     }
     await refresh()
   } catch (err) {
@@ -165,6 +174,7 @@ function startEditFields(type: DossierType) {
   editDraft.value = {
     allowUnknownFields: type.allowUnknownFields,
     fieldDefinitions: [...type.fieldDefinitions],
+    documentTemplateKeys: [...(type.documentTemplateKeys ?? [])],
   }
   editFieldErrors.value = []
 }
@@ -184,6 +194,7 @@ async function saveEditFields() {
     await updateDossierType(editingCode.value as string, {
       allowUnknownFields: editDraft.value.allowUnknownFields,
       fieldDefinitions: editDraft.value.fieldDefinitions,
+      documentTemplateKeys: editDraft.value.documentTemplateKeys,
     })
     editingCode.value = null
     editFieldErrors.value = []
@@ -305,6 +316,10 @@ async function revoke() {
         Autoriser les champs inconnus
       </label>
       <FieldDefinitionDefsEditor v-model="form.fieldDefinitions" />
+      <fieldset>
+        <legend>Templates de documents autorisés (document-generation)</legend>
+        <DocumentTemplateKeysEditor v-model="form.documentTemplateKeys" />
+      </fieldset>
       <button type="submit">Créer</button>
     </form>
     <table>
@@ -354,6 +369,10 @@ async function revoke() {
         Autoriser les champs inconnus
       </label>
       <FieldDefinitionDefsEditor v-model="editDraft.fieldDefinitions" />
+      <fieldset>
+        <legend>Templates de documents autorisés (document-generation)</legend>
+        <DocumentTemplateKeysEditor v-model="editDraft.documentTemplateKeys" />
+      </fieldset>
       <div class="edit-fields-panel__actions">
         <button type="button" data-testid="type-edit-fields-save" @click="saveEditFields">Enregistrer</button>
         <button type="button" data-testid="type-edit-fields-cancel" @click="cancelEditFields">Annuler</button>

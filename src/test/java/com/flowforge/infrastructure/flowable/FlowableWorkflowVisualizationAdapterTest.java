@@ -153,6 +153,31 @@ class FlowableWorkflowVisualizationAdapterTest {
     }
 
     @Test
+    void listActiveTasks_mapsFormKeyFromTask() {
+        stubActiveProcess();
+        TaskQuery countQuery = mock(TaskQuery.class);
+        when(countQuery.processInstanceId(PI)).thenReturn(countQuery);
+        when(countQuery.taskTenantId(TENANT)).thenReturn(countQuery);
+        when(countQuery.count()).thenReturn(1L);
+
+        TaskQuery listQuery = mock(TaskQuery.class);
+        when(listQuery.processInstanceId(PI)).thenReturn(listQuery);
+        when(listQuery.taskTenantId(TENANT)).thenReturn(listQuery);
+        when(listQuery.orderByTaskCreateTime()).thenReturn(listQuery);
+        when(listQuery.asc()).thenReturn(listQuery);
+        Task task = mock(Task.class);
+        when(task.getId()).thenReturn("task-1");
+        when(task.getFormKey()).thenReturn("document-generation");
+        when(listQuery.listPage(0, 10)).thenReturn(List.of(task));
+
+        when(taskService.createTaskQuery()).thenReturn(countQuery, listQuery);
+
+        PageResult<WorkflowTaskView> page = adapter.listActiveTasks(PI, TENANT, PageQuery.of(0, 10));
+
+        assertThat(page.content().getFirst().formKey()).isEqualTo("document-generation");
+    }
+
+    @Test
     void reassignTask_callsSetAssigneeWhenTaskBelongsToInstanceAndTenant() {
         TaskQuery query = mock(TaskQuery.class);
         Task task = mock(Task.class);

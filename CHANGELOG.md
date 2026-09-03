@@ -45,6 +45,15 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
+- **PR #TBD** — Formulaires de tâche rattachés aux `userTask` BPMN (TODO §52, à resynchroniser
+  avec le vrai numéro de PR à l'ouverture) : un `userTask` peut désormais déclarer
+  `flowable:formKey` (éditeur BPMN, groupe « Flowable ») pour afficher un formulaire avant
+  complétion — édition des champs du dossier (`dossier-fields`) ou choix d'un document à générer
+  parmi ceux associés au type de dossier (`document-generation`, nouvel écran Admin → Types).
+  Nouvel endpoint `GET /api/dossier-types/{code}/document-templates` (accessible à tout porteur de
+  tâche ayant VIEW sur le type, pas seulement `TENANT_ADMIN`). Corrige au passage un bug latent de
+  l'éditeur BPMN : le tout premier attribut `flowable:*` posé sur un diagramme démarré vierge dans
+  cet éditeur ne se sauvegardait pas (espace de noms `flowable` non déclaré).
 - **PR [#102](https://github.com/superjojo79/FlowForge/pull/102)** — Nouveau connecteur générique
   `flowable-callback` (TODO §51, capability **CALLBACK**) : un process BPMN en attente sur un
   `intermediateCatchEvent`/`receiveTask` à message peut désormais être réveillé par un callback

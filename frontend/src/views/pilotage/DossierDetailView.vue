@@ -145,9 +145,9 @@ async function onStart(key: string) {
   }
 }
 
-async function onComplete(taskId: string) {
+async function onComplete(taskId: string, variables: Record<string, unknown> = {}) {
   try {
-    await store.complete(taskId)
+    await store.complete(taskId, variables)
   } catch (err) {
     actionError.value = toProblemDetail(err).detail ?? 'Complétion impossible'
   }
@@ -236,11 +236,13 @@ async function confirmReassign() {
     />
     <TaskList
       :tasks="tasks"
+      :dossier-id="dossier?.id"
       :can-reassign="canReassign"
       :page="tasksPage"
       :total-pages="tasksTotalPages"
       @complete="onComplete"
       @reassign="reassignTaskId = $event"
+      @form-error="actionError = $event"
       @update:page="store.loadTasksPage($event)"
     />
 

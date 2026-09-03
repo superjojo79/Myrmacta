@@ -1,5 +1,6 @@
 package com.flowforge.infrastructure.web.workflow;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oidcLogin;
 import static org.hamcrest.Matchers.containsString;
@@ -114,7 +115,9 @@ class WorkflowApiTest {
                         .with(user("workflow-editor")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].taskId").value(taskId))
-                .andExpect(jsonPath("$.content[0].name").value("Smoke Task"));
+                .andExpect(jsonPath("$.content[0].name").value("Smoke Task"))
+                // smokeTask carries no flowable:formKey (TODO §52) -- field present, null value.
+                .andExpect(jsonPath("$.content[0].formKey").value(org.hamcrest.Matchers.nullValue()));
 
         mockMvc.perform(get("/api/workflow-links/{id}/dossier", linkId)
                         .with(user("workflow-editor")))
@@ -182,6 +185,7 @@ class WorkflowApiTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].taskId").value(taskId))
                 .andExpect(jsonPath("$.content[0].assigneeId").value("assignee-sub"))
+                .andExpect(jsonPath("$.content[0].formKey").value(org.hamcrest.Matchers.nullValue()))
                 .andExpect(jsonPath("$.page").value(0))
                 .andExpect(jsonPath("$.totalElements").value(1));
 
@@ -235,6 +239,55 @@ class WorkflowApiTest {
                                 """))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status").value(403));
+    }
+
+    @Test
+    void complete_withDocumentTypeNotAllowedForTheDossierType_returns400AndNeverReachesTheEngine() throws Exception {
+        // Phase 9 adversarial review finding E4: DossierType.documentTemplateKeys() was only
+        // enforced at discovery time (GET .../document-templates) -- nothing on the completion
+        // path stopped a task holder (any actor with EDIT on the dossier, not just the one who
+        // opened the document-generation picker) from smuggling an arbitrary documentType into
+        // ${documentGenerationTask}. createType() below configures no documentTemplateKeys at
+        // all, so any documentType must be rejected.
+        createWorkflowConfig("smokeProcess");
+        String typeCode = createType();
+        grant(typeCode, "workflow-editor", "EDIT");
+        String dossierId = createDossier(typeCode, "workflow-editor");
+
+        MvcResult startResult = mockMvc.perform(post("/api/dossiers/{id}/workflows", dossierId)
+                        .with(user("workflow-editor"))
+                        .with(csrf())
+                        .header("Idempotency-Key", "idem-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "processDefinitionKey": "smokeProcess"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String processInstanceId = extractString(startResult.getResponse().getContentAsString(), "processInstanceId");
+        String taskId = taskService.createTaskQuery()
+                .processInstanceId(processInstanceId)
+                .singleResult()
+                .getId();
+
+        mockMvc.perform(post("/api/workflow-tasks/{taskId}/complete", taskId)
+                        .with(user("workflow-editor"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "variables": {
+                                    "documentType": "some-other-tenants-secret-template"
+                                  }
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+
+        assertThat(taskService.createTaskQuery().processInstanceId(processInstanceId).singleResult())
+                .as("the task must still be active -- the engine must never see a rejected completion")
+                .isNotNull();
     }
 
     @Test

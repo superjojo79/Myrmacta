@@ -49,6 +49,12 @@ class DossierApiTest {
     @Autowired
     private AddDossierElementUseCase addDossierElementUseCase;
 
+    @Autowired
+    private com.flowforge.domain.document.port.in.CreateDocumentTemplateUseCase createDocumentTemplateUseCase;
+
+    @Autowired
+    private com.flowforge.domain.document.port.in.ActivateDocumentTemplateUseCase activateDocumentTemplateUseCase;
+
     @Test
     void createDossier_anonymous_returns401() throws Exception {
         mockMvc.perform(post("/api/dossiers")
@@ -78,6 +84,169 @@ class DossierApiTest {
                 .andExpect(jsonPath("$.code").value(code))
                 .andExpect(jsonPath("$.label").value("Label " + code))
                 .andExpect(jsonPath("$.active").value(true));
+    }
+
+    @Test
+    void createType_omitsDocumentTemplateKeys_defaultsToEmptyList() throws Exception {
+        String code = uniqueCode("TYPE");
+
+        mockMvc.perform(post("/api/dossier-types")
+                        .with(user("admin-create-type-docgen", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(typePayload(code, true)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.documentTemplateKeys").isArray())
+                .andExpect(jsonPath("$.documentTemplateKeys").isEmpty());
+    }
+
+    @Test
+    void createType_setsDocumentTemplateKeys() throws Exception {
+        String code = uniqueCode("TYPE");
+
+        mockMvc.perform(post("/api/dossier-types")
+                        .with(user("admin-create-type-docgen2", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "code": "%s",
+                                  "label": "Label %s",
+                                  "workflowKey": "workflow-%s",
+                                  "active": true,
+                                  "allowUnknownFields": false,
+                                  "fieldDefinitions": [],
+                                  "documentTemplateKeys": ["invoice", "contract"]
+                                }
+                                """.formatted(code, code, code.toLowerCase())))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.documentTemplateKeys[0]").value("invoice"))
+                .andExpect(jsonPath("$.documentTemplateKeys[1]").value("contract"));
+    }
+
+    @Test
+    void updateType_omittingDocumentTemplateKeysPreservesExisting() throws Exception {
+        String code = uniqueCode("TYPE");
+        mockMvc.perform(post("/api/dossier-types")
+                        .with(user("admin-patch-type-docgen", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "code": "%s",
+                                  "label": "Label %s",
+                                  "workflowKey": "workflow-%s",
+                                  "active": true,
+                                  "allowUnknownFields": false,
+                                  "fieldDefinitions": [],
+                                  "documentTemplateKeys": ["invoice"]
+                                }
+                                """.formatted(code, code, code.toLowerCase())))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(patch("/api/dossier-types/{code}", code)
+                        .with(user("admin-patch-type-docgen", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "label": "Patched %s"
+                                }
+                                """.formatted(code)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.documentTemplateKeys[0]").value("invoice"));
+    }
+
+    @Test
+    void updateType_replacesDocumentTemplateKeysWhenProvided() throws Exception {
+        String code = uniqueCode("TYPE");
+        mockMvc.perform(post("/api/dossier-types")
+                        .with(user("admin-patch-type-docgen2", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "code": "%s",
+                                  "label": "Label %s",
+                                  "workflowKey": "workflow-%s",
+                                  "active": true,
+                                  "allowUnknownFields": false,
+                                  "fieldDefinitions": [],
+                                  "documentTemplateKeys": ["invoice"]
+                                }
+                                """.formatted(code, code, code.toLowerCase())))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(patch("/api/dossier-types/{code}", code)
+                        .with(user("admin-patch-type-docgen2", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "documentTemplateKeys": []
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.documentTemplateKeys").isEmpty());
+    }
+
+    @Test
+    void documentTemplates_returnsOnlyConfiguredActiveKeysWithoutHtmlContent() throws Exception {
+        String code = uniqueCode("TYPE");
+        String templateKey = "docgen-" + UUID.randomUUID();
+        var created = createDocumentTemplateUseCase.create(
+                new com.flowforge.domain.document.port.in.CreateDocumentTemplateUseCase.CreateCommand(
+                        templateKey, null, null, "Facture", "<p>secret template markup</p>", "admin"));
+        activateDocumentTemplateUseCase.activate(created.id(), TENANT_ID, "admin");
+
+        mockMvc.perform(post("/api/dossier-types")
+                        .with(user("admin-docgen-list", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "code": "%s",
+                                  "label": "Label %s",
+                                  "workflowKey": "workflow-%s",
+                                  "active": true,
+                                  "allowUnknownFields": false,
+                                  "fieldDefinitions": [],
+                                  "documentTemplateKeys": ["%s"]
+                                }
+                                """.formatted(code, code, code.toLowerCase(), templateKey)))
+                .andExpect(status().isCreated());
+        grant(code, "plain-task-holder", "VIEW");
+
+        // Reachable by a plain authenticated user holding only a VIEW ACL grant -- not
+        // TENANT_ADMIN -- unlike GET /api/document-templates (TENANT_ADMIN-only class-level
+        // guard), fixed by this dedicated endpoint (same VIEW check as GET /api/dossier-types/{code}).
+        mockMvc.perform(get("/api/dossier-types/{code}/document-templates", code)
+                        .with(user("plain-task-holder")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].templateKey").value(templateKey))
+                .andExpect(jsonPath("$[0].label").value("Facture"))
+                .andExpect(jsonPath("$[0]", not(hasKey("htmlContent"))))
+                .andExpect(jsonPath("$[0]", not(hasKey("status"))))
+                .andExpect(jsonPath("$[0]", not(hasKey("version"))));
+    }
+
+    @Test
+    void documentTemplates_emptyDocumentTemplateKeys_returnsEmptyList() throws Exception {
+        String code = createType(true);
+        grant(code, "plain-task-holder-2", "VIEW");
+
+        mockMvc.perform(get("/api/dossier-types/{code}/document-templates", code)
+                        .with(user("plain-task-holder-2")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$").isEmpty());
+    }
+
+    @Test
+    void documentTemplates_unknownDossierType_returns404() throws Exception {
+        mockMvc.perform(get("/api/dossier-types/{code}/document-templates", "NO-SUCH-TYPE")
+                        .with(user("plain-task-holder-3")))
+                .andExpect(status().isNotFound());
     }
 
     @Test

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             targetNamespace="http://flowforge/processes">
+
+  <!-- Regression fixture for TODO §52 (formulaires-dynamiques-taches) Phase 9 adversarial review
+       finding C1: the document-generation task form (frontend) must submit completion variables
+       under the exact names DocumentGenerationTask.java reads via execution.getVariable(),
+       namely documentType/documentVariant/documentLocale, not templateKey/variantKey/locale (the
+       AllowedDocumentTemplate DTO's own field names). This process exercises the real two step
+       chain end to end: userTask flowable:formKey="document-generation" completed with those
+       variables must let the documentGenerationTask delegate run without a
+       "documentType variable is required" failure. See DocumentGenerationFormSmokeIT. -->
+  <process id="documentGenerationFormSmoke" name="Document Generation Form Smoke" isExecutable="true">
+    <startEvent id="docGenFormSmokeStart" name="Start"/>
+    <sequenceFlow id="flow_doc_gen_form_task" sourceRef="docGenFormSmokeStart" targetRef="docGenFormSmokeTask"/>
+    <userTask id="docGenFormSmokeTask" name="Pick Document" flowable:formKey="document-generation"/>
+    <sequenceFlow id="flow_doc_gen_form_generate" sourceRef="docGenFormSmokeTask" targetRef="docGenFormSmokeGenerate"/>
+    <serviceTask id="docGenFormSmokeGenerate" name="Generate" flowable:delegateExpression="${documentGenerationTask}"/>
+    <sequenceFlow id="flow_doc_gen_form_end" sourceRef="docGenFormSmokeGenerate" targetRef="docGenFormSmokeEnd"/>
+    <endEvent id="docGenFormSmokeEnd" name="End"/>
+  </process>
+</definitions>

@@ -67,7 +67,8 @@ class WorkflowTaskController {
         String dossierId = workflowEnginePort.findDossierIdVariable(processInstanceId)
                 .orElseThrow(() -> new IllegalArgumentException("Task is not linked to a dossier"));
         accessGuard.requireEditable(UUID.fromString(dossierId), accessContextFactory.user(authentication));
-        completeTaskUseCase.complete(taskId, request == null || request.variables() == null ? Map.of() : request.variables());
+        completeTaskUseCase.complete(
+                taskId, dossierId, request == null || request.variables() == null ? Map.of() : request.variables());
         return ResponseEntity.noContent().build();
     }
 
@@ -80,7 +81,8 @@ class WorkflowTaskController {
             UUID dossierId,
             String dossierReference,
             UUID linkId,
-            Double slaRemainingHours) {
+            Double slaRemainingHours,
+            String formKey) {
 
         static MyWorkflowTaskResponse from(MyWorkflowTask task) {
             return new MyWorkflowTaskResponse(
@@ -92,7 +94,8 @@ class WorkflowTaskController {
                     task.dossierId(),
                     task.dossierReference(),
                     task.linkId(),
-                    task.slaRemainingHours());
+                    task.slaRemainingHours(),
+                    task.formKey());
         }
     }
 }

@@ -83,6 +83,37 @@ class DossierPersistenceTest {
     }
 
     @Test
+    void savesAndLoadsDossierTypeWithDocumentTemplateKeys() {
+        var type = DossierType.inherit(
+                        UUID.randomUUID(),
+                        "tenant_dev",
+                        "SIN-DOCGEN",
+                        "Sinistre docgen",
+                        "sinistre-process",
+                        true,
+                        false,
+                        List.of())
+                .withUpdate(
+                        "Sinistre docgen",
+                        "sinistre-process",
+                        true,
+                        false,
+                        List.of(),
+                        null,
+                        false,
+                        null,
+                        List.of("invoice", "contract"),
+                        "system");
+
+        dossierTypeRepository.save(type);
+
+        assertThat(dossierTypeRepository.findByCode("tenant_dev", "SIN-DOCGEN"))
+                .get()
+                .extracting(DossierType::documentTemplateKeys)
+                .isEqualTo(List.of("invoice", "contract"));
+    }
+
+    @Test
     void page_filtersAllowedCodesOrdersByCodeAndOffsetsWithoutHoles() {
         String token = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
         String codeC = "ZZC" + token;

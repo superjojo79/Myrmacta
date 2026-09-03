@@ -66,4 +66,16 @@ describe('BpmnEditorCanvas', () => {
     expect(saveXML).toHaveBeenCalled()
     expect(xml).toBe('<definitions edited="true"/>')
   })
+
+  it('the blank starter template declares xmlns:flowable (D-FLOWABLE-NS, TODO §52)', async () => {
+    // Regression guard: without this, the *first* flowable:* attribute ever set on a brand-new
+    // diagram (async/delegateExpression/expression/scope/formKey) round-trips through
+    // getValue()/setValue() but is silently dropped by saveXML() -- moddle-xml can't emit a
+    // prefix it never saw a URI for. Proven against the real (unmocked) engine in
+    // e2e/pilotage.spec.ts E2E-FORM-4.
+    mount(BpmnEditorCanvas, { props: { bpmnXml: '' } })
+    await flushPromises()
+
+    expect(importXML).toHaveBeenCalledWith(expect.stringContaining('xmlns:flowable="http://flowable.org/bpmn"'))
+  })
 })

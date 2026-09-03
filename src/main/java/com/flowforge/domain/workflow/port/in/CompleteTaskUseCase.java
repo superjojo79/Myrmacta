@@ -4,5 +4,5 @@ import java.util.Map;
 
 public interface CompleteTaskUseCase {
 
-    void complete(String taskId, Map<String, Object> variables);
+    void complete(String taskId, String dossierId, Map<String, Object> variables);
 }

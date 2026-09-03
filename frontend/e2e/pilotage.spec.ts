@@ -1771,3 +1771,233 @@ test('E2E-SLA-8 type filter is forwarded as dossierTypeCode', async ({ page }) =
   expect(url.searchParams.get('dossierTypeCode')).toBe('CLAIM')
 })
 
+// TODO §52 (formulaires-dynamiques-taches) — a task with a known formKey shows the matching
+// task-form component instead of the blind "Compléter" button (E2E-5 already covers the
+// non-regression case: a task without formKey keeps the blind button).
+test('E2E-FORM-1 dossier-fields task shows the fields form and completes via PATCH', async ({ page }) => {
+  await mockSession(page)
+  let formTasks = [
+    {
+      taskId: 'task-1',
+      name: 'Valider',
+      assigneeId: 'user-1',
+      createdAt: '2026-08-12T00:00:00Z',
+      processInstanceId: 'pi-1',
+      dossierId: DOSSIER_ID,
+      dossierReference: 'DOS-1',
+      linkId: LINK_ID,
+      slaRemainingHours: 12,
+      formKey: 'dossier-fields',
+    },
+  ]
+  await page.route('**/api/workflow-tasks/mine*', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(envelope(formTasks)) })
+  })
+  await page.route('**/api/workflow-tasks/*/complete', async (route) => {
+    formTasks = []
+    await route.fulfill({ status: 204, body: '' })
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Tâches' }).click()
+  await expect(page.getByText('Valider')).toBeVisible()
+  // The dossier-fields form renders DynamicFields against CLAIM_TYPE.fieldDefinitions
+  // (single "priority" STRING field, defaultValue "NORMAL" per dossierBody()'s fields).
+  const priorityInput = page.locator('.dossier-fields-task-form input')
+  await expect(priorityInput).toHaveValue('NORMAL')
+  await priorityInput.fill('HIGH')
+
+  const patchRequest = page.waitForRequest(
+    (request) => request.url().includes(`/api/dossiers/${DOSSIER_ID}/fields`) && request.method() === 'PATCH',
+  )
+  await page.locator('.dossier-fields-task-form button').click()
+  const patched = (await patchRequest).postDataJSON() as { fields: Record<string, unknown> }
+  expect(patched.fields.priority).toBe('HIGH')
+  await expect(page.getByText('Aucune tâche assignée')).toBeVisible()
+})
+
+test('E2E-FORM-2 document-generation task lists only the allowed templates and completes with variables', async ({
+  page,
+}) => {
+  await mockSession(page)
+  await page.route('**/api/workflow-tasks/mine*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(
+        envelope([
+          {
+            taskId: 'task-1',
+            name: 'Générer',
+            assigneeId: 'user-1',
+            createdAt: '2026-08-12T00:00:00Z',
+            processInstanceId: 'pi-1',
+            dossierId: DOSSIER_ID,
+            dossierReference: 'DOS-1',
+            linkId: LINK_ID,
+            slaRemainingHours: 12,
+            formKey: 'document-generation',
+          },
+        ]),
+      ),
+    })
+  })
+  await page.route('**/api/dossier-types/CLAIM/document-templates', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        { templateKey: 'invoice', variantKey: 'premium', locale: 'fr', label: 'Facture premium FR' },
+      ]),
+    })
+  })
+  let completedWith: unknown = null
+  await page.route('**/api/workflow-tasks/*/complete', async (route) => {
+    completedWith = route.request().postDataJSON()
+    await route.fulfill({ status: 204, body: '' })
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Tâches' }).click()
+  await expect(page.getByText('Générer')).toBeVisible()
+  const picker = page.locator('.document-generation-task-form select')
+  await expect(picker.locator('option', { hasText: 'Facture premium FR' })).toHaveCount(1)
+  await picker.selectOption({ label: 'Facture premium FR' })
+  await page.locator('.document-generation-task-form button').click()
+  // documentType/documentVariant/documentLocale are the variable names DocumentGenerationTask.java
+  // (the ${documentGenerationTask} serviceTask) actually reads via execution.getVariable(...) --
+  // not templateKey/variantKey/locale, which are only the AllowedDocumentTemplate DTO's field
+  // names on the way in.
+  expect(completedWith).toEqual({
+    variables: { documentType: 'invoice', documentVariant: 'premium', documentLocale: 'fr' },
+  })
+})
+
+// Own fixture (not BPMN_FOR_OTHER_WORKFLOW_EDITABLE): must declare xmlns:flowable up front, like
+// every real process file under src/main/resources/processes/ does. Writing a *new* flowable:*
+// attribute via the Modeling API only lands in the moddle element's generic $attrs bag (no
+// moddleExtensions registered for "flowable" in this app -- see flowablePropertiesProvider.ts
+// header) -- moddle-xml's writer can only re-emit it if it already knows a URI for the "flowable"
+// prefix from the parsed document. Confirmed empirically: without this xmlns declaration, the
+// property still round-trips through getValue()/setValue() (proven by reselecting the element)
+// but silently never reaches saveXML()'s output -- the writer swallows the failed prefix
+// resolution. Real diagrams built by this editor and re-saved always carry the declaration once a
+// flowable:* attribute (delegateExpression/expression/scope/formKey) is set once via the palette,
+// same as any other bpmn-js extension attribute -- this fixture only needs to pre-declare it
+// because the source XML is fed in fully formed rather than authored by hand in the canvas.
+const BPMN_FOR_OTHER_WORKFLOW_WITH_FLOWABLE_NS = `<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+             xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+             targetNamespace="http://flowforge/e2e">
+  <process id="otherWorkflow" isExecutable="true">
+    <startEvent id="start"/>
+    <userTask id="wait" name="Wait"/>
+    <endEvent id="end"/>
+    <sequenceFlow id="flow1" sourceRef="start" targetRef="wait"/>
+    <sequenceFlow id="flow2" sourceRef="wait" targetRef="end"/>
+  </process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="otherWorkflow">
+      <bpmndi:BPMNShape id="start_di" bpmnElement="start">
+        <dc:Bounds x="150" y="100" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="wait_di" bpmnElement="wait">
+        <dc:Bounds x="250" y="80" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end_di" bpmnElement="end">
+        <dc:Bounds x="420" y="100" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow1_di" bpmnElement="flow1">
+        <di:waypoint x="186" y="118"/>
+        <di:waypoint x="250" y="120"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow2_di" bpmnElement="flow2">
+        <di:waypoint x="350" y="120"/>
+        <di:waypoint x="420" y="118"/>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>`
+
+test('E2E-FORM-4 BPMN editor sets flowable:formKey on a userTask, round-trips on save', async ({ page }) => {
+  await mockSession(page)
+  await page.route('**/api/workflow-bpmn-deployments/otherWorkflow/xml', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'text/xml', body: BPMN_FOR_OTHER_WORKFLOW_WITH_FLOWABLE_NS })
+  })
+  await page.route('**/api/workflow-bpmn-deployments/info*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ processDefinitionKey: 'otherWorkflow', latestVersion: 2, activeInstanceCount: 0 }),
+    })
+  })
+  let savedXml = ''
+  await page.route('**/api/workflow-bpmn-drafts/Process_1', async (route) => {
+    await route.fulfill({ status: 204, body: '' })
+  })
+  await page.route('**/api/workflow-bpmn-drafts/otherWorkflow', async (route) => {
+    if (route.request().method() === 'PUT') {
+      savedXml = (route.request().postDataJSON() as { xml: string }).xml
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          processDefinitionKey: 'otherWorkflow',
+          xml: savedXml,
+          updatedAt: '2026-09-03T00:00:00Z',
+          updatedBy: 'user-1',
+        }),
+      })
+      return
+    }
+    await route.fulfill({ status: 204, body: '' })
+  })
+  await openApp(page)
+  await openBpmnEditor(page)
+
+  await page.locator('[data-element-id="wait"]').click()
+  const formKeyInput = page.getByLabel('Form key')
+  await expect(formKeyInput).toBeVisible()
+  await formKeyInput.fill('document-generation')
+  // The properties panel text entry debounces its commit to the moddle model
+  // (useService('debounceInput'), DEFAULT_DEBOUNCE_TIME = 600ms, same wiring as
+  // delegateExpression/expression/scope) -- give it time to flush before saveXML().
+  await page.waitForTimeout(1000)
+
+  await page.getByRole('button', { name: 'Enregistrer le brouillon' }).click()
+  expect(savedXml).toContain('flowable:formKey="document-generation"')
+})
+
+test('E2E-FORM-3 admin associates document templates to a dossier type and it persists', async ({ page }) => {
+  await mockSession(page)
+  await page.route(/\/api\/document-templates(?:\?|$)/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(envelope([{ id: 'dt-1', templateKey: 'invoice', status: 'ACTIVE' }])),
+    })
+  })
+  let updatedPayload: unknown = null
+  await page.route('**/api/dossier-types/CLAIM', async (route) => {
+    if (route.request().method() === 'PATCH') {
+      updatedPayload = route.request().postDataJSON()
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ...CLAIM_TYPE, documentTemplateKeys: ['invoice'] }),
+      })
+      return
+    }
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(CLAIM_TYPE) })
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Types' }).click()
+  await page.getByTestId('type-edit-fields').click()
+  const panel = page.getByTestId('type-edit-fields-panel')
+  await expect(panel.getByText('invoice')).toBeVisible()
+  await panel.locator('[data-testid="document-template-key-invoice"]').check()
+  await page.getByTestId('type-edit-fields-save').click()
+  expect((updatedPayload as { documentTemplateKeys?: string[] })?.documentTemplateKeys).toEqual(['invoice'])
+})
+

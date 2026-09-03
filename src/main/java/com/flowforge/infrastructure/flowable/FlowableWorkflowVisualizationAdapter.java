@@ -176,7 +176,8 @@ class FlowableWorkflowVisualizationAdapter implements WorkflowVisualizationPort 
                 task.getName(),
                 task.getAssignee(),
                 task.getTaskDefinitionKey(),
-                toInstant(task.getCreateTime()));
+                toInstant(task.getCreateTime()),
+                task.getFormKey());
     }
 
     private static Instant toInstant(Date date) {

@@ -18,5 +18,6 @@ public interface UpdateDossierTypeUseCase {
             List<FieldDefinition> fieldDefinitions,
             Integer retentionDays,
             boolean retentionNever,
-            Integer slaTargetHours) {}
+            Integer slaTargetHours,
+            List<String> documentTemplateKeys) {}
 }

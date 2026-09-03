@@ -1,0 +1,27 @@
+databaseChangeLog:
+  - changeSet:
+      id: 019-dossier-type-document-template-keys
+      author: flowforge
+      changes:
+        - addColumn:
+            tableName: dossier_type
+            columns:
+              - column:
+                  name: document_template_keys
+                  type: json
+                  constraints:
+                    nullable: true
+        - update:
+            tableName: dossier_type
+            columns:
+              - column:
+                  name: document_template_keys
+                  value: '[]'
+        - addNotNullConstraint:
+            tableName: dossier_type
+            columnName: document_template_keys
+            columnDataType: json
+      rollback:
+        - dropColumn:
+            tableName: dossier_type
+            columnName: document_template_keys

@@ -62,13 +62,24 @@ restreint** (`flowablePropertiesProvider.ts`) — décision **D-EDIT-SCOPE**. Se
 |---|---|
 | `serviceTask` | `flowable:async` (case à cocher), `flowable:delegateExpression`, `flowable:expression` |
 | `signal` | `flowable:scope` |
+| `userTask` | `flowable:formKey` — voir §3bis (TODO §52) |
 
-**Explicitement absents de l'UI** : `assignee`, `candidateGroups`, `formKey`. L'assignation d'une
-tâche humaine (`userTask`) n'est **pas déclarée dans le BPMN** — voir §6. Un diagramme importé
-depuis un outil externe qui porte d'autres attributs `flowable:*` (ex. `assignee` posé dans
-Camunda Modeler) les conserve tels quels au ré-export (`bpmn-moddle` préserve les attributs
-d'espace de noms inconnus), mais l'éditeur FlowForge ne permet ni de les visualiser ni de les
-modifier — à écrire/modifier hors FlowForge si besoin, en connaissance de cause.
+**Explicitement absents de l'UI** : `assignee`, `candidateGroups`. L'assignation d'une tâche
+humaine (`userTask`) n'est **pas déclarée dans le BPMN** — voir §6. Un diagramme importé depuis un
+outil externe qui porte d'autres attributs `flowable:*` (ex. `assignee` posé dans Camunda Modeler)
+les conserve tels quels au ré-export (`bpmn-moddle` préserve les attributs d'espace de noms
+inconnus), mais l'éditeur FlowForge ne permet ni de les visualiser ni de les modifier — à
+écrire/modifier hors FlowForge si besoin, en connaissance de cause.
+
+> **D-FLOWABLE-NS** — aucune extension moddle n'est enregistrée pour l'espace de noms `flowable`
+> dans cet éditeur (attributs traités génériquement par `bpmn-moddle`). Un diagramme qui ne
+> déclare **pas encore** `xmlns:flowable="http://flowable.org/bpmn"` perd silencieusement le
+> **premier** attribut `flowable:*` posé dessus (async/delegateExpression/expression/scope/formKey)
+> au moment de l'enregistrement — corrigé pour tout diagramme démarré vierge dans cet éditeur
+> (le gabarit de départ déclare désormais l'espace de noms), mais un diagramme importé depuis un
+> outil externe qui n'a jamais utilisé d'attribut `flowable:*` garde ce risque résiduel. En cas de
+> doute après import, ouvrir le XML exporté et vérifier la présence de la déclaration
+> `xmlns:flowable`.
 
 ### Convention de nommage des variables de processus
 
@@ -178,6 +189,28 @@ jamais été saisi sur ce dossier, ou que le nom est mal orthographié dans le t
 se résoudre silencieusement à une chaîne vide dans le PDF plutôt que de faire échouer la
 génération — Thymeleaf ne distingue pas « valeur vide » de « clé absente de la map ». Tester
 chaque template avec un jeu de champs réel reste la seule façon fiable de s'en assurer.
+
+---
+
+## 3bis. Formulaire de tâche (`flowable:formKey`) — TODO §52
+
+Un `userTask` peut déclarer qu'il attend une saisie utilisateur avant complétion, via l'attribut
+BPMN standard `flowable:formKey` (éditable dans le panel de propriétés, groupe « Flowable »). Le
+moteur ne fait que stocker/restituer cette chaîne — c'est une **convention FlowForge**
+(`taskFormRegistry.ts` côté frontend), pas un mécanisme Flowable prêt à l'emploi (le module
+`flowable-form` n'est pas sur le classpath).
+
+Deux valeurs reconnues aujourd'hui :
+
+| `flowable:formKey` | Formulaire affiché | Variables de complétion |
+|---|---|---|
+| `dossier-fields` | Schéma complet du `DossierType` du dossier lié (`DynamicFields.vue`) | aucune — soumis via `PATCH /api/dossiers/{id}/fields`, la tâche se complète ensuite sans variable |
+| `document-generation` | Sélection d'un template parmi ceux associés au type de dossier (Admin → Types → *Templates de documents autorisés*) | `documentType`, `documentVariant`, `documentLocale` — lues par le `serviceTask` `${documentGenerationTask}` suivant (§5, mêmes noms que le tableau des variables d'entrée), la génération reste où elle est |
+
+Une tâche sans `formKey`, ou avec une valeur non reconnue, garde le comportement actuel (bouton
+« Compléter » sans saisie) — jamais bloquant. Pour `document-generation`, si aucun template n'est
+associé au type de dossier, le porteur de tâche voit un message plutôt qu'un picker vide ; associer
+au moins un `templateKey` actif dans Admin → Types avant de déployer un process qui l'utilise.
 
 ---
 

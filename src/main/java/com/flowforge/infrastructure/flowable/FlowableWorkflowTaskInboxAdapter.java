@@ -33,7 +33,8 @@ class FlowableWorkflowTaskInboxAdapter implements WorkflowTaskInboxPort {
                         task.getName() == null ? "" : task.getName(),
                         task.getAssignee(),
                         toInstant(task.getCreateTime()),
-                        task.getProcessInstanceId()))
+                        task.getProcessInstanceId(),
+                        task.getFormKey()))
                 .toList();
         return PageResult.of(content, query.page(), query.size(), total);
     }

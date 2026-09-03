@@ -125,6 +125,25 @@ class DocumentTemplatePersistenceIT {
         assertThat(pastEnd.totalElements()).isEqualTo(3);
     }
 
+    @Test
+    void findActiveByTemplateKeysIn_returnsOnlyActiveMatchingKeys() {
+        String keyA = "docgen-a-" + UUID.randomUUID();
+        String keyB = "docgen-b-" + UUID.randomUUID();
+        String keyC = "docgen-c-" + UUID.randomUUID();
+        saveActive(keyA, null, null, 1);
+        save(keyB, null, null, 1, TemplateStatus.DRAFT);
+        saveActive(keyC, null, null, 1);
+
+        var result = repository.findActiveByTemplateKeysIn("tenant_dev", java.util.List.of(keyA, keyB));
+
+        assertThat(result).extracting(DocumentTemplate::templateKey).containsExactly(keyA);
+    }
+
+    @Test
+    void findActiveByTemplateKeysIn_emptyKeys_returnsEmpty() {
+        assertThat(repository.findActiveByTemplateKeysIn("tenant_dev", java.util.List.of())).isEmpty();
+    }
+
     private UUID saveAt(String key, int version, Instant updatedAt) {
         UUID id = UUID.randomUUID();
         repository.save(new DocumentTemplate(

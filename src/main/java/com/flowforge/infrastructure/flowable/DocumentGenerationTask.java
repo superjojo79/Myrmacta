@@ -2,6 +2,7 @@ package com.flowforge.infrastructure.flowable;
 
 import com.flowforge.domain.document.port.in.GenerateDocumentUseCase;
 import com.flowforge.domain.document.port.out.DocumentStoragePort;
+import com.flowforge.domain.workflow.WorkflowVariables;
 import com.flowforge.infrastructure.config.TenantProperties;
 import java.util.HashMap;
 import java.util.Map;
@@ -28,7 +29,7 @@ public class DocumentGenerationTask implements JavaDelegate {
 
     @Override
     public void execute(DelegateExecution execution) {
-        Object documentType = execution.getVariable("documentType");
+        Object documentType = execution.getVariable(WorkflowVariables.DOCUMENT_TYPE);
         if (documentType == null || documentType.toString().isBlank()) {
             throw new IllegalArgumentException("documentType variable is required");
         }

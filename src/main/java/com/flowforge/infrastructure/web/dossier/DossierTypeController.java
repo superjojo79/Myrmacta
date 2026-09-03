@@ -3,6 +3,7 @@ package com.flowforge.infrastructure.web.dossier;
 import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.DossierType;
 import com.flowforge.domain.dossier.model.FieldDefinition;
+import com.flowforge.domain.document.port.in.ListDocumentTemplatesForDossierTypeUseCase;
 import com.flowforge.domain.dossier.port.in.CreateDossierTypeUseCase;
 import com.flowforge.domain.dossier.port.in.GetDossierTypeUseCase;
 import com.flowforge.domain.dossier.port.in.ListDossierTypesUseCase;
@@ -34,6 +35,7 @@ public class DossierTypeController {
     private final UpdateDossierTypeUseCase updateDossierTypeUseCase;
     private final GetDossierTypeUseCase getDossierTypeUseCase;
     private final ListDossierTypesUseCase listDossierTypesUseCase;
+    private final ListDocumentTemplatesForDossierTypeUseCase listDocumentTemplatesForDossierTypeUseCase;
     private final AccessContextFactory accessContextFactory;
 
     public DossierTypeController(
@@ -42,12 +44,14 @@ public class DossierTypeController {
             UpdateDossierTypeUseCase updateDossierTypeUseCase,
             GetDossierTypeUseCase getDossierTypeUseCase,
             ListDossierTypesUseCase listDossierTypesUseCase,
+            ListDocumentTemplatesForDossierTypeUseCase listDocumentTemplatesForDossierTypeUseCase,
             AccessContextFactory accessContextFactory) {
         this.tenantProperties = tenantProperties;
         this.createDossierTypeUseCase = createDossierTypeUseCase;
         this.updateDossierTypeUseCase = updateDossierTypeUseCase;
         this.getDossierTypeUseCase = getDossierTypeUseCase;
         this.listDossierTypesUseCase = listDossierTypesUseCase;
+        this.listDocumentTemplatesForDossierTypeUseCase = listDocumentTemplatesForDossierTypeUseCase;
         this.accessContextFactory = accessContextFactory;
     }
 
@@ -68,7 +72,8 @@ public class DossierTypeController {
                         listOrEmpty(request.fieldDefinitions()),
                         request.retentionDays(),
                         Boolean.TRUE.equals(request.retentionNever()),
-                        request.slaTargetHours()),
+                        request.slaTargetHours(),
+                        listOrEmptyStrings(request.documentTemplateKeys())),
                 actor);
         return ResponseEntity
                 .created(URI.create("/api/dossier-types/" + type.code()))
@@ -108,7 +113,10 @@ public class DossierTypeController {
                         SlaTargetHoursPatch.resolve(
                                 existing.slaTargetHours(),
                                 request.slaTargetHours(),
-                                request.clearSlaTargetHours())),
+                                request.clearSlaTargetHours()),
+                        request.documentTemplateKeys() == null
+                                ? existing.documentTemplateKeys()
+                                : listOrEmptyStrings(request.documentTemplateKeys())),
                 actor);
         return ResponseEntity.ok(DossierTypeResponse.from(type));
     }
@@ -137,6 +145,23 @@ public class DossierTypeController {
                 accessContextFactory.user(authentication)));
     }
 
+    /**
+     * TODO §52 -- picker source for the {@code document-generation} task form kind. Same VIEW
+     * permission as {@link #getByCode} (delegated to it inside the use case), deliberately
+     * **not** {@code TENANT_ADMIN}-only like {@code GET /api/document-templates} -- a task holder
+     * needs this, not just an admin.
+     */
+    @GetMapping("/{code}/document-templates")
+    public List<AllowedDocumentTemplateResponse> documentTemplates(
+            @PathVariable String code,
+            Authentication authentication) {
+        return listDocumentTemplatesForDossierTypeUseCase
+                .list(tenantProperties.id(), code, accessContextFactory.user(authentication))
+                .stream()
+                .map(AllowedDocumentTemplateResponse::from)
+                .toList();
+    }
+
     private static String required(String value, String field) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(field + " is required");
@@ -145,6 +170,10 @@ public class DossierTypeController {
     }
 
     private static List<FieldDefinition> listOrEmpty(List<FieldDefinition> values) {
+        return values == null ? List.of() : List.copyOf(values);
+    }
+
+    private static List<String> listOrEmptyStrings(List<String> values) {
         return values == null ? List.of() : List.copyOf(values);
     }
 }

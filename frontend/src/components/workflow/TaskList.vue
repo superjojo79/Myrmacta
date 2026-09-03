@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import type { WorkflowTaskView } from '@/api/types'
 import AdminPager from '@/components/admin/AdminPager.vue'
+import { resolveTaskFormComponent } from '@/components/workflow/task-forms/taskFormRegistry'
 
 defineProps<{
   tasks: WorkflowTaskView[]
+  dossierId?: string
   canReassign?: boolean
   totalPages?: number
 }>()
@@ -11,8 +13,9 @@ defineProps<{
 const page = defineModel<number>('page', { default: 0 })
 
 const emit = defineEmits<{
-  complete: [taskId: string]
+  complete: [taskId: string, variables?: Record<string, unknown>]
   reassign: [taskId: string]
+  'form-error': [message: string]
 }>()
 </script>
 
@@ -27,7 +30,21 @@ const emit = defineEmits<{
           <span class="task-list__meta">Assignee : {{ task.assignee || '—' }}</span>
         </div>
         <div class="task-list__actions">
-          <button type="button" @click="emit('complete', task.taskId)">Compléter</button>
+          <component
+            :is="resolveTaskFormComponent(task.formKey)"
+            v-if="resolveTaskFormComponent(task.formKey) && dossierId"
+            :dossier-id="dossierId"
+            @ready="emit('complete', task.taskId, $event)"
+            @error="emit('form-error', $event)"
+          />
+          <button
+            v-else
+            type="button"
+            data-testid="complete-task"
+            @click="emit('complete', task.taskId)"
+          >
+            Compléter
+          </button>
           <button
             v-if="canReassign"
             type="button"

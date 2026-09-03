@@ -55,7 +55,7 @@ class UpdateDossierTypeUseCaseImplTest {
 
         DossierType updated = useCase.update(
                 new UpdateDossierTypeUseCase.UpdateDossierTypeCommand(
-                        TENANT, TYPE_CODE, "New label", "wf-new", false, true, newFields, null, false, null),
+                        TENANT, TYPE_CODE, "New label", "wf-new", false, true, newFields, null, false, null, List.of()),
                 admin());
 
         assertThat(updated.id()).isEqualTo(existing.id());
@@ -81,7 +81,7 @@ class UpdateDossierTypeUseCaseImplTest {
 
         DossierType updated = useCase.update(
                 new UpdateDossierTypeUseCase.UpdateDossierTypeCommand(
-                        TENANT, TYPE_CODE, "Old label", "wf-old", true, false, List.of(), 90, false, null),
+                        TENANT, TYPE_CODE, "Old label", "wf-old", true, false, List.of(), 90, false, null, List.of()),
                 admin());
 
         assertThat(updated.retentionDays()).isEqualTo(90);
@@ -95,7 +95,7 @@ class UpdateDossierTypeUseCaseImplTest {
 
         assertThatThrownBy(() -> useCase.update(
                         new UpdateDossierTypeUseCase.UpdateDossierTypeCommand(
-                                TENANT, TYPE_CODE, "Old label", "wf-old", true, false, List.of(), 30, true, null),
+                                TENANT, TYPE_CODE, "Old label", "wf-old", true, false, List.of(), 30, true, null, List.of()),
                         admin()))
                 .isInstanceOf(InvalidRetentionPolicyException.class);
 
@@ -109,7 +109,7 @@ class UpdateDossierTypeUseCaseImplTest {
 
         assertThatThrownBy(() -> useCase.update(
                         new UpdateDossierTypeUseCase.UpdateDossierTypeCommand(
-                                TENANT, TYPE_CODE, "Old label", "wf-old", true, false, List.of(), -1, false, null),
+                                TENANT, TYPE_CODE, "Old label", "wf-old", true, false, List.of(), -1, false, null, List.of()),
                         admin()))
                 .isInstanceOf(InvalidRetentionPolicyException.class);
 
@@ -185,7 +185,7 @@ class UpdateDossierTypeUseCaseImplTest {
 
         useCase.update(
                 new UpdateDossierTypeUseCase.UpdateDossierTypeCommand(
-                        TENANT, TYPE_CODE, "New label", "wf-new", false, true, newFields, null, false, null),
+                        TENANT, TYPE_CODE, "New label", "wf-new", false, true, newFields, null, false, null, List.of()),
                 admin());
 
         ArgumentCaptor<CheckDossierTypeSchemaCompatibilityUseCase.Query> captor =
@@ -206,12 +206,26 @@ class UpdateDossierTypeUseCaseImplTest {
 
         assertThatThrownBy(() -> useCase.update(
                         new UpdateDossierTypeUseCase.UpdateDossierTypeCommand(
-                                TENANT, TYPE_CODE, "New label", "wf-new", false, true, duplicated, null, false, null),
+                                TENANT, TYPE_CODE, "New label", "wf-new", false, true, duplicated, null, false, null, List.of()),
                         admin()))
                 .isInstanceOf(IllegalArgumentException.class);
 
         verifyNoInteractions(checkCompatibilityUseCase);
         verify(repository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void update_persistsDocumentTemplateKeys() {
+        DossierType existing = type("Old label", true, List.of());
+        when(repository.findByCode(TENANT, TYPE_CODE)).thenReturn(Optional.of(existing));
+
+        DossierType updated = useCase.update(
+                new UpdateDossierTypeUseCase.UpdateDossierTypeCommand(
+                        TENANT, TYPE_CODE, "Old label", "wf-old", true, false, List.of(), null, false, null,
+                        List.of("invoice", "contract")),
+                admin());
+
+        assertThat(updated.documentTemplateKeys()).containsExactly("invoice", "contract");
     }
 
     @Test
@@ -228,7 +242,7 @@ class UpdateDossierTypeUseCaseImplTest {
 
     private static UpdateDossierTypeUseCase.UpdateDossierTypeCommand command() {
         return new UpdateDossierTypeUseCase.UpdateDossierTypeCommand(
-                TENANT, TYPE_CODE, "New label", "wf-new", false, false, List.of(), null, false, null);
+                TENANT, TYPE_CODE, "New label", "wf-new", false, false, List.of(), null, false, null, List.of());
     }
 
     private static AccessContext.User admin() {

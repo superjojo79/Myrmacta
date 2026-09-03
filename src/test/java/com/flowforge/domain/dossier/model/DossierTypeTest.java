@@ -99,4 +99,42 @@ class DossierTypeTest {
         DossierType type = DossierType.inherit(ID, TENANT, "CLAIM", "Claim", "wf-claim", true, false, List.of());
         assertThat(type.slaTargetHours()).isNull();
     }
+
+    @Test
+    void inherit_defaultsDocumentTemplateKeysToEmptyList() {
+        DossierType type = DossierType.inherit(ID, TENANT, "CLAIM", "Claim", "wf-claim", true, false, List.of());
+        assertThat(type.documentTemplateKeys()).isEmpty();
+    }
+
+    @Test
+    void constructor_copiesDocumentTemplateKeysDefensively() {
+        List<String> mutable = new java.util.ArrayList<>(List.of("invoice"));
+        DossierType type = new DossierType(
+                ID, TENANT, "CLAIM", "Claim", "wf-claim", true, false, List.of(),
+                null, false, null, mutable, "system", "system");
+
+        mutable.add("contract");
+
+        assertThat(type.documentTemplateKeys()).containsExactly("invoice");
+    }
+
+    @Test
+    void constructor_defaultsNullDocumentTemplateKeysToEmptyList() {
+        DossierType type = new DossierType(
+                ID, TENANT, "CLAIM", "Claim", "wf-claim", true, false, List.of(),
+                null, false, null, null, "system", "system");
+
+        assertThat(type.documentTemplateKeys()).isEmpty();
+    }
+
+    @Test
+    void withUpdate_propagatesDocumentTemplateKeys() {
+        DossierType type = DossierType.inherit(ID, TENANT, "CLAIM", "Claim", "wf-claim", true, false, List.of());
+
+        DossierType updated = type.withUpdate(
+                "Claim", "wf-claim", true, false, List.of(), null, false, null,
+                List.of("invoice"), "admin");
+
+        assertThat(updated.documentTemplateKeys()).containsExactly("invoice");
+    }
 }

@@ -45,4 +45,16 @@ describe('tasks store', () => {
     expect(tasksApi.completeTask).toHaveBeenCalledWith('t1', {})
     expect(tasksApi.listMyTasks).toHaveBeenCalled()
   })
+
+  it('completes with the given task-form variables (TODO §52)', async () => {
+    vi.mocked(tasksApi.completeTask).mockResolvedValue(undefined)
+    vi.mocked(tasksApi.listMyTasks).mockResolvedValue(asPage([]))
+    const store = useTasksStore()
+    await store.complete('t1', { templateKey: 'invoice', variantKey: null, locale: 'fr' })
+    expect(tasksApi.completeTask).toHaveBeenCalledWith('t1', {
+      templateKey: 'invoice',
+      variantKey: null,
+      locale: 'fr',
+    })
+  })
 })

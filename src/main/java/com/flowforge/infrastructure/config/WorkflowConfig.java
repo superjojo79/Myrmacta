@@ -64,8 +64,13 @@ public class WorkflowConfig {
     }
 
     @Bean
-    CompleteTaskUseCase completeTaskUseCase(WorkflowEnginePort workflowEnginePort) {
-        return new CompleteTaskUseCaseImpl(workflowEnginePort);
+    CompleteTaskUseCase completeTaskUseCase(
+            TenantProperties tenantProperties,
+            WorkflowEnginePort workflowEnginePort,
+            DossierRepository dossierRepository,
+            DossierTypeRepository dossierTypeRepository) {
+        return new CompleteTaskUseCaseImpl(
+                tenantProperties.id(), workflowEnginePort, dossierRepository, dossierTypeRepository);
     }
 
     @Bean

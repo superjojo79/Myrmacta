@@ -99,7 +99,8 @@ public final class ListMyTasksUseCaseImpl implements ListMyTasksUseCase {
                     dossierId,
                     loaded.reference(),
                     link.get().id(),
-                    SlaReportAssembler.remainingHoursFor(slaRow, slaHours, clock.instant())));
+                    SlaReportAssembler.remainingHoursFor(slaRow, slaHours, clock.instant()),
+                    task.formKey()));
         }
         return PageResult.of(List.copyOf(result), page.page(), page.size(), page.totalElements());
     }

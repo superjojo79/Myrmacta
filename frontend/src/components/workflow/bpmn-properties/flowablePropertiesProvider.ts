@@ -11,8 +11,9 @@ import type { Element as BpmnElement } from 'bpmn-js/lib/model/Types'
 // Custom bpmn-js-properties-panel provider exposing only the flowable:*
 // attributes actually used elsewhere in this repository (see the .bpmn20.xml
 // process definitions under src/main/resources/processes/): `async`,
-// `delegateExpression`, `expression` on a serviceTask, and `scope` on a
-// signal. Nothing else (no assignee/candidateGroups/formKey) — D-EDIT-SCOPE.
+// `delegateExpression`, `expression` on a serviceTask, `scope` on a signal,
+// and `formKey` on a userTask (TODO §52). Nothing else (no
+// assignee/candidateGroups) — D-EDIT-SCOPE.
 //
 // Any other flowable:* attribute present in an imported diagram (e.g. one
 // authored outside this editor) is left untouched: bpmn-moddle preserves
@@ -82,6 +83,7 @@ function textFieldEntry(attribute: string, label: string) {
 const DelegateExpression = textFieldEntry('flowable:delegateExpression', 'Delegate expression')
 const Expression = textFieldEntry('flowable:expression', 'Expression')
 const Scope = textFieldEntry('flowable:scope', 'Scope')
+const FormKey = textFieldEntry('flowable:formKey', 'Form key')
 
 function serviceTaskGroup() {
   return {
@@ -107,6 +109,17 @@ function signalGroup() {
   }
 }
 
+// TODO §52 (formulaires-dynamiques-taches) : flowable:formKey déclare qu'un userTask attend un
+// formulaire de tâche avant complétion. Convention FlowForge interprétée uniquement côté frontend
+// (taskFormRegistry.ts) — le moteur ne fait que stocker/restituer cette chaîne opaque.
+function userTaskGroup() {
+  return {
+    id: 'flowable-user-task',
+    label: 'Flowable',
+    entries: [{ id: 'flowable:formKey', component: FormKey, isEdited: isTextFieldEntryEdited }],
+  }
+}
+
 interface FlowablePropertiesProviderInstance {
   getGroups: (element: BpmnElement) => (groups: unknown[]) => unknown[]
 }
@@ -122,6 +135,9 @@ export default function FlowablePropertiesProvider(
       }
       if (is(element, 'bpmn:Signal')) {
         groups.push(signalGroup())
+      }
+      if (is(element, 'bpmn:UserTask')) {
+        groups.push(userTaskGroup())
       }
       return groups
     }

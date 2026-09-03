@@ -78,6 +78,62 @@ class FlowableWorkflowTaskInboxAdapterTest {
         assertThat(snapshot.processInstanceId()).isEqualTo("pi-1");
     }
 
+    @Test
+    void findActiveAssignedTo_mapsFormKeyFromTask() {
+        TaskQuery countQuery = mock(TaskQuery.class);
+        when(countQuery.taskAssignee(ASSIGNEE)).thenReturn(countQuery);
+        when(countQuery.active()).thenReturn(countQuery);
+        when(countQuery.count()).thenReturn(1L);
+
+        TaskQuery listQuery = mock(TaskQuery.class);
+        when(listQuery.taskAssignee(ASSIGNEE)).thenReturn(listQuery);
+        when(listQuery.active()).thenReturn(listQuery);
+        when(listQuery.orderByTaskCreateTime()).thenReturn(listQuery);
+        when(listQuery.desc()).thenReturn(listQuery);
+        Task task = mock(Task.class);
+        when(task.getId()).thenReturn("task-1");
+        when(task.getName()).thenReturn("Task");
+        when(task.getAssignee()).thenReturn(ASSIGNEE);
+        when(task.getCreateTime()).thenReturn(new Date(0));
+        when(task.getProcessInstanceId()).thenReturn("pi-1");
+        when(task.getFormKey()).thenReturn("dossier-fields");
+        when(listQuery.listPage(20, 20)).thenReturn(List.of(task));
+
+        when(taskService.createTaskQuery()).thenReturn(countQuery, listQuery);
+
+        PageResult<ActiveTaskSnapshot> page = adapter.findActiveAssignedTo(ASSIGNEE, PageQuery.of(1, 20));
+
+        assertThat(page.content().getFirst().formKey()).isEqualTo("dossier-fields");
+    }
+
+    @Test
+    void findActiveAssignedTo_taskWithoutFormKey_mapsToNull() {
+        TaskQuery countQuery = mock(TaskQuery.class);
+        when(countQuery.taskAssignee(ASSIGNEE)).thenReturn(countQuery);
+        when(countQuery.active()).thenReturn(countQuery);
+        when(countQuery.count()).thenReturn(1L);
+
+        TaskQuery listQuery = mock(TaskQuery.class);
+        when(listQuery.taskAssignee(ASSIGNEE)).thenReturn(listQuery);
+        when(listQuery.active()).thenReturn(listQuery);
+        when(listQuery.orderByTaskCreateTime()).thenReturn(listQuery);
+        when(listQuery.desc()).thenReturn(listQuery);
+        Task task = mock(Task.class);
+        when(task.getId()).thenReturn("task-1");
+        when(task.getName()).thenReturn("Task");
+        when(task.getAssignee()).thenReturn(ASSIGNEE);
+        when(task.getCreateTime()).thenReturn(new Date(0));
+        when(task.getProcessInstanceId()).thenReturn("pi-1");
+        when(task.getFormKey()).thenReturn(null);
+        when(listQuery.listPage(20, 20)).thenReturn(List.of(task));
+
+        when(taskService.createTaskQuery()).thenReturn(countQuery, listQuery);
+
+        PageResult<ActiveTaskSnapshot> page = adapter.findActiveAssignedTo(ASSIGNEE, PageQuery.of(1, 20));
+
+        assertThat(page.content().getFirst().formKey()).isNull();
+    }
+
     private TaskQuery freshListQuery() {
         TaskQuery listQuery = mock(TaskQuery.class);
         when(listQuery.taskAssignee(ASSIGNEE)).thenReturn(listQuery);

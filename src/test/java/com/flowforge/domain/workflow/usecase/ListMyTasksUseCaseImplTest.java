@@ -134,6 +134,35 @@ class ListMyTasksUseCaseImplTest {
         assertThat(result.content().getFirst().slaRemainingHours()).isEqualTo(46.0);
     }
 
+    @Test
+    void list_propagatesFormKeyFromTaskSnapshot() {
+        Instant created = Instant.parse("2026-08-12T10:00:00Z");
+        UUID dossierId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+        UUID linkId = UUID.fromString("22222222-2222-2222-2222-222222222222");
+        PageQuery query = PageQuery.of(0, 20);
+        when(inboxPort.findActiveAssignedTo(eq(SUB), eq(query))).thenReturn(PageResult.of(
+                List.of(new WorkflowTaskInboxPort.ActiveTaskSnapshot(
+                        "task-ok", "Instruction", SUB, created, "pi-1", "dossier-fields")),
+                0, 20, 1));
+        when(workflowEnginePort.findDossierIdVariable("pi-1")).thenReturn(Optional.of(dossierId.toString()));
+        when(linkRepository.findByProcessInstanceId(TENANT, "pi-1")).thenReturn(Optional.of(link(linkId, dossierId)));
+        when(dossierRepository.findById(dossierId)).thenReturn(Optional.of(dossier(dossierId)));
+        when(typeRepository.findByCode(TENANT, "SINISTRE")).thenReturn(Optional.empty());
+
+        ListMyTasksUseCaseImpl useCase = new ListMyTasksUseCaseImpl(
+                TENANT,
+                inboxPort,
+                workflowEnginePort,
+                linkRepository,
+                dossierRepository,
+                typeRepository,
+                Clock.fixed(Instant.parse("2026-08-12T12:00:00Z"), ZoneOffset.UTC));
+
+        PageResult<MyWorkflowTask> result = useCase.listMine(SUB, query);
+
+        assertThat(result.content().getFirst().formKey()).isEqualTo("dossier-fields");
+    }
+
     private static DossierWorkflowLink link(UUID linkId, UUID dossierId) {
         return new DossierWorkflowLink(
                 linkId,

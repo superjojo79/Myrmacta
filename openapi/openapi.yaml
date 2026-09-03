@@ -931,6 +931,28 @@ paths:
               schema:
                 type: object
                 additionalProperties: {}
+  /api/callbacks/{instanceId}:
+    post:
+      tags:
+      - callback-webhook-controller
+      operationId: receive_1
+      parameters:
+      - name: instanceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+              format: byte
+        required: true
+      responses:
+        "200":
+          description: OK
   /api/workflow-type-configs/{workflowKey}:
     get:
       tags:
@@ -1589,6 +1611,26 @@ paths:
       responses:
         "200":
           description: OK
+  /api/dossier-types/{code}/document-templates:
+    get:
+      tags:
+      - dossier-type-controller
+      operationId: documentTemplates
+      parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AllowedDocumentTemplateResponse"
   /api/dossier-elements/{id}/content:
     get:
       tags:
@@ -2221,6 +2263,10 @@ components:
         slaTargetHours:
           type: integer
           format: int32
+        documentTemplateKeys:
+          type: array
+          items:
+            type: string
     FieldDefinition:
       type: object
       properties:
@@ -2279,6 +2325,10 @@ components:
         slaTargetHours:
           type: integer
           format: int32
+        documentTemplateKeys:
+          type: array
+          items:
+            type: string
     GrantDossierTypeAccessRequest:
       type: object
       properties:
@@ -2457,6 +2507,10 @@ components:
           format: int32
         clearSlaTargetHours:
           type: boolean
+        documentTemplateKeys:
+          type: array
+          items:
+            type: string
     UpdateRequest:
       type: object
       properties:
@@ -2519,6 +2573,8 @@ components:
         slaRemainingHours:
           type: number
           format: double
+        formKey:
+          type: string
     PageResponseMyWorkflowTaskResponse:
       type: object
       properties:
@@ -2571,6 +2627,8 @@ components:
         createTime:
           type: string
           format: date-time
+        formKey:
+          type: string
     ActivityHistoryEntry:
       type: object
       properties:
@@ -3163,6 +3221,17 @@ components:
         totalPages:
           type: integer
           format: int32
+    AllowedDocumentTemplateResponse:
+      type: object
+      properties:
+        templateKey:
+          type: string
+        variantKey:
+          type: string
+        locale:
+          type: string
+        label:
+          type: string
     PageResponseTemplateResponse:
       type: object
       properties:
@@ -3240,6 +3309,7 @@ components:
           - TRIGGER
           - SERVICE
           - BOTH
+          - CALLBACK
         configSchema:
           type: array
           items:

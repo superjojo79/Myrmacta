@@ -87,11 +87,27 @@ class WebhookController {
         return idempotencyStore.beginOrGetCompleted(instance.id(), idempotencyKey)
                 .map(status -> ResponseEntity.status(status).<Void>build())
                 .orElseGet(() -> {
-                    Object payload = readPayload(body);
-                    triggerRuntime.onIncomingEvent(instance, payload);
+                    Object payload;
+                    try {
+                        payload = readPayload(body);
+                        triggerRuntime.onIncomingEvent(instance, payload);
+                    } catch (RuntimeException ex) {
+                        Integer failureStatus = deterministicFailureStatus(ex);
+                        if (failureStatus != null) {
+                            idempotencyStore.complete(instance.id(), idempotencyKey, failureStatus);
+                        }
+                        throw ex;
+                    }
                     idempotencyStore.complete(instance.id(), idempotencyKey, ACCEPTED);
                     return ResponseEntity.accepted().build();
                 });
+    }
+
+    private static Integer deterministicFailureStatus(RuntimeException ex) {
+        if (ex instanceof ConnectorValidationException || ex instanceof IllegalArgumentException) {
+            return 400;
+        }
+        return null;
     }
 
     private WebhookAuthenticator authenticator(WebhookAuthType authType) {

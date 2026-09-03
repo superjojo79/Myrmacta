@@ -215,8 +215,13 @@ détail de la cause racine ci-dessous, pas juste le symptôme.
    reconnue reste volontairement `IN_FLIGHT` plutôt que de deviner un statut (testé explicitement :
    `receive_unmappedRuntimeException_leavesClaimInFlightForFreshRetry`). **Même défaut latent
    présent dans `WebhookController`** (composant `JpaWebhookIdempotencyStoreAdapter` partagé,
-   pattern identique) — pas corrigé ici (hors du périmètre F0–F4 explicitement approuvé), tracé en
-   dette dans `TODO.md`.
+   pattern identique) — d'abord tracé en dette dans `TODO.md` §53 (hors du périmètre F0–F4
+   initialement approuvé), puis corrigé le lendemain sur demande explicite (« Je pensais avoir
+   demandé de corriger tous les findings ») avec le même pattern :
+   `WebhookController.receive()` capture `RuntimeException`, complète la réclamation en 400 pour
+   `ConnectorValidationException`/`IllegalArgumentException`, laisse `IN_FLIGHT` sinon. Tests
+   ajoutés : `receive_deterministicValidationFailureReturns400_andCompletesClaim`,
+   `receive_unmappedRuntimeException_leavesClaimInFlightForFreshRetry` (`WebhookControllerTest`).
 4. **F3 (moyenne) — ambiguïté de corrélation totalement silencieuse côté serveur.** Le design doc
    promettait *« loguée en ERROR »* ; le code livré ne loguait rien. Corrigé : nouvel événement
    `SecurityAuditLog.callbackAmbiguousCorrelation(...)` (WARN, canal `SECURITY_AUDIT` déjà établi
@@ -233,4 +238,10 @@ détail de la cause racine ci-dessous, pas juste le symptôme.
    (UUID), jamais une valeur séquentielle/devinable. Documentation uniquement, pas de changement de
    comportement.
 
-`./mvnw verify` après correctifs : **1539 tests, 0 échec** (+6 tests de régression permanents).
+`./mvnw verify` après correctifs F0–F4 : **1539 tests, 0 échec** (+6 tests de régression permanents).
+
+### Suivi TODO §53 (`WebhookController`, 2026-09-03)
+
+`./mvnw verify` après correctif TODO §53 : **1541 tests, 0 échec** (+2 tests de régression
+permanents). PR ouverte et mergée sur `main` uniquement après CI locale verte, sur demande
+explicite utilisateur.

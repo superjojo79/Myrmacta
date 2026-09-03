@@ -1,8 +1,10 @@
 package com.flowforge.infrastructure.web.connector;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -12,6 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.flowforge.domain.connector.model.ConnectorInstanceData;
+import com.flowforge.domain.connector.model.ConnectorValidationException;
 import com.flowforge.domain.connector.port.in.ConnectorTriggerRuntime;
 import com.flowforge.domain.connector.port.out.ConnectorInstanceRepository;
 import com.flowforge.domain.connector.port.out.WebhookIdempotencyStore;
@@ -196,6 +199,55 @@ class WebhookControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void receive_deterministicValidationFailureReturns400_andCompletesClaim() throws Exception {
+        // TODO §53 (found in adversarial security review on connecteur-callback, fixed here with
+        // the same pattern): a failed attempt whose outcome is stable for the same request content
+        // must be recorded as complete(400), never left stuck at IN_FLIGHT -- a stuck claim blocks
+        // every retry with the same Idempotency-Key for the full TTL via
+        // WebhookIdempotencyInFlightException/409, defeating the retry contract.
+        ConnectorInstanceData instance = instance(true);
+        when(instances.findByIdAndTenantId(INSTANCE_ID, "tenant_dev")).thenReturn(Optional.of(instance));
+        when(idempotencyStore.beginOrGetCompleted(INSTANCE_ID, "idem-invalid")).thenReturn(Optional.empty());
+        doThrow(new ConnectorValidationException("dossierTypeCode is required when existingDossierReference is absent"))
+                .when(runtime)
+                .onIncomingEvent(eq(instance), any());
+
+        mockMvc.perform(post("/api/webhooks/{instanceId}", INSTANCE_ID)
+                        .header("Idempotency-Key", "idem-invalid")
+                        .header("X-Webhook-Token", "secret")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+
+        verify(idempotencyStore).complete(INSTANCE_ID, "idem-invalid", 400);
+    }
+
+    @Test
+    void receive_unmappedRuntimeException_leavesClaimInFlightForFreshRetry() {
+        // An exception this endpoint doesn't recognize is not assumed deterministic on the exact
+        // same input -- conservatively left IN_FLIGHT rather than caching a guessed status, unlike
+        // the deterministic validation failure above whose outcome is stable for the same request
+        // content. Unmapped by ConnectorExceptionHandler too, so it propagates raw here (no
+        // controller advice covers it) -- the point of this test is only the idempotency store
+        // interaction.
+        ConnectorInstanceData instance = instance(true);
+        when(instances.findByIdAndTenantId(INSTANCE_ID, "tenant_dev")).thenReturn(Optional.of(instance));
+        when(idempotencyStore.beginOrGetCompleted(INSTANCE_ID, "idem-unexpected")).thenReturn(Optional.empty());
+        doThrow(new IllegalStateException("boom"))
+                .when(runtime)
+                .onIncomingEvent(eq(instance), any());
+
+        assertThatThrownBy(() -> mockMvc.perform(post("/api/webhooks/{instanceId}", INSTANCE_ID)
+                        .header("Idempotency-Key", "idem-unexpected")
+                        .header("X-Webhook-Token", "secret")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}")))
+                .hasRootCauseInstanceOf(IllegalStateException.class);
+
+        verify(idempotencyStore, never()).complete(any(), any(), anyInt());
     }
 
     private static ConnectorInstanceData instance(boolean enabled) {

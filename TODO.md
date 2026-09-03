@@ -1014,7 +1014,15 @@ lecture dans `FlowableWorkflowTaskInboxAdapter`, champ `flowable:formKey` dans l
 
 ---
 
-### [ ] 53. `WebhookController` : un événement TRIGGER échoué peut bloquer les rejeux avec la même `Idempotency-Key`
+### [x] 53. `WebhookController` : un événement TRIGGER échoué peut bloquer les rejeux avec la même `Idempotency-Key`
+
+**Statut (2026-09-03) : corrigé.** Même pattern que le correctif F2 de TODO §51 : capture de
+`RuntimeException` autour de `readPayload`/`onIncomingEvent`, `idempotencyStore.complete(...)`
+appelé avec le statut déterministe (400) pour `ConnectorValidationException`/`IllegalArgumentException`,
+`IN_FLIGHT` conservé pour l'imprévu. Tests ajoutés dans `WebhookControllerTest`
+(`receive_deterministicValidationFailureReturns400_andCompletesClaim`,
+`receive_unmappedRuntimeException_leavesClaimInFlightForFreshRetry`). `./mvnw verify` : 1541
+tests, 0 échec.
 
 **Constat (trouvé en revue de sécurité adversariale sur `connecteur-callback`, 2026-09-02) :**
 `WebhookController.receive(...)` n'appelle `idempotencyStore.complete(...)` que sur le chemin de

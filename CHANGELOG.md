@@ -88,6 +88,19 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Corrigé
 
+- **PR [#104](https://github.com/superjojo79/FlowForge/pull/104)** — `WebhookController` (TODO
+  §53) : un événement webhook (TRIGGER) qui échoue complète désormais la réclamation
+  d'idempotence avec le statut déterministe de l'échec au lieu de la laisser bloquée `IN_FLIGHT`
+  jusqu'à 24h, ce qui empêchait tout rejeu légitime avec la même `Idempotency-Key`. Même
+  correctif que la PR #103 pour `CallbackWebhookController`, appliqué au défaut latent partagé
+  laissé en dette.
+- **PR [#103](https://github.com/superjojo79/FlowForge/pull/103)** — Revue de sécurité
+  adversariale post-merge sur le connecteur `flowable-callback` (TODO §51) : `/api/callbacks/**`
+  n'était couvert par aucune règle de sécurité Spring et recevait systématiquement un 403 avant
+  d'atteindre le contrôleur — la fonctionnalité était totalement inatteignable en production. 4
+  autres écarts corrigés dans le même lot : garde de taille de corps absente sur ce chemin,
+  idempotence non complétée sur échec de callback, ambiguïté de corrélation non journalisée,
+  documentation manquante sur l'entropie requise de la valeur de corrélation.
 - **PR [#86](https://github.com/superjojo79/FlowForge/pull/86)** — Les champs dynamiques d'un
   dossier (`Dossier.fields()`) sont désormais injectés automatiquement comme variable de
   processus réservée `dossierFields` à chaque démarrage de workflow (API manuelle, relais

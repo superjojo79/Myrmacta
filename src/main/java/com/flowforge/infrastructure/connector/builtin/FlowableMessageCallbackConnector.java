@@ -9,6 +9,7 @@ import com.flowforge.domain.connector.model.ConnectorDefinition;
 import com.flowforge.domain.connector.model.ConnectorInstanceData;
 import com.flowforge.domain.connector.model.ConnectorValidationException;
 import com.flowforge.domain.connector.model.WebhookAuthType;
+import com.flowforge.domain.connector.model.WebhookSecretPolicy;
 import com.flowforge.infrastructure.connector.mapping.SimpleJsonPathMapper;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -57,7 +58,10 @@ public class FlowableMessageCallbackConnector implements ConnectorDefinition, Ca
                         List.of(
                                 WebhookAuthType.HMAC_SHA256.name(),
                                 WebhookAuthType.SHARED_SECRET_TOKEN.name()),
-                        "IP_ALLOWLIST is not supported in V1"),
+                        "IP_ALLOWLIST is not supported in V1. HMAC_SHA256 requires an"
+                                + " X-Webhook-Timestamp header (Unix epoch seconds) covered by the"
+                                + " signature (X-Signature-256 = HMAC(secret, timestamp + \".\" + body)),"
+                                + " checked against a 5-minute freshness window"),
                 new ConfigField(
                         "webhookSecret",
                         "Webhook secret",
@@ -65,7 +69,8 @@ public class FlowableMessageCallbackConnector implements ConnectorDefinition, Ca
                         true,
                         null,
                         List.of(),
-                        "HMAC or shared token secret"),
+                        "HMAC or shared token secret -- at least " + WebhookSecretPolicy.MIN_LENGTH
+                                + " characters"),
                 new ConfigField(
                         "messageName",
                         "BPMN message name",
@@ -116,7 +121,7 @@ public class FlowableMessageCallbackConnector implements ConnectorDefinition, Ca
         } catch (IllegalArgumentException ex) {
             throw new ConnectorValidationException("Unsupported webhookAuthType: " + auth);
         }
-        stringValue(config, "webhookSecret");
+        WebhookSecretPolicy.validate(stringValue(config, "webhookSecret"));
         stringValue(config, "messageName");
         stringValue(config, "correlationVariableName");
         stringValue(config, "correlationValuePath");

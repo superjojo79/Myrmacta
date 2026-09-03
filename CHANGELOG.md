@@ -88,6 +88,13 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Corrigé
 
+- **PR [#106](https://github.com/superjojo79/FlowForge/pull/106)** — 2ème revue de sécurité
+  adversariale, indépendante, sur `connecteur-callback` (TODO §54) : DoS mémoire non authentifié
+  (le corps de requête était intégralement bufférisé avant toute garde applicative, contournable
+  par `Transfer-Encoding: chunked`), absence de protection anti-rejeu sur la signature HMAC
+  (**rupture de contrat assumée pour les appelants existants** — en-tête `X-Webhook-Timestamp`
+  désormais requis), aucune longueur minimale sur `webhookSecret`, échecs d'authentification
+  webhook jamais journalisés. 4 écarts corrigés, 13 tests de régression ajoutés.
 - **PR [#104](https://github.com/superjojo79/FlowForge/pull/104)** — `WebhookController` (TODO
   §53) : un événement webhook (TRIGGER) qui échoue complète désormais la réclamation
   d'idempotence avec le statut déterministe de l'échec au lieu de la laisser bloquée `IN_FLIGHT`

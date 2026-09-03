@@ -20,7 +20,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class ConnectorExceptionHandler {
 
     @ExceptionHandler(WebhookAuthenticationException.class)
-    ProblemDetail handleWebhookAuthentication(WebhookAuthenticationException ex) {
+    ProblemDetail handleWebhookAuthentication(WebhookAuthenticationException ex, HttpServletRequest request) {
+        SecurityAuditLog.webhookAuthenticationFailed(request, ex.instanceId());
         return problem(HttpStatus.UNAUTHORIZED, "Webhook authentication failed", ex.getMessage());
     }
 

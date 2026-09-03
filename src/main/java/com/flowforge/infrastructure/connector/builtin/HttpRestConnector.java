@@ -9,6 +9,7 @@ import com.flowforge.domain.connector.model.ConnectorValidationException;
 import com.flowforge.domain.connector.model.ServiceConnector;
 import com.flowforge.domain.connector.model.TriggerConnector;
 import com.flowforge.domain.connector.model.WebhookAuthType;
+import com.flowforge.domain.connector.model.WebhookSecretPolicy;
 import com.flowforge.domain.connector.model.WorkflowTriggerEvent;
 import com.flowforge.infrastructure.config.ConnectorProperties;
 import com.flowforge.infrastructure.connector.mapping.SimpleJsonPathMapper;
@@ -87,7 +88,10 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
                         List.of(
                                 WebhookAuthType.HMAC_SHA256.name(),
                                 WebhookAuthType.SHARED_SECRET_TOKEN.name()),
-                        "IP_ALLOWLIST is not supported in V1"),
+                        "IP_ALLOWLIST is not supported in V1. HMAC_SHA256 requires an"
+                                + " X-Webhook-Timestamp header (Unix epoch seconds) covered by the"
+                                + " signature (X-Signature-256 = HMAC(secret, timestamp + \".\" + body)),"
+                                + " checked against a 5-minute freshness window"),
                 new ConfigField(
                         "webhookSecret",
                         "Webhook secret",
@@ -95,7 +99,8 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
                         true,
                         null,
                         List.of(),
-                        "HMAC or shared token secret"),
+                        "HMAC or shared token secret -- at least " + WebhookSecretPolicy.MIN_LENGTH
+                                + " characters"),
                 new ConfigField(
                         "processKey",
                         "Process key",
@@ -141,7 +146,7 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
         } catch (IllegalArgumentException ex) {
             throw new ConnectorValidationException("Unsupported webhookAuthType: " + auth);
         }
-        requireString(config, "webhookSecret");
+        WebhookSecretPolicy.validate(requireString(config, "webhookSecret"));
         requireString(config, "processKey");
         requireString(config, "dossierTypeCode");
     }
@@ -294,10 +299,11 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
         return text.isBlank() ? fallback : text;
     }
 
-    private static void requireString(Map<String, Object> config, String key) {
+    private static String requireString(Map<String, Object> config, String key) {
         Object value = config.get(key);
         if (!(value instanceof String text) || text.isBlank()) {
             throw new ConnectorValidationException(key + " is required");
         }
+        return text;
     }
 }

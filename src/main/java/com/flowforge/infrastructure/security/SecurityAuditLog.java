@@ -91,4 +91,19 @@ public final class SecurityAuditLog {
                 correlationKey,
                 matchCount);
     }
+
+    /**
+     * A webhook/callback request failed authentication (bad or missing HMAC signature / shared
+     * token) -- found silent in adversarial security review : the anonymous, internet-facing
+     * {@code /api/webhooks/**} and {@code /api/callbacks/**} chain had no audit trail at all for
+     * this denial, so a sustained brute-force attempt against a connector instance's secret would
+     * leave zero signal. Never logs the submitted secret/signature, only the connector instance.
+     */
+    public static void webhookAuthenticationFailed(HttpServletRequest request, UUID instanceId) {
+        LOGGER.warn(
+                "event=webhook_authentication_failed method={} path={} instanceId={}",
+                request.getMethod(),
+                request.getRequestURI(),
+                instanceId);
+    }
 }

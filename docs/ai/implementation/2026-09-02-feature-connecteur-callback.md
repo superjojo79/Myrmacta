@@ -245,3 +245,60 @@ détail de la cause racine ci-dessous, pas juste le symptôme.
 `./mvnw verify` après correctif TODO §53 : **1541 tests, 0 échec** (+2 tests de régression
 permanents). PR ouverte et mergée sur `main` uniquement après CI locale verte, sur demande
 explicite utilisateur.
+
+## Correctifs post-merge (2ème passe adversariale, 2026-09-03)
+
+Nouvelle revue adversariale complète, indépendante de la première, demandée explicitement par
+l'utilisateur (« lance une analyse complète de type adversarial sur le code de la feature des
+callbacks »). Reconfirme F0–F4 toujours clos, trouve 4 nouveaux écarts (F5–F8, numérotation
+poursuivant celle de la 1ère revue), tous corrigés sur demande explicite (« corrige tout
+maintenant ») :
+
+1. **F5 (haute) — DoS mémoire non authentifié : le corps de requête est intégralement bufférisé
+   avant toute garde applicative.** Spring matérialise `@RequestBody byte[] rawBody` en mémoire
+   (`ByteArrayHttpMessageConverter`) **avant** l'exécution de la méthode du contrôleur — donc avant
+   la garde `body.length > maxBodyBytes`, avant le rate limiter, avant toute authentification.
+   `WebhookBodySizeLimitFilter` (F1, 1ère revue) ne vérifiait que l'en-tête `Content-Length`
+   déclaré ; son propre javadoc admettait déjà que « chunked transfer-encoding still reaches the
+   app-level check » — mais ce check applicatif était lui-même trop tardif. Corrigé : le filtre
+   enveloppe désormais la requête dans un `HttpServletRequestWrapper` dont le `ServletInputStream`
+   compte les octets réellement lus et lève `WebhookPayloadTooLargeException` dès que
+   `maxBodyBytes` est dépassé, indépendamment de ce que la requête déclare. Preuve dédiée :
+   `limitsActualBytesReadEvenWithoutDeclaredContentLength` (mock de requête sans
+   `Content-Length`, flux réel de 2 Mo).
+2. **F6 (moyenne) — absence de protection anti-rejeu HMAC.** La signature ne couvrait que le corps
+   brut (`hmacHex(secret, rawBody)`) — ni horodatage, ni nonce, ni liaison à `instanceId`. La clé
+   de déduplication (`Idempotency-Key`) est fournie par l'appelant et n'était pas signée : une
+   paire (corps, signature) capturée une fois était rejouable indéfiniment avec une nouvelle clé à
+   chaque fois. Corrigé (`HmacWebhookAuthenticator`) : la signature couvre désormais
+   `timestamp + "." + corps` (en-tête `X-Webhook-Timestamp`, secondes epoch Unix, requis pour
+   `HMAC_SHA256`), avec une fenêtre de fraîcheur de 5 minutes (`Clock` injectable pour les tests).
+   **Rupture de contrat pour les appelants HMAC déjà en production** — ils doivent désormais
+   envoyer cet en-tête et l'inclure dans le calcul de signature ; documenté dans le champ de config
+   `webhookAuthType` des deux connecteurs (`http-rest`, `flowable-callback`) et dans
+   `analysis doc/06-connecteurs.md`. `SHARED_SECRET_TOKEN` (jeton nu, jamais de signature) non
+   concerné — compromis déjà documenté comme plus faible, pas une régression de cette revue. 6
+   tests dédiés dans `WebhookAuthenticatorTest` (horodatage manquant/non numérique/périmé/futur,
+   signature calculée sans le préfixe horodatage).
+3. **F7 (moyenne) — aucune longueur minimale imposée sur `webhookSecret`.** Seul un contrôle
+   non-vide existait. Avec la limite de débit par défaut (120 req/min), un secret court reste
+   brute-forçable en temps réaliste sur un endpoint anonyme sans autre couche de défense (pas
+   d'allowlist IP en V1). Corrigé : nouvelle classe `WebhookSecretPolicy`
+   (`domain.connector.model`, `MIN_LENGTH = 20`), appelée depuis `validate()` de `HttpRestConnector`
+   et `FlowableMessageCallbackConnector` (les 2 seuls connecteurs à champ `webhookSecret`).
+4. **F8 (moyenne) — aucun échec d'authentification webhook n'était journalisé.**
+   `WebhookAuthenticationException` → 401 direct, aucun appel à `SecurityAuditLog` (dont le
+   javadoc dit pourtant « WARN level for denials »). Une tentative de brute force soutenue contre
+   F7 aurait été invisible. Corrigé : nouvelle méthode
+   `SecurityAuditLog.webhookAuthenticationFailed(...)` (WARN, `instanceId` uniquement, jamais la
+   signature/le secret soumis), appelée depuis
+   `ConnectorExceptionHandler.handleWebhookAuthentication` — même schéma que F3.
+   `WebhookAuthenticationException` porte désormais `instanceId()` en accesseur (au lieu d'être
+   uniquement dans le message).
+
+Faux positifs vérifiés et écartés (détail dans la revue elle-même, pas reproduit ici) : DoS par
+imbrication JSON profonde (garde par défaut Jackson), RCE par désérialisation polymorphe
+(`activateDefaultTyping` jamais activé), IDOR cross-tenant, confusion de type de connecteur, fuite
+de secrets via l'API admin, injection SQL via `correlationValue`.
+
+`./mvnw verify` après F5–F8 : **1554 tests, 0 échec** (+13 tests de régression permanents).

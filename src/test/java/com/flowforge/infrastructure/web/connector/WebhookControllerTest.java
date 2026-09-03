@@ -13,6 +13,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.flowforge.domain.connector.model.ConnectorInstanceData;
 import com.flowforge.domain.connector.model.ConnectorValidationException;
 import com.flowforge.domain.connector.port.in.ConnectorTriggerRuntime;
@@ -27,6 +30,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -145,10 +149,12 @@ class WebhookControllerTest {
         when(instances.findByIdAndTenantId(INSTANCE_ID, "tenant_dev")).thenReturn(Optional.of(instance));
         when(idempotencyStore.beginOrGetCompleted(INSTANCE_ID, "idem-hmac")).thenReturn(Optional.empty());
         byte[] body = "{\"event\":\"created\"}".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        String timestamp = String.valueOf(java.time.Instant.now().getEpochSecond());
 
         mockMvc.perform(post("/api/webhooks/{instanceId}", INSTANCE_ID)
                         .header("Idempotency-Key", "idem-hmac")
-                        .header("X-Signature-256", "sha256=" + hmacHex("hmac-secret", body))
+                        .header("X-Webhook-Timestamp", timestamp)
+                        .header("X-Signature-256", "sha256=" + hmacHex("hmac-secret", timestamp, body))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isAccepted());
@@ -172,6 +178,53 @@ class WebhookControllerTest {
 
         verify(runtime, never()).onIncomingEvent(any(), any());
         verify(idempotencyStore, never()).complete(any(), any(), anyInt());
+    }
+
+    @Test
+    void receive_invalidHmac_logsSecurityAuditEvent() throws Exception {
+        // D-CALLBACK-BRUTEFORCE (found in adversarial security review) : a failed authentication
+        // attempt on this anonymous, internet-facing endpoint was previously entirely silent --
+        // a sustained brute-force against webhookSecret would leave no trace. Never logs the
+        // submitted signature/secret, only the connector instance. Same fix as
+        // CallbackWebhookControllerTest#receive_invalidHmac_logsSecurityAuditEvent -- both
+        // controllers share ConnectorExceptionHandler.
+        when(instances.findByIdAndTenantId(INSTANCE_ID, "tenant_dev"))
+                .thenReturn(Optional.of(hmacInstance(true)));
+
+        ListAppender<ILoggingEvent> appender = attachSecurityAuditAppender();
+        try {
+            mockMvc.perform(post("/api/webhooks/{instanceId}", INSTANCE_ID)
+                            .header("Idempotency-Key", "idem-bad-audit")
+                            .header("X-Signature-256", "sha256=deadbeef")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"event\":\"created\"}"))
+                    .andExpect(status().isUnauthorized());
+        } finally {
+            detachSecurityAuditAppender(appender);
+        }
+
+        List<String> matches = appender.list.stream()
+                .map(ILoggingEvent::getFormattedMessage)
+                .filter(msg -> msg.contains("event=webhook_authentication_failed"))
+                .toList();
+        org.assertj.core.api.Assertions.assertThat(matches).hasSize(1);
+        org.assertj.core.api.Assertions.assertThat(matches.get(0))
+                .contains("instanceId=" + INSTANCE_ID)
+                .doesNotContain("deadbeef");
+    }
+
+    private static ListAppender<ILoggingEvent> attachSecurityAuditAppender() {
+        Logger logger = (Logger) LoggerFactory.getLogger("SECURITY_AUDIT");
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        return appender;
+    }
+
+    private static void detachSecurityAuditAppender(ListAppender<ILoggingEvent> appender) {
+        Logger logger = (Logger) LoggerFactory.getLogger("SECURITY_AUDIT");
+        logger.detachAppender(appender);
+        appender.stop();
     }
 
     @Test
@@ -274,12 +327,16 @@ class WebhookControllerTest {
                         "webhookSecret", "hmac-secret"));
     }
 
-    private static String hmacHex(String secret, byte[] body) {
+    private static String hmacHex(String secret, String timestamp, byte[] body) {
         try {
+            byte[] prefix = (timestamp + ".").getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            byte[] combined = new byte[prefix.length + body.length];
+            System.arraycopy(prefix, 0, combined, 0, prefix.length);
+            System.arraycopy(body, 0, combined, prefix.length, body.length);
             javax.crypto.Mac mac = javax.crypto.Mac.getInstance("HmacSHA256");
             mac.init(new javax.crypto.spec.SecretKeySpec(
                     secret.getBytes(java.nio.charset.StandardCharsets.UTF_8), "HmacSHA256"));
-            return java.util.HexFormat.of().formatHex(mac.doFinal(body));
+            return java.util.HexFormat.of().formatHex(mac.doFinal(combined));
         } catch (Exception ex) {
             throw new IllegalStateException(ex);
         }

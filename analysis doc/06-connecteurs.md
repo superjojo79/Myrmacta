@@ -434,6 +434,19 @@ code — `findByIdAndTenantId` avec `tenantProperties.id()` n'est donc plus qu'u
 profondeur, plus une nécessité pour éviter une résolution circulaire (l'instance ne dessert de toute
 façon jamais qu'un seul schéma).
 
+**Addendum (2026-09-03, revue de sécurité adversariale sur `connecteur-callback`, D-CALLBACK-REPLAY).**
+Le schéma HMAC ci-dessus (signature du seul corps brut) permettait à quiconque capturait une fois
+une paire (corps, signature) valide de la rejouer indéfiniment avec une nouvelle
+`Idempotency-Key` à chaque fois, contournant totalement l'idempotence (clé fournie par l'appelant,
+non couverte par la signature). Corrigé : la signature couvre désormais
+`timestamp + "." + corps` (`X-Webhook-Timestamp`, secondes epoch Unix, obligatoire pour
+`HMAC_SHA256`), avec une fenêtre de fraîcheur de 5 minutes — une requête capturée n'est rejouable
+que dans cette fenêtre, plus indéfiniment. **Rupture de contrat pour les appelants HMAC déjà en
+production** : ils doivent désormais envoyer cet en-tête et l'inclure dans le calcul de signature.
+`SHARED_SECRET_TOKEN` (jeton nu comparé, jamais de signature) n'est pas concerné — c'est un
+compromis déjà documenté comme plus faible que HMAC, pas une régression de cette revue.
+Voir `HmacWebhookAuthenticator` (`infrastructure.web.connector`) pour l'implémentation réelle.
+
 ### Appel direct via API
 
 Les connecteurs de type SERVICE sont également appelables hors contexte workflow :

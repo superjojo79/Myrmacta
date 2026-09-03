@@ -160,6 +160,37 @@ class CallbackWebhookControllerTest {
     }
 
     @Test
+    void receive_invalidHmac_logsSecurityAuditEvent() throws Exception {
+        // D-CALLBACK-BRUTEFORCE (found in adversarial security review) : a failed authentication
+        // attempt on this anonymous, internet-facing endpoint was previously entirely silent --
+        // a sustained brute-force against webhookSecret would leave no trace. Never logs the
+        // submitted signature/secret, only the connector instance.
+        when(instances.findByIdAndTenantId(INSTANCE_ID, "tenant_dev"))
+                .thenReturn(Optional.of(hmacInstance(true)));
+
+        ListAppender<ILoggingEvent> appender = attachSecurityAuditAppender();
+        try {
+            mockMvc.perform(post("/api/callbacks/{instanceId}", INSTANCE_ID)
+                            .header("Idempotency-Key", "idem-bad-audit")
+                            .header("X-Signature-256", "sha256=deadbeef")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"orderId\":\"ORD-1\"}"))
+                    .andExpect(status().isUnauthorized());
+        } finally {
+            detachSecurityAuditAppender(appender);
+        }
+
+        List<String> matches = appender.list.stream()
+                .map(ILoggingEvent::getFormattedMessage)
+                .filter(msg -> msg.contains("event=webhook_authentication_failed"))
+                .toList();
+        org.assertj.core.api.Assertions.assertThat(matches).hasSize(1);
+        org.assertj.core.api.Assertions.assertThat(matches.get(0))
+                .contains("instanceId=" + INSTANCE_ID)
+                .doesNotContain("deadbeef");
+    }
+
+    @Test
     void receive_disabledInstanceReturns404() throws Exception {
         when(instances.findByIdAndTenantId(INSTANCE_ID, "tenant_dev"))
                 .thenReturn(Optional.of(instance(false)));

@@ -255,7 +255,7 @@ class ConnectorAdminApiTest {
                   "enabled": true,
                   "config": {
                     "webhookAuthType": "%s",
-                    "webhookSecret": "plain-secret",
+                    "webhookSecret": "plain-secret-0123456789",
                     "processKey": "smokeProcess",
                     "dossierTypeCode": "CLAIM"
                   }

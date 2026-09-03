@@ -322,7 +322,7 @@ class ConnectorExecuteApiTest {
                                   "enabled": true,
                                   "config": {
                                     "webhookAuthType": "HMAC_SHA256",
-                                    "webhookSecret": "s",
+                                    "webhookSecret": "webhook-secret-0123456789",
                                     "processKey": "smokeProcess",
                                     "dossierTypeCode": "CLAIM"
                                   }

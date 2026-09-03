@@ -16,6 +16,8 @@ import org.junit.jupiter.api.Test;
 
 class FlowableMessageCallbackConnectorTest {
 
+    private static final String VALID_WEBHOOK_SECRET = "test-webhook-secret-0123456789";
+
     private FlowableMessageCallbackConnector connector;
 
     @BeforeEach
@@ -162,17 +164,33 @@ class FlowableMessageCallbackConnectorTest {
         assertThatThrownBy(() -> connector.validate(Map.of())).isInstanceOf(ConnectorValidationException.class);
         assertThatThrownBy(() -> connector.validate(Map.of(
                         "webhookAuthType", "HMAC_SHA256",
-                        "webhookSecret", "s",
+                        "webhookSecret", VALID_WEBHOOK_SECRET,
                         "messageName", "m")))
                 .isInstanceOf(ConnectorValidationException.class)
                 .hasMessageContaining("correlationVariableName");
         assertThatThrownBy(() -> connector.validate(Map.of(
                         "webhookAuthType", "HMAC_SHA256",
-                        "webhookSecret", "s",
+                        "webhookSecret", VALID_WEBHOOK_SECRET,
                         "messageName", "m",
                         "correlationVariableName", "k")))
                 .isInstanceOf(ConnectorValidationException.class)
                 .hasMessageContaining("correlationValuePath");
+    }
+
+    @Test
+    void validate_rejectsShortWebhookSecret() {
+        // D-CALLBACK-BRUTEFORCE (found in adversarial security review) : the anonymous,
+        // internet-facing callback endpoint has no other layer of defense (no IP allowlist in
+        // V1) -- a short secret is brute-forceable within the per-instance rate limit.
+        assertThatThrownBy(() -> connector.validate(Map.of(
+                        "webhookAuthType", "HMAC_SHA256",
+                        "webhookSecret", "too-short",
+                        "messageName", "m",
+                        "correlationVariableName", "k",
+                        "correlationValuePath", "$.x")))
+                .isInstanceOf(ConnectorValidationException.class)
+                .hasMessageContaining("webhookSecret")
+                .hasMessageContaining("20");
     }
 
     @Test
@@ -221,7 +239,7 @@ class FlowableMessageCallbackConnectorTest {
     void validate_acceptsCompleteConfig() {
         connector.validate(Map.of(
                 "webhookAuthType", "HMAC_SHA256",
-                "webhookSecret", "s",
+                "webhookSecret", VALID_WEBHOOK_SECRET,
                 "messageName", "m",
                 "correlationVariableName", "k",
                 "correlationValuePath", "$.x"));

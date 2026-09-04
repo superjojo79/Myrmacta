@@ -24,7 +24,7 @@
         <flying-saucer.version>10.5.0</flying-saucer.version>
         <jsoup.version>1.23.1</jsoup.version>
         <archunit.version>1.5.0</archunit.version>
-        <aws.sdk.version>2.54.3</aws.sdk.version>
+        <aws.sdk.version>2.54.9</aws.sdk.version>
         <!-- D-SDK=A (serveur-mcp) — Spring AI MCP server WebMVC starter, pas de starter chat/model -->
         <spring-ai.version>2.0.1</spring-ai.version>
         <skip.frontend>false</skip.frontend>

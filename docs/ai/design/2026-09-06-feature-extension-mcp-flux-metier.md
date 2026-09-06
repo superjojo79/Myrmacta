@@ -222,6 +222,26 @@ Le RBAC REST diffère par contrôleur — vérifié précisément en Phase 2 :
 | `TaskQuestionSchemaUseCaseImpl` / `GetTaskQuestionSchemaUseCaseImpl` | `TaskQuestionSchemaController` : `@PreAuthorize` explicite sur **chaque** méthode, y compris `list`/`getByKey` | Sur **toutes** les opérations |
 | `WorkflowTypeConfigUseCaseImpl` | `WorkflowTypeConfigController` : `@PreAuthorize` **uniquement** sur `create`/`update` — `GET` (list/getByKey) ouverts à tout utilisateur authentifié | **Uniquement** sur `create`/`update` — ne pas toucher `list`/`getByKey` (régresserait `list_workflow_types`, déjà en production depuis PR #82, sans aucune demande fonctionnelle pour ça) |
 
+### D6 — Risque accepté : confiance « tout ou rien » du JWT M2M (trouvé en revue adversariale post-Phase 9)
+
+`McpAccessContextFactory` attribue le rôle `API_SERVICE` à **tout** porteur d'un JWT M2M valide,
+sans distinction entre clients ni lecture de scopes réels du token — c'est une constante
+(`ROLES = Set.of("API_SERVICE")`), pas une dérivation des claims JWT. Combiné au garde-fou D5
+ci-dessus (qui traite `API_SERVICE` comme équivalent `TENANT_ADMIN`/`WORKFLOW_ADMIN` sur les
+use cases connecteurs et questions de tâche), tout client M2M autorisé sur `/api/m2m/mcp` devient
+de facto administrateur complet de ces ressources, y compris la lecture des configurations de
+connecteur. Ce n'est pas un défaut introduit par cette feature (le mapping JWT→rôle est
+pré-existant, `serveur-mcp` PR #82) mais cette feature en étend concrètement la portée : avant,
+seul un `TENANT_ADMIN` humain via la session BFF pouvait lire une config de connecteur ; désormais
+tout service M2M le peut aussi via `get_connector_instance`/`list_connector_instances`.
+
+**Décision assumée pour cette itération** : un seul client M2M de confiance est prévu à ce stade,
+donc ce risque est accepté plutôt que de dériver les rôles effectifs des claims réels du JWT
+(`scope`/`roles`) — un changement plus large touchant l'émission des tokens M2M, hors périmètre de
+ce cycle. **Si plusieurs clients M2M à portées différentes sont introduits**, ce point doit être
+revisité avant de leur donner accès à `/api/m2m/mcp` : soit dériver les rôles des claims réels,
+soit introduire un rôle M2M plus restreint que ne couvre pas `TenantAdminGuard`.
+
 ## Non-Functional Requirements
 
 - **Sécurité** : aucun secret en clair au repos ni dans les logs (`ConnectorSecretCipher`

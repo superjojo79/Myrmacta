@@ -154,7 +154,17 @@ class DefineConnectorInstanceToolTest {
         assertThat(result.get("dryRun")).isEqualTo(true);
         assertThat(result.get("operation")).isEqualTo("create");
         verify(httpRestDefinition).validate(Map.of());
-        verifyNoInteractions(manageConnectorInstanceUseCase);
+        verify(manageConnectorInstanceUseCase, never()).create(any(), any());
+        verify(manageConnectorInstanceUseCase, never()).update(any(), any());
+    }
+
+    @Test
+    void create_dryRun_reassertsAuthorization() {
+        // Adversarial review follow-up: create's dryRun previously never re-checked the guard,
+        // unlike update's dryRun (which reasserts via get()).
+        tool.defineConnectorInstance(null, "Webhook", "http-rest", null, Map.of(), null, true);
+
+        verify(manageConnectorInstanceUseCase).assertAuthorized(any());
     }
 
     @Test
@@ -165,7 +175,7 @@ class DefineConnectorInstanceToolTest {
         assertThatThrownBy(() -> tool.defineConnectorInstance(
                         null, "Webhook", "http-rest", null, Map.of(), null, true))
                 .isInstanceOf(ConnectorValidationException.class);
-        verifyNoInteractions(manageConnectorInstanceUseCase);
+        verify(manageConnectorInstanceUseCase, never()).create(any(), any());
     }
 
     @Test
@@ -175,7 +185,7 @@ class DefineConnectorInstanceToolTest {
         assertThatThrownBy(() -> tool.defineConnectorInstance(
                         null, "Webhook", "bogus", null, Map.of(), null, true))
                 .isInstanceOf(UnknownConnectorException.class);
-        verifyNoInteractions(manageConnectorInstanceUseCase);
+        verify(manageConnectorInstanceUseCase, never()).create(any(), any());
     }
 
     @Test

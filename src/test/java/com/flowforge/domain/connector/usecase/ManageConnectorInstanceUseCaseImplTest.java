@@ -37,13 +37,14 @@ class ManageConnectorInstanceUseCaseImplTest {
     private static final AccessContext.User NO_ROLE = AccessContext.user("nobody", Set.of("DOSSIER_MANAGER"));
 
     private ConnectorInstanceRepository repository;
+    private ConnectorCatalog catalog;
     private ConnectorDefinition definition;
     private ManageConnectorInstanceUseCase useCase;
 
     @BeforeEach
     void setUp() {
         repository = mock(ConnectorInstanceRepository.class);
-        ConnectorCatalog catalog = mock(ConnectorCatalog.class);
+        catalog = mock(ConnectorCatalog.class);
         definition = mock(ConnectorDefinition.class);
         when(catalog.get("http-rest")).thenReturn(definition);
         useCase = new ManageConnectorInstanceUseCaseImpl(repository, catalog, new TenantAdminGuard());
@@ -65,6 +66,18 @@ class ManageConnectorInstanceUseCaseImplTest {
         assertThat(created.config()).isEqualTo(config);
         verify(definition).validate(config);
         verify(repository).save(created);
+    }
+
+    @Test
+    void assertAuthorized_rejectsActorWithoutRequiredRole() {
+        assertThatThrownBy(() -> useCase.assertAuthorized(NO_ROLE))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void assertAuthorized_acceptsTenantAdminAndApiService() {
+        useCase.assertAuthorized(TENANT_ADMIN);
+        useCase.assertAuthorized(API_SERVICE);
     }
 
     @Test
@@ -141,6 +154,30 @@ class ManageConnectorInstanceUseCaseImplTest {
         assertThat(updated.config()).containsEntry("webhookSecret", "plain-secret");
         assertThat(updated.config()).containsEntry("processKey", "newProcess");
         verify(definition).validate(updated.config());
+    }
+
+    @Test
+    void update_preservesSchemaDeclaredPasswordFieldRegardlessOfName() {
+        // authHeaderValue matches no name heuristic (adversarial review follow-up) — only the
+        // connector type's declared PASSWORD schema field catches it.
+        UUID id = UUID.randomUUID();
+        ConnectorInstanceData existing = new ConnectorInstanceData(
+                id, "tenant_dev", "Webhook", "http-rest", true,
+                Map.of("authHeaderValue", "Bearer plain-token", "url", "https://old.example.com"));
+        when(repository.findByIdAndTenantId(id, "tenant_dev")).thenReturn(Optional.of(existing));
+        when(definition.getConfigSchema()).thenReturn(List.of(new ConfigField(
+                "authHeaderValue", "Auth header", ConfigFieldType.PASSWORD, false, null, List.of(), null)));
+        when(catalog.isPasswordField("http-rest", "authHeaderValue")).thenCallRealMethod();
+        when(catalog.isPasswordField("http-rest", "url")).thenCallRealMethod();
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ConnectorInstanceData updated = useCase.update(new ManageConnectorInstanceUseCase.UpdateCommand(
+                id, "tenant_dev", null, null,
+                Map.of("authHeaderValue", "********", "url", "https://new.example.com"),
+                false), TENANT_ADMIN);
+
+        assertThat(updated.config()).containsEntry("authHeaderValue", "Bearer plain-token");
+        assertThat(updated.config()).containsEntry("url", "https://new.example.com");
     }
 
     @Test

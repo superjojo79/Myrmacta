@@ -226,6 +226,11 @@ public class DefineDossierTypeTool {
         if (!(raw instanceof List<?> rawList)) {
             throw new IllegalArgumentException("documentTemplateKeys must be an array");
         }
-        return rawList.stream().map(String.class::cast).toList();
+        return rawList.stream().map(item -> {
+            if (!(item instanceof String key)) {
+                throw new IllegalArgumentException("documentTemplateKeys items must be strings");
+            }
+            return key;
+        }).toList();
     }
 }

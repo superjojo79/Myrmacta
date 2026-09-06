@@ -1,6 +1,7 @@
 package com.flowforge.infrastructure.mcp.tool;
 
 import com.flowforge.domain.connector.port.in.ManageConnectorInstanceUseCase;
+import com.flowforge.domain.connector.port.out.ConnectorCatalog;
 import com.flowforge.domain.shared.PageQuery;
 import com.flowforge.domain.shared.PageResult;
 import com.flowforge.infrastructure.config.TenantProperties;
@@ -14,15 +15,18 @@ import org.springframework.stereotype.Component;
 public class ListConnectorInstancesTool {
 
     private final ManageConnectorInstanceUseCase manageConnectorInstanceUseCase;
+    private final ConnectorCatalog connectorCatalog;
     private final TenantProperties tenantProperties;
     private final McpAccessContextFactory accessContextFactory;
 
     public ListConnectorInstancesTool(
             ManageConnectorInstanceUseCase manageConnectorInstanceUseCase,
+            ConnectorCatalog connectorCatalog,
             TenantProperties tenantProperties,
             McpAccessContextFactory accessContextFactory) {
         this.manageConnectorInstanceUseCase =
                 Objects.requireNonNull(manageConnectorInstanceUseCase, "manageConnectorInstanceUseCase");
+        this.connectorCatalog = Objects.requireNonNull(connectorCatalog, "connectorCatalog");
         this.tenantProperties = Objects.requireNonNull(tenantProperties, "tenantProperties");
         this.accessContextFactory = Objects.requireNonNull(accessContextFactory, "accessContextFactory");
     }
@@ -37,6 +41,6 @@ public class ListConnectorInstancesTool {
         PageQuery query = PageQuery.of(page == null ? 0 : page, size == null ? PageQuery.DEFAULT_SIZE : size);
         return manageConnectorInstanceUseCase
                 .list(tenantProperties.id(), query, accessContextFactory.currentActor())
-                .map(ConnectorInstanceMcpView::from);
+                .map(data -> ConnectorInstanceMcpView.from(data, connectorCatalog));
     }
 }

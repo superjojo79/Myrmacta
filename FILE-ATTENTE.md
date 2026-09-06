@@ -11,19 +11,22 @@
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
 > **Dernière mise à jour :** 2026-09-06 — TODO **§56 clos**, cycle `dev-lifecycle` **complet
-> (Phases 1 à 9)** sur `extension-mcp-flux-metier` — 16 tools MCP au total (9 → 16 : connecteurs +
-> questions de tâche + `define_dossier_type` étendu). Écarts réels trouvés et corrigés au fil des
-> phases : 3 en Phase 5 (implémentation), 1 en Phase 7 (`DefineConnectorInstanceTool` sautait la
-> validation en `dryRun=true`), 3 en Phase 8 (pagination + branches non testées, trouvés via Jacoco
-> classe par classe). **Phase 9 (revue finale)** : checklist complète passée sur le diff réel (53
-> fichiers, +3703/-118) — aucune dépendance circulaire, aucun breaking change externe, aucune fuite
-> de secret, aucune migration, feature backend-only. 2 trouvailles non bloquantes documentées comme
-> follow-ups hors périmètre (dryRun pré-existant sur `DefineDossierTypeTool`, même défaut que celui
-> corrigé en Phase 7 mais antérieur à cette feature ; duplication `isSecretKey` non nettoyée côté
-> REST). `./mvnw verify` final : **1666 tests, 0 échec**, ArchUnit conforme, couverture Jacoco
-> tenue ; Vitest 289/289 (0 régression, zéro fichier frontend touché) ; Playwright non exécutable
-> dans ce bac à sable (binaire manquant, pré-existant, non bloquant). **Cycle prêt à pousser /
-> ouvrir une PR, sur demande.** Détail complet dans TODO §56 et
+> (Phases 1 à 9) + revue adversariale post-Phase 9** sur `extension-mcp-flux-metier` — 16 tools MCP
+> au total (9 → 16 : connecteurs + questions de tâche + `define_dossier_type` étendu). Écarts réels
+> trouvés et corrigés au fil des phases : 3 en Phase 5, 1 en Phase 7, 3 en Phase 8 (Jacoco classe
+> par classe). **Revue adversariale (sous-agent) post-Phase 9** : **1 faille bloquante réelle
+> trouvée et corrigée** — `authHeaderValue` (credential HTTP réel du connecteur `http-rest`)
+> n'était reconnu par aucune heuristique de détection de secret par nom, donc jamais chiffré en
+> base ni masqué en lecture ; corrigé en basant la détection sur le schéma déclaré du connecteur
+> (`ConnectorCatalog.isPasswordField`, source de vérité unique) plutôt que sur des heuristiques de
+> nom dupliquées 3 fois. Piège trouvé en cours de correctif : une dépendance circulaire Spring
+> réelle (non détectable par lecture statique), corrigée par `@Lazy`. + 2 findings mineurs corrigés
+> (garde-fou non réaffirmé en dryRun sur `define_connector_instance` create ; casts non défensifs)
+> + 1 risque documenté sans correctif (confiance « tout ou rien » du JWT M2M, décision assumée).
+> `./mvnw verify` final : **1675 tests, 0 échec**, ArchUnit conforme, couverture Jacoco tenue ;
+> Vitest 289/289 (0 régression, zéro fichier frontend touché) ; Playwright non exécutable dans ce
+> bac à sable (binaire manquant, pré-existant, non bloquant). **Cycle prêt à pousser / ouvrir une
+> PR, sur demande.** Détail complet dans TODO §56 et
 > [docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md](docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md).
 >
 > 2026-09-06 (plus tôt) — Phase 3 (design) close. 6 décisions tranchées en Phase 1 via
@@ -229,10 +232,12 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 (connecteurs hors V1), §51 (connecteur callback) et §52 (formulaires dynamiques tâches) **clos**.
 
 **Terminé (2026-09-06) :** `extension-mcp-flux-metier` (TODO §56), cycle `dev-lifecycle` **complet
-(Phases 1-9)** — 16 tools MCP livrés (9 → 16 : connecteurs, questions de tâche,
-`define_dossier_type` étendu) pour couvrir les mécanismes de configuration ajoutés depuis
-`serveur-mcp` (§48, §50, §51, §52, §55). `./mvnw verify` : 1666 tests (0 échec). Prêt à pousser /
-ouvrir une PR, sur demande. Voir l'en-tête de ce fichier pour le détail.
+(Phases 1-9) + revue adversariale post-Phase 9** — 16 tools MCP livrés (9 → 16 : connecteurs,
+questions de tâche, `define_dossier_type` étendu) pour couvrir les mécanismes de configuration
+ajoutés depuis `serveur-mcp` (§48, §50, §51, §52, §55). 1 faille bloquante trouvée par revue
+adversariale (sous-agent) et corrigée : fuite en clair de `authHeaderValue`, un secret de
+connecteur non détecté par l'heuristique de nom pré-existante. `./mvnw verify` : 1675 tests (0
+échec). Prêt à pousser / ouvrir une PR, sur demande. Voir l'en-tête de ce fichier pour le détail.
 
 En réserve (non retenu, aucune analyse écrite) : outillage provisioning tenant (schéma/instance/
 proxy/secrets, `DEFERRED-FEATURES.md` §1.2/§4).

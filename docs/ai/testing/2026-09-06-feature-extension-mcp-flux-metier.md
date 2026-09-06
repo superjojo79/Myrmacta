@@ -251,3 +251,17 @@ description: Define testing approach, test cases, and quality assurance
   tests de branches manquantes ajoutés sur `DefineConnectorInstanceTool` ; 1 gap pré-existant
   identifié et documenté sans correctif (`ManageConnectorInstanceUseCaseImpl`, hors périmètre de
   cette feature). Détail dans « Test Reporting & Coverage » ci-dessus.
+- Post-Phase 9 (revue adversariale par sous-agent) : **1 faille bloquante trouvée et corrigée**
+  (fuite en clair de `authHeaderValue`, un champ `PASSWORD` du schéma `http-rest` non reconnu par
+  l'heuristique de détection par nom) + 2 findings mineurs corrigés (`define_connector_instance`
+  create dryRun sans réaffirmation du garde-fou ; casts non défensifs sur listes hétérogènes) + 1
+  risque architectural documenté sans correctif (confiance « tout ou rien » du JWT M2M, décision
+  assumée — voir design doc § D6). Nouveaux tests couvrant le schéma déclaré (pas le nom) :
+  `ManageConnectorInstanceUseCaseImplTest.update_preservesSchemaDeclaredPasswordFieldRegardlessOfName`,
+  `GetConnectorInstanceToolTest.masksSchemaDeclaredPasswordFieldRegardlessOfName`,
+  `EnvMasterKeyCipherTest.encryptDecrypt_roundTripsSchemaDeclaredPasswordFieldRegardlessOfName`,
+  `ConnectorResponseSecretMaskingTest.from_neverExposesSchemaDeclaredPasswordFieldNotMatchingNameHeuristic`
+  (garde-fou anti-régression dédié), IT `ConnectorAdminApiTest.createConnector_masksAuthHeaderValueInResponse`
+  et `McpToolCallIntegrationTest.defineConnectorInstance_masksSchemaDeclaredPasswordFieldNotMatchingNameHeuristic`
+  (round-trip create → get → list via les deux canaux REST et MCP). Détail complet dans
+  `docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md` § « Post-Phase 9 ».

@@ -105,9 +105,7 @@ public class DeployWorkflowTool {
         String rawLabel = McpArgs.requireString(args, "label");
         List<WorkflowStatusDefinition> rawStatusDefinitions = parseStatusDefinitions(args.get("statusDefinitions"));
         List<DossierStatus> rawAllowedDossierStatuses = parseDossierStatuses(args.get("allowedDossierStatuses"));
-        DossierStatus rawOnStartDossierStatus = args.get("onStartDossierStatus") == null
-                ? null
-                : DossierStatus.valueOf((String) args.get("onStartDossierStatus"));
+        DossierStatus rawOnStartDossierStatus = parseDossierStatus(args.get("onStartDossierStatus"));
         List<String> rawObserverUserIds = parseObserverUserIds(args.get("observerUserIds"));
         boolean rawDryRun = Boolean.TRUE.equals(args.get("dryRun"));
 
@@ -183,7 +181,18 @@ public class DeployWorkflowTool {
         if (!(raw instanceof List<?> list)) {
             throw new IllegalArgumentException("allowedDossierStatuses is required");
         }
-        return list.stream().map(item -> DossierStatus.valueOf((String) item)).toList();
+        return list.stream().map(item -> parseDossierStatus(item, "allowedDossierStatuses")).toList();
+    }
+
+    private static DossierStatus parseDossierStatus(Object raw) {
+        return raw == null ? null : parseDossierStatus(raw, "onStartDossierStatus");
+    }
+
+    private static DossierStatus parseDossierStatus(Object raw, String argumentName) {
+        if (!(raw instanceof String status)) {
+            throw new IllegalArgumentException(argumentName + " items must be strings");
+        }
+        return DossierStatus.valueOf(status);
     }
 
     private static List<String> parseObserverUserIds(Object raw) {
@@ -193,6 +202,11 @@ public class DeployWorkflowTool {
         if (!(raw instanceof List<?> list)) {
             throw new IllegalArgumentException("observerUserIds must be an array");
         }
-        return list.stream().map(String.class::cast).toList();
+        return list.stream().map(item -> {
+            if (!(item instanceof String userId)) {
+                throw new IllegalArgumentException("observerUserIds items must be strings");
+            }
+            return userId;
+        }).toList();
     }
 }

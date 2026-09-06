@@ -2,6 +2,7 @@ package com.flowforge.infrastructure.web.connector;
 
 import com.flowforge.domain.connector.model.ConnectorInstanceData;
 import com.flowforge.domain.connector.port.in.ManageConnectorInstanceUseCase;
+import com.flowforge.domain.connector.port.out.ConnectorCatalog;
 import com.flowforge.infrastructure.config.TenantProperties;
 import com.flowforge.infrastructure.web.ListSorts;
 import com.flowforge.infrastructure.web.PageQueryParser;
@@ -31,14 +32,17 @@ public class ConnectorAdminController {
 
     private final TenantProperties tenantProperties;
     private final ManageConnectorInstanceUseCase manageUseCase;
+    private final ConnectorCatalog connectorCatalog;
     private final AccessContextFactory accessContextFactory;
 
     public ConnectorAdminController(
             TenantProperties tenantProperties,
             ManageConnectorInstanceUseCase manageUseCase,
+            ConnectorCatalog connectorCatalog,
             AccessContextFactory accessContextFactory) {
         this.tenantProperties = tenantProperties;
         this.manageUseCase = manageUseCase;
+        this.connectorCatalog = connectorCatalog;
         this.accessContextFactory = accessContextFactory;
     }
 
@@ -55,7 +59,7 @@ public class ConnectorAdminController {
                 accessContextFactory.user(authentication));
         return ResponseEntity
                 .created(URI.create("/api/connectors/" + created.id()))
-                .body(ConnectorResponse.from(created));
+                .body(ConnectorResponse.from(created, connectorCatalog));
     }
 
     @GetMapping
@@ -69,13 +73,14 @@ public class ConnectorAdminController {
                         tenantProperties.id(),
                         PageQueryParser.parse(page, size, sort, ListSorts.CONNECTORS),
                         accessContextFactory.user(authentication))
-                .map(ConnectorResponse::from));
+                .map(data -> ConnectorResponse.from(data, connectorCatalog)));
     }
 
     @GetMapping("/{id}")
     public ConnectorResponse get(@PathVariable UUID id, Authentication authentication) {
         return ConnectorResponse.from(
-                manageUseCase.get(id, tenantProperties.id(), accessContextFactory.user(authentication)));
+                manageUseCase.get(id, tenantProperties.id(), accessContextFactory.user(authentication)),
+                connectorCatalog);
     }
 
     @PatchMapping("/{id}")
@@ -93,7 +98,7 @@ public class ConnectorAdminController {
                         request.config(),
                         Boolean.TRUE.equals(request.restore())),
                 accessContextFactory.user(authentication));
-        return ConnectorResponse.from(updated);
+        return ConnectorResponse.from(updated, connectorCatalog);
     }
 
     @DeleteMapping("/{id}")

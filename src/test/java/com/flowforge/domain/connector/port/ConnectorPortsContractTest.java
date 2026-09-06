@@ -53,12 +53,14 @@ class ConnectorPortsContractTest {
 
         ConnectorSecretCipher cipher = new ConnectorSecretCipher() {
             @Override
-            public Map<String, Object> encryptPasswordFields(String tenantId, Map<String, Object> config) {
+            public Map<String, Object> encryptPasswordFields(
+                    String tenantId, String connectorType, Map<String, Object> config) {
                 return config;
             }
 
             @Override
-            public Map<String, Object> decryptPasswordFields(String tenantId, Map<String, Object> config) {
+            public Map<String, Object> decryptPasswordFields(
+                    String tenantId, String connectorType, Map<String, Object> config) {
                 return config;
             }
 
@@ -89,6 +91,9 @@ class ConnectorPortsContractTest {
         };
 
         ManageConnectorInstanceUseCase manage = new ManageConnectorInstanceUseCase() {
+            @Override
+            public void assertAuthorized(AccessContext.User actor) {}
+
             @Override
             public ConnectorInstanceData create(CreateCommand command, AccessContext.User actor) {
                 return instance;
@@ -122,7 +127,7 @@ class ConnectorPortsContractTest {
         ExecuteConnectorUseCase execute = (instanceId, tenantId, input) -> Map.of("signaled", true);
 
         assertThat(repo.findByIdAndTenantId(id, "tenant_dev")).contains(instance);
-        assertThat(cipher.encryptPasswordFields("tenant_dev", Map.of("webhookSecret", "x")))
+        assertThat(cipher.encryptPasswordFields("tenant_dev", "http-rest", Map.of("webhookSecret", "x")))
                 .containsEntry("webhookSecret", "x");
         assertThat(store.findResponseStatus(id, "k")).isEmpty();
         assertThat(manage.create(

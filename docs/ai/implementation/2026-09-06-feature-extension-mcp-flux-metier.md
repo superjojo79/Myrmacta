@@ -249,3 +249,89 @@ précédentes.
 Les 2 trouvailles ci-dessus sont des follow-ups documentés, pas des régressions de cette feature.
 `CHANGELOG.md` reste différé (aucune PR ouverte à ce stade, même convention que TODO §47/§55) —
 à faire à l'ouverture de la PR, sur demande.
+
+## Post-Phase 9 — Revue adversariale et correctifs de sécurité
+
+Un sous-agent a mené une analyse adversariale dédiée du diff complet de la feature (`e9d38d795..
+HEAD`), en se plaçant du point de vue d'un porteur de JWT M2M déjà authentifié (`API_SERVICE`)
+cherchant une élévation de privilège, une fuite de secret ou un contournement de validation. **1
+faille bloquante réelle trouvée et corrigée**, plus 2 findings mineurs corrigés et 1 risque
+architectural documenté comme accepté.
+
+### Bloquant — fuite en clair du champ `authHeaderValue` (corrigé)
+
+`HttpRestConnector` déclare `authHeaderValue` (`ConfigFieldType.PASSWORD` — un credential HTTP
+réel, envoyé tel quel comme header `Authorization`) mais la détection des secrets était
+**par nom** (`isSecretKey`/`isPasswordKey` : `endsWith("secret")`/`endsWith("password")`), qui ne
+reconnaît pas `authHeaderValue`. Conséquence vérifiée : jamais chiffré en base
+(`EnvMasterKeyCipher`), jamais masqué en lecture (`ConnectorInstanceMcpView`,
+`ConnectorApiDtos.ConnectorResponse`) — un bug **pré-existant** (avant `extension-mcp-flux-metier`)
+mais dont cette feature étend concrètement la portée : avant, seul un `TENANT_ADMIN` humain via la
+session BFF pouvait le lire ; désormais tout service M2M le peut aussi via
+`get_connector_instance`/`list_connector_instances`.
+
+**Correctif** : `ConnectorCatalog` gagne une méthode par défaut `isPasswordField(type, key)` qui
+consulte le schéma déclaré du connecteur (`ConfigField.type() == PASSWORD`) — source de vérité
+unique, en plus (pas à la place) de l'heuristique de nom existante. Propagé partout où un secret
+était détecté par nom seul :
+- `ManageConnectorInstanceUseCaseImpl.mergeConfig` (préservation du secret existant à l'update) ;
+- `ConnectorInstanceMcpView` (masquage MCP — `from` prend désormais `ConnectorCatalog`) ;
+- `ConnectorApiDtos.ConnectorResponse` (masquage REST — même changement de signature, et son
+  ancien `isSecretKey` privé dupliqué est supprimé au passage, réutilisant
+  `ManageConnectorInstanceUseCaseImpl.isSecretKey` : ferme aussi la trouvaille (b) de Phase 9) ;
+- `ConnectorSecretCipher`/`EnvMasterKeyCipher` (chiffrement au repos — les deux méthodes du port
+  gagnent un paramètre `connectorType`, propagé depuis `JpaConnectorInstanceRepositoryAdapter`, qui
+  lit `connectorType` sur `ConnectorInstanceData`/`ConnectorInstanceJpaEntity`, cette dernière ayant
+  gagné un accessseur dédié).
+
+**Piège trouvé en cours de correctif — dépendance circulaire réelle, non détectable par lecture
+statique du code** : injecter `ConnectorCatalog` directement dans `EnvMasterKeyCipher` casse le
+démarrage du contexte Spring. Chaîne : `EnvMasterKeyCipher` → `ConnectorCatalog`
+(`ConnectorRegistry`) → `FlowableSignalConnector` (un `ConnectorDefinition`) → `RuntimeService`
+Flowable → configuration du moteur → `WorkflowStateEventListener` → `SendNotificationUseCase` →
+`JpaNotificationWebhookRepositoryAdapter`, qui dépend **aussi** de `ConnectorSecretCipher` (le même
+cipher, réutilisé génériquement pour les secrets de webhooks de notification, pas seulement les
+connecteurs) → cycle. Confirmé par un échec réel de chargement de contexte
+(`UnsatisfiedDependencyException: ... Requested bean is currently in creation`) avant correctif.
+**Corrigé par `@Lazy` sur le paramètre `ConnectorCatalog`** du constructeur d'`EnvMasterKeyCipher`
+— rompt la résolution éager sans changer le comportement (le catalogue n'est consulté qu'au moment
+effectif du chiffrement/déchiffrement, jamais à la construction du bean).
+
+Tests ajoutés (schéma déclaré, pas le nom, sur `authHeaderValue`) : unitaires sur
+`ManageConnectorInstanceUseCaseImplTest`, `GetConnectorInstanceToolTest`, `EnvMasterKeyCipherTest`,
+`ConnectorResponseSecretMaskingTest` (garde-fou anti-régression dédié, D-SECRETS-AUDIT) ; IT réelles
+sur `ConnectorAdminApiTest` (REST) et `McpToolCallIntegrationTest` (MCP, round-trip create → get →
+list, preuve qu'aucun chemin ne renvoie la valeur en clair). `./mvnw verify` final (avec les 3
+correctifs de cette section + les 2 mineurs ci-dessous) : **1675 tests, 0 échec** (+9 vs. Phase 8),
+ArchUnit conforme, gate Jacoco `BUNDLE` tenue.
+
+### Mineur — `define_connector_instance` create dryRun ne réaffirmait jamais le garde-fou (corrigé)
+
+Contrairement à sa propre branche `update` (qui réaffirme l'autorisation via `get()` pendant la
+prévisualisation), la branche `create` en `dryRun=true` ne rappelait jamais le garde-fou —
+incohérence dans du code neuf de ce cycle. Corrigé par une nouvelle méthode
+`ManageConnectorInstanceUseCase.assertAuthorized(actor)` (délègue au garde-fou sans effet de bord),
+appelée en tête de la branche dryRun de `defineCreate`. Testé (`create_dryRun_reassertsAuthorization`).
+
+### Mineur — casts non défensifs sur listes hétérogènes (corrigé)
+
+`DefineDossierTypeTool.parseDocumentTemplateKeys` et `DeployWorkflowTool` (`observerUserIds`,
+`allowedDossierStatuses`, `onStartDossierStatus`) utilisaient un cast direct
+(`String.class::cast`/`(String) item`) au lieu d'un `instanceof` explicite — un élément non-`String`
+levait une `ClassCastException` générique (jamais un stack trace exposé, le framework MCP
+intercepte proprement, mais message moins soigné que les `IllegalArgumentException` explicites déjà
+utilisées ailleurs dans les mêmes fichiers). Corrigé par cohérence de style, aucun changement de
+comportement observable côté sécurité (l'agent avait qualifié ce point d'observation, pas de faille).
+
+### Risque accepté et documenté (pas corrigé) — confiance « tout ou rien » du JWT M2M
+
+`McpAccessContextFactory` attribue le rôle `API_SERVICE` à tout porteur de JWT M2M valide (constante,
+pas dérivée des claims réels du token) ; combiné au garde-fou D5, cela signifie que tout client M2M
+autorisé devient de facto administrateur complet des connecteurs/questions de tâche. Pré-existant
+(PR #82), pas introduit par cette feature, mais celle-ci en étend la portée (nouveaux chemins de
+lecture des secrets connecteur). Documenté comme décision assumée (un seul client M2M de confiance
+prévu à ce stade) dans le Javadoc de `McpAccessContextFactory` et dans
+[docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md](../design/2026-09-06-feature-extension-mcp-flux-metier.md)
+§ D6, plutôt que corrigé — dériver les rôles des scopes JWT réels serait un changement plus large
+touchant l'émission des tokens M2M, hors périmètre d'un correctif de findings. À revisiter si
+plusieurs clients M2M à portées différentes sont introduits.

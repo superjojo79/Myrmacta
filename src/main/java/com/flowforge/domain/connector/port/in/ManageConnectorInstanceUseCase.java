@@ -15,6 +15,14 @@ import java.util.UUID;
  */
 public interface ManageConnectorInstanceUseCase {
 
+    /**
+     * Reasserts authorization without any side effect — for previews (e.g. {@code dryRun}) that
+     * must never call {@link #create}/{@link #update}, but must still be gated the same way
+     * (adversarial review follow-up, extension-mcp-flux-metier: {@code define_connector_instance}
+     * create dryRun skipped this, unlike its own update dryRun which reasserts via {@link #get}).
+     */
+    void assertAuthorized(AccessContext.User actor);
+
     ConnectorInstanceData create(CreateCommand command, AccessContext.User actor);
 
     ConnectorInstanceData update(UpdateCommand command, AccessContext.User actor);

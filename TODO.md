@@ -1434,8 +1434,38 @@ nettoyer le doublon REST pré-existant n'a pas été prise ici (fichier hors pé
 [docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md)
 § « Phase 9 — Revue finale ».
 
-**Suite, sur demande :** ouverture PR + `CHANGELOG.md` ; éventuel cycle dédié pour les 2 follow-ups
-non bloquants ci-dessus. Documents lifecycle :
+**Post-Phase 9 — revue adversariale (sous-agent) et correctifs** : analyse dédiée du diff complet
+par un sous-agent, en se plaçant du point de vue d'un porteur de JWT M2M déjà authentifié cherchant
+une élévation de privilège ou une fuite de secret. **1 faille bloquante réelle trouvée et
+corrigée** : `authHeaderValue` (credential HTTP réel du connecteur `http-rest`, déclaré
+`ConfigFieldType.PASSWORD`) n'était reconnu par aucune des heuristiques de détection de secret par
+nom (`isSecretKey`/`isPasswordKey`), donc **jamais chiffré en base ni masqué en lecture** — bug
+pré-existant (avant cette feature) mais dont ce cycle étend concrètement la portée en ajoutant les
+premiers chemins de lecture M2M des configurations de connecteur. Corrigé en ajoutant à
+`ConnectorCatalog` une méthode `isPasswordField(type, key)` qui consulte le schéma déclaré du
+connecteur (source de vérité unique), propagée au masquage MCP (`ConnectorInstanceMcpView`), au
+masquage REST (`ConnectorApiDtos.ConnectorResponse` — dont l'ancien doublon `isSecretKey` est
+supprimé, fermant au passage la trouvaille (2) ci-dessus) et au chiffrement au repos
+(`ConnectorSecretCipher`/`EnvMasterKeyCipher`, qui gagnent un paramètre `connectorType`). **Piège
+non détectable par lecture statique** : injecter `ConnectorCatalog` dans `EnvMasterKeyCipher` casse
+le démarrage Spring par une dépendance circulaire réelle (`EnvMasterKeyCipher` → `ConnectorCatalog`
+→ `FlowableSignalConnector` → moteur Flowable → `WorkflowStateEventListener` →
+`SendNotificationUseCase` → `JpaNotificationWebhookRepositoryAdapter`, qui dépend du même cipher
+pour les secrets de webhooks de notification) — corrigé par `@Lazy` sur le paramètre, après un
+échec de contexte confirmé puis résolu. **2 findings mineurs corrigés** : `define_connector_instance`
+create dryRun ne réaffirmait jamais le garde-fou (nouvelle méthode `assertAuthorized`, cohérent
+avec la branche update qui le fait déjà) ; casts non défensifs sur listes hétérogènes dans
+`DefineDossierTypeTool`/`DeployWorkflowTool` (remplacés par des `instanceof` explicites). **1
+risque documenté sans correctif** : tout JWT M2M valide reçoit `API_SERVICE`, traité comme
+équivalent `TENANT_ADMIN` par le garde-fou — décision assumée (un seul client M2M de confiance
+prévu), documentée dans le design doc § D6 plutôt que corrigée (dériver les rôles des scopes JWT
+réels serait un changement plus large, hors périmètre). `./mvnw verify` final : **1675 tests, 0
+échec** (+9 vs Phase 9), ArchUnit conforme, gate Jacoco tenue. Détail complet dans
+[docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md)
+§ « Post-Phase 9 — Revue adversariale et correctifs de sécurité ».
+
+**Suite, sur demande :** ouverture PR + `CHANGELOG.md` ; éventuel cycle dédié pour le follow-up
+`DefineDossierTypeTool` restant (trouvaille (1) ci-dessus, toujours non corrigée). Documents lifecycle :
 [docs/ai/requirements/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/requirements/2026-09-06-feature-extension-mcp-flux-metier.md),
 [docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md),
 [docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md),

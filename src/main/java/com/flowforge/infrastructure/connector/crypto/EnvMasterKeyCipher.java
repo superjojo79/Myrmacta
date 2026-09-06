@@ -1,5 +1,6 @@
 package com.flowforge.infrastructure.connector.crypto;
 
+import com.flowforge.domain.connector.port.out.ConnectorCatalog;
 import com.flowforge.domain.connector.port.out.ConnectorSecretCipher;
 import com.flowforge.infrastructure.config.ConnectorProperties;
 import java.nio.ByteBuffer;
@@ -15,6 +16,7 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -26,10 +28,19 @@ public class EnvMasterKeyCipher implements ConnectorSecretCipher {
 
     private final byte[] masterKeyBytes;
     private final TenantDekStore dekStore;
+    private final ConnectorCatalog catalog;
     private final SecureRandom secureRandom = new SecureRandom();
 
-    public EnvMasterKeyCipher(ConnectorProperties properties, TenantDekStore dekStore) {
+    // @Lazy breaks a real circular dependency: ConnectorCatalog (ConnectorRegistry) transitively
+    // needs the Flowable engine (via FlowableSignalConnector's RuntimeService), whose own wiring
+    // (WorkflowStateEventListener -> SendNotificationUseCase -> JpaNotificationWebhookRepositoryAdapter)
+    // depends back on this cipher (reused generically for notification webhook secrets, not just
+    // connector configs) — confirmed by a failed Spring context load before this annotation was
+    // added (adversarial review follow-up, extension-mcp-flux-metier).
+    public EnvMasterKeyCipher(
+            ConnectorProperties properties, TenantDekStore dekStore, @Lazy ConnectorCatalog catalog) {
         this.dekStore = Objects.requireNonNull(dekStore, "dekStore");
+        this.catalog = Objects.requireNonNull(catalog, "catalog");
         String masterKey = properties.crypto().masterKey();
         if (masterKey == null || masterKey.isBlank()) {
             this.masterKeyBytes = null;
@@ -44,14 +55,14 @@ public class EnvMasterKeyCipher implements ConnectorSecretCipher {
     }
 
     @Override
-    public Map<String, Object> encryptPasswordFields(String tenantId, Map<String, Object> config) {
+    public Map<String, Object> encryptPasswordFields(String tenantId, String connectorType, Map<String, Object> config) {
         if (config == null || config.isEmpty()) {
             return config == null ? Map.of() : config;
         }
         SecretKey dek = resolveDek(tenantId);
         Map<String, Object> out = new LinkedHashMap<>(config);
         for (Map.Entry<String, Object> entry : config.entrySet()) {
-            if (!isPasswordKey(entry.getKey()) || !(entry.getValue() instanceof String value)) {
+            if (!isPasswordKey(connectorType, entry.getKey()) || !(entry.getValue() instanceof String value)) {
                 continue;
             }
             if (value.startsWith(ENC_PREFIX)) {
@@ -63,14 +74,14 @@ public class EnvMasterKeyCipher implements ConnectorSecretCipher {
     }
 
     @Override
-    public Map<String, Object> decryptPasswordFields(String tenantId, Map<String, Object> config) {
+    public Map<String, Object> decryptPasswordFields(String tenantId, String connectorType, Map<String, Object> config) {
         if (config == null || config.isEmpty()) {
             return config == null ? Map.of() : config;
         }
         SecretKey dek = resolveDek(tenantId);
         Map<String, Object> out = new LinkedHashMap<>(config);
         for (Map.Entry<String, Object> entry : config.entrySet()) {
-            if (!isPasswordKey(entry.getKey()) || !(entry.getValue() instanceof String value)) {
+            if (!isPasswordKey(connectorType, entry.getKey()) || !(entry.getValue() instanceof String value)) {
                 continue;
             }
             if (!value.startsWith(ENC_PREFIX)) {
@@ -102,7 +113,14 @@ public class EnvMasterKeyCipher implements ConnectorSecretCipher {
         return new String(plain, java.nio.charset.StandardCharsets.UTF_8);
     }
 
-    static boolean isPasswordKey(String key) {
+    // Reuses ConnectorCatalog.isPasswordField (the connector type's declared schema) in addition
+    // to the name heuristic — a field like authHeaderValue carries a real credential but doesn't
+    // match a name pattern (adversarial review follow-up, extension-mcp-flux-metier).
+    private boolean isPasswordKey(String connectorType, String key) {
+        return isPasswordKeyByName(key) || catalog.isPasswordField(connectorType, key);
+    }
+
+    static boolean isPasswordKeyByName(String key) {
         String k = key.toLowerCase(Locale.ROOT);
         return k.equals("webhooksecret")
                 || k.equals("clientsecret")

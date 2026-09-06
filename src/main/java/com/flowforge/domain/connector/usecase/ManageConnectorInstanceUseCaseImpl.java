@@ -43,6 +43,11 @@ public final class ManageConnectorInstanceUseCaseImpl implements ManageConnector
     }
 
     @Override
+    public void assertAuthorized(AccessContext.User actor) {
+        tenantAdminGuard.requireTenantAdminOrApiService(actor);
+    }
+
+    @Override
     public ConnectorInstanceData create(CreateCommand command, AccessContext.User actor) {
         tenantAdminGuard.requireTenantAdminOrApiService(actor);
         Objects.requireNonNull(command, "command");
@@ -74,7 +79,7 @@ public final class ManageConnectorInstanceUseCaseImpl implements ManageConnector
                 ? existing.name()
                 : command.name();
         boolean enabled = command.enabled() == null ? existing.enabled() : command.enabled();
-        Map<String, Object> merged = mergeConfig(existing.config(), command.config());
+        Map<String, Object> merged = mergeConfig(existing.connectorType(), existing.config(), command.config());
 
         ConnectorDefinition definition = catalog.get(existing.connectorType());
         definition.validate(merged);
@@ -127,13 +132,14 @@ public final class ManageConnectorInstanceUseCaseImpl implements ManageConnector
     }
 
     private Map<String, Object> mergeConfig(
-            Map<String, Object> existing, Map<String, Object> updates) {
+            String connectorType, Map<String, Object> existing, Map<String, Object> updates) {
         Map<String, Object> merged = new LinkedHashMap<>(existing == null ? Map.of() : existing);
         if (updates == null) {
             return merged;
         }
         for (Map.Entry<String, Object> entry : updates.entrySet()) {
-            if (isSecretKey(entry.getKey()) && isBlankOrMask(entry.getValue())) {
+            boolean isSecret = isSecretKey(entry.getKey()) || catalog.isPasswordField(connectorType, entry.getKey());
+            if (isSecret && isBlankOrMask(entry.getValue())) {
                 // Preserve the current secret when clients submit the mask or a blank value.
                 continue;
             }

@@ -106,6 +106,35 @@ class ConnectorAdminApiTest {
     }
 
     @Test
+    void createConnector_masksAuthHeaderValueInResponse() throws Exception {
+        // authHeaderValue matches no name heuristic (webhookSecret does) — only the connector
+        // type's declared PASSWORD schema field catches it (adversarial review follow-up).
+        String name = "Claims webhook " + UUID.randomUUID();
+
+        mockMvc.perform(post("/api/connectors")
+                        .with(user("connector-admin", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "%s",
+                                  "connectorType": "http-rest",
+                                  "enabled": true,
+                                  "config": {
+                                    "webhookAuthType": "SHARED_SECRET_TOKEN",
+                                    "webhookSecret": "plain-secret-0123456789",
+                                    "processKey": "smokeProcess",
+                                    "dossierTypeCode": "CLAIM",
+                                    "authHeaderValue": "Bearer plain-credential-0123456789"
+                                  }
+                                }
+                                """.formatted(name)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.config.authHeaderValue").value("********"))
+                .andExpect(jsonPath("$.secretConfigured.authHeaderValue").value(true));
+    }
+
+    @Test
     void createConnector_ipAllowlist_returns400() throws Exception {
         mockMvc.perform(post("/api/connectors")
                         .with(user("connector-admin", "TENANT_ADMIN"))

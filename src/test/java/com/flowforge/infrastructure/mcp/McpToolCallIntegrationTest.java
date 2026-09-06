@@ -279,6 +279,49 @@ class McpToolCallIntegrationTest {
     }
 
     @Test
+    void defineConnectorInstance_masksSchemaDeclaredPasswordFieldNotMatchingNameHeuristic() throws Exception {
+        // authHeaderValue matches no name heuristic (webhookSecret does) — only the connector
+        // type's declared PASSWORD schema field catches it (adversarial review follow-up).
+        String name = "MCP IT AuthHeader " + UUID.randomUUID();
+
+        MvcResult createCall = callMcp(sessionId, TENANT, "API_SERVICE", 2, "tools/call", """
+                {
+                  "name": "define_connector_instance",
+                  "arguments": {
+                    "name": "%s",
+                    "connectorType": "http-rest",
+                    "config": {
+                      "webhookAuthType": "HMAC_SHA256",
+                      "webhookSecret": "supersecretvalue1234",
+                      "processKey": "wf-mcp-it",
+                      "dossierTypeCode": "MCPIT",
+                      "authHeaderValue": "Bearer plaincredential5678"
+                    }
+                  }
+                }
+                """.formatted(name));
+        String createBody = createCall.getResponse().getContentAsString();
+        assertThat(createBody).as("body: %s", createBody).contains("\"isError\":false");
+        assertThat(createBody).doesNotContain("plaincredential5678");
+
+        var persisted = connectorInstanceRepository.pageByTenantId(TENANT, com.flowforge.domain.shared.PageQuery.of(0, 100))
+                .content().stream().filter(c -> c.name().equals(name)).findFirst().orElseThrow();
+        assertThat(persisted.config()).containsEntry("authHeaderValue", "Bearer plaincredential5678");
+
+        MvcResult getCall = callMcp(sessionId, TENANT, "API_SERVICE", 2, "tools/call", """
+                {"name": "get_connector_instance", "arguments": {"id": "%s"}}
+                """.formatted(persisted.id()));
+        String getBody = getCall.getResponse().getContentAsString();
+        assertThat(getBody).as("body: %s", getBody).doesNotContain("plaincredential5678");
+
+        MvcResult listCall = callMcp(sessionId, TENANT, "API_SERVICE", 2, "tools/call", """
+                {"name": "list_connector_instances", "arguments": {}}
+                """);
+        String listBody = listCall.getResponse().getContentAsString();
+        assertThat(listBody).as("body: %s", listBody).doesNotContain("plaincredential5678");
+    }
+
+    @Test
     void defineTaskQuestionSchema_persistsAndIsVisibleToDirectRepositoryRead() throws Exception {
         String schemaKey = "mcpit" + UUID.randomUUID().toString().substring(0, 8);
 

@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 
 import com.flowforge.domain.connector.model.ConnectorInstanceData;
 import com.flowforge.domain.connector.port.in.ManageConnectorInstanceUseCase;
+import com.flowforge.domain.connector.port.out.ConnectorCatalog;
 import com.flowforge.domain.shared.PageQuery;
 import com.flowforge.domain.shared.PageResult;
 import com.flowforge.infrastructure.config.TenantProperties;
@@ -33,7 +34,10 @@ class ListConnectorInstancesToolTest {
     void setUp() {
         manageConnectorInstanceUseCase = mock(ManageConnectorInstanceUseCase.class);
         tool = new ListConnectorInstancesTool(
-                manageConnectorInstanceUseCase, new TenantProperties(TENANT), new McpAccessContextFactory());
+                manageConnectorInstanceUseCase,
+                mock(ConnectorCatalog.class),
+                new TenantProperties(TENANT),
+                new McpAccessContextFactory());
         Jwt jwt = Jwt.withTokenValue("t")
                 .header("alg", "none")
                 .claim("sub", "agent-1")

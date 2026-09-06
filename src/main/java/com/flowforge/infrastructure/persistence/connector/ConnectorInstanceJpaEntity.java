@@ -93,6 +93,10 @@ class ConnectorInstanceJpaEntity {
         return tenantId;
     }
 
+    String connectorType() {
+        return connectorType;
+    }
+
     Instant deletedAt() {
         return deletedAt;
     }

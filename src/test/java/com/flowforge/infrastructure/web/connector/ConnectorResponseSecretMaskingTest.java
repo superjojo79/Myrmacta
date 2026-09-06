@@ -1,9 +1,16 @@
 package com.flowforge.infrastructure.web.connector;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.flowforge.domain.connector.model.ConfigField;
+import com.flowforge.domain.connector.model.ConfigFieldType;
+import com.flowforge.domain.connector.model.ConnectorDefinition;
 import com.flowforge.domain.connector.model.ConnectorInstanceData;
+import com.flowforge.domain.connector.port.out.ConnectorCatalog;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -27,7 +34,7 @@ class ConnectorResponseSecretMaskingTest {
                 true,
                 Map.of("webhookSecret", KNOWN_SECRET, "processKey", "wf-1"));
 
-        ConnectorResponse response = ConnectorResponse.from(data);
+        ConnectorResponse response = ConnectorResponse.from(data, mock(ConnectorCatalog.class));
         String json = new ObjectMapper().writeValueAsString(response);
 
         assertThat(json).doesNotContain(KNOWN_SECRET);
@@ -44,9 +51,30 @@ class ConnectorResponseSecretMaskingTest {
                 true,
                 Map.of("password", KNOWN_SECRET));
 
-        ConnectorResponse response = ConnectorResponse.from(data);
+        ConnectorResponse response = ConnectorResponse.from(data, mock(ConnectorCatalog.class));
         String json = new ObjectMapper().writeValueAsString(response);
 
         assertThat(json).doesNotContain(KNOWN_SECRET);
+    }
+
+    @Test
+    void from_neverExposesSchemaDeclaredPasswordFieldNotMatchingNameHeuristic() throws Exception {
+        // authHeaderValue matches no name heuristic (adversarial review follow-up) — only the
+        // connector type's declared PASSWORD schema field catches it.
+        ConnectorInstanceData data = new ConnectorInstanceData(
+                UUID.randomUUID(), "tenant_dev", "http-rest-trigger", "http-rest", true,
+                Map.of("authHeaderValue", KNOWN_SECRET));
+        ConnectorDefinition definition = mock(ConnectorDefinition.class);
+        when(definition.getConfigSchema()).thenReturn(List.of(new ConfigField(
+                "authHeaderValue", "Auth header", ConfigFieldType.PASSWORD, false, null, List.of(), null)));
+        ConnectorCatalog catalog = mock(ConnectorCatalog.class);
+        when(catalog.get("http-rest")).thenReturn(definition);
+        when(catalog.isPasswordField("http-rest", "authHeaderValue")).thenCallRealMethod();
+
+        ConnectorResponse response = ConnectorResponse.from(data, catalog);
+        String json = new ObjectMapper().writeValueAsString(response);
+
+        assertThat(json).doesNotContain(KNOWN_SECRET);
+        assertThat(response.secretConfigured()).containsEntry("authHeaderValue", true);
     }
 }

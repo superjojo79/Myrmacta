@@ -105,7 +105,11 @@ public class DefineConnectorInstanceTool {
         if (dryRun) {
             // Mirrors the validation ManageConnectorInstanceUseCaseImpl.create() runs, without
             // reaching it — same "duplicate for the preview only" pattern already used by
-            // DefineDossierTypeTool's update dry run (checkCompatibilityUseCase).
+            // DefineDossierTypeTool's update dry run (checkCompatibilityUseCase). Also reasserts
+            // authorization (assertAuthorized), matching defineUpdate's dryRun branch below,
+            // which reasserts via get() — adversarial review follow-up: this branch previously
+            // never re-checked the guard, unlike its own update counterpart.
+            manageConnectorInstanceUseCase.assertAuthorized(actor);
             connectorCatalog.get(connectorType).validate(resolvedConfig);
             return result("create", true, null, null);
         }
@@ -136,12 +140,12 @@ public class DefineConnectorInstanceTool {
         return result("update", false, id, updated);
     }
 
-    private static Map<String, Object> result(String operation, boolean dryRun, UUID id, ConnectorInstanceData data) {
+    private Map<String, Object> result(String operation, boolean dryRun, UUID id, ConnectorInstanceData data) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("operation", operation);
         map.put("dryRun", dryRun);
         map.put("id", id);
-        map.put("connectorInstance", data == null ? null : ConnectorInstanceMcpView.from(data));
+        map.put("connectorInstance", data == null ? null : ConnectorInstanceMcpView.from(data, connectorCatalog));
         return map;
     }
 }

@@ -1,6 +1,7 @@
 package com.flowforge.infrastructure.mcp.tool;
 
 import com.flowforge.domain.connector.port.in.ManageConnectorInstanceUseCase;
+import com.flowforge.domain.connector.port.out.ConnectorCatalog;
 import com.flowforge.infrastructure.config.TenantProperties;
 import com.flowforge.infrastructure.mcp.McpAccessContextFactory;
 import java.util.Objects;
@@ -13,15 +14,18 @@ import org.springframework.stereotype.Component;
 public class GetConnectorInstanceTool {
 
     private final ManageConnectorInstanceUseCase manageConnectorInstanceUseCase;
+    private final ConnectorCatalog connectorCatalog;
     private final TenantProperties tenantProperties;
     private final McpAccessContextFactory accessContextFactory;
 
     public GetConnectorInstanceTool(
             ManageConnectorInstanceUseCase manageConnectorInstanceUseCase,
+            ConnectorCatalog connectorCatalog,
             TenantProperties tenantProperties,
             McpAccessContextFactory accessContextFactory) {
         this.manageConnectorInstanceUseCase =
                 Objects.requireNonNull(manageConnectorInstanceUseCase, "manageConnectorInstanceUseCase");
+        this.connectorCatalog = Objects.requireNonNull(connectorCatalog, "connectorCatalog");
         this.tenantProperties = Objects.requireNonNull(tenantProperties, "tenantProperties");
         this.accessContextFactory = Objects.requireNonNull(accessContextFactory, "accessContextFactory");
     }
@@ -32,7 +36,9 @@ public class GetConnectorInstanceTool {
                     + "masked, never returned in clear.")
     public ConnectorInstanceMcpView getConnectorInstance(
             @McpToolParam(required = true, description = "Connector instance id (UUID)") String id) {
-        return ConnectorInstanceMcpView.from(manageConnectorInstanceUseCase.get(
-                UUID.fromString(id), tenantProperties.id(), accessContextFactory.currentActor()));
+        return ConnectorInstanceMcpView.from(
+                manageConnectorInstanceUseCase.get(
+                        UUID.fromString(id), tenantProperties.id(), accessContextFactory.currentActor()),
+                connectorCatalog);
     }
 }

@@ -10,21 +10,21 @@
 >   (rétention / purge / sensible — **livré**) ; revue post-implémentation 2026-08-25 :
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
-> **Dernière mise à jour :** 2026-09-06 — TODO **§56 ouvert**, cycle `dev-lifecycle` lancé sur
-> `extension-mcp-flux-metier`, Phase 8 (dev-testing) close — M1 à M9 enchaînés en Phase 5, 16 tools
-> MCP au total (9 → 16 : connecteurs + questions de tâche + `define_dossier_type` étendu). Écarts
-> réels trouvés et corrigés au fil des phases : 3 en Phase 5 (implémentation), 1 en Phase 7
-> (`DefineConnectorInstanceTool` sautait la validation en `dryRun=true`), 3 en Phase 8 (3 nouveaux
-> tools de liste ne testaient `page`/`size` que absents + 6 branches non testées sur
-> `DefineConnectorInstanceTool`, trouvés via Jacoco classe par classe). 1 gap pré-existant
-> documenté sans correctif (`ManageConnectorInstanceUseCaseImpl`, 69.4 % BRANCH, hors périmètre de
-> cette feature — le gate `BUNDLE` global reste vert). `./mvnw verify` final : **1666 tests, 0
-> échec**, ArchUnit conforme, couverture Jacoco tenue ; Vitest 289/289 (0 régression, zéro fichier
-> frontend touché) ; Playwright non exécutable dans ce bac à sable (binaire manquant, pré-existant,
-> non bloquant). Détail complet dans TODO §56 et
-> [docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md](docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md),
-> [docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md](docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md).
-> Suite, sur demande : Phase 9 (revue finale).
+> **Dernière mise à jour :** 2026-09-06 — TODO **§56 clos**, cycle `dev-lifecycle` **complet
+> (Phases 1 à 9)** sur `extension-mcp-flux-metier` — 16 tools MCP au total (9 → 16 : connecteurs +
+> questions de tâche + `define_dossier_type` étendu). Écarts réels trouvés et corrigés au fil des
+> phases : 3 en Phase 5 (implémentation), 1 en Phase 7 (`DefineConnectorInstanceTool` sautait la
+> validation en `dryRun=true`), 3 en Phase 8 (pagination + branches non testées, trouvés via Jacoco
+> classe par classe). **Phase 9 (revue finale)** : checklist complète passée sur le diff réel (53
+> fichiers, +3703/-118) — aucune dépendance circulaire, aucun breaking change externe, aucune fuite
+> de secret, aucune migration, feature backend-only. 2 trouvailles non bloquantes documentées comme
+> follow-ups hors périmètre (dryRun pré-existant sur `DefineDossierTypeTool`, même défaut que celui
+> corrigé en Phase 7 mais antérieur à cette feature ; duplication `isSecretKey` non nettoyée côté
+> REST). `./mvnw verify` final : **1666 tests, 0 échec**, ArchUnit conforme, couverture Jacoco
+> tenue ; Vitest 289/289 (0 régression, zéro fichier frontend touché) ; Playwright non exécutable
+> dans ce bac à sable (binaire manquant, pré-existant, non bloquant). **Cycle prêt à pousser /
+> ouvrir une PR, sur demande.** Détail complet dans TODO §56 et
+> [docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md](docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md).
 >
 > 2026-09-06 (plus tôt) — Phase 3 (design) close. 6 décisions tranchées en Phase 1 via
 > `AskUserQuestion` (périmètre un seul cycle, flux du secret connecteur, extension de
@@ -228,11 +228,11 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 (ArchUnit `application`), §48 (`http-rest` SERVICE), §49 (assainissement dette technique), §50
 (connecteurs hors V1), §51 (connecteur callback) et §52 (formulaires dynamiques tâches) **clos**.
 
-**En cours :** `extension-mcp-flux-metier` (TODO §56), cycle `dev-lifecycle` lancé, Phase 8
-(dev-testing) close — 16 tools MCP livrés (9 → 16 : connecteurs, questions de tâche,
+**Terminé (2026-09-06) :** `extension-mcp-flux-metier` (TODO §56), cycle `dev-lifecycle` **complet
+(Phases 1-9)** — 16 tools MCP livrés (9 → 16 : connecteurs, questions de tâche,
 `define_dossier_type` étendu) pour couvrir les mécanismes de configuration ajoutés depuis
-`serveur-mcp` (§48, §50, §51, §52, §55). `./mvnw verify` : 1666 tests (0 échec). Suite, sur
-demande : Phase 9 (revue finale). Voir l'en-tête de ce fichier pour le détail.
+`serveur-mcp` (§48, §50, §51, §52, §55). `./mvnw verify` : 1666 tests (0 échec). Prêt à pousser /
+ouvrir une PR, sur demande. Voir l'en-tête de ce fichier pour le détail.
 
 En réserve (non retenu, aucune analyse écrite) : outillage provisioning tenant (schéma/instance/
 proxy/secrets, `DEFERRED-FEATURES.md` §1.2/§4).

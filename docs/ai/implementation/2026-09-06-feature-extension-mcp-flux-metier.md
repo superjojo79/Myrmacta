@@ -192,3 +192,60 @@ aux requirements — pas une relecture du résumé Phase 5, mais une nouvelle le
 trouvé et corrigé (dryRun connecteur), aucune autre déviation, aucune fuite de secret identifiée,
 aucun appelant manquant supplémentaire (balayage `grep` sur les 5 interfaces modifiées : tous les
 appelants recensés étaient déjà connus et à jour). Pas de retour en Phase 3/Phase 5 nécessaire.
+
+## Phase 9 — Revue finale (dev-review)
+
+Revue holistique du diff réel de la feature contre `origin/main`
+(`git diff --stat e9d38d7..HEAD` : **53 fichiers, +3703/-118**, hors bruit d'un `merge-base` qui
+incluait à tort 1043 fichiers d'un autre historique) — pas seulement une relecture des phases
+précédentes.
+
+**Checklist finale :**
+
+- **Alignement design/requirements** : confirmé (Phases 3/7). Aucune déviation non documentée.
+- **Dépendances circulaires / ArchUnit** : vérifié que `TenantAdminGuard` (`domain.dossier`)
+  n'importe que son propre package (`domain.dossier.model`) — aucun risque de cycle avec
+  `domain.connector`/`domain.workflow`, qui en dépendent dans un seul sens (précédent déjà
+  accepté, TODO §55). 7 tests `ArchitectureRulesTest` toujours verts.
+- **Contrats de rupture (breaking changes)** : les 5 interfaces `port.in` modifiées
+  (signature + paramètre acteur) sont internes au dépôt (pas d'API publique externe) — modification
+  en place avec tous les appelants mis à jour dans le même commit, conforme à la règle du dépôt
+  pour ce cas (pas de dépréciation nécessaire).
+- **Sécurité / secrets** : masquage vérifié exhaustif sur les 3 tools connecteur
+  (`ConnectorInstanceMcpView`, `GetConnectorInstanceTool`, `ListConnectorInstancesTool`) —
+  relecture complète, aucun chemin de retour n'expose `ConnectorInstanceData` brut.
+- **Rollback safety** : aucune migration de schéma dans cette feature (uniquement du code Java) —
+  vérifié (`git diff --stat` sur `*.xml`/`*.sql`/changelogs : vide). Revert trivial si besoin.
+- **Frontend / E2E** : zéro fichier `frontend/**` touché — la clause Playwright obligatoire du
+  contrat `dev-review` ne s'applique pas (feature backend-only, confirmé).
+- **Tests couvrent les changements** : `./mvnw verify` — **1666 tests, 0 échec**, gate Jacoco
+  `BUNDLE` tenue ; Vitest 289/289, 0 régression.
+
+**2 trouvailles non bloquantes (follow-ups recommandés, hors périmètre de cette feature) :**
+
+1. **`DefineDossierTypeTool.defineCreate()` — même classe de bug que le correctif Phase 7, mais
+   pré-existante (PR #82, pas introduite par cette feature).** Le test `if (dryRun)` (ligne 155)
+   retourne le stub *avant* de construire l'objet `DossierType`, dont le constructeur compact
+   valide pourtant des règles réelles (noms de `fieldDefinitions` dupliqués, politique de
+   rétention/SLA). Un appel `dryRun=true` sur `create` avec des noms de champs dupliqués
+   réussirait donc silencieusement, alors que le même appel sans `dryRun` échouerait. Ce n'est
+   **pas** un écart introduit par `extension-mcp-flux-metier` : le seul ajout de cette feature à ce
+   tool (`documentTemplateKeys`) est lui bien validé même en dryRun (`parseDocumentTemplateKeys`
+   s'exécute avant la branche dryRun, ligne 119). Ce cycle a d'ailleurs involontairement reproduit
+   ce même défaut dans `DefineConnectorInstanceTool` (code neuf, donc corrigé en Phase 7) en le
+   citant comme précédent à suivre — la trouvaille de Phase 9 est que le précédent lui-même était
+   défectueux. Recommandation : un correctif dédié dans un futur cycle sur `DefineDossierTypeTool`
+   seul (hors scope ici, même principe que le point 2 ci-dessous et que le gap Jacoco documenté en
+   Phase 8 sur `ManageConnectorInstanceUseCaseImpl` : ne pas élargir cette PR à du code que la
+   feature n'a pas touché sur ce point précis).
+2. **Opportunité de réutilisation non exploitée** : `ConnectorApiDtos.ConnectorResponse` conserve
+   sa propre méthode privée `isSecretKey` (duplication déjà connue et documentée en Phase 1/D3),
+   alors que cette feature a justement rendu `ManageConnectorInstanceUseCaseImpl.isSecretKey`
+   `public` pour que `ConnectorInstanceMcpView` la réutilise plutôt que d'en créer une 3ᵉ copie.
+   L'occasion de retirer le doublon pré-existant côté REST n'a pas été prise ici (fichier hors
+   périmètre déclaré de cette feature). Recommandation : petit nettoyage séparé, non bloquant.
+
+**Conclusion Phase 9 :** cycle `dev-lifecycle` **prêt à pousser / ouvrir une PR**. Aucun blocage.
+Les 2 trouvailles ci-dessus sont des follow-ups documentés, pas des régressions de cette feature.
+`CHANGELOG.md` reste différé (aucune PR ouverte à ce stade, même convention que TODO §47/§55) —
+à faire à l'ouverture de la PR, sur demande.

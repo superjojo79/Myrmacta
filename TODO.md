@@ -1268,9 +1268,9 @@ re-confirmée verte ; Vitest/Playwright inchangés (correctif backend seul).
 
 ---
 
-### [ ] 56. Extension du serveur MCP au flux métier complet (connecteurs, association templates, questions de tâche)
+### [x] 56. Extension du serveur MCP au flux métier complet (connecteurs, association templates, questions de tâche)
 
-**Statut (2026-09-06) : cycle `dev-lifecycle` lancé, Phase 8 (dev-testing) close.** Origine :
+**Statut (2026-09-06) : cycle `dev-lifecycle` complet, Phases 1 à 9 closes.** Origine :
 demande utilisateur — inspecter ce qui a été ajouté à FlowForge depuis `serveur-mcp` (PR #82, 9
 tools) et déterminer ce qui manque pour qu'un agent MCP puisse définir un flux métier complet sans
 sortir du canal MCP. Analyse initiale :
@@ -1413,7 +1413,29 @@ verify` final : **1666 tests, 0 échec** (+9 vs Phase 7), ArchUnit conforme, gat
 tenue. Détail complet dans
 [docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md).
 
-**Suite, sur demande :** Phase 9 (revue finale). Documents lifecycle :
+**Phase 9 (revue finale) close** — revue holistique du diff réel contre `origin/main` (53 fichiers,
++3703/-118, pas les 1043 fichiers de bruit d'un mauvais `merge-base`). Checklist complète passée :
+alignement design/requirements confirmé, aucune dépendance circulaire (`TenantAdminGuard` n'importe
+que son propre package), pas de breaking change externe (interfaces `port.in` internes au dépôt,
+tous les appelants mis à jour dans le même commit), aucune fuite de secret, aucune migration de
+schéma (rollback trivial), pas de fichier frontend touché (clause Playwright non applicable).
+**2 trouvailles non bloquantes, documentées comme follow-ups hors périmètre** : (1)
+`DefineDossierTypeTool.defineCreate()` a le même défaut que celui corrigé en Phase 7 sur
+`DefineConnectorInstanceTool` (dryRun retourne avant de construire l'objet domaine, donc avant sa
+validation) — mais celui-ci est pré-existant (PR #82), pas introduit par cette feature (le seul
+ajout de cette feature à ce tool, `documentTemplateKeys`, est lui bien validé en dryRun) ; ironie
+notée : ce cycle a cité ce tool comme précédent à suivre pour `DefineConnectorInstanceTool`, sans
+savoir que le précédent lui-même était défectueux — trouvaille de Phase 9, pas de Phase 7 ; (2)
+`ConnectorApiDtos.ConnectorResponse` garde sa propre méthode privée `isSecretKey` en double, alors
+que cette feature a justement rendu la méthode équivalente `public` sur
+`ManageConnectorInstanceUseCaseImpl` pour éviter une 3ᵉ duplication côté MCP — l'occasion de
+nettoyer le doublon REST pré-existant n'a pas été prise ici (fichier hors périmètre déclaré).
+**Cycle prêt à pousser / ouvrir une PR**, sur demande. Détail complet dans
+[docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md)
+§ « Phase 9 — Revue finale ».
+
+**Suite, sur demande :** ouverture PR + `CHANGELOG.md` ; éventuel cycle dédié pour les 2 follow-ups
+non bloquants ci-dessus. Documents lifecycle :
 [docs/ai/requirements/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/requirements/2026-09-06-feature-extension-mcp-flux-metier.md),
 [docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md),
 [docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md),

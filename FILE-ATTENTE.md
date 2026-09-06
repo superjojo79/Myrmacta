@@ -11,8 +11,8 @@
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
 > **Dernière mise à jour :** 2026-09-06 — TODO **§56 ouvert**, cycle `dev-lifecycle` lancé sur
-> `extension-mcp-flux-metier`, Phase 1 (requirements) close. 6 décisions tranchées via
-> `AskUserQuestion` : périmètre (un seul cycle pour les 3 lacunes), flux du secret connecteur
+> `extension-mcp-flux-metier`, Phase 2 (revue requirements) close. 6 décisions tranchées en Phase 1
+> via `AskUserQuestion` : périmètre (un seul cycle pour les 3 lacunes), flux du secret connecteur
 > (même que l'admin REST), extension de `define_dossier_type` (pas de nouveau tool pour
 > `documentTemplateKeys`), `dryRun` reconduit sur tous les tools d'écriture, 7 noms de tools
 > confirmés, et une trouvaille réelle en explorant le code (pas anticipée par l'analyse initiale) :
@@ -20,7 +20,13 @@
 > `WorkflowTypeConfigUseCaseImpl`, déjà utilisé par `deploy_workflow` depuis PR #82 — n'ont aucune
 > garde de rôle au niveau domaine, le RBAC n'étant vérifié qu'au contrôleur REST. Décision : ajouter
 > le garde-fou domaine partout, y compris un correctif sur `WorkflowTypeConfigUseCaseImpl` (code
-> déjà en production). Documents :
+> déjà en production). **+1 décision en Phase 2** (D-MCP-EXT-RBAC-SCOPE) : le RBAC REST diffère par
+> contrôleur (`ConnectorAdminController` gate tout, `TaskQuestionSchemaController` gate aussi
+> `list`/`get`, `WorkflowTypeConfigController` ne gate que `create`/`update`) — asymétrie
+> volontairement reproduite au niveau domaine plutôt qu'uniformisée, pour ne pas régresser
+> `list_workflow_types` (déjà en production). 2 incertitudes du brouillon design résolues par
+> vérification du code (pas des trous) : `GetTaskQuestionSchemaUseCase.list` existe déjà ;
+> `list_connector_definitions` réutilisera `ConnectorCatalog.listAll()` directement. Documents :
 > [docs/ai/requirements/2026-09-06-feature-extension-mcp-flux-metier.md](docs/ai/requirements/2026-09-06-feature-extension-mcp-flux-metier.md),
 > [docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md](docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md)
 > (brouillon Phase 1),
@@ -209,11 +215,11 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 (ArchUnit `application`), §48 (`http-rest` SERVICE), §49 (assainissement dette technique), §50
 (connecteurs hors V1), §51 (connecteur callback) et §52 (formulaires dynamiques tâches) **clos**.
 
-**En cours :** `extension-mcp-flux-metier` (TODO §56), cycle `dev-lifecycle` lancé, Phase 1
-(requirements) close — extension du serveur MCP (`ConnectorInstance`, association templates ↔
-type de dossier, `TaskQuestionSchema`) pour couvrir les mécanismes de configuration ajoutés depuis
-`serveur-mcp` (§48, §50, §51, §52, §55). Suite : Phase 2 (revue requirements). Voir l'en-tête de ce
-fichier pour le détail des décisions déjà tranchées.
+**En cours :** `extension-mcp-flux-metier` (TODO §56), cycle `dev-lifecycle` lancé, Phase 2 (revue
+requirements) close — extension du serveur MCP (`ConnectorInstance`, association templates ↔ type
+de dossier, `TaskQuestionSchema`) pour couvrir les mécanismes de configuration ajoutés depuis
+`serveur-mcp` (§48, §50, §51, §52, §55). Suite : Phase 3 (design). Voir l'en-tête de ce fichier
+pour le détail des décisions déjà tranchées.
 
 En réserve (non retenu, aucune analyse écrite) : outillage provisioning tenant (schéma/instance/
 proxy/secrets, `DEFERRED-FEATURES.md` §1.2/§4).

@@ -1270,7 +1270,7 @@ re-confirmée verte ; Vitest/Playwright inchangés (correctif backend seul).
 
 ### [ ] 56. Extension du serveur MCP au flux métier complet (connecteurs, association templates, questions de tâche)
 
-**Statut (2026-09-06) : cycle `dev-lifecycle` lancé, Phase 1 (requirements) close.** Origine :
+**Statut (2026-09-06) : cycle `dev-lifecycle` lancé, Phase 2 (revue requirements) close.** Origine :
 demande utilisateur — inspecter ce qui a été ajouté à FlowForge depuis `serveur-mcp` (PR #82, 9
 tools) et déterminer ce qui manque pour qu'un agent MCP puisse définir un flux métier complet sans
 sortir du canal MCP. Analyse initiale :
@@ -1311,7 +1311,22 @@ REST existants. Point de conception encore ouvert (Phase 3) : emplacement du gar
 `TenantAdminGuard` en l'acceptant comme dépendance transverse) — voir
 [docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md).
 
-**Suite :** Phase 2 (revue requirements), puis Phase 3 (design). Documents lifecycle :
+**Phase 2 (revue requirements) close** — 1 décision supplémentaire tranchée via `AskUserQuestion` :
+**D-MCP-EXT-RBAC-SCOPE**, trouvée en revérifiant le RBAC REST exact de chaque contrôleur (pas
+seulement l'existence du garde) — l'asymétrie est réelle et volontairement reproduite au niveau
+domaine : `ManageConnectorInstanceUseCaseImpl` (garde sur toutes les opérations, miroir du
+`@PreAuthorize` classe de `ConnectorAdminController`) et `TaskQuestionSchemaUseCaseImpl`/
+`GetTaskQuestionSchemaUseCaseImpl` (garde sur toutes les opérations, miroir de
+`TaskQuestionSchemaController` qui gate explicitement `list`/`get`) contre
+`WorkflowTypeConfigUseCaseImpl` (garde **uniquement** sur `create`/`update` — ses `list`/
+`getByKey` restent ouverts comme le REST, pour ne pas régresser `list_workflow_types` déjà en
+production sans demande fonctionnelle). 2 points que le brouillon design avait laissés incertains
+en Phase 1 sont résolus après vérification du code réel (pas des trous) :
+`GetTaskQuestionSchemaUseCase.list(PageQuery)` existe déjà (pas de nouveau port nécessaire) ;
+`list_connector_definitions` réutilisera `ConnectorCatalog.listAll()` directement, comme le fait
+déjà `ConnectorDefinitionController`.
+
+**Suite :** Phase 3 (design). Documents lifecycle :
 [docs/ai/requirements/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/requirements/2026-09-06-feature-extension-mcp-flux-metier.md),
 [docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md),
 [docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md).

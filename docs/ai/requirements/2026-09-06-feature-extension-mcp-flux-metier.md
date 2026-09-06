@@ -91,6 +91,7 @@ pré-existant sur du code déjà en production, pas seulement un risque introdui
 | D-MCP-EXT-DRYRUN | `dryRun` sur les 2 nouveaux tools d'écriture ? | **Oui, partout** — cohérence de contrat avec `define_dossier_type`/`deploy_workflow` |
 | D-MCP-EXT-NAMING | Noms définitifs des 7 nouveaux tools ? | Confirmés : `list_connector_definitions`, `list_connector_instances`, `get_connector_instance`, `define_connector_instance`, `list_task_question_schemas`, `get_task_question_schema`, `define_task_question_schema` |
 | D-MCP-EXT-RBAC-GUARD | `ManageConnectorInstanceUseCaseImpl`/`TaskQuestionSchemaUseCaseImpl` n'ont aucune garde domaine ; `WorkflowTypeConfigUseCaseImpl` (déjà en PR #82) non plus. Comment traiter ? | **Ajouter le garde-fou domaine partout**, y compris correctif de `WorkflowTypeConfigUseCaseImpl` (écart pré-existant, à documenter comme correctif sur du code déjà livré, pas juste comme nouvelle feature) |
+| D-MCP-EXT-RBAC-SCOPE | Phase 2 : le RBAC REST exact diffère par contrôleur — `ConnectorAdminController` gate **toutes** ses routes (`@PreAuthorize` classe) ; `TaskQuestionSchemaController` gate explicitement **list et get**, pas seulement les écritures ; `WorkflowTypeConfigController` ne gate **que** create/update, ses `GET` sont ouverts à tout utilisateur authentifié (et `list_workflow_types`, déjà livré en PR #82, s'appuie sur cette lecture ouverte). Le garde-fou domaine doit-il reproduire cette asymétrie ou l'uniformiser ? | **Reproduire l'asymétrie telle quelle** — `ManageConnectorInstanceUseCaseImpl` : garde sur toutes les opérations (create/update/get/list/softDelete/restore) ; `TaskQuestionSchemaUseCaseImpl`/`GetTaskQuestionSchemaUseCaseImpl` : garde sur toutes les opérations ; `WorkflowTypeConfigUseCaseImpl` : garde **uniquement** sur `create`/`update` — `list`/`getByKey` restent ouverts, zéro régression sur `list_workflow_types` déjà en production |
 
 ## User Stories & Use Cases
 
@@ -130,10 +131,11 @@ pré-existant sur du code déjà en production, pas seulement un risque introdui
 - 7 nouveaux tools exposés sur `/api/m2m/mcp`, découvrables (schema JSON généré) et testés par IT
   HTTP M2M réelles, même famille que `McpToolCallIntegrationTest` (M7 de `serveur-mcp`).
 - `define_dossier_type` accepte `documentTemplateKeys` en entrée, round-trip vérifié.
-- `ManageConnectorInstanceUseCaseImpl`, `TaskQuestionSchemaUseCaseImpl` et
-  `WorkflowTypeConfigUseCaseImpl` rejettent un acteur sans rôle admin/`API_SERVICE` — test de
-  régression prouvant qu'un acteur sans les rôles requis est rejeté par le use case lui-même (pas
-  seulement par le contrôleur REST).
+- `ManageConnectorInstanceUseCaseImpl` (toutes opérations) et `TaskQuestionSchemaUseCaseImpl`/
+  `GetTaskQuestionSchemaUseCaseImpl` (toutes opérations) rejettent un acteur sans rôle admin/
+  `API_SERVICE` ; `WorkflowTypeConfigUseCaseImpl` le fait uniquement sur `create`/`update` (`list`/
+  `getByKey` restent ouverts, cf. D-MCP-EXT-RBAC-SCOPE) — test de régression prouvant que le rejet
+  a lieu dans le use case lui-même, pas seulement au contrôleur REST.
 - Secrets connecteurs jamais renvoyés en clair par `list_connector_instances`/
   `get_connector_instance` (test miroir de `ConnectorResponseSecretMaskingTest`).
 - `./mvnw verify` vert (Jacoco LINE/BRANCH aux seuils actuels), zéro régression sur les 9 tools
@@ -162,12 +164,23 @@ pré-existant sur du code déjà en production, pas seulement un risque introdui
 
 ## Questions & Open Items
 
-Aucune question matérielle restant ouverte à l'issue de cette phase — les 6 décisions ci-dessus
-couvrent le périmètre, le flux du secret, le nommage et le garde-fou RBAC. Reste à trancher en
-Phase 3 (design), de nature technique et non produit :
+Aucune question matérielle restant ouverte à l'issue de cette phase — les 7 décisions ci-dessus
+(6 de Phase 1 + D-MCP-EXT-RBAC-SCOPE de Phase 2) couvrent le périmètre, le flux du secret, le
+nommage et le garde-fou RBAC (y compris son asymétrie exacte par use case). Deux points que le
+brouillon design (Phase 1) avait laissés incertains ont été vérifiés contre le code réel en Phase 2
+et ne sont **plus** des trous :
 
-- Emplacement/forme exacte du garde-fou domaine partagé (voir « Constraints »).
+- **`list_task_question_schemas`** : `GetTaskQuestionSchemaUseCase.list(PageQuery)` existe déjà
+  (`domain/workflow/port/in/GetTaskQuestionSchemaUseCase.java`) — pas de nouveau port à créer.
+- **`list_connector_definitions`** : `ConnectorDefinitionController` (REST) n'appelle aucun use
+  case dédié, il lit directement `ConnectorCatalog.listAll()` (port `out`, catalogue statique en
+  mémoire, aucune donnée tenant, aucun secret) — le tool MCP fera de même, cohérent avec le
+  pattern déjà utilisé par certains tools de lecture existants (ex. `ListWorkflowTypesTool` appelle
+  directement `GetWorkflowTypeConfigUseCase`, pas de couche supplémentaire).
+
+Reste à trancher en Phase 3 (design), de nature technique et non produit :
+
+- Emplacement/forme exacte du garde-fou domaine partagé (voir « Constraints ») — 3 options déjà
+  esquissées dans le brouillon design (D2), aucune ne change le périmètre fonctionnel.
 - Comportement précis sur une clé de template inconnue dans `documentTemplateKeys` (validation à
   l'écriture vs. tolérance jusqu'à l'usage runtime).
-- Endpoint(s) domaine à réutiliser pour `list_connector_definitions` (déjà exposé en REST via
-  `ConnectorDefinitionController` — vérifier le use case sous-jacent réutilisable tel quel).

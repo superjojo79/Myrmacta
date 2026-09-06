@@ -41,11 +41,14 @@ description: Define testing approach, test cases, and quality assurance
 - [ ] `save` accepte `API_SERVICE` (nouveau)
 - [ ] `delete` — mêmes cas
 
-### `WorkflowTypeConfigUseCaseImpl` (correctif pré-existant, PR #82)
+### `WorkflowTypeConfigUseCaseImpl` (correctif pré-existant, PR #82 — périmètre restreint, D-MCP-EXT-RBAC-SCOPE)
 
 - [ ] `create`/`update` rejettent un acteur sans rôle requis (écart pré-existant comblé)
 - [ ] `create`/`update` acceptent toujours `TENANT_ADMIN`/`WORKFLOW_ADMIN` (régression REST/admin
       BPMN) et `API_SERVICE` (régression `deploy_workflow`, déjà utilisé en prod)
+- [ ] `list`/`getByKey` restent accessibles à un acteur **sans** rôle admin/`API_SERVICE` — preuve
+      explicite de non-régression sur `list_workflow_types` (déjà en production, PR #82), pas
+      seulement absence de garde par omission
 
 ### `DefineDossierTypeTool` (étendu)
 

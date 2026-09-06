@@ -81,7 +81,7 @@ Aucun nouveau modèle domaine. Réutilisation stricte de l'existant :
 | `list_connector_instances` | `ManageConnectorInstanceUseCase.list` | non | — |
 | `get_connector_instance` | `ManageConnectorInstanceUseCase.get` | non | — |
 | `define_connector_instance` | `ManageConnectorInstanceUseCase.create`/`update` | oui | oui |
-| `list_task_question_schemas` | `GetTaskQuestionSchemaUseCase` (lister — à vérifier si un `list` existe ou s'il faut l'ajouter, voir « Points ouverts ») | non | — |
+| `list_task_question_schemas` | `GetTaskQuestionSchemaUseCase.list` (existe déjà, vérifié Phase 2) | non | — |
 | `get_task_question_schema` | `GetTaskQuestionSchemaUseCase.get` | non | — |
 | `define_task_question_schema` | `SaveTaskQuestionSchemaUseCase.save` | oui | oui |
 
@@ -182,16 +182,24 @@ inchangé), masqué (`SECRET_MASK = "********"`) sur toute lecture MCP
 (`list_connector_instances`/`get_connector_instance`), miroir de
 `ConnectorResponseSecretMaskingTest`.
 
-### D4 — `list_task_question_schemas` : use case manquant ?
+### D4 — `list_task_question_schemas` : use case manquant ? (résolu, Phase 2)
 
-`GetTaskQuestionSchemaUseCase`/`SaveTaskQuestionSchemaUseCase`/`DeleteTaskQuestionSchemaUseCase`
-sont les 3 ports `in` identifiés côté `TaskQuestionSchema` — aucun ne semble porter de `list`
-paginé (à vérifier précisément en Phase 3 : `TaskQuestionSchemaController` expose bien un
-`GET` collection, donc soit un port `list` existe déjà et n'a pas été vu en Phase 1, soit le
-contrôleur REST liste directement via le repository). Si aucun port `list` réutilisable n'existe,
-il faudra soit l'ajouter au use case existant, soit appeler le repository directement (à trancher
-selon le pattern déjà utilisé par `list_dossier_types`/`list_workflow_types`, qui semblent appeler
-le repository directement plutôt qu'un use case dédié).
+Vérifié dans le code : `GetTaskQuestionSchemaUseCase.list(PageQuery)` existe déjà
+(`domain/workflow/port/in/GetTaskQuestionSchemaUseCase.java`), utilisé par
+`TaskQuestionSchemaController.list`. `list_task_question_schemas` l'appelle directement, aucun
+nouveau port nécessaire. De même, `list_connector_definitions` appelle directement
+`ConnectorCatalog.listAll()` (port `out`, catalogue statique en mémoire) — même pattern que
+`ConnectorDefinitionController` (REST), pas de use case dédié à créer.
+
+### D5 — Périmètre exact du garde-fou domaine par use case (résolu, Phase 2, D-MCP-EXT-RBAC-SCOPE)
+
+Le RBAC REST diffère par contrôleur — vérifié précisément en Phase 2 :
+
+| Use case | RBAC REST équivalent | Garde-fou domaine à ajouter |
+|---|---|---|
+| `ManageConnectorInstanceUseCaseImpl` | `ConnectorAdminController` : `@PreAuthorize` **au niveau classe** — toutes les routes (list/get/create/delete) | Sur **toutes** les opérations (`create`, `update`, `get`, `list`, `softDelete`, `restore`) |
+| `TaskQuestionSchemaUseCaseImpl` / `GetTaskQuestionSchemaUseCaseImpl` | `TaskQuestionSchemaController` : `@PreAuthorize` explicite sur **chaque** méthode, y compris `list`/`getByKey` | Sur **toutes** les opérations |
+| `WorkflowTypeConfigUseCaseImpl` | `WorkflowTypeConfigController` : `@PreAuthorize` **uniquement** sur `create`/`update` — `GET` (list/getByKey) ouverts à tout utilisateur authentifié | **Uniquement** sur `create`/`update` — ne pas toucher `list`/`getByKey` (régresserait `list_workflow_types`, déjà en production depuis PR #82, sans aucune demande fonctionnelle pour ça) |
 
 ## Non-Functional Requirements
 

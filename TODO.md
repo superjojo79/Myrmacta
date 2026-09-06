@@ -1270,7 +1270,7 @@ re-confirmée verte ; Vitest/Playwright inchangés (correctif backend seul).
 
 ### [ ] 56. Extension du serveur MCP au flux métier complet (connecteurs, association templates, questions de tâche)
 
-**Statut (2026-09-06) : cycle `dev-lifecycle` lancé, Phase 4 (planning) close.** Origine :
+**Statut (2026-09-06) : cycle `dev-lifecycle` lancé, Phase 5 (implémentation TDD) close.** Origine :
 demande utilisateur — inspecter ce qui a été ajouté à FlowForge depuis `serveur-mcp` (PR #82, 9
 tools) et déterminer ce qui manque pour qu'un agent MCP puisse définir un flux métier complet sans
 sortir du canal MCP. Analyse initiale :
@@ -1351,7 +1351,26 @@ bout (`define_connector_instance` → `define_dossier_type` → `define_task_que
 `deploy_workflow`, preuve du flux métier complet) ; M9 vérification globale + documentation.
 Traçabilité testing → tâches vérifiée exhaustive.
 
-**Suite :** Phase 5 (implémentation TDD), en commençant par M1. Documents lifecycle :
+**Phase 5 (implémentation TDD) close** — M1 à M9 enchaînés en TDD dans la même session. 16 tools
+MCP au total (9 → 16). **3 écarts réels trouvés en cours d'implémentation, pas anticipés par le
+design** : (1) `ConnectorPortsContractTest` (implémentation anonyme du port dans un test de
+contrat existant) était un appelant supplémentaire non recensé en design, corrigé en même temps
+que `DeployWorkflowTool`/`DeployWorkflowToolTest` ; (2) les méthodes `default`
+`TaskQuestionSchemaRepository.page(...)`/`WorkflowTypeConfigRepository.page(...)` ne sont pas
+exécutées par un mock Mockito standard (retournent `null`) — les nouveaux tests stubbent
+directement `page(...)`, pas `findAll(...)` ; (3) seule régression trouvée par `./mvnw verify` :
+`McpEndpointApiTest` figeait le compte de tools à 9, corrigé (16, test renommé). `./mvnw verify` :
+**1653 tests, 0 échec**, ArchUnit conforme, couverture Jacoco tenue. Frontend : **289/289 Vitest**,
+0 régression (zéro fichier `frontend/**` modifié, confirmé par `git diff --stat`). Playwright non
+exécutable dans ce bac à sable (binaire `chrome-headless-shell` absent, pré-existant, sans rapport
+avec cette feature) — non bloquant, feature backend-only. Documentation resynchronisée :
+[GETTING-STARTED.md](../GETTING-STARTED.md) §12 (9 → 16 tools),
+[15-serveur-mcp.md](analysis%20doc/15-serveur-mcp.md) (bandeau d'extension). `CHANGELOG.md`
+différé (aucune PR ouverte à ce stade, même convention que TODO §47/§55). Détail complet :
+[docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md).
+
+**Suite :** Phase 6 (mise à jour planning — déjà reflétée ci-dessus) puis Phase 7 (check
+implementation), Phase 8 (dev-testing), Phase 9 (revue finale). Documents lifecycle :
 [docs/ai/requirements/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/requirements/2026-09-06-feature-extension-mcp-flux-metier.md),
 [docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md),
 [docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md),

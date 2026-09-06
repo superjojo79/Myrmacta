@@ -133,8 +133,8 @@ public class DeployWorkflowTool {
         }
 
         WorkflowTypeConfig saved = existing.isPresent()
-                ? saveWorkflowTypeConfigUseCase.update(config)
-                : saveWorkflowTypeConfigUseCase.create(config);
+                ? saveWorkflowTypeConfigUseCase.update(config, actor)
+                : saveWorkflowTypeConfigUseCase.create(config, actor);
 
         String filename = rawProcessDefinitionKey + ".bpmn20.xml";
         BpmnDeploymentResult deployment = deployBpmnProcessUseCase.deploy(filename, xmlBytes);

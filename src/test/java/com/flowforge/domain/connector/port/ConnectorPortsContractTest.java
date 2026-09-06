@@ -8,11 +8,13 @@ import com.flowforge.domain.connector.port.in.ManageConnectorInstanceUseCase;
 import com.flowforge.domain.connector.port.out.ConnectorInstanceRepository;
 import com.flowforge.domain.connector.port.out.ConnectorSecretCipher;
 import com.flowforge.domain.connector.port.out.WebhookIdempotencyStore;
+import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.shared.PageQuery;
 import com.flowforge.domain.shared.PageResult;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -88,30 +90,31 @@ class ConnectorPortsContractTest {
 
         ManageConnectorInstanceUseCase manage = new ManageConnectorInstanceUseCase() {
             @Override
-            public ConnectorInstanceData create(CreateCommand command) {
+            public ConnectorInstanceData create(CreateCommand command, AccessContext.User actor) {
                 return instance;
             }
 
             @Override
-            public ConnectorInstanceData update(UpdateCommand command) {
+            public ConnectorInstanceData update(UpdateCommand command, AccessContext.User actor) {
                 return instance;
             }
 
             @Override
-            public ConnectorInstanceData get(UUID instanceId, String tenantId) {
+            public ConnectorInstanceData get(UUID instanceId, String tenantId, AccessContext.User actor) {
                 return instance;
             }
 
             @Override
-            public PageResult<ConnectorInstanceData> list(String tenantId, PageQuery query) {
+            public PageResult<ConnectorInstanceData> list(
+                    String tenantId, PageQuery query, AccessContext.User actor) {
                 return PageResult.of(List.of(instance), query.page(), query.size(), 1);
             }
 
             @Override
-            public void softDelete(UUID instanceId, String tenantId) {}
+            public void softDelete(UUID instanceId, String tenantId, AccessContext.User actor) {}
 
             @Override
-            public ConnectorInstanceData restore(UUID instanceId, String tenantId) {
+            public ConnectorInstanceData restore(UUID instanceId, String tenantId, AccessContext.User actor) {
                 return instance;
             }
         };
@@ -122,8 +125,9 @@ class ConnectorPortsContractTest {
         assertThat(cipher.encryptPasswordFields("tenant_dev", Map.of("webhookSecret", "x")))
                 .containsEntry("webhookSecret", "x");
         assertThat(store.findResponseStatus(id, "k")).isEmpty();
-        assertThat(manage.create(new ManageConnectorInstanceUseCase.CreateCommand(
-                        "tenant_dev", "n", "http-rest", true, Map.of())))
+        assertThat(manage.create(
+                        new ManageConnectorInstanceUseCase.CreateCommand("tenant_dev", "n", "http-rest", true, Map.of()),
+                        AccessContext.user("svc", Set.of("API_SERVICE"))))
                 .isEqualTo(instance);
         assertThat(execute.execute(id, "tenant_dev", Map.of())).containsEntry("signaled", true);
     }

@@ -6,7 +6,9 @@ description: Break down work into actionable tasks and estimate timeline
 
 # Project Planning & Task Breakdown — `extension-mcp-flux-metier`
 
-> Phase 4 close. S'appuie sur
+> Phase 4 close ; Phase 5 (implémentation) close, M1–M9 enchaînés en TDD — voir
+> [docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md](../implementation/2026-09-06-feature-extension-mcp-flux-metier.md).
+> S'appuie sur
 > [docs/ai/requirements/2026-09-06-feature-extension-mcp-flux-metier.md](../requirements/2026-09-06-feature-extension-mcp-flux-metier.md),
 > [docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md](../design/2026-09-06-feature-extension-mcp-flux-metier.md)
 > et [docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md](../testing/2026-09-06-feature-extension-mcp-flux-metier.md).
@@ -15,21 +17,21 @@ description: Break down work into actionable tasks and estimate timeline
 
 ## Milestones
 
-- [ ] M1 : `TenantAdminGuard.requireTenantOrWorkflowAdminOrApiService` (nouvelle méthode, D2)
-- [ ] M2 : Garde-fou domaine — connecteurs (`ManageConnectorInstanceUseCase`, toutes opérations)
-- [ ] M3 : Garde-fou domaine — questions de tâche (`TaskQuestionSchema*UseCase`, toutes opérations)
-- [ ] M4 : Correctif garde-fou domaine — `WorkflowTypeConfigUseCase` (`create`/`update` seulement, PR #82)
-- [ ] M5 : `define_dossier_type` étendu (`documentTemplateKeys`)
-- [ ] M6 : 5 nouveaux tools MCP de lecture
-- [ ] M7 : 2 nouveaux tools MCP d'écriture (`dryRun`, secrets)
-- [ ] M8 : IT HTTP M2M réelles (7 nouveaux tools + `define_dossier_type` étendu)
-- [ ] M9 : Vérification globale + documentation
+- [x] M1 : `TenantAdminGuard.requireTenantOrWorkflowAdminOrApiService` (nouvelle méthode, D2)
+- [x] M2 : Garde-fou domaine — connecteurs (`ManageConnectorInstanceUseCase`, toutes opérations)
+- [x] M3 : Garde-fou domaine — questions de tâche (`TaskQuestionSchema*UseCase`, toutes opérations)
+- [x] M4 : Correctif garde-fou domaine — `WorkflowTypeConfigUseCase` (`create`/`update` seulement, PR #82)
+- [x] M5 : `define_dossier_type` étendu (`documentTemplateKeys`)
+- [x] M6 : 5 nouveaux tools MCP de lecture
+- [x] M7 : 2 nouveaux tools MCP d'écriture (`dryRun`, secrets)
+- [x] M8 : IT HTTP M2M réelles (7 nouveaux tools + `define_dossier_type` étendu)
+- [x] M9 : Vérification globale + documentation
 
 ## Task Breakdown
 
 ### M1 — Garde-fou domaine partagé (D2)
 
-- [ ] T1.1 : `TenantAdminGuardTest` — nouveau test unitaire couvrant
+- [x] T1.1 : `TenantAdminGuardTest` — nouveau test unitaire couvrant
       `requireTenantOrWorkflowAdminOrApiService` : accepte `TENANT_ADMIN`, `WORKFLOW_ADMIN`,
       `API_SERVICE` ; rejette tout le reste (`AccessDeniedException`). TDD : le test échoue
       d'abord (méthode inexistante), puis implémentation dans `TenantAdminGuard.java`.
@@ -38,57 +40,57 @@ description: Break down work into actionable tasks and estimate timeline
 
 ### M2 — Garde-fou domaine : connecteurs
 
-- [ ] T2.1 : `ManageConnectorInstanceUseCase` (`port.in`) — ajouter `AccessContext.User actor` en
+- [x] T2.1 : `ManageConnectorInstanceUseCase` (`port.in`) — ajouter `AccessContext.User actor` en
       paramètre de `create`, `update`, `get`, `list`, `softDelete`, `restore` (D5 : toutes les
       opérations, miroir `@PreAuthorize` classe de `ConnectorAdminController`).
-- [ ] T2.2 : `ManageConnectorInstanceUseCaseImpl` — injecter `TenantAdminGuard`, appeler
+- [x] T2.2 : `ManageConnectorInstanceUseCaseImpl` — injecter `TenantAdminGuard`, appeler
       `requireTenantAdminOrApiService(actor)` (méthode **existante**, pas de nouvelle méthode ici)
       en tête de chaque méthode. Tests TDD par méthode et par rôle (`ManageConnectorInstanceUseCaseImplTest`) :
       rejet sans rôle, acceptation `TENANT_ADMIN` (régression), acceptation `API_SERVICE` (nouveau).
       *(Testing : bloc « `ManageConnectorInstanceUseCaseImpl` (garde-fou ajouté) ».)*
-- [ ] T2.3 : `ConnectorAdminController` — passer l'acteur (déjà disponible via `Authentication`,
+- [x] T2.3 : `ConnectorAdminController` — passer l'acteur (déjà disponible via `Authentication`,
       pattern `DossierController`) à chaque appel du use case. Test API existant
       (`ConnectorAdminControllerTest`) rejoué sans régression.
-- [ ] T2.4 : Non-régression — `update` avec secret vide/masque préserve l'existant
+- [x] T2.4 : Non-régression — `update` avec secret vide/masque préserve l'existant
       (`mergeConfig`/`isBlankOrMask` inchangés, test déjà existant à revalider après le changement
       de signature).
 
 ### M3 — Garde-fou domaine : questions de tâche
 
-- [ ] T3.1 : `SaveTaskQuestionSchemaUseCase`, `DeleteTaskQuestionSchemaUseCase`,
+- [x] T3.1 : `SaveTaskQuestionSchemaUseCase`, `DeleteTaskQuestionSchemaUseCase`,
       `GetTaskQuestionSchemaUseCase` (`port.in`) — ajouter `AccessContext.User actor` sur `save`,
       `delete`, `getByKey`, `list` (D5 : toutes les opérations, y compris les lectures, miroir
       exact de `TaskQuestionSchemaController`).
-- [ ] T3.2 : `TaskQuestionSchemaUseCaseImpl`/`GetTaskQuestionSchemaUseCaseImpl` — injecter
+- [x] T3.2 : `TaskQuestionSchemaUseCaseImpl`/`GetTaskQuestionSchemaUseCaseImpl` — injecter
       `TenantAdminGuard`, appeler `requireTenantOrWorkflowAdminOrApiService(actor)` (nouvelle
       méthode de M1) en tête de chaque méthode. Tests TDD par méthode et par rôle.
       *(Testing : bloc « `TaskQuestionSchemaUseCaseImpl`/`GetTaskQuestionSchemaUseCaseImpl`
       (garde-fou ajouté sur TOUTES les opérations, D5) ».)*
-- [ ] T3.3 : `TaskQuestionSchemaController` — passer l'acteur à chaque appel (`create`, `update`,
+- [x] T3.3 : `TaskQuestionSchemaController` — passer l'acteur à chaque appel (`create`, `update`,
       `delete`, `list`, `getByKey` — **pas** `getForTask`, hors périmètre, RBAC différent
       D-USERQ-RUNTIME-SCOPE). Test API existant (`TaskQuestionSchemaApiTest`) rejoué sans
       régression.
 
 ### M4 — Correctif garde-fou domaine : `WorkflowTypeConfigUseCase` (PR #82)
 
-- [ ] T4.1 : `SaveWorkflowTypeConfigUseCase` (`port.in`) — ajouter `AccessContext.User actor` sur
+- [x] T4.1 : `SaveWorkflowTypeConfigUseCase` (`port.in`) — ajouter `AccessContext.User actor` sur
       `create`/`update` **uniquement**. `GetWorkflowTypeConfigUseCase` (`list`/`getByKey`) reste
       **inchangé** (D5 : pas de régression sur `list_workflow_types`).
-- [ ] T4.2 : `WorkflowTypeConfigUseCaseImpl` — injecter `TenantAdminGuard`, appeler
+- [x] T4.2 : `WorkflowTypeConfigUseCaseImpl` — injecter `TenantAdminGuard`, appeler
       `requireTenantOrWorkflowAdminOrApiService(actor)` dans `create`/`update` seulement. Tests
       TDD : rejet sans rôle sur `create`/`update` ; `list`/`getByKey` **toujours accessibles** sans
       rôle (test de non-régression explicite, pas juste absence de garde par omission).
       *(Testing : bloc « `WorkflowTypeConfigUseCaseImpl` (correctif pré-existant...) ».)*
-- [ ] T4.3 : `WorkflowTypeConfigController` — passer l'acteur sur `create`/`update` seulement (ses
+- [x] T4.3 : `WorkflowTypeConfigController` — passer l'acteur sur `create`/`update` seulement (ses
       méthodes `GET` non touchées).
-- [ ] T4.4 : `DeployWorkflowTool` (MCP, tool `deploy_workflow` existant) — passer l'acteur déjà
+- [x] T4.4 : `DeployWorkflowTool` (MCP, tool `deploy_workflow` existant) — passer l'acteur déjà
       résolu (`accessContextFactory.currentActor()`, ligne 125) aux appels
       `saveWorkflowTypeConfigUseCase.create`/`update`. Test de régression explicite sur
       `deploy_workflow` (`McpToolCallIntegrationTest` existant, à rejouer).
 
 ### M5 — `define_dossier_type` étendu
 
-- [ ] T5.1 : `DefineDossierTypeTool` — ajouter le paramètre optionnel `documentTemplateKeys`
+- [x] T5.1 : `DefineDossierTypeTool` — ajouter le paramètre optionnel `documentTemplateKeys`
       (absent/`null` en update préserve l'existant, `[]` par défaut en création). Réutilise
       `CreateDossierTypeUseCase.CreateDossierTypeCommand`/`UpdateDossierTypeUseCase.UpdateDossierTypeCommand`
       qui portent déjà ce champ (aucun changement domaine nécessaire ici, contrairement à M2–M4).
@@ -98,55 +100,55 @@ description: Break down work into actionable tasks and estimate timeline
 
 ### M6 — Nouveaux tools MCP de lecture
 
-- [ ] T6.1 : `ListConnectorDefinitionsTool` → `ConnectorCatalog.listAll()` directement (pas de use
+- [x] T6.1 : `ListConnectorDefinitionsTool` → `ConnectorCatalog.listAll()` directement (pas de use
       case, catalogue statique — D4/design). Test : retourne le catalogue, jamais de secret.
-- [ ] T6.2 : `ListConnectorInstancesTool` → `ManageConnectorInstanceUseCase.list`. Test : masquage
+- [x] T6.2 : `ListConnectorInstancesTool` → `ManageConnectorInstanceUseCase.list`. Test : masquage
       secret (miroir `ConnectorResponseSecretMaskingTest`).
-- [ ] T6.3 : `GetConnectorInstanceTool` → `ManageConnectorInstanceUseCase.get`. Test : masquage
+- [x] T6.3 : `GetConnectorInstanceTool` → `ManageConnectorInstanceUseCase.get`. Test : masquage
       secret ; erreur explicite si id inconnu/tenant différent.
-- [ ] T6.4 : `ListTaskQuestionSchemasTool` → `GetTaskQuestionSchemaUseCase.list` (existe déjà,
+- [x] T6.4 : `ListTaskQuestionSchemasTool` → `GetTaskQuestionSchemaUseCase.list` (existe déjà,
       D4/Phase 2). Test : pagination correcte.
-- [ ] T6.5 : `GetTaskQuestionSchemaTool` → `GetTaskQuestionSchemaUseCase.getByKey`. Test : erreur
+- [x] T6.5 : `GetTaskQuestionSchemaTool` → `GetTaskQuestionSchemaUseCase.getByKey`. Test : erreur
       explicite si `schemaKey` inconnu.
 
 ### M7 — Nouveaux tools MCP d'écriture
 
-- [ ] T7.1 : `DefineConnectorInstanceTool` → `ManageConnectorInstanceUseCase.create`/`update`,
+- [x] T7.1 : `DefineConnectorInstanceTool` → `ManageConnectorInstanceUseCase.create`/`update`,
       `dryRun` (pattern `DefineDossierTypeTool`). Tests : secret en clair persisté chiffré ; secret
       vide/masque préserve l'existant ; `dryRun=true` ne persiste rien ; type de connecteur inconnu
       → erreur explicite.
-- [ ] T7.2 : `DefineTaskQuestionSchemaTool` → `SaveTaskQuestionSchemaUseCase.save`, `dryRun`. Tests :
+- [x] T7.2 : `DefineTaskQuestionSchemaTool` → `SaveTaskQuestionSchemaUseCase.save`, `dryRun`. Tests :
       création/MAJ avec `FieldDefinition` valides ; `dryRun=true` ne persiste rien ; collision avec
       les 4 variables plateforme réservées rejetée (réutilise
       `WorkflowVariables.isReservedOrKnownKey`, TODO §55).
 
 ### M8 — IT HTTP M2M réelles
 
-- [ ] T8.1 : Étendre `McpToolCallIntegrationTest` (ou dédier une nouvelle classe, à trancher en
+- [x] T8.1 : Étendre `McpToolCallIntegrationTest` (ou dédier une nouvelle classe, à trancher en
       Phase 5 selon la taille) : appel HTTP réel `/api/m2m/mcp` pour chacun des 7 nouveaux tools +
       `define_dossier_type` étendu, à travers la vraie chaîne Spring Security (pas de mock JWT) —
       même exigence que M7 de `serveur-mcp`, qui avait révélé le risque d'un endpoint
       inatteignable (cf. le trou trouvé post-merge sur `connecteur-callback`, TODO §53/§54, à ne
       pas reproduire ici).
-- [ ] T8.2 : Round-trip complet (scénario métier, justifie le nom de la feature) :
+- [x] T8.2 : Round-trip complet (scénario métier, justifie le nom de la feature) :
       `define_connector_instance` → `define_dossier_type` (avec `documentTemplateKeys`) →
       `define_task_question_schema` → `deploy_workflow` référençant les trois — prouve qu'un flux
       métier complet est atteignable sans sortir du canal MCP.
 
 ### M9 — Vérification globale + documentation
 
-- [ ] T9.1 : `./mvnw verify -Dmaven.compiler.release=21` — Jacoco LINE ≥ 85 % / BRANCH ≥ 75 %,
+- [x] T9.1 : `./mvnw verify -Dmaven.compiler.release=21` — Jacoco LINE ≥ 85 % / BRANCH ≥ 75 %,
       vérifié classe par classe sur les fichiers modifiés/ajoutés (convention TODO §28), 0 échec.
-- [ ] T9.2 : Régression explicite des 9 tools MCP existants + 3 contrôleurs REST touchés
+- [x] T9.2 : Régression explicite des 9 tools MCP existants + 3 contrôleurs REST touchés
       (`ConnectorAdminControllerTest`, `TaskQuestionSchemaApiTest`, `WorkflowTypeConfigController`
       tests) + `frontend` (`npm run test`) — feature backend-only pressentie, à confirmer par
       `git diff --stat` (zéro fichier `frontend/**`).
-- [ ] T9.3 : Mise à jour documentation : [15-serveur-mcp.md](../../../analysis%20doc/15-serveur-mcp.md)
+- [x] T9.3 : Mise à jour documentation : [15-serveur-mcp.md](../../../analysis%20doc/15-serveur-mcp.md)
       (catalogue des tools, 9 → 16), [06-connecteurs.md](../../../analysis%20doc/06-connecteurs.md)
       si pertinent, `README.md`/`GETTING-STARTED.md` si une variable d'environnement change (a
       priori non — aucune prévue). `CHANGELOG.md` : entrée `[Non publié]` à la PR (convention
       `flowforge-conventions`).
-- [ ] T9.4 : Clôture TODO §56 (statut `[x]`), resynchronisation `FILE-ATTENTE.md`.
+- [x] T9.4 : Clôture TODO §56 (statut `[x]`), resynchronisation `FILE-ATTENTE.md`.
 
 ## Dependencies
 

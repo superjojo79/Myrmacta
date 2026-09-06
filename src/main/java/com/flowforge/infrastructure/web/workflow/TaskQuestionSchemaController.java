@@ -1,5 +1,6 @@
 package com.flowforge.infrastructure.web.workflow;
 
+import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.FieldDefinition;
 import com.flowforge.domain.workflow.model.TaskQuestionSchema;
 import com.flowforge.domain.workflow.model.UnknownTaskQuestionSchemaException;
@@ -65,7 +66,8 @@ class TaskQuestionSchemaController {
     @PreAuthorize("hasAnyRole('TENANT_ADMIN','WORKFLOW_ADMIN')")
     ResponseEntity<TaskQuestionSchemaResponse> create(
             @RequestBody CreateTaskQuestionSchemaRequest request, Authentication authentication) {
-        String actor = accessContextFactory.user(authentication).userId();
+        AccessContext.User actorContext = accessContextFactory.user(authentication);
+        String actor = actorContext.userId();
         TaskQuestionSchema schema = saveUseCase.save(new TaskQuestionSchema(
                 UUID.randomUUID(),
                 tenantProperties.id(),
@@ -73,7 +75,8 @@ class TaskQuestionSchemaController {
                 required(request.label(), "label"),
                 listOrEmpty(request.fieldDefinitions()),
                 actor,
-                actor));
+                actor),
+                actorContext);
         return ResponseEntity
                 .created(URI.create("/api/task-question-schemas/" + schema.schemaKey()))
                 .body(TaskQuestionSchemaResponse.from(schema));
@@ -85,18 +88,19 @@ class TaskQuestionSchemaController {
             @PathVariable String schemaKey,
             @RequestBody UpdateTaskQuestionSchemaRequest request,
             Authentication authentication) {
-        String actor = accessContextFactory.user(authentication).userId();
-        TaskQuestionSchema existing = getUseCase.getByKey(schemaKey)
+        AccessContext.User actorContext = accessContextFactory.user(authentication);
+        String actor = actorContext.userId();
+        TaskQuestionSchema existing = getUseCase.getByKey(schemaKey, actorContext)
                 .orElseThrow(() -> new UnknownTaskQuestionSchemaException("Unknown schema: " + schemaKey));
         TaskQuestionSchema updated = existing.withUpdate(
                 required(request.label(), "label"), listOrEmpty(request.fieldDefinitions()), actor);
-        return TaskQuestionSchemaResponse.from(saveUseCase.save(updated));
+        return TaskQuestionSchemaResponse.from(saveUseCase.save(updated, actorContext));
     }
 
     @DeleteMapping("/{schemaKey}")
     @PreAuthorize("hasAnyRole('TENANT_ADMIN','WORKFLOW_ADMIN')")
-    ResponseEntity<Void> delete(@PathVariable String schemaKey) {
-        deleteUseCase.delete(schemaKey);
+    ResponseEntity<Void> delete(@PathVariable String schemaKey, Authentication authentication) {
+        deleteUseCase.delete(schemaKey, accessContextFactory.user(authentication));
         return ResponseEntity.noContent().build();
     }
 
@@ -105,16 +109,19 @@ class TaskQuestionSchemaController {
     PageResponse<TaskQuestionSchemaResponse> list(
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size,
-            @RequestParam(required = false) String sort) {
+            @RequestParam(required = false) String sort,
+            Authentication authentication) {
         return PageResponse.from(getUseCase
-                .list(PageQueryParser.parse(page, size, sort, ListSorts.TASK_QUESTION_SCHEMAS))
+                .list(
+                        PageQueryParser.parse(page, size, sort, ListSorts.TASK_QUESTION_SCHEMAS),
+                        accessContextFactory.user(authentication))
                 .map(TaskQuestionSchemaResponse::from));
     }
 
     @GetMapping("/{schemaKey}")
     @PreAuthorize("hasAnyRole('TENANT_ADMIN','WORKFLOW_ADMIN')")
-    TaskQuestionSchemaResponse getByKey(@PathVariable String schemaKey) {
-        return getUseCase.getByKey(schemaKey)
+    TaskQuestionSchemaResponse getByKey(@PathVariable String schemaKey, Authentication authentication) {
+        return getUseCase.getByKey(schemaKey, accessContextFactory.user(authentication))
                 .map(TaskQuestionSchemaResponse::from)
                 .orElseThrow(() -> new UnknownTaskQuestionSchemaException("Unknown schema: " + schemaKey));
     }

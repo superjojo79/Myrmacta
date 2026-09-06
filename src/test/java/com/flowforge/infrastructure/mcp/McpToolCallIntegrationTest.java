@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
+import com.flowforge.domain.connector.port.out.ConnectorInstanceRepository;
 import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierStatus;
 import com.flowforge.domain.dossier.model.DossierType;
@@ -12,6 +13,7 @@ import com.flowforge.domain.dossier.model.FieldType;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
 import com.flowforge.domain.workflow.port.in.GetWorkflowTypeConfigUseCase;
+import com.flowforge.domain.workflow.port.out.TaskQuestionSchemaRepository;
 import com.flowforge.support.OidcClientTestConfiguration;
 import java.time.Instant;
 import java.util.List;
@@ -55,6 +57,12 @@ class McpToolCallIntegrationTest {
 
     @Autowired
     private GetWorkflowTypeConfigUseCase getWorkflowTypeConfigUseCase;
+
+    @Autowired
+    private ConnectorInstanceRepository connectorInstanceRepository;
+
+    @Autowired
+    private TaskQuestionSchemaRepository taskQuestionSchemaRepository;
 
     private String sessionId;
 
@@ -197,6 +205,183 @@ class McpToolCallIntegrationTest {
 
         String body = call.getResponse().getContentAsString();
         assertThat(body).as("body: %s", body).contains("\\\"size\\\":20");
+    }
+
+    @Test
+    void listConnectorDefinitions_returns200() throws Exception {
+        MvcResult call = callMcp(sessionId, TENANT, "API_SERVICE", 2, "tools/call", """
+                {"name": "list_connector_definitions", "arguments": {}}
+                """);
+
+        assertThat(call.getResponse().getContentAsString()).contains("\"isError\":false");
+    }
+
+    @Test
+    void defineConnectorInstance_createsAndMasksSecretOnRead() throws Exception {
+        String name = "MCP IT Connector " + UUID.randomUUID();
+
+        MvcResult createCall = callMcp(sessionId, TENANT, "API_SERVICE", 2, "tools/call", """
+                {
+                  "name": "define_connector_instance",
+                  "arguments": {
+                    "name": "%s",
+                    "connectorType": "http-rest",
+                    "config": {
+                      "webhookAuthType": "HMAC_SHA256",
+                      "webhookSecret": "supersecretvalue1234",
+                      "processKey": "wf-mcp-it",
+                      "dossierTypeCode": "MCPIT"
+                    }
+                  }
+                }
+                """.formatted(name));
+        String createBody = createCall.getResponse().getContentAsString();
+        assertThat(createBody).as("body: %s", createBody).contains("\"isError\":false");
+        assertThat(createBody).doesNotContain("supersecretvalue1234");
+
+        var persisted = connectorInstanceRepository.pageByTenantId(TENANT, com.flowforge.domain.shared.PageQuery.of(0, 100))
+                .content().stream().filter(c -> c.name().equals(name)).findFirst().orElseThrow();
+        assertThat(persisted.config()).containsEntry("webhookSecret", "supersecretvalue1234");
+
+        MvcResult getCall = callMcp(sessionId, TENANT, "API_SERVICE", 2, "tools/call", """
+                {"name": "get_connector_instance", "arguments": {"id": "%s"}}
+                """.formatted(persisted.id()));
+        String getBody = getCall.getResponse().getContentAsString();
+        assertThat(getBody).as("body: %s", getBody).doesNotContain("supersecretvalue1234");
+    }
+
+    @Test
+    void defineTaskQuestionSchema_persistsAndIsVisibleToDirectRepositoryRead() throws Exception {
+        String schemaKey = "mcpit" + UUID.randomUUID().toString().substring(0, 8);
+
+        MvcResult call = callMcp(sessionId, TENANT, "API_SERVICE", 2, "tools/call", """
+                {
+                  "name": "define_task_question_schema",
+                  "arguments": {
+                    "schemaKey": "%s",
+                    "label": "MCP IT question",
+                    "fields": [{"name": "decision", "label": "Decision", "type": "STRING", "required": true}]
+                  }
+                }
+                """.formatted(schemaKey));
+
+        assertThat(call.getResponse().getContentAsString()).contains("\"isError\":false");
+        var persisted = taskQuestionSchemaRepository.findByKey(TENANT, schemaKey).orElseThrow();
+        assertThat(persisted.label()).isEqualTo("MCP IT question");
+        assertThat(persisted.createdBy()).isEqualTo("agent-1");
+    }
+
+    @Test
+    void listAndGetTaskQuestionSchemas_return200() throws Exception {
+        MvcResult list = callMcp(sessionId, TENANT, "API_SERVICE", 2, "tools/call", """
+                {"name": "list_task_question_schemas", "arguments": {}}
+                """);
+        assertThat(list.getResponse().getContentAsString()).contains("\"isError\":false");
+    }
+
+    @Test
+    void defineDossierType_withDocumentTemplateKeys_persists() throws Exception {
+        String code = "MCPIT" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+
+        MvcResult call = callMcp(sessionId, TENANT, "API_SERVICE", 2, "tools/call", """
+                {
+                  "name": "define_dossier_type",
+                  "arguments": {
+                    "code": "%s",
+                    "label": "MCP IT",
+                    "workflowKey": "wf-mcp-it",
+                    "active": true,
+                    "allowUnknownFields": false,
+                    "fieldDefinitions": [],
+                    "documentTemplateKeys": ["template-a", "template-b"]
+                  }
+                }
+                """.formatted(code));
+
+        assertThat(call.getResponse().getContentAsString()).contains("\"isError\":false");
+        DossierType persisted = dossierTypeRepository.findByCode(TENANT, code).orElseThrow();
+        assertThat(persisted.documentTemplateKeys()).containsExactly("template-a", "template-b");
+    }
+
+    @Test
+    void businessFlow_connectorDossierTypeQuestionSchemaAndWorkflow_areAllReachableThroughMcpOnly() throws Exception {
+        String connectorName = "Flow connector " + UUID.randomUUID();
+        callMcp(sessionId, TENANT, "API_SERVICE", 2, "tools/call", """
+                {
+                  "name": "define_connector_instance",
+                  "arguments": {
+                    "name": "%s",
+                    "connectorType": "http-rest",
+                    "config": {
+                      "webhookAuthType": "HMAC_SHA256",
+                      "webhookSecret": "supersecretvalue1234",
+                      "processKey": "wf-mcp-flow",
+                      "dossierTypeCode": "MCPFLOW"
+                    }
+                  }
+                }
+                """.formatted(connectorName));
+
+        String typeCode = "MCPFLOW" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+        MvcResult typeCall = callMcp(sessionId, TENANT, "API_SERVICE", 2, "tools/call", """
+                {
+                  "name": "define_dossier_type",
+                  "arguments": {
+                    "code": "%s",
+                    "label": "Flow type",
+                    "workflowKey": "wf-mcp-flow",
+                    "active": true,
+                    "allowUnknownFields": false,
+                    "fieldDefinitions": [],
+                    "documentTemplateKeys": []
+                  }
+                }
+                """.formatted(typeCode));
+        assertThat(typeCall.getResponse().getContentAsString()).contains("\"isError\":false");
+
+        String schemaKey = "flow" + UUID.randomUUID().toString().substring(0, 8);
+        MvcResult schemaCall = callMcp(sessionId, TENANT, "API_SERVICE", 2, "tools/call", """
+                {
+                  "name": "define_task_question_schema",
+                  "arguments": {
+                    "schemaKey": "%s",
+                    "label": "Flow question",
+                    "fields": [{"name": "orientation", "label": "Orientation", "type": "STRING", "required": true}]
+                  }
+                }
+                """.formatted(schemaKey));
+        assertThat(schemaCall.getResponse().getContentAsString()).contains("\"isError\":false");
+
+        String workflowKey = "mcpFlow" + UUID.randomUUID().toString().substring(0, 8);
+        String xml = """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                             targetNamespace="http://flowforge/test">
+                  <process id="%s" isExecutable="true">
+                    <startEvent id="start"/>
+                    <userTask id="wait" name="Wait"/>
+                    <endEvent id="end"/>
+                    <sequenceFlow id="flow1" sourceRef="start" targetRef="wait"/>
+                    <sequenceFlow id="flow2" sourceRef="wait" targetRef="end"/>
+                  </process>
+                </definitions>
+                """.formatted(workflowKey).replace("\"", "\\\"").replace("\n", "\\n");
+        MvcResult deployCall = callMcp(sessionId, TENANT, "API_SERVICE", 2, "tools/call", """
+                {
+                  "name": "deploy_workflow",
+                  "arguments": {
+                    "processDefinitionKey": "%s",
+                    "xml": "%s",
+                    "label": "MCP Flow",
+                    "statusDefinitions": [{"code": "STARTED", "label": "Started", "initial": true, "outcome": "NONE"}],
+                    "allowedDossierStatuses": ["OUVERT"]
+                  }
+                }
+                """.formatted(workflowKey, xml));
+
+        String body = deployCall.getResponse().getContentAsString();
+        assertThat(body).as("body: %s", body).contains("\"isError\":false");
+        assertThat(getWorkflowTypeConfigUseCase.getByKey(workflowKey)).isPresent();
     }
 
     private MvcResult callMcp(String sessionId, String tenantId, String authority, int id, String method, String params)

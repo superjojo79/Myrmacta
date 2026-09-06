@@ -11,12 +11,16 @@
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
 > **Dernière mise à jour :** 2026-09-06 — TODO **§56 ouvert**, cycle `dev-lifecycle` lancé sur
-> `extension-mcp-flux-metier`, Phase 4 (planning) close — plan en 9 milestones/~26 tâches (M1
-> garde-fou domaine d'abord, M2–M4 câblage par bounded context, M5 `define_dossier_type` étendu,
-> M6–M7 les 7 nouveaux tools, M8 IT M2M réelles + scénario bout en bout, M9 vérification globale).
-> Détail complet dans TODO §56 et
-> [docs/ai/planning/2026-09-06-feature-extension-mcp-flux-metier.md](docs/ai/planning/2026-09-06-feature-extension-mcp-flux-metier.md).
-> Suite : Phase 5 (implémentation TDD).
+> `extension-mcp-flux-metier`, Phase 5 (implémentation TDD) close — M1 à M9 enchaînés, 16 tools MCP
+> au total (9 → 16 : connecteurs + questions de tâche + `define_dossier_type` étendu). 3 écarts
+> réels trouvés en implémentation (appelant de test non recensé en design, méthodes `default` de
+> repository non exécutées par Mockito, comptage de tools figé dans un test existant) — tous
+> corrigés. `./mvnw verify` : 1653 tests (0 échec), ArchUnit conforme, couverture tenue ; Vitest
+> 289/289 (0 régression, zéro fichier frontend touché) ; Playwright non exécutable dans ce bac à
+> sable (binaire manquant, pré-existant, non bloquant). Détail complet dans TODO §56 et
+> [docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md](docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md).
+> Suite : Phase 6 (mise à jour planning), Phase 7 (check implementation), Phase 8 (dev-testing),
+> Phase 9 (revue finale).
 >
 > 2026-09-06 (plus tôt) — Phase 3 (design) close. 6 décisions tranchées en Phase 1 via
 > `AskUserQuestion` (périmètre un seul cycle, flux du secret connecteur, extension de
@@ -220,11 +224,11 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 (ArchUnit `application`), §48 (`http-rest` SERVICE), §49 (assainissement dette technique), §50
 (connecteurs hors V1), §51 (connecteur callback) et §52 (formulaires dynamiques tâches) **clos**.
 
-**En cours :** `extension-mcp-flux-metier` (TODO §56), cycle `dev-lifecycle` lancé, Phase 4
-(planning) close — extension du serveur MCP (`ConnectorInstance`, association templates ↔ type de
-dossier, `TaskQuestionSchema`) pour couvrir les mécanismes de configuration ajoutés depuis
-`serveur-mcp` (§48, §50, §51, §52, §55). Plan en 9 milestones. Suite : Phase 5 (implémentation
-TDD). Voir l'en-tête de ce fichier pour le détail des décisions déjà tranchées.
+**En cours :** `extension-mcp-flux-metier` (TODO §56), cycle `dev-lifecycle` lancé, Phase 5
+(implémentation TDD) close — 16 tools MCP livrés (9 → 16 : connecteurs, questions de tâche,
+`define_dossier_type` étendu) pour couvrir les mécanismes de configuration ajoutés depuis
+`serveur-mcp` (§48, §50, §51, §52, §55). `./mvnw verify` 1653 tests (0 échec). Suite : Phase 7
+(check implementation). Voir l'en-tête de ce fichier pour le détail.
 
 En réserve (non retenu, aucune analyse écrite) : outillage provisioning tenant (schéma/instance/
 proxy/secrets, `DEFERRED-FEATURES.md` §1.2/§4).

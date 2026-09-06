@@ -6,9 +6,10 @@ description: Define testing approach, test cases, and quality assurance
 
 # Testing Strategy — `extension-mcp-flux-metier`
 
-> Brouillon Phase 1, dérivé des « Success Criteria » du document requirements. À affiner en
-> Phase 4 (planning) et Phase 8 (dev-testing). Même style que la suite `serveur-mcp`
-> (`McpToolCallIntegrationTest`, `McpAccessContextFactoryTest`, `McpEndpointApiTest`).
+> Dérivé des « Success Criteria » du document requirements, mis à jour après Phase 3 (design close
+> — D2/D5 tranchés). À affiner en Phase 4 (planning) et Phase 8 (dev-testing). Même style que la
+> suite `serveur-mcp` (`McpToolCallIntegrationTest`, `McpAccessContextFactoryTest`,
+> `McpEndpointApiTest`).
 
 ## Test Coverage Goals
 
@@ -18,8 +19,13 @@ description: Define testing approach, test cases, and quality assurance
 - Test de régression **par use case touché** (pas seulement par tool MCP) prouvant que le
   garde-fou domaine rejette un acteur sans rôle requis — c'est le cœur de la trouvaille
   D-MCP-EXT-RBAC-GUARD, doit être vérifié au niveau `ManageConnectorInstanceUseCaseImpl`,
-  `TaskQuestionSchemaUseCaseImpl` et `WorkflowTypeConfigUseCaseImpl` directement, pas seulement
-  via le tool.
+  `TaskQuestionSchemaUseCaseImpl`/`GetTaskQuestionSchemaUseCaseImpl` et
+  `WorkflowTypeConfigUseCaseImpl` directement, pas seulement via le tool — avec le périmètre exact
+  par méthode fixé par D5 (`WorkflowTypeConfigUseCaseImpl` : `create`/`update` seulement).
+- Régression explicite sur `infrastructure/mcp/tool/DeployWorkflowTool.java` : le passage de
+  l'acteur déjà résolu (`accessContextFactory.currentActor()`) à
+  `saveWorkflowTypeConfigUseCase.create`/`update` ne doit rien changer au comportement observable
+  du tool `deploy_workflow` pour un appelant `API_SERVICE` déjà valide.
 - Alignement Jacoco LINE ≥ 85 % / BRANCH ≥ 75 % (seuils actuels), classe par classe (convention du
   dépôt depuis `fiabilisation-tests-plateforme`, TODO §28).
 
@@ -34,12 +40,18 @@ description: Define testing approach, test cases, and quality assurance
 - [ ] `update` avec secret vide/masque préserve le secret existant (régression —
   `mergeConfig`/`isBlankOrMask` inchangés)
 
-### `TaskQuestionSchemaUseCaseImpl` (garde-fou ajouté)
+### `TaskQuestionSchemaUseCaseImpl`/`GetTaskQuestionSchemaUseCaseImpl` (garde-fou ajouté sur TOUTES les opérations, D5)
 
 - [ ] `save` rejette un acteur sans `TENANT_ADMIN`/`WORKFLOW_ADMIN` ni `API_SERVICE`
 - [ ] `save` accepte `TENANT_ADMIN` et `WORKFLOW_ADMIN` (régression REST)
 - [ ] `save` accepte `API_SERVICE` (nouveau)
 - [ ] `delete` — mêmes cas
+- [ ] `getByKey` — mêmes cas (contrairement à `WorkflowTypeConfigUseCaseImpl`, la lecture est
+      gardée ici aussi, cf. D5/D-MCP-EXT-RBAC-SCOPE)
+- [ ] `list` — mêmes cas
+- [ ] `TenantAdminGuard.requireTenantOrWorkflowAdminOrApiService` (nouvelle méthode, D2=c) : test
+      unitaire dédié sur `TenantAdminGuard` lui-même (accepte `TENANT_ADMIN`/`WORKFLOW_ADMIN`/
+      `API_SERVICE`, rejette tout le reste) — avant de vérifier ses appelants
 
 ### `WorkflowTypeConfigUseCaseImpl` (correctif pré-existant, PR #82 — périmètre restreint, D-MCP-EXT-RBAC-SCOPE)
 

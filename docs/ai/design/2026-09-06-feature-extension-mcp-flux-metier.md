@@ -6,9 +6,11 @@ description: Define the technical architecture, components, and data models
 
 # System Design & Architecture — `extension-mcp-flux-metier`
 
-> Brouillon Phase 1, à valider en Phase 3 (`dev-design`). S'appuie sur
+> Phase 3 (`dev-design`) close — dernier point de conception ouvert (D2, emplacement du garde-fou
+> partagé) tranché via `AskUserQuestion`. S'appuie sur
 > [docs/ai/requirements/2026-09-06-feature-extension-mcp-flux-metier.md](../requirements/2026-09-06-feature-extension-mcp-flux-metier.md)
-> et sur le code réel exploré pendant la Phase 1 (pas seulement sur l'analyse initiale).
+> et sur le code réel (tous les appelants des 4 interfaces `port.in` modifiées recensés, règles
+> ArchUnit vérifiées avant de trancher D2).
 
 ## Architecture Overview
 
@@ -36,18 +38,21 @@ graph TD
     T7 --> SaveQSchema[SaveTaskQuestionSchemaUseCase]
     T8 --> DossierTypeUC[Create/UpdateDossierTypeUseCase]
 
-    ManageConn --> Guard1{{Domain guard\nTENANT_ADMIN ou API_SERVICE}}
-    SaveQSchema --> Guard2{{Domain guard\nTENANT_ADMIN/WORKFLOW_ADMIN ou API_SERVICE}}
-    DossierTypeUC --> Guard3[TenantAdminGuard existant]
+    ManageConn -->|toutes opérations| Guard1["TenantAdminGuard.requireTenantAdminOrApiService\n(méthode existante, réutilisée telle quelle)"]
+    SaveQSchema -->|toutes opérations| Guard2["TenantAdminGuard.requireTenantOrWorkflowAdminOrApiService\n(nouvelle méthode, D2=c)"]
+    DossierTypeUC --> Guard3["TenantAdminGuard.requireTenantAdminOrApiService\n(existant, inchangé)"]
 
     ManageConn --> ConnRepo[(ConnectorInstance\nAES-GCM secrets)]
     SaveQSchema --> QSchemaRepo[(TaskQuestionSchema)]
     DossierTypeUC --> DossierTypeRepo[(DossierType)]
 
     subgraph "Correctif pré-existant (PR #82)"
-        DeployWorkflow[deploy_workflow existant] --> WfConfigUC[WorkflowTypeConfigUseCaseImpl]
-        WfConfigUC --> Guard4{{Domain guard\nà ajouter}}
+        DeployWorkflow[deploy_workflow existant] -->|create/update seulement| WfConfigUC[WorkflowTypeConfigUseCaseImpl]
+        WfConfigUC --> Guard4["TenantAdminGuard.requireTenantOrWorkflowAdminOrApiService\n(même nouvelle méthode que SaveQSchema)"]
+        WfConfigUC -.list/getByKey inchangés, aucun garde.-> OpenRead[(reste ouvert)]
     end
+
+    Guard1 -.domain.dossier.TenantAdminGuard, réutilisé par domain.connector\nD2=c : dépendance transverse assumée, précédent déjà accepté\n(domain.workflow → domain.dossier.model.FieldDefinition, TODO §55).-> Guard2
 ```
 
 **Composants clés**
@@ -112,19 +117,35 @@ désormais vérifier ce rôle lui-même**, voir « Design Decisions ».
 **Backend — modifié**
 
 - `infrastructure/mcp/tool/DefineDossierTypeTool.java` (+`documentTemplateKeys`)
-- `domain/connector/port/in/ManageConnectorInstanceUseCase.java` (+ paramètre acteur sur
-  `create`/`update`, potentiellement `get`/`list`/`softDelete` selon la décision de conception)
-- `domain/connector/usecase/ManageConnectorInstanceUseCaseImpl.java` (+ garde-fou)
-- `domain/workflow/port/in/SaveTaskQuestionSchemaUseCase.java` /
-  `DeleteTaskQuestionSchemaUseCase.java` (+ paramètre acteur)
-- `domain/workflow/usecase/TaskQuestionSchemaUseCaseImpl.java` (+ garde-fou)
-- `domain/workflow/port/in/SaveWorkflowTypeConfigUseCase.java` (+ paramètre acteur — **correctif
-  sur du code déjà livré en PR #82**)
-- `domain/workflow/usecase/WorkflowTypeConfigUseCaseImpl.java` (+ garde-fou)
-- Tous les appelants REST de ces use cases (`ConnectorAdminController`,
-  `TaskQuestionSchemaController`, `WorkflowBpmnDeploymentController`/écran admin workflow-types) —
-  doivent désormais passer l'acteur déjà disponible via `Authentication`, cohérent avec le
-  pattern déjà utilisé par `DossierController`/`CreateDossierTypeUseCaseImpl`.
+- `domain/dossier/TenantAdminGuard.java` (D2=c) : nouvelle méthode
+  `requireTenantOrWorkflowAdminOrApiService(AccessContext.User actor)` (accepte `TENANT_ADMIN`,
+  `WORKFLOW_ADMIN` ou `API_SERVICE`) — `requireTenantAdminOrApiService` existante réutilisée telle
+  quelle pour les connecteurs (RBAC REST `TENANT_ADMIN`-only).
+- `domain/connector/port/in/ManageConnectorInstanceUseCase.java` : `AccessContext.User actor` en
+  paramètre sur **toutes** les méthodes (`create`, `update`, `get`, `list`, `softDelete`,
+  `restore`) — miroir exact du `@PreAuthorize` classe de `ConnectorAdminController` (D5).
+- `domain/connector/usecase/ManageConnectorInstanceUseCaseImpl.java` (+ appel
+  `TenantAdminGuard.requireTenantAdminOrApiService` en tête de chaque méthode).
+- `domain/workflow/port/in/SaveTaskQuestionSchemaUseCase.java`,
+  `DeleteTaskQuestionSchemaUseCase.java`, `GetTaskQuestionSchemaUseCase.java` : `AccessContext.User
+  actor` en paramètre sur **toutes** les méthodes (`save`, `delete`, `getByKey`, `list`) — miroir
+  exact de `TaskQuestionSchemaController`, qui gate aussi les lectures (D5).
+- `domain/workflow/usecase/TaskQuestionSchemaUseCaseImpl.java`,
+  `GetTaskQuestionSchemaUseCaseImpl.java` (+ appel
+  `TenantAdminGuard.requireTenantOrWorkflowAdminOrApiService` en tête de chaque méthode).
+- `domain/workflow/port/in/SaveWorkflowTypeConfigUseCase.java` (+ paramètre acteur sur `create`/
+  `update` **uniquement** — **correctif sur du code déjà livré en PR #82**, `GetWorkflowTypeConfigUseCase`
+  (`list`/`getByKey`) reste inchangé, cf. D5).
+- `domain/workflow/usecase/WorkflowTypeConfigUseCaseImpl.java` (+ appel
+  `TenantAdminGuard.requireTenantOrWorkflowAdminOrApiService` dans `create`/`update` seulement).
+- Appelants REST à mettre à jour pour passer l'acteur déjà disponible via `Authentication`
+  (pattern déjà utilisé par `DossierController`/`CreateDossierTypeUseCaseImpl`) :
+  `ConnectorAdminController`, `TaskQuestionSchemaController`, `WorkflowTypeConfigController`
+  (uniquement ses méthodes `create`/`update` — `list`/`getByKey` d'un contrôleur non touchées).
+- `infrastructure/mcp/tool/DeployWorkflowTool.java` : appel MCP existant à
+  `saveWorkflowTypeConfigUseCase.create(config)`/`update(config)` — l'acteur est **déjà résolu**
+  dans la méthode (`accessContextFactory.currentActor()`, ligne 125) mais pas transmis ; ajout du
+  paramètre à l'appel existant, changement minimal.
 
 **Backend — inchangé, réutilisé tel quel**
 
@@ -139,40 +160,40 @@ désormais vérifier ce rôle lui-même**, voir « Design Decisions ».
 
 ## Design Decisions
 
-### D1 — Garde-fou domaine : nouvelle interface de paramètre acteur (breaking, assumé)
+### D1 — Garde-fou domaine : nouveau paramètre acteur sur 5 interfaces `port.in` (breaking, assumé)
 
-Constat vérifié dans le code (Phase 1) : ni `ManageConnectorInstanceUseCase`, ni
-`SaveTaskQuestionSchemaUseCase`/`DeleteTaskQuestionSchemaUseCase`, ni `SaveWorkflowTypeConfigUseCase`
-n'acceptent aujourd'hui un `AccessContext.User` en paramètre — contrairement à
-`CreateDossierTypeUseCase`/`UpdateDossierTypeUseCase`, qui le font déjà et embarquent
-`TenantAdminGuard`. Ajouter un garde-fou domaine (décision D-MCP-EXT-RBAC-GUARD, requirements)
-implique donc de **changer la signature de ces 4 interfaces `port.in`** pour y ajouter l'acteur,
-et de mettre à jour tous leurs appelants REST existants (qui ont déjà l'acteur via
-`Authentication`, juste pas transmis aujourd'hui).
+Constat vérifié dans le code (Phase 1, précisé Phase 2/3 par D5) : ni `ManageConnectorInstanceUseCase`,
+ni `SaveTaskQuestionSchemaUseCase`/`DeleteTaskQuestionSchemaUseCase`/`GetTaskQuestionSchemaUseCase`,
+ni `SaveWorkflowTypeConfigUseCase` n'acceptent aujourd'hui un `AccessContext.User` en paramètre —
+contrairement à `CreateDossierTypeUseCase`/`UpdateDossierTypeUseCase`, qui le font déjà et
+embarquent `TenantAdminGuard`. Ajouter le garde-fou domaine (décision D-MCP-EXT-RBAC-GUARD,
+requirements ; périmètre exact par D-MCP-EXT-RBAC-SCOPE/D5) implique donc de **changer la
+signature de 5 interfaces `port.in`** (le compte est passé de 4 à 5 en Phase 2 : `D5` a établi que
+`TaskQuestionSchemaController` gate aussi ses lectures, donc `GetTaskQuestionSchemaUseCase` a
+besoin de l'acteur lui aussi, pas seulement `Save`/`Delete`), et de mettre à jour tous leurs
+appelants REST/MCP existants (qui ont déjà l'acteur via `Authentication`/`accessContextFactory`,
+juste pas transmis aujourd'hui — voir « Component Breakdown »).
 
 C'est un changement plus large que le périmètre visible depuis l'analyse initiale — assumé
 explicitement par l'utilisateur (choix « Ajouter le garde-fou domaine partout », requirements),
 documenté ici pour ne pas être découvert en Phase 5.
 
-### D2 — Emplacement du garde-fou partagé (point ouvert)
+### D2 — Emplacement du garde-fou partagé (résolu, Phase 3, option **(c)**)
 
-`TenantAdminGuard` vit dans `domain.dossier` — recopier son usage tel quel pour
-`ConnectorInstance` (bounded context `connector`) ou `TaskQuestionSchema` (bounded context
-`workflow`) introduirait une dépendance `connector`/`workflow` → `dossier` uniquement pour un
-garde-fou générique, sans lien métier réel. Options à trancher en Phase 3 :
+Vérifié avant de trancher : aucune règle ArchUnit n'interdit une dépendance entre sous-packages du
+domaine (seules `domain_has_no_framework_dependency` et `domain_never_depends_on_infrastructure`
+existent, `ArchitectureRulesTest.java`) — et un précédent déjà assumé existe :
+`domain.workflow` dépend déjà de `domain.dossier.model.FieldDefinition`/`FieldType`, décision
+explicite de TODO §55 (« dépendance déjà existante et assumée »). Étendre `TenantAdminGuard` sur
+place n'est donc pas un précédent nouveau.
 
-- **(a)** Dupliquer un petit guard par bounded context (`ConnectorAdminGuard`,
-  `WorkflowAdminGuard`) — cohérent avec la règle d'architecture hexagonale (pas de couplage entre
-  bounded contexts), léger duplicat de 5 lignes.
-- **(b)** Déplacer un guard générique dans un package neutre partagé (ex. `domain.shared` ou
-  `domain.access`) réutilisable par tous les bounded contexts.
-- **(c)** Étendre `TenantAdminGuard` avec une méthode `requireTenantOrWorkflowAdminOrApiService`
-  et le laisser dans `domain.dossier`, accepté comme dépendance transverse pragmatique (le
-  `AccessContext`/`AccessDeniedException` qu'il utilise sont déjà dans `domain.dossier.model`,
-  partagés de fait par tout le domaine).
-
-Recommandation à date (à confirmer Phase 3) : **(b)**, la classe ne contient aucune logique
-spécifique aux dossiers — c'est un contrôle de rôle générique mal rangé.
+**Décision : (c)** — `TenantAdminGuard` (`domain.dossier`) gagne une méthode
+`requireTenantOrWorkflowAdminOrApiService(AccessContext.User actor)`, réutilisée telle quelle par
+`domain.connector` (via `requireTenantAdminOrApiService`, déjà existante — pas de nouvelle méthode
+nécessaire pour les connecteurs) et `domain.workflow` (via la nouvelle méthode). Aucun nouveau
+package, aucune duplication, cohérent avec le pattern déjà accepté. La classe reste dans
+`domain.dossier` malgré son usage désormais transverse — renommage/déplacement jugé non justifié
+par un simple gain cosmétique (options (a) dupliquer, (b) déplacer, écartées pour cette raison).
 
 ### D3 — Secrets connecteurs sur le canal MCP
 
@@ -208,10 +229,11 @@ Le RBAC REST diffère par contrôleur — vérifié précisément en Phase 2 :
   rejeté par le use case lui-même, pas seulement par un `@PreAuthorize` REST contournable par un
   appelant qui invoque le use case directement (c'est exactement le trou que cette feature comble).
 - **Compatibilité** : les 9 tools existants et les endpoints REST déjà couverts
-  (`ConnectorAdminController`, `TaskQuestionSchemaController`,
-  `WorkflowBpmnDeploymentController`/écran admin) ne doivent subir aucune régression de
-  comportement — seul le paramètre acteur est ajouté en interne, le comportement pour un acteur
-  déjà autorisé (`TENANT_ADMIN` REST, `API_SERVICE` MCP) reste identique.
+  (`ConnectorAdminController`, `TaskQuestionSchemaController`, `WorkflowTypeConfigController`) ne
+  doivent subir aucune régression de comportement — seul le paramètre acteur est ajouté en
+  interne, le comportement pour un acteur déjà autorisé (rôles REST habituels, `API_SERVICE` MCP)
+  reste identique ; `WorkflowTypeConfigController.list`/`getByKey` et `list_workflow_types`
+  restent ouverts sans garde (D5), preuve de non-régression explicite en Phase 8.
 - **Performance** : aucune, ces tools sont des opérations CRUD ponctuelles sur des tables déjà
   indexées (pas de nouveau chemin chaud).
 - **Couverture** : Jacoco LINE ≥ 85 % / BRANCH ≥ 75 % (seuils actuels du dépôt), zéro régression.

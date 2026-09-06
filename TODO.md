@@ -1270,7 +1270,7 @@ re-confirmée verte ; Vitest/Playwright inchangés (correctif backend seul).
 
 ### [ ] 56. Extension du serveur MCP au flux métier complet (connecteurs, association templates, questions de tâche)
 
-**Statut (2026-09-06) : cycle `dev-lifecycle` lancé, Phase 2 (revue requirements) close.** Origine :
+**Statut (2026-09-06) : cycle `dev-lifecycle` lancé, Phase 3 (design) close.** Origine :
 demande utilisateur — inspecter ce qui a été ajouté à FlowForge depuis `serveur-mcp` (PR #82, 9
 tools) et déterminer ce qui manque pour qu'un agent MCP puisse définir un flux métier complet sans
 sortir du canal MCP. Analyse initiale :
@@ -1326,7 +1326,22 @@ en Phase 1 sont résolus après vérification du code réel (pas des trous) :
 `list_connector_definitions` réutilisera `ConnectorCatalog.listAll()` directement, comme le fait
 déjà `ConnectorDefinitionController`.
 
-**Suite :** Phase 3 (design). Documents lifecycle :
+**Phase 3 (design) close** — dernier point de conception ouvert (D2, emplacement du garde-fou
+partagé) tranché via `AskUserQuestion` : **option (c)** — `TenantAdminGuard` (`domain.dossier`)
+gagne une méthode `requireTenantOrWorkflowAdminOrApiService`, réutilisée par `domain.connector`
+(via `requireTenantAdminOrApiService`, déjà existante) et `domain.workflow` (nouvelle méthode),
+plutôt que de dupliquer un guard par bounded context ou de déplacer la classe dans un package
+neutre. Vérifié avant de trancher : aucune règle ArchUnit n'interdit une dépendance entre
+sous-packages du domaine, et un précédent déjà accepté existe (`domain.workflow` dépend déjà de
+`domain.dossier.model.FieldDefinition`, TODO §55). En recensant tous les appelants des interfaces
+`port.in` à modifier, le compte est passé de **4 à 5 interfaces** : `GetTaskQuestionSchemaUseCase`
+a aussi besoin de l'acteur (pas seulement `Save`/`Delete`), car `TaskQuestionSchemaController` gate
+également ses lectures (D5). Trouvaille utile : `DeployWorkflowTool` (tool `deploy_workflow`
+existant, PR #82) résout déjà l'acteur (`accessContextFactory.currentActor()`) mais ne le transmet
+pas à `saveWorkflowTypeConfigUseCase.create`/`update` — changement minimal (un paramètre à ajouter
+à un appel déjà en place).
+
+**Suite :** Phase 4 (planning). Documents lifecycle :
 [docs/ai/requirements/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/requirements/2026-09-06-feature-extension-mcp-flux-metier.md),
 [docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md),
 [docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md).

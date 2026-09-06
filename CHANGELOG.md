@@ -45,6 +45,11 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
+- **PR [#111](https://github.com/superjojo79/FlowForge/pull/111)** — Le serveur MCP interne
+  (`POST /api/m2m/mcp`, PR #82) couvre désormais le flux métier complet (TODO §56, 9 → 16 tools) :
+  7 nouveaux tools (connecteurs, questions de tâche) et `define_dossier_type` étendu
+  (`documentTemplateKeys`). Un agent M2M peut définir un connecteur, un type de dossier, une
+  question de tâche et déployer un workflow sans jamais sortir du canal MCP.
 - **PR #107** — Formulaires de tâche rattachés aux `userTask` BPMN (TODO §52) : un `userTask`
   peut désormais déclarer
   `flowable:formKey` (éditeur BPMN, groupe « Flowable ») pour afficher un formulaire avant
@@ -97,6 +102,14 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Corrigé
 
+- **PR [#111](https://github.com/superjojo79/FlowForge/pull/111)** — Revue de sécurité
+  adversariale sur l'extension du serveur MCP (TODO §56) : le champ `authHeaderValue` du
+  connecteur `http-rest` (un credential HTTP réel, déclaré `PASSWORD` dans son schéma) n'était
+  reconnu par aucune heuristique de détection de secret par nom — jamais chiffré en base ni
+  masqué en lecture. Corrigé en basant la détection sur le schéma déclaré du connecteur
+  (`ConnectorCatalog.isPasswordField`) plutôt que sur des heuristiques de nom dupliquées 3 fois.
+  Même revue : garde-fou domaine (`TenantAdminGuard`) manquant depuis PR #82 sur les use cases
+  connecteurs/questions de tâche/types de workflow, comblé pour tout appelant MCP.
 - **PR [#106](https://github.com/superjojo79/FlowForge/pull/106)** — 2ème revue de sécurité
   adversariale, indépendante, sur `connecteur-callback` (TODO §54) : DoS mémoire non authentifié
   (le corps de requête était intégralement bufférisé avant toute garde applicative, contournable

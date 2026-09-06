@@ -64,4 +64,39 @@ class TenantAdminGuardTest {
                         AccessContext.user("a", Set.of("WORKFLOW_ADMIN"))))
                 .isInstanceOf(AccessDeniedException.class);
     }
+
+    @Test
+    void requireTenantOrWorkflowAdminOrApiService_tenantAdmin_doesNotThrow() {
+        assertThatCode(() -> guard.requireTenantOrWorkflowAdminOrApiService(
+                        AccessContext.user("a", Set.of("TENANT_ADMIN"))))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void requireTenantOrWorkflowAdminOrApiService_workflowAdmin_doesNotThrow() {
+        assertThatCode(() -> guard.requireTenantOrWorkflowAdminOrApiService(
+                        AccessContext.user("a", Set.of("WORKFLOW_ADMIN"))))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void requireTenantOrWorkflowAdminOrApiService_apiService_doesNotThrow() {
+        assertThatCode(() -> guard.requireTenantOrWorkflowAdminOrApiService(
+                        AccessContext.user("svc", Set.of("API_SERVICE"))))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void requireTenantOrWorkflowAdminOrApiService_dossierManager_isDenied() {
+        assertThatThrownBy(() -> guard.requireTenantOrWorkflowAdminOrApiService(
+                        AccessContext.user("a", Set.of("DOSSIER_MANAGER"))))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void requireTenantOrWorkflowAdminOrApiService_noRoles_isDenied() {
+        assertThatThrownBy(() -> guard.requireTenantOrWorkflowAdminOrApiService(
+                        AccessContext.user("a", Set.of())))
+                .isInstanceOf(AccessDeniedException.class);
+    }
 }

@@ -82,7 +82,7 @@ class DeployWorkflowToolTest {
     void validXml_upsertsConfigThenDeploysInOrder() {
         when(bpmnParserPort.extractProcessDefinitionKey(any())).thenReturn(KEY);
         when(getWorkflowTypeConfigUseCase.getByKey(KEY)).thenReturn(Optional.empty());
-        when(saveWorkflowTypeConfigUseCase.create(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(saveWorkflowTypeConfigUseCase.create(any(), any())).thenAnswer(inv -> inv.getArgument(0));
         when(deployBpmnProcessUseCase.deploy(eq(KEY + ".bpmn20.xml"), any()))
                 .thenReturn(new BpmnDeploymentResult(KEY, 1, "dep-1"));
 
@@ -90,7 +90,7 @@ class DeployWorkflowToolTest {
 
         assertThat(result.get("processDefinitionKey")).isEqualTo(KEY);
         InOrder order = inOrder(saveWorkflowTypeConfigUseCase, deployBpmnProcessUseCase);
-        order.verify(saveWorkflowTypeConfigUseCase).create(any());
+        order.verify(saveWorkflowTypeConfigUseCase).create(any(), any());
         order.verify(deployBpmnProcessUseCase).deploy(eq(KEY + ".bpmn20.xml"), any());
     }
 
@@ -149,13 +149,13 @@ class DeployWorkflowToolTest {
                 List.of(DossierStatus.OUVERT), null, List.of(), "original-author", "original-author");
         when(bpmnParserPort.extractProcessDefinitionKey(any())).thenReturn(KEY);
         when(getWorkflowTypeConfigUseCase.getByKey(KEY)).thenReturn(Optional.of(existing));
-        when(saveWorkflowTypeConfigUseCase.update(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(saveWorkflowTypeConfigUseCase.update(any(), any())).thenAnswer(inv -> inv.getArgument(0));
         when(deployBpmnProcessUseCase.deploy(any(), any())).thenReturn(new BpmnDeploymentResult(KEY, 2, "dep-2"));
 
         invoke(baseArgs());
 
         var captor = org.mockito.ArgumentCaptor.forClass(WorkflowTypeConfig.class);
-        org.mockito.Mockito.verify(saveWorkflowTypeConfigUseCase).update(captor.capture());
+        org.mockito.Mockito.verify(saveWorkflowTypeConfigUseCase).update(captor.capture(), any());
         assertThat(captor.getValue().createdBy()).isEqualTo("original-author");
         assertThat(captor.getValue().updatedBy()).isEqualTo("agent-1");
     }
@@ -164,7 +164,7 @@ class DeployWorkflowToolTest {
     void onStartDossierStatusProvided_isAppliedToConfig() {
         when(bpmnParserPort.extractProcessDefinitionKey(any())).thenReturn(KEY);
         when(getWorkflowTypeConfigUseCase.getByKey(KEY)).thenReturn(Optional.empty());
-        when(saveWorkflowTypeConfigUseCase.create(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(saveWorkflowTypeConfigUseCase.create(any(), any())).thenAnswer(inv -> inv.getArgument(0));
         when(deployBpmnProcessUseCase.deploy(any(), any())).thenReturn(new BpmnDeploymentResult(KEY, 1, "dep-1"));
 
         Map<String, Object> args = baseArgs();
@@ -172,7 +172,7 @@ class DeployWorkflowToolTest {
         invoke(args);
 
         var captor = org.mockito.ArgumentCaptor.forClass(WorkflowTypeConfig.class);
-        org.mockito.Mockito.verify(saveWorkflowTypeConfigUseCase).create(captor.capture());
+        org.mockito.Mockito.verify(saveWorkflowTypeConfigUseCase).create(captor.capture(), any());
         assertThat(captor.getValue().onStartDossierStatus()).isEqualTo(DossierStatus.OUVERT);
     }
 
@@ -235,7 +235,7 @@ class DeployWorkflowToolTest {
     void observerUserIdsProvided_isRelayedToConfig() {
         when(bpmnParserPort.extractProcessDefinitionKey(any())).thenReturn(KEY);
         when(getWorkflowTypeConfigUseCase.getByKey(KEY)).thenReturn(Optional.empty());
-        when(saveWorkflowTypeConfigUseCase.create(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(saveWorkflowTypeConfigUseCase.create(any(), any())).thenAnswer(inv -> inv.getArgument(0));
         when(deployBpmnProcessUseCase.deploy(any(), any())).thenReturn(new BpmnDeploymentResult(KEY, 1, "dep-1"));
 
         Map<String, Object> args = baseArgs();
@@ -243,7 +243,7 @@ class DeployWorkflowToolTest {
         invoke(args);
 
         var captor = org.mockito.ArgumentCaptor.forClass(WorkflowTypeConfig.class);
-        org.mockito.Mockito.verify(saveWorkflowTypeConfigUseCase).create(captor.capture());
+        org.mockito.Mockito.verify(saveWorkflowTypeConfigUseCase).create(captor.capture(), any());
         assertThat(captor.getValue().observerUserIds()).containsExactly("user-1", "user-2");
     }
 

@@ -69,6 +69,8 @@ public class DefineDossierTypeTool {
             description = "Create or update a dossier type's schema by code (label, workflowKey, active, "
                     + "allowUnknownFields, fieldDefinitions — the full schema every call). Retention/SLA policy "
                     + "cannot be set here: create defaults to inherit, update preserves the existing policy. "
+                    + "documentTemplateKeys is optional: absent/null preserves the existing association on "
+                    + "update (defaults to empty on create); provide the full list to replace it. "
                     + "dryRun=true validates without persisting.")
     public Map<String, Object> defineDossierType(
             McpSchema.CallToolRequest request,
@@ -87,6 +89,12 @@ public class DefineDossierTypeTool {
                                     + "item: {name, label, type (STRING|NUMBER|BOOLEAN|DATE|SELECT|FILE), "
                                     + "required, defaultValue, options, group, sensitive}")
                     List<Map<String, Object>> fieldDefinitions,
+            @McpToolParam(
+                            required = false,
+                            description = "Document template keys usable by document-generation task forms on "
+                                    + "this type — the full list every call, not a diff. Absent/null preserves "
+                                    + "the existing association on update (empty on create).")
+                    List<String> documentTemplateKeys,
             @McpToolParam(
                             required = false,
                             description = "Validate without persisting (no save, no author stamp); default false")
@@ -108,6 +116,7 @@ public class DefineDossierTypeTool {
         boolean rawActive = McpArgs.requireBoolean(args, "active");
         boolean rawAllowUnknownFields = McpArgs.requireBoolean(args, "allowUnknownFields");
         List<FieldDefinition> rawFieldDefinitions = parseFieldDefinitions(args.get("fieldDefinitions"));
+        List<String> rawDocumentTemplateKeys = parseDocumentTemplateKeys(args.get("documentTemplateKeys"));
         boolean rawDryRun = Boolean.TRUE.equals(args.get("dryRun"));
 
         AccessContext.User actor = accessContextFactory.currentActor();
@@ -117,11 +126,11 @@ public class DefineDossierTypeTool {
         if (existing == null) {
             return defineCreate(
                     tenantId, rawCode, rawLabel, rawWorkflowKey, rawActive, rawAllowUnknownFields,
-                    rawFieldDefinitions, rawDryRun, actor);
+                    rawFieldDefinitions, rawDocumentTemplateKeys, rawDryRun, actor);
         }
         return defineUpdate(
-                existing, rawLabel, rawWorkflowKey, rawActive, rawAllowUnknownFields, rawFieldDefinitions, rawDryRun,
-                actor);
+                existing, rawLabel, rawWorkflowKey, rawActive, rawAllowUnknownFields, rawFieldDefinitions,
+                rawDocumentTemplateKeys, rawDryRun, actor);
     }
 
     private DossierType findExisting(String tenantId, String code, AccessContext.User actor) {
@@ -140,6 +149,7 @@ public class DefineDossierTypeTool {
             boolean active,
             boolean allowUnknownFields,
             List<FieldDefinition> fieldDefinitions,
+            List<String> documentTemplateKeys,
             boolean dryRun,
             AccessContext.User actor) {
         if (dryRun) {
@@ -148,7 +158,7 @@ public class DefineDossierTypeTool {
         DossierType created = createDossierTypeUseCase.create(
                 new CreateDossierTypeUseCase.CreateDossierTypeCommand(
                         tenantId, code, label, workflowKey, active, allowUnknownFields, fieldDefinitions,
-                        null, false, null),
+                        null, false, null, documentTemplateKeys == null ? List.of() : documentTemplateKeys),
                 actor);
         return result("create", false, code, created);
     }
@@ -160,6 +170,7 @@ public class DefineDossierTypeTool {
             boolean active,
             boolean allowUnknownFields,
             List<FieldDefinition> fieldDefinitions,
+            List<String> documentTemplateKeys,
             boolean dryRun,
             AccessContext.User actor) {
         // D-DESIGN-CHECK-PLACEMENT: the real (non-dryRun) write path no longer checks
@@ -176,11 +187,15 @@ public class DefineDossierTypeTool {
             }
             return result("update", true, existing.code(), null);
         }
+        // Absent/null documentTemplateKeys preserves the existing association (extension-mcp-flux-metier,
+        // D-MCP-EXT-DOCTPL) — same "absent = unchanged" contract already used elsewhere in this tool.
+        List<String> resolvedDocumentTemplateKeys =
+                documentTemplateKeys == null ? existing.documentTemplateKeys() : documentTemplateKeys;
         DossierType updated = updateDossierTypeUseCase.update(
                 new UpdateDossierTypeUseCase.UpdateDossierTypeCommand(
                         existing.tenantId(), existing.code(), label, workflowKey, active, allowUnknownFields,
                         fieldDefinitions, existing.retentionDays(), existing.retentionNever(),
-                        existing.slaTargetHours(), existing.documentTemplateKeys()),
+                        existing.slaTargetHours(), resolvedDocumentTemplateKeys),
                 actor);
         return result("update", false, existing.code(), updated);
     }
@@ -202,5 +217,20 @@ public class DefineDossierTypeTool {
             throw new IllegalArgumentException("fieldDefinitions must be an array");
         }
         return rawList.stream().map(item -> objectMapper.convertValue(item, FieldDefinition.class)).toList();
+    }
+
+    private static List<String> parseDocumentTemplateKeys(Object raw) {
+        if (raw == null) {
+            return null;
+        }
+        if (!(raw instanceof List<?> rawList)) {
+            throw new IllegalArgumentException("documentTemplateKeys must be an array");
+        }
+        return rawList.stream().map(item -> {
+            if (!(item instanceof String key)) {
+                throw new IllegalArgumentException("documentTemplateKeys items must be strings");
+            }
+            return key;
+        }).toList();
     }
 }

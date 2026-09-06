@@ -2,6 +2,7 @@ package com.flowforge.infrastructure.config;
 
 import com.flowforge.application.workflow.ManualStartOrchestrator;
 import com.flowforge.domain.dossier.DossierAccessPolicy;
+import com.flowforge.domain.dossier.TenantAdminGuard;
 import com.flowforge.domain.dossier.port.in.AttachWorkflowUseCase;
 import com.flowforge.domain.dossier.port.in.ListDossierRelationsUseCase;
 import com.flowforge.domain.dossier.port.out.DossierElementRepository;
@@ -63,8 +64,9 @@ public class WorkflowConfig {
     @Bean
     WorkflowTypeConfigUseCaseImpl workflowTypeConfigUseCaseImpl(
             TenantProperties tenantProperties,
-            WorkflowTypeConfigRepository repository) {
-        return new WorkflowTypeConfigUseCaseImpl(tenantProperties.id(), repository);
+            WorkflowTypeConfigRepository repository,
+            TenantAdminGuard tenantAdminGuard) {
+        return new WorkflowTypeConfigUseCaseImpl(tenantProperties.id(), repository, tenantAdminGuard);
     }
 
     @Bean
@@ -86,8 +88,10 @@ public class WorkflowConfig {
 
     @Bean
     TaskQuestionSchemaUseCaseImpl taskQuestionSchemaUseCaseImpl(
-            TenantProperties tenantProperties, TaskQuestionSchemaRepository repository) {
-        return new TaskQuestionSchemaUseCaseImpl(tenantProperties.id(), repository);
+            TenantProperties tenantProperties,
+            TaskQuestionSchemaRepository repository,
+            TenantAdminGuard tenantAdminGuard) {
+        return new TaskQuestionSchemaUseCaseImpl(tenantProperties.id(), repository, tenantAdminGuard);
     }
 
     @Bean

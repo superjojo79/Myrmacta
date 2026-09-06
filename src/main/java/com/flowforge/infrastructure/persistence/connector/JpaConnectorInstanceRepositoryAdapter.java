@@ -28,7 +28,7 @@ public class JpaConnectorInstanceRepositoryAdapter implements ConnectorInstanceR
     @Override
     @Transactional
     public ConnectorInstanceData save(ConnectorInstanceData data) {
-        var encrypted = cipher.encryptPasswordFields(data.tenantId(), data.config());
+        var encrypted = cipher.encryptPasswordFields(data.tenantId(), data.connectorType(), data.config());
         Optional<ConnectorInstanceJpaEntity> existing =
                 repository.findByIdAndTenantId(data.id(), data.tenantId());
         ConnectorInstanceJpaEntity entity;
@@ -81,6 +81,7 @@ public class JpaConnectorInstanceRepositoryAdapter implements ConnectorInstanceR
     }
 
     private ConnectorInstanceData toDomain(ConnectorInstanceJpaEntity entity) {
-        return entity.toDomain(cipher.decryptPasswordFields(entity.tenantId(), entity.config()));
+        return entity.toDomain(
+                cipher.decryptPasswordFields(entity.tenantId(), entity.connectorType(), entity.config()));
     }
 }

@@ -220,6 +220,77 @@ class DefineDossierTypeToolTest {
         verifyNoInteractions(getDossierTypeUseCase, createDossierTypeUseCase, updateDossierTypeUseCase);
     }
 
+    @Test
+    void documentTemplateKeysOmitted_onCreate_defaultsToEmptyList() {
+        when(getDossierTypeUseCase.getByCode(any(), any(), any()))
+                .thenThrow(new DossierNotFoundException("nope"));
+        when(createDossierTypeUseCase.create(any(), any())).thenReturn(type("CLAIM"));
+
+        invoke(baseArgs("CLAIM"));
+
+        var captor = org.mockito.ArgumentCaptor.forClass(CreateDossierTypeUseCase.CreateDossierTypeCommand.class);
+        verify(createDossierTypeUseCase).create(captor.capture(), any());
+        assertThat(captor.getValue().documentTemplateKeys()).isEmpty();
+    }
+
+    @Test
+    void documentTemplateKeysProvided_onCreate_arePersisted() {
+        when(getDossierTypeUseCase.getByCode(any(), any(), any()))
+                .thenThrow(new DossierNotFoundException("nope"));
+        when(createDossierTypeUseCase.create(any(), any())).thenReturn(type("CLAIM"));
+
+        Map<String, Object> args = baseArgs("CLAIM");
+        args.put("documentTemplateKeys", List.of("template-a", "template-b"));
+        invoke(args);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(CreateDossierTypeUseCase.CreateDossierTypeCommand.class);
+        verify(createDossierTypeUseCase).create(captor.capture(), any());
+        assertThat(captor.getValue().documentTemplateKeys()).containsExactly("template-a", "template-b");
+    }
+
+    @Test
+    void documentTemplateKeysOmitted_onUpdate_preservesExisting() {
+        DossierType existing = new DossierType(
+                UUID.randomUUID(), TENANT, "CLAIM", "Old", "wf-old", true, false, List.of(),
+                null, false, null, List.of("existing-template"), "system", "system");
+        when(getDossierTypeUseCase.getByCode(any(), any(), any())).thenReturn(existing);
+        when(updateDossierTypeUseCase.update(any(), any())).thenReturn(existing);
+
+        invoke(baseArgs("CLAIM"));
+
+        var captor = org.mockito.ArgumentCaptor.forClass(UpdateDossierTypeUseCase.UpdateDossierTypeCommand.class);
+        verify(updateDossierTypeUseCase).update(captor.capture(), any());
+        assertThat(captor.getValue().documentTemplateKeys()).containsExactly("existing-template");
+    }
+
+    @Test
+    void documentTemplateKeysProvided_onUpdate_replacesExisting() {
+        DossierType existing = new DossierType(
+                UUID.randomUUID(), TENANT, "CLAIM", "Old", "wf-old", true, false, List.of(),
+                null, false, null, List.of("old-template"), "system", "system");
+        when(getDossierTypeUseCase.getByCode(any(), any(), any())).thenReturn(existing);
+        when(updateDossierTypeUseCase.update(any(), any())).thenReturn(existing);
+
+        Map<String, Object> args = baseArgs("CLAIM");
+        args.put("documentTemplateKeys", List.of("new-template"));
+        invoke(args);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(UpdateDossierTypeUseCase.UpdateDossierTypeCommand.class);
+        verify(updateDossierTypeUseCase).update(captor.capture(), any());
+        assertThat(captor.getValue().documentTemplateKeys()).containsExactly("new-template");
+    }
+
+    @Test
+    void documentTemplateKeysWrongType_isRejected() {
+        Map<String, Object> args = baseArgs("CLAIM");
+        args.put("documentTemplateKeys", "not-a-list");
+
+        assertThatThrownBy(() -> invoke(args))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("documentTemplateKeys");
+        verifyNoInteractions(getDossierTypeUseCase, createDossierTypeUseCase, updateDossierTypeUseCase);
+    }
+
     private static Map<String, Object> baseArgs(String code) {
         var args = new java.util.HashMap<String, Object>();
         args.put("code", code);
@@ -241,7 +312,7 @@ class DefineDossierTypeToolTest {
      * pass null for all of them.
      */
     private Map<String, Object> invoke(Map<String, Object> args) {
-        return tool.defineDossierType(request(args), null, null, null, null, null, null, null);
+        return tool.defineDossierType(request(args), null, null, null, null, null, null, null, null);
     }
 
     private static DossierType type(String code) {

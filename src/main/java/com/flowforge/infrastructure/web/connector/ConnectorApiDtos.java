@@ -4,10 +4,10 @@ import com.flowforge.domain.connector.model.ConfigField;
 import com.flowforge.domain.connector.model.ConnectorCapability;
 import com.flowforge.domain.connector.model.ConnectorDefinition;
 import com.flowforge.domain.connector.model.ConnectorInstanceData;
+import com.flowforge.domain.connector.port.out.ConnectorCatalog;
 import com.flowforge.domain.connector.usecase.ManageConnectorInstanceUseCaseImpl;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -85,8 +85,8 @@ record ConnectorResponse(
         Map<String, Object> config,
         Map<String, Boolean> secretConfigured) {
 
-    static ConnectorResponse from(ConnectorInstanceData data) {
-        MaskedConfig masked = maskSecrets(data.config());
+    static ConnectorResponse from(ConnectorInstanceData data, ConnectorCatalog catalog) {
+        MaskedConfig masked = maskSecrets(data.connectorType(), data.config(), catalog);
         return new ConnectorResponse(
                 data.id(),
                 data.tenantId(),
@@ -97,11 +97,18 @@ record ConnectorResponse(
                 masked.secretConfigured());
     }
 
-    private static MaskedConfig maskSecrets(Map<String, Object> config) {
+    // Reuses ManageConnectorInstanceUseCaseImpl.isSecretKey (name heuristic) plus
+    // ConnectorCatalog.isPasswordField (the connector type's declared schema) instead of a
+    // private name-only duplicate — a field like authHeaderValue carries a real credential but
+    // doesn't match any name pattern, so the name heuristic alone missed it (adversarial review
+    // follow-up, extension-mcp-flux-metier).
+    private static MaskedConfig maskSecrets(String connectorType, Map<String, Object> config, ConnectorCatalog catalog) {
         Map<String, Object> masked = new LinkedHashMap<>();
         Map<String, Boolean> secretConfigured = new LinkedHashMap<>();
         for (Map.Entry<String, Object> entry : config.entrySet()) {
-            if (isSecretKey(entry.getKey()) && entry.getValue() != null) {
+            boolean isSecret = ManageConnectorInstanceUseCaseImpl.isSecretKey(entry.getKey())
+                    || catalog.isPasswordField(connectorType, entry.getKey());
+            if (isSecret && entry.getValue() != null) {
                 masked.put(entry.getKey(), ManageConnectorInstanceUseCaseImpl.SECRET_MASK);
                 secretConfigured.put(entry.getKey(), true);
             } else {
@@ -109,11 +116,6 @@ record ConnectorResponse(
             }
         }
         return new MaskedConfig(Map.copyOf(masked), Map.copyOf(secretConfigured));
-    }
-
-    private static boolean isSecretKey(String key) {
-        String k = key.toLowerCase(Locale.ROOT);
-        return k.equals("password") || k.endsWith("secret") || k.endsWith("password");
     }
 
     private record MaskedConfig(Map<String, Object> config, Map<String, Boolean> secretConfigured) {}

@@ -23,7 +23,8 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  * Security M2M ({@code Order 1}, JWT {@code API_SERVICE}) que {@code /api/m2m/connectors/**}.
  * {@code initialize} + {@code tools/list} : exactement 9 tools nommés (T6.3). Vérifie aussi que
  * le SDK MCP convertit une exception de tool en {@code isError=true} (message, pas de stack
- * trace) sans mapper dédié.
+ * trace) sans mapper dédié. Depuis extension-mcp-flux-metier (TODO §56) : 16 tools nommés (9
+ * initiaux de serveur-mcp + 7 nouveaux — connecteurs, questions de tâche).
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -40,7 +41,14 @@ class McpEndpointApiTest {
             "list_dossier_types",
             "list_workflow_types",
             "query_sla_summary",
-            "search_dossiers");
+            "search_dossiers",
+            "list_connector_definitions",
+            "list_connector_instances",
+            "get_connector_instance",
+            "define_connector_instance",
+            "list_task_question_schemas",
+            "get_task_question_schema",
+            "define_task_question_schema");
 
     @Autowired
     private MockMvc mockMvc;
@@ -62,7 +70,7 @@ class McpEndpointApiTest {
     }
 
     @Test
-    void toolsList_registersExactlyTheNineExpectedTools() throws Exception {
+    void toolsList_registersExactlyTheExpectedTools() throws Exception {
         String sessionId = initializeSession();
 
         MvcResult list = callMcp(sessionId, 2, "tools/list", "{}");

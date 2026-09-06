@@ -1,5 +1,6 @@
 package com.flowforge.infrastructure.web.workflow;
 
+import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.workflow.model.WorkflowTypeConfig;
 import com.flowforge.domain.workflow.model.WorkflowTypeConfigNotFoundException;
 import com.flowforge.domain.workflow.port.in.GetWorkflowTypeConfigUseCase;
@@ -48,9 +49,10 @@ class WorkflowTypeConfigController {
     ResponseEntity<WorkflowTypeConfigResponse> create(
             @RequestBody WorkflowTypeConfigRequest request,
             Authentication authentication) {
-        String actor = accessContextFactory.user(authentication).userId();
+        AccessContext.User actorContext = accessContextFactory.user(authentication);
+        String actor = actorContext.userId();
         WorkflowTypeConfig saved = saveUseCase.create(
-                request.toDomain(tenantProperties.id(), UUID.randomUUID(), null, actor, actor));
+                request.toDomain(tenantProperties.id(), UUID.randomUUID(), null, actor, actor), actorContext);
         return ResponseEntity
                 .created(URI.create("/api/workflow-type-configs/" + saved.workflowKey()))
                 .body(WorkflowTypeConfigResponse.from(saved));
@@ -62,11 +64,13 @@ class WorkflowTypeConfigController {
             @PathVariable String workflowKey,
             @RequestBody WorkflowTypeConfigRequest request,
             Authentication authentication) {
-        String actor = accessContextFactory.user(authentication).userId();
+        AccessContext.User actorContext = accessContextFactory.user(authentication);
+        String actor = actorContext.userId();
         WorkflowTypeConfig existing = getUseCase.getByKey(workflowKey)
                 .orElseThrow(() -> new WorkflowTypeConfigNotFoundException("Workflow type config not found: " + workflowKey));
         return WorkflowTypeConfigResponse.from(saveUseCase.update(
-                request.toDomain(tenantProperties.id(), existing.id(), workflowKey, existing.createdBy(), actor)));
+                request.toDomain(tenantProperties.id(), existing.id(), workflowKey, existing.createdBy(), actor),
+                actorContext));
     }
 
     @GetMapping

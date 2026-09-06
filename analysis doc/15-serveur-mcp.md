@@ -15,6 +15,17 @@
 > points 4 à 7) ; quatre tools d'écriture à risque modéré identifiés et
 > placés en [backlog](#backlog--extensions-futures-envisageables-hors-v1),
 > pas retenus pour le V1.
+>
+> **Extension (2026-09-06, feature `extension-mcp-flux-metier`, TODO §56) :** 7 nouveaux tools
+> livrés pour couvrir des mécanismes de configuration ajoutés après ce cadrage initial —
+> connecteurs (`list_connector_definitions`, `list_connector_instances`, `get_connector_instance`,
+> `define_connector_instance`) et questions de tâche (`list_task_question_schemas`,
+> `get_task_question_schema`, `define_task_question_schema`), plus l'extension de
+> `define_dossier_type` avec `documentTemplateKeys`. **9 → 16 tools.** Correctif de sécurité
+> associé : `ManageConnectorInstanceUseCaseImpl`, `TaskQuestionSchemaUseCaseImpl` et
+> `WorkflowTypeConfigUseCaseImpl` (ce dernier déjà utilisé par `deploy_workflow` depuis ce cadrage)
+> n'avaient aucune garde de rôle au niveau domaine — comblé. Détail :
+> [24-extension-mcp-flux-metier.md](24-extension-mcp-flux-metier.md).
 
 ---
 

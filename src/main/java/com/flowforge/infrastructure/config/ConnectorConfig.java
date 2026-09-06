@@ -10,6 +10,7 @@ import com.flowforge.domain.connector.usecase.CallbackConnectorRuntimeImpl;
 import com.flowforge.domain.connector.usecase.ExecuteConnectorUseCaseImpl;
 import com.flowforge.domain.connector.usecase.ConnectorTriggerRuntimeImpl;
 import com.flowforge.domain.connector.usecase.ManageConnectorInstanceUseCaseImpl;
+import com.flowforge.domain.dossier.TenantAdminGuard;
 import com.flowforge.domain.dossier.port.in.CreateDossierUseCase;
 import com.flowforge.domain.dossier.port.in.GetDossierUseCase;
 import com.flowforge.domain.workflow.port.out.OutboxRepository;
@@ -41,8 +42,9 @@ public class ConnectorConfig {
     @Bean
     ManageConnectorInstanceUseCase manageConnectorInstanceUseCase(
             ConnectorInstanceRepository repository,
-            ConnectorCatalog catalog) {
-        return new ManageConnectorInstanceUseCaseImpl(repository, catalog);
+            ConnectorCatalog catalog,
+            TenantAdminGuard tenantAdminGuard) {
+        return new ManageConnectorInstanceUseCaseImpl(repository, catalog, tenantAdminGuard);
     }
 
     @Bean

@@ -38,6 +38,7 @@
 | 21 | Corrélation par clé métier pour callbacks asynchrones (`http-rest`) — analyse initiale | [21-correlation-callback-async.md](21-correlation-callback-async.md) |
 | 22 | Formulaires dynamiques rattachés aux tâches BPMN (`userTask`) — analyse initiale | [22-formulaires-dynamiques-taches.md](22-formulaires-dynamiques-taches.md) |
 | 23 | Questions/choix utilisateur indépendants du dossier (nouveau kind `user-question`) — **livré** (TODO §55) | [23-questions-utilisateur-taches.md](23-questions-utilisateur-taches.md) |
+| 24 | Extension du serveur MCP (connecteurs, association templates, questions de tâche) — analyse initiale | [24-extension-mcp-flux-metier.md](24-extension-mcp-flux-metier.md) |
 
 > Pour concevoir concrètement un diagramme BPMN pour FlowForge (conventions, référence des
 > `serviceTask` disponibles, champs dynamiques, connecteurs, intervenants, génération de

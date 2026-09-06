@@ -1430,7 +1430,11 @@ savoir que le précédent lui-même était défectueux — trouvaille de Phase 9
 que cette feature a justement rendu la méthode équivalente `public` sur
 `ManageConnectorInstanceUseCaseImpl` pour éviter une 3ᵉ duplication côté MCP — l'occasion de
 nettoyer le doublon REST pré-existant n'a pas été prise ici (fichier hors périmètre déclaré).
-**Cycle prêt à pousser / ouvrir une PR**, sur demande. Détail complet dans
+**Cycle mergé** : [PR #111](https://github.com/superjojo79/FlowForge/pull/111), mergée sur `main`
+sur demande explicite de l'utilisateur **sans attendre la CI GitHub Actions** (crédits épuisés) —
+décision basée sur la vérification locale fraîche (`./mvnw verify` : 1675 tests, 0 échec, même
+build que celui poussé). `CHANGELOG.md` mis à jour (entrées Ajouté + Corrigé référençant la PR).
+Détail complet dans
 [docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md)
 § « Phase 9 — Revue finale ».
 

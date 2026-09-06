@@ -25,8 +25,10 @@
 > + 1 risque documenté sans correctif (confiance « tout ou rien » du JWT M2M, décision assumée).
 > `./mvnw verify` final : **1675 tests, 0 échec**, ArchUnit conforme, couverture Jacoco tenue ;
 > Vitest 289/289 (0 régression, zéro fichier frontend touché) ; Playwright non exécutable dans ce
-> bac à sable (binaire manquant, pré-existant, non bloquant). **Cycle prêt à pousser / ouvrir une
-> PR, sur demande.** Détail complet dans TODO §56 et
+> bac à sable (binaire manquant, pré-existant, non bloquant). **Cycle mergé** :
+> [PR #111](https://github.com/superjojo79/FlowForge/pull/111), sur `main`, sur demande explicite
+> de l'utilisateur **sans attendre la CI GitHub Actions** (crédits épuisés) — décision basée sur la
+> vérification locale fraîche ci-dessus. Détail complet dans TODO §56 et
 > [docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md](docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md).
 >
 > 2026-09-06 (plus tôt) — Phase 3 (design) close. 6 décisions tranchées en Phase 1 via
@@ -237,7 +239,8 @@ questions de tâche, `define_dossier_type` étendu) pour couvrir les mécanismes
 ajoutés depuis `serveur-mcp` (§48, §50, §51, §52, §55). 1 faille bloquante trouvée par revue
 adversariale (sous-agent) et corrigée : fuite en clair de `authHeaderValue`, un secret de
 connecteur non détecté par l'heuristique de nom pré-existante. `./mvnw verify` : 1675 tests (0
-échec). Prêt à pousser / ouvrir une PR, sur demande. Voir l'en-tête de ce fichier pour le détail.
+échec). Mergé : [PR #111](https://github.com/superjojo79/FlowForge/pull/111), sans attendre la CI
+(crédits épuisés). Voir l'en-tête de ce fichier pour le détail.
 
 En réserve (non retenu, aucune analyse écrite) : outillage provisioning tenant (schéma/instance/
 proxy/secrets, `DEFERRED-FEATURES.md` §1.2/§4).

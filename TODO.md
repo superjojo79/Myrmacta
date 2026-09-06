@@ -1268,6 +1268,63 @@ re-confirmée verte ; Vitest/Playwright inchangés (correctif backend seul).
 
 ---
 
+### [ ] 56. Extension du serveur MCP au flux métier complet (connecteurs, association templates, questions de tâche)
+
+**Statut (2026-09-06) : cycle `dev-lifecycle` lancé, Phase 1 (requirements) close.** Origine :
+demande utilisateur — inspecter ce qui a été ajouté à FlowForge depuis `serveur-mcp` (PR #82, 9
+tools) et déterminer ce qui manque pour qu'un agent MCP puisse définir un flux métier complet sans
+sortir du canal MCP. Analyse initiale :
+[24-extension-mcp-flux-metier.md](analysis%20doc/24-extension-mcp-flux-metier.md). Trois lacunes
+vérifiées contre le code réel : **(1)** aucun tool ne couvre `ConnectorInstance` (créée
+aujourd'hui uniquement via l'écran admin `TENANT_ADMIN`-only, alors qu'un `serviceTask` BPMN la
+référence par UUID d'instance) ; **(2)** `DossierType.documentTemplateKeys` (association template
+↔ type de dossier, TODO §52) est le seul champ de `DossierType` inaccessible en écriture via
+`define_dossier_type` (forcé à `null` en création, préservé tel quel en update) ; **(3)**
+`TaskQuestionSchema` (TODO §55) n'a pas de tool MCP, la feature étant postérieure au cadrage MCP.
+
+**6 décisions tranchées en Phase 1 via `AskUserQuestion`** :
+
+- **D-MCP-EXT-SCOPE = un seul cycle** couvrant les 3 lacunes (pas 3 cycles séparés).
+- **D-MCP-EXT-SECRET = même flux que l'admin REST** — secret connecteur en clair sur l'appel MCP
+  (canal M2M déjà authentifié `API_SERVICE`), chiffré AES-GCM à l'écriture, jamais renvoyé en
+  clair en lecture.
+- **D-MCP-EXT-DOCTPL = étendre `define_dossier_type`** avec un paramètre optionnel
+  `documentTemplateKeys`, plutôt qu'un tool dédié.
+- **D-MCP-EXT-DRYRUN = `dryRun` partout** — reconduit sur les 2 nouveaux tools d'écriture, cohérent
+  avec `define_dossier_type`/`deploy_workflow`.
+- **D-MCP-EXT-NAMING** — 7 nouveaux tools confirmés : `list_connector_definitions`,
+  `list_connector_instances`, `get_connector_instance`, `define_connector_instance`,
+  `list_task_question_schemas`, `get_task_question_schema`, `define_task_question_schema`.
+- **D-MCP-EXT-RBAC-GUARD** — trouvaille réelle faite en Phase 1 (pas anticipée par l'analyse
+  initiale) : `ManageConnectorInstanceUseCaseImpl` et `TaskQuestionSchemaUseCaseImpl` n'ont
+  **aucune garde de rôle au niveau domaine** (RBAC vérifié seulement au contrôleur REST
+  `@PreAuthorize`) — et `WorkflowTypeConfigUseCaseImpl`, **déjà utilisé par `deploy_workflow`
+  depuis PR #82**, non plus. Décision : ajouter le garde-fou domaine sur les 3 use cases, y
+  compris le correctif sur du code déjà livré (pas seulement sur les 2 nouveaux tools).
+
+**Portée technique désormais plus large que l'analyse initiale** : le garde-fou implique de
+changer la signature de 4 interfaces `port.in`
+(`ManageConnectorInstanceUseCase`, `SaveTaskQuestionSchemaUseCase`/`DeleteTaskQuestionSchemaUseCase`,
+`SaveWorkflowTypeConfigUseCase`) pour y ajouter l'acteur, et de mettre à jour tous leurs appelants
+REST existants. Point de conception encore ouvert (Phase 3) : emplacement du garde-fou partagé
+(dupliquer un guard par bounded context, le déplacer dans un package neutre, ou étendre
+`TenantAdminGuard` en l'acceptant comme dépendance transverse) — voir
+[docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md).
+
+**Suite :** Phase 2 (revue requirements), puis Phase 3 (design). Documents lifecycle :
+[docs/ai/requirements/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/requirements/2026-09-06-feature-extension-mcp-flux-metier.md),
+[docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md),
+[docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md).
+
+**Impacte :** `infrastructure/mcp/tool/**` (7 nouveaux tools + `DefineDossierTypeTool` étendu),
+`domain/connector/**`, `domain/workflow/**` (`TaskQuestionSchemaUseCaseImpl`,
+`WorkflowTypeConfigUseCaseImpl`), [15-serveur-mcp.md](analysis%20doc/15-serveur-mcp.md),
+[06-connecteurs.md](analysis%20doc/06-connecteurs.md).
+
+**Détail :** [24-extension-mcp-flux-metier.md](analysis%20doc/24-extension-mcp-flux-metier.md).
+
+---
+
 ## Alignement post-implémentation et sécurité (2026-08-25)
 
 Points identifiés par

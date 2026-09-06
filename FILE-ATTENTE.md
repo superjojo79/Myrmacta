@@ -10,22 +10,26 @@
 >   (rétention / purge / sensible — **livré**) ; revue post-implémentation 2026-08-25 :
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
-> **Dernière mise à jour :** 2026-09-06 — nouvelle analyse initiale, aucun TODO ouvert :
-> [24-extension-mcp-flux-metier.md](analysis%20doc/24-extension-mcp-flux-metier.md). Origine :
-> demande utilisateur — inspecter ce qui a été ajouté à FlowForge depuis `serveur-mcp` (TODO §55
-> clos ci-dessous inclus) et déterminer ce qui manque au serveur MCP (9 tools, PR #82) pour définir
-> un **flux métier complet** sans sortir du canal MCP. Trois lacunes vérifiées contre le code réel,
-> pas seulement contre la documentation : **(1)** aucun tool ne couvre `ConnectorInstance`
-> (`define_connector_instance`/`list_connector_instances`/`get_connector_instance`/
-> `list_connector_definitions` envisagés) — un `serviceTask` référence un connecteur par UUID
-> d'instance (`connectorInstanceId`), provisionné aujourd'hui uniquement par l'écran admin, ce qui
-> empêche un agent MCP de finir un flux qui appelle un connecteur ; **(2)**
-> `DossierType.documentTemplateKeys` (association template ↔ type de dossier, TODO §52) est le seul
-> champ du modèle inaccessible en écriture via `define_dossier_type` (vérifié dans
-> `DefineDossierTypeTool.java` : forcé à `null` en création, préservé tel quel en mise à jour) ;
-> **(3)** `TaskQuestionSchema` (TODO §55, ci-dessous) n'existe pas encore au moment du cadrage MCP,
-> aucun tool ne le couvre. Analyse volontairement non tranchée techniquement (pas de décision
-> `dev-lifecycle`) — sert de base à un futur cycle, pas encore priorisée dans la file ci-dessous.
+> **Dernière mise à jour :** 2026-09-06 — TODO **§56 ouvert**, cycle `dev-lifecycle` lancé sur
+> `extension-mcp-flux-metier`, Phase 1 (requirements) close. 6 décisions tranchées via
+> `AskUserQuestion` : périmètre (un seul cycle pour les 3 lacunes), flux du secret connecteur
+> (même que l'admin REST), extension de `define_dossier_type` (pas de nouveau tool pour
+> `documentTemplateKeys`), `dryRun` reconduit sur tous les tools d'écriture, 7 noms de tools
+> confirmés, et une trouvaille réelle en explorant le code (pas anticipée par l'analyse initiale) :
+> `ManageConnectorInstanceUseCaseImpl`/`TaskQuestionSchemaUseCaseImpl` — et
+> `WorkflowTypeConfigUseCaseImpl`, déjà utilisé par `deploy_workflow` depuis PR #82 — n'ont aucune
+> garde de rôle au niveau domaine, le RBAC n'étant vérifié qu'au contrôleur REST. Décision : ajouter
+> le garde-fou domaine partout, y compris un correctif sur `WorkflowTypeConfigUseCaseImpl` (code
+> déjà en production). Documents :
+> [docs/ai/requirements/2026-09-06-feature-extension-mcp-flux-metier.md](docs/ai/requirements/2026-09-06-feature-extension-mcp-flux-metier.md),
+> [docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md](docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md)
+> (brouillon Phase 1),
+> [docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md](docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md)
+> (brouillon Phase 1). Détail TODO §56, analyse d'origine
+> [24-extension-mcp-flux-metier.md](analysis%20doc/24-extension-mcp-flux-metier.md). Suite : Phase 2
+> (revue requirements). Mode workspace : no-worktree, développement direct sur la branche de
+> session `claude/mcp-changes-business-flow-ytc3j8` (confirmé par l'utilisateur, cohérent avec
+> toutes les features précédentes de ce dépôt).
 >
 > 2026-09-05 — TODO **§55 clos** : `questions-utilisateur-taches`,
 > cycle `dev-lifecycle` Phases 1–9 complet (M1–M9 enchaînés en TDD sur demande explicite), plus une
@@ -205,12 +209,11 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 (ArchUnit `application`), §48 (`http-rest` SERVICE), §49 (assainissement dette technique), §50
 (connecteurs hors V1), §51 (connecteur callback) et §52 (formulaires dynamiques tâches) **clos**.
 
-**File vide** — aucune feature en cours. Une nouvelle analyse est disponible mais **pas encore
-priorisée ni tranchée en `dev-lifecycle`** :
-[24-extension-mcp-flux-metier.md](analysis%20doc/24-extension-mcp-flux-metier.md) — extension du
-serveur MCP (`ConnectorInstance`, association templates ↔ type de dossier, `TaskQuestionSchema`)
-pour couvrir les mécanismes de configuration ajoutés depuis `serveur-mcp` (§48, §50, §51, §52,
-§55). Aucun point TODO ouvert à ce stade.
+**En cours :** `extension-mcp-flux-metier` (TODO §56), cycle `dev-lifecycle` lancé, Phase 1
+(requirements) close — extension du serveur MCP (`ConnectorInstance`, association templates ↔
+type de dossier, `TaskQuestionSchema`) pour couvrir les mécanismes de configuration ajoutés depuis
+`serveur-mcp` (§48, §50, §51, §52, §55). Suite : Phase 2 (revue requirements). Voir l'en-tête de ce
+fichier pour le détail des décisions déjà tranchées.
 
 En réserve (non retenu, aucune analyse écrite) : outillage provisioning tenant (schéma/instance/
 proxy/secrets, `DEFERRED-FEATURES.md` §1.2/§4).

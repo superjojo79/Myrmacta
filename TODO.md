@@ -1270,7 +1270,7 @@ re-confirmée verte ; Vitest/Playwright inchangés (correctif backend seul).
 
 ### [ ] 56. Extension du serveur MCP au flux métier complet (connecteurs, association templates, questions de tâche)
 
-**Statut (2026-09-06) : cycle `dev-lifecycle` lancé, Phase 3 (design) close.** Origine :
+**Statut (2026-09-06) : cycle `dev-lifecycle` lancé, Phase 4 (planning) close.** Origine :
 demande utilisateur — inspecter ce qui a été ajouté à FlowForge depuis `serveur-mcp` (PR #82, 9
 tools) et déterminer ce qui manque pour qu'un agent MCP puisse définir un flux métier complet sans
 sortir du canal MCP. Analyse initiale :
@@ -1341,10 +1341,21 @@ existant, PR #82) résout déjà l'acteur (`accessContextFactory.currentActor()`
 pas à `saveWorkflowTypeConfigUseCase.create`/`update` — changement minimal (un paramètre à ajouter
 à un appel déjà en place).
 
-**Suite :** Phase 4 (planning). Documents lifecycle :
+**Phase 4 (planning) close** — plan en **9 milestones / ~26 tâches** (comparable à `serveur-mcp`,
+9 milestones / 32 tâches) : M1 nouvelle méthode `TenantAdminGuard` seule d'abord (pattern « gardes
+domaine d'abord » déjà utilisé par `serveur-mcp` M1) ; M2/M3/M4 câblage du garde-fou par bounded
+context (connecteurs, questions de tâche, correctif `WorkflowTypeConfigUseCase` limité à
+`create`/`update`) ; M5 `define_dossier_type` étendu (indépendant, peut être fait en parallèle) ;
+M6/M7 les 7 nouveaux tools MCP (lecture puis écriture) ; M8 IT HTTP M2M réelles + scénario bout en
+bout (`define_connector_instance` → `define_dossier_type` → `define_task_question_schema` →
+`deploy_workflow`, preuve du flux métier complet) ; M9 vérification globale + documentation.
+Traçabilité testing → tâches vérifiée exhaustive.
+
+**Suite :** Phase 5 (implémentation TDD), en commençant par M1. Documents lifecycle :
 [docs/ai/requirements/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/requirements/2026-09-06-feature-extension-mcp-flux-metier.md),
 [docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md),
-[docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md).
+[docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md),
+[docs/ai/planning/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/planning/2026-09-06-feature-extension-mcp-flux-metier.md).
 
 **Impacte :** `infrastructure/mcp/tool/**` (7 nouveaux tools + `DefineDossierTypeTool` étendu),
 `domain/connector/**`, `domain/workflow/**` (`TaskQuestionSchemaUseCaseImpl`,

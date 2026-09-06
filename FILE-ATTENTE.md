@@ -11,7 +11,14 @@
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
 > **Dernière mise à jour :** 2026-09-06 — TODO **§56 ouvert**, cycle `dev-lifecycle` lancé sur
-> `extension-mcp-flux-metier`, Phase 3 (design) close. 6 décisions tranchées en Phase 1 via
+> `extension-mcp-flux-metier`, Phase 4 (planning) close — plan en 9 milestones/~26 tâches (M1
+> garde-fou domaine d'abord, M2–M4 câblage par bounded context, M5 `define_dossier_type` étendu,
+> M6–M7 les 7 nouveaux tools, M8 IT M2M réelles + scénario bout en bout, M9 vérification globale).
+> Détail complet dans TODO §56 et
+> [docs/ai/planning/2026-09-06-feature-extension-mcp-flux-metier.md](docs/ai/planning/2026-09-06-feature-extension-mcp-flux-metier.md).
+> Suite : Phase 5 (implémentation TDD).
+>
+> 2026-09-06 (plus tôt) — Phase 3 (design) close. 6 décisions tranchées en Phase 1 via
 > `AskUserQuestion` (périmètre un seul cycle, flux du secret connecteur, extension de
 > `define_dossier_type`, `dryRun` partout, 7 noms de tools) + une trouvaille réelle : ni
 > `ManageConnectorInstanceUseCaseImpl`/`TaskQuestionSchemaUseCaseImpl` ni
@@ -213,11 +220,11 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 (ArchUnit `application`), §48 (`http-rest` SERVICE), §49 (assainissement dette technique), §50
 (connecteurs hors V1), §51 (connecteur callback) et §52 (formulaires dynamiques tâches) **clos**.
 
-**En cours :** `extension-mcp-flux-metier` (TODO §56), cycle `dev-lifecycle` lancé, Phase 3
-(design) close — extension du serveur MCP (`ConnectorInstance`, association templates ↔ type de
+**En cours :** `extension-mcp-flux-metier` (TODO §56), cycle `dev-lifecycle` lancé, Phase 4
+(planning) close — extension du serveur MCP (`ConnectorInstance`, association templates ↔ type de
 dossier, `TaskQuestionSchema`) pour couvrir les mécanismes de configuration ajoutés depuis
-`serveur-mcp` (§48, §50, §51, §52, §55). Suite : Phase 4 (planning). Voir l'en-tête de ce fichier
-pour le détail des décisions déjà tranchées.
+`serveur-mcp` (§48, §50, §51, §52, §55). Plan en 9 milestones. Suite : Phase 5 (implémentation
+TDD). Voir l'en-tête de ce fichier pour le détail des décisions déjà tranchées.
 
 En réserve (non retenu, aucune analyse écrite) : outillage provisioning tenant (schéma/instance/
 proxy/secrets, `DEFERRED-FEATURES.md` §1.2/§4).

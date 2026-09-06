@@ -2,6 +2,7 @@ package com.flowforge.infrastructure.mcp.tool;
 
 import com.flowforge.domain.connector.model.ConnectorInstanceData;
 import com.flowforge.domain.connector.port.in.ManageConnectorInstanceUseCase;
+import com.flowforge.domain.connector.port.out.ConnectorCatalog;
 import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.infrastructure.config.TenantProperties;
 import com.flowforge.infrastructure.mcp.McpAccessContextFactory;
@@ -18,23 +19,30 @@ import org.springframework.stereotype.Component;
  * {@link ConnectorInstanceData}. Unlike {@code define_dossier_type} (keyed by a caller-chosen
  * {@code code}), a connector instance is keyed by a server-generated UUID — the create/update
  * split mirrors {@code ConnectorAdminController} (POST vs PATCH /{id}) rather than an upsert.
- * {@code dryRun=true} previews without persisting: on create it is a no-op stub (same contract as
- * {@code define_dossier_type}'s create dry run — no validation performed), on update it confirms
- * the instance exists and the actor is authorized (via {@code get}) without saving.
+ * {@code dryRun=true} previews without persisting: required fields and, on create, the config
+ * against the connector type's schema (via {@link ConnectorCatalog}, the same check
+ * {@link ManageConnectorInstanceUseCase#create} would run) are still validated — found missing in
+ * Phase 7 review and fixed, since a preview that skips validation defeats its own purpose. On
+ * update, dry run confirms the instance exists and the actor is authorized (via {@code get})
+ * without saving; it does not replicate the private secret-preserving merge, so a merged-config
+ * validation preview is not offered there (documented, not silently incomplete).
  */
 @Component
 public class DefineConnectorInstanceTool {
 
     private final ManageConnectorInstanceUseCase manageConnectorInstanceUseCase;
+    private final ConnectorCatalog connectorCatalog;
     private final TenantProperties tenantProperties;
     private final McpAccessContextFactory accessContextFactory;
 
     public DefineConnectorInstanceTool(
             ManageConnectorInstanceUseCase manageConnectorInstanceUseCase,
+            ConnectorCatalog connectorCatalog,
             TenantProperties tenantProperties,
             McpAccessContextFactory accessContextFactory) {
         this.manageConnectorInstanceUseCase =
                 Objects.requireNonNull(manageConnectorInstanceUseCase, "manageConnectorInstanceUseCase");
+        this.connectorCatalog = Objects.requireNonNull(connectorCatalog, "connectorCatalog");
         this.tenantProperties = Objects.requireNonNull(tenantProperties, "tenantProperties");
         this.accessContextFactory = Objects.requireNonNull(accessContextFactory, "accessContextFactory");
     }
@@ -87,19 +95,23 @@ public class DefineConnectorInstanceTool {
             Map<String, Object> config,
             boolean dryRun,
             AccessContext.User actor) {
-        if (dryRun) {
-            return result("create", true, null, null);
-        }
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("name is required to create a connector instance");
         }
         if (connectorType == null || connectorType.isBlank()) {
             throw new IllegalArgumentException("connectorType is required to create a connector instance");
         }
+        Map<String, Object> resolvedConfig = config == null ? Map.of() : config;
+        if (dryRun) {
+            // Mirrors the validation ManageConnectorInstanceUseCaseImpl.create() runs, without
+            // reaching it — same "duplicate for the preview only" pattern already used by
+            // DefineDossierTypeTool's update dry run (checkCompatibilityUseCase).
+            connectorCatalog.get(connectorType).validate(resolvedConfig);
+            return result("create", true, null, null);
+        }
         ConnectorInstanceData created = manageConnectorInstanceUseCase.create(
                 new ManageConnectorInstanceUseCase.CreateCommand(
-                        tenantId, name, connectorType, enabled == null || enabled,
-                        config == null ? Map.of() : config),
+                        tenantId, name, connectorType, enabled == null || enabled, resolvedConfig),
                 actor);
         return result("create", false, created.id(), created);
     }

@@ -10,8 +10,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.flowforge.domain.connector.model.ConnectorDefinition;
 import com.flowforge.domain.connector.model.ConnectorInstanceData;
+import com.flowforge.domain.connector.model.ConnectorValidationException;
+import com.flowforge.domain.connector.model.UnknownConnectorException;
 import com.flowforge.domain.connector.port.in.ManageConnectorInstanceUseCase;
+import com.flowforge.domain.connector.port.out.ConnectorCatalog;
 import com.flowforge.infrastructure.config.TenantProperties;
 import com.flowforge.infrastructure.mcp.McpAccessContextFactory;
 import java.time.Instant;
@@ -30,13 +34,19 @@ class DefineConnectorInstanceToolTest {
     private static final String TENANT = "tenant_dev";
 
     private ManageConnectorInstanceUseCase manageConnectorInstanceUseCase;
+    private ConnectorCatalog connectorCatalog;
+    private ConnectorDefinition httpRestDefinition;
     private DefineConnectorInstanceTool tool;
 
     @BeforeEach
     void setUp() {
         manageConnectorInstanceUseCase = mock(ManageConnectorInstanceUseCase.class);
+        connectorCatalog = mock(ConnectorCatalog.class);
+        httpRestDefinition = mock(ConnectorDefinition.class);
+        when(connectorCatalog.get("http-rest")).thenReturn(httpRestDefinition);
         tool = new DefineConnectorInstanceTool(
-                manageConnectorInstanceUseCase, new TenantProperties(TENANT), new McpAccessContextFactory());
+                manageConnectorInstanceUseCase, connectorCatalog, new TenantProperties(TENANT),
+                new McpAccessContextFactory());
         Jwt jwt = Jwt.withTokenValue("t")
                 .header("alg", "none")
                 .claim("sub", "agent-1")
@@ -88,6 +98,36 @@ class DefineConnectorInstanceToolTest {
 
         assertThat(result.get("dryRun")).isEqualTo(true);
         assertThat(result.get("operation")).isEqualTo("create");
+        verify(httpRestDefinition).validate(Map.of());
+        verifyNoInteractions(manageConnectorInstanceUseCase);
+    }
+
+    @Test
+    void create_dryRun_stillValidatesConfigAgainstCatalog() {
+        org.mockito.Mockito.doThrow(new ConnectorValidationException("webhookAuthType is required"))
+                .when(httpRestDefinition).validate(Map.of());
+
+        assertThatThrownBy(() -> tool.defineConnectorInstance(
+                        null, "Webhook", "http-rest", null, Map.of(), null, true))
+                .isInstanceOf(ConnectorValidationException.class);
+        verifyNoInteractions(manageConnectorInstanceUseCase);
+    }
+
+    @Test
+    void create_dryRun_unknownConnectorType_isRejected() {
+        when(connectorCatalog.get("bogus")).thenThrow(new UnknownConnectorException("bogus"));
+
+        assertThatThrownBy(() -> tool.defineConnectorInstance(
+                        null, "Webhook", "bogus", null, Map.of(), null, true))
+                .isInstanceOf(UnknownConnectorException.class);
+        verifyNoInteractions(manageConnectorInstanceUseCase);
+    }
+
+    @Test
+    void create_dryRun_missingName_isStillRejected() {
+        assertThatThrownBy(() -> tool.defineConnectorInstance(null, null, "http-rest", null, Map.of(), null, true))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("name");
         verifyNoInteractions(manageConnectorInstanceUseCase);
     }
 

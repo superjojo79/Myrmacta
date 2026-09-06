@@ -3,7 +3,6 @@ package com.flowforge.infrastructure.mcp.tool;
 import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.FieldDefinition;
 import com.flowforge.domain.workflow.model.TaskQuestionSchema;
-import com.flowforge.domain.workflow.model.UnknownTaskQuestionSchemaException;
 import com.flowforge.domain.workflow.port.in.GetTaskQuestionSchemaUseCase;
 import com.flowforge.domain.workflow.port.in.SaveTaskQuestionSchemaUseCase;
 import com.flowforge.infrastructure.config.TenantProperties;

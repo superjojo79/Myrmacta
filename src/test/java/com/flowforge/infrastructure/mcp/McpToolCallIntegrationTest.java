@@ -217,6 +217,34 @@ class McpToolCallIntegrationTest {
     }
 
     @Test
+    void defineConnectorInstance_dryRun_rejectsInvalidConfigWithoutPersisting() throws Exception {
+        // Phase 7 finding: dryRun=true on create originally skipped all validation (a no-op stub),
+        // defeating its own "preview" purpose — fixed to validate against the connector type's
+        // schema without persisting. webhookAuthType is missing here, which HttpRestConnector
+        // .validate(...) rejects.
+        String name = "MCP IT Invalid " + UUID.randomUUID();
+
+        MvcResult call = callMcp(sessionId, TENANT, "API_SERVICE", 2, "tools/call", """
+                {
+                  "name": "define_connector_instance",
+                  "arguments": {
+                    "name": "%s",
+                    "connectorType": "http-rest",
+                    "config": {},
+                    "dryRun": true
+                  }
+                }
+                """.formatted(name));
+
+        String body = call.getResponse().getContentAsString();
+        assertThat(body).as("body: %s", body).contains("\"isError\":true");
+        assertThat(connectorInstanceRepository
+                        .pageByTenantId(TENANT, com.flowforge.domain.shared.PageQuery.of(0, 100))
+                        .content().stream().anyMatch(c -> c.name().equals(name)))
+                .isFalse();
+    }
+
+    @Test
     void defineConnectorInstance_createsAndMasksSecretOnRead() throws Exception {
         String name = "MCP IT Connector " + UUID.randomUUID();
 

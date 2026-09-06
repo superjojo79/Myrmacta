@@ -1270,7 +1270,7 @@ re-confirmée verte ; Vitest/Playwright inchangés (correctif backend seul).
 
 ### [ ] 56. Extension du serveur MCP au flux métier complet (connecteurs, association templates, questions de tâche)
 
-**Statut (2026-09-06) : cycle `dev-lifecycle` lancé, Phase 5 (implémentation TDD) close.** Origine :
+**Statut (2026-09-06) : cycle `dev-lifecycle` lancé, Phase 7 (check implementation) close.** Origine :
 demande utilisateur — inspecter ce qui a été ajouté à FlowForge depuis `serveur-mcp` (PR #82, 9
 tools) et déterminer ce qui manque pour qu'un agent MCP puisse définir un flux métier complet sans
 sortir du canal MCP. Analyse initiale :
@@ -1369,8 +1369,34 @@ avec cette feature) — non bloquant, feature backend-only. Documentation resync
 différé (aucune PR ouverte à ce stade, même convention que TODO §47/§55). Détail complet :
 [docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md).
 
-**Suite :** Phase 6 (mise à jour planning — déjà reflétée ci-dessus) puis Phase 7 (check
-implementation), Phase 8 (dev-testing), Phase 9 (revue finale). Documents lifecycle :
+**Phase 6 (mise à jour planning)** — déjà reflétée ci-dessus (les 9 milestones étaient marqués
+`[x]` en fin de Phase 5).
+
+**Phase 7 (check implementation) close** — revue fichier par fichier (pas par relecture du résumé
+Phase 5) de tous les fichiers modifiés, comparés au design et aux requirements. Confirmé conforme :
+pattern adaptateur fin sur les 7 nouveaux tools ; garde-fou domaine bien en tête de chaque méthode
+concernée sans exception, dans les 3 use case impl ; asymétrie D5 réellement implémentée dans le
+code (pas seulement non testée) — vérifiée à l'identique côté domaine et côté REST
+(`WorkflowTypeConfigController.list`/`get` toujours sans acteur transmis) ; masquage secrets
+(`ConnectorInstanceMcpView`) seul point de sortie des 3 tools connecteur, aucune fuite en clair
+dans les messages d'erreur. **1 écart réel trouvé et corrigé** : `DefineConnectorInstanceTool`
+sautait toute validation (`name`/`connectorType` requis, `config` contre le schéma connecteur) en
+`dryRun=true` sur `create` — le test `if (dryRun)` était placé avant les contrôles, contrairement
+au contrat annoncé et incohérent avec `define_dossier_type` (validation structurelle toujours
+active en dryRun). Corrigé : contrôles requis avant le test dryRun, ajout d'une validation
+`ConnectorCatalog.get(connectorType).validate(...)` dans la branche dryRun (`ConnectorCatalog`
+désormais injecté dans le tool) — 3 nouveaux tests unitaires (`DefineConnectorInstanceToolTest` →
+10/10) + 1 nouveau test d'intégration HTTP réel (`McpToolCallIntegrationTest` → 14/14). 2 questions
+examinées et écartées (pas des bugs) : le garde-fou domaine n'est pas redondant avec la chaîne
+Spring Security M2M (rôle métier vs. validité transport du JWT, objets différents) ; la validation
+`ConnectorCatalog` en dryRun-create n'a pas besoin de garde propre (opération locale en mémoire,
+aucun accès tenant). `./mvnw verify` final (JDK 25 installé dans ce bac à sable, absent au
+démarrage du conteneur) : **1657 tests, 0 échec**, ArchUnit conforme, couverture Jacoco tenue.
+Détail complet dans
+[docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md)
+§ « Phase 7 — Check Implementation ».
+
+**Suite :** Phase 8 (dev-testing), Phase 9 (revue finale). Documents lifecycle :
 [docs/ai/requirements/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/requirements/2026-09-06-feature-extension-mcp-flux-metier.md),
 [docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md),
 [docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md),

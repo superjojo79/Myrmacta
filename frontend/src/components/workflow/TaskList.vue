@@ -34,6 +34,8 @@ const emit = defineEmits<{
             :is="resolveTaskFormComponent(task.formKey)"
             v-if="resolveTaskFormComponent(task.formKey) && dossierId"
             :dossier-id="dossierId"
+            :task-id="task.taskId"
+            :form-key="task.formKey"
             @ready="emit('complete', task.taskId, $event)"
             @error="emit('form-error', $event)"
           />

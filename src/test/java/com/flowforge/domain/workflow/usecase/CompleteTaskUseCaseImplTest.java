@@ -1,5 +1,6 @@
 package com.flowforge.domain.workflow.usecase;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -10,9 +11,17 @@ import static org.mockito.Mockito.when;
 import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierStatus;
 import com.flowforge.domain.dossier.model.DossierType;
+import com.flowforge.domain.dossier.model.FieldDefinition;
+import com.flowforge.domain.dossier.model.FieldType;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
+import com.flowforge.domain.workflow.TaskQuestionFormKeys;
 import com.flowforge.domain.workflow.WorkflowVariables;
+import com.flowforge.domain.workflow.model.TaskQuestionAnswer;
+import com.flowforge.domain.workflow.model.TaskQuestionSchema;
+import com.flowforge.domain.workflow.model.UnknownTaskQuestionSchemaException;
+import com.flowforge.domain.workflow.port.out.TaskQuestionAnswerRepository;
+import com.flowforge.domain.workflow.port.out.TaskQuestionSchemaRepository;
 import com.flowforge.domain.workflow.port.out.WorkflowEnginePort;
 import java.time.Instant;
 import java.util.List;
@@ -21,15 +30,19 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 class CompleteTaskUseCaseImplTest {
 
     private static final String TENANT_ID = "tenant_dev";
     private static final UUID DOSSIER_ID = UUID.randomUUID();
+    private static final String ACTOR = "actor-1";
 
     private WorkflowEnginePort workflowEnginePort;
     private DossierRepository dossierRepository;
     private DossierTypeRepository dossierTypeRepository;
+    private TaskQuestionSchemaRepository taskQuestionSchemaRepository;
+    private TaskQuestionAnswerRepository taskQuestionAnswerRepository;
     private CompleteTaskUseCaseImpl useCase;
 
     @BeforeEach
@@ -37,19 +50,27 @@ class CompleteTaskUseCaseImplTest {
         workflowEnginePort = mock(WorkflowEnginePort.class);
         dossierRepository = mock(DossierRepository.class);
         dossierTypeRepository = mock(DossierTypeRepository.class);
-        useCase = new CompleteTaskUseCaseImpl(TENANT_ID, workflowEnginePort, dossierRepository, dossierTypeRepository);
+        taskQuestionSchemaRepository = mock(TaskQuestionSchemaRepository.class);
+        taskQuestionAnswerRepository = mock(TaskQuestionAnswerRepository.class);
+        useCase = new CompleteTaskUseCaseImpl(
+                TENANT_ID,
+                workflowEnginePort,
+                dossierRepository,
+                dossierTypeRepository,
+                taskQuestionSchemaRepository,
+                taskQuestionAnswerRepository);
     }
 
     @Test
     void complete_forwardsVariablesToEnginePort() {
-        useCase.complete("task-1", DOSSIER_ID.toString(), Map.of("decision", "OK"));
+        useCase.complete("task-1", DOSSIER_ID.toString(), Map.of("decision", "OK"), ACTOR);
 
         verify(workflowEnginePort).completeTask("task-1", Map.of("decision", "OK"));
     }
 
     @Test
     void complete_rejectsReservedVariableKeys() {
-        assertThatThrownBy(() -> useCase.complete("task-1", DOSSIER_ID.toString(), Map.of("dossierId", "x")))
+        assertThatThrownBy(() -> useCase.complete("task-1", DOSSIER_ID.toString(), Map.of("dossierId", "x"), ACTOR))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("reserved");
         verifyNoInteractions(workflowEnginePort);
@@ -57,7 +78,7 @@ class CompleteTaskUseCaseImplTest {
 
     @Test
     void complete_withoutDocumentTypeVariable_neverConsultsDossierOrTypeRepositories() {
-        useCase.complete("task-1", DOSSIER_ID.toString(), Map.of("decision", "OK"));
+        useCase.complete("task-1", DOSSIER_ID.toString(), Map.of("decision", "OK"), ACTOR);
 
         verifyNoInteractions(dossierRepository, dossierTypeRepository);
     }
@@ -71,7 +92,8 @@ class CompleteTaskUseCaseImplTest {
         useCase.complete(
                 "task-1",
                 DOSSIER_ID.toString(),
-                Map.of(WorkflowVariables.DOCUMENT_TYPE, "invoice"));
+                Map.of(WorkflowVariables.DOCUMENT_TYPE, "invoice"),
+                ACTOR);
 
         verify(workflowEnginePort).completeTask("task-1", Map.of(WorkflowVariables.DOCUMENT_TYPE, "invoice"));
     }
@@ -90,7 +112,8 @@ class CompleteTaskUseCaseImplTest {
         assertThatThrownBy(() -> useCase.complete(
                         "task-1",
                         DOSSIER_ID.toString(),
-                        Map.of(WorkflowVariables.DOCUMENT_TYPE, "some-other-tenants-secret-template")))
+                        Map.of(WorkflowVariables.DOCUMENT_TYPE, "some-other-tenants-secret-template"),
+                        ACTOR))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("some-other-tenants-secret-template");
         verifyNoInteractions(workflowEnginePort);
@@ -103,9 +126,139 @@ class CompleteTaskUseCaseImplTest {
                 .thenReturn(Optional.of(dossierType("CLAIM", List.of())));
 
         assertThatThrownBy(() -> useCase.complete(
-                        "task-1", DOSSIER_ID.toString(), Map.of(WorkflowVariables.DOCUMENT_TYPE, "invoice")))
+                        "task-1", DOSSIER_ID.toString(), Map.of(WorkflowVariables.DOCUMENT_TYPE, "invoice"), ACTOR))
                 .isInstanceOf(IllegalArgumentException.class);
         verifyNoInteractions(workflowEnginePort);
+    }
+
+    @Test
+    void complete_withoutUserQuestionFormKey_neverConsultsSchemaOrAnswerRepositories() {
+        when(workflowEnginePort.findFormKeyByTaskId("task-1")).thenReturn(Optional.of("dossier-fields"));
+
+        useCase.complete("task-1", DOSSIER_ID.toString(), Map.of("decision", "OK"), ACTOR);
+
+        verifyNoInteractions(taskQuestionSchemaRepository, taskQuestionAnswerRepository);
+    }
+
+    @Test
+    void complete_withUserQuestionFormKey_validatesAndRecordsAnswer_thenCompletesTask() {
+        when(workflowEnginePort.findFormKeyByTaskId("task-1"))
+                .thenReturn(Optional.of(TaskQuestionFormKeys.formKeyFor("orientation-dossier")));
+        when(workflowEnginePort.findProcessInstanceIdByTaskId("task-1")).thenReturn(Optional.of("proc-1"));
+        when(taskQuestionSchemaRepository.findByKey(TENANT_ID, "orientation-dossier"))
+                .thenReturn(Optional.of(questionSchema()));
+
+        useCase.complete("task-1", DOSSIER_ID.toString(), Map.of("decision", "approve"), ACTOR);
+
+        ArgumentCaptor<TaskQuestionAnswer> captor = ArgumentCaptor.forClass(TaskQuestionAnswer.class);
+        verify(taskQuestionAnswerRepository).save(captor.capture());
+        TaskQuestionAnswer saved = captor.getValue();
+        assertThat(saved.tenantId()).isEqualTo(TENANT_ID);
+        assertThat(saved.dossierId()).isEqualTo(DOSSIER_ID);
+        assertThat(saved.taskId()).isEqualTo("task-1");
+        assertThat(saved.processInstanceId()).isEqualTo("proc-1");
+        assertThat(saved.schemaKey()).isEqualTo("orientation-dossier");
+        assertThat(saved.answers()).isEqualTo(Map.of("decision", "approve"));
+        assertThat(saved.submittedBy()).isEqualTo(ACTOR);
+        verify(workflowEnginePort).completeTask("task-1", Map.of("decision", "approve"));
+    }
+
+    @Test
+    void complete_withUserQuestionFormKey_missingRequiredField_rejectsAndNeverReachesTheEngine() {
+        when(workflowEnginePort.findFormKeyByTaskId("task-1"))
+                .thenReturn(Optional.of(TaskQuestionFormKeys.formKeyFor("orientation-dossier")));
+        when(taskQuestionSchemaRepository.findByKey(TENANT_ID, "orientation-dossier"))
+                .thenReturn(Optional.of(questionSchema()));
+
+        assertThatThrownBy(() -> useCase.complete("task-1", DOSSIER_ID.toString(), Map.of(), ACTOR))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("decision");
+        verify(workflowEnginePort, org.mockito.Mockito.never()).completeTask(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+        verify(taskQuestionAnswerRepository, org.mockito.Mockito.never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void complete_withUserQuestionFormKey_valueNotInSelectOptions_rejects() {
+        when(workflowEnginePort.findFormKeyByTaskId("task-1"))
+                .thenReturn(Optional.of(TaskQuestionFormKeys.formKeyFor("orientation-dossier")));
+        when(taskQuestionSchemaRepository.findByKey(TENANT_ID, "orientation-dossier"))
+                .thenReturn(Optional.of(questionSchema()));
+
+        assertThatThrownBy(() -> useCase.complete(
+                        "task-1", DOSSIER_ID.toString(), Map.of("decision", "maybe"), ACTOR))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("INVALID_OPTION");
+        verify(taskQuestionAnswerRepository, org.mockito.Mockito.never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void complete_withUserQuestionFormKey_wrongTypeForNumberField_rejects() {
+        // Phase 7 review finding: the original hand-rolled validation only checked required/SELECT
+        // options, silently accepting a non-numeric value on a NUMBER field. Replaced with
+        // DossierFieldValidator (shared with dossier fields), which also enforces type conformance.
+        when(workflowEnginePort.findFormKeyByTaskId("task-1"))
+                .thenReturn(Optional.of(TaskQuestionFormKeys.formKeyFor("orientation-dossier")));
+        TaskQuestionSchema schemaWithNumberField = new TaskQuestionSchema(
+                UUID.randomUUID(),
+                TENANT_ID,
+                "orientation-dossier",
+                "Orientation",
+                List.of(new FieldDefinition("amount", "Amount", FieldType.NUMBER, true, null, List.of(), null)),
+                "u",
+                "u");
+        when(taskQuestionSchemaRepository.findByKey(TENANT_ID, "orientation-dossier"))
+                .thenReturn(Optional.of(schemaWithNumberField));
+
+        assertThatThrownBy(() -> useCase.complete(
+                        "task-1", DOSSIER_ID.toString(), Map.of("amount", "not-a-number"), ACTOR))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("TYPE_MISMATCH");
+        verify(taskQuestionAnswerRepository, org.mockito.Mockito.never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void complete_withUserQuestionFormKey_variableNotDeclaredByTheSchema_rejectsAndNeverReachesTheEngine() {
+        // Adversarial review finding (post-Phase-9): allowUnknownFields was hard-coded true and the
+        // raw `variables` (not the schema-filtered `answers`) reached completeTask -- so a task
+        // holder could smuggle an extra process variable (e.g. one read by a downstream exclusive
+        // gateway) past a schema whose entire purpose is to bound what this task can produce, and
+        // it would never even appear in the TaskQuestionAnswer trace. Now rejected outright.
+        when(workflowEnginePort.findFormKeyByTaskId("task-1"))
+                .thenReturn(Optional.of(TaskQuestionFormKeys.formKeyFor("orientation-dossier")));
+        when(taskQuestionSchemaRepository.findByKey(TENANT_ID, "orientation-dossier"))
+                .thenReturn(Optional.of(questionSchema()));
+
+        assertThatThrownBy(() -> useCase.complete(
+                        "task-1",
+                        DOSSIER_ID.toString(),
+                        Map.of("decision", "approve", "priority", "URGENT"),
+                        ACTOR))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("UNKNOWN_FIELD");
+        verify(workflowEnginePort, org.mockito.Mockito.never()).completeTask(any(), any());
+        verify(taskQuestionAnswerRepository, org.mockito.Mockito.never()).save(any());
+    }
+
+    @Test
+    void complete_withUserQuestionFormKey_unknownSchema_rejects() {
+        when(workflowEnginePort.findFormKeyByTaskId("task-1"))
+                .thenReturn(Optional.of("user-question:missing-schema"));
+        when(taskQuestionSchemaRepository.findByKey(TENANT_ID, "missing-schema")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> useCase.complete("task-1", DOSSIER_ID.toString(), Map.of(), ACTOR))
+                .isInstanceOf(UnknownTaskQuestionSchemaException.class);
+    }
+
+    private static TaskQuestionSchema questionSchema() {
+        return new TaskQuestionSchema(
+                UUID.randomUUID(),
+                TENANT_ID,
+                "orientation-dossier",
+                "Orientation",
+                List.of(new FieldDefinition("decision", "Decision", FieldType.SELECT, true, null,
+                        List.of("approve", "reject"), null)),
+                "u",
+                "u");
     }
 
     private static Dossier dossier(String dossierTypeCode) {

@@ -58,6 +58,8 @@ function onFormError(message: string) {
             :is="resolveTaskFormComponent(task.formKey)"
             v-if="resolveTaskFormComponent(task.formKey)"
             :dossier-id="task.dossierId"
+            :task-id="task.taskId"
+            :form-key="task.formKey"
             @ready="complete(task.taskId, $event)"
             @error="onFormError"
           />

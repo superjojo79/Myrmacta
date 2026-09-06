@@ -22,6 +22,11 @@ public final class WorkflowVariables {
      */
     public static final String DOCUMENT_TYPE = "documentType";
 
+    /** Sibling constants to {@link #DOCUMENT_TYPE}, same {@code document-generation} kind (TODO §52). */
+    public static final String DOCUMENT_VARIANT = "documentVariant";
+
+    public static final String DOCUMENT_LOCALE = "documentLocale";
+
     /**
      * Instantané des champs dynamiques du dossier (voir {@code Dossier.fields()}), injecté
      * automatiquement à chaque démarrage de workflow — comble l'écart identifié avec le
@@ -34,6 +39,15 @@ public final class WorkflowVariables {
     private static final Set<String> RESERVED =
             Set.of(DOSSIER_ID, DOSSIER_WORKFLOW_LINK_ID, TENANT_ID, DOSSIER_FIELDS);
 
+    /**
+     * Business (non-platform) variable names already claimed by another task form kind —
+     * checked by {@code TaskQuestionSchema} at save time (D-USERQ-VAR-COLLISION, TODO §55) so a
+     * {@code user-question} schema field can never shadow {@code document-generation}'s
+     * completion variables.
+     */
+    private static final Set<String> KNOWN_BUSINESS_KEYS =
+            Set.of(DOCUMENT_TYPE, DOCUMENT_VARIANT, DOCUMENT_LOCALE);
+
     private WorkflowVariables() {}
 
     public static void assertNoReservedKeys(Map<String, Object> variables) {
@@ -45,6 +59,10 @@ public final class WorkflowVariables {
                 throw new IllegalArgumentException("Workflow variable is reserved: " + key);
             }
         }
+    }
+
+    public static boolean isReservedOrKnownKey(String key) {
+        return RESERVED.contains(key) || KNOWN_BUSINESS_KEYS.contains(key);
     }
 
     /**

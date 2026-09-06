@@ -56,6 +56,12 @@ class FlowableWorkflowEngineAdapter implements WorkflowEnginePort {
     }
 
     @Override
+    public Optional<String> findFormKeyByTaskId(String taskId) {
+        return Optional.ofNullable(taskService.createTaskQuery().taskId(taskId).singleResult())
+                .map(org.flowable.task.api.Task::getFormKey);
+    }
+
+    @Override
     public void deleteProcessInstanceBestEffort(String processInstanceId) {
         if (processInstanceId == null || processInstanceId.isBlank()) {
             return;

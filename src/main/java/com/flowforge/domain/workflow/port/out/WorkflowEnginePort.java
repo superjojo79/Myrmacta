@@ -17,6 +17,14 @@ public interface WorkflowEnginePort {
     Optional<String> findDossierIdVariable(String processInstanceId);
 
     /**
+     * Server-side read of {@code flowable:formKey} for the given task — used by
+     * {@code CompleteTaskUseCaseImpl} (kind {@code user-question}, TODO §55) to resolve which
+     * {@code TaskQuestionSchema} to validate against without trusting a value submitted by the
+     * client (D-USERQ-FORMKEY-PARSING; see {@code TaskQuestionFormKeys}).
+     */
+    Optional<String> findFormKeyByTaskId(String taskId);
+
+    /**
      * Best-effort runtime process-instance delete. Missing PI is a no-op. Failures must not
      * propagate (ACT_HI residual is acceptable).
      */

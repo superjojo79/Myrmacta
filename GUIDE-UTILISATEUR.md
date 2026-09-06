@@ -25,6 +25,7 @@ le permet — l'affichage du menu est indicatif, le contrôle réel se fait côt
 | Admin | Templates | `/admin/templates` | `TENANT_ADMIN` |
 | Admin | Connecteurs | `/admin/connectors` | `TENANT_ADMIN` |
 | Admin | Workflows | `/admin/workflow-types` | `TENANT_ADMIN` ou `WORKFLOW_ADMIN` |
+| Admin | Questions de tâche | `/admin/task-question-schemas` | `TENANT_ADMIN` ou `WORKFLOW_ADMIN` |
 | Admin | Webhooks (notification) | `/admin/notification-webhooks` | `TENANT_ADMIN` |
 | Admin | File purge | `/admin/purge-outbox` | `TENANT_ADMIN` |
 | Admin | Observabilité | `/admin/observabilite` | `TENANT_ADMIN` |
@@ -414,6 +415,30 @@ port management, voir [GETTING-STARTED.md](GETTING-STARTED.md#7-démarrer-le-bac
 dispose déjà d'un outil de supervision externe).
 
 ------
+
+## 10. Questions de tâche indépendantes du dossier (TODO §55)
+
+Écran **Admin → Questions de tâche** (`/admin/task-question-schemas`, `TENANT_ADMIN` ou
+`WORKFLOW_ADMIN`) — définit des mini-formulaires (« schémas ») qu'un `userTask` BPMN peut afficher
+au porteur de tâche avant complétion, **indépendamment des données du dossier** (voir §3bis du
+[GUIDE-CONCEPTION-BPMN.md](GUIDE-CONCEPTION-BPMN.md) pour la convention `formKey` côté BPMN).
+
+- **Créer un schéma** : un `schemaKey` (identifiant stable, unique par tenant — c'est lui qui sera
+  référencé dans le BPMN via `formKey = "user-question:<schemaKey>"`), un libellé, et un ou
+  plusieurs champs (mêmes types que ceux d'un type de dossier : texte, nombre, date, booléen,
+  choix — `FILE` n'est pas supporté ici, une tentative est rejetée avec un message explicite).
+- Le nom de chaque champ devient le nom de la **variable de process** produite à la complétion de
+  la tâche — un nom qui collisionne avec une variable déjà utilisée ailleurs dans le produit
+  (`documentType`, `documentVariant`, `documentLocale`, ou une variable plateforme réservée) est
+  refusé dès la sauvegarde du schéma, avant tout déploiement BPMN.
+- **Modifier** un schéma s'applique immédiatement — pas de version figée ; une instance de process
+  déjà démarrée référençant ce `schemaKey` verra le schéma tel qu'il est au moment où le porteur de
+  tâche ouvre le formulaire.
+- **Supprimer** un schéma encore référencé par un process en cours dégrade comme un `formKey`
+  inconnu (bouton « Compléter » sans saisie), jamais une erreur bloquante.
+- La réponse soumise n'est **jamais écrite dans le dossier** — elle part uniquement comme
+  variable(s) de process, et reste consultable après coup (traçabilité interne, pas d'écran de
+  consultation dédié dans cette itération).
 
 ## Pour aller plus loin
 

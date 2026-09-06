@@ -52,6 +52,12 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/views/admin/WorkflowConfigsAdminView.vue'),
   },
   {
+    path: '/admin/task-question-schemas',
+    name: 'admin-task-question-schemas',
+    meta: { roles: ['TENANT_ADMIN', 'WORKFLOW_ADMIN'] },
+    component: () => import('@/views/admin/TaskQuestionSchemasAdminView.vue'),
+  },
+  {
     path: '/admin/bpmn-editor',
     name: 'admin-bpmn-editor',
     meta: { roles: ['TENANT_ADMIN', 'WORKFLOW_ADMIN'] },

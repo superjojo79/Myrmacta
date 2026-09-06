@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -57,7 +58,15 @@ class WorkflowTaskController {
                 .map(MyWorkflowTaskResponse::from));
     }
 
+    /**
+     * {@code @Transactional} here (not on the use case/port, both domain/infra POJOs, same
+     * rationale as {@code DossierExportController}) is what lets the {@code TaskQuestionAnswer}
+     * write and {@code completeTask(...)} roll back together on failure — Flowable's Spring Boot
+     * integration lets {@code TaskService} participate in the ambient transaction (D-USERQ kind
+     * {@code user-question}, TODO §55).
+     */
     @PostMapping("/{taskId}/complete")
+    @Transactional
     ResponseEntity<Void> complete(
             @PathVariable String taskId,
             @RequestBody(required = false) CompleteTaskRequest request,
@@ -66,9 +75,13 @@ class WorkflowTaskController {
                 .orElseThrow(() -> new WorkflowTaskNotFoundException("Workflow task not found: " + taskId));
         String dossierId = workflowEnginePort.findDossierIdVariable(processInstanceId)
                 .orElseThrow(() -> new IllegalArgumentException("Task is not linked to a dossier"));
-        accessGuard.requireEditable(UUID.fromString(dossierId), accessContextFactory.user(authentication));
+        var actor = accessContextFactory.user(authentication);
+        accessGuard.requireEditable(UUID.fromString(dossierId), actor);
         completeTaskUseCase.complete(
-                taskId, dossierId, request == null || request.variables() == null ? Map.of() : request.variables());
+                taskId,
+                dossierId,
+                request == null || request.variables() == null ? Map.of() : request.variables(),
+                actor.userId());
         return ResponseEntity.noContent().build();
     }
 

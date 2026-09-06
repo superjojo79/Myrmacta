@@ -200,17 +200,34 @@ moteur ne fait que stocker/restituer cette chaîne — c'est une **convention Fl
 (`taskFormRegistry.ts` côté frontend), pas un mécanisme Flowable prêt à l'emploi (le module
 `flowable-form` n'est pas sur le classpath).
 
-Deux valeurs reconnues aujourd'hui :
+Trois valeurs reconnues aujourd'hui :
 
 | `flowable:formKey` | Formulaire affiché | Variables de complétion |
 |---|---|---|
 | `dossier-fields` | Schéma complet du `DossierType` du dossier lié (`DynamicFields.vue`) | aucune — soumis via `PATCH /api/dossiers/{id}/fields`, la tâche se complète ensuite sans variable |
 | `document-generation` | Sélection d'un template parmi ceux associés au type de dossier (Admin → Types → *Templates de documents autorisés*) | `documentType`, `documentVariant`, `documentLocale` — lues par le `serviceTask` `${documentGenerationTask}` suivant (§5, mêmes noms que le tableau des variables d'entrée), la génération reste où elle est |
+| `user-question:<schemaKey>` (TODO §55) | Mini-formulaire admin-défini (Admin → Questions de tâche), **indépendant du dossier** — un ou plusieurs champs (texte/nombre/date/choix, mêmes types que `FieldDefinition`, `FILE` non supporté) | Une variable de process par champ (nom = `FieldDefinition.name` du schéma) — lisible par une passerelle exclusive ou un `serviceTask` en aval ; jamais écrite dans le dossier |
 
 Une tâche sans `formKey`, ou avec une valeur non reconnue, garde le comportement actuel (bouton
 « Compléter » sans saisie) — jamais bloquant. Pour `document-generation`, si aucun template n'est
 associé au type de dossier, le porteur de tâche voit un message plutôt qu'un picker vide ; associer
 au moins un `templateKey` actif dans Admin → Types avant de déployer un process qui l'utilise.
+
+### `user-question:<schemaKey>` — poser un choix indépendant du dossier
+
+1. Créer le schéma dans **Admin → Questions de tâche** : `schemaKey` (identifiant stable, unique
+   par tenant), libellé, un ou plusieurs champs (le nom de chaque champ devient le nom de la
+   variable de process produite — évitez `documentType`/`documentVariant`/`documentLocale` et les
+   4 variables plateforme réservées, rejetés à la sauvegarde du schéma).
+2. Dans l'éditeur BPMN, sur le `userTask` concerné, poser `flowable:formKey =
+   "user-question:<schemaKey>"` (champ texte libre du panel de propriétés — pas de sélecteur dédié
+   pour l'instant).
+3. En aval, référencer le nom de champ choisi dans une condition de passerelle exclusive (ex.
+   `${decision == 'approve'}`) ou dans un `serviceTask` qui lit la variable.
+
+Le schéma n'est **pas versionné** : le modifier s'applique immédiatement, y compris aux instances
+de process déjà démarrées référençant le même `schemaKey` ; le supprimer alors qu'un process en
+cours le référence encore dégrade comme un `formKey` inconnu (bouton « Compléter » aveugle).
 
 ---
 

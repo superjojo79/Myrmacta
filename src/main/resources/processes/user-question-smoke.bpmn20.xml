@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             targetNamespace="http://flowforge/processes">
+
+  <!-- Smoke process for TODO §55 (questions-utilisateur-taches): a userTask declaring
+       formKey="user-question:orientation-dossier" followed by an exclusiveGateway that reads the
+       "decision" variable produced by completing that task, proving the variable is actually
+       read downstream, not just emitted (lesson from TODO §52 Phase 9: a name mismatch between a
+       task form and the node reading it was never caught by tests exercising each side alone). -->
+  <process id="userQuestionSmoke" name="User Question Smoke" isExecutable="true">
+    <startEvent id="userQuestionSmokeStart" name="Start"/>
+    <sequenceFlow id="flow_uq_task" sourceRef="userQuestionSmokeStart" targetRef="userQuestionSmokeTask"/>
+    <userTask id="userQuestionSmokeTask" name="Orientation" flowable:formKey="user-question:orientation-dossier"/>
+    <sequenceFlow id="flow_uq_gateway" sourceRef="userQuestionSmokeTask" targetRef="userQuestionSmokeGateway"/>
+    <exclusiveGateway id="userQuestionSmokeGateway" name="Orientation Gateway"/>
+    <sequenceFlow id="flow_uq_approved" sourceRef="userQuestionSmokeGateway" targetRef="userQuestionSmokeApproved">
+      <conditionExpression xsi:type="tFormalExpression">${decision == 'approve'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_uq_rejected" sourceRef="userQuestionSmokeGateway" targetRef="userQuestionSmokeRejected">
+      <conditionExpression xsi:type="tFormalExpression">${decision == 'reject'}</conditionExpression>
+    </sequenceFlow>
+    <endEvent id="userQuestionSmokeApproved" name="Approved"/>
+    <endEvent id="userQuestionSmokeRejected" name="Rejected"/>
+  </process>
+</definitions>

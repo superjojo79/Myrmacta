@@ -37,3 +37,5 @@ databaseChangeLog:
       file: db/changelog/changes/018-connector-schedule-state.yaml
   - include:
       file: db/changelog/changes/019-dossier-type-document-template-keys.yaml
+  - include:
+      file: db/changelog/changes/020-task-question-tables.yaml

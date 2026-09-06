@@ -5,6 +5,7 @@ import com.flowforge.domain.dossier.model.DossierNotFoundException;
 import com.flowforge.domain.dossier.model.DossierWorkflowLinkNotFoundException;
 import com.flowforge.domain.dossier.model.WorkflowAlreadyRunningException;
 import com.flowforge.domain.workflow.model.InvalidBpmnException;
+import com.flowforge.domain.workflow.model.UnknownTaskQuestionSchemaException;
 import com.flowforge.domain.workflow.model.UnknownWorkflowKeyException;
 import com.flowforge.domain.workflow.model.WorkflowProcessInstanceMissingException;
 import com.flowforge.domain.workflow.model.WorkflowProcessInstanceNotFoundException;
@@ -39,7 +40,8 @@ class WorkflowExceptionHandler {
             WorkflowProcessInstanceNotFoundException.class,
             WorkflowTypeConfigNotFoundException.class,
             WorkflowTaskNotFoundException.class,
-            UnknownWorkflowKeyException.class
+            UnknownWorkflowKeyException.class,
+            UnknownTaskQuestionSchemaException.class
     })
     ProblemDetail handleWorkflowResourceNotFound(RuntimeException ex) {
         return problem(HttpStatus.NOT_FOUND, "Workflow resource not found", ex.getMessage());

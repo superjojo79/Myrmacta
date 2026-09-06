@@ -2001,3 +2001,79 @@ test('E2E-FORM-3 admin associates document templates to a dossier type and it pe
   expect((updatedPayload as { documentTemplateKeys?: string[] })?.documentTemplateKeys).toEqual(['invoice'])
 })
 
+test('E2E-USERQ-1 user-question task shows the schema form and completes with the submitted answer', async ({
+  page,
+}) => {
+  await mockSession(page)
+  await page.route('**/api/workflow-tasks/mine*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(
+        envelope([
+          {
+            taskId: 'task-1',
+            name: 'Orientation',
+            assigneeId: 'user-1',
+            createdAt: '2026-08-12T00:00:00Z',
+            processInstanceId: 'pi-1',
+            dossierId: DOSSIER_ID,
+            dossierReference: 'DOS-1',
+            linkId: LINK_ID,
+            slaRemainingHours: 12,
+            formKey: 'user-question:orientation-dossier',
+          },
+        ]),
+      ),
+    })
+  })
+  await page.route('**/api/task-question-schemas/orientation-dossier/runtime*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        schemaKey: 'orientation-dossier',
+        label: 'Orientation',
+        fieldDefinitions: [
+          { name: 'decision', label: 'Decision', type: 'SELECT', required: true, options: ['approve', 'reject'] },
+        ],
+      }),
+    })
+  })
+  let completedWith: unknown = null
+  await page.route('**/api/workflow-tasks/*/complete', async (route) => {
+    completedWith = route.request().postDataJSON()
+    await route.fulfill({ status: 204, body: '' })
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Tâches' }).click()
+  await expect(page.getByText('Orientation')).toBeVisible()
+  const picker = page.locator('.user-question-task-form select')
+  await picker.selectOption('approve')
+  await page.locator('.user-question-task-form button').click()
+  // Proves the answer leaves as a task-completion variable keyed by the FieldDefinition.name --
+  // never a dossier field (no PATCH /api/dossiers/{id}/fields route mocked/expected here).
+  expect(completedWith).toEqual({ variables: { decision: 'approve' } })
+})
+
+test('E2E-USERQ-2 admin creates a task question schema and it appears in the list', async ({ page }) => {
+  await mockSession(page)
+  let schemas: unknown[] = []
+  await page.route('**/api/task-question-schemas*', async (route) => {
+    if (route.request().method() === 'POST') {
+      const body = route.request().postDataJSON() as { schemaKey: string; label: string; fieldDefinitions: unknown[] }
+      const created = { id: 's-1', createdBy: 'admin-1', updatedBy: 'admin-1', ...body }
+      schemas = [created]
+      await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(created) })
+      return
+    }
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(envelope(schemas)) })
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Questions de tâche' }).click()
+  await page.getByTestId('schema-key-input').fill('orientation-dossier')
+  await page.getByTestId('schema-label-input').fill('Orientation')
+  await page.locator('[data-testid="schema-create-form"] button[type="submit"]').click()
+  await expect(page.getByText('orientation-dossier')).toBeVisible()
+})
+

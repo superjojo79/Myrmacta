@@ -10,7 +10,42 @@
 >   (rétention / purge / sensible — **livré**) ; revue post-implémentation 2026-08-25 :
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
-> **Dernière mise à jour :** 2026-09-03 — TODO **§52 clos** : `formulaires-dynamiques-taches`,
+> **Dernière mise à jour :** 2026-09-05 — TODO **§55 clos** : `questions-utilisateur-taches`,
+> cycle `dev-lifecycle` Phases 1–9 complet (M1–M9 enchaînés en TDD sur demande explicite), plus une
+> **analyse adversariale post-Phase-9** (subagent dédié, demande explicite de l'utilisateur).
+> Nouveau 3ᵉ kind de tâche
+> `user-question:<schemaKey>` (`taskFormRegistry.ts`, TODO §52) : un concepteur de workflow
+> définit un mini-formulaire admin (**Admin → Questions de tâche**) qu'un `userTask` affiche avant
+> complétion, indépendamment du dossier — réponse en variables de process uniquement, tracée
+> (`TaskQuestionAnswer`). **Compromis d'architecture tranché avec l'utilisateur** : la validation
+> serveur résout le schéma en lisant `formKey` côté serveur (nouveau
+> `WorkflowEnginePort.findFormKeyByTaskId`), jamais depuis une variable client — exception
+> documentée et bornée au principe « `formKey` opaque » hérité de TODO §52. **2 gaps réels trouvés
+> en revue requirements** (Phase 2) : `CompleteTaskUseCase.complete(...)` ne transmettait aucune
+> identité d'appelant ; l'endpoint runtime n'avait aucun `DossierType`/`VIEW` à vérifier — corrigés
+> (`submittedBy`, garde par `taskId`). Prouvé contre le **vrai** moteur Flowable
+> (`UserQuestionFormSmokeIT`) : la passerelle exclusive lit effectivement la variable produite.
+> **1 écart réel trouvé en Phase 7** (revue d'implémentation) : la validation ne couvrait que
+> `required`/`SELECT`, acceptait une valeur non conforme sur un champ `NUMBER`/`DATE`/`BOOLEAN` —
+> corrigé par réutilisation de `DossierFieldValidator`. **4 écarts réels trouvés en Phase 8**
+> (balayage Jacoco classe par classe) : 2 branches non couvertes complétées (schéma supprimé après
+> résolution du `formKey` ; 404 sur `schemaKey` inconnu en update), `TaskQuestionFormKeys.formKeyFor`
+> était du code mort côté production — de vrais appelants lui ont été donnés côté tests plutôt que
+> des littéraux dupliqués, `TaskQuestionAnswerJpaEntity.toDomain()` supprimée (0% de couverture,
+> aucun appelant, cohérent avec le write-only de `TaskQuestionAnswerRepository`). **Bug réel trouvé
+> et corrigé après Phase 9** (analyse adversariale) : le schéma ne bornait pas réellement les
+> variables de process — `allowUnknownFields` codé à `true` et les `variables` brutes (pas la map
+> `answers` filtrée) transmises au moteur, si bien qu'une clé absente du schéma (ex. `decision`)
+> pouvait piloter une passerelle exclusive ailleurs dans le workflow sans jamais apparaître dans la
+> trace `TaskQuestionAnswer` — corrigé (rejet 400 des clés hors schéma, transmission de la map
+> filtrée au moteur). `./mvnw verify`
+> 1592 tests (0 échec) ; Vitest 289/289 ; Playwright 65/65 (63 existants + 2 nouveaux depuis
+> Phase 5, zéro régression). Analyse d'origine :
+> [23-questions-utilisateur-taches.md](analysis%20doc/23-questions-utilisateur-taches.md).
+> `CHANGELOG.md` différé (aucune PR ouverte à ce stade). File toujours vide, aucune feature en
+> cours.
+>
+> 2026-09-03 — TODO **§52 clos** : `formulaires-dynamiques-taches`,
 > cycle `dev-lifecycle` Phases 1–9 complet. Un `userTask` BPMN peut désormais déclarer
 > `flowable:formKey` pour afficher un formulaire de tâche avant complétion — schéma complet du
 > dossier (`dossier-fields`) ou choix d'un document parmi ceux associés au type de dossier

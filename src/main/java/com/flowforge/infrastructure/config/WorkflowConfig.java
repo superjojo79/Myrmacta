@@ -19,6 +19,8 @@ import com.flowforge.domain.workflow.port.in.UpdateWorkflowLinkStatusUseCase;
 import com.flowforge.domain.workflow.port.out.BpmnDraftRepository;
 import com.flowforge.domain.workflow.port.out.BpmnParserPort;
 import com.flowforge.domain.workflow.port.out.IdempotencyStore;
+import com.flowforge.domain.workflow.port.out.TaskQuestionAnswerRepository;
+import com.flowforge.domain.workflow.port.out.TaskQuestionSchemaRepository;
 import com.flowforge.domain.workflow.port.out.WorkflowDeploymentPort;
 import com.flowforge.domain.workflow.port.out.WorkflowParticipantPort;
 import com.flowforge.domain.workflow.port.out.WorkflowEnginePort;
@@ -31,8 +33,10 @@ import com.flowforge.domain.workflow.usecase.CompleteTaskUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.DeployBpmnProcessUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.GetBpmnDraftUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.GetProcessDeploymentInfoUseCaseImpl;
+import com.flowforge.domain.workflow.usecase.GetTaskQuestionSchemaForTaskUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.ListMyTasksUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.SaveBpmnDraftUseCaseImpl;
+import com.flowforge.domain.workflow.usecase.TaskQuestionSchemaUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.UpdateWorkflowLinkStatusUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.WorkflowLinkVisualizationUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.WorkflowTypeConfigUseCaseImpl;
@@ -68,9 +72,31 @@ public class WorkflowConfig {
             TenantProperties tenantProperties,
             WorkflowEnginePort workflowEnginePort,
             DossierRepository dossierRepository,
-            DossierTypeRepository dossierTypeRepository) {
+            DossierTypeRepository dossierTypeRepository,
+            TaskQuestionSchemaRepository taskQuestionSchemaRepository,
+            TaskQuestionAnswerRepository taskQuestionAnswerRepository) {
         return new CompleteTaskUseCaseImpl(
-                tenantProperties.id(), workflowEnginePort, dossierRepository, dossierTypeRepository);
+                tenantProperties.id(),
+                workflowEnginePort,
+                dossierRepository,
+                dossierTypeRepository,
+                taskQuestionSchemaRepository,
+                taskQuestionAnswerRepository);
+    }
+
+    @Bean
+    TaskQuestionSchemaUseCaseImpl taskQuestionSchemaUseCaseImpl(
+            TenantProperties tenantProperties, TaskQuestionSchemaRepository repository) {
+        return new TaskQuestionSchemaUseCaseImpl(tenantProperties.id(), repository);
+    }
+
+    @Bean
+    GetTaskQuestionSchemaForTaskUseCaseImpl getTaskQuestionSchemaForTaskUseCaseImpl(
+            TenantProperties tenantProperties,
+            TaskQuestionSchemaRepository schemaRepository,
+            WorkflowEnginePort workflowEnginePort) {
+        return new GetTaskQuestionSchemaForTaskUseCaseImpl(
+                tenantProperties.id(), schemaRepository, workflowEnginePort);
     }
 
     @Bean

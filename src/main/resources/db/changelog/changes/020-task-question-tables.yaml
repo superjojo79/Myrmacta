@@ -1,0 +1,106 @@
+databaseChangeLog:
+  - changeSet:
+      id: 020-task-question-schema
+      author: flowforge
+      changes:
+        - createTable:
+            tableName: task_question_schema
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_task_question_schema
+                    nullable: false
+              - column:
+                  name: tenant_id
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: schema_key
+                  type: varchar(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: label
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: fields
+                  type: json
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_by
+                  type: varchar(128)
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: task_question_schema
+            columnNames: tenant_id, schema_key
+            constraintName: uq_task_question_schema_tenant_key
+
+  - changeSet:
+      id: 020-task-question-answer
+      author: flowforge
+      changes:
+        - createTable:
+            tableName: task_question_answer
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_task_question_answer
+                    nullable: false
+              - column:
+                  name: tenant_id
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dossier_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: task_id
+                  type: varchar(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: process_instance_id
+                  type: varchar(128)
+              - column:
+                  name: schema_key
+                  type: varchar(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: answers
+                  type: json
+                  constraints:
+                    nullable: false
+              - column:
+                  name: submitted_by
+                  type: varchar(128)
+              - column:
+                  name: submitted_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: task_question_answer
+            indexName: idx_task_question_answer_dossier
+            columns:
+              - column:
+                  name: dossier_id

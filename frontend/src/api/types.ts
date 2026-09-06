@@ -228,6 +228,21 @@ export interface WorkflowTypeConfig {
   observerUserIds: string[]
 }
 
+export interface TaskQuestionSchema {
+  id: string
+  schemaKey: string
+  label: string
+  fieldDefinitions: FieldDefinition[]
+  createdBy: string
+  updatedBy: string
+}
+
+export interface TaskQuestionSchemaRuntime {
+  schemaKey: string
+  label: string
+  fieldDefinitions: FieldDefinition[]
+}
+
 export interface DocumentTemplate {
   id: string
   templateKey: string

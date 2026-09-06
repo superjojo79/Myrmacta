@@ -1270,7 +1270,7 @@ re-confirmée verte ; Vitest/Playwright inchangés (correctif backend seul).
 
 ### [ ] 56. Extension du serveur MCP au flux métier complet (connecteurs, association templates, questions de tâche)
 
-**Statut (2026-09-06) : cycle `dev-lifecycle` lancé, Phase 7 (check implementation) close.** Origine :
+**Statut (2026-09-06) : cycle `dev-lifecycle` lancé, Phase 8 (dev-testing) close.** Origine :
 demande utilisateur — inspecter ce qui a été ajouté à FlowForge depuis `serveur-mcp` (PR #82, 9
 tools) et déterminer ce qui manque pour qu'un agent MCP puisse définir un flux métier complet sans
 sortir du canal MCP. Analyse initiale :
@@ -1396,7 +1396,24 @@ Détail complet dans
 [docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md)
 § « Phase 7 — Check Implementation ».
 
-**Suite :** Phase 8 (dev-testing), Phase 9 (revue finale). Documents lifecycle :
+**Phase 8 (dev-testing) close** — vérification Jacoco **classe par classe** (convention TODO §28)
+sur les 14 classes nouvelles/modifiées, pas seulement à l'agrégat `BUNDLE`. **3 gaps réels
+trouvés et comblés** : `list_connector_definitions`/`list_connector_instances`/
+`list_task_question_schemas` ne testaient `page`/`size` que absents, jamais fournis explicitement
+— contrairement au pattern déjà établi par `ListWorkflowTypesToolTest` (4 tests) — 1 test ajouté
+par tool (BRANCH 50 % → 100 % chacun). `DefineConnectorInstanceTool` avait 6 branches non testées
+(`isBlank()` vs `null` sur `id`/`name`/`connectorType`, `config` `null` sur create, `enabled`
+explicite `false`, `restore=true`) — 6 tests ajoutés (BRANCH 70.8 % → 95.8 %). **1 gap
+pré-existant identifié, non corrigé** : `ManageConnectorInstanceUseCaseImpl` reste à 69.4 % BRANCH
+(sous le seuil de 75 % du dépôt) — vérifié via `git diff` que cette feature n'y a ajouté que
+l'appel au garde-fou (une ligne sans branche), les branches non couvertes
+(`mergeConfig`/`isBlankOrMask`/fusion `name`/`enabled`) étant de la logique métier pré-existante
+et hors sujet de ce cycle — même principe que l'import mort laissé intact en Phase 7. `./mvnw
+verify` final : **1666 tests, 0 échec** (+9 vs Phase 7), ArchUnit conforme, gate Jacoco `BUNDLE`
+tenue. Détail complet dans
+[docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md).
+
+**Suite, sur demande :** Phase 9 (revue finale). Documents lifecycle :
 [docs/ai/requirements/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/requirements/2026-09-06-feature-extension-mcp-flux-metier.md),
 [docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md),
 [docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md),

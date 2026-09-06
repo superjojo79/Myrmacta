@@ -8,6 +8,7 @@ import com.flowforge.domain.connector.model.ConfigField;
 import com.flowforge.domain.connector.model.ConnectorCapability;
 import com.flowforge.domain.connector.model.ConnectorDefinition;
 import com.flowforge.domain.connector.port.out.ConnectorCatalog;
+import com.flowforge.domain.shared.PageQuery;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,19 @@ class ListConnectorDefinitionsToolTest {
 
         assertThat(result.content()).extracting(ConnectorDefinition::getType)
                 .containsExactly("http-rest", "smtp");
+    }
+
+    @Test
+    void pageAndSizeProvided_slicesAccordingly() {
+        ConnectorDefinition httpRest = definition("http-rest");
+        ConnectorDefinition smtp = definition("smtp");
+        when(catalog.listAll()).thenReturn(List.of(smtp, httpRest));
+
+        var result = tool.listConnectorDefinitions(1, 1);
+
+        assertThat(result.page()).isEqualTo(1);
+        assertThat(result.size()).isEqualTo(1);
+        assertThat(result.content()).extracting(ConnectorDefinition::getType).containsExactly("smtp");
     }
 
     private static ConnectorDefinition definition(String type) {

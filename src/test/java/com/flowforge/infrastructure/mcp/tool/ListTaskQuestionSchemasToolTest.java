@@ -59,4 +59,14 @@ class ListTaskQuestionSchemasToolTest {
 
         assertThat(result.content()).containsExactly(schema);
     }
+
+    @Test
+    void pageAndSizeProvided_relayedAsGiven() {
+        when(getTaskQuestionSchemaUseCase.list(eq(PageQuery.of(2, 5)), any()))
+                .thenReturn(PageResult.empty(2, 5));
+
+        tool.listTaskQuestionSchemas(2, 5);
+
+        org.mockito.Mockito.verify(getTaskQuestionSchemaUseCase).list(eq(PageQuery.of(2, 5)), any());
+    }
 }

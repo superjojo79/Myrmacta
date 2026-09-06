@@ -72,4 +72,14 @@ class ListConnectorInstancesToolTest {
         org.mockito.Mockito.verify(manageConnectorInstanceUseCase)
                 .list(org.mockito.ArgumentMatchers.eq(TENANT), org.mockito.ArgumentMatchers.eq(PageQuery.defaults()), any());
     }
+
+    @Test
+    void pageAndSizeProvided_relayedAsGiven() {
+        when(manageConnectorInstanceUseCase.list(any(), any(), any())).thenReturn(PageResult.empty(2, 5));
+
+        tool.listConnectorInstances(2, 5);
+
+        org.mockito.Mockito.verify(manageConnectorInstanceUseCase)
+                .list(org.mockito.ArgumentMatchers.eq(TENANT), org.mockito.ArgumentMatchers.eq(PageQuery.of(2, 5)), any());
+    }
 }

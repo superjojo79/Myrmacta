@@ -84,11 +84,66 @@ class DefineConnectorInstanceToolTest {
     }
 
     @Test
+    void create_blankName_isRejected() {
+        assertThatThrownBy(() -> tool.defineConnectorInstance(null, "   ", "http-rest", null, Map.of(), null, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("name");
+        verifyNoInteractions(manageConnectorInstanceUseCase);
+    }
+
+    @Test
     void create_missingConnectorType_isRejected() {
         assertThatThrownBy(() -> tool.defineConnectorInstance(null, "Webhook", null, null, Map.of(), null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("connectorType");
         verifyNoInteractions(manageConnectorInstanceUseCase);
+    }
+
+    @Test
+    void create_blankConnectorType_isRejected() {
+        assertThatThrownBy(() -> tool.defineConnectorInstance(null, "Webhook", "   ", null, Map.of(), null, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("connectorType");
+        verifyNoInteractions(manageConnectorInstanceUseCase);
+    }
+
+    @Test
+    void blankId_isTreatedAsCreate() {
+        ConnectorInstanceData created = new ConnectorInstanceData(
+                UUID.randomUUID(), TENANT, "Webhook", "http-rest", true, Map.of());
+        when(manageConnectorInstanceUseCase.create(any(), any())).thenReturn(created);
+
+        Map<String, Object> result = tool.defineConnectorInstance(
+                "  ", "Webhook", "http-rest", null, Map.of(), null, null);
+
+        assertThat(result.get("operation")).isEqualTo("create");
+        verify(manageConnectorInstanceUseCase).create(any(), any());
+    }
+
+    @Test
+    void create_nullConfig_defaultsToEmptyMap() {
+        ConnectorInstanceData created = new ConnectorInstanceData(
+                UUID.randomUUID(), TENANT, "Webhook", "http-rest", true, Map.of());
+        org.mockito.ArgumentCaptor<ManageConnectorInstanceUseCase.CreateCommand> captor =
+                org.mockito.ArgumentCaptor.forClass(ManageConnectorInstanceUseCase.CreateCommand.class);
+        when(manageConnectorInstanceUseCase.create(captor.capture(), any())).thenReturn(created);
+
+        tool.defineConnectorInstance(null, "Webhook", "http-rest", null, null, null, null);
+
+        assertThat(captor.getValue().config()).isEmpty();
+    }
+
+    @Test
+    void create_explicitEnabledFalse_isRespected() {
+        ConnectorInstanceData created = new ConnectorInstanceData(
+                UUID.randomUUID(), TENANT, "Webhook", "http-rest", false, Map.of());
+        org.mockito.ArgumentCaptor<ManageConnectorInstanceUseCase.CreateCommand> captor =
+                org.mockito.ArgumentCaptor.forClass(ManageConnectorInstanceUseCase.CreateCommand.class);
+        when(manageConnectorInstanceUseCase.create(captor.capture(), any())).thenReturn(created);
+
+        tool.defineConnectorInstance(null, "Webhook", "http-rest", false, Map.of(), null, null);
+
+        assertThat(captor.getValue().enabled()).isFalse();
     }
 
     @Test
@@ -143,6 +198,19 @@ class DefineConnectorInstanceToolTest {
         assertThat(result.get("operation")).isEqualTo("update");
         verify(manageConnectorInstanceUseCase).update(any(), any());
         verify(manageConnectorInstanceUseCase, never()).create(any(), any());
+    }
+
+    @Test
+    void update_withRestoreTrue_passesRestoreFlag() {
+        UUID id = UUID.randomUUID();
+        ConnectorInstanceData updated = new ConnectorInstanceData(id, TENANT, "New", "http-rest", true, Map.of());
+        org.mockito.ArgumentCaptor<ManageConnectorInstanceUseCase.UpdateCommand> captor =
+                org.mockito.ArgumentCaptor.forClass(ManageConnectorInstanceUseCase.UpdateCommand.class);
+        when(manageConnectorInstanceUseCase.update(captor.capture(), any())).thenReturn(updated);
+
+        tool.defineConnectorInstance(id.toString(), null, null, null, null, true, null);
+
+        assertThat(captor.getValue().restore()).isTrue();
     }
 
     @Test

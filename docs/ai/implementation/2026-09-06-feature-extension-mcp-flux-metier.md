@@ -8,11 +8,16 @@ description: Technical implementation notes, patterns, and code guidelines
 
 > Phase 5 (implémentation TDD) close, M1–M9 enchaînés — `./mvnw verify` : 1653 tests, 0 échec.
 > Phase 7 (check implementation) close — 1 bug dryRun trouvé et corrigé (`DefineConnectorInstanceTool`,
-> +4 tests). `./mvnw verify` final (JDK 25) : **1657 tests, 0 échec**, ArchUnit conforme, couverture
-> Jacoco tenue (seuils BUNDLE LINE ≥ 85 % / BRANCH ≥ 75 %, gate `verify` passée). Frontend :
-> **289/289 Vitest**, 0 régression (zéro fichier `frontend/**` modifié, confirmé par
-> `git diff --stat`). Playwright non exécutable dans ce bac à sable (binaire `chrome-headless-shell`
-> absent, pré-existant, sans rapport avec cette feature) — non bloquant, feature backend-only.
+> +4 tests, 1657 tests). Phase 8 (dev-testing) close — 3 gaps de pagination (page/size jamais
+> fournis explicitement sur les 3 nouveaux tools de liste) + 6 branches non testées sur
+> `DefineConnectorInstanceTool` trouvés via Jacoco classe par classe et comblés (+9 tests). 1 gap
+> pré-existant documenté sans correctif (`ManageConnectorInstanceUseCaseImpl`, 69.4 % BRANCH, hors
+> périmètre de cette feature). `./mvnw verify` final (JDK 25, installé dans ce bac à sable en
+> Phase 7 — absent au démarrage du conteneur) : **1666 tests, 0 échec**, ArchUnit conforme,
+> couverture Jacoco `BUNDLE` tenue (LINE ≥ 85 % / BRANCH ≥ 75 %). Frontend : **289/289 Vitest**,
+> 0 régression (zéro fichier `frontend/**` modifié, confirmé par `git diff --stat`). Playwright non
+> exécutable dans ce bac à sable (binaire `chrome-headless-shell` absent, pré-existant, sans rapport
+> avec cette feature) — non bloquant, feature backend-only.
 
 ## Ce qui a été livré
 

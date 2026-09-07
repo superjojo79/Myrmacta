@@ -274,4 +274,16 @@ class OutboundUrlGuardTest {
         assertThat(first.requestUrl()).isEqualTo("https://93.184.216.34/notify");
         assertThat(lookups).hasValue(2);
     }
+
+    @Test
+    void reject_cgnatLiteral() {
+        assertThatThrownBy(() -> strict.assertSafe("https://100.64.0.1/meta"))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void reject_zeroSlashEight() {
+        assertThatThrownBy(() -> strict.assertSafe("https://0.0.0.1/meta"))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
 }

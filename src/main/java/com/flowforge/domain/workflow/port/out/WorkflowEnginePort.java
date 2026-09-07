@@ -25,6 +25,11 @@ public interface WorkflowEnginePort {
     Optional<String> findFormKeyByTaskId(String taskId);
 
     /**
+     * Assignee of an active task, empty if the task is missing or unassigned.
+     */
+    Optional<String> findAssigneeByTaskId(String taskId);
+
+    /**
      * Best-effort runtime process-instance delete. Missing PI is a no-op. Failures must not
      * propagate (ACT_HI residual is acceptable).
      */

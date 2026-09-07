@@ -283,6 +283,13 @@ L'appel doit porter un en-tête `Idempotency-Key` et l'authentification déclar�
 (`webhookAuthType`) ; la taille du corps et le débit sont limités par la configuration serveur
 (voir [GETTING-STARTED.md](GETTING-STARTED.md) pour les paramètres correspondants).
 
+Pour `HMAC_SHA256`, la signature (`X-Signature-256`) couvre
+`timestamp + "." + Idempotency-Key + "." + body` (`X-Webhook-Timestamp` = secondes epoch Unix,
+fenêtre de 5 minutes). C'est une **rupture de contrat** par rapport à l'ancien schéma
+`timestamp + "." + body` : les partenaires doivent inclure la clé d'idempotence dans le HMAC.
+`SHARED_SECRET_TOKEN` reste un jeton nu ; un même corps rejoué dans la fenêtre de 5 minutes
+est rejeté même avec une nouvelle `Idempotency-Key`.
+
 ------
 
 ## 5. Configurer un template de document

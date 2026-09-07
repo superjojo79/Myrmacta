@@ -41,6 +41,13 @@ public final class DossierAccessPolicy {
         return hasPermission(dossier.tenantId(), dossier.dossierTypeCode(), ctx, DossierPermission.EDIT);
     }
 
+    /**
+     * Non-throwing VIEW check on a type (TODO §57 M12 generate ACL).
+     */
+    public boolean canViewType(String tenantId, String dossierTypeCode, AccessContext ctx) {
+        return hasPermission(tenantId, dossierTypeCode, ctx, DossierPermission.VIEW);
+    }
+
     private void assertPermission(
             String tenantId, String dossierTypeCode, AccessContext ctx, DossierPermission required) {
         if (ctx instanceof AccessContext.Service) {

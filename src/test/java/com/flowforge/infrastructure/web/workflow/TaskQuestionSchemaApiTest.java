@@ -221,6 +221,18 @@ class TaskQuestionSchemaApiTest {
                 .andExpect(jsonPath("$.schemaKey").value(schemaKey))
                 .andExpect(jsonPath("$.createdBy").doesNotExist());
 
+        taskService.setAssignee(task.getId(), "alice");
+
+        mockMvc.perform(get("/api/task-question-schemas/{schemaKey}/runtime", schemaKey)
+                        .param("taskId", task.getId())
+                        .with(user("any-task-holder")))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/task-question-schemas/{schemaKey}/runtime", schemaKey)
+                        .param("taskId", task.getId())
+                        .with(user("alice")))
+                .andExpect(status().isOk());
+
         mockMvc.perform(get("/api/task-question-schemas/{schemaKey}/runtime", "some-other-schema")
                         .param("taskId", task.getId())
                         .with(user("any-task-holder")))

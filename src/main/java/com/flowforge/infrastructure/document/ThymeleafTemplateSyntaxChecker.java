@@ -20,6 +20,11 @@ public class ThymeleafTemplateSyntaxChecker implements TemplateSyntaxChecker {
 
     @Override
     public void check(String htmlContent) {
+        if (htmlContent != null
+                && (htmlContent.contains("th:utext") || htmlContent.contains("[(${"))) {
+            throw new InvalidTemplateSyntaxException(
+                    "Unescaped Thymeleaf interpolation (th:utext / [(${...})]) is not allowed");
+        }
         try {
             TemplateData templateData = new TemplateData(
                     "document-template-syntax-check",

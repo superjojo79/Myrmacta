@@ -20,10 +20,11 @@ import org.springframework.stereotype.Component;
  * (body, signature) pair -- a leaked log line, a compromised intermediary, a debugging tool on
  * the caller's side -- replay it indefinitely with a fresh {@code Idempotency-Key} each time,
  * bypassing idempotency entirely since that header is caller-supplied and unsigned. Signing now
- * covers {@code timestamp + "." + body} (Stripe/GitHub-style) with a bounded freshness window :
- * a captured request is only replayable within {@link #TOLERANCE} of its original signing time,
- * not forever. This is a breaking change to the wire contract for existing HMAC callers, who must
- * start sending {@value #TIMESTAMP_HEADER}.
+ * covers {@code timestamp + "." + idempotencyKey + "." + body} (Stripe/GitHub-style) with a bounded
+ * freshness window : a captured request is only replayable within {@link #TOLERANCE} of its original
+ * signing time, not forever — and a fresh {@code Idempotency-Key} cannot reuse a captured signature
+ * (TODO §57 M7). This is a breaking change to the wire contract for existing HMAC callers, who must
+ * start sending {@value #TIMESTAMP_HEADER} and include the {@code Idempotency-Key} in the HMAC.
  */
 @Component
 public class HmacWebhookAuthenticator implements WebhookAuthenticator {
@@ -53,12 +54,15 @@ public class HmacWebhookAuthenticator implements WebhookAuthenticator {
     public void authenticate(UUID instanceId, String webhookSecret, byte[] rawBody, HttpHeaders headers) {
         String providedSignature = headers.getFirst(SIGNATURE_HEADER);
         String providedTimestamp = headers.getFirst(TIMESTAMP_HEADER);
+        String idempotencyKey = headers.getFirst("Idempotency-Key");
         if (webhookSecret == null
                 || webhookSecret.isBlank()
                 || providedSignature == null
                 || providedSignature.isBlank()
                 || providedTimestamp == null
-                || providedTimestamp.isBlank()) {
+                || providedTimestamp.isBlank()
+                || idempotencyKey == null
+                || idempotencyKey.isBlank()) {
             throw new WebhookAuthenticationException(instanceId);
         }
         Instant signedAt = parseTimestamp(providedTimestamp, instanceId);
@@ -66,8 +70,13 @@ public class HmacWebhookAuthenticator implements WebhookAuthenticator {
         if (signedAt.isBefore(now.minus(TOLERANCE)) || signedAt.isAfter(now.plus(TOLERANCE))) {
             throw new WebhookAuthenticationException(instanceId);
         }
-        String expected =
-                PREFIX + hmacHex(webhookSecret, signedPayload(providedTimestamp, rawBody == null ? new byte[0] : rawBody));
+        String expected = PREFIX
+                + hmacHex(
+                        webhookSecret,
+                        signedPayload(
+                                providedTimestamp,
+                                idempotencyKey,
+                                rawBody == null ? new byte[0] : rawBody));
         if (!constantTimeEquals(expected, providedSignature)) {
             throw new WebhookAuthenticationException(instanceId);
         }
@@ -81,8 +90,8 @@ public class HmacWebhookAuthenticator implements WebhookAuthenticator {
         }
     }
 
-    private static byte[] signedPayload(String timestamp, byte[] rawBody) {
-        byte[] prefix = (timestamp + ".").getBytes(StandardCharsets.UTF_8);
+    private static byte[] signedPayload(String timestamp, String idempotencyKey, byte[] rawBody) {
+        byte[] prefix = (timestamp + "." + idempotencyKey + ".").getBytes(StandardCharsets.UTF_8);
         byte[] combined = new byte[prefix.length + rawBody.length];
         System.arraycopy(prefix, 0, combined, 0, prefix.length);
         System.arraycopy(rawBody, 0, combined, prefix.length, rawBody.length);

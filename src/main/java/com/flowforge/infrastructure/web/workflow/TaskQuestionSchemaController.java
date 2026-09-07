@@ -136,8 +136,9 @@ class TaskQuestionSchemaController {
      */
     @GetMapping("/{schemaKey}/runtime")
     TaskQuestionSchemaRuntimeResponse getForTask(
-            @PathVariable String schemaKey, @RequestParam String taskId) {
-        return TaskQuestionSchemaRuntimeResponse.from(getForTaskUseCase.getForTask(taskId, schemaKey));
+            @PathVariable String schemaKey, @RequestParam String taskId, Authentication authentication) {
+        return TaskQuestionSchemaRuntimeResponse.from(getForTaskUseCase.getForTask(
+                taskId, schemaKey, accessContextFactory.user(authentication)));
     }
 
     private static String required(String value, String field) {

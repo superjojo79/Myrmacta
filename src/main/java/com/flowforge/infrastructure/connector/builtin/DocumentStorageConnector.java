@@ -87,8 +87,13 @@ public class DocumentStorageConnector implements ConnectorDefinition, ServiceCon
         if (!(contentType instanceof String contentTypeString) || contentTypeString.isBlank()) {
             throw new IllegalArgumentException("contentType is required for STORE");
         }
-        byte[] bytes = Base64.getDecoder().decode(contentBase64);
         long maxContentSize = connectorProperties.documentStorage().maxContentSize();
+        long maxEncodedLength = 4L * ((maxContentSize + 2) / 3);
+        if (contentBase64.length() > maxEncodedLength) {
+            throw new IllegalArgumentException(
+                    "content exceeds maxContentSize (" + maxContentSize + " bytes)");
+        }
+        byte[] bytes = Base64.getDecoder().decode(contentBase64);
         if (bytes.length > maxContentSize) {
             throw new IllegalArgumentException(
                     "content exceeds maxContentSize (" + maxContentSize + " bytes)");
@@ -99,6 +104,11 @@ public class DocumentStorageConnector implements ConnectorDefinition, ServiceCon
 
     private Map<String, Object> retrieve(String tenantId, Map<String, Object> inputParams) {
         byte[] bytes = documentStoragePort.retrieve(tenantId, requireStorageRef(inputParams));
+        long maxContentSize = connectorProperties.documentStorage().maxContentSize();
+        if (bytes.length > maxContentSize) {
+            throw new IllegalArgumentException(
+                    "retrieved content exceeds maxContentSize (" + maxContentSize + " bytes)");
+        }
         return Map.of("content", Base64.getEncoder().encodeToString(bytes));
     }
 

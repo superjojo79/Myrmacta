@@ -10,7 +10,13 @@
 >   (rétention / purge / sensible — **livré**) ; revue post-implémentation 2026-08-25 :
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
-> **Dernière mise à jour :** 2026-09-06 — TODO **§56 clos**, cycle `dev-lifecycle` **complet
+> **Dernière mise à jour :** 2026-09-07 — TODO **§57 ouvert**, feature **en cours**
+> `revue-adversariale-securite` (cycle `dev-lifecycle` lancé) : revue adversariale du dépôt
+> complet après clôture des points 40–46. Findings High (H1 RCE BPMN, H2 complete sans
+> assignee) + Medium M1–M13 consignés dans TODO.md section **Security**. Branche
+> `cursor/revue-adversariale-securite-da9e`.
+>
+> 2026-09-06 — TODO **§56 clos**, cycle `dev-lifecycle` **complet
 > (Phases 1 à 9) + revue adversariale post-Phase 9** sur `extension-mcp-flux-metier` — 16 tools MCP
 > au total (9 → 16 : connecteurs + questions de tâche + `define_dossier_type` étendu). Écarts réels
 > trouvés et corrigés au fil des phases : 3 en Phase 5, 1 en Phase 7, 3 en Phase 8 (Jacoco classe
@@ -241,6 +247,9 @@ adversariale (sous-agent) et corrigée : fuite en clair de `authHeaderValue`, un
 connecteur non détecté par l'heuristique de nom pré-existante. `./mvnw verify` : 1675 tests (0
 échec). Mergé : [PR #111](https://github.com/superjojo79/FlowForge/pull/111), sans attendre la CI
 (crédits épuisés). Voir l'en-tête de ce fichier pour le détail.
+
+**En cours (2026-09-07) :** `revue-adversariale-securite` (TODO §57) — cycle `dev-lifecycle`
+sur la revue adversariale (H1–H2, M1–M13). File produit vide hors ce lot.
 
 En réserve (non retenu, aucune analyse écrite) : outillage provisioning tenant (schéma/instance/
 proxy/secrets, `DEFERRED-FEATURES.md` §1.2/§4).

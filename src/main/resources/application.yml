@@ -149,6 +149,10 @@ app:
       max-body-bytes: 1048576
       rate-limit-per-minute: 120
       idempotency-ttl: 24h
+    http:
+      connect-timeout: 5s
+      request-timeout: 5s
+      max-response-bytes: 5242880
   document:
     generate:
       max-body-bytes: 262144
@@ -174,6 +178,8 @@ app:
       bucket: ${APP_STORAGE_S3_BUCKET:}
       region: ${APP_STORAGE_S3_REGION:us-east-1}
       endpoint: ${APP_STORAGE_S3_ENDPOINT:}
+      access-key-id: ${APP_STORAGE_S3_ACCESS_KEY:}
+      secret-access-key: ${APP_STORAGE_S3_SECRET_KEY:}
   retention:
     poll-delay: 1h
     batch-size: 100
@@ -189,8 +195,6 @@ app:
       # spring.servlet.multipart.max-file-size/max-request-size ci-dessus — une seule source de
       # vérité, pas de second seuil applicatif à garder synchronisé.
       allowed-content-types: ${APP_DOSSIER_ATTACHMENT_ALLOWED_TYPES:application/pdf,image/png,image/jpeg,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain}
-      access-key-id: ${APP_STORAGE_S3_ACCESS_KEY:}
-      secret-access-key: ${APP_STORAGE_S3_SECRET_KEY:}
 
 flowable:
   async-executor-activate: true

@@ -1,5 +1,6 @@
 package com.flowforge.domain.workflow.usecase;
 
+import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierFieldValidator;
 import com.flowforge.domain.dossier.model.DossierNotFoundException;
@@ -8,6 +9,7 @@ import com.flowforge.domain.dossier.model.FieldDefinition;
 import com.flowforge.domain.dossier.model.FieldValidationError;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
+import com.flowforge.domain.workflow.TaskAssignmentGuard;
 import com.flowforge.domain.workflow.TaskQuestionFormKeys;
 import com.flowforge.domain.workflow.WorkflowVariables;
 import com.flowforge.domain.workflow.model.TaskQuestionAnswer;
@@ -53,12 +55,24 @@ public final class CompleteTaskUseCaseImpl implements CompleteTaskUseCase {
     }
 
     @Override
-    public void complete(String taskId, String dossierId, Map<String, Object> variables, String actorUserId) {
+    public void complete(String taskId, String dossierId, Map<String, Object> variables, AccessContext.User actor) {
+        Objects.requireNonNull(actor, "actor");
+        assertAssignee(taskId, actor);
         WorkflowVariables.assertNoReservedKeys(variables);
         assertDocumentTypeAllowed(dossierId, variables);
         Map<String, Object> effectiveVariables =
-                assertAndRecordUserQuestionAnswers(taskId, dossierId, variables, actorUserId);
+                assertAndRecordUserQuestionAnswers(taskId, dossierId, variables, actor.userId());
         workflowEnginePort.completeTask(taskId, effectiveVariables);
+    }
+
+    /**
+     * TODO §57 H2: assignment is not advisory. Unassigned tasks remain completable by anyone who
+     * already passed the dossier EDIT gate. Admins may complete a task assigned to someone else
+     * (same privilege as reassignment).
+     */
+    private void assertAssignee(String taskId, AccessContext.User actor) {
+        TaskAssignmentGuard.assertActorMayAct(
+                workflowEnginePort.findAssigneeByTaskId(taskId).orElse(null), actor);
     }
 
     /**

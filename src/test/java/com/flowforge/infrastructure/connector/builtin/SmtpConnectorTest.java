@@ -82,6 +82,27 @@ class SmtpConnectorTest {
     }
 
     @Test
+    void execute_toMultipleRecipients_throwsWithoutCallingEmailPort() {
+        assertThatThrownBy(() -> connector.execute(
+                        INSTANCE,
+                        Map.of("to", "a@x.com,b@y.com", "subject", "Subject", "body", "Body")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("to");
+
+        verify(emailPort, never()).send(any(), any(), any());
+    }
+
+    @Test
+    void execute_toWithCrlf_throwsWithoutCallingEmailPort() {
+        assertThatThrownBy(() -> connector.execute(
+                        INSTANCE,
+                        Map.of("to", "user@example.com\nbcc:evil@x.com", "subject", "Subject", "body", "Body")))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        verify(emailPort, never()).send(any(), any(), any());
+    }
+
+    @Test
     void execute_missingSubject_throwsWithoutCallingEmailPort() {
         assertThatThrownBy(() -> connector.execute(
                         INSTANCE, Map.of("to", "user@example.com", "body", "Body")))

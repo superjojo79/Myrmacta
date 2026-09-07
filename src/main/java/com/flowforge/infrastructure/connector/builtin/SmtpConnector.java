@@ -6,6 +6,8 @@ import com.flowforge.domain.connector.model.ConnectorDefinition;
 import com.flowforge.domain.connector.model.ConnectorInstanceData;
 import com.flowforge.domain.connector.model.ServiceConnector;
 import com.flowforge.domain.notification.port.out.EmailPort;
+import jakarta.mail.internet.AddressException;
+import jakarta.mail.internet.InternetAddress;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -55,10 +57,13 @@ public class SmtpConnector implements ConnectorDefinition, ServiceConnector {
     public Map<String, Object> execute(ConnectorInstanceData instance, Map<String, Object> inputParams) {
         Objects.requireNonNull(inputParams, "inputParams");
         String to = requireString(inputParams, "to");
-        if (!to.contains("@")) {
-            throw new IllegalArgumentException("to must be a valid email address");
+        if (!isSingleEmailAddress(to)) {
+            throw new IllegalArgumentException("to must be a single valid email address");
         }
         String subject = requireString(inputParams, "subject");
+        if (containsHeaderBreak(subject) || containsHeaderBreak(to)) {
+            throw new IllegalArgumentException("to/subject must not contain control characters");
+        }
         String body = requireString(inputParams, "body");
 
         emailPort.send(to, subject, body);
@@ -71,5 +76,21 @@ public class SmtpConnector implements ConnectorDefinition, ServiceConnector {
             throw new IllegalArgumentException(key + " is required");
         }
         return text;
+    }
+
+    private static boolean isSingleEmailAddress(String to) {
+        if (to.contains(",") || to.contains(";") || containsHeaderBreak(to) || !to.contains("@")) {
+            return false;
+        }
+        try {
+            InternetAddress parsed = new InternetAddress(to, true);
+            return parsed.getAddress() != null && !parsed.getAddress().isBlank();
+        } catch (AddressException ex) {
+            return false;
+        }
+    }
+
+    private static boolean containsHeaderBreak(String value) {
+        return value.indexOf('\r') >= 0 || value.indexOf('\n') >= 0;
     }
 }

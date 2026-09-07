@@ -86,6 +86,20 @@ class CallbackConnectorRuntimeImplTest {
     }
 
     @Test
+    void reservedVariableKeys_rejectedBeforeCorrelate() {
+        var instance = instance();
+        when(catalog.get("callback")).thenReturn(callbackDefinition);
+        when(callbackConnector.resolve(eq(instance), any()))
+                .thenReturn(new CallbackResolution(
+                        "callbackReceived", "correlationKey", "42", Map.of("tenantId", "evil")));
+
+        assertThatThrownBy(() -> runtime.onIncomingCallback(instance, Map.of("orderId", "42")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("reserved");
+        verifyNoInteractions(workflowEnginePort);
+    }
+
+    @Test
     void unknownType_propagates() {
         var instance = instance();
         when(catalog.get("callback")).thenThrow(new UnknownConnectorException("callback"));

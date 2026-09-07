@@ -32,10 +32,7 @@ class ConnectorServiceTask implements JavaDelegate {
         }
         UUID instanceId = UUID.fromString(instanceIdVar.toString());
 
-        Object tenantOverride = execution.getVariable("tenantId");
-        String tenantId = tenantOverride == null
-                ? tenantProperties.id()
-                : tenantOverride.toString();
+        String tenantId = tenantProperties.id();
 
         @SuppressWarnings("unchecked")
         Map<String, Object> input = execution.getVariable("connectorInput") instanceof Map<?, ?> map

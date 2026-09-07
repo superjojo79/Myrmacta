@@ -2,11 +2,6 @@ package com.flowforge.infrastructure.connector.builtin;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import com.flowforge.domain.connector.model.ConfigField;
 import com.flowforge.domain.connector.model.ConfigFieldType;
@@ -23,9 +18,7 @@ import com.flowforge.infrastructure.connector.mapping.SimpleJsonPathMapper;
 import com.flowforge.infrastructure.notification.OutboundUrlGuard;
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,7 +26,6 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -41,18 +33,18 @@ class HttpRestConnectorTest {
 
     private static final ConnectorProperties DEFAULT_PROPERTIES = new ConnectorProperties(null, null, null, null);
 
-    private HttpClient httpClient;
+    private RecordingHttpSender httpSender;
     private HttpRestConnector connector;
 
     @BeforeEach
     void setUp() {
-        httpClient = mock(HttpClient.class);
+        httpSender = new RecordingHttpSender();
         connector = new HttpRestConnector(
                 new SimpleJsonPathMapper(),
                 new OutboundUrlGuard(false),
-                httpClient,
                 JsonMapper.builder().build(),
-                DEFAULT_PROPERTIES);
+                DEFAULT_PROPERTIES,
+                httpSender);
     }
 
     // --- TRIGGER (régression — comportement inchangé) ---
@@ -165,7 +157,7 @@ class HttpRestConnectorTest {
     void configSchema_stillHasTriggerFields() {
         assertThat(connector.getConfigSchema())
                 .extracting(ConfigField::name)
-                .contains("webhookAuthType", "webhookSecret", "processKey", "dossierTypeCode");
+                .contains("webhookAuthType", "webhookSecret", "processKey", "dossierTypeCode", "mapping");
     }
 
     @Test
@@ -186,30 +178,27 @@ class HttpRestConnectorTest {
             Map.of("apiSecret", "should-never-be-echoed-back"));
 
     @Test
-    void execute_unsafeUrl_neverCallsHttpClient() throws Exception {
+    void execute_unsafeUrl_neverCallsHttpClient() {
         assertThatThrownBy(() -> connector.execute(SERVICE_INSTANCE, Map.of("url", "https://127.0.0.1/internal")))
                 .isInstanceOf(IllegalArgumentException.class);
 
-        verify(httpClient, never()).send(any(), any());
+        assertThat(httpSender.last).isNull();
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void execute_safeUrl_getIsDefaultMethod() throws Exception {
-        stubResponse(200, "{\"ok\":true}");
+        httpSender.stub(200, "{\"ok\":true}");
 
         Map<String, Object> result = connector.execute(SERVICE_INSTANCE, Map.of("url", "https://example.com/hook"));
 
-        ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
-        verify(httpClient).send(captor.capture(), any());
-        assertThat(captor.getValue().method()).isEqualTo("GET");
+        assertThat(httpSender.last.method()).isEqualTo("GET");
         assertThat(result.get("status")).isEqualTo(200);
         assertThat(result.get("body")).isEqualTo("{\"ok\":true}");
     }
 
     @Test
     void execute_neverEchoesInstanceConfigInResult() throws Exception {
-        stubResponse(200, "ok");
+        httpSender.stub(200, "ok");
 
         Map<String, Object> result = connector.execute(SERVICE_INSTANCE, Map.of("url", "https://example.com/hook"));
 
@@ -218,18 +207,17 @@ class HttpRestConnectorTest {
     }
 
     @Test
-    void execute_missingUrl_throwsWithoutCallingHttpClient() throws Exception {
+    void execute_missingUrl_throwsWithoutCallingHttpClient() {
         assertThatThrownBy(() -> connector.execute(SERVICE_INSTANCE, Map.of()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("url");
 
-        verify(httpClient, never()).send(any(), any());
+        assertThat(httpSender.last).isNull();
     }
 
     @Test
-    @SuppressWarnings("unchecked")
-    void execute_httpClientThrowsIOException_wrapsInIllegalStateException() throws Exception {
-        when(httpClient.<String>send(any(), any())).thenThrow(new IOException("connection refused"));
+    void execute_httpClientThrowsIOException_wrapsInIllegalStateException() {
+        httpSender.error = new IOException("connection refused");
 
         assertThatThrownBy(() -> connector.execute(SERVICE_INSTANCE, Map.of("url", "https://example.com/hook")))
                 .isInstanceOf(IllegalStateException.class)
@@ -237,21 +225,6 @@ class HttpRestConnectorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
-    void execute_httpClientInterrupted_restoresInterruptFlagAndWraps() throws Exception {
-        when(httpClient.<String>send(any(), any())).thenThrow(new InterruptedException("interrupted"));
-
-        try {
-            assertThatThrownBy(() -> connector.execute(SERVICE_INSTANCE, Map.of("url", "https://example.com/hook")))
-                    .isInstanceOf(IllegalStateException.class);
-            assertThat(Thread.currentThread().isInterrupted()).isTrue();
-        } finally {
-            Thread.interrupted();
-        }
-    }
-
-    @Test
-    @SuppressWarnings("unchecked")
     void execute_pinsResolvedIpWithoutSecondLookup() throws Exception {
         AtomicInteger lookups = new AtomicInteger();
         OutboundUrlGuard.HostResolver resolver = host -> {
@@ -261,166 +234,156 @@ class HttpRestConnectorTest {
         connector = new HttpRestConnector(
                 new SimpleJsonPathMapper(),
                 new OutboundUrlGuard(false, resolver),
-                httpClient,
                 JsonMapper.builder().build(),
-                DEFAULT_PROPERTIES);
-        stubResponse(200, "ok");
+                DEFAULT_PROPERTIES,
+                httpSender);
+        httpSender.stub(200, "ok");
 
         connector.execute(SERVICE_INSTANCE, Map.of("url", "https://hooks.example.com/hook"));
 
-        ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
-        verify(httpClient).send(captor.capture(), any());
-        assertThat(captor.getValue().uri().toString()).isEqualTo("https://93.184.216.34/hook");
+        assertThat(httpSender.last.url()).isEqualTo("https://93.184.216.34/hook");
+        assertThat(httpSender.last.headers()).containsEntry("Host", "hooks.example.com");
         assertThat(lookups).hasValue(1);
     }
 
-    // --- SERVICE : méthode / corps (D-HTTP-METHODS) ---
+    @Test
+    void execute_callerHostHeaderIsOverwrittenWithOriginalHostname() throws Exception {
+        AtomicInteger lookups = new AtomicInteger();
+        OutboundUrlGuard.HostResolver resolver = host -> {
+            lookups.incrementAndGet();
+            return new InetAddress[] {InetAddress.getByName("93.184.216.34")};
+        };
+        connector = new HttpRestConnector(
+                new SimpleJsonPathMapper(),
+                new OutboundUrlGuard(false, resolver),
+                JsonMapper.builder().build(),
+                DEFAULT_PROPERTIES,
+                httpSender);
+        httpSender.stub(200, "ok");
+
+        connector.execute(SERVICE_INSTANCE, Map.of(
+                "url", "https://hooks.example.com/hook",
+                "headers", Map.of("Host", "evil.internal")));
+
+        assertThat(httpSender.last.headers()).containsEntry("Host", "hooks.example.com");
+        assertThat(httpSender.last.headers().values()).noneMatch("evil.internal"::equals);
+    }
 
     @Test
-    @SuppressWarnings("unchecked")
     void execute_methodPost_sendsPostWithBody() throws Exception {
-        stubResponse(201, "created");
+        httpSender.stub(201, "created");
 
         connector.execute(SERVICE_INSTANCE, Map.of(
                 "url", "https://example.com/hook", "method", "POST", "body", Map.of("k", "v")));
 
-        ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
-        verify(httpClient).send(captor.capture(), any());
-        assertThat(captor.getValue().method()).isEqualTo("POST");
+        assertThat(httpSender.last.method()).isEqualTo("POST");
+        assertThat(new String(httpSender.last.body(), StandardCharsets.UTF_8)).contains("\"k\"");
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void execute_methodPut_sendsPutWithBody() throws Exception {
-        stubResponse(200, "updated");
+        httpSender.stub(200, "updated");
 
         connector.execute(SERVICE_INSTANCE, Map.of(
                 "url", "https://example.com/hook", "method", "PUT", "body", Map.of("k", "v")));
 
-        ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
-        verify(httpClient).send(captor.capture(), any());
-        assertThat(captor.getValue().method()).isEqualTo("PUT");
+        assertThat(httpSender.last.method()).isEqualTo("PUT");
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void execute_methodIsCaseInsensitive() throws Exception {
-        stubResponse(200, "ok");
+        httpSender.stub(200, "ok");
 
         connector.execute(SERVICE_INSTANCE, Map.of("url", "https://example.com/hook", "method", "post"));
 
-        ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
-        verify(httpClient).send(captor.capture(), any());
-        assertThat(captor.getValue().method()).isEqualTo("POST");
+        assertThat(httpSender.last.method()).isEqualTo("POST");
     }
 
     @Test
-    void execute_unsupportedMethod_throwsWithoutCallingHttpClient() throws Exception {
+    void execute_unsupportedMethod_throwsWithoutCallingHttpClient() {
         assertThatThrownBy(() -> connector.execute(
                         SERVICE_INSTANCE, Map.of("url", "https://example.com/hook", "method", "DELETE")))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("DELETE");
 
-        verify(httpClient, never()).send(any(), any());
+        assertThat(httpSender.last).isNull();
     }
 
     @Test
-    void execute_bodyOnGet_throwsWithoutCallingHttpClient() throws Exception {
+    void execute_bodyOnGet_throwsWithoutCallingHttpClient() {
         assertThatThrownBy(() -> connector.execute(
                         SERVICE_INSTANCE, Map.of("url", "https://example.com/hook", "body", "x")))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("GET");
 
-        verify(httpClient, never()).send(any(), any());
+        assertThat(httpSender.last).isNull();
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void execute_bodyAsMap_serializedToJson() throws Exception {
-        stubResponse(200, "ok");
+        httpSender.stub(200, "ok");
 
         connector.execute(SERVICE_INSTANCE, Map.of(
                 "url", "https://example.com/hook", "method", "POST", "body", Map.of("k", "v")));
 
-        ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
-        verify(httpClient).send(captor.capture(), any());
-        assertThat(captor.getValue().bodyPublisher()).isPresent();
+        assertThat(httpSender.last.body().length).isGreaterThan(0);
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void execute_bodyAsString_sentVerbatim() throws Exception {
-        stubResponse(200, "ok");
+        httpSender.stub(200, "ok");
 
         connector.execute(SERVICE_INSTANCE, Map.of(
                 "url", "https://example.com/hook", "method", "POST", "body", "{\"raw\":true}"));
 
-        ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
-        verify(httpClient).send(captor.capture(), any());
-        assertThat(captor.getValue().bodyPublisher()).isPresent();
+        assertThat(new String(httpSender.last.body(), StandardCharsets.UTF_8)).isEqualTo("{\"raw\":true}");
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void execute_postWithoutBody_sendsEmptyBody() throws Exception {
-        stubResponse(200, "ok");
+        httpSender.stub(200, "ok");
 
         connector.execute(SERVICE_INSTANCE, Map.of("url", "https://example.com/hook", "method", "POST"));
 
-        ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
-        verify(httpClient).send(captor.capture(), any());
-        assertThat(captor.getValue().bodyPublisher()).isPresent();
-        assertThat(captor.getValue().bodyPublisher().orElseThrow().contentLength()).isZero();
+        assertThat(httpSender.last.body()).isEmpty();
     }
 
-    // --- SERVICE : en-têtes / authHeaderValue (D-HTTP-CONFIG, D-HTTP-CONTENT-TYPE) ---
-
     @Test
-    @SuppressWarnings("unchecked")
     void execute_authHeaderValuePresent_sendsAuthorizationHeader() throws Exception {
-        stubResponse(200, "ok");
+        httpSender.stub(200, "ok");
         var instance = new ConnectorInstanceData(
                 UUID.randomUUID(), "tenant_dev", "http-rest-service", "http-rest", true,
                 Map.of("authHeaderValue", "Bearer secret-token"));
 
         connector.execute(instance, Map.of("url", "https://example.com/hook"));
 
-        ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
-        verify(httpClient).send(captor.capture(), any());
-        assertThat(captor.getValue().headers().firstValue("Authorization")).contains("Bearer secret-token");
+        assertThat(httpSender.last.headers()).containsEntry("Authorization", "Bearer secret-token");
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void execute_authHeaderValueAbsent_noAuthorizationHeader() throws Exception {
-        stubResponse(200, "ok");
+        httpSender.stub(200, "ok");
 
         connector.execute(SERVICE_INSTANCE, Map.of("url", "https://example.com/hook"));
 
-        ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
-        verify(httpClient).send(captor.capture(), any());
-        assertThat(captor.getValue().headers().firstValue("Authorization")).isEmpty();
+        assertThat(httpSender.last.headers()).doesNotContainKey("Authorization");
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void execute_authHeaderValueBlank_noAuthorizationHeader() throws Exception {
-        stubResponse(200, "ok");
+        httpSender.stub(200, "ok");
         var instance = new ConnectorInstanceData(
                 UUID.randomUUID(), "tenant_dev", "http-rest-service", "http-rest", true,
                 Map.of("authHeaderValue", "   "));
 
         connector.execute(instance, Map.of("url", "https://example.com/hook"));
 
-        ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
-        verify(httpClient).send(captor.capture(), any());
-        assertThat(captor.getValue().headers().firstValue("Authorization")).isEmpty();
+        assertThat(httpSender.last.headers()).doesNotContainKey("Authorization");
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void execute_authHeaderValueNeverLeaksInResult() throws Exception {
-        stubResponse(200, "ok");
+        httpSender.stub(200, "ok");
         var instance = new ConnectorInstanceData(
                 UUID.randomUUID(), "tenant_dev", "http-rest-service", "http-rest", true,
                 Map.of("authHeaderValue", "Bearer secret-token"));
@@ -432,9 +395,8 @@ class HttpRestConnectorTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void execute_explicitAuthorizationHeader_overridesConfigValue() throws Exception {
-        stubResponse(200, "ok");
+        httpSender.stub(200, "ok");
         var instance = new ConnectorInstanceData(
                 UUID.randomUUID(), "tenant_dev", "http-rest-service", "http-rest", true,
                 Map.of("authHeaderValue", "Bearer config-token"));
@@ -442,58 +404,72 @@ class HttpRestConnectorTest {
         connector.execute(instance, Map.of(
                 "url", "https://example.com/hook", "headers", Map.of("Authorization", "Bearer call-token")));
 
-        ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
-        verify(httpClient).send(captor.capture(), any());
-        assertThat(captor.getValue().headers().firstValue("Authorization")).contains("Bearer call-token");
+        assertThat(httpSender.last.headers()).containsEntry("Authorization", "Bearer call-token");
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void execute_headersApplied() throws Exception {
-        stubResponse(200, "ok");
+        httpSender.stub(200, "ok");
 
         connector.execute(SERVICE_INSTANCE, Map.of(
                 "url", "https://example.com/hook",
                 "headers", Map.of("Content-Type", "application/json", "X-Custom", "value")));
 
-        ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
-        verify(httpClient).send(captor.capture(), any());
-        assertThat(captor.getValue().headers().firstValue("Content-Type")).contains("application/json");
-        assertThat(captor.getValue().headers().firstValue("X-Custom")).contains("value");
+        assertThat(httpSender.last.headers()).containsEntry("Content-Type", "application/json");
+        assertThat(httpSender.last.headers()).containsEntry("X-Custom", "value");
     }
 
     @Test
-    void execute_headersNotAMap_throwsWithoutCallingHttpClient() throws Exception {
+    void execute_headersNotAMap_throwsWithoutCallingHttpClient() {
         assertThatThrownBy(() -> connector.execute(
                         SERVICE_INSTANCE, Map.of("url", "https://example.com/hook", "headers", "not-a-map")))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("headers");
 
-        verify(httpClient, never()).send(any(), any());
+        assertThat(httpSender.last).isNull();
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void execute_noHeadersKey_noContentTypeAddedByDefault() throws Exception {
-        stubResponse(200, "ok");
+        httpSender.stub(200, "ok");
 
         connector.execute(SERVICE_INSTANCE, Map.of("url", "https://example.com/hook", "method", "POST", "body", "x"));
 
-        ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
-        verify(httpClient).send(captor.capture(), any());
-        assertThat(captor.getValue().headers().firstValue("Content-Type")).isEmpty();
+        assertThat(httpSender.last.headers()).doesNotContainKey("Content-Type");
     }
 
-    @SuppressWarnings("unchecked")
-    private void stubResponse(int status, String body) throws IOException, InterruptedException {
-        HttpResponse<String> response = mock(HttpResponse.class);
-        when(response.statusCode()).thenReturn(status);
-        when(response.body()).thenReturn(body);
-        when(httpClient.<String>send(any(), any())).thenReturn(response);
+    @Test
+    void execute_oversizedResponse_isRejected() {
+        httpSender.stub(200, "x".repeat(6_000_000));
+
+        assertThatThrownBy(() -> connector.execute(SERVICE_INSTANCE, Map.of("url", "https://example.com/hook")))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("maxResponseBytes");
     }
 
     private static ConnectorInstanceData instance(Map<String, Object> config) {
         return new ConnectorInstanceData(
                 UUID.randomUUID(), "tenant_dev", "http", "http-rest", true, new HashMap<>(config));
+    }
+
+    private static final class RecordingHttpSender implements HttpRestConnector.HttpSender {
+        HttpRestConnector.HttpCallRequest last;
+        int status = 200;
+        String responseBody = "ok";
+        IOException error;
+
+        void stub(int status, String body) {
+            this.status = status;
+            this.responseBody = body;
+        }
+
+        @Override
+        public HttpRestConnector.HttpCallResponse send(HttpRestConnector.HttpCallRequest request) throws IOException {
+            this.last = request;
+            if (error != null) {
+                throw error;
+            }
+            return new HttpRestConnector.HttpCallResponse(status, responseBody);
+        }
     }
 }

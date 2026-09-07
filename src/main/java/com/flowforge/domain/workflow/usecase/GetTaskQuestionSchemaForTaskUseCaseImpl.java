@@ -1,5 +1,7 @@
 package com.flowforge.domain.workflow.usecase;
 
+import com.flowforge.domain.dossier.model.AccessContext;
+import com.flowforge.domain.workflow.TaskAssignmentGuard;
 import com.flowforge.domain.workflow.TaskQuestionFormKeys;
 import com.flowforge.domain.workflow.model.TaskQuestionSchema;
 import com.flowforge.domain.workflow.model.UnknownTaskQuestionSchemaException;
@@ -23,7 +25,10 @@ public final class GetTaskQuestionSchemaForTaskUseCaseImpl implements GetTaskQue
     }
 
     @Override
-    public TaskQuestionSchema getForTask(String taskId, String schemaKey) {
+    public TaskQuestionSchema getForTask(String taskId, String schemaKey, AccessContext.User actor) {
+        Objects.requireNonNull(actor, "actor");
+        TaskAssignmentGuard.assertActorMayAct(
+                workflowEnginePort.findAssigneeByTaskId(taskId).orElse(null), actor);
         String formKey = workflowEnginePort.findFormKeyByTaskId(taskId).orElse(null);
         Optional<String> actualSchemaKey = TaskQuestionFormKeys.schemaKeyOf(formKey);
         if (actualSchemaKey.isEmpty() || !actualSchemaKey.get().equals(schemaKey)) {

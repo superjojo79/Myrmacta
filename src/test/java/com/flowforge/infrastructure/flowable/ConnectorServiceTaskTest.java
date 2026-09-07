@@ -1,6 +1,5 @@
 package com.flowforge.infrastructure.flowable;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -52,16 +51,14 @@ class ConnectorServiceTaskTest {
     }
 
     @Test
-    void execute_usesTenantOverrideVariable() {
+    void execute_ignoresProcessTenantIdVariable() {
         UUID id = UUID.randomUUID();
         when(execution.getVariable("connectorInstanceId")).thenReturn(id);
-        when(execution.getVariable("tenantId")).thenReturn("other_tenant");
         when(execution.getVariable("connectorInput")).thenReturn(null);
-        when(executeUseCase.execute(id, "other_tenant", Map.of())).thenReturn(Map.of());
+        when(executeUseCase.execute(id, "tenant_dev", Map.of())).thenReturn(Map.of());
 
         task.execute(execution);
 
-        verify(executeUseCase).execute(id, "other_tenant", Map.of());
-        assertThat(true).isTrue();
+        verify(executeUseCase).execute(id, "tenant_dev", Map.of());
     }
 }

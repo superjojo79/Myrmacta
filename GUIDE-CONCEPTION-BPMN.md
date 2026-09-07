@@ -51,6 +51,14 @@ le rechargement Spring et avec les tests) — tous les `serviceTask` du dépôt 
 `delegateExpression`. Le nom entre `${...}` est **exactement** la valeur passée à `@Component(...)`
 — voir le catalogue des tâches disponibles en §7.
 
+**Garde runtime (TODO §57 H1).** L'éditeur expose encore `flowable:expression`, mais le backend
+refuse au parse / sauvegarde / déploiement : `scriptTask`, `flowable:class`, `flowable:expression`,
+listeners script, types Flowable built-in (`mail`/`http`/`shell`), et tout
+`delegateExpression` hors allowlist
+(`${connectorServiceTask}`, `${documentGenerationTask}`, `${attachGeneratedDocumentTask}`,
+`${notificationDispatchTask}`, `${createChildDossierTask}`, `${updateDossierStatusTask}`,
+`${updateWorkflowLinkStatusTask}`). Payload interdit → `InvalidBpmnException` / HTTP 400.
+
 ### Ce que l'éditeur BPMN intégré permet réellement d'éditer
 
 L'éditeur (`/admin/bpmn-editor`, voir [14-edition-bpmn.md](analysis%20doc/14-edition-bpmn.md)) est

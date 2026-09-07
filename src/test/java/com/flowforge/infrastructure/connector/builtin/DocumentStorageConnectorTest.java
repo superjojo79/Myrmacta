@@ -116,6 +116,40 @@ class DocumentStorageConnectorTest {
     }
 
     @Test
+    void execute_storeEncodedPayloadLargerThanCap_throwsWithoutCallingPort() {
+        ConnectorProperties smallLimit = new ConnectorProperties(
+                null, null, null, new ConnectorProperties.DocumentStorage(4L));
+        connector = new DocumentStorageConnector(storagePort, smallLimit);
+
+        assertThatThrownBy(() -> connector.execute(
+                        INSTANCE,
+                        Map.of(
+                                "operation",
+                                "STORE",
+                                "content",
+                                "A".repeat(64),
+                                "contentType",
+                                "text/plain")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("maxContentSize");
+
+        verify(storagePort, never()).store(any(), any(), any());
+    }
+
+    @Test
+    void execute_retrieveExceedingMaxContentSize_throws() {
+        ConnectorProperties smallLimit = new ConnectorProperties(
+                null, null, null, new ConnectorProperties.DocumentStorage(4L));
+        connector = new DocumentStorageConnector(storagePort, smallLimit);
+        when(storagePort.retrieve("tenant_dev", "tenant_dev/abc123")).thenReturn(new byte[10]);
+
+        assertThatThrownBy(() -> connector.execute(
+                        INSTANCE, Map.of("operation", "RETRIEVE", "storageRef", "tenant_dev/abc123")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("maxContentSize");
+    }
+
+    @Test
     void execute_missingOperation_throws() {
         assertThatThrownBy(() -> connector.execute(INSTANCE, Map.of()))
                 .isInstanceOf(IllegalArgumentException.class)

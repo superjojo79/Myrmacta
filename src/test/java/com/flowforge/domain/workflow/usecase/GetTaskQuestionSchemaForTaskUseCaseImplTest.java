@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.flowforge.domain.dossier.model.AccessContext;
+import com.flowforge.domain.dossier.model.AccessDeniedException;
 import com.flowforge.domain.dossier.model.FieldDefinition;
 import com.flowforge.domain.dossier.model.FieldType;
 import com.flowforge.domain.workflow.TaskQuestionFormKeys;
@@ -14,6 +16,7 @@ import com.flowforge.domain.workflow.port.out.TaskQuestionSchemaRepository;
 import com.flowforge.domain.workflow.port.out.WorkflowEnginePort;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,6 +24,7 @@ import org.junit.jupiter.api.Test;
 class GetTaskQuestionSchemaForTaskUseCaseImplTest {
 
     private static final String TENANT_ID = "tenant_dev";
+    private static final AccessContext.User ACTOR = AccessContext.user("actor-1", Set.of("DOSSIER_MANAGER"));
 
     private TaskQuestionSchemaRepository schemaRepository;
     private WorkflowEnginePort workflowEnginePort;
@@ -40,7 +44,7 @@ class GetTaskQuestionSchemaForTaskUseCaseImplTest {
         TaskQuestionSchema schema = schema("orientation-dossier");
         when(schemaRepository.findByKey(TENANT_ID, "orientation-dossier")).thenReturn(Optional.of(schema));
 
-        TaskQuestionSchema result = useCase.getForTask("task-1", "orientation-dossier");
+        TaskQuestionSchema result = useCase.getForTask("task-1", "orientation-dossier", ACTOR);
 
         assertThat(result).isEqualTo(schema);
     }
@@ -52,7 +56,7 @@ class GetTaskQuestionSchemaForTaskUseCaseImplTest {
         when(workflowEnginePort.findFormKeyByTaskId("task-1"))
                 .thenReturn(Optional.of("user-question:other-schema"));
 
-        assertThatThrownBy(() -> useCase.getForTask("task-1", "orientation-dossier"))
+        assertThatThrownBy(() -> useCase.getForTask("task-1", "orientation-dossier", ACTOR))
                 .isInstanceOf(UnknownTaskQuestionSchemaException.class);
     }
 
@@ -60,7 +64,7 @@ class GetTaskQuestionSchemaForTaskUseCaseImplTest {
     void getForTask_rejects_whenTaskHasNoFormKey() {
         when(workflowEnginePort.findFormKeyByTaskId("task-1")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> useCase.getForTask("task-1", "orientation-dossier"))
+        assertThatThrownBy(() -> useCase.getForTask("task-1", "orientation-dossier", ACTOR))
                 .isInstanceOf(UnknownTaskQuestionSchemaException.class);
     }
 
@@ -68,7 +72,7 @@ class GetTaskQuestionSchemaForTaskUseCaseImplTest {
     void getForTask_rejects_whenTaskFormKeyIsADifferentKind() {
         when(workflowEnginePort.findFormKeyByTaskId("task-1")).thenReturn(Optional.of("document-generation"));
 
-        assertThatThrownBy(() -> useCase.getForTask("task-1", "orientation-dossier"))
+        assertThatThrownBy(() -> useCase.getForTask("task-1", "orientation-dossier", ACTOR))
                 .isInstanceOf(UnknownTaskQuestionSchemaException.class);
     }
 
@@ -81,8 +85,33 @@ class GetTaskQuestionSchemaForTaskUseCaseImplTest {
                 .thenReturn(Optional.of(TaskQuestionFormKeys.formKeyFor("orientation-dossier")));
         when(schemaRepository.findByKey(TENANT_ID, "orientation-dossier")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> useCase.getForTask("task-1", "orientation-dossier"))
+        assertThatThrownBy(() -> useCase.getForTask("task-1", "orientation-dossier", ACTOR))
                 .isInstanceOf(UnknownTaskQuestionSchemaException.class);
+    }
+
+    @Test
+    void getForTask_rejectsWhenActorIsNotTheAssignee() {
+        when(workflowEnginePort.findAssigneeByTaskId("task-1")).thenReturn(Optional.of("other-user"));
+
+        assertThatThrownBy(() -> useCase.getForTask("task-1", "orientation-dossier", ACTOR))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("assignee");
+    }
+
+    @Test
+    void getForTask_allowsAdminToReadAnotherUsersTaskSchema() {
+        when(workflowEnginePort.findAssigneeByTaskId("task-1")).thenReturn(Optional.of("other-user"));
+        when(workflowEnginePort.findFormKeyByTaskId("task-1"))
+                .thenReturn(Optional.of(TaskQuestionFormKeys.formKeyFor("orientation-dossier")));
+        TaskQuestionSchema schema = schema("orientation-dossier");
+        when(schemaRepository.findByKey(TENANT_ID, "orientation-dossier")).thenReturn(Optional.of(schema));
+
+        TaskQuestionSchema result = useCase.getForTask(
+                "task-1",
+                "orientation-dossier",
+                AccessContext.user("admin-1", Set.of("WORKFLOW_ADMIN")));
+
+        assertThat(result).isEqualTo(schema);
     }
 
     private static TaskQuestionSchema schema(String schemaKey) {

@@ -36,6 +36,7 @@ class WebhookController {
     private final ConnectorProperties connectorProperties;
     private final ObjectMapper objectMapper;
     private final WebhookRequestRateLimiter rateLimiter;
+    private final WebhookPreAuthRateLimiter preAuthRateLimiter;
     private final List<WebhookAuthenticator> authenticators;
 
     WebhookController(
@@ -46,6 +47,7 @@ class WebhookController {
             ConnectorProperties connectorProperties,
             ObjectMapper objectMapper,
             WebhookRequestRateLimiter rateLimiter,
+            WebhookPreAuthRateLimiter preAuthRateLimiter,
             List<WebhookAuthenticator> authenticators) {
         this.tenantProperties = tenantProperties;
         this.instances = instances;
@@ -54,6 +56,7 @@ class WebhookController {
         this.connectorProperties = connectorProperties;
         this.objectMapper = objectMapper;
         this.rateLimiter = rateLimiter;
+        this.preAuthRateLimiter = preAuthRateLimiter;
         this.authenticators = List.copyOf(authenticators);
     }
 
@@ -70,6 +73,15 @@ class WebhookController {
         String idempotencyKey = headers.getFirst("Idempotency-Key");
         if (idempotencyKey == null || idempotencyKey.isBlank()) {
             throw new IllegalArgumentException("Idempotency-Key header is required");
+        }
+
+        // TODO §57 revue adversariale PR #113 : le plafond strict (rateLimitPerMinute) ne
+        // s'applique plus qu'après authenticate() depuis PR #113 (Q10), pour qu'un flot non signé
+        // ne puisse plus épuiser le budget d'un intégrateur légitime. Ce plafond pré-auth, plus
+        // large et distinct, borne malgré tout le coût (parsing/HMAC, bande passante) d'un flot
+        // de requêtes non authentifiées ou visant un instanceId inexistant.
+        if (!preAuthRateLimiter.tryConsume(instanceId, connectorProperties.webhook().preAuthRateLimitPerMinute())) {
+            throw new WebhookRateLimitExceededException(instanceId);
         }
 
         ConnectorInstanceData instance = instances

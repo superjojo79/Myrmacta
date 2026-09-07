@@ -88,6 +88,7 @@ public class DocumentGenerationController {
     public ResponseEntity<String> previewHtml(@RequestBody PreviewRequest request, Authentication authentication) {
         PreviewCommand command = request.toCommand();
         denyLiveUnlessTenantAdmin(command, authentication);
+        assertCanPreviewByKey(command, authentication);
         if (!previewHtmlRateLimiter.tryConsume(authentication.getName(), previewProperties.rateLimitPerMinute())) {
             throw new DocumentGenerationRateLimitExceededException(authentication.getName());
         }
@@ -103,6 +104,7 @@ public class DocumentGenerationController {
     public ResponseEntity<byte[]> previewPdf(@RequestBody PreviewRequest request, Authentication authentication) {
         PreviewCommand command = request.toCommand();
         denyLiveUnlessTenantAdmin(command, authentication);
+        assertCanPreviewByKey(command, authentication);
         if (!rateLimiter.tryConsume(authentication.getName(), properties.rateLimitPerMinute())) {
             throw new DocumentGenerationRateLimitExceededException(authentication.getName());
         }
@@ -128,6 +130,21 @@ public class DocumentGenerationController {
             }
         }
         throw new AccessDeniedException("No VIEW dossier type lists this document template");
+    }
+
+    /**
+     * TODO §57 revue adversariale PR #113 : la même règle ACL que {@link #assertCanGenerate}
+     * s'applique à la prévisualisation par {@code templateKey} — sans quoi un DOSSIER_MANAGER
+     * peut lire n'importe quel template du tenant (HTML ou PDF) sans permission VIEW sur un type
+     * de dossier qui le liste. Le mode {@code live} (rendu de {@code htmlContent} brut) est déjà
+     * réservé à TENANT_ADMIN par {@link #denyLiveUnlessTenantAdmin} et n'a pas de {@code
+     * templateKey} à vérifier.
+     */
+    private void assertCanPreviewByKey(PreviewCommand command, Authentication authentication) {
+        if (command.isLive()) {
+            return;
+        }
+        assertCanGenerate(command.templateKey(), authentication);
     }
 
     private static void denyLiveUnlessTenantAdmin(PreviewCommand command, Authentication authentication) {

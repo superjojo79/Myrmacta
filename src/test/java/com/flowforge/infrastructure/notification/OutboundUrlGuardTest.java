@@ -286,4 +286,38 @@ class OutboundUrlGuardTest {
         assertThatThrownBy(() -> strict.assertSafe("https://0.0.0.1/meta"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    // --- DNS-resolved IPv4-mapped IPv6 (AAAA record embedding a private/metadata IPv4) ---
+    //
+    // A literal ::ffff:x.x.x.x host in the URL is already unwrapped by extractIpv4() before the
+    // private-range check. But a hostname whose DNS AAAA record resolves to an IPv4-mapped
+    // Inet6Address bypassed isBlockedResolvedAddress(): InetAddress#isLoopbackAddress() /
+    // #isSiteLocalAddress() do not recognize IPv4-mapped addresses, and the manual octet checks
+    // only ran for bytes.length == 4 (a real Inet4Address), never for a 16-byte IPv4-mapped one —
+    // so a dual-stack connect to that address would actually reach the embedded IPv4 host.
+
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "mapped-loopback.attacker.example",
+                "mapped-private10.attacker.example",
+                "mapped-private192.attacker.example",
+                "mapped-metadata.attacker.example",
+                "mapped-cgnat.attacker.example",
+                "mapped-zero.attacker.example"
+            })
+    void hostnameResolvingToIpv4MappedIpv6Address_isRejected(String host) throws Exception {
+        java.util.Map<String, InetAddress> mapped = java.util.Map.of(
+                "mapped-loopback.attacker.example", InetAddress.getByName("::ffff:127.0.0.1"),
+                "mapped-private10.attacker.example", InetAddress.getByName("::ffff:10.0.0.5"),
+                "mapped-private192.attacker.example", InetAddress.getByName("::ffff:192.168.1.1"),
+                "mapped-metadata.attacker.example", InetAddress.getByName("::ffff:169.254.169.254"),
+                "mapped-cgnat.attacker.example", InetAddress.getByName("::ffff:100.64.0.1"),
+                "mapped-zero.attacker.example", InetAddress.getByName("::ffff:0.0.0.1"));
+        OutboundUrlGuard guard =
+                new OutboundUrlGuard(false, h -> new InetAddress[] {mapped.get(h.toLowerCase(Locale.ROOT))});
+        assertThatThrownBy(() -> guard.assertSafe("https://" + host + "/hook"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("disallowed network");
+    }
 }

@@ -10,7 +10,8 @@ feature: revue-adversariale-securite
 
 # Implementation Guide — `revue-adversariale-securite`
 
-Phase 5/7 : code PR #113 **aligné** sur Q1–Q12 = A. Pas de diff production.
+Phase 5/7 : code PR #113 **aligné** sur Q1–Q12 = A. **Mergée sur `main`**
+(2026-09-07, `9482597`).
 
 ## Development Setup
 

@@ -9,7 +9,7 @@
 >   - [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) pour les points **40–46**
 >     (revue post-implémentation 2026-08-25 : alignement spec → AI-devkit → code, et sécurité) ;
 >   - la section **[Security](#security)** ci-dessous pour le point **57**
->     (revue adversariale 2026-09-07, cycle `revue-adversariale-securite`).
+>     (revue adversariale 2026-09-07, **clos** — PR #113).
 > - **[Décisions actées](#décisions-actées)** — décisions prises lors de la revue de conception
 >   initiale, déjà répercutées dans `analysis doc/`. Elles font office de journal ; ne les rouvrir
 >   qu'avec une raison explicite.
@@ -54,13 +54,14 @@ Les findings S-1…S-5 (2026-08-25) restent **clos**. Reliquats S-6…S-10 (AV, 
 CSRF cookie, headers HTTP, `allowUnknownFields`) non rouverts — voir
 [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §4.
 
-Le cycle `dev-lifecycle` `revue-adversariale-securite` (TODO §57) **implémente** les High et
+Le cycle `dev-lifecycle` `revue-adversariale-securite` (TODO §57) **a livré** les High et
 Medium (Q1–Q12 = A, stakeholder 2026-09-07). Les Low L1–L7 restent hors correctif (Q12=A).
 
-**Statut :** Phases 1–9 closes après confirmation. PR draft
-[#113](https://github.com/superjojo79/FlowForge/pull/113) — case à cocher au merge.
+**Statut :** **clos** — mergé sur `main`
+([PR #113](https://github.com/superjojo79/FlowForge/pull/113), 2026-09-07).
+CI GitHub verte sur `e96121a`. HMAC : partenaires à prévenir (Q5).
 
-### [ ] 57. Revue adversariale 2026-09-07 — durcissement High / Medium
+### [x] 57. Revue adversariale 2026-09-07 — durcissement High / Medium
 
 **Énoncé :** une revue adversariale du code livré a trouvé deux High et treize Medium encore
 exploitables, plus des Low / risques déjà assumés. Ce n'est pas une nouvelle surface produit :
@@ -115,8 +116,8 @@ ce sont des gardes manquantes sur du code déjà en `main`.
 
 JWT dans le SPA ; `/api/webhooks/**` `permitAll` + HMAC ; IDOR UUID dossier (ACL de type, décision 20) ; SSTI `${T(Runtime)}` (D-40) ; SSRF PDF ; SQLi ; path traversal storage ; XXE BPMN converter ; actuator loopback (D-42).
 
-**À produire :** *fait* après `OK tous` — cycle clos, PR #113. Merge : prévenir les
-partenaires HMAC (Q5=A).
+**Livré :** [PR #113](https://github.com/superjojo79/FlowForge/pull/113) mergée.
+Prévenir les partenaires HMAC (`timestamp.Idempotency-Key.body`, Q5=A).
 
 **Impacte :** parser BPMN, complete tâche, OIDC mapper, `application.yml` storage, `HttpRestConnector`, `OutboundUrlGuard`, CRUD connecteurs, webhooks HMAC, schemas runtime, callback + `ConnectorServiceTask`, SMTP, document-storage, generate PDF, syntax checker templates.
 

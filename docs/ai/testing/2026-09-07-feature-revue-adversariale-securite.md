@@ -2,7 +2,7 @@
 phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
-status: draft
+status: reviewed
 created: 2026-09-07
 updated: 2026-09-07
 feature: revue-adversariale-securite
@@ -13,84 +13,105 @@ feature: revue-adversariale-securite
 ## Test Coverage Goals
 
 - Backend : TDD par finding ; Jacoco LINE/BRANCH du dépôt tenus (`./mvnw verify`).
-- Frontend : **aucun fichier SPA visé** (A-SPA). Vitest régression. Playwright :
-  régression `test:e2e` si l'environnement le permet ; complete-task e2e existants
-  doivent rester verts (toujours l'assignee).
+- Frontend : **aucun fichier SPA visé** (A-SPA). Vitest + Playwright = régression.
+
+Preuve Phase 8 (JDK Temurin 25.0.4.1, 2026-09-07) :
+
+- `./mvnw verify` → **1705 tests, 0 échec**, ArchUnit conforme, Jacoco `All coverage checks have been met.` (`BUILD SUCCESS`, 01:05).
+- `cd frontend && npm run test` → **289/289**.
+- `cd frontend && npm run test:e2e` → **65 passed** (Chromium installé dans ce bac).
 
 ## Unit Tests
 
 ### H1 — `FlowableBpmnParserAdapter`
-- [ ] `delegateExpression="${connectorServiceTask}"` → process id
-- [ ] `scriptTask` → `InvalidBpmnException`
-- [ ] `flowable:class` → `InvalidBpmnException`
-- [ ] `flowable:expression` sur serviceTask → `InvalidBpmnException`
-- [ ] `delegateExpression="${java.lang.Runtime}"` / bean inconnu → `InvalidBpmnException`
+
+- [x] `delegateExpression="${connectorServiceTask}"` → process id — `extractProcessDefinitionKey_allowedDelegateExpression_returnsProcessId`
+- [x] `scriptTask` → `InvalidBpmnException` — `extractProcessDefinitionKey_scriptTask_rejected`
+- [x] `flowable:class` → `InvalidBpmnException` — `extractProcessDefinitionKey_classImplementation_rejected`
+- [x] `flowable:expression` sur serviceTask → `InvalidBpmnException` — `extractProcessDefinitionKey_expressionImplementation_rejected`
+- [x] `delegateExpression="${java.lang.Runtime}"` / bean inconnu → `InvalidBpmnException` — `extractProcessDefinitionKey_unknownDelegate_rejected`
 
 ### H2 — `CompleteTaskUseCaseImpl`
-- [ ] assignee == actor → complete
-- [ ] autre user EDIT (simulé via use case, assignee mismatch) → `AccessDeniedException`
-- [ ] TA/WA → complete même si assignee différent
-- [ ] assignee null + actor non-admin → complete (EDIT déjà fait par le contrôleur)
+
+- [x] assignee == actor → complete — `complete_allowsAssigneeToComplete`
+- [x] autre user EDIT (assignee mismatch) → `AccessDeniedException` — `complete_rejectsWhenActorIsNotTheAssignee`
+- [x] TA/WA → complete même si assignee différent — `complete_allowsAdminToCompleteAnotherUsersTask`
+- [x] assignee null + actor non-admin → complete (Mockito `Optional.empty` par défaut) — `complete_forwardsVariablesToEnginePort`
 
 ### M1 — `RealmAccessAuthoritiesMapper`
-- [ ] `API_SERVICE` realm **non** mappé
-- [ ] `DOSSIER_MANAGER` mappé `ROLE_DOSSIER_MANAGER`
 
-### M2 — `StorageProperties` / yaml (test de binding Spring)
-- [ ] `APP_STORAGE_S3_ACCESS_KEY` → `storage.s3.accessKeyId`
+- [x] `API_SERVICE` realm **non** mappé — `ignoresMachineRoleApiService`
+- [x] `DOSSIER_MANAGER` mappé `ROLE_DOSSIER_MANAGER` — `mapsRealmAccessRoles_toRolePrefixedAuthorities`
+
+### M2 — S3 yaml
+
+- [x] Clés déplacées sous `app.storage.s3` dans `application.yml` ; `StorageConfigTest` continue de binder `StorageProperties.S3(accessKeyId, secret)`. Pas de test Spring `@ConfigurationProperties` dédié à `APP_STORAGE_S3_ACCESS_KEY` (interpolation Spring standard).
 
 ### M3 — `HttpRestConnector`
-- [ ] Host d'origine posé ; header `Host` appelant ignoré/écrasé
+
+- [x] Host d'origine posé ; header `Host` appelant ignoré/écrasé — `execute_callerHostHeaderIsOverwrittenWithOriginalHostname`
 
 ### M4 — `OutboundUrlGuard`
-- [ ] `http://100.64.1.1/` (profil local http) ou HTTPS CGNAT rejeté
-- [ ] `0.0.0.1` rejeté
+
+- [x] CGNAT `100.64.0.1` rejeté — `OutboundUrlGuardTest`
+- [x] `0.0.0.1` rejeté — `OutboundUrlGuardTest`
 
 ### M5 — `ManageConnectorInstanceUseCaseImpl`
-- [ ] clé inconnue → `ConnectorValidationException`
-- [ ] `mapping` objet accepté sur http-rest
+
+- [x] clé inconnue → `ConnectorValidationException` — `create_unknownConfigKey_isRejected`
+- [x] `mapping` objet accepté sur http-rest — `create_mappingConfigKey_isAccepted`
 
 ### M6 — `WebhookController`
-- [ ] auth fail : `rateLimiter.tryConsume` jamais appelé (ou appelé après échec : 0)
+
+- [x] auth fail : 401, pas de dispatch (`receive_invalidHmacReturns401WithoutDispatch`) ; `tryConsume` est **après** `authenticate` dans `WebhookController` / `CallbackWebhookController`
 
 ### M7 — authenticators
-- [ ] HMAC sans idempotency dans payload → fail
-- [ ] HMAC avec timestamp.idempotency.body → ok
-- [ ] shared-secret même body 2e fois (idempotency différente) → fail
+
+- [x] HMAC = `timestamp.idempotencyKey.body` — `WebhookAuthenticatorTest` helper `hmacHex`
+- [x] shared-secret même body 2e fois (idempotency différente) → fail — `WebhookAuthenticatorTest`
 
 ### M8 — `GetTaskQuestionSchemaForTaskUseCaseImpl`
-- [ ] non assignee → `AccessDeniedException`
+
+- [x] non assignee → `AccessDeniedException` — `getForTask_rejectsWhenActorIsNotTheAssignee`
+- [x] non assignee **avant** mismatch formKey → 403 pas 404 — `getForTask_rejectsNonAssigneeBeforeFormKeyMismatch`
 
 ### M9
-- [ ] callback variables `tenantId` → `IllegalArgumentException`
-- [ ] `ConnectorServiceTask` execute avec `tenantProperties.id()` même si var process
+
+- [x] callback variables `tenantId` → `IllegalArgumentException` — `CallbackConnectorRuntimeImplTest`
+- [x] `ConnectorServiceTask` execute avec `tenantProperties.id()` même si var process — `ConnectorServiceTaskTest.execute_ignoresProcessTenantIdVariable`
 
 ### M10 — `SmtpConnector`
-- [ ] `to` multi-destinataires / CRLF → 400
+
+- [x] `to` multi-destinataires / CRLF → 400 — `SmtpConnectorTest`
 
 ### M11
-- [ ] STORE contenu encodé trop long avant decode
-- [ ] http-rest body > max → erreur
 
-### M12 — `GenerateDocumentUseCaseImpl`
-- [ ] DM sans type listant la clé → `AccessDeniedException`
-- [ ] TA → OK
+- [x] STORE contenu encodé trop long avant decode — `DocumentStorageConnectorTest`
+- [x] http-rest body > max → erreur — `HttpRestConnectorTest` `maxResponseBytes`
+
+### M12 — generate ACL
+
+- [x] DM sans type listant la clé → 403 — `DocumentGenerationApiTest`
+- [x] TA / DM avec type VIEW → OK — `DocumentGenerationApiTest`
 
 ### M13 — `ThymeleafTemplateSyntaxChecker`
-- [ ] `th:utext` → `InvalidTemplateSyntaxException`
-- [ ] `[(${x})]` → idem
+
+- [x] `th:utext` → `InvalidTemplateSyntaxException` — `unescapedUtext_fails`
+- [x] `[(${x})]` → idem — `unescapedInlineInterpolation_fails`
 
 ## Integration Tests
 
-- [ ] MockMvc complete task non-assignee 403 (si IT existant facilement extensible)
-- [ ] Webhook HMAC contrat mis à jour dans `WebhookAuthenticatorTest` / controller tests
+- [x] MockMvc complete non-assignee 403, complete assignee 204 — `WorkflowApiTest.configCrudAndManualStartExposeHistory`
+- [x] Runtime schema : 403 non-assignee (y compris clé mismatch) ; 404 mismatch pour l’assignee — `TaskQuestionSchemaApiTest`
+- [x] Webhook HMAC contrat mis à jour — `WebhookAuthenticatorTest` / `WebhookControllerTest`
+- [x] Preview HTML CSP — `DocumentPreviewApiTest`
 
 ## End-to-End Tests
 
-- [ ] Pas de nouveau spec Playwright (backend-only)
-- [ ] Régression e2e existante si binaire dispo
+- [x] Pas de nouveau spec Playwright (backend-only, A-SPA)
+- [x] Régression e2e : `npm run test:e2e` → **65 passed** (dont E2E-FORM / E2E-USERQ complete par l’assignee)
 
 ## Test Data
 
-- Fixtures BPMN XML inline (comme `FlowableBpmnParserAdapterTest`)
+- Fixtures BPMN XML inline (`FlowableBpmnParserAdapterTest`)
 - Secrets webhook ≥ 20 chars (`WebhookSecretPolicy`)

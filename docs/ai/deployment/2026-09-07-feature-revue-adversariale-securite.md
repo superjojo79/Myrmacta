@@ -2,71 +2,38 @@
 phase: deployment
 title: Deployment Strategy
 description: Define deployment process, infrastructure, and release procedures
+status: reviewed
+created: 2026-09-07
+updated: 2026-09-07
+feature: revue-adversariale-securite
 ---
 
-# Deployment Strategy
+# Deployment Strategy — `revue-adversariale-securite`
 
 ## Infrastructure
-**Where will the application run?**
 
-- Hosting platform (AWS, GCP, Azure, etc.)
-- Infrastructure components (servers, databases, etc.)
-- Environment separation (dev, staging, production)
+Inchangé : une instance Spring Boot = un tenant. Pas de nouveau service.
 
-## Deployment Pipeline
-**How do we deploy changes?**
+## Breaking change HMAC (M7)
 
-### Build Process
-- Build steps and commands
-- Asset compilation/optimization
-- Environment configuration
-
-### CI/CD Pipeline
-- Automated testing gates
-- Build automation
-- Deployment automation
+Les partenaires qui signent `timestamp + "." + body` doivent passer à
+`timestamp + "." + Idempotency-Key + "." + body`. Documenté dans
+`GUIDE-UTILISATEUR.md` et `analysis doc/06-connecteurs.md`. Déployer **après**
+avoir prévenu les intégrateurs (401 sinon).
 
 ## Environment Configuration
-**What settings differ per environment?**
 
-### Development
-- Configuration details
-- Local setup
+- `APP_STORAGE_S3_ACCESS_KEY` / `SECRET` : désormais bindés sous `app.storage.s3`
+  (M2). `.env.example` déjà aligné — pas de nouvelle variable.
+- Aucune migration Liquibase.
 
-### Staging
-- Configuration details
-- Testing environment
+## Deployment Pipeline
 
-### Production
-- Configuration details
-- Monitoring setup
-
-## Deployment Steps
-**What's the release process?**
-
-1. Pre-deployment checklist
-2. Deployment execution steps
-3. Post-deployment validation
-4. Rollback procedure (if needed)
-
-## Database Migrations
-**How do we handle schema changes?**
-
-- Migration strategy
-- Backup procedures
-- Rollback approach
+CI GitHub Actions `./mvnw verify` (Jacoco + ArchUnit) + job frontend.
+Rollback : revert git ; HMAC redevient l’ancien contrat (partenaires déjà migrés cassés
+dans l’autre sens).
 
 ## Secrets Management
-**How do we handle sensitive data?**
 
-- Environment variables
-- Secret storage solution
-- Key rotation strategy
-
-## Rollback Plan
-**What if something goes wrong?**
-
-- Rollback triggers
-- Rollback steps
-- Communication plan
-
+Inchangé. Clés connecteur hors schéma désormais **rejetées** (M5) — un `backupToken`
+en clair en base n’est plus créable via l’API.

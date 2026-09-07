@@ -55,7 +55,7 @@ flowchart TD
 | H2 / M8 | `WorkflowEnginePort.findAssigneeByTaskId` ; `CompleteTaskUseCase` gagne `AccessContext.User` ; runtime schema idem |
 | M1 | `RealmAccessAuthoritiesMapper` allowlist |
 | M2 | `application.yml` `app.storage.s3` |
-| M3 | `HttpRestConnector` Host + TLS verifier (HttpClient) |
+| M3 | `HttpRestConnector` Host + TLS hostname via `HttpURLConnection` (pas le JDK `HttpClient`) |
 | M4 | `OutboundUrlGuard.isBlockedIpv4Literal` |
 | M5 | `ManageConnectorInstanceUseCaseImpl.assertKnownConfigKeys` + `mapping` au schéma |
 | M6 | ordre Webhook/Callback controllers |

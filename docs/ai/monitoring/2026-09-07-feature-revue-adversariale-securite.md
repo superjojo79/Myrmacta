@@ -2,79 +2,30 @@
 phase: monitoring
 title: Monitoring & Observability
 description: Define monitoring strategy, metrics, alerts, and incident response
+status: reviewed
+created: 2026-09-07
+updated: 2026-09-07
+feature: revue-adversariale-securite
 ---
 
-# Monitoring & Observability
+# Monitoring & Observability — `revue-adversariale-securite`
 
-## Key Metrics
-**What do we need to track?**
+## Signaux à surveiller après déploiement
 
-### Performance Metrics
-- Response time/latency
-- Throughput/requests per second
-- Resource utilization (CPU, memory, disk)
+| Signal | Interprétation |
+|---|---|
+| 400 `InvalidBpmnException` au deploy/save | Payload H1 (scriptTask / class / expression / delegate hors catalogue) |
+| 403 complete / runtime schema | H2/M8 : non-assignee (attendu) ; pic = régression SPA ou manager EDIT qui complétait pour un collègue |
+| 401 webhook HMAC | Partenaire pas encore migré sur `timestamp.Idempotency-Key.body` |
+| 401 shared-secret replay | Même corps rejoué dans 5 min (M7) |
+| 429 webhook | Rate-limit **après** auth ; flood anonyme ne doit plus vider le bucket |
 
-### Business Metrics
-- User engagement metrics
-- Conversion/success rates
-- Feature usage
+## Logging
 
-### Error Metrics
-- Error rates by type
-- Failed requests
-- Exception tracking
+Ne pas logger secrets HMAC, tokens, S3, `authHeaderValue`. Les 401/403 restent
+sur `SECURITY_AUDIT` existant.
 
-## Monitoring Tools
-**What tools are we using?**
+## Rollback
 
-- Application monitoring (APM)
-- Infrastructure monitoring
-- Log aggregation
-- User analytics
-
-## Logging Strategy
-**What do we log and how?**
-
-- Log levels and categories
-- Structured logging format
-- Log retention policy
-- Sensitive data handling
-
-## Alerts & Notifications
-**When and how do we get notified?**
-
-### Critical Alerts
-- Alert 1: [Condition] → [Action]
-- Alert 2: [Condition] → [Action]
-
-### Warning Alerts
-- Alert 1: [Condition] → [Action]
-- Alert 2: [Condition] → [Action]
-
-## Dashboards
-**What do we visualize?**
-
-- System health dashboard
-- Business metrics dashboard
-- Custom views per team/role
-
-## Incident Response
-**How do we handle issues?**
-
-### On-Call Rotation
-- Schedule and contacts
-- Escalation path
-
-### Incident Process
-1. Detection and triage
-2. Investigation and diagnosis
-3. Resolution and mitigation
-4. Post-mortem and learning
-
-## Health Checks
-**How do we verify system health?**
-
-- Endpoint health checks
-- Dependency checks
-- Automated smoke tests
-
+Si les partenaires HMAC ne peuvent pas migrer : revert de `HmacWebhookAuthenticator`
+uniquement (contrat filaire), pas de l’allowlist BPMN.

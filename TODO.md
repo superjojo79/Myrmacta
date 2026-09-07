@@ -58,6 +58,10 @@ Le cycle `dev-lifecycle` `revue-adversariale-securite` (TODO §57) **implémente
 Medium. Les Low sont soit traités en défense en profondeur légère, soit documentés comme
 risque accepté.
 
+**Statut (2026-09-07) :** Phases 1–9 closes. Preuve : `./mvnw verify` 1705/0, Vitest 289,
+Playwright 65. PR draft [#113](https://github.com/superjojo79/FlowForge/pull/113) — case à
+cocher au merge.
+
 ### [ ] 57. Revue adversariale 2026-09-07 — durcissement High / Medium
 
 **Énoncé :** une revue adversariale du code livré a trouvé deux High et treize Medium encore
@@ -113,7 +117,7 @@ ce sont des gardes manquantes sur du code déjà en `main`.
 
 JWT dans le SPA ; `/api/webhooks/**` `permitAll` + HMAC ; IDOR UUID dossier (ACL de type, décision 20) ; SSTI `${T(Runtime)}` (D-40) ; SSRF PDF ; SQLi ; path traversal storage ; XXE BPMN converter ; actuator loopback (D-42).
 
-**À produire :** cycle `dev-lifecycle` `revue-adversariale-securite` (requirements → review). Tests d'exploit qui doivent échouer (H1 payload → 400 ; H2 non-assignee → 403). Docs : `GUIDE-CONCEPTION-BPMN.md` (garde runtime), `GUIDE-UTILISATEUR.md` / `.env.example` (S3, HMAC idempotency), `CHANGELOG.md`.
+**À produire :** *fait* — cycle `dev-lifecycle` `revue-adversariale-securite` (requirements → review, PR #113). Tests d'exploit qui échouent côté attaquant (H1 payload → 400 ; H2 non-assignee → 403). Docs : `GUIDE-CONCEPTION-BPMN.md` (garde runtime), `GUIDE-UTILISATEUR.md` (HMAC idempotency), `CHANGELOG.md`.
 
 **Impacte :** parser BPMN, complete tâche, OIDC mapper, `application.yml` storage, `HttpRestConnector`, `OutboundUrlGuard`, CRUD connecteurs, webhooks HMAC, schemas runtime, callback + `ConnectorServiceTask`, SMTP, document-storage, generate PDF, syntax checker templates.
 

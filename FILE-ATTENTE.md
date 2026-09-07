@@ -10,11 +10,11 @@
 >   (rétention / purge / sensible — **livré**) ; revue post-implémentation 2026-08-25 :
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
-> **Dernière mise à jour :** 2026-09-07 — TODO **§57 ouvert**, feature **en cours**
-> `revue-adversariale-securite` (cycle `dev-lifecycle` lancé) : revue adversariale du dépôt
-> complet après clôture des points 40–46. Findings High (H1 RCE BPMN, H2 complete sans
-> assignee) + Medium M1–M13 consignés dans TODO.md section **Security**. Branche
-> `cursor/revue-adversariale-securite-da9e`.
+> **Dernière mise à jour :** 2026-09-07 — TODO **§57** cycle `revue-adversariale-securite`
+> **clos (Phases 1–9)**, PR draft [#113](https://github.com/superjojo79/FlowForge/pull/113)
+> en revue. Findings High (H1 RCE BPMN, H2 complete sans assignee) + Medium M1–M13
+> durcis. Branche `cursor/revue-adversariale-securite-da9e`. `./mvnw verify` 1705/0 ;
+> Vitest 289 ; Playwright 65.
 >
 > 2026-09-06 — TODO **§56 clos**, cycle `dev-lifecycle` **complet
 > (Phases 1 à 9) + revue adversariale post-Phase 9** sur `extension-mcp-flux-metier` — 16 tools MCP
@@ -248,8 +248,9 @@ connecteur non détecté par l'heuristique de nom pré-existante. `./mvnw verify
 échec). Mergé : [PR #111](https://github.com/superjojo79/FlowForge/pull/111), sans attendre la CI
 (crédits épuisés). Voir l'en-tête de ce fichier pour le détail.
 
-**En cours (2026-09-07) :** `revue-adversariale-securite` (TODO §57) — cycle `dev-lifecycle`
-sur la revue adversariale (H1–H2, M1–M13). File produit vide hors ce lot.
+**En revue (2026-09-07) :** `revue-adversariale-securite` (TODO §57) — cycle `dev-lifecycle`
+Phases 1–9 clos. PR [#113](https://github.com/superjojo79/FlowForge/pull/113). File produit
+vide hors ce lot.
 
 En réserve (non retenu, aucune analyse écrite) : outillage provisioning tenant (schéma/instance/
 proxy/secrets, `DEFERRED-FEATURES.md` §1.2/§4).
@@ -259,7 +260,8 @@ Détail : [TODO.md](TODO.md) §40–46, §48–52,
 
 ## En revue
 
-Aucune feature produit en revue. `connecteur-http-rest-service`
+`revue-adversariale-securite` — [PR #113](https://github.com/superjojo79/FlowForge/pull/113)
+(draft). `connecteur-http-rest-service`
 **mergée sur `main`** ([PR #95](https://github.com/superjojo79/FlowForge/pull/95), 2026-08-31).
 
 `durcissement-securite-post-revue`

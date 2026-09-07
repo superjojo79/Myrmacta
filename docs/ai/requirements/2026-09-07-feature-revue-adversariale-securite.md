@@ -72,25 +72,24 @@ Implémenter **H1, H2, M1–M13** selon le tableau TODO §57 (colonne « Fix ret
 
 ## Success Criteria
 
-- [ ] H1 : BPMN `scriptTask` / `flowable:class` / `flowable:expression` → 400 au
+- [x] H1 : BPMN `scriptTask` / `flowable:class` / `flowable:expression` → 400 au
       parse/deploy ; `delegateExpression="${connectorServiceTask}"` OK.
-- [ ] H2 : complete non-assignee non-admin → 403 ; assignee → 204.
-- [ ] M1 : OIDC n'émet pas `ROLE_API_SERVICE`.
-- [ ] M2 : `app.storage.s3.access-key-id` bind `APP_STORAGE_S3_ACCESS_KEY`.
-- [ ] M3 : `HttpRestConnector` pose `Host` d'origine et refuse un `Host` appelant.
-- [ ] M4 : URL `http://100.64.0.1/` et `http://0.0.0.1/` rejetées.
-- [ ] M5 : config `{ "backupToken": "x" }` → validation error ; `mapping` accepté.
-- [ ] M6 : auth échouée n'incrémente pas le bucket partenaire.
-- [ ] M7 : HMAC sans idempotency dans la signature → 401 ; même corps shared-secret
+- [x] H2 : complete non-assignee non-admin → 403 ; assignee → 204.
+- [x] M1 : OIDC n'émet pas `ROLE_API_SERVICE`.
+- [x] M2 : `app.storage.s3.access-key-id` bind `APP_STORAGE_S3_ACCESS_KEY`.
+- [x] M3 : `HttpRestConnector` pose `Host` d'origine et refuse un `Host` appelant.
+- [x] M4 : URL `http://100.64.0.1/` et `http://0.0.0.1/` rejetées.
+- [x] M5 : config `{ "backupToken": "x" }` → validation error ; `mapping` accepté.
+- [x] M6 : auth échouée n'incrémente pas le bucket partenaire.
+- [x] M7 : HMAC sans idempotency dans la signature → 401 ; même corps shared-secret
       rejoué dans la fenêtre → 401.
-- [ ] M8 : `/runtime` d'une tâche d'autrui → 403.
-- [ ] M9 : callback mapping `tenantId` → 400 ; `ConnectorServiceTask` ignore la var process.
-- [ ] M10 : `to=a@x.com,b@y.com` → 400.
-- [ ] M11 : réponse HTTP / retrieve au-delà du cap → erreur ; STORE oversized encodé → 400 avant OOM.
-- [ ] M12 : `DOSSIER_MANAGER` sans type VIEW lié au template → 403.
-- [ ] M13 : template `th:utext` → 400 à l'activation ; preview HTML porte CSP.
-- [ ] `./mvnw verify` vert ; Vitest vert ; Playwright régression si SPA non touchée
-      (feature backend) **ou** e2e complete-task toujours vert.
+- [x] M8 : `/runtime` d'une tâche d'autrui → 403.
+- [x] M9 : callback mapping `tenantId` → 400 ; `ConnectorServiceTask` ignore la var process.
+- [x] M10 : `to=a@x.com,b@y.com` → 400.
+- [x] M11 : réponse HTTP / retrieve au-delà du cap → erreur ; STORE oversized encodé → 400 avant OOM.
+- [x] M12 : `DOSSIER_MANAGER` sans type VIEW lié au template → 403.
+- [x] M13 : template `th:utext` → 400 à l'activation ; preview HTML porte CSP.
+- [x] `./mvnw verify` vert (1705) ; Vitest 289/289 ; Playwright 65/65.
 
 ## Constraints & Assumptions
 

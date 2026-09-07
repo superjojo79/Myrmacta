@@ -2,7 +2,7 @@
 phase: planning
 title: Project Planning & Task Breakdown
 description: Break down work into actionable tasks and estimate timeline
-status: draft
+status: reviewed
 created: 2026-09-07
 updated: 2026-09-07
 feature: revue-adversariale-securite
@@ -17,7 +17,7 @@ feature: revue-adversariale-securite
 - [x] M3 — M1 OIDC allowlist + M12 generate ACL
 - [x] M4 — M2 S3 yaml, M3/M4 SSRF, M5 schema keys, M9 callback/tenant
 - [x] M5 — M6/M7 webhooks, M10 SMTP, M11 caps, M13 templates/CSP
-- [ ] M6 — docs GUIDE / `.env.example` / CHANGELOG ; `./mvnw verify`
+- [x] M6 — docs GUIDE / `.env.example` / CHANGELOG ; `./mvnw verify`
 
 ## Task Breakdown
 
@@ -51,8 +51,8 @@ feature: revue-adversariale-securite
 
 ### M6 close
 - [x] T6.1 GUIDE-CONCEPTION-BPMN, GUIDE-UTILISATEUR webhook HMAC, CHANGELOG PR #113
-- [ ] T6.2 `./mvnw verify` + Vitest
-- [ ] T6.3 Phase 7/8/9 docs
+- [x] T6.2 `./mvnw verify` (1705, 0 échec) + Vitest 289 + Playwright 65
+- [x] T6.3 Phase 7/8/9 docs
 
 ## Dependencies
 

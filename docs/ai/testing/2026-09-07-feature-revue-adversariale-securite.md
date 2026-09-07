@@ -2,13 +2,16 @@
 phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
-status: reviewed
+status: draft
 created: 2026-09-07
 updated: 2026-09-07
 feature: revue-adversariale-securite
 ---
 
 # Testing Strategy — `revue-adversariale-securite`
+
+> **Phase 8 suspendue.** Preuves ci-dessous = ce que le code actuel fait.
+> Recoller les cases aux critères une fois Q1–Q12 confirmés.
 
 ## Test Coverage Goals
 

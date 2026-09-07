@@ -2,13 +2,16 @@
 phase: design
 title: System Design & Architecture
 description: Define the technical architecture, components, and data models
-status: reviewed
+status: draft
 created: 2026-09-07
 updated: 2026-09-07
 feature: revue-adversariale-securite
 ---
 
 # System Design & Architecture — `revue-adversariale-securite`
+
+> **Phase 3 suspendue.** Design = proposition alignée sur les reco Q1–Q12.
+> À revoir après Phase 2. Code PR #113 conservé.
 
 ## Architecture Overview
 

@@ -54,13 +54,14 @@ Les findings S-1…S-5 (2026-08-25) restent **clos**. Reliquats S-6…S-10 (AV, 
 CSRF cookie, headers HTTP, `allowUnknownFields`) non rouverts — voir
 [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §4.
 
-Le cycle `dev-lifecycle` `revue-adversariale-securite` (TODO §57) **implémente** les High et
-Medium. Les Low sont soit traités en défense en profondeur légère, soit documentés comme
-risque accepté.
+Le cycle `dev-lifecycle` `revue-adversariale-securite` (TODO §57) **propose** les
+correctifs High et Medium (code sur PR #113). **Phases 1–2 rouvertes** : les D-*
+sont des recommandations, pas des décisions stakeholder. Les Low restent documentés
+comme hors périmètre **si Q12=A**.
 
-**Statut (2026-09-07) :** Phases 1–9 closes. Preuve : `./mvnw verify` 1705/0, Vitest 289,
-Playwright 65. PR draft [#113](https://github.com/superjojo79/FlowForge/pull/113) — case à
-cocher au merge.
+**Statut (2026-09-07 soir) :** Phases rouvertes. Code conservé. PR draft
+[#113](https://github.com/superjojo79/FlowForge/pull/113). Attente réponses Q1–Q12
+dans `docs/ai/requirements/2026-09-07-feature-revue-adversariale-securite.md`.
 
 ### [ ] 57. Revue adversariale 2026-09-07 — durcissement High / Medium
 
@@ -70,14 +71,14 @@ ce sont des gardes manquantes sur du code déjà en `main`.
 
 #### High
 
-| ID | Finding | Preuves | Fix retenu (cycle) |
+| ID | Finding | Preuves | Proposition (à confirmer Q1–Q12) |
 |---|---|---|---|
 | **H1** | RCE BPMN : `scriptTask` / `flowable:expression` / `flowable:class` non filtrés au deploy. Un `WORKFLOW_ADMIN` (ou MCP `deploy_workflow`) exécute du JUEL sur la JVM — même blast radius que l'ancien SSTI Thymeleaf (point 40), désormais sandboxé. | `FlowableWorkflowDeploymentAdapter.java` L48–54 ; `FlowableBpmnParserAdapter` ne lit que l'id de process ; `GUIDE-CONCEPTION-BPMN.md` interdit `flowable:class` **sans garde runtime** ; l'éditeur expose `flowable:expression`. | **D-H1** — à l'extract/deploy/save draft : refuser `scriptTask`, `flowable:class`, `flowable:expression`, listeners script ; allowlist des `delegateExpression` du catalogue (`connectorServiceTask`, `documentGenerationTask`, `attachGeneratedDocumentTask`, `notificationDispatchTask`, `createChildDossierTask`, `updateDossierStatusTask`, `updateWorkflowLinkStatusTask`). Payload d'exploit → `InvalidBpmnException` / 400. |
 | **H2** | `POST /api/workflow-tasks/{taskId}/complete` ne vérifie que l'ACL **EDIT** du type, pas l'assignee. `taskService.complete` est non borné. Un manager EDIT peut terminer la tâche d'un autre ; la réassignation, elle, exige TA/WA. | `WorkflowTaskController.java` L74–84 ; `CompleteTaskUseCaseImpl.java` L56–61 ; `FlowableWorkflowEngineAdapter.completeTask`. | **D-H2** — complete exige `assignee == actor` **ou** TA/WA ; tâche sans assignee : EDIT suffit. 403 sinon. |
 
 #### Medium
 
-| ID | Finding | Preuves | Fix retenu (cycle) |
+| ID | Finding | Preuves | Proposition (à confirmer Q1–Q12) |
 |---|---|---|---|
 | **M1** | `RealmAccessAuthoritiesMapper` mappe **tous** les rôles Keycloak, y compris `API_SERVICE`. Un humain avec ce rôle realm obtient VIEW **et** EDIT tenant-wide (`DossierAccessPolicy` L63). Spec : `API_SERVICE` = M2M. | `RealmAccessAuthoritiesMapper.java` ; `DossierAccessPolicy.java` L63–64 ; `DEPLOIEMENT.md`. | **D-M1** — allowlist OIDC des rôles humains uniquement (`TENANT_ADMIN`, `WORKFLOW_ADMIN`, `DOSSIER_MANAGER`, `DOSSIER_VIEWER`). MCP continue d'injecter `API_SERVICE` via `McpAccessContextFactory` (D6 assumé, L1). Policy inchangée pour le User MCP. |
 | **M2** | `APP_STORAGE_S3_ACCESS_KEY` / `SECRET` interpolés sous `app.dossier.attachment`, alors que `StorageConfig` lit `app.storage.s3`. Clés mortes ; client S3 = `DefaultCredentialsProvider`. | `application.yml` L192–193 ; `StorageProperties` / `StorageConfig.java` L39–47 ; `AttachmentUploadProperties` n'a que `allowedContentTypes`. | **D-M2** — déplacer `access-key-id` / `secret-access-key` sous `app.storage.s3`. |
@@ -117,7 +118,8 @@ ce sont des gardes manquantes sur du code déjà en `main`.
 
 JWT dans le SPA ; `/api/webhooks/**` `permitAll` + HMAC ; IDOR UUID dossier (ACL de type, décision 20) ; SSTI `${T(Runtime)}` (D-40) ; SSRF PDF ; SQLi ; path traversal storage ; XXE BPMN converter ; actuator loopback (D-42).
 
-**À produire :** *fait* — cycle `dev-lifecycle` `revue-adversariale-securite` (requirements → review, PR #113). Tests d'exploit qui échouent côté attaquant (H1 payload → 400 ; H2 non-assignee → 403). Docs : `GUIDE-CONCEPTION-BPMN.md` (garde runtime), `GUIDE-UTILISATEUR.md` (HMAC idempotency), `CHANGELOG.md`.
+**À produire :** confirmation stakeholder Q1–Q12, puis reprise Phase 2 → 3…9 (adapter le code
+si une reco est refusée). Tests d'exploit déjà présents dans PR #113.
 
 **Impacte :** parser BPMN, complete tâche, OIDC mapper, `application.yml` storage, `HttpRestConnector`, `OutboundUrlGuard`, CRUD connecteurs, webhooks HMAC, schemas runtime, callback + `ConnectorServiceTask`, SMTP, document-storage, generate PDF, syntax checker templates.
 

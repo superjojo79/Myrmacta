@@ -2,13 +2,16 @@
 phase: implementation
 title: Implementation Guide
 description: Technical implementation notes, patterns, and code guidelines
-status: reviewed
+status: draft
 created: 2026-09-07
 updated: 2026-09-07
 feature: revue-adversariale-securite
 ---
 
 # Implementation Guide — `revue-adversariale-securite`
+
+> **Phases 5/7 suspendues.** Journal du code conservé (PR #113). Pas d’édition
+> production tant que Q1–Q12 ne sont pas tranchées.
 
 ## Development Setup
 

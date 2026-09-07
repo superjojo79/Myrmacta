@@ -6,16 +6,22 @@ import com.flowforge.domain.workflow.port.out.BpmnParserPort;
 import java.io.ByteArrayInputStream;
 import java.util.Collection;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.flowable.bpmn.converter.BpmnXMLConverter;
 import org.flowable.bpmn.model.BpmnModel;
+import org.flowable.bpmn.model.BusinessRuleTask;
+import org.flowable.bpmn.model.FieldExtension;
 import org.flowable.bpmn.model.FlowElement;
 import org.flowable.bpmn.model.FlowableListener;
 import org.flowable.bpmn.model.HasExecutionListeners;
 import org.flowable.bpmn.model.ImplementationType;
 import org.flowable.bpmn.model.Process;
 import org.flowable.bpmn.model.ScriptTask;
+import org.flowable.bpmn.model.SequenceFlow;
 import org.flowable.bpmn.model.ServiceTask;
 import org.flowable.bpmn.model.SubProcess;
+import org.flowable.bpmn.model.TaskWithFieldExtensions;
 import org.flowable.bpmn.model.UserTask;
 import org.springframework.stereotype.Component;
 
@@ -63,12 +69,22 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
         }
         if (element instanceof UserTask userTask) {
             assertSafeListeners(element.getId() + " taskListeners", userTask.getTaskListeners());
+            assertSafeUserTask(userTask);
         }
         if (element instanceof ScriptTask) {
             throw new InvalidBpmnException("BPMN scriptTask is not allowed: " + element.getId());
         }
+        if (element instanceof BusinessRuleTask) {
+            throw new InvalidBpmnException("BPMN businessRuleTask is not allowed: " + element.getId());
+        }
         if (element instanceof ServiceTask serviceTask) {
             assertSafeServiceTask(serviceTask);
+        }
+        if (element instanceof TaskWithFieldExtensions taskWithFields) {
+            assertNoFieldExtensions(element.getId(), taskWithFields.getFieldExtensions());
+        }
+        if (element instanceof SequenceFlow sequenceFlow) {
+            assertSafeConditionExpression(element.getId(), sequenceFlow.getConditionExpression());
         }
     }
 
@@ -92,6 +108,98 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
         }
     }
 
+    /**
+     * TODO §57 revue adversariale PR #113 (H1 gap, confirmé par test réel --
+     * FlowableBpmnAllowlistGapTest) : {@code assignee}/{@code candidateUsers}/{@code
+     * candidateGroups} ne sont pas des sorties texte, ce sont des expressions UEL évaluées par le
+     * moteur. Une première version de ce correctif autorisait {@code ${nomSimple}} (un seul
+     * identifiant, ni point ni parenthèse) en pensant limiter la surface à une référence de
+     * variable de process -- mais {@code ${connectorServiceTask}} EST déjà un seul identifiant
+     * syntaxiquement "simple", et résout malgré tout au bean Spring du même nom : UEL retombe sur
+     * la résolution de bean par nom dès qu'aucune variable de process ne porte ce nom, ce qui rend
+     * indiscernables, par la seule syntaxe, une variable métier légitime et un nom de bean choisi
+     * par l'attaquant. Aucun BPMN livré avec ce dépôt n'utilise d'expression ici (grep vérifié) --
+     * donc littéral uniquement, sans exception.
+     */
+    private static void assertSafeUserTask(UserTask userTask) {
+        assertLiteralAssigneeValue(userTask.getId() + " assignee", userTask.getAssignee());
+        for (String candidate : safeList(userTask.getCandidateUsers())) {
+            assertLiteralAssigneeValue(userTask.getId() + " candidateUsers", candidate);
+        }
+        for (String candidate : safeList(userTask.getCandidateGroups())) {
+            assertLiteralAssigneeValue(userTask.getId() + " candidateGroups", candidate);
+        }
+    }
+
+    private static List<String> safeList(List<String> values) {
+        return values == null ? List.of() : values;
+    }
+
+    private static void assertLiteralAssigneeValue(String owner, String raw) {
+        if (raw != null && (raw.contains("${") || raw.contains("#{"))) {
+            throw new InvalidBpmnException("BPMN assignee/candidate expression is not allowed: " + owner);
+        }
+    }
+
+    /**
+     * TODO §57 revue adversariale PR #113 : {@code conditionExpression} reste une expression
+     * booléenne légitime et courante ({@code ${decision == 'approve'}}, seul usage réel du dépôt,
+     * grep vérifié) -- donc pas interdite comme {@link #assertLiteralAssigneeValue}. Allowlist
+     * plutôt que blocklist, pour la même raison que ci-dessus (un simple identifiant bare peut
+     * résoudre un bean) : le contenu doit être composé uniquement d'identifiants, littéraux
+     * numériques/chaînes/booléens et opérateurs de comparaison/logique -- jamais de point (accès
+     * propriété/méthode implicite via getter), parenthèse (appel), crochet, {@code @} (référence
+     * de bean) ni {@code #{} } (EL différé) -- et doit contenir au moins un opérateur : un
+     * identifiant seul serait la même ambiguïté variable-ou-bean que pour assignee.
+     */
+    private static final Pattern SAFE_CONDITION_TOKEN = Pattern.compile(
+            "[A-Za-z_][A-Za-z0-9_]*|\\d+(\\.\\d+)?|'[^']*'|\"[^\"]*\"|>=|<=|==|!=|&&|\\|\\||[><!]|\\s+");
+
+    private static void assertSafeConditionExpression(String owner, String raw) {
+        if (raw == null) {
+            return;
+        }
+        String trimmed = raw.trim();
+        if (!trimmed.startsWith("${") && !trimmed.startsWith("#{")) {
+            return;
+        }
+        if (!trimmed.endsWith("}")) {
+            throw new InvalidBpmnException("BPMN conditionExpression is not allowed: " + owner);
+        }
+        String inner = trimmed.substring(2, trimmed.length() - 1);
+        if (inner.contains(".")
+                || inner.contains("(")
+                || inner.contains(")")
+                || inner.contains("[")
+                || inner.contains("]")
+                || inner.contains("@")
+                || inner.contains("#")) {
+            throw new InvalidBpmnException("BPMN conditionExpression is not allowed: " + owner);
+        }
+        Matcher matcher = SAFE_CONDITION_TOKEN.matcher(inner);
+        int end = 0;
+        boolean hasOperator = false;
+        while (matcher.find(end)) {
+            if (matcher.start() != end) {
+                throw new InvalidBpmnException("BPMN conditionExpression is not allowed: " + owner);
+            }
+            String token = matcher.group();
+            if (token.matches(">=|<=|==|!=|&&|\\|\\||[><!]")) {
+                hasOperator = true;
+            }
+            end = matcher.end();
+        }
+        if (end != inner.length() || !hasOperator) {
+            throw new InvalidBpmnException("BPMN conditionExpression is not allowed: " + owner);
+        }
+    }
+
+    private static void assertNoFieldExtensions(String owner, List<FieldExtension> fields) {
+        if (fields != null && !fields.isEmpty()) {
+            throw new InvalidBpmnException("BPMN field extensions are not allowed: " + owner);
+        }
+    }
+
     private static void assertSafeListeners(String owner, List<FlowableListener> listeners) {
         if (listeners == null || listeners.isEmpty()) {
             return;
@@ -112,6 +220,7 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
                         "BPMN listener delegateExpression is not in the allowlist: "
                                 + listener.getImplementation());
             }
+            assertNoFieldExtensions(owner + " listener", listener.getFieldExtensions());
         }
     }
 }

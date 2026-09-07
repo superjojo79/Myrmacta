@@ -44,6 +44,7 @@ class CallbackWebhookController {
     private final ConnectorProperties connectorProperties;
     private final ObjectMapper objectMapper;
     private final WebhookRequestRateLimiter rateLimiter;
+    private final WebhookPreAuthRateLimiter preAuthRateLimiter;
     private final List<WebhookAuthenticator> authenticators;
 
     CallbackWebhookController(
@@ -54,6 +55,7 @@ class CallbackWebhookController {
             ConnectorProperties connectorProperties,
             ObjectMapper objectMapper,
             WebhookRequestRateLimiter rateLimiter,
+            WebhookPreAuthRateLimiter preAuthRateLimiter,
             List<WebhookAuthenticator> authenticators) {
         this.tenantProperties = tenantProperties;
         this.instances = instances;
@@ -62,6 +64,7 @@ class CallbackWebhookController {
         this.connectorProperties = connectorProperties;
         this.objectMapper = objectMapper;
         this.rateLimiter = rateLimiter;
+        this.preAuthRateLimiter = preAuthRateLimiter;
         this.authenticators = List.copyOf(authenticators);
     }
 
@@ -78,6 +81,12 @@ class CallbackWebhookController {
         String idempotencyKey = headers.getFirst("Idempotency-Key");
         if (idempotencyKey == null || idempotencyKey.isBlank()) {
             throw new IllegalArgumentException("Idempotency-Key header is required");
+        }
+
+        // TODO §57 revue adversariale PR #113 : voir WebhookController -- même plafond pré-auth,
+        // distinct du plafond strict post-auth (Q10).
+        if (!preAuthRateLimiter.tryConsume(instanceId, connectorProperties.webhook().preAuthRateLimitPerMinute())) {
+            throw new WebhookRateLimitExceededException(instanceId);
         }
 
         ConnectorInstanceData instance = instances

@@ -190,7 +190,7 @@ class DocumentPreviewApiTest {
     }
 
     @Test
-    void preview_publishedKey_allowedForWorkflowAndManager() throws Exception {
+    void preview_publishedKey_allowedForWorkflowAndManagerWithViewType() throws Exception {
         String key = createActiveTemplate();
         String body = """
                 { "templateKey": "%s", "variables": { "title": "X" } }
@@ -203,12 +203,47 @@ class DocumentPreviewApiTest {
                         .content(body))
                 .andExpect(status().isOk());
 
+        grantViewTypeListingTemplate("dm-key", key);
         mockMvc.perform(post("/api/documents/preview")
                         .with(user("dm-key", "DOSSIER_MANAGER"))
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isOk());
+    }
+
+    /**
+     * TODO §57 revue adversariale PR #113 : /preview et /preview/pdf laissaient un
+     * DOSSIER_MANAGER prévisualiser (HTML ou PDF) n'importe quel templateKey du tenant, sans le
+     * contrôle VIEW sur un type de dossier listant ce template déjà appliqué à /generate
+     * (assertCanGenerate, TODO §57 M12). Ce test échouait avant correctif (200 au lieu de 403).
+     */
+    @Test
+    void previewHtml_dossierManagerWithoutViewType_isForbidden() throws Exception {
+        String key = createActiveTemplate();
+
+        mockMvc.perform(post("/api/documents/preview")
+                        .with(user("dm-no-acl", "DOSSIER_MANAGER"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "templateKey": "%s", "variables": { "title": "X" } }
+                                """.formatted(key)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void previewPdf_dossierManagerWithoutViewType_isForbidden() throws Exception {
+        String key = createActiveTemplate();
+
+        mockMvc.perform(post("/api/documents/preview/pdf")
+                        .with(user("dm-no-acl-pdf", "DOSSIER_MANAGER"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "templateKey": "%s", "variables": { "title": "X" } }
+                                """.formatted(key)))
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -322,6 +357,37 @@ class DocumentPreviewApiTest {
 
         String disposition = result.getResponse().getHeader("Content-Disposition");
         assertThat(disposition == null || !disposition.contains("inline")).isTrue();
+    }
+
+    private void grantViewTypeListingTemplate(String subjectUserId, String templateKey) throws Exception {
+        String code = "PREV" + UUID.randomUUID().toString().substring(0, 8).replace("-", "");
+        mockMvc.perform(post("/api/dossier-types")
+                        .with(user("prev-type-admin", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "code": "%s",
+                                  "label": "Label %s",
+                                  "workflowKey": "workflow-%s",
+                                  "active": true,
+                                  "allowUnknownFields": false,
+                                  "fieldDefinitions": [],
+                                  "documentTemplateKeys": ["%s"]
+                                }
+                                """.formatted(code, code, code, templateKey)))
+                .andExpect(status().isCreated());
+        mockMvc.perform(post("/api/dossier-types/{code}/acl", code)
+                        .with(user("prev-type-admin", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "subjectUserId": "%s",
+                                  "permission": "VIEW"
+                                }
+                                """.formatted(subjectUserId)))
+                .andExpect(status().isNoContent());
     }
 
     private String createActiveTemplate() throws Exception {

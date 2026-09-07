@@ -57,11 +57,12 @@ class WebhookControllerTest {
                 runtime,
                 new ConnectorProperties(
                         new ConnectorProperties.Crypto("unused"),
-                        new ConnectorProperties.Webhook(64, 2, Duration.ofHours(24)),
+                        new ConnectorProperties.Webhook(64, 2, Duration.ofHours(24), 3),
                         null,
                         null),
                 JsonMapper.builder().build(),
                 new WebhookRequestRateLimiter(),
+                new WebhookPreAuthRateLimiter(),
                 List.of(new SharedSecretWebhookAuthenticator(), new HmacWebhookAuthenticator()));
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new ConnectorExceptionHandler())
@@ -141,6 +142,33 @@ class WebhookControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"n\":3}"))
                 .andExpect(status().isTooManyRequests());
+    }
+
+    /**
+     * TODO §57 revue adversariale PR #113 : voir CallbackWebhookControllerTest -- même plafond
+     * pré-auth, même contrôleur `/api/webhooks`.
+     */
+    @Test
+    void receive_invalidSecretFloodTripsPreAuthLimitBeforeAuthentication() throws Exception {
+        when(instances.findByIdAndTenantId(INSTANCE_ID, "tenant_dev")).thenReturn(Optional.of(instance(true)));
+
+        for (int i = 0; i < 3; i++) {
+            mockMvc.perform(post("/api/webhooks/{instanceId}", INSTANCE_ID)
+                            .header("Idempotency-Key", "idem-bad-" + i)
+                            .header("X-Webhook-Token", "wrong-secret")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"n\":" + i + "}"))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        mockMvc.perform(post("/api/webhooks/{instanceId}", INSTANCE_ID)
+                        .header("Idempotency-Key", "idem-bad-3")
+                        .header("X-Webhook-Token", "wrong-secret")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"n\":3}"))
+                .andExpect(status().isTooManyRequests());
+
+        verify(runtime, never()).onIncomingEvent(any(), any());
     }
 
     @Test

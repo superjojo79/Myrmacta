@@ -57,11 +57,12 @@ class CallbackWebhookControllerTest {
                 runtime,
                 new ConnectorProperties(
                         new ConnectorProperties.Crypto("unused"),
-                        new ConnectorProperties.Webhook(64, 2, Duration.ofHours(24)),
+                        new ConnectorProperties.Webhook(64, 2, Duration.ofHours(24), 3),
                         null,
                         null),
                 JsonMapper.builder().build(),
                 new WebhookRequestRateLimiter(),
+                new WebhookPreAuthRateLimiter(),
                 List.of(new SharedSecretWebhookAuthenticator(), new HmacWebhookAuthenticator()));
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new ConnectorExceptionHandler())
@@ -141,6 +142,37 @@ class CallbackWebhookControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"n\":3}"))
                 .andExpect(status().isTooManyRequests());
+    }
+
+    /**
+     * TODO §57 revue adversariale PR #113 : après le passage du rate-limit strict (2/min) après
+     * authenticate() (Q10, pour ne plus permettre à du trafic non signé de verrouiller
+     * l'intégrateur légitime), le trafic non authentifié n'était plus du tout borné -- un
+     * attaquant pouvait envoyer un volume illimité de requêtes à secret invalide (coût
+     * HMAC/parsing, bande passante) sans jamais être throttlé. Le plafond pré-auth (3/min ici,
+     * séparé du plafond post-auth 2/min) doit intervenir avant authenticate().
+     */
+    @Test
+    void receive_invalidSecretFloodTripsPreAuthLimitBeforeAuthentication() throws Exception {
+        when(instances.findByIdAndTenantId(INSTANCE_ID, "tenant_dev")).thenReturn(Optional.of(instance(true)));
+
+        for (int i = 0; i < 3; i++) {
+            mockMvc.perform(post("/api/callbacks/{instanceId}", INSTANCE_ID)
+                            .header("Idempotency-Key", "idem-bad-" + i)
+                            .header("X-Webhook-Token", "wrong-secret")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"n\":" + i + "}"))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        mockMvc.perform(post("/api/callbacks/{instanceId}", INSTANCE_ID)
+                        .header("Idempotency-Key", "idem-bad-3")
+                        .header("X-Webhook-Token", "wrong-secret")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"n\":3}"))
+                .andExpect(status().isTooManyRequests());
+
+        verify(runtime, never()).onIncomingCallback(any(), any());
     }
 
     @Test

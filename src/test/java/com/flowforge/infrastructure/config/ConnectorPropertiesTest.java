@@ -15,6 +15,7 @@ class ConnectorPropertiesTest {
         assertThat(props.webhook().maxBodyBytes()).isEqualTo(1_048_576L);
         assertThat(props.webhook().rateLimitPerMinute()).isEqualTo(120);
         assertThat(props.webhook().idempotencyTtl()).isEqualTo(Duration.ofHours(24));
+        assertThat(props.webhook().preAuthRateLimitPerMinute()).isEqualTo(1200);
     }
 
     @Test
@@ -44,7 +45,7 @@ class ConnectorPropertiesTest {
     void customValues_arePreserved() {
         var props = new ConnectorProperties(
                 new ConnectorProperties.Crypto("dGVzdC1rZXktMzItYnl0ZXMtbG9uZyEh"),
-                new ConnectorProperties.Webhook(256_000L, 60, Duration.ofHours(6)),
+                new ConnectorProperties.Webhook(256_000L, 60, Duration.ofHours(6), 900),
                 new ConnectorProperties.Http(Duration.ofSeconds(2), Duration.ofSeconds(3), 1_024L),
                 null);
 
@@ -52,9 +53,24 @@ class ConnectorPropertiesTest {
         assertThat(props.webhook().maxBodyBytes()).isEqualTo(256_000L);
         assertThat(props.webhook().rateLimitPerMinute()).isEqualTo(60);
         assertThat(props.webhook().idempotencyTtl()).isEqualTo(Duration.ofHours(6));
+        assertThat(props.webhook().preAuthRateLimitPerMinute()).isEqualTo(900);
         assertThat(props.http().connectTimeout()).isEqualTo(Duration.ofSeconds(2));
         assertThat(props.http().requestTimeout()).isEqualTo(Duration.ofSeconds(3));
         assertThat(props.http().maxResponseBytes()).isEqualTo(1_024L);
+    }
+
+    @Test
+    void preAuthRateLimitBelowRateLimit_selfHealsToTenTimesRateLimit() {
+        var webhook = new ConnectorProperties.Webhook(1_048_576L, 200, Duration.ofHours(24), 50);
+
+        assertThat(webhook.preAuthRateLimitPerMinute()).isEqualTo(2_000);
+    }
+
+    @Test
+    void preAuthRateLimitAboveRateLimit_isPreserved() {
+        var webhook = new ConnectorProperties.Webhook(1_048_576L, 200, Duration.ofHours(24), 5_000);
+
+        assertThat(webhook.preAuthRateLimitPerMinute()).isEqualTo(5_000);
     }
 
     @Test

@@ -1,8 +1,10 @@
 package com.flowforge.domain.connector.usecase;
 
+import com.flowforge.domain.connector.model.ConfigField;
 import com.flowforge.domain.connector.model.ConnectorDefinition;
 import com.flowforge.domain.connector.model.ConnectorInstanceData;
 import com.flowforge.domain.connector.model.ConnectorInstanceNotFoundException;
+import com.flowforge.domain.connector.model.ConnectorValidationException;
 import com.flowforge.domain.connector.port.in.ManageConnectorInstanceUseCase;
 import com.flowforge.domain.connector.port.out.ConnectorCatalog;
 import com.flowforge.domain.connector.port.out.ConnectorInstanceRepository;
@@ -54,6 +56,7 @@ public final class ManageConnectorInstanceUseCaseImpl implements ManageConnector
         ConnectorDefinition definition = catalog.get(command.connectorType());
         Map<String, Object> config = command.config() == null ? Map.of() : command.config();
         definition.validate(config);
+        assertKnownConfigKeys(definition, config);
         ConnectorInstanceData data = new ConnectorInstanceData(
                 UUID.randomUUID(),
                 command.tenantId(),
@@ -83,6 +86,7 @@ public final class ManageConnectorInstanceUseCaseImpl implements ManageConnector
 
         ConnectorDefinition definition = catalog.get(existing.connectorType());
         definition.validate(merged);
+        assertKnownConfigKeys(definition, merged);
 
         return repository.save(new ConnectorInstanceData(
                 existing.id(),
@@ -161,6 +165,22 @@ public final class ManageConnectorInstanceUseCaseImpl implements ManageConnector
         return k.equals("password")
                 || k.endsWith("secret")
                 || k.endsWith("password");
+    }
+
+    private static void assertKnownConfigKeys(ConnectorDefinition definition, Map<String, Object> config) {
+        List<ConfigField> schema = definition.getConfigSchema();
+        if (schema == null) {
+            schema = List.of();
+        }
+        java.util.Set<String> allowed = new java.util.HashSet<>();
+        for (ConfigField field : schema) {
+            allowed.add(field.name());
+        }
+        for (String key : config.keySet()) {
+            if (!allowed.contains(key)) {
+                throw new ConnectorValidationException("Unknown config key: " + key);
+            }
+        }
     }
 
     private static String requireName(String name) {

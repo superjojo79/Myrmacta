@@ -17,6 +17,13 @@ import org.springframework.stereotype.Component;
 @Component
 public class RealmAccessAuthoritiesMapper implements GrantedAuthoritiesMapper {
 
+    /**
+     * Human BFF roles only. {@code API_SERVICE} is a machine role (TODO §57 M1) and must not
+     * elevate an OIDC browser session.
+     */
+    private static final Set<String> HUMAN_ROLES = Set.of(
+            "TENANT_ADMIN", "WORKFLOW_ADMIN", "DOSSIER_MANAGER", "DOSSIER_VIEWER");
+
     @Override
     public Collection<? extends GrantedAuthority> mapAuthorities(
             Collection<? extends GrantedAuthority> authorities) {
@@ -49,8 +56,13 @@ public class RealmAccessAuthoritiesMapper implements GrantedAuthoritiesMapper {
             if (name.isBlank()) {
                 continue;
             }
-            String authorityName = name.startsWith("ROLE_") ? name : "ROLE_" + name;
-            result.add(new SimpleGrantedAuthority(authorityName));
+            if (name.startsWith("ROLE_")) {
+                name = name.substring("ROLE_".length());
+            }
+            if (!HUMAN_ROLES.contains(name)) {
+                continue;
+            }
+            result.add(new SimpleGrantedAuthority("ROLE_" + name));
         }
         return result;
     }

@@ -60,4 +60,16 @@ class ThymeleafTemplateSyntaxCheckerTest {
         assertThatThrownBy(() -> checker.check("<th:block th:each=\"x : ${y}\""))
                 .isInstanceOf(InvalidTemplateSyntaxException.class);
     }
+
+    @Test
+    void unescapedUtext_fails() {
+        assertThatThrownBy(() -> checker.check("<p th:utext=\"${title}\">x</p>"))
+                .isInstanceOf(InvalidTemplateSyntaxException.class);
+    }
+
+    @Test
+    void unescapedInlineInterpolation_fails() {
+        assertThatThrownBy(() -> checker.check("<p>[(${title})]</p>"))
+                .isInstanceOf(InvalidTemplateSyntaxException.class);
+    }
 }

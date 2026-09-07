@@ -131,7 +131,7 @@ class CallbackWebhookControllerTest {
                             .header("Idempotency-Key", "idem-" + i)
                             .header("X-Webhook-Token", "secret")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content("{}"))
+                            .content("{\"n\":" + i + "}"))
                     .andExpect(status().isAccepted());
         }
 
@@ -139,7 +139,7 @@ class CallbackWebhookControllerTest {
                         .header("Idempotency-Key", "idem-3")
                         .header("X-Webhook-Token", "secret")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
+                        .content("{\"n\":3}"))
                 .andExpect(status().isTooManyRequests());
     }
 

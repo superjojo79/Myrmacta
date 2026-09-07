@@ -59,6 +59,7 @@ class DocumentPreviewApiTest {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
+                .andExpect(header().string("Content-Security-Policy", "default-src 'none'; sandbox"))
                 .andReturn();
 
         String body = result.getResponse().getContentAsString();

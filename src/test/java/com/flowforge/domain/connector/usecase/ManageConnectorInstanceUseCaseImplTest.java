@@ -13,6 +13,7 @@ import com.flowforge.domain.connector.model.ConfigFieldType;
 import com.flowforge.domain.connector.model.ConnectorDefinition;
 import com.flowforge.domain.connector.model.ConnectorInstanceData;
 import com.flowforge.domain.connector.model.ConnectorInstanceNotFoundException;
+import com.flowforge.domain.connector.model.ConnectorValidationException;
 import com.flowforge.domain.connector.port.in.ManageConnectorInstanceUseCase;
 import com.flowforge.domain.connector.port.out.ConnectorCatalog;
 import com.flowforge.domain.connector.port.out.ConnectorInstanceRepository;
@@ -47,6 +48,12 @@ class ManageConnectorInstanceUseCaseImplTest {
         catalog = mock(ConnectorCatalog.class);
         definition = mock(ConnectorDefinition.class);
         when(catalog.get("http-rest")).thenReturn(definition);
+        when(definition.getConfigSchema())
+                .thenReturn(List.of(
+                        new ConfigField("webhookAuthType", "auth", ConfigFieldType.SELECT, true, null, List.of(), null),
+                        new ConfigField(
+                                "webhookSecret", "secret", ConfigFieldType.PASSWORD, true, null, List.of(), null),
+                        new ConfigField("mapping", "mapping", ConfigFieldType.STRING, false, null, List.of(), null)));
         useCase = new ManageConnectorInstanceUseCaseImpl(repository, catalog, new TenantAdminGuard());
     }
 
@@ -66,6 +73,27 @@ class ManageConnectorInstanceUseCaseImplTest {
         assertThat(created.config()).isEqualTo(config);
         verify(definition).validate(config);
         verify(repository).save(created);
+    }
+
+    @Test
+    void create_unknownConfigKey_isRejected() {
+        Map<String, Object> config = Map.of("backupToken", "x");
+
+        assertThatThrownBy(() -> useCase.create(new ManageConnectorInstanceUseCase.CreateCommand(
+                        "tenant_dev", "Claims webhook", "http-rest", true, config), TENANT_ADMIN))
+                .isInstanceOf(ConnectorValidationException.class)
+                .hasMessageContaining("backupToken");
+    }
+
+    @Test
+    void create_mappingConfigKey_isAccepted() {
+        Map<String, Object> config = Map.of("mapping", Map.of("fields", Map.of("a", "$.a")));
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ConnectorInstanceData created = useCase.create(new ManageConnectorInstanceUseCase.CreateCommand(
+                "tenant_dev", "Claims webhook", "http-rest", true, config), TENANT_ADMIN);
+
+        assertThat(created.config()).containsKey("mapping");
     }
 
     @Test
@@ -135,8 +163,13 @@ class ManageConnectorInstanceUseCaseImplTest {
                         "processKey", "oldProcess",
                         "dossierTypeCode", "CLAIM"));
         when(repository.findByIdAndTenantId(id, "tenant_dev")).thenReturn(Optional.of(existing));
-        when(definition.getConfigSchema()).thenReturn(List.of(new ConfigField(
-                "webhookSecret", "Webhook secret", ConfigFieldType.PASSWORD, true, null, List.of(), null)));
+        when(definition.getConfigSchema()).thenReturn(List.of(
+                new ConfigField(
+                        "webhookSecret", "Webhook secret", ConfigFieldType.PASSWORD, true, null, List.of(), null),
+                new ConfigField(
+                        "webhookAuthType", "auth", ConfigFieldType.SELECT, true, null, List.of(), null),
+                new ConfigField("processKey", "pk", ConfigFieldType.STRING, true, null, List.of(), null),
+                new ConfigField("dossierTypeCode", "dt", ConfigFieldType.STRING, true, null, List.of(), null)));
         when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         ConnectorInstanceData updated = useCase.update(new ManageConnectorInstanceUseCase.UpdateCommand(
@@ -165,8 +198,10 @@ class ManageConnectorInstanceUseCaseImplTest {
                 id, "tenant_dev", "Webhook", "http-rest", true,
                 Map.of("authHeaderValue", "Bearer plain-token", "url", "https://old.example.com"));
         when(repository.findByIdAndTenantId(id, "tenant_dev")).thenReturn(Optional.of(existing));
-        when(definition.getConfigSchema()).thenReturn(List.of(new ConfigField(
-                "authHeaderValue", "Auth header", ConfigFieldType.PASSWORD, false, null, List.of(), null)));
+        when(definition.getConfigSchema()).thenReturn(List.of(
+                new ConfigField(
+                        "authHeaderValue", "Auth header", ConfigFieldType.PASSWORD, false, null, List.of(), null),
+                new ConfigField("url", "url", ConfigFieldType.STRING, false, null, List.of(), null)));
         when(catalog.isPasswordField("http-rest", "authHeaderValue")).thenCallRealMethod();
         when(catalog.isPasswordField("http-rest", "url")).thenCallRealMethod();
         when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));

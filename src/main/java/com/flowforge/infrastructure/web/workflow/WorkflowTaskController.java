@@ -81,7 +81,7 @@ class WorkflowTaskController {
                 taskId,
                 dossierId,
                 request == null || request.variables() == null ? Map.of() : request.variables(),
-                actor.userId());
+                actor);
         return ResponseEntity.noContent().build();
     }
 

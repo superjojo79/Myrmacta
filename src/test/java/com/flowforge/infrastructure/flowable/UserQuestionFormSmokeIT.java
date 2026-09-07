@@ -2,6 +2,7 @@ package com.flowforge.infrastructure.flowable;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.FieldDefinition;
 import com.flowforge.domain.dossier.model.FieldType;
 import com.flowforge.domain.workflow.TaskQuestionFormKeys;
@@ -12,6 +13,7 @@ import com.flowforge.infrastructure.config.TenantProperties;
 import com.flowforge.support.OidcClientTestConfiguration;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.RuntimeService;
@@ -76,7 +78,11 @@ class UserQuestionFormSmokeIT {
         assertThat(task).isNotNull();
         assertThat(task.getFormKey()).isEqualTo(TaskQuestionFormKeys.formKeyFor("orientation-dossier"));
 
-        completeTaskUseCase.complete(task.getId(), dossierId, Map.of("decision", "approve"), "actor-1");
+        completeTaskUseCase.complete(
+                task.getId(),
+                dossierId,
+                Map.of("decision", "approve"),
+                AccessContext.user("actor-1", Set.of("DOSSIER_MANAGER")));
 
         assertThat(taskService.createTaskQuery()
                         .processDefinitionKey("userQuestionSmoke")

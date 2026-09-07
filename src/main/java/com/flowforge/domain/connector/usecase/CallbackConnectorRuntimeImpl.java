@@ -7,6 +7,7 @@ import com.flowforge.domain.connector.model.ConnectorInstanceData;
 import com.flowforge.domain.connector.model.ConnectorValidationException;
 import com.flowforge.domain.connector.port.in.CallbackConnectorRuntime;
 import com.flowforge.domain.connector.port.out.ConnectorCatalog;
+import com.flowforge.domain.workflow.WorkflowVariables;
 import com.flowforge.domain.workflow.port.out.WorkflowEnginePort;
 import java.util.Objects;
 
@@ -30,6 +31,7 @@ public final class CallbackConnectorRuntimeImpl implements CallbackConnectorRunt
         }
 
         CallbackResolution resolution = callback.resolve(instance, rawPayload);
+        WorkflowVariables.assertNoReservedKeys(resolution.variables());
         workflowEnginePort.correlateMessage(
                 resolution.messageName(),
                 resolution.correlationVariableName(),

@@ -59,9 +59,9 @@ public class FlowableMessageCallbackConnector implements ConnectorDefinition, Ca
                                 WebhookAuthType.HMAC_SHA256.name(),
                                 WebhookAuthType.SHARED_SECRET_TOKEN.name()),
                         "IP_ALLOWLIST is not supported in V1. HMAC_SHA256 requires an"
-                                + " X-Webhook-Timestamp header (Unix epoch seconds) covered by the"
-                                + " signature (X-Signature-256 = HMAC(secret, timestamp + \".\" + body)),"
-                                + " checked against a 5-minute freshness window"),
+                                + " X-Webhook-Timestamp header (Unix epoch seconds) and covers"
+                                + " timestamp + \".\" + Idempotency-Key + \".\" + body"
+                                + " (X-Signature-256), checked against a 5-minute freshness window"),
                 new ConfigField(
                         "webhookSecret",
                         "Webhook secret",
@@ -100,7 +100,15 @@ public class FlowableMessageCallbackConnector implements ConnectorDefinition, Ca
                                 + " Authentication is per connector instance, not per correlation value: use a"
                                 + " high-entropy, non-sequential identifier (e.g. a UUID), never a guessable one"
                                 + " (sequential dossier number), or any caller holding this instance's secret could"
-                                + " correlate to an unrelated waiting process by guessing it"));
+                                + " correlate to an unrelated waiting process by guessing it"),
+                new ConfigField(
+                        "mapping",
+                        "Payload mapping",
+                        ConfigFieldType.STRING,
+                        false,
+                        null,
+                        List.of(),
+                        "JSON object of JSONPath mappings for callback variables."));
     }
 
     @Override

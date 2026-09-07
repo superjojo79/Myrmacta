@@ -14,7 +14,7 @@ public record ConnectorProperties(Crypto crypto, Webhook webhook, Http http, Doc
             webhook = new Webhook(1_048_576L, 120, Duration.ofHours(24));
         }
         if (http == null) {
-            http = new Http(Duration.ofSeconds(5), Duration.ofSeconds(5));
+            http = new Http(Duration.ofSeconds(5), Duration.ofSeconds(5), 5_242_880L);
         }
         if (documentStorage == null) {
             documentStorage = new DocumentStorage(5_242_880L);
@@ -37,13 +37,16 @@ public record ConnectorProperties(Crypto crypto, Webhook webhook, Http http, Doc
         }
     }
 
-    public record Http(Duration connectTimeout, Duration requestTimeout) {
+    public record Http(Duration connectTimeout, Duration requestTimeout, long maxResponseBytes) {
         public Http {
             if (connectTimeout == null) {
                 connectTimeout = Duration.ofSeconds(5);
             }
             if (requestTimeout == null) {
                 requestTimeout = Duration.ofSeconds(5);
+            }
+            if (maxResponseBytes <= 0) {
+                maxResponseBytes = 5_242_880L;
             }
         }
     }

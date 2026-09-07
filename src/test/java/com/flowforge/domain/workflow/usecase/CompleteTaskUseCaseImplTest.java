@@ -4,10 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.flowforge.domain.dossier.model.AccessContext;
+import com.flowforge.domain.dossier.model.AccessDeniedException;
 import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierStatus;
 import com.flowforge.domain.dossier.model.DossierType;
@@ -27,6 +30,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,6 +41,7 @@ class CompleteTaskUseCaseImplTest {
     private static final String TENANT_ID = "tenant_dev";
     private static final UUID DOSSIER_ID = UUID.randomUUID();
     private static final String ACTOR = "actor-1";
+    private static final AccessContext.User ACTOR_USER = AccessContext.user(ACTOR, Set.of("DOSSIER_MANAGER"));
 
     private WorkflowEnginePort workflowEnginePort;
     private DossierRepository dossierRepository;
@@ -63,22 +68,22 @@ class CompleteTaskUseCaseImplTest {
 
     @Test
     void complete_forwardsVariablesToEnginePort() {
-        useCase.complete("task-1", DOSSIER_ID.toString(), Map.of("decision", "OK"), ACTOR);
+        useCase.complete("task-1", DOSSIER_ID.toString(), Map.of("decision", "OK"), ACTOR_USER);
 
         verify(workflowEnginePort).completeTask("task-1", Map.of("decision", "OK"));
     }
 
     @Test
     void complete_rejectsReservedVariableKeys() {
-        assertThatThrownBy(() -> useCase.complete("task-1", DOSSIER_ID.toString(), Map.of("dossierId", "x"), ACTOR))
+        assertThatThrownBy(() -> useCase.complete("task-1", DOSSIER_ID.toString(), Map.of("dossierId", "x"), ACTOR_USER))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("reserved");
-        verifyNoInteractions(workflowEnginePort);
+        verify(workflowEnginePort, never()).completeTask(any(), any());
     }
 
     @Test
     void complete_withoutDocumentTypeVariable_neverConsultsDossierOrTypeRepositories() {
-        useCase.complete("task-1", DOSSIER_ID.toString(), Map.of("decision", "OK"), ACTOR);
+        useCase.complete("task-1", DOSSIER_ID.toString(), Map.of("decision", "OK"), ACTOR_USER);
 
         verifyNoInteractions(dossierRepository, dossierTypeRepository);
     }
@@ -93,7 +98,7 @@ class CompleteTaskUseCaseImplTest {
                 "task-1",
                 DOSSIER_ID.toString(),
                 Map.of(WorkflowVariables.DOCUMENT_TYPE, "invoice"),
-                ACTOR);
+                ACTOR_USER);
 
         verify(workflowEnginePort).completeTask("task-1", Map.of(WorkflowVariables.DOCUMENT_TYPE, "invoice"));
     }
@@ -113,10 +118,10 @@ class CompleteTaskUseCaseImplTest {
                         "task-1",
                         DOSSIER_ID.toString(),
                         Map.of(WorkflowVariables.DOCUMENT_TYPE, "some-other-tenants-secret-template"),
-                        ACTOR))
+                        ACTOR_USER))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("some-other-tenants-secret-template");
-        verifyNoInteractions(workflowEnginePort);
+        verify(workflowEnginePort, never()).completeTask(any(), any());
     }
 
     @Test
@@ -126,16 +131,16 @@ class CompleteTaskUseCaseImplTest {
                 .thenReturn(Optional.of(dossierType("CLAIM", List.of())));
 
         assertThatThrownBy(() -> useCase.complete(
-                        "task-1", DOSSIER_ID.toString(), Map.of(WorkflowVariables.DOCUMENT_TYPE, "invoice"), ACTOR))
+                        "task-1", DOSSIER_ID.toString(), Map.of(WorkflowVariables.DOCUMENT_TYPE, "invoice"), ACTOR_USER))
                 .isInstanceOf(IllegalArgumentException.class);
-        verifyNoInteractions(workflowEnginePort);
+        verify(workflowEnginePort, never()).completeTask(any(), any());
     }
 
     @Test
     void complete_withoutUserQuestionFormKey_neverConsultsSchemaOrAnswerRepositories() {
         when(workflowEnginePort.findFormKeyByTaskId("task-1")).thenReturn(Optional.of("dossier-fields"));
 
-        useCase.complete("task-1", DOSSIER_ID.toString(), Map.of("decision", "OK"), ACTOR);
+        useCase.complete("task-1", DOSSIER_ID.toString(), Map.of("decision", "OK"), ACTOR_USER);
 
         verifyNoInteractions(taskQuestionSchemaRepository, taskQuestionAnswerRepository);
     }
@@ -148,7 +153,7 @@ class CompleteTaskUseCaseImplTest {
         when(taskQuestionSchemaRepository.findByKey(TENANT_ID, "orientation-dossier"))
                 .thenReturn(Optional.of(questionSchema()));
 
-        useCase.complete("task-1", DOSSIER_ID.toString(), Map.of("decision", "approve"), ACTOR);
+        useCase.complete("task-1", DOSSIER_ID.toString(), Map.of("decision", "approve"), ACTOR_USER);
 
         ArgumentCaptor<TaskQuestionAnswer> captor = ArgumentCaptor.forClass(TaskQuestionAnswer.class);
         verify(taskQuestionAnswerRepository).save(captor.capture());
@@ -170,7 +175,7 @@ class CompleteTaskUseCaseImplTest {
         when(taskQuestionSchemaRepository.findByKey(TENANT_ID, "orientation-dossier"))
                 .thenReturn(Optional.of(questionSchema()));
 
-        assertThatThrownBy(() -> useCase.complete("task-1", DOSSIER_ID.toString(), Map.of(), ACTOR))
+        assertThatThrownBy(() -> useCase.complete("task-1", DOSSIER_ID.toString(), Map.of(), ACTOR_USER))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("decision");
         verify(workflowEnginePort, org.mockito.Mockito.never()).completeTask(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
@@ -185,7 +190,7 @@ class CompleteTaskUseCaseImplTest {
                 .thenReturn(Optional.of(questionSchema()));
 
         assertThatThrownBy(() -> useCase.complete(
-                        "task-1", DOSSIER_ID.toString(), Map.of("decision", "maybe"), ACTOR))
+                        "task-1", DOSSIER_ID.toString(), Map.of("decision", "maybe"), ACTOR_USER))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("INVALID_OPTION");
         verify(taskQuestionAnswerRepository, org.mockito.Mockito.never()).save(org.mockito.ArgumentMatchers.any());
@@ -210,7 +215,7 @@ class CompleteTaskUseCaseImplTest {
                 .thenReturn(Optional.of(schemaWithNumberField));
 
         assertThatThrownBy(() -> useCase.complete(
-                        "task-1", DOSSIER_ID.toString(), Map.of("amount", "not-a-number"), ACTOR))
+                        "task-1", DOSSIER_ID.toString(), Map.of("amount", "not-a-number"), ACTOR_USER))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("TYPE_MISMATCH");
         verify(taskQuestionAnswerRepository, org.mockito.Mockito.never()).save(org.mockito.ArgumentMatchers.any());
@@ -232,11 +237,40 @@ class CompleteTaskUseCaseImplTest {
                         "task-1",
                         DOSSIER_ID.toString(),
                         Map.of("decision", "approve", "priority", "URGENT"),
-                        ACTOR))
+                        ACTOR_USER))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("UNKNOWN_FIELD");
         verify(workflowEnginePort, org.mockito.Mockito.never()).completeTask(any(), any());
         verify(taskQuestionAnswerRepository, org.mockito.Mockito.never()).save(any());
+    }
+
+    @Test
+    void complete_rejectsWhenActorIsNotTheAssignee() {
+        when(workflowEnginePort.findAssigneeByTaskId("task-1")).thenReturn(Optional.of("other-user"));
+
+        assertThatThrownBy(() -> useCase.complete("task-1", DOSSIER_ID.toString(), Map.of("decision", "OK"), ACTOR_USER))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("assignee");
+        verify(workflowEnginePort, never()).completeTask(any(), any());
+    }
+
+    @Test
+    void complete_allowsAdminToCompleteAnotherUsersTask() {
+        when(workflowEnginePort.findAssigneeByTaskId("task-1")).thenReturn(Optional.of("other-user"));
+        AccessContext.User admin = AccessContext.user("admin-1", Set.of("WORKFLOW_ADMIN"));
+
+        useCase.complete("task-1", DOSSIER_ID.toString(), Map.of("decision", "OK"), admin);
+
+        verify(workflowEnginePort).completeTask("task-1", Map.of("decision", "OK"));
+    }
+
+    @Test
+    void complete_allowsAssigneeToComplete() {
+        when(workflowEnginePort.findAssigneeByTaskId("task-1")).thenReturn(Optional.of(ACTOR));
+
+        useCase.complete("task-1", DOSSIER_ID.toString(), Map.of("decision", "OK"), ACTOR_USER);
+
+        verify(workflowEnginePort).completeTask("task-1", Map.of("decision", "OK"));
     }
 
     @Test
@@ -245,7 +279,7 @@ class CompleteTaskUseCaseImplTest {
                 .thenReturn(Optional.of("user-question:missing-schema"));
         when(taskQuestionSchemaRepository.findByKey(TENANT_ID, "missing-schema")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> useCase.complete("task-1", DOSSIER_ID.toString(), Map.of(), ACTOR))
+        assertThatThrownBy(() -> useCase.complete("task-1", DOSSIER_ID.toString(), Map.of(), ACTOR_USER))
                 .isInstanceOf(UnknownTaskQuestionSchemaException.class);
     }
 

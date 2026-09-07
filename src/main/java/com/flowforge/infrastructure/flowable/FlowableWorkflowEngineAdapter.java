@@ -62,6 +62,13 @@ class FlowableWorkflowEngineAdapter implements WorkflowEnginePort {
     }
 
     @Override
+    public Optional<String> findAssigneeByTaskId(String taskId) {
+        return Optional.ofNullable(taskService.createTaskQuery().taskId(taskId).singleResult())
+                .map(org.flowable.task.api.Task::getAssignee)
+                .filter(assignee -> assignee != null && !assignee.isBlank());
+    }
+
+    @Override
     public void deleteProcessInstanceBestEffort(String processInstanceId) {
         if (processInstanceId == null || processInstanceId.isBlank()) {
             return;

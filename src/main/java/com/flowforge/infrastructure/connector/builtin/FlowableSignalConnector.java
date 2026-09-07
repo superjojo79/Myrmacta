@@ -79,7 +79,15 @@ public class FlowableSignalConnector implements ConnectorDefinition, ServiceConn
                         true,
                         null,
                         List.of(),
-                        "Default dossier type for TRIGGER create"));
+                        "Default dossier type for TRIGGER create"),
+                new ConfigField(
+                        "mapping",
+                        "Payload mapping",
+                        ConfigFieldType.STRING,
+                        false,
+                        null,
+                        List.of(),
+                        "JSON object of JSONPath mappings (fields, variables, …)."));
     }
 
     @Override

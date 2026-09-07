@@ -175,6 +175,16 @@ public class OutboundUrlGuard {
             return true;
         }
         byte[] bytes = address.getAddress();
+        if (bytes.length == 4) {
+            int b0 = bytes[0] & 0xff;
+            int b1 = bytes[1] & 0xff;
+            if (b0 == 0) {
+                return true;
+            }
+            if (b0 == 100 && b1 >= 64 && b1 <= 127) {
+                return true;
+            }
+        }
         // IPv6 unique local addresses fc00::/7 — not covered by isSiteLocalAddress().
         return bytes.length == 16 && (bytes[0] & 0xfe) == 0xfc;
     }
@@ -321,7 +331,10 @@ public class OutboundUrlGuard {
                 return false;
             }
         }
-        if (octets[0] == 0 && octets[1] == 0 && octets[2] == 0 && octets[3] == 0) {
+        if (octets[0] == 100 && octets[1] >= 64 && octets[1] <= 127) {
+            return true;
+        }
+        if (octets[0] == 0) {
             return true;
         }
         if (octets[0] == 10) {

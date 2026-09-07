@@ -127,8 +127,8 @@ class TaskQuestionSchemaController {
     }
 
     /**
-     * Open to any authenticated task holder, not admin-only — the schema's runtime consumer is
-     * whoever holds the {@code userTask}, mirroring
+     * Open to the task assignee (or TA/WA), not admin-only — the schema's runtime consumer is
+     * whoever holds the {@code userTask} (TODO §57 M8), mirroring
      * {@code GET /api/dossier-types/{code}/document-templates} (TODO §52). {@code taskId} is
      * required so the use case can verify the caller's own task actually references
      * {@code schemaKey} (D-USERQ-RUNTIME-SCOPE) — there is no {@code DossierType}/{@code VIEW}
@@ -136,8 +136,9 @@ class TaskQuestionSchemaController {
      */
     @GetMapping("/{schemaKey}/runtime")
     TaskQuestionSchemaRuntimeResponse getForTask(
-            @PathVariable String schemaKey, @RequestParam String taskId) {
-        return TaskQuestionSchemaRuntimeResponse.from(getForTaskUseCase.getForTask(taskId, schemaKey));
+            @PathVariable String schemaKey, @RequestParam String taskId, Authentication authentication) {
+        return TaskQuestionSchemaRuntimeResponse.from(getForTaskUseCase.getForTask(
+                taskId, schemaKey, accessContextFactory.user(authentication)));
     }
 
     private static String required(String value, String field) {

@@ -45,7 +45,7 @@ class ConnectorPropertiesTest {
         var props = new ConnectorProperties(
                 new ConnectorProperties.Crypto("dGVzdC1rZXktMzItYnl0ZXMtbG9uZyEh"),
                 new ConnectorProperties.Webhook(256_000L, 60, Duration.ofHours(6)),
-                new ConnectorProperties.Http(Duration.ofSeconds(2), Duration.ofSeconds(3)),
+                new ConnectorProperties.Http(Duration.ofSeconds(2), Duration.ofSeconds(3), 1_024L),
                 null);
 
         assertThat(props.crypto().masterKey()).isEqualTo("dGVzdC1rZXktMzItYnl0ZXMtbG9uZyEh");
@@ -54,6 +54,7 @@ class ConnectorPropertiesTest {
         assertThat(props.webhook().idempotencyTtl()).isEqualTo(Duration.ofHours(6));
         assertThat(props.http().connectTimeout()).isEqualTo(Duration.ofSeconds(2));
         assertThat(props.http().requestTimeout()).isEqualTo(Duration.ofSeconds(3));
+        assertThat(props.http().maxResponseBytes()).isEqualTo(1_024L);
     }
 
     @Test
@@ -62,12 +63,13 @@ class ConnectorPropertiesTest {
 
         assertThat(props.http().connectTimeout()).isEqualTo(Duration.ofSeconds(5));
         assertThat(props.http().requestTimeout()).isEqualTo(Duration.ofSeconds(5));
+        assertThat(props.http().maxResponseBytes()).isEqualTo(5_242_880L);
     }
 
     @Test
     void httpPartialOverride_fillsMissingFieldWithDefault() {
         var props = new ConnectorProperties(
-                null, null, new ConnectorProperties.Http(Duration.ofSeconds(1), null), null);
+                null, null, new ConnectorProperties.Http(Duration.ofSeconds(1), null, 0L), null);
 
         assertThat(props.http().connectTimeout()).isEqualTo(Duration.ofSeconds(1));
         assertThat(props.http().requestTimeout()).isEqualTo(Duration.ofSeconds(5));
@@ -75,9 +77,10 @@ class ConnectorPropertiesTest {
 
     @Test
     void httpPartialOverride_fillsMissingConnectTimeoutWithDefault() {
-        var http = new ConnectorProperties.Http(null, Duration.ofSeconds(9));
+        var http = new ConnectorProperties.Http(null, Duration.ofSeconds(9), 0L);
 
         assertThat(http.connectTimeout()).isEqualTo(Duration.ofSeconds(5));
         assertThat(http.requestTimeout()).isEqualTo(Duration.ofSeconds(9));
+        assertThat(http.maxResponseBytes()).isEqualTo(5_242_880L);
     }
 }

@@ -74,9 +74,6 @@ class CallbackWebhookController {
         if (body.length > connectorProperties.webhook().maxBodyBytes()) {
             throw new WebhookPayloadTooLargeException(connectorProperties.webhook().maxBodyBytes());
         }
-        if (!rateLimiter.tryConsume(instanceId, connectorProperties.webhook().rateLimitPerMinute())) {
-            throw new WebhookRateLimitExceededException(instanceId);
-        }
 
         String idempotencyKey = headers.getFirst("Idempotency-Key");
         if (idempotencyKey == null || idempotencyKey.isBlank()) {
@@ -91,6 +88,10 @@ class CallbackWebhookController {
         WebhookAuthType authType = authType(instance.config());
         String secret = stringValue(instance.config().get("webhookSecret"), "webhookSecret");
         authenticator(authType).authenticate(instance.id(), secret, body, headers);
+
+        if (!rateLimiter.tryConsume(instanceId, connectorProperties.webhook().rateLimitPerMinute())) {
+            throw new WebhookRateLimitExceededException(instanceId);
+        }
 
         return idempotencyStore.beginOrGetCompleted(instance.id(), idempotencyKey)
                 .map(status -> ResponseEntity.status(status).<Void>build())

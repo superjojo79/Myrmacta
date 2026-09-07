@@ -117,7 +117,7 @@ class DocumentGenerationApiTest {
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
-                .andExpect(status().isOk());
+                .andExpect(status().isForbidden());
 
         mockMvc.perform(post("/api/documents/generate")
                         .with(user("viewer", "DOSSIER_VIEWER"))
@@ -131,6 +131,48 @@ class DocumentGenerationApiTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void generate_dossierManager_withViewTypeListingTemplate_succeeds() throws Exception {
+        String key = createActiveTemplate();
+        String code = "GEN" + UUID.randomUUID().toString().substring(0, 8).replace("-", "");
+        mockMvc.perform(post("/api/dossier-types")
+                        .with(user("gen-type-admin", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "code": "%s",
+                                  "label": "Label %s",
+                                  "workflowKey": "workflow-%s",
+                                  "active": true,
+                                  "allowUnknownFields": false,
+                                  "fieldDefinitions": [],
+                                  "documentTemplateKeys": ["%s"]
+                                }
+                                """.formatted(code, code, code, key)))
+                .andExpect(status().isCreated());
+        mockMvc.perform(post("/api/dossier-types/{code}/acl", code)
+                        .with(user("gen-type-admin", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "subjectUserId": "mgr-allowed",
+                                  "permission": "VIEW"
+                                }
+                                """))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(post("/api/documents/generate")
+                        .with(user("mgr-allowed", "DOSSIER_MANAGER"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "templateKey": "%s", "variables": { "title": "X" } }
+                                """.formatted(key)))
+                .andExpect(status().isOk());
     }
 
     @Test

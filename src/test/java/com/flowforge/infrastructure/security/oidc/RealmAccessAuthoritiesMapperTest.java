@@ -73,6 +73,16 @@ class RealmAccessAuthoritiesMapperTest {
         assertThat(authorities).isEmpty();
     }
 
+    @Test
+    void ignoresMachineRoleApiService() {
+        var authorities = mapper.mapAuthorities(List.of(oidcAuthority(
+                Map.of("roles", List.of("API_SERVICE", "DOSSIER_VIEWER")))));
+
+        assertThat(authorities)
+                .extracting(GrantedAuthority::getAuthority)
+                .containsExactly("ROLE_DOSSIER_VIEWER");
+    }
+
     private static OidcUserAuthority oidcAuthority(Map<String, Object> realmAccess) {
         var claims = new java.util.HashMap<String, Object>();
         claims.put("sub", "user-1");

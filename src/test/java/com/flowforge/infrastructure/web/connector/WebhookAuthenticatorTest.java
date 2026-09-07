@@ -29,7 +29,8 @@ class WebhookAuthenticatorTest {
         String timestamp = String.valueOf(FIXED_NOW.getEpochSecond());
         HttpHeaders headers = new HttpHeaders();
         headers.add("X-Webhook-Timestamp", timestamp);
-        headers.add("X-Signature-256", "sha256=" + hmacHex("webhook-secret", timestamp, body));
+        headers.add("Idempotency-Key", "idem-1");
+        headers.add("X-Signature-256", "sha256=" + hmacHex("webhook-secret", timestamp, "idem-1", body));
 
         var authenticator = new HmacWebhookAuthenticator(FIXED_CLOCK);
 
@@ -42,6 +43,7 @@ class WebhookAuthenticatorTest {
         byte[] body = "{\"event\":\"created\"}".getBytes(StandardCharsets.UTF_8);
         HttpHeaders headers = new HttpHeaders();
         headers.add("X-Webhook-Timestamp", String.valueOf(FIXED_NOW.getEpochSecond()));
+        headers.add("Idempotency-Key", "idem-1");
         headers.add("X-Signature-256", "sha256=invalid");
 
         assertThatThrownBy(() -> new HmacWebhookAuthenticator(FIXED_CLOCK)
@@ -53,7 +55,7 @@ class WebhookAuthenticatorTest {
     void hmacAuthenticator_missingTimestamp_rejected() {
         byte[] body = "{\"event\":\"created\"}".getBytes(StandardCharsets.UTF_8);
         HttpHeaders headers = new HttpHeaders();
-        headers.add("X-Signature-256", "sha256=" + hmacHex("webhook-secret", "0", body));
+        headers.add("X-Signature-256", "sha256=" + hmacHex("webhook-secret", "0", "idem-1", body));
 
         assertThatThrownBy(() -> new HmacWebhookAuthenticator(FIXED_CLOCK)
                         .authenticate(INSTANCE_ID, "webhook-secret", body, headers))
@@ -65,7 +67,8 @@ class WebhookAuthenticatorTest {
         byte[] body = "{\"event\":\"created\"}".getBytes(StandardCharsets.UTF_8);
         HttpHeaders headers = new HttpHeaders();
         headers.add("X-Webhook-Timestamp", "not-a-number");
-        headers.add("X-Signature-256", "sha256=" + hmacHex("webhook-secret", "not-a-number", body));
+        headers.add("Idempotency-Key", "idem-1");
+        headers.add("X-Signature-256", "sha256=" + hmacHex("webhook-secret", "not-a-number", "idem-1", body));
 
         assertThatThrownBy(() -> new HmacWebhookAuthenticator(FIXED_CLOCK)
                         .authenticate(INSTANCE_ID, "webhook-secret", body, headers))
@@ -81,7 +84,8 @@ class WebhookAuthenticatorTest {
         String staleTimestamp = String.valueOf(FIXED_NOW.minus(Duration.ofMinutes(10)).getEpochSecond());
         HttpHeaders headers = new HttpHeaders();
         headers.add("X-Webhook-Timestamp", staleTimestamp);
-        headers.add("X-Signature-256", "sha256=" + hmacHex("webhook-secret", staleTimestamp, body));
+        headers.add("Idempotency-Key", "idem-1");
+        headers.add("X-Signature-256", "sha256=" + hmacHex("webhook-secret", staleTimestamp, "idem-1", body));
 
         assertThatThrownBy(() -> new HmacWebhookAuthenticator(FIXED_CLOCK)
                         .authenticate(INSTANCE_ID, "webhook-secret", body, headers))
@@ -94,7 +98,8 @@ class WebhookAuthenticatorTest {
         String futureTimestamp = String.valueOf(FIXED_NOW.plus(Duration.ofMinutes(10)).getEpochSecond());
         HttpHeaders headers = new HttpHeaders();
         headers.add("X-Webhook-Timestamp", futureTimestamp);
-        headers.add("X-Signature-256", "sha256=" + hmacHex("webhook-secret", futureTimestamp, body));
+        headers.add("Idempotency-Key", "idem-1");
+        headers.add("X-Signature-256", "sha256=" + hmacHex("webhook-secret", futureTimestamp, "idem-1", body));
 
         assertThatThrownBy(() -> new HmacWebhookAuthenticator(FIXED_CLOCK)
                         .authenticate(INSTANCE_ID, "webhook-secret", body, headers))
@@ -108,6 +113,7 @@ class WebhookAuthenticatorTest {
         byte[] body = "{\"event\":\"created\"}".getBytes(StandardCharsets.UTF_8);
         HttpHeaders headers = new HttpHeaders();
         headers.add("X-Webhook-Timestamp", String.valueOf(FIXED_NOW.getEpochSecond()));
+        headers.add("Idempotency-Key", "idem-1");
         headers.add("X-Signature-256", "sha256=" + bodyOnlyHmacHex("webhook-secret", body));
 
         assertThatThrownBy(() -> new HmacWebhookAuthenticator(FIXED_CLOCK)
@@ -127,6 +133,57 @@ class WebhookAuthenticatorTest {
     }
 
     @Test
+    void hmacAuthenticator_signatureOmittingIdempotencyKey_rejected() {
+        byte[] body = "{\"event\":\"created\"}".getBytes(StandardCharsets.UTF_8);
+        String timestamp = String.valueOf(FIXED_NOW.getEpochSecond());
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("X-Webhook-Timestamp", timestamp);
+        headers.add("Idempotency-Key", "idem-fresh");
+        headers.add("X-Signature-256", "sha256=" + timestampBodyOnlyHmac("webhook-secret", timestamp, body));
+
+        assertThatThrownBy(() -> new HmacWebhookAuthenticator(FIXED_CLOCK)
+                        .authenticate(INSTANCE_ID, "webhook-secret", body, headers))
+                .isInstanceOf(WebhookAuthenticationException.class);
+    }
+
+    @Test
+    void hmacAuthenticator_missingIdempotencyKey_rejected() {
+        byte[] body = "{\"event\":\"created\"}".getBytes(StandardCharsets.UTF_8);
+        String timestamp = String.valueOf(FIXED_NOW.getEpochSecond());
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("X-Webhook-Timestamp", timestamp);
+        headers.add("X-Signature-256", "sha256=" + hmacHex("webhook-secret", timestamp, "idem-1", body));
+
+        assertThatThrownBy(() -> new HmacWebhookAuthenticator(FIXED_CLOCK)
+                        .authenticate(INSTANCE_ID, "webhook-secret", body, headers))
+                .isInstanceOf(WebhookAuthenticationException.class);
+    }
+
+    @Test
+    void sharedSecretAuthenticator_rejectsReplayOfSameBody() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("X-Webhook-Token", "webhook-secret");
+        byte[] body = "{\"event\":\"created\"}".getBytes(StandardCharsets.UTF_8);
+        var authenticator = new SharedSecretWebhookAuthenticator();
+
+        authenticator.authenticate(INSTANCE_ID, "webhook-secret", body, headers);
+        assertThatThrownBy(() -> authenticator.authenticate(INSTANCE_ID, "webhook-secret", body, headers))
+                .isInstanceOf(WebhookAuthenticationException.class);
+    }
+
+    @Test
+    void sharedSecretAuthenticator_acceptsDifferentBodyAfterFirst() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("X-Webhook-Token", "webhook-secret");
+        var authenticator = new SharedSecretWebhookAuthenticator();
+
+        authenticator.authenticate(
+                INSTANCE_ID, "webhook-secret", "{\"n\":1}".getBytes(StandardCharsets.UTF_8), headers);
+        authenticator.authenticate(
+                INSTANCE_ID, "webhook-secret", "{\"n\":2}".getBytes(StandardCharsets.UTF_8), headers);
+    }
+
+    @Test
     void sharedSecretAuthenticator_rejectsWrongToken() {
         HttpHeaders headers = new HttpHeaders();
         headers.add("X-Webhook-Token", "wrong");
@@ -136,7 +193,15 @@ class WebhookAuthenticatorTest {
                 .isInstanceOf(WebhookAuthenticationException.class);
     }
 
-    private static String hmacHex(String secret, String timestamp, byte[] body) {
+    private static String hmacHex(String secret, String timestamp, String idempotencyKey, byte[] body) {
+        byte[] prefix = (timestamp + "." + idempotencyKey + ".").getBytes(StandardCharsets.UTF_8);
+        byte[] combined = new byte[prefix.length + body.length];
+        System.arraycopy(prefix, 0, combined, 0, prefix.length);
+        System.arraycopy(body, 0, combined, prefix.length, body.length);
+        return bodyOnlyHmacHex(secret, combined);
+    }
+
+    private static String timestampBodyOnlyHmac(String secret, String timestamp, byte[] body) {
         byte[] prefix = (timestamp + ".").getBytes(StandardCharsets.UTF_8);
         byte[] combined = new byte[prefix.length + body.length];
         System.arraycopy(prefix, 0, combined, 0, prefix.length);

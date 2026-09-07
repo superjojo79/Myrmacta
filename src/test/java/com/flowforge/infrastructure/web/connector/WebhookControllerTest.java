@@ -131,7 +131,7 @@ class WebhookControllerTest {
                             .header("Idempotency-Key", "idem-" + i)
                             .header("X-Webhook-Token", "secret")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content("{}"))
+                            .content("{\"n\":" + i + "}"))
                     .andExpect(status().isAccepted());
         }
 
@@ -139,7 +139,7 @@ class WebhookControllerTest {
                         .header("Idempotency-Key", "idem-3")
                         .header("X-Webhook-Token", "secret")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
+                        .content("{\"n\":3}"))
                 .andExpect(status().isTooManyRequests());
     }
 
@@ -154,7 +154,7 @@ class WebhookControllerTest {
         mockMvc.perform(post("/api/webhooks/{instanceId}", INSTANCE_ID)
                         .header("Idempotency-Key", "idem-hmac")
                         .header("X-Webhook-Timestamp", timestamp)
-                        .header("X-Signature-256", "sha256=" + hmacHex("hmac-secret", timestamp, body))
+                        .header("X-Signature-256", "sha256=" + hmacHex("hmac-secret", timestamp, "idem-hmac", body))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isAccepted());
@@ -178,6 +178,36 @@ class WebhookControllerTest {
 
         verify(runtime, never()).onIncomingEvent(any(), any());
         verify(idempotencyStore, never()).complete(any(), any(), anyInt());
+    }
+
+    @Test
+    void receive_failedAuthDoesNotConsumePartnerRateLimit() throws Exception {
+        when(instances.findByIdAndTenantId(INSTANCE_ID, "tenant_dev"))
+                .thenReturn(Optional.of(instance(true)));
+        when(idempotencyStore.beginOrGetCompleted(eq(INSTANCE_ID), any())).thenReturn(Optional.empty());
+
+        mockMvc.perform(post("/api/webhooks/{instanceId}", INSTANCE_ID)
+                        .header("Idempotency-Key", "idem-bad")
+                        .header("X-Webhook-Token", "wrong")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"n\":-1}"))
+                .andExpect(status().isUnauthorized());
+
+        for (int i = 0; i < 2; i++) {
+            mockMvc.perform(post("/api/webhooks/{instanceId}", INSTANCE_ID)
+                            .header("Idempotency-Key", "idem-ok-" + i)
+                            .header("X-Webhook-Token", "secret")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"n\":" + i + "}"))
+                    .andExpect(status().isAccepted());
+        }
+
+        mockMvc.perform(post("/api/webhooks/{instanceId}", INSTANCE_ID)
+                        .header("Idempotency-Key", "idem-ok-2")
+                        .header("X-Webhook-Token", "secret")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"n\":2}"))
+                .andExpect(status().isTooManyRequests());
     }
 
     @Test
@@ -327,9 +357,9 @@ class WebhookControllerTest {
                         "webhookSecret", "hmac-secret"));
     }
 
-    private static String hmacHex(String secret, String timestamp, byte[] body) {
+    private static String hmacHex(String secret, String timestamp, String idempotencyKey, byte[] body) {
         try {
-            byte[] prefix = (timestamp + ".").getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            byte[] prefix = (timestamp + "." + idempotencyKey + ".").getBytes(java.nio.charset.StandardCharsets.UTF_8);
             byte[] combined = new byte[prefix.length + body.length];
             System.arraycopy(prefix, 0, combined, 0, prefix.length);
             System.arraycopy(body, 0, combined, prefix.length, body.length);

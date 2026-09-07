@@ -439,12 +439,12 @@ Le schéma HMAC ci-dessus (signature du seul corps brut) permettait à quiconque
 une paire (corps, signature) valide de la rejouer indéfiniment avec une nouvelle
 `Idempotency-Key` à chaque fois, contournant totalement l'idempotence (clé fournie par l'appelant,
 non couverte par la signature). Corrigé : la signature couvre désormais
-`timestamp + "." + corps` (`X-Webhook-Timestamp`, secondes epoch Unix, obligatoire pour
-`HMAC_SHA256`), avec une fenêtre de fraîcheur de 5 minutes — une requête capturée n'est rejouable
-que dans cette fenêtre, plus indéfiniment. **Rupture de contrat pour les appelants HMAC déjà en
-production** : ils doivent désormais envoyer cet en-tête et l'inclure dans le calcul de signature.
-`SHARED_SECRET_TOKEN` (jeton nu comparé, jamais de signature) n'est pas concerné — c'est un
-compromis déjà documenté comme plus faible que HMAC, pas une régression de cette revue.
+`timestamp + "." + Idempotency-Key + "." + corps` (`X-Webhook-Timestamp`, secondes epoch Unix,
+obligatoire pour `HMAC_SHA256`), avec une fenêtre de fraîcheur de 5 minutes — une requête
+capturée n'est rejouable que dans cette fenêtre, et une `Idempotency-Key` neuve ne peut plus
+réutiliser une signature capturée. **Rupture de contrat pour les appelants HMAC déjà en
+production** : ils doivent désormais envoyer cet en-tête **et** l'inclure dans le calcul de
+signature. `SHARED_SECRET_TOKEN` : cache anti-rejeu du corps (TTL 5 min) en plus du jeton.
 Voir `HmacWebhookAuthenticator` (`infrastructure.web.connector`) pour l'implémentation réelle.
 
 ### Appel direct via API

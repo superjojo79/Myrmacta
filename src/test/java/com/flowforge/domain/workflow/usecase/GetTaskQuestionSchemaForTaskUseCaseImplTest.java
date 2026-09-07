@@ -99,6 +99,16 @@ class GetTaskQuestionSchemaForTaskUseCaseImplTest {
     }
 
     @Test
+    void getForTask_rejectsNonAssigneeBeforeFormKeyMismatch() {
+        when(workflowEnginePort.findAssigneeByTaskId("task-1")).thenReturn(Optional.of("other-user"));
+        when(workflowEnginePort.findFormKeyByTaskId("task-1"))
+                .thenReturn(Optional.of("user-question:other-schema"));
+
+        assertThatThrownBy(() -> useCase.getForTask("task-1", "orientation-dossier", ACTOR))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
     void getForTask_allowsAdminToReadAnotherUsersTaskSchema() {
         when(workflowEnginePort.findAssigneeByTaskId("task-1")).thenReturn(Optional.of("other-user"));
         when(workflowEnginePort.findFormKeyByTaskId("task-1"))

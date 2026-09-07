@@ -127,8 +127,8 @@ class TaskQuestionSchemaController {
     }
 
     /**
-     * Open to any authenticated task holder, not admin-only — the schema's runtime consumer is
-     * whoever holds the {@code userTask}, mirroring
+     * Open to the task assignee (or TA/WA), not admin-only — the schema's runtime consumer is
+     * whoever holds the {@code userTask} (TODO §57 M8), mirroring
      * {@code GET /api/dossier-types/{code}/document-templates} (TODO §52). {@code taskId} is
      * required so the use case can verify the caller's own task actually references
      * {@code schemaKey} (D-USERQ-RUNTIME-SCOPE) — there is no {@code DossierType}/{@code VIEW}

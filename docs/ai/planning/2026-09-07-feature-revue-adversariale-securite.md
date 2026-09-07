@@ -12,45 +12,45 @@ feature: revue-adversariale-securite
 
 ## Milestones
 
-- [ ] M1 — H1 BPMN allowlist (parser + tests exploit)
-- [ ] M2 — H2 + M8 assignee (port engine, complete, runtime schema)
-- [ ] M3 — M1 OIDC allowlist + M12 generate ACL
-- [ ] M4 — M2 S3 yaml, M3/M4 SSRF, M5 schema keys, M9 callback/tenant
-- [ ] M5 — M6/M7 webhooks, M10 SMTP, M11 caps, M13 templates/CSP
+- [x] M1 — H1 BPMN allowlist (parser + tests exploit)
+- [x] M2 — H2 + M8 assignee (port engine, complete, runtime schema)
+- [x] M3 — M1 OIDC allowlist + M12 generate ACL
+- [x] M4 — M2 S3 yaml, M3/M4 SSRF, M5 schema keys, M9 callback/tenant
+- [x] M5 — M6/M7 webhooks, M10 SMTP, M11 caps, M13 templates/CSP
 - [ ] M6 — docs GUIDE / `.env.example` / CHANGELOG ; `./mvnw verify`
 
 ## Task Breakdown
 
 ### M1 H1
-- [ ] T1.1 Test parser `scriptTask` / `class` / `expression` / bean inconnu → rouge
-- [ ] T1.2 `AllowedBpmnDelegates` + walk `BpmnModel` dans `FlowableBpmnParserAdapter`
-- [ ] T1.3 Smoke BPMN du dépôt toujours extraits
+- [x] T1.1 Test parser `scriptTask` / `class` / `expression` / bean inconnu → rouge
+- [x] T1.2 `AllowedBpmnDelegates` + walk `BpmnModel` dans `FlowableBpmnParserAdapter`
+- [x] T1.3 Smoke BPMN du dépôt toujours extraits
 
 ### M2 H2/M8
-- [ ] T2.1 `findAssigneeByTaskId` + tests complete
-- [ ] T2.2 Controller passe `AccessContext.User`
-- [ ] T2.3 Runtime schema + actor
+- [x] T2.1 `findAssigneeByTaskId` + tests complete
+- [x] T2.2 Controller passe `AccessContext.User`
+- [x] T2.3 Runtime schema + actor
 
 ### M3 M1/M12
-- [ ] T3.1 Mapper OIDC
-- [ ] T3.2 Generate use case + controller Authentication → AccessContext
+- [x] T3.1 Mapper OIDC
+- [x] T3.2 Generate use case + controller Authentication → AccessContext
 
 ### M4 SSRF / secrets / callback
-- [ ] T4.1 yaml S3
-- [ ] T4.2 OutboundUrlGuard CGNAT / 0.0.0.0/8
-- [ ] T4.3 HttpRestConnector Host/TLS
-- [ ] T4.4 assertKnownConfigKeys + mapping schema
-- [ ] T4.5 reserved keys callback + ConnectorServiceTask
+- [x] T4.1 yaml S3
+- [x] T4.2 OutboundUrlGuard CGNAT / 0.0.0.0/8
+- [x] T4.3 HttpRestConnector Host/TLS
+- [x] T4.4 assertKnownConfigKeys + mapping schema
+- [x] T4.5 reserved keys callback + ConnectorServiceTask
 
 ### M5 webhooks / smtp / caps / preview
-- [ ] T5.1 ordre auth/rate-limit
-- [ ] T5.2 HMAC idempotency + shared-secret replay cache
-- [ ] T5.3 SmtpConnector
-- [ ] T5.4 maxResponseBytes + document-storage
-- [ ] T5.5 th:utext + CSP preview
+- [x] T5.1 ordre auth/rate-limit
+- [x] T5.2 HMAC idempotency + shared-secret replay cache
+- [x] T5.3 SmtpConnector
+- [x] T5.4 maxResponseBytes + document-storage
+- [x] T5.5 th:utext + CSP preview
 
 ### M6 close
-- [ ] T6.1 GUIDE-CONCEPTION-BPMN, GUIDE-UTILISATEUR webhook HMAC, .env.example
+- [x] T6.1 GUIDE-CONCEPTION-BPMN, GUIDE-UTILISATEUR webhook HMAC, CHANGELOG PR #113
 - [ ] T6.2 `./mvnw verify` + Vitest
 - [ ] T6.3 Phase 7/8/9 docs
 

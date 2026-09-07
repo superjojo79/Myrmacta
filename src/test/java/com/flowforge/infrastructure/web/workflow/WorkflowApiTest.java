@@ -189,8 +189,23 @@ class WorkflowApiTest {
                 .andExpect(jsonPath("$.page").value(0))
                 .andExpect(jsonPath("$.totalElements").value(1));
 
+        // TODO §57 H2: EDIT on the type is no longer enough once the task has an assignee.
         mockMvc.perform(post("/api/workflow-tasks/{taskId}/complete", taskId)
                         .with(user("workflow-editor"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "variables": {
+                                    "targetWorkflowStatus": "COMPLETED"
+                                  }
+                                }
+                                """))
+                .andExpect(status().isForbidden());
+
+        grant(typeCode, "assignee-sub", "EDIT");
+        mockMvc.perform(post("/api/workflow-tasks/{taskId}/complete", taskId)
+                        .with(user("assignee-sub"))
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""

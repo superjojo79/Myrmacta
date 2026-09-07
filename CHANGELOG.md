@@ -28,6 +28,13 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ## [Non publié]
 
+### Sécurité
+
+- **PR [#113](https://github.com/superjojo79/FlowForge/pull/113)** — Revue adversariale TODO §57 :
+  allowlist BPMN, complete/runtime schemas bornés à l’assignee, OIDC sans `API_SERVICE`,
+  HMAC `timestamp.Idempotency-Key.body` (rupture de contrat), SSRF Host/CGNAT, caps HTTP/storage,
+  ACL generate PDF, CSP preview. Les partenaires HMAC doivent inclure `Idempotency-Key` dans la signature.
+
 ### Documentation
 
 - **PR [#83](https://github.com/superjojo79/FlowForge/pull/83)** — Rattrapage de la documentation

@@ -233,9 +233,16 @@ class TaskQuestionSchemaApiTest {
                         .with(user("alice")))
                 .andExpect(status().isOk());
 
+        // M8 checks assignment before formKey match: a non-assignee still gets 403 even with
+        // a mismatched schema key. The 404 (unknown schema for this task) is for the assignee.
         mockMvc.perform(get("/api/task-question-schemas/{schemaKey}/runtime", "some-other-schema")
                         .param("taskId", task.getId())
                         .with(user("any-task-holder")))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/task-question-schemas/{schemaKey}/runtime", "some-other-schema")
+                        .param("taskId", task.getId())
+                        .with(user("alice")))
                 .andExpect(status().isNotFound());
 
         taskService.complete(task.getId(), java.util.Map.of("decision", "approve"));

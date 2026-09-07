@@ -2,7 +2,7 @@
 phase: design
 title: System Design & Architecture
 description: Define the technical architecture, components, and data models
-status: draft
+status: reviewed
 created: 2026-09-07
 updated: 2026-09-07
 feature: revue-adversariale-securite
@@ -10,8 +10,9 @@ feature: revue-adversariale-securite
 
 # System Design & Architecture — `revue-adversariale-securite`
 
-> **Phase 3 suspendue.** Design = proposition alignée sur les reco Q1–Q12.
-> À revoir après Phase 2. Code PR #113 conservé.
+Phase 3 revalidée après Q1–Q12 = A. Couverture requirements : chaque H/M a un
+composant. Écart accepté (Q8) : M12 dans `DocumentGenerationController`, pas le
+use case (préserve `documentGenerationTask` BPMN).
 
 ## Architecture Overview
 
@@ -66,7 +67,7 @@ flowchart TD
 | M9 | `CallbackConnectorRuntimeImpl` + `ConnectorServiceTask` |
 | M10 | `SmtpConnector` |
 | M11 | Http response limiter + document-storage |
-| M12 | `GenerateDocumentUseCase` + actor + `DossierTypeRepository` |
+| M12 | `DocumentGenerationController.assertCanGenerate` (pas le use case, Q8) |
 | M13 | `ThymeleafTemplateSyntaxChecker` + header preview |
 
 Allowlist H1 (noms `@Component`) :
@@ -84,14 +85,20 @@ autorisées (chaîne, pas EL moteur).
 
 ## Design Decisions
 
+Actées stakeholder `OK tous` (Q1–Q12 = A).
+
 | ID | Choix | Alternatives écartées |
 |---|---|---|
-| D-H1 | Allowlist parse-time | Désactiver le script engine Flowable seul (rate des `expression` serviceTask) |
-| D-H2 | Assignee **ou** TA/WA ; unassigned → EDIT | Candidate groups (hors V1) |
-| D-M1 | Filtre OIDC, policy MCP inchangée | Retirer API_SERVICE de la policy (casserait get_dossier MCP) |
-| D-M5 | Strip/reject unknown + déclarer `mapping` | Heuristique `*token` (facile à rater) |
-| D-M7 | Idempotency dans HMAC + cache body shared-secret | Nonce serveur (nouveau header, plus lourd) |
-| D-M12 | DM si un type VIEW liste la clé | Retirer DM de `@PreAuthorize` (perte du generate métier) |
+| D-H1 / Q2 | Allowlist parse-time | Script engine seul ; WA ne déploie plus |
+| D-H2 / Q3 | Assignee **ou** TA/WA ; unassigned → EDIT | Assignee only ; statu quo EDIT |
+| D-M1 / Q4 | Filtre OIDC, policy MCP inchangée | Retirer API_SERVICE de la policy |
+| D-M5 / Q7 | Reject unknown + déclarer `mapping` | Strip ; heuristique `*token` |
+| D-M6 / Q10 | Auth puis rate-limit | Bucket anonyme séparé ; statu quo |
+| D-M7 / Q5–Q6 | HMAC idempotency + cache body shared-secret | Dual-accept ; timestamp shared-secret |
+| D-M12 / Q8 | DM si un type VIEW liste la clé ; garde contrôleur | Retirer DM de `@PreAuthorize` |
+| D-M13 / Q11 | Interdire `utext` + CSP preview | CSP seul ; utext sans CSP |
+| D-SPA / Q9 | Pas de chantier FE | Masquer le champ bpmn-js |
+| D-LOW / Q12 | L1–L7 hors cycle | Scopes M2M ; fail-fast actuator |
 
 ## Non-Functional Requirements
 

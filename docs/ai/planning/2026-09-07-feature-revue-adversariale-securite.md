@@ -2,7 +2,7 @@
 phase: planning
 title: Project Planning & Task Breakdown
 description: Break down work into actionable tasks and estimate timeline
-status: draft
+status: reviewed
 created: 2026-09-07
 updated: 2026-09-07
 feature: revue-adversariale-securite
@@ -10,8 +10,7 @@ feature: revue-adversariale-securite
 
 # Project Planning & Task Breakdown — `revue-adversariale-securite`
 
-> **Phases 4/6 suspendues.** Le découpage M1–M6 décrit le code déjà poussé.
-> Recoller après confirmation Q1–Q12 (adapter les tâches si une reco est refusée).
+Phase 4/6 : Q1–Q12 = A, pas de nouvelle tâche (code déjà livré).
 
 ## Milestones
 

@@ -2,22 +2,22 @@
 phase: requirements
 title: Requirements & Problem Understanding
 description: Clarify the problem space, gather requirements, and define success criteria
-status: draft
+status: reviewed
 created: 2026-09-07
 updated: 2026-09-07
 feature: revue-adversariale-securite
 phase1: 2026-09-07
+phase2: 2026-09-07
 todo_ref: TODO.md §57 · FILE-ATTENTE.md
 ---
 
 # Requirements & Problem Understanding — `revue-adversariale-securite`
 
-## Reprise Phase 1–2 (2026-09-07, soir)
+## Phase 2 close (2026-09-07)
 
-Les Phases 1–9 avaient été closes sans questions stakeholder. **Rouvert** : le
-code de la PR #113 est **conservé** en proposition, pas acté. Les D-* / A-*
-ci-dessous sont des **recommandations**, pas des décisions. Les critères de
-succès redeviennent des cases ouvertes jusqu’à confirmation.
+Stakeholder : **`OK tous`** — Q1–Q12 = option **A** (recos). Le code PR #113
+est **acté** (pas d’adaptation). Phases 3–9 = revalidation du design/code
+existant, pas une réécriture.
 
 ## Problem Statement
 **What problem are we solving?**
@@ -39,7 +39,7 @@ ne sont pas au même niveau.
 
 ### Primary goals
 
-Implémenter **H1, H2, M1–M13** selon les réponses Q1–Q12 (reco actuelle = tableau TODO §57).
+Implémenter **H1, H2, M1–M13** (Q1=A) selon les décisions Q2–Q12 = A.
 
 ### Non-goals
 
@@ -70,65 +70,56 @@ Implémenter **H1, H2, M1–M13** selon les réponses Q1–Q12 (reco actuelle = 
 
 ## Success Criteria
 
-> Cases rouvertes. Le code PR #113 implémente déjà la colonne « reco » ;
-> à recocher seulement après confirmation stakeholder.
-
-- [ ] H1 : BPMN `scriptTask` / `flowable:class` / `flowable:expression` → 400 au
-      parse/deploy ; `delegateExpression="${connectorServiceTask}"` OK.
-- [ ] H2 : complete non-assignee non-admin → 403 ; assignee → 204.
-- [ ] M1 : OIDC n'émet pas `ROLE_API_SERVICE`.
-- [ ] M2 : `app.storage.s3.access-key-id` bind `APP_STORAGE_S3_ACCESS_KEY`.
-- [ ] M3 : `HttpRestConnector` pose `Host` d'origine et refuse un `Host` appelant.
-- [ ] M4 : URL `http://100.64.0.1/` et `http://0.0.0.1/` rejetées.
-- [ ] M5 : config `{ "backupToken": "x" }` → validation error ; `mapping` accepté.
-- [ ] M6 : auth échouée n'incrémente pas le bucket partenaire.
-- [ ] M7 : HMAC sans idempotency dans la signature → 401 ; même corps shared-secret
-      rejoué dans la fenêtre → 401.
-- [ ] M8 : `/runtime` d'une tâche d'autrui → 403.
-- [ ] M9 : callback mapping `tenantId` → 400 ; `ConnectorServiceTask` ignore la var process.
-- [ ] M10 : `to=a@x.com,b@y.com` → 400.
-- [ ] M11 : réponse HTTP / retrieve au-delà du cap → erreur ; STORE oversized encodé → 400 avant OOM.
-- [ ] M12 : `DOSSIER_MANAGER` sans type VIEW lié au template → 403.
-- [ ] M13 : template `th:utext` → 400 à l'activation ; preview HTML porte CSP.
-- [ ] `./mvnw verify` / Vitest / Playwright verts (preuve locale déjà produite, à
-      revalider si le code change après les réponses).
+- [x] H1 : BPMN `scriptTask` / `flowable:class` / `flowable:expression` → 400 au
+      parse/deploy ; `delegateExpression="${connectorServiceTask}"` OK. (Q2=A)
+- [x] H2 : complete non-assignee non-admin → 403 ; assignee → 204. (Q3=A)
+- [x] M1 : OIDC n'émet pas `ROLE_API_SERVICE`. (Q4=A)
+- [x] M2 : `app.storage.s3.access-key-id` bind `APP_STORAGE_S3_ACCESS_KEY`.
+- [x] M3 : `HttpRestConnector` pose `Host` d'origine et refuse un `Host` appelant.
+- [x] M4 : URL `http://100.64.0.1/` et `http://0.0.0.1/` rejetées.
+- [x] M5 : config `{ "backupToken": "x" }` → validation error ; `mapping` accepté. (Q7=A)
+- [x] M6 : auth échouée n'incrémente pas le bucket partenaire. (Q10=A)
+- [x] M7 : HMAC sans idempotency dans la signature → 401 ; même corps shared-secret
+      rejoué dans la fenêtre → 401. (Q5=A, Q6=A)
+- [x] M8 : `/runtime` d'une tâche d'autrui → 403. (même règle que Q3)
+- [x] M9 : callback mapping `tenantId` → 400 ; `ConnectorServiceTask` ignore la var process.
+- [x] M10 : `to=a@x.com,b@y.com` → 400.
+- [x] M11 : réponse HTTP / retrieve au-delà du cap → erreur ; STORE oversized encodé → 400 avant OOM.
+- [x] M12 : `DOSSIER_MANAGER` sans type VIEW lié au template → 403. (Q8=A)
+- [x] M13 : template `th:utext` → 400 à l'activation ; preview HTML porte CSP. (Q11=A)
+- [x] `./mvnw verify` 1705/0 ; Vitest 289 ; Playwright 65 (session 2026-09-07, code inchangé après Q1–Q12).
 
 ## Constraints & Assumptions
 
-> Propositions, pas actées (Phase 2 ouverte).
-
 - Hexagone : validation BPMN dans `BpmnParserPort` (infra adapter), pas de Flowable dans `domain`.
-- HMAC M7 = **rupture de contrat** si Q5=A (comme F6, TODO §54) — GUIDE / changelog.
+- HMAC M7 = **rupture de contrat** (Q5=A, comme F6, TODO §54) — GUIDE / changelog.
 - A-SPA (Q9=A) : zéro fichier frontend visé.
-- A-EXPRESSION-EDITOR : le champ `flowable:expression` du panel bpmn-js reste visible
-  si Q9=A.
+- A-EXPRESSION-EDITOR (Q9=A) : le champ `flowable:expression` du panel bpmn-js reste visible ;
+  le backend refuse à la sauvegarde/deploy (400).
 
 ## Questions & Open Items
 
-**Toutes ouvertes.** Reco = ce que le code PR #113 fait aujourd’hui. Répondre
-par ID (`Q1 = A`, ou `OK tous`).
+**Aucune ouverte.** Stakeholder 2026-09-07 : `OK tous` → Q1–Q12 = **A**.
 
-| ID | Question | Options | Reco | Pourquoi |
-|---|---|---|---|---|
-| **Q1** | Périmètre de ce cycle ? | **A** High+Medium H1/H2/M1–M13 en un lot. **B** High seulement (H1/H2), Medium plus tard. **C** High + Medium non-rupture d’abord, HMAC (M7) ensuite. | **A** | La revue est un seul requirement ; B/C laissent H2/M1/M7 exploitables. |
-| **Q2** | Comment bloquer la RCE BPMN (H1) ? | **A** Allowlist parse-time (`scriptTask`/`class`/`expression` refusés ; `delegateExpression` catalogue). **B** Désactiver seulement le script engine Flowable (rate les `expression` serviceTask). **C** WA ne peut plus déployer ; seul TA + revue manuelle. | **A** | B ne coupe pas `flowable:expression`. C casse le métier WA. L’éditeur peut encore *afficher* expression : le backend refuse (Q9). |
-| **Q3** | Qui peut `complete` une tâche assignée (H2) ? | **A** Assignee **ou** TA/WA ; sans assignee, EDIT du type suffit. **B** Assignee uniquement (admin doit d’abord réassigner). **C** Tout EDIT du type (statu quo, on ne fixe pas H2). | **A** | B alourdit le support (admin ne peut plus débloquer). C est le finding. Unassigned+EDIT = V1 pragmatique (pas de candidate groups). |
-| **Q4** | Humain Keycloak avec rôle realm `API_SERVICE` (M1) ? | **A** OIDC n’émet plus `ROLE_API_SERVICE` ; MCP continue d’injecter le rôle. **B** Retirer `API_SERVICE` de `DossierAccessPolicy` (humain *et* MCP). **C** Documenter seulement (accepter l’élévation). | **A** | B casse `get_dossier` MCP (D6). C laisse H2/ACL contournables. |
-| **Q5** | HMAC : inclure `Idempotency-Key` (M7) ? | **A** Rupture in-place `timestamp.idempotencyKey.body` (comme F6). **B** Dual-accept ancien+nouveau pendant une fenêtre. **C** Nouveau header de version, ancien contrat conservé. | **A** | Replay 5 min avec clés neuves est réel. B double la surface. C = dette. **Ops :** prévenir les partenaires avant merge. |
-| **Q6** | Shared-secret sans timestamp (M7) ? | **A** Cache anti-rejeu `(instanceId, sha256(body))` 5 min. **B** Exiger un timestamp comme HMAC. **C** Ne rien changer (token volé = hors scope). | **A** | B = 2ᵉ rupture pour les partenaires token. C laisse le replay illimité sur le même corps. Token + *nouveau* corps = vol de credential, hors scope. |
-| **Q7** | Clés connecteur hors schéma (M5) ? | **A** Rejeter + déclarer `mapping` au schéma. **B** Strip silencieux des inconnues. **C** Heuristique `*token`/`*secret` seulement. | **A** | B masque les typos. C rate `backupToken` mal nommé. `mapping` doit être déclaré sinon A casse les instances existantes. |
-| **Q8** | `POST /api/documents/generate` pour un DM (M12) ? | **A** TA/WA libres ; DM seulement si un type VIEW liste la clé. **B** Retirer DM de `@PreAuthorize` (TA/WA seuls). **C** Statu quo (rôle DM suffit). | **A** | B retire le generate métier. C est le finding. Garde dans le **contrôleur** (pas le use case) pour ne pas casser `documentGenerationTask` BPMN. |
-| **Q9** | Champ `flowable:expression` dans bpmn-js (H1 UX) ? | **A** Backend refuse au save/deploy ; pas de chantier FE. **B** Masquer le champ dans le panel. **C** A + B. | **A** | A-SPA : zéro fichier frontend. B/C = autre feature. 400 à la sauvegarde suffit. |
-| **Q10** | Ordre rate-limit webhook (M6) ? | **A** Auth puis `tryConsume` (échec auth ne débite pas le partenaire). **B** Bucket anonyme séparé + bucket partenaire. **C** Statu quo (rate-limit avant auth). | **A** | C est le finding (DoS du partenaire). B plus juste mais plus de code V1. |
-| **Q11** | `th:utext` / `[(${…})]` (M13) ? | **A** Interdire au checker + CSP `default-src 'none'; sandbox` sur preview. **B** CSP seulement, garder `utext`. **C** Interdire `utext`, pas de header CSP. | **A** | `utext` = HTML non échappé (SSTI/HTML inject). CSP iframe SPA `sandbox=""` est insuffisant seul. |
-| **Q12** | Low L1–L7 dans ce cycle ? | **A** Hors correctif (L1 accepté D6 ; L2–L5 reliquats S-6…S-9 ; L6/L7 déjà gated ailleurs). **B** Traiter L1 (scopes M2M). **C** Fail-fast actuator hors loopback (L2). | **A** | L1/L2 sont des choix d’archi déjà documentés ; les rouvrir mélange ce durcissement et un chantier IdP/k8s. |
+| ID | Décision actée |
+|---|---|
+| Q1 | Lot unique H1/H2 + M1–M13 |
+| Q2 | Allowlist BPMN parse-time (D-H1) |
+| Q3 | Complete : assignee ou TA/WA ; unassigned → EDIT (D-H2) ; M8 idem |
+| Q4 | OIDC sans `ROLE_API_SERVICE` ; MCP inchangé (D-M1) |
+| Q5 | HMAC `timestamp.idempotencyKey.body` (rupture, comme F6) |
+| Q6 | Shared-secret : cache replay corps 5 min |
+| Q7 | Rejet clés hors schéma + `mapping` déclaré (D-M5) |
+| Q8 | Generate : DM si type VIEW liste la clé ; garde **contrôleur** |
+| Q9 | Pas de chantier FE (backend refuse `flowable:expression`) |
+| Q10 | Auth webhook puis rate-limit (D-M6) |
+| Q11 | Interdire `th:utext`/`[(${…})]` + CSP preview (D-M13) |
+| Q12 | L1–L7 hors cycle |
 
-### Alternatives de lot (Q1, brainstorm)
+### Alternatives de lot (Q1)
 
-| Approche | Trade-off | Reco |
-|---|---|---|
-| A — un lot H+M | Un merge, rupture HMAC dans le même train | **Retenu en reco** |
-| B — High only | Plus sûr à relire, Medium restent ouverts | Non : M1 court-circuite H2 |
-| C — HMAC plus tard | Moins de rupture maintenant | Non : M7 est la chaîne starts/dossiers en boucle |
-
-Code **inchangé** tant que les réponses ne demandent pas d’adapter.
+| Approche | Verdict |
+|---|---|
+| A — un lot H+M | **Acté** |
+| B — High only | Écarté (M1 court-circuite H2) |
+| C — HMAC plus tard | Écarté (M7 chaîne replay) |

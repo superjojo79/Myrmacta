@@ -2,7 +2,7 @@
 phase: deployment
 title: Deployment Strategy
 description: Define deployment process, infrastructure, and release procedures
-status: draft
+status: reviewed
 created: 2026-09-07
 updated: 2026-09-07
 feature: revue-adversariale-securite

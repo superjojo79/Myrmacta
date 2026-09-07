@@ -2,7 +2,7 @@
 phase: implementation
 title: Implementation Guide
 description: Technical implementation notes, patterns, and code guidelines
-status: draft
+status: reviewed
 created: 2026-09-07
 updated: 2026-09-07
 feature: revue-adversariale-securite
@@ -10,8 +10,7 @@ feature: revue-adversariale-securite
 
 # Implementation Guide — `revue-adversariale-securite`
 
-> **Phases 5/7 suspendues.** Journal du code conservé (PR #113). Pas d’édition
-> production tant que Q1–Q12 ne sont pas tranchées.
+Phase 5/7 : code PR #113 **aligné** sur Q1–Q12 = A. Pas de diff production.
 
 ## Development Setup
 
@@ -61,3 +60,15 @@ Cette feature **est** le durcissement. Ne pas logger secrets webhook, HMAC, S3.
 
 - `./mvnw verify` : **1705 tests, 0 échec**, Jacoco tenu, ArchUnit OK.
 - Vitest **289/289** ; Playwright **65 passed**.
+
+## Phase 9 — revue
+
+Checklist : design = Q1–Q12 ; pas de gap logique H/M ; HMAC rupture documentée ;
+IT H2/M8 alignés ; pas de migration ; A-SPA (Q9) donc Playwright = régression
+seulement (65 passed).
+
+| Sévérité | Finding | Action |
+|---|---|---|
+| Nice-to-have | Bean `HttpClient` `ConnectorConfig` orphelin | Follow-up, non bloquant |
+| Accepté | Rupture HMAC (Q5=A) | Prévenir partenaires avant merge |
+| Aucun bloquant | — | Prêt à review humaine / merge sur demande |

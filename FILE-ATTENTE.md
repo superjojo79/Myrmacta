@@ -10,9 +10,9 @@
 >   (rétention / purge / sensible — **livré**) ; revue post-implémentation 2026-08-25 :
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
-> **Dernière mise à jour :** 2026-09-07 soir — TODO **§57** cycle
-> `revue-adversariale-securite` **Phases 1–2 rouvertes** (questions Q1–Q12).
-> Code PR [#113](https://github.com/superjojo79/FlowForge/pull/113) **conservé**.
+> **Dernière mise à jour :** 2026-09-07 — TODO **§57** cycle
+> `revue-adversariale-securite` **Phases 1–9 closes** (Q1–Q12 = A).
+> PR draft [#113](https://github.com/superjojo79/FlowForge/pull/113).
 > Branche `cursor/revue-adversariale-securite-da9e`.
 >
 > 2026-09-06 — TODO **§56 clos**, cycle `dev-lifecycle` **complet
@@ -247,8 +247,7 @@ connecteur non détecté par l'heuristique de nom pré-existante. `./mvnw verify
 échec). Mergé : [PR #111](https://github.com/superjojo79/FlowForge/pull/111), sans attendre la CI
 (crédits épuisés). Voir l'en-tête de ce fichier pour le détail.
 
-**En cours (2026-09-07 soir) :** `revue-adversariale-securite` (TODO §57) — Phases 1–2
-rouvertes, questions Q1–Q12. Code conservé sur PR #113.
+**En cours :** aucune feature produit. `revue-adversariale-securite` (TODO §57) est **en revue**.
 
 En réserve (non retenu, aucune analyse écrite) : outillage provisioning tenant (schéma/instance/
 proxy/secrets, `DEFERRED-FEATURES.md` §1.2/§4).
@@ -258,7 +257,11 @@ Détail : [TODO.md](TODO.md) §40–46, §48–52,
 
 ## En revue
 
-Aucune feature produit en revue (cycle §57 rouvert en Phase 1–2). `connecteur-http-rest-service`
+`revue-adversariale-securite` (TODO §57) — Phases 1–9 closes, Q1–Q12 = A (`OK tous`).
+PR draft [#113](https://github.com/superjojo79/FlowForge/pull/113) ; code inchangé après confirmation.
+Merge sur demande explicite ; prévenir les partenaires HMAC (Q5).
+
+`connecteur-http-rest-service`
 **mergée sur `main`** ([PR #95](https://github.com/superjojo79/FlowForge/pull/95), 2026-08-31).
 
 `durcissement-securite-post-revue`

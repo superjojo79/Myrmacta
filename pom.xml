@@ -22,7 +22,7 @@
         <!-- Décision n° 27 — versions de stack -->
         <flowable.version>8.0.0</flowable.version>
         <flying-saucer.version>10.5.0</flying-saucer.version>
-        <jsoup.version>1.23.1</jsoup.version>
+        <jsoup.version>1.23.2</jsoup.version>
         <archunit.version>1.5.0</archunit.version>
         <aws.sdk.version>2.54.9</aws.sdk.version>
         <!-- D-SDK=A (serveur-mcp) — Spring AI MCP server WebMVC starter, pas de starter chat/model -->

@@ -18,9 +18,11 @@ lot: A3
 > `cursor/mcp-ecritures-metier-6efe`. Traçage `ai-devkit task` **indisponible**
 > (`error: unknown command 'task'`).
 >
-> Décisions ci-dessous actées d'après le cadrage FILE-ATTENTE + l'analyse 15 + les
-> patterns MCP déjà livrés (pas d'`AskUserQuestion` dans cette session cloud). Toute
-> décision d'image Docker, de store partagé ou d'`context-path` est **hors lot** (A1).
+> Phases 1–3 **rejouées** le 2026-09-08 après constat : les `D-*` avaient été
+> actées sans question (violation `dev-requirements` / `dev-design`). Cadrage
+> FILE-ATTENTE inchangé (4 tools, un cycle, ports REST, pas de SPA /
+> `SecurityConfig` / ACL / purge). Toute décision d'image Docker, de store
+> partagé ou d'`context-path` est **hors lot** (A1).
 
 ## Problem Statement
 
@@ -135,7 +137,7 @@ nouvelle surface HTTP, sans SPA, sans toucher à `SecurityConfig`**.
 | **D-DRY-RUN** | dryRun sur les écritures métier ? | **Oui, les 4** | Contrat MCP d'écriture déjà livré. |
 | **D-ELEMENT-TYPES** | Quels types d'éléments ? | **NOTE, LINK, INFORMATION** uniquement | Analyse 15 + parité `DossierController.addElement`. |
 | **D-START-ORCH** | `AttachWorkflowUseCase` seul ? | **`ManualStartOrchestrator`** | C'est le chemin REST réel (idempotence + confirm + abort). |
-| **D-GENERATE-ATTACH** | Renvoyer le PDF ? | **Store + attache `PRODUCED_DOC`** | MCP mal adapté au binaire ; `DossierElementView` sans `storageRef` (DD-ELEMENTS-DTO). |
+| **D-GENERATE-ATTACH** | Renvoyer le PDF ? | **C — Store + attache `PRODUCED_DOC`** (confirmé utilisateur 2026-09-08) | MCP mal adapté au binaire ; `DossierElementView` sans `storageRef` (DD-ELEMENTS-DTO). |
 | **D-GENERATE-TEMPLATE** | N'importe quel template du tenant ? | **Uniquement si le type du dossier le liste** | Plus strict que le bypass TA/WA REST ; l'agent agit *sur ce dossier*. |
 | **D-GENERATE-VARS** | Variables du template ? | **Champs du dossier** (`DossierMcpView.fields`) + overlay optionnel | Équivalent d'un POST `/generate` alimenté par le dossier. Overlay soumis à `WorkflowVariables.assertNoReservedKeys`. |
 | **D-RATE-LIMIT** | Partager le rate limiter REST ? | **Non** | Classe package-private hors surface A3 ; client M2M de confiance (L1). |
@@ -143,8 +145,10 @@ nouvelle surface HTTP, sans SPA, sans toucher à `SecurityConfig`**.
 
 ## Questions & Open Items
 
-Aucun point matériel ouvert. Les exclusions ACL / purge / statut de link restent
-celles de l'analyse 15. Le provisioning tenant (A1) et le formulaire admin
-connecteurs (A2) sont des lots parallèles à surfaces disjointes.
+Phases 1–3 en cours de rejeu. **Acté par l'utilisateur :** D-GENERATE-ATTACH = C.
+Reste à poser (une à la fois) : D-GENERATE-TEMPLATE, D-GENERATE-VARS, D-DRY-RUN,
+D-RATE-LIMIT, D-NO-OPENAPI, puis Phase 3 (D-START-ORCH, D-DRY-RUN-START,
+D-FIELDS-READ). D-WRITE-ONE-CYCLE / D-REUSE-PORTS / D-ELEMENT-TYPES restent le
+cadrage FILE-ATTENTE + analyse 15 (pas relancés sauf demande).
 
-Prochain : `dev-design` Phase 3.
+Prochain : D-GENERATE-TEMPLATE.

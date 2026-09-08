@@ -29,7 +29,7 @@ de code applicatif du lot (`context-path`).
 **What individual components need testing?**
 
 ### `scripts/provision-tenant.sh`
-- [ ] Rejette un `tenant_id` invalide (ex. `Tenant-B`, `1abc`, chaîne vide, > 63 caractères) avant
+- [ ] Rejette un `tenant_id` invalide (ex. `Tenant-B`, `1abc`, chaîne vide, > 53 caractères) avant
       toute génération SQL — exit non-zéro, message explicite, aucune sortie SQL produite.
 - [ ] Génère un SQL valide pour un `tenant_id` valide (ex. `tenant_b`) : schéma `tenant_b`, rôle
       `flowforge_tenant_b`, `GRANT`/`REVOKE` alignés sur `docker/postgres/init/01-init-tenant-schema.sql`.

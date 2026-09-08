@@ -14,8 +14,9 @@ usage() {
 Usage: scripts/provision-tenant.sh <tenant_id> [-o <fichier.sql>] [--apply]
 
   <tenant_id>       Identifiant de tenant (schéma + rôle PostgreSQL). Doit matcher
-                     ^[a-z][a-z0-9_]{2,62}$ (identifiant PostgreSQL non cité, <= 63
-                     caractères).
+                     ^[a-z][a-z0-9_]{2,52}$ (3 à 53 caractères) — le rôle généré
+                     ("flowforge_<tenant_id>") reste ainsi <= 63 octets, la limite
+                     NAMEDATALEN des identifiants PostgreSQL non cités.
 
   -o <fichier.sql>  Écrit le SQL généré dans <fichier.sql> au lieu de stdout.
                      Ignoré avec --apply.
@@ -89,12 +90,14 @@ if [[ -z "$tenant_id" ]]; then
   exit 1
 fi
 
-# Identifiant PostgreSQL non cité, <= 63 octets (NAMEDATALEN) — validé avant toute
-# génération SQL pour ne jamais interpoler une entrée non maîtrisée dans le SQL produit
-# (tenant_id est la seule entrée utilisateur injectée ci-dessous, hors mot de passe).
-if ! [[ "$tenant_id" =~ ^[a-z][a-z0-9_]{2,62}$ ]]; then
+# Identifiant PostgreSQL non cité, borné à 53 caractères — validé avant toute génération
+# SQL pour ne jamais interpoler une entrée non maîtrisée dans le SQL produit (tenant_id est
+# la seule entrée utilisateur injectée ci-dessous, hors mot de passe). La borne n'est pas
+# 63 (NAMEDATALEN) mais 53 : le rôle généré préfixe "flowforge_" (10 caractères) au
+# tenant_id, et le nom de rôle résultant doit lui aussi rester <= 63 octets.
+if ! [[ "$tenant_id" =~ ^[a-z][a-z0-9_]{2,52}$ ]]; then
   echo "Identifiant de tenant invalide : '$tenant_id'" >&2
-  echo "Attendu : minuscules/chiffres/underscore, commence par une lettre, 3 à 63 caractères." >&2
+  echo "Attendu : minuscules/chiffres/underscore, commence par une lettre, 3 à 53 caractères." >&2
   exit 1
 fi
 

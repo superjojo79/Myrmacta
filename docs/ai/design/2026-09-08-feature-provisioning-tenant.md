@@ -77,7 +77,9 @@ opérateur :
     `TENANT_DB_PASSWORD` (jamais un argument positionnel visible dans `ps`/l'historique shell) ;
     le script échoue explicitement si elle est absente.
   - Validation de `<tenant_id>` **avant toute génération SQL** : doit matcher
-    `^[a-z][a-z0-9_]{2,62}$` (identifiant PostgreSQL non cité, ≤ 63 octets) — rejet immédiat sinon,
+    `^[a-z][a-z0-9_]{2,52}$` (3 à 53 caractères — le rôle généré préfixe `flowforge_`, 10
+    caractères, et doit lui aussi rester ≤ 63 octets, la limite NAMEDATALEN PostgreSQL pour un
+    identifiant non cité) — rejet immédiat sinon,
     pour ne jamais interpoler une entrée non maîtrisée dans du SQL généré par concaténation de
     chaîne (le script ne prend aucune entrée libre dans le corps SQL, seul l'identifiant validé y
     est interpolé).

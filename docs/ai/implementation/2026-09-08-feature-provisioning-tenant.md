@@ -46,8 +46,13 @@ description: Technical implementation notes, patterns, and code guidelines
 
 ### Script de provisioning
 - Validation de l'identifiant de tenant **avant toute génération SQL** (regex `^[a-z][a-z0-9_]
-  {2,62}$`, limite `NAMEDATALEN` PostgreSQL) — seule entrée utilisateur interpolée dans le SQL
-  généré (hors mot de passe, échappé par doublement du guillemet simple).
+  {2,52}$`, 3 à 53 caractères) — seule entrée utilisateur interpolée dans le SQL généré (hors mot
+  de passe, échappé par doublement du guillemet simple). Borne à 53 et non 63 (`NAMEDATALEN`) : le
+  rôle généré préfixe `flowforge_` (10 caractères), et `flowforge_<tenant_id>` doit lui-même rester
+  ≤ 63 octets — un `tenant_id` de 63 caractères aurait produit un nom de rôle tronqué
+  silencieusement par PostgreSQL, avec un risque de collision entre deux tenants longs. **Trouvé et
+  corrigé pendant la revue Phase 7** (Check Implementation), pas détecté par `hadolint`/`shellcheck`
+  (angle mort logique, pas syntaxique).
 - `TENANT_DB_PASSWORD` requis dans tous les modes (dry-run inclus) : le SQL produit contient
   toujours `CREATE ROLE ... PASSWORD`, il n'a pas de sens sans mot de passe, même pour une simple
   revue.

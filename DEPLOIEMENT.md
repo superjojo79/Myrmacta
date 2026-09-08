@@ -116,7 +116,8 @@ OAuth2), les webhooks entrants et l'API machine-to-machine (§7) — pas de rout
 ## 4. Provisionner un nouveau tenant
 
 1. **Choisir un identifiant de tenant** (ex. `tenant_b`), unique parmi les instances déployées —
-   doit matcher `^[a-z][a-z0-9_]{2,62}$` (identifiant PostgreSQL non cité).
+   doit matcher `^[a-z][a-z0-9_]{2,52}$` (3 à 53 caractères — le rôle généré préfixe
+   `flowforge_`, le nom de rôle résultant doit rester ≤ 63 octets).
 2. **Créer le schéma et le rôle PostgreSQL dédiés** avec `scripts/provision-tenant.sh` — reproduit
    paramétré le gabarit `docker/postgres/init/01-init-tenant-schema.sql` (celui utilisé pour
    `tenant_dev` en dev local) :

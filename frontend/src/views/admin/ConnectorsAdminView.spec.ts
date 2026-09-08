@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
+import axios from 'axios'
 import ConnectorsAdminView from './ConnectorsAdminView.vue'
 import * as adminApi from '@/api/admin'
 import { routes } from '@/app/routes'
@@ -35,6 +36,10 @@ describe('ConnectorsAdminView generated config form', () => {
     vi.resetAllMocks()
     vi.mocked(adminApi.listConnectors).mockResolvedValue(asPage([]))
     vi.mocked(adminApi.createConnector).mockResolvedValue({} as never)
+  })
+
+  afterEach(() => {
+    axios.defaults.baseURL = undefined
   })
 
   it('renders schema fields instead of a JSON textarea', async () => {
@@ -226,5 +231,30 @@ describe('ConnectorsAdminView generated config form', () => {
     await flushPromises()
     expect(wrapper.text()).toContain('Mailer')
     expect(wrapper.find('[data-testid="connector-ingress"]').exists()).toBe(false)
+  })
+
+  it('prefixes ingress URLs with the HTTP client tenant context-path', async () => {
+    axios.defaults.baseURL = '/acme'
+    vi.mocked(adminApi.listConnectorDefinitions).mockResolvedValue([
+      { type: 'http-rest', label: 'HTTP REST', configSchema: httpRestSchema },
+    ])
+    vi.mocked(adminApi.listConnectors).mockResolvedValue(
+      asPage([
+        {
+          id: 'c1',
+          tenantId: 'acme',
+          name: 'Hook',
+          connectorType: 'http-rest',
+          enabled: true,
+          config: {},
+          secretConfigured: {},
+        },
+      ]),
+    )
+    const wrapper = await mountView()
+    await flushPromises()
+    expect(wrapper.get('[data-testid="connector-ingress-url"]').text()).toBe(
+      `POST ${globalThis.location.origin}/acme/api/webhooks/c1`,
+    )
   })
 })

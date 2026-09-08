@@ -9,7 +9,7 @@ import {
   type ConnectorDefinition,
 } from '@/api/admin'
 import type { Connector } from '@/api/types'
-import { resolveApiBaseUrl, toProblemDetail } from '@/api/http'
+import { apiContextPath, toProblemDetail } from '@/api/http'
 import AdminPager from '@/components/admin/AdminPager.vue'
 import ConnectorConfigForm from '@/components/connectors/ConnectorConfigForm.vue'
 import ConnectorIngressUrl from '@/components/connectors/ConnectorIngressUrl.vue'
@@ -110,7 +110,7 @@ async function remove(connector: Connector) {
 }
 
 function ingressOf(connector: Connector) {
-  return ingressUrlFor(connector, globalThis.location.origin, resolveApiBaseUrl())
+  return ingressUrlFor(connector, globalThis.location.origin, apiContextPath())
 }
 
 const listedConnectors = computed(() =>

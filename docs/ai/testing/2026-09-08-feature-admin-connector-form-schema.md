@@ -122,6 +122,11 @@ non exigée (aucun `.java` dans le diff — `git diff --stat origin/main` vérif
 post-création `fallback()` vers le mock session (liste vide). Corrigé : même `page.route`
 gère GET+POST avec liste accumulée.
 
+Écart D-WEBHOOK-URL (produit, 2026-09-08) : `resolveApiBaseUrl()` au rendu sur
+`/admin/connectors` avec Vite `base: './'` prenait `admin` comme préfixe tenant
+(`…/admin/api/webhooks/{id}`). Corrigé : `apiContextPath()` = `axios.defaults.baseURL`
+fixé au boot.
+
 ## Manual Testing
 
 Walkthrough navigateur : `/admin/connectors`, créer http-rest, créer smtp, switch de type.

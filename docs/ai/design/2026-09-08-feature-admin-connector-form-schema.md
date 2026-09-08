@@ -140,8 +140,10 @@ Intégration vue :
 - Schéma vide : paragraphe « Aucune configuration d'instance pour ce type » ; pas de
   `ConnectorConfigForm` champs.
 - `definitions.length === 0` : textarea JSON (D-FALLBACK-NO-DEFS).
-- Liste : `ingressUrlFor(connector, location.origin, resolveApiBaseUrl())` — `http-rest` →
-  `/api/webhooks/{id}`, `flowable-callback` → `/api/callbacks/{id}` ; sinon rien.
+- Liste : `ingressUrlFor(connector, location.origin, apiContextPath())` — préfixe tenant =
+  `axios.defaults.baseURL` fixé au boot (`configureHttpClient`), **pas** `resolveApiBaseUrl()`
+  au moment du rendu (sur `/admin/connectors`, `base: './'` ferait du premier segment `admin`).
+  `http-rest` → `/api/webhooks/{id}`, `flowable-callback` → `/api/callbacks/{id}` ; sinon rien.
   `ConnectorIngressUrl` affiche `POST {url}` + bouton Copier (D-WEBHOOK-URL = C).
 
 **Ne pas** réutiliser `DynamicFields.vue` (D-NO-DYNAMICFIELDS).

@@ -80,3 +80,5 @@ Fallback `JSON.parse` + API → `toProblemDetail`. Validation métier serveur.
 ## Security Notes
 
 PASSWORD `autocomplete=new-password`. Liste : `secretConfigured` seulement.
+URL ingress : préfixe tenant = `axios.defaults.baseURL` au boot, jamais le segment Vue
+`/admin` (écart E2E D-WEBHOOK-URL).

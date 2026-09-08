@@ -134,7 +134,7 @@ nouvelle surface HTTP, sans SPA, sans toucher à `SecurityConfig`**.
 |---|---|---|---|
 | **D-WRITE-ONE-CYCLE** | 4 tools / 4 PRs ? | **Un cycle, une PR** | FILE-ATTENTE A3 : même enregistrement tools / tests MCP. |
 | **D-REUSE-PORTS** | Nouvelle logique domaine ? | **Non** — adaptateurs minces | Import batch (Vague B) partage `CreateDossierUseCase` ; ne pas le modifier. |
-| **D-DRY-RUN** | dryRun sur les écritures métier ? | **Oui, les 4** | Contrat MCP d'écriture déjà livré. |
+| **D-DRY-RUN** | dryRun sur les écritures métier ? | **C — Oui, les 4** (confirmé utilisateur 2026-09-08) | Contrat MCP d'écriture déjà livré. |
 | **D-ELEMENT-TYPES** | Quels types d'éléments ? | **NOTE, LINK, INFORMATION** uniquement | Analyse 15 + parité `DossierController.addElement`. |
 | **D-START-ORCH** | `AttachWorkflowUseCase` seul ? | **`ManualStartOrchestrator`** | C'est le chemin REST réel (idempotence + confirm + abort). |
 | **D-GENERATE-ATTACH** | Renvoyer le PDF ? | **C — Store + attache `PRODUCED_DOC`** (confirmé utilisateur 2026-09-08) | MCP mal adapté au binaire ; `DossierElementView` sans `storageRef` (DD-ELEMENTS-DTO). |
@@ -146,9 +146,9 @@ nouvelle surface HTTP, sans SPA, sans toucher à `SecurityConfig`**.
 ## Questions & Open Items
 
 Phases 1–3 en cours de rejeu. **Acté par l'utilisateur :** D-GENERATE-ATTACH = C,
-D-GENERATE-TEMPLATE = C. Reste à poser (une à la fois) : D-GENERATE-VARS, D-DRY-RUN,
-D-RATE-LIMIT, D-NO-OPENAPI, puis Phase 3 (D-START-ORCH, D-DRY-RUN-START,
+D-GENERATE-TEMPLATE = C, D-GENERATE-VARS = C. Reste à poser (une à la fois) :
+D-DRY-RUN, D-RATE-LIMIT, D-NO-OPENAPI, puis Phase 3 (D-START-ORCH, D-DRY-RUN-START,
 D-FIELDS-READ). D-WRITE-ONE-CYCLE / D-REUSE-PORTS / D-ELEMENT-TYPES restent le
 cadrage FILE-ATTENTE + analyse 15 (pas relancés sauf demande).
 
-Prochain : D-GENERATE-VARS.
+Prochain : D-DRY-RUN.

@@ -14,8 +14,8 @@ feature: mcp-ecritures-metier
 > `DocumentGenerationTask` / `AttachGeneratedDocumentTask`, tools MCP existants).
 >
 > Rejeu 2026-09-08 : les `D-*` design avaient été actées sans question.
-> Phase 3 rejouée **après** confirmations requirements. **Acté :** D-START-ORCH = C,
-> D-DRY-RUN-START = B. Suivant : D-FIELDS-READ.
+> Phase 3 **close** — confirmé utilisateur : D-START-ORCH = C, D-DRY-RUN-START = B,
+> D-FIELDS-READ = B. Aligné sur le code de la PR #118 (aucun écart à corriger).
 
 ## Architecture Overview
 
@@ -162,10 +162,10 @@ Sortie : `DossierElementView` (`downloadable=true`, pas de `storageRef`).
 | ID | Alternatives | Retenu |
 |---|---|---|
 | D-START-ORCH | (a) `AttachWorkflowUseCase.reserve` seul — incomplet vs REST ; (b) dupliquer l'orchestrateur dans le tool ; (c) injecter `ManualStartOrchestrator` | **(c)** — confirmé utilisateur 2026-09-08 ; infrastructure → application déjà autorisé ArchUnit |
-| D-GENERATE-ATTACH | (a) Base64 PDF ; (b) store sans attache ; (c) store + `PRODUCED_DOC` | **(c)** — écriture métier durable, parité BPMN, pas de binaire MCP |
-| D-GENERATE-TEMPLATE | (a) n'importe quel template (bypass TA/WA) ; (b) n'importe quel type VIEW du tenant (D-M12 REST) ; (c) type **du dossier** | **(c)** — l'outil est dossier-centré |
-| D-DRY-RUN-START | (a) dryRun appelle `reserve` puis abort ; (b) gardes seulement | **(b)** — pas d'effet de bord Flowable / lien RESERVED |
-| D-FIELDS-READ | (a) `dossier.fields()` dans `GenerateDocumentTool` + étendre l'allowlist ArchUnit ; (b) `DossierMcpView` | **(b)** — pas d'écriture hors `mcp/**` |
+| D-GENERATE-ATTACH | (a) Base64 PDF ; (b) store sans attache ; (c) store + `PRODUCED_DOC` | **(c)** — confirmé utilisateur 2026-09-08 (requirements) |
+| D-GENERATE-TEMPLATE | (a) n'importe quel template (bypass TA/WA) ; (b) n'importe quel type VIEW du tenant (D-M12 REST) ; (c) type **du dossier** | **(c)** — confirmé utilisateur 2026-09-08 (requirements) |
+| D-DRY-RUN-START | (a) dryRun appelle `reserve` puis abort ; (b) gardes seulement | **(b)** — confirmé utilisateur 2026-09-08 ; pas d'effet de bord Flowable / lien RESERVED |
+| D-FIELDS-READ | (a) `dossier.fields()` dans `GenerateDocumentTool` + étendre l'allowlist ArchUnit ; (b) `DossierMcpView` | **(b)** — confirmé utilisateur 2026-09-08 ; pas d'écriture hors `mcp/**` |
 
 ## Non-Functional Requirements
 
@@ -189,4 +189,5 @@ Sortie : `DossierElementView` (`downloadable=true`, pas de `storageRef`).
 | Surface exclusive | aucun fichier hors `mcp` + docs + GETTING-STARTED compteur |
 | ArchUnit fields() | D-FIELDS-READ |
 
-Aucun goal requirements sans couverture. Prochain : Phase 4 planning.
+Aucun goal requirements sans couverture. Phase 3 rejeu **close** (2026-09-08) :
+toutes les réponses utilisateur alignées sur le code livré. Pas de retour Phase 5.

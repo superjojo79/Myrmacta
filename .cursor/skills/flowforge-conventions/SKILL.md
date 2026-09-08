@@ -71,6 +71,9 @@ Référence : `analysis doc/11-frontend.md`.
 ## Workflow de feature (AI DevKit)
 
 1. Lire `FILE-ATTENTE.md` (prochaine feature) + `DEFERRED-FEATURES.md` + docs `docs/ai/**` de la feature.
+   Si la file décrit des **vagues parallèles**, respecter les surfaces exclusives
+   (un agent n’écrit que dans sa colonne) et ne pas démarrer deux lots qui
+   partagent une couture listée en « interdits de parallélisme ».
 2. Suivre `dev-lifecycle` (requirements → design → planning → implementation → testing → review → PR).
 3. Implémentation en **TDD** (`tdd` + `verify`) : test qui échoue → code → `./mvnw verify` (ou scope de tests ciblé puis verify avant claim).
 4. Pour le FE : **Vitest et Playwright sont tous les deux obligatoires** dès qu’une

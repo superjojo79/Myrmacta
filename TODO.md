@@ -19,7 +19,7 @@
 > lifecycle non démarrées, et mapping vers les points ouverts ci-dessous.
 >
 > **Prochaine feature (file d’attente) :** [FILE-ATTENTE.md](FILE-ATTENTE.md) — ordre
-> recommandé et critères de sélection.
+> recommandé, **vagues parallèles** (surfaces exclusives) et critères de sélection.
 
 ---
 

@@ -4,7 +4,7 @@
 > (`architecture-hexagonale`, `multi-tenant`, `authentification`, `dossiers`).
 >
 > - Les **points ouverts à trancher** restent dans [TODO.md](TODO.md).
-> - L’**ordre de la prochaine feature** est dans [FILE-ATTENTE.md](FILE-ATTENTE.md).
+> - L’**ordre de la prochaine feature** (et les vagues parallèles) est dans [FILE-ATTENTE.md](FILE-ATTENTE.md).
 > - Le détail par feature reste dans `docs/ai/**/2026-*-feature-*.md`
 >   (sections Non-goals, Différé, Follow-ups).
 > - Ce fichier consolide le **chemin d’implémentation restant** pour ne pas le
@@ -20,19 +20,24 @@
 `modele-physique-consolide`, `masquage-donnees-sensibles-logs-webhooks`
 (PR #70), `edition-bpmn` (PR #71), `reporting-sla` (PR #80), `serveur-mcp`
 (PR #82), `schema-champs-dynamiques` (PR #87), `connecteur-http-rest-service`
-(PR #95, TODO §48), `assainissement-dette-technique` (PR #97, TODO §49)
+(PR #95, TODO §48), `assainissement-dette-technique` (PR #97, TODO §49),
+`connecteurs-hors-v1` (PR #99, TODO §50), `connecteur-callback` (PR #102,
+TODO §51), `formulaires-dynamiques-taches` (TODO §52),
+`questions-utilisateur-taches` (TODO §55), `extension-mcp-flux-metier`
+(PR #111, TODO §56), `revue-adversariale-securite` (PR #113, TODO §57),
+contre-revue post-merge (PR #115, TODO §58)
 sont **Complete** (mergées sur `main` sauf
 mention contraire — `frontend` via PR #38
 `cursor/feature-frontend-21f2`, vague 1 instructeur + vague 2 admin
 types/templates/connectors/workflow-configs ; packaging Maven→`static/` ;
 maquette
 [FlowForge - Maquettes UI.html](analysis%20doc/FlowForge%20-%20Maquettes%20UI.html)
-= référence UX). Détail des 5 dernières (regroupement 2026-08-20) en §2.
-**File d'attente (2026-09-01) :** vide — `assainissement-dette-technique`
-livrée (TODO §49 clos) ; TODO.md **entièrement clos** (49/49 points).
+= référence UX). Détail des lots livrés en §2.
+**TODO.md entièrement clos** (points 1–58). **File d'attente (2026-09-08) :**
+reliquat V1.x / ops cadré en **vagues parallèles** — voir
+[FILE-ATTENTE.md](FILE-ATTENTE.md) § *File d’attente* et **§6** ci-dessous.
 [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) intégralement
-close (§40–46). Reliquat ops : provisioning (schéma/instance/proxy/secrets,
-jamais numéroté formellement — voir §1.2/§4).
+close (§40–46).
 
 ---
 
@@ -169,6 +174,11 @@ Ordre indicatif aligné sur l’analyse et les dépendances techniques :
 | — | `schema-champs-dynamiques` | **Complete** (PR #87) — écran Admin → Types édite le schéma `fieldDefinitions` d'un `DossierType` (création + édition), blocage 409 sur schéma incompatible avec des dossiers existants. TODO §47 clos. |
 | — | `connecteur-http-rest-service` | **Complete** ([PR #95](https://github.com/superjojo79/FlowForge/pull/95)) — connecteur `http-rest` utilisable en rôle SERVICE (capability `BOTH`), fusion avec le skeleton `HttpRestServiceConnector` (supprimé) dans `HttpRestConnector` renommé. GET/POST/PUT dynamiques, `authHeaderValue` chiffré, nouveau bean `HttpClient`. TODO §48 clos. |
 | — | `connecteurs-hors-v1` | **Complete** ([PR #99](https://github.com/superjojo79/FlowForge/pull/99)) — 3 derniers connecteurs du catalogue cible : `scheduler` (TRIGGER, cron via job `@Scheduled` + table `connector_schedule_state`), `smtp` (SERVICE, réutilise `EmailPort`), `document-storage` (SERVICE, généralisé depuis `s3-minio`, réutilise `DocumentStoragePort`). TODO §50 clos. |
+| — | `connecteur-callback` | **Complete** ([PR #102](https://github.com/superjojo79/FlowForge/pull/102), correctifs #103/#104) — capability `CALLBACK`, `POST /api/callbacks/{instanceId}`. TODO §51/§53/§54 clos. |
+| — | `formulaires-dynamiques-taches` | **Complete** (TODO §52) — `flowable:formKey` `dossier-fields` / `document-generation`. |
+| — | `questions-utilisateur-taches` | **Complete** (TODO §55) — kind `user-question:<schemaKey>`. |
+| — | `extension-mcp-flux-metier` | **Complete** ([PR #111](https://github.com/superjojo79/FlowForge/pull/111)) — 9 → 16 tools MCP. TODO §56 clos. |
+| — | `revue-adversariale-securite` | **Complete** ([PR #113](https://github.com/superjojo79/FlowForge/pull/113) + [PR #115](https://github.com/superjojo79/FlowForge/pull/115)) — High/Medium §57 + contre-revue §58. |
 
 ---
 
@@ -190,7 +200,7 @@ Voir le détail et les options dans [TODO.md](TODO.md),
 | 28 | Stratégie de test | **Clos** (2026-08-22, `fiabilisation-tests-plateforme` PR #66) — Testcontainers PostgreSQL ajoutés (`TenantSchemaIsolationIT`, `LiquibasePartialFailureIT`, `SequentialReferenceMultiPodIT`), seuils Jacoco relevés ; FE = Vitest + Playwright, câblés en CI (job `frontend`, `.github/workflows/ci.yml`) |
 | 29 | Observabilité | **Livré** (2026-08-20) — `observabilite` PR #59 Phase 9 READY ; Q1–Q6 |
 | 30 | Durcissement entrées exposées | **Clos** (2026-08-21, `durcissement-donnees-sensibles` PR #62) — en plus du rate limit/taille max/SSRF déjà livrés, validation magic-bytes des pièces jointes + port `AttachmentScanPort` pluggable (adaptateur no-op, pas d'antivirus dans la stack figée — décision explicite, contrat prêt pour un futur adaptateur type ClamAV) + audit anti-fuite de secrets déchiffrés |
-| 31 | Découpage en lots / provisioning | **Partiel** — lots lifecycle démarrés (5 features du regroupement 2026-08-20 toutes livrées) ; outillage provisioning ops (schéma/instance/proxy/secrets) encore à produire |
+| 31 | Découpage en lots / provisioning | **Partiel** — lots lifecycle V1 livrés ; outillage provisioning ops = lot **A1** ([FILE-ATTENTE.md](FILE-ATTENTE.md)) |
 | 40 | SSTI Thymeleaf / SpEL | **Clos** (2026-08-25, `durcissement-securite-post-revue` PR #76) — évaluateur allowlist (`#vars`/`#dates`/`#numbers`/`#strings`/`#lists` + chemins modèle), D-40 = B/B2 |
 | 41 | Isolation PG sans GRANT par tenant | **Clos** (2026-08-25, PR #76) — GRANT PG `LOGIN` par tenant |
 | 42 | Actuator `permitAll` / port 8081 | **Clos** (2026-08-25, PR #76) — actuator bindé `127.0.0.1:8090` |
@@ -206,14 +216,14 @@ Voir le détail et les options dans [TODO.md](TODO.md),
 
 ## 4. Ops & qualité transverses
 
-- Provisioning tenant : schéma PG, instance Boot, bloc proxy, secrets OIDC
+- Provisioning tenant : **lot A1** — schéma PG, instance Boot, bloc proxy, secrets OIDC, Dockerfile (aucun aujourd’hui)
 - Surcharge prod de `app.tenant.id` (ne jamais laisser `tenant_dev`)
-- Smoke manuel : Keycloak réel, PostgreSQL réel
+- Smoke manuel : Keycloak réel, PostgreSQL réel — **hors file produit**
 - Observabilité : **livré** — MDC + Micrometer + UI admin (TODO §29, PR #59)
 - Chore docs : `com.monapp` dans `analysis doc/01` — **clos** (2026-08-25, PR #72) ;
   dérive README / `analysis doc/` (TODO §45) — **clos** (PR #75)
 - Build FE : `npm run build` → copie vers `src/main/resources/static/` (Maven plugin ou CI)
-- Reliquats sécu V1 assumés (pas rouverts) : AV no-op, rate-limit JVM, headers HTTP —
+- Reliquats sécu V1 assumés (pas rouverts **sauf** lots A4 headers / C ClamAV) : AV no-op, rate-limit JVM, headers HTTP —
   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) §4 Low
 
 ---
@@ -222,10 +232,30 @@ Voir le détail et les options dans [TODO.md](TODO.md),
 
 | Source | Usage |
 |---|---|
-| [FILE-ATTENTE.md](FILE-ATTENTE.md) | Prochaine feature + critères de sélection |
+| [FILE-ATTENTE.md](FILE-ATTENTE.md) | Prochaine feature + **vagues parallèles** (surfaces exclusives) |
 | [TODO.md](TODO.md) | Points ouverts + décisions actées |
 | [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) | Revue 2026-08-25 alignement × sécurité (points 40–46) |
 | `docs/ai/**/2026-*-feature-*.md` | Non-goals, Différé, Follow-ups lifecycle |
 | [11-frontend.md](analysis%20doc/11-frontend.md) | Stack FE + packaging + maquette |
 | [FlowForge - Maquettes UI.html](analysis%20doc/FlowForge%20-%20Maquettes%20UI.html) | Référence UX / écrans |
 | `analysis doc/` | Cible architecture |
+
+---
+
+## 6. Lots V1.x — lancement parallèle (2026-09-08)
+
+> **Source opérationnelle :** [FILE-ATTENTE.md](FILE-ATTENTE.md) § *File d’attente*
+> (tables des surfaces exclusives). Ne pas dupliquer le brief ici — ce § est
+> l’inventaire pour ne pas reperdre les lots après clôture du V1 nommé.
+
+| Vague | Feature | Statut | Notes |
+|---|---|---|---|
+| **A1** | `provisioning-tenant` | À lancer (// A2, A3) | Dockerfile + runbook/CLI ; sorti de « hors file » |
+| **A2** | `admin-connector-form-schema` | À lancer (// A1, A3) | FE seulement ; `configSchema` déjà exposé par l’API |
+| **A3** | `mcp-ecritures-metier` | À lancer (// A1, A2) | 4 tools dans **un** cycle ; cadrage [15-serveur-mcp.md](analysis%20doc/15-serveur-mcp.md) § Backlog |
+| **A4** | `headers-http-globaux` | Optionnel // A | S-9 ; pas en même temps qu’un A1 qui touche `SecurityConfig` |
+| **B1** | `connecteurs-cible` (Kafka + import batch + ERP) | Après A, **1** cycle | Même couture que PR #99 — pas 3 PRs |
+| **C** | Adaptateur AV (ClamAV) | Après A1 | Port `AttachmentScanPort` déjà prêt (S-6) |
+
+**Interdits :** Kafka ∥ import-batch ∥ ERP ; import batch ∥ A3 ; ClamAV ∥ A1 (Compose) ;
+codegen OpenAPI ∥ tout FE. Hors vague : Redis/SSE multi-pod, Chart.js SLA, DMN, Cockpit.

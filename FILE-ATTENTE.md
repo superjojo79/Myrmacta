@@ -10,10 +10,16 @@
 >   (rétention / purge / sensible — **livré**) ; revue post-implémentation 2026-08-25 :
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
-> **Dernière mise à jour :** 2026-09-07 — TODO **§57 clos**, cycle
+> **Dernière mise à jour :** 2026-09-08 — file d’attente **relancée en vagues
+> parallèles** (V1 nommé livré ; reliquat V1.x / ops). Source opérationnelle pour
+> lancer 3 agents simultanés : section [File d’attente](#file-dattente) ci-dessous
+> (surfaces exclusives + interdits de parallélisme). Inventaire : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §6.
+>
+> 2026-09-07 — TODO **§57 clos**, cycle
 > `revue-adversariale-securite` **mergé** sur `main`
 > ([PR #113](https://github.com/superjojo79/FlowForge/pull/113), Q1–Q12 = A).
-> CI verte (`e96121a`). File d’attente produit vide.
+> CI verte (`e96121a`). Contre-revue post-merge §58 livrée
+> ([PR #115](https://github.com/superjojo79/FlowForge/pull/115)).
 >
 > 2026-09-06 — TODO **§56 clos**, cycle `dev-lifecycle` **complet
 > (Phases 1 à 9) + revue adversariale post-Phase 9** sur `extension-mcp-flux-metier` — 16 tools MCP
@@ -226,39 +232,62 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 
 ## File d’attente
 
-`reporting-sla`, `serveur-mcp`, `schema-champs-dynamiques`,
-`connecteur-http-rest-service`, `assainissement-dette-technique`, `connecteurs-hors-v1`,
-`connecteur-callback` et `formulaires-dynamiques-taches` sont toutes **livrées**
-([PR #80](https://github.com/superjojo79/FlowForge/pull/80),
-[PR #82](https://github.com/superjojo79/FlowForge/pull/82),
-[PR #87](https://github.com/superjojo79/FlowForge/pull/87),
-[PR #95](https://github.com/superjojo79/FlowForge/pull/95),
-[PR #97](https://github.com/superjojo79/FlowForge/pull/97),
-[PR #99](https://github.com/superjojo79/FlowForge/pull/99),
-[PR #102](https://github.com/superjojo79/FlowForge/pull/102)). TODO §46
-(ArchUnit `application`), §48 (`http-rest` SERVICE), §49 (assainissement dette technique), §50
-(connecteurs hors V1), §51 (connecteur callback) et §52 (formulaires dynamiques tâches) **clos**.
+Le V1 nommé est **livré** (`reporting-sla` … `revue-adversariale-securite` / §58,
+voir *Récemment livré*). TODO.md **entièrement clos**. Reliquat = lots V1.x / ops,
+**sans analyse `dev-lifecycle` écrite** (sauf backlog MCP déjà cadré dans
+[15-serveur-mcp.md](analysis%20doc/15-serveur-mcp.md) § *Backlog*). Chaque agent
+démarre par requirements → design ; **ne pas trancher silencieusement** une
+décision d’image Docker, de store partagé, ou d’activation `context-path`.
 
-**Terminé (2026-09-07) :** `revue-adversariale-securite` (TODO §57), cycle `dev-lifecycle`
-complet (Phases 1–9), Q1–Q12 = A. Mergé : [PR #113](https://github.com/superjojo79/FlowForge/pull/113).
-CI GitHub verte. HMAC : prévenir les partenaires (`timestamp.Idempotency-Key.body`).
+### Vague A — 3 agents simultanés (surfaces disjointes)
 
-**Terminé (2026-09-06) :** `extension-mcp-flux-metier` (TODO §56), cycle `dev-lifecycle` **complet
-(Phases 1-9) + revue adversariale post-Phase 9** — 16 tools MCP livrés (9 → 16 : connecteurs,
-questions de tâche, `define_dossier_type` étendu) pour couvrir les mécanismes de configuration
-ajoutés depuis `serveur-mcp` (§48, §50, §51, §52, §55). 1 faille bloquante trouvée par revue
-adversariale (sous-agent) et corrigée : fuite en clair de `authHeaderValue`, un secret de
-connecteur non détecté par l'heuristique de nom pré-existante. `./mvnw verify` : 1675 tests (0
-échec). Mergé : [PR #111](https://github.com/superjojo79/FlowForge/pull/111), sans attendre la CI
-(crédits épuisés). Voir l'en-tête de ce fichier pour le détail.
+Lancer **A1, A2, A3** en parallèle (3 branches / 3 PRs). **A4** optionnel en
+même temps **si** A1 ne touche pas `SecurityConfig`.
 
-**En cours :** aucune feature produit. File vide.
+| Lot | Feature | Objectif | Surface **exclusive** (seul cet agent y écrit) | Ne **pas** toucher |
+|---|---|---|---|---|
+| **A1** | `provisioning-tenant` | Outillage ops : Dockerfile, runbook/CLI schéma PG + instance Boot + bloc proxy + `app.tenant.id` ; `server.servlet.context-path` seulement si tranché en Phase 1 | `Dockerfile` (nouveau), `scripts/` provisioning (nouveau), [DEPLOIEMENT.md](DEPLOIEMENT.md), [GETTING-STARTED.md](GETTING-STARTED.md), `docker-compose*.yml`, `.env.example` ; `application.yml` **uniquement** pour `context-path` / tenant si décidé | `frontend/**`, `infrastructure/mcp/**`, `ConnectorsAdminView.vue`, `SecurityConfig.java`, `ConnectorCatalog` |
+| **A2** | `admin-connector-form-schema` | Formulaire admin généré depuis `configSchema` à la place du `<textarea>` JSON ([06-connecteurs.md](analysis%20doc/06-connecteurs.md) « Écran d'admin ») | `frontend/src/views/admin/ConnectorsAdminView.vue`, `frontend/src/api/admin.ts`, e2e connecteurs, [GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md) § connecteurs | Backend connecteurs, `ConnectorCatalog`, MCP, Compose, `SecurityConfig` — l’API `GET /api/connector-definitions` **expose déjà** `configSchema` |
+| **A3** | `mcp-ecritures-metier` | 4 tools d’écriture métier : `create_dossier`, `add_dossier_element`, `start_workflow`, `generate_document` — **un seul cycle**, pas 4 PRs (même enregistrement tools / tests MCP) | `src/main/java/com/flowforge/infrastructure/mcp/**`, tests MCP associés, golden OpenAPI si le contrat MCP est documenté | `frontend/**`, admin connecteurs, Compose, `SecurityConfig`. Réutiliser les use cases REST existants ; **pas** d’ACL/purge/statut de link (exclusions de [15-serveur-mcp.md](analysis%20doc/15-serveur-mcp.md)) |
+| **A4** (opt.) | `headers-http-globaux` | CSP / HSTS / `X-Frame-Options` applicatifs (reliquat S-9) | `SecurityConfig.java` (+ éventuellement en-têtes de la réponse SPA) | Compose, `context-path`, cookies CSRF (S-8 assumé, ne pas rouvrir) |
 
-En réserve (non retenu, aucune analyse écrite) : outillage provisioning tenant (schéma/instance/
-proxy/secrets, `DEFERRED-FEATURES.md` §1.2/§4).
+Contraintes de lancement :
 
-Détail : [TODO.md](TODO.md) §40–46, §48–52,
-[REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md).
+- Une branche `cursor/<feature>-…` par lot ; worktrees isolés si plusieurs agents sur la même machine.
+- A3 : les 4 tools **ne sont pas** 4 features concurrentes — milestones TDD dans **une** PR.
+- A1 : `DEPLOIEMENT.md` dit déjà qu’un Dockerfile tranche des décisions ouvertes (image, user non-root, heap) — Phase 1 obligatoire avant code.
+- Validation : A1 docs + smoke compose si possible ; A2 Vitest **et** Playwright ; A3 `./mvnw verify` (feature backend-only, régression FE seulement).
+
+### Vague B — après A, **un** agent (coutures partagées)
+
+| Lot | Feature | Pourquoi pas en parallèle de A ni entre eux |
+|---|---|---|
+| **B1** | `connecteurs-cible` — Kafka + import batch + ERP **dans un seul cycle** | Même plomberie que `connecteurs-hors-v1` (PR #99) : `ConnectorCatalog`, `ExecuteConnectorRequest`, golden OpenAPI, [GUIDE-CONCEPTION-BPMN.md](GUIDE-CONCEPTION-BPMN.md). Trois PRs = conflits. Attendre **A2** (admin connecteurs) et **A1** si Kafka/ClamAV veulent le Compose |
+
+Enchaînements interdits même après A :
+
+| Combinaison | Raison |
+|---|---|
+| Kafka ∥ import-batch ∥ ERP | Même fichiers catalogue / DTO d’exécution |
+| Import batch ∥ A3 (`create_dossier`) | Les deux passent par `CreateDossierUseCase` / `CreateDossierBatchUseCase` |
+| AV ClamAV ∥ A1 | Les deux s’approprient `docker-compose` / `GETTING-STARTED.md` — ClamAV **après** A1, ou A1 reste propriétaire Compose |
+| Codegen OpenAPI ∥ tout FE | Régénère `frontend/src/api/*` (`D-CODEGEN` = hors V1 de toute façon) |
+
+### Vague C — optionnel, après A1
+
+| Lot | Notes |
+|---|---|
+| Adaptateur AV (ClamAV) | Port `AttachmentScanPort` + `NoOpAttachmentScanAdapter` déjà livrés (S-6). Adapter réel + Compose — **propriétaire Compose = A1 d’abord** |
+
+### Ne pas lancer (décision V1 contraire ou stack absente)
+
+Rate-limit distribué / SSE multi-pod / Spring Session (pas de Redis dans la stack figée) ;
+codegen OpenAPI ; Chart.js SLA (`D-CHARTS = A`) ; DMN ; Cockpit Flowable ;
+OTel / Grafana ; pagination inbox > 100.
+
+**En cours :** aucune implémentation démarrée — file = brief de lancement ci-dessus.
+
+Détail inventaire : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §4 / §6.
 
 ## En revue
 
@@ -276,9 +305,12 @@ analyses `serveur-mcp`/`reporting-sla`
 
 ## Hors file produit (ne pas traiter comme « prochaine feature »)
 
-- Provisioning tenant (schéma PG, instance Boot, bloc proxy, `app.tenant.id`)
 - Smoke Keycloak réel (environnement manuel — distinct du smoke PostgreSQL/Testcontainers
   automatisé désormais dans `fiabilisation-tests-plateforme`, §26/§28)
+- Reliquats sécu assumés S-6…S-10 / L1–L7 — sauf s’ils sont explicitement un lot
+  de vague (A4 headers, C ClamAV) ci-dessus
+
+Provisioning tenant **n’est plus hors file** : c’est le lot **A1**.
 
 **Clos (2026-08-25, hors cycle `dev-lifecycle` formel — corrections/hygiène ponctuelles, PR #72) :**
 
@@ -414,3 +446,4 @@ Vérifié : `./mvnw verify` 1136 tests (0 échec), Jacoco OK ; frontend `npm run
 | 2026-09-03 | `WebhookController` : TODO §53 corrigé (défaut latent partagé laissé en dette la veille) | Demande explicite utilisateur (« Corrige aussi le TODO §53 dans WebhookController. Je pensais avoir demander de corriger tous les findings ») — le F2 de la revue adversariale du 2026-09-02 avait été corrigé uniquement sur `CallbackWebhookController`, le même défaut sur `WebhookController` (composant `JpaWebhookIdempotencyStoreAdapter` partagé, pattern identique) avait été volontairement laissé hors périmètre et tracé en dette. Corrigé avec exactement le même pattern déjà écrit et testé : `WebhookController.receive()` capture désormais `RuntimeException` autour de `readPayload`/`onIncomingEvent`, appelle `idempotencyStore.complete(...)` avec le statut déterministe (400 pour `ConnectorValidationException`/`IllegalArgumentException`) sur les échecs dont l'issue est stable sur le même contenu de requête, laisse `IN_FLIGHT` pour l'imprévu (`UnknownConnectorException`/`DossierNotFoundException` compris — non mappés par `ConnectorExceptionHandler` pour ce contrôleur, propagation brute conservée à l'identique du comportement pré-existant). 2 tests de régression ajoutés à `WebhookControllerTest` (`receive_deterministicValidationFailureReturns400_andCompletesClaim`, `receive_unmappedRuntimeException_leavesClaimInFlightForFreshRetry`), mêmes noms/structure que leurs équivalents `CallbackWebhookControllerTest`. Branche redémarrée depuis `origin/main` (PR #102/#103 déjà mergées) avant ce correctif, conformément à la convention du dépôt. `./mvnw verify` **1541 tests** (0 échec) — build reproduit sous JDK 25 fraîchement installé (JDK 21 seul présent par défaut sur ce conteneur, `pom.xml` exige `java.version=25`). PR ouverte puis **mergée sur `main` uniquement après vérification explicite que la CI locale passait** (demande explicite utilisateur, contrairement au « sans attendre la CI » de la PR #102/#103). |
 
 | 2026-09-03 | `connecteur-callback` : 2ème revue de sécurité adversariale, indépendante, 4 nouveaux écarts trouvés et corrigés (TODO §54) | Demande explicite utilisateur (« lance une analyse complète de type adversarial sur le code de la feature des callbacks »), volontairement conduite en ignorant les acquis de la 1ère passe (F0–F4, TODO §51) au-delà d'une simple reconfirmation qu'ils étaient toujours clos dans le code actuel. **F5 (haute)** : Spring matérialise `@RequestBody byte[] rawBody` en mémoire (`ByteArrayHttpMessageConverter`) *avant* l'exécution de la méthode du contrôleur — donc avant la garde `body.length > maxBodyBytes`, le rate limiter et l'authentification. `WebhookBodySizeLimitFilter` (F1, 1ère passe) ne vérifiait que le `Content-Length` déclaré ; son propre javadoc admettait déjà le contournement par `Transfer-Encoding: chunked`, mais le check applicatif présenté comme filet de sécurité était lui-même déjà trop tardif — DoS mémoire exploitable sans authentification ni UUID valide. Corrigé : le filtre enveloppe désormais la requête dans un `ServletInputStream` qui compte les octets réellement lus et rejette dès dépassement, indépendamment de ce que la requête déclare. **F6 (moyenne)** : la signature HMAC ne couvrait que le corps brut, sans horodatage ni nonce, et `Idempotency-Key` (fournie par l'appelant) n'était pas signée — une paire (corps, signature) capturée une fois (log, proxy compromis, outil de debug côté appelant) était rejouable indéfiniment avec une nouvelle clé à chaque fois, contournant totalement l'idempotence. Corrigé (`HmacWebhookAuthenticator`) : signature étendue à `timestamp + "." + corps` (en-tête `X-Webhook-Timestamp` requis, secondes epoch Unix), fenêtre de fraîcheur de 5 minutes, `Clock` injectable pour les tests — **rupture de contrat assumée pour les appelants HMAC déjà en production**, documentée dans les champs de config des 2 connecteurs concernés et dans `analysis doc/06-connecteurs.md`. `SHARED_SECRET_TOKEN` non concerné (compromis déjà documenté comme plus faible, pas une régression de cette revue). **F7 (moyenne)** : aucune longueur minimale imposée sur `webhookSecret` — avec la limite de débit par défaut (120 req/min) et l'absence de toute autre couche de défense (pas d'allowlist IP en V1), un secret court reste brute-forçable en temps réaliste. Corrigé : nouvelle classe `WebhookSecretPolicy` (`domain.connector.model`, seuil 20 caractères), appliquée dans `validate()` des 2 connecteurs à champ `webhookSecret` (`http-rest`, `flowable-callback`). **F8 (moyenne)** : un échec d'authentification webhook n'était jamais journalisé — une tentative de brute force soutenue contre F7 serait restée invisible, aucune alerte possible sur cet endpoint anonyme exposé sur internet. Corrigé : `SecurityAuditLog.webhookAuthenticationFailed(...)` (WARN, `instanceId` uniquement, jamais la signature/le secret soumis), câblé dans `ConnectorExceptionHandler` — même schéma que F3. Faux positifs vérifiés et écartés : DoS par imbrication JSON profonde (garde par défaut Jackson), RCE par désérialisation polymorphe (jamais activée dans le dépôt), IDOR cross-tenant, confusion de type de connecteur, fuite de secrets via l'API admin, injection SQL via `correlationValue`. Tous corrigés en TDD sur demande explicite (« corrige tout maintenant »), 13 tests de régression permanents ajoutés (`WebhookBodySizeLimitFilterTest`, `WebhookAuthenticatorTest` ×6, `FlowableMessageCallbackConnectorTest`, `WebhookControllerTest`/`CallbackWebhookControllerTest` ×2 chacun). `./mvnw verify` **1554 tests** (0 échec). Détail complet : `docs/ai/implementation/2026-09-02-feature-connecteur-callback.md` § « Correctifs post-merge (2ème passe adversariale) ». |
+| 2026-09-08 | File d’attente relancée en vagues parallèles (V1.x / ops) | Demande utilisateur : conserver le cadrage « features restantes + concurrence » pour lancer des agents en parallèle. **Vague A** (3 agents, surfaces disjointes) : `provisioning-tenant` (A1, sorti de « hors file ») · `admin-connector-form-schema` (A2) · `mcp-ecritures-metier` (A3, 4 tools dans **un** cycle). A4 headers HTTP optionnel. **Vague B** : Kafka + import batch + ERP en **un** cycle, après A. Interdits documentés (catalogue connecteurs, Compose, `CreateDossierUseCase`). Aucune analyse lifecycle encore écrite sauf backlog MCP dans [15-serveur-mcp.md](analysis%20doc/15-serveur-mcp.md). |

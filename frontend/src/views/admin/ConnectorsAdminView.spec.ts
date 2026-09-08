@@ -1,0 +1,143 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { mount, flushPromises } from '@vue/test-utils'
+import { createMemoryHistory, createRouter } from 'vue-router'
+import ConnectorsAdminView from './ConnectorsAdminView.vue'
+import * as adminApi from '@/api/admin'
+import { routes } from '@/app/routes'
+import { asPage } from '@/api/page'
+import type { ConfigField } from '@/api/admin'
+
+vi.mock('@/api/admin')
+
+const httpRestSchema: ConfigField[] = [
+  {
+    name: 'webhookAuthType',
+    label: 'Webhook auth',
+    type: 'SELECT',
+    required: true,
+    defaultValue: 'HMAC_SHA256',
+    options: ['HMAC_SHA256', 'SHARED_SECRET_TOKEN'],
+  },
+  { name: 'webhookSecret', label: 'Webhook secret', type: 'PASSWORD', required: true },
+  { name: 'processKey', label: 'Process key', type: 'STRING', required: true },
+  { name: 'dossierTypeCode', label: 'Dossier type', type: 'STRING', required: true },
+]
+
+async function mountView() {
+  const router = createRouter({ history: createMemoryHistory(), routes })
+  await router.push('/admin/connectors')
+  await router.isReady()
+  return mount(ConnectorsAdminView, { global: { plugins: [router] } })
+}
+
+describe('ConnectorsAdminView generated config form', () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+    vi.mocked(adminApi.listConnectors).mockResolvedValue(asPage([]))
+    vi.mocked(adminApi.createConnector).mockResolvedValue({} as never)
+  })
+
+  it('renders schema fields instead of a JSON textarea', async () => {
+    vi.mocked(adminApi.listConnectorDefinitions).mockResolvedValue([
+      { type: 'http-rest', label: 'HTTP REST', configSchema: httpRestSchema },
+    ])
+    const wrapper = await mountView()
+    await flushPromises()
+    expect(wrapper.find('textarea').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="connector-config-field-webhookSecret"]').exists()).toBe(true)
+    expect(wrapper.get('[data-testid="connector-config-field-processKey"]').exists()).toBe(true)
+  })
+
+  it('posts a typed config object from the generated form', async () => {
+    vi.mocked(adminApi.listConnectorDefinitions).mockResolvedValue([
+      { type: 'http-rest', label: 'HTTP REST', configSchema: httpRestSchema },
+    ])
+    const wrapper = await mountView()
+    await flushPromises()
+    await wrapper.get('input[placeholder="nom"]').setValue('Hook')
+    await wrapper.get('[data-testid="connector-config-field-webhookSecret"]').setValue('a-very-long-secret')
+    await wrapper.get('[data-testid="connector-config-field-processKey"]').setValue('signal-smoke')
+    await wrapper.get('[data-testid="connector-config-field-dossierTypeCode"]').setValue('SINISTRE')
+    await wrapper.get('form').trigger('submit.prevent')
+    await flushPromises()
+    expect(adminApi.createConnector).toHaveBeenCalledWith({
+      name: 'Hook',
+      connectorType: 'http-rest',
+      enabled: true,
+      config: {
+        webhookAuthType: 'HMAC_SHA256',
+        webhookSecret: 'a-very-long-secret',
+        processKey: 'signal-smoke',
+        dossierTypeCode: 'SINISTRE',
+      },
+    })
+  })
+
+  it('submits empty config for a type with an empty schema', async () => {
+    vi.mocked(adminApi.listConnectorDefinitions).mockResolvedValue([
+      { type: 'smtp', label: 'SMTP', configSchema: [] },
+    ])
+    const wrapper = await mountView()
+    await flushPromises()
+    expect(wrapper.find('textarea').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="connector-config-empty"]').text()).toMatch(/Aucune configuration/)
+    await wrapper.get('input[placeholder="nom"]').setValue('Mailer')
+    await wrapper.get('form').trigger('submit.prevent')
+    await flushPromises()
+    expect(adminApi.createConnector).toHaveBeenCalledWith({
+      name: 'Mailer',
+      connectorType: 'smtp',
+      enabled: true,
+      config: {},
+    })
+  })
+
+  it('resets values when the connector type changes', async () => {
+    vi.mocked(adminApi.listConnectorDefinitions).mockResolvedValue([
+      { type: 'http-rest', label: 'HTTP REST', configSchema: httpRestSchema },
+      {
+        type: 'scheduler',
+        label: 'Scheduler',
+        configSchema: [
+          { name: 'cronExpression', label: 'Cron', type: 'STRING', required: true },
+          { name: 'processKey', label: 'Process key', type: 'STRING', required: true },
+        ],
+      },
+    ])
+    const wrapper = await mountView()
+    await flushPromises()
+    await wrapper.get('[data-testid="connector-config-field-webhookSecret"]').setValue('leaked')
+    await wrapper.get('[data-testid="connector-type"]').setValue('scheduler')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="connector-config-field-webhookSecret"]').exists()).toBe(false)
+    await wrapper.get('input[placeholder="nom"]').setValue('Cron')
+    await wrapper.get('[data-testid="connector-config-field-cronExpression"]').setValue('0 * * * * *')
+    await wrapper.get('[data-testid="connector-config-field-processKey"]').setValue('job')
+    await wrapper.get('form').trigger('submit.prevent')
+    await flushPromises()
+    expect(adminApi.createConnector).toHaveBeenCalledWith({
+      name: 'Cron',
+      connectorType: 'scheduler',
+      enabled: true,
+      config: { cronExpression: '0 * * * * *', processKey: 'job' },
+    })
+  })
+
+  it('keeps a JSON textarea when the catalogue is empty', async () => {
+    vi.mocked(adminApi.listConnectorDefinitions).mockResolvedValue([])
+    const wrapper = await mountView()
+    await flushPromises()
+    expect(wrapper.get('[data-testid="connector-config-json-fallback"]').exists()).toBe(true)
+    await wrapper.get('input[placeholder="nom"]').setValue('Custom')
+    await wrapper.get('input[placeholder="type"]').setValue('custom')
+    await wrapper.get('[data-testid="connector-config-json-fallback"]').setValue('{"k":"v"}')
+    await wrapper.get('form').trigger('submit.prevent')
+    await flushPromises()
+    expect(adminApi.createConnector).toHaveBeenCalledWith({
+      name: 'Custom',
+      connectorType: 'custom',
+      enabled: true,
+      config: { k: 'v' },
+    })
+  })
+})

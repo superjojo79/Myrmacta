@@ -232,40 +232,34 @@ depuis **Tâches** (`/tasks`) — pratique en mobilité.
 ### Catalogue des types disponibles
 
 La partie haute de l'écran liste les **types de connecteurs** installés sur l'instance (pas les
-connecteurs eux-mêmes — leurs instances configurées). Deux types sont fournis de base :
+connecteurs eux-mêmes — leurs instances configurées). Types fournis de base :
 
-| Type | Rôle (`capability`) | Champs de config attendus |
+| Type | Rôle (`capability`) | Champs de config (formulaire généré) |
 |---|---|---|
-| `http-rest` | trigger (déclenche un workflow sur appel HTTP entrant) | `webhookAuthType` (`HMAC_SHA256` ou `SHARED_SECRET_TOKEN`), `webhookSecret`, `processKey`, `dossierTypeCode` |
-| `flowable-signal` | trigger **et** service (peut aussi être appelé depuis un workflow) | `signalName`, `processKey`, `dossierTypeCode` |
+| `http-rest` | trigger **et** service (`BOTH`) | `webhookAuthType` (liste HMAC / token), `webhookSecret`, `processKey`, `dossierTypeCode`, `authHeaderValue` (optionnel, mot de passe — appels SERVICE), `mapping` (optionnel) |
+| `flowable-signal` | trigger **et** service | `signalName`, `processKey`, `dossierTypeCode`, `mapping` (optionnel) |
+| `scheduler` | trigger | `cronExpression`, `processKey`, `dossierTypeCode` |
+| `flowable-callback` | callback | `webhookAuthType`, `webhookSecret`, `messageName`, `correlationVariableName`, `correlationValuePath`, `mapping` (optionnel) |
+| `smtp` | service | aucun champ d'instance (réutilise la config SMTP de l'application) |
+| `document-storage` | service | aucun champ d'instance (réutilise le stockage documents déjà configuré) |
 
 D'autres connecteurs custom peuvent être ajoutés au classpath backend sans modifier le core (voir
 [analysis doc/06-connecteurs.md](analysis%20doc/06-connecteurs.md)) — ils apparaîtront alors dans
-ce même catalogue.
-
-> **Ce que cet écran ne permet pas :** configurer un appel sortant générique vers un service tiers
-> depuis un workflow (rôle **service** d'un connecteur `http-rest`). Ce rôle existe dans le code
-> mais n'est pas enregistré en V1 — seul `flowable-signal` peut être appelé en tant que service
-> depuis un workflow aujourd'hui. Pour notifier un système externe en sortie, utiliser un webhook de
-> notification (§7) plutôt qu'un connecteur.
+ce même catalogue, avec un formulaire généré depuis leur `configSchema`.
 
 ### Créer une instance de connecteur
 
 1. **Nom** — libellé libre de l'instance.
-2. **Type** — sélectionné dans le catalogue ci-dessus.
-3. **Config** — **zone de texte JSON brut** : saisir directement l'objet JSON avec les clés
-   attendues par le type choisi (tableau ci-dessus). Il n'y a pas de formulaire champ par champ
-   pour l'instant — un JSON mal formé bloque la création avec une erreur générique.
+2. **Type** — sélectionné dans le catalogue ci-dessus. Changer de type réinitialise les champs
+   de configuration (les valeurs du type précédent ne sont pas réutilisées).
+3. **Config** — **formulaire champ par champ** généré depuis le schéma du type : texte, mot de
+   passe, liste, URL, entier, case à cocher. Un texte d'aide s'affiche sous le champ lorsqu'il
+   est fourni par le schéma (ex. longueur minimale du secret HMAC). Les types sans configuration
+   d'instance (`smtp`, `document-storage`) n'affichent aucun champ — valider suffit.
 
-   Exemple pour un `http-rest` :
-   ```json
-   {
-     "webhookAuthType": "SHARED_SECRET_TOKEN",
-     "webhookSecret": "un-secret-long-et-aleatoire",
-     "processKey": "signal-smoke",
-     "dossierTypeCode": "SINISTRE"
-   }
-   ```
+   La validation métier (secret trop court, cron invalide, etc.) reste faite **par le serveur** :
+   le formulaire bloque seulement les champs requis vides. Les secrets ne sont jamais réaffichés
+   dans la liste après création.
 4. Valider — le connecteur est créé actif par défaut.
 
 Dans la liste, chaque connecteur affiche son nom, son type, son statut et les **clés** des

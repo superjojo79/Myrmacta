@@ -71,12 +71,14 @@ public class ConfigField {
 ### Écran d'admin (V1 livré)
 
 `ConnectorsAdminView.vue` liste les instances existantes et permet d'en créer une : un `<select>`
-alimenté par `GET /api/connector-definitions` pour choisir le type (le frontend n'en lit que `type`
-et `label` — `ConnectorDefinitionItem` dans `frontend/src/api/admin.ts` — et ignore le `configSchema`
-renvoyé par l'API), puis un simple `<textarea>` de JSON brut (`form.configJson`, parsé côté client
-avec `JSON.parse`) pour saisir la config, envoyée telle quelle au backend. C'est
-`ConnectorDefinition.validate(config)` qui la valide côté serveur — pas un formulaire généré à partir
-de `getConfigSchema()`.
+alimenté par `GET /api/connector-definitions` pour choisir le type. Le frontend lit `type`,
+`label` et **`configSchema`** (`ConnectorDefinition` dans `frontend/src/api/admin.ts`) et génère
+un formulaire champ par champ (`ConnectorConfigForm.vue`) — SELECT, PASSWORD, STRING, URL,
+INTEGER, BOOLEAN — à la place du `<textarea>` JSON de la première livraison. Un type au schéma
+vide (`smtp`, `document-storage`) n'affiche aucun champ de config et poste `config: {}`.
+La validation métier (`ConnectorDefinition.validate(config)`, longueur de secret, cron, etc.)
+reste côté serveur. Un textarea JSON n'est conservé qu'en repli si le catalogue n'a pas pu
+être chargé.
 
 ### Catalogue de connecteurs fournis
 
@@ -421,10 +423,8 @@ public class WebhookController {
 
 Le champ `webhookAuthType` est un `ConfigField` SELECT du connecteur `http-rest` (valeurs
 `HMAC_SHA256` / `SHARED_SECRET_TOKEN` / `IP_ALLOWLIST`) — stocké dans `ConnectorInstanceData.config`,
-pas comme champ de premier niveau du record (décision n° 18). Comme le reste de la config
-(§ « Écran d'admin » plus haut), il se saisit en V1 dans le `<textarea>` JSON libre de
-`ConnectorsAdminView.vue` — pas dans un formulaire dédié (secret HMAC, token, ou liste d'IP
-autorisées) généré depuis ce schéma.
+pas comme champ de premier niveau du record (décision n° 18). L'écran d'admin le saisit dans le
+formulaire généré depuis `configSchema` (liste déroulante), comme les autres champs du type.
 
 **Résolution du tenant (décision n° 14, [02-multi-tenant.md](02-multi-tenant.md#routage-vers-linstance--chemin-par-tenant-reverse-proxy-statique)).**
 L'URL complète exposée au tiers pour configurer son webhook inclut le préfixe de chemin propre au

@@ -648,15 +648,71 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
       body: JSON.stringify(envelope([])),
     })
   })
+  const connectorDefinitions = [
+    {
+      type: 'http-rest',
+      label: 'HTTP REST',
+      capability: 'BOTH',
+      configSchema: [
+        {
+          name: 'webhookAuthType',
+          label: 'Webhook auth',
+          type: 'SELECT',
+          required: true,
+          defaultValue: 'HMAC_SHA256',
+          options: ['HMAC_SHA256', 'SHARED_SECRET_TOKEN'],
+        },
+        { name: 'webhookSecret', label: 'Webhook secret', type: 'PASSWORD', required: true },
+        { name: 'processKey', label: 'Process key', type: 'STRING', required: true },
+        { name: 'dossierTypeCode', label: 'Dossier type', type: 'STRING', required: true },
+      ],
+    },
+    {
+      type: 'smtp',
+      label: 'SMTP (ad hoc email send)',
+      capability: 'SERVICE',
+      configSchema: [],
+    },
+  ]
+  let connectors: Array<Record<string, unknown>> = []
   await page.route(/\/api\/connectors(?:\?|$)/, async (route) => {
+    const method = route.request().method()
+    if (method === 'POST') {
+      const posted = route.request().postDataJSON() as {
+        name: string
+        connectorType: string
+        enabled?: boolean
+        config?: Record<string, unknown>
+      }
+      const created = {
+        id: `c-${connectors.length + 1}`,
+        tenantId: 'tenant_dev',
+        name: posted.name,
+        connectorType: posted.connectorType,
+        enabled: posted.enabled !== false,
+        config: posted.config ?? {},
+        secretConfigured: {},
+      }
+      connectors = [...connectors, created]
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify(created),
+      })
+      return
+    }
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify(envelope([])),
+      body: JSON.stringify(envelope(connectors)),
     })
   })
   await page.route('**/api/connector-definitions*', async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(envelope([])) })
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(envelope(connectorDefinitions)),
+    })
   })
   let webhooks: Array<Record<string, unknown>> = [
     {
@@ -2075,5 +2131,84 @@ test('E2E-USERQ-2 admin creates a task question schema and it appears in the lis
   await page.getByTestId('schema-label-input').fill('Orientation')
   await page.locator('[data-testid="schema-create-form"] button[type="submit"]').click()
   await expect(page.getByText('orientation-dossier')).toBeVisible()
+})
+
+test('E2E-CONN-1 admin creates http-rest connector from generated form', async ({ page }) => {
+  let createdBody: Record<string, unknown> | null = null
+  await mockSession(page)
+  await page.route(/\/api\/connectors(?:\?|$)/, async (route) => {
+    if (route.request().method() === 'POST') {
+      createdBody = route.request().postDataJSON() as Record<string, unknown>
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'c-new',
+          tenantId: 'tenant_dev',
+          name: createdBody.name,
+          connectorType: createdBody.connectorType,
+          enabled: true,
+          config: createdBody.config,
+          secretConfigured: { webhookSecret: true },
+        }),
+      })
+      return
+    }
+    await route.fallback()
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Connecteurs' }).click()
+  const form = page.getByTestId('connector-create-form')
+  await form.getByPlaceholder('nom').fill('Hook prod')
+  await form.getByTestId('connector-type').selectOption('http-rest')
+  await form.getByTestId('connector-config-field-webhookSecret').fill('a-very-long-secret')
+  await form.getByTestId('connector-config-field-processKey').fill('signal-smoke')
+  await form.getByTestId('connector-config-field-dossierTypeCode').fill('SINISTRE')
+  await expect(form.locator('textarea')).toHaveCount(0)
+  await form.getByRole('button', { name: 'Créer' }).click()
+  await expect.poll(() => createdBody?.connectorType).toBe('http-rest')
+  await expect
+    .poll(() => (createdBody?.config as Record<string, unknown> | undefined)?.webhookAuthType)
+    .toBe('HMAC_SHA256')
+  await expect
+    .poll(() => (createdBody?.config as Record<string, unknown> | undefined)?.webhookSecret)
+    .toBe('a-very-long-secret')
+  await expect(page.getByText('Hook prod')).toBeVisible()
+})
+
+test('E2E-CONN-2 admin creates smtp connector with empty config', async ({ page }) => {
+  let createdBody: Record<string, unknown> | null = null
+  await mockSession(page)
+  await page.route(/\/api\/connectors(?:\?|$)/, async (route) => {
+    if (route.request().method() === 'POST') {
+      createdBody = route.request().postDataJSON() as Record<string, unknown>
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'c-smtp',
+          tenantId: 'tenant_dev',
+          name: createdBody.name,
+          connectorType: createdBody.connectorType,
+          enabled: true,
+          config: createdBody.config ?? {},
+          secretConfigured: {},
+        }),
+      })
+      return
+    }
+    await route.fallback()
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Connecteurs' }).click()
+  const form = page.getByTestId('connector-create-form')
+  await form.getByTestId('connector-type').selectOption('smtp')
+  await expect(form.getByTestId('connector-config-empty')).toBeVisible()
+  await expect(form.locator('textarea')).toHaveCount(0)
+  await form.getByPlaceholder('nom').fill('Mailer')
+  await form.getByRole('button', { name: 'Créer' }).click()
+  await expect.poll(() => createdBody?.connectorType).toBe('smtp')
+  await expect.poll(() => createdBody?.config).toEqual({})
+  await expect(page.getByText('Mailer')).toBeVisible()
 })
 

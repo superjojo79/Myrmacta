@@ -1,38 +1,55 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import {
   createConnector,
   deleteConnector,
   listConnectorDefinitions,
   listConnectors,
   updateConnector,
+  type ConnectorDefinition,
 } from '@/api/admin'
 import type { Connector } from '@/api/types'
 import { toProblemDetail } from '@/api/http'
 import AdminPager from '@/components/admin/AdminPager.vue'
+import ConnectorConfigForm from '@/components/connectors/ConnectorConfigForm.vue'
+import {
+  configFromFormValues,
+  defaultsFromSchema,
+  schemaOf,
+  type FormValues,
+} from '@/components/connectors/connectorConfig'
 import { useAdminListQuery } from '@/composables/useAdminListQuery'
 
 const { page, size } = useAdminListQuery()
 const connectors = ref<Connector[]>([])
 const totalPages = ref(0)
-const definitions = ref<Array<{ type: string; label?: string }>>([])
+const definitions = ref<ConnectorDefinition[]>([])
 const error = ref<string | null>(null)
 const form = ref({
   name: '',
-  connectorType: 'HTTP',
+  connectorType: '',
   enabled: true,
   configJson: '{}',
 })
+const configValues = ref<FormValues>({})
+
+const catalogueLoaded = computed(() => definitions.value.length > 0)
+const activeSchema = computed(() => schemaOf(definitions.value, form.value.connectorType))
+
+watch(
+  () => form.value.connectorType,
+  (type) => {
+    if (!catalogueLoaded.value) {
+      return
+    }
+    configValues.value = defaultsFromSchema(schemaOf(definitions.value, type))
+  },
+)
 
 async function refresh() {
   const [result, defs] = await Promise.all([
     listConnectors({ page: page.value, size: size.value }),
-    listConnectorDefinitions().then((items) =>
-      items.map((d) => ({
-        type: String(d.type ?? d.connectorType ?? ''),
-        label: d.label ? String(d.label) : undefined,
-      })),
-    ),
+    listConnectorDefinitions(),
   ])
   connectors.value = result.content
   totalPages.value = result.totalPages
@@ -52,21 +69,28 @@ watch(
   { immediate: true },
 )
 
+function resetForm() {
+  form.value = {
+    name: '',
+    connectorType: definitions.value[0]?.type ?? '',
+    enabled: true,
+    configJson: '{}',
+  }
+  configValues.value = defaultsFromSchema(schemaOf(definitions.value, form.value.connectorType))
+}
+
 async function create() {
   try {
-    const config = JSON.parse(form.value.configJson) as Record<string, unknown>
+    const config = catalogueLoaded.value
+      ? configFromFormValues(activeSchema.value, configValues.value)
+      : (JSON.parse(form.value.configJson) as Record<string, unknown>)
     await createConnector({
       name: form.value.name,
       connectorType: form.value.connectorType,
       enabled: form.value.enabled,
       config,
     })
-    form.value = {
-      name: '',
-      connectorType: definitions.value[0]?.type ?? 'HTTP',
-      enabled: true,
-      configJson: '{}',
-    }
+    resetForm()
     await refresh()
   } catch (err) {
     error.value = toProblemDetail(err).detail ?? 'Création impossible'
@@ -92,15 +116,36 @@ async function remove(connector: Connector) {
       Types catalogue :
       <span v-for="def in definitions" :key="def.type">{{ def.label || def.type }} </span>
     </p>
-    <form class="admin-form" @submit.prevent="create">
+    <form class="admin-form" data-testid="connector-create-form" @submit.prevent="create">
       <input v-model="form.name" placeholder="nom" required />
-      <select v-if="definitions.length" v-model="form.connectorType">
+      <select
+        v-if="definitions.length"
+        v-model="form.connectorType"
+        data-testid="connector-type"
+      >
         <option v-for="def in definitions" :key="def.type" :value="def.type">
           {{ def.label || def.type }}
         </option>
       </select>
       <input v-else v-model="form.connectorType" placeholder="type" required />
-      <textarea v-model="form.configJson" rows="3" />
+      <ConnectorConfigForm
+        v-if="catalogueLoaded"
+        v-model="configValues"
+        :schema="activeSchema"
+      />
+      <p
+        v-if="catalogueLoaded && activeSchema.length === 0"
+        data-testid="connector-config-empty"
+        class="empty-config"
+      >
+        Aucune configuration d'instance pour ce type.
+      </p>
+      <textarea
+        v-if="!catalogueLoaded"
+        v-model="form.configJson"
+        rows="3"
+        data-testid="connector-config-json-fallback"
+      />
       <button type="submit">Créer</button>
     </form>
     <ul>
@@ -149,5 +194,10 @@ li {
 }
 .error {
   color: #c92a2a;
+}
+.empty-config {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  margin: 0;
 }
 </style>

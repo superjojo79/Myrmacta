@@ -285,7 +285,9 @@ Rate-limit distribué / SSE multi-pod / Spring Session (pas de Redis dans la sta
 codegen OpenAPI ; Chart.js SLA (`D-CHARTS = A`) ; DMN ; Cockpit Flowable ;
 OTel / Grafana ; pagination inbox > 100.
 
-**En cours :** aucune implémentation démarrée — file = brief de lancement ci-dessus.
+**En cours :** lot **A2** `admin-connector-form-schema` — cycle `dev-lifecycle` lancé
+(branche `cursor/admin-connector-form-schema-52bc`). A1 et A3 restent lançables en parallèle
+(surfaces disjointes).
 
 Détail inventaire : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §4 / §6.
 

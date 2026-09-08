@@ -160,7 +160,31 @@ limitation Flowable Community, cohérent).
 
 ---
 
-### [ ] 59. Écritures métier MCP — `create_dossier` / `add_dossier_element` / `start_workflow` / `generate_document`
+### [x] 59. Formulaire admin connecteurs généré depuis `configSchema` (lot A2)
+
+**Énoncé :** `GET /api/connector-definitions` expose déjà `configSchema` ; l’écran
+Admin → Connecteurs ignore le schéma et impose un `<textarea>` JSON
+(`ConnectorsAdminView.vue`). Lot **A2** de [FILE-ATTENTE.md](FILE-ATTENTE.md) :
+feature `admin-connector-form-schema`, frontend seulement.
+
+**Décisions (cycle 2026-09-08, agent cloud) :** D-REPLACE-TEXTAREA, D-EMPTY-SCHEMA,
+D-FALLBACK-NO-DEFS, D-SCOPE-CREATE, D-NO-DYNAMICFIELDS, D-COERCE, D-PASSWORD,
+D-CLIENT-REQUIRED, D-SWITCH-TYPE, D-NO-BACKEND, **D-WEBHOOK-URL = C** (rejeu Phase 1–3)
+— détail dans
+`docs/ai/requirements/2026-09-08-feature-admin-connector-form-schema.md`.
+
+**Impacte :** `frontend/src/views/admin/ConnectorsAdminView.vue`,
+`frontend/src/api/admin.ts`, `frontend/src/components/connectors/**`, e2e connecteurs,
+[GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md) §4, [06-connecteurs.md](analysis%20doc/06-connecteurs.md)
+§ écran d’admin.
+
+**Statut :** cycle `dev-lifecycle` Phases 1–9 **clos** — [PR #117](https://github.com/superjojo79/FlowForge/pull/117).
+Vitest 324/324 ; Playwright 68/68 (`E2E-CONN-1` webhook, `E2E-CONN-2` smtp, `E2E-CONN-3` callback).
+**Mergé sur `main`** (2026-09-08).
+
+---
+
+### [ ] 60. Écritures métier MCP — `create_dossier` / `add_dossier_element` / `start_workflow` / `generate_document`
 
 **Énoncé :** lot **A3** ([FILE-ATTENTE.md](FILE-ATTENTE.md)) — le canal MCP (16 tools) définit un
 flux mais ne l'opère pas. Backlog déjà cadré dans
@@ -169,6 +193,7 @@ flux mais ne l'opère pas. Backlog déjà cadré dans
 **Statut :** Phases 1–9 du cycle `dev-lifecycle` terminées ;
 [PR #118](https://github.com/superjojo79/FlowForge/pull/118) en revue
 (`cursor/mcp-ecritures-metier-6efe`). Case cochée après merge sur `main`.
+Numérotation §60 : §59 déjà pris par A2 mergé ([PR #117](https://github.com/superjojo79/FlowForge/pull/117)).
 
 **Décisions :** D-WRITE-ONE-CYCLE, D-REUSE-PORTS, D-DRY-RUN, D-ELEMENT-TYPES (NOTE/LINK/INFORMATION),
 D-START-ORCH (`ManualStartOrchestrator`), D-GENERATE-ATTACH (`PRODUCED_DOC`, pas de PDF Base64),

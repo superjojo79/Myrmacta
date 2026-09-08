@@ -249,9 +249,10 @@ un appel HTTP écrit en dur dans un delegate ad hoc.
 Écran d'admin des connecteurs (`ConnectorsAdminView.vue`) : choisir un type (`ConnectorDefinition.getType()`,
 ex. `flowable-signal`, ou un connecteur custom ajouté au classpath — voir
 [06-connecteurs.md](analysis%20doc/06-connecteurs.md) « Ajout d'un connecteur custom »), puis saisir la
-configuration en JSON libre (un `<textarea>` de JSON brut, validé côté backend par
-`ConnectorDefinition.validate(config)` — l'écran n'affiche pas de formulaire généré à partir de
-`getConfigSchema()`, voir [06-connecteurs.md](analysis%20doc/06-connecteurs.md) « Écran d'admin »).
+configuration dans le **formulaire généré** depuis `getConfigSchema()` du type
+(voir [06-connecteurs.md](analysis%20doc/06-connecteurs.md) « Écran d'admin » et
+[GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md) §4). La validation métier reste côté backend
+(`ConnectorDefinition.validate(config)`).
 Cela produit un `ConnectorInstanceData.id`
 (UUID) — **c'est cet UUID que le BPMN référence**, jamais le type ou la config en dur.
 

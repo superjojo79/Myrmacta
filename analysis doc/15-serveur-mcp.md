@@ -24,7 +24,7 @@
 > `define_dossier_type` avec `documentTemplateKeys`. **9 → 16 tools.** Correctif de sécurité
 > associé : `ManageConnectorInstanceUseCaseImpl`, `TaskQuestionSchemaUseCaseImpl` et
 > `WorkflowTypeConfigUseCaseImpl` (ce dernier déjà utilisé par `deploy_workflow` depuis ce cadrage)
-> **Lot A3 (2026-09-08, feature `mcp-ecritures-metier`, TODO §59, [PR #118](https://github.com/superjojo79/FlowForge/pull/118)) :**
+> **Lot A3 (2026-09-08, feature `mcp-ecritures-metier`, TODO §60, [PR #118](https://github.com/superjojo79/FlowForge/pull/118)) :**
 > les 4 tools d'écriture métier du backlog ci-dessous (`create_dossier`,
 > `add_dossier_element`, `start_workflow`, `generate_document`) sont implémentés —
 > **16 → 20 tools**. Les exclusions (ACL, purge, statut de link) restent hors périmètre.
@@ -285,7 +285,7 @@ Clos en Phases 1–3 `serveur-mcp` (2026-08-27) — détail dans
 ## Backlog — écritures métier (lot A3 / `mcp-ecritures-metier`)
 
 > Tools d'écriture à risque modéré identifiés lors du cadrage V1, **implémentés**
-> ([PR #118](https://github.com/superjojo79/FlowForge/pull/118), TODO §59) — plus « hors V1 ».
+> ([PR #118](https://github.com/superjojo79/FlowForge/pull/118), TODO §60) — plus « hors V1 ».
 > Validation, audit (`createdBy` = sujet JWT) et `dryRun` repris des tools d'écriture déjà livrés.
 
 | Tool | Use case / orchestrateur réutilisé | Remarque |

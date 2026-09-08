@@ -14,8 +14,8 @@ feature: mcp-ecritures-metier
 > `DocumentGenerationTask` / `AttachGeneratedDocumentTask`, tools MCP existants).
 >
 > Rejeu 2026-09-08 : les `D-*` design avaient été actées sans question.
-> Phase 3 rejouée **après** confirmations requirements (D-GENERATE-* / D-DRY-RUN /
-> D-RATE-LIMIT / D-NO-OPENAPI). Première question : D-START-ORCH.
+> Phase 3 rejouée **après** confirmations requirements. **Acté :** D-START-ORCH = C.
+> Suivant : D-DRY-RUN-START.
 
 ## Architecture Overview
 
@@ -161,7 +161,7 @@ Sortie : `DossierElementView` (`downloadable=true`, pas de `storageRef`).
 
 | ID | Alternatives | Retenu |
 |---|---|---|
-| D-START-ORCH | (a) `AttachWorkflowUseCase.reserve` seul — incomplet vs REST ; (b) dupliquer l'orchestrateur dans le tool ; (c) injecter `ManualStartOrchestrator` | **(c)** — infrastructure → application déjà autorisé ArchUnit |
+| D-START-ORCH | (a) `AttachWorkflowUseCase.reserve` seul — incomplet vs REST ; (b) dupliquer l'orchestrateur dans le tool ; (c) injecter `ManualStartOrchestrator` | **(c)** — confirmé utilisateur 2026-09-08 ; infrastructure → application déjà autorisé ArchUnit |
 | D-GENERATE-ATTACH | (a) Base64 PDF ; (b) store sans attache ; (c) store + `PRODUCED_DOC` | **(c)** — écriture métier durable, parité BPMN, pas de binaire MCP |
 | D-GENERATE-TEMPLATE | (a) n'importe quel template (bypass TA/WA) ; (b) n'importe quel type VIEW du tenant (D-M12 REST) ; (c) type **du dossier** | **(c)** — l'outil est dossier-centré |
 | D-DRY-RUN-START | (a) dryRun appelle `reserve` puis abort ; (b) gardes seulement | **(b)** — pas d'effet de bord Flowable / lien RESERVED |

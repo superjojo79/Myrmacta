@@ -145,10 +145,7 @@ nouvelle surface HTTP, sans SPA, sans toucher à `SecurityConfig`**.
 
 ## Questions & Open Items
 
-Phases 1–2 rejeu **clos** (confirmations utilisateur 2026-09-08) : D-GENERATE-ATTACH = C,
-D-GENERATE-TEMPLATE = C, D-GENERATE-VARS = C, D-DRY-RUN = C, D-RATE-LIMIT = A,
-D-NO-OPENAPI = A. Phase 3 à rejouer (une à la fois) : D-START-ORCH, D-DRY-RUN-START,
-D-FIELDS-READ. D-WRITE-ONE-CYCLE / D-REUSE-PORTS / D-ELEMENT-TYPES restent le
-cadrage FILE-ATTENTE + analyse 15 (pas relancés sauf demande).
+Phases 1–2 rejeu **clos**. Phase 3 en cours. **Acté :** D-START-ORCH = C.
+Reste : D-DRY-RUN-START, D-FIELDS-READ.
 
-Prochain : `dev-design` Phase 3 — D-START-ORCH.
+Prochain : D-DRY-RUN-START.

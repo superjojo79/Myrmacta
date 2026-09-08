@@ -65,8 +65,8 @@ inchangés. Pas de secret logué.
 
 ## Phase 8
 
-`npm run test` 312/312 ; Playwright 67/67. Coverage agrégat au-dessus des seuils ;
-`components/connectors` lines 100 %.
+`npm run test` 324/324 ; Playwright 68/68. Coverage agrégat au-dessus des seuils ;
+`components/connectors` lines 98.55 %.
 
 ## Phase 9
 

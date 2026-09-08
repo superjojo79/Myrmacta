@@ -117,7 +117,6 @@ Sans calendrier (agent). Séquence unique, TDD par tâche.
 
 ## Summary
 
-M1–M6 clos. Preuves : `npm run test` **312/312** ; `npx playwright test` **67/67** (65 existants
-+ 2 `E2E-CONN-*`) ; typecheck/lint propres. Écart E2E trouvé en Phase 8 : le GET post-création
-n’était pas mocké dans le même `page.route` que le POST — corrigé (pas un bug produit).
-Aucun fichier Java.
+M1–M7 clos. Preuves : `npm run test` **324/324** ; `npx playwright test` **68/68** (65 existants
++ 3 `E2E-CONN-*`) ; typecheck/lint propres. Écart E2E D-WEBHOOK-URL : `resolveApiBaseUrl()` au
+rendu prenait `admin` comme préfixe — corrigé via `apiContextPath()`. Aucun fichier Java.

@@ -112,11 +112,11 @@ non exigée (aucun `.java` dans le diff — `git diff --stat origin/main` vérif
 
 | Commande | Résultat |
 |---|---|
-| `cd frontend && npm run test` | **312** passed, 0 failed, exit 0 |
+| `cd frontend && npm run test` | **324** passed, 0 failed, exit 0 |
 | `cd frontend && npm run typecheck` | exit 0 |
 | `cd frontend && npm run lint` | exit 0 |
-| `cd frontend && npm run test:coverage` | statements 87.38 / branches 80.1 / functions 86.34 / lines 89.04 (seuils tenus). `components/connectors` : lines 100 %, branches ~89–92 % |
-| `cd frontend && npx playwright test` | **67** passed (65 existants + `E2E-CONN-1` + `E2E-CONN-2`), exit 0 |
+| `cd frontend && npm run test:coverage` | statements 87.4 / branches 80.34 / functions 86.5 / lines 89.03 (seuils tenus). `components/connectors` : lines 98.55 %, branches 95.83 % |
+| `cd frontend && npx playwright test` | **68** passed (65 existants + `E2E-CONN-1` + `E2E-CONN-2` + `E2E-CONN-3`), exit 0 |
 
 Écart de test (pas produit) : premier passage E2E, POST ok mais liste vide — le GET
 post-création `fallback()` vers le mock session (liste vide). Corrigé : même `page.route`
@@ -129,7 +129,8 @@ fixé au boot.
 
 ## Manual Testing
 
-Walkthrough navigateur : `/admin/connectors`, créer http-rest, créer smtp, switch de type.
+Walkthrough navigateur : `/admin/connectors`, créer http-rest (URL webhook), créer
+`flowable-callback` (URL callback), créer smtp (pas d’URL), switch de type, Copier.
 Vérifier desktop (écran admin, pas de layout mobile dédié).
 
 ## Performance Testing

@@ -138,17 +138,17 @@ nouvelle surface HTTP, sans SPA, sans toucher à `SecurityConfig`**.
 | **D-ELEMENT-TYPES** | Quels types d'éléments ? | **NOTE, LINK, INFORMATION** uniquement | Analyse 15 + parité `DossierController.addElement`. |
 | **D-START-ORCH** | `AttachWorkflowUseCase` seul ? | **`ManualStartOrchestrator`** | C'est le chemin REST réel (idempotence + confirm + abort). |
 | **D-GENERATE-ATTACH** | Renvoyer le PDF ? | **C — Store + attache `PRODUCED_DOC`** (confirmé utilisateur 2026-09-08) | MCP mal adapté au binaire ; `DossierElementView` sans `storageRef` (DD-ELEMENTS-DTO). |
-| **D-GENERATE-TEMPLATE** | N'importe quel template du tenant ? | **Uniquement si le type du dossier le liste** | Plus strict que le bypass TA/WA REST ; l'agent agit *sur ce dossier*. |
+| **D-GENERATE-TEMPLATE** | N'importe quel template du tenant ? | **C — Uniquement si le type du dossier le liste** (confirmé utilisateur 2026-09-08) | Plus strict que le bypass TA/WA REST ; l'agent agit *sur ce dossier*. |
 | **D-GENERATE-VARS** | Variables du template ? | **Champs du dossier** (`DossierMcpView.fields`) + overlay optionnel | Équivalent d'un POST `/generate` alimenté par le dossier. Overlay soumis à `WorkflowVariables.assertNoReservedKeys`. |
 | **D-RATE-LIMIT** | Partager le rate limiter REST ? | **Non** | Classe package-private hors surface A3 ; client M2M de confiance (L1). |
 | **D-NO-OPENAPI** | Régénérer le golden ? | **Non** | MCP n'est pas un contrat OpenAPI SPA. |
 
 ## Questions & Open Items
 
-Phases 1–3 en cours de rejeu. **Acté par l'utilisateur :** D-GENERATE-ATTACH = C.
-Reste à poser (une à la fois) : D-GENERATE-TEMPLATE, D-GENERATE-VARS, D-DRY-RUN,
+Phases 1–3 en cours de rejeu. **Acté par l'utilisateur :** D-GENERATE-ATTACH = C,
+D-GENERATE-TEMPLATE = C. Reste à poser (une à la fois) : D-GENERATE-VARS, D-DRY-RUN,
 D-RATE-LIMIT, D-NO-OPENAPI, puis Phase 3 (D-START-ORCH, D-DRY-RUN-START,
 D-FIELDS-READ). D-WRITE-ONE-CYCLE / D-REUSE-PORTS / D-ELEMENT-TYPES restent le
 cadrage FILE-ATTENTE + analyse 15 (pas relancés sauf demande).
 
-Prochain : D-GENERATE-TEMPLATE.
+Prochain : D-GENERATE-VARS.

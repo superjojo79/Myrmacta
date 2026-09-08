@@ -20,7 +20,10 @@ description: Break down work into actionable tasks and estimate timeline
       (clé YAML `server:` dupliquée), voir Risks/Task Breakdown.
 - [x] M4 : Documentation (`DEPLOIEMENT.md`, `GETTING-STARTED.md`, `.env.example`) alignée avec
       l'outillage livré.
-- [ ] M5 : Revue finale (Phase 9) + mise à jour `TODO.md`/`FILE-ATTENTE.md`.
+- [x] M5 : Revue finale (Phase 9, aucun blocage) + `TODO.md` §31/§41 et `FILE-ATTENTE.md` mis à
+      jour (lot A1 déplacé vers § Récemment livré). `CHANGELOG.md` différé — aucune PR ouverte à ce
+      stade (convention déjà suivie par les cycles précédents de ce dépôt), pas demandé par
+      l'utilisateur pour ce cycle.
 
 M1 et M2 sont indépendants entre eux (aucun fichier partagé) — ordre arbitraire, M1 traité en
 premier ici. M3 est isolé et rapide. M4 dépend de M1-M3 (documente ce qui a été livré). M5 clôt le

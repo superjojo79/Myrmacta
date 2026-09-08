@@ -9,58 +9,70 @@ description: Technical implementation notes, patterns, and code guidelines
 ## Development Setup
 
 Workspace : branche `cursor/admin-connector-form-schema-52bc` (no-worktree, convention
-cloud agent). Task tracing indisponible (`ai-devkit task` absent). Frontend : `npm ci`
-déjà exécuté dans la session.
+cloud agent). Task tracing indisponible (`ai-devkit task` → `unknown command 'task'`).
+Frontend : `npm ci` dans la session.
 
 ## Code Structure
 
 ```
-frontend/src/api/admin.ts                          # ConnectorDefinition / ConfigField
-frontend/src/components/connectors/
-  connectorConfig.ts                               # defaultsFromSchema, configFromFormValues, schemaOf
-  connectorConfig.spec.ts
-  ConnectorConfigForm.vue
-  ConnectorConfigForm.spec.ts
+frontend/src/api/admin.ts
+frontend/src/components/connectors/connectorConfig.ts
+frontend/src/components/connectors/ConnectorConfigForm.vue
 frontend/src/views/admin/ConnectorsAdminView.vue
-frontend/src/views/admin/ConnectorsAdminView.spec.ts
-frontend/e2e/pilotage.spec.ts                      # E2E-CONN-1 / E2E-CONN-2 + mocks définitions
+frontend/e2e/pilotage.spec.ts
 ```
 
-Aucun fichier Java.
+Aucun fichier Java. PR [#117](https://github.com/superjojo79/FlowForge/pull/117).
 
 ## Implementation Notes
 
-### M1–M3 (TDD, 2026-09-08)
+### M1–M5 (TDD)
 
-- T1.2 rouge : import `./connectorConfig` manquant (vitest 1 failed suite).
+- T1.2 rouge : import `./connectorConfig` manquant.
 - T2.1 rouge : `ConnectorConfigForm.vue` manquant.
-- T3.1 rouge : 5/5 `ConnectorsAdminView.spec.ts` (textarea encore présent).
-- Vert : 13 tests composant + 5 vue + régression `adminActions` / `adminViews` / `phase8Api`.
+- T3.1 rouge : 5/5 specs vue (textarea encore présent).
+- `adminActions` create : mock sans `configSchema` → schéma `[]` → `config: {}` (pas de
+  casse). Cas http-rest dans `ConnectorsAdminView.spec.ts`.
 
 ### Patterns
 
-- View thin, formulaire extrait, utils purs (pas un composable — pas d’état partagé).
-- `defineModel` sur `ConnectorConfigForm`.
-- `watch(connectorType)` reset via `defaultsFromSchema` (D-SWITCH-TYPE).
-- Fallback textarea seulement si `definitions.length === 0`.
+View thin ; formulaire extrait ; utils purs. `defineModel`. `watch(connectorType)` reset.
+Fallback textarea si `definitions.length === 0`.
 
 ### Design deviations
 
-Aucune à ce stade.
+Aucune. `mapping` reste STRING (D-DESIGN-NO-JSON-EDITOR).
 
-## Integration Points
+## Phase 7 — check implementation
 
-`GET /api/connector-definitions` / `POST /api/connectors` inchangés.
+Revue fichier par fichier vs design :
+
+| Fichier | Alignement | Notes |
+|---|---|---|
+| `admin.ts` | OK | Types OpenAPI `ConfigField` / `ConnectorDefinition` |
+| `connectorConfig.ts` | OK | D-COERCE, D-EMPTY-SCHEMA, omit blank |
+| `ConnectorConfigForm.vue` | OK | 6 types, password, helpText, pas de `v-html` |
+| `ConnectorsAdminView.vue` | OK | D-SWITCH-TYPE, D-FALLBACK-NO-DEFS, create-only |
+| e2e mocks | OK après Phase 8 | GET+POST même route |
+| GUIDE §4 / `06-connecteurs.md` | OK | Catalogue 6 types, plus de JSON brut |
+
+Callers : `listConnectorDefinitions` uniquement vue admin + `phase8Api.spec`. Toggle/delete
+inchangés. Pas de secret logué.
+
+## Phase 8
+
+`npm run test` 312/312 ; Playwright 67/67. Coverage agrégat au-dessus des seuils ;
+`components/connectors` lines 100 %.
+
+## Phase 9
+
+Diff scopé FE + docs. Pas de Liquibase, pas d’OpenAPI, pas de nouvelle dépendance npm.
+Scan : pas de `.only` / secret / debug. Rollback = revert FE. Prêt pour revue humaine.
 
 ## Error Handling
 
-`JSON.parse` du fallback + erreurs API → `toProblemDetail` existant. Validation métier serveur.
+Fallback `JSON.parse` + API → `toProblemDetail`. Validation métier serveur.
 
 ## Security Notes
 
-PASSWORD = `type=password` `autocomplete=new-password`. `helpText` en texte, pas `v-html`.
-Liste : `secretConfigured` inchangé.
-
-## Phase 7 / 8
-
-À remplir après revue fichier par fichier et preuves Vitest + Playwright fraîches.
+PASSWORD `autocomplete=new-password`. Liste : `secretConfigured` seulement.

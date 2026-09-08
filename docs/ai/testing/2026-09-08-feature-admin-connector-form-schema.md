@@ -18,35 +18,35 @@ description: Define testing approach, test cases, and quality assurance
 
 ### `connectorConfig.ts` (T-UTIL)
 
-- [ ] T-UTIL-1 : `defaultsFromSchema` — STRING defaultValue, SELECT required → première option
+- [x] T-UTIL-1 : `defaultsFromSchema` — STRING defaultValue, SELECT required → première option
       si pas de default, BOOLEAN → `false`, champs vides → `''`.
-- [ ] T-UTIL-2 : `configFromFormValues` — INTEGER `"3"` → `3`, BOOLEAN `true`, STRING conservée.
-- [ ] T-UTIL-3 : optionnel `''` / PASSWORD vide **omis** (D-COERCE / D-DESIGN-OMIT-BLANK).
-- [ ] T-UTIL-4 : INTEGER vide optionnel omis ; INTEGER invalide (`abc`) omis (le HTML `required`
+- [x] T-UTIL-2 : `configFromFormValues` — INTEGER `"3"` → `3`, BOOLEAN `true`, STRING conservée.
+- [x] T-UTIL-3 : optionnel `''` / PASSWORD vide **omis** (D-COERCE / D-DESIGN-OMIT-BLANK).
+- [x] T-UTIL-4 : INTEGER vide optionnel omis ; INTEGER invalide (`abc`) omis (le HTML `required`
       couvre le requis).
-- [ ] T-UTIL-5 : `schemaOf` — type inconnu / undefined → `[]`.
-- [ ] T-UTIL-6 : schéma `[]` → `configFromFormValues` → `{}`.
+- [x] T-UTIL-5 : `schemaOf` — type inconnu / undefined → `[]`.
+- [x] T-UTIL-6 : schéma `[]` → `configFromFormValues` → `{}`.
 
 ### `ConnectorConfigForm.vue` (T-FORM)
 
-- [ ] T-FORM-1 : rend un input text, password, select, checkbox, url, number selon le type.
-- [ ] T-FORM-2 : `required` HTML sur STRING requis, pas sur BOOLEAN.
-- [ ] T-FORM-3 : `helpText` affiché.
-- [ ] T-FORM-4 : `v-model` met à jour la valeur (input + select + checkbox).
-- [ ] T-FORM-5 : schéma vide → aucun contrôle, slot / message parent.
+- [x] T-FORM-1 : rend un input text, password, select, checkbox, url, number selon le type.
+- [x] T-FORM-2 : `required` HTML sur STRING requis, pas sur BOOLEAN.
+- [x] T-FORM-3 : `helpText` affiché.
+- [x] T-FORM-4 : `v-model` met à jour la valeur (input + select + checkbox).
+- [x] T-FORM-5 : schéma vide → aucun contrôle, slot / message parent.
 
 ### `ConnectorsAdminView.vue` (T-VIEW) — étend `adminActions.spec.ts` / `adminViews.spec.ts`
 
-- [ ] T-VIEW-1 : catalogue avec `configSchema` http-rest → **pas** de `textarea` ; champs labelés.
-- [ ] T-VIEW-2 : submit poste `config` objet (SELECT + password + strings), pas une string JSON.
-- [ ] T-VIEW-3 : type `smtp` / schéma `[]` → pas de textarea ; submit `config: {}`.
-- [ ] T-VIEW-4 : changer de type reset les valeurs (pas de fuite `webhookSecret` vers scheduler).
-- [ ] T-VIEW-5 : `listConnectorDefinitions` `[]` → textarea JSON conservé (D-FALLBACK-NO-DEFS).
-- [ ] T-VIEW-6 : toggle / delete inchangés (régression `adminActions`).
+- [x] T-VIEW-1 : catalogue avec `configSchema` http-rest → **pas** de `textarea` ; champs labelés.
+- [x] T-VIEW-2 : submit poste `config` objet (SELECT + password + strings), pas une string JSON.
+- [x] T-VIEW-3 : type `smtp` / schéma `[]` → pas de textarea ; submit `config: {}`.
+- [x] T-VIEW-4 : changer de type reset les valeurs (pas de fuite `webhookSecret` vers scheduler).
+- [x] T-VIEW-5 : `listConnectorDefinitions` `[]` → textarea JSON conservé (D-FALLBACK-NO-DEFS).
+- [x] T-VIEW-6 : toggle / delete inchangés (régression `adminActions`).
 
 ### `admin.ts` (T-API)
 
-- [ ] T-API-1 : `listConnectorDefinitions` type `ConnectorDefinition` (compile + appel inchangé).
+- [x] T-API-1 : `listConnectorDefinitions` type `ConnectorDefinition` (compile + appel inchangé).
 
 ## Integration Tests
 
@@ -58,11 +58,11 @@ Mocks `page.route('**/api/connector-definitions*')` **doivent** renvoyer un enve
 `configSchema` (aujourd’hui `envelope([])` — à enrichir sans casser les tests existants qui
 ne visitent pas l’écran).
 
-- [ ] E2E-CONN-1 : Admin → Connecteurs ; créer `http-rest` via SELECT + champs ; POST body
+- [x] E2E-CONN-1 : Admin → Connecteurs ; créer `http-rest` via SELECT + champs ; POST body
       `config.webhookAuthType` / `webhookSecret` / `processKey` / `dossierTypeCode` (pas
       `configJson`).
-- [ ] E2E-CONN-2 : créer `smtp` ; POST `config` `{}` ; pas de textarea.
-- [ ] Régression : suite `pilotage.spec.ts` existante verte.
+- [x] E2E-CONN-2 : créer `smtp` ; POST `config` `{}` ; pas de textarea.
+- [x] Régression : suite `pilotage.spec.ts` existante verte.
 
 ## Test Data
 
@@ -94,7 +94,21 @@ cd frontend && npm run test:e2e
 ```
 
 Jacoco backend non applicable aux fichiers de cette feature. Régression `./mvnw verify`
-recommandée en Phase 8/9 (aucun `.java` touché — smoke).
+non exigée (aucun `.java` dans le diff — `git diff --stat origin/main` vérifié).
+
+### Preuves Phase 8 (2026-09-08)
+
+| Commande | Résultat |
+|---|---|
+| `cd frontend && npm run test` | **312** passed, 0 failed, exit 0 |
+| `cd frontend && npm run typecheck` | exit 0 |
+| `cd frontend && npm run lint` | exit 0 |
+| `cd frontend && npm run test:coverage` | statements 87.38 / branches 80.1 / functions 86.34 / lines 89.04 (seuils tenus). `components/connectors` : lines 100 %, branches ~89–92 % |
+| `cd frontend && npx playwright test` | **67** passed (65 existants + `E2E-CONN-1` + `E2E-CONN-2`), exit 0 |
+
+Écart de test (pas produit) : premier passage E2E, POST ok mais liste vide — le GET
+post-création `fallback()` vers le mock session (liste vide). Corrigé : même `page.route`
+gère GET+POST avec liste accumulée.
 
 ## Manual Testing
 

@@ -2135,26 +2135,33 @@ test('E2E-USERQ-2 admin creates a task question schema and it appears in the lis
 
 test('E2E-CONN-1 admin creates http-rest connector from generated form', async ({ page }) => {
   let createdBody: Record<string, unknown> | null = null
+  let connectors: Array<Record<string, unknown>> = []
   await mockSession(page)
   await page.route(/\/api\/connectors(?:\?|$)/, async (route) => {
     if (route.request().method() === 'POST') {
       createdBody = route.request().postDataJSON() as Record<string, unknown>
+      const created = {
+        id: 'c-new',
+        tenantId: 'tenant_dev',
+        name: createdBody.name,
+        connectorType: createdBody.connectorType,
+        enabled: true,
+        config: createdBody.config,
+        secretConfigured: { webhookSecret: true },
+      }
+      connectors = [...connectors, created]
       await route.fulfill({
         status: 201,
         contentType: 'application/json',
-        body: JSON.stringify({
-          id: 'c-new',
-          tenantId: 'tenant_dev',
-          name: createdBody.name,
-          connectorType: createdBody.connectorType,
-          enabled: true,
-          config: createdBody.config,
-          secretConfigured: { webhookSecret: true },
-        }),
+        body: JSON.stringify(created),
       })
       return
     }
-    await route.fallback()
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(envelope(connectors)),
+    })
   })
   await openApp(page)
   await page.getByRole('link', { name: 'Connecteurs' }).click()
@@ -2178,26 +2185,33 @@ test('E2E-CONN-1 admin creates http-rest connector from generated form', async (
 
 test('E2E-CONN-2 admin creates smtp connector with empty config', async ({ page }) => {
   let createdBody: Record<string, unknown> | null = null
+  let connectors: Array<Record<string, unknown>> = []
   await mockSession(page)
   await page.route(/\/api\/connectors(?:\?|$)/, async (route) => {
     if (route.request().method() === 'POST') {
       createdBody = route.request().postDataJSON() as Record<string, unknown>
+      const created = {
+        id: 'c-smtp',
+        tenantId: 'tenant_dev',
+        name: createdBody.name,
+        connectorType: createdBody.connectorType,
+        enabled: true,
+        config: createdBody.config ?? {},
+        secretConfigured: {},
+      }
+      connectors = [...connectors, created]
       await route.fulfill({
         status: 201,
         contentType: 'application/json',
-        body: JSON.stringify({
-          id: 'c-smtp',
-          tenantId: 'tenant_dev',
-          name: createdBody.name,
-          connectorType: createdBody.connectorType,
-          enabled: true,
-          config: createdBody.config ?? {},
-          secretConfigured: {},
-        }),
+        body: JSON.stringify(created),
       })
       return
     }
-    await route.fallback()
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(envelope(connectors)),
+    })
   })
   await openApp(page)
   await page.getByRole('link', { name: 'Connecteurs' }).click()

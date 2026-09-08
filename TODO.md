@@ -160,7 +160,7 @@ limitation Flowable Community, cohérent).
 
 ---
 
-### [ ] 59. Formulaire admin connecteurs généré depuis `configSchema` (lot A2)
+### [x] 59. Formulaire admin connecteurs généré depuis `configSchema` (lot A2)
 
 **Énoncé :** `GET /api/connector-definitions` expose déjà `configSchema` ; l’écran
 Admin → Connecteurs ignore le schéma et impose un `<textarea>` JSON
@@ -176,6 +176,9 @@ D-CLIENT-REQUIRED, D-SWITCH-TYPE, D-NO-BACKEND — détail dans
 `frontend/src/api/admin.ts`, `frontend/src/components/connectors/**`, e2e connecteurs,
 [GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md) §4, [06-connecteurs.md](analysis%20doc/06-connecteurs.md)
 § écran d’admin.
+
+**Statut :** cycle `dev-lifecycle` Phases 1–9 — [PR #117](https://github.com/superjojo79/FlowForge/pull/117).
+Vitest 312/312 ; Playwright 67/67.
 
 ---
 

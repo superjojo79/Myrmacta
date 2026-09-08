@@ -71,6 +71,13 @@ describe('defaultsFromSchema', () => {
     ]
     expect(defaultsFromSchema(schema).mode).toBe('A')
   })
+
+  it('falls back to empty string when INTEGER defaultValue is not numeric', () => {
+    const schema: ConfigField[] = [
+      { name: 'n', label: 'N', type: 'INTEGER', required: false, defaultValue: 'nope' },
+    ]
+    expect(defaultsFromSchema(schema).n).toBe('')
+  })
 })
 
 describe('configFromFormValues', () => {
@@ -115,6 +122,16 @@ describe('configFromFormValues', () => {
 
   it('returns empty object for an empty schema', () => {
     expect(configFromFormValues([], { leftover: 'x' })).toEqual({})
+  })
+
+  it('keeps INTEGER values that are already numbers', () => {
+    const schema: ConfigField[] = [{ name: 'n', label: 'N', type: 'INTEGER', required: true }]
+    expect(configFromFormValues(schema, { n: 7 })).toEqual({ n: 7 })
+  })
+
+  it('treats null string values as empty optional fields', () => {
+    const schema: ConfigField[] = [{ name: 's', label: 'S', type: 'STRING', required: false }]
+    expect(configFromFormValues(schema, { s: null as unknown as string })).toEqual({})
   })
 })
 

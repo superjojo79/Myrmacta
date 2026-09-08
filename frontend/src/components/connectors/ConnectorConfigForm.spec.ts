@@ -108,4 +108,23 @@ describe('ConnectorConfigForm', () => {
     expect(wrapper.find('[data-testid="connector-config-form"]').exists()).toBe(true)
     expect(wrapper.findAll('[data-testid^="connector-config-field-"]')).toHaveLength(0)
   })
+
+  it('offers a blank option for a non-required SELECT', () => {
+    const wrapper = mount(ConnectorConfigForm, {
+      props: {
+        schema: [
+          {
+            name: 'mode',
+            label: 'Mode',
+            type: 'SELECT',
+            required: false,
+            options: ['A', 'B'],
+          },
+        ],
+        modelValue: { mode: '' },
+      },
+    })
+    const options = wrapper.findAll('[data-testid="connector-config-field-mode"] option')
+    expect(options[0]?.text()).toBe('—')
+  })
 })

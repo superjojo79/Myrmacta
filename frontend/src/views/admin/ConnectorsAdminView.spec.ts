@@ -140,4 +140,19 @@ describe('ConnectorsAdminView generated config form', () => {
       config: { k: 'v' },
     })
   })
+
+  it('shows a problem detail when create fails', async () => {
+    vi.mocked(adminApi.listConnectorDefinitions).mockResolvedValue([
+      { type: 'smtp', label: 'SMTP', configSchema: [] },
+    ])
+    vi.mocked(adminApi.createConnector).mockRejectedValue({
+      response: { status: 400, data: { detail: 'webhookSecret too short' } },
+    })
+    const wrapper = await mountView()
+    await flushPromises()
+    await wrapper.get('input[placeholder="nom"]').setValue('Bad')
+    await wrapper.get('form').trigger('submit.prevent')
+    await flushPromises()
+    expect(wrapper.get('.error').text()).toBe('webhookSecret too short')
+  })
 })

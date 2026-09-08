@@ -285,15 +285,17 @@ Rate-limit distribué / SSE multi-pod / Spring Session (pas de Redis dans la sta
 codegen OpenAPI ; Chart.js SLA (`D-CHARTS = A`) ; DMN ; Cockpit Flowable ;
 OTel / Grafana ; pagination inbox > 100.
 
-**En cours :** lot **A2** `admin-connector-form-schema` — cycle `dev-lifecycle` lancé
-(branche `cursor/admin-connector-form-schema-52bc`). A1 et A3 restent lançables en parallèle
-(surfaces disjointes).
+**En revue :** lot **A2** `admin-connector-form-schema` — [PR #117](https://github.com/superjojo79/FlowForge/pull/117),
+cycle Phases 1–9. A1 et A3 restent lançables en parallèle (surfaces disjointes).
 
 Détail inventaire : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §4 / §6.
 
 ## En revue
 
-Aucune feature produit en revue. `revue-adversariale-securite` (TODO §57)
+Lot **A2** `admin-connector-form-schema` — [PR #117](https://github.com/superjojo79/FlowForge/pull/117),
+cycle `dev-lifecycle` Phases 1–9 (Vitest 312, Playwright 67).
+
+`revue-adversariale-securite` (TODO §57)
 **mergée sur `main`** ([PR #113](https://github.com/superjojo79/FlowForge/pull/113), 2026-09-07).
 
 `connecteur-http-rest-service`

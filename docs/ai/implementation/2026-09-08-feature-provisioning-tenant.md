@@ -140,3 +140,27 @@ description: Technical implementation notes, patterns, and code guidelines
   `./mvnw verify` lui-même (échec de démarrage de contexte sur 353 tests avant correctif), corrigé
   en fusionnant `servlet.context-path` dans le bloc `server:` déjà existant (ligne 112, qui portait
   déjà `forward-headers-strategy`/`servlet.session.cookie.*`).
+- Un second bug réel a été trouvé en Phase 7 (Check Implementation, relecture ligne à ligne) : le
+  rôle PostgreSQL généré préfixe `flowforge_` (10 caractères) au `tenant_id` ; avec la borne
+  initiale de 63 caractères sur `tenant_id`, un identifiant proche du maximum produisait un nom de
+  rôle > 63 octets (NAMEDATALEN), tronqué silencieusement par PostgreSQL — risque de collision
+  entre deux tenants aux identifiants longs, jamais détecté ni par `hadolint` ni par `shellcheck`
+  (angle mort logique métier, pas syntaxique). Corrigé en bornant `tenant_id` à 53 caractères ;
+  vérifié aux limites (53 accepté, 54 rejeté).
+
+## Alignement avec le design (Phase 7)
+
+- Surface exclusive du lot respectée : `git diff --stat` depuis le début du cycle ne montre que
+  `Dockerfile`, `.dockerignore`, `scripts/provision-tenant.sh`, `DEPLOIEMENT.md`,
+  `GETTING-STARTED.md`, `.env.example`, `application.yml`/`application-local.yml` (context-path
+  uniquement) + `docs/ai/**`. Aucun fichier de `frontend/**`, `infrastructure/mcp/**`,
+  `ConnectorsAdminView.vue`, `SecurityConfig.java`, `ConnectorCatalog` ni `docker-compose*.yml`
+  touché.
+- Les 4 décisions actées en Phase 1 sont bien reflétées dans le code livré : image
+  `eclipse-temurin:25-jre`/`-jdk` (`Dockerfile` lignes 11/28), utilisateur non-root
+  (`Dockerfile` lignes 30-31/36), heap dynamique `-XX:MaxRAMPercentage=75.0` (`Dockerfile` ligne
+  48), `context-path` activé (`application.yml`) et neutralisé en local
+  (`application-local.yml`).
+- Aucune déviation majeure par rapport au design doc — seul écart : le smoke test PostgreSQL a
+  utilisé le service local du bac à sable plutôt qu'un conteneur jetable (contrainte
+  d'environnement, pas un choix de conception), déjà documenté ci-dessus.

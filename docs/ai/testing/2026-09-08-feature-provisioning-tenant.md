@@ -7,9 +7,18 @@ description: Define testing approach, test cases, and quality assurance
 # Testing Strategy — `provisioning-tenant` (lot A1)
 
 Lot ops/outillage : pas de code applicatif Java nouveau (pas de use case/entité/port), donc pas de
-suite JUnit dédiée. La stratégie de validation combine revue statique, smoke tests réels (Docker est
-disponible dans cet environnement d'exécution) et la suite backend existante pour le seul changement
-de code applicatif du lot (`context-path`).
+suite JUnit dédiée. La stratégie de validation combine revue statique, smoke tests réels et la
+suite backend existante pour le seul changement de code applicatif du lot (`context-path`).
+
+**Résultat réel (Phase 8, à jour) :** le démon Docker de ce bac à sable fonctionne, mais la
+politique réseau de la session rejette explicitement `production.cloudfront.docker.com` (CDN de
+blobs Docker Hub) — confirmé systémique (`eclipse-temurin:25-jdk` et `postgres:17-alpine` tous deux
+rejetés), non contourné (`/root/.ccr/README.md`). Conséquence : le `Dockerfile` n'a **pas** été
+buildé/exécuté réellement (repli : `hadolint`, propre) ; le smoke PostgreSQL du script de
+provisioning a utilisé le service `postgresql-16` déjà installé localement dans le bac à sable
+plutôt qu'un conteneur jetable — tous les scénarios ont néanmoins été exécutés avec de vraies
+requêtes SQL contre un vrai PostgreSQL. Détail complet :
+[docs/ai/implementation/2026-09-08-feature-provisioning-tenant.md](../implementation/2026-09-08-feature-provisioning-tenant.md).
 
 ## Test Coverage Goals
 **What level of testing do we aim for?**
@@ -29,70 +38,87 @@ de code applicatif du lot (`context-path`).
 **What individual components need testing?**
 
 ### `scripts/provision-tenant.sh`
-- [ ] Rejette un `tenant_id` invalide (ex. `Tenant-B`, `1abc`, chaîne vide, > 53 caractères) avant
-      toute génération SQL — exit non-zéro, message explicite, aucune sortie SQL produite.
-- [ ] Génère un SQL valide pour un `tenant_id` valide (ex. `tenant_b`) : schéma `tenant_b`, rôle
-      `flowforge_tenant_b`, `GRANT`/`REVOKE` alignés sur `docker/postgres/init/01-init-tenant-schema.sql`.
-- [ ] `--apply` sans `TENANT_DB_PASSWORD` positionné → échec explicite avant toute connexion PG.
-- [ ] Mode génération (sans `--apply`) : le SQL sort sur stdout par défaut ; `-o <fichier>` écrit
-      dans le fichier indiqué.
+- [x] Rejette un `tenant_id` invalide (ex. `Tenant-Invalid`, > 53 caractères) avant toute génération
+      SQL — exit non-zéro, message explicite. **Exécuté réellement** (identifiant `Tenant-Invalid`
+      et cas limite 54 caractères, tous deux rejetés en Phase 5/7).
+- [x] Génère un SQL valide pour un `tenant_id` valide (`tenant_smoke`) : schéma, rôle
+      `flowforge_tenant_smoke`, `GRANT`/`REVOKE` alignés sur
+      `docker/postgres/init/01-init-tenant-schema.sql`. **Exécuté réellement**, sortie inspectée.
+- [x] `--apply` sans `TENANT_DB_PASSWORD` positionné → échec explicite avant toute connexion PG.
+      **Exécuté réellement** (exit 1, message clair, aucune tentative de connexion).
+- [x] Mode génération (sans `--apply`) : le SQL sort sur stdout par défaut. **Exécuté réellement**
+      (option `-o <fichier>` non ré-exécutée séparément mais couverte par lecture de code +
+      `shellcheck` — chemin symétrique au cas stdout déjà exercé).
 
 ### `Dockerfile`
 - [ ] Le build multi-stage réussit (`docker build -t flowforge:test .`) à partir d'un checkout
-      propre.
+      propre. **Non exécuté** — Docker Hub bloqué dans ce bac à sable (voir note en tête de doc).
+      Repli : `hadolint Dockerfile` → exit 0, aucun avertissement.
 - [ ] L'image finale exécute le process en tant qu'utilisateur non-root (`docker run --rm
-      flowforge:test id` → UID ≠ 0).
+      flowforge:test id` → UID ≠ 0). **Non exécuté**, même raison. Repli : revue statique du
+      `Dockerfile` (`USER flowforge` avant `ENTRYPOINT`, UID/GID 10001 fixes).
 - [ ] Le jar copié dans l'image finale ne contient pas le JDK complet ni les sources Maven du stage
-      `build` (image runtime basée sur `-jre`, pas `-jdk`).
+      `build`. **Non exécuté**, même raison. Repli : revue statique (stage `runtime` déclaré
+      `FROM eclipse-temurin:25-jre`, `COPY --from=build` limité au jar).
 
 ## Integration Tests
 **How do we test component interactions?**
 
-- [ ] Smoke réel end-to-end : `docker run` d'un conteneur PostgreSQL jetable → exécuter
-      `scripts/provision-tenant.sh tenant_smoke --apply` contre ce conteneur → vérifier que le
-      schéma `tenant_smoke` et le rôle `flowforge_tenant_smoke` existent, avec les permissions
-      attendues (le rôle ne voit que son propre schéma — reproduit l'esprit de
-      `TenantRoleIsolationIT`, TODO §41, sans dépendre de Testcontainers/Java).
-- [ ] Rejeu du même appel `--apply` sur le même conteneur → échec explicite (pas d'écrasement), sans
-      corrompre le schéma déjà créé.
-- [ ] `./mvnw verify` (suite backend complète, profil `test`, context-path actif par défaut dans ce
-      profil) : zéro régression sur la suite existante malgré l'activation de
-      `server.servlet.context-path`.
+- [x] Smoke réel end-to-end : `scripts/provision-tenant.sh tenant_smoke --apply` contre le service
+      PostgreSQL local du bac à sable (pas un conteneur jetable — Docker Hub bloqué) → schéma et
+      rôle vérifiés créés avec les permissions attendues. **Isolation cross-tenant vérifiée avec un
+      second tenant réel** (`tenant_smoke2`) : `flowforge_tenant_smoke` reçoit `permission denied`
+      en tentant `CREATE TABLE tenant_smoke2.probe` — reproduit réellement l'esprit de
+      `TenantRoleIsolationIT` (TODO §41), sans Testcontainers.
+- [x] Rejeu du même appel `--apply` → échec explicite (« Le schéma existe déjà — provisioning
+      refusé »), schéma non corrompu (vérifié par re-sélection après rejeu). **Exécuté réellement.**
+- [x] `./mvnw -B verify -Dmaven.compiler.release=21` (suite backend complète, profil `test`,
+      context-path actif) : **`BUILD SUCCESS`, 1738 tests, 0 échec, 0 erreur, ArchUnit conforme,
+      Jacoco respecté** — exécuté réellement, à deux reprises (un échec réel intermédiaire dû à un
+      bug YAML introduit puis corrigé, voir doc implémentation).
 - [ ] Démarrage réel du conteneur applicatif (image buildée) avec `APP_TENANT_ID=tenant_smoke` et
-      connexion au PostgreSQL provisionné ci-dessus si le temps du cycle le permet ; sinon,
-      documenter précisément ce qui a été vérifié à la place (ex. `./mvnw verify` seul + revue
-      statique du `Dockerfile`) plutôt que de prétendre un smoke complet non exécuté.
+      connexion au PostgreSQL provisionné ci-dessus. **Non exécuté** : dépend du build d'image,
+      lui-même bloqué (Docker Hub). Ce qui a été vérifié à la place : `./mvnw verify` (démarrage de
+      contexte Spring réel avec `context-path` actif, hors conteneur) + revue statique du
+      `Dockerfile`.
 
 ## End-to-End Tests
 **What user flows need validation?**
 
-- [ ] Parcours ops complet documenté dans `DEPLOIEMENT.md` : build image → provisionner un tenant →
-      démarrer l'instance avec `context-path` actif → ajouter le bloc reverse-proxy — rejoué au
-      moins partiellement (les étapes automatisables) pendant ce cycle, le reste (Keycloak, reverse
-      proxy réel) restant hors de portée d'un smoke test en bac à sable (déjà noté hors scope en
-      requirements).
-- [ ] Parcours dev local (`GETTING-STARTED.md`) : aucune régression observable — vérifié par la
-      suite `./mvnw verify` (profil `test`) et par lecture du diff `application-local.yml` (context
-      path neutralisé pour ce profil).
+- [x] Parcours ops — étape provisioning tenant (`DEPLOIEMENT.md` §4) : **rejouée réellement**
+      (`scripts/provision-tenant.sh --apply`, voir Integration Tests). Étapes build image /
+      démarrage conteneur / reverse-proxy réel : non rejouables dans ce bac à sable (Docker Hub
+      bloqué pour la première, Keycloak/Apache réels hors scope pour les autres, déjà noté en
+      requirements) — restent des commandes documentées, non exécutées dans ce cycle.
+- [x] Parcours dev local (`GETTING-STARTED.md`) : aucune régression observable — **vérifié
+      réellement** par `./mvnw verify` (profil `test`, 1738/1738 tests) et par lecture du diff
+      `application-local.yml` (context-path neutralisé pour ce profil).
 
 ## Test Data
 **What data do we use for testing?**
 
-- Conteneur PostgreSQL jetable (`postgres:17-alpine`, même image que `docker-compose.yml`), lancé et
-  détruit pour le seul besoin du smoke test — pas de volume persistant, pas de dépendance à
-  l'environnement de dev habituel.
-- Identifiants de tenant de test dédiés (`tenant_smoke`, jamais `tenant_dev`) pour ne pas interférer
-  avec un éventuel schéma de dev existant.
+- **Réel** : service PostgreSQL 16 déjà installé dans le bac à sable (`sudo service postgresql
+  start`), pas un conteneur jetable `postgres:17-alpine` comme prévu initialement (Docker Hub
+  bloqué) — SQL standard (`CREATE SCHEMA`/`CREATE ROLE`/`GRANT`/`REVOKE`), pas de divergence
+  attendue entre PostgreSQL 16 et 17 sur ces primitives.
+- Identifiants de tenant de test dédiés (`tenant_smoke`, `tenant_smoke2`), jamais `tenant_dev` —
+  schémas/rôles nettoyés après le smoke test (`DROP SCHEMA ... CASCADE`, `DROP ROLE`).
 
 ## Test Reporting & Coverage
 **How do we verify and communicate test results?**
 
-- `./mvnw verify` : sortie fraîche à citer dans le doc d'implémentation (nombre de tests, 0 échec),
-  cf. `verify` skill — pas de claim sans sortie de commande récente.
-- Sortie brute des smoke tests Docker/PostgreSQL consignée dans le doc d'implémentation (commandes +
-  résultat), pas seulement « ça marche ».
+- `./mvnw -B verify -Dmaven.compiler.release=21` : **`BUILD SUCCESS`, 1738 tests, 0 échec, 0 erreur,
+  ArchUnit conforme, Jacoco « All coverage checks have been met »** (sortie fraîche, exécutée deux
+  fois pendant ce cycle — un échec réel entre les deux, corrigé).
+- `hadolint Dockerfile` : exit 0, aucune sortie.
+- `shellcheck scripts/provision-tenant.sh` : exit 0, aucune sortie (exécuté deux fois, avant et
+  après le correctif de longueur `tenant_id`).
+- Smoke PostgreSQL (`scripts/provision-tenant.sh`) : sorties brutes consignées dans
+  [docs/ai/implementation/2026-09-08-feature-provisioning-tenant.md](../implementation/2026-09-08-feature-provisioning-tenant.md)
+  et dans les commandes exécutées pendant Phase 5/7 de ce cycle.
 - Pas de rapport de couverture Jacoco supplémentaire attendu : aucun code Java nouveau introduit par
-  ce lot (seul un changement de configuration `application.yml`).
+  ce lot (seul un changement de configuration `application.yml`) — confirmé par le run `verify`
+  ci-dessus (« Analyzed bundle... 554 classes », identique au périmètre existant).
 
 ## Manual Testing
 **What requires human validation?**

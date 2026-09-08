@@ -18,7 +18,7 @@ description: Break down work into actionable tasks and estimate timeline
 - [x] M3 : `context-path` activé en configuration, `./mvnw verify` réellement exécuté et vert (1738
       tests, 0 échec, ArchUnit conforme, Jacoco respecté) — un bug réel trouvé et corrigé en route
       (clé YAML `server:` dupliquée), voir Risks/Task Breakdown.
-- [ ] M4 : Documentation (`DEPLOIEMENT.md`, `GETTING-STARTED.md`, `.env.example`) alignée avec
+- [x] M4 : Documentation (`DEPLOIEMENT.md`, `GETTING-STARTED.md`, `.env.example`) alignée avec
       l'outillage livré.
 - [ ] M5 : Revue finale (Phase 9) + mise à jour `TODO.md`/`FILE-ATTENTE.md`.
 

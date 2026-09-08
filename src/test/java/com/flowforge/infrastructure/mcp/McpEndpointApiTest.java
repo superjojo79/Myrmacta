@@ -25,6 +25,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  * le SDK MCP convertit une exception de tool en {@code isError=true} (message, pas de stack
  * trace) sans mapper dédié. Depuis extension-mcp-flux-metier (TODO §56) : 16 tools nommés (9
  * initiaux de serveur-mcp + 7 nouveaux — connecteurs, questions de tâche).
+ * Lot A3 mcp-ecritures-metier : +4 tools d'écriture métier (20 au total).
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -48,7 +49,11 @@ class McpEndpointApiTest {
             "define_connector_instance",
             "list_task_question_schemas",
             "get_task_question_schema",
-            "define_task_question_schema");
+            "define_task_question_schema",
+            "create_dossier",
+            "add_dossier_element",
+            "start_workflow",
+            "generate_document");
 
     @Autowired
     private MockMvc mockMvc;

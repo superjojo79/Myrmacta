@@ -276,12 +276,13 @@ docker compose down -v         # + supprime les volumes (base, realm Keycloak, b
 ## 12. Serveur MCP (outillage agent IA)
 
 FlowForge expose un serveur [MCP](https://modelcontextprotocol.io) pour un agent IA interne
-(Claude Code ou tout autre client MCP compatible Streamable HTTP) — 16 tools couvrant la
+(Claude Code ou tout autre client MCP compatible Streamable HTTP) — 20 tools couvrant la
 définition de type de dossier (schéma + templates de documents associés), le déploiement de
-workflow BPMN, la définition de connecteurs et de schémas de questions de tâche, la lecture d'un
-dossier, la recherche de dossiers, les statistiques SLA, et la lecture des types/templates/
-workflows/connecteurs — de quoi définir un flux métier complet (type de dossier, connecteurs,
-questions de tâche, workflow) sans sortir du canal MCP.
+workflow BPMN, la définition de connecteurs et de schémas de questions de tâche, **et les
+écritures métier** (`create_dossier`, `add_dossier_element`, `start_workflow`,
+`generate_document`), plus la lecture d'un dossier, la recherche, les statistiques SLA, et
+la lecture des types/templates/workflows/connecteurs — de quoi définir **et opérer** un flux
+métier sans sortir du canal MCP.
 
 Endpoint : `POST http://localhost:8080/api/m2m/mcp` — même chaîne de sécurité machine-à-machine
 que `/api/m2m/connectors/**` (aucune session navigateur, aucun cookie) : un JWT `Authorization:
@@ -300,7 +301,7 @@ curl -i http://localhost:8080/api/m2m/mcp \
 ```
 
 Une réponse `200` avec `"serverInfo":{"name":"flowforge",...}` confirme l'endpoint actif. La
-liste des 16 tools (`tools/list`) et leurs schémas d'entrée sont générés automatiquement depuis le
+liste des 20 tools (`tools/list`) et leurs schémas d'entrée sont générés automatiquement depuis le
 code (`infrastructure.mcp.tool`) — pas de documentation à maintenir manuellement en plus de
 celle-ci. Aucune UI dédiée côté SPA : ce canal est réservé à l'outillage interne, pas aux
 utilisateurs finaux du tenant.

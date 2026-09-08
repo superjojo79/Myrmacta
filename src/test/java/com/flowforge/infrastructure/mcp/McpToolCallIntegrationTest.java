@@ -198,6 +198,82 @@ class McpToolCallIntegrationTest {
     }
 
     @Test
+    void createDossier_persistsAndIsVisibleToDirectRepositoryRead() throws Exception {
+        String typeCode = "MCPWR" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        dossierTypeRepository.save(new DossierType(
+                UUID.randomUUID(), TENANT, typeCode, "Write type", "wf-write", true, true,
+                List.of(), null, false, null, "system", "system"));
+
+        MvcResult call = callMcp(sessionId, TENANT, "API_SERVICE", 2, "tools/call", """
+                {
+                  "name": "create_dossier",
+                  "arguments": {
+                    "dossierTypeCode": "%s",
+                    "label": "MCP write dossier"
+                  }
+                }
+                """.formatted(typeCode));
+
+        String body = call.getResponse().getContentAsString();
+        assertThat(body).as("body: %s", body).contains("\"isError\":false");
+        assertThat(body).contains("MCP write dossier");
+        List<Dossier> created = dossierRepository.findByDossierTypeCode(TENANT, typeCode);
+        assertThat(created).anyMatch(d -> "MCP write dossier".equals(d.label()));
+        assertThat(created.stream()
+                        .filter(d -> "MCP write dossier".equals(d.label()))
+                        .findFirst()
+                        .orElseThrow()
+                        .createdBy())
+                .isEqualTo("agent-1");
+    }
+
+    @Test
+    void addDossierElement_note_persistsOnCreatedDossier() throws Exception {
+        String typeCode = "MCPNT" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        dossierTypeRepository.save(new DossierType(
+                UUID.randomUUID(), TENANT, typeCode, "Note type", "wf-note", true, true,
+                List.of(), null, false, null, "system", "system"));
+        Instant now = Instant.now();
+        Dossier dossier = new Dossier(
+                UUID.randomUUID(), TENANT, "DOS-NOTE-" + UUID.randomUUID().toString().substring(0, 8), typeCode,
+                "Note host", DossierStatus.OUVERT, Map.of(), null, 0L, "creator", now, "creator", now, null, null,
+                null);
+        dossierRepository.save(dossier);
+
+        MvcResult call = callMcp(sessionId, TENANT, "API_SERVICE", 2, "tools/call", """
+                {
+                  "name": "add_dossier_element",
+                  "arguments": {
+                    "dossierId": "%s",
+                    "type": "NOTE",
+                    "label": "MCP note",
+                    "metadata": {"text": "hello from MCP"}
+                  }
+                }
+                """.formatted(dossier.id()));
+
+        String body = call.getResponse().getContentAsString();
+        assertThat(body).as("body: %s", body).contains("\"isError\":false");
+        assertThat(body).contains("MCP note").contains("hello from MCP");
+    }
+
+    @Test
+    void createDossier_unknownType_returnsIsError() throws Exception {
+        MvcResult call = callMcp(sessionId, TENANT, "API_SERVICE", 2, "tools/call", """
+                {
+                  "name": "create_dossier",
+                  "arguments": {
+                    "dossierTypeCode": "DOESNOTEXIST",
+                    "label": "Nope"
+                  }
+                }
+                """);
+
+        String body = call.getResponse().getContentAsString();
+        assertThat(body).as("body: %s", body).contains("\"isError\":true");
+    }
+
+    @Test
     void searchDossiers_defaultsToPageSize20() throws Exception {
         MvcResult call = callMcp(sessionId, TENANT, "API_SERVICE", 2, "tools/call", """
                 {"name": "search_dossiers", "arguments": {}}

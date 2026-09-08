@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class McpArgsTest {
@@ -76,5 +77,79 @@ class McpArgsTest {
         assertThatThrownBy(() -> McpArgs.requireBoolean(args, "dryRun"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("dryRun is required");
+    }
+
+    @Test
+    void requireNonBlank_trims() {
+        assertThat(McpArgs.requireNonBlank("  SINISTRE  ", "dossierTypeCode")).isEqualTo("SINISTRE");
+    }
+
+    @Test
+    void requireNonBlank_null_throws() {
+        assertThatThrownBy(() -> McpArgs.requireNonBlank(null, "label"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("label is required");
+    }
+
+    @Test
+    void requireUuid_valid_returnsUuid() {
+        UUID id = UUID.randomUUID();
+
+        assertThat(McpArgs.requireUuid(id.toString(), "dossierId")).isEqualTo(id);
+    }
+
+    @Test
+    void requireUuid_null_throws() {
+        assertThatThrownBy(() -> McpArgs.requireUuid(null, "dossierId"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("dossierId is required");
+    }
+
+    @Test
+    void requireUuid_blank_throws() {
+        assertThatThrownBy(() -> McpArgs.requireUuid("  ", "dossierId"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("dossierId is required");
+    }
+
+    @Test
+    void requireUuid_malformed_throws() {
+        assertThatThrownBy(() -> McpArgs.requireUuid("not-a-uuid", "dossierId"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("dossierId must be a UUID");
+    }
+
+    @Test
+    void optionalMap_null_returnsEmpty() {
+        assertThat(McpArgs.optionalMap(null, "fields")).isEmpty();
+    }
+
+    @Test
+    void optionalMap_map_returnsCopy() {
+        Map<String, Object> fields = new HashMap<>();
+        fields.put("amount", 10);
+
+        Map<String, Object> copy = McpArgs.optionalMap(fields, "fields");
+
+        assertThat(copy).containsEntry("amount", 10);
+        fields.put("amount", 99);
+        assertThat(copy).containsEntry("amount", 10);
+    }
+
+    @Test
+    void optionalMap_wrongType_throws() {
+        assertThatThrownBy(() -> McpArgs.optionalMap("nope", "fields"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("fields must be an object");
+    }
+
+    @Test
+    void optionalMap_nonStringKey_throws() {
+        Map<Object, Object> invalid = new HashMap<>();
+        invalid.put(42, "x");
+
+        assertThatThrownBy(() -> McpArgs.optionalMap(invalid, "fields"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("fields must be an object");
     }
 }

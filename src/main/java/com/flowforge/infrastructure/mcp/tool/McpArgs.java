@@ -22,4 +22,40 @@ final class McpArgs {
         }
         return b;
     }
+
+    static String requireNonBlank(String raw, String key) {
+        if (raw == null || raw.isBlank()) {
+            throw new IllegalArgumentException(key + " is required");
+        }
+        return raw.trim();
+    }
+
+    static java.util.UUID requireUuid(String raw, String key) {
+        if (raw == null || raw.isBlank()) {
+            throw new IllegalArgumentException(key + " is required");
+        }
+        try {
+            return java.util.UUID.fromString(raw.trim());
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException(key + " must be a UUID");
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    static Map<String, Object> optionalMap(Object value, String key) {
+        if (value == null) {
+            return Map.of();
+        }
+        if (!(value instanceof Map<?, ?> map)) {
+            throw new IllegalArgumentException(key + " must be an object");
+        }
+        Map<String, Object> copy = new java.util.LinkedHashMap<>();
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
+            if (!(entry.getKey() instanceof String name)) {
+                throw new IllegalArgumentException(key + " must be an object");
+            }
+            copy.put(name, entry.getValue());
+        }
+        return Map.copyOf(copy);
+    }
 }

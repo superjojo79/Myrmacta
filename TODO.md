@@ -180,6 +180,29 @@ D-CLIENT-REQUIRED, D-SWITCH-TYPE, D-NO-BACKEND, **D-WEBHOOK-URL = C** (rejeu Pha
 
 **Statut :** cycle `dev-lifecycle` Phases 1–9 **clos** — [PR #117](https://github.com/superjojo79/FlowForge/pull/117).
 Vitest 324/324 ; Playwright 68/68 (`E2E-CONN-1` webhook, `E2E-CONN-2` smtp, `E2E-CONN-3` callback).
+**Mergé sur `main`** (2026-09-08).
+
+---
+
+### [ ] 60. Écritures métier MCP — `create_dossier` / `add_dossier_element` / `start_workflow` / `generate_document`
+
+**Énoncé :** lot **A3** ([FILE-ATTENTE.md](FILE-ATTENTE.md)) — le canal MCP (16 tools) définit un
+flux mais ne l'opère pas. Backlog déjà cadré dans
+[15-serveur-mcp.md](analysis%20doc/15-serveur-mcp.md). **Un seul cycle**, pas 4 PRs.
+
+**Statut :** Phases 1–9 du cycle `dev-lifecycle` terminées ;
+[PR #118](https://github.com/superjojo79/FlowForge/pull/118) en revue
+(`cursor/mcp-ecritures-metier-6efe`). Case cochée après merge sur `main`.
+Numérotation §60 : §59 déjà pris par A2 mergé ([PR #117](https://github.com/superjojo79/FlowForge/pull/117)).
+
+**Décisions :** D-WRITE-ONE-CYCLE, D-REUSE-PORTS, D-DRY-RUN, D-ELEMENT-TYPES (NOTE/LINK/INFORMATION),
+D-START-ORCH (`ManualStartOrchestrator`), D-GENERATE-ATTACH (`PRODUCED_DOC`, pas de PDF Base64),
+D-GENERATE-TEMPLATE (type du dossier), D-NO-OPENAPI. `CreateDossierUseCase*` non modifié
+(couture import batch Vague B).
+
+**Impacte :** `infrastructure.mcp.tool` uniquement + tests MCP + `GETTING-STARTED.md` §12.
+
+**Détail :** `docs/ai/**/2026-09-08-feature-mcp-ecritures-metier.md`.
 
 ---
 

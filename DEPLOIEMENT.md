@@ -5,12 +5,12 @@ infrastructure jetable, un seul tenant `tenant_dev`) pour couvrir ce qui change 
 cadre : construire un artefact déployable, exposer une instance derrière un reverse-proxy, faire
 tourner plusieurs tenants, et gérer les comptes réels côté Keycloak.
 
-> **Portée honnête.** Le modèle cible (une instance Spring Boot dédiée par tenant, routage par
-> chemin) est **décidé** (décisions n° 13–14, [analysis doc/02-multi-tenant.md](analysis%20doc/02-multi-tenant.md)),
-> mais son **outillage** ne l'est pas : il n'existe ni Dockerfile, ni CLI de provisioning tenant à ce
-> jour ([TODO.md](TODO.md) points 31/41 — « pas de CLI provisioning tenant »). Ce guide documente donc
-> une procédure **manuelle**, pas un outil clé en main. Ne pas lire ce document comme la preuve qu'un
-> pipeline de déploiement existe déjà.
+> **Portée.** Le modèle cible (une instance Spring Boot dédiée par tenant, routage par chemin) est
+> **décidé** (décisions n° 13–14, [analysis doc/02-multi-tenant.md](analysis%20doc/02-multi-tenant.md))
+> et désormais **outillé** ([TODO.md](TODO.md) points 31/41 — lot `provisioning-tenant`) : un
+> `Dockerfile` à la racine du dépôt et un script `scripts/provision-tenant.sh` pour le schéma/rôle
+> PostgreSQL par tenant. Le démarrage de l'instance et le bloc reverse-proxy restent des étapes
+> documentées (commande / gabarit de config), pas automatisées de bout en bout — voir §4.
 
 ------
 
@@ -29,12 +29,41 @@ dans `target/classes/static/`) — pas d'étape manuelle séparée comme en dev 
 java -jar target/flowforge-*.jar
 ```
 
-**Pas de `Dockerfile` fourni par ce dépôt.** Le déploiement conteneurisé est une cible affichée dans
-[README.md](README.md#modèle-de-déploiement), mais aucune décision (image de base, utilisateur non
-root, taille de heap par défaut) n'a été actée dans `TODO.md` — en produire un revient à trancher ces
-points sans passer par le processus de décision du projet. Si un déploiement conteneurisé est
-nécessaire dès maintenant, traiter ce Dockerfile comme n'importe quelle décision technique ouverte
-(cf. `flowforge-conventions`, §« Points ouverts ») plutôt que de l'ajouter silencieusement.
+### Construire l'image conteneur
+
+Le `Dockerfile` à la racine du dépôt construit une image exécutable en 2 stages :
+
+```bash
+docker build -t flowforge:<tag> .
+```
+
+Décisions actées pour cette image (lot `provisioning-tenant`, voir
+[docs/ai/requirements/2026-09-08-feature-provisioning-tenant.md](docs/ai/requirements/2026-09-08-feature-provisioning-tenant.md)) :
+
+| Décision | Choix |
+|---|---|
+| Image de base | `eclipse-temurin:25-jre` (stage runtime) — build avec `eclipse-temurin:25-jdk` (stage build) |
+| Utilisateur du conteneur | Non-root dédié (`flowforge`, UID/GID 10001) |
+| Heap JVM par défaut | Dynamique (`-XX:MaxRAMPercentage=75.0`), pas de `-Xmx` fixe — s'adapte à la limite mémoire du conteneur |
+
+```bash
+docker run -d --name flowforge-<tenant_id> -p 8081:8080 \
+  -e APP_TENANT_ID=<tenant_id> \
+  -e DB_URL=jdbc:postgresql://<host>:5432/flowforge \
+  -e DB_USERNAME=flowforge_<tenant_id> -e DB_PASSWORD=<mot-de-passe-du-role> \
+  -e SPRING_PROFILES_ACTIVE=<profil-non-local> \
+  -e OAUTH2_ISSUER_URI=<realm-keycloak-reel> \
+  flowforge:<tag>
+```
+
+`JAVA_OPTS` permet d'ajuster les options JVM sans reconstruire l'image (ex. `-e
+JAVA_OPTS="-Dhttps.proxyHost=..."`). `APP_TENANT_ID` (relaxed-binding Spring Boot standard vers
+`app.tenant.id`) est la seule variable propre au tenant à passer au conteneur — voir §4 pour le
+provisioning du schéma/rôle PostgreSQL correspondant.
+
+> Validation de ce `Dockerfile` dans le cycle qui l'a produit : revue statique + `hadolint` (propre),
+> pas de `docker build`/`docker run` réel (environnement d'exécution du cycle sans accès registre
+> Docker Hub) — à vérifier par un build réel avant un premier déploiement.
 
 ------
 
@@ -56,22 +85,19 @@ Checklist des variables à revoir pour un environnement réel :
 | `APP_SECURITY_COOKIE_SECURE` | `false` (HTTP) | `true` (défaut) — exige HTTPS de bout en bout ou une terminaison TLS au reverse-proxy ; `server.forward-headers-strategy: framework` est déjà positionné pour honorer les en-têtes `X-Forwarded-*` |
 | `OIDC_CLIENT_SECRET` | `dev-secret-change-me` | secret généré par le client Keycloak réel (§5) |
 | `OAUTH2_ISSUER_URI` / `M2M_JWT_SECRET` | vides (M2M désactivé) ou HMAC de test | `OAUTH2_ISSUER_URI` pointant le realm Keycloak réel — jamais `M2M_JWT_SECRET` (§7) |
-| `app.tenant.id` (pas une variable `.env`, propriété `application.yml`) | `tenant_dev` | un identifiant par instance, propre à chaque tenant (§4) |
+| `APP_TENANT_ID` (relaxed-binding Spring Boot vers `app.tenant.id`, défaut `tenant_dev` dans `application.yml`) | `tenant_dev` | un identifiant par instance, propre à chaque tenant (§4) |
 
 ------
 
-## 3. Activer le routage par chemin (décision n° 14)
+## 3. Routage par chemin (décision n° 14)
 
-En dev local, `server.servlet.context-path` reste **commenté** dans `application.yml` (l'instance
-sert sur `/`, pas de reverse-proxy). Pour la cible multi-tenant, le décommenter :
+`server.servlet.context-path: /${app.tenant.id}` est **actif par défaut** dans `application.yml`
+(ex. `/tenant_a` pour l'instance `app.tenant.id=tenant_a`) — seul le profil `local`
+(`application-local.yml`) le neutralise pour que le poste de dev continue de servir l'application à
+la racine `/`. Aucune action nécessaire pour l'activer sur une instance déployée : ne pas passer
+`SPRING_PROFILES_ACTIVE=local` suffit à l'exposer sous son préfixe de tenant.
 
-```yaml
-server:
-  servlet:
-    context-path: /${app.tenant.id}    # ex. /tenant_a — identique au préfixe du reverse-proxy
-```
-
-puis router chaque instance depuis un reverse-proxy Apache à configuration **statique** (un bloc par
+Router ensuite chaque instance depuis un reverse-proxy Apache à configuration **statique** (un bloc par
 tenant, ajouté au provisioning — voir [analysis doc/02-multi-tenant.md](analysis%20doc/02-multi-tenant.md#routage-vers-linstance--chemin-par-tenant-reverse-proxy-statique)
 pour le détail et la justification du choix) :
 
@@ -87,32 +113,30 @@ OAuth2), les webhooks entrants et l'API machine-to-machine (§7) — pas de rout
 
 ------
 
-## 4. Provisionner un nouveau tenant — runbook manuel
+## 4. Provisionner un nouveau tenant
 
-Comme rappelé en tête de ce guide, **aucun outil n'automatise cette procédure aujourd'hui** ; elle se
-fait à la main, étape par étape.
+1. **Choisir un identifiant de tenant** (ex. `tenant_b`), unique parmi les instances déployées —
+   doit matcher `^[a-z][a-z0-9_]{2,62}$` (identifiant PostgreSQL non cité).
+2. **Créer le schéma et le rôle PostgreSQL dédiés** avec `scripts/provision-tenant.sh` — reproduit
+   paramétré le gabarit `docker/postgres/init/01-init-tenant-schema.sql` (celui utilisé pour
+   `tenant_dev` en dev local) :
+   ```bash
+   # Revue du SQL avant application (recommandé) :
+   TENANT_DB_PASSWORD='<mot-de-passe-fort>' scripts/provision-tenant.sh tenant_b
 
-1. **Choisir un identifiant de tenant** (ex. `tenant_b`), unique parmi les instances déployées.
-2. **Créer le schéma et le rôle PostgreSQL dédiés.** `docker/postgres/init/01-init-tenant-schema.sql`
-   sert de gabarit pour le dev local (`tenant_dev`) — le rejouer en remplaçant le nom de schéma et le
-   mot de passe :
-   ```sql
-   CREATE SCHEMA IF NOT EXISTS tenant_b;
-   CREATE ROLE flowforge_tenant_b LOGIN PASSWORD '<mot-de-passe-fort>';
-   GRANT CONNECT ON DATABASE flowforge TO flowforge_tenant_b;
-   REVOKE ALL ON SCHEMA tenant_b FROM PUBLIC;
-   REVOKE CREATE ON SCHEMA public FROM flowforge_tenant_b;
-   GRANT USAGE ON SCHEMA public TO flowforge_tenant_b;
-   GRANT USAGE, CREATE ON SCHEMA tenant_b TO flowforge_tenant_b;
-   GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA tenant_b TO flowforge_tenant_b;
-   GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA tenant_b TO flowforge_tenant_b;
-   ALTER DEFAULT PRIVILEGES IN SCHEMA tenant_b GRANT ALL ON TABLES TO flowforge_tenant_b;
-   ALTER DEFAULT PRIVILEGES IN SCHEMA tenant_b GRANT ALL ON SEQUENCES TO flowforge_tenant_b;
+   # Application directe contre PostgreSQL (superuser de provisioning) :
+   TENANT_DB_PASSWORD='<mot-de-passe-fort>' \
+     PGHOST=<host> PGPORT=5432 PGDATABASE=flowforge PGUSER=<superuser> PGPASSWORD=<mdp-superuser> \
+     scripts/provision-tenant.sh tenant_b --apply
    ```
-   C'est l'option retenue par la décision D-41 (**un rôle PostgreSQL par tenant**, [TODO.md](TODO.md)
-   point 41) — un seul rôle superutilisateur partagé entre tenants romprait l'isolation par schéma.
-3. **Démarrer une nouvelle instance** avec sa propre configuration : `app.tenant.id=tenant_b`,
-   `DB_USERNAME=flowforge_tenant_b` / `DB_PASSWORD` correspondant, un port dédié, `server.servlet.context-path=/tenant_b` (§3).
+   Échoue explicitement si le schéma `tenant_b` existe déjà (pas d'écrasement). C'est l'option
+   retenue par la décision D-41 (**un rôle PostgreSQL par tenant**, [TODO.md](TODO.md) point 41) —
+   un seul rôle superutilisateur partagé entre tenants romprait l'isolation par schéma.
+   Voir `scripts/provision-tenant.sh --help` pour le détail des options.
+3. **Démarrer une nouvelle instance** (image buildée en §1) avec sa propre configuration :
+   `APP_TENANT_ID=tenant_b`, `DB_USERNAME=flowforge_tenant_b` / `DB_PASSWORD` correspondant, un port
+   dédié — `context-path` (`/tenant_b`) est déjà actif par défaut (§3), aucune configuration
+   supplémentaire nécessaire pour ce point précis.
 4. **Ajouter le bloc reverse-proxy** de ce tenant (§3).
 5. **Si ce tenant a besoin de l'API machine-to-machine** (connecteurs, serveur MCP) : provisionner son
    client Keycloak `client_credentials` dédié (§7). Le flux humain (BFF), lui, n'a besoin d'aucun
@@ -209,9 +233,11 @@ en production.
 
 ## Ce qui n'est pas (encore) couvert par ce guide
 
-- **Aucune image ni CLI de déploiement** — voir §1 et l'avertissement de portée en tête de document.
-- **Aucun outillage de provisioning tenant** — le runbook §4 est manuel ; `TODO.md` (points 31, 41)
-  suit ce manque comme un point ouvert du projet, pas une simplification volontaire de ce guide.
+- **Démarrage de l'instance et bloc reverse-proxy** restent des étapes documentées (§1/§3/§4), pas
+  automatisées de bout en bout — dépendent trop de l'environnement cible (systemd/Docker/bare metal,
+  Apache/nginx) pour un script générique.
+- **Provisioning Keycloak** (réalm, clients OIDC/M2M, §5/§7) reste une procédure manuelle — hors
+  scope du lot `provisioning-tenant`.
 - **Sauvegarde/restauration PostgreSQL par schéma et stratégie de montée de version** ne sont pas
   documentées ici — à traiter comme toute décision technique ouverte du projet plutôt qu'improvisées
   à la première mise en production.

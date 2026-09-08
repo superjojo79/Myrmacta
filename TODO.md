@@ -1674,7 +1674,14 @@ que le XSS navigateur. Le sandboxing Thymeleaf avancé a été reporté dès
 **Clos** (2026-08-25, `durcissement-securite-post-revue`, D-41 = **A** / scope **S**,
 [PR #76](https://github.com/superjojo79/FlowForge/pull/76)) — rôle LOGIN
 `flowforge_tenant_dev` dans l'init Compose, superuser `POSTGRES_USER` distinct,
-IT `TenantRoleIsolationIT` (SKIPPED sans Docker). Pas de CLI provisioning tenant.
+IT `TenantRoleIsolationIT` (SKIPPED sans Docker).
+
+**Outillage produit (2026-09-08, lot A1 `provisioning-tenant`)** :
+`scripts/provision-tenant.sh` génère/applique le schéma + rôle LOGIN dédié d'un tenant, paramétré
+depuis le même gabarit que l'init Compose. Isolation cross-tenant vérifiée avec un vrai PostgreSQL
+pendant ce cycle (rôle A refusé sur le schéma de B — `permission denied`, reproduisant
+`TenantRoleIsolationIT` sans Testcontainers). Voir point 31 et
+[docs/ai/implementation/2026-09-08-feature-provisioning-tenant.md](docs/ai/implementation/2026-09-08-feature-provisioning-tenant.md).
 
 **Énoncé :** `search_path` n'est pas une barrière. Un seul rôle PG (Compose :
 superuser de la base `flowforge`) peut lire les autres schémas du cluster
@@ -1843,6 +1850,17 @@ lots lifecycle (`workflow-engine` → `observabilite`) puis six features de suiv
 de plan statique unique à produire en plus : le séquencement de
 [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md) §9 reste la référence pour l'ordre
 initial, `FILE-ATTENTE.md` prend le relais pour la suite et se met à jour à chaque clôture.
+
+**Volet outillage provisioning (lot A1, 2026-09-08) — clos :** `Dockerfile` (multi-stage
+`eclipse-temurin:25-jdk`/`-jre`, utilisateur non-root, heap `-XX:MaxRAMPercentage`) et
+`scripts/provision-tenant.sh` (schéma + rôle PostgreSQL par tenant, D-41 point 41) livrés ;
+`server.servlet.context-path` (décision n°14) activé par défaut hors profil `local`. Validation
+réelle : `./mvnw verify` (1738 tests, 0 échec), `hadolint`/`shellcheck` propres, smoke PostgreSQL
+réel (isolation cross-tenant vérifiée). **Limite assumée** : `docker build`/`docker run` réel non
+exécutable dans le bac à sable de ce cycle (politique réseau bloquant Docker Hub) — Dockerfile
+validé par `hadolint` + revue statique uniquement, à confirmer par un build réel avant premier
+déploiement. Détail :
+[docs/ai/implementation/2026-09-08-feature-provisioning-tenant.md](docs/ai/implementation/2026-09-08-feature-provisioning-tenant.md).
 
 **Documenté dans :** [FILE-ATTENTE.md](FILE-ATTENTE.md), [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md).
 

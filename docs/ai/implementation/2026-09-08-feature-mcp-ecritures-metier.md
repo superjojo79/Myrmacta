@@ -2,7 +2,7 @@
 phase: implementation
 title: Implementation Guide
 description: Technical implementation notes, patterns, and code guidelines
-status: checked
+status: reviewed
 feature: mcp-ecritures-metier
 ---
 
@@ -73,3 +73,24 @@ vs `main` : `infrastructure/mcp/**` + tests MCP + docs (dont §12 GETTING-STARTE
 
 - A1 propriétaire de `GETTING-STARTED.md` : résoudre le conflit de merge si les deux lots avancent.
 - Rate-limit generate MCP : hors surface ; réévaluer si le canal M2M est exposé au-delà de l’outillage interne.
+
+## Phase 9 — revue finale
+
+**Alignement design :** 4 `@McpTool` minces, ports REST réutilisés, `ManualStartOrchestrator`,
+`DossierMcpView` pour les champs, `DossierElementView` sans `storageRef`. Surface exclusive
+respectée (`git diff --name-only origin/main...HEAD` : pas de `frontend/**`, pas de
+`SecurityConfig`, pas de Compose, pas de `CreateDossierUseCase*`).
+
+**Sécurité (skill `security-review`, catégories pertinentes) :**
+- Auth : JWT M2M `API_SERVICE` via `McpAccessContextFactory` ; pas de `AccessContext.system`.
+- ACL : create/add via use cases ; start/generate `GetDossierUseCase` + `assertCanEdit`.
+- Exposition : `storageRef` seulement en interne (`GenerateDocumentTool` → `AddCommand`) ;
+  réponse = `DossierElementView`.
+- Tenant : `TenantProperties.id`, pas un paramètre client.
+- Findings **non bloquants** : (L) pas de `DocumentGenerationRateLimiter` (D-RATE-LIMIT) ;
+  (L) `GETTING-STARTED.md` partagé avec A1.
+
+**Contrats :** tools MCP additifs (16 → 20). Pas de migration. Rollback = retirer les 4 `@Component`.
+
+**Checklist :** design match · pas de gap logique bloquant · sécurité adressée · IT create/add/list
+· tests 1775/0 · docs + CHANGELOG PR #118. **READY** pour revue humaine (pas de merge autonome).

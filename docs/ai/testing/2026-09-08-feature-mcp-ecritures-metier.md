@@ -2,7 +2,7 @@
 phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
-status: in-progress
+status: verified
 feature: mcp-ecritures-metier
 ---
 
@@ -90,8 +90,26 @@ template seed facile à réutiliser — sinon pas d'IT disproportionné.
 ./mvnw verify -Dskip.frontend=true
 ```
 
-Jacoco : balayage **classe par classe** des 4 tools + `McpArgs` en Phase 8
-(chiffres dans cette section après `./mvnw verify` frais de la session).
+Jacoco : balayage **classe par classe** des 4 tools + `McpArgs` (rapport
+`target/site/jacoco/jacoco.csv` après `./mvnw verify -Dskip.frontend=true`,
+2026-09-08T11:19:24Z) :
+
+| Classe | LINE | BRANCH |
+|---|---|---|
+| `CreateDossierTool` | 29/29 (100 %) | 6/6 (100 %) |
+| `AddDossierElementTool` | 33/33 (100 %) | 4/4 (100 %) |
+| `StartWorkflowTool` | 24/24 (100 %) | 2/2 (100 %) |
+| `StartWorkflowTool.Result` | 10/10 (100 %) | n/a |
+| `GenerateDocumentTool` | 45/45 (100 %) | 12/12 (100 %) |
+| `McpArgs` | 27/27 (100 %) | 22/22 (100 %) |
+
+Bundle : LINE 93.73 % / BRANCH 77.55 % (≥ 85 / 75). Check Jacoco : « All coverage checks have been met ».
+
+Surefire : **Tests run: 1775, Failures: 0, Errors: 0, Skipped: 0**. `ArchitectureRulesTest` 7/7.
+`McpEndpointApiTest` 4/4. `McpToolCallIntegrationTest` 18/18.
+
+Frontend : zéro fichier `frontend/**` dans le diff vs `main` — Vitest/Playwright non relancés
+(FILE-ATTENTE A3 : backend-only, régression FE seulement).
 
 ## Manual Testing
 

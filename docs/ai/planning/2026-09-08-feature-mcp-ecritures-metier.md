@@ -70,7 +70,11 @@ Séquencement : M1 → M2/M3 (indépendants après M1) → M4 → M5 (réutilise
 
 ### M8 — Qualité
 
-- [ ] **T8.1** `./mvnw verify` 0 échec, Jacoco tenu, ArchUnit tenu (preuve Phase 8, cette session)
+- [x] **T8.1** `./mvnw verify -Dskip.frontend=true` : **1775 tests, 0 échec**, Jacoco
+  « All coverage checks have been met » (LINE 93.73 % / BRANCH 77.55 % bundle).
+  Classes feature **100 %** LINE+BRANCH : `CreateDossierTool`, `AddDossierElementTool`,
+  `StartWorkflowTool` (+ `Result`), `GenerateDocumentTool`, `McpArgs`.
+  `ArchitectureRulesTest` 7/7. 2026-09-08T11:19:24Z, JDK 25.
 - [x] **T8.2** `git diff --stat` : pas de `frontend/**`, pas de `SecurityConfig`, pas de Compose
 
 ## Progress summary (Phase 6)

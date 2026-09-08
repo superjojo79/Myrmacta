@@ -24,10 +24,10 @@
 > `define_dossier_type` avec `documentTemplateKeys`. **9 → 16 tools.** Correctif de sécurité
 > associé : `ManageConnectorInstanceUseCaseImpl`, `TaskQuestionSchemaUseCaseImpl` et
 > `WorkflowTypeConfigUseCaseImpl` (ce dernier déjà utilisé par `deploy_workflow` depuis ce cadrage)
-> **Lot A3 (2026-09-08, feature `mcp-ecritures-metier`, TODO §59) :** les 4 tools d'écriture
-> métier du backlog ci-dessous (`create_dossier`, `add_dossier_element`, `start_workflow`,
-> `generate_document`) passent en cycle `dev-lifecycle` — **16 → 20 tools**. Les exclusions
-> (ACL, purge, statut de link) restent hors périmètre.
+> **Lot A3 (2026-09-08, feature `mcp-ecritures-metier`, TODO §59, [PR #118](https://github.com/superjojo79/FlowForge/pull/118)) :**
+> les 4 tools d'écriture métier du backlog ci-dessous (`create_dossier`,
+> `add_dossier_element`, `start_workflow`, `generate_document`) sont implémentés —
+> **16 → 20 tools**. Les exclusions (ACL, purge, statut de link) restent hors périmètre.
 
 ---
 
@@ -276,7 +276,7 @@ Clos en Phases 1–3 `serveur-mcp` (2026-08-27) — détail dans
 4. `statusDefinitions` — singleton non versionné comme REST
    (**D-DEPLOY-ORDER**).
 5. Audit — **D-AUDIT = C** (`createdBy`/`updatedBy`, pas de table MCP).
-6. Backlog écritures métier — hors V1 (inchangé).
+6. Backlog écritures métier — livré lot A3 / PR #118 (plus hors V1).
 7. Stats — **D-STATS = A** (`query_sla_summary`).
 8. Pagination search — **D-SEARCH/D-PAGE = A**.
 
@@ -284,9 +284,9 @@ Clos en Phases 1–3 `serveur-mcp` (2026-08-27) — détail dans
 
 ## Backlog — écritures métier (lot A3 / `mcp-ecritures-metier`)
 
-> Tools d'écriture à risque modéré identifiés lors du cadrage V1, **désormais en cycle
-> `dev-lifecycle`** (FILE-ATTENTE lot A3, TODO §59) — plus « hors V1 ». Validation,
-> audit (`createdBy` = sujet JWT) et `dryRun` repris des tools d'écriture déjà livrés.
+> Tools d'écriture à risque modéré identifiés lors du cadrage V1, **implémentés**
+> ([PR #118](https://github.com/superjojo79/FlowForge/pull/118), TODO §59) — plus « hors V1 ».
+> Validation, audit (`createdBy` = sujet JWT) et `dryRun` repris des tools d'écriture déjà livrés.
 
 | Tool | Use case / orchestrateur réutilisé | Remarque |
 |---|---|---|

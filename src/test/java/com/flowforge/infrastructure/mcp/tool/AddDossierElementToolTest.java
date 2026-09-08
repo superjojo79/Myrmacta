@@ -88,6 +88,16 @@ class AddDossierElementToolTest {
     }
 
     @Test
+    void attachment_isRejectedWithoutCallingAdd() {
+        assertThatThrownBy(() -> tool.addDossierElement(
+                        dossierId.toString(), "ATTACHMENT", "File", Map.of(), false))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("dedicated endpoint");
+        verify(addDossierElementUseCase, never()).add(any(), any());
+        verify(getDossierUseCase, never()).get(any(), any());
+    }
+
+    @Test
     void unknownType_isRejected() {
         assertThatThrownBy(() -> tool.addDossierElement(dossierId.toString(), "WIDGET", "x", Map.of(), false))
                 .isInstanceOf(IllegalArgumentException.class)

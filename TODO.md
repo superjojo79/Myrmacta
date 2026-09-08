@@ -166,8 +166,9 @@ limitation Flowable Community, cohérent).
 flux mais ne l'opère pas. Backlog déjà cadré dans
 [15-serveur-mcp.md](analysis%20doc/15-serveur-mcp.md). **Un seul cycle**, pas 4 PRs.
 
-**Statut :** cycle `dev-lifecycle` en cours (`mcp-ecritures-metier`, branche
-`cursor/mcp-ecritures-metier-6efe`).
+**Statut :** Phases 1–9 du cycle `dev-lifecycle` terminées ;
+[PR #118](https://github.com/superjojo79/FlowForge/pull/118) en revue
+(`cursor/mcp-ecritures-metier-6efe`). Case cochée après merge sur `main`.
 
 **Décisions :** D-WRITE-ONE-CYCLE, D-REUSE-PORTS, D-DRY-RUN, D-ELEMENT-TYPES (NOTE/LINK/INFORMATION),
 D-START-ORCH (`ManualStartOrchestrator`), D-GENERATE-ATTACH (`PRODUCED_DOC`, pas de PDF Base64),

@@ -109,6 +109,39 @@ class GenerateDocumentToolTest {
         DossierElementView view = (DossierElementView) result;
         assertThat(view.downloadable()).isTrue();
         assertThat(view.label()).isEqualTo("Document généré — quote");
+        assertThat(view.toString()).doesNotContain("storageRef").doesNotContain("tenant_dev/abc.pdf");
+    }
+
+    @Test
+    void generate_withoutVariantOrLocale_omitsThoseMetadataKeys() {
+        when(generateDocumentUseCase.generate(any())).thenReturn(new byte[] {1});
+        when(documentStoragePort.store(eq(TENANT), eq("application/pdf"), any())).thenReturn("ref");
+        when(addDossierElementUseCase.add(any(), any())).thenReturn(producedDoc("ref"));
+
+        tool.generateDocument(dossierId.toString(), "quote", null, null, Map.of(), false);
+
+        ArgumentCaptor<AddDossierElementUseCase.AddCommand> add =
+                ArgumentCaptor.forClass(AddDossierElementUseCase.AddCommand.class);
+        verify(addDossierElementUseCase).add(add.capture(), any());
+        assertThat(add.getValue().metadata())
+                .containsEntry("templateKey", "quote")
+                .containsEntry("contentType", "application/pdf")
+                .doesNotContainKeys("variantKey", "locale");
+    }
+
+    @Test
+    void generate_blankVariantAndLocale_treatedAsAbsent() {
+        when(generateDocumentUseCase.generate(any())).thenReturn(new byte[] {1});
+        when(documentStoragePort.store(eq(TENANT), eq("application/pdf"), any())).thenReturn("ref");
+        when(addDossierElementUseCase.add(any(), any())).thenReturn(producedDoc("ref"));
+
+        tool.generateDocument(dossierId.toString(), "quote", "  ", "   ", Map.of(), false);
+
+        ArgumentCaptor<GenerateDocumentUseCase.GenerateDocumentCommand> gen =
+                ArgumentCaptor.forClass(GenerateDocumentUseCase.GenerateDocumentCommand.class);
+        verify(generateDocumentUseCase).generate(gen.capture());
+        assertThat(gen.getValue().variantKey()).isNull();
+        assertThat(gen.getValue().locale()).isNull();
     }
 
     @Test

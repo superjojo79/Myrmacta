@@ -2,7 +2,7 @@
 phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
-status: planned
+status: in-progress
 feature: mcp-ecritures-metier
 ---
 
@@ -20,49 +20,51 @@ feature: mcp-ecritures-metier
 
 ### `McpArgs`
 
-- [ ] `T-ARGS-UUID` UUID valide / blanc / mal formé
-- [ ] `T-ARGS-MAP` map présente / absente / type invalide → `{}` ou IAE
+- [x] `T-ARGS-UUID` UUID valide / blanc / mal formé
+- [x] `T-ARGS-MAP` map présente / absente / type invalide → `{}` ou IAE
+- [x] `T-ARGS-UUID-NULL` / `T-ARGS-MAP-KEY` / `T-ARGS-NONBLANK` (Phase 8 — branches)
 
 ### `CreateDossierTool`
 
-- [ ] `T-CREATE-OK` délègue `CreateDossierCommand` (tenant, type, label, fields, createdBy=sub)
-- [ ] `T-CREATE-DEFAULT-FIELDS` `fields` null → `Map.of()`
-- [ ] `T-CREATE-BLANK` type/label blank → IAE, use case non appelé
-- [ ] `T-CREATE-DRY` `dryRun=true` : charge le type, valide, **ne** persiste **pas**
-- [ ] `T-CREATE-DRY-INACTIVE` type inactif → `InactiveDossierTypeException`
-- [ ] `T-CREATE-DRY-FIELDS` champs invalides → `DossierFieldValidationException`
+- [x] `T-CREATE-OK` délègue `CreateDossierCommand` (tenant, type, label, fields, createdBy=sub)
+- [x] `T-CREATE-DEFAULT-FIELDS` `fields` null → `Map.of()`
+- [x] `T-CREATE-BLANK` type/label blank → IAE, use case non appelé
+- [x] `T-CREATE-DRY` `dryRun=true` : charge le type, valide, **ne** persiste **pas**
+- [x] `T-CREATE-DRY-INACTIVE` type inactif → `InactiveDossierTypeException`
+- [x] `T-CREATE-DRY-FIELDS` champs invalides → `DossierFieldValidationException`
 
 ### `AddDossierElementTool`
 
-- [ ] `T-ADD-NOTE` type NOTE + metadata.text → `AddCommand` correct
-- [ ] `T-ADD-REJECT-BINARY` `PRODUCED_DOC` / `ATTACHMENT` → IAE, use case non appelé
-- [ ] `T-ADD-BAD-TYPE` type inconnu → IAE
-- [ ] `T-ADD-DRY` dryRun : get dossier + pas d'`add`
+- [x] `T-ADD-NOTE` type NOTE + metadata.text → `AddCommand` correct
+- [x] `T-ADD-REJECT-BINARY` `PRODUCED_DOC` / `ATTACHMENT` → IAE, use case non appelé
+- [x] `T-ADD-BAD-TYPE` type inconnu → IAE
+- [x] `T-ADD-DRY` dryRun : get dossier + pas d'`add`
 
 ### `StartWorkflowTool`
 
-- [ ] `T-START-OK` `orchestrator.start(dossierId, key, vars, idempotency, actor)`
-- [ ] `T-START-NO-KEY` idempotencyKey blank → IAE, orchestrateur non appelé
-- [ ] `T-START-RESERVED` variables avec `tenantId` → IAE
-- [ ] `T-START-ACL` `assertCanEdit` après get
-- [ ] `T-START-REPLAY` `replay=true` dans le résultat
-- [ ] `T-START-DRY` dryRun : get + edit + reserved check, orchestrateur non appelé
+- [x] `T-START-OK` `orchestrator.start(dossierId, key, vars, idempotency, actor)`
+- [x] `T-START-NO-KEY` idempotencyKey blank → IAE, orchestrateur non appelé
+- [x] `T-START-RESERVED` variables avec `tenantId` → IAE
+- [x] `T-START-ACL` `assertCanEdit` après get ; refus → orchestrateur non appelé
+- [x] `T-START-REPLAY` `replay=true` dans le résultat
+- [x] `T-START-DRY` dryRun : get + edit + reserved check, orchestrateur non appelé
 
 ### `GenerateDocumentTool`
 
-- [ ] `T-GEN-OK` generate → store → add `PRODUCED_DOC` ; label `Document généré — {templateKey}`
-- [ ] `T-GEN-TEMPLATE` template absent du type → `AccessDeniedException`, pas de generate
-- [ ] `T-GEN-VARS` overlay fusionné avec `DossierMcpView.fields` ; reserved overlay → IAE
-- [ ] `T-GEN-DRY` pas de generate / store / add
-- [ ] `T-GEN-ADDED-BY` `addedBy` = sujet JWT, pas `"system"`
-- [ ] `T-GEN-VIEW` sortie = `DossierElementView` (pas de storageRef)
+- [x] `T-GEN-OK` generate → store → add `PRODUCED_DOC` ; label `Document généré — {templateKey}`
+- [x] `T-GEN-TEMPLATE` template absent du type → `AccessDeniedException`, pas de generate
+- [x] `T-GEN-VARS` overlay fusionné avec `DossierMcpView.fields` ; reserved overlay → IAE
+- [x] `T-GEN-DRY` pas de generate / store / add
+- [x] `T-GEN-ADDED-BY` `addedBy` = sujet JWT, pas `"system"`
+- [x] `T-GEN-VIEW` sortie = `DossierElementView` (pas de storageRef)
+- [x] `T-GEN-META` variant/locale absents ou blank omis des metadata (Phase 8)
 
 ## Integration Tests
 
-- [ ] `IT-LIST-20` `McpEndpointApiTest` : `EXPECTED_TOOLS` contient les 4 nouveaux (20 au total)
-- [ ] `IT-CREATE` `tools/call create_dossier` persiste ; `createdBy` = `agent-1` ; relisible
-- [ ] `IT-ADD` `add_dossier_element` NOTE sur le dossier créé
-- [ ] `IT-CREATE-ERROR` type inconnu → `isError=true` (pas de stack)
+- [x] `IT-LIST-20` `McpEndpointApiTest` : `EXPECTED_TOOLS` contient les 4 nouveaux (20 au total)
+- [x] `IT-CREATE` `tools/call create_dossier` persiste ; `createdBy` = `agent-1` ; relisible
+- [x] `IT-ADD` `add_dossier_element` NOTE sur le dossier créé
+- [x] `IT-CREATE-ERROR` type inconnu → `isError=true` (pas de stack)
 
 `start_workflow` / `generate_document` bout-en-bout réel (Flowable + template HTML)
 sont **hors IT MCP** si le setup dépasse le pattern existant : couverts en unitaire
@@ -71,8 +73,8 @@ template seed facile à réutiliser — sinon pas d'IT disproportionné.
 
 ## End-to-End Tests
 
-- [ ] N/A SPA — zéro contrat frontend. Pas de nouveau `frontend/e2e/**`.
-- [ ] Régression Vitest seulement si exécutable dans le bac.
+- [x] N/A SPA — zéro contrat frontend. Pas de nouveau `frontend/e2e/**`.
+- [ ] Régression Vitest seulement si exécutable dans le bac (optionnel A3).
 
 ## Test Data
 
@@ -85,10 +87,11 @@ template seed facile à réutiliser — sinon pas d'IT disproportionné.
 
 ```bash
 ./mvnw test -Dtest=CreateDossierToolTest,AddDossierElementToolTest,StartWorkflowToolTest,GenerateDocumentToolTest,McpArgsTest,McpEndpointApiTest,McpToolCallIntegrationTest
-./mvnw verify -Dmaven.compiler.release=21
+./mvnw verify -Dskip.frontend=true
 ```
 
-Jacoco : balayage **classe par classe** des 4 tools + `McpArgs` en Phase 8.
+Jacoco : balayage **classe par classe** des 4 tools + `McpArgs` en Phase 8
+(chiffres dans cette section après `./mvnw verify` frais de la session).
 
 ## Manual Testing
 

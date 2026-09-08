@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -11,6 +12,7 @@ import static org.mockito.Mockito.when;
 
 import com.flowforge.application.workflow.ManualStartOrchestrator;
 import com.flowforge.domain.dossier.DossierAccessPolicy;
+import com.flowforge.domain.dossier.model.AccessDeniedException;
 import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierStatus;
 import com.flowforge.domain.dossier.model.DossierWorkflowLink;
@@ -84,6 +86,16 @@ class StartWorkflowToolTest {
                         tool.startWorkflow(dossierId.toString(), "wf", "idem-1", Map.of("tenantId", "x"), false))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("reserved");
+        verify(orchestrator, never()).start(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void editDenied_doesNotStart() {
+        doThrow(new AccessDeniedException("no edit")).when(accessPolicy).assertCanEdit(any(), any());
+
+        assertThatThrownBy(() ->
+                        tool.startWorkflow(dossierId.toString(), "wf-sinistre", "idem-1", Map.of(), false))
+                .isInstanceOf(AccessDeniedException.class);
         verify(orchestrator, never()).start(any(), any(), any(), any(), any());
     }
 

@@ -97,6 +97,14 @@ class CreateDossierToolTest {
     }
 
     @Test
+    void create_blankLabel_isRejectedWithoutCallingUseCase() {
+        assertThatThrownBy(() -> tool.createDossier("SINISTRE", "  ", Map.of(), false))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("label is required");
+        verify(createDossierUseCase, never()).create(any(), any());
+    }
+
+    @Test
     void dryRun_doesNotPersist() {
         when(getDossierTypeUseCase.getByCode(eq(TENANT), eq("SINISTRE"), any()))
                 .thenReturn(type(true, List.of()));

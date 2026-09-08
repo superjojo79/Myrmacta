@@ -80,10 +80,29 @@ class McpArgsTest {
     }
 
     @Test
+    void requireNonBlank_trims() {
+        assertThat(McpArgs.requireNonBlank("  SINISTRE  ", "dossierTypeCode")).isEqualTo("SINISTRE");
+    }
+
+    @Test
+    void requireNonBlank_null_throws() {
+        assertThatThrownBy(() -> McpArgs.requireNonBlank(null, "label"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("label is required");
+    }
+
+    @Test
     void requireUuid_valid_returnsUuid() {
         UUID id = UUID.randomUUID();
 
         assertThat(McpArgs.requireUuid(id.toString(), "dossierId")).isEqualTo(id);
+    }
+
+    @Test
+    void requireUuid_null_throws() {
+        assertThatThrownBy(() -> McpArgs.requireUuid(null, "dossierId"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("dossierId is required");
     }
 
     @Test
@@ -120,6 +139,16 @@ class McpArgsTest {
     @Test
     void optionalMap_wrongType_throws() {
         assertThatThrownBy(() -> McpArgs.optionalMap("nope", "fields"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("fields must be an object");
+    }
+
+    @Test
+    void optionalMap_nonStringKey_throws() {
+        Map<Object, Object> invalid = new HashMap<>();
+        invalid.put(42, "x");
+
+        assertThatThrownBy(() -> McpArgs.optionalMap(invalid, "fields"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("fields must be an object");
     }

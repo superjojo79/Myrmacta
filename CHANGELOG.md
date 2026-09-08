@@ -52,6 +52,10 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
+- **PR [#118](https://github.com/superjojo79/FlowForge/pull/118)** — Le serveur MCP interne
+  peut désormais opérer un flux métier (TODO §59) : 4 tools d’écriture
+  (`create_dossier`, `add_dossier_element`, `start_workflow`, `generate_document`),
+  16 → 20 tools. Pas d’upload binaire ni de PDF Base64 dans le canal MCP.
 - **PR [#111](https://github.com/superjojo79/FlowForge/pull/111)** — Le serveur MCP interne
   (`POST /api/m2m/mcp`, PR #82) couvre désormais le flux métier complet (TODO §56, 9 → 16 tools) :
   7 nouveaux tools (connecteurs, questions de tâche) et `define_dossier_type` étendu

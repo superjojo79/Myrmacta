@@ -10,10 +10,32 @@
 >   (rétention / purge / sensible — **livré**) ; revue post-implémentation 2026-08-25 :
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
-> **Dernière mise à jour :** 2026-09-08 — file d’attente **relancée en vagues
-> parallèles** (V1 nommé livré ; reliquat V1.x / ops). Source opérationnelle pour
-> lancer 3 agents simultanés : section [File d’attente](#file-dattente) ci-dessous
-> (surfaces exclusives + interdits de parallélisme). Inventaire : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §6.
+> **Dernière mise à jour :** 2026-09-08 — **A1 (`provisioning-tenant`) mergé**
+> ([PR #119](https://github.com/superjojo79/FlowForge/pull/119)). **A3**
+> `mcp-ecritures-metier` en revue ([PR #118](https://github.com/superjojo79/FlowForge/pull/118)).
+> **A2** `admin-connector-form-schema` reste à lancer.
+>
+> 2026-09-08 — TODO **§31 (volet outillage)/§41 (volet outillage) clos**, lot **A1**
+> `provisioning-tenant` : `Dockerfile` (`eclipse-temurin:25-jdk`/`-jre`, non-root,
+> `-XX:MaxRAMPercentage`) + `scripts/provision-tenant.sh` (schéma/rôle PostgreSQL par tenant,
+> D-41) + activation `server.servlet.context-path` (décision n°14) hors profil `local`. 4
+> décisions Dockerfile tranchées via `AskUserQuestion` en Phase 1 (DEPLOIEMENT.md avertissait
+> qu'un Dockerfile sans passer par le processus de décision reviendrait à trancher
+> silencieusement — donc posées explicitement plutôt que devinées). **2 bugs réels trouvés et
+> corrigés** : clé YAML `server:` dupliquée (`application.yml`, cassait le parsing SnakeYAML,
+> détecté par `./mvnw verify` lui-même) ; troncature silencieuse possible du rôle PostgreSQL
+> généré au-delà de `NAMEDATALEN` (63 octets) pour un `tenant_id` proche de l'ancienne borne —
+> corrigé en bornant `tenant_id` à 53 caractères, trouvé en Phase 7 (relecture ligne à ligne),
+> ni `hadolint` ni `shellcheck` ne l'auraient détecté. **Limite d'environnement assumée et
+> documentée** (pas de contournement) : Docker Hub inaccessible dans ce bac à sable (politique
+> réseau de la session rejette `production.cloudfront.docker.com`, constaté systémique) —
+> `docker build`/`docker run` réel non exécuté, `Dockerfile` validé par `hadolint` (propre) +
+> revue statique seulement, à confirmer par un build réel avant premier déploiement. Le script
+> de provisioning, lui, a été validé avec de vraies preuves (service PostgreSQL local du bac à
+> sable) : isolation cross-tenant vérifiée avec un second tenant réel (`permission denied`
+> confirmé), tous les scénarios d'erreur exécutés. `./mvnw verify` **1738 tests (0 échec)**.
+> Détail complet : TODO §31/§41,
+> [docs/ai/implementation/2026-09-08-feature-provisioning-tenant.md](docs/ai/implementation/2026-09-08-feature-provisioning-tenant.md).
 >
 > 2026-09-07 — TODO **§57 clos**, cycle
 > `revue-adversariale-securite` **mergé** sur `main`
@@ -227,6 +249,7 @@ Même grille que pour `preview-documents` puis `edition-champs-dossier` :
 
 | `formulaires-dynamiques-taches` | analyse [22-formulaires-dynamiques-taches.md](analysis%20doc/22-formulaires-dynamiques-taches.md), TODO §52 (clos) | Un `userTask` BPMN peut déclarer `flowable:formKey` pour afficher un formulaire de tâche avant complétion : `dossier-fields` (schéma complet du `DossierType`, `DynamicFields.vue` réutilisé) ou `document-generation` (choix d'un document parmi ceux associés au type de dossier via le nouveau `DossierType.documentTemplateKeys`, liste vide = aucun template disponible). Mécanisme volontairement extensible **côté frontend uniquement** (`taskFormRegistry.ts`, kind → composant) — `formKey` reste une chaîne opaque de bout en bout côté backend, décision utilisateur au lancement du cycle. **Écart de sécurité trouvé et corrigé en Phase 3** : `GET /api/document-templates` (admin-only) inutilisable par un porteur de tâche — nouvel endpoint `GET /api/dossier-types/{code}/document-templates` (jamais `htmlContent`, même contrôle `VIEW` que la lecture du type). **Bug réel latent trouvé et corrigé en Phase 5**, via un test Playwright réel (pas mocké au niveau composant) : le tout premier attribut `flowable:*` posé sur un diagramme sans `xmlns:flowable` déjà déclaré — dont le gabarit BPMN vierge de l'éditeur — se perdait silencieusement à l'enregistrement (`saveXML()`), latent depuis `edition-bpmn` (TODO §39) car jamais détecté par un test round-trip réel jusqu'ici ; `EMPTY_BPMN_XML` déclare désormais l'espace de noms. Spike de risque technique fait en premier (M0) : `Task.getFormKey()` confirmé fonctionner sans le module `flowable-form` sur ce Flowable 8.0.0, par un test d'intégration réel (`FormKeySmokeIT`) avant d'investir dans la plomberie qui en dépend. `./mvnw verify` 1572 tests (0 échec, Jacoco LINE/BRANCH tenus) ; Vitest 269/269 ; Playwright 63/63 (59 existants + 4 nouveaux `E2E-FORM-*`, zéro régression). Cycle `dev-lifecycle` Phases 1–9 complet (2026-09-03). |
 | `revue-adversariale-securite` | [PR #113](https://github.com/superjojo79/FlowForge/pull/113), TODO §57 (clos) | Durcissement High/Medium de la revue adversariale 2026-09-07 (Q1–Q12 = A) : allowlist BPMN parse-time (H1), complete/runtime schemas bornés à l’assignee (H2/M8), OIDC sans `API_SERVICE` (M1), S3 yaml (M2), SSRF Host/CGNAT (M3/M4), clés connecteur hors schéma (M5), auth puis rate-limit (M6), HMAC `timestamp.Idempotency-Key.body` **rupture de contrat** (M7), reserved keys callback (M9), SMTP (M10), caps HTTP/storage (M11), ACL generate dans le contrôleur (M12), `th:utext` + CSP preview (M13). L1–L7 hors cycle. `./mvnw verify` 1705 tests (0 échec) ; Vitest 289/289 ; Playwright 65/65. CI GitHub verte. **Mergée sur `main`** (2026-09-07). |
+| `provisioning-tenant` (lot **A1**) | [PR #119](https://github.com/superjojo79/FlowForge/pull/119), TODO §31/§41 | Outillage ops manquant : `Dockerfile` multi-stage (`eclipse-temurin:25-jdk`/`-jre`, utilisateur non-root UID 10001, heap `-XX:MaxRAMPercentage=75.0`) + `.dockerignore` ; `scripts/provision-tenant.sh` (schéma + rôle PostgreSQL par tenant, D-41, dry-run par défaut/`--apply`, garde anti-écrasement) ; `server.servlet.context-path` (décision n°14) activé par défaut hors profil `local` (neutralisé dans `application-local.yml`, pattern déjà en place pour `app.security.cookie.secure`). Cycle `dev-lifecycle` Phases 1–9 complet, 4 décisions tranchées via `AskUserQuestion` en Phase 1 (image, non-root, heap, activation `context-path`). **2 bugs réels trouvés et corrigés en cours de cycle** : clé YAML `server:` dupliquée dans `application.yml` lors de la première tentative d'activation `context-path` (SnakeYAML « found duplicate key server », détecté par `./mvnw verify` lui-même, Phase 5) ; troncature silencieuse possible du rôle PostgreSQL généré au-delà de `NAMEDATALEN` (63 octets) pour un `tenant_id` proche de l'ancienne borne de 63 caractères — le rôle préfixe `flowforge_` (10 caractères) — corrigé en bornant `tenant_id` à 53 caractères (Phase 7, relecture ligne à ligne, ni `hadolint` ni `shellcheck` ne l'auraient trouvé). **Limite d'environnement assumée** : `docker build`/`docker run` réel impossible dans le bac à sable de ce cycle — politique réseau de la session bloquant explicitement `production.cloudfront.docker.com` (CDN Docker Hub), confirmé systémique (`eclipse-temurin:25-jdk` et `postgres:17-alpine` tous deux rejetés), non contourné (conforme à `/root/.ccr/README.md`) ; `Dockerfile` validé par `hadolint` (propre) + revue statique, **à confirmer par un build réel avant premier déploiement**. Script de provisioning en revanche validé avec de vraies preuves : service PostgreSQL local du bac à sable (Docker Hub bloqué aussi pour le conteneur jetable prévu), tous les scénarios exécutés (nominal, rejeu rejeté, identifiant invalide, mot de passe absent, **isolation cross-tenant vérifiée avec un second tenant réel** — `permission denied` confirmé). `shellcheck` propre. `./mvnw verify` **1738 tests (0 échec)**, ArchUnit conforme, Jacoco respecté ; zéro fichier `frontend/**` touché. `DEPLOIEMENT.md`/`GETTING-STARTED.md`/`.env.example` alignés sur l'outillage livré. **Pas de PR ouverte** (non demandé) — branche poussée, prête pour revue. |
 
 Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relations, PATCH fields API, éléments) : voir [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §2.
 
@@ -285,8 +308,9 @@ Rate-limit distribué / SSE multi-pod / Spring Session (pas de Redis dans la sta
 codegen OpenAPI ; Chart.js SLA (`D-CHARTS = A`) ; DMN ; Cockpit Flowable ;
 OTel / Grafana ; pagination inbox > 100.
 
-**En cours :** lots **A1** `provisioning-tenant` et **A2** `admin-connector-form-schema`
-restent à lancer en parallèle. A3 est en revue (PR #118).
+**En cours :** **A2** `admin-connector-form-schema` reste à lancer.
+**A1** `provisioning-tenant` **mergé** ([PR #119](https://github.com/superjojo79/FlowForge/pull/119)).
+**A3** `mcp-ecritures-metier` en revue ([PR #118](https://github.com/superjojo79/FlowForge/pull/118)).
 
 Détail inventaire : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §4 / §6.
 

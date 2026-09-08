@@ -1,0 +1,33 @@
+# Exclut du contexte docker build tout ce qui n'est pas nécessaire à
+# `./mvnw clean package` (voir Dockerfile) — évite d'envoyer des artefacts
+# volumineux ou sensibles au démon Docker.
+
+.git
+.gitignore
+.worktrees
+.dockerignore
+Dockerfile
+
+# Artefacts de build (régénérés dans le conteneur)
+target/
+frontend/dist/
+frontend/node_modules/
+
+# Secrets / config locale — ne doivent jamais entrer dans l'image
+.env
+.env.*
+!.env.example
+
+# Docs, scripts et fichiers projet non nécessaires au build de l'image
+*.md
+analysis doc/
+docs/
+scripts/
+docker/
+docker-compose*.yml
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store

@@ -191,6 +191,11 @@ puis recharger les variables dans le shell (§3) avant de (re)lancer le backend.
 Sert l'API sur `http://localhost:8080`. Si `src/main/resources/static/` est vide (frontend pas
 encore buildé), les routes `/api/**` répondent mais l'UI ne s'affiche pas — voir §8.
 
+> `server.servlet.context-path` (routage multi-tenant par chemin, décision n°14) est actif par
+> défaut hors profil `local` — `application-local.yml` le neutralise pour ce parcours, l'application
+> reste donc servie à la racine `/` comme ci-dessus. Voir [DEPLOIEMENT.md](DEPLOIEMENT.md#3-routage-par-chemin-décision-n-14)
+> pour une instance déployée sous un préfixe de tenant.
+
 Actuator (health / Prometheus) : **`http://127.0.0.1:8090`** (`MANAGEMENT_ADDRESS` /
 `MANAGEMENT_PORT`, D-42). Keycloak reste sur **`:8081`**. `permitAll` sur le port management
 est conservé parce que le bind est loopback.

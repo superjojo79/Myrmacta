@@ -250,7 +250,7 @@ Voir le détail et les options dans [TODO.md](TODO.md),
 
 | Vague | Feature | Statut | Notes |
 |---|---|---|---|
-| **A1** | `provisioning-tenant` | À lancer (// A2, A3) | Dockerfile + runbook/CLI ; sorti de « hors file » |
+| **A1** | `provisioning-tenant` | **Livré** ([PR #119](https://github.com/superjojo79/FlowForge/pull/119)) | Dockerfile + runbook/CLI ; sorti de « hors file » |
 | **A2** | `admin-connector-form-schema` | À lancer (// A1, A3) | FE seulement ; `configSchema` déjà exposé par l’API |
 | **A3** | `mcp-ecritures-metier` | **En revue** ([PR #118](https://github.com/superjojo79/FlowForge/pull/118)) | 4 tools dans **un** cycle ; cadrage [15-serveur-mcp.md](analysis%20doc/15-serveur-mcp.md) § Backlog |
 | **A4** | `headers-http-globaux` | Optionnel // A | S-9 ; pas en même temps qu’un A1 qui touche `SecurityConfig` |

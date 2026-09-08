@@ -6,6 +6,11 @@ spring:
   config:
     activate:
       on-profile: local
+server:
+  # Neutralise le context-path multi-tenant (application.yml) pour ce profil : le poste de
+  # dev continue de servir l'application à la racine "/" (lot provisioning-tenant).
+  servlet:
+    context-path: ""
 app:
   security:
     cookie:

@@ -16,6 +16,7 @@ Frontend : `npm ci` dans la session.
 
 ```
 frontend/src/api/admin.ts
+frontend/src/api/http.ts
 frontend/src/components/connectors/connectorConfig.ts
 frontend/src/components/connectors/ConnectorConfigForm.vue
 frontend/src/components/connectors/ConnectorIngressUrl.vue
@@ -70,8 +71,28 @@ inchangés. Pas de secret logué.
 
 ## Phase 9
 
-Diff scopé FE + docs. Pas de Liquibase, pas d’OpenAPI, pas de nouvelle dépendance npm.
-Scan : pas de `.only` / secret / debug. Rollback = revert FE. Prêt pour revue humaine.
+Revue holistique delta (formulaire + **D-WEBHOOK-URL = C**, 2026-09-08), après rebase
+sur `main` (A1 [PR #119](https://github.com/superjojo79/FlowForge/pull/119)).
+
+Checklist :
+
+- [x] Alignement design : D-* du formulaire + D-WEBHOOK-URL = C + `apiContextPath()`
+- [x] Pas de trou de logique (schéma vide, fallback catalogue, types sans ingress)
+- [x] Sécurité : PASSWORD masqué, pas de `v-html`, copie d’URL publique seulement
+- [x] Intégration : `GET /api/connector-definitions` / `POST /api/connectors` inchangés
+- [x] Tests : Vitest + Playwright `E2E-CONN-*` (preuves Phase 8)
+- [x] Docs : GUIDE §4, `06-connecteurs.md`, CHANGELOG PR #117
+- [x] Zéro `.java`, Liquibase, OpenAPI, npm dep
+- [x] Rollback = revert FE
+- [x] Scan : pas de `.only` / secret / debug
+
+Callers de `ingressUrlFor` / `apiContextPath` : vue admin + specs. `DynamicFields.vue`
+non réutilisé. Écart produit corrigé : préfixe `/admin` (Vite `base: './'`).
+
+Findings : aucun bloquant. Nice-to-have hors scope : édition de config d’instance,
+éditeur JSON `mapping`.
+
+Prêt pour merge une fois la CI GitHub verte.
 
 ## Error Handling
 

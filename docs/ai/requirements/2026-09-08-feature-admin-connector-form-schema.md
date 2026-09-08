@@ -82,16 +82,16 @@ Non-goals :
 
 ## Success Criteria
 
-- [ ] Plus de `<textarea>` JSON sur le chemin nominal (catalogue chargé, y compris schéma vide).
-- [ ] `POST /api/connectors` envoie un objet `config` typé (INTEGER = number, BOOLEAN = boolean,
+- [x] Plus de `<textarea>` JSON sur le chemin nominal (catalogue chargé, y compris schéma vide).
+- [x] `POST /api/connectors` envoie un objet `config` typé (INTEGER = number, BOOLEAN = boolean,
       optionnels vides omis) construit depuis le formulaire, pas `JSON.parse` d’un blob.
-- [ ] Vitest : composant de formulaire + vue d’admin (création, switch de type, smtp vide,
+- [x] Vitest : composant de formulaire + vue d’admin (création, switch de type, smtp vide,
       fallback catalogue vide).
-- [ ] Playwright : au moins un scénario de création `http-rest` (SELECT + PASSWORD + STRING)
+- [x] Playwright : au moins un scénario de création `http-rest` (SELECT + PASSWORD + STRING)
       et un scénario schéma vide (`smtp`) ; mocks `GET /api/connector-definitions` portent
       `configSchema` ; après création, URL webhook / callback visibles (D-WEBHOOK-URL).
-- [ ] `GUIDE-UTILISATEUR.md` §4 décrit le formulaire et le catalogue réel (6 types).
-- [ ] Zéro fichier Java / `ConnectorCatalog` / MCP / Compose / `SecurityConfig` modifié.
+- [x] `GUIDE-UTILISATEUR.md` §4 décrit le formulaire et le catalogue réel (6 types).
+- [x] Zéro fichier Java / `ConnectorCatalog` / MCP / Compose / `SecurityConfig` modifié.
 
 ## Constraints & Assumptions
 

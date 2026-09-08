@@ -169,7 +169,8 @@ feature `admin-connector-form-schema`, frontend seulement.
 
 **Décisions (cycle 2026-09-08, agent cloud) :** D-REPLACE-TEXTAREA, D-EMPTY-SCHEMA,
 D-FALLBACK-NO-DEFS, D-SCOPE-CREATE, D-NO-DYNAMICFIELDS, D-COERCE, D-PASSWORD,
-D-CLIENT-REQUIRED, D-SWITCH-TYPE, D-NO-BACKEND — détail dans
+D-CLIENT-REQUIRED, D-SWITCH-TYPE, D-NO-BACKEND, **D-WEBHOOK-URL = C** (rejeu Phase 1–3)
+— détail dans
 `docs/ai/requirements/2026-09-08-feature-admin-connector-form-schema.md`.
 
 **Impacte :** `frontend/src/views/admin/ConnectorsAdminView.vue`,
@@ -177,8 +178,8 @@ D-CLIENT-REQUIRED, D-SWITCH-TYPE, D-NO-BACKEND — détail dans
 [GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md) §4, [06-connecteurs.md](analysis%20doc/06-connecteurs.md)
 § écran d’admin.
 
-**Statut :** cycle `dev-lifecycle` Phases 1–9 — [PR #117](https://github.com/superjojo79/FlowForge/pull/117).
-Vitest 312/312 ; Playwright 67/67.
+**Statut :** cycle `dev-lifecycle` Phases 1–9 **clos** — [PR #117](https://github.com/superjojo79/FlowForge/pull/117).
+Vitest 324/324 ; Playwright 68/68 (`E2E-CONN-1` webhook, `E2E-CONN-2` smtp, `E2E-CONN-3` callback).
 
 ---
 

@@ -145,7 +145,7 @@ nouvelle surface HTTP, sans SPA, sans toucher à `SecurityConfig`**.
 
 ## Questions & Open Items
 
-Phases 1–2 rejeu **clos**. Phase 3 en cours. **Acté :** D-START-ORCH = C.
-Reste : D-DRY-RUN-START, D-FIELDS-READ.
+Phases 1–2 rejeu **clos**. Phase 3 en cours. **Acté :** D-START-ORCH = C,
+D-DRY-RUN-START = B. Reste : D-FIELDS-READ.
 
-Prochain : D-DRY-RUN-START.
+Prochain : D-FIELDS-READ.

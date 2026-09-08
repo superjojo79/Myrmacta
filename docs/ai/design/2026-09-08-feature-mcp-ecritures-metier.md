@@ -14,8 +14,8 @@ feature: mcp-ecritures-metier
 > `DocumentGenerationTask` / `AttachGeneratedDocumentTask`, tools MCP existants).
 >
 > Rejeu 2026-09-08 : les `D-*` design avaient été actées sans question.
-> Phase 3 rejouée **après** confirmations requirements. **Acté :** D-START-ORCH = C.
-> Suivant : D-DRY-RUN-START.
+> Phase 3 rejouée **après** confirmations requirements. **Acté :** D-START-ORCH = C,
+> D-DRY-RUN-START = B. Suivant : D-FIELDS-READ.
 
 ## Architecture Overview
 

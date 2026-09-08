@@ -53,12 +53,29 @@ export async function newDocumentTemplateVersion(id: string): Promise<DocumentTe
   return data
 }
 
-type ConnectorDefinitionItem = { type: string; label?: string; [key: string]: unknown }
+export type ConfigFieldType = 'STRING' | 'PASSWORD' | 'URL' | 'INTEGER' | 'BOOLEAN' | 'SELECT'
 
-export async function listConnectorDefinitions(): Promise<ConnectorDefinitionItem[]> {
+export interface ConfigField {
+  name: string
+  label: string
+  type: ConfigFieldType
+  required: boolean
+  defaultValue?: string | null
+  options?: string[]
+  helpText?: string | null
+}
+
+export interface ConnectorDefinition {
+  type: string
+  label?: string
+  capability?: string
+  configSchema?: ConfigField[]
+}
+
+export async function listConnectorDefinitions(): Promise<ConnectorDefinition[]> {
   return listAllPages((page, size) =>
     axios
-      .get<Page<ConnectorDefinitionItem>>('/api/connector-definitions', { params: { page, size } })
+      .get<Page<ConnectorDefinition>>('/api/connector-definitions', { params: { page, size } })
       .then((response) => response.data),
   )
 }

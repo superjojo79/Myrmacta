@@ -21,6 +21,14 @@ export function resolveApiBaseUrl(baseUri = globalThis.document?.baseURI ?? '/')
   }
 }
 
+export function apiContextPath(): string {
+  const fromClient = axios.defaults.baseURL
+  if (typeof fromClient !== 'string' || fromClient === '') {
+    return ''
+  }
+  return fromClient.replace(/\/$/, '')
+}
+
 export function configureHttpClient(): void {
   axios.defaults.withCredentials = true
   axios.defaults.xsrfCookieName = 'XSRF-TOKEN'

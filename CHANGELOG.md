@@ -28,6 +28,14 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ## [Non publié]
 
+### Modifié
+
+- **PR [#117](https://github.com/superjojo79/FlowForge/pull/117)** — L’écran Admin → Connecteurs
+  génère un formulaire champ par champ depuis `configSchema` au lieu d’un JSON brut (lot A2).
+  Les types sans config d’instance (`smtp`, `document-storage`) n’affichent plus de zone de texte.
+  Après création, la liste affiche l’URL webhook (`http-rest`) et l’URL callback (`flowable-callback`)
+  avec copie presse-papiers.
+
 ### Sécurité
 
 - **PR [#113](https://github.com/superjojo79/FlowForge/pull/113)** — Revue adversariale TODO §57 :

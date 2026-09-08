@@ -10,9 +10,10 @@
 >   (rétention / purge / sensible — **livré**) ; revue post-implémentation 2026-08-25 :
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
-> **Dernière mise à jour :** 2026-09-08 — **A1 (`provisioning-tenant`) livré** (cycle
-> `dev-lifecycle` Phases 1–9 complet, branche `claude/cycle-sdd-lot-a1-mjxdai`, non mergée —
-> détail ci-dessous et § Récemment livré). A2/A3 restent à lancer.
+> **Dernière mise à jour :** 2026-09-08 — **A1 (`provisioning-tenant`) mergé**
+> ([PR #119](https://github.com/superjojo79/FlowForge/pull/119)). **A2**
+> `admin-connector-form-schema` en clôture de cycle ([PR #117](https://github.com/superjojo79/FlowForge/pull/117)).
+> **A3** (`mcp-ecritures-metier`) reste à lancer.
 >
 > 2026-09-08 — TODO **§31 (volet outillage)/§41 (volet outillage) clos**, lot **A1**
 > `provisioning-tenant` : `Dockerfile` (`eclipse-temurin:25-jdk`/`-jre`, non-root,
@@ -307,16 +308,18 @@ Rate-limit distribué / SSE multi-pod / Spring Session (pas de Redis dans la sta
 codegen OpenAPI ; Chart.js SLA (`D-CHARTS = A`) ; DMN ; Cockpit Flowable ;
 OTel / Grafana ; pagination inbox > 100.
 
-**En cours :** **A1 (`provisioning-tenant`) livré** (2026-09-08, branche
-`claude/cycle-sdd-lot-a1-mjxdai`, non mergée — voir § Récemment livré). **A2**
-(`admin-connector-form-schema`) et **A3** (`mcp-ecritures-metier`) restent à lancer, sur des
-branches distinctes.
+**En revue :** lot **A2** `admin-connector-form-schema` — [PR #117](https://github.com/superjojo79/FlowForge/pull/117),
+cycle Phases 1–9 (D-WEBHOOK-URL = C). **A1 livré et mergé** ([PR #119](https://github.com/superjojo79/FlowForge/pull/119)).
+**A3** (`mcp-ecritures-metier`) reste lançable (surface MCP).
 
 Détail inventaire : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §4 / §6.
 
 ## En revue
 
-Aucune feature produit en revue. `revue-adversariale-securite` (TODO §57)
+Lot **A2** `admin-connector-form-schema` — [PR #117](https://github.com/superjojo79/FlowForge/pull/117),
+cycle `dev-lifecycle` Phases 1–9 clos (D-WEBHOOK-URL = C ; Vitest 324, Playwright 68).
+
+`revue-adversariale-securite` (TODO §57)
 **mergée sur `main`** ([PR #113](https://github.com/superjojo79/FlowForge/pull/113), 2026-09-07).
 
 `connecteur-http-rest-service`

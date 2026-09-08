@@ -285,7 +285,8 @@ Rate-limit distribué / SSE multi-pod / Spring Session (pas de Redis dans la sta
 codegen OpenAPI ; Chart.js SLA (`D-CHARTS = A`) ; DMN ; Cockpit Flowable ;
 OTel / Grafana ; pagination inbox > 100.
 
-**En cours :** aucune implémentation démarrée — file = brief de lancement ci-dessus.
+**En cours :** lot **A3** `mcp-ecritures-metier` (cycle `dev-lifecycle`, branche
+`cursor/mcp-ecritures-metier-6efe`) — A1/A2 restent à lancer en parallèle.
 
 Détail inventaire : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §4 / §6.
 

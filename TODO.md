@@ -160,6 +160,26 @@ limitation Flowable Community, cohérent).
 
 ---
 
+### [ ] 59. Écritures métier MCP — `create_dossier` / `add_dossier_element` / `start_workflow` / `generate_document`
+
+**Énoncé :** lot **A3** ([FILE-ATTENTE.md](FILE-ATTENTE.md)) — le canal MCP (16 tools) définit un
+flux mais ne l'opère pas. Backlog déjà cadré dans
+[15-serveur-mcp.md](analysis%20doc/15-serveur-mcp.md). **Un seul cycle**, pas 4 PRs.
+
+**Statut :** cycle `dev-lifecycle` en cours (`mcp-ecritures-metier`, branche
+`cursor/mcp-ecritures-metier-6efe`).
+
+**Décisions :** D-WRITE-ONE-CYCLE, D-REUSE-PORTS, D-DRY-RUN, D-ELEMENT-TYPES (NOTE/LINK/INFORMATION),
+D-START-ORCH (`ManualStartOrchestrator`), D-GENERATE-ATTACH (`PRODUCED_DOC`, pas de PDF Base64),
+D-GENERATE-TEMPLATE (type du dossier), D-NO-OPENAPI. `CreateDossierUseCase*` non modifié
+(couture import batch Vague B).
+
+**Impacte :** `infrastructure.mcp.tool` uniquement + tests MCP + `GETTING-STARTED.md` §12.
+
+**Détail :** `docs/ai/**/2026-09-08-feature-mcp-ecritures-metier.md`.
+
+---
+
 ## Autorisation et conformité
 
 Points identifiés par [12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md),

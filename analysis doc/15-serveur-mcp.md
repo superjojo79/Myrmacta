@@ -24,8 +24,10 @@
 > `define_dossier_type` avec `documentTemplateKeys`. **9 → 16 tools.** Correctif de sécurité
 > associé : `ManageConnectorInstanceUseCaseImpl`, `TaskQuestionSchemaUseCaseImpl` et
 > `WorkflowTypeConfigUseCaseImpl` (ce dernier déjà utilisé par `deploy_workflow` depuis ce cadrage)
-> n'avaient aucune garde de rôle au niveau domaine — comblé. Détail :
-> [24-extension-mcp-flux-metier.md](24-extension-mcp-flux-metier.md).
+> **Lot A3 (2026-09-08, feature `mcp-ecritures-metier`, TODO §59) :** les 4 tools d'écriture
+> métier du backlog ci-dessous (`create_dossier`, `add_dossier_element`, `start_workflow`,
+> `generate_document`) passent en cycle `dev-lifecycle` — **16 → 20 tools**. Les exclusions
+> (ACL, purge, statut de link) restent hors périmètre.
 
 ---
 
@@ -280,21 +282,18 @@ Clos en Phases 1–3 `serveur-mcp` (2026-08-27) — détail dans
 
 ---
 
-## Backlog — extensions futures envisageables (hors V1)
+## Backlog — écritures métier (lot A3 / `mcp-ecritures-metier`)
 
-> Tools d'écriture à **risque modéré** identifiés lors du cadrage — utiles,
-> mais pas retenus pour le V1 car ils touchent des données métier au-delà
-> de la configuration (dossier type / workflow) déjà en périmètre. Chacun
-> nécessiterait sa propre analyse avant d'être implémenté (validation,
-> audit, prévisualisation — mêmes réserves que les tools V1 en écriture,
-> voir [Risques et points de vigilance](#risques-et-points-de-vigilance)).
+> Tools d'écriture à risque modéré identifiés lors du cadrage V1, **désormais en cycle
+> `dev-lifecycle`** (FILE-ATTENTE lot A3, TODO §59) — plus « hors V1 ». Validation,
+> audit (`createdBy` = sujet JWT) et `dryRun` repris des tools d'écriture déjà livrés.
 
-| Tool candidat | Use case existant réutilisable | Remarque |
+| Tool | Use case / orchestrateur réutilisé | Remarque |
 |---|---|---|
-| `create_dossier` | `CreateDossierUseCase` / `CreateDossierBatchUseCase` | Passe par `DossierFieldValidator` comme toute création — voir [04-dossiers.md](04-dossiers.md#validation-des-champs-dynamiques). |
-| `add_dossier_element` | `AddDossierElementUseCase` | Ajout d'une note/pièce/lien à un dossier existant ; ne couvre pas l'upload de fichier binaire (canal MCP mal adapté à un flux multipart). |
-| `start_workflow` | `AttachWorkflowUseCase.reserve` / `confirmStarted` | Équivalent MCP du démarrage manuel déjà exposé en REST ([04-dossiers.md](04-dossiers.md#1-déclenchement-manuel--api--ui)) ; soumis à la même règle de concurrence (un seul workflow actif par dossier). |
-| `generate_document` | Génération PDF (voir [07-generation-documents.md](07-generation-documents.md)) | Déclenche une génération à partir d'un template pour un dossier donné ; dépend du point 7 (liste des templates) pour que l'agent sache quoi proposer. |
+| `create_dossier` | `CreateDossierUseCase` (inchangé) | Passe par `DossierFieldValidator` comme toute création. |
+| `add_dossier_element` | `AddDossierElementUseCase` | NOTE / LINK / INFORMATION seulement — pas d'upload binaire. |
+| `start_workflow` | `ManualStartOrchestrator` (chemin REST réel) | Idempotence + un seul workflow actif. |
+| `generate_document` | `GenerateDocumentUseCase` + `DocumentStoragePort` + `AddDossierElementUseCase` | PDF stocké et attaché `PRODUCED_DOC` ; template listé sur le type du dossier. |
 
 ### Exclusions explicites (risque jugé trop élevé pour un MCP interne)
 

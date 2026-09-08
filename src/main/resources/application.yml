@@ -112,6 +112,12 @@ logging:
 server:
   forward-headers-strategy: framework
   servlet:
+    # Routage multi-tenant par chemin (décision n°14) — actif par défaut pour toute
+    # instance déployée (surchargé à vide en profil local, cf. application-local.yml, pour
+    # que le poste de dev continue de servir l'application à la racine "/", comme
+    # documenté dans GETTING-STARTED.md). À faire correspondre au bloc reverse-proxy
+    # statique du tenant (DEPLOIEMENT.md §3).
+    context-path: /${app.tenant.id}
     session:
       cookie:
         same-site: lax
@@ -204,8 +210,3 @@ springdoc:
     enabled: false
   swagger-ui:
     enabled: false
-
-# Cible multi-tenant (non actif) — décommenter avec datasource / reverse-proxy :
-# server:
-#   servlet:
-#     context-path: /${app.tenant.id}

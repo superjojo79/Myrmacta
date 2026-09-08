@@ -9,10 +9,15 @@ description: Break down work into actionable tasks and estimate timeline
 ## Milestones
 **What are the major checkpoints?**
 
-- [ ] M1 : `Dockerfile` fonctionnel, image buildée et smoke-testée réellement (`docker build` +
-      `docker run`).
-- [ ] M2 : `scripts/provision-tenant.sh` fonctionnel, smoke-testé contre un vrai PostgreSQL jetable.
-- [ ] M3 : `context-path` activé en configuration sans régression (`./mvnw verify` vert).
+- [x] M1 : `Dockerfile` fonctionnel — **validation partielle** : `docker build`/`docker run` réels
+      impossibles dans ce bac à sable (Docker Hub bloqué par la politique réseau de la session, voir
+      Risks) ; validé à la place par revue statique + `hadolint` (exit 0, propre) + cohérence
+      `pom.xml` (`java.version=25`).
+- [x] M2 : `scripts/provision-tenant.sh` fonctionnel, smoke-testé **réellement** contre PostgreSQL
+      (service local du bac à sable, pas de conteneur — Docker Hub bloqué) + `shellcheck` propre.
+- [x] M3 : `context-path` activé en configuration, `./mvnw verify` réellement exécuté et vert (1738
+      tests, 0 échec, ArchUnit conforme, Jacoco respecté) — un bug réel trouvé et corrigé en route
+      (clé YAML `server:` dupliquée), voir Risks/Task Breakdown.
 - [ ] M4 : Documentation (`DEPLOIEMENT.md`, `GETTING-STARTED.md`, `.env.example`) alignée avec
       l'outillage livré.
 - [ ] M5 : Revue finale (Phase 9) + mise à jour `TODO.md`/`FILE-ATTENTE.md`.
@@ -25,40 +30,56 @@ cycle.
 **What specific work needs to be done?**
 
 ### Milestone 1 — Dockerfile
-- [ ] T1.1 : `.dockerignore` (exclut `target/`, `frontend/node_modules`, `frontend/dist`, `.git`,
-      `.worktrees`, `docker/postgres/data` éventuel, fichiers `.env*`).
-- [ ] T1.2 : `Dockerfile` multi-stage — stage `build` (`eclipse-temurin:25-jdk`, `./mvnw -B clean
-      package -DskipTests`), stage `runtime` (`eclipse-temurin:25-jre`, utilisateur non-root dédié,
-      `ENTRYPOINT` shell-form avec `-XX:MaxRAMPercentage=75.0` + `JAVA_OPTS` override, `EXPOSE 8080`).
-- [ ] T1.3 : Validation — `docker build -t flowforge:smoke .` réel ; `docker run --rm flowforge:smoke
-      id` (UID non-root) ; vérifier taille/contenu image (pas de JDK dans le stage final).
-      *Couvre les scénarios testing : « build multi-stage réussit », « utilisateur non-root »,
-      « image runtime sans JDK ».*
+- [x] T1.1 : `.dockerignore` (exclut `target/`, `frontend/node_modules`, `frontend/dist`, `.git`,
+      `.worktrees`, `docs/`, `scripts/`, `docker/`, fichiers `.env*`).
+- [x] T1.2 : `Dockerfile` multi-stage — stage `build` (`eclipse-temurin:25-jdk`, `./mvnw -B clean
+      package -DskipTests`), stage `runtime` (`eclipse-temurin:25-jre`, utilisateur non-root UID/GID
+      10001, `ENTRYPOINT` shell-form avec `-XX:MaxRAMPercentage=75.0` + `JAVA_OPTS` override,
+      `EXPOSE 8080`).
+- [x] T1.3 : Validation — **`docker build`/`docker run` réels impossibles** dans ce bac à sable
+      (`production.cloudfront.docker.com`, CDN de blobs Docker Hub, rejeté par la politique réseau
+      de la session — confirmé systémique, `eclipse-temurin:25-jdk` **et** `postgres:17-alpine`
+      tous deux rejetés ; pas de contournement tenté, conformément à `/root/.ccr/README.md`).
+      Repli réel obtenu : `hadolint` (binaire GitHub Releases, seul host testé hors Docker Hub) sur
+      `Dockerfile` → exit 0, aucun avertissement ; `pom.xml` confirmé `java.version=25` (cohérent
+      avec les tags `eclipse-temurin:25-*`) et `frontend-maven-plugin` autonome (télécharge son
+      propre Node, comme en dev local) — le plan de stages est réalisable, non vérifié end-to-end.
+      *Couvre partiellement les scénarios testing « build multi-stage réussit », « utilisateur
+      non-root », « image runtime sans JDK » — ces 3 restent non exécutés faute d'accès registre.*
 
 ### Milestone 2 — Script de provisioning
-- [ ] T2.1 : `scripts/provision-tenant.sh` — validation de `<tenant_id>`
+- [x] T2.1 : `scripts/provision-tenant.sh` — validation de `<tenant_id>`
       (`^[a-z][a-z0-9_]{2,62}$`), génération SQL paramétrée à partir du gabarit
       `docker/postgres/init/01-init-tenant-schema.sql`, sortie stdout par défaut / `-o <fichier>`.
-- [ ] T2.2 : Mode `--apply` — connexion `psql` (variables standard `PGHOST`/`PGPORT`/`PGDATABASE`/
+- [x] T2.2 : Mode `--apply` — connexion `psql` (variables standard `PGHOST`/`PGPORT`/`PGDATABASE`/
       `PGUSER`/`PGPASSWORD`), lecture `TENANT_DB_PASSWORD` (échec explicite si absente), garde
       anti-écrasement (vérifie `information_schema.schemata` avant d'appliquer, échoue si le schéma
       existe déjà).
-- [ ] T2.3 : Validation — conteneur PostgreSQL jetable (`postgres:17-alpine`, cohérent avec
-      `docker-compose.yml`) ; scénario nominal (génération + application), scénario rejeu (échec
-      attendu), scénario identifiant invalide (échec avant toute connexion), scénario mot de passe
-      absent (échec avant toute connexion).
-      *Couvre tous les scénarios testing « scripts/provision-tenant.sh » + l'intégration
-      PostgreSQL jetable.*
+- [x] T2.3 : Validation — **conteneur PostgreSQL jetable impossible** (Docker Hub bloqué, cf. M1),
+      remplacé par le service `postgresql-16` déjà installé dans ce bac à sable (démarré via
+      `sudo service postgresql start`) : tous les scénarios réellement exécutés avec de vraies
+      requêtes SQL — génération + application nominale, rejeu sur tenant existant rejeté
+      explicitement (pas d'écrasement), identifiant invalide rejeté avant connexion, mot de passe
+      absent rejeté avant connexion, **et isolation croisée vérifiée** (un second tenant provisionné,
+      le rôle du premier reçoit `permission denied` en `CREATE TABLE` dans le schéma du second).
+      `shellcheck scripts/provision-tenant.sh` propre. Données de test nettoyées après coup.
+      *Couvre tous les scénarios testing « scripts/provision-tenant.sh » avec de vraies preuves
+      d'exécution, sur PostgreSQL natif plutôt que conteneurisé.*
 
 ### Milestone 3 — Activation `context-path`
-- [ ] T3.1 : Décommenter `server.servlet.context-path: /${app.tenant.id}` dans `application.yml`.
-- [ ] T3.2 : Ajouter la neutralisation `context-path: ""` dans `application-local.yml` (pattern
+- [x] T3.1 : `server.servlet.context-path: /${app.tenant.id}` **fusionné dans le bloc `server:`
+      existant** d'`application.yml` (ligne 112, portait déjà `forward-headers-strategy` et
+      `servlet.session.cookie.*`) — pas un nouveau bloc top-level (une première tentative en créant
+      un second bloc `server:` cassait le YAML, SnakeYAML: « found duplicate key server »,
+      détecté par `./mvnw verify` lui-même et corrigé).
+- [x] T3.2 : Neutralisation `context-path: ""` ajoutée dans `application-local.yml` (pattern
       `app.security.cookie.secure`).
-- [ ] T3.3 : Validation — `./mvnw verify` (suite complète, profil `test`) ; relecture ciblée des 2
-      tests `RANDOM_PORT`/`DEFINED_PORT` (`ObservabilityPrometheusApiTest`,
-      `ObservabilityActuatorIT`) pour confirmer qu'ils continuent de cibler le port management,
-      non affecté.
-      *Couvre le scénario testing « `./mvnw verify` reste vert malgré context-path actif ».*
+- [x] T3.3 : Validation — `./mvnw -B verify -Dmaven.compiler.release=21` **exécuté réellement** :
+      `BUILD SUCCESS`, 1738 tests, 0 échec, 0 erreur, ArchUnit conforme, couverture Jacoco respectée.
+      Confirme l'analyse préalable (seuls `ObservabilityPrometheusApiTest`/`ObservabilityActuatorIT`
+      utilisent un vrai port HTTP, sur le port management séparé, non affecté par le context-path).
+      *Couvre le scénario testing « `./mvnw verify` reste vert malgré context-path actif » — avec
+      preuve fraîche.*
 
 ### Milestone 4 — Documentation
 - [ ] T4.1 : `DEPLOIEMENT.md` — remplacer le runbook manuel §4 par les commandes réelles
@@ -103,6 +124,19 @@ en plusieurs jours.
 ## Risks & Mitigation
 **What could go wrong?**
 
+- **[Réalisé] Docker Hub inaccessible dans ce bac à sable.** Le démon Docker fonctionne (démarré
+  manuellement, `sudo dockerd`), mais la politique réseau de la session rejette explicitement
+  `production.cloudfront.docker.com` (CDN de blobs Docker Hub) — confirmé par
+  `recentRelayFailures` de l'agent proxy (`connect_rejected`, « policy denial »), et systémique
+  (`eclipse-temurin:25-jdk` et `postgres:17-alpine` tous deux rejetés, pas seulement une image
+  précise). Conformément à `/root/.ccr/README.md`, aucun contournement n'a été tenté (pas de retry
+  en boucle, pas de recherche de registre miroir alternatif). Mitigation appliquée : `hadolint`
+  (récupéré une fois depuis GitHub Releases, host non bloqué) pour le `Dockerfile` ; `postgresql-16`
+  déjà installé localement dans le bac à sable pour le smoke test du script de provisioning (au lieu
+  d'un conteneur PostgreSQL jetable) ; `shellcheck` pour le script. **Conséquence assumée** : le
+  `Dockerfile` n'a pas été buildé/exécuté réellement dans ce cycle — à faire à la première occasion
+  dans un environnement avec accès registre (poste ops, CI), documenté comme tel dans le doc
+  d'implémentation plutôt que de prétendre un smoke build réussi.
 - **Démon Docker instable/indisponible en cours de route** (sandbox éphémère) → mitigation :
   documenter précisément la dernière validation réussie ; si le smoke test devient impossible, le
   signaler explicitement plutôt que de prétendre un résultat non observé (cf. `verify` skill).

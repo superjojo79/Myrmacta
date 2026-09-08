@@ -103,9 +103,10 @@ affichées dans `error` existant.
 
 | Composant | Responsabilité | Props / emits |
 |---|---|---|
-| `ConnectorsAdminView.vue` | Liste, pager, create, toggle, delete | — |
+| `ConnectorsAdminView.vue` | Liste, pager, create, toggle, delete, URL ingress | — |
 | `ConnectorConfigForm.vue` | Rendu d’un schéma | `schema`, `v-model` values |
-| `connectorConfig.ts` | Purs : `defaultsFromSchema`, `configFromFormValues`, `schemaOf` | — |
+| `ConnectorIngressUrl.vue` | URL POST + Copier | `kind`, `url` |
+| `connectorConfig.ts` | Purs : `defaultsFromSchema`, `configFromFormValues`, `schemaOf`, `ingressUrlFor` | — |
 
 Layout :
 
@@ -139,6 +140,9 @@ Intégration vue :
 - Schéma vide : paragraphe « Aucune configuration d'instance pour ce type » ; pas de
   `ConnectorConfigForm` champs.
 - `definitions.length === 0` : textarea JSON (D-FALLBACK-NO-DEFS).
+- Liste : `ingressUrlFor(connector, location.origin, resolveApiBaseUrl())` — `http-rest` →
+  `/api/webhooks/{id}`, `flowable-callback` → `/api/callbacks/{id}` ; sinon rien.
+  `ConnectorIngressUrl` affiche `POST {url}` + bouton Copier (D-WEBHOOK-URL = C).
 
 **Ne pas** réutiliser `DynamicFields.vue` (D-NO-DYNAMICFIELDS).
 
@@ -151,7 +155,8 @@ Intégration vue :
 | **D-DESIGN-INTEGER** | `Number(value)` ; `NaN` / vide sur requis → ne pas poster, laisser HTML `required` | String | `validate()` / JSON backend attendent un nombre |
 | **D-DESIGN-OMIT-BLANK** | Optionnel `''` omis | Envoyer `""` | Secrets optionnels (`authHeaderValue`) : string vide peut échouer des gardes |
 | **D-DESIGN-NO-JSON-EDITOR** | `mapping` = STRING | Textarea multiligne JSON | Hors brief ; une ligne + `helpText` suffit |
-| **D-DESIGN-E2E-MOCK** | Mocks Playwright `connector-definitions` portent un `configSchema` réel (http-rest + smtp) | Mock `[]` inchangé | FILE-ATTENTE : e2e connecteurs ; le mock actuel `envelope([])` ne permet pas le chemin nominal |
+| **D-DESIGN-E2E-MOCK** | Mocks Playwright `connector-definitions` portent un `configSchema` réel (http-rest + smtp + flowable-callback) | Mock `[]` inchangé | FILE-ATTENTE : e2e connecteurs ; le mock actuel `envelope([])` ne permet pas le chemin nominal |
+| **D-WEBHOOK-URL** | Liste : URL webhook **et** callback, copie presse-papiers | A = rien ; B = webhook seul | Stakeholder 2026-09-08 option **C** |
 
 ## Non-Functional Requirements
 
@@ -172,6 +177,6 @@ Intégration vue :
 | Switch type (D-SWITCH-TYPE) | watch + `defaultsFromSchema` |
 | Schéma vide (D-EMPTY-SCHEMA) | message + `{}` |
 | Fallback catalogue vide | textarea existant |
-| Create only (D-SCOPE-CREATE) | liste inchangée (toggle/delete) |
-| GUIDE §4 | M7 planning |
+| Create only (D-SCOPE-CREATE) | liste inchangée (toggle/delete) ; URL en lecture seule |
+| GUIDE §4 | M7 planning ; URL webhook/callback (D-WEBHOOK-URL) |
 | Pas de backend | ce document |

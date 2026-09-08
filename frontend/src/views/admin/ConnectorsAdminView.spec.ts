@@ -155,4 +155,76 @@ describe('ConnectorsAdminView generated config form', () => {
     await flushPromises()
     expect(wrapper.get('.error').text()).toBe('webhookSecret too short')
   })
+
+  it('shows the webhook URL for an http-rest connector in the list', async () => {
+    vi.mocked(adminApi.listConnectorDefinitions).mockResolvedValue([
+      { type: 'http-rest', label: 'HTTP REST', configSchema: httpRestSchema },
+    ])
+    vi.mocked(adminApi.listConnectors).mockResolvedValue(
+      asPage([
+        {
+          id: 'c1',
+          tenantId: 't',
+          name: 'Hook',
+          connectorType: 'http-rest',
+          enabled: true,
+          config: {},
+          secretConfigured: { webhookSecret: true },
+        },
+      ]),
+    )
+    const wrapper = await mountView()
+    await flushPromises()
+    expect(wrapper.get('[data-testid="connector-ingress-url"]').text()).toBe(
+      `POST ${globalThis.location.origin}/api/webhooks/c1`,
+    )
+  })
+
+  it('shows the callback URL for a flowable-callback connector in the list', async () => {
+    vi.mocked(adminApi.listConnectorDefinitions).mockResolvedValue([
+      { type: 'flowable-callback', label: 'Callback', configSchema: [] },
+    ])
+    vi.mocked(adminApi.listConnectors).mockResolvedValue(
+      asPage([
+        {
+          id: 'cb-9',
+          tenantId: 't',
+          name: 'Async',
+          connectorType: 'flowable-callback',
+          enabled: true,
+          config: {},
+          secretConfigured: { webhookSecret: true },
+        },
+      ]),
+    )
+    const wrapper = await mountView()
+    await flushPromises()
+    expect(wrapper.get('[data-testid="connector-ingress"]').text()).toMatch(/URL callback/)
+    expect(wrapper.get('[data-testid="connector-ingress-url"]').text()).toBe(
+      `POST ${globalThis.location.origin}/api/callbacks/cb-9`,
+    )
+  })
+
+  it('does not show an ingress URL for smtp', async () => {
+    vi.mocked(adminApi.listConnectorDefinitions).mockResolvedValue([
+      { type: 'smtp', label: 'SMTP', configSchema: [] },
+    ])
+    vi.mocked(adminApi.listConnectors).mockResolvedValue(
+      asPage([
+        {
+          id: 's1',
+          tenantId: 't',
+          name: 'Mailer',
+          connectorType: 'smtp',
+          enabled: true,
+          config: {},
+          secretConfigured: {},
+        },
+      ]),
+    )
+    const wrapper = await mountView()
+    await flushPromises()
+    expect(wrapper.text()).toContain('Mailer')
+    expect(wrapper.find('[data-testid="connector-ingress"]').exists()).toBe(false)
+  })
 })

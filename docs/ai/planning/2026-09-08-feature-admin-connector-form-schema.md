@@ -15,6 +15,7 @@ description: Break down work into actionable tasks and estimate timeline
 - [x] M4 : Playwright + mocks définitions (dépend M3)
 - [x] M5 : `GUIDE-UTILISATEUR.md` §4 + `06-connecteurs.md` écran d’admin
 - [x] M6 : Vérification globale (Phases 7–9)
+- [x] M7 : D-WEBHOOK-URL = C — URL webhook + callback dans la liste (stakeholder 2026-09-08)
 
 ## Task Breakdown
 
@@ -24,8 +25,8 @@ description: Break down work into actionable tasks and estimate timeline
   (ou `types.ts` + re-export). `listConnectorDefinitions(): Promise<ConnectorDefinition[]>`.
   Validation : T-API-1 (`phase8Api.spec.ts` inchangé fonctionnellement).
 - [x] T1.2 : `frontend/src/components/connectors/connectorConfig.ts` + spec. Fonctions
-  `defaultsFromSchema`, `configFromFormValues`, `schemaOf`. Rouge d’abord. Validation :
-  T-UTIL-1…6.
+  `defaultsFromSchema`, `configFromFormValues`, `schemaOf`, `ingressUrlFor`. Rouge d’abord. Validation :
+  T-UTIL-1…6, T-UTIL-7 (`ingressUrlFor`).
 
 ### M2 — Composant formulaire (dépend T1.2 pour les types, pas pour le runtime)
 
@@ -47,6 +48,14 @@ description: Break down work into actionable tasks and estimate timeline
   avec http-rest + smtp (pas `[]`).
 - [x] T4.2 : `E2E-CONN-1` création http-rest.
 - [x] T4.3 : `E2E-CONN-2` création smtp / `config {}`.
+- [x] T4.4 : `E2E-CONN-3` `flowable-callback` affiche `/api/callbacks/{id}` ; CONN-1 affiche
+  `/api/webhooks/{id}` ; CONN-2 n’affiche pas d’URL ingress.
+
+### M7 — URL ingress (D-WEBHOOK-URL = C)
+
+- [x] T7.1 : `ingressUrlFor` + `ConnectorIngressUrl.vue` + liste admin. Validation : T-UTIL-7,
+  T-INGRESS-1…3, T-VIEW-7…9.
+- [x] T7.2 : GUIDE §4 — retirer « L'UI n'affiche l'URL du webhook nulle part ».
 
 ### M5 — Documentation utilisateur (dépend M3 pour coller à l’UI réelle)
 
@@ -101,9 +110,10 @@ Sans calendrier (agent). Séquence unique, TDD par tâche.
 | T-UTIL-1…6 | T1.2 |
 | T-FORM-1…5 | T2.1 |
 | T-VIEW-1…6 | T3.1 |
-| E2E-CONN-1 | T4.2 |
+| E2E-CONN-1 | T4.2 + T7.1 |
 | E2E-CONN-2 | T4.3 |
-| GUIDE | T5.1 |
+| E2E-CONN-3 | T4.4 |
+| GUIDE | T5.1 + T7.2 |
 
 ## Summary
 

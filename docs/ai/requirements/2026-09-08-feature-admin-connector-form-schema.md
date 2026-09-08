@@ -62,7 +62,6 @@ Non-goals :
   Compose (surface exclusive A2 = FE + guide).
 - Réutiliser `DynamicFields.vue` (enum dossier `NUMBER`/`DATE`/`FILE` ≠ `ConfigFieldType`).
 - Éditeur JSON structuré pour le champ `mapping` (reste un `STRING` / textarea d’une ligne).
-- Générer l’URL webhook dans l’UI (hors brief A2, déjà documenté comme limite).
 
 ## User Stories & Use Cases
 
@@ -77,6 +76,9 @@ Non-goals :
   un secret trop court est toujours rejeté **par le serveur** (message existant).
 - Cas limites : catalogue vide (textarea) ; `helpText` long (HMAC) affiché ; BOOLEAN /
   INTEGER / URL rendus même si aucun builtin ne les utilise aujourd’hui.
+- En tant que `TENANT_ADMIN`, après création d’un `http-rest` je vois l’URL webhook
+  `POST …/api/webhooks/{id}` dans la liste (copie presse-papiers) ; pour `flowable-callback`,
+  l’URL callback `POST …/api/callbacks/{id}` (**D-WEBHOOK-URL** = C, stakeholder 2026-09-08).
 
 ## Success Criteria
 
@@ -87,7 +89,7 @@ Non-goals :
       fallback catalogue vide).
 - [ ] Playwright : au moins un scénario de création `http-rest` (SELECT + PASSWORD + STRING)
       et un scénario schéma vide (`smtp`) ; mocks `GET /api/connector-definitions` portent
-      `configSchema`.
+      `configSchema` ; après création, URL webhook / callback visibles (D-WEBHOOK-URL).
 - [ ] `GUIDE-UTILISATEUR.md` §4 décrit le formulaire et le catalogue réel (6 types).
 - [ ] Zéro fichier Java / `ConnectorCatalog` / MCP / Compose / `SecurityConfig` modifié.
 
@@ -116,8 +118,9 @@ Non-goals :
 | **D-CLIENT-REQUIRED** | `required` HTML + `helpText` ; pas de duplication des règles serveur | Recoder min-20 / cron en FE | Source de vérité = `ConnectorDefinition.validate` |
 | **D-SWITCH-TYPE** | Changement de type → reset aux defaults du nouveau schéma | Fusionner les clés homonymes | Évite de poster `webhookSecret` sur un `scheduler` |
 | **D-NO-BACKEND** | Zéro Java | Étendre le schéma | FILE-ATTENTE A2 : l’API expose déjà `configSchema` |
+| **D-WEBHOOK-URL** | **C** — afficher dans la liste l’URL webhook (`http-rest`) **et** l’URL callback (`flowable-callback`), avec copie | A = ne pas afficher (limite GUIDE) ; B = webhook seulement | Stakeholder 2026-09-08 ; l’id est déjà dans `GET /api/connectors` |
 
 ## Questions & Open Items
 
-Aucun. Les D-* ferment le cadrage. Hors scope volontaire : édition d’instance, URL webhook
-dans l’UI, éditeur JSON pour `mapping`.
+Aucun. Les D-* ferment le cadrage, y compris **D-WEBHOOK-URL = C** (rejeu Phase 1–3, 2026-09-08).
+Hors scope volontaire : édition d’instance, éditeur JSON pour `mapping`.

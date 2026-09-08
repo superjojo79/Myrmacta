@@ -9,12 +9,14 @@ import {
   type ConnectorDefinition,
 } from '@/api/admin'
 import type { Connector } from '@/api/types'
-import { toProblemDetail } from '@/api/http'
+import { resolveApiBaseUrl, toProblemDetail } from '@/api/http'
 import AdminPager from '@/components/admin/AdminPager.vue'
 import ConnectorConfigForm from '@/components/connectors/ConnectorConfigForm.vue'
+import ConnectorIngressUrl from '@/components/connectors/ConnectorIngressUrl.vue'
 import {
   configFromFormValues,
   defaultsFromSchema,
+  ingressUrlFor,
   schemaOf,
   type FormValues,
 } from '@/components/connectors/connectorConfig'
@@ -106,6 +108,17 @@ async function remove(connector: Connector) {
   await deleteConnector(connector.id)
   await refresh()
 }
+
+function ingressOf(connector: Connector) {
+  return ingressUrlFor(connector, globalThis.location.origin, resolveApiBaseUrl())
+}
+
+const listedConnectors = computed(() =>
+  connectors.value.map((connector) => ({
+    connector,
+    ingress: ingressOf(connector),
+  })),
+)
 </script>
 
 <template>
@@ -148,13 +161,14 @@ async function remove(connector: Connector) {
       />
       <button type="submit">Créer</button>
     </form>
-    <ul>
-      <li v-for="c in connectors" :key="c.id">
+    <ul data-testid="connector-list">
+      <li v-for="{ connector: c, ingress } in listedConnectors" :key="c.id">
         <div>
           <strong>{{ c.name }}</strong> ({{ c.connectorType }}) — {{ c.enabled ? 'actif' : 'inactif' }}
           <span v-if="Object.keys(c.secretConfigured || {}).length" class="secrets">
             secrets: {{ Object.keys(c.secretConfigured).join(', ') }}
           </span>
+          <ConnectorIngressUrl v-if="ingress" :kind="ingress.kind" :url="ingress.url" />
         </div>
         <div>
           <button type="button" @click="toggle(c)">Basculer</button>

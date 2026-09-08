@@ -18,6 +18,7 @@ Frontend : `npm ci` dans la session.
 frontend/src/api/admin.ts
 frontend/src/components/connectors/connectorConfig.ts
 frontend/src/components/connectors/ConnectorConfigForm.vue
+frontend/src/components/connectors/ConnectorIngressUrl.vue
 frontend/src/views/admin/ConnectorsAdminView.vue
 frontend/e2e/pilotage.spec.ts
 ```
@@ -41,7 +42,9 @@ Fallback textarea si `definitions.length === 0`.
 
 ### Design deviations
 
-Aucune. `mapping` reste STRING (D-DESIGN-NO-JSON-EDITOR).
+Aucune sur le formulaire. Addendum stakeholder 2026-09-08 : **D-WEBHOOK-URL = C** (URL webhook
++ callback dans la liste) — hors brief initial, acté en rejeu Phase 1–3. `mapping` reste STRING
+(D-DESIGN-NO-JSON-EDITOR).
 
 ## Phase 7 — check implementation
 
@@ -50,11 +53,12 @@ Revue fichier par fichier vs design :
 | Fichier | Alignement | Notes |
 |---|---|---|
 | `admin.ts` | OK | Types OpenAPI `ConfigField` / `ConnectorDefinition` |
-| `connectorConfig.ts` | OK | D-COERCE, D-EMPTY-SCHEMA, omit blank |
+| `connectorConfig.ts` | OK | D-COERCE, D-EMPTY-SCHEMA, omit blank, `ingressUrlFor` |
 | `ConnectorConfigForm.vue` | OK | 6 types, password, helpText, pas de `v-html` |
-| `ConnectorsAdminView.vue` | OK | D-SWITCH-TYPE, D-FALLBACK-NO-DEFS, create-only |
-| e2e mocks | OK après Phase 8 | GET+POST même route |
-| GUIDE §4 / `06-connecteurs.md` | OK | Catalogue 6 types, plus de JSON brut |
+| `ConnectorIngressUrl.vue` | OK | D-WEBHOOK-URL = C, Copier sans secret |
+| `ConnectorsAdminView.vue` | OK | D-SWITCH-TYPE, D-FALLBACK-NO-DEFS, create-only, URL liste |
+| e2e mocks | OK après Phase 8 | GET+POST même route ; CONN-3 callback |
+| GUIDE §4 / `06-connecteurs.md` | OK | Catalogue 6 types, plus de JSON brut ; URL affichée |
 
 Callers : `listConnectorDefinitions` uniquement vue admin + `phase8Api.spec`. Toggle/delete
 inchangés. Pas de secret logué.

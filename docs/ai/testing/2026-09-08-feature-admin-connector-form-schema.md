@@ -26,6 +26,8 @@ description: Define testing approach, test cases, and quality assurance
       couvre le requis).
 - [x] T-UTIL-5 : `schemaOf` — type inconnu / undefined → `[]`.
 - [x] T-UTIL-6 : schéma `[]` → `configFromFormValues` → `{}`.
+- [x] T-UTIL-7 : `ingressUrlFor` — `http-rest` → `/api/webhooks/{id}` avec préfixe tenant ;
+      `flowable-callback` → `/api/callbacks/{id}` ; `smtp`/`scheduler`/… → `null`.
 
 ### `ConnectorConfigForm.vue` (T-FORM)
 
@@ -43,6 +45,15 @@ description: Define testing approach, test cases, and quality assurance
 - [x] T-VIEW-4 : changer de type reset les valeurs (pas de fuite `webhookSecret` vers scheduler).
 - [x] T-VIEW-5 : `listConnectorDefinitions` `[]` → textarea JSON conservé (D-FALLBACK-NO-DEFS).
 - [x] T-VIEW-6 : toggle / delete inchangés (régression `adminActions`).
+- [x] T-VIEW-7 : liste `http-rest` → `POST {origin}/api/webhooks/{id}`.
+- [x] T-VIEW-8 : liste `flowable-callback` → `POST {origin}/api/callbacks/{id}`.
+- [x] T-VIEW-9 : liste `smtp` → pas d’URL ingress.
+
+### `ConnectorIngressUrl.vue` (T-INGRESS)
+
+- [x] T-INGRESS-1 : libellé webhook + `POST {url}`.
+- [x] T-INGRESS-2 : libellé callback.
+- [x] T-INGRESS-3 : Copier appelle `clipboard.writeText(url)` (sans le mot POST).
 
 ### `admin.ts` (T-API)
 
@@ -61,7 +72,8 @@ ne visitent pas l’écran).
 - [x] E2E-CONN-1 : Admin → Connecteurs ; créer `http-rest` via SELECT + champs ; POST body
       `config.webhookAuthType` / `webhookSecret` / `processKey` / `dossierTypeCode` (pas
       `configJson`).
-- [x] E2E-CONN-2 : créer `smtp` ; POST `config` `{}` ; pas de textarea.
+- [x] E2E-CONN-2 : créer `smtp` ; POST `config` `{}` ; pas de textarea ; pas d’URL ingress.
+- [x] E2E-CONN-3 : créer `flowable-callback` ; liste affiche `POST …/api/callbacks/{id}`.
 - [x] Régression : suite `pilotage.spec.ts` existante verte.
 
 ## Test Data

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   configFromFormValues,
   defaultsFromSchema,
+  ingressUrlFor,
   schemaOf,
 } from './connectorConfig'
 import type { ConfigField, ConnectorDefinition } from '@/api/admin'
@@ -149,5 +150,49 @@ describe('schemaOf', () => {
   it('returns empty list for unknown or missing type', () => {
     expect(schemaOf(definitions, 'nope')).toEqual([])
     expect(schemaOf(definitions, undefined)).toEqual([])
+  })
+})
+
+describe('ingressUrlFor', () => {
+  const origin = 'https://example.com'
+  const tenantBase = '/acme'
+
+  it('builds the tenant-prefixed webhook URL for http-rest', () => {
+    expect(
+      ingressUrlFor({ id: 'c-1', connectorType: 'http-rest' }, origin, tenantBase),
+    ).toEqual({
+      kind: 'webhook',
+      method: 'POST',
+      url: 'https://example.com/acme/api/webhooks/c-1',
+    })
+  })
+
+  it('builds the callback URL for flowable-callback', () => {
+    expect(
+      ingressUrlFor({ id: 'cb-9', connectorType: 'flowable-callback' }, origin, tenantBase),
+    ).toEqual({
+      kind: 'callback',
+      method: 'POST',
+      url: 'https://example.com/acme/api/callbacks/cb-9',
+    })
+  })
+
+  it('omits the tenant prefix when apiBase is empty', () => {
+    expect(ingressUrlFor({ id: 'c-1', connectorType: 'http-rest' }, origin, '')).toEqual({
+      kind: 'webhook',
+      method: 'POST',
+      url: 'https://example.com/api/webhooks/c-1',
+    })
+  })
+
+  it('returns null for types without an HTTP ingress endpoint', () => {
+    expect(ingressUrlFor({ id: 's1', connectorType: 'smtp' }, origin, tenantBase)).toBeNull()
+    expect(
+      ingressUrlFor({ id: 'd1', connectorType: 'document-storage' }, origin, tenantBase),
+    ).toBeNull()
+    expect(ingressUrlFor({ id: 'j1', connectorType: 'scheduler' }, origin, tenantBase)).toBeNull()
+    expect(
+      ingressUrlFor({ id: 'g1', connectorType: 'flowable-signal' }, origin, tenantBase),
+    ).toBeNull()
   })
 })

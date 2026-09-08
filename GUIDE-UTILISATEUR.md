@@ -266,16 +266,24 @@ Dans la liste, chaque connecteur affiche son nom, son type, son statut et les **
 secrets configurés (jamais leur valeur — tout champ se terminant par `password`/`secret` est
 masqué). Boutons **Basculer** (activer/désactiver) et **Supprimer**.
 
+Après création, l'écran affiche aussi l'URL d'entrée HTTP quand le type en a une :
+
+| Type | URL affichée (à donner au partenaire) |
+|---|---|
+| `http-rest` | `POST https://{hôte}/{tenantId}/api/webhooks/{id}` — **URL webhook** |
+| `flowable-callback` | `POST https://{hôte}/{tenantId}/api/callbacks/{id}` — **URL callback** |
+
+Le préfixe `{tenantId}` est celui du reverse-proxy (chemin du tenant, décision n° 14) ; s'il
+n'y en a pas, le chemin commence à `/api/…`. Un bouton **Copier** recopie l'URL (sans le mot
+`POST`). Les autres types (`smtp`, `document-storage`, `scheduler`, `flowable-signal`) n'ont
+pas d'endpoint HTTP entrant.
+
 ### Appeler un connecteur `http-rest` (webhook entrant)
 
-> **L'UI n'affiche l'URL du webhook nulle part.** Elle se construit manuellement :
-> `POST /api/webhooks/{id-du-connecteur}`, où `{id-du-connecteur}` est l'identifiant renvoyé par
-> l'API à la création (visible dans les outils réseau du navigateur, ou à demander à un
-> administrateur technique).
-
-L'appel doit porter un en-tête `Idempotency-Key` et l'authentification déclarée
-(`webhookAuthType`) ; la taille du corps et le débit sont limités par la configuration serveur
-(voir [GETTING-STARTED.md](GETTING-STARTED.md) pour les paramètres correspondants).
+L'URL webhook complète est visible dans la liste dès que l'instance existe. L'appel doit
+porter un en-tête `Idempotency-Key` et l'authentification déclarée (`webhookAuthType`) ; la
+taille du corps et le débit sont limités par la configuration serveur (voir
+[GETTING-STARTED.md](GETTING-STARTED.md) pour les paramètres correspondants).
 
 Pour `HMAC_SHA256`, la signature (`X-Signature-256`) couvre
 `timestamp + "." + Idempotency-Key + "." + body` (`X-Webhook-Timestamp` = secondes epoch Unix,

@@ -69,3 +69,32 @@ export function configFromFormValues(
   }
   return config
 }
+
+export type ConnectorIngress = {
+  kind: 'webhook' | 'callback'
+  method: 'POST'
+  url: string
+}
+
+const INGRESS_BY_TYPE: Record<string, { kind: ConnectorIngress['kind']; path: string }> = {
+  'http-rest': { kind: 'webhook', path: '/api/webhooks' },
+  'flowable-callback': { kind: 'callback', path: '/api/callbacks' },
+}
+
+export function ingressUrlFor(
+  connector: { id: string; connectorType: string },
+  origin: string,
+  apiBase = '',
+): ConnectorIngress | null {
+  const mapping = INGRESS_BY_TYPE[connector.connectorType]
+  if (!mapping || !connector.id) {
+    return null
+  }
+  const originClean = origin.replace(/\/$/, '')
+  const base = apiBase.replace(/\/$/, '')
+  return {
+    kind: mapping.kind,
+    method: 'POST',
+    url: `${originClean}${base}${mapping.path}/${connector.id}`,
+  }
+}

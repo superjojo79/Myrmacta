@@ -673,6 +673,35 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
       capability: 'SERVICE',
       configSchema: [],
     },
+    {
+      type: 'flowable-callback',
+      label: 'Flowable message callback',
+      capability: 'CALLBACK',
+      configSchema: [
+        {
+          name: 'webhookAuthType',
+          label: 'Webhook auth',
+          type: 'SELECT',
+          required: true,
+          defaultValue: 'HMAC_SHA256',
+          options: ['HMAC_SHA256', 'SHARED_SECRET_TOKEN'],
+        },
+        { name: 'webhookSecret', label: 'Webhook secret', type: 'PASSWORD', required: true },
+        { name: 'messageName', label: 'BPMN message name', type: 'STRING', required: true },
+        {
+          name: 'correlationVariableName',
+          label: 'Correlation process variable',
+          type: 'STRING',
+          required: true,
+        },
+        {
+          name: 'correlationValuePath',
+          label: 'Correlation value JSONPath',
+          type: 'STRING',
+          required: true,
+        },
+      ],
+    },
   ]
   let connectors: Array<Record<string, unknown>> = []
   await page.route(/\/api\/connectors(?:\?|$)/, async (route) => {
@@ -2181,6 +2210,9 @@ test('E2E-CONN-1 admin creates http-rest connector from generated form', async (
     .poll(() => (createdBody?.config as Record<string, unknown> | undefined)?.webhookSecret)
     .toBe('a-very-long-secret')
   await expect(page.getByText('Hook prod')).toBeVisible()
+  await expect(page.getByTestId('connector-ingress-url')).toHaveText(
+    /POST http:\/\/127\.0\.0\.1:\d+\/api\/webhooks\/c-new/,
+  )
 })
 
 test('E2E-CONN-2 admin creates smtp connector with empty config', async ({ page }) => {
@@ -2224,5 +2256,54 @@ test('E2E-CONN-2 admin creates smtp connector with empty config', async ({ page 
   await expect.poll(() => createdBody?.connectorType).toBe('smtp')
   await expect.poll(() => createdBody?.config).toEqual({})
   await expect(page.getByText('Mailer')).toBeVisible()
+  await expect(page.getByTestId('connector-list').getByTestId('connector-ingress')).toHaveCount(0)
+})
+
+test('E2E-CONN-3 admin sees callback URL after creating flowable-callback', async ({ page }) => {
+  let createdBody: Record<string, unknown> | null = null
+  let connectors: Array<Record<string, unknown>> = []
+  await mockSession(page)
+  await page.route(/\/api\/connectors(?:\?|$)/, async (route) => {
+    if (route.request().method() === 'POST') {
+      createdBody = route.request().postDataJSON() as Record<string, unknown>
+      const created = {
+        id: 'c-cb',
+        tenantId: 'tenant_dev',
+        name: createdBody.name,
+        connectorType: createdBody.connectorType,
+        enabled: true,
+        config: createdBody.config,
+        secretConfigured: { webhookSecret: true },
+      }
+      connectors = [...connectors, created]
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify(created),
+      })
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(envelope(connectors)),
+    })
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Connecteurs' }).click()
+  const form = page.getByTestId('connector-create-form')
+  await form.getByPlaceholder('nom').fill('Async hook')
+  await form.getByTestId('connector-type').selectOption('flowable-callback')
+  await form.getByTestId('connector-config-field-webhookSecret').fill('a-very-long-secret')
+  await form.getByTestId('connector-config-field-messageName').fill('orderReceived')
+  await form.getByTestId('connector-config-field-correlationVariableName').fill('orderId')
+  await form.getByTestId('connector-config-field-correlationValuePath').fill('$.orderId')
+  await form.getByRole('button', { name: 'Créer' }).click()
+  await expect.poll(() => createdBody?.connectorType).toBe('flowable-callback')
+  await expect(page.getByText('Async hook')).toBeVisible()
+  await expect(page.getByTestId('connector-ingress')).toContainText('URL callback')
+  await expect(page.getByTestId('connector-ingress-url')).toHaveText(
+    /POST http:\/\/127\.0\.0\.1:\d+\/api\/callbacks\/c-cb/,
+  )
 })
 

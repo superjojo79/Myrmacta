@@ -78,7 +78,9 @@ INTEGER, BOOLEAN — à la place du `<textarea>` JSON de la première livraison.
 vide (`smtp`, `document-storage`) n'affiche aucun champ de config et poste `config: {}`.
 La validation métier (`ConnectorDefinition.validate(config)`, longueur de secret, cron, etc.)
 reste côté serveur. Un textarea JSON n'est conservé qu'en repli si le catalogue n'a pas pu
-être chargé.
+être chargé. Pour `http-rest` / `flowable-callback`, la liste affiche l'URL d'entrée à donner
+au partenaire (`POST …/api/webhooks/{id}` ou `POST …/api/callbacks/{id}`, préfixe tenant
+inclus) avec un bouton Copier.
 
 ### Catalogue de connecteurs fournis
 

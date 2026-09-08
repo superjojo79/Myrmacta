@@ -12,6 +12,10 @@ feature: mcp-ecritures-metier
 > [docs/ai/requirements/2026-09-08-feature-mcp-ecritures-metier.md](../requirements/2026-09-08-feature-mcp-ecritures-metier.md)
 > et le code réel (`DossierController`, `DossierWorkflowController`,
 > `DocumentGenerationTask` / `AttachGeneratedDocumentTask`, tools MCP existants).
+>
+> Rejeu 2026-09-08 : les `D-*` design avaient été actées sans question.
+> Phase 3 rejouée **après** confirmations requirements (D-GENERATE-* / D-DRY-RUN /
+> D-RATE-LIMIT / D-NO-OPENAPI). Première question : D-START-ORCH.
 
 ## Architecture Overview
 

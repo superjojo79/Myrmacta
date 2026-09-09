@@ -1,12 +1,16 @@
 package com.flowforge.infrastructure.mcp;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.flowforge.domain.dossier.model.AccessContext;
+import com.flowforge.infrastructure.config.M2mSecurityProperties;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.oauth2.jwt.Jwt;
 
 class McpAccessContextFactoryTest {
@@ -47,6 +51,46 @@ class McpAccessContextFactoryTest {
         AccessContext.User actor = factory.from(jwt(Map.of("sub", "user-1")));
 
         assertThat(actor.roles()).isEqualTo(Set.of("API_SERVICE"));
+    }
+
+    @Test
+    void trustedClientIdsEmpty_acceptsAnyM2mClient() {
+        McpAccessContextFactory unrestricted =
+                new McpAccessContextFactory(new M2mSecurityProperties(null, null, List.of()));
+
+        AccessContext.User actor = unrestricted.from(jwt(Map.of("client_id", "any-client")));
+
+        assertThat(actor.userId()).isEqualTo("any-client");
+        assertThat(actor.roles()).containsExactly("API_SERVICE");
+    }
+
+    @Test
+    void trustedClientIdsConfigured_allowsListedClientId() {
+        McpAccessContextFactory restricted = new McpAccessContextFactory(
+                new M2mSecurityProperties(null, null, List.of("agent-1")));
+
+        AccessContext.User actor = restricted.from(jwt(Map.of("client_id", "agent-1")));
+
+        assertThat(actor.roles()).containsExactly("API_SERVICE");
+    }
+
+    @Test
+    void trustedClientIdsConfigured_rejectsUnlistedClientId() {
+        McpAccessContextFactory restricted = new McpAccessContextFactory(
+                new M2mSecurityProperties(null, null, List.of("agent-1")));
+
+        assertThatThrownBy(() -> restricted.from(jwt(Map.of("client_id", "rogue-client"))))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void trustedClientIdsConfigured_fallsBackToSubjectWhenClientIdAbsent() {
+        McpAccessContextFactory restricted = new McpAccessContextFactory(
+                new M2mSecurityProperties(null, null, List.of("user-42")));
+
+        AccessContext.User actor = restricted.from(jwt(Map.of("sub", "user-42")));
+
+        assertThat(actor.userId()).isEqualTo("user-42");
     }
 
     private static Jwt jwt(Map<String, Object> claims) {

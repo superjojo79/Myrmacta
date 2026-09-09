@@ -132,6 +132,11 @@ app:
     m2m:
       issuer-uri: ${OAUTH2_ISSUER_URI:}   # resource-server JWT M2M ; vide en local/test
       jwt-secret: ${M2M_JWT_SECRET:}       # HMAC HS256 optionnel (local/test sans IdP)
+      # allowlist optionnelle des client_id/sub JWT M2M autorisés au rôle API_SERVICE
+      # (McpAccessContextFactory). Vide (défaut) = tout JWT M2M authentifié reçoit API_SERVICE
+      # (comportement historique, un seul client M2M de confiance). À renseigner avant d'accorder
+      # l'accès /api/m2m/mcp à un second client M2M (revue adversariale A3-M2, TODO §56).
+      trusted-client-ids: ${M2M_TRUSTED_CLIENT_IDS:}
   workflow:
     reserve-timeout: 5m
     outbox:

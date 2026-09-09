@@ -152,3 +152,17 @@ D-START-ORCH = C, D-DRY-RUN-START = B, D-FIELDS-READ = B. Cadrage FILE-ATTENTE
 non relancé : D-WRITE-ONE-CYCLE, D-REUSE-PORTS, D-ELEMENT-TYPES.
 
 Aucun point matériel ouvert.
+
+## Amendement post-implémentation (2026-09-09, revue adversariale)
+
+**D-RATE-LIMIT reversée** : la décision « A — Non » (confirmée 2026-09-08) laissait
+`generate_document` sans aucune limite, alors que l'équivalent REST est plafonné à 30/min —
+identifié en revue adversariale comme un risque de déni de service (A3-M1) si le JWT M2M venait à
+fuiter. `DocumentGenerationRateLimiter` a été rendue publique et réutilisée depuis le tool MCP
+(même compteur que le REST). Le motif d'origine (classe package-private, hors surface exclusive
+A3) est toujours vrai mais n'a plus été jugé suffisant face au risque.
+
+**A-ACTOR / risque M2M « tout ou rien » (TODO §56)** : toujours assumé par défaut, mais
+`McpAccessContextFactory` accepte maintenant une allowlist optionnelle
+(`M2mSecurityProperties#trustedClientIds`, vide par défaut = comportement inchangé) pour fermer le
+risque avant l'introduction d'un second client M2M (A3-M2). Voir TODO.md §56 et §60.

@@ -200,7 +200,21 @@ D-START-ORCH (`ManualStartOrchestrator`), D-GENERATE-ATTACH (`PRODUCED_DOC`, pas
 D-GENERATE-TEMPLATE (type du dossier), D-NO-OPENAPI. `CreateDossierUseCase*` non modifié
 (couture import batch Vague B).
 
-**Impacte :** `infrastructure.mcp.tool` uniquement + tests MCP + `GETTING-STARTED.md` §12.
+**Correctifs sécurité (revue adversariale, 2026-09-09)** :
+- **A3-M1** — `generate_document` (MCP) contournait entièrement `DocumentGenerationRateLimiter`
+  (30/min) qui protège l'équivalent REST `POST /api/documents/generate` : un client M2M pouvait
+  générer un volume illimité de PDF. **D-RATE-LIMIT (confirmée « A — Non » le 2026-09-08) est
+  reversée** : `DocumentGenerationRateLimiter`/`DocumentGenerationRateLimitExceededException`
+  rendues publiques et réutilisées depuis `GenerateDocumentTool`, même compteur que le REST
+  (clé `actor.userId()`), `dryRun` non décompté.
+- **A3-M2** — les 4 tools d'écriture héritaient du raccourci `API_SERVICE` = admin de facto
+  (risque déjà documenté, voir §56) désormais étendu aux écritures métier. Referme partiellement
+  via `M2mSecurityProperties#trustedClientIds` (voir §56) — décision **A-ACTOR toujours valable**
+  par défaut (allowlist vide), le durcissement est opt-in.
+
+**Impacte :** `infrastructure.mcp.tool`, `infrastructure.web.document` (visibilité élargie),
+`infrastructure.mcp.McpAccessContextFactory`, `infrastructure.config.M2mSecurityProperties`,
+`application.yml` + tests MCP + `GETTING-STARTED.md` §12.
 
 **Détail :** `docs/ai/**/2026-09-08-feature-mcp-ecritures-metier.md`.
 
@@ -1629,7 +1643,16 @@ risque documenté sans correctif** : tout JWT M2M valide reçoit `API_SERVICE`, 
 équivalent `TENANT_ADMIN` par le garde-fou — décision assumée (un seul client M2M de confiance
 prévu), documentée dans le design doc § D6 plutôt que corrigée (dériver les rôles des scopes JWT
 réels serait un changement plus large, hors périmètre). `./mvnw verify` final : **1675 tests, 0
-échec** (+9 vs Phase 9), ArchUnit conforme, gate Jacoco tenue. Détail complet dans
+échec** (+9 vs Phase 9), ArchUnit conforme, gate Jacoco tenue.
+
+**Mise à jour (revue adversariale lot A3, 2026-09-09, A3-M2)** : ce risque n'est plus totalement
+sans garde-fou côté configuration. `McpAccessContextFactory` accepte désormais
+`M2mSecurityProperties#trustedClientIds()` (property `app.security.m2m.trusted-client-ids`,
+`M2M_TRUSTED_CLIENT_IDS`) : vide (défaut, comportement historique inchangé) = tout JWT M2M reçoit
+`API_SERVICE` ; renseignée = seuls les `client_id`/`sub` listés obtiennent `API_SERVICE`, les
+autres sont rejetés (403). Le risque de fond (aucune dérivation des scopes JWT réels) reste assumé
+et non corrigé — à activer explicitement avant d'accorder l'accès `/api/m2m/mcp` à un second client
+M2M à portée réduite. Détail complet dans
 [docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md)
 § « Post-Phase 9 — Revue adversariale et correctifs de sécurité ».
 

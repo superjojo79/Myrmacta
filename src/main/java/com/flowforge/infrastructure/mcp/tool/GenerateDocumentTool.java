@@ -14,8 +14,11 @@ import com.flowforge.domain.dossier.port.in.AddDossierElementUseCase;
 import com.flowforge.domain.dossier.port.in.GetDossierTypeUseCase;
 import com.flowforge.domain.dossier.port.in.GetDossierUseCase;
 import com.flowforge.domain.workflow.WorkflowVariables;
+import com.flowforge.infrastructure.config.DocumentGenerationProperties;
 import com.flowforge.infrastructure.config.TenantProperties;
 import com.flowforge.infrastructure.mcp.McpAccessContextFactory;
+import com.flowforge.infrastructure.web.document.DocumentGenerationRateLimitExceededException;
+import com.flowforge.infrastructure.web.document.DocumentGenerationRateLimiter;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -35,6 +38,8 @@ public class GenerateDocumentTool {
     private final AddDossierElementUseCase addDossierElementUseCase;
     private final TenantProperties tenantProperties;
     private final McpAccessContextFactory accessContextFactory;
+    private final DocumentGenerationRateLimiter rateLimiter;
+    private final DocumentGenerationProperties documentGenerationProperties;
 
     public GenerateDocumentTool(
             GetDossierUseCase getDossierUseCase,
@@ -44,7 +49,9 @@ public class GenerateDocumentTool {
             DocumentStoragePort documentStoragePort,
             AddDossierElementUseCase addDossierElementUseCase,
             TenantProperties tenantProperties,
-            McpAccessContextFactory accessContextFactory) {
+            McpAccessContextFactory accessContextFactory,
+            DocumentGenerationRateLimiter rateLimiter,
+            DocumentGenerationProperties documentGenerationProperties) {
         this.getDossierUseCase = Objects.requireNonNull(getDossierUseCase, "getDossierUseCase");
         this.getDossierTypeUseCase = Objects.requireNonNull(getDossierTypeUseCase, "getDossierTypeUseCase");
         this.accessPolicy = Objects.requireNonNull(accessPolicy, "accessPolicy");
@@ -55,6 +62,9 @@ public class GenerateDocumentTool {
                 Objects.requireNonNull(addDossierElementUseCase, "addDossierElementUseCase");
         this.tenantProperties = Objects.requireNonNull(tenantProperties, "tenantProperties");
         this.accessContextFactory = Objects.requireNonNull(accessContextFactory, "accessContextFactory");
+        this.rateLimiter = Objects.requireNonNull(rateLimiter, "rateLimiter");
+        this.documentGenerationProperties =
+                Objects.requireNonNull(documentGenerationProperties, "documentGenerationProperties");
     }
 
     @McpTool(
@@ -94,6 +104,10 @@ public class GenerateDocumentTool {
             preview.put("dossierId", id.toString());
             preview.put("templateKey", key);
             return preview;
+        }
+
+        if (!rateLimiter.tryConsume(actor.userId(), documentGenerationProperties.rateLimitPerMinute())) {
+            throw new DocumentGenerationRateLimitExceededException(actor.userId());
         }
 
         Map<String, Object> merged = new LinkedHashMap<>(DossierMcpView.from(dossier).fields());

@@ -22,8 +22,12 @@ import com.flowforge.domain.dossier.model.ElementType;
 import com.flowforge.domain.dossier.port.in.AddDossierElementUseCase;
 import com.flowforge.domain.dossier.port.in.GetDossierTypeUseCase;
 import com.flowforge.domain.dossier.port.in.GetDossierUseCase;
+import com.flowforge.infrastructure.config.DocumentGenerationProperties;
 import com.flowforge.infrastructure.config.TenantProperties;
 import com.flowforge.infrastructure.mcp.McpAccessContextFactory;
+import com.flowforge.infrastructure.web.document.DocumentGenerationRateLimitExceededException;
+import com.flowforge.infrastructure.web.document.DocumentGenerationRateLimiter;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -57,15 +61,7 @@ class GenerateDocumentToolTest {
         generateDocumentUseCase = mock(GenerateDocumentUseCase.class);
         documentStoragePort = mock(DocumentStoragePort.class);
         addDossierElementUseCase = mock(AddDossierElementUseCase.class);
-        tool = new GenerateDocumentTool(
-                getDossierUseCase,
-                getDossierTypeUseCase,
-                accessPolicy,
-                generateDocumentUseCase,
-                documentStoragePort,
-                addDossierElementUseCase,
-                new TenantProperties(TENANT),
-                new McpAccessContextFactory());
+        tool = newTool(new DocumentGenerationRateLimiter(Clock.systemUTC()), 30);
         dossierId = UUID.randomUUID();
         when(getDossierUseCase.get(eq(dossierId), any())).thenReturn(dossier(dossierId));
         when(getDossierTypeUseCase.getByCode(eq(TENANT), eq("SINISTRE"), any()))
@@ -168,6 +164,31 @@ class GenerateDocumentToolTest {
     }
 
     @Test
+    void rateLimitExceeded_deniesGeneration() {
+        DocumentGenerationRateLimiter exhausted = new DocumentGenerationRateLimiter(Clock.systemUTC());
+        exhausted.tryConsume("agent-1", 1);
+        tool = newTool(exhausted, 1);
+
+        assertThatThrownBy(() ->
+                        tool.generateDocument(dossierId.toString(), "quote", null, null, Map.of(), false))
+                .isInstanceOf(DocumentGenerationRateLimitExceededException.class);
+        verify(generateDocumentUseCase, never()).generate(any());
+        verify(documentStoragePort, never()).store(any(), any(), any());
+        verify(addDossierElementUseCase, never()).add(any(), any());
+    }
+
+    @Test
+    void dryRun_doesNotConsumeRateLimit() {
+        DocumentGenerationRateLimiter exhausted = new DocumentGenerationRateLimiter(Clock.systemUTC());
+        exhausted.tryConsume("agent-1", 1);
+        tool = newTool(exhausted, 1);
+
+        tool.generateDocument(dossierId.toString(), "quote", null, null, Map.of(), true);
+
+        verify(generateDocumentUseCase, never()).generate(any());
+    }
+
+    @Test
     void dryRun_doesNotGenerate() {
         @SuppressWarnings("unchecked")
         Map<String, Object> preview = (Map<String, Object>)
@@ -177,6 +198,20 @@ class GenerateDocumentToolTest {
         verify(generateDocumentUseCase, never()).generate(any());
         verify(documentStoragePort, never()).store(any(), any(), any());
         verify(addDossierElementUseCase, never()).add(any(), any());
+    }
+
+    private GenerateDocumentTool newTool(DocumentGenerationRateLimiter rateLimiter, int rateLimitPerMinute) {
+        return new GenerateDocumentTool(
+                getDossierUseCase,
+                getDossierTypeUseCase,
+                accessPolicy,
+                generateDocumentUseCase,
+                documentStoragePort,
+                addDossierElementUseCase,
+                new TenantProperties(TENANT),
+                new McpAccessContextFactory(),
+                rateLimiter,
+                new DocumentGenerationProperties(0, rateLimitPerMinute));
     }
 
     private static void bindJwt() {

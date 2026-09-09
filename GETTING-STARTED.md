@@ -306,6 +306,12 @@ code (`infrastructure.mcp.tool`) — pas de documentation à maintenir manuellem
 celle-ci. Aucune UI dédiée côté SPA : ce canal est réservé à l'outillage interne, pas aux
 utilisateurs finaux du tenant.
 
+Par défaut, tout JWT M2M authentifié reçoit `API_SERVICE` (un seul client M2M de confiance
+assumé, TODO §56). `M2M_TRUSTED_CLIENT_IDS` (voir `.env.example`) restreint ce rôle à une
+allowlist de `client_id`/`sub` — à renseigner avant d'ouvrir `/api/m2m/mcp` à un second client M2M
+à portée réduite. `generate_document` partage par ailleurs le rate limiter (30/min par défaut,
+`app.document.generate.rate-limit-per-minute`) de l'équivalent REST `/api/documents/generate`.
+
 ------
 
 ## Pour aller plus loin

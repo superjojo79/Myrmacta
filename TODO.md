@@ -220,6 +220,29 @@ D-GENERATE-TEMPLATE (type du dossier), D-NO-OPENAPI. `CreateDossierUseCase*` non
 
 ---
 
+### [ ] 61. Introduction de DMN — lever l'exclusion V1
+
+**Énoncé :** DMN est explicitement hors V1 depuis l'origine (`application.yml` : auto-config
+`DmnEngineAutoConfiguration`/`DmnEngineServicesAutoConfiguration` exclue) et le `businessRuleTask`
+BPMN est en plus explicitement rejeté au parsing depuis la contre-revue adversariale post-merge PR
+#113 (TODO §58, finding H1-bis) — pas de moteur DMN dans la stack à ce moment-là. Origine :
+question utilisateur (2026-09-10), pas encore priorisé ni tranché en `dev-lifecycle`.
+
+**Analyse écrite :** [25-introduction-dmn.md](analysis%20doc/25-introduction-dmn.md) — état actuel
+vérifié dans le code (activation moteur = 2 lignes de config + lever le rejet
+`businessRuleTask`), risque dominant identifié = durcissement des expressions FEEL avant de lever
+ce rejet (même classe de risque que H1/H1-bis, qui a nécessité deux passes avant d'être fermé),
+questions ouvertes D-DMN-SCOPE à D-DMN-RESULT (cas d'usage métier non encore fourni, propriétaire
+de la revue de sécurité, mécanisme de déploiement, tool MCP, hit policies, masquage du résultat).
+
+**Impacte (si retenu) :** `application.yml`, `FlowableBpmnParserAdapter`, nouveau
+port/adaptateur de parsing/déploiement DMN, écran admin (upload + prévisualisation, miroir
+`deploiement-bpmn`), potentiellement `infrastructure.mcp`, `README.md`/`analysis doc/05`/
+`analysis doc/00-index.md`/`FILE-ATTENTE.md` (retrait de la mention « hors V1 »),
+`GUIDE-CONCEPTION-BPMN.md`.
+
+---
+
 ## Autorisation et conformité
 
 Points identifiés par [12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md),

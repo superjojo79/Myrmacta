@@ -6,6 +6,13 @@ description: Break down work into actionable tasks and estimate timeline
 
 # Project Planning & Task Breakdown — `introduction-dmn`
 
+> **Correction (2026-09-11, implémentation) :** Flowable n'implémente pas FEEL — moteur réel =
+> **JUEL** (voir [design](../design/2026-09-11-feature-introduction-dmn.md) §Sécurité). M1 est donc
+> une **adaptation** de `assertSafeConditionExpression` à la grammaire, plus étroite, des fragments
+> `[opérateur] valeur` des cellules DMN — pas une grammaire FEEL à inventer. La fixture M11 ne peut
+> pas utiliser d'intervalles `[a..b]`/listes `"a","b"` en cellule (non supportés par Flowable) — une
+> grille à valeurs multiples s'exprime en plusieurs règles/lignes.
+>
 > 12 milestones séquencés par dépendance (plus large que les 8 de `edition-bpmn` — le périmètre
 > retenu en Phase 1 cumule activation moteur + durcissement sécurité + éditeur intégré + MCP dans
 > un seul cycle, assumé explicitement). Chaque tâche référence les scénarios de

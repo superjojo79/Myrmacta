@@ -288,6 +288,19 @@ H1→H1-bis) ; forme exacte de `DmnRepositoryService` non garantie symétrique �
 BPMN ; source de la liste des tables déployées côté éditeur BPMN à trancher en implémentation.
 Suite : Phase 5 (implémentation), démarrage par **M1**.
 
+**Phase 5 (implémentation) — correction M1 (2026-09-11) :** investigation du code source
+`flowable-dmn-engine` (`org.flowable.dmn.engine.impl.el`) — **Flowable n'implémente pas FEEL**, le
+moteur réel est **JUEL**, le même déjà durci côté BPMN. `ELInputEntryExpressionPreParser`
+transforme une cellule brute (fragment `[opérateur] valeur`, pas une expression complète) en
+`#{...}` évalué par ce moteur — un identifiant nu en position de valeur expose exactement la
+vulnérabilité H1-bis. M1 devient une **adaptation** de `assertSafeConditionExpression` à cette
+grammaire plus étroite, pas une grammaire FEEL à inventer — risque réduit par rapport à l'estimation
+du planning. Confirmé aussi : ni intervalles `[a..b]` ni listes `"a","b"` ne sont supportés par
+l'implémentation Flowable (fixture M11 à base de règles multiples, pas de cellules à liste).
+[25-introduction-dmn.md](analysis%20doc/25-introduction-dmn.md) §1.2,
+[design](docs/ai/design/2026-09-11-feature-introduction-dmn.md) §Sécurité et
+[planning](docs/ai/planning/2026-09-11-feature-introduction-dmn.md) corrigés en conséquence.
+
 **Analyse écrite :** [25-introduction-dmn.md](analysis%20doc/25-introduction-dmn.md) — état actuel
 vérifié dans le code (activation moteur = 2 lignes de config + lever le rejet
 `businessRuleTask`), risque dominant identifié = durcissement des expressions FEEL avant de lever

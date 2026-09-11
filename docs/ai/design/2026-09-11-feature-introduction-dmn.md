@@ -11,6 +11,13 @@ description: Define the technical architecture, components, and data models
 > Items ». Un 5ᵉ point, non anticipé en Phase 1, a été trouvé en investiguant Flowable 8 : le
 > **mécanisme d'invocation DMN réel** n'est pas celui supposé dans l'analyse initiale — voir
 > « Design Decisions » D1, tranché avec l'utilisateur via `AskUserQuestion`.
+>
+> **Correction (2026-09-11, Phase 5 implémentation) — pas de FEEL du tout.** Le point « allowlist
+> FEEL » laissé ouvert (§Non-Functional Requirements) partait d'une prémisse fausse : Flowable
+> n'implémente pas FEEL. Son moteur DMN évalue les cellules via **JUEL**, le même moteur déjà
+> durci côté BPMN (`assertSafeConditionExpression`) — M1 en planning se réduit donc à *adapter*
+> cette allowlist existante à la grammaire (plus restreinte) des cellules DMN, pas à en inventer
+> une nouvelle pour un langage distinct. Voir §Non-Functional Requirements/Sécurité, mis à jour.
 
 ## Architecture Overview
 
@@ -242,21 +249,35 @@ design pour justifier un comportement différent de BPMN sur ces points.
 
 ## Non-Functional Requirements
 
-### Sécurité — allowlist FEEL (risque dominant, non résolu dans ce document)
+### Sécurité — allowlist JUEL pour les cellules DMN (risque dominant, mécanisme clarifié)
 
-**À dire clairement plutôt que présenter comme réglé :** ce document fixe l'architecture (où vit le
-garde-fou — `DmnParserPort`/`FlowableDmnParserAdapter`, au parsing du `.dmn`, avant tout
-déploiement) mais **pas la grammaire FEEL exacte de l'allowlist**. Contrairement à
-`assertSafeConditionExpression` (UEL, une expression déjà connue et bornée par l'usage réel du
-dépôt), le FEEL des cellules d'une table DMN est un langage distinct avec sa propre syntaxe
-(intervalles `[100..500]`, listes de valeurs `"gold","platinum"`, opérateur `-` pour « n'importe »)
-— une grammaire d'allowlist calquée sur celle des gateways ne s'appliquerait pas telle quelle.
-**Reste à faire avant l'implémentation** (planning ou un sous-cycle dédié, à trancher) :
-investiguer si le moteur FEEL de Flowable DMN offre un mode restreint (désactivation de
-l'invocation de fonction externe / navigation de contexte arbitraire) plutôt que de tout valider au
-niveau texte XML comme pour UEL — et si non, construire l'allowlist à partir des besoins réels de
-la grille d'éligibilité (D-DMN-SCOPE), avec preuve par **exécution réelle** contre le moteur (pas
-seulement lecture statique), même exigence que H1-bis.
+**Correction (2026-09-11, implémentation) : Flowable n'implémente pas FEEL.** Vérifié dans le code
+source (`flowable-dmn-engine`, package `org.flowable.dmn.engine.impl.el`) et la documentation
+officielle : les cellules d'entrée/sortie d'une table de décision Flowable sont évaluées par
+**JUEL**, le même moteur déjà durci côté BPMN — pas un langage distinct à sécuriser depuis zéro.
+
+Mécanique exacte (`ELInputEntryExpressionPreParser`) : une cellule d'entrée brute est un
+**fragment**, pas une expression complète — soit un opérateur de comparaison suivi d'une valeur
+(`>= 18`, `== BRONZE`), soit une valeur nue interprétée comme une égalité implicite contre la
+variable d'entrée de la colonne (`BRONZE` → `input == BRONZE`). Le pré-parseur l'enveloppe ensuite
+en `#{...}` (EL différé) avant évaluation. **Absence confirmée** de support des constructs FEEL
+évoqués dans une version antérieure de cette analyse (intervalles `[a..b]`, listes
+`"a","b"`) — non implémentés par Flowable ; une grille combinant plusieurs valeurs s'exprime en
+plusieurs règles (lignes), pas en une cellule à liste. Empty/`-` → shortcut `true` sans passer par
+l'EL (sûr, aucune garde nécessaire).
+
+**Conséquence directe pour l'allowlist :** une cellule contenant un identifiant nu non quoté (ex.
+`connectorServiceTask`) expose *exactement* la vulnérabilité H1-bis — résolution d'un bean Spring
+par nom dès qu'aucune variable de process ne porte ce nom. La grammaire à construire n'est donc pas
+une invention pour un langage FEEL — c'est une **adaptation** de `assertSafeConditionExpression` à
+une surface plus étroite (fragment « opérateur + valeur », pas une expression booléenne complète
+avec `&&`/`||`) : valeurs = littéraux quotés (chaîne) ou numériques uniquement, jamais un
+identifiant nu en position de valeur (même règle que `assertLiteralAssigneeValue` pour
+`assignee`/`candidateUsers`) ; côté sortie, même traitement littéral-only. **Reste néanmoins requis
+avant de considérer le sujet clos** : preuve par **exécution réelle** contre le vrai moteur DMN
+(pas seulement lecture statique) qu'un fragment construit pour ressembler à une valeur légitime ne
+peut pas résoudre un bean — même exigence, et même prudence après la 1ère tentative insuffisante de
+H1-bis, que côté BPMN.
 
 ### Multi-tenant
 

@@ -71,10 +71,20 @@ restriction « littéral simple » (`${nomSimple}`) s'est révélée contournabl
 la résolution d'un bean Spring par nom dès qu'aucune variable de process ne porte ce nom —
 `${connectorServiceTask}` est syntaxiquement indiscernable d'une variable métier légitime et
 invoque pourtant un bean vivant du contexte applicatif. **Cette même classe de risque existe côté
-DMN** : les expressions FEEL d'une table de décision Flowable peuvent, selon la configuration du
-moteur, résoudre des variables de process et des beans exactement comme UEL en BPMN. Lever un
-blocage BPMN qui protège l'invocation de DMN, sans réappliquer une discipline équivalente,
-rouvrirait la même surface que H1/H1-bis avaient fermée.
+DMN — et pas « comme si c'était du UEL », c'est littéralement le même moteur.** Correction
+(2026-09-11, Phase 5 implémentation, vérifié dans le code source Flowable) : **Flowable
+n'implémente pas FEEL du tout**. Son moteur DMN évalue les cellules d'entrée/sortie via **JUEL**,
+le même `ExpressionManager`/EL que celui déjà durci côté BPMN — pas un langage FEEL séparé à
+inventer. Le pré-parseur DMN de Flowable (`ELInputEntryExpressionPreParser`) transforme une cellule
+brute (`== BRONZE`, `>= 18`, ou une valeur nue interprétée en égalité implicite) en une expression
+`#{...}` évaluée par ce même moteur — donc une cellule contenant un identifiant nu non quoté
+(`connectorServiceTask`) expose *exactement* la vulnérabilité H1-bis. La grammaire FEEL
+(intervalles `[a..b]`, listes `"a","b"`) évoquée plus haut dans ce document **n'est pas supportée
+par l'implémentation Flowable** — seules les formes « opérateur + valeur » ou « valeur nue = égalité
+implicite » le sont ; une grille combinant plusieurs valeurs doit s'exprimer en plusieurs règles,
+pas en une cellule à liste. Lever un blocage BPMN qui protège l'invocation de DMN, sans réappliquer
+une discipline JUEL équivalente à `assertSafeConditionExpression`, rouvrirait la même surface que
+H1/H1-bis avaient fermée.
 
 **Correction (2026-09-11, Phase 3 design) — `businessRuleTask` n'est PAS le mécanisme d'invocation
 DMN de Flowable.** Investigation du code source Flowable 8 et de sa documentation officielle,

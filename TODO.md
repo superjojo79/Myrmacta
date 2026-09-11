@@ -257,6 +257,20 @@ http/shell/dmn...). Décision actée avec l'utilisateur (`AskUserQuestion`) : ou
 tables déployées) plutôt qu'un delegate custom réimplémentant la sémantique DMN à la main.
 [25-introduction-dmn.md](analysis%20doc/25-introduction-dmn.md) §1.2/§3.1 corrigés en conséquence.
 
+**Phase 3 (design) close (2026-09-11)** :
+[docs/ai/design/2026-09-11-feature-introduction-dmn.md](docs/ai/design/2026-09-11-feature-introduction-dmn.md).
+Architecture : `DmnParserPort`/`DmnDeploymentPort`/`DmnDraftRepository` (domaine, miroir exact
+`BpmnParserPort`/`WorkflowDeploymentPort`/`BpmnDraftRepository`), exception native `type="dmn"`
+dans `assertSafeServiceTask` (D1), `dmn-js` Modeler **sans** provider custom — le `.dmn` est du DMN
+1.3 standard, l'extension `flowable:*` est côté éditeur **BPMN** existant
+(`flowablePropertiesProvider.ts`, à compléter) pas côté DMN (D2). Table `dmn_draft` (composite
+`tenant_id`/`decision_key`, miroir `bpmn_draft`). Tools MCP :
+`deploy_decision_table`/`list_decision_tables`/`get_decision_table` (D3). **Non résolu, reporté au
+planning/un sous-cycle dédié** : grammaire FEEL exacte de l'allowlist de sécurité — risque
+dominant de la feature, le FEEL des cellules DMN (intervalles, listes, `-`) n'est pas la même
+grammaire que l'UEL des gateways, ne peut pas être calquée telle quelle sur
+`assertSafeConditionExpression`. Suite : Phase 4 (planning).
+
 **Analyse écrite :** [25-introduction-dmn.md](analysis%20doc/25-introduction-dmn.md) — état actuel
 vérifié dans le code (activation moteur = 2 lignes de config + lever le rejet
 `businessRuleTask`), risque dominant identifié = durcissement des expressions FEEL avant de lever

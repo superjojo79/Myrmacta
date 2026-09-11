@@ -246,6 +246,17 @@ cycle donc large (activation moteur + durcissement sécurité + éditeur + MCP e
 le séquencement progressif suivi historiquement par BPMN) — assumé explicitement par l'utilisateur,
 pas une extension silencieuse. Suite : Phase 3 (design).
 
+**Phase 3 (design) — correction majeure du mécanisme (2026-09-11) :** investigation du code source
+Flowable 8 (pas supposée) — `businessRuleTask` (H1-bis) est câblé sur **Drools**, sans rapport avec
+DMN, son rejet reste inchangé. Le vrai mécanisme d'invocation DMN de Flowable est
+`<serviceTask flowable:type="dmn">` + champ `decisionTableReferenceKey`, bloqué aujourd'hui par une
+règle différente et plus large (`assertSafeServiceTask` rejette tout type intégré : mail/camel/
+http/shell/dmn...). Décision actée avec l'utilisateur (`AskUserQuestion`) : ouvrir une exception
+**native** et étroite (`type="dmn"` strictement littéral, `decisionTableReferenceKey` en
+`flowable:string` uniquement, jamais `flowable:expression`, clé vérifiée contre le catalogue des
+tables déployées) plutôt qu'un delegate custom réimplémentant la sémantique DMN à la main.
+[25-introduction-dmn.md](analysis%20doc/25-introduction-dmn.md) §1.2/§3.1 corrigés en conséquence.
+
 **Analyse écrite :** [25-introduction-dmn.md](analysis%20doc/25-introduction-dmn.md) — état actuel
 vérifié dans le code (activation moteur = 2 lignes de config + lever le rejet
 `businessRuleTask`), risque dominant identifié = durcissement des expressions FEEL avant de lever

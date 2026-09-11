@@ -17,6 +17,12 @@
 > d'une techno pour elle-même. **D-DMN-SCOPE (§5) n'est donc plus une question d'opportunité**, seul
 > son périmètre concret (quel `DossierType`/process, quelle forme de règle) reste à préciser en
 > Phase 1 — voir §2.
+>
+> **Corrigé (2026-09-11), Phase 3 design — mécanisme d'invocation DMN.** Investigation du code
+> source Flowable 8 : `businessRuleTask` (H1-bis) est câblé sur **Drools**, sans rapport avec DMN —
+> son rejet reste justifié, inchangé. Le vrai mécanisme est `<serviceTask flowable:type="dmn">`,
+> bloqué aujourd'hui par une règle différente et plus large
+> (`assertSafeServiceTask` rejette tout type intégré). §1.2/§3.1 corrigés en conséquence.
 
 ---
 
@@ -66,9 +72,37 @@ la résolution d'un bean Spring par nom dès qu'aucune variable de process ne po
 `${connectorServiceTask}` est syntaxiquement indiscernable d'une variable métier légitime et
 invoque pourtant un bean vivant du contexte applicatif. **Cette même classe de risque existe côté
 DMN** : les expressions FEEL d'une table de décision Flowable peuvent, selon la configuration du
-moteur, résoudre des variables de process et des beans exactement comme UEL en BPMN. Lever le
-blocage `businessRuleTask` sans réappliquer une discipline équivalente rouvrirait la même surface
-que H1/H1-bis avaient fermée.
+moteur, résoudre des variables de process et des beans exactement comme UEL en BPMN. Lever un
+blocage BPMN qui protège l'invocation de DMN, sans réappliquer une discipline équivalente,
+rouvrirait la même surface que H1/H1-bis avaient fermée.
+
+**Correction (2026-09-11, Phase 3 design) — `businessRuleTask` n'est PAS le mécanisme d'invocation
+DMN de Flowable.** Investigation du code source Flowable 8 et de sa documentation officielle,
+faite en Phase 3 plutôt que supposée : l'élément BPMN `<businessRuleTask>` est câblé par Flowable
+sur **Drools** (`BusinessRuleTaskActivityBehavior`, moteur de règles indépendant, absent du
+classpath FlowForge — seul `flowable-spring-boot-starter` est déclaré, `pom.xml` L62-64). Son
+rejet actuel (H1-bis) reste donc justifié tel quel — Drools n'a jamais eu de garde-fou côté
+FlowForge et n'a aucun rapport avec DMN. **Le vrai mécanisme d'invocation DMN de Flowable est un
+`<serviceTask flowable:type="dmn">`** portant un champ `decisionTableReferenceKey` (exemple
+officiel, `flowable-examples/flowable-intro/.../dmn.bpmn20.xml`) :
+
+```xml
+<serviceTask id="dmnTask" flowable:type="dmn">
+    <extensionElements>
+        <flowable:field name="decisionTableReferenceKey">
+            <flowable:string><![CDATA[intro]]></flowable:string>
+        </flowable:field>
+    </extensionElements>
+</serviceTask>
+```
+
+Cette forme est **déjà bloquée aujourd'hui**, mais par une règle différente et plus large que le
+rejet `businessRuleTask` : `FlowableBpmnParserAdapter.assertSafeServiceTask` (L91-109) rejette tout
+`serviceTask` dont `getType()` est non-vide — c'est-à-dire **tous** les types intégrés Flowable
+(`mail`, `camel`, `http`, `shell`, `mule`, `dmn`...), pas seulement DMN, pour ne garder que
+`delegateExpression` vers l'allowlist `AllowedBpmnDelegates`. C'est le **vrai** gate à ouvrir, de
+façon étroite (une exception `type="dmn"` explicitement validée, pas une levée générale des types
+intégrés) — voir design §Architecture pour le mécanisme retenu.
 
 ### 1.3 Mécanisme de décision actuellement disponible (l'alternative existante à DMN)
 
@@ -122,9 +156,12 @@ Bénéfices attendus, confirmés pertinents pour ce besoin :
   `application.yml`. Le moteur DMN Flowable gère ses propres tables (`ACT_DMN_*`, comme
   `ACT_RU_*`/`ACT_HI_*` pour BPMN) — pas de changelog Liquibase applicatif à écrire, cohérent avec
   le mode `databaseSchemaUpdate` déjà en place pour le moteur BPMN.
-- Lever le rejet `businessRuleTask` dans `FlowableBpmnParserAdapter` — **seulement** après avoir
-  posé l'équivalent DMN de `AllowedBpmnDelegates`/`assertSafeConditionExpression` (voir §4.1).
-  Sans ce garde-fou, réactiver `businessRuleTask` rouvre exactement H1-bis.
+- **`businessRuleTask` reste rejeté, inchangé** (§1.2 — Drools, hors sujet DMN). Le gate à ouvrir
+  est `assertSafeServiceTask` : une exception étroite pour `flowable:type="dmn"` (littéral,
+  `decisionTableReferenceKey` en `flowable:string` uniquement, jamais `flowable:expression`, clé
+  vérifiée contre le catalogue des tables déployées) — **seulement** après avoir posé l'équivalent
+  DMN de l'allowlist FEEL (voir §4.1). Sans ce garde-fou, ouvrir cette exception rouvrirait
+  exactement la classe de risque fermée par H1/H1-bis.
 
 ### 3.2 Déploiement des tables de décision
 

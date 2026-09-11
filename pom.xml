@@ -145,7 +145,7 @@
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>3.1.0</version>
+            <version>3.1.1</version>
         </dependency>
 
         <!-- Serveur MCP M2M (serveur-mcp, D-SDK=A) — tool-only, pas de starter chat/model -->

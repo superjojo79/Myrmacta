@@ -84,6 +84,115 @@ const DelegateExpression = textFieldEntry('flowable:delegateExpression', 'Delega
 const Expression = textFieldEntry('flowable:expression', 'Expression')
 const Scope = textFieldEntry('flowable:scope', 'Scope')
 const FormKey = textFieldEntry('flowable:formKey', 'Form key')
+const Type = textFieldEntry('flowable:type', 'Type (ex. "dmn")')
+
+const FLOWABLE_NS_URI = 'http://flowable.org/bpmn'
+const DECISION_TABLE_REFERENCE_KEY_FIELD = 'decisionTableReferenceKey'
+
+interface ModdleService {
+  createAny: (name: string, nsUri: string, properties?: Record<string, unknown>) => AnyModdleElement
+}
+
+interface AnyModdleElement {
+  $type: string
+  name?: string
+  $body?: string
+  // moddle-xml's generic-element writer (ElementSerializer.collectGenericContainments) looks
+  // specifically at $body (text content) and $children (nested elements) -- any other own,
+  // non-$-prefixed property on a createAny() element is written as a plain XML attribute
+  // instead, stringified (verified by a real round-trip failure using an ordinary "values"
+  // property name for this: it serialized as values="[object Object]", not as child elements).
+  $children?: AnyModdleElement[]
+  [key: string]: unknown
+}
+
+interface ExtensionElementsModdle {
+  get: (key: 'values') => AnyModdleElement[]
+  set: (key: 'values', value: AnyModdleElement[]) => void
+  values?: AnyModdleElement[]
+}
+
+// TODO §61 (introduction-dmn), M8 -- exposes decisionTableReferenceKey on a serviceTask
+// flowable:type="dmn" (FlowableBpmnParserAdapter D1, backend already accepts this shape).
+// No moddle extension descriptor is registered for the "flowable" namespace in this app (see
+// BpmnEditorCanvas.vue header) -- flat flowable:* attributes above work via bpmn-moddle's generic
+// "any attribute" handling, but a *child element* like <flowable:field><flowable:string>...
+// </flowable:string></flowable:field> needs Moddle#createAny (not bpmnFactory.create, which only
+// constructs registered types) to build a serializable generic element tree. Proven by two real
+// round-trip failures (E2E-EDIT-BPMN-5, not just a mocked unit test) before landing on the
+// working shape: (1) the *container* bpmn:ExtensionElements must be the real registered type via
+// bpmnFactory.create, not createAny -- only its schema-declared "values" property is recognized
+// as child elements; (2) each createAny() child's own nested children must be assigned to
+// "$children" specifically (moddle-xml's ElementSerializer.collectGenericContainments convention
+// for generic elements), not an arbitrary property name like "values" -- anything else is
+// serialized as a plain XML attribute (stringified), silently producing
+// values="[object Object]" instead of a real nested element.
+function DecisionTableReferenceKey(props: EntryProps) {
+  const { element } = props
+  const modeling = useService<{
+    updateModdleProperties: (el: unknown, mo: unknown, props: Record<string, unknown>) => void
+  }>('modeling')
+  const moddle = useService<ModdleService>('moddle')
+  const bpmnFactory = useService<{ create: (type: string, attrs?: Record<string, unknown>) => ExtensionElementsModdle }>(
+    'bpmnFactory',
+  )
+  const debounce = useService<Debounce>('debounceInput')
+
+  function findField(): AnyModdleElement | null {
+    const extensionElements = element.businessObject.get('extensionElements') as
+      | ExtensionElementsModdle
+      | undefined
+    const values = extensionElements?.get('values') ?? []
+    return (
+      values.find(
+        (value) => value.$type === 'flowable:field' && value.name === DECISION_TABLE_REFERENCE_KEY_FIELD,
+      ) ?? null
+    )
+  }
+
+  const getValue = () => {
+    const field = findField()
+    const stringChild = field?.$children?.find((value) => value.$type === 'flowable:string')
+    return stringChild?.$body ?? ''
+  }
+
+  const setValue = (value: string | undefined) => {
+    let extensionElements = element.businessObject.get('extensionElements') as
+      | ExtensionElementsModdle
+      | undefined
+    if (!extensionElements) {
+      // bpmn:ExtensionElements *is* a registered BPMN type (unlike flowable:field/flowable:string
+      // below) -- its schema declares "values" as a child-element array, which is what makes
+      // moddle-xml serialize real <extensionElements>...</extensionElements> children instead of
+      // stringifying the array as a single attribute (verified by a real round-trip failure: using
+      // moddle.createAny for this container produced values="[object Object]").
+      extensionElements = bpmnFactory.create('bpmn:ExtensionElements', { values: [] })
+    }
+    const remaining = (extensionElements.get('values') ?? []).filter(
+      (existing) =>
+        !(existing.$type === 'flowable:field' && existing.name === DECISION_TABLE_REFERENCE_KEY_FIELD),
+    )
+    if (value) {
+      const stringChild = moddle.createAny('flowable:string', FLOWABLE_NS_URI, { $body: value })
+      const field = moddle.createAny('flowable:field', FLOWABLE_NS_URI, {
+        name: DECISION_TABLE_REFERENCE_KEY_FIELD,
+        $children: [stringChild],
+      })
+      remaining.push(field)
+    }
+    extensionElements.set('values', remaining)
+    modeling.updateModdleProperties(element, element.businessObject, { extensionElements })
+  }
+
+  return TextFieldEntry({
+    element,
+    id: 'flowable:decisionTableReferenceKey',
+    label: 'Clé de la table de décision',
+    getValue,
+    setValue,
+    debounce,
+  })
+}
 
 function serviceTaskGroup() {
   return {
@@ -97,6 +206,12 @@ function serviceTaskGroup() {
         isEdited: isTextFieldEntryEdited,
       },
       { id: 'flowable:expression', component: Expression, isEdited: isTextFieldEntryEdited },
+      { id: 'flowable:type', component: Type, isEdited: isTextFieldEntryEdited },
+      {
+        id: 'flowable:decisionTableReferenceKey',
+        component: DecisionTableReferenceKey,
+        isEdited: isTextFieldEntryEdited,
+      },
     ],
   }
 }

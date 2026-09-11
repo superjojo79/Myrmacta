@@ -23,6 +23,7 @@
     "axios": "^1.19.0",
     "bpmn-js": "^18.24.0",
     "bpmn-js-properties-panel": "^5.65.0",
+    "dmn-js": "^17.10.2",
     "pinia": "^4.0.2",
     "primeicons": "^7.0.0",
     "primevue": "^5.0.0",

@@ -1780,6 +1780,162 @@ test('E2E-EDIT-BPMN-4 draft takes priority over the deployed diagram, deploy the
   expect(deployedXmlFetchCount).toBe(1)
 })
 
+const BPMN_WITH_SERVICE_TASK = `<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+             xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://flowforge/e2e">
+  <process id="dmnFieldProcess" isExecutable="true">
+    <startEvent id="start"/>
+    <serviceTask id="svc" name="Evaluate"/>
+    <endEvent id="end"/>
+    <sequenceFlow id="flow1" sourceRef="start" targetRef="svc"/>
+    <sequenceFlow id="flow2" sourceRef="svc" targetRef="end"/>
+  </process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="dmnFieldProcess">
+      <bpmndi:BPMNShape id="start_di" bpmnElement="start">
+        <dc:Bounds x="150" y="100" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="svc_di" bpmnElement="svc">
+        <dc:Bounds x="250" y="80" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end_di" bpmnElement="end">
+        <dc:Bounds x="420" y="100" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow1_di" bpmnElement="flow1">
+        <di:waypoint x="186" y="118"/>
+        <di:waypoint x="250" y="120"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow2_di" bpmnElement="flow2">
+        <di:waypoint x="350" y="120"/>
+        <di:waypoint x="420" y="118"/>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>`
+
+test('E2E-EDIT-BPMN-5 serviceTask decisionTableReferenceKey field round-trips through saveXML', async ({
+  page,
+}) => {
+  await mockSession(page)
+  await page.route('**/api/workflow-bpmn-drafts/otherWorkflow', async (route) => {
+    await route.fulfill({ status: 204, body: '' })
+  })
+  await page.route('**/api/workflow-bpmn-deployments/otherWorkflow/xml', async (route) => {
+    await route.fulfill({ status: 204, body: '' })
+  })
+  let putBody = ''
+  await page.route('**/api/workflow-bpmn-drafts/dmnFieldProcess', async (route) => {
+    putBody = route.request().postData() ?? ''
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        processDefinitionKey: 'dmnFieldProcess',
+        xml: '<definitions/>',
+        updatedAt: '2026-09-11T00:00:00Z',
+        updatedBy: 'user-1',
+      }),
+    })
+  })
+  await openApp(page)
+  await openBpmnEditor(page)
+
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'dmn-field.bpmn20.xml',
+    mimeType: 'application/xml',
+    buffer: Buffer.from(BPMN_WITH_SERVICE_TASK),
+  })
+  await expect(page.locator('[data-element-id="svc"]')).toBeVisible()
+
+  await page.locator('[data-element-id="svc"]').click()
+  await page.getByLabel('Type (ex. "dmn")').fill('dmn')
+  await page.getByLabel('Clé de la table de décision').fill('eligibilite')
+  // Move focus off the debounced text field so its change commits before save.
+  await page.keyboard.press('Tab')
+
+  await page.getByRole('button', { name: 'Enregistrer le brouillon' }).click()
+  await expect.poll(() => putBody.length > 0).toBe(true)
+  expect(putBody).toContain('flowable:type=\\"dmn\\"')
+  // Exact nesting, not just "these words appear somewhere" -- proves flowable:string is a real
+  // child of flowable:field (both parsed correctly by FlowableBpmnParserAdapterTest server-side
+  // with this identical shape), not a sibling or a stringified attribute value.
+  expect(putBody).toContain(
+    '<flowable:field name=\\"decisionTableReferenceKey\\"><flowable:string>eligibilite</flowable:string></flowable:field>',
+  )
+})
+
+async function openDmnEditor(page: Page) {
+  await page.getByRole('link', { name: 'Tables de décision' }).click()
+  await expect(page.getByRole('heading', { name: 'Éditeur de table de décision DMN' })).toBeVisible()
+  // Mirrors openBpmnEditor's .djs-element wait: the dmn-js Modeler is
+  // constructed via dynamic import, then importXML runs asynchronously --
+  // wait for the decision table's own rendered content (its name field),
+  // otherwise saveXML() races ahead of the import and returns blank content.
+  await expect(page.getByRole('textbox', { name: 'Decision name' })).toBeVisible()
+}
+
+test('E2E-EDIT-DMN-1 blank decision table (no draft, not yet deployed): save creates the draft', async ({
+  page,
+}) => {
+  await mockSession(page)
+  let putCalled = false
+  let putBody = ''
+  await page.route('**/api/dmn-decision-drafts/Decision_1', async (route) => {
+    putCalled = true
+    putBody = route.request().postData() ?? ''
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        decisionKey: 'Decision_1',
+        xml: '<definitions/>',
+        updatedAt: '2026-09-11T00:00:00Z',
+        updatedBy: 'user-1',
+      }),
+    })
+  })
+  await openApp(page)
+  await openDmnEditor(page)
+  await expect(page.getByText(/non reconnue/)).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Enregistrer le brouillon' }).click()
+  await expect.poll(() => putCalled).toBe(true)
+  expect(putBody).toContain('Decision_1')
+})
+
+test('E2E-EDIT-DMN-2 deploy the current decision table via the confirmation flow', async ({ page }) => {
+  await mockSession(page)
+  await page.route('**/api/dmn-decision-deployments/info*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ decisionKey: 'Decision_1', latestVersion: 1 }),
+    })
+  })
+  let deployCalled = false
+  await page.route('**/api/dmn-decision-deployments', async (route) => {
+    deployCalled = true
+    await route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify({ decisionKey: 'Decision_1', deployedVersion: 2, deploymentId: 'dep-dmn-1' }),
+    })
+  })
+  await openApp(page)
+  await openDmnEditor(page)
+
+  await page.getByRole('button', { name: 'Déployer' }).click()
+  await expect(page.getByText('Version actuelle déployée : 1')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Confirmer le déploiement' }).click()
+  await expect(page.getByText(/Déployé : version 2/)).toBeVisible()
+  expect(deployCalled).toBe(true)
+})
+
 test('E2E-SLA-1 reports page shows KPI cards for manager', async ({ page }) => {
   await mockSession(page, { roles: ['DOSSIER_MANAGER'] })
   await openApp(page)

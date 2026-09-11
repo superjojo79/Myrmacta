@@ -158,6 +158,24 @@ export interface BpmnDeploymentResult {
   deploymentId: string
 }
 
+export interface DecisionTableDeploymentInfo {
+  decisionKey: string
+  latestVersion: number
+}
+
+export interface DmnDraft {
+  decisionKey: string
+  xml: string
+  updatedAt: string
+  updatedBy: string
+}
+
+export interface DecisionTableDeploymentResult {
+  decisionKey: string
+  deployedVersion: number
+  deploymentId: string
+}
+
 export interface WorkflowTaskView {
   taskId: string
   name: string | null

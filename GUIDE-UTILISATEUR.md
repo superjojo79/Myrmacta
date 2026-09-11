@@ -229,8 +229,12 @@ depuis **Tâches** (`/tasks`) — pratique en mobilité.
 Écran **Tables de décision** (`/admin/dmn-editor`, `TENANT_ADMIN` ou `WORKFLOW_ADMIN`) — même
 principe que l'éditeur BPMN, avec l'éditeur `dmn-js` :
 
-1. **Trois points d'entrée**, comme pour le BPMN : table vierge, import d'un fichier `.dmn` local,
-   ou édition d'une table déjà déployée pour une clé de décision donnée.
+1. **Trois points d'entrée**, comme pour le BPMN : table vierge (à l'ouverture de l'écran), import
+   d'un fichier `.dmn` local, ou édition d'une table déjà déployée pour une clé de décision donnée
+   — contrairement au BPMN (accessible depuis le lien **Éditer** de l'écran **Admin → Workflows**),
+   il n'existe pas d'écran listant les tables déployées : le champ **Charger une table existante**
+   de la barre d'outils (clé de décision saisie à la main, puis bouton **Charger**) est le point
+   d'entrée pour ce 3ᵉ cas.
 2. L'éditeur `dmn-js` gère la table (colonnes d'entrée/sortie, règles, hit policy) — pas de
    panel de propriétés custom FlowForge ici, le `.dmn` est du DMN 1.3 standard.
 3. Bouton **Enregistrer le brouillon** — même mécanique qu'en BPMN (un brouillon par clé de

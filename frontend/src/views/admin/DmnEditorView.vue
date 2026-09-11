@@ -32,6 +32,22 @@ onMounted(async () => {
   ready.value = true
 })
 
+// Phase 7 gap : contrairement à l'éditeur BPMN (accessible via le lien "Éditer" de
+// WorkflowConfigsAdminView, ?processDefinitionKey=...), aucun écran de la SPA ne liste les tables
+// de décision déployées ni ne lie vers /admin/dmn-editor?decisionKey=... -- le 3ᵉ point d'entrée
+// ("édition d'une table déjà déployée") promis par le design D-DMN-DEPLOY n'était donc jamais
+// atteignable depuis l'UI, uniquement en tapant l'URL à la main. Une liste dédiée serait une
+// nouvelle fonctionnalité (hors scope M9, déjà livré) ; ce champ ferme l'accès manquant sans en
+// ajouter une, en réutilisant le mécanisme de chargement de brouillon déjà écrit.
+const loadKeyInput = ref('')
+
+async function loadExistingTable() {
+  const key = loadKeyInput.value.trim()
+  if (!key) return
+  importedXml.value = null
+  await draft.load(key)
+}
+
 function extractDecisionKey(xml: string): string | null {
   const match = xml.match(/<(?:[\w-]+:)?decision\b[^>]*\bid\s*=\s*["']([^"']+)["']/)
   return match ? match[1] : null
@@ -103,6 +119,16 @@ async function confirmDeploy() {
         Importer un fichier local
         <input type="file" accept=".xml,.dmn" @change="onFileChange" />
       </label>
+      <label>
+        Charger une table existante
+        <input
+          v-model="loadKeyInput"
+          type="text"
+          placeholder="Clé de la table de décision"
+          @keyup.enter="loadExistingTable"
+        />
+      </label>
+      <button type="button" class="dmn-editor__load" @click="loadExistingTable">Charger</button>
       <button type="button" class="dmn-editor__save" @click="saveDraft">Enregistrer le brouillon</button>
       <button type="button" class="dmn-editor__deploy" @click="prepareDeploy">Déployer</button>
     </div>

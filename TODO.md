@@ -220,7 +220,7 @@ D-GENERATE-TEMPLATE (type du dossier), D-NO-OPENAPI. `CreateDossierUseCase*` non
 
 ---
 
-### [ ] 61. Introduction de DMN — lever l'exclusion V1
+### [x] 61. Introduction de DMN — lever l'exclusion V1
 
 **Énoncé :** DMN est explicitement hors V1 depuis l'origine (`application.yml` : auto-config
 `DmnEngineAutoConfiguration`/`DmnEngineServicesAutoConfiguration` exclue) et le `businessRuleTask`
@@ -301,6 +301,55 @@ l'implémentation Flowable (fixture M11 à base de règles multiples, pas de cel
 [design](docs/ai/design/2026-09-11-feature-introduction-dmn.md) §Sécurité et
 [planning](docs/ai/planning/2026-09-11-feature-introduction-dmn.md) corrigés en conséquence.
 
+**Phase 5 (implémentation) — livré (2026-09-11), M1 à M12.** Backend (M1-M6, M10) : allowlist JUEL
+(`FlowableDmnParserAdapter`, 16 tests unitaires + `DmnJuelSecuritySmokeIT` — bean Spring réel
+résolu par un identifiant nu, preuve d'exécution sur le vrai moteur, même doctrine que H1-bis) ;
+`DmnDeploymentPort`/`DeployDecisionTableUseCase` ; exception native `type="dmn"` dans
+`FlowableBpmnParserAdapter` + vérification de la clé référencée au déploiement d'un process
+(`UnknownDecisionKeyException`) ; persistence brouillon (`dmn_draft`, composite
+`tenant_id`/`decision_key`) ; endpoints REST (`/api/dmn-decision-drafts`,
+`/api/dmn-decision-deployments`) ; tools MCP (`deploy_decision_table`, `list_decision_tables`,
+`get_decision_table`). Frontend (M7-M9) : éditeur `dmn-js` (`/admin/dmn-editor`), complément du
+panel de propriétés BPMN existant (`decisionTableReferenceKey` sur `serviceTask type="dmn"`),
+nouvel écran admin. **Deux bugs réels de sérialisation `moddle-xml`** trouvés et corrigés via un
+round-trip E2E réel (pas un test mocké, même leçon que TODO §39) : le conteneur
+`bpmn:ExtensionElements` doit être créé via `bpmnFactory.create` (type enregistré) et non
+`moddle.createAny`, et les enfants d'un élément générique `createAny` doivent être assignés à la
+propriété `$children` spécifiquement, toute autre propriété étant sérialisée en attribut plat
+stringifié.
+
+**M11 (fixture livrée)** : `grille-eligibilite-client.dmn`
+(`src/main/resources/decisions/`, hit policy `FIRST`) + `dmn-grille-eligibilite-smoke.bpmn20.xml`
+(`src/main/resources/processes/`), auto-déployés au démarrage par `TenantDmnDeployment` (nouveau,
+miroir de `TenantProcessDeployment`) — mêmes conventions que les process `-smoke` déjà livrés,
+preuve de bout en bout par `DmnGrilleEligibiliteSmokeIT` (3 branches de la grille, sans aucun
+déploiement manuel dans le test).
+
+**Bug réel trouvé en vérification finale (M12), pas seulement lu dans le code :** `./mvnw verify`
+complet a révélé que le déploiement d'**une** table DMN, quelle qu'elle soit, faisait planter le
+moteur Flowable 8.0.0 sur le JDK 25 de ce dépôt —
+`DmnXMLException: StAXSource(XMLStreamReader) with XMLStreamReader not in
+XMLStreamConstants.START_DOCUMENT or XMLStreamConstants.START_ELEMENT state`. Root-cause identifiée
+par décompilation (`javap -p -c`) de `flowable-dmn-engine`/`flowable-dmn-xml-converter` 8.0.0, pas
+supposée : `DmnParse.execute()` transmet `DmnEngineConfiguration.isEnableSafeDmnXml()` (vrai par
+défaut, seul point d'appel de cette méthode dans tout le moteur) comme 3ᵉ argument de
+`DmnXMLConverter.convertToDmnModel`, qui choisit alors de **réutiliser** un même
+`XMLStreamReader` entre la détection du namespace et la validation de schéma — un
+`javax.xml.transform.stax.StAXSource` construit sur ce reader lève l'exception sur ce JDK. Pas de
+version Flowable 8.0.x plus récente disponible (8.0.0 = dernière sur Maven Central). **Contournement
+sans régression de sécurité** — vérifié dans le même désassemblage : les réglages anti-XXE de
+`convertToDmnModel` (DTD/entités externes désactivées) sont appliqués **inconditionnellement**,
+indépendamment de ce flag, qui ne pilote que la réutilisation du reader. `WorkflowConfig` déclare
+donc un `EngineConfigurationConfigurer<SpringDmnEngineConfiguration>` mettant
+`enableSafeDmnXml=false`, documenté en détail sur place. Détecté uniquement parce que M11/M12 ont
+exercé un vrai déploiement DMN de bout en bout au lieu de s'arrêter aux tests déjà verts de M1-M10
+(qui, eux, n'appellent jamais ce chemin de code précis). `./mvnw verify` complet (1817 tests,
+ArchUnit compris) + suite Playwright (71/71, dont 3 scénarios DMN réels) verts après correctif.
+Documentation mise à jour : `README.md`, `analysis doc/05-workflow-engine.md` (nouvelle section
+« Tables de décision — DMN »), `analysis doc/00-index.md` (entrée 25), `FILE-ATTENTE.md` (clôture
+définitive), `GUIDE-CONCEPTION-BPMN.md` (§7bis/§7ter), `GUIDE-UTILISATEUR.md` (nouvel écran),
+`CHANGELOG.md`.
+
 **Analyse écrite :** [25-introduction-dmn.md](analysis%20doc/25-introduction-dmn.md) — état actuel
 vérifié dans le code (activation moteur = 2 lignes de config + lever le rejet
 `businessRuleTask`), risque dominant identifié = durcissement des expressions FEEL avant de lever
@@ -317,11 +366,11 @@ vérifiée identique — MIT + clause filigrane, déjà acceptée implicitement 
 fournit un `Modeler` dédié aux tables de décision : c'est l'équivalent DMN direct de ce qui a déjà
 été livré, pas une extrapolation. Nouvelle question ouverte **D-DMN-EDITOR-SCOPE** (§5).
 
-**Impacte (si retenu) :** `application.yml`, `FlowableBpmnParserAdapter`, nouveau
-port/adaptateur de parsing/déploiement DMN, écran admin (upload + prévisualisation et/ou éditeur
-intégré `dmn-js`, miroir `deploiement-bpmn`/`edition-bpmn`), potentiellement `infrastructure.mcp`,
+**Impacté :** `application.yml`, `FlowableBpmnParserAdapter`, nouveaux ports/adaptateurs de
+parsing/déploiement DMN, écran admin `dmn-editor`, `infrastructure.mcp`,
 `README.md`/`analysis doc/05`/`analysis doc/00-index.md`/`FILE-ATTENTE.md` (retrait de la mention
-« hors V1 »), `GUIDE-CONCEPTION-BPMN.md`.
+« hors V1 »), `GUIDE-CONCEPTION-BPMN.md`, `GUIDE-UTILISATEUR.md`, `CHANGELOG.md` — voir détail
+Phase 5 ci-dessus.
 
 ---
 

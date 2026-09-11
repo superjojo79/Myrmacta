@@ -396,6 +396,47 @@ Toutes ces classes vivent dans `src/main/java/com/flowforge/infrastructure/flowa
 de doute sur une variable, elles font foi avant ce document ou avant les `analysis doc/*`
 pseudo-code.
 
+### §7bis. `serviceTask flowable:type="dmn"` — invoquer une table de décision (TODO §61)
+
+Mécanisme distinct des `serviceTask` du tableau ci-dessus : pas de `flowable:delegateExpression`,
+mais l'attribut natif Flowable `flowable:type="dmn"` **+** un champ d'extension
+`decisionTableReferenceKey` portant la clé de la table de décision (id du `<decision>` dans le
+`.dmn` déployé séparément, voir §7ter) :
+
+```xml
+<serviceTask id="evaluerEligibilite" name="Évaluer l'éligibilité" flowable:type="dmn">
+  <extensionElements>
+    <flowable:field name="decisionTableReferenceKey">
+      <flowable:string>grilleEligibiliteClient</flowable:string>
+    </flowable:field>
+  </extensionElements>
+</serviceTask>
+```
+
+Les colonnes de sortie de la table de décision (`<output name="…">`) sont écrites telles quelles
+comme variables de process — pas de configuration côté BPMN, le nom de sortie DMN **est** le nom
+de la variable. Pas de `businessRuleTask` : cet élément BPMN standard est câblé sur un moteur
+Drools absent de ce dépôt et reste explicitement rejeté au parsing (`FlowableBpmnParserAdapter`,
+TODO §58).
+
+### §7ter. Quand utiliser une table de décision DMN plutôt qu'une cascade de gateways
+
+| Situation | Choix |
+|---|---|
+| 2-3 branches, une seule condition simple (`${statut == 'VALIDE'}`) | Passerelle exclusive (`exclusiveGateway`) — pas de table DMN, surcharge inutile |
+| Plusieurs critères combinés (ex. type de demandeur **et** montant) produisant un ou plusieurs résultats, règles qui évoluent indépendamment du flux | Table de décision DMN (`serviceTask type="dmn"`) — la logique de décision est isolée, relisible en tableau, modifiable sans retoucher le diagramme de process |
+| La règle change plus souvent que le processus lui-même, ou doit être lisible/validée par un non-développeur | Table de décision DMN — édition dans son propre éditeur (`/admin/dmn-editor`), déploiement indépendant du process qui l'invoque |
+| Une seule sortie booléenne dérivée d'une seule variable | Passerelle exclusive — une table DMN à une ligne n'apporte rien |
+
+**Sécurité — ne jamais oublier en concevant une table :** Flowable évalue les cellules d'une table
+de décision en **JUEL**, pas en FEEL malgré ce que le standard DMN laisse penser (voir
+[05-workflow-engine.md](analysis%20doc/05-workflow-engine.md) §« Tables de décision — DMN »). Une
+cellule d'entrée/sortie doit rester un littéral (entre guillemets, nombre, booléen), un `-`
+(« n'importe quelle valeur »), ou l'un de ces littéraux précédé d'un opérateur de comparaison
+(`==`, `!=`, `<`, `>`, `<=`, `>=`) — jamais une expression EL libre ni une navigation de propriété
+(`.xxx`). `FlowableDmnParserAdapter` rejette strictement tout le reste au déploiement ; ne pas
+chercher à le contourner, la même classe de vulnérabilité que H1-bis (BPMN) s'applique ici.
+
 ---
 
 ## 8. Sécurité et bonnes pratiques à respecter en concevant un processus

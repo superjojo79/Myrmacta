@@ -13,8 +13,9 @@
 | Standard | BPMN 2.0 + DMN |
 | Licence | Apache 2.0 |
 | Intégration Spring Boot | `flowable-spring-boot-starter` |
-| Designer visuel | Éditeur intégré FlowForge (`bpmn-js` Modeler + panel de propriétés Flowable custom, `/admin/bpmn-editor`, feature `edition-bpmn`) — pas Flowable UI/Modeler/Cockpit, explicitement hors scope produit (`DEFERRED-FEATURES.md` §1.5) |
+| Designer visuel | Éditeur intégré FlowForge (`bpmn-js` Modeler + panel de propriétés Flowable custom, `/admin/bpmn-editor`, feature `edition-bpmn`) **+** éditeur DMN (`dmn-js` Modeler, `/admin/dmn-editor`, feature `introduction-dmn`) — pas Flowable UI/Modeler/Cockpit, explicitement hors scope produit (`DEFERRED-FEATURES.md` §1.5) |
 | Déploiement des processus | Scan classpath au build/démarrage (`TenantProcessDeployment`) **+** upload admin à chaud avec prévisualisation (`/admin/workflow-types`, feature `deploiement-bpmn`) **+** déploiement direct depuis l'éditeur (`/admin/bpmn-editor`, feature `edition-bpmn`) |
+| Déploiement des tables de décision | Scan classpath au build/démarrage (`TenantDmnDeployment`, miroir de `TenantProcessDeployment`) **+** déploiement direct depuis l'éditeur DMN (`/admin/dmn-editor`) **+** MCP (`deploy_decision_table`) — feature `introduction-dmn` |
 | Monitoring instances | Viewer intégré FlowForge (`bpmn-js`, `GET …/diagram`) — pas de cockpit Flowable |
 
 ### Dépendance Maven
@@ -32,6 +33,35 @@
 - **Camunda 7** — en maintenance, migration Camunda 8 complexe (Zeebe/Kafka)
 - **jBPM / Kogito** — orienté Quarkus, intégration Spring secondaire
 - **Spring State Machine** — pas de designer visuel, adapté aux flux linéaires simples uniquement
+
+---
+
+## Tables de décision — DMN
+
+**Choix retenu : moteur DMN Flowable, activé (feature `introduction-dmn`, voir
+[25-introduction-dmn.md](../analysis%20doc/25-introduction-dmn.md), TODO §61).** Un
+`serviceTask flowable:type="dmn"` (une extension native Flowable, pas le `businessRuleTask`
+standard — celui-ci est câblé sur un moteur Drools absent de ce dépôt) invoque une table de
+décision déployée séparément via `decisionTableReferenceKey`, un champ d'extension `flowable:field`
+portant la clé de la décision.
+
+**Sécurité — le risque dominant, pas un détail d'implémentation.** Contrairement à ce que le
+standard DMN laisse penser, Flowable n'implémente **pas FEEL** : ses cellules de table de décision
+sont évaluées en **JUEL**, le même moteur d'expression déjà durci pour les `conditionExpression`
+BPMN (`FlowableBpmnParserAdapter.assertSafeConditionExpression`, TODO §57 H1). Une cellule laissée
+libre expose donc la même classe de vulnérabilité que H1-bis (résolution d'un identifiant non
+qualifié contre un bean Spring du même nom) — vérifié par décompilation du moteur
+`flowable-dmn-engine` 8.0.0 réel, pas supposé. `FlowableDmnParserAdapter` applique en conséquence,
+au moment du déploiement, une allowlist stricte sur chaque cellule d'entrée/sortie (littéral entre
+guillemets, nombre, booléen, `-`, ou l'un de ces littéraux précédé d'un opérateur de comparaison) —
+tout le reste (EL brut `#{}`/`${}`, navigation de propriété `.xxx`) est rejeté. Preuve d'exécution
+réelle sur le moteur (pas seulement une lecture statique) : `DmnJuelSecuritySmokeIT`.
+
+**Scénario illustratif livré :** `grille-eligibilite-client.dmn`
+(`src/main/resources/decisions/`) + `dmn-grille-eligibilite-smoke.bpmn20.xml`
+(`src/main/resources/processes/`), auto-déployés au démarrage comme les process `-smoke` existants
+— cas générique (pas un besoin métier réel identifié), preuve de bout en bout que
+`serviceTask type="dmn"` alimente des variables de process réelles (`DmnGrilleEligibiliteSmokeIT`).
 
 ---
 

@@ -1,5 +1,11 @@
 # Introduction de DMN — lever l'exclusion V1
 
+> **Livré (2026-09-11).** Cycle `dev-lifecycle` complet (requirements → design → planning →
+> implémentation, M1-M12, TODO §61) — détail dans
+> [TODO.md](../TODO.md) §61. Le reste de ce document (état « non tranché ») est conservé tel
+> quel comme trace de l'analyse initiale, y compris ce qui a depuis été corrigé (blocs
+> « Corrigé »/« Confirmé » ci-dessous) et ce que l'implémentation a confirmé ou infirmé.
+>
 > **Statut : besoin métier confirmé (2026-09-11), périmètre et sécurité non tranchés.** Origine :
 > demande utilisateur (2026-09-10) — DMN (Decision Model & Notation) est aujourd'hui explicitement
 > exclu du V1 ; ce document vérifie contre le code réel ce que lever cette exclusion impliquerait.

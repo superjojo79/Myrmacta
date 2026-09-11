@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  TODO §61 (introduction-dmn), M11 : scénario illustratif "grille d'éligibilité" (D-DMN-SCOPE,
+  docs/ai/requirements/2026-09-11-feature-introduction-dmn.md) : pas un cas métier réel identifié
+  chez l'utilisateur, un exemple générique prouvant le mécanisme de bout en bout, au même titre que
+  les process BPMN "-smoke" déjà livrés dans src/main/resources/processes. Auto-déployé pour chaque
+  tenant au démarrage par TenantDmnDeployment, invoqué par le process de démonstration
+  dmn-grille-eligibilite-smoke.bpmn20.xml via serviceTask flowable:type="dmn" (D1).
+
+  Chaque cellule respecte l'allowlist JUEL de FlowableDmnParserAdapter (littéral entre guillemets,
+  ou opérateur de comparaison + nombre, ou "-" pour "n'importe quelle valeur") : pas de grammaire
+  FEEL générique, cf. le Javadoc de l'adaptateur.
+-->
+<definitions xmlns="http://www.omg.org/spec/DMN/20151101"
+             id="Definitions_grilleEligibiliteClient"
+             name="Grille d'éligibilité client"
+             namespace="http://flowforge/decisions/grille-eligibilite-client">
+  <decision id="grilleEligibiliteClient" name="Grille d'éligibilité client">
+    <decisionTable id="DecisionTable_grilleEligibiliteClient" hitPolicy="FIRST">
+      <input id="Input_typeDemandeur" label="Type de demandeur">
+        <inputExpression id="InputExpression_typeDemandeur" typeRef="string">
+          <text>typeDemandeur</text>
+        </inputExpression>
+      </input>
+      <input id="Input_montantDossier" label="Montant du dossier">
+        <inputExpression id="InputExpression_montantDossier" typeRef="number">
+          <text>montantDossier</text>
+        </inputExpression>
+      </input>
+      <output id="Output_statutEligibilite" label="Statut d'éligibilité" name="statutEligibilite" typeRef="string" />
+      <output id="Output_motif" label="Motif" name="motif" typeRef="string" />
+      <rule id="Rule_1">
+        <inputEntry id="InputEntry_1_1"><text>"ENTREPRISE"</text></inputEntry>
+        <inputEntry id="InputEntry_1_2"><text>&gt;= 50000</text></inputEntry>
+        <outputEntry id="OutputEntry_1_1"><text>"ELIGIBLE"</text></outputEntry>
+        <outputEntry id="OutputEntry_1_2"><text>"Grand compte entreprise"</text></outputEntry>
+      </rule>
+      <rule id="Rule_2">
+        <inputEntry id="InputEntry_2_1"><text>"PARTICULIER"</text></inputEntry>
+        <inputEntry id="InputEntry_2_2"><text>&lt;= 10000</text></inputEntry>
+        <outputEntry id="OutputEntry_2_1"><text>"ELIGIBLE"</text></outputEntry>
+        <outputEntry id="OutputEntry_2_2"><text>"Dossier particulier standard"</text></outputEntry>
+      </rule>
+      <rule id="Rule_3">
+        <inputEntry id="InputEntry_3_1"><text>-</text></inputEntry>
+        <inputEntry id="InputEntry_3_2"><text>-</text></inputEntry>
+        <outputEntry id="OutputEntry_3_1"><text>"NON_ELIGIBLE"</text></outputEntry>
+        <outputEntry id="OutputEntry_3_2"><text>"Hors critères d'éligibilité"</text></outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+</definitions>

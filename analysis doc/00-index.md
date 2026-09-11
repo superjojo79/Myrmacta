@@ -39,6 +39,7 @@
 | 22 | Formulaires dynamiques rattachés aux tâches BPMN (`userTask`) — analyse initiale | [22-formulaires-dynamiques-taches.md](22-formulaires-dynamiques-taches.md) |
 | 23 | Questions/choix utilisateur indépendants du dossier (nouveau kind `user-question`) — **livré** (TODO §55) | [23-questions-utilisateur-taches.md](23-questions-utilisateur-taches.md) |
 | 24 | Extension du serveur MCP (connecteurs, association templates, questions de tâche) — analyse initiale | [24-extension-mcp-flux-metier.md](24-extension-mcp-flux-metier.md) |
+| 25 | Introduction de DMN — tables de décision, moteur + éditeur intégrés — **livré** (TODO §61) | [25-introduction-dmn.md](25-introduction-dmn.md) |
 
 > Pour concevoir concrètement un diagramme BPMN pour FlowForge (conventions, référence des
 > `serviceTask` disponibles, champs dynamiques, connecteurs, intervenants, génération de
@@ -54,7 +55,7 @@
 
 | Composant | Librairie | Rôle |
 |---|---|---|
-| Workflow engine | Flowable 8.0.x | BPMN 2.0 (DMN auto-config **exclue** en V1), triggers, tasks |
+| Workflow engine | Flowable 8.0.x | BPMN 2.0 + DMN, triggers, tasks |
 | Génération PDF | Flying Saucer 10.4.x + OpenPDF + jsoup 1.23.1 | Thymeleaf → HTML → PDF |
 | Sécurité | Spring Security 7 + OAuth2 Client | BFF, session httpOnly |
 | Persistence | Spring Data JPA + PostgreSQL | Données métier + Flowable |

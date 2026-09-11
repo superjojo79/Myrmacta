@@ -55,6 +55,8 @@ import com.flowforge.domain.workflow.usecase.UpdateWorkflowLinkStatusUseCaseImpl
 import com.flowforge.domain.workflow.usecase.WorkflowLinkVisualizationUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.WorkflowTypeConfigUseCaseImpl;
 import com.flowforge.infrastructure.flowable.WorkflowStateEventListener;
+import org.flowable.dmn.spring.SpringDmnEngineConfiguration;
+import org.flowable.spring.boot.EngineConfigurationConfigurer;
 import org.flowable.spring.boot.ProcessEngineConfigurationConfigurer;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -258,5 +260,31 @@ public class WorkflowConfig {
     @Bean
     ProcessEngineConfigurationConfigurer workflowStateEventListenerConfigurer(WorkflowStateEventListener listener) {
         return configuration -> configuration.setEventListeners(java.util.List.of(listener));
+    }
+
+    // TODO §61 (introduction-dmn), M11/M12 -- works around a real, reproducible crash found while
+    // proving M11's shipped fixture actually deploys (not just parses): with the default
+    // enableSafeDmnXml=true, deploying ANY .dmn on this repository's pinned JDK 25 fails inside
+    // Flowable 8.0.0 itself, not our code -- DmnParse.execute() -> DmnXMLConverter.convertToDmnModel
+    // reuses a single XMLStreamReader across getTargetNameSpace() and the schema Validator (wraps it
+    // in a javax.xml.transform.stax.StAXSource), and on this JDK the reader is no longer positioned
+    // at START_DOCUMENT/START_ELEMENT by the time the Validator runs -- IllegalStateException,
+    // wrapped as DmnXMLException("StAXSource(XMLStreamReader) with XMLStreamReader not in
+    // XMLStreamConstants.START_DOCUMENT or XMLStreamConstants.START_ELEMENT state"). Verified by
+    // decompiling flowable-dmn-engine/flowable-dmn-xml-converter 8.0.0 (javap -p -c), not assumed:
+    // DmnEngineConfiguration.isEnableSafeDmnXml() has exactly one call site (DmnParse.execute()),
+    // feeding the 3rd boolean of DmnXMLConverter#convertToDmnModel(InputStreamProvider, boolean,
+    // boolean, String) -- true takes the buggy reader-reuse branch, false takes the branch that
+    // re-opens a fresh InputStream for validation (the same branch FlowableDmnParserAdapter's own
+    // extractDecisionKey already uses successfully, via the 3-arg overload that hardcodes this
+    // argument to false). This is NOT a reduction of XXE protection: convertToDmnModel's safe
+    // XMLInputFactory setup (isReplacingEntityReferences=false, isSupportingExternalEntities=false,
+    // supportDTD=false, accessExternalDTD/accessExternalSchema="") is applied unconditionally at the
+    // top of the method, before either branch -- isEnableSafeDmnXml only selects which branch reads
+    // the stream, never whether XXE is disabled. No newer Flowable 8.0.x patch exists on Maven
+    // Central to fix this upstream (checked : 8.0.0 is still latest/release).
+    @Bean
+    EngineConfigurationConfigurer<SpringDmnEngineConfiguration> dmnSafeXmlJdk25WorkaroundConfigurer() {
+        return configuration -> configuration.setEnableSafeDmnXml(false);
     }
 }

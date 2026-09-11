@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  TODO §61 (introduction-dmn), M11 : process de démonstration invoquant la table de décision
+  "grille d'éligibilité client" (grille-eligibilite-client.dmn) via serviceTask
+  flowable:type="dmn" (D1). Auto-déployé avec les autres process "-smoke" au démarrage
+  (TenantProcessDeployment) ; la table elle-même est auto-déployée séparément par
+  TenantDmnDeployment. Exercé de bout en bout par DmnGrilleEligibiliteSmokeIT.
+-->
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://flowforge/processes">
+  <process id="dmnGrilleEligibiliteSmoke" name="Grille d'éligibilité (démonstration DMN)" isExecutable="true">
+    <startEvent id="start" name="Start"/>
+    <sequenceFlow id="flow1" sourceRef="start" targetRef="evaluateEligibilite"/>
+    <serviceTask id="evaluateEligibilite" name="Évaluer l'éligibilité" flowable:type="dmn">
+      <extensionElements>
+        <flowable:field name="decisionTableReferenceKey">
+          <flowable:string>grilleEligibiliteClient</flowable:string>
+        </flowable:field>
+      </extensionElements>
+    </serviceTask>
+    <sequenceFlow id="flow2" sourceRef="evaluateEligibilite" targetRef="end"/>
+    <endEvent id="end" name="End"/>
+  </process>
+</definitions>

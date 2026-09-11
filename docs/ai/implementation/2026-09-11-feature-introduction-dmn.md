@@ -16,15 +16,19 @@ planning_ref: docs/ai/planning/2026-09-11-feature-introduction-dmn.md
 `claude/project-status-next-features-w043uj` (no-worktree, convention de ce dépôt). M1-M6/M10
 (backend) puis M7-M9 (frontend) livrés séquentiellement ; M11 (fixture) et M12 (documentation +
 vérification globale) ont révélé et corrigé des bugs réels (voir Design Deviations). Phase 7
-(revue fichier par fichier, dédiée, ci-dessous) a trouvé et comblé un **gap de couverture de test
-important** (toute la persistence/API/MCP de la partie DMN du dépôt, jamais testée avant cette
-revue) et un **gap d'accessibilité UI réel** (3ᵉ point d'entrée de l'éditeur promis par le design,
-jamais atteignable depuis l'interface).
+(revue fichier par fichier, dédiée) a trouvé et comblé un **gap de couverture de test important**
+(toute la persistence/API/MCP de la partie DMN du dépôt, jamais testée avant cette revue) et un
+**gap d'accessibilité UI réel** (3ᵉ point d'entrée de l'éditeur promis par le design, jamais
+atteignable depuis l'interface). Phase 8 (mesure de couverture par classe, ci-dessous) a comblé 3
+gaps réels supplémentaires dans le fichier sécurité-critique `FlowableDmnParserAdapter` et 1 côté
+frontend.
 
-`./mvnw verify` final : **1875 tests, 0 échec** (backend). Frontend **350 tests Vitest, 0 échec**,
-typecheck/lint propres. **71/71 Playwright** (0 régression, dont 3 scénarios `E2E-EDIT-DMN-*`/
-`E2E-EDIT-BPMN-5`). Statut : implémentation **terminée**, Phase 7 intégrée ci-dessous. Prochaine
-étape : `dev-testing`/`dev-review` (Phases 8/9), non lancées à ce stade.
+`./mvnw verify` final : **1875 tests, 0 échec** (backend, y compris les 3 tests ajoutés en Phase
+8). Frontend **351 tests Vitest, 0 échec** (+1 Phase 8), `test:coverage` 85.83%/79.12%/84.93%/
+87.63% (seuils 80/75/70/60 tenus), typecheck/lint propres. **71/71 Playwright** (0 régression,
+preuve fraîche Phase 8, dont 3 scénarios `E2E-EDIT-DMN-*`/`E2E-EDIT-BPMN-5`). Statut :
+implémentation **terminée**, Phases 7 et 8 intégrées. Prochaine étape : `dev-review` (Phase 9),
+non lancée à ce stade.
 
 ## Development Setup
 
@@ -203,11 +207,20 @@ pour mémoire de la question posée pendant la revue.
 
 ## Coverage
 
-Aucun changement aux seuils Jacoco existants (LINE 85%, BRANCH 75%). `./mvnw verify` final :
-1875 tests, 0 échec (1817 avant Phase 7 + 59 nouveaux tests DMN + 1 nouveau test nested-subprocess
-− quelques anciens comptages divergent selon paramétrage ; le chiffre qui fait foi est le run réel
-le plus récent). Frontend : 350 tests Vitest (dont 27 nouveaux DMN), `test:coverage` non re-mesuré
-dans cette session (pas de régression de code déjà couvert).
+Seuils Jacoco existants tenus (LINE 85%, BRANCH 75%), aucune dérogation. Mesure par classe (pas
+seulement l'agrégat `BUNDLE`) faite en **Phase 8** — voir
+[docs/ai/testing/2026-09-11-feature-introduction-dmn.md](../testing/2026-09-11-feature-introduction-dmn.md)
+§Test Reporting & Coverage pour le détail complet par fichier. Résumé : 3 gaps de couverture réels
+trouvés et comblés dans `FlowableDmnParserAdapter` (le fichier sécurité-critique de la feature —
+`decision` sans `id`, `decision` portant un `literalExpression` au lieu d'une `decisionTable`,
+`decisionTable` à 0 règle) et 1 côté frontend (`useDmnDeployment.ts`, branche de repli du message
+d'erreur). Le reste des écarts résiduels (`FlowableDmnDeploymentAdapter`,
+`DmnDecisionDeploymentController`, `TenantDmnDeployment`, `useDmnDraft.ts`) est en **parité
+exacte** avec son équivalent BPMN — un gap déjà accepté côté BPMN, pas quelque chose d'introduit
+par cette feature. `./mvnw verify` final (Phase 8) : **1875 tests, 0 échec**. Frontend : **351
+tests Vitest** (+1 sur les 350 de fin de Phase 7), `npm run test:coverage` : 85.83% statements /
+79.12% branches / 84.93% functions / 87.63% lines (seuils 80/75/70/60 tenus). Playwright :
+**71/71, 0 échec** (preuve fraîche Phase 8).
 
 ## Files Changed
 
@@ -322,5 +335,60 @@ changements ✅ (1875 backend + 350 frontend + 71 Playwright, tous verts, preuve
 session) · docs à jour ✅ (les 7 docs du cycle, `TODO.md` §61 clôturé, `FILE-ATTENTE.md`,
 `analysis doc/{00,05,25}`, `GUIDE-CONCEPTION-BPMN.md`, `GUIDE-UTILISATEUR.md` mis à jour pour le
 nouveau champ **Charger**).
+
+**Aucun blocage.**
+
+## Phase 8 — write tests (2026-09-11)
+
+Coverage mesurée par classe/fichier (`jacoco.csv` backend, `test:coverage` frontend), pas
+seulement à l'agrégat `BUNDLE` — sur demande explicite de l'utilisateur (« lance la phase 8 »).
+
+**Écarts de couverture réels trouvés et comblés** (pas des bugs — code déjà correct, juste jamais
+exercé) :
+- `FlowableDmnParserAdapter` (fichier sécurité-critique) : 3 branches jamais exercées —
+  `decision` sans attribut `id` (rejet), `decision` portant un `<literalExpression>` au lieu d'une
+  `<decisionTable>` (rejet), `decisionTable` à 0 règle (rejet). 3 tests ajoutés, tous verts du
+  premier coup. **1 branche investiguée et sciemment laissée non couverte**, documentée en
+  commentaire plutôt que forcée : le court-circuit `rawText == null` d'`assertSafeCellText` est
+  vérifié inatteignable via le chemin de parsing public — le schéma DMN 1.1 exige un `<text>` sur
+  chaque `inputEntry`/`outputEntry` (`<inputEntry/>` seul échoue la validation de schéma avant
+  d'atteindre ce code, prouvé par un run réel qui échoue avec `cvc-complex-type.2.4.b`).
+- `useDmnDeployment.ts` (frontend) : branche de repli `?? 'Déploiement impossible'` jamais
+  atteinte. Root-cause : `toProblemDetail()` ne renvoie jamais `detail: undefined/null` pour une
+  erreur réseau générique (elle utilise `.message` comme repli interne) — seul un corps
+  `ProblemDetail` réel sans champ `detail` déclenche la branche. 1 test ajouté avec la forme
+  correcte (`response.data` sans `detail`), vert du premier coup.
+
+**Parité vérifiée avec le précédent BPMN, pas des gaps DMN-spécifiques** (comparaison ligne à
+ligne des comptes Jacoco/Vitest) : `FlowableDmnDeploymentAdapter` ≈ `FlowableWorkflowDeploymentAdapter`,
+`DmnDecisionDeploymentController` ≈ `WorkflowBpmnDeploymentController`, `TenantDmnDeployment` =
+`TenantProcessDeployment` (chiffres identiques), `useDmnDraft.ts` = `useBpmnDraft.ts` (chiffres
+identiques). Ces écarts résiduels sont des branches défensives déjà acceptées côté BPMN (ex.
+`catch (IOException)`, "classpath vide" non mockable) — non retouchés, cohérent avec la doctrine
+du dépôt de ne pas chasser 100% sur du code déjà jugé acceptable ailleurs.
+
+**T5.6 (masquage des valeurs sensibles) revérifié, pas un gap** : la contrainte requirements
+« toute valeur sensible produite par une table de décision doit transiter par le masquage
+`SendNotificationUseCaseImpl` » a été revérifiée contre le code réel plutôt que supposée acquise —
+`redactSensitiveFields` ne s'applique qu'au `DossierFieldsSnapshot` explicitement transmis, et
+aucun producteur du dépôt (DMN inclus) ne le câble aujourd'hui. Comportement déjà documenté comme
+limitation connue, repo-wide, dans `GUIDE-CONCEPTION-BPMN.md` §8 — une variable produite par DMN
+suit exactement le même comportement qu'une variable produite par tout autre `serviceTask`, pas de
+régression ni d'écart introduit par cette feature.
+
+Validation finale : `./mvnw verify` **1875 tests / 0 échec** (inchangé en nombre de fichiers, +3
+tests dans les fichiers existants). Frontend `npm run test:coverage` **351/351**, sommaire
+85.83%/79.12%/84.93%/87.63% (seuils 80/75/70/60 tenus). `npx playwright test --project=chromium`
+**71/71, 0 échec** (preuve fraîche, 33.0s — le run précédent avait 2 échecs transitoires de
+contention, non reproduits ici).
+
+**Checklist :** design ✅ · pas de gap logique ✅ (0 bug de production trouvé — 4 gaps de
+couverture réels trouvés et comblés, 1 branche investiguée et documentée comme inatteignable, 1
+contrainte requirements revérifiée sans écart) · sécurité ✅ (le fichier sécurité-critique de la
+feature est maintenant couvert à 9 instructions manquées sur 268, contre 28 avant cette phase) ·
+tests couvrent les changements ✅ (1875 backend + 351 frontend + 71 Playwright, tous verts, preuve
+fraîche cette session) · docs à jour ✅ (`docs/ai/testing/2026-09-11-feature-introduction-dmn.md`
+réécrit — terminologie FEEL→JUEL corrigée, chaque scénario T1-T6 coché et tracé vers son test
+réel, tableau de couverture par classe/fichier).
 
 **Aucun blocage.**

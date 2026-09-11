@@ -66,6 +66,22 @@ describe('useDmnDeployment', () => {
     expect(deployment.deployedResult.value).toBeNull()
   })
 
+  it('deploy() falls back to a generic message when the ProblemDetail body carries no detail field', async () => {
+    // toProblemDetail() returns response.data verbatim when it's an object -- if that object has
+    // no "detail" key, the ?? fallback in deploy() is what actually produces a user-facing message.
+    const file = new File(['<definitions/>'], 'table.dmn', { type: 'application/xml' })
+    vi.mocked(workflowsApi.deployDecisionTable).mockRejectedValue({
+      isAxiosError: true,
+      response: { status: 500, data: { title: 'Internal Server Error' } },
+    })
+
+    const deployment = useDmnDeployment()
+    const result = await deployment.deploy(file)
+
+    expect(result).toBeNull()
+    expect(deployment.deployError.value).toBe('Déploiement impossible')
+  })
+
   it('reset() clears info, error and result', async () => {
     vi.mocked(workflowsApi.getDecisionTableDeploymentInfo).mockResolvedValue({
       decisionKey: 'grilleEligibilite',

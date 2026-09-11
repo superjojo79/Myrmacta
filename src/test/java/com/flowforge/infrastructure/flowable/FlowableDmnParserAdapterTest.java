@@ -168,6 +168,84 @@ class FlowableDmnParserAdapterTest {
                 .hasMessageContaining("exactly one decision");
     }
 
+    @Test
+    void extractDecisionKey_decisionWithNoIdAttribute_isRejected() {
+        // Phase 8 gap : decision.getId() null/blank guard (extractDecisionKey) never exercised.
+        // An empty id="" fails DMN XSD validation itself (NCName pattern) before reaching our own
+        // check -- omitting the attribute entirely (optional per the DMN 1.1 schema) is the only
+        // schema-valid way to reach decision.getId() == null.
+        String xml =
+                """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <definitions xmlns="http://www.omg.org/spec/DMN/20151101" id="def" name="Def"
+                             namespace="http://flowforge/test">
+                  <decision name="Eligibilite">
+                    <decisionTable id="dt" hitPolicy="UNIQUE">
+                      <input><inputExpression id="ie" typeRef="string"><text>customerCat</text></inputExpression></input>
+                      <output id="o" name="result" typeRef="string" />
+                      <rule>
+                        <inputEntry id="in"><text>"BRONZE"</text></inputEntry>
+                        <outputEntry id="out"><text>'ok'</text></outputEntry>
+                      </rule>
+                    </decisionTable>
+                  </decision>
+                </definitions>
+                """;
+        assertThatThrownBy(() -> adapter.extractDecisionKey(xml.getBytes(StandardCharsets.UTF_8)))
+                .isInstanceOf(InvalidDmnException.class)
+                .hasMessageContaining("does not define an id");
+    }
+
+    @Test
+    void extractDecisionKey_decisionWithLiteralExpressionInsteadOfTable_isRejected() {
+        // Phase 8 gap : DMN allows a <decision> to carry a <literalExpression> instead of a
+        // <decisionTable> -- never exercised. Our allowlist only reasons about decision tables.
+        String xml =
+                """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <definitions xmlns="http://www.omg.org/spec/DMN/20151101" id="def" name="Def"
+                             namespace="http://flowforge/test">
+                  <decision id="eligibilite" name="Eligibilite">
+                    <literalExpression id="le"><text>1</text></literalExpression>
+                  </decision>
+                </definitions>
+                """;
+        assertThatThrownBy(() -> adapter.extractDecisionKey(xml.getBytes(StandardCharsets.UTF_8)))
+                .isInstanceOf(InvalidDmnException.class)
+                .hasMessageContaining("must be a decision table");
+    }
+
+    @Test
+    void extractDecisionKey_decisionTableWithNoRules_isRejected() {
+        // Phase 8 gap : empty decisionTable (0 <rule> elements) never exercised.
+        String xml =
+                """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <definitions xmlns="http://www.omg.org/spec/DMN/20151101" id="def" name="Def"
+                             namespace="http://flowforge/test">
+                  <decision id="eligibilite" name="Eligibilite">
+                    <decisionTable id="dt" hitPolicy="UNIQUE">
+                      <input><inputExpression id="ie" typeRef="string"><text>customerCat</text></inputExpression></input>
+                      <output id="o" name="result" typeRef="string" />
+                    </decisionTable>
+                  </decision>
+                </definitions>
+                """;
+        assertThatThrownBy(() -> adapter.extractDecisionKey(xml.getBytes(StandardCharsets.UTF_8)))
+                .isInstanceOf(InvalidDmnException.class)
+                .hasMessageContaining("has no rules");
+    }
+
+    // Phase 8 gap investigated, not covered by design : assertSafeCellText's rawText==null
+    // short-circuit (line 97-98) has no reachable test through the public, schema-validated
+    // parsing path -- DMN 1.1's XSD requires a <text> child on every inputEntry/outputEntry
+    // (verified: an <inputEntry id="in"/> with no <text> at all fails schema validation before
+    // reaching our code, "content of element 'inputEntry' is not complete... text is expected").
+    // The only way to produce rawText == null would be to call assertSafeCellText directly
+    // (private, would need reflection) with a hand-built model bypassing XML entirely --
+    // disproportionate to prove defensive code that the real parsing path cannot exercise.
+    // Left uncovered deliberately, documented here rather than forced by a synthetic unit test.
+
     private static String decisionTable(String hitPolicy, String inputEntryText, String outputEntryText) {
         return """
                 <?xml version="1.0" encoding="UTF-8"?>

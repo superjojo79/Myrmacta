@@ -51,6 +51,13 @@ const { user, isTenantAdmin, isWorkflowAdmin, canSeeReports } = storeToRefs(auth
         >
           Questions de tâche
         </RouterLink>
+        <RouterLink
+          v-if="isTenantAdmin || isWorkflowAdmin"
+          class="app-shell__link"
+          to="/admin/dmn-editor"
+        >
+          Tables de décision
+        </RouterLink>
       </template>
     </aside>
     <div class="app-shell__content">

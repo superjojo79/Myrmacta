@@ -3,6 +3,9 @@ import type {
   ActivityHistoryEntry,
   BpmnDeploymentResult,
   BpmnDraft,
+  DecisionTableDeploymentInfo,
+  DecisionTableDeploymentResult,
+  DmnDraft,
   ProcessDeploymentInfo,
   WorkflowDiagram,
   WorkflowTaskView,
@@ -115,6 +118,44 @@ export async function saveBpmnDraft(processDefinitionKey: string, xml: string): 
 export async function getDeployedBpmnXml(processDefinitionKey: string): Promise<string | null> {
   const { data, status } = await axios.get<string>(
     `/api/workflow-bpmn-deployments/${processDefinitionKey}/xml`,
+  )
+  return status === 204 ? null : data
+}
+
+export async function getDecisionTableDeploymentInfo(
+  decisionKey: string,
+): Promise<DecisionTableDeploymentInfo | null> {
+  const { data, status } = await axios.get<DecisionTableDeploymentInfo>(
+    '/api/dmn-decision-deployments/info',
+    { params: { decisionKey } },
+  )
+  return status === 204 ? null : data
+}
+
+export async function deployDecisionTable(file: File): Promise<DecisionTableDeploymentResult> {
+  const form = new FormData()
+  form.append('file', file)
+  const { data } = await axios.post<DecisionTableDeploymentResult>(
+    '/api/dmn-decision-deployments',
+    form,
+    { headers: { 'Content-Type': 'multipart/form-data' } },
+  )
+  return data
+}
+
+export async function getDmnDraft(decisionKey: string): Promise<DmnDraft | null> {
+  const { data, status } = await axios.get<DmnDraft>(`/api/dmn-decision-drafts/${decisionKey}`)
+  return status === 204 ? null : data
+}
+
+export async function saveDmnDraft(decisionKey: string, xml: string): Promise<DmnDraft> {
+  const { data } = await axios.put<DmnDraft>(`/api/dmn-decision-drafts/${decisionKey}`, { xml })
+  return data
+}
+
+export async function getDeployedDmnXml(decisionKey: string): Promise<string | null> {
+  const { data, status } = await axios.get<string>(
+    `/api/dmn-decision-deployments/${decisionKey}/xml`,
   )
   return status === 204 ? null : data
 }

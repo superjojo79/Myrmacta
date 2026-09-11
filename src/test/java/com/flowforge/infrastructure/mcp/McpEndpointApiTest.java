@@ -53,7 +53,10 @@ class McpEndpointApiTest {
             "create_dossier",
             "add_dossier_element",
             "start_workflow",
-            "generate_document");
+            "generate_document",
+            "deploy_decision_table",
+            "list_decision_tables",
+            "get_decision_table");
 
     @Autowired
     private MockMvc mockMvc;

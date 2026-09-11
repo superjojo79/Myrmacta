@@ -25,6 +25,7 @@ le permet — l'affichage du menu est indicatif, le contrôle réel se fait côt
 | Admin | Templates | `/admin/templates` | `TENANT_ADMIN` |
 | Admin | Connecteurs | `/admin/connectors` | `TENANT_ADMIN` |
 | Admin | Workflows | `/admin/workflow-types` | `TENANT_ADMIN` ou `WORKFLOW_ADMIN` |
+| Admin | Tables de décision | `/admin/dmn-editor` | `TENANT_ADMIN` ou `WORKFLOW_ADMIN` |
 | Admin | Questions de tâche | `/admin/task-question-schemas` | `TENANT_ADMIN` ou `WORKFLOW_ADMIN` |
 | Admin | Webhooks (notification) | `/admin/notification-webhooks` | `TENANT_ADMIN` |
 | Admin | File purge | `/admin/purge-outbox` | `TENANT_ADMIN` |
@@ -222,6 +223,36 @@ Toujours sur la fiche dossier :
 
 Un utilisateur peut aussi retrouver l'ensemble de ses tâches assignées, tous dossiers confondus,
 depuis **Tâches** (`/tasks`) — pratique en mobilité.
+
+### Construire une table de décision DMN (TODO §61)
+
+Écran **Tables de décision** (`/admin/dmn-editor`, `TENANT_ADMIN` ou `WORKFLOW_ADMIN`) — même
+principe que l'éditeur BPMN, avec l'éditeur `dmn-js` :
+
+1. **Trois points d'entrée**, comme pour le BPMN : table vierge (à l'ouverture de l'écran), import
+   d'un fichier `.dmn` local, ou édition d'une table déjà déployée pour une clé de décision donnée
+   — contrairement au BPMN (accessible depuis le lien **Éditer** de l'écran **Admin → Workflows**),
+   il n'existe pas d'écran listant les tables déployées : le champ **Charger une table existante**
+   de la barre d'outils (clé de décision saisie à la main, puis bouton **Charger**) est le point
+   d'entrée pour ce 3ᵉ cas.
+2. L'éditeur `dmn-js` gère la table (colonnes d'entrée/sortie, règles, hit policy) — pas de
+   panel de propriétés custom FlowForge ici, le `.dmn` est du DMN 1.3 standard.
+3. Bouton **Enregistrer le brouillon** — même mécanique qu'en BPMN (un brouillon par clé de
+   décision, pas d'historique, pas d'autosave).
+4. Bouton **Déployer** — revalidation côté serveur (schéma DMN + allowlist JUEL sur chaque
+   cellule, voir ci-dessous) puis déploiement ; supprime le brouillon de cette clé.
+
+Une fois déployée, la table est invoquée depuis un diagramme BPMN via un `serviceTask
+flowable:type="dmn"` — voir le champ **Clé de la table de décision** dans le panel de propriétés
+de l'éditeur BPMN (§« Construire ou modifier un diagramme BPMN » ci-dessus), et le guide pratique
+[GUIDE-CONCEPTION-BPMN.md](GUIDE-CONCEPTION-BPMN.md) §7bis/§7ter pour quand préférer une table de
+décision à une cascade de passerelles.
+
+> **Sécurité :** contrairement à ce que le standard DMN laisse penser, Flowable évalue les
+> cellules d'une table de décision en **JUEL**, pas en FEEL — chaque cellule d'entrée/sortie doit
+> rester un littéral simple (nombre, texte entre guillemets, booléen), un `-`, ou l'un de ces
+> littéraux précédé d'un opérateur de comparaison. Toute expression plus riche est rejetée au
+> déploiement (même logique que la validation déjà en place pour les expressions BPMN).
 
 ------
 

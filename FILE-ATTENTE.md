@@ -10,7 +10,21 @@
 >   (rétention / purge / sensible — **livré**) ; revue post-implémentation 2026-08-25 :
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
-> **Dernière mise à jour :** 2026-09-08 — **A1 (`provisioning-tenant`) mergé**
+> **Dernière mise à jour :** 2026-09-11 — TODO **§61 livré** : introduction de DMN, cycle
+> `dev-lifecycle` complet (analyse
+> [25-introduction-dmn.md](analysis%20doc/25-introduction-dmn.md) → requirements → design →
+> planning → implémentation, M1-M12). Le moteur DMN Flowable est activé, un
+> `serviceTask flowable:type="dmn"` invoque une table de décision via
+> `decisionTableReferenceKey` (pas le `businessRuleTask` standard, câblé sur Drools et toujours
+> rejeté au parsing). Sécurité : Flowable évalue les cellules de table de décision en **JUEL**, pas
+> FEEL — `FlowableDmnParserAdapter` applique une allowlist stricte (miroir du durcissement BPMN
+> H1/H1-bis, TODO §57/§58), prouvée par exécution réelle sur le moteur
+> (`DmnJuelSecuritySmokeIT`), pas seulement par lecture statique. Éditeur intégré `dmn-js`
+> (`/admin/dmn-editor`), MCP (`deploy_decision_table`/`list_decision_tables`/
+> `get_decision_table`), scénario illustratif livré (`grille-eligibilite-client.dmn`). File
+> sinon vide (Vague B `connecteurs-cible` en attente).
+>
+> 2026-09-08 — **A1 (`provisioning-tenant`) mergé**
 > ([PR #119](https://github.com/superjojo79/FlowForge/pull/119)). **A2**
 > `admin-connector-form-schema` mergé ([PR #117](https://github.com/superjojo79/FlowForge/pull/117)).
 > **A3** `mcp-ecritures-metier` en revue ([PR #118](https://github.com/superjojo79/FlowForge/pull/118)).
@@ -306,8 +320,8 @@ Enchaînements interdits même après A :
 ### Ne pas lancer (décision V1 contraire ou stack absente)
 
 Rate-limit distribué / SSE multi-pod / Spring Session (pas de Redis dans la stack figée) ;
-codegen OpenAPI ; Chart.js SLA (`D-CHARTS = A`) ; DMN ; Cockpit Flowable ;
-OTel / Grafana ; pagination inbox > 100.
+codegen OpenAPI ; Chart.js SLA (`D-CHARTS = A`) ; Cockpit Flowable ; OTel / Grafana ;
+pagination inbox > 100.
 
 **En cours :** Vague B (`connecteurs-cible`) après A3.
 **A1** mergé ([PR #119](https://github.com/superjojo79/FlowForge/pull/119)).

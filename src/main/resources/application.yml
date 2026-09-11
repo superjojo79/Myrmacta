@@ -1,7 +1,10 @@
-# Flowable V1 = moteur BPMN uniquement. Auto-config exclue : JPA, Security,
-# App Engine, DMN, IDM, Event Registry, CMMN, REST API, actuator Flowable, LDAP
+# Flowable V1 = moteur BPMN + DMN (TODO §61, introduction-dmn). Auto-config exclue : JPA,
+# Security, App Engine, IDM, Event Registry, CMMN, REST API, actuator Flowable, LDAP
 # (voir spring.autoconfigure.exclude). Les exclusions Spring Security / OAuth2
-# Client ont été retirées (feature authentification).
+# Client ont été retirées (feature authentification). DMN activé (TODO §61) : businessRuleTask
+# reste rejeté (câblé sur Drools, hors sujet) -- l'invocation DMN passe par
+# serviceTask flowable:type="dmn", validé par FlowableDmnParserAdapter (allowlist JUEL, même
+# moteur que les gateways BPMN) avant d'être autorisé au parsing BPMN.
 spring:
   application:
     name: flowforge
@@ -13,8 +16,6 @@ spring:
       - org.flowable.spring.boot.FlowableSecurityAutoConfiguration
       - org.flowable.spring.boot.app.AppEngineAutoConfiguration
       - org.flowable.spring.boot.app.AppEngineServicesAutoConfiguration
-      - org.flowable.spring.boot.dmn.DmnEngineAutoConfiguration
-      - org.flowable.spring.boot.dmn.DmnEngineServicesAutoConfiguration
       - org.flowable.spring.boot.idm.IdmEngineAutoConfiguration
       - org.flowable.spring.boot.idm.IdmEngineServicesAutoConfiguration
       - org.flowable.spring.boot.eventregistry.EventRegistryAutoConfiguration

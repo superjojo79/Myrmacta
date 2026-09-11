@@ -28,6 +28,17 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ## [Non publié]
 
+### Ajouté
+
+- **TODO §61** — Introduction de DMN : le moteur DMN Flowable est activé et un `serviceTask
+  flowable:type="dmn"` peut invoquer une table de décision (clé portée par un champ d'extension
+  `decisionTableReferenceKey`) — pas le `businessRuleTask` standard, câblé sur Drools et toujours
+  rejeté. Éditeur intégré `dmn-js` (`/admin/dmn-editor`, `TENANT_ADMIN`/`WORKFLOW_ADMIN`), même
+  principe que l'éditeur BPMN (brouillon persisté, déploiement à chaud avec confirmation). MCP :
+  `deploy_decision_table`, `list_decision_tables`, `get_decision_table`. Scénario illustratif
+  livré (`grille-eligibilite-client.dmn` + process de démonstration), déployés au démarrage comme
+  les process `-smoke` existants.
+
 ### Modifié
 
 - **PR [#117](https://github.com/superjojo79/FlowForge/pull/117)** — L’écran Admin → Connecteurs
@@ -37,6 +48,20 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
   avec copie presse-papiers.
 
 ### Sécurité
+
+- **TODO §61** — Flowable n'implémente pas FEEL pour DMN malgré le standard : les cellules de
+  table de décision sont évaluées en JUEL, exposant la même classe de vulnérabilité que H1-bis
+  (TODO §57/§58, résolution d'un identifiant non qualifié contre un bean Spring). Vérifié par
+  décompilation du moteur réel et prouvé par exécution (`DmnJuelSecuritySmokeIT`), pas seulement
+  par lecture statique — `FlowableDmnParserAdapter` applique une allowlist stricte sur chaque
+  cellule au déploiement.
+- **TODO §61 (revue adversariale)** — l'allowlist ci-dessus ne validait pas
+  `<input><inputExpression>`, une surface JUEL identique aux cellules de règle : un subagent
+  indépendant a prouvé sur le vrai moteur qu'une table par ailleurs allowlist-safe pouvait
+  invoquer une méthode arbitraire sur un bean Spring vivant via l'inputExpression
+  (`connectorServiceTask.getClass().getName()`). Corrigé : l'inputExpression est désormais
+  restreinte à un identifiant nu strict, même discipline que les identifiants de
+  `conditionExpression` BPMN (TODO §57 H1).
 
 - **PR [#113](https://github.com/superjojo79/FlowForge/pull/113)** — Revue adversariale TODO §57 :
   allowlist BPMN, complete/runtime schemas bornés à l’assignee, OIDC sans `API_SERVICE`,

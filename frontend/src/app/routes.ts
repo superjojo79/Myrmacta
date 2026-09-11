@@ -64,6 +64,12 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/views/admin/BpmnEditorView.vue'),
   },
   {
+    path: '/admin/dmn-editor',
+    name: 'admin-dmn-editor',
+    meta: { roles: ['TENANT_ADMIN', 'WORKFLOW_ADMIN'] },
+    component: () => import('@/views/admin/DmnEditorView.vue'),
+  },
+  {
     path: '/admin/purge-outbox',
     name: 'admin-purge-outbox',
     meta: { roles: ['TENANT_ADMIN'] },

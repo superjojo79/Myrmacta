@@ -5,7 +5,9 @@ import com.flowforge.domain.workflow.model.InvalidBpmnException;
 import com.flowforge.domain.workflow.port.out.BpmnParserPort;
 import java.io.ByteArrayInputStream;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.flowable.bpmn.converter.BpmnXMLConverter;
@@ -46,6 +48,42 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
         return mainProcess.getId();
     }
 
+    @Override
+    public Set<String> extractReferencedDecisionKeys(byte[] bpmnXml) {
+        BpmnModel model;
+        try {
+            model = new BpmnXMLConverter().convertToBpmnModel(() -> new ByteArrayInputStream(bpmnXml), true, false);
+        } catch (Exception ex) {
+            throw new InvalidBpmnException("File is not a valid BPMN 2.0 document: " + ex.getMessage(), ex);
+        }
+        Set<String> keys = new HashSet<>();
+        for (Process process : model.getProcesses()) {
+            collectDecisionKeys(process.getFlowElements(), keys);
+        }
+        return keys;
+    }
+
+    private static void collectDecisionKeys(Collection<FlowElement> elements, Set<String> keys) {
+        if (elements == null) {
+            return;
+        }
+        for (FlowElement element : elements) {
+            if (element instanceof ServiceTask serviceTask
+                    && DMN_SERVICE_TASK_TYPE.equals(serviceTask.getType())
+                    && serviceTask.getFieldExtensions() != null
+                    && serviceTask.getFieldExtensions().size() == 1) {
+                FieldExtension field = serviceTask.getFieldExtensions().get(0);
+                if (DMN_DECISION_TABLE_REFERENCE_KEY_FIELD.equals(field.getFieldName())
+                        && field.getStringValue() != null) {
+                    keys.add(field.getStringValue());
+                }
+            }
+            if (element instanceof SubProcess subProcess) {
+                collectDecisionKeys(subProcess.getFlowElements(), keys);
+            }
+        }
+    }
+
     private static void assertSafeProcess(Process process) {
         assertSafeListeners("process " + process.getId(), process.getExecutionListeners());
         walk(process.getFlowElements());
@@ -80,7 +118,7 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
         if (element instanceof ServiceTask serviceTask) {
             assertSafeServiceTask(serviceTask);
         }
-        if (element instanceof TaskWithFieldExtensions taskWithFields) {
+        if (element instanceof TaskWithFieldExtensions taskWithFields && !isDmnServiceTask(element)) {
             assertNoFieldExtensions(element.getId(), taskWithFields.getFieldExtensions());
         }
         if (element instanceof SequenceFlow sequenceFlow) {
@@ -88,8 +126,58 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
         }
     }
 
+    private static boolean isDmnServiceTask(FlowElement element) {
+        return element instanceof ServiceTask serviceTask && DMN_SERVICE_TASK_TYPE.equals(serviceTask.getType());
+    }
+
+    /**
+     * TODO §61 (introduction-dmn), D1 -- the real Flowable DMN invocation mechanism is not
+     * {@code businessRuleTask} (rejected above, câblé sur Drools, sans rapport) but
+     * {@code <serviceTask flowable:type="dmn">} with a single {@code decisionTableReferenceKey}
+     * field extension. This is otherwise indistinguishable from any other dangerous built-in
+     * service task type (mail/camel/http/shell/...), all rejected below -- so the exception is
+     * intentionally narrow: {@code type} must be exactly {@code "dmn"} (literal), exactly one field
+     * extension named {@code decisionTableReferenceKey}, {@code flowable:string} only (never
+     * {@code flowable:expression} -- same rule as {@link #assertLiteralAssigneeValue}, a literal
+     * key value must not be able to hide a UEL expression). Whether the key actually references a
+     * <em>deployed</em> decision table is verified at deploy time
+     * ({@code DeployBpmnProcessUseCaseImpl}), not here -- the parser alone cannot reach the DMN
+     * deployment catalog.
+     */
+    private static final String DMN_SERVICE_TASK_TYPE = "dmn";
+
+    private static final String DMN_DECISION_TABLE_REFERENCE_KEY_FIELD = "decisionTableReferenceKey";
+
+    private static void assertSafeDmnServiceTask(ServiceTask serviceTask) {
+        List<FieldExtension> fields = serviceTask.getFieldExtensions();
+        if (fields == null || fields.size() != 1) {
+            throw new InvalidBpmnException(
+                    "BPMN serviceTask type=\"dmn\" must declare exactly one field extension: " + serviceTask.getId());
+        }
+        FieldExtension field = fields.get(0);
+        if (!DMN_DECISION_TABLE_REFERENCE_KEY_FIELD.equals(field.getFieldName())) {
+            throw new InvalidBpmnException(
+                    "BPMN serviceTask type=\"dmn\" field must be named decisionTableReferenceKey: "
+                            + serviceTask.getId());
+        }
+        if (field.getExpression() != null) {
+            throw new InvalidBpmnException(
+                    "BPMN serviceTask type=\"dmn\" decisionTableReferenceKey must be a literal, not an expression: "
+                            + serviceTask.getId());
+        }
+        String key = field.getStringValue();
+        if (key == null || key.isBlank() || key.contains("${") || key.contains("#{")) {
+            throw new InvalidBpmnException(
+                    "BPMN serviceTask type=\"dmn\" decisionTableReferenceKey is not allowed: " + serviceTask.getId());
+        }
+    }
+
     private static void assertSafeServiceTask(ServiceTask serviceTask) {
         if (serviceTask.getType() != null && !serviceTask.getType().isBlank()) {
+            if (DMN_SERVICE_TASK_TYPE.equals(serviceTask.getType())) {
+                assertSafeDmnServiceTask(serviceTask);
+                return;
+            }
             throw new InvalidBpmnException(
                     "BPMN built-in serviceTask type is not allowed: " + serviceTask.getType());
         }

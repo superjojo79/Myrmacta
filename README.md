@@ -34,6 +34,7 @@ L'idée centrale : un dossier métier suit un workflow adapté à son type, déc
 | Besoin                                 | Réponse FlowForge                                            |
 | -------------------------------------- | ------------------------------------------------------------ |
 | Modéliser un processus sans coder      | Éditeur BPMN 2.0 visuel intégré (`bpmn-js`, écran admin FlowForge) |
+| Exprimer des règles/critères métier sans cascade de gateways | Éditeur de tables de décision DMN intégré (`dmn-js`, `/admin/dmn-editor`), invocable depuis un process via `serviceTask` |
 | Gérer des dossiers structurés          | Entité dossier avec signalétique et champs dynamiques par type |
 | Produire des documents automatiquement | Génération PDF à partir de templates Thymeleaf versionnés    |
 | Intégrer des systèmes existants        | Système de connecteurs extensible (V1 : REST/webhook, signal Flowable, cron, email ad hoc, stockage fichier ; cible : Kafka, import batch, ERP…) |
@@ -51,7 +52,7 @@ Entité métier centrale de la plateforme. Chaque dossier est constitué d'un **
 
 ### Moteur de workflow BPMN 2.0
 
-Orchestration des flux métier via **Flowable** — standard industriel ouvert (pas de cockpit Flowable intégré à FlowForge, `DEFERRED-FEATURES.md` §1.5). Les processus se modélisent directement dans FlowForge (éditeur `bpmn-js` intégré à `/admin/bpmn-editor` — création, import, édition d'un diagramme déjà déployé, brouillon persisté) ou avec un outil externe, puis se déploient soit au build/démarrage (scan classpath), soit à chaud depuis l'écran d'administration `/admin/workflow-types` (upload avec prévisualisation) ou directement depuis l'éditeur. Support des gateways, tâches humaines et événements de signal. Le moteur DMN Flowable n'est **pas activé** en V1 (auto-config exclue).
+Orchestration des flux métier via **Flowable** — standard industriel ouvert (pas de cockpit Flowable intégré à FlowForge, `DEFERRED-FEATURES.md` §1.5). Les processus se modélisent directement dans FlowForge (éditeur `bpmn-js` intégré à `/admin/bpmn-editor` — création, import, édition d'un diagramme déjà déployé, brouillon persisté) ou avec un outil externe, puis se déploient soit au build/démarrage (scan classpath), soit à chaud depuis l'écran d'administration `/admin/workflow-types` (upload avec prévisualisation) ou directement depuis l'éditeur. Support des gateways, tâches humaines et événements de signal. Le moteur DMN Flowable est activé et un `serviceTask flowable:type="dmn"` peut invoquer une table de décision éditée dans son propre éditeur intégré (`dmn-js`, `/admin/dmn-editor`) — mêmes principes que l'éditeur BPMN (brouillon persisté, déploiement à chaud), grammaire d'expression JUEL restreinte à une allowlist sûre (littéraux/comparaisons, pas d'EL brut) côté serveur.
 
 ### Système de connecteurs
 
@@ -100,9 +101,9 @@ L'application est construite sur le modèle **Ports & Adapters (hexagonal)** —
                             │ événements
                             ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  Moteur de workflow — Flowable BPMN 2.0                         │
+│  Moteur de workflow — Flowable BPMN 2.0 + DMN                   │
 │  ┌──────────────┐  ┌─────────────┐  ┌──────────┐  ┌─────────┐ │
-│  │ Service Tasks│  │ User Tasks  │  │ Gateways │  │DMN hors │ │
+│  │ Service Tasks│  │ User Tasks  │  │ Gateways │  │  DMN    │ │
 │  └──────┬───────┘  └──────┬──────┘  └──────────┘  └─────────┘ │
 └─────────┼─────────────────┼───────────────────────────────────-─┘
           │                 │
@@ -130,6 +131,7 @@ L'application est construite sur le modèle **Ports & Adapters (hexagonal)** —
 | State management  | Pinia                           | Store réactif Vue 3                             |
 | Tests frontend    | Vitest + Playwright + ESLint/Prettier | Unitaire/composants **et** e2e (`npm run test:all`) obligatoires pour features FE ; aligné job CI `frontend` |
 | BPMN viewer/éditeur | bpmn-js + bpmn-js-properties-panel | Rendu fidèle, overlays d'état, édition (Modeler + panel de propriétés Flowable custom) |
+| DMN éditeur       | dmn-js                          | Même écosystème bpmn.io/Camunda, MIT + filigrane, `/admin/dmn-editor` |
 | Stockage fichiers | Port S3 / filesystem             | `DocumentStoragePort` ; MinIO possible en local (pas de couplage) |
 | Auth server       | Keycloak 26.7.x                 | Self-hosted, OIDC/OAuth2, LDAP                  |
 | Build             | Maven mono-module + ArchUnit    | Règle domaine vérifiée en CI                    |

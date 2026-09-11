@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://flowforge/test">
+  <process id="dmnSmoke" isExecutable="true">
+    <startEvent id="start"/>
+    <serviceTask id="evaluate" flowable:type="dmn">
+      <extensionElements>
+        <flowable:field name="decisionTableReferenceKey">
+          <flowable:string>dmnSmokeEligibilite</flowable:string>
+        </flowable:field>
+      </extensionElements>
+    </serviceTask>
+    <endEvent id="end"/>
+    <sequenceFlow id="flow1" sourceRef="start" targetRef="evaluate"/>
+    <sequenceFlow id="flow2" sourceRef="evaluate" targetRef="end"/>
+  </process>
+</definitions>

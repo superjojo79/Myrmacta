@@ -1,5 +1,7 @@
 package com.flowforge.domain.workflow.port.out;
 
+import java.util.Set;
+
 public interface BpmnParserPort {
 
     /**
@@ -8,4 +10,12 @@ public interface BpmnParserPort {
      * bytes are not well-formed XML, not a valid BPMN 2.0 document, or define no process id.
      */
     String extractProcessDefinitionKey(byte[] bpmnXml);
+
+    /**
+     * Returns the {@code decisionTableReferenceKey} of every {@code serviceTask flowable:type="dmn"}
+     * in the document (TODO §61 D1) -- empty if none. Only meaningful after a prior successful call
+     * to {@link #extractProcessDefinitionKey(byte[])} on the same bytes (which already validates the
+     * shape of each such element); does not itself verify the keys are deployed.
+     */
+    Set<String> extractReferencedDecisionKeys(byte[] bpmnXml);
 }

@@ -1,0 +1,40 @@
+databaseChangeLog:
+  - changeSet:
+      id: 021-dmn-draft
+      author: flowforge
+      changes:
+        - createTable:
+            tableName: dmn_draft
+            columns:
+              - column:
+                  name: tenant_id
+                  type: varchar(64)
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_dmn_draft
+                    nullable: false
+              - column:
+                  name: decision_key
+                  type: varchar(255)
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_dmn_draft
+                    nullable: false
+              - column:
+                  name: xml
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_by
+                  type: varchar(128)
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: dmn_draft

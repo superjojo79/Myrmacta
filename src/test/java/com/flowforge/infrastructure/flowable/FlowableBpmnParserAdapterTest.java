@@ -312,4 +312,106 @@ class FlowableBpmnParserAdapterTest {
                 </definitions>
                 """.formatted(serviceTaskAttr);
     }
+
+    // --- TODO §61 (introduction-dmn), D1 : serviceTask flowable:type="dmn" ---
+
+    @Test
+    void extractProcessDefinitionKey_dmnServiceTaskWithLiteralField_accepted() {
+        String xml = dmnServiceTaskBpmn(
+                "<flowable:field name=\"decisionTableReferenceKey\"><flowable:string>eligibilite</flowable:string></flowable:field>");
+        assertThat(adapter.extractProcessDefinitionKey(xml.getBytes(StandardCharsets.UTF_8)))
+                .isEqualTo("testProcess");
+    }
+
+    @Test
+    void extractReferencedDecisionKeys_dmnServiceTask_returnsTheKey() {
+        String xml = dmnServiceTaskBpmn(
+                "<flowable:field name=\"decisionTableReferenceKey\"><flowable:string>eligibilite</flowable:string></flowable:field>");
+        assertThat(adapter.extractReferencedDecisionKeys(xml.getBytes(StandardCharsets.UTF_8)))
+                .containsExactly("eligibilite");
+    }
+
+    @Test
+    void extractReferencedDecisionKeys_noDmnServiceTask_returnsEmpty() {
+        assertThat(adapter.extractReferencedDecisionKeys(VALID_BPMN.getBytes(StandardCharsets.UTF_8)))
+                .isEmpty();
+    }
+
+    @Test
+    void extractProcessDefinitionKey_dmnServiceTaskWithExpressionField_rejected() {
+        String xml = dmnServiceTaskBpmn(
+                "<flowable:field name=\"decisionTableReferenceKey\"><flowable:expression>${connectorServiceTask}</flowable:expression></flowable:field>");
+        assertThatThrownBy(() -> adapter.extractProcessDefinitionKey(xml.getBytes(StandardCharsets.UTF_8)))
+                .isInstanceOf(InvalidBpmnException.class)
+                .hasMessageContaining("literal");
+    }
+
+    @Test
+    void extractProcessDefinitionKey_dmnServiceTaskWithWrongFieldName_rejected() {
+        String xml = dmnServiceTaskBpmn(
+                "<flowable:field name=\"somethingElse\"><flowable:string>eligibilite</flowable:string></flowable:field>");
+        assertThatThrownBy(() -> adapter.extractProcessDefinitionKey(xml.getBytes(StandardCharsets.UTF_8)))
+                .isInstanceOf(InvalidBpmnException.class)
+                .hasMessageContaining("decisionTableReferenceKey");
+    }
+
+    @Test
+    void extractProcessDefinitionKey_dmnServiceTaskWithNoField_rejected() {
+        String xml = dmnServiceTaskBpmn("");
+        assertThatThrownBy(() -> adapter.extractProcessDefinitionKey(xml.getBytes(StandardCharsets.UTF_8)))
+                .isInstanceOf(InvalidBpmnException.class)
+                .hasMessageContaining("exactly one field extension");
+    }
+
+    @Test
+    void extractProcessDefinitionKey_dmnServiceTaskWithTwoFields_rejected() {
+        String xml = dmnServiceTaskBpmn(
+                """
+                <flowable:field name="decisionTableReferenceKey"><flowable:string>eligibilite</flowable:string></flowable:field>
+                <flowable:field name="extra"><flowable:string>x</flowable:string></flowable:field>
+                """);
+        assertThatThrownBy(() -> adapter.extractProcessDefinitionKey(xml.getBytes(StandardCharsets.UTF_8)))
+                .isInstanceOf(InvalidBpmnException.class)
+                .hasMessageContaining("exactly one field extension");
+    }
+
+    @Test
+    void extractProcessDefinitionKey_dmnServiceTaskWithElExpressionInLiteralValue_rejected() {
+        // Same lesson as H1-bis: a "literal" that itself contains an EL marker is not safe just
+        // because it arrived via flowable:string rather than flowable:expression.
+        String xml = dmnServiceTaskBpmn(
+                "<flowable:field name=\"decisionTableReferenceKey\"><flowable:string>${connectorServiceTask}</flowable:string></flowable:field>");
+        assertThatThrownBy(() -> adapter.extractProcessDefinitionKey(xml.getBytes(StandardCharsets.UTF_8)))
+                .isInstanceOf(InvalidBpmnException.class);
+    }
+
+    @Test
+    void extractProcessDefinitionKey_otherBuiltinServiceTaskType_stillRejected() {
+        // Non-regression: the new type="dmn" exception must not widen into "any built-in type".
+        String xml = serviceTaskBpmn("flowable:type=\"mail\"");
+        assertThatThrownBy(() -> adapter.extractProcessDefinitionKey(xml.getBytes(StandardCharsets.UTF_8)))
+                .isInstanceOf(InvalidBpmnException.class)
+                .hasMessageContaining("built-in serviceTask type");
+    }
+
+    private static String dmnServiceTaskBpmn(String fieldExtensionsXml) {
+        return """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                             xmlns:flowable="http://flowable.org/bpmn"
+                             targetNamespace="http://flowforge/test">
+                  <process id="testProcess" isExecutable="true">
+                    <startEvent id="start"/>
+                    <serviceTask id="svc" flowable:type="dmn">
+                      <extensionElements>
+                        %s
+                      </extensionElements>
+                    </serviceTask>
+                    <endEvent id="end"/>
+                    <sequenceFlow sourceRef="start" targetRef="svc"/>
+                    <sequenceFlow sourceRef="svc" targetRef="end"/>
+                  </process>
+                </definitions>
+                """.formatted(fieldExtensionsXml);
+    }
 }

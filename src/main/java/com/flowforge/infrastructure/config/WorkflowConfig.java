@@ -12,13 +12,20 @@ import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
 import com.flowforge.domain.dossier.usecase.AttachWorkflowUseCaseImpl;
 import com.flowforge.domain.workflow.port.in.CompleteTaskUseCase;
 import com.flowforge.domain.workflow.port.in.DeployBpmnProcessUseCase;
+import com.flowforge.domain.workflow.port.in.DeployDecisionTableUseCase;
 import com.flowforge.domain.workflow.port.in.GetBpmnDraftUseCase;
+import com.flowforge.domain.workflow.port.in.GetDecisionTableDeploymentInfoUseCase;
+import com.flowforge.domain.workflow.port.in.GetDmnDraftUseCase;
 import com.flowforge.domain.workflow.port.in.GetProcessDeploymentInfoUseCase;
 import com.flowforge.domain.workflow.port.in.ListMyTasksUseCase;
 import com.flowforge.domain.workflow.port.in.SaveBpmnDraftUseCase;
+import com.flowforge.domain.workflow.port.in.SaveDmnDraftUseCase;
 import com.flowforge.domain.workflow.port.in.UpdateWorkflowLinkStatusUseCase;
 import com.flowforge.domain.workflow.port.out.BpmnDraftRepository;
 import com.flowforge.domain.workflow.port.out.BpmnParserPort;
+import com.flowforge.domain.workflow.port.out.DmnDeploymentPort;
+import com.flowforge.domain.workflow.port.out.DmnDraftRepository;
+import com.flowforge.domain.workflow.port.out.DmnParserPort;
 import com.flowforge.domain.workflow.port.out.IdempotencyStore;
 import com.flowforge.domain.workflow.port.out.TaskQuestionAnswerRepository;
 import com.flowforge.domain.workflow.port.out.TaskQuestionSchemaRepository;
@@ -32,11 +39,15 @@ import com.flowforge.domain.workflow.port.out.WorkflowTypeConfigRepository;
 import com.flowforge.domain.workflow.port.out.WorkflowVisualizationPort;
 import com.flowforge.domain.workflow.usecase.CompleteTaskUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.DeployBpmnProcessUseCaseImpl;
+import com.flowforge.domain.workflow.usecase.DeployDecisionTableUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.GetBpmnDraftUseCaseImpl;
+import com.flowforge.domain.workflow.usecase.GetDecisionTableDeploymentInfoUseCaseImpl;
+import com.flowforge.domain.workflow.usecase.GetDmnDraftUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.GetProcessDeploymentInfoUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.GetTaskQuestionSchemaForTaskUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.ListMyTasksUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.SaveBpmnDraftUseCaseImpl;
+import com.flowforge.domain.workflow.usecase.SaveDmnDraftUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.TaskQuestionSchemaUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.UpdateWorkflowLinkStatusUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.WorkflowLinkVisualizationUseCaseImpl;
@@ -177,9 +188,15 @@ public class WorkflowConfig {
             WorkflowDeploymentPort deploymentPort,
             WorkflowTypeConfigRepository configRepository,
             BpmnParserPort bpmnParserPort,
-            BpmnDraftRepository bpmnDraftRepository) {
+            BpmnDraftRepository bpmnDraftRepository,
+            DmnDeploymentPort dmnDeploymentPort) {
         return new DeployBpmnProcessUseCaseImpl(
-                tenantProperties.id(), deploymentPort, configRepository, bpmnParserPort, bpmnDraftRepository);
+                tenantProperties.id(),
+                deploymentPort,
+                configRepository,
+                bpmnParserPort,
+                bpmnDraftRepository,
+                dmnDeploymentPort);
     }
 
     @Bean
@@ -197,6 +214,32 @@ public class WorkflowConfig {
     @Bean
     GetBpmnDraftUseCase getBpmnDraftUseCase(TenantProperties tenantProperties, BpmnDraftRepository draftRepository) {
         return new GetBpmnDraftUseCaseImpl(tenantProperties.id(), draftRepository);
+    }
+
+    @Bean
+    DeployDecisionTableUseCase deployDecisionTableUseCase(
+            TenantProperties tenantProperties,
+            DmnDeploymentPort deploymentPort,
+            DmnParserPort dmnParserPort,
+            DmnDraftRepository dmnDraftRepository) {
+        return new DeployDecisionTableUseCaseImpl(tenantProperties.id(), deploymentPort, dmnParserPort, dmnDraftRepository);
+    }
+
+    @Bean
+    GetDecisionTableDeploymentInfoUseCase getDecisionTableDeploymentInfoUseCase(
+            TenantProperties tenantProperties, DmnDeploymentPort deploymentPort) {
+        return new GetDecisionTableDeploymentInfoUseCaseImpl(tenantProperties.id(), deploymentPort);
+    }
+
+    @Bean
+    SaveDmnDraftUseCase saveDmnDraftUseCase(
+            TenantProperties tenantProperties, DmnDraftRepository draftRepository, DmnParserPort dmnParserPort) {
+        return new SaveDmnDraftUseCaseImpl(tenantProperties.id(), draftRepository, dmnParserPort);
+    }
+
+    @Bean
+    GetDmnDraftUseCase getDmnDraftUseCase(TenantProperties tenantProperties, DmnDraftRepository draftRepository) {
+        return new GetDmnDraftUseCaseImpl(tenantProperties.id(), draftRepository);
     }
 
     @Bean

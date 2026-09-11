@@ -17,6 +17,7 @@ import com.flowforge.domain.workflow.port.in.GetBpmnDraftUseCase;
 import com.flowforge.domain.workflow.port.in.GetDecisionTableDeploymentInfoUseCase;
 import com.flowforge.domain.workflow.port.in.GetDmnDraftUseCase;
 import com.flowforge.domain.workflow.port.in.GetProcessDeploymentInfoUseCase;
+import com.flowforge.domain.workflow.port.in.ListDecisionTablesUseCase;
 import com.flowforge.domain.workflow.port.in.ListMyTasksUseCase;
 import com.flowforge.domain.workflow.port.in.SaveBpmnDraftUseCase;
 import com.flowforge.domain.workflow.port.in.SaveDmnDraftUseCase;
@@ -45,6 +46,7 @@ import com.flowforge.domain.workflow.usecase.GetDecisionTableDeploymentInfoUseCa
 import com.flowforge.domain.workflow.usecase.GetDmnDraftUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.GetProcessDeploymentInfoUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.GetTaskQuestionSchemaForTaskUseCaseImpl;
+import com.flowforge.domain.workflow.usecase.ListDecisionTablesUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.ListMyTasksUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.SaveBpmnDraftUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.SaveDmnDraftUseCaseImpl;
@@ -240,6 +242,12 @@ public class WorkflowConfig {
     @Bean
     GetDmnDraftUseCase getDmnDraftUseCase(TenantProperties tenantProperties, DmnDraftRepository draftRepository) {
         return new GetDmnDraftUseCaseImpl(tenantProperties.id(), draftRepository);
+    }
+
+    @Bean
+    ListDecisionTablesUseCase listDecisionTablesUseCase(
+            TenantProperties tenantProperties, DmnDeploymentPort deploymentPort) {
+        return new ListDecisionTablesUseCaseImpl(tenantProperties.id(), deploymentPort);
     }
 
     @Bean

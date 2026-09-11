@@ -105,6 +105,101 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/TenantRetentionSettingsResponse"
+  /api/task-question-schemas/{schemaKey}:
+    get:
+      tags:
+      - task-question-schema-controller
+      operationId: getByKey
+      parameters:
+      - name: schemaKey
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TaskQuestionSchemaResponse"
+    put:
+      tags:
+      - task-question-schema-controller
+      operationId: update
+      parameters:
+      - name: schemaKey
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTaskQuestionSchemaRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TaskQuestionSchemaResponse"
+    delete:
+      tags:
+      - task-question-schema-controller
+      operationId: delete
+      parameters:
+      - name: schemaKey
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+  /api/dmn-decision-drafts/{decisionKey}:
+    get:
+      tags:
+      - dmn-draft-controller
+      operationId: get_3
+      parameters:
+      - name: decisionKey
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DmnDraftResponse"
+    put:
+      tags:
+      - dmn-draft-controller
+      operationId: save_1
+      parameters:
+      - name: decisionKey
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveDmnDraftRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DmnDraftResponse"
   /api/workflow-type-configs:
     get:
       tags:
@@ -242,6 +337,53 @@ paths:
       responses:
         "200":
           description: OK
+  /api/task-question-schemas:
+    get:
+      tags:
+      - task-question-schema-controller
+      operationId: list_1
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageResponseTaskQuestionSchemaResponse"
+    post:
+      tags:
+      - task-question-schema-controller
+      operationId: create_1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTaskQuestionSchemaRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TaskQuestionSchemaResponse"
   /api/notifications/send:
     post:
       tags:
@@ -264,7 +406,7 @@ paths:
     get:
       tags:
       - notification-webhook-admin-controller
-      operationId: list_1
+      operationId: list_2
       parameters:
       - name: page
         in: query
@@ -293,7 +435,7 @@ paths:
     post:
       tags:
       - notification-webhook-admin-controller
-      operationId: create_1
+      operationId: create_2
       requestBody:
         content:
           application/json:
@@ -336,7 +478,7 @@ paths:
     get:
       tags:
       - dossier-controller
-      operationId: list_2
+      operationId: list_3
       parameters:
       - name: page
         in: query
@@ -387,7 +529,7 @@ paths:
     post:
       tags:
       - dossier-controller
-      operationId: create_2
+      operationId: create_3
       requestBody:
         content:
           application/json:
@@ -625,7 +767,7 @@ paths:
     get:
       tags:
       - dossier-type-controller
-      operationId: list_3
+      operationId: list_4
       parameters:
       - name: page
         in: query
@@ -654,7 +796,7 @@ paths:
     post:
       tags:
       - dossier-type-controller
-      operationId: create_3
+      operationId: create_4
       requestBody:
         content:
           application/json:
@@ -748,7 +890,7 @@ paths:
     get:
       tags:
       - document-template-controller
-      operationId: list_4
+      operationId: list_5
       parameters:
       - name: templateKey
         in: query
@@ -788,7 +930,7 @@ paths:
     post:
       tags:
       - document-template-controller
-      operationId: create_4
+      operationId: create_5
       requestBody:
         content:
           application/json:
@@ -859,11 +1001,34 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/TemplateResponse"
+  /api/dmn-decision-deployments:
+    post:
+      tags:
+      - dmn-decision-deployment-controller
+      operationId: deploy_1
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+              - file
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DecisionTableDeploymentResultResponse"
   /api/connectors:
     get:
       tags:
       - connector-admin-controller
-      operationId: list_5
+      operationId: list_6
       parameters:
       - name: page
         in: query
@@ -892,7 +1057,7 @@ paths:
     post:
       tags:
       - connector-admin-controller
-      operationId: create_5
+      operationId: create_6
       requestBody:
         content:
           application/json:
@@ -957,7 +1122,7 @@ paths:
     get:
       tags:
       - workflow-type-config-controller
-      operationId: get_3
+      operationId: get_4
       parameters:
       - name: workflowKey
         in: path
@@ -974,7 +1139,7 @@ paths:
     patch:
       tags:
       - workflow-type-config-controller
-      operationId: update
+      operationId: update_1
       parameters:
       - name: workflowKey
         in: path
@@ -998,7 +1163,7 @@ paths:
     get:
       tags:
       - notification-webhook-admin-controller
-      operationId: get_4
+      operationId: get_5
       parameters:
       - name: id
         in: path
@@ -1030,7 +1195,7 @@ paths:
     patch:
       tags:
       - notification-webhook-admin-controller
-      operationId: update_1
+      operationId: update_2
       parameters:
       - name: id
         in: path
@@ -1122,7 +1287,7 @@ paths:
     patch:
       tags:
       - dossier-type-controller
-      operationId: update_2
+      operationId: update_3
       parameters:
       - name: code
         in: path
@@ -1146,7 +1311,7 @@ paths:
     get:
       tags:
       - document-template-controller
-      operationId: get_5
+      operationId: get_6
       parameters:
       - name: id
         in: path
@@ -1164,7 +1329,7 @@ paths:
     patch:
       tags:
       - document-template-controller
-      operationId: update_3
+      operationId: update_4
       parameters:
       - name: id
         in: path
@@ -1189,7 +1354,7 @@ paths:
     get:
       tags:
       - connector-admin-controller
-      operationId: get_6
+      operationId: get_7
       parameters:
       - name: id
         in: path
@@ -1221,7 +1386,7 @@ paths:
     patch:
       tags:
       - connector-admin-controller
-      operationId: update_4
+      operationId: update_5
       parameters:
       - name: id
         in: path
@@ -1419,11 +1584,34 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ProcessDeploymentInfoResponse"
+  /api/task-question-schemas/{schemaKey}/runtime:
+    get:
+      tags:
+      - task-question-schema-controller
+      operationId: getForTask
+      parameters:
+      - name: schemaKey
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: taskId
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TaskQuestionSchemaRuntimeResponse"
   /api/reports/sla:
     get:
       tags:
       - sla-report-controller
-      operationId: get_7
+      operationId: get_8
       parameters:
       - name: from
         in: query
@@ -1508,7 +1696,7 @@ paths:
     get:
       tags:
       - purge-outbox-controller
-      operationId: list_6
+      operationId: list_7
       parameters:
       - name: status
         in: query
@@ -1548,7 +1736,7 @@ paths:
     get:
       tags:
       - observability-controller
-      operationId: get_8
+      operationId: get_9
       responses:
         "200":
           description: OK
@@ -1679,11 +1867,48 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/TemplateResponse"
+  /api/dmn-decision-deployments/{decisionKey}/xml:
+    get:
+      tags:
+      - dmn-decision-deployment-controller
+      operationId: deployedXml_1
+      parameters:
+      - name: decisionKey
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: byte
+  /api/dmn-decision-deployments/info:
+    get:
+      tags:
+      - dmn-decision-deployment-controller
+      operationId: info_1
+      parameters:
+      - name: decisionKey
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DecisionTableDeploymentInfoResponse"
   /api/connector-definitions:
     get:
       tags:
       - connector-definition-controller
-      operationId: list_7
+      operationId: list_8
       parameters:
       - name: page
         in: query
@@ -1792,6 +2017,78 @@ components:
         defaultRetentionDays:
           type: integer
           format: int32
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+    FieldDefinition:
+      type: object
+      properties:
+        name:
+          type: string
+        label:
+          type: string
+        type:
+          type: string
+          enum:
+          - STRING
+          - NUMBER
+          - DATE
+          - BOOLEAN
+          - SELECT
+          - FILE
+        required:
+          type: boolean
+        defaultValue:
+          type: string
+        options:
+          type: array
+          items:
+            type: string
+        group:
+          type: string
+        sensitive:
+          type: boolean
+    UpdateTaskQuestionSchemaRequest:
+      type: object
+      properties:
+        label:
+          type: string
+        fieldDefinitions:
+          type: array
+          items:
+            $ref: "#/components/schemas/FieldDefinition"
+    TaskQuestionSchemaResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        schemaKey:
+          type: string
+        label:
+          type: string
+        fieldDefinitions:
+          type: array
+          items:
+            $ref: "#/components/schemas/FieldDefinition"
+        createdBy:
+          type: string
+        updatedBy:
+          type: string
+    SaveDmnDraftRequest:
+      type: object
+      properties:
+        xml:
+          type: string
+    DmnDraftResponse:
+      type: object
+      properties:
+        decisionKey:
+          type: string
+        xml:
+          type: string
         updatedAt:
           type: string
           format: date-time
@@ -1925,6 +2222,17 @@ components:
           format: int32
         deploymentId:
           type: string
+    CreateTaskQuestionSchemaRequest:
+      type: object
+      properties:
+        schemaKey:
+          type: string
+        label:
+          type: string
+        fieldDefinitions:
+          type: array
+          items:
+            $ref: "#/components/schemas/FieldDefinition"
     SendNotificationRequest:
       type: object
       properties:
@@ -2267,34 +2575,6 @@ components:
           type: array
           items:
             type: string
-    FieldDefinition:
-      type: object
-      properties:
-        name:
-          type: string
-        label:
-          type: string
-        type:
-          type: string
-          enum:
-          - STRING
-          - NUMBER
-          - DATE
-          - BOOLEAN
-          - SELECT
-          - FILE
-        required:
-          type: boolean
-        defaultValue:
-          type: string
-        options:
-          type: array
-          items:
-            type: string
-        group:
-          type: string
-        sensitive:
-          type: boolean
     DossierTypeResponse:
       type: object
       properties:
@@ -2410,6 +2690,16 @@ components:
           type: string
           format: date-time
         updatedBy:
+          type: string
+    DecisionTableDeploymentResultResponse:
+      type: object
+      properties:
+        decisionKey:
+          type: string
+        deployedVersion:
+          type: integer
+          format: int32
+        deploymentId:
           type: string
     CreateConnectorRequest:
       type: object
@@ -2845,6 +3135,36 @@ components:
         activeInstanceCount:
           type: integer
           format: int64
+    PageResponseTaskQuestionSchemaResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskQuestionSchemaResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    TaskQuestionSchemaRuntimeResponse:
+      type: object
+      properties:
+        schemaKey:
+          type: string
+        label:
+          type: string
+        fieldDefinitions:
+          type: array
+          items:
+            $ref: "#/components/schemas/FieldDefinition"
     ManagerLoad:
       type: object
       properties:
@@ -3249,6 +3569,14 @@ components:
           type: integer
           format: int64
         totalPages:
+          type: integer
+          format: int32
+    DecisionTableDeploymentInfoResponse:
+      type: object
+      properties:
+        decisionKey:
+          type: string
+        latestVersion:
           type: integer
           format: int32
     PageResponseConnectorResponse:

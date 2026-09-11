@@ -6,6 +6,7 @@ import com.flowforge.domain.workflow.port.out.DmnDeploymentPort;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import org.flowable.dmn.api.DmnDecision;
@@ -31,6 +32,13 @@ class FlowableDmnDeploymentAdapter implements DmnDeploymentPort {
             return Optional.empty();
         }
         return Optional.of(new DecisionTableDeploymentInfo(decisionKey, latest.getVersion()));
+    }
+
+    @Override
+    public List<DecisionTableDeploymentInfo> findAllLatestDeployments(String tenantId) {
+        return dmnRepositoryService.createDecisionQuery().decisionTenantId(tenantId).latestVersion().list().stream()
+                .map(decision -> new DecisionTableDeploymentInfo(decision.getKey(), decision.getVersion()))
+                .toList();
     }
 
     @Override

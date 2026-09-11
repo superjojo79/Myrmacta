@@ -10,14 +10,16 @@
 >   (rétention / purge / sensible — **livré**) ; revue post-implémentation 2026-08-25 :
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
-> **Dernière mise à jour :** 2026-09-10 — TODO **§61 ouvert** : introduction de DMN
+> **Dernière mise à jour :** 2026-09-11 — TODO **§61 ouvert** : introduction de DMN
 > (question utilisateur), analyse écrite
 > [25-introduction-dmn.md](analysis%20doc/25-introduction-dmn.md) — DMN est hors V1 depuis
 > l'origine et le `businessRuleTask` BPMN est en plus explicitement rejeté au parsing depuis TODO
-> §58 (H1-bis, pas de moteur DMN dans la stack). Pas encore priorisé ni tranché en
-> `dev-lifecycle` ; ne pas rouvrir le rejet `businessRuleTask` sans durcissement FEEL équivalent à
-> celui fait pour BPMN (H1/H1-bis). File toujours vide sinon (Vague B `connecteurs-cible` en
-> attente).
+> §58 (H1-bis, pas de moteur DMN dans la stack). **Besoin métier confirmé** (gérer des cas/règles
+> métier séparément du flux, pas une techno pour elle-même) — retiré de « Ne pas lancer » ;
+> périmètre concret (`DossierType`/process porteur, forme de règle) encore à préciser en Phase 1
+> avant tout cadrage `dev-lifecycle`. Ne pas rouvrir le rejet `businessRuleTask` sans durcissement
+> FEEL équivalent à celui fait pour BPMN (H1/H1-bis). File toujours vide sinon (Vague B
+> `connecteurs-cible` en attente).
 >
 > 2026-09-08 — **A1 (`provisioning-tenant`) mergé**
 > ([PR #119](https://github.com/superjojo79/FlowForge/pull/119)). **A2**
@@ -315,9 +317,13 @@ Enchaînements interdits même après A :
 ### Ne pas lancer (décision V1 contraire ou stack absente)
 
 Rate-limit distribué / SSE multi-pod / Spring Session (pas de Redis dans la stack figée) ;
-codegen OpenAPI ; Chart.js SLA (`D-CHARTS = A`) ; DMN (analyse ouverte, non tranchée — TODO §61,
-[25-introduction-dmn.md](analysis%20doc/25-introduction-dmn.md), pas encore de cas d'usage métier
-confirmé) ; Cockpit Flowable ; OTel / Grafana ; pagination inbox > 100.
+codegen OpenAPI ; Chart.js SLA (`D-CHARTS = A`) ; Cockpit Flowable ; OTel / Grafana ;
+pagination inbox > 100.
+
+**DMN retiré de cette liste (2026-09-11) :** besoin métier confirmé par l'utilisateur (gérer des
+cas/règles métier séparément du flux) — ce n'est plus une décision V1 contraire. Pas encore
+séquencé dans une vague : périmètre concret à préciser en Phase 1 avant cadrage `dev-lifecycle` —
+voir TODO §61 / [25-introduction-dmn.md](analysis%20doc/25-introduction-dmn.md).
 
 **En cours :** Vague B (`connecteurs-cible`) après A3.
 **A1** mergé ([PR #119](https://github.com/superjojo79/FlowForge/pull/119)).

@@ -1,16 +1,22 @@
 # Introduction de DMN — lever l'exclusion V1
 
-> **Statut : première analyse fonctionnelle et technique, aucune décision tranchée.** À affiner en
-> phase `dev-lifecycle` (requirements → design) avant tout code — voir « Questions ouvertes » en
-> fin de document. Origine : demande utilisateur (2026-09-10) — DMN (Decision Model & Notation) est
-> aujourd'hui explicitement exclu du V1 ; ce document vérifie contre le code réel ce que lever cette
-> exclusion impliquerait, avant tout cadrage `dev-lifecycle`.
+> **Statut : besoin métier confirmé (2026-09-11), périmètre et sécurité non tranchés.** Origine :
+> demande utilisateur (2026-09-10) — DMN (Decision Model & Notation) est aujourd'hui explicitement
+> exclu du V1 ; ce document vérifie contre le code réel ce que lever cette exclusion impliquerait.
+> À affiner en phase `dev-lifecycle` (requirements → design) avant tout code — voir « Questions
+> ouvertes » en fin de document.
 >
 > **Corrigé (2026-09-11), question utilisateur :** la version initiale sous-estimait l'état réel de
 > l'édition BPMN (« modélisé en externe puis déployé ») — `edition-bpmn` (PR #71, TODO §39) a depuis
 > ajouté un éditeur graphique intégré (`bpmn-js` Modeler). §3.2/§4.2 corrigés : `dmn-js`, toolkit
 > sœur de `bpmn-js` (même éditeur bpmn.io, même licence vérifiée), est l'équivalent DMN direct de ce
 > mécanisme — ajoute la question **D-DMN-EDITOR-SCOPE** (§5).
+>
+> **Confirmé (2026-09-11), question utilisateur :** DMN répond à un besoin métier identifié — gérer
+> des cas/règles métier (barèmes, seuils, éligibilité) séparément du flux — et non à l'introduction
+> d'une techno pour elle-même. **D-DMN-SCOPE (§5) n'est donc plus une question d'opportunité**, seul
+> son périmètre concret (quel `DossierType`/process, quelle forme de règle) reste à préciser en
+> Phase 1 — voir §2.
 
 ---
 
@@ -76,24 +82,35 @@ diagramme BPMN lui-même — pas dans un artefact séparé, éditable indépenda
 
 ---
 
-## 2. Ce que DMN apporterait (à confirmer par un besoin métier concret en requirements)
+## 2. Ce que DMN apporterait — besoin confirmé (2026-09-11)
 
-- **Séparer la règle de décision du flux.** Une matrice de règles (barème, seuils, éligibilité,
-  grille tarifaire) devient un artefact `.dmn` autonome, versionné indépendamment du diagramme
-  BPMN qui l'invoque — alors qu'aujourd'hui la même logique, si elle dépasse quelques conditions,
-  se traduirait par une cascade de gateways exclusifs imbriqués dans le process.
+**Confirmé par l'utilisateur, ne pas rouvrir sans raison explicite :** DMN répond à un besoin
+métier identifié — **gérer les cas/règles métier** (barèmes, seuils, grilles d'éligibilité,
+matrices de tarification) qui se posent en dehors du seul enchaînement de tâches — pas une
+introduction technologique pour elle-même. Ce n'est pas « une feature pour de la feature » : c'est
+la même doctrine que chaque feature V1.x du dépôt (partir d'un écart ou d'un besoin constaté), donc
+cadrable en `dev-lifecycle` sans revalider la légitimité de fond à chaque relecture. Ce qui reste à
+préciser en phase requirements (Phase 1), ce n'est **pas** l'opportunité de DMN mais son **usage
+concret** : quel(s) `DossierType`/process porte(nt) la première règle de décision candidate, sous
+quelle forme (barème numérique, matrice d'éligibilité à conditions multiples, autre), avec quel
+volume de règles — c'est ce détail qui alimentera D-DMN-SCOPE (§5) sans redemander « pourquoi DMN
+du tout ».
+
+Bénéfices attendus, confirmés pertinents pour ce besoin :
+
+- **Séparer la règle de décision du flux.** Une matrice de règles devient un artefact `.dmn`
+  autonome, versionné indépendamment du diagramme BPMN qui l'invoque — alors qu'aujourd'hui la même
+  logique, si elle dépasse quelques conditions, se traduirait par une cascade de gateways exclusifs
+  imbriqués dans le process (seul mécanisme disponible aujourd'hui, §1.3).
 - **Lisibilité pour un profil non technique.** Une table de décision (lignes = règles, colonnes =
   conditions/conclusions) est plus proche d'une grille métier (Excel, cahier de règles) qu'un
-  graphe de gateways — pertinent si l'intention est de permettre à un métier de faire évoluer des
-  seuils sans repasser par un diagramme BPMN complet.
-- **Réutilisation.** Une même table de décision peut être invoquée depuis plusieurs `businessRuleTask`
-  / plusieurs process, alors qu'une cascade de gateways est dupliquée à chaque process qui en a
-  besoin.
-
-**Point de vigilance sur ce §2 :** ce sont des bénéfices génériques de DMN, pas un besoin métier
-FlowForge identifié. Le cadrage `dev-lifecycle` (§5, D-DMN-SCOPE) doit s'appuyer sur un cas d'usage
-réel plutôt que sur l'introduction de DMN pour elle-même — cohérent avec la doctrine du dépôt
-(chaque feature V1.x part d'un écart ou d'un besoin constaté, pas d'une techno à cocher).
+  graphe de gateways — permet à un métier de faire évoluer des seuils sans repasser par un
+  diagramme BPMN complet, cohérent avec l'objectif « gérer les cas métier » plutôt que le déléguer
+  systématiquement à une réécriture de process.
+- **Réutilisation.** Une même table de décision peut être invoquée depuis plusieurs
+  `businessRuleTask` / plusieurs process, alors qu'une cascade de gateways est dupliquée à chaque
+  process qui en a besoin — pertinent dès que plusieurs types de dossier partagent une même règle
+  (ex. un même barème d'éligibilité appliqué par deux workflows différents).
 
 ---
 
@@ -230,9 +247,14 @@ seulement des tests unitaires sur le parseur.
 
 ## 5. Questions ouvertes (à trancher en phase requirements/design)
 
-1. **D-DMN-SCOPE** — cas d'usage métier concret qui justifie la feature (voir §2), plutôt
-   qu'introduire DMN pour compléter la couverture du standard. Sans cas d'usage porté par
-   l'utilisateur, cette analyse reste un inventaire technique, pas un backlog priorisable.
+1. **D-DMN-SCOPE — besoin confirmé (2026-09-11), périmètre à préciser.** L'opportunité n'est plus
+   ouverte (§2) : DMN répond à un besoin identifié de gestion des cas/règles métier, pas à une
+   introduction technologique pour elle-même. Reste à trancher en Phase 1 : le(s) `DossierType`/
+   process concret(s) porteur(s) de la première règle de décision, la forme de la règle (barème,
+   matrice d'éligibilité, autre) et son volume — sans quoi le design (§3/§4) ne peut pas dimensionner
+   le durcissement FEEL (§4.1 : la grammaire sûre à autoriser dépend des opérateurs/types réellement
+   nécessaires, comme `assertSafeConditionExpression` l'a fait pour les gateways à partir de l'usage
+   réel du dépôt, pas d'une grammaire FEEL générique).
 2. **D-DMN-SECURITY-OWNER** — le durcissement FEEL (§4.1) est-il fait dans le même cycle que
    l'activation du moteur, ou l'activation est-elle bloquée tant qu'une revue de sécurité dédiée
    n'a pas eu lieu (comme le split H1/H1-bis le suggère) ?

@@ -228,12 +228,18 @@ BPMN est en plus explicitement rejeté au parsing depuis la contre-revue adversa
 #113 (TODO §58, finding H1-bis) — pas de moteur DMN dans la stack à ce moment-là. Origine :
 question utilisateur (2026-09-10), pas encore priorisé ni tranché en `dev-lifecycle`.
 
+**Besoin confirmé (2026-09-11, utilisateur) :** DMN répond à un besoin métier identifié — gérer des
+cas/règles métier (barèmes, seuils, éligibilité) séparément du flux BPMN — pas une introduction
+technologique pour elle-même. **D-DMN-SCOPE n'est donc plus une question d'opportunité** ; reste à
+préciser en Phase 1 le périmètre concret (quel `DossierType`/process, quelle forme de règle, quel
+volume) — voir [25-introduction-dmn.md](analysis%20doc/25-introduction-dmn.md) §2/§5.
+
 **Analyse écrite :** [25-introduction-dmn.md](analysis%20doc/25-introduction-dmn.md) — état actuel
 vérifié dans le code (activation moteur = 2 lignes de config + lever le rejet
 `businessRuleTask`), risque dominant identifié = durcissement des expressions FEEL avant de lever
 ce rejet (même classe de risque que H1/H1-bis, qui a nécessité deux passes avant d'être fermé),
-questions ouvertes D-DMN-SCOPE à D-DMN-RESULT (cas d'usage métier non encore fourni, propriétaire
-de la revue de sécurité, mécanisme de déploiement, tool MCP, hit policies, masquage du résultat).
+questions ouvertes D-DMN-SECURITY-OWNER à D-DMN-RESULT (propriétaire de la revue de sécurité,
+mécanisme de déploiement, périmètre éditeur intégré, tool MCP, hit policies, masquage du résultat).
 
 **Corrigé (2026-09-11, question utilisateur) :** la version initiale sous-estimait l'état réel de
 l'édition BPMN dans FlowForge (« modélisé en externe puis déployé/uploadé ») — `edition-bpmn`

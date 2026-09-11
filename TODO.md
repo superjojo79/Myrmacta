@@ -271,6 +271,23 @@ dominant de la feature, le FEEL des cellules DMN (intervalles, listes, `-`) n'es
 grammaire que l'UEL des gateways, ne peut pas être calquée telle quelle sur
 `assertSafeConditionExpression`. Suite : Phase 4 (planning).
 
+**Phase 4 (planning) close (2026-09-11)** :
+[docs/ai/planning/2026-09-11-feature-introduction-dmn.md](docs/ai/planning/2026-09-11-feature-introduction-dmn.md) +
+[docs/ai/testing/2026-09-11-feature-introduction-dmn.md](docs/ai/testing/2026-09-11-feature-introduction-dmn.md).
+12 milestones séquencés : **M1** grammaire FEEL (spike bloquant, prérequis de tout le reste) ;
+M2 activation moteur + parsing/allowlist (TDD) ; M3 déploiement DMN ; M4 exception BPMN
+`type="dmn"` + vérification clé au déploiement process ; M5 persistence brouillon ; M6 endpoints
+admin REST ; M7 éditeur `dmn-js` (parallélisable à M5/M6, comme `edition-bpmn`) ; M8 complément de
+l'éditeur BPMN existant pour référencer une table depuis un `serviceTask` ; M9 écran admin ; M10
+tools MCP ; M11 fixture grille d'éligibilité ; M12 doc (`GUIDE-UTILISATEUR.md`, `CHANGELOG.md`,
+retrait définitif « hors V1 ») + vérification globale. Tous les scénarios de test tracés vers au
+moins une tâche (table de couverture exhaustive dans le doc planning). Risques identifiés :
+grammaire FEEL potentiellement plus dure que prévu si le moteur DMN de Flowable n'offre aucun mode
+restreint (validation texte exhaustive alors nécessaire, même risque de 1ère passe insuffisante que
+H1→H1-bis) ; forme exacte de `DmnRepositoryService` non garantie symétrique à `RepositoryService`
+BPMN ; source de la liste des tables déployées côté éditeur BPMN à trancher en implémentation.
+Suite : Phase 5 (implémentation), démarrage par **M1**.
+
 **Analyse écrite :** [25-introduction-dmn.md](analysis%20doc/25-introduction-dmn.md) — état actuel
 vérifié dans le code (activation moteur = 2 lignes de config + lever le rejet
 `businessRuleTask`), risque dominant identifié = durcissement des expressions FEEL avant de lever

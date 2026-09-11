@@ -234,6 +234,18 @@ technologique pour elle-même. **D-DMN-SCOPE n'est donc plus une question d'oppo
 préciser en Phase 1 le périmètre concret (quel `DossierType`/process, quelle forme de règle, quel
 volume) — voir [25-introduction-dmn.md](analysis%20doc/25-introduction-dmn.md) §2/§5.
 
+**Phase 1 (requirements) close (2026-09-11)** : cycle `dev-lifecycle` démarré, no-worktree
+(branche de session), doc
+[docs/ai/requirements/2026-09-11-feature-introduction-dmn.md](docs/ai/requirements/2026-09-11-feature-introduction-dmn.md).
+5 décisions actées via `AskUserQuestion` : **D-DMN-SCOPE** = cas illustratif générique (grille
+d'éligibilité, pas de cas métier réel identifié) ; **D-DMN-SECURITY-OWNER** = durcissement FEEL
+dans le même cycle que l'activation moteur (pas de split H1/H1-bis) ; **D-DMN-DEPLOY** = éditeur
+intégré `dmn-js` dès ce cycle, pas de palier upload-seul intermédiaire ; **D-DMN-MCP** = tool MCP
+dans le même cycle ; **D-DMN-HITPOLICY** = `UNIQUE`/`FIRST` + `COLLECT` dès ce cycle. Périmètre du
+cycle donc large (activation moteur + durcissement sécurité + éditeur + MCP en une fois, plutôt que
+le séquencement progressif suivi historiquement par BPMN) — assumé explicitement par l'utilisateur,
+pas une extension silencieuse. Suite : Phase 3 (design).
+
 **Analyse écrite :** [25-introduction-dmn.md](analysis%20doc/25-introduction-dmn.md) — état actuel
 vérifié dans le code (activation moteur = 2 lignes de config + lever le rejet
 `businessRuleTask`), risque dominant identifié = durcissement des expressions FEEL avant de lever

@@ -53,6 +53,15 @@ updated: 2026-09-11
   `extractDecisionKey_propertyNavigationPrefix_isRejected`,
   `extractDecisionKey_functionInvocationCell_isRejected`,
   `extractDecisionKey_unsafeOutputEntry_isRejected`.
+- [x] T1.2bis (**revue adversariale post-Phase 9**) : `<input><inputExpression>` — jamais couvert
+  jusqu'ici, contournement réel trouvé par un subagent indépendant (exécution de méthode
+  arbitraire sur un bean Spring vivant, prouvée sur le vrai moteur) et corrigé —
+  `extractDecisionKey_inputExpressionWithMethodInvocationChain_isRejected_AdversarialReviewFinding`
+  (l'attaque exacte trouvée), `extractDecisionKey_inputExpressionWithPropertyNavigation_isRejected`,
+  `extractDecisionKey_inputExpressionWithFunctionCall_isRejected`,
+  `extractDecisionKey_inputExpressionRawEl_isRejected`,
+  `extractDecisionKey_inputExpressionBlank_isRejected`,
+  `extractDecisionKey_inputExpressionBareIdentifier_isAccepted` (non-régression).
 - [x] T1.3 : `decision` sans `id` ou XML DMN mal formé → rejet (miroir
   `extractProcessDefinitionKey` sur XML invalide côté BPMN) —
   `extractDecisionKey_malformedXml_throwsInvalidDmnException`,
@@ -111,7 +120,12 @@ updated: 2026-09-11
 - [x] T5.1 (miroir `FlowableBpmnAllowlistGapTest`) : preuve par **exécution réelle** contre le vrai
   moteur DMN qu'un identifiant nu resolvant contre un bean Spring vivant est bien détecté/rejeté —
   `DmnJuelSecuritySmokeIT` (2 scénarios : bean réel résolu vs identifiant inconnu, messages
-  d'exception réels du moteur comparés).
+  d'exception réels du moteur comparés). **Revue adversariale post-Phase 9** : un subagent
+  indépendant a étendu cette preuve à `<input><inputExpression>` (surface non couverte par ce
+  test, contournement réel trouvé — voir T1.2bis) et a revérifié indépendamment, par déploiement
+  réel d'une table portant une entité XML externe, que le contournement JDK25
+  (`enableSafeDmnXml=false`) ne réactive pas XXE (l'entité n'a pas été résolue) — claim confirmé,
+  pas un finding.
 - [x] T5.2 (miroir `FlowableBpmnParserAdapterShippedProcessesTest`) : les process BPMN déjà livrés
   continuent de se déployer sans changement de comportement — non-régression confirmée, `./mvnw
   verify` vert, aucun changement de comportement sur les fixtures existantes. Miroir DMN ajouté en

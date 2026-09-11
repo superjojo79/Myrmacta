@@ -11,6 +11,7 @@ import org.flowable.dmn.model.DecisionRule;
 import org.flowable.dmn.model.DecisionTable;
 import org.flowable.dmn.model.DmnDefinition;
 import org.flowable.dmn.model.HitPolicy;
+import org.flowable.dmn.model.InputClause;
 import org.flowable.dmn.model.RuleInputClauseContainer;
 import org.flowable.dmn.model.RuleOutputClauseContainer;
 import org.flowable.dmn.xml.converter.DmnXMLConverter;
@@ -43,6 +44,28 @@ class FlowableDmnParserAdapter implements DmnParserPort {
     private static final Pattern SAFE_VALUE =
             Pattern.compile("true|false|-?\\d+(\\.\\d+)?|'[^']*'|\"[^\"]*\"");
 
+    /**
+     * TODO §61 adversarial review follow-up (2026-09-11) — {@code <input><inputExpression>} was
+     * not validated at all: {@code ELInputEntryExpressionPreParser} injects its text <em>verbatim</em>
+     * as the left operand of the wrapped expression ({@code #{ <inputExpressionText> <op> <value> }}),
+     * so it is just as much a JUEL sink as a rule cell. Proven by an independent adversarial
+     * subagent review, not assumed: a table whose rule cells were all allowlist-safe but whose
+     * {@code inputExpression} text was {@code connectorServiceTask.getClass().getName()} passed
+     * {@code extractDecisionKey} unrejected and, on the real engine, actually invoked
+     * {@code getClass().getName()} on the live {@code connectorServiceTask} Spring bean during
+     * rule evaluation — arbitrary method invocation, not just bean resolution. A legitimate
+     * inputExpression is always a bare reference to a process variable name (every fixture in this
+     * repository uses one, e.g. {@code customerCat}), never a full expression, so it is restricted
+     * to a bare identifier here — same restriction already applied to identifiers inside
+     * {@code FlowableBpmnParserAdapter.assertSafeConditionExpression} (no {@code .}/{@code (}/
+     * {@code )}/{@code [}/{@code ]}/{@code @}/{@code #}/{@code $}/whitespace). This does not
+     * eliminate the residual, already-accepted H1-bis-class risk that a bare identifier with no
+     * matching process variable resolves against a same-named Spring bean instead (same accepted
+     * risk as BPMN's {@code conditionExpression} identifiers) — it closes the proven, strictly
+     * worse escalation to arbitrary method invocation via property/method-chain navigation.
+     */
+    private static final Pattern SAFE_IDENTIFIER = Pattern.compile("[A-Za-z_][A-Za-z0-9_]*");
+
     @Override
     public String extractDecisionKey(byte[] dmnXml) {
         DmnDefinition model;
@@ -71,6 +94,10 @@ class FlowableDmnParserAdapter implements DmnParserPort {
         if (!ALLOWED_HIT_POLICIES.contains(table.getHitPolicy())) {
             throw new InvalidDmnException("DMN hit policy is not allowed: " + table.getHitPolicy());
         }
+        for (InputClause input : safeList(table.getInputs())) {
+            assertSafeInputExpression(
+                    decision.getId(), input.getInputExpression() == null ? null : input.getInputExpression().getText());
+        }
         List<DecisionRule> rules = table.getRules();
         if (rules == null || rules.isEmpty()) {
             throw new InvalidDmnException("DMN decision table has no rules: " + decision.getId());
@@ -91,6 +118,17 @@ class FlowableDmnParserAdapter implements DmnParserPort {
 
     private static <T> List<T> safeList(List<T> values) {
         return values == null ? List.of() : values;
+    }
+
+    private static void assertSafeInputExpression(String decisionId, String rawText) {
+        if (rawText == null || rawText.isBlank()) {
+            throw new InvalidDmnException("DMN input clause has no expression: " + decisionId);
+        }
+        String trimmed = rawText.trim();
+        if (!SAFE_IDENTIFIER.matcher(trimmed).matches()) {
+            throw new InvalidDmnException(
+                    "DMN input expression must be a bare variable name: " + decisionId);
+        }
     }
 
     private static void assertSafeCellText(String owner, String rawText) {

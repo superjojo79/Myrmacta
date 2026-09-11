@@ -454,3 +454,53 @@ fraîche) · docs à jour ✅ (les 7 docs du cycle + `TODO.md` §61 clôturé + 
 
 **Aucun blocage. Feature prête à être poussée / PR à créer** (demande explicite de l'utilisateur,
 pas encore formulée à ce stade).
+
+## Revue adversariale post-Phase 9 (2026-09-11)
+
+Sur demande explicite de l'utilisateur (« lance un subagent d'analyse adversariale »), un subagent
+indépendant (modèle Opus, accès complet, aucune confiance accordée à la documentation déjà
+écrite par l'agent implémenteur — vérification indépendante exigée pour chaque affirmation) a
+mené une revue adversariale ciblée, avec obligation de preuve par exécution réelle (même doctrine
+que le reste de ce cycle).
+
+**1 finding bloquant trouvé et corrigé (High).** `FlowableDmnParserAdapter.assertSafeDecision` ne
+validait jamais `<input><inputExpression>` — seules les cellules de règle
+(`inputEntry`/`outputEntry`) passaient par l'allowlist. Or `ELInputEntryExpressionPreParser`
+injecte le texte de l'inputExpression **tel quel** comme opérande gauche de l'expression JUEL
+enveloppée, exactement la même surface qu'une cellule. Preuve du subagent, reproduite et
+reconfirmée : une table dont toutes les cellules de règle étaient allowlist-safe mais dont
+l'inputExpression valait `connectorServiceTask.getClass().getName()` passait
+`extractDecisionKey` sans rejet et, exécutée sur le vrai moteur, invoquait réellement
+`getClass().getName()` sur le bean Spring `connectorServiceTask` vivant — exécution de méthode
+arbitraire via chaîne de navigation de propriété, au-delà de la simple résolution de bean déjà
+documentée comme risque JUEL. Atteignable par `POST /api/dmn-decision-deployments`
+(`TENANT_ADMIN`/`WORKFLOW_ADMIN`) et par le tool MCP `deploy_decision_table` (tout appelant M2M).
+
+**Corrigé** : `assertSafeDecision` valide désormais chaque `InputClause.getInputExpression()`
+contre un identifiant nu strict (`[A-Za-z_][A-Za-z0-9_]*`, aucun `.`/`(`/`)`/`[`/`]`/`#`/`$`/
+espace toléré) — même discipline déjà appliquée aux identifiants dans
+`FlowableBpmnParserAdapter.assertSafeConditionExpression` (TODO §57 H1). 6 tests ajoutés à
+`FlowableDmnParserAdapterTest` (attaque exacte du subagent + navigation de propriété + appel de
+fonction + EL brut + inputExpression vide, tous rejetés + non-régression sur l'identifiant nu déjà
+utilisé par toutes les fixtures livrées). **Résidu accepté, pas nouveau** : un identifiant nu
+légitime sans variable de process correspondante au runtime continue de résoudre contre un bean du
+même nom — même risque déjà accepté pour `conditionExpression` côté BPMN (« un identifiant seul
+est la même ambiguïté ») ; le correctif ferme l'escalade prouvée vers l'exécution de méthode, pas
+ce résidu structurel de JUEL/UEL.
+
+**Vérifications indépendantes du subagent qui ont confirmé l'implémentation correcte (pas de
+nouveau finding)** : le contournement JDK25 (`enableSafeDmnXml=false`, `WorkflowConfig.java`) a
+été revérifié à la fois par décompilation bytecode indépendante et par un déploiement réel d'une
+table portant une entité XML externe — l'entité n'a pas été résolue, confirmant que la protection
+anti-XXE reste bien inconditionnelle. RBAC MCP et isolation multi-tenant (`dmn_draft`, requêtes
+Flowable DMN) confirmés cohérents avec la posture déjà acceptée du dépôt.
+
+**2 constats mineurs signalés, non corrigés** (voir `TODO.md` §61 pour le détail) : absence de
+limite de taille sur `DmnDraftController.save` (gap identique côté BPMN, pas introduit ici,
+sévérité faible) ; redéploiement d'une table DMN prend effet immédiatement pour les instances en
+cours (comportemental, même logique que BPMN, jamais explicitement tranché pour DMN).
+
+Validation finale : `./mvnw verify` vert après correctif (aucune régression sur
+`DmnJuelSecuritySmokeIT`, `DmnServiceTaskEndToEndSmokeIT`, `DmnGrilleEligibiliteSmokeIT`,
+`FlowableDmnParserAdapterShippedDecisionsTest` — la fixture `grille-eligibilite-client.dmn`
+utilisait déjà exclusivement des identifiants nus, aucun changement de comportement pour elle).

@@ -372,6 +372,39 @@ parsing/déploiement DMN, écran admin `dmn-editor`, `infrastructure.mcp`,
 « hors V1 »), `GUIDE-CONCEPTION-BPMN.md`, `GUIDE-UTILISATEUR.md`, `CHANGELOG.md` — voir détail
 Phase 5 ci-dessus.
 
+**Revue adversariale post-Phase 9, corrigé (2026-09-11) :** un subagent indépendant a trouvé un
+contournement réel de l'allowlist JUEL — `FlowableDmnParserAdapter.assertSafeDecision` ne validait
+que les cellules de règle (`inputEntry`/`outputEntry`), jamais le texte de
+`<input><inputExpression>`. Or `ELInputEntryExpressionPreParser` injecte ce texte **tel quel**
+comme opérande gauche de l'expression enveloppée (`#{ <inputExpressionText> <op> <valeur> }`) —
+même surface JUEL qu'une cellule, jamais gardée. Preuve empirique sur le vrai moteur (pas
+seulement lecture statique, même doctrine H1/H1-bis) : une table dont toutes les cellules de règle
+étaient sûres mais dont l'`inputExpression` valait `connectorServiceTask.getClass().getName()`
+passait `extractDecisionKey` sans rejet et, à l'exécution réelle, invoquait effectivement
+`getClass().getName()` sur le bean Spring `connectorServiceTask` vivant — exécution de méthode
+arbitraire, au-delà de la simple résolution de bean déjà connue. Atteignable par un `TENANT_ADMIN`/
+`WORKFLOW_ADMIN` via `POST /api/dmn-decision-deployments` **et** par tout appelant M2M via le tool
+MCP `deploy_decision_table`. **Corrigé** : `assertSafeDecision` valide désormais chaque
+`InputClause.getInputExpression().getText()` contre un identifiant nu strict
+(`[A-Za-z_][A-Za-z0-9_]*`, sans `.`/`(`/`)`/`[`/`]`/`#`/`$`/espace) — même restriction déjà
+appliquée aux identifiants dans `assertSafeConditionExpression` côté BPMN (TODO §57 H1). 6 tests
+ajoutés (`FlowableDmnParserAdapterTest`), `./mvnw verify` vert (1881 tests), fixture livrée
+(`grille-eligibilite-client.dmn`, déjà en identifiants nus) et `DmnJuelSecuritySmokeIT` toujours
+verts, non-régression confirmée. **Résidu accepté, pas nouveau** : un identifiant nu légitime
+(nom de variable de process) qui ne correspond à aucune variable au runtime continue de résoudre
+contre un bean du même nom (même risque déjà accepté pour les identifiants de
+`conditionExpression` BPMN) — le correctif ferme l'escalade prouvée vers l'exécution de méthode
+via navigation de propriété/chaîne d'appel, pas ce résidu structurel de UEL/JUEL.
+
+**2 constats supplémentaires de la revue, non corrigés, signalés plutôt que tranchés
+silencieusement** : (1) `DmnDraftController.save`/`SaveDmnDraftUseCaseImpl` n'a aucune limite de
+taille sur le corps `xml` (contrairement à l'endpoint de déploiement multipart, qui réutilise
+`spring.servlet.multipart.max-file-size`) — gap déjà présent à l'identique côté `BpmnDraftController`,
+pas introduit par ce cycle, sévérité faible (endpoint admin-gated) ; (2) le redéploiement d'une
+nouvelle version de table DMN prend effet immédiatement pour les instances de process en cours qui
+l'invoquent ensuite — même comportement que BPMN, jamais explicitement tranché pour DMN, purement
+comportemental (pas un défaut de sécurité).
+
 ---
 
 ## Autorisation et conformité

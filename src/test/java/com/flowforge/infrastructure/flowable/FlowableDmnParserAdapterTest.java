@@ -236,6 +236,81 @@ class FlowableDmnParserAdapterTest {
                 .hasMessageContaining("has no rules");
     }
 
+    @Test
+    void extractDecisionKey_inputExpressionWithMethodInvocationChain_isRejected_AdversarialReviewFinding() {
+        // Adversarial review finding (2026-09-11) : <input><inputExpression> was never validated.
+        // ELInputEntryExpressionPreParser injects its text verbatim as the left operand of the
+        // wrapped expression -- proven on the real engine that this exact XML, with every rule
+        // cell allowlist-safe, resolved the live connectorServiceTask Spring bean and actually
+        // invoked getClass().getName() on it during evaluation (arbitrary method invocation, not
+        // just bean resolution). Must now be rejected at parse time, before ever reaching the
+        // engine.
+        String xml = inputExpressionDecisionTable("connectorServiceTask.getClass().getName()");
+        assertThatThrownBy(() -> adapter.extractDecisionKey(xml.getBytes(StandardCharsets.UTF_8)))
+                .isInstanceOf(InvalidDmnException.class)
+                .hasMessageContaining("bare variable name");
+    }
+
+    @Test
+    void extractDecisionKey_inputExpressionWithPropertyNavigation_isRejected() {
+        String xml = inputExpressionDecisionTable("someBean.someField");
+        assertThatThrownBy(() -> adapter.extractDecisionKey(xml.getBytes(StandardCharsets.UTF_8)))
+                .isInstanceOf(InvalidDmnException.class)
+                .hasMessageContaining("bare variable name");
+    }
+
+    @Test
+    void extractDecisionKey_inputExpressionWithFunctionCall_isRejected() {
+        String xml = inputExpressionDecisionTable("fn_now()");
+        assertThatThrownBy(() -> adapter.extractDecisionKey(xml.getBytes(StandardCharsets.UTF_8)))
+                .isInstanceOf(InvalidDmnException.class)
+                .hasMessageContaining("bare variable name");
+    }
+
+    @Test
+    void extractDecisionKey_inputExpressionRawEl_isRejected() {
+        String xml = inputExpressionDecisionTable("#{connectorServiceTask}");
+        assertThatThrownBy(() -> adapter.extractDecisionKey(xml.getBytes(StandardCharsets.UTF_8)))
+                .isInstanceOf(InvalidDmnException.class)
+                .hasMessageContaining("bare variable name");
+    }
+
+    @Test
+    void extractDecisionKey_inputExpressionBlank_isRejected() {
+        String xml = inputExpressionDecisionTable("");
+        assertThatThrownBy(() -> adapter.extractDecisionKey(xml.getBytes(StandardCharsets.UTF_8)))
+                .isInstanceOf(InvalidDmnException.class)
+                .hasMessageContaining("no expression");
+    }
+
+    @Test
+    void extractDecisionKey_inputExpressionBareIdentifier_isAccepted() {
+        // Legitimate shape -- every shipped/test fixture in this repository already uses a bare
+        // variable name (e.g. customerCat, montantDossier). Non-regression guard.
+        String xml = inputExpressionDecisionTable("customerCat");
+        assertThat(adapter.extractDecisionKey(xml.getBytes(StandardCharsets.UTF_8))).isEqualTo("eligibilite");
+    }
+
+    private static String inputExpressionDecisionTable(String inputExpressionText) {
+        return """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <definitions xmlns="http://www.omg.org/spec/DMN/20151101" id="def" name="Def"
+                             namespace="http://flowforge/test">
+                  <decision id="eligibilite" name="Eligibilite">
+                    <decisionTable id="dt" hitPolicy="UNIQUE">
+                      <input><inputExpression id="ie" typeRef="string"><text>%s</text></inputExpression></input>
+                      <output id="o" name="result" typeRef="string" />
+                      <rule>
+                        <inputEntry id="in"><text>"BRONZE"</text></inputEntry>
+                        <outputEntry id="out"><text>'ok'</text></outputEntry>
+                      </rule>
+                    </decisionTable>
+                  </decision>
+                </definitions>
+                """
+                .formatted(inputExpressionText);
+    }
+
     // Phase 8 gap investigated, not covered by design : assertSafeCellText's rawText==null
     // short-circuit (line 97-98) has no reachable test through the public, schema-validated
     // parsing path -- DMN 1.1's XSD requires a <text> child on every inputEntry/outputEntry

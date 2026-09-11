@@ -55,6 +55,13 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
   décompilation du moteur réel et prouvé par exécution (`DmnJuelSecuritySmokeIT`), pas seulement
   par lecture statique — `FlowableDmnParserAdapter` applique une allowlist stricte sur chaque
   cellule au déploiement.
+- **TODO §61 (revue adversariale)** — l'allowlist ci-dessus ne validait pas
+  `<input><inputExpression>`, une surface JUEL identique aux cellules de règle : un subagent
+  indépendant a prouvé sur le vrai moteur qu'une table par ailleurs allowlist-safe pouvait
+  invoquer une méthode arbitraire sur un bean Spring vivant via l'inputExpression
+  (`connectorServiceTask.getClass().getName()`). Corrigé : l'inputExpression est désormais
+  restreinte à un identifiant nu strict, même discipline que les identifiants de
+  `conditionExpression` BPMN (TODO §57 H1).
 
 - **PR [#113](https://github.com/superjojo79/FlowForge/pull/113)** — Revue adversariale TODO §57 :
   allowlist BPMN, complete/runtime schemas bornés à l’assignee, OIDC sans `API_SERVICE`,

@@ -26,9 +26,10 @@ frontend.
 `./mvnw verify` final : **1875 tests, 0 échec** (backend, y compris les 3 tests ajoutés en Phase
 8). Frontend **351 tests Vitest, 0 échec** (+1 Phase 8), `test:coverage` 85.83%/79.12%/84.93%/
 87.63% (seuils 80/75/70/60 tenus), typecheck/lint propres. **71/71 Playwright** (0 régression,
-preuve fraîche Phase 8, dont 3 scénarios `E2E-EDIT-DMN-*`/`E2E-EDIT-BPMN-5`). Statut :
-implémentation **terminée**, Phases 7 et 8 intégrées. Prochaine étape : `dev-review` (Phase 9),
-non lancée à ce stade.
+preuve fraîche Phase 8, dont 3 scénarios `E2E-EDIT-DMN-*`/`E2E-EDIT-BPMN-5`). Phase 9 (revue
+holistique, ci-dessous) n'a trouvé aucun bug et confirmé l'ensemble des points de contrat/
+sécurité/rollback. Statut : implémentation **terminée**, cycle `dev-lifecycle` complet
+(Phases 1-9). Prête à être poussée / PR à créer sur demande explicite de l'utilisateur.
 
 ## Development Setup
 
@@ -392,3 +393,64 @@ réécrit — terminologie FEEL→JUEL corrigée, chaque scénario T1-T6 coché 
 réel, tableau de couverture par classe/fichier).
 
 **Aucun blocage.**
+
+## Phase 9 — revue finale (2026-09-11)
+
+Revue holistique (au-delà du fichier-par-fichier de Phase 7 et de la couverture de Phase 8), sur
+demande explicite de l'utilisateur (« lance la phase 9 ») :
+
+- **Diff complet vérifié** (`git diff --stat b14c602 HEAD`, base = dernier commit avant le premier
+  commit `introduction-dmn`) : **97 fichiers**, strictement scopé à la feature — code
+  backend/frontend DMN, ses tests, et la documentation qui la référence (`README.md`,
+  `analysis doc/**`, `TODO.md`/`FILE-ATTENTE.md`/`CHANGELOG.md`/`GUIDE-*`,
+  `docs/ai/**/2026-09-11-feature-introduction-dmn.md`). Aucun fichier hors scope.
+- **Working tree propre** (`git status -sb`) : branche à jour avec `origin`, aucun changement non
+  committé.
+- **Contrat API** (`openapi/openapi.yaml`) : 4 nouveaux chemins
+  (`/api/dmn-decision-drafts/{decisionKey}`, `/api/dmn-decision-deployments`, `.../info`,
+  `.../{decisionKey}/xml`) + 4 nouveaux schémas (`SaveDmnDraftRequest`, `DmnDraftResponse`,
+  `DecisionTableDeploymentResultResponse`, `DecisionTableDeploymentInfoResponse`) documentés
+  correctement. **Même imprécision cosmétique déjà connue côté BPMN** relevée pour
+  `deployedXml` (`type: string, format: byte` alors que la réponse réelle est
+  `text/xml`) — comportement déjà vérifié par les tests (`DmnDecisionDeploymentApiTest`), pas un
+  bug fonctionnel, cohérent avec l'imprécision déjà acceptée côté
+  `WorkflowBpmnDeploymentApiTest`/`edition-bpmn`, pas une régression nouvelle. `operationId`
+  suffixés `_1` (mécanique springdoc à l'ajout d'un contrôleur portant des méthodes de même nom),
+  sans impact.
+- **Dépendance santé** : `dmn-js@17.10.2` (MIT, Camunda Services GmbH — licence vérifiée sur le
+  fichier `LICENSE` réel du paquet installé), `npm ls dmn-js` propre, aucune dépendance
+  `UNMET`/`invalid`, aucun conflit avec `bpmn-js@^18.24.0` déjà fixé.
+- **Rollback** : migration `021-dmn-draft-tables.yaml` avec bloc `rollback: dropTable` explicite ;
+  aucune modification de table existante, aucune migration de données. Revert trivial si
+  nécessaire.
+- **Breaking changes** : aucun — `BpmnParserPort` étendu de façon additive
+  (`extractReferencedDecisionKeys`, un seul implémenteur réel,
+  `FlowableBpmnParserAdapter`, vérifié) ; `DmnDeploymentPort`/`DmnDraftRepository` sont de
+  nouvelles interfaces sans callers préexistants à casser ; `DeployBpmnProcessUseCaseImpl` modifié
+  de façon strictement additive (`extractReferencedDecisionKeys` renvoie un ensemble vide pour
+  tout process sans `serviceTask type="dmn"`, donc **aucun changement de comportement** pour les
+  process BPMN existants — vérifié en relisant la boucle, pas supposé).
+- **Secrets/debug** : diff complet scanné (`console.log`/`debugger`/`.only(`/`.skip(`/
+  `System.out.print`/patterns de mot de passe ou clé en dur) — rien trouvé.
+- **Cohérence documentaire** : recherche exhaustive des mentions résiduelles de
+  `businessRuleTask` dans la documentation active — toutes dans un contexte correct (rejet
+  explicite, câblé sur Drools), aucune trace de l'ancienne confusion pré-Phase-3.
+- **Preuve E2E fraîche exigée par cette phase** : réutilise la preuve de Phase 8 (`71/71`, cette
+  session) — aucun code frontend modifié depuis, `git status` confirmé propre.
+
+**Checklist finale :** design ✅ (D1-D5 vérifiés Phase 7, reconfirmés) · pas de gap logique ✅
+(0 nouveau bug trouvé cette phase — **3 bugs réels de production** trouvés et corrigés sur
+l'ensemble du cycle M1-Phase 8 : 2 bugs de sérialisation `moddle-xml` en M7-M9, 1 bug
+JDK25/Flowable en M12 ; plus 1 test de non-régression obsolète corrigé (`McpEndpointApiTest`,
+M12) et plusieurs gaps de **couverture** comblés en Phase 7/8, aucun défaut de production trouvé
+par ces derniers — la couverture manquante était le seul problème, précisé à chaque fois dans ce
+fichier) · sécurité ✅ (allowlist JUEL, contournement
+JDK25 sans impact XXE, RBAC identique BPMN sur tous les nouveaux endpoints/tools) · points
+d'intégration vérifiés ✅ (contrat API, dépendances, migration, aucune rupture de contrat) · tests
+couvrent les changements ✅ (1875 backend + 351 frontend + 71 Playwright, tous verts, preuve
+fraîche) · docs à jour ✅ (les 7 docs du cycle + `TODO.md` §61 clôturé + `FILE-ATTENTE.md` +
+`analysis doc/{00,05,25}` + `README.md` + `GUIDE-CONCEPTION-BPMN.md` + `GUIDE-UTILISATEUR.md` +
+`CHANGELOG.md`).
+
+**Aucun blocage. Feature prête à être poussée / PR à créer** (demande explicite de l'utilisateur,
+pas encore formulée à ce stade).

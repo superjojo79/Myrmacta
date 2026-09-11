@@ -235,11 +235,20 @@ ce rejet (même classe de risque que H1/H1-bis, qui a nécessité deux passes av
 questions ouvertes D-DMN-SCOPE à D-DMN-RESULT (cas d'usage métier non encore fourni, propriétaire
 de la revue de sécurité, mécanisme de déploiement, tool MCP, hit policies, masquage du résultat).
 
+**Corrigé (2026-09-11, question utilisateur) :** la version initiale sous-estimait l'état réel de
+l'édition BPMN dans FlowForge (« modélisé en externe puis déployé/uploadé ») — `edition-bpmn`
+(PR #71, TODO §39) a depuis ajouté un éditeur graphique **intégré** (`bpmn-js` Modeler +
+`bpmn-js-properties-panel`, `/admin/bpmn-editor`), au-delà du simple upload de `deploiement-bpmn`
+(TODO §35). `dmn-js`, toolkit sœur de `bpmn-js` dans l'écosystème bpmn.io (même éditeur, licence
+vérifiée identique — MIT + clause filigrane, déjà acceptée implicitement côté BPMN en prod),
+fournit un `Modeler` dédié aux tables de décision : c'est l'équivalent DMN direct de ce qui a déjà
+été livré, pas une extrapolation. Nouvelle question ouverte **D-DMN-EDITOR-SCOPE** (§5).
+
 **Impacte (si retenu) :** `application.yml`, `FlowableBpmnParserAdapter`, nouveau
-port/adaptateur de parsing/déploiement DMN, écran admin (upload + prévisualisation, miroir
-`deploiement-bpmn`), potentiellement `infrastructure.mcp`, `README.md`/`analysis doc/05`/
-`analysis doc/00-index.md`/`FILE-ATTENTE.md` (retrait de la mention « hors V1 »),
-`GUIDE-CONCEPTION-BPMN.md`.
+port/adaptateur de parsing/déploiement DMN, écran admin (upload + prévisualisation et/ou éditeur
+intégré `dmn-js`, miroir `deploiement-bpmn`/`edition-bpmn`), potentiellement `infrastructure.mcp`,
+`README.md`/`analysis doc/05`/`analysis doc/00-index.md`/`FILE-ATTENTE.md` (retrait de la mention
+« hors V1 »), `GUIDE-CONCEPTION-BPMN.md`.
 
 ---
 

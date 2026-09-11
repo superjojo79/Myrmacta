@@ -5,6 +5,12 @@
 > fin de document. Origine : demande utilisateur (2026-09-10) — DMN (Decision Model & Notation) est
 > aujourd'hui explicitement exclu du V1 ; ce document vérifie contre le code réel ce que lever cette
 > exclusion impliquerait, avant tout cadrage `dev-lifecycle`.
+>
+> **Corrigé (2026-09-11), question utilisateur :** la version initiale sous-estimait l'état réel de
+> l'édition BPMN (« modélisé en externe puis déployé ») — `edition-bpmn` (PR #71, TODO §39) a depuis
+> ajouté un éditeur graphique intégré (`bpmn-js` Modeler). §3.2/§4.2 corrigés : `dmn-js`, toolkit
+> sœur de `bpmn-js` (même éditeur bpmn.io, même licence vérifiée), est l'équivalent DMN direct de ce
+> mécanisme — ajoute la question **D-DMN-EDITOR-SCOPE** (§5).
 
 ---
 
@@ -105,13 +111,24 @@ réel plutôt que sur l'introduction de DMN pour elle-même — cohérent avec l
 
 ### 3.2 Déploiement des tables de décision
 
-Deux mécanismes déjà éprouvés côté BPMN, réutilisables par analogie (feature `deploiement-bpmn`,
-TODO §35, décision (c) retenue à l'époque — **pas** de Modeler/Cockpit intégré) :
+**Correction par rapport à une première version de ce document (§4.2 initial) :** ce paragraphe
+citait uniquement `deploiement-bpmn` (TODO §35, upload minimal) comme précédent, en présentant
+l'absence d'éditeur intégré comme la doctrine du dépôt. C'est incomplet — `deploiement-bpmn` a
+depuis été **remplacé en pratique** par un mécanisme plus riche, `edition-bpmn` (PR #71, TODO §39,
+[14-edition-bpmn.md](14-edition-bpmn.md)) : FlowForge embarque aujourd'hui un **véritable éditeur
+graphique** à `/admin/bpmn-editor` (`bpmn-js` Modeler + `bpmn-js-properties-panel` avec un provider
+custom pour les attributs `flowable:*`), pas seulement un upload de fichier modélisé ailleurs. Les
+trois mécanismes coexistent et sont tous les trois réutilisables par analogie pour DMN :
 
 - Scan classpath au démarrage (`classpath*:/dmn/**/*.dmn` — miroir de `TenantProcessDeployment`).
-- Upload admin à chaud avec prévisualisation, sur le même modèle que `BpmnUploadPreview.vue` /
-  `WorkflowBpmnDeploymentController` — nouveau port `DmnParserPort`/`DmnDeploymentPort` côté
-  domaine, nouvel adaptateur infrastructure, nouveau contrôleur `TENANT_ADMIN`/`WORKFLOW_ADMIN`.
+- Upload admin à chaud avec prévisualisation (mécanisme historique `deploiement-bpmn`, TODO §35),
+  sur le même modèle que `BpmnUploadPreview.vue` / `WorkflowBpmnDeploymentController` — nouveau
+  port `DmnParserPort`/`DmnDeploymentPort` côté domaine, nouvel adaptateur infrastructure, nouveau
+  contrôleur `TENANT_ADMIN`/`WORKFLOW_ADMIN`.
+- **Éditeur intégré** (mécanisme actuel `edition-bpmn`, TODO §39) — voir §4.2 : `dmn-js` est le
+  toolkit sœur de `bpmn-js`, même éditeur bpmn.io, et fournit un composant `Modeler` dédié aux
+  tables de décision. C'est l'option directement analogue à ce qui a été livré côté BPMN, pas une
+  extrapolation.
 
 Un `businessRuleTask` référence une `decisionRef` (clé de table DMN) au même titre qu'un process
 référence son `processDefinitionKey` — la validation « clé connue sinon rejet » déjà appliquée aux
@@ -157,12 +174,42 @@ avant de lever le blocage `businessRuleTask` :
 - probablement passer par une revue adversariale dédiée avant merge, comme les deux précédentes
   (§57/§58), plutôt que de considérer le sujet clos après l'implémentation initiale.
 
-### 4.2 Pas d'éditeur DMN intégré à prévoir
+### 4.2 Éditeur DMN intégré — possible par le même mécanisme que l'éditeur BPMN, à confirmer
 
-Cohérent avec la décision déjà actée sur Modeler/Cockpit (`DEFERRED-FEATURES.md` §1.5, TODO §35) :
-si la feature est lancée, le mécanisme attendu est un **upload minimal** d'un `.dmn` validé, pas un
-éditeur de table de décision dans FlowForge. Une table DMN se construit avec un outil externe
-(Flowable Design, Camunda Modeler, ou XML à la main), comme un `.bpmn20.xml` aujourd'hui.
+**Correction :** l'affirmation « FlowForge ne fait que déployer du BPMN modélisé ailleurs » n'est
+plus exacte depuis `edition-bpmn` (PR #71, 2026-08-24, TODO §39) — un éditeur graphique est
+**intégré** à `/admin/bpmn-editor` (`bpmn-js` Modeler + `bpmn-js-properties-panel`), en plus de
+l'upload d'un fichier modélisé en externe. Ce que la décision `DEFERRED-FEATURES.md` §1.5 /
+TODO §35 exclut réellement, c'est de déployer les **applications web propriétaires** de Flowable
+(Modeler, Cockpit — option (d) écartée dans [14-edition-bpmn.md](14-edition-bpmn.md) §Options :
+« app tierce à opérer/sécuriser par tenant ») — pas d'embarquer une **librairie JS** d'édition dans
+le SPA FlowForge, ce qui est exactement le choix retenu pour BPMN (option (b) du même document).
+
+**L'équivalent DMN existe et vient du même éditeur.** `dmn-js` ([bpmn.io/toolkit/dmn-js](https://bpmn.io/toolkit/dmn-js/),
+[github.com/bpmn-io/dmn-js](https://github.com/bpmn-io/dmn-js)) est le toolkit sœur de `bpmn-js`
+au sein de l'écosystème bpmn.io (même éditeur, maintenu par Camunda Services GmbH) : vue/édition de
+diagrammes DRD (Decision Requirements Diagram), de **tables de décision** et d'expressions
+littérales pour du DMN 1.3, packagé npm (`dmn-js`, avec un sous-module dédié
+`dmn-js-decision-table`), avec un `Viewer` (lecture seule) et un `Modeler` (édition) — même
+architecture bibliothèque-front-sans-service-à-opérer que `bpmn-js`. Le même schéma que
+`edition-bpmn` s'applique donc directement : `DmnEditorCanvas.vue` (nouveau) embarquant
+`dmn-js/lib/Modeler`, un écran admin dédié, un mécanisme de brouillon si le même choix D-EDIT-SAVE
+est reconduit.
+
+**Licence vérifiée (fichiers `LICENSE` des deux dépôts GitHub, pas seulement `package.json`)** :
+`bpmn-js` et `dmn-js` portent exactement la **même** licence — MIT, avec une clause additionnelle
+(« bpmn.io License ») : le filigrane bpmn.io affiché sur le canvas ne doit pas être retiré ni
+masqué visuellement. Ce n'est **pas** un risque nouveau propre à DMN — la même clause s'applique
+déjà à l'éditeur BPMN en production (`BpmnEditorCanvas.vue`), qui ne la contourne pas (grep
+vérifié : aucun code de masquage du filigrane dans `frontend/src`). Un futur éditeur DMN
+hériterait de la même contrainte, déjà acceptée implicitement pour BPMN — à documenter
+explicitement plutôt qu'à redécouvrir, [14-edition-bpmn.md](14-edition-bpmn.md) ne mentionnant que
+« MIT » sans la nuance du filigrane.
+
+**Ce que ça ne change pas :** un éditeur graphique adresse la **saisie** d'une table de décision,
+pas sa **sécurité d'exécution**. Le risque dominant de cette feature reste §4.1 — les expressions
+FEEL d'une table de décision restent à durcir côté moteur avant de lever le rejet
+`businessRuleTask`, qu'elles soient saisies via `dmn-js` ou via un outil externe puis uploadées.
 
 ### 4.3 Coexistence avec les gateways existants
 
@@ -189,14 +236,21 @@ seulement des tests unitaires sur le parseur.
 2. **D-DMN-SECURITY-OWNER** — le durcissement FEEL (§4.1) est-il fait dans le même cycle que
    l'activation du moteur, ou l'activation est-elle bloquée tant qu'une revue de sécurité dédiée
    n'a pas eu lieu (comme le split H1/H1-bis le suggère) ?
-3. **D-DMN-DEPLOY** — scan classpath seul, upload admin seul, ou les deux dès le premier cycle
-   (mêmes deux mécanismes que BPMN aujourd'hui) ?
-4. **D-DMN-MCP** — `deploy_decision_table` dans le même cycle que l'activation backend, ou différé
+3. **D-DMN-DEPLOY** — scan classpath, upload admin, éditeur intégré (`dmn-js`, §4.2), ou plusieurs
+   dès le premier cycle ? BPMN a introduit les trois progressivement (`deploiement-bpmn` TODO §35
+   puis `edition-bpmn` TODO §39) — à trancher si DMN suit le même séquencement ou démarre
+   directement avec l'éditeur intégré, l'upload seul étant alors un jalon intermédiaire inutile.
+4. **D-DMN-EDITOR-SCOPE** — si l'éditeur intégré est retenu dès ce cycle : `dmn-js` Modeler seul
+   (DRD + table de décision standard) suffit-il, ou faut-il un provider custom pour des extensions
+   Flowable spécifiques (miroir `flowablePropertiesProvider.ts`) ? À vérifier en design si le DMN
+   de Flowable 8 a des attributs `flowable:*` propres au-delà du DMN 1.3 standard — contrairement à
+   BPMN, ce n'est pas confirmé dans ce document.
+5. **D-DMN-MCP** — `deploy_decision_table` dans le même cycle que l'activation backend, ou différé
    (précédent : connecteurs traités en cycles séparés côté backend puis côté MCP) ?
-5. **D-DMN-HITPOLICY** — quelles hit policies Flowable DMN autoriser au lancement (`UNIQUE`,
+6. **D-DMN-HITPOLICY** — quelles hit policies Flowable DMN autoriser au lancement (`UNIQUE`,
    `FIRST`, `PRIORITY`, `COLLECT`...) ? Certaines (agrégation `COLLECT`) élargissent sensiblement la
    surface de test par rapport à une simple table à résultat unique.
-6. **D-DMN-RESULT** — le résultat d'une table de décision s'écrit en variable(s) de process, au
+7. **D-DMN-RESULT** — le résultat d'une table de décision s'écrit en variable(s) de process, au
    même titre qu'une réponse `user-question` (TODO §55) ou `dossierFields` (PR #86) — confirmer
    qu'il transite par le même mécanisme de masquage des valeurs sensibles
    (`SendNotificationUseCaseImpl`, TODO §23) avant toute écriture outbox, pour ne pas rouvrir un

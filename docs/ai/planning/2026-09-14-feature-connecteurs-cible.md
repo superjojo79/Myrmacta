@@ -26,7 +26,7 @@ lot: B1
 - [x] **M3** — `kafka` : connecteur (validate/capability/mapping), tests unitaires. **Clos 2026-09-14** — 11 tests, même correction hasBlankMappedField que batch-import.
 - [x] **M4** — `kafka` : reconciliateur de cycle de vie des consumers + IT bout-en-bout. **Clos 2026-09-14** — 11 tests réconciliateur + 3 tests construction props + 1 IT bout-en-bout réel.
 - [x] **M5** — `docker-compose.yml` (service Kafka) + doc catalogue connecteurs. **Clos 2026-09-14** — `docker compose config` validé (syntaxe correcte) ; `docker compose up` non exécutable dans ce bac à sable (aucun daemon Docker, même limite qu'A1).
-- [ ] **M6** — Frontend : `ConnectorConfigForm.vue` (`SECRET_TEXTAREA`) + Vitest + Playwright.
+- [x] **M6** — Frontend : `ConnectorConfigForm.vue` (`SECRET_TEXTAREA`) + Vitest + Playwright. **Clos 2026-09-14** — Vitest 352/352, Playwright 72/72, typecheck et lint propres.
 - [ ] **M7** — Vérification globale (Phase 7-8), comblement de trous de couverture Jacoco.
 - [ ] **M8** — Revue holistique (Phase 9), docs projet (`06-connecteurs.md`,
   `GUIDE-CONCEPTION-BPMN.md`, `CHANGELOG.md`, `TODO.md`/`FILE-ATTENTE.md`/`DEFERRED-FEATURES.md`).
@@ -134,11 +134,11 @@ lot: B1
 
 ### M6 — Frontend (indépendant de M1–M5, dépend de M0.T0.1)
 
-- [ ] **T6.1** `ConnectorConfigForm.vue` : cas `SECRET_TEXTAREA` dans `inputType`/template
+- [x] **T6.1** `ConnectorConfigForm.vue` : cas `SECRET_TEXTAREA` dans `inputType`/template
   (`<textarea>`). Dépend de : T0.1.
-- [ ] **T6.2** Vitest `connectorConfig.spec.ts`/`ConnectorConfigForm.spec.ts` : nouveau cas +
+- [x] **T6.2** Vitest `connectorConfig.spec.ts`/`ConnectorConfigForm.spec.ts` : nouveau cas +
   régression `PASSWORD`/`SELECT`/`BOOLEAN`.
-- [ ] **T6.3** Playwright `E2E-CONN-BATCH-IMPORT-KEY` + régression `E2E-CONN-*` existants. Dépend
+- [x] **T6.3** Playwright `E2E-CONN-BATCH-IMPORT-KEY` + régression `E2E-CONN-*` existants. Dépend
   de : T6.1, backend M1 (le connecteur `batch-import` doit exister pour être configurable en E2E).
 
 ### M7 — Vérification globale (Phase 7-8, dépend de M1–M6)

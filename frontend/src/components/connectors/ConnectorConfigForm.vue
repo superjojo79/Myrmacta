@@ -55,6 +55,16 @@ function isRequired(field: ConfigField): boolean {
         :checked="Boolean(values[field.name])"
         @change="setField(field.name, ($event.target as HTMLInputElement).checked)"
       />
+      <textarea
+        v-else-if="field.type === 'SECRET_TEXTAREA'"
+        :data-testid="`connector-config-field-${field.name}`"
+        :value="values[field.name] == null ? '' : String(values[field.name])"
+        :required="isRequired(field)"
+        autocomplete="off"
+        rows="6"
+        class="connector-config-form__secret-textarea"
+        @input="setField(field.name, ($event.target as HTMLTextAreaElement).value)"
+      ></textarea>
       <input
         v-else
         :data-testid="`connector-config-field-${field.name}`"
@@ -87,10 +97,16 @@ function isRequired(field: ConfigField): boolean {
 }
 
 .connector-config-form__field input,
-.connector-config-form__field select {
+.connector-config-form__field select,
+.connector-config-form__field textarea {
   padding: 0.45rem 0.55rem;
   border: 1px solid #c5c5c8;
   border-radius: 4px;
+}
+
+.connector-config-form__secret-textarea {
+  font-family: ui-monospace, monospace;
+  resize: vertical;
 }
 
 .connector-config-form__help {

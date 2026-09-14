@@ -200,6 +200,26 @@ conséquence (`T-KAFKA-MALFORMED`) plutôt que de répéter l'erreur trouvée en
 **Preuve fraîche (M3+M4) :** `./mvnw test` sur `infrastructure.connector.kafka.**` et
 `infrastructure.connector.builtin.KafkaConnectorTest` → **26 tests, 0 échec**.
 
+## M6 — Frontend `ConnectorConfigForm.vue` (clos, 2026-09-14)
+
+**Fichiers touchés :**
+
+- `frontend/src/api/admin.ts` — `ConfigFieldType` gagne `SECRET_TEXTAREA`.
+- `frontend/src/components/connectors/ConnectorConfigForm.vue` — 1 cas ajouté (`<textarea>` pour
+  `SECRET_TEXTAREA`, avant la branche `<input>` générique) ; aucun autre cas existant modifié.
+- Tests : `ConnectorConfigForm.spec.ts` (+1 cas Vitest), `e2e/pilotage.spec.ts` — nouvelle entrée
+  `batch-import` dans la liste `connectorDefinitions` partagée (`mockSession`) + nouveau test
+  `E2E-CONN-BATCH-IMPORT-KEY`.
+
+**Note d'exécution Playwright dans ce bac à sable :** le binaire `chrome-headless-shell` par défaut
+n'est pas installé ; utiliser `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium-1194/chrome-linux/chrome`
+(supporté nativement par `playwright.config.ts` de ce dépôt) pour exécuter réellement la suite
+plutôt que de la déclarer non exécutable.
+
+**Preuve fraîche :** Vitest **352/352** (régression complète) ; Playwright **72/72** (régression
+complète, y compris les 3 `E2E-CONN-*` existants inchangés) ; `npm run typecheck` et `npm run lint`
+propres.
+
 ## Development Setup
 
 - JDK 25 (`java.version` du `pom.xml`) — `apt-get install openjdk-25-jdk` si seul JDK 21 est

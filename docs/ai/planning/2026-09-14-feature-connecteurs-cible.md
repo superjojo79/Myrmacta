@@ -2,7 +2,7 @@
 phase: planning
 title: Project Planning & Task Breakdown
 description: Break down work into actionable tasks and estimate timeline
-status: planned
+status: completed
 feature: connecteurs-cible
 lot: B1
 ---
@@ -32,8 +32,11 @@ lot: B1
   preuve T-REG-REGISTRY-COUNT comblé, `./mvnw verify` 1948/1948 (0 échec), Jacoco LINE/BRANCH
   tenus. Voir doc implementation pour le détail (dont un flake pré-existant hors périmètre,
   confirmé reproductible sur `origin/main`).
-- [ ] **M8** — Revue holistique (Phase 9), docs projet (`06-connecteurs.md`,
+- [x] **M8** — Revue holistique (Phase 9), docs projet (`06-connecteurs.md`,
   `GUIDE-CONCEPTION-BPMN.md`, `CHANGELOG.md`, `TODO.md`/`FILE-ATTENTE.md`/`DEFERRED-FEATURES.md`).
+  **Clos 2026-09-14** — aucun secret réel trouvé, scan CVE réel bloqué par la politique réseau du
+  bac à sable (documenté, pas contourné), `GUIDE-CONCEPTION-BPMN.md` confirmé hors périmètre (les
+  2 connecteurs sont TRIGGER uniquement). Pas de PR ouverte (non demandée).
 
 ## Task Breakdown
 
@@ -165,9 +168,10 @@ lot: B1
 
 ### M8 — Clôture (Phase 9)
 
-- [ ] **T8.1** Revue holistique (secrets, migrations, dépendances nouvelles).
-- [ ] **T8.2** `CHANGELOG.md`, `TODO.md`, `FILE-ATTENTE.md`, `DEFERRED-FEATURES.md` mis à jour.
-- [ ] **T8.3** PR (sur demande explicite de l'utilisateur — pas créée automatiquement).
+- [x] **T8.1** Revue holistique (secrets, migrations, dépendances nouvelles).
+- [x] **T8.2** `CHANGELOG.md`, `TODO.md`, `FILE-ATTENTE.md`, `DEFERRED-FEATURES.md` mis à jour.
+- [x] **T8.3** PR (sur demande explicite de l'utilisateur — pas créée automatiquement). **Non
+  demandée** — aucune PR ouverte, branche poussée.
 
 ## Dependencies
 

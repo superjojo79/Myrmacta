@@ -2,7 +2,7 @@
 phase: implementation
 title: Implementation Guide
 description: Technical implementation notes, patterns, and code guidelines
-status: in-progress
+status: reviewed
 feature: connecteurs-cible
 lot: B1
 ---
@@ -274,6 +274,47 @@ même run global (`SequentialReferenceMultiPodIT`, `TenantRoleIsolationIT`,
 `TenantSchemaIsolationIT`) — limite de bac à sable déjà connue (multi-pod/isolation nécessitant
 plusieurs instances), sans rapport avec `connecteurs-cible`. Ni l'un ni l'autre ne bloque ce
 cycle : aucun fichier notification/tenant touché par `connecteurs-cible`.
+
+## M8 — Clôture, Phase 9 (clos, 2026-09-14)
+
+**Revue holistique (T8.1) :**
+
+- **Secrets** : aucun secret réel dans le diff (`git diff origin/main...HEAD`). Les seules
+  occurrences de motifs `BEGIN OPENSSH PRIVATE KEY`/`password=`/`secret=` sont des fixtures de
+  test explicitement factices (`"abc"`, `"abc123"`), jamais un credential réel. `docker-compose.yml`
+  (service Kafka) n'introduit aucun secret — `PLAINTEXT` est le protocole dev-local documenté
+  (D-KAFKA-AUTH acte `PLAINTEXT` local + `SASL_SSL` en prod, jamais l'inverse), `CLUSTER_ID` fixe
+  n'est pas un secret (identifiant d'instance KRaft, pas un credential).
+- **Nouvelles dépendances (4)** : `spring-kafka` (version gérée par le BOM Spring Boot, résolue
+  4.1.1 — pas de version épinglée manuellement, donc pas de dérive possible du BOM) ; `sshj`
+  0.39.0, `poi-ooxml` 5.4.1, `commons-csv` 1.14.1 (versions figées récentes au moment du cycle).
+  `./mvnw -Psecurity-scan verify` (OWASP Dependency-Check) tenté pour un scan CVE réel : **bloqué
+  par la politique réseau du bac à sable** (`https://www.cisa.gov/.../known_exploited_vulnerabilities.json`
+  → 403 Forbidden, pas de cache NVD local préexistant) — même famille de limite déjà documentée
+  pour Docker Hub (A1, TODO §31) et non contournée, conformément à `/root/.ccr/README.md`. Aucune
+  trace dans ce dépôt qu'un cycle précédent ait pu exécuter ce profil avec succès non plus. Revue
+  manuelle de repli : les 3 versions figées sont les dernières mineures/patchs disponibles au
+  moment du cycle, aucune n'est une version historique connue pour une CVE critique déjà publique
+  à la connaissance de l'auteur. **À confirmer par un scan réel dès qu'un réseau NVD est
+  disponible**, comme documenté pour Docker Hub.
+- **Migrations DB** : aucune. Les deux connecteurs stockent leur configuration dans la colonne JSON
+  générique `connector_instance.config` déjà existante (comme tous les connecteurs), pas de nouvelle
+  table/colonne.
+- **Cohérence avec les patterns existants** : confirmée tout du long (voir M0-M4 ci-dessus) — même
+  mapper (`SimpleJsonPathMapper`), même style de job cron dédié (`SchedulerConnectorTriggerJob`),
+  même extension point sécurité unique (`ConnectorCatalog.isPasswordField`), zéro modification de
+  `ConnectorTriggerRuntimeImpl`/`ConnectorRegistry`/`ExecuteConnectorRequest`.
+
+**Docs projet (T8.2) :** `analysis doc/06-connecteurs.md` (2 lignes catalogue), `TODO.md` §62,
+`CHANGELOG.md` (§ Ajouté), `FILE-ATTENTE.md` (ligne déplacée vers *Récemment livré*, en-tête et
+§ *File d'attente* resynchronisés — Vagues A et B toutes deux intégralement livrées, file produit
+vide), `DEFERRED-FEATURES.md` §6 (B1 marqué **Livré**). `GUIDE-CONCEPTION-BPMN.md` **non modifié**
+— sa table `serviceTask` (§7) ne référence que les connecteurs invocables en rôle **SERVICE** via
+`${connectorServiceTask}` ; `batch-import`/`kafka` sont TRIGGER uniquement (D-BATCH/D-KAFKA-ROLE),
+donc hors de son périmètre, confirmé en relisant le fichier plutôt que supposé.
+
+**PR (T8.3) :** non ouverte, non demandée par l'utilisateur. Branche
+`claude/blissful-brahmagupta-vo50p3` poussée, prête pour revue.
 
 ## Development Setup
 

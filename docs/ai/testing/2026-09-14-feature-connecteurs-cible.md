@@ -2,7 +2,7 @@
 phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
-status: draft
+status: verified
 feature: connecteurs-cible
 lot: B1
 ---

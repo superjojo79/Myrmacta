@@ -10,12 +10,19 @@
 >   (rétention / purge / sensible — **livré**) ; revue post-implémentation 2026-08-25 :
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
-> **Dernière mise à jour :** 2026-09-14 — Vague A confirmée **intégralement livrée** :
+> **Dernière mise à jour :** 2026-09-14 — Vague B (**B1**, `connecteurs-cible`) **livrée** : cycle
+> `dev-lifecycle` Phases 1-9 complet, 2 nouveaux connecteurs `batch-import` (SFTP, CSV/Excel) et
+> `kafka` (TRIGGER) dans un seul cycle comme prévu, TODO §62 clos. `./mvnw verify` 1948 tests
+> (0 échec), Vitest 352/352, Playwright 72/72. **Pas de PR ouverte** (non demandée) — branche
+> `claude/blissful-brahmagupta-vo50p3` poussée, prête pour revue. **File produit désormais vide**
+> (Vagues A et B intégralement livrées).
+>
+> 2026-09-14 — Vague A confirmée **intégralement livrée** :
 > **A1** (`provisioning-tenant`, [PR #119](https://github.com/superjojo79/FlowForge/pull/119)),
 > **A2** (`admin-connector-form-schema`, [PR #117](https://github.com/superjojo79/FlowForge/pull/117))
 > et **A3** (`mcp-ecritures-metier`, [PR #118](https://github.com/superjojo79/FlowForge/pull/118))
 > tous **mergés sur `main`** (vérifié via l'API GitHub : `merged: true` pour les 3 PR). TODO §60
-> clos. Seule la Vague B (`connecteurs-cible`) reste en attente.
+> clos.
 >
 > 2026-09-11 — TODO **§61 livré** : introduction de DMN, cycle
 > `dev-lifecycle` complet (analyse
@@ -28,8 +35,7 @@
 > H1/H1-bis, TODO §57/§58), prouvée par exécution réelle sur le moteur
 > (`DmnJuelSecuritySmokeIT`), pas seulement par lecture statique. Éditeur intégré `dmn-js`
 > (`/admin/dmn-editor`), MCP (`deploy_decision_table`/`list_decision_tables`/
-> `get_decision_table`), scénario illustratif livré (`grille-eligibilite-client.dmn`). File
-> sinon vide (Vague B `connecteurs-cible` en attente).
+> `get_decision_table`), scénario illustratif livré (`grille-eligibilite-client.dmn`).
 >
 > 2026-09-08 — **A1 (`provisioning-tenant`) mergé**
 > ([PR #119](https://github.com/superjojo79/FlowForge/pull/119)). **A2**
@@ -275,6 +281,7 @@ Même grille que pour `preview-documents` puis `edition-champs-dossier` :
 | `admin-connector-form-schema` (lot **A2**) | [PR #117](https://github.com/superjojo79/FlowForge/pull/117), TODO §59 | Formulaire admin connecteurs généré depuis `configSchema` (plus de `<textarea>` JSON). Types sans config d’instance (`smtp`, `document-storage`) : plus de zone de texte. Après création, URL webhook (`http-rest`) et URL callback (`flowable-callback`) avec copie presse-papiers (D-WEBHOOK-URL = C). Frontend seulement. Vitest 324 ; Playwright 68 (`E2E-CONN-1` webhook, `E2E-CONN-2` smtp, `E2E-CONN-3` callback). **Mergée sur `main`** (2026-09-08). |
 | `mcp-ecritures-metier` (lot **A3**) | [PR #118](https://github.com/superjojo79/FlowForge/pull/118), TODO §60 (clos) | 4 tools MCP d'écriture métier (`create_dossier`, `add_dossier_element`, `start_workflow`, `generate_document`), 16 → 20 tools. Adaptateurs `infrastructure.mcp.tool` uniquement ; `CreateDossierUseCase*` inchangé (réutilise les use cases REST existants, pas de duplication de logique). Auth inchangée (JWT M2M `API_SERVICE`). **Phases 1–3 rejouées** après constat utilisateur que le premier passage avait acté les décisions sans poser de question (violation du contrat SDD) : 9 arbitrages posés un par un via `AskUserQuestion` (D-GENERATE-ATTACH, D-GENERATE-TEMPLATE, D-GENERATE-VARS, D-DRY-RUN, D-RATE-LIMIT, D-NO-OPENAPI, D-START-ORCH, D-DRY-RUN-START, D-FIELDS-READ), **tous confirmés et alignés sur le code déjà écrit** — aucun écart à corriger. `./mvnw verify -Dskip.frontend=true` 1775 tests (0 échec), Jacoco tenu, classes de la feature 100 % LINE+BRANCH. Playwright N/A (feature backend-only, zéro fichier `frontend/**` touché). **Mergée sur `main`** (2026-09-08, conditionnée à CI GitHub verte). |
 | `provisioning-tenant` (lot **A1**) | [PR #119](https://github.com/superjojo79/FlowForge/pull/119), TODO §31/§41 | Outillage ops manquant : `Dockerfile` multi-stage (`eclipse-temurin:25-jdk`/`-jre`, utilisateur non-root UID 10001, heap `-XX:MaxRAMPercentage=75.0`) + `.dockerignore` ; `scripts/provision-tenant.sh` (schéma + rôle PostgreSQL par tenant, D-41, dry-run par défaut/`--apply`, garde anti-écrasement) ; `server.servlet.context-path` (décision n°14) activé par défaut hors profil `local` (neutralisé dans `application-local.yml`, pattern déjà en place pour `app.security.cookie.secure`). Cycle `dev-lifecycle` Phases 1–9 complet, 4 décisions tranchées via `AskUserQuestion` en Phase 1 (image, non-root, heap, activation `context-path`). **2 bugs réels trouvés et corrigés en cours de cycle** : clé YAML `server:` dupliquée dans `application.yml` lors de la première tentative d'activation `context-path` (SnakeYAML « found duplicate key server », détecté par `./mvnw verify` lui-même, Phase 5) ; troncature silencieuse possible du rôle PostgreSQL généré au-delà de `NAMEDATALEN` (63 octets) pour un `tenant_id` proche de l'ancienne borne de 63 caractères — le rôle préfixe `flowforge_` (10 caractères) — corrigé en bornant `tenant_id` à 53 caractères (Phase 7, relecture ligne à ligne, ni `hadolint` ni `shellcheck` ne l'auraient trouvé). **Limite d'environnement assumée** : `docker build`/`docker run` réel impossible dans le bac à sable de ce cycle — politique réseau de la session bloquant explicitement `production.cloudfront.docker.com` (CDN Docker Hub), confirmé systémique (`eclipse-temurin:25-jdk` et `postgres:17-alpine` tous deux rejetés), non contourné (conforme à `/root/.ccr/README.md`) ; `Dockerfile` validé par `hadolint` (propre) + revue statique, **à confirmer par un build réel avant premier déploiement**. Script de provisioning en revanche validé avec de vraies preuves : service PostgreSQL local du bac à sable (Docker Hub bloqué aussi pour le conteneur jetable prévu), tous les scénarios exécutés (nominal, rejeu rejeté, identifiant invalide, mot de passe absent, **isolation cross-tenant vérifiée avec un second tenant réel** — `permission denied` confirmé). `shellcheck` propre. `./mvnw verify` **1738 tests (0 échec)**, ArchUnit conforme, Jacoco respecté ; zéro fichier `frontend/**` touché. `DEPLOIEMENT.md`/`GETTING-STARTED.md`/`.env.example` alignés sur l'outillage livré. **Pas de PR ouverte** (non demandé) — branche poussée, prête pour revue. |
+| `connecteurs-cible` (lot **B1**) | TODO §62 (clos) | 2 nouveaux connecteurs du catalogue cible dans un seul cycle (Kafka + import batch, « ERP » = cas d'usage de `batch-import`, pas un 3ème connecteur — confirmé en Phase 1) : `batch-import` (TRIGGER, SFTP/SSHJ, parsing CSV+Excel, un dossier par ligne, isolation par ligne invalide, garde `maxFileBytes`/`maxRows`, archivage post-traitement) et `kafka` (TRIGGER, `KafkaConsumerReconciler` — nouveau pattern de cycle de vie de ressource externe par polling, un message = un dossier). Nouveau `ConfigFieldType.SECRET_TEXTAREA` (clé privée SFTP), masqué/chiffré via le même point d'extension unique que `PASSWORD` (`ConnectorCatalog.isPasswordField`, TODO §56). **3 décisions non-recommandées choisies délibérément par l'utilisateur** : CSV **et** Excel dès ce cycle, authentification SFTP mot de passe **et** clé privée, tests Kafka/SFTP mockés uniquement. **2 trouvailles de sécurité actées en cours d'implémentation** (hors planification initiale) : garde taille/lignes sur le parsing (D-BATCH-SIZE-LIMIT) et vérification obligatoire de l'empreinte de clé d'hôte SSH (D-SFTP-HOSTKEY — SSHJ n'accepte silencieusement aucun hôte par défaut). **2 bugs réels trouvés et corrigés en TDD** : second constructeur sur un record `@ConfigurationProperties` cassant le démarrage Spring (corrigé en amont, tous les call sites mis à jour) ; isolation de ligne invalide inatteignable (calquée à tort sur `HttpRestConnector`, le vrai critère est un champ **mappé** requis manquant, pas `processKey`). Golden OpenAPI et trou de preuve `ConnectorRegistry` (contexte réel, 8 types sans collision) trouvés et comblés en Phase 7. `./mvnw verify` 1948 tests (0 échec), Jacoco tenu ; Vitest 352/352 ; Playwright 72/72. Flake préexistant hors périmètre trouvé (`NotificationPersistenceIT`, reproductible sur `main` nu, non touché par ce cycle). Cycle `dev-lifecycle` Phases 1–9 complet (2026-09-14). **Pas de PR ouverte** (non demandée) — branche `claude/blissful-brahmagupta-vo50p3` poussée, prête pour revue. |
 
 Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relations, PATCH fields API, éléments) : voir [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §2.
 
@@ -338,8 +345,12 @@ pagination inbox > 100.
 **A2** mergé ([PR #117](https://github.com/superjojo79/FlowForge/pull/117)),
 **A3** mergé ([PR #118](https://github.com/superjojo79/FlowForge/pull/118)).
 
-**En cours :** aucune — file vide côté Vague A. **Prochain candidat :** Vague B
-(`connecteurs-cible`), pas encore lancée.
+**Vague B — intégralement livrée** (2026-09-14) : **B1** (`connecteurs-cible`, TODO §62 clos),
+pas de PR ouverte (non demandée), branche `claude/blissful-brahmagupta-vo50p3` poussée.
+
+**En cours :** aucune — Vagues A et B intégralement livrées, file produit vide. **Prochain
+candidat :** aucun lot cadré à ce jour ; voir [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) pour
+le reliquat non cadré en `dev-lifecycle`.
 
 Détail inventaire : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §4 / §6.
 

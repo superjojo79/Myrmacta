@@ -84,6 +84,27 @@ class ConnectorAdminApiTest {
     }
 
     @Test
+    void listDefinitions_registersExactlySevenTypesWithoutCollision_connecteursCibleLotB1() throws Exception {
+        // T-REG-REGISTRY-COUNT : les 6 connecteurs déjà livrés (http-rest, flowable-signal,
+        // flowable-callback, scheduler, smtp, document-storage) + batch-import + kafka, tous
+        // enregistrés sans collision de type au démarrage du contexte Spring réel (un doublon
+        // ferait échouer ConnectorRegistry.init() et empêcherait ce test de démarrer).
+        mockMvc.perform(get("/api/connector-definitions")
+                        .param("size", "50")
+                        .with(user("connector-admin", "TENANT_ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(8))
+                .andExpect(jsonPath("$.content[*].type", hasItem("http-rest")))
+                .andExpect(jsonPath("$.content[*].type", hasItem("flowable-signal")))
+                .andExpect(jsonPath("$.content[*].type", hasItem("flowable-callback")))
+                .andExpect(jsonPath("$.content[*].type", hasItem("scheduler")))
+                .andExpect(jsonPath("$.content[*].type", hasItem("smtp")))
+                .andExpect(jsonPath("$.content[*].type", hasItem("document-storage")))
+                .andExpect(jsonPath("$.content[*].type", hasItem("batch-import")))
+                .andExpect(jsonPath("$.content[*].type", hasItem("kafka")));
+    }
+
+    @Test
     void listDefinitions_nonAdmin_returns403() throws Exception {
         mockMvc.perform(get("/api/connector-definitions")
                         .with(user("viewer", "DOSSIER_VIEWER")))

@@ -79,8 +79,11 @@ ne nécessite de modifier `ConnectorCatalog`, `ConnectorTriggerRuntimeImpl` ni
   `ConnectorTriggerRuntime.onIncomingEvent`, `WorkflowTriggerEvent`, `CreateDossierUseCase` —
   **zéro** modification de ces classes partagées.
 - Formulaire admin **déjà généré depuis `configSchema`** par le lot A2
-  (`admin-connector-form-schema`, PR #117) — **zéro** nouveau code frontend pour configurer une
-  instance des deux connecteurs.
+  (`admin-connector-form-schema`, PR #117) pour configurer une instance des deux connecteurs.
+  **Amendé en Phase 3 (design)** : une clé privée SSH (PEM multi-lignes) ne tient pas dans le
+  rendu actuel de `ConfigFieldType.PASSWORD` (`<input type="password">` mono-ligne) — 1 seul cas
+  additif dans le composant partagé `ConnectorConfigForm.vue` (nouveau `ConfigFieldType.
+  SECRET_TEXTAREA`), aucun nouvel écran/vue (voir D-CONFIG-FIELD-SECRET-TEXTAREA, doc design).
 
 **Objectifs secondaires**
 
@@ -192,14 +195,10 @@ ne nécessite de modifier `ConnectorCatalog`, `ConnectorTriggerRuntimeImpl` ni
 
 ## Questions & Open Items
 
-Aucun point produit/scope matériel ouvert à l'issue de la Phase 2 (revue). Reportés explicitement en
-Phase 3 (design), car de nature architecturale et sans impact sur le comportement utilisateur final
-(voir C-SCHEDULER-NOT-GENERIC, C-KAFKA-DYNAMIC, A-SFTP-LIB ci-dessus) :
-
-- Mécanisme exact de déclenchement cron de `batch-import` (nouveau job dédié vs généralisation de
-  `SchedulerConnectorTriggerJob`).
-- Mécanisme exact d'abonnement/désabonnement dynamique des consumers Kafka par instance de
-  connecteur (création/arrêt de `MessageListenerContainer`).
-- Bibliothèque SFTP/SSH précise (SSHJ vs JSch) et bibliothèque Excel (Apache POI, format streaming
-  vs DOM).
-- Forme exacte du `configSchema` des deux connecteurs (liste des champs, valeurs par défaut).
+Aucun point produit/scope matériel ouvert. Les 4 points architecturaux reportés en Phase 3 (design)
+sont tranchés — voir
+[docs/ai/design/2026-09-14-feature-connecteurs-cible.md](../design/2026-09-14-feature-connecteurs-cible.md) :
+D-BATCH-CRON-JOB (nouveau job dédié), D-KAFKA-LIFECYCLE (reconciliateur par polling),
+D-CONFIG-FIELD-SECRET-TEXTAREA (nouveau `ConfigFieldType`, découvert en design à partir de
+D-SFTP-AUTH), D-SFTP-LIB (SSHJ). `configSchema` exact des deux connecteurs également documenté
+dans le doc design.

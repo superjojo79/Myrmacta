@@ -27,7 +27,11 @@ lot: B1
 - [x] **M4** — `kafka` : reconciliateur de cycle de vie des consumers + IT bout-en-bout. **Clos 2026-09-14** — 11 tests réconciliateur + 3 tests construction props + 1 IT bout-en-bout réel.
 - [x] **M5** — `docker-compose.yml` (service Kafka) + doc catalogue connecteurs. **Clos 2026-09-14** — `docker compose config` validé (syntaxe correcte) ; `docker compose up` non exécutable dans ce bac à sable (aucun daemon Docker, même limite qu'A1).
 - [x] **M6** — Frontend : `ConnectorConfigForm.vue` (`SECRET_TEXTAREA`) + Vitest + Playwright. **Clos 2026-09-14** — Vitest 352/352, Playwright 72/72, typecheck et lint propres.
-- [ ] **M7** — Vérification globale (Phase 7-8), comblement de trous de couverture Jacoco.
+- [x] **M7** — Vérification globale (Phase 7-8), comblement de trous de couverture Jacoco. **Clos
+  2026-09-14** — drift golden OpenAPI trouvé et corrigé (`SECRET_TEXTAREA` manquant), trou de
+  preuve T-REG-REGISTRY-COUNT comblé, `./mvnw verify` 1948/1948 (0 échec), Jacoco LINE/BRANCH
+  tenus. Voir doc implementation pour le détail (dont un flake pré-existant hors périmètre,
+  confirmé reproductible sur `origin/main`).
 - [ ] **M8** — Revue holistique (Phase 9), docs projet (`06-connecteurs.md`,
   `GUIDE-CONCEPTION-BPMN.md`, `CHANGELOG.md`, `TODO.md`/`FILE-ATTENTE.md`/`DEFERRED-FEATURES.md`).
 
@@ -143,11 +147,21 @@ lot: B1
 
 ### M7 — Vérification globale (Phase 7-8, dépend de M1–M6)
 
-- [ ] **T7.1** Revue fichier par fichier du diff complet (callers tracés, ArchUnit). Inclut
+- [x] **T7.1** Revue fichier par fichier du diff complet (callers tracés, ArchUnit). Inclut
   `ConnectorRegistry.listAll()` compte exactement les connecteurs existants + 2, sans collision
-  de type au démarrage du contexte réel. Couvre : `T-REG-REGISTRY-COUNT`.
-- [ ] **T7.2** Balayage Jacoco classe par classe — combler les trous réels trouvés.
-- [ ] **T7.3** `./mvnw verify` + Vitest + Playwright — preuve fraîche, tout vert.
+  de type au démarrage du contexte réel. Couvre : `T-REG-REGISTRY-COUNT`. **Fait** : aucun import
+  de bibliothèque tierce (sshj/spring-kafka/kafka-clients/poi/commons-csv) dans `domain` (grep),
+  `ArchitectureRulesTest` 7/7 vert. Trou de preuve identifié (aucun test n'exerçait
+  `ConnectorRegistry` avec le contexte Spring réel) : nouveau test
+  `ConnectorAdminApiTest.listDefinitions_registersExactlyEightTypesWithoutCollision_...`
+  confirmant 8 types (6 déjà livrés + `batch-import` + `kafka`) sans collision — premier jet écrit
+  en supposant 5 connecteurs pré-existants (oubli de `flowable-callback`, livré par le cycle
+  précédent), corrigé après échec réel du test (8, pas 7).
+- [x] **T7.2** Balayage Jacoco classe par classe — combler les trous réels trouvés. **Fait** :
+  `jacoco:check` → « All coverage checks have been met » (seuils LINE≥85%/BRANCH≥75% respectés
+  globalement), aucun trou supplémentaire trouvé nécessitant un nouveau test ciblé.
+- [x] **T7.3** `./mvnw verify` + Vitest + Playwright — preuve fraîche, tout vert. **Fait** : voir
+  doc implementation, section M7.
 
 ### M8 — Clôture (Phase 9)
 

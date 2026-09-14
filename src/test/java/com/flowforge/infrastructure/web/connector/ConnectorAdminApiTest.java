@@ -84,7 +84,7 @@ class ConnectorAdminApiTest {
     }
 
     @Test
-    void listDefinitions_registersExactlySevenTypesWithoutCollision_connecteursCibleLotB1() throws Exception {
+    void listDefinitions_registersExactlyEightTypesWithoutCollision_connecteursCibleLotB1() throws Exception {
         // T-REG-REGISTRY-COUNT : les 6 connecteurs déjà livrés (http-rest, flowable-signal,
         // flowable-callback, scheduler, smtp, document-storage) + batch-import + kafka, tous
         // enregistrés sans collision de type au démarrage du contexte Spring réel (un doublon

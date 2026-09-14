@@ -220,6 +220,61 @@ plutôt que de la déclarer non exécutable.
 complète, y compris les 3 `E2E-CONN-*` existants inchangés) ; `npm run typecheck` et `npm run lint`
 propres.
 
+## M7 — Vérification globale, Phase 7-8 (clos, 2026-09-14)
+
+**Drift golden OpenAPI trouvé et corrigé :** `openapi/openapi.yaml` documentait
+`ConfigField.type` comme un enum YAML (`STRING, PASSWORD, URL, INTEGER, BOOLEAN, SELECT`)
+n'incluant pas `SECRET_TEXTAREA` (ajouté M0/T0.1). Confirmé réel (pas hypothétique) :
+`./mvnw -Dtest=OpenApiContractIT` → `Tests run: 1, Failures: 1` avant correctif. Corrigé via le
+mécanisme de régénération prévu par le test lui-même
+(`./mvnw -Dtest=OpenApiContractIT -Dopenapi.update=true`) ; diff résultant limité à la seule ligne
+attendue (`+ SECRET_TEXTAREA`), revu avant commit. Re-exécution sans le flag : vert.
+
+**Trou de preuve comblé (T7.1, T-REG-REGISTRY-COUNT) :** aucun test existant n'exerçait
+`ConnectorRegistry` avec un contexte Spring réel pour prouver l'absence de collision de type au
+démarrage (un doublon ferait échouer `ConnectorRegistry.init()`, donc tout `@SpringBootTest` du
+dépôt échouerait déjà indirectement — mais aucune assertion positive sur le compte exact
+n'existait). Nouveau test dans `ConnectorAdminApiTest` (contexte réel, `GET
+/api/connector-definitions`) : `$.totalElements` == 8. Premier jet écrit en supposant **5**
+connecteurs déjà livrés (http-rest, flowable-signal, scheduler, smtp, document-storage) — rouge
+réel (`expected:<7> but was:<8>`), qui a révélé l'oubli de `flowable-callback` (livré par le cycle
+`connecteur-callback` précédent, TODO §51/§56). Corrigé en comptant les 6 types réels lus
+directement dans le code
+(`grep "String getType()"` sur `infrastructure/connector/builtin/*.java`) plutôt que de deviner à
+nouveau.
+
+**Question `*IT.java` / `mvn verify` sans Failsafe — déjà documentée, pas un trou nouveau :**
+confirmé dans `TODO.md` (entrées `connecteur-callback`) que ce dépôt n'a **pas** de plugin
+Failsafe lié et que les patterns d'inclusion par défaut de Surefire (`**/*Test.java`,
+`**/*Tests.java`, `**/*TestCase.java`, `**/Test*.java`) n'incluent pas `*IT.java`. Comportement
+confirmé à nouveau ici : `./mvnw verify` (défaut, sans `-Dtest=`) exécute uniquement les classes
+`Test*`, jamais les `*IT.java`. Suivi la même convention que les cycles précédents : preuve
+`Test*` via `mvn verify`, puis preuve `*IT.java` séparée via `-Dtest=` explicite ciblant le
+périmètre de la feature.
+
+**Preuve fraîche — `Test*` (via `./mvnw verify`) :** **1948 tests, 0 échec** (1947 régression +
+1 nouveau `T-REG-REGISTRY-COUNT`), Jacoco « All coverage checks have been met » (LINE≥85%/
+BRANCH≥75%), `ArchitectureRulesTest` 7/7 (limite hexagonale confirmée : zéro import
+sshj/spring-kafka/kafka-clients/poi/commons-csv dans `domain`).
+
+**Preuve fraîche — `*IT.java` du périmètre feature (via `-Dtest=` explicite) :**
+`OpenApiContractIT` (1/1), `ConnectorPersistenceIT` (5/5), `ConnectorSchemaIT` (2/2),
+`BatchImportEndToEndIT` (1/1), `KafkaEndToEndIT` (1/1) → **10/10, 0 échec**.
+
+**Préexistant hors périmètre, non corrigé ce cycle (documenté, pas contourné) :** en exécutant
+l'ensemble des `*IT.java` du dépôt (`-Dtest="*IT"`, 78 tests), **1 échec** trouvé dans
+`NotificationPersistenceIT.oldestPendingAndWebhookDeadCount` — dépendance à l'ordre d'exécution
+des méthodes de test au sein de la classe (une ligne `PENDING` créée par une méthode antérieure
+n'est jamais nettoyée, faussant `oldestPendingCreatedAt()` pour une méthode ultérieure si l'ordre
+JUnit5 — non garanti par défaut, aucun `@TestMethodOrder` déclaré — place l'une avant l'autre).
+Confirmé **non lié à ce cycle** : fichier jamais touché par cette branche (`git diff
+origin/main...HEAD` ne le liste pas) et reproduit à l'identique sur `origin/main` nu (vérifié via
+`git worktree add` sur `origin/main`, même échec exact). 3 tests par ailleurs `Skipped` dans ce
+même run global (`SequentialReferenceMultiPodIT`, `TenantRoleIsolationIT`,
+`TenantSchemaIsolationIT`) — limite de bac à sable déjà connue (multi-pod/isolation nécessitant
+plusieurs instances), sans rapport avec `connecteurs-cible`. Ni l'un ni l'autre ne bloque ce
+cycle : aucun fichier notification/tenant touché par `connecteurs-cible`.
+
 ## Development Setup
 
 - JDK 25 (`java.version` du `pom.xml`) — `apt-get install openjdk-25-jdk` si seul JDK 21 est

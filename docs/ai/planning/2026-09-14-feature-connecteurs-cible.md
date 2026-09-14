@@ -23,8 +23,8 @@ lot: B1
   bug réel trouvé et corrigé (second constructeur sur un record `@ConfigurationProperties`).
 - [x] **M1** — `batch-import` : connecteur (validate/capability/mapping/gardes), tests unitaires. **Clos 2026-09-14** — 18 tests connecteur + 3 tests adaptateur SSHJ, 228/228 en régression complète. Nouvelle décision D-SFTP-HOSTKEY trouvée en cours (voir doc requirements).
 - [x] **M2** — `batch-import` : job de déclenchement cron dédié + IT bout-en-bout. **Clos 2026-09-14** — 8 tests job + 1 IT bout-en-bout réel, 237/237 en régression complète.
-- [ ] **M3** — `kafka` : connecteur (validate/capability/mapping), tests unitaires.
-- [ ] **M4** — `kafka` : reconciliateur de cycle de vie des consumers + IT bout-en-bout.
+- [x] **M3** — `kafka` : connecteur (validate/capability/mapping), tests unitaires. **Clos 2026-09-14** — 11 tests, même correction hasBlankMappedField que batch-import.
+- [x] **M4** — `kafka` : reconciliateur de cycle de vie des consumers + IT bout-en-bout. **Clos 2026-09-14** — 11 tests réconciliateur + 3 tests construction props + 1 IT bout-en-bout réel.
 - [ ] **M5** — `docker-compose.yml` (service Kafka) + doc catalogue connecteurs.
 - [ ] **M6** — Frontend : `ConnectorConfigForm.vue` (`SECRET_TEXTAREA`) + Vitest + Playwright.
 - [ ] **M7** — Vérification globale (Phase 7-8), comblement de trous de couverture Jacoco.
@@ -99,29 +99,29 @@ lot: B1
 
 ### M3 — `KafkaConnector` (dépend de M0, indépendant de M1/M2)
 
-- [ ] **T3.1** `validate()`/`getCapability()`/`getConfigSchema()`. Dépend de : T0.1. Couvre :
+- [x] **T3.1** `validate()`/`getCapability()`/`getConfigSchema()`. Dépend de : T0.1. Couvre :
   `T-KAFKA-CAPABILITY`, `T-KAFKA-VALIDATE-REQUIRED`, `T-KAFKA-VALIDATE-SASL`.
-- [ ] **T3.2** Mapping JSON message → 1 `WorkflowTriggerEvent` (réutilise le style
+- [x] **T3.2** Mapping JSON message → 1 `WorkflowTriggerEvent` (réutilise le style
   `SimpleJsonPathMapper`). Dépend de : T3.1. Couvre : `T-KAFKA-MAP-OK`, `T-KAFKA-EXISTING-REF`.
-- [ ] **T3.3** Rejet propre message malformé (`ConnectorValidationException`). Dépend de : T3.2.
+- [x] **T3.3** Rejet propre message malformé (`ConnectorValidationException`). Dépend de : T3.2.
   Couvre : `T-KAFKA-MALFORMED`.
 
 ### M4 — `KafkaConsumerReconciler` (dépend de M3)
 
-- [ ] **T4.1** Boucle de réconciliation (`@Scheduled`) : diff instances activées vs conteneurs en
+- [x] **T4.1** Boucle de réconciliation (`@Scheduled`) : diff instances activées vs conteneurs en
   cours. Dépend de : M3, T0.2. Couvre : `T-KR-START-ON-DISCOVERY`, `T-KR-IDEMPOTENT-POLL`.
-- [ ] **T4.2** Arrêt propre sur désactivation/suppression d'instance. Dépend de : T4.1. Couvre :
+- [x] **T4.2** Arrêt propre sur désactivation/suppression d'instance. Dépend de : T4.1. Couvre :
   `T-KR-STOP-ON-DISABLE`, `T-KR-STOP-ON-DELETE`.
-- [ ] **T4.3** Redémarrage sur changement de config (topic/bootstrapServers). Dépend de : T4.1.
+- [x] **T4.3** Redémarrage sur changement de config (topic/bootstrapServers). Dépend de : T4.1.
   Couvre : `T-KR-RESTART-ON-CONFIG-CHANGE`.
-- [ ] **T4.4** Construction config consumer PLAINTEXT/SASL_SSL + `auto.offset.reset=latest`.
+- [x] **T4.4** Construction config consumer PLAINTEXT/SASL_SSL + `auto.offset.reset=latest`.
   Dépend de : T4.1. Couvre : `T-KR-PLAINTEXT-PROPS`, `T-KR-SASL-PROPS`.
-- [ ] **T4.5** Dispatch message reçu → `ConnectorTriggerRuntime.onIncomingEvent`. Dépend de :
+- [x] **T4.5** Dispatch message reçu → `ConnectorTriggerRuntime.onIncomingEvent`. Dépend de :
   T4.1, M3. Couvre : `T-KR-MESSAGE-DISPATCH`.
-- [ ] **T4.6** Isolation erreurs : un message malformé ou une instance en échec de démarrage
+- [x] **T4.6** Isolation erreurs : un message malformé ou une instance en échec de démarrage
   n'affecte pas les autres. Dépend de : T4.5, T3.3. Couvre : `T-KR-MESSAGE-ERROR-ISOLATION`,
   `T-KR-START-FAILURE-ISOLATED`.
-- [ ] **T4.7** IT bout-en-bout `kafka` (conteneur mocké → dossier créé/lisible). Dépend de :
+- [x] **T4.7** IT bout-en-bout `kafka` (conteneur mocké → dossier créé/lisible). Dépend de :
   M4, M3. Couvre : `IT-KAFKA-END-TO-END`.
 
 ### M5 — Infra & doc catalogue (dépend de M2 + M4 pour la doc, indépendant pour Compose)

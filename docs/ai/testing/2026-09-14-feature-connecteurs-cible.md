@@ -92,8 +92,12 @@ lot: B1
       `itemsPath`, contrairement à `http-rest`)
 - [ ] `T-KAFKA-EXISTING-REF` mapping avec `existingDossierReferencePath` → événement cible un
       dossier existant plutôt que d'en créer un (parité avec `http-rest`)
-- [ ] `T-KAFKA-MALFORMED` payload non-JSON ou champ mappé requis absent →
-      `ConnectorValidationException`, isolée au message (voir `T-KR-MESSAGE-ERROR-ISOLATION`)
+- [ ] `T-KAFKA-MALFORMED` un champ de `mapping.fields` résolvant à `null`/blanc →
+      `ConnectorValidationException` (même correction que `BatchImportConnector` :
+      `processKey`/`dossierTypeCode` ont toujours un repli d'instance obligatoire, donc ne
+      peuvent jamais être blancs — seul un champ mappé peut réellement manquer). Un payload
+      non-JSON est rejeté **avant** `KafkaConnector.onEvent` (désérialisation dans
+      `KafkaConsumerReconciler`, voir `T-KR-MESSAGE-ERROR-ISOLATION`)
 
 ### `KafkaConsumerReconciler`
 

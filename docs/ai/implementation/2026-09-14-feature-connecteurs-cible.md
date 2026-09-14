@@ -158,6 +158,48 @@ n'est **pas** rétroportée sur `scheduler`, documentée ici comme écart connu 
 
 **Preuve fraîche :** `./mvnw test` sur les packages connecteurs → **237 tests, 0 échec**.
 
+## M3 — `KafkaConnector` (clos, 2026-09-14)
+
+**Fichiers touchés :** `infrastructure/connector/builtin/KafkaConnector.java` (nouveau) —
+`ConnectorDefinition` + `TriggerConnector`, capability `TRIGGER`, un message → exactement un
+`WorkflowTriggerEvent` (pas d'`itemsPath`, contrairement à `http-rest`). Réutilise le même
+`SimpleJsonPathMapper` injecté. Tests : `KafkaConnectorTest` (11 cas).
+
+**Même correction que `BatchImportConnector` (M1), appliquée directement cette fois :**
+`processKey`/`dossierTypeCode` ont toujours un repli d'instance (champs requis par `validate()`),
+donc un chemin de mapping résolvant à blanc ne peut jamais les rendre invalides. `hasBlankMappedField`
+(sur `mapping.fields`) est le seul critère d'invalidité réel — corrigé le doc testing en
+conséquence (`T-KAFKA-MALFORMED`) plutôt que de répéter l'erreur trouvée en TDD sur M1.
+
+## M4 — `KafkaConsumerReconciler` (clos, 2026-09-14)
+
+**Fichiers touchés :**
+
+- `infrastructure/connector/kafka/KafkaConsumerHandle.java`,
+  `infrastructure/connector/kafka/KafkaConsumerFactory.java` (nouveaux ports d'infrastructure,
+  **pas** `domain.connector.port.out` — `KafkaConsumerReconciler` est un composant
+  d'infrastructure de bout en bout, contrairement à `BatchImportConnector`/`SftpClientPort` qui
+  sont un `ConnectorDefinition` domaine + son port). Seam introduit spécifiquement pour permettre
+  un test complet du réconciliateur sans jamais instancier de vraie classe Spring Kafka
+  (`KafkaMessageListenerContainer.start()` démarrerait un vrai thread de poll même contre un
+  broker injoignable — non déterministe et bruyant en test).
+- `infrastructure/connector/kafka/KafkaConsumerReconciler.java` (nouveau) — poll `@Scheduled`,
+  diff instances `kafka` activées vs conteneurs en cours (démarrage/arrêt/redémarrage sur
+  changement de config), dispatch message → `ConnectorTriggerRuntime.onIncomingEvent` avec
+  isolation par message (`try/catch(RuntimeException)`, ni une erreur de désérialisation JSON ni
+  une exception du runtime ne bloque les messages suivants).
+- `infrastructure/connector/kafka/SpringKafkaConsumerFactory.java` (nouveau) — adaptateur réel,
+  `KafkaMessageListenerContainer`/`DefaultKafkaConsumerFactory` (API vérifiée par `javap` sur le
+  jar réel `spring-kafka-4.1.1.jar`, même discipline que SSHJ). `buildConsumerProperties(...)`
+  extraite en méthode statique testable isolément (PLAINTEXT/SASL_SSL).
+- Tests : `KafkaConsumerReconcilerTest` (11 cas, `FakeKafkaConsumerFactory`),
+  `SpringKafkaConsumerFactoryTest` (3 cas, construction des propriétés uniquement), `KafkaEndToEndIT`
+  (1 cas — chaîne réelle réconciliateur → `KafkaConnector` → `ConnectorTriggerRuntimeImpl` réel →
+  dossier créé/lisible, seule la factory Kafka est un faux).
+
+**Preuve fraîche (M3+M4) :** `./mvnw test` sur `infrastructure.connector.kafka.**` et
+`infrastructure.connector.builtin.KafkaConnectorTest` → **26 tests, 0 échec**.
+
 ## Development Setup
 
 - JDK 25 (`java.version` du `pom.xml`) — `apt-get install openjdk-25-jdk` si seul JDK 21 est

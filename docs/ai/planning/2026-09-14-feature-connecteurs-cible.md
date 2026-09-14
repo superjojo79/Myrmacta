@@ -21,7 +21,7 @@ lot: B1
   `ConnectorProperties.BatchImport`/`Kafka`, extension masquage/chiffrement secrets. **Clos
   2026-09-14** — `./mvnw test` régression connecteurs 465/465. Voir doc implementation pour le
   bug réel trouvé et corrigé (second constructeur sur un record `@ConfigurationProperties`).
-- [ ] **M1** — `batch-import` : connecteur (validate/capability/mapping/gardes), tests unitaires.
+- [x] **M1** — `batch-import` : connecteur (validate/capability/mapping/gardes), tests unitaires. **Clos 2026-09-14** — 18 tests connecteur + 3 tests adaptateur SSHJ, 228/228 en régression complète. Nouvelle décision D-SFTP-HOSTKEY trouvée en cours (voir doc requirements).
 - [ ] **M2** — `batch-import` : job de déclenchement cron dédié + IT bout-en-bout.
 - [ ] **M3** — `kafka` : connecteur (validate/capability/mapping), tests unitaires.
 - [ ] **M4** — `kafka` : reconciliateur de cycle de vie des consumers + IT bout-en-bout.
@@ -58,27 +58,30 @@ lot: B1
 
 ### M1 — `BatchImportConnector` (dépend de M0)
 
-- [ ] **T1.1** `SftpClientPort` (port domaine) + DTO minimal (liste fichiers, download, move/
+- [x] **T1.1** `SftpClientPort` (port domaine) + DTO minimal (liste fichiers, download, move/
   rename). Dépend de : rien (peut démarrer en parallèle de M0 selon TDD).
-- [ ] **T1.2** `BatchImportConnector.validate()`/`getCapability()`/`getConfigSchema()`. Dépend
+- [x] **T1.2** `BatchImportConnector.validate()`/`getCapability()`/`getConfigSchema()`. Dépend
   de : T0.1 (config schema référence `SECRET_TEXTAREA`). Couvre : `T-BI-CAPABILITY`,
   `T-BI-VALIDATE-REQUIRED`, `T-BI-VALIDATE-AUTH-PASSWORD`, `T-BI-VALIDATE-AUTH-KEY`,
   `T-BI-DEFAULT-PORT`.
-- [ ] **T1.3** Mapping colonnes CSV → champs (parseur CSV + `TabularRowMapper`). Dépend de :
-  T1.1. Couvre : `T-BI-CSV-OK`, `T-BI-EMPTY-FILE`.
-- [ ] **T1.4** Mapping colonnes XLSX → champs (Apache POI, `XSSFWorkbook`). Dépend de : T1.3
+- [x] **T1.3** Mapping colonnes CSV → champs. Dépend de : T1.1. Couvre : `T-BI-CSV-OK`,
+  `T-BI-EMPTY-FILE`. **Simplifié en cours** : pas de classe `TabularRowMapper` séparée — chaque
+  ligne devient un `Map<String,Object>` (colonne → valeur) et réutilise directement le
+  `SimpleJsonPathMapper` injecté (même `"$.colonne"` que `http-rest.mapping`), voir doc
+  implementation.
+- [x] **T1.4** Mapping colonnes XLSX → champs (Apache POI, `XSSFWorkbook`). Dépend de : T1.3
   (même mapper réutilisé). Couvre : `T-BI-XLSX-OK`.
-- [ ] **T1.5** Isolation ligne invalide (log + compteur, pas de blocage). Dépend de : T1.3/T1.4.
+- [x] **T1.5** Isolation ligne invalide (log + compteur, pas de blocage). Dépend de : T1.3/T1.4.
   Couvre : `T-BI-INVALID-ROW-SKIPPED`, `T-BI-ALL-ROWS-INVALID`.
-- [ ] **T1.6** Garde `maxFileBytes`/`maxRows` (rejet propre avant parsing). Dépend de : T0.3, T1.3.
+- [x] **T1.6** Garde `maxFileBytes`/`maxRows` (rejet propre avant parsing). Dépend de : T0.3, T1.3.
   Couvre : `T-BI-SIZE-LIMIT`, `T-BI-ROW-LIMIT`.
-- [ ] **T1.7** Listing répertoire + motif glob + téléchargement multi-fichiers. Dépend de : T1.1.
+- [x] **T1.7** Listing répertoire + motif glob + téléchargement multi-fichiers. Dépend de : T1.1.
   Couvre : `T-BI-NO-MATCH`, `T-BI-MULTIPLE-FILES`.
-- [ ] **T1.8** Archivage post-traitement (move/rename SFTP). Dépend de : T1.5, T1.7. Couvre :
+- [x] **T1.8** Archivage post-traitement (move/rename SFTP). Dépend de : T1.5, T1.7. Couvre :
   `T-BI-ARCHIVE-SUCCESS`.
-- [ ] **T1.9** Gestion échec connexion/auth SFTP (exception domaine propre, journalisée). Dépend
+- [x] **T1.9** Gestion échec connexion/auth SFTP (exception domaine propre, journalisée). Dépend
   de : T1.1. Couvre : `T-BI-SFTP-CONN-FAILURE`.
-- [ ] **T1.10** Adaptateur SSHJ réel de `SftpClientPort` (utilisé seulement en prod ; les tests
+- [x] **T1.10** Adaptateur SSHJ réel de `SftpClientPort` (utilisé seulement en prod ; les tests
   ci-dessus utilisent un mock/faux du port). Dépend de : T1.1, T0.2.
 
 ### M2 — `BatchImportConnectorTriggerJob` (dépend de M1)

@@ -61,6 +61,71 @@ des connecteurs déjà livrés — aucun `ApplicationContext` cassé par le chan
 JDK 25 installé dans ce conteneur (JDK 21 seul présent par défaut, même limite déjà rencontrée et
 documentée lors de `connecteur-callback` TODO §53).
 
+## M1 — `BatchImportConnector` (clos, 2026-09-14)
+
+**Fichiers touchés :**
+
+- `domain/connector/model/SftpConnectionConfig.java`, `SftpConnectionException.java` (nouveaux).
+- `domain/connector/port/out/SftpClientPort.java` (nouveau port — `listFiles`/`download`/
+  `archive`, `RemoteFile` imbriqué avec `path`+`sizeBytes` pour la garde taille **avant**
+  téléchargement).
+- `infrastructure/connector/builtin/BatchImportConnector.java` (nouveau) — `ConnectorDefinition`
+  + `TriggerConnector`, capability `TRIGGER`.
+- `infrastructure/connector/sftp/SshjSftpClientAdapter.java` (nouveau) — adaptateur réel SSHJ.
+- `pom.xml` — `commons-csv` ajouté (parsing CSV robuste face aux champs cités/virgules ; un
+  splitter artisanal aurait été fragile, pas de compromis réel à trancher).
+- Tests : `BatchImportConnectorTest` (18 cas), `SshjSftpClientAdapterTest` (3 cas, échec de
+  connexion uniquement — pas de vrai serveur SSH, D-SFTP-TEST).
+
+**Simplification trouvée en TDD (T1.3) :** le design prévoyait une classe `TabularRowMapper`
+dédiée pour le mapping colonnes → champs. En écrivant le premier test, constat que
+`SimpleJsonPathMapper.read(item, path)` navigue déjà n'importe quel `Map`/`List` — convertir
+chaque ligne CSV/XLSX en `Map<String,Object>` (colonne → valeur) suffit pour réutiliser **le
+même** mapper injecté que `http-rest`, avec la même syntaxe `"$.colonne"`. Aucune nouvelle classe
+de mapping nécessaire.
+
+**Bug de conception réel trouvé et corrigé en TDD (isolation ligne invalide) :** la première
+version de `mapRows` copiait littéralement la logique de `HttpRestConnector.onEvent` — rejeter la
+ligne si `processKey` (après résolution du chemin de mapping + repli sur la valeur d'instance)
+est blanc. Écrit le test correspondant (ligne avec un chemin de processKey blanc), il **passait
+déjà sans isolation réelle** : `processKey` étant un champ obligatoire de l'instance
+(`validate()`), le repli sur la valeur d'instance réussit **toujours**, rendant cette branche
+d'erreur strictement inatteignable — un `ConnectorValidationException("processKey is required")`
+ne peut jamais être levé dans ce chemin. Root cause : la validation « champ requis » pertinente
+pour un import batch (D-BATCH-ERROR-HANDLING, requirements : « champ **mappé** requis manquant »)
+porte sur les **champs du dossier mappés** (`mapping.fields`), pas sur `processKey`/
+`dossierTypeCode` qui ont toujours un repli d'instance. Corrigé : une ligne est invalide si
+**une valeur de `mapping.fields` résout à `null`/blanc** (`hasBlankMappedField`) — testé avec 2
+colonnes pour éviter l'ambiguïté avec la ligne CSV vide (Commons CSV ignore les lignes
+entièrement vides par défaut, un piège pour un CSV à une seule colonne).
+
+**Découverte de sécurité réelle en écrivant l'adaptateur SSHJ (T1.10, hors planification
+initiale) :** `SSHClient` de SSHJ exige un `HostKeyVerifier` explicite — sans lui, la connexion
+échoue (SSHJ ne se connecte jamais « en silence » sans vérification, contrairement à d'autres
+clients SSH plus permissifs par défaut). Décision D-SFTP-HOSTKEY actée avec l'utilisateur : nouveau
+champ `sftpHostKeyFingerprint` (requis), vérifié via `SSHClient.addHostKeyVerifier(String)` à
+chaque connexion — API confirmée en lisant le jar réel (`javap` sur `sshj-0.39.0.jar`, pas
+supposée depuis la mémoire de formation), suivant la même discipline que la vérification de l'API
+Flowable réelle lors de `connecteur-callback` (TODO §51).
+
+**Autres points d'API SSHJ vérifiés avant d'écrire l'adaptateur (`javap`, pas supposés) :**
+`OpenSSHKeyFile.init(String privateKey, String publicKey, PasswordFinder)` accepte le contenu PEM
+directement (pas seulement un chemin de fichier) ; `RemoteFile.RemoteFileInputStream` est une
+classe interne **non statique** (`remoteFile.new RemoteFileInputStream()`, pas
+`new RemoteFile.RemoteFileInputStream(remoteFile)`) — première tentative en échec de compilation,
+corrigée immédiatement ; `SSHException` (base de `UserAuthException`/`TransportException`) étend
+`IOException`, donc un seul bloc `catch (IOException)` couvre connexion, authentification et
+erreurs SFTP.
+
+**Limite assumée, non corrigée ce cycle (documentée, pas contournée) :** une connexion SSH/SFTP
+séparée est ouverte pour chacun des 3 appels du port (`listFiles`/`download`/`archive`) plutôt que
+réutilisée sur tout un cycle `onEvent`. Comportement correct, coût de connexion répété acceptable
+pour un job cron s'exécutant au mieux toutes les quelques minutes — réutilisation de session
+possible en follow-up si le profil de performance l'exige.
+
+**Preuve fraîche :** `./mvnw test` sur `domain.connector.**`, `infrastructure.connector.**`,
+`infrastructure.config.**` → **228 tests, 0 échec** (régression M0 incluse).
+
 ## Development Setup
 
 - JDK 25 (`java.version` du `pom.xml`) — `apt-get install openjdk-25-jdk` si seul JDK 21 est

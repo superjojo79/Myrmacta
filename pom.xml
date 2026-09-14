@@ -28,6 +28,7 @@
         <!-- connecteurs-cible (lot B1) — batch-import : client SFTP + parseur Excel -->
         <sshj.version>0.39.0</sshj.version>
         <poi.version>5.4.1</poi.version>
+        <commons-csv.version>1.14.1</commons-csv.version>
         <!-- D-SDK=A (serveur-mcp) — Spring AI MCP server WebMVC starter, pas de starter chat/model -->
         <spring-ai.version>2.0.1</spring-ai.version>
         <skip.frontend>false</skip.frontend>
@@ -175,6 +176,14 @@
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>
             <version>${poi.version}</version>
+        </dependency>
+
+        <!-- connecteurs-cible (lot B1) — batch-import : parsing .csv robuste (champs cités, virgules
+             embarquées) — un splitter artisanal serait fragile, choix standard sans compromis réel -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-csv</artifactId>
+            <version>${commons-csv.version}</version>
         </dependency>
 
         <!-- Tests -->

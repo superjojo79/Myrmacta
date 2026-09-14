@@ -6,5 +6,7 @@ public enum ConfigFieldType {
     URL,
     INTEGER,
     BOOLEAN,
-    SELECT
+    SELECT,
+    /** Multi-line secret (e.g. a PEM private key) — {@link #PASSWORD} renders a single-line input. */
+    SECRET_TEXTAREA
 }

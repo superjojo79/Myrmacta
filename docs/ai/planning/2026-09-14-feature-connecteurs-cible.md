@@ -17,8 +17,10 @@ lot: B1
 
 ## Milestones
 
-- [ ] **M0** — Fondations partagées : `ConfigFieldType.SECRET_TEXTAREA` (domaine + frontend),
-  `ConnectorProperties.BatchImport`/`Kafka`, extension masquage/chiffrement secrets.
+- [x] **M0** — Fondations partagées : `ConfigFieldType.SECRET_TEXTAREA` (domaine + frontend),
+  `ConnectorProperties.BatchImport`/`Kafka`, extension masquage/chiffrement secrets. **Clos
+  2026-09-14** — `./mvnw test` régression connecteurs 465/465. Voir doc implementation pour le
+  bug réel trouvé et corrigé (second constructeur sur un record `@ConfigurationProperties`).
 - [ ] **M1** — `batch-import` : connecteur (validate/capability/mapping/gardes), tests unitaires.
 - [ ] **M2** — `batch-import` : job de déclenchement cron dédié + IT bout-en-bout.
 - [ ] **M3** — `kafka` : connecteur (validate/capability/mapping), tests unitaires.
@@ -31,21 +33,21 @@ lot: B1
 
 ## Task Breakdown
 
-### M0 — Fondations partagées (bloquant M1–M4)
+### M0 — Fondations partagées (bloquant M1–M4) — clos 2026-09-14
 
-- [ ] **T0.1** `ConfigFieldType.SECRET_TEXTAREA` — nouvelle valeur d'enum domaine.
+- [x] **T0.1** `ConfigFieldType.SECRET_TEXTAREA` — nouvelle valeur d'enum domaine.
   Dépend de : rien. Couvre : `T-CFT-SECRET-TEXTAREA`.
-- [ ] **T0.2** `pom.xml` — ajouter `com.hierynomus:sshj`, `org.apache.poi:poi-ooxml`,
+- [x] **T0.2** `pom.xml` — ajouter `com.hierynomus:sshj`, `org.apache.poi:poi-ooxml`,
   `spring-kafka` (versions alignées BOM Spring Boot du projet). Dépend de : rien.
-- [ ] **T0.3** `ConnectorProperties.BatchImport(maxFileBytes, maxRows)` et
+- [x] **T0.3** `ConnectorProperties.BatchImport(maxFileBytes, maxRows)` et
   `ConnectorProperties.Kafka(...)` avec défauts, même pattern que `Http`/`Webhook`. Dépend de :
   T0.1 non requis. Couvre : `T-PROPS-BATCH-DEFAULTS`, `T-PROPS-KAFKA-DEFAULTS`.
-- [ ] **T0.4** `ManageConnectorInstanceUseCaseImpl.isSecretKey` / `ConnectorCatalog.
+- [x] **T0.4** `ManageConnectorInstanceUseCaseImpl.isSecretKey` / `ConnectorCatalog.
   isPasswordField` — étendre pour traiter `SECRET_TEXTAREA` comme un type sensible (masquage
   lecture + préservation sur update), pas seulement `PASSWORD`. Dépend de : T0.1. Couvre :
   `T-SECRET-ISPASSWORDFIELD-KEY`, `T-SECRET-ISPASSWORDFIELD-PWD`, `T-SECRET-MASK-ROUNDTRIP`,
   `T-SECRET-UPDATE-PRESERVE`.
-- [ ] **T0.5** Vérifier `ConnectorSecretCipher`/l'adaptateur de persistance chiffre bien tout champ
+- [x] **T0.5** Vérifier `ConnectorSecretCipher`/l'adaptateur de persistance chiffre bien tout champ
   détecté sensible par T0.4 sans modification de code (déjà générique par construction — sinon,
   écart réel à documenter). Couvre : `T-SECRET-ENCRYPT-AT-REST`.
 - [ ] **T0.6** IT round-trip complet d'un secret `SECRET_TEXTAREA` : create (`sftpPrivateKey`) →

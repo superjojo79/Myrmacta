@@ -4,7 +4,13 @@ import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "app.connector")
-public record ConnectorProperties(Crypto crypto, Webhook webhook, Http http, DocumentStorage documentStorage) {
+public record ConnectorProperties(
+        Crypto crypto,
+        Webhook webhook,
+        Http http,
+        DocumentStorage documentStorage,
+        BatchImport batchImport,
+        Kafka kafka) {
 
     public ConnectorProperties {
         if (crypto == null) {
@@ -18,6 +24,12 @@ public record ConnectorProperties(Crypto crypto, Webhook webhook, Http http, Doc
         }
         if (documentStorage == null) {
             documentStorage = new DocumentStorage(5_242_880L);
+        }
+        if (batchImport == null) {
+            batchImport = new BatchImport(10_485_760L, 50_000);
+        }
+        if (kafka == null) {
+            kafka = new Kafka(Duration.ofSeconds(5));
         }
     }
 
@@ -70,6 +82,31 @@ public record ConnectorProperties(Crypto crypto, Webhook webhook, Http http, Doc
         public DocumentStorage {
             if (maxContentSize <= 0) {
                 maxContentSize = 5_242_880L;
+            }
+        }
+    }
+
+    /**
+     * @param maxFileBytes bound on a single downloaded file, same DoS-prevention pattern as
+     *     {@link Http#maxResponseBytes()} (D-BATCH-SIZE-LIMIT, connecteurs-cible) — a file
+     *     exceeding this is rejected before parsing, never buffered whole regardless.
+     * @param maxRows bound on the number of data rows parsed from one file, same rationale.
+     */
+    public record BatchImport(long maxFileBytes, int maxRows) {
+        public BatchImport {
+            if (maxFileBytes <= 0) {
+                maxFileBytes = 10_485_760L;
+            }
+            if (maxRows <= 0) {
+                maxRows = 50_000;
+            }
+        }
+    }
+
+    public record Kafka(Duration consumerPollTimeout) {
+        public Kafka {
+            if (consumerPollTimeout == null) {
+                consumerPollTimeout = Duration.ofSeconds(5);
             }
         }
     }

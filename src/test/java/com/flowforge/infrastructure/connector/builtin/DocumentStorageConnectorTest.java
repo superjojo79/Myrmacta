@@ -25,7 +25,8 @@ class DocumentStorageConnectorTest {
 
     private static final ConnectorInstanceData INSTANCE = new ConnectorInstanceData(
             UUID.randomUUID(), "tenant_dev", "Storage smoke", "document-storage", true, Map.of());
-    private static final ConnectorProperties DEFAULT_PROPERTIES = new ConnectorProperties(null, null, null, null);
+    private static final ConnectorProperties DEFAULT_PROPERTIES =
+            new ConnectorProperties(null, null, null, null, null, null);
 
     private DocumentStoragePort storagePort;
     private DocumentStorageConnector connector;
@@ -103,7 +104,7 @@ class DocumentStorageConnectorTest {
     @Test
     void execute_storeExceedingMaxContentSize_throwsWithoutCallingPort() {
         ConnectorProperties smallLimit = new ConnectorProperties(
-                null, null, null, new ConnectorProperties.DocumentStorage(4L));
+                null, null, null, new ConnectorProperties.DocumentStorage(4L), null, null);
         connector = new DocumentStorageConnector(storagePort, smallLimit);
         String content = Base64.getEncoder().encodeToString("hello".getBytes(StandardCharsets.UTF_8));
 
@@ -118,7 +119,7 @@ class DocumentStorageConnectorTest {
     @Test
     void execute_storeEncodedPayloadLargerThanCap_throwsWithoutCallingPort() {
         ConnectorProperties smallLimit = new ConnectorProperties(
-                null, null, null, new ConnectorProperties.DocumentStorage(4L));
+                null, null, null, new ConnectorProperties.DocumentStorage(4L), null, null);
         connector = new DocumentStorageConnector(storagePort, smallLimit);
 
         assertThatThrownBy(() -> connector.execute(
@@ -139,7 +140,7 @@ class DocumentStorageConnectorTest {
     @Test
     void execute_retrieveExceedingMaxContentSize_throws() {
         ConnectorProperties smallLimit = new ConnectorProperties(
-                null, null, null, new ConnectorProperties.DocumentStorage(4L));
+                null, null, null, new ConnectorProperties.DocumentStorage(4L), null, null);
         connector = new DocumentStorageConnector(storagePort, smallLimit);
         when(storagePort.retrieve("tenant_dev", "tenant_dev/abc123")).thenReturn(new byte[10]);
 

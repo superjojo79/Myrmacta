@@ -25,7 +25,7 @@ lot: B1
 - [x] **M2** — `batch-import` : job de déclenchement cron dédié + IT bout-en-bout. **Clos 2026-09-14** — 8 tests job + 1 IT bout-en-bout réel, 237/237 en régression complète.
 - [x] **M3** — `kafka` : connecteur (validate/capability/mapping), tests unitaires. **Clos 2026-09-14** — 11 tests, même correction hasBlankMappedField que batch-import.
 - [x] **M4** — `kafka` : reconciliateur de cycle de vie des consumers + IT bout-en-bout. **Clos 2026-09-14** — 11 tests réconciliateur + 3 tests construction props + 1 IT bout-en-bout réel.
-- [ ] **M5** — `docker-compose.yml` (service Kafka) + doc catalogue connecteurs.
+- [x] **M5** — `docker-compose.yml` (service Kafka) + doc catalogue connecteurs. **Clos 2026-09-14** — `docker compose config` validé (syntaxe correcte) ; `docker compose up` non exécutable dans ce bac à sable (aucun daemon Docker, même limite qu'A1).
 - [ ] **M6** — Frontend : `ConnectorConfigForm.vue` (`SECRET_TEXTAREA`) + Vitest + Playwright.
 - [ ] **M7** — Vérification globale (Phase 7-8), comblement de trous de couverture Jacoco.
 - [ ] **M8** — Revue holistique (Phase 9), docs projet (`06-connecteurs.md`,
@@ -126,10 +126,10 @@ lot: B1
 
 ### M5 — Infra & doc catalogue (dépend de M2 + M4 pour la doc, indépendant pour Compose)
 
-- [ ] **T5.1** `docker-compose.yml` : service Kafka (image KRaft, sans Zookeeper). Dépend de :
+- [x] **T5.1** `docker-compose.yml` : service Kafka (image KRaft, sans Zookeeper). Dépend de :
   rien (peut démarrer tôt). Validation : `docker compose config`.
-- [ ] **T5.2** `GETTING-STARTED.md` mis à jour si le démarrage local change. Dépend de : T5.1.
-- [ ] **T5.3** `06-connecteurs.md` / `GUIDE-CONCEPTION-BPMN.md` : catalogue + exemples de mapping
+- [x] **T5.2** `GETTING-STARTED.md` mis à jour si le démarrage local change. Dépend de : T5.1.
+- [x] **T5.3** `06-connecteurs.md` / `GUIDE-CONCEPTION-BPMN.md` : catalogue + exemples de mapping
   pour `batch-import`/`kafka`. Dépend de : M2, M4 (comportement final connu).
 
 ### M6 — Frontend (indépendant de M1–M5, dépend de M0.T0.1)

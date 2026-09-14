@@ -209,6 +209,12 @@ Linux (Docker Engine ou Podman rootless) ; sous macOS/Windows Docker Desktop, `n
 exige d'activer *Host networking* (Docker Desktop ≥ 4.34) — à défaut, se contenter de
 `curl http://127.0.0.1:8090/actuator/prometheus` sans ce conteneur.
 
+**Connecteur `kafka` (optionnel, connecteurs-cible lot B1).**
+`docker compose --profile kafka up -d` démarre un broker Kafka mono-nœud en mode KRaft (image
+officielle `apache/kafka`, pas de Zookeeper), joignable depuis l'application sur
+`localhost:${KAFKA_PORT:-9094}`. Sert uniquement à tester/démontrer le connecteur `kafka` en
+local — aucune dépendance du reste de l'application sur ce service.
+
 Test rapide sans frontend :
 
 ```bash

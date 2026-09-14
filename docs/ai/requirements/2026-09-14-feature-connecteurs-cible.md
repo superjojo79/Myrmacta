@@ -155,9 +155,12 @@ ne nécessite de modifier `ConnectorCatalog`, `ConnectorTriggerRuntimeImpl` ni
 - `docker-compose.yml` démarre un broker Kafka utilisable localement (`docker compose config`
   valide au minimum si `docker compose up` n'est pas exécutable dans ce bac à sable — même limite
   déjà documentée pour A1/Docker Hub).
-- `./mvnw verify` vert (Jacoco LINE ≥ 85 % / BRANCH ≥ 75 % tenus). Feature backend-only : Vitest en
-  régression seulement, Playwright non exigé (zéro fichier `frontend/**`, le formulaire admin A2
-  couvre déjà l'UI générique).
+- `./mvnw verify` vert (Jacoco LINE ≥ 85 % / BRANCH ≥ 75 % tenus). **Amendé en Phase 3** : la
+  feature n'est plus 100 % backend-only — `ConnectorConfigForm.vue` gagne le cas `SECRET_TEXTAREA`
+  (D-CONFIG-FIELD-SECRET-TEXTAREA). Vitest couvre ce nouveau cas ; Playwright reste **exigé** en
+  régression (composant partagé par tous les connecteurs déjà configurables en E2E) **plus** un
+  nouveau scénario bout-en-bout (configurer une instance `batch-import` avec `sftpAuthType=
+  PRIVATE_KEY` via l'écran Admin → Connecteurs).
 - `06-connecteurs.md` / `GUIDE-CONCEPTION-BPMN.md` mis à jour (catalogue, exemples de mapping).
 
 ## Constraints & Assumptions

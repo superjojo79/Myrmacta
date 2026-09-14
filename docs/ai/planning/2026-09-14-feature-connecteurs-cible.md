@@ -50,7 +50,7 @@ lot: B1
 - [x] **T0.5** Vérifier `ConnectorSecretCipher`/l'adaptateur de persistance chiffre bien tout champ
   détecté sensible par T0.4 sans modification de code (déjà générique par construction — sinon,
   écart réel à documenter). Couvre : `T-SECRET-ENCRYPT-AT-REST`.
-- [ ] **T0.6** IT round-trip complet d'un secret `SECRET_TEXTAREA` : create (`sftpPrivateKey`) →
+- [x] **T0.6** IT round-trip complet d'un secret `SECRET_TEXTAREA` : create (`sftpPrivateKey`) →
   get (masqué) → update (masque préservé) → valeur déchiffrée utilisée par le connecteur à
   l'exécution. Dépend de : T0.4, T1.2 (nécessite le connecteur `batch-import` enregistré pour
   avoir un champ `SECRET_TEXTAREA` réel à exercer) — exécuté après M1, pas bloquant pour la suite

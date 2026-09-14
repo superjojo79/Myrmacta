@@ -126,6 +126,16 @@ possible en follow-up si le profil de performance l'exige.
 **Preuve fraîche :** `./mvnw test` sur `domain.connector.**`, `infrastructure.connector.**`,
 `infrastructure.config.**` → **228 tests, 0 échec** (régression M0 incluse).
 
+## T0.6 — round-trip secret complet (clos après M1, 2026-09-14)
+
+`ConnectorPersistenceIT` (déjà existant pour `webhookSecret`/`PASSWORD`) étendu d'un cas
+`sftpPrivateKey`/`SECRET_TEXTAREA` : `@SpringBootTest` réel (contexte complet, PostgreSQL +
+Flowable démarrés, `BatchImportConnector` auto-enregistré via `ConnectorRegistry`), preuve que
+l'extension `ConnectorCatalog.isPasswordField` de M0 (T0.4) fonctionne bout en bout — pas
+seulement au niveau unitaire de `ManageConnectorInstanceUseCaseImpl`. Colonne DB brute vérifiée
+`enc:v1:` présent, PEM en clair absent ; relecture décrypte correctement. `./mvnw test
+-Dtest=ConnectorPersistenceIT` : 5/5 (1 nouveau + 4 existants inchangés).
+
 ## M2 — `BatchImportConnectorTriggerJob` (clos, 2026-09-14)
 
 **Fichiers touchés :**

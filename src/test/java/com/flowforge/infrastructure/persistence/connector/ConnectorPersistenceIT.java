@@ -58,6 +58,48 @@ class ConnectorPersistenceIT {
     }
 
     @Test
+    void save_encryptsSecretTextareaFieldAtRest_andDecryptsOnLoad() {
+        // connecteurs-cible (lot B1), IT-SECRET-FULL-ROUNDTRIP (T0.6) : ConfigFieldType.
+        // SECRET_TEXTAREA (sftpPrivateKey) doit être traité comme sensible de bout en bout, pas
+        // seulement PASSWORD — même round-trip que webhookSecret ci-dessus, sur un vrai contexte
+        // Spring (ConnectorRegistry réel avec BatchImportConnector auto-enregistré).
+        UUID id = UUID.randomUUID();
+        String privateKey = "-----BEGIN OPENSSH PRIVATE KEY-----\nabc123\n-----END OPENSSH PRIVATE KEY-----";
+        var saved = instances.save(new ConnectorInstanceData(
+                id,
+                "tenant_dev",
+                "Batch " + id,
+                "batch-import",
+                true,
+                Map.ofEntries(
+                        Map.entry("sftpHost", "sftp.example.com"),
+                        Map.entry("sftpUsername", "flowforge"),
+                        Map.entry("sftpAuthType", "PRIVATE_KEY"),
+                        Map.entry("sftpPrivateKey", privateKey),
+                        Map.entry("sftpHostKeyFingerprint", "SHA256:abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG"),
+                        Map.entry("remoteDirectory", "/in"),
+                        Map.entry("filenamePattern", "*.csv"),
+                        Map.entry("archiveDirectory", "/archive"),
+                        Map.entry("cronExpression", "0 0 * * * *"),
+                        Map.entry("processKey", "importProcess"),
+                        Map.entry("dossierTypeCode", "IMPORT"))));
+
+        assertThat(saved.config().get("sftpPrivateKey")).isEqualTo(privateKey);
+
+        String rawConfig = jdbc.queryForObject(
+                "SELECT cast(config as varchar) FROM connector_instance WHERE id = ?",
+                String.class,
+                id);
+        assertThat(rawConfig).contains("enc:v1:");
+        assertThat(rawConfig).doesNotContain("BEGIN OPENSSH PRIVATE KEY");
+
+        assertThat(instances.findByIdAndTenantId(id, "tenant_dev"))
+                .get()
+                .extracting(data -> data.config().get("sftpPrivateKey"))
+                .isEqualTo(privateKey);
+    }
+
+    @Test
     void softDelete_hidesFromFindAndList_butIncludingDeletedStillFinds() {
         UUID id = UUID.randomUUID();
         instances.save(new ConnectorInstanceData(

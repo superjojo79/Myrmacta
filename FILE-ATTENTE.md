@@ -10,6 +10,19 @@
 >   (rétention / purge / sensible — **livré**) ; revue post-implémentation 2026-08-25 :
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
+> **2026-09-14 (plus tard)** — Revue de `ROADMAP.md` v1.1 : les 8 items marqués « Produit, pas
+> cadré » (portail externe, signature électronique, inbox notifications, alerting SLA, dashboard
+> widgets, export BI, `evaluate_decision` MCP, historique/rollback DMN) reçoivent chacun une
+> **analyse initiale** écrite, regroupés par cohérence technique/thématique en **4 documents** :
+> [26-portail-externe-signature.md](analysis%20doc/26-portail-externe-signature.md) (3.1 + 2.4),
+> [27-notifications-inbox.md](analysis%20doc/27-notifications-inbox.md) (3.2),
+> [28-outillage-dmn.md](analysis%20doc/28-outillage-dmn.md) (1.1 + 1.2 + 1.3/5.1),
+> [29-enrichissement-reporting.md](analysis%20doc/29-enrichissement-reporting.md) (5.2 + 3.3 + 5.3).
+> ClamAV (Vague C) et A4 headers HTTP globaux **ne sont pas concernés** — déjà scopés avec
+> propriétaire/dépendances connus, pas besoin de cadrage produit. **Aucune décision de priorité
+> n'est prise ici** : ces 4 items restent en *Gaps réels hors Vague B* (`ROADMAP.md`), à ne
+> démarrer qu'après B1 (et C si concerné), chacun via son propre cycle Phase 1 → 9.
+>
 > **Dernière mise à jour :** 2026-09-14 — Vague A confirmée **intégralement livrée** :
 > **A1** (`provisioning-tenant`, [PR #119](https://github.com/superjojo79/FlowForge/pull/119)),
 > **A2** (`admin-connector-form-schema`, [PR #117](https://github.com/superjojo79/FlowForge/pull/117))
@@ -326,6 +339,19 @@ Enchaînements interdits même après A :
 | Lot | Notes |
 |---|---|
 | Adaptateur AV (ClamAV) | Port `AttachmentScanPort` + `NoOpAttachmentScanAdapter` déjà livrés (S-6). Adapter réel + Compose — **propriétaire Compose = A1 d’abord** |
+
+### Backlog produit — analyses initiales disponibles (non cadré, pas de priorité tranchée)
+
+Écarts réels du `ROADMAP.md` § *Gaps réels hors Vague B*, catégorie « Produit, pas cadré ».
+**Ne pas démarrer avant B1** (et Vague C si ClamAV est en cours). Chaque lot reste soumis à
+Phase 1 → 9 complet — l'analyse initiale ne tranche aucune décision technique.
+
+| Lot | Items `ROADMAP.md` | Analyse initiale |
+|---|---|---|
+| Portail externe & signature | 3.1 (Portail externe tokenisé) + 2.4 (Signature électronique) | [26-portail-externe-signature.md](analysis%20doc/26-portail-externe-signature.md) |
+| Inbox notifications | 3.2 (Notification Inbox persistée) | [27-notifications-inbox.md](analysis%20doc/27-notifications-inbox.md) |
+| Outillage DMN | 1.1 (`evaluate_decision` MCP) + 1.2 (`TestDecisionTool`) + 1.3/5.1 (historique/rollback) | [28-outillage-dmn.md](analysis%20doc/28-outillage-dmn.md) |
+| Enrichissement reporting | 5.2 (Alerting SLA) + 3.3 (Dashboard widgets) + 5.3 (Export BI) | [29-enrichissement-reporting.md](analysis%20doc/29-enrichissement-reporting.md) |
 
 ### Ne pas lancer (décision V1 contraire ou stack absente)
 

@@ -40,6 +40,10 @@
 | 23 | Questions/choix utilisateur indépendants du dossier (nouveau kind `user-question`) — **livré** (TODO §55) | [23-questions-utilisateur-taches.md](23-questions-utilisateur-taches.md) |
 | 24 | Extension du serveur MCP (connecteurs, association templates, questions de tâche) — analyse initiale | [24-extension-mcp-flux-metier.md](24-extension-mcp-flux-metier.md) |
 | 25 | Introduction de DMN — tables de décision, moteur + éditeur intégrés — **livré** (TODO §61) | [25-introduction-dmn.md](25-introduction-dmn.md) |
+| 26 | Portail externe tokenisé & signature électronique — analyse initiale | [26-portail-externe-signature.md](26-portail-externe-signature.md) |
+| 27 | Inbox de notifications persistée — analyse initiale | [27-notifications-inbox.md](27-notifications-inbox.md) |
+| 28 | Outillage DMN — évaluation ad hoc, historique/rollback, tests — analyse initiale | [28-outillage-dmn.md](28-outillage-dmn.md) |
+| 29 | Enrichissement du reporting — alerting SLA, dashboard, export BI — analyse initiale | [29-enrichissement-reporting.md](29-enrichissement-reporting.md) |
 
 > Pour concevoir concrètement un diagramme BPMN pour FlowForge (conventions, référence des
 > `serviceTask` disponibles, champs dynamiques, connecteurs, intervenants, génération de

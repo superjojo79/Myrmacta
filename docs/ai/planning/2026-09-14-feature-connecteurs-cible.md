@@ -22,7 +22,7 @@ lot: B1
   2026-09-14** — `./mvnw test` régression connecteurs 465/465. Voir doc implementation pour le
   bug réel trouvé et corrigé (second constructeur sur un record `@ConfigurationProperties`).
 - [x] **M1** — `batch-import` : connecteur (validate/capability/mapping/gardes), tests unitaires. **Clos 2026-09-14** — 18 tests connecteur + 3 tests adaptateur SSHJ, 228/228 en régression complète. Nouvelle décision D-SFTP-HOSTKEY trouvée en cours (voir doc requirements).
-- [ ] **M2** — `batch-import` : job de déclenchement cron dédié + IT bout-en-bout.
+- [x] **M2** — `batch-import` : job de déclenchement cron dédié + IT bout-en-bout. **Clos 2026-09-14** — 8 tests job + 1 IT bout-en-bout réel, 237/237 en régression complète.
 - [ ] **M3** — `kafka` : connecteur (validate/capability/mapping), tests unitaires.
 - [ ] **M4** — `kafka` : reconciliateur de cycle de vie des consumers + IT bout-en-bout.
 - [ ] **M5** — `docker-compose.yml` (service Kafka) + doc catalogue connecteurs.
@@ -86,15 +86,15 @@ lot: B1
 
 ### M2 — `BatchImportConnectorTriggerJob` (dépend de M1)
 
-- [ ] **T2.1** Job dédié, copie filtrée du pattern `SchedulerConnectorTriggerJob` (type
+- [x] **T2.1** Job dédié, copie filtrée du pattern `SchedulerConnectorTriggerJob` (type
   `"batch-import"`, réutilise `ConnectorScheduleStateRepository` tel quel). Dépend de : M1.
   Couvre : `T-BIJ-DUE`, `T-BIJ-NOT-DUE`, `T-BIJ-DISABLED`, `T-BIJ-OTHER-TYPES-IGNORED`,
   `T-BIJ-FIRST-FIRE`, `T-BIJ-SCHEDULE-STATE-SHARED`.
-- [ ] **T2.2** Isolation par instance au sein d'un même poll (une instance en échec n'empêche pas
+- [x] **T2.2** Isolation par instance au sein d'un même poll (une instance en échec n'empêche pas
   les autres). Dépend de : T2.1. Couvre : `T-BIJ-ONE-INSTANCE-FAILS`.
-- [ ] **T2.3** IT bout-en-bout `batch-import` (SFTP mocké → dossiers réellement créés/lisibles).
+- [x] **T2.3** IT bout-en-bout `batch-import` (SFTP mocké → dossiers réellement créés/lisibles).
   Dépend de : T2.1, T1.*. Couvre : `IT-BI-END-TO-END`.
-- [ ] **T2.4** Garde de régression : suite `SchedulerConnectorTriggerJobTest` existante inchangée
+- [x] **T2.4** Garde de régression : suite `SchedulerConnectorTriggerJobTest` existante inchangée
   et verte. Dépend de : T2.1. Couvre : `T-REG-SCHEDULER-UNCHANGED`.
 
 ### M3 — `KafkaConnector` (dépend de M0, indépendant de M1/M2)

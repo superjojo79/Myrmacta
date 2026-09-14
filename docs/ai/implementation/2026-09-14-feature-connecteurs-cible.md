@@ -126,6 +126,28 @@ possible en follow-up si le profil de performance l'exige.
 **Preuve fraîche :** `./mvnw test` sur `domain.connector.**`, `infrastructure.connector.**`,
 `infrastructure.config.**` → **228 tests, 0 échec** (régression M0 incluse).
 
+## M2 — `BatchImportConnectorTriggerJob` (clos, 2026-09-14)
+
+**Fichiers touchés :**
+
+- `infrastructure/connector/BatchImportConnectorTriggerJob.java` (nouveau) — copie filtrée de
+  `SchedulerConnectorTriggerJob` (poll `@Scheduled`, type `"batch-import"`), réutilise
+  `ConnectorScheduleStateRepository` sans modification.
+- Tests : `BatchImportConnectorTriggerJobTest` (8 cas), `BatchImportEndToEndIT` (1 cas — chaîne
+  réelle `BatchImportConnectorTriggerJob` → `ConnectorTriggerRuntimeImpl` réel →
+  `CreateDossierUseCase`/`GetDossierUseCase` en mémoire, seul `SftpClientPort` est un faux).
+
+**Divergence délibérée par rapport au pattern copié (T-BIJ-ONE-INSTANCE-FAILS) :**
+`SchedulerConnectorTriggerJob.process(...)` n'isole **pas** ses instances aujourd'hui — une
+exception sur une instance interrompt la boucle entière pour ce poll (lu dans le code existant,
+pas supposé). Le nouveau job ajoute un `try/catch(RuntimeException)` par instance (log + poursuite)
+car le testing doc l'exige explicitement pour `batch-import` (une panne SFTP sur une instance ne
+doit pas priver les autres instances du même tenant de leur import ce cycle-ci). `scheduler` reste
+inchangé (D-BATCH-CRON-JOB : job dédié précisément pour ne pas y toucher) — cette amélioration
+n'est **pas** rétroportée sur `scheduler`, documentée ici comme écart connu entre les deux jobs.
+
+**Preuve fraîche :** `./mvnw test` sur les packages connecteurs → **237 tests, 0 échec**.
+
 ## Development Setup
 
 - JDK 25 (`java.version` du `pom.xml`) — `apt-get install openjdk-25-jdk` si seul JDK 21 est

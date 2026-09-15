@@ -213,6 +213,10 @@
                                 <format>HTML</format>
                                 <format>JSON</format>
                             </formats>
+                            <!-- Requise par l'API NVD depuis fin 2023 (sans clé : quota quasi nul,
+                                 échec immédiat "Invalid API Key"). Fournie via la variable d'env
+                                 NVD_API_KEY (secret GitHub Actions), jamais commitée en clair. -->
+                            <nvdApiKey>${env.NVD_API_KEY}</nvdApiKey>
                         </configuration>
                         <executions>
                             <execution>

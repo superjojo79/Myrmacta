@@ -24,6 +24,11 @@ jobs:
           cache: maven
 
       - name: OWASP Dependency-Check (fails this job on CVSS >= 9)
+        env:
+          # Requise par l'API NVD (nvd.nist.gov) depuis fin 2023 — sans clé, le job échoue avec
+          # "Invalid API Key". À créer sur https://nvd.nist.gov/developers/request-an-api-key
+          # et à stocker comme secret de repo/organisation nommé NVD_API_KEY.
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
         run: ./mvnw -B -Psecurity-scan -Dskip.frontend=true -DskipTests verify
 
       - name: Upload report

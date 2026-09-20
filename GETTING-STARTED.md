@@ -320,6 +320,37 @@ allowlist de `client_id`/`sub` — à renseigner avant d'ouvrir `/api/m2m/mcp` �
 
 ------
 
+## 13. Scan antivirus des pièces jointes (optionnel)
+
+Par défaut (`APP_DOSSIER_ATTACHMENT_SCAN_TYPE=noop`, `.env.example`), les pièces jointes
+(`POST /api/dossiers/{id}/elements/attachment`) ne sont pas scannées — comportement inchangé
+depuis toujours. Pour activer un scan réel via [ClamAV](https://www.clamav.net/) :
+
+```bash
+docker compose --profile clamav up -d
+```
+
+Le démarrage est **lent** (plusieurs minutes) : `clamd` télécharge sa base de signatures
+virales avant d'accepter des connexions — le `healthcheck` du service attend ce chargement.
+Puis, dans `.env` :
+
+```bash
+APP_DOSSIER_ATTACHMENT_SCAN_TYPE=clamav
+APP_DOSSIER_ATTACHMENT_SCAN_CLAMAV_HOST=localhost
+APP_DOSSIER_ATTACHMENT_SCAN_CLAMAV_PORT=3310
+```
+
+puis recharger les variables dans le shell (§3) avant de (re)lancer le backend. Pour vérifier
+que le scan fonctionne, téléverser le
+[fichier de test EICAR](https://www.eicar.org/download-anti-malware-testfile/) (une chaîne de
+test standard, pas un vrai virus) comme pièce jointe : il doit être rejeté.
+
+Si `clamd` n'est pas joignable (profil non démarré, arrêté, etc.) alors que le scan est activé,
+l'upload reste **accepté** (fail-open assumé — voir [DEPLOIEMENT.md § ClamAV](DEPLOIEMENT.md#8-scan-antivirus-des-pièces-jointes-clamav)
+pour le détail de ce compromis) — ce n'est pas une panne bloquante en local.
+
+------
+
 ## Pour aller plus loin
 
 - Déploiement au-delà de ce guide (reverse-proxy, provisioning tenant, comptes Keycloak) : [DEPLOIEMENT.md](DEPLOIEMENT.md)

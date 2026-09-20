@@ -17,6 +17,10 @@
 #
 # Avec Kafka (pour tester/démontrer le connecteur `kafka`, connecteurs-cible lot B1) :
 #   docker compose --profile kafka up -d
+#
+# Avec ClamAV (pour activer le scan antivirus réel des pièces jointes, lot C — voir
+# DEPLOIEMENT.md § ClamAV ; nécessite aussi APP_DOSSIER_ATTACHMENT_SCAN_TYPE=clamav) :
+#   docker compose --profile clamav up -d
 
 services:
   postgres:
@@ -157,6 +161,32 @@ services:
     volumes:
       - kafka_data:/var/lib/kafka/data
 
+  # --- Antivirus — scan réel des pièces jointes (lot C, D-AV-CLAMAV-TOPO : service mutualisé,
+  # pas un sidecar par tenant), dev/démo local uniquement (D-AV-CLAMAV-PROD-TOPO : en prod,
+  # clamd est un service externe déjà provisionné, même modèle que PostgreSQL/Keycloak) ---
+
+  clamav:
+    # Image officielle Cisco Talos, tag épingle (D-AV-CLAMAV-IMAGE) — pas `latest`, cohérent
+    # avec postgres/keycloak/kafka ci-dessus. Chemin de montage clamd.conf non vérifié contre un
+    # conteneur réel dans ce cycle (démon Docker absent du bac à sable) — voir
+    # docker/clamav/clamd.conf pour le détail de cette limite assumée.
+    image: clamav/clamav:1.4
+    profiles: ["clamav"]
+    volumes:
+      - ./docker/clamav/clamd.conf:/etc/clamav/clamd.conf:ro
+      - clamav_data:/var/lib/clamav
+    ports:
+      - "${CLAMAV_PORT:-3310}:3310"
+    healthcheck:
+      test: ["CMD-SHELL", "echo PING | timeout 5 bash -c 'cat < /dev/null > /dev/tcp/127.0.0.1/3310' || exit 1"]
+      # Chargement initial des définitions virales par freshclam avant que clamd n'accepte des
+      # connexions — plus long qu'un healthcheck applicatif classique (D-AV-CLAMAV-FRESHCLAM :
+      # mécanisme natif de l'image, pas de job séparé).
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 5m
+
   # --- Observabilité — scrape local de /actuator/prometheus, exposé par le backend ---
 
   prometheus:
@@ -187,3 +217,4 @@ volumes:
   seaweedfs_data:
   prometheus_data:
   kafka_data:
+  clamav_data:

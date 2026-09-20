@@ -1917,10 +1917,21 @@ enregistrés (6 déjà livrés + `batch-import` + `kafka`), premier jet écrit �
 LINE/BRANCH tenus, `ArchitectureRulesTest` conforme (zéro import SSHJ/Spring Kafka/POI/Commons CSV
 dans `domain`). `*IT.java` du périmètre (ce dépôt n'a pas de plugin Failsafe, même limite déjà
 documentée §53) exécutées séparément : 10/10. Vitest 352/352, Playwright 72/72, typecheck/lint
-propres. **1 flake préexistant hors périmètre trouvé et non corrigé** (documenté, pas contourné) :
-`NotificationPersistenceIT.oldestPendingAndWebhookDeadCount` dépend de l'ordre d'exécution des
-méthodes de la classe — confirmé reproductible à l'identique sur `origin/main` nu (aucun fichier
-notification touché par ce cycle), donc hors périmètre.
+propres. **1 flake préexistant hors périmètre trouvé** (`NotificationPersistenceIT.
+oldestPendingAndWebhookDeadCount`, dépendant de l'ordre d'exécution des méthodes de la classe —
+confirmé reproductible à l'identique sur `origin/main` nu, aucun fichier notification touché par
+ce cycle) — **corrigé sur demande explicite ultérieure** (2026-09-20, hors cycle
+`connecteurs-cible`) : `oldestPendingCreatedAt()` est une lecture globale, pas par tenant
+(`findOldestCreatedAtByStatus` sans clause tenant), polluée par une ligne PENDING jamais nettoyée
+dans `outbox_savePendingBatch_persistsAllRows` ; les deux tests nettoient désormais leurs propres
+lignes et le test incriminé repart d'un état propre. Suite complète (`Test*` + `*IT.java`)
+confirmée verte à 2 reprises : 2040 tests, 0 échec. Au passage (même demande), 2 autres bugs de
+test sans rapport trouvés et corrigés : `EvaluateDossierRetentionUseCaseImplTest` (le use case
+lisait `Instant.now()` en interne au lieu de le recevoir en paramètre, contrairement au pattern
+déjà établi par `ProcessPurgeOutboxUseCase` — le test pariait sur un petit dérapage d'horloge qui
+a fini par dépasser la fenêtre de rétention de 30 jours avec le temps réel qui avance) et
+`DossierTest.toString_neverPrintsFieldValuesOrKeys` (un `UUID.randomUUID()` contenant
+occasionnellement par hasard la séquence de chiffres testée, remplacé par un UUID fixe).
 
 **Impacte :** `domain/connector/model/{ConfigFieldType,SftpConnectionConfig,
 SftpConnectionException}.java`, `domain/connector/port/out/{ConnectorCatalog,SftpClientPort}.java`,

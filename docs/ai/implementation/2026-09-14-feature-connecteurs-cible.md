@@ -261,15 +261,18 @@ sshj/spring-kafka/kafka-clients/poi/commons-csv dans `domain`).
 `OpenApiContractIT` (1/1), `ConnectorPersistenceIT` (5/5), `ConnectorSchemaIT` (2/2),
 `BatchImportEndToEndIT` (1/1), `KafkaEndToEndIT` (1/1) → **10/10, 0 échec**.
 
-**Préexistant hors périmètre, non corrigé ce cycle (documenté, pas contourné) :** en exécutant
-l'ensemble des `*IT.java` du dépôt (`-Dtest="*IT"`, 78 tests), **1 échec** trouvé dans
+**Préexistant hors périmètre, trouvé puis corrigé sur demande explicite (2026-09-20) :** en
+exécutant l'ensemble des `*IT.java` du dépôt (`-Dtest="*IT"`, 78 tests), **1 échec** trouvé dans
 `NotificationPersistenceIT.oldestPendingAndWebhookDeadCount` — dépendance à l'ordre d'exécution
 des méthodes de test au sein de la classe (une ligne `PENDING` créée par une méthode antérieure
 n'est jamais nettoyée, faussant `oldestPendingCreatedAt()` pour une méthode ultérieure si l'ordre
 JUnit5 — non garanti par défaut, aucun `@TestMethodOrder` déclaré — place l'une avant l'autre).
 Confirmé **non lié à ce cycle** : fichier jamais touché par cette branche (`git diff
 origin/main...HEAD` ne le liste pas) et reproduit à l'identique sur `origin/main` nu (vérifié via
-`git worktree add` sur `origin/main`, même échec exact). 3 tests par ailleurs `Skipped` dans ce
+`git worktree add` sur `origin/main`, même échec exact). **Corrigé ultérieurement** (demande
+explicite utilisateur) : voir TODO §62 (note ajoutée après coup) et le commit dédié — les deux
+tests responsables nettoient désormais leurs propres lignes `PENDING`, plus de dépendance à
+l'ordre d'exécution. 3 tests par ailleurs `Skipped` dans ce
 même run global (`SequentialReferenceMultiPodIT`, `TenantRoleIsolationIT`,
 `TenantSchemaIsolationIT`) — limite de bac à sable déjà connue (multi-pod/isolation nécessitant
 plusieurs instances), sans rapport avec `connecteurs-cible`. Ni l'un ni l'autre ne bloque ce
@@ -447,3 +450,10 @@ interne, en supposant un « petit dérapage d'horloge » qui a fini par dépasse
 rétention de 30 jours avec le temps réel qui avance — non touché par ce cycle, signalé pour
 information) : **1954 tests, 0 échec**, Jacoco « All coverage checks have been met », 10/10
 `*IT.java` du périmètre feature.
+
+**Mise à jour (2026-09-20, demande explicite utilisateur, hors cycle) :** les 3 bugs de test
+signalés « pour information » ci-dessus (`NotificationPersistenceIT`,
+`EvaluateDossierRetentionUseCaseImplTest`, et `DossierTest.toString_neverPrintsFieldValuesOrKeys`
+trouvé au passage) ont tous été corrigés. Détail dans TODO.md §62 et les commits dédiés. Suite
+complète (`Test*` + `*IT.java`) confirmée verte à 2 reprises consécutives sans aucune exclusion :
+**2040 tests, 0 échec.**

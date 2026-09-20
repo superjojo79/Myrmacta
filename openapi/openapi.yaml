@@ -3614,6 +3614,7 @@ components:
           - INTEGER
           - BOOLEAN
           - SELECT
+          - SECRET_TEXTAREA
         required:
           type: boolean
         defaultValue:

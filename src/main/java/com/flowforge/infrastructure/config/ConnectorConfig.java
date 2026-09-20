@@ -16,6 +16,7 @@ import com.flowforge.domain.dossier.port.in.GetDossierUseCase;
 import com.flowforge.domain.workflow.port.out.OutboxRepository;
 import com.flowforge.domain.workflow.port.out.WorkflowEnginePort;
 import java.net.http.HttpClient;
+import java.util.Map;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -43,8 +44,13 @@ public class ConnectorConfig {
     ManageConnectorInstanceUseCase manageConnectorInstanceUseCase(
             ConnectorInstanceRepository repository,
             ConnectorCatalog catalog,
-            TenantAdminGuard tenantAdminGuard) {
-        return new ManageConnectorInstanceUseCaseImpl(repository, catalog, tenantAdminGuard);
+            TenantAdminGuard tenantAdminGuard,
+            ConnectorProperties properties) {
+        return new ManageConnectorInstanceUseCaseImpl(
+                repository,
+                catalog,
+                tenantAdminGuard,
+                Map.of("kafka", properties.kafka().maxInstancesPerTenant()));
     }
 
     @Bean

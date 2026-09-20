@@ -4,6 +4,7 @@ import com.flowforge.domain.connector.model.ConfigField;
 import com.flowforge.domain.connector.model.ConnectorDefinition;
 import com.flowforge.domain.connector.model.ConnectorInstanceData;
 import com.flowforge.domain.connector.model.ConnectorInstanceNotFoundException;
+import com.flowforge.domain.connector.model.ConnectorInstanceQuotaExceededException;
 import com.flowforge.domain.connector.model.ConnectorValidationException;
 import com.flowforge.domain.connector.port.in.ManageConnectorInstanceUseCase;
 import com.flowforge.domain.connector.port.out.ConnectorCatalog;
@@ -36,12 +37,32 @@ public final class ManageConnectorInstanceUseCaseImpl implements ManageConnector
     private final ConnectorInstanceRepository repository;
     private final ConnectorCatalog catalog;
     private final TenantAdminGuard tenantAdminGuard;
+    private final Map<String, Integer> maxEnabledInstancesPerTenantByType;
 
     public ManageConnectorInstanceUseCaseImpl(
             ConnectorInstanceRepository repository, ConnectorCatalog catalog, TenantAdminGuard tenantAdminGuard) {
+        this(repository, catalog, tenantAdminGuard, Map.of());
+    }
+
+    /**
+     * @param maxEnabledInstancesPerTenantByType per-type ceiling on how many <em>enabled</em>
+     *     instances a tenant may have at once, keyed by {@code connectorType} — a type absent
+     *     from this map has no limit. Kept generic (no connector type ever hardcoded here, same
+     *     invariant as the rest of this class) — a specific type's limit is a wiring/config
+     *     concern for infrastructure, not this domain use case (found in adversarial review,
+     *     connecteurs-cible lot B1: an unbounded number of enabled {@code kafka} instances each
+     *     run a real consumer thread for the JVM's lifetime).
+     */
+    public ManageConnectorInstanceUseCaseImpl(
+            ConnectorInstanceRepository repository,
+            ConnectorCatalog catalog,
+            TenantAdminGuard tenantAdminGuard,
+            Map<String, Integer> maxEnabledInstancesPerTenantByType) {
         this.repository = Objects.requireNonNull(repository, "repository");
         this.catalog = Objects.requireNonNull(catalog, "catalog");
         this.tenantAdminGuard = Objects.requireNonNull(tenantAdminGuard, "tenantAdminGuard");
+        this.maxEnabledInstancesPerTenantByType =
+                Map.copyOf(Objects.requireNonNull(maxEnabledInstancesPerTenantByType, "maxEnabledInstancesPerTenantByType"));
     }
 
     @Override
@@ -57,6 +78,9 @@ public final class ManageConnectorInstanceUseCaseImpl implements ManageConnector
         Map<String, Object> config = command.config() == null ? Map.of() : command.config();
         definition.validate(config);
         assertKnownConfigKeys(definition, config);
+        if (command.enabled()) {
+            assertWithinQuota(command.tenantId(), command.connectorType(), null);
+        }
         ConnectorInstanceData data = new ConnectorInstanceData(
                 UUID.randomUUID(),
                 command.tenantId(),
@@ -87,6 +111,9 @@ public final class ManageConnectorInstanceUseCaseImpl implements ManageConnector
         ConnectorDefinition definition = catalog.get(existing.connectorType());
         definition.validate(merged);
         assertKnownConfigKeys(definition, merged);
+        if (enabled && !existing.enabled()) {
+            assertWithinQuota(existing.tenantId(), existing.connectorType(), existing.id());
+        }
 
         return repository.save(new ConnectorInstanceData(
                 existing.id(),
@@ -126,6 +153,7 @@ public final class ManageConnectorInstanceUseCaseImpl implements ManageConnector
         ConnectorInstanceData existing = repository
                 .findByIdAndTenantIdIncludingDeleted(id, tenantId)
                 .orElseThrow(() -> new ConnectorInstanceNotFoundException(id));
+        assertWithinQuota(existing.tenantId(), existing.connectorType(), existing.id());
         return repository.save(new ConnectorInstanceData(
                 existing.id(),
                 existing.tenantId(),
@@ -133,6 +161,30 @@ public final class ManageConnectorInstanceUseCaseImpl implements ManageConnector
                 existing.connectorType(),
                 true,
                 existing.config()));
+    }
+
+    /**
+     * @throws ConnectorInstanceQuotaExceededException if enabling one more instance of {@code
+     *     connectorType} would push the tenant's count of <em>enabled</em> instances of that type
+     *     past its configured limit (a type absent from {@code maxEnabledInstancesPerTenantByType}
+     *     has no limit). {@code excludingInstanceId} lets an already-counted instance (an update
+     *     or a restore) recheck the limit without double-counting itself.
+     */
+    private void assertWithinQuota(String tenantId, String connectorType, UUID excludingInstanceId) {
+        Integer max = maxEnabledInstancesPerTenantByType.get(connectorType);
+        if (max == null) {
+            return;
+        }
+        long enabledCount = repository.listByTenantId(tenantId).stream()
+                .filter(instance -> connectorType.equals(instance.connectorType()))
+                .filter(ConnectorInstanceData::enabled)
+                .filter(instance -> !instance.id().equals(excludingInstanceId))
+                .count();
+        if (enabledCount >= max) {
+            throw new ConnectorInstanceQuotaExceededException(
+                    "Tenant already has " + enabledCount + " enabled '" + connectorType
+                            + "' instance(s), the configured limit is " + max);
+        }
     }
 
     private Map<String, Object> mergeConfig(

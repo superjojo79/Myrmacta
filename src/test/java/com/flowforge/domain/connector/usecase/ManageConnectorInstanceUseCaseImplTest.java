@@ -13,6 +13,7 @@ import com.flowforge.domain.connector.model.ConfigFieldType;
 import com.flowforge.domain.connector.model.ConnectorDefinition;
 import com.flowforge.domain.connector.model.ConnectorInstanceData;
 import com.flowforge.domain.connector.model.ConnectorInstanceNotFoundException;
+import com.flowforge.domain.connector.model.ConnectorInstanceQuotaExceededException;
 import com.flowforge.domain.connector.model.ConnectorValidationException;
 import com.flowforge.domain.connector.port.in.ManageConnectorInstanceUseCase;
 import com.flowforge.domain.connector.port.out.ConnectorCatalog;
@@ -274,5 +275,120 @@ class ManageConnectorInstanceUseCaseImplTest {
     void softDelete_withoutRequiredRole_isDenied() {
         assertThatThrownBy(() -> useCase.softDelete(UUID.randomUUID(), "tenant_dev", NO_ROLE))
                 .isInstanceOf(AccessDeniedException.class);
+    }
+
+    // --- Quota d'instances activées par type (revue adversariale, connecteurs-cible lot B1) ---
+
+    private ManageConnectorInstanceUseCase quotaLimitedUseCase(int maxKafkaInstances) {
+        ConnectorDefinition kafkaDefinition = mock(ConnectorDefinition.class);
+        when(catalog.get("kafka")).thenReturn(kafkaDefinition);
+        when(kafkaDefinition.getConfigSchema()).thenReturn(List.of());
+        return new ManageConnectorInstanceUseCaseImpl(
+                repository, catalog, new TenantAdminGuard(), Map.of("kafka", maxKafkaInstances));
+    }
+
+    private static ConnectorInstanceData enabledKafkaInstance() {
+        return new ConnectorInstanceData(
+                UUID.randomUUID(), "tenant_dev", "Kafka " + UUID.randomUUID(), "kafka", true, Map.of());
+    }
+
+    @Test
+    void create_enabledInstance_withinQuota_succeeds() {
+        ManageConnectorInstanceUseCase limited = quotaLimitedUseCase(2);
+        when(repository.listByTenantId("tenant_dev")).thenReturn(List.of(enabledKafkaInstance()));
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ConnectorInstanceData created = limited.create(
+                new ManageConnectorInstanceUseCase.CreateCommand("tenant_dev", "Kafka 2", "kafka", true, Map.of()),
+                TENANT_ADMIN);
+
+        assertThat(created.enabled()).isTrue();
+    }
+
+    @Test
+    void create_enabledInstance_exceedingQuota_isRejected() {
+        ManageConnectorInstanceUseCase limited = quotaLimitedUseCase(1);
+        when(repository.listByTenantId("tenant_dev")).thenReturn(List.of(enabledKafkaInstance()));
+
+        assertThatThrownBy(() -> limited.create(
+                        new ManageConnectorInstanceUseCase.CreateCommand(
+                                "tenant_dev", "Kafka 2", "kafka", true, Map.of()),
+                        TENANT_ADMIN))
+                .isInstanceOf(ConnectorInstanceQuotaExceededException.class);
+    }
+
+    @Test
+    void create_disabledInstance_neverCheckedAgainstQuota_evenAtLimit() {
+        ManageConnectorInstanceUseCase limited = quotaLimitedUseCase(1);
+        when(repository.listByTenantId("tenant_dev")).thenReturn(List.of(enabledKafkaInstance()));
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ConnectorInstanceData created = limited.create(
+                new ManageConnectorInstanceUseCase.CreateCommand("tenant_dev", "Kafka 2", "kafka", false, Map.of()),
+                TENANT_ADMIN);
+
+        assertThat(created.enabled()).isFalse();
+    }
+
+    @Test
+    void create_typeWithoutConfiguredQuota_isUnaffectedByAnyLimit() {
+        ManageConnectorInstanceUseCase limited = quotaLimitedUseCase(1);
+        // http-rest has no entry in the quota map (only "kafka" does) — never checked.
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        Map<String, Object> config = Map.of("webhookAuthType", "HMAC_SHA256", "webhookSecret", "secret");
+
+        ConnectorInstanceData created = limited.create(
+                new ManageConnectorInstanceUseCase.CreateCommand("tenant_dev", "Webhook", "http-rest", true, config),
+                TENANT_ADMIN);
+
+        assertThat(created.enabled()).isTrue();
+        verify(repository, org.mockito.Mockito.never()).listByTenantId(any());
+    }
+
+    @Test
+    void update_reEnablingInstance_exceedingQuota_isRejected() {
+        ManageConnectorInstanceUseCase limited = quotaLimitedUseCase(1);
+        UUID id = UUID.randomUUID();
+        ConnectorInstanceData existing =
+                new ConnectorInstanceData(id, "tenant_dev", "Kafka disabled", "kafka", false, Map.of());
+        when(repository.findByIdAndTenantId(id, "tenant_dev")).thenReturn(Optional.of(existing));
+        when(repository.listByTenantId("tenant_dev")).thenReturn(List.of(enabledKafkaInstance()));
+
+        assertThatThrownBy(() -> limited.update(
+                        new ManageConnectorInstanceUseCase.UpdateCommand(
+                                id, "tenant_dev", null, true, null, false),
+                        TENANT_ADMIN))
+                .isInstanceOf(ConnectorInstanceQuotaExceededException.class);
+    }
+
+    @Test
+    void update_alreadyEnabledInstance_notRecheckedAgainstQuota() {
+        // Un changement (ex. renommage) sur une instance déjà activée ne doit pas être bloqué
+        // même si le tenant est par ailleurs au-dessus de la limite (ex. après son abaissement).
+        ManageConnectorInstanceUseCase limited = quotaLimitedUseCase(1);
+        UUID id = UUID.randomUUID();
+        ConnectorInstanceData existing = new ConnectorInstanceData(id, "tenant_dev", "Kafka", "kafka", true, Map.of());
+        when(repository.findByIdAndTenantId(id, "tenant_dev")).thenReturn(Optional.of(existing));
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ConnectorInstanceData updated = limited.update(
+                new ManageConnectorInstanceUseCase.UpdateCommand(id, "tenant_dev", "Renamed", true, null, false),
+                TENANT_ADMIN);
+
+        assertThat(updated.name()).isEqualTo("Renamed");
+        verify(repository, org.mockito.Mockito.never()).listByTenantId(any());
+    }
+
+    @Test
+    void restore_reEnablingInstance_exceedingQuota_isRejected() {
+        ManageConnectorInstanceUseCase limited = quotaLimitedUseCase(1);
+        UUID id = UUID.randomUUID();
+        ConnectorInstanceData deleted =
+                new ConnectorInstanceData(id, "tenant_dev", "Kafka deleted", "kafka", false, Map.of());
+        when(repository.findByIdAndTenantIdIncludingDeleted(id, "tenant_dev")).thenReturn(Optional.of(deleted));
+        when(repository.listByTenantId("tenant_dev")).thenReturn(List.of(enabledKafkaInstance()));
+
+        assertThatThrownBy(() -> limited.restore(id, "tenant_dev", TENANT_ADMIN))
+                .isInstanceOf(ConnectorInstanceQuotaExceededException.class);
     }
 }

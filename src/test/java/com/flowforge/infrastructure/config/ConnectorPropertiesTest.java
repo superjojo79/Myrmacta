@@ -9,7 +9,7 @@ class ConnectorPropertiesTest {
 
     @Test
     void defaults_matchDesignHardening() {
-        var props = new ConnectorProperties(null, null, null, null);
+        var props = new ConnectorProperties(null, null, null, null, null, null);
 
         assertThat(props.crypto().masterKey()).isNull();
         assertThat(props.webhook().maxBodyBytes()).isEqualTo(1_048_576L);
@@ -20,7 +20,7 @@ class ConnectorPropertiesTest {
 
     @Test
     void documentStorageDefaults_matchWebhookMaxBodyConvention() {
-        var props = new ConnectorProperties(null, null, null, null);
+        var props = new ConnectorProperties(null, null, null, null, null, null);
 
         assertThat(props.documentStorage().maxContentSize()).isEqualTo(5_242_880L);
     }
@@ -28,7 +28,7 @@ class ConnectorPropertiesTest {
     @Test
     void documentStorageCustomValue_isPreserved() {
         var props = new ConnectorProperties(
-                null, null, null, new ConnectorProperties.DocumentStorage(1_024L));
+                null, null, null, new ConnectorProperties.DocumentStorage(1_024L), null, null);
 
         assertThat(props.documentStorage().maxContentSize()).isEqualTo(1_024L);
     }
@@ -36,7 +36,7 @@ class ConnectorPropertiesTest {
     @Test
     void documentStorageNonPositiveValue_fallsBackToDefault() {
         var props = new ConnectorProperties(
-                null, null, null, new ConnectorProperties.DocumentStorage(0L));
+                null, null, null, new ConnectorProperties.DocumentStorage(0L), null, null);
 
         assertThat(props.documentStorage().maxContentSize()).isEqualTo(5_242_880L);
     }
@@ -47,6 +47,8 @@ class ConnectorPropertiesTest {
                 new ConnectorProperties.Crypto("dGVzdC1rZXktMzItYnl0ZXMtbG9uZyEh"),
                 new ConnectorProperties.Webhook(256_000L, 60, Duration.ofHours(6), 900),
                 new ConnectorProperties.Http(Duration.ofSeconds(2), Duration.ofSeconds(3), 1_024L),
+                null,
+                null,
                 null);
 
         assertThat(props.crypto().masterKey()).isEqualTo("dGVzdC1rZXktMzItYnl0ZXMtbG9uZyEh");
@@ -75,7 +77,7 @@ class ConnectorPropertiesTest {
 
     @Test
     void httpDefaults_matchNotificationWebhookConvention() {
-        var props = new ConnectorProperties(null, null, null, null);
+        var props = new ConnectorProperties(null, null, null, null, null, null);
 
         assertThat(props.http().connectTimeout()).isEqualTo(Duration.ofSeconds(5));
         assertThat(props.http().requestTimeout()).isEqualTo(Duration.ofSeconds(5));
@@ -85,7 +87,7 @@ class ConnectorPropertiesTest {
     @Test
     void httpPartialOverride_fillsMissingFieldWithDefault() {
         var props = new ConnectorProperties(
-                null, null, new ConnectorProperties.Http(Duration.ofSeconds(1), null, 0L), null);
+                null, null, new ConnectorProperties.Http(Duration.ofSeconds(1), null, 0L), null, null, null);
 
         assertThat(props.http().connectTimeout()).isEqualTo(Duration.ofSeconds(1));
         assertThat(props.http().requestTimeout()).isEqualTo(Duration.ofSeconds(5));
@@ -98,5 +100,56 @@ class ConnectorPropertiesTest {
         assertThat(http.connectTimeout()).isEqualTo(Duration.ofSeconds(5));
         assertThat(http.requestTimeout()).isEqualTo(Duration.ofSeconds(9));
         assertThat(http.maxResponseBytes()).isEqualTo(5_242_880L);
+    }
+
+    @Test
+    void batchImportDefaults_matchMaxResponseBytesConvention() {
+        var props = new ConnectorProperties(null, null, null, null, null, null);
+
+        assertThat(props.batchImport().maxFileBytes()).isEqualTo(10_485_760L);
+        assertThat(props.batchImport().maxRows()).isEqualTo(50_000);
+    }
+
+    @Test
+    void batchImportCustomValue_isPreserved() {
+        var props = new ConnectorProperties(
+                null, null, null, null, new ConnectorProperties.BatchImport(1_024L, 10), null);
+
+        assertThat(props.batchImport().maxFileBytes()).isEqualTo(1_024L);
+        assertThat(props.batchImport().maxRows()).isEqualTo(10);
+    }
+
+    @Test
+    void batchImportNonPositiveValue_fallsBackToDefault() {
+        var props = new ConnectorProperties(
+                null, null, null, null, new ConnectorProperties.BatchImport(0L, 0), null);
+
+        assertThat(props.batchImport().maxFileBytes()).isEqualTo(10_485_760L);
+        assertThat(props.batchImport().maxRows()).isEqualTo(50_000);
+    }
+
+    @Test
+    void kafkaDefaults_matchHttpTimeoutConvention() {
+        var props = new ConnectorProperties(null, null, null, null, null, null);
+
+        assertThat(props.kafka().consumerPollTimeout()).isEqualTo(Duration.ofSeconds(5));
+        assertThat(props.kafka().maxInstancesPerTenant()).isEqualTo(10);
+    }
+
+    @Test
+    void kafkaCustomValue_isPreserved() {
+        var props = new ConnectorProperties(
+                null, null, null, null, null, new ConnectorProperties.Kafka(Duration.ofSeconds(2), 3));
+
+        assertThat(props.kafka().consumerPollTimeout()).isEqualTo(Duration.ofSeconds(2));
+        assertThat(props.kafka().maxInstancesPerTenant()).isEqualTo(3);
+    }
+
+    @Test
+    void kafkaMaxInstancesPerTenant_nonPositive_fallsBackToDefault() {
+        var props = new ConnectorProperties(
+                null, null, null, null, null, new ConnectorProperties.Kafka(Duration.ofSeconds(2), 0));
+
+        assertThat(props.kafka().maxInstancesPerTenant()).isEqualTo(10);
     }
 }

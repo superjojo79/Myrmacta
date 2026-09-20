@@ -63,7 +63,7 @@ class EvaluateDossierRetentionUseCaseImplTest {
     void evaluate_settingsAbsentIsNoOp() {
         when(settingsRepository.findByTenantId(TENANT)).thenReturn(Optional.empty());
 
-        EvaluateDossierRetentionUseCase.EvaluationResult result = useCase.evaluate(TENANT, 100);
+        EvaluateDossierRetentionUseCase.EvaluationResult result = useCase.evaluate(NOW, TENANT, 100);
 
         assertThat(result.scanned()).isZero();
         assertThat(result.archived()).isZero();
@@ -80,7 +80,7 @@ class EvaluateDossierRetentionUseCaseImplTest {
         when(dossierRepository.findClosedForRetention(TENANT, 100)).thenReturn(List.of(expired));
         when(typeRepository.findByCode(TENANT, "CLAIM")).thenReturn(Optional.of(inheritType("CLAIM")));
 
-        EvaluateDossierRetentionUseCase.EvaluationResult result = evaluateAt(NOW);
+        EvaluateDossierRetentionUseCase.EvaluationResult result = useCase.evaluate(NOW, TENANT, 100);
 
         assertThat(result.scanned()).isEqualTo(1);
         assertThat(result.archived()).isEqualTo(1);
@@ -106,7 +106,7 @@ class EvaluateDossierRetentionUseCaseImplTest {
         when(dossierRepository.findClosedForRetention(TENANT, 100)).thenReturn(List.of(recent));
         when(typeRepository.findByCode(TENANT, "CLAIM")).thenReturn(Optional.of(inheritType("CLAIM")));
 
-        EvaluateDossierRetentionUseCase.EvaluationResult result = evaluateAt(NOW);
+        EvaluateDossierRetentionUseCase.EvaluationResult result = useCase.evaluate(NOW, TENANT, 100);
 
         assertThat(result.scanned()).isEqualTo(1);
         assertThat(result.archived()).isZero();
@@ -121,7 +121,7 @@ class EvaluateDossierRetentionUseCaseImplTest {
         when(dossierRepository.findClosedForRetention(TENANT, 100)).thenReturn(List.of(expired));
         when(typeRepository.findByCode(TENANT, "LOG")).thenReturn(Optional.of(neverType("LOG")));
 
-        EvaluateDossierRetentionUseCase.EvaluationResult result = evaluateAt(NOW);
+        EvaluateDossierRetentionUseCase.EvaluationResult result = useCase.evaluate(NOW, TENANT, 100);
 
         assertThat(result.archived()).isZero();
         verify(dossierRepository, never()).save(any());
@@ -136,7 +136,7 @@ class EvaluateDossierRetentionUseCaseImplTest {
                 Map.of(), null, 0, "creator", NOW, "creator", NOW, null, null, null);
         when(dossierRepository.findClosedForRetention(TENANT, 100)).thenReturn(List.of(noClosedAt));
 
-        EvaluateDossierRetentionUseCase.EvaluationResult result = evaluateAt(NOW);
+        EvaluateDossierRetentionUseCase.EvaluationResult result = useCase.evaluate(NOW, TENANT, 100);
 
         assertThat(result.archived()).isZero();
         verify(dossierRepository, never()).save(any());
@@ -150,7 +150,7 @@ class EvaluateDossierRetentionUseCaseImplTest {
         when(dossierRepository.findClosedForRetention(TENANT, 100)).thenReturn(List.of(expired));
         when(purgeOutboxRepository.existsByDossierId(expired.id())).thenReturn(true);
 
-        EvaluateDossierRetentionUseCase.EvaluationResult result = evaluateAt(NOW);
+        EvaluateDossierRetentionUseCase.EvaluationResult result = useCase.evaluate(NOW, TENANT, 100);
 
         assertThat(result.archived()).isZero();
         verify(dossierRepository, never()).save(any());
@@ -169,7 +169,7 @@ class EvaluateDossierRetentionUseCaseImplTest {
         when(dossierRepository.findClosedForRetention(TENANT, 100)).thenReturn(List.of(alreadyArchived));
         when(typeRepository.findByCode(TENANT, "CLAIM")).thenReturn(Optional.of(inheritType("CLAIM")));
 
-        EvaluateDossierRetentionUseCase.EvaluationResult result = evaluateAt(NOW);
+        EvaluateDossierRetentionUseCase.EvaluationResult result = useCase.evaluate(NOW, TENANT, 100);
 
         assertThat(result.archived()).isZero();
         verify(dossierRepository, never()).save(any());
@@ -182,7 +182,7 @@ class EvaluateDossierRetentionUseCaseImplTest {
                 new TenantRetentionSettings(TENANT, 30, NOW, "admin")));
         when(dossierRepository.findClosedForRetention(TENANT, 7)).thenReturn(List.of());
 
-        useCase.evaluate(TENANT, 7);
+        useCase.evaluate(NOW, TENANT, 7);
 
         verify(dossierRepository).findClosedForRetention(TENANT, 7);
     }
@@ -190,13 +190,6 @@ class EvaluateDossierRetentionUseCaseImplTest {
     private void settings(int defaultRetentionDays) {
         when(settingsRepository.findByTenantId(TENANT)).thenReturn(Optional.of(
                 new TenantRetentionSettings(TENANT, defaultRetentionDays, NOW, "admin")));
-    }
-
-    private EvaluateDossierRetentionUseCase.EvaluationResult evaluateAt(Instant now) {
-        // Business logic reads Instant.now() internally; tests use closedAt offsets from NOW that
-        // remain valid regardless of the small clock drift between NOW and the real now used
-        // inside the use case (seconds-level, irrelevant at day granularity).
-        return useCase.evaluate(TENANT, 100);
     }
 
     private static Dossier dossier(String typeCode, Instant closedAt) {

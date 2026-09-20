@@ -31,7 +31,8 @@ import tools.jackson.databind.json.JsonMapper;
 
 class HttpRestConnectorTest {
 
-    private static final ConnectorProperties DEFAULT_PROPERTIES = new ConnectorProperties(null, null, null, null);
+    private static final ConnectorProperties DEFAULT_PROPERTIES =
+            new ConnectorProperties(null, null, null, null, null, null);
 
     private RecordingHttpSender httpSender;
     private HttpRestConnector connector;

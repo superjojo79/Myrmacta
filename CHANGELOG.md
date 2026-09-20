@@ -30,6 +30,11 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
+- **TODO §62** — Deux nouveaux connecteurs (lot B1) : `batch-import` (import périodique de
+  fichiers CSV/Excel via SFTP, un dossier créé par ligne) et `kafka` (déclenchement par message
+  reçu sur un topic). Nouveau type de champ de configuration `SECRET_TEXTAREA` (clé privée SFTP
+  multi-lignes) masqué en lecture et chiffré au repos comme les mots de passe. Service Kafka
+  optionnel disponible en local (`docker compose --profile kafka up -d`).
 - **TODO §61** — Introduction de DMN : le moteur DMN Flowable est activé et un `serviceTask
   flowable:type="dmn"` peut invoquer une table de décision (clé portée par un champ d'extension
   `decisionTableReferenceKey`) — pas le `businessRuleTask` standard, câblé sur Drools et toujours

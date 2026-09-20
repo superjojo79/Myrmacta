@@ -10,9 +10,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.flowforge.infrastructure.config.SecurityHeadersProperties;
+import jakarta.servlet.http.HttpServletRequestWrapper;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.mock.env.MockEnvironment;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
@@ -112,10 +114,74 @@ class SecurityHeadersCustomizerTest {
         when(hstsConfig.maxAgeInSeconds(anyLong())).thenReturn(hstsConfig);
         when(hstsConfig.includeSubDomains(anyBoolean())).thenReturn(hstsConfig);
         when(hstsConfig.preload(anyBoolean())).thenReturn(hstsConfig);
+        when(hstsConfig.requestMatcher(any())).thenReturn(hstsConfig);
         hstsCaptor.getValue().customize(hstsConfig);
 
         verify(hstsConfig).maxAgeInSeconds(31_536_000L);
         verify(hstsConfig).includeSubDomains(true);
         verify(hstsConfig).preload(false);
+        verify(hstsConfig).requestMatcher(any());
+    }
+
+    @Test
+    void shouldWriteHsts_requiresSecureAndTrustedPeer() {
+        MockHttpServletRequest loopback = request("127.0.0.1", true);
+        MockHttpServletRequest publicPeer = request("203.0.113.10", true);
+        MockHttpServletRequest cleartext = request("127.0.0.1", false);
+        MockHttpServletRequest rfc1918 = request("10.1.2.3", true);
+        MockHttpServletRequest ipv6 = request("::1", true);
+        MockHttpServletRequest blank = request("127.0.0.1", true);
+        blank.setRemoteAddr("   ");
+        MockHttpServletRequest missing = request("127.0.0.1", true);
+        missing.setRemoteAddr(null);
+        MockHttpServletRequest bogus = request("not-an-ip", true);
+
+        assertThat(SecurityHeadersCustomizer.shouldWriteHsts(loopback)).isTrue();
+        assertThat(SecurityHeadersCustomizer.shouldWriteHsts(publicPeer)).isFalse();
+        assertThat(SecurityHeadersCustomizer.shouldWriteHsts(cleartext)).isFalse();
+        assertThat(SecurityHeadersCustomizer.shouldWriteHsts(rfc1918)).isTrue();
+        assertThat(SecurityHeadersCustomizer.shouldWriteHsts(ipv6)).isTrue();
+        assertThat(SecurityHeadersCustomizer.shouldWriteHsts(blank)).isFalse();
+        assertThat(SecurityHeadersCustomizer.shouldWriteHsts(missing)).isFalse();
+        assertThat(SecurityHeadersCustomizer.shouldWriteHsts(bogus)).isFalse();
+    }
+
+    @Test
+    void immediateTcpPeer_unwrapsForwardedForClient() {
+        MockHttpServletRequest tcpPeer = request("127.0.0.1", true);
+        tcpPeer.setRemoteAddr("127.0.0.1");
+        HttpServletRequestWrapper forwarded = new HttpServletRequestWrapper(tcpPeer) {
+            @Override
+            public String getRemoteAddr() {
+                return "203.0.113.50";
+            }
+
+            @Override
+            public boolean isSecure() {
+                return true;
+            }
+        };
+
+        assertThat(SecurityHeadersCustomizer.immediateTcpPeer(forwarded)).isEqualTo("127.0.0.1");
+        assertThat(SecurityHeadersCustomizer.shouldWriteHsts(forwarded)).isTrue();
+    }
+
+    @Test
+    void immediateTcpPeer_stopsWhenInnerIsNotHttpServletRequest() {
+        jakarta.servlet.ServletRequest notHttp = mock(jakarta.servlet.ServletRequest.class);
+        HttpServletRequestWrapper wrapper = new HttpServletRequestWrapper(request("192.168.1.10", true)) {
+            @Override
+            public jakarta.servlet.ServletRequest getRequest() {
+                return notHttp;
+            }
+        };
+        assertThat(SecurityHeadersCustomizer.immediateTcpPeer(wrapper)).isEqualTo("192.168.1.10");
+    }
+
+    private static MockHttpServletRequest request(String remoteAddr, boolean secure) {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/auth/me");
+        request.setRemoteAddr(remoteAddr);
+        request.setSecure(secure);
+        return request;
     }
 }

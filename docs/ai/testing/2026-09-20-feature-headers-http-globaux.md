@@ -63,6 +63,8 @@ Fichiers :
       ces profils (T-HSTS-PROD)
 - [x] Kill switch `false` : Customizer no-op / pas de writers A4
       (T-SWITCH-OFF)
+- [x] `shouldWriteHsts` : secure + pair loopback/RFC1918 ; unwrap
+      `X-Forwarded-For` ; refus pair public / HTTP clair / adresse invalide
 
 ## Integration Tests
 
@@ -72,6 +74,7 @@ Fichiers :
 - `src/test/java/com/flowforge/infrastructure/security/SecurityHeadersDisabledApiTest.java`
 - `src/test/java/com/flowforge/infrastructure/web/observability/ObservabilityActuatorIT.java`
 - `src/test/java/com/flowforge/infrastructure/web/document/DocumentPreviewApiTest.java` (inchangé, M13)
+- `src/test/java/com/flowforge/infrastructure/security/SecurityHeadersHstsApiTest.java`
 
 - [x] BFF `GET /api/auth/me` authentifié (T-CHAIN-BFF)
 - [x] M2M `POST /api/m2m/mcp` (T-CHAIN-M2M)
@@ -81,6 +84,13 @@ Fichiers :
 - [x] Profil test : pas de HSTS (T-HSTS-ABSENT-TEST)
 - [x] `headers.enabled=false` (T-CHAIN-OFF)
 - [x] Preview M13 `default-src 'none'; sandbox` (T-PREVIEW-M13)
+- [x] A4-HSTS-001 `SecurityHeadersHstsApiTest` (customizer prod `@Primary`,
+      hors effet du profil `test`) :
+      loopback + `X-Forwarded-Proto: https` → HSTS ;
+      pair RFC1918 + proto → HSTS ;
+      pair public + proto spoofé → pas de HSTS ;
+      HTTP clair loopback → pas de HSTS ;
+      `X-Forwarded-For` client public + pair TCP loopback → HSTS (unwrap)
 
 ## End-to-End Tests
 
@@ -106,7 +116,9 @@ Fichier : `frontend/e2e/pilotage.spec.ts` (`A4_CSP`, `injectDocumentCsp`, `attac
 
 ## Manual Testing
 
-Hors cycle. Smoke HTTPS derrière proxy : `curl -I` + `X-Forwarded-Proto: https`.
+Hors cycle. Smoke HTTPS derrière proxy : `curl -I` + `X-Forwarded-Proto: https`
+depuis loopback. Vérifier l’absence de HSTS si le port applicatif est
+atteint hors pair de confiance.
 
 ## Performance Testing
 

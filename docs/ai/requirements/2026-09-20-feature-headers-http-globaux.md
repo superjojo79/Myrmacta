@@ -192,7 +192,7 @@ Edge cases :
 | **A-FRAME** | `X-Frame-Options: DENY` pour coller à `frame-ancestors 'none'`. L’iframe preview `srcdoc` n’est pas affectée. |
 | **A-REFERRER** | `Referrer-Policy: strict-origin-when-cross-origin`. Pas d’impact OIDC BFF (redirect, pas fetch IdP depuis le SPA). |
 | **A-PREVIEW** | CSP M13 conservée telle quelle. Une CSP globale plus large sur la même réponse est acceptable (AND navigateur). |
-| **A-HSTS-SECURE** | Hors `local`/`test`, HSTS n’est écrit que si la requête est reconnue HTTPS (Spring + `forward-headers-strategy`). |
+| **A-HSTS-SECURE** | Hors `local`/`test`, HSTS n’est écrit que si la requête est reconnue HTTPS (Spring + `forward-headers-strategy`) **et** que le pair TCP immédiat est loopback/RFC1918 (A4-HSTS-001). |
 | **A-NO-META** | Pas de `<meta http-equiv="Content-Security-Policy">` dans `index.html`. |
 | **A-NO-GUIDE-UI** | Pas de mise à jour GUIDE-UTILISATEUR (aucun écran/champ admin). |
 

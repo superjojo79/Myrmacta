@@ -198,7 +198,7 @@ docs courtes.
 |---|---|
 | Playwright Vite ≠ Spring → faux E2E CSP | A-E2E-CSP-INJECT (T6.1/T6.2) |
 | `unsafe-eval` bpmn-js 18 non détecté en MockMvc | T6.1 sur `/admin/bpmn-editor` si le mock admin le permet ; sinon supervision + élargir si console rouge |
-| Profil `test` empêche de voir HSTS en MockMvc | T2.2 unitaire sur `hstsEnabled` ; T3.1 assert absence |
+| Profil `test` empêche de voir HSTS en MockMvc | T2.2 unitaire sur `hstsEnabled` ; T3.1 assert absence ; `SecurityHeadersHstsApiTest` customizer prod `@Primary` (A4-HSTS-001) |
 | T4.1 second contexte Spring coûteux | Classe de test dédiée, un seul cas |
 | Collision GETTING-STARTED avec B1 | T5.2 = **une** variable, pas Compose |
 | API HeadersConfigurer Spring Security 7 | Vérifier à la compilation T2.3 ; pas d’API maison |

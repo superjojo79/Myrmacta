@@ -64,7 +64,7 @@ Task tracing indisponible : `npx ai-devkit@latest task list --name headers-http-
 | Sévérité | Écart | Traitement |
 |---|---|---|
 | Info | E2E-HDR-1 ouvre **Supervision**, pas `/admin/bpmn-editor` | Autorisé par requirements (« supervision **ou** éditeur »). Risque résiduel `unsafe-eval` bpmn-js : follow-up Phase 8 si un test éditeur est ajouté |
-| Info | HSTS jamais observé en MockMvc (profil `test`) | Prévu D-HSTS / T2.2 ; lambda prod couverte unitairement |
+| Info | HSTS jamais observé en MockMvc (profil `test`) | Refermé : `SecurityHeadersHstsApiTest` customizer prod `@Primary` |
 | Info | `DocumentPreviewApiTest` lit `getHeader()` (première valeur) | M13 non affaiblie (égalité exacte). Dual-header AND navigateur (A-PREVIEW) non asserté séparément |
 | Info | `SecurityConfig` BRANCH 50 % | Branches JWT M2M **pré-existantes**, hors paquet A4 |
 | Hors lot | `EvaluateDossierRetentionUseCaseImplTest.NOW = Instant.now()` | Horloge figée vs `evaluate()` ; pas un bug produit A4 |
@@ -116,7 +116,7 @@ Pas de changement `domain/**`. `DocumentGenerationController.PREVIEW_CSP` inchan
 - **D-MECHANISM B** : customizer par chain, pas de `OncePerRequestFilter` (raterait l’actuator `:8090`).
 - **D-CSP-STRING A** : constante `CONTENT_SECURITY_POLICY` unique (tests + writers).
 - **D-SWITCH-OFF A** : `enabled=false` → `return` immédiat, Spring defaults (XFO/nosniff) restent.
-- **HSTS** : `!environment.matchesProfiles("local", "test")` ; `max-age=31536000`, `includeSubDomains`, `preload=false`. Sous profil `test`, MockMvc n’émet pas HSTS (prouvé).
+- **HSTS** : `!environment.matchesProfiles("local", "test")` ; `max-age=31536000`, `includeSubDomains`, `preload=false`. Writer seulement si `isSecure()` **et** pair TCP immédiat loopback/RFC1918 (unwrap wrappers forwarded, A4-HSTS-001). Sous profil `test`, MockMvc n’émet pas HSTS (prouvé). IT prod-like : `SecurityHeadersHstsApiTest`.
 - **A-E2E-CSP-INJECT** : Playwright Vite `:4173` n’atteint pas Spring. `E2E-HDR-1/2` injectent la CSP A4 sur les réponses `document`.
 
 Preuves Phase 5 (session précédente, à reconfirmer Phase 8) :

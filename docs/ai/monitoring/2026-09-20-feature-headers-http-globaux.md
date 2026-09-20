@@ -25,8 +25,9 @@ Pas d’événement dédié au kill switch ni à l’émission CSP/HSTS.
 ## Health Checks
 
 Inchangés. L’actuator `:8090` porte désormais CSP / XFO / nosniff
-(chaîne `@Order(0)`). Smoke ops optionnel : `curl -I` HTTPS avec
-`X-Forwarded-Proto: https` pour voir HSTS — hors gate de cycle.
+(chaîne `@Order(0)`). Smoke ops optionnel : `curl -I` HTTPS depuis le
+proxy de confiance (`X-Forwarded-Proto: https`, pair TCP loopback) pour
+voir HSTS — hors gate de cycle.
 
 ## Incident Response
 

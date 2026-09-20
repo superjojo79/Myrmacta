@@ -126,7 +126,7 @@ default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src
 | `X-Frame-Options` | `DENY` | `enabled=true` |
 | `X-Content-Type-Options` | `nosniff` | `enabled=true` |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` | `enabled=true` |
-| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` | `enabled=true` **et** profil ∉ {`local`,`test`} **et** requête secure (writer Spring) |
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` | `enabled=true` **et** profil ∉ {`local`,`test`} **et** requête secure **et** pair TCP immédiat loopback/RFC1918 (A4-HSTS-001 ; unwrap `ForwardedHeaderFilter`) |
 | Preview HTML `Content-Security-Policy` | `default-src 'none'; sandbox` | inchangé (M13). AND navigateur avec la CSP globale (A-PREVIEW) |
 
 Kill switch `enabled=false` : le customizer ne touche pas `http.headers()`

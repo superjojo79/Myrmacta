@@ -22,11 +22,18 @@ s’active au boot Spring via `application.yml`.
 | Profils Spring | — | `local` : pas de HSTS | profil ≠ `local`/`test` : HSTS `max-age=31536000; includeSubDomains` (pas de `preload`) |
 
 `server.forward-headers-strategy: framework` est déjà en place : HSTS
-n’est écrit par Spring que si la requête est reconnue HTTPS
-(`X-Forwarded-Proto`).
+n’est écrit que si la requête est reconnue HTTPS (`X-Forwarded-Proto`)
+**et** que le pair TCP immédiat (unwrap des wrappers forwarded) est
+loopback ou RFC1918 (A4-HSTS-001). Ne pas changer `framework` →
+`native` (décision OIDC existante).
 
-Ne pas poser un HSTS reverse-proxy **plus court** que celui de l’app
-(voir [DEPLOIEMENT.md](../../../DEPLOIEMENT.md)).
+Ops (voir [DEPLOIEMENT.md](../../../DEPLOIEMENT.md)) :
+
+- `docker run -p 127.0.0.1:8081:8080` — ne pas publier `:8080`/`:8081`
+  hors loopback.
+- Reverse-proxy de confiance : `RequestHeader unset X-Forwarded-*`
+  puis poser `X-Forwarded-Proto: https`.
+- Ne pas poser un HSTS reverse-proxy **plus court** que celui de l’app.
 
 ## Database Migrations
 

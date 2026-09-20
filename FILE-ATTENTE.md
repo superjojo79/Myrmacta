@@ -24,7 +24,9 @@
 > démarrer qu'après B1 (et C si concerné), chacun via son propre cycle Phase 1 → 9.
 >
 > **Dernière mise à jour :** 2026-09-20 — lot **A4** `headers-http-globaux` : Phases
-> 1–9 closes, **en revue**. [PR #128](https://github.com/superjojo79/FlowForge/pull/128).
+> 1–9 closes, **en revue**. Remédiation **A4-HSTS-001** (pair TCP de
+> confiance + bind `127.0.0.1` + IT HSTS).
+> [PR #128](https://github.com/superjojo79/FlowForge/pull/128).
 > B1 reste le lot connecteurs en cours — A4 n’y touche pas.
 >
 > **2026-09-14** — Vague A confirmée **intégralement livrée** :
@@ -377,6 +379,7 @@ Détail inventaire : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §4 / §6.
 ## En revue
 
 - **A4** `headers-http-globaux` — Phases 1–9 closes (2026-09-20).
+  Remédiation A4-HSTS-001 (pair TCP de confiance + docs ops + IT).
   [PR #128](https://github.com/superjojo79/FlowForge/pull/128).
 
 `revue-adversariale-securite` (TODO §57)
@@ -542,3 +545,4 @@ Vérifié : `./mvnw verify` 1136 tests (0 échec), Jacoco OK ; frontend `npm run
 | 2026-09-20 | `headers-http-globaux` (lot A4) Phase 4 planning close | 7 milestones / T1.1–T7.2, toutes `not started`. Traçabilité testing→tasks complète (aucun scénario orphelin). **A-E2E-CSP-INJECT** : Playwright Vite `:4173` n’atteint pas Spring — injection CSP document dans E2E-HDR-1/2. Surface exclusive `SecurityConfig` + customizer ; B1 en parallèle (pas Compose, pas CSRF). [PR #128](https://github.com/superjojo79/FlowForge/pull/128). Prochain : Phase 5 TDD à **T1.1**. |
 | 2026-09-20 | `headers-http-globaux` (lot A4) Phase 5 TDD T1.1–T7.2 | Customizer câblé sur les 4 chaînes ; MockMvc + actuator ; E2E-HDR-1/2 verts (73/73 Playwright) ; Vitest 351 ; `./mvnw verify` 1898 tests. Kill switch `APP_SECURITY_HEADERS_ENABLED`. Trouvaille hors lot : `EvaluateDossierRetentionUseCaseImplTest` `NOW` figé au 2026-08-19 vs `Instant.now()` — corrigé. [PR #128](https://github.com/superjojo79/FlowForge/pull/128). Prochain : Phase 7. |
 | 2026-09-20 | `headers-http-globaux` (lot A4) Phases 7–9 | Phase 7 conforme design. Phase 8 : verify 1898 / Vitest 351 / Playwright 75/75 ; E2E-HDR-3/4 BPMN+DMN sans `unsafe-eval` ; flake BPMN save → `expect.poll`. Phase 9 : aucun blocking. **En revue** [PR #128](https://github.com/superjojo79/FlowForge/pull/128). |
+| 2026-09-20 | `headers-http-globaux` (lot A4) remédiation A4-HSTS-001 | HSTS seulement si requête secure **et** pair TCP immédiat loopback/RFC1918 (unwrap `ForwardedHeaderFilter`). `DEPLOIEMENT.md` : bind `127.0.0.1:8081:8080`, unset `X-Forwarded-*` côté proxy. IT `SecurityHeadersHstsApiTest` hors profil `test` via customizer `@Primary`. `forward-headers-strategy: framework` inchangé. [PR #128](https://github.com/superjojo79/FlowForge/pull/128). |

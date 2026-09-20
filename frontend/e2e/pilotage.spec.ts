@@ -2482,7 +2482,7 @@ async function injectDocumentCsp(page: Page) {
   })
 }
 
-test('E2E-HDR-1 SPA renders under injected A4 CSP', async ({ page }) => {
+async function attachCspProbe(page: Page) {
   const consoleCsp: string[] = []
   page.on('console', (msg) => {
     if (/content.security.policy/i.test(msg.text())) {
@@ -2496,32 +2496,29 @@ test('E2E-HDR-1 SPA renders under injected A4 CSP', async ({ page }) => {
       list.push(`${event.effectiveDirective}:${event.blockedURI}`)
     })
   })
+  return {
+    assertClean: async () => {
+      const violations = await page.evaluate(
+        () => (window as unknown as { __cspViolations?: string[] }).__cspViolations ?? [],
+      )
+      expect(violations, `CSP violations: ${violations.join('; ')}`).toEqual([])
+      expect(consoleCsp, `CSP console: ${consoleCsp.join('; ')}`).toEqual([])
+    },
+  }
+}
+
+test('E2E-HDR-1 SPA renders under injected A4 CSP', async ({ page }) => {
+  const probe = await attachCspProbe(page)
   await injectDocumentCsp(page)
   await mockSession(page)
   await openApp(page)
   await page.getByRole('link', { name: 'Supervision' }).click()
   await expect(page.getByRole('heading', { name: 'Supervision' })).toBeVisible()
-  const violations = await page.evaluate(
-    () => (window as unknown as { __cspViolations?: string[] }).__cspViolations ?? [],
-  )
-  expect(violations, `CSP violations: ${violations.join('; ')}`).toEqual([])
-  expect(consoleCsp, `CSP console: ${consoleCsp.join('; ')}`).toEqual([])
+  await probe.assertClean()
 })
 
 test('E2E-HDR-2 template preview iframes remain visible under injected A4 CSP', async ({ page }) => {
-  const consoleCsp: string[] = []
-  page.on('console', (msg) => {
-    if (/content.security.policy/i.test(msg.text())) {
-      consoleCsp.push(msg.text())
-    }
-  })
-  await page.addInitScript(() => {
-    ;(window as unknown as { __cspViolations: string[] }).__cspViolations = []
-    document.addEventListener('securitypolicyviolation', (event) => {
-      const list = (window as unknown as { __cspViolations: string[] }).__cspViolations
-      list.push(`${event.effectiveDirective}:${event.blockedURI}`)
-    })
-  })
+  const probe = await attachCspProbe(page)
   await injectDocumentCsp(page)
   await mockSession(page)
   await openApp(page)
@@ -2531,10 +2528,30 @@ test('E2E-HDR-2 template preview iframes remain visible under injected A4 CSP', 
   await expect(page.locator('iframe[title="Aperçu HTML"]')).toBeVisible()
   await page.getByRole('button', { name: 'Aperçu PDF' }).click()
   await expect(page.locator('iframe[title="Aperçu PDF"]')).toBeVisible()
-  const violations = await page.evaluate(
-    () => (window as unknown as { __cspViolations?: string[] }).__cspViolations ?? [],
-  )
-  expect(violations, `CSP violations: ${violations.join('; ')}`).toEqual([])
-  expect(consoleCsp, `CSP console: ${consoleCsp.join('; ')}`).toEqual([])
+  await probe.assertClean()
+})
+
+test('E2E-HDR-3 BPMN editor renders under injected A4 CSP', async ({ page }) => {
+  const probe = await attachCspProbe(page)
+  await injectDocumentCsp(page)
+  await mockSession(page)
+  await page.route('**/api/workflow-bpmn-drafts/otherWorkflow', async (route) => {
+    await route.fulfill({ status: 204, body: '' })
+  })
+  await page.route('**/api/workflow-bpmn-deployments/otherWorkflow/xml', async (route) => {
+    await route.fulfill({ status: 204, body: '' })
+  })
+  await openApp(page)
+  await openBpmnEditor(page)
+  await probe.assertClean()
+})
+
+test('E2E-HDR-4 DMN editor renders under injected A4 CSP', async ({ page }) => {
+  const probe = await attachCspProbe(page)
+  await injectDocumentCsp(page)
+  await mockSession(page)
+  await openApp(page)
+  await openDmnEditor(page)
+  await probe.assertClean()
 })
 

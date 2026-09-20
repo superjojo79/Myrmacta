@@ -57,7 +57,9 @@ description: Define testing approach, test cases, and quality assurance
 - [ ] Même IT, fichier propre → upload accepté, élément créé (comportement inchangé côté
       appelant)
 - [ ] Scénario panne : conteneur `clamd` arrêté/inaccessible pendant l'appel, scan activé →
-      upload accepté (fail-open), log de l'incident vérifiable
+      upload accepté (fail-open), log de l'incident vérifiable **et** compteur Micrometer
+      `clamav.scan.fail_open` incrémenté (D-AV-CLAMAV-HEALTH, Phase 2) — vérifié via
+      `/actuator/prometheus` ou lecture directe du `MeterRegistry` de test
 - [ ] Non-régression : `DossierElementUploadControllerTest` (scan désactivé, mock du port comme
       aujourd'hui) reste vert sans modification de ses assertions existantes
 

@@ -11,21 +11,28 @@
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
 > **Dernière mise à jour :** 2026-09-20 — Lot **C** (`scan-antivirus-clamav`, adaptateur AV
-> réel derrière `AttachmentScanPort`) **démarré** : cycle `dev-lifecycle` Phase 1 (requirements)
+> réel derrière `AttachmentScanPort`) : cycle `dev-lifecycle` Phase 2 (review requirements)
 > close. Objectif explicite utilisateur : implémentation de référence ClamAV sans modifier le
 > port existant (D-AV, PR #62), pour rester swappable vers un autre moteur AV plus tard. 5
-> décisions actées via `AskUserQuestion` : intégration `clamd` en TCP natif `INSTREAM`
-> (D-AV-CLAMAV-PROTO), **fail-open** si `clamd` indisponible/timeout (D-AV-CLAMAV-FAILMODE,
-> upload accepté + log plutôt que blocage sur panne d'un composant annexe), `clamd`
-> **mutualisé** entre tenants (D-AV-CLAMAV-TOPO, stateless, écart assumé au principe « 1
-> instance = 1 tenant » qui porte sur l'isolation des données), activation **opt-in** par
-> défaut désactivée (D-AV-CLAMAV-DEFAULT, pour ne pas casser un déploiement existant sans
-> `clamd` provisionné), IT Testcontainers **isolée** du run standard `./mvnw verify`
-> (D-AV-CLAMAV-TEST-SCOPE, même traitement que les IT PostgreSQL). Détail :
+> décisions actées en Phase 1 via `AskUserQuestion` : intégration `clamd` en TCP natif
+> `INSTREAM` (D-AV-CLAMAV-PROTO), **fail-open** si `clamd` indisponible/timeout
+> (D-AV-CLAMAV-FAILMODE, upload accepté + log plutôt que blocage sur panne d'un composant
+> annexe), `clamd` **mutualisé** entre tenants (D-AV-CLAMAV-TOPO, stateless, écart assumé au
+> principe « 1 instance = 1 tenant » qui porte sur l'isolation des données), activation
+> **opt-in** par défaut désactivée (D-AV-CLAMAV-DEFAULT), IT Testcontainers **isolée** du run
+> standard `./mvnw verify` (D-AV-CLAMAV-TEST-SCOPE, même traitement que les IT PostgreSQL). **2
+> décisions supplémentaires actées en Phase 2**, après avoir challengé le brouillon Phase 1 :
+> **signal de santé Micrometer actif exigé** sur chaque fail-open (D-AV-CLAMAV-HEALTH — sans ce
+> signal, une panne `clamd` prolongée désactiverait le scan silencieusement, un log par requête
+> seul jugé insuffisant) ; `clamd` en production traité comme **service externe déjà
+> provisionné**, même modèle que PostgreSQL/Keycloak (D-AV-CLAMAV-PROD-TOPO — résout
+> l'ambiguïté du brouillon Phase 1, qui ne décrivait que le profil Compose local/démo).
+> Clarification stockée en mémoire AI DevKit (`repo:FlowForge`) pour réutilisation sur de
+> futures features dépendant d'un service externe stateless. Détail :
 > [docs/ai/requirements/2026-09-20-feature-scan-antivirus-clamav.md](docs/ai/requirements/2026-09-20-feature-scan-antivirus-clamav.md).
-> Suite : Phase 2 (review requirements) puis Phase 3 (design). Développement direct sur la
-> branche de session `claude/funny-johnson-x0er1h`, pas de worktree séparé (précédent du
-> dépôt, cf. `extension-mcp-flux-metier`).
+> Suite : Phase 3 (design). Développement direct sur la branche de session
+> `claude/funny-johnson-x0er1h`, pas de worktree séparé (précédent du dépôt, cf.
+> `extension-mcp-flux-metier`).
 >
 > **2026-09-20 (plus tôt)** — Vague B (**B1**, `connecteurs-cible`) **livrée** : cycle
 > `dev-lifecycle` Phases 1-9 complet, 2 nouveaux connecteurs `batch-import` (SFTP, CSV/Excel) et

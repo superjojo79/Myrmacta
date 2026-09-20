@@ -45,7 +45,12 @@ description: Clarify the problem space, gather requirements, and define success 
   - Service `clamd` démarrable en local/démo via `docker-compose.yml` (nouveau profil, sur le
     modèle `kafka`/`minio`).
   - Documentation ops à jour (`DEPLOIEMENT.md`, `GETTING-STARTED.md`, `.env.example`) pour
-    provisionner et activer le scan en production.
+    activer le scan en production, en traitant `clamd` comme un service externe déjà
+    provisionné (même modèle que PostgreSQL/Keycloak — voir décision D-AV-CLAMAV-PROD-TOPO).
+  - **Signal de santé actif sur la disponibilité de `clamd`** (décision D-AV-CLAMAV-HEALTH,
+    Phase 2) — le fail-open retenu (D-AV-CLAMAV-FAILMODE) ne doit pas pouvoir désactiver le
+    scan silencieusement et durablement sans qu'un opérateur puisse le détecter autrement qu'en
+    scrutant les logs requête par requête.
 - **Non-goals (hors scope explicite) :**
   - Modifier `AttachmentScanPort` / `AttachmentScanResult` ou leur contrat d'appel.
   - Système à plugins pour faire tourner **plusieurs** moteurs AV simultanément — rien ne le
@@ -91,7 +96,10 @@ description: Clarify the problem space, gather requirements, and define success 
 - Upload réel d'un fichier propre (`clamd` up, scan activé) → accepté, comportement identique à
   aujourd'hui.
 - Upload réel avec `clamd` indisponible (scan activé) → accepté, un log est émis avec assez de
-  contexte (tenant, dossier, raison) pour être exploitable en observabilité.
+  contexte (tenant, dossier, raison) pour être exploitable en observabilité, **et** un compteur
+  Micrometer dédié (ex. `clamav.scan.fail_open`, exposé via `/actuator/prometheus`, même
+  mécanisme que `observabilite` PR #59) s'incrémente — vérifiable par un test réel, pas
+  seulement par lecture de log.
 - Scan désactivé (défaut) → comportement strictement identique à l'état actuel (`NoOp`), aucune
   régression sur les tests existants (`DossierElementUploadControllerTest`,
   `NoOpAttachmentScanAdapterTest`).
@@ -122,35 +130,53 @@ description: Clarify the problem space, gather requirements, and define success 
   l'isolation des données, pas sur un service sans état comme un scan AV).
 - **Timeout de scan borné** pour ne pas dégrader la latence perçue de l'upload — valeur exacte à
   trancher en Phase 3 (Design), ordre de grandeur : quelques secondes.
-- Hypothèse : `clamd` tourne comme conteneur Compose (profil `clamav`, sur le modèle `kafka`),
-  joignable en TCP depuis l'instance backend sur le réseau Compose interne, sans TLS/auth sur ce
-  canal (cohérent avec PostgreSQL/Kafka en interne réseau Compose aujourd'hui).
-- Hypothèse : le fail-open ne s'applique **qu'à l'indisponibilité/l'erreur technique** de
-  `clamd` (connexion refusée, timeout, erreur protocole). Un scan qui **aboutit** et détecte une
-  infection reste bloquant — pas de mode « détecté mais on laisse passer ».
+- **Local/démo uniquement :** `clamd` tourne comme conteneur Compose (profil `clamav`, sur le
+  modèle `kafka`), joignable en TCP depuis l'instance backend sur le réseau Compose interne, sans
+  TLS/auth sur ce canal (cohérent avec PostgreSQL/Kafka en réseau Compose interne aujourd'hui).
+  `docker-compose.yml` reste une infra locale/démo (en-tête du fichier) — ce n'est **pas** le
+  mécanisme de déploiement prod.
+- **Production :** `clamd` est un service externe déjà provisionné, au même titre que
+  PostgreSQL/Keycloak aujourd'hui (`DEPLOIEMENT.md` §4/§5) — l'application ne fait que s'y
+  connecter via la config `host`/`port` (décision D-AV-CLAMAV-PROD-TOPO, Phase 2). Le
+  provisioning réel (dimensionnement mémoire, mise à jour des signatures, éventuelle HA) reste
+  une procédure manuelle hors scope de ce cycle, documentée comme limite assumée dans
+  `DEPLOIEMENT.md` — pas d'équivalent `provision-tenant.sh` pour `clamd` dans ce lot.
+- Le fail-open ne s'applique **qu'à l'indisponibilité/l'erreur technique** de `clamd` (connexion
+  refusée, timeout, erreur protocole — y compris une réponse « taille de flux dépassée » côté
+  `clamd`, `StreamMaxLength`, traitée comme une erreur technique et non une infection). Un scan
+  qui **aboutit** et détecte une infection reste bloquant — pas de mode « détecté mais on laisse
+  passer ».
 
 ## Questions & Open Items
 
 **What do we still need to clarify?**
 
-Cinq décisions produit/sécurité ont été tranchées explicitement en Phase 1 (via
-`AskUserQuestion`, pas de décision silencieuse) :
+Sept décisions produit/sécurité ont été tranchées explicitement via `AskUserQuestion` — 5 en
+Phase 1, 2 en Phase 2 (review) après avoir challengé le fail-open et l'ambiguïté dev/prod
+laissée par le brouillon Phase 1 — aucune décision silencieuse :
 
-| ID | Décision | Choix |
-|---|---|---|
-| D-AV-CLAMAV-PROTO | Intégration avec `clamd` | TCP natif, commande `INSTREAM`, pas de bibliothèque tierce |
-| D-AV-CLAMAV-FAILMODE | `clamd` indisponible/timeout pendant un upload | **Fail-open** : upload accepté, incident loggé (pas de blocage sur panne d'un composant annexe) |
-| D-AV-CLAMAV-TOPO | Topologie ops | `clamd` **mutualisé** entre tenants (stateless, pas de couplage à l'isolation PG par schéma) |
-| D-AV-CLAMAV-DEFAULT | Activation par défaut | **Opt-in, désactivé par défaut** — NoOp reste le comportement par défaut ; activation explicite (`app.dossier.attachment-scan.clamav.enabled=true`) une fois `clamd` provisionné, pour ne pas casser un déploiement existant sur mise à jour |
-| D-AV-CLAMAV-TEST-SCOPE | Portée de l'IT réelle (Testcontainers + EICAR) | **Isolée** du run standard `./mvnw verify`, même traitement que les IT PostgreSQL Testcontainers (tag/profil dédié, job CI séparé) |
+| ID | Phase | Décision | Choix |
+|---|---|---|---|
+| D-AV-CLAMAV-PROTO | 1 | Intégration avec `clamd` | TCP natif, commande `INSTREAM`, pas de bibliothèque tierce |
+| D-AV-CLAMAV-FAILMODE | 1 | `clamd` indisponible/timeout pendant un upload | **Fail-open** : upload accepté, incident loggé (pas de blocage sur panne d'un composant annexe) |
+| D-AV-CLAMAV-TOPO | 1 | Topologie ops | `clamd` **mutualisé** entre tenants (stateless, pas de couplage à l'isolation PG par schéma) |
+| D-AV-CLAMAV-DEFAULT | 1 | Activation par défaut | **Opt-in, désactivé par défaut** — NoOp reste le comportement par défaut ; activation explicite (`app.dossier.attachment-scan.clamav.enabled=true`) une fois `clamd` provisionné, pour ne pas casser un déploiement existant sur mise à jour |
+| D-AV-CLAMAV-TEST-SCOPE | 1 | Portée de l'IT réelle (Testcontainers + EICAR) | **Isolée** du run standard `./mvnw verify`, même traitement que les IT PostgreSQL Testcontainers (tag/profil dédié, job CI séparé) |
+| D-AV-CLAMAV-HEALTH | 2 | Observabilité du fail-open, au-delà du log | **Signal de santé actif exigé dans ce cycle** (compteur Micrometer `clamav.scan.fail_open` a minima) — remonté en Phase 2 car un fail-open sans aucun signal actif transformerait la feature en protection silencieusement désactivable sans que personne ne le sache ; le log seul (proposé en Phase 1) a été jugé insuffisant comme critère de succès |
+| D-AV-CLAMAV-PROD-TOPO | 2 | Déploiement de `clamd` en production | **Service externe déjà provisionné**, même modèle que PostgreSQL/Keycloak (`DEPLOIEMENT.md` §4/§5) — l'app se contente de la config `host`/`port` ; provisioning réel (dimensionnement, mise à jour signatures, HA) hors scope de ce cycle, documenté comme limite assumée. Résout l'ambiguïté du brouillon Phase 1, qui ne décrivait que le profil Compose local/démo sans trancher le cas prod |
 
-Points laissés à la Phase 3 (Design), non bloquants pour clore la Phase 1 — détails
-d'implémentation, pas des désaccords produit :
+Points laissés à la Phase 3 (Design), non bloquants pour clore la Phase 2 — détails
+d'implémentation, pas des désaccords produit ni des trous de scope :
 
 - Valeur exacte du timeout de connexion/scan `clamd`.
-- Tag d'image `clamav/clamav` exact à épingler (pas `latest` en CI/prod).
+- Tag d'image `clamav/clamav` exact à épingler (pas `latest` en CI/prod), utilisé pour le profil
+  Compose local/démo et pour Testcontainers.
 - Mécanisme de mise à jour des signatures virales (`freshclam` intégré à l'image vs job séparé) —
   responsabilité ops documentée dans `DEPLOIEMENT.md`.
-- Métrique/observabilité du fail-open (compteur Prometheus dédié, réutilisation de
-  l'instrumentation Micrometer déjà livrée par `observabilite`, PR #59) — nice-to-have, pas un
-  critère de succès bloquant pour ce cycle.
+- Alignement `clamd.conf` `StreamMaxLength` sur `spring.servlet.multipart.max-file-size` (détail
+  de configuration Compose/prod) — un dépassement résiduel reste de toute façon couvert par le
+  fail-open (D-AV-CLAMAV-FAILMODE), donc non bloquant, mais à documenter en Phase 3 pour éviter
+  qu'un futur relèvement de la taille max applicative désynchronise silencieusement `clamd`.
+- Nom/labels exacts de la métrique Micrometer (`clamav.scan.fail_open` proposé) et éventuelle
+  alerte associée (Prometheus/Grafana) — mécanique à trancher en Phase 3, le principe
+  (D-AV-CLAMAV-HEALTH) est acté.

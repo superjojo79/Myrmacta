@@ -10,6 +10,7 @@ lot: A4
 phase1: 2026-09-20
 phase2: 2026-09-20
 phase3: 2026-09-20
+phase4: 2026-09-20
 stakeholder_decisions: 2026-09-20
 todo_ref: FILE-ATTENTE.md lot A4 · REVUE-ALIGNEMENT-SECURITE.md S-9
 ---
@@ -203,7 +204,12 @@ Edge cases :
 **Design Phase 3 close** (2026-09-20) : D-MECHANISM = B
 (`SecurityHeadersCustomizer`), D-CSP-STRING = A (constante documentée
 dans le design), D-SWITCH-OFF = A (kill switch = no-op, défauts Spring
-conservés). Plus de question ouverte avant Phase 4.
+conservés).
+
+**Planning Phase 4 close** (2026-09-20) : plan reviewed, T1.1–T7.2
+`not started`. Hypothèse **A-E2E-CSP-INJECT** (pas une D-*) : Playwright
+Vite `:4173` n’atteint pas Spring — injection CSP document dans
+E2E-HDR. Plus de question ouverte avant Phase 5.
 
 ## Décisions Phase 1 (stakeholder)
 

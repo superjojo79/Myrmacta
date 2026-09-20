@@ -8,6 +8,7 @@ updated: 2026-09-20
 feature: headers-http-globaux
 lot: A4
 phase3: 2026-09-20
+phase4: 2026-09-20
 ---
 
 # Testing Strategy — `headers-http-globaux` (lot A4)
@@ -32,7 +33,7 @@ pendant Phase 5/8. Playwright **obligatoire** (CSP SPA).
 - [ ] `headers.enabled` défaut `true` (T-PROP-DEFAULT)
 - [ ] `headers.enabled=false` bind depuis l’environnement (T-PROP-OFF)
 
-### Helper d’en-têtes (ou équivalent Phase 3)
+### `SecurityHeadersCustomizer`
 
 - [ ] Construit la CSP D-CSP-STRING = A (T-CSP-VALUE) :
       `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-src 'self' blob:; worker-src 'self' blob:; frame-ancestors 'none'; object-src 'none'; base-uri 'self'`
@@ -69,12 +70,18 @@ même doctrine que `WebhookAndCallbackRoutesSecurityTest`.
 
 ## End-to-End Tests
 
+Playwright sert le SPA via Vite `:4173` (`playwright.config.ts`), pas
+Spring. **A-E2E-CSP-INJECT** (planning Phase 4) : les tests HDR
+ajoutent la CSP D-CSP-STRING sur les réponses HTML document, pour
+simuler la chaîne BFF.
+
 - [ ] E2E-HDR-1 : un utilisateur authentifié ouvre une vue SPA
       existante (supervision **ou** `/admin/bpmn-editor`) — page
       rendue, **aucune** violation CSP `blocked` dans la console
       (T-E2E-SPA)
-- [ ] E2E-HDR-2 : preview HTML template admin — iframe `sandbox`
-      toujours présente et contenu affiché (T-E2E-PREVIEW)
+- [ ] E2E-HDR-2 : preview HTML/PDF template admin (réutiliser le
+      setup d’`E2E-20`) — iframe `sandbox` / blob toujours visible
+      (T-E2E-PREVIEW)
 - [ ] Régression complète `npx playwright test` (parcours existants)
 
 ## Test Data

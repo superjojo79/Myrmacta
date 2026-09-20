@@ -52,6 +52,20 @@ class ClamAvAttachmentScanAdapterTest {
     }
 
     @Test
+    void scan_responseWithoutNulTerminator_stillParsedFromConnectionClose() throws Exception {
+        // clamd ferme la connexion juste après la réponse sans NUL terminal (ou un proxy
+        // intermédiaire la coupe) : readResponse() doit s'arrêter sur la fin de flux (-1), pas
+        // seulement sur l'octet NUL.
+        try (FakeClamd clamd = FakeClamd.respondingWith("stream: OK")) {
+            ClamAvAttachmentScanAdapter adapter = adapterFor(clamd, Duration.ofSeconds(5));
+
+            AttachmentScanResult result = adapter.scan(new byte[] {1}, "application/pdf");
+
+            assertThat(result.clean()).isTrue();
+        }
+    }
+
+    @Test
     void scan_emptyContent_stillSendsTerminatorAndGetsClean() throws Exception {
         try (FakeClamd clamd = FakeClamd.respondingWith("stream: OK\0")) {
             ClamAvAttachmentScanAdapter adapter = adapterFor(clamd, Duration.ofSeconds(5));
@@ -117,6 +131,21 @@ class ClamAvAttachmentScanAdapterTest {
         // réponse protocolaire non reconnue, traitée comme un échec technique et non une
         // infection (D-AV-CLAMAV-SIZE-ALIGN).
         try (FakeClamd clamd = FakeClamd.respondingWith("INSTREAM size limit exceeded\0")) {
+            ClamAvAttachmentScanAdapter adapter = adapterFor(clamd, Duration.ofSeconds(5));
+
+            AttachmentScanResult result = adapter.scan(new byte[] {1}, "application/pdf");
+
+            assertThat(result.clean()).isTrue();
+            assertThat(meterRegistry.get(ClamAvAttachmentScanAdapter.FAIL_OPEN_COUNTER).counter().count())
+                    .isEqualTo(1);
+        }
+    }
+
+    @Test
+    void scan_streamPrefixWithoutFoundSuffix_isFailOpenNotInfected() throws Exception {
+        // Couvre la branche où la réponse commence par "stream: " (comme un verdict FOUND) mais
+        // ne se termine pas par " FOUND" — un statut clamd non reconnu, pas une infection.
+        try (FakeClamd clamd = FakeClamd.respondingWith("stream: some-other-status\0")) {
             ClamAvAttachmentScanAdapter adapter = adapterFor(clamd, Duration.ofSeconds(5));
 
             AttachmentScanResult result = adapter.scan(new byte[] {1}, "application/pdf");

@@ -6,9 +6,9 @@ description: Define testing approach, test cases, and quality assurance
 
 # Testing Strategy — `scan-antivirus-clamav` (lot C)
 
-> Scénarios dérivés des success criteria (Phase 1-2) et affinés contre les décisions Phase 3
-> (config `app.dossier.attachment.scan.type`, métrique `flowforge.attachment.scan.fail_open`,
-> timeouts 5s) — à finaliser en Phase 8 (`dev-testing`) une fois l'implémentation posée.
+> Phase 5 (implémentation) exécutée : scénarios cochés au fur et à mesure, quelques ajouts
+> réels trouvés en cours de route (branches non prévues au brouillon). Finalisation formelle en
+> Phase 8 (`dev-testing`).
 
 ## Test Coverage Goals
 
@@ -32,43 +32,62 @@ description: Define testing approach, test cases, and quality assurance
 
 ### `ClamAvAttachmentScanAdapter`
 
-- [ ] Fichier propre, `clamd` répond `stream: OK` → `AttachmentScanResult.ofClean()`
-- [ ] Fichier infecté (signature test), `clamd` répond `... FOUND` → `ofInfected(reason)` avec la
+- [x] Fichier propre, `clamd` répond `stream: OK` → `AttachmentScanResult.ofClean()`
+- [x] Fichier infecté (signature test), `clamd` répond `... FOUND` → `ofInfected(reason)` avec la
       signature dans `reason`
-- [ ] Connexion refusée / hôte injoignable → fail-open : pas d'exception propagée à l'appelant,
+- [x] Connexion refusée / hôte injoignable → fail-open : pas d'exception propagée à l'appelant,
       résultat équivalent à « clean », log émis avec le motif technique
-- [ ] Timeout connexion (> 5 s, D-AV-CLAMAV-TIMEOUT) → fail-open
-- [ ] Timeout lecture (> 5 s, D-AV-CLAMAV-TIMEOUT) → fail-open
-- [ ] Réponse protocole inattendue/malformée de `clamd` (y compris « taille de flux dépassée »,
+- [x] Timeout connexion (> 5 s, D-AV-CLAMAV-TIMEOUT) → fail-open (test avec une adresse
+      TEST-NET-1 non routée, RFC 5737, pour un vrai timeout et pas un refus immédiat)
+- [x] Timeout lecture (> 5 s, D-AV-CLAMAV-TIMEOUT) → fail-open
+- [x] Réponse protocole inattendue/malformée de `clamd` (y compris « taille de flux dépassée »,
       `StreamMaxLength`) → traitée comme un échec technique (fail-open + log), pas comme une
       infection ni un crash
-- [ ] Chaque bascule fail-open (connexion refusée, timeout, réponse malformée) incrémente le
+- [x] Chaque bascule fail-open (connexion refusée, timeout, réponse malformée) incrémente le
       `Counter` Micrometer `flowforge.attachment.scan.fail_open` (D-AV-CLAMAV-HEALTH) — vérifié
       via un `SimpleMeterRegistry` de test, pas seulement l'appel au logger
+- [x] Contenu vide (`byte[0]`) → terminateur `INSTREAM` envoyé directement, réponse `clean`
+- [x] **Trouvé en visant 100 % de couverture branche (Jacoco), pas anticipé au brouillon** :
+      réponse commençant par `stream: ` mais ne se terminant pas par ` FOUND` (statut clamd non
+      reconnu) → fail-open, pas confondu avec un verdict infecté
+- [x] **Idem** : connexion fermée par `clamd` juste après la réponse, sans octet NUL terminal —
+      `readResponse()` doit s'arrêter sur la fin de flux (-1), pas seulement sur le NUL
 
 ### Configuration / wiring (`DossierConfig`)
 
-- [ ] `app.dossier.attachment.scan.type=noop` (défaut, absent) → bean actif reste
+- [x] `app.dossier.attachment.scan.type=noop` (défaut, absent) → bean actif reste
       `NoOpAttachmentScanAdapter`, zéro changement de comportement observable
-- [ ] `app.dossier.attachment.scan.type=clamav` → bean actif devient `ClamAvAttachmentScanAdapter`
-      (mêmes tests de sélection conditionnelle que `StorageConfigTest` pour
-      `app.storage.type=s3`/`filesystem`, si un tel test existe déjà comme référence)
+- [x] `app.dossier.attachment.scan.type=clamav` → bean actif devient `ClamAvAttachmentScanAdapter`
+      (même technique d'instanciation directe que `StorageConfigTest`)
 
 ## Integration Tests
 
 **How do we test component interactions?**
 
-- [ ] IT réelle isolée (Testcontainers, image `clamav/clamav`, tag/profil dédié hors
-      `./mvnw verify` par défaut) : upload d'un fichier de test EICAR via l'endpoint réel → rejet
-      (`InvalidDossierElementException`, même famille d'erreur que les rejets existants)
-- [ ] Même IT, fichier propre → upload accepté, élément créé (comportement inchangé côté
-      appelant)
-- [ ] Scénario panne : conteneur `clamd` arrêté/inaccessible pendant l'appel, scan activé →
-      upload accepté (fail-open), log de l'incident vérifiable **et** compteur Micrometer
-      `flowforge.attachment.scan.fail_open` incrémenté (D-AV-CLAMAV-HEALTH) — vérifié via
-      `/actuator/prometheus` ou lecture directe du `MeterRegistry` de test
-- [ ] Non-régression : `DossierElementUploadControllerTest` (scan désactivé, mock du port comme
-      aujourd'hui) reste vert sans modification de ses assertions existantes
+**Périmètre révisé en Phase 5** : `ClamAvAttachmentScanIT` teste l'adaptateur directement contre
+un vrai conteneur `clamd` (Testcontainers), pas via l'endpoint HTTP complet — même principe que
+`DmnJuelSecuritySmokeIT` (« ne prouve pas que le chemin HTTP complet fonctionne — déjà couvert,
+mocké, par `DossierElementUploadControllerTest` — prouve que le protocole implémenté à la main
+est effectivement compris par un vrai moteur »). Le contrôleur est frozen (diff nul imposé) et
+déjà entièrement couvert côté mock ; ajouter dossier/auth/ACL pour un aller-retour HTTP complet
+n'aurait apporté aucune preuve supplémentaire sur le seul point réellement à risque : le
+protocole `INSTREAM` fait main.
+
+- [x] IT réelle isolée (Testcontainers, image `clamav/clamav:1.4`, nommage `*IT.java` seul —
+      D-AV-CLAMAV-TEST-SCOPE) : fichier EICAR → `AttachmentScanResult.ofInfected(...)`
+- [x] Même IT, fichier propre → `ofClean()`
+- [x] Scénario panne : conteneur `clamd` arrêté (`.stop()`) entre deux appels → deuxième appel
+      accepté (fail-open), compteur Micrometer `flowforge.attachment.scan.fail_open` incrémenté
+      (D-AV-CLAMAV-HEALTH)
+- [x] Non-régression : `DossierElementUploadControllerTest` (scan désactivé, mock du port comme
+      aujourd'hui) reste vert sans modification de ses assertions existantes — confirmé par
+      `./mvnw verify` complet (1981 tests, 0 échec)
+- **Non exécuté dans ce bac à sable** (démon Docker absent — confirmé, pas supposé : `docker
+  pull` échoue avec « failed to connect to the docker API »). Écrit, compilé
+  (`./mvnw test-compile` vert) et exécuté explicitement une fois : les deux tests passent en
+  `SKIPPED` proprement via `Assumptions.assumeTrue(DockerClientFactory...)`, même garde que
+  `TenantSchemaIsolationIT`/`SequentialReferenceMultiPodIT` — à exécuter réellement en CI ou sur
+  un poste avec Docker actif avant de considérer ce lot totalement clos.
 
 ## End-to-End Tests
 
@@ -78,7 +97,8 @@ description: Define testing approach, test cases, and quality assurance
   couvert côté FE par les tests existants d'upload de pièce jointe ; pas de nouvel écran ni de
   changement de contrat consommé par le SPA (cf. Test Coverage Goals).
 - [ ] Vérifier a posteriori qu'aucun test Playwright existant lié à l'upload de pièce jointe ne
-      régresse (exécution normale de la suite FE, sans modification attendue).
+      régresse (exécution normale de la suite FE, sans modification attendue) — reporté à la
+      Phase 8 (`dev-testing`), aucun fichier frontend touché en Phase 5.
 
 ## Test Data
 
@@ -95,12 +115,14 @@ description: Define testing approach, test cases, and quality assurance
 
 **How do we verify and communicate test results?**
 
-- `./mvnw verify -Dmaven.compiler.release=21` (suite standard, sans l'IT ClamAV) : 0 échec,
-  Jacoco maintenu au seuil actuel, `ClamAvAttachmentScanAdapter` visé à 100 % en couverture
-  unitaire (mocks du socket).
+- `./mvnw verify -Dmaven.compiler.release=21 -Dskip.frontend=true` (suite standard, sans l'IT
+  ClamAV) : **1981 tests, 0 échec**, seuils Jacoco globaux tenus (LINE ≥85%/BRANCH ≥75%, `pom.xml`
+  inchangés), `ClamAvAttachmentScanAdapter` à **100% instruction/ligne/branche** (vérifié via
+  `target/site/jacoco/jacoco.csv` et `jacoco.xml`, pas seulement affirmé).
 - IT ClamAV dédiée exécutée séparément : `./mvnw test -Dtest=ClamAvAttachmentScanIT`
-  (D-AV-CLAMAV-TEST-SCOPE) ; job CI séparé à évaluer en Phase 4/5 selon le coût réel mesuré du
-  démarrage `clamd` (~1-2 min).
+  (D-AV-CLAMAV-TEST-SCOPE, confirmé absent du run précédent — 0 occurrence du nom de la classe
+  dans les logs du `./mvnw verify` standard). Job CI séparé toujours à évaluer une fois le temps
+  de démarrage `clamd` mesuré réellement (impossible dans ce bac à sable, Docker absent).
 
 ## Manual Testing
 

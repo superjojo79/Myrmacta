@@ -11,26 +11,28 @@
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
 > **Dernière mise à jour :** 2026-09-20 — Lot **C** (`scan-antivirus-clamav`, adaptateur AV
-> réel derrière `AttachmentScanPort`) : cycle `dev-lifecycle` Phase 2 (review requirements)
-> close. Objectif explicite utilisateur : implémentation de référence ClamAV sans modifier le
-> port existant (D-AV, PR #62), pour rester swappable vers un autre moteur AV plus tard. 5
-> décisions actées en Phase 1 via `AskUserQuestion` : intégration `clamd` en TCP natif
-> `INSTREAM` (D-AV-CLAMAV-PROTO), **fail-open** si `clamd` indisponible/timeout
-> (D-AV-CLAMAV-FAILMODE, upload accepté + log plutôt que blocage sur panne d'un composant
-> annexe), `clamd` **mutualisé** entre tenants (D-AV-CLAMAV-TOPO, stateless, écart assumé au
-> principe « 1 instance = 1 tenant » qui porte sur l'isolation des données), activation
-> **opt-in** par défaut désactivée (D-AV-CLAMAV-DEFAULT), IT Testcontainers **isolée** du run
-> standard `./mvnw verify` (D-AV-CLAMAV-TEST-SCOPE, même traitement que les IT PostgreSQL). **2
-> décisions supplémentaires actées en Phase 2**, après avoir challengé le brouillon Phase 1 :
-> **signal de santé Micrometer actif exigé** sur chaque fail-open (D-AV-CLAMAV-HEALTH — sans ce
-> signal, une panne `clamd` prolongée désactiverait le scan silencieusement, un log par requête
-> seul jugé insuffisant) ; `clamd` en production traité comme **service externe déjà
-> provisionné**, même modèle que PostgreSQL/Keycloak (D-AV-CLAMAV-PROD-TOPO — résout
-> l'ambiguïté du brouillon Phase 1, qui ne décrivait que le profil Compose local/démo).
-> Clarification stockée en mémoire AI DevKit (`repo:FlowForge`) pour réutilisation sur de
-> futures features dépendant d'un service externe stateless. Détail :
-> [docs/ai/requirements/2026-09-20-feature-scan-antivirus-clamav.md](docs/ai/requirements/2026-09-20-feature-scan-antivirus-clamav.md).
-> Suite : Phase 3 (design). Développement direct sur la branche de session
+> réel derrière `AttachmentScanPort`) : cycle `dev-lifecycle` Phase 3 (review design) close, 12
+> décisions actées au total sans aucune tranchée silencieusement. Objectif explicite
+> utilisateur : implémentation de référence ClamAV sans modifier le port existant (D-AV, PR
+> #62), swappable vers un autre moteur AV plus tard. Produit/sécurité (Phases 1-2,
+> `AskUserQuestion`) : `clamd` en TCP natif `INSTREAM`, **fail-open** si indisponible/timeout
+> (log + compteur), `clamd` **mutualisé** entre tenants, activation **opt-in** par défaut
+> désactivée, IT Testcontainers **isolée** du run standard, **signal de santé Micrometer actif
+> exigé** sur le fail-open (un log seul jugé insuffisant), `clamd` en prod = **service externe
+> déjà provisionné** (modèle PostgreSQL/Keycloak). Architecture (Phase 3, tranchées par
+> alignement sur des patterns déjà établis dans le dépôt, sans nouvelle question produit) :
+> timeouts 5s connexion+lecture (aligné `ConnectorProperties.Http`), image `clamav/clamav:1.4`
+> épinglée (comme `postgres`/`keycloak`/`kafka`), mise à jour des signatures via le mécanisme
+> natif de l'image (`FRESHCLAM_CHECKS`, pas de nouveau composant), `clamd.conf`
+> `StreamMaxLength` aligné sur `APP_DOSSIER_ATTACHMENT_MAX_SIZE_MB`, activation via propriété
+> `app.dossier.attachment.scan.type=noop|clamav` **calquée sur `app.storage.type`**
+> (`StorageConfig`) plutôt qu'un booléen inventé, métrique nommée `flowforge.attachment.scan.
+> fail_open` (convention `flowforge.<bc>.<sujet>.<événement>` du dépôt, pas
+> `clamav.scan.fail_open`). 2 clarifications réutilisables stockées en mémoire AI DevKit
+> (`repo:FlowForge`) : services externes stateless = modèle PostgreSQL/Keycloak ; idiomes
+> `app.<x>.type` + `MeterRegistry` injecté au constructeur pour tout futur adaptateur infra.
+> Détail : [docs/ai/design/2026-09-20-feature-scan-antivirus-clamav.md](docs/ai/design/2026-09-20-feature-scan-antivirus-clamav.md).
+> Suite : Phase 4 (planning). Développement direct sur la branche de session
 > `claude/funny-johnson-x0er1h`, pas de worktree séparé (précédent du dépôt, cf.
 > `extension-mcp-flux-metier`).
 >

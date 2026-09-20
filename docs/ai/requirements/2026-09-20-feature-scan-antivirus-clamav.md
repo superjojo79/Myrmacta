@@ -83,10 +83,10 @@ description: Clarify the problem space, gather requirements, and define success 
   - Fichier propre, `clamd` up → accepté (comportement inchangé du point de vue utilisateur).
   - Fichier infecté (test EICAR), `clamd` up → rejeté, `InvalidDossierElementException`
     (« attachment rejected: ... »), même famille d'erreur que les rejets existants.
-  - `clamd` indisponible / timeout → accepté + log (fail-open, décision ci-dessous), jamais
-    d'exception remontée à l'appelant pour ce cas précis.
-  - Scan désactivé (`enabled=false`, défaut) → comportement actuel inchangé (NoOp, toujours
-    clean).
+  - `clamd` indisponible / timeout → accepté + log + compteur (fail-open, décision ci-dessous),
+    jamais d'exception remontée à l'appelant pour ce cas précis.
+  - Scan désactivé (`app.dossier.attachment.scan.type=noop`, défaut) → comportement actuel
+    inchangé (NoOp, toujours clean).
 
 ## Success Criteria
 
@@ -96,10 +96,10 @@ description: Clarify the problem space, gather requirements, and define success 
 - Upload réel d'un fichier propre (`clamd` up, scan activé) → accepté, comportement identique à
   aujourd'hui.
 - Upload réel avec `clamd` indisponible (scan activé) → accepté, un log est émis avec assez de
-  contexte (tenant, dossier, raison) pour être exploitable en observabilité, **et** un compteur
-  Micrometer dédié (ex. `clamav.scan.fail_open`, exposé via `/actuator/prometheus`, même
-  mécanisme que `observabilite` PR #59) s'incrémente — vérifiable par un test réel, pas
-  seulement par lecture de log.
+  contexte (tenant, dossier, raison) pour être exploitable en observabilité, **et** le compteur
+  Micrometer `flowforge.attachment.scan.fail_open` (exposé via `/actuator/prometheus`, même
+  mécanisme que `observabilite` PR #59 ; nom confirmé en Phase 3, D-AV-CLAMAV-HEALTH) s'incrémente
+  — vérifiable par un test réel, pas seulement par lecture de log.
 - Scan désactivé (défaut) → comportement strictement identique à l'état actuel (`NoOp`), aucune
   régression sur les tests existants (`DossierElementUploadControllerTest`,
   `NoOpAttachmentScanAdapterTest`).
@@ -128,8 +128,9 @@ description: Clarify the problem space, gather requirements, and define success 
 - **`clamd` mutualisé, pas de contrainte multi-tenant PostgreSQL** — décision D-AV-CLAMAV-TOPO
   ci-dessous, écart assumé au principe « 1 instance Spring Boot = 1 tenant » (qui porte sur
   l'isolation des données, pas sur un service sans état comme un scan AV).
-- **Timeout de scan borné** pour ne pas dégrader la latence perçue de l'upload — valeur exacte à
-  trancher en Phase 3 (Design), ordre de grandeur : quelques secondes.
+- **Timeout de scan borné** pour ne pas dégrader la latence perçue de l'upload — **5 s connexion
+  + 5 s lecture** (D-AV-CLAMAV-TIMEOUT, Phase 3, alignés sur `ConnectorProperties.Http`/
+  `NotificationProperties.Webhook`, déjà à 5s dans ce dépôt pour tout appel réseau sortant).
 - **Local/démo uniquement :** `clamd` tourne comme conteneur Compose (profil `clamav`, sur le
   modèle `kafka`), joignable en TCP depuis l'instance backend sur le réseau Compose interne, sans
   TLS/auth sur ce canal (cohérent avec PostgreSQL/Kafka en réseau Compose interne aujourd'hui).
@@ -151,32 +152,28 @@ description: Clarify the problem space, gather requirements, and define success 
 
 **What do we still need to clarify?**
 
-Sept décisions produit/sécurité ont été tranchées explicitement via `AskUserQuestion` — 5 en
-Phase 1, 2 en Phase 2 (review) après avoir challengé le fail-open et l'ambiguïté dev/prod
-laissée par le brouillon Phase 1 — aucune décision silencieuse :
+Douze décisions produit/sécurité/architecture ont été tranchées au fil des trois premières
+phases — 5 en Phase 1 (`AskUserQuestion`), 2 en Phase 2 (`AskUserQuestion`, après avoir challengé
+le fail-open et l'ambiguïté dev/prod du brouillon), 5 en Phase 3 (tranchées directement par
+alignement sur des patterns déjà établis dans le dépôt, sans nouvelle question produit — voir
+détail et alternatives écartées dans le document design associé) — aucune décision silencieuse :
 
 | ID | Phase | Décision | Choix |
 |---|---|---|---|
 | D-AV-CLAMAV-PROTO | 1 | Intégration avec `clamd` | TCP natif, commande `INSTREAM`, pas de bibliothèque tierce |
 | D-AV-CLAMAV-FAILMODE | 1 | `clamd` indisponible/timeout pendant un upload | **Fail-open** : upload accepté, incident loggé (pas de blocage sur panne d'un composant annexe) |
 | D-AV-CLAMAV-TOPO | 1 | Topologie ops | `clamd` **mutualisé** entre tenants (stateless, pas de couplage à l'isolation PG par schéma) |
-| D-AV-CLAMAV-DEFAULT | 1 | Activation par défaut | **Opt-in, désactivé par défaut** — NoOp reste le comportement par défaut ; activation explicite (`app.dossier.attachment-scan.clamav.enabled=true`) une fois `clamd` provisionné, pour ne pas casser un déploiement existant sur mise à jour |
+| D-AV-CLAMAV-DEFAULT | 1 | Activation par défaut | **Opt-in, désactivé par défaut** — `NoOp` reste le comportement par défaut ; activation explicite une fois `clamd` provisionné, pour ne pas casser un déploiement existant sur mise à jour (mécanique précisée en Phase 3, D-AV-CLAMAV-CONFIG-SELECTOR) |
 | D-AV-CLAMAV-TEST-SCOPE | 1 | Portée de l'IT réelle (Testcontainers + EICAR) | **Isolée** du run standard `./mvnw verify`, même traitement que les IT PostgreSQL Testcontainers (tag/profil dédié, job CI séparé) |
-| D-AV-CLAMAV-HEALTH | 2 | Observabilité du fail-open, au-delà du log | **Signal de santé actif exigé dans ce cycle** (compteur Micrometer `clamav.scan.fail_open` a minima) — remonté en Phase 2 car un fail-open sans aucun signal actif transformerait la feature en protection silencieusement désactivable sans que personne ne le sache ; le log seul (proposé en Phase 1) a été jugé insuffisant comme critère de succès |
-| D-AV-CLAMAV-PROD-TOPO | 2 | Déploiement de `clamd` en production | **Service externe déjà provisionné**, même modèle que PostgreSQL/Keycloak (`DEPLOIEMENT.md` §4/§5) — l'app se contente de la config `host`/`port` ; provisioning réel (dimensionnement, mise à jour signatures, HA) hors scope de ce cycle, documenté comme limite assumée. Résout l'ambiguïté du brouillon Phase 1, qui ne décrivait que le profil Compose local/démo sans trancher le cas prod |
+| D-AV-CLAMAV-HEALTH | 2 | Observabilité du fail-open, au-delà du log | **Signal de santé actif exigé dans ce cycle** — compteur Micrometer dédié, nom confirmé en Phase 3 : `flowforge.attachment.scan.fail_open` (pas `clamav.scan.fail_open` comme envisagé en Phase 1/2) |
+| D-AV-CLAMAV-PROD-TOPO | 2 | Déploiement de `clamd` en production | **Service externe déjà provisionné**, même modèle que PostgreSQL/Keycloak (`DEPLOIEMENT.md` §4/§5) — l'app se contente de la config `host`/`port` ; provisioning réel hors scope de ce cycle, documenté comme limite assumée |
+| D-AV-CLAMAV-TIMEOUT | 3 | Timeout connexion/lecture `clamd` | **5 s chacun**, configurables — alignés sur `ConnectorProperties.Http`/`NotificationProperties.Webhook` (déjà 5s dans ce dépôt pour tout appel réseau sortant), pas les 10s du SFTP (appel distant, pas comparable) |
+| D-AV-CLAMAV-IMAGE | 3 | Tag d'image `clamav/clamav` | **Épinglé** (`clamav/clamav:1.4`), pas `latest`/`stable` — cohérent avec le pinning `postgres:17-alpine`/`keycloak:26.7.1`/`apache/kafka:3.8.0` sur un composant sécurité-critique |
+| D-AV-CLAMAV-FRESHCLAM | 3 | Mise à jour des signatures virales | Mécanisme **natif de l'image officielle** (`FRESHCLAM_CHECKS`) — pas de job Compose/cron séparé, aucun nouveau composant à opérer |
+| D-AV-CLAMAV-SIZE-ALIGN | 3 | Alignement taille `clamd`/appli | `clamd.conf` `StreamMaxLength` = `APP_DOSSIER_ATTACHMENT_MAX_SIZE_MB` (25 Mo par défaut de part et d'autre aujourd'hui), **documenté explicitement** pour éviter une désynchronisation silencieuse si l'un des deux est relevé sans l'autre |
+| D-AV-CLAMAV-CONFIG-SELECTOR | 3 | Mécanique d'activation | Propriété `app.dossier.attachment.scan.type` (`noop`/`clamav`), **calquée sur `app.storage.type`** (`StorageConfig`) — remplace le booléen `enabled` envisagé en Phase 1/2, même sémantique opt-in mais réutilise un idiome déjà établi dans le dépôt pour sélectionner un adaptateur unique parmi plusieurs |
 
-Points laissés à la Phase 3 (Design), non bloquants pour clore la Phase 2 — détails
-d'implémentation, pas des désaccords produit ni des trous de scope :
-
-- Valeur exacte du timeout de connexion/scan `clamd`.
-- Tag d'image `clamav/clamav` exact à épingler (pas `latest` en CI/prod), utilisé pour le profil
-  Compose local/démo et pour Testcontainers.
-- Mécanisme de mise à jour des signatures virales (`freshclam` intégré à l'image vs job séparé) —
-  responsabilité ops documentée dans `DEPLOIEMENT.md`.
-- Alignement `clamd.conf` `StreamMaxLength` sur `spring.servlet.multipart.max-file-size` (détail
-  de configuration Compose/prod) — un dépassement résiduel reste de toute façon couvert par le
-  fail-open (D-AV-CLAMAV-FAILMODE), donc non bloquant, mais à documenter en Phase 3 pour éviter
-  qu'un futur relèvement de la taille max applicative désynchronise silencieusement `clamd`.
-- Nom/labels exacts de la métrique Micrometer (`clamav.scan.fail_open` proposé) et éventuelle
-  alerte associée (Prometheus/Grafana) — mécanique à trancher en Phase 3, le principe
-  (D-AV-CLAMAV-HEALTH) est acté.
+Aucun point laissé ouvert à l'issue de la Phase 3 — les 5 détails d'implémentation identifiés en
+Phase 2 (timeout, tag d'image, mécanisme `freshclam`, alignement de taille, nom de métrique) sont
+tous tranchés ci-dessus. Prochaine phase : 4 (planning), pour découper ces décisions en tâches
+d'implémentation TDD.

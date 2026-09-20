@@ -6,8 +6,9 @@ description: Define testing approach, test cases, and quality assurance
 
 # Testing Strategy — `scan-antivirus-clamav` (lot C)
 
-> Brouillon issu de la Phase 1 (requirements), scénarios dérivés des success criteria — à
-> affiner en Phase 8 (`dev-testing`) une fois l'implémentation posée.
+> Scénarios dérivés des success criteria (Phase 1-2) et affinés contre les décisions Phase 3
+> (config `app.dossier.attachment.scan.type`, métrique `flowforge.attachment.scan.fail_open`,
+> timeouts 5s) — à finaliser en Phase 8 (`dev-testing`) une fois l'implémentation posée.
 
 ## Test Coverage Goals
 
@@ -36,16 +37,22 @@ description: Define testing approach, test cases, and quality assurance
       signature dans `reason`
 - [ ] Connexion refusée / hôte injoignable → fail-open : pas d'exception propagée à l'appelant,
       résultat équivalent à « clean », log émis avec le motif technique
-- [ ] Timeout de lecture/écriture au-delà du délai configuré → même comportement fail-open que
-      ci-dessus
-- [ ] Réponse protocole inattendue/malformée de `clamd` → traitée comme un échec technique
-      (fail-open + log), pas comme une infection ni un crash
+- [ ] Timeout connexion (> 5 s, D-AV-CLAMAV-TIMEOUT) → fail-open
+- [ ] Timeout lecture (> 5 s, D-AV-CLAMAV-TIMEOUT) → fail-open
+- [ ] Réponse protocole inattendue/malformée de `clamd` (y compris « taille de flux dépassée »,
+      `StreamMaxLength`) → traitée comme un échec technique (fail-open + log), pas comme une
+      infection ni un crash
+- [ ] Chaque bascule fail-open (connexion refusée, timeout, réponse malformée) incrémente le
+      `Counter` Micrometer `flowforge.attachment.scan.fail_open` (D-AV-CLAMAV-HEALTH) — vérifié
+      via un `SimpleMeterRegistry` de test, pas seulement l'appel au logger
 
 ### Configuration / wiring (`DossierConfig`)
 
-- [ ] `enabled=false` (défaut) → bean actif reste `NoOpAttachmentScanAdapter`, zéro changement de
-      comportement observable
-- [ ] `enabled=true` → bean actif devient `ClamAvAttachmentScanAdapter`
+- [ ] `app.dossier.attachment.scan.type=noop` (défaut, absent) → bean actif reste
+      `NoOpAttachmentScanAdapter`, zéro changement de comportement observable
+- [ ] `app.dossier.attachment.scan.type=clamav` → bean actif devient `ClamAvAttachmentScanAdapter`
+      (mêmes tests de sélection conditionnelle que `StorageConfigTest` pour
+      `app.storage.type=s3`/`filesystem`, si un tel test existe déjà comme référence)
 
 ## Integration Tests
 
@@ -58,7 +65,7 @@ description: Define testing approach, test cases, and quality assurance
       appelant)
 - [ ] Scénario panne : conteneur `clamd` arrêté/inaccessible pendant l'appel, scan activé →
       upload accepté (fail-open), log de l'incident vérifiable **et** compteur Micrometer
-      `clamav.scan.fail_open` incrémenté (D-AV-CLAMAV-HEALTH, Phase 2) — vérifié via
+      `flowforge.attachment.scan.fail_open` incrémenté (D-AV-CLAMAV-HEALTH) — vérifié via
       `/actuator/prometheus` ou lecture directe du `MeterRegistry` de test
 - [ ] Non-régression : `DossierElementUploadControllerTest` (scan désactivé, mock du port comme
       aujourd'hui) reste vert sans modification de ses assertions existantes
@@ -81,7 +88,8 @@ description: Define testing approach, test cases, and quality assurance
   déclencher une détection déterministe sans risque.
 - Fichiers déjà utilisés par les tests existants du chemin d'upload (PDF/PNG valides) pour le cas
   « propre ».
-- Testcontainers : image `clamav/clamav` (tag exact à épingler en Phase 3, pas `latest`).
+- Testcontainers : image `clamav/clamav:1.4` (D-AV-CLAMAV-IMAGE, Phase 3 — même tag épinglé que
+  le profil Compose local/démo, pas `latest`).
 
 ## Test Reporting & Coverage
 
@@ -90,9 +98,9 @@ description: Define testing approach, test cases, and quality assurance
 - `./mvnw verify -Dmaven.compiler.release=21` (suite standard, sans l'IT ClamAV) : 0 échec,
   Jacoco maintenu au seuil actuel, `ClamAvAttachmentScanAdapter` visé à 100 % en couverture
   unitaire (mocks du socket).
-- IT ClamAV dédiée exécutée séparément (commande/tag à documenter en Phase 3, ex.
-  `./mvnw test -Dtest=ClamAvAttachmentScanIT` ou profil Maven dédié) + job CI séparé si le temps
-  de démarrage le justifie (à trancher en Phase 3/4 selon le coût réel mesuré).
+- IT ClamAV dédiée exécutée séparément : `./mvnw test -Dtest=ClamAvAttachmentScanIT`
+  (D-AV-CLAMAV-TEST-SCOPE) ; job CI séparé à évaluer en Phase 4/5 selon le coût réel mesuré du
+  démarrage `clamd` (~1-2 min).
 
 ## Manual Testing
 

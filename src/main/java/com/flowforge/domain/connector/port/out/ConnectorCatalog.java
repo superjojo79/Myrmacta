@@ -28,6 +28,10 @@ public interface ConnectorCatalog {
         }
         return definition != null
                 && definition.getConfigSchema().stream()
-                        .anyMatch(field -> field.type() == ConfigFieldType.PASSWORD && field.name().equals(key));
+                        .anyMatch(field -> isSecretType(field.type()) && field.name().equals(key));
+    }
+
+    private static boolean isSecretType(ConfigFieldType type) {
+        return type == ConfigFieldType.PASSWORD || type == ConfigFieldType.SECRET_TEXTAREA;
     }
 }

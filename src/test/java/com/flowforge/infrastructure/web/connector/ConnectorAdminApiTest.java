@@ -25,7 +25,11 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import tools.jackson.databind.json.JsonMapper;
 
-@SpringBootTest(properties = "app.connector.crypto.master-key=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=")
+@SpringBootTest(
+        properties = {
+            "app.connector.crypto.master-key=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+            "app.connector.kafka.max-instances-per-tenant=1"
+        })
 @AutoConfigureMockMvc
 @Import(OidcClientTestConfiguration.class)
 class ConnectorAdminApiTest {
@@ -84,10 +88,56 @@ class ConnectorAdminApiTest {
     }
 
     @Test
+    void listDefinitions_registersExactlyEightTypesWithoutCollision_connecteursCibleLotB1() throws Exception {
+        // T-REG-REGISTRY-COUNT : les 6 connecteurs déjà livrés (http-rest, flowable-signal,
+        // flowable-callback, scheduler, smtp, document-storage) + batch-import + kafka, tous
+        // enregistrés sans collision de type au démarrage du contexte Spring réel (un doublon
+        // ferait échouer ConnectorRegistry.init() et empêcherait ce test de démarrer).
+        mockMvc.perform(get("/api/connector-definitions")
+                        .param("size", "50")
+                        .with(user("connector-admin", "TENANT_ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(8))
+                .andExpect(jsonPath("$.content[*].type", hasItem("http-rest")))
+                .andExpect(jsonPath("$.content[*].type", hasItem("flowable-signal")))
+                .andExpect(jsonPath("$.content[*].type", hasItem("flowable-callback")))
+                .andExpect(jsonPath("$.content[*].type", hasItem("scheduler")))
+                .andExpect(jsonPath("$.content[*].type", hasItem("smtp")))
+                .andExpect(jsonPath("$.content[*].type", hasItem("document-storage")))
+                .andExpect(jsonPath("$.content[*].type", hasItem("batch-import")))
+                .andExpect(jsonPath("$.content[*].type", hasItem("kafka")));
+    }
+
+    @Test
     void listDefinitions_nonAdmin_returns403() throws Exception {
         mockMvc.perform(get("/api/connector-definitions")
                         .with(user("viewer", "DOSSIER_VIEWER")))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void createConnector_kafkaInstanceExceedingQuota_returns409_wiredThroughRealConfig() throws Exception {
+        // Revue adversariale (connecteurs-cible, lot B1) : preuve bout en bout que
+        // app.connector.kafka.max-instances-per-tenant (surchargé à 1 pour cette classe) atteint
+        // bien ManageConnectorInstanceUseCaseImpl via le vrai câblage Spring (ConnectorConfig),
+        // pas seulement au niveau unitaire mocké.
+        String firstId = createKafka("Kafka quota 1 " + UUID.randomUUID());
+        try {
+            mockMvc.perform(post("/api/connectors")
+                            .with(user("connector-admin", "TENANT_ADMIN"))
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(kafkaPayload("Kafka quota 2 " + UUID.randomUUID())))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.status").value(409));
+        } finally {
+            // Ne laisse pas une instance kafka activée dans la base après ce test : le
+            // réconciliateur (poll @Scheduled réel dans ce contexte Spring) la reprendrait sinon
+            // pour le reste de la suite.
+            mockMvc.perform(delete("/api/connectors/{id}", firstId)
+                    .with(user("connector-admin", "TENANT_ADMIN"))
+                    .with(csrf()));
+        }
     }
 
     @Test
@@ -274,6 +324,38 @@ class ConnectorAdminApiTest {
                 .readTree(result.getResponse().getContentAsString())
                 .get("id")
                 .asText();
+    }
+
+    private String createKafka(String name) throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/connectors")
+                        .with(user("connector-admin", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(kafkaPayload(name)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        return JsonMapper.builder().build()
+                .readTree(result.getResponse().getContentAsString())
+                .get("id")
+                .asText();
+    }
+
+    private static String kafkaPayload(String name) {
+        return """
+                {
+                  "name": "%s",
+                  "connectorType": "kafka",
+                  "enabled": true,
+                  "config": {
+                    "bootstrapServers": "localhost:9092",
+                    "topic": "claims.events",
+                    "groupId": "flowforge-quota-test",
+                    "securityProtocol": "PLAINTEXT",
+                    "processKey": "smokeProcess",
+                    "dossierTypeCode": "CLAIM"
+                  }
+                }
+                """.formatted(name);
     }
 
     private static String httpRestPayload(String name, String authType) {

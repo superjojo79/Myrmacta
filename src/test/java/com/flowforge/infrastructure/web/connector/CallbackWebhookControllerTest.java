@@ -59,6 +59,8 @@ class CallbackWebhookControllerTest {
                         new ConnectorProperties.Crypto("unused"),
                         new ConnectorProperties.Webhook(64, 2, Duration.ofHours(24), 3),
                         null,
+                        null,
+                        null,
                         null),
                 JsonMapper.builder().build(),
                 new WebhookRequestRateLimiter(),

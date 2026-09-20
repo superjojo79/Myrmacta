@@ -3,6 +3,7 @@ package com.flowforge.infrastructure.web.connector;
 import com.flowforge.domain.connector.model.CallbackAmbiguousCorrelationException;
 import com.flowforge.domain.connector.model.CallbackNoMatchingInstanceException;
 import com.flowforge.domain.connector.model.ConnectorInstanceNotFoundException;
+import com.flowforge.domain.connector.model.ConnectorInstanceQuotaExceededException;
 import com.flowforge.domain.connector.model.ConnectorValidationException;
 import com.flowforge.domain.connector.model.UnknownConnectorException;
 import com.flowforge.domain.connector.model.WebhookAuthenticationException;
@@ -33,6 +34,11 @@ public class ConnectorExceptionHandler {
     @ExceptionHandler(ConnectorInstanceNotFoundException.class)
     ProblemDetail handleConnectorNotFound(ConnectorInstanceNotFoundException ex) {
         return problem(HttpStatus.NOT_FOUND, "Connector instance not found", ex.getMessage());
+    }
+
+    @ExceptionHandler(ConnectorInstanceQuotaExceededException.class)
+    ProblemDetail handleQuotaExceeded(ConnectorInstanceQuotaExceededException ex) {
+        return problem(HttpStatus.CONFLICT, "Connector instance quota exceeded", ex.getMessage());
     }
 
     @ExceptionHandler(WebhookRateLimitExceededException.class)

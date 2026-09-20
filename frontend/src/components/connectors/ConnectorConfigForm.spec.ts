@@ -109,6 +109,30 @@ describe('ConnectorConfigForm', () => {
     expect(wrapper.findAll('[data-testid^="connector-config-field-"]')).toHaveLength(0)
   })
 
+  it('renders a textarea for SECRET_TEXTAREA (connecteurs-cible, lot B1)', async () => {
+    const wrapper = mount(ConnectorConfigForm, {
+      props: {
+        schema: [
+          {
+            name: 'sftpPrivateKey',
+            label: 'SFTP private key',
+            type: 'SECRET_TEXTAREA',
+            required: true,
+          },
+        ],
+        modelValue: { sftpPrivateKey: '' },
+      },
+    })
+    const field = wrapper.get('[data-testid="connector-config-field-sftpPrivateKey"]')
+    expect(field.element.tagName).toBe('TEXTAREA')
+
+    const multiline = '-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----'
+    await field.setValue(multiline)
+    expect(wrapper.emitted('update:modelValue')?.at(-1)?.[0]).toMatchObject({
+      sftpPrivateKey: multiline,
+    })
+  })
+
   it('offers a blank option for a non-required SELECT', () => {
     const wrapper = mount(ConnectorConfigForm, {
       props: {

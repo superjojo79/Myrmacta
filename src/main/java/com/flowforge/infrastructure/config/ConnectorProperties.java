@@ -4,7 +4,13 @@ import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "app.connector")
-public record ConnectorProperties(Crypto crypto, Webhook webhook, Http http, DocumentStorage documentStorage) {
+public record ConnectorProperties(
+        Crypto crypto,
+        Webhook webhook,
+        Http http,
+        DocumentStorage documentStorage,
+        BatchImport batchImport,
+        Kafka kafka) {
 
     public ConnectorProperties {
         if (crypto == null) {
@@ -18,6 +24,12 @@ public record ConnectorProperties(Crypto crypto, Webhook webhook, Http http, Doc
         }
         if (documentStorage == null) {
             documentStorage = new DocumentStorage(5_242_880L);
+        }
+        if (batchImport == null) {
+            batchImport = new BatchImport(10_485_760L, 50_000);
+        }
+        if (kafka == null) {
+            kafka = new Kafka(Duration.ofSeconds(5), 10);
         }
     }
 
@@ -70,6 +82,43 @@ public record ConnectorProperties(Crypto crypto, Webhook webhook, Http http, Doc
         public DocumentStorage {
             if (maxContentSize <= 0) {
                 maxContentSize = 5_242_880L;
+            }
+        }
+    }
+
+    /**
+     * @param maxFileBytes bound on a single downloaded file, same DoS-prevention pattern as
+     *     {@link Http#maxResponseBytes()} (D-BATCH-SIZE-LIMIT, connecteurs-cible) — a file reported
+     *     larger than this at listing time is rejected before any download attempt, and the actual
+     *     download itself is also bounded (never buffers more than {@code maxFileBytes + 1} bytes),
+     *     so a server misreporting a smaller size at listing time cannot force an unbounded read.
+     * @param maxRows bound on the number of data rows parsed from one file, same rationale.
+     */
+    public record BatchImport(long maxFileBytes, int maxRows) {
+        public BatchImport {
+            if (maxFileBytes <= 0) {
+                maxFileBytes = 10_485_760L;
+            }
+            if (maxRows <= 0) {
+                maxRows = 50_000;
+            }
+        }
+    }
+
+    /**
+     * @param maxInstancesPerTenant enabled {@code kafka} instances a tenant may have at once —
+     *     each one runs a real consumer thread/connection for the JVM's lifetime, unlike a
+     *     cron-polled connector, so leaving this unbounded lets a config mistake or a compromised
+     *     admin account exhaust resources shared by the whole tenant (found in adversarial review,
+     *     connecteurs-cible lot B1).
+     */
+    public record Kafka(Duration consumerPollTimeout, int maxInstancesPerTenant) {
+        public Kafka {
+            if (consumerPollTimeout == null) {
+                consumerPollTimeout = Duration.ofSeconds(5);
+            }
+            if (maxInstancesPerTenant <= 0) {
+                maxInstancesPerTenant = 10;
             }
         }
     }

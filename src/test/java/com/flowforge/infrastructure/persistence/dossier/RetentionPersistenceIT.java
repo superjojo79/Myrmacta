@@ -137,7 +137,7 @@ class RetentionPersistenceIT {
         dossierRepository.save(closed);
 
         EvaluateDossierRetentionUseCase.EvaluationResult result =
-                evaluateDossierRetentionUseCase.evaluate(TENANT, 100);
+                evaluateDossierRetentionUseCase.evaluate(now, TENANT, 100);
 
         assertThat(result.settingsAbsent()).isFalse();
         assertThat(result.archived()).isGreaterThanOrEqualTo(1);

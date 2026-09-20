@@ -53,7 +53,14 @@ export async function newDocumentTemplateVersion(id: string): Promise<DocumentTe
   return data
 }
 
-export type ConfigFieldType = 'STRING' | 'PASSWORD' | 'URL' | 'INTEGER' | 'BOOLEAN' | 'SELECT'
+export type ConfigFieldType =
+  | 'STRING'
+  | 'PASSWORD'
+  | 'URL'
+  | 'INTEGER'
+  | 'BOOLEAN'
+  | 'SELECT'
+  | 'SECRET_TEXTAREA'
 
 export interface ConfigField {
   name: string

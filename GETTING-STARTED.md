@@ -61,6 +61,9 @@ cp .env.example .env
 
 [`.env.example`](.env.example) documente chaque variable. Les valeurs par défaut suffisent pour un
 premier démarrage — rien à modifier pour suivre ce guide tel quel.
+`APP_SECURITY_HEADERS_ENABLED` (défaut `true`) : le passer à `false` coupe en urgence le paquet
+CSP / HSTS / `X-Frame-Options` ; **ne pas** le faire en local — seul HSTS est absent en profil
+`local`/`test`.
 
 Le profil Spring **`local`** (`SPRING_PROFILES_ACTIVE=local` dans `.env.example`) autorise les
 secrets de démo et le HMAC M2M. Hors `local`/`test`, le boot refuse `DB_PASSWORD` dans la denylist

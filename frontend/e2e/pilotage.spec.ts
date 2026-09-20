@@ -2463,3 +2463,78 @@ test('E2E-CONN-3 admin sees callback URL after creating flowable-callback', asyn
   )
 })
 
+const A4_CSP =
+  "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-src 'self' blob:; worker-src 'self' blob:; frame-ancestors 'none'; object-src 'none'; base-uri 'self'"
+
+async function injectDocumentCsp(page: Page) {
+  await page.route('**/*', async (route) => {
+    if (route.request().resourceType() !== 'document') {
+      await route.continue()
+      return
+    }
+    const response = await route.fetch()
+    const headers = { ...response.headers(), 'content-security-policy': A4_CSP }
+    await route.fulfill({
+      status: response.status(),
+      headers,
+      body: await response.body(),
+    })
+  })
+}
+
+test('E2E-HDR-1 SPA renders under injected A4 CSP', async ({ page }) => {
+  const consoleCsp: string[] = []
+  page.on('console', (msg) => {
+    if (/content.security.policy/i.test(msg.text())) {
+      consoleCsp.push(msg.text())
+    }
+  })
+  await page.addInitScript(() => {
+    ;(window as unknown as { __cspViolations: string[] }).__cspViolations = []
+    document.addEventListener('securitypolicyviolation', (event) => {
+      const list = (window as unknown as { __cspViolations: string[] }).__cspViolations
+      list.push(`${event.effectiveDirective}:${event.blockedURI}`)
+    })
+  })
+  await injectDocumentCsp(page)
+  await mockSession(page)
+  await openApp(page)
+  await page.getByRole('link', { name: 'Supervision' }).click()
+  await expect(page.getByRole('heading', { name: 'Supervision' })).toBeVisible()
+  const violations = await page.evaluate(
+    () => (window as unknown as { __cspViolations?: string[] }).__cspViolations ?? [],
+  )
+  expect(violations, `CSP violations: ${violations.join('; ')}`).toEqual([])
+  expect(consoleCsp, `CSP console: ${consoleCsp.join('; ')}`).toEqual([])
+})
+
+test('E2E-HDR-2 template preview iframes remain visible under injected A4 CSP', async ({ page }) => {
+  const consoleCsp: string[] = []
+  page.on('console', (msg) => {
+    if (/content.security.policy/i.test(msg.text())) {
+      consoleCsp.push(msg.text())
+    }
+  })
+  await page.addInitScript(() => {
+    ;(window as unknown as { __cspViolations: string[] }).__cspViolations = []
+    document.addEventListener('securitypolicyviolation', (event) => {
+      const list = (window as unknown as { __cspViolations: string[] }).__cspViolations
+      list.push(`${event.effectiveDirective}:${event.blockedURI}`)
+    })
+  })
+  await injectDocumentCsp(page)
+  await mockSession(page)
+  await openApp(page)
+  await page.getByRole('link', { name: 'Templates' }).click()
+  await expect(page.getByRole('heading', { name: 'Templates documents' })).toBeVisible()
+  await page.locator('form textarea').fill('<p>Bonjour</p>')
+  await expect(page.locator('iframe[title="Aperçu HTML"]')).toBeVisible()
+  await page.getByRole('button', { name: 'Aperçu PDF' }).click()
+  await expect(page.locator('iframe[title="Aperçu PDF"]')).toBeVisible()
+  const violations = await page.evaluate(
+    () => (window as unknown as { __cspViolations?: string[] }).__cspViolations ?? [],
+  )
+  expect(violations, `CSP violations: ${violations.join('; ')}`).toEqual([])
+  expect(consoleCsp, `CSP console: ${consoleCsp.join('; ')}`).toEqual([])
+})
+

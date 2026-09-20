@@ -49,6 +49,10 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Sécurité
 
+- **PR [#128](https://github.com/superjojo79/FlowForge/pull/128)** — En-têtes HTTP applicatifs
+  (CSP enforce SPA, HSTS 1 an hors local/test, `X-Frame-Options`, `nosniff`, `Referrer-Policy`)
+  sur les 4 chaînes Spring Security. Kill switch `APP_SECURITY_HEADERS_ENABLED` (défaut `true`).
+
 - **TODO §61** — Flowable n'implémente pas FEEL pour DMN malgré le standard : les cellules de
   table de décision sont évaluées en JUEL, exposant la même classe de vulnérabilité que H1-bis
   (TODO §57/§58, résolution d'un identifiant non qualifié contre un bean Spring). Vérifié par

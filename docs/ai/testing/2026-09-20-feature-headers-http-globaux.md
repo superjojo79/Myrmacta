@@ -7,6 +7,7 @@ created: 2026-09-20
 updated: 2026-09-20
 feature: headers-http-globaux
 lot: A4
+phase3: 2026-09-20
 ---
 
 # Testing Strategy — `headers-http-globaux` (lot A4)
@@ -33,8 +34,8 @@ pendant Phase 5/8. Playwright **obligatoire** (CSP SPA).
 
 ### Helper d’en-têtes (ou équivalent Phase 3)
 
-- [ ] Construit la CSP visée (T-CSP-VALUE) — valeur exacte après
-      D-CSP-STRING
+- [ ] Construit la CSP D-CSP-STRING = A (T-CSP-VALUE) :
+      `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-src 'self' blob:; worker-src 'self' blob:; frame-ancestors 'none'; object-src 'none'; base-uri 'self'`
 - [ ] HSTS writer absent si profil `local` (T-HSTS-LOCAL)
 - [ ] HSTS writer absent si profil `test` (T-HSTS-TEST)
 - [ ] HSTS `max-age=31536000; includeSubDomains` sans `preload` hors

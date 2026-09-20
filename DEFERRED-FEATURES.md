@@ -253,7 +253,7 @@ Voir le détail et les options dans [TODO.md](TODO.md),
 | **A1** | `provisioning-tenant` | **Livré** ([PR #119](https://github.com/superjojo79/FlowForge/pull/119)) | Dockerfile + runbook/CLI ; mergé 2026-09-08 |
 | **A2** | `admin-connector-form-schema` | **Livré** ([PR #117](https://github.com/superjojo79/FlowForge/pull/117)) | FE seulement ; `configSchema` déjà exposé par l’API ; D-WEBHOOK-URL = C ; mergé 2026-09-08 |
 | **A3** | `mcp-ecritures-metier` | **En revue** ([PR #118](https://github.com/superjojo79/FlowForge/pull/118)) | 4 tools dans **un** cycle ; cadrage [15-serveur-mcp.md](analysis%20doc/15-serveur-mcp.md) § Backlog ; TODO §60 |
-| **A4** | `headers-http-globaux` | **En cours** (Phases 1–2, 2026-09-20) | S-9 ; `SecurityConfig` ; // B1 OK (surfaces disjointes) |
+| **A4** | `headers-http-globaux` | **En cours** (Phases 1–3, 2026-09-20, PR #128) | S-9 ; `SecurityHeadersCustomizer` ; // B1 OK |
 | **B1** | `connecteurs-cible` (Kafka + import batch + ERP) | Après A, **1** cycle | Même couture que PR #99 — pas 3 PRs |
 | **C** | Adaptateur AV (ClamAV) | Après A1 | Port `AttachmentScanPort` déjà prêt (S-6) |
 

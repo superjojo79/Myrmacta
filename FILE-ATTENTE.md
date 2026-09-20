@@ -23,10 +23,9 @@
 > n'est prise ici** : ces 4 items restent en *Gaps réels hors Vague B* (`ROADMAP.md`), à ne
 > démarrer qu'après B1 (et C si concerné), chacun via son propre cycle Phase 1 → 9.
 >
-> **Dernière mise à jour :** 2026-09-20 — lot **A4** `headers-http-globaux` : cycle
-> `dev-lifecycle` **démarré** (Phases 1–2 close, décisions D-* actées). Branche
-> `cursor/headers-http-globaux-ec9a`. B1 reste le lot connecteurs en cours — A4
-> n’y touche pas (`SecurityConfig` seulement).
+> **Dernière mise à jour :** 2026-09-20 — lot **A4** `headers-http-globaux` : Phases
+> 1–3 closes (design reviewed). [PR #128](https://github.com/superjojo79/FlowForge/pull/128).
+> B1 reste le lot connecteurs en cours — A4 n’y touche pas.
 >
 > **2026-09-14** — Vague A confirmée **intégralement livrée** :
 > **A1** (`provisioning-tenant`, [PR #119](https://github.com/superjojo79/FlowForge/pull/119)),
@@ -372,8 +371,9 @@ pagination inbox > 100.
 
 **En cours :**
 - **B1** `connecteurs-cible` (Kafka + import batch + ERP) — un agent, couture catalogue.
-- **A4** `headers-http-globaux` — Phases 1–2 close (2026-09-20) ; Phase 3 design
-  suivante. Surface exclusive `SecurityConfig.java`. Pas Compose, pas CSRF.
+- **A4** `headers-http-globaux` — Phases 1–3 close (2026-09-20) ; Phase 4 planning
+  suivante. [PR #128](https://github.com/superjojo79/FlowForge/pull/128).
+  Surface exclusive `SecurityConfig` + `SecurityHeadersCustomizer`. Pas Compose, pas CSRF.
 
 Détail inventaire : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §4 / §6.
 

@@ -9,6 +9,7 @@ feature: headers-http-globaux
 lot: A4
 phase1: 2026-09-20
 phase2: 2026-09-20
+phase3: 2026-09-20
 stakeholder_decisions: 2026-09-20
 todo_ref: FILE-ATTENTE.md lot A4 · REVUE-ALIGNEMENT-SECURITE.md S-9
 ---
@@ -199,16 +200,10 @@ Edge cases :
 
 **Produit : néant.** Toutes les D-* Phase 1 sont tranchées.
 
-Reporté **Phase 3 (design)** — pas des décisions produit :
-
-- Chaîne CSP exacte après inspection PrimeVue / bpmn-js / dmn-js
-  (`unsafe-inline` styles, `worker-src blob:`, etc.). Intent Phase 1 :
-  enforce `default-src 'self'` + bornes, pas Report-Only.
-- Mécanisme : `http.headers(…)` Spring réutilisé par helper sur les
-  4 chains vs `OncePerRequestFilter`. FILE-ATTENTE pointe
-  `SecurityConfig`.
-- Comportement exact des défauts Spring quand le kill switch est
-  `false`.
+**Design Phase 3 close** (2026-09-20) : D-MECHANISM = B
+(`SecurityHeadersCustomizer`), D-CSP-STRING = A (constante documentée
+dans le design), D-SWITCH-OFF = A (kill switch = no-op, défauts Spring
+conservés). Plus de question ouverte avant Phase 4.
 
 ## Décisions Phase 1 (stakeholder)
 

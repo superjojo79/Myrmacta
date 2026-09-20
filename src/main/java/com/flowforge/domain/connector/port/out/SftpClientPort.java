@@ -19,9 +19,16 @@ public interface SftpClientPort {
     List<RemoteFile> listFiles(SftpConnectionConfig config, String remoteDirectory, String filenamePattern);
 
     /**
+     * Downloads at most {@code maxBytes} — the implementation must never buffer more than that in
+     * memory even if the server misreports a smaller size at {@link #listFiles}-time (found in
+     * adversarial review, connecteurs-cible lot B1: trusting only the pre-download size check
+     * allows an OOM via a server that lies about a file's size).
+     *
      * @throws com.flowforge.domain.connector.model.SftpConnectionException on connection/auth/read failure
+     * @throws com.flowforge.domain.connector.model.SftpFileTooLargeException if the file is larger
+     *     than {@code maxBytes} once actually read, regardless of what {@link #listFiles} reported
      */
-    byte[] download(SftpConnectionConfig config, String remotePath);
+    byte[] download(SftpConnectionConfig config, String remotePath, long maxBytes);
 
     /**
      * Moves/renames the file into {@code archiveDirectory} once processed (D-BATCH-DEDUP,

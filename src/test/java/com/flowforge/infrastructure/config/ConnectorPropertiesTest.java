@@ -133,13 +133,23 @@ class ConnectorPropertiesTest {
         var props = new ConnectorProperties(null, null, null, null, null, null);
 
         assertThat(props.kafka().consumerPollTimeout()).isEqualTo(Duration.ofSeconds(5));
+        assertThat(props.kafka().maxInstancesPerTenant()).isEqualTo(10);
     }
 
     @Test
     void kafkaCustomValue_isPreserved() {
         var props = new ConnectorProperties(
-                null, null, null, null, null, new ConnectorProperties.Kafka(Duration.ofSeconds(2)));
+                null, null, null, null, null, new ConnectorProperties.Kafka(Duration.ofSeconds(2), 3));
 
         assertThat(props.kafka().consumerPollTimeout()).isEqualTo(Duration.ofSeconds(2));
+        assertThat(props.kafka().maxInstancesPerTenant()).isEqualTo(3);
+    }
+
+    @Test
+    void kafkaMaxInstancesPerTenant_nonPositive_fallsBackToDefault() {
+        var props = new ConnectorProperties(
+                null, null, null, null, null, new ConnectorProperties.Kafka(Duration.ofSeconds(2), 0));
+
+        assertThat(props.kafka().maxInstancesPerTenant()).isEqualTo(10);
     }
 }

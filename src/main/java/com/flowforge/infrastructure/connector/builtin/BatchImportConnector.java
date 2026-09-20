@@ -7,6 +7,7 @@ import com.flowforge.domain.connector.model.ConnectorDefinition;
 import com.flowforge.domain.connector.model.ConnectorInstanceData;
 import com.flowforge.domain.connector.model.ConnectorValidationException;
 import com.flowforge.domain.connector.model.SftpConnectionConfig;
+import com.flowforge.domain.connector.model.SftpFileTooLargeException;
 import com.flowforge.domain.connector.model.TriggerConnector;
 import com.flowforge.domain.connector.model.WorkflowTriggerEvent;
 import com.flowforge.domain.connector.port.out.SftpClientPort;
@@ -194,7 +195,16 @@ public class BatchImportConnector implements ConnectorDefinition, TriggerConnect
                         file.path(), file.sizeBytes(), maxFileBytes);
                 continue;
             }
-            byte[] content = sftpClient.download(connectionConfig, file.path());
+            byte[] content;
+            try {
+                content = sftpClient.download(connectionConfig, file.path(), maxFileBytes);
+            } catch (SftpFileTooLargeException ex) {
+                log.warn(
+                        "batch-import: file {} exceeds maxFileBytes ({}) while downloading — the server "
+                                + "reported a smaller size when listing, rejected: {}",
+                        file.path(), maxFileBytes, ex.getMessage());
+                continue;
+            }
             List<Map<String, Object>> rows = parseRows(file.path(), content);
             if (rows.size() > maxRows) {
                 log.warn(
@@ -342,6 +352,7 @@ public class BatchImportConnector implements ConnectorDefinition, TriggerConnect
                 requireString(config, "sftpUsername"),
                 stringOr(config.get("sftpPassword"), null),
                 stringOr(config.get("sftpPrivateKey"), null),
+                requireString(config, "sftpAuthType"),
                 requireString(config, "sftpHostKeyFingerprint"));
     }
 

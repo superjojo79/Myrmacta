@@ -105,7 +105,8 @@ class BatchImportEndToEndIT {
         }
 
         @Override
-        public byte[] download(com.flowforge.domain.connector.model.SftpConnectionConfig config, String remotePath) {
+        public byte[] download(
+                com.flowforge.domain.connector.model.SftpConnectionConfig config, String remotePath, long maxBytes) {
             return content.getOrDefault(remotePath, new byte[0]);
         }
 

@@ -38,6 +38,20 @@ class SpringKafkaConsumerFactoryTest {
     }
 
     @Test
+    void saslSsl_escapesQuotesAndBackslashesInCredentials() {
+        // Revue adversariale (connecteurs-cible, lot B1) : un identifiant/mot de passe contenant
+        // un guillemet ou un backslash ne doit pas casser la syntaxe du sasl.jaas.config généré.
+        Map<String, Object> props = SpringKafkaConsumerFactory.buildConsumerProperties(Map.of(
+                "bootstrapServers", "localhost:9092",
+                "groupId", "flowforge",
+                "securityProtocol", "SASL_SSL",
+                "saslUsername", "svc",
+                "saslPassword", "a\"b\\c"));
+
+        assertThat(props.get("sasl.jaas.config").toString()).contains("password=\"a\\\"b\\\\c\";");
+    }
+
+    @Test
     void bootstrapServersAndGroupId_arePropagated() {
         Map<String, Object> props = SpringKafkaConsumerFactory.buildConsumerProperties(Map.of(
                 "bootstrapServers", "broker1:9092,broker2:9092",

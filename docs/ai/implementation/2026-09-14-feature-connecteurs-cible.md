@@ -356,3 +356,94 @@ _Mis à jour au fil des milestones._
 - `SECRET_TEXTAREA` traité comme sensible par `ConnectorCatalog.isPasswordField` — masquage
   lecture (REST + MCP) et chiffrement au repos couverts par le même point d'extension que
   `PASSWORD`, sans dupliquer la logique (leçon TODO §56 réappliquée).
+
+## Revue adversariale post-cycle (2026-09-20, sous-agent dédié)
+
+Sur demande explicite (« lance un subagent pour l'analyse adversariale »), un sous-agent a relu
+intégralement les adaptateurs SFTP/Kafka et vérifié le comportement réel des 3 librairies tierces
+(SSHJ 0.39.0, Apache POI 5.4.1, Spring Kafka 4.1.1) par décompilation des jars résolus (`javap`),
+pas par supposition — même discipline que la vérification API en Phase 3/5. **2 findings réels
+corrigés, 2 findings mineurs corrigés, 9 angles vérifiés et écartés avec preuve.**
+
+**[Haute] TOCTOU sur `maxFileBytes` — OOM possible malgré la garde documentée (corrigé) :** la
+garde ne comparait `file.sizeBytes()` (métadonnée `listFiles()`, donc annoncée par le serveur) à
+`maxFileBytes` qu'**avant** le téléchargement — `download()` faisait ensuite un
+`in.readAllBytes()` sans aucune limite, contredisant le javadoc de
+`ConnectorProperties.BatchImport.maxFileBytes` (« never buffered whole regardless »). Un serveur
+SFTP menteur ou un fichier encore en cours d'écriture pouvait annoncer une petite taille au LIST
+puis servir bien plus au download réel → OOM sur l'unique JVM du tenant (déni de service complet,
+pas seulement du connecteur). **Corrigé** : `SftpClientPort.download` prend désormais `maxBytes`
+en paramètre ; `SshjSftpClientAdapter.readBounded` (même pattern que
+`HttpRestConnector.readBounded`, `in.readNBytes(maxBytes + 1)`) lève `SftpFileTooLargeException`
+(nouvelle exception domaine, distincte de `SftpConnectionException`) sans jamais matérialiser plus
+que `maxBytes + 1` octets ; `BatchImportConnector.onEvent` traite ce cas comme le pré-contrôle
+existant (log + `continue`, isolation par fichier, pas d'abandon du poll entier). Testé : nouveau
+cas `onEvent_serverMisreportsSmallerSizeThanActualContent_...` (serveur menteur simulé côté fake
+port) + `SshjSftpClientAdapterTest.readBounded_*` (2 cas, isolation sur `ByteArrayInputStream`,
+sans serveur SSH réel).
+
+**[Moyenne] Aucun plafond sur le nombre d'instances `kafka` activées par tenant (corrigé, décision
+utilisateur via `AskUserQuestion`) :** chaque instance `kafka` activée lance un thread/connexion
+consommateur réel pour toute la durée de vie de la JVM (contrairement à `batch-import`, cron-pollé
+par cycles courts) — sans plafond, une erreur de config ou un compte `TENANT_ADMIN` compromis
+pouvait épuiser threads/connexions et faire tomber tout le processus du tenant, pas seulement le
+connecteur. Utilisateur a choisi l'option « plafond configurable ». **Corrigé** : nouvelle
+propriété `ConnectorProperties.Kafka.maxInstancesPerTenant` (défaut 10,
+`app.connector.kafka.max-instances-per-tenant`). Appliqué dans
+`ManageConnectorInstanceUseCaseImpl` via un `Map<String, Integer>` générique
+(`maxEnabledInstancesPerTenantByType`, type absent = pas de limite) — **aucun littéral de type
+connecteur codé en dur dans le domaine**, invariant architectural déjà respecté par tout le reste
+de cette classe (vérifié par grep avant d'écrire le correctif) ; le type concret (`"kafka"`) reste
+un détail de câblage assemblé dans `ConnectorConfig` (infrastructure), pas dans le domaine.
+Vérifié sur `create`, `update` (transition désactivé→activé uniquement, pas de recheck sur une
+instance déjà activée) et **`restore`** (chemin initialement manqué en écrivant le correctif,
+trouvé en relisant les 3 façons d'activer une instance avant de considérer la protection complète
+— même discipline que la fuite `authHeaderValue` de TODO §56). Nouvelle exception domaine
+`ConnectorInstanceQuotaExceededException` → 409 (`ConnectorExceptionHandler`). Testé : 8 cas
+`ManageConnectorInstanceUseCaseImplTest` (mockés) + 1 test bout-en-bout réel dans
+`ConnectorAdminApiTest` (property Spring réelle `app.connector.kafka.max-instances-per-tenant=1`
+sur la classe, preuve que le câblage `ConnectorConfig` fonctionne, pas seulement l'unité isolée) —
+nettoyage explicite (`softDelete`) en fin de test pour ne pas laisser une instance `kafka` activée
+tourner dans le réconciliateur réel `@Scheduled` pour le reste de la suite.
+
+**[Basse] Choix de l'authentification SFTP ignorait `sftpAuthType` (corrigé) :** `connect()`
+choisissait mot de passe vs clé privée uniquement selon `privateKeyPem() != null`, jamais selon le
+sélecteur explicite `sftpAuthType` validé par ailleurs — un champ `sftpPrivateKey` resté en base
+après un retour à `sftpAuthType=PASSWORD` restait donc silencieusement actif. Pas d'élévation de
+privilège (même acteur `TENANT_ADMIN` déjà propriétaire des deux champs), mais peut masquer une
+rotation de credential ratée. **Corrigé** : `SftpConnectionConfig` porte désormais `authType`
+explicitement, `connect()` branche dessus. Testé :
+`connectionConfig_carriesSftpAuthTypeExplicitly_evenWithLeftoverPrivateKeyField`.
+
+**[Basse] Injection dans `sasl.jaas.config` (corrigé) :** `saslUsername`/`saslPassword` étaient
+interpolés dans le gabarit JAAS sans échapper `"`/`\`, cassant silencieusement le parsing JAAS pour
+un credential légitime contenant un guillemet. Pas d'élévation de privilège (même acteur). **Corrigé** :
+`escapeJaasValue` (échappe `\` puis `"`, grammaire standard JAAS). Testé :
+`saslSsl_escapesQuotesAndBackslashesInCredentials`.
+
+**Défense en profondeur (pas un correctif de faille active) :** `SftpConnectionConfig.toString()`
+surchargé pour masquer `password`/`privateKeyPem` — aucun appelant actuel ne logue cet objet
+(vérifié par grep), mais l'exposer en clair par défaut serait une mine dormante pour un futur log
+de debug/erreur.
+
+**9 angles vérifiés et écartés avec preuve (pas supposés sûrs)** — détail complet dans le rapport
+du sous-agent, résumé : vérification de la clé d'hôte SSH réellement appliquée sur les 3
+opérations SFTP (`FingerprintVerifier` lève si format invalide, pas de mode « accepter tout ») ;
+traversée de chemin SFTP non exploitable (`info.getName()` ne peut structurellement pas contenir
+`/`) ; injection CSV/formule déjà couverte par le point d'export unique existant (TODO §23) ; POI
+5.4.1 durci contre XXE par défaut (`XMLHelper.newDocumentBuilder`, vérifié par décompilation) ;
+mot de passe SASL jamais en clair dans les logs Kafka (`ConfigDef.Type.PASSWORD` masqué
+automatiquement) ; pas de race de double-consommateur dans `KafkaConsumerReconciler`
+(`@Scheduled` non chevauchant, `stop()` bloquant avant `start()`) ; isolation multi-tenant Kafka
+garantie par construction (1 JVM = 1 tenant, jamais résolu par requête) ; masquage/chiffrement
+`SECRET_TEXTAREA` confirmé sur tous les chemins create/update/get/list, pas de chemin oublié.
+
+**Preuve fraîche post-correctifs :** `./mvnw verify` (hors 2 flakes préexistants sans rapport,
+confirmés reproductibles sur `origin/main`/hors périmètre : `NotificationPersistenceIT` déjà
+documenté en M7, et `EvaluateDossierRetentionUseCaseImplTest.evaluate_notYetExpiredDossierIsUnchanged`
+nouvellement trouvé — bug de conception du test, pas de la production : il compare une instance
+figée `NOW` du 2026-08-19 aux résultats d'un use case qui appelle le vrai `Instant.now()` en
+interne, en supposant un « petit dérapage d'horloge » qui a fini par dépasser la fenêtre de
+rétention de 30 jours avec le temps réel qui avance — non touché par ce cycle, signalé pour
+information) : **1954 tests, 0 échec**, Jacoco « All coverage checks have been met », 10/10
+`*IT.java` du périmètre feature.

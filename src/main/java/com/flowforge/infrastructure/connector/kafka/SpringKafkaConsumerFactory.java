@@ -57,6 +57,16 @@ class SpringKafkaConsumerFactory implements KafkaConsumerFactory {
 
     private static String jaasConfig(Map<String, Object> config) {
         return "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"%s\" password=\"%s\";"
-                .formatted(config.get("saslUsername"), config.get("saslPassword"));
+                .formatted(escapeJaasValue(config.get("saslUsername")), escapeJaasValue(config.get("saslPassword")));
+    }
+
+    /**
+     * Escapes {@code \} and {@code "} per the JAAS config quoted-string grammar (found in
+     * adversarial review, connecteurs-cible lot B1) — without this, a username/password
+     * containing a double quote silently breaks the generated {@code sasl.jaas.config} string
+     * instead of being carried as literal credential text.
+     */
+    private static String escapeJaasValue(Object value) {
+        return String.valueOf(value).replace("\\", "\\\\").replace("\"", "\\\"");
     }
 }

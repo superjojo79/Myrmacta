@@ -100,6 +100,21 @@ class BatchImportConnectorTest {
         assertThat(sftp.lastConnectionConfig.port()).isEqualTo(22);
     }
 
+    @Test
+    void connectionConfig_carriesSftpAuthTypeExplicitly_evenWithLeftoverPrivateKeyField() {
+        // Revue adversariale (connecteurs-cible, lot B1) : la méthode d'authentification réelle
+        // doit venir de sftpAuthType, pas être devinée depuis la présence d'un privateKeyPem —
+        // sinon une clé privée laissée en base après un retour à PASSWORD resterait active.
+        Map<String, Object> config = baseConfig();
+        config.put("sftpAuthType", "PASSWORD");
+        config.put("sftpPrivateKey", "-----BEGIN OPENSSH PRIVATE KEY-----\nleftover\n-----END OPENSSH PRIVATE KEY-----");
+        registerCsv("/in", "/in/a.csv", "name\nAlice\n");
+
+        connector.onEvent(instance(config), null);
+
+        assertThat(sftp.lastConnectionConfig.authType()).isEqualTo("PASSWORD");
+    }
+
     // --- onEvent(): CSV ---
 
     @Test
@@ -183,6 +198,35 @@ class BatchImportConnectorTest {
         assertThat(events).isEmpty();
         assertThat(sftp.downloaded).isEmpty();
         assertThat(sftp.archived).isEmpty();
+    }
+
+    @Test
+    void onEvent_serverMisreportsSmallerSizeThanActualContent_rejectedWithoutOom_otherFilesStillProcessed() {
+        // Revue adversariale (connecteurs-cible, lot B1) : le pré-contrôle ne fait confiance qu'à
+        // la taille annoncée par listFiles() ; un serveur SFTP menteur/défaillant pourrait annoncer
+        // une petite taille puis servir davantage d'octets au download() réel — la garde doit donc
+        // aussi s'appliquer pendant le téléchargement, pas seulement avant.
+        ConnectorProperties smallLimit = new ConnectorProperties(
+                null, null, null, null, new ConnectorProperties.BatchImport(20L, 1_000), null);
+        connector = new BatchImportConnector(sftp, new SimpleJsonPathMapper(), smallLimit);
+        Map<String, Object> config = baseConfig();
+        byte[] lyingActualContent = "name\nAlice\nBob\nCarol\n".getBytes(StandardCharsets.UTF_8); // 21 octets réels
+        byte[] okContent = "name\nBob\n".getBytes(StandardCharsets.UTF_8); // 9 octets, sous la limite
+        sftp.filesByDirectory.put(
+                "/in",
+                List.of(
+                        // taille annoncée (5) très inférieure à la limite (20) ET au contenu réel (21)
+                        new SftpClientPort.RemoteFile("/in/lying.csv", 5L),
+                        new SftpClientPort.RemoteFile("/in/ok.csv", okContent.length)));
+        sftp.contentsByPath.put("/in/lying.csv", lyingActualContent);
+        sftp.contentsByPath.put("/in/ok.csv", okContent);
+
+        List<WorkflowTriggerEvent> events = connector.onEvent(instance(config), null);
+
+        assertThat(sftp.downloaded).contains("/in/lying.csv"); // le pré-contrôle laisse passer, à tort
+        assertThat(sftp.archived).containsExactly("/in/ok.csv"); // seul le fichier honnête est archivé
+        // Le fichier menteur ne plante pas le traitement des autres fichiers du même poll (1 ligne "Bob").
+        assertThat(events).hasSize(1);
     }
 
     @Test
@@ -329,9 +373,15 @@ class BatchImportConnectorTest {
         }
 
         @Override
-        public byte[] download(SftpConnectionConfig config, String remotePath) {
+        public byte[] download(SftpConnectionConfig config, String remotePath, long maxBytes) {
             downloaded.add(remotePath);
-            return contentsByPath.getOrDefault(remotePath, new byte[0]);
+            byte[] content = contentsByPath.getOrDefault(remotePath, new byte[0]);
+            if (content.length > maxBytes) {
+                throw new com.flowforge.domain.connector.model.SftpFileTooLargeException(
+                        "File " + remotePath + " exceeds maxFileBytes while downloading "
+                                + "(the server reported a smaller size when listing)");
+            }
+            return content;
         }
 
         @Override

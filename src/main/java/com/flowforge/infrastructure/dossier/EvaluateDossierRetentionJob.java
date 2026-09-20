@@ -4,6 +4,7 @@ import com.flowforge.domain.dossier.port.in.EvaluateDossierRetentionUseCase;
 import com.flowforge.infrastructure.config.RetentionProperties;
 import com.flowforge.infrastructure.config.TenantProperties;
 import com.flowforge.infrastructure.observability.MdcScope;
+import java.time.Instant;
 import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +44,7 @@ class EvaluateDossierRetentionJob {
         try (MdcScope ignored = MdcScope.tenant(tenantProperties.id())) {
             EvaluateDossierRetentionUseCase.EvaluationResult result =
                     evaluateDossierRetentionUseCase.evaluate(
-                            tenantProperties.id(), retentionProperties.batchSize());
+                            Instant.now(), tenantProperties.id(), retentionProperties.batchSize());
             if (result.settingsAbsent()) {
                 log.warn(
                         "Retention job no-op for tenant '{}': settings not configured (D-BOOTSTRAP)",

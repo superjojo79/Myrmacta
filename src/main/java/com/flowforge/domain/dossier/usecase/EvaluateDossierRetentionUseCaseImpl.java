@@ -52,7 +52,8 @@ public final class EvaluateDossierRetentionUseCaseImpl implements EvaluateDossie
     }
 
     @Override
-    public EvaluationResult evaluate(String tenantId, int batchSize) {
+    public EvaluationResult evaluate(Instant now, String tenantId, int batchSize) {
+        Objects.requireNonNull(now, "now");
         Objects.requireNonNull(tenantId, "tenantId");
         if (batchSize <= 0) {
             return EvaluationResult.of(0, 0);
@@ -65,7 +66,6 @@ public final class EvaluateDossierRetentionUseCaseImpl implements EvaluateDossie
         }
 
         List<Dossier> candidates = dossierRepository.findClosedForRetention(tenantId, batchSize);
-        Instant now = Instant.now();
         int archived = 0;
         for (Dossier dossier : candidates) {
             if (archiveIfExpired(dossier, settings.get(), now)) {

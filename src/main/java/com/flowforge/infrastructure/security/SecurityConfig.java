@@ -4,6 +4,7 @@ import com.flowforge.infrastructure.config.ConnectorProperties;
 import com.flowforge.infrastructure.config.DocumentGenerationProperties;
 import com.flowforge.infrastructure.config.M2mSecurityProperties;
 import com.flowforge.infrastructure.config.SecurityCookieProperties;
+import com.flowforge.infrastructure.config.SecurityHeadersProperties;
 import com.flowforge.infrastructure.config.TenantProperties;
 import com.flowforge.infrastructure.security.oidc.RealmAccessAuthoritiesMapper;
 import com.flowforge.infrastructure.tenant.TenantResolutionFilter;
@@ -40,7 +41,11 @@ import org.springframework.security.web.context.SecurityContextHolderFilter;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@EnableConfigurationProperties({SecurityCookieProperties.class, M2mSecurityProperties.class})
+@EnableConfigurationProperties({
+    SecurityCookieProperties.class,
+    M2mSecurityProperties.class,
+    SecurityHeadersProperties.class
+})
 public class SecurityConfig {
 
     /** Autorité M2M requise sur {@code /api/m2m/**} (DD-M2M). */
@@ -87,10 +92,12 @@ public class SecurityConfig {
 
     @Bean
     @Order(0)
-    SecurityFilterChain actuatorSecurityFilterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain actuatorSecurityFilterChain(
+            HttpSecurity http, SecurityHeadersCustomizer securityHeadersCustomizer) throws Exception {
         http.securityMatcher(EndpointRequest.toAnyEndpoint())
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+        securityHeadersCustomizer.apply(http);
         return http.build();
     }
 
@@ -100,7 +107,8 @@ public class SecurityConfig {
             HttpSecurity http,
             JwtDecoder m2mJwtDecoder,
             JwtAuthenticationConverter m2mJwtAuthenticationConverter,
-            TenantProperties tenantProperties)
+            TenantProperties tenantProperties,
+            SecurityHeadersCustomizer securityHeadersCustomizer)
             throws Exception {
         http.securityMatcher("/api/m2m/**")
                 .csrf(csrf -> csrf.disable())
@@ -112,12 +120,16 @@ public class SecurityConfig {
                 .addFilterAfter(
                         new M2mTenantValidationFilter(tenantProperties),
                         BearerTokenAuthenticationFilter.class);
+        securityHeadersCustomizer.apply(http);
         return http.build();
     }
 
     @Bean
     @Order(2)
-    SecurityFilterChain webhookSecurityFilterChain(HttpSecurity http, ConnectorProperties connectorProperties)
+    SecurityFilterChain webhookSecurityFilterChain(
+            HttpSecurity http,
+            ConnectorProperties connectorProperties,
+            SecurityHeadersCustomizer securityHeadersCustomizer)
             throws Exception {
         // Auth métier (HMAC / token) réalisée dans les contrôleurs — pas d'OIDC ici.
         // D-CALLBACK-ROUTE : /api/callbacks/** doit être anonyme comme /api/webhooks/** --
@@ -133,6 +145,7 @@ public class SecurityConfig {
                 .addFilterBefore(
                         new WebhookBodySizeLimitFilter(connectorProperties.webhook().maxBodyBytes()),
                         SecurityContextHolderFilter.class);
+        securityHeadersCustomizer.apply(http);
         return http.build();
     }
 
@@ -144,7 +157,8 @@ public class SecurityConfig {
             RealmAccessAuthoritiesMapper authoritiesMapper,
             TenantResolutionFilter tenantResolutionFilter,
             ClientRegistrationRepository clientRegistrationRepository,
-            DocumentGenerationProperties documentGenerationProperties)
+            DocumentGenerationProperties documentGenerationProperties,
+            SecurityHeadersCustomizer securityHeadersCustomizer)
             throws Exception {
         CookieCsrfTokenRepository csrfRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
         csrfRepository.setCookieCustomizer(cookie -> cookie
@@ -187,6 +201,7 @@ public class SecurityConfig {
                         .authenticated())
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(
                         new ApiAuthenticationEntryPoint(loginEntryPoint)));
+        securityHeadersCustomizer.apply(http);
 
         return http.build();
     }

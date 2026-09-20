@@ -47,7 +47,7 @@ Décisions actées pour cette image (lot `provisioning-tenant`, voir
 | Heap JVM par défaut | Dynamique (`-XX:MaxRAMPercentage=75.0`), pas de `-Xmx` fixe — s'adapte à la limite mémoire du conteneur |
 
 ```bash
-docker run -d --name flowforge-<tenant_id> -p 8081:8080 \
+docker run -d --name flowforge-<tenant_id> -p 127.0.0.1:8081:8080 \
   -e APP_TENANT_ID=<tenant_id> \
   -e DB_URL=jdbc:postgresql://<host>:5432/flowforge \
   -e DB_USERNAME=flowforge_<tenant_id> -e DB_PASSWORD=<mot-de-passe-du-role> \
@@ -55,6 +55,12 @@ docker run -d --name flowforge-<tenant_id> -p 8081:8080 \
   -e OAUTH2_ISSUER_URI=<realm-keycloak-reel> \
   flowforge:<tag>
 ```
+
+Lier le port applicatif **uniquement à loopback** (`127.0.0.1:8081:8080`).
+Ne pas publier `:8080` / `:8081` sur toutes les interfaces (`-p 8081:8080`) :
+`server.forward-headers-strategy: framework` honore `X-Forwarded-Proto` tel quel,
+et un client distant pourrait forcer HSTS 1 an + `includeSubDomains` sur du HTTP
+clair (A4-HSTS-001). Le reverse-proxy local est le seul à joindre l’instance.
 
 `JAVA_OPTS` permet d'ajuster les options JVM sans reconstruire l'image (ex. `-e
 JAVA_OPTS="-Dhttps.proxyHost=..."`). `APP_TENANT_ID` (relaxed-binding Spring Boot standard vers
@@ -82,7 +88,8 @@ Checklist des variables à revoir pour un environnement réel :
 |---|---|---|
 | `SPRING_PROFILES_ACTIVE` | `local` | un profil dédié (≠ `local`/`test`) pour activer les garde-fous D-43 |
 | `DB_PASSWORD` | `flowforge` | mot de passe fort, hors denylist |
-| `APP_SECURITY_COOKIE_SECURE` | `false` (HTTP) | `true` (défaut) — exige HTTPS de bout en bout ou une terminaison TLS au reverse-proxy ; `server.forward-headers-strategy: framework` est déjà positionné pour honorer les en-têtes `X-Forwarded-*` |
+| `APP_SECURITY_COOKIE_SECURE` | `false` (HTTP) | `true` (défaut) — exige HTTPS de bout en bout ou une terminaison TLS au reverse-proxy ; `server.forward-headers-strategy: framework` est déjà positionné pour honorer les en-têtes `X-Forwarded-*` **posés par le proxy de confiance** |
+| `APP_SECURITY_HEADERS_ENABLED` | `true` (défaut, à laisser) | `true` — l’app émet HSTS `max-age=31536000; includeSubDomains` (pas de `preload`) hors profils `local`/`test`, seulement si la requête est HTTPS **et** que le pair TCP immédiat est loopback ou RFC1918. Ne pas poser un HSTS reverse-proxy **plus court** qui le contredirait. Kill switch `false` uniquement en urgence. |
 | `OIDC_CLIENT_SECRET` | `dev-secret-change-me` | secret généré par le client Keycloak réel (§5) |
 | `OAUTH2_ISSUER_URI` / `M2M_JWT_SECRET` | vides (M2M désactivé) ou HMAC de test | `OAUTH2_ISSUER_URI` pointant le realm Keycloak réel — jamais `M2M_JWT_SECRET` (§7) |
 | `APP_TENANT_ID` (relaxed-binding Spring Boot vers `app.tenant.id`, défaut `tenant_dev` dans `application.yml`) | `tenant_dev` | un identifiant par instance, propre à chaque tenant (§4) |
@@ -103,6 +110,14 @@ pour le détail et la justification du choix) :
 
 ```apache
 # httpd.conf — un bloc par tenant, ajouté au provisioning
+# Écraser les X-Forwarded-* clients (mod_headers) puis poser proto=https.
+# Sans ça, un client peut envoyer X-Forwarded-Proto: https sur HTTP clair.
+RequestHeader unset X-Forwarded-Proto early
+RequestHeader unset X-Forwarded-For early
+RequestHeader unset X-Forwarded-Host early
+RequestHeader unset X-Forwarded-Port early
+RequestHeader set X-Forwarded-Proto "https"
+RequestHeader set X-Forwarded-For "%{REMOTE_ADDR}s"
 ProxyPass        "/tenant_a" "http://127.0.0.1:8081/tenant_a"
 ProxyPassReverse "/tenant_a" "http://127.0.0.1:8081/tenant_a"
 ```

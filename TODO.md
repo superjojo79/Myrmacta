@@ -407,6 +407,29 @@ comportemental (pas un défaut de sécurité).
 
 ---
 
+### [ ] 62. Headers HTTP globaux — CSP / HSTS / X-Frame-Options (lot A4)
+
+**Énoncé :** reliquat **S-9** ([REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md)) —
+pas de CSP / HSTS / `X-Frame-Options` applicatifs. Lot **A4**
+([FILE-ATTENTE.md](FILE-ATTENTE.md)) : surface exclusive `SecurityConfig.java`.
+
+**Statut :** Phases 1–2 `dev-lifecycle` **closes** (2026-09-20). Suite : Phase 3
+design (D-MECHANISM, D-CSP-STRING). Branche `cursor/headers-http-globaux-ec9a`.
+
+**Décisions Phase 1 :** D-HEADERS-SCOPE = B (trio S-9 + nosniff + Referrer-Policy) ;
+D-HEADERS-CHAINS = B (4 chaînes, helper partagé) ; D-CSP-POLICY = B (enforce SPA,
+M13 preview conservée) ; D-HSTS = B (1 an, includeSubDomains, pas de preload,
+absent `local`/`test`) ; D-CONFIG = C (`app.security.headers.enabled`, défaut
+true) ; D-LOCAL-HEADERS = A (kill switch pas false en local — seul HSTS l’est).
+
+**Impacte :** `SecurityConfig.java`, tests sécurité, `.env.example`,
+[GETTING-STARTED.md](GETTING-STARTED.md), [DEPLOIEMENT.md](DEPLOIEMENT.md).
+Pas Compose, pas CSRF (S-8), pas `GUIDE-UTILISATEUR.md`.
+
+**Détail :** `docs/ai/{requirements,design,testing}/2026-09-20-feature-headers-http-globaux.md`.
+
+---
+
 ## Autorisation et conformité
 
 Points identifiés par [12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md),

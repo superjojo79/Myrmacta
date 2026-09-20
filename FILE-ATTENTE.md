@@ -23,12 +23,18 @@
 > n'est prise ici** : ces 4 items restent en *Gaps réels hors Vague B* (`ROADMAP.md`), à ne
 > démarrer qu'après B1 (et C si concerné), chacun via son propre cycle Phase 1 → 9.
 >
-> **Dernière mise à jour :** 2026-09-14 — Vague A confirmée **intégralement livrée** :
+> **Dernière mise à jour :** 2026-09-20 — lot **A4** `headers-http-globaux` : cycle
+> `dev-lifecycle` **démarré** (Phases 1–2 close, décisions D-* actées). Branche
+> `cursor/headers-http-globaux-ec9a`. B1 reste le lot connecteurs en cours — A4
+> n’y touche pas (`SecurityConfig` seulement).
+>
+> **2026-09-14** — Vague A confirmée **intégralement livrée** :
 > **A1** (`provisioning-tenant`, [PR #119](https://github.com/superjojo79/FlowForge/pull/119)),
 > **A2** (`admin-connector-form-schema`, [PR #117](https://github.com/superjojo79/FlowForge/pull/117))
 > et **A3** (`mcp-ecritures-metier`, [PR #118](https://github.com/superjojo79/FlowForge/pull/118))
 > tous **mergés sur `main`** (vérifié via l'API GitHub : `merged: true` pour les 3 PR). TODO §60
-> clos. Seule la Vague B (`connecteurs-cible`) reste en attente.
+> clos. Vague B (`connecteurs-cible`) et A4 (`headers-http-globaux`) peuvent coexister
+> (surfaces disjointes).
 >
 > 2026-09-11 — TODO **§61 livré** : introduction de DMN, cycle
 > `dev-lifecycle` complet (analyse
@@ -364,8 +370,10 @@ pagination inbox > 100.
 **A2** mergé ([PR #117](https://github.com/superjojo79/FlowForge/pull/117)),
 **A3** mergé ([PR #118](https://github.com/superjojo79/FlowForge/pull/118)).
 
-**En cours :** aucune — file vide côté Vague A. **Prochain candidat :** Vague B
-(`connecteurs-cible`), pas encore lancée.
+**En cours :**
+- **B1** `connecteurs-cible` (Kafka + import batch + ERP) — un agent, couture catalogue.
+- **A4** `headers-http-globaux` — Phases 1–2 close (2026-09-20) ; Phase 3 design
+  suivante. Surface exclusive `SecurityConfig.java`. Pas Compose, pas CSRF.
 
 Détail inventaire : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §4 / §6.
 

@@ -11,6 +11,12 @@ import org.junit.jupiter.api.Test;
 class DossierTest {
 
     private static final Instant CREATED_AT = Instant.parse("2026-08-02T09:00:00Z");
+    // Fixed rather than UUID.randomUUID() (found flaky): toString_neverPrintsFieldValuesOrKeys
+    // asserts the whole toString() doesn't contain "100" (the redacted field value) — a random
+    // UUID occasionally contains that same digit sequence by pure chance, failing the test for a
+    // reason unrelated to redaction. Deterministic id, chosen to contain no "0" digit at all so no
+    // digit-sequence collision with any field value used in this file is possible.
+    private static final UUID DOSSIER_ID = UUID.fromString("11111111-2222-3333-4444-555555555555");
 
     @Test
     void withRetentionArchive_fromClotureSetsArchiveStatusAndPurgeEligibleAt() {
@@ -104,7 +110,7 @@ class DossierTest {
 
     private static Dossier dossier() {
         return new Dossier(
-                UUID.randomUUID(),
+                DOSSIER_ID,
                 "tenant_dev",
                 "DOS-1",
                 "SINISTRE",

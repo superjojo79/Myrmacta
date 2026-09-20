@@ -10,31 +10,41 @@
 >   (rétention / purge / sensible — **livré**) ; revue post-implémentation 2026-08-25 :
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
-> **Dernière mise à jour :** 2026-09-20 — Lot **C** (`scan-antivirus-clamav`, adaptateur AV
-> réel derrière `AttachmentScanPort`) : cycle `dev-lifecycle` Phase 3 (review design) close, 12
-> décisions actées au total sans aucune tranchée silencieusement. Objectif explicite
-> utilisateur : implémentation de référence ClamAV sans modifier le port existant (D-AV, PR
-> #62), swappable vers un autre moteur AV plus tard. Produit/sécurité (Phases 1-2,
-> `AskUserQuestion`) : `clamd` en TCP natif `INSTREAM`, **fail-open** si indisponible/timeout
-> (log + compteur), `clamd` **mutualisé** entre tenants, activation **opt-in** par défaut
-> désactivée, IT Testcontainers **isolée** du run standard, **signal de santé Micrometer actif
-> exigé** sur le fail-open (un log seul jugé insuffisant), `clamd` en prod = **service externe
-> déjà provisionné** (modèle PostgreSQL/Keycloak). Architecture (Phase 3, tranchées par
-> alignement sur des patterns déjà établis dans le dépôt, sans nouvelle question produit) :
-> timeouts 5s connexion+lecture (aligné `ConnectorProperties.Http`), image `clamav/clamav:1.4`
-> épinglée (comme `postgres`/`keycloak`/`kafka`), mise à jour des signatures via le mécanisme
-> natif de l'image (`FRESHCLAM_CHECKS`, pas de nouveau composant), `clamd.conf`
-> `StreamMaxLength` aligné sur `APP_DOSSIER_ATTACHMENT_MAX_SIZE_MB`, activation via propriété
+> **Dernière mise à jour :** 2026-09-20 — Lot **C** (`scan-antivirus-clamav`) : cycle
+> `dev-lifecycle` Phase 4 (planning) close. Plan TDD écrit dans
+> [docs/ai/planning/2026-09-20-feature-scan-antivirus-clamav.md](docs/ai/planning/2026-09-20-feature-scan-antivirus-clamav.md)
+> — 10 tâches (T1-T10) en 5 milestones (socle config → adaptateur ClamAV → ops Compose → IT
+> réelle isolée → clôture), séquencement et dépendances explicites, chaque scénario du document
+> testing.md rattaché à au moins une tâche. **Vérification faite pendant cette phase** : le
+> dépôt n'a pas de `maven-failsafe-plugin`, et les patterns par défaut de
+> `maven-surefire-plugin` 3.5.6 (confirmés via `help:describe`, pas supposés) n'incluent déjà pas
+> `*IT.java` — c'est le mécanisme réel derrière l'isolation des IT PostgreSQL existantes de
+> `./mvnw verify`, et il suffit donc de nommer la nouvelle classe `ClamAvAttachmentScanIT` pour
+> obtenir D-AV-CLAMAV-TEST-SCOPE, sans profil Maven ni tag JUnit à créer. 12 décisions produit/
+> architecture actées au total sur les Phases 1-3 (détail dans
+> [docs/ai/requirements/2026-09-20-feature-scan-antivirus-clamav.md](docs/ai/requirements/2026-09-20-feature-scan-antivirus-clamav.md)
+> et [docs/ai/design/2026-09-20-feature-scan-antivirus-clamav.md](docs/ai/design/2026-09-20-feature-scan-antivirus-clamav.md)),
+> aucune tranchée silencieusement. Suite : Phase 5 (implémentation, TDD). Développement direct
+> sur la branche de session `claude/funny-johnson-x0er1h`, pas de worktree séparé (précédent du
+> dépôt, cf. `extension-mcp-flux-metier`).
+>
+> **2026-09-20 (plus tôt)** — Lot **C** : Phases 1-3 closes. Objectif explicite utilisateur :
+> implémentation de référence ClamAV sans modifier le port existant (D-AV, PR #62), swappable
+> vers un autre moteur AV plus tard. Produit/sécurité (Phases 1-2, `AskUserQuestion`) : `clamd`
+> en TCP natif `INSTREAM`, **fail-open** si indisponible/timeout (log + compteur), `clamd`
+> **mutualisé** entre tenants, activation **opt-in** par défaut désactivée, IT Testcontainers
+> **isolée** du run standard, **signal de santé Micrometer actif exigé** sur le fail-open (un
+> log seul jugé insuffisant), `clamd` en prod = **service externe déjà provisionné** (modèle
+> PostgreSQL/Keycloak). Architecture (Phase 3, tranchées par alignement sur des patterns déjà
+> établis dans le dépôt, sans nouvelle question produit) : timeouts 5s connexion+lecture (aligné
+> `ConnectorProperties.Http`), image `clamav/clamav:1.4` épinglée (comme
+> `postgres`/`keycloak`/`kafka`), mise à jour des signatures via le mécanisme natif de l'image
+> (`FRESHCLAM_CHECKS`), `clamd.conf` `StreamMaxLength` aligné sur
+> `APP_DOSSIER_ATTACHMENT_MAX_SIZE_MB`, activation via propriété
 > `app.dossier.attachment.scan.type=noop|clamav` **calquée sur `app.storage.type`**
-> (`StorageConfig`) plutôt qu'un booléen inventé, métrique nommée `flowforge.attachment.scan.
-> fail_open` (convention `flowforge.<bc>.<sujet>.<événement>` du dépôt, pas
-> `clamav.scan.fail_open`). 2 clarifications réutilisables stockées en mémoire AI DevKit
-> (`repo:FlowForge`) : services externes stateless = modèle PostgreSQL/Keycloak ; idiomes
-> `app.<x>.type` + `MeterRegistry` injecté au constructeur pour tout futur adaptateur infra.
-> Détail : [docs/ai/design/2026-09-20-feature-scan-antivirus-clamav.md](docs/ai/design/2026-09-20-feature-scan-antivirus-clamav.md).
-> Suite : Phase 4 (planning). Développement direct sur la branche de session
-> `claude/funny-johnson-x0er1h`, pas de worktree séparé (précédent du dépôt, cf.
-> `extension-mcp-flux-metier`).
+> (`StorageConfig`), métrique nommée `flowforge.attachment.scan.fail_open` (convention
+> `flowforge.<bc>.<sujet>.<événement>` du dépôt). 2 clarifications réutilisables stockées en
+> mémoire AI DevKit (`repo:FlowForge`).
 >
 > **2026-09-20 (plus tôt)** — Vague B (**B1**, `connecteurs-cible`) **livrée** : cycle
 > `dev-lifecycle` Phases 1-9 complet, 2 nouveaux connecteurs `batch-import` (SFTP, CSV/Excel) et

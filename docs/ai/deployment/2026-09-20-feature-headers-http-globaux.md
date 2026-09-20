@@ -2,82 +2,38 @@
 phase: deployment
 title: Deployment Strategy
 description: Define deployment process, infrastructure, and release procedures
+status: reviewed
+created: 2026-09-20
+updated: 2026-09-20
+feature: headers-http-globaux
+lot: A4
 ---
 
-# Deployment Strategy
+# Deployment Strategy — `headers-http-globaux` (lot A4)
 
-## Infrastructure
-
-**Where will the application run?**
-
-- Hosting platform (AWS, GCP, Azure, etc.)
-- Infrastructure components (servers, databases, etc.)
-- Environment separation (dev, staging, production)
-
-## Deployment Pipeline
-
-**How do we deploy changes?**
-
-### Build Process
-
-- Build steps and commands
-- Asset compilation/optimization
-- Environment configuration
-
-### CI/CD Pipeline
-
-- Automated testing gates
-- Build automation
-- Deployment automation
+Pas de nouveau artefact, pas de migration, pas de Compose. Le lot
+s’active au boot Spring via `application.yml`.
 
 ## Environment Configuration
 
-**What settings differ per environment?**
+| Variable | Défaut | Local | Prod |
+|---|---|---|---|
+| `APP_SECURITY_HEADERS_ENABLED` | `true` | laisser `true` (ne pas couper la CSP) | `true` ; `false` uniquement en urgence |
+| Profils Spring | — | `local` : pas de HSTS | profil ≠ `local`/`test` : HSTS `max-age=31536000; includeSubDomains` (pas de `preload`) |
 
-### Development
+`server.forward-headers-strategy: framework` est déjà en place : HSTS
+n’est écrit par Spring que si la requête est reconnue HTTPS
+(`X-Forwarded-Proto`).
 
-- Configuration details
-- Local setup
-
-### Staging
-
-- Configuration details
-- Testing environment
-
-### Production
-
-- Configuration details
-- Monitoring setup
-
-## Deployment Steps
-
-**What's the release process?**
-
-1. Pre-deployment checklist
-2. Deployment execution steps
-3. Post-deployment validation
-4. Rollback procedure (if needed)
+Ne pas poser un HSTS reverse-proxy **plus court** que celui de l’app
+(voir [DEPLOIEMENT.md](../../../DEPLOIEMENT.md)).
 
 ## Database Migrations
 
-**How do we handle schema changes?**
-
-- Migration strategy
-- Backup procedures
-- Rollback approach
-
-## Secrets Management
-
-**How do we handle sensitive data?**
-
-- Environment variables
-- Secret storage solution
-- Key rotation strategy
+Aucune.
 
 ## Rollback Plan
 
-**What if something goes wrong?**
-
-- Rollback triggers
-- Rollback steps
-- Communication plan
+1. `APP_SECURITY_HEADERS_ENABLED=false` + restart — le customizer
+   devient no-op (défauts Spring conservés).
+2. Pas de rebuild, pas de rollback Liquibase.

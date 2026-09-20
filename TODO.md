@@ -413,8 +413,8 @@ comportemental (pas un défaut de sécurité).
 pas de CSP / HSTS / `X-Frame-Options` applicatifs. Lot **A4**
 ([FILE-ATTENTE.md](FILE-ATTENTE.md)) : surface exclusive `SecurityConfig.java`.
 
-**Statut :** Phases 1–5 **closes** (2026-09-20). Suite : Phase 7 check
-implementation. Branche `cursor/headers-http-globaux-ec9a`.
+**Statut :** Phases 1–7 **closes** (2026-09-20). Suite : Phases 8–9.
+Branche `cursor/headers-http-globaux-ec9a`.
 [PR #128](https://github.com/superjojo79/FlowForge/pull/128).
 
 **Décisions Phase 1 :** D-HEADERS-SCOPE = B ; D-HEADERS-CHAINS = B ;

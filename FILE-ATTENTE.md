@@ -24,7 +24,7 @@
 > démarrer qu'après B1 (et C si concerné), chacun via son propre cycle Phase 1 → 9.
 >
 > **Dernière mise à jour :** 2026-09-20 — lot **A4** `headers-http-globaux` : Phases
-> 1–5 closes (TDD T1.1–T7.2). [PR #128](https://github.com/superjojo79/FlowForge/pull/128).
+> 1–7 closes (implementation checked). [PR #128](https://github.com/superjojo79/FlowForge/pull/128).
 > B1 reste le lot connecteurs en cours — A4 n’y touche pas.
 >
 > **2026-09-14** — Vague A confirmée **intégralement livrée** :
@@ -371,8 +371,8 @@ pagination inbox > 100.
 
 **En cours :**
 - **B1** `connecteurs-cible` (Kafka + import batch + ERP) — un agent, couture catalogue.
-- **A4** `headers-http-globaux` — Phases 1–5 close (2026-09-20) ; Phase 7
-  check implementation. [PR #128](https://github.com/superjojo79/FlowForge/pull/128).
+- **A4** `headers-http-globaux` — Phases 1–7 close (2026-09-20) ; Phases 8–9
+  couverture + revue. [PR #128](https://github.com/superjojo79/FlowForge/pull/128).
 
 Détail inventaire : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §4 / §6.
 

@@ -407,7 +407,7 @@ comportemental (pas un défaut de sécurité).
 
 ---
 
-### [ ] 63. Headers HTTP globaux — CSP / HSTS / X-Frame-Options (lot A4)
+### [x] 63. Headers HTTP globaux — CSP / HSTS / X-Frame-Options (lot A4)
 
 > Numérotation : B1 a clos **TODO §62** sur `main` (PR #129) en parallèle
 > de ce lot, qui s’appelait §62 sur sa branche. Le point A4 est donc **§63**.
@@ -416,12 +416,10 @@ comportemental (pas un défaut de sécurité).
 pas de CSP / HSTS / `X-Frame-Options` applicatifs. Lot **A4**
 ([FILE-ATTENTE.md](FILE-ATTENTE.md)) : surface exclusive `SecurityConfig.java`.
 
-**Statut :** Phases 1–9 **closes** (2026-09-20), **en revue**.
-Branche `cursor/headers-http-globaux-ec9a`.
-[PR #128](https://github.com/superjojo79/FlowForge/pull/128).
-Remédiation **A4-HSTS-001** (2026-09-20) : HSTS seulement si pair TCP
-loopback/RFC1918 ; DEPLOIEMENT bind `127.0.0.1` + unset `X-Forwarded-*`
-proxy ; IT `SecurityHeadersHstsApiTest`. Cocher `[x]` au merge.
+**Statut (2026-09-20) : clos.** Phases 1–9 closes. Remédiation A4-HSTS-001
+incluse. **Mergée sur `main`**
+([PR #128](https://github.com/superjojo79/FlowForge/pull/128), CI `build` +
+`frontend` verte, merge `8415cee`).
 
 **Décisions Phase 1 :** D-HEADERS-SCOPE = B ; D-HEADERS-CHAINS = B ;
 D-CSP-POLICY = B ; D-HSTS = B ; D-CONFIG = C ; D-LOCAL-HEADERS = A.

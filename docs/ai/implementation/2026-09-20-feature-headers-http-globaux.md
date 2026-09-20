@@ -2,14 +2,17 @@
 phase: implementation
 title: Implementation Guide
 description: Technical implementation notes, patterns, and code guidelines
-status: checked
+status: reviewed
 created: 2026-09-20
 updated: 2026-09-20
 feature: headers-http-globaux
 lot: A4
 phase5: 2026-09-20
 phase7: 2026-09-20
+phase8: 2026-09-20
+phase9: 2026-09-20
 checked: 2026-09-20
+reviewed: 2026-09-20
 ---
 
 # Implementation Guide — `headers-http-globaux` (lot A4)
@@ -67,11 +70,30 @@ Task tracing indisponible : `npx ai-devkit@latest task list --name headers-http-
 | Hors lot | `EvaluateDossierRetentionUseCaseImplTest.NOW = Instant.now()` | Horloge figée vs `evaluate()` ; pas un bug produit A4 |
 | Info | Test défaut properties : `bindOrCreate` | `Binder.bind()` sur préfixe vide reste unbound malgré `@DefaultValue` |
 
-### Follow-ups Phase 8
+### Phase 8
 
-- Preuve fraîche `./mvnw verify`, Vitest, Playwright (skill `verify`).
-- Jacoco classe par classe customizer / properties / SecurityConfig.
-- Optionnel : E2E éditeur BPMN/DMN sous CSP injectée (gap risque planning).
+Preuves fraîches : verify 1898 / Vitest 351 / Playwright **75/75**.
+E2E-HDR-3/4 : éditeurs BPMN et DMN sans violation CSP (pas d’`unsafe-eval`).
+Flake E2E-EDIT-BPMN-1/3 : `expect.poll` sur `putCalled`.
+
+### Phase 9 — revue holistique
+
+Stance : findings d’abord. **Aucun blocking.**
+
+| Sévérité | Fichier | Issue | Reco |
+|---|---|---|---|
+| — | — | Pas de finding bloquant | Merger PR #128 |
+| Low | `pilotage.spec.ts` `A4_CSP` | Copie de la constante Java (A-E2E-CSP-INJECT) | Commentaire de synchro ajouté ; MockMvc reste la preuve d’émission Spring |
+| Low | `DocumentPreviewApiTest` | `getHeader()` = première CSP | M13 exacte prouve non-affaiblissement ; AND dual-header non asserté |
+| Low | `SecurityConfig` | BRANCH 50 % | Branches JWT M2M pré-existantes, hors A4 |
+| Info | `ObservabilityActuatorIT` | FQCN du customizer | Cosmétique |
+| Info | E2E Vite `:4173` | N’atteint pas Spring | Attendu ; émission = MockMvc + actuator IT |
+
+Checklist finale : design match ; 4 `apply(http)` ; kill switch no-op ;
+HSTS profil ; CSRF `HttpOnly=false` intact ; pas Compose / GUIDE-UI ;
+CHANGELOG Sécurité PR #128 ; rollback `APP_SECURITY_HEADERS_ENABLED=false`.
+Callers : customizer seulement depuis `SecurityConfig` + tests. Pas de
+nouvelle dépendance. Pas de migration. HSTS sans `preload` (réversible).
 
 ## Development Setup
 

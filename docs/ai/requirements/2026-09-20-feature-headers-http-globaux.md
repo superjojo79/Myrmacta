@@ -151,22 +151,22 @@ Edge cases :
 ## Success Criteria
 **How will we know when we're done?**
 
-- [ ] MockMvc sur les 4 chaînes (BFF authentifié, M2M, webhook
+- [x] MockMvc sur les 4 chaînes (BFF authentifié, M2M, webhook
       anonyme, actuator) : présence de CSP, XFO, nosniff,
       Referrer-Policy quand `headers.enabled=true`.
-- [ ] HSTS présent hors `local`/`test` sur une requête secure ; **absent**
+- [x] HSTS présent hors `local`/`test` sur une requête secure ; **absent**
       sous profil `local` ou `test`.
-- [ ] `headers.enabled=false` : le paquet custom n’est pas émis
+- [x] `headers.enabled=false` : le paquet custom n’est pas émis
       (prouvé par test).
-- [ ] Preview HTML : en-tête M13 inchangé
+- [x] Preview HTML : en-tête M13 inchangé
       (`default-src 'none'; sandbox`) ; test existant
       `DocumentPreviewApiTest` toujours vert.
-- [ ] Playwright : parcours SPA réel (login → supervision ou éditeur
+- [x] Playwright : parcours SPA réel (login → supervision ou éditeur
       BPMN/DMN) sans erreur console CSP bloquante ; iframe preview
       templates toujours rendue.
-- [ ] `./mvnw verify` vert ; `cd frontend && npm run test` et
+- [x] `./mvnw verify` vert ; `cd frontend && npm run test` et
       `npm run test:e2e` verts (convention FE).
-- [ ] `.env.example` + GETTING-STARTED.md mentionnent
+- [x] `.env.example` + GETTING-STARTED.md mentionnent
       `APP_SECURITY_HEADERS_ENABLED` ; DEPLOIEMENT.md note HSTS
       applicatif.
 

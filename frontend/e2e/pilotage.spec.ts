@@ -1639,7 +1639,7 @@ test('E2E-EDIT-BPMN-1 blank diagram (no draft, not yet deployed): save creates t
   // "Process_1") drives the save key — not the URL's processDefinitionKey
   // (édition d'un diagramme sans clé encore définie, cf. requirements doc).
   await page.getByRole('button', { name: 'Enregistrer le brouillon' }).click()
-  expect(putCalled).toBe(true)
+  await expect.poll(() => putCalled).toBe(true)
 })
 
 test('E2E-EDIT-BPMN-2 edit an already-deployed diagram (no draft) then deploy', async ({ page }) => {
@@ -1718,7 +1718,7 @@ test('E2E-EDIT-BPMN-3 import a local BPMN file into the editor', async ({ page }
   // The imported file's own process id ("importedProcess") drives the save
   // key, proving import → re-render → key extraction all wired correctly.
   await page.getByRole('button', { name: 'Enregistrer le brouillon' }).click()
-  expect(putCalled).toBe(true)
+  await expect.poll(() => putCalled).toBe(true)
 })
 
 test('E2E-EDIT-BPMN-4 draft takes priority over the deployed diagram, deploy then reopen falls back to it', async ({
@@ -2463,6 +2463,7 @@ test('E2E-CONN-3 admin sees callback URL after creating flowable-callback', asyn
   )
 })
 
+// Must stay equal to SecurityHeadersCustomizer.CONTENT_SECURITY_POLICY (D-CSP-STRING A).
 const A4_CSP =
   "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-src 'self' blob:; worker-src 'self' blob:; frame-ancestors 'none'; object-src 'none'; base-uri 'self'"
 

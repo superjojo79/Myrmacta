@@ -2,7 +2,7 @@
 phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
-status: planned
+status: verified
 created: 2026-09-20
 updated: 2026-09-20
 feature: headers-http-globaux
@@ -10,24 +10,44 @@ lot: A4
 phase3: 2026-09-20
 phase4: 2026-09-20
 phase5: 2026-09-20
+phase8: 2026-09-20
+verified: 2026-09-20
 ---
 
 # Testing Strategy — `headers-http-globaux` (lot A4)
 
-Scénarios dérivés des success criteria requirements. Cases à cocher
-pendant Phase 5/8. Playwright **obligatoire** (CSP SPA).
+Scénarios dérivés des success criteria requirements. Playwright **obligatoire** (CSP SPA).
+
+## Phase 8 — résultats (session 2026-09-20)
+
+| Commande | Exit | Résultat |
+|---|---|---|
+| `./mvnw verify -Dskip.frontend=true` | 0 | Surefire **1898** tests, 0 failure, 0 error |
+| Jacoco bundle | — | LINE **93,9 %** (9187/9782) BRANCH **77,9 %** (2995/3845) |
+| `SecurityHeadersCustomizer` | — | LINE **100 %** (21/21) BRANCH **100 %** (6/6) |
+| `SecurityHeadersProperties` | — | LINE **100 %** (1/1) |
+| `SecurityConfig` | — | LINE **95,7 %** (67/70) BRANCH **50 %** (4/8, JWT M2M pré-existant) |
+| `cd frontend && npm run test` | 0 | **351** Vitest |
+| `cd frontend && npx playwright test` | 0 | **75/75** (dont E2E-HDR-1–4) |
+
+Gap refermé en Phase 8 : E2E-HDR-3 (éditeur BPMN) et E2E-HDR-4 (éditeur DMN)
+sous CSP injectée — **aucune** violation, **pas** d’`unsafe-eval`. D-CSP-STRING A
+tenu. Flake pré-existant E2E-EDIT-BPMN-1/3 (`putCalled` immédiat) : `expect.poll`
+comme E2E-EDIT-DMN-1.
 
 ## Test Coverage Goals
 
-- Backend : nouvelles branches helper / kill switch / HSTS-par-profil
-  à 100 % LINE+BRANCH sur les classes ajoutées ou touchées du lot.
-- Jacoco bundle existant (LINE ≥ 85 %, BRANCH ≥ 75 %) tenu.
-- Frontend unit : pas de nouveau composant ; régression Vitest
-  `npm run test`.
-- Frontend E2E : `npm run test:e2e` — au moins un parcours SPA réel
-  + preview documents.
+- Backend : classes **ajoutées** (`SecurityHeadersProperties`, `SecurityHeadersCustomizer`) à 100 % LINE+BRANCH — **tenu**.
+- `SecurityConfig` touché : LINE 95,7 % ; branches manquantes = JWT M2M pré-existantes.
+- Jacoco bundle LINE ≥ 85 %, BRANCH ≥ 75 % — **tenu**.
+- Frontend : Vitest régression + Playwright obligatoire — **tenu**.
 
 ## Unit Tests
+
+Fichiers :
+
+- `src/test/java/com/flowforge/infrastructure/config/SecurityHeadersPropertiesTest.java`
+- `src/test/java/com/flowforge/infrastructure/security/SecurityHeadersCustomizerTest.java`
 
 ### Properties / bind
 
@@ -36,8 +56,7 @@ pendant Phase 5/8. Playwright **obligatoire** (CSP SPA).
 
 ### `SecurityHeadersCustomizer`
 
-- [x] Construit la CSP D-CSP-STRING = A (T-CSP-VALUE) :
-      `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-src 'self' blob:; worker-src 'self' blob:; frame-ancestors 'none'; object-src 'none'; base-uri 'self'`
+- [x] Construit la CSP D-CSP-STRING = A (T-CSP-VALUE)
 - [x] HSTS writer absent si profil `local` (T-HSTS-LOCAL)
 - [x] HSTS writer absent si profil `test` (T-HSTS-TEST)
 - [x] HSTS `max-age=31536000; includeSubDomains` sans `preload` hors
@@ -47,64 +66,47 @@ pendant Phase 5/8. Playwright **obligatoire** (CSP SPA).
 
 ## Integration Tests
 
-MockMvc **vraie** chaîne Spring Security (pas `standaloneSetup`) —
-même doctrine que `WebhookAndCallbackRoutesSecurityTest`.
+Fichiers :
 
-- [x] BFF `GET /api/auth/me` authentifié : CSP, XFO=DENY, nosniff,
-      Referrer-Policy (T-CHAIN-BFF) — couvre D-HEADERS-CHAINS
-- [x] M2M `POST /api/m2m/mcp` (ou GET health M2M existant) : mêmes
-      en-têtes hors HSTS sous `test` (T-CHAIN-M2M)
-- [x] Webhook anonyme `POST /api/webhooks/{uuid}` : mêmes en-têtes,
-      statut contrôleur inchangé (404 instance inconnue)
-      (T-CHAIN-WEBHOOK)
-- [x] Callback anonyme `POST /api/callbacks/{uuid}` : idem
-      (T-CHAIN-CALLBACK)
-- [x] Actuator `GET /actuator/health` sur port management : CSP/XFO
-      présents (T-CHAIN-ACTUATOR) — si le test actuel bind déjà le
-      port
-- [x] Profil test : **pas** de `Strict-Transport-Security`
-      (T-HSTS-ABSENT-TEST)
-- [x] `headers.enabled=false` : assertions d’absence du paquet A4
-      (T-CHAIN-OFF)
-- [x] `DocumentPreviewApiTest` : CSP M13
-      `default-src 'none'; sandbox` inchangée (T-PREVIEW-M13)
+- `src/test/java/com/flowforge/infrastructure/security/SecurityHeadersApiTest.java`
+- `src/test/java/com/flowforge/infrastructure/security/SecurityHeadersDisabledApiTest.java`
+- `src/test/java/com/flowforge/infrastructure/web/observability/ObservabilityActuatorIT.java`
+- `src/test/java/com/flowforge/infrastructure/web/document/DocumentPreviewApiTest.java` (inchangé, M13)
+
+- [x] BFF `GET /api/auth/me` authentifié (T-CHAIN-BFF)
+- [x] M2M `POST /api/m2m/mcp` (T-CHAIN-M2M)
+- [x] Webhook anonyme (T-CHAIN-WEBHOOK)
+- [x] Callback anonyme (T-CHAIN-CALLBACK)
+- [x] Actuator liveness port management (T-CHAIN-ACTUATOR)
+- [x] Profil test : pas de HSTS (T-HSTS-ABSENT-TEST)
+- [x] `headers.enabled=false` (T-CHAIN-OFF)
+- [x] Preview M13 `default-src 'none'; sandbox` (T-PREVIEW-M13)
 
 ## End-to-End Tests
 
-Playwright sert le SPA via Vite `:4173` (`playwright.config.ts`), pas
-Spring. **A-E2E-CSP-INJECT** (planning Phase 4) : les tests HDR
-ajoutent la CSP D-CSP-STRING sur les réponses HTML document, pour
-simuler la chaîne BFF.
+Fichier : `frontend/e2e/pilotage.spec.ts` (`A4_CSP`, `injectDocumentCsp`, `attachCspProbe`).
 
-- [x] E2E-HDR-1 : un utilisateur authentifié ouvre une vue SPA
-      existante (supervision **ou** `/admin/bpmn-editor`) — page
-      rendue, **aucune** violation CSP `blocked` dans la console
-      (T-E2E-SPA)
-- [x] E2E-HDR-2 : preview HTML/PDF template admin (réutiliser le
-      setup d’`E2E-20`) — iframe `sandbox` / blob toujours visible
-      (T-E2E-PREVIEW)
-- [x] Régression complète `npx playwright test` (parcours existants)
+- [x] E2E-HDR-1 Supervision (T-E2E-SPA)
+- [x] E2E-HDR-2 preview HTML/PDF (T-E2E-PREVIEW)
+- [x] E2E-HDR-3 éditeur BPMN sous CSP (Phase 8)
+- [x] E2E-HDR-4 éditeur DMN sous CSP (Phase 8)
+- [x] Régression `npx playwright test` **75/75**
 
 ## Test Data
 
 - `OidcClientTestConfiguration` existant.
 - Profil Spring `test` (HSTS off).
-- Un test `@SpringBootTest` avec
-  `@TestPropertySource(properties = "app.security.headers.enabled=false")`.
-- Pas de Kafka / Compose (hors lot).
+- `@TestPropertySource(properties = "app.security.headers.enabled=false")`.
 
 ## Test Reporting & Coverage
 
-- `./mvnw verify -Dmaven.compiler.release=21` (ou release du `pom`)
+- `./mvnw verify -Dskip.frontend=true`
 - `cd frontend && npm run test`
-- `cd frontend && npm run test:e2e`
-- Jacoco classe par classe sur les fichiers du diff (Phase 8)
+- `cd frontend && npm run test:e2e` (équivalent `npx playwright test`)
 
 ## Manual Testing
 
-Hors cycle si E2E + MockMvc couvrent. Smoke HTTPS derrière proxy :
-HSTS visible (`curl -I` avec `X-Forwarded-Proto: https`) — nice-to-have
-ops, pas un gate Phase 8.
+Hors cycle. Smoke HTTPS derrière proxy : `curl -I` + `X-Forwarded-Proto: https`.
 
 ## Performance Testing
 
@@ -112,6 +114,4 @@ Non applicable (HeaderWriter).
 
 ## Bug Tracking
 
-Écarts CSP découverts en E2E → ajuster D-CSP-STRING en Phase 5,
-documenter dans le design, **pas** passer en Report-Only sans
-rejouer D-CSP-POLICY.
+Aucune violation CSP E2E. D-CSP-STRING A inchangé. Flake BPMN save → `expect.poll`.

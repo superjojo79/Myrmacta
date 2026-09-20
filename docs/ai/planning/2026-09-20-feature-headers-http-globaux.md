@@ -2,7 +2,7 @@
 phase: planning
 title: Project Planning & Task Breakdown
 description: Break down work into actionable tasks
-status: checked
+status: reviewed
 created: 2026-09-20
 updated: 2026-09-20
 feature: headers-http-globaux
@@ -10,6 +10,8 @@ lot: A4
 phase4: 2026-09-20
 phase5: 2026-09-20
 phase7: 2026-09-20
+phase8: 2026-09-20
+phase9: 2026-09-20
 requirements_ref: docs/ai/requirements/2026-09-20-feature-headers-http-globaux.md
 design_ref: docs/ai/design/2026-09-20-feature-headers-http-globaux.md
 testing_ref: docs/ai/testing/2026-09-20-feature-headers-http-globaux.md
@@ -20,8 +22,8 @@ testing_ref: docs/ai/testing/2026-09-20-feature-headers-http-globaux.md
 ## Phase 4: Create Initial Plan
 
 Plan **reviewed** 2026-09-20. Phase 5 **exécutée** 2026-09-20 : T1.1–T7.2 `done`.
-Phase 7 **checked** 2026-09-20 : code conforme au design, aucune déviation
-bloquante. Prochaine étape : Phase 8 (preuves fraîches + Jacoco).
+Phase 7 **checked** 2026-09-20. Phases 8–9 **closes** 2026-09-20 :
+couverture vérifiée, revue holistique sans blocking. Cycle SDD terminé.
 
 ## Milestones
 

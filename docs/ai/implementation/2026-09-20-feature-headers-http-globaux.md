@@ -38,7 +38,7 @@ Pas de changement `domain/**`. `DocumentGenerationController.PREVIEW_CSP` inchan
 
 Preuves Phase 5 (session) :
 
-- `./mvnw verify -Dskip.frontend=true` : **1897 tests**, 0 échec, Jacoco bundle LINE 93.9 % / BRANCH 77.9 % (seuils tenus).
+- `./mvnw verify -Dskip.frontend=true` : **1898 tests**, 0 échec, Jacoco bundle LINE 93.9 % / BRANCH 77.9 % (seuils tenus).
 - Classes du lot : `SecurityHeadersCustomizer` LINE+BRANCH **100 %** ; `SecurityHeadersProperties` LINE **100 %** ; `SecurityConfig` LINE 95.7 % (branches JWT M2M pré-existantes).
 - `cd frontend && npm run test` : **351** Vitest.
 - `cd frontend && npm run test:e2e` : **73/73** Playwright, dont E2E-HDR-1/2.

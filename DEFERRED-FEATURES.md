@@ -254,7 +254,7 @@ Voir le détail et les options dans [TODO.md](TODO.md),
 | **A2** | `admin-connector-form-schema` | **Livré** ([PR #117](https://github.com/superjojo79/FlowForge/pull/117)) | FE seulement ; `configSchema` déjà exposé par l’API ; D-WEBHOOK-URL = C ; mergé 2026-09-08 |
 | **A3** | `mcp-ecritures-metier` | **Livré** ([PR #118](https://github.com/superjojo79/FlowForge/pull/118)) | 4 tools dans **un** cycle ; cadrage [15-serveur-mcp.md](analysis%20doc/15-serveur-mcp.md) § Backlog ; TODO §60 clos ; mergé 2026-09-08 |
 | **A4** | `headers-http-globaux` | Optionnel // A | S-9 ; pas en même temps qu’un A1 qui touche `SecurityConfig` |
-| **B1** | `connecteurs-cible` (Kafka + import batch + ERP) | **Livré** (TODO §62 clos, pas de PR ouverte — non demandée) | `batch-import` (SFTP) + `kafka`, 1 seul cycle comme prévu ; « ERP » = cas d'usage de `batch-import`, pas un 3ème connecteur ; branche poussée 2026-09-14 |
+| **B1** | `connecteurs-cible` (Kafka + import batch + ERP) | **Livré** ([PR #129](https://github.com/superjojo79/FlowForge/pull/129), TODO §62 clos) | `batch-import` (SFTP) + `kafka`, 1 seul cycle comme prévu ; « ERP » = cas d'usage de `batch-import`, pas un 3ème connecteur ; mergé sur `main` 2026-09-20 |
 | **C** | Adaptateur AV (ClamAV) | Après A1 | Port `AttachmentScanPort` déjà prêt (S-6) |
 
 **Interdits :** Kafka ∥ import-batch ∥ ERP ; import batch ∥ A3 ; ClamAV ∥ A1 (Compose) ;

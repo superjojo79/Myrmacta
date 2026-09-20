@@ -1941,8 +1941,9 @@ SftpConnectionException}.java`, `domain/connector/port/out/{ConnectorCatalog,Sft
 `GETTING-STARTED.md`, `openapi/openapi.yaml`, frontend `ConnectorConfigForm.vue`/`admin.ts`.
 Documents lifecycle :
 `docs/ai/{requirements,design,planning,implementation,testing,deployment,monitoring}/2026-09-14-feature-connecteurs-cible.md`.
-Pas de PR ouverte (non demandée) — branche `claude/blissful-brahmagupta-vo50p3` poussée, prête
-pour revue.
+**Mergée sur `main`** ([PR #129](https://github.com/superjojo79/FlowForge/pull/129), CI verte,
+2026-09-20, sur demande explicite utilisateur — revue adversariale post-cycle et 3 bugs de test
+préexistants sans rapport corrigés avant fusion, voir doc implementation).
 
 ---
 

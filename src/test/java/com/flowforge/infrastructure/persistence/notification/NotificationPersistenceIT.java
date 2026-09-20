@@ -167,10 +167,26 @@ class NotificationPersistenceIT {
                 ids.get(0),
                 ids.get(1));
         assertThat(count).isEqualTo(2);
+
+        // Nettoyage (trouvé en marge de la revue adversariale connecteurs-cible) : cette méthode
+        // laissait 2 lignes PENDING en base indéfiniment, polluant oldestPendingCreatedAt() —
+        // lecture globale, pas par tenant (D-OBS) — pour tout test exécuté après celui-ci dans le
+        // même run (flake d'ordre d'exécution trouvé sur oldestPendingAndWebhookDeadCount).
+        ids.forEach(id -> outbox.markProcessed(id, now.plusSeconds(1)));
+        assertThat(outbox.purgeTerminalOlderThan(now.plusSeconds(2))).isGreaterThanOrEqualTo(2);
     }
 
     @Test
     void oldestPendingAndWebhookDeadCount() {
+        // Isolation (flake trouvé en marge de la revue adversariale connecteurs-cible) :
+        // oldestPendingCreatedAt() est une lecture globale, pas par tenant (D-OBS,
+        // findOldestCreatedAtByStatus n'a pas de clause tenant) — une ligne PENDING oubliée par
+        // un autre test de cette classe (ex. outbox_savePendingBatch_persistsAllRows avant son
+        // propre nettoyage) rendait cette assertion dépendante de l'ordre d'exécution des
+        // méthodes JUnit5 (non garanti). On repart d'un état propre pour que ce test ne possède
+        // que les lignes PENDING qu'il crée lui-même.
+        jdbc.update("DELETE FROM notification_outbox WHERE status = 'PENDING'");
+
         Instant now = Instant.parse("2026-08-20T10:00:00Z");
         UUID pending = outbox.savePending(
                 "tenant_dev",
@@ -193,6 +209,10 @@ class NotificationPersistenceIT {
         assertThat(outbox.countByChannelAndStatus(NotificationChannel.WEBHOOK, NotificationOutboxStatus.DEAD))
                 .isGreaterThanOrEqualTo(1);
         assertThat(pending).isNotNull();
+
+        // Nettoyage : ne pas laisser de ligne PENDING/DEAD permanente dans la table partagée.
+        outbox.markProcessed(pending, now.plusSeconds(5));
+        assertThat(outbox.purgeTerminalOlderThan(now.plusSeconds(6))).isGreaterThanOrEqualTo(3);
     }
 
     @Test

@@ -24,7 +24,7 @@
 > démarrer qu'après B1 (et C si concerné), chacun via son propre cycle Phase 1 → 9.
 >
 > **Dernière mise à jour :** 2026-09-20 — lot **A4** `headers-http-globaux` : Phases
-> 1–4 closes (planning reviewed). [PR #128](https://github.com/superjojo79/FlowForge/pull/128).
+> 1–5 closes (TDD T1.1–T7.2). [PR #128](https://github.com/superjojo79/FlowForge/pull/128).
 > B1 reste le lot connecteurs en cours — A4 n’y touche pas.
 >
 > **2026-09-14** — Vague A confirmée **intégralement livrée** :
@@ -371,8 +371,8 @@ pagination inbox > 100.
 
 **En cours :**
 - **B1** `connecteurs-cible` (Kafka + import batch + ERP) — un agent, couture catalogue.
-- **A4** `headers-http-globaux` — Phases 1–4 close (2026-09-20) ; Phase 5 TDD
-  (T1.1). [PR #128](https://github.com/superjojo79/FlowForge/pull/128).
+- **A4** `headers-http-globaux` — Phases 1–5 close (2026-09-20) ; Phase 7
+  check implementation. [PR #128](https://github.com/superjojo79/FlowForge/pull/128).
 
 Détail inventaire : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §4 / §6.
 
@@ -539,3 +539,4 @@ Vérifié : `./mvnw verify` 1136 tests (0 échec), Jacoco OK ; frontend `npm run
 | 2026-09-08 | `mcp-ecritures-metier` (lot A3) **mergée sur `main`**, TODO §60 clos | [PR #118](https://github.com/superjojo79/FlowForge/pull/118) mergée à 21:17, conditionnée à CI GitHub verte (`build` + `frontend`) sur HEAD `6c1198d`. `./mvnw verify -Dskip.frontend=true` 1775 tests (0 échec). Vague A (A1/A2/A3) **intégralement livrée** le même jour. |
 | 2026-09-14 | Statuts A1/A2/A3 vérifiés et resynchronisés dans `FILE-ATTENTE.md` | Demande utilisateur : confirmer que les lots A1, A2 et A3 sont livrés. Vérifié via l'API GitHub (`pull_request_read` méthode `get`) : PR #118 (A3) confirmée `merged: true` (merged_at 2026-09-08T21:17:57Z) — les statuts A1/PR #119 et A2/PR #117 étaient déjà marqués mergés dans ce fichier. Ligne A3 déplacée dans *Récemment livré*, retirée de « En revue », en-tête et section « File d'attente » mis à jour en cohérence. |
 | 2026-09-20 | `headers-http-globaux` (lot A4) Phase 4 planning close | 7 milestones / T1.1–T7.2, toutes `not started`. Traçabilité testing→tasks complète (aucun scénario orphelin). **A-E2E-CSP-INJECT** : Playwright Vite `:4173` n’atteint pas Spring — injection CSP document dans E2E-HDR-1/2. Surface exclusive `SecurityConfig` + customizer ; B1 en parallèle (pas Compose, pas CSRF). [PR #128](https://github.com/superjojo79/FlowForge/pull/128). Prochain : Phase 5 TDD à **T1.1**. |
+| 2026-09-20 | `headers-http-globaux` (lot A4) Phase 5 TDD T1.1–T7.2 | Customizer câblé sur les 4 chaînes ; MockMvc + actuator ; E2E-HDR-1/2 verts (73/73 Playwright) ; Vitest 351 ; `./mvnw verify` 1897 tests. Kill switch `APP_SECURITY_HEADERS_ENABLED`. Trouvaille hors lot : `EvaluateDossierRetentionUseCaseImplTest` `NOW` figé au 2026-08-19 vs `Instant.now()` — corrigé. [PR #128](https://github.com/superjojo79/FlowForge/pull/128). Prochain : Phase 7. |

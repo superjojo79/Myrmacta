@@ -413,8 +413,8 @@ comportemental (pas un défaut de sécurité).
 pas de CSP / HSTS / `X-Frame-Options` applicatifs. Lot **A4**
 ([FILE-ATTENTE.md](FILE-ATTENTE.md)) : surface exclusive `SecurityConfig.java`.
 
-**Statut :** Phases 1–4 **closes** (2026-09-20). Suite : Phase 5 TDD
-(T1.1). Branche `cursor/headers-http-globaux-ec9a`.
+**Statut :** Phases 1–5 **closes** (2026-09-20). Suite : Phase 7 check
+implementation. Branche `cursor/headers-http-globaux-ec9a`.
 [PR #128](https://github.com/superjojo79/FlowForge/pull/128).
 
 **Décisions Phase 1 :** D-HEADERS-SCOPE = B ; D-HEADERS-CHAINS = B ;
@@ -427,7 +427,7 @@ D-SWITCH-OFF = A (kill switch = no-op, défauts Spring conservés).
 [GETTING-STARTED.md](GETTING-STARTED.md), [DEPLOIEMENT.md](DEPLOIEMENT.md).
 Pas Compose, pas CSRF (S-8), pas `GUIDE-UTILISATEUR.md`.
 
-**Détail :** `docs/ai/{requirements,design,planning,testing}/2026-09-20-feature-headers-http-globaux.md`.
+**Détail :** `docs/ai/{requirements,design,planning,testing,implementation}/2026-09-20-feature-headers-http-globaux.md`.
 
 ---
 

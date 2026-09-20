@@ -2,12 +2,13 @@
 phase: planning
 title: Project Planning & Task Breakdown
 description: Break down work into actionable tasks
-status: reviewed
+status: in-progress
 created: 2026-09-20
 updated: 2026-09-20
 feature: headers-http-globaux
 lot: A4
 phase4: 2026-09-20
+phase5: 2026-09-20
 requirements_ref: docs/ai/requirements/2026-09-20-feature-headers-http-globaux.md
 design_ref: docs/ai/design/2026-09-20-feature-headers-http-globaux.md
 testing_ref: docs/ai/testing/2026-09-20-feature-headers-http-globaux.md
@@ -17,45 +18,45 @@ testing_ref: docs/ai/testing/2026-09-20-feature-headers-http-globaux.md
 
 ## Phase 4: Create Initial Plan
 
-Plan **reviewed** 2026-09-20. Toutes les tâches `not started`. TDD :
-test rouge → code → vert. Validation = scénario du testing doc.
-Aucune décision produit à rejouer. Phase 5 commence à **T1.1**.
+Plan **reviewed** 2026-09-20. Phase 5 **exécutée** 2026-09-20 : T1.1–T7.2 `done`.
+TDD respecté (rouge Binder / CSP stub / MockMvc avant câblage). Prochaine
+étape lifecycle : Phase 7 check implementation.
 
 ## Milestones
 
-- [ ] **M1** Properties kill switch (T-PROP-*)
-- [ ] **M2** `SecurityHeadersCustomizer` + constante CSP / HSTS profil
-- [ ] **M3** Câblage des 4 chaînes + preuves MockMvc / actuator
-- [ ] **M4** Kill switch `false` (contexte Spring dédié) + M13
-- [ ] **M5** Docs ops (`.env.example`, GETTING-STARTED, DEPLOIEMENT) + CHANGELOG
-- [ ] **M6** Playwright CSP (injection document) + régression FE
-- [ ] **M7** `./mvnw verify` + Jacoco classes du lot
+- [x] **M1** Properties kill switch (T-PROP-*)
+- [x] **M2** `SecurityHeadersCustomizer` + constante CSP / HSTS profil
+- [x] **M3** Câblage des 4 chaînes + preuves MockMvc / actuator
+- [x] **M4** Kill switch `false` (contexte Spring dédié) + M13
+- [x] **M5** Docs ops (`.env.example`, GETTING-STARTED, DEPLOIEMENT) + CHANGELOG
+- [x] **M6** Playwright CSP (injection document) + régression FE
+- [x] **M7** `./mvnw verify` + Jacoco classes du lot
 
 ## Task Breakdown
 
 ### M1 — Bind `app.security.headers.enabled`
 
-- [ ] **T1.1** `SecurityHeadersProperties` record (`@DefaultValue("true")`)
+- [x] **T1.1** `SecurityHeadersProperties` record (`@DefaultValue("true")`)
       + `SecurityHeadersPropertiesTest` Binder (défaut true / override
       false). **Deps :** aucune. **Scénarios :** T-PROP-DEFAULT,
       T-PROP-OFF.
-- [ ] **T1.2** `application.yml` :
+- [x] **T1.2** `application.yml` :
       `app.security.headers.enabled: ${APP_SECURITY_HEADERS_ENABLED:true}`.
       **Pas** d’override `false` dans `application-local.yml`
       (D-LOCAL-HEADERS). **Deps :** T1.1.
 
 ### M2 — Customizer (TDD, pas encore branché sur les 4 chains)
 
-- [ ] **T2.1** Constante publique `CONTENT_SECURITY_POLICY` = D-CSP-STRING
+- [x] **T2.1** Constante publique `CONTENT_SECURITY_POLICY` = D-CSP-STRING
       A (une seule source de vérité). Test d’égalité exacte.
       **Deps :** aucune. **Scénarios :** T-CSP-VALUE.
-- [ ] **T2.2** `hstsEnabled(Environment)` : false si
+- [x] **T2.2** `hstsEnabled(Environment)` : false si
       `matchesProfiles("local")` ou `"test"` ; true sinon. Tests unitaires
       des 3 cas (T-HSTS-LOCAL, T-HSTS-TEST, T-HSTS-PROD). La valeur HSTS
       (`max-age=31536000`, `includeSubDomains`, pas `preload`) est
       assertée ici — MockMvc sous profil `test` ne peut pas émettre
       HSTS (D-HSTS). **Deps :** T2.1.
-- [ ] **T2.3** `SecurityHeadersCustomizer.apply(HttpSecurity)` :
+- [x] **T2.3** `SecurityHeadersCustomizer.apply(HttpSecurity)` :
       `enabled=false` → return immédiat (D-SWITCH-OFF A) ; sinon
       `headers()` CSP / XFO DENY / nosniff / Referrer-Policy + HSTS
       conditionnel. Test unitaire du no-op si possible ; preuve
@@ -67,18 +68,18 @@ Aucune décision produit à rejouer. Phase 5 commence à **T1.1**.
 Injecter le customizer dans **les 4** `@Bean` ; étendre
 `@EnableConfigurationProperties`.
 
-- [ ] **T3.1** BFF `GET /api/auth/me` + `oidcLogin` : CSP exacte, XFO=DENY,
+- [x] **T3.1** BFF `GET /api/auth/me` + `oidcLogin` : CSP exacte, XFO=DENY,
       nosniff, Referrer-Policy, **pas** HSTS (profil test). Étendre
       `BffSecurityTest` ou nouveau `SecurityHeadersApiTest`.
       **Deps :** T2.3. **Scénarios :** T-CHAIN-BFF, T-HSTS-ABSENT-TEST.
-- [ ] **T3.2** Webhook + callback anonymes : mêmes en-têtes ; statut
+- [x] **T3.2** Webhook + callback anonymes : mêmes en-têtes ; statut
       contrôleur inchangé (404). Réutiliser le pattern
       `WebhookAndCallbackRoutesSecurityTest` (vraie chaîne, pas
       `standaloneSetup`). **Deps :** T2.3. **Scénarios :**
       T-CHAIN-WEBHOOK, T-CHAIN-CALLBACK.
-- [ ] **T3.3** M2M `POST /api/m2m/mcp` + `jwt()` `API_SERVICE` : mêmes
+- [x] **T3.3** M2M `POST /api/m2m/mcp` + `jwt()` `API_SERVICE` : mêmes
       en-têtes hors HSTS. **Deps :** T2.3. **Scénarios :** T-CHAIN-M2M.
-- [ ] **T3.4** Actuator port management : étendre
+- [x] **T3.4** Actuator port management : étendre
       `ObservabilityActuatorIT` (`MANAGEMENT_PORT=0`, `HttpClient` sur
       `@LocalManagementPort`) — headers CSP/XFO/nosniff sur
       `/actuator/health/liveness`. **Deps :** T2.3. **Scénarios :**
@@ -86,11 +87,11 @@ Injecter le customizer dans **les 4** `@Bean` ; étendre
 
 ### M4 — Kill switch + non-régression preview
 
-- [ ] **T4.1** Classe de test dédiée
+- [x] **T4.1** Classe de test dédiée
       `@TestPropertySource(properties = "app.security.headers.enabled=false")`
       : BFF authentifié **sans** la CSP A4 (D-SWITCH-OFF A — les défauts
       Spring peuvent rester). **Deps :** T3.1. **Scénarios :** T-CHAIN-OFF.
-- [ ] **T4.2** Relancer `DocumentPreviewApiTest` (déjà M13) — ne pas
+- [x] **T4.2** Relancer `DocumentPreviewApiTest` (déjà M13) — ne pas
       modifier `PREVIEW_CSP`. **Deps :** T3.1. **Scénarios :**
       T-PREVIEW-M13.
 
@@ -98,14 +99,14 @@ Injecter le customizer dans **les 4** `@Bean` ; étendre
 
 Diff GETTING-STARTED **minimal** (B1 en parallèle).
 
-- [ ] **T5.1** `.env.example` : commentaire +
+- [x] **T5.1** `.env.example` : commentaire +
       `# APP_SECURITY_HEADERS_ENABLED=true` (à côté du cookie secure).
-- [ ] **T5.2** GETTING-STARTED : une ligne / entrée de table pour le
+- [x] **T5.2** GETTING-STARTED : une ligne / entrée de table pour le
       kill switch (défaut true ; ne pas le mettre à false en local).
-- [ ] **T5.3** DEPLOIEMENT.md : l’app émet HSTS 1 an + includeSubDomains
+- [x] **T5.3** DEPLOIEMENT.md : l’app émet HSTS 1 an + includeSubDomains
       hors local/test ; ne pas poser un HSTS proxy **plus court**.
       `forward-headers-strategy` déjà documenté.
-- [ ] **T5.4** `CHANGELOG.md` `[Non publié]` / Sécurité — entrée PR #128
+- [x] **T5.4** `CHANGELOG.md` `[Non publié]` / Sécurité — entrée PR #128
       (une phrase). TODO §62 / FILE-ATTENTE à clore en Phase 9, pas ici.
       **Scénarios :** success criteria docs.
 
@@ -117,14 +118,14 @@ CSP A4. **A-E2E-CSP-INJECT** (hypothèse de planning, pas une D-*) :
 ajouter la constante CSP sur les réponses **document** HTML dans les
 deux tests HDR, pour simuler la chaîne BFF prod.
 
-- [ ] **T6.1** `E2E-HDR-1` : injection CSP → ouvrir supervision (ou
+- [x] **T6.1** `E2E-HDR-1` : injection CSP → ouvrir supervision (ou
       `/admin/bpmn-editor` si le shell admin est déjà mocké) → page
       rendue, **zéro** `securitypolicyviolation` / log console
       `Content-Security-Policy`. **Scénarios :** T-E2E-SPA.
-- [ ] **T6.2** `E2E-HDR-2` : même injection + parcours preview HTML/PDF
+- [x] **T6.2** `E2E-HDR-2` : même injection + parcours preview HTML/PDF
       (réutiliser le setup d’`E2E-20`) — iframes toujours visibles.
       **Scénarios :** T-E2E-PREVIEW.
-- [ ] **T6.3** `cd frontend && npm run test` + `npm run test:e2e`
+- [x] **T6.3** `cd frontend && npm run test` + `npm run test:e2e`
       (régression complète). **Deps :** T6.1, T6.2.
 
 Si T6.1 révèle une violation réelle : élargir D-CSP-STRING **dans ce
@@ -133,9 +134,9 @@ de basculer en Report-Only (D-CSP-POLICY = B).
 
 ### M7 — Preuve globale
 
-- [ ] **T7.1** `./mvnw verify` (Jacoco LINE/BRANCH bundle tenus).
+- [x] **T7.1** `./mvnw verify` (Jacoco LINE/BRANCH bundle tenus).
       **Deps :** M1–M4.
-- [ ] **T7.2** Jacoco **classe par classe** sur
+- [x] **T7.2** Jacoco **classe par classe** sur
       `SecurityHeadersProperties`, `SecurityHeadersCustomizer`,
       `SecurityConfig` (branches enabled / profil). **Deps :** T7.1.
 
@@ -178,6 +179,9 @@ flowchart LR
 
 Séquencement Phase 5 : M1 → M2 → M3 → M4 ; M5 et M6 parallélisables
 après M3 ; M7 en dernier.
+
+Phase 5 exécutée dans cet ordre. Aucune tâche nouvelle découverte.
+Écart hors lot : `EvaluateDossierRetentionUseCaseImplTest` (horloge).
 
 ## Timeline & Estimates
 

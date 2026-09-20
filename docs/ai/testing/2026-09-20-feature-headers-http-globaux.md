@@ -9,6 +9,7 @@ feature: headers-http-globaux
 lot: A4
 phase3: 2026-09-20
 phase4: 2026-09-20
+phase5: 2026-09-20
 ---
 
 # Testing Strategy — `headers-http-globaux` (lot A4)
@@ -30,18 +31,18 @@ pendant Phase 5/8. Playwright **obligatoire** (CSP SPA).
 
 ### Properties / bind
 
-- [ ] `headers.enabled` défaut `true` (T-PROP-DEFAULT)
-- [ ] `headers.enabled=false` bind depuis l’environnement (T-PROP-OFF)
+- [x] `headers.enabled` défaut `true` (T-PROP-DEFAULT)
+- [x] `headers.enabled=false` bind depuis l’environnement (T-PROP-OFF)
 
 ### `SecurityHeadersCustomizer`
 
-- [ ] Construit la CSP D-CSP-STRING = A (T-CSP-VALUE) :
+- [x] Construit la CSP D-CSP-STRING = A (T-CSP-VALUE) :
       `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-src 'self' blob:; worker-src 'self' blob:; frame-ancestors 'none'; object-src 'none'; base-uri 'self'`
-- [ ] HSTS writer absent si profil `local` (T-HSTS-LOCAL)
-- [ ] HSTS writer absent si profil `test` (T-HSTS-TEST)
-- [ ] HSTS `max-age=31536000; includeSubDomains` sans `preload` hors
+- [x] HSTS writer absent si profil `local` (T-HSTS-LOCAL)
+- [x] HSTS writer absent si profil `test` (T-HSTS-TEST)
+- [x] HSTS `max-age=31536000; includeSubDomains` sans `preload` hors
       ces profils (T-HSTS-PROD)
-- [ ] Kill switch `false` : Customizer no-op / pas de writers A4
+- [x] Kill switch `false` : Customizer no-op / pas de writers A4
       (T-SWITCH-OFF)
 
 ## Integration Tests
@@ -49,23 +50,23 @@ pendant Phase 5/8. Playwright **obligatoire** (CSP SPA).
 MockMvc **vraie** chaîne Spring Security (pas `standaloneSetup`) —
 même doctrine que `WebhookAndCallbackRoutesSecurityTest`.
 
-- [ ] BFF `GET /api/auth/me` authentifié : CSP, XFO=DENY, nosniff,
+- [x] BFF `GET /api/auth/me` authentifié : CSP, XFO=DENY, nosniff,
       Referrer-Policy (T-CHAIN-BFF) — couvre D-HEADERS-CHAINS
-- [ ] M2M `POST /api/m2m/mcp` (ou GET health M2M existant) : mêmes
+- [x] M2M `POST /api/m2m/mcp` (ou GET health M2M existant) : mêmes
       en-têtes hors HSTS sous `test` (T-CHAIN-M2M)
-- [ ] Webhook anonyme `POST /api/webhooks/{uuid}` : mêmes en-têtes,
+- [x] Webhook anonyme `POST /api/webhooks/{uuid}` : mêmes en-têtes,
       statut contrôleur inchangé (404 instance inconnue)
       (T-CHAIN-WEBHOOK)
-- [ ] Callback anonyme `POST /api/callbacks/{uuid}` : idem
+- [x] Callback anonyme `POST /api/callbacks/{uuid}` : idem
       (T-CHAIN-CALLBACK)
-- [ ] Actuator `GET /actuator/health` sur port management : CSP/XFO
+- [x] Actuator `GET /actuator/health` sur port management : CSP/XFO
       présents (T-CHAIN-ACTUATOR) — si le test actuel bind déjà le
       port
-- [ ] Profil test : **pas** de `Strict-Transport-Security`
+- [x] Profil test : **pas** de `Strict-Transport-Security`
       (T-HSTS-ABSENT-TEST)
-- [ ] `headers.enabled=false` : assertions d’absence du paquet A4
+- [x] `headers.enabled=false` : assertions d’absence du paquet A4
       (T-CHAIN-OFF)
-- [ ] `DocumentPreviewApiTest` : CSP M13
+- [x] `DocumentPreviewApiTest` : CSP M13
       `default-src 'none'; sandbox` inchangée (T-PREVIEW-M13)
 
 ## End-to-End Tests
@@ -75,14 +76,14 @@ Spring. **A-E2E-CSP-INJECT** (planning Phase 4) : les tests HDR
 ajoutent la CSP D-CSP-STRING sur les réponses HTML document, pour
 simuler la chaîne BFF.
 
-- [ ] E2E-HDR-1 : un utilisateur authentifié ouvre une vue SPA
+- [x] E2E-HDR-1 : un utilisateur authentifié ouvre une vue SPA
       existante (supervision **ou** `/admin/bpmn-editor`) — page
       rendue, **aucune** violation CSP `blocked` dans la console
       (T-E2E-SPA)
-- [ ] E2E-HDR-2 : preview HTML/PDF template admin (réutiliser le
+- [x] E2E-HDR-2 : preview HTML/PDF template admin (réutiliser le
       setup d’`E2E-20`) — iframe `sandbox` / blob toujours visible
       (T-E2E-PREVIEW)
-- [ ] Régression complète `npx playwright test` (parcours existants)
+- [x] Régression complète `npx playwright test` (parcours existants)
 
 ## Test Data
 

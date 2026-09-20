@@ -2,6 +2,8 @@ package com.flowforge.infrastructure.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -9,8 +11,11 @@ import static org.mockito.Mockito.when;
 
 import com.flowforge.infrastructure.config.SecurityHeadersProperties;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.mock.env.MockEnvironment;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 
 class SecurityHeadersCustomizerTest {
 
@@ -76,5 +81,41 @@ class SecurityHeadersCustomizerTest {
         customizer.apply(http);
 
         verify(http).headers(any());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void apply_whenEnabledOutsideLocalTest_configuresHstsMaxAge() throws Exception {
+        HttpSecurity http = mock(HttpSecurity.class);
+        ArgumentCaptor<Customizer<HeadersConfigurer<HttpSecurity>>> headersCaptor =
+                ArgumentCaptor.forClass(Customizer.class);
+        when(http.headers(headersCaptor.capture())).thenReturn(http);
+
+        MockEnvironment env = new MockEnvironment();
+        env.setActiveProfiles("prod");
+        new SecurityHeadersCustomizer(new SecurityHeadersProperties(true), env).apply(http);
+
+        HeadersConfigurer<HttpSecurity> headers = mock(HeadersConfigurer.class);
+        when(headers.contentSecurityPolicy(any())).thenReturn(headers);
+        when(headers.frameOptions(any())).thenReturn(headers);
+        when(headers.contentTypeOptions(any())).thenReturn(headers);
+        when(headers.referrerPolicy(any())).thenReturn(headers);
+        when(headers.httpStrictTransportSecurity(any())).thenReturn(headers);
+
+        headersCaptor.getValue().customize(headers);
+
+        ArgumentCaptor<Customizer<HeadersConfigurer<HttpSecurity>.HstsConfig>> hstsCaptor =
+                ArgumentCaptor.forClass(Customizer.class);
+        verify(headers).httpStrictTransportSecurity(hstsCaptor.capture());
+
+        HeadersConfigurer<HttpSecurity>.HstsConfig hstsConfig = mock(HeadersConfigurer.HstsConfig.class);
+        when(hstsConfig.maxAgeInSeconds(anyLong())).thenReturn(hstsConfig);
+        when(hstsConfig.includeSubDomains(anyBoolean())).thenReturn(hstsConfig);
+        when(hstsConfig.preload(anyBoolean())).thenReturn(hstsConfig);
+        hstsCaptor.getValue().customize(hstsConfig);
+
+        verify(hstsConfig).maxAgeInSeconds(31_536_000L);
+        verify(hstsConfig).includeSubDomains(true);
+        verify(hstsConfig).preload(false);
     }
 }

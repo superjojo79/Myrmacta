@@ -86,12 +86,7 @@ public final class EvaluateSlaAlertsUseCaseImpl implements EvaluateSlaAlertsUseC
                 failures++;
             }
         }
-        // Re-read before this final save: a concurrent PUT /api/tenant/sla-settings during the
-        // scan must not be clobbered by writing back the aggregate captured at scan start.
-        settingsRepository
-                .findByTenantId(tenantId)
-                .map(current -> current.withLastAlertScanAt(now))
-                .ifPresent(settingsRepository::save);
+        settingsRepository.advanceLastAlertScanAt(settings.tenantId(), now);
         return failures;
     }
 

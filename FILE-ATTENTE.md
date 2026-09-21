@@ -11,22 +11,33 @@
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
 > **Dernière mise à jour :** 2026-09-21 — Lot **C** (`scan-antivirus-clamav`) : cycle
-> `dev-lifecycle` Phase 8 (testing) close, avec preuves fraîches plutôt qu'affirmées. Suite
-> complète **`./mvnw verify`** (frontend inclus, pas de raccourci `-Dskip.frontend`) :
-> **1982 tests, 0 échec**, `BUILD SUCCESS`, `ClamAvAttachmentScanAdapter` à **100%** couverture
-> (instruction/ligne/branche, vérifié dans `jacoco.csv`). Frontend exécuté réellement (dernier
-> point resté ouvert depuis la Phase 5) : **`npm run test` → 352/352 Vitest** ; **`npm run
-> test:e2e` → 72/72 Playwright** (contournement d'un décalage de version du binaire
-> pré-installé via `PLAYWRIGHT_CHROMIUM_EXECUTABLE`, mécanisme déjà prévu par
-> `playwright.config.ts`), incluant explicitement `E2E-17`/`E2E-19` (upload de pièce jointe) —
-> aucune régression. Note d'environnement trouvée en marge, sans rapport avec ce lot : un `mvn
-> clean verify -Dskip.frontend=true` (les deux options combinées) fait échouer
-> `OpenApiDisabledApiTest` (`static/index.html` absent faute de rebuild frontend après le
-> `clean`) — artefact pré-existant du raccourci, absent d'un `verify` normal, non corrigé (hors
-> périmètre de ce lot). **Toujours pas « livré »** — reste Phase 9 (revue finale) puis PR.
-> Détail : [docs/ai/testing/2026-09-20-feature-scan-antivirus-clamav.md](docs/ai/testing/2026-09-20-feature-scan-antivirus-clamav.md).
+> `dev-lifecycle` **Phases 1-9 complet**, Phase 9 (revue finale pré-push) close. Seul écart
+> matériel trouvé en Phase 9 : la branche de session avait pris **15 commits de retard sur
+> `main`** pendant le cycle (lot A4 `headers-http-globaux`, PR #128, mergé en parallèle).
+> Vérifié avant d'agir (`git merge-tree`, pas supposé) : **zéro conflit réel** malgré 7 fichiers
+> touchés des deux côtés (`.env.example`, `CHANGELOG.md`, `DEFERRED-FEATURES.md`,
+> `DEPLOIEMENT.md`, `FILE-ATTENTE.md`, `GETTING-STARTED.md`, `application.yml`). `main` fusionné
+> proprement, puis **toute la preuve re-vérifiée après fusion** (pas seulement avant) :
+> `./mvnw verify` → **2004 tests, 0 échec** (1982 + tests A4 désormais inclus),
+> `ArchitectureRulesTest` 7/7 ; `npm run test` → 352/352 ; `npm run test:e2e` → **76/76**
+> (72 + les 4 `E2E-HDR-*` d'A4). Diff nul reconfirmé sur les 3 fichiers gelés du port contre la
+> base `main` réellement à jour. `ClamAvAttachmentScanAdapter` toujours à 100% couverture.
+> **Checklist finale Phase 9** : design conforme (12 décisions), aucun gap de logique non
+> documenté (4 limites assumées explicites), sécurité traitée, intégration vérifiée post-fusion,
+> tests couvrent les changements, docs à jour — **prêt pour PR**. Seule action restante avant
+> « livré » : une entrée `CHANGELOG.md` au moment de l'ouverture de la PR (non demandée à ce
+> stade). Détail :
+> [docs/ai/implementation/2026-09-20-feature-scan-antivirus-clamav.md](docs/ai/implementation/2026-09-20-feature-scan-antivirus-clamav.md).
 > Développement direct sur la branche de session `claude/funny-johnson-x0er1h`, pas de worktree
 > séparé (précédent du dépôt, cf. `extension-mcp-flux-metier`).
+>
+> **2026-09-21 (plus tôt)** — Phase 8 (testing) close : suite complète `./mvnw verify` (frontend
+> inclus) → 1982 tests, 0 échec ; `npm run test` → 352/352 Vitest ; `npm run test:e2e` → 72/72
+> Playwright (contournement `PLAYWRIGHT_CHROMIUM_EXECUTABLE` pour un décalage de version du
+> binaire pré-installé, mécanisme déjà prévu par `playwright.config.ts`), incluant
+> explicitement `E2E-17`/`E2E-19` (upload de pièce jointe). Note d'environnement sans rapport
+> avec ce lot : `mvn clean verify -Dskip.frontend=true` (options combinées) fait échouer
+> `OpenApiDisabledApiTest`, artefact pré-existant non corrigé (hors périmètre).
 >
 > **2026-09-20 (plus tôt)** — Lot **C** : Phases 1-3 closes. Objectif explicite utilisateur :
 > implémentation de référence ClamAV sans modifier le port existant (D-AV, PR #62), swappable

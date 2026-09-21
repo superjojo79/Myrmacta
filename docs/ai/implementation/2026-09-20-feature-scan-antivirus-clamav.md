@@ -6,9 +6,55 @@ description: Technical implementation notes, patterns, and code guidelines
 
 # Implementation Guide — `scan-antivirus-clamav` (lot C)
 
-> Phase 5 exécutée (T1-T10), Phase 7 (check implementation) faite. Ce document capture ce qui a
-> réellement été livré, y compris les écarts au plan trouvés en cours de route — pas une
-> reformulation du plan a priori.
+> Phase 5 exécutée (T1-T10), Phase 7 (check implementation) faite, Phase 9 (revue finale
+> pré-push) faite. Ce document capture ce qui a réellement été livré, y compris les écarts au
+> plan trouvés en cours de route — pas une reformulation du plan a priori.
+
+## Phase 9 — Revue holistique pré-push
+
+**Trouvé et résolu — le seul écart matériel de cette passe :**
+
+- **La branche de session avait pris 15 commits de retard sur `origin/main`** pendant les
+  Phases 1-8 : le lot A4 (`headers-http-globaux`, PR #128) a été mergé sur `main` en parallèle de
+  ce cycle. Fichiers touchés des deux côtés : `.env.example`, `CHANGELOG.md`,
+  `DEFERRED-FEATURES.md`, `DEPLOIEMENT.md`, `FILE-ATTENTE.md`, `GETTING-STARTED.md`,
+  `application.yml`. Vérifié avant d'agir (`git merge-tree`, pas supposé) : **zéro conflit
+  réel** — les deux lots touchent des sections disjointes des mêmes fichiers. `git merge
+  origin/main` exécuté, propre, sans résolution manuelle. Suite complète re-vérifiée
+  **après** la fusion (pas seulement avant) : `./mvnw verify` → **2004 tests, 0 échec**
+  (1982 + les nouveaux tests A4 désormais inclus), `ArchitectureRulesTest` 7/7 ; `npm run test`
+  → 352/352 ; `npm run test:e2e` → **76/76** (72 + les 4 nouveaux `E2E-HDR-*` d'A4). Diff nul
+  reconfirmé sur les 3 fichiers gelés du port, cette fois contre la base `main` réellement à
+  jour. Sans cette étape, le premier `git push`/la première ouverture de PR contre `main` aurait
+  révélé cet écart de 15 commits à un moment moins maîtrisé.
+
+**Vérifications complémentaires (pas de nouveau finding) :**
+
+- Aucune référence au nom du bean Spring renommé (`attachmentScanPort` → `noOpAttachmentScanPort`/
+  `clamAvAttachmentScanPort`) ailleurs dans le code — pas de `@Qualifier` ni de couplage par nom de
+  bean qui aurait pu casser silencieusement au renommage (`grep` ciblé, zéro résultat en dehors du
+  nom de variable/champ local dans `DossierElementUploadController`, sans rapport).
+  `@ConditionalOnProperty` garantit qu'un seul bean `AttachmentScanPort` est jamais actif à la fois
+  (jamais zéro ni deux) pour les deux valeurs valides de `type` ; une valeur invalide fait échouer
+  le démarrage Spring plutôt que de retomber silencieusement sur un comportement inattendu — même
+  comportement que `app.storage.type` pour une valeur non reconnue, cohérent, pas un nouveau gap.
+- `CHANGELOG.md` : **pas encore d'entrée pour ce lot**, volontairement — la convention du dépôt
+  lie l'entrée à l'ouverture/mise à jour d'une PR, qui n'a pas encore été demandée. Reste l'action
+  suivante explicite avant `dev-pr`.
+
+**Checklist finale :**
+
+| Critère | Statut |
+|---|---|
+| Conforme au design (12 décisions) | ✅ |
+| Aucun gap de logique connu non documenté | ✅ (4 limites assumées, toutes documentées explicitement) |
+| Sécurité traitée | ✅ (fail-open assumé + observable, borne de taille, pas de nouvelle surface AuthN/AuthZ) |
+| Points d'intégration vérifiés | ✅ (diff nul reconfirmé post-merge, ArchUnit vert, suite complète verte après fusion de `main`) |
+| Tests couvrent les changements | ✅ (100% adaptateur, IT réelle écrite, non-régression FE confirmée) |
+| Docs à jour | ✅ (requirements/design/planning/implementation/testing + DEPLOIEMENT/GETTING-STARTED/.env.example) |
+
+**Prêt pour push** (déjà fait au fil des phases) **et prêt pour une PR** dès que demandé —
+reste uniquement l'entrée `CHANGELOG.md` à ajouter au moment de l'ouverture.
 
 ## Phase 7 — Revue fichier par fichier (findings)
 

@@ -10,6 +10,7 @@ import com.flowforge.infrastructure.security.oidc.RealmAccessAuthoritiesMapper;
 import com.flowforge.infrastructure.tenant.TenantResolutionFilter;
 import com.flowforge.infrastructure.web.connector.WebhookBodySizeLimitFilter;
 import com.flowforge.infrastructure.web.document.DocumentGenerationBodySizeLimitFilter;
+import com.flowforge.infrastructure.web.security.CspReportBodySizeLimitFilter;
 import java.nio.charset.StandardCharsets;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.boot.security.autoconfigure.actuate.web.servlet.EndpointRequest;
@@ -50,6 +51,9 @@ public class SecurityConfig {
 
     /** Autorité M2M requise sur {@code /api/m2m/**} (DD-M2M). */
     static final String M2M_AUTHORITY = "API_SERVICE";
+
+    /** Corps max d'un rapport CSP -- quelques centaines d'octets en usage réel (TODO §64). */
+    private static final long CSP_REPORT_MAX_BODY_BYTES = 8_192L;
 
     /**
      * Empêche le double enregistrement servlet de {@link TenantResolutionFilter}
@@ -126,6 +130,25 @@ public class SecurityConfig {
 
     @Bean
     @Order(2)
+    SecurityFilterChain cspReportSecurityFilterChain(
+            HttpSecurity http, SecurityHeadersCustomizer securityHeadersCustomizer) throws Exception {
+        // Endpoint anonyme, internet-facing (les navigateurs postent sans identifiants) --
+        // même raisonnement que D-CALLBACK-ROUTE ci-dessous : absent d'ici, il tomberait dans le
+        // chaînage BFF (anyRequest().authenticated()) et le rapport serait rejeté en 302/401
+        // avant d'atteindre CspReportController (TODO §64, revue adversariale post-merge PR #128).
+        http.securityMatcher(SecurityHeadersCustomizer.CSP_REPORT_PATH)
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+                .addFilterBefore(
+                        new CspReportBodySizeLimitFilter(CSP_REPORT_MAX_BODY_BYTES),
+                        SecurityContextHolderFilter.class);
+        securityHeadersCustomizer.apply(http);
+        return http.build();
+    }
+
+    @Bean
+    @Order(3)
     SecurityFilterChain webhookSecurityFilterChain(
             HttpSecurity http,
             ConnectorProperties connectorProperties,
@@ -133,7 +156,7 @@ public class SecurityConfig {
             throws Exception {
         // Auth métier (HMAC / token) réalisée dans les contrôleurs — pas d'OIDC ici.
         // D-CALLBACK-ROUTE : /api/callbacks/** doit être anonyme comme /api/webhooks/** --
-        // absent d'ici, il tombe dans le chaînage BFF (@Order(3), anyRequest().authenticated())
+        // absent d'ici, il tombe dans le chaînage BFF (@Order(4), anyRequest().authenticated())
         // et n'atteint jamais CallbackWebhookController (trouvé en revue de sécurité
         // adversariale post-merge, TODO §51).
         http.securityMatcher("/api/webhooks/**", "/api/callbacks/**")
@@ -150,7 +173,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    @Order(3)
+    @Order(4)
     SecurityFilterChain bffSecurityFilterChain(
             HttpSecurity http,
             SecurityCookieProperties cookieProperties,

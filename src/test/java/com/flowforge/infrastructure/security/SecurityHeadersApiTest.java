@@ -70,6 +70,17 @@ class SecurityHeadersApiTest {
     }
 
     @Test
+    void cspReportAnonymous_emitsA4HeadersWithoutHsts() throws Exception {
+        MvcResult result = mockMvc.perform(post(SecurityHeadersCustomizer.CSP_REPORT_PATH)
+                        .contentType("application/csp-report")
+                        .content("{\"csp-report\":{\"blocked-uri\":\"https://evil.example/x.js\"}}"))
+                .andReturn();
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(204);
+        assertA4HeadersWithoutHsts(result.getResponse());
+    }
+
+    @Test
     void m2mAuthenticated_emitsA4HeadersWithoutHsts() throws Exception {
         MvcResult result = mockMvc.perform(post("/api/m2m/mcp")
                         .with(jwt().jwt(builder -> builder
@@ -92,8 +103,15 @@ class SecurityHeadersApiTest {
     }
 
     static void assertA4HeadersWithoutHsts(MockHttpServletResponse response) {
-        assertThat(response.getHeader("Content-Security-Policy"))
-                .isEqualTo(SecurityHeadersCustomizer.CONTENT_SECURITY_POLICY);
+        String csp = response.getHeader("Content-Security-Policy");
+        assertThat(csp).startsWith(SecurityHeadersCustomizer.CONTENT_SECURITY_POLICY);
+        assertThat(csp)
+                .contains("; report-uri ")
+                .contains(SecurityHeadersCustomizer.CSP_REPORT_PATH)
+                .endsWith("; report-to csp-endpoint");
+        assertThat(response.getHeader("Reporting-Endpoints"))
+                .contains("csp-endpoint=")
+                .contains(SecurityHeadersCustomizer.CSP_REPORT_PATH);
         assertThat(response.getHeader("X-Frame-Options")).isEqualTo("DENY");
         assertThat(response.getHeader("X-Content-Type-Options")).isEqualTo("nosniff");
         assertThat(response.getHeader("Referrer-Policy")).isEqualTo("strict-origin-when-cross-origin");

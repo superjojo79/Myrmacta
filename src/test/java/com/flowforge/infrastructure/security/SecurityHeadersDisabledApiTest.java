@@ -36,8 +36,7 @@ class SecurityHeadersDisabledApiTest {
                 .andReturn();
 
         assertThat(result.getResponse().getStatus()).isEqualTo(200);
-        assertThat(result.getResponse().getHeader("Content-Security-Policy"))
-                .isNotEqualTo(SecurityHeadersCustomizer.CONTENT_SECURITY_POLICY);
+        assertThat(result.getResponse().getHeader("Content-Security-Policy")).isNull();
         assertThat(result.getResponse().getHeader("Referrer-Policy")).isNull();
     }
 }

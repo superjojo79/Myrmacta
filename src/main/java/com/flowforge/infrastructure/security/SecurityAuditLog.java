@@ -106,4 +106,20 @@ public final class SecurityAuditLog {
                 request.getRequestURI(),
                 instanceId);
     }
+
+    /**
+     * A browser reported a CSP violation on {@code /api/security/csp-reports} (adversarial
+     * review follow-up on PR #128, TODO §64). Anonymous, internet-facing endpoint : callers
+     * pass in report fields already truncated by {@code CspReportController}, so an attacker
+     * cannot use this to write unbounded or unbounded-count log lines.
+     */
+    public static void cspViolationReported(
+            HttpServletRequest request, String documentUri, String violatedDirective, String blockedUri) {
+        LOGGER.warn(
+                "event=csp_violation_reported remoteAddr={} documentUri={} violatedDirective={} blockedUri={}",
+                request.getRemoteAddr(),
+                documentUri,
+                violatedDirective,
+                blockedUri);
+    }
 }

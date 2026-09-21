@@ -45,8 +45,8 @@ class ObservabilityActuatorIT {
 
         HttpResponse<String> liveness = get(client, managementPort, "/actuator/health/liveness");
         assertThat(liveness.statusCode()).isBetween(200, 299);
-        assertThat(liveness.headers().firstValue("Content-Security-Policy"))
-                .contains(com.flowforge.infrastructure.security.SecurityHeadersCustomizer.CONTENT_SECURITY_POLICY);
+        assertThat(liveness.headers().firstValue("Content-Security-Policy").orElse(""))
+                .startsWith(com.flowforge.infrastructure.security.SecurityHeadersCustomizer.CONTENT_SECURITY_POLICY);
         assertThat(liveness.headers().firstValue("X-Frame-Options")).contains("DENY");
         assertThat(liveness.headers().firstValue("X-Content-Type-Options")).contains("nosniff");
         assertThat(get(client, managementPort, "/actuator/health/readiness").statusCode()).isBetween(200, 299);

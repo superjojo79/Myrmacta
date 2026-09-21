@@ -12,10 +12,12 @@ import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 /**
  * Preuve contre un faux {@code clamd} (socket loopback réelle, pas un mock du protocole) —
@@ -176,6 +178,72 @@ class ClamAvAttachmentScanAdapterTest {
     }
 
     @Test
+    @Timeout(15) // filet de sécurité JUnit : si le correctif régresse, échec net plutôt qu'un hang.
+    void scan_writeBlocksOnFullSocketBuffer_isBoundedAndFailsOpen() throws Exception {
+        // Trouvé en revue adversariale (sous-agent) : socket.setSoTimeout() ne borne que les
+        // read() Java, jamais les write()/writeInt() bloquants (Javadoc Socket.setSoTimeout).
+        // Un clamd vivant mais qui ne draine pas assez vite (file de scan saturée, charge
+        // légitime) bloque indéfiniment le thread de requête HTTP sur l'écriture — épuisement du
+        // pool de threads Tomcat avec assez d'uploads concurrents, pas seulement un échec de scan.
+        try (FakeClamd clamd = FakeClamd.acceptButNeverRead()) {
+            ClamAvAttachmentScanAdapter adapter = adapterFor(clamd, Duration.ofMillis(300));
+            byte[] content = new byte[2 * 1024 * 1024]; // 2 Mo : dépasse largement le buffer TCP réduit du faux serveur
+
+            long start = System.nanoTime();
+            AttachmentScanResult result = adapter.scan(content, "application/pdf");
+            long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+
+            assertThat(result.clean()).isTrue();
+            assertThat(elapsedMs)
+                    .as("l'écriture doit être bornée par un budget, pas seulement la lecture")
+                    .isLessThan(5_000);
+            assertThat(meterRegistry.get(ClamAvAttachmentScanAdapter.FAIL_OPEN_COUNTER).counter().count())
+                    .isEqualTo(1);
+        }
+    }
+
+    @Test
+    void scan_infectedPrefixAndSuffixOverlap_isFailOpenNotCrash() throws Exception {
+        // Trouvé en revue adversariale (sous-agent) : "stream: FOUND" (13 car.) matche à la fois
+        // startsWith("stream: ") et endsWith(" FOUND"), mais les deux se chevauchent sur l'espace
+        // partagé (8 + 6 = 14 > 13) — substring(8, 13-6=7) avec begin>end levait
+        // StringIndexOutOfBoundsException, une RuntimeException non rattrapée par le catch
+        // (IOException ex) de scan(), cassant l'invariant fail-open pour toute réponse
+        // dégénérée de ce type au lieu de tomber dans la branche "réponse inattendue".
+        try (FakeClamd clamd = FakeClamd.respondingWith("stream: FOUND\0")) {
+            ClamAvAttachmentScanAdapter adapter = adapterFor(clamd, Duration.ofSeconds(5));
+
+            AttachmentScanResult result = adapter.scan(new byte[] {1}, "application/pdf");
+
+            assertThat(result.clean()).isTrue();
+            assertThat(meterRegistry.get(ClamAvAttachmentScanAdapter.FAIL_OPEN_COUNTER).counter().count())
+                    .isEqualTo(1);
+        }
+    }
+
+    @Test
+    void scan_unexpectedResponseWithControlCharacters_logsSanitizedReason() throws Exception {
+        // Défense en profondeur (remarque mineure, revue adversariale sous-agent) : le texte brut
+        // de la réponse clamd (jusqu'à MAX_RESPONSE_BYTES) atterrit dans un log.warn(...) sans
+        // filtrage — un clamd non standard/compromis pourrait injecter de fausses lignes de log
+        // via CR/LF. Un vrai ClamAV n'envoie jamais ça (noms de signature contraints), donc pas
+        // exploitable via le contenu d'un fichier uploadé — mais peu coûteux à neutraliser.
+        try (FakeClamd clamd = FakeClamd.respondingWith("not-stream: line1\r\nFAKE LOG LINE\0")) {
+            ClamAvAttachmentScanAdapter adapter = adapterFor(clamd, Duration.ofSeconds(5));
+
+            AttachmentScanResult result = adapter.scan(new byte[] {1}, "application/pdf");
+
+            assertThat(result.clean()).isTrue();
+        }
+    }
+
+    @Test
+    void sanitizeForLog_escapesCarriageReturnAndNewline() {
+        assertThat(ClamAvAttachmentScanAdapter.sanitizeForLog("line1\r\nFAKE LOG LINE"))
+                .isEqualTo("line1\\r\\nFAKE LOG LINE");
+    }
+
+    @Test
     void scan_multipleFailOpens_counterAccumulates() {
         try (ServerSocket closedServer = new ServerSocket(0)) {
             int port = closedServer.getLocalPort();
@@ -243,6 +311,33 @@ class ClamAvAttachmentScanAdapterTest {
                     holder[0].accepted.countDown();
                     // n'écrit jamais de réponse : force le timeout de lecture côté adaptateur.
                     Thread.sleep(5_000);
+                } catch (IOException | InterruptedException ignored) {
+                    // socket fermée par le test / thread interrompu en fin de test
+                }
+            });
+            FakeClamd fake = new FakeClamd(serverSocket, thread);
+            holder[0] = fake;
+            thread.setDaemon(true);
+            thread.start();
+            return fake;
+        }
+
+        static FakeClamd acceptButNeverRead() throws IOException {
+            ServerSocket serverSocket = new ServerSocket();
+            // Fenêtre de réception réduite côté serveur pour forcer un blocage TCP rapide et
+            // déterministe côté écrivain (adaptateur), sans dépendre des tailles de buffer par
+            // défaut de l'OS — doit être posé avant bind()/accept() pour s'appliquer à la socket
+            // acceptée.
+            serverSocket.setReceiveBufferSize(1024);
+            serverSocket.bind(new InetSocketAddress("localhost", 0));
+            FakeClamd[] holder = new FakeClamd[1];
+            Thread thread = new Thread(() -> {
+                try {
+                    Socket client = serverSocket.accept();
+                    holder[0].accepted.countDown();
+                    // N'écrit jamais de réponse, ne lit jamais l'INSTREAM entrant : le buffer TCP
+                    // finit par saturer et bloque l'écrivain côté adaptateur.
+                    Thread.sleep(30_000);
                 } catch (IOException | InterruptedException ignored) {
                     // socket fermée par le test / thread interrompu en fin de test
                 }

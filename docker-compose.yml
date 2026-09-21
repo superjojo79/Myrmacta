@@ -176,6 +176,12 @@ services:
       - ./docker/clamav/clamd.conf:/etc/clamav/clamd.conf:ro
       - clamav_data:/var/lib/clamav
     ports:
+      # Publié sur toutes les interfaces par défaut, sans authentification — le protocole clamd
+      # expose aussi SHUTDOWN (non authentifié, arrête clamd) au-delà d'INSTREAM. Acceptable en
+      # dev/démo local (même exposition que postgres/keycloak ci-dessus), mais ne jamais publier
+      # ce port au-delà du loopback/réseau de confiance hors de ce contexte — trouvé en revue
+      # adversariale, en prod clamd est de toute façon un service externe séparé (D-AV-CLAMAV-
+      # PROD-TOPO, DEPLOIEMENT.md § ClamAV), pas ce profil Compose.
       - "${CLAMAV_PORT:-3310}:3310"
     healthcheck:
       # Trouvé en Phase 7 (check implementation) : un premier essai basé sur la redirection

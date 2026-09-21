@@ -55,6 +55,14 @@ description: Define testing approach, test cases, and quality assurance
 - [x] **Trouvé en Phase 7 (check implementation)** : réponse dépassant `MAX_RESPONSE_BYTES`
       (4096, jamais bufferisée indéfiniment — même convention que
       `ConnectorProperties.Http.maxResponseBytes`) → fail-open, pas un buffer illimité
+- [x] **Trouvé en revue adversariale (sous-agent), sévérité haute** : écriture bloquée sur un
+      buffer TCP plein (`clamd` vivant mais qui ne draine pas) → bornée par un watchdog qui ferme
+      la socket au-delà du budget, fail-open, pas un blocage indéfini du thread de requête HTTP
+- [x] **Trouvé en revue adversariale, sévérité moyenne** : réponse `"stream: FOUND"` (chevauchement
+      préfixe/suffixe sur l'espace partagé) → fail-open, pas un crash `StringIndexOutOfBoundsException`
+- [x] **Trouvé en revue adversariale, mineur (défense en profondeur)** : texte brut de réponse
+      contenant `\r`/`\n` → échappé avant log (`sanitizeForLog`), pas d'injection de fausses
+      lignes de log
 
 ### Configuration / wiring (`DossierConfig`)
 

@@ -7,8 +7,78 @@ description: Technical implementation notes, patterns, and code guidelines
 # Implementation Guide — `scan-antivirus-clamav` (lot C)
 
 > Phase 5 exécutée (T1-T10), Phase 7 (check implementation) faite, Phase 9 (revue finale
-> pré-push) faite. Ce document capture ce qui a réellement été livré, y compris les écarts au
-> plan trouvés en cours de route — pas une reformulation du plan a priori.
+> pré-push) faite, **revue adversariale (sous-agent) faite après la Phase 9**. Ce document
+> capture ce qui a réellement été livré, y compris les écarts au plan trouvés en cours de
+> route — pas une reformulation du plan a priori.
+
+## Revue adversariale (sous-agent), post-Phase 9
+
+Demandée explicitement par l'utilisateur après la clôture du cycle Phases 1-9, sur le modèle des
+revues adversariales déjà pratiquées dans ce dépôt (connecteur callback PR #102-104,
+`extension-mcp-flux-metier` PR #111) : un sous-agent dédié, briefé pour ne pas relister les
+limites déjà documentées et chercher ce que ma propre revue (Phases 7 et 9) avait raté, avec
+preuve réelle à l'appui (test qui échoue puis correctif prouvé), pas une lecture statique.
+
+**2 findings réels, tous les deux reproduits indépendamment par moi avant correction — pas une
+confiance aveugle dans le rapport du sous-agent :**
+
+- **Sévérité haute — le chemin d'écriture vers `clamd` n'avait aucun timeout.**
+  `socket.setSoTimeout(...)` ne borne que les `read()` Java (documenté ainsi dans le Javadoc de
+  `Socket`), jamais les `write()`/`writeInt()`. Un `clamd` vivant mais qui ne draine pas assez
+  vite (file de scan saturée, charge légitime — pas besoin de le compromettre) bloquait
+  indéfiniment le thread de requête HTTP à l'écriture ; avec assez d'uploads volumineux
+  concurrents, épuisement du pool de threads Tomcat et application entière injoignable, pas
+  seulement le scan. **Reproduit indépendamment** : test avec un faux `clamd` qui accepte la
+  connexion sans jamais lire, tentative encadrée d'un `@Timeout` JUnit — le test **restait
+  bloqué au-delà du timeout et a dû être tué manuellement au niveau du process**, confirmant au
+  passage que `Thread.interrupt()` n'a aucun effet sur un `java.io.Socket` bloqué en écriture
+  (seule la fermeture de la socket débloque). Corrigé par un thread « watchdog » qui ferme la
+  socket au-delà du budget (`readTimeout`, réutilisé comme budget total post-connexion) —
+  fermer une socket débloque immédiatement tout read/write en cours. Testé
+  (`scan_writeBlocksOnFullSocketBuffer_isBoundedAndFailsOpen`, 2 Mo de contenu contre un serveur
+  à fenêtre TCP réduite, `@Timeout(15)` en filet de sécurité) : passe maintenant en <1s.
+- **Sévérité moyenne — une réponse `clamd` dégénérée faisait planter `scan()` au lieu de
+  fail-open.** `"stream: FOUND"` (13 caractères) matche à la fois `startsWith("stream: ")` (8)
+  et `endsWith(" FOUND")` (6), mais les deux se chevauchent sur l'espace partagé (8+6=14 > 13) —
+  `substring(8, 7)` avec `begin > end` levait `StringIndexOutOfBoundsException`, une
+  `RuntimeException` non rattrapée par le `catch (IOException ex)` de `scan()`, cassant
+  l'invariant fail-open documenté par la classe elle-même pour ce cas précis.
+  **Reproduit indépendamment** : même trace exacte (`Range [8, 7) out of bounds for length 13`)
+  obtenue avant correctif. Peu exploitable à la demande via le contenu d'un fichier uploadé (un
+  vrai ClamAV n'envoie jamais un nom de signature vide) — défaut de robustesse du parser fait
+  main plutôt qu'un bypass, mais corrigé : garde de longueur avant le `substring`. Testé
+  (`scan_infectedPrefixAndSuffixOverlap_isFailOpenNotCrash`).
+
+**1 négatif confirmé par le sous-agent (pas un bug)** : une valeur `type` invalide
+(`app.dossier.attachment.scan.type=banana`) fait échouer net le démarrage du contexte Spring
+(`NoSuchBeanDefinitionException`), vérifié par un vrai `AnnotationConfigApplicationContext` —
+comportement voulu, cohérent avec `app.storage.type`, rien à corriger.
+
+**2 remarques mineures, corrigées en défense en profondeur (coût faible, pas des urgences)** :
+
+- Port `clamav` (3310) publié sans authentification dans `docker-compose.yml` — le protocole
+  clamd expose aussi `SHUTDOWN` non authentifié. Même exposition que `postgres`/`keycloak` déjà
+  dans ce fichier (convention existante, pas une régression de ce lot), mais commentaire ajouté
+  pour rappeler explicitement de ne jamais publier ce port au-delà du loopback/réseau de
+  confiance hors dev/démo.
+- Texte brut de la réponse `clamd` (jusqu'à `MAX_RESPONSE_BYTES`) parti tel quel dans les logs de
+  fail-open — risque d'injection de fausses lignes de log si `clamd` était compromis/non
+  standard (pas exploitable via le contenu d'un fichier uploadé, hypothèse déjà posée par moi en
+  amont). Ajout de `sanitizeForLog(...)` (échappe `\r`/`\n`), testé
+  (`sanitizeForLog_escapesCarriageReturnAndNewline`).
+
+**Ce que le sous-agent n'a pas pu trancher** : aucune nouvelle piste concrète pour déclencher le
+fail-open « à la demande » via le seul contenu d'un fichier contre un **vrai** moteur ClamAV —
+non testable dans ce bac à sable (Docker absent), à vérifier avec `ClamAvAttachmentScanIT` en
+environnement Docker avant de considérer le modèle de menace totalement validé. Aucun problème
+de concurrence trouvé (chaque `scan()` crée sa propre `Socket`, aucun état mutable partagé hors
+le `Counter` Micrometer, thread-safe par construction).
+
+**Preuve post-correctifs** : `./mvnw verify -Dskip.frontend=true` → **2008 tests, 0 échec**,
+`ClamAvAttachmentScanAdapter` couverture branche 100% (16/16), 1 ligne/instruction non couverte
+(le `catch (IOException)` du watchdog sur une race de fermeture très improbable — laissé tel
+quel, seuils globaux du dépôt déjà confortablement tenus). Diff nul reconfirmé sur les 3
+fichiers gelés du port.
 
 ## Phase 9 — Revue holistique pré-push
 

@@ -11,25 +11,46 @@
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
 > **Dernière mise à jour :** 2026-09-21 — Lot **C** (`scan-antivirus-clamav`) : cycle
-> `dev-lifecycle` **Phases 1-9 complet**, Phase 9 (revue finale pré-push) close. Seul écart
-> matériel trouvé en Phase 9 : la branche de session avait pris **15 commits de retard sur
-> `main`** pendant le cycle (lot A4 `headers-http-globaux`, PR #128, mergé en parallèle).
-> Vérifié avant d'agir (`git merge-tree`, pas supposé) : **zéro conflit réel** malgré 7 fichiers
-> touchés des deux côtés (`.env.example`, `CHANGELOG.md`, `DEFERRED-FEATURES.md`,
-> `DEPLOIEMENT.md`, `FILE-ATTENTE.md`, `GETTING-STARTED.md`, `application.yml`). `main` fusionné
-> proprement, puis **toute la preuve re-vérifiée après fusion** (pas seulement avant) :
-> `./mvnw verify` → **2004 tests, 0 échec** (1982 + tests A4 désormais inclus),
-> `ArchitectureRulesTest` 7/7 ; `npm run test` → 352/352 ; `npm run test:e2e` → **76/76**
-> (72 + les 4 `E2E-HDR-*` d'A4). Diff nul reconfirmé sur les 3 fichiers gelés du port contre la
-> base `main` réellement à jour. `ClamAvAttachmentScanAdapter` toujours à 100% couverture.
-> **Checklist finale Phase 9** : design conforme (12 décisions), aucun gap de logique non
-> documenté (4 limites assumées explicites), sécurité traitée, intégration vérifiée post-fusion,
-> tests couvrent les changements, docs à jour — **prêt pour PR**. Seule action restante avant
+> `dev-lifecycle` **Phases 1-9 complet** + **revue adversariale (sous-agent)** demandée
+> explicitement par l'utilisateur après la clôture, sur le modèle des revues adversariales déjà
+> pratiquées dans ce dépôt (connecteur callback, `extension-mcp-flux-metier`). **2 findings réels
+> trouvés et corrigés**, tous les deux reproduits indépendamment avant correction (pas une
+> confiance aveugle dans le rapport du sous-agent) :
+>
+> - **Sévérité haute** — `socket.setSoTimeout(...)` ne borne que les `read()` Java, jamais les
+>   `write()` : un `clamd` vivant mais lent à drainer (charge légitime, pas besoin de le
+>   compromettre) bloquait indéfiniment le thread de requête HTTP à l'écriture — épuisement du
+>   pool de threads Tomcat avec assez d'uploads concurrents, application entière injoignable.
+>   Reproduit : un test encadré d'un `@Timeout` JUnit est resté bloqué et a dû être tué au niveau
+>   du process (confirme au passage que `Thread.interrupt()` n'a aucun effet sur un
+>   `java.io.Socket` bloqué en écriture). Corrigé par un thread watchdog qui ferme la socket au
+>   -delà du budget.
+> - **Sévérité moyenne** — `"stream: FOUND"` (chevauchement préfixe/suffixe sur l'espace
+>   partagé, 8+6=14 > 13 caractères) faisait lever `StringIndexOutOfBoundsException`, une
+>   `RuntimeException` non rattrapée par le `catch (IOException)`, cassant l'invariant fail-open
+>   documenté par la classe elle-même. Corrigé par une garde de longueur avant le `substring`.
+>
+> + 2 remarques mineures corrigées en défense en profondeur (port `clamav` non authentifié
+> documenté dans `docker-compose.yml`, sanitisation `\r`/`\n` des logs de fail-open contre
+> l'injection de fausses lignes). 1 négatif confirmé (valeur `type` invalide = échec net du
+> démarrage Spring, comportement voulu, rien à corriger). Ce que le sous-agent n'a pas pu
+> trancher, faute de Docker dans ce bac à sable : existe-t-il un fichier qui ferait
+> planter/geler un **vrai** moteur ClamAV de façon déterministe (donc un bypass fail-open à la
+> demande) — à vérifier avec `ClamAvAttachmentScanIT` en environnement Docker.
+>
+> **Preuve finale** : `./mvnw verify -Dskip.frontend=true` → **2008 tests, 0 échec**,
+> `ClamAvAttachmentScanAdapter` toujours à 100% couverture branche après les 4 correctifs. Diff
+> nul reconfirmé sur les 3 fichiers gelés du port. **Prêt pour PR** — seule action restante avant
 > « livré » : une entrée `CHANGELOG.md` au moment de l'ouverture de la PR (non demandée à ce
 > stade). Détail :
 > [docs/ai/implementation/2026-09-20-feature-scan-antivirus-clamav.md](docs/ai/implementation/2026-09-20-feature-scan-antivirus-clamav.md).
 > Développement direct sur la branche de session `claude/funny-johnson-x0er1h`, pas de worktree
 > séparé (précédent du dépôt, cf. `extension-mcp-flux-metier`).
+>
+> **2026-09-21 (plus tôt, Phase 9)** — Branche fusionnée avec `main` (lot A4
+> `headers-http-globaux`, PR #128, mergé en parallèle du cycle — 15 commits de retard, zéro
+> conflit réel vérifié via `git merge-tree` avant d'agir). Suite complète re-vérifiée après
+> fusion : `./mvnw verify` → 2004 tests, 0 échec ; `npm run test:e2e` → 76/76.
 >
 > **2026-09-21 (plus tôt)** — Phase 8 (testing) close : suite complète `./mvnw verify` (frontend
 > inclus) → 1982 tests, 0 échec ; `npm run test` → 352/352 Vitest ; `npm run test:e2e` → 72/72

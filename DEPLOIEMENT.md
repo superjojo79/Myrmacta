@@ -254,6 +254,47 @@ en production.
 
 ------
 
+## 8. Scan antivirus des pièces jointes (ClamAV)
+
+`AttachmentScanPort` (domaine, inchangé depuis `durcissement-donnees-sensibles`, PR #62) accepte
+deux implémentations : `NoOpAttachmentScanAdapter` (défaut, toujours « clean ») ou
+`ClamAvAttachmentScanAdapter`, qui parle au démon `clamd` en TCP natif (protocole `INSTREAM`).
+Sélection par propriété, même idiome que `APP_STORAGE_TYPE` (§ci-dessus) :
+
+```bash
+APP_DOSSIER_ATTACHMENT_SCAN_TYPE=clamav
+APP_DOSSIER_ATTACHMENT_SCAN_CLAMAV_HOST=clamav.internal
+APP_DOSSIER_ATTACHMENT_SCAN_CLAMAV_PORT=3310
+```
+
+**`clamd` est un service externe déjà provisionné en production** — même modèle que
+PostgreSQL (§4) ou Keycloak (§5) : l'application ne fait que s'y connecter, elle ne le
+déploie pas. `docker-compose.yml` (profil `clamav`) ne couvre que le dev/démo local, pas la
+prod.
+
+Points à couvrir par l'opérateur qui provisionne `clamd` en prod (hors scope de ce dépôt, comme
+le provisioning Keycloak §7 ci-dessous) :
+
+- Dimensionnement mémoire : ~1,5-2 Go pour la base de signatures virales.
+- Mise à jour des signatures (`freshclam`), en continu — pas un geste ponctuel au provisioning.
+- **Alignement `clamd.conf` `StreamMaxLength` sur `spring.servlet.multipart.max-file-size`**
+  (`APP_DOSSIER_ATTACHMENT_MAX_SIZE_MB`, défaut 25 Mo, `application.yml`) — si l'un est relevé
+  sans l'autre, un fichier légitime dans la plage haute traverse `clamd` en fail-open
+  (ci-dessous) sans être réellement scanné. Voir `docker/clamav/clamd.conf` pour l'équivalent
+  dev/démo.
+- Un seul `clamd` mutualisé entre tenants suffit (pas de sidecar par tenant) — `clamd` ne
+  stocke aucune donnée tenant, le scan est un aller-retour bytes-in/verdict-out sans état.
+
+**Résilience — fail-open assumé.** Si `clamd` est indisponible, en timeout, ou répond de façon
+inattendue (y compris « taille de flux dépassée »), l'upload est **accepté** (pas de blocage sur
+la panne d'un composant annexe) — la tentative est loggée et incrémente le compteur Micrometer
+`flowforge.attachment.scan.fail_open` (`/actuator/prometheus`, même mécanisme que
+`observabilite`, PR #59). **Une panne `clamd` prolongée désactive donc le scan sans bloquer
+personne** — surveiller ce compteur en prod (alerte sur une valeur non nulle et croissante) est
+la seule façon de le détecter autrement qu'en lisant les logs requête par requête.
+
+------
+
 ## Ce qui n'est pas (encore) couvert par ce guide
 
 - **Démarrage de l'instance et bloc reverse-proxy** restent des étapes documentées (§1/§3/§4), pas
@@ -261,6 +302,8 @@ en production.
   Apache/nginx) pour un script générique.
 - **Provisioning Keycloak** (réalm, clients OIDC/M2M, §5/§7) reste une procédure manuelle — hors
   scope du lot `provisioning-tenant`.
+- **Provisioning `clamd`** (dimensionnement, mise à jour des signatures, éventuelle HA, §8) reste
+  une procédure manuelle — hors scope du lot `scan-antivirus-clamav` (D-AV-CLAMAV-PROD-TOPO).
 - **Sauvegarde/restauration PostgreSQL par schéma et stratégie de montée de version** ne sont pas
   documentées ici — à traiter comme toute décision technique ouverte du projet plutôt qu'improvisées
   à la première mise en production.

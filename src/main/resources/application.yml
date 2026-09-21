@@ -216,6 +216,16 @@ app:
       # spring.servlet.multipart.max-file-size/max-request-size ci-dessus — une seule source de
       # vérité, pas de second seuil applicatif à garder synchronisé.
       allowed-content-types: ${APP_DOSSIER_ATTACHMENT_ALLOWED_TYPES:application/pdf,image/png,image/jpeg,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain}
+      scan:
+        # D-AV-CLAMAV-CONFIG-SELECTOR : même idiome que app.storage.type — noop (défaut) tant
+        # que clamd n'est pas provisionné et activé explicitement. Voir DEPLOIEMENT.md § ClamAV
+        # et docker-compose.yml (profil clamav, local/démo uniquement).
+        type: ${APP_DOSSIER_ATTACHMENT_SCAN_TYPE:noop}
+        clamav:
+          host: ${APP_DOSSIER_ATTACHMENT_SCAN_CLAMAV_HOST:localhost}
+          port: ${APP_DOSSIER_ATTACHMENT_SCAN_CLAMAV_PORT:3310}
+          connect-timeout: 5s
+          read-timeout: 5s
 
 flowable:
   async-executor-activate: true

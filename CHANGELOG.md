@@ -54,6 +54,15 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Sécurité
 
+- **PR [#131](https://github.com/superjojo79/FlowForge/pull/131)** — Scan antivirus des pièces
+  jointes de dossier (lot C) : nouvel adaptateur `ClamAvAttachmentScanAdapter` (protocole natif
+  `INSTREAM` clamd en TCP, zéro dépendance tierce) derrière le port `AttachmentScanPort` existant
+  (non modifié), sélectionné par `app.dossier.attachment.scan.type` (`noop` par défaut, `clamav`
+  opt-in). Fail-open si clamd indisponible/timeout (décision produit assumée), watchdog d'E/S
+  bornant l'écriture réseau (pas seulement la lecture) suite à une revue adversariale post-Phase 9
+  ayant trouvé un DoS par épuisement de threads. Service `clamav` optionnel dans
+  `docker-compose.yml` (profil `clamav`, local/démo).
+
 - **PR [#130](https://github.com/superjojo79/FlowForge/pull/130)** — Durcissement post-merge du
   lot A4 (revue adversariale de la PR #128) : périmètre de confiance HSTS restreint à une
   allowlist de CIDR configurable, démarrage refusé si `APP_SECURITY_HEADERS_ENABLED=false` hors

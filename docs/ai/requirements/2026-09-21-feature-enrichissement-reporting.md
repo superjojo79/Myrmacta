@@ -150,7 +150,11 @@ Source : [29-enrichissement-reporting.md](../../../analysis%20doc/29-enrichissem
   **A-WEBHOOK-CAP** (20), **A-MISSED-WINDOW**, **A-BROWSER-NO-RETRY**,
   **A-SNAPSHOT-ALL-SCORED** (y compris `ON_TRACK`, pour ne pas
   rattraper), **A-SLA-CSV-PERIOD** (défaut 30 jours, tous types),
-  **A-TWO-TOGGLES** (alerting et BI indépendants), **A-NO-DIGEST**.
+  **A-TWO-TOGGLES** (alerting et BI indépendants), **A-NO-DIGEST**,
+  **A-ALERT-POPULATION** (tous les dossiers scorés, pas la fenêtre du
+  rapport), **A-BI-MASK-ALWAYS** (le CSV stocké retire les clés
+  sensibles pour tout téléchargeur ; le clair reste l’export manuel
+  admin).
 
 ## Questions & Open Items
 

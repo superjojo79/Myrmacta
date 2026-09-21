@@ -28,7 +28,7 @@ Le lot C ne partage aucun fichier de cette liste.
 
 ### M1 — Réglages
 
-- [ ] T1.1 Migration Liquibase colonnes `tenant_sla_settings` + table `tenant_sla_alert_webhook`. Dépend de rien. Preuve : IT démarrage changelog. Tests : T-IT-1.
+- [ ] T1.1 Migration Liquibase colonnes `tenant_sla_settings` (y compris `bi_enabled_at`) + table `tenant_sla_alert_webhook`. Dépend de rien. Preuve : IT démarrage changelog. Tests : T-IT-1.
 - [ ] T1.2 Étendre le record, le port et l’upsert : bornes, e-mails, webhooks du tenant activés, plafond 20. Preuve : tests unitaires use case. Tests : T-SET-1, T-SET-2, T-SET-5.
 - [ ] T1.3 Snapshot à l’activation alerting, sans `SendNotificationUseCase`, y compris réactivation. Preuve : test use case avec dossiers scoré / non scoré. Tests : T-SET-3, T-SET-4.
 - [ ] T1.4 `PUT`/`GET` admin, 403 sinon, golden OpenAPI plus tard en M6. Preuve : MockMvc. Tests : T-IT-1.
@@ -36,8 +36,8 @@ Le lot C ne partage aucun fichier de cette liste.
 ### M2 — Alerting
 
 - [ ] T2.1 Table `sla_alert_state` + port. Dépend de T1.1. Tests : T-ALR-3 (persistance du statut).
-- [ ] T2.2 `EvaluateSlaAlertsUseCase` : opt-in, échéance, transitions, fenêtre manquée, ré-entrée, non scoré, clos. Dépend de T1.3 et T2.1. Tests : T-ALR-1 à T-ALR-9.
-- [ ] T2.3 Fan-out `SendNotificationUseCase` (trois canaux, webhook désactivé sauté, payload sans champ sensible, échec n’avance pas l’état du dossier). Dépend de T2.2. Tests : T-ALR-10, T-ALR-11, T-ALR-12.
+- [ ] T2.2 `EvaluateSlaAlertsUseCase` sur `SlaAlertCandidatePort` (tous les dossiers scorés, pas la période du rapport) : opt-in, échéance, transitions, fenêtre manquée, ré-entrée, non scoré, clos. Dépend de T1.3 et T2.1. Tests : T-ALR-1 à T-ALR-9, T-ALR-13.
+- [ ] T2.3 Fan-out un événement par destinataire, webhook désactivé filtré avant `send`, transaction par dossier. Dépend de T2.2. Tests : T-ALR-10, T-ALR-11, T-ALR-12.
 - [ ] T2.4 `SlaAlertJob` tick 1 min, MDC tenant. Dépend de T2.3. Tests : T-IT-2.
 
 ### M3 — Widgets
@@ -48,8 +48,8 @@ Le lot C ne partage aucun fichier de cette liste.
 ### M4 — Export BI
 
 - [ ] T4.1 Table `bi_export_file` + port. Dépend de T1.1 pour les colonnes de rétention lues sur les réglages. Tests : T-BI-5.
-- [ ] T4.2 Production CSV par type et CSV SLA (réutiliser le masquage et les colonnes existants, pas un second formateur). Dépend de T4.1. Tests : T-BI-3, T-BI-4.
-- [ ] T4.3 `RunBiExportUseCase` : opt-in, échéance 24 h par défaut, store, transaction, delete best-effort, horloge. Dépend de T4.2. Tests : T-BI-1, T-BI-2, T-BI-6.
+- [ ] T4.2 CSV par type avec suppression inconditionnelle des clés sensibles (pas `ExportDossiersUseCase` + `System`) et CSV SLA via `AccessContext.System`. Dépend de T4.1. Tests : T-BI-3, T-BI-4, T-BI-9.
+- [ ] T4.3 `RunBiExportUseCase` : opt-in, ancre `bi_enabled_at`, store, transaction, delete best-effort. Dépend de T4.2. Tests : T-BI-1, T-BI-2, T-BI-6.
 - [ ] T4.4 Rétention y compris export désactivé. Dépend de T4.3. Tests : T-BI-5, T-BI-8.
 - [ ] T4.5 Liste paginée et téléchargement, filtre `VIEW`, 404 si interdit. Dépend de T4.1. Tests : T-BI-7, T-IT-4.
 - [ ] T4.6 `BiExportJob`. Dépend de T4.3 et T4.4. Tests : T-IT-4.
@@ -57,7 +57,7 @@ Le lot C ne partage aucun fichier de cette liste.
 ### M5 — UI
 
 - [ ] T5.1 Client `slaSettings.ts` + formulaire admin (alerting, e-mails, webhooks, BI). Dépend de T1.4. Tests : T-E2E-1, Vitest vue admin.
-- [ ] T5.2 `RapportsView` compteurs + liste + téléchargement. Dépend de T3.2 et T4.5. Tests : T-E2E-2, T-E2E-3, T-E2E-4, T-E2E-5.
+- [ ] T5.2 `RapportsView` compteurs + liste + téléchargement. Store SSE : événement `notification`. Dépend de T3.2 et T4.5. Tests : T-E2E-2, T-E2E-3, T-E2E-4, T-E2E-5, T-SSE-1.
 
 ### M6 — Clôture documentaire et verify
 
@@ -73,11 +73,10 @@ Le lot C ne partage aucun fichier de cette liste.
 
 ## Risks
 
-- L’export dossiers manuel est streamé dans le contrôleur. T4.2 doit
-  extraire la construction de ligne (colonnes + masquage) sans dupliquer
-  la règle sensible. Si l’extraction touche `DossierExportController`,
-  garder le comportement HTTP identique (test de non-régression déjà
-  présent, à rejouer).
+- L’export dossiers manuel masque selon l’acteur
+  (`DossierFieldRedactor`). Le CSV BI retire toujours les clés
+  sensibles, sans passer par `AccessContext.System`. Si T4.2 touche
+  `DossierExportController`, l’export manuel admin reste en clair.
 - Dead-letter Flowable : confirmer en T3.1 que la query est scopée au
   tenant de l’instance (schéma unique). Si la query n’a pas de filtre
   tenant explicite, le documenter comme équivalent « une instance = un
@@ -87,5 +86,7 @@ Le lot C ne partage aucun fichier de cette liste.
 
 ## Progress
 
-Phase 4 seulement. Aucune tâche d’implémentation commencée. Prochaine
-étape : Phase 5, T1.1 en TDD.
+Phase 3 revue contre le code (2026-09-21). Plan à jour des quatre
+corrections (population d’alerte, masquage BI, ancre `bi_enabled_at`,
+événement SSE `notification`). Phase 5 non commencée. Prochaine étape :
+T1.1 en TDD.

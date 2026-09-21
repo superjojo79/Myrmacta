@@ -13,21 +13,43 @@ phase3: 2026-09-21
 
 ## Phase 3: Review design
 
-Revue 2026-09-21 contre les exigences. Chaque story et critère de succès
-a un composant ci-dessous. Aucun **D-*** produit rouvert.
+Revue 2026-09-21, recoupée avec le code de `main` (pas seulement avec le
+premier jet). Chaque story et critère de succès a un composant
+ci-dessous. Aucun **D-*** produit rouvert. Quatre écarts du premier jet
+sont corrigés dans ce document :
 
-Alternatives écartées avant d’accepter ce dessin :
+1. **Population d’alerte.** `SlaReportQueryPort.findDossiers` filtre
+   `createdAt` sur la période du rapport (30 jours par défaut). Un
+   dossier plus ancien peut franchir un seuil aujourd’hui. Le scan
+   utilise un port dédié, tous les dossiers scorés, hors période.
+2. **Masquage du CSV stocké.** `DossierFieldRedactor` ne masque pas
+   `AccessContext.System`, et `ExportDossiersUseCase` avec ce contexte
+   passerait aussi l’ACL. Le fichier BI est partagé entre rôles : il
+   retire toujours les clés sensibles. L’export manuel admin, lui,
+   reste en clair pour `TENANT_ADMIN`.
+3. **Échéance BI.** `last_bi_export_at` null ne veut pas dire « dû
+   tout de suite ». D-BI-SCHEDULE ancre l’intervalle sur l’activation.
+   Colonne `bi_enabled_at`.
+4. **Tiroir SSE.** `SseNotificationAdapter` émet l’événement nommé
+   `notification`. Le store n’écoute que `onmessage`, et le relais
+   envoie `{id, payload, at}`, pas `title` à la racine. Le store écoute
+   l’événement nommé et lit `payload.title` / `payload.body`.
 
-- Vue JDBC en lecture seule : écarte le masquage applicatif et ouvre le
-  schéma tenant (D-BI-MECHANISM).
-- Nouveau canal de notification : `SendNotificationUseCase` couvre déjà
-  les trois canaux (D-ALERT-CHANNEL).
-- Lister le bucket : `DocumentStoragePort` n’a pas de list ; une table
-  `bi_export_file` est le catalogue.
-- `@Scheduled` calé sur l’intervalle tenant : l’intervalle est en base,
-  donc un tick fixe d’une minute (**A-POLL**) et un use case qui décide
-  si l’échéance est due.
-- Un seul CSV dossiers toutes colonnes fixes : contredit D-BI-DOSSIER-SHAPE.
+Alternatives écartées :
+
+- Vue JDBC : ouvre le schéma tenant (D-BI-MECHANISM).
+- Nouveau canal de notification : `SendNotificationUseCase` suffit, un
+  événement par destinataire (le use case valide tous les canaux du
+  même événement avant d’écrire).
+- Lister le bucket : le port ne liste pas.
+- Réutiliser la requête du rapport SLA pour l’alerting : fenêtre de
+  création, faux négatifs.
+- Générer le CSV avec `AccessContext.System` : fuite des champs
+  sensibles vers un `DOSSIER_MANAGER` qui télécharge le même objet.
+- Geler `last_alert_scan_at` tant qu’un dossier échoue : un destinataire
+  empoisonné transformerait le tick d’une minute en boucle. L’horloge
+  avance ; le dossier en échec garde son ancien statut et sera repris
+  à l’intervalle suivant.
 
 ## Architecture Overview
 
@@ -70,8 +92,9 @@ Colonnes ajoutées (défauts = feature éteinte) :
 | `bi_export_enabled` | boolean | défaut false |
 | `bi_interval_hours` | int | défaut 24, bornes 1–720 |
 | `bi_retention_days` | int | défaut 30, bornes 1–365 |
-| `alerting_enabled_at` | timestamptz nullable | posé à l’activation |
-| `last_alert_scan_at` | timestamptz nullable | |
+| `alerting_enabled_at` | timestamptz nullable | posé à chaque activation |
+| `last_alert_scan_at` | timestamptz nullable | null = premier scan dû tout de suite |
+| `bi_enabled_at` | timestamptz nullable | posé à chaque activation de l’export |
 | `last_bi_export_at` | timestamptz nullable | n’avance qu’en succès complet |
 
 Table `tenant_sla_alert_webhook` (`tenant_id`, `webhook_id`), clé
@@ -86,9 +109,12 @@ Le pourcentage de conformité existant ne change pas de sémantique.
 `BREACHED`), `updated_at`.
 
 À l’activation (transition false → true), dans la même transaction que
-le flag : une ligne par dossier **scoré** (`slaTargetHours` non null),
-statut courant, **sans** appel à `SendNotificationUseCase`. Réactivation
-après coupure : nouveau snapshot, même règle.
+le flag : **remplacement** des lignes du tenant (les anciennes sont
+supprimées) par une ligne par dossier scoré (`slaTargetHours` non
+null), statut courant via `SlaClock` + `SlaStatus`, **sans** appel à
+`SendNotificationUseCase`. `last_alert_scan_at` n’est pas posé ici : le
+prochain tick compare le snapshot et n’envoie rien si le statut n’a pas
+bougé. Réactivation après coupure : même remplacement.
 
 Scan suivant : statut calculé via `SlaStatus.of` (horloge déjà utilisée
 par le rapport). Écart :
@@ -113,8 +139,9 @@ dossier créé ou devenu scoré **après** l’activation. Ce premier statut
 Nom de fichier horodaté, par exemple
 `dossiers-{code}-{instant}.csv` et `sla-report-{instant}.csv`.
 
-Rétention : après un export réussi, supprimer storage (idempotent) puis
-lignes dont `created_at` est plus vieux que `bi_retention_days`.
+Rétention : supprimer storage (idempotent) puis les lignes dont
+`created_at` est plus vieux que `bi_retention_days`. La purge tourne
+aussi quand l’export est désactivé.
 
 ## API Design
 
@@ -127,9 +154,10 @@ du tableau ci-dessus plus `webhookIds: uuid[]`. `complianceTargetPercent`
 reste obligatoire et validé 1–100.
 
 Activer l’alerting (`alertingEnabled: true` alors qu’il était false)
-déclenche le snapshot. Activer le BI exige un intervalle et une
-rétention dans les bornes (ils ont déjà des défauts valides : activer
-sans les envoyer réécrit les défauts).
+déclenche le snapshot et pose `alerting_enabled_at`. Activer le BI pose
+`bi_enabled_at`. Intervalle et rétention ont des défauts déjà valides :
+les omettre à l’écriture réapplique ces défauts, pas une valeur hors
+bornes.
 
 ### `GET /api/reports/operations`
 
@@ -160,23 +188,38 @@ Lecteur du storage via `DocumentStoragePort.retrieve`.
 
 ### Alerting
 
-- `EvaluateSlaAlertsUseCase` (domaine) : si désactivé, retour immédiat.
-  Si `now` < `last_alert_scan_at` + intervalle, retour immédiat (sauf
-  le snapshot, qui est dans l’upsert des réglages, pas dans le job).
-  Sinon compare, envoie, met à jour `last_alert_scan_at` même s’il n’y
-  a aucun franchissement (l’intervalle compte les scans, pas les envois).
-- Fan-out par franchissement : un `NotificationEvent` EMAIL par adresse,
-  un WEBHOOK par webhook encore activé, un BROWSER par `userId` distinct
-  retourné par `WorkflowParticipantPort` sur les liens du dossier.
-  Sujet / corps / payload : référence, code de type, statut. Aucune
-  valeur de champ de dossier.
-- Payload BROWSER : `type=SLA_THRESHOLD_CROSSED`, `title`, `body`,
-  `createdAt`, pour le tiroir existant (`notifications.ts` lit `title`
-  et `body`).
-- `SlaAlertJob` : `@Scheduled(fixedDelay = 1 min)`, MDC tenant, appelle
-  le use case. Échec d’un envoi : ne pas avancer l’état de **ce**
-  dossier (réessai au tick suivant, sans doublon une fois l’état écrit
-  dans la même transaction que les outbox).
+- Horloge injectée (`Clock`), la même que l’upsert des réglages. Pas
+  d’`Instant.now()` dans le use case d’alerte.
+- Pas de ligne de réglages (`TenantSlaSettingsNotFoundException`
+  aujourd’hui si l’admin n’a jamais enregistré) : le job sort sans
+  erreur.
+- `EvaluateSlaAlertsUseCase` : si désactivé, retour immédiat. Si
+  `last_alert_scan_at` est non null et `now` est avant cette horloge
+  plus l’intervalle, retour immédiat. Sinon il charge les candidats.
+- Port `SlaAlertCandidatePort` : tous les dossiers du tenant dont le
+  type a un `slaTargetHours` non null, ouverts ou clos. Champs utiles :
+  id, référence, code de type, `createdAt`, `closedAt`, `updatedAt`,
+  clos, cible. Pas les champs métier. Pas la requête périodée du
+  rapport.
+- Statut = `SlaStatus.of(SlaClock.elapsed(...), cible, clos)`.
+- Fan-out par franchissement, **un** `NotificationEvent` par
+  destinataire. `send` valide tous les canaux du même événement et
+  exige `to` pour EMAIL, `webhookConfigId` pour WEBHOOK, `userId` pour
+  BROWSER : un événement mixte est invalide. Les webhooks désactivés
+  sont retirés **avant** `send` (`send` lève si le webhook est éteint).
+  Participants : union de `WorkflowParticipantPort` sur
+  `findByDossierIdOrderBySequence`. Sujet, corps et payload : référence,
+  code de type, statut, id de dossier. Aucune valeur de champ.
+- Payload interne BROWSER : `type=SLA_THRESHOLD_CROSSED`, `title`,
+  `body`. Le relais l’enveloppe déjà en `{id, payload, at}` et l’émet
+  sous le nom d’événement `notification`.
+- Transaction **par dossier** : les `send` de ce franchissement et la
+  mise à jour de `sla_alert_state` committent ensemble. Un échec
+  rollback les outbox de ce dossier et laisse l’ancien statut.
+  `last_alert_scan_at` avance à la fin du parcours, même si un dossier
+  a échoué : le rejeu de ce dossier attend le prochain intervalle, pas
+  la minute suivante.
+- `SlaAlertJob` : `@Scheduled(fixedDelay = 1 min)`, MDC tenant.
 
 ### Widgets
 
@@ -189,25 +232,31 @@ Lecteur du storage via `DocumentStoragePort.retrieve`.
 
 ### Export BI
 
-- `RunBiExportUseCase` : si désactivé, ou si `now` < dernière réussite
-  + `bi_interval_hours`, retour. Sinon :
-  1. Pour chaque type de dossier du tenant, produire les octets CSV
-     comme `DossierExportController` (colonnes fixes + champs du type,
-     masquage sensible, garde anti-formule). Pas d’`AccessContext`
-     utilisateur : le job est le tenant. Le droit est réappliqué au
-     téléchargement.
-  2. Produire le CSV SLA comme `SlaReportExportController` sans
-     `from` / `to` / `dossierTypeCode` (`SlaPeriod` 30 jours).
+- Ancre d’échéance : `bi_enabled_at` à chaque activation. Référence =
+  `last_bi_export_at` s’il est non null et pas avant `bi_enabled_at`,
+  sinon `bi_enabled_at`. Dû quand `now` atteint cette référence plus
+  `bi_interval_hours`. Une réactivation repousse le prochain fichier
+  d’un intervalle entier. Un `last_bi_export_at` null ne rend pas
+  l’export immédiat.
+- `RunBiExportUseCase`, si désactivé : pas de fichier, horloge
+  d’export inchangée, puis purge de rétention si une ligne de réglages
+  existe. Si activé mais pas encore dû : purge seulement. Si dû :
+  1. Pour chaque type, colonnes fixes de `DossierExportController` plus
+     les champs du type, dans le même ordre. Les valeurs passent par
+     une suppression **inconditionnelle** des clés sensibles
+     (`DossierFieldRedactor` tel quel ne le fait pas pour
+     `AccessContext.System`). Garde anti-formule : `CsvWriter` existant.
+     Le job n’appelle pas `ExportDossiersUseCase` avec `System`.
+  2. CSV SLA via `GetSlaReportUseCase` avec `AccessContext.System`
+     (déjà autorisé par `SlaReportAccess`, et ce CSV n’a pas de champs
+     de dossier), sans `from` / `to` / type (`SlaPeriod` 30 jours).
   3. `DocumentStoragePort.store` pour chaque fichier.
   4. Insérer les lignes et poser `last_bi_export_at` dans une
      transaction. Si l’insertion échoue, `delete` best-effort des
      `storageRef` de la tentative et ne pas avancer l’horloge.
   5. Purger la rétention.
-- La purge de rétention tourne aussi quand l’export est **désactivé**
-  (tick, lecture des jours enregistrés) : couper l’interrupteur n’a pas
-  pour effet de garder les fichiers indéfiniment. Elle ne crée pas de
-  fichier et n’avance pas `last_bi_export_at`.
-- `BiExportJob` : même tick d’une minute.
+- `BiExportJob` : même tick d’une minute. Pas de ligne de réglages :
+  sortie silencieuse.
 
 ### Frontend
 
@@ -217,8 +266,12 @@ Lecteur du storage via `DocumentStoragePort.retrieve`.
   le nouveau contrat.
 - `RapportsView.vue` : deux compteurs ; liste paginée des exports avec
   téléchargement. Visible pour les rôles qui ont déjà la page.
-- Vitest des vues et clients API. Playwright sur le formulaire admin,
-  les compteurs et la liste (mocks réseau alignés).
+- `notifications.ts` : écouter l’événement SSE `notification` (pas
+  seulement `onmessage`). Titre et corps lus dans `payload.title` et
+  `payload.body`, avec le repli actuel si absents. Les notifications
+  de workflow sans titre restent sur le libellé de repli.
+- Vitest des vues, du store et des clients API. Playwright sur le
+  formulaire admin, les compteurs et la liste (mocks réseau alignés).
 
 ### Documentation
 
@@ -232,6 +285,12 @@ Lecteur du storage via `DocumentStoragePort.retrieve`.
 
 - Snapshot dans l’upsert, pas dans le premier tick : sinon un tick
   entre l’activation et le snapshot enverrait le passé.
+- Fichier BI dossiers toujours masqué, même pour un admin qui le
+  télécharge. Le clair reste l’export manuel, qui dépend de l’acteur.
+- Pagination BI : le filtre `VIEW` est dans la requête (types autorisés
+  ou CSV SLA), pas un filtrage mémoire après coup, pour que le total
+  de page reste juste. `TENANT_ADMIN` et `WORKFLOW_ADMIN` voient tous
+  les types (`SlaReportAccess` leur donne déjà un filtre null).
 - 404 sur téléchargement interdit : pas d’oracle d’existence.
 - Dead-letter non filtré par une table métier : le compteur Flowable
   est déjà la définition « instance en erreur » du dépôt

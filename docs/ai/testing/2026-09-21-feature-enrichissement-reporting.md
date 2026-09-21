@@ -42,7 +42,8 @@ feature: enrichissement-reporting
 - [ ] T-ALR-9 : dossier clos dans les temps → pas `AT_RISK` ; clos en retard → `BREACHED` seulement s’il n’était pas déjà mémorisé ainsi.
 - [ ] T-ALR-10 : fan-out EMAIL (une outbox par adresse), WEBHOOK (webhook encore activé seulement), BROWSER (participants dédupliqués). Payload sans valeur de champ.
 - [ ] T-ALR-11 : liste d’e-mails vide → pas d’EMAIL ; BROWSER part quand même.
-- [ ] T-ALR-12 : échec d’envoi → l’état de ce dossier n’est pas avancé.
+- [ ] T-ALR-12 : échec d’envoi → l’état de ce dossier n’est pas avancé, les outbox de ce dossier sont annulées, `last_alert_scan_at` avance quand même.
+- [ ] T-ALR-13 : un dossier créé hors de la fenêtre de 30 jours du rapport est quand même évalué.
 
 ### Widgets
 
@@ -51,7 +52,8 @@ feature: enrichissement-reporting
 ### Export BI
 
 - [ ] T-BI-1 : feature éteinte → aucun store, horloge inchangée.
-- [ ] T-BI-2 : avant échéance (dernier succès + intervalle) → no-op.
+- [ ] T-BI-2 : avant échéance (référence activation ou dernier succès + intervalle) → pas de nouveau fichier. Premier tour : pas d’export immédiat.
+- [ ] T-BI-9 : le CSV stocké retire les clés sensibles même si le job n’est pas un `TENANT_ADMIN`. L’export manuel admin reste en clair.
 - [ ] T-BI-3 : un fichier `DOSSIERS` par type, colonnes identiques à l’export manuel, champs sensibles masqués.
 - [ ] T-BI-4 : un fichier `SLA` sans filtre, en-tête compliance et colonnes de l’export manuel, période 30 jours.
 - [ ] T-BI-5 : succès → `last_bi_export_at` avance et la rétention supprime storage + lignes trop vieux.
@@ -73,6 +75,7 @@ feature: enrichissement-reporting
 - [ ] T-E2E-3 : `/rapports` liste un export autorisé et pas un export d’un type sans `VIEW` (réponse API déjà filtrée, l’UI n’invente pas de ligne).
 - [ ] T-E2E-4 : régression des specs Playwright rapports / admin types existantes.
 - [ ] T-E2E-5 : mocks `frontend/e2e/**` alignés sur les nouveaux corps JSON (`sla-settings`, `operations`, `bi-exports`).
+- [ ] T-SSE-1 : le store traite l’événement nommé `notification` et affiche `payload.title` / `payload.body`. Un événement sans titre garde le libellé de repli.
 
 ## Test Data
 

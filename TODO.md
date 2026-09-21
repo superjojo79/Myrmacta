@@ -489,7 +489,7 @@ dans un seul cycle : alerting sur les statuts SLA déjà calculés, compteurs
 dead-letter et tâches sans assigné, export CSV planifié vers
 `DocumentStoragePort`.
 
-**Statut (2026-09-21) : Phase 4 prête, Phase 5 non commencée.** Lot C
+**Statut (2026-09-21) : Phase 3 revue contre le code, Phase 5 non commencée.** Lot C
 (ClamAV) en parallèle, surfaces disjointes.
 
 **Décisions Phase 1 (une par une) :** D-CYCLE-SCOPE = les trois volets ;

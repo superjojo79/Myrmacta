@@ -87,6 +87,9 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Documentation
 
+- **PR [#132](https://github.com/superjojo79/FlowForge/pull/132)** — Cadrage du cycle
+  enrichissement du reporting : alerting SLA, compteurs opérationnels et export
+  planifié. Décisions produit et plan d’implémentation, sans code applicatif.
 - **PR [#83](https://github.com/superjojo79/FlowForge/pull/83)** — Rattrapage de la documentation
   admin/utilisateur : trois écrans admin livrés mais jamais documentés (webhooks de notification,
   file de purge RGPD, observabilité), rétention par type de dossier, limite du connecteur

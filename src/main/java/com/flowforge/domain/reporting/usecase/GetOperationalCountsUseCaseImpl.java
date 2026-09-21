@@ -21,6 +21,13 @@ public final class GetOperationalCountsUseCaseImpl implements GetOperationalCoun
 
     @Override
     public OperationalCounts get(String tenantId, AccessContext ctx) {
+        // Role gate only: allowedTypeCodes() throws for a caller without at least one of
+        // TENANT_ADMIN/WORKFLOW_ADMIN/DOSSIER_MANAGER (mirrors the controller's @PreAuthorize
+        // as a defense-in-depth check for any non-HTTP caller). The returned set is a
+        // per-dossier-type ACL scope and is intentionally unused here: these counts are
+        // tenant-wide by design (see FlowableOperationalCountsAdapter) and are never filtered
+        // by dossier type, so a DOSSIER_MANAGER sees them regardless of which types they hold
+        // a VIEW grant on.
         SlaReportAccess.allowedTypeCodes(aclRepository, tenantId, ctx);
         return countsPort.current(tenantId);
     }

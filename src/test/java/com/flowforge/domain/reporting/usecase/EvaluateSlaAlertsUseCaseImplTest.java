@@ -284,6 +284,30 @@ class EvaluateSlaAlertsUseCaseImplTest {
         assertScanClockAdvanced();
     }
 
+    @Test
+    void scan_settingsChangedConcurrently_finalSavePreservesTheNewerAggregate() {
+        UUID id = UUID.randomUUID();
+        UUID webhook = UUID.randomUUID();
+        TenantSlaSettings atScanStart = settings(true, null, List.of("a@b.co"), List.of(webhook));
+        // The admin disables alerting and clears the webhook while the scan is still running.
+        TenantSlaSettings afterConcurrentPut = settings(false, null, List.of(), List.of());
+        when(settingsRepository.findByTenantId(TENANT)).thenReturn(Optional.of(atScanStart), Optional.of(afterConcurrentPut));
+        when(candidatePort.listCandidates(TENANT)).thenReturn(List.of(candidate(id, 9, false)));
+        when(stateRepository.find(TENANT, id)).thenReturn(Optional.empty());
+        NotificationWebhookConfig enabledWebhook = webhook(true);
+        when(webhookRepository.findByIdAndTenantId(webhook, TENANT)).thenReturn(Optional.of(enabledWebhook));
+
+        useCase.scan(TENANT, NOW, INLINE);
+
+        ArgumentCaptor<TenantSlaSettings> captor = ArgumentCaptor.forClass(TenantSlaSettings.class);
+        verify(settingsRepository).save(captor.capture());
+        TenantSlaSettings saved = captor.getValue();
+        assertThat(saved.lastAlertScanAt()).isEqualTo(NOW);
+        assertThat(saved.alertingEnabled()).isFalse();
+        assertThat(saved.alertEmails()).isEmpty();
+        assertThat(saved.alertWebhookIds()).isEmpty();
+    }
+
     private void verifyNoCandidates() {
         verify(candidatePort, never()).listCandidates(any());
         verify(send, never()).send(any(), any());
@@ -299,23 +323,10 @@ class EvaluateSlaAlertsUseCaseImplTest {
         verify(stateRepository).save(new SlaAlertState(TENANT, id, status, NOW));
     }
 
-    @Test
-    void scan_advancesClockWithoutRewritingSettings() {
-        UUID id = UUID.randomUUID();
-        when(settingsRepository.findByTenantId(TENANT))
-                .thenReturn(Optional.of(settings(true, null, List.of("old@b.co"), List.of())));
-        when(candidatePort.listCandidates(TENANT)).thenReturn(List.of(candidate(id, 9, false)));
-        when(stateRepository.find(TENANT, id)).thenReturn(Optional.empty());
-
-        useCase.scan(TENANT, NOW, INLINE);
-
-        verify(settingsRepository, never()).save(any());
-        verify(settingsRepository).advanceLastAlertScanAt(TENANT, NOW);
-    }
-
     private void assertScanClockAdvanced() {
-        verify(settingsRepository, never()).save(any());
-        verify(settingsRepository).advanceLastAlertScanAt(TENANT, NOW);
+        ArgumentCaptor<TenantSlaSettings> captor = ArgumentCaptor.forClass(TenantSlaSettings.class);
+        verify(settingsRepository).save(captor.capture());
+        assertThat(captor.getValue().lastAlertScanAt()).isEqualTo(NOW);
     }
 
     private static SlaAlertCandidate candidate(UUID id, int elapsedHours, boolean closed) {

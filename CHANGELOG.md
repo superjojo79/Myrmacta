@@ -54,6 +54,12 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Sécurité
 
+- **PR [#130](https://github.com/superjojo79/FlowForge/pull/130)** — Durcissement post-merge du
+  lot A4 (revue adversariale de la PR #128) : périmètre de confiance HSTS restreint à une
+  allowlist de CIDR configurable, démarrage refusé si `APP_SECURITY_HEADERS_ENABLED=false` hors
+  local/test, et endpoint anonyme rate-limité de collecte des rapports CSP
+  (`POST /api/security/csp-reports`).
+
 - **PR [#128](https://github.com/superjojo79/FlowForge/pull/128)** — En-têtes HTTP applicatifs
   (CSP enforce SPA, HSTS 1 an hors local/test si pair TCP loopback/RFC1918,
   `X-Frame-Options`, `nosniff`, `Referrer-Policy`) sur les 4 chaînes Spring Security.

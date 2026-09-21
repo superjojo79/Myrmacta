@@ -89,7 +89,8 @@ Checklist des variables à revoir pour un environnement réel :
 | `SPRING_PROFILES_ACTIVE` | `local` | un profil dédié (≠ `local`/`test`) pour activer les garde-fous D-43 |
 | `DB_PASSWORD` | `flowforge` | mot de passe fort, hors denylist |
 | `APP_SECURITY_COOKIE_SECURE` | `false` (HTTP) | `true` (défaut) — exige HTTPS de bout en bout ou une terminaison TLS au reverse-proxy ; `server.forward-headers-strategy: framework` est déjà positionné pour honorer les en-têtes `X-Forwarded-*` **posés par le proxy de confiance** |
-| `APP_SECURITY_HEADERS_ENABLED` | `true` (défaut, à laisser) | `true` — l’app émet HSTS `max-age=31536000; includeSubDomains` (pas de `preload`) hors profils `local`/`test`, seulement si la requête est HTTPS **et** que le pair TCP immédiat est loopback ou RFC1918. Ne pas poser un HSTS reverse-proxy **plus court** qui le contredirait. Kill switch `false` uniquement en urgence. |
+| `APP_SECURITY_HEADERS_ENABLED` | `true` (défaut, à laisser) | `true` — l’app émet HSTS `max-age=31536000; includeSubDomains` (pas de `preload`) hors profils `local`/`test`, seulement si la requête est HTTPS **et** que le pair TCP immédiat est dans `APP_SECURITY_HEADERS_TRUSTED_PROXY_CIDRS`. Ne pas poser un HSTS reverse-proxy **plus court** qui le contredirait. **Depuis TODO §64, `false` hors profils `local`/`test` empêche le démarrage** (fail-fast, même doctrine que `DB_PASSWORD`/§2) — ce n'est plus un coupe-circuit d'urgence. |
+| `APP_SECURITY_HEADERS_TRUSTED_PROXY_CIDRS` | défaut (loopback + RFC1918) | Défaut = loopback + RFC1918, **valable pour le modèle Docker+Apache mono-host de ce guide** (§1/§3). ⚠️ Ce défaut couvre aussi les plages d'adresses typiques des bridges Docker et des CIDR de pods Kubernetes — s'il faut un jour sortir de ce modèle mono-host (sidecar, cluster où d'autres charges de travail partagent ce même réseau privé), restreindre cette liste à l'IP réelle du reverse-proxy avant la migration, sous peine de reconstituer la confiance trop large que ce point corrige. |
 | `OIDC_CLIENT_SECRET` | `dev-secret-change-me` | secret généré par le client Keycloak réel (§5) |
 | `OAUTH2_ISSUER_URI` / `M2M_JWT_SECRET` | vides (M2M désactivé) ou HMAC de test | `OAUTH2_ISSUER_URI` pointant le realm Keycloak réel — jamais `M2M_JWT_SECRET` (§7) |
 | `APP_TENANT_ID` (relaxed-binding Spring Boot vers `app.tenant.id`, défaut `tenant_dev` dans `application.yml`) | `tenant_dev` | un identifiant par instance, propre à chaque tenant (§4) |
@@ -125,6 +126,12 @@ ProxyPassReverse "/tenant_a" "http://127.0.0.1:8081/tenant_a"
 Le préfixe n'est jamais réécrit par le proxy : la même URL (préfixe inclus) désigne la ressource
 côté client et côté serveur. Ce mécanisme couvre uniformément le trafic humain (SPA, redirection
 OAuth2), les webhooks entrants et l'API machine-to-machine (§7) — pas de routage distinct par flux.
+
+> **Rapports CSP (TODO §64).** La CSP applicative pointe un endpoint anonyme et rate-limité
+> (`POST .../api/security/csp-reports`, `APP_SECURITY_HEADERS_CSP_REPORT_RATE_LIMIT` par pair TCP,
+> défaut 60/min) qui journalise les violations tronquées via `SECURITY_AUDIT`. Aucune action
+> opérationnelle requise (même routage par chemin que le reste), mais à connaître pour le
+> dimensionnement des logs si le shipping de `SECURITY_AUDIT` est agrégé/alerté.
 
 ------
 

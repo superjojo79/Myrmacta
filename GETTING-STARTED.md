@@ -61,9 +61,11 @@ cp .env.example .env
 
 [`.env.example`](.env.example) documente chaque variable. Les valeurs par défaut suffisent pour un
 premier démarrage — rien à modifier pour suivre ce guide tel quel.
-`APP_SECURITY_HEADERS_ENABLED` (défaut `true`) : le passer à `false` coupe en urgence le paquet
-CSP / HSTS / `X-Frame-Options` ; **ne pas** le faire en local — seul HSTS est absent en profil
-`local`/`test`.
+`APP_SECURITY_HEADERS_ENABLED` (défaut `true`) coupe le paquet CSP / HSTS / `X-Frame-Options` —
+uniquement utilisable en profil `local`/`test` (seul HSTS y est absent par ailleurs) : hors de ces
+profils, le boot refuse de démarrer si cette variable vaut `false` (TODO §64).
+`APP_SECURITY_HEADERS_TRUSTED_PROXY_CIDRS` et `APP_SECURITY_HEADERS_CSP_REPORT_RATE_LIMIT` ont des
+défauts adaptés au dev local — voir `.env.example`.
 
 Le profil Spring **`local`** (`SPRING_PROFILES_ACTIVE=local` dans `.env.example`) autorise les
 secrets de démo et le HMAC M2M. Hors `local`/`test`, le boot refuse `DB_PASSWORD` dans la denylist

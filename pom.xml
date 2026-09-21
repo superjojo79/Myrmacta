@@ -28,6 +28,11 @@
         <!-- D-SDK=A (serveur-mcp) — Spring AI MCP server WebMVC starter, pas de starter chat/model -->
         <spring-ai.version>2.0.1</spring-ai.version>
         <skip.frontend>false</skip.frontend>
+        <!-- Override du Tomcat embarqué géré par spring-boot-starter-parent 4.1.1 (fige 11.0.24) :
+             11.0.24 porte plusieurs CVE critiques (CVSS 9.8/9.1 — CVE-2026-65905, CVE-2026-65637,
+             CVE-2026-68525, CVE-2026-65182 notamment), corrigées à partir de 11.0.25/11.0.26. À
+             retirer une fois que Spring Boot gère nativement 11.0.26+ (cf. prochaine version 4.1.x). -->
+        <tomcat.version>11.0.26</tomcat.version>
     </properties>
 
     <dependencyManagement>

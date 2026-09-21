@@ -23,8 +23,37 @@ jobs:
           java-version: "25"
           cache: maven
 
+      - name: Restore NVD database cache
+        id: nvd-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: dependency-check-data
+          # Pas de correspondance exacte voulue : chaque run sauvegarde une nouvelle entrée
+          # (clé unique via run_id), et restore-keys récupère la plus récente disponible en
+          # préfixe. C'est le pattern recommandé pour un cache qui grossit/se met à jour en
+          # continu (évictions automatiques par GitHub au-delà de 10 Go par repo).
+          key: nvd-data-${{ github.run_id }}
+          restore-keys: |
+            nvd-data-
+
       - name: OWASP Dependency-Check (fails this job on CVSS >= 9)
+        env:
+          # Requise par l'API NVD (nvd.nist.gov) depuis fin 2023 — sans clé, le job échoue avec
+          # "Invalid API Key". À créer sur https://nvd.nist.gov/developers/request-an-api-key
+          # et à stocker comme secret de repo/organisation nommé NVD_API_KEY.
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
         run: ./mvnw -B -Psecurity-scan -Dskip.frontend=true -DskipTests verify
+
+      - name: Save NVD database cache
+        # actions/cache (tout-en-un) ne sauvegarde qu'en cas de succès du job (post-if:
+        # success() intégré) — inutilisable ici puisque ce job échoue légitimement dès
+        # qu'une CVE critique est trouvée, exactement le cas où on veut garder la base déjà
+        # téléchargée. actions/cache/save avec if: always() la sauvegarde dans tous les cas.
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: dependency-check-data
+          key: nvd-data-${{ github.run_id }}
 
       - name: Upload report
         if: always()

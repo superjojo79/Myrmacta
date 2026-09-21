@@ -52,6 +52,9 @@ description: Define testing approach, test cases, and quality assurance
       reconnu) → fail-open, pas confondu avec un verdict infecté
 - [x] **Idem** : connexion fermée par `clamd` juste après la réponse, sans octet NUL terminal —
       `readResponse()` doit s'arrêter sur la fin de flux (-1), pas seulement sur le NUL
+- [x] **Trouvé en Phase 7 (check implementation)** : réponse dépassant `MAX_RESPONSE_BYTES`
+      (4096, jamais bufferisée indéfiniment — même convention que
+      `ConnectorProperties.Http.maxResponseBytes`) → fail-open, pas un buffer illimité
 
 ### Configuration / wiring (`DossierConfig`)
 

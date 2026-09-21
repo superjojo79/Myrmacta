@@ -30,6 +30,14 @@ public class ClamAvAttachmentScanAdapter implements AttachmentScanPort {
 
     public static final String FAIL_OPEN_COUNTER = "flowforge.attachment.scan.fail_open";
 
+    /**
+     * Borne haute sur la réponse {@code clamd} bufferisée — un statut clamd tient normalement en
+     * quelques dizaines d'octets ; même convention que {@code ConnectorProperties.Http.
+     * maxResponseBytes}/{@code Webhook.maxBodyBytes} : toute lecture réseau externe de ce dépôt
+     * est bornée, jamais bufferisée indéfiniment (trouvé en Phase 7, check implementation).
+     */
+    static final int MAX_RESPONSE_BYTES = 4096;
+
     private static final Logger log = LoggerFactory.getLogger(ClamAvAttachmentScanAdapter.class);
     private static final byte[] INSTREAM_COMMAND = "zINSTREAM\0".getBytes(StandardCharsets.US_ASCII);
     private static final int CHUNK_SIZE = 8192;
@@ -98,6 +106,9 @@ public class ClamAvAttachmentScanAdapter implements AttachmentScanPort {
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
         int b;
         while ((b = in.read()) != -1 && b != 0) {
+            if (buffer.size() >= MAX_RESPONSE_BYTES) {
+                throw new IOException("clamd response exceeded " + MAX_RESPONSE_BYTES + " bytes");
+            }
             buffer.write(b);
         }
         return buffer.toString(StandardCharsets.US_ASCII);

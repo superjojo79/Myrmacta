@@ -6,8 +6,56 @@ description: Technical implementation notes, patterns, and code guidelines
 
 # Implementation Guide — `scan-antivirus-clamav` (lot C)
 
-> Phase 5 exécutée (T1-T10). Ce document capture ce qui a réellement été livré, y compris les
-> écarts au plan trouvés en cours de route — pas une reformulation du plan a priori.
+> Phase 5 exécutée (T1-T10), Phase 7 (check implementation) faite. Ce document capture ce qui a
+> réellement été livré, y compris les écarts au plan trouvés en cours de route — pas une
+> reformulation du plan a priori.
+
+## Phase 7 — Revue fichier par fichier (findings)
+
+**Trouvés et corrigés :**
+
+- **`readResponse()` n'avait aucune borne de taille** — écart par rapport à une convention forte
+  et systématique de ce dépôt : toute lecture réseau externe est bornée
+  (`ConnectorProperties.Http.maxResponseBytes`, `Webhook.maxBodyBytes`,
+  `DocumentStorage.maxContentSize`, `BatchImport.maxFileBytes`...). Un `clamd` qui ne renvoie
+  jamais NUL/EOF pouvait faire grossir le buffer indéfiniment (borné dans les faits par
+  `readTimeout` par octet, mais pas en taille). Corrigé : `MAX_RESPONSE_BYTES = 4096` — au-delà,
+  `IOException` → fail-open, comme toute autre erreur protocolaire. Testé
+  (`scan_responseExceedingMaxSize_isFailOpenNotUnboundedRead`), 100% couverture maintenue.
+- **Healthcheck Compose `clamav` reposait sur la redirection `/dev/tcp` de bash**, une extension
+  non-POSIX dont la présence dans l'image `clamav/clamav:1.4` n'était pas vérifiable (Docker
+  absent du bac à sable). Remplacé par `test -f /run/clamav/clamd.pid` (POSIX `sh`, aucune
+  dépendance externe), cohérent avec le `PidFile` déjà déclaré dans `docker/clamav/clamd.conf` —
+  reste sujet à la même limite documentée (chemin de montage non vérifié contre un conteneur
+  réel), mais n'ajoute plus une hypothèse supplémentaire (présence de bash) par-dessus.
+
+**Trouvés, documentés, non corrigés (accepté, hors du périmètre borné du lot)** :
+
+- **`socket.setSoTimeout(...)` borne chaque appel `read()` individuellement, pas la durée totale
+  de lecture de la réponse.** `readResponse()` lit octet par octet ; un `clamd` qui ferait
+  traîner sa réponse en la livrant très lentement (un octet juste avant l'expiration de chaque
+  fenêtre `readTimeout`) pourrait dépasser le budget de latence nominal (5s) sans jamais
+  déclencher de timeout. Risque jugé faible : `clamd` est un service interne de confiance
+  (D-AV-CLAMAV-PROD-TOPO), pas une entrée utilisateur adversariale, et la réponse réelle tient en
+  quelques dizaines d'octets. Documenté plutôt que corrigé (un délai global nécessiterait un
+  thread de surveillance séparé — complexité disproportionnée par rapport au risque réel ici).
+- **`new InetSocketAddress(host, port)` résout le DNS de façon synchrone, avant même que
+  `connectTimeout` ne s'applique** (la résolution n'est pas couverte par le paramètre de timeout
+  de `Socket.connect(...)`). Un DNS lent pour `properties.host()` pourrait bloquer au-delà du
+  budget nominal. Risque jugé faible : `host` est une valeur de configuration opérateur (pas une
+  entrée utilisateur), typiquement `localhost` ou un nom interne à résolution quasi instantanée —
+  différent du risque SSRF déjà corrigé ailleurs (TODO §44, DNS rebinding sur un webhook
+  *sortant* piloté par un tenant). Documenté, pas corrigé dans ce cycle.
+
+**Vérifié conforme au design, rien à signaler :**
+
+- `AttachmentScanProperties` / wiring `DossierConfig` : correspond exactement au design (Phase 3),
+  même structure que `StorageProperties`/`StorageConfig`.
+- `application.yml` : bloc `app.dossier.attachment.scan.*` conforme, mêmes défauts que documentés.
+- Diff nul confirmé (à nouveau, après les corrections ci-dessus) sur `AttachmentScanPort.java`,
+  `AttachmentScanResult.java`, `DossierElementUploadController.java`.
+- `./mvnw verify -Dskip.frontend=true` : **1982 tests, 0 échec**, seuils Jacoco globaux tenus,
+  `ClamAvAttachmentScanAdapter` toujours à 100% (instruction/ligne/branche) après les correctifs.
 
 ## Development Setup
 

@@ -10,22 +10,22 @@
 >   (rétention / purge / sensible — **livré**) ; revue post-implémentation 2026-08-25 :
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
-> **Dernière mise à jour :** 2026-09-20 — Lot **C** (`scan-antivirus-clamav`) : cycle
-> `dev-lifecycle` Phase 5 (implémentation) close, **T1 à T10 complets** en TDD strict (test
-> rouge avant code, à chaque tâche). `ClamAvAttachmentScanAdapter` (protocole `INSTREAM` en
-> socket Java natif, aucune dépendance tierce), sélecteur `app.dossier.attachment.scan.type`,
-> compteur Micrometer `flowforge.attachment.scan.fail_open`, profil `docker-compose clamav`,
-> doc ops (`DEPLOIEMENT.md` §8, `GETTING-STARTED.md` §13, `.env.example`). `./mvnw verify
-> -Dskip.frontend=true` : **1981 tests, 0 échec**, `ClamAvAttachmentScanAdapter` à **100%**
-> couverture instruction/ligne/branche (2 scénarios non anticipés au design trouvés en visant ce
-> seuil, tous deux fail-open). Diff nul vérifié sur les 3 fichiers gelés du port à chaque
-> commit. **Limite assumée et documentée** : démon Docker absent de ce bac à sable —
-> `ClamAvAttachmentScanIT` (Testcontainers, preuve contre un vrai `clamd`) écrite et compilée
-> mais jamais exécutée contre un conteneur réel (confirmé, pas supposé : `docker pull` échoue) ;
-> skip propre vérifié via `Assumptions.assumeTrue`, même garde que `TenantSchemaIsolationIT`.
-> **Pas encore « livré »** — reste Phases 6 (update planning)/7 (check implementation)/8
-> (testing dédiée)/9 (revue finale) puis PR, non demandées dans ce tour de session (portée
-> explicitement limitée à la Phase 5). Détail :
+> **Dernière mise à jour :** 2026-09-21 — Lot **C** (`scan-antivirus-clamav`) : cycle
+> `dev-lifecycle` Phase 7 (check implementation) close. Revue fichier par fichier de
+> l'implémentation Phase 5 (T1-T10) contre le design : **2 écarts réels trouvés et corrigés**
+> (pas seulement confirmés) — `ClamAvAttachmentScanAdapter.readResponse()` n'avait aucune borne
+> de taille (incohérent avec la convention `maxResponseBytes`/`maxBodyBytes` systématique du
+> reste du dépôt pour toute lecture réseau externe) → `MAX_RESPONSE_BYTES=4096`, au-delà
+> fail-open ; le healthcheck Compose du service `clamav` reposait sur la redirection `/dev/tcp`
+> de bash, une extension non-POSIX dont la présence dans l'image n'était pas vérifiable → `test
+> -f` sur le `PidFile` (POSIX `sh`, cohérent avec `docker/clamav/clamd.conf`). **2 nuances
+> documentées et acceptées sans correctif** (risque jugé faible, hors périmètre borné du lot) :
+> le timeout socket borne chaque lecture individuelle, pas la durée totale de la réponse ; la
+> résolution DNS de `clamd` n'est pas couverte par `connectTimeout`. `./mvnw verify
+> -Dskip.frontend=true` : **1982 tests, 0 échec**, `ClamAvAttachmentScanAdapter` toujours à
+> **100%** couverture après les correctifs. Diff nul reconfirmé sur les 3 fichiers gelés du
+> port. **Toujours pas « livré »** — reste Phase 8 (testing dédiée, confirmation Playwright
+> non-régression)/9 (revue finale) puis PR. Détail :
 > [docs/ai/implementation/2026-09-20-feature-scan-antivirus-clamav.md](docs/ai/implementation/2026-09-20-feature-scan-antivirus-clamav.md).
 > Développement direct sur la branche de session `claude/funny-johnson-x0er1h`, pas de worktree
 > séparé (précédent du dépôt, cf. `extension-mcp-flux-metier`).

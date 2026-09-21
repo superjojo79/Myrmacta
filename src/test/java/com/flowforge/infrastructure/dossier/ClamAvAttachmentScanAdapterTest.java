@@ -157,6 +157,25 @@ class ClamAvAttachmentScanAdapterTest {
     }
 
     @Test
+    void scan_responseExceedingMaxSize_isFailOpenNotUnboundedRead() throws Exception {
+        // Trouvé en Phase 7 (check implementation) : readResponse() n'avait aucune borne sur la
+        // taille bufferisée — écart par rapport à la convention du dépôt (ConnectorProperties.
+        // Http.maxResponseBytes, ConnectorProperties.Webhook.maxBodyBytes, etc. bornent toujours
+        // une lecture réseau externe). Un clamd qui ne renvoie jamais NUL/EOF dans la limite du
+        // raisonnable doit être traité comme une erreur technique, pas bufferisé indéfiniment.
+        String oversized = "stream: " + "x".repeat(ClamAvAttachmentScanAdapter.MAX_RESPONSE_BYTES) + "\0";
+        try (FakeClamd clamd = FakeClamd.respondingWith(oversized)) {
+            ClamAvAttachmentScanAdapter adapter = adapterFor(clamd, Duration.ofSeconds(5));
+
+            AttachmentScanResult result = adapter.scan(new byte[] {1}, "application/pdf");
+
+            assertThat(result.clean()).isTrue();
+            assertThat(meterRegistry.get(ClamAvAttachmentScanAdapter.FAIL_OPEN_COUNTER).counter().count())
+                    .isEqualTo(1);
+        }
+    }
+
+    @Test
     void scan_multipleFailOpens_counterAccumulates() {
         try (ServerSocket closedServer = new ServerSocket(0)) {
             int port = closedServer.getLocalPort();

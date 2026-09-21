@@ -178,7 +178,13 @@ services:
     ports:
       - "${CLAMAV_PORT:-3310}:3310"
     healthcheck:
-      test: ["CMD-SHELL", "echo PING | timeout 5 bash -c 'cat < /dev/null > /dev/tcp/127.0.0.1/3310' || exit 1"]
+      # Trouvé en Phase 7 (check implementation) : un premier essai basé sur la redirection
+      # /dev/tcp de bash supposait bash présent dans l'image — pas vérifiable dans ce bac à
+      # sable (Docker absent). `test -f` (POSIX sh, aucune dépendance externe) sur le PidFile
+      # déclaré dans docker/clamav/clamd.conf est plus portable et ne dépend que de ce que clamd
+      # écrit lui-même à son démarrage réel — mais reste sujet à la même limite documentée
+      # ailleurs (chemin de montage clamd.conf non vérifié contre un conteneur réel).
+      test: ["CMD-SHELL", "test -f /run/clamav/clamd.pid"]
       # Chargement initial des définitions virales par freshclam avant que clamd n'accepte des
       # connexions — plus long qu'un healthcheck applicatif classique (D-AV-CLAMAV-FRESHCLAM :
       # mécanisme natif de l'image, pas de job séparé).

@@ -217,6 +217,10 @@
                                  échec immédiat "Invalid API Key"). Fournie via la variable d'env
                                  NVD_API_KEY (secret GitHub Actions), jamais commitée en clair. -->
                             <nvdApiKey>${env.NVD_API_KEY}</nvdApiKey>
+                            <!-- Chemin fixe (par défaut sous ~/.m2) pour pouvoir être mis en cache
+                                 entre les runs CI : sans ça, chaque run retélécharge les ~400k
+                                 enregistrements NVD depuis zéro (~1h30). -->
+                            <dataDirectory>${project.basedir}/dependency-check-data</dataDirectory>
                         </configuration>
                         <executions>
                             <execution>

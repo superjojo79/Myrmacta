@@ -4,6 +4,8 @@ import { createPinia, setActivePinia } from 'pinia'
 import RapportsView from './RapportsView.vue'
 import * as slaReport from '@/api/slaReport'
 import * as dossierTypes from '@/api/dossierTypes'
+import * as operations from '@/api/operations'
+import * as biExports from '@/api/biExports'
 
 vi.mock('@/api/slaReport', () => ({
   getSlaReport: vi.fn(),
@@ -12,6 +14,15 @@ vi.mock('@/api/slaReport', () => ({
 
 vi.mock('@/api/dossierTypes', () => ({
   listAllDossierTypes: vi.fn(),
+}))
+
+vi.mock('@/api/operations', () => ({
+  getOperationalCounts: vi.fn(),
+}))
+
+vi.mock('@/api/biExports', () => ({
+  listBiExports: vi.fn(),
+  downloadBiExport: vi.fn(),
 }))
 
 const snapshot = {
@@ -47,6 +58,27 @@ describe('RapportsView', () => {
     setActivePinia(createPinia())
     vi.mocked(slaReport.getSlaReport).mockResolvedValue(snapshot)
     vi.mocked(slaReport.downloadSlaReportCsv).mockResolvedValue(undefined)
+    vi.mocked(operations.getOperationalCounts).mockResolvedValue({
+      deadLetterJobCount: 2,
+      unassignedOpenTaskCount: 4,
+    })
+    vi.mocked(biExports.listBiExports).mockResolvedValue({
+      content: [
+        {
+          id: 'bi-1',
+          kind: 'SLA',
+          dossierTypeCode: null,
+          fileName: 'sla-report-2026.csv',
+          createdAt: '2026-08-01T00:00:00Z',
+          sizeBytes: 12,
+        },
+      ],
+      page: 0,
+      size: 20,
+      totalElements: 1,
+      totalPages: 1,
+    })
+    vi.mocked(biExports.downloadBiExport).mockResolvedValue(undefined)
     vi.mocked(dossierTypes.listAllDossierTypes).mockResolvedValue([
       {
         id: 't1',
@@ -72,6 +104,9 @@ describe('RapportsView', () => {
     expect(wrapper.get('[data-testid="rapports-schedule"]').attributes('disabled')).toBeDefined()
     expect(wrapper.text()).toContain('Sinistre')
     expect(wrapper.text()).toContain('100 %')
+    expect(wrapper.get('[data-testid="kpi-dead-letter"]').text()).toContain('2')
+    expect(wrapper.get('[data-testid="kpi-unassigned"]').text()).toContain('4')
+    expect(wrapper.get('[data-testid="rapports-bi-exports"]').text()).toContain('sla-report-2026.csv')
   })
 
   it('sends datetime-local bounds as UTC Instant and optional type filter', async () => {

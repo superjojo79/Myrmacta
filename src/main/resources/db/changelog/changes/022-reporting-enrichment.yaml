@@ -1,0 +1,206 @@
+databaseChangeLog:
+  - changeSet:
+      id: 022-tenant-sla-settings-alerting-bi
+      author: flowforge
+      changes:
+        - addColumn:
+            tableName: tenant_sla_settings
+            columns:
+              - column:
+                  name: alerting_enabled
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: alert_interval_minutes
+                  type: int
+                  defaultValueNumeric: 60
+                  constraints:
+                    nullable: false
+              - column:
+                  name: alert_emails
+                  type: json
+                  defaultValue: "[]"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: bi_export_enabled
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: bi_interval_hours
+                  type: int
+                  defaultValueNumeric: 24
+                  constraints:
+                    nullable: false
+              - column:
+                  name: bi_retention_days
+                  type: int
+                  defaultValueNumeric: 30
+                  constraints:
+                    nullable: false
+              - column:
+                  name: alerting_enabled_at
+                  type: timestamp with time zone
+              - column:
+                  name: last_alert_scan_at
+                  type: timestamp with time zone
+              - column:
+                  name: bi_enabled_at
+                  type: timestamp with time zone
+              - column:
+                  name: last_bi_export_at
+                  type: timestamp with time zone
+      rollback:
+        - dropColumn:
+            tableName: tenant_sla_settings
+            columnName: last_bi_export_at
+        - dropColumn:
+            tableName: tenant_sla_settings
+            columnName: bi_enabled_at
+        - dropColumn:
+            tableName: tenant_sla_settings
+            columnName: last_alert_scan_at
+        - dropColumn:
+            tableName: tenant_sla_settings
+            columnName: alerting_enabled_at
+        - dropColumn:
+            tableName: tenant_sla_settings
+            columnName: bi_retention_days
+        - dropColumn:
+            tableName: tenant_sla_settings
+            columnName: bi_interval_hours
+        - dropColumn:
+            tableName: tenant_sla_settings
+            columnName: bi_export_enabled
+        - dropColumn:
+            tableName: tenant_sla_settings
+            columnName: alert_emails
+        - dropColumn:
+            tableName: tenant_sla_settings
+            columnName: alert_interval_minutes
+        - dropColumn:
+            tableName: tenant_sla_settings
+            columnName: alerting_enabled
+
+  - changeSet:
+      id: 022-tenant-sla-alert-webhook
+      author: flowforge
+      changes:
+        - createTable:
+            tableName: tenant_sla_alert_webhook
+            columns:
+              - column:
+                  name: tenant_id
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: webhook_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: tenant_sla_alert_webhook
+            columnNames: tenant_id, webhook_id
+            constraintName: pk_tenant_sla_alert_webhook
+      rollback:
+        - dropTable:
+            tableName: tenant_sla_alert_webhook
+
+  - changeSet:
+      id: 022-sla-alert-state
+      author: flowforge
+      changes:
+        - createTable:
+            tableName: sla_alert_state
+            columns:
+              - column:
+                  name: tenant_id
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dossier_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_status
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: sla_alert_state
+            columnNames: tenant_id, dossier_id
+            constraintName: pk_sla_alert_state
+      rollback:
+        - dropTable:
+            tableName: sla_alert_state
+
+  - changeSet:
+      id: 022-bi-export-file
+      author: flowforge
+      changes:
+        - createTable:
+            tableName: bi_export_file
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_bi_export_file
+                    nullable: false
+              - column:
+                  name: tenant_id
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: kind
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dossier_type_code
+                  type: varchar(64)
+              - column:
+                  name: storage_ref
+                  type: varchar(512)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: file_name
+                  type: varchar(256)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: size_bytes
+                  type: bigint
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: bi_export_file
+            indexName: idx_bi_export_file_tenant_created
+            columns:
+              - column:
+                  name: tenant_id
+              - column:
+                  name: created_at
+      rollback:
+        - dropTable:
+            tableName: bi_export_file

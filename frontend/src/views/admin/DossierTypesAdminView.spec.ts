@@ -5,6 +5,7 @@ import DossierTypesAdminView from './DossierTypesAdminView.vue'
 import * as api from '@/api/dossierTypes'
 import * as retentionApi from '@/api/retentionSettings'
 import * as slaApi from '@/api/slaSettings'
+import * as webhookApi from '@/api/notificationWebhooks'
 import * as adminApi from '@/api/admin'
 import { routes } from '@/app/routes'
 import { asPage } from '@/api/page'
@@ -13,6 +14,7 @@ import type { Component } from 'vue'
 vi.mock('@/api/dossierTypes')
 vi.mock('@/api/retentionSettings')
 vi.mock('@/api/slaSettings')
+vi.mock('@/api/notificationWebhooks')
 vi.mock('@/api/admin')
 
 const sampleType = {
@@ -47,6 +49,21 @@ describe('DossierTypesAdminView', () => {
     vi.mocked(slaApi.getSlaSettings).mockRejectedValue({
       response: { status: 404, data: { detail: 'not found', status: 404 } },
     })
+    vi.mocked(webhookApi.listNotificationWebhooks).mockResolvedValue(
+      asPage([
+        {
+          id: 'wh-1',
+          tenantId: 't',
+          name: 'Ops',
+          targetUrl: 'https://example.com/hook',
+          secret: null,
+          secretConfigured: true,
+          enabled: true,
+          createdAt: '2026-01-01T00:00:00Z',
+          updatedAt: '2026-01-01T00:00:00Z',
+        },
+      ]),
+    )
     vi.mocked(adminApi.listDocumentTemplates).mockResolvedValue(
       asPage([{ templateKey: 'invoice', status: 'ACTIVE' } as never]),
     )
@@ -103,6 +120,17 @@ describe('DossierTypesAdminView', () => {
     vi.mocked(slaApi.upsertSlaSettings).mockResolvedValue({
       tenantId: 't',
       complianceTargetPercent: 90,
+      alertingEnabled: true,
+      alertIntervalMinutes: 60,
+      alertEmails: ['ops@example.com'],
+      webhookIds: ['wh-1'],
+      biExportEnabled: false,
+      biIntervalHours: 24,
+      biRetentionDays: 30,
+      alertingEnabledAt: null,
+      lastAlertScanAt: null,
+      biEnabledAt: null,
+      lastBiExportAt: null,
       updatedAt: '2026-01-01T00:00:00Z',
       updatedBy: 'admin',
     })
@@ -110,9 +138,21 @@ describe('DossierTypesAdminView', () => {
     await flushPromises()
     expect(wrapper.text()).toContain('Objectif SLA tenant')
     await wrapper.get('[data-testid="sla-target-percent"]').setValue('90')
+    await wrapper.get('[data-testid="sla-alerting-enabled"]').setValue(true)
+    await wrapper.get('[data-testid="sla-alert-emails"]').setValue('ops@example.com')
+    await wrapper.get('[data-testid="sla-alert-webhooks"]').setValue(['wh-1'])
     await wrapper.get('[data-testid="sla-settings-form"]').trigger('submit.prevent')
     await flushPromises()
-    expect(slaApi.upsertSlaSettings).toHaveBeenCalledWith(90)
+    expect(slaApi.upsertSlaSettings).toHaveBeenCalledWith({
+      complianceTargetPercent: 90,
+      alertingEnabled: true,
+      alertIntervalMinutes: 60,
+      alertEmails: ['ops@example.com'],
+      webhookIds: ['wh-1'],
+      biExportEnabled: false,
+      biIntervalHours: 24,
+      biRetentionDays: 30,
+    })
   })
 
   it('saves tenant retention default', async () => {

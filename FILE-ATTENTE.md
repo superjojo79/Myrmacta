@@ -391,8 +391,8 @@ pagination inbox > 100.
 
 **Cycle en cours (2026-09-21) :** `enrichissement-reporting` (TODO §65) —
 les trois volets de [29-enrichissement-reporting.md](analysis%20doc/29-enrichissement-reporting.md)
-dans un seul cycle (alerting SLA, widgets dead-letter / tâches sans
-assigné, export BI planifié). Décisions Phase 1 dans
+sont implémentés (alerting SLA, widgets dead-letter / tâches sans
+assigné, export BI planifié), en revue dans la PR #132. Décisions Phase 1 dans
 `docs/ai/requirements/2026-09-21-feature-enrichissement-reporting.md`.
 Ne pas le relancer en parallèle. Le lot C (ClamAV) reste sur sa surface
 (`AttachmentScanPort`, Compose, `GETTING-STARTED.md`) et ne partage pas
@@ -570,4 +570,4 @@ Vérifié : `./mvnw verify` 1136 tests (0 échec), Jacoco OK ; frontend `npm run
 | 2026-09-20 | `headers-http-globaux` (lot A4) remédiation A4-HSTS-001 | HSTS seulement si requête secure **et** pair TCP immédiat loopback/RFC1918 (unwrap `ForwardedHeaderFilter`). `DEPLOIEMENT.md` : bind `127.0.0.1:8081:8080`, unset `X-Forwarded-*` côté proxy. IT `SecurityHeadersHstsApiTest` hors profil `test` via customizer `@Primary`. `forward-headers-strategy: framework` inchangé. [PR #128](https://github.com/superjojo79/FlowForge/pull/128). |
 | 2026-09-20 | `headers-http-globaux` (lot A4) rebase docs sur main (B1) | Conflits PR #128 × main après merge PR #129 : TODO A4 renommé **§63** (B1 a clos §62), FILE-ATTENTE / DEFERRED conservent A4 en revue + B1 livré, E2E HDR + batch-import conservés. |
 | 2026-09-20 | `headers-http-globaux` (lot A4) **mergée sur `main`** | [PR #128](https://github.com/superjojo79/FlowForge/pull/128) mergée (merge `8415cee`) après CI verte (`build` + `frontend`). TODO §63 clos. File produit vide. |
-| 2026-09-21 | `enrichissement-reporting` Phases 1–4 | Quatorze décisions produit, une par une. Trois volets dans un cycle (alerting, widgets, export BI). Docs requirements / design / testing / planning. Phase 5 non commencée. TODO §65. Surfaces disjointes du lot C. |
+| 2026-09-21 | `enrichissement-reporting` Phases 1–5 | Quatorze décisions produit, une par une. Trois volets implémentés (alerting, widgets, export BI). PR #132. Surfaces disjointes du lot C. |

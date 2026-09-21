@@ -253,6 +253,44 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
     }
     await route.fulfill({ status: 405, body: '' })
   })
+  await page.route('**/api/reports/operations', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ deadLetterJobCount: 2, unassignedOpenTaskCount: 4 }),
+    })
+  })
+  await page.route('**/api/reports/bi-exports**', async (route) => {
+    if (route.request().url().includes('/bi-exports/')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/csv;charset=UTF-8',
+        headers: { 'Content-Disposition': 'attachment; filename="sla-report-2026.csv"' },
+        body: 'type,workflow\r\n',
+      })
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        content: [
+          {
+            id: 'bi-1',
+            kind: 'SLA',
+            dossierTypeCode: null,
+            fileName: 'sla-report-2026.csv',
+            createdAt: '2026-08-01T00:00:00Z',
+            sizeBytes: 12,
+          },
+        ],
+        page: 0,
+        size: 20,
+        totalElements: 1,
+        totalPages: 1,
+      }),
+    })
+  })
   await page.route('**/api/reports/sla**', async (route) => {
     const url = route.request().url()
     if (url.includes('sla.csv')) {
@@ -1987,6 +2025,43 @@ test('E2E-SLA-2 export triggers CSV download request', async ({ page }) => {
   const csvRequest = page.waitForRequest((request) => request.url().includes('/api/reports/sla.csv'))
   await page.getByTestId('rapports-export').click()
   await csvRequest
+})
+
+test('E2E-RPT-1 rapports shows operational counters and BI files', async ({ page }) => {
+  await mockSession(page)
+  await openApp(page)
+  await page.getByRole('link', { name: 'Rapports & SLA' }).click()
+  await expect(page.getByTestId('kpi-dead-letter')).toContainText('2')
+  await expect(page.getByTestId('kpi-unassigned')).toContainText('4')
+  await expect(page.getByTestId('rapports-bi-exports')).toContainText('sla-report-2026.csv')
+  const download = page.waitForRequest((request) => request.url().includes('/api/reports/bi-exports/bi-1'))
+  await page.getByTestId('rapports-bi-download').click()
+  await download
+})
+
+test('E2E-RPT-2 admin saves alerting and BI settings', async ({ page }) => {
+  await mockSession(page)
+  await openApp(page)
+  await page.getByRole('link', { name: 'Types' }).click()
+  await page.getByTestId('sla-alerting-enabled').check()
+  await page.getByTestId('sla-alert-emails').fill('ops@example.com')
+  await page.getByTestId('sla-alert-webhooks').selectOption('wh-1')
+  await page.getByTestId('sla-bi-enabled').check()
+  const saved = page.waitForRequest(
+    (request) => request.method() === 'PUT' && request.url().includes('/api/tenant/sla-settings'),
+  )
+  await page.getByTestId('sla-save').click()
+  const request = await saved
+  const body = request.postDataJSON() as {
+    alertingEnabled: boolean
+    alertEmails: string[]
+    webhookIds: string[]
+    biExportEnabled: boolean
+  }
+  expect(body.alertingEnabled).toBe(true)
+  expect(body.alertEmails).toEqual(['ops@example.com'])
+  expect(body.webhookIds).toEqual(['wh-1'])
+  expect(body.biExportEnabled).toBe(true)
 })
 
 test('E2E-SLA-3 schedule send is disabled', async ({ page }) => {

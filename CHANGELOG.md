@@ -30,6 +30,10 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
+- **PR [#132](https://github.com/superjojo79/FlowForge/pull/132)** — Alertes de franchissement SLA
+  (e-mail, webhook, navigateur, une fois par palier), compteurs dead-letter et tâches ouvertes
+  sans assigné sur `/rapports`, et export BI planifié (CSV par type et CSV SLA, rétention,
+  masquage des champs sensibles). Réglages opt-in dans Admin → Types. Guide utilisateur mis à jour.
 - **TODO §62** — Deux nouveaux connecteurs (lot B1) : `batch-import` (import périodique de
   fichiers CSV/Excel via SFTP, un dossier créé par ligne) et `kafka` (déclenchement par message
   reçu sur un topic). Nouveau type de champ de configuration `SECRET_TEXTAREA` (clé privée SFTP
@@ -87,10 +91,6 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Documentation
 
-- **PR [#132](https://github.com/superjojo79/FlowForge/pull/132)** — Cadrage du cycle
-  enrichissement du reporting : alerting SLA, compteurs opérationnels et export
-  planifié. La revue de conception aligne le scan, le masquage du CSV stocké
-  et la notification navigateur sur le code existant. Sans code applicatif.
 - **PR [#83](https://github.com/superjojo79/FlowForge/pull/83)** — Rattrapage de la documentation
   admin/utilisateur : trois écrans admin livrés mais jamais documentés (webhooks de notification,
   file de purge RGPD, observabilité), rétention par type de dossier, limite du connecteur

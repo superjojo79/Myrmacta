@@ -9,6 +9,7 @@ import {
 } from '@/api/dossierTypes'
 import { getRetentionSettings, upsertRetentionSettings } from '@/api/retentionSettings'
 import { getSlaSettings, upsertSlaSettings } from '@/api/slaSettings'
+import { listNotificationWebhooks, type NotificationWebhook } from '@/api/notificationWebhooks'
 import type { DossierPermission, DossierType, FieldDefinition } from '@/api/types'
 import { toProblemDetail } from '@/api/http'
 import AdminPager from '@/components/admin/AdminPager.vue'
@@ -26,6 +27,14 @@ const retentionConfigured = ref(false)
 const retentionDraft = ref(365)
 const slaTargetPercent = ref(95)
 const slaConfigured = ref(false)
+const alertingEnabled = ref(false)
+const alertIntervalMinutes = ref(60)
+const alertEmailsText = ref('')
+const alertWebhookIds = ref<string[]>([])
+const biExportEnabled = ref(false)
+const biIntervalHours = ref(24)
+const biRetentionDays = ref(30)
+const enabledWebhooks = ref<NotificationWebhook[]>([])
 const form = ref({
   code: '',
   label: '',
@@ -80,6 +89,13 @@ async function refresh() {
     const sla = await getSlaSettings()
     slaConfigured.value = true
     slaTargetPercent.value = sla.complianceTargetPercent
+    alertingEnabled.value = sla.alertingEnabled
+    alertIntervalMinutes.value = sla.alertIntervalMinutes
+    alertEmailsText.value = sla.alertEmails.join('\n')
+    alertWebhookIds.value = [...sla.webhookIds]
+    biExportEnabled.value = sla.biExportEnabled
+    biIntervalHours.value = sla.biIntervalHours
+    biRetentionDays.value = sla.biRetentionDays
   } catch (err) {
     const status = toProblemDetail(err).status
     if (status === 404) {
@@ -87,6 +103,12 @@ async function refresh() {
     } else {
       throw err
     }
+  }
+  try {
+    const hooks = await listNotificationWebhooks({ page: 0, size: 100 })
+    enabledWebhooks.value = hooks.content.filter((hook) => hook.enabled)
+  } catch {
+    enabledWebhooks.value = []
   }
 }
 
@@ -114,7 +136,19 @@ async function saveRetention() {
 async function saveSla() {
   error.value = null
   try {
-    const saved = await upsertSlaSettings(slaTargetPercent.value)
+    const saved = await upsertSlaSettings({
+      complianceTargetPercent: slaTargetPercent.value,
+      alertingEnabled: alertingEnabled.value,
+      alertIntervalMinutes: alertIntervalMinutes.value,
+      alertEmails: alertEmailsText.value
+        .split(/[\n,]/)
+        .map((email) => email.trim())
+        .filter((email) => email.length > 0),
+      webhookIds: alertWebhookIds.value,
+      biExportEnabled: biExportEnabled.value,
+      biIntervalHours: biIntervalHours.value,
+      biRetentionDays: biRetentionDays.value,
+    })
     slaConfigured.value = true
     slaTargetPercent.value = saved.complianceTargetPercent
   } catch (err) {
@@ -280,6 +314,63 @@ async function revoke() {
             max="100"
             required
             data-testid="sla-target-percent"
+          />
+        </label>
+        <label>
+          <input v-model="alertingEnabled" type="checkbox" data-testid="sla-alerting-enabled" />
+          Alertes de franchissement SLA
+        </label>
+        <label>
+          Intervalle (minutes, 15 à 10080)
+          <input
+            v-model.number="alertIntervalMinutes"
+            type="number"
+            min="15"
+            max="10080"
+            required
+            data-testid="sla-alert-interval"
+          />
+        </label>
+        <label>
+          Destinataires e-mail (un par ligne, 20 maximum)
+          <textarea v-model="alertEmailsText" rows="3" data-testid="sla-alert-emails" />
+        </label>
+        <label>
+          Webhooks activés
+          <select
+            v-model="alertWebhookIds"
+            multiple
+            data-testid="sla-alert-webhooks"
+          >
+            <option v-for="hook in enabledWebhooks" :key="hook.id" :value="hook.id">
+              {{ hook.name }}
+            </option>
+          </select>
+        </label>
+        <label>
+          <input v-model="biExportEnabled" type="checkbox" data-testid="sla-bi-enabled" />
+          Export BI planifié
+        </label>
+        <label>
+          Intervalle BI (heures, 1 à 720)
+          <input
+            v-model.number="biIntervalHours"
+            type="number"
+            min="1"
+            max="720"
+            required
+            data-testid="sla-bi-interval"
+          />
+        </label>
+        <label>
+          Rétention des fichiers BI (jours, 1 à 365)
+          <input
+            v-model.number="biRetentionDays"
+            type="number"
+            min="1"
+            max="365"
+            required
+            data-testid="sla-bi-retention"
           />
         </label>
         <button type="submit" data-testid="sla-save">Enregistrer l'objectif SLA</button>

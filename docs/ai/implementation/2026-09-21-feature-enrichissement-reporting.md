@@ -2,7 +2,7 @@
 phase: implementation
 title: Implementation Guide
 description: Technical implementation notes, patterns, and code guidelines
-status: not-started
+status: done
 created: 2026-09-21
 updated: 2026-09-21
 feature: enrichissement-reporting
@@ -10,8 +10,14 @@ feature: enrichissement-reporting
 
 # Implementation Guide — `enrichissement-reporting`
 
-Phase 5 non commencée. Le plan exécutable est
-[2026-09-21-feature-enrichissement-reporting.md](../planning/2026-09-21-feature-enrichissement-reporting.md).
+Phase 5 livrée sur la branche `cursor/enrichissement-reporting-1d3d`.
 
-Première tâche : T1.1, test de migration ou de mapping qui échoue, puis
-colonnes Liquibase. Pas de code avant le test rouge (TDD).
+Le domaine reste sans Spring. Les jobs `SlaAlertJob` et `BiExportJob`
+passent une transaction par franchissement (alerte) ou par commit de
+catalogue (BI). Le CSV BI dossiers retire les clés sensibles via
+`DossierFieldRedactor.withoutSensitiveKeys`. Le compteur dead-letter
+reprend la requête de `FlowableJobMetricsBinder` (une instance = un
+tenant) ; les tâches ouvertes filtrent `taskTenantId`.
+
+Le plan détaillé est
+[2026-09-21-feature-enrichissement-reporting.md](../planning/2026-09-21-feature-enrichissement-reporting.md).

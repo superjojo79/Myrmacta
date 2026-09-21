@@ -372,9 +372,28 @@ Dans le tableau des templates existants (`templateKey` — libellé — version 
   pour son type (§1). Une tâche sans formulaire déclaré garde le bouton **Compléter** habituel.
 - **Rapports & SLA** (`/rapports`) — snapshot de conformité et de délais sur une période
   (défaut 30 jours). Visible pour `TENANT_ADMIN`, `WORKFLOW_ADMIN` et `DOSSIER_MANAGER`
-  (ce dernier ne voit que les types pour lesquels il a VIEW). Export CSV disponible ;
-  la planification d'envoi n'est pas encore activée. L'objectif de conformité tenant
-  (défaut 95 %) se configure dans **Admin → Types**.
+  (ce dernier ne voit que les types pour lesquels il a VIEW). Export CSV manuel disponible.
+  La page affiche aussi deux compteurs opérationnels (jobs Flowable en dead-letter, tâches
+  ouvertes sans assigné) et la liste des fichiers d'export BI déjà produits. Un gestionnaire
+  ne voit et ne télécharge que le CSV SLA et les CSV de types sur lesquels il a VIEW.
+  L'objectif de conformité tenant (défaut 95 %), les alertes de franchissement et l'export
+  BI se configurent dans **Admin → Types**.
+
+### Alertes SLA et export BI (Admin → Types)
+
+Le formulaire **Objectif SLA tenant** reste réservé au `TENANT_ADMIN` :
+
+- **Alertes de franchissement** — désactivées par défaut. À l'activation, l'état courant des
+  dossiers scorés est mémorisé sans envoi. Seul un franchissement ultérieur (`AT_RISK` à 80 %
+  de l'objectif en heures, ou `BREACHED` au-delà) prévient une fois : e-mails saisis (20 maximum),
+  webhooks déjà activés choisis dans la liste (20 maximum), et notification navigateur pour les
+  participants du dossier. L'intervalle de contrôle se règle en minutes (15 à 10 080, défaut 60).
+- **Export BI planifié** — désactivé par défaut. Une fois activé, un CSV par type de dossier et
+  un CSV SLA (période 30 jours) sont déposés après chaque intervalle (1 à 720 heures, défaut 24),
+  compté depuis l'activation ou le dernier export réussi. Les clés de champs sensibles sont
+  retirées de ces fichiers, y compris pour un administrateur ; l'export CSV manuel des dossiers
+  reste en clair pour le `TENANT_ADMIN`. Les fichiers plus vieux que la rétention (1 à 365 jours,
+  défaut 30) disparaissent de la liste, même si l'export est ensuite coupé.
 
 Sur la fiche d'un dossier (`/dossiers/{id}`), en plus du suivi de workflow (§3), on trouve aussi :
 

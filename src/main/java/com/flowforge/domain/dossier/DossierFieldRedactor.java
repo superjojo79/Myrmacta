@@ -45,4 +45,24 @@ public final class DossierFieldRedactor {
         }
         return redacted == null ? dossier : dossier.withFields(redacted);
     }
+
+    /**
+     * Strips sensitive keys for a shared artifact (BI CSV). Unlike {@link #redact}, this does not
+     * depend on the caller: a system job must not keep values that a later non-admin download
+     * would expose.
+     */
+    public static Map<String, Object> withoutSensitiveKeys(Dossier dossier, List<FieldDefinition> fieldDefinitions) {
+        Objects.requireNonNull(dossier, "dossier");
+        Objects.requireNonNull(fieldDefinitions, "fieldDefinitions");
+        Map<String, Object> copy = null;
+        for (FieldDefinition definition : fieldDefinitions) {
+            if (definition.isSensitive() && dossier.fields().containsKey(definition.name())) {
+                if (copy == null) {
+                    copy = new HashMap<>(dossier.fields());
+                }
+                copy.remove(definition.name());
+            }
+        }
+        return copy == null ? dossier.fields() : Map.copyOf(copy);
+    }
 }

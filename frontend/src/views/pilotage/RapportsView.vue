@@ -2,6 +2,8 @@
 import { onMounted, ref } from 'vue'
 import { listAllDossierTypes } from '@/api/dossierTypes'
 import { getSlaReport, downloadSlaReportCsv, type SlaReport } from '@/api/slaReport'
+import { getOperationalCounts, type OperationalCounts } from '@/api/operations'
+import { downloadBiExport, listBiExports, type BiExportFile } from '@/api/biExports'
 import { toSlaPeriodParam } from '@/api/slaPeriod'
 import { toProblemDetail } from '@/api/http'
 import type { DossierType } from '@/api/types'
@@ -13,6 +15,8 @@ const from = ref('')
 const to = ref('')
 const typeFilter = ref('')
 const types = ref<DossierType[]>([])
+const operations = ref<OperationalCounts | null>(null)
+const biExports = ref<BiExportFile[]>([])
 
 function queryParams() {
   return {
@@ -31,6 +35,24 @@ async function refresh() {
     error.value = toProblemDetail(err).detail ?? 'Chargement impossible'
   } finally {
     loading.value = false
+  }
+  try {
+    operations.value = await getOperationalCounts()
+  } catch {
+    operations.value = null
+  }
+  try {
+    biExports.value = (await listBiExports()).content
+  } catch {
+    biExports.value = []
+  }
+}
+
+async function downloadExport(file: BiExportFile) {
+  try {
+    await downloadBiExport(file)
+  } catch (err) {
+    error.value = toProblemDetail(err).detail ?? 'Téléchargement impossible'
   }
 }
 
@@ -91,6 +113,46 @@ onMounted(() => {
         </button>
       </div>
     </header>
+    <div class="kpi-grid" data-testid="rapports-operations">
+      <article class="kpi">
+        <p class="kpi__label">Jobs en dead-letter</p>
+        <p class="kpi__value" data-testid="kpi-dead-letter">
+          {{ operations ? operations.deadLetterJobCount : '—' }}
+        </p>
+      </article>
+      <article class="kpi">
+        <p class="kpi__label">Tâches ouvertes sans assigné</p>
+        <p class="kpi__value" data-testid="kpi-unassigned">
+          {{ operations ? operations.unassignedOpenTaskCount : '—' }}
+        </p>
+      </article>
+    </div>
+    <section>
+      <h2>Exports BI</h2>
+      <p v-if="biExports.length === 0" class="muted">Aucun fichier pour l'instant.</p>
+      <table v-else data-testid="rapports-bi-exports">
+        <thead>
+          <tr>
+            <th>Fichier</th>
+            <th>Type</th>
+            <th>Date</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="file in biExports" :key="file.id">
+            <td>{{ file.fileName }}</td>
+            <td>{{ file.kind === 'SLA' ? 'SLA' : file.dossierTypeCode }}</td>
+            <td>{{ new Date(file.createdAt).toLocaleString('fr-FR') }}</td>
+            <td>
+              <button type="button" data-testid="rapports-bi-download" @click="downloadExport(file)">
+                Télécharger
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
     <p v-if="loading">Chargement…</p>
     <p v-else-if="error" class="error">{{ error }}</p>
     <template v-else-if="report">

@@ -23,8 +23,9 @@ jobs:
           java-version: "25"
           cache: maven
 
-      - name: Cache NVD database
-        uses: actions/cache@v4
+      - name: Restore NVD database cache
+        id: nvd-cache
+        uses: actions/cache/restore@v4
         with:
           path: dependency-check-data
           # Pas de correspondance exacte voulue : chaque run sauvegarde une nouvelle entrée
@@ -42,6 +43,17 @@ jobs:
           # et à stocker comme secret de repo/organisation nommé NVD_API_KEY.
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
         run: ./mvnw -B -Psecurity-scan -Dskip.frontend=true -DskipTests verify
+
+      - name: Save NVD database cache
+        # actions/cache (tout-en-un) ne sauvegarde qu'en cas de succès du job (post-if:
+        # success() intégré) — inutilisable ici puisque ce job échoue légitimement dès
+        # qu'une CVE critique est trouvée, exactement le cas où on veut garder la base déjà
+        # téléchargée. actions/cache/save avec if: always() la sauvegarde dans tous les cas.
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: dependency-check-data
+          key: nvd-data-${{ github.run_id }}
 
       - name: Upload report
         if: always()

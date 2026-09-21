@@ -11,22 +11,20 @@
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
 > **Dernière mise à jour :** 2026-09-21 — Lot **C** (`scan-antivirus-clamav`) : cycle
-> `dev-lifecycle` Phase 7 (check implementation) close. Revue fichier par fichier de
-> l'implémentation Phase 5 (T1-T10) contre le design : **2 écarts réels trouvés et corrigés**
-> (pas seulement confirmés) — `ClamAvAttachmentScanAdapter.readResponse()` n'avait aucune borne
-> de taille (incohérent avec la convention `maxResponseBytes`/`maxBodyBytes` systématique du
-> reste du dépôt pour toute lecture réseau externe) → `MAX_RESPONSE_BYTES=4096`, au-delà
-> fail-open ; le healthcheck Compose du service `clamav` reposait sur la redirection `/dev/tcp`
-> de bash, une extension non-POSIX dont la présence dans l'image n'était pas vérifiable → `test
-> -f` sur le `PidFile` (POSIX `sh`, cohérent avec `docker/clamav/clamd.conf`). **2 nuances
-> documentées et acceptées sans correctif** (risque jugé faible, hors périmètre borné du lot) :
-> le timeout socket borne chaque lecture individuelle, pas la durée totale de la réponse ; la
-> résolution DNS de `clamd` n'est pas couverte par `connectTimeout`. `./mvnw verify
-> -Dskip.frontend=true` : **1982 tests, 0 échec**, `ClamAvAttachmentScanAdapter` toujours à
-> **100%** couverture après les correctifs. Diff nul reconfirmé sur les 3 fichiers gelés du
-> port. **Toujours pas « livré »** — reste Phase 8 (testing dédiée, confirmation Playwright
-> non-régression)/9 (revue finale) puis PR. Détail :
-> [docs/ai/implementation/2026-09-20-feature-scan-antivirus-clamav.md](docs/ai/implementation/2026-09-20-feature-scan-antivirus-clamav.md).
+> `dev-lifecycle` Phase 8 (testing) close, avec preuves fraîches plutôt qu'affirmées. Suite
+> complète **`./mvnw verify`** (frontend inclus, pas de raccourci `-Dskip.frontend`) :
+> **1982 tests, 0 échec**, `BUILD SUCCESS`, `ClamAvAttachmentScanAdapter` à **100%** couverture
+> (instruction/ligne/branche, vérifié dans `jacoco.csv`). Frontend exécuté réellement (dernier
+> point resté ouvert depuis la Phase 5) : **`npm run test` → 352/352 Vitest** ; **`npm run
+> test:e2e` → 72/72 Playwright** (contournement d'un décalage de version du binaire
+> pré-installé via `PLAYWRIGHT_CHROMIUM_EXECUTABLE`, mécanisme déjà prévu par
+> `playwright.config.ts`), incluant explicitement `E2E-17`/`E2E-19` (upload de pièce jointe) —
+> aucune régression. Note d'environnement trouvée en marge, sans rapport avec ce lot : un `mvn
+> clean verify -Dskip.frontend=true` (les deux options combinées) fait échouer
+> `OpenApiDisabledApiTest` (`static/index.html` absent faute de rebuild frontend après le
+> `clean`) — artefact pré-existant du raccourci, absent d'un `verify` normal, non corrigé (hors
+> périmètre de ce lot). **Toujours pas « livré »** — reste Phase 9 (revue finale) puis PR.
+> Détail : [docs/ai/testing/2026-09-20-feature-scan-antivirus-clamav.md](docs/ai/testing/2026-09-20-feature-scan-antivirus-clamav.md).
 > Développement direct sur la branche de session `claude/funny-johnson-x0er1h`, pas de worktree
 > séparé (précédent du dépôt, cf. `extension-mcp-flux-metier`).
 >

@@ -6,9 +6,8 @@ description: Define testing approach, test cases, and quality assurance
 
 # Testing Strategy — `scan-antivirus-clamav` (lot C)
 
-> Phase 5 (implémentation) exécutée : scénarios cochés au fur et à mesure, quelques ajouts
-> réels trouvés en cours de route (branches non prévues au brouillon). Finalisation formelle en
-> Phase 8 (`dev-testing`).
+> Phase 8 (`dev-testing`) close. Tous les scénarios cochés avec preuve fraîche (commandes,
+> comptes de tests, sorties réelles) — pas seulement affirmés.
 
 ## Test Coverage Goals
 
@@ -22,9 +21,10 @@ description: Define testing approach, test cases, and quality assurance
 - Aucune régression sur les tests existants du chemin d'upload
   (`DossierElementUploadControllerTest`, `NoOpAttachmentScanAdapterTest`) : le comportement par
   défaut (scan désactivé) doit rester strictement identique.
-- Frontend : **aucun impact** (pas de nouvel écran, pas de contrat SPA modifié) → Vitest/
-  Playwright non requis pour ce lot (règle §4 `flowforge-conventions`, conditionnée à un impact
-  SPA réel).
+- Frontend : **aucun impact fonctionnel** (pas de nouvel écran, pas de contrat SPA modifié) —
+  pas de nouveau test Vitest/Playwright à écrire. Vitest et Playwright **exécutés quand même en
+  Phase 8** (chemin d'upload de pièce jointe concerné, même indirectement) pour la preuve de
+  non-régression : 352/352 et 72/72, voir § Test Reporting & Coverage.
 
 ## Unit Tests
 
@@ -84,7 +84,8 @@ protocole `INSTREAM` fait main.
       (D-AV-CLAMAV-HEALTH)
 - [x] Non-régression : `DossierElementUploadControllerTest` (scan désactivé, mock du port comme
       aujourd'hui) reste vert sans modification de ses assertions existantes — confirmé par
-      `./mvnw verify` complet (1981 tests, 0 échec)
+      `./mvnw verify` complet (Phase 8, frontend inclus, sans `-Dskip.frontend` : **1982 tests,
+      0 échec**, `BUILD SUCCESS`)
 - **Non exécuté dans ce bac à sable** (démon Docker absent — confirmé, pas supposé : `docker
   pull` échoue avec « failed to connect to the docker API »). Écrit, compilé
   (`./mvnw test-compile` vert) et exécuté explicitement une fois : les deux tests passent en
@@ -99,9 +100,13 @@ protocole `INSTREAM` fait main.
 - Aucun flux E2E navigateur nouveau à couvrir — le point d'entrée est le même endpoint REST déjà
   couvert côté FE par les tests existants d'upload de pièce jointe ; pas de nouvel écran ni de
   changement de contrat consommé par le SPA (cf. Test Coverage Goals).
-- [ ] Vérifier a posteriori qu'aucun test Playwright existant lié à l'upload de pièce jointe ne
-      régresse (exécution normale de la suite FE, sans modification attendue) — reporté à la
-      Phase 8 (`dev-testing`), aucun fichier frontend touché en Phase 5.
+- [x] Vérifier a posteriori qu'aucun test Playwright existant lié à l'upload de pièce jointe ne
+      régresse (exécution normale de la suite FE, sans modification attendue) — **fait en Phase
+      8** : `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e` (variable
+      d'échappement déjà prévue par `playwright.config.ts` pour un binaire pré-installé) →
+      **72/72 verts**, dont explicitement `E2E-17 upload an ATTACHMENT element from detail` et
+      `E2E-19 oversized attachment upload shows an error, no crash` — aucune régression. Vitest :
+      `npm run test` → **352/352 verts**.
 
 ## Test Data
 
@@ -118,14 +123,26 @@ protocole `INSTREAM` fait main.
 
 **How do we verify and communicate test results?**
 
-- `./mvnw verify -Dmaven.compiler.release=21 -Dskip.frontend=true` (suite standard, sans l'IT
-  ClamAV) : **1981 tests, 0 échec**, seuils Jacoco globaux tenus (LINE ≥85%/BRANCH ≥75%, `pom.xml`
-  inchangés), `ClamAvAttachmentScanAdapter` à **100% instruction/ligne/branche** (vérifié via
-  `target/site/jacoco/jacoco.csv` et `jacoco.xml`, pas seulement affirmé).
+- **Preuve finale Phase 8** — `./mvnw verify -Dmaven.compiler.release=21` (suite complète,
+  frontend inclus, sans raccourci `-Dskip.frontend`) : **1982 tests, 0 échec**, `BUILD SUCCESS`,
+  seuils Jacoco globaux tenus (LINE ≥85%/BRANCH ≥75%, `pom.xml` inchangés),
+  `ClamAvAttachmentScanAdapter` à **100% instruction/ligne/branche** (vérifié via
+  `target/site/jacoco/jacoco.csv`, pas seulement affirmé — `0,183,0,14,0,44,0,13,0,6`, aucune
+  ligne/branche manquée).
+- Frontend : `cd frontend && npm run test` → **352/352 Vitest**, `npm run test:e2e`
+  (`PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium`, contournement d'un décalage de
+  version du binaire Playwright pré-installé dans ce bac à sable, mécanisme déjà prévu par
+  `playwright.config.ts`) → **72/72 Playwright**.
 - IT ClamAV dédiée exécutée séparément : `./mvnw test -Dtest=ClamAvAttachmentScanIT`
-  (D-AV-CLAMAV-TEST-SCOPE, confirmé absent du run précédent — 0 occurrence du nom de la classe
-  dans les logs du `./mvnw verify` standard). Job CI séparé toujours à évaluer une fois le temps
-  de démarrage `clamd` mesuré réellement (impossible dans ce bac à sable, Docker absent).
+  (D-AV-CLAMAV-TEST-SCOPE, confirmé absent du run standard — 0 occurrence du nom de la classe
+  dans les logs). Job CI séparé toujours à évaluer une fois le temps de démarrage `clamd` mesuré
+  réellement (impossible dans ce bac à sable, Docker absent).
+- **Note d'environnement trouvée en Phase 8, sans rapport avec ce lot** : un `mvn clean verify
+  -Dskip.frontend=true` (combinaison des deux options ensemble) fait échouer
+  `OpenApiDisabledApiTest` (`static/index.html` absent après un `clean` sans rebuild frontend) —
+  artefact du raccourci `-Dskip.frontend=true` quand il est combiné à `clean`, pas une régression
+  de ce lot (confirmé : absent d'un `verify` sans `clean`, et absent de la suite complète
+  ci-dessus). Non corrigé — hors périmètre de ce lot, pré-existant.
 
 ## Manual Testing
 

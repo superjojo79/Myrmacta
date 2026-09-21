@@ -1673,7 +1673,7 @@ test('E2E-EDIT-BPMN-1 blank diagram (no draft, not yet deployed): save creates t
   // "Process_1") drives the save key — not the URL's processDefinitionKey
   // (édition d'un diagramme sans clé encore définie, cf. requirements doc).
   await page.getByRole('button', { name: 'Enregistrer le brouillon' }).click()
-  expect(putCalled).toBe(true)
+  await expect.poll(() => putCalled).toBe(true)
 })
 
 test('E2E-EDIT-BPMN-2 edit an already-deployed diagram (no draft) then deploy', async ({ page }) => {
@@ -1752,7 +1752,7 @@ test('E2E-EDIT-BPMN-3 import a local BPMN file into the editor', async ({ page }
   // The imported file's own process id ("importedProcess") drives the save
   // key, proving import → re-render → key extraction all wired correctly.
   await page.getByRole('button', { name: 'Enregistrer le brouillon' }).click()
-  expect(putCalled).toBe(true)
+  await expect.poll(() => putCalled).toBe(true)
 })
 
 test('E2E-EDIT-BPMN-4 draft takes priority over the deployed diagram, deploy then reopen falls back to it', async ({
@@ -2559,5 +2559,98 @@ test('E2E-CONN-BATCH-IMPORT-KEY admin configures batch-import with a private key
     .poll(() => (createdBody?.config as Record<string, unknown> | undefined)?.sftpPrivateKey)
     .toBe(privateKey)
   await expect(page.getByText('Import nightly')).toBeVisible()
+})
+
+// Must stay equal to SecurityHeadersCustomizer.CONTENT_SECURITY_POLICY (D-CSP-STRING A).
+const A4_CSP =
+  "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-src 'self' blob:; worker-src 'self' blob:; frame-ancestors 'none'; object-src 'none'; base-uri 'self'"
+
+async function injectDocumentCsp(page: Page) {
+  await page.route('**/*', async (route) => {
+    if (route.request().resourceType() !== 'document') {
+      await route.continue()
+      return
+    }
+    const response = await route.fetch()
+    const headers = { ...response.headers(), 'content-security-policy': A4_CSP }
+    await route.fulfill({
+      status: response.status(),
+      headers,
+      body: await response.body(),
+    })
+  })
+}
+
+async function attachCspProbe(page: Page) {
+  const consoleCsp: string[] = []
+  page.on('console', (msg) => {
+    if (/content.security.policy/i.test(msg.text())) {
+      consoleCsp.push(msg.text())
+    }
+  })
+  await page.addInitScript(() => {
+    ;(window as unknown as { __cspViolations: string[] }).__cspViolations = []
+    document.addEventListener('securitypolicyviolation', (event) => {
+      const list = (window as unknown as { __cspViolations: string[] }).__cspViolations
+      list.push(`${event.effectiveDirective}:${event.blockedURI}`)
+    })
+  })
+  return {
+    assertClean: async () => {
+      const violations = await page.evaluate(
+        () => (window as unknown as { __cspViolations?: string[] }).__cspViolations ?? [],
+      )
+      expect(violations, `CSP violations: ${violations.join('; ')}`).toEqual([])
+      expect(consoleCsp, `CSP console: ${consoleCsp.join('; ')}`).toEqual([])
+    },
+  }
+}
+
+test('E2E-HDR-1 SPA renders under injected A4 CSP', async ({ page }) => {
+  const probe = await attachCspProbe(page)
+  await injectDocumentCsp(page)
+  await mockSession(page)
+  await openApp(page)
+  await page.getByRole('link', { name: 'Supervision' }).click()
+  await expect(page.getByRole('heading', { name: 'Supervision' })).toBeVisible()
+  await probe.assertClean()
+})
+
+test('E2E-HDR-2 template preview iframes remain visible under injected A4 CSP', async ({ page }) => {
+  const probe = await attachCspProbe(page)
+  await injectDocumentCsp(page)
+  await mockSession(page)
+  await openApp(page)
+  await page.getByRole('link', { name: 'Templates' }).click()
+  await expect(page.getByRole('heading', { name: 'Templates documents' })).toBeVisible()
+  await page.locator('form textarea').fill('<p>Bonjour</p>')
+  await expect(page.locator('iframe[title="Aperçu HTML"]')).toBeVisible()
+  await page.getByRole('button', { name: 'Aperçu PDF' }).click()
+  await expect(page.locator('iframe[title="Aperçu PDF"]')).toBeVisible()
+  await probe.assertClean()
+})
+
+test('E2E-HDR-3 BPMN editor renders under injected A4 CSP', async ({ page }) => {
+  const probe = await attachCspProbe(page)
+  await injectDocumentCsp(page)
+  await mockSession(page)
+  await page.route('**/api/workflow-bpmn-drafts/otherWorkflow', async (route) => {
+    await route.fulfill({ status: 204, body: '' })
+  })
+  await page.route('**/api/workflow-bpmn-deployments/otherWorkflow/xml', async (route) => {
+    await route.fulfill({ status: 204, body: '' })
+  })
+  await openApp(page)
+  await openBpmnEditor(page)
+  await probe.assertClean()
+})
+
+test('E2E-HDR-4 DMN editor renders under injected A4 CSP', async ({ page }) => {
+  const probe = await attachCspProbe(page)
+  await injectDocumentCsp(page)
+  await mockSession(page)
+  await openApp(page)
+  await openDmnEditor(page)
+  await probe.assertClean()
 })
 

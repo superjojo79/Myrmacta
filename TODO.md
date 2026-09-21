@@ -99,7 +99,7 @@ ce sont des gardes manquantes sur du code déjà en `main`.
 |---|---|---|
 | L1 | Tout JWT M2M = admin MCP (`McpAccessContextFactory` D6) | **Accepté** — un seul client M2M de confiance. Documenté, pas de split d'autorités. |
 | L2 | Actuator `permitAll` si `MANAGEMENT_ADDRESS` n'est plus loopback | Défaut `127.0.0.1:8090` conservé (D-42). Pas de fail-fast (casserait un scrape k8s documenté). |
-| L3 | Pas de CSP/HSTS globaux | Reliquat S-9 ; seul le preview HTML est durci (M13). |
+| L3 | Pas de CSP/HSTS globaux | Traité lot A4 ([PR #128](https://github.com/superjojo79/FlowForge/pull/128), TODO §63). |
 | L4 | AV no-op | Reliquat S-6. |
 | L5 | Rate-limit JVM-local | Reliquat S-7. |
 | L6 | `define_dossier_type` create dryRun sans construire le type | Hors périmètre (pré-existant PR #82, noté TODO §56 Phase 9). |
@@ -404,6 +404,34 @@ pas introduit par ce cycle, sévérité faible (endpoint admin-gated) ; (2) le r
 nouvelle version de table DMN prend effet immédiatement pour les instances de process en cours qui
 l'invoquent ensuite — même comportement que BPMN, jamais explicitement tranché pour DMN, purement
 comportemental (pas un défaut de sécurité).
+
+---
+
+### [x] 63. Headers HTTP globaux — CSP / HSTS / X-Frame-Options (lot A4)
+
+> Numérotation : B1 a clos **TODO §62** sur `main` (PR #129) en parallèle
+> de ce lot, qui s’appelait §62 sur sa branche. Le point A4 est donc **§63**.
+
+**Énoncé :** reliquat **S-9** ([REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md)) —
+pas de CSP / HSTS / `X-Frame-Options` applicatifs. Lot **A4**
+([FILE-ATTENTE.md](FILE-ATTENTE.md)) : surface exclusive `SecurityConfig.java`.
+
+**Statut (2026-09-20) : clos.** Phases 1–9 closes. Remédiation A4-HSTS-001
+incluse. **Mergée sur `main`**
+([PR #128](https://github.com/superjojo79/FlowForge/pull/128), CI `build` +
+`frontend` verte, merge `8415cee`).
+
+**Décisions Phase 1 :** D-HEADERS-SCOPE = B ; D-HEADERS-CHAINS = B ;
+D-CSP-POLICY = B ; D-HSTS = B ; D-CONFIG = C ; D-LOCAL-HEADERS = A.
+**Décisions Phase 3 :** D-MECHANISM = B (`SecurityHeadersCustomizer`) ;
+D-CSP-STRING = A (dont `frame-src blob:` pour l’iframe PDF) ;
+D-SWITCH-OFF = A (kill switch = no-op, défauts Spring conservés).
+
+**Impacte :** `SecurityConfig.java`, tests sécurité, `.env.example`,
+[GETTING-STARTED.md](GETTING-STARTED.md), [DEPLOIEMENT.md](DEPLOIEMENT.md).
+Pas Compose, pas CSRF (S-8), pas `GUIDE-UTILISATEUR.md`.
+
+**Détail :** `docs/ai/{requirements,design,planning,testing,implementation}/2026-09-20-feature-headers-http-globaux.md`.
 
 ---
 

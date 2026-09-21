@@ -34,7 +34,7 @@ import org.mockito.ArgumentCaptor;
 class EvaluateDossierRetentionUseCaseImplTest {
 
     private static final String TENANT = "tenant_dev";
-    private static final Instant NOW = Instant.parse("2026-08-19T12:00:00Z");
+    private static final Instant NOW = Instant.now();
 
     private DossierRepository dossierRepository;
     private DossierTypeRepository typeRepository;

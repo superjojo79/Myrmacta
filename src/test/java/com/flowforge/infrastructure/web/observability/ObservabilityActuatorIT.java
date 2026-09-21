@@ -43,7 +43,12 @@ class ObservabilityActuatorIT {
         HttpResponse<String> app = get(client, appPort, "/actuator/prometheus");
         assertThat(app.body()).doesNotContain("flowforge_outbox_trigger_oldest_pending_age_seconds");
 
-        assertThat(get(client, managementPort, "/actuator/health/liveness").statusCode()).isBetween(200, 299);
+        HttpResponse<String> liveness = get(client, managementPort, "/actuator/health/liveness");
+        assertThat(liveness.statusCode()).isBetween(200, 299);
+        assertThat(liveness.headers().firstValue("Content-Security-Policy"))
+                .contains(com.flowforge.infrastructure.security.SecurityHeadersCustomizer.CONTENT_SECURITY_POLICY);
+        assertThat(liveness.headers().firstValue("X-Frame-Options")).contains("DENY");
+        assertThat(liveness.headers().firstValue("X-Content-Type-Options")).contains("nosniff");
         assertThat(get(client, managementPort, "/actuator/health/readiness").statusCode()).isBetween(200, 299);
 
         assertHidden(get(client, managementPort, "/actuator/beans"));

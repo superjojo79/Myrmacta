@@ -130,6 +130,8 @@ app:
   security:
     cookie:
       secure: true   # false en local HTTP (profil / override)
+    headers:
+      enabled: ${APP_SECURITY_HEADERS_ENABLED:true}
     m2m:
       issuer-uri: ${OAUTH2_ISSUER_URI:}   # resource-server JWT M2M ; vide en local/test
       jwt-secret: ${M2M_JWT_SECRET:}       # HMAC HS256 optionnel (local/test sans IdP)

@@ -388,6 +388,8 @@ Le formulaire **Objectif SLA tenant** reste réservé au `TENANT_ADMIN` :
   de l'objectif en heures, ou `BREACHED` au-delà) prévient une fois : e-mails saisis (20 maximum),
   webhooks déjà activés choisis dans la liste (20 maximum), et notification navigateur pour les
   participants du dossier. L'intervalle de contrôle se règle en minutes (15 à 10 080, défaut 60).
+  Un enregistrement qui n'envoie qu'une partie des champs conserve le reste déjà enregistré.
+  Seul un `false` ou une liste vide explicite coupe l'alerting, vide les destinataires ou arrête l'export.
 - **Export BI planifié** — désactivé par défaut. Une fois activé, un CSV par type de dossier et
   un CSV SLA (période 30 jours) sont déposés après chaque intervalle (1 à 720 heures, défaut 24),
   compté depuis l'activation ou le dernier export réussi. Les clés de champs sensibles sont

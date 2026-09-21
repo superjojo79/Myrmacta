@@ -86,7 +86,7 @@ public final class EvaluateSlaAlertsUseCaseImpl implements EvaluateSlaAlertsUseC
                 failures++;
             }
         }
-        settingsRepository.save(settings.withLastAlertScanAt(now));
+        settingsRepository.advanceLastAlertScanAt(settings.tenantId(), now);
         return failures;
     }
 

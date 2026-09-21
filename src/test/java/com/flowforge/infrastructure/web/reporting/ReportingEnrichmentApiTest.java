@@ -95,6 +95,20 @@ class ReportingEnrichmentApiTest {
 
         mockMvc.perform(put("/api/tenant/sla-settings")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"complianceTargetPercent\":92}")
+                        .with(csrf())
+                        .with(user("sla-admin", "TENANT_ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.complianceTargetPercent").value(92))
+                .andExpect(jsonPath("$.alertingEnabled").value(false))
+                .andExpect(jsonPath("$.alertIntervalMinutes").value(15))
+                .andExpect(jsonPath("$.alertEmails[0]").value("ops@example.com"))
+                .andExpect(jsonPath("$.biExportEnabled").value(true))
+                .andExpect(jsonPath("$.biIntervalHours").value(2))
+                .andExpect(jsonPath("$.biRetentionDays").value(7));
+
+        mockMvc.perform(put("/api/tenant/sla-settings")
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"complianceTargetPercent\":90,\"alertEmails\":[\"nope\"]}")
                         .with(csrf())
                         .with(user("sla-admin", "TENANT_ADMIN")))
@@ -326,7 +340,7 @@ class ReportingEnrichmentApiTest {
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
-        assertThat(csv).contains("Lyon").contains("'=cmd").doesNotContain("FR-SECRET-99");
+        assertThat(csv).contains("Lyon").contains("'=cmd").doesNotContain("FR-SECRET-99").doesNotContain("iban");
 
         String manual = mockMvc.perform(get("/api/dossiers/export.csv").param("dossierTypeCode", code)
                         .with(user("sla-admin", "TENANT_ADMIN")))

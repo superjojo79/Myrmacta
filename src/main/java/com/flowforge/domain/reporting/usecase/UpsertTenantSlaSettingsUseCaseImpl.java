@@ -49,17 +49,31 @@ public final class UpsertTenantSlaSettingsUseCaseImpl implements UpsertTenantSla
     public TenantSlaSettings upsert(Command command, AccessContext.User actor) {
         Objects.requireNonNull(command, "command");
         tenantAdminGuard.requireTenantAdmin(actor);
+        boolean alertingEnabled = Boolean.TRUE.equals(command.alertingEnabled());
+        int alertIntervalMinutes = command.alertIntervalMinutes() == null
+                ? TenantSlaSettings.DEFAULT_ALERT_INTERVAL_MINUTES
+                : command.alertIntervalMinutes();
+        List<String> alertEmails = command.alertEmails() == null ? List.of() : command.alertEmails();
+        List<UUID> requestedWebhooks =
+                command.alertWebhookIds() == null ? List.of() : command.alertWebhookIds();
+        boolean biExportEnabled = Boolean.TRUE.equals(command.biExportEnabled());
+        int biIntervalHours = command.biIntervalHours() == null
+                ? TenantSlaSettings.DEFAULT_BI_INTERVAL_HOURS
+                : command.biIntervalHours();
+        int biRetentionDays = command.biRetentionDays() == null
+                ? TenantSlaSettings.DEFAULT_BI_RETENTION_DAYS
+                : command.biRetentionDays();
         // Validates bounds and recipients before any persistence, including a rejected percent.
         new TenantSlaSettings(
                 command.tenantId(),
                 command.complianceTargetPercent(),
-                command.alertingEnabled(),
-                command.alertIntervalMinutes(),
-                command.alertEmails(),
-                command.alertWebhookIds(),
-                command.biExportEnabled(),
-                command.biIntervalHours(),
-                command.biRetentionDays(),
+                alertingEnabled,
+                alertIntervalMinutes,
+                alertEmails,
+                requestedWebhooks,
+                biExportEnabled,
+                biIntervalHours,
+                biRetentionDays,
                 null,
                 null,
                 null,
@@ -67,19 +81,49 @@ public final class UpsertTenantSlaSettingsUseCaseImpl implements UpsertTenantSla
                 Instant.EPOCH,
                 actor.userId());
 
-        List<UUID> webhookIds = TenantSlaSettings.normalizeWebhookIds(command.alertWebhookIds());
-        for (UUID webhookId : webhookIds) {
-            NotificationWebhookConfig config = webhookRepository
-                    .findByIdAndTenantId(webhookId, command.tenantId())
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "alert webhook not found or disabled: " + webhookId));
-            if (!config.enabled()) {
-                throw new IllegalArgumentException("alert webhook not found or disabled: " + webhookId);
+        List<UUID> webhookIds = null;
+        if (command.alertWebhookIds() != null) {
+            webhookIds = TenantSlaSettings.normalizeWebhookIds(command.alertWebhookIds());
+            for (UUID webhookId : webhookIds) {
+                NotificationWebhookConfig config = webhookRepository
+                        .findByIdAndTenantId(webhookId, command.tenantId())
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "alert webhook not found or disabled: " + webhookId));
+                if (!config.enabled()) {
+                    throw new IllegalArgumentException("alert webhook not found or disabled: " + webhookId);
+                }
             }
         }
 
         Instant now = clock.instant();
         Optional<TenantSlaSettings> existing = repository.findByTenantId(command.tenantId());
+        if (command.alertingEnabled() == null) {
+            alertingEnabled = existing.map(TenantSlaSettings::alertingEnabled).orElse(false);
+        }
+        if (command.alertIntervalMinutes() == null) {
+            alertIntervalMinutes = existing
+                    .map(TenantSlaSettings::alertIntervalMinutes)
+                    .orElse(TenantSlaSettings.DEFAULT_ALERT_INTERVAL_MINUTES);
+        }
+        if (command.alertEmails() == null) {
+            alertEmails = existing.map(TenantSlaSettings::alertEmails).orElse(List.of());
+        }
+        if (webhookIds == null) {
+            webhookIds = existing.map(TenantSlaSettings::alertWebhookIds).orElse(List.of());
+        }
+        if (command.biExportEnabled() == null) {
+            biExportEnabled = existing.map(TenantSlaSettings::biExportEnabled).orElse(false);
+        }
+        if (command.biIntervalHours() == null) {
+            biIntervalHours = existing
+                    .map(TenantSlaSettings::biIntervalHours)
+                    .orElse(TenantSlaSettings.DEFAULT_BI_INTERVAL_HOURS);
+        }
+        if (command.biRetentionDays() == null) {
+            biRetentionDays = existing
+                    .map(TenantSlaSettings::biRetentionDays)
+                    .orElse(TenantSlaSettings.DEFAULT_BI_RETENTION_DAYS);
+        }
         boolean wasAlerting = existing.map(TenantSlaSettings::alertingEnabled).orElse(false);
         boolean wasBi = existing.map(TenantSlaSettings::biExportEnabled).orElse(false);
         Instant alertingEnabledAt = existing.map(TenantSlaSettings::alertingEnabledAt).orElse(null);
@@ -87,26 +131,26 @@ public final class UpsertTenantSlaSettingsUseCaseImpl implements UpsertTenantSla
         Instant biEnabledAt = existing.map(TenantSlaSettings::biEnabledAt).orElse(null);
         Instant lastBiExportAt = existing.map(TenantSlaSettings::lastBiExportAt).orElse(null);
 
-        boolean activatingAlerts = command.alertingEnabled() && !wasAlerting;
+        boolean activatingAlerts = alertingEnabled && !wasAlerting;
         if (activatingAlerts) {
             alertingEnabledAt = now;
             lastAlertScanAt = null;
             snapshot(command.tenantId(), now);
         }
-        if (command.biExportEnabled() && !wasBi) {
+        if (biExportEnabled && !wasBi) {
             biEnabledAt = now;
         }
 
         TenantSlaSettings settings = new TenantSlaSettings(
                 command.tenantId(),
                 command.complianceTargetPercent(),
-                command.alertingEnabled(),
-                command.alertIntervalMinutes(),
-                command.alertEmails(),
+                alertingEnabled,
+                alertIntervalMinutes,
+                alertEmails,
                 webhookIds,
-                command.biExportEnabled(),
-                command.biIntervalHours(),
-                command.biRetentionDays(),
+                biExportEnabled,
+                biIntervalHours,
+                biRetentionDays,
                 alertingEnabledAt,
                 lastAlertScanAt,
                 biEnabledAt,

@@ -60,7 +60,7 @@ public class BiExportCsvRenderer implements BiExportContentPort {
     }
 
     private byte[] dossierCsv(String tenantId, DossierType type) {
-        List<FieldDefinition> definitions = type.fieldDefinitions();
+        List<FieldDefinition> definitions = exportedDefinitions(type.fieldDefinitions());
         StringBuilder csv = new StringBuilder();
         List<String> columns = new ArrayList<>(FIXED_COLUMNS);
         for (FieldDefinition definition : definitions) {
@@ -72,6 +72,16 @@ public class BiExportCsvRenderer implements BiExportContentPort {
             dossiers.forEach(dossier -> csv.append(CsvWriter.writeRow(row(dossier, definitions))));
         }
         return csv.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    private static List<FieldDefinition> exportedDefinitions(List<FieldDefinition> definitions) {
+        List<FieldDefinition> exported = new ArrayList<>();
+        for (FieldDefinition definition : definitions) {
+            if (!definition.isSensitive()) {
+                exported.add(definition);
+            }
+        }
+        return List.copyOf(exported);
     }
 
     private static List<String> row(Dossier dossier, List<FieldDefinition> definitions) {

@@ -107,6 +107,7 @@ Fichiers ajoutés ou durcis dans cette phase :
 ## Notes
 
 - T-ALR-12 prouve que l’état du dossier en échec n’est pas sauvé et que `lastAlertScanAt` avance. L’annulation des outbox déjà écrites est le `TransactionTemplate` de `SlaAlertJob` (jointure `REQUIRED`). Il n’y a pas d’IT de rollback JDBC au milieu du fan-out. Suite non bloquante.
+- Revue adversariale : `scan_advancesClockWithoutRewritingSettings` interdit `save` de l’agrégat ; `upsert_omittedFieldsKeepStoredAlertingAndRecipients` et l’IT `settings_roundTrip` gardent e-mails et BI quand seul le pourcentage est envoyé ; le CSV BI ne contient plus le nom `iban`.
 
 ## Manual Testing
 

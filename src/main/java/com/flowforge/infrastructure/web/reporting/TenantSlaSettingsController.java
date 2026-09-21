@@ -105,18 +105,12 @@ public class TenantSlaSettingsController {
         return new UpsertTenantSlaSettingsUseCase.Command(
                 tenantProperties.id(),
                 request.complianceTargetPercent(),
-                Boolean.TRUE.equals(request.alertingEnabled()),
-                request.alertIntervalMinutes() == null
-                        ? TenantSlaSettings.DEFAULT_ALERT_INTERVAL_MINUTES
-                        : request.alertIntervalMinutes(),
-                request.alertEmails() == null ? List.of() : request.alertEmails(),
-                request.webhookIds() == null ? List.of() : request.webhookIds(),
-                Boolean.TRUE.equals(request.biExportEnabled()),
-                request.biIntervalHours() == null
-                        ? TenantSlaSettings.DEFAULT_BI_INTERVAL_HOURS
-                        : request.biIntervalHours(),
-                request.biRetentionDays() == null
-                        ? TenantSlaSettings.DEFAULT_BI_RETENTION_DAYS
-                        : request.biRetentionDays());
+                request.alertingEnabled(),
+                request.alertIntervalMinutes(),
+                request.alertEmails(),
+                request.webhookIds(),
+                request.biExportEnabled(),
+                request.biIntervalHours(),
+                request.biRetentionDays());
     }
 }

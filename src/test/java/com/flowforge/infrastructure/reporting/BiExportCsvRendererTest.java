@@ -96,7 +96,8 @@ class BiExportCsvRendererTest {
         assertThat(dossiers.kind()).isEqualTo(BiExportKind.DOSSIERS);
         assertThat(dossiers.fileName()).isEqualTo("dossiers-CLAIM-2026-08-01T10-15-30Z.csv");
         String dossierCsv = new String(dossiers.content());
-        assertThat(dossierCsv).contains("reference,label,status,createdAt,updatedAt,closedAt,iban,city");
+        assertThat(dossierCsv).contains("reference,label,status,createdAt,updatedAt,closedAt,city");
+        assertThat(dossierCsv).doesNotContain("iban");
         assertThat(dossierCsv).contains("Lyon");
         assertThat(dossierCsv).contains("'=cmd");
         assertThat(dossierCsv).doesNotContain("TOP-SECRET");

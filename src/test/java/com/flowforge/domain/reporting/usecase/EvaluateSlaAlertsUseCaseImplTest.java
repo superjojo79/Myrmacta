@@ -299,10 +299,23 @@ class EvaluateSlaAlertsUseCaseImplTest {
         verify(stateRepository).save(new SlaAlertState(TENANT, id, status, NOW));
     }
 
+    @Test
+    void scan_advancesClockWithoutRewritingSettings() {
+        UUID id = UUID.randomUUID();
+        when(settingsRepository.findByTenantId(TENANT))
+                .thenReturn(Optional.of(settings(true, null, List.of("old@b.co"), List.of())));
+        when(candidatePort.listCandidates(TENANT)).thenReturn(List.of(candidate(id, 9, false)));
+        when(stateRepository.find(TENANT, id)).thenReturn(Optional.empty());
+
+        useCase.scan(TENANT, NOW, INLINE);
+
+        verify(settingsRepository, never()).save(any());
+        verify(settingsRepository).advanceLastAlertScanAt(TENANT, NOW);
+    }
+
     private void assertScanClockAdvanced() {
-        ArgumentCaptor<TenantSlaSettings> captor = ArgumentCaptor.forClass(TenantSlaSettings.class);
-        verify(settingsRepository).save(captor.capture());
-        assertThat(captor.getValue().lastAlertScanAt()).isEqualTo(NOW);
+        verify(settingsRepository, never()).save(any());
+        verify(settingsRepository).advanceLastAlertScanAt(TENANT, NOW);
     }
 
     private static SlaAlertCandidate candidate(UUID id, int elapsedHours, boolean closed) {

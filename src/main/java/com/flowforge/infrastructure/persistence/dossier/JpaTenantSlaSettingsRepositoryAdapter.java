@@ -2,6 +2,7 @@ package com.flowforge.infrastructure.persistence.dossier;
 
 import com.flowforge.domain.reporting.model.TenantSlaSettings;
 import com.flowforge.domain.reporting.port.out.TenantSlaSettingsRepository;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -37,6 +38,12 @@ public class JpaTenantSlaSettingsRepositoryAdapter implements TenantSlaSettingsR
             webhookRepository.save(new TenantSlaAlertWebhookJpaEntity(settings.tenantId(), webhookId));
         }
         return saved.toDomain(settings.alertWebhookIds());
+    }
+
+    @Override
+    @Transactional
+    public void advanceLastAlertScanAt(String tenantId, Instant scannedAt) {
+        repository.advanceLastAlertScanAt(tenantId, scannedAt);
     }
 
     private List<UUID> webhookIds(String tenantId) {

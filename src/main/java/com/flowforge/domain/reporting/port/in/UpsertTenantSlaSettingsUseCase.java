@@ -9,28 +9,23 @@ public interface UpsertTenantSlaSettingsUseCase {
 
     TenantSlaSettings upsert(Command command, AccessContext.User actor);
 
+    /**
+     * A null alerting, cadence, recipient, or BI field means “not provided”.
+     * The percent is always required.
+     */
     record Command(
             String tenantId,
             int complianceTargetPercent,
-            boolean alertingEnabled,
-            int alertIntervalMinutes,
+            Boolean alertingEnabled,
+            Integer alertIntervalMinutes,
             List<String> alertEmails,
             List<UUID> alertWebhookIds,
-            boolean biExportEnabled,
-            int biIntervalHours,
-            int biRetentionDays) {
+            Boolean biExportEnabled,
+            Integer biIntervalHours,
+            Integer biRetentionDays) {
 
         public Command(String tenantId, int complianceTargetPercent) {
-            this(
-                    tenantId,
-                    complianceTargetPercent,
-                    false,
-                    TenantSlaSettings.DEFAULT_ALERT_INTERVAL_MINUTES,
-                    List.of(),
-                    List.of(),
-                    false,
-                    TenantSlaSettings.DEFAULT_BI_INTERVAL_HOURS,
-                    TenantSlaSettings.DEFAULT_BI_RETENTION_DAYS);
+            this(tenantId, complianceTargetPercent, null, null, null, null, null, null, null);
         }
     }
 }

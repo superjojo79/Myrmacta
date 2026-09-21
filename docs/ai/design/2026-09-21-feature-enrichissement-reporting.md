@@ -155,9 +155,10 @@ reste obligatoire et validé 1–100.
 
 Activer l’alerting (`alertingEnabled: true` alors qu’il était false)
 déclenche le snapshot et pose `alerting_enabled_at`. Activer le BI pose
-`bi_enabled_at`. Intervalle et rétention ont des défauts déjà valides :
-les omettre à l’écriture réapplique ces défauts, pas une valeur hors
-bornes.
+`bi_enabled_at`. Un champ omis du JSON conserve la valeur déjà
+enregistrée (défauts seulement s’il n’y a pas encore de ligne) : un PUT
+qui ne contient que `complianceTargetPercent` ne coupe pas l’alerting
+ni l’export. Une liste vide ou `false` explicite, eux, remplacent.
 
 ### `GET /api/reports/operations`
 
@@ -218,7 +219,8 @@ Lecteur du storage via `DocumentStoragePort.retrieve`.
   rollback les outbox de ce dossier et laisse l’ancien statut.
   `last_alert_scan_at` avance à la fin du parcours, même si un dossier
   a échoué : le rejeu de ce dossier attend le prochain intervalle, pas
-  la minute suivante.
+  la minute suivante. Cette écriture ne touche que l’horloge : elle ne
+  réécrit pas les e-mails, les webhooks ni les interrupteurs.
 - `SlaAlertJob` : `@Scheduled(fixedDelay = 1 min)`, MDC tenant.
 
 ### Widgets
@@ -242,7 +244,8 @@ Lecteur du storage via `DocumentStoragePort.retrieve`.
   d’export inchangée, puis purge de rétention si une ligne de réglages
   existe. Si activé mais pas encore dû : purge seulement. Si dû :
   1. Pour chaque type, colonnes fixes de `DossierExportController` plus
-     les champs du type, dans le même ordre. Les valeurs passent par
+     les champs du type, dans le même ordre, **sans** les définitions
+     sensibles (ni colonne, ni valeur). Les valeurs passent par
      une suppression **inconditionnelle** des clés sensibles
      (`DossierFieldRedactor` tel quel ne le fait pas pour
      `AccessContext.System`). Garde anti-formule : `CsvWriter` existant.

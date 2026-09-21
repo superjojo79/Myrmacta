@@ -51,7 +51,7 @@ de transition.
 
 | Écart | Sévérité | Suite |
 |---|---|---|
-| `EvaluateSlaAlertsUseCaseImpl` enregistre `lastAlertScanAt` en réécrivant l’agrégat chargé au début du scan. `JpaTenantSlaSettingsRepositoryAdapter.save` remplace la ligne et les webhooks. Un `PUT` concurrent (e-mails, webhooks, horloge BI) pendant le scan est écrasé. Le commit BI, lui, recharge les réglages avant d’écrire `lastBiExportAt`. | moyenne | Recharger les réglages avant l’horloge d’alerte, sur le modèle de `BiExportCommitPort`. Hors critères de succès (une instance, un admin). Pas de correctif dans cette phase. |
+| L’horloge d’alerte passe par `advanceLastAlertScanAt` (UPDATE de `last_alert_scan_at` seul). | close | Revue adversariale, corrigé. |
 | L’exception d’un dossier est avalée dans le use case. Le job journalise le nombre d’échecs, pas la cause (le domaine ne peut pas utiliser SLF4J). | basse | Remonter la cause au job. |
 | `BiExportCsvRenderer.render` assemble tous les CSV avant le premier `store`. Le NFR « un CSV à la fois » n’est pas tenu. | basse | Découper rendu et stockage si le volume des types l’exige. |
 | `SlaAlertCandidatePort` liste aussi les dossiers sans `slaTargetHours`. Le use case les ignore. Pas de filtre `createdAt`. | basse | Comportement de la table de transition respecté. |
@@ -74,7 +74,7 @@ Le plan détaillé est
 
 Checklist : alignement design tenu, contrats API et Liquibase réversibles (`022` a un rollback), rôles du rapport sur les nouveaux GET, 404 si le CSV est invisible, clés sensibles absentes du CSV stocké, anti-formule via `CsvWriter`, code de type limité à `[A-Za-z0-9_-]` donc sûr dans le nom de fichier. Tests frais de la phase 8 verts, y compris Playwright.
 
-Aucun point bloquant. Suites non bloquantes déjà listées : réécriture des réglages en fin de scan d’alerte, cause d’échec non journalisée, CSV BI tous en mémoire, pas d’IT JDBC du rollback outbox. Les colonnes fixes du CSV dossiers sont dupliquées avec `DossierExportController` ; les garder alignées à la main.
+Aucun point bloquant. La revue adversariale a corrigé l’horloge de scan (UPDATE ciblé), le PUT partiel (champs omis conservés) et les colonnes sensibles du CSV BI. Suites restantes : cause d’échec non journalisée, CSV BI tous en mémoire, pas d’IT JDBC du rollback outbox. Les colonnes fixes du CSV dossiers sont dupliquées avec `DossierExportController` ; les garder alignées à la main.
 
 ## Traçage
 

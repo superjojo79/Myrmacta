@@ -220,6 +220,43 @@ class UpsertTenantSlaSettingsUseCaseImplTest {
     }
 
     @Test
+    void upsert_omittedFieldsKeepStoredAlertingAndRecipients() {
+        UUID webhook = UUID.randomUUID();
+        when(repository.findByTenantId(TENANT)).thenReturn(Optional.of(new TenantSlaSettings(
+                TENANT,
+                90,
+                true,
+                15,
+                List.of("ops@example.com"),
+                List.of(webhook),
+                true,
+                2,
+                7,
+                NOW.minus(Duration.ofDays(1)),
+                NOW.minus(Duration.ofHours(1)),
+                NOW.minus(Duration.ofDays(1)),
+                null,
+                NOW.minus(Duration.ofDays(2)),
+                "admin")));
+
+        TenantSlaSettings saved = useCase.upsert(
+                new UpsertTenantSlaSettingsUseCase.Command(TENANT, 92, null, null, null, null, null, null, null),
+                admin());
+
+        assertThat(saved.complianceTargetPercent()).isEqualTo(92);
+        assertThat(saved.alertingEnabled()).isTrue();
+        assertThat(saved.alertEmails()).containsExactly("ops@example.com");
+        assertThat(saved.alertWebhookIds()).containsExactly(webhook);
+        assertThat(saved.biExportEnabled()).isTrue();
+        assertThat(saved.biIntervalHours()).isEqualTo(2);
+        assertThat(saved.biRetentionDays()).isEqualTo(7);
+        assertThat(saved.alertIntervalMinutes()).isEqualTo(15);
+        assertThat(saved.lastAlertScanAt()).isEqualTo(NOW.minus(Duration.ofHours(1)));
+        verify(alertStateRepository, never()).replaceAll(any(), any());
+        verifyNoInteractions(webhookRepository);
+    }
+
+    @Test
     void upsert_nonAdminDeniedWithoutRepositoryCall() {
         assertThatThrownBy(() -> useCase.upsert(
                         new UpsertTenantSlaSettingsUseCase.Command(TENANT, 90),

@@ -94,6 +94,11 @@ cd frontend && npm run test:e2e
 
 Preuve Playwright à coller en Phase 8 avant de marquer la testing doc `verified`.
 
+## Notes de la phase 7
+
+- T-ALR-5 est coché. Le test qui envoie `BREACHED` (`scan_missedWindow_sendsOnlyBreached`) part d’un état `ON_TRACK`, pas `AT_RISK`. La branche de code est la même. Un cas explicite `AT_RISK` → `BREACHED` reste ouvert pour la phase 8.
+- T-ALR-12 prouve que l’état du dossier en échec n’est pas sauvé et que `lastAlertScanAt` avance. L’annulation des outbox déjà écrites est le `TransactionTemplate` de `SlaAlertJob` (jointure `REQUIRED`). Il n’y a pas d’IT de rollback JDBC au milieu du fan-out.
+
 ## Manual Testing
 
 - Activer l’alerting sur un tenant local, avancer un dossier sous la cible, vérifier l’e-mail (ou l’outbox) et le tiroir SSE.

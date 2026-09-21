@@ -280,20 +280,31 @@ class ReportingEnrichmentApiTest {
                 "SELECT COUNT(*) FROM bi_export_file WHERE tenant_id = ?", Integer.class, TENANT);
         assertThat(none).isZero();
 
-        biExportJob.process(enabledAt.plus(1, ChronoUnit.HOURS));
+        // timestamptz arrondit à la microseconde : l'instant JSON peut précéder
+        // l'ancre stockée, et +1 h pile n'est pas encore dû.
+        biExportJob.process(enabledAt.plus(1, ChronoUnit.HOURS).plusSeconds(1));
         Integer createdFiles = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM bi_export_file WHERE tenant_id = ?", Integer.class, TENANT);
-        String listBody = mockMvc.perform(get("/api/reports/bi-exports")
-                        .param("size", "100")
-                        .with(user("sla-admin", "TENANT_ADMIN")))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-        assertThat(createdFiles)
-                .as(listBody)
-                .isGreaterThan(0);
-        assertThat(listBody).contains(code);
+        assertThat(createdFiles).isGreaterThan(0);
+        StringBuilder listed = new StringBuilder();
+        boolean foundType = false;
+        for (int page = 0; page < 20 && !foundType; page++) {
+            String listBody = mockMvc.perform(get("/api/reports/bi-exports")
+                            .param("page", Integer.toString(page))
+                            .param("size", "100")
+                            .with(user("sla-admin", "TENANT_ADMIN")))
+                    .andExpect(status().isOk())
+                    .andReturn()
+                    .getResponse()
+                    .getContentAsString();
+            listed.append(listBody);
+            foundType = listBody.contains(code);
+            int totalPages = JSON.readTree(listBody).get("totalPages").asInt();
+            if (page + 1 >= totalPages) {
+                break;
+            }
+        }
+        assertThat(foundType).as(listed.toString()).isTrue();
 
         String dossierFileId = jdbcTemplate.queryForObject(
                 """

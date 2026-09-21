@@ -7,6 +7,7 @@ created: 2026-09-21
 updated: 2026-09-21
 feature: enrichissement-reporting
 phase7: 2026-09-21
+phase9: 2026-09-21
 ---
 
 # Implementation Guide — `enrichissement-reporting`
@@ -57,7 +58,7 @@ de transition.
 | Les jobs ont `initialDelay = 60_000` en plus de `fixedDelay = 60_000`. | basse | Accepté : pas de tick au démarrage des tests. |
 | Échec Flowable des compteurs : log warn et 0. | basse | Accepté : la page reste lisible. |
 | Purge sautée si l’export dû lève : l’exception sort avant `purge`. | basse | Conforme à « ne pas avancer l’horloge ». La purge reprend au tick non dû ou quand le BI est coupé. |
-| T-ALR-5 (précédent `AT_RISK` → `BREACHED`) n’a pas de test dédié. Le test `scan_missedWindow_sendsOnlyBreached` part de `ON_TRACK`. Même branche de code. | basse | Phase 8. |
+| T-ALR-5 est couvert par `scan_atRiskThenBreached_sendsOnlyBreached` (phase 8). | close | — |
 | Le rollback outbox d’un envoi raté est le `TransactionTemplate` du job (`REQUIRED` sur l’adaptateur outbox). Le test unitaire prouve que l’état n’est pas sauvé et que l’horloge avance. Pas d’IT qui force un rollback JDBC au milieu du fan-out. | basse | Phase 8 si l’on veut une preuve base. |
 
 ## Fichiers principaux
@@ -68,6 +69,12 @@ de transition.
 
 Le plan détaillé est
 [2026-09-21-feature-enrichissement-reporting.md](../planning/2026-09-21-feature-enrichissement-reporting.md).
+
+## Revue phase 9
+
+Checklist : alignement design tenu, contrats API et Liquibase réversibles (`022` a un rollback), rôles du rapport sur les nouveaux GET, 404 si le CSV est invisible, clés sensibles absentes du CSV stocké, anti-formule via `CsvWriter`, code de type limité à `[A-Za-z0-9_-]` donc sûr dans le nom de fichier. Tests frais de la phase 8 verts, y compris Playwright.
+
+Aucun point bloquant. Suites non bloquantes déjà listées : réécriture des réglages en fin de scan d’alerte, cause d’échec non journalisée, CSV BI tous en mémoire, pas d’IT JDBC du rollback outbox. Les colonnes fixes du CSV dossiers sont dupliquées avec `DossierExportController` ; les garder alignées à la main.
 
 ## Traçage
 

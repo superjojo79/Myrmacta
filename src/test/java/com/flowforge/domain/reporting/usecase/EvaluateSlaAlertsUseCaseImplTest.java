@@ -123,6 +123,23 @@ class EvaluateSlaAlertsUseCaseImplTest {
     }
 
     @Test
+    void scan_atRiskThenBreached_sendsOnlyBreached() {
+        UUID id = UUID.randomUUID();
+        when(settingsRepository.findByTenantId(TENANT))
+                .thenReturn(Optional.of(settings(true, null, List.of("a@b.co"), List.of())));
+        when(candidatePort.listCandidates(TENANT)).thenReturn(List.of(candidate(id, 11, false)));
+        when(stateRepository.find(TENANT, id))
+                .thenReturn(Optional.of(new SlaAlertState(TENANT, id, SlaStatus.AT_RISK, NOW.minus(Duration.ofHours(2)))));
+
+        useCase.scan(TENANT, NOW, INLINE);
+
+        NotificationEvent event = sentOnce();
+        assertThat(event.subject()).contains("BREACHED").doesNotContain("AT_RISK");
+        assertThat(event.body()).contains("BREACHED");
+        assertStored(id, SlaStatus.BREACHED);
+    }
+
+    @Test
     void scan_missedWindow_sendsOnlyBreached() {
         UUID id = UUID.randomUUID();
         when(settingsRepository.findByTenantId(TENANT))

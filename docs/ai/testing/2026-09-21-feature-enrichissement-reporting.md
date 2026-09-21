@@ -2,10 +2,11 @@
 phase: testing
 title: Testing Strategy
 description: Define testing approach, test cases, and quality assurance
-status: draft
+status: verified
 created: 2026-09-21
 updated: 2026-09-21
 feature: enrichissement-reporting
+phase8: 2026-09-21
 ---
 
 # Testing Strategy — `enrichissement-reporting`
@@ -92,12 +93,20 @@ cd frontend && npm run test
 cd frontend && npm run test:e2e
 ```
 
-Preuve Playwright à coller en Phase 8 avant de marquer la testing doc `verified`.
+## Preuve phase 8 (2026-09-21)
 
-## Notes de la phase 7
+- `./mvnw -Dmaven.compiler.release=21 verify` : exit 0, `Tests run: 2049, Failures: 0, Errors: 0, Skipped: 0`, `All coverage checks have been met.`
+- `cd frontend && npm run test -- --run` : exit 0, 80 fichiers, 353 tests.
+- `cd frontend && npm run test:e2e` : exit 0, 78 tests, dont `E2E-RPT-1` et `E2E-RPT-2`.
 
-- T-ALR-5 est coché. Le test qui envoie `BREACHED` (`scan_missedWindow_sendsOnlyBreached`) part d’un état `ON_TRACK`, pas `AT_RISK`. La branche de code est la même. Un cas explicite `AT_RISK` → `BREACHED` reste ouvert pour la phase 8.
-- T-ALR-12 prouve que l’état du dossier en échec n’est pas sauvé et que `lastAlertScanAt` avance. L’annulation des outbox déjà écrites est le `TransactionTemplate` de `SlaAlertJob` (jointure `REQUIRED`). Il n’y a pas d’IT de rollback JDBC au milieu du fan-out.
+Fichiers ajoutés ou durcis dans cette phase :
+
+- `EvaluateSlaAlertsUseCaseImplTest.scan_atRiskThenBreached_sendsOnlyBreached` couvre T-ALR-5 (état précédent `AT_RISK`).
+- `ReportingEnrichmentApiTest` avance d’une seconde après l’intervalle BI. `timestamptz` arrondit à la microseconde : l’instant renvoyé en JSON peut précéder l’ancre stockée, et un `+1 h` pile ne déclenchait pas l’export dans la suite complète. La liste admin est parcourue page par page (taille max 100).
+
+## Notes
+
+- T-ALR-12 prouve que l’état du dossier en échec n’est pas sauvé et que `lastAlertScanAt` avance. L’annulation des outbox déjà écrites est le `TransactionTemplate` de `SlaAlertJob` (jointure `REQUIRED`). Il n’y a pas d’IT de rollback JDBC au milieu du fan-out. Suite non bloquante.
 
 ## Manual Testing
 

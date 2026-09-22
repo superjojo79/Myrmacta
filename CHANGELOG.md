@@ -102,6 +102,9 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Documentation
 
+- **PR (outillage-dmn, en cours)** — Cadrage Phase 1 de l’outillage DMN (TODO §66) :
+  évaluation ad hoc, jeux de tests JSON/CSV, historique et redéploiement de version ;
+  cinq décisions produit actées. Pas de code applicatif dans ce lot.
 - **PR [#83](https://github.com/superjojo79/FlowForge/pull/83)** — Rattrapage de la documentation
   admin/utilisateur : trois écrans admin livrés mais jamais documentés (webhooks de notification,
   file de purge RGPD, observabilité), rétention par type de dossier, limite du connecteur

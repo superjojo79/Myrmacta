@@ -87,6 +87,8 @@ que la contrainte « ne pas découper B1 en 3 PRs » de la Vague B connecteurs.
 | D-DMN-TEST-FORMAT | **C** — JSON **et** CSV |
 | D-DMN-ROLLBACK-UX | **A** — « Redéployer la version N » + confirmation |
 | D-DMN-HISTORY-RETENTION | **A** — aucune purge applicative dans ce cycle |
+| D-DMN-TEST-SURFACE | **C** — MCP + REST + upload UI JSON/CSV (Phase 2, 2026-09-22) |
 
 Détail :
-[`docs/ai/requirements/2026-09-22-feature-outillage-dmn.md`](../docs/ai/requirements/2026-09-22-feature-outillage-dmn.md).
+[`docs/ai/requirements/2026-09-22-feature-outillage-dmn.md`](../docs/ai/requirements/2026-09-22-feature-outillage-dmn.md)
+(status **reviewed**, Phase 2 close).

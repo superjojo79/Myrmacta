@@ -522,15 +522,17 @@ Compose, pas `AttachmentScanPort`, pas de variable d’environnement.
 historique des versions Flowable + redéploiement d’une version
 antérieure (libellé « Redéployer la version N »).
 
-**Statut (2026-09-22) : Phase 1 décisions produit closes** — branche
-`cursor/outillage-dmn-d49a`. Prochaine : Phase 2 (revue requirements).
-Surfaces disjointes de §65 et du lot C.
+**Statut (2026-09-22) : Phase 2 (revue requirements) close** — branche
+`cursor/outillage-dmn-d49a`. Prochaine : Phase 3 (design). Surfaces
+disjointes de §65 et du lot C.
 
 **Décisions Phase 1 (une par une) :** D-DMN-EVAL-SURFACE = C (MCP + REST
 + Tester) ; D-DMN-EVAL-VERSION = B (version optionnelle) ;
 D-DMN-TEST-FORMAT = C (JSON **et** CSV) ; D-DMN-ROLLBACK-UX = A
 (« Redéployer la version N » + confirmation) ;
 D-DMN-HISTORY-RETENTION = A (pas de purge).
+
+**Décision Phase 2 :** D-DMN-TEST-SURFACE = C (MCP + REST + upload UI).
 
 **Impacte :** `DmnDeploymentPort` / adaptateur Flowable,
 `/admin/dmn-editor`, tools MCP, golden OpenAPI, `GUIDE-UTILISATEUR.md`.

@@ -80,11 +80,12 @@ Dérivé des critères de succès requirements et des composants design
 
 - [ ] T-E2E-1 : panneau Tester — inputs → résultat affiché
 - [ ] T-E2E-2 : Tester avec version choisie (si UI le permet)
-- [ ] T-E2E-3 : historique visible après au moins deux déploiements
+- [ ] T-E2E-3 : upload jeu JSON et CSV → rapport pass/fail affiché
+- [ ] T-E2E-4 : historique visible après au moins deux déploiements
       (mocks réseau alignés sur les nouveaux contrats)
-- [ ] T-E2E-4 : confirmation « Redéployer la version N » ; annulation
+- [ ] T-E2E-5 : confirmation « Redéployer la version N » ; annulation
       ne appelle pas l’API ; confirm appelle redeploy
-- [ ] T-E2E-5 : non-régression parcours brouillon / déployer existant
+- [ ] T-E2E-6 : non-régression parcours brouillon / déployer existant
 - [ ] Mocks `frontend/e2e/**` mis à jour pour les nouveaux endpoints
 
 ## Test Data

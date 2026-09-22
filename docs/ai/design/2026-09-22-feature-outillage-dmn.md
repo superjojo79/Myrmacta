@@ -183,12 +183,12 @@ Catalogue MCP : 23 → **27** tools après livraison.
 
 ### Frontend
 
-- `DmnEditorView.vue` : panneau **Tester** (inputs dynamiques ou JSON
-  libre — détail UX Phase 3) + panneau **Historique** avec action
-  **Redéployer la version N** + dialogue de confirmation
-  (D-DMN-ROLLBACK-UX).
+- `DmnEditorView.vue` : panneau **Tester** (cas unitaire) + upload
+  **JSON/CSV** de jeux de tests (D-DMN-TEST-SURFACE = C) + panneau
+  **Historique** avec **Redéployer la version N** + dialogue de
+  confirmation (D-DMN-ROLLBACK-UX).
 - Composable `useDmnEvaluation` / extension `useDmnDeployment`.
-- Client `workflows.ts` (ou module dédié) pour les nouveaux endpoints.
+- Client API pour evaluate / test / versions / redeploy.
 
 ## Component Breakdown
 

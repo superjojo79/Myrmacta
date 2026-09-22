@@ -48,18 +48,24 @@ export const useNotificationsStore = defineStore('notifications', () => {
         source = null
         scheduleReconnect()
       }
-      source.onmessage = (event) => {
+      const ingest = (data: string) => {
         let payload: Record<string, unknown> = {}
         try {
-          payload = JSON.parse(event.data) as Record<string, unknown>
+          payload = JSON.parse(data) as Record<string, unknown>
         } catch {
-          payload = { body: event.data }
+          payload = { body: data }
         }
+        const nested =
+          payload.payload && typeof payload.payload === 'object'
+            ? (payload.payload as Record<string, unknown>)
+            : null
+        const title = String(nested?.title ?? payload.title ?? 'Notification')
+        const body = String(nested?.body ?? payload.body ?? payload.message ?? data)
         items.value.unshift({
           id: String(payload.id ?? crypto.randomUUID()),
-          title: String(payload.title ?? 'Notification'),
-          body: String(payload.body ?? payload.message ?? event.data),
-          createdAt: String(payload.createdAt ?? new Date().toISOString()),
+          title,
+          body,
+          createdAt: String(payload.at ?? payload.createdAt ?? new Date().toISOString()),
           read: false,
           raw: payload,
         })
@@ -67,6 +73,8 @@ export const useNotificationsStore = defineStore('notifications', () => {
           items.value = items.value.slice(0, 100)
         }
       }
+      source.onmessage = (event) => ingest(event.data)
+      source.addEventListener('notification', (event) => ingest((event as MessageEvent).data))
     } catch {
       failed.value = true
       connected.value = false

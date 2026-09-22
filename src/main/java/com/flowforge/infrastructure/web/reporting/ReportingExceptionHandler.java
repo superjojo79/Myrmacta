@@ -1,6 +1,7 @@
 package com.flowforge.infrastructure.web.reporting;
 
 import com.flowforge.domain.dossier.model.AccessDeniedException;
+import com.flowforge.domain.reporting.model.BiExportNotFoundException;
 import com.flowforge.domain.reporting.model.SlaCohortTooLargeException;
 import com.flowforge.domain.reporting.model.TenantSlaSettingsNotFoundException;
 import com.flowforge.infrastructure.security.SecurityAuditLog;
@@ -23,6 +24,11 @@ public class ReportingExceptionHandler {
     @ExceptionHandler(TenantSlaSettingsNotFoundException.class)
     ProblemDetail handleSettingsNotFound(TenantSlaSettingsNotFoundException ex) {
         return problem(HttpStatus.NOT_FOUND, "SLA settings not found", ex.getMessage());
+    }
+
+    @ExceptionHandler(BiExportNotFoundException.class)
+    ProblemDetail handleBiExportNotFound(BiExportNotFoundException ex) {
+        return problem(HttpStatus.NOT_FOUND, "BI export not found", ex.getMessage());
     }
 
     @ExceptionHandler(SlaCohortTooLargeException.class)

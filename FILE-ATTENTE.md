@@ -89,7 +89,10 @@
 > `headers-http-globaux` **livré**
 > ([PR #128](https://github.com/superjojo79/FlowForge/pull/128), TODO §63 clos,
 > CI `build` + `frontend` verte, merge `8415cee`, 2026-09-20).
-> **File produit désormais vide** (Vagues A et B + A4 livrés).
+> **File produit désormais vide** (Vagues A et B + A4 livrés), hors lot C
+> (ClamAV, en cours sur une autre surface) et hors cycle
+> `enrichissement-reporting` démarré le 2026-09-21 (TODO §65) — surfaces
+> disjointes du lot C.
 >
 > **2026-09-14** — Revue de `ROADMAP.md` v1.1 : les 8 items marqués « Produit, pas
 > cadré » (portail externe, signature électronique, inbox notifications, alerting SLA, dashboard
@@ -103,6 +106,9 @@
 > propriétaire/dépendances connus, pas besoin de cadrage produit. **Aucune décision de priorité
 > n'est prise ici** : ces 4 items restent en *Gaps réels hors Vague B* (`ROADMAP.md`), à ne
 > démarrer qu'après B1 (et C si concerné), chacun via son propre cycle Phase 1 → 9.
+> **2026-09-21** — exception explicite : `enrichissement-reporting` (document 29)
+> est lancé (TODO §65). Le lot C reste en cours sur une autre surface ; ce
+> cycle ne la croise pas.
 >
 > 2026-09-14 — Vague A confirmée **intégralement livrée** :
 > **A1** (`provisioning-tenant`, [PR #119](https://github.com/superjojo79/FlowForge/pull/119)),
@@ -451,8 +457,14 @@ pagination inbox > 100.
 
 **En revue :** aucune.
 
-**Prochain candidat :** aucun lot cadré à ce jour ; voir
-[DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) pour le reliquat non cadré en `dev-lifecycle`.
+**Cycle en cours (2026-09-21) :** `enrichissement-reporting` (TODO §65) —
+les trois volets de [29-enrichissement-reporting.md](analysis%20doc/29-enrichissement-reporting.md)
+sont implémentés (alerting SLA, widgets dead-letter / tâches sans
+assigné, export BI planifié), en revue dans la PR #132. Décisions Phase 1 dans
+`docs/ai/requirements/2026-09-21-feature-enrichissement-reporting.md`.
+Ne pas le relancer en parallèle. Le lot C (ClamAV) est livré
+([PR #131](https://github.com/superjojo79/FlowForge/pull/131)) et ne partage
+pas ces fichiers.
 
 Détail inventaire : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §4 / §6.
 
@@ -626,3 +638,4 @@ Vérifié : `./mvnw verify` 1136 tests (0 échec), Jacoco OK ; frontend `npm run
 | 2026-09-20 | `headers-http-globaux` (lot A4) remédiation A4-HSTS-001 | HSTS seulement si requête secure **et** pair TCP immédiat loopback/RFC1918 (unwrap `ForwardedHeaderFilter`). `DEPLOIEMENT.md` : bind `127.0.0.1:8081:8080`, unset `X-Forwarded-*` côté proxy. IT `SecurityHeadersHstsApiTest` hors profil `test` via customizer `@Primary`. `forward-headers-strategy: framework` inchangé. [PR #128](https://github.com/superjojo79/FlowForge/pull/128). |
 | 2026-09-20 | `headers-http-globaux` (lot A4) rebase docs sur main (B1) | Conflits PR #128 × main après merge PR #129 : TODO A4 renommé **§63** (B1 a clos §62), FILE-ATTENTE / DEFERRED conservent A4 en revue + B1 livré, E2E HDR + batch-import conservés. |
 | 2026-09-20 | `headers-http-globaux` (lot A4) **mergée sur `main`** | [PR #128](https://github.com/superjojo79/FlowForge/pull/128) mergée (merge `8415cee`) après CI verte (`build` + `frontend`). TODO §63 clos. File produit vide. |
+| 2026-09-21 | `enrichissement-reporting` Phases 1–5 | Quatorze décisions produit, une par une. Trois volets implémentés (alerting, widgets, export BI). PR #132. Surfaces disjointes du lot C. |

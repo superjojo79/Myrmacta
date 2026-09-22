@@ -66,13 +66,21 @@ import com.flowforge.domain.dossier.usecase.UpdateDossierTypeUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.UpsertTenantRetentionSettingsUseCaseImpl;
 import com.flowforge.domain.document.port.out.DocumentStoragePort;
 import com.flowforge.domain.workflow.port.out.WorkflowEnginePort;
+import com.flowforge.infrastructure.dossier.ClamAvAttachmentScanAdapter;
 import com.flowforge.infrastructure.dossier.NoOpAttachmentScanAdapter;
+import io.micrometer.core.instrument.MeterRegistry;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@EnableConfigurationProperties({AttachmentUploadProperties.class, RetentionProperties.class, PurgeProperties.class})
+@EnableConfigurationProperties({
+    AttachmentUploadProperties.class,
+    AttachmentScanProperties.class,
+    RetentionProperties.class,
+    PurgeProperties.class
+})
 public class DossierConfig {
 
     @Bean
@@ -81,8 +89,15 @@ public class DossierConfig {
     }
 
     @Bean
-    AttachmentScanPort attachmentScanPort() {
+    @ConditionalOnProperty(name = "app.dossier.attachment.scan.type", havingValue = "noop", matchIfMissing = true)
+    AttachmentScanPort noOpAttachmentScanPort() {
         return new NoOpAttachmentScanAdapter();
+    }
+
+    @Bean
+    @ConditionalOnProperty(name = "app.dossier.attachment.scan.type", havingValue = "clamav")
+    AttachmentScanPort clamAvAttachmentScanPort(AttachmentScanProperties properties, MeterRegistry meterRegistry) {
+        return new ClamAvAttachmentScanAdapter(properties.clamav(), meterRegistry);
     }
 
     @Bean

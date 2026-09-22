@@ -255,8 +255,8 @@ Voir le détail et les options dans [TODO.md](TODO.md),
 | **A3** | `mcp-ecritures-metier` | **Livré** ([PR #118](https://github.com/superjojo79/FlowForge/pull/118)) | 4 tools dans **un** cycle ; cadrage [15-serveur-mcp.md](analysis%20doc/15-serveur-mcp.md) § Backlog ; TODO §60 clos ; mergé 2026-09-08 |
 | **A4** | `headers-http-globaux` | **Livré** ([PR #128](https://github.com/superjojo79/FlowForge/pull/128), TODO §63 clos) | S-9 ; CSP/HSTS/XFO ; remédiation A4-HSTS-001 ; mergé sur `main` 2026-09-20 |
 | **B1** | `connecteurs-cible` (Kafka + import batch + ERP) | **Livré** ([PR #129](https://github.com/superjojo79/FlowForge/pull/129), TODO §62 clos) | `batch-import` (SFTP) + `kafka`, 1 seul cycle comme prévu ; « ERP » = cas d'usage de `batch-import`, pas un 3ème connecteur ; mergé sur `main` 2026-09-20 |
-| **C** | Adaptateur AV (ClamAV) | **En cours** (autre cycle) | Port `AttachmentScanPort` déjà prêt (S-6). Ne pas toucher Compose / `GETTING-STARTED.md` depuis un autre lot |
-| — | `enrichissement-reporting` | **En cours** (2026-09-21, TODO §65) | Alerting SLA + widgets opérationnels + export BI. Surfaces disjointes du lot C |
+| **C** | Adaptateur AV (ClamAV) | **Livré** ([PR #131](https://github.com/superjojo79/FlowForge/pull/131), mergé 2026-09-21) | Cycle `scan-antivirus-clamav` Phases 1-9 et revue adversariale clos. Port `AttachmentScanPort` inchangé, adaptateur `INSTREAM`, profil Compose `clamav`. |
+| — | `enrichissement-reporting` | **En revue** ([PR #132](https://github.com/superjojo79/FlowForge/pull/132), 2026-09-21, TODO §65) | Alerting SLA, widgets opérationnels et export BI. Surfaces disjointes du lot C. |
 
 **Interdits :** Kafka ∥ import-batch ∥ ERP ; import batch ∥ A3 ; ClamAV ∥ A1 (Compose) ;
 codegen OpenAPI ∥ tout FE. Hors vague : Redis/SSE multi-pod, Chart.js SLA, DMN, Cockpit.

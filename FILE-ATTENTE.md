@@ -10,7 +10,75 @@
 >   (rétention / purge / sensible — **livré**) ; revue post-implémentation 2026-08-25 :
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
-> **Dernière mise à jour :** 2026-09-20 — Vague B (**B1**, `connecteurs-cible`) **livrée** : cycle
+> **Dernière mise à jour :** 2026-09-21 — Lot **C** (`scan-antivirus-clamav`) : cycle
+> `dev-lifecycle` **Phases 1-9 complet** + **revue adversariale (sous-agent)** demandée
+> explicitement par l'utilisateur après la clôture, sur le modèle des revues adversariales déjà
+> pratiquées dans ce dépôt (connecteur callback, `extension-mcp-flux-metier`). **2 findings réels
+> trouvés et corrigés**, tous les deux reproduits indépendamment avant correction (pas une
+> confiance aveugle dans le rapport du sous-agent) :
+>
+> - **Sévérité haute** — `socket.setSoTimeout(...)` ne borne que les `read()` Java, jamais les
+>   `write()` : un `clamd` vivant mais lent à drainer (charge légitime, pas besoin de le
+>   compromettre) bloquait indéfiniment le thread de requête HTTP à l'écriture — épuisement du
+>   pool de threads Tomcat avec assez d'uploads concurrents, application entière injoignable.
+>   Reproduit : un test encadré d'un `@Timeout` JUnit est resté bloqué et a dû être tué au niveau
+>   du process (confirme au passage que `Thread.interrupt()` n'a aucun effet sur un
+>   `java.io.Socket` bloqué en écriture). Corrigé par un thread watchdog qui ferme la socket au
+>   -delà du budget.
+> - **Sévérité moyenne** — `"stream: FOUND"` (chevauchement préfixe/suffixe sur l'espace
+>   partagé, 8+6=14 > 13 caractères) faisait lever `StringIndexOutOfBoundsException`, une
+>   `RuntimeException` non rattrapée par le `catch (IOException)`, cassant l'invariant fail-open
+>   documenté par la classe elle-même. Corrigé par une garde de longueur avant le `substring`.
+>
+> + 2 remarques mineures corrigées en défense en profondeur (port `clamav` non authentifié
+> documenté dans `docker-compose.yml`, sanitisation `\r`/`\n` des logs de fail-open contre
+> l'injection de fausses lignes). 1 négatif confirmé (valeur `type` invalide = échec net du
+> démarrage Spring, comportement voulu, rien à corriger). Ce que le sous-agent n'a pas pu
+> trancher, faute de Docker dans ce bac à sable : existe-t-il un fichier qui ferait
+> planter/geler un **vrai** moteur ClamAV de façon déterministe (donc un bypass fail-open à la
+> demande) — à vérifier avec `ClamAvAttachmentScanIT` en environnement Docker.
+>
+> **Preuve finale** : `./mvnw verify -Dskip.frontend=true` → **2008 tests, 0 échec**,
+> `ClamAvAttachmentScanAdapter` toujours à 100% couverture branche après les 4 correctifs. Diff
+> nul reconfirmé sur les 3 fichiers gelés du port. **Prêt pour PR** — seule action restante avant
+> « livré » : une entrée `CHANGELOG.md` au moment de l'ouverture de la PR (non demandée à ce
+> stade). Détail :
+> [docs/ai/implementation/2026-09-20-feature-scan-antivirus-clamav.md](docs/ai/implementation/2026-09-20-feature-scan-antivirus-clamav.md).
+> Développement direct sur la branche de session `claude/funny-johnson-x0er1h`, pas de worktree
+> séparé (précédent du dépôt, cf. `extension-mcp-flux-metier`).
+>
+> **2026-09-21 (plus tôt, Phase 9)** — Branche fusionnée avec `main` (lot A4
+> `headers-http-globaux`, PR #128, mergé en parallèle du cycle — 15 commits de retard, zéro
+> conflit réel vérifié via `git merge-tree` avant d'agir). Suite complète re-vérifiée après
+> fusion : `./mvnw verify` → 2004 tests, 0 échec ; `npm run test:e2e` → 76/76.
+>
+> **2026-09-21 (plus tôt)** — Phase 8 (testing) close : suite complète `./mvnw verify` (frontend
+> inclus) → 1982 tests, 0 échec ; `npm run test` → 352/352 Vitest ; `npm run test:e2e` → 72/72
+> Playwright (contournement `PLAYWRIGHT_CHROMIUM_EXECUTABLE` pour un décalage de version du
+> binaire pré-installé, mécanisme déjà prévu par `playwright.config.ts`), incluant
+> explicitement `E2E-17`/`E2E-19` (upload de pièce jointe). Note d'environnement sans rapport
+> avec ce lot : `mvn clean verify -Dskip.frontend=true` (options combinées) fait échouer
+> `OpenApiDisabledApiTest`, artefact pré-existant non corrigé (hors périmètre).
+>
+> **2026-09-20 (plus tôt)** — Lot **C** : Phases 1-3 closes. Objectif explicite utilisateur :
+> implémentation de référence ClamAV sans modifier le port existant (D-AV, PR #62), swappable
+> vers un autre moteur AV plus tard. Produit/sécurité (Phases 1-2, `AskUserQuestion`) : `clamd`
+> en TCP natif `INSTREAM`, **fail-open** si indisponible/timeout (log + compteur), `clamd`
+> **mutualisé** entre tenants, activation **opt-in** par défaut désactivée, IT Testcontainers
+> **isolée** du run standard, **signal de santé Micrometer actif exigé** sur le fail-open (un
+> log seul jugé insuffisant), `clamd` en prod = **service externe déjà provisionné** (modèle
+> PostgreSQL/Keycloak). Architecture (Phase 3, tranchées par alignement sur des patterns déjà
+> établis dans le dépôt, sans nouvelle question produit) : timeouts 5s connexion+lecture (aligné
+> `ConnectorProperties.Http`), image `clamav/clamav:1.4` épinglée (comme
+> `postgres`/`keycloak`/`kafka`), mise à jour des signatures via le mécanisme natif de l'image
+> (`FRESHCLAM_CHECKS`), `clamd.conf` `StreamMaxLength` aligné sur
+> `APP_DOSSIER_ATTACHMENT_MAX_SIZE_MB`, activation via propriété
+> `app.dossier.attachment.scan.type=noop|clamav` **calquée sur `app.storage.type`**
+> (`StorageConfig`), métrique nommée `flowforge.attachment.scan.fail_open` (convention
+> `flowforge.<bc>.<sujet>.<événement>` du dépôt). 2 clarifications réutilisables stockées en
+> mémoire AI DevKit (`repo:FlowForge`).
+>
+> **2026-09-20 (plus tôt)** — Vague B (**B1**, `connecteurs-cible`) **livrée** : cycle
 > `dev-lifecycle` Phases 1-9 complet, 2 nouveaux connecteurs `batch-import` (SFTP, CSV/Excel) et
 > `kafka` (TRIGGER) dans un seul cycle comme prévu, TODO §62 clos. Revue adversariale post-cycle
 > (2 vulnérabilités réelles corrigées : TOCTOU `maxFileBytes`, absence de plafond d'instances
@@ -394,9 +462,9 @@ les trois volets de [29-enrichissement-reporting.md](analysis%20doc/29-enrichiss
 sont implémentés (alerting SLA, widgets dead-letter / tâches sans
 assigné, export BI planifié), en revue dans la PR #132. Décisions Phase 1 dans
 `docs/ai/requirements/2026-09-21-feature-enrichissement-reporting.md`.
-Ne pas le relancer en parallèle. Le lot C (ClamAV) reste sur sa surface
-(`AttachmentScanPort`, Compose, `GETTING-STARTED.md`) et ne partage pas
-ces fichiers.
+Ne pas le relancer en parallèle. Le lot C (ClamAV) est livré
+([PR #131](https://github.com/superjojo79/FlowForge/pull/131)) et ne partage
+pas ces fichiers.
 
 Détail inventaire : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §4 / §6.
 

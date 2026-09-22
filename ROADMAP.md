@@ -78,8 +78,8 @@ Ne **pas** découper B1 en 3 PRs (conflits catalogue). Ne **pas** lancer un 4ᵉ
 | Produit, pas cadré | **2.4 Signature électronique** | Aucune trace DocuSign/Yousign/eIDAS | Hors file actuelle. |
 | Produit, pas cadré | **3.2 Inbox notifications persistée** | SSE JVM-local uniquement | Outbox notifications ≠ historique utilisateur. |
 | Produit, pas cadré | **5.2 Alerting SLA proactif** | Reporting a posteriori seulement | `/rapports` + `AT_RISK` existent ; pas de job d’alerte/escalade. |
-| Produit, pas cadré | **1.1 `evaluate_decision` MCP** | 23 tools, aucun evaluate | Confort agent : DMN est déjà exécutable via un process. Pas le « gap critique » décrit en v1.0. |
-| Produit, pas cadré | **1.2 / 1.3 / 5.1** tests + historique/rollback DMN | `list`/`get` = **dernière** version (`DecisionTableDeploymentInfo(key, version)`) | Flowable versionne déjà (`ACT_DMN_*`) ; pas d’UI rollback ni de jeu de tests. |
+| **En cadrage** (TODO §66) | **1.1 `evaluate_decision` MCP** | 23 tools, aucun evaluate | Phase 1 `outillage-dmn` 2026-09-22 — MCP + REST + Tester UI. |
+| **En cadrage** (TODO §66) | **1.2 / 1.3 / 5.1** tests + historique/rollback DMN | `list`/`get` = **dernière** version | Même cycle `outillage-dmn` ; JSON tests ; redéploiement version N. |
 | Produit, pas cadré | **3.3 Dashboard opérationnel widgets** | `/rapports` + inbox tâches | Incrément UX, pas une page vide. |
 | Produit, pas cadré | **5.3 BI JDBC / Power BI / SFTP** | CSV dossiers + CSV SLA | Agrégations configurables / JDBC = nouveau produit. |
 
@@ -92,21 +92,22 @@ Catalogue MCP **réel** (23) : `define_dossier_type`, `deploy_workflow`, `get_do
 ### 1.1 EvaluateDecisionTool
 
 **Statut vérifié :** ❌ Non implémenté (tool MCP). ⚠️ L’évaluation runtime **existe** via BPMN.  
-**Priorité réelle :** moyenne (confort agent), **pas** critique.
+**Priorité réelle :** moyenne (confort agent), **pas** critique.  
+**Cadrage :** Phase 1 `outillage-dmn` (TODO §66, 2026-09-22) — D-DMN-EVAL-SURFACE =
+MCP + REST + bouton Tester ; D-DMN-EVAL-VERSION = version optionnelle.
 
 Un agent peut déjà : déployer une table, déployer un process `serviceTask type=dmn`, démarrer le workflow. Il n’existe pas d’appel MCP *ad hoc* `decisionKey` + `inputs` → résultat. `DmnJuelSecuritySmokeIT` / `DmnServiceTaskEndToEndSmokeIT` prouvent `DmnDecisionService` côté serveur.
-
-**Ne pas couvrir pendant la Vague B** (surface MCP distincte, mais file produit = connecteurs).
 
 ### 1.2 TestDecisionTool
 
 **Statut vérifié :** ❌ Non implémenté.  
-Hors file. Jeu de tests CSV/JSON sur une table : aucun use case, aucun tool.
+**Cadrage :** même cycle `outillage-dmn` — D-DMN-TEST-FORMAT = JSON uniquement.
 
 ### 1.3 GetDecisionHistoryTool + RollbackDecisionTool
 
 **Statut vérifié :** ❌ Non implémenté.  
-`list_decision_tables` / `get_decision_table` exposent la **dernière** version. Pas de table `decision_deployment_history` applicative — s’appuyer sur le versioning Flowable plutôt que d’en inventer une.
+`list_decision_tables` / `get_decision_table` exposent la **dernière** version. Pas de table `decision_deployment_history` applicative — s’appuyer sur le versioning Flowable plutôt que d’en inventer une.  
+**Cadrage :** même cycle — D-DMN-ROLLBACK-UX = « Redéployer la version N » ; D-DMN-HISTORY-RETENTION = pas de purge.
 
 ### 1.4 CompositeScenarioTool
 

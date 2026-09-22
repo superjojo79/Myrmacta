@@ -513,6 +513,33 @@ Compose, pas `AttachmentScanPort`, pas de variable d’environnement.
 
 ---
 
+### [ ] 66. Outillage DMN — évaluation ad hoc, jeux de tests, historique/rollback
+
+**Énoncé :** les trois écarts de
+[28-outillage-dmn.md](analysis%20doc/28-outillage-dmn.md) /
+`ROADMAP.md` **1.1** + **1.2** + **1.3/5.1** dans un seul cycle :
+`evaluate_decision` (MCP + REST + bouton Tester), jeu de tests JSON,
+historique des versions Flowable + redéploiement d’une version
+antérieure (libellé « Redéployer la version N »).
+
+**Statut (2026-09-22) : Phase 1 décisions produit closes** — branche
+`cursor/outillage-dmn-d49a`. Prochaine : Phase 2 (revue requirements).
+Surfaces disjointes de §65 et du lot C.
+
+**Décisions Phase 1 (une par une) :** D-DMN-EVAL-SURFACE = C (MCP + REST
++ Tester) ; D-DMN-EVAL-VERSION = B (version optionnelle) ;
+D-DMN-TEST-FORMAT = C (JSON **et** CSV) ; D-DMN-ROLLBACK-UX = A
+(« Redéployer la version N » + confirmation) ;
+D-DMN-HISTORY-RETENTION = A (pas de purge).
+
+**Impacte :** `DmnDeploymentPort` / adaptateur Flowable,
+`/admin/dmn-editor`, tools MCP, golden OpenAPI, `GUIDE-UTILISATEUR.md`.
+Pas de table historique applicative, pas de variable d’environnement.
+
+**Détail :** `docs/ai/{requirements,design,planning,testing}/2026-09-22-feature-outillage-dmn.md`.
+
+---
+
 ## Autorisation et conformité
 
 Points identifiés par [12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md),

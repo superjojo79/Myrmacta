@@ -4,11 +4,12 @@ title: Requirements & Problem Understanding
 description: Clarify the problem space, gather requirements, and define success criteria
 status: reviewed
 created: 2026-09-22
-updated: 2026-09-22
+updated: 2026-09-23
 feature: outillage-dmn
 phase1: 2026-09-22
 phase2: 2026-09-22
-stakeholder_decisions: 2026-09-22
+phase3: 2026-09-23
+stakeholder_decisions: 2026-09-23
 todo_ref: TODO.md §66 · analysis doc/28-outillage-dmn.md
 ---
 
@@ -174,14 +175,14 @@ Source : [28-outillage-dmn.md](../../../analysis%20doc/28-outillage-dmn.md),
 | **A-CSV-SHAPE** | Forme exacte des colonnes CSV → Phase 3. |
 | **A-HISTORY-SURFACE** | Historique + redéploiement = MCP + REST + UI (SPA → REST). |
 | **A-RBAC-ALIGN** | Mêmes rôles que le déploiement DMN existant. |
-| **A-TEST-CASE-CAP** | Borne max de cas / taille fichier → Phase 3 (proposition de travail : 100 cas). |
-| **A-MCP-CONFIRM** | La « confirmation » D-DMN-ROLLBACK-UX s’applique à l’UI ; MCP exécute directement (description tool explicite). |
+| **A-TEST-CASE-CAP** | 100 cas (D-TECH-TEST-CAP = A). |
+| **A-MCP-CONFIRM** | La confirmation D-DMN-ROLLBACK-UX s’applique à l’UI ; MCP exécute directement. |
 
 ## Questions & Open Items
 
 **What do we still need to clarify?**
 
-Toutes tranchées :
+Décisions produit :
 
 | ID | Décision | Quand |
 |---|---|---|
@@ -192,10 +193,6 @@ Toutes tranchées :
 | **D-DMN-HISTORY-RETENTION** | **A** — aucune purge dans ce cycle | Phase 1 |
 | **D-DMN-TEST-SURFACE** | **C** — MCP + REST + upload UI | Phase 2 |
 
-Points techniques → **Phase 3** (design) : ports (`DmnEvaluationPort` vs
-extension déploiement), DTOs, A-CSV-SHAPE, A-TEST-CASE-CAP, comportement
-redeploy version courante, noms finaux tools MCP, extension
-`findDeployedXml(version)` / list versions Flowable.
-
-Aucune question produit restante. Prochaine étape : **Phase 3** (revue
-design).
+Décisions techniques : design Phase 3 (`status: reviewed`), 2026-09-23.
+Aucune question produit ou technique ouverte. Prochaine étape :
+**Phase 4** (planning).

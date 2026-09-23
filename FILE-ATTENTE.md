@@ -656,3 +656,4 @@ Vérifié : `./mvnw verify` 1136 tests (0 échec), Jacoco OK ; frontend `npm run
 | 2026-09-21 | `enrichissement-reporting` Phases 1–5 | Quatorze décisions produit, une par une. Trois volets implémentés (alerting, widgets, export BI). PR #132. Surfaces disjointes du lot C. |
 | 2026-09-22 | `outillage-dmn` Phase 1 (requirements) | TODO §66. Cinq décisions produit (EVAL-SURFACE, EVAL-VERSION, TEST-FORMAT, ROLLBACK-UX, HISTORY-RETENTION). Docs `2026-09-22-feature-outillage-dmn`. Analyse 28 + ROADMAP 1.1/1.2/1.3 mis à jour « En cadrage ». |
 | 2026-09-22 | `outillage-dmn` Phase 2 (revue requirements) | Écart trouvé : D-DMN-TEST-SURFACE = C (MCP+REST+upload UI). Requirements `status=reviewed`. [PR #134](https://github.com/superjojo79/FlowForge/pull/134). Prochain : Phase 3 design. |
+| 2026-09-23 | `outillage-dmn` Phase 3 (design) | 17 décisions techniques. Design `status=reviewed`. Évaluation versionnée via `parentDeploymentId`. Prochain : Phase 4 planning. |

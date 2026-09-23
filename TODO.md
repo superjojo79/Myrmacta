@@ -522,20 +522,26 @@ Compose, pas `AttachmentScanPort`, pas de variable d’environnement.
 historique des versions Flowable + redéploiement d’une version
 antérieure (libellé « Redéployer la version N »).
 
-**Statut (2026-09-22) : Phase 2 (revue requirements) close** — branche
-`cursor/outillage-dmn-d49a`. Prochaine : Phase 3 (design). Surfaces
+**Statut (2026-09-23) : Phase 3 (design) close** — branche
+`cursor/outillage-dmn-d49a`. Prochaine : Phase 4 (planning). Surfaces
 disjointes de §65 et du lot C.
 
-**Décisions Phase 1 (une par une) :** D-DMN-EVAL-SURFACE = C (MCP + REST
-+ Tester) ; D-DMN-EVAL-VERSION = B (version optionnelle) ;
-D-DMN-TEST-FORMAT = C (JSON **et** CSV) ; D-DMN-ROLLBACK-UX = A
-(« Redéployer la version N » + confirmation) ;
-D-DMN-HISTORY-RETENTION = A (pas de purge).
+**Décisions Phase 1 :** D-DMN-EVAL-SURFACE = C ; D-DMN-EVAL-VERSION = B ;
+D-DMN-TEST-FORMAT = C ; D-DMN-ROLLBACK-UX = A ;
+D-DMN-HISTORY-RETENTION = A.
 
-**Décision Phase 2 :** D-DMN-TEST-SURFACE = C (MCP + REST + upload UI).
+**Décision Phase 2 :** D-DMN-TEST-SURFACE = C.
 
-**Impacte :** `DmnDeploymentPort` / adaptateur Flowable,
-`/admin/dmn-editor`, tools MCP, golden OpenAPI, `GUIDE-UTILISATEUR.md`.
+**Décisions Phase 3 :** port d’évaluation dédié ; résultat toujours en
+liste ; version via `parentDeploymentId` ; match de tests ordonné ;
+CSV `input.`/`expected.` hors fichier, coercion des littéraux ; 100 cas ;
+409 si redéploiement de la courante ; allowlist rejouée ; tools
+`evaluate_decision`, `test_decision`, `list_decision_table_versions`,
+`redeploy_decision_table` ; REST unique `POST /test` ; Tester en JSON ;
+`TenantAdminGuard` sur les quatre nouveaux use cases.
+
+**Impacte :** `DmnDeploymentPort`, `DmnEvaluationPort`,
+`/admin/dmn-editor`, 4 tools MCP, golden OpenAPI, `GUIDE-UTILISATEUR.md`.
 Pas de table historique applicative, pas de variable d’environnement.
 
 **Détail :** `docs/ai/{requirements,design,planning,testing}/2026-09-22-feature-outillage-dmn.md`.

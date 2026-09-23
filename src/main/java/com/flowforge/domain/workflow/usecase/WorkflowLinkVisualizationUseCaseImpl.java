@@ -15,6 +15,9 @@ import com.flowforge.domain.dossier.port.out.DossierElementRepository;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
 import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
+import com.flowforge.domain.notification.model.NotificationChannel;
+import com.flowforge.domain.notification.model.NotificationEvent;
+import com.flowforge.domain.notification.port.in.SendNotificationUseCase;
 import com.flowforge.domain.shared.PageQuery;
 import com.flowforge.domain.shared.PageResult;
 import com.flowforge.domain.workflow.model.ActivityHistoryEntry;
@@ -30,6 +33,7 @@ import com.flowforge.domain.workflow.port.in.ReassignWorkflowTaskUseCase;
 import com.flowforge.domain.workflow.port.out.WorkflowParticipantPort;
 import com.flowforge.domain.workflow.port.out.WorkflowVisualizationPort;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -49,6 +53,7 @@ public final class WorkflowLinkVisualizationUseCaseImpl implements
     private final WorkflowVisualizationPort visualizationPort;
     private final WorkflowParticipantPort participantPort;
     private final DossierAccessPolicy dossierAccessPolicy;
+    private final SendNotificationUseCase sendNotificationUseCase;
 
     public WorkflowLinkVisualizationUseCaseImpl(
             String tenantId,
@@ -59,7 +64,8 @@ public final class WorkflowLinkVisualizationUseCaseImpl implements
             ListDossierRelationsUseCase listDossierRelationsUseCase,
             WorkflowVisualizationPort visualizationPort,
             WorkflowParticipantPort participantPort,
-            DossierAccessPolicy dossierAccessPolicy) {
+            DossierAccessPolicy dossierAccessPolicy,
+            SendNotificationUseCase sendNotificationUseCase) {
         this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
         this.linkRepository = Objects.requireNonNull(linkRepository, "linkRepository");
         this.dossierRepository = Objects.requireNonNull(dossierRepository, "dossierRepository");
@@ -70,6 +76,7 @@ public final class WorkflowLinkVisualizationUseCaseImpl implements
         this.visualizationPort = Objects.requireNonNull(visualizationPort, "visualizationPort");
         this.participantPort = Objects.requireNonNull(participantPort, "participantPort");
         this.dossierAccessPolicy = Objects.requireNonNull(dossierAccessPolicy, "dossierAccessPolicy");
+        this.sendNotificationUseCase = Objects.requireNonNull(sendNotificationUseCase, "sendNotificationUseCase");
     }
 
     @Override
@@ -130,6 +137,37 @@ public final class WorkflowLinkVisualizationUseCaseImpl implements
                     "assigneeId is not a known participant or observer of this workflow: " + assigneeId);
         }
         visualizationPort.reassignTask(processInstanceId, taskId, assigneeId, tenantId);
+        // M5 (TODO §66), transactional semantics fixed per F4 (Phase 10 adversarial review): not
+        // wrapped in try/catch — unlike WorkflowStateEventListener (an async engine-event reaction
+        // outside the request), this runs inside the synchronous admin request, and
+        // WorkflowLinkVisualizationController#reassign is now @Transactional so a send() failure
+        // rolls back the reassignTask(...) call above together with it (Flowable's TaskService
+        // participates in the ambient Spring transaction) instead of leaving the reassignment
+        // committed while the caller sees a 500. Propagating the failure here (rather than
+        // swallowing it) is consistent with every other write use case in this bounded context
+        // (domain must not depend on org.slf4j — ArchUnit — so silent swallow-without-logging is
+        // not an option here the way it is in an infrastructure listener).
+        // Known overlap, not a bug: Flowable's taskService.setAssignee (called by
+        // visualizationPort.reassignTask) also fires TASK_ASSIGNED, which
+        // WorkflowStateEventListener already turns into a generic WORKFLOW_STATE_CHANGED
+        // broadcast to *all* participants — the new assignee receives both that broadcast and
+        // this targeted TASK_REASSIGNED. Left as-is (documented, not silently accepted).
+        sendNotificationUseCase.send(
+                new NotificationEvent(
+                        List.of(NotificationChannel.BROWSER),
+                        null,
+                        null,
+                        null,
+                        assigneeId,
+                        null,
+                        Map.of(
+                                "type", "TASK_REASSIGNED",
+                                "title", "Tâche réassignée",
+                                "body", "Une tâche du workflow vous a été réassignée.",
+                                "linkId", link.id().toString(),
+                                "dossierId", link.dossierId().toString(),
+                                "taskId", taskId)),
+                tenantId);
     }
 
     private DossierWorkflowLink requireReadableLink(UUID linkId, AccessContext.User actor) {

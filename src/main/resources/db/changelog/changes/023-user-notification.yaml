@@ -1,0 +1,51 @@
+databaseChangeLog:
+  - changeSet:
+      id: 023-user-notification
+      author: flowforge
+      changes:
+        - createTable:
+            tableName: user_notification
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_user_notification
+                    nullable: false
+              - column:
+                  name: tenant_id
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: recipient
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: payload_json
+                  type: json
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: read_at
+                  type: timestamp with time zone
+        - createIndex:
+            tableName: user_notification
+            indexName: ix_user_notification_recipient_created
+            columns:
+              - column:
+                  name: tenant_id
+              - column:
+                  name: recipient
+              - column:
+                  name: created_at
+      rollback:
+        - dropTable:
+            tableName: user_notification

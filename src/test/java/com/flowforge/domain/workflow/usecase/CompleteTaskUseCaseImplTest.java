@@ -3,8 +3,10 @@ package com.flowforge.domain.workflow.usecase;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -16,8 +18,13 @@ import com.flowforge.domain.dossier.model.DossierStatus;
 import com.flowforge.domain.dossier.model.DossierType;
 import com.flowforge.domain.dossier.model.FieldDefinition;
 import com.flowforge.domain.dossier.model.FieldType;
+import com.flowforge.domain.dossier.model.DossierWorkflowLink;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
+import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
+import com.flowforge.domain.notification.model.NotificationChannel;
+import com.flowforge.domain.notification.model.NotificationEvent;
+import com.flowforge.domain.notification.port.in.SendNotificationUseCase;
 import com.flowforge.domain.workflow.TaskQuestionFormKeys;
 import com.flowforge.domain.workflow.WorkflowVariables;
 import com.flowforge.domain.workflow.model.TaskQuestionAnswer;
@@ -26,6 +33,7 @@ import com.flowforge.domain.workflow.model.UnknownTaskQuestionSchemaException;
 import com.flowforge.domain.workflow.port.out.TaskQuestionAnswerRepository;
 import com.flowforge.domain.workflow.port.out.TaskQuestionSchemaRepository;
 import com.flowforge.domain.workflow.port.out.WorkflowEnginePort;
+import com.flowforge.domain.workflow.port.out.WorkflowParticipantPort;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +56,9 @@ class CompleteTaskUseCaseImplTest {
     private DossierTypeRepository dossierTypeRepository;
     private TaskQuestionSchemaRepository taskQuestionSchemaRepository;
     private TaskQuestionAnswerRepository taskQuestionAnswerRepository;
+    private DossierWorkflowLinkRepository linkRepository;
+    private WorkflowParticipantPort participantPort;
+    private SendNotificationUseCase sendNotificationUseCase;
     private CompleteTaskUseCaseImpl useCase;
 
     @BeforeEach
@@ -57,13 +68,19 @@ class CompleteTaskUseCaseImplTest {
         dossierTypeRepository = mock(DossierTypeRepository.class);
         taskQuestionSchemaRepository = mock(TaskQuestionSchemaRepository.class);
         taskQuestionAnswerRepository = mock(TaskQuestionAnswerRepository.class);
+        linkRepository = mock(DossierWorkflowLinkRepository.class);
+        participantPort = mock(WorkflowParticipantPort.class);
+        sendNotificationUseCase = mock(SendNotificationUseCase.class);
         useCase = new CompleteTaskUseCaseImpl(
                 TENANT_ID,
                 workflowEnginePort,
                 dossierRepository,
                 dossierTypeRepository,
                 taskQuestionSchemaRepository,
-                taskQuestionAnswerRepository);
+                taskQuestionAnswerRepository,
+                linkRepository,
+                participantPort,
+                sendNotificationUseCase);
     }
 
     @Test
@@ -313,6 +330,71 @@ class CompleteTaskUseCaseImplTest {
                 null,
                 null,
                 null);
+    }
+
+    @Test
+    void complete_notifiesOtherParticipantsButNotTheActor() {
+        // UT-NOTIF-12
+        DossierWorkflowLink link = link();
+        when(linkRepository.findActiveByDossierId(DOSSIER_ID)).thenReturn(Optional.of(link));
+        when(participantPort.findParticipantUserIds(link)).thenReturn(List.of(ACTOR, "other-1", "other-2"));
+
+        useCase.complete("task-1", DOSSIER_ID.toString(), Map.of(), ACTOR_USER);
+
+        ArgumentCaptor<NotificationEvent> events = ArgumentCaptor.forClass(NotificationEvent.class);
+        verify(sendNotificationUseCase, times(2)).send(events.capture(), eq(TENANT_ID));
+        assertThat(events.getAllValues())
+                .extracting(NotificationEvent::userId)
+                .containsExactlyInAnyOrder("other-1", "other-2")
+                .doesNotContain(ACTOR);
+        assertThat(events.getAllValues().getFirst().channels()).containsExactly(NotificationChannel.BROWSER);
+        assertThat(events.getAllValues().getFirst().payload()).containsEntry("type", "TASK_COMPLETED_BY_OTHER");
+    }
+
+    @Test
+    void complete_resolvesActiveLinkBeforeCompletingTheTask() {
+        // TODO §66 F6 (Phase 10 adversarial review): the link lookup must happen before
+        // completeTask, not after — completing the workflow's last task can itself flip the link
+        // to inactive (endedAt set), and a lookup performed after that point would silently find
+        // no active link and skip notifying other participants who were active right up until
+        // this completion.
+        DossierWorkflowLink link = link();
+        when(linkRepository.findActiveByDossierId(DOSSIER_ID)).thenReturn(Optional.of(link));
+        when(participantPort.findParticipantUserIds(link)).thenReturn(List.of(ACTOR, "other-1"));
+
+        useCase.complete("task-1", DOSSIER_ID.toString(), Map.of(), ACTOR_USER);
+
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(linkRepository, workflowEnginePort);
+        order.verify(linkRepository).findActiveByDossierId(DOSSIER_ID);
+        order.verify(workflowEnginePort).completeTask("task-1", Map.of());
+    }
+
+    @Test
+    void complete_noActiveLink_completesWithoutNotifyingAnyone() {
+        // UT-NOTIF-13 — defensive: absence of a link is a silent no-op, not an error.
+        when(linkRepository.findActiveByDossierId(DOSSIER_ID)).thenReturn(Optional.empty());
+
+        useCase.complete("task-1", DOSSIER_ID.toString(), Map.of(), ACTOR_USER);
+
+        verify(workflowEnginePort).completeTask("task-1", Map.of());
+        verifyNoInteractions(sendNotificationUseCase);
+        verify(participantPort, never()).findParticipantUserIds(any());
+    }
+
+    private static DossierWorkflowLink link() {
+        return new DossierWorkflowLink(
+                UUID.randomUUID(),
+                DOSSIER_ID,
+                TENANT_ID,
+                "proc-1",
+                "smokeProcess",
+                1,
+                "STARTED",
+                "manual",
+                Instant.parse("2026-09-22T10:00:00Z"),
+                null,
+                null,
+                ACTOR);
     }
 
     private static DossierType dossierType(String code, List<String> documentTemplateKeys) {

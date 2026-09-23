@@ -23,6 +23,7 @@ import com.flowforge.domain.notification.port.in.SendNotificationUseCase;
 import com.flowforge.domain.notification.port.out.NotificationOutboxRepository;
 import com.flowforge.domain.notification.port.out.NotificationWebhookRepository;
 import com.flowforge.domain.notification.port.out.PendingOutboxWrite;
+import com.flowforge.domain.notification.port.out.UserNotificationRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +38,7 @@ class SendNotificationUseCaseImplTest {
     private NotificationOutboxRepository outboxRepository;
     private NotificationWebhookRepository webhookRepository;
     private DossierTypeRepository dossierTypeRepository;
+    private UserNotificationRepository userNotificationRepository;
     private SendNotificationUseCase useCase;
 
     @BeforeEach
@@ -44,7 +46,9 @@ class SendNotificationUseCaseImplTest {
         outboxRepository = mock(NotificationOutboxRepository.class);
         webhookRepository = mock(NotificationWebhookRepository.class);
         dossierTypeRepository = mock(DossierTypeRepository.class);
-        useCase = new SendNotificationUseCaseImpl(outboxRepository, webhookRepository, dossierTypeRepository);
+        userNotificationRepository = mock(UserNotificationRepository.class);
+        useCase = new SendNotificationUseCaseImpl(
+                outboxRepository, webhookRepository, dossierTypeRepository, userNotificationRepository);
         when(outboxRepository.savePendingBatch(anyString(), any(), any()))
                 .thenAnswer(invocation -> {
                     @SuppressWarnings("unchecked")
@@ -383,6 +387,85 @@ class SendNotificationUseCaseImplTest {
 
         String json = capturePayloadJson();
         assertThat(json).doesNotContain("SECRET-VALUE-DO-NOT-LEAK");
+    }
+
+    @Test
+    void send_browserChannel_alsoPersistsUserNotification() {
+        // UT-NOTIF-6
+        NotificationEvent event = new NotificationEvent(
+                List.of(NotificationChannel.BROWSER), null, null, null, "user-1", null, Map.of("type", "X"));
+
+        useCase.send(event, "tenant_dev");
+
+        verify(userNotificationRepository).save(any(), eq("tenant_dev"), eq("user-1"), anyString(), any());
+    }
+
+    @Test
+    void send_emailOrWebhookOnly_neverPersistsUserNotification() {
+        // UT-NOTIF-7
+        UUID webhookId = UUID.randomUUID();
+        stubActiveWebhook(webhookId);
+        NotificationEvent event = new NotificationEvent(
+                List.of(NotificationChannel.EMAIL, NotificationChannel.WEBHOOK),
+                "a@example.com",
+                "Hello",
+                "Body",
+                null,
+                webhookId,
+                Map.of());
+
+        useCase.send(event, "tenant_dev");
+
+        verify(userNotificationRepository, never()).save(any(), anyString(), anyString(), anyString(), any());
+    }
+
+    @Test
+    void send_multiChannelIncludingBrowser_writesOneOutboxRowPerChannelAndOneInboxRow() {
+        // UT-NOTIF-8
+        NotificationEvent event = new NotificationEvent(
+                List.of(NotificationChannel.BROWSER, NotificationChannel.EMAIL),
+                "a@example.com",
+                "Hello",
+                "Body",
+                "user-1",
+                null,
+                Map.of());
+
+        List<UUID> ids = useCase.send(event, "tenant_dev");
+
+        assertThat(ids).hasSize(2);
+        verify(userNotificationRepository, org.mockito.Mockito.times(1))
+                .save(any(), eq("tenant_dev"), eq("user-1"), anyString(), any());
+    }
+
+    @Test
+    void send_browserChannelPayload_persistedWithoutUserIdWrapper() {
+        // Confirms user_notification stores the plain payload, not the {"userId":..,"payload":..}
+        // wrapper used for the outbox row (recipient is already a column).
+        NotificationEvent event = new NotificationEvent(
+                List.of(NotificationChannel.BROWSER), null, null, null, "user-1", null, Map.of("type", "X"));
+
+        useCase.send(event, "tenant_dev");
+
+        ArgumentCaptor<String> jsonCaptor = ArgumentCaptor.forClass(String.class);
+        verify(userNotificationRepository).save(any(), eq("tenant_dev"), eq("user-1"), jsonCaptor.capture(), any());
+        assertThat(jsonCaptor.getValue()).isEqualTo("{\"type\":\"X\"}");
+    }
+
+    @Test
+    void send_browserChannel_outboxSnapshotCarriesSameInboxIdAsUserNotificationSave() {
+        // D-NOTIF-SSE-ID (F1 fix): the id embedded in the BROWSER outbox snapshot — later
+        // surfaced as the SSE event id — must be the exact id the user_notification row is saved
+        // under, so a client can PATCH /api/notifications/{id}/read against a live-pushed item.
+        NotificationEvent event = new NotificationEvent(
+                List.of(NotificationChannel.BROWSER), null, null, null, "user-1", null, Map.of("type", "X"));
+
+        useCase.send(event, "tenant_dev");
+
+        ArgumentCaptor<UUID> idCaptor = ArgumentCaptor.forClass(UUID.class);
+        verify(userNotificationRepository).save(idCaptor.capture(), eq("tenant_dev"), eq("user-1"), anyString(), any());
+        String outboxJson = capturePayloadJson();
+        assertThat(outboxJson).contains("\"inboxId\":\"" + idCaptor.getValue() + "\"");
     }
 
     private void stubDossierType(String code, List<FieldDefinition> definitions) {

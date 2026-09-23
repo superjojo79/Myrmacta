@@ -44,8 +44,10 @@ class NotificationPayloadJsonTest {
 
     @Test
     void browser_nullPayload_becomesEmptyObject() throws Exception {
-        JsonNode node = MAPPER.readTree(NotificationPayloadJson.browser("user-1", null));
+        UUID inboxId = UUID.fromString("22222222-2222-2222-2222-222222222222");
+        JsonNode node = MAPPER.readTree(NotificationPayloadJson.browser("user-1", null, inboxId));
         assertThat(node.get("userId").asText()).isEqualTo("user-1");
+        assertThat(node.get("inboxId").asText()).isEqualTo(inboxId.toString());
         assertThat(node.get("payload").isObject()).isTrue();
         assertThat(node.get("payload").isEmpty()).isTrue();
     }

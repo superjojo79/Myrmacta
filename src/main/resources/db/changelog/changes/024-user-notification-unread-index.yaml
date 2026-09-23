@@ -1,0 +1,28 @@
+databaseChangeLog:
+  - changeSet:
+      id: 024-user-notification-unread-index
+      author: flowforge
+      comment: >-
+        TODO §66 F3 (Phase 10 adversarial review): countUnread was flagged as safe to leave
+        uncovered because no endpoint used it yet. It now backs GET /api/notifications/unread-count
+        (server-truth badge), so this index covers
+        countByTenantIdAndRecipientAndReadAtIsNull's WHERE tenant_id = ? AND recipient = ? AND
+        read_at IS NULL. A plain btree index on (tenant_id, recipient, read_at) rather than a
+        PostgreSQL-only partial index (WHERE read_at IS NULL) — portable to H2, which this repo's
+        tests run against, while serving the same query just as well since read_at IS NULL is a
+        normal indexable predicate on a btree.
+      changes:
+        - createIndex:
+            tableName: user_notification
+            indexName: ix_user_notification_recipient_unread
+            columns:
+              - column:
+                  name: tenant_id
+              - column:
+                  name: recipient
+              - column:
+                  name: read_at
+      rollback:
+        - dropIndex:
+            tableName: user_notification
+            indexName: ix_user_notification_recipient_unread

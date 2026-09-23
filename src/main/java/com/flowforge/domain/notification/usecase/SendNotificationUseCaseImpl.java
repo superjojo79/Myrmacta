@@ -13,6 +13,7 @@ import com.flowforge.domain.notification.port.in.SendNotificationUseCase;
 import com.flowforge.domain.notification.port.out.NotificationOutboxRepository;
 import com.flowforge.domain.notification.port.out.NotificationWebhookRepository;
 import com.flowforge.domain.notification.port.out.PendingOutboxWrite;
+import com.flowforge.domain.notification.port.out.UserNotificationRepository;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -33,14 +34,18 @@ public final class SendNotificationUseCaseImpl implements SendNotificationUseCas
     private final NotificationOutboxRepository outboxRepository;
     private final NotificationWebhookRepository webhookRepository;
     private final DossierTypeRepository dossierTypeRepository;
+    private final UserNotificationRepository userNotificationRepository;
 
     public SendNotificationUseCaseImpl(
             NotificationOutboxRepository outboxRepository,
             NotificationWebhookRepository webhookRepository,
-            DossierTypeRepository dossierTypeRepository) {
+            DossierTypeRepository dossierTypeRepository,
+            UserNotificationRepository userNotificationRepository) {
         this.outboxRepository = Objects.requireNonNull(outboxRepository, "outboxRepository");
         this.webhookRepository = Objects.requireNonNull(webhookRepository, "webhookRepository");
         this.dossierTypeRepository = Objects.requireNonNull(dossierTypeRepository, "dossierTypeRepository");
+        this.userNotificationRepository =
+                Objects.requireNonNull(userNotificationRepository, "userNotificationRepository");
     }
 
     @Override
@@ -53,14 +58,29 @@ public final class SendNotificationUseCaseImpl implements SendNotificationUseCas
         List<NotificationChannel> channels = dedupeChannels(event.channels());
         Map<String, Object> payload = buildPayload(event, tenantId);
         Instant now = Instant.now();
+        // D-NOTIF-SSE-ID: generated up front so the BROWSER outbox snapshot can carry the same id
+        // that will identify the user_notification row — the relay uses it as the SSE event id,
+        // letting the client mark that exact inbox row read instead of the outbox row's own id
+        // (which the inbox never shares and the client can never resolve to a 200 on PATCH).
+        UUID inboxId = channels.contains(NotificationChannel.BROWSER) ? UUID.randomUUID() : null;
 
         // Validate all channels before any write (atomic fan-out).
         List<PendingOutboxWrite> writes = new ArrayList<>(channels.size());
         for (NotificationChannel channel : channels) {
             validateChannel(channel, event, tenantId);
-            writes.add(new PendingOutboxWrite(channel, snapshot(channel, event, payload)));
+            writes.add(new PendingOutboxWrite(channel, snapshot(channel, event, payload, inboxId)));
         }
-        return outboxRepository.savePendingBatch(tenantId, writes, now);
+        List<UUID> outboxIds = outboxRepository.savePendingBatch(tenantId, writes, now);
+        if (channels.contains(NotificationChannel.BROWSER)) {
+            // D-NOTIF-PERSISTENCE: mirrors the BROWSER fan-out into the user-facing history,
+            // independent of notification_outbox's own retry/retention lifecycle. Written after
+            // the outbox batch, not in the same transaction (no shared transaction manager
+            // reachable from this pure domain class) — a failure here never orphans an outbox
+            // row that would otherwise still deliver via SSE/email/webhook.
+            userNotificationRepository.save(
+                    inboxId, tenantId, event.userId(), NotificationPayloadJson.plain(payload), now);
+        }
+        return outboxIds;
     }
 
     /**
@@ -144,11 +164,11 @@ public final class SendNotificationUseCaseImpl implements SendNotificationUseCas
     }
 
     private static String snapshot(
-            NotificationChannel channel, NotificationEvent event, Map<String, Object> payload) {
+            NotificationChannel channel, NotificationEvent event, Map<String, Object> payload, UUID inboxId) {
         return switch (channel) {
             case EMAIL -> NotificationPayloadJson.email(event.to(), event.subject(), event.body());
             case WEBHOOK -> NotificationPayloadJson.webhook(event.webhookConfigId(), payload);
-            case BROWSER -> NotificationPayloadJson.browser(event.userId(), payload);
+            case BROWSER -> NotificationPayloadJson.browser(event.userId(), payload, inboxId);
         };
     }
 

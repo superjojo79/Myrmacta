@@ -25,7 +25,7 @@ class SseNotificationAdapterTest {
     void setUp() {
         adapter = new SseNotificationAdapter(
                 new NotificationProperties(
-                        null, null, new NotificationProperties.Sse(Duration.ofSeconds(15))),
+                        null, null, new NotificationProperties.Sse(Duration.ofSeconds(15)), null),
                 JsonMapper.builder().build());
     }
 

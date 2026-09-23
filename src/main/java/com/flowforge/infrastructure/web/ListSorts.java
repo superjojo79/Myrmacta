@@ -8,6 +8,7 @@ public final class ListSorts {
     public static final String WORKFLOW_TYPE_CONFIGS = "workflowKey,asc";
     public static final String TASK_QUESTION_SCHEMAS = "schemaKey,asc";
     public static final String NOTIFICATION_WEBHOOKS = "name,asc";
+    public static final String USER_NOTIFICATIONS = "createdAt,desc";
     public static final String PURGE_OUTBOX = "createdAt,desc";
 
     public static final String DOSSIER_ELEMENTS = "addedAt,asc";

@@ -4,7 +4,7 @@ import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "app.notification")
-public record NotificationProperties(Outbox outbox, Webhook webhook, Sse sse) {
+public record NotificationProperties(Outbox outbox, Webhook webhook, Sse sse, Inbox inbox) {
 
     public NotificationProperties {
         if (outbox == null) {
@@ -15,6 +15,9 @@ public record NotificationProperties(Outbox outbox, Webhook webhook, Sse sse) {
         }
         if (sse == null) {
             sse = new Sse(Duration.ofSeconds(15));
+        }
+        if (inbox == null) {
+            inbox = new Inbox(Duration.ofDays(30), Duration.ofDays(1));
         }
     }
 
@@ -50,6 +53,18 @@ public record NotificationProperties(Outbox outbox, Webhook webhook, Sse sse) {
         public Sse {
             if (heartbeatInterval == null) {
                 heartbeatInterval = Duration.ofSeconds(15);
+            }
+        }
+    }
+
+    /** D-NOTIF-RETENTION (TODO §66): {@code user_notification} rétention, distincte de {@link Outbox#retention()}. */
+    public record Inbox(Duration retention, Duration pollDelay) {
+        public Inbox {
+            if (retention == null) {
+                retention = Duration.ofDays(30);
+            }
+            if (pollDelay == null) {
+                pollDelay = Duration.ofDays(1);
             }
         }
     }

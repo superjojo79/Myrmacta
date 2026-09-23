@@ -19,6 +19,7 @@ import com.flowforge.domain.notification.model.NotificationWebhookConfig;
 import com.flowforge.domain.notification.port.out.NotificationOutboxRepository;
 import com.flowforge.domain.notification.port.out.NotificationWebhookRepository;
 import com.flowforge.domain.notification.port.out.PendingOutboxWrite;
+import com.flowforge.domain.notification.port.out.UserNotificationRepository;
 import com.flowforge.domain.notification.port.out.WebhookPort;
 import com.flowforge.domain.notification.usecase.SendNotificationUseCaseImpl;
 import com.flowforge.infrastructure.config.NotificationProperties;
@@ -78,7 +79,8 @@ class NotificationSensitiveFieldMaskingEndToEndTest {
                         webhookId, tenantId, "hook", "https://hooks.example.com/notify",
                         null, true, null, now, now)));
 
-        var useCase = new SendNotificationUseCaseImpl(outboxRepository, webhookRepository, dossierTypeRepository);
+        var useCase = new SendNotificationUseCaseImpl(
+                outboxRepository, webhookRepository, dossierTypeRepository, mock(UserNotificationRepository.class));
         useCase.send(
                 new NotificationEvent(
                         List.of(NotificationChannel.WEBHOOK),
@@ -102,6 +104,7 @@ class NotificationSensitiveFieldMaskingEndToEndTest {
                 mock(ConnectorSecretCipher.class),
                 new NotificationProperties(
                         new NotificationProperties.Outbox(10, 3, Duration.ofSeconds(1), Duration.ofDays(7)),
+                        null,
                         null,
                         null),
                 MAPPER);

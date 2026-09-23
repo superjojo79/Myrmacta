@@ -379,6 +379,26 @@ Dans le tableau des templates existants (`templateKey` — libellé — version 
   L'objectif de conformité tenant (défaut 95 %), les alertes de franchissement et l'export
   BI se configurent dans **Admin → Types**.
 
+### Notifications (cloche, tous rôles)
+
+La cloche affichée en haut de chaque page (icône PrimeVue, badge rouge = nombre de notifications
+non lues) donne accès à un historique persistant — TODO §66. Contrairement au comportement
+précédent (purement en mémoire de l'onglet, perdu au reload), les notifications reçues pendant
+une déconnexion sont désormais retrouvées à la réouverture du tiroir : au montage, le tiroir
+charge d'abord l'historique serveur (`GET /api/notifications`), puis reste à jour en direct via
+le flux temps réel existant. Un clic sur une notification la marque lue (état conservé côté
+serveur, identique sur tous les onglets/appareils de l'utilisateur) ; **Tout lu** marque
+l'ensemble d'un coup, y compris les notifications non lues au-delà de celles déjà chargées dans le
+tiroir. Le badge affiche un compte tenu à jour par le serveur (`GET /api/notifications/unread-count`),
+pas une estimation limitée à ce qui est affiché. Un bouton **Charger plus** en bas du tiroir donne
+accès à l'historique au-delà des 20 notifications les plus récentes. L'historique est conservé 30
+jours puis purgé automatiquement.
+
+Événements couverts : changement d'état d'un lien de workflow, franchissement de seuil SLA
+(voir ci-dessous), réassignation d'une tâche, tâche terminée par un autre participant, document
+généré sur un dossier suivi. Vue strictement séparée de l'inbox **Tâches** ci-dessus (« ce qui
+s'est passé » vs « ce que j'ai à faire »).
+
 ### Alertes SLA et export BI (Admin → Types)
 
 Le formulaire **Objectif SLA tenant** reste réservé au `TENANT_ADMIN` :

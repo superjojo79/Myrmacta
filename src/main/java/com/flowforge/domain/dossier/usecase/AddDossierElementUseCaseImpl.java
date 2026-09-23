@@ -6,16 +6,24 @@ import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierConflictException;
 import com.flowforge.domain.dossier.model.DossierElement;
 import com.flowforge.domain.dossier.model.DossierNotFoundException;
+import com.flowforge.domain.dossier.model.DossierWorkflowLink;
 import com.flowforge.domain.dossier.model.ElementType;
 import com.flowforge.domain.dossier.model.InvalidDossierElementException;
 import com.flowforge.domain.dossier.port.in.AddDossierElementUseCase;
 import com.flowforge.domain.dossier.port.out.DossierElementRepository;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
+import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
+import com.flowforge.domain.notification.model.NotificationChannel;
+import com.flowforge.domain.notification.model.NotificationEvent;
+import com.flowforge.domain.notification.port.in.SendNotificationUseCase;
+import com.flowforge.domain.workflow.port.out.WorkflowParticipantPort;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 public final class AddDossierElementUseCaseImpl implements AddDossierElementUseCase {
@@ -24,16 +32,25 @@ public final class AddDossierElementUseCaseImpl implements AddDossierElementUseC
     private final DossierRepository dossierRepository;
     private final DossierElementRepository elementRepository;
     private final DossierAccessPolicy accessPolicy;
+    private final DossierWorkflowLinkRepository linkRepository;
+    private final WorkflowParticipantPort participantPort;
+    private final SendNotificationUseCase sendNotificationUseCase;
 
     public AddDossierElementUseCaseImpl(
             String tenantId,
             DossierRepository dossierRepository,
             DossierElementRepository elementRepository,
-            DossierAccessPolicy accessPolicy) {
+            DossierAccessPolicy accessPolicy,
+            DossierWorkflowLinkRepository linkRepository,
+            WorkflowParticipantPort participantPort,
+            SendNotificationUseCase sendNotificationUseCase) {
         this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
         this.dossierRepository = Objects.requireNonNull(dossierRepository, "dossierRepository");
         this.elementRepository = Objects.requireNonNull(elementRepository, "elementRepository");
         this.accessPolicy = Objects.requireNonNull(accessPolicy, "accessPolicy");
+        this.linkRepository = Objects.requireNonNull(linkRepository, "linkRepository");
+        this.participantPort = Objects.requireNonNull(participantPort, "participantPort");
+        this.sendNotificationUseCase = Objects.requireNonNull(sendNotificationUseCase, "sendNotificationUseCase");
     }
 
     @Override
@@ -69,7 +86,37 @@ public final class AddDossierElementUseCaseImpl implements AddDossierElementUseC
                 command.addedBy() == null || command.addedBy().isBlank() ? "system" : command.addedBy(),
                 Instant.now(),
                 command.workflowStepId());
-        return elementRepository.save(element);
+        DossierElement saved = elementRepository.save(element);
+        if (type == ElementType.PRODUCED_DOC) {
+            notifyParticipants(dossier.id());
+        }
+        return saved;
+    }
+
+    /**
+     * M7 (TODO §66): {@code PRODUCED_DOC} has two real producers —
+     * {@code AttachGeneratedDocumentTask} (BPMN delegate) and {@code GenerateDocumentTool} (MCP
+     * tool) — both call this method, neither has a dossier-workflow-link concept of its own. This
+     * is the single point common to both, avoiding duplicated participant-resolution logic in
+     * each producer. No active link (dossier without a workflow, or a closed one) is a silent
+     * no-op, not every PRODUCED_DOC element has participants to notify.
+     */
+    private void notifyParticipants(UUID dossierId) {
+        Optional<DossierWorkflowLink> link = linkRepository.findActiveByDossierId(dossierId);
+        if (link.isEmpty()) {
+            return;
+        }
+        Map<String, Object> payload = Map.of(
+                "type", "DOCUMENT_GENERATED",
+                "title", "Document généré",
+                "body", "Un document a été généré sur le dossier suivi.",
+                "linkId", link.get().id().toString(),
+                "dossierId", dossierId.toString());
+        for (String userId : participantPort.findParticipantUserIds(link.get())) {
+            sendNotificationUseCase.send(
+                    new NotificationEvent(List.of(NotificationChannel.BROWSER), null, null, null, userId, null, payload),
+                    tenantId);
+        }
     }
 
     /** Returns the storageRef to persist (null for metadata-only types), or throws on invalid input for the type. */

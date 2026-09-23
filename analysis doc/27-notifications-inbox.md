@@ -1,8 +1,15 @@
 # Inbox de notifications persistée — historique utilisateur
 
-> **Statut : première analyse fonctionnelle, aucune décision technique tranchée.** À affiner en
-> phase `dev-lifecycle` (requirements → design) avant tout code — voir « Points ouverts » en fin de
-> document. Origine : `ROADMAP.md` v1.1 (14/09/2026), item **3.2**, classé « Produit, pas cadré ».
+> **Statut : livré** (2026-09-22, TODO §66, cycle `dev-lifecycle` complet). Ce document reste
+> l'analyse d'origine (2026-09-14) — conservé pour l'historique du raisonnement, **pas à jour**
+> sur l'état du code : voir `TODO.md` §66 et
+> `docs/ai/{requirements,design,planning,testing}/2026-09-22-feature-inbox-notifications-persistee.md`
+> pour l'état livré (table `user_notification`, `NotificationInboxController`, 5 producteurs
+> BROWSER, `NotificationDrawer.vue` en PrimeVue). Constat corrigé en Phase 1 : cette analyse
+> sous-estimait l'état réel du code au moment de sa rédaction — le canal `NotificationChannel.BROWSER`
+> et un premier `NotificationDrawer.vue` existaient déjà (introduits par la PR #132 sans être
+> documentés comme une brique d'inbox), mais 100% éphémères côté client avant ce cycle.
+> Origine : `ROADMAP.md` v1.1 (14/09/2026), item **3.2**, classé « Produit, pas cadré ».
 > Traité **seul** (pas regroupé) : l'audience est l'utilisateur interne connecté au SPA, différente
 > du public externe visé par le portail (`26-portail-externe-signature.md`) et de la surface DMN
 > (`28-outillage-dmn.md`).

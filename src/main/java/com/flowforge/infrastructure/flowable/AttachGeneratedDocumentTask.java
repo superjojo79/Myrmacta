@@ -30,6 +30,14 @@ public class AttachGeneratedDocumentTask implements JavaDelegate {
                 Objects.requireNonNull(addDossierElementUseCase, "addDossierElementUseCase");
     }
 
+    /**
+     * TODO §66 F4 (Phase 10 adversarial review): {@code addDossierElementUseCase.add(...)} below
+     * (and the {@code DOCUMENT_GENERATED} notification it triggers for {@code PRODUCED_DOC}) run
+     * inside Flowable's own Spring-managed command transaction — a notification failure here rolls
+     * back the element write together with it and fails the job (retried per the engine's async
+     * job policy), the same rollback-together semantics now applied explicitly to the MCP path
+     * ({@link com.flowforge.infrastructure.mcp.tool.GenerateDocumentTool}).
+     */
     @Override
     public void execute(DelegateExecution execution) {
         Object dossierIdVar = execution.getVariable("dossierId");

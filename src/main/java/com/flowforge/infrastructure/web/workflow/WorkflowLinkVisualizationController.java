@@ -16,6 +16,7 @@ import com.flowforge.infrastructure.web.dossier.AccessContextFactory;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -86,7 +87,15 @@ class WorkflowLinkVisualizationController {
         return getDossierUseCase.getDossier(linkId, accessContextFactory.user(authentication));
     }
 
+    /**
+     * {@code @Transactional} here (same rationale as {@link WorkflowTaskController#complete}, TODO
+     * §66 F4): lets Flowable's {@code TaskService.setAssignee(...)} and the {@code TASK_REASSIGNED}
+     * notification write roll back together on failure — before this fix the two ran as
+     * independent commits, so a notification failure left the reassignment already effective while
+     * the caller still saw a 500.
+     */
     @PostMapping("/tasks/{taskId}/reassign")
+    @Transactional
     ResponseEntity<Void> reassign(
             @PathVariable UUID linkId,
             @PathVariable String taskId,

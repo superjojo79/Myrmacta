@@ -10,6 +10,70 @@
 >   (rétention / purge / sensible — **livré**) ; revue post-implémentation 2026-08-25 :
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
+> **2026-09-22** — `enrichissement-reporting` (TODO §65) confirmé **mergé sur `main`**
+> ([PR #132](https://github.com/superjojo79/FlowForge/pull/132)) : file produit à nouveau vide.
+> Nouveau cycle démarré sur demande utilisateur : `inbox-notifications-persistee` (TODO §66,
+> item 3.2 `ROADMAP.md`) — **Phase 1 (requirements) close**. Constat corrigé en cours de cadrage :
+> l'analyse d'origine [27-notifications-inbox.md](analysis%20doc/27-notifications-inbox.md)
+> sous-estimait l'état réel du code, écrite avant que la PR #132 n'introduise (sans le documenter
+> comme tel) un canal `NotificationChannel.BROWSER` et un composant `NotificationDrawer.vue` déjà
+> monté globalement — mécanisme existant mais 100% éphémère côté client, sans persistance ni
+> rattrapage des événements manqués hors connexion. Détail : TODO §66,
+> [docs/ai/requirements/2026-09-22-feature-inbox-notifications-persistee.md](docs/ai/requirements/2026-09-22-feature-inbox-notifications-persistee.md)
+> et **Phase 3 (design) close** le même jour :
+> [docs/ai/design/2026-09-22-feature-inbox-notifications-persistee.md](docs/ai/design/2026-09-22-feature-inbox-notifications-persistee.md)
+> — nouveau port `UserNotificationRepository`/table `user_notification`, `NotificationInboxController`
+> (self-scoped, distinct de `NotificationSendController` déjà sur `/api/notifications`), job de
+> purge miroir `WorkflowRetentionJob`. **Phase 4 (planning) close** le même jour : 12 milestones
+> séquencés (M1 fondation → M2 point de couture → M3 REST / M4 rétention parallélisables → M5/M6/M7
+> les 3 nouveaux producteurs parallélisables → M8/M9 frontend → M10 Playwright → M11 doc → M12
+> vérification globale), 33 scénarios de test tracés en amont
+> ([docs/ai/planning/2026-09-22-feature-inbox-notifications-persistee.md](docs/ai/planning/2026-09-22-feature-inbox-notifications-persistee.md)).
+> **Phase 5 (implémentation) livrée** le même jour, M1 à M12 en continu (demande explicite
+> utilisateur) : `./mvnw verify` 2112 tests (0 échec). 2 déviations trouvées et documentées en
+> cours de route (écriture outbox/inbox en 2 transactions séparées plutôt qu'une seule — pas de
+> gestionnaire de transaction accessible depuis le domaine ; `NotificationDrawer.vue` en panneau
+> `v-if` local plutôt que `Popover` PrimeVue — Teleport + floating-ui ne s'ouvrent pas de façon
+> fiable sous jsdom, vérifié empiriquement).
+> **2026-09-23** — Phases 7-8-9 closes, en continu (demande explicite utilisateur). **Phase 7 :
+> 1 bug réel trouvé et corrigé** — race condition entre le backfill REST et le flux SSE
+> (`stores/notifications.ts` écrasait un événement live reçu pendant que le fetch de backfill
+> était encore en vol), reproduit en TDD puis corrigé par une fusion dédoublonnée. **Phase 8** :
+> couverture Jacoco vérifiée ligne par ligne (aucun gap dans le nouveau code, les branches
+> manquées signalées sont préexistantes) ; 1 scénario Playwright ajouté (`E2E-NOTIF-3`) ; 3 écarts
+> plan/livré documentés avec leur raison. **Phase 9** : revue holistique du diff complet (59
+> fichiers), aucune incohérence bloquante trouvée dans le code (une incohérence de documentation
+> — compteurs de tests obsolètes dans TODO §66 — corrigée dans cette même clôture). Preuves
+> finales : Vitest **361/361**, Playwright **81/81**. Feature jugée prête pour PR à ce stade, non
+> ouverte (non demandé). **Phase 10 (analyse adversariale, subagent Opus 5.5) close le même jour**,
+> sur demande explicite utilisateur : **1 bug bloquant trouvé et corrigé (F1)** — l'id porté par
+> l'événement SSE `BROWSER` était celui de la ligne `notification_outbox`, jamais celui de la ligne
+> `user_notification` correspondante, rendant impossible le marquage lu d'une notification reçue en
+> direct (404 silencieux) et cassant la dédup backfill/SSE (doublons) ; corrigé par
+> **D-NOTIF-SSE-ID** (id inbox généré avant l'écriture outbox, propagé dans le payload SSE). **1
+> gap de fiabilité trouvé et corrigé (F2)** — une reconnexion SSE ne relançait jamais le backfill
+> REST, perdant définitivement tout ce qui arrivait pendant le trou de reconnexion. 2 écarts moyens
+> (badge non-lu = estimation client, sémantique transactionnelle incohérente entre les 3 nouveaux
+> producteurs) documentés comme décision produit à soumettre, pas silencieusement corrigés ni
+> ignorés. Sécurité jugée saine (pas d'IDOR/injection/XSS/désérialisation dangereuse, vérifié
+> empiriquement). Preuves : Vitest **362/362** (+1), 63 tests backend ciblés verts ; suite backend
+> complète non rejouée dans ce conteneur (JDK 25 indisponible). **Phase 11 close le même jour**, sur
+> demande explicite utilisateur (« Corrige tous les findings ») : **F3 corrigé** — nouveau
+> `GET /api/notifications/unread-count` (badge serveur, plus une estimation client), bouton
+> « Charger plus » dans le tiroir, index `024-user-notification-unread-index` ; **F4 corrigé** —
+> `reassign` et `generate_document` (MCP) rendus `@Transactional`, alignés sur le patron déjà
+> établi par `complete` (rollback ensemble avec l'échec de notification), Javadoc fausse corrigée ;
+> **F5 corrigé** — purge inbox passée en bulk `@Modifying @Query` (miroir de l'outbox) ; **F6
+> corrigé** — résolution du lien actif avant (plus après) `completeTask`, pour ne plus manquer de
+> notifier les autres participants quand la tâche complétée est la dernière du workflow ; **F7**
+> — `markRead` rendu idempotent (ne glisse plus `readAt` en avant sur un second appel), les 3
+> autres points listés en Phase 10 restant explicitement non-régression/non-fuite par la revue
+> elle-même. Preuves : golden OpenAPI stable (diff net +18 lignes), 135 tests backend ciblés verts
+> + `WorkflowApiTest`/`McpEndpointApiTest`/ArchUnit verts, Vitest **366/366** (+4), Playwright
+> **81/81** (route `unread-count` ajoutée à `mockSession()`, sans quoi `backfill()` échouait
+> entièrement sur le 404). **Feature prête pour PR — tous les findings de la Phase 10 traités.**
+> Détail : TODO §66.
+>
 > **Dernière mise à jour :** 2026-09-21 — Lot **C** (`scan-antivirus-clamav`) : cycle
 > `dev-lifecycle` **Phases 1-9 complet** + **revue adversariale (sous-agent)** demandée
 > explicitement par l'utilisateur après la clôture, sur le modèle des revues adversariales déjà

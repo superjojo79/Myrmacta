@@ -62,7 +62,11 @@ class WorkflowStateEventListenerTest {
         assertThat(events.getAllValues().getFirst().payload())
                 .containsEntry("type", WorkflowStateEventListener.WORKFLOW_STATE_CHANGED)
                 .containsEntry("linkId", link.id().toString())
+                .containsEntry("dossierId", link.dossierId().toString())
                 .doesNotContainKey("processInstanceId");
+        // UT-NOTIF-16: standardized payload contract — title/body must be non-blank, not just present.
+        assertThat(events.getAllValues().getFirst().payload().get("title")).asString().isNotBlank();
+        assertThat(events.getAllValues().getFirst().payload().get("body")).asString().isNotBlank();
     }
 
     @Test

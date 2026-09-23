@@ -127,6 +127,31 @@ class EvaluateDecisionUseCaseImplTest {
     }
 
     @Test
+    void blankKeyOrVersionBelowOne_isRejectedBeforeEvaluation() {
+        when(deploymentPort.findDeploymentInfo(TENANT, "eligibilite"))
+                .thenReturn(Optional.of(new DecisionTableDeploymentInfo("eligibilite", 1)));
+
+        assertThatThrownBy(() -> useCase().evaluate(ADMIN, null, null, Map.of()))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> useCase().evaluate(ADMIN, "  ", null, Map.of()))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> useCase().evaluate(ADMIN, "eligibilite", 0, Map.of()))
+                .isInstanceOf(IllegalArgumentException.class);
+        verify(evaluationPort, never()).evaluate(TENANT, "eligibilite", 0, Map.of());
+    }
+
+    @Test
+    void nullInputs_areEvaluatedAsAnEmptyMap() {
+        when(deploymentPort.findDeploymentInfo(TENANT, "eligibilite"))
+                .thenReturn(Optional.of(new DecisionTableDeploymentInfo("eligibilite", 4)));
+        when(evaluationPort.evaluate(TENANT, "eligibilite", 4, Map.of()))
+                .thenReturn(new DecisionEvaluationResult("eligibilite", 4, List.of()));
+
+        assertThat(useCase().evaluate(ADMIN, " eligibilite ", null, null).rows()).isEmpty();
+        verify(evaluationPort).evaluate(TENANT, "eligibilite", 4, Map.of());
+    }
+
+    @Test
     void actorWithoutAdminRole_isRejectedBeforeAnyPort() {
         assertThatThrownBy(() -> useCase().evaluate(NO_ROLE, "eligibilite", null, Map.of()))
                 .isInstanceOf(AccessDeniedException.class);

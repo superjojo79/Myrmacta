@@ -1,7 +1,10 @@
 package com.flowforge.infrastructure.mcp.tool;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import tools.jackson.databind.ObjectMapper;
@@ -49,7 +52,7 @@ class DmnDecisionToolingToolsTest {
 
     @BeforeEach
     void actor() {
-        when(accessContextFactory.currentActor()).thenReturn(ACTOR);
+        lenient().when(accessContextFactory.currentActor()).thenReturn(ACTOR);
     }
 
     @Test
@@ -102,5 +105,28 @@ class DmnDecisionToolingToolsTest {
                         .redeployDecisionTable("eligibilite", 1)
                         .deployedVersion())
                 .isEqualTo(3);
+    }
+
+    @Test
+    void testDecision_rejectsUnknownFormatAndInvalidJson() {
+        TestDecisionTool tool = new TestDecisionTool(
+                testDecisionUseCase, new DmnCsvTestCaseParser(), new ObjectMapper(), accessContextFactory);
+
+        assertThatThrownBy(() -> tool.testDecision("eligibilite", null, "xml", "<x/>"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> tool.testDecision("eligibilite", null, "json", "not-json"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> tool.testDecision("eligibilite", null, "json", "{}"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cases");
+        verifyNoInteractions(testDecisionUseCase);
+    }
+
+    @Test
+    void redeploy_requiresAVersion() {
+        assertThatThrownBy(() -> new RedeployDecisionTableTool(redeployDecisionTableUseCase, accessContextFactory)
+                        .redeployDecisionTable("eligibilite", null))
+                .isInstanceOf(IllegalArgumentException.class);
+        verifyNoInteractions(redeployDecisionTableUseCase);
     }
 }

@@ -48,6 +48,35 @@ class DmnCsvTestCaseParserTest {
     }
 
     @Test
+    void rejectsMissingPrefixAndBlankPayload() {
+        assertThatThrownBy(() -> parser.parse(null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> parser.parse("""
+                input.customerCat
+                BRONZE
+                """)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> parser.parse("""
+                expected.result
+                ok
+                """)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> parser.parse("""
+                input.,expected.result
+                x,ok
+                """)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void blankCellIsNullAndOversizedIntegerBecomesDecimal() {
+        List<DecisionTestCase> cases = parser.parse("""
+                input.amount,expected.note
+                ,pending
+                2147483648,ok
+                """);
+
+        assertThat(cases.getFirst().inputs()).containsEntry("amount", null);
+        assertThat(cases.get(1).inputs().get("amount")).isEqualTo(new java.math.BigDecimal("2147483648"));
+    }
+
+    @Test
     void rejectsMalformedOrEmptyCsv() {
         assertThatThrownBy(() -> parser.parse("")).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> parser.parse("input.customerCat,expected.result\n"))

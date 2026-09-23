@@ -7,12 +7,14 @@ created: 2026-09-22
 updated: 2026-09-23
 feature: outillage-dmn
 phase3: 2026-09-23
+phase8: 2026-09-23
 ---
 
 # Testing Strategy — `outillage-dmn`
 
 Dérivé des requirements revus et du design Phase 3 (`status: reviewed`).
-Cases cochées en Phase 5 (tests écrits et exécutés). La revue de clôture reste la Phase 8.
+Cases cochées en Phase 5. La Phase 8 (2026-09-23) a ajouté les branches
+manquantes utiles et enregistré les preuves ci-dessous.
 
 ## Test Coverage Goals
 
@@ -98,13 +100,15 @@ Cases cochées en Phase 5 (tests écrits et exécutés). La revue de clôture re
 
 ## Test Reporting & Coverage
 
-```bash
-./mvnw verify
-cd frontend && npm run test
-cd frontend && npm run test:e2e
-```
+Preuves fraîches du 2026-09-23 (cette session, JDK 21 via `-Djava.version=21`) :
 
-Enregistrer comptes de tests + Jacoco avant claim Phase 8/9.
+- `./mvnw verify -Djava.version=21 -Dskip.frontend=true` : **BUILD SUCCESS**, Tests run **2133**, Failures 0, Errors 0, Jacoco « All coverage checks have been met ».
+- `cd frontend && npm run test` : **358** tests, 80 fichiers, exit 0.
+- `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/google/chrome/chrome npm run test:e2e` : **84** passed, exit 0.
+
+Branches laissées volontairement : corps REST `null` (`@RequestBody` obligatoire),
+`suite == null` côté Jackson, `IOException` de lecture XML, `BigInteger` et
+`NumberFormatException` du comparateur (le motif numérique ne les produit pas).
 
 ## Manual Testing
 

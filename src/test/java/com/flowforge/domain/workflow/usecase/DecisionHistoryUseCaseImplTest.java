@@ -123,6 +123,13 @@ class DecisionHistoryUseCaseImplTest {
     }
 
     @Test
+    void redeploy_versionBelowOne_isRejectedBeforeLookup() {
+        assertThatThrownBy(() -> redeployUseCase().redeploy(ADMIN, "eligibilite", 0))
+                .isInstanceOf(IllegalArgumentException.class);
+        verifyNoInteractions(deploymentPort, dmnParserPort);
+    }
+
+    @Test
     void redeploy_currentVersion_conflictsWithoutDeploy() {
         when(deploymentPort.findAllVersions(TENANT, "eligibilite")).thenReturn(List.of(version(1), version(2)));
 

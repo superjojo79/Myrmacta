@@ -136,6 +136,67 @@ class TestDecisionUseCaseImplTest {
     }
 
     @Test
+    void nullCaseOrMissingExpectedKey_isRejectedOrFailed() {
+        assertThatThrownBy(() -> useCase().test(ADMIN, "eligibilite", null, null, false))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> useCase().test(
+                        ADMIN, "eligibilite", null, java.util.Arrays.asList((DecisionTestCase) null), false))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        when(evaluateDecisionUseCase.evaluate(ADMIN, "eligibilite", null, Map.of()))
+                .thenReturn(new DecisionEvaluationResult("eligibilite", 1, List.of(Map.of("result", "ok"))));
+        DecisionTestReport missing = useCase().test(
+                ADMIN,
+                "eligibilite",
+                null,
+                List.of(new DecisionTestCase(null, List.of(Map.of("absent", true)))),
+                true);
+
+        assertThat(missing.results().getFirst().passed()).isFalse();
+        assertThat(missing.results().getFirst().failureMessage()).contains("absent");
+    }
+
+    @Test
+    void booleanLiteralAndDecimal_matchCoercedActuals() {
+        when(evaluateDecisionUseCase.evaluate(ADMIN, "eligibilite", null, Map.of("n", 1)))
+                .thenReturn(new DecisionEvaluationResult("eligibilite", 1, List.of(Map.of("ok", true, "amount", 1.5d))));
+
+        DecisionTestReport report = useCase().test(
+                ADMIN,
+                "eligibilite",
+                null,
+                List.of(new DecisionTestCase(Map.of("n", 1), List.of(Map.of("ok", "true", "amount", "1.5")))),
+                true);
+
+        assertThat(report.results().getFirst().passed()).isTrue();
+    }
+
+    @Test
+    void nullRowsAndFalseLiteral_followThePartialMatchRules() {
+        when(evaluateDecisionUseCase.evaluate(ADMIN, "eligibilite", null, Map.of("n", 1)))
+                .thenReturn(new DecisionEvaluationResult("eligibilite", 1, null));
+        when(evaluateDecisionUseCase.evaluate(ADMIN, "eligibilite", null, Map.of("n", 2)))
+                .thenReturn(new DecisionEvaluationResult(
+                        "eligibilite", 1, List.of(Map.of("ok", false, "amount", 1.5f))));
+
+        DecisionTestReport empty = useCase().test(
+                ADMIN,
+                "eligibilite",
+                null,
+                List.of(new DecisionTestCase(Map.of("n", 1), null)),
+                false);
+        DecisionTestReport falseLiteral = useCase().test(
+                ADMIN,
+                "eligibilite",
+                null,
+                List.of(new DecisionTestCase(Map.of("n", 2), List.of(Map.of("ok", "false", "amount", "1.5")))),
+                true);
+
+        assertThat(empty.results().getFirst().passed()).isTrue();
+        assertThat(falseLiteral.results().getFirst().passed()).isTrue();
+    }
+
+    @Test
     void moreThanOneHundredCases_areRejected() {
         List<DecisionTestCase> cases = new ArrayList<>();
         IntStream.range(0, 101).forEach(i -> cases.add(new DecisionTestCase(Map.of(), List.of())));

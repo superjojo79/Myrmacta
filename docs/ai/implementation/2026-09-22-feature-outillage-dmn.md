@@ -7,6 +7,9 @@ created: 2026-09-22
 updated: 2026-09-23
 feature: outillage-dmn
 phase5: 2026-09-23
+phase7: 2026-09-23
+phase8: 2026-09-23
+phase9: 2026-09-23
 ---
 
 # Implementation Guide — `outillage-dmn`
@@ -57,3 +60,64 @@ UI : panneaux ouverts explicitement. Aucun appel
 `/versions`, `/evaluate`, `/test` ou `/redeploy` au montage, parce que
 le mock Playwright `**/api/dmn-decision-deployments` intercepte les
 sous-chemins du déploiement existant.
+
+## Phase 7 — check implementation (2026-09-23)
+
+Revue fichier par fichier contre le design (`status: reviewed`) et les
+requirements. Les quatre use cases, le port d’évaluation, le CSV
+d’infrastructure, les quatre tools MCP, le contrôleur REST et les
+panneaux de `/admin/dmn-editor` correspondent aux décisions D-TECH-*.
+`DeployDecisionTableUseCaseImpl` n’est pas modifié. Le redéploiement
+appelle `DmnDeploymentPort.deploy` après l’allowlist et n’efface pas le
+brouillon.
+
+Écarts corrigés :
+
+- L’échec moteur renvoyait « Decision evaluation failed… » sans la cause.
+  Le détail HTTP 400 inclut désormais le message du moteur
+  (`FlowableDmnEvaluationAdapter`). Le test était rouge avant le correctif.
+- Une cellule CSV vide est un `null`. `Map.copyOf` rejetait cette valeur
+  et le parseur répondait « CSV is malformed ». La copie conserve le null.
+- L’entrée CHANGELOG de la PR #134 avait absorbé le texte de la PR #132
+  (alertes SLA). Les deux entrées sont de nouveau distinctes.
+
+Écarts acceptés :
+
+- `deployedAt` vaut `Instant.EPOCH` si Flowable ne fournit pas
+  d’horodatage de déploiement. Le record exige un `Instant`.
+- La comparaison des lignes est privée dans `TestDecisionUseCaseImpl`
+  (ArchUnit : une classe `..usecase..` concrète se termine par `Impl`).
+- `disableHistory()` sur l’évaluation ad hoc, pour ne pas remplir
+  l’historique DMN Flowable à chaque essai.
+
+## Phase 8 — write tests (2026-09-23)
+
+Couverture relue dans `target/site/jacoco/jacoco.csv` après
+`./mvnw verify -Djava.version=21 -Dskip.frontend=true` : **2133** tests,
+0 échec, « All coverage checks have been met ».
+
+Branches ajoutées : clé nulle, lignes attendues nulles, littéral `false`
+et flottant, CSV sans colonne `input` ou avec un préfixe vide, version
+XML absente, payload JSON sans `cases`, message moteur vide ou présent.
+
+Frontend : Vitest **358** (80 fichiers). Playwright **84** passed
+(`PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/google/chrome/chrome`).
+
+## Phase 9 — review (2026-09-23)
+
+Revue holistique après les correctifs de la Phase 7. Aucun blocage.
+
+- Design : les quatre surfaces (domaine, REST, MCP, éditeur) suivent les
+  D-TECH-*. Pas de table Liquibase, pas de variable d’environnement, pas
+  d’évaluation de brouillon.
+- Sécurité : garde `TenantAdminGuard` avant les ports ; redéploiement
+  rejoue l’allowlist ; `DOSSIER_VIEWER` rejeté avant le port.
+- Contrat : golden OpenAPI et catalogue de 27 tools inchangés par cette
+  revue. Le message 400 d’évaluation inclut la cause moteur.
+- Tests : preuves fraîches de cette session (2133, 358, 84).
+- Docs : implementation, testing, deployment, monitoring, requirements,
+  TODO §66, FILE-ATTENTE, analyse 28, CHANGELOG (entrée #132 restaurée).
+
+**Checklist :** design ✅ · pas de gap logique ouvert ✅ · sécurité ✅ ·
+intégrations vérifiées ✅ · tests ✅ · docs ✅. Prêt pour la revue de la
+PR #134.

@@ -205,6 +205,29 @@ describe('DmnEditorView', () => {
     expect(wrapper.get('.dmn-editor__rows').text()).toContain('ok')
   })
 
+  it('rejects a JSON input that is not an object and shows an evaluation error', async () => {
+    vi.mocked(workflowsApi.listDecisionTableVersions).mockResolvedValue([])
+    vi.mocked(workflowsApi.evaluateDecision).mockRejectedValue({
+      response: { data: { title: 'Bad request', detail: 'type incompatible', status: 400 } },
+    })
+
+    const wrapper = await mountView('/admin/dmn-editor')
+    await flushPromises()
+    await wrapper.get('button.dmn-editor__tester').trigger('click')
+    await flushPromises()
+
+    await wrapper.get('textarea.dmn-editor__inputs').setValue('[1]')
+    await wrapper.get('button.dmn-editor__evaluate').trigger('click')
+    await flushPromises()
+    expect(workflowsApi.evaluateDecision).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('Les entrées doivent être un objet JSON.')
+
+    await wrapper.get('textarea.dmn-editor__inputs').setValue('{"customerCat":"BRONZE"}')
+    await wrapper.get('button.dmn-editor__evaluate').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('type incompatible')
+  })
+
   it('uploads a JSON suite and a CSV suite', async () => {
     vi.mocked(workflowsApi.listDecisionTableVersions).mockResolvedValue([])
     vi.mocked(workflowsApi.testDecisionJson).mockResolvedValue({

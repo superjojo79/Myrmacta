@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -78,7 +79,12 @@ public class DmnCsvTestCaseParser {
                 expected.put(header.substring("expected.".length()), value);
             }
         }
-        return new DecisionTestCase(Map.copyOf(inputs), List.of(Map.copyOf(expected)));
+        return new DecisionTestCase(copy(inputs), List.of(copy(expected)));
+    }
+
+    /** {@link Map#copyOf} rejects null cells; a blank CSV cell is a null value. */
+    private static Map<String, Object> copy(Map<String, Object> values) {
+        return Collections.unmodifiableMap(new LinkedHashMap<>(values));
     }
 
     static Object coerce(String cell) {

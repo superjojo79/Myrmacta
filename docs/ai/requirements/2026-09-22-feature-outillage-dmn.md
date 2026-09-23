@@ -194,5 +194,5 @@ Décisions produit :
 | **D-DMN-TEST-SURFACE** | **C** — MCP + REST + upload UI | Phase 2 |
 
 Décisions techniques : design Phase 3 (`status: reviewed`), 2026-09-23.
-Aucune question produit ou technique ouverte. Prochaine étape :
-**Phase 4** (planning).
+Aucune question produit ou technique ouverte. Phases 4 à 9 exécutées
+le 2026-09-23.

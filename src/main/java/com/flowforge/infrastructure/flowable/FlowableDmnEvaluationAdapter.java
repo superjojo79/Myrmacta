@@ -50,8 +50,12 @@ class FlowableDmnEvaluationAdapter implements DmnEvaluationPort {
                     .execute();
             return new DecisionEvaluationResult(decisionKey, version, rows == null ? List.of() : List.copyOf(rows));
         } catch (RuntimeException ex) {
-            throw new DecisionEvaluationException(
-                    "Decision evaluation failed for " + decisionKey + " version " + version, ex);
+            String detail = ex.getMessage();
+            String message = "Decision evaluation failed for " + decisionKey + " version " + version;
+            if (detail != null && !detail.isBlank()) {
+                message = message + ": " + detail;
+            }
+            throw new DecisionEvaluationException(message, ex);
         }
     }
 }

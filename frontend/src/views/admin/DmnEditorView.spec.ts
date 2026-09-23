@@ -164,4 +164,106 @@ describe('DmnEditorView', () => {
     const deployedFile = vi.mocked(workflowsApi.deployDecisionTable).mock.calls[0][0]
     expect(deployedFile).toBeInstanceOf(File)
   })
+
+  it('does not call evaluation endpoints until a tooling panel is opened', async () => {
+    await mountView('/admin/dmn-editor')
+    await flushPromises()
+
+    expect(workflowsApi.listDecisionTableVersions).not.toHaveBeenCalled()
+    expect(workflowsApi.evaluateDecision).not.toHaveBeenCalled()
+    expect(workflowsApi.testDecisionJson).not.toHaveBeenCalled()
+    expect(workflowsApi.redeployDecisionTable).not.toHaveBeenCalled()
+  })
+
+  it('evaluates the JSON inputs of the selected version', async () => {
+    vi.mocked(workflowsApi.listDecisionTableVersions).mockResolvedValue([
+      { decisionKey: 'editedDecision', version: 1, deploymentId: 'dep-1', deployedAt: '2026-09-01T00:00:00Z' },
+      { decisionKey: 'editedDecision', version: 2, deploymentId: 'dep-2', deployedAt: '2026-09-02T00:00:00Z' },
+    ])
+    vi.mocked(workflowsApi.evaluateDecision).mockResolvedValue({
+      decisionKey: 'editedDecision',
+      version: 1,
+      rows: [{ result: 'ok' }],
+    })
+
+    const wrapper = await mountView('/admin/dmn-editor')
+    await flushPromises()
+    await wrapper.get('button.dmn-editor__tester').trigger('click')
+    await flushPromises()
+
+    expect(workflowsApi.listDecisionTableVersions).toHaveBeenCalledWith('editedDecision')
+    await wrapper.get('textarea.dmn-editor__inputs').setValue('{"customerCat":"BRONZE"}')
+    await wrapper.get('select.dmn-editor__version').setValue('1')
+    await wrapper.get('button.dmn-editor__evaluate').trigger('click')
+    await flushPromises()
+
+    expect(workflowsApi.evaluateDecision).toHaveBeenCalledWith(
+      'editedDecision',
+      { customerCat: 'BRONZE' },
+      1,
+    )
+    expect(wrapper.get('.dmn-editor__rows').text()).toContain('ok')
+  })
+
+  it('uploads a JSON suite and a CSV suite', async () => {
+    vi.mocked(workflowsApi.listDecisionTableVersions).mockResolvedValue([])
+    vi.mocked(workflowsApi.testDecisionJson).mockResolvedValue({
+      decisionKey: 'editedDecision',
+      version: 1,
+      results: [{ index: 0, passed: true, actualRows: [], failureMessage: null }],
+    })
+    vi.mocked(workflowsApi.testDecisionCsv).mockResolvedValue({
+      decisionKey: 'editedDecision',
+      version: 1,
+      results: [{ index: 0, passed: false, actualRows: [], failureMessage: 'mismatch' }],
+    })
+
+    const wrapper = await mountView('/admin/dmn-editor')
+    await flushPromises()
+    await wrapper.get('button.dmn-editor__suite').trigger('click')
+    await flushPromises()
+
+    const jsonFile = new File(['{"cases":[]}'], 'suite.json', { type: 'application/json' })
+    const fileInput = wrapper.get('input.dmn-editor__suite-file').element as HTMLInputElement
+    Object.defineProperty(fileInput, 'files', { value: [jsonFile], configurable: true })
+    await wrapper.get('input.dmn-editor__suite-file').trigger('change')
+    await flushPromises()
+    expect(workflowsApi.testDecisionJson).toHaveBeenCalled()
+    expect(wrapper.text()).toContain('réussi')
+
+    const csvFile = new File(['input.a,expected.b\n1,2\n'], 'suite.csv', { type: 'text/csv' })
+    Object.defineProperty(fileInput, 'files', { value: [csvFile], configurable: true })
+    await wrapper.get('input.dmn-editor__suite-file').trigger('change')
+    await flushPromises()
+    expect(workflowsApi.testDecisionCsv).toHaveBeenCalled()
+    expect(wrapper.text()).toContain('échec')
+  })
+
+  it('asks for confirmation before redeploying and cancel does not call the API', async () => {
+    vi.mocked(workflowsApi.listDecisionTableVersions).mockResolvedValue([
+      { decisionKey: 'editedDecision', version: 1, deploymentId: 'dep-1', deployedAt: '2026-09-01T00:00:00Z' },
+    ])
+    vi.mocked(workflowsApi.redeployDecisionTable).mockResolvedValue({
+      decisionKey: 'editedDecision',
+      deployedVersion: 2,
+      deploymentId: 'dep-2',
+    })
+
+    const wrapper = await mountView('/admin/dmn-editor')
+    await flushPromises()
+    await wrapper.get('button.dmn-editor__history').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Version 1')
+    await wrapper.get('.dmn-editor__history-panel button').trigger('click')
+    expect(wrapper.text()).toContain('Redéployer la version 1')
+    await wrapper.get('button.dmn-editor__cancel-redeploy').trigger('click')
+    expect(workflowsApi.redeployDecisionTable).not.toHaveBeenCalled()
+
+    await wrapper.get('.dmn-editor__history-panel button').trigger('click')
+    await wrapper.get('button.dmn-editor__confirm-redeploy').trigger('click')
+    await flushPromises()
+    expect(workflowsApi.redeployDecisionTable).toHaveBeenCalledWith('editedDecision', 1)
+    expect(wrapper.text()).toContain('Redéployé : version 2')
+  })
 })

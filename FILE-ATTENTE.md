@@ -448,7 +448,7 @@ technique.
 
 **Cycles démarrés depuis ces analyses :**
 - `enrichissement-reporting` (doc 29, items 5.2 + 3.3 + 5.3) — TODO §65, PR #132
-- `outillage-dmn` (doc 28, items 1.1 + 1.2 + 1.3/5.1) — TODO §66, Phase 1 2026-09-22
+- `outillage-dmn` (doc 28, items 1.1 + 1.2 + 1.3/5.1) — TODO §66, Phase 5 2026-09-23
 
 ### Ne pas lancer (décision V1 contraire ou stack absente)
 
@@ -475,8 +475,9 @@ Ne pas le relancer en parallèle. Le lot C (ClamAV) est livré
 ([PR #131](https://github.com/superjojo79/FlowForge/pull/131)) et ne partage
 pas ces fichiers.
 
-**Cycle en cours (2026-09-22) :** `outillage-dmn` (TODO §66) — Phase 1
-requirements. Analyse
+**Cycle en cours (2026-09-23) :** `outillage-dmn` (TODO §66) — Phases 1 à 5
+livrées (requirements, design, planning, implémentation des trois écarts
+1.1 + 1.2 + 1.3/5.1). Analyse
 [28-outillage-dmn.md](analysis%20doc/28-outillage-dmn.md), docs
 `docs/ai/*/2026-09-22-feature-outillage-dmn.md`. Surfaces disjointes de
 §65 et du lot C.

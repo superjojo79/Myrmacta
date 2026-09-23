@@ -17,7 +17,11 @@ import com.flowforge.domain.workflow.port.in.GetBpmnDraftUseCase;
 import com.flowforge.domain.workflow.port.in.GetDecisionTableDeploymentInfoUseCase;
 import com.flowforge.domain.workflow.port.in.GetDmnDraftUseCase;
 import com.flowforge.domain.workflow.port.in.GetProcessDeploymentInfoUseCase;
+import com.flowforge.domain.workflow.port.in.EvaluateDecisionUseCase;
+import com.flowforge.domain.workflow.port.in.ListDecisionTableVersionsUseCase;
 import com.flowforge.domain.workflow.port.in.ListDecisionTablesUseCase;
+import com.flowforge.domain.workflow.port.in.RedeployDecisionTableUseCase;
+import com.flowforge.domain.workflow.port.in.TestDecisionUseCase;
 import com.flowforge.domain.workflow.port.in.ListMyTasksUseCase;
 import com.flowforge.domain.workflow.port.in.SaveBpmnDraftUseCase;
 import com.flowforge.domain.workflow.port.in.SaveDmnDraftUseCase;
@@ -25,6 +29,7 @@ import com.flowforge.domain.workflow.port.in.UpdateWorkflowLinkStatusUseCase;
 import com.flowforge.domain.workflow.port.out.BpmnDraftRepository;
 import com.flowforge.domain.workflow.port.out.BpmnParserPort;
 import com.flowforge.domain.workflow.port.out.DmnDeploymentPort;
+import com.flowforge.domain.workflow.port.out.DmnEvaluationPort;
 import com.flowforge.domain.workflow.port.out.DmnDraftRepository;
 import com.flowforge.domain.workflow.port.out.DmnParserPort;
 import com.flowforge.domain.workflow.port.out.IdempotencyStore;
@@ -46,7 +51,11 @@ import com.flowforge.domain.workflow.usecase.GetDecisionTableDeploymentInfoUseCa
 import com.flowforge.domain.workflow.usecase.GetDmnDraftUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.GetProcessDeploymentInfoUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.GetTaskQuestionSchemaForTaskUseCaseImpl;
+import com.flowforge.domain.workflow.usecase.EvaluateDecisionUseCaseImpl;
+import com.flowforge.domain.workflow.usecase.ListDecisionTableVersionsUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.ListDecisionTablesUseCaseImpl;
+import com.flowforge.domain.workflow.usecase.RedeployDecisionTableUseCaseImpl;
+import com.flowforge.domain.workflow.usecase.TestDecisionUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.ListMyTasksUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.SaveBpmnDraftUseCaseImpl;
 import com.flowforge.domain.workflow.usecase.SaveDmnDraftUseCaseImpl;
@@ -250,6 +259,38 @@ public class WorkflowConfig {
     ListDecisionTablesUseCase listDecisionTablesUseCase(
             TenantProperties tenantProperties, DmnDeploymentPort deploymentPort) {
         return new ListDecisionTablesUseCaseImpl(tenantProperties.id(), deploymentPort);
+    }
+
+    @Bean
+    EvaluateDecisionUseCase evaluateDecisionUseCase(
+            TenantProperties tenantProperties,
+            DmnDeploymentPort deploymentPort,
+            DmnEvaluationPort evaluationPort,
+            TenantAdminGuard tenantAdminGuard) {
+        return new EvaluateDecisionUseCaseImpl(
+                tenantProperties.id(), deploymentPort, evaluationPort, tenantAdminGuard);
+    }
+
+    @Bean
+    TestDecisionUseCase testDecisionUseCase(
+            EvaluateDecisionUseCase evaluateDecisionUseCase, TenantAdminGuard tenantAdminGuard) {
+        return new TestDecisionUseCaseImpl(evaluateDecisionUseCase, tenantAdminGuard);
+    }
+
+    @Bean
+    ListDecisionTableVersionsUseCase listDecisionTableVersionsUseCase(
+            TenantProperties tenantProperties, DmnDeploymentPort deploymentPort, TenantAdminGuard tenantAdminGuard) {
+        return new ListDecisionTableVersionsUseCaseImpl(tenantProperties.id(), deploymentPort, tenantAdminGuard);
+    }
+
+    @Bean
+    RedeployDecisionTableUseCase redeployDecisionTableUseCase(
+            TenantProperties tenantProperties,
+            DmnDeploymentPort deploymentPort,
+            DmnParserPort dmnParserPort,
+            TenantAdminGuard tenantAdminGuard) {
+        return new RedeployDecisionTableUseCaseImpl(
+                tenantProperties.id(), deploymentPort, dmnParserPort, tenantAdminGuard);
     }
 
     @Bean

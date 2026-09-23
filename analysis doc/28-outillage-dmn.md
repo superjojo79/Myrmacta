@@ -1,7 +1,8 @@
 # Outillage DMN — évaluation ad hoc, historique/rollback, jeux de tests
 
-> **Statut : Phase 3 (design) close (2026-09-23)** — feature `outillage-dmn`, TODO §66.
-> Requirements et design `status: reviewed`. Prochaine étape : Phase 4 (planning). Origine :
+> **Statut : Phase 5 (implémentation) livrée (2026-09-23)** — feature `outillage-dmn`, TODO §66.
+> Requirements, design et planning rédigés. Prochaine étape : Phase 6 à 9 (suivi, tests de
+> clôture, revue). Origine :
 > `ROADMAP.md` v1.1 (14/09/2026), items **1.1** (`evaluate_decision` MCP), **1.2**
 > (`TestDecisionTool`) et **1.3**/**5.1** (historique/rollback), auparavant « Produit, pas cadré ».
 > Regroupés en **un seul** document (pas trois) parce qu'ils touchent la **même** surface

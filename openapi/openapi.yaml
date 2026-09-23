@@ -1038,6 +1038,96 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/DecisionTableDeploymentResultResponse"
+  /api/dmn-decision-deployments/{decisionKey}/redeploy/{version}:
+    post:
+      tags:
+      - dmn-decision-tooling-controller
+      operationId: redeploy
+      parameters:
+      - name: decisionKey
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: version
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DecisionTableDeploymentResult"
+  /api/dmn-decision-deployments/test:
+    post:
+      tags:
+      - dmn-decision-tooling-controller
+      operationId: testCsv
+      parameters:
+      - name: decisionKey
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: version
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      requestBody:
+        content:
+          text/csv:
+            schema:
+              type: string
+          text/plain:
+            schema:
+              type: string
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestDecisionRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DecisionTestReport"
+  /api/dmn-decision-deployments/evaluate:
+    post:
+      tags:
+      - dmn-decision-tooling-controller
+      operationId: evaluate
+      parameters:
+      - name: decisionKey
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: version
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EvaluateDecisionRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DecisionEvaluationResult"
   /api/connectors:
     get:
       tags:
@@ -1959,6 +2049,26 @@ paths:
               schema:
                 type: string
                 format: byte
+  /api/dmn-decision-deployments/{decisionKey}/versions:
+    get:
+      tags:
+      - dmn-decision-tooling-controller
+      operationId: versions
+      parameters:
+      - name: decisionKey
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DecisionTableVersionInfo"
   /api/dmn-decision-deployments/info:
     get:
       tags:
@@ -2830,6 +2940,80 @@ components:
           format: int32
         deploymentId:
           type: string
+    DecisionTableDeploymentResult:
+      type: object
+      properties:
+        decisionKey:
+          type: string
+        deployedVersion:
+          type: integer
+          format: int32
+        deploymentId:
+          type: string
+    DecisionTestCaseResult:
+      type: object
+      properties:
+        index:
+          type: integer
+          format: int32
+        passed:
+          type: boolean
+        actualRows:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        failureMessage:
+          type: string
+    DecisionTestReport:
+      type: object
+      properties:
+        decisionKey:
+          type: string
+        version:
+          type: integer
+          format: int32
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/DecisionTestCaseResult"
+    DecisionTestCase:
+      type: object
+      properties:
+        inputs:
+          type: object
+          additionalProperties: {}
+        expectedRows:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+    TestDecisionRequest:
+      type: object
+      properties:
+        cases:
+          type: array
+          items:
+            $ref: "#/components/schemas/DecisionTestCase"
+    EvaluateDecisionRequest:
+      type: object
+      properties:
+        inputs:
+          type: object
+          additionalProperties: {}
+    DecisionEvaluationResult:
+      type: object
+      properties:
+        decisionKey:
+          type: string
+        version:
+          type: integer
+          format: int32
+        rows:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
     CreateConnectorRequest:
       type: object
       properties:
@@ -3746,6 +3930,19 @@ components:
         totalPages:
           type: integer
           format: int32
+    DecisionTableVersionInfo:
+      type: object
+      properties:
+        decisionKey:
+          type: string
+        version:
+          type: integer
+          format: int32
+        deploymentId:
+          type: string
+        deployedAt:
+          type: string
+          format: date-time
     DecisionTableDeploymentInfoResponse:
       type: object
       properties:

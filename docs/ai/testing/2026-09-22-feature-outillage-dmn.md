@@ -12,7 +12,7 @@ phase3: 2026-09-23
 # Testing Strategy — `outillage-dmn`
 
 Dérivé des requirements revus et du design Phase 3 (`status: reviewed`).
-Cases en `- [ ]` jusqu’à Phase 8.
+Cases cochées en Phase 5 (tests écrits et exécutés). La revue de clôture reste la Phase 8.
 
 ## Test Coverage Goals
 
@@ -28,66 +28,66 @@ Cases en `- [ ]` jusqu’à Phase 8.
 
 ### `EvaluateDecisionUseCaseImpl`
 
-- [ ] T-EVAL-1 : version omise → dernière version ; outputs corrects
-- [ ] T-EVAL-2 : version explicite → lignes de cette version, pas de la courante
-- [ ] T-EVAL-3 : clé inconnue → 404
-- [ ] T-EVAL-4 : version absente → 404
-- [ ] T-EVAL-5 : aucune règle → liste vide, pas une erreur
-- [ ] T-EVAL-6 : échec moteur → 400, distinct de la liste vide
+- [x] T-EVAL-1 : version omise → dernière version ; outputs corrects
+- [x] T-EVAL-2 : version explicite → lignes de cette version, pas de la courante
+- [x] T-EVAL-3 : clé inconnue → 404
+- [x] T-EVAL-4 : version absente → 404
+- [x] T-EVAL-5 : aucune règle → liste vide, pas une erreur
+- [x] T-EVAL-6 : échec moteur → 400, distinct de la liste vide
 
 ### `TestDecisionUseCaseImpl`
 
-- [ ] T-TEST-1 : tous les cas passent → rapport 100 % passed
-- [ ] T-TEST-2 : un cas échoue → passed=false + actualOutputs + message
-- [ ] T-TEST-3 : tableau `cases` vide → validation reject
-- [ ] T-TEST-4 : délégation à `EvaluateDecisionUseCase` (pas de second
+- [x] T-TEST-1 : tous les cas passent → rapport 100 % passed
+- [x] T-TEST-2 : un cas échoue → passed=false + actualOutputs + message
+- [x] T-TEST-3 : tableau `cases` vide → validation reject
+- [x] T-TEST-4 : délégation à `EvaluateDecisionUseCase` (pas de second
       moteur) — mock verify
-- [ ] T-TEST-5 : CSV `input.*` / `expected.*` → même rapport que le JSON équivalent
-- [ ] T-TEST-6 : CSV mal formé ou colonne hors préfixe → 400
-- [ ] T-TEST-7 : `1000` CSV égale un nombre réel ; `"1000"` JSON reste une chaîne
-- [ ] T-TEST-8 : deux lignes dans le désordre ou une ligne en trop → échec
-- [ ] T-TEST-9 : 101 cas → 400
+- [x] T-TEST-5 : CSV `input.*` / `expected.*` → même rapport que le JSON équivalent
+- [x] T-TEST-6 : CSV mal formé ou colonne hors préfixe → 400
+- [x] T-TEST-7 : `1000` CSV égale un nombre réel ; `"1000"` JSON reste une chaîne
+- [x] T-TEST-8 : deux lignes dans le désordre ou une ligne en trop → échec
+- [x] T-TEST-9 : 101 cas → 400
 
 ### `ListDecisionTableVersionsUseCaseImpl` /
 `RedeployDecisionTableUseCaseImpl`
 
-- [ ] T-HIST-1 : versions triées par numéro croissant, avec `deployedAt`
-- [ ] T-HIST-2 : clé inconnue → 404
-- [ ] T-RB-1 : redéploie le XML de N → nouvelle version courante
-- [ ] T-RB-2 : version N absente → 404
-- [ ] T-RB-3 : redéploiement repasse par l’allowlist ; XML refusé → pas de deploy
-- [ ] T-RB-4 : N déjà courante → 409, aucun nouveau déploiement
+- [x] T-HIST-1 : versions triées par numéro croissant, avec `deployedAt`
+- [x] T-HIST-2 : clé inconnue → 404
+- [x] T-RB-1 : redéploie le XML de N → nouvelle version courante
+- [x] T-RB-2 : version N absente → 404
+- [x] T-RB-3 : redéploiement repasse par l’allowlist ; XML refusé → pas de deploy
+- [x] T-RB-4 : N déjà courante → 409, aucun nouveau déploiement
 
 ### Adaptateurs / tools MCP / contrôleur
 
-- [ ] T-MCP-1 : `evaluate_decision` mappe args → use case
-- [ ] T-MCP-2 : `test_decision` / `list_decision_table_versions` /
+- [x] T-MCP-1 : `evaluate_decision` mappe args → use case
+- [x] T-MCP-2 : `test_decision` / `list_decision_table_versions` /
       `redeploy_decision_table`
-- [ ] T-API-1 : REST evaluate / test json / test csv / versions / redeploy — 200 / 400 / 403 / 404 / 409
-- [ ] T-API-2 : rôle `DOSSIER_MANAGER` → 403
-- [ ] T-API-3 : garde domaine absente sur un acteur non autorisé → rejet avant le port
+- [x] T-API-1 : REST evaluate / test json / test csv / versions / redeploy — 200 / 400 / 403 / 404 / 409
+- [x] T-API-2 : rôle `DOSSIER_MANAGER` → 403
+- [x] T-API-3 : garde domaine absente sur un acteur non autorisé → rejet avant le port
 
 ## Integration Tests
 
-- [ ] T-IT-1 : `DmnDecisionService` réel — evaluate après deploy
+- [x] T-IT-1 : `DmnDecisionService` réel — evaluate après deploy
       (fixture grille d’éligibilité ou table minimale)
-- [ ] T-IT-2 : deux versions déployées ; `version=1` diffère de la courante (`parentDeploymentId`)
-- [ ] T-IT-3 : list versions reflète les déploiements Flowable, ordre croissant
-- [ ] T-IT-4 : redeploy version 1 → version courante = max+1, XML identique à v1
-- [ ] T-IT-5 : XML historique hors allowlist courante → redéploiement refusé
-- [ ] T-IT-6 : aucune règle sur le moteur réel → liste vide
+- [x] T-IT-2 : deux versions déployées ; `version=1` diffère de la courante (`parentDeploymentId`)
+- [x] T-IT-3 : list versions reflète les déploiements Flowable, ordre croissant
+- [x] T-IT-4 : redeploy version 1 → version courante = max+1, XML identique à v1
+- [x] T-IT-5 : XML historique hors allowlist courante → redéploiement refusé
+- [x] T-IT-6 : aucune règle sur le moteur réel → liste vide
 
 ## End-to-End Tests (Playwright)
 
-- [ ] T-E2E-1 : zone JSON du Tester → liste de lignes affichée
-- [ ] T-E2E-2 : sélecteur de version envoyé en query `version`
-- [ ] T-E2E-3 : upload jeu JSON et CSV → rapport pass/fail affiché
-- [ ] T-E2E-4 : historique visible après au moins deux déploiements
+- [x] T-E2E-1 : zone JSON du Tester → liste de lignes affichée
+- [x] T-E2E-2 : sélecteur de version envoyé en query `version`
+- [x] T-E2E-3 : upload jeu JSON et CSV → rapport pass/fail affiché
+- [x] T-E2E-4 : historique visible après au moins deux déploiements
       (mocks réseau alignés sur les nouveaux contrats)
-- [ ] T-E2E-5 : confirmation « Redéployer la version N » ; annulation
+- [x] T-E2E-5 : confirmation « Redéployer la version N » ; annulation
       ne appelle pas l’API ; confirm appelle redeploy
-- [ ] T-E2E-6 : non-régression parcours brouillon / déployer existant
-- [ ] Mocks `frontend/e2e/**` mis à jour pour les nouveaux endpoints
+- [x] T-E2E-6 : non-régression parcours brouillon / déployer existant
+- [x] Mocks `frontend/e2e/**` mis à jour pour les nouveaux endpoints
 
 ## Test Data
 

@@ -2,10 +2,12 @@ package com.flowforge.infrastructure.flowable;
 
 import com.flowforge.domain.workflow.model.DecisionTableDeploymentInfo;
 import com.flowforge.domain.workflow.model.DecisionTableDeploymentResult;
+import com.flowforge.domain.workflow.model.DecisionTableVersionInfo;
 import com.flowforge.domain.workflow.port.out.DmnDeploymentPort;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -61,11 +63,58 @@ class FlowableDmnDeploymentAdapter implements DmnDeploymentPort {
         if (latest == null) {
             return Optional.empty();
         }
-        try (InputStream in = dmnRepositoryService.getResourceAsStream(latest.getDeploymentId(), latest.getResourceName())) {
+        return readXml(latest);
+    }
+
+    @Override
+    public List<DecisionTableVersionInfo> findAllVersions(String tenantId, String decisionKey) {
+        return dmnRepositoryService.createDecisionQuery()
+                .decisionKey(decisionKey)
+                .decisionTenantId(tenantId)
+                .orderByDecisionVersion()
+                .asc()
+                .list()
+                .stream()
+                .map(decision -> new DecisionTableVersionInfo(
+                        decisionKey,
+                        decision.getVersion(),
+                        decision.getDeploymentId(),
+                        deploymentTime(decision.getDeploymentId())))
+                .toList();
+    }
+
+    @Override
+    public Optional<byte[]> findDeployedXml(String tenantId, String decisionKey, int version) {
+        DmnDecision decision = dmnRepositoryService.createDecisionQuery()
+                .decisionKey(decisionKey)
+                .decisionVersion(version)
+                .decisionTenantId(tenantId)
+                .singleResult();
+        if (decision == null) {
+            return Optional.empty();
+        }
+        return readXml(decision);
+    }
+
+    private Optional<byte[]> readXml(DmnDecision decision) {
+        try (InputStream in = dmnRepositoryService.getResourceAsStream(decision.getDeploymentId(), decision.getResourceName())) {
+            if (in == null) {
+                return Optional.empty();
+            }
             return Optional.of(in.readAllBytes());
         } catch (IOException ex) {
             throw new UncheckedIOException(ex);
         }
+    }
+
+    private Instant deploymentTime(String deploymentId) {
+        DmnDeployment deployment = dmnRepositoryService.createDeploymentQuery()
+                .deploymentId(deploymentId)
+                .singleResult();
+        if (deployment == null || deployment.getDeploymentTime() == null) {
+            return Instant.EPOCH;
+        }
+        return deployment.getDeploymentTime().toInstant();
     }
 
     private DmnDecision latestDecision(String tenantId, String decisionKey) {

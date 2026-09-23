@@ -176,6 +176,37 @@ export interface DecisionTableDeploymentResult {
   deploymentId: string
 }
 
+export interface DecisionTableVersionInfo {
+  decisionKey: string
+  version: number
+  deploymentId: string
+  deployedAt: string
+}
+
+export interface DecisionEvaluationResult {
+  decisionKey: string
+  version: number
+  rows: Record<string, unknown>[]
+}
+
+export interface DecisionTestCase {
+  inputs: Record<string, unknown>
+  expectedRows: Record<string, unknown>[]
+}
+
+export interface DecisionTestCaseResult {
+  index: number
+  passed: boolean
+  actualRows: Record<string, unknown>[]
+  failureMessage: string | null
+}
+
+export interface DecisionTestReport {
+  decisionKey: string
+  version: number
+  results: DecisionTestCaseResult[]
+}
+
 export interface WorkflowTaskView {
   taskId: string
   name: string | null

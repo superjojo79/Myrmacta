@@ -522,8 +522,8 @@ Compose, pas `AttachmentScanPort`, pas de variable d’environnement.
 historique des versions Flowable + redéploiement d’une version
 antérieure (libellé « Redéployer la version N »).
 
-**Statut (2026-09-23) : Phase 3 (design) close** — branche
-`cursor/outillage-dmn-d49a`. Prochaine : Phase 4 (planning). Surfaces
+**Statut (2026-09-23) : Phase 5 (implémentation) livrée** — branche
+`cursor/outillage-dmn-d49a`. Phases 1 à 4 closes. Surfaces
 disjointes de §65 et du lot C.
 
 **Décisions Phase 1 :** D-DMN-EVAL-SURFACE = C ; D-DMN-EVAL-VERSION = B ;

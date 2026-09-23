@@ -4,9 +4,12 @@ import com.flowforge.domain.dossier.model.AccessDeniedException;
 import com.flowforge.domain.dossier.model.DossierNotFoundException;
 import com.flowforge.domain.dossier.model.DossierWorkflowLinkNotFoundException;
 import com.flowforge.domain.dossier.model.WorkflowAlreadyRunningException;
+import com.flowforge.domain.workflow.model.DecisionEvaluationException;
+import com.flowforge.domain.workflow.model.DecisionVersionAlreadyCurrentException;
 import com.flowforge.domain.workflow.model.InvalidBpmnException;
 import com.flowforge.domain.workflow.model.InvalidDmnException;
 import com.flowforge.domain.workflow.model.UnknownDecisionKeyException;
+import com.flowforge.domain.workflow.model.UnknownDecisionVersionException;
 import com.flowforge.domain.workflow.model.UnknownTaskQuestionSchemaException;
 import com.flowforge.domain.workflow.model.UnknownWorkflowKeyException;
 import com.flowforge.domain.workflow.model.WorkflowProcessInstanceMissingException;
@@ -44,10 +47,16 @@ class WorkflowExceptionHandler {
             WorkflowTaskNotFoundException.class,
             UnknownWorkflowKeyException.class,
             UnknownTaskQuestionSchemaException.class,
-            UnknownDecisionKeyException.class
+            UnknownDecisionKeyException.class,
+            UnknownDecisionVersionException.class
     })
     ProblemDetail handleWorkflowResourceNotFound(RuntimeException ex) {
         return problem(HttpStatus.NOT_FOUND, "Workflow resource not found", ex.getMessage());
+    }
+
+    @ExceptionHandler(DecisionVersionAlreadyCurrentException.class)
+    ProblemDetail handleVersionAlreadyCurrent(DecisionVersionAlreadyCurrentException ex) {
+        return problem(HttpStatus.CONFLICT, "Decision version already current", ex.getMessage());
     }
 
     @ExceptionHandler(WorkflowAlreadyRunningException.class)
@@ -74,7 +83,8 @@ class WorkflowExceptionHandler {
             IllegalArgumentException.class,
             HttpMessageNotReadableException.class,
             InvalidBpmnException.class,
-            InvalidDmnException.class
+            InvalidDmnException.class,
+            DecisionEvaluationException.class
     })
     ProblemDetail handleBadRequest(Exception ex) {
         return problem(HttpStatus.BAD_REQUEST, "Bad request", ex.getMessage());

@@ -30,7 +30,10 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
-- **PR [#132](https://github.com/superjojo79/FlowForge/pull/132)** — Alertes de franchissement SLA
+- **PR [#134](https://github.com/superjojo79/FlowForge/pull/134)** — Outillage DMN (TODO §66) :
+  évaluation d'une table déployée, jeux de tests JSON et CSV (100 cas maximum), historique des
+  versions et redéploiement (« Redéployer la version N », avec confirmation dans l'éditeur).
+  Disponible dans l'éditeur `/admin/dmn-editor`, l'API REST et quatre outils MCP.
   (e-mail, webhook, navigateur, une fois par palier), compteurs dead-letter et tâches ouvertes
   sans assigné sur `/rapports`, et export BI planifié (CSV par type et CSV SLA, rétention,
   masquage des champs sensibles). L'horloge de scan n'écrase plus les destinataires, un PUT
@@ -102,9 +105,6 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Documentation
 
-- **PR [#134](https://github.com/superjojo79/FlowForge/pull/134)** — Cadrage de
-  l’outillage DMN (TODO §66), Phases 1 à 3 : évaluation ad hoc, jeux de tests JSON/CSV,
-  historique et redéploiement de version. Pas de code applicatif.
 - **PR [#83](https://github.com/superjojo79/FlowForge/pull/83)** — Rattrapage de la documentation
   admin/utilisateur : trois écrans admin livrés mais jamais documentés (webhooks de notification,
   file de purge RGPD, observabilité), rétention par type de dossier, limite du connecteur

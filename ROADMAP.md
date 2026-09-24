@@ -95,7 +95,7 @@ Catalogue MCP **réel** (27) : `define_dossier_type`, `deploy_workflow`, `get_do
 **Priorité réelle :** moyenne (confort agent), **pas** critique.  
 **Cadrage :** `outillage-dmn` (TODO §67) — D-DMN-EVAL-SURFACE = MCP + REST + bouton Tester ; D-DMN-EVAL-VERSION = version optionnelle.
 
-Un agent peut déjà : déployer une table, déployer un process `serviceTask type=dmn`, démarrer le workflow. Il n’existe pas d’appel MCP *ad hoc* `decisionKey` + `inputs` → résultat. `DmnJuelSecuritySmokeIT` / `DmnServiceTaskEndToEndSmokeIT` prouvent `DmnDecisionService` côté serveur.
+Un agent peut déployer une table, déployer un process `serviceTask type=dmn`, démarrer le workflow, et appeler `evaluate_decision` avec `decisionKey`, `inputs` et une `version` optionnelle. `DmnJuelSecuritySmokeIT` / `DmnServiceTaskEndToEndSmokeIT` prouvent `DmnDecisionService` côté serveur.
 
 ### 1.2 TestDecisionTool
 

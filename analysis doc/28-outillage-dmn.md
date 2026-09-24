@@ -1,8 +1,8 @@
 # Outillage DMN — évaluation ad hoc, historique/rollback, jeux de tests
 
-> **Statut : Phases 1 à 9 livrées (2026-09-23)** — feature `outillage-dmn`, TODO §67, PR #134.
-> Évaluation, jeux de tests JSON/CSV et redéploiement sont implémentés. La case TODO reste
-> ouverte tant que la PR n’est pas mergée. Origine :
+> **Statut : livré (2026-09-24)** — feature `outillage-dmn`, TODO §67 clos,
+> [PR #134](https://github.com/superjojo79/FlowForge/pull/134) mergée (commit `97b429a`).
+> Évaluation, jeux de tests JSON/CSV et redéploiement sont sur `main`. Origine :
 > `ROADMAP.md` v1.1 (14/09/2026), items **1.1** (`evaluate_decision` MCP), **1.2**
 > (`TestDecisionTool`) et **1.3**/**5.1** (historique/rollback), auparavant « Produit, pas cadré ».
 > Regroupés en **un seul** document (pas trois) parce qu'ils touchent la **même** surface

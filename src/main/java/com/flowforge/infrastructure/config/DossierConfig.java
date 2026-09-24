@@ -302,7 +302,9 @@ public class DossierConfig {
             DossierRelationRepository dossierRelationRepository,
             DossierWorkflowLinkRepository dossierWorkflowLinkRepository,
             DocumentStoragePort documentStoragePort,
-            WorkflowEnginePort workflowEnginePort) {
+            WorkflowEnginePort workflowEnginePort,
+            com.flowforge.domain.workflow.port.out.TaskQuestionAnswerRepository taskQuestionAnswerRepository,
+            com.flowforge.domain.workflow.portal.port.out.PortalLinkRepository portalLinkRepository) {
         return new ProcessPurgeOutboxUseCaseImpl(
                 purgeOutboxRepository,
                 dossierRepository,
@@ -310,7 +312,9 @@ public class DossierConfig {
                 dossierRelationRepository,
                 dossierWorkflowLinkRepository,
                 documentStoragePort,
-                workflowEnginePort);
+                workflowEnginePort,
+                taskQuestionAnswerRepository,
+                portalLinkRepository);
     }
 
     @Bean

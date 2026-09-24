@@ -84,6 +84,13 @@ const DelegateExpression = textFieldEntry('flowable:delegateExpression', 'Delega
 const Expression = textFieldEntry('flowable:expression', 'Expression')
 const Scope = textFieldEntry('flowable:scope', 'Scope')
 const FormKey = textFieldEntry('flowable:formKey', 'Form key')
+// TODO §68 (portail-externe) D-PORTAL-BPMN-MARKER : présence de portalRecipient = tâche externe,
+// répondue par un tiers via le portail (formKey user-question:<schéma> exigé par le backend).
+const PortalRecipient = textFieldEntry(
+  'flowable:portalRecipient',
+  'Tiers externe — adresse (dossierField:<champ> ou variable:<nom>)',
+)
+const PortalLinkTtlDays = textFieldEntry('flowable:portalLinkTtlDays', 'Tiers externe — validité du lien (jours)')
 const Type = textFieldEntry('flowable:type', 'Type (ex. "dmn")')
 
 const FLOWABLE_NS_URI = 'http://flowable.org/bpmn'
@@ -231,7 +238,11 @@ function userTaskGroup() {
   return {
     id: 'flowable-user-task',
     label: 'Flowable',
-    entries: [{ id: 'flowable:formKey', component: FormKey, isEdited: isTextFieldEntryEdited }],
+    entries: [
+      { id: 'flowable:formKey', component: FormKey, isEdited: isTextFieldEntryEdited },
+      { id: 'flowable:portalRecipient', component: PortalRecipient, isEdited: isTextFieldEntryEdited },
+      { id: 'flowable:portalLinkTtlDays', component: PortalLinkTtlDays, isEdited: isTextFieldEntryEdited },
+    ],
   }
 }
 

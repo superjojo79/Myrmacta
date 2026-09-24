@@ -53,4 +53,12 @@ class SlaReportAccessTest {
         assertThatThrownBy(() -> SlaReportAccess.allowedTypeCodes(aclRepository, TENANT, user))
                 .isInstanceOf(AccessDeniedException.class);
     }
+
+    @Test
+    void external_isAlwaysDenied() {
+        // T-ACTOR-1 (TODO §68)
+        var ctx = AccessContext.external(java.util.UUID.randomUUID());
+        assertThatThrownBy(() -> SlaReportAccess.allowedTypeCodes(aclRepository, TENANT, ctx))
+                .isInstanceOf(AccessDeniedException.class);
+    }
 }

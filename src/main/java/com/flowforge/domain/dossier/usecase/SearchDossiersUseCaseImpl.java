@@ -43,6 +43,8 @@ public final class SearchDossiersUseCaseImpl implements SearchDossiersUseCase {
             case AccessContext.System ignored -> searchUnrestricted(tenantId, query);
             case AccessContext.Service ignored -> throw new AccessDeniedException(
                     "Service context cannot access dossiers");
+            case AccessContext.External ignored -> throw new AccessDeniedException(
+                    "External portal context cannot access dossiers");
             case AccessContext.User user -> searchForUser(tenantId, query, user);
         };
     }

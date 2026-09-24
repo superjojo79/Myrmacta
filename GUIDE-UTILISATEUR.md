@@ -30,6 +30,7 @@ le permet — l'affichage du menu est indicatif, le contrôle réel se fait côt
 | Admin | Webhooks (notification) | `/admin/notification-webhooks` | `TENANT_ADMIN` |
 | Admin | File purge | `/admin/purge-outbox` | `TENANT_ADMIN` |
 | Admin | Observabilité | `/admin/observabilite` | `TENANT_ADMIN` |
+| Public | Portail tiers externe | `/portal/` | **aucun compte** — lien personnel reçu par e-mail, si le portail est activé (§11) |
 
 Sans le rôle requis, l'entrée de menu correspondante n'apparaît simplement pas — pas besoin de la
 chercher.
@@ -530,6 +531,47 @@ au porteur de tâche avant complétion, **indépendamment des données du dossie
 - La réponse soumise n'est **jamais écrite dans le dossier** — elle part uniquement comme
   variable(s) de process, et reste consultable après coup (traçabilité interne, pas d'écran de
   consultation dédié dans cette itération).
+
+## 11. Tiers externes — portail (TODO §68)
+
+Quand un workflow contient une **tâche externe** (voir §3ter du
+[GUIDE-CONCEPTION-BPMN.md](GUIDE-CONCEPTION-BPMN.md)), FlowForge envoie automatiquement au tiers
+concerné (citoyen, fournisseur, partenaire… **sans compte**) un e-mail contenant un **lien
+personnel**. En l'ouvrant, le tiers voit la référence du dossier, l'intitulé et les consignes de la
+tâche, remplit le formulaire, dépose des pièces et envoie sa réponse — la tâche se termine et le
+workflow continue. Le tiers ne voit **rien d'autre** du dossier (ni ses champs, ni ses documents,
+ni les pièces déposées par d'autres).
+
+Le portail est **désactivé par défaut** : il doit être activé par l'exploitant
+(`APP_PORTAL_ENABLED`, voir [DEPLOIEMENT.md](DEPLOIEMENT.md#9-portail-externe-tiers-sans-compte)).
+
+**Panneau « Tiers externes »** sur le détail d'un dossier (visible dès qu'un lien existe) :
+
+| Colonne | Contenu |
+|---|---|
+| Destinataire | Adresse e-mail du tiers — **masquée** (`a***@exemple.fr`) si vous n'avez que le droit VIEW sur le type |
+| Statut | *Envoi en cours*, *En attente du tiers*, *Non envoyé* (avec la raison : aucune adresse, adresse invalide, formulaire introuvable, échec d'envoi), *Répondu*, *Expiré*, *Révoqué* |
+| Envoyé / Expire / Dernier accès | Dates d'envoi, d'expiration du lien et de dernière ouverture par le tiers |
+
+**Actions** (droit **EDIT** sur le type du dossier, ou `TENANT_ADMIN` / `WORKFLOW_ADMIN`) :
+
+- **Envoyer / Renvoyer** : émet un nouveau lien (l'ancien devient immédiatement inutilisable).
+  L'adresse est relue à chaque envoi — si le lien est *Non envoyé — aucune adresse*, corrigez le
+  champ du dossier puis cliquez **Envoyer**. Si l'adresse reste invalide, le panneau l'indique.
+- **Révoquer** : rend le lien inutilisable tout de suite (le tiers verra « Lien invalide ou expiré »).
+
+Un lien est valable **7 jours** par défaut (durée ajustable par tâche dans le BPMN, plafonnée par
+l'exploitant) et **réutilisable** jusqu'à l'envoi de la réponse. À son expiration, la tâche reste
+ouverte et les participants du workflow sont prévenus.
+
+**Notifications** (cloche) : *Réponse d'un tiers externe*, *Lien tiers expiré*, *Lien tiers non
+envoyé*. Les réponses du tiers sont tracées (auteur `portal:<identifiant du lien>`), ses pièces
+apparaissent dans les éléments du dossier.
+
+**Antivirus** : les pièces déposées par un tiers suivent la même politique que les dépôts
+internes — si l'antivirus n'est pas activé ou ne répond pas, le fichier est **accepté** (risque
+accepté, décision D-PORTAL-SCAN). L'exploitant doit activer ClamAV sur tout tenant qui active le
+portail.
 
 ## Pour aller plus loin
 

@@ -7,7 +7,6 @@ import com.flowforge.domain.dossier.model.DossierNotFoundException;
 import com.flowforge.domain.dossier.model.DossierType;
 import com.flowforge.domain.dossier.model.FieldDefinition;
 import com.flowforge.domain.dossier.model.DossierWorkflowLink;
-import com.flowforge.domain.dossier.model.FieldValidationError;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
 import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
@@ -16,6 +15,7 @@ import com.flowforge.domain.notification.model.NotificationEvent;
 import com.flowforge.domain.notification.port.in.SendNotificationUseCase;
 import com.flowforge.domain.workflow.TaskAssignmentGuard;
 import com.flowforge.domain.workflow.TaskQuestionFormKeys;
+import com.flowforge.domain.workflow.UserQuestionAnswers;
 import com.flowforge.domain.workflow.WorkflowVariables;
 import com.flowforge.domain.workflow.model.TaskQuestionAnswer;
 import com.flowforge.domain.workflow.model.TaskQuestionSchema;
@@ -26,7 +26,6 @@ import com.flowforge.domain.workflow.port.out.TaskQuestionSchemaRepository;
 import com.flowforge.domain.workflow.port.out.WorkflowEnginePort;
 import com.flowforge.domain.workflow.port.out.WorkflowParticipantPort;
 import java.time.Instant;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -41,10 +40,10 @@ public final class CompleteTaskUseCaseImpl implements CompleteTaskUseCase {
     private final DossierTypeRepository dossierTypeRepository;
     private final TaskQuestionSchemaRepository taskQuestionSchemaRepository;
     private final TaskQuestionAnswerRepository taskQuestionAnswerRepository;
+    private final UserQuestionAnswers userQuestionAnswers;
     private final DossierWorkflowLinkRepository linkRepository;
     private final WorkflowParticipantPort participantPort;
     private final SendNotificationUseCase sendNotificationUseCase;
-    private final DossierFieldValidator fieldValidator = new DossierFieldValidator();
 
     public CompleteTaskUseCaseImpl(
             String tenantId,
@@ -64,6 +63,7 @@ public final class CompleteTaskUseCaseImpl implements CompleteTaskUseCase {
                 Objects.requireNonNull(taskQuestionSchemaRepository, "taskQuestionSchemaRepository");
         this.taskQuestionAnswerRepository =
                 Objects.requireNonNull(taskQuestionAnswerRepository, "taskQuestionAnswerRepository");
+        this.userQuestionAnswers = new UserQuestionAnswers(this.tenantId, this.taskQuestionAnswerRepository);
         this.linkRepository = Objects.requireNonNull(linkRepository, "linkRepository");
         this.participantPort = Objects.requireNonNull(participantPort, "participantPort");
         this.sendNotificationUseCase = Objects.requireNonNull(sendNotificationUseCase, "sendNotificationUseCase");
@@ -168,30 +168,10 @@ public final class CompleteTaskUseCaseImpl implements CompleteTaskUseCase {
         TaskQuestionSchema schema = taskQuestionSchemaRepository.findByKey(tenantId, schemaKey)
                 .orElseThrow(() -> new UnknownTaskQuestionSchemaException("Unknown schema: " + schemaKey));
 
-        List<FieldValidationError> errors = fieldValidator.validate(schema.fields(), submitted, false);
-        if (!errors.isEmpty()) {
-            throw new IllegalArgumentException("Schema '" + schemaKey + "' validation failed: " + errors);
-        }
-
-        Map<String, Object> answers = new LinkedHashMap<>();
-        for (FieldDefinition field : schema.fields()) {
-            Object value = submitted.get(field.name());
-            if (value != null && !(value instanceof String s && s.isBlank())) {
-                answers.put(field.name(), value);
-            }
-        }
-
+        Map<String, Object> answers = userQuestionAnswers.validate(schema, submitted);
         String processInstanceId = workflowEnginePort.findProcessInstanceIdByTaskId(taskId).orElse(null);
-        taskQuestionAnswerRepository.save(new TaskQuestionAnswer(
-                UUID.randomUUID(),
-                tenantId,
-                UUID.fromString(dossierId),
-                taskId,
-                processInstanceId,
-                schemaKey,
-                answers,
-                actorUserId,
-                Instant.now()));
+        userQuestionAnswers.record(
+                schemaKey, UUID.fromString(dossierId), taskId, processInstanceId, answers, actorUserId, Instant.now());
 
         return answers;
     }

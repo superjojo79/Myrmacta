@@ -11,7 +11,7 @@
 > documentés comme une brique d'inbox), mais 100% éphémères côté client avant ce cycle.
 > Origine : `ROADMAP.md` v1.1 (14/09/2026), item **3.2**, classé « Produit, pas cadré ».
 > Traité **seul** (pas regroupé) : l'audience est l'utilisateur interne connecté au SPA, différente
-> du public externe visé par le portail (`26-portail-externe-signature.md`) et de la surface DMN
+> du public externe visé par le portail (`26-portail-externe.md`) et de la surface DMN
 > (`28-outillage-dmn.md`).
 
 ---

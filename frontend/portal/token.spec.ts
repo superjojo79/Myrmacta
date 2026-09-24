@@ -1,0 +1,26 @@
+import { describe, expect, it, vi } from 'vitest'
+import { takeTokenFromLocation } from './token'
+
+const TOKEN = 'a'.repeat(43)
+
+describe('takeTokenFromLocation (V-PORTAL-1)', () => {
+  it('reads the token from the fragment and removes it from the address bar', () => {
+    const replaceState = vi.fn()
+    const token = takeTokenFromLocation({ hash: `#${TOKEN}`, pathname: '/tenant-a/portal/', search: '' }, { replaceState })
+
+    expect(token).toBe(TOKEN)
+    expect(replaceState).toHaveBeenCalledWith(null, '', '/tenant-a/portal/')
+  })
+
+  it('returns null without touching history when there is no fragment', () => {
+    const replaceState = vi.fn()
+    expect(takeTokenFromLocation({ hash: '', pathname: '/portal/', search: '' }, { replaceState })).toBeNull()
+    expect(replaceState).not.toHaveBeenCalled()
+  })
+
+  it('still clears a malformed fragment but rejects it', () => {
+    const replaceState = vi.fn()
+    expect(takeTokenFromLocation({ hash: '#<script>', pathname: '/portal/', search: '' }, { replaceState })).toBeNull()
+    expect(replaceState).toHaveBeenCalled()
+  })
+})

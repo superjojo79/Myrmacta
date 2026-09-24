@@ -171,4 +171,14 @@ class DossierAccessPolicyTest {
             return entry == null ? List.of() : List.of(entry);
         }
     }
+
+    @Test
+    void external_alwaysDenied() {
+        // T-ACTOR-1 (TODO §68) : un tiers externe n'a aucun droit via la politique d'accès.
+        var ctx = AccessContext.external(java.util.UUID.randomUUID());
+        assertThatThrownBy(() -> policy.assertCanViewType(TENANT, "SINISTRE", ctx))
+                .isInstanceOf(AccessDeniedException.class);
+        assertThat(policy.canEdit(dossierOfType("SINISTRE"), ctx)).isFalse();
+        assertThat(policy.canViewType(TENANT, "SINISTRE", ctx)).isFalse();
+    }
 }

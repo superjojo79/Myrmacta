@@ -48,6 +48,8 @@ class ProcessPurgeOutboxUseCaseImplTest {
     private DocumentStoragePort storage;
     private WorkflowEnginePort engine;
     private ProcessPurgeOutboxUseCaseImpl useCase;
+    private com.flowforge.domain.workflow.port.out.TaskQuestionAnswerRepository answers;
+    private com.flowforge.domain.workflow.portal.port.out.PortalLinkRepository portalLinks;
 
     @BeforeEach
     void setUp() {
@@ -58,8 +60,10 @@ class ProcessPurgeOutboxUseCaseImplTest {
         links = mock(DossierWorkflowLinkRepository.class);
         storage = mock(DocumentStoragePort.class);
         engine = mock(WorkflowEnginePort.class);
+        answers = mock(com.flowforge.domain.workflow.port.out.TaskQuestionAnswerRepository.class);
+        portalLinks = mock(com.flowforge.domain.workflow.portal.port.out.PortalLinkRepository.class);
         useCase = new ProcessPurgeOutboxUseCaseImpl(
-                outbox, dossiers, elements, relations, links, storage, engine);
+                outbox, dossiers, elements, relations, links, storage, engine, answers, portalLinks);
         when(outbox.claim(any())).thenReturn(true);
         when(elements.findByDossierIdOrderByAddedAtAsc(any())).thenReturn(List.of());
         when(links.findByDossierIdOrderBySequence(any())).thenReturn(List.of());
@@ -341,5 +345,23 @@ class ProcessPurgeOutboxUseCaseImplTest {
                 null,
                 null,
                 "user");
+    }
+
+    @Test
+    void processBatch_alsoPurgesTaskAnswersAndPortalLinks_afterProcessInstances() {
+        // T-PURGE-1 (TODO §68 D-PORTAL-PURGE) — y compris l'écart préexistant task_question_answer.
+        UUID dossierId = UUID.randomUUID();
+        PurgeOutboxRecord record = pending(dossierId, PurgeOutboxOrigin.RETENTION, NOW.minusSeconds(60));
+        when(outbox.findRetryable(10)).thenReturn(List.of(record));
+        when(dossiers.findById(dossierId)).thenReturn(java.util.Optional.of(archived(dossierId)));
+        when(links.findByDossierIdOrderBySequence(dossierId)).thenReturn(List.of(link(dossierId, "pi-9")));
+
+        useCase.processBatch(NOW, 10, NO_OP);
+
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(engine, answers, portalLinks, dossiers);
+        order.verify(engine).deleteProcessInstanceBestEffort("pi-9");
+        order.verify(answers).deleteAllByDossierId(dossierId);
+        order.verify(portalLinks).deleteAllByDossierId(dossierId);
+        order.verify(dossiers).deleteById(dossierId);
     }
 }

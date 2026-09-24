@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://flowforge/test">
+
+  <!-- TODO §68 (portail-externe) : tâche externe — le tiers dont l'adresse est dans le champ
+       contactEmail du dossier répond au formulaire user-question "portal-smoke". -->
+  <process id="portalSmoke" name="Portal Smoke" isExecutable="true">
+    <startEvent id="portalSmokeStart"/>
+    <sequenceFlow id="portalSmokeFlow1" sourceRef="portalSmokeStart" targetRef="portalSmokeTask"/>
+    <userTask id="portalSmokeTask" name="Avis du tiers"
+              flowable:formKey="user-question:portal-smoke"
+              flowable:portalRecipient="dossierField:contactEmail">
+      <documentation>Merci de confirmer vos disponibilités et de joindre le devis signé.</documentation>
+    </userTask>
+    <sequenceFlow id="portalSmokeFlow2" sourceRef="portalSmokeTask" targetRef="portalSmokeEnd"/>
+    <endEvent id="portalSmokeEnd"/>
+  </process>
+</definitions>

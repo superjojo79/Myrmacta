@@ -498,4 +498,52 @@ class AddDossierElementUseCaseImplTest {
                 null,
                 null);
     }
+
+    @Test
+    void add_attachmentFromExternalPortalContext_skipsAclAndForcesExternalIdentity() {
+        // T-UPLOAD-1 (TODO §68) : l'autorisation a été faite par le use case portail ; addedBy est
+        // toujours l'identité externe, jamais la valeur fournie par l'appelant.
+        UUID dossierId = UUID.randomUUID();
+        UUID linkId = UUID.randomUUID();
+        when(dossierRepository.findById(dossierId)).thenReturn(Optional.of(dossier(dossierId)));
+        when(elementRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        DossierElement saved = useCase.add(
+                new AddDossierElementUseCase.AddCommand(
+                        dossierId, ElementType.ATTACHMENT, "Justificatif", "tenant_dev/att.pdf", Map.of(),
+                        "admin", null),
+                AccessContext.external(linkId));
+
+        assertThat(saved.addedBy()).isEqualTo("portal:" + linkId);
+        verify(accessPolicy, never()).assertCanEdit(any(Dossier.class), any(AccessContext.class));
+    }
+
+    @Test
+    void add_nonAttachmentFromExternalPortalContext_isDenied() {
+        UUID dossierId = UUID.randomUUID();
+        when(dossierRepository.findById(dossierId)).thenReturn(Optional.of(dossier(dossierId)));
+
+        assertThatThrownBy(() -> useCase.add(
+                        new AddDossierElementUseCase.AddCommand(
+                                dossierId, ElementType.NOTE, "Note", null, Map.of("text", "x"), "x", null),
+                        AccessContext.external(UUID.randomUUID())))
+                .isInstanceOf(AccessDeniedException.class);
+        verify(elementRepository, never()).save(any());
+    }
+
+    @Test
+    void add_attachmentFromExternalPortalContext_onClosedDossier_isRejected() {
+        // T-UPLOAD-4 (TODO §68)
+        UUID dossierId = UUID.randomUUID();
+        when(dossierRepository.findById(dossierId))
+                .thenReturn(Optional.of(dossier(dossierId, DossierStatus.CLOTURE)));
+
+        assertThatThrownBy(() -> useCase.add(
+                        new AddDossierElementUseCase.AddCommand(
+                                dossierId, ElementType.ATTACHMENT, "Justificatif", "tenant_dev/att.pdf", Map.of(),
+                                null, null),
+                        AccessContext.external(UUID.randomUUID())))
+                .isInstanceOf(DossierConflictException.class);
+        verify(elementRepository, never()).save(any());
+    }
 }

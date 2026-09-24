@@ -118,4 +118,30 @@ describe('NotificationDrawer', () => {
     expect(wrapper.text()).toContain('Older')
     expect(wrapper.find('[data-testid="notification-load-more"]').exists()).toBe(false)
   })
+
+  it('renders portal notifications with their title and body (V-INT-3, TODO §68)', async () => {
+    vi.mocked(notificationsApi.listNotifications).mockResolvedValue(
+      asPage([
+        {
+          id: 'p1',
+          payload: {
+            type: 'PORTAL_TASK_SUBMITTED',
+            title: "Réponse d'un tiers externe",
+            body: 'Le tiers (a***@example.org) a répondu à la tâche qui lui était adressée.',
+            dossierId: 'd1',
+          },
+          createdAt: '',
+          readAt: null,
+          read: false,
+        },
+      ]),
+    )
+    vi.mocked(notificationsApi.getUnreadCount).mockResolvedValue(1)
+    const wrapper = mountDrawer()
+    await flushPromises()
+    await wrapper.find('button').trigger('click')
+    await flushPromises()
+
+    expect(document.body.textContent + wrapper.text()).toContain("Réponse d'un tiers externe")
+  })
 })

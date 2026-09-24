@@ -11,6 +11,7 @@ import com.flowforge.infrastructure.tenant.TenantResolutionFilter;
 import com.flowforge.infrastructure.web.connector.WebhookBodySizeLimitFilter;
 import com.flowforge.infrastructure.web.document.DocumentGenerationBodySizeLimitFilter;
 import com.flowforge.infrastructure.web.security.CspReportBodySizeLimitFilter;
+import jakarta.servlet.DispatcherType;
 import java.nio.charset.StandardCharsets;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.boot.security.autoconfigure.actuate.web.servlet.EndpointRequest;
@@ -148,7 +149,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    @Order(3)
+    @Order(4)
     SecurityFilterChain webhookSecurityFilterChain(
             HttpSecurity http,
             ConnectorProperties connectorProperties,
@@ -156,7 +157,7 @@ public class SecurityConfig {
             throws Exception {
         // Auth métier (HMAC / token) réalisée dans les contrôleurs — pas d'OIDC ici.
         // D-CALLBACK-ROUTE : /api/callbacks/** doit être anonyme comme /api/webhooks/** --
-        // absent d'ici, il tombe dans le chaînage BFF (@Order(4), anyRequest().authenticated())
+        // absent d'ici, il tombe dans le chaînage BFF (@Order(5), anyRequest().authenticated())
         // et n'atteint jamais CallbackWebhookController (trouvé en revue de sécurité
         // adversariale post-merge, TODO §51).
         http.securityMatcher("/api/webhooks/**", "/api/callbacks/**")
@@ -172,8 +173,13 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /**
+     * {@code @Order(5)} : dernière chaîne, {@code anyRequest().authenticated()}. {@code @Order(3)} est
+     * la chaîne publique du portail externe (TODO §68, {@code PortalSecurityConfig}, présente
+     * seulement si le portail est activé).
+     */
     @Bean
-    @Order(4)
+    @Order(5)
     SecurityFilterChain bffSecurityFilterChain(
             HttpSecurity http,
             SecurityCookieProperties cookieProperties,
@@ -213,6 +219,13 @@ public class SecurityConfig {
                         .invalidateHttpSession(true)
                         .deleteCookies("JSESSIONID"))
                 .authorizeHttpRequests(auth -> auth
+                        // C1 (revue adversariale du portail) — le dispatch d'erreur vers /error
+                        // d'une requête déjà admise par une chaîne publique (portail, webhooks,
+                        // rejet du pare-feu HTTP) retombait ici : redirection vers la connexion
+                        // Keycloak et session créée pour un anonyme. Une requête anonyme vers une
+                        // route protégée est refusée au dispatch initial, avant tout /error.
+                        .dispatcherTypeMatchers(DispatcherType.ERROR)
+                        .permitAll()
                         .requestMatchers(
                                 "/v3/api-docs",
                                 "/v3/api-docs/**",

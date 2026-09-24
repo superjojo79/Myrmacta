@@ -354,6 +354,24 @@ Si `clamd` n'est pas joignable (profil non démarré, arrêté, etc.) alors que 
 l'upload reste **accepté** (fail-open assumé — voir [DEPLOIEMENT.md § ClamAV](DEPLOIEMENT.md#8-scan-antivirus-des-pièces-jointes-clamav)
 pour le détail de ce compromis) — ce n'est pas une panne bloquante en local.
 
+## 14. Portail externe — tiers sans compte (optionnel, TODO §68)
+
+Désactivé par défaut. Pour l'essayer en local, dans `.env` :
+
+```bash
+APP_PORTAL_ENABLED=true
+APP_PORTAL_PUBLIC_BASE_URL=http://localhost:8080
+```
+
+`APP_PORTAL_PUBLIC_BASE_URL` est **obligatoire** dès que le portail est activé (le backend refuse
+de démarrer sinon) : c'est l'URL publique écrite dans l'e-mail d'invitation, suivie de
+`/portal/#<jeton>`. L'invitation part par le canal SMTP (§6) — sans relais SMTP, le lien reste
+*Non envoyé* après 5 tentatives ; un outil de capture type Mailpit suffit pour voir l'e-mail en
+local. Déployer ensuite un BPMN contenant une tâche externe (GUIDE-CONCEPTION-BPMN §3ter).
+
+Variables facultatives : `APP_PORTAL_DEFAULT_LINK_TTL` (défaut `7d`), `APP_PORTAL_MAX_LINK_TTL`
+(plafond, défaut `30d`).
+
 ------
 
 ## Pour aller plus loin

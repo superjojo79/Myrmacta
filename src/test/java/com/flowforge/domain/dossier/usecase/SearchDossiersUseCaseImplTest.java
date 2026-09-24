@@ -206,4 +206,15 @@ class SearchDossiersUseCaseImplTest {
     private static DossierTypeAclEntry acl(String code, DossierPermission permission) {
         return new DossierTypeAclEntry(TENANT, code, "u1", permission);
     }
+
+    @Test
+    void externalContext_denied() {
+        // T-ACTOR-1 (TODO §68)
+        assertThatThrownBy(() -> useCase.search(
+                        TENANT,
+                        SearchDossiersQuery.of(null, null, null, 0, 20),
+                        AccessContext.external(java.util.UUID.randomUUID())))
+                .isInstanceOf(AccessDeniedException.class);
+        verify(searchPort, never()).search(any(), any(), anyInt(), anyInt());
+    }
 }

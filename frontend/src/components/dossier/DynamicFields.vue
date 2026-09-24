@@ -2,6 +2,7 @@
 import { computed, watch } from 'vue'
 import type { FieldDefinition } from '@/api/types'
 import SensitiveValue from './SensitiveValue.vue'
+import DynamicFieldInput from './DynamicFieldInput.vue'
 
 const props = withDefaults(
   defineProps<{
@@ -59,29 +60,12 @@ function setField(name: string, value: unknown) {
         <template v-if="readonly">
           <SensitiveValue :value="modelValue[field.name]" :sensitive="!!field.sensitive" />
         </template>
-        <template v-else-if="field.type === 'BOOLEAN'">
-          <input
-            type="checkbox"
-            :checked="Boolean(modelValue[field.name])"
-            @change="setField(field.name, ($event.target as HTMLInputElement).checked)"
-          />
-        </template>
-        <template v-else-if="field.type === 'SELECT'">
-          <select
-            :value="String(modelValue[field.name] ?? '')"
-            @change="setField(field.name, ($event.target as HTMLSelectElement).value)"
-          >
-            <option value="">—</option>
-            <option v-for="opt in field.options ?? []" :key="opt" :value="opt">{{ opt }}</option>
-          </select>
-        </template>
-        <template v-else>
-          <input
-            :type="field.type === 'NUMBER' ? 'number' : field.type === 'DATE' ? 'date' : 'text'"
-            :value="modelValue[field.name] == null ? '' : String(modelValue[field.name])"
-            @input="setField(field.name, ($event.target as HTMLInputElement).value)"
-          />
-        </template>
+        <DynamicFieldInput
+          v-else
+          :field="field"
+          :model-value="modelValue[field.name]"
+          @update:model-value="(value) => setField(field.name, value)"
+        />
       </label>
     </section>
   </div>

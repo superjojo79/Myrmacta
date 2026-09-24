@@ -17,6 +17,6 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"],
-  "exclude": ["src/**/*.spec.ts", "src/**/*.test.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue", "portal/**/*.ts", "portal/**/*.vue"],
+  "exclude": ["src/**/*.spec.ts", "src/**/*.test.ts", "portal/**/*.spec.ts"]
 }

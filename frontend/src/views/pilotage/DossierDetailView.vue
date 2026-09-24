@@ -18,6 +18,7 @@ import TaskList from '@/components/workflow/TaskList.vue'
 import HistoryTimeline from '@/components/workflow/HistoryTimeline.vue'
 import StartWorkflowDialog from '@/components/workflow/StartWorkflowDialog.vue'
 import DossierPurgeRequestButton from '@/components/dossier/DossierPurgeRequestButton.vue'
+import PortalLinksPanel from '@/components/dossier/PortalLinksPanel.vue'
 
 const route = useRoute()
 const store = useDossierStore()
@@ -245,6 +246,8 @@ async function confirmReassign() {
       @form-error="actionError = $event"
       @update:page="store.loadTasksPage($event)"
     />
+
+    <PortalLinksPanel :key="`${dossier.id}-${tasks.length}`" :dossier-id="dossier.id" />
 
     <div v-if="reassignTaskId" class="reassign">
       <label>

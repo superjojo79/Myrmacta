@@ -14,6 +14,8 @@ import com.flowforge.domain.dossier.port.out.DossierRelationRepository;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
 import com.flowforge.domain.dossier.port.out.PurgeOutboxRepository;
+import com.flowforge.domain.workflow.port.out.TaskQuestionAnswerRepository;
+import com.flowforge.domain.workflow.portal.port.out.PortalLinkRepository;
 import com.flowforge.domain.workflow.port.out.WorkflowEnginePort;
 import java.time.Instant;
 import java.util.Objects;
@@ -32,6 +34,8 @@ public final class ProcessPurgeOutboxUseCaseImpl implements ProcessPurgeOutboxUs
     private final DossierWorkflowLinkRepository workflowLinkRepository;
     private final DocumentStoragePort documentStoragePort;
     private final WorkflowEnginePort workflowEnginePort;
+    private final TaskQuestionAnswerRepository taskQuestionAnswerRepository;
+    private final PortalLinkRepository portalLinkRepository;
 
     public ProcessPurgeOutboxUseCaseImpl(
             PurgeOutboxRepository purgeOutboxRepository,
@@ -40,7 +44,9 @@ public final class ProcessPurgeOutboxUseCaseImpl implements ProcessPurgeOutboxUs
             DossierRelationRepository relationRepository,
             DossierWorkflowLinkRepository workflowLinkRepository,
             DocumentStoragePort documentStoragePort,
-            WorkflowEnginePort workflowEnginePort) {
+            WorkflowEnginePort workflowEnginePort,
+            TaskQuestionAnswerRepository taskQuestionAnswerRepository,
+            PortalLinkRepository portalLinkRepository) {
         this.purgeOutboxRepository = Objects.requireNonNull(purgeOutboxRepository, "purgeOutboxRepository");
         this.dossierRepository = Objects.requireNonNull(dossierRepository, "dossierRepository");
         this.elementRepository = Objects.requireNonNull(elementRepository, "elementRepository");
@@ -48,6 +54,9 @@ public final class ProcessPurgeOutboxUseCaseImpl implements ProcessPurgeOutboxUs
         this.workflowLinkRepository = Objects.requireNonNull(workflowLinkRepository, "workflowLinkRepository");
         this.documentStoragePort = Objects.requireNonNull(documentStoragePort, "documentStoragePort");
         this.workflowEnginePort = Objects.requireNonNull(workflowEnginePort, "workflowEnginePort");
+        this.taskQuestionAnswerRepository =
+                Objects.requireNonNull(taskQuestionAnswerRepository, "taskQuestionAnswerRepository");
+        this.portalLinkRepository = Objects.requireNonNull(portalLinkRepository, "portalLinkRepository");
     }
 
     @Override
@@ -117,6 +126,11 @@ public final class ProcessPurgeOutboxUseCaseImpl implements ProcessPurgeOutboxUs
         }
 
         elementRepository.deleteAllByDossierId(dossierId);
+        // TODO §68 D-PORTAL-PURGE : réponses user-question (écart préexistant) et liens portail
+        // (adresse e-mail du tiers) — après la suppression des instances de process, qui révoque
+        // déjà les liens vivants via le listener portail.
+        taskQuestionAnswerRepository.deleteAllByDossierId(dossierId);
+        portalLinkRepository.deleteAllByDossierId(dossierId);
         relationRepository.deleteRelationsTouching(dossierId);
         workflowLinkRepository.deleteAllByDossierId(dossierId);
         if (dossier.isPresent()) {

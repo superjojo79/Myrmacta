@@ -1,0 +1,128 @@
+databaseChangeLog:
+  - changeSet:
+      id: 025-portal-link
+      author: flowforge
+      comment: >-
+        TODO §68 (portail-externe) — lien d'accès d'un tiers externe à une tâche. token_hash =
+        SHA-256 hex du jeton (jamais le jeton en clair). recipient_email = donnée personnelle,
+        supprimée avec le dossier (D-PORTAL-PURGE).
+      changes:
+        - createTable:
+            tableName: portal_link
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_portal_link
+                    nullable: false
+              - column:
+                  name: tenant_id
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dossier_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: task_id
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: process_instance_id
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: schema_key
+                  type: varchar(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: recipient_email
+                  type: varchar(320)
+              - column:
+                  name: token_hash
+                  type: varchar(64)
+              - column:
+                  name: status
+                  type: varchar(16)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status_reason
+                  type: varchar(32)
+              - column:
+                  name: ttl_days
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expires_at
+                  type: timestamp with time zone
+              - column:
+                  name: send_attempts
+                  type: int
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: sent_at
+                  type: timestamp with time zone
+              - column:
+                  name: last_accessed_at
+                  type: timestamp with time zone
+              - column:
+                  name: completed_at
+                  type: timestamp with time zone
+              - column:
+                  name: revoked_at
+                  type: timestamp with time zone
+              - column:
+                  name: created_by
+                  type: varchar(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: revoked_by
+                  type: varchar(128)
+        - addUniqueConstraint:
+            tableName: portal_link
+            columnNames: token_hash
+            constraintName: ux_portal_link_token_hash
+        - createIndex:
+            tableName: portal_link
+            indexName: idx_portal_link_dossier
+            columns:
+              - column:
+                  name: dossier_id
+        - createIndex:
+            tableName: portal_link
+            indexName: idx_portal_link_status_expires
+            columns:
+              - column:
+                  name: status
+              - column:
+                  name: expires_at
+        - sqlFile:
+            path: sql/025-portal-link-live-index-postgresql.sql
+            relativeToChangelogFile: true
+            dbms: postgresql
+            splitStatements: false
+        - sqlFile:
+            path: sql/025-portal-link-live-index-h2.sql
+            relativeToChangelogFile: true
+            dbms: h2
+            splitStatements: true
+      rollback:
+        - dropTable:
+            tableName: portal_link

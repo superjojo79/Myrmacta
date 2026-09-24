@@ -18,7 +18,8 @@ import java.util.Objects;
  * what the frontend does with it. The key is removed rather than nulled because {@link Dossier}
  * stores an immutable map that rejects null values.
  *
- * <p>Only {@link AccessContext.User} is redacted. {@link AccessContext.System} callers (document
+ * <p>{@link AccessContext.User} (non-admin) and {@link AccessContext.External} (portal third
+ * party, TODO §68) are redacted. {@link AccessContext.System} callers (document
  * generation, connector triggers) need the real values to do their job and never render them to
  * a browser, so they pass through unchanged.
  */
@@ -31,7 +32,15 @@ public final class DossierFieldRedactor {
         Objects.requireNonNull(dossier, "dossier");
         Objects.requireNonNull(fieldDefinitions, "fieldDefinitions");
         Objects.requireNonNull(ctx, "ctx");
-        if (!(ctx instanceof AccessContext.User user) || user.hasRole("TENANT_ADMIN")) {
+        boolean privileged = switch (ctx) {
+            case AccessContext.User user -> user.hasRole("TENANT_ADMIN");
+            case AccessContext.System ignored -> true;
+            case AccessContext.Service ignored -> true;
+            // TODO §68 D-PORTAL-ACTOR : un tiers externe n'est jamais privilégié (défense en
+            // profondeur — le portail ne renvoie de toute façon aucun champ du dossier).
+            case AccessContext.External ignored -> false;
+        };
+        if (privileged) {
             return dossier;
         }
         Map<String, Object> redacted = null;

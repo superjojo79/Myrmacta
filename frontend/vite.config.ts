@@ -14,13 +14,14 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    include: ['src/**/*.{test,spec}.ts'],
+    include: ['src/**/*.{test,spec}.ts', 'portal/**/*.{test,spec}.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'json-summary'],
-      include: ['src/**/*.{ts,vue}'],
+      include: ['src/**/*.{ts,vue}', 'portal/**/*.{ts,vue}'],
       exclude: [
         'src/main.ts',
+        'portal/main.ts',
         'src/App.vue',
         'src/**/*.d.ts',
         'src/components/workflow/BpmnViewer.vue',

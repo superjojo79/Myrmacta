@@ -211,14 +211,16 @@ public class WorkflowConfig {
             WorkflowTypeConfigRepository configRepository,
             BpmnParserPort bpmnParserPort,
             BpmnDraftRepository bpmnDraftRepository,
-            DmnDeploymentPort dmnDeploymentPort) {
+            DmnDeploymentPort dmnDeploymentPort,
+            com.flowforge.domain.workflow.portal.port.out.PortalAvailabilityPort portalAvailabilityPort) {
         return new DeployBpmnProcessUseCaseImpl(
                 tenantProperties.id(),
                 deploymentPort,
                 configRepository,
                 bpmnParserPort,
                 bpmnDraftRepository,
-                dmnDeploymentPort);
+                dmnDeploymentPort,
+                portalAvailabilityPort);
     }
 
     @Bean

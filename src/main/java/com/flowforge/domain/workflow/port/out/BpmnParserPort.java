@@ -18,4 +18,12 @@ public interface BpmnParserPort {
      * shape of each such element); does not itself verify the keys are deployed.
      */
     Set<String> extractReferencedDecisionKeys(byte[] bpmnXml);
+
+    /**
+     * TODO §68 — tâches externes du document ({@code userTask} portant
+     * {@code flowable:portalRecipient}), déjà validées en forme par
+     * {@link #extractProcessDefinitionKey(byte[])}. Vide si aucune.
+     */
+    java.util.List<com.flowforge.domain.workflow.portal.model.PortalTaskDefinition> extractPortalTasks(
+            byte[] bpmnXml);
 }

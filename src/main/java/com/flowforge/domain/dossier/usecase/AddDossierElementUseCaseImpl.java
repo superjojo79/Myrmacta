@@ -7,6 +7,7 @@ import com.flowforge.domain.dossier.model.DossierConflictException;
 import com.flowforge.domain.dossier.model.DossierElement;
 import com.flowforge.domain.dossier.model.DossierNotFoundException;
 import com.flowforge.domain.dossier.model.DossierWorkflowLink;
+import com.flowforge.domain.dossier.model.AccessDeniedException;
 import com.flowforge.domain.dossier.model.ElementType;
 import com.flowforge.domain.dossier.model.InvalidDossierElementException;
 import com.flowforge.domain.dossier.port.in.AddDossierElementUseCase;
@@ -69,8 +70,21 @@ public final class AddDossierElementUseCaseImpl implements AddDossierElementUseC
         if (!tenantId.equals(dossier.tenantId())) {
             throw new DossierNotFoundException("Dossier not found: " + command.dossierId());
         }
-        accessPolicy.assertCanEdit(dossier, ctx);
-        if (ctx instanceof AccessContext.User && dossier.status().blocksMutation()) {
+        String addedBy = command.addedBy() == null || command.addedBy().isBlank() ? "system" : command.addedBy();
+        if (ctx instanceof AccessContext.External external) {
+            // TODO §68 D-PORTAL-ACTOR : l'autorisation a été faite par le use case portail (lien
+            // ACTIVE résolu → ce dossier-ci). Un tiers ne peut déposer qu'une pièce jointe, tracée
+            // à son identité externe quel que soit le addedBy fourni. Seul ..workflow.portal.. peut
+            // construire un AccessContext.External (ArchitectureRulesTest).
+            if (type != ElementType.ATTACHMENT) {
+                throw new AccessDeniedException("External portal context may only add attachments");
+            }
+            addedBy = external.actorId();
+        } else {
+            accessPolicy.assertCanEdit(dossier, ctx);
+        }
+        if ((ctx instanceof AccessContext.User || ctx instanceof AccessContext.External)
+                && dossier.status().blocksMutation()) {
             throw new DossierConflictException("Dossier elements cannot be added in status " + dossier.status());
         }
 
@@ -83,7 +97,7 @@ public final class AddDossierElementUseCaseImpl implements AddDossierElementUseC
                 command.label().trim(),
                 storageRef,
                 metadata,
-                command.addedBy() == null || command.addedBy().isBlank() ? "system" : command.addedBy(),
+                addedBy,
                 Instant.now(),
                 command.workflowStepId());
         DossierElement saved = elementRepository.save(element);

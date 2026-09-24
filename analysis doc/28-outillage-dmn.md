@@ -1,10 +1,11 @@
 # Outillage DMN — évaluation ad hoc, historique/rollback, jeux de tests
 
-> **Statut : première analyse fonctionnelle, aucune décision technique tranchée.** À affiner en
-> phase `dev-lifecycle` (requirements → design) avant tout code — voir « Points ouverts » en fin de
-> document. Origine : `ROADMAP.md` v1.1 (14/09/2026), items **1.1** (`evaluate_decision` MCP),
-> **1.2** (`TestDecisionTool`) et **1.3**/**5.1** (historique/rollback), tous classés « Produit, pas
-> cadré ». Regroupés en **un seul** document (pas trois) parce qu'ils touchent la **même** surface
+> **Statut : Phases 1 à 9 livrées (2026-09-23)** — feature `outillage-dmn`, TODO §67, PR #134.
+> Évaluation, jeux de tests JSON/CSV et redéploiement sont implémentés. La case TODO reste
+> ouverte tant que la PR n’est pas mergée. Origine :
+> `ROADMAP.md` v1.1 (14/09/2026), items **1.1** (`evaluate_decision` MCP), **1.2**
+> (`TestDecisionTool`) et **1.3**/**5.1** (historique/rollback), auparavant « Produit, pas cadré ».
+> Regroupés en **un seul** document (pas trois) parce qu'ils touchent la **même** surface
 > technique — le port `DmnDeploymentPort`/le versioning Flowable des tables de décision déjà livré
 > par `introduction-dmn` (TODO §61) — pas trois fonctionnalités indépendantes.
 
@@ -77,15 +78,17 @@ Les trois sous-items partagent :
 Découper en trois PR reviendrait à toucher le même fichier catalogue/port trois fois — même logique
 que la contrainte « ne pas découper B1 en 3 PRs » de la Vague B connecteurs.
 
-## 4. Points ouverts (Phase 1 `dev-lifecycle`)
+## 4. Points ouverts (Phase 1 `dev-lifecycle`) — **tranchés 2026-09-22**
 
-| ID | Question |
+| ID | Décision |
 |---|---|
-| D-DMN-EVAL-SURFACE | `evaluate_decision` est-il MCP uniquement, ou aussi exposé en REST pour un usage UI (ex. bouton « tester » dans `/admin/dmn-editor`) ? |
-| D-DMN-EVAL-VERSION | L'évaluation ad hoc cible-t-elle toujours la dernière version déployée, ou une version arbitraire (utile pour tester avant rollback) ? |
-| D-DMN-TEST-FORMAT | Format du jeu de tests (CSV aligné sur l'export dossiers existant, ou JSON) ? |
-| D-DMN-ROLLBACK-UX | Comment l'UI communique qu'un « rollback » est un redéploiement, pas une suppression, pour éviter toute confusion opérateur ? |
-| D-DMN-HISTORY-RETENTION | Le moteur garde tout indéfiniment — faut-il une politique de purge applicative des vieilles versions, ou s'appuyer tel quel sur Flowable ? |
+| D-DMN-EVAL-SURFACE | **C** — MCP + REST + bouton Tester |
+| D-DMN-EVAL-VERSION | **B** — version optionnelle, défaut = courante |
+| D-DMN-TEST-FORMAT | **C** — JSON **et** CSV |
+| D-DMN-ROLLBACK-UX | **A** — « Redéployer la version N » + confirmation |
+| D-DMN-HISTORY-RETENTION | **A** — aucune purge applicative dans ce cycle |
+| D-DMN-TEST-SURFACE | **C** — MCP + REST + upload UI JSON/CSV (Phase 2, 2026-09-22) |
 
-Aucune décision de priorité n'est prise par ce document — il documente uniquement l'écart réel
-constaté contre le code.
+Détail :
+[`docs/ai/requirements/2026-09-22-feature-outillage-dmn.md`](../docs/ai/requirements/2026-09-22-feature-outillage-dmn.md)
+(status **reviewed**, Phase 2 close).

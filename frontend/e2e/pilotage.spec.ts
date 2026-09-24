@@ -2134,6 +2134,139 @@ test('E2E-EDIT-DMN-2 deploy the current decision table via the confirmation flow
   expect(deployCalled).toBe(true)
 })
 
+const DMN_VERSIONS = [
+  { decisionKey: 'Decision_1', version: 1, deploymentId: 'dep-1', deployedAt: '2026-09-01T00:00:00Z' },
+  { decisionKey: 'Decision_1', version: 2, deploymentId: 'dep-2', deployedAt: '2026-09-02T00:00:00Z' },
+]
+
+test('E2E-DMN-TOOL-1 tester JSON shows the row list', async ({ page }) => {
+  await mockSession(page)
+  await page.route('**/api/dmn-decision-deployments/*/versions', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(DMN_VERSIONS) })
+  })
+  await page.route('**/api/dmn-decision-deployments/evaluate**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ decisionKey: 'Decision_1', version: 2, rows: [{ result: 'ok' }] }),
+    })
+  })
+  await openApp(page)
+  await openDmnEditor(page)
+  await page.getByRole('button', { name: 'Tester' }).click()
+  await page.getByLabel('Entrées JSON').fill('{"customerCat":"BRONZE"}')
+  await page.getByRole('button', { name: 'Évaluer' }).click()
+  await expect(page.locator('.dmn-editor__rows')).toContainText('ok')
+})
+
+test('E2E-DMN-TOOL-2 version selector is sent as a query parameter', async ({ page }) => {
+  await mockSession(page)
+  await page.route('**/api/dmn-decision-deployments/*/versions', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(DMN_VERSIONS) })
+  })
+  let evaluateUrl = ''
+  await page.route('**/api/dmn-decision-deployments/evaluate**', async (route) => {
+    evaluateUrl = route.request().url()
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ decisionKey: 'Decision_1', version: 1, rows: [{ result: 'old' }] }),
+    })
+  })
+  await openApp(page)
+  await openDmnEditor(page)
+  await page.getByRole('button', { name: 'Tester' }).click()
+  await page.locator('.dmn-editor__version').selectOption('1')
+  await page.getByRole('button', { name: 'Évaluer' }).click()
+  await expect.poll(() => evaluateUrl).toContain('version=1')
+})
+
+test('E2E-DMN-TOOL-3 JSON and CSV uploads show the pass/fail report', async ({ page }) => {
+  await mockSession(page)
+  await page.route('**/api/dmn-decision-deployments/*/versions', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(DMN_VERSIONS) })
+  })
+  await page.route('**/api/dmn-decision-deployments/test**', async (route) => {
+    const csv = (route.request().headers()['content-type'] ?? '').includes('text/csv')
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        decisionKey: 'Decision_1',
+        version: 2,
+        results: [{ index: 0, passed: !csv, actualRows: [], failureMessage: csv ? 'mismatch' : null }],
+      }),
+    })
+  })
+  await openApp(page)
+  await openDmnEditor(page)
+  await page.getByRole('button', { name: 'Jeu de tests' }).click()
+  await page.locator('.dmn-editor__suite-file').setInputFiles({
+    name: 'suite.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from('{"cases":[{"inputs":{},"expectedRows":[]}]}'),
+  })
+  await expect(page.getByText('Cas 1 : réussi')).toBeVisible()
+  await page.locator('.dmn-editor__suite-file').setInputFiles({
+    name: 'suite.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from('input.customerCat,expected.result\nBRONZE,ok\n'),
+  })
+  await expect(page.getByText(/Cas 1 : échec/)).toBeVisible()
+})
+
+test('E2E-DMN-TOOL-4 history lists versions after two deployments', async ({ page }) => {
+  await mockSession(page)
+  await page.route('**/api/dmn-decision-deployments/*/versions', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(DMN_VERSIONS) })
+  })
+  await openApp(page)
+  await openDmnEditor(page)
+  await page.getByRole('button', { name: 'Historique' }).click()
+  await expect(page.getByText('Version 1 — 2026-09-01T00:00:00Z')).toBeVisible()
+  await expect(page.getByText('Version 2 — 2026-09-02T00:00:00Z')).toBeVisible()
+})
+
+test('E2E-DMN-TOOL-5 redeploy confirmation can be cancelled', async ({ page }) => {
+  await mockSession(page)
+  await page.route('**/api/dmn-decision-deployments/*/versions', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(DMN_VERSIONS) })
+  })
+  let redeployed = 0
+  await page.route('**/api/dmn-decision-deployments/*/redeploy/*', async (route) => {
+    redeployed += 1
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ decisionKey: 'Decision_1', deployedVersion: 3, deploymentId: 'dep-3' }),
+    })
+  })
+  await openApp(page)
+  await openDmnEditor(page)
+  await page.getByRole('button', { name: 'Historique' }).click()
+  await page.getByRole('button', { name: 'Redéployer la version 1' }).click()
+  await page.getByRole('button', { name: 'Annuler' }).click()
+  expect(redeployed).toBe(0)
+  await page.getByRole('button', { name: 'Redéployer la version 1' }).click()
+  await page.getByRole('button', { name: 'Confirmer le redéploiement' }).click()
+  await expect(page.getByText('Redéployé : version 3')).toBeVisible()
+  expect(redeployed).toBe(1)
+})
+
+test('E2E-DMN-TOOL-6 opening the editor does not call tooling endpoints', async ({ page }) => {
+  await mockSession(page)
+  const tooling: string[] = []
+  page.on('request', (request) => {
+    const url = request.url()
+    if (url.includes('/versions') || url.includes('/evaluate') || url.includes('/redeploy') || url.includes('/test')) {
+      tooling.push(url)
+    }
+  })
+  await openApp(page)
+  await openDmnEditor(page)
+  expect(tooling).toEqual([])
+})
+
 test('E2E-SLA-1 reports page shows KPI cards for manager', async ({ page }) => {
   await mockSession(page, { roles: ['DOSSIER_MANAGER'] })
   await openApp(page)

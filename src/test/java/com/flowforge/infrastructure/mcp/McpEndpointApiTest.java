@@ -56,7 +56,11 @@ class McpEndpointApiTest {
             "generate_document",
             "deploy_decision_table",
             "list_decision_tables",
-            "get_decision_table");
+            "get_decision_table",
+            "evaluate_decision",
+            "test_decision",
+            "list_decision_table_versions",
+            "redeploy_decision_table");
 
     @Autowired
     private MockMvc mockMvc;

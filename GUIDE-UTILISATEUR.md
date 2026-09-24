@@ -241,6 +241,16 @@ principe que l'éditeur BPMN, avec l'éditeur `dmn-js` :
    décision, pas d'historique, pas d'autosave).
 4. Bouton **Déployer** — revalidation côté serveur (schéma DMN + allowlist JUEL sur chaque
    cellule, voir ci-dessous) puis déploiement ; supprime le brouillon de cette clé.
+5. Bouton **Tester** — zone JSON des entrées et sélecteur de version (défaut : dernière version
+   déployée). Le résultat est une liste de lignes, vide si aucune règle ne correspond. Seules les
+   tables déjà déployées sont évaluées, pas le brouillon.
+6. Bouton **Jeu de tests** — envoi d'un fichier `.json` (`cases` avec `inputs` et `expectedRows`)
+   ou `.csv` (colonnes `input.<nom>` et `expected.<nom>`, une ligne attendue par cas). Le rapport
+   indique pour chaque cas s'il est réussi ou en échec. Cent cas maximum.
+7. Bouton **Historique** — versions déployées, de la plus ancienne à la plus récente. **Redéployer
+   la version N** demande une confirmation. Annuler n'envoie rien. Confirmer republie le XML de
+   cette version comme nouvelle version courante, après la même allowlist JUEL. Ce n'est pas une
+   suppression : les versions précédentes restent dans l'historique du moteur.
 
 Une fois déployée, la table est invoquée depuis un diagramme BPMN via un `serviceTask
 flowable:type="dmn"` — voir le champ **Clé de la table de décision** dans le panel de propriétés

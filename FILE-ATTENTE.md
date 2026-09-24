@@ -154,9 +154,14 @@
 > ([PR #128](https://github.com/superjojo79/FlowForge/pull/128), TODO §63 clos,
 > CI `build` + `frontend` verte, merge `8415cee`, 2026-09-20).
 > **File produit désormais vide** (Vagues A et B + A4 livrés), hors lot C
-> (ClamAV, en cours sur une autre surface) et hors cycle
-> `enrichissement-reporting` démarré le 2026-09-21 (TODO §65) — surfaces
-> disjointes du lot C.
+> (ClamAV, en cours sur une autre surface) et hors cycles
+> `enrichissement-reporting` (TODO §65) et `outillage-dmn` démarré le
+> 2026-09-22 (TODO §67, Phase 1) — surfaces disjointes du lot C.
+>
+> **2026-09-22** — exception explicite : `outillage-dmn` (document 28,
+> roadmap 1.1 + 1.2 + 1.3/5.1) entre en Phase 1 `dev-lifecycle` (TODO §67).
+> Cinq décisions produit tranchées ; docs
+> `docs/ai/*/2026-09-22-feature-outillage-dmn.md`.
 >
 > **2026-09-14** — Revue de `ROADMAP.md` v1.1 : les 8 items marqués « Produit, pas
 > cadré » (portail externe, signature électronique, inbox notifications, alerting SLA, dashboard
@@ -495,15 +500,19 @@ Enchaînements interdits même après A :
 ### Backlog produit — analyses initiales disponibles (non cadré, pas de priorité tranchée)
 
 Écarts réels du `ROADMAP.md` § *Gaps réels hors Vague B*, catégorie « Produit, pas cadré ».
-**Ne pas démarrer avant B1** (et Vague C si ClamAV est en cours). Chaque lot reste soumis à
-Phase 1 → 9 complet — l'analyse initiale ne tranche aucune décision technique.
+Chaque lot reste soumis à Phase 1 → 9 complet — l'analyse initiale ne tranche aucune décision
+technique.
+
+**Encore non démarrés :**
 
 | Lot | Items `ROADMAP.md` | Analyse initiale |
 |---|---|---|
 | Portail externe & signature | 3.1 (Portail externe tokenisé) + 2.4 (Signature électronique) | [26-portail-externe-signature.md](analysis%20doc/26-portail-externe-signature.md) |
 | Inbox notifications | 3.2 (Notification Inbox persistée) | [27-notifications-inbox.md](analysis%20doc/27-notifications-inbox.md) |
-| Outillage DMN | 1.1 (`evaluate_decision` MCP) + 1.2 (`TestDecisionTool`) + 1.3/5.1 (historique/rollback) | [28-outillage-dmn.md](analysis%20doc/28-outillage-dmn.md) |
-| Enrichissement reporting | 5.2 (Alerting SLA) + 3.3 (Dashboard widgets) + 5.3 (Export BI) | [29-enrichissement-reporting.md](analysis%20doc/29-enrichissement-reporting.md) |
+
+**Cycles démarrés depuis ces analyses :**
+- `enrichissement-reporting` (doc 29, items 5.2 + 3.3 + 5.3) — TODO §65, PR #132
+- `outillage-dmn` (doc 28, items 1.1 + 1.2 + 1.3/5.1) — TODO §67, Phases 1 à 9, PR #134
 
 ### Ne pas lancer (décision V1 contraire ou stack absente)
 
@@ -529,6 +538,13 @@ assigné, export BI planifié), en revue dans la PR #132. Décisions Phase 1 dan
 Ne pas le relancer en parallèle. Le lot C (ClamAV) est livré
 ([PR #131](https://github.com/superjojo79/FlowForge/pull/131)) et ne partage
 pas ces fichiers.
+
+**Cycle en cours (2026-09-23) :** `outillage-dmn` (TODO §67) — Phases 1 à 9
+livrées (requirements, design, planning, implémentation, tests et revue
+des trois écarts 1.1 + 1.2 + 1.3/5.1), en revue dans la PR #134. Analyse
+[28-outillage-dmn.md](analysis%20doc/28-outillage-dmn.md), docs
+`docs/ai/*/2026-09-22-feature-outillage-dmn.md`. Surfaces disjointes de
+§65 et du lot C.
 
 Détail inventaire : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §4 / §6.
 
@@ -703,3 +719,6 @@ Vérifié : `./mvnw verify` 1136 tests (0 échec), Jacoco OK ; frontend `npm run
 | 2026-09-20 | `headers-http-globaux` (lot A4) rebase docs sur main (B1) | Conflits PR #128 × main après merge PR #129 : TODO A4 renommé **§63** (B1 a clos §62), FILE-ATTENTE / DEFERRED conservent A4 en revue + B1 livré, E2E HDR + batch-import conservés. |
 | 2026-09-20 | `headers-http-globaux` (lot A4) **mergée sur `main`** | [PR #128](https://github.com/superjojo79/FlowForge/pull/128) mergée (merge `8415cee`) après CI verte (`build` + `frontend`). TODO §63 clos. File produit vide. |
 | 2026-09-21 | `enrichissement-reporting` Phases 1–5 | Quatorze décisions produit, une par une. Trois volets implémentés (alerting, widgets, export BI). PR #132. Surfaces disjointes du lot C. |
+| 2026-09-22 | `outillage-dmn` Phase 1 (requirements) | TODO §67. Cinq décisions produit (EVAL-SURFACE, EVAL-VERSION, TEST-FORMAT, ROLLBACK-UX, HISTORY-RETENTION). Docs `2026-09-22-feature-outillage-dmn`. Analyse 28 + ROADMAP 1.1/1.2/1.3 mis à jour « En cadrage ». |
+| 2026-09-22 | `outillage-dmn` Phase 2 (revue requirements) | Écart trouvé : D-DMN-TEST-SURFACE = C (MCP+REST+upload UI). Requirements `status=reviewed`. [PR #134](https://github.com/superjojo79/FlowForge/pull/134). Prochain : Phase 3 design. |
+| 2026-09-23 | `outillage-dmn` Phase 3 (design) | 17 décisions techniques. Design `status=reviewed`. Évaluation versionnée via `parentDeploymentId`. Prochain : Phase 4 planning. |

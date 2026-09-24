@@ -3,8 +3,12 @@ import type {
   ActivityHistoryEntry,
   BpmnDeploymentResult,
   BpmnDraft,
+  DecisionEvaluationResult,
   DecisionTableDeploymentInfo,
   DecisionTableDeploymentResult,
+  DecisionTableVersionInfo,
+  DecisionTestCase,
+  DecisionTestReport,
   DmnDraft,
   ProcessDeploymentInfo,
   WorkflowDiagram,
@@ -150,6 +154,67 @@ export async function getDmnDraft(decisionKey: string): Promise<DmnDraft | null>
 
 export async function saveDmnDraft(decisionKey: string, xml: string): Promise<DmnDraft> {
   const { data } = await axios.put<DmnDraft>(`/api/dmn-decision-drafts/${decisionKey}`, { xml })
+  return data
+}
+
+export async function listDecisionTableVersions(
+  decisionKey: string,
+): Promise<DecisionTableVersionInfo[]> {
+  const { data } = await axios.get<DecisionTableVersionInfo[]>(
+    `/api/dmn-decision-deployments/${encodeURIComponent(decisionKey)}/versions`,
+  )
+  return data
+}
+
+export async function evaluateDecision(
+  decisionKey: string,
+  inputs: Record<string, unknown>,
+  version: number | null,
+): Promise<DecisionEvaluationResult> {
+  const { data } = await axios.post<DecisionEvaluationResult>(
+    '/api/dmn-decision-deployments/evaluate',
+    { inputs },
+    { params: version == null ? { decisionKey } : { decisionKey, version } },
+  )
+  return data
+}
+
+export async function testDecisionJson(
+  decisionKey: string,
+  cases: DecisionTestCase[],
+  version: number | null,
+): Promise<DecisionTestReport> {
+  const { data } = await axios.post<DecisionTestReport>(
+    '/api/dmn-decision-deployments/test',
+    { cases },
+    { params: version == null ? { decisionKey } : { decisionKey, version } },
+  )
+  return data
+}
+
+export async function testDecisionCsv(
+  decisionKey: string,
+  csv: string,
+  version: number | null,
+): Promise<DecisionTestReport> {
+  const { data } = await axios.post<DecisionTestReport>(
+    '/api/dmn-decision-deployments/test',
+    csv,
+    {
+      params: version == null ? { decisionKey } : { decisionKey, version },
+      headers: { 'Content-Type': 'text/csv' },
+    },
+  )
+  return data
+}
+
+export async function redeployDecisionTable(
+  decisionKey: string,
+  version: number,
+): Promise<DecisionTableDeploymentResult> {
+  const { data } = await axios.post<DecisionTableDeploymentResult>(
+    `/api/dmn-decision-deployments/${encodeURIComponent(decisionKey)}/redeploy/${version}`,
+  )
   return data
 }
 

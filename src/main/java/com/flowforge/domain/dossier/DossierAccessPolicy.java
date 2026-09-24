@@ -53,6 +53,9 @@ public final class DossierAccessPolicy {
         if (ctx instanceof AccessContext.Service) {
             throw new AccessDeniedException("Service context cannot access dossiers");
         }
+        if (ctx instanceof AccessContext.External) {
+            throw new AccessDeniedException("External portal context cannot access dossiers");
+        }
         if (!hasPermission(tenantId, dossierTypeCode, ctx, required)) {
             throw new AccessDeniedException("Access denied for permission " + required);
         }
@@ -66,6 +69,9 @@ public final class DossierAccessPolicy {
         return switch (ctx) {
             case AccessContext.System ignored -> true;
             case AccessContext.Service ignored -> false;
+            // TODO §68 D-PORTAL-ACTOR : un tiers externe n'a aucun droit sur les dossiers ; le seul
+            // chemin qui l'accepte (AddDossierElementUseCaseImpl, pièce jointe) a déjà validé le lien.
+            case AccessContext.External ignored -> false;
             case AccessContext.User user -> {
                 if (user.hasRole("TENANT_ADMIN") || user.hasRole("WORKFLOW_ADMIN") || user.hasRole("API_SERVICE")) {
                     yield true;

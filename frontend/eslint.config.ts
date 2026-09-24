@@ -12,4 +12,22 @@ export default defineConfigWithVueTs(
   },
   pluginVue.configs['flat/essential'],
   vueTsConfigs.recommended,
+  {
+    // TODO §68 (portail-externe) V-PORTAL-5 — la page publique ne doit embarquer ni le store
+    // d'authentification, ni le routeur, ni le client axios (XSRF/cookies BFF) du SPA interne.
+    name: 'app/portal-isolation',
+    files: ['portal/**/*.{ts,vue}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            { group: ['@/stores/*', '@/app/*', '@/views/*'], message: 'Portail public : pas de code du SPA interne.' },
+            { group: ['@/api/http', 'axios', 'vue-router', 'pinia'], message: 'Portail public : fetch sans cookies uniquement.' },
+            { group: ['@/components/dossier/SensitiveValue.vue', '@/components/dossier/DynamicFields.vue'], message: 'Dépend du store d’authentification — utiliser DynamicFieldInput.vue.' },
+          ],
+        },
+      ],
+    },
+  },
 )

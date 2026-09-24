@@ -25,6 +25,8 @@ public final class SlaReportAccess {
             case AccessContext.System ignored -> null;
             case AccessContext.Service ignored -> throw new AccessDeniedException(
                     "Service context cannot access SLA reports");
+            case AccessContext.External ignored -> throw new AccessDeniedException(
+                    "External portal context cannot access SLA reports");
             case AccessContext.User user -> {
                 if (user.hasRole("TENANT_ADMIN") || user.hasRole("WORKFLOW_ADMIN") || user.hasRole("API_SERVICE")) {
                     yield null;

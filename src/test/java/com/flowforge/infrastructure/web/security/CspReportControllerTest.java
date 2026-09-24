@@ -7,6 +7,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.flowforge.infrastructure.config.SecurityHeadersProperties;
+import com.flowforge.infrastructure.security.ClientIpResolver;
 import com.flowforge.infrastructure.security.SecurityHeadersCustomizer;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -21,7 +22,7 @@ class CspReportControllerTest {
 
     @Test
     void legacyReportUriShape_returnsNoContent() {
-        var controller = new CspReportController(allowingRateLimiter(), PROPERTIES);
+        var controller = new CspReportController(allowingRateLimiter(), PROPERTIES, new ClientIpResolver(PROPERTIES));
         String body = "{\"csp-report\":{\"document-uri\":\"https://app.example/x\","
                 + "\"violated-directive\":\"script-src\",\"blocked-uri\":\"https://evil.example/x.js\"}}";
 
@@ -32,7 +33,7 @@ class CspReportControllerTest {
 
     @Test
     void modernReportToShape_returnsNoContent() {
-        var controller = new CspReportController(allowingRateLimiter(), PROPERTIES);
+        var controller = new CspReportController(allowingRateLimiter(), PROPERTIES, new ClientIpResolver(PROPERTIES));
         String body = "[{\"type\":\"csp-violation\",\"body\":{\"documentURL\":\"https://app.example/x\","
                 + "\"effectiveDirective\":\"script-src\",\"blockedURL\":\"https://evil.example/x.js\"}}]";
 
@@ -43,7 +44,7 @@ class CspReportControllerTest {
 
     @Test
     void malformedBody_stillReturnsNoContent() {
-        var controller = new CspReportController(allowingRateLimiter(), PROPERTIES);
+        var controller = new CspReportController(allowingRateLimiter(), PROPERTIES, new ClientIpResolver(PROPERTIES));
 
         var response = controller.receive(request(), "not-json{{{".getBytes(StandardCharsets.UTF_8));
 
@@ -52,7 +53,7 @@ class CspReportControllerTest {
 
     @Test
     void emptyBody_returnsNoContent() {
-        var controller = new CspReportController(allowingRateLimiter(), PROPERTIES);
+        var controller = new CspReportController(allowingRateLimiter(), PROPERTIES, new ClientIpResolver(PROPERTIES));
 
         var response = controller.receive(request(), null);
 
@@ -63,7 +64,7 @@ class CspReportControllerTest {
     void rateLimitExceeded_returnsTooManyRequests() {
         CspReportRateLimiter rateLimiter = mock(CspReportRateLimiter.class);
         when(rateLimiter.tryConsume(any(), anyInt())).thenReturn(false);
-        var controller = new CspReportController(rateLimiter, PROPERTIES);
+        var controller = new CspReportController(rateLimiter, PROPERTIES, new ClientIpResolver(PROPERTIES));
 
         var response = controller.receive(request(), null);
 

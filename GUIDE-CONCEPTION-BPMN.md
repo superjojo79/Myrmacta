@@ -262,6 +262,39 @@ cours le référence encore dégrade comme un `formKey` inconnu (bouton « Compl
 
 ---
 
+## 3ter. Tâche externe — réponse d'un tiers sans compte (portail, TODO §68)
+
+Un `userTask` devient une **tâche externe** quand il porte `flowable:portalRecipient` : à sa
+création, FlowForge envoie au tiers un lien personnel vers une page publique où il remplit un
+formulaire `user-question` (§3bis) et dépose des pièces. Sa réponse complète la tâche et produit
+les mêmes variables de process qu'une complétion interne.
+
+```xml
+<userTask id="avisTiers" name="Avis du fournisseur"
+          flowable:formKey="user-question:avis-fournisseur"
+          flowable:portalRecipient="dossierField:emailFournisseur"
+          flowable:portalLinkTtlDays="10">
+  <documentation>Merci de confirmer le délai et de joindre le devis signé.</documentation>
+</userTask>
+```
+
+| Attribut | Règle |
+|---|---|
+| `flowable:portalRecipient` | **Obligatoire** — `dossierField:<champ>` (champ du dossier) ou `variable:<nom>` (variable de process), nom simple sans point ni expression |
+| `flowable:formKey` | **Obligatoire** — `user-question:<schemaKey>` uniquement (le tiers n'écrit jamais dans les champs du dossier) |
+| `flowable:portalLinkTtlDays` | Facultatif — durée de validité en jours (1 à 365, et au plus le plafond de l'instance) ; défaut 7 |
+| `documentation` | Facultatif — consignes affichées au tiers (texte simple, littéral) |
+| `assignee` / `candidateUsers` / `candidateGroups` | **Interdits** — une tâche externe n'est pas assignée en interne (elle reste complétable par un admin) |
+
+Le déploiement est **refusé** tant que le portail n'est pas activé sur l'instance
+(`APP_PORTAL_ENABLED`). Adresse absente ou invalide à la création de la tâche : **aucun incident de
+process** — le lien est marqué *Non envoyé*, les participants sont prévenus et l'instructeur le
+renvoie après correction (GUIDE-UTILISATEUR §11). Prévoir un **timer boundary** si le process doit
+réagir à une absence de réponse (le lien expiré laisse la tâche ouverte).
+
+Les attributs se saisissent dans l'éditeur BPMN (panneau *Flowable* d'un `userTask` :
+*Tiers externe — adresse*, *Tiers externe — validité du lien*).
+
 ## 4. Instancier / appeler un service externe
 
 Le mécanisme est le **système de connecteurs** ([06-connecteurs.md](analysis%20doc/06-connecteurs.md)), jamais

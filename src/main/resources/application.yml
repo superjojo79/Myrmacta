@@ -120,6 +120,8 @@ server:
     # statique du tenant (DEPLOIEMENT.md §3).
     context-path: /${app.tenant.id}
     session:
+      # C1 (revue adversariale du portail) : jamais de ;jsessionid dans une URL.
+      tracking-modes: cookie
       cookie:
         same-site: lax
         secure: ${app.security.cookie.secure:true}
@@ -213,6 +215,24 @@ app:
     processing-timeout: 2h
   openapi:
     enabled: false
+  portal:
+    # TODO §68 (portail-externe) — opt-in (D-PORTAL-ACTIVATION). Activé, APP_PORTAL_PUBLIC_BASE_URL
+    # est obligatoire (URL publique de l'instance derrière le reverse-proxy, chemin du tenant
+    # compris) — démarrage refusé sinon. Voir DEPLOIEMENT.md § Portail externe.
+    enabled: ${APP_PORTAL_ENABLED:false}
+    public-base-url: ${APP_PORTAL_PUBLIC_BASE_URL:}
+    default-link-ttl: ${APP_PORTAL_DEFAULT_LINK_TTL:7d}
+    max-link-ttl: ${APP_PORTAL_MAX_LINK_TTL:30d}
+    send:
+      poll-delay: 10s
+      max-attempts: 5
+      batch-size: 50
+    expiry:
+      poll-delay: 15m
+      batch-size: 50
+    rate-limit:
+      per-ip-per-minute: 30
+    max-body-bytes: 65536
   dossier:
     attachment:
       # Taille max : app.storage n'a pas de borne dédiée, la seule limite est

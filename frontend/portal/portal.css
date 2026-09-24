@@ -1,0 +1,116 @@
+:root {
+  --portal-accent: #5980a6;
+  --portal-text: #1d2d3d;
+  --portal-surface: #eef1f4;
+  --portal-error: #b3261e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: var(--portal-text);
+  background: var(--portal-surface);
+}
+
+.portal {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.portal__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 0.5rem 0 1rem;
+}
+
+.portal__brand {
+  font-weight: 700;
+  color: var(--portal-accent);
+}
+
+.portal__card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.portal__card h1 {
+  font-size: 1.3rem;
+  margin-top: 0;
+}
+
+.portal__card h2 {
+  font-size: 1.1rem;
+  margin-top: 0;
+}
+
+.portal__instructions {
+  white-space: pre-line;
+}
+
+.portal__muted,
+.portal__expiry {
+  color: #5b6773;
+}
+
+.portal-form {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.portal-form__field,
+.portal__upload {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 0.9rem;
+}
+
+.portal input[type='text'],
+.portal input[type='number'],
+.portal input[type='date'],
+.portal select {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid #c5c5c8;
+  border-radius: 4px;
+  font: inherit;
+}
+
+.portal__primary,
+.portal__secondary {
+  font: inherit;
+  border-radius: 4px;
+  padding: 0.6rem 1rem;
+  cursor: pointer;
+  border: 1px solid var(--portal-accent);
+}
+
+.portal__primary {
+  background: var(--portal-accent);
+  color: #fff;
+  width: 100%;
+}
+
+.portal__secondary {
+  background: #fff;
+  color: var(--portal-accent);
+  justify-self: start;
+}
+
+.portal__primary:disabled,
+.portal__secondary:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.portal__error {
+  color: var(--portal-error);
+}

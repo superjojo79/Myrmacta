@@ -1,5 +1,10 @@
 package com.flowforge.domain.workflow.usecase;
 
+import com.flowforge.domain.workflow.model.InvalidBpmnException;
+import com.flowforge.domain.workflow.portal.model.PortalTaskDefinition;
+import com.flowforge.domain.workflow.portal.port.out.PortalAvailabilityPort;
+import java.util.List;
+
 import com.flowforge.domain.workflow.model.BpmnDeploymentResult;
 import com.flowforge.domain.workflow.model.UnknownDecisionKeyException;
 import com.flowforge.domain.workflow.model.UnknownWorkflowKeyException;
@@ -19,6 +24,7 @@ public final class DeployBpmnProcessUseCaseImpl implements DeployBpmnProcessUseC
     private final BpmnParserPort bpmnParserPort;
     private final BpmnDraftRepository draftRepository;
     private final DmnDeploymentPort dmnDeploymentPort;
+    private final PortalAvailabilityPort portalAvailability;
 
     public DeployBpmnProcessUseCaseImpl(
             String tenantId,
@@ -26,13 +32,15 @@ public final class DeployBpmnProcessUseCaseImpl implements DeployBpmnProcessUseC
             WorkflowTypeConfigRepository configRepository,
             BpmnParserPort bpmnParserPort,
             BpmnDraftRepository draftRepository,
-            DmnDeploymentPort dmnDeploymentPort) {
+            DmnDeploymentPort dmnDeploymentPort,
+            PortalAvailabilityPort portalAvailability) {
         this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
         this.deploymentPort = Objects.requireNonNull(deploymentPort, "deploymentPort");
         this.configRepository = Objects.requireNonNull(configRepository, "configRepository");
         this.bpmnParserPort = Objects.requireNonNull(bpmnParserPort, "bpmnParserPort");
         this.draftRepository = Objects.requireNonNull(draftRepository, "draftRepository");
         this.dmnDeploymentPort = Objects.requireNonNull(dmnDeploymentPort, "dmnDeploymentPort");
+        this.portalAvailability = Objects.requireNonNull(portalAvailability, "portalAvailability");
     }
 
     @Override
@@ -51,10 +59,34 @@ public final class DeployBpmnProcessUseCaseImpl implements DeployBpmnProcessUseC
                     .orElseThrow(() -> new UnknownDecisionKeyException(
                             "No deployed DMN decision table found for key: " + decisionKey));
         }
+        assertPortalTasksDeployable(bpmnParserPort.extractPortalTasks(bpmnXml));
         BpmnDeploymentResult result = deploymentPort.deploy(tenantId, filename, bpmnXml);
         // D-DESIGN-DRAFT-LIFECYCLE: a successful deployment retires the draft for this key --
         // avoids a stale draft silently diverging from what is actually deployed.
         draftRepository.deleteByTenantIdAndProcessDefinitionKey(tenantId, processDefinitionKey);
         return result;
+    }
+
+    /**
+     * TODO §68 D-PORTAL-ACTIVATION — une tâche externe exposerait une route publique : refusée tant
+     * que le portail est désactivé sur l'instance. Même règle pour l'écran admin et MCP
+     * {@code deploy_workflow}, qui passent tous deux par ce use case. Le plafond tenant de durée de
+     * vie (D-PORTAL-TTL) est vérifié ici, le parseur ne connaissant pas la configuration.
+     */
+    private void assertPortalTasksDeployable(List<PortalTaskDefinition> portalTasks) {
+        if (portalTasks.isEmpty()) {
+            return;
+        }
+        if (!portalAvailability.isPortalEnabled()) {
+            throw new InvalidBpmnException("BPMN external portal task requires the portal to be enabled "
+                    + "(APP_PORTAL_ENABLED=true): " + portalTasks.getFirst().taskDefinitionKey());
+        }
+        int ceiling = portalAvailability.maxLinkTtlDays();
+        for (PortalTaskDefinition task : portalTasks) {
+            if (task.ttlDays() != null && task.ttlDays() > ceiling) {
+                throw new InvalidBpmnException("BPMN portalLinkTtlDays exceeds the tenant ceiling of " + ceiling
+                        + " days: " + task.taskDefinitionKey());
+            }
+        }
     }
 }

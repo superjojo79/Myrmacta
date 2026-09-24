@@ -99,7 +99,11 @@ class ArchitectureRulesTest {
             // est nécessaire au moteur de workflow, jamais renvoyée telle quelle à un navigateur.
             "com.flowforge.application.workflow.ManualStartOrchestrator",
             "com.flowforge.infrastructure.flowable.OutboxRelayScheduler",
-            "com.flowforge.infrastructure.flowable.ReservedReconcileJob");
+            "com.flowforge.infrastructure.flowable.ReservedReconcileJob",
+            // TODO §68 (portail-externe) : lit une seule clé — l'adresse e-mail du tiers désignée par
+            // flowable:portalRecipient="dossierField:<nom>" — pour lui envoyer son lien. La valeur
+            // n'est jamais renvoyée à un navigateur ni journalisée en clair (PortalEmails.mask).
+            "com.flowforge.infrastructure.flowable.PortalRecipientResolverAdapter");
 
     /** Same rationale as {@link #DOSSIER_FIELDS_READ_ALLOWLIST}, for {@code FieldDefinition.defaultValue()}. */
     private static final Set<String> FIELD_DEFINITION_DEFAULT_VALUE_READ_ALLOWLIST = Set.of(
@@ -120,6 +124,22 @@ class ArchitectureRulesTest {
             .because("FieldDefinition.defaultValue() may carry a sensitive prefilled value — extend "
                     + "ArchitectureRulesTest.FIELD_DEFINITION_DEFAULT_VALUE_READ_ALLOWLIST deliberately "
                     + "rather than letting a new, unreviewed call site appear");
+
+    /**
+     * TODO §68 D-PORTAL-ACTOR : {@code AccessContext.External} court-circuite l'ACL de
+     * {@code AddDossierElementUseCaseImpl} (le lien portail a déjà été résolu). Seul le code du
+     * portail, qui a validé ce lien, peut en fabriquer un — sinon n'importe quel appelant futur
+     * pourrait contourner {@code DossierAccessPolicy} en construisant un contexte externe.
+     */
+    @ArchTest
+    static final ArchRule only_portal_code_builds_external_access_context = noClasses()
+            .that().resideOutsideOfPackage("..workflow.portal..")
+            .and().doNotHaveFullyQualifiedName("com.flowforge.domain.dossier.model.AccessContext")
+            .should().callMethod(
+                    com.flowforge.domain.dossier.model.AccessContext.class, "external", java.util.UUID.class)
+            .orShould().callConstructor(
+                    com.flowforge.domain.dossier.model.AccessContext.External.class, java.util.UUID.class)
+            .because("AccessContext.External bypasses dossier ACLs and must only come from a resolved portal link");
 
     private static DescribedPredicate<JavaClass> notIn(Set<String> allowlist) {
         return new DescribedPredicate<>("not in the allowlist " + allowlist) {

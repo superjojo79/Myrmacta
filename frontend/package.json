@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc -b && vite build",
+    "build": "vue-tsc -b && vite build && vite build --config vite.portal.config.ts",
     "preview": "vite preview",
     "typecheck": "vue-tsc -b --pretty false",
     "lint": "eslint .",

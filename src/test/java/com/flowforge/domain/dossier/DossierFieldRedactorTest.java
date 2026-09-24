@@ -92,4 +92,16 @@ class DossierFieldRedactorTest {
                 null,
                 null);
     }
+
+    @Test
+    void redact_stripsSensitiveFieldsForExternalPortalContext() {
+        // T-ACTOR-1 (TODO §68) : défense en profondeur, un tiers externe n'est jamais privilégié.
+        Dossier dossier = dossier(Map.of("priority", "HIGH", "ssn", "123-45-6789"));
+
+        Dossier result = DossierFieldRedactor.redact(
+                dossier, FIELD_DEFINITIONS, AccessContext.external(java.util.UUID.randomUUID()));
+
+        assertThat(result.fields()).containsEntry("priority", "HIGH");
+        assertThat(result.fields()).doesNotContainKey("ssn");
+    }
 }

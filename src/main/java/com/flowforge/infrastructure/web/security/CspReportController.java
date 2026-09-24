@@ -1,6 +1,7 @@
 package com.flowforge.infrastructure.web.security;
 
 import com.flowforge.infrastructure.config.SecurityHeadersProperties;
+import com.flowforge.infrastructure.security.ClientIpResolver;
 import com.flowforge.infrastructure.security.SecurityAuditLog;
 import com.flowforge.infrastructure.security.SecurityHeadersCustomizer;
 import jakarta.servlet.http.HttpServletRequest;
@@ -33,15 +34,18 @@ class CspReportController {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final CspReportRateLimiter rateLimiter;
     private final SecurityHeadersProperties properties;
+    private final ClientIpResolver clientIpResolver;
 
-    CspReportController(CspReportRateLimiter rateLimiter, SecurityHeadersProperties properties) {
+    CspReportController(
+            CspReportRateLimiter rateLimiter, SecurityHeadersProperties properties, ClientIpResolver clientIpResolver) {
         this.rateLimiter = rateLimiter;
         this.properties = properties;
+        this.clientIpResolver = clientIpResolver;
     }
 
     @PostMapping(SecurityHeadersCustomizer.CSP_REPORT_PATH)
     ResponseEntity<Void> receive(HttpServletRequest request, @RequestBody(required = false) byte[] rawBody) {
-        if (!rateLimiter.tryConsume(request.getRemoteAddr(), properties.cspReportRateLimitPerMinute())) {
+        if (!rateLimiter.tryConsume(clientIpResolver.resolve(request), properties.cspReportRateLimitPerMinute())) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).build();
         }
         if (rawBody != null && rawBody.length > 0) {

@@ -10,6 +10,34 @@
 >   (rétention / purge / sensible — **livré**) ; revue post-implémentation 2026-08-25 :
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
+>
+> **2026-09-23 (rattrapage documentaire + scission portail/signature)** — État de `main` recoupé
+> avec l'API GitHub : lot C ClamAV ([PR #131](https://github.com/superjojo79/FlowForge/pull/131)),
+> `enrichissement-reporting` ([PR #132](https://github.com/superjojo79/FlowForge/pull/132), TODO §65)
+> et `inbox-notifications-persistee` ([PR #135](https://github.com/superjojo79/FlowForge/pull/135),
+> TODO §66) sont **mergés** ; ils rejoignent *Récemment livré*. TODO §60/§65/§66 cochés (§60 était
+> resté `[ ]` depuis le merge de la PR #118). `outillage-dmn` reste **en cours**
+> ([PR #134](https://github.com/superjojo79/FlowForge/pull/134), branche
+> `cursor/outillage-dmn-d49a`). **Collision de numérotation à corriger au merge de la PR #134** :
+> la branche DMN a pris **TODO §66**, déjà attribué sur `main` à l'inbox (PR #135) — l'outillage
+> DMN devra être renuméroté **§67** (numéro réservé, non utilisé ailleurs), même procédure que le
+> renommage A4 → §63 du 2026-09-20. Sur demande utilisateur, le lot « portail externe & signature »
+> est **scindé en deux lots distincts** : `portail-externe` (analyse
+> [26-portail-externe.md](analysis%20doc/26-portail-externe.md), prérequis) puis
+> `signature-electronique` (analyse
+> [30-signature-electronique.md](analysis%20doc/30-signature-electronique.md), démarrable seulement
+> après la livraison du portail). **`portail-externe` : Phase 1 close** (TODO §68) — 10 décisions
+> tranchées par l'utilisateur, dont D-PORTAL-SCAN = fail-open identique à l'interne (risque accepté
+> explicitement, contre la recommandation fail-closed). Requirements :
+> [docs/ai/requirements/2026-09-23-feature-portail-externe.md](docs/ai/requirements/2026-09-23-feature-portail-externe.md).
+> **Phases 2 et 3 closes le même jour** (requirements `reviewed`, design
+> [docs/ai/design/2026-09-23-feature-portail-externe.md](docs/ai/design/2026-09-23-feature-portail-externe.md)).
+> **2026-09-24** — TODO §69 (faille UEL BPMN, High) corrigé puis **Phase 4 (planning) close** :
+> 13 milestones, 65 scénarios tracés
+> ([planning](docs/ai/planning/2026-09-23-feature-portail-externe.md)). **Phase 5 livrée le même jour**
+> (M1→M13, TDD) : `./mvnw verify` 2253 tests 0 échec, Vitest 387/387, Playwright 86/86. H6 corrigée et
+> tranchée par l'utilisateur (EDIT sur le type). Correctif §69 confié à un subagent pour une PR dédiée vers `main`.
+> Prochaine étape : Phases 7–9.
 > **2026-09-22** — `enrichissement-reporting` (TODO §65) confirmé **mergé sur `main`**
 > ([PR #132](https://github.com/superjojo79/FlowForge/pull/132)) : file produit à nouveau vide.
 > Nouveau cycle démarré sur demande utilisateur : `inbox-notifications-persistee` (TODO §66,
@@ -167,7 +195,7 @@
 > cadré » (portail externe, signature électronique, inbox notifications, alerting SLA, dashboard
 > widgets, export BI, `evaluate_decision` MCP, historique/rollback DMN) reçoivent chacun une
 > **analyse initiale** écrite, regroupés par cohérence technique/thématique en **4 documents** :
-> [26-portail-externe-signature.md](analysis%20doc/26-portail-externe-signature.md) (3.1 + 2.4),
+> [26-portail-externe.md](analysis%20doc/26-portail-externe.md) (scindé depuis, avec [30-signature-electronique.md](analysis%20doc/30-signature-electronique.md)) (3.1 + 2.4),
 > [27-notifications-inbox.md](analysis%20doc/27-notifications-inbox.md) (3.2),
 > [28-outillage-dmn.md](analysis%20doc/28-outillage-dmn.md) (1.1 + 1.2 + 1.3/5.1),
 > [29-enrichissement-reporting.md](analysis%20doc/29-enrichissement-reporting.md) (5.2 + 3.3 + 5.3).
@@ -445,6 +473,9 @@ Même grille que pour `preview-documents` puis `edition-champs-dossier` :
 | `provisioning-tenant` (lot **A1**) | [PR #119](https://github.com/superjojo79/FlowForge/pull/119), TODO §31/§41 | Outillage ops manquant : `Dockerfile` multi-stage (`eclipse-temurin:25-jdk`/`-jre`, utilisateur non-root UID 10001, heap `-XX:MaxRAMPercentage=75.0`) + `.dockerignore` ; `scripts/provision-tenant.sh` (schéma + rôle PostgreSQL par tenant, D-41, dry-run par défaut/`--apply`, garde anti-écrasement) ; `server.servlet.context-path` (décision n°14) activé par défaut hors profil `local` (neutralisé dans `application-local.yml`, pattern déjà en place pour `app.security.cookie.secure`). Cycle `dev-lifecycle` Phases 1–9 complet, 4 décisions tranchées via `AskUserQuestion` en Phase 1 (image, non-root, heap, activation `context-path`). **2 bugs réels trouvés et corrigés en cours de cycle** : clé YAML `server:` dupliquée dans `application.yml` lors de la première tentative d'activation `context-path` (SnakeYAML « found duplicate key server », détecté par `./mvnw verify` lui-même, Phase 5) ; troncature silencieuse possible du rôle PostgreSQL généré au-delà de `NAMEDATALEN` (63 octets) pour un `tenant_id` proche de l'ancienne borne de 63 caractères — le rôle préfixe `flowforge_` (10 caractères) — corrigé en bornant `tenant_id` à 53 caractères (Phase 7, relecture ligne à ligne, ni `hadolint` ni `shellcheck` ne l'auraient trouvé). **Limite d'environnement assumée** : `docker build`/`docker run` réel impossible dans le bac à sable de ce cycle — politique réseau de la session bloquant explicitement `production.cloudfront.docker.com` (CDN Docker Hub), confirmé systémique (`eclipse-temurin:25-jdk` et `postgres:17-alpine` tous deux rejetés), non contourné (conforme à `/root/.ccr/README.md`) ; `Dockerfile` validé par `hadolint` (propre) + revue statique, **à confirmer par un build réel avant premier déploiement**. Script de provisioning en revanche validé avec de vraies preuves : service PostgreSQL local du bac à sable (Docker Hub bloqué aussi pour le conteneur jetable prévu), tous les scénarios exécutés (nominal, rejeu rejeté, identifiant invalide, mot de passe absent, **isolation cross-tenant vérifiée avec un second tenant réel** — `permission denied` confirmé). `shellcheck` propre. `./mvnw verify` **1738 tests (0 échec)**, ArchUnit conforme, Jacoco respecté ; zéro fichier `frontend/**` touché. `DEPLOIEMENT.md`/`GETTING-STARTED.md`/`.env.example` alignés sur l'outillage livré. **Pas de PR ouverte** (non demandé) — branche poussée, prête pour revue. |
 | `headers-http-globaux` (lot **A4**) | [PR #128](https://github.com/superjojo79/FlowForge/pull/128), TODO §63 (clos) | En-têtes HTTP applicatifs (CSP enforce SPA sans `unsafe-eval`, HSTS 1 an hors local/test si pair TCP loopback/RFC1918, `X-Frame-Options`, `nosniff`, `Referrer-Policy`) sur les 4 chaînes Spring Security. Kill switch `APP_SECURITY_HEADERS_ENABLED`. Remédiation A4-HSTS-001. E2E-HDR-1–4. **Mergée sur `main`** (2026-09-20, CI verte, merge `8415cee`). |
 | `connecteurs-cible` (lot **B1**) | [PR #129](https://github.com/superjojo79/FlowForge/pull/129), TODO §62 (clos) | 2 nouveaux connecteurs du catalogue cible dans un seul cycle (Kafka + import batch, « ERP » = cas d'usage de `batch-import`, pas un 3ème connecteur — confirmé en Phase 1) : `batch-import` (TRIGGER, SFTP/SSHJ, parsing CSV+Excel, un dossier par ligne, isolation par ligne invalide, garde `maxFileBytes`/`maxRows`, archivage post-traitement) et `kafka` (TRIGGER, `KafkaConsumerReconciler` — nouveau pattern de cycle de vie de ressource externe par polling, un message = un dossier). Nouveau `ConfigFieldType.SECRET_TEXTAREA` (clé privée SFTP), masqué/chiffré via le même point d'extension unique que `PASSWORD` (`ConnectorCatalog.isPasswordField`, TODO §56). **3 décisions non-recommandées choisies délibérément par l'utilisateur** : CSV **et** Excel dès ce cycle, authentification SFTP mot de passe **et** clé privée, tests Kafka/SFTP mockés uniquement. **2 trouvailles de sécurité actées en cours d'implémentation** (hors planification initiale) : garde taille/lignes sur le parsing (D-BATCH-SIZE-LIMIT) et vérification obligatoire de l'empreinte de clé d'hôte SSH (D-SFTP-HOSTKEY — SSHJ n'accepte silencieusement aucun hôte par défaut). **2 bugs réels trouvés et corrigés en TDD** : second constructeur sur un record `@ConfigurationProperties` cassant le démarrage Spring (corrigé en amont, tous les call sites mis à jour) ; isolation de ligne invalide inatteignable (calquée à tort sur `HttpRestConnector`, le vrai critère est un champ **mappé** requis manquant, pas `processKey`). Golden OpenAPI et trou de preuve `ConnectorRegistry` (contexte réel, 8 types sans collision) trouvés et comblés en Phase 7. `./mvnw verify` 1948 tests (0 échec), Jacoco tenu ; Vitest 352/352 ; Playwright 72/72. **Revue adversariale post-cycle** (sous-agent dédié) : 2 vulnérabilités réelles corrigées (TOCTOU sur `maxFileBytes` pouvant provoquer un OOM malgré la garde documentée ; absence de plafond sur le nombre d'instances `kafka` activées par tenant, `app.connector.kafka.max-instances-per-tenant`) + 2 bugs de robustesse mineurs. 3 bugs de test préexistants et sans rapport trouvés au passage et corrigés sur demande explicite (`NotificationPersistenceIT`, `EvaluateDossierRetentionUseCaseImplTest`, `DossierTest`). Cycle `dev-lifecycle` Phases 1–9 complet (2026-09-14). `./mvnw verify` final : 2040 tests (0 échec, `Test*` + `*IT.java` sans exclusion). **Mergée sur `main`** (2026-09-20). |
+| `scan-antivirus-clamav` (lot **C**) | [PR #131](https://github.com/superjojo79/FlowForge/pull/131) | Adaptateur réel `ClamAvAttachmentScanAdapter` (clamd `INSTREAM` TCP) derrière le port `AttachmentScanPort` inchangé ; opt-in `app.dossier.attachment.scan.type=clamav` ; fail-open + compteur Micrometer ; profil Compose `clamav`. Revue adversariale : DoS écriture socket (watchdog) et `StringIndexOutOfBoundsException` corrigés. Reste : `ClamAvAttachmentScanIT` à jouer avec Docker |
+| `enrichissement-reporting` | [PR #132](https://github.com/superjojo79/FlowForge/pull/132), analyse [29-enrichissement-reporting.md](analysis%20doc/29-enrichissement-reporting.md), TODO §65 (clos) | Alerting SLA (EMAIL/WEBHOOK/BROWSER, une alerte par palier), widgets dead-letter + tâches sans assigné sur `/rapports`, export BI planifié (CSV par type + CSV SLA vers `DocumentStoragePort`, rétention, masquage). Pas de JDBC/Power BI (D-BI-MECHANISM) |
+| `inbox-notifications-persistee` | [PR #135](https://github.com/superjojo79/FlowForge/pull/135), analyse [27-notifications-inbox.md](analysis%20doc/27-notifications-inbox.md), TODO §66 (clos) | Table `user_notification` + `NotificationInboxController` self-scoped, backfill REST + SSE dédoublonnés, badge `GET /api/notifications/unread-count`, « Charger plus », purge par rétention, 3 nouveaux producteurs. Revue adversariale : F1 (id SSE ≠ id inbox) et F2 (pas de backfill après reconnexion SSE) corrigés |
 
 Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relations, PATCH fields API, éléments) : voir [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §2.
 
@@ -505,14 +536,23 @@ technique.
 
 **Encore non démarrés :**
 
-| Lot | Items `ROADMAP.md` | Analyse initiale |
-|---|---|---|
-| Portail externe & signature | 3.1 (Portail externe tokenisé) + 2.4 (Signature électronique) | [26-portail-externe-signature.md](analysis%20doc/26-portail-externe-signature.md) |
-| Inbox notifications | 3.2 (Notification Inbox persistée) | [27-notifications-inbox.md](analysis%20doc/27-notifications-inbox.md) |
+| Lot | Items `ROADMAP.md` | Analyse initiale | Statut |
+|---|---|---|---|
+| `portail-externe` | 3.1 (Portail externe tokenisé) | [26-portail-externe.md](analysis%20doc/26-portail-externe.md) | **Phases 1–9 + revue adversariale closes** (TODO §68, 2026-09-24) — en PR |
+| `signature-electronique` | 2.4 (Signature électronique) | [30-signature-electronique.md](analysis%20doc/30-signature-electronique.md) | Non démarré — **dépend de `portail-externe` livré** (le signataire n'a pas de compte) |
+| `outillage-dmn` | 1.1 + 1.2 + 1.3/5.1 | [28-outillage-dmn.md](analysis%20doc/28-outillage-dmn.md) | **Livré** ([PR #134](https://github.com/superjojo79/FlowForge/pull/134), TODO §67) |
+| `enrichissement-reporting` | 5.2 + 3.3 + 5.3 | [29-enrichissement-reporting.md](analysis%20doc/29-enrichissement-reporting.md) | **Livré** (PR #132) |
+| `inbox-notifications-persistee` | 3.2 | [27-notifications-inbox.md](analysis%20doc/27-notifications-inbox.md) | **Livré** (PR #135) |
 
-**Cycles démarrés depuis ces analyses :**
-- `enrichissement-reporting` (doc 29, items 5.2 + 3.3 + 5.3) — TODO §65, PR #132
-- `outillage-dmn` (doc 28, items 1.1 + 1.2 + 1.3/5.1) — TODO §67, Phases 1 à 9, PR #134
+Scission 2026-09-23 (demande utilisateur) : portail et signature étaient un seul lot dans
+l'analyse d'origine. Ils deviennent deux cycles `dev-lifecycle` séparés — le portail a une valeur
+propre (consultation, dépôt de pièce, réponse de tâche) ; la signature ajoute un choix de
+fournisseur et un arbitrage juridique (eIDAS) qui ne doivent pas bloquer le portail. Ordre
+imposé : portail **puis** signature. Surfaces partagées entre `portail-externe` et
+`outillage-dmn` : aucune identifiée à ce stade (le portail ne touche ni `infrastructure.mcp` ni
+`/admin/dmn-editor`) — les deux peuvent avancer en parallèle, **sauf** les fichiers de suivi
+(`TODO.md`, `FILE-ATTENTE.md`, `ROADMAP.md`, `CHANGELOG.md`) qui conflicteront textuellement au
+merge.
 
 ### Ne pas lancer (décision V1 contraire ou stack absente)
 
@@ -530,21 +570,15 @@ pagination inbox > 100.
 
 **En revue :** aucune.
 
-**Cycle en cours (2026-09-21) :** `enrichissement-reporting` (TODO §65) —
-les trois volets de [29-enrichissement-reporting.md](analysis%20doc/29-enrichissement-reporting.md)
-sont implémentés (alerting SLA, widgets dead-letter / tâches sans
-assigné, export BI planifié), en revue dans la PR #132. Décisions Phase 1 dans
-`docs/ai/requirements/2026-09-21-feature-enrichissement-reporting.md`.
-Ne pas le relancer en parallèle. Le lot C (ClamAV) est livré
-([PR #131](https://github.com/superjojo79/FlowForge/pull/131)) et ne partage
-pas ces fichiers.
+**Livrés depuis la Vague C :** `enrichissement-reporting` (PR #132, TODO §65),
+`inbox-notifications-persistee` (PR #135, TODO §66), `outillage-dmn`
+([PR #134](https://github.com/superjojo79/FlowForge/pull/134), TODO §67) et le correctif de
+sécurité UEL du BPMN ([PR #136](https://github.com/superjojo79/FlowForge/pull/136), TODO §69).
 
-**Cycle en cours (2026-09-23) :** `outillage-dmn` (TODO §67) — Phases 1 à 9
-livrées (requirements, design, planning, implémentation, tests et revue
-des trois écarts 1.1 + 1.2 + 1.3/5.1), en revue dans la PR #134. Analyse
-[28-outillage-dmn.md](analysis%20doc/28-outillage-dmn.md), docs
-`docs/ai/*/2026-09-22-feature-outillage-dmn.md`. Surfaces disjointes de
-§65 et du lot C.
+**Cycle en cours (2026-09-24) :**
+
+- `portail-externe` — TODO §68, Phases 1–9 et revue adversariale **closes**, en PR, branche `claude/determined-allen-s21jia`, `main` intégrée (PR #134 et #136).
+  Docs `docs/ai/*/2026-09-23-feature-portail-externe.md`.
 
 Détail inventaire : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §4 / §6.
 
@@ -719,6 +753,21 @@ Vérifié : `./mvnw verify` 1136 tests (0 échec), Jacoco OK ; frontend `npm run
 | 2026-09-20 | `headers-http-globaux` (lot A4) rebase docs sur main (B1) | Conflits PR #128 × main après merge PR #129 : TODO A4 renommé **§63** (B1 a clos §62), FILE-ATTENTE / DEFERRED conservent A4 en revue + B1 livré, E2E HDR + batch-import conservés. |
 | 2026-09-20 | `headers-http-globaux` (lot A4) **mergée sur `main`** | [PR #128](https://github.com/superjojo79/FlowForge/pull/128) mergée (merge `8415cee`) après CI verte (`build` + `frontend`). TODO §63 clos. File produit vide. |
 | 2026-09-21 | `enrichissement-reporting` Phases 1–5 | Quatorze décisions produit, une par une. Trois volets implémentés (alerting, widgets, export BI). PR #132. Surfaces disjointes du lot C. |
+| 2026-09-22 | `enrichissement-reporting` **mergée sur `main`** | [PR #132](https://github.com/superjojo79/FlowForge/pull/132). TODO §65 clos (coché lors du rattrapage du 2026-09-23). |
 | 2026-09-22 | `outillage-dmn` Phase 1 (requirements) | TODO §67. Cinq décisions produit (EVAL-SURFACE, EVAL-VERSION, TEST-FORMAT, ROLLBACK-UX, HISTORY-RETENTION). Docs `2026-09-22-feature-outillage-dmn`. Analyse 28 + ROADMAP 1.1/1.2/1.3 mis à jour « En cadrage ». |
 | 2026-09-22 | `outillage-dmn` Phase 2 (revue requirements) | Écart trouvé : D-DMN-TEST-SURFACE = C (MCP+REST+upload UI). Requirements `status=reviewed`. [PR #134](https://github.com/superjojo79/FlowForge/pull/134). Prochain : Phase 3 design. |
+| 2026-09-23 | `inbox-notifications-persistee` **mergée sur `main`** | [PR #135](https://github.com/superjojo79/FlowForge/pull/135) (squash `b3f03f9`). TODO §66 clos. |
+| 2026-09-23 | Rattrapage documentaire + scission portail/signature | TODO §60/§65/§66 cochés, *Récemment livré* complété (C, reporting, inbox), `ROADMAP.md` v1.2, entrée `CHANGELOG.md` PR #135. Lot portail/signature scindé : `portail-externe` (doc 26, TODO §68) puis `signature-electronique` (doc 30). Collision TODO §66 (DMN vs inbox) signalée, DMN → §67 au merge de la PR #134. |
+| 2026-09-23 | `portail-externe` Phase 1 (requirements) | TODO §68. Dix décisions tranchées une par une (SCOPE = tâche externe, AUTH = lien magique, ISSUE = BPMN + manuel, TTL = 7 j, SESSION = stateless fragment, DATA = contexte tâche, FORM = `user-question`, ACTIVATION = opt-in, SCAN = fail-open accepté, EXPIRY = alerte inbox). Prochain : Phase 2. |
+| 2026-09-23 | `portail-externe` Phase 2 (revue requirements) | H1–H6 validées. D-PORTAL-REUSE, D-PORTAL-NO-ADDRESS, D-PORTAL-PURGE. **Écart préexistant trouvé** : la purge de dossier (TODO §22) ne supprime pas `task_question_answer` — corrigé dans ce lot. Requirements `status=reviewed`. |
+| 2026-09-23 | `portail-externe` Phase 3 (design) | Quatre décisions d'architecture tranchées par l'utilisateur (UI-BUILD, BPMN-MARKER, INVITE-DELIVERY, ACTOR), les autres par alignement sur l'existant. Constat hors périmètre : `userTask` `formKey`/`name`/`dueDate`… évalués en UEL par Flowable 8 sans contrôle d'allowlist (tâche séparée proposée). Prochain : Phase 4. |
 | 2026-09-23 | `outillage-dmn` Phase 3 (design) | 17 décisions techniques. Design `status=reviewed`. Évaluation versionnée via `parentDeploymentId`. Prochain : Phase 4 planning. |
+| 2026-09-24 | TODO §69 — surfaces UEL du BPMN hors allowlist (High) | Trouvé en Phase 3 du portail. Prouvé sur le vrai moteur (`name`/`formKey` d'un `userTask` invoquent une méthode de bean), corrigé par une allowlist générique au niveau XML (`BpmnExpressionSurfaceScanner`) avant la Phase 4 du portail, sur demande utilisateur. |
+| 2026-09-24 | `portail-externe` Phase 4 (planning) | 13 milestones, 65 scénarios tracés vers les tâches. `DynamicFields.vue` confirmé réutilisable dans le build portail (composant pur) ; `UserQuestionTaskForm.vue` non (API BFF). Prochain : Phase 5. |
+| 2026-09-24 | `outillage-dmn` **mergée sur `main`** | [PR #134](https://github.com/superjojo79/FlowForge/pull/134) (`97b429a`), renumérotée TODO §67. |
+| 2026-09-24 | TODO §69 **mergé sur `main`** | [PR #136](https://github.com/superjojo79/FlowForge/pull/136) (squash `114edd1`), CI verte, sorti du lot portail par un subagent. |
+| 2026-09-24 | `portail-externe` Phase 5 (implémentation) | M1→M13 en TDD, 11 commits. H6 corrigée (erreur factuelle, tranchée : EDIT sur le type). Écarts au design documentés. `./mvnw verify` 2253/0, Vitest 387/387, Playwright 86/86, 66/66 scénarios. Prochain : Phases 7–9. |
+| 2026-09-24 | `portail-externe` Phase 7 (contrôle d'implémentation) | 3 défauts réels corrigés en TDD : `/portal` sans slash (page blanche), base d'API avec `/portal` dans le chemin, erreur imprévue sortie de la chaîne portail. Limitation SMTP sans backoff documentée. |
+| 2026-09-24 | `portail-externe` Phase 8 (tests) | Tests des branches hors moteur (notificateur, e-mail, courses compare-and-set perdues, schéma supprimé). `main` intégrée (conflits de docs seulement). Chiffres : TODO §68. |
+| 2026-09-24 | `portail-externe` Phase 9 (revue) | **F-PORTAL-1 (Moyenne) corrigé** : limite par IP et jeton contrôlés avant lecture du corps multipart (`PortalPreAuthInterceptor`). `verify` 2347/0, Vitest 402/402, Playwright 92/92. Prochain : revue adversariale (subagent), puis PR. |
+| 2026-09-24 | `portail-externe` revue adversariale + correctifs | Subagent, preuves sur Tomcat réel. C1 (redirection Keycloak + session sur erreur de routage publique), C2 (limite par IP contournable via `Forwarded`), C3 (500 sur requête mal formée), H1 (table du limiteur non bornée dans la minute) : tous corrigés en TDD. `verify` 2358/0. DEPLOIEMENT.md : supprimer aussi `Forwarded` et `X-Forwarded-Prefix` au proxy. |

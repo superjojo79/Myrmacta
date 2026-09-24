@@ -33,4 +33,30 @@ class ArchitectureRulesFixtureTest {
                 .isInstanceOf(AssertionError.class)
                 .hasMessageContaining("NotOnTheAllowlist");
     }
+
+    /** Hors de {@code ..workflow.portal..} — ne doit pas pouvoir fabriquer un contexte externe (TODO §68). */
+    static final class ForgesAnExternalContext {
+        Object viaFactory() {
+            return com.flowforge.domain.dossier.model.AccessContext.external(java.util.UUID.randomUUID());
+        }
+
+        Object viaConstructor() {
+            return new com.flowforge.domain.dossier.model.AccessContext.External(java.util.UUID.randomUUID());
+        }
+    }
+
+    @Test
+    void rule_failsWhenCodeOutsideThePortalBuildsAnExternalAccessContext() {
+        JavaClasses classes = new ClassFileImporter().importClasses(
+                ForgesAnExternalContext.class,
+                com.flowforge.domain.dossier.model.AccessContext.class,
+                com.flowforge.domain.dossier.model.AccessContext.External.class);
+
+        assertThatThrownBy(() ->
+                        ArchitectureRulesTest.only_portal_code_builds_external_access_context.check(classes))
+                .isInstanceOf(AssertionError.class)
+                .hasMessageContaining("ForgesAnExternalContext")
+                .hasMessageContaining("external")
+                .hasMessageContaining("<init>");
+    }
 }

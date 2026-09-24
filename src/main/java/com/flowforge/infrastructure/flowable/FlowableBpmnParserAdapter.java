@@ -1,12 +1,17 @@
 package com.flowforge.infrastructure.flowable;
 
 import com.flowforge.domain.workflow.AllowedBpmnDelegates;
+import com.flowforge.domain.workflow.TaskQuestionFormKeys;
 import com.flowforge.domain.workflow.model.InvalidBpmnException;
 import com.flowforge.domain.workflow.port.out.BpmnParserPort;
+import com.flowforge.domain.workflow.portal.model.PortalRecipientSource;
+import com.flowforge.domain.workflow.portal.model.PortalTaskDefinition;
+import java.util.ArrayList;
 import java.io.ByteArrayInputStream;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -65,6 +70,89 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
         }
         return keys;
     }
+
+    @Override
+    public List<PortalTaskDefinition> extractPortalTasks(byte[] bpmnXml) {
+        BpmnModel model;
+        try {
+            model = new BpmnXMLConverter().convertToBpmnModel(() -> new ByteArrayInputStream(bpmnXml), true, false);
+        } catch (Exception ex) {
+            throw new InvalidBpmnException("File is not a valid BPMN 2.0 document: " + ex.getMessage(), ex);
+        }
+        List<PortalTaskDefinition> tasks = new ArrayList<>();
+        for (Process process : model.getProcesses()) {
+            collectPortalTasks(process.getFlowElements(), tasks);
+        }
+        return List.copyOf(tasks);
+    }
+
+    private static void collectPortalTasks(Collection<FlowElement> elements, List<PortalTaskDefinition> tasks) {
+        if (elements == null) {
+            return;
+        }
+        for (FlowElement element : elements) {
+            if (element instanceof UserTask userTask) {
+                portalDefinition(userTask).ifPresent(tasks::add);
+            }
+            if (element instanceof SubProcess subProcess) {
+                collectPortalTasks(subProcess.getFlowElements(), tasks);
+            }
+        }
+    }
+
+    /**
+     * TODO §68 D-PORTAL-BPMN-MARKER — la présence de {@code flowable:portalRecipient} fait d'un
+     * {@code userTask} une tâche externe. Flowable conserve ces attributs inconnus sans jamais les
+     * évaluer ({@code BpmnXMLUtil.addCustomAttributes}, sources 8.0.0) ; leur caractère littéral est
+     * de toute façon garanti pour tout le document par {@link BpmnExpressionSurfaceScanner} (§69).
+     * Règles : {@code formKey} = {@code user-question:<schemaKey>} (D-PORTAL-FORM), source
+     * {@code dossierField:<nom>} ou {@code variable:<nom>}, durée entière 1–{@value #MAX_PORTAL_TTL_DAYS}
+     * jours (le plafond tenant est vérifié au déploiement), et aucune assignation interne
+     * (D-PORTAL-NO-ASSIGNEE).
+     */
+    static Optional<PortalTaskDefinition> portalDefinition(UserTask userTask) {
+        String owner = "BPMN external portal task " + userTask.getId();
+        String recipientRaw = userTask.getAttributeValue(FLOWABLE_NAMESPACE, PORTAL_RECIPIENT_ATTRIBUTE);
+        String ttlRaw = userTask.getAttributeValue(FLOWABLE_NAMESPACE, PORTAL_TTL_ATTRIBUTE);
+        if (recipientRaw == null) {
+            if (ttlRaw != null) {
+                throw new InvalidBpmnException(owner + ": portalLinkTtlDays requires portalRecipient");
+            }
+            return Optional.empty();
+        }
+        PortalRecipientSource source = PortalRecipientSource.parse(recipientRaw)
+                .orElseThrow(() -> new InvalidBpmnException(
+                        owner + ": portalRecipient must be dossierField:<name> or variable:<name>"));
+        String schemaKey = TaskQuestionFormKeys.schemaKeyOf(userTask.getFormKey())
+                .filter(key -> SCHEMA_KEY.matcher(key).matches())
+                .orElseThrow(() -> new InvalidBpmnException(
+                        owner + ": formKey must be user-question:<schemaKey>"));
+        Integer ttlDays = null;
+        if (ttlRaw != null) {
+            try {
+                ttlDays = Integer.valueOf(ttlRaw.trim());
+            } catch (NumberFormatException ex) {
+                throw new InvalidBpmnException(owner + ": portalLinkTtlDays must be an integer", ex);
+            }
+            if (ttlDays < 1 || ttlDays > MAX_PORTAL_TTL_DAYS) {
+                throw new InvalidBpmnException(
+                        owner + ": portalLinkTtlDays must be between 1 and " + MAX_PORTAL_TTL_DAYS);
+            }
+        }
+        if (userTask.getAssignee() != null
+                || !safeList(userTask.getCandidateUsers()).isEmpty()
+                || !safeList(userTask.getCandidateGroups()).isEmpty()) {
+            throw new InvalidBpmnException(owner + ": an external task must not be assigned internally");
+        }
+        return Optional.of(new PortalTaskDefinition(userTask.getId(), schemaKey, source, ttlDays));
+    }
+
+    private static final String FLOWABLE_NAMESPACE = "http://flowable.org/bpmn";
+    private static final String PORTAL_RECIPIENT_ATTRIBUTE = "portalRecipient";
+    private static final String PORTAL_TTL_ATTRIBUTE = "portalLinkTtlDays";
+    private static final int MAX_PORTAL_TTL_DAYS = 365;
+    /** Même format que {@code TaskQuestionSchema} (clé de schéma {@code user-question}). */
+    private static final Pattern SCHEMA_KEY = Pattern.compile("[A-Za-z0-9_-]+");
 
     private static void collectDecisionKeys(Collection<FlowElement> elements, Set<String> keys) {
         if (elements == null) {
@@ -220,6 +308,7 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
         for (String candidate : safeList(userTask.getCandidateGroups())) {
             assertLiteralAssigneeValue(userTask.getId() + " candidateGroups", candidate);
         }
+        portalDefinition(userTask);
     }
 
     private static List<String> safeList(List<String> values) {

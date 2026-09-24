@@ -30,6 +30,11 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
+- **PR [#138](https://github.com/superjojo79/FlowForge/pull/138) — TODO §68** — Portail externe : un tiers sans compte
+  répond à une tâche BPMN qui lui est destinée (formulaire + pièces) via un lien personnel reçu
+  par e-mail, valable 7 jours, révocable et renvoyable par l'instructeur depuis le détail du
+  dossier. Désactivé par défaut (`APP_PORTAL_ENABLED`, `APP_PORTAL_PUBLIC_BASE_URL`) ; la purge
+  de dossier supprime désormais aussi les réponses aux questions de tâche.
 - **PR [#134](https://github.com/superjojo79/FlowForge/pull/134)** — Outillage DMN (TODO §67) :
   évaluation d'une table déployée, jeux de tests JSON et CSV (100 cas maximum), historique des
   versions et redéploiement (« Redéployer la version N », avec confirmation dans l'éditeur).
@@ -37,6 +42,11 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
   Le redéploiement refuse un XML dont l'identifiant ne correspond pas à la clé demandée,
   un jeu CSV de plus de 100 cas est rejeté dès la lecture, et le payload MCP de
   `test_decision` est borné par la taille maximale d'upload.
+- **PR [#135](https://github.com/superjojo79/FlowForge/pull/135)** — Inbox de notifications
+  persistée : la cloche conserve l'historique par utilisateur (lu/non-lu, badge calculé côté
+  serveur, « Charger plus ») et rattrape les notifications reçues hors connexion ou pendant une
+  reconnexion SSE. Purge automatique par rétention, nouveaux producteurs (réassignation, tâche
+  complétée, document généré).
 - **PR [#132](https://github.com/superjojo79/FlowForge/pull/132)** — Alertes de franchissement SLA
   (e-mail, webhook, navigateur, une fois par palier), compteurs dead-letter et tâches ouvertes
   sans assigné sur `/rapports`, et export BI planifié (CSV par type et CSV SLA, rétention,
@@ -67,6 +77,17 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Sécurité
 
+- **PR [#138](https://github.com/superjojo79/FlowForge/pull/138) — revue adversariale du portail (TODO §68)** — Une erreur de routage
+  (mauvaise méthode, URL inconnue, `Content-Type` refusé, chemin rejeté par le pare-feu HTTP) sur
+  une route publique (portail, webhooks) renvoyait une redirection vers la connexion Keycloak et
+  créait une session anonyme, identifiant dans l'URL : elle renvoie désormais son statut (404,
+  405, 415, 400), sans session ; les sessions ne passent plus que par cookie. La limite de débit
+  du portail et des rapports CSP ne pouvait plus être contournée par un en-tête `Forwarded` forgé
+  (l'adresse du client ne vient d'en-têtes transférés que si le pair est le proxy de confiance) ;
+  sa table est bornée même sous une rafale de clients distincts, IPv6 regroupé par /64. Une
+  requête mal formée sur le portail ne produit plus d'erreur 500 journalisée. **Action de
+  déploiement** : le reverse-proxy doit aussi supprimer `Forwarded` et `X-Forwarded-Prefix`
+  (DEPLOIEMENT.md §3).
 - **PR [#136](https://github.com/superjojo79/FlowForge/pull/136) — TODO §69** — Un BPMN déployé pouvait faire exécuter une
   méthode d'un bean Spring via le nom, le `formKey`, l'échéance d'une tâche, un timer ou un
   `callActivity` (surfaces évaluées par Flowable, hors de l'allowlist H1-bis). Le backend refuse
@@ -116,6 +137,10 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Documentation
 
+- **PR [#138](https://github.com/superjojo79/FlowForge/pull/138)** — Rattrapage documentaire après les merges #131/#132/#135
+  (TODO, file d'attente, roadmap v1.2), scission du lot « portail externe & signature » en deux
+  lots distincts et cadrage du portail externe tokenisé (requirements, revue, design). Pas de
+  code applicatif.
 - **PR [#83](https://github.com/superjojo79/FlowForge/pull/83)** — Rattrapage de la documentation
   admin/utilisateur : trois écrans admin livrés mais jamais documentés (webhooks de notification,
   file de purge RGPD, observabilité), rétention par type de dossier, limite du connecteur

@@ -117,6 +117,9 @@ RequestHeader unset X-Forwarded-Proto early
 RequestHeader unset X-Forwarded-For early
 RequestHeader unset X-Forwarded-Host early
 RequestHeader unset X-Forwarded-Port early
+# RFC 7239 : ForwardedHeaderFilter préfère « Forwarded » (for/proto/host) aux X-Forwarded-*.
+RequestHeader unset Forwarded early
+RequestHeader unset X-Forwarded-Prefix early
 RequestHeader set X-Forwarded-Proto "https"
 RequestHeader set X-Forwarded-For "%{REMOTE_ADDR}s"
 ProxyPass        "/tenant_a" "http://127.0.0.1:8081/tenant_a"
@@ -292,6 +295,44 @@ la panne d'un composant annexe) — la tentative est loggée et incrémente le c
 `observabilite`, PR #59). **Une panne `clamd` prolongée désactive donc le scan sans bloquer
 personne** — surveiller ce compteur en prod (alerte sur une valeur non nulle et croissante) est
 la seule façon de le détecter autrement qu'en lisant les logs requête par requête.
+
+## 9. Portail externe (tiers sans compte)
+
+Opt-in (TODO §68) : tant que `APP_PORTAL_ENABLED=false` (défaut), aucune route publique n'existe
+— `/portal/**` et `/api/portal/**` exigent la session Keycloak comme le reste de l'application,
+et un BPMN contenant une tâche externe est refusé au déploiement.
+
+```bash
+APP_PORTAL_ENABLED=true
+APP_PORTAL_PUBLIC_BASE_URL=https://flowforge.example.org/tenant-a
+APP_PORTAL_DEFAULT_LINK_TTL=7d   # facultatif
+APP_PORTAL_MAX_LINK_TTL=30d      # facultatif, plafond de ce que le BPMN peut demander
+```
+
+- **`APP_PORTAL_PUBLIC_BASE_URL` est obligatoire** (démarrage refusé sinon) : URL publique
+  **absolue** de l'instance, **chemin du tenant compris** (§3), sans `?` ni `#`. Le serveur ne la
+  reconstruit jamais à partir de l'en-tête `Host` (contrôlable par le client).
+- **Reverse-proxy** : exposer `/<tenant>/portal/` et `/<tenant>/api/portal/` à internet comme le
+  reste de l'instance. Le proxy **doit écraser** `X-Forwarded-For` (déjà requis §3) : la limite de
+  30 requêtes par minute et par IP du portail s'appuie dessus. L'application ne lit
+  `X-Forwarded-For` que si le pair TCP est dans `APP_SECURITY_HEADERS_TRUSTED_PROXY_CIDRS` (sinon
+  le pair lui-même est le client) et n'en retient que l'entrée la plus à droite non fiable ;
+  l'en-tête `Forwarded` n'est jamais utilisé pour cette limite (revue adversariale, C2). Quand un
+  afflux de clients distincts remplit la table du limiteur (10 000 entrées), les nouveaux venus
+  partagent un seau commun, les clients déjà suivis gardent leur quota. Ne pas journaliser l'en-tête
+  `X-Portal-Token` si le proxy journalise des en-têtes (c'est le secret d'accès du tiers).
+- **SMTP** : l'invitation part directement par le relais SMTP configuré (pas par l'outbox de
+  notification, qui stockerait le lien en base). Le jeton n'existe en clair que dans l'e-mail ; la
+  base ne conserve que son empreinte SHA-256.
+- **Antivirus — à activer (§8)** : les pièces déposées par un tiers **anonyme** suivent la
+  politique fail-open (risque accepté, D-PORTAL-SCAN). Sans `clamd`, ou pendant une panne, un
+  fichier non scanné est accepté. Activer ClamAV sur tout tenant qui active le portail et
+  surveiller `flowforge.attachment.scan.fail_open`.
+- **Métriques** : `flowforge.portal.access.denied` (liens refusés ou limite atteinte — une hausse
+  brutale signale une tentative d'énumération).
+- **Données personnelles** : l'adresse du tiers et ses réponses sont supprimées avec le dossier
+  par la purge (§ rétention / `purge_outbox`).
+- Mono-réplique : la limite par IP est en mémoire de l'instance (pas de Redis, décision n° 13).
 
 ------
 

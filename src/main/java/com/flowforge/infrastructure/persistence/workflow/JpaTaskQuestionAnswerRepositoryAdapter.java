@@ -19,4 +19,10 @@ class JpaTaskQuestionAnswerRepositoryAdapter implements TaskQuestionAnswerReposi
     public void save(TaskQuestionAnswer answer) {
         repository.save(TaskQuestionAnswerJpaEntity.fromDomain(answer));
     }
+
+    @Override
+    @Transactional
+    public int deleteAllByDossierId(java.util.UUID dossierId) {
+        return repository.deleteAllByDossierId(java.util.Objects.requireNonNull(dossierId, "dossierId"));
+    }
 }

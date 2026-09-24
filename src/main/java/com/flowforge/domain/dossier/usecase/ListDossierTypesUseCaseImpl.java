@@ -36,6 +36,8 @@ public final class ListDossierTypesUseCaseImpl implements ListDossierTypesUseCas
             case AccessContext.System ignored -> typeRepository.page(tenantId, null, query);
             case AccessContext.Service ignored -> throw new AccessDeniedException(
                     "Service context cannot access dossiers");
+            case AccessContext.External ignored -> throw new AccessDeniedException(
+                    "External portal context cannot access dossiers");
             case AccessContext.User user -> listForUser(tenantId, user, query);
         };
     }

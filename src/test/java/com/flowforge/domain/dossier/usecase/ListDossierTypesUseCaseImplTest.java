@@ -156,4 +156,12 @@ class ListDossierTypesUseCaseImplTest {
                     .toList();
         }
     }
+
+    @Test
+    void list_externalContextIsDenied() {
+        // T-ACTOR-1 (TODO §68)
+        assertThatThrownBy(() -> useCase.list(
+                        TENANT, AccessContext.external(java.util.UUID.randomUUID()), PageQuery.defaults()))
+                .isInstanceOf(AccessDeniedException.class);
+    }
 }

@@ -829,7 +829,7 @@ Pas de table historique applicative, pas de variable d’environnement.
 
 ---
 
-### [ ] 68. Portail externe tokenisé — tâche externe par lien magique
+### [x] 68. Portail externe tokenisé — tâche externe par lien magique
 
 **Énoncé :** item **3.1** de `ROADMAP.md`, analyse
 [26-portail-externe.md](analysis%20doc/26-portail-externe.md). Scindé le 2026-09-23 (demande
@@ -911,7 +911,7 @@ fuite du jeton, ni XSS. **Corrigés en TDD** (tests rouges d'abord sur Tomcat r�
 ignoré), aussi pour le limiteur CSP ; DEPLOIEMENT.md : le proxy supprime `Forwarded` et
 `X-Forwarded-Prefix` ; **C3 (Faible, = F-PORTAL-2)** — 500 + log ERROR sur requête mal formée →
 statut 4xx propre ; **H1** — table du limiteur plafonnée même au sein d'une minute, IPv6 par /64.
-**Preuves** : `./mvnw verify` → **2358 tests, 0 échec**. Prochaine étape : PR.
+**Preuves** : `./mvnw verify` → **2358 tests, 0 échec**. **Mergée sur `main`** le 2026-09-24 ([PR #138](https://github.com/superjojo79/FlowForge/pull/138), squash `578a2db`), CI verte (`build` + `frontend`). Suite : lot `signature-electronique` (analyse 30), désormais démarrable.
 
 **Impacte (réel, Phase 5) :** `SecurityConfig` (chaînes renumérotées) + `PortalSecurityConfig`,
 `SpaFallbackConfig`, `AccessContext` (+ 5 politiques d'accès), `AddDossierElementUseCaseImpl`,

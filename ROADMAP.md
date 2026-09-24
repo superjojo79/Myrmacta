@@ -4,7 +4,7 @@
 > **Statut** : statuts **recoupés sur le code et sur l’API GitHub**, pas sur l’analyse d’origine du 12/09  
 > **Sources de vérité produit :** [FILE-ATTENTE.md](FILE-ATTENTE.md), [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md), [TODO.md](TODO.md)  
 > **Vagues A, B, C et A4 : livrées.** `enrichissement-reporting` (PR #132), `inbox-notifications-persistee` (PR #135) et `outillage-dmn` ([PR #134](https://github.com/superjojo79/FlowForge/pull/134)) : livrés.
-> **En cours :** `portail-externe` (Phases 1–9 closes, TODO §68).
+> `portail-externe` ([PR #138](https://github.com/superjojo79/FlowForge/pull/138), TODO §68) : livré. **Prochain :** `signature-electronique`.
 
 ---
 
@@ -29,7 +29,6 @@ FlowForge est un SaaS multi-tenant à architecture hexagonale. Stack **réelle**
 
 | Priorité | Item | Lot | Statut |
 |---|---|---|---|
-| En cours | **3.1 Portail externe tokenisé** | `portail-externe` | Implémenté, Phases 1–9 closes (TODO §68) — [26-portail-externe.md](analysis%20doc/26-portail-externe.md) |
 | Ensuite | **2.4 Signature électronique** | `signature-electronique` | Non démarré, **après le portail** — [30-signature-electronique.md](analysis%20doc/30-signature-electronique.md) |
 | Non planifié | **5.3 bis** Export BI JDBC / Power BI | — | Écarté du lot reporting (D-BI-MECHANISM) ; nouveau produit si besoin confirmé |
 
@@ -87,7 +86,7 @@ FlowForge est un SaaS multi-tenant à architecture hexagonale. Stack **réelle**
 
 | Item | Statut |
 |---|---|
-| 3.1 Portail externe tokenisé | 🔄 Implémenté, en revue (TODO §68, Phases 1–9 closes) — opt-in `APP_PORTAL_ENABLED` |
+| 3.1 Portail externe tokenisé | ✅ Livré (PR #138, TODO §68) — opt-in `APP_PORTAL_ENABLED` |
 | 3.2 Inbox notifications | ✅ Livré (PR #135) |
 | 3.3 Dashboard opérationnel | ✅ Livré (PR #80 + widgets PR #132) |
 
@@ -117,9 +116,8 @@ FlowForge est un SaaS multi-tenant à architecture hexagonale. Stack **réelle**
 
 ## Priorisation
 
-1. `portail-externe` — implémenté (Phase 5, 2026-09-24) ; reste contrôle d'implémentation, revue et PR.
-2. `signature-electronique` — seulement après la livraison du portail ; fournisseur et niveau eIDAS à trancher en Phase 1.
-3. Vérifications d’environnement hors file : `ClamAvAttachmentScanIT` sous Docker, smoke Keycloak réel.
+1. `signature-electronique` — démarrable (portail livré, PR #138) ; fournisseur et niveau eIDAS à trancher en Phase 1.
+2. Vérifications d’environnement hors file : `ClamAvAttachmentScanIT` sous Docker, smoke Keycloak réel.
 
 ---
 

@@ -258,9 +258,9 @@ Voir le détail et les options dans [TODO.md](TODO.md),
 | **C** | Adaptateur AV (ClamAV) | **Livré** ([PR #131](https://github.com/superjojo79/FlowForge/pull/131), mergé 2026-09-21) | Cycle `scan-antivirus-clamav` Phases 1-9 et revue adversariale clos. Port `AttachmentScanPort` inchangé, adaptateur `INSTREAM`, profil Compose `clamav`. |
 | — | `enrichissement-reporting` | **Livré** ([PR #132](https://github.com/superjojo79/FlowForge/pull/132), mergé 2026-09-22, TODO §65 clos) | Alerting SLA, widgets opérationnels et export BI CSV planifié (pas de JDBC/Power BI). |
 | — | `inbox-notifications-persistee` | **Livré** ([PR #135](https://github.com/superjojo79/FlowForge/pull/135), mergé 2026-09-23, TODO §66 clos) | Historique `user_notification`, badge serveur, backfill REST + SSE, purge par rétention. |
-| — | `outillage-dmn` | **En cours** ([PR #134](https://github.com/superjojo79/FlowForge/pull/134), Phase 2 close) | Doc 28. Numéroté §66 sur sa branche → **§67** au merge (collision avec l'inbox). |
-| — | `portail-externe` | **Implémenté** (TODO §68, Phase 5 livrée 2026-09-24, pas encore de PR) | Doc [26-portail-externe.md](analysis%20doc/26-portail-externe.md). Scindé de la signature le 2026-09-23. |
-| — | `signature-electronique` | Non démarré — **après `portail-externe`** | Doc [30-signature-electronique.md](analysis%20doc/30-signature-electronique.md). Fournisseur et niveau eIDAS à trancher. |
+| — | `outillage-dmn` | **Livré** ([PR #134](https://github.com/superjojo79/FlowForge/pull/134), TODO §67 clos) | Doc 28. Évaluation, jeux de tests, historique et redéploiement de version. |
+| — | `portail-externe` | **Livré** ([PR #138](https://github.com/superjojo79/FlowForge/pull/138), mergé 2026-09-24, TODO §68 clos) | Doc [26-portail-externe.md](analysis%20doc/26-portail-externe.md). Opt-in ; revue adversariale close. |
+| — | `signature-electronique` | Non démarré — **démarrable** (portail livré) | Doc [30-signature-electronique.md](analysis%20doc/30-signature-electronique.md). Fournisseur et niveau eIDAS à trancher. |
 
 **Interdits :** Kafka ∥ import-batch ∥ ERP ; import batch ∥ A3 ; ClamAV ∥ A1 (Compose) ;
 codegen OpenAPI ∥ tout FE ; `signature-electronique` avant `portail-externe`. Hors vague : Redis/SSE multi-pod, Chart.js SLA, Cockpit.

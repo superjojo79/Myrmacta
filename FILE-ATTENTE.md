@@ -11,6 +11,13 @@
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
 >
+> **2026-09-24 (merges)** — `outillage-dmn` ([PR #134](https://github.com/superjojo79/FlowForge/pull/134),
+> TODO §67), le correctif UEL du BPMN ([PR #136](https://github.com/superjojo79/FlowForge/pull/136),
+> TODO §69) puis `portail-externe` ([PR #138](https://github.com/superjojo79/FlowForge/pull/138),
+> TODO §68, Phases 1–9 + revue adversariale) sont **mergés sur `main`** : aucun cycle en cours.
+> Prochain candidat : `signature-electronique` (analyse 30), désormais démarrable. Action de
+> déploiement du portail : le reverse-proxy supprime aussi `Forwarded` et `X-Forwarded-Prefix`.
+>
 > **2026-09-23 (rattrapage documentaire + scission portail/signature)** — État de `main` recoupé
 > avec l'API GitHub : lot C ClamAV ([PR #131](https://github.com/superjojo79/FlowForge/pull/131)),
 > `enrichissement-reporting` ([PR #132](https://github.com/superjojo79/FlowForge/pull/132), TODO §65)
@@ -476,6 +483,8 @@ Même grille que pour `preview-documents` puis `edition-champs-dossier` :
 | `scan-antivirus-clamav` (lot **C**) | [PR #131](https://github.com/superjojo79/FlowForge/pull/131) | Adaptateur réel `ClamAvAttachmentScanAdapter` (clamd `INSTREAM` TCP) derrière le port `AttachmentScanPort` inchangé ; opt-in `app.dossier.attachment.scan.type=clamav` ; fail-open + compteur Micrometer ; profil Compose `clamav`. Revue adversariale : DoS écriture socket (watchdog) et `StringIndexOutOfBoundsException` corrigés. Reste : `ClamAvAttachmentScanIT` à jouer avec Docker |
 | `enrichissement-reporting` | [PR #132](https://github.com/superjojo79/FlowForge/pull/132), analyse [29-enrichissement-reporting.md](analysis%20doc/29-enrichissement-reporting.md), TODO §65 (clos) | Alerting SLA (EMAIL/WEBHOOK/BROWSER, une alerte par palier), widgets dead-letter + tâches sans assigné sur `/rapports`, export BI planifié (CSV par type + CSV SLA vers `DocumentStoragePort`, rétention, masquage). Pas de JDBC/Power BI (D-BI-MECHANISM) |
 | `inbox-notifications-persistee` | [PR #135](https://github.com/superjojo79/FlowForge/pull/135), analyse [27-notifications-inbox.md](analysis%20doc/27-notifications-inbox.md), TODO §66 (clos) | Table `user_notification` + `NotificationInboxController` self-scoped, backfill REST + SSE dédoublonnés, badge `GET /api/notifications/unread-count`, « Charger plus », purge par rétention, 3 nouveaux producteurs. Revue adversariale : F1 (id SSE ≠ id inbox) et F2 (pas de backfill après reconnexion SSE) corrigés |
+| `outillage-dmn` | [PR #134](https://github.com/superjojo79/FlowForge/pull/134), analyse [28-outillage-dmn.md](analysis%20doc/28-outillage-dmn.md), TODO §67 (clos) | Évaluation d'une table déployée, jeux de tests JSON et CSV, historique des versions et redéploiement « version N » ; éditeur `/admin/dmn-editor`, REST et 4 tools MCP. |
+| `portail-externe` | [PR #138](https://github.com/superjojo79/FlowForge/pull/138), analyse [26-portail-externe.md](analysis%20doc/26-portail-externe.md), TODO §68 (clos) | Un tiers sans compte répond à une `userTask` (formulaire `user-question` + pièces) via un lien magique reçu par e-mail ; opt-in `APP_PORTAL_ENABLED`. Cycle Phases 1–9 + revue adversariale (F-PORTAL-1, C1–C3, H1 corrigés). Correctif §69 ([PR #136](https://github.com/superjojo79/FlowForge/pull/136)) trouvé en Phase 3. |
 
 Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relations, PATCH fields API, éléments) : voir [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §2.
 
@@ -538,8 +547,8 @@ technique.
 
 | Lot | Items `ROADMAP.md` | Analyse initiale | Statut |
 |---|---|---|---|
-| `portail-externe` | 3.1 (Portail externe tokenisé) | [26-portail-externe.md](analysis%20doc/26-portail-externe.md) | **Phases 1–9 + revue adversariale closes** (TODO §68, 2026-09-24) — en PR |
-| `signature-electronique` | 2.4 (Signature électronique) | [30-signature-electronique.md](analysis%20doc/30-signature-electronique.md) | Non démarré — **dépend de `portail-externe` livré** (le signataire n'a pas de compte) |
+| `portail-externe` | 3.1 (Portail externe tokenisé) | [26-portail-externe.md](analysis%20doc/26-portail-externe.md) | **Livré** ([PR #138](https://github.com/superjojo79/FlowForge/pull/138), TODO §68) |
+| `signature-electronique` | 2.4 (Signature électronique) | [30-signature-electronique.md](analysis%20doc/30-signature-electronique.md) | Non démarré — **démarrable** (`portail-externe` livré, PR #138 : le signataire sans compte passe par le portail) |
 | `outillage-dmn` | 1.1 + 1.2 + 1.3/5.1 | [28-outillage-dmn.md](analysis%20doc/28-outillage-dmn.md) | **Livré** ([PR #134](https://github.com/superjojo79/FlowForge/pull/134), TODO §67) |
 | `enrichissement-reporting` | 5.2 + 3.3 + 5.3 | [29-enrichissement-reporting.md](analysis%20doc/29-enrichissement-reporting.md) | **Livré** (PR #132) |
 | `inbox-notifications-persistee` | 3.2 | [27-notifications-inbox.md](analysis%20doc/27-notifications-inbox.md) | **Livré** (PR #135) |
@@ -573,12 +582,12 @@ pagination inbox > 100.
 **Livrés depuis la Vague C :** `enrichissement-reporting` (PR #132, TODO §65),
 `inbox-notifications-persistee` (PR #135, TODO §66), `outillage-dmn`
 ([PR #134](https://github.com/superjojo79/FlowForge/pull/134), TODO §67) et le correctif de
-sécurité UEL du BPMN ([PR #136](https://github.com/superjojo79/FlowForge/pull/136), TODO §69).
+sécurité UEL du BPMN ([PR #136](https://github.com/superjojo79/FlowForge/pull/136), TODO §69), puis
+`portail-externe` ([PR #138](https://github.com/superjojo79/FlowForge/pull/138), TODO §68).
 
-**Cycle en cours (2026-09-24) :**
-
-- `portail-externe` — TODO §68, Phases 1–9 et revue adversariale **closes**, en PR, branche `claude/determined-allen-s21jia`, `main` intégrée (PR #134 et #136).
-  Docs `docs/ai/*/2026-09-23-feature-portail-externe.md`.
+**Cycle en cours :** aucun. Prochain candidat : `signature-electronique` (analyse
+[30-signature-electronique.md](analysis%20doc/30-signature-electronique.md), fournisseur et niveau
+eIDAS à trancher en Phase 1).
 
 Détail inventaire : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §4 / §6.
 
@@ -771,3 +780,4 @@ Vérifié : `./mvnw verify` 1136 tests (0 échec), Jacoco OK ; frontend `npm run
 | 2026-09-24 | `portail-externe` Phase 8 (tests) | Tests des branches hors moteur (notificateur, e-mail, courses compare-and-set perdues, schéma supprimé). `main` intégrée (conflits de docs seulement). Chiffres : TODO §68. |
 | 2026-09-24 | `portail-externe` Phase 9 (revue) | **F-PORTAL-1 (Moyenne) corrigé** : limite par IP et jeton contrôlés avant lecture du corps multipart (`PortalPreAuthInterceptor`). `verify` 2347/0, Vitest 402/402, Playwright 92/92. Prochain : revue adversariale (subagent), puis PR. |
 | 2026-09-24 | `portail-externe` revue adversariale + correctifs | Subagent, preuves sur Tomcat réel. C1 (redirection Keycloak + session sur erreur de routage publique), C2 (limite par IP contournable via `Forwarded`), C3 (500 sur requête mal formée), H1 (table du limiteur non bornée dans la minute) : tous corrigés en TDD. `verify` 2358/0. DEPLOIEMENT.md : supprimer aussi `Forwarded` et `X-Forwarded-Prefix` au proxy. |
+| 2026-09-24 | `portail-externe` **mergée sur `main`** | [PR #138](https://github.com/superjojo79/FlowForge/pull/138) (squash `578a2db`), CI verte. TODO §68 clos. Action de déploiement : le reverse-proxy supprime aussi `Forwarded` et `X-Forwarded-Prefix` (DEPLOIEMENT.md §3). |

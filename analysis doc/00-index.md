@@ -40,7 +40,7 @@
 | 23 | Questions/choix utilisateur indépendants du dossier (nouveau kind `user-question`) — **livré** (TODO §55) | [23-questions-utilisateur-taches.md](23-questions-utilisateur-taches.md) |
 | 24 | Extension du serveur MCP (connecteurs, association templates, questions de tâche) — analyse initiale | [24-extension-mcp-flux-metier.md](24-extension-mcp-flux-metier.md) |
 | 25 | Introduction de DMN — tables de décision, moteur + éditeur intégrés — **livré** (TODO §61) | [25-introduction-dmn.md](25-introduction-dmn.md) |
-| 26 | Portail externe tokenisé — implémenté, Phase 5 (TODO §68) ; scindé de la signature le 2026-09-23 | [26-portail-externe.md](26-portail-externe.md) |
+| 26 | Portail externe tokenisé — **livré** (TODO §68, PR #138) ; scindé de la signature le 2026-09-23 | [26-portail-externe.md](26-portail-externe.md) |
 | 27 | Inbox de notifications persistée — **livré** (TODO §66) | [27-notifications-inbox.md](27-notifications-inbox.md) |
 | 28 | Outillage DMN — évaluation ad hoc, historique/rollback, tests — **livré** (TODO §67, PR #134) | [28-outillage-dmn.md](28-outillage-dmn.md) |
 | 29 | Enrichissement du reporting — alerting SLA, dashboard, export BI — **livré** (TODO §65, PR #132) | [29-enrichissement-reporting.md](29-enrichissement-reporting.md) |

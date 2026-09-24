@@ -48,7 +48,11 @@ public final class RedeployDecisionTableUseCaseImpl implements RedeployDecisionT
                 .findDeployedXml(tenantId, key, version)
                 .orElseThrow(() -> new UnknownDecisionVersionException(
                         "No deployed version " + version + " for decision key: " + key));
-        dmnParserPort.extractDecisionKey(xml);
+        String extracted = dmnParserPort.extractDecisionKey(xml);
+        if (!extracted.equals(key)) {
+            throw new IllegalArgumentException(
+                    "decisionKey (" + key + ") does not match the DMN decision id (" + extracted + ")");
+        }
         return deploymentPort.deploy(tenantId, key + ".dmn", xml);
     }
 

@@ -34,6 +34,9 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
   évaluation d'une table déployée, jeux de tests JSON et CSV (100 cas maximum), historique des
   versions et redéploiement (« Redéployer la version N », avec confirmation dans l'éditeur).
   Disponible dans l'éditeur `/admin/dmn-editor`, l'API REST et quatre outils MCP.
+  Le redéploiement refuse un XML dont l'identifiant ne correspond pas à la clé demandée,
+  un jeu CSV de plus de 100 cas est rejeté dès la lecture, et le payload MCP de
+  `test_decision` est borné par la taille maximale d'upload.
 - **PR [#132](https://github.com/superjojo79/FlowForge/pull/132)** — Alertes de franchissement SLA
   (e-mail, webhook, navigateur, une fois par palier), compteurs dead-letter et tâches ouvertes
   sans assigné sur `/rapports`, et export BI planifié (CSV par type et CSV SLA, rétention,

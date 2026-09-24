@@ -18,6 +18,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class DmnCsvTestCaseParser {
 
+    static final int MAX_CASES = 100;
+
     public List<DecisionTestCase> parse(String csv) {
         if (csv == null || csv.isBlank()) {
             throw new IllegalArgumentException("CSV is empty");
@@ -32,6 +34,9 @@ public class DmnCsvTestCaseParser {
             validateHeaders(headers);
             List<DecisionTestCase> cases = new ArrayList<>();
             for (CSVRecord record : parser) {
+                if (cases.size() >= MAX_CASES) {
+                    throw new IllegalArgumentException("at most " + MAX_CASES + " cases are allowed");
+                }
                 cases.add(toCase(headers, record));
             }
             if (cases.isEmpty()) {

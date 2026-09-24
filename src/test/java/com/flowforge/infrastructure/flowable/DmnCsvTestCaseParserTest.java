@@ -77,6 +77,18 @@ class DmnCsvTestCaseParserTest {
     }
 
     @Test
+    void rejectsMoreThanOneHundredDataRows() {
+        StringBuilder csv = new StringBuilder("input.a,expected.b\n");
+        for (int i = 0; i < 101; i++) {
+            csv.append("x,y\n");
+        }
+
+        assertThatThrownBy(() -> parser.parse(csv.toString()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("100");
+    }
+
+    @Test
     void rejectsMalformedOrEmptyCsv() {
         assertThatThrownBy(() -> parser.parse("")).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> parser.parse("input.customerCat,expected.result\n"))

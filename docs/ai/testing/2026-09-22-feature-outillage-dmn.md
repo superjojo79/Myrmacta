@@ -102,9 +102,11 @@ manquantes utiles et enregistré les preuves ci-dessous.
 
 Preuves fraîches du 2026-09-23 (cette session, JDK 21 via `-Djava.version=21`) :
 
-- `./mvnw verify -Djava.version=21 -Dskip.frontend=true` : **BUILD SUCCESS**, Tests run **2133**, Failures 0, Errors 0, Jacoco « All coverage checks have been met ».
+- `./mvnw verify -Djava.version=21 -Dskip.frontend=true` : **BUILD SUCCESS**, Tests run **2136**, Failures 0, Errors 0, Jacoco « All coverage checks have been met » (rejoué après le durcissement post-revue).
 - `cd frontend && npm run test` : **358** tests, 80 fichiers, exit 0.
 - `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/google/chrome/chrome npm run test:e2e` : **84** passed, exit 0.
+
+Durcissement post-revue : id XML ≠ clé demandée au redéploiement, CSV de 101 lignes rejeté par le parseur, payload MCP `test_decision` au-dessus de `max-file-size` rejeté avant parse.
 
 Branches laissées volontairement : corps REST `null` (`@RequestBody` obligatoire),
 `suite == null` côté Jackson, `IOException` de lecture XML, `BigInteger` et

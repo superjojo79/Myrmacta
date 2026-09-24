@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.util.unit.DataSize;
 
 @ExtendWith(MockitoExtension.class)
 class DmnDecisionToolingToolsTest {
@@ -75,7 +76,11 @@ class DmnDecisionToolingToolsTest {
                 new DecisionTestCase(Map.of("customerCat", "BRONZE"), List.of(Map.of("result", "ok")))), true))
                 .thenReturn(new DecisionTestReport("eligibilite", 1, List.of()));
         TestDecisionTool tool = new TestDecisionTool(
-                testDecisionUseCase, new DmnCsvTestCaseParser(), new ObjectMapper(), accessContextFactory);
+                testDecisionUseCase,
+                new DmnCsvTestCaseParser(),
+                new ObjectMapper(),
+                accessContextFactory,
+                DataSize.ofMegabytes(25));
 
         tool.testDecision(
                 "eligibilite",
@@ -110,7 +115,11 @@ class DmnDecisionToolingToolsTest {
     @Test
     void testDecision_rejectsUnknownFormatAndInvalidJson() {
         TestDecisionTool tool = new TestDecisionTool(
-                testDecisionUseCase, new DmnCsvTestCaseParser(), new ObjectMapper(), accessContextFactory);
+                testDecisionUseCase,
+                new DmnCsvTestCaseParser(),
+                new ObjectMapper(),
+                accessContextFactory,
+                DataSize.ofMegabytes(25));
 
         assertThatThrownBy(() -> tool.testDecision("eligibilite", null, "xml", "<x/>"))
                 .isInstanceOf(IllegalArgumentException.class);
@@ -119,6 +128,21 @@ class DmnDecisionToolingToolsTest {
         assertThatThrownBy(() -> tool.testDecision("eligibilite", null, "json", "{}"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("cases");
+        verifyNoInteractions(testDecisionUseCase);
+    }
+
+    @Test
+    void testDecision_rejectsPayloadAboveTheUploadLimit() {
+        TestDecisionTool tool = new TestDecisionTool(
+                testDecisionUseCase,
+                new DmnCsvTestCaseParser(),
+                new ObjectMapper(),
+                accessContextFactory,
+                DataSize.ofBytes(4));
+
+        assertThatThrownBy(() -> tool.testDecision("eligibilite", null, "json", "{\"cases\":[]}"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("exceeds max size");
         verifyNoInteractions(testDecisionUseCase);
     }
 

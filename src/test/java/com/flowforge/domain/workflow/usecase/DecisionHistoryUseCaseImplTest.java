@@ -111,6 +111,23 @@ class DecisionHistoryUseCaseImplTest {
     }
 
     @Test
+    void redeploy_xmlDecisionIdMismatch_doesNotDeploy() {
+        byte[] xml = "<other/>".getBytes(StandardCharsets.UTF_8);
+        when(deploymentPort.findAllVersions(TENANT, "eligibilite")).thenReturn(List.of(version(1), version(2)));
+        when(deploymentPort.findDeployedXml(TENANT, "eligibilite", 1)).thenReturn(Optional.of(xml));
+        when(dmnParserPort.extractDecisionKey(xml)).thenReturn("autre");
+
+        assertThatThrownBy(() -> redeployUseCase().redeploy(ADMIN, "eligibilite", 1))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("autre");
+        verify(deploymentPort, never())
+                .deploy(
+                        org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
     void redeploy_rejectedByAllowlist_doesNotDeploy() {
         byte[] xml = "<bad/>".getBytes(StandardCharsets.UTF_8);
         when(deploymentPort.findAllVersions(TENANT, "eligibilite")).thenReturn(List.of(version(1), version(2)));

@@ -90,6 +90,17 @@ brouillon.
 - `disableHistory()` sur l’évaluation ad hoc, pour ne pas remplir
   l’historique DMN Flowable à chaque essai.
 
+## Durcissement (revue adversariale)
+
+- Le redéploiement refuse le XML dont l’id de décision diffère de la clé
+  demandée (`IllegalArgumentException`, HTTP 400), après l’allowlist.
+- Le parseur CSV rejette la 101e ligne avant de construire le cas
+  (`at most 100 cases are allowed`).
+- `test_decision` refuse un payload plus grand que
+  `spring.servlet.multipart.max-file-size`, avant le parse JSON ou CSV.
+- Une version historique hors allowlist actuelle reste exécutable par
+  evaluate/test ; seul le redéploiement la republie, et il la refuse.
+
 ## Phase 8 — write tests (2026-09-23)
 
 Couverture relue dans `target/site/jacoco/jacoco.csv` après
@@ -102,6 +113,9 @@ XML absente, payload JSON sans `cases`, message moteur vide ou présent.
 
 Frontend : Vitest **358** (80 fichiers). Playwright **84** passed
 (`PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/google/chrome/chrome`).
+
+Durcissement post-revue : `./mvnw verify -Djava.version=21 -Dskip.frontend=true`
+→ **2136** tests, 0 échec, Jacoco tenu.
 
 ## Phase 9 — review (2026-09-23)
 

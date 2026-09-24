@@ -130,7 +130,7 @@ Revue holistique après les correctifs de la Phase 7. Aucun blocage.
   revue. Le message 400 d’évaluation inclut la cause moteur.
 - Tests : preuves fraîches de cette session (2133, 358, 84).
 - Docs : implementation, testing, deployment, monitoring, requirements,
-  TODO §66, FILE-ATTENTE, analyse 28, CHANGELOG (entrée #132 restaurée).
+  TODO §67, FILE-ATTENTE, analyse 28, CHANGELOG (entrée #132 restaurée).
 
 **Checklist :** design ✅ · pas de gap logique ouvert ✅ · sécurité ✅ ·
 intégrations vérifiées ✅ · tests ✅ · docs ✅. Prêt pour la revue de la

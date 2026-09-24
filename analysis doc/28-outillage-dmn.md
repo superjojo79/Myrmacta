@@ -1,6 +1,6 @@
 # Outillage DMN — évaluation ad hoc, historique/rollback, jeux de tests
 
-> **Statut : Phases 1 à 9 livrées (2026-09-23)** — feature `outillage-dmn`, TODO §66, PR #134.
+> **Statut : Phases 1 à 9 livrées (2026-09-23)** — feature `outillage-dmn`, TODO §67, PR #134.
 > Évaluation, jeux de tests JSON/CSV et redéploiement sont implémentés. La case TODO reste
 > ouverte tant que la PR n’est pas mergée. Origine :
 > `ROADMAP.md` v1.1 (14/09/2026), items **1.1** (`evaluate_decision` MCP), **1.2**

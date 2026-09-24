@@ -29,6 +29,9 @@ import com.flowforge.domain.dossier.port.out.DossierElementRepository;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
 import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
+import com.flowforge.domain.notification.model.NotificationChannel;
+import com.flowforge.domain.notification.model.NotificationEvent;
+import com.flowforge.domain.notification.port.in.SendNotificationUseCase;
 import com.flowforge.domain.workflow.model.WorkflowDiagramView;
 import com.flowforge.domain.workflow.model.WorkflowProcessInstanceMissingException;
 import com.flowforge.domain.workflow.port.out.WorkflowParticipantPort;
@@ -55,6 +58,7 @@ class WorkflowLinkVisualizationUseCaseImplTest {
     private WorkflowVisualizationPort visualizationPort;
     private WorkflowParticipantPort participantPort;
     private DossierAccessPolicy dossierAccessPolicy;
+    private SendNotificationUseCase sendNotificationUseCase;
     private WorkflowLinkVisualizationUseCaseImpl useCase;
 
     @BeforeEach
@@ -69,6 +73,7 @@ class WorkflowLinkVisualizationUseCaseImplTest {
         visualizationPort = mock(WorkflowVisualizationPort.class);
         participantPort = mock(WorkflowParticipantPort.class);
         dossierAccessPolicy = mock(DossierAccessPolicy.class);
+        sendNotificationUseCase = mock(SendNotificationUseCase.class);
         when(dossierTypeRepository.findByCode(anyString(), anyString())).thenReturn(Optional.empty());
         useCase = new WorkflowLinkVisualizationUseCaseImpl(
                 TENANT,
@@ -79,7 +84,8 @@ class WorkflowLinkVisualizationUseCaseImplTest {
                 listDossierRelationsUseCase,
                 visualizationPort,
                 participantPort,
-                dossierAccessPolicy);
+                dossierAccessPolicy,
+                sendNotificationUseCase);
     }
 
     @Test
@@ -291,6 +297,23 @@ class WorkflowLinkVisualizationUseCaseImplTest {
         useCase.reassign(link.id(), "task-1", "assignee-sub", user("workflow-admin", "WORKFLOW_ADMIN"));
 
         verify(visualizationPort).reassignTask("proc-1", "task-1", "assignee-sub", TENANT);
+    }
+
+    @Test
+    void reassign_notifiesNewAssigneeOnly() {
+        // UT-NOTIF-11
+        DossierWorkflowLink link = activeLink("proc-1");
+        when(linkRepository.findById(link.id())).thenReturn(Optional.of(link));
+        when(participantPort.findParticipantUserIds(link)).thenReturn(List.of("assignee-sub", "old-assignee"));
+
+        useCase.reassign(link.id(), "task-1", "assignee-sub", user("workflow-admin", "WORKFLOW_ADMIN"));
+
+        org.mockito.ArgumentCaptor<NotificationEvent> captor =
+                org.mockito.ArgumentCaptor.forClass(NotificationEvent.class);
+        verify(sendNotificationUseCase).send(captor.capture(), org.mockito.ArgumentMatchers.eq(TENANT));
+        assertThat(captor.getValue().userId()).isEqualTo("assignee-sub");
+        assertThat(captor.getValue().channels()).containsExactly(NotificationChannel.BROWSER);
+        assertThat(captor.getValue().payload()).containsEntry("type", "TASK_REASSIGNED");
     }
 
     @Test

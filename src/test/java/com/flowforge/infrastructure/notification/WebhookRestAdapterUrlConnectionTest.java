@@ -98,7 +98,8 @@ class WebhookRestAdapterUrlConnectionTest {
                 return new PinnedEndpoint(original, loopback);
             }
         };
-        return new WebhookRestAdapter(stub, JsonMapper.builder().build(), new NotificationProperties(null, null, null));
+        return new WebhookRestAdapter(
+                stub, JsonMapper.builder().build(), new NotificationProperties(null, null, null, null));
     }
 
     private static InetAddress literalAddress(String literalIp) {

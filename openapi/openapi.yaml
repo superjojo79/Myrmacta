@@ -416,6 +416,14 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/SendNotificationResponse"
+  /api/notifications/read-all:
+    post:
+      tags:
+      - notification-inbox-controller
+      operationId: markAllRead
+      responses:
+        "200":
+          description: OK
   /api/notification-webhooks:
     get:
       tags:
@@ -1263,6 +1271,21 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/WorkflowTypeConfigResponse"
+  /api/notifications/{id}/read:
+    patch:
+      tags:
+      - notification-inbox-controller
+      operationId: markRead
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
   /api/notification-webhooks/{id}:
     get:
       tags:
@@ -1907,6 +1930,43 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ObservabilitySnapshotResponse"
+  /api/notifications:
+    get:
+      tags:
+      - notification-inbox-controller
+      operationId: list_9
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageResponseUserNotificationResponse"
+  /api/notifications/unread-count:
+    get:
+      tags:
+      - notification-inbox-controller
+      operationId: unreadCount
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/UnreadCountResponse"
   /api/notifications/stream:
     get:
       tags:
@@ -2091,7 +2151,7 @@ paths:
     get:
       tags:
       - connector-definition-controller
-      operationId: list_9
+      operationId: list_10
       parameters:
       - name: page
         in: query
@@ -3799,6 +3859,48 @@ components:
         maxMs:
           type: number
           format: double
+    PageResponseUserNotificationResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserNotificationResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    UserNotificationResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        payload:
+          type: object
+          additionalProperties: {}
+        createdAt:
+          type: string
+          format: date-time
+        readAt:
+          type: string
+          format: date-time
+        read:
+          type: boolean
+    UnreadCountResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+          format: int64
     SseEmitter:
       type: object
       properties:

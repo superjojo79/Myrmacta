@@ -191,6 +191,9 @@ app:
       read-timeout: 5s
     sse:
       heartbeat-interval: 15s
+    inbox:
+      retention: 30d
+      poll-delay: 1d
   storage:
     type: ${APP_STORAGE_TYPE:filesystem}
     filesystem:

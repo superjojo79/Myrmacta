@@ -18,10 +18,17 @@ import com.flowforge.domain.dossier.model.DossierNotFoundException;
 import com.flowforge.domain.dossier.model.DossierStatus;
 import com.flowforge.domain.dossier.model.ElementType;
 import com.flowforge.domain.dossier.model.InvalidDossierElementException;
+import com.flowforge.domain.dossier.model.DossierWorkflowLink;
 import com.flowforge.domain.dossier.port.in.AddDossierElementUseCase;
 import com.flowforge.domain.dossier.port.out.DossierElementRepository;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
+import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
+import com.flowforge.domain.notification.model.NotificationChannel;
+import com.flowforge.domain.notification.model.NotificationEvent;
+import com.flowforge.domain.notification.port.in.SendNotificationUseCase;
+import com.flowforge.domain.workflow.port.out.WorkflowParticipantPort;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -45,12 +52,27 @@ class AddDossierElementUseCaseImplTest {
     @Mock
     DossierAccessPolicy accessPolicy;
 
+    @Mock
+    DossierWorkflowLinkRepository linkRepository;
+
+    @Mock
+    WorkflowParticipantPort participantPort;
+
+    @Mock
+    SendNotificationUseCase sendNotificationUseCase;
+
     AddDossierElementUseCaseImpl useCase;
 
     @BeforeEach
     void setUp() {
         useCase = new AddDossierElementUseCaseImpl(
-                "tenant_dev", dossierRepository, elementRepository, accessPolicy);
+                "tenant_dev",
+                dossierRepository,
+                elementRepository,
+                accessPolicy,
+                linkRepository,
+                participantPort,
+                sendNotificationUseCase);
     }
 
     @Test
@@ -76,6 +98,93 @@ class AddDossierElementUseCaseImplTest {
         assertThat(captor.getValue().type()).isEqualTo(ElementType.PRODUCED_DOC);
         assertThat(captor.getValue().metadata()).containsEntry("templateKey", "contrat");
         assertThat(saved.storageRef()).isEqualTo("tenant_dev/x.pdf");
+    }
+
+    @Test
+    void add_producedDocWithActiveLink_notifiesAllParticipants_systemContext() {
+        // UT-NOTIF-14 (AttachGeneratedDocumentTask path: AccessContext.system)
+        UUID dossierId = UUID.randomUUID();
+        when(dossierRepository.findById(dossierId)).thenReturn(Optional.of(dossier(dossierId)));
+        when(elementRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        DossierWorkflowLink link = link(dossierId);
+        when(linkRepository.findActiveByDossierId(dossierId)).thenReturn(Optional.of(link));
+        when(participantPort.findParticipantUserIds(link)).thenReturn(List.of("p1", "p2"));
+
+        useCase.add(
+                new AddDossierElementUseCase.AddCommand(
+                        dossierId, ElementType.PRODUCED_DOC, "Document", "tenant_dev/x.pdf", Map.of(), "system", null),
+                AccessContext.system("flowable-delegate"));
+
+        ArgumentCaptor<NotificationEvent> events = ArgumentCaptor.forClass(NotificationEvent.class);
+        verify(sendNotificationUseCase, org.mockito.Mockito.times(2)).send(events.capture(), org.mockito.ArgumentMatchers.eq("tenant_dev"));
+        assertThat(events.getAllValues()).extracting(NotificationEvent::userId).containsExactlyInAnyOrder("p1", "p2");
+        assertThat(events.getAllValues().getFirst().payload()).containsEntry("type", "DOCUMENT_GENERATED");
+    }
+
+    @Test
+    void add_producedDocWithActiveLink_notifiesAllParticipants_userContext() {
+        // UT-NOTIF-14 (GenerateDocumentTool MCP path: AccessContext.User)
+        UUID dossierId = UUID.randomUUID();
+        when(dossierRepository.findById(dossierId)).thenReturn(Optional.of(dossier(dossierId)));
+        when(elementRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        DossierWorkflowLink link = link(dossierId);
+        when(linkRepository.findActiveByDossierId(dossierId)).thenReturn(Optional.of(link));
+        when(participantPort.findParticipantUserIds(link)).thenReturn(List.of("p1"));
+
+        useCase.add(
+                new AddDossierElementUseCase.AddCommand(
+                        dossierId, ElementType.PRODUCED_DOC, "Document", "tenant_dev/x.pdf", Map.of(), "mcp", null),
+                AccessContext.user("api-service", Set.of("API_SERVICE")));
+
+        verify(sendNotificationUseCase).send(any(), org.mockito.ArgumentMatchers.eq("tenant_dev"));
+    }
+
+    @Test
+    void add_producedDocWithoutActiveLink_noNotification() {
+        UUID dossierId = UUID.randomUUID();
+        when(dossierRepository.findById(dossierId)).thenReturn(Optional.of(dossier(dossierId)));
+        when(elementRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(linkRepository.findActiveByDossierId(dossierId)).thenReturn(Optional.empty());
+
+        useCase.add(
+                new AddDossierElementUseCase.AddCommand(
+                        dossierId, ElementType.PRODUCED_DOC, "Document", "tenant_dev/x.pdf", Map.of(), "system", null),
+                AccessContext.system("test"));
+
+        verify(sendNotificationUseCase, never()).send(any(), any());
+        verify(participantPort, never()).findParticipantUserIds(any());
+    }
+
+    @Test
+    void add_note_neverTriggersNotification() {
+        // UT-NOTIF-15 — only PRODUCED_DOC notifies, not the other 4 element types.
+        UUID dossierId = UUID.randomUUID();
+        when(dossierRepository.findById(dossierId)).thenReturn(Optional.of(dossier(dossierId)));
+        when(elementRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        useCase.add(
+                new AddDossierElementUseCase.AddCommand(
+                        dossierId, ElementType.NOTE, "Note", null, Map.of("text", "hello"), "system", null),
+                AccessContext.system("test"));
+
+        verify(sendNotificationUseCase, never()).send(any(), any());
+        verify(linkRepository, never()).findActiveByDossierId(any());
+    }
+
+    private static DossierWorkflowLink link(UUID dossierId) {
+        return new DossierWorkflowLink(
+                UUID.randomUUID(),
+                dossierId,
+                "tenant_dev",
+                "proc-1",
+                "smokeProcess",
+                1,
+                "STARTED",
+                "manual",
+                Instant.parse("2026-09-22T10:00:00Z"),
+                null,
+                null,
+                "starter");
     }
 
     @Test

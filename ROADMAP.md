@@ -78,8 +78,8 @@ Ne **pas** découper B1 en 3 PRs (conflits catalogue). Ne **pas** lancer un 4ᵉ
 | Produit, pas cadré | **2.4 Signature électronique** | Aucune trace DocuSign/Yousign/eIDAS | Hors file actuelle. |
 | Produit, pas cadré | **3.2 Inbox notifications persistée** | SSE JVM-local uniquement | Outbox notifications ≠ historique utilisateur. |
 | Produit, pas cadré | **5.2 Alerting SLA proactif** | Reporting a posteriori seulement | `/rapports` + `AT_RISK` existent ; pas de job d’alerte/escalade. |
-| **Implémenté** (TODO §66) | **1.1 `evaluate_decision` MCP** | 27 tools | Phase 5 `outillage-dmn` 2026-09-23 — MCP + REST + Tester UI. |
-| **Implémenté** (TODO §66) | **1.2 / 1.3 / 5.1** tests + historique/rollback DMN | versions Flowable listées | Même cycle ; JSON et CSV ; redéploiement version N. |
+| **Implémenté** (TODO §67) | **1.1 `evaluate_decision` MCP** | 27 tools | Phase 5 `outillage-dmn` 2026-09-23 — MCP + REST + Tester UI. |
+| **Implémenté** (TODO §67) | **1.2 / 1.3 / 5.1** tests + historique/rollback DMN | versions Flowable listées | Même cycle ; JSON et CSV ; redéploiement version N. |
 | Produit, pas cadré | **3.3 Dashboard opérationnel widgets** | `/rapports` + inbox tâches | Incrément UX, pas une page vide. |
 | Produit, pas cadré | **5.3 BI JDBC / Power BI / SFTP** | CSV dossiers + CSV SLA | Agrégations configurables / JDBC = nouveau produit. |
 
@@ -93,7 +93,7 @@ Catalogue MCP **réel** (27) : `define_dossier_type`, `deploy_workflow`, `get_do
 
 **Statut vérifié :** ✅ Implémenté (Phase 5, 2026-09-23) — tool `evaluate_decision`, `POST /api/dmn-decision-deployments/evaluate`, bouton Tester.  
 **Priorité réelle :** moyenne (confort agent), **pas** critique.  
-**Cadrage :** `outillage-dmn` (TODO §66) — D-DMN-EVAL-SURFACE = MCP + REST + bouton Tester ; D-DMN-EVAL-VERSION = version optionnelle.
+**Cadrage :** `outillage-dmn` (TODO §67) — D-DMN-EVAL-SURFACE = MCP + REST + bouton Tester ; D-DMN-EVAL-VERSION = version optionnelle.
 
 Un agent peut déjà : déployer une table, déployer un process `serviceTask type=dmn`, démarrer le workflow. Il n’existe pas d’appel MCP *ad hoc* `decisionKey` + `inputs` → résultat. `DmnJuelSecuritySmokeIT` / `DmnServiceTaskEndToEndSmokeIT` prouvent `DmnDecisionService` côté serveur.
 

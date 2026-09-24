@@ -55,9 +55,15 @@ public class WorkflowStateEventListener implements FlowableEventListener {
                     .ifPresent(link -> {
                         // Only linkId is exposed — the frontend never sees the raw Flowable
                         // process instance id (see WorkflowLinkVisualizationController, DD-URL).
+                        // title/body: standardized payload contract (TODO §66) — every BROWSER
+                        // producer now includes them, not just EvaluateSlaAlertsUseCaseImpl.
                         Map<String, Object> payload = Map.of(
                                 "type", WORKFLOW_STATE_CHANGED,
-                                "linkId", link.id().toString());
+                                "title", "Workflow mis à jour — " + link.processDefinitionKey(),
+                                "body", "Le workflow \"" + link.processDefinitionKey()
+                                        + "\" a évolué (statut : " + link.status() + ").",
+                                "linkId", link.id().toString(),
+                                "dossierId", link.dossierId().toString());
                         participantPort.findParticipantUserIds(link).forEach(userId -> sendNotificationUseCase.send(
                                 new NotificationEvent(
                                         List.of(NotificationChannel.BROWSER),

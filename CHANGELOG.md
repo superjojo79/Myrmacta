@@ -30,7 +30,7 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
-- **PR [#134](https://github.com/superjojo79/FlowForge/pull/134)** — Outillage DMN (TODO §66) :
+- **PR [#134](https://github.com/superjojo79/FlowForge/pull/134)** — Outillage DMN (TODO §67) :
   évaluation d'une table déployée, jeux de tests JSON et CSV (100 cas maximum), historique des
   versions et redéploiement (« Redéployer la version N », avec confirmation dans l'éditeur).
   Disponible dans l'éditeur `/admin/dmn-editor`, l'API REST et quatre outils MCP.

@@ -3,6 +3,7 @@ package com.flowforge.infrastructure.web.notification;
 import com.flowforge.domain.notification.model.NotificationValidationException;
 import com.flowforge.domain.notification.model.NotificationWebhookConflictException;
 import com.flowforge.domain.notification.model.NotificationWebhookNotFoundException;
+import com.flowforge.domain.notification.model.UserNotificationNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -16,6 +17,11 @@ public class NotificationExceptionHandler {
     @ExceptionHandler(NotificationWebhookNotFoundException.class)
     ProblemDetail handleNotFound(NotificationWebhookNotFoundException ex) {
         return problem(HttpStatus.NOT_FOUND, "Notification webhook not found", ex.getMessage());
+    }
+
+    @ExceptionHandler(UserNotificationNotFoundException.class)
+    ProblemDetail handleNotFound(UserNotificationNotFoundException ex) {
+        return problem(HttpStatus.NOT_FOUND, "Notification not found", ex.getMessage());
     }
 
     @ExceptionHandler({

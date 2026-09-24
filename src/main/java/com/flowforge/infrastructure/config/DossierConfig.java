@@ -65,7 +65,9 @@ import com.flowforge.domain.dossier.usecase.UpdateDossierStatusUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.UpdateDossierTypeUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.UpsertTenantRetentionSettingsUseCaseImpl;
 import com.flowforge.domain.document.port.out.DocumentStoragePort;
+import com.flowforge.domain.notification.port.in.SendNotificationUseCase;
 import com.flowforge.domain.workflow.port.out.WorkflowEnginePort;
+import com.flowforge.domain.workflow.port.out.WorkflowParticipantPort;
 import com.flowforge.infrastructure.dossier.ClamAvAttachmentScanAdapter;
 import com.flowforge.infrastructure.dossier.NoOpAttachmentScanAdapter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -217,9 +219,18 @@ public class DossierConfig {
             TenantProperties tenantProperties,
             DossierRepository dossierRepository,
             DossierElementRepository dossierElementRepository,
-            DossierAccessPolicy accessPolicy) {
+            DossierAccessPolicy accessPolicy,
+            DossierWorkflowLinkRepository linkRepository,
+            WorkflowParticipantPort participantPort,
+            SendNotificationUseCase sendNotificationUseCase) {
         return new AddDossierElementUseCaseImpl(
-                tenantProperties.id(), dossierRepository, dossierElementRepository, accessPolicy);
+                tenantProperties.id(),
+                dossierRepository,
+                dossierElementRepository,
+                accessPolicy,
+                linkRepository,
+                participantPort,
+                sendNotificationUseCase);
     }
 
     @Bean

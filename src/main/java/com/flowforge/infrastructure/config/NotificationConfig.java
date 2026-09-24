@@ -2,10 +2,13 @@ package com.flowforge.infrastructure.config;
 
 import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
 import com.flowforge.domain.notification.port.in.ManageNotificationWebhookUseCase;
+import com.flowforge.domain.notification.port.in.NotificationInboxUseCase;
 import com.flowforge.domain.notification.port.in.SendNotificationUseCase;
 import com.flowforge.domain.notification.port.out.NotificationOutboxRepository;
 import com.flowforge.domain.notification.port.out.NotificationWebhookRepository;
+import com.flowforge.domain.notification.port.out.UserNotificationRepository;
 import com.flowforge.domain.notification.usecase.ManageNotificationWebhookUseCaseImpl;
+import com.flowforge.domain.notification.usecase.NotificationInboxUseCaseImpl;
 import com.flowforge.domain.notification.usecase.SendNotificationUseCaseImpl;
 import com.flowforge.infrastructure.notification.OutboundUrlGuard;
 import java.util.Arrays;
@@ -32,13 +35,20 @@ public class NotificationConfig {
     SendNotificationUseCase sendNotificationUseCase(
             NotificationOutboxRepository outboxRepository,
             NotificationWebhookRepository webhookRepository,
-            DossierTypeRepository dossierTypeRepository) {
-        return new SendNotificationUseCaseImpl(outboxRepository, webhookRepository, dossierTypeRepository);
+            DossierTypeRepository dossierTypeRepository,
+            UserNotificationRepository userNotificationRepository) {
+        return new SendNotificationUseCaseImpl(
+                outboxRepository, webhookRepository, dossierTypeRepository, userNotificationRepository);
     }
 
     @Bean
     ManageNotificationWebhookUseCase manageNotificationWebhookUseCase(
             NotificationWebhookRepository webhookRepository) {
         return new ManageNotificationWebhookUseCaseImpl(webhookRepository);
+    }
+
+    @Bean
+    NotificationInboxUseCase notificationInboxUseCase(UserNotificationRepository userNotificationRepository) {
+        return new NotificationInboxUseCaseImpl(userNotificationRepository);
     }
 }

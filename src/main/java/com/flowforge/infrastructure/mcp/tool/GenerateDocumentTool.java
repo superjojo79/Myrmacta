@@ -26,6 +26,7 @@ import java.util.UUID;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 @Component
 public class GenerateDocumentTool {
@@ -67,11 +68,22 @@ public class GenerateDocumentTool {
                 Objects.requireNonNull(documentGenerationProperties, "documentGenerationProperties");
     }
 
+    /**
+     * {@code @Transactional} (TODO §66 F4, Phase 10 adversarial review): makes the
+     * {@code addDossierElementUseCase.add(...)} DB write and the {@code DOCUMENT_GENERATED}
+     * notification it triggers roll back together on a notification failure, consistent with the
+     * BPMN path ({@code AttachGeneratedDocumentTask}, which already gets this for free from
+     * Flowable's own Spring-managed job transaction) instead of leaving the element already
+     * committed while the MCP caller sees an error. Same accepted tradeoff as the BPMN path: the
+     * PDF already written to {@link #documentStoragePort} above is external storage and is not
+     * undone by a DB rollback — an orphaned object, not a data-integrity issue.
+     */
     @McpTool(
             name = "generate_document",
             description = "Generate a PDF for a dossier from a template listed on that dossier's type, "
                     + "store it and attach a PRODUCED_DOC element. Does not return PDF bytes. "
                     + "dryRun=true validates without generating.")
+    @Transactional
     public Object generateDocument(
             @McpToolParam(required = true, description = "Dossier id (UUID)") String dossierId,
             @McpToolParam(required = true, description = "Document template key (must be listed on the dossier type)")

@@ -9,7 +9,7 @@ class NotificationPropertiesTest {
 
     @Test
     void defaults_matchDesign() {
-        var props = new NotificationProperties(null, null, null);
+        var props = new NotificationProperties(null, null, null, null);
 
         assertThat(props.outbox().batchSize()).isEqualTo(20);
         assertThat(props.outbox().maxAttempts()).isEqualTo(3);
@@ -18,6 +18,8 @@ class NotificationPropertiesTest {
         assertThat(props.webhook().connectTimeout()).isEqualTo(Duration.ofSeconds(5));
         assertThat(props.webhook().readTimeout()).isEqualTo(Duration.ofSeconds(5));
         assertThat(props.sse().heartbeatInterval()).isEqualTo(Duration.ofSeconds(15));
+        assertThat(props.inbox().retention()).isEqualTo(Duration.ofDays(30));
+        assertThat(props.inbox().pollDelay()).isEqualTo(Duration.ofDays(1));
     }
 
     @Test
@@ -25,7 +27,8 @@ class NotificationPropertiesTest {
         var props = new NotificationProperties(
                 new NotificationProperties.Outbox(10, 5, Duration.ofMillis(500), Duration.ofDays(3)),
                 new NotificationProperties.Webhook(Duration.ofSeconds(2), Duration.ofSeconds(8)),
-                new NotificationProperties.Sse(Duration.ofSeconds(30)));
+                new NotificationProperties.Sse(Duration.ofSeconds(30)),
+                new NotificationProperties.Inbox(Duration.ofDays(60), Duration.ofHours(12)));
 
         assertThat(props.outbox().batchSize()).isEqualTo(10);
         assertThat(props.outbox().maxAttempts()).isEqualTo(5);
@@ -34,5 +37,7 @@ class NotificationPropertiesTest {
         assertThat(props.webhook().connectTimeout()).isEqualTo(Duration.ofSeconds(2));
         assertThat(props.webhook().readTimeout()).isEqualTo(Duration.ofSeconds(8));
         assertThat(props.sse().heartbeatInterval()).isEqualTo(Duration.ofSeconds(30));
+        assertThat(props.inbox().retention()).isEqualTo(Duration.ofDays(60));
+        assertThat(props.inbox().pollDelay()).isEqualTo(Duration.ofHours(12));
     }
 }

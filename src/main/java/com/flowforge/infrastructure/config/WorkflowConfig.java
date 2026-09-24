@@ -10,6 +10,7 @@ import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
 import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
 import com.flowforge.domain.dossier.usecase.AttachWorkflowUseCaseImpl;
+import com.flowforge.domain.notification.port.in.SendNotificationUseCase;
 import com.flowforge.domain.workflow.port.in.CompleteTaskUseCase;
 import com.flowforge.domain.workflow.port.in.DeployBpmnProcessUseCase;
 import com.flowforge.domain.workflow.port.in.DeployDecisionTableUseCase;
@@ -100,14 +101,20 @@ public class WorkflowConfig {
             DossierRepository dossierRepository,
             DossierTypeRepository dossierTypeRepository,
             TaskQuestionSchemaRepository taskQuestionSchemaRepository,
-            TaskQuestionAnswerRepository taskQuestionAnswerRepository) {
+            TaskQuestionAnswerRepository taskQuestionAnswerRepository,
+            DossierWorkflowLinkRepository linkRepository,
+            WorkflowParticipantPort participantPort,
+            SendNotificationUseCase sendNotificationUseCase) {
         return new CompleteTaskUseCaseImpl(
                 tenantProperties.id(),
                 workflowEnginePort,
                 dossierRepository,
                 dossierTypeRepository,
                 taskQuestionSchemaRepository,
-                taskQuestionAnswerRepository);
+                taskQuestionAnswerRepository,
+                linkRepository,
+                participantPort,
+                sendNotificationUseCase);
     }
 
     @Bean
@@ -163,7 +170,8 @@ public class WorkflowConfig {
             ListDossierRelationsUseCase listDossierRelationsUseCase,
             WorkflowVisualizationPort visualizationPort,
             WorkflowParticipantPort participantPort,
-            DossierAccessPolicy dossierAccessPolicy) {
+            DossierAccessPolicy dossierAccessPolicy,
+            SendNotificationUseCase sendNotificationUseCase) {
         return new WorkflowLinkVisualizationUseCaseImpl(
                 tenantProperties.id(),
                 linkRepository,
@@ -173,7 +181,8 @@ public class WorkflowConfig {
                 listDossierRelationsUseCase,
                 visualizationPort,
                 participantPort,
-                dossierAccessPolicy);
+                dossierAccessPolicy,
+                sendNotificationUseCase);
     }
 
     @Bean

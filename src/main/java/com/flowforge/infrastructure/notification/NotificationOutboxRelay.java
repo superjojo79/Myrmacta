@@ -136,10 +136,13 @@ public class NotificationOutboxRelay {
     private void dispatchBrowser(NotificationOutboxRecord record, Instant now) {
         JsonNode root = readTree(record.payloadJson());
         String userId = textRequired(root, "userId");
+        // D-NOTIF-SSE-ID: the user_notification row id, not this outbox row's own id — lets the
+        // client PATCH /api/notifications/{id}/read against the exact history row it just saw.
+        String inboxId = textRequired(root, "inboxId");
         Map<String, Object> payload = readPayloadMap(root.get("payload"));
 
         Map<String, Object> event = new LinkedHashMap<>();
-        event.put("id", record.id().toString());
+        event.put("id", inboxId);
         event.put("payload", payload);
         event.put("at", now.toString());
 

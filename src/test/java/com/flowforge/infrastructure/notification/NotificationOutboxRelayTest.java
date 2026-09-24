@@ -62,6 +62,7 @@ class NotificationOutboxRelayTest {
         NotificationProperties properties = new NotificationProperties(
                 new NotificationProperties.Outbox(20, 3, Duration.ofSeconds(1), Duration.ofDays(7)),
                 null,
+                null,
                 null);
         relay = new NotificationOutboxRelay(
                 outboxRepository,
@@ -204,9 +205,10 @@ class NotificationOutboxRelayTest {
     @Test
     void relay_browserDelivered_marksProcessed() {
         Instant now = Instant.parse("2026-08-07T12:00:00Z");
+        UUID inboxId = UUID.randomUUID();
         NotificationOutboxRecord record = pending(
                 NotificationChannel.BROWSER,
-                "{\"userId\":\"user-1\",\"payload\":{\"a\":1}}",
+                "{\"userId\":\"user-1\",\"inboxId\":\"" + inboxId + "\",\"payload\":{\"a\":1}}",
                 now);
         when(outboxRepository.lockNextPending(20, now)).thenReturn(List.of(record));
         when(browserPushPort.push(eq("user-1"), any())).thenReturn(true);
@@ -217,7 +219,9 @@ class NotificationOutboxRelayTest {
         ArgumentCaptor<Map<String, Object>> eventCaptor = ArgumentCaptor.forClass(Map.class);
         verify(browserPushPort).push(eq("user-1"), eventCaptor.capture());
         org.assertj.core.api.Assertions.assertThat(eventCaptor.getValue())
-                .containsEntry("id", record.id().toString())
+                // D-NOTIF-SSE-ID: the event id must be the user_notification row id (inboxId),
+                // never the outbox row's own id — the client PATCHes /read against this exact id.
+                .containsEntry("id", inboxId.toString())
                 .containsKey("payload")
                 .containsKey("at");
         verify(outboxRepository).markProcessed(record.id(), now);
@@ -228,7 +232,7 @@ class NotificationOutboxRelayTest {
         Instant now = Instant.parse("2026-08-07T12:00:00Z");
         NotificationOutboxRecord record = pending(
                 NotificationChannel.BROWSER,
-                "{\"userId\":\"user-1\",\"payload\":{}}",
+                "{\"userId\":\"user-1\",\"inboxId\":\"" + UUID.randomUUID() + "\",\"payload\":{}}",
                 now);
         when(outboxRepository.lockNextPending(20, now)).thenReturn(List.of(record));
         when(browserPushPort.push(eq("user-1"), any())).thenReturn(false);

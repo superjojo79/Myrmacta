@@ -34,10 +34,22 @@ public final class NotificationPayloadJson {
         return sb.toString();
     }
 
-    public static String browser(String userId, Map<String, Object> payload) {
+    /** Serializes just the payload map, no channel-specific wrapper — used for {@code user_notification}. */
+    public static String plain(Map<String, Object> payload) {
+        StringBuilder sb = new StringBuilder(64);
+        writeValue(sb, payload == null ? Map.of() : payload);
+        return sb.toString();
+    }
+
+    /**
+     * {@code inboxId} is the {@code user_notification} row id, not the outbox row id — the relay
+     * uses it as the SSE event id so a client can mark that exact history row read (D-NOTIF-SSE-ID).
+     */
+    public static String browser(String userId, Map<String, Object> payload, UUID inboxId) {
         StringBuilder sb = new StringBuilder(64);
         sb.append('{');
         appendField(sb, "userId", userId, true);
+        appendField(sb, "inboxId", inboxId.toString(), false);
         sb.append(',');
         quote(sb, "payload");
         sb.append(':');

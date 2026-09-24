@@ -43,3 +43,7 @@ databaseChangeLog:
       file: db/changelog/changes/021-dmn-draft-tables.yaml
   - include:
       file: db/changelog/changes/022-reporting-enrichment.yaml
+  - include:
+      file: db/changelog/changes/023-user-notification.yaml
+  - include:
+      file: db/changelog/changes/024-user-notification-unread-index.yaml

@@ -184,6 +184,28 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
       body: 'data: {"id":"n1","title":"Ping","body":"hello"}\n\n',
     })
   })
+  // F3 (TODO §66, Phase 11): backfill() now fetches this in parallel with the list — without a
+  // mock, the request 404s, Promise.all rejects, and backfill() never sets `items` either.
+  await page.route('**/api/notifications/unread-count', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ count: 0 }),
+    })
+  })
+  await page.route(/\/api\/notifications(\?|$)/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(envelope([])),
+    })
+  })
+  await page.route('**/api/notifications/*/read', async (route) => {
+    await route.fulfill({ status: 204, body: '' })
+  })
+  await page.route('**/api/notifications/read-all', async (route) => {
+    await route.fulfill({ status: 204, body: '' })
+  })
   await page.route(/\/api\/dossier-types(?:\?|$)/, async (route) => {
     if (route.request().method() === 'GET') {
       await route.fulfill({
@@ -950,6 +972,110 @@ test('E2E-8 notifications drawer', async ({ page }) => {
   await openApp(page)
   await page.getByRole('button', { name: /Notifications/ }).click()
   await expect(page.getByText('Ping')).toBeVisible()
+})
+
+test('E2E-NOTIF-1 a notification missed while disconnected is visible via REST backfill', async ({ page }) => {
+  // TODO §66 — the whole point of persisting user_notification: unlike E2E-8 (which only proves
+  // the live SSE path), this notification never arrives over the stream at all, only via the
+  // GET backfill issued on mount — proving the drawer no longer depends on being connected at
+  // the moment an event fires.
+  await mockSession(page)
+  await page.route(/\/api\/notifications(\?|$)/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(
+        envelope([
+          {
+            id: 'missed-1',
+            payload: { type: 'TASK_REASSIGNED', title: 'Tâche réassignée', body: 'Pendant votre absence' },
+            createdAt: '2026-09-22T08:00:00Z',
+            readAt: null,
+            read: false,
+          },
+        ]),
+      ),
+    })
+  })
+  await openApp(page)
+  await page.getByRole('button', { name: /Notifications/ }).click()
+  await expect(page.getByText('Tâche réassignée')).toBeVisible()
+})
+
+test('E2E-NOTIF-2 marking a notification read calls the server and persists the state', async ({ page }) => {
+  await mockSession(page)
+  let readRequested = false
+  await page.route(/\/api\/notifications(\?|$)/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(
+        envelope([
+          {
+            id: 'to-read-1',
+            payload: { type: 'DOCUMENT_GENERATED', title: 'Document généré', body: 'sur DOS-1' },
+            createdAt: '2026-09-22T08:00:00Z',
+            readAt: null,
+            read: false,
+          },
+        ]),
+      ),
+    })
+  })
+  await page.route('**/api/notifications/to-read-1/read', async (route) => {
+    readRequested = true
+    await route.fulfill({ status: 204, body: '' })
+  })
+  await openApp(page)
+  await page.getByRole('button', { name: /Notifications/ }).click()
+  await expect(page.getByText('Document généré')).toBeVisible()
+  await page.getByRole('button', { name: /Document généré/ }).click()
+  expect(readRequested).toBe(true)
+})
+
+test('E2E-NOTIF-3 the 3 new producer payload types render correctly in the drawer', async ({ page }) => {
+  // Covers what UT-NOTIF-11/12/14 already prove at the backend (the right recipients get sent
+  // TASK_REASSIGNED/TASK_COMPLETED_BY_OTHER/DOCUMENT_GENERATED) from the other end: once such a
+  // row exists, the drawer renders its title/body correctly in a real browser — same rendering
+  // path regardless of which producer wrote the row, so one test covering all 3 payload shapes
+  // is equivalent to testing each producer's rendering separately.
+  await mockSession(page)
+  await page.route(/\/api\/notifications(\?|$)/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(
+        envelope([
+          {
+            id: 'reassigned-1',
+            payload: { type: 'TASK_REASSIGNED', title: 'Tâche réassignée', body: 'vous a été réassignée' },
+            createdAt: '2026-09-22T08:02:00Z',
+            readAt: null,
+            read: false,
+          },
+          {
+            id: 'completed-1',
+            payload: { type: 'TASK_COMPLETED_BY_OTHER', title: 'Tâche terminée', body: 'par un autre participant' },
+            createdAt: '2026-09-22T08:01:00Z',
+            readAt: null,
+            read: false,
+          },
+          {
+            id: 'generated-1',
+            payload: { type: 'DOCUMENT_GENERATED', title: 'Document généré', body: 'sur le dossier suivi' },
+            createdAt: '2026-09-22T08:00:00Z',
+            readAt: null,
+            read: false,
+          },
+        ]),
+      ),
+    })
+  })
+  await openApp(page)
+  await page.getByRole('button', { name: /Notifications/ }).click()
+  await expect(page.getByText('Tâche réassignée')).toBeVisible()
+  await expect(page.getByText('Tâche terminée')).toBeVisible()
+  await expect(page.getByText('Document généré')).toBeVisible()
 })
 
 test('E2E-9 supervision has no fake KPI', async ({ page }) => {

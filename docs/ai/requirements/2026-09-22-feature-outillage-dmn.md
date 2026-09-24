@@ -10,7 +10,7 @@ phase1: 2026-09-22
 phase2: 2026-09-22
 phase3: 2026-09-23
 stakeholder_decisions: 2026-09-23
-todo_ref: TODO.md §66 · analysis doc/28-outillage-dmn.md
+todo_ref: TODO.md §67 · analysis doc/28-outillage-dmn.md
 ---
 
 # Requirements & Problem Understanding — `outillage-dmn`

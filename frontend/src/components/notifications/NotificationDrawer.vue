@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
+import Button from 'primevue/button'
+import OverlayBadge from 'primevue/overlaybadge'
+import ScrollPanel from 'primevue/scrollpanel'
 import { useNotificationsStore } from '@/stores/notifications'
 
 const store = useNotificationsStore()
-const { items, unreadCount, failed } = storeToRefs(store)
+const { items, unreadCount, hasMore, failed } = storeToRefs(store)
 const open = ref(false)
 
 onMounted(() => store.connect())
@@ -12,93 +15,125 @@ onUnmounted(() => store.disconnect())
 </script>
 
 <template>
-  <div class="notif">
-    <button type="button" class="notif__bell" @click="open = !open">
-      Notifications
-      <span v-if="unreadCount" class="notif__badge">{{ unreadCount }}</span>
-    </button>
-    <p v-if="failed" class="notif__fail">Flux temps réel indisponible</p>
-    <aside v-if="open" class="notif__drawer">
-      <header>
+  <div class="notification-drawer">
+    <OverlayBadge v-if="unreadCount" :value="unreadCount" severity="danger">
+      <Button
+        icon="pi pi-bell"
+        severity="secondary"
+        text
+        rounded
+        aria-label="Notifications"
+        data-testid="notification-bell"
+        @click="open = !open"
+      />
+    </OverlayBadge>
+    <Button
+      v-else
+      icon="pi pi-bell"
+      severity="secondary"
+      text
+      rounded
+      aria-label="Notifications"
+      data-testid="notification-bell"
+      @click="open = !open"
+    />
+    <p v-if="failed" class="notification-drawer__fail">Flux temps réel indisponible</p>
+    <div v-if="open" class="notification-drawer__panel" data-testid="notification-panel">
+      <header class="notification-drawer__header">
         <strong>Notifications</strong>
-        <button type="button" @click="store.markAllRead()">Tout lu</button>
+        <Button
+          label="Tout lu"
+          text
+          size="small"
+          :disabled="unreadCount === 0"
+          data-testid="mark-all-read"
+          @click="store.markAllRead()"
+        />
       </header>
-      <p v-if="items.length === 0">Aucune notification.</p>
-      <ul>
-        <li v-for="item in items" :key="item.id" :class="{ unread: !item.read }">
-          <button type="button" @click="store.markRead(item.id)">
-            <strong>{{ item.title }}</strong>
-            <span>{{ item.body }}</span>
-          </button>
-        </li>
-      </ul>
-    </aside>
+      <p v-if="items.length === 0" data-testid="notification-empty">Aucune notification.</p>
+      <ScrollPanel v-else style="width: min(360px, 90vw); max-height: 360px">
+        <ul class="notification-drawer__list">
+          <li
+            v-for="item in items"
+            :key="item.id"
+            :class="{ 'notification-drawer__item--unread': !item.read }"
+          >
+            <button
+              type="button"
+              class="notification-drawer__item"
+              data-testid="notification-item"
+              @click="store.markRead(item.id)"
+            >
+              <strong>{{ item.title }}</strong>
+              <span>{{ item.body }}</span>
+            </button>
+          </li>
+        </ul>
+        <Button
+          v-if="hasMore"
+          label="Charger plus"
+          text
+          size="small"
+          data-testid="notification-load-more"
+          @click="store.loadMore()"
+        />
+      </ScrollPanel>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.notif {
+.notification-drawer {
   position: relative;
+  display: inline-flex;
+  align-items: center;
 }
-.notif__bell {
-  border: 1px solid #b7b7ba;
-  background: white;
-  padding: 0.35rem 0.7rem;
-  cursor: pointer;
-}
-.notif__badge {
-  margin-left: 0.35rem;
-  background: #c92a2a;
-  color: white;
-  border-radius: 999px;
-  padding: 0 0.4rem;
-  font-size: 0.75rem;
-}
-.notif__fail {
+.notification-drawer__fail {
   position: absolute;
   top: 100%;
   right: 0;
   font-size: 0.75rem;
-  color: #8a4b08;
+  color: var(--p-orange-600, #b45309);
   white-space: nowrap;
 }
-.notif__drawer {
+.notification-drawer__panel {
   position: absolute;
   right: 0;
   top: calc(100% + 0.4rem);
-  width: min(320px, 90vw);
-  background: white;
-  border: 1px solid #d0d0d3;
-  border-radius: 6px;
-  padding: 0.75rem;
   z-index: 30;
-  max-height: 360px;
-  overflow: auto;
+  min-width: 320px;
+  padding: 0.75rem;
+  background: var(--p-content-background, #fff);
+  border: 1px solid var(--p-content-border-color, #d0d0d3);
+  border-radius: var(--p-content-border-radius, 6px);
+  box-shadow: var(--p-overlay-popover-shadow, 0 2px 8px rgba(0, 0, 0, 0.15));
 }
-.notif__drawer ul {
+.notification-drawer__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+.notification-drawer__list {
   list-style: none;
-  padding: 0;
   margin: 0;
+  padding: 0;
 }
-.notif__drawer li button {
+.notification-drawer__item {
   width: 100%;
   text-align: left;
   border: 0;
   background: transparent;
-  padding: 0.45rem 0;
+  padding: 0.5rem 0.25rem;
   cursor: pointer;
 }
-.notif__drawer li.unread strong {
-  color: var(--color-accent, #5980a6);
-}
-.notif__drawer span {
+.notification-drawer__item span {
   display: block;
   font-size: 0.85rem;
   opacity: 0.75;
 }
-header {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 0.5rem;
+.notification-drawer__item--unread strong {
+  color: var(--p-primary-color, #5980a6);
 }
 </style>

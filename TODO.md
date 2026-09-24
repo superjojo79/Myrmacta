@@ -804,8 +804,9 @@ les findings de la Phase 10 traités**, aucun report vers un suivi post-merge.
 historique des versions Flowable + redéploiement d’une version
 antérieure (libellé « Redéployer la version N »).
 
-**Statut (2026-09-23) : Phases 1 à 9 livrées** — branche
-`cursor/outillage-dmn-d49a`, **mergée sur `main`** ([PR #134](https://github.com/superjojo79/FlowForge/pull/134), `97b429a`). Surfaces disjointes de §65, de l'inbox §66 et du lot C.
+**Résolu (2026-09-24) :** Phases 1 à 9 livrées, mergées sur `main`
+([PR #134](https://github.com/superjojo79/FlowForge/pull/134), commit
+`97b429a`). Surfaces disjointes de §65, de l'inbox §66 et du lot C.
 
 **Décisions Phase 1 :** D-DMN-EVAL-SURFACE = C ; D-DMN-EVAL-VERSION = B ;
 D-DMN-TEST-FORMAT = C ; D-DMN-ROLLBACK-UX = A ;

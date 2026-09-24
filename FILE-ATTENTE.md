@@ -483,7 +483,7 @@ Même grille que pour `preview-documents` puis `edition-champs-dossier` :
 | `scan-antivirus-clamav` (lot **C**) | [PR #131](https://github.com/superjojo79/FlowForge/pull/131) | Adaptateur réel `ClamAvAttachmentScanAdapter` (clamd `INSTREAM` TCP) derrière le port `AttachmentScanPort` inchangé ; opt-in `app.dossier.attachment.scan.type=clamav` ; fail-open + compteur Micrometer ; profil Compose `clamav`. Revue adversariale : DoS écriture socket (watchdog) et `StringIndexOutOfBoundsException` corrigés. Reste : `ClamAvAttachmentScanIT` à jouer avec Docker |
 | `enrichissement-reporting` | [PR #132](https://github.com/superjojo79/FlowForge/pull/132), analyse [29-enrichissement-reporting.md](analysis%20doc/29-enrichissement-reporting.md), TODO §65 (clos) | Alerting SLA (EMAIL/WEBHOOK/BROWSER, une alerte par palier), widgets dead-letter + tâches sans assigné sur `/rapports`, export BI planifié (CSV par type + CSV SLA vers `DocumentStoragePort`, rétention, masquage). Pas de JDBC/Power BI (D-BI-MECHANISM) |
 | `inbox-notifications-persistee` | [PR #135](https://github.com/superjojo79/FlowForge/pull/135), analyse [27-notifications-inbox.md](analysis%20doc/27-notifications-inbox.md), TODO §66 (clos) | Table `user_notification` + `NotificationInboxController` self-scoped, backfill REST + SSE dédoublonnés, badge `GET /api/notifications/unread-count`, « Charger plus », purge par rétention, 3 nouveaux producteurs. Revue adversariale : F1 (id SSE ≠ id inbox) et F2 (pas de backfill après reconnexion SSE) corrigés |
-| `outillage-dmn` | [PR #134](https://github.com/superjojo79/FlowForge/pull/134), analyse [28-outillage-dmn.md](analysis%20doc/28-outillage-dmn.md), TODO §67 (clos) | Évaluation d'une table déployée, jeux de tests JSON et CSV, historique des versions et redéploiement « version N » ; éditeur `/admin/dmn-editor`, REST et 4 tools MCP. |
+| `outillage-dmn` | [PR #134](https://github.com/superjojo79/FlowForge/pull/134), analyse [28-outillage-dmn.md](analysis%20doc/28-outillage-dmn.md), TODO §67 (clos) | Évaluation d'une table déployée, jeux de tests JSON et CSV, historique des versions et redéploiement « version N » ; éditeur `/admin/dmn-editor`, REST et 4 tools MCP. **Mergée sur `main`** (2026-09-24, CI verte, merge `97b429a`). |
 | `portail-externe` | [PR #138](https://github.com/superjojo79/FlowForge/pull/138), analyse [26-portail-externe.md](analysis%20doc/26-portail-externe.md), TODO §68 (clos) | Un tiers sans compte répond à une `userTask` (formulaire `user-question` + pièces) via un lien magique reçu par e-mail ; opt-in `APP_PORTAL_ENABLED`. Cycle Phases 1–9 + revue adversariale (F-PORTAL-1, C1–C3, H1 corrigés). Correctif §69 ([PR #136](https://github.com/superjojo79/FlowForge/pull/136)) trouvé en Phase 3. |
 
 Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relations, PATCH fields API, éléments) : voir [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §2.
@@ -559,9 +559,7 @@ propre (consultation, dépôt de pièce, réponse de tâche) ; la signature ajou
 fournisseur et un arbitrage juridique (eIDAS) qui ne doivent pas bloquer le portail. Ordre
 imposé : portail **puis** signature. Surfaces partagées entre `portail-externe` et
 `outillage-dmn` : aucune identifiée à ce stade (le portail ne touche ni `infrastructure.mcp` ni
-`/admin/dmn-editor`) — les deux peuvent avancer en parallèle, **sauf** les fichiers de suivi
-(`TODO.md`, `FILE-ATTENTE.md`, `ROADMAP.md`, `CHANGELOG.md`) qui conflicteront textuellement au
-merge.
+`/admin/dmn-editor`).
 
 ### Ne pas lancer (décision V1 contraire ou stack absente)
 
@@ -594,6 +592,9 @@ Détail inventaire : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §4 / §6.
 ## En revue
 
 Aucune PR produit en revue.
+
+`outillage-dmn` (TODO §67)
+**mergée sur `main`** ([PR #134](https://github.com/superjojo79/FlowForge/pull/134), commit `97b429a`, 2026-09-24).
 
 `revue-adversariale-securite` (TODO §57)
 **mergée sur `main`** ([PR #113](https://github.com/superjojo79/FlowForge/pull/113), 2026-09-07).
@@ -773,7 +774,7 @@ Vérifié : `./mvnw verify` 1136 tests (0 échec), Jacoco OK ; frontend `npm run
 | 2026-09-23 | `outillage-dmn` Phase 3 (design) | 17 décisions techniques. Design `status=reviewed`. Évaluation versionnée via `parentDeploymentId`. Prochain : Phase 4 planning. |
 | 2026-09-24 | TODO §69 — surfaces UEL du BPMN hors allowlist (High) | Trouvé en Phase 3 du portail. Prouvé sur le vrai moteur (`name`/`formKey` d'un `userTask` invoquent une méthode de bean), corrigé par une allowlist générique au niveau XML (`BpmnExpressionSurfaceScanner`) avant la Phase 4 du portail, sur demande utilisateur. |
 | 2026-09-24 | `portail-externe` Phase 4 (planning) | 13 milestones, 65 scénarios tracés vers les tâches. `DynamicFields.vue` confirmé réutilisable dans le build portail (composant pur) ; `UserQuestionTaskForm.vue` non (API BFF). Prochain : Phase 5. |
-| 2026-09-24 | `outillage-dmn` **mergée sur `main`** | [PR #134](https://github.com/superjojo79/FlowForge/pull/134) (`97b429a`), renumérotée TODO §67. |
+| 2026-09-24 | `outillage-dmn` **mergée sur `main`**, TODO §67 clos | [PR #134](https://github.com/superjojo79/FlowForge/pull/134) mergée (merge `97b429a`) après CI verte (`build` + `frontend`), renumérotée TODO §67. Statuts TODO §67, analyse 28, file d’attente et ROADMAP §1.1 alignés sur ce merge. |
 | 2026-09-24 | TODO §69 **mergé sur `main`** | [PR #136](https://github.com/superjojo79/FlowForge/pull/136) (squash `114edd1`), CI verte, sorti du lot portail par un subagent. |
 | 2026-09-24 | `portail-externe` Phase 5 (implémentation) | M1→M13 en TDD, 11 commits. H6 corrigée (erreur factuelle, tranchée : EDIT sur le type). Écarts au design documentés. `./mvnw verify` 2253/0, Vitest 387/387, Playwright 86/86, 66/66 scénarios. Prochain : Phases 7–9. |
 | 2026-09-24 | `portail-externe` Phase 7 (contrôle d'implémentation) | 3 défauts réels corrigés en TDD : `/portal` sans slash (page blanche), base d'API avec `/portal` dans le chemin, erreur imprévue sortie de la chaîne portail. Limitation SMTP sans backoff documentée. |

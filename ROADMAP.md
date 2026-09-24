@@ -119,6 +119,7 @@ FlowForge est un SaaS multi-tenant à architecture hexagonale. Stack **réelle**
 1. `signature-electronique` — démarrable (portail livré, PR #138) ; fournisseur et niveau eIDAS à trancher en Phase 1.
 2. Vérifications d’environnement hors file : `ClamAvAttachmentScanIT` sous Docker, smoke Keycloak réel.
 
+
 ---
 
 ## Historique des versions

@@ -45,6 +45,9 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
         for (Process process : model.getProcesses()) {
             assertSafeProcess(process);
         }
+        // TODO §69 : après les règles ciblées ci-dessus (qui gardent leurs messages précis), toute
+        // autre surface UEL du document est refusée — voir BpmnExpressionSurfaceScanner.
+        BpmnExpressionSurfaceScanner.assertNoUnvettedExpressions(bpmnXml);
         return mainProcess.getId();
     }
 
@@ -243,7 +246,7 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
     private static final Pattern SAFE_CONDITION_TOKEN = Pattern.compile(
             "[A-Za-z_][A-Za-z0-9_]*|\\d+(\\.\\d+)?|'[^']*'|\"[^\"]*\"|>=|<=|==|!=|&&|\\|\\||[><!]|\\s+");
 
-    private static void assertSafeConditionExpression(String owner, String raw) {
+    static void assertSafeConditionExpression(String owner, String raw) {
         if (raw == null) {
             return;
         }

@@ -67,6 +67,13 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Sécurité
 
+- **PR [#136](https://github.com/superjojo79/FlowForge/pull/136) — TODO §69** — Un BPMN déployé pouvait faire exécuter une
+  méthode d'un bean Spring via le nom, le `formKey`, l'échéance d'une tâche, un timer ou un
+  `callActivity` (surfaces évaluées par Flowable, hors de l'allowlist H1-bis). Le backend refuse
+  désormais toute expression `${…}` sauf `delegateExpression` allowlistée et condition de flux
+  simple, ainsi que les conditions écrites en script (`language`) ; prouvé sur le vrai moteur
+  avant correctif.
+
 - **PR [#131](https://github.com/superjojo79/FlowForge/pull/131)** — Scan antivirus des pièces
   jointes de dossier (lot C) : nouvel adaptateur `ClamAvAttachmentScanAdapter` (protocole natif
   `INSTREAM` clamd en TCP, zéro dépendance tierce) derrière le port `AttachmentScanPort` existant

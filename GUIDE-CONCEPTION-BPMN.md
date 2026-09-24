@@ -59,6 +59,25 @@ listeners script, types Flowable built-in (`mail`/`http`/`shell`), et tout
 `${notificationDispatchTask}`, `${createChildDossierTask}`, `${updateDossierStatusTask}`,
 `${updateWorkflowLinkStatusTask}`). Payload interdit → `InvalidBpmnException` / HTTP 400.
 
+**Expressions `${…}` / `#{…}` : deux emplacements seulement (TODO §69).** Le moteur Flowable évalue
+en expression (UEL) bien plus d'attributs qu'il n'y paraît — nom, documentation, `formKey`,
+échéance, priorité, catégorie d'un `userTask`, timers, `calledElement` d'un `callActivity`,
+multi-instance, `skipExpression`… — et une expression peut y invoquer un bean Spring. Le backend
+refuse donc **toute** expression dans le document BPMN, sauf :
+
+- `flowable:delegateExpression` d'une valeur de l'allowlist ci-dessus ;
+- le texte d'une `conditionExpression` de flux, limité à une comparaison simple entre
+  variables et littéraux (`${decision == 'approve'}`, `${montant > 1000}` — ni point, ni
+  parenthèse, ni appel).
+
+Tous les autres attributs sont des **littéraux** : nom de tâche fixe, `formKey` fixe
+(`user-question:avis`), timer `PT48H` et non `${delai}`, multi-instance par
+`flowable:collection="nomDeVariable"` (nom de variable, sans `${}`). Les attributs `class`,
+`language` (condition écrite en script Groovy/JavaScript) et `scriptFormat` sont refusés partout. Le contrôle s'applique aussi à l'alias d'espace de noms `activiti:` et aux entités XML
+(`&#36;{`). Même le texte d'une annotation contenant `${` est refusé (règle volontairement
+stricte). Refus → `InvalidBpmnException` / HTTP 400 à la sauvegarde du brouillon comme au
+déploiement.
+
 ### Ce que l'éditeur BPMN intégré permet réellement d'éditer
 
 L'éditeur (`/admin/bpmn-editor`, voir [14-edition-bpmn.md](analysis%20doc/14-edition-bpmn.md)) est
@@ -146,7 +165,11 @@ injectées, le reste des variables passées par l'appelant :
 `DossierType.fieldDefinitions`) sont **automatiquement disponibles** sous la variable réservée
 `dossierFields` (`Map<String, Object>`, voir §1) dès le démarrage de **toute** instance —
 appel manuel, connecteur/relais outbox, ou réconciliation d'un lien `RESERVED` orphelin.
-Accès depuis une expression BPMN ou un template Thymeleaf : `${dossierFields.montantSinistre}`.
+Accès depuis un template Thymeleaf ou un `serviceTask` Java : `${dossierFields.montantSinistre}`.
+**Pas depuis une condition de passerelle** : la grammaire de `conditionExpression` interdit le
+point (TODO §57 H1, §69) — pour brancher sur un champ du dossier, un `serviceTask` doit d'abord
+copier la valeur dans une variable simple (`montantSinistre`), puis la condition la compare
+(`${montantSinistre > 1000}`).
 
 > **Historique — écart désormais comblé.** Cette section signalait jusqu'ici un écart réel entre
 > le pseudo-code de [04-dossiers.md](analysis%20doc/04-dossiers.md) (`DossierAwareTask`, chargement

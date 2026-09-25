@@ -24,7 +24,7 @@
         <flying-saucer.version>10.5.0</flying-saucer.version>
         <jsoup.version>1.23.2</jsoup.version>
         <archunit.version>1.5.0</archunit.version>
-        <aws.sdk.version>2.54.20</aws.sdk.version>
+        <aws.sdk.version>2.55.2</aws.sdk.version>
         <!-- connecteurs-cible (lot B1) — batch-import : client SFTP + parseur Excel -->
         <sshj.version>0.39.0</sshj.version>
         <poi.version>5.4.1</poi.version>

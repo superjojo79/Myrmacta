@@ -11,6 +11,13 @@
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
 >
+> **2026-09-28 (décision produit)** — D0 de la Vague D (`ROADMAP.md` Catégorie 7, PR #143)
+> **tranché = C** : produit pour intégrateurs avec une couche low-code / no-code, décision n° 13
+> maintenue, allowlist serveur inchangée (TODO §70). Découpé en sous-lots `LC1`–`LC6` (palette
+> métier BPMN, langage d'expression borné, assistant IA, éditeurs de formulaires et de templates,
+> concepteur de parcours, scripts en bac à sable conditionnels). **File inchangée :** prochain
+> candidat toujours `signature-electronique` ; aucun lot Vague D cadré.
+>
 > **2026-09-24 (merges)** — `outillage-dmn` ([PR #134](https://github.com/superjojo79/FlowForge/pull/134),
 > TODO §67), le correctif UEL du BPMN ([PR #136](https://github.com/superjojo79/FlowForge/pull/136),
 > TODO §69) puis `portail-externe` ([PR #138](https://github.com/superjojo79/FlowForge/pull/138),

@@ -4,8 +4,11 @@
 > D0 = C (TODO §70), **avant** le premier lot `LC*`, pour que chaque lot expose ses artefacts au
 > MCP dès sa livraison au lieu de les rattraper après coup (ce qu'a dû faire
 > [24-extension-mcp-flux-metier.md](24-extension-mcp-flux-metier.md) pour trois mécanismes
-> livrés sans tool). Suivi : TODO §71. Les décisions `D-MCP-LC-*` ci-dessous sont **proposées,
-> pas tranchées**.
+> livrés sans tool). Suivi : TODO §71.
+>
+> **Décisions tranchées par l'utilisateur (2026-09-28) :** D-MCP-LC-IDENTITY = **A**,
+> D-MCP-LC-PUBLISH = **C** (défaut = A), D-MCP-LC-MIGRATION = **A**, D-MCP-LC-MODES = **A** —
+> voir §6. Les cinq autres restent **proposées, non tranchées**.
 
 ---
 
@@ -114,14 +117,14 @@ Tools de publication : un `publish_draft` générique, ou un par artefact, selon
 | ID | Question | Options | Recommandation |
 |---|---|---|---|
 | **D-MCP-LC-PARITY** | La parité MCP entre-t-elle dans la *definition of done* de chaque lot `LC*` ? | A. oui · B. rattrapage par un lot MCP dédié en fin de vague | **A** — évite un second doc 24 |
-| **D-MCP-LC-PUBLISH** | Qui publie un brouillon créé par MCP ? | A. un humain dans l'UI uniquement · B. un tool `publish_*` réservé à un client M2M scopé · C. propriété de démarrage : publication directe autorisée hors production, humaine en production | **C** avec défaut = A — l'intégrateur itère vite en recette, la production reste gardée |
-| **D-MCP-LC-IDENTITY** | Comment l'assistant embarqué (LC3) appelle-t-il les tools ? | A. catalogue partagé exécuté **dans le processus** avec l'`AccessContext` de l'utilisateur de la session BFF · B. MCP avec jeton délégué (échange de jeton RFC 8693 via Keycloak) · C. endpoint MCP ouvert à la session navigateur | **A** — ni jeton dans le navigateur (contraire au BFF), ni `/api/m2m` exposé ; un seul catalogue, deux points d'entrée |
-| **D-MCP-LC-MODES** | Séparer les modes *conception* et *opération* de l'assistant ? | A. oui · B. un seul mode | **A** — mitigation principale de l'injection de consignes |
+| **D-MCP-LC-PUBLISH** | Qui publie un brouillon créé par MCP ? | A. un humain dans l'UI uniquement · B. un tool `publish_*` réservé à un client M2M scopé · C. propriété de démarrage : publication directe autorisée hors production, humaine en production | ✅ **Tranché = C, défaut = A** (2026-09-28) — l'intégrateur itère vite en recette, la production reste gardée |
+| **D-MCP-LC-IDENTITY** | Comment l'assistant embarqué (LC3) appelle-t-il les tools ? | A. catalogue partagé exécuté **dans le processus** avec l'`AccessContext` de l'utilisateur de la session BFF · B. MCP avec jeton délégué (échange de jeton RFC 8693 via Keycloak) · C. endpoint MCP ouvert à la session navigateur | ✅ **Tranché = A** (2026-09-28) — ni jeton dans le navigateur (contraire au BFF), ni `/api/m2m` exposé ; un seul catalogue, deux points d'entrée |
+| **D-MCP-LC-MODES** | Séparer les modes *conception* et *opération* de l'assistant ? | A. oui · B. un seul mode | ✅ **Tranché = A** (2026-09-28) — mitigation principale de l'injection de consignes |
 | **D-MCP-LC-RESOURCES** | Activer les capacités MCP `resources` (et `prompts`) ? | A. oui : catalogue LC1, grammaire LC2, typings LC6, guide de conception · B. tout passer en tools | **A** — contexte chargé sans appel d'outil, à borner en taille |
-| **D-MCP-LC-SCOPES** | Fermer A3-M2 avant LC3 ? | A. rôles dérivés des scopes du JWT · B. `trustedClientIds` obligatoire · C. laisser en l'état | **A** si D-MCP-LC-IDENTITY ≠ A, sinon **B** suffit |
+| **D-MCP-LC-SCOPES** | Fermer A3-M2 avant LC3 ? | A. rôles dérivés des scopes du JWT · B. `trustedClientIds` obligatoire · C. laisser en l'état | **B** suffit, D-MCP-LC-IDENTITY = A ne faisant pas passer l'assistant par le canal M2M |
 | **D-MCP-LC-SECRETS** | Secrets de connecteur via l'assistant ? | A. jamais (saisie humaine) · B. comme le canal M2M | **A** (P9) |
 | **D-MCP-LC-TS** | TypeScript soumis via MCP (LC6) ? | A. JavaScript seulement via MCP · B. transpilation côté serveur, dans le même bac à sable | À trancher **après le spike LC6** |
-| **D-MCP-LC-MIGRATION** | Les tools de déploiement directs existants (`deploy_workflow`, `deploy_decision_table`, `redeploy_decision_table`) passent-ils au brouillon ? | A. oui, dans D6 · B. conservés tels quels, seuls les nouveaux tools sont en brouillon | **A** — sinon l'assistant contourne la politique par l'ancien chemin |
+| **D-MCP-LC-MIGRATION** | Les tools de déploiement directs existants (`deploy_workflow`, `deploy_decision_table`, `redeploy_decision_table`) passent-ils au brouillon ? | A. oui, dans D6 · B. conservés tels quels, seuls les nouveaux tools sont en brouillon | ✅ **Tranché = A** (2026-09-28) — sinon l'assistant contourne la politique par l'ancien chemin. **Rupture de comportement** pour les agents internes existants, à annoncer dans le lot D6 |
 
 ## 7. Impact sur la roadmap
 
@@ -129,5 +132,22 @@ Tools de publication : un `publish_draft` générique, ou un par artefact, selon
   des tools directs, provenance, fermeture d'A3-M2. Prérequis de **LC3**, et de toute écriture
   MCP des lots LC4b, LC5 et LC6. LC1 et LC2 (lecture et exécution à blanc) peuvent le précéder.
 - Chaque lot `LC*` gagne une ligne « Exposition MCP » dans sa Phase 1, alimentée par le §4.
-- `15-serveur-mcp.md` § Décisions de cadrage (« Consommateur ») sera à amender quand
-  D-MCP-LC-IDENTITY sera tranchée.
+- `15-serveur-mcp.md` § Décisions de cadrage (« Consommateur ») amendé le 2026-09-28 suite à
+  D-MCP-LC-IDENTITY = A.
+
+### Conséquences des décisions tranchées
+
+- **IDENTITY = A** : le catalogue de tools doit être invocable depuis deux points d'entrée
+  (serveur MCP M2M et assistant in-process). La résolution de l'acteur, aujourd'hui figée dans
+  `McpAccessContextFactory` (JWT M2M → `API_SERVICE`), devient un paramètre de l'invocation :
+  `AccessContext` de l'utilisateur de la session pour l'assistant, inchangé pour le M2M. Le
+  canal `/api/m2m/mcp` ne change pas.
+- **PUBLISH = C (défaut A)** : nouvelle propriété de démarrage (nom à fixer en design, lue au
+  démarrage comme `app.tenant.id`) → `.env.example`, `GETTING-STARTED.md` et `DEPLOIEMENT.md`
+  à mettre à jour dans D6. La publication humaine exige le rôle qui publie déjà dans l'UI
+  (`WORKFLOW_ADMIN` / `TENANT_ADMIN`).
+- **MIGRATION = A** : `deploy_workflow`, `deploy_decision_table` et `redeploy_decision_table`
+  écrivent un brouillon par défaut ; le comportement direct n'existe plus que via la propriété
+  de PUBLISH hors production. Rupture de contrat à signaler dans `CHANGELOG.md`.
+- **MODES = A** : deux jeux de tools distincts exposés à l'assistant selon le mode ; le mode
+  *conception* n'inclut ni `get_dossier`, ni `search_dossiers`, ni les écritures métier.

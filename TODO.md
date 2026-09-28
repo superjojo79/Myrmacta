@@ -1079,13 +1079,20 @@ provenance, aucun secret via l'assistant), exposition par sous-lot, risques prop
 l'assistant (injection de consignes par les données, données transmises au fournisseur du
 modèle, DoS par les outils d'évaluation, élévation via A3-M2).
 
-**Statut :** **ouvert** — 9 décisions proposées, non tranchées : D-MCP-LC-PARITY,
-D-MCP-LC-PUBLISH, D-MCP-LC-IDENTITY, D-MCP-LC-MODES, D-MCP-LC-RESOURCES, D-MCP-LC-SCOPES,
-D-MCP-LC-SECRETS, D-MCP-LC-TS (après le spike LC6), D-MCP-LC-MIGRATION.
+**Statut :** **ouvert** — 4 décisions tranchées par l'utilisateur (2026-09-28) :
+**D-MCP-LC-IDENTITY = A** (assistant in-process avec l'`AccessContext` de l'utilisateur de la
+session BFF, catalogue partagé avec le serveur MCP M2M) ; **D-MCP-LC-PUBLISH = C, défaut = A**
+(publication directe autorisable hors production par propriété de démarrage, humaine dans l'UI
+sinon) ; **D-MCP-LC-MIGRATION = A** (`deploy_workflow`, `deploy_decision_table`,
+`redeploy_decision_table` passent au brouillon dans D6 — rupture de comportement à annoncer) ;
+**D-MCP-LC-MODES = A** (modes *conception* et *opération* séparés). Restent ouvertes :
+D-MCP-LC-PARITY, D-MCP-LC-RESOURCES, D-MCP-LC-SCOPES (B suffit vu IDENTITY = A),
+D-MCP-LC-SECRETS, D-MCP-LC-TS (après le spike LC6).
 
 **Impacte :** `ROADMAP.md` (D6 élargi en socle MCP low-code, ligne « Exposition MCP » dans chaque
-lot `LC*`), `analysis doc/00-index.md`, puis `15-serveur-mcp.md` § Décisions de cadrage quand
-D-MCP-LC-IDENTITY sera tranchée.
+lot `LC*`), `analysis doc/00-index.md`, `15-serveur-mcp.md` § Décisions de cadrage (amendé). Dans le lot D6 :
+`.env.example`, `GETTING-STARTED.md`, `DEPLOIEMENT.md` (propriété de publication),
+`CHANGELOG.md` (rupture des tools de déploiement).
 
 ---
 

@@ -65,6 +65,7 @@ comme hors périmètre V1 ailleurs dans le produit — voir
 | Question | Décision |
 |---|---|
 | **Consommateur** | Outillage **interne** (agents IA type Claude Code utilisés par l'équipe FlowForge pour l'administration/l'automatisation). **Pas** d'exposition aux tenants ou à des systèmes tiers en V1. |
+| **Consommateur — amendement 2026-09-28** (TODO §71, D-MCP-LC-IDENTITY = A) | Le canal `/api/m2m/mcp` reste réservé à l'outillage interne M2M. L'assistant de conception embarqué (LC3) **n'utilise pas ce canal** : il invoque le **même catalogue de tools dans le processus**, avec l'`AccessContext` de l'utilisateur de la session BFF. Voir [31-exposition-mcp-couche-low-code.md](31-exposition-mcp-couche-low-code.md). |
 | **Portée d'écriture V1** | Lecture **et** écriture pour les capacités 1 (définition de dossier) et 2 (insertion BPMN). Le point 4 (stats) est retiré du périmètre V1 — voir dépendance ci-dessous. |
 | **Sens de « dossier »** | Le point 1 porte sur le **type de dossier** (`DossierType` + `FieldDefinition`, schéma/configuration) — **pas** sur la création d'instances `Dossier`. Équivalent MCP de l'écran admin des types de dossier. |
 | **Granularité de l'insertion BPMN** | Un seul outil MCP couvre **déploiement du `.bpmn20.xml` + création/mise à jour du `WorkflowTypeConfig`** associé (statusDefinitions, lien avec un `DossierType`), pas seulement le dépôt du fichier. |

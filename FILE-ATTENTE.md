@@ -17,6 +17,9 @@
 > métier BPMN, langage d'expression borné, assistant IA, éditeurs de formulaires et de templates,
 > concepteur de parcours, scripts en bac à sable conditionnels). **File inchangée :** prochain
 > candidat toujours `signature-electronique` ; aucun lot Vague D cadré.
+> Même jour : exposition MCP de la couche low-code cadrée (TODO §71, 4 décisions actées), puis
+> analyses initiales de tous les lots de la Vague D (`analysis doc/` 31 à 45, cadrage MCP
+> renuméroté 46). Toujours aucun lot cadré au sens `dev-lifecycle`.
 >
 > **2026-09-24 (merges)** — `outillage-dmn` ([PR #134](https://github.com/superjojo79/FlowForge/pull/134),
 > TODO §67), le correctif UEL du BPMN ([PR #136](https://github.com/superjojo79/FlowForge/pull/136),

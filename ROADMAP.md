@@ -8,7 +8,7 @@
 > **Vague D (nouvelle, 28/09) :** priorités issues de l'analyse critique fonctionnelle — adéquation
 > aux cas d'usage et industrialisation. **D0 tranché = C** (intégrateurs + couche low-code, TODO §70),
 > découpé en sous-lots `LC1`–`LC6`. Exposition MCP de ces sous-lots cadrée en amont
-> ([analyse 31](analysis%20doc/31-exposition-mcp-couche-low-code.md), TODO §71, décisions ouvertes).
+> ([analyse 46](analysis%20doc/46-exposition-mcp-couche-low-code.md), TODO §71, décisions ouvertes).
 > Aucun lot cadré ; voir [Catégorie 7](#catégorie-7--adéquation-métier--industrialisation-vague-d).
 
 ---
@@ -35,20 +35,20 @@ FlowForge est un SaaS multi-tenant à architecture hexagonale. Stack **réelle**
 | Priorité | Item | Lot | Statut |
 |---|---|---|---|
 | Ensuite | **2.4 Signature électronique** | `signature-electronique` | Non démarré, **après le portail** — [30-signature-electronique.md](analysis%20doc/30-signature-electronique.md) |
-| Décision | **D0** Positionnement produit | — | ✅ **Tranché = C** (TODO §70) : intégrateurs + couche low-code, décision n° 13 maintenue |
-| Vague D | **LC1** Palette métier dans l'éditeur BPMN | `palette-metier-bpmn` | Non cadré |
-| Vague D | **LC2** Langage d'expression métier borné | `langage-expression-metier` | Non cadré |
-| Vague D | **LC3** Assistant de conception IA | `assistant-conception-ia` | Non cadré — après D6 |
-| Vague D | **LC4a / LC4b** Éditeurs visuels de formulaires / de templates | `editeur-formulaires`, `editeur-templates-wysiwyg` | Non cadrés |
-| Vague D | **LC5** Concepteur de parcours compilé en BPMN | `concepteur-parcours` | Non cadré — après LC1, LC2 |
-| Vague D | **LC6** Scripts JS/TS en bac à sable | `scripts-sandbox` | **Conditionnel** — spike d'abord |
-| Vague D | **D1** Modèle de champs enrichi (montant/devise, groupes répétables, référence externe) | à nommer | Non cadré |
-| Vague D | **D2** Recherche sur champs dynamiques (JSONB + plein texte) | à nommer | Non cadré — après D1 |
-| Vague D | **D3** Intégrations entreprise (OAuth2 client credentials, mapping réponse → dossier, e-mail entrant) | à nommer | Non cadré |
-| Vague D | **D4** Promotion de configuration entre environnements | à nommer | Non cadré |
-| Vague D | **D5** Scalabilité intra-tenant — verrou des jobs planifiés | à nommer | Audit d'abord |
-| Vague D | **D6** Socle MCP low-code (brouillon, publication, provenance, A3-M2) | à nommer | Analyse 31 faite, décisions ouvertes (TODO §71) |
-| Vague D | **D7** Internationalisation de l'UI | à nommer | Non cadré — selon marché |
+| Décision | **D0** Positionnement produit | [analyse 31](analysis%20doc/31-positionnement-produit.md) | ✅ **Tranché = C** (TODO §70) : intégrateurs + couche low-code, décision n° 13 maintenue |
+| Vague D | **LC1** Palette métier dans l'éditeur BPMN | [`palette-metier-bpmn`](analysis%20doc/39-palette-metier-bpmn.md) | Analyse initiale |
+| Vague D | **LC2** Langage d'expression métier borné | [`langage-expression-metier`](analysis%20doc/40-langage-expression-metier.md) | Analyse initiale |
+| Vague D | **LC3** Assistant de conception IA | [`assistant-conception-ia`](analysis%20doc/41-assistant-conception-ia.md) | Analyse initiale — après D6 |
+| Vague D | **LC4a / LC4b** Éditeurs visuels de formulaires / de templates | [`editeur-formulaires`](analysis%20doc/42-editeur-formulaires.md), [`editeur-templates-wysiwyg`](analysis%20doc/43-editeur-templates-wysiwyg.md) | Analyses initiales |
+| Vague D | **LC5** Concepteur de parcours compilé en BPMN | [`concepteur-parcours`](analysis%20doc/44-concepteur-parcours.md) | Analyse initiale — après LC1, LC2 |
+| Vague D | **LC6** Scripts JS/TS en bac à sable | [`scripts-sandbox`](analysis%20doc/45-scripts-sandbox.md) | Analyse initiale — **conditionnel**, spike d'abord |
+| Vague D | **D1** Modèle de champs enrichi (montant/devise, groupes répétables, référence externe) | [`modele-champs-enrichi`](analysis%20doc/32-modele-champs-enrichi.md) | Analyse initiale |
+| Vague D | **D2** Recherche sur champs dynamiques (JSONB + plein texte) | [`recherche-champs-dynamiques`](analysis%20doc/33-recherche-champs-dynamiques.md) | Analyse initiale — après D1 |
+| Vague D | **D3** Intégrations entreprise (OAuth2 client credentials, mapping réponse → dossier, e-mail entrant) | [`integrations-entreprise`](analysis%20doc/34-integrations-entreprise.md) | Analyse initiale |
+| Vague D | **D4** Promotion de configuration entre environnements | [`promotion-configuration`](analysis%20doc/35-promotion-configuration.md) | Analyse initiale |
+| Vague D | **D5** Scalabilité intra-tenant — verrou des jobs planifiés | [`verrou-jobs-planifies`](analysis%20doc/36-verrou-jobs-planifies.md) | Analyse initiale — audit d'abord |
+| Vague D | **D6** Socle MCP low-code (brouillon, publication, provenance, A3-M2) | [`socle-mcp-low-code`](analysis%20doc/37-socle-mcp-low-code.md) | Analyse initiale ; 4 décisions actées via le cadrage 46 (TODO §71) |
+| Vague D | **D7** Internationalisation de l'UI | [`internationalisation-ui`](analysis%20doc/38-internationalisation-ui.md) | Analyse initiale — selon marché |
 | Non planifié | **5.3 bis** Export BI JDBC / Power BI | — | Écarté du lot reporting (D-BI-MECHANISM) ; nouveau produit si besoin confirmé |
 
 ### Déjà couvert par le code — ne plus traiter comme un gap
@@ -142,6 +142,8 @@ FlowForge est un SaaS multi-tenant à architecture hexagonale. Stack **réelle**
 
 #### D0 — Décision de positionnement ✅ tranchée (TODO §70)
 
+> Analyse initiale : [31-positionnement-produit.md](analysis%20doc/31-positionnement-produit.md).
+
 **Constat :** le `README.md` promet « modéliser sans développement », mais la conception d'un
 process exige une expertise BPMN (`GUIDE-CONCEPTION-BPMN.md`) et toute logique hors des 7
 delegates allowlistés impose du code Java. Le verrouillage est **serveur** (allowlist §57/§69) ;
@@ -163,13 +165,13 @@ prérequis de LC3, les champs calculés de D1 et le mapping de D3b s'appuient su
 
 > **Exposition MCP :** chaque sous-lot expose ses artefacts au MCP **dans le même lot**
 > (principe P1, proposé) ; tools envisagés, principes et décisions dans
-> [31-exposition-mcp-couche-low-code.md](analysis%20doc/31-exposition-mcp-couche-low-code.md).
+> [46-exposition-mcp-couche-low-code.md](analysis%20doc/46-exposition-mcp-couche-low-code.md).
 >
 > Principe commun : une brique low-code **ne crée pas de nouvelle surface d'expression serveur**.
 > Soit elle produit le même XML BPMN que l'existant (validé par `FlowableBpmnParserAdapter` et
 > `BpmnExpressionSurfaceScanner`), soit elle passe par un évaluateur borné exécuté hors JUEL.
 
-**LC1 — `palette-metier-bpmn` (S–M).** Blocs prêts à l'emploi dans la palette de l'éditeur BPMN
+**LC1 — `palette-metier-bpmn` (S–M).** ([analyse](analysis%20doc/39-palette-metier-bpmn.md)) Blocs prêts à l'emploi dans la palette de l'éditeur BPMN
 (« Générer un document », « Appeler un connecteur », « Changer le statut », « Tâche externe
 (portail) », « Décision DMN », « Question utilisateur »). Le panneau de propriétés propose des
 **listes alimentées par les API existantes** (templates, instances de connecteurs, statuts du
@@ -178,7 +180,7 @@ type, tables DMN, schémas de questions) et écrit lui-même `delegateExpression
 endpoints de catalogue en lecture ; **aucun changement du parseur serveur**. Parallélisable avec D1
 (surfaces disjointes). *Valeur :* rend l'essentiel de `GUIDE-CONCEPTION-BPMN.md` implicite.
 
-**LC2 — `langage-expression-metier` (M).** Langage borné, sans accès au serveur et à durée
+**LC2 — `langage-expression-metier` (M).** ([analyse](analysis%20doc/40-langage-expression-metier.md)) Langage borné, sans accès au serveur et à durée
 d'évaluation limitée, pour trois usages : conditions de passerelle, **champs calculés** (D1),
 **mapping réponse de connecteur → champs** (D3b). *Décision ouverte :* JSONata (recommandé) vs
 CEL ; vérifier que le portage Java (Apache 2.0) borne temps et profondeur. *Coutures :* évaluateur
@@ -187,30 +189,30 @@ une condition de passerelle écrite dans ce langage doit passer par une variable
 delegate, pas par une `conditionExpression` libre. *Valeur :* couvre la majorité des besoins de
 « scripting réduit » sans exécuter de code.
 
-**LC3 — `assistant-conception-ia` (M).** Un utilisateur métier décrit son besoin ; l'assistant
+**LC3 — `assistant-conception-ia` (M).** ([analyse](analysis%20doc/41-assistant-conception-ia.md)) Un utilisateur métier décrit son besoin ; l'assistant
 produit type de dossier, BPMN, DMN et templates via les **27 tools MCP** existants, **en
 brouillon** ; relecture dans les éditeurs, `test_decision`, puis publication. *Prérequis :* **D6**
 (brouillon et validation humaine des déploiements MCP). LC1 et LC2 améliorent la qualité de
 génération (briques typées plutôt que XML libre). *Risque :* qualité des générations → aperçu,
 tests et historique obligatoires.
 
-**LC4a — `editeur-formulaires` (M).** Éditeur visuel des formulaires de tâche (`user-question`,
+**LC4a — `editeur-formulaires` (M).** ([analyse](analysis%20doc/42-editeur-formulaires.md)) Éditeur visuel des formulaires de tâche (`user-question`,
 `dossier-fields`, portail), candidat `form-js` (bpmn.io, même licence que `bpmn-js`).
 *Coutures :* `TaskQuestionSchemasAdminView.vue`, schéma `fieldDefinitions` (à coordonner avec D1
 si les nouveaux types arrivent en même temps).
 
-**LC4b — `editeur-templates-wysiwyg` (M).** Éditeur WYSIWYG des templates de documents,
+**LC4b — `editeur-templates-wysiwyg` (M).** ([analyse](analysis%20doc/43-editeur-templates-wysiwyg.md)) Éditeur WYSIWYG des templates de documents,
 variables du dossier insérées par menu au lieu du HTML Thymeleaf brut. *Décision ouverte :*
 TipTap (MIT) vs GrapesJS (BSD-3). *Contrainte :* se limiter au sous-ensemble **CSS 2.1** rendu par
 Flying Saucer ; l'évaluateur allowlist des templates (§40) reste inchangé.
 
-**LC5 — `concepteur-parcours` (L).** Vue par étapes (étapes, validations, conditions via DMN ou
+**LC5 — `concepteur-parcours` (L).** ([analyse](analysis%20doc/44-concepteur-parcours.md)) Vue par étapes (étapes, validations, conditions via DMN ou
 LC2, actions : document, notification, connecteur, portail) **compilée en BPMN** ; Flowable reste
 le moteur, l'éditeur BPMN reste disponible pour les experts. *Dépend de :* LC1 (briques), LC2
 (conditions). *Décision ouverte :* aller-retour vue simplifiée ↔ BPMN (verrouillage par mode ou
 conversion à sens unique).
 
-**LC6 — `scripts-sandbox` (M–L, conditionnel).** Nouvelle brique « Script » : ressource versionnée
+**LC6 — `scripts-sandbox` (M–L, conditionnel).** ([analyse](analysis%20doc/45-scripts-sandbox.md)) Nouvelle brique « Script » : ressource versionnée
 (comme une table DMN, jamais inline dans le BPMN), JS ou TypeScript transpilé à l'enregistrement,
 exécuté dans **QuickJS compilé en WASM via Chicory** (pur Java, Apache 2.0) : ni système, ni
 réseau, ni Java ; mémoire et instructions bornées ; API explicite (`ctx.dossier.fields`,
@@ -225,6 +227,8 @@ reconfirmer — repli seulement si le spike LC6 échoue) ; `scriptTask` natif Fl
 §57/§69). Complément hors lot : modèles n8n / Make prêts à l'emploi (documentation).
 
 #### D1 — Modèle de champs dynamiques enrichi
+
+> Analyse initiale : [32-modele-champs-enrichi.md](analysis%20doc/32-modele-champs-enrichi.md).
 
 **Constat vérifié :** `FieldType` = `STRING, NUMBER, DATE, BOOLEAN, SELECT, FILE`
 (`domain/dossier/model/FieldType.java`). Pas de montant avec devise, pas de groupe répétable,
@@ -246,6 +250,8 @@ formulaires `dossier-fields` (TODO §52), variables des templates PDF, export CS
 
 #### D2 — Recherche sur les champs dynamiques
 
+> Analyse initiale : [33-recherche-champs-dynamiques.md](analysis%20doc/33-recherche-champs-dynamiques.md).
+
 **Constat vérifié :** `DossierSpecifications` ne filtre que sur `status`, `dossierTypeCode` et un
 **préfixe** de `reference`. Aucune recherche sur les champs JSONB, aucun plein texte. Bloquant
 au-delà de quelques milliers de dossiers par tenant.
@@ -259,6 +265,8 @@ Syntaxe propre à PostgreSQL → tests Testcontainers (extension ciblée de D-TE
 H2 ne couvrent pas les opérateurs JSONB). Tool MCP `search_dossiers`. **Taille :** M.
 
 #### D3 — Intégrations entreprise
+
+> Analyse initiale : [34-integrations-entreprise.md](analysis%20doc/34-integrations-entreprise.md).
 
 | Sous-lot | Constat vérifié | Débloque | Taille |
 |---|---|---|---|
@@ -275,6 +283,8 @@ D3a peut démarrer en parallèle de D1 (aucune couture commune).
 
 #### D4 — Promotion de configuration entre environnements
 
+> Analyse initiale : [35-promotion-configuration.md](analysis%20doc/35-promotion-configuration.md).
+
 **Constat vérifié :** aucun mécanisme d'export/import de configuration. Types de dossier, BPMN,
 DMN, templates, schémas de questions et instances de connecteurs se recréent à la main (ou via
 MCP) sur chaque environnement.
@@ -286,7 +296,9 @@ journalisé. Indispensable pour un intégrateur qui fait recette puis production
 
 #### D5 — Scalabilité intra-tenant : verrou des jobs planifiés
 
-**Constat :** 13 méthodes `@Scheduled`, aucun ShedLock ni verrou distribué trouvé. Certains jobs
+> Analyse initiale : [36-verrou-jobs-planifies.md](analysis%20doc/36-verrou-jobs-planifies.md).
+
+**Constat :** 15 méthodes `@Scheduled` (recompté le 28/09), aucun ShedLock ni verrou distribué trouvé. Certains jobs
 ont leur propre état persisté (`connector_schedule_state`) : **audit d'abord**, job par job, pour
 savoir lesquels s'exécuteraient en double si un tenant passe à 2 pods.
 
@@ -297,12 +309,14 @@ seulement si un client impose plusieurs pods. **Taille :** S (audit) + M.
 
 #### D6 — Socle MCP low-code (élargi le 28/09, TODO §71)
 
+> Analyse initiale : [37-socle-mcp-low-code.md](analysis%20doc/37-socle-mcp-low-code.md).
+
 **Constat :** `deploy_workflow`, `deploy_decision_table` et `redeploy_decision_table` agissent
 directement sur l'instance (seul `redeploy_decision_table` n'a pas de `dryRun`) ; les brouillons
 `BpmnDraft`/`DmnDraft` des éditeurs ne sont pas utilisés par le MCP ; tout JWT M2M reçoit le rôle
 constant `API_SERVICE`, équivalent administrateur (risque A3-M2 accepté).
 
-**Périmètre élargi par l'[analyse 31](analysis%20doc/31-exposition-mcp-couche-low-code.md) :**
+**Périmètre élargi par l'[analyse 46](analysis%20doc/46-exposition-mcp-couche-low-code.md) :**
 brouillon par défaut pour les écritures de configuration venant du MCP, politique de publication
 (D-MCP-LC-PUBLISH), migration des tools de déploiement directs (D-MCP-LC-MIGRATION), provenance
 `UI`/`MCP`/`ASSISTANT` sur brouillons et versions, fermeture d'A3-M2 (D-MCP-LC-SCOPES).
@@ -310,6 +324,8 @@ brouillon par défaut pour les écritures de configuration venant du MCP, politi
 exécution à blanc) peuvent le précéder. **Taille :** M.
 
 #### D7 — Internationalisation de l'UI
+
+> Analyse initiale : [38-internationalisation-ui.md](analysis%20doc/38-internationalisation-ui.md).
 
 **Constat vérifié :** pas de `vue-i18n` ; l'UI est en une seule langue, alors que les templates
 PDF gèrent déjà des variantes par langue. Priorité selon le marché visé (D0). **Taille :** M.
@@ -350,4 +366,5 @@ démarrer ».
 | 1.2 | 23/09/2026 | Rattrapage post-merges #131/#132/#135 | Vagues A/B/C/A4, reporting et inbox passés en livré ; catalogue connecteurs à 8 ; portail et signature scindés en deux lots ; DMN et portail en cours. |
 | 1.3 | 28/09/2026 | Analyse critique fonctionnelle | Ajout de la Vague D (Catégorie 7) : décision de positionnement D0 et lots D1–D7 recoupés sur `main` @ `f9638c7` ; MCP à 27 tools ; priorisation étendue après `signature-electronique`. |
 | 1.4 | 28/09/2026 | Décision D0 (TODO §70) | D0 tranché = C (intégrateurs + couche low-code) ; sous-lots LC1–LC6 ; priorisation revue (D4 remonte, LC2 avant D3b et champs calculés). |
-| 1.5 | 28/09/2026 | Cadrage MCP low-code (TODO §71) | Analyse 31 référencée ; D6 élargi en socle MCP low-code ; exposition MCP dans le même lot pour chaque `LC*`. |
+| 1.5 | 28/09/2026 | Cadrage MCP low-code (TODO §71) | Analyse 46 référencée ; D6 élargi en socle MCP low-code ; exposition MCP dans le même lot pour chaque `LC*`. |
+| 1.6 | 28/09/2026 | Analyses initiales de la Vague D | Analyses 31–45 créées (D0–D7, LC1–LC6), cadrage MCP renuméroté 31 → 46 ; lots nommés et liés à leur analyse. |

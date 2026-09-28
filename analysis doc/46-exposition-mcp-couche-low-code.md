@@ -1,5 +1,8 @@
 # Exposition MCP de la couche low-code — cadrage transverse
 
+> **Numérotation :** créée en 31, renumérotée 46 le 2026-09-28 pour suivre les analyses des lots
+> qu'elle cadre ([31](31-positionnement-produit.md) à [45](45-scripts-sandbox.md)).
+
 > **Statut : première analyse (2026-09-28), décisions ouvertes.** Cadrage demandé dès la décision
 > D0 = C (TODO §70), **avant** le premier lot `LC*`, pour que chaque lot expose ses artefacts au
 > MCP dès sa livraison au lieu de les rattraper après coup (ce qu'a dû faire
@@ -84,14 +87,14 @@ un humain les saisit dans l'UI. Le canal M2M interne garde D-MCP-EXT-SECRET.
 
 | Lot | Tools / ressources envisagés | Nature | Points d'attention |
 |---|---|---|---|
-| **LC1** palette BPMN | `list_bpmn_building_blocks` (briques, paramètres typés, sources de valeurs) — ou ressource MCP | Lecture | **Source unique** : le catalogue sert l'UI (element templates générés) *et* le MCP. L'agent compose du BPMN à partir des briques, validé par `deploy_workflow` en `dryRun`. |
-| **LC2** langage d'expression | `validate_expression` (syntaxe, champs référencés existants sur le type), `evaluate_expression` (contexte d'exemple fourni) | Lecture / exécution à blanc | Limites de temps et de profondeur **identiques** à l'exécution réelle. Les expressions s'écrivent via les tools existants qui les portent (`define_dossier_type` pour les champs calculés, brique de mapping D3b). |
-| **LC3** assistant IA | Pas de tool propre : consomme le catalogue | — | Porte P3, P7, P8, P9 et les décisions D-MCP-LC-IDENTITY / MODES. |
-| **LC4a** formulaires | Extension de `define_task_question_schema` (nouveaux types de D1) ; `preview_form` optionnel | Écriture en brouillon | L'éditeur `form-js` reste une vue ; `fieldDefinitions` reste le contrat (P5). |
-| **LC4b** templates | **Nouveaux** `define_document_template` (version brouillon), `preview_document` (HTML/PDF sur dossier d'exemple, réutilise `/preview`) | Écriture en brouillon + aperçu | Comble le trou actuel (lecture seule). Allowlist §40 inchangée. |
-| **LC5** parcours | `define_parcours` (brouillon), `compile_parcours` (retourne le BPMN généré sans déployer), publication selon D-MCP-LC-PUBLISH | Écriture en brouillon + compilation à blanc | Dépend de la politique d'aller-retour de LC5 : en sens unique, l'agent n'édite que le parcours. |
-| **LC6** scripts | `define_script` (brouillon), `test_script` (bac à sable, contexte d'exemple, cas bornés), `get_script_typings` (`.d.ts` du type) | Écriture en brouillon + exécution à blanc | Via MCP il n'y a pas de navigateur pour transpiler le TypeScript → D-MCP-LC-TS. |
-| **D6** garde-fous | Politique de publication, migration des tools de déploiement directs vers le brouillon, provenance | Transverse | Devient le **socle** de cette exposition (voir §6). |
+| **LC1** [palette BPMN](39-palette-metier-bpmn.md) | `list_bpmn_building_blocks` (briques, paramètres typés, sources de valeurs) — ou ressource MCP | Lecture | **Source unique** : le catalogue sert l'UI (element templates générés) *et* le MCP. L'agent compose du BPMN à partir des briques, validé par `deploy_workflow` en `dryRun`. |
+| **LC2** [langage d'expression](40-langage-expression-metier.md) | `validate_expression` (syntaxe, champs référencés existants sur le type), `evaluate_expression` (contexte d'exemple fourni) | Lecture / exécution à blanc | Limites de temps et de profondeur **identiques** à l'exécution réelle. Les expressions s'écrivent via les tools existants qui les portent (`define_dossier_type` pour les champs calculés, brique de mapping D3b). |
+| **LC3** [assistant IA](41-assistant-conception-ia.md) | Pas de tool propre : consomme le catalogue | — | Porte P3, P7, P8, P9 et les décisions D-MCP-LC-IDENTITY / MODES. |
+| **LC4a** [formulaires](42-editeur-formulaires.md) | Extension de `define_task_question_schema` (nouveaux types de D1) ; `preview_form` optionnel | Écriture en brouillon | L'éditeur `form-js` reste une vue ; `fieldDefinitions` reste le contrat (P5). |
+| **LC4b** [templates](43-editeur-templates-wysiwyg.md) | **Nouveaux** `define_document_template` (version brouillon), `preview_document` (HTML/PDF sur dossier d'exemple, réutilise `/preview`) | Écriture en brouillon + aperçu | Comble le trou actuel (lecture seule). Allowlist §40 inchangée. |
+| **LC5** [parcours](44-concepteur-parcours.md) | `define_parcours` (brouillon), `compile_parcours` (retourne le BPMN généré sans déployer), publication selon D-MCP-LC-PUBLISH | Écriture en brouillon + compilation à blanc | Dépend de la politique d'aller-retour de LC5 : en sens unique, l'agent n'édite que le parcours. |
+| **LC6** [scripts](45-scripts-sandbox.md) | `define_script` (brouillon), `test_script` (bac à sable, contexte d'exemple, cas bornés), `get_script_typings` (`.d.ts` du type) | Écriture en brouillon + exécution à blanc | Via MCP il n'y a pas de navigateur pour transpiler le TypeScript → D-MCP-LC-TS. |
+| **D6** [socle MCP](37-socle-mcp-low-code.md) | Politique de publication, migration des tools de déploiement directs vers le brouillon, provenance | Transverse | Devient le **socle** de cette exposition (voir §6). |
 
 Tools de publication : un `publish_draft` générique, ou un par artefact, selon D-MCP-LC-PUBLISH.
 

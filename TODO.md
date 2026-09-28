@@ -1016,7 +1016,11 @@ métier en dehors du JUEL restreint.
   Flowable (JSR-223 Groovy/JS) reste **écarté** (exécution de code arbitraire, §57/§69).
 
 **Découpage en sous-lots (Vague D, préfixe `LC`)** — détail et coutures dans `ROADMAP.md`
-Catégorie 7. Aucun n'est cadré : `dev-lifecycle` Phase 1 obligatoire pour chacun.
+Catégorie 7. Aucun n'est cadré : `dev-lifecycle` Phase 1 obligatoire pour chacun. Analyses
+initiales (2026-09-28) : [31](analysis%20doc/31-positionnement-produit.md) pour cette décision,
+[32](analysis%20doc/32-modele-champs-enrichi.md)–[38](analysis%20doc/38-internationalisation-ui.md)
+pour D1–D7, [39](analysis%20doc/39-palette-metier-bpmn.md)–[45](analysis%20doc/45-scripts-sandbox.md)
+pour LC1–LC6.
 
 | Sous-lot | Contenu | Taille | Dépend de |
 |---|---|---|---|
@@ -1072,7 +1076,7 @@ sans tool, rattrapés par [24-extension-mcp-flux-metier.md](analysis%20doc/24-ex
 MCP ; rôle constant `API_SERVICE` pour tout JWT M2M (risque A3-M2 accepté) ; capacités MCP
 `resource`/`prompt` désactivées.
 
-**Analyse :** [31-exposition-mcp-couche-low-code.md](analysis%20doc/31-exposition-mcp-couche-low-code.md)
+**Analyse :** [46-exposition-mcp-couche-low-code.md](analysis%20doc/46-exposition-mcp-couche-low-code.md)
 — principes P1–P9 (parité par conception, atomicité, brouillon par défaut, auto-vérification,
 formats du domaine comme contrat, aucun nouveau chemin de confiance, identité réelle de l'acteur,
 provenance, aucun secret via l'assistant), exposition par sous-lot, risques propres à
@@ -1088,6 +1092,10 @@ sinon) ; **D-MCP-LC-MIGRATION = A** (`deploy_workflow`, `deploy_decision_table`,
 **D-MCP-LC-MODES = A** (modes *conception* et *opération* séparés). Restent ouvertes :
 D-MCP-LC-PARITY, D-MCP-LC-RESOURCES, D-MCP-LC-SCOPES (B suffit vu IDENTITY = A),
 D-MCP-LC-SECRETS, D-MCP-LC-TS (après le spike LC6).
+
+**Numérotation :** l'analyse, créée en 31, a été renumérotée **46** le 2026-09-28 pour suivre les
+analyses initiales des lots qu'elle cadre (31 à 45) ; le lot D6 a sa propre analyse
+([37-socle-mcp-low-code.md](analysis%20doc/37-socle-mcp-low-code.md)).
 
 **Impacte :** `ROADMAP.md` (D6 élargi en socle MCP low-code, ligne « Exposition MCP » dans chaque
 lot `LC*`), `analysis doc/00-index.md`, `15-serveur-mcp.md` § Décisions de cadrage (amendé). Dans le lot D6 :

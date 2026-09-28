@@ -7,7 +7,9 @@
 > `portail-externe` ([PR #138](https://github.com/superjojo79/FlowForge/pull/138), TODO §68) : livré. **Prochain :** `signature-electronique`.
 > **Vague D (nouvelle, 28/09) :** priorités issues de l'analyse critique fonctionnelle — adéquation
 > aux cas d'usage et industrialisation. **D0 tranché = C** (intégrateurs + couche low-code, TODO §70),
-> découpé en sous-lots `LC1`–`LC6`. Aucun lot cadré ; voir [Catégorie 7](#catégorie-7--adéquation-métier--industrialisation-vague-d).
+> découpé en sous-lots `LC1`–`LC6`. Exposition MCP de ces sous-lots cadrée en amont
+> ([analyse 31](analysis%20doc/31-exposition-mcp-couche-low-code.md), TODO §71, décisions ouvertes).
+> Aucun lot cadré ; voir [Catégorie 7](#catégorie-7--adéquation-métier--industrialisation-vague-d).
 
 ---
 
@@ -45,7 +47,7 @@ FlowForge est un SaaS multi-tenant à architecture hexagonale. Stack **réelle**
 | Vague D | **D3** Intégrations entreprise (OAuth2 client credentials, mapping réponse → dossier, e-mail entrant) | à nommer | Non cadré |
 | Vague D | **D4** Promotion de configuration entre environnements | à nommer | Non cadré |
 | Vague D | **D5** Scalabilité intra-tenant — verrou des jobs planifiés | à nommer | Audit d'abord |
-| Vague D | **D6** Garde-fous des déploiements MCP | à nommer | Non cadré |
+| Vague D | **D6** Socle MCP low-code (brouillon, publication, provenance, A3-M2) | à nommer | Analyse 31 faite, décisions ouvertes (TODO §71) |
 | Vague D | **D7** Internationalisation de l'UI | à nommer | Non cadré — selon marché |
 | Non planifié | **5.3 bis** Export BI JDBC / Power BI | — | Écarté du lot reporting (D-BI-MECHANISM) ; nouveau produit si besoin confirmé |
 
@@ -159,6 +161,10 @@ prérequis de LC3, les champs calculés de D1 et le mapping de D3b s'appuient su
 
 #### Couche low-code — sous-lots LC1 à LC6
 
+> **Exposition MCP :** chaque sous-lot expose ses artefacts au MCP **dans le même lot**
+> (principe P1, proposé) ; tools envisagés, principes et décisions dans
+> [31-exposition-mcp-couche-low-code.md](analysis%20doc/31-exposition-mcp-couche-low-code.md).
+>
 > Principe commun : une brique low-code **ne crée pas de nouvelle surface d'expression serveur**.
 > Soit elle produit le même XML BPMN que l'existant (validé par `FlowableBpmnParserAdapter` et
 > `BpmnExpressionSurfaceScanner`), soit elle passe par un évaluateur borné exécuté hors JUEL.
@@ -289,16 +295,19 @@ savoir lesquels s'exécuteraient en double si un tenant passe à 2 pods.
 (`FILE-ATTENTE.md` § *Ne pas lancer*). D0 = C (hébergement dédié) : **reste à l'audit**, verrou
 seulement si un client impose plusieurs pods. **Taille :** S (audit) + M.
 
-#### D6 — Garde-fous des déploiements MCP
+#### D6 — Socle MCP low-code (élargi le 28/09, TODO §71)
 
 **Constat :** `deploy_workflow`, `deploy_decision_table` et `redeploy_decision_table` agissent
-directement sur l'instance, sans brouillon ni validation humaine. C'est puissant pour un agent,
-mais risqué en production.
+directement sur l'instance (seul `redeploy_decision_table` n'a pas de `dryRun`) ; les brouillons
+`BpmnDraft`/`DmnDraft` des éditeurs ne sont pas utilisés par le MCP ; tout JWT M2M reçoit le rôle
+constant `API_SERVICE`, équivalent administrateur (risque A3-M2 accepté).
 
-**Périmètre à poser :** mode « brouillon » par défaut pour les déploiements venant de MCP
-(réutiliser les brouillons persistés des éditeurs BPMN et DMN) avec validation par un
-`WORKFLOW_ADMIN`, et/ou propriété de démarrage interdisant les écritures de déploiement MCP hors
-environnements hors production. **Taille :** S à M.
+**Périmètre élargi par l'[analyse 31](analysis%20doc/31-exposition-mcp-couche-low-code.md) :**
+brouillon par défaut pour les écritures de configuration venant du MCP, politique de publication
+(D-MCP-LC-PUBLISH), migration des tools de déploiement directs (D-MCP-LC-MIGRATION), provenance
+`UI`/`MCP`/`ASSISTANT` sur brouillons et versions, fermeture d'A3-M2 (D-MCP-LC-SCOPES).
+**Prérequis de LC3** et de toute écriture MCP de LC4b, LC5 et LC6 ; LC1 et LC2 (lecture et
+exécution à blanc) peuvent le précéder. **Taille :** M.
 
 #### D7 — Internationalisation de l'UI
 
@@ -317,7 +326,8 @@ PDF gèrent déjà des variantes par langue. Priorité selon le marché visé (D
    calculés de D1.
 5. **D2** recherche sur champs dynamiques (après D1).
 6. **D4** promotion de configuration — remontée par D0 = C.
-7. **D6** garde-fous MCP, puis **LC3** assistant de conception IA.
+7. **D6** socle MCP low-code (après arbitrage des décisions TODO §71), puis **LC3** assistant de
+   conception IA.
 8. **LC4a** éditeur de formulaires et **LC4b** éditeur de templates.
 9. **D3c** (+ **D3d** si confirmé) — e-mail entrant et bus Azure, un seul cycle catalogue.
 10. **LC5** concepteur de parcours.
@@ -340,3 +350,4 @@ démarrer ».
 | 1.2 | 23/09/2026 | Rattrapage post-merges #131/#132/#135 | Vagues A/B/C/A4, reporting et inbox passés en livré ; catalogue connecteurs à 8 ; portail et signature scindés en deux lots ; DMN et portail en cours. |
 | 1.3 | 28/09/2026 | Analyse critique fonctionnelle | Ajout de la Vague D (Catégorie 7) : décision de positionnement D0 et lots D1–D7 recoupés sur `main` @ `f9638c7` ; MCP à 27 tools ; priorisation étendue après `signature-electronique`. |
 | 1.4 | 28/09/2026 | Décision D0 (TODO §70) | D0 tranché = C (intégrateurs + couche low-code) ; sous-lots LC1–LC6 ; priorisation revue (D4 remonte, LC2 avant D3b et champs calculés). |
+| 1.5 | 28/09/2026 | Cadrage MCP low-code (TODO §71) | Analyse 31 référencée ; D6 élargi en socle MCP low-code ; exposition MCP dans le même lot pour chaque `LC*`. |

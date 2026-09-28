@@ -45,6 +45,7 @@
 | 28 | Outillage DMN — évaluation ad hoc, historique/rollback, tests — **livré** (TODO §67, PR #134) | [28-outillage-dmn.md](28-outillage-dmn.md) |
 | 29 | Enrichissement du reporting — alerting SLA, dashboard, export BI — **livré** (TODO §65, PR #132) | [29-enrichissement-reporting.md](29-enrichissement-reporting.md) |
 | 30 | Signature électronique — analyse initiale (lot distinct, après le portail) | [30-signature-electronique.md](30-signature-electronique.md) |
+| 31 | Exposition MCP de la couche low-code — cadrage transverse, décisions ouvertes (TODO §71) | [31-exposition-mcp-couche-low-code.md](31-exposition-mcp-couche-low-code.md) |
 
 > Pour concevoir concrètement un diagramme BPMN pour FlowForge (conventions, référence des
 > `serviceTask` disponibles, champs dynamiques, connecteurs, intervenants, génération de

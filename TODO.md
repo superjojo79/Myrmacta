@@ -1058,6 +1058,35 @@ prêts à l'emploi (documentation), l'intégration no-code restant externalisée
 inchangée). À répercuter lors du premier lot livré : `README.md` (vision « sans développement »
 à nuancer, § Statut obsolète).
 
+### [ ] 71. Exposition MCP de la couche low-code — cadrage transverse
+
+**Énoncé :** conséquence directe de §70. Le sous-lot LC3 (assistant de conception IA) fait du
+serveur MCP le moteur du no-code côté client, alors qu'il a été cadré comme outillage interne M2M
+([15-serveur-mcp.md](analysis%20doc/15-serveur-mcp.md)). Sans cadrage préalable, chaque lot `LC*`
+exposerait ses artefacts au MCP à sa façon, ou pas du tout (précédent : trois mécanismes livrés
+sans tool, rattrapés par [24-extension-mcp-flux-metier.md](analysis%20doc/24-extension-mcp-flux-metier.md)).
+
+**Constat vérifié (`main` @ `e3985fe`) :** 27 tools atomiques ; `dryRun` sur 9 tools d'écriture
+(absent de `redeploy_decision_table`) ; déploiements BPMN/DMN **directs** ; brouillons
+`BpmnDraft`/`DmnDraft` existants mais non utilisés par le MCP ; templates en lecture seule côté
+MCP ; rôle constant `API_SERVICE` pour tout JWT M2M (risque A3-M2 accepté) ; capacités MCP
+`resource`/`prompt` désactivées.
+
+**Analyse :** [31-exposition-mcp-couche-low-code.md](analysis%20doc/31-exposition-mcp-couche-low-code.md)
+— principes P1–P9 (parité par conception, atomicité, brouillon par défaut, auto-vérification,
+formats du domaine comme contrat, aucun nouveau chemin de confiance, identité réelle de l'acteur,
+provenance, aucun secret via l'assistant), exposition par sous-lot, risques propres à
+l'assistant (injection de consignes par les données, données transmises au fournisseur du
+modèle, DoS par les outils d'évaluation, élévation via A3-M2).
+
+**Statut :** **ouvert** — 9 décisions proposées, non tranchées : D-MCP-LC-PARITY,
+D-MCP-LC-PUBLISH, D-MCP-LC-IDENTITY, D-MCP-LC-MODES, D-MCP-LC-RESOURCES, D-MCP-LC-SCOPES,
+D-MCP-LC-SECRETS, D-MCP-LC-TS (après le spike LC6), D-MCP-LC-MIGRATION.
+
+**Impacte :** `ROADMAP.md` (D6 élargi en socle MCP low-code, ligne « Exposition MCP » dans chaque
+lot `LC*`), `analysis doc/00-index.md`, puis `15-serveur-mcp.md` § Décisions de cadrage quand
+D-MCP-LC-IDENTITY sera tranchée.
+
 ---
 
 ## Autorisation et conformité

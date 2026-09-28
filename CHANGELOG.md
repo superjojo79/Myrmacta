@@ -137,6 +137,10 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Documentation
 
+- **PR [#143](https://github.com/superjojo79/FlowForge/pull/143)** — `ROADMAP.md` enrichie d'une
+  Vague D issue d'une analyse critique fonctionnelle : décision de positionnement à trancher (D0)
+  et sept lots non cadrés (champs enrichis, recherche, intégrations entreprise, promotion de
+  configuration, jobs multi-pods, garde-fous MCP, i18n), chacun recoupé sur le code.
 - **PR [#138](https://github.com/superjojo79/FlowForge/pull/138)** — Rattrapage documentaire après les merges #131/#132/#135
   (TODO, file d'attente, roadmap v1.2), scission du lot « portail externe & signature » en deux
   lots distincts et cadrage du portail externe tokenisé (requirements, revue, design). Pas de

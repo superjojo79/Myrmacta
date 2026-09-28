@@ -45,6 +45,22 @@
 | 28 | Outillage DMN — évaluation ad hoc, historique/rollback, tests — **livré** (TODO §67, PR #134) | [28-outillage-dmn.md](28-outillage-dmn.md) |
 | 29 | Enrichissement du reporting — alerting SLA, dashboard, export BI — **livré** (TODO §65, PR #132) | [29-enrichissement-reporting.md](29-enrichissement-reporting.md) |
 | 30 | Signature électronique — analyse initiale (lot distinct, après le portail) | [30-signature-electronique.md](30-signature-electronique.md) |
+| 31 | Positionnement produit (D0) — intégrateurs + couche low-code, **décision actée** (TODO §70) | [31-positionnement-produit.md](31-positionnement-produit.md) |
+| 32 | Modèle de champs dynamiques enrichi (D1) — analyse initiale | [32-modele-champs-enrichi.md](32-modele-champs-enrichi.md) |
+| 33 | Recherche sur les champs dynamiques (D2) — analyse initiale | [33-recherche-champs-dynamiques.md](33-recherche-champs-dynamiques.md) |
+| 34 | Intégrations entreprise (D3a–D3d) — analyse initiale | [34-integrations-entreprise.md](34-integrations-entreprise.md) |
+| 35 | Promotion de configuration entre environnements (D4) — analyse initiale | [35-promotion-configuration.md](35-promotion-configuration.md) |
+| 36 | Verrou des jobs planifiés (D5) — analyse initiale, audit d'abord | [36-verrou-jobs-planifies.md](36-verrou-jobs-planifies.md) |
+| 37 | Socle MCP low-code (D6) — analyse initiale, 4 décisions actées via TODO §71 | [37-socle-mcp-low-code.md](37-socle-mcp-low-code.md) |
+| 38 | Internationalisation de l'UI (D7) — analyse initiale | [38-internationalisation-ui.md](38-internationalisation-ui.md) |
+| 39 | Palette métier dans l'éditeur BPMN (LC1) — analyse initiale | [39-palette-metier-bpmn.md](39-palette-metier-bpmn.md) |
+| 40 | Langage d'expression métier borné (LC2) — analyse initiale | [40-langage-expression-metier.md](40-langage-expression-metier.md) |
+| 41 | Assistant de conception IA (LC3) — analyse initiale | [41-assistant-conception-ia.md](41-assistant-conception-ia.md) |
+| 42 | Éditeur visuel de formulaires (LC4a) — analyse initiale | [42-editeur-formulaires.md](42-editeur-formulaires.md) |
+| 43 | Éditeur WYSIWYG des templates (LC4b) — analyse initiale | [43-editeur-templates-wysiwyg.md](43-editeur-templates-wysiwyg.md) |
+| 44 | Concepteur de parcours compilé en BPMN (LC5) — analyse initiale | [44-concepteur-parcours.md](44-concepteur-parcours.md) |
+| 45 | Scripts JS/TS en bac à sable (LC6) — analyse initiale, conditionnelle | [45-scripts-sandbox.md](45-scripts-sandbox.md) |
+| 46 | Exposition MCP de la couche low-code — cadrage transverse (TODO §71) | [46-exposition-mcp-couche-low-code.md](46-exposition-mcp-couche-low-code.md) |
 
 > Pour concevoir concrètement un diagramme BPMN pour FlowForge (conventions, référence des
 > `serviceTask` disponibles, champs dynamiques, connecteurs, intervenants, génération de

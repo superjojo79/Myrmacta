@@ -220,9 +220,10 @@ La documentation d'architecture est disponible dans le répertoire `analysis doc
 ## Statut
 
 > Projet en développement actif : le socle (dossiers, workflows BPMN/DMN, documents, connecteurs,
-> serveur MCP, portail externe tokenisé, reporting/SLA, notifications) est livré sur `main`.
+> serveur MCP, portail externe tokenisé, signature électronique générique avec fournisseur de
+> simulation, reporting/SLA, notifications) est livré sur `main`.
 > Les évolutions en cours de cadrage (couche low-code, modèle de champs enrichi, intégrations
-> entreprise, signature électronique) sont suivies dans [ROADMAP.md](ROADMAP.md).
+> entreprise, fournisseur de signature réel) sont suivies dans [ROADMAP.md](ROADMAP.md).
 >  Activité indépendante complémentaire.
 
 La documentation d'architecture a fait l'objet d'une [revue pré-implémentation](REVUE-PRE-IMPLEMENTATION.md)

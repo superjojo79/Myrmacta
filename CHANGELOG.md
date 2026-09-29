@@ -30,7 +30,7 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
-- **TODO §72** — Signature électronique générique : un bloc BPMN `${signatureRequestTask}` demande la
+- **[PR #149](https://github.com/superjojo79/FlowForge/pull/149) — TODO §72** — Signature électronique générique : un bloc BPMN `${signatureRequestTask}` demande la
   signature d'un document du dossier à des signataires externes (lien par e-mail, sans compte) ou
   internes (« Mes signatures »), en mode parallèle ou séquentiel, requis ou facultatifs ; le process
   reprend sur le message `signatureCompleted` avec `signatureOutcome`. Panneau « Signatures » dans le

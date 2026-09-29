@@ -1104,7 +1104,9 @@ lot `LC*`), `analysis doc/00-index.md`, `15-serveur-mcp.md` § Décisions de cad
 
 ---
 
-### [ ] 72. Signature électronique — socle générique et stub (Phases 1 à 4 closes ; Phase 5 implémentée, vérification globale M14 et PR à venir)
+### [x] 72. Signature électronique — socle générique et stub (livré)
+
+**Livré (2026-09-29).** Phases 1 à 9 closes, analyse adversariale par sous-agent comprise. **Mergée sur `main`** le 2026-09-29 ([PR #149](https://github.com/superjojo79/FlowForge/pull/149), squash `1c839ff`), CI verte (`build` + `frontend`). Preuves : `./mvnw verify` → **2571 tests, 0 échec** ; Vitest 424 ; Playwright 98 ; test de bout en bout réel navigateur + backend (`SignatureBrowserE2eTest`). Seul fournisseur livré : `stub` (simulation, sans valeur juridique) ; un fournisseur réel et eIDAS restent à cadrer. Restent ouverts (voir `docs/ai/implementation/2026-09-29-feature-signature-electronique.md`) : S-EMIT-10 sur PostgreSQL réel, vérifications manuelles T14.4, tests de concurrence à deux transactions réelles, parcours internes en e2e réel (session OIDC).
 
 **Énoncé :** item **2.4** de `ROADMAP.md`, analyse
 [30-signature-electronique.md](analysis%20doc/30-signature-electronique.md), recalibrée le

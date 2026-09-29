@@ -11,6 +11,9 @@
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
 >
+> **2026-09-29 (`signature-electronique` mergée)** — [PR #149](https://github.com/superjojo79/FlowForge/pull/149), TODO §72 : livré (stub, sans provider). Aucun
+> cycle en cours ; la Vague 1 de la Vague D démarre sans elle (LC1, LC2 ou D1).
+>
 > **2026-09-29 (ordonnancement Vague D)** — La file est réordonnancée en **vagues** (voir
 > § *File d'attente — Vague D*) : parallélisme borné à 3 agents (4 avec D3a), dépendances entre
 > lots, et point d'arbitrage D4/D6. `signature-electronique` reste le prochain candidat officiel ;
@@ -501,6 +504,7 @@ Même grille que pour `preview-documents` puis `edition-champs-dossier` :
 | `inbox-notifications-persistee` | [PR #135](https://github.com/superjojo79/FlowForge/pull/135), analyse [27-notifications-inbox.md](analysis%20doc/27-notifications-inbox.md), TODO §66 (clos) | Table `user_notification` + `NotificationInboxController` self-scoped, backfill REST + SSE dédoublonnés, badge `GET /api/notifications/unread-count`, « Charger plus », purge par rétention, 3 nouveaux producteurs. Revue adversariale : F1 (id SSE ≠ id inbox) et F2 (pas de backfill après reconnexion SSE) corrigés |
 | `outillage-dmn` | [PR #134](https://github.com/superjojo79/FlowForge/pull/134), analyse [28-outillage-dmn.md](analysis%20doc/28-outillage-dmn.md), TODO §67 (clos) | Évaluation d'une table déployée, jeux de tests JSON et CSV, historique des versions et redéploiement « version N » ; éditeur `/admin/dmn-editor`, REST et 4 tools MCP. **Mergée sur `main`** (2026-09-24, CI verte, merge `97b429a`). |
 | `portail-externe` | [PR #138](https://github.com/superjojo79/FlowForge/pull/138), analyse [26-portail-externe.md](analysis%20doc/26-portail-externe.md), TODO §68 (clos) | Un tiers sans compte répond à une `userTask` (formulaire `user-question` + pièces) via un lien magique reçu par e-mail ; opt-in `APP_PORTAL_ENABLED`. Cycle Phases 1–9 + revue adversariale (F-PORTAL-1, C1–C3, H1 corrigés). Correctif §69 ([PR #136](https://github.com/superjojo79/FlowForge/pull/136)) trouvé en Phase 3. |
+| `signature-electronique` | [PR #149](https://github.com/superjojo79/FlowForge/pull/149), analyse [30-signature-electronique.md](analysis%20doc/30-signature-electronique.md), TODO §72 (clos) | Socle générique de signature : port `SignaturePort`, fournisseur `stub` (simulation, sans valeur juridique), bloc BPMN `signatureRequestTask`, signataires externes (portail) et internes (« Mes signatures »), parallèle/séquentiel, requis/facultatifs, panneau « Signatures », connecteur de catalogue et callback fournisseur, 3 outils MCP de lecture/annulation. Désactivé par défaut (`APP_SIGNATURE_PROVIDER`). |
 
 Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relations, PATCH fields API, éléments) : voir [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §2.
 
@@ -615,7 +619,7 @@ technique.
 | Lot | Items `ROADMAP.md` | Analyse initiale | Statut |
 |---|---|---|---|
 | `portail-externe` | 3.1 (Portail externe tokenisé) | [26-portail-externe.md](analysis%20doc/26-portail-externe.md) | **Livré** ([PR #138](https://github.com/superjojo79/FlowForge/pull/138), TODO §68) |
-| `signature-electronique` | 2.4 (Signature électronique) | [30-signature-electronique.md](analysis%20doc/30-signature-electronique.md) | **Implémenté sur branche** `claude/dreamy-davinci-4ddp96` (Phase 5, jalons M0–M13 ; M14 vérification globale puis PR à venir) — `portail-externe` livré, PR #138 |
+| `signature-electronique` | 2.4 (Signature électronique) | [30-signature-electronique.md](analysis%20doc/30-signature-electronique.md) | **Livré** ([PR #149](https://github.com/superjojo79/FlowForge/pull/149), TODO §72) — socle générique + stub, sans provider |
 | `outillage-dmn` | 1.1 + 1.2 + 1.3/5.1 | [28-outillage-dmn.md](analysis%20doc/28-outillage-dmn.md) | **Livré** ([PR #134](https://github.com/superjojo79/FlowForge/pull/134), TODO §67) |
 | `enrichissement-reporting` | 5.2 + 3.3 + 5.3 | [29-enrichissement-reporting.md](analysis%20doc/29-enrichissement-reporting.md) | **Livré** (PR #132) |
 | `inbox-notifications-persistee` | 3.2 | [27-notifications-inbox.md](analysis%20doc/27-notifications-inbox.md) | **Livré** (PR #135) |
@@ -648,11 +652,10 @@ pagination inbox > 100.
 `inbox-notifications-persistee` (PR #135, TODO §66), `outillage-dmn`
 ([PR #134](https://github.com/superjojo79/FlowForge/pull/134), TODO §67) et le correctif de
 sécurité UEL du BPMN ([PR #136](https://github.com/superjojo79/FlowForge/pull/136), TODO §69), puis
-`portail-externe` ([PR #138](https://github.com/superjojo79/FlowForge/pull/138), TODO §68).
+`portail-externe` ([PR #138](https://github.com/superjojo79/FlowForge/pull/138), TODO §68), puis
+`signature-electronique` ([PR #149](https://github.com/superjojo79/FlowForge/pull/149), TODO §72 : port `SignaturePort` + adaptateur stub, sans fournisseur ; eIDAS reporté).
 
-**Cycle en cours :** aucun. Prochain candidat : `signature-electronique` (analyse
-[30-signature-electronique.md](analysis%20doc/30-signature-electronique.md), lot recalibré
-le 2026-09-29 : port `SignaturePort` + adaptateur stub, sans fournisseur ; eIDAS reporté). Suite : voir *File d'attente — Vague D* (Vague 1 : LC1 et LC2 ou D1 en parallèle).
+**Cycle en cours :** aucun. Suite : voir *File d'attente — Vague D* (Vague 1 : LC1 et LC2 ou D1 en parallèle).
 
 Détail inventaire : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §4 / §6.
 
@@ -850,3 +853,4 @@ Vérifié : `./mvnw verify` 1136 tests (0 échec), Jacoco OK ; frontend `npm run
 | 2026-09-24 | `portail-externe` revue adversariale + correctifs | Subagent, preuves sur Tomcat réel. C1 (redirection Keycloak + session sur erreur de routage publique), C2 (limite par IP contournable via `Forwarded`), C3 (500 sur requête mal formée), H1 (table du limiteur non bornée dans la minute) : tous corrigés en TDD. `verify` 2358/0. DEPLOIEMENT.md : supprimer aussi `Forwarded` et `X-Forwarded-Prefix` au proxy. |
 | 2026-09-24 | `portail-externe` **mergée sur `main`** | [PR #138](https://github.com/superjojo79/FlowForge/pull/138) (squash `578a2db`), CI verte. TODO §68 clos. Action de déploiement : le reverse-proxy supprime aussi `Forwarded` et `X-Forwarded-Prefix` (DEPLOIEMENT.md §3). |
 | 2026-09-29 | Ordonnancement de la Vague D | File réordonnancée en 4 vagues, parallélisme borné (3 agents, 4 avec D3a), dépendances explicites ; arbitrage D4/D6 à trancher (recommandation : D6 avant D4). Prochain candidat inchangé : `signature-electronique`. |
+| 2026-09-29 | `signature-electronique` **mergée sur `main`** | [PR #149](https://github.com/superjojo79/FlowForge/pull/149) (squash `1c839ff`), CI verte. TODO §72 clos. Phases 1–9 : `verify` 2571/0, Vitest 424, Playwright 98, test de bout en bout réel navigateur + backend, analyse adversariale par sous-agent (3 constats élevés + suivis n°4–9 et 12–15 corrigés). Ouverts : S-EMIT-10 (PostgreSQL), T14.4 manuel, concurrence à deux transactions réelles. |

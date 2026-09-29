@@ -4,7 +4,7 @@
 > **Statut** : statuts **recoupés sur le code et sur l’API GitHub**, pas sur l’analyse d’origine du 12/09  
 > **Sources de vérité produit :** [FILE-ATTENTE.md](FILE-ATTENTE.md), [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md), [TODO.md](TODO.md)  
 > **Vagues A, B, C et A4 : livrées.** `enrichissement-reporting` (PR #132), `inbox-notifications-persistee` (PR #135) et `outillage-dmn` ([PR #134](https://github.com/superjojo79/FlowForge/pull/134)) : livrés.
-> `portail-externe` ([PR #138](https://github.com/superjojo79/FlowForge/pull/138), TODO §68) : livré. **Prochain :** `signature-electronique`.
+> `portail-externe` ([PR #138](https://github.com/superjojo79/FlowForge/pull/138), TODO §68) et `signature-electronique` ([PR #149](https://github.com/superjojo79/FlowForge/pull/149), TODO §72, stub sans provider) : livrés.
 > **Vague D (nouvelle, 28/09) :** priorités issues de l'analyse critique fonctionnelle — adéquation
 > aux cas d'usage et industrialisation. **D0 tranché = C** (intégrateurs + couche low-code, TODO §70),
 > découpé en sous-lots `LC1`–`LC6`. Exposition MCP de ces sous-lots cadrée en amont
@@ -36,7 +36,7 @@ FlowForge est un SaaS multi-tenant à architecture hexagonale. Stack **réelle**
 
 | Priorité | Item | Lot | Statut |
 |---|---|---|---|
-| Ensuite | **2.4 Signature électronique** | `signature-electronique` | **Phases 1 à 4 closes, Phase 5 implémentée sur branche (TODO §72), lot XL — vérification globale et PR à venir**, **socle générique + stub** (aucun provider) — [30-signature-electronique.md](analysis%20doc/30-signature-electronique.md) |
+| Livré | **2.4 Signature électronique** | `signature-electronique` | **Livré** ([PR #149](https://github.com/superjojo79/FlowForge/pull/149), TODO §72, lot XL), **socle générique + stub** (aucun provider ; fournisseur réel et eIDAS à cadrer) — [30-signature-electronique.md](analysis%20doc/30-signature-electronique.md) |
 | Décision | **D0** Positionnement produit | [analyse 31](analysis%20doc/31-positionnement-produit.md) | ✅ **Tranché = C** (TODO §70) : intégrateurs + couche low-code, décision n° 13 maintenue |
 | Vague D | **LC1** Palette métier dans l'éditeur BPMN | [`palette-metier-bpmn`](analysis%20doc/39-palette-metier-bpmn.md) | Analyse initiale |
 | Vague D | **LC2** Langage d'expression métier borné | [`langage-expression-metier`](analysis%20doc/40-langage-expression-metier.md) | Analyse initiale |
@@ -100,7 +100,7 @@ FlowForge est un SaaS multi-tenant à architecture hexagonale. Stack **réelle**
 | 2.1 Import batch | ✅ Livré (`batch-import`, PR #129) |
 | 2.2 Kafka | ✅ Livré (`kafka`, PR #129) |
 | 2.3 Antivirus ClamAV | ✅ Livré (PR #131) — `ClamAvAttachmentScanIT` à jouer avec Docker |
-| 2.4 Signature électronique | 🟡 Implémenté sur branche (stub, sans provider) — lot `signature-electronique`, PR à venir |
+| 2.4 Signature électronique | ✅ Livré, socle générique + stub sans provider ([PR #149](https://github.com/superjojo79/FlowForge/pull/149), TODO §72) |
 | 2.5 ERP | ✅ Couvert par `batch-import` (décision Phase 1 de B1) |
 
 ### Catégorie 3 : Portail externe & UX
@@ -341,8 +341,7 @@ PDF gèrent déjà des variantes par langue. Priorité selon le marché visé (D
 
 **Vague 1 — en parallèle (surfaces disjointes)**
 
-1. `signature-electronique` — démarrable (portail livré, PR #138) ; lot recalibré le 29/09 : socle générique + stub de signature (aucun provider désigné), eIDAS reporté au premier provider réel.
-2. **LC1** palette métier BPMN (frontend seul).
+1. ~~`signature-electronique`~~ — **livré** (PR #149). **LC1** palette métier BPMN (frontend seul).
 3. **D1** (nouveaux types uniquement) **ou LC2** — LC2 raccourcit le chemin critique (il débloque
    D3b, les champs calculés de D1 et LC5). **D3a** (OAuth2) en 4ᵉ agent si accepté.
 4. **D5** audit des jobs planifiés, en fond (lecture seule).

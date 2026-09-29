@@ -36,7 +36,7 @@ FlowForge est un SaaS multi-tenant à architecture hexagonale. Stack **réelle**
 
 | Priorité | Item | Lot | Statut |
 |---|---|---|---|
-| Ensuite | **2.4 Signature électronique** | `signature-electronique` | Non démarré, **socle générique + stub** (aucun provider) — [30-signature-electronique.md](analysis%20doc/30-signature-electronique.md) |
+| Ensuite | **2.4 Signature électronique** | `signature-electronique` | **Phase 1 close (TODO §72)**, **socle générique + stub** (aucun provider) — [30-signature-electronique.md](analysis%20doc/30-signature-electronique.md) |
 | Décision | **D0** Positionnement produit | [analyse 31](analysis%20doc/31-positionnement-produit.md) | ✅ **Tranché = C** (TODO §70) : intégrateurs + couche low-code, décision n° 13 maintenue |
 | Vague D | **LC1** Palette métier dans l'éditeur BPMN | [`palette-metier-bpmn`](analysis%20doc/39-palette-metier-bpmn.md) | Analyse initiale |
 | Vague D | **LC2** Langage d'expression métier borné | [`langage-expression-metier`](analysis%20doc/40-langage-expression-metier.md) | Analyse initiale |

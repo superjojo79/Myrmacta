@@ -7,22 +7,24 @@ description: Define the technical architecture, components, and data models
 
 # System Design & Architecture — `signature-electronique`
 
-> TODO §72. **Esquisse de Phase 1** (2026-09-29), à valider en Phase 3 après la revue des
-> [requirements](../requirements/2026-09-29-feature-signature-electronique.md). Les décisions de
-> Phase 1 sont fermes ; tout ce qui est marqué **[Phase 3]** est une proposition à trancher.
-> Nommage des classes et des colonnes indicatif.
+> TODO §72. **Esquisse de Phase 1, mise à jour après la Phase 2** (2026-09-29) : intègre les
+> décisions de [requirements](../requirements/2026-09-29-feature-signature-electronique.md)
+> (`reviewed`) — signataires internes et externes, modes `PARALLEL` / `SEQUENTIAL`, requis /
+> facultatifs, issue en variable de process. Tout ce qui est marqué **[Phase 3]** est une
+> proposition à trancher. Nommage des classes et des colonnes indicatif.
 
 ## Architecture Overview
 
 ```mermaid
 graph TD
     subgraph Externe
-        S[Signataire - navigateur]
+        S[Signataire externe - navigateur]
         P[Provider réel - futur]
     end
     subgraph Interne
         A[WORKFLOW_ADMIN - éditeur BPMN]
         I[Instructeur - SPA BFF]
+        SI[Signataire interne - SPA BFF]
         AD[Admin - catalogue de connecteurs]
     end
 
@@ -43,6 +45,8 @@ graph TD
     OUT -->|issue normalisée| FLOW[WorkflowEnginePort - reprise du process]
     OUT --> NOTIF[Inbox - participants]
     I -->|statut, annuler, renvoyer| ADMINAPI[SignatureAdminController]
+    SI -->|Mes signatures| MINE[MySignaturesController]
+    MINE --> DEC
     AD -->|config, secrets, adaptateur| CATALOG[ConnectorCatalog - entrée signature]
 ```
 
@@ -84,7 +88,8 @@ Esquisse par défaut (table dédiée, le portail existant reste inchangé) :
 | `status` | `varchar(16)` | `PENDING`, `SIGNED`, `DECLINED`, `EXPIRED`, `FAILED`, `CANCELLED` |
 | `simulated` | `boolean` not null | vrai pour le stub |
 | `assurance_level` | `varchar(16)` null | informatif (D-SIGNATURE-LEVEL reportée) |
-| `deadline_at` | `timestamptz` null | échéance de la demande |
+| `mode` | `varchar(12)` | `PARALLEL` ou `SEQUENTIAL` (D-SIGNATURE-ORDER) |
+| `deadline_at` | `timestamptz` not null | échéance de la demande, plafonnée par le tenant (D-SIGNATURE-DEADLINE) |
 | `created_at`, `completed_at` | `timestamptz` | |
 | `created_by` | `varchar(128)` | acteur ou `flowable-task-created` |
 | `version` | `bigint` | verrou optimiste (double issue, callback rejoué) |
@@ -95,13 +100,16 @@ Esquisse par défaut (table dédiée, le portail existant reste inchangé) :
 |---|---|---|
 | `id` | `uuid` PK | identité externe `signature:<id>` |
 | `request_id` | `uuid` FK, indexé | |
-| `position` | `int` | ordre déclaré (sémantique : Phase 2) |
+| `position` | `int` | rang ; significatif en `SEQUENTIAL` |
+| `kind` | `varchar(10)` | `EXTERNAL` ou `INTERNAL` (D-SIGNATURE-SIGNER-KIND) |
+| `required` | `boolean` | requis ou facultatif (D-SIGNATURE-REQUIRED) |
+| `user_id` | `varchar(128)` null | identifiant utilisateur pour un signataire `INTERNAL` |
 | `display_name` | `varchar(200)` | |
-| `email` | `varchar(320)` | **donnée personnelle**, supprimée à la purge |
+| `email` | `varchar(320)` null | **donnée personnelle** (`EXTERNAL`), supprimée à la purge |
 | `role` | `varchar(64)` null | |
 | `token_hash` | `char(64)` null, unique | SHA-256 du jeton, comme `portal_link` |
-| `status` | `varchar(16)` | `PENDING`, `SIGNED`, `DECLINED`, `EXPIRED`, `REVOKED` |
-| `expires_at`, `decided_at` | `timestamptz` | |
+| `status` | `varchar(16)` | `WAITING` (pas son tour), `PENDING`, `SIGNED`, `DECLINED`, `EXPIRED`, `REVOKED` |
+| `expires_at`, `decided_at` | `timestamptz` | `expires_at` ≤ `deadline_at` |
 | `decline_reason` | `varchar(500)` null | texte libre borné |
 
 ### Éléments de dossier
@@ -116,8 +124,8 @@ métadonnées `signatureRequestId`, `signatureRole` (`SIGNED_DOCUMENT` | `SIGNAT
 stateDiagram-v2
     [*] --> PENDING: demande émise, signataires notifiés
     PENDING --> SIGNED: tous les signataires requis ont signé
-    PENDING --> DECLINED: refus d'un signataire (sémantique Phase 2)
-    PENDING --> EXPIRED: échéance dépassée (job)
+    PENDING --> DECLINED: refus d'un signataire requis
+    PENDING --> EXPIRED: échéance dépassée, ou expiration d'un requis (job)
     PENDING --> FAILED: erreur provider non récupérable
     PENDING --> CANCELLED: instructeur annule, tâche/dossier disparaît
     SIGNED --> [*]
@@ -129,11 +137,17 @@ stateDiagram-v2
 
 ### Domaine
 
-- `SignatureRequest`, `Signer` (records), `SignatureStatus`, `SignerStatus` (enums).
+- `SignatureRequest`, `Signer` (records), `SignatureStatus`, `SignerStatus`, `SignatureMode`,
+  `SignerKind` (enums).
+- `SignatureProgression` (fonction pure) : à partir de l'état des signataires, du mode et de
+  l'indicateur requis, calcule l'issue de la demande et le prochain signataire à notifier ;
+  cœur testé exhaustivement (tableau parallèle / séquentiel × requis / facultatif).
 - `SignatureProviderCapabilities` : multi-signataires, ordre imposé, niveaux supportés, parcours
   hébergé chez le provider ou dans le portail, preuve fournie.
-- `AccessContext.External` : le signataire est représenté par `signature:<signerId>` (à rapprocher de
-  `portal:<linkId>`, D-PORTAL-ACTOR).
+- `AccessContext.External` : le signataire **externe** est représenté par `signature:<signerId>` (à
+  rapprocher de `portal:<linkId>`, D-PORTAL-ACTOR). Le signataire **interne** agit avec son
+  `AccessContext.User` ; le contrôle de la demande (`signer.user_id` = utilisateur courant, son tour)
+  s'ajoute au droit de lecture du dossier (A4).
 
 ## API Design
 
@@ -166,6 +180,17 @@ correspondance avec 2 à 3 API publiques (D-SIGNATURE-CONTRACT-CHECK).
 Authentification : jeton dans le fragment d'URL, relu par la page et envoyé en en-tête
 `X-Portal-Token` ; réponses uniformes en cas d'échec (pas d'oracle). **[Phase 3]** chemins exacts,
 cohabitation avec `/api/portal/task`.
+
+### API « Mes signatures » (signataire interne, chaîne BFF)
+
+| Méthode + chemin | Rôle |
+|---|---|
+| `GET /api/signatures/mine` | demandes adressées à l'utilisateur courant (statut, à son tour ou non) |
+| `GET /api/signatures/mine/{signerId}/document` | flux du document, uniquement pour ses propres demandes |
+| `POST /api/signatures/mine/{signerId}/sign` · `/decline` | signer ou refuser (à son tour uniquement) |
+
+Filtrage par identité authentifiée ; toute autre demande répond comme inexistante. **[Phase 3]**
+chemins exacts et lien avec l'inbox.
 
 ### API interne instructeur (chaîne BFF)
 
@@ -209,6 +234,8 @@ lecture du statut d'une demande et annulation ; **[Phase 3]** périmètre exact,
 ### Frontend
 
 - Portail (build Vite séparé) : écran « Signature » (consultation du document, signer, refuser).
+- SPA interne : vue « Mes signatures » (liste, document, signer, refuser) pour les signataires
+  internes.
 - SPA interne : panneau « Signatures » dans le détail du dossier (statuts, annuler, renvoyer,
   document signé et preuve, bandeau « SIMULATION »).
 - Éditeur BPMN : marqueur du bloc signature (aligné sur LC1, **[Phase 3]**).
@@ -228,7 +255,16 @@ portail + statut dans le dossier ; delegate allowlisté appelant le port directe
 tâche « signature » ; `PRODUCED_DOC` marqué ; refus de démarrer du stub en production sauf drapeau
 explicite ; contrat validé contre des API publiques.
 
-### À trancher en Phase 3 (dépend des réponses de Phase 2)
+### Tranchées en Phase 2 (voir requirements)
+
+Modes `PARALLEL` et `SEQUENTIAL` ; requis / facultatifs (SIGNED = tous les requis) ; en séquentiel
+un facultatif qui refuse ou expire fait passer au suivant ; issue en variable de process
+(`signatureOutcome`, `signatureRequestId`) ; un seul `PRODUCED_DOC` désigné par variable ; échéance
+de demande unique, pas de relance automatique ; signataires internes et externes, vue « Mes
+signatures » ; internes désignés par identifiant utilisateur (champ / variable) ; preuve = PDF
+filigrané ; un lot à jalons internes.
+
+### À trancher en Phase 3
 
 - Table dédiée ou extension de `portal_link` (colonne `kind`) : réutilisation maximale du code
   contre isolation du modèle et du périmètre de sécurité.

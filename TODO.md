@@ -1104,7 +1104,7 @@ lot `LC*`), `analysis doc/00-index.md`, `15-serveur-mcp.md` § Décisions de cad
 
 ---
 
-### [ ] 72. Signature électronique — socle générique et stub (Phase 1 close)
+### [ ] 72. Signature électronique — socle générique et stub (Phases 1 et 2 closes)
 
 **Énoncé :** item **2.4** de `ROADMAP.md`, analyse
 [30-signature-electronique.md](analysis%20doc/30-signature-electronique.md), recalibrée le
@@ -1127,7 +1127,20 @@ strict : risque R-SIM-EN-PROD assumé, avertissement et marquage inchangés) ;
 D-SIGNATURE-CONTRACT-CHECK = revue documentaire de 2 à 3 API publiques, sans intégration.
 Reportés au premier provider réel : D-SIGNATURE-PROVIDER, D-SIGNATURE-LEVEL (eIDAS).
 
-**Reste à figer en Phase 2-3 :** propriété d'activation et second drapeau (noms, défauts, jamais dans
+**Phase 2 (revue) close (2026-09-29)** — 11 décisions supplémentaires tranchées une par une par
+l'utilisateur : D-SIGNATURE-ORDER = **modes parallèle et séquentiel** au choix du BPMN (contre la
+recommandation parallèle seul) ; D-SIGNATURE-REQUIRED = **signataires requis ou facultatifs**
+(SIGNED = tous les requis) ; D-SIGNATURE-SEQ-OPTIONAL = un facultatif qui refuse fait passer au
+suivant ; D-SIGNATURE-OUTCOME = variable de process `signatureOutcome` ; D-SIGNATURE-DOCUMENT = un
+seul `PRODUCED_DOC` désigné par variable ; D-SIGNATURE-DEADLINE = échéance de demande unique, pas
+de relance automatique ; D-SIGNATURE-SIGNER-KIND = **internes et externes dès ce lot** (contre la
+recommandation externes seuls) ; D-SIGNATURE-INTERNAL-UX = vue « Mes signatures » dans la SPA ;
+D-SIGNATURE-SIGNER-SOURCE = utilisateur désigné par champ / variable ; D-SIGNATURE-PROOF = PDF de
+preuve filigrané ; D-SIGNATURE-DELIVERY = un lot XL à jalons internes. Hypothèses A1–A5 acceptées
+(voir requirements). Documents SDD : requirements `reviewed`, design / planning / testing `draft`
+([requirements](docs/ai/requirements/2026-09-29-feature-signature-electronique.md)).
+
+**Reste à figer en Phase 3 :** propriété d'activation et second drapeau (noms, défauts, jamais dans
 les gabarits de configuration), forme du marqueur `PRODUCED_DOC`, marqueur BPMN de la tâche
 « signature », critère de « profil de production ».
 

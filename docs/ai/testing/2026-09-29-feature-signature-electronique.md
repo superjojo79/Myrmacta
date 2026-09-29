@@ -7,11 +7,11 @@ description: Define testing approach, test cases, and quality assurance
 
 # Testing Strategy — `signature-electronique`
 
-> TODO §72. Scénarios de Phase 1 dérivés des critères de succès et user stories des
-> [requirements](../requirements/2026-09-29-feature-signature-electronique.md) et des composants du
-> [design](../design/2026-09-29-feature-signature-electronique.md) (esquisse). À affiner en Phases 2
-> et 3 ; les scénarios dépendant d'une question ouverte sont marqués **[P2]** (multi-signataires,
-> issue, document) ou **[P3]** (conception). Cases cochées au fil de l'implémentation.
+> TODO §72. Scénarios dérivés des critères de succès et user stories des
+> [requirements](../requirements/2026-09-29-feature-signature-electronique.md) (`reviewed`) et des
+> composants du [design](../design/2026-09-29-feature-signature-electronique.md) (esquisse). Les
+> scénarios marqués **[P3]** dépendent d'une décision de conception. Cases cochées au fil de
+> l'implémentation.
 
 ## Test Coverage Goals
 
@@ -74,22 +74,45 @@ description: Define testing approach, test cases, and quality assurance
 
 ### Décision du signataire (US-2, US-6)
 
-- [ ] Signature : statut `SIGNED` du signataire ; issue de la demande selon la sémantique
-      multi-signataires. [P2]
+- [ ] Signature : statut `SIGNED` du signataire ; issue de la demande selon `SignatureProgression`.
 - [ ] Refus avec motif : motif borné en longueur, échappé à l'affichage.
 - [ ] Double soumission (double clic, rejeu) : une seule issue, la seconde ignorée (compare-and-set).
 - [ ] Signature après expiration ou annulation : refus uniforme.
-- [ ] Ordre des signataires respecté si retenu. [P2]
+- [ ] `SEQUENTIAL` : le signataire N+1 reste `WAITING` (lien et « Mes signatures » inactifs, réponse
+      uniforme) jusqu'à la décision de N ; puis il est notifié.
+- [ ] `PARALLEL` : tous notifiés à l'émission, ordre de décision indifférent.
 
 ### Issue et reprise du process (US-6, US-7)
 
-- [ ] L'issue normalisée est posée en variable de process ; le process reprend et route
-      (`SIGNED`, `DECLINED`, `EXPIRED`, `FAILED`). [P2/P3]
+- [ ] Le process reprend avec `signatureOutcome` et `signatureRequestId` ; une passerelle route sur
+      les cinq issues (`SIGNED`, `DECLINED`, `EXPIRED`, `FAILED`, `CANCELLED`).
 - [ ] Notification inbox des participants pour chaque issue.
 - [ ] Reprise idempotente : issue appliquée deux fois ⇒ une seule reprise.
 - [ ] Callback du provider : HMAC horodaté invalide, rejeu, corps trop grand, rate-limit dépassé ⇒
       rejeté sans effet (rejeu des cas F5–F8).
 - [ ] Callback après expiration ou annulation : ignoré et journalisé.
+
+### Progression multi-signataires (US-2, US-10, D-SIGNATURE-ORDER, D-SIGNATURE-REQUIRED, D-SIGNATURE-SEQ-OPTIONAL)
+
+- [ ] Table de vérité de `SignatureProgression` : mode × (requis / facultatif) × (signe / refuse /
+      expire) ⇒ issue et prochain signataire.
+- [ ] Refus d'un requis (parallèle et séquentiel) : demande `DECLINED`, liens restants révoqués, aucun
+      document signé.
+- [ ] Expiration d'un requis : `EXPIRED`, mêmes effets.
+- [ ] Refus ou expiration d'un facultatif : marqué, la demande continue ; en séquentiel, on passe au suivant.
+- [ ] Tous les signataires facultatifs : refusé au déploiement.
+- [ ] Même personne deux fois (adresse ou utilisateur) : refusé au déploiement (A5).
+- [ ] Le dernier requis signe alors qu'un facultatif reste en attente : `SIGNED`, le facultatif est révoqué.
+
+### Signataire interne (US-10, D-SIGNATURE-INTERNAL-UX, D-SIGNATURE-SIGNER-SOURCE)
+
+- [ ] `GET /api/signatures/mine` ne renvoie que les demandes adressées à l'utilisateur courant.
+- [ ] `T-IDOR-3` : un utilisateur ne peut ni lire le document ni agir sur la demande d'un autre.
+- [ ] Le droit de lecture du dossier reste exigé ; sans lui, la demande n'est pas émise pour ce
+      signataire (notification interne, process non bloqué).
+- [ ] Utilisateur désigné inconnu, désactivé ou identifiant invalide : traité comme adresse absente.
+- [ ] En séquentiel, signature avant son tour : refus uniforme.
+- [ ] Notification inbox à l'émission et à la décision.
 
 ### Gestion instructeur (US-4)
 
@@ -137,6 +160,9 @@ description: Define testing approach, test cases, and quality assurance
 
 ### Playwright
 
+- [ ] Signataire interne : « Mes signatures » affiche la demande à son tour, signature, statut mis à jour.
+- [ ] Séquentiel : le second signataire ne peut agir qu'après le premier.
+- [ ] Facultatif qui refuse : la demande aboutit quand même à `SIGNED`.
 - [ ] Parcours nominal : le process demande la signature, le signataire ouvre le lien, signe,
       l'instructeur voit `SIGNED`, le document signé et la preuve « SIMULATION ».
 - [ ] Refus : le signataire refuse, le process route sur `DECLINED`.
@@ -149,7 +175,8 @@ description: Define testing approach, test cases, and quality assurance
 - Dossier avec un `PRODUCED_DOC` PDF (généré par un template de test).
 - BPMN de test : génération de document → demande de signature → routage sur l'issue.
 - Adaptateur de test contrôlable (issues forcées) pour les tests de contrat et de robustesse.
-- Adresses valides / invalides / absentes ; plusieurs signataires. [P2]
+- Adresses valides / invalides / absentes ; plusieurs signataires, requis et facultatifs, internes et
+  externes, deux modes.
 
 ## Test Reporting & Coverage
 

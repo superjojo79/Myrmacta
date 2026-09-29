@@ -1,6 +1,6 @@
 ---
 phase: requirements
-status: draft
+status: reviewed
 title: Requirements & Problem Understanding
 description: Clarify the problem space, gather requirements, and define success criteria
 ---
@@ -14,6 +14,10 @@ description: Clarify the problem space, gather requirements, and define success 
 > **Phase 1 close le 2026-09-29** : neuf décisions tranchées par l'utilisateur via
 > `AskUserQuestion` (voir « Décisions »). **Aucun fournisseur désigné** : le lot livre un socle
 > générique et un adaptateur *stub*, pas une intégration.
+> **Phase 2 (revue) close le 2026-09-29** : hypothèses H1–H7 validées ou remplacées, **11 décisions
+> supplémentaires** tranchées (voir « Décisions Phase 2 »). Le périmètre a **grandi** : signataires
+> internes et externes, modes séquentiel et parallèle, signataires facultatifs (taille **XL**,
+> livrée en un lot à jalons internes).
 
 ## Problem Statement
 
@@ -55,9 +59,12 @@ configuration** — sans modifier le domaine, le BPMN, le portail ni le modèle 
 
 **Objectifs secondaires :**
 
-- Un bloc BPMN « Demander une signature » (delegate allowlisté) que la palette LC1 pourra exposer.
-- Une tâche externe de type « signature » dans le portail (redirection vers le fournisseur pour un
-  provider réel, écran de confirmation pour le stub).
+- Un bloc BPMN « Demander une signature » (delegate allowlisté) que la palette LC1 pourra exposer,
+  déclarant les signataires (internes ou externes, requis ou facultatifs) et le mode
+  (**parallèle** ou **séquentiel**).
+- Une tâche externe de type « signature » dans le portail pour les signataires externes
+  (redirection vers le fournisseur pour un provider réel, écran de confirmation pour le stub).
+- Une vue « Mes signatures » dans la SPA pour les signataires **internes** (utilisateurs FlowForge).
 - Un statut de chaque demande visible dans le détail du dossier, avec annulation et renvoi.
 - Un **document signé** et une **preuve** rattachés au dossier (`PRODUCED_DOC` marqués), traçables
   jusqu'à la demande et au signataire.
@@ -72,7 +79,10 @@ configuration** — sans modifier le domaine, le BPMN, le portail ni le modèle 
 - Bascule à chaud d'un provider vers un autre pour des demandes en cours.
 - Nouvelle valeur d'`ElementType` (écartée par D-SIGNATURE-ELEMENT).
 - Iframe fournisseur et élargissement de la CSP (redirection uniquement).
-- Relances automatiques, rappels planifiés aux signataires (hors lot ; voir Questions).
+- Relances automatiques et rappels planifiés aux signataires (renvoi manuel seulement).
+- Signature par groupe ou par rôle : un signataire est toujours **une personne** nommée.
+- Génération du document à signer par le bloc signature (le BPMN enchaîne génération puis signature).
+- Enveloppe de plusieurs documents : **un seul** `PRODUCED_DOC` par demande.
 
 ## Décisions (Phase 1, tranchées par l'utilisateur le 2026-09-29)
 
@@ -89,19 +99,51 @@ configuration** — sans modifier le domaine, le BPMN, le portail ni le modèle 
 | **D-SIGNATURE-CONTRACT-CHECK** | **Revue documentaire de 2 à 3 API publiques**, tableau de correspondance en Phase 2-3, sans intégration. | Contrat minimal figé par le seul stub. |
 | ~~D-SIGNATURE-PROVIDER~~, ~~D-SIGNATURE-LEVEL~~ | **Reportées** au premier provider réel. | — |
 
+## Décisions Phase 2 (revue, tranchées par l'utilisateur le 2026-09-29)
+
+| ID | Décision | Alternatives écartées |
+|---|---|---|
+| **D-SIGNATURE-ORDER** (ex-H1/H7) | **Deux modes au choix du BPMN** : `PARALLEL` (tous notifiés ensemble) et `SEQUENTIAL` (le suivant n'est notifié qu'après la décision du précédent). Le contrat déclare « ordre imposé » comme capacité ; le stub implémente les deux. | Parallèle seul (recommandé, écarté) ; séquentiel seul. |
+| **D-SIGNATURE-REQUIRED** | **Signataires requis ou facultatifs**, déclarés dans le bloc. `SIGNED` = **tous les requis ont signé** ; le refus ou l'expiration d'un **requis** ferme la demande (`DECLINED` / `EXPIRED`), liens restants révoqués, aucun document signé partiel. | Tout ou rien sans facultatifs (recommandé, écarté) ; signatures partielles conservées. |
+| **D-SIGNATURE-SEQ-OPTIONAL** | **En séquentiel, le refus ou l'expiration d'un facultatif fait passer au suivant** (le signataire est marqué, la chaîne continue). | Arrêt de la chaîne à tout refus. |
+| **D-SIGNATURE-OUTCOME** (ex-H3) | **Variable de process normalisée** : après l'attente (message corrélé, patron `flowable-callback`), le process reprend avec `signatureOutcome` (`SIGNED`, `DECLINED`, `EXPIRED`, `FAILED`, `CANCELLED`) et `signatureRequestId` ; le BPMN route par passerelle. | Un message par issue ; deux sorties succès/échec. |
+| **D-SIGNATURE-DOCUMENT** (ex-H2) | **Un seul `PRODUCED_DOC` existant**, désigné par variable de process ; le lot ne génère rien. | Plusieurs documents ; génération intégrée au bloc. |
+| **D-SIGNATURE-DEADLINE** (ex-H6) | **Une échéance de demande** (jours, plafonnée par le tenant) ; les liens ne la dépassent jamais ; à l'échéance la demande passe `EXPIRED`. **Renvoi manuel** par l'instructeur, **aucune relance automatique**. | TTL de lien indépendante ; relances automatiques. |
+| **D-SIGNATURE-SIGNER-KIND** | **Signataires internes ET externes dès ce lot** ; le signataire porte un type (`EXTERNAL`, `INTERNAL`). | Externes seuls (recommandé, écarté). |
+| **D-SIGNATURE-INTERNAL-UX** | **Vue « Mes signatures »** dans la SPA authentifiée (liste des demandes adressées à l'utilisateur, document, signer, refuser) + notification inbox. Pas de passage par le portail. | `userTask` Flowable classique ; lien e-mail + session OIDC. |
+| **D-SIGNATURE-SIGNER-SOURCE** | Un signataire **interne** est désigné par un **identifiant utilisateur lu dans un champ du dossier ou une variable de process** (même mécanisme de source que l'adresse des externes) ; jamais par groupe. | Utilisateur littéral ou groupe candidat ; nom littéral seul. |
+| **D-SIGNATURE-PROOF** | La preuve du stub est un **PDF de preuve filigrané** (demande, empreinte du document, signataires, horodatages, mention SIMULATION). | JSON seul ; PDF + JSON. |
+| **D-SIGNATURE-DELIVERY** | **Un seul lot**, un cycle `dev-lifecycle`, une PR, **jalons internes ordonnés** : externes + parallèle + requis d'abord, puis séquentiel et facultatifs, puis internes. | Deux lots successifs ; livraison d'un bloc sans coupure. |
+
+**Hypothèses acceptées telles quelles (nommées, sans nouvelle question) :**
+
+- **A1** (ex-H4) — les signataires **externes** sont désignés comme les destinataires du portail :
+  champ du dossier ou variable de process, même résolution d'adresse.
+- **A2** (ex-H5) — annuler ou renvoyer exige **EDIT sur le type du dossier** (aligné sur le portail,
+  écart H6 tranché en PR #138) ; la lecture de la liste exige VIEW, l'adresse est masquée sans EDIT.
+- **A3** — un lien externe = **un signataire** ; les liens de signature et les liens `user-question`
+  du portail coexistent sur un même dossier sans interférer (états, jetons et purge indépendants).
+- **A4** — un signataire interne ne peut voir et signer **que les demandes qui lui sont adressées**
+  (identité authentifiée), en plus du droit de lecture normal sur le dossier ; l'accès au document
+  reste borné à celui de la demande.
+- **A5** — la même personne (adresse ou utilisateur) ne peut figurer qu'**une fois** par demande.
+
 ## User Stories & Use Cases
 
 - **US-1 (concepteur BPMN)** — En tant que `WORKFLOW_ADMIN`, j'ajoute à un process un bloc
-  « Demander une signature » en désignant le document à signer, les signataires et une échéance ;
-  un déploiement incohérent (fonctionnalité désactivée, document introuvable, signataire sans
-  adresse, échéance au-delà du plafond) est refusé avec un message explicite.
+  « Demander une signature » en désignant le document à signer (variable), les signataires
+  (internes ou externes, requis ou facultatifs), le **mode** (`PARALLEL` ou `SEQUENTIAL`) et une
+  échéance ; un déploiement incohérent (fonctionnalité désactivée, document non désigné, signataire
+  sans source, doublon de personne, échéance au-delà du plafond) est refusé avec un message explicite.
 - **US-2 (signataire externe)** — En tant que signataire sans compte, je reçois un e-mail avec un
-  lien ; j'y consulte le document à signer, puis je signe ou je refuse.
+  lien (immédiatement en parallèle, à mon tour en séquentiel) ; j'y consulte le document à signer,
+  puis je signe ou je refuse.
 - **US-3 (signataire externe)** — En tant que signataire, si mon lien est expiré, révoqué, déjà
   utilisé ou inexistant, je vois le même message neutre qu'au portail (pas d'oracle).
 - **US-4 (instructeur)** — En tant que `DOSSIER_MANAGER` avec droit EDIT sur le type, je vois
   dans le détail du dossier le statut de chaque demande de signature (`PENDING`, `SIGNED`,
-  `DECLINED`, `EXPIRED`, `FAILED`, `CANCELLED`), je peux **annuler** ou **renvoyer** une demande.
+  `DECLINED`, `EXPIRED`, `FAILED`, `CANCELLED`) et de **chaque signataire** (rang, type, requis ou
+  facultatif), je peux **annuler** la demande ou **renvoyer** à un signataire.
 - **US-5 (instructeur)** — En tant qu'instructeur, je retrouve le **document signé** et la
   **preuve** rattachés au dossier, clairement distingués du document source, et étiquetés
   « SIMULATION » quand ils proviennent du stub.
@@ -112,6 +154,9 @@ configuration** — sans modifier le domaine, le BPMN, le portail ni le modèle 
 - **US-8 (administrateur / intégrateur)** — En tant qu'administrateur, je configure le provider
   actif (adaptateur et secrets) via l'entrée de catalogue, sans toucher au code ni au BPMN ;
   quand le stub est actif, je vois un avertissement explicite.
+- **US-10 (signataire interne)** — En tant qu'utilisateur FlowForge désigné signataire, je vois dans
+  « Mes signatures » les demandes qui m'attendent (à mon tour en séquentiel), je consulte le
+  document, puis je signe ou je refuse ; je suis notifié dans l'inbox.
 - **US-9 (audit)** — En tant qu'administrateur, je retrouve qui a signé quoi, quand, via quelle
   demande et quel provider, y compris pour une simulation.
 
@@ -129,7 +174,14 @@ configuration** — sans modifier le domaine, le BPMN, le portail ni le modèle 
   demandes annulables en interne.
 - Retour du provider arrivant après expiration ou annulation ⇒ ignoré et journalisé.
 - Stub actif en profil production sans le second drapeau ⇒ l'application refuse de démarrer.
-- Plusieurs signataires : ordre, refus d'un seul, signature partielle (voir Questions).
+- Refus ou expiration d'un **requis** ⇒ demande fermée, liens restants révoqués ; d'un
+  **facultatif** ⇒ marqué, la demande continue (séquentiel : on passe au suivant).
+- Tous les signataires sont facultatifs ⇒ refusé au déploiement (au moins un requis obligatoire).
+- Séquentiel : un signataire n'est notifié ni ne peut agir avant son tour (lien ou entrée « Mes
+  signatures » inactifs, réponse uniforme).
+- Signataire interne désigné mais désactivé, supprimé ou sans droit de lecture sur le dossier ⇒ aucune
+  demande envoyée à ce signataire, notification interne, process non bloqué.
+- Même personne désignée deux fois ⇒ refusé (A5).
 
 ## Success Criteria
 
@@ -140,6 +192,15 @@ configuration** — sans modifier le domaine, le BPMN, le portail ni le modèle 
   migration de l'export CSV ni de l'affichage existants.
 - Tout artefact du stub porte « SIMULATION — sans valeur juridique » : filigrane PDF, champ
   `simulated`, bandeau UI ; vérifié par test.
+- Les **deux modes** (`PARALLEL`, `SEQUENTIAL`) et la distinction **requis / facultatif** sont couverts
+  par tests, dont les cas : facultatif qui refuse en séquentiel (la chaîne continue), requis qui
+  refuse (demande fermée, liens révoqués), tous facultatifs (refusé au déploiement).
+- Un signataire **interne** ne voit et ne signe que les demandes qui lui sont adressées, et seulement
+  à son tour (test d'IDOR sur « Mes signatures »).
+- La preuve du stub est un PDF filigrané contenant l'empreinte du document, les signataires et les
+  horodatages (extraction de texte vérifiée).
+- Le process reprend avec `signatureOutcome` et `signatureRequestId` ; le routage par passerelle
+  fonctionne pour les cinq issues.
 - Le stub est **désactivé par défaut** ; actif en profil production sans le second drapeau
   explicite, l'application **refuse de démarrer** (test) ; avec le drapeau, elle démarre avec un
   avertissement.
@@ -176,20 +237,9 @@ configuration** — sans modifier le domaine, le BPMN, le portail ni le modèle 
 - Rate-limit JVM-local (mono-réplique, pas de Redis).
 - PDF : le filigrane du stub s'appuie sur la pile existante (Flying Saucer / OpenPDF).
 
-**Hypothèses (à valider en Phase 2) :**
-
-- **H1** — Une demande porte **un ou plusieurs signataires**, chacun avec son propre lien.
-- **H2** — Le document à signer est un `PRODUCED_DOC` **existant** du dossier ; le lot ne génère
-  pas le document (il enchaîne avec `documentGenerationTask`).
-- **H3** — L'issue est restituée au process comme **variable normalisée** sur laquelle le BPMN
-  route, sans nouveau type d'événement.
-- **H4** — Les signataires sont désignés comme les destinataires du portail (champ du dossier ou
-  variable de process), avec le même mécanisme de résolution d'adresse.
-- **H5** — Les droits d'annuler ou renvoyer sont **EDIT sur le type du dossier** (aligné sur le
-  portail après tranchage de l'écart H6, PR #138).
-- **H6** — La TTL d'un lien de signature suit le mécanisme du portail (défaut, surcharge BPMN,
-  plafond tenant).
-- **H7** — Le stub n'impose pas d'ordre entre signataires tant que le contrat ne le demande pas.
+**Hypothèses de Phase 1, toutes levées en Phase 2 (2026-09-29) :** H1 et H7 → D-SIGNATURE-ORDER /
+D-SIGNATURE-REQUIRED ; H2 → D-SIGNATURE-DOCUMENT ; H3 → D-SIGNATURE-OUTCOME ; H4 → A1 ; H5 → A2 ;
+H6 → D-SIGNATURE-DEADLINE. Aucune hypothèse non nommée ne subsiste.
 
 ## Risques acceptés
 
@@ -203,20 +253,21 @@ configuration** — sans modifier le domaine, le BPMN, le portail ni le modèle 
 
 ## Questions & Open Items
 
-À traiter en **Phase 2** (une décision à la fois, chaque réponse est consignée dans « Décisions
-Phase 2 » ci-dessous) :
+**Toutes les décisions produit de Phase 1 et 2 sont tranchées ou acceptées comme hypothèses
+nommées (A1–A5).** Aucune question produit ouverte. Le périmètre XL est assumé (D-SIGNATURE-DELIVERY).
 
-- Multi-signataires : ordre (séquentiel / parallèle) et sémantique en cas de refus partiel (H1, H7).
-- Restitution de l'issue au process (variable, événement, ou autre) et règles de routage (H3).
-- Origine du document à signer et comportement si le document change (H2).
-- Périmètre de la preuve du stub (contenu, format).
-- Cohabitation avec le portail : un même tiers peut-il avoir une tâche `user-question` et une
-  demande de signature sur le même dossier ? Un lien = une demande ?
-- Relances et échéance de la demande (H6) ; distinction entre expiration du lien et échéance de la
-  demande.
-- Signataire interne (utilisateur authentifié) hors périmètre ou à prévoir dans le contrat ?
+**Questions de conception renvoyées à la Phase 3 :**
 
-**Questions de conception renvoyées à la Phase 3 :** modèle de données (table dédiée ou extension
-de `portal_link`), marqueur BPMN du bloc signature, nom de la propriété d'activation et du second
-drapeau, critère de « profil de production », forme du marqueur `PRODUCED_DOC`, forme de l'événement
-normalisé, chiffrement des secrets par instance, signature du callback du provider.
+- Modèle de données : table dédiée ou extension de `portal_link` ; représentation du type de
+  signataire (`EXTERNAL` / `INTERNAL`), du rang et de l'indicateur requis / facultatif.
+- Marqueur BPMN du bloc signature (attributs `flowable:*` portant document, signataires, mode,
+  échéance) et compatibilité avec l'allowlist (§57/§69) : les signataires sont des **sources**
+  (champ / variable), jamais des expressions libres.
+- Mécanisme d'attente du process (message corrélé, patron `flowable-callback`) et corrélation.
+- Moteur de progression séquentielle : qui notifie le signataire suivant, transitions atomiques.
+- Vue « Mes signatures » : route et API authentifiées, filtrage par identité, lien avec l'inbox.
+- Nom de la propriété d'activation et du second drapeau, critère de « profil de production ».
+- Forme du marqueur `PRODUCED_DOC` et du PDF de preuve ; filigrane.
+- Forme de l'événement normalisé du contrat et des capacités (dont « ordre imposé », signataires
+  facultatifs) ; tableau de correspondance avec 2 à 3 API publiques (M0).
+- Chiffrement des secrets par instance de connecteur ; signature du callback du provider.

@@ -7,8 +7,8 @@ description: Break down work into actionable tasks and estimate timeline
 
 # Project Planning & Task Breakdown — `signature-electronique`
 
-> TODO §72. **Plan initial de Phase 1** (2026-09-29), dérivé des
-> [requirements](../requirements/2026-09-29-feature-signature-electronique.md) (`draft`), du
+> TODO §72. **Plan initial de Phase 1, mis à jour après la Phase 2** (2026-09-29), dérivé des
+> [requirements](../requirements/2026-09-29-feature-signature-electronique.md) (`reviewed`), du
 > [design](../design/2026-09-29-feature-signature-electronique.md) (esquisse) et des
 > [scénarios de test](../testing/2026-09-29-feature-signature-electronique.md). À reconcilier en
 > Phase 4 après les Phases 2 et 3. Toutes les tâches `not started`. Implémentation en TDD.
@@ -23,12 +23,14 @@ description: Break down work into actionable tasks and estimate timeline
 | M3 | Stub, filigrane, preuve, garde de profil | M1 | M2 |
 | M4 | Émission et liens signataires | M1, M3 | — |
 | M5 | Type de tâche portail « signature » (backend) | M4 | M7 |
-| M6 | Décision du signataire, issue et reprise du process | M5 | — |
+| M6 | Décision du signataire externe, issue et reprise du process (parallèle, requis) | M5 | — |
+| M6b | Séquentiel et facultatifs (`SignatureProgression` complet) | M6 | M7 |
+| M6c | Signataires internes : API « Mes signatures » | M6 | M6b, M7 |
 | M7 | Gestion instructeur, expiration, annulation | M4 | M5 |
 | M8 | Connecteur de catalogue et callback provider | M1 | M5 |
 | M9 | Purge | M1 | M5 |
 | M10 | Frontend portail (écran signataire) | M5 | M11 |
-| M11 | Frontend interne (panneau « Signatures ») | M7 | M10 |
+| M11 | Frontend interne (panneau « Signatures » et vue « Mes signatures ») | M7, M6c | M10 |
 | M12 | Playwright | M10, M11 | — |
 | M13 | Documentation | M12 | — |
 | M14 | Vérification globale et revue adversariale du portail | M13 | — |
@@ -68,6 +70,15 @@ description: Break down work into actionable tasks and estimate timeline
 - [ ] `HandleSignatureOutcomeUseCase` : documents marqués, variable d'issue, reprise du process,
       notifications inbox.
 
+### M6b — Séquentiel et facultatifs
+- [ ] `SignatureProgression` : table de vérité complète, notification du signataire suivant, révocation
+      des liens restants.
+- [ ] Règles de parser : au moins un requis, pas de doublon de personne (A5).
+
+### M6c — Signataires internes
+- [ ] `MySignaturesController` : liste, document, signer, refuser ; filtrage par identité, tour.
+- [ ] Résolution de l'utilisateur désigné (champ / variable), contrôle du droit de lecture, notification inbox.
+
 ### M7 — Gestion instructeur
 - [ ] Liste, annulation, renvoi ; droits VIEW / EDIT ; job d'expiration.
 
@@ -105,8 +116,10 @@ description: Break down work into actionable tasks and estimate timeline
 
 ## Timeline & Estimates
 
-Estimation indicative : **L** (comparable au portail : 14 milestones). M0 court mais bloquant pour le
-contrat ; M2/M3 et M5/M7/M8/M9 parallélisables à l'intérieur du lot.
+Estimation indicative : **XL** (périmètre élargi en Phase 2 : internes, deux modes, facultatifs).
+**Jalons de livraison internes (D-SIGNATURE-DELIVERY)** : (1) M0–M9 avec externes, parallèle, requis ;
+(2) M6b séquentiel et facultatifs ; (3) M6c et la vue « Mes signatures ». Chaque jalon laisse le dépôt
+vert et cohérent. M2/M3 et M5/M7/M8/M9 parallélisables à l'intérieur du lot.
 
 ## Risks & Mitigation
 

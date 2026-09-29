@@ -7,9 +7,9 @@ description: Break down work into actionable tasks and estimate timeline
 
 # Project Planning & Task Breakdown — `signature-electronique`
 
-> TODO §72. **Plan initial de Phase 1, mis à jour après la Phase 2** (2026-09-29), dérivé des
+> TODO §72. **Plan mis à jour après la Phase 3** (2026-09-29), dérivé des
 > [requirements](../requirements/2026-09-29-feature-signature-electronique.md) (`reviewed`), du
-> [design](../design/2026-09-29-feature-signature-electronique.md) (esquisse) et des
+> [design](../design/2026-09-29-feature-signature-electronique.md) (`reviewed`) et des
 > [scénarios de test](../testing/2026-09-29-feature-signature-electronique.md). À reconcilier en
 > Phase 4 après les Phases 2 et 3. Toutes les tâches `not started`. Implémentation en TDD.
 
@@ -28,6 +28,8 @@ description: Break down work into actionable tasks and estimate timeline
 | M6c | Signataires internes : API « Mes signatures » | M6 | M6b, M7 |
 | M7 | Gestion instructeur, expiration, annulation | M4 | M5 |
 | M8 | Connecteur de catalogue et callback provider | M1 | M5 |
+| M8b | Répartiteur d'issue avec reprise (D-SIGNATURE-DISPATCH) | M1, M4 | M5 |
+| M8c | Tools MCP (lecture + annulation `dryRun`) | M7 | M10 |
 | M9 | Purge | M1 | M5 |
 | M10 | Frontend portail (écran signataire) | M5 | M11 |
 | M11 | Frontend interne (panneau « Signatures » et vue « Mes signatures ») | M7, M6c | M10 |
@@ -42,20 +44,24 @@ description: Break down work into actionable tasks and estimate timeline
       signataires, statuts, preuve, webhooks.
 - [ ] Produire le tableau de correspondance avec `SignaturePort`, traiter ou consigner chaque écart.
 
-### M1 — Fondation
+### M1 — Fondation (tables dédiées)
 - [ ] Records et enums de domaine, `SignaturePort`, `SignatureProviderCapabilities`, ports `in`/`out`.
 - [ ] Migration Liquibase (`signature_request`, `signature_signer`), entités JPA, repository.
 - [ ] Extension de `AccessContext.External` pour le signataire, règles `case External`.
 
 ### M2 — Allowlist et parser
 - [ ] Ajouter `signatureRequestTask` à `AllowedBpmnDelegates` (tests d'allowlist).
-- [ ] Règles de parser du bloc signature et garde de déploiement (fonctionnalité désactivée).
+- [ ] `extractSignatureBlocks` : premier parsing d'`extensionElements` (`flowable:signer`) ; règles de
+      validation du design ; garde de déploiement (`provider=none`, portail requis pour `EXTERNAL`).
+- [ ] Vérifier la compatibilité avec `BpmnExpressionSurfaceScanner` (§69).
 
 ### M3 — Stub
 - [ ] `StubSignatureAdapter` (cycle complet, issues forcées pour les tests).
 - [ ] Filigrane PDF et preuve factice, `simulated` partout.
-- [ ] `SignatureConfig` : sélection par propriété, garde du profil de production, second drapeau,
-      avertissement au démarrage.
+- [ ] `SignatureConfig` : `app.signature.provider`, garde par **liste positive de profils**
+      (`local`/`test` sans drapeau, sinon `allow-outside-local`), avertissement au démarrage, compteur.
+- [ ] **Spike F7** : confirmer l'accès à l'API OpenPDF (`PdfStamper`) via `flying-saucer-pdf` avant
+      d'écrire le filigrane.
 
 ### M4 — Émission
 - [ ] `RequestSignatureUseCase`, résolution des signataires, empreinte du document.
@@ -85,6 +91,13 @@ description: Break down work into actionable tasks and estimate timeline
 ### M8 — Connecteur et callback
 - [ ] Entrée de catalogue `signature` (`configSchema`, secrets chiffrés).
 - [ ] Contrôleur de callback (HMAC horodaté, idempotence, taille, rate-limit).
+
+### M8b — Répartiteur d'issue
+- [ ] `SignatureOutcomeDispatcher` : tentative immédiate, reprise sur `CallbackNoMatchingInstanceException`,
+      `outcome_dispatched_at`, plafond et alerte.
+
+### M8c — MCP
+- [ ] `list_signature_requests`, `get_signature_request`, `cancel_signature_request` (`dryRun`).
 
 ### M9 — Purge
 - [ ] Étendre le graphe de purge aux nouvelles tables et aux documents marqués.

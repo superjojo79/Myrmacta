@@ -1104,7 +1104,7 @@ lot `LC*`), `analysis doc/00-index.md`, `15-serveur-mcp.md` § Décisions de cad
 
 ---
 
-### [ ] 72. Signature électronique — socle générique et stub (Phases 1 et 2 closes)
+### [ ] 72. Signature électronique — socle générique et stub (Phases 1 à 3 closes)
 
 **Énoncé :** item **2.4** de `ROADMAP.md`, analyse
 [30-signature-electronique.md](analysis%20doc/30-signature-electronique.md), recalibrée le
@@ -1140,7 +1140,17 @@ preuve filigrané ; D-SIGNATURE-DELIVERY = un lot XL à jalons internes. Hypoth�
 (voir requirements). Documents SDD : requirements `reviewed`, design / planning / testing `draft`
 ([requirements](docs/ai/requirements/2026-09-29-feature-signature-electronique.md)).
 
-**Reste à figer en Phase 3 :** propriété d'activation et second drapeau (noms, défauts, jamais dans
+**Phase 3 (design) close (2026-09-29)** — 4 décisions tranchées par l'utilisateur :
+D-SIGNATURE-DATA-MODEL = **tables dédiées** (le portail exige une `userTask` ouverte, F1) ;
+D-SIGNATURE-BPMN-MARKER = attributs `flowable:*` + éléments `flowable:signer` validés au
+déploiement ; D-SIGNATURE-GUARD-CRITERION = **liste positive** de profils (`local`/`test` sans
+drapeau, sinon `app.signature.stub.allow-outside-local`) ; D-SIGNATURE-MCP = lecture + annulation
+avec `dryRun`. Plus 11 décisions par alignement sur l'existant (dont D-SIGNATURE-DISPATCH,
+répartiteur avec reprise). Trois précisions apportées aux requirements (doublons, référence du
+document par `storageRef`, expiration propre à la demande). Design `reviewed`. Reste : **M0** fige la
+forme finale de `SignaturePort` ; **Phase 4** (planning).
+
+**Ancienne liste « à figer », levée par la Phase 3 :** propriété d'activation et second drapeau (noms, défauts, jamais dans
 les gabarits de configuration), forme du marqueur `PRODUCED_DOC`, marqueur BPMN de la tâche
 « signature », critère de « profil de production ».
 

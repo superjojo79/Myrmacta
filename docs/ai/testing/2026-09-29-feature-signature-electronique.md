@@ -9,9 +9,8 @@ description: Define testing approach, test cases, and quality assurance
 
 > TODO §72. Scénarios dérivés des critères de succès et user stories des
 > [requirements](../requirements/2026-09-29-feature-signature-electronique.md) (`reviewed`) et des
-> composants du [design](../design/2026-09-29-feature-signature-electronique.md) (esquisse). Les
-> scénarios marqués **[P3]** dépendent d'une décision de conception. Cases cochées au fil de
-> l'implémentation.
+> composants du [design](../design/2026-09-29-feature-signature-electronique.md) (`reviewed`,
+> Phase 3 close le 2026-09-29). Cases cochées au fil de l'implémentation.
 
 ## Test Coverage Goals
 
@@ -30,8 +29,12 @@ description: Define testing approach, test cases, and quality assurance
 
 - [ ] `AllowedBpmnDelegates` accepte `signatureRequestTask` (formes `${…}` et nue) et rejette toute
       variante (`.`, `(`, espace, `#`).
-- [ ] Le parser accepte un bloc signature valide et refuse : fonctionnalité désactivée, source du
-      document absente, signataire sans source d'adresse, échéance au-delà du plafond. [P3]
+- [ ] Le parser (`extractSignatureBlocks`) accepte un bloc valide et refuse : fonctionnalité désactivée
+      (`provider=none`), `signatureDocument` absent, aucun signataire, aucun requis, `kind` inconnu,
+      `source` mal formée, sources identiques, mode invalide, échéance hors bornes, plus de
+      `max-signers`, signataire `EXTERNAL` avec portail désactivé.
+- [ ] `flowable:signer` sans effet de bord sur `BpmnExpressionSurfaceScanner` ; `${…}` dans `name`
+      ou un attribut du bloc ⇒ refusé (§69).
 - [ ] Un BPMN sans bloc signature n'est pas affecté (non-régression du parser portail).
 - [ ] Aucune expression libre n'est acceptée dans les attributs du bloc (rejeu des cas §69).
 
@@ -42,7 +45,12 @@ description: Define testing approach, test cases, and quality assurance
 - [ ] Adresse absente ou invalide : aucune demande envoyée, notification interne, process non bloqué.
 - [ ] Document source introuvable ou non `PRODUCED_DOC` : refus explicite, aucune demande.
 - [ ] Empreinte du document figée à l'émission ; une modification ultérieure n'altère pas la demande.
-- [ ] Émission idempotente pour une même tâche (pas de doublon sur rejeu du delegate).
+- [ ] Émission idempotente (index partiel `(process_instance_id, activity_id)` en `PENDING`) : pas de
+      doublon sur rejeu du delegate.
+- [ ] Identités résolues identiques (même adresse ou même utilisateur) : demande `FAILED`
+      (`DUPLICATE_SIGNER`), notification interne, process non bloqué.
+- [ ] `signatureDocument` dont le `storageRef` ne correspond à aucun `PRODUCED_DOC` du dossier :
+      `FAILED` (`SOURCE_NOT_FOUND`).
 - [ ] Erreur du provider à l'émission : issue `FAILED`, process non bloqué.
 
 ### Stub (D-SIGNATURE-STUB-BEHAVIOR, D-SIGNATURE-STUB-GUARD)
@@ -52,10 +60,11 @@ description: Define testing approach, test cases, and quality assurance
 - [ ] Le document signé porte le filigrane « SIMULATION — sans valeur juridique » (extraction de
       texte du PDF) ; la preuve porte `simulated = true`.
 - [ ] Refus du signataire : issue `DECLINED`, aucun document signé.
-- [ ] `T-GUARD-1` : stub actif, profil production, sans second drapeau ⇒ échec de démarrage du
-      contexte Spring avec message explicite.
-- [ ] `T-GUARD-2` : stub actif, profil production, avec second drapeau ⇒ démarrage réussi,
-      avertissement journalisé.
+- [ ] `T-GUARD-1` : stub actif, profils autres que `local`/`test` (dont aucun profil), sans
+      `allow-outside-local` ⇒ échec de démarrage du contexte Spring avec message explicite.
+- [ ] `T-GUARD-2` : stub actif, hors `local`/`test`, avec `allow-outside-local=true` ⇒ démarrage
+      réussi, avertissement journalisé, compteur incrémenté.
+- [ ] `T-GUARD-5` : stub actif avec profil `local` ou `test` ⇒ démarrage sans drapeau.
 - [ ] `T-GUARD-3` : stub inactif par défaut ; aucun bean `SignaturePort` actif, tâche « signature »
       rejetée au déploiement.
 - [ ] `T-GUARD-4` : le second drapeau n'apparaît dans aucun gabarit (`.env.example`,
@@ -126,6 +135,21 @@ description: Define testing approach, test cases, and quality assurance
 - [ ] Document signé et preuve = `PRODUCED_DOC` avec marqueur ; aucune valeur d'`ElementType` ajoutée.
 - [ ] L'API distingue document source, document signé, preuve (filtre sur le marqueur). [P3]
 - [ ] L'export CSV et l'affichage existants restent inchangés (non-régression).
+
+### Répartiteur d'issue (D-SIGNATURE-DISPATCH)
+
+- [ ] Issue produite avant l'abonnement du process (échec à l'émission) : `correlateMessage` lève
+      `CallbackNoMatchingInstanceException`, la demande reste non répartie, le job reprend et réussit
+      une fois le process abonné.
+- [ ] Reprise idempotente : `outcome_dispatched_at` posé une seule fois, aucune double reprise.
+- [ ] Plafond `dispatch-max-attempts` atteint : alerte (métrique + journal), la demande reste consultable.
+- [ ] Plusieurs demandes dans un même process : la corrélation par `signatureRequestId` ne mélange pas les issues.
+
+### MCP (D-SIGNATURE-MCP)
+
+- [ ] `list_signature_requests` / `get_signature_request` : adresses masquées, droits respectés.
+- [ ] `cancel_signature_request` : `dryRun` sans effet ; annulation réelle propagée au port.
+- [ ] Aucun tool d'émission n'est exposé (test de catalogue des tools).
 
 ### Expiration (H6)
 

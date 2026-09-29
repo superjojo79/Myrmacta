@@ -107,7 +107,7 @@ configuration** — sans modifier le domaine, le BPMN, le portail ni le modèle 
 | **D-SIGNATURE-REQUIRED** | **Signataires requis ou facultatifs**, déclarés dans le bloc. `SIGNED` = **tous les requis ont signé** ; le refus ou l'expiration d'un **requis** ferme la demande (`DECLINED` / `EXPIRED`), liens restants révoqués, aucun document signé partiel. | Tout ou rien sans facultatifs (recommandé, écarté) ; signatures partielles conservées. |
 | **D-SIGNATURE-SEQ-OPTIONAL** | **En séquentiel, le refus ou l'expiration d'un facultatif fait passer au suivant** (le signataire est marqué, la chaîne continue). | Arrêt de la chaîne à tout refus. |
 | **D-SIGNATURE-OUTCOME** (ex-H3) | **Variable de process normalisée** : après l'attente (message corrélé, patron `flowable-callback`), le process reprend avec `signatureOutcome` (`SIGNED`, `DECLINED`, `EXPIRED`, `FAILED`, `CANCELLED`) et `signatureRequestId` ; le BPMN route par passerelle. | Un message par issue ; deux sorties succès/échec. |
-| **D-SIGNATURE-DOCUMENT** (ex-H2) | **Un seul `PRODUCED_DOC` existant**, désigné par variable de process ; le lot ne génère rien. | Plusieurs documents ; génération intégrée au bloc. |
+| **D-SIGNATURE-DOCUMENT** (ex-H2) | **Un seul `PRODUCED_DOC` existant**, désigné par une variable de process ou un champ contenant son `storageRef` (précisé en Phase 3, F4) ; le lot ne génère rien. | Plusieurs documents ; génération intégrée au bloc. |
 | **D-SIGNATURE-DEADLINE** (ex-H6) | **Une échéance de demande** (jours, plafonnée par le tenant) ; les liens ne la dépassent jamais ; à l'échéance la demande passe `EXPIRED`. **Renvoi manuel** par l'instructeur, **aucune relance automatique**. | TTL de lien indépendante ; relances automatiques. |
 | **D-SIGNATURE-SIGNER-KIND** | **Signataires internes ET externes dès ce lot** ; le signataire porte un type (`EXTERNAL`, `INTERNAL`). | Externes seuls (recommandé, écarté). |
 | **D-SIGNATURE-INTERNAL-UX** | **Vue « Mes signatures »** dans la SPA authentifiée (liste des demandes adressées à l'utilisateur, document, signer, refuser) + notification inbox. Pas de passage par le portail. | `userTask` Flowable classique ; lien e-mail + session OIDC. |
@@ -127,6 +127,9 @@ configuration** — sans modifier le domaine, le BPMN, le portail ni le modèle 
   (identité authentifiée), en plus du droit de lecture normal sur le dossier ; l'accès au document
   reste borné à celui de la demande.
 - **A5** — la même personne (adresse ou utilisateur) ne peut figurer qu'**une fois** par demande.
+  *Précisé en Phase 3 (D-SIGNATURE-DUPLICATE) :* sources identiques refusées **au déploiement** ;
+  identités résolues identiques détectées **à l'émission** ⇒ demande `FAILED` (`DUPLICATE_SIGNER`),
+  notification interne, process non bloqué.
 
 ## User Stories & Use Cases
 
@@ -256,7 +259,12 @@ H6 → D-SIGNATURE-DEADLINE. Aucune hypothèse non nommée ne subsiste.
 **Toutes les décisions produit de Phase 1 et 2 sont tranchées ou acceptées comme hypothèses
 nommées (A1–A5).** Aucune question produit ouverte. Le périmètre XL est assumé (D-SIGNATURE-DELIVERY).
 
-**Questions de conception renvoyées à la Phase 3 :**
+**Questions de conception : toutes tranchées en Phase 3** — voir le
+[design](../design/2026-09-29-feature-signature-electronique.md) § *Design Decisions* (tables dédiées,
+marqueur BPMN `flowable:signer`, garde par liste positive de profils, MCP en lecture + annulation,
+répartiteur avec reprise, progression synchrone, propriétés `app.signature.*`). Seule reste ouverte
+la **forme finale de `SignaturePort`**, figée par M0 (D-SIGNATURE-CONTRACT-CHECK). Rappel de la
+liste d'origine :
 
 - Modèle de données : table dédiée ou extension de `portal_link` ; représentation du type de
   signataire (`EXTERNAL` / `INTERNAL`), du rang et de l'indicateur requis / facultatif.

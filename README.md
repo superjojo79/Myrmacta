@@ -7,7 +7,7 @@
 >  **Utilisation de l'UI :** voir [GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md) — créer un dossier,
 > démarrer/suivre un workflow, configurer un connecteur ou un template de document.
 >  **Déploiement :** voir [DEPLOIEMENT.md](DEPLOIEMENT.md) — au-delà du poste de dev : artefact,
-> reverse-proxy, provisioning d'un tenant, comptes Keycloak (portée manuelle, pas d'outillage à ce jour).
+> reverse-proxy, provisioning d'un tenant, comptes Keycloak (`Dockerfile` et `scripts/provision-tenant.sh` livrés ; démarrage de l'instance, reverse-proxy et Keycloak restent documentés, non automatisés).
 >  **Concevoir un BPMN :** voir [GUIDE-CONCEPTION-BPMN.md](GUIDE-CONCEPTION-BPMN.md) — conventions,
 > champs dynamiques, connecteurs, intervenants, génération de documents depuis un diagramme.
 

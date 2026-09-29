@@ -357,5 +357,5 @@ APP_PORTAL_MAX_LINK_TTL=30d      # facultatif, plafond de ce que le BPMN peut de
 - Modèle multi-tenant détaillé : [analysis doc/02-multi-tenant.md](analysis%20doc/02-multi-tenant.md)
 - Authentification, BFF, machine-to-machine : [analysis doc/03-authentification.md](analysis%20doc/03-authentification.md)
 - Autorisation et conformité : [analysis doc/12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md)
-- Décisions ouvertes (dont le provisioning tenant, points 31/41) : [TODO.md](TODO.md)
+- Décisions et suivi (provisioning tenant, points 31/41 : livré via le lot `provisioning-tenant`) : [TODO.md](TODO.md) ; prochaines évolutions : [ROADMAP.md](ROADMAP.md)
 - Prise en main de l'UI : [GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md)

@@ -137,6 +137,9 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Documentation
 
+- **PR [#145](https://github.com/superjojo79/FlowForge/pull/145)** — Ordonnancement de la Vague D :
+  lots parallélisables, contraintes d'ordre et quatre vagues dans `FILE-ATTENTE.md` et `ROADMAP.md` ;
+  `README.md` (statut, positionnement) et `DEPLOIEMENT.md` (provisioning livré) alignés.
 - **PR [#144](https://github.com/superjojo79/FlowForge/pull/144)** — Positionnement tranché (TODO §70) :
   produit pour intégrateurs avec une couche low-code, découpée en six sous-lots. Exposition MCP de
   cette couche cadrée (TODO §71, quatre décisions actées) et analyses initiales de tous les lots de

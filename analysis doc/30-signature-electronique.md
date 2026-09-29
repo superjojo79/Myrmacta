@@ -1,7 +1,8 @@
 # Signature électronique — socle générique et stub, en préparation d'un provider
 
-> **Statut : analyse initiale recalibrée (2026-09-29), non démarré.** Aucune décision technique
-> tranchée au sens `dev-lifecycle` — Phase 1 (requirements) obligatoire avant tout code. Origine :
+> **Statut : Phase 1 (cadrage) close le 2026-09-29 — non implémenté** (TODO §72). Les décisions
+> ci-dessous sont tranchées par l'utilisateur ; restent la Phase 2 (revue des requirements), le
+> design (Phase 3) et le reste du cycle `dev-lifecycle` avant tout code. Origine :
 > `ROADMAP.md` item **2.4**, classé « Produit, pas cadré ».
 >
 > **Recalibrage (2026-09-29, demande utilisateur).** Il n'y a **aucun fournisseur désigné**. Le lot
@@ -16,10 +17,14 @@
 > [26-portail-externe.md](26-portail-externe.md). **Prérequis livré :** `portail-externe`
 > ([PR #138](https://github.com/superjojo79/FlowForge/pull/138), TODO §68).
 >
-> **Arbitrages d'orientation posés le 2026-09-29** (réponses de l'utilisateur, à confirmer en
-> Phase 1 et à consigner dans le TODO) : abstraction = **port + adaptateur exposé comme
-> connecteur** ; comportement du stub = **simulation de bout en bout** ; parcours = **tâche externe
-> du portail + statut dans le dossier** ; déclenchement = **nouveau delegate allowlisté**.
+> **Décisions tranchées le 2026-09-29** (`AskUserQuestion`, consignées TODO §72) :
+> D-SIGNATURE-ABSTRACTION = **port + adaptateur exposé comme connecteur** ;
+> D-SIGNATURE-STUB-BEHAVIOR = **simulation de bout en bout** ; D-SIGNATURE-UX = **tâche externe du
+> portail + statut dans le dossier** ; D-SIGNATURE-TRIGGER = **nouveau delegate allowlisté** ;
+> D-SIGNATURE-TRIGGER-VS-CONNECTOR = **delegate → port direct** ; D-SIGNATURE-PORTAL-KIND =
+> **nouveau type de tâche externe « signature »** ; D-SIGNATURE-ELEMENT = **`PRODUCED_DOC` marqué** ;
+> D-SIGNATURE-STUB-GUARD = **refus en profil production, activable par un second drapeau
+> explicite** ; D-SIGNATURE-CONTRACT-CHECK = **oui, revue documentaire de 2 à 3 API publiques**.
 
 ---
 
@@ -83,22 +88,23 @@ demande et sur la preuve, bandeau dans l'UI). Un stub actif en production ne doi
 - **Delegate dédié** (ex. `signatureRequestTask`) **ajouté à `AllowedBpmnDelegates`** : il émet la
   demande via `SignaturePort` puis met le process en attente jusqu'au retour normalisé. C'est ce
   que la palette LC1 proposera comme bloc « Demander une signature ».
-- **Cohabitation à trancher** (D-SIGNATURE-TRIGGER-VS-CONNECTOR) : les deux arbitrages d'orientation
-  ne se recouvrent qu'en apparence — le **connecteur** configure et reçoit, le **delegate**
-  déclenche et attend. Reste à décider si le delegate passe *par* le connecteur (config lue à
-  chaque appel) ou lit directement le port ; recommandation : le delegate appelle le port, le
-  connecteur ne sert qu'à la configuration et au retour.
+- **Cohabitation (D-SIGNATURE-TRIGGER-VS-CONNECTOR, tranchée)** : le **delegate appelle
+  directement `SignaturePort`** ; le **connecteur** ne sert qu'à la configuration, aux secrets et à
+  la réception du retour (`CALLBACK`). L'exécution reste indépendante du modèle de connecteur
+  générique.
 
 ### 2.4 Parcours du signataire
 
 Le signataire n'a pas de compte : il passe par le **portail tokenisé** livré (PR #138).
 
-- **Écart à traiter** : le portail n'accepte aujourd'hui que des tâches `user-question:`
-  (D-PORTAL-FORM). Pour le stub, deux voies : (a) réutiliser `user-question` avec une question de
-  confirmation (« Je signe ce document ») — aucun changement du portail, mais UX pauvre ; (b)
-  introduire un **type de tâche externe « signature »** — plus propre et porteur pour un provider
-  réel (redirection vers l'URL de signature du fournisseur), mais rouvre le périmètre du portail.
-  Décision de Phase 1 (D-SIGNATURE-PORTAL-KIND).
+- **Nouveau type de tâche externe « signature » (D-SIGNATURE-PORTAL-KIND, tranchée)** : le portail
+  n'accepte aujourd'hui que des tâches `user-question:` (D-PORTAL-FORM). Ce lot **rouvre
+  volontairement ce périmètre** avec un second type de tâche, porteur pour un provider réel
+  (redirection vers l'URL de signature du fournisseur) et propre pour le stub (écran dédié :
+  document à consulter, confirmation, refus). Conséquences à cadrer en Phase 2-3 : nouvelle route
+  publique sous `/portal/**`, revue de sécurité du lot portail rejouée sur ce type (jeton, CSRF,
+  limitation par IP, purge), marqueur BPMN distinct de `user-question:` (D-PORTAL-BPMN-MARKER),
+  mise à jour de la validation au déploiement, et **CSP inchangée** (redirection, pas d'iframe).
 - **Instructeur** : statut de chaque demande (`PENDING`, `SIGNED`, `DECLINED`, `EXPIRED`,
   `FAILED`) visible dans le détail du dossier, avec renvoi et annulation.
 
@@ -106,9 +112,11 @@ Le signataire n'a pas de compte : il passe par le **portail tokenisé** livré (
 
 - **Demande de signature** (`signature_request`) : dossier, élément source, provider (code de
   l'adaptateur), signataires, statut normalisé, `simulated`, corrélation, échéance, horodatages.
-- **Document signé et preuve** : rattachés au dossier. Choix à figer (D-SIGNATURE-ELEMENT) :
-  `PRODUCED_DOC` avec un marqueur, ou nouvelle valeur d'`ElementType`. Une nouvelle valeur touche
-  l'export CSV, l'affichage, la purge et le schéma — à mesurer avant.
+- **Document signé et preuve (D-SIGNATURE-ELEMENT, tranchée)** : éléments `PRODUCED_DOC` **marqués**
+  (métadonnées : identifiant de la demande, rôle `SIGNED_DOCUMENT` ou `SIGNATURE_PROOF`,
+  `simulated`). **Aucune nouvelle valeur d'`ElementType`** : pas d'impact sur l'export CSV, l'affichage
+  ni le schéma. Le marqueur doit être filtrable côté API pour que l'UI distingue document source,
+  document signé et preuve.
 - **Purge et rétention** : la purge de dossier doit supprimer les demandes, documents signés et
   preuves (même leçon que D-PORTAL-PURGE : le graphe de `ProcessPurgeOutboxUseCaseImpl` doit
   couvrir les nouvelles tables).
@@ -124,10 +132,10 @@ Le signataire n'a pas de compte : il passe par le **portail tokenisé** livré (
 
 | ID | Risque | Parade proposée |
 |---|---|---|
-| **R-SIM-EN-PROD** | Le stub actif en production produit des « documents signés » pris pour authentiques | Désactivé par défaut ; marquage indélébile (filigrane, `simulated`, bandeau) ; refus de démarrage ou avertissement fort si actif avec un profil de production — à trancher (D-SIGNATURE-STUB-GUARD) |
-| **R-CONTRAT-TROP-ETROIT** | Le contrat figé sans provider réel se révèle inadapté au premier fournisseur | Capacités déclarées ; événement normalisé minimal ; **valider le contrat contre 2 ou 3 API publiques** (documentation Yousign, DocuSign, Universign) avant Phase 3, sans les intégrer |
+| **R-SIM-EN-PROD** | Le stub actif en production produit des « documents signés » pris pour authentiques | Désactivé par défaut ; marquage indélébile (filigrane, `simulated`, bandeau) ; **refus de démarrage en profil production**, sauf second drapeau explicite (D-SIGNATURE-STUB-GUARD) qui n'autorise qu'avec avertissement (log WARN au démarrage, bandeau UI, marquage inchangé). Le drapeau ne doit jamais figurer dans les gabarits de configuration ni `.env.example` |
+| **R-CONTRAT-TROP-ETROIT** | Le contrat figé sans provider réel se révèle inadapté au premier fournisseur | Capacités déclarées ; événement normalisé minimal ; **revue documentaire de 2 à 3 API publiques** (D-SIGNATURE-CONTRACT-CHECK, tranchée : par ex. Yousign, DocuSign, Universign), tableau de correspondance livré en Phase 2-3, sans intégration |
 | **R-CONTRAT-TROP-LARGE** | Sur-conception d'un contrat « universel » jamais exercé | Périmètre §2.1 restreint ; ce qui n'est pas utilisé par le stub ni par un provider cible ne sort pas |
-| **R-PORTAIL** | Ajouter un type de tâche externe rouvre la sécurité du portail (routes publiques, CSP) | Préférer (a) tant qu'aucun provider n'impose (b) ; toute nouvelle route publique repasse par la revue du lot portail |
+| **R-PORTAIL** | Le type de tâche « signature » rouvre la sécurité du portail (routes publiques, CSRF, limitation, purge) — **risque assumé** (D-SIGNATURE-PORTAL-KIND) | Réutiliser les composants du portail (jeton haché, limite par IP avant lecture du corps, `PortalPreAuthInterceptor`) ; rejouer la revue adversariale du portail sur le nouveau type ; aucune route hors `/portal/**` ; CSP inchangée |
 | **R-DELEGATE** | Un nouveau delegate modifie la surface d'exécution BPMN | Ajout à `AllowedBpmnDelegates` + tests de l'allowlist (§57/§69) ; aucune expression libre |
 | **Secrets fournisseur** | Clés API en clair | Champs `PASSWORD` de connecteur (chiffrés au repos) ; jamais en propriété d'environnement partagée |
 | **Webhook du fournisseur** | Rejeu, secret faible, DoS mémoire | Réutiliser les correctifs F5–F8 de `flowable-callback` |
@@ -135,28 +143,33 @@ Le signataire n'a pas de compte : il passe par le **portail tokenisé** livré (
 | **CSP** | Un parcours embarqué (iframe) exigerait d'élargir `frame-src` | Redirection plutôt qu'iframe ; ne pas toucher à la CSP dans ce lot |
 | **Conformité juridique** | Valeur probante, niveau eIDAS | **Hors lot** : arbitrage reporté au choix du premier provider réel (voir D-SIGNATURE-LEVEL) |
 
-## 5. Points ouverts (Phase 1 `dev-lifecycle` — ne rien trancher silencieusement)
+## 5. Décisions (Phase 1 close le 2026-09-29, TODO §72)
 
-| ID | Question | Statut |
+| ID | Décision | Statut |
 |---|---|---|
 | ~~D-SIGNATURE-SCOPE~~ | Lot séparé, après `portail-externe` | **Tranchée 2026-09-23** |
-| ~~D-SIGNATURE-PROVIDER~~ | Quel fournisseur ? | **Reportée** : aucun provider désigné ; le lot fournit le point d'extension et le stub |
-| D-SIGNATURE-ABSTRACTION | Port + adaptateur exposé comme connecteur | **Orientation posée 2026-09-29**, à confirmer en Phase 1 |
-| D-SIGNATURE-STUB-BEHAVIOR | Simulation de bout en bout, marquée non probante | **Orientation posée 2026-09-29**, à confirmer |
-| D-SIGNATURE-UX | Tâche externe du portail + statut dans le dossier | **Orientation posée 2026-09-29**, à confirmer |
-| D-SIGNATURE-TRIGGER | Nouveau delegate allowlisté | **Orientation posée 2026-09-29**, à confirmer |
-| D-SIGNATURE-TRIGGER-VS-CONNECTOR | Le delegate passe-t-il par le connecteur ou lit-il directement le port ? | Ouvert — recommandation §2.3 |
-| D-SIGNATURE-PORTAL-KIND | Réutiliser `user-question` (a) ou créer un type de tâche « signature » (b) ? | Ouvert — recommandation : (a) |
-| D-SIGNATURE-ELEMENT | Document signé et preuve : `PRODUCED_DOC` marqué ou nouvelle valeur d'`ElementType` ? | Ouvert |
-| D-SIGNATURE-STUB-GUARD | Comportement du stub avec un profil de production (refus de démarrer, avertissement, indisponible) | Ouvert |
-| D-SIGNATURE-ACTIVATION | Propriété d'activation, nom et valeur par défaut (`off`) | Ouvert — patron `scan.type` |
-| D-SIGNATURE-LEVEL | Niveau eIDAS visé (simple, avancé, qualifié) | **Reportée** au premier provider réel ; le contrat expose seulement un champ « niveau » informatif |
-| D-SIGNATURE-CONTRACT-CHECK | Faut-il valider le contrat contre 2 ou 3 API publiques avant de le figer ? | Ouvert — recommandé (R-CONTRAT-TROP-ETROIT) |
+| ~~D-SIGNATURE-PROVIDER~~ | Aucun provider désigné : le lot fournit le point d'extension et le stub | **Reportée** au premier provider réel |
+| ~~D-SIGNATURE-LEVEL~~ | Niveau eIDAS : le contrat n'expose qu'un champ « niveau » informatif | **Reportée** au premier provider réel |
+| D-SIGNATURE-ABSTRACTION | **Port `SignaturePort` + adaptateur exposé comme connecteur** mince | **Tranchée 2026-09-29** |
+| D-SIGNATURE-STUB-BEHAVIOR | **Simulation de bout en bout**, marquée non probante | **Tranchée 2026-09-29** |
+| D-SIGNATURE-UX | **Tâche externe du portail + statut dans le dossier** | **Tranchée 2026-09-29** |
+| D-SIGNATURE-TRIGGER | **Nouveau delegate allowlisté** (`signatureRequestTask`) | **Tranchée 2026-09-29** |
+| D-SIGNATURE-TRIGGER-VS-CONNECTOR | **Delegate → port direct** ; connecteur = configuration, secrets, retour | **Tranchée 2026-09-29** |
+| D-SIGNATURE-PORTAL-KIND | **Nouveau type de tâche externe « signature »** (rouvre le périmètre du portail) | **Tranchée 2026-09-29** |
+| D-SIGNATURE-ELEMENT | **`PRODUCED_DOC` marqué**, pas de nouvelle valeur d'`ElementType` | **Tranchée 2026-09-29** |
+| D-SIGNATURE-STUB-GUARD | **Refus de démarrer en profil production, activable par un second drapeau explicite** (avertissement) | **Tranchée 2026-09-29** |
+| D-SIGNATURE-CONTRACT-CHECK | **Oui** : revue documentaire de 2 à 3 API publiques, sans intégration | **Tranchée 2026-09-29** |
+
+**Restent à figer en Phase 2-3 (détail de conception) :** nom et valeur par défaut de la propriété
+d'activation (patron `app.dossier.attachment.scan.type`, défaut désactivé), nom du second drapeau de
+D-SIGNATURE-STUB-GUARD, forme exacte du marqueur D-SIGNATURE-ELEMENT, marqueur BPMN de la tâche
+« signature » (D-PORTAL-BPMN-MARKER), critère de « profil de production » (profil Spring actif ou
+propriété dédiée).
 
 ## 6. Coutures et séquencement
 
 - **Surfaces touchées :** nouveau port et adaptateur (`domain/…/port/out`, `infrastructure/…`),
-  entrée `ConnectorCatalog`, `AllowedBpmnDelegates`, portail (selon D-SIGNATURE-PORTAL-KIND),
+  entrée `ConnectorCatalog`, `AllowedBpmnDelegates`, portail (nouveau type de tâche « signature »),
   détail du dossier (statut), purge, golden OpenAPI, tools MCP (exposition dans le même lot,
   principe P1 de l'[analyse 46](46-exposition-mcp-couche-low-code.md)).
 - **Parallélisme (voir `FILE-ATTENTE.md`, Vague 1) :** disjoint de LC1 (frontend BPMN), D1

@@ -1104,6 +1104,39 @@ lot `LC*`), `analysis doc/00-index.md`, `15-serveur-mcp.md` § Décisions de cad
 
 ---
 
+### [ ] 72. Signature électronique — socle générique et stub (Phase 1 close)
+
+**Énoncé :** item **2.4** de `ROADMAP.md`, analyse
+[30-signature-electronique.md](analysis%20doc/30-signature-electronique.md), recalibrée le
+2026-09-29 : aucun fournisseur désigné, le lot pose le contrat, le modèle, le parcours et un
+adaptateur **stub** qui simule le cycle complet, pour qu'un provider réel se branche ensuite par un
+adaptateur et une configuration. Prérequis livré : portail externe (§68, PR #138).
+
+**Statut :** **Phase 1 close (2026-09-29)** — décisions tranchées une par une par l'utilisateur
+(`AskUserQuestion`) : D-SIGNATURE-ABSTRACTION = port `SignaturePort` + adaptateur exposé comme
+connecteur mince ; D-SIGNATURE-STUB-BEHAVIOR = simulation de bout en bout marquée « SIMULATION —
+sans valeur juridique » ; D-SIGNATURE-UX = tâche externe du portail + statut dans le dossier ;
+D-SIGNATURE-TRIGGER = nouveau delegate allowlisté ; D-SIGNATURE-TRIGGER-VS-CONNECTOR = delegate →
+port direct (le connecteur ne porte que configuration, secrets et retour `CALLBACK`) ;
+D-SIGNATURE-PORTAL-KIND = **nouveau type de tâche externe « signature »** (contre la
+recommandation de réutiliser `user-question` : rouvre le périmètre du portail, risque R-PORTAIL
+assumé, revue de sécurité du portail à rejouer sur ce type) ; D-SIGNATURE-ELEMENT = `PRODUCED_DOC`
+marqué, aucune nouvelle valeur d'`ElementType` ; D-SIGNATURE-STUB-GUARD = **refus de démarrer en
+profil production, activable par un second drapeau explicite** (contre la recommandation de refus
+strict : risque R-SIM-EN-PROD assumé, avertissement et marquage inchangés) ;
+D-SIGNATURE-CONTRACT-CHECK = revue documentaire de 2 à 3 API publiques, sans intégration.
+Reportés au premier provider réel : D-SIGNATURE-PROVIDER, D-SIGNATURE-LEVEL (eIDAS).
+
+**Reste à figer en Phase 2-3 :** propriété d'activation et second drapeau (noms, défauts, jamais dans
+les gabarits de configuration), forme du marqueur `PRODUCED_DOC`, marqueur BPMN de la tâche
+« signature », critère de « profil de production ».
+
+**Impacte :** `AllowedBpmnDelegates` (§57/§69), `ConnectorCatalog`, portail (`/portal/**`), purge de
+dossier, golden OpenAPI, tools MCP (principe P1 de l'analyse 46), `GUIDE-CONCEPTION-BPMN.md`,
+`DEPLOIEMENT.md` (propriétés d'activation), `CHANGELOG.md`.
+
+---
+
 ## Autorisation et conformité
 
 Points identifiés par [12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md),

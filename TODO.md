@@ -1104,7 +1104,7 @@ lot `LC*`), `analysis doc/00-index.md`, `15-serveur-mcp.md` § Décisions de cad
 
 ---
 
-### [ ] 72. Signature électronique — socle générique et stub (Phase 1 close)
+### [ ] 72. Signature électronique — socle générique et stub (Phases 1 à 4 closes)
 
 **Énoncé :** item **2.4** de `ROADMAP.md`, analyse
 [30-signature-electronique.md](analysis%20doc/30-signature-electronique.md), recalibrée le
@@ -1127,7 +1127,38 @@ strict : risque R-SIM-EN-PROD assumé, avertissement et marquage inchangés) ;
 D-SIGNATURE-CONTRACT-CHECK = revue documentaire de 2 à 3 API publiques, sans intégration.
 Reportés au premier provider réel : D-SIGNATURE-PROVIDER, D-SIGNATURE-LEVEL (eIDAS).
 
-**Reste à figer en Phase 2-3 :** propriété d'activation et second drapeau (noms, défauts, jamais dans
+**Phase 2 (revue) close (2026-09-29)** — 11 décisions supplémentaires tranchées une par une par
+l'utilisateur : D-SIGNATURE-ORDER = **modes parallèle et séquentiel** au choix du BPMN (contre la
+recommandation parallèle seul) ; D-SIGNATURE-REQUIRED = **signataires requis ou facultatifs**
+(SIGNED = tous les requis) ; D-SIGNATURE-SEQ-OPTIONAL = un facultatif qui refuse fait passer au
+suivant ; D-SIGNATURE-OUTCOME = variable de process `signatureOutcome` ; D-SIGNATURE-DOCUMENT = un
+seul `PRODUCED_DOC` désigné par variable ; D-SIGNATURE-DEADLINE = échéance de demande unique, pas
+de relance automatique ; D-SIGNATURE-SIGNER-KIND = **internes et externes dès ce lot** (contre la
+recommandation externes seuls) ; D-SIGNATURE-INTERNAL-UX = vue « Mes signatures » dans la SPA ;
+D-SIGNATURE-SIGNER-SOURCE = utilisateur désigné par champ / variable ; D-SIGNATURE-PROOF = PDF de
+preuve filigrané ; D-SIGNATURE-DELIVERY = un lot XL à jalons internes. Hypothèses A1–A5 acceptées
+(voir requirements). Documents SDD : requirements `reviewed`, design / planning / testing `draft`
+([requirements](docs/ai/requirements/2026-09-29-feature-signature-electronique.md)).
+
+**Phase 3 (design) close (2026-09-29)** — 4 décisions tranchées par l'utilisateur :
+D-SIGNATURE-DATA-MODEL = **tables dédiées** (le portail exige une `userTask` ouverte, F1) ;
+D-SIGNATURE-BPMN-MARKER = attributs `flowable:*` + éléments `flowable:signer` validés au
+déploiement ; D-SIGNATURE-GUARD-CRITERION = **liste positive** de profils (`local`/`test` sans
+drapeau, sinon `app.signature.stub.allow-outside-local`) ; D-SIGNATURE-MCP = lecture + annulation
+avec `dryRun`. Plus 11 décisions par alignement sur l'existant (dont D-SIGNATURE-DISPATCH,
+répartiteur avec reprise). Trois précisions apportées aux requirements (doublons, référence du
+document par `storageRef`, expiration propre à la demande). Design `reviewed`. Reste : **M0** fige la
+forme finale de `SignaturePort` ; **Phase 4** (planning).
+
+**Phase 4 (planning) close (2026-09-29)** : 19 milestones, environ 80 tâches, 94 scénarios de test
+identifiés (`S-<groupe>-<n>`) et tous couverts (contrôle croisé automatisé). Trois jalons de
+livraison internes dans une PR (J1 externes / parallèle / requis, J2 séquentiel et facultatifs, J3
+internes), contrat et tables posés en entier dès M1. Chemin critique : M0 (revue documentaire, gel de
+`SignaturePort`) → M1 → M3 → M4 → M5 → M6 → M8b. Risque technique à lever d'abord en M3 : le spike
+F7 (API OpenPDF via Flying Saucer). Prochaine étape : **Phase 5 (implémentation)**, à démarrer par M0
+(avec l'utilisateur pour le choix des API de référence).
+
+**Ancienne liste « à figer », levée par la Phase 3 :** propriété d'activation et second drapeau (noms, défauts, jamais dans
 les gabarits de configuration), forme du marqueur `PRODUCED_DOC`, marqueur BPMN de la tâche
 « signature », critère de « profil de production ».
 

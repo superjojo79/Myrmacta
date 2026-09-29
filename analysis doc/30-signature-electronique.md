@@ -1,6 +1,12 @@
 # Signature électronique — socle générique et stub, en préparation d'un provider
 
-> **Statut : Phase 1 (cadrage) close le 2026-09-29 — non implémenté** (TODO §72). Les décisions
+> **Statut : Phases 1 à 4 closes le 2026-09-29 — non implémenté** (TODO §72). La Phase 2 a élargi
+> le périmètre (signataires internes, modes parallèle et séquentiel, requis / facultatifs, issue en
+> variable de process, un seul document, échéance unique, preuve PDF) : les
+> [requirements](../docs/ai/requirements/2026-09-29-feature-signature-electronique.md) font foi sur
+> ce point.
+>
+> Statut d'origine de la Phase 1 : Les décisions
 > ci-dessous sont tranchées par l'utilisateur ; restent la Phase 2 (revue des requirements), le
 > design (Phase 3) et le reste du cycle `dev-lifecycle` avant tout code. Origine :
 > `ROADMAP.md` item **2.4**, classé « Produit, pas cadré ».

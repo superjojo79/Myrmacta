@@ -554,7 +554,7 @@ des tools, les tests MCP et le golden OpenAPI.
 
 | Vague | Lots | Notes |
 |---|---|---|
-| **1** (3 agents, +D5 en fond) | `signature-electronique` ∥ LC1 ∥ (D1 **ou** LC2) ; D3a en 4ᵉ | LC2 plutôt que D1 raccourcit le chemin critique (LC2 débloque D3b, champs calculés D1, LC5). Lot recalibré le 2026-09-29, **Phase 1 close (TODO §72)** : **socle générique + stub** (aucun provider désigné), eIDAS reporté au premier provider réel ; JSONata vs CEL en Phase 1 de LC2. |
+| **1** (3 agents, +D5 en fond) | `signature-electronique` ∥ LC1 ∥ (D1 **ou** LC2) ; D3a en 4ᵉ | LC2 plutôt que D1 raccourcit le chemin critique (LC2 débloque D3b, champs calculés D1, LC5). Lot recalibré le 2026-09-29, **Phases 1 à 4 closes (TODO §72), lot XL** : **socle générique + stub** (aucun provider désigné), eIDAS reporté au premier provider réel ; JSONata vs CEL en Phase 1 de LC2. |
 | **2** | D3b, champs calculés de D1, D2, D6, D4 (ordre de départ selon le lot de la Vague 1) | Voir arbitrage D4/D6 ci-dessous. Décisions TODO §71 encore ouvertes pour D6 : PARITY, RESOURCES, SCOPES, SECRETS. |
 | **3** | LC3, LC4a, LC4b (dès qu'un slot est libre), D3c + D3d | LC3 après D6, LC4a après D1. |
 | **4** | LC5, spike LC6 (conditionnel), D7 (selon marché) | Vérifications d'environnement hors file : `ClamAvAttachmentScanIT` sous Docker, smoke Keycloak réel. |

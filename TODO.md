@@ -1104,7 +1104,7 @@ lot `LC*`), `analysis doc/00-index.md`, `15-serveur-mcp.md` § Décisions de cad
 
 ---
 
-### [ ] 72. Signature électronique — socle générique et stub (Phases 1 à 3 closes)
+### [ ] 72. Signature électronique — socle générique et stub (Phases 1 à 4 closes)
 
 **Énoncé :** item **2.4** de `ROADMAP.md`, analyse
 [30-signature-electronique.md](analysis%20doc/30-signature-electronique.md), recalibrée le
@@ -1149,6 +1149,14 @@ avec `dryRun`. Plus 11 décisions par alignement sur l'existant (dont D-SIGNATUR
 répartiteur avec reprise). Trois précisions apportées aux requirements (doublons, référence du
 document par `storageRef`, expiration propre à la demande). Design `reviewed`. Reste : **M0** fige la
 forme finale de `SignaturePort` ; **Phase 4** (planning).
+
+**Phase 4 (planning) close (2026-09-29)** : 19 milestones, environ 80 tâches, 94 scénarios de test
+identifiés (`S-<groupe>-<n>`) et tous couverts (contrôle croisé automatisé). Trois jalons de
+livraison internes dans une PR (J1 externes / parallèle / requis, J2 séquentiel et facultatifs, J3
+internes), contrat et tables posés en entier dès M1. Chemin critique : M0 (revue documentaire, gel de
+`SignaturePort`) → M1 → M3 → M4 → M5 → M6 → M8b. Risque technique à lever d'abord en M3 : le spike
+F7 (API OpenPDF via Flying Saucer). Prochaine étape : **Phase 5 (implémentation)**, à démarrer par M0
+(avec l'utilisateur pour le choix des API de référence).
 
 **Ancienne liste « à figer », levée par la Phase 3 :** propriété d'activation et second drapeau (noms, défauts, jamais dans
 les gabarits de configuration), forme du marqueur `PRODUCED_DOC`, marqueur BPMN de la tâche

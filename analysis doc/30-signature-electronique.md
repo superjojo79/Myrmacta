@@ -1,6 +1,6 @@
 # Signature électronique — socle générique et stub, en préparation d'un provider
 
-> **Statut : Phases 1 à 3 closes le 2026-09-29 — non implémenté** (TODO §72). La Phase 2 a élargi
+> **Statut : Phases 1 à 4 closes le 2026-09-29 — non implémenté** (TODO §72). La Phase 2 a élargi
 > le périmètre (signataires internes, modes parallèle et séquentiel, requis / facultatifs, issue en
 > variable de process, un seul document, échéance unique, preuve PDF) : les
 > [requirements](../docs/ai/requirements/2026-09-29-feature-signature-electronique.md) font foi sur

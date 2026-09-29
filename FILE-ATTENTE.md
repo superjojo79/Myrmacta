@@ -11,6 +11,12 @@
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
 >
+> **2026-09-29 (ordonnancement Vague D)** — La file est réordonnancée en **vagues** (voir
+> § *File d'attente — Vague D*) : parallélisme borné à 3 agents (4 avec D3a), dépendances entre
+> lots, et point d'arbitrage D4/D6. `signature-electronique` reste le prochain candidat officiel ;
+> la Vague 1 propose de lui adjoindre LC1 et LC2 (ou D1). Aucun lot n'est cadré au sens
+> `dev-lifecycle` : Phase 1 obligatoire avant tout code.
+>
 > **2026-09-28 (décision produit)** — D0 de la Vague D (`ROADMAP.md` Catégorie 7, PR #143)
 > **tranché = C** : produit pour intégrateurs avec une couche low-code / no-code, décision n° 13
 > maintenue, allowlist serveur inchangée (TODO §70). Découpé en sous-lots `LC1`–`LC6` (palette
@@ -507,6 +513,57 @@ voir *Récemment livré*). TODO.md **entièrement clos**. Reliquat = lots V1.x /
 démarre par requirements → design ; **ne pas trancher silencieusement** une
 décision d’image Docker, de store partagé, ou d’activation `context-path`.
 
+> **Les Vagues A, B et C ci-dessous sont intégralement livrées** (PR #117–#119, #129, #131) ;
+> elles sont conservées pour mémoire et pour les règles de collision de coutures. La file active
+> est la **Vague D** ci-après.
+
+### File d'attente — Vague D (ordonnancement du 2026-09-29)
+
+Sources : [ROADMAP.md](ROADMAP.md) Catégorie 7 et *Priorisation*, analyses `analysis doc/` 30 à 46,
+TODO §70 (D0 = C) et §71 (exposition MCP). **Plafond : 3 agents simultanés** (4 avec D3a) : chaque
+lot `LC*` expose ses tools MCP dans le même lot (principe P1), donc tous touchent l'enregistrement
+des tools, les tests MCP et le golden OpenAPI.
+
+#### Lots parallélisables (surfaces d'écriture disjointes)
+
+| Lot | Surface principale | Parallèle avec |
+|---|---|---|
+| `signature-electronique` | portail, pièces jointes, port de signature | LC1, D1, D3a, LC2, LC4b |
+| **LC1** `palette-metier-bpmn` | frontend `bpmn-properties` (+ endpoints de catalogue en lecture) ; aucun changement du parseur serveur | signature, D1, D3a, LC2 |
+| **D1** `modele-champs-enrichi` (types seuls) | `FieldDefinition` / `FieldType`, forms `dossier-fields`, export CSV | signature, LC1, D3a, LC2 |
+| **D3a** OAuth2 client credentials | `HttpRestConnector` | signature, LC1, D1, LC2 |
+| **LC2** `langage-expression-metier` | évaluateur borné + delegate dans `AllowedBpmnDelegates` | signature, LC1, D1, D3a |
+| **LC4b** `editeur-templates-wysiwyg` | `TemplatesAdminView` | à peu près tout (aucune dépendance) |
+| **D5** audit des jobs planifiés | lecture seule, ne produit que de la doc | tout |
+
+#### Lots à ne pas lancer ensemble / ordre imposé
+
+| Contrainte | Raison |
+|---|---|
+| D3b ∦ LC2 (D3b **après** LC2) | les deux ajoutent un delegate dans `AllowedBpmnDelegates` ; D3b s'appuie sur le langage LC2 |
+| Champs calculés / visibilité de D1 **après** LC2 et **après** D1 (types) | dépendent de LC2 ; même fichier `FieldDefinition` que D1 |
+| D2 **après** D1 | partage `FieldDefinition` ; tests Testcontainers JSONB |
+| LC4a **après** D1 | le schéma `fieldDefinitions` doit être stabilisé avant l'éditeur de formulaires |
+| D3c + D3d : **un seul cycle** | même plomberie `ConnectorCatalog` (leçon B1) |
+| D4 **après** D1 et D3a | le format du bundle changerait deux fois (types de champs, config de connecteur) |
+| LC3 **après** D6 | prérequis explicite (brouillon et validation humaine des déploiements MCP) |
+| LC5 **après** LC1 et LC2 | briques typées (LC1) et conditions (LC2) |
+| LC6 : spike d'abord, lot **conditionnel** | seulement si LC2 s'avère insuffisant |
+
+#### Ordre proposé
+
+| Vague | Lots | Notes |
+|---|---|---|
+| **1** (3 agents, +D5 en fond) | `signature-electronique` ∥ LC1 ∥ (D1 **ou** LC2) ; D3a en 4ᵉ | LC2 plutôt que D1 raccourcit le chemin critique (LC2 débloque D3b, champs calculés D1, LC5). Fournisseur et niveau eIDAS à trancher en Phase 1 de la signature ; JSONata vs CEL en Phase 1 de LC2. |
+| **2** | D3b, champs calculés de D1, D2, D6, D4 (ordre de départ selon le lot de la Vague 1) | Voir arbitrage D4/D6 ci-dessous. Décisions TODO §71 encore ouvertes pour D6 : PARITY, RESOURCES, SCOPES, SECRETS. |
+| **3** | LC3, LC4a, LC4b (dès qu'un slot est libre), D3c + D3d | LC3 après D6, LC4a après D1. |
+| **4** | LC5, spike LC6 (conditionnel), D7 (selon marché) | Vérifications d'environnement hors file : `ClamAvAttachmentScanIT` sous Docker, smoke Keycloak réel. |
+
+**Arbitrage à trancher (non silencieux) — D4 vs D6.** `ROADMAP.md` place D4 avant D6 (D0 = C fait
+remonter D4). Or D4 (import de bundle) et D6 (brouillon, publication, provenance) touchent tous
+deux aux brouillons et à la publication de configuration. Recommandation : **D6 avant D4**, pour
+que l'import réutilise le mécanisme de brouillon ; à confirmer par l'utilisateur en Phase 1.
+
 ### Vague A — 3 agents simultanés (surfaces disjointes)
 
 Lancer **A1, A2, A3** en parallèle (3 branches / 3 PRs). **A4** optionnel en
@@ -595,7 +652,7 @@ sécurité UEL du BPMN ([PR #136](https://github.com/superjojo79/FlowForge/pull/
 
 **Cycle en cours :** aucun. Prochain candidat : `signature-electronique` (analyse
 [30-signature-electronique.md](analysis%20doc/30-signature-electronique.md), fournisseur et niveau
-eIDAS à trancher en Phase 1).
+eIDAS à trancher en Phase 1). Suite : voir *File d'attente — Vague D* (Vague 1 : LC1 et LC2 ou D1 en parallèle).
 
 Détail inventaire : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §4 / §6.
 
@@ -792,3 +849,4 @@ Vérifié : `./mvnw verify` 1136 tests (0 échec), Jacoco OK ; frontend `npm run
 | 2026-09-24 | `portail-externe` Phase 9 (revue) | **F-PORTAL-1 (Moyenne) corrigé** : limite par IP et jeton contrôlés avant lecture du corps multipart (`PortalPreAuthInterceptor`). `verify` 2347/0, Vitest 402/402, Playwright 92/92. Prochain : revue adversariale (subagent), puis PR. |
 | 2026-09-24 | `portail-externe` revue adversariale + correctifs | Subagent, preuves sur Tomcat réel. C1 (redirection Keycloak + session sur erreur de routage publique), C2 (limite par IP contournable via `Forwarded`), C3 (500 sur requête mal formée), H1 (table du limiteur non bornée dans la minute) : tous corrigés en TDD. `verify` 2358/0. DEPLOIEMENT.md : supprimer aussi `Forwarded` et `X-Forwarded-Prefix` au proxy. |
 | 2026-09-24 | `portail-externe` **mergée sur `main`** | [PR #138](https://github.com/superjojo79/FlowForge/pull/138) (squash `578a2db`), CI verte. TODO §68 clos. Action de déploiement : le reverse-proxy supprime aussi `Forwarded` et `X-Forwarded-Prefix` (DEPLOIEMENT.md §3). |
+| 2026-09-29 | Ordonnancement de la Vague D | File réordonnancée en 4 vagues, parallélisme borné (3 agents, 4 avec D3a), dépendances explicites ; arbitrage D4/D6 à trancher (recommandation : D6 avant D4). Prochain candidat inchangé : `signature-electronique`. |

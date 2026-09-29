@@ -1,6 +1,6 @@
 # FlowForge — Roadmap Fonctionnelle
 
-> **Document de référence** — Dernière vérification code : 28 septembre 2026 (`main` @ `e3985fe`, PR #143)  
+> **Document de référence** — Dernière vérification : 29 septembre 2026 (`main` @ `2283c92`, PR #144)  
 > **Statut** : statuts **recoupés sur le code et sur l’API GitHub**, pas sur l’analyse d’origine du 12/09  
 > **Sources de vérité produit :** [FILE-ATTENTE.md](FILE-ATTENTE.md), [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md), [TODO.md](TODO.md)  
 > **Vagues A, B, C et A4 : livrées.** `enrichissement-reporting` (PR #132), `inbox-notifications-persistee` (PR #135) et `outillage-dmn` ([PR #134](https://github.com/superjojo79/FlowForge/pull/134)) : livrés.
@@ -10,6 +10,8 @@
 > découpé en sous-lots `LC1`–`LC6`. Exposition MCP de ces sous-lots cadrée en amont
 > ([analyse 46](analysis%20doc/46-exposition-mcp-couche-low-code.md), TODO §71, décisions ouvertes).
 > Aucun lot cadré ; voir [Catégorie 7](#catégorie-7--adéquation-métier--industrialisation-vague-d).
+> **Ordonnancement (29/09) :** parallélisme, dépendances et vagues détaillés dans
+> [FILE-ATTENTE.md](FILE-ATTENTE.md) § *File d'attente — Vague D*.
 
 ---
 
@@ -334,25 +336,39 @@ PDF gèrent déjà des variantes par langue. Priorité selon le marché visé (D
 
 ## Priorisation
 
-1. `signature-electronique` — démarrable (portail livré, PR #138) ; fournisseur et niveau eIDAS à trancher en Phase 1.
-2. ~~**D0**~~ — ✅ tranché = C (TODO §70).
-3. **LC1** palette métier BPMN, en parallèle de **D1** (nouveaux types) et **D3a** (OAuth2) —
-   surfaces disjointes.
-4. **LC2** langage d'expression métier, puis **D3b** (mapping réponse → champs) et les champs
-   calculés de D1.
-5. **D2** recherche sur champs dynamiques (après D1).
-6. **D4** promotion de configuration — remontée par D0 = C.
-7. **D6** socle MCP low-code (après arbitrage des décisions TODO §71), puis **LC3** assistant de
-   conception IA.
-8. **LC4a** éditeur de formulaires et **LC4b** éditeur de templates.
-9. **D3c** (+ **D3d** si confirmé) — e-mail entrant et bus Azure, un seul cycle catalogue.
-10. **LC5** concepteur de parcours.
-11. **LC6** — spike de qualification, puis lot seulement si LC2 ne suffit pas.
-12. **D5** audit des jobs planifiés ; **D7** i18n selon le marché.
-13. Vérifications d’environnement hors file : `ClamAvAttachmentScanIT` sous Docker, smoke Keycloak réel.
+> Détail (surfaces d'écriture, contraintes de collision, plafond de 3 agents simultanés, 4 avec
+> D3a) : [FILE-ATTENTE.md](FILE-ATTENTE.md) § *File d'attente — Vague D*.
 
-Correctif documentaire sans cycle : le § *Statut* du `README.md` annonce encore « développement à
-démarrer ».
+**Vague 1 — en parallèle (surfaces disjointes)**
+
+1. `signature-electronique` — démarrable (portail livré, PR #138) ; fournisseur et niveau eIDAS à trancher en Phase 1.
+2. **LC1** palette métier BPMN (frontend seul).
+3. **D1** (nouveaux types uniquement) **ou LC2** — LC2 raccourcit le chemin critique (il débloque
+   D3b, les champs calculés de D1 et LC5). **D3a** (OAuth2) en 4ᵉ agent si accepté.
+4. **D5** audit des jobs planifiés, en fond (lecture seule).
+
+**Vague 2**
+
+5. **D3b** (mapping réponse → champs) et champs calculés de D1 — après LC2.
+6. **D2** recherche sur champs dynamiques — après D1.
+7. **D6** socle MCP low-code, puis **D4** promotion de configuration — *arbitrage à trancher* :
+   D6 avant D4 (recommandé, l'import réutilise le mécanisme de brouillon) ou D4 avant D6
+   (ordre précédent de ce document).
+
+**Vague 3**
+
+8. **LC3** assistant de conception IA — après D6.
+9. **LC4a** éditeur de formulaires — après D1 ; **LC4b** éditeur de templates — sans dépendance,
+   dès qu'un slot est libre.
+10. **D3c** (+ **D3d** si confirmé) — e-mail entrant et bus Azure, un seul cycle catalogue.
+
+**Vague 4**
+
+11. **LC5** concepteur de parcours — après LC1 et LC2.
+12. **LC6** — spike de qualification, puis lot seulement si LC2 ne suffit pas ; **D7** i18n selon le marché.
+13. Vérifications d'environnement hors file : `ClamAvAttachmentScanIT` sous Docker, smoke Keycloak réel.
+
+Correctif documentaire : le § *Statut* du `README.md` a été mis à jour le 29/09/2026 (fait).
 
 
 ---
@@ -368,3 +384,4 @@ démarrer ».
 | 1.4 | 28/09/2026 | Décision D0 (TODO §70) | D0 tranché = C (intégrateurs + couche low-code) ; sous-lots LC1–LC6 ; priorisation revue (D4 remonte, LC2 avant D3b et champs calculés). |
 | 1.5 | 28/09/2026 | Cadrage MCP low-code (TODO §71) | Analyse 46 référencée ; D6 élargi en socle MCP low-code ; exposition MCP dans le même lot pour chaque `LC*`. |
 | 1.6 | 28/09/2026 | Analyses initiales de la Vague D | Analyses 31–45 créées (D0–D7, LC1–LC6), cadrage MCP renuméroté 31 → 46 ; lots nommés et liés à leur analyse. |
+| 1.7 | 29/09/2026 | Ordonnancement de la Vague D | Priorisation réécrite en 4 vagues (alignée sur `FILE-ATTENTE.md`), arbitrage D4/D6 signalé, en-tête recalé sur `main` @ `2283c92`, README (Statut, positionnement) aligné. |

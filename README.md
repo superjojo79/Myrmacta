@@ -17,6 +17,12 @@
 
 FlowForge est une plateforme permettant à des organisations de **modéliser, exécuter et superviser leurs processus métier** sans développement sur mesure pour chaque cas d'usage.
 
+**Positionnement (décision du 2026-09-28, [TODO §70](TODO.md)) :** produit pour **intégrateurs**,
+avec hébergement dédié par client. L'intégrateur conçoit les processus (BPMN/DMN) ; une couche
+**low-code / no-code** (palette métier, éditeurs de formulaires et de templates, assistant IA) est
+planifiée pour que les utilisateurs avancés côté client ajustent formulaires, documents et règles.
+Cette couche n'est pas encore livrée : voir [ROADMAP.md](ROADMAP.md) (Vague D).
+
 L'idée centrale : un dossier métier suit un workflow adapté à son type, déclenché automatiquement depuis des sources externes, avec production de documents et notification des parties prenantes à chaque étape clé.
 
 **Exemples de cas d'usage :**
@@ -213,7 +219,10 @@ La documentation d'architecture est disponible dans le répertoire `analysis doc
 
 ## Statut
 
-> Projet en phase de conception — architecture définie, développement à démarrer.
+> Projet en développement actif : le socle (dossiers, workflows BPMN/DMN, documents, connecteurs,
+> serveur MCP, portail externe tokenisé, reporting/SLA, notifications) est livré sur `main`.
+> Les évolutions en cours de cadrage (couche low-code, modèle de champs enrichi, intégrations
+> entreprise, signature électronique) sont suivies dans [ROADMAP.md](ROADMAP.md).
 >  Activité indépendante complémentaire.
 
 La documentation d'architecture a fait l'objet d'une [revue pré-implémentation](REVUE-PRE-IMPLEMENTATION.md)

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://flowforge/test">
+
+  <!-- TODO §72 : deux signataires internes en séquentiel (relecteur puis approbateur), désignés par
+       identifiant utilisateur lu dans les champs du dossier. -->
+  <message id="signatureCompletedInternalMsg" name="signatureCompleted"/>
+
+  <process id="signatureInternalSmoke" name="Signature Internal Smoke" isExecutable="true">
+    <startEvent id="isStart"/>
+    <sequenceFlow id="isFlow1" sourceRef="isStart" targetRef="isRequest"/>
+    <serviceTask id="isRequest" name="Demander la signature interne"
+                 flowable:delegateExpression="${signatureRequestTask}"
+                 flowable:signatureDocument="variable:generatedDocumentId"
+                 flowable:signatureMode="SEQUENTIAL">
+      <extensionElements>
+        <flowable:signer source="dossierField:reviewerId" kind="INTERNAL" required="true" name="Relecteur"/>
+        <flowable:signer source="dossierField:approverId" kind="INTERNAL" required="true" name="Approbateur"/>
+      </extensionElements>
+    </serviceTask>
+    <sequenceFlow id="isFlow2" sourceRef="isRequest" targetRef="isWait"/>
+    <intermediateCatchEvent id="isWait">
+      <messageEventDefinition messageRef="signatureCompletedInternalMsg"/>
+    </intermediateCatchEvent>
+    <sequenceFlow id="isFlow3" sourceRef="isWait" targetRef="isEnd"/>
+    <endEvent id="isEnd"/>
+  </process>
+</definitions>

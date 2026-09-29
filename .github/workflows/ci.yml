@@ -26,6 +26,17 @@ jobs:
       - name: Build and verify (tests, ArchUnit, Jacoco)
         run: ./mvnw -B verify
 
+      # TODO §72 : parcours réel de bout en bout (navigateur + Spring Boot H2, sans API simulée).
+      # Réutilise le portail construit par l'étape précédente (target/classes/static/portal).
+      - name: Install Playwright browsers (signature E2E)
+        run: npx playwright install --with-deps chromium
+        working-directory: frontend
+
+      - name: Signature end-to-end (browser + real backend)
+        run: >
+          ./mvnw -B test -Dtest=SignatureBrowserE2eTest -Dsignature.e2e=true
+          -Dskip.frontend=true -Djacoco.skip=true -Dsurefire.failIfNoSpecifiedTests=false
+
   frontend:
     runs-on: ubuntu-latest
     defaults:

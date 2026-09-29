@@ -47,4 +47,12 @@ public interface WorkflowEnginePort {
      */
     void correlateMessage(
             String messageName, String correlationKey, Object correlationValue, Map<String, Object> variables);
+
+    /**
+     * Same as {@link #correlateMessage} but matches the variable on the <em>subscribed execution itself</em>
+     * (a variable set with {@code setVariableLocal}), so that several waits of the same process — parallel
+     * branches — can each be correlated without overwriting one another.
+     */
+    void correlateMessageOnExecution(
+            String messageName, String correlationKey, Object correlationValue, Map<String, Object> variables);
 }

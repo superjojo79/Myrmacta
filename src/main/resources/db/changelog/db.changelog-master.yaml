@@ -49,3 +49,5 @@ databaseChangeLog:
       file: db/changelog/changes/024-user-notification-unread-index.yaml
   - include:
       file: db/changelog/changes/025-portal-link.yaml
+  - include:
+      file: db/changelog/changes/026-signature.yaml

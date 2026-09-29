@@ -14,6 +14,7 @@ import com.flowforge.domain.dossier.port.out.DossierRelationRepository;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
 import com.flowforge.domain.dossier.port.out.PurgeOutboxRepository;
+import com.flowforge.domain.signature.port.out.SignatureRequestRepository;
 import com.flowforge.domain.workflow.port.out.TaskQuestionAnswerRepository;
 import com.flowforge.domain.workflow.portal.port.out.PortalLinkRepository;
 import com.flowforge.domain.workflow.port.out.WorkflowEnginePort;
@@ -36,6 +37,7 @@ public final class ProcessPurgeOutboxUseCaseImpl implements ProcessPurgeOutboxUs
     private final WorkflowEnginePort workflowEnginePort;
     private final TaskQuestionAnswerRepository taskQuestionAnswerRepository;
     private final PortalLinkRepository portalLinkRepository;
+    private final SignatureRequestRepository signatureRequestRepository;
 
     public ProcessPurgeOutboxUseCaseImpl(
             PurgeOutboxRepository purgeOutboxRepository,
@@ -46,7 +48,8 @@ public final class ProcessPurgeOutboxUseCaseImpl implements ProcessPurgeOutboxUs
             DocumentStoragePort documentStoragePort,
             WorkflowEnginePort workflowEnginePort,
             TaskQuestionAnswerRepository taskQuestionAnswerRepository,
-            PortalLinkRepository portalLinkRepository) {
+            PortalLinkRepository portalLinkRepository,
+            SignatureRequestRepository signatureRequestRepository) {
         this.purgeOutboxRepository = Objects.requireNonNull(purgeOutboxRepository, "purgeOutboxRepository");
         this.dossierRepository = Objects.requireNonNull(dossierRepository, "dossierRepository");
         this.elementRepository = Objects.requireNonNull(elementRepository, "elementRepository");
@@ -57,6 +60,8 @@ public final class ProcessPurgeOutboxUseCaseImpl implements ProcessPurgeOutboxUs
         this.taskQuestionAnswerRepository =
                 Objects.requireNonNull(taskQuestionAnswerRepository, "taskQuestionAnswerRepository");
         this.portalLinkRepository = Objects.requireNonNull(portalLinkRepository, "portalLinkRepository");
+        this.signatureRequestRepository =
+                Objects.requireNonNull(signatureRequestRepository, "signatureRequestRepository");
     }
 
     @Override
@@ -118,6 +123,12 @@ public final class ProcessPurgeOutboxUseCaseImpl implements ProcessPurgeOutboxUs
                 documentStoragePort.delete(tenantId, ref);
             }
         }
+
+        // TODO §72 : demandes de signature et signataires (adresses e-mail des tiers), supprimés AVANT les instances
+        // de process : sinon leur suppression déclencherait l'annulation des demandes ouvertes et des notifications
+        // parasites sur un dossier en cours de purge. Les documents signés et preuves sont des PRODUCED_DOC :
+        // déjà supprimés du stockage avec les éléments.
+        signatureRequestRepository.deleteAllByDossierId(dossierId);
 
         for (DossierWorkflowLink link : workflowLinkRepository.findByDossierIdOrderBySequence(dossierId)) {
             if (link.processInstanceId() != null && !link.processInstanceId().isBlank()) {

@@ -2,6 +2,7 @@ package com.flowforge.infrastructure.web.connector;
 
 import com.flowforge.domain.connector.model.CallbackAmbiguousCorrelationException;
 import com.flowforge.domain.connector.model.CallbackNoMatchingInstanceException;
+import com.flowforge.domain.connector.model.CallbackRetryLaterException;
 import com.flowforge.domain.connector.model.ConnectorInstanceNotFoundException;
 import com.flowforge.domain.connector.model.ConnectorInstanceQuotaExceededException;
 import com.flowforge.domain.connector.model.ConnectorValidationException;
@@ -62,6 +63,11 @@ public class ConnectorExceptionHandler {
     @ExceptionHandler(CallbackNoMatchingInstanceException.class)
     ProblemDetail handleCallbackNoMatchingInstance(CallbackNoMatchingInstanceException ex) {
         return problem(HttpStatus.NOT_FOUND, "No process waiting for this callback", ex.getMessage());
+    }
+
+    @ExceptionHandler(CallbackRetryLaterException.class)
+    ProblemDetail handleCallbackRetryLater(CallbackRetryLaterException ex) {
+        return problem(HttpStatus.SERVICE_UNAVAILABLE, "Callback cannot be applied yet, retry", ex.getMessage());
     }
 
     @ExceptionHandler(CallbackAmbiguousCorrelationException.class)

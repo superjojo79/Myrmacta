@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://flowforge/test">
+
+  <!-- TODO §72 (signature-electronique) : bloc « Demander une signature » suivi de l'attente du
+       message signatureCompleted et d'un routage sur signatureOutcome. Deux signataires externes
+       (champs du dossier signerA / signerB) ; le document est le storageRef posé dans la variable
+       generatedDocumentId. -->
+  <message id="signatureCompletedMsg" name="signatureCompleted"/>
+
+  <process id="signatureSmoke" name="Signature Smoke" isExecutable="true">
+    <startEvent id="sigStart"/>
+    <sequenceFlow id="sigFlow1" sourceRef="sigStart" targetRef="sigRequest"/>
+    <serviceTask id="sigRequest" name="Demander la signature"
+                 flowable:delegateExpression="${signatureRequestTask}"
+                 flowable:signatureDocument="variable:generatedDocumentId"
+                 flowable:signatureMode="PARALLEL"
+                 flowable:signatureDeadlineDays="14">
+      <extensionElements>
+        <flowable:signer source="dossierField:signerA" kind="EXTERNAL" required="true" name="Client"/>
+        <flowable:signer source="dossierField:signerB" kind="EXTERNAL" required="false" name="Garant"/>
+      </extensionElements>
+    </serviceTask>
+    <sequenceFlow id="sigFlow2" sourceRef="sigRequest" targetRef="sigWait"/>
+    <intermediateCatchEvent id="sigWait">
+      <messageEventDefinition messageRef="signatureCompletedMsg"/>
+    </intermediateCatchEvent>
+    <sequenceFlow id="sigFlow3" sourceRef="sigWait" targetRef="sigGateway"/>
+    <exclusiveGateway id="sigGateway"/>
+    <sequenceFlow id="sigSigned" sourceRef="sigGateway" targetRef="sigDone">
+      <conditionExpression xsi:type="tFormalExpression" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">${signatureOutcome == 'SIGNED'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sigNotSigned" sourceRef="sigGateway" targetRef="sigNotDone">
+      <conditionExpression xsi:type="tFormalExpression" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">${signatureOutcome != 'SIGNED'}</conditionExpression>
+    </sequenceFlow>
+    <userTask id="sigDone" name="Signature obtenue" flowable:assignee="signature-smoke"/>
+    <userTask id="sigNotDone" name="Signature non obtenue" flowable:assignee="signature-smoke"/>
+  </process>
+</definitions>

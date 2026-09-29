@@ -1,6 +1,7 @@
 package com.flowforge.domain.connector.usecase;
 
 import com.flowforge.domain.connector.model.CallbackConnector;
+import com.flowforge.domain.connector.model.CallbackHandlingConnector;
 import com.flowforge.domain.connector.model.CallbackResolution;
 import com.flowforge.domain.connector.model.ConnectorDefinition;
 import com.flowforge.domain.connector.model.ConnectorInstanceData;
@@ -25,6 +26,10 @@ public final class CallbackConnectorRuntimeImpl implements CallbackConnectorRunt
     public void onIncomingCallback(ConnectorInstanceData instance, Object rawPayload) {
         Objects.requireNonNull(instance, "instance");
         ConnectorDefinition definition = catalog.get(instance.connectorType());
+        if (definition instanceof CallbackHandlingConnector handling) {
+            handling.handleCallback(instance, rawPayload);
+            return;
+        }
         if (!(definition instanceof CallbackConnector callback)) {
             throw new ConnectorValidationException(
                     "Connector type does not support CALLBACK: " + instance.connectorType());

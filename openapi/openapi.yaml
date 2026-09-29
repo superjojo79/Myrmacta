@@ -384,6 +384,99 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/TaskQuestionSchemaResponse"
+  /api/signatures/mine/{signerId}/sign:
+    post:
+      tags:
+      - my-signatures-controller
+      operationId: sign
+      parameters:
+      - name: signerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SignatureDecisionResponse"
+  /api/signatures/mine/{signerId}/decline:
+    post:
+      tags:
+      - my-signatures-controller
+      operationId: decline
+      parameters:
+      - name: signerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignatureDeclineRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SignatureDecisionResponse"
+  /api/signature-requests/{requestId}/signers/{signerId}/resend:
+    post:
+      tags:
+      - signature-admin-controller
+      operationId: resend
+      parameters:
+      - name: requestId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: signerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SignatureRequestResponse"
+  /api/signature-requests/{requestId}/cancel:
+    post:
+      tags:
+      - signature-admin-controller
+      operationId: cancel
+      parameters:
+      - name: requestId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: dryRun
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SignatureRequestResponse"
   /api/security/csp-reports:
     post:
       tags:
@@ -418,6 +511,47 @@ paths:
       responses:
         "200":
           description: OK
+  /api/portal/signature/sign:
+    post:
+      tags:
+      - signature-portal-controller
+      operationId: sign_1
+      parameters:
+      - name: X-Portal-Token
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SignatureDecisionResponse"
+  /api/portal/signature/decline:
+    post:
+      tags:
+      - signature-portal-controller
+      operationId: decline_1
+      parameters:
+      - name: X-Portal-Token
+        in: header
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignatureDeclineRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SignatureDecisionResponse"
   /api/notifications/send:
     post:
       tags:
@@ -1803,6 +1937,40 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/TaskQuestionSchemaRuntimeResponse"
+  /api/signatures/mine:
+    get:
+      tags:
+      - my-signatures-controller
+      operationId: listMySignatures
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MySignatureItemResponse"
+  /api/signatures/mine/{signerId}/document:
+    get:
+      tags:
+      - my-signatures-controller
+      operationId: document
+      parameters:
+      - name: signerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: byte
   /api/reports/sla:
     get:
       tags:
@@ -2005,6 +2173,43 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/PortalTaskResponse"
+  /api/portal/signature:
+    get:
+      tags:
+      - signature-portal-controller
+      operationId: context
+      parameters:
+      - name: X-Portal-Token
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SignatureContextResponse"
+  /api/portal/signature/document:
+    get:
+      tags:
+      - signature-portal-controller
+      operationId: document_1
+      parameters:
+      - name: X-Portal-Token
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: byte
   /api/observability:
     get:
       tags:
@@ -2085,6 +2290,25 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/DossierResponse"
+  /api/dossiers/{dossierId}/signature-requests:
+    get:
+      tags:
+      - signature-admin-controller
+      operationId: listSignatureRequests
+      parameters:
+      - name: dossierId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SignatureRequestListResponse"
   /api/dossiers/{dossierId}/portal-links:
     get:
       tags:
@@ -2638,6 +2862,76 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/FieldDefinition"
+    SignatureDecisionResponse:
+      type: object
+      properties:
+        status:
+          type: string
+    SignatureDeclineRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+    SignatureRequestResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+        statusReason:
+          type: string
+        mode:
+          type: string
+        simulated:
+          type: boolean
+        providerCode:
+          type: string
+        sourceElementId:
+          type: string
+          format: uuid
+        deadlineAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        canManage:
+          type: boolean
+        signers:
+          type: array
+          items:
+            $ref: "#/components/schemas/SignatureSignerResponse"
+    SignatureSignerResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        position:
+          type: integer
+          format: int32
+        kind:
+          type: string
+        required:
+          type: boolean
+        displayName:
+          type: string
+        contact:
+          type: string
+        status:
+          type: string
+        decidedAt:
+          type: string
+          format: date-time
+        declineReason:
+          type: string
+        invited:
+          type: boolean
     SubmitRequest:
       type: object
       properties:
@@ -3689,6 +3983,28 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/FieldDefinition"
+    MySignatureItemResponse:
+      type: object
+      properties:
+        signerId:
+          type: string
+          format: uuid
+        dossierId:
+          type: string
+          format: uuid
+        dossierReference:
+          type: string
+        documentLabel:
+          type: string
+        required:
+          type: boolean
+        myTurn:
+          type: boolean
+        deadlineAt:
+          type: string
+          format: date-time
+        simulated:
+          type: boolean
     ManagerLoad:
       type: object
       properties:
@@ -4004,6 +4320,22 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Attachment"
+    SignatureContextResponse:
+      type: object
+      properties:
+        dossierReference:
+          type: string
+        documentLabel:
+          type: string
+        signerName:
+          type: string
+        required:
+          type: boolean
+        deadlineAt:
+          type: string
+          format: date-time
+        simulated:
+          type: boolean
     ObservabilitySeverityMap:
       type: object
       properties:
@@ -4192,6 +4524,15 @@ components:
         totalPages:
           type: integer
           format: int32
+    SignatureRequestListResponse:
+      type: object
+      properties:
+        canManage:
+          type: boolean
+        requests:
+          type: array
+          items:
+            $ref: "#/components/schemas/SignatureRequestResponse"
     ListResponse:
       type: object
       properties:

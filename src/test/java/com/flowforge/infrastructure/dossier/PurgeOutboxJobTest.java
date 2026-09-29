@@ -130,7 +130,8 @@ class PurgeOutboxJobTest {
         ProcessPurgeOutboxUseCase useCase = new ProcessPurgeOutboxUseCaseImpl(
                 outbox, dossiers, elements, relations, links, storage, engine,
                 org.mockito.Mockito.mock(com.flowforge.domain.workflow.port.out.TaskQuestionAnswerRepository.class),
-                org.mockito.Mockito.mock(com.flowforge.domain.workflow.portal.port.out.PortalLinkRepository.class));
+                org.mockito.Mockito.mock(com.flowforge.domain.workflow.portal.port.out.PortalLinkRepository.class),
+                org.mockito.Mockito.mock(com.flowforge.domain.signature.port.out.SignatureRequestRepository.class));
         PurgeOutboxJob job = new PurgeOutboxJob(
                 useCase,
                 new PurgeProperties(Duration.ofHours(1), 50, Duration.ofHours(2)),

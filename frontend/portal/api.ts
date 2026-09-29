@@ -90,3 +90,55 @@ export function submitAnswers(token: string, answers: Record<string, unknown>): 
     body: JSON.stringify({ answers }),
   })
 }
+
+// TODO §72 — signature électronique (jeton dans l'en-tête, aucune donnée du dossier hors contexte).
+export interface SignatureContext {
+  dossierReference: string
+  documentLabel: string
+  signerName: string
+  required: boolean
+  deadlineAt: string | null
+  simulated: boolean
+}
+
+export type SignatureDecision = 'SIGNED' | 'DECLINED'
+
+function signatureBase(pathname: string = window.location.pathname): string {
+  return apiBase(pathname).replace(/\/task$/, '/signature')
+}
+
+async function signatureRequest<T>(token: string, path: string, init: RequestInit = {}): Promise<T> {
+  const headers = new Headers(init.headers)
+  headers.set(TOKEN_HEADER, token)
+  const response = await fetch(signatureBase() + path, { ...init, headers, credentials: 'omit' })
+  if (!response.ok) {
+    let detail = ''
+    try {
+      detail = ((await response.json()) as { detail?: string }).detail ?? ''
+    } catch {
+      detail = ''
+    }
+    throw new PortalApiError(response.status, detail)
+  }
+  return init.method === 'POST' || path === '' ? ((await response.json()) as T) : ((await response.blob()) as T)
+}
+
+export function fetchSignatureContext(token: string): Promise<SignatureContext> {
+  return signatureRequest<SignatureContext>(token, '', { headers: { Accept: 'application/json' } })
+}
+
+export function fetchSignatureDocument(token: string): Promise<Blob> {
+  return signatureRequest<Blob>(token, '/document')
+}
+
+export function signDocument(token: string): Promise<{ status: SignatureDecision }> {
+  return signatureRequest(token, '/sign', { method: 'POST', headers: { Accept: 'application/json' } })
+}
+
+export function declineSignature(token: string, reason: string): Promise<{ status: SignatureDecision }> {
+  return signatureRequest(token, '/decline', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ reason: reason.trim() || null }),
+  })
+}

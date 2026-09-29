@@ -336,6 +336,47 @@ APP_PORTAL_MAX_LINK_TTL=30d      # facultatif, plafond de ce que le BPMN peut de
 
 ------
 
+## 10. Signature électronique
+
+Opt-in (TODO §72) : tant que `APP_SIGNATURE_PROVIDER=none` (défaut), aucune route de signature
+n'existe et un BPMN contenant un bloc de signature est **refusé au déploiement**.
+
+```bash
+APP_SIGNATURE_PROVIDER=stub          # seul fournisseur livré : simulation
+APP_SIGNATURE_DEFAULT_DEADLINE=14d   # facultatif
+APP_SIGNATURE_MAX_DEADLINE=90d       # facultatif, plafond de ce que le BPMN peut demander
+```
+
+- **Le `stub` ne produit aucune signature valable.** Il n'existe que pour développer et démontrer le
+  parcours. Il ne démarre sans réglage que sous les profils `local` ou `test`. **Hors de ces profils
+  (production comprise), il exige en plus la propriété `app.signature.stub.allow-outside-local=true`**,
+  volontairement absente de tous les gabarits (`.env.example`, `application*.yml`) : ne l'activer que
+  pour une recette ou une démonstration, jamais pour un usage réel. Le démarrage journalise un
+  avertissement et la jauge `flowforge.signature.stub.active` vaut 1 tant qu'il tourne — **alerter**
+  si elle vaut 1 en production.
+- **Signataires externes** : le portail doit être activé (§9), y compris `APP_PORTAL_PUBLIC_BASE_URL` ;
+  le lien d'invitation est `<URL publique>/portal/#signature:<jeton>`. L'invitation part par le relais
+  SMTP (cinq tentatives). Le jeton n'existe en clair que dans l'e-mail (empreinte SHA-256 en base, jamais
+  journalisé) ; le portail répond toujours par le même 404 uniforme à un lien refusé.
+- **Brancher un vrai fournisseur** : implémenter le port `SignaturePort` et créer une instance du
+  connecteur `signature` (type `CALLBACK`, secret de webhook en champ mot de passe). Le fournisseur
+  appelle `/api/callbacks/{id de l'instance}` (HMAC horodaté + clé d'idempotence, comme tout callback).
+- **Garde du stub** : le profil `test` est réservé aux tests automatisés ; ne jamais nommer ainsi un environnement
+  de recette (il démarrerait le stub sans le second drapeau). L'e-mail d'invitation et les PDF portent la mention
+  « SIMULATION » ; les PDF ont en plus la métadonnée `Subject`/`Keywords` et sont protégés contre la modification.
+- **Callback fournisseur** : atomique (une seule transaction) ; une référence encore inconnue répond **503** sans
+  mémoriser la clé d'idempotence — le fournisseur rejoue avec la même clé. Bornes revérifiées à l'exécution :
+  nombre de signataires (`max-signers`) et échéance (`APP_SIGNATURE_MAX_DEADLINE`) ; deux renvois d'invitation
+  au même signataire sont espacés d'au moins `app.signature.send.resend-min-interval` (1 minute).
+- **Reprise** : les issues sont reprises par un répartiteur à nouvelle tentative (20 essais) ; les
+  demandes expirent à l'échéance (tâche planifiée toutes les 15 minutes).
+- **Métriques** : `flowforge.signature.requests`, `.outcomes`, `.dispatch.retries` / `.dispatch.gave_up`
+  (reprises abandonnées : à alerter), `.callbacks.rejected`, et la jauge `flowforge.signature.stub.active`.
+- **Données personnelles** : demandes, signataires (adresses), documents signés et preuves sont
+  supprimés avec le dossier par la purge.
+
+------
+
 ## Ce qui n'est pas (encore) couvert par ce guide
 
 - **Démarrage de l'instance et bloc reverse-proxy** restent des étapes documentées (§1/§3/§4), pas

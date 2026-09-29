@@ -1,0 +1,262 @@
+databaseChangeLog:
+  - changeSet:
+      id: 026-signature
+      author: flowforge
+      comment: >-
+        TODO §72 (signature-electronique) — demandes de signature et signataires. token_hash =
+        SHA-256 hex du jeton (jamais le jeton). email = donnée personnelle, supprimée avec le dossier.
+        Index partiel : au plus une demande PENDING par (process_instance_id, activity_id).
+      changes:
+        - createTable:
+            tableName: signature_request
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_signature_request
+                    nullable: false
+              - column:
+                  name: tenant_id
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dossier_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: process_instance_id
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: activity_id
+                  type: varchar(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: source_element_id
+                  type: uuid
+              - column:
+                  name: source_storage_ref
+                  type: varchar(512)
+              - column:
+                  name: source_digest
+                  type: varchar(64)
+              - column:
+                  name: provider_code
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: provider_reference
+                  type: varchar(256)
+              - column:
+                  name: mode
+                  type: varchar(12)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(16)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status_reason
+                  type: varchar(48)
+              - column:
+                  name: simulated
+                  type: boolean
+                  defaultValueNumeric: False
+                  constraints:
+                    nullable: false
+              - column:
+                  name: assurance_level
+                  type: varchar(16)
+              - column:
+                  name: deadline_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: outcome_dispatched_at
+                  type: timestamp with time zone
+              - column:
+                  name: dispatch_attempts
+                  type: int
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: completed_at
+                  type: timestamp with time zone
+              - column:
+                  name: created_by
+                  type: varchar(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: version
+                  type: bigint
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+        - createTable:
+            tableName: signature_signer
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_signature_signer
+                    nullable: false
+              - column:
+                  name: tenant_id
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: request_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: signer_rank
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: kind
+                  type: varchar(10)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: required
+                  type: boolean
+                  defaultValueNumeric: True
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: varchar(128)
+              - column:
+                  name: display_name
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: email
+                  type: varchar(320)
+              - column:
+                  name: token_hash
+                  type: varchar(64)
+              - column:
+                  name: status
+                  type: varchar(16)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: invite_sent_at
+                  type: timestamp with time zone
+              - column:
+                  name: invite_attempts
+                  type: int
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: decided_at
+                  type: timestamp with time zone
+              - column:
+                  name: decline_reason
+                  type: varchar(500)
+              - column:
+                  name: version
+                  type: bigint
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: signature_request
+            indexName: idx_signature_request_dossier
+            columns:
+              - column:
+                  name: dossier_id
+        - createIndex:
+            tableName: signature_request
+            indexName: idx_signature_request_status_deadline
+            columns:
+              - column:
+                  name: status
+              - column:
+                  name: deadline_at
+        - createIndex:
+            tableName: signature_request
+            indexName: idx_signature_request_dispatch
+            columns:
+              - column:
+                  name: status
+              - column:
+                  name: outcome_dispatched_at
+        - createIndex:
+            tableName: signature_request
+            indexName: idx_signature_request_provider_ref
+            columns:
+              - column:
+                  name: provider_reference
+        - createIndex:
+            tableName: signature_request
+            indexName: idx_signature_request_process
+            columns:
+              - column:
+                  name: process_instance_id
+        - createIndex:
+            tableName: signature_signer
+            indexName: idx_signature_signer_request
+            columns:
+              - column:
+                  name: request_id
+        - createIndex:
+            tableName: signature_signer
+            indexName: idx_signature_signer_user
+            columns:
+              - column:
+                  name: user_id
+        - createIndex:
+            tableName: signature_signer
+            indexName: ux_signature_signer_token_hash
+            unique: true
+            columns:
+              - column:
+                  name: token_hash
+        - addForeignKeyConstraint:
+            baseTableName: signature_signer
+            baseColumnNames: request_id
+            referencedTableName: signature_request
+            referencedColumnNames: id
+            constraintName: fk_signature_signer_request
+            onDelete: CASCADE
+        - sqlFile:
+            path: sql/026-signature-request-pending-index-postgresql.sql
+            relativeToChangelogFile: true
+            dbms: postgresql
+            splitStatements: false
+        - sqlFile:
+            path: sql/026-signature-request-pending-index-h2.sql
+            relativeToChangelogFile: true
+            dbms: h2
+            splitStatements: true
+      rollback:
+        - dropTable:
+            tableName: signature_signer
+        - dropTable:
+            tableName: signature_request

@@ -87,9 +87,22 @@ class FlowableWorkflowEngineAdapter implements WorkflowEnginePort {
     @Override
     public void correlateMessage(
             String messageName, String correlationKey, Object correlationValue, Map<String, Object> variables) {
-        List<Execution> matches = runtimeService.createExecutionQuery()
-                .messageEventSubscriptionName(messageName)
-                .processVariableValueEquals(correlationKey, correlationValue)
+        correlate(messageName, correlationKey, correlationValue, variables, false);
+    }
+
+    @Override
+    public void correlateMessageOnExecution(
+            String messageName, String correlationKey, Object correlationValue, Map<String, Object> variables) {
+        correlate(messageName, correlationKey, correlationValue, variables, true);
+    }
+
+    private void correlate(
+            String messageName, String correlationKey, Object correlationValue, Map<String, Object> variables,
+            boolean executionLocal) {
+        var query = runtimeService.createExecutionQuery().messageEventSubscriptionName(messageName);
+        List<Execution> matches = (executionLocal
+                        ? query.variableValueEquals(correlationKey, correlationValue)
+                        : query.processVariableValueEquals(correlationKey, correlationValue))
                 .list();
         if (matches.isEmpty()) {
             throw new CallbackNoMatchingInstanceException(messageName, correlationKey, correlationValue);

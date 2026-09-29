@@ -1,5 +1,8 @@
 package com.flowforge.infrastructure.flowable;
 
+import com.flowforge.domain.signature.model.SignatureBlockDefinition;
+import com.flowforge.domain.signature.model.SignatureMode;
+import com.flowforge.domain.signature.model.SignerKind;
 import com.flowforge.domain.workflow.AllowedBpmnDelegates;
 import com.flowforge.domain.workflow.TaskQuestionFormKeys;
 import com.flowforge.domain.workflow.model.InvalidBpmnException;
@@ -18,6 +21,8 @@ import java.util.regex.Pattern;
 import org.flowable.bpmn.converter.BpmnXMLConverter;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.BusinessRuleTask;
+import org.flowable.bpmn.model.ExtensionAttribute;
+import org.flowable.bpmn.model.ExtensionElement;
 import org.flowable.bpmn.model.FieldExtension;
 import org.flowable.bpmn.model.FlowElement;
 import org.flowable.bpmn.model.FlowableListener;
@@ -84,6 +89,156 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
             collectPortalTasks(process.getFlowElements(), tasks);
         }
         return List.copyOf(tasks);
+    }
+
+    @Override
+    public List<SignatureBlockDefinition> extractSignatureBlocks(byte[] bpmnXml) {
+        BpmnModel model;
+        try {
+            model = new BpmnXMLConverter().convertToBpmnModel(() -> new ByteArrayInputStream(bpmnXml), true, false);
+        } catch (Exception ex) {
+            throw new InvalidBpmnException("File is not a valid BPMN 2.0 document: " + ex.getMessage(), ex);
+        }
+        List<SignatureBlockDefinition> blocks = new ArrayList<>();
+        for (Process process : model.getProcesses()) {
+            collectSignatureBlocks(process.getFlowElements(), blocks);
+        }
+        return List.copyOf(blocks);
+    }
+
+    private static void collectSignatureBlocks(Collection<FlowElement> elements, List<SignatureBlockDefinition> blocks) {
+        if (elements == null) {
+            return;
+        }
+        for (FlowElement element : elements) {
+            if (element instanceof ServiceTask serviceTask) {
+                signatureDefinition(serviceTask).ifPresent(blocks::add);
+            }
+            if (element instanceof SubProcess subProcess) {
+                collectSignatureBlocks(subProcess.getFlowElements(), blocks);
+            }
+        }
+    }
+
+    private static final String SIGNATURE_DELEGATE = "signatureRequestTask";
+    private static final String SIGNATURE_DOCUMENT_ATTRIBUTE = "signatureDocument";
+    private static final String SIGNATURE_MODE_ATTRIBUTE = "signatureMode";
+    private static final String SIGNATURE_DEADLINE_ATTRIBUTE = "signatureDeadlineDays";
+    private static final String SIGNER_ELEMENT = "signer";
+    private static final Set<String> SIGNER_ATTRIBUTES = Set.of("source", "kind", "required", "name");
+    private static final int MAX_SIGNATURE_DEADLINE_DAYS = 365;
+    /** Colonne {@code signature_request.activity_id} : varchar(128). */
+    private static final int MAX_ACTIVITY_ID_LENGTH = 128;
+
+    /**
+     * TODO §72 D-SIGNATURE-BPMN-MARKER — un {@code serviceTask} {@code ${signatureRequestTask}} est un
+     * bloc signature : {@code flowable:signatureDocument="variable:<nom>|dossierField:<nom>"}
+     * (obligatoire), {@code flowable:signatureMode="PARALLEL|SEQUENTIAL"} (défaut {@code PARALLEL}),
+     * {@code flowable:signatureDeadlineDays} (1–{@value #MAX_SIGNATURE_DEADLINE_DAYS}, plafond tenant
+     * vérifié au déploiement) et un élément {@code <flowable:signer source= kind= required= name=/>} par
+     * signataire, avec au moins un requis et des sources distinctes. Les sources sont des noms
+     * <em>littéraux</em>, jamais évalués en UEL (§69) ; les attributs inconnus sont refusés.
+     * Tout attribut ou élément de signature hors de ce bloc est refusé.
+     */
+    static Optional<SignatureBlockDefinition> signatureDefinition(ServiceTask serviceTask) {
+        String owner = "BPMN signature block " + serviceTask.getId();
+        String documentRaw = serviceTask.getAttributeValue(FLOWABLE_NAMESPACE, SIGNATURE_DOCUMENT_ATTRIBUTE);
+        String modeRaw = serviceTask.getAttributeValue(FLOWABLE_NAMESPACE, SIGNATURE_MODE_ATTRIBUTE);
+        String deadlineRaw = serviceTask.getAttributeValue(FLOWABLE_NAMESPACE, SIGNATURE_DEADLINE_ATTRIBUTE);
+        List<ExtensionElement> signerElements = signerElements(serviceTask);
+        boolean isSignatureDelegate = ImplementationType.IMPLEMENTATION_TYPE_DELEGATEEXPRESSION
+                        .equals(serviceTask.getImplementationType())
+                && SIGNATURE_DELEGATE.equals(
+                        AllowedBpmnDelegates.unwrapBeanName(serviceTask.getImplementation()));
+        boolean hasSignatureMarkup =
+                documentRaw != null || modeRaw != null || deadlineRaw != null || !signerElements.isEmpty();
+        if (!isSignatureDelegate) {
+            if (hasSignatureMarkup) {
+                throw new InvalidBpmnException(
+                        owner + ": signature attributes and flowable:signer require delegateExpression ${"
+                                + SIGNATURE_DELEGATE + "}");
+            }
+            return Optional.empty();
+        }
+        PortalRecipientSource document = PortalRecipientSource.parse(documentRaw)
+                .orElseThrow(() -> new InvalidBpmnException(
+                        owner + ": signatureDocument must be dossierField:<name> or variable:<name>"));
+        SignatureMode mode = modeRaw == null
+                ? SignatureMode.PARALLEL
+                : SignatureMode.parse(modeRaw)
+                        .orElseThrow(() -> new InvalidBpmnException(
+                                owner + ": signatureMode must be PARALLEL or SEQUENTIAL"));
+        Integer deadlineDays = null;
+        if (deadlineRaw != null) {
+            try {
+                deadlineDays = Integer.valueOf(deadlineRaw.trim());
+            } catch (NumberFormatException ex) {
+                throw new InvalidBpmnException(owner + ": signatureDeadlineDays must be an integer", ex);
+            }
+            if (deadlineDays < 1 || deadlineDays > MAX_SIGNATURE_DEADLINE_DAYS) {
+                throw new InvalidBpmnException(
+                        owner + ": signatureDeadlineDays must be between 1 and " + MAX_SIGNATURE_DEADLINE_DAYS);
+            }
+        }
+        if (serviceTask.getId() != null && serviceTask.getId().length() > MAX_ACTIVITY_ID_LENGTH) {
+            throw new InvalidBpmnException(
+                    owner + ": the activity id must be at most " + MAX_ACTIVITY_ID_LENGTH + " characters");
+        }
+        if (signerElements.isEmpty()) {
+            throw new InvalidBpmnException(owner + ": at least one flowable:signer is required");
+        }
+        List<SignatureBlockDefinition.SignerDefinition> signers = new ArrayList<>();
+        for (ExtensionElement element : signerElements) {
+            signers.add(signerDefinition(owner, element));
+        }
+        try {
+            return Optional.of(new SignatureBlockDefinition(serviceTask.getId(), document, mode, deadlineDays, signers));
+        } catch (IllegalArgumentException ex) {
+            throw new InvalidBpmnException(owner + ": " + ex.getMessage(), ex);
+        }
+    }
+
+    private static List<ExtensionElement> signerElements(ServiceTask serviceTask) {
+        List<ExtensionElement> all = serviceTask.getExtensionElements().get(SIGNER_ELEMENT);
+        if (all == null) {
+            return List.of();
+        }
+        return all.stream().filter(e -> FLOWABLE_NAMESPACE.equals(e.getNamespace())).toList();
+    }
+
+    private static SignatureBlockDefinition.SignerDefinition signerDefinition(String owner, ExtensionElement element) {
+        for (String attribute : element.getAttributes().keySet()) {
+            if (!SIGNER_ATTRIBUTES.contains(attribute)) {
+                throw new InvalidBpmnException(owner + ": unexpected attribute '" + attribute + "' on flowable:signer");
+            }
+        }
+        if (element.getChildElements() != null && !element.getChildElements().isEmpty()
+                || (element.getElementText() != null && !element.getElementText().isBlank())) {
+            throw new InvalidBpmnException(owner + ": flowable:signer must be an empty element");
+        }
+        PortalRecipientSource source = PortalRecipientSource.parse(signerAttribute(element, "source"))
+                .orElseThrow(() -> new InvalidBpmnException(
+                        owner + ": flowable:signer source must be dossierField:<name> or variable:<name>"));
+        SignerKind kind = SignerKind.parse(signerAttribute(element, "kind"))
+                .orElseThrow(() -> new InvalidBpmnException(
+                        owner + ": flowable:signer kind must be EXTERNAL or INTERNAL"));
+        String requiredRaw = signerAttribute(element, "required");
+        boolean required;
+        if (requiredRaw == null || "true".equalsIgnoreCase(requiredRaw.trim())) {
+            required = true;
+        } else if ("false".equalsIgnoreCase(requiredRaw.trim())) {
+            required = false;
+        } else {
+            throw new InvalidBpmnException(owner + ": flowable:signer required must be true or false");
+        }
+        String name = signerAttribute(element, "name");
+        return new SignatureBlockDefinition.SignerDefinition(
+                source, kind, required, name == null || name.isBlank() ? source.name() : name.trim());
+    }
+
+    private static String signerAttribute(ExtensionElement element, String name) {
+        List<ExtensionAttribute> values = element.getAttributes().get(name);
+        return values == null || values.isEmpty() ? null : values.get(0).getValue();
     }
 
     private static void collectPortalTasks(Collection<FlowElement> elements, List<PortalTaskDefinition> tasks) {
@@ -208,6 +363,12 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
         }
         if (element instanceof ServiceTask serviceTask) {
             assertSafeServiceTask(serviceTask);
+            signatureDefinition(serviceTask);
+        } else if (element.getAttributeValue(FLOWABLE_NAMESPACE, SIGNATURE_DOCUMENT_ATTRIBUTE) != null
+                || element.getAttributeValue(FLOWABLE_NAMESPACE, SIGNATURE_MODE_ATTRIBUTE) != null
+                || element.getAttributeValue(FLOWABLE_NAMESPACE, SIGNATURE_DEADLINE_ATTRIBUTE) != null) {
+            throw new InvalidBpmnException("BPMN signature attributes are only allowed on a serviceTask "
+                    + "with delegateExpression ${" + SIGNATURE_DELEGATE + "}: " + element.getId());
         }
         if (element instanceof TaskWithFieldExtensions taskWithFields && !isDmnServiceTask(element)) {
             assertNoFieldExtensions(element.getId(), taskWithFields.getFieldExtensions());
@@ -310,6 +471,7 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
         }
         portalDefinition(userTask);
     }
+
 
     private static List<String> safeList(List<String> values) {
         return values == null ? List.of() : values;

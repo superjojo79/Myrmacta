@@ -26,4 +26,14 @@ public interface BpmnParserPort {
      */
     java.util.List<com.flowforge.domain.workflow.portal.model.PortalTaskDefinition> extractPortalTasks(
             byte[] bpmnXml);
+
+    /**
+     * TODO §72 — blocs « Demander une signature » du document ({@code serviceTask}
+     * {@code ${signatureRequestTask}} portant des attributs {@code flowable:signature*} et des
+     * éléments {@code flowable:signer}), déjà validés en forme par
+     * {@link #extractProcessDefinitionKey(byte[])}. Les bornes tenant (fonctionnalité active, portail,
+     * nombre de signataires, échéance) sont vérifiées au déploiement, pas ici. Vide si aucun.
+     */
+    java.util.List<com.flowforge.domain.signature.model.SignatureBlockDefinition> extractSignatureBlocks(
+            byte[] bpmnXml);
 }

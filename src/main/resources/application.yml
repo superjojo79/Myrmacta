@@ -227,12 +227,33 @@ app:
       poll-delay: 10s
       max-attempts: 5
       batch-size: 50
+      resend-min-interval: 1m
     expiry:
       poll-delay: 15m
       batch-size: 50
     rate-limit:
       per-ip-per-minute: 30
     max-body-bytes: 65536
+  signature:
+    # TODO §72 (signature-electronique). provider : none (défaut : fonctionnalité absente, un bloc
+    # signature est refusé au déploiement) | stub (simulation, sans valeur juridique). Le stub ne
+    # démarre sans drapeau que sous le profil local ou test (D-SIGNATURE-STUB-GUARD).
+    provider: ${APP_SIGNATURE_PROVIDER:none}
+    max-signers: 10
+    default-deadline: ${APP_SIGNATURE_DEFAULT_DEADLINE:14d}
+    max-deadline: ${APP_SIGNATURE_MAX_DEADLINE:90d}
+    max-document-bytes: 20971520
+    send:
+      poll-delay: 10s
+      max-attempts: 5
+      batch-size: 50
+    expiry:
+      poll-delay: 15m
+      batch-size: 50
+    dispatch:
+      poll-delay: 15s
+      max-attempts: 20
+      batch-size: 50
   dossier:
     attachment:
       # Taille max : app.storage n'a pas de borne dédiée, la seule limite est

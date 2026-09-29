@@ -333,6 +333,54 @@ attribut ou élément inattendu. Tout écart ⇒ `InvalidBpmnException` explicit
 avec `dryRun`. Réutilisent les use cases REST (doctrine MCP atomique) ; **aucun tool d'émission** ni
 d'écriture de configuration.
 
+## Revue documentaire du contrat (M0, D-SIGNATURE-CONTRACT-CHECK)
+
+> **Limite assumée.** L'accès réseau du conteneur de session bloque les sites des fournisseurs
+> (`developers.yousign.com`, `developers.docusign.com` : proxy d'egress). Le tableau ci-dessous
+> repose sur la **connaissance de leurs API publiques**, pas sur une relecture en ligne du jour.
+> Chaque ligne est donc à **reconfirmer contre la documentation à jour au premier provider réel** ;
+> les cases marquées ⚠ sont celles où mon niveau de certitude est le plus faible. Références
+> retenues (par défaut, faute de choix de l'utilisateur) : **Yousign (API v3)**, **DocuSign
+> eSignature (REST)**, **Universign** (moins détaillé, ⚠).
+
+| Besoin du contrat | Yousign v3 | DocuSign eSignature | Traitement dans `SignaturePort` |
+|---|---|---|---|
+| Création de la demande | `signature_requests` (+ documents + signataires, puis activation) | `envelopes` (documents + recipients, statut `sent`) | `submit` |
+| Corrélation FlowForge | `external_id` | `envelopeId` + champ personnalisé ⚠ | `SubmitCommand.requestId` transmis comme référence externe |
+| Signataires ordonnés | option d'ordre au niveau de la demande | `routingOrder` croissant (séquentiel), même valeur (parallèle) | capacité `orderedSigning` ; `SEQUENTIAL` sans support ⇒ refus à l'émission (`MODE_UNSUPPORTED`) |
+| Signataires facultatifs | pas de notion directe ⚠ (rôle approbateur ≠ facultatif) | pas de destinataire facultatif natif ⚠ | capacité `optionalSigners` ; bloc avec facultatifs sans support ⇒ refus (`OPTIONAL_UNSUPPORTED`) |
+| Niveau d'assurance | niveau par signataire (simple, avancé, qualifié) | types de signature selon offre ⚠ | `requestedAssuranceLevel` (facultatif) ; `assuranceLevel` en retour, informatif |
+| Envoi des invitations | mode de livraison configurable (dont aucun envoi) | signature intégrée sans e-mail possible | FlowForge envoie **sa propre invitation** (lien portail) ; l'adaptateur **désactive l'e-mail du fournisseur** |
+| URL de signature | lien par signataire | URL de signature intégrée par signataire | `SignatureSubmission.signingUrls`, redirection depuis le portail (`hostedSigningUrl`) |
+| Échéance | date d'expiration de la demande | expiration de l'enveloppe | `deadlineAt` transmis ; FlowForge expire aussi de son côté (job) |
+| Issue | événements de demande (terminée, refusée, expirée…) | événements Connect (completed, declined, voided) | `parseCallback` ⇒ `SignatureOutcome` (terminée→`SIGNED`, refusée→`DECLINED`, expirée→`EXPIRED`, annulée→`CANCELLED`, erreur→`FAILED`) |
+| Décision par signataire | événement par signataire | événements par destinataire | `signerDecisions` (facultatif dans l'événement) |
+| Document signé | téléchargement du document signé | téléchargement des documents combinés | `fetchArtifacts().signedDocument` |
+| Preuve | piste d'audit téléchargeable | certificat de réalisation | `fetchArtifacts().proof` |
+| Annulation | annulation de la demande | annulation (`voided`) | `cancel` (au mieux) |
+| Authenticité du callback | secret / signature HMAC des webhooks ⚠ | signature HMAC des webhooks Connect ⚠ | contrôleur de callback (HMAC horodaté du connecteur) ; **le schéma de signature propre à chaque fournisseur est géré par l'adaptateur** |
+
+**Écarts et décisions de gel :**
+
+1. **Ordre imposé et facultatifs ne sont pas universels.** Le contrat les déclare en capacités ;
+   FlowForge **refuse à l'émission** une demande qu'un fournisseur ne peut pas honorer
+   (`FAILED`, `MODE_UNSUPPORTED` / `OPTIONAL_UNSUPPORTED`) plutôt que de l'émuler côté domaine
+   (orchestration signataire par signataire : possible plus tard, hors lot).
+2. **Décisions par signataire en mode hébergé.** Quand le signataire signe chez le fournisseur,
+   FlowForge n'en est informé que par callback : `SignatureCallbackEvent` porte l'issue et, si le
+   fournisseur les donne, les décisions par signataire (pour l'affichage). L'issue de la demande
+   reste celle du fournisseur ; `SignatureProgression` ne pilote alors que le stub.
+3. **Invitation.** Un seul e-mail au signataire : celui de FlowForge (lien portail). L'adaptateur
+   d'un fournisseur doit désactiver ses propres e-mails, sinon le signataire reçoit deux messages.
+4. **Ajouts au port par rapport à l'esquisse :** `requestedAssuranceLevel`, `signingUrls`,
+   `parseCallback` / `SignatureCallbackEvent`. Le reste (`code`, `capabilities`, `submit`, `status`,
+   `cancel`, `fetchArtifacts`) est inchangé.
+5. **Non couvert volontairement :** signatures avec champs positionnés dans le document, pièces
+   jointes multiples, signature par lot, modèles du fournisseur (hors périmètre, un seul
+   `PRODUCED_DOC` — D-SIGNATURE-DOCUMENT).
+
+**Contrat gelé le 2026-09-29** (T0.4) sous réserve de la reconfirmation documentaire ci-dessus.
+
 ## Component Breakdown
 
 ### Backend — domaine (`com.flowforge.domain.signature`)

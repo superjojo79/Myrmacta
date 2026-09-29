@@ -16,3 +16,24 @@ export function takeTokenFromLocation(
   }
   return TOKEN_PATTERN.test(raw) ? raw : null
 }
+
+export type PortalLink = { kind: 'task' | 'signature'; token: string }
+
+const SIGNATURE_PREFIX = 'signature:'
+
+/**
+ * TODO §72 — le lien de signature est `#signature:<jeton>` ; le lien de tâche (§68) reste `#<jeton>`.
+ * Même règle : lu une fois, effacé de la barre d'adresse, jamais stocké.
+ */
+export function takeLinkFromLocation(
+  location: Pick<Location, 'hash' | 'pathname' | 'search'>,
+  history: Pick<History, 'replaceState'>,
+): PortalLink | null {
+  const raw = location.hash.startsWith('#') ? location.hash.slice(1) : location.hash
+  const kind = raw.startsWith(SIGNATURE_PREFIX) ? 'signature' : 'task'
+  const token = takeTokenFromLocation(
+    { ...location, hash: kind === 'signature' ? '#' + raw.slice(SIGNATURE_PREFIX.length) : location.hash },
+    history,
+  )
+  return token ? { kind, token } : null
+}

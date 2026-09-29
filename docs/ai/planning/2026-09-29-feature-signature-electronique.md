@@ -59,112 +59,112 @@ migration ; seuls les comportements sont livrés par jalons.
 Notation : `Tx.y` — outcome ; *dép.* dépendances ; *preuve* validation ; *scénarios* identifiants du testing.
 
 ### M0 — Revue documentaire et gel du contrat
-- [ ] **T0.1** Choisir 2 à 3 API publiques de référence avec l'utilisateur (aucun compte requis, lecture de la documentation publique). *preuve :* liste consignée dans le design. *scénarios :* S-CONTRACT-2.
-- [ ] **T0.2** Extraire pour chacune : demande, signataires, ordre, facultatifs, statuts, preuve, webhooks, échéance. *dép. :* T0.1.
-- [ ] **T0.3** Produire le tableau de correspondance avec `SignaturePort` ; traiter ou consigner chaque écart, dont : provider sans ordre imposé ou sans facultatifs (le port refuse, ou FlowForge orchestre). *preuve :* tableau relu et validé par l'utilisateur. *scénarios :* S-CONTRACT-2.
-- [ ] **T0.4** Geler la forme finale de `SignaturePort` et des capacités dans le design. *dép. :* T0.3.
+- [x] **T0.1** Choisir 2 à 3 API publiques de référence avec l'utilisateur (aucun compte requis, lecture de la documentation publique). *preuve :* liste consignée dans le design. *scénarios :* S-CONTRACT-2.
+- [x] **T0.2** Extraire pour chacune : demande, signataires, ordre, facultatifs, statuts, preuve, webhooks, échéance. *dép. :* T0.1.
+- [x] **T0.3** Produire le tableau de correspondance avec `SignaturePort` ; traiter ou consigner chaque écart, dont : provider sans ordre imposé ou sans facultatifs (le port refuse, ou FlowForge orchestre). *preuve :* tableau relu et validé par l'utilisateur. *scénarios :* S-CONTRACT-2.
+- [x] **T0.4** Geler la forme finale de `SignaturePort` et des capacités dans le design. *dép. :* T0.3.
 
 ### M1 — Fondation
-- [ ] **T1.1** Records et enums de domaine : `SignatureRequest`, `Signer`, statuts, `SignatureMode`, `SignerKind`, `SignatureOutcome`, `SignerSource`, `SignatureBlockDefinition`. *preuve :* tests unitaires des invariants.
-- [ ] **T1.2** Ports `in`/`out` (`SignaturePort` provisoire, repositories, token, résolution de signataire, invitations, documents, disponibilité). *dép. :* T1.1.
-- [ ] **T1.3** `SignatureProgression` (fonction pure) : règles 1–5 du design. *preuve :* table de vérité exhaustive mode × requis × événement. *scénarios :* S-PROG-1, S-PROG-2, S-PROG-3, S-PROG-4, S-PROG-7.
-- [ ] **T1.4** Migration Liquibase (`signature_request`, `signature_signer`, index dont l'index partiel PostgreSQL et son équivalent H2) et test sur PostgreSQL réel (Testcontainers). *preuve :* IT vert sur PG. *scénarios :* S-EMIT-10.
-- [ ] **T1.5** Entités JPA et adaptateurs de repository, verrou optimiste, compare-and-set. *dép. :* T1.4.
-- [ ] **T1.6** `AccessContext.External` pour le signataire (`signature:<id>`) et mise à jour des `case External`. *preuve :* tests des politiques d'accès existantes inchangés.
-- [ ] **T1.7** Règle ArchUnit `domain.signature` pure. *scénarios :* S-CONN-3.
-- [ ] **T1.8** `SignatureProperties` (`app.signature.*`), validation des bornes, valeurs par défaut. *dép. :* T1.1.
+- [x] **T1.1** Records et enums de domaine : `SignatureRequest`, `Signer`, statuts, `SignatureMode`, `SignerKind`, `SignatureOutcome`, `SignerSource`, `SignatureBlockDefinition`. *preuve :* tests unitaires des invariants.
+- [x] **T1.2** Ports `in`/`out` (`SignaturePort` provisoire, repositories, token, résolution de signataire, invitations, documents, disponibilité). *dép. :* T1.1.
+- [x] **T1.3** `SignatureProgression` (fonction pure) : règles 1–5 du design. *preuve :* table de vérité exhaustive mode × requis × événement. *scénarios :* S-PROG-1, S-PROG-2, S-PROG-3, S-PROG-4, S-PROG-7.
+- [x] **T1.4** Migration Liquibase (`signature_request`, `signature_signer`, index dont l'index partiel PostgreSQL et son équivalent H2) et test sur PostgreSQL réel (Testcontainers). *preuve :* IT vert sur PG. *scénarios :* S-EMIT-10.
+- [x] **T1.5** Entités JPA et adaptateurs de repository, verrou optimiste, compare-and-set. *dép. :* T1.4.
+- [x] **T1.6** ~~`AccessContext.External` pour le signataire (`signature:<id>`) et mise à jour des `case External`. *preuve :* tests des politiques d'accès existantes inchangés.~~ *Supprimée (écart D1 du design)* : le signataire n'appelle aucune politique d'accès dossier ; il est authentifié par son jeton et le use case agit en contexte système. Aucun `AccessContext` nouveau.
+- [x] **T1.7** Règle ArchUnit `domain.signature` pure. *scénarios :* S-CONN-3.
+- [x] **T1.8** `SignatureProperties` (`app.signature.*`), validation des bornes, valeurs par défaut. *dép. :* T1.1.
 
 ### M2 — Allowlist, delegate et parser
-- [ ] **T2.1** Ajouter `signatureRequestTask` à `AllowedBpmnDelegates`. *scénarios :* S-PARSE-1.
-- [ ] **T2.2** `extractSignatureBlocks` : premier parsing d'`extensionElements` (`flowable:signer`) et de tous les attributs du bloc, toutes les règles de validation du design (dont sources distinctes, ≥ 1 requis, portail requis pour `EXTERNAL`, bornes). *scénarios :* S-PARSE-2, S-PROG-5, S-PROG-6.
-- [ ] **T2.3** Compatibilité avec `BpmnExpressionSurfaceScanner` : aucun `${…}` toléré dans le bloc. *scénarios :* S-PARSE-3, S-PARSE-5.
-- [ ] **T2.4** Non-régression du parser portail et des BPMN livrés. *scénarios :* S-PARSE-4.
-- [ ] **T2.5** Garde de déploiement branchée sur `SignatureAvailabilityPort` (`provider=none` ⇒ bloc refusé). *dép. :* T1.2, T2.2. *scénarios :* S-STUB-7 (partie déploiement), S-PW-8.
+- [x] **T2.1** Ajouter `signatureRequestTask` à `AllowedBpmnDelegates`. *scénarios :* S-PARSE-1.
+- [x] **T2.2** `extractSignatureBlocks` : premier parsing d'`extensionElements` (`flowable:signer`) et de tous les attributs du bloc, toutes les règles de validation du design (dont sources distinctes, ≥ 1 requis, portail requis pour `EXTERNAL`, bornes). *scénarios :* S-PARSE-2, S-PROG-5, S-PROG-6.
+- [x] **T2.3** Compatibilité avec `BpmnExpressionSurfaceScanner` : aucun `${…}` toléré dans le bloc. *scénarios :* S-PARSE-3, S-PARSE-5.
+- [x] **T2.4** Non-régression du parser portail et des BPMN livrés. *scénarios :* S-PARSE-4.
+- [x] **T2.5** Garde de déploiement branchée sur `SignatureAvailabilityPort` (`provider=none` ⇒ bloc refusé). *dép. :* T1.2, T2.2. *scénarios :* S-STUB-7 (partie déploiement), S-PW-8.
 
 ### M3 — Stub, PDF, garde de profil, contrat
-- [ ] **T3.1** **Spike F7** : confirmer l'accès à l'API OpenPDF (`PdfStamper`) via `flying-saucer-pdf` 10.5.0. *preuve :* test d'essai qui estampille un PDF existant ; sinon, décision de dépendance à remonter à l'utilisateur.
-- [ ] **T3.2** `StubPdfFactory` : filigrane « SIMULATION — sans valeur juridique » sur le document signé. *dép. :* T3.1. *scénarios :* S-STUB-2, S-STUB-10.
-- [ ] **T3.3** PDF de preuve : empreinte, signataires (identité masquée), horodatages, mention. *dép. :* T3.1. *scénarios :* S-STUB-9.
-- [ ] **T3.4** `StubSignatureAdapter` : cycle complet, issues forcées pour les tests, applique ses issues en interne. *dép. :* T0.4, T1.2, T3.2, T3.3. *scénarios :* S-STUB-1, S-STUB-3.
-- [ ] **T3.5** `SignatureConfig` : sélection de l'adaptateur (`none` \| `stub` \| inconnu ⇒ échec de démarrage), garde par liste positive de profils, second drapeau, avertissement et compteur ; absence du drapeau des gabarits. *dép. :* T1.8. *scénarios :* S-STUB-4, S-STUB-5, S-STUB-6, S-STUB-7, S-STUB-8, S-CONN-2, S-CONN-4 (partie beans).
-- [ ] **T3.6** Suite de **tests de contrat** `SignaturePort`, exécutée contre le stub, réutilisable. *dép. :* T3.4. *scénarios :* S-CONTRACT-1.
+- [x] **T3.1** **Spike F7** : confirmer l'accès à l'API OpenPDF (`PdfStamper`) via `flying-saucer-pdf` 10.5.0. *preuve :* test d'essai qui estampille un PDF existant ; sinon, décision de dépendance à remonter à l'utilisateur.
+- [x] **T3.2** `StubPdfFactory` : filigrane « SIMULATION — sans valeur juridique » sur le document signé. *dép. :* T3.1. *scénarios :* S-STUB-2, S-STUB-10.
+- [x] **T3.3** PDF de preuve : empreinte, signataires (identité masquée), horodatages, mention. *dép. :* T3.1. *scénarios :* S-STUB-9.
+- [x] **T3.4** `StubSignatureAdapter` : cycle complet, issues forcées pour les tests, applique ses issues en interne. *dép. :* T0.4, T1.2, T3.2, T3.3. *scénarios :* S-STUB-1, S-STUB-3.
+- [x] **T3.5** `SignatureConfig` : sélection de l'adaptateur (`none` \| `stub` \| inconnu ⇒ échec de démarrage), garde par liste positive de profils, second drapeau, avertissement et compteur ; absence du drapeau des gabarits. *dép. :* T1.8. *scénarios :* S-STUB-4, S-STUB-5, S-STUB-6, S-STUB-7, S-STUB-8, S-CONN-2, S-CONN-4 (partie beans).
+- [x] **T3.6** Suite de **tests de contrat** `SignaturePort`, exécutée contre le stub, réutilisable. *dép. :* T3.4. *scénarios :* S-CONTRACT-1.
 
 ### M4 — Émission
-- [ ] **T4.1** Adaptateur de résolution des signataires : champ de dossier / variable de process → adresse (externe) ou utilisateur (interne, existence et statut). *scénarios :* S-EMIT-2, S-INT-4.
-- [ ] **T4.2** `RequestSignatureUseCase` : validation, document retrouvé par `storageRef`, taille, empreinte, création demande + signataires, appel du port, erreurs en `FAILED`. *dép. :* T1.5, T3.4, T4.1. *scénarios :* S-EMIT-1, S-EMIT-3, S-EMIT-4, S-EMIT-7, S-EMIT-8, S-EMIT-9.
-- [ ] **T4.3** Idempotence : rejeu du delegate sans doublon. *dép. :* T4.2. *scénarios :* S-EMIT-5.
-- [ ] **T4.4** Détection des identités résolues identiques ⇒ `FAILED` (`DUPLICATE_SIGNER`). *dép. :* T4.2. *scénarios :* S-EMIT-6.
-- [ ] **T4.5** Delegate `SignatureRequestTask` : pose `signatureRequestId`, ne bloque jamais le process. *dép. :* T2.1, T4.2.
-- [ ] **T4.6** Jetons (`SignatureTokenPort` sur `PortalTokenPort`) et `SignatureInviteSenderJob` : invitation e-mail aux externes `PENDING`, reprises, plafond. *dép. :* T4.2. *scénarios :* S-DEC-7 (parallèle).
+- [x] **T4.1** Adaptateur de résolution des signataires : champ de dossier / variable de process → adresse (externe) ou utilisateur (interne, existence et statut). *scénarios :* S-EMIT-2, S-INT-4.
+- [x] **T4.2** `RequestSignatureUseCase` : validation, document retrouvé par `storageRef`, taille, empreinte, création demande + signataires, appel du port, erreurs en `FAILED`. *dép. :* T1.5, T3.4, T4.1. *scénarios :* S-EMIT-1, S-EMIT-3, S-EMIT-4, S-EMIT-7, S-EMIT-8, S-EMIT-9.
+- [x] **T4.3** Idempotence : rejeu du delegate sans doublon. *dép. :* T4.2. *scénarios :* S-EMIT-5.
+- [x] **T4.4** Détection des identités résolues identiques ⇒ `FAILED` (`DUPLICATE_SIGNER`). *dép. :* T4.2. *scénarios :* S-EMIT-6.
+- [x] **T4.5** Delegate `SignatureRequestTask` : pose `signatureRequestId`, ne bloque jamais le process. *dép. :* T2.1, T4.2.
+- [x] **T4.6** Jetons (`SignatureTokenPort` sur `PortalTokenPort`) et `SignatureInviteSenderJob` : invitation e-mail aux externes `PENDING`, reprises, plafond. *dép. :* T4.2. *scénarios :* S-DEC-7 (parallèle).
 
 ### M5 — Portail
-- [ ] **T5.1** `SignatureAccessResolver` : jeton → signataire `PENDING` d'une demande `PENDING` non échue ; réponses uniformes, comparaison en temps constant. *dép. :* T1.5, T4.6. *scénarios :* S-ACCESS-2, S-ACCESS-7.
-- [ ] **T5.2** `SignaturePortalController` (contexte, document, signer, refuser), gestionnaire d'exceptions uniforme ; aucun identifiant client. *dép. :* T5.1. *scénarios :* S-ACCESS-1, S-ACCESS-3, S-ACCESS-4.
-- [ ] **T5.3** Extension de l'intercepteur pré-authentification : limite par IP et jeton vivant avant lecture du corps, corps borné. *dép. :* T5.2. *scénarios :* S-ACCESS-5.
-- [ ] **T5.4** Le jeton n'apparaît ni en base, ni dans les journaux, ni dans les URL serveur. *scénarios :* S-ACCESS-6.
-- [ ] **T5.5** Routes et beans absents quand la fonctionnalité est désactivée. *scénarios :* S-ACCESS-8, S-CONN-4 (partie routes).
+- [x] **T5.1** `SignatureAccessResolver` : jeton → signataire `PENDING` d'une demande `PENDING` non échue ; réponses uniformes, comparaison en temps constant. *dép. :* T1.5, T4.6. *scénarios :* S-ACCESS-2, S-ACCESS-7.
+- [x] **T5.2** `SignaturePortalController` (contexte, document, signer, refuser), gestionnaire d'exceptions uniforme ; aucun identifiant client. *dép. :* T5.1. *scénarios :* S-ACCESS-1, S-ACCESS-3, S-ACCESS-4.
+- [x] **T5.3** Extension de l'intercepteur pré-authentification : limite par IP et jeton vivant avant lecture du corps, corps borné. *dép. :* T5.2. *scénarios :* S-ACCESS-5.
+- [x] **T5.4** Le jeton n'apparaît ni en base, ni dans les journaux, ni dans les URL serveur. *scénarios :* S-ACCESS-6.
+- [x] **T5.5** Routes et beans absents quand la fonctionnalité est désactivée. *scénarios :* S-ACCESS-8, S-CONN-4 (partie routes).
 
 ### M6 — Décision externe (J1)
-- [ ] **T6.1** `DecideSignatureUseCase` (externe, parallèle, requis) : signature, refus borné et échappé, compare-and-set, refus si expirée / annulée. *dép. :* T1.3, T5.2. *scénarios :* S-DEC-1, S-DEC-2, S-DEC-3, S-DEC-4, S-DEC-6.
-- [ ] **T6.2** `HandleSignatureOutcomeUseCase` : documents signés et preuves (`PRODUCED_DOC` marqués), révocation des non décidés, notifications inbox. *dép. :* T6.1, T3.4. *scénarios :* S-OUT-2, S-DOC-1.
-- [ ] **T6.3** Reprise du process avec `signatureOutcome` et `signatureRequestId` (via le répartiteur), routage par passerelle sur les cinq issues, reprise idempotente. *dép. :* T6.2, T8b.1. *scénarios :* S-OUT-1, S-OUT-3.
+- [x] **T6.1** `DecideSignatureUseCase` (externe, parallèle, requis) : signature, refus borné et échappé, compare-and-set, refus si expirée / annulée. *dép. :* T1.3, T5.2. *scénarios :* S-DEC-1, S-DEC-2, S-DEC-3, S-DEC-4, S-DEC-6.
+- [x] **T6.2** `HandleSignatureOutcomeUseCase` : documents signés et preuves (`PRODUCED_DOC` marqués), révocation des non décidés, notifications inbox. *dép. :* T6.1, T3.4. *scénarios :* S-OUT-2, S-DOC-1.
+- [x] **T6.3** Reprise du process avec `signatureOutcome` et `signatureRequestId` (via le répartiteur), routage par passerelle sur les cinq issues, reprise idempotente. *dép. :* T6.2, T8b.1. *scénarios :* S-OUT-1, S-OUT-3.
 
 ### M6b — Séquentiel et facultatifs (J2)
-- [ ] **T6b.1** Mode `SEQUENTIAL` : `WAITING` → `PENDING` dans la transaction de décision, réponse uniforme avant son tour. *dép. :* T6.1. *scénarios :* S-DEC-5.
-- [ ] **T6b.2** Facultatifs : refus / échéance d'un facultatif ne ferme pas la demande ; dernier requis signé ⇒ facultatif restant révoqué ; intégration de `SignatureProgression` aux use cases. *scénarios :* S-PROG-2, S-PROG-4, S-PROG-7 (intégration).
-- [ ] **T6b.3** Invitation du suivant en séquentiel. *dép. :* T4.6. *scénarios :* S-DEC-7 (séquentiel).
+- [x] **T6b.1** Mode `SEQUENTIAL` : `WAITING` → `PENDING` dans la transaction de décision, réponse uniforme avant son tour. *dép. :* T6.1. *scénarios :* S-DEC-5.
+- [x] **T6b.2** Facultatifs : refus / échéance d'un facultatif ne ferme pas la demande ; dernier requis signé ⇒ facultatif restant révoqué ; intégration de `SignatureProgression` aux use cases. *scénarios :* S-PROG-2, S-PROG-4, S-PROG-7 (intégration).
+- [x] **T6b.3** Invitation du suivant en séquentiel. *dép. :* T4.6. *scénarios :* S-DEC-7 (séquentiel).
 
 ### M6c — Signataires internes (J3)
-- [ ] **T6c.1** `ListMySignaturesUseCase` et `MySignaturesController` (liste, document, signer, refuser) filtrés par identité et tour. *dép. :* T6.1. *scénarios :* S-INT-1, S-INT-2, S-INT-5.
-- [ ] **T6c.2** Droit de lecture du dossier exigé ; à l'émission, absence de droit ⇒ traité comme adresse absente. *dép. :* T4.1. *scénarios :* S-INT-3.
-- [ ] **T6c.3** Notifications inbox à l'émission et à la décision. *scénarios :* S-INT-6.
+- [x] **T6c.1** `ListMySignaturesUseCase` et `MySignaturesController` (liste, document, signer, refuser) filtrés par identité et tour. *dép. :* T6.1. *scénarios :* S-INT-1, S-INT-2, S-INT-5.
+- [x] **T6c.2** Droit de lecture du dossier exigé ; à l'émission, absence de droit ⇒ traité comme adresse absente. *dép. :* T4.1. *scénarios :* S-INT-3.
+- [x] **T6c.3** Notifications inbox à l'émission et à la décision. *scénarios :* S-INT-6.
 
 ### M7 — Gestion instructeur (J1)
-- [ ] **T7.1** Liste des demandes (statuts par signataire) : VIEW, adresse masquée sans EDIT. *dép. :* T4.2. *scénarios :* S-ADM-1.
-- [ ] **T7.2** Annuler et renvoyer : EDIT requis, propagation au port, nouveau jeton et ancien révoqué. *scénarios :* S-ADM-2, S-ADM-4.
-- [ ] **T7.3** Annulation sur disparition de la tâche / du process / du dossier (écouteur moteur). *scénarios :* S-ADM-3.
-- [ ] **T7.4** `SignatureExpiryJob` idempotent tolérant le retard ; expiration d'un requis ⇒ `EXPIRED`. *scénarios :* S-EXP-1, S-PROG-3 (intégration).
-- [ ] **T7.5** API : filtre sur `metadata.signatureRole` pour distinguer source, signé, preuve. *scénarios :* S-DOC-2.
+- [x] **T7.1** Liste des demandes (statuts par signataire) : VIEW, adresse masquée sans EDIT. *dép. :* T4.2. *scénarios :* S-ADM-1.
+- [x] **T7.2** Annuler et renvoyer : EDIT requis, propagation au port, nouveau jeton et ancien révoqué. *scénarios :* S-ADM-2, S-ADM-4.
+- [x] **T7.3** Annulation sur disparition de la tâche / du process / du dossier (écouteur moteur). *scénarios :* S-ADM-3.
+- [x] **T7.4** `SignatureExpiryJob` idempotent tolérant le retard ; expiration d'un requis ⇒ `EXPIRED`. *scénarios :* S-EXP-1, S-PROG-3 (intégration).
+- [x] **T7.5** API : filtre sur `metadata.signatureRole` pour distinguer source, signé, preuve. *scénarios :* S-DOC-2.
 
 ### M8 — Connecteur et callback
-- [ ] **T8.1** Entrée de catalogue `signature` (`CALLBACK`, `configSchema`, secrets `PASSWORD`). *scénarios :* S-CONN-1.
-- [ ] **T8.2** `SignatureCallbackController` : HMAC horodaté, idempotence, taille, rate-limit ; callback tardif ignoré et journalisé. *dép. :* T8.1, T6.2. *scénarios :* S-OUT-4, S-OUT-5.
+- [x] **T8.1** Entrée de catalogue `signature` (`CALLBACK`, `configSchema`, secrets `PASSWORD`). *scénarios :* S-CONN-1.
+- [x] **T8.2** `SignatureCallbackController` : HMAC horodaté, idempotence, taille, rate-limit ; callback tardif ignoré et journalisé. *dép. :* T8.1, T6.2. *scénarios :* S-OUT-4, S-OUT-5.
 
 ### M8b — Répartiteur et métriques
-- [ ] **T8b.1** `SignatureOutcomeDispatcher` : tentative immédiate, reprise sur `CallbackNoMatchingInstanceException`, `outcome_dispatched_at`, plafond et alerte. *dép. :* T1.5. *scénarios :* S-DISP-1, S-DISP-2, S-DISP-3, S-DISP-4.
-- [ ] **T8b.2** Métriques Micrometer, sans donnée personnelle dans les libellés. *scénarios :* S-DISP-5.
+- [x] **T8b.1** `SignatureOutcomeDispatcher` : tentative immédiate, reprise sur `CallbackNoMatchingInstanceException`, `outcome_dispatched_at`, plafond et alerte. *dép. :* T1.5. *scénarios :* S-DISP-1, S-DISP-2, S-DISP-3, S-DISP-4.
+- [x] **T8b.2** Métriques Micrometer, sans donnée personnelle dans les libellés. *scénarios :* S-DISP-5.
 
 ### M8c — MCP
-- [ ] **T8c.1** `list_signature_requests`, `get_signature_request` (adresses masquées). *dép. :* T7.1. *scénarios :* S-MCP-1.
-- [ ] **T8c.2** `cancel_signature_request` avec `dryRun`. *dép. :* T7.2. *scénarios :* S-MCP-2.
-- [ ] **T8c.3** Test de catalogue : aucun tool d'émission. *scénarios :* S-MCP-3.
+- [x] **T8c.1** `list_signature_requests`, `get_signature_request` (adresses masquées). *dép. :* T7.1. *scénarios :* S-MCP-1.
+- [x] **T8c.2** `cancel_signature_request` avec `dryRun`. *dép. :* T7.2. *scénarios :* S-MCP-2.
+- [x] **T8c.3** Test de catalogue : aucun tool d'émission. *scénarios :* S-MCP-3.
 
 ### M9 — Purge
-- [ ] **T9.1** Étendre le graphe de purge (`ProcessPurgeOutboxUseCaseImpl`) aux demandes, signataires (adresses), documents signés et preuves. *dép. :* T1.5. *scénarios :* S-PURGE-1.
+- [x] **T9.1** Étendre le graphe de purge (`ProcessPurgeOutboxUseCaseImpl`) aux demandes, signataires (adresses), documents signés et preuves. *dép. :* T1.5. *scénarios :* S-PURGE-1.
 
 ### M10 — Frontend portail
-- [ ] **T10.1** Écran signataire dans le build portail : consulter le document, signer, refuser ; états neutres (invalide / expiré / signé / refusé). *dép. :* T5.2. *scénarios :* S-VT-1.
+- [x] **T10.1** Écran signataire dans le build portail : consulter le document, signer, refuser ; états neutres (invalide / expiré / signé / refusé). *dép. :* T5.2. *scénarios :* S-VT-1.
 
 ### M11 — Frontend interne
-- [ ] **T11a.1** Panneau « Signatures » du détail du dossier : statuts par signataire, annuler, renvoyer, document signé et preuve, bandeau « SIMULATION ». *dép. :* T7.1. *scénarios :* S-VT-2.
-- [ ] **T11a.2** Import / export d'un BPMN contenant le bloc préserve attributs et éléments (aucune UI dédiée, réservée à LC1). *scénarios :* S-VT-3.
-- [ ] **T11b.1** Vue « Mes signatures » : liste, tour actif / en attente, signer, refuser, erreurs neutres. *dép. :* T6c.1. *scénarios :* S-VT-4.
+- [x] **T11a.1** Panneau « Signatures » du détail du dossier : statuts par signataire, annuler, renvoyer, document signé et preuve, bandeau « SIMULATION ». *dép. :* T7.1. *scénarios :* S-VT-2.
+- [x] **T11a.2** Import / export d'un BPMN contenant le bloc préserve attributs et éléments (aucune UI dédiée, réservée à LC1). *scénarios :* S-VT-3.
+- [x] **T11b.1** Vue « Mes signatures » : liste, tour actif / en attente, signer, refuser, erreurs neutres. *dép. :* T6c.1. *scénarios :* S-VT-4.
 
 ### M12 — Playwright
-- [ ] **T12a.1** J1 : parcours nominal, refus, lien invalide, annulation et renvoi, fonctionnalité désactivée. *dép. :* T10.1, T11a.1. *scénarios :* S-PW-4, S-PW-5, S-PW-6, S-PW-7, S-PW-8.
-- [ ] **T12b.1** J2 : séquentiel, facultatif qui refuse. *dép. :* T6b.1, T6b.2. *scénarios :* S-PW-2, S-PW-3.
-- [ ] **T12c.1** J3 : signataire interne. *dép. :* T11b.1. *scénarios :* S-PW-1.
+- [x] **T12a.1** J1 : parcours nominal, refus, lien invalide, annulation et renvoi, fonctionnalité désactivée. *dép. :* T10.1, T11a.1. *scénarios :* S-PW-4, S-PW-5, S-PW-6, S-PW-7, S-PW-8.
+- [x] **T12b.1** J2 : séquentiel, facultatif qui refuse. *dép. :* T6b.1, T6b.2. *scénarios :* S-PW-2, S-PW-3.
+- [x] **T12c.1** J3 : signataire interne. *dép. :* T11b.1. *scénarios :* S-PW-1.
 
 ### M13 — Documentation
-- [ ] **T13.1** `GUIDE-CONCEPTION-BPMN.md` (bloc signature, message `signatureCompleted`, variables, exemple de routage), `GUIDE-UTILISATEUR.md` (instructeur, signataires, « Mes signatures »).
-- [ ] **T13.2** `GETTING-STARTED.md` et `.env.example` (propriétés, **sans** le second drapeau), `DEPLOIEMENT.md` (activation, garde du stub, portail requis pour les externes), `CHANGELOG.md`.
-- [ ] **T13.3** Golden OpenAPI régénéré pour les nouveaux chemins uniquement. *scénarios :* S-CONTRACT-3.
-- [ ] **T13.4** Statuts : TODO §72, `FILE-ATTENTE.md`, `ROADMAP.md`, `DEFERRED-FEATURES.md`, analyse 30.
+- [x] **T13.1** `GUIDE-CONCEPTION-BPMN.md` (bloc signature, message `signatureCompleted`, variables, exemple de routage), `GUIDE-UTILISATEUR.md` (instructeur, signataires, « Mes signatures »).
+- [x] **T13.2** `GETTING-STARTED.md` et `.env.example` (propriétés, **sans** le second drapeau), `DEPLOIEMENT.md` (activation, garde du stub, portail requis pour les externes), `CHANGELOG.md`.
+- [x] **T13.3** Golden OpenAPI régénéré pour les nouveaux chemins uniquement. *scénarios :* S-CONTRACT-3.
+- [x] **T13.4** Statuts : TODO §72, `FILE-ATTENTE.md`, `ROADMAP.md`, `DEFERRED-FEATURES.md`, analyse 30.
 
 ### M14 — Vérification globale
-- [ ] **T14.1** `./mvnw verify` (Jacoco, ArchUnit), Vitest, Playwright verts. *preuve :* chiffres consignés dans le testing.
-- [ ] **T14.2** Non-régression : export CSV et affichage des éléments inchangés. *scénarios :* S-DOC-3.
-- [ ] **T14.3** Revue adversariale du portail rejouée sur le nouveau contrôleur (Tomcat réel, sur le modèle de `PortalRealServerTest`) ; corriger les constats avant PR.
+- [x] **T14.1** `./mvnw verify` (Jacoco, ArchUnit), Vitest, Playwright verts. *preuve :* chiffres consignés dans le testing.
+- [x] **T14.2** Non-régression : export CSV et affichage des éléments inchangés. *scénarios :* S-DOC-3.
+- [x] **T14.3** Revue adversariale du portail rejouée sur le nouveau contrôleur (Tomcat réel, sur le modèle de `PortalRealServerTest`) ; corriger les constats avant PR.
 - [ ] **T14.4** Vérifications manuelles : PDF filigrané, e-mails, démarrage réel avec et sans le second drapeau.
 
 ## Dependencies

@@ -573,6 +573,36 @@ internes — si l'antivirus n'est pas activé ou ne répond pas, le fichier est 
 accepté, décision D-PORTAL-SCAN). L'exploitant doit activer ClamAV sur tout tenant qui active le
 portail.
 
+## 12. Signatures électroniques (TODO §72)
+
+Quand un workflow contient un **bloc de signature** (GUIDE-CONCEPTION-BPMN §3quater), FlowForge invite
+les signataires à signer un document du dossier, suit leurs décisions et fait reprendre le workflow.
+La fonctionnalité est **désactivée par défaut** (voir [DEPLOIEMENT.md](DEPLOIEMENT.md#10-signature-électronique)).
+Tant qu'aucun fournisseur réel n'est branché, les signatures sont une **simulation sans valeur
+juridique** : un bandeau « SIMULATION » l'indique partout et les PDF produits le portent.
+
+**Signataire externe (sans compte).** Il reçoit un e-mail avec un lien personnel : il consulte le
+document, puis **signe** ou **refuse** (motif facultatif). Un lien inconnu, expiré, déjà utilisé ou
+d'une demande close affiche toujours le même message « Lien invalide ou expiré ». Il ne voit rien
+d'autre du dossier.
+
+**Signataire interne — « Mes signatures »** (menu du même nom). *À mon tour* liste les demandes à
+signer maintenant ; *En attente* celles où un signataire précédent doit d'abord décider (mode
+séquentiel). Vous pouvez consulter le document, **Signer** ou **Refuser**.
+
+**Panneau « Signatures »** sur le détail d'un dossier (visible dès qu'une demande existe) :
+
+| Colonne | Contenu |
+|---|---|
+| Signataire | Nom et, le cas échéant, *(facultatif)* |
+| Contact | Adresse e-mail **masquée** (`a***@exemple.fr`) ou identifiant ; absent sans le droit EDIT |
+| Statut | *En attente de son tour*, *À signer*, *Signé*, *Refusé*, *Expiré*, *Révoqué* |
+| Décision | Date et motif éventuel de refus |
+
+Droit **EDIT** sur le type du dossier (ou `TENANT_ADMIN` / `WORKFLOW_ADMIN`) : **Renvoyer** (nouveau
+lien, l'ancien cesse de fonctionner) et **Annuler la demande** (le workflow reprend avec le résultat
+*Annulée*). Une fois signée, le **document signé** et la **preuve** apparaissent dans les pièces du dossier.
+
 ## Pour aller plus loin
 
 - Mise en place de l'environnement : [GETTING-STARTED.md](GETTING-STARTED.md)

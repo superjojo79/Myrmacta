@@ -615,7 +615,7 @@ technique.
 | Lot | Items `ROADMAP.md` | Analyse initiale | Statut |
 |---|---|---|---|
 | `portail-externe` | 3.1 (Portail externe tokenisé) | [26-portail-externe.md](analysis%20doc/26-portail-externe.md) | **Livré** ([PR #138](https://github.com/superjojo79/FlowForge/pull/138), TODO §68) |
-| `signature-electronique` | 2.4 (Signature électronique) | [30-signature-electronique.md](analysis%20doc/30-signature-electronique.md) | Non démarré — **démarrable** (`portail-externe` livré, PR #138 : le signataire sans compte passe par le portail) |
+| `signature-electronique` | 2.4 (Signature électronique) | [30-signature-electronique.md](analysis%20doc/30-signature-electronique.md) | **Implémenté sur branche** `claude/dreamy-davinci-4ddp96` (Phase 5, jalons M0–M13 ; M14 vérification globale puis PR à venir) — `portail-externe` livré, PR #138 |
 | `outillage-dmn` | 1.1 + 1.2 + 1.3/5.1 | [28-outillage-dmn.md](analysis%20doc/28-outillage-dmn.md) | **Livré** ([PR #134](https://github.com/superjojo79/FlowForge/pull/134), TODO §67) |
 | `enrichissement-reporting` | 5.2 + 3.3 + 5.3 | [29-enrichissement-reporting.md](analysis%20doc/29-enrichissement-reporting.md) | **Livré** (PR #132) |
 | `inbox-notifications-persistee` | 3.2 | [27-notifications-inbox.md](analysis%20doc/27-notifications-inbox.md) | **Livré** (PR #135) |

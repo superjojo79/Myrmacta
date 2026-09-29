@@ -1104,7 +1104,7 @@ lot `LC*`), `analysis doc/00-index.md`, `15-serveur-mcp.md` § Décisions de cad
 
 ---
 
-### [ ] 72. Signature électronique — socle générique et stub (Phases 1 à 4 closes)
+### [ ] 72. Signature électronique — socle générique et stub (Phases 1 à 4 closes ; Phase 5 implémentée, vérification globale M14 et PR à venir)
 
 **Énoncé :** item **2.4** de `ROADMAP.md`, analyse
 [30-signature-electronique.md](analysis%20doc/30-signature-electronique.md), recalibrée le

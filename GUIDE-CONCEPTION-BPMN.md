@@ -295,6 +295,67 @@ réagir à une absence de réponse (le lien expiré laisse la tâche ouverte).
 Les attributs se saisissent dans l'éditeur BPMN (panneau *Flowable* d'un `userTask` :
 *Tiers externe — adresse*, *Tiers externe — validité du lien*).
 
+## 3quater. Demander une signature électronique (TODO §72)
+
+Un `serviceTask` `${signatureRequestTask}` **demande** la signature d'un document par un ou plusieurs
+signataires, puis le process **attend** le message `signatureCompleted` et reprend avec le résultat.
+Le bloc ne bloque jamais le moteur : il enregistre la demande et rend la main.
+
+```xml
+<message id="signatureCompletedMsg" name="signatureCompleted"/>
+<process id="contrat" isExecutable="true">
+  ...
+  <serviceTask id="demanderSignature" name="Demander la signature"
+               flowable:delegateExpression="${signatureRequestTask}"
+               flowable:signatureDocument="variable:generatedDocumentId"
+               flowable:signatureMode="SEQUENTIAL"
+               flowable:signatureDeadlineDays="14">
+    <extensionElements>
+      <flowable:signer source="dossierField:emailClient" kind="EXTERNAL" required="true" name="Client"/>
+      <flowable:signer source="variable:directeurId" kind="INTERNAL" required="false" name="Directeur"/>
+    </extensionElements>
+  </serviceTask>
+  <intermediateCatchEvent id="attenteSignature">
+    <messageEventDefinition messageRef="signatureCompletedMsg"/>
+  </intermediateCatchEvent>
+  <exclusiveGateway id="routage"/>
+  <!-- flux sortants : ${signatureOutcome == 'SIGNED'} / ${signatureOutcome != 'SIGNED'} -->
+</process>
+```
+
+| Attribut / élément | Règle |
+|---|---|
+| `flowable:signatureDocument` | **Obligatoire** — désigne un `PRODUCED_DOC` **au format PDF** (tout autre contenu est refusé : `FAILED`, raison « le document à signer n'est pas un PDF ») ; `variable:<nom>` (ex. `generatedDocumentId`, posé par `documentGenerationTask`) ou `dossierField:<nom>` ; nom littéral, jamais évalué |
+| `flowable:signatureMode` | `PARALLEL` (défaut : tous peuvent signer tout de suite) ou `SEQUENTIAL` (dans l'ordre des `signer` ; le suivant est invité quand le précédent a signé) |
+| `flowable:signatureDeadlineDays` | Facultatif — 1 à 365, au plus le plafond de l'instance (`APP_SIGNATURE_MAX_DEADLINE`) ; défaut `APP_SIGNATURE_DEFAULT_DEADLINE` |
+| `<flowable:signer source= kind= required= name=/>` | Un par signataire (au moins un **requis**, sources distinctes, 10 au plus) : `source` = `dossierField:`/`variable:` (adresse e-mail pour `EXTERNAL`, identifiant utilisateur pour `INTERNAL`) ; `kind` = `EXTERNAL` (lien par e-mail, sans compte) ou `INTERNAL` (vue « Mes signatures ») ; `required` (défaut `true`) ; `name` affiché |
+
+**Résultat.** La demande est `SIGNED` quand **tous les signataires requis** ont signé (un facultatif
+qui refuse ou n'agit pas n'empêche rien). Un requis qui refuse, l'expiration, l'annulation ou une
+erreur du fournisseur clôt la demande. Le process reçoit alors le message `signatureCompleted`
+(corrélé par la variable `signatureRequestId`, posée par le bloc) et la variable de process **`signatureOutcome`**
+(`SIGNED`, `DECLINED`, `EXPIRED`, `FAILED` ou `CANCELLED`) ; `signatureRequestId` reste lisible en aval sur le même chemin d'exécution. À `SIGNED`, le
+**document signé** et la **preuve** sont rattachés au dossier (pièces `PRODUCED_DOC`, métadonnées
+`signatureRole` = `SIGNED_DOCUMENT` / `SIGNATURE_PROOF`). La reprise est garantie (nouvelle tentative
+automatique) : un process fermé entre-temps annule la demande sans incident.
+
+**Plusieurs blocs, interruptions.** Chaque bloc pose `signatureRequestId` comme variable **locale à son exécution** :
+deux blocs en branches parallèles (fork/join) sont corrélés chacun à leur propre attente. Le résultat
+`signatureOutcome` est en revanche une variable de process : **routez-le immédiatement** après l'attente de chaque
+branche. Si l'attente est interrompue alors que le process continue (frontière interrompante, sous-processus
+terminé), la demande est annulée (`CANCELLED`, raison `WAIT_INTERRUPTED`) et ses liens cessent de fonctionner.
+L'identifiant du bloc (`id` du `serviceTask`) est limité à 128 caractères.
+
+Contraintes :
+
+- Déploiement **refusé** tant que la fonctionnalité n'est pas activée (`APP_SIGNATURE_PROVIDER`), et
+  pour un signataire `EXTERNAL` tant que le portail n'est pas activé (`APP_PORTAL_ENABLED`, §3ter).
+- Placer le `intermediateCatchEvent` **immédiatement** après le bloc ; prévoir un routage sur
+  `signatureOutcome` (au minimum `SIGNED` / autre) et, si le process doit réagir à une absence de
+  réponse, compter sur l'échéance (`EXPIRED`) plutôt que sur un timer.
+- Avec le fournisseur `stub`, toute signature est une **SIMULATION sans valeur juridique**, signalée
+  dans les PDF produits et dans l'interface.
+
 ## 4. Instancier / appeler un service externe
 
 Le mécanisme est le **système de connecteurs** ([06-connecteurs.md](analysis%20doc/06-connecteurs.md)), jamais
@@ -446,6 +507,7 @@ Référence rapide — `delegateExpression`, variables lues (entrée) et écrite
 | `${attachGeneratedDocumentTask}` | rattache le PDF généré au dossier (`DossierElement`) | `dossierId` (réservée), `generatedDocumentId` | — |
 | `${connectorServiceTask}` | invoque un connecteur en rôle SERVICE | `connectorInstanceId`, `connectorInput`? | `connectorResult`? |
 | `${notificationDispatchTask}` | envoie une notification (outbox) | `notificationChannels` + champs selon canal (§6c) | — |
+| `${signatureRequestTask}` | demande une signature électronique (§3quater) | `signatureDocument`, `signatureMode`, `signatureDeadlineDays`, `<flowable:signer>` (attributs du bloc) | `signatureRequestId` ; à la reprise : `signatureOutcome` |
 | `${createChildDossierTask}` | crée un dossier enfant/suite et démarre son workflow | `dossierId` (réservée), `childDossierTypeCode`, `childDossierLabel`, `workflowProcessKey`, `relationType` (`PARENT_CHILD` ou `SUBSEQUENT`), `childDossierFields`?, `childWorkflowVariables`? | — |
 
 Toutes ces classes vivent dans `src/main/java/com/flowforge/infrastructure/flowable/` — en cas
@@ -544,3 +606,5 @@ chercher à le contourner, la même classe de vulnérabilité que H1-bis (BPMN) 
 6. Aucun `assignee`/`candidateGroups` attendu du diagramme pour l'assignation des `userTask` —
    c'est un geste opérationnel post-démarrage (§6a).
 7. `./mvnw verify` (ArchUnit compris) si un nouveau delegate Java a été ajouté pour ce processus.
+8. Un bloc de signature (§3quater) est suivi d'un `intermediateCatchEvent` `signatureCompleted` et d'un
+   routage sur `signatureOutcome` ; document et signataires pointent des champs / variables existants.

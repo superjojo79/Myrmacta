@@ -374,6 +374,23 @@ Variables facultatives : `APP_PORTAL_DEFAULT_LINK_TTL` (défaut `7d`), `APP_PORT
 
 ------
 
+## 15. Signature électronique — simulation locale (optionnel, TODO §72)
+
+Désactivée par défaut. Pour l'essayer en local (profil `local`), dans `.env` :
+
+```bash
+APP_SIGNATURE_PROVIDER=stub
+# signataires externes : portail activé (§14)
+APP_PORTAL_ENABLED=true
+APP_PORTAL_PUBLIC_BASE_URL=http://localhost:8080
+```
+
+Le fournisseur `stub` **simule** la signature (PDF marqué « SIMULATION — sans valeur juridique »).
+Il démarre sans autre réglage sous le profil `local` ou `test` ; hors de ces profils, il refuse de
+démarrer (voir DEPLOIEMENT.md § Signature électronique). Variables facultatives :
+`APP_SIGNATURE_DEFAULT_DEADLINE` (défaut `14d`), `APP_SIGNATURE_MAX_DEADLINE` (défaut `90d`).
+Déployer ensuite un BPMN contenant un bloc de signature (GUIDE-CONCEPTION-BPMN §3quater).
+
 ## Pour aller plus loin
 
 - Déploiement au-delà de ce guide (reverse-proxy, provisioning tenant, comptes Keycloak) : [DEPLOIEMENT.md](DEPLOIEMENT.md)

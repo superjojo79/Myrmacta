@@ -45,7 +45,7 @@ final class PortalPreAuthInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-        if (!(handler instanceof HandlerMethod method) || !PortalController.class.equals(method.getBeanType())) {
+        if (!(handler instanceof HandlerMethod method) || !isPortalPublicController(method.getBeanType())) {
             return true;
         }
         rateLimiter.consumeOrThrow(clientIpResolver.resolve(request));
@@ -53,6 +53,11 @@ final class PortalPreAuthInterceptor implements HandlerInterceptor {
             accessResolver.assertUsableToken(request.getHeader(PortalController.TOKEN_HEADER));
         }
         return true;
+    }
+
+    /** Contrôleurs publics du portail : tâche externe et signature (TODO §72) partagent la limite par IP. */
+    private static boolean isPortalPublicController(Class<?> beanType) {
+        return PortalController.class.equals(beanType) || SignaturePortalController.class.equals(beanType);
     }
 
     @Configuration

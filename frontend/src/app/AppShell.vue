@@ -15,6 +15,7 @@ const { user, isTenantAdmin, isWorkflowAdmin, canSeeReports } = storeToRefs(auth
       <p class="app-shell__section">Pilotage</p>
       <RouterLink class="app-shell__link" to="/supervision">Supervision</RouterLink>
       <RouterLink class="app-shell__link" to="/tasks">Tâches</RouterLink>
+      <RouterLink class="app-shell__link" to="/signatures">Mes signatures</RouterLink>
       <RouterLink v-if="canSeeReports" class="app-shell__link" to="/rapports">Rapports &amp; SLA</RouterLink>
       <RouterLink class="app-shell__link" to="/dossiers/new">Nouveau dossier</RouterLink>
       <template v-if="isTenantAdmin || isWorkflowAdmin">

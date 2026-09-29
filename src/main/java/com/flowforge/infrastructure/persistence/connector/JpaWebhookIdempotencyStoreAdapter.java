@@ -61,6 +61,17 @@ class JpaWebhookIdempotencyStoreAdapter implements WebhookIdempotencyStore {
     }
 
     @Override
+    @Transactional
+    public void release(UUID instanceId, String idempotencyKey) {
+        repository.findByInstanceIdAndIdemKey(instanceId, idempotencyKey)
+                .filter(row -> row.responseStatus() == IN_FLIGHT)
+                .ifPresent(row -> {
+                    repository.delete(row);
+                    repository.flush();
+                });
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public Optional<Integer> findResponseStatus(UUID instanceId, String idempotencyKey) {
         return repository

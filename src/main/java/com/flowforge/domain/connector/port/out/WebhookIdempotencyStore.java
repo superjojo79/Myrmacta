@@ -23,6 +23,9 @@ public interface WebhookIdempotencyStore {
     /** Persist the final HTTP status for a previously claimed key. */
     void complete(UUID instanceId, String idempotencyKey, int responseStatus);
 
+    /** Abandons a claim without recording an outcome, so the same key can be retried (transient failure). */
+    void release(UUID instanceId, String idempotencyKey);
+
     /** Read-only lookup of a completed status (never claims). */
     Optional<Integer> findResponseStatus(UUID instanceId, String idempotencyKey);
 }

@@ -50,6 +50,7 @@ class ProcessPurgeOutboxUseCaseImplTest {
     private ProcessPurgeOutboxUseCaseImpl useCase;
     private com.flowforge.domain.workflow.port.out.TaskQuestionAnswerRepository answers;
     private com.flowforge.domain.workflow.portal.port.out.PortalLinkRepository portalLinks;
+    private com.flowforge.domain.signature.port.out.SignatureRequestRepository signatures;
 
     @BeforeEach
     void setUp() {
@@ -61,9 +62,10 @@ class ProcessPurgeOutboxUseCaseImplTest {
         storage = mock(DocumentStoragePort.class);
         engine = mock(WorkflowEnginePort.class);
         answers = mock(com.flowforge.domain.workflow.port.out.TaskQuestionAnswerRepository.class);
+        signatures = mock(com.flowforge.domain.signature.port.out.SignatureRequestRepository.class);
         portalLinks = mock(com.flowforge.domain.workflow.portal.port.out.PortalLinkRepository.class);
         useCase = new ProcessPurgeOutboxUseCaseImpl(
-                outbox, dossiers, elements, relations, links, storage, engine, answers, portalLinks);
+                outbox, dossiers, elements, relations, links, storage, engine, answers, portalLinks, signatures);
         when(outbox.claim(any())).thenReturn(true);
         when(elements.findByDossierIdOrderByAddedAtAsc(any())).thenReturn(List.of());
         when(links.findByDossierIdOrderBySequence(any())).thenReturn(List.of());
@@ -88,6 +90,12 @@ class ProcessPurgeOutboxUseCaseImplTest {
         verify(storage).delete(TENANT, TENANT + "/doc.pdf");
         verify(engine).deleteProcessInstanceBestEffort("pi-1");
         verify(elements).deleteAllByDossierId(dossierId);
+        verify(signatures).deleteAllByDossierId(dossierId); // S-PURGE-1
+        // revue adversariale n°15 : les demandes partent AVANT les instances de process, sinon leur suppression
+        // déclencherait annulations et notifications parasites sur un dossier en cours de purge
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(signatures, engine);
+        order.verify(signatures).deleteAllByDossierId(dossierId);
+        order.verify(engine).deleteProcessInstanceBestEffort("pi-1");
         verify(relations).deleteRelationsTouching(dossierId);
         verify(links).deleteAllByDossierId(dossierId);
         verify(dossiers).deleteById(dossierId);

@@ -40,9 +40,11 @@ class DeployBpmnProcessUseCaseImplTest {
     private final DmnDeploymentPort dmnDeploymentPort = mock(DmnDeploymentPort.class);
     private final com.flowforge.domain.workflow.portal.port.out.PortalAvailabilityPort portalAvailability =
             mock(com.flowforge.domain.workflow.portal.port.out.PortalAvailabilityPort.class);
+    private final com.flowforge.domain.signature.port.out.SignatureAvailabilityPort signatureAvailability =
+            mock(com.flowforge.domain.signature.port.out.SignatureAvailabilityPort.class);
     private final DeployBpmnProcessUseCaseImpl useCase = new DeployBpmnProcessUseCaseImpl(
             TENANT, deploymentPort, configRepository, bpmnParserPort, draftRepository, dmnDeploymentPort,
-            portalAvailability);
+            portalAvailability, signatureAvailability);
 
     @Test
     void deploy_validBpmnWithKnownKey_delegatesToDeploymentPort() {
@@ -195,5 +197,76 @@ class DeployBpmnProcessUseCaseImplTest {
                 .isInstanceOf(com.flowforge.domain.workflow.model.InvalidBpmnException.class)
                 .hasMessageContaining("portalLinkTtlDays");
         verify(deploymentPort, never()).deploy(any(), any(), any());
+    }
+
+    // ---- TODO §72 : blocs signature (S-PARSE-2 partie déploiement, S-STUB-7, S-PW-8)
+
+    private com.flowforge.domain.signature.model.SignatureBlockDefinition block(
+            com.flowforge.domain.signature.model.SignerKind kind, Integer deadlineDays, int signers) {
+        var doc = com.flowforge.domain.workflow.portal.model.PortalRecipientSource.parse("variable:doc").orElseThrow();
+        var list = new java.util.ArrayList<com.flowforge.domain.signature.model.SignatureBlockDefinition.SignerDefinition>();
+        for (int i = 0; i < signers; i++) {
+            list.add(new com.flowforge.domain.signature.model.SignatureBlockDefinition.SignerDefinition(
+                    com.flowforge.domain.workflow.portal.model.PortalRecipientSource.parse("variable:s" + i)
+                            .orElseThrow(),
+                    kind, true, "S" + i));
+        }
+        return new com.flowforge.domain.signature.model.SignatureBlockDefinition(
+                "sign", doc, com.flowforge.domain.signature.model.SignatureMode.PARALLEL, deadlineDays, list);
+    }
+
+    private void givenDeployableWithSignatureBlocks(
+            java.util.List<com.flowforge.domain.signature.model.SignatureBlockDefinition> blocks) {
+        when(bpmnParserPort.extractProcessDefinitionKey(BPMN_BYTES)).thenReturn("testProcess");
+        when(configRepository.findByWorkflowKey(TENANT, "testProcess")).thenReturn(Optional.of(smokeConfig()));
+        when(bpmnParserPort.extractReferencedDecisionKeys(BPMN_BYTES)).thenReturn(Set.of());
+        when(bpmnParserPort.extractSignatureBlocks(BPMN_BYTES)).thenReturn(blocks);
+        when(signatureAvailability.providerActive()).thenReturn(true);
+        when(signatureAvailability.portalEnabled()).thenReturn(true);
+        when(signatureAvailability.maxSigners()).thenReturn(3);
+        when(signatureAvailability.maxDeadlineDays()).thenReturn(30);
+    }
+
+    @Test
+    void deploy_signatureBlockWithoutProvider_isRejected() {
+        givenDeployableWithSignatureBlocks(java.util.List.of(block(
+                com.flowforge.domain.signature.model.SignerKind.INTERNAL, null, 1)));
+        when(signatureAvailability.providerActive()).thenReturn(false);
+
+        assertThatThrownBy(() -> useCase.deploy("d.bpmn20.xml", BPMN_BYTES))
+                .isInstanceOf(com.flowforge.domain.workflow.model.InvalidBpmnException.class)
+                .hasMessageContaining("signature provider");
+        verify(deploymentPort, never()).deploy(any(), any(), any());
+    }
+
+    @Test
+    void deploy_externalSignerWithoutPortal_isRejectedButInternalOnlyIsAccepted() {
+        givenDeployableWithSignatureBlocks(java.util.List.of(block(
+                com.flowforge.domain.signature.model.SignerKind.EXTERNAL, null, 1)));
+        when(signatureAvailability.portalEnabled()).thenReturn(false);
+        assertThatThrownBy(() -> useCase.deploy("d.bpmn20.xml", BPMN_BYTES))
+                .isInstanceOf(com.flowforge.domain.workflow.model.InvalidBpmnException.class)
+                .hasMessageContaining("portal");
+
+        when(bpmnParserPort.extractSignatureBlocks(BPMN_BYTES)).thenReturn(java.util.List.of(block(
+                com.flowforge.domain.signature.model.SignerKind.INTERNAL, null, 1)));
+        when(deploymentPort.deploy(TENANT, "d.bpmn20.xml", BPMN_BYTES))
+                .thenReturn(new BpmnDeploymentResult("testProcess", 1, "dep"));
+        assertThat(useCase.deploy("d.bpmn20.xml", BPMN_BYTES).processDefinitionKey()).isEqualTo("testProcess");
+    }
+
+    @Test
+    void deploy_tooManySignersOrTooLongDeadline_isRejected() {
+        givenDeployableWithSignatureBlocks(java.util.List.of(block(
+                com.flowforge.domain.signature.model.SignerKind.INTERNAL, null, 4)));
+        assertThatThrownBy(() -> useCase.deploy("d.bpmn20.xml", BPMN_BYTES))
+                .isInstanceOf(com.flowforge.domain.workflow.model.InvalidBpmnException.class)
+                .hasMessageContaining("maximum of 3");
+
+        when(bpmnParserPort.extractSignatureBlocks(BPMN_BYTES)).thenReturn(java.util.List.of(block(
+                com.flowforge.domain.signature.model.SignerKind.INTERNAL, 31, 1)));
+        assertThatThrownBy(() -> useCase.deploy("d.bpmn20.xml", BPMN_BYTES))
+                .isInstanceOf(com.flowforge.domain.workflow.model.InvalidBpmnException.class)
+                .hasMessageContaining("ceiling of 30");
     }
 }

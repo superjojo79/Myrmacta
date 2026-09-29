@@ -3120,6 +3120,85 @@ test('E2E-PORTAL-3 instructor resends then revokes an external party link from t
   expect(calls).toEqual(['send', 'revoke'])
 })
 
+test('E2E-SIG-1 instructor cancels and resends a signature request (S-PW-7)', async ({ page }) => {
+  await mockSession(page)
+  let status = 'PENDING'
+  const calls: string[] = []
+  const body = () => ({
+    canManage: true,
+    requests: [
+      {
+        id: 'sr-1', status, statusReason: null, mode: 'PARALLEL', simulated: true, providerCode: 'stub',
+        sourceElementId: 'e1', deadlineAt: '2026-10-30T10:00:00Z', createdAt: '2026-09-30T10:00:00Z',
+        completedAt: null, canManage: true,
+        signers: [
+          { id: 'sg-1', position: 0, kind: 'EXTERNAL', required: true, displayName: 'Alice',
+            contact: 'a***@example.com', status: status === 'PENDING' ? 'PENDING' : 'REVOKED', decidedAt: null,
+            declineReason: null, invited: true },
+        ],
+      },
+    ],
+  })
+  await page.route('**/api/signature-requests/**', async (route) => {
+    const path = new URL(route.request().url()).pathname
+    calls.push(path.endsWith('/cancel') ? 'cancel' : 'resend')
+    if (path.endsWith('/cancel')) status = 'CANCELLED'
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body().requests[0]) })
+  })
+  await page.route('**/api/dossiers/*/signature-requests**', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body()) })
+  })
+  await openApp(page)
+  await createAndOpenDossier(page)
+
+  const panel = page.getByTestId('signature-requests-panel')
+  await expect(panel).toContainText('SIMULATION — sans valeur juridique')
+  await expect(panel).toContainText('a***@example.com')
+  await panel.getByRole('button', { name: 'Renvoyer' }).click()
+  await panel.getByRole('button', { name: 'Annuler la demande' }).click()
+  await expect(panel).toContainText('Annulée')
+  await expect(panel.getByRole('button', { name: 'Annuler la demande' })).toHaveCount(0)
+  expect(calls).toEqual(['resend', 'cancel'])
+})
+
+test('E2E-SIG-2 internal signer signs from « Mes signatures » (S-PW-1)', async ({ page }) => {
+  await mockSession(page)
+  let items = [
+    { signerId: 'sg-1', dossierId: DOSSIER_ID, dossierReference: 'DOS-1', documentLabel: 'Contrat',
+      required: true, myTurn: true, deadlineAt: '2026-10-30T10:00:00Z', simulated: true },
+    { signerId: 'sg-2', dossierId: DOSSIER_ID, dossierReference: 'DOS-1', documentLabel: 'Avenant',
+      required: true, myTurn: false, deadlineAt: null, simulated: true },
+  ]
+  await page.route('**/api/signatures/mine**', async (route) => {
+    const request = route.request()
+    if (request.method() === 'POST') {
+      items = items.filter((i) => i.signerId !== 'sg-1').map((i) => ({ ...i, myTurn: true }))
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'SIGNED' }) })
+      return
+    }
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(items) })
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Mes signatures' }).click()
+
+  await expect(page.getByTestId('signatures-active')).toContainText('Contrat')
+  await expect(page.getByTestId('signatures-waiting')).toContainText('Avenant')
+  await expect(page.getByTestId('signatures-waiting').getByRole('button', { name: 'Signer' })).toHaveCount(0)
+  await page.getByTestId('signatures-active').getByRole('button', { name: 'Signer' }).click()
+  await expect(page.getByTestId('signatures-active')).toContainText('Avenant')
+  await expect(page.getByTestId('signatures-waiting')).toHaveCount(0)
+})
+
+test('E2E-SIG-3 « Mes signatures » says the feature is off when the routes are absent (S-PW-8)', async ({ page }) => {
+  await mockSession(page)
+  await page.route('**/api/signatures/mine**', async (route) => {
+    await route.fulfill({ status: 404, contentType: 'application/json', body: '{}' })
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Mes signatures' }).click()
+  await expect(page.getByTestId('signatures-unavailable')).toBeVisible()
+})
+
 test('E2E-PORTAL-4 BPMN editor marks a userTask as external, round-trips on save', async ({ page }) => {
   await mockSession(page)
   await page.route('**/api/workflow-bpmn-deployments/otherWorkflow/xml', async (route) => {

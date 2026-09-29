@@ -85,6 +85,9 @@ class ConnectorPortsContractTest {
             public void complete(UUID instanceId, String idempotencyKey, int responseStatus) {}
 
             @Override
+            public void release(UUID instanceId, String idempotencyKey) {}
+
+            @Override
             public Optional<Integer> findResponseStatus(UUID instanceId, String idempotencyKey) {
                 return Optional.empty();
             }

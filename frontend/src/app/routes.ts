@@ -13,6 +13,11 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/views/pilotage/MobileTasksView.vue'),
   },
   {
+    path: '/signatures',
+    name: 'signatures',
+    component: () => import('@/views/pilotage/MySignaturesView.vue'),
+  },
+  {
     path: '/rapports',
     name: 'rapports',
     component: () => import('@/views/pilotage/RapportsView.vue'),

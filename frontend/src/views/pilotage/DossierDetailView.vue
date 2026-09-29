@@ -19,6 +19,7 @@ import HistoryTimeline from '@/components/workflow/HistoryTimeline.vue'
 import StartWorkflowDialog from '@/components/workflow/StartWorkflowDialog.vue'
 import DossierPurgeRequestButton from '@/components/dossier/DossierPurgeRequestButton.vue'
 import PortalLinksPanel from '@/components/dossier/PortalLinksPanel.vue'
+import SignatureRequestsPanel from '@/components/dossier/SignatureRequestsPanel.vue'
 
 const route = useRoute()
 const store = useDossierStore()
@@ -248,6 +249,8 @@ async function confirmReassign() {
     />
 
     <PortalLinksPanel :key="`${dossier.id}-${tasks.length}`" :dossier-id="dossier.id" />
+
+    <SignatureRequestsPanel :key="`${dossier.id}-${tasks.length}`" :dossier-id="dossier.id" />
 
     <div v-if="reassignTaskId" class="reassign">
       <label>

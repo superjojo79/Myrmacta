@@ -2,6 +2,7 @@ package com.flowforge.infrastructure.web.connector;
 
 import com.flowforge.domain.connector.model.CallbackAmbiguousCorrelationException;
 import com.flowforge.domain.connector.model.CallbackNoMatchingInstanceException;
+import com.flowforge.domain.connector.model.CallbackRetryLaterException;
 import com.flowforge.domain.connector.model.ConnectorInstanceData;
 import com.flowforge.domain.connector.model.ConnectorValidationException;
 import com.flowforge.domain.connector.model.WebhookAuthType;
@@ -118,6 +119,11 @@ class CallbackWebhookController {
                         // exceptions whose outcome is deterministic on this request's own content
                         // (so replaying the cached status on an exact-key retry is correct);
                         // anything unmapped is left IN_FLIGHT rather than guessing a status.
+                        if (ex instanceof CallbackRetryLaterException) {
+                            // transitoire : la clé est libérée, le rejeu avec la même clé sera traité
+                            idempotencyStore.release(instance.id(), idempotencyKey);
+                            throw ex;
+                        }
                         Integer failureStatus = deterministicFailureStatus(ex);
                         if (failureStatus != null) {
                             idempotencyStore.complete(instance.id(), idempotencyKey, failureStatus);

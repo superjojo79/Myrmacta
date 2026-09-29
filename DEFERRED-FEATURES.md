@@ -260,7 +260,7 @@ Voir le détail et les options dans [TODO.md](TODO.md),
 | — | `inbox-notifications-persistee` | **Livré** ([PR #135](https://github.com/superjojo79/FlowForge/pull/135), mergé 2026-09-23, TODO §66 clos) | Historique `user_notification`, badge serveur, backfill REST + SSE, purge par rétention. |
 | — | `outillage-dmn` | **Livré** ([PR #134](https://github.com/superjojo79/FlowForge/pull/134), TODO §67 clos) | Doc 28. Évaluation, jeux de tests, historique et redéploiement de version. |
 | — | `portail-externe` | **Livré** ([PR #138](https://github.com/superjojo79/FlowForge/pull/138), mergé 2026-09-24, TODO §68 clos) | Doc [26-portail-externe.md](analysis%20doc/26-portail-externe.md). Opt-in ; revue adversariale close. |
-| — | `signature-electronique` | Non démarré — **démarrable** (portail livré) | Doc [30-signature-electronique.md](analysis%20doc/30-signature-electronique.md). Recalibré le 2026-09-29 : socle générique + stub, aucun provider désigné ; eIDAS reporté au premier provider réel. |
+| — | `signature-electronique` | **Implémenté sur branche** (stub, PR à venir) | Doc [30-signature-electronique.md](analysis%20doc/30-signature-electronique.md). Recalibré le 2026-09-29 : socle générique + stub, aucun provider désigné ; eIDAS reporté au premier provider réel. |
 
 **Interdits :** Kafka ∥ import-batch ∥ ERP ; import batch ∥ A3 ; ClamAV ∥ A1 (Compose) ;
 codegen OpenAPI ∥ tout FE ; `signature-electronique` avant `portail-externe`. Hors vague : Redis/SSE multi-pod, Chart.js SLA, Cockpit.

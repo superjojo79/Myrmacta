@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://flowforge/test">
+
+  <!-- TODO §72, revue adversariale n°6 : deux blocs de signature en branches parallèles (variable de corrélation
+       locale à chaque branche). -->
+  <message id="signatureCompletedMsgPar" name="signatureCompleted"/>
+
+  <process id="signatureParallelBlocksSmoke" name="Signature Parallel Blocks Smoke" isExecutable="true">
+    <startEvent id="parStart"/>
+    <sequenceFlow id="parFlow0" sourceRef="parStart" targetRef="parFork"/>
+    <parallelGateway id="parFork"/>
+    <sequenceFlow id="parFlowA1" sourceRef="parFork" targetRef="parRequestA"/>
+    <sequenceFlow id="parFlowB1" sourceRef="parFork" targetRef="parRequestB"/>
+    <serviceTask id="parRequestA" name="Signature A"
+                 flowable:delegateExpression="${signatureRequestTask}"
+                 flowable:signatureDocument="variable:generatedDocumentId">
+      <extensionElements>
+        <flowable:signer source="dossierField:signerA" kind="EXTERNAL" required="true" name="Client"/>
+      </extensionElements>
+    </serviceTask>
+    <serviceTask id="parRequestB" name="Signature B"
+                 flowable:delegateExpression="${signatureRequestTask}"
+                 flowable:signatureDocument="variable:generatedDocumentId">
+      <extensionElements>
+        <flowable:signer source="dossierField:signerB" kind="EXTERNAL" required="true" name="Garant"/>
+      </extensionElements>
+    </serviceTask>
+    <sequenceFlow id="parFlowA2" sourceRef="parRequestA" targetRef="parWaitA"/>
+    <sequenceFlow id="parFlowB2" sourceRef="parRequestB" targetRef="parWaitB"/>
+    <intermediateCatchEvent id="parWaitA">
+      <messageEventDefinition messageRef="signatureCompletedMsgPar"/>
+    </intermediateCatchEvent>
+    <intermediateCatchEvent id="parWaitB">
+      <messageEventDefinition messageRef="signatureCompletedMsgPar"/>
+    </intermediateCatchEvent>
+    <sequenceFlow id="parFlowA3" sourceRef="parWaitA" targetRef="parJoin"/>
+    <sequenceFlow id="parFlowB3" sourceRef="parWaitB" targetRef="parJoin"/>
+    <parallelGateway id="parJoin"/>
+    <sequenceFlow id="parFlow9" sourceRef="parJoin" targetRef="parDone"/>
+    <userTask id="parDone" name="Toutes signées" flowable:assignee="signature-smoke"/>
+  </process>
+</definitions>

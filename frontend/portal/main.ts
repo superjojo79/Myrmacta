@@ -3,6 +3,8 @@
 import { createApp } from 'vue'
 import './portal.css'
 import PortalApp from './PortalApp.vue'
-import { takeTokenFromLocation } from './token'
+import { takeLinkFromLocation } from './token'
 
-createApp(PortalApp, { token: takeTokenFromLocation(window.location, window.history) }).mount('#portal')
+const link = takeLinkFromLocation(window.location, window.history)
+
+createApp(PortalApp, { token: link?.token ?? null, kind: link?.kind ?? 'task' }).mount('#portal')

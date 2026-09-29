@@ -36,7 +36,7 @@ FlowForge est un SaaS multi-tenant à architecture hexagonale. Stack **réelle**
 
 | Priorité | Item | Lot | Statut |
 |---|---|---|---|
-| Ensuite | **2.4 Signature électronique** | `signature-electronique` | **Phases 1 à 4 closes (TODO §72), lot XL**, **socle générique + stub** (aucun provider) — [30-signature-electronique.md](analysis%20doc/30-signature-electronique.md) |
+| Ensuite | **2.4 Signature électronique** | `signature-electronique` | **Phases 1 à 4 closes, Phase 5 implémentée sur branche (TODO §72), lot XL — vérification globale et PR à venir**, **socle générique + stub** (aucun provider) — [30-signature-electronique.md](analysis%20doc/30-signature-electronique.md) |
 | Décision | **D0** Positionnement produit | [analyse 31](analysis%20doc/31-positionnement-produit.md) | ✅ **Tranché = C** (TODO §70) : intégrateurs + couche low-code, décision n° 13 maintenue |
 | Vague D | **LC1** Palette métier dans l'éditeur BPMN | [`palette-metier-bpmn`](analysis%20doc/39-palette-metier-bpmn.md) | Analyse initiale |
 | Vague D | **LC2** Langage d'expression métier borné | [`langage-expression-metier`](analysis%20doc/40-langage-expression-metier.md) | Analyse initiale |
@@ -100,7 +100,7 @@ FlowForge est un SaaS multi-tenant à architecture hexagonale. Stack **réelle**
 | 2.1 Import batch | ✅ Livré (`batch-import`, PR #129) |
 | 2.2 Kafka | ✅ Livré (`kafka`, PR #129) |
 | 2.3 Antivirus ClamAV | ✅ Livré (PR #131) — `ClamAvAttachmentScanIT` à jouer avec Docker |
-| 2.4 Signature électronique | ❌ Non démarré — lot `signature-electronique`, **après le portail** |
+| 2.4 Signature électronique | 🟡 Implémenté sur branche (stub, sans provider) — lot `signature-electronique`, PR à venir |
 | 2.5 ERP | ✅ Couvert par `batch-import` (décision Phase 1 de B1) |
 
 ### Catégorie 3 : Portail externe & UX

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import PortalQuestionForm from './PortalQuestionForm.vue'
+import PortalSignature from './PortalSignature.vue'
 import {
   fetchTask,
   PortalApiError,
@@ -14,9 +15,10 @@ import {
 // (US-3) : la page ne cherche jamais à distinguer lien expiré, révoqué ou inconnu.
 type State = 'no-token' | 'loading' | 'denied' | 'ready' | 'done' | 'unavailable'
 
-const props = defineProps<{ token: string | null }>()
+const props = withDefaults(defineProps<{ token: string | null; kind?: 'task' | 'signature' }>(), { kind: 'task' })
 
 const state = ref<State>(props.token ? 'loading' : 'no-token')
+const isSignature = computed(() => props.kind === 'signature' && !!props.token)
 const task = ref<PortalTask | null>(null)
 const answers = ref<Record<string, unknown>>({})
 const attachments = ref<PortalAttachment[]>([])
@@ -52,7 +54,7 @@ function handleError(error: unknown): string {
 }
 
 onMounted(async () => {
-  if (!props.token) return
+  if (!props.token || isSignature.value) return
   try {
     task.value = await fetchTask(props.token)
     attachments.value = task.value.attachments
@@ -104,7 +106,9 @@ async function onSubmit() {
       <span v-if="task" class="portal__reference">Dossier {{ task.dossierReference }}</span>
     </header>
 
-    <section v-if="state === 'loading'" class="portal__card" aria-live="polite">
+    <PortalSignature v-if="isSignature" :token="props.token as string" />
+
+    <section v-else-if="state === 'loading'" class="portal__card" aria-live="polite">
       <p>Chargement de votre demande…</p>
     </section>
 

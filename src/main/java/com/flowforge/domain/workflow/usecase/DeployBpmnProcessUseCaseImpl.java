@@ -2,6 +2,8 @@ package com.flowforge.domain.workflow.usecase;
 
 import com.flowforge.domain.workflow.model.InvalidBpmnException;
 import com.flowforge.domain.workflow.portal.model.PortalTaskDefinition;
+import com.flowforge.domain.signature.model.SignatureBlockDefinition;
+import com.flowforge.domain.signature.port.out.SignatureAvailabilityPort;
 import com.flowforge.domain.workflow.portal.port.out.PortalAvailabilityPort;
 import java.util.List;
 
@@ -25,6 +27,7 @@ public final class DeployBpmnProcessUseCaseImpl implements DeployBpmnProcessUseC
     private final BpmnDraftRepository draftRepository;
     private final DmnDeploymentPort dmnDeploymentPort;
     private final PortalAvailabilityPort portalAvailability;
+    private final SignatureAvailabilityPort signatureAvailability;
 
     public DeployBpmnProcessUseCaseImpl(
             String tenantId,
@@ -33,7 +36,8 @@ public final class DeployBpmnProcessUseCaseImpl implements DeployBpmnProcessUseC
             BpmnParserPort bpmnParserPort,
             BpmnDraftRepository draftRepository,
             DmnDeploymentPort dmnDeploymentPort,
-            PortalAvailabilityPort portalAvailability) {
+            PortalAvailabilityPort portalAvailability,
+            SignatureAvailabilityPort signatureAvailability) {
         this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
         this.deploymentPort = Objects.requireNonNull(deploymentPort, "deploymentPort");
         this.configRepository = Objects.requireNonNull(configRepository, "configRepository");
@@ -41,6 +45,7 @@ public final class DeployBpmnProcessUseCaseImpl implements DeployBpmnProcessUseC
         this.draftRepository = Objects.requireNonNull(draftRepository, "draftRepository");
         this.dmnDeploymentPort = Objects.requireNonNull(dmnDeploymentPort, "dmnDeploymentPort");
         this.portalAvailability = Objects.requireNonNull(portalAvailability, "portalAvailability");
+        this.signatureAvailability = Objects.requireNonNull(signatureAvailability, "signatureAvailability");
     }
 
     @Override
@@ -60,11 +65,41 @@ public final class DeployBpmnProcessUseCaseImpl implements DeployBpmnProcessUseC
                             "No deployed DMN decision table found for key: " + decisionKey));
         }
         assertPortalTasksDeployable(bpmnParserPort.extractPortalTasks(bpmnXml));
+        assertSignatureBlocksDeployable(bpmnParserPort.extractSignatureBlocks(bpmnXml));
         BpmnDeploymentResult result = deploymentPort.deploy(tenantId, filename, bpmnXml);
         // D-DESIGN-DRAFT-LIFECYCLE: a successful deployment retires the draft for this key --
         // avoids a stale draft silently diverging from what is actually deployed.
         draftRepository.deleteByTenantIdAndProcessDefinitionKey(tenantId, processDefinitionKey);
         return result;
+    }
+
+    /**
+     * TODO §72 D-SIGNATURE-BPMN-MARKER / D-SIGNATURE-EXTERNAL-NEEDS-PORTAL — un bloc signature exige un
+     * fournisseur actif ({@code app.signature.provider} autre que {@code none}) ; un signataire externe
+     * exige le portail ; nombre de signataires et échéance restent sous les plafonds tenant.
+     */
+    private void assertSignatureBlocksDeployable(List<SignatureBlockDefinition> blocks) {
+        if (blocks.isEmpty()) {
+            return;
+        }
+        if (!signatureAvailability.providerActive()) {
+            throw new InvalidBpmnException("BPMN signature block requires a signature provider "
+                    + "(app.signature.provider): " + blocks.getFirst().activityId());
+        }
+        for (SignatureBlockDefinition block : blocks) {
+            if (block.hasExternalSigner() && !signatureAvailability.portalEnabled()) {
+                throw new InvalidBpmnException("BPMN signature block with an EXTERNAL signer requires the portal "
+                        + "to be enabled (APP_PORTAL_ENABLED=true): " + block.activityId());
+            }
+            if (block.signers().size() > signatureAvailability.maxSigners()) {
+                throw new InvalidBpmnException("BPMN signature block exceeds the maximum of "
+                        + signatureAvailability.maxSigners() + " signers: " + block.activityId());
+            }
+            if (block.deadlineDays() != null && block.deadlineDays() > signatureAvailability.maxDeadlineDays()) {
+                throw new InvalidBpmnException("BPMN signatureDeadlineDays exceeds the tenant ceiling of "
+                        + signatureAvailability.maxDeadlineDays() + " days: " + block.activityId());
+            }
+        }
     }
 
     /**

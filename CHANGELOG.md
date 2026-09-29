@@ -30,6 +30,13 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
+- **TODO §72** — Signature électronique générique : un bloc BPMN `${signatureRequestTask}` demande la
+  signature d'un document du dossier à des signataires externes (lien par e-mail, sans compte) ou
+  internes (« Mes signatures »), en mode parallèle ou séquentiel, requis ou facultatifs ; le process
+  reprend sur le message `signatureCompleted` avec `signatureOutcome`. Panneau « Signatures » dans le
+  détail du dossier (annuler, renvoyer), trois outils MCP de lecture/annulation, connecteur `signature`
+  pour un futur fournisseur. Seul fournisseur livré : `stub` (simulation sans valeur juridique).
+  Désactivé par défaut (`APP_SIGNATURE_PROVIDER`).
 - **PR [#138](https://github.com/superjojo79/FlowForge/pull/138) — TODO §68** — Portail externe : un tiers sans compte
   répond à une tâche BPMN qui lui est destinée (formulaire + pièces) via un lien personnel reçu
   par e-mail, valable 7 jours, révocable et renvoyable par l'instructeur depuis le détail du

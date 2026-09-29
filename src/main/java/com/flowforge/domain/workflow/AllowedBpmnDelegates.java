@@ -17,7 +17,9 @@ public final class AllowedBpmnDelegates {
             "notificationDispatchTask",
             "createChildDossierTask",
             "updateDossierStatusTask",
-            "updateWorkflowLinkStatusTask");
+            "updateWorkflowLinkStatusTask",
+            // TODO §72 (signature-electronique) : bloc « Demander une signature ».
+            "signatureRequestTask");
 
     private AllowedBpmnDelegates() {}
 
@@ -26,7 +28,7 @@ public final class AllowedBpmnDelegates {
         return bean != null && NAMES.contains(bean);
     }
 
-    static String unwrapBeanName(String raw) {
+    public static String unwrapBeanName(String raw) {
         if (raw == null) {
             return null;
         }

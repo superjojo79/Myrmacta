@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://flowforge/test">
+
+  <!-- TODO §72 (signature-electronique) : bloc « Demander une signature » suivi de l'attente du
+       message signatureCompleted et d'un routage sur signatureOutcome. Deux signataires externes
+       (champs du dossier signerA / signerB) ; le document est le storageRef posé dans la variable
+       generatedDocumentId. -->
+  <message id="signatureCompletedMsgSq" name="signatureCompleted"/>
+
+  <process id="signatureSequentialSmoke" name="Signature Sequential Smoke" isExecutable="true">
+    <startEvent id="sqStart"/>
+    <sequenceFlow id="sqFlow1" sourceRef="sqStart" targetRef="sqRequest"/>
+    <serviceTask id="sqRequest" name="Demander la signature"
+                 flowable:delegateExpression="${signatureRequestTask}"
+                 flowable:signatureDocument="variable:generatedDocumentId"
+                 flowable:signatureMode="SEQUENTIAL"
+                 flowable:signatureDeadlineDays="14">
+      <extensionElements>
+        <flowable:signer source="dossierField:signerA" kind="EXTERNAL" required="true" name="Client"/>
+        <flowable:signer source="dossierField:signerB" kind="EXTERNAL" required="true" name="Garant"/>
+      </extensionElements>
+    </serviceTask>
+    <sequenceFlow id="sqFlow2" sourceRef="sqRequest" targetRef="sqWait"/>
+    <intermediateCatchEvent id="sqWait">
+      <messageEventDefinition messageRef="signatureCompletedMsgSq"/>
+    </intermediateCatchEvent>
+    <sequenceFlow id="sqFlow3" sourceRef="sqWait" targetRef="sqGateway"/>
+    <exclusiveGateway id="sqGateway"/>
+    <sequenceFlow id="sqSigned" sourceRef="sqGateway" targetRef="sqDone">
+      <conditionExpression xsi:type="tFormalExpression" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">${signatureOutcome == 'SIGNED'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sqNotSigned" sourceRef="sqGateway" targetRef="sqNotDone">
+      <conditionExpression xsi:type="tFormalExpression" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">${signatureOutcome != 'SIGNED'}</conditionExpression>
+    </sequenceFlow>
+    <userTask id="sqDone" name="Signature obtenue" flowable:assignee="signature-smoke"/>
+    <userTask id="sqNotDone" name="Signature non obtenue" flowable:assignee="signature-smoke"/>
+  </process>
+</definitions>

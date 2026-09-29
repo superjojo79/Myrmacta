@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://flowforge/test">
+
+  <!-- TODO §72, revue adversariale n°5 : l'attente de signature est interrompue par un signal alors que le
+       process continue (sous-processus + frontière interrompante). -->
+  <message id="signatureCompletedMsgInt" name="signatureCompleted"/>
+  <signal id="abortSignatureSig" name="abortSignature"/>
+
+  <process id="signatureInterruptSmoke" name="Signature Interrupt Smoke" isExecutable="true">
+    <startEvent id="intStart"/>
+    <sequenceFlow id="intFlow1" sourceRef="intStart" targetRef="intSub"/>
+    <subProcess id="intSub">
+      <startEvent id="intSubStart"/>
+      <sequenceFlow id="intSubFlow1" sourceRef="intSubStart" targetRef="intRequest"/>
+      <serviceTask id="intRequest" name="Demander la signature"
+                   flowable:delegateExpression="${signatureRequestTask}"
+                   flowable:signatureDocument="variable:generatedDocumentId"
+                   flowable:signatureDeadlineDays="14">
+        <extensionElements>
+          <flowable:signer source="dossierField:signerA" kind="EXTERNAL" required="true" name="Client"/>
+        </extensionElements>
+      </serviceTask>
+      <sequenceFlow id="intSubFlow2" sourceRef="intRequest" targetRef="intWait"/>
+      <intermediateCatchEvent id="intWait">
+        <messageEventDefinition messageRef="signatureCompletedMsgInt"/>
+      </intermediateCatchEvent>
+      <sequenceFlow id="intSubFlow3" sourceRef="intWait" targetRef="intSubEnd"/>
+      <endEvent id="intSubEnd"/>
+    </subProcess>
+    <sequenceFlow id="intFlow2" sourceRef="intSub" targetRef="intDone"/>
+    <boundaryEvent id="intAbort" attachedToRef="intSub" cancelActivity="true">
+      <signalEventDefinition signalRef="abortSignatureSig"/>
+    </boundaryEvent>
+    <sequenceFlow id="intFlow3" sourceRef="intAbort" targetRef="intAborted"/>
+    <userTask id="intDone" name="Terminé" flowable:assignee="signature-smoke"/>
+    <userTask id="intAborted" name="Abandonné" flowable:assignee="signature-smoke"/>
+  </process>
+</definitions>

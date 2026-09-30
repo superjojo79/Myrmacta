@@ -1227,7 +1227,7 @@ D-EXPR-LITERAL-ONLY = formule lue **uniquement** dans l'attribut littéral ; D-E
 brique « Évaluer une expression » (12ᵉ bloc, delegate allowlisté, formule validée au déploiement) ; `POST /api/expressions/{validate,evaluate}` ; outils MCP
 `validate_expression`, `evaluate_expression` ; règles ArchUnit (bibliothèque confinée, jamais d'UEL). Golden OpenAPI additif. Aucune migration.
 **Constats du design corrigés :** `outputConvertNulls` par défaut (null explicite ≠ absent), intervalles paresseux, regex non interruptibles, attribut natif
-`resultVariable`, grammaire de condition à opérateur obligatoire. **Revue adversariale** : voir le document d'implémentation.
+`resultVariable`, grammaire de condition à opérateur obligatoire. **Revue adversariale en 3 passes** (sous-agents indépendants, sondes exécutées) : passe 1 = 2 Critiques (callbacks masquables par `$__evaluate_entry := nope` ; `$replace` à 4 arguments = regex/ReDoS), 1 Haute (`[1..9999999]` + appels natifs → OOM), 2 Moyennes, 3 Basses ; passe 2 = 2 nouvelles Critiques (aplatissement de chemin sur références partagées ; graphe partagé exponentiel pour `=`/`$distinct`) corrigées à la racine par deux invariants à chaque sortie de nœud (poids déplié, travail cumulé) ; passe 3 = **0 Critique, 0 Haute**. Détail, preuves et décisions : document d'implémentation et `DECISIONS.md` (D-EXPR-ALLOWLIST, D-EXPR-WEIGHT-FUEL…).
 **Impacte :** `GUIDE-CONCEPTION-BPMN.md` (§3sexies, §3quinquies, §7), `GUIDE-UTILISATEUR.md`, `analysis doc/40`, `ROADMAP.md`, `CHANGELOG.md`.
 Nouvelles propriétés `app.expression.*` (valeurs par défaut, aucune variable d'environnement requise).
 

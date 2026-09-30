@@ -42,9 +42,12 @@ class DeployBpmnProcessUseCaseImplTest {
             mock(com.flowforge.domain.workflow.portal.port.out.PortalAvailabilityPort.class);
     private final com.flowforge.domain.signature.port.out.SignatureAvailabilityPort signatureAvailability =
             mock(com.flowforge.domain.signature.port.out.SignatureAvailabilityPort.class);
+    private final com.flowforge.domain.workflow.palette.port.out.BlockReferenceLookupPort lookup =
+            mock(com.flowforge.domain.workflow.palette.port.out.BlockReferenceLookupPort.class);
     private final DeployBpmnProcessUseCaseImpl useCase = new DeployBpmnProcessUseCaseImpl(
             TENANT, deploymentPort, configRepository, bpmnParserPort, draftRepository, dmnDeploymentPort,
-            portalAvailability, signatureAvailability);
+            portalAvailability, signatureAvailability,
+            new com.flowforge.domain.workflow.palette.BlockReferenceVerifier(TENANT, lookup));
 
     @Test
     void deploy_validBpmnWithKnownKey_delegatesToDeploymentPort() {
@@ -57,6 +60,47 @@ class DeployBpmnProcessUseCaseImplTest {
         BpmnDeploymentResult result = useCase.deploy("diagram.bpmn20.xml", BPMN_BYTES);
 
         assertThat(result).isEqualTo(expected);
+    }
+
+    @Test
+    void deploy_blockReferenceToAMissingResource_isRefusedBeforeAnyDeployment() {
+        // S-REFCHK-2 : D-PALETTE-DEPLOY-REFERENCES
+        when(bpmnParserPort.extractProcessDefinitionKey(BPMN_BYTES)).thenReturn("testProcess");
+        when(configRepository.findByWorkflowKey(TENANT, "testProcess")).thenReturn(Optional.of(smokeConfig()));
+        when(bpmnParserPort.extractBlockReferences(BPMN_BYTES)).thenReturn(java.util.List.of(
+                new com.flowforge.domain.workflow.palette.BlockParameterUsage(
+                        "gen", "generate-document", "documentType", "documentTemplates", "absent")));
+        when(lookup.exists(TENANT, "documentTemplates", "absent")).thenReturn(false);
+
+        assertThatThrownBy(() -> useCase.deploy("diagram.bpmn20.xml", BPMN_BYTES))
+                .isInstanceOf(com.flowforge.domain.workflow.model.UnknownBlockReferenceException.class);
+
+        verify(deploymentPort, never()).deploy(any(), any(), any());
+    }
+
+    @Test
+    void validate_playsEveryDeploymentCheckWithTheSubmittedConfigAndDeploysNothing() {
+        // S-DRY-1, S-DRY-2
+        when(bpmnParserPort.extractProcessDefinitionKey(BPMN_BYTES)).thenReturn("testProcess");
+        when(bpmnParserPort.extractReferencedDecisionKeys(BPMN_BYTES)).thenReturn(Set.of("eligibilite"));
+        when(dmnDeploymentPort.findDeploymentInfo(TENANT, "eligibilite")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> useCase.validate(BPMN_BYTES, Optional.of(smokeConfig())))
+                .isInstanceOf(UnknownDecisionKeyException.class);
+
+        verify(deploymentPort, never()).deploy(any(), any(), any());
+        verify(configRepository, never()).findByWorkflowKey(any(), any());
+        verify(draftRepository, never()).deleteByTenantIdAndProcessDefinitionKey(any(), any());
+    }
+
+    @Test
+    void validate_acceptsAValidDocumentWithoutAStoredConfig() {
+        when(bpmnParserPort.extractProcessDefinitionKey(BPMN_BYTES)).thenReturn("testProcess");
+        when(bpmnParserPort.extractReferencedDecisionKeys(BPMN_BYTES)).thenReturn(Set.of());
+
+        useCase.validate(BPMN_BYTES, Optional.empty());
+
+        verify(deploymentPort, never()).deploy(any(), any(), any());
     }
 
     @Test

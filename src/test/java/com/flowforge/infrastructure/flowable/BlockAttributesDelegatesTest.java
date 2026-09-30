@@ -1,0 +1,211 @@
+package com.flowforge.infrastructure.flowable;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import com.flowforge.domain.connector.port.in.ExecuteConnectorUseCase;
+import com.flowforge.domain.document.port.in.GenerateDocumentUseCase;
+import com.flowforge.domain.document.port.out.DocumentStoragePort;
+import com.flowforge.domain.dossier.model.DossierStatus;
+import com.flowforge.domain.dossier.model.RelationType;
+import com.flowforge.domain.dossier.port.in.UpdateDossierStatusUseCase;
+import com.flowforge.domain.dossier.port.out.DossierRepository;
+import com.flowforge.domain.notification.model.NotificationChannel;
+import com.flowforge.domain.notification.model.NotificationEvent;
+import com.flowforge.domain.notification.port.in.SendNotificationUseCase;
+import com.flowforge.domain.workflow.port.in.UpdateWorkflowLinkStatusUseCase;
+import com.flowforge.application.workflow.ManualStartOrchestrator;
+import com.flowforge.infrastructure.dossier.ChildDossierRelationConfirmer;
+import com.flowforge.infrastructure.config.TenantProperties;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+import org.flowable.bpmn.model.ServiceTask;
+import org.flowable.engine.delegate.DelegateExecution;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+
+/**
+ * S-RT-1..S-RT-4 pour les six delegates concernés (TODO §73, D-PALETTE-PARAMS / D-PALETTE-PRECEDENCE) : variable
+ * seule = comportement d'avant ; attribut littéral seul = valeur ; les deux = l'attribut gagne (I1) ; aucun = même erreur.
+ */
+class BlockAttributesDelegatesTest {
+
+    private static DelegateExecution execution(Map<String, Object> variables, Map<String, String> attributes) {
+        DelegateExecution execution = mock(DelegateExecution.class);
+        variables.forEach((k, v) -> when(execution.getVariable(k)).thenReturn(v));
+        when(execution.getProcessInstanceId()).thenReturn("pi-1");
+        when(execution.getCurrentActivityId()).thenReturn("act");
+        if (!attributes.isEmpty()) {
+            ServiceTask task = new ServiceTask();
+            task.setId("act");
+            attributes.forEach((k, v) -> DeployedActivityParametersTest.taskWith(k, v)
+                    .getAttributes().forEach((name, list) -> list.forEach(task::addAttribute)));
+            when(execution.getCurrentFlowElement()).thenReturn(task);
+        }
+        return execution;
+    }
+
+    // --- updateDossierStatusTask -------------------------------------------------------------------------------
+
+    @Test
+    void dossierStatus_attributeOnly_attributeWins_andMissingKeepsTheError() {
+        UpdateDossierStatusUseCase useCase = mock(UpdateDossierStatusUseCase.class);
+        UpdateDossierStatusDelegate delegate = new UpdateDossierStatusDelegate(useCase);
+        UUID dossier = UUID.randomUUID();
+        Map<String, Object> dossierVar = Map.of("dossierId", dossier.toString());
+
+        delegate.execute(execution(dossierVar, Map.of("targetDossierStatus", "CLOTURE")));
+        Map<String, Object> both = new HashMap<>(dossierVar);
+        both.put("targetDossierStatus", "SUSPENDU");
+        delegate.execute(execution(both, Map.of("targetDossierStatus", "CLOTURE")));
+        delegate.execute(execution(both, Map.of()));
+
+        ArgumentCaptor<UpdateDossierStatusUseCase.UpdateDossierStatusCommand> captor =
+                ArgumentCaptor.forClass(UpdateDossierStatusUseCase.UpdateDossierStatusCommand.class);
+        verify(useCase, org.mockito.Mockito.times(3)).update(captor.capture(), any());
+        assertThat(captor.getAllValues()).extracting(c -> c.status())
+                .containsExactly(DossierStatus.CLOTURE, DossierStatus.CLOTURE, DossierStatus.SUSPENDU);
+        assertThatThrownBy(() -> delegate.execute(execution(dossierVar, Map.of())))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("targetDossierStatus");
+    }
+
+    // --- updateWorkflowLinkStatusTask --------------------------------------------------------------------------
+
+    @Test
+    void workflowStatus_attributeOnly_attributeWins_andMissingKeepsTheError() {
+        UpdateWorkflowLinkStatusUseCase useCase = mock(UpdateWorkflowLinkStatusUseCase.class);
+        UpdateWorkflowLinkStatusDelegate delegate = new UpdateWorkflowLinkStatusDelegate(useCase);
+        UUID link = UUID.randomUUID();
+        Map<String, Object> linkVar = Map.of("dossierWorkflowLinkId", link.toString());
+
+        delegate.execute(execution(linkVar, Map.of("targetWorkflowStatus", "EN_INSTRUCTION")));
+        Map<String, Object> both = new HashMap<>(linkVar);
+        both.put("targetWorkflowStatus", "VALIDE");
+        delegate.execute(execution(both, Map.of("targetWorkflowStatus", "EN_INSTRUCTION")));
+
+        verify(useCase, org.mockito.Mockito.times(2)).update(link, "EN_INSTRUCTION", "act");
+        verify(useCase, never()).update(link, "VALIDE", "act");
+        assertThatThrownBy(() -> delegate.execute(execution(linkVar, Map.of())))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    // --- connectorServiceTask ----------------------------------------------------------------------------------
+
+    @Test
+    void connector_attributeOnly_attributeWins_andMissingKeepsTheError() {
+        ExecuteConnectorUseCase useCase = mock(ExecuteConnectorUseCase.class);
+        ConnectorServiceTask delegate = new ConnectorServiceTask(useCase, new TenantProperties("tenant_dev"));
+        UUID fromAttribute = UUID.randomUUID();
+        UUID fromVariable = UUID.randomUUID();
+
+        delegate.execute(execution(Map.of(), Map.of("connectorInstanceId", fromAttribute.toString())));
+        delegate.execute(execution(Map.of("connectorInstanceId", fromVariable.toString()),
+                Map.of("connectorInstanceId", fromAttribute.toString())));
+
+        delegate.execute(execution(Map.of("connectorInstanceId", fromVariable.toString()), Map.of()));
+
+        verify(useCase, org.mockito.Mockito.times(2)).execute(eq(fromAttribute), eq("tenant_dev"), any());
+        verify(useCase).execute(eq(fromVariable), eq("tenant_dev"), any());
+        assertThatThrownBy(() -> delegate.execute(execution(Map.of(), Map.of())))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("connectorInstanceId");
+    }
+
+    // --- notificationDispatchTask ------------------------------------------------------------------------------
+
+    @Test
+    void notification_attributesOnly_attributeWins_andMissingChannelsKeepsTheError() {
+        SendNotificationUseCase useCase = mock(SendNotificationUseCase.class);
+        NotificationDispatchTask delegate = new NotificationDispatchTask(new TenantProperties("tenant_dev"), useCase);
+        UUID webhook = UUID.randomUUID();
+
+        delegate.execute(execution(Map.of(), Map.of(
+                "notificationChannels", "EMAIL, BROWSER",
+                "notificationTo", "a@example.org",
+                "notificationSubject", "Objet",
+                "notificationBody", "Corps",
+                "notificationUserId", "u1",
+                "notificationWebhookConfigId", webhook.toString())));
+        delegate.execute(execution(Map.of("notificationSubject", "Variable"),
+                Map.of("notificationChannels", "EMAIL", "notificationSubject", "Attribut")));
+
+        ArgumentCaptor<NotificationEvent> captor = ArgumentCaptor.forClass(NotificationEvent.class);
+        verify(useCase, org.mockito.Mockito.times(2)).send(captor.capture(), eq("tenant_dev"));
+        NotificationEvent first = captor.getAllValues().get(0);
+        assertThat(first.channels()).containsExactly(NotificationChannel.EMAIL, NotificationChannel.BROWSER);
+        assertThat(first.to()).isEqualTo("a@example.org");
+        assertThat(first.subject()).isEqualTo("Objet");
+        assertThat(first.body()).isEqualTo("Corps");
+        assertThat(first.userId()).isEqualTo("u1");
+        assertThat(first.webhookConfigId()).isEqualTo(webhook);
+        assertThat(captor.getAllValues().get(1).subject()).isEqualTo("Attribut");
+        assertThatThrownBy(() -> delegate.execute(execution(Map.of(), Map.of())))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("notificationChannels");
+    }
+
+    // --- documentGenerationTask --------------------------------------------------------------------------------
+
+    @Test
+    void documentGeneration_attributesOnly_attributeWins_andMissingKeepsTheError() {
+        GenerateDocumentUseCase generate = mock(GenerateDocumentUseCase.class);
+        DocumentStoragePort storage = mock(DocumentStoragePort.class);
+        when(generate.generate(any())).thenReturn("%PDF".getBytes());
+        when(storage.store(any(), any(), any())).thenReturn("ref");
+        DocumentGenerationTask delegate =
+                new DocumentGenerationTask(new TenantProperties("tenant_dev"), generate, storage);
+
+        delegate.execute(execution(Map.of(), Map.of(
+                "documentType", "facture", "documentVariant", "premium", "documentLocale", "fr")));
+        delegate.execute(execution(Map.of("documentType", "devis"), Map.of("documentType", "facture")));
+
+        ArgumentCaptor<GenerateDocumentUseCase.GenerateDocumentCommand> captor =
+                ArgumentCaptor.forClass(GenerateDocumentUseCase.GenerateDocumentCommand.class);
+        verify(generate, org.mockito.Mockito.times(2)).generate(captor.capture());
+        assertThat(captor.getAllValues().get(0).templateKey()).isEqualTo("facture");
+        assertThat(captor.getAllValues().get(0).variantKey()).isEqualTo("premium");
+        assertThat(captor.getAllValues().get(0).locale()).isEqualTo("fr");
+        assertThat(captor.getAllValues().get(1).templateKey()).isEqualTo("facture");
+        assertThatThrownBy(() -> delegate.execute(execution(Map.of(), Map.of())))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("documentType");
+    }
+
+    // --- createChildDossierTask --------------------------------------------------------------------------------
+
+    @Test
+    void createChild_attributesOnly_attributeWins_andMissingKeepsTheError() {
+        ChildDossierRelationConfirmer confirmer = mock(ChildDossierRelationConfirmer.class);
+        ManualStartOrchestrator orchestrator = mock(ManualStartOrchestrator.class);
+        DossierRepository dossiers = mock(DossierRepository.class);
+        CreateChildDossierDelegate delegate = new CreateChildDossierDelegate(
+                confirmer, orchestrator, dossiers, mock(UpdateDossierStatusUseCase.class),
+                new TenantProperties("tenant_dev"));
+        UUID source = UUID.randomUUID();
+        UUID child = UUID.randomUUID();
+        when(confirmer.confirm(any(), any(), any(), any(), any(), any(), any())).thenReturn(child);
+        Map<String, Object> dossierVar = Map.of("dossierId", source.toString());
+
+        delegate.execute(execution(dossierVar, Map.of(
+                "childDossierTypeCode", "ENFANT", "childDossierLabel", "Suite", "workflowProcessKey", "suiteProcess",
+                "relationType", "SUBSEQUENT")));
+        Map<String, Object> withVariable = new HashMap<>(dossierVar);
+        withVariable.put("childDossierLabel", "Depuis variable");
+        delegate.execute(execution(withVariable, Map.of(
+                "childDossierTypeCode", "ENFANT", "childDossierLabel", "Suite", "workflowProcessKey", "suiteProcess",
+                "relationType", "PARENT_CHILD")));
+
+        verify(confirmer).confirm(eq("tenant_dev"), eq(source), eq("ENFANT"), eq("Suite"), any(),
+                eq(RelationType.SUBSEQUENT), eq("pi-1:act"));
+        verify(confirmer).confirm(eq("tenant_dev"), eq(source), eq("ENFANT"), eq("Suite"), any(),
+                eq(RelationType.PARENT_CHILD), eq("pi-1:act"));
+        verify(orchestrator, org.mockito.Mockito.times(2)).start(eq(child), eq("suiteProcess"), any(), any(), any());
+        assertThatThrownBy(() -> delegate.execute(execution(dossierVar, Map.of())))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("childDossierTypeCode");
+        verify(confirmer, never()).confirm(any(), any(), eq("MISSING"), any(), any(), any(), any());
+    }
+}

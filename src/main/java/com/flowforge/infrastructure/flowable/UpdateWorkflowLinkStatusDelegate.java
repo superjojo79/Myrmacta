@@ -18,7 +18,7 @@ class UpdateWorkflowLinkStatusDelegate implements JavaDelegate {
     @Override
     public void execute(DelegateExecution execution) {
         Object linkId = execution.getVariable("dossierWorkflowLinkId");
-        Object status = execution.getVariable("targetWorkflowStatus");
+        Object status = DeployedActivityParameters.get(execution, "targetWorkflowStatus");
         if (linkId == null || status == null) {
             throw new IllegalArgumentException("dossierWorkflowLinkId and targetWorkflowStatus variables are required");
         }

@@ -30,6 +30,14 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
+- **TODO §73 (LC1)** — Palette métier dans l'éditeur BPMN : onze briques (document, connecteur,
+  notification, dossier enfant, statuts, DMN, signature, question, tâche externe) posables depuis la
+  palette, champs typés alimentés par l'API dans le panneau, avertissements non bloquants. Le
+  catalogue est servi par `GET /api/bpmn-building-blocks` et l'outil MCP `list_bpmn_building_blocks` ;
+  six delegates lisent désormais aussi des attributs `flowable:<nom>` littéraux (renseigné, l'attribut
+  prime sur une variable de même nom ; sans attribut, comportement inchangé), validés au déploiement (forme puis existence des ressources, `dryRun` MCP compris).
+  L'éditeur charge enfin les feuilles de style `bpmn-js`. Aucune migration, aucun changement pour un
+  process existant.
 - **[PR #149](https://github.com/superjojo79/FlowForge/pull/149) — TODO §72** — Signature électronique générique : un bloc BPMN `${signatureRequestTask}` demande la
   signature d'un document du dossier à des signataires externes (lien par e-mail, sans compte) ou
   internes (« Mes signatures »), en mode parallèle ou séquentiel, requis ou facultatifs ; le process

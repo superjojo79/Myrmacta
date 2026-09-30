@@ -7,6 +7,8 @@ import {
 import { useService } from 'bpmn-js-properties-panel'
 import { is } from 'bpmn-js/lib/util/ModelUtil'
 import type { Element as BpmnElement } from 'bpmn-js/lib/model/Types'
+import { getBlocks } from '../bpmn-blocks/blockCatalogHolder'
+import { recognizeBlock } from '../bpmn-blocks/recognizeBlock'
 
 // Custom bpmn-js-properties-panel provider exposing only the flowable:*
 // attributes actually used elsewhere in this repository (see the .bpmn20.xml
@@ -201,10 +203,11 @@ function DecisionTableReferenceKey(props: EntryProps) {
   })
 }
 
-function serviceTaskGroup() {
+function serviceTaskGroup(shouldOpen: boolean) {
   return {
     id: 'flowable-service-task',
-    label: 'Flowable',
+    label: 'Avancé',
+    shouldOpen,
     entries: [
       { id: 'flowable-async', component: Async, isEdited: isCheckboxEntryEdited },
       {
@@ -226,7 +229,7 @@ function serviceTaskGroup() {
 function signalGroup() {
   return {
     id: 'flowable-signal',
-    label: 'Flowable',
+    label: 'Avancé',
     entries: [{ id: 'flowable:scope', component: Scope, isEdited: isTextFieldEntryEdited }],
   }
 }
@@ -234,10 +237,11 @@ function signalGroup() {
 // TODO §52 (formulaires-dynamiques-taches) : flowable:formKey déclare qu'un userTask attend un
 // formulaire de tâche avant complétion. Convention FlowForge interprétée uniquement côté frontend
 // (taskFormRegistry.ts) — le moteur ne fait que stocker/restituer cette chaîne opaque.
-function userTaskGroup() {
+function userTaskGroup(shouldOpen: boolean) {
   return {
     id: 'flowable-user-task',
-    label: 'Flowable',
+    label: 'Avancé',
+    shouldOpen,
     entries: [
       { id: 'flowable:formKey', component: FormKey, isEdited: isTextFieldEntryEdited },
       { id: 'flowable:portalRecipient', component: PortalRecipient, isEdited: isTextFieldEntryEdited },
@@ -256,14 +260,16 @@ export default function FlowablePropertiesProvider(
 ) {
   this.getGroups = (element: BpmnElement) => {
     return (groups: unknown[]) => {
+      // TODO §73 : section « Avancé » (entrées brutes) repliée pour une brique reconnue, ouverte sinon (S-UI-4/5/8).
+      const shouldOpen = !recognizeBlock(element.businessObject as never, getBlocks())
       if (is(element, 'bpmn:ServiceTask')) {
-        groups.push(serviceTaskGroup())
+        groups.push(serviceTaskGroup(shouldOpen))
       }
       if (is(element, 'bpmn:Signal')) {
         groups.push(signalGroup())
       }
       if (is(element, 'bpmn:UserTask')) {
-        groups.push(userTaskGroup())
+        groups.push(userTaskGroup(shouldOpen))
       }
       return groups
     }

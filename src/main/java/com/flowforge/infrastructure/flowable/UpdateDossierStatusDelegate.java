@@ -20,7 +20,7 @@ class UpdateDossierStatusDelegate implements JavaDelegate {
     @Override
     public void execute(DelegateExecution execution) {
         Object dossierId = execution.getVariable("dossierId");
-        Object status = execution.getVariable("targetDossierStatus");
+        Object status = DeployedActivityParameters.get(execution, "targetDossierStatus");
         if (dossierId == null || status == null) {
             throw new IllegalArgumentException("dossierId and targetDossierStatus variables are required");
         }

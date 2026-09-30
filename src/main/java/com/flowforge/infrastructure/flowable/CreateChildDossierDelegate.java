@@ -45,10 +45,10 @@ class CreateChildDossierDelegate implements JavaDelegate {
     @Override
     public void execute(DelegateExecution execution) {
         UUID sourceDossierId = requiredUuid(execution, "dossierId");
-        String childType = requiredString(execution, "childDossierTypeCode");
-        String childLabel = requiredString(execution, "childDossierLabel");
-        String workflowProcessKey = requiredString(execution, "workflowProcessKey");
-        RelationType relationType = parseRelationType(requiredString(execution, "relationType"));
+        String childType = requiredParameter(execution, "childDossierTypeCode");
+        String childLabel = requiredParameter(execution, "childDossierLabel");
+        String workflowProcessKey = requiredParameter(execution, "workflowProcessKey");
+        RelationType relationType = parseRelationType(requiredParameter(execution, "relationType"));
         if (!ALLOWED_TYPES.contains(relationType)) {
             throw new IllegalArgumentException(
                     "relationType must be PARENT_CHILD or SUBSEQUENT, got: " + relationType);
@@ -123,6 +123,15 @@ class CreateChildDossierDelegate implements JavaDelegate {
     private static String requiredString(DelegateExecution execution, String name) {
         Object value = execution.getVariable(name);
         if (value == null || value.toString().isBlank()) {
+            throw new IllegalArgumentException(name + " process variable is required");
+        }
+        return value.toString();
+    }
+
+    /** Paramètre de brique : attribut littéral prioritaire, sinon variable (TODO §73). */
+    private static String requiredParameter(DelegateExecution execution, String name) {
+        Object value = DeployedActivityParameters.get(execution, name);
+        if (value == null) {
             throw new IllegalArgumentException(name + " process variable is required");
         }
         return value.toString();

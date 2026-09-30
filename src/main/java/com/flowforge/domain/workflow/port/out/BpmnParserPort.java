@@ -36,4 +36,11 @@ public interface BpmnParserPort {
      */
     java.util.List<com.flowforge.domain.signature.model.SignatureBlockDefinition> extractSignatureBlocks(
             byte[] bpmnXml);
+
+    /**
+     * TODO §73 — ressources du tenant référencées par les attributs de brique ({@code flowable:documentType},
+     * {@code connectorInstanceId}, …), déjà validés en forme par {@link #extractProcessDefinitionKey(byte[])}.
+     * L'existence est vérifiée par le use case de déploiement. Vide si aucune.
+     */
+    java.util.List<com.flowforge.domain.workflow.palette.BlockParameterUsage> extractBlockReferences(byte[] bpmnXml);
 }

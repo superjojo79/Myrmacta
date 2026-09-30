@@ -1,6 +1,6 @@
 # Palette métier dans l'éditeur BPMN (LC1)
 
-> **Statut : première analyse (2026-09-28), aucune décision technique tranchée.** Sous-lot
+> **Statut : Phases 1 à 5 closes le 2026-09-29 (TODO §73) — implémentation livrée, PR à ouvrir.** Phase 1 : — décisions D-PALETTE-* tranchées, voir les [requirements](../docs/ai/requirements/2026-09-29-feature-palette-metier-bpmn.md). **Correction** : les paramètres de six delegates vivent dans des variables de process, pas dans le XML ; le lot inclut donc les delegates et le parseur (§4 ci-dessous « aucun changement du parseur » est caduc). Analyse d'origine (2026-09-28) : Sous-lot
 > **LC1** `palette-metier-bpmn` de la couche low-code (D0 = C, [31](31-positionnement-produit.md),
 > rang 1 du classement). À affiner en `dev-lifecycle` Phase 1. Exposition MCP :
 > [46](46-exposition-mcp-couche-low-code.md).

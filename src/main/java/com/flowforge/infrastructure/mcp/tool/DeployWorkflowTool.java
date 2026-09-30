@@ -126,6 +126,9 @@ public class DeployWorkflowTool {
                 existing, rawProcessDefinitionKey, rawLabel, rawStatusDefinitions, rawAllowedDossierStatuses,
                 rawOnStartDossierStatus, rawObserverUserIds, actor);
 
+        // TODO §73 (parité + revue M5) : mêmes contrôles que le déploiement, avec la configuration SOUMISE, AVANT toute
+        // écriture — un refus (référence absente…) ne laisse plus une configuration modifiée sans BPMN déployé.
+        deployBpmnProcessUseCase.validate(xmlBytes, Optional.of(config));
         if (rawDryRun) {
             return result(rawProcessDefinitionKey, true, null, null);
         }

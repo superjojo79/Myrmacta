@@ -3254,3 +3254,334 @@ test('E2E-PORTAL-5 portal page renders under the injected A4 CSP (no unsafe-eval
   await expect(page.getByRole('heading', { name: 'Avis du tiers' })).toBeVisible()
   await probe.assertClean()
 })
+
+// ---------------------------------------------------------------------------------------------------------------
+// TODO §73 (palette-metier-bpmn) — briques métier dans l'éditeur BPMN (S-PW-1 à S-PW-5).
+// Catalogue simulé : sous-ensemble des marqueurs du catalogue serveur (BuildingBlockCatalog).
+// ---------------------------------------------------------------------------------------------------------------
+function blockParam(over: Record<string, unknown> & { name: string; label: string }) {
+  return {
+    type: 'TEXT',
+    binding: 'ATTRIBUTE',
+    required: false,
+    valueSource: null,
+    enumValues: [],
+    maxLength: 200,
+    min: null,
+    max: null,
+    help: null,
+    ...over,
+  }
+}
+
+const BLOCK_CATALOG = {
+  version: 1,
+  blocks: [
+    {
+      id: 'set-dossier-status',
+      label: 'Changer le statut du dossier',
+      description: 'Modifie le statut du dossier courant.',
+      category: 'DOSSIER',
+      element: 'SERVICE_TASK',
+      marker: { delegate: 'updateDossierStatusTask', serviceTaskType: null, formKeyPrefix: null, portalRecipient: false },
+      parameters: [
+        blockParam({
+          name: 'targetDossierStatus',
+          label: 'Statut du dossier',
+          type: 'ENUM',
+          required: true,
+          enumValues: ['DRAFT', 'OUVERT', 'EN_COURS', 'SUSPENDU', 'CLOTURE', 'ARCHIVE'],
+        }),
+      ],
+    },
+    {
+      id: 'generate-document',
+      label: 'Générer un document',
+      description: 'Génère un PDF depuis un template.',
+      category: 'DOCUMENT',
+      element: 'SERVICE_TASK',
+      marker: { delegate: 'documentGenerationTask', serviceTaskType: null, formKeyPrefix: null, portalRecipient: false },
+      parameters: [
+        blockParam({
+          name: 'documentType',
+          label: 'Template de document',
+          type: 'REFERENCE',
+          required: true,
+          valueSource: 'documentTemplates',
+        }),
+      ],
+    },
+    {
+      id: 'request-signature',
+      label: 'Demander une signature',
+      description: 'Demande la signature d’un document PDF.',
+      category: 'SIGNATURE',
+      element: 'SERVICE_TASK',
+      marker: { delegate: 'signatureRequestTask', serviceTaskType: null, formKeyPrefix: null, portalRecipient: false },
+      parameters: [
+        blockParam({ name: 'signatureDocument', label: 'Document à signer', type: 'SOURCE_REF', required: true }),
+        blockParam({
+          name: 'signers',
+          label: 'Signataires',
+          type: 'SIGNERS',
+          binding: 'SIGNER_ELEMENTS',
+          required: true,
+        }),
+      ],
+    },
+    {
+      id: 'user-question',
+      label: 'Question utilisateur',
+      description: 'Tâche humaine.',
+      category: 'HUMAN',
+      element: 'USER_TASK',
+      marker: { delegate: null, serviceTaskType: null, formKeyPrefix: 'user-question:', portalRecipient: false },
+      parameters: [
+        blockParam({
+          name: 'schemaKey',
+          label: 'Question',
+          type: 'REFERENCE',
+          binding: 'FORM_KEY_SUFFIX',
+          required: true,
+          valueSource: 'questionSchemas',
+        }),
+      ],
+    },
+  ],
+}
+
+function editableBpmn(processKey: string, tasks: string, taskIds: string[]): string {
+  const shapes = taskIds
+    .map(
+      (id, i) => `<bpmndi:BPMNShape id="${id}_di" bpmnElement="${id}"><dc:Bounds x="${250 + i * 140}" y="80" width="100" height="80"/></bpmndi:BPMNShape>`,
+    )
+    .join('')
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+             targetNamespace="http://flowforge/e2e">
+  <process id="${processKey}" isExecutable="true">
+    <startEvent id="start"/>
+    ${tasks}
+  </process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="${processKey}">
+      <bpmndi:BPMNShape id="start_di" bpmnElement="start"><dc:Bounds x="150" y="100" width="36" height="36"/></bpmndi:BPMNShape>
+      ${shapes}
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>`
+}
+
+async function mockBlockApis(page: Page, opts: { catalog?: boolean; templates?: Array<{ value: string; label: string }> } = {}) {
+  await mockSession(page)
+  await page.route('**/api/workflow-bpmn-drafts/otherWorkflow', (route) => route.fulfill({ status: 204, body: '' }))
+  await page.route('**/api/workflow-bpmn-deployments/otherWorkflow/xml', (route) => route.fulfill({ status: 204, body: '' }))
+  await page.route('**/api/bpmn-building-blocks', (route) =>
+    opts.catalog === false
+      ? route.fulfill({ status: 500, body: '' })
+      : route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(BLOCK_CATALOG) }),
+  )
+  await page.route('**/api/bpmn-building-blocks/references/documentTemplates', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(opts.templates ?? [{ value: 'contrat', label: 'Contrat de prêt' }]),
+    }),
+  )
+  await page.route('**/api/task-question-schemas*', (route) => route.fulfill({ status: 403, body: '' }))
+}
+
+async function importBpmn(page: Page, xml: string, anchorId: string) {
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'blocks.bpmn20.xml',
+    mimeType: 'application/xml',
+    buffer: Buffer.from(xml),
+  })
+  await expect(page.locator(`[data-element-id="${anchorId}"]`)).toBeVisible()
+}
+
+test('E2E-PALETTE-1 pose une brique « Changer le statut », la paramètre, enregistre puis la retrouve reconnue', async ({
+  page,
+}) => {
+  await mockBlockApis(page)
+  let putBody = ''
+  await page.route('**/api/workflow-bpmn-drafts/Process_1', async (route) => {
+    putBody = route.request().postData() ?? ''
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ processDefinitionKey: 'Process_1', xml: '<definitions/>', updatedAt: '2026-09-29T00:00:00Z', updatedBy: 'u' }),
+    })
+  })
+  await openApp(page)
+  await openBpmnEditor(page)
+
+  // S-UI-1 : le groupe « Briques métier » est dans la palette, à côté de la palette native.
+  const entry = page.locator('[data-action="create-block-set-dossier-status"]')
+  await expect(entry).toBeVisible()
+  await expect(page.locator('[data-action="create-block-generate-document"]')).toBeVisible()
+  await expect(page.locator('.djs-palette [data-action="create.task"]')).toBeVisible()
+
+  await entry.click()
+  await page.mouse.move(500, 300)
+  await page.mouse.click(500, 300)
+  const task = page.locator('.djs-element.djs-shape[data-element-id^="Activity_"], .djs-element.djs-shape[data-element-id^="ServiceTask_"]').first()
+  await expect(task).toBeVisible()
+  // bpmn-js ouvre l'édition directe du libellé à la pose : on la quitte (le nom de la brique est conservé).
+  await page.keyboard.press('Escape')
+  await task.click()
+
+  await page.getByLabel('Statut du dossier').selectOption('CLOTURE')
+  await page.getByRole('button', { name: 'Enregistrer le brouillon' }).click()
+  await expect.poll(() => putBody.length > 0).toBe(true)
+  expect(putBody).toContain('flowable:delegateExpression=\\"${updateDossierStatusTask}\\"')
+  expect(putBody).toContain('flowable:targetDossierStatus=\\"CLOTURE\\"')
+  expect(putBody).toContain('xmlns:flowable')
+
+  // Rechargement (réimport du XML enregistré) : la brique est reconnue avec sa valeur (S-PW-1).
+  const saved = JSON.parse(putBody).xml as string
+  await importBpmn(page, saved, 'StartEvent_1')
+  await page.locator('.djs-shape[data-element-id^="Activity_"], .djs-shape[data-element-id^="ServiceTask_"]').first().click()
+  await expect(page.getByLabel('Statut du dossier')).toHaveValue('CLOTURE')
+})
+
+test('E2E-PALETTE-2 liste des templates issue de l’API ; référence supprimée ⇒ avertissement visible', async ({ page }) => {
+  await mockBlockApis(page)
+  const xml = editableBpmn(
+    'otherWorkflow',
+    '<serviceTask id="gen" name="Générer" flowable:delegateExpression="${documentGenerationTask}" flowable:documentType="supprime"/>',
+    ['gen'],
+  )
+  await openApp(page)
+  await openBpmnEditor(page)
+  await importBpmn(page, xml, 'gen')
+  await expect(page.locator('[data-element-id="gen"].fb-block-warning')).toBeVisible()
+  await page.locator('[data-element-id="gen"]').click()
+  const select = page.getByLabel('Template de document')
+  await expect(select.locator('option', { hasText: 'Contrat de prêt' })).toHaveCount(1)
+  await expect(select.locator('option', { hasText: 'supprime (introuvable)' })).toHaveCount(1)
+  await expect(page.getByText(/n'existe plus/)).toBeVisible()
+  await select.selectOption('contrat')
+  await expect(page.locator('[data-element-id="gen"].fb-block-warning')).toHaveCount(0)
+})
+
+test('E2E-PALETTE-3 BPMN existant : tâches reconnues en briques, le reste en brut (section Avancé ouverte)', async ({ page }) => {
+  await mockBlockApis(page)
+  const xml = editableBpmn(
+    'otherWorkflow',
+    `<serviceTask id="st" name="Statut" flowable:delegateExpression="\${updateDossierStatusTask}" flowable:targetDossierStatus="OUVERT"/>
+     <serviceTask id="raw" name="Brut" flowable:delegateExpression="\${autreDelegue}"/>`,
+    ['st', 'raw'],
+  )
+  await openApp(page)
+  await openBpmnEditor(page)
+  await importBpmn(page, xml, 'st')
+
+  await page.locator('[data-element-id="st"]').click()
+  await expect(page.getByLabel('Statut du dossier')).toHaveValue('OUVERT')
+
+  await page.locator('[data-element-id="raw"]').click()
+  await expect(page.getByLabel('Statut du dossier')).toHaveCount(0)
+  await expect(page.getByLabel('Delegate expression')).toBeVisible() // « Avancé » ouvert pour un élément brut
+})
+
+test('E2E-PALETTE-4 section Avancé : une valeur brute modifiée se reflète dans le panneau de brique', async ({ page }) => {
+  await mockBlockApis(page)
+  const xml = editableBpmn(
+    'otherWorkflow',
+    '<userTask id="q" name="Question" flowable:formKey="user-question:demande"/>',
+    ['q'],
+  )
+  await openApp(page)
+  await openBpmnEditor(page)
+  await importBpmn(page, xml, 'q')
+  await page.locator('[data-element-id="q"]').click()
+  await expect(page.getByLabel('Question')).toHaveValue('demande') // liste indisponible ⇒ saisie libre
+
+  await page.getByText('Avancé', { exact: true }).click()
+  await page.getByLabel('Form key').fill('user-question:autre')
+  await page.keyboard.press('Tab')
+  await expect(page.getByLabel('Question')).toHaveValue('autre')
+})
+
+test('E2E-PALETTE-5 catalogue indisponible : l’éditeur reste utilisable en mode brut', async ({ page }) => {
+  await mockBlockApis(page, { catalog: false })
+  const xml = editableBpmn(
+    'otherWorkflow',
+    '<serviceTask id="st" name="Statut" flowable:delegateExpression="${updateDossierStatusTask}"/>',
+    ['st'],
+  )
+  await openApp(page)
+  await openBpmnEditor(page)
+  await expect(page.locator('[data-action="create-block-set-dossier-status"]')).toHaveCount(0)
+  await importBpmn(page, xml, 'st')
+  await page.locator('[data-element-id="st"]').click()
+  await expect(page.getByLabel('Delegate expression')).toHaveValue('${updateDossierStatusTask}')
+})
+
+test('E2E-PALETTE-6 brique signature : ajout d’un signataire dans la liste, écrit en <flowable:signer>', async ({ page }) => {
+  await mockBlockApis(page)
+  let putBody = ''
+  await page.route('**/api/workflow-bpmn-drafts/otherWorkflow', async (route) => {
+    if (route.request().method() === 'PUT') {
+      putBody = route.request().postData() ?? ''
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ processDefinitionKey: 'otherWorkflow', xml: '', updatedAt: '2026-09-29T00:00:00Z', updatedBy: 'u' }),
+      })
+      return
+    }
+    await route.fulfill({ status: 204, body: '' })
+  })
+  const xml = editableBpmn(
+    'otherWorkflow',
+    '<serviceTask id="sig" name="Signer" flowable:delegateExpression="${signatureRequestTask}" flowable:signatureDocument="variable:doc"/>',
+    ['sig'],
+  )
+  await openApp(page)
+  await openBpmnEditor(page)
+  await importBpmn(page, xml, 'sig')
+  await expect(page.locator('[data-element-id="sig"].fb-block-warning')).toBeVisible() // aucun signataire, aucune attente
+  await page.locator('[data-element-id="sig"]').click()
+  await page.locator('[data-group-id="group-block-signers"] button.bio-properties-panel-add-entry').click()
+  // Le nouvel élément de liste s'ouvre de lui-même mais le groupe reste replié : on l'ouvre.
+  const source = page.getByLabel('Source (dossierField:<champ> ou variable:<nom>)')
+  await page.locator('[data-group-id="group-block-signers"] .bio-properties-panel-group-header-title').click()
+  await expect(source).toBeVisible()
+  await source.fill('dossierField:emailClient')
+  await page.keyboard.press('Tab')
+  await page.getByRole('button', { name: 'Enregistrer le brouillon' }).click()
+  await expect.poll(() => putBody.length > 0).toBe(true)
+  expect(putBody).toContain('<flowable:signer')
+  expect(putBody).toContain('source=\\"dossierField:emailClient\\"')
+  expect(putBody).toContain('kind=\\"EXTERNAL\\"')
+})
+
+test('E2E-PALETTE-7 brique posée sur un diagramme importé sans xmlns:flowable : le marqueur survit à l’export (revue I3)', async ({
+  page,
+}) => {
+  await mockBlockApis(page)
+  let putBody = ''
+  await page.route('**/api/workflow-bpmn-drafts/noNsProcess', async (route) => {
+    putBody = route.request().postData() ?? ''
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ processDefinitionKey: 'noNsProcess', xml: '', updatedAt: '2026-09-30T00:00:00Z', updatedBy: 'u' }),
+    })
+  })
+  const xml = editableBpmn('noNsProcess', '', []).replace(' xmlns:flowable="http://flowable.org/bpmn"', '')
+  await openApp(page)
+  await openBpmnEditor(page)
+  await importBpmn(page, xml, 'start')
+  await page.locator('[data-action="create-block-set-dossier-status"]').click()
+  await page.mouse.move(500, 300)
+  await page.mouse.click(500, 300)
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Enregistrer le brouillon' }).click()
+  await expect.poll(() => putBody.length > 0).toBe(true)
+  expect(putBody).toContain('xmlns:flowable')
+  expect(putBody).toContain('flowable:delegateExpression=\\"${updateDossierStatusTask}\\"')
+})

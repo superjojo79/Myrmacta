@@ -216,6 +216,70 @@ class WorkflowBpmnDeploymentApiTest {
                 .andExpect(status().isNoContent());
     }
 
+    private static final String BLOCK_BPMN = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                         xmlns:flowable="http://flowable.org/bpmn"
+                         targetNamespace="http://flowforge/test">
+              <process id="%s" isExecutable="true">
+                <startEvent id="start"/>
+                <serviceTask id="setStatus" flowable:delegateExpression="${updateWorkflowLinkStatusTask}"
+                             flowable:targetWorkflowStatus="%s"/>
+                <userTask id="wait" name="Wait"/>
+                <sequenceFlow id="f1" sourceRef="start" targetRef="setStatus"/>
+                <sequenceFlow id="f2" sourceRef="setStatus" targetRef="wait"/>
+              </process>
+            </definitions>
+            """;
+
+    private static MockMultipartFile blockFile(String key, String status) {
+        return new MockMultipartFile("file", "diagram.bpmn20.xml", "application/xml",
+                BLOCK_BPMN.formatted(key, status).getBytes(StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void deploy_blockAttributeReferencingAStatusOfThisWorkflow_isAccepted() throws Exception {
+        // S-REFCHK-3 : le statut est vérifié contre la configuration DE CE process
+        String key = "apiBlockOk" + System.nanoTime();
+        createWorkflowTypeConfig(key);
+
+        mockMvc.perform(multipart("/api/workflow-bpmn-deployments")
+                        .file(blockFile(key, "STARTED"))
+                        .with(user("admin-block-ok", "TENANT_ADMIN"))
+                        .with(csrf()))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void deploy_blockAttributeReferencingAnUnknownStatus_returns404AndDeploysNothing() throws Exception {
+        // S-REFCHK-2
+        String key = "apiBlockKo" + System.nanoTime();
+        createWorkflowTypeConfig(key);
+
+        mockMvc.perform(multipart("/api/workflow-bpmn-deployments")
+                        .file(blockFile(key, "INCONNU"))
+                        .with(user("admin-block-ko", "TENANT_ADMIN"))
+                        .with(csrf()))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/workflow-bpmn-deployments/info")
+                        .param("processDefinitionKey", key)
+                        .with(user("admin-block-ko-info", "TENANT_ADMIN")))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void deploy_blockAttributeWithAnExpression_returns400() throws Exception {
+        // S-PARSE-3 / T-SEC-2 de bout en bout
+        String key = "apiBlockUel" + System.nanoTime();
+        createWorkflowTypeConfig(key);
+
+        mockMvc.perform(multipart("/api/workflow-bpmn-deployments")
+                        .file(blockFile(key, "${T(java.lang.Runtime).getRuntime()}"))
+                        .with(user("admin-block-uel", "TENANT_ADMIN"))
+                        .with(csrf()))
+                .andExpect(status().isBadRequest());
+    }
+
     private void createWorkflowTypeConfig(String key) throws Exception {
         mockMvc.perform(post("/api/workflow-type-configs")
                         .with(user("admin-config-" + key, "TENANT_ADMIN"))

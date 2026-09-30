@@ -60,7 +60,8 @@ class McpEndpointApiTest {
             "evaluate_decision",
             "test_decision",
             "list_decision_table_versions",
-            "redeploy_decision_table");
+            "redeploy_decision_table",
+            "list_bpmn_building_blocks");
 
     @Autowired
     private MockMvc mockMvc;

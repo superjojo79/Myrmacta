@@ -8,6 +8,8 @@ import com.flowforge.domain.workflow.model.DecisionEvaluationException;
 import com.flowforge.domain.workflow.model.DecisionVersionAlreadyCurrentException;
 import com.flowforge.domain.workflow.model.InvalidBpmnException;
 import com.flowforge.domain.workflow.model.InvalidDmnException;
+import com.flowforge.domain.workflow.model.UnknownBlockReferenceException;
+import com.flowforge.domain.workflow.model.UnknownBlockSourceException;
 import com.flowforge.domain.workflow.model.UnknownDecisionKeyException;
 import com.flowforge.domain.workflow.model.UnknownDecisionVersionException;
 import com.flowforge.domain.workflow.model.UnknownTaskQuestionSchemaException;
@@ -48,6 +50,8 @@ class WorkflowExceptionHandler {
             UnknownWorkflowKeyException.class,
             UnknownTaskQuestionSchemaException.class,
             UnknownDecisionKeyException.class,
+            UnknownBlockSourceException.class,
+            UnknownBlockReferenceException.class,
             UnknownDecisionVersionException.class
     })
     ProblemDetail handleWorkflowResourceNotFound(RuntimeException ex) {

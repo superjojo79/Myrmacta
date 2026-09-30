@@ -213,7 +213,8 @@ public class WorkflowConfig {
             BpmnDraftRepository bpmnDraftRepository,
             DmnDeploymentPort dmnDeploymentPort,
             com.flowforge.domain.workflow.portal.port.out.PortalAvailabilityPort portalAvailabilityPort,
-            com.flowforge.domain.signature.port.out.SignatureAvailabilityPort signatureAvailabilityPort) {
+            com.flowforge.domain.signature.port.out.SignatureAvailabilityPort signatureAvailabilityPort,
+            com.flowforge.domain.workflow.palette.BlockReferenceVerifier blockReferenceVerifier) {
         return new DeployBpmnProcessUseCaseImpl(
                 tenantProperties.id(),
                 deploymentPort,
@@ -222,7 +223,8 @@ public class WorkflowConfig {
                 bpmnDraftRepository,
                 dmnDeploymentPort,
                 portalAvailabilityPort,
-                signatureAvailabilityPort);
+                signatureAvailabilityPort,
+                blockReferenceVerifier);
     }
 
     @Bean

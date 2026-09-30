@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { loadBlockCatalog } from './bpmn-blocks/catalogClient'
+import { setBlockCatalog, setOpenProcessKey } from './bpmn-blocks/blockCatalogHolder'
 
 const props = defineProps<{
   bpmnXml: string
@@ -49,23 +51,57 @@ interface ModelerInstance {
 
 let modeler: ModelerInstance | null = null
 
+function processKeyOf(xml: string): string | null {
+  const match = xml.match(/<(?:[\w-]+:)?process\b[^>]*\bid\s*=\s*["']([^"']+)["']/)
+  return match ? match[1] : null
+}
+
 async function render() {
   if (!host.value) return
   const xml = props.bpmnXml || EMPTY_BPMN_XML
+  // TODO §73 : les statuts de workflow proposés par les briques viennent de la configuration de ce process.
+  setOpenProcessKey(processKeyOf(xml))
 
   if (!modeler) {
-    const [{ default: ModelerCtor }, propertiesPanel, { FlowablePropertiesProviderModule }] = await Promise.all([
+    // TODO §73 : le catalogue est chargé avant la création du Modeler (ses modules s'instancient de façon
+    // synchrone). Indisponible ⇒ palette et panneau natifs seulement (D-PALETTE-FALLBACK).
+    const [
+      { default: ModelerCtor },
+      propertiesPanel,
+      { FlowablePropertiesProviderModule },
+      catalog,
+      { BlockPaletteModule },
+      { BlockPropertiesProviderModule },
+      { BlockMarkersModule },
+    ] = await Promise.all([
       import('bpmn-js/lib/Modeler'),
       import('bpmn-js-properties-panel'),
       import('./bpmn-properties/flowablePropertiesProvider'),
+      loadBlockCatalog(),
+      import('./bpmn-blocks/blockPaletteProvider'),
+      import('./bpmn-blocks/blockPropertiesProvider'),
+      import('./bpmn-blocks/blockMarkers'),
+      // Feuilles de style de bpmn-js / diagram-js / panneau de propriétés : sans elles la palette (police d'icônes)
+      // et le panneau sont invisibles ou non mis en forme. Chargées avec l'éditeur seulement.
+      import('bpmn-js/dist/assets/diagram-js.css'),
+      import('bpmn-js/dist/assets/bpmn-js.css'),
+      import('bpmn-js/dist/assets/bpmn-font/css/bpmn.css'),
+      import('@bpmn-io/properties-panel/assets/properties-panel.css'),
     ])
+    const blocks = catalog?.blocks ?? []
+    setBlockCatalog(blocks)
     const { BpmnPropertiesPanelModule, BpmnPropertiesProviderModule } = propertiesPanel
     const Modeler = ModelerCtor as unknown as new (options: Record<string, unknown>) => ModelerInstance
 
     modeler = new Modeler({
       container: host.value,
       propertiesPanel: { parent: propertiesHost.value },
-      additionalModules: [BpmnPropertiesPanelModule, BpmnPropertiesProviderModule, FlowablePropertiesProviderModule],
+      additionalModules: [
+        BpmnPropertiesPanelModule,
+        BpmnPropertiesProviderModule,
+        FlowablePropertiesProviderModule,
+        ...(blocks.length > 0 ? [BlockPaletteModule, BlockPropertiesProviderModule, BlockMarkersModule] : []),
+      ],
     })
 
     // diagram-js's CommandStack has no .on() of its own — events are fired
@@ -74,6 +110,10 @@ async function render() {
     const eventBus = modeler.get('eventBus') as { on: (event: string, handler: () => void) => void }
     eventBus.on('commandStack.changed', () => {
       emit('dirty')
+      // Revue M7 : l'id du process peut être renommé dans l'éditeur ; les statuts proposés suivent la clé courante.
+      const root = (modeler?.get('canvas') as { getRootElement?: () => { businessObject?: { $type?: string; id?: string } } })
+        .getRootElement?.()?.businessObject
+      if (root?.$type === 'bpmn:Process' && root.id) setOpenProcessKey(root.id)
     })
   }
 
@@ -129,5 +169,23 @@ defineExpose({ saveXML })
   flex: 0 0 300px;
   border-left: 1px solid #d0d0d3;
   overflow-y: auto;
+}
+/* TODO §73 : brique dont un paramètre appelle un avertissement (non bloquant). */
+.bpmn-editor-canvas__diagram :deep(.fb-block-warning .djs-visual > rect) {
+  stroke: #d97706 !important;
+  stroke-width: 3px !important;
+}
+:deep(.fb-palette-block) {
+  position: relative;
+}
+:deep(.fb-palette-block::after) {
+  content: '';
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2563eb;
 }
 </style>

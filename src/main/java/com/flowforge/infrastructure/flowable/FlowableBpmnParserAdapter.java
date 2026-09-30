@@ -6,6 +6,8 @@ import com.flowforge.domain.signature.model.SignerKind;
 import com.flowforge.domain.workflow.AllowedBpmnDelegates;
 import com.flowforge.domain.workflow.TaskQuestionFormKeys;
 import com.flowforge.domain.workflow.model.InvalidBpmnException;
+import com.flowforge.domain.workflow.palette.BlockAttributeRules;
+import com.flowforge.domain.workflow.palette.BlockParameterUsage;
 import com.flowforge.domain.workflow.port.out.BpmnParserPort;
 import com.flowforge.domain.workflow.portal.model.PortalRecipientSource;
 import com.flowforge.domain.workflow.portal.model.PortalTaskDefinition;
@@ -13,6 +15,8 @@ import java.util.ArrayList;
 import java.io.ByteArrayInputStream;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -89,6 +93,56 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
             collectPortalTasks(process.getFlowElements(), tasks);
         }
         return List.copyOf(tasks);
+    }
+
+    @Override
+    public List<BlockParameterUsage> extractBlockReferences(byte[] bpmnXml) {
+        BpmnModel model;
+        try {
+            model = new BpmnXMLConverter().convertToBpmnModel(() -> new ByteArrayInputStream(bpmnXml), true, false);
+        } catch (Exception ex) {
+            throw new InvalidBpmnException("File is not a valid BPMN 2.0 document: " + ex.getMessage(), ex);
+        }
+        List<BlockParameterUsage> usages = new ArrayList<>();
+        for (Process process : model.getProcesses()) {
+            collectBlockReferences(process.getFlowElements(), usages);
+        }
+        return List.copyOf(usages);
+    }
+
+    private static void collectBlockReferences(Collection<FlowElement> elements, List<BlockParameterUsage> usages) {
+        if (elements == null) {
+            return;
+        }
+        for (FlowElement element : elements) {
+            usages.addAll(BlockAttributeRules.referenceUsages(
+                    element.getId(), blockDelegate(element), flowableAttributes(element)));
+            if (element instanceof SubProcess subProcess) {
+                collectBlockReferences(subProcess.getFlowElements(), usages);
+            }
+        }
+    }
+
+    /** Nom du bean {@code delegateExpression} d'un {@code serviceTask}, sinon {@code null}. */
+    private static String blockDelegate(FlowElement element) {
+        if (element instanceof ServiceTask serviceTask
+                && ImplementationType.IMPLEMENTATION_TYPE_DELEGATEEXPRESSION.equals(serviceTask.getImplementationType())) {
+            return AllowedBpmnDelegates.unwrapBeanName(serviceTask.getImplementation());
+        }
+        return null;
+    }
+
+    /** Attributs {@code flowable:*} de l'élément (nom → première valeur). */
+    private static Map<String, String> flowableAttributes(FlowElement element) {
+        Map<String, String> attributes = new LinkedHashMap<>();
+        element.getAttributes().forEach((name, list) -> {
+            for (ExtensionAttribute attribute : list) {
+                if (FLOWABLE_NAMESPACE.equals(attribute.getNamespace()) && attribute.getValue() != null) {
+                    attributes.putIfAbsent(name, attribute.getValue());
+                }
+            }
+        });
+        return attributes;
     }
 
     @Override
@@ -348,6 +402,9 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
     }
 
     private static void assertSafeElement(FlowElement element) {
+        // TODO §73 : forme des attributs de brique (dérivée du catalogue), sur tout élément — un attribut de brique
+        // posé hors de son delegate est refusé.
+        BlockAttributeRules.validate(element.getId(), blockDelegate(element), flowableAttributes(element));
         if (element instanceof HasExecutionListeners hasListeners) {
             assertSafeListeners(element.getId(), hasListeners.getExecutionListeners());
         }

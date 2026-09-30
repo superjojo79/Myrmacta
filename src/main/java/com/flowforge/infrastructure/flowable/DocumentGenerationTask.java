@@ -29,12 +29,12 @@ public class DocumentGenerationTask implements JavaDelegate {
 
     @Override
     public void execute(DelegateExecution execution) {
-        Object documentType = execution.getVariable(WorkflowVariables.DOCUMENT_TYPE);
+        Object documentType = DeployedActivityParameters.get(execution, WorkflowVariables.DOCUMENT_TYPE);
         if (documentType == null || documentType.toString().isBlank()) {
             throw new IllegalArgumentException("documentType variable is required");
         }
-        String variant = stringOrNull(execution.getVariable("documentVariant"));
-        String locale = stringOrNull(execution.getVariable("documentLocale"));
+        String variant = stringOrNull(DeployedActivityParameters.get(execution, "documentVariant"));
+        String locale = stringOrNull(DeployedActivityParameters.get(execution, "documentLocale"));
         Map<String, Object> variables = new HashMap<>(execution.getVariables());
         byte[] pdf = generateDocumentUseCase.generate(new GenerateDocumentUseCase.GenerateDocumentCommand(
                 documentType.toString(), variant, locale, variables));

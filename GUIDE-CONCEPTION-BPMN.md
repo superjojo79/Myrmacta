@@ -91,6 +91,11 @@ restreint** (`flowablePropertiesProvider.ts`) — décision **D-EDIT-SCOPE**. Se
 | `signal` | `flowable:scope` |
 | `userTask` | `flowable:formKey` — voir §3bis (TODO §52) |
 
+> **Briques métier (TODO §73).** Pour les onze cas d'usage courants, la palette de l'éditeur propose
+> un groupe **« Briques métier »** et le panneau affiche des champs typés (listes alimentées par
+> l'API) à la place des attributs bruts — voir §3quinquies. Le tableau ci-dessus décrit la section
+> **« Avancé »**, désormais repliée pour une brique reconnue.
+
 **Explicitement absents de l'UI** : `assignee`, `candidateGroups`. L'assignation d'une tâche
 humaine (`userTask`) n'est **pas déclarée dans le BPMN** — voir §6. Un diagramme importé depuis un
 outil externe qui porte d'autres attributs `flowable:*` (ex. `assignee` posé dans Camunda Modeler)
@@ -355,6 +360,65 @@ Contraintes :
   réponse, compter sur l'échéance (`EXPIRED`) plutôt que sur un timer.
 - Avec le fournisseur `stub`, toute signature est une **SIMULATION sans valeur juridique**, signalée
   dans les PDF produits et dans l'interface.
+
+## 3quinquies. Briques métier de l'éditeur (TODO §73)
+
+L'éditeur (`/admin/bpmn-editor`) charge le **catalogue des briques** exposé par le serveur
+(`GET /api/bpmn-building-blocks`, outil MCP `list_bpmn_building_blocks`) : une seule source pour la
+palette, le panneau, la validation au déploiement et les agents. Onze briques, chacune = **un seul
+élément BPMN** pré-configuré (D-PALETTE-GRANULARITY) :
+
+| Brique | Élément | Marqueur XML reconnu |
+|---|---|---|
+| Générer un document | `serviceTask` | `${documentGenerationTask}` |
+| Joindre le document | `serviceTask` | `${attachGeneratedDocumentTask}` |
+| Appeler un connecteur | `serviceTask` | `${connectorServiceTask}` |
+| Notifier | `serviceTask` | `${notificationDispatchTask}` |
+| Créer un dossier enfant | `serviceTask` | `${createChildDossierTask}` |
+| Changer le statut du dossier | `serviceTask` | `${updateDossierStatusTask}` |
+| Changer le statut du workflow | `serviceTask` | `${updateWorkflowLinkStatusTask}` |
+| Décision DMN | `serviceTask` | `flowable:type="dmn"` |
+| Demander une signature | `serviceTask` | `${signatureRequestTask}` |
+| Question utilisateur | `userTask` | `flowable:formKey="user-question:<clé>"` |
+| Tâche externe (portail) | `userTask` | `formKey` `user-question:` + `flowable:portalRecipient` |
+
+**Où vont les paramètres.** Les six delegates historiques (document, connecteur, notification, dossier
+enfant, statut du dossier, statut du workflow) lisent désormais aussi des **attributs littéraux**
+`flowable:<nom>` de leur propre activité, par exemple :
+
+```xml
+<serviceTask id="cloture" flowable:delegateExpression="${updateDossierStatusTask}"
+             flowable:targetDossierStatus="CLOTURE"/>
+```
+
+- **L'attribut renseigné prime sur une variable de process de même nom** (D-PALETTE-PRECEDENCE, révisée
+  après revue de sécurité) : ce que le concepteur fixe n'est pas modifiable à l'exécution — une variable
+  envoyée à la complétion d'une tâche ne peut pas changer le statut, le connecteur ou le destinataire.
+  Sans attribut, la variable fonctionne comme avant : rien ne change pour un process existant. Le panneau
+  le rappelle sous chaque champ. Valeurs sans espace de bord ni retour à la ligne (sauf le message d'une
+  notification) ; valeurs d'énumération exactes (`CLOTURE`, pas `CLOSED`).
+- `dossierId` et `dossierWorkflowLinkId` restent **exclusivement** des variables ; les données
+  structurées (`connectorInput`, `childDossierFields`, `childWorkflowVariables`, `notificationPayload`)
+  restent des variables ou des sorties d'étapes précédentes.
+- La table DMN s'écrit comme avant (`<flowable:field name="decisionTableReferenceKey">`), la question
+  dans le `formKey`, les signataires en `<flowable:signer …/>` (§3quater).
+
+**Ce qui est vérifié au déploiement** (écran, API et `deploy_workflow` MCP, y compris `dryRun`) :
+
+1. *La forme* — valeurs **littérales** uniquement (`${…}` et `#{…}` refusés), formats UUID / clé /
+   énumération / longueur ; sinon `400`.
+2. *L'existence* — template de document, connecteur (activé, rôle service), webhook (activé), type de
+   dossier, workflow, statut déclaré dans la configuration **de ce process**, table DMN, schéma de
+   question ; sinon `404`, comme pour une table DMN inconnue.
+
+Les avertissements de l'éditeur (paramètre obligatoire vide, référence disparue, `${…}` saisi,
+signature sans attente `signatureCompleted`, tâche externe sans question, adresse e-mail littérale dans
+« Notifier ») sont **non bloquants** : ils n'empêchent ni l'enregistrement du brouillon ni l'export.
+Catalogue indisponible → l'éditeur retombe sur la palette et le panneau natifs.
+
+> **Import d'un diagramme sans `xmlns:flowable`.** Dès qu'un paramètre de brique est écrit, l'éditeur
+> déclare lui-même `xmlns:flowable` sur `definitions` (D-FLOWABLE-NS) : plus de perte silencieuse du
+> premier attribut.
 
 ## 4. Instancier / appeler un service externe
 

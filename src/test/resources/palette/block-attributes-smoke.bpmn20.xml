@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://flowforge/test">
+
+  <!-- TODO §73 (palette-metier-bpmn) : briques écrites en attributs littéraux, sans aucune variable de process autre
+       que la réservée dossierId. -->
+  <process id="blockAttributesSmoke" name="Block Attributes Smoke" isExecutable="true">
+    <startEvent id="baStart"/>
+    <sequenceFlow id="baFlow1" sourceRef="baStart" targetRef="baGenerate"/>
+    <serviceTask id="baGenerate" name="Générer"
+                 flowable:delegateExpression="${documentGenerationTask}"
+                 flowable:documentType="invoice"
+                 flowable:documentVariant="premium"
+                 flowable:documentLocale="fr"/>
+    <sequenceFlow id="baFlow2" sourceRef="baGenerate" targetRef="baStatus"/>
+    <serviceTask id="baStatus" name="Statut"
+                 flowable:delegateExpression="${updateDossierStatusTask}"
+                 flowable:targetDossierStatus="EN_COURS"/>
+    <sequenceFlow id="baFlow3" sourceRef="baStatus" targetRef="baDone"/>
+    <userTask id="baDone" name="Terminé" flowable:assignee="block-smoke"/>
+  </process>
+</definitions>

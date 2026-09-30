@@ -2507,6 +2507,38 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/PageResponseConnectorDefinitionResponse"
+  /api/bpmn-building-blocks:
+    get:
+      tags:
+      - building-block-controller
+      operationId: catalog
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/BuildingBlockCatalogResponse"
+  /api/bpmn-building-blocks/references/{source}:
+    get:
+      tags:
+      - building-block-controller
+      operationId: references
+      parameters:
+      - name: source
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BlockReferenceResponse"
   /api/auth/me:
     get:
       tags:
@@ -4695,6 +4727,106 @@ components:
         totalPages:
           type: integer
           format: int32
+    BlockMarker:
+      type: object
+      properties:
+        delegate:
+          type: string
+        serviceTaskType:
+          type: string
+        formKeyPrefix:
+          type: string
+        portalRecipient:
+          type: boolean
+    BlockParameter:
+      type: object
+      properties:
+        name:
+          type: string
+        label:
+          type: string
+        type:
+          type: string
+          enum:
+          - TEXT
+          - ENUM
+          - ENUM_MULTI
+          - INTEGER
+          - REFERENCE
+          - SOURCE_REF
+          - SIGNERS
+        binding:
+          type: string
+          enum:
+          - ATTRIBUTE
+          - FIELD_ELEMENT
+          - FORM_KEY_SUFFIX
+          - SIGNER_ELEMENTS
+        required:
+          type: boolean
+        valueSource:
+          type: string
+        enumValues:
+          type: array
+          items:
+            type: string
+        maxLength:
+          type: integer
+          format: int32
+        min:
+          type: integer
+          format: int32
+        max:
+          type: integer
+          format: int32
+        help:
+          type: string
+    BuildingBlock:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+          enum:
+          - DOSSIER
+          - DOCUMENT
+          - INTEGRATION
+          - DECISION
+          - HUMAN
+          - SIGNATURE
+        element:
+          type: string
+          enum:
+          - SERVICE_TASK
+          - USER_TASK
+        marker:
+          $ref: "#/components/schemas/BlockMarker"
+        parameters:
+          type: array
+          items:
+            $ref: "#/components/schemas/BlockParameter"
+    BuildingBlockCatalogResponse:
+      type: object
+      properties:
+        version:
+          type: integer
+          format: int32
+        blocks:
+          type: array
+          items:
+            $ref: "#/components/schemas/BuildingBlock"
+    BlockReferenceResponse:
+      type: object
+      properties:
+        value:
+          type: string
+        label:
+          type: string
     AuthUserResponse:
       type: object
       properties:

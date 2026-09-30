@@ -38,7 +38,7 @@ FlowForge est un SaaS multi-tenant à architecture hexagonale. Stack **réelle**
 |---|---|---|---|
 | Livré | **2.4 Signature électronique** | `signature-electronique` | **Livré** ([PR #149](https://github.com/superjojo79/FlowForge/pull/149), TODO §72, lot XL), **socle générique + stub** (aucun provider ; fournisseur réel et eIDAS à cadrer) — [30-signature-electronique.md](analysis%20doc/30-signature-electronique.md) |
 | Décision | **D0** Positionnement produit | [analyse 31](analysis%20doc/31-positionnement-produit.md) | ✅ **Tranché = C** (TODO §70) : intégrateurs + couche low-code, décision n° 13 maintenue |
-| Vague D | **LC1** Palette métier dans l'éditeur BPMN | [`palette-metier-bpmn`](analysis%20doc/39-palette-metier-bpmn.md) | Analyse initiale |
+| Vague D | **LC1** Palette métier dans l'éditeur BPMN | [`palette-metier-bpmn`](analysis%20doc/39-palette-metier-bpmn.md) | **Phases 1–5 closes (TODO §73)** — implémentation livrée sur branche, PR à ouvrir ; lot M–L (catalogue serveur + delegates + parseur + éditeur) |
 | Vague D | **LC2** Langage d'expression métier borné | [`langage-expression-metier`](analysis%20doc/40-langage-expression-metier.md) | Analyse initiale |
 | Vague D | **LC3** Assistant de conception IA | [`assistant-conception-ia`](analysis%20doc/41-assistant-conception-ia.md) | Analyse initiale — après D6 |
 | Vague D | **LC4a / LC4b** Éditeurs visuels de formulaires / de templates | [`editeur-formulaires`](analysis%20doc/42-editeur-formulaires.md), [`editeur-templates-wysiwyg`](analysis%20doc/43-editeur-templates-wysiwyg.md) | Analyses initiales |

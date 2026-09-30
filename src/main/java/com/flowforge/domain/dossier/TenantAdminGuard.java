@@ -14,6 +14,13 @@ public final class TenantAdminGuard {
         }
     }
 
+    public void requireTenantOrWorkflowAdmin(AccessContext.User actor) {
+        Objects.requireNonNull(actor, "actor");
+        if (!actor.hasRole("TENANT_ADMIN") && !actor.hasRole("WORKFLOW_ADMIN")) {
+            throw new AccessDeniedException("TENANT_ADMIN or WORKFLOW_ADMIN role required");
+        }
+    }
+
     public void requireTenantAdminOrApiService(AccessContext.User actor) {
         Objects.requireNonNull(actor, "actor");
         if (!actor.hasRole("TENANT_ADMIN") && !actor.hasRole("API_SERVICE")) {

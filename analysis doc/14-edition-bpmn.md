@@ -192,6 +192,16 @@ E2E) exécuté par l'orchestrateur sur l'arbre fusionné.
   designer visuel/éditeur BPMN » devenues fausses, nouveau mécanisme
   documenté.
 
+## Évolution — briques métier (TODO §73, LC1)
+
+Le provider Flowable volontairement restreint (D-EDIT-SCOPE) est complété, sans le remplacer, par une
+**palette métier** : groupe « Briques métier » (`blockPaletteProvider`), groupe « Brique » du panneau
+inséré après « General » (`blockPropertiesProvider`), section « Avancé » (l'ancien groupe « Flowable »,
+repliée pour une brique reconnue), diagnostics non bloquants et marqueur de canevas (`blockMarkers`),
+`ensureFlowableNamespace` (D-FLOWABLE-NS). Le catalogue vient du serveur ; l'éditeur charge aussi
+désormais les feuilles de style `bpmn-js` / `diagram-js` / panneau de propriétés, absentes jusque-là
+(palette et panneau apparaissaient sans mise en forme). Détail : `docs/ai/design/2026-09-29-feature-palette-metier-bpmn.md`.
+
 ## Prochaine étape
 
 TODO §39 clos. Prochaine étape sur demande explicite de l'utilisateur :

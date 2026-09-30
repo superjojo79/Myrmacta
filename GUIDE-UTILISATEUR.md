@@ -142,9 +142,17 @@ depuis le bouton **Éditer** en face de chaque config workflow sur l'écran **Ad
    `.bpmn20.xml` local, ou édition d'un diagramme déjà déployé pour la clé de la config workflow
    choisie (le diagramme réellement en cours d'exécution est rechargé automatiquement).
 2. **Palette d'édition** (`bpmn-js`) — glisser-déposer des éléments BPMN standard (tâches,
-   passerelles, événements). Le **panel de propriétés** à droite permet d'éditer les propriétés
-   BPMN standard, ainsi que les attributs Flowable spécifiques aux tâches de service
-   (`asynchrone`, `delegate expression`, `expression`) et aux signaux (`scope`).
+   passerelles, événements) **et**, dans le groupe **« Briques métier »** (icônes marquées d'un point
+   bleu), onze briques prêtes à l'emploi : générer / joindre un document, appeler un connecteur,
+   notifier, créer un dossier enfant, changer le statut du dossier ou du workflow, décision DMN,
+   demander une signature, question utilisateur, tâche externe. Le **panel de propriétés** à droite
+   affiche pour une brique un groupe dédié avec des **champs typés** (listes de templates, connecteurs,
+   statuts, questions… alimentées par le serveur) ; la section **« Avancé »**, repliée, garde les
+   attributs Flowable bruts (`asynchrone`, `delegate expression`, `expression`, `scope`, `form key`…).
+   Une tâche qui n'est pas une brique reste éditable comme avant. Un contour orange signale une brique
+   à compléter (paramètre obligatoire vide, ressource supprimée) — l'avertissement n'empêche pas
+   d'enregistrer, seul le déploiement refuse une référence inexistante. Si le catalogue n'est pas
+   disponible, l'éditeur fonctionne avec ses seuls éléments BPMN standards.
 3. Bouton **Enregistrer le brouillon** — persiste l'état courant côté serveur, un brouillon par
    clé de processus (le dernier enregistrement écrase le précédent, pas d'historique). Rouvrir
    l'éditeur sur la même clé reprend ce brouillon.

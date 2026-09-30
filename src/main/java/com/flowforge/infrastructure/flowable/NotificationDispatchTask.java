@@ -30,12 +30,12 @@ public class NotificationDispatchTask implements JavaDelegate {
 
     @Override
     public void execute(DelegateExecution execution) {
-        List<NotificationChannel> channels = parseChannels(execution.getVariable("notificationChannels"));
-        String to = stringOrNull(execution.getVariable("notificationTo"));
-        String subject = stringOrNull(execution.getVariable("notificationSubject"));
-        String body = stringOrNull(execution.getVariable("notificationBody"));
-        String userId = stringOrNull(execution.getVariable("notificationUserId"));
-        UUID webhookConfigId = parseUuid(execution.getVariable("notificationWebhookConfigId"));
+        List<NotificationChannel> channels = parseChannels(DeployedActivityParameters.get(execution, "notificationChannels"));
+        String to = stringOrNull(DeployedActivityParameters.get(execution, "notificationTo"));
+        String subject = stringOrNull(DeployedActivityParameters.get(execution, "notificationSubject"));
+        String body = stringOrNull(DeployedActivityParameters.get(execution, "notificationBody"));
+        String userId = stringOrNull(DeployedActivityParameters.get(execution, "notificationUserId"));
+        UUID webhookConfigId = parseUuid(DeployedActivityParameters.get(execution, "notificationWebhookConfigId"));
         Map<String, Object> payload = parsePayload(execution.getVariable("notificationPayload"));
 
         NotificationEvent event =

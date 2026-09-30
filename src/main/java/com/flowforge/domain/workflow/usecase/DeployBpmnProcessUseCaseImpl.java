@@ -10,6 +10,8 @@ import java.util.List;
 import com.flowforge.domain.workflow.model.BpmnDeploymentResult;
 import com.flowforge.domain.workflow.model.UnknownDecisionKeyException;
 import com.flowforge.domain.workflow.model.UnknownWorkflowKeyException;
+import com.flowforge.domain.workflow.model.WorkflowTypeConfig;
+import com.flowforge.domain.workflow.palette.BlockReferenceVerifier;
 import com.flowforge.domain.workflow.port.in.DeployBpmnProcessUseCase;
 import com.flowforge.domain.workflow.port.out.BpmnDraftRepository;
 import com.flowforge.domain.workflow.port.out.BpmnParserPort;
@@ -17,6 +19,7 @@ import com.flowforge.domain.workflow.port.out.DmnDeploymentPort;
 import com.flowforge.domain.workflow.port.out.WorkflowDeploymentPort;
 import com.flowforge.domain.workflow.port.out.WorkflowTypeConfigRepository;
 import java.util.Objects;
+import java.util.Optional;
 
 public final class DeployBpmnProcessUseCaseImpl implements DeployBpmnProcessUseCase {
 
@@ -28,6 +31,7 @@ public final class DeployBpmnProcessUseCaseImpl implements DeployBpmnProcessUseC
     private final DmnDeploymentPort dmnDeploymentPort;
     private final PortalAvailabilityPort portalAvailability;
     private final SignatureAvailabilityPort signatureAvailability;
+    private final BlockReferenceVerifier blockReferenceVerifier;
 
     public DeployBpmnProcessUseCaseImpl(
             String tenantId,
@@ -37,7 +41,8 @@ public final class DeployBpmnProcessUseCaseImpl implements DeployBpmnProcessUseC
             BpmnDraftRepository draftRepository,
             DmnDeploymentPort dmnDeploymentPort,
             PortalAvailabilityPort portalAvailability,
-            SignatureAvailabilityPort signatureAvailability) {
+            SignatureAvailabilityPort signatureAvailability,
+            BlockReferenceVerifier blockReferenceVerifier) {
         this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
         this.deploymentPort = Objects.requireNonNull(deploymentPort, "deploymentPort");
         this.configRepository = Objects.requireNonNull(configRepository, "configRepository");
@@ -46,18 +51,29 @@ public final class DeployBpmnProcessUseCaseImpl implements DeployBpmnProcessUseC
         this.dmnDeploymentPort = Objects.requireNonNull(dmnDeploymentPort, "dmnDeploymentPort");
         this.portalAvailability = Objects.requireNonNull(portalAvailability, "portalAvailability");
         this.signatureAvailability = Objects.requireNonNull(signatureAvailability, "signatureAvailability");
+        this.blockReferenceVerifier = Objects.requireNonNull(blockReferenceVerifier, "blockReferenceVerifier");
     }
 
     @Override
     public BpmnDeploymentResult deploy(String filename, byte[] bpmnXml) {
         String processDefinitionKey = bpmnParserPort.extractProcessDefinitionKey(bpmnXml);
-        configRepository.findByWorkflowKey(tenantId, processDefinitionKey)
+        WorkflowTypeConfig config = configRepository.findByWorkflowKey(tenantId, processDefinitionKey)
                 .orElseThrow(() -> new UnknownWorkflowKeyException(
                         "No WorkflowTypeConfig found for key: " + processDefinitionKey));
+        validate(bpmnXml, Optional.of(config));
+        BpmnDeploymentResult result = deploymentPort.deploy(tenantId, filename, bpmnXml);
+        // D-DESIGN-DRAFT-LIFECYCLE: a successful deployment retires the draft for this key --
+        // avoids a stale draft silently diverging from what is actually deployed.
+        draftRepository.deleteByTenantIdAndProcessDefinitionKey(tenantId, processDefinitionKey);
+        return result;
+    }
+
+    @Override
+    public void validate(byte[] bpmnXml, Optional<WorkflowTypeConfig> effectiveConfig) {
+        String processDefinitionKey = bpmnParserPort.extractProcessDefinitionKey(bpmnXml);
         // TODO §61 D1 -- a serviceTask flowable:type="dmn" is only accepted by the BPMN parser in
         // shape (literal decisionTableReferenceKey); the parser alone cannot know which decision
-        // tables are actually deployed, so that check happens here, mirroring the
-        // WorkflowTypeConfig check just above.
+        // tables are actually deployed, so that check happens here.
         for (String decisionKey : bpmnParserPort.extractReferencedDecisionKeys(bpmnXml)) {
             dmnDeploymentPort
                     .findDeploymentInfo(tenantId, decisionKey)
@@ -66,11 +82,8 @@ public final class DeployBpmnProcessUseCaseImpl implements DeployBpmnProcessUseC
         }
         assertPortalTasksDeployable(bpmnParserPort.extractPortalTasks(bpmnXml));
         assertSignatureBlocksDeployable(bpmnParserPort.extractSignatureBlocks(bpmnXml));
-        BpmnDeploymentResult result = deploymentPort.deploy(tenantId, filename, bpmnXml);
-        // D-DESIGN-DRAFT-LIFECYCLE: a successful deployment retires the draft for this key --
-        // avoids a stale draft silently diverging from what is actually deployed.
-        draftRepository.deleteByTenantIdAndProcessDefinitionKey(tenantId, processDefinitionKey);
-        return result;
+        // TODO §73 D-PALETTE-DEPLOY-REFERENCES : existence des ressources référencées par les attributs de brique.
+        blockReferenceVerifier.verify(processDefinitionKey, effectiveConfig, bpmnParserPort.extractBlockReferences(bpmnXml));
     }
 
     /**

@@ -26,7 +26,7 @@ class ConnectorServiceTask implements JavaDelegate {
 
     @Override
     public void execute(DelegateExecution execution) {
-        Object instanceIdVar = execution.getVariable("connectorInstanceId");
+        Object instanceIdVar = DeployedActivityParameters.get(execution, "connectorInstanceId");
         if (instanceIdVar == null) {
             throw new IllegalArgumentException("connectorInstanceId process variable is required");
         }

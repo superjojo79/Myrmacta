@@ -1,0 +1,174 @@
+package com.flowforge.infrastructure.flowable;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import com.flowforge.domain.workflow.model.InvalidBpmnException;
+import com.flowforge.domain.workflow.palette.BlockParameter;
+import com.flowforge.domain.workflow.palette.BlockParameterUsage;
+import com.flowforge.domain.workflow.palette.BuildingBlock;
+import com.flowforge.domain.workflow.palette.BuildingBlockCatalog;
+import com.flowforge.domain.workflow.palette.ParameterBinding;
+import com.flowforge.domain.workflow.palette.ParameterType;
+import java.nio.charset.StandardCharsets;
+import java.util.UUID;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+
+/**
+ * TODO §73 — S-PARSE-1 (conformité catalogue ↔ parseur, US-8), S-PARSE-2..4, 6, S-PARSE-8 : la validation des
+ * attributs de brique au déploiement est dérivée du catalogue.
+ */
+class FlowableBpmnParserAdapterBlockTest {
+
+    private final FlowableBpmnParserAdapter adapter = new FlowableBpmnParserAdapter();
+
+    static java.util.stream.Stream<BuildingBlock> blocks() {
+        return BuildingBlockCatalog.all().stream();
+    }
+
+    /** XML minimal d'une brique avec des valeurs d'exemple pour chacun de ses paramètres. */
+    static String sampleXml(BuildingBlock block) {
+        StringBuilder attributes = new StringBuilder();
+        StringBuilder children = new StringBuilder();
+        String delegate = block.marker().delegate();
+        String type = block.marker().serviceTaskType();
+        String formKey = null;
+        if (delegate != null) {
+            attributes.append(" flowable:delegateExpression=\"${").append(delegate).append("}\"");
+        }
+        if (type != null) {
+            attributes.append(" flowable:type=\"").append(type).append("\"");
+        }
+        for (BlockParameter p : block.parameters()) {
+            String value = sampleValue(p);
+            switch (p.binding()) {
+                case ATTRIBUTE -> attributes.append(" flowable:").append(p.name()).append("=\"").append(value).append("\"");
+                case FIELD_ELEMENT -> children.append("<flowable:field name=\"").append(p.name())
+                        .append("\"><flowable:string>").append(value).append("</flowable:string></flowable:field>");
+                case FORM_KEY_SUFFIX -> formKey = block.marker().formKeyPrefix() + value;
+                case SIGNER_ELEMENTS -> children.append(
+                        "<flowable:signer source=\"dossierField:email\" kind=\"EXTERNAL\" required=\"true\" name=\"Client\"/>");
+            }
+        }
+        if (formKey != null) {
+            attributes.append(" flowable:formKey=\"").append(formKey).append("\"");
+        }
+        String tag = block.element().name().equals("USER_TASK") ? "userTask" : "serviceTask";
+        return "<" + tag + " id=\"act\"" + attributes + ">"
+                + (children.isEmpty() ? "" : "<extensionElements>" + children + "</extensionElements>")
+                + "</" + tag + ">";
+    }
+
+    private static String sampleValue(BlockParameter p) {
+        return switch (p.type()) {
+            case ENUM -> p.enumValues().getFirst();
+            case ENUM_MULTI -> String.join(",", p.enumValues().subList(0, 2));
+            case INTEGER -> String.valueOf(p.min());
+            case SOURCE_REF -> "variable:generatedDocumentId";
+            case REFERENCE -> "connectorInstances".equals(p.valueSource()) || "notificationWebhooks".equals(p.valueSource())
+                    ? UUID.randomUUID().toString() : "key1";
+            case SIGNERS -> "";
+            case TEXT -> "documentVariant".equals(p.name()) || "documentLocale".equals(p.name()) ? "fr" : "texte";
+        };
+    }
+
+    private static byte[] bpmn(String element) {
+        return """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                             xmlns:flowable="http://flowable.org/bpmn"
+                             targetNamespace="http://flowforge/test">
+                  <process id="testProcess" isExecutable="true">
+                    <startEvent id="start"/>
+                    %s
+                    <endEvent id="end"/>
+                    <sequenceFlow sourceRef="start" targetRef="act"/>
+                    <sequenceFlow sourceRef="act" targetRef="end"/>
+                  </process>
+                </definitions>
+                """.formatted(element).getBytes(StandardCharsets.UTF_8);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("blocks")
+    void everyCatalogBlockProducesXmlTheParserAccepts(BuildingBlock block) {
+        // S-PARSE-1 : le catalogue et l'allowlist ne divergent jamais
+        assertThat(adapter.extractProcessDefinitionKey(bpmn(sampleXml(block)))).isEqualTo("testProcess");
+    }
+
+    private void assertRefused(String element, String messagePart) {
+        assertThatThrownBy(() -> adapter.extractProcessDefinitionKey(bpmn(element)))
+                .isInstanceOf(InvalidBpmnException.class).hasMessageContaining(messagePart);
+    }
+
+    private static String service(String delegate, String attributes) {
+        return "<serviceTask id=\"act\" flowable:delegateExpression=\"${" + delegate + "}\" " + attributes + "/>";
+    }
+
+    @Test
+    void attributeOfAnotherBlockIsRefused() {
+        assertRefused(service("updateDossierStatusTask", "flowable:documentType=\"facture\""), "documentType");
+    }
+
+    @Test
+    void blockAttributeOnAUserTaskIsRefused() {
+        assertRefused("<userTask id=\"act\" flowable:targetDossierStatus=\"CLOTURE\"/>", "targetDossierStatus");
+    }
+
+    @Test
+    void expressionsAreRefusedInEveryAttribute() {
+        assertRefused(service("updateDossierStatusTask", "flowable:targetDossierStatus=\"${status}\""), "literal");
+        assertRefused(service("notificationDispatchTask", "flowable:notificationBody=\"a #{b}\""), "literal");
+    }
+
+    @Test
+    void invalidFormsAreRefusedWithTheActivityAndAttribute() {
+        assertRefused(service("connectorServiceTask", "flowable:connectorInstanceId=\"nope\""), "connectorInstanceId");
+        assertRefused(service("createChildDossierTask", "flowable:relationType=\"LINKED\""), "relationType");
+        assertRefused(service("updateDossierStatusTask", "flowable:targetDossierStatus=\"???\""), "targetDossierStatus");
+        assertRefused(service("notificationDispatchTask", "flowable:notificationChannels=\"SMS\""), "notificationChannels");
+    }
+
+    @Test
+    void diagramsWithoutBlockAttributesAreUntouchedAndUnknownAttributesArePreserved() {
+        // S-PARSE-5, S-PARSE-6
+        assertThat(adapter.extractProcessDefinitionKey(bpmn(service("updateDossierStatusTask", "")))).isEqualTo("testProcess");
+        assertThat(adapter.extractProcessDefinitionKey(
+                        bpmn(service("updateDossierStatusTask", "flowable:customThing=\"x\""))))
+                .isEqualTo("testProcess");
+    }
+
+    @Test
+    void delegateAllowlistRemainsTheGatekeeper() {
+        // S-PARSE-7 : un attribut de brique ne rend pas un delegate inconnu acceptable
+        assertRefused(service("evilBean", "flowable:targetDossierStatus=\"CLOTURE\""), "evilBean");
+        assertRefused(service("evilBean", ""), "allowlist");
+    }
+
+    @Test
+    void referencesToTenantResourcesAreExtractedForTheDeploymentCheck() {
+        byte[] xml = bpmn(service("createChildDossierTask",
+                "flowable:childDossierTypeCode=\"ENFANT\" flowable:childDossierLabel=\"Suite\""
+                        + " flowable:workflowProcessKey=\"suite\" flowable:relationType=\"SUBSEQUENT\""));
+
+        assertThat(adapter.extractBlockReferences(xml))
+                .extracting(BlockParameterUsage::activityId, BlockParameterUsage::valueSource, BlockParameterUsage::value)
+                .containsExactlyInAnyOrder(
+                        org.assertj.core.groups.Tuple.tuple("act", "dossierTypes", "ENFANT"),
+                        org.assertj.core.groups.Tuple.tuple("act", "workflowTypes", "suite"));
+        assertThat(adapter.extractBlockReferences(bpmn(service("updateDossierStatusTask", "")))).isEmpty();
+    }
+
+    @Test
+    void sampleXmlCoversEveryBindingOfTheCatalog() {
+        // garde-fou du test de conformité lui-même
+        assertThat(BuildingBlockCatalog.all().stream().flatMap(b -> b.parameters().stream())
+                        .map(BlockParameter::binding).distinct().toList())
+                .containsExactlyInAnyOrder(ParameterBinding.values());
+        assertThat(BuildingBlockCatalog.all().stream().flatMap(b -> b.parameters().stream())
+                        .map(BlockParameter::type).distinct().toList())
+                .contains(ParameterType.SIGNERS, ParameterType.SOURCE_REF, ParameterType.ENUM_MULTI);
+    }
+}

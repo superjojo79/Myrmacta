@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -95,6 +96,20 @@ class DeployWorkflowToolTest {
     }
 
     @Test
+    void refusedReference_isRejectedBeforeAnyConfigWrite() {
+        // revue M5 : plus de configuration modifiée sans BPMN déployé
+        when(bpmnParserPort.extractProcessDefinitionKey(any())).thenReturn(KEY);
+        when(getWorkflowTypeConfigUseCase.getByKey(KEY)).thenReturn(Optional.empty());
+        org.mockito.Mockito.doThrow(new com.flowforge.domain.workflow.model.UnknownBlockReferenceException("act", "documentType", "x"))
+                .when(deployBpmnProcessUseCase).validate(any(), any());
+
+        assertThatThrownBy(() -> invoke(baseArgs()))
+                .isInstanceOf(com.flowforge.domain.workflow.model.UnknownBlockReferenceException.class);
+        verifyNoInteractions(saveWorkflowTypeConfigUseCase);
+        org.mockito.Mockito.verify(deployBpmnProcessUseCase, org.mockito.Mockito.never()).deploy(any(), any());
+    }
+
+    @Test
     void invalidXml_rejectedBeforeAnyConfigChange() {
         when(bpmnParserPort.extractProcessDefinitionKey(any())).thenThrow(new InvalidBpmnException("bad xml"));
 
@@ -113,7 +128,10 @@ class DeployWorkflowToolTest {
         Map<String, Object> result = invoke(args);
 
         assertThat(result.get("dryRun")).isEqualTo(true);
-        verifyNoInteractions(saveWorkflowTypeConfigUseCase, deployBpmnProcessUseCase);
+        // S-DRY-1/2 : mêmes contrôles que le déploiement, avec la configuration soumise ; rien n'est écrit ni déployé
+        verify(deployBpmnProcessUseCase).validate(any(), any());
+        verify(deployBpmnProcessUseCase, never()).deploy(any(), any());
+        verifyNoInteractions(saveWorkflowTypeConfigUseCase);
     }
 
     @Test

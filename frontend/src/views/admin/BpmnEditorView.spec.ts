@@ -35,6 +35,16 @@ vi.mock('@/components/workflow/bpmn-properties/flowablePropertiesProvider', () =
   FlowablePropertiesProviderModule: {},
 }))
 
+// TODO §73 : modules de briques et feuilles de style de l'éditeur, allégés pour rester dans un flushPromises.
+vi.mock('@/components/workflow/bpmn-blocks/catalogClient', () => ({ loadBlockCatalog: () => Promise.resolve(null) }))
+vi.mock('@/components/workflow/bpmn-blocks/blockPaletteProvider', () => ({ BlockPaletteModule: {} }))
+vi.mock('@/components/workflow/bpmn-blocks/blockPropertiesProvider', () => ({ BlockPropertiesProviderModule: {} }))
+vi.mock('@/components/workflow/bpmn-blocks/blockMarkers', () => ({ BlockMarkersModule: {} }))
+vi.mock('bpmn-js/dist/assets/diagram-js.css', () => ({}))
+vi.mock('bpmn-js/dist/assets/bpmn-js.css', () => ({}))
+vi.mock('bpmn-js/dist/assets/bpmn-font/css/bpmn.css', () => ({}))
+vi.mock('@bpmn-io/properties-panel/assets/properties-panel.css', () => ({}))
+
 async function mountView(path: string) {
   const router = createRouter({ history: createMemoryHistory(), routes })
   await router.push(path)

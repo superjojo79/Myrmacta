@@ -83,4 +83,14 @@ contournables :
 indivisible — ni le délai coopératif ni la garde d'allocation ne voient le travail. Plutôt que de borner fonction par fonction
 (jeu sans fin), deux invariants généraux sont vérifiés à chaque sortie de nœud (D-EXPR-WEIGHT-FUEL).
 
-### Passe 3 — voir ci-dessous (complétée au retour du relecteur)
+### Passe 3 (troisième sous-agent, sondes exécutées ; une première tentative s'était arrêtée après 87 s sans sonder — écartée, relancée) — **0 Critique, 0 Haute**
+
+Conclusion explicite du relecteur : aucune faille Critique ou Haute reproduite. Preuves exécutées sous `-Xmx256m` :
+
+- C1 (aplatissement) refusé en **58 ms**, C2 (graphe partagé, `=` et `$distinct`) en **80 ms** : les correctifs de la passe 2 tiennent.
+- Mutation en place d'un conteneur déjà pesé (soupçon sur la mémoïsation par identité) : **non reproduite** — `$append`, `$reverse`, `$sort`, `$distinct`, `$keys`, `$spread`, `$merge`, `$lookup`, `$each`, `evaluateStep` construisent tous un conteneur neuf.
+- Pire cas natif mono-appel sous toutes les bornes (`$sort`, `$distinct`, `$clone`, `**`, transformation, `$zip`, `$string`) : aucun dépassement (pire observé 193 ms) — le budget de travail plafonne la *construction* des données avant l'appel natif, le délai attrape le cumul.
+- Récursion de `weigh`/`copyResult` : pas de `StackOverflowError` reproductible (profondeur limitée par le délai ; copie plafonnée à 32 niveaux).
+- Surcoût de `weigh` négligeable ; liste blanche, noms `__*`, messages neutres, `OutOfMemoryError` non avalée, delegate : inchangés et tenus.
+
+Constat unique, **Basse** : faux positif — 3 000 lignes de 6 champs refusées par la borne d'entrée de 256 Ko (le guide citait ce cas). **Corrigé** : `maxInputBytes` relevé à 1 Mo (les bornes de travail et de poids continuent de borner le calcul) ; guide aligné.

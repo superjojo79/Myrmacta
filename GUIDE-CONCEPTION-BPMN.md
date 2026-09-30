@@ -496,7 +496,7 @@ JSON** dans la variable ; booléen, nombre et texte le sont tels quels.
 | longueur d'un texte **intermédiaire** | 65 536 caractères |
 | poids **déplié** d'une valeur intermédiaire (chaque occurrence d'un sous-arbre *partagé* comptée : `{"a":$c,"b":$c}` imbriqué n fois pèse 2ⁿ) | 1 000 000 |
 | travail **cumulé** d'une évaluation (somme, à chaque nœud, de la taille de la valeur produite : borne `[1..9999].$l` et les appels natifs sur références partagées) | 3 000 000 |
-| contexte d'entrée / résultat | 256 Ko / 64 Ko |
+| contexte d'entrée / résultat | 1 Mo / 64 Ko (≈ 3 000 lignes de 6 champs) |
 | largeur de `$pad` | 10 000 caractères |
 | mémoire allouée par évaluation | 64 Mo |
 

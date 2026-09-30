@@ -38,7 +38,7 @@ public record ExpressionLimits(
         long maxWork) {
 
     public static final ExpressionLimits DEFAULTS = new ExpressionLimits(
-            2_000, 500, 40, 250L, 400, 256 * 1024, 64 * 1024, 10_000, 64L * 1024 * 1024, 10_000, 1_000_000L, 3_000_000L);
+            2_000, 500, 40, 250L, 400, 1024 * 1024, 64 * 1024, 10_000, 64L * 1024 * 1024, 10_000, 1_000_000L, 3_000_000L);
 
     public ExpressionLimits {
         if (maxExpressionChars < 1 || maxAstNodes < 1 || maxAstDepth < 1 || timeoutMillis < 1 || maxEvalDepth < 1

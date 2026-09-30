@@ -4,7 +4,7 @@
 
 | # | Lot | Statut | Phase | Dernier commit | Tests (verify / Vitest / Playwright) | Revue adversariale | Décisions ⚠ |
 |---|---|---|---|---|---|---|---|
-| 1 | LC1-suite (tables DMN dans la palette) | À faire | – | – | – | – | – |
+| 1 | LC1-suite (tables DMN dans la palette) | **Livré** (TODO §74) | 10 | voir `git log` | verify 2658/0 échec · Vitest 499 · Playwright 106 | 1 passe : 0 Crit./Haut, 1 Moy. + 3 Basses traitées | aucune |
 | 2 | LC2 langage d'expression métier | À faire | – | – | – | – | – |
 | 3 | D1 types de champs | À faire | – | – | – | – | – |
 | 4 | D3a OAuth2 client credentials | À faire | – | – | – | – | – |

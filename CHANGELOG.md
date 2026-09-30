@@ -30,6 +30,10 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
+- **TODO §74 (LC1-suite)** — Le panneau de la brique « Décision DMN » propose désormais la liste des tables de décision
+  déployées (clé et dernière version) au lieu d'une saisie libre. Servie par
+  `GET /api/bpmn-building-blocks/references/dmnTables` (`TENANT_ADMIN` ou `WORKFLOW_ADMIN`). Aucune migration.
+
 - **[PR #151](https://github.com/superjojo79/FlowForge/pull/151) — TODO §73 (LC1)** — Palette métier dans l'éditeur BPMN : onze briques (document, connecteur,
   notification, dossier enfant, statuts, DMN, signature, question, tâche externe) posables depuis la
   palette, champs typés alimentés par l'API dans le panneau, avertissements non bloquants. Le

@@ -17,6 +17,8 @@ import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
 import com.flowforge.domain.notification.model.NotificationWebhookConfig;
 import com.flowforge.domain.notification.port.out.NotificationWebhookRepository;
 import com.flowforge.domain.workflow.palette.port.out.BlockReference;
+import com.flowforge.domain.workflow.model.DecisionTableDeploymentInfo;
+import com.flowforge.domain.workflow.port.out.DmnDeploymentPort;
 import com.flowforge.domain.workflow.port.out.WorkflowTypeConfigRepository;
 import java.time.Instant;
 import java.util.List;
@@ -36,8 +38,9 @@ class BlockReferenceLookupAdapterTest {
     private final NotificationWebhookRepository webhooks = mock(NotificationWebhookRepository.class);
     private final DossierTypeRepository dossierTypes = mock(DossierTypeRepository.class);
     private final WorkflowTypeConfigRepository workflows = mock(WorkflowTypeConfigRepository.class);
-    private final BlockReferenceLookupAdapter adapter =
-            new BlockReferenceLookupAdapter(templates, connectors, catalog, webhooks, dossierTypes, workflows);
+    private final DmnDeploymentPort dmnDeployments = mock(DmnDeploymentPort.class);
+    private final BlockReferenceLookupAdapter adapter = new BlockReferenceLookupAdapter(
+            templates, connectors, catalog, webhooks, dossierTypes, workflows, dmnDeployments);
 
     @BeforeEach
     void setUp() {
@@ -87,6 +90,36 @@ class BlockReferenceLookupAdapterTest {
                 new NotificationWebhookConfig(UUID.randomUUID(), TENANT, "Del", "https://x", "c", true, now, now, now)));
 
         assertThat(adapter.list(TENANT, "notificationWebhooks")).containsExactly(new BlockReference(ok.toString(), "Slack"));
+    }
+
+    @Test
+    void dmnTablesListTheLatestDeploymentOfEachKeySortedByKeyWithItsVersionInTheLabel() {
+        when(dmnDeployments.findAllLatestDeployments(TENANT)).thenReturn(List.of(
+                new DecisionTableDeploymentInfo("scoring", 3), new DecisionTableDeploymentInfo("eligibilite", 1)));
+
+        assertThat(adapter.list(TENANT, "dmnTables")).containsExactly(
+                new BlockReference("eligibilite", "eligibilite (v1)"), new BlockReference("scoring", "scoring (v3)"));
+    }
+
+    @Test
+    void dmnTablesAreReadForTheRequestedTenantOnly() {
+        when(dmnDeployments.findAllLatestDeployments("tenant_b")).thenReturn(List.of());
+
+        assertThat(adapter.list("tenant_b", "dmnTables")).isEmpty();
+        org.mockito.Mockito.verify(dmnDeployments).findAllLatestDeployments("tenant_b");
+        org.mockito.Mockito.verify(dmnDeployments, org.mockito.Mockito.never()).findAllLatestDeployments(TENANT);
+    }
+
+    @Test
+    void dmnTableExistenceIsCheckedAgainstTheTenantDeployments() {
+        when(dmnDeployments.findDeploymentInfo(TENANT, "scoring"))
+                .thenReturn(Optional.of(new DecisionTableDeploymentInfo("scoring", 2)));
+        when(dmnDeployments.findDeploymentInfo(TENANT, "absente")).thenReturn(Optional.empty());
+
+        assertThat(adapter.exists(TENANT, "dmnTables", "scoring")).isTrue();
+        assertThat(adapter.exists(TENANT, "dmnTables", "absente")).isFalse();
+        assertThat(adapter.exists(TENANT, "dmnTables", " ")).isFalse();
+        assertThat(adapter.exists("tenant_b", "dmnTables", "scoring")).isFalse();
     }
 
     @Test

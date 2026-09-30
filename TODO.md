@@ -1196,6 +1196,20 @@ variables de process seulement ; le lot n'est donc pas « frontend seul » (tail
 **Phase 5 (2026-09-29).** Jalons M0–M12 livrés (backend : catalogue + API + outil MCP, `DeployedActivityParameters` et six delegates, validation de forme au parseur, existence des références au déploiement, parité `dryRun` ; frontend : `bpmn-blocks/` — client, reconnaissance, palette, panneau typé, « Avancé », diagnostics, marqueurs). Vérification : `./mvnw verify` 2648 tests verts, Vitest 489, Playwright 104 (dont `E2E-PALETTE-1..6`), OpenAPI dorée additive. **Constat** : les feuilles de style de `bpmn-js` n'étaient chargées nulle part (palette invisible) — corrigé. Écart assumé : la source `dmnTables` reste en saisie libre (pas d'API de liste). Voir [implementation](docs/ai/implementation/2026-09-29-feature-palette-metier-bpmn.md). Phases 6 à 9 closes (revue adversariale par sous-agent : 0 bloquant, 4 importants et 8 mineurs corrigés, dont la précédence attribut > variable). **Mergée sur `main`** le 2026-09-30 ([PR #151](https://github.com/superjojo79/FlowForge/pull/151), squash `f161129`), CI verte (`build` + `frontend`) ; chiffres finaux : `./mvnw verify` 2653 tests, Vitest 498, Playwright 105.
 
 
+### [x] 74. Palette métier — liste des tables DMN déployées (LC1-suite) (livré)
+
+**Énoncé :** reliquat de §73 (« reste en suite : liste des tables DMN déployées »). Docs SDD :
+[requirements](docs/ai/requirements/2026-09-30-feature-lc1-suite-palette-dmn.md), [design](docs/ai/design/2026-09-30-feature-lc1-suite-palette-dmn.md),
+[planning](docs/ai/planning/2026-09-30-feature-lc1-suite-palette-dmn.md), [implementation](docs/ai/implementation/2026-09-30-feature-lc1-suite-palette-dmn.md),
+[testing](docs/ai/testing/2026-09-30-feature-lc1-suite-palette-dmn.md). Journal des décisions : [DECISIONS.md](docs/roadmap-goal/DECISIONS.md).
+
+**Décisions (mandat « roadmap complète », 2026-09-30).** D-LC1S-SOURCE = endpoint de références de la palette (pas de nouvelle API REST publique) ;
+D-LC1S-LABEL = valeur = clé, libellé = « clé (vN) » ; D-LC1S-EXISTS = `exists("dmnTables")` ajouté à l'adaptateur (l'existence reste vérifiée au
+déploiement par le use case). **Livré** : `GET /api/bpmn-building-blocks/references/dmnTables` (TENANT_ADMIN, WORKFLOW_ADMIN), frontend, `E2E-PALETTE-8`.
+**Revue adversariale** (sous-agent) : 0 Critique/Haut ; 1 Moyenne (doc obsolète), 3 Basses (2 corrigées, 1 tracée).
+**Impacte :** `GUIDE-UTILISATEUR.md` (palette), `ROADMAP.md`, `CHANGELOG.md`. Aucune variable d'environnement, aucune migration.
+
+
 ### [x] 19. Granularité des rôles RBAC
 
 **Clos V1 (2026-08-03 — feature `autorisation-conformite`) :** les cinq rôles

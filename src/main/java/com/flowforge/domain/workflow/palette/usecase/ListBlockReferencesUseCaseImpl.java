@@ -12,8 +12,12 @@ import java.util.Set;
 
 public final class ListBlockReferencesUseCaseImpl implements ListBlockReferencesUseCase {
 
-    /** Sources dont l'API d'administration est réservée à {@code TENANT_ADMIN} : les autres restent lues à leur API. */
-    static final Set<String> SERVED_SOURCES = Set.of("documentTemplates", "connectorInstances", "notificationWebhooks");
+    /**
+     * Sources servies ici : celles dont l'API d'administration est réservée à {@code TENANT_ADMIN}, et
+     * {@code dmnTables} qui n'a pas d'API REST de liste (seul l'outil MCP {@code list_decision_tables}). Les autres
+     * restent lues à leur API.
+     */
+    static final Set<String> SERVED_SOURCES = Set.of("documentTemplates", "connectorInstances", "notificationWebhooks", "dmnTables");
 
     private final String tenantId;
     private final BlockReferenceLookupPort lookup;

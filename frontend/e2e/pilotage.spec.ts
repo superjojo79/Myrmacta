@@ -3312,6 +3312,24 @@ const BLOCK_CATALOG = {
       ],
     },
     {
+      id: 'dmn-decision',
+      label: 'Décision DMN',
+      description: 'Évalue une table de décision DMN.',
+      category: 'DECISION',
+      element: 'SERVICE_TASK',
+      marker: { delegate: null, serviceTaskType: 'dmn', formKeyPrefix: null, portalRecipient: false },
+      parameters: [
+        blockParam({
+          name: 'decisionTableReferenceKey',
+          label: 'Table de décision',
+          type: 'REFERENCE',
+          binding: 'FIELD_ELEMENT',
+          required: true,
+          valueSource: 'dmnTables',
+        }),
+      ],
+    },
+    {
       id: 'request-signature',
       label: 'Demander une signature',
       description: 'Demande la signature d’un document PDF.',
@@ -3387,6 +3405,16 @@ async function mockBlockApis(page: Page, opts: { catalog?: boolean; templates?: 
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify(opts.templates ?? [{ value: 'contrat', label: 'Contrat de prêt' }]),
+    }),
+  )
+  await page.route('**/api/bpmn-building-blocks/references/dmnTables', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        { value: 'eligibilite', label: 'eligibilite (v1)' },
+        { value: 'scoring', label: 'scoring (v2)' },
+      ]),
     }),
   )
   await page.route('**/api/task-question-schemas*', (route) => route.fulfill({ status: 403, body: '' }))
@@ -3557,6 +3585,40 @@ test('E2E-PALETTE-6 brique signature : ajout d’un signataire dans la liste, é
   expect(putBody).toContain('<flowable:signer')
   expect(putBody).toContain('source=\\"dossierField:emailClient\\"')
   expect(putBody).toContain('kind=\\"EXTERNAL\\"')
+})
+
+test('E2E-PALETTE-8 brique « Décision DMN » : la table se choisit dans la liste des tables déployées (LC1-suite)', async ({ page }) => {
+  await mockBlockApis(page)
+  let putBody = ''
+  await page.route('**/api/workflow-bpmn-drafts/otherWorkflow', async (route) => {
+    if (route.request().method() === 'PUT') {
+      putBody = route.request().postData() ?? ''
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ processDefinitionKey: 'otherWorkflow', xml: '', updatedAt: '2026-09-30T00:00:00Z', updatedBy: 'u' }),
+      })
+      return
+    }
+    await route.fulfill({ status: 204, body: '' })
+  })
+  const xml = editableBpmn(
+    'otherWorkflow',
+    '<serviceTask id="dec" name="Décider" flowable:type="dmn"><extensionElements><flowable:field name="decisionTableReferenceKey"><flowable:string>scoring</flowable:string></flowable:field></extensionElements></serviceTask>',
+    ['dec'],
+  )
+  await openApp(page)
+  await openBpmnEditor(page)
+  await importBpmn(page, xml, 'dec')
+  await page.locator('[data-element-id="dec"]').click()
+  const select = page.getByLabel('Table de décision', { exact: true })
+  await expect(select.locator('option', { hasText: 'scoring (v2)' })).toHaveCount(1)
+  await expect(select.locator('option', { hasText: 'eligibilite (v1)' })).toHaveCount(1)
+  await select.selectOption('eligibilite')
+  await page.getByRole('button', { name: 'Enregistrer le brouillon' }).click()
+  await expect.poll(() => putBody.length > 0).toBe(true)
+  expect(putBody).toContain('decisionTableReferenceKey')
+  expect(putBody).toContain('eligibilite')
 })
 
 test('E2E-PALETTE-7 brique posée sur un diagramme importé sans xmlns:flowable : le marqueur survit à l’export (revue I3)', async ({

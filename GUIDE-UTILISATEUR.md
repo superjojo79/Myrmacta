@@ -147,7 +147,7 @@ depuis le bouton **Éditer** en face de chaque config workflow sur l'écran **Ad
    notifier, créer un dossier enfant, changer le statut du dossier ou du workflow, décision DMN,
    demander une signature, question utilisateur, tâche externe. Le **panel de propriétés** à droite
    affiche pour une brique un groupe dédié avec des **champs typés** (listes de templates, connecteurs,
-   statuts, questions… alimentées par le serveur) ; la section **« Avancé »**, repliée, garde les
+   statuts, questions, **tables de décision DMN déployées** (clé et dernière version)… alimentées par le serveur) ; la section **« Avancé »**, repliée, garde les
    attributs Flowable bruts (`asynchrone`, `delegate expression`, `expression`, `scope`, `form key`…).
    Une tâche qui n'est pas une brique reste éditable comme avant. Un contour orange signale une brique
    à compléter (paramètre obligatoire vide, ressource supprimée) — l'avertissement n'empêche pas

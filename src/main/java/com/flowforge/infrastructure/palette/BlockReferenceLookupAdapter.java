@@ -10,7 +10,10 @@ import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
 import com.flowforge.domain.notification.port.out.NotificationWebhookRepository;
 import com.flowforge.domain.workflow.palette.port.out.BlockReference;
 import com.flowforge.domain.workflow.palette.port.out.BlockReferenceLookupPort;
+import com.flowforge.domain.workflow.model.DecisionTableDeploymentInfo;
+import com.flowforge.domain.workflow.port.out.DmnDeploymentPort;
 import com.flowforge.domain.workflow.port.out.WorkflowTypeConfigRepository;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +34,7 @@ class BlockReferenceLookupAdapter implements BlockReferenceLookupPort {
     private final NotificationWebhookRepository webhooks;
     private final DossierTypeRepository dossierTypes;
     private final WorkflowTypeConfigRepository workflowTypes;
+    private final DmnDeploymentPort dmnDeployments;
 
     BlockReferenceLookupAdapter(
             DocumentTemplateRepository templates,
@@ -38,13 +42,15 @@ class BlockReferenceLookupAdapter implements BlockReferenceLookupPort {
             ConnectorCatalog connectorCatalog,
             NotificationWebhookRepository webhooks,
             DossierTypeRepository dossierTypes,
-            WorkflowTypeConfigRepository workflowTypes) {
+            WorkflowTypeConfigRepository workflowTypes,
+            DmnDeploymentPort dmnDeployments) {
         this.templates = templates;
         this.connectors = connectors;
         this.connectorCatalog = connectorCatalog;
         this.webhooks = webhooks;
         this.dossierTypes = dossierTypes;
         this.workflowTypes = workflowTypes;
+        this.dmnDeployments = dmnDeployments;
     }
 
     @Override
@@ -59,6 +65,10 @@ class BlockReferenceLookupAdapter implements BlockReferenceLookupPort {
             case "notificationWebhooks" -> webhooks.listByTenantId(tenantId).stream()
                     .filter(w -> w.enabled() && w.deletedAt() == null)
                     .map(w -> new BlockReference(w.id().toString(), w.name()))
+                    .toList();
+            case "dmnTables" -> dmnDeployments.findAllLatestDeployments(tenantId).stream()
+                    .sorted(Comparator.comparing(DecisionTableDeploymentInfo::decisionKey))
+                    .map(d -> new BlockReference(d.decisionKey(), d.decisionKey() + " (v" + d.version() + ")"))
                     .toList();
             default -> throw new IllegalArgumentException("Unsupported source: " + source);
         };
@@ -83,6 +93,7 @@ class BlockReferenceLookupAdapter implements BlockReferenceLookupPort {
                     .isPresent();
             case "dossierTypes" -> dossierTypes.findByCode(tenantId, value).filter(t -> t.active()).isPresent();
             case "workflowTypes" -> workflowTypes.findByWorkflowKey(tenantId, value).isPresent();
+            case "dmnTables" -> dmnDeployments.findDeploymentInfo(tenantId, value).isPresent();
             default -> throw new IllegalArgumentException("Unsupported source: " + source);
         };
     }

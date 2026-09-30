@@ -7,7 +7,7 @@
 | 1 | LC1-suite (tables DMN dans la palette) | **Livré** (TODO §74) | 10 | `b4c26cf` | verify 2658/0 échec · Vitest 499 · Playwright 106 | 1 passe : 0 Crit./Haut, 1 Moy. + 3 Basses traitées | aucune |
 | 2 | LC2 langage d'expression métier | **Livré** (TODO §75) | 10 | voir `git log` (feat(expression), fix(expression)) | verify 2734/0 échec · Vitest 499 · Playwright 106 | 3 passes : 4 Critiques + 1 Haute trouvées puis corrigées, passe 3 = 0 Crit./Haut. | ⚠ D-EXPR-LANGUAGE, -ALLOWLIST, -WEIGHT-FUEL, -BOUNDED-FUNCTIONS, -AST-BRIDGE, -ALLOC-GUARD, -UNDEFINED, -CONTEXT, -REQUEST-SIZE |
 | 3 | D1 types de champs | **Livré** (TODO §76) | 10 | voir `git log` (feat(champs)) | verify 2780/0 échec · Vitest 539 · Playwright 110 | 1 passe : 0 Crit./Haut., Moyens et Bas traités ; résidu M4 | ⚠ D-CHAMPS-MONEY (texte décimal), -REPEAT, -SENSITIVE, -USERQ, M4 plafond de corps HTTP |
-| 4 | D3a OAuth2 client credentials | À faire | – | – | – | – | – |
+| 4 | D3a OAuth2 client credentials | En cours | 10 (revue adversariale) | – | – | – | ⚠ D-INTEG-OAUTH-SCOPE, -HOSTS |
 | 5 | D5 audit jobs planifiés | À faire | – | – | – | – | – |
 | 6 | D3b mapping + D1 champs calculés | À faire | – | – | – | – | – |
 | 7 | D2 recherche champs dynamiques | À faire | – | – | – | – | – |

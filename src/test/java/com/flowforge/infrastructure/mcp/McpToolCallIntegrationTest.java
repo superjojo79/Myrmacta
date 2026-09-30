@@ -397,6 +397,54 @@ class McpToolCallIntegrationTest {
         assertThat(listBody).as("body: %s", listBody).doesNotContain("plaincredential5678");
     }
 
+    /** D3a : un secret OAuth2 défini via le canal M2M est chiffré en base puis masqué dans get/list et dans la réponse. */
+    @Test
+    void defineConnectorInstance_oauth2SecretsAreEncryptedAtRestAndNeverReturned() throws Exception {
+        String name = "MCP IT OAuth " + UUID.randomUUID();
+
+        MvcResult createCall = callMcp(sessionId, TENANT, "API_SERVICE", 2, "tools/call", """
+                {
+                  "name": "define_connector_instance",
+                  "arguments": {
+                    "name": "%s",
+                    "connectorType": "http-rest",
+                    "config": {
+                      "webhookAuthType": "HMAC_SHA256",
+                      "webhookSecret": "supersecretvalue1234",
+                      "processKey": "wf-mcp-it",
+                      "dossierTypeCode": "MCPIT",
+                      "authMode": "OAUTH2_CLIENT_CREDENTIALS",
+                      "oauthTokenUrl": "https://93.184.216.34/token",
+                      "oauthClientId": "app-mcp",
+                      "oauthClientSecret": "oauthclientsecret9876",
+                      "oauthAllowedHosts": "erp.example.com"
+                    }
+                  }
+                }
+                """.formatted(name));
+        String createBody = createCall.getResponse().getContentAsString();
+        assertThat(createBody).as("body: %s", createBody).contains("\"isError\":false");
+        assertThat(createBody).doesNotContain("oauthclientsecret9876");
+
+        var persisted = connectorInstanceRepository.pageByTenantId(TENANT, com.flowforge.domain.shared.PageQuery.of(0, 100))
+                .content().stream().filter(c -> c.name().equals(name)).findFirst().orElseThrow();
+        assertThat(persisted.config()).containsEntry("oauthClientSecret", "oauthclientsecret9876");
+
+        String getBody = callMcp(sessionId, TENANT, "API_SERVICE", 3, "tools/call", """
+                {"name": "get_connector_instance", "arguments": {"id": "%s"}}
+                """.formatted(persisted.id())).getResponse().getContentAsString();
+        assertThat(getBody).as("body: %s", getBody).doesNotContain("oauthclientsecret9876").contains("app-mcp");
+        String listBody = callMcp(sessionId, TENANT, "API_SERVICE", 4, "tools/call", """
+                {"name": "list_connector_instances", "arguments": {}}
+                """).getResponse().getContentAsString();
+        assertThat(listBody).doesNotContain("oauthclientsecret9876");
+
+        String definitions = callMcp(sessionId, TENANT, "API_SERVICE", 5, "tools/call", """
+                {"name": "list_connector_definitions", "arguments": {}}
+                """).getResponse().getContentAsString();
+        assertThat(definitions).contains("oauthAllowedHosts").contains("OAUTH2_CLIENT_CREDENTIALS");
+    }
+
     @Test
     void defineTaskQuestionSchema_persistsAndIsVisibleToDirectRepositoryRead() throws Exception {
         String schemaKey = "mcpit" + UUID.randomUUID().toString().substring(0, 8);

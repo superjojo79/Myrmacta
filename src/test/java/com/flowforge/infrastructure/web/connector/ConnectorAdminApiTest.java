@@ -184,6 +184,77 @@ class ConnectorAdminApiTest {
                 .andExpect(jsonPath("$.secretConfigured.authHeaderValue").value(true));
     }
 
+    private static String oauthPayload(String name, String extra) {
+        return """
+                {
+                  "name": "%s",
+                  "connectorType": "http-rest",
+                  "enabled": true,
+                  "config": {
+                    "webhookAuthType": "SHARED_SECRET_TOKEN",
+                    "webhookSecret": "plain-secret-0123456789",
+                    "processKey": "smokeProcess",
+                    "dossierTypeCode": "CLAIM",
+                    "authMode": "OAUTH2_CLIENT_CREDENTIALS",
+                    "oauthTokenUrl": "https://93.184.216.34/tenant/oauth2/v2.0/token",
+                    "oauthClientId": "app-1",
+                    "oauthClientSecret": "client-secret-0123456789",
+                    "oauthAllowedHosts": "erp.example.com"%s
+                  }
+                }
+                """.formatted(name, extra);
+    }
+
+    /** D3a : la vraie chaîne HTTP/sécurité/chiffrement — secrets OAuth chiffrés puis masqués, validation appliquée. */
+    @Test
+    void createConnector_oauth2ClientCredentials_masksBothSecretsAndKeepsPublicFields() throws Exception {
+        String name = "ERP oauth " + UUID.randomUUID();
+        MvcResult created = mockMvc.perform(post("/api/connectors")
+                        .with(user("connector-admin", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(oauthPayload(name, ",\n\"oauthPrivateKey\": \"-----BEGIN PRIVATE KEY-----\\nQUJD\\n-----END PRIVATE KEY-----\"")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.config.oauthClientSecret").value("********"))
+                .andExpect(jsonPath("$.config.oauthPrivateKey").value("********"))
+                .andExpect(jsonPath("$.secretConfigured.oauthClientSecret").value(true))
+                .andExpect(jsonPath("$.secretConfigured.oauthPrivateKey").value(true))
+                .andExpect(jsonPath("$.config.oauthClientId").value("app-1"))
+                .andExpect(jsonPath("$.config.authMode").value("OAUTH2_CLIENT_CREDENTIALS"))
+                .andReturn();
+        String body = created.getResponse().getContentAsString();
+        org.assertj.core.api.Assertions.assertThat(body).doesNotContain("client-secret-0123456789", "QUJD");
+        String id = JsonMapper.builder().build().readTree(body).get("id").asString();
+
+        String fetched = mockMvc.perform(get("/api/connectors/{id}", id)
+                        .with(user("connector-admin", "TENANT_ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.config.oauthClientSecret").value("********"))
+                .andReturn().getResponse().getContentAsString();
+        org.assertj.core.api.Assertions.assertThat(fetched).doesNotContain("client-secret-0123456789");
+    }
+
+    @Test
+    void createConnector_oauth2WithAStaticHeaderToo_returns400() throws Exception {
+        mockMvc.perform(post("/api/connectors")
+                        .with(user("connector-admin", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(oauthPayload("Ambiguous " + UUID.randomUUID(), ",\n\"authHeaderValue\": \"Bearer x\"")))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void createConnector_oauth2WithALoopbackTokenUrl_returns400() throws Exception {
+        mockMvc.perform(post("/api/connectors")
+                        .with(user("connector-admin", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(oauthPayload("Loopback " + UUID.randomUUID(), "")
+                                .replace("93.184.216.34", "127.0.0.1")))
+                .andExpect(status().isBadRequest());
+    }
+
     @Test
     void createConnector_ipAllowlist_returns400() throws Exception {
         mockMvc.perform(post("/api/connectors")

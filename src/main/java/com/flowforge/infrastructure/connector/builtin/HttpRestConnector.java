@@ -20,6 +20,7 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -28,6 +29,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Pattern;
 import javax.net.ssl.HttpsURLConnection;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -44,6 +46,7 @@ import tools.jackson.databind.ObjectMapper;
 @Component
 public class HttpRestConnector implements ConnectorDefinition, TriggerConnector, ServiceConnector {
 
+    private static final String STATIC_HEADER = "STATIC_HEADER";
     private static final Set<String> SUPPORTED_METHODS = Set.of("GET", "POST", "PUT");
 
     static {
@@ -74,6 +77,7 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
     private final ObjectMapper objectMapper;
     private final ConnectorProperties connectorProperties;
     private final HttpSender httpSender;
+    private final OAuth2TokenProvider tokenProvider;
 
     @Autowired
     public HttpRestConnector(
@@ -90,11 +94,23 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
             ObjectMapper objectMapper,
             ConnectorProperties connectorProperties,
             HttpSender httpSender) {
+        this(mapper, outboundUrlGuard, objectMapper, connectorProperties, httpSender, Clock.systemUTC());
+    }
+
+    HttpRestConnector(
+            SimpleJsonPathMapper mapper,
+            OutboundUrlGuard outboundUrlGuard,
+            ObjectMapper objectMapper,
+            ConnectorProperties connectorProperties,
+            HttpSender httpSender,
+            Clock clock) {
         this.mapper = mapper;
         this.outboundUrlGuard = Objects.requireNonNull(outboundUrlGuard, "outboundUrlGuard");
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
         this.connectorProperties = Objects.requireNonNull(connectorProperties, "connectorProperties");
         this.httpSender = Objects.requireNonNull(httpSender, "httpSender");
+        this.tokenProvider =
+                new OAuth2TokenProvider(outboundUrlGuard, objectMapper, connectorProperties, httpSender, clock);
     }
 
     @Override
@@ -161,7 +177,89 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
                         null,
                         List.of(),
                         "Sent verbatim as the Authorization header on SERVICE calls, "
-                                + "e.g. 'Bearer xxx' or 'Basic yyy'. Leave empty for no auth header."),
+                                + "e.g. 'Bearer xxx' or 'Basic yyy'. Leave empty for no auth header. "
+                                + "Must stay empty when authMode is OAUTH2_CLIENT_CREDENTIALS."),
+                new ConfigField(
+                        "authMode",
+                        "Outbound authentication",
+                        ConfigFieldType.SELECT,
+                        false,
+                        STATIC_HEADER,
+                        List.of(STATIC_HEADER, OAuth2TokenProvider.MODE),
+                        "SERVICE calls only. STATIC_HEADER sends authHeaderValue as is (default). "
+                                + "OAUTH2_CLIENT_CREDENTIALS obtains, caches and renews a Bearer token "
+                                + "(e.g. Microsoft Entra ID for D365 F&O, Dataverse, Graph)."),
+                new ConfigField(
+                        "oauthTokenUrl",
+                        "OAuth2 token URL",
+                        ConfigFieldType.URL,
+                        false,
+                        null,
+                        List.of(),
+                        "https token endpoint, e.g. https://login.microsoftonline.com/<tenant>/oauth2/v2.0/token. "
+                                + "Used only when authMode is OAUTH2_CLIENT_CREDENTIALS."),
+                new ConfigField(
+                        "oauthClientId",
+                        "OAuth2 client id",
+                        ConfigFieldType.STRING,
+                        false,
+                        null,
+                        List.of(),
+                        "Application (client) id. Used only with OAUTH2_CLIENT_CREDENTIALS."),
+                new ConfigField(
+                        "oauthClientAuthMethod",
+                        "OAuth2 client authentication",
+                        ConfigFieldType.SELECT,
+                        false,
+                        OAuth2TokenProvider.METHOD_POST,
+                        List.of(OAuth2TokenProvider.METHOD_POST, OAuth2TokenProvider.METHOD_BASIC,
+                                OAuth2TokenProvider.METHOD_JWT),
+                        "CLIENT_SECRET_POST / CLIENT_SECRET_BASIC use oauthClientSecret; PRIVATE_KEY_JWT "
+                                + "(certificate) uses oauthPrivateKey and oauthCertThumbprint."),
+                new ConfigField(
+                        "oauthClientSecret",
+                        "OAuth2 client secret",
+                        ConfigFieldType.PASSWORD,
+                        false,
+                        null,
+                        List.of(),
+                        "Encrypted at rest. Required for CLIENT_SECRET_POST and CLIENT_SECRET_BASIC."),
+                new ConfigField(
+                        "oauthPrivateKey",
+                        "OAuth2 certificate private key",
+                        ConfigFieldType.SECRET_TEXTAREA,
+                        false,
+                        null,
+                        List.of(),
+                        "PEM PKCS#8 RSA private key (BEGIN PRIVATE KEY). Encrypted at rest. "
+                                + "Required for PRIVATE_KEY_JWT."),
+                new ConfigField(
+                        "oauthCertThumbprint",
+                        "OAuth2 certificate thumbprint",
+                        ConfigFieldType.STRING,
+                        false,
+                        null,
+                        List.of(),
+                        "Hexadecimal SHA-1 (40 chars, as shown by the Entra portal) or SHA-256 (64 chars) "
+                                + "thumbprint of the uploaded certificate. Required for PRIVATE_KEY_JWT."),
+                new ConfigField(
+                        "oauthAllowedHosts",
+                        "OAuth2 allowed API hosts",
+                        ConfigFieldType.STRING,
+                        false,
+                        null,
+                        List.of(),
+                        "Comma-separated host names that may receive the Bearer token, e.g. "
+                                + "'myorg.operations.dynamics.com, *.crm4.dynamics.com'. A call to any other host is "
+                                + "refused before a token is requested. Required with OAUTH2_CLIENT_CREDENTIALS."),
+                new ConfigField(
+                        "oauthScope",
+                        "OAuth2 scope",
+                        ConfigFieldType.STRING,
+                        false,
+                        null,
+                        List.of(),
+                        "e.g. https://<org>.operations.dynamics.com/.default. Optional."),
                 new ConfigField(
                         "mapping",
                         "Payload mapping",
@@ -193,6 +291,43 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
         WebhookSecretPolicy.validate(requireString(config, "webhookSecret"));
         requireString(config, "processKey");
         requireString(config, "dossierTypeCode");
+        validateOutboundAuth(config);
+    }
+
+    private void validateOutboundAuth(Map<String, Object> config) {
+        String mode = stringOr(config.get("authMode"), STATIC_HEADER);
+        if (STATIC_HEADER.equals(mode)) {
+            return;
+        }
+        if (!OAuth2TokenProvider.MODE.equals(mode)) {
+            throw new ConnectorValidationException("Unsupported authMode: " + mode);
+        }
+        if (stringOr(config.get("authHeaderValue"), null) != null) {
+            throw new ConnectorValidationException(
+                    "authHeaderValue must be empty when authMode is " + OAuth2TokenProvider.MODE);
+        }
+        String tokenUrl = requireString(config, "oauthTokenUrl");
+        try {
+            outboundUrlGuard.assertSafe(tokenUrl);
+        } catch (IllegalArgumentException ex) {
+            throw new ConnectorValidationException("oauthTokenUrl is not an acceptable https endpoint");
+        }
+        requireString(config, "oauthClientId");
+        parseAllowedHosts(requireString(config, "oauthAllowedHosts"));
+        String method = stringOr(config.get("oauthClientAuthMethod"), OAuth2TokenProvider.METHOD_POST);
+        switch (method) {
+            case OAuth2TokenProvider.METHOD_POST, OAuth2TokenProvider.METHOD_BASIC ->
+                requireString(config, "oauthClientSecret");
+            case OAuth2TokenProvider.METHOD_JWT -> {
+                requireString(config, "oauthPrivateKey");
+                String thumbprint = requireString(config, "oauthCertThumbprint").replace(":", "").trim();
+                if (!thumbprint.matches("(?i)[0-9a-f]{40}|[0-9a-f]{64}")) {
+                    throw new ConnectorValidationException(
+                            "oauthCertThumbprint must be a hexadecimal SHA-1 (40) or SHA-256 (64) thumbprint");
+                }
+            }
+            default -> throw new ConnectorValidationException("Unsupported oauthClientAuthMethod: " + method);
+        }
     }
 
     @Override
@@ -250,18 +385,85 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
         }
 
         OutboundUrlGuard.PinnedEndpoint pinned = outboundUrlGuard.resolveSafe(urlString);
+        byte[] requestBody = body == null ? new byte[0] : serializeBody(body).getBytes(StandardCharsets.UTF_8);
+        boolean oauth = OAuth2TokenProvider.MODE.equals(stringOr(instance.config().get("authMode"), STATIC_HEADER));
+        if (oauth) {
+            assertHostAllowed(instance.config(), pinned.originalHost());
+        }
+
+        HttpCallResponse response = call(instance, inputParams, pinned, method, requestBody, oauth);
+        if (oauth && response.status() == 401) {
+            // Jeton révoqué ou expiré côté IdP avant l'heure annoncée : un nouveau jeton, un seul nouvel essai.
+            tokenProvider.invalidate(instance);
+            response = call(instance, inputParams, pinned, method, requestBody, true);
+        }
+        byte[] responseBytes = response.body().getBytes(StandardCharsets.UTF_8);
+        if (responseBytes.length > connectorProperties.http().maxResponseBytes()) {
+            throw new IllegalStateException("http-rest response exceeds maxResponseBytes");
+        }
+        return Map.of("status", response.status(), "body", response.body());
+    }
+
+    private static final Pattern HOST_PATTERN =
+            Pattern.compile("(\\*\\.)?[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*");
+
+    private static List<String> parseAllowedHosts(String raw) {
+        List<String> hosts = new ArrayList<>();
+        for (String part : raw.split(",")) {
+            String host = part.trim().toLowerCase(Locale.ROOT);
+            if (host.isEmpty()) {
+                continue;
+            }
+            if (!HOST_PATTERN.matcher(host).matches()) {
+                throw new ConnectorValidationException("oauthAllowedHosts contains an invalid host name");
+            }
+            hosts.add(host);
+        }
+        if (hosts.isEmpty()) {
+            throw new ConnectorValidationException("oauthAllowedHosts must list at least one host");
+        }
+        return hosts;
+    }
+
+    /** Le jeton n'est jamais émis vers un hôte non déclaré : évite qu'une URL de process l'exfiltre. */
+    private static void assertHostAllowed(Map<String, Object> config, String host) {
+        String target = host == null ? "" : host.toLowerCase(Locale.ROOT);
+        List<String> allowed;
+        try {
+            allowed = parseAllowedHosts(stringOr(config.get("oauthAllowedHosts"), ""));
+        } catch (ConnectorValidationException ex) {
+            throw new IllegalStateException("http-rest OAuth2 configuration is incomplete: oauthAllowedHosts");
+        }
+        for (String pattern : allowed) {
+            if (pattern.startsWith("*.") ? target.endsWith(pattern.substring(1)) && target.length() > pattern.length() - 1
+                    : target.equals(pattern)) {
+                return;
+            }
+        }
+        throw new IllegalArgumentException("Host is not allowed for this connector's OAuth2 credentials");
+    }
+
+    private HttpCallResponse call(
+            ConnectorInstanceData instance,
+            Map<String, Object> inputParams,
+            OutboundUrlGuard.PinnedEndpoint pinned,
+            String method,
+            byte[] requestBody,
+            boolean oauth) {
         Map<String, String> headers = new LinkedHashMap<>();
         Object authHeaderValue = instance.config().get("authHeaderValue");
-        if (authHeaderValue instanceof String authValue && !authValue.isBlank()) {
+        if (!oauth && authHeaderValue instanceof String authValue && !authValue.isBlank()) {
             headers.put("Authorization", authValue);
         }
         applyHeaders(headers, inputParams.get("headers"));
+        if (oauth) {
+            // Le jeton du connecteur prévaut toujours : un en-tête Authorization fourni par l'appelant est ignoré.
+            headers.keySet().removeIf("authorization"::equalsIgnoreCase);
+            headers.put("Authorization", "Bearer " + tokenProvider.accessToken(instance));
+        }
         headers.put("Host", pinned.originalHost());
-
-        byte[] requestBody = body == null ? new byte[0] : serializeBody(body).getBytes(StandardCharsets.UTF_8);
-        HttpCallResponse response;
         try {
-            response = httpSender.send(new HttpCallRequest(
+            return httpSender.send(new HttpCallRequest(
                     pinned.requestUrl(),
                     method,
                     requestBody,
@@ -273,11 +475,6 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
         } catch (IOException ex) {
             throw new IllegalStateException("http-rest call failed: " + ex.getMessage(), ex);
         }
-        byte[] responseBytes = response.body().getBytes(StandardCharsets.UTF_8);
-        if (responseBytes.length > connectorProperties.http().maxResponseBytes()) {
-            throw new IllegalStateException("http-rest response exceeds maxResponseBytes");
-        }
-        return Map.of("status", response.status(), "body", response.body());
     }
 
     private static String parseMethod(Map<String, Object> inputParams) {

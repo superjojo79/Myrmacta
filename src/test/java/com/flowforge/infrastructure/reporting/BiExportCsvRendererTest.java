@@ -112,4 +112,39 @@ class BiExportCsvRendererTest {
         verify(sla).get(any(), ctx.capture());
         assertThat(ctx.getValue()).isInstanceOf(AccessContext.System.class);
     }
+
+    /** TODO §76 (D1, revue adversariale) : montant et référence aplatis ; groupe et montant sensibles absents de l'export BI. */
+    @Test
+    void render_flattensStructuredFieldsAndNeverExportsASensitiveGroupOrMoney() {
+        DossierTypeRepository types = mock(DossierTypeRepository.class);
+        DossierExportPort exportPort = mock(DossierExportPort.class);
+        GetSlaReportUseCase sla = mock(GetSlaReportUseCase.class);
+        FieldDefinition price = new FieldDefinition("prix", "Prix", FieldType.MONEY, false, null, List.of(), null, false);
+        FieldDefinition supplier = new FieldDefinition("fournisseur", "F", FieldType.EXTERNAL_REF, false, null, List.of(), null, false);
+        FieldDefinition lines = new FieldDefinition("lignes", "L", FieldType.REPEATABLE_GROUP, false, null, List.of(), null,
+                false, List.of(new FieldDefinition("poste", "P", FieldType.STRING, false, null, List.of(), null)), null, null);
+        FieldDefinition secretMoney = new FieldDefinition("salaire", "S", FieldType.MONEY, false, null, List.of(), null, true);
+        FieldDefinition secretGroup = new FieldDefinition("budget", "B", FieldType.REPEATABLE_GROUP, false, null, List.of(), null,
+                true, List.of(new FieldDefinition("poste", "P", FieldType.STRING, false, null, List.of(), null)), null, null);
+        when(types.findAll(TENANT)).thenReturn(List.of(new DossierType(UUID.randomUUID(), TENANT, "CLAIM", "Sinistre", "wf", true,
+                false, List.of(price, supplier, lines, secretMoney, secretGroup), null, false, 24, "admin", "admin")));
+        Instant created = NOW.minusSeconds(3600);
+        Dossier dossier = new Dossier(UUID.randomUUID(), TENANT, "DOS-9", "CLAIM", "x", DossierStatus.OUVERT,
+                Map.of("prix", Map.of("amount", "12.50", "currency", "EUR"),
+                        "fournisseur", Map.of("system", "d365fo", "id", "V-1"),
+                        "lignes", List.of(Map.of("poste", "Toiture")),
+                        "salaire", Map.of("amount", "4242.00", "currency", "EUR"),
+                        "budget", List.of(Map.of("poste", "CONFIDENTIEL-XYZ"))),
+                null, 0L, "admin", created, "admin", created, null, null, null);
+        when(exportPort.streamForExport(eq(TENANT), any())).thenReturn(Stream.of(dossier));
+        when(sla.get(any(), any())).thenReturn(new SlaReport(NOW.minusSeconds(86_400), NOW, 95, 80.0, 1L, 2.0, null, null,
+                List.of(), List.of(), List.of(), List.of()));
+
+        String csv = new String(new BiExportCsvRenderer(types, exportPort, sla).render(TENANT, NOW).get(0).content());
+
+        assertThat(csv).contains("prix.amount,prix.currency,fournisseur.system,fournisseur.id,fournisseur.label,lignes");
+        assertThat(csv).contains("12.50,EUR,d365fo,V-1,");
+        assertThat(csv).contains("Toiture");
+        assertThat(csv).doesNotContain("salaire").doesNotContain("budget").doesNotContain("4242").doesNotContain("CONFIDENTIEL-XYZ");
+    }
 }

@@ -225,6 +225,7 @@ describe('FieldDefinitionDefsEditor — structured types (TODO §76, D1)', () =>
       'STRING', 'NUMBER', 'DATE', 'BOOLEAN', 'SELECT', 'MONEY', 'EXTERNAL_REF',
     ])
     expect(nested.find('[data-testid="field-def-sensitive"]').exists()).toBe(false)
+    expect(nested.find('[data-testid="field-def-default"]').exists()).toBe(false)
     expect(nested.find('[data-testid="field-def-group"]').exists()).toBe(false)
   })
 

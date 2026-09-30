@@ -23,6 +23,13 @@ public final class DossierFieldValidator {
     private static final Set<String> MONEY_KEYS = Set.of("amount", "currency");
     private static final Set<String> REF_KEYS = Set.of("system", "id", "label");
     private static final int REF_TEXT_MAX = 200;
+    /** Revue adversariale D1 (M4) : un groupe de 500 lignes × 20 cellules ne doit pas porter des centaines de Mo. */
+    private static final int CELL_TEXT_MAX = 10_000;
+    private static final int GROUP_TEXT_MAX = 1_000_000;
+    private static final int FIELDS_TEXT_MAX = 1_048_576;
+    /** Un montant JSON (nombre) n'est sûr que si un double le représente exactement : 15 chiffres significatifs au plus. */
+    private static final int DOUBLE_SAFE_DIGITS = 15;
+    private static final Pattern SAFE_KEY = Pattern.compile("[A-Za-z0-9_.-]{1,50}");
 
     public Map<String, Object> applyDefaults(List<FieldDefinition> definitions, Map<String, Object> values) {
         Objects.requireNonNull(definitions, "definitions");
@@ -39,6 +46,10 @@ public final class DossierFieldValidator {
             List<FieldDefinition> definitions, Map<String, Object> values, boolean allowUnknownFields) {
         Objects.requireNonNull(definitions, "definitions");
         Map<String, Object> vals = values == null ? Map.of() : values;
+        if (textLength(vals, FIELDS_TEXT_MAX) > FIELDS_TEXT_MAX) {
+            return List.of(FieldValidationError.invalidValue(
+                    "fields", "Fields exceed " + FIELDS_TEXT_MAX + " characters of text in total"));
+        }
         List<FieldValidationError> errors = new ArrayList<>(validateValues(definitions, vals, ""));
 
         if (!allowUnknownFields) {
@@ -64,6 +75,8 @@ public final class DossierFieldValidator {
             return Map.of();
         }
         Map<String, Object> out = new LinkedHashMap<>(values);
+        // Une valeur nulle (cellule d'une ligne, par exemple) est une absence : `Map.copyOf` la refuserait (NPE, HTTP 500).
+        out.values().removeIf(Objects::isNull);
         for (FieldDefinition def : definitions) {
             Object value = out.get(def.name());
             if (value != null) {
@@ -96,6 +109,10 @@ public final class DossierFieldValidator {
                 errors.add(FieldValidationError.typeMismatch(path, def.type()));
                 continue;
             }
+            if (!prefix.isEmpty() && value instanceof String text && text.length() > CELL_TEXT_MAX) {
+                errors.add(FieldValidationError.invalidValue(path, "Text exceeds " + CELL_TEXT_MAX + " characters"));
+                continue;
+            }
             if (def.type() == FieldType.SELECT
                     && value != null
                     && !def.options().contains(String.valueOf(value))) {
@@ -114,6 +131,10 @@ public final class DossierFieldValidator {
         if (value == null) {
             if (def.required()) {
                 errors.add(FieldValidationError.required(path));
+            } else if (def.minRows() > 0) {
+                // minRows vaut pour un groupe absent comme pour un groupe vide.
+                errors.add(FieldValidationError.invalidValue(
+                        path, "Expected between " + def.minRows() + " and " + def.maxRows() + " rows"));
             }
             return;
         }
@@ -130,6 +151,11 @@ public final class DossierFieldValidator {
                     path, "Expected between " + def.minRows() + " and " + def.maxRows() + " rows"));
             return;
         }
+        if (textLength(rows, GROUP_TEXT_MAX) > GROUP_TEXT_MAX) {
+            errors.add(FieldValidationError.invalidValue(
+                    path, "Rows exceed " + GROUP_TEXT_MAX + " characters of text in total"));
+            return;
+        }
         for (int i = 0; i < rows.size(); i++) {
             String rowPath = path + "[" + i + "]";
             if (!(rows.get(i) instanceof Map<?, ?> row)) {
@@ -142,7 +168,9 @@ public final class DossierFieldValidator {
             Set<String> known = def.fields().stream().map(FieldDefinition::name).collect(Collectors.toSet());
             for (Object key : row.keySet()) {
                 if (!known.contains(String.valueOf(key))) {
-                    errors.add(FieldValidationError.unknownField(rowPath + "." + key));
+                    // La clé vient de l'appelant : recopiée dans le chemin d'erreur seulement si c'est un identifiant simple.
+                    String shown = SAFE_KEY.matcher(String.valueOf(key)).matches() ? String.valueOf(key) : "?";
+                    errors.add(FieldValidationError.unknownField(rowPath + "." + shown));
                 }
             }
         }
@@ -205,8 +233,11 @@ public final class DossierFieldValidator {
                 case Byte b -> Optional.of(BigDecimal.valueOf(b));
                 case BigInteger b -> Optional.of(new BigDecimal(b));
                 case BigDecimal b -> Optional.of(b);
-                case Double d when Double.isFinite(d) -> Optional.of(BigDecimal.valueOf(d));
-                case Float f when Float.isFinite(f) -> Optional.of(new BigDecimal(Float.toString(f)));
+                // Jackson lit `99999999999999.99` comme le Double 9.999999999999998E13 : accepté, il deviendrait « …98 » en
+                // silence. Un double n'est accepté que s'il représente exactement ce qu'il affiche (≤ 15 chiffres
+                // significatifs) ; au-delà, le montant doit être envoyé en texte. Float n'est jamais exact : refusé.
+                case Double d when Double.isFinite(d) && BigDecimal.valueOf(d).precision() <= DOUBLE_SAFE_DIGITS ->
+                        Optional.of(BigDecimal.valueOf(d));
                 case null, default -> Optional.empty();
             };
         } catch (NumberFormatException e) {
@@ -261,6 +292,30 @@ public final class DossierFieldValidator {
     }
 
     // ---- divers ---------------------------------------------------------------------------------------------------
+
+    /** Longueur cumulée des textes d'une valeur JSON ; s'arrête dès que {@code cap} est dépassé (pas de parcours inutile). */
+    private static long textLength(Object value, long cap) {
+        long total = 0;
+        if (value instanceof String s) {
+            return s.length();
+        }
+        if (value instanceof Map<?, ?> map) {
+            for (Object item : map.values()) {
+                total += textLength(item, cap - total);
+                if (total > cap) {
+                    return total;
+                }
+            }
+        } else if (value instanceof Iterable<?> items) {
+            for (Object item : items) {
+                total += textLength(item, cap - total);
+                if (total > cap) {
+                    return total;
+                }
+            }
+        }
+        return total;
+    }
 
     private static Object coerceDefault(FieldDefinition def) {
         String raw = def.defaultValue();

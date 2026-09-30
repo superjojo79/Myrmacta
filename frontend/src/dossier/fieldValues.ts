@@ -31,8 +31,23 @@ function text(value: unknown): string {
   return value === undefined || value === null ? '' : String(value)
 }
 
+function isBlankCell(value: unknown): boolean {
+  return value === undefined || value === null || (typeof value === 'string' && value.trim() === '')
+}
+
+/** Une ligne de groupe sans aucune cellule renseignée (les sous-champs vides, nuls ou blancs ne comptent pas). */
+function isBlankRow(def: Pick<FieldDefinition, 'fields'>, row: unknown): boolean {
+  const r = asRecord(row)
+  if (!r) return false
+  const subs = new Map((def.fields ?? []).map((f) => [f.name, f]))
+  return Object.entries(r).every(([key, v]) => {
+    const sub = subs.get(key)
+    return isBlankCell(v) || (sub ? isBlankValue(sub, v) : false)
+  })
+}
+
 /** Vrai quand la saisie ne porte aucune information (le champ sera retiré du dossier). */
-export function isBlankValue(def: Pick<FieldDefinition, 'type'> | undefined, value: unknown): boolean {
+export function isBlankValue(def: Pick<FieldDefinition, 'type' | 'fields'> | undefined, value: unknown): boolean {
   if (value === undefined || value === null) return true
   switch (def?.type) {
     case 'BOOLEAN':
@@ -46,7 +61,9 @@ export function isBlankValue(def: Pick<FieldDefinition, 'type'> | undefined, val
       return !r || (text(r.system).trim() === '' && text(r.id).trim() === '' && text(r.label).trim() === '')
     }
     case 'REPEATABLE_GROUP':
-      return !Array.isArray(value) || value.length === 0
+      // Un groupe dont toutes les lignes sont vides équivaut à un groupe vide (et ne doit pas être « modifié » à chaque
+      // enregistrement : le diff le renverrait autrement en null sans action de l'utilisateur).
+      return !Array.isArray(value) || value.every((row) => isBlankRow(def, row))
     default:
       return value === ''
   }
@@ -75,9 +92,23 @@ export function formatFieldValue(def: Pick<FieldDefinition, 'type'> | undefined,
   }
 }
 
+/**
+ * Forme décimale canonique d'un montant saisi (« 007.10 » → « 7.1 », « 12.50 » → « 12.5 », « -0.0 » → « 0 »), en chaîne :
+ * jamais via `Number`, qui arrondit au-delà de 15 chiffres significatifs (« …98 » et « …99 » deviendraient égaux et une vraie
+ * modification ne serait pas envoyée).
+ */
+export function canonicalDecimal(raw: string): string | null {
+  const m = /^(-?)(\d+)(?:\.(\d+))?$/.exec(raw.trim())
+  if (!m) return null
+  const integer = m[2]!.replace(/^0+(?=\d)/, '')
+  const fraction = (m[3] ?? '').replace(/0+$/, '')
+  const body = fraction ? `${integer}.${fraction}` : integer
+  return body === '0' ? '0' : `${m[1]}${body}`
+}
+
 function numericAmount(amount: unknown): unknown {
   const raw = text(amount).trim()
-  return raw !== '' && !Number.isNaN(Number(raw)) ? Number(raw) : raw
+  return canonicalDecimal(raw) ?? raw
 }
 
 /**
@@ -97,7 +128,7 @@ export function comparable(def: FieldDefinition | undefined, value: unknown): un
     case 'REPEATABLE_GROUP': {
       if (!Array.isArray(value)) return value
       const subs = new Map((def.fields ?? []).map((f) => [f.name, f]))
-      return value.map((row) => {
+      return value.filter((row) => !isBlankRow(def, row)).map((row) => {
         const r = asRecord(row)
         if (!r) return row
         const out: Record<string, unknown> = {}

@@ -1247,7 +1247,7 @@ D-CHAMPS-NORMALIZE ; D-CHAMPS-USERQ = types refusés dans les questions de tâch
 **Livré.** `FieldType` + `FieldDefinition` (règles de définition), `DossierFieldValidator` (validation avec chemins d'erreur `lignes[1].poste`, normalisation), `DossierFieldCsv`
 (exports dossiers et BI), branchements création/mise à jour/MCP, SPA (saisie, lecture texte/tableau, diff sans faux patch, éditeur d'administration avec colonnes de groupe, validation
 miroir). Preuves de non-régression : modèles PDF (sans modification), compatibilité 409, masquage du groupe sensible, OpenAPI additif. Aucune migration, aucune variable d'environnement.
-**Impacte :** `GUIDE-UTILISATEUR.md` (Admin → Types), `GUIDE-CONCEPTION-BPMN.md` (§3sexies), `analysis doc/32`, `ROADMAP.md`, `CHANGELOG.md`. **Revue adversariale** : voir le document d'implémentation.
+**Impacte :** `GUIDE-UTILISATEUR.md` (Admin → Types), `GUIDE-CONCEPTION-BPMN.md` (§3sexies), `analysis doc/32`, `ROADMAP.md`, `CHANGELOG.md`. **Revue adversariale** : 1 passe, 0 Critique/Haute, Moyens et Bas corrigés avec tests ; résidu ⚠ M4 (plafond de corps HTTP non spécifique aux `fields`), voir le document d'implémentation.
 
 
 ### [x] 19. Granularité des rôles RBAC

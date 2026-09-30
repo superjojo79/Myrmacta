@@ -126,7 +126,9 @@ class ArchitectureRulesTest {
 
     /** Same rationale as {@link #DOSSIER_FIELDS_READ_ALLOWLIST}, for {@code FieldDefinition.defaultValue()}. */
     private static final Set<String> FIELD_DEFINITION_DEFAULT_VALUE_READ_ALLOWLIST = Set.of(
-            "com.flowforge.domain.dossier.model.DossierFieldValidator");
+            "com.flowforge.domain.dossier.model.DossierFieldValidator",
+            // D1 : le constructeur refuse un sous-champ de groupe portant une valeur par défaut (lecture pour rejet, jamais exposée).
+            "com.flowforge.domain.dossier.model.FieldDefinition");
 
     @ArchTest
     static final ArchRule only_allowlisted_classes_read_raw_dossier_fields = noClasses()

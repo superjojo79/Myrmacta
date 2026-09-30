@@ -3,7 +3,7 @@ import { computed, watch } from 'vue'
 import type { FieldDefinition } from '@/api/types'
 import SensitiveValue from './SensitiveValue.vue'
 import DynamicFieldInput from './DynamicFieldInput.vue'
-import { formatFieldValue } from '@/dossier/fieldValues'
+import { formatFieldValue, isStructured } from '@/dossier/fieldValues'
 
 const props = withDefaults(
   defineProps<{
@@ -56,7 +56,18 @@ function setField(name: string, value: unknown) {
   <div class="dynamic-fields">
     <section v-for="[group, fields] in groups" :key="group" class="dynamic-fields__group">
       <h3>{{ group }}</h3>
-      <label v-for="field in fields" :key="field.name" class="dynamic-fields__field">
+      <!--
+        Un champ structuré (montant, référence, groupe) porte plusieurs contrôles, voire un tableau : dans un <label>, un clic
+        sur le libellé activerait le premier contrôle (ajout de ligne, case à cocher) et le HTML serait invalide.
+      -->
+      <component
+        :is="isStructured(field.type) ? 'div' : 'label'"
+        v-for="field in fields"
+        :key="field.name"
+        class="dynamic-fields__field"
+        :role="isStructured(field.type) ? 'group' : undefined"
+        :aria-label="isStructured(field.type) ? field.label : undefined"
+      >
         <span>{{ field.label }}<em v-if="field.required"> *</em></span>
         <template v-if="readonly">
           <SensitiveValue :value="formatFieldValue(field, modelValue[field.name])" :sensitive="!!field.sensitive">
@@ -85,7 +96,7 @@ function setField(name: string, value: unknown) {
           :model-value="modelValue[field.name]"
           @update:model-value="(value) => setField(field.name, value)"
         />
-      </label>
+      </component>
     </section>
   </div>
 </template>

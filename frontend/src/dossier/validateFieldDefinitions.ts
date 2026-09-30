@@ -88,6 +88,9 @@ export function validateFieldDefinitions(definitions: FieldDefinition[], owner?:
         if (!GROUP_SUBFIELD_TYPES.includes(sub.type)) {
           errors.push(`Le type ${sub.type} du sous-champ « ${sub.name || '(sans nom)'} » n'est pas autorisé dans un groupe`)
         }
+        if (!isBlank(sub.defaultValue)) {
+          errors.push(`Le sous-champ « ${sub.name || '(sans nom)'} » ne peut pas avoir de valeur par défaut (elle ne serait jamais appliquée)`)
+        }
         if (sub.sensitive) {
           errors.push(`Le sous-champ « ${sub.name || '(sans nom)'} » ne peut pas être sensible : marquez le groupe « ${shown} » lui-même`)
         }
@@ -95,6 +98,10 @@ export function validateFieldDefinitions(definitions: FieldDefinition[], owner?:
       errors.push(...validateFieldDefinitions(subs, shown))
       const min = def.minRows ?? 0
       const max = def.maxRows ?? 100
+      if (def.options && def.options.length > 0) {
+        errors.push(`Le groupe « ${shown} » n'accepte pas d'options`)
+      }
+      if (max < 1) errors.push(`Le nombre maximal de lignes du groupe « ${shown} » est au moins 1`)
       if (min < 0) errors.push(`Le nombre minimal de lignes du groupe « ${shown} » ne peut pas être négatif`)
       if (max > HARD_MAX_ROWS) errors.push(`Le nombre maximal de lignes du groupe « ${shown} » est ${HARD_MAX_ROWS}`)
       if (min > max) errors.push(`Le minimum de lignes du groupe « ${shown} » dépasse son maximum`)

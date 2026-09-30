@@ -75,12 +75,22 @@ public record FieldDefinition(
                     throw new IllegalArgumentException(
                             "a REPEATABLE_GROUP needs at least one sub-field (field: " + name + ")");
                 }
+                if (!options.isEmpty()) {
+                    throw new IllegalArgumentException("a REPEATABLE_GROUP does not take options (field: " + name + ")");
+                }
                 if (fields.size() > MAX_GROUP_FIELDS) {
                     throw new IllegalArgumentException(
                             "a group has at most " + MAX_GROUP_FIELDS + " sub-fields (field: " + name + ")");
                 }
                 Set<String> seen = new HashSet<>();
                 for (FieldDefinition sub : fields) {
+                    if (sub.name().isBlank()) {
+                        throw new IllegalArgumentException("a sub-field of a group needs a name (group: " + name + ")");
+                    }
+                    if (sub.defaultValue() != null && !sub.defaultValue().isBlank()) {
+                        throw new IllegalArgumentException("a sub-field of a group cannot have a default value (field: "
+                                + sub.name() + "): it would never be applied");
+                    }
                     if (!seen.add(sub.name())) {
                         throw new IllegalArgumentException(
                                 "duplicate sub-field name: " + sub.name() + " (group: " + name + ")");
@@ -98,6 +108,9 @@ public record FieldDefinition(
                 maxRows = maxRows == null ? DEFAULT_MAX_ROWS : maxRows;
                 if (minRows < 0) {
                     throw new IllegalArgumentException("minRows must not be negative (group: " + name + ")");
+                }
+                if (maxRows < 1) {
+                    throw new IllegalArgumentException("maxRows must be at least 1 (group: " + name + ")");
                 }
                 if (maxRows > HARD_MAX_ROWS) {
                     throw new IllegalArgumentException(
@@ -136,7 +149,11 @@ public record FieldDefinition(
         this(name, label, type, required, defaultValue, options, group, false);
     }
 
-    /** Devise ISO 4217 réelle (les pseudo-devises sans décimales connues, comme XXX, sont refusées). */
+    /**
+     * Code de devise ISO 4217 connu du JDK (les pseudo-devises sans décimales connues, comme XXX, sont refusées). Le JDK
+     * connaît aussi des devises retirées (FRF, DEM…) : elles sont acceptées — restreindre les devises d'un champ avec
+     * {@code options} pour n'autoriser que celles qu'on veut.
+     */
     public static boolean isIsoCurrency(String code) {
         if (code == null || !CURRENCY_CODE.matcher(code).matches()) {
             return false;

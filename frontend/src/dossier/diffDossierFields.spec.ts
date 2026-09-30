@@ -99,4 +99,16 @@ describe('diffDossierFields — structured types (TODO §76, D1)', () => {
     })
     expect(diffDossierFields(snapshot, { g: [{ poste: 'Z' }] }, [group])).toEqual({ g: [{ poste: 'Z' }] })
   })
+
+  it('reports a real change of a very large amount (revue adversariale D1, M3)', () => {
+    const snapshot = { m: { amount: '999999999999999.98', currency: 'EUR' } }
+    expect(diffDossierFields(snapshot, { m: { amount: '999999999999999.99', currency: 'EUR' } }, [money])).toEqual({
+      m: { amount: '999999999999999.99', currency: 'EUR' },
+    })
+  })
+
+  it('does not patch a stored group made of empty rows on every save (revue adversariale D1, B3)', () => {
+    expect(diffDossierFields({ g: [{}] }, { g: [{}] }, [group])).toEqual({})
+    expect(diffDossierFields({ g: [{ poste: 'A' }, {}] }, { g: [{ poste: 'A' }, {}] }, [group])).toEqual({})
+  })
 })

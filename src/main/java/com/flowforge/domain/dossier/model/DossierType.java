@@ -81,9 +81,17 @@ public record DossierType(
     // they all construct a DossierType.
     private static void requireUniqueFieldNames(List<FieldDefinition> fieldDefinitions) {
         Set<String> seen = new HashSet<>();
+        Set<String> columns = new HashSet<>();
         for (FieldDefinition def : fieldDefinitions) {
             if (!seen.add(def.name())) {
                 throw new IllegalArgumentException("Duplicate fieldDefinition name: " + def.name());
+            }
+            // TODO §76 : un montant ou une référence devient plusieurs colonnes CSV (`m.amount`…) ; un champ nommé
+            // « m.amount » à côté d'un montant « m » donnerait deux colonnes identiques.
+            for (String column : com.flowforge.domain.dossier.DossierFieldCsv.headers(def)) {
+                if (!columns.add(column)) {
+                    throw new IllegalArgumentException("CSV column name collision: " + column);
+                }
             }
         }
     }

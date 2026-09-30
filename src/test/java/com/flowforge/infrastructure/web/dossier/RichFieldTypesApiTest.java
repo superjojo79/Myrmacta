@@ -220,4 +220,70 @@ class RichFieldTypesApiTest {
                         .content("{\"fieldDefinitions\": [{\"name\":\"montant\",\"label\":\"Montant\",\"type\":\"MONEY\",\"required\":false}]}"))
                 .andExpect(status().isConflict());
     }
+
+    // ---- revue adversariale D1 -------------------------------------------------------------------------------------
+
+    private static final String SENSITIVE_DEFS = """
+            [
+              {"name": "salaire", "label": "Salaire", "type": "MONEY", "required": false, "sensitive": true},
+              {"name": "budget", "label": "Budget", "type": "REPEATABLE_GROUP", "required": false, "sensitive": true,
+               "fields": [{"name": "poste", "label": "Poste", "type": "STRING", "required": false}]},
+              {"name": "note", "label": "Note", "type": "STRING", "required": false}
+            ]
+            """;
+
+    @Test
+    void aNonAdminCsvExportNeverCarriesASensitiveMoneyOrGroup() throws Exception {
+        String code = createType(SENSITIVE_DEFS);
+        mockMvc.perform(post("/api/dossier-types/{code}/acl", code)
+                        .with(user("acl-" + code, "TENANT_ADMIN")).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"subjectUserId\": \"viewer-csv\", \"permission\": \"VIEW\"}"))
+                .andExpect(status().isNoContent());
+        createDossier(code, """
+                {"salaire": {"amount": "4242.00", "currency": "EUR"},
+                 "budget": [{"poste": "CONFIDENTIEL-XYZ"}], "note": "visible"}""").andExpect(status().isCreated());
+
+        String viewer = mockMvc.perform(get("/api/dossiers/export.csv").param("dossierTypeCode", code)
+                        .with(user("viewer-csv", "DOSSIER_VIEWER")))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(viewer).contains("visible").doesNotContain("4242").doesNotContain("CONFIDENTIEL-XYZ");
+
+        String admin = mockMvc.perform(get("/api/dossiers/export.csv").param("dossierTypeCode", code)
+                        .with(user("admin-" + code, "TENANT_ADMIN")))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(admin).contains("4242.00").contains("CONFIDENTIEL-XYZ");
+    }
+
+    @Test
+    void aJsonNumberAmountThatADoubleCannotHoldIsRefusedWhileAQuotedOneIsKept() throws Exception {
+        String code = createType(DEFINITIONS);
+        createDossier(code, "{\"montant\": {\"amount\": 99999999999999.99, \"currency\": \"EUR\"}}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].code").value("INVALID_VALUE"));
+        createDossier(code, "{\"montant\": {\"amount\": \"99999999999999.99\", \"currency\": \"EUR\"}}")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.fields.montant.amount").value("99999999999999.99"));
+    }
+
+    @Test
+    void aNullCellInAGroupRowIsAbsenceAndNeverAServerError() throws Exception {
+        String code = createType(DEFINITIONS);
+        createDossier(code, "{\"lignes\": [{\"poste\": \"Toiture\", \"prix\": null}]}")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.fields.lignes[0].poste").value("Toiture"))
+                .andExpect(jsonPath("$.fields.lignes[0].prix").doesNotExist());
+        createDossier(code, "{\"lignes\": [{\"poste\": null}]}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("lignes[0].poste"));
+    }
+
+    @Test
+    void anOversizedCellIsRefusedBeforeItCanBeStored() throws Exception {
+        String code = createType(DEFINITIONS);
+        createDossier(code, "{\"lignes\": [{\"poste\": \"" + "x".repeat(10_001) + "\"}]}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("lignes[0].poste"))
+                .andExpect(jsonPath("$.errors[0].code").value("INVALID_VALUE"));
+    }
 }

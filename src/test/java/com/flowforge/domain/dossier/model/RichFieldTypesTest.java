@@ -257,4 +257,98 @@ class RichFieldTypesTest {
         assertThat(legacy.maxRows()).isNull();
         assertThat(codes(List.of(legacy), Map.of("a", "x"))).isEmpty();
     }
+
+    // ---- revue adversariale D1 -------------------------------------------------------------------------------------
+
+    @Test
+    void mediumAJsonNumberThatADoubleCannotHoldExactlyIsRefusedNotRoundedInSilence() {
+        // M1 : Jackson lit 99999999999999.99 comme le Double 9.999999999999998E13 → stocké « 99999999999999.98 ».
+        List<FieldDefinition> defs = List.of(money("m", false));
+        for (Object risky : List.of(99999999999999.99d, 999999999999999.9d, 16777217f, 0.1f, 1234567890123.456d)) {
+            assertThat(codes(defs, Map.of("m", amount(risky, "EUR")))).as(String.valueOf(risky)).isNotEmpty();
+        }
+        // Ce qu'un double représente exactement (≤ 15 chiffres significatifs) reste accepté ; les textes et grands
+        // entiers exacts aussi.
+        for (Object exact : List.of(12.5d, 0.05d, 1234567890123.45d, 100.0d, 999999999999999L, new BigDecimal("99999999999999.99"),
+                "99999999999999.99")) {
+            assertThat(codes(defs, Map.of("m", amount(exact, "EUR")))).as(String.valueOf(exact)).isEmpty();
+        }
+        assertThat(validator.normalize(defs, Map.of("m", amount("99999999999999.99", "EUR"))).get("m"))
+                .isEqualTo(Map.of("amount", "99999999999999.99", "currency", "EUR"));
+    }
+
+    @Test
+    void mediumANullCellInAGroupRowIsAbsenceNotACrash() {
+        // M2 : [{"nom": null}] passait la validation puis `Map.copyOf` levait une NullPointerException (HTTP 500).
+        List<FieldDefinition> defs = List.of(lines());
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("poste", "Toiture");
+        row.put("prix", null);
+        Map<String, Object> values = Map.of("lignes", List.of(row));
+        assertThat(codes(defs, values)).isEmpty();
+        Map<String, Object> out = validator.normalize(defs, values);
+        assertThat(out.get("lignes")).isEqualTo(List.of(Map.of("poste", "Toiture")));
+
+        Map<String, Object> onlyNull = new LinkedHashMap<>();
+        onlyNull.put("poste", null);
+        assertThat(codes(defs, Map.of("lignes", List.of(onlyNull)))).containsExactly("lignes[0].poste:REQUIRED");
+    }
+
+    @Test
+    void mediumTextSizeIsBoundedSoAGroupCannotCarryHundredsOfMegabytes() {
+        // M4 : 500 lignes × 20 cellules de 10 Mo passaient ; bornes par cellule, par groupe et par dossier.
+        List<FieldDefinition> defs = List.of(group("g", false, 0, 500, text("a", false)));
+        assertThat(codes(defs, Map.of("g", List.of(Map.of("a", "x".repeat(10_000)))))).isEmpty();
+        assertThat(codes(defs, Map.of("g", List.of(Map.of("a", "x".repeat(10_001)))))).containsExactly("g[0].a:INVALID_VALUE");
+        List<Object> rows = new ArrayList<>();
+        for (int i = 0; i < 101; i++) {
+            rows.add(Map.of("a", "x".repeat(10_000)));
+        }
+        assertThat(codes(defs, Map.of("g", rows))).containsExactly("g:INVALID_VALUE"); // 1 010 000 > 1 000 000 par groupe
+        for (int i = 0; i < 99; i++) {
+            rows.add(Map.of("a", "x".repeat(10_000)));
+        }
+        assertThat(codes(defs, Map.of("g", rows))).containsExactly("fields:INVALID_VALUE"); // 2 000 000 > 1 Mio par dossier
+        // Borne globale d'un dossier, tous champs confondus (le champ STRING historique n'était borné nulle part).
+        List<FieldDefinition> plain = List.of(text("a", false), text("b", false));
+        assertThat(codes(plain, Map.of("a", "x".repeat(600_000), "b", "y".repeat(600_000)))).containsExactly("fields:INVALID_VALUE");
+        assertThat(codes(plain, Map.of("a", "x".repeat(600_000)))).isEmpty();
+    }
+
+    @Test
+    void lowMinRowsAppliesWhenTheGroupIsAbsentToo() {
+        // B3 : avec minRows=2 non requis, un groupe absent était accepté mais [] refusé.
+        List<FieldDefinition> defs = List.of(group("g", false, 2, 5, text("a", false)));
+        assertThat(codes(defs, Map.of())).containsExactly("g:INVALID_VALUE");
+        assertThat(codes(defs, Map.of("g", List.of(Map.of("a", "1"), Map.of("a", "2"))))).isEmpty();
+        assertThat(codes(List.of(group("g", false, 0, 5, text("a", false))), Map.of())).isEmpty();
+    }
+
+    @Test
+    void lowDefinitionsAreTighter() {
+        // B4
+        FieldDefinition blankName = new FieldDefinition("", "x", FieldType.STRING, false, null, List.of(), null);
+        assertThatThrownBy(() -> group("g", false, 0, 5, blankName)).hasMessageContaining("name");
+        FieldDefinition withDefault = new FieldDefinition("d", "d", FieldType.STRING, false, "x", List.of(), null);
+        assertThatThrownBy(() -> group("g", false, 0, 5, withDefault)).hasMessageContaining("default");
+        assertThatThrownBy(() -> new FieldDefinition("g", "g", FieldType.REPEATABLE_GROUP, false, null, List.of("a"), null,
+                false, List.of(text("a", false)), 0, 5)).hasMessageContaining("options");
+        assertThatThrownBy(() -> group("g", false, 0, 0, text("a", false))).hasMessageContaining("maxRows");
+    }
+
+    @Test
+    void lowAnUnknownRowKeyIsNotEchoedIntoTheErrorPathUnlessItIsAPlainIdentifier() {
+        List<FieldDefinition> defs = List.of(group("g", false, 0, 5, text("a", false)));
+        assertThat(codes(defs, Map.of("g", List.of(Map.of("<script>alert(1)</script>", "x")))))
+                .containsExactly("g[0].?:UNKNOWN_FIELD");
+        assertThat(codes(defs, Map.of("g", List.of(Map.of("zzz", "x"))))).containsExactly("g[0].zzz:UNKNOWN_FIELD");
+    }
+
+    @Test
+    void lowCsvColumnNamesOfATypeCannotCollide() {
+        // B4 : un STRING nommé « m.amount » à côté d'un MONEY « m » donnait deux colonnes « m.amount ».
+        List<FieldDefinition> colliding = List.of(text("m.amount", false), money("m", false));
+        assertThatThrownBy(() -> new DossierType(java.util.UUID.randomUUID(), "t", "CODE", "L", "wf", true, false, colliding,
+                null, false, null, "u", "u")).hasMessageContaining("column");
+    }
 }

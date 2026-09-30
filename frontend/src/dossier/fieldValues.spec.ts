@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { FieldDefinition } from '@/api/types'
-import { cleanStructuredFields, comparable, deepEqual, formatFieldValue, isBlankValue, isStructured, toPayload } from './fieldValues'
+import { canonicalDecimal, cleanStructuredFields, comparable, deepEqual, formatFieldValue, isBlankValue, isStructured, toPayload } from './fieldValues'
 
 const money: FieldDefinition = { name: 'm', label: 'M', type: 'MONEY', required: false }
 const ref: FieldDefinition = { name: 'r', label: 'R', type: 'EXTERNAL_REF', required: false }
@@ -44,7 +44,7 @@ describe('fieldValues (TODO §76, D1)', () => {
     expect(isBlankValue(ref, { system: ' ', id: '', label: '' })).toBe(true)
     expect(isBlankValue(ref, { system: 'a', id: '', label: '' })).toBe(false)
     expect(isBlankValue(group, [])).toBe(true)
-    expect(isBlankValue(group, [{}])).toBe(false)
+    expect(isBlankValue(group, [{}])).toBe(true)
     expect(isBlankValue({ type: 'BOOLEAN' }, false)).toBe(false)
     expect(isBlankValue({ type: 'STRING' }, '')).toBe(true)
   })
@@ -94,5 +94,30 @@ describe('fieldValues (TODO §76, D1)', () => {
       inconnu: 'x',
     })
     expect(out).toEqual({ note: '', r: { system: 'd365fo', id: '1' }, g: [{ poste: 'A' }], inconnu: 'x' })
+  })
+
+  it('compares large amounts as decimal text, never through Number (revue adversariale D1, M3)', () => {
+    const a = { amount: '999999999999999.98', currency: 'EUR' }
+    const b = { amount: '999999999999999.99', currency: 'EUR' }
+    expect(deepEqual(comparable(money, a), comparable(money, b))).toBe(false)
+    expect(deepEqual(comparable(money, { amount: '99999999999999.98', currency: 'EUR' }), comparable(money, { amount: '99999999999999.99', currency: 'EUR' }))).toBe(false)
+    expect(deepEqual(comparable(money, { amount: '007.10', currency: 'EUR' }), comparable(money, { amount: '7.1', currency: 'EUR' }))).toBe(true)
+  })
+
+  it('canonicalDecimal normalizes plain decimals and refuses anything else', () => {
+    expect(canonicalDecimal('12.50')).toBe('12.5')
+    expect(canonicalDecimal('007.10')).toBe('7.1')
+    expect(canonicalDecimal('-0.0')).toBe('0')
+    expect(canonicalDecimal('-12.30')).toBe('-12.3')
+    expect(canonicalDecimal(' 5 ')).toBe('5')
+    expect(canonicalDecimal('0')).toBe('0')
+    for (const bad of ['', 'abc', '1,5', '1e3', '.5', '1.', '--1']) expect(canonicalDecimal(bad)).toBeNull()
+  })
+
+  it('a group whose rows are all empty is blank (no spontaneous patch), and blank rows do not count in comparisons', () => {
+    expect(isBlankValue(group, [{}])).toBe(true)
+    expect(isBlankValue(group, [{ poste: '', qte: null }, { poste: '  ' }])).toBe(true)
+    expect(isBlankValue(group, [{ poste: 'A' }])).toBe(false)
+    expect(deepEqual(comparable(group, [{ poste: 'A' }, {}]), comparable(group, [{ poste: 'A' }]))).toBe(true)
   })
 })

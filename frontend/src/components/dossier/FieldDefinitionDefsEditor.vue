@@ -142,7 +142,7 @@ function parseOptions(raw: string): string[] {
         />
         Obligatoire
       </label>
-      <label v-if="!STRUCTURED.includes(def.type)">
+      <label v-if="!STRUCTURED.includes(def.type) && !isSub">
         Valeur par défaut
         <input
           :value="def.defaultValue ?? ''"

@@ -365,8 +365,8 @@ Contraintes :
 
 L'éditeur (`/admin/bpmn-editor`) charge le **catalogue des briques** exposé par le serveur
 (`GET /api/bpmn-building-blocks`, outil MCP `list_bpmn_building_blocks`) : une seule source pour la
-palette, le panneau, la validation au déploiement et les agents. Onze briques, chacune = **un seul
-élément BPMN** pré-configuré (D-PALETTE-GRANULARITY) :
+palette, le panneau, la validation au déploiement et les agents. Douze briques, chacune = **un seul
+élément BPMN** pré-configuré (D-PALETTE-GRANULARITY). Douze briques depuis LC2 (§3sexies) :
 
 | Brique | Élément | Marqueur XML reconnu |
 |---|---|---|
@@ -378,6 +378,7 @@ palette, le panneau, la validation au déploiement et les agents. Onze briques, 
 | Changer le statut du dossier | `serviceTask` | `${updateDossierStatusTask}` |
 | Changer le statut du workflow | `serviceTask` | `${updateWorkflowLinkStatusTask}` |
 | Décision DMN | `serviceTask` | `flowable:type="dmn"` |
+| Évaluer une expression | `serviceTask` | `${businessExpressionTask}` |
 | Demander une signature | `serviceTask` | `${signatureRequestTask}` |
 | Question utilisateur | `userTask` | `flowable:formKey="user-question:<clé>"` |
 | Tâche externe (portail) | `userTask` | `formKey` `user-question:` + `flowable:portalRecipient` |
@@ -419,6 +420,80 @@ Catalogue indisponible → l'éditeur retombe sur la palette et le panneau natif
 > **Import d'un diagramme sans `xmlns:flowable`.** Dès qu'un paramètre de brique est écrit, l'éditeur
 > déclare lui-même `xmlns:flowable` sur `definitions` (D-FLOWABLE-NS) : plus de perte silencieuse du
 > premier attribut.
+
+## 3sexies. Évaluer une expression métier (TODO §75, LC2)
+
+Jusqu'ici, brancher un process sur « montant > 5000 **et** pays = FR » était impossible : la condition de
+passerelle n'accepte ni point ni appel (§3, §8). La brique **Évaluer une expression** comble ce manque sans
+ouvrir de surface d'exécution : une expression d'un langage **borné** (sous-ensemble de
+[JSONata](https://jsonata.org), hors JUEL) est évaluée par un `serviceTask` dédié, qui écrit le résultat dans
+**une variable**, que la passerelle compare ensuite avec sa grammaire sûre habituelle.
+
+```xml
+<serviceTask id="calc" name="Dossier à fort enjeu ?" flowable:delegateExpression="${businessExpressionTask}"
+             flowable:formula="dossier.fields.montant &gt; 5000 and dossier.fields.pays = &quot;FR&quot;"
+             flowable:formulaResult="fortEnjeu"/>
+<exclusiveGateway id="route" default="standard"/>
+<sequenceFlow id="fort" sourceRef="route" targetRef="revue">
+  <conditionExpression xsi:type="tFormalExpression">${fortEnjeu == true}</conditionExpression>
+</sequenceFlow>
+```
+
+**Document racine** de l'expression (et seulement lui) :
+
+| Racine | Contenu |
+|---|---|
+| `dossier` | `reference`, `type`, `status`, `label`, `fields` — les champs **non sensibles** : un champ marqué `sensitive` n'est pas exposé (une expression ne peut pas recopier sa valeur vers une variable, une notification ou un champ lisible par un non-administrateur) |
+| `connectorResult` | résultat du dernier appel de connecteur (JSON) |
+| `variables` | variables de process **scalaires** (texte, nombre, booléen, date en ISO, UUID) |
+| `now` | instant courant UTC en ISO, à la seconde (`$toMillis(now)`) — seule source d'horloge |
+
+**Exemples.** Condition : `dossier.fields.montant > 5000 and dossier.fields.pays = "FR"` · calcul :
+`dossier.fields.montant * 0.2` · seuil avec valeur par défaut : `$exists(dossier.fields.score) ? dossier.fields.score : 0` ·
+somme de lignes : `$sum($map(connectorResult.lignes, function($l){ $l.qty * $l.prix }))` · extraction d'une réponse de
+connecteur : `connectorResult.data.score`. Une expression qui renvoie un objet ou une liste est rangée en **texte
+JSON** dans la variable ; booléen, nombre et texte le sont tels quels.
+
+**Règles strictes** (refusées au déploiement, avec le nom de l'activité) :
+
+- **Aucune valeur → échec explicite.** Un chemin absent (`dossier.fields.inconnu`) ne produit pas de valeur : la
+  tâche échoue (« produced no value ») plutôt que de laisser la passerelle router en silence sur une variable
+  absente. Donner une valeur par défaut dans l'expression.
+- **Pas de littéral regex** (`/…/`) : le retour arrière d'une expression régulière Java n'est pas interruptible ; les
+  motifs en chaîne (`$contains(x, "abc")`, `$replace(x, "-", "+")`) restent permis. La division `a / b` est permise.
+- **Fonctions interdites** : `$eval`, et les fonctions non déterministes `$random`, `$now()`, `$millis()` — utiliser
+  la valeur `now`. Pas de `${…}` ni `#{…}` dans l'expression (ce n'est pas de l'UEL).
+- **L'expression est un attribut littéral** ; le delegate **ne lit jamais** une variable de process nommée `formula` :
+  une variable posée à l'exécution (complétion de tâche) ne peut pas devenir du code. `formula` et `formulaResult`
+  sont obligatoires.
+- **`formulaResult`** : lettres, chiffres, `_`, 60 caractères ; ne peut pas nommer une variable réservée
+  (`dossierId`, `connectorResult`, `dossier`, `variables`, `now`…) **ni un paramètre de brique** (`targetDossierStatus`,
+  `documentType`…) : un delegate relit ces noms en repli, une expression ne doit pas pouvoir piloter une autre brique.
+  Le nom d'attribut n'est pas `resultVariable` car Flowable en fait un attribut natif.
+
+**Bornes** (propriétés `app.expression.*`, mêmes valeurs en validation, évaluation à blanc et exécution) :
+
+| Borne | Défaut |
+|---|---|
+| longueur de l'expression | 2 000 caractères |
+| nœuds / profondeur de l'arbre syntaxique | 500 / 40 |
+| durée d'une évaluation | 250 ms |
+| évaluations imbriquées (récursion) | 400 |
+| contexte d'entrée / résultat | 256 Ko / 64 Ko |
+| chaîne produite par `$pad` | 10 000 caractères |
+| mémoire allouée par évaluation | 64 Mo |
+
+Les relever (`app.expression.timeout-millis`, `app.expression.max-result-bytes`…) n'est à faire qu'en connaissance
+de cause : ces bornes sont la défense contre l'expression coûteuse.
+
+**Essayer sans déployer.** `POST /api/expressions/validate` (toujours `200`, `{valid, message, position}`) et
+`POST /api/expressions/evaluate` (`{expression, context}` → `{defined, value}`) — `TENANT_ADMIN` ou `WORKFLOW_ADMIN` —
+ainsi que les outils MCP `validate_expression` et `evaluate_expression`. Le contexte est **fourni par l'appelant** :
+rien du tenant n'est lu, aucun effet de bord.
+
+> **Deux langages à ne pas confondre.** La condition de passerelle reste du JUEL restreint (`${fortEnjeu == true}` :
+> il faut un opérateur, un booléen nu est refusé) ; l'expression métier est du JSONata borné et ne vit que dans
+> `flowable:formula`. Les champs calculés et le mapping de réponse de connecteur s'appuieront sur ce même moteur.
 
 ## 4. Instancier / appeler un service externe
 
@@ -572,6 +647,7 @@ Référence rapide — `delegateExpression`, variables lues (entrée) et écrite
 | `${connectorServiceTask}` | invoque un connecteur en rôle SERVICE | `connectorInstanceId`, `connectorInput`? | `connectorResult`? |
 | `${notificationDispatchTask}` | envoie une notification (outbox) | `notificationChannels` + champs selon canal (§6c) | — |
 | `${signatureRequestTask}` | demande une signature électronique (§3quater) | `signatureDocument`, `signatureMode`, `signatureDeadlineDays`, `<flowable:signer>` (attributs du bloc) | `signatureRequestId` ; à la reprise : `signatureOutcome` |
+| `${businessExpressionTask}` | évalue une expression métier bornée (§3sexies) | attributs littéraux `formula`, `formulaResult` ; lit le dossier (champs non sensibles), `connectorResult`, variables scalaires | la variable nommée par `formulaResult` |
 | `${createChildDossierTask}` | crée un dossier enfant/suite et démarre son workflow | `dossierId` (réservée), `childDossierTypeCode`, `childDossierLabel`, `workflowProcessKey`, `relationType` (`PARENT_CHILD` ou `SUBSEQUENT`), `childDossierFields`?, `childWorkflowVariables`? | — |
 
 Toutes ces classes vivent dans `src/main/java/com/flowforge/infrastructure/flowable/` — en cas

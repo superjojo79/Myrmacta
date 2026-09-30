@@ -37,6 +37,17 @@ final class DeployedActivityParameters {
         return isEmpty(variable) ? null : variable;
     }
 
+    /**
+     * Attribut littéral {@code flowable:<nom>} seulement — <b>jamais</b> le repli sur une variable de process. Pour les
+     * delegates dont le paramètre devient du code évalué (TODO §75 : la formule) : une variable posée à l'exécution ne
+     * doit pas pouvoir le remplacer.
+     */
+    static String getLiteral(DelegateExecution execution, String name) {
+        FlowElement element = execution.getCurrentFlowElement();
+        String literal = element == null ? null : element.getAttributeValue(FLOWABLE_NAMESPACE, name);
+        return literal == null || literal.isBlank() ? null : literal.strip();
+    }
+
     private static boolean isEmpty(Object value) {
         return value == null
                 || value.toString().isBlank()

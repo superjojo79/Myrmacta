@@ -20,6 +20,30 @@ public final class BlockAttributeRules {
     private static final String SIGNATURE_DELEGATE = "signatureRequestTask";
     private static final Pattern KEY = Pattern.compile("[A-Za-z0-9_.:-]+");
     private static final Set<String> KEY_TEXT = Set.of("documentVariant", "documentLocale");
+    /** Paramètres pouvant s'étendre sur plusieurs lignes (texte libre ou expression). */
+    private static final Set<String> MULTILINE = Set.of("notificationBody", "formula");
+
+    /**
+     * TODO §75 — delegates qui ne lisent <b>que</b> l'attribut littéral, jamais une variable de même nom : une variable de
+     * process peut être posée par un utilisateur à l'exécution (complétion de tâche) ; elle ne doit jamais devenir du code
+     * exécutable. Tous leurs paramètres obligatoires doivent donc figurer dans le BPMN.
+     */
+    private static final Set<String> LITERAL_ONLY_DELEGATES = Set.of("businessExpressionTask");
+
+    /**
+     * Le nom d'attribut est {@code formulaResult} et non {@code resultVariable} : ce dernier est un attribut natif de
+     * Flowable (alias de {@code resultVariableName}) absorbé par le convertisseur BPMN, donc invisible ici.
+     */
+    private static final Pattern VARIABLE_NAME = Pattern.compile("[A-Za-z][A-Za-z0-9_]{0,59}");
+
+    /**
+     * Variables de process lues ou écrites par le moteur et les delegates : une expression ne doit pas les écraser (elles
+     * pilotent le dossier courant, les connecteurs, les documents…). S'y ajoutent tous les noms de paramètres de brique,
+     * qu'un delegate relit en repli depuis une variable de même nom.
+     */
+    private static final Set<String> RESERVED_VARIABLES = Set.of(
+            "dossierId", "dossierWorkflowLinkId", "connectorInput", "connectorResult", "childDossierFields",
+            "childWorkflowVariables", "generatedDocumentId", "notificationPayload", "now", "variables", "dossier");
     private static final Set<String> UUID_SOURCES = Set.of("connectorInstances", "notificationWebhooks");
     private static final Pattern UUID_FORM =
             Pattern.compile("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
@@ -62,6 +86,14 @@ public final class BlockAttributeRules {
                                     : " (delegate " + delegate + ")")));
             check(activityId, parameter, entry.getValue());
         }
+        block.filter(b -> LITERAL_ONLY_DELEGATES.contains(delegate)).ifPresent(b -> {
+            for (BlockParameter p : b.parameters()) {
+                if (p.required() && p.binding() == ParameterBinding.ATTRIBUTE && !flowableAttributes.containsKey(p.name())) {
+                    throw new InvalidBpmnException("BPMN attribute flowable:" + p.name() + " is required on " + activityId
+                            + " (delegate " + delegate + " reads only literal attributes)");
+                }
+            }
+        });
     }
 
     /** Ressources du tenant référencées par les attributs de cette activité (à vérifier par le use case de déploiement). */
@@ -77,6 +109,15 @@ public final class BlockAttributeRules {
             }
         });
         return List.copyOf(usages);
+    }
+
+    private static void checkFormulaResult(String owner, String value) {
+        if (!VARIABLE_NAME.matcher(value).matches()) {
+            throw new InvalidBpmnException(owner + " must be a variable name (letters, digits, _; starts with a letter)");
+        }
+        if (RESERVED_VARIABLES.contains(value) || MANAGED_ATTRIBUTES.contains(value)) {
+            throw new InvalidBpmnException(owner + " names a reserved variable (" + value + "); choose another name");
+        }
     }
 
     private static boolean isManaged(BuildingBlock block) {
@@ -100,7 +141,7 @@ public final class BlockAttributeRules {
         }
         // Revue adversariale I2 : l'exécution lit la valeur telle quelle (après strip) — espaces de bord et retours à la
         // ligne sont donc refusés plutôt que « tolérés » à la validation puis fatals à l'exécution.
-        boolean multiline = "notificationBody".equals(parameter.name());
+        boolean multiline = MULTILINE.contains(parameter.name());
         if (!raw.equals(raw.strip()) && !multiline) {
             throw new InvalidBpmnException(owner + " must not start or end with whitespace");
         }
@@ -132,6 +173,9 @@ public final class BlockAttributeRules {
             case TEXT -> {
                 if (KEY_TEXT.contains(parameter.name()) && !KEY.matcher(value).matches()) {
                     throw new InvalidBpmnException(owner + " has an invalid format");
+                }
+                if ("formulaResult".equals(parameter.name())) {
+                    checkFormulaResult(owner, value);
                 }
             }
             default -> { }

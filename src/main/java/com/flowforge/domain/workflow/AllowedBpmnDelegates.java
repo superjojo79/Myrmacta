@@ -19,7 +19,9 @@ public final class AllowedBpmnDelegates {
             "updateDossierStatusTask",
             "updateWorkflowLinkStatusTask",
             // TODO §72 (signature-electronique) : bloc « Demander une signature ».
-            "signatureRequestTask");
+            "signatureRequestTask",
+            // TODO §75 (langage-expression-metier, LC2) : bloc « Évaluer une expression » (JSONata borné, hors JUEL).
+            "businessExpressionTask");
 
     private AllowedBpmnDelegates() {}
 

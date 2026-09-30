@@ -47,7 +47,7 @@ class BuildingBlockApiTest {
             mockMvc.perform(get("/api/bpmn-building-blocks").with(as(role)))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.version").value(1))
-                    .andExpect(jsonPath("$.blocks.length()").value(11))
+                    .andExpect(jsonPath("$.blocks.length()").value(12))
                     .andExpect(jsonPath("$.blocks[0].id").value("generate-document"))
                     .andExpect(jsonPath("$.blocks[0].parameters[0].name").value("documentType"));
         }

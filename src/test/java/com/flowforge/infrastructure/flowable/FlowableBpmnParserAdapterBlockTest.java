@@ -171,4 +171,51 @@ class FlowableBpmnParserAdapterBlockTest {
                         .map(BlockParameter::type).distinct().toList())
                 .contains(ParameterType.SIGNERS, ParameterType.SOURCE_REF, ParameterType.ENUM_MULTI);
     }
+
+    // ---- TODO §75 (LC2) : la formule est validée au déploiement (syntaxe et constructions permises) ------------------
+
+    private static String expression(String formula, String formulaResult) {
+        return service("businessExpressionTask", "flowable:formula=\"" + formula.replace("\"", "&quot;")
+                + "\" flowable:formulaResult=\"" + formulaResult + "\"");
+    }
+
+    @Test
+    void aValidFormulaIsAccepted() {
+        assertThat(adapter.extractProcessDefinitionKey(
+                        bpmn(expression("dossier.fields.montant > 5000 and dossier.fields.pays = &quot;FR&quot;", "eleve"))))
+                .isEqualTo("testProcess");
+    }
+
+    @Test
+    void aSyntaxErrorInTheFormulaIsRefusedAtDeploymentWithTheActivity() {
+        assertRefused(expression("dossier.fields.montant >", "eleve"), "formula");
+        assertRefused(expression("dossier.fields.montant >", "eleve"), "act");
+    }
+
+    @Test
+    void forbiddenConstructsInTheFormulaAreRefusedAtDeployment() {
+        assertRefused(expression("$eval('1')", "x1"), "$eval");
+        assertRefused(expression("$random()", "x1"), "$random");
+        assertRefused(expression("$now()", "x1"), "$now");
+        assertRefused(expression("$match(a, /b+/)", "x1"), "regular expression");
+    }
+
+    @Test
+    void theFormulaAndItsResultVariableAreBothRequired() {
+        assertRefused(service("businessExpressionTask", "flowable:formula=\"1\""), "formulaResult");
+        assertRefused(service("businessExpressionTask", "flowable:formulaResult=\"x1\""), "formula");
+        assertRefused(service("businessExpressionTask", ""), "required");
+    }
+
+    @Test
+    void aFormulaAttributeOnAnotherServiceTaskIsStillRefused() {
+        assertRefused(service("updateDossierStatusTask", "flowable:formula=\"1\""), "formula");
+        assertRefused("<serviceTask id=\"act\" flowable:type=\"dmn\" flowable:formula=\"1\"/>", "formula");
+    }
+
+    @Test
+    void thePlainFlowableExpressionAttributeRemainsAForbiddenSurface() {
+        // La formule ne réintroduit pas de surface UEL : `flowable:expression` reste refusé (TODO §69).
+        assertRefused("<serviceTask id=\"act\" flowable:expression=\"${x}\"/>", "expression");
+    }
 }

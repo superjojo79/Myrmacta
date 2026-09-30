@@ -650,6 +650,42 @@ paths:
               schema:
                 type: object
                 additionalProperties: {}
+  /api/expressions/validate:
+    post:
+      tags:
+      - expression-controller
+      operationId: validateExpression
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpressionRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ValidateExpressionResponse"
+  /api/expressions/evaluate:
+    post:
+      tags:
+      - expression-controller
+      operationId: evaluateExpression
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpressionRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/EvaluateExpressionResponse"
   /api/dossiers:
     get:
       tags:
@@ -3068,6 +3104,30 @@ components:
           type: string
         contentType:
           type: string
+    ExpressionRequest:
+      type: object
+      properties:
+        expression:
+          type: string
+        context:
+          type: object
+          additionalProperties: {}
+    ValidateExpressionResponse:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        message:
+          type: string
+        position:
+          type: integer
+          format: int32
+    EvaluateExpressionResponse:
+      type: object
+      properties:
+        defined:
+          type: boolean
+        value: {}
     CreateDossierRequest:
       type: object
       properties:

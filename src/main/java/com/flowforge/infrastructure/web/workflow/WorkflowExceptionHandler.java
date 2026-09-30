@@ -5,6 +5,8 @@ import com.flowforge.domain.dossier.model.DossierNotFoundException;
 import com.flowforge.domain.dossier.model.DossierWorkflowLinkNotFoundException;
 import com.flowforge.domain.dossier.model.WorkflowAlreadyRunningException;
 import com.flowforge.domain.workflow.model.DecisionEvaluationException;
+import com.flowforge.domain.expression.model.ExpressionEvaluationException;
+import com.flowforge.domain.expression.model.InvalidExpressionException;
 import com.flowforge.domain.workflow.model.DecisionVersionAlreadyCurrentException;
 import com.flowforge.domain.workflow.model.InvalidBpmnException;
 import com.flowforge.domain.workflow.model.InvalidDmnException;
@@ -88,7 +90,9 @@ class WorkflowExceptionHandler {
             HttpMessageNotReadableException.class,
             InvalidBpmnException.class,
             InvalidDmnException.class,
-            DecisionEvaluationException.class
+            DecisionEvaluationException.class,
+            InvalidExpressionException.class,
+            ExpressionEvaluationException.class
     })
     ProblemDetail handleBadRequest(Exception ex) {
         return problem(HttpStatus.BAD_REQUEST, "Bad request", ex.getMessage());

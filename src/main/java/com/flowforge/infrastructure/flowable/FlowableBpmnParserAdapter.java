@@ -6,6 +6,8 @@ import com.flowforge.domain.signature.model.SignerKind;
 import com.flowforge.domain.workflow.AllowedBpmnDelegates;
 import com.flowforge.domain.workflow.TaskQuestionFormKeys;
 import com.flowforge.domain.workflow.model.InvalidBpmnException;
+import com.flowforge.domain.expression.model.InvalidExpressionException;
+import com.flowforge.domain.expression.port.out.ExpressionEnginePort;
 import com.flowforge.domain.workflow.palette.BlockAttributeRules;
 import com.flowforge.domain.workflow.palette.BlockParameterUsage;
 import com.flowforge.domain.workflow.port.out.BpmnParserPort;
@@ -43,6 +45,22 @@ import org.springframework.stereotype.Component;
 
 @Component
 class FlowableBpmnParserAdapter implements BpmnParserPort {
+
+    /** TODO §75 — la syntaxe d'une formule (brique « Évaluer une expression ») est une règle de forme : refusée au parseur. */
+    private static final String EXPRESSION_DELEGATE = "businessExpressionTask";
+
+    private final ExpressionEnginePort expressionEngine;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    FlowableBpmnParserAdapter(ExpressionEnginePort expressionEngine) {
+        this.expressionEngine = java.util.Objects.requireNonNull(expressionEngine, "expressionEngine");
+    }
+
+    /** Pour les tests du parseur seul : moteur par défaut, mêmes bornes que la production. */
+    FlowableBpmnParserAdapter() {
+        this(new com.flowforge.infrastructure.expression.JsonataExpressionEngine(
+                com.flowforge.domain.expression.model.ExpressionLimits.DEFAULTS, java.time.Clock.systemUTC()));
+    }
 
     @Override
     public String extractProcessDefinitionKey(byte[] bpmnXml) {
@@ -120,6 +138,23 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
             if (element instanceof SubProcess subProcess) {
                 collectBlockReferences(subProcess.getFlowElements(), usages);
             }
+        }
+    }
+
+    /** TODO §75 — la formule d'une brique « Évaluer une expression » doit être valide (syntaxe et constructions permises). */
+    private void assertBusinessExpression(FlowElement element) {
+        if (!EXPRESSION_DELEGATE.equals(blockDelegate(element))) {
+            return;
+        }
+        String formula = flowableAttributes(element).get("formula");
+        if (formula == null) {
+            return; // déjà refusé par BlockAttributeRules (attribut obligatoire)
+        }
+        try {
+            expressionEngine.validate(formula.strip());
+        } catch (InvalidExpressionException e) {
+            throw new InvalidBpmnException(
+                    "BPMN attribute flowable:formula on " + element.getId() + " is invalid: " + e.getMessage());
         }
     }
 
@@ -384,12 +419,12 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
         }
     }
 
-    private static void assertSafeProcess(Process process) {
+    private void assertSafeProcess(Process process) {
         assertSafeListeners("process " + process.getId(), process.getExecutionListeners());
         walk(process.getFlowElements());
     }
 
-    private static void walk(Collection<FlowElement> elements) {
+    private void walk(Collection<FlowElement> elements) {
         if (elements == null) {
             return;
         }
@@ -401,10 +436,11 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
         }
     }
 
-    private static void assertSafeElement(FlowElement element) {
+    private void assertSafeElement(FlowElement element) {
         // TODO §73 : forme des attributs de brique (dérivée du catalogue), sur tout élément — un attribut de brique
         // posé hors de son delegate est refusé.
         BlockAttributeRules.validate(element.getId(), blockDelegate(element), flowableAttributes(element));
+        assertBusinessExpression(element);
         if (element instanceof HasExecutionListeners hasListeners) {
             assertSafeListeners(element.getId(), hasListeners.getExecutionListeners());
         }

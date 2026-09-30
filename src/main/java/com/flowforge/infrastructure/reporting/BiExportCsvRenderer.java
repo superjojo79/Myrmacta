@@ -1,6 +1,7 @@
 package com.flowforge.infrastructure.reporting;
 
 import com.flowforge.domain.dossier.DossierFieldRedactor;
+import com.flowforge.domain.dossier.DossierFieldCsv;
 import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierType;
@@ -64,7 +65,7 @@ public class BiExportCsvRenderer implements BiExportContentPort {
         StringBuilder csv = new StringBuilder();
         List<String> columns = new ArrayList<>(FIXED_COLUMNS);
         for (FieldDefinition definition : definitions) {
-            columns.add(definition.name());
+            columns.addAll(DossierFieldCsv.headers(definition));
         }
         csv.append(CsvWriter.writeRow(columns));
         try (Stream<Dossier> dossiers = exportPort.streamForExport(
@@ -94,8 +95,7 @@ public class BiExportCsvRenderer implements BiExportContentPort {
                 dossier.updatedAt() == null ? "" : dossier.updatedAt().toString(),
                 dossier.closedAt() == null ? "" : dossier.closedAt().toString()));
         for (FieldDefinition definition : definitions) {
-            Object value = fields.get(definition.name());
-            values.add(value == null ? "" : String.valueOf(value));
+            values.addAll(DossierFieldCsv.cells(definition, fields.get(definition.name())));
         }
         return values;
     }

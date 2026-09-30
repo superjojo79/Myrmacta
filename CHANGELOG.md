@@ -30,6 +30,11 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
+- **TODO §76 (D1)** — Champs dynamiques structurés : `MONEY` (montant décimal exact + devise ISO 4217, jamais arrondi en silence),
+  `REPEATABLE_GROUP` (lignes typées, un niveau, 0–500) et `EXTERNAL_REF` (système + identifiant). Validation avec chemin d'erreur par ligne,
+  valeurs normalisées, export CSV en colonnes stables, saisie et lecture dans la SPA, éditeur d'administration. Aucune migration ; types
+  structurés non encore proposés dans les questions de tâche.
+
 - **TODO §75 (LC2)** — Langage d'expression métier borné (JSONata, hors JUEL) : brique « Évaluer une expression » qui calcule
   une condition ou une valeur sur le dossier (champs non sensibles), le résultat d'un connecteur et les variables, et la range dans
   une variable comparée par une passerelle. Essai à blanc par `POST /api/expressions/{validate,evaluate}` et outils MCP

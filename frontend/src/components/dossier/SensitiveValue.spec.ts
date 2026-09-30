@@ -34,3 +34,27 @@ describe('SensitiveValue', () => {
     expect(wrapper.text()).toContain('plain')
   })
 })
+
+describe('SensitiveValue — slot (TODO §76, D1)', () => {
+  it('renders the slot only when the value is revealed', () => {
+    setActivePinia(createPinia())
+    const auth = useAuthStore()
+    auth.user = { id: 'u1', name: 'Ada', email: null, roles: ['DOSSIER_MANAGER'] }
+    const hidden = mount(SensitiveValue, {
+      props: { value: '2 lignes', sensitive: true },
+      slots: { default: '<table><tr><td>CONFIDENTIEL</td></tr></table>' },
+    })
+    expect(hidden.text()).toBe('••••')
+    expect(hidden.html()).not.toContain('CONFIDENTIEL')
+
+    auth.user = { id: 'u2', name: 'Admin', email: null, roles: ['TENANT_ADMIN'] }
+    const revealed = mount(SensitiveValue, {
+      props: { value: '2 lignes', sensitive: true },
+      slots: { default: '<table><tr><td>CONFIDENTIEL</td></tr></table>' },
+    })
+    expect(revealed.text()).toContain('CONFIDENTIEL')
+
+    const plain = mount(SensitiveValue, { props: { value: 'x', sensitive: false }, slots: { default: '<b>slot</b>' } })
+    expect(plain.text()).toBe('slot')
+  })
+})

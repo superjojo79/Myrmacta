@@ -22,6 +22,11 @@ public record FieldValidationError(String field, String code, String message) {
         return new FieldValidationError(field, "INVALID_OPTION", "Value not in allowed options");
     }
 
+    /** TODO §76 — valeur structurée mal formée (montant, référence, ligne de groupe) ; le message ne recopie jamais la valeur. */
+    public static FieldValidationError invalidValue(String field, String message) {
+        return new FieldValidationError(field, "INVALID_VALUE", message);
+    }
+
     public static FieldValidationError unknownField(String field) {
         return new FieldValidationError(field, "UNKNOWN_FIELD", "Unknown field");
     }

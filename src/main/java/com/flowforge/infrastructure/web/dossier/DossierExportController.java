@@ -1,5 +1,6 @@
 package com.flowforge.infrastructure.web.dossier;
 
+import com.flowforge.domain.dossier.DossierFieldCsv;
 import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.ExportDossiersQuery;
@@ -65,7 +66,7 @@ public class DossierExportController {
 
         List<String> columns = new ArrayList<>(FIXED_COLUMNS);
         for (FieldDefinition definition : result.fieldDefinitions()) {
-            columns.add(definition.name());
+            columns.addAll(DossierFieldCsv.headers(definition));
         }
 
         PrintWriter writer = response.getWriter();
@@ -85,8 +86,7 @@ public class DossierExportController {
                 dossier.updatedAt().toString(),
                 dossier.closedAt() == null ? "" : dossier.closedAt().toString()));
         for (FieldDefinition definition : fieldDefinitions) {
-            Object value = dossier.fields().get(definition.name());
-            values.add(value == null ? "" : String.valueOf(value));
+            values.addAll(DossierFieldCsv.cells(definition, dossier.fields().get(definition.name())));
         }
         return values;
     }

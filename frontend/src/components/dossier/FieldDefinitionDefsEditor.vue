@@ -1,16 +1,29 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { FieldDefinition, FieldType } from '@/api/types'
 
-const props = defineProps<{
-  modelValue: FieldDefinition[]
-}>()
+// TODO §76 (D1) : `mode` choisit les types proposés — `fields` (champs de dossier : tous), `task` (questions de tâche :
+// les six types historiques, le serveur refuse les types structurés), `subfields` (colonnes d'un groupe répétable).
+const props = withDefaults(
+  defineProps<{
+    modelValue: FieldDefinition[]
+    mode?: 'fields' | 'task' | 'subfields'
+  }>(),
+  { mode: 'fields' },
+)
 
 const emit = defineEmits<{
   'update:modelValue': [FieldDefinition[]]
 }>()
 
-const FIELD_TYPES: FieldType[] = ['STRING', 'NUMBER', 'DATE', 'BOOLEAN', 'SELECT', 'FILE']
+const LEGACY_TYPES: FieldType[] = ['STRING', 'NUMBER', 'DATE', 'BOOLEAN', 'SELECT', 'FILE']
+const STRUCTURED: FieldType[] = ['MONEY', 'REPEATABLE_GROUP', 'EXTERNAL_REF']
+const fieldTypes = computed<FieldType[]>(() => {
+  if (props.mode === 'task') return LEGACY_TYPES
+  if (props.mode === 'subfields') return ['STRING', 'NUMBER', 'DATE', 'BOOLEAN', 'SELECT', 'MONEY', 'EXTERNAL_REF']
+  return [...LEGACY_TYPES, ...STRUCTURED]
+})
+const isSub = computed(() => props.mode === 'subfields')
 
 // Local reactive copy so the editor re-renders immediately on every keystroke/toggle without
 // waiting for the parent to feed the emitted list back through the modelValue prop (same pattern
@@ -56,6 +69,28 @@ function moveRow(index: number, delta: number) {
   emitRows()
 }
 
+function changeType(index: number, type: FieldType) {
+  const before = rows.value[index]!.type
+  if (STRUCTURED.includes(type) || STRUCTURED.includes(before)) {
+    // Options, valeur par défaut et sous-champs d'un type ne valent pas pour un autre : on repart propre.
+    updateRow(index, {
+      type,
+      options: [],
+      defaultValue: type === 'STRING' || type === 'NUMBER' || type === 'DATE' || type === 'BOOLEAN' ? '' : null,
+      fields: [],
+      minRows: null,
+      maxRows: null,
+    })
+    return
+  }
+  updateRow(index, { type })
+}
+
+function parseRows(raw: string): number | null {
+  const n = Number.parseInt(raw, 10)
+  return Number.isNaN(n) ? null : n
+}
+
 function updateRow(index: number, patch: Partial<FieldDefinition>) {
   rows.value[index] = { ...rows.value[index]!, ...patch }
   emitRows()
@@ -93,9 +128,9 @@ function parseOptions(raw: string): string[] {
         <select
           :value="def.type"
           data-testid="field-def-type"
-          @change="updateRow(index, { type: ($event.target as HTMLSelectElement).value as FieldType })"
+          @change="changeType(index, ($event.target as HTMLSelectElement).value as FieldType)"
         >
-          <option v-for="type in FIELD_TYPES" :key="type" :value="type">{{ type }}</option>
+          <option v-for="type in fieldTypes" :key="type" :value="type">{{ type }}</option>
         </select>
       </label>
       <label class="field-def-editor__checkbox">
@@ -107,7 +142,7 @@ function parseOptions(raw: string): string[] {
         />
         Obligatoire
       </label>
-      <label>
+      <label v-if="!STRUCTURED.includes(def.type)">
         Valeur par défaut
         <input
           :value="def.defaultValue ?? ''"
@@ -115,15 +150,21 @@ function parseOptions(raw: string): string[] {
           @input="updateRow(index, { defaultValue: ($event.target as HTMLInputElement).value })"
         />
       </label>
-      <label v-if="def.type === 'SELECT'" data-testid="field-def-options">
-        Options (séparées par des virgules)
+      <label v-if="def.type === 'SELECT' || def.type === 'MONEY' || def.type === 'EXTERNAL_REF'" data-testid="field-def-options">
+        {{
+          def.type === 'MONEY'
+            ? 'Devises autorisées (codes ISO 4217 séparés par des virgules, vide = toutes)'
+            : def.type === 'EXTERNAL_REF'
+              ? 'Systèmes autorisés (séparés par des virgules, vide = tous)'
+              : 'Options (séparées par des virgules)'
+        }}
         <input
           :value="(def.options ?? []).join(', ')"
           data-testid="field-def-options-input"
           @input="updateRow(index, { options: parseOptions(($event.target as HTMLInputElement).value) })"
         />
       </label>
-      <label>
+      <label v-if="!isSub">
         Groupe
         <input
           :value="def.group ?? ''"
@@ -131,7 +172,7 @@ function parseOptions(raw: string): string[] {
           @input="updateRow(index, { group: ($event.target as HTMLInputElement).value })"
         />
       </label>
-      <label class="field-def-editor__checkbox">
+      <label v-if="!isSub" class="field-def-editor__checkbox">
         <input
           type="checkbox"
           :checked="!!def.sensitive"
@@ -140,6 +181,37 @@ function parseOptions(raw: string): string[] {
         />
         Sensible
       </label>
+      <template v-if="def.type === 'REPEATABLE_GROUP'">
+        <label>
+          Lignes min.
+          <input
+            type="number"
+            min="0"
+            :value="def.minRows ?? ''"
+            data-testid="field-def-min-rows"
+            @input="updateRow(index, { minRows: parseRows(($event.target as HTMLInputElement).value) })"
+          />
+        </label>
+        <label>
+          Lignes max.
+          <input
+            type="number"
+            min="1"
+            max="500"
+            :value="def.maxRows ?? ''"
+            data-testid="field-def-max-rows"
+            @input="updateRow(index, { maxRows: parseRows(($event.target as HTMLInputElement).value) })"
+          />
+        </label>
+        <fieldset class="field-def-editor__subfields" data-testid="field-def-subfields">
+          <legend>Colonnes du groupe (sous-champs, un seul niveau ; sensibilité = celle du groupe)</legend>
+          <FieldDefinitionDefsEditor
+            :model-value="def.fields ?? []"
+            mode="subfields"
+            @update:model-value="(fields) => updateRow(index, { fields })"
+          />
+        </fieldset>
+      </template>
       <div class="field-def-editor__actions">
         <button type="button" data-testid="field-def-move-up" :disabled="index === 0" @click="moveRow(index, -1)">
           ↑
@@ -180,6 +252,11 @@ function parseOptions(raw: string): string[] {
   flex-direction: row !important;
   align-items: center;
   gap: 0.3rem !important;
+}
+.field-def-editor__subfields {
+  flex-basis: 100%;
+  border: 1px dashed #c5c5c8;
+  border-radius: 4px;
 }
 .field-def-editor__actions {
   display: flex;

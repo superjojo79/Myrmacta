@@ -86,6 +86,21 @@ class JsonataExpressionEngineTest {
         assertThat(engine.evaluate("connectorResult.data.score", ctx).value()).isEqualTo(712L);
     }
 
+    /** TODO §76 (D1) : les champs structurés se calculent avec `$number(...)` sur le montant décimal exact (texte). */
+    @Test
+    void structuredDossierFieldsAreUsableInExpressions() {
+        Map<String, Object> ctx = Map.of("dossier", Map.of("fields", Map.of(
+                "montant", Map.of("amount", "1234.50", "currency", "EUR"),
+                "fournisseur", Map.of("system", "d365fo", "id", "V-1"),
+                "lignes", List.of(
+                        Map.of("poste", "Toiture", "prix", Map.of("amount", "1000.00", "currency", "EUR")),
+                        Map.of("poste", "Cuisine", "prix", Map.of("amount", "234.50", "currency", "EUR"))))));
+        assertThat(engine.evaluate("$number(dossier.fields.montant.amount) > 1000", ctx).value()).isEqualTo(true);
+        assertThat(engine.evaluate("$sum(dossier.fields.lignes.$number(prix.amount))", ctx).value()).isEqualTo(1234.5d);
+        assertThat(engine.evaluate("dossier.fields.fournisseur.system = \"d365fo\"", ctx).value()).isEqualTo(true);
+        assertThat(engine.evaluate("$count(dossier.fields.lignes)", ctx).value()).isEqualTo(2L);
+    }
+
     @Test
     void anAbsentPathIsUndefinedNotNull() {
         ExpressionResult r = engine.evaluate("dossier.fields.absent", dossier(1, "FR"));

@@ -1232,6 +1232,24 @@ brique « Évaluer une expression » (12ᵉ bloc, delegate allowlisté, formule 
 Nouvelles propriétés `app.expression.*` (valeurs par défaut, aucune variable d'environnement requise).
 
 
+### [x] 76. Modèle de champs enrichi — types structurés (D1) (livré)
+
+**Énoncé :** lot **D1** de la Vague D, analyse [32-modele-champs-enrichi.md](analysis%20doc/32-modele-champs-enrichi.md). Docs SDD :
+[requirements](docs/ai/requirements/2026-09-30-feature-d1-modele-champs-enrichi.md), [design](docs/ai/design/2026-09-30-feature-d1-modele-champs-enrichi.md),
+[planning](docs/ai/planning/2026-09-30-feature-d1-modele-champs-enrichi.md), [implementation](docs/ai/implementation/2026-09-30-feature-d1-modele-champs-enrichi.md),
+[testing](docs/ai/testing/2026-09-30-feature-d1-modele-champs-enrichi.md). Journal : [DECISIONS.md](docs/roadmap-goal/DECISIONS.md).
+
+**Décisions (mandat « roadmap complète », 2026-09-30).** D-CHAMPS-TYPES = `MONEY`, `REPEATABLE_GROUP`, `EXTERNAL_REF` ; D-CHAMPS-MONEY = montant en **texte décimal exact** +
+devise par valeur, refusé (jamais arrondi) au-delà des décimales de la devise ; D-CHAMPS-REPEAT = un niveau, 20 sous-champs, 0–500 lignes ; D-CHAMPS-SENSITIVE = sensibilité sur le
+**groupe entier** ; D-CHAMPS-EXPORT = colonnes `.amount/.currency`, `.system/.id/.label`, groupe en une colonne JSON ; D-CHAMPS-STORAGE = `json` conservé (jsonb en D2) ;
+D-CHAMPS-NORMALIZE ; D-CHAMPS-USERQ = types refusés dans les questions de tâche pour l'instant ; D-CHAMPS-REF = référence seule.
+
+**Livré.** `FieldType` + `FieldDefinition` (règles de définition), `DossierFieldValidator` (validation avec chemins d'erreur `lignes[1].poste`, normalisation), `DossierFieldCsv`
+(exports dossiers et BI), branchements création/mise à jour/MCP, SPA (saisie, lecture texte/tableau, diff sans faux patch, éditeur d'administration avec colonnes de groupe, validation
+miroir). Preuves de non-régression : modèles PDF (sans modification), compatibilité 409, masquage du groupe sensible, OpenAPI additif. Aucune migration, aucune variable d'environnement.
+**Impacte :** `GUIDE-UTILISATEUR.md` (Admin → Types), `GUIDE-CONCEPTION-BPMN.md` (§3sexies), `analysis doc/32`, `ROADMAP.md`, `CHANGELOG.md`. **Revue adversariale** : voir le document d'implémentation.
+
+
 ### [x] 19. Granularité des rôles RBAC
 
 **Clos V1 (2026-08-03 — feature `autorisation-conformite`) :** les cinq rôles

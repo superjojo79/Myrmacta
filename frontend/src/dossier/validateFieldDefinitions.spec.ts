@@ -80,3 +80,65 @@ describe('validateFieldDefinitions', () => {
     expect(validateFieldDefinitions([field({ type: 'NUMBER', defaultValue: '' })])).toEqual([])
   })
 })
+
+describe('validateFieldDefinitions — structured types (TODO §76, D1)', () => {
+  const text = (name: string): FieldDefinition => ({ name, label: name, type: 'STRING', required: false })
+  const group = (over: Partial<FieldDefinition> = {}): FieldDefinition => ({
+    name: 'g',
+    label: 'G',
+    type: 'REPEATABLE_GROUP',
+    required: false,
+    fields: [text('a')],
+    ...over,
+  })
+
+  it('accepts well-formed MONEY, EXTERNAL_REF and REPEATABLE_GROUP definitions', () => {
+    expect(
+      validateFieldDefinitions([
+        { name: 'm', label: 'M', type: 'MONEY', required: false, options: ['EUR', 'USD'] },
+        { name: 'r', label: 'R', type: 'EXTERNAL_REF', required: false, options: ['d365fo'] },
+        group({ minRows: 0, maxRows: 5 }),
+      ]),
+    ).toEqual([])
+  })
+
+  it('checks currency codes and system identifiers', () => {
+    const errors = validateFieldDefinitions([
+      { name: 'm', label: 'M', type: 'MONEY', required: false, options: ['eur', 'EUR'] },
+      { name: 'r', label: 'R', type: 'EXTERNAL_REF', required: false, options: ['mauvais système'] },
+    ])
+    expect(errors).toHaveLength(2)
+    expect(errors[0]).toContain('ISO 4217')
+    expect(errors[1]).toContain('identifiant valide')
+  })
+
+  it('refuses a default value on a structured type', () => {
+    const errors = validateFieldDefinitions([{ name: 'm', label: 'M', type: 'MONEY', required: false, defaultValue: '1' }])
+    expect(errors[0]).toContain('valeur par défaut')
+  })
+
+  it('bounds groups: sub-fields, types, sensitivity, rows', () => {
+    expect(validateFieldDefinitions([group({ fields: [] })])[0]).toContain('au moins un sous-champ')
+    expect(
+      validateFieldDefinitions([group({ fields: [{ name: 'f', label: 'f', type: 'FILE', required: false }] })])[0],
+    ).toContain('pas autorisé')
+    expect(
+      validateFieldDefinitions([group({ fields: [{ name: 'f', label: 'f', type: 'REPEATABLE_GROUP', required: false, fields: [text('x')] }] })])
+        .some((e) => e.includes('pas autorisé')),
+    ).toBe(true)
+    expect(
+      validateFieldDefinitions([group({ fields: [{ ...text('s'), sensitive: true }] })])[0],
+    ).toContain('ne peut pas être sensible')
+    expect(validateFieldDefinitions([group({ minRows: 5, maxRows: 2 })])[0]).toContain('dépasse')
+    expect(validateFieldDefinitions([group({ maxRows: 501 })])[0]).toContain('500')
+    expect(validateFieldDefinitions([group({ minRows: -1 })])[0]).toContain('négatif')
+    const many = Array.from({ length: 21 }, (_, i) => text(`f${i}`))
+    expect(validateFieldDefinitions([group({ fields: many })])[0]).toContain('au plus 20')
+  })
+
+  it('validates sub-fields recursively (names, labels, duplicates) and names the group', () => {
+    const errors = validateFieldDefinitions([group({ fields: [text('a'), text('a'), { name: '', label: '', type: 'STRING', required: false }] })])
+    expect(errors.some((e) => e.includes('utilisé plusieurs fois') && e.includes('groupe « g »'))).toBe(true)
+    expect(errors.some((e) => e.includes('nom du champ est obligatoire'))).toBe(true)
+  })
+})

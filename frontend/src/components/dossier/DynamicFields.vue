@@ -3,6 +3,7 @@ import { computed, watch } from 'vue'
 import type { FieldDefinition } from '@/api/types'
 import SensitiveValue from './SensitiveValue.vue'
 import DynamicFieldInput from './DynamicFieldInput.vue'
+import { formatFieldValue } from '@/dossier/fieldValues'
 
 const props = withDefaults(
   defineProps<{
@@ -58,7 +59,25 @@ function setField(name: string, value: unknown) {
       <label v-for="field in fields" :key="field.name" class="dynamic-fields__field">
         <span>{{ field.label }}<em v-if="field.required"> *</em></span>
         <template v-if="readonly">
-          <SensitiveValue :value="modelValue[field.name]" :sensitive="!!field.sensitive" />
+          <SensitiveValue :value="formatFieldValue(field, modelValue[field.name])" :sensitive="!!field.sensitive">
+            <!-- TODO §76 : les lignes d'un groupe se lisent en tableau (visible seulement si la valeur est révélée). -->
+            <table
+              v-if="field.type === 'REPEATABLE_GROUP' && Array.isArray(modelValue[field.name]) && (modelValue[field.name] as unknown[]).length > 0"
+              class="dynamic-fields__rows"
+            >
+              <thead>
+                <tr>
+                  <th v-for="sub in field.fields ?? []" :key="sub.name">{{ sub.label }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(row, index) in modelValue[field.name] as Record<string, unknown>[]" :key="index">
+                  <td v-for="sub in field.fields ?? []" :key="sub.name">{{ formatFieldValue(sub, row[sub.name]) }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <template v-else>{{ formatFieldValue(field, modelValue[field.name]) }}</template>
+          </SensitiveValue>
         </template>
         <DynamicFieldInput
           v-else
@@ -79,6 +98,15 @@ function setField(name: string, value: unknown) {
   display: grid;
   gap: 0.25rem;
   margin-bottom: 0.75rem;
+}
+.dynamic-fields__rows {
+  border-collapse: collapse;
+}
+.dynamic-fields__rows th,
+.dynamic-fields__rows td {
+  padding: 0.2rem 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid #e3e3e6;
 }
 .dynamic-fields__field input,
 .dynamic-fields__field select {

@@ -13,7 +13,17 @@ export type DossierStatus =
   | 'CLOTURE'
   | 'ARCHIVE'
 
-export type FieldType = 'STRING' | 'NUMBER' | 'DATE' | 'BOOLEAN' | 'SELECT' | 'FILE'
+export type FieldType =
+  | 'STRING'
+  | 'NUMBER'
+  | 'DATE'
+  | 'BOOLEAN'
+  | 'SELECT'
+  | 'FILE'
+  // TODO §76 (D1) : types structurés (valeurs objet/liste, voir dossier/fieldValues.ts)
+  | 'MONEY'
+  | 'REPEATABLE_GROUP'
+  | 'EXTERNAL_REF'
 
 export interface FieldDefinition {
   name: string
@@ -24,6 +34,11 @@ export interface FieldDefinition {
   options?: string[]
   group?: string | null
   sensitive?: boolean
+  /** REPEATABLE_GROUP : sous-champs (plats, non sensibles, un seul niveau). */
+  fields?: FieldDefinition[]
+  /** REPEATABLE_GROUP : bornes du nombre de lignes (défaut 0 et 100, plafond 500). */
+  minRows?: number | null
+  maxRows?: number | null
 }
 
 export interface DossierType {

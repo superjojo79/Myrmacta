@@ -12,13 +12,11 @@ const auth = useAuthStore()
 const { isTenantAdmin } = storeToRefs(auth)
 
 /** D-SENSITIVE = A : masqué sauf TENANT_ADMIN (pas de reveal côté non-admin). */
-const display = computed(() => {
-  if (!props.sensitive) return String(props.value ?? '')
-  if (isTenantAdmin.value) return String(props.value ?? '')
-  return '••••'
-})
+const revealed = computed(() => !props.sensitive || isTenantAdmin.value)
+const display = computed(() => (revealed.value ? String(props.value ?? '') : '••••'))
 </script>
 
 <template>
-  <span class="sensitive-value">{{ display }}</span>
+  <!-- TODO §76 : le contenu par défaut (ex. tableau des lignes d'un groupe) n'est rendu que si la valeur est visible. -->
+  <span class="sensitive-value"><slot v-if="revealed">{{ display }}</slot><template v-else>{{ display }}</template></span>
 </template>

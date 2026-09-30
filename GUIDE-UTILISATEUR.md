@@ -60,12 +60,28 @@ Formulaire de création :
 
 **Éditeur de champs dynamiques.** Le bouton **Ajouter un champ** insère une ligne éditable :
 `name` (clé technique, doit être unique dans le type), `label` (libellé affiché), `type`
-(`STRING`, `NUMBER`, `DATE`, `BOOLEAN`, `SELECT`, `FILE`), `required`, `defaultValue`, `options`
-(liste séparée par des virgules, uniquement pour `SELECT`), `group` (regroupement visuel sur
+(`STRING`, `NUMBER`, `DATE`, `BOOLEAN`, `SELECT`, `FILE` et les trois types structurés `MONEY`,
+`EXTERNAL_REF`, `REPEATABLE_GROUP` — voir ci-dessous), `required`, `defaultValue`, `options`
+(liste séparée par des virgules, pour `SELECT`, et pour `MONEY` / `EXTERNAL_REF` : devises / systèmes autorisés), `group` (regroupement visuel sur
 l'écran dossier) et `sensible` (masquage à l'affichage/export pour tout acteur non
 `TENANT_ADMIN`). Boutons ↑/↓ pour réordonner, **Supprimer** pour retirer une ligne. La
 sauvegarde envoie la **liste complète** (pas un ajout unitaire) — même convention que l'outil MCP
 interne `define_dossier_type`.
+
+**Types structurés (TODO §76).**
+
+| Type | Saisie | Valeur stockée | Règles |
+|---|---|---|---|
+| `MONEY` (montant) | un montant et une devise | `{"amount":"1234.50","currency":"EUR"}` | devise ISO 4217 en majuscules ; **options** = devises autorisées (vide = toutes ; une seule = préremplie) ; le montant est un décimal **exact** (jamais un nombre flottant), au plus autant de décimales que la devise (2 pour EUR, 0 pour JPY, 3 pour KWD) — **refusé, jamais arrondi en silence** ; le serveur le range à l'échelle de la devise (`12.5` → `12.50`) ; négatif permis (avoir) ; aucune valeur par défaut |
+| `EXTERNAL_REF` (référence externe) | système, identifiant, libellé facultatif | `{"system":"d365fo","id":"V-0042","label":"Contoso"}` | **options** = systèmes autorisés (vide = tous) ; identifiant 200 caractères au plus, sans caractère de contrôle ; la résolution auprès du système distant n'est pas faite (la valeur est une référence) ; aucune valeur par défaut |
+| `REPEATABLE_GROUP` (lignes) | tableau de lignes, boutons **Ajouter une ligne** / ✕ | liste d'objets, un par ligne | **Colonnes** = sous-champs définis dans l'éditeur (20 au plus, **un seul niveau** : ni groupe ni `FILE` dans un groupe) ; **lignes min./max.** (défaut 0 et 100, plafond 500) ; un champ obligatoire d'une ligne doit être renseigné ; la **sensibilité se pose sur le groupe entier**, pas sur une colonne ; aucune valeur par défaut |
+
+Une erreur de saisie nomme le champ **et la ligne** (`lignes[1].poste`). Dans un export CSV, un montant se répartit en
+deux colonnes (`montant.amount`, `montant.currency`), une référence en trois (`.system`, `.id`, `.label`) et un groupe en
+**une** colonne portant les lignes en JSON compact. Un montant **négatif** y est préfixé d'une apostrophe comme tout
+nombre négatif de l'export (protection contre l'injection de formule) : à retirer à l'import. Un changement de type d'un
+champ existant (ex. `STRING` → `MONEY`) est refusé (409) tant que des dossiers ont une valeur incompatible.
+Les **questions de tâche** (formulaires utilisateur, portail) ne proposent pas encore ces trois types.
 
 Une fois créé, le type apparaît dans le tableau avec un bouton **Basculer** pour l'activer/le
 désactiver — seuls les types actifs sont proposés à la création d'un dossier. Le bouton

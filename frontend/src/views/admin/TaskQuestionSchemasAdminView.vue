@@ -123,7 +123,7 @@ async function remove(schema: TaskQuestionSchema) {
     <form class="admin-form" data-testid="schema-create-form" @submit.prevent="create">
       <input v-model="form.schemaKey" placeholder="schemaKey" required data-testid="schema-key-input" />
       <input v-model="form.label" placeholder="libellé" required data-testid="schema-label-input" />
-      <FieldDefinitionDefsEditor v-model="form.fieldDefinitions" />
+      <FieldDefinitionDefsEditor v-model="form.fieldDefinitions" mode="task" />
       <button type="submit">Créer</button>
     </form>
 
@@ -157,7 +157,7 @@ async function remove(schema: TaskQuestionSchema) {
         Libellé
         <input v-model="editDraft.label" data-testid="schema-edit-label" />
       </label>
-      <FieldDefinitionDefsEditor v-model="editDraft.fieldDefinitions" />
+      <FieldDefinitionDefsEditor v-model="editDraft.fieldDefinitions" mode="task" />
       <div class="edit-panel__actions">
         <button type="button" data-testid="schema-edit-save" @click="saveEdit">Enregistrer</button>
         <button type="button" data-testid="schema-edit-cancel" @click="cancelEdit">Annuler</button>

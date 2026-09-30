@@ -1493,6 +1493,163 @@ test('E2E-22 manager patches dossier fields from detail', async ({ page }) => {
   await expect(page.locator('.dossier-fields-editor input')).toHaveValue('HIGH')
 })
 
+// TODO §76 (D1) — champs structurés : montant, référence externe, groupe répétable.
+const RICH_TYPE = {
+  ...CLAIM_TYPE,
+  fieldDefinitions: [
+    { name: 'montant', label: 'Montant', type: 'MONEY', required: false, options: ['EUR', 'USD'], group: null, sensitive: false },
+    {
+      name: 'fournisseur',
+      label: 'Fournisseur',
+      type: 'EXTERNAL_REF',
+      required: false,
+      options: ['d365fo'],
+      group: null,
+      sensitive: false,
+    },
+    {
+      name: 'lignes',
+      label: 'Lignes',
+      type: 'REPEATABLE_GROUP',
+      required: false,
+      options: [],
+      group: null,
+      sensitive: false,
+      minRows: 0,
+      maxRows: 5,
+      fields: [
+        { name: 'poste', label: 'Poste', type: 'STRING', required: true, options: [], group: null, sensitive: false },
+        { name: 'prix', label: 'Prix', type: 'MONEY', required: false, options: ['EUR'], group: null, sensitive: false },
+      ],
+    },
+  ],
+}
+const RICH_FIELDS = {
+  montant: { amount: '12.50', currency: 'EUR' },
+  fournisseur: { system: 'd365fo', id: 'V-0042', label: 'Contoso' },
+  lignes: [{ poste: 'Toiture', prix: { amount: '1000.00', currency: 'EUR' } }],
+}
+
+async function mockRichDossier(page: Page, canEdit = true) {
+  await page.route('**/api/dossier-types/CLAIM', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(RICH_TYPE) }),
+  )
+  await page.route(`**/api/dossiers/${DOSSIER_ID}`, async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback()
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(dossierBody({ fields: RICH_FIELDS, canEdit })),
+    })
+  })
+}
+
+test('E2E-RICH-FIELDS-1 manager edits a money amount and a group row, only the changes are patched', async ({ page }) => {
+  await mockSession(page)
+  await mockRichDossier(page)
+  await openApp(page)
+  await createAndOpenDossier(page)
+
+  await expect(page.getByLabel('Montant — montant')).toHaveValue('12.50')
+  await expect(page.getByLabel('Montant — devise')).toHaveValue('EUR')
+  await expect(page.getByLabel('Fournisseur — identifiant')).toHaveValue('V-0042')
+  await expect(page.getByLabel('Poste (ligne 1)')).toHaveValue('Toiture')
+
+  const fieldsRequest = page.waitForRequest((req) => req.method() === 'PATCH' && req.url().includes('/fields'))
+  await page.getByLabel('Montant — montant').fill('15')
+  await page.getByTestId('group-add-row').click()
+  await page.getByLabel('Poste (ligne 2)').fill('Cuisine')
+  await page.getByRole('button', { name: 'Enregistrer les champs' }).click()
+
+  const body = (await fieldsRequest).postDataJSON() as { fields: Record<string, unknown> }
+  expect(body.fields).toEqual({
+    montant: { amount: '15', currency: 'EUR' },
+    lignes: [
+      { poste: 'Toiture', prix: { amount: '1000.00', currency: 'EUR' } },
+      { poste: 'Cuisine' },
+    ],
+  })
+  // La référence externe n'a pas été touchée : elle n'est pas renvoyée.
+  expect(body.fields).not.toHaveProperty('fournisseur')
+})
+
+test('E2E-RICH-FIELDS-2 an unchanged amount typed without trailing zeros sends no patch', async ({ page }) => {
+  await mockSession(page)
+  await mockRichDossier(page)
+  await openApp(page)
+  await createAndOpenDossier(page)
+  let patched = false
+  page.on('request', (req) => {
+    if (req.method() === 'PATCH' && req.url().includes('/fields')) patched = true
+  })
+  await page.getByLabel('Montant — montant').fill('12.5')
+  await page.getByRole('button', { name: 'Enregistrer les champs' }).click()
+  await page.waitForTimeout(300)
+  expect(patched).toBe(false)
+})
+
+test('E2E-RICH-FIELDS-3 a viewer reads the structured values as text and as a table', async ({ page }) => {
+  await mockSession(page, { roles: ['DOSSIER_VIEWER'] })
+  await mockRichDossier(page, false)
+  await openApp(page)
+  await createAndOpenDossier(page)
+  const fields = page.locator('.dossier-fields-editor')
+  await expect(fields.getByText('12.50 EUR')).toBeVisible()
+  await expect(fields.getByText('d365fo · V-0042 — Contoso')).toBeVisible()
+  await expect(fields.locator('table')).toContainText('Toiture')
+  await expect(fields.locator('table')).toContainText('1000.00 EUR')
+  await expect(fields).not.toContainText('[object Object]')
+  await expect(fields.getByRole('button', { name: 'Enregistrer les champs' })).toHaveCount(0)
+})
+
+test('E2E-RICH-FIELDS-4 admin defines a type with a group and its columns', async ({ page }) => {
+  let createdBody: Record<string, unknown> | null = null
+  await mockSession(page)
+  await page.route(/\/api\/dossier-types(?:\?|$)/, async (route) => {
+    if (route.request().method() === 'POST') {
+      createdBody = route.request().postDataJSON() as Record<string, unknown>
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({ ...RICH_TYPE, code: createdBody.code, fieldDefinitions: createdBody.fieldDefinitions }),
+      })
+      return
+    }
+    await route.fallback()
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Types' }).click()
+  const form = page.getByTestId('type-create-form')
+  await form.getByPlaceholder('code').fill('SUBV')
+  await form.getByPlaceholder('libellé').fill('Subventions')
+  await form.getByPlaceholder('workflowKey').fill('wf-subv')
+  await form.getByTestId('field-def-add').click()
+  await form.getByTestId('field-def-name').first().fill('lignes')
+  await form.getByTestId('field-def-label').first().fill('Lignes budgétaires')
+  await form.getByTestId('field-def-type').first().selectOption('REPEATABLE_GROUP')
+  await form.getByTestId('field-def-max-rows').fill('10')
+  const nested = form.getByTestId('field-def-subfields')
+  await nested.getByTestId('field-def-add').click()
+  await nested.getByTestId('field-def-name').fill('nature')
+  await nested.getByTestId('field-def-label').fill('Nature')
+  await nested.getByTestId('field-def-add').click()
+  await nested.getByTestId('field-def-name').nth(1).fill('montant')
+  await nested.getByTestId('field-def-label').nth(1).fill('Montant')
+  await nested.getByTestId('field-def-type').nth(1).selectOption('MONEY')
+  await nested.getByTestId('field-def-options-input').fill('EUR')
+  await form.getByRole('button', { name: 'Créer' }).click()
+
+  await expect.poll(() => createdBody !== null).toBe(true)
+  const group = (createdBody!.fieldDefinitions as Array<Record<string, unknown>>)[0]!
+  expect(group).toMatchObject({ name: 'lignes', type: 'REPEATABLE_GROUP', maxRows: 10, defaultValue: null })
+  const subs = group.fields as Array<Record<string, unknown>>
+  expect(subs.map((f) => [f.name, f.type])).toEqual([
+    ['nature', 'STRING'],
+    ['montant', 'MONEY'],
+  ])
+  expect(subs[1]).toMatchObject({ options: ['EUR'], defaultValue: null })
+})
+
 test('E2E-23 viewer cannot edit dossier fields', async ({ page }) => {
   await mockSession(page, { roles: ['DOSSIER_VIEWER'] })
   await openApp(page)

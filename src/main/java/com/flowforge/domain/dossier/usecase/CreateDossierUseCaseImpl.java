@@ -63,6 +63,8 @@ public final class CreateDossierUseCaseImpl implements CreateDossierUseCase {
         if (!errors.isEmpty()) {
             throw new DossierFieldValidationException(errors);
         }
+        // TODO §76 : forme canonique des valeurs structurées (montant à l'échelle de sa devise, référence nettoyée, lignes).
+        fields = fieldValidator.normalize(type.fieldDefinitions(), fields);
 
         Instant now = Instant.now();
         Dossier dossier = new Dossier(

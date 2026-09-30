@@ -2735,6 +2735,9 @@ components:
           - BOOLEAN
           - SELECT
           - FILE
+          - MONEY
+          - REPEATABLE_GROUP
+          - EXTERNAL_REF
         required:
           type: boolean
         defaultValue:
@@ -2747,6 +2750,16 @@ components:
           type: string
         sensitive:
           type: boolean
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/FieldDefinition"
+        minRows:
+          type: integer
+          format: int32
+        maxRows:
+          type: integer
+          format: int32
     UpdateTaskQuestionSchemaRequest:
       type: object
       properties:

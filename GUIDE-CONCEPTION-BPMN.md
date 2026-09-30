@@ -443,7 +443,7 @@ ouvrir de surface d'exécution : une expression d'un langage **borné** (sous-en
 
 | Racine | Contenu |
 |---|---|
-| `dossier` | `reference`, `type`, `status`, `label`, `fields` — uniquement les champs **déclarés dans le type et non sensibles** (liste blanche) : un champ `sensitive`, ou encore stocké mais plus déclaré, n'est pas exposé (une expression ne peut pas recopier sa valeur vers une variable, une notification ou un champ lisible par un non-administrateur). Pour utiliser un champ dans une expression, il doit être déclaré dans le type de dossier |
+| `dossier` | `reference`, `type`, `status`, `label`, `fields` (un montant est `{amount, currency}` — `dossier.fields.montant.amount` est un **texte décimal**, le convertir avec `$number(...)` pour calculer ; une référence `{system, id, label}` ; un groupe une liste de lignes) — uniquement les champs **déclarés dans le type et non sensibles** (liste blanche) : un champ `sensitive`, ou encore stocké mais plus déclaré, n'est pas exposé (une expression ne peut pas recopier sa valeur vers une variable, une notification ou un champ lisible par un non-administrateur). Pour utiliser un champ dans une expression, il doit être déclaré dans le type de dossier |
 | `connectorResult` | résultat du dernier appel de connecteur (JSON) |
 | `variables` | variables de process **scalaires** (texte, nombre, booléen, date en ISO, UUID) |
 | `now` | instant courant UTC en ISO, à la seconde (`$toMillis(now)`) — seule source d'horloge |

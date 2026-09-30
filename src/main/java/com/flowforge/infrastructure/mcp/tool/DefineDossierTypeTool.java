@@ -86,8 +86,14 @@ public class DefineDossierTypeTool {
             @McpToolParam(
                             required = true,
                             description = "Full field schema — the complete list every call, not a diff. Each "
-                                    + "item: {name, label, type (STRING|NUMBER|BOOLEAN|DATE|SELECT|FILE), "
-                                    + "required, defaultValue, options, group, sensitive}")
+                                    + "item: {name, label, type (STRING|NUMBER|BOOLEAN|DATE|SELECT|FILE|MONEY|"
+                                    + "REPEATABLE_GROUP|EXTERNAL_REF), required, defaultValue, options, group, sensitive, "
+                                    + "fields, minRows, maxRows}. MONEY value {amount:\"1234.50\",currency:\"EUR\"} "
+                                    + "(options = allowed ISO 4217 currencies, amount checked against the currency "
+                                    + "decimals, never rounded); EXTERNAL_REF value {system,id,label?} (options = allowed "
+                                    + "systems); REPEATABLE_GROUP value = list of rows typed by `fields` (one level, at "
+                                    + "most 20 flat non-sensitive sub-fields, minRows/maxRows up to 500 — mark the group "
+                                    + "itself sensitive, not its sub-fields)")
                     List<Map<String, Object>> fieldDefinitions,
             @McpToolParam(
                             required = false,

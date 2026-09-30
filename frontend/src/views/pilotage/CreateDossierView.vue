@@ -7,6 +7,7 @@ import { toProblemDetail } from '@/api/http'
 import type { DossierType } from '@/api/types'
 import DynamicFields from '@/components/dossier/DynamicFields.vue'
 import { onMounted } from 'vue'
+import { cleanStructuredFields } from '@/dossier/fieldValues'
 
 const router = useRouter()
 const store = useDossierStore()
@@ -35,7 +36,7 @@ async function submit() {
     const created = await store.create({
       dossierTypeCode: dossierTypeCode.value,
       label: label.value.trim(),
-      fields: fields.value,
+      fields: cleanStructuredFields(selectedType()?.fieldDefinitions ?? [], fields.value),
     })
     await router.push(`/dossiers/${created.id}`)
   } catch (err) {

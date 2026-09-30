@@ -71,6 +71,9 @@ public final class UpdateDossierFieldsUseCaseImpl implements UpdateDossierFields
         if (!errors.isEmpty()) {
             throw new DossierFieldValidationException(errors);
         }
+        // TODO §76 : normalisé AVANT la détection des champs sensibles modifiés (le stocké l'est déjà : sinon un montant
+        // inchangé mais écrit « 12.5 » serait vu comme modifié).
+        merged = fieldValidator.normalize(type.fieldDefinitions(), merged);
 
         List<String> sensitiveFieldsChanged =
                 DossierFieldMerger.changedSensitiveFieldNames(type.fieldDefinitions(), before, merged);

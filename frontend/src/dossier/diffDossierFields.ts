@@ -1,24 +1,5 @@
-import type { FieldDefinition, FieldType } from '@/api/types'
-
-function isBlank(type: FieldType | undefined, value: unknown): boolean {
-  if (value === undefined || value === null) return true
-  if (type === 'BOOLEAN') return false
-  return value === ''
-}
-
-function coerceDraft(type: FieldType | undefined, value: unknown): unknown {
-  if (type === 'NUMBER' && typeof value === 'string' && value !== '') {
-    const n = Number(value)
-    return Number.isNaN(n) ? value : n
-  }
-  return value
-}
-
-function valuesEqual(a: unknown, b: unknown): boolean {
-  if (Object.is(a, b)) return true
-  if (a == null && b == null) return true
-  return false
-}
+import type { FieldDefinition } from '@/api/types'
+import { comparable, deepEqual, isBlankValue, toPayload } from './fieldValues'
 
 export function diffDossierFields(
   snapshot: Record<string, unknown>,
@@ -33,17 +14,19 @@ export function diffDossierFields(
   ])
   const patch: Record<string, unknown> = {}
   for (const name of names) {
-    const type = defByName.get(name)?.type
+    const def = defByName.get(name)
     const before = snapshot[name]
-    const after = coerceDraft(type, draft[name])
-    const afterBlank = isBlank(type, after)
-    const beforeBlank = isBlank(type, before)
+    // TODO §76 : les valeurs structurées (montant, référence, lignes) sont nettoyées avant d'être comparées puis envoyées.
+    const after = def ? toPayload(def, draft[name]) : draft[name]
+    const afterBlank = isBlankValue(def, after)
+    const beforeBlank = isBlankValue(def, before)
     if (afterBlank && beforeBlank) continue
     if (afterBlank && !beforeBlank) {
       patch[name] = null
       continue
     }
-    if (valuesEqual(before, after)) continue
+    // « 12.5 » et « 12.50 » désignent le même montant : comparaison sur la forme canonique, pas sur la saisie.
+    if (deepEqual(comparable(def, before), comparable(def, after))) continue
     patch[name] = after
   }
   return patch

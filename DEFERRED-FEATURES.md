@@ -261,6 +261,7 @@ Voir le détail et les options dans [TODO.md](TODO.md),
 | — | `outillage-dmn` | **Livré** ([PR #134](https://github.com/superjojo79/FlowForge/pull/134), TODO §67 clos) | Doc 28. Évaluation, jeux de tests, historique et redéploiement de version. |
 | — | `portail-externe` | **Livré** ([PR #138](https://github.com/superjojo79/FlowForge/pull/138), mergé 2026-09-24, TODO §68 clos) | Doc [26-portail-externe.md](analysis%20doc/26-portail-externe.md). Opt-in ; revue adversariale close. |
 | — | `signature-electronique` | **Livré** ([PR #149](https://github.com/superjojo79/FlowForge/pull/149), mergé 2026-09-29, TODO §72 clos ; stub, sans provider) | Doc [30-signature-electronique.md](analysis%20doc/30-signature-electronique.md). Recalibré le 2026-09-29 : socle générique + stub, aucun provider désigné ; eIDAS reporté au premier provider réel. |
+| — | `palette-metier-bpmn` (LC1) | **Livré** ([PR #151](https://github.com/superjojo79/FlowForge/pull/151), mergé 2026-09-30, TODO §73 clos) | Doc [39-palette-metier-bpmn.md](analysis%20doc/39-palette-metier-bpmn.md). Onze briques, catalogue serveur (API + MCP), attributs littéraux ; revue adversariale close. |
 
 **Interdits :** Kafka ∥ import-batch ∥ ERP ; import batch ∥ A3 ; ClamAV ∥ A1 (Compose) ;
 codegen OpenAPI ∥ tout FE ; `signature-electronique` avant `portail-externe`. Hors vague : Redis/SSE multi-pod, Chart.js SLA, Cockpit.

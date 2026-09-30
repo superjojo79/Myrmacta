@@ -11,6 +11,8 @@
 >   [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (TODO §40–46)
 >
 >
+> **2026-09-30 (`palette-metier-bpmn` mergée)** — [PR #151](https://github.com/superjojo79/FlowForge/pull/151), TODO §73 : LC1 livré (catalogue serveur, six delegates à attributs littéraux, validation au déploiement, palette et panneau typés). Prochains candidats de la Vague 1 : LC2 ou D1.
+>
 > **2026-09-29 (`signature-electronique` mergée)** — [PR #149](https://github.com/superjojo79/FlowForge/pull/149), TODO §72 : livré (stub, sans provider). Aucun
 > cycle en cours ; la Vague 1 de la Vague D démarre sans elle (LC1, LC2 ou D1).
 >
@@ -655,7 +657,7 @@ sécurité UEL du BPMN ([PR #136](https://github.com/superjojo79/FlowForge/pull/
 `portail-externe` ([PR #138](https://github.com/superjojo79/FlowForge/pull/138), TODO §68), puis
 `signature-electronique` ([PR #149](https://github.com/superjojo79/FlowForge/pull/149), TODO §72 : port `SignaturePort` + adaptateur stub, sans fournisseur ; eIDAS reporté).
 
-**Cycle en cours :** `palette-metier-bpmn` (LC1) — Phases 1 à 5 closes le 2026-09-29 (TODO §73) ; reste Phases 6–9 et PR. Suite : voir *File d'attente — Vague D* (Vague 1 : LC2 ou D1 en parallèle).
+**Cycle en cours :** aucun — `palette-metier-bpmn` (LC1) mergée le 2026-09-30 ([PR #151](https://github.com/superjojo79/FlowForge/pull/151), TODO §73). Suite : voir *File d'attente — Vague D* (Vague 1 : LC2 ou D1 en parallèle).
 
 Détail inventaire : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §4 / §6.
 

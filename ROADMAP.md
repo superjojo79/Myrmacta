@@ -38,7 +38,7 @@ FlowForge est un SaaS multi-tenant à architecture hexagonale. Stack **réelle**
 |---|---|---|---|
 | Livré | **2.4 Signature électronique** | `signature-electronique` | **Livré** ([PR #149](https://github.com/superjojo79/FlowForge/pull/149), TODO §72, lot XL), **socle générique + stub** (aucun provider ; fournisseur réel et eIDAS à cadrer) — [30-signature-electronique.md](analysis%20doc/30-signature-electronique.md) |
 | Décision | **D0** Positionnement produit | [analyse 31](analysis%20doc/31-positionnement-produit.md) | ✅ **Tranché = C** (TODO §70) : intégrateurs + couche low-code, décision n° 13 maintenue |
-| Vague D | **LC1** Palette métier dans l'éditeur BPMN | [`palette-metier-bpmn`](analysis%20doc/39-palette-metier-bpmn.md) | **Phases 1–5 closes (TODO §73)** — implémentation livrée sur branche, PR à ouvrir ; lot M–L (catalogue serveur + delegates + parseur + éditeur) |
+| Vague D | **LC1** Palette métier dans l'éditeur BPMN | [`palette-metier-bpmn`](analysis%20doc/39-palette-metier-bpmn.md) | **Livré** ([PR #151](https://github.com/superjojo79/FlowForge/pull/151), TODO §73, lot M–L : catalogue serveur + delegates + parseur + éditeur) ; reste en suite : liste des tables DMN déployées (saisie libre aujourd'hui) |
 | Vague D | **LC2** Langage d'expression métier borné | [`langage-expression-metier`](analysis%20doc/40-langage-expression-metier.md) | Analyse initiale |
 | Vague D | **LC3** Assistant de conception IA | [`assistant-conception-ia`](analysis%20doc/41-assistant-conception-ia.md) | Analyse initiale — après D6 |
 | Vague D | **LC4a / LC4b** Éditeurs visuels de formulaires / de templates | [`editeur-formulaires`](analysis%20doc/42-editeur-formulaires.md), [`editeur-templates-wysiwyg`](analysis%20doc/43-editeur-templates-wysiwyg.md) | Analyses initiales |
@@ -341,7 +341,7 @@ PDF gèrent déjà des variantes par langue. Priorité selon le marché visé (D
 
 **Vague 1 — en parallèle (surfaces disjointes)**
 
-1. ~~`signature-electronique`~~ — **livré** (PR #149). **LC1** palette métier BPMN (frontend seul).
+1. ~~`signature-electronique`~~ — **livré** (PR #149). ~~LC1 palette métier BPMN~~ — **livré** (PR #151).
 3. **D1** (nouveaux types uniquement) **ou LC2** — LC2 raccourcit le chemin critique (il débloque
    D3b, les champs calculés de D1 et LC5). **D3a** (OAuth2) en 4ᵉ agent si accepté.
 4. **D5** audit des jobs planifiés, en fond (lecture seule).

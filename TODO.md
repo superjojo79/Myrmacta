@@ -1175,7 +1175,7 @@ dossier, golden OpenAPI, tools MCP (principe P1 de l'analyse 46), `GUIDE-CONCEPT
 Points identifiés par [12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md),
 qui prévoyait leur fusion dans ce registre.
 
-### [ ] 73. Palette métier dans l'éditeur BPMN (LC1) — Phases 1 à 5 closes (implémentation livrée, PR à ouvrir)
+### [x] 73. Palette métier dans l'éditeur BPMN (LC1) (livré)
 
 **Énoncé :** sous-lot **LC1** de la couche low-code (§70), analyse [39-palette-metier-bpmn.md](analysis%20doc/39-palette-metier-bpmn.md).
 Docs SDD : [requirements](docs/ai/requirements/2026-09-29-feature-palette-metier-bpmn.md), [design](docs/ai/design/2026-09-29-feature-palette-metier-bpmn.md),
@@ -1193,7 +1193,7 @@ variables de process seulement ; le lot n'est donc pas « frontend seul » (tail
 
 **Phase 3 (2026-09-29).** Design revu contre le code. **Écarts corrigés** : un attribut par paramètre est faux pour la clé DMN, le `formKey` et la signature ⇒ `ParameterBinding` ; import sans `xmlns:flowable` ⇒ perte silencieuse de l'attribut ⇒ `ensureFlowableNamespace` ; le `dryRun` MCP saute les contrôles du use case de déploiement (DMN, portail, signature) ⇒ `validate(...)` partagé. **Décisions utilisateur** : D-PALETTE-DEPLOY-REFERENCES = **existence vérifiée au déploiement** (template, connecteur, type de dossier, workflow, webhook, statut) ; D-PALETTE-RAW-PALETTE = palette native conservée.
 
-**Phase 5 (2026-09-29).** Jalons M0–M12 livrés (backend : catalogue + API + outil MCP, `DeployedActivityParameters` et six delegates, validation de forme au parseur, existence des références au déploiement, parité `dryRun` ; frontend : `bpmn-blocks/` — client, reconnaissance, palette, panneau typé, « Avancé », diagnostics, marqueurs). Vérification : `./mvnw verify` 2648 tests verts, Vitest 489, Playwright 104 (dont `E2E-PALETTE-1..6`), OpenAPI dorée additive. **Constat** : les feuilles de style de `bpmn-js` n'étaient chargées nulle part (palette invisible) — corrigé. Écart assumé : la source `dmnTables` reste en saisie libre (pas d'API de liste). Voir [implementation](docs/ai/implementation/2026-09-29-feature-palette-metier-bpmn.md). Reste : Phases 6–9, PR.
+**Phase 5 (2026-09-29).** Jalons M0–M12 livrés (backend : catalogue + API + outil MCP, `DeployedActivityParameters` et six delegates, validation de forme au parseur, existence des références au déploiement, parité `dryRun` ; frontend : `bpmn-blocks/` — client, reconnaissance, palette, panneau typé, « Avancé », diagnostics, marqueurs). Vérification : `./mvnw verify` 2648 tests verts, Vitest 489, Playwright 104 (dont `E2E-PALETTE-1..6`), OpenAPI dorée additive. **Constat** : les feuilles de style de `bpmn-js` n'étaient chargées nulle part (palette invisible) — corrigé. Écart assumé : la source `dmnTables` reste en saisie libre (pas d'API de liste). Voir [implementation](docs/ai/implementation/2026-09-29-feature-palette-metier-bpmn.md). Phases 6 à 9 closes (revue adversariale par sous-agent : 0 bloquant, 4 importants et 8 mineurs corrigés, dont la précédence attribut > variable). **Mergée sur `main`** le 2026-09-30 ([PR #151](https://github.com/superjojo79/FlowForge/pull/151), squash `f161129`), CI verte (`build` + `frontend`) ; chiffres finaux : `./mvnw verify` 2653 tests, Vitest 498, Playwright 105.
 
 
 ### [x] 19. Granularité des rôles RBAC

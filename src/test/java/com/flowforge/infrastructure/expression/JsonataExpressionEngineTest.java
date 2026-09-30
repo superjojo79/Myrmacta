@@ -3,6 +3,7 @@ package com.flowforge.infrastructure.expression;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.dashjoin.jsonata.AstInspector;
 import com.flowforge.domain.expression.model.ExpressionEvaluationException;
 import com.flowforge.domain.expression.model.ExpressionLimits;
 import com.flowforge.domain.expression.model.ExpressionResult;
@@ -229,20 +230,25 @@ class JsonataExpressionEngineTest {
         JsonataExpressionEngine quick = new JsonataExpressionEngine(fast, CLOCK);
         long start = System.nanoTime();
         assertThatThrownBy(() -> quick.evaluate(
-                        "$count($map([1..900000], function($v){ $sum([1..200]) }))", Map.of()))
+                        "$count($map([1..9000], function($v){ $sum([1..9000]) }))", Map.of()))
                 .isInstanceOf(ExpressionEvaluationException.class)
                 .hasMessageContaining("timeout");
-        assertThat((System.nanoTime() - start) / 1_000_000).isLessThan(5_000);
+        assertThat((System.nanoTime() - start) / 1_000_000).as("stopped close to the 30 ms budget").isLessThan(1_500);
     }
 
     @Test
     void hugeRangesAndHugePaddingAreRefusedNotAllocated() {
         assertThatThrownBy(() -> engine.evaluate("[1..100000000]", Map.of()))
                 .isInstanceOf(ExpressionEvaluationException.class);
+        assertThat(engine.evaluate("$sum([1..1000])", Map.of()).value()).isEqualTo(500_500L);
         assertThatThrownBy(() -> engine.evaluate("$pad(\"x\", 2000000000)", Map.of()))
                 .isInstanceOf(ExpressionEvaluationException.class)
                 .hasMessageContaining("10000");
         assertThat(engine.evaluate("$pad(\"x\", 5, \"-\")", Map.of()).value()).isEqualTo("x----");
+        assertThat(engine.evaluate("$pad(\"x\", -5, \"-\")", Map.of()).value()).isEqualTo("----x");
+        assertThat(engine.evaluate("$pad(\"x\", 5)", Map.of()).value()).isEqualTo("x    ");
+        assertThat(engine.evaluate("$pad(\"abc\", 2)", Map.of()).value()).isEqualTo("abc");
+        assertThat(engine.evaluate("$pad(\"x\", 6, \"ab\")", Map.of()).value()).isEqualTo("xababa");
     }
 
     @Test
@@ -250,9 +256,18 @@ class JsonataExpressionEngineTest {
         JsonataExpressionEngine small =
                 new JsonataExpressionEngine(ExpressionLimits.DEFAULTS.withMaxAllocatedBytes(1024 * 1024), CLOCK);
         assertThatThrownBy(() -> small.evaluate(
-                        "$count($map([1..50000], function($v){ $string($v) & \"x\" }))", Map.of()))
+                        "$count($map([1..9000], function($v){ $string($v) & \"x\" }))", Map.of()))
                 .isInstanceOf(ExpressionEvaluationException.class)
                 .hasMessageContaining("memory");
+    }
+
+    @Test
+    void padIsLinearNotQuadraticSoAWideWidthCostsNoMemoryBurst() {
+        // La version de la bibliothèque alloue ~49 Mo pour une largeur de 10 000 ; la nôtre quelques Ko.
+        JsonataExpressionEngine tight = new JsonataExpressionEngine(
+                ExpressionLimits.DEFAULTS.withMaxAllocatedBytes(4L * 1024 * 1024), CLOCK);
+        assertThat(tight.evaluate("$length($pad(\"a\", 10000)) + $length($pad(\"b\", -10000, \"xy\"))", Map.of()).value())
+                .isEqualTo(20_000L);
     }
 
     @Test
@@ -288,5 +303,147 @@ class JsonataExpressionEngineTest {
         loop.put("self", loop);
         assertThatThrownBy(() -> engine.evaluate("self", Map.of("x", loop)))
                 .isInstanceOf(ExpressionEvaluationException.class);
+    }
+
+    // ---- revue adversariale LC2 (constats reproduits par sonde) -------------------------------------------------------
+
+    @Test
+    void criticalNoExpressionCanMaskTheEngineGuardsByBindingAnInternalName() {
+        // Constat 1 : `$__evaluate_entry := nope` masquait les callbacks (délai, mémoire, profondeur) du bloc courant.
+        for (String expr : List.of(
+                "($__evaluate_entry := nope; $__evaluate_exit := nope; $f := function($n){ $n >= 20000000 ? $n : $f($n+1) }; $f(0))",
+                "($__evaluate_entry := nope; 1)",
+                "($__evaluate_exit := nope; 1)",
+                "function($__evaluate_entry){1}(2)",
+                "x@$__evaluate_entry.y",
+                "x#$__evaluate_exit.y",
+                "($__anything := 1; $__anything)")) {
+            long start = System.nanoTime();
+            assertThatThrownBy(() -> engine.validate(expr)).as(expr)
+                    .isInstanceOf(InvalidExpressionException.class).hasMessageContaining("__");
+            assertThat((System.nanoTime() - start) / 1_000_000).isLessThan(2_000);
+        }
+    }
+
+    @Test
+    void theMemoryBypassExpressionIsRefusedBeforeItCanExhaustTheHeap() {
+        assertThatThrownBy(() -> engine.evaluate(
+                        "($__evaluate_entry := nope; $__evaluate_exit := nope;"
+                                + " $length($reduce([1..40], function($a,$b){$a & $a}, \"xxxxxxxx\")))", Map.of()))
+                .isInstanceOf(InvalidExpressionException.class);
+    }
+
+    @Test
+    void criticalReplaceWithALimitIsLiteralAndNeverARegex() {
+        // Constat 2 : avec un 4ᵉ argument, dashjoin appelait String.replaceFirst (motif interprété en regex, ReDoS).
+        assertThat(engine.evaluate("$replace(\"abc\", \"(b)\", \"[$1]\", 1)", Map.of()).value()).isEqualTo("abc");
+        assertThat(engine.evaluate("$replace(\"a(b)c\", \"(b)\", \"[$1]\", 1)", Map.of()).value()).isEqualTo("a[$1]c");
+        assertThat(engine.evaluate("$replace(\"aaaa\", \"a\", \"bb\", 2)", Map.of()).value()).isEqualTo("bbbbaa");
+        assertThat(engine.evaluate("$replace(\"a-b-c\", \"-\", \"+\")", Map.of()).value()).isEqualTo("a+b+c");
+        long start = System.nanoTime();
+        assertThat(engine.evaluate(
+                        "$replace(\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab\", \"^(.*a){12}$\", \"z\", 1)", Map.of()).value())
+                .isEqualTo("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab");
+        assertThat(engine.evaluate("$replace(\"a\", \"b\", \"c\", 10000000)", Map.of()).value()).isEqualTo("a");
+        assertThat((System.nanoTime() - start) / 1_000_000).as("no backtracking, no native loop").isLessThan(1_000);
+    }
+
+    @Test
+    void replaceRefusesEmptyPatternsNegativeLimitsAndOversizedResults() {
+        assertThatThrownBy(() -> engine.evaluate("$replace(\"abc\", \"\", \"x\")", Map.of()))
+                .isInstanceOf(ExpressionEvaluationException.class);
+        assertThatThrownBy(() -> engine.evaluate("$replace(\"abc\", \"a\", \"x\", -1)", Map.of()))
+                .isInstanceOf(ExpressionEvaluationException.class);
+        assertThatThrownBy(() -> engine.evaluate(
+                        "$replace($pad(\"a\", 10000, \"a\"), \"a\", $pad(\"b\", 10000))", Map.of()))
+                .isInstanceOf(ExpressionEvaluationException.class)
+                .hasMessageContaining("exceeds");
+        assertThatThrownBy(() -> engine.evaluate("$replace(\"abc\", \"a\", function($m){ \"x\" })", Map.of()))
+                .isInstanceOf(ExpressionEvaluationException.class);
+    }
+
+    @Test
+    void highSingleHugeCollectionsAndStringsAreRefusedAtTheNodeThatProducesThem() {
+        // Constat 3 : `[1..9999999]` (plafond réel 1e7) puis `$string`/`$distinct`/… en un seul appel natif → OOM.
+        for (String expr : List.of(
+                "[1..9999999]",
+                "$string([1..9999999])",
+                "$sum([1..9999999])",
+                "$length($string([[1..9999999],[1..9999999],[1..9999999],[1..9999999],[1..9999999],[1..9999999]]))",
+                "$count($distinct([[1..9999999],[1..9999999],[1..9999999]]))")) {
+            long start = System.nanoTime();
+            assertThatThrownBy(() -> engine.evaluate(expr, Map.of())).as(expr)
+                    .isInstanceOf(ExpressionEvaluationException.class).hasMessageContaining("exceeds");
+            assertThat((System.nanoTime() - start) / 1_000_000).as(expr).isLessThan(2_000);
+        }
+        assertThatThrownBy(() -> engine.evaluate(
+                        "$length($reduce([1..40], function($a,$b){$a & $a}, \"xxxxxxxx\"))", Map.of()))
+                .isInstanceOf(ExpressionEvaluationException.class).hasMessageContaining("exceeds");
+        assertThat(engine.evaluate("$count([1..9999])", Map.of()).value()).isEqualTo(9_999L);
+    }
+
+    @Test
+    void mediumErrorMessagesNeverLeakContextValuesOrInternals() {
+        Map<String, Object> ctx = Map.of("secret", "TOPSECRET-VALUE", "x", 1);
+        for (String expr : List.of("$split(\"abc\", 1)", "x + \"a\"", "$sum(\"a\")", "$substring(1, \"b\")",
+                "$number(\"zzz\")", "$count(1,2,3)")) {
+            assertThatThrownBy(() -> engine.evaluate(expr, ctx)).as(expr)
+                    .isInstanceOf(ExpressionEvaluationException.class)
+                    .satisfies(e -> assertThat(e.getMessage()).doesNotContain("TOPSECRET").doesNotContain("java.")
+                            .doesNotContain("com.dashjoin").doesNotContain("class ").doesNotContain("{x=")
+                            .doesNotContain("secret"));
+        }
+        // Utile à l'auteur : le message statique de la bibliothèque est conservé, sans les valeurs.
+        assertThatThrownBy(() -> engine.evaluate("1 + \"a\"", Map.of()))
+                .hasMessageContaining("must evaluate to a number");
+        // `$error(...)` est un texte choisi par l'auteur : il est restitué tel quel.
+        assertThatThrownBy(() -> engine.evaluate("$error(\"montant manquant\")", Map.of()))
+                .hasMessageContaining("montant manquant");
+    }
+
+    @Test
+    void evaluationFailuresCarryNoCauseThatCouldLogRawValues() {
+        assertThatThrownBy(() -> engine.evaluate("$split(\"abc\", 1)", Map.of("secret", "TOPSECRET-VALUE")))
+                .isInstanceOf(ExpressionEvaluationException.class)
+                .hasNoCause();
+    }
+
+    @Test
+    void lowEveryBuiltinOutsideTheAllowlistIsRefusedAndEveryAllowedOneIsKnownToTheLibrary() {
+        java.util.Set<String> builtins = AstInspector.builtinFunctionNames();
+        assertThat(builtins).containsAll(JsonataExpressionEngine.ALLOWED_FUNCTIONS); // dérive de la bibliothèque
+        for (String name : builtins) {
+            if (JsonataExpressionEngine.ALLOWED_FUNCTIONS.contains(name)) {
+                engine.validate("$" + name); // référence seule : syntaxe valide
+            } else {
+                assertThatThrownBy(() -> engine.validate("$" + name)).as("$" + name)
+                        .isInstanceOf(InvalidExpressionException.class);
+            }
+        }
+        assertThat(builtins).contains("shuffle", "random", "eval", "now", "millis", "match", "formatInteger", "parseInteger");
+        assertThatThrownBy(() -> engine.validate("$shuffle([1,2,3])")).isInstanceOf(InvalidExpressionException.class);
+    }
+
+    @Test
+    void dateFunctionsTakeNoPictureSoNoUserSuppliedFormatReachesTheDateEngine() {
+        assertThat(engine.evaluate("$toMillis(\"2026-09-30T10:00:00Z\")", Map.of()).value()).isInstanceOf(Long.class);
+        assertThat(engine.evaluate("$fromMillis(0)", Map.of()).value()).isEqualTo("1970-01-01T00:00:00.000Z");
+        assertThatThrownBy(() -> engine.evaluate("$toMillis(\"2026\", \"[Y0001]\")", Map.of()))
+                .isInstanceOf(ExpressionEvaluationException.class);
+        assertThatThrownBy(() -> engine.evaluate("$fromMillis(0, \"[Y0001]\")", Map.of()))
+                .isInstanceOf(ExpressionEvaluationException.class);
+        assertThatThrownBy(() -> engine.evaluate("$toMillis(\"pas une date\")", Map.of()))
+                .isInstanceOf(ExpressionEvaluationException.class);
+    }
+
+    @Test
+    void anErrorThrownByTheRuntimeIsNotSwallowedIntoABadRequest() {
+        // Une StackOverflowError profonde (parseur ou évaluation) devient un échec neutre ; jamais un message de classe.
+        String deep = "(".repeat(900) + "1" + ")".repeat(900);
+        try {
+            engine.evaluate(deep, Map.of());
+        } catch (InvalidExpressionException | ExpressionEvaluationException e) {
+            assertThat(e.getMessage()).doesNotContain("java.lang");
+        }
     }
 }

@@ -166,7 +166,10 @@ class BlockAttributeRulesTest {
         // Un delegate relit ses paramètres en repli depuis une variable de même nom : une expression ne doit pas
         // pouvoir piloter le statut cible, le connecteur ou le destinataire d'une autre brique.
         for (String reserved : List.of("dossierId", "connectorResult", "connectorInput", "now", "dossier", "variables",
-                "targetDossierStatus", "connectorInstanceId", "documentType", "notificationTo", "formula", "formulaResult")) {
+                "targetDossierStatus", "connectorInstanceId", "documentType", "notificationTo", "formula", "formulaResult",
+                // Revue adversariale LC2 : variables de la plateforme et de Flowable (multi-instance, exécution, tâche).
+                "dossierFields", "tenantId", "dossierWorkflowLinkId", "nrOfInstances", "nrOfActiveInstances",
+                "nrOfCompletedInstances", "loopCounter", "execution", "task", "initiator", "authenticatedUserId")) {
             assertThatThrownBy(() -> BlockAttributeRules.validate("a", "businessExpressionTask",
                             Map.of("formula", "1", "formulaResult", reserved)))
                     .as(reserved).isInstanceOf(InvalidBpmnException.class).hasMessageContaining("reserved");

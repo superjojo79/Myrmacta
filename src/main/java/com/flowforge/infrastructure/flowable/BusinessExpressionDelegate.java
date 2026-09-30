@@ -7,6 +7,7 @@ import com.flowforge.domain.dossier.port.in.GetDossierUseCase;
 import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
 import com.flowforge.domain.expression.model.ExpressionResult;
 import com.flowforge.domain.expression.port.out.ExpressionEnginePort;
+import com.flowforge.domain.workflow.palette.BlockAttributeRules;
 import com.flowforge.infrastructure.config.TenantProperties;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +33,7 @@ import tools.jackson.databind.ObjectMapper;
 class BusinessExpressionDelegate implements JavaDelegate {
 
     private static final Logger LOG = LoggerFactory.getLogger(BusinessExpressionDelegate.class);
+    private static final String DELEGATE = "businessExpressionTask";
 
     private final ExpressionEnginePort engine;
     private final GetDossierUseCase getDossier;
@@ -60,14 +62,22 @@ class BusinessExpressionDelegate implements JavaDelegate {
             throw new IllegalStateException(
                     "businessExpressionTask requires the literal attributes flowable:formula and flowable:formulaResult");
         }
+        // Défense en profondeur : un BPMN déployé sans passer par le parseur (ressource classpath, import direct) ne doit
+        // pas pouvoir écraser une variable réservée. Mêmes règles de forme qu'au déploiement.
+        BlockAttributeRules.validate(
+                execution.getCurrentActivityId(), DELEGATE, Map.of("formula", formula, "formulaResult", formulaResult));
         Dossier dossier = null;
         List<com.flowforge.domain.dossier.model.FieldDefinition> definitions = List.of();
         Object dossierId = execution.getVariable("dossierId");
         if (dossierId != null) {
             dossier = getDossier.get(UUID.fromString(dossierId.toString()), AccessContext.system("flowable-expression"));
-            definitions = dossierTypes.findByCode(tenantProperties.id(), dossier.dossierTypeCode())
+            // Échec FERMÉ : sans la définition du type on ne sait pas quels champs sont sensibles ; `withoutSensitiveKeys`
+            // avec une liste vide les exposerait tous.
+            String typeCode = dossier.dossierTypeCode();
+            definitions = dossierTypes.findByCode(tenantProperties.id(), typeCode)
                     .map(DossierType::fieldDefinitions)
-                    .orElse(List.of());
+                    .orElseThrow(() -> new IllegalStateException(
+                            "dossier type " + typeCode + " not found: cannot tell which fields are sensitive"));
         }
         Map<String, Object> context = BusinessExpressionContext.build(
                 dossier, definitions, execution.getVariable("connectorResult"), execution.getVariables());

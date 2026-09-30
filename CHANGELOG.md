@@ -30,6 +30,11 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
+- **TODO §75 (LC2)** — Langage d'expression métier borné (JSONata, hors JUEL) : brique « Évaluer une expression » qui calcule
+  une condition ou une valeur sur le dossier (champs non sensibles), le résultat d'un connecteur et les variables, et la range dans
+  une variable comparée par une passerelle. Essai à blanc par `POST /api/expressions/{validate,evaluate}` et outils MCP
+  `validate_expression` / `evaluate_expression`. Bornes `app.expression.*` ; regex, `$eval` et fonctions non déterministes refusés.
+
 - **TODO §74 (LC1-suite)** — Le panneau de la brique « Décision DMN » propose désormais la liste des tables de décision
   déployées (clé et dernière version) au lieu d'une saisie libre. Servie par
   `GET /api/bpmn-building-blocks/references/dmnTables` (`TENANT_ADMIN` ou `WORKFLOW_ADMIN`). Aucune migration.

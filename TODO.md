@@ -1210,6 +1210,28 @@ déploiement par le use case). **Livré** : `GET /api/bpmn-building-blocks/refer
 **Impacte :** `GUIDE-UTILISATEUR.md` (palette), `ROADMAP.md`, `CHANGELOG.md`. Aucune variable d'environnement, aucune migration.
 
 
+### [x] 75. Langage d'expression métier borné (LC2) (livré)
+
+**Énoncé :** sous-lot **LC2** de la couche low-code (§70), analyse [40-langage-expression-metier.md](analysis%20doc/40-langage-expression-metier.md).
+Docs SDD : [requirements](docs/ai/requirements/2026-09-30-feature-lc2-langage-expression-metier.md), [design](docs/ai/design/2026-09-30-feature-lc2-langage-expression-metier.md),
+[planning](docs/ai/planning/2026-09-30-feature-lc2-langage-expression-metier.md), [implementation](docs/ai/implementation/2026-09-30-feature-lc2-langage-expression-metier.md),
+[testing](docs/ai/testing/2026-09-30-feature-lc2-langage-expression-metier.md). Journal : [DECISIONS.md](docs/roadmap-goal/DECISIONS.md).
+
+**Décisions (mandat « roadmap complète », 2026-09-30).** D-EXPR-LANGUAGE = JSONata (`com.dashjoin:jsonata` 0.9.10) ; D-EXPR-EVAL-SITE = port
+`ExpressionEnginePort` + delegate `businessExpressionTask` ; D-EXPR-CONTEXT = dossier **sans champs sensibles** + `connectorResult` + variables scalaires + `now` ;
+D-EXPR-LIMITS = 2 000 car., 250 ms, 64 Ko de résultat… ; D-EXPR-REGEX = littéraux regex refusés ; D-EXPR-FUNCTIONS = `$eval`/`$random`/`$now`/`$millis` refusés ;
+D-EXPR-LITERAL-ONLY = formule lue **uniquement** dans l'attribut littéral ; D-EXPR-UNDEFINED = résultat absent ⇒ échec explicite ; D-EXPR-RESULT ; D-EXPR-ATTR-NAME =
+`formulaResult` (`resultVariable` est un attribut natif Flowable) ; D-EXPR-AST-BRIDGE ; D-EXPR-ALLOC-GUARD ; D-EXPR-API.
+
+**Livré.** Domaine `domain/expression/**` ; adaptateur `JsonataExpressionEngine` (inspection d'AST, bornes de délai/mémoire/profondeur/taille, contexte JSON pur) ;
+brique « Évaluer une expression » (12ᵉ bloc, delegate allowlisté, formule validée au déploiement) ; `POST /api/expressions/{validate,evaluate}` ; outils MCP
+`validate_expression`, `evaluate_expression` ; règles ArchUnit (bibliothèque confinée, jamais d'UEL). Golden OpenAPI additif. Aucune migration.
+**Constats du design corrigés :** `outputConvertNulls` par défaut (null explicite ≠ absent), intervalles paresseux, regex non interruptibles, attribut natif
+`resultVariable`, grammaire de condition à opérateur obligatoire. **Revue adversariale** : voir le document d'implémentation.
+**Impacte :** `GUIDE-CONCEPTION-BPMN.md` (§3sexies, §3quinquies, §7), `GUIDE-UTILISATEUR.md`, `analysis doc/40`, `ROADMAP.md`, `CHANGELOG.md`.
+Nouvelles propriétés `app.expression.*` (valeurs par défaut, aucune variable d'environnement requise).
+
+
 ### [x] 19. Granularité des rôles RBAC
 
 **Clos V1 (2026-08-03 — feature `autorisation-conformite`) :** les cinq rôles

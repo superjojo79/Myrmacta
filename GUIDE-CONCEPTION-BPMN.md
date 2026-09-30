@@ -454,22 +454,35 @@ somme de lignes : `$sum($map(connectorResult.lignes, function($l){ $l.qty * $l.p
 connecteur : `connectorResult.data.score`. Une expression qui renvoie un objet ou une liste est rangée en **texte
 JSON** dans la variable ; booléen, nombre et texte le sont tels quels.
 
-**Règles strictes** (refusées au déploiement, avec le nom de l'activité) :
+**Règles strictes** (refusées au déploiement avec le nom de l'activité, sauf mention « à l'exécution ») :
 
-- **Aucune valeur → échec explicite.** Un chemin absent (`dossier.fields.inconnu`) ne produit pas de valeur : la
-  tâche échoue (« produced no value ») plutôt que de laisser la passerelle router en silence sur une variable
-  absente. Donner une valeur par défaut dans l'expression.
-- **Pas de littéral regex** (`/…/`) : le retour arrière d'une expression régulière Java n'est pas interruptible ; les
-  motifs en chaîne (`$contains(x, "abc")`, `$replace(x, "-", "+")`) restent permis. La division `a / b` est permise.
-- **Fonctions interdites** : `$eval`, et les fonctions non déterministes `$random`, `$now()`, `$millis()` — utiliser
-  la valeur `now`. Pas de `${…}` ni `#{…}` dans l'expression (ce n'est pas de l'UEL).
+- **Liste blanche de fonctions.** Seules sont permises : `$abs $ceil $floor $round $sqrt $power $number $formatNumber
+  $formatBase`, `$sum $count $max $min $average`, `$string $substring $substringBefore $substringAfter $lowercase
+  $uppercase $length $trim $contains $split $join $pad $replace`, `$boolean $not $exists $type $keys $lookup $append
+  $reverse $sort $distinct $zip $map $filter $reduce $each $sift $single $spread $merge $clone $assert $error`,
+  `$toMillis $fromMillis`. **Toute autre fonction est refusée**, y compris une fonction qu'une future version de la
+  bibliothèque ajouterait : `$eval`, les fonctions non déterministes (`$random`, `$shuffle`, `$now()`, `$millis()` — utiliser
+  la valeur `now`), `$match` et les formats `$formatInteger`/`$parseInteger`, `$base64*` et `$encodeUrl*`/`$decodeUrl*`.
+- **Sémantique littérale.** `$replace(texte, motif, remplacement [, limite])` remplace le motif **tel quel** : ni regex, ni
+  `$1` interprété, motif non vide, limite positive ; `$toMillis` et `$fromMillis` n'acceptent **pas** de format
+  (ISO 8601 uniquement) ; `$pad` est borné. La division `a / b` est permise.
+- **Pas de littéral regex** (`/…/`) : le retour arrière d'une expression régulière Java n'est pas interruptible.
+  Pas de `${…}` ni `#{…}` dans l'expression (ce n'est pas de l'UEL).
+- **Pas de variable nommée `__…`** (référencée ou affectée) : ces noms sont réservés au moteur.
 - **L'expression est un attribut littéral** ; le delegate **ne lit jamais** une variable de process nommée `formula` :
   une variable posée à l'exécution (complétion de tâche) ne peut pas devenir du code. `formula` et `formulaResult`
   sont obligatoires.
 - **`formulaResult`** : lettres, chiffres, `_`, 60 caractères ; ne peut pas nommer une variable réservée
-  (`dossierId`, `connectorResult`, `dossier`, `variables`, `now`…) **ni un paramètre de brique** (`targetDossierStatus`,
-  `documentType`…) : un delegate relit ces noms en repli, une expression ne doit pas pouvoir piloter une autre brique.
-  Le nom d'attribut n'est pas `resultVariable` car Flowable en fait un attribut natif.
+  (`dossierId`, `dossierFields`, `tenantId`, `connectorResult`, `dossier`, `variables`, `now`, les variables multi-instance
+  `nrOfInstances`/`loopCounter`…) **ni un paramètre de brique** (`targetDossierStatus`, `documentType`…) : un delegate
+  relit ces noms en repli, une expression ne doit pas pouvoir piloter une autre brique. Le nom d'attribut n'est pas
+  `resultVariable` car Flowable en fait un attribut natif. Ces règles sont revérifiées **à l'exécution**.
+- **À l'exécution — aucune valeur ⇒ échec explicite.** Un chemin absent (`dossier.fields.inconnu`) ne produit pas de
+  valeur : la tâche échoue (« produced no value ») plutôt que de laisser la passerelle router en silence sur une variable
+  absente. Donner une valeur par défaut dans l'expression. Le type du dossier doit exister (sinon on ne sait pas quels
+  champs sont sensibles : échec, jamais exposition).
+- **À l'exécution — les messages d'erreur sont neutres** : le gabarit de la bibliothèque sans les valeurs (jamais le
+  document racine ni un nom de classe). Seul le texte de `$error("…")` / `$assert(…, "…")`, choisi par l'auteur, est restitué.
 
 **Bornes** (propriétés `app.expression.*`, mêmes valeurs en validation, évaluation à blanc et exécution) :
 
@@ -479,8 +492,10 @@ JSON** dans la variable ; booléen, nombre et texte le sont tels quels.
 | nœuds / profondeur de l'arbre syntaxique | 500 / 40 |
 | durée d'une évaluation | 250 ms |
 | évaluations imbriquées (récursion) | 400 |
+| éléments d'une liste ou d'un objet **intermédiaire** (contrôlé à chaque nœud, donc `[1..9999999]` refusé) | 10 000 |
+| longueur d'un texte **intermédiaire** | 65 536 caractères |
 | contexte d'entrée / résultat | 256 Ko / 64 Ko |
-| chaîne produite par `$pad` | 10 000 caractères |
+| largeur de `$pad` | 10 000 caractères |
 | mémoire allouée par évaluation | 64 Mo |
 
 Les relever (`app.expression.timeout-millis`, `app.expression.max-result-bytes`…) n'est à faire qu'en connaissance

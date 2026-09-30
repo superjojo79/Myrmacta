@@ -1,5 +1,6 @@
 package com.flowforge.domain.workflow.palette;
 
+import com.flowforge.domain.workflow.WorkflowVariables;
 import com.flowforge.domain.workflow.model.InvalidBpmnException;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -38,12 +39,17 @@ public final class BlockAttributeRules {
 
     /**
      * Variables de process lues ou écrites par le moteur et les delegates : une expression ne doit pas les écraser (elles
-     * pilotent le dossier courant, les connecteurs, les documents…). S'y ajoutent tous les noms de paramètres de brique,
-     * qu'un delegate relit en repli depuis une variable de même nom.
+     * pilotent le dossier courant, les connecteurs, les documents, la boucle multi-instance…). S'y ajoutent les variables
+     * de {@link WorkflowVariables} (plateforme et clés métier connues) et tous les noms de paramètres de brique, qu'un
+     * delegate relit en repli depuis une variable de même nom.
      */
     private static final Set<String> RESERVED_VARIABLES = Set.of(
             "dossierId", "dossierWorkflowLinkId", "connectorInput", "connectorResult", "childDossierFields",
-            "childWorkflowVariables", "generatedDocumentId", "notificationPayload", "now", "variables", "dossier");
+            "childWorkflowVariables", "generatedDocumentId", "notificationPayload", "now", "variables", "dossier",
+            // Variables de Flowable : multi-instance, contexte d'exécution et d'identité.
+            "nrOfInstances", "nrOfActiveInstances", "nrOfCompletedInstances", "loopCounter", "execution", "task",
+            "initiator", "authenticatedUserId", "processInstanceId", "processDefinitionId", "executionId", "taskId");
+
     private static final Set<String> UUID_SOURCES = Set.of("connectorInstances", "notificationWebhooks");
     private static final Pattern UUID_FORM =
             Pattern.compile("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
@@ -115,7 +121,8 @@ public final class BlockAttributeRules {
         if (!VARIABLE_NAME.matcher(value).matches()) {
             throw new InvalidBpmnException(owner + " must be a variable name (letters, digits, _; starts with a letter)");
         }
-        if (RESERVED_VARIABLES.contains(value) || MANAGED_ATTRIBUTES.contains(value)) {
+        if (RESERVED_VARIABLES.contains(value) || WorkflowVariables.isReservedOrKnownKey(value)
+                || MANAGED_ATTRIBUTES.contains(value)) {
             throw new InvalidBpmnException(owner + " names a reserved variable (" + value + "); choose another name");
         }
     }

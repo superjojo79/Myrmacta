@@ -26,6 +26,26 @@ public final class AstInspector {
 
     private AstInspector() {}
 
+    /** Noms de toutes les fonctions natives de la bibliothèque ({@code $sum}, {@code $eval}…), pour une liste blanche fermée. */
+    public static Set<String> builtinFunctionNames() {
+        return Set.copyOf(Jsonata.staticFrame.bindings.keySet());
+    }
+
+    /**
+     * Message d'erreur d'exécution <b>sans les valeurs</b> : le gabarit statique de la bibliothèque dont les
+     * emplacements {@code {{valeur}}} sont remplacés par « … ». Les messages bruts de la bibliothèque recopient les
+     * arguments (jusqu'au document racine entier) ; ils ne doivent jamais atteindre un client, un journal ou un job.
+     */
+    public static String neutralMessage(JException e) {
+        String template = e.getError() == null ? null : Jsonata.errorCodes.get(e.getError());
+        String code = e.getError() == null ? "unknown" : e.getError();
+        if (template == null || template.isBlank()) {
+            return "expression error " + code;
+        }
+        String neutral = template.replaceAll("\\{\\{\\{?[^}]*}}}?", "…");
+        return neutral + " (" + code + (e.getLocation() >= 0 ? ", position " + e.getLocation() : "") + ")";
+    }
+
     /** @throws JException si l'expression est syntaxiquement invalide */
     public static Report inspect(String expression) {
         Jsonata parsed = Jsonata.jsonata(expression);
@@ -50,12 +70,23 @@ public final class AstInspector {
             if ("variable".equals(node.type) && node.value != null) {
                 variables.add(node.value.toString());
             }
+            // Liaisons de focus (`x@$v`) et d'index (`x#$i`) : des noms de variable qui ne sont pas des nœuds.
+            if (node.focus instanceof String name) {
+                variables.add(stripDollar(name));
+            }
+            if (node.index instanceof String name) {
+                variables.add(stripDollar(name));
+            }
             for (Symbol child : children(node)) {
                 stack.push(child);
                 depths.push(depth + 1);
             }
         }
         return new Report(seen.size(), maxDepth, regex, Set.copyOf(variables));
+    }
+
+    private static String stripDollar(String name) {
+        return name.startsWith("$") ? name.substring(1) : name;
     }
 
     private static List<Symbol> children(Symbol n) {

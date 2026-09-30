@@ -446,4 +446,69 @@ class JsonataExpressionEngineTest {
             assertThat(e.getMessage()).doesNotContain("java.lang");
         }
     }
+
+    // ---- seconde passe adversariale : amplification par partage de sous-structures ---------------------------------
+
+    private static final String DAG = "$t := function($n){ $n=0 ? \"x\" : ($c := $t($n-1); {\"a\":$c,\"b\":$c}) };";
+
+    /** Enchaîne des instructions dans un bloc : JSONata exige des parenthèses autour de `;`. */
+    private static String block(String statements) {
+        return "(" + DAG + " " + statements + ")";
+    }
+
+    private void assertRefusedFast(String expr) {
+        long start = System.nanoTime();
+        assertThatThrownBy(() -> engine.evaluate(expr, Map.of())).as(expr)
+                .isInstanceOf(ExpressionEvaluationException.class);
+        assertThat((System.nanoTime() - start) / 1_000_000).as(expr + " (ms)").isLessThan(3_000);
+    }
+
+    @Test
+    void criticalPathFlatteningOverASharedListIsStoppedByTheWorkBudgetBeforeTheNativeStep() {
+        // C1 : `[1..9999].$l` aplatit 9999 × 9999 références dans UNE étape native : OutOfMemoryError (2,7 s à 256 Mo).
+        assertRefusedFast("($l := [1..9999]; [1..9999].$l)");
+        assertRefusedFast("($x := $join([1..6500].(\"xxxxxxxxxx\")); $length($join([1..9999].$x)))");
+        assertRefusedFast("($x := $join([1..6500].(\"xxxxxxxxxx\")); $length($string([1..9999].$x)))");
+        assertRefusedFast("($l := [1..9999]; $count($distinct([1..9999].$l)))");
+        assertRefusedFast("($o := $merge([1..9999].{$string($): 1}); $count($keys([1..9999].$o)))");
+        assertRefusedFast("($o := $merge([1..9999].{$string($): 1}); $spread([1..9999].$o))");
+    }
+
+    @Test
+    void criticalSharedSubtreesHaveABoundedExpandedWeightSoEqualityAndHashingStayLinear() {
+        // C2 : `{"a":$c,"b":$c}` imbriqué 28 fois = 2^28 chemins pour 28 objets ; `=` et `$distinct` parcourent tout.
+        assertRefusedFast(block("$a := $t(28); $b := $t(28); $a = $b"));
+        assertRefusedFast(block("$t(24)"));
+        assertRefusedFast(block("$string($t(24))"));
+        assertRefusedFast(block("$distinct([$t(22), 1])"));
+        // Un arbre partagé de poids raisonnable reste permis (2^10 = 1024 feuilles).
+        assertThat(engine.evaluate(block("$a := $t(10); $b := $t(10); $a = $b"), Map.of()).value()).isEqualTo(true);
+    }
+
+    @Test
+    void legitimateBusinessExpressionsStillFitComfortablyInTheBudgets() {
+        List<Object> lines = new ArrayList<>();
+        for (int i = 0; i < 3_000; i++) {
+            lines.add(Map.of("sku", "SKU-" + i, "qty", i % 7 + 1, "price", 10 + i % 13, "tags", List.of("a", "b")));
+        }
+        Map<String, Object> ctx = Map.of("connectorResult", Map.of("lignes", lines));
+        long start = System.nanoTime();
+        assertThat(engine.evaluate("$sum($map(connectorResult.lignes, function($l){ $l.qty * $l.price }))", ctx).value())
+                .isInstanceOf(Long.class);
+        assertThat(engine.evaluate("$count(connectorResult.lignes[qty > 3])", ctx).value()).isInstanceOf(Long.class);
+        assertThat(engine.evaluate("$count($distinct(connectorResult.lignes.qty))", ctx).value()).isEqualTo(7L);
+        assertThat(engine.evaluate("$join($sort(connectorResult.lignes[price > 20].sku)[[0..2]], \",\")", ctx).value())
+                .isInstanceOf(String.class);
+        assertThat((System.nanoTime() - start) / 1_000_000).isLessThan(2_000);
+    }
+
+    @Test
+    void lowAnIndexBindingBehindAPredicateCannotSmuggleAReservedName() {
+        // B1 : `#$nom` après un prédicat n'était pas vu de l'inspecteur.
+        for (String expr : List.of("items[a>0]#$__q.a", "items[a>0]#$__evaluate_entry.a", "items[a>0]#$__evaluate_exit.a")) {
+            assertThatThrownBy(() -> engine.validate(expr)).as(expr)
+                    .isInstanceOf(InvalidExpressionException.class).hasMessageContaining("__");
+        }
+        engine.validate("items[a>0]#$i.a"); // la forme légitime reste permise
+    }
 }

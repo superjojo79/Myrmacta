@@ -56,6 +56,26 @@ public final class DossierFieldRedactor {
     }
 
     /**
+     * Fields that are <b>declared and not sensitive</b> — an allowlist, unlike {@link #withoutSensitiveKeys}, which only
+     * removes what is currently declared sensitive and therefore exposes a key that is still stored but no longer (or
+     * never) declared (a renamed or removed field, a field of a type that allows unknown fields). Used where a
+     * value would be copied into an arbitrary computation (business expressions, TODO §75). Null values are kept out
+     * of the result (immutable-map contract), not turned into a failure.
+     */
+    public static Map<String, Object> declaredNonSensitiveFields(Dossier dossier, List<FieldDefinition> fieldDefinitions) {
+        Objects.requireNonNull(dossier, "dossier");
+        Objects.requireNonNull(fieldDefinitions, "fieldDefinitions");
+        Map<String, Object> out = new java.util.LinkedHashMap<>();
+        for (FieldDefinition definition : fieldDefinitions) {
+            Object value = dossier.fields().get(definition.name());
+            if (!definition.isSensitive() && value != null) {
+                out.put(definition.name(), value);
+            }
+        }
+        return out;
+    }
+
+    /**
      * Strips sensitive keys for a shared artifact (BI CSV). Unlike {@link #redact}, this does not
      * depend on the caller: a system job must not keep values that a later non-admin download
      * would expose.

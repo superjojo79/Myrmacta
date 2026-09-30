@@ -443,7 +443,7 @@ ouvrir de surface d'exécution : une expression d'un langage **borné** (sous-en
 
 | Racine | Contenu |
 |---|---|
-| `dossier` | `reference`, `type`, `status`, `label`, `fields` — les champs **non sensibles** : un champ marqué `sensitive` n'est pas exposé (une expression ne peut pas recopier sa valeur vers une variable, une notification ou un champ lisible par un non-administrateur) |
+| `dossier` | `reference`, `type`, `status`, `label`, `fields` — uniquement les champs **déclarés dans le type et non sensibles** (liste blanche) : un champ `sensitive`, ou encore stocké mais plus déclaré, n'est pas exposé (une expression ne peut pas recopier sa valeur vers une variable, une notification ou un champ lisible par un non-administrateur). Pour utiliser un champ dans une expression, il doit être déclaré dans le type de dossier |
 | `connectorResult` | résultat du dernier appel de connecteur (JSON) |
 | `variables` | variables de process **scalaires** (texte, nombre, booléen, date en ISO, UUID) |
 | `now` | instant courant UTC en ISO, à la seconde (`$toMillis(now)`) — seule source d'horloge |
@@ -494,6 +494,8 @@ JSON** dans la variable ; booléen, nombre et texte le sont tels quels.
 | évaluations imbriquées (récursion) | 400 |
 | éléments d'une liste ou d'un objet **intermédiaire** (contrôlé à chaque nœud, donc `[1..9999999]` refusé) | 10 000 |
 | longueur d'un texte **intermédiaire** | 65 536 caractères |
+| poids **déplié** d'une valeur intermédiaire (chaque occurrence d'un sous-arbre *partagé* comptée : `{"a":$c,"b":$c}` imbriqué n fois pèse 2ⁿ) | 1 000 000 |
+| travail **cumulé** d'une évaluation (somme, à chaque nœud, de la taille de la valeur produite : borne `[1..9999].$l` et les appels natifs sur références partagées) | 3 000 000 |
 | contexte d'entrée / résultat | 256 Ko / 64 Ko |
 | largeur de `$pad` | 10 000 caractères |
 | mémoire allouée par évaluation | 64 Mo |

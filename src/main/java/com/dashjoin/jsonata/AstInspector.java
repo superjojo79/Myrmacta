@@ -31,6 +31,11 @@ public final class AstInspector {
         return Set.copyOf(Jsonata.staticFrame.bindings.keySet());
     }
 
+    /** Vrai pour un intervalle paresseux {@code [a..b]} : sa taille est connue sans le parcourir. */
+    public static boolean isLazyRange(Object value) {
+        return value instanceof Utils.RangeList;
+    }
+
     /**
      * Message d'erreur d'exécution <b>sans les valeurs</b> : le gabarit statique de la bibliothèque dont les
      * emplacements {@code {{valeur}}} sont remplacés par « … ». Les messages bruts de la bibliothèque recopient les
@@ -69,6 +74,10 @@ public final class AstInspector {
             }
             if ("variable".equals(node.type) && node.value != null) {
                 variables.add(node.value.toString());
+            }
+            // Étape d'index (`x[a>0]#$i`) : le nom lié est la valeur du nœud, pas un champ `index` de l'étape courante.
+            if ("index".equals(node.type) && node.value != null) {
+                variables.add(stripDollar(node.value.toString()));
             }
             // Liaisons de focus (`x@$v`) et d'index (`x#$i`) : des noms de variable qui ne sont pas des nœuds.
             if (node.focus instanceof String name) {

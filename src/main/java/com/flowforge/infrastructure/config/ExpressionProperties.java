@@ -19,7 +19,9 @@ public record ExpressionProperties(
         int maxResultBytes,
         int maxStringChars,
         long maxAllocatedBytes,
-        int maxCollectionSize) {
+        int maxCollectionSize,
+        long maxValueWeight,
+        long maxWork) {
 
     public ExpressionLimits toLimits() {
         ExpressionLimits d = ExpressionLimits.DEFAULTS;
@@ -33,7 +35,9 @@ public record ExpressionProperties(
                 positive(maxResultBytes, d.maxResultBytes()),
                 positive(maxStringChars, d.maxStringChars()),
                 positive(maxAllocatedBytes, d.maxAllocatedBytes()),
-                positive(maxCollectionSize, d.maxCollectionSize()));
+                positive(maxCollectionSize, d.maxCollectionSize()),
+                positive(maxValueWeight, d.maxValueWeight()),
+                positive(maxWork, d.maxWork()));
     }
 
     private static int positive(int value, int fallback) {

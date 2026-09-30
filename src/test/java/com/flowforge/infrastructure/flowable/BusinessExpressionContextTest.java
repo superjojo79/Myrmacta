@@ -70,4 +70,28 @@ class BusinessExpressionContextTest {
         Map<String, Object> ctx = BusinessExpressionContext.build(null, List.of(), null, Map.of("a", 1));
         assertThat(ctx).containsOnlyKeys("variables");
     }
+
+    @Test
+    void onlyDeclaredNonSensitiveFieldsAreExposedNotEverythingThatIsStored() {
+        // B3 (seconde passe) : `withoutSensitiveKeys` est une liste d'exclusion — un champ encore stocké mais plus déclaré
+        // (renommé, supprimé, ancien champ sensible) était exposé. Liste blanche : déclaré ET non sensible.
+        // (Un `Dossier` ne peut pas porter de valeur nulle : `Map.copyOf` dans son constructeur.)
+        java.util.Map<String, Object> stored = new java.util.LinkedHashMap<>();
+        stored.put("montant", 6000);
+        stored.put("ancienIban", "FR7630001007941234567890185");
+        stored.put("renomme", "valeur");
+        Dossier d = new Dossier(UUID.randomUUID(), "t", "DOS-7", "SINISTRE", "x", DossierStatus.OUVERT, stored, null, 1L, "u",
+                NOW, null, NOW, null, null, null);
+        List<FieldDefinition> defs = List.of(
+                new FieldDefinition("montant", "Montant", FieldType.NUMBER, false, null, null, null, false),
+                new FieldDefinition("jamaisSaisi", "Jamais saisi", FieldType.STRING, false, null, null, null, false),
+                new FieldDefinition("iban", "IBAN", FieldType.STRING, false, null, null, null, true));
+
+        Map<String, Object> ctx = BusinessExpressionContext.build(d, defs, null, Map.of());
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> fields = (Map<String, Object>) ((Map<String, Object>) ctx.get("dossier")).get("fields");
+        assertThat(fields).containsOnlyKeys("montant");
+        assertThat(ctx.toString()).doesNotContain("FR7630001007941234567890185").doesNotContain("valeur");
+    }
 }

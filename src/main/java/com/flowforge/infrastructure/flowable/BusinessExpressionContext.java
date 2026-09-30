@@ -15,9 +15,10 @@ import java.util.UUID;
 /**
  * TODO §75 (LC2, D-EXPR-CONTEXT) — document racine exposé à une expression métier exécutée dans un process :
  * <ul>
- *   <li>{@code dossier} : référence, type, statut, libellé et champs <b>non sensibles</b> (un champ sensible n'est pas
- *       exposé : une expression ne peut pas en recopier la valeur vers une variable, un message ou un champ lisible par
- *       un non-administrateur) ;</li>
+ *   <li>{@code dossier} : référence, type, statut, libellé et champs <b>déclarés et non sensibles</b> — liste blanche :
+ *       un champ sensible, ou stocké mais non déclaré (renommé, supprimé, type autorisant les champs inconnus), n'est
+ *       pas exposé ; une expression ne peut pas en recopier la valeur vers une variable, un message ou un champ lisible
+ *       par un non-administrateur ;</li>
  *   <li>{@code connectorResult} : résultat du dernier appel de connecteur, tel quel (JSON) ;</li>
  *   <li>{@code variables} : variables de process scalaires (texte, nombre, booléen, date, UUID).</li>
  * </ul>
@@ -39,7 +40,7 @@ final class BusinessExpressionContext {
             d.put("type", dossier.dossierTypeCode());
             d.put("status", dossier.status() == null ? null : dossier.status().name());
             d.put("label", dossier.label());
-            d.put("fields", new LinkedHashMap<>(DossierFieldRedactor.withoutSensitiveKeys(dossier, fieldDefinitions)));
+            d.put("fields", DossierFieldRedactor.declaredNonSensitiveFields(dossier, fieldDefinitions));
             root.put("dossier", d);
         }
         if (connectorResult != null) {

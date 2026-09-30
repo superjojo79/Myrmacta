@@ -12,12 +12,15 @@ import com.flowforge.domain.expression.port.out.ExpressionEnginePort;
 import java.lang.management.ManagementFactory;
 import java.time.Clock;
 import java.time.temporal.ChronoUnit;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * TODO §75 (LC2) — moteur d'expressions métier JSONata, <b>borné</b> et sans accès au serveur.
@@ -43,6 +46,8 @@ import java.util.TreeSet;
  * Jamais évalué en JUEL ; jamais concaténé dans une expression UEL.
  */
 public final class JsonataExpressionEngine implements ExpressionEnginePort {
+
+    private static final Logger LOG = LoggerFactory.getLogger(JsonataExpressionEngine.class);
 
     /**
      * Fonctions natives permises : calcul, agrégats, texte littéral, structures. Exclues — {@code eval},
@@ -208,6 +213,8 @@ public final class JsonataExpressionEngine implements ExpressionEnginePort {
         long deadline = System.nanoTime() + limits.timeoutMillis() * 1_000_000L;
         long allocationStart = currentAllocated();
         int[] depth = {0};
+        long[] work = {0};
+        IdentityHashMap<Object, Long> weights = new IdentityHashMap<>();
         Runnable check = () -> {
             if (System.nanoTime() - deadline > 0) {
                 throw new ExpressionEvaluationException(
@@ -229,7 +236,79 @@ public final class JsonataExpressionEngine implements ExpressionEnginePort {
             depth[0]--;
             check.run();
             checkIntermediateValue(result);
+            chargeWork(result, work);
+            if (result instanceof List<?> || result instanceof Map<?, ?>) {
+                weigh(result, weights); // lève si le poids déplié dépasse la borne
+            }
         });
+    }
+
+    /**
+     * Budget de travail cumulé : à chaque nœud, la taille de la valeur produite. Un aplatissement de chemin
+     * ({@code [1..9999].$l}) ou un appel natif appliqué à des références partagées commence par <em>évaluer</em> chaque
+     * référence — chacune est comptée ici avant que l'étape native ne s'exécute.
+     */
+    private void chargeWork(Object value, long[] work) {
+        long cost = 1;
+        if (value instanceof CharSequence text) {
+            cost += text.length() / 8;
+        } else if (value instanceof List<?> list) {
+            cost += list.size();
+        } else if (value instanceof Map<?, ?> map) {
+            cost += map.size();
+        }
+        work[0] += cost;
+        if (work[0] > limits.maxWork()) {
+            throw new ExpressionEvaluationException(
+                    "expression exceeds its work budget (" + limits.maxWork() + " units)");
+        }
+    }
+
+    /**
+     * Poids <b>déplié</b> d'une valeur : chaque occurrence d'un sous-arbre partagé est comptée (les sous-arbres partagés
+     * ne sont calculés qu'une fois, par identité). {@code {"a":$c,"b":$c}} imbriqué n fois tient en n objets mais pèse 2^n ;
+     * l'égalité et {@code $distinct} le parcourent en entier sans allouer, hors d'atteinte du délai et de la garde mémoire.
+     * Refusé dès la construction de la valeur, donc avant tout parcours.
+     */
+    private long weigh(Object value, IdentityHashMap<Object, Long> memo) {
+        if (value == null || value == Jsonata.NULL_VALUE || value instanceof Boolean || value instanceof Number) {
+            return 1;
+        }
+        if (value instanceof CharSequence text) {
+            return 1 + text.length() / 16;
+        }
+        if (AstInspector.isLazyRange(value)) {
+            return 1 + ((List<?>) value).size();
+        }
+        if (!(value instanceof List<?>) && !(value instanceof Map<?, ?>)) {
+            return 1;
+        }
+        Long known = memo.get(value);
+        if (known != null) {
+            return known;
+        }
+        long total = 1;
+        if (value instanceof List<?> list) {
+            for (Object item : list) {
+                total += weigh(item, memo);
+                requireWeight(total);
+            }
+        } else {
+            for (Object item : ((Map<?, ?>) value).values()) {
+                total += 1 + weigh(item, memo);
+                requireWeight(total);
+            }
+        }
+        memo.put(value, total);
+        return total;
+    }
+
+    private void requireWeight(long total) {
+        if (total > limits.maxValueWeight()) {
+            throw new ExpressionEvaluationException(
+                    "an intermediate value is too large once shared parts are counted each time (max "
+                            + limits.maxValueWeight() + ")");
+        }
     }
 
     /** Borne toute valeur intermédiaire au nœud qui la produit, avant qu'un appel natif ne la consomme. */
@@ -373,6 +452,10 @@ public final class JsonataExpressionEngine implements ExpressionEnginePort {
             bean.setThreadAllocatedMemoryEnabled(true);
             return bean;
         }
+        // Propre à HotSpot : sans cette JVM la garde d'allocation est absente. Les bornes structurelles (taille, poids déplié,
+        // budget de travail) restent actives et bornent la mémoire indépendamment.
+        LOG.warn("Thread allocation accounting is unavailable on this JVM: the expression memory guard is disabled "
+                + "(structural bounds remain in force)");
         return null;
     }
 }

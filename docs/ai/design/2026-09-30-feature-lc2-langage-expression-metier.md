@@ -58,9 +58,12 @@ flowchart LR
 
 ## Défenses (toutes testées)
 
-Statique : longueur, nœuds/profondeur d'arbre, regex, fonctions interdites, `${`/`#{`, contrôle. Dynamique : délai, profondeur
-d'évaluation, mémoire allouée (`ThreadMXBean`), plafond de `$pad`. Données : contexte copié en JSON pur (cycles, clés,
-profondeur, taille), résultat normalisé et borné, `now` injecté. ArchUnit : seule `infrastructure.expression` touche la
+Statique : longueur, nœuds/profondeur d'arbre, regex, **liste blanche fermée de fonctions**, noms `__*`, `${`/`#{`, contrôle.
+Dynamique : délai, profondeur d'évaluation, mémoire allouée (`ThreadMXBean`, HotSpot), et à **chaque sortie de nœud** : taille de la
+valeur, **poids déplié** (sous-arbres partagés comptés à chaque occurrence, mémoïsé par identité) et **travail cumulé**. Fonctions
+natives remplacées par des versions bornées : `$pad` (linéaire), `$replace` (texte littéral), `$toMillis`/`$fromMillis` (sans format).
+Données : contexte copié en JSON pur (cycles, clés, profondeur, taille), champs du dossier en **liste blanche** (déclarés et non
+sensibles), résultat normalisé et borné, `now` injecté. Erreurs : gabarit sans valeurs, sans cause. ArchUnit : seule `infrastructure.expression` touche la
 bibliothèque ; elle ne touche ni Flowable ni aucun évaluateur UEL.
 
 ## Décisions de design

@@ -18,6 +18,15 @@ const common: typeof fr = {
   retry: 'Retry',
   search: 'Search',
   actions: 'Actions',
+  pagination: 'Pagination',
+  notifications: {
+    bell: 'Notifications',
+    streamFailed: 'Real-time feed unavailable',
+    title: 'Notifications',
+    markAllRead: 'Mark all read',
+    empty: 'No notification.',
+    loadMore: 'Load more',
+  },
 }
 
 export default common

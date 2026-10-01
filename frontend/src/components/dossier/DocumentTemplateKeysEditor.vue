@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { onMounted, ref } from 'vue'
 import { listDocumentTemplates } from '@/api/admin'
 import { listAllPages } from '@/api/page'
@@ -28,7 +29,7 @@ async function load() {
       ...new Set(templates.filter((t) => t.status === 'ACTIVE').map((t) => t.templateKey)),
     ]
   } catch (err) {
-    error.value = toProblemDetail(err).detail ?? 'Impossible de charger les templates'
+    error.value = toProblemDetail(err).detail ?? t('dossier.templateKeys.loadError')
   } finally {
     loading.value = false
   }
@@ -40,13 +41,15 @@ function toggle(key: string, checked: boolean) {
     : props.modelValue.filter((k) => k !== key)
   emit('update:modelValue', next)
 }
+
+const { t } = useI18n()
 </script>
 
 <template>
   <div class="document-template-keys-editor">
-    <p v-if="loading">Chargement…</p>
+    <p v-if="loading">{{ t('common.loading') }}</p>
     <p v-else-if="error" class="error">{{ error }}</p>
-    <p v-else-if="availableKeys.length === 0">Aucun template actif.</p>
+    <p v-else-if="availableKeys.length === 0">{{ t('dossier.templateKeys.none') }}</p>
     <label
       v-for="key in availableKeys"
       :key="key"

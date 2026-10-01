@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { listAllDossierTypes } from '@/api/dossierTypes'
@@ -9,6 +10,7 @@ import DynamicFields from '@/components/dossier/DynamicFields.vue'
 import { onMounted } from 'vue'
 import { cleanStructuredFields } from '@/dossier/fieldValues'
 
+const { t } = useI18n()
 const router = useRouter()
 const store = useDossierStore()
 const types = ref<DossierType[]>([])
@@ -28,7 +30,7 @@ onMounted(async () => {
 async function submit() {
   error.value = null
   if (!dossierTypeCode.value || !label.value.trim()) {
-    error.value = 'Type et libellé requis'
+    error.value = t('createDossier.errors.required')
     return
   }
   submitting.value = true
@@ -40,7 +42,7 @@ async function submit() {
     })
     await router.push(`/dossiers/${created.id}`)
   } catch (err) {
-    error.value = toProblemDetail(err).detail ?? 'Création impossible'
+    error.value = toProblemDetail(err).detail ?? t('createDossier.errors.create')
   } finally {
     submitting.value = false
   }
@@ -49,16 +51,16 @@ async function submit() {
 
 <template>
   <section class="create-dossier">
-    <h1>Nouveau dossier</h1>
+    <h1>{{ t('createDossier.title') }}</h1>
     <form class="create-dossier__form" @submit.prevent="submit">
       <label>
-        Type
+        {{ t('createDossier.type') }}
         <select v-model="dossierTypeCode">
           <option v-for="type in types" :key="type.code" :value="type.code">{{ type.label }}</option>
         </select>
       </label>
       <label for="dossier-label">
-        Libellé
+        {{ t('createDossier.label') }}
         <input id="dossier-label" v-model="label" type="text" required />
       </label>
       <DynamicFields
@@ -68,7 +70,7 @@ async function submit() {
         :type-code="selectedType()!.code"
       />
       <p v-if="error" class="create-dossier__error">{{ error }}</p>
-      <button type="submit" :disabled="submitting">Créer</button>
+      <button type="submit" :disabled="submitting">{{ t('createDossier.create') }}</button>
     </form>
   </section>
 </template>

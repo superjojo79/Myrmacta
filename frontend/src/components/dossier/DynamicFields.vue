@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import type { FieldDefinition, FieldRulesPreview } from '@/api/types'
 import SensitiveValue from './SensitiveValue.vue'
@@ -70,7 +71,7 @@ const groups = computed(() => {
   const map = new Map<string, FieldDefinition[]>()
   for (const def of props.definitions) {
     if (!props.readonly && !isFieldApplicable(def, rules.value)) continue
-    const key = def.group?.trim() || 'Général'
+    const key = def.group?.trim() || t('dossier.defaultGroup')
     const list = map.get(key) ?? []
     list.push(def)
     map.set(key, list)
@@ -98,6 +99,8 @@ watch(
 function setField(name: string, value: unknown) {
   emit('update:modelValue', { ...props.modelValue, [name]: value })
 }
+
+const { t } = useI18n()
 </script>
 
 <template>
@@ -119,7 +122,7 @@ function setField(name: string, value: unknown) {
       >
         <span>
           {{ field.label }}<em v-if="isFieldRequired(field, rules)"> *</em>
-          <small v-if="isComputedField(field)" class="dynamic-fields__computed-hint"> (calculé)</small>
+          <small v-if="isComputedField(field)" class="dynamic-fields__computed-hint"> {{ t('dossier.computed') }}</small>
         </span>
         <output v-if="!readonly && isComputedField(field)" class="dynamic-fields__computed" :data-testid="`computed-${field.name}`">{{
           formatFieldValue(field, computedValue(field)) || '—'

@@ -103,4 +103,21 @@ export default {
       reassign: 'Réassignation impossible',
     },
   },
+  myTasks: {
+    title: 'Mes tâches',
+    empty: 'Aucune tâche assignée.',
+    sla: 'SLA {state}',
+    slaIn: 'dans {n} h',
+    slaOver: 'dépassée',
+    dossier: 'Dossier',
+    complete: 'Compléter',
+    errors: { complete: 'Complétion impossible' },
+  },
+  createDossier: {
+    title: 'Nouveau dossier',
+    type: 'Type',
+    label: 'Libellé',
+    create: 'Créer',
+    errors: { required: 'Type et libellé requis', create: 'Création impossible' },
+  },
 }

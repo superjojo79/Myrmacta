@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { DOSSIER_STATUSES, type DossierStatus } from '@/api/types'
 
 defineProps<{
@@ -9,11 +10,13 @@ defineProps<{
 const emit = defineEmits<{
   'update:modelValue': [DossierStatus]
 }>()
+
+const { t } = useI18n()
 </script>
 
 <template>
   <label class="status-select">
-    <span>Statut</span>
+    <span>{{ t('dossier.status') }}</span>
     <select
       :value="modelValue"
       :disabled="disabled"

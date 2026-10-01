@@ -105,6 +105,23 @@ const pilotage: typeof fr = {
       reassign: 'Unable to reassign',
     },
   },
+  myTasks: {
+    title: 'My tasks',
+    empty: 'No task assigned.',
+    sla: 'SLA {state}',
+    slaIn: 'in {n} h',
+    slaOver: 'overdue',
+    dossier: 'Dossier',
+    complete: 'Complete',
+    errors: { complete: 'Unable to complete' },
+  },
+  createDossier: {
+    title: 'New dossier',
+    type: 'Type',
+    label: 'Label',
+    create: 'Create',
+    errors: { required: 'Type and label are required', create: 'Unable to create' },
+  },
 }
 
 export default pilotage

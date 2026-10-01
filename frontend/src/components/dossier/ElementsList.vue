@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import type { DossierElementView } from '@/api/types'
 import { downloadElementContent, elementContentUrl } from '@/api/elements'
 import AdminPager from '@/components/admin/AdminPager.vue'
@@ -29,15 +30,17 @@ async function download(element: DossierElementView) {
   a.click()
   URL.revokeObjectURL(url)
 }
+
+const { t } = useI18n()
 </script>
 
 <template>
   <section class="elements-list">
     <header class="elements-list__header">
-      <h2>Éléments</h2>
+      <h2>{{ t('dossier.elements.title') }}</h2>
       <slot name="actions" />
     </header>
-    <p v-if="elements.length === 0" class="elements-list__empty">Aucun élément.</p>
+    <p v-if="elements.length === 0" class="elements-list__empty">{{ t('dossier.elements.empty') }}</p>
     <ul v-else>
       <li v-for="el in elements" :key="el.id">
         <div>
@@ -65,7 +68,7 @@ async function download(element: DossierElementView) {
           :href="elementContentUrl(el.id)"
           @click.prevent="download(el)"
         >
-          Télécharger
+          {{ t('dossier.elements.download') }}
         </a>
       </li>
     </ul>

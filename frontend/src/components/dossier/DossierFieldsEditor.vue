@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { computed, ref, watch } from 'vue'
 import type { FieldDefinition } from '@/api/types'
 import DynamicFields from './DynamicFields.vue'
@@ -34,11 +35,13 @@ function save() {
   if (Object.keys(patch).length === 0) return
   emit('save', patch)
 }
+
+const { t } = useI18n()
 </script>
 
 <template>
   <section class="dossier-fields-editor">
-    <h2>Champs</h2>
+    <h2>{{ t('dossier.fieldsEditor.title') }}</h2>
     <DynamicFields
       v-model="draft"
       :definitions="definitions"
@@ -52,7 +55,7 @@ function save() {
       :disabled="saving"
       @click="save"
     >
-      Enregistrer les champs
+      {{ t('dossier.fieldsEditor.save') }}
     </button>
   </section>
 </template>

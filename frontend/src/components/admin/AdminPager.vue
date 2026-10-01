@@ -1,13 +1,16 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 const page = defineModel<number>({ required: true })
 
 defineProps<{
   totalPages: number
 }>()
+
+const { t } = useI18n()
 </script>
 
 <template>
-  <nav class="admin-pager" aria-label="Pagination">
+  <nav class="admin-pager" :aria-label="t('common.pagination')">
     <button
       type="button"
       class="admin-pager__btn"
@@ -15,7 +18,7 @@ defineProps<{
       :disabled="page <= 0"
       @click="page = page - 1"
     >
-      Précédent
+      {{ t('common.previous') }}
     </button>
     <span data-testid="admin-pager-status">{{ page + 1 }} / {{ Math.max(totalPages, 1) }}</span>
     <button
@@ -25,7 +28,7 @@ defineProps<{
       :disabled="page + 1 >= totalPages"
       @click="page = page + 1"
     >
-      Suivant
+      {{ t('common.next') }}
     </button>
   </nav>
 </template>

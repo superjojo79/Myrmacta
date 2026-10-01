@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { computed, ref, watch } from 'vue'
 import { MANUAL_ELEMENT_TYPES, type ElementType } from '@/api/types'
 
@@ -22,13 +23,7 @@ const linkUrl = ref('')
 const linkDescription = ref('')
 const error = ref<string | null>(null)
 
-const typeLabels: Record<ElementType, string> = {
-  ATTACHMENT: 'Pièce jointe',
-  INFORMATION: 'Information',
-  NOTE: 'Note',
-  LINK: 'Lien',
-  PRODUCED_DOC: 'Document généré',
-}
+const typeLabel = (type: ElementType): string => t(`dossier.addElement.types.${type}`)
 
 const manualTypes = computed(() => MANUAL_ELEMENT_TYPES)
 
@@ -56,12 +51,12 @@ function onFileChange(event: Event) {
 function confirm() {
   error.value = null
   if (!label.value.trim()) {
-    error.value = 'Libellé requis'
+    error.value = t('dossier.addElement.errors.label')
     return
   }
   if (type.value === 'ATTACHMENT') {
     if (!file.value) {
-      error.value = 'Sélectionnez un fichier'
+      error.value = t('dossier.addElement.errors.file')
       return
     }
     emit('submitAttachment', { file: file.value, label: label.value.trim() })
@@ -69,7 +64,7 @@ function confirm() {
   }
   if (type.value === 'INFORMATION') {
     if (!infoKey.value.trim()) {
-      error.value = 'Clé requise'
+      error.value = t('dossier.addElement.errors.key')
       return
     }
     emit('submitElement', {
@@ -81,7 +76,7 @@ function confirm() {
   }
   if (type.value === 'NOTE') {
     if (!noteText.value.trim()) {
-      error.value = 'Texte requis'
+      error.value = t('dossier.addElement.errors.text')
       return
     }
     emit('submitElement', { type: 'NOTE', label: label.value.trim(), metadata: { text: noteText.value } })
@@ -89,7 +84,7 @@ function confirm() {
   }
   if (type.value === 'LINK') {
     if (!linkUrl.value.trim()) {
-      error.value = 'URL requise'
+      error.value = t('dossier.addElement.errors.url')
       return
     }
     emit('submitElement', {
@@ -99,60 +94,62 @@ function confirm() {
     })
   }
 }
+
+const { t } = useI18n()
 </script>
 
 <template>
   <div v-if="open" class="dialog" role="dialog" aria-labelledby="add-element-title">
-    <h2 id="add-element-title">Ajouter un élément</h2>
+    <h2 id="add-element-title">{{ t('dossier.addElement.title') }}</h2>
     <p v-if="error" class="error">{{ error }}</p>
     <label>
-      Type
+      {{ t('dossier.addElement.type') }}
       <select v-model="type">
         <option v-for="option in manualTypes" :key="option" :value="option">
-          {{ typeLabels[option] }}
+          {{ typeLabel(option) }}
         </option>
       </select>
     </label>
     <label>
-      Libellé
+      {{ t('dossier.addElement.label') }}
       <input v-model="label" type="text" />
     </label>
 
     <label v-if="type === 'ATTACHMENT'">
-      Fichier
+      {{ t('dossier.addElement.file') }}
       <input type="file" @change="onFileChange" />
     </label>
 
     <template v-if="type === 'INFORMATION'">
       <label>
-        Clé
+        {{ t('dossier.addElement.key') }}
         <input v-model="infoKey" type="text" />
       </label>
       <label>
-        Valeur
+        {{ t('dossier.addElement.value') }}
         <input v-model="infoValue" type="text" />
       </label>
     </template>
 
     <label v-if="type === 'NOTE'">
-      Texte
+      {{ t('dossier.addElement.text') }}
       <textarea v-model="noteText" rows="4"></textarea>
     </label>
 
     <template v-if="type === 'LINK'">
       <label>
-        URL
+        {{ t('dossier.addElement.url') }}
         <input v-model="linkUrl" type="url" placeholder="https://…" />
       </label>
       <label>
-        Description
+        {{ t('dossier.addElement.description') }}
         <input v-model="linkDescription" type="text" />
       </label>
     </template>
 
     <div class="actions">
-      <button type="button" class="primary" @click="confirm">Ajouter</button>
-      <button type="button" @click="emit('close')">Annuler</button>
+      <button type="button" class="primary" @click="confirm">{{ t('dossier.addElement.add') }}</button>
+      <button type="button" @click="emit('close')">{{ t('common.cancel') }}</button>
     </div>
   </div>
 </template>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import type { DossierRelation } from '@/api/types'
 import { relationLabel } from './relationLabels'
@@ -6,15 +7,17 @@ import { relationLabel } from './relationLabels'
 defineProps<{
   relations: DossierRelation[]
 }>()
+
+const { t } = useI18n()
 </script>
 
 <template>
   <section class="relations-list">
     <header class="relations-list__header">
-      <h2>Dossiers liés</h2>
+      <h2>{{ t('dossier.relations.title') }}</h2>
       <slot name="actions" />
     </header>
-    <p v-if="relations.length === 0" class="relations-list__empty">Aucun dossier lié.</p>
+    <p v-if="relations.length === 0" class="relations-list__empty">{{ t('dossier.relations.empty') }}</p>
     <ul v-else>
       <li v-for="relation in relations" :key="relation.id">
         <div>

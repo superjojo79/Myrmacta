@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { shallowRef } from 'vue'
 import { toProblemDetail } from '@/api/http'
 import { enqueueDossierPurge } from '@/api/purgeOutbox'
@@ -18,11 +19,13 @@ async function requestPurge() {
     await enqueueDossierPurge(props.dossierId)
     done.value = true
   } catch (err) {
-    error.value = toProblemDetail(err).detail ?? 'Demande de purge impossible'
+    error.value = toProblemDetail(err).detail ?? t('dossier.purge.error')
   } finally {
     pending.value = false
   }
 }
+
+const { t } = useI18n()
 </script>
 
 <template>
@@ -33,9 +36,9 @@ async function requestPurge() {
       :disabled="pending"
       @click="requestPurge"
     >
-      Demander la purge
+      {{ t('dossier.purge.request') }}
     </button>
-    <p v-if="done">Demande enregistrée</p>
+    <p v-if="done">{{ t('dossier.purge.done') }}</p>
     <p v-if="error" class="error">{{ error }}</p>
   </div>
 </template>

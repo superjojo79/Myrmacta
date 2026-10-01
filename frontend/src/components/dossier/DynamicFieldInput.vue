@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { computed } from 'vue'
 import type { FieldDefinition } from '@/api/types'
 
@@ -65,6 +66,8 @@ function setCell(index: number, name: string, value: unknown) {
     rows.value.map((row, i) => (i === index ? { ...row, [name]: value } : row)),
   )
 }
+
+const { t } = useI18n()
 </script>
 
 <template>
@@ -93,13 +96,13 @@ function setCell(index: number, name: string, value: unknown) {
       type="text"
       inputmode="decimal"
       autocomplete="off"
-      :aria-label="`${ariaLabel ?? field.label} — montant`"
+      :aria-label="t('dossier.aria.amount', { label: ariaLabel ?? field.label })"
       :value="str(money.amount)"
       @input="setMoney({ amount: ($event.target as HTMLInputElement).value })"
     />
     <select
       v-if="options.length > 0"
-      :aria-label="`${ariaLabel ?? field.label} — devise`"
+      :aria-label="t('dossier.aria.currency', { label: ariaLabel ?? field.label })"
       :value="str(money.currency)"
       @change="setMoney({ currency: ($event.target as HTMLSelectElement).value })"
     >
@@ -113,7 +116,7 @@ function setCell(index: number, name: string, value: unknown) {
       size="4"
       placeholder="EUR"
       autocomplete="off"
-      :aria-label="`${ariaLabel ?? field.label} — devise`"
+      :aria-label="t('dossier.aria.currency', { label: ariaLabel ?? field.label })"
       :value="str(money.currency)"
       @input="setMoney({ currency: ($event.target as HTMLInputElement).value.toUpperCase() })"
     />
@@ -122,7 +125,7 @@ function setCell(index: number, name: string, value: unknown) {
   <span v-else-if="field.type === 'EXTERNAL_REF'" class="structured-input structured-input--ref">
     <select
       v-if="options.length > 0"
-      :aria-label="`${ariaLabel ?? field.label} — système`"
+      :aria-label="t('dossier.aria.system', { label: ariaLabel ?? field.label })"
       :value="str(ref.system)"
       @change="setRef({ system: ($event.target as HTMLSelectElement).value })"
     >
@@ -132,26 +135,26 @@ function setCell(index: number, name: string, value: unknown) {
     <input
       v-else
       type="text"
-      placeholder="système"
+      :placeholder="t('dossier.placeholders.system')"
       autocomplete="off"
-      :aria-label="`${ariaLabel ?? field.label} — système`"
+      :aria-label="t('dossier.aria.system', { label: ariaLabel ?? field.label })"
       :value="str(ref.system)"
       @input="setRef({ system: ($event.target as HTMLInputElement).value })"
     />
     <input
       :id="inputId"
       type="text"
-      placeholder="identifiant"
+      :placeholder="t('dossier.placeholders.identifier')"
       autocomplete="off"
-      :aria-label="`${ariaLabel ?? field.label} — identifiant`"
+      :aria-label="t('dossier.aria.identifier', { label: ariaLabel ?? field.label })"
       :value="str(ref.id)"
       @input="setRef({ id: ($event.target as HTMLInputElement).value })"
     />
     <input
       type="text"
-      placeholder="libellé (facultatif)"
+      :placeholder="t('dossier.placeholders.label')"
       autocomplete="off"
-      :aria-label="`${ariaLabel ?? field.label} — libellé`"
+      :aria-label="t('dossier.aria.refLabel', { label: ariaLabel ?? field.label })"
       :value="str(ref.label)"
       @input="setRef({ label: ($event.target as HTMLInputElement).value })"
     />
@@ -171,7 +174,7 @@ function setCell(index: number, name: string, value: unknown) {
             <DynamicFieldInput
               :field="sub"
               :model-value="row[sub.name]"
-              :aria-label="`${sub.label} (ligne ${index + 1})`"
+              :aria-label="t('dossier.aria.cell', { label: sub.label, n: index + 1 })"
               @update:model-value="(value) => setCell(index, sub.name, value)"
             />
           </td>
@@ -179,7 +182,7 @@ function setCell(index: number, name: string, value: unknown) {
             <button
               type="button"
               :disabled="rows.length <= minRows"
-              :aria-label="`Supprimer la ligne ${index + 1}`"
+              :aria-label="t('dossier.aria.removeRow', { n: index + 1 })"
               @click="removeRow(index)"
             >
               ✕
@@ -189,9 +192,9 @@ function setCell(index: number, name: string, value: unknown) {
       </tbody>
     </table>
     <button type="button" data-testid="group-add-row" :disabled="rows.length >= maxRows" @click="addRow">
-      Ajouter une ligne
+      {{ t('dossier.addRow') }}
     </button>
-    <small v-if="rows.length >= maxRows">Maximum {{ maxRows }} lignes.</small>
+    <small v-if="rows.length >= maxRows">{{ t('dossier.maxRows', { n: maxRows }) }}</small>
   </span>
 
   <input

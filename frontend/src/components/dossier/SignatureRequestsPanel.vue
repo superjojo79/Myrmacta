@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+import { formatDateTime } from '@/i18n/format'
 import { computed, onMounted, ref, watch } from 'vue'
 import { toProblemDetail } from '@/api/http'
 import {
@@ -6,8 +8,6 @@ import {
   listSignatureRequests,
   resendSignatureInvite,
   type SignatureRequestView,
-  type SignatureStatus,
-  type SignerStatus,
   type SignerView,
 } from '@/api/signatures'
 
@@ -15,23 +15,11 @@ import {
 // l'API est indisponible (fonction désactivée). Les documents signés et preuves sont des pièces du
 // dossier (liste des éléments).
 const props = defineProps<{ dossierId: string }>()
+const { t, te } = useI18n()
 
-const STATUS_LABELS: Record<SignatureStatus, string> = {
-  PENDING: 'En cours',
-  SIGNED: 'Signée',
-  DECLINED: 'Refusée',
-  EXPIRED: 'Expirée',
-  FAILED: 'Échec',
-  CANCELLED: 'Annulée',
-}
-
-const SIGNER_LABELS: Record<SignerStatus, string> = {
-  WAITING: 'En attente de son tour',
-  PENDING: 'À signer',
-  SIGNED: 'Signé',
-  DECLINED: 'Refusé',
-  EXPIRED: 'Expiré',
-  REVOKED: 'Révoqué',
+function label(group: 'status' | 'signerStatus', code: string): string {
+  const key = `dossier.signatures.${group}.${code}`
+  return te(key) ? t(key) : code
 }
 
 const requests = ref<SignatureRequestView[]>([])
@@ -43,7 +31,7 @@ const error = ref('')
 const hasSimulation = computed(() => requests.value.some((r) => r.simulated))
 
 function formatDate(value: string | null): string {
-  return value ? new Date(value).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '—'
+  return formatDateTime(value)
 }
 
 function canResend(request: SignatureRequestView, signer: SignerView): boolean {
@@ -69,7 +57,7 @@ async function run(action: () => Promise<unknown>) {
     await action()
     await load()
   } catch (e) {
-    error.value = toProblemDetail(e).detail ?? 'Action impossible.'
+    error.value = toProblemDetail(e).detail ?? t('dossier.signatures.errors.action')
   } finally {
     busy.value = false
   }
@@ -82,33 +70,33 @@ watch(() => props.dossierId, load)
 <template>
   <section v-if="loaded && requests.length" class="signature-requests" data-testid="signature-requests-panel">
     <header>
-      <h2>Signatures</h2>
+      <h2>{{ t('dossier.signatures.title') }}</h2>
     </header>
     <p v-if="hasSimulation" class="signature-requests__banner" role="status" data-testid="signature-simulation-banner">
-      SIMULATION — sans valeur juridique
+      {{ t('dossier.signatures.simulation') }}
     </p>
     <p v-if="error" class="error" role="alert">{{ error }}</p>
     <article v-for="request in requests" :key="request.id" :data-status="request.status" class="signature-requests__item">
       <h3>
-        {{ STATUS_LABELS[request.status] ?? request.status }}
-        <span class="muted">— {{ request.mode === 'SEQUENTIAL' ? 'séquentielle' : 'parallèle' }}</span>
+        {{ label('status', request.status) }}
+        <span class="muted">— {{ request.mode === 'SEQUENTIAL' ? t('dossier.signatures.sequential') : t('dossier.signatures.parallel') }}</span>
       </h3>
-      <p class="muted">Créée {{ formatDate(request.createdAt) }} · échéance {{ formatDate(request.deadlineAt) }}</p>
+      <p class="muted">{{ t('dossier.signatures.created', { created: formatDate(request.createdAt), deadline: formatDate(request.deadlineAt) }) }}</p>
       <table>
         <thead>
           <tr>
-            <th>Signataire</th>
-            <th>Contact</th>
-            <th>Statut</th>
-            <th>Décision</th>
-            <th v-if="canManage"><span class="visually-hidden">Actions</span></th>
+            <th>{{ t('dossier.signatures.signer') }}</th>
+            <th>{{ t('dossier.signatures.contact') }}</th>
+            <th>{{ t('dossier.signatures.statusHeader') }}</th>
+            <th>{{ t('dossier.signatures.decision') }}</th>
+            <th v-if="canManage"><span class="visually-hidden">{{ t('common.actions') }}</span></th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="signer in request.signers" :key="signer.id">
-            <td>{{ signer.displayName }}<span v-if="!signer.required" class="muted"> (facultatif)</span></td>
+            <td>{{ signer.displayName }}<span v-if="!signer.required" class="muted"> {{ t('dossier.signatures.optional') }}</span></td>
             <td>{{ signer.contact ?? '—' }}</td>
-            <td>{{ SIGNER_LABELS[signer.status] ?? signer.status }}</td>
+            <td>{{ label('signerStatus', signer.status) }}</td>
             <td>
               {{ formatDate(signer.decidedAt) }}
               <span v-if="signer.declineReason" class="muted">— {{ signer.declineReason }}</span>
@@ -120,7 +108,7 @@ watch(() => props.dossierId, load)
                 :disabled="busy"
                 @click="run(() => resendSignatureInvite(request.id, signer.id))"
               >
-                Renvoyer
+                {{ t('dossier.signatures.resend') }}
               </button>
             </td>
           </tr>
@@ -133,7 +121,7 @@ watch(() => props.dossierId, load)
         data-testid="signature-cancel"
         @click="run(() => cancelSignatureRequest(request.id))"
       >
-        Annuler la demande
+        {{ t('dossier.signatures.cancelRequest') }}
       </button>
     </article>
   </section>

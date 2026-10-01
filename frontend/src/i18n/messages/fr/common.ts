@@ -16,4 +16,13 @@ export default {
   retry: 'Réessayer',
   search: 'Rechercher',
   actions: 'Actions',
+  pagination: 'Pagination',
+  notifications: {
+    bell: 'Notifications',
+    streamFailed: 'Flux temps réel indisponible',
+    title: 'Notifications',
+    markAllRead: 'Tout lu',
+    empty: 'Aucune notification.',
+    loadMore: 'Charger plus',
+  },
 }

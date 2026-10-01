@@ -1,17 +1,20 @@
 import type { RelationDirection, RelationType } from '@/api/types'
+import { i18n } from '@/i18n'
 
 export function relationLabel(type: RelationType, direction: RelationDirection): string {
+  const t = i18n.global.t
+  const outgoing = direction === 'OUTGOING'
   switch (type) {
     case 'PARENT_CHILD':
-      return direction === 'OUTGOING' ? 'Enfant' : 'Parent'
+      return outgoing ? t('dossier.relations.child') : t('dossier.relations.parent')
     case 'SUBSEQUENT':
-      return direction === 'OUTGOING' ? 'Dossier de suite' : 'Précédent'
+      return outgoing ? t('dossier.relations.followUp') : t('dossier.relations.previous')
     case 'LINKED':
-      return 'Lié'
+      return t('dossier.relations.linked')
     case 'DUPLICATE':
-      return 'Doublon'
+      return t('dossier.relations.duplicate')
     case 'MERGED_INTO':
-      return direction === 'OUTGOING' ? 'Fusionné vers' : 'Fusionné depuis'
+      return outgoing ? t('dossier.relations.mergedInto') : t('dossier.relations.mergedFrom')
     default:
       return type
   }

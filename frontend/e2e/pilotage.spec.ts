@@ -4153,3 +4153,38 @@ test('E2E-FORMED-1 designer: sections, half width and help text are previewed li
   await form.locator('button[type="submit"]').click()
   await expect.poll(() => created?.fieldDefinitions[0]).toMatchObject({ name: 'nom', group: 'Identité', width: 'HALF', helpText: 'Nom de famille' })
 })
+
+test('E2E-ASSIST-1 design assistant: disabled notice, then a conversation that produces drafts to review (LC3)', async ({ page }) => {
+  await mockSession(page)
+  let enabled = false
+  let sent: { message: string; conversationId: string | null } | null = null
+  await page.route('**/api/assistant/status', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ enabled, model: enabled ? 'm' : null }) }))
+  await page.route('**/api/assistant/conversations', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }))
+  await page.route('**/api/assistant/messages', async (route) => {
+    sent = route.request().postDataJSON()
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        conversationId: 'c-1',
+        reply: 'Brouillon du processus créé : relisez-le avant publication.',
+        activity: [{ tool: 'deploy_workflow', ok: true, summary: '{}' }],
+        producedDrafts: true,
+      }),
+    })
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Assistant' }).click()
+  await expect(page.getByTestId('assistant-disabled')).toBeVisible()
+  await expect(page.getByTestId('assistant-input')).toHaveCount(0)
+
+  enabled = true
+  await page.reload()
+  await page.getByTestId('assistant-input').fill('Un processus de validation à deux étapes')
+  await page.getByTestId('assistant-send').click()
+  await expect(page.getByTestId('assistant-log')).toContainText('relisez-le avant publication')
+  await expect(page.getByTestId('assistant-drafts')).toBeVisible()
+  expect(sent).toEqual({ message: 'Un processus de validation à deux étapes', conversationId: null })
+})

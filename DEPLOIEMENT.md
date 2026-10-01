@@ -472,3 +472,24 @@ une clé de configuration d'un connecteur existant (fusion) et ne change pas son
 - Autorisation et conformité : [analysis doc/12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md)
 - Décisions et suivi (provisioning tenant, points 31/41 : livré via le lot `provisioning-tenant`) : [TODO.md](TODO.md) ; prochaines évolutions : [ROADMAP.md](ROADMAP.md)
 - Prise en main de l'UI : [GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md)
+
+## 15. Assistant de conception IA (TODO §86)
+
+L'écran *Admin → Assistant* est **désactivé par défaut** : sans configuration, aucune requête ne sort de l'instance.
+
+| Variable | Rôle |
+|---|---|
+| `APP_ASSISTANT_ENABLED` | `true` pour l'activer (démarrage refusé sans clé) |
+| `APP_ASSISTANT_API_KEY` | clé du fournisseur de modèle — **secret serveur**, jamais envoyée au navigateur ni journalisée |
+| `APP_ASSISTANT_BASE_URL` | point d'accès (défaut API Anthropic) ; **https obligatoire** hors boucle locale ; permet une passerelle d'entreprise ou une région d'hébergement |
+| `APP_ASSISTANT_MODEL` | modèle utilisé |
+| `APP_ASSISTANT_RETENTION_DAYS` | durée de conservation des conversations (défaut 30 ; purge automatique) |
+| `APP_ASSISTANT_MAX_*` | plafonds : appels d'outils par message (12), tours par conversation (60), jetons par conversation (400 000) et par jour et par tenant (3 000 000) |
+
+**Données et sous-traitance (RGPD).** Le fournisseur de modèle est un sous-traitant : à déclarer. En mode *conception*, l'assistant n'a accès
+à **aucune donnée de dossier** (le catalogue d'outils est celui de `McpToolModes` en conception) : partent chez le fournisseur le texte saisi par l'administrateur,
+les descriptions d'outils et les résultats d'outils de configuration (types, formulaires, processus, tables de décision, noms de connecteurs — jamais un secret).
+N'y saisissez pas de données personnelles. L'assistant **ne publie jamais** (les processus et tables DMN restent des brouillons à relire), n'applique pas de bundle de
+configuration et n'écrit jamais de secret de connecteur. Les conversations sont propres à leur auteur ; un administrateur ne lit pas celles d'un autre.
+Le pare-feu sortant doit autoriser le seul hôte de `APP_ASSISTANT_BASE_URL`.
+

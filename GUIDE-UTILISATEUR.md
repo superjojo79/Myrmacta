@@ -81,6 +81,13 @@ deux colonnes (`montant.amount`, `montant.currency`), une référence en trois (
 **une** colonne portant les lignes en JSON compact. Un montant **négatif** y est préfixé d'une apostrophe comme tout
 nombre négatif de l'export (protection contre l'injection de formule) : à retirer à l'import. Un changement de type d'un
 champ existant (ex. `STRING` → `MONEY`) est refusé (409) tant que des dossiers ont une valeur incompatible.
+
+**Règles de champs (champs calculés, visibilité, obligation conditionnelle).** Dans l'éditeur d'un type, chaque champ peut porter
+trois expressions métier (langage JSONata borné, `dossier.fields.nomDuChamp`) : **formule** (le champ est calculé : jamais saisi,
+toujours recalculé), **visible si** (faux ⇒ le champ n'est ni affiché, ni obligatoire, et sa valeur stockée est retirée) et
+**obligatoire si**. Une règle ne lit que des champs déclarés, simples, non sensibles ; elle ne peut pas lire un champ calculé ni un
+champ qui porte lui-même une règle « visible si ». Au plus 40 règles par type. La SPA affiche un aperçu calculé par le serveur ;
+l'API et l'outil MCP `evaluate_dossier_rules` donnent le même résultat. Les règles ne sont pas disponibles dans les questions de tâche.
 Les **questions de tâche** (formulaires utilisateur, portail) ne proposent pas encore ces trois types.
 
 Une fois créé, le type apparaît dans le tableau avec un bouton **Basculer** pour l'activer/le

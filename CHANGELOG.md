@@ -30,6 +30,10 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
+- **TODO §80 (D1 règles)** — Champs calculés (formule), visibilité conditionnelle et obligation conditionnelle sur les types de dossier : expressions métier bornées (JSONata)
+  évaluées côté serveur (un champ calculé n'est jamais saisi, un champ masqué n'est ni obligatoire ni conservé), aperçu en direct dans la SPA, endpoint `evaluate-rules` et outil MCP
+  `evaluate_dossier_rules`, éditeur d'administration. Règles refusées dans les questions de tâche. Aucune migration.
+
 - **TODO §79 (D5)** — Tâches planifiées sûres si deux pods les exécutent (déploiement progressif, répliques) : audit des 18 tâches, puis prise de l'unité de travail en base avant
   l'effet (relais d'outbox, alertes SLA, invitations du portail, déclencheurs cron, export BI, réconciliation des liens, distribution des signatures). Plus d'e-mails, de dossiers, de fichiers
   ou d'instances de process en double ; sans Redis ni verrou externe. Trois colonnes de bail (migrations 027 à 029). Guide d'exploitation : `DEPLOIEMENT.md` §11.

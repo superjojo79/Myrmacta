@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { messages as portalMessages } from './messages/bundle.portal'
 import en from './messages/en'
 import fr from './messages/fr'
 
@@ -64,6 +65,25 @@ describe('key usage', () => {
       const text = readFileSync(file, 'utf8')
       for (const match of text.matchAll(/(?<![\w.])\$?t\(\s*'([A-Za-z][\w.]*)'/g)) {
         if (!(match[1] in frFlat)) missing.push(`${relative(root, file)}: ${match[1]}`)
+      }
+    }
+    expect(missing).toEqual([])
+  })
+})
+
+describe('portal bundle', () => {
+  it('holds every key used by the portal pages and by the shared field input', () => {
+    const root = join(__dirname, '..', '..')
+    const portalFlat = flatten(portalMessages.fr as unknown as Tree)
+    const files = [...sources(join(root, 'portal')), join(root, 'src', 'components', 'dossier', 'DynamicFieldInput.vue'), join(root, 'src', 'i18n', 'LocaleSwitcher.vue')]
+    const missing: string[] = []
+    for (const file of files) {
+      const text = readFileSync(file, 'utf8')
+      for (const match of text.matchAll(/(?<![\w.])\$?t\(\s*'([A-Za-z][\w.]*)'/g)) {
+        if (!(match[1] in portalFlat)) missing.push(`${relative(root, file)}: ${match[1]}`)
+      }
+      for (const match of text.matchAll(/t\(`([A-Za-z][\w.]*)\.\$\{/g)) {
+        if (!Object.keys(portalFlat).some((k) => k.startsWith(match[1] + '.'))) missing.push(`${relative(root, file)}: ${match[1]}.*`)
       }
     }
     expect(missing).toEqual([])

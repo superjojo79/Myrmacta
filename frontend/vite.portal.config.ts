@@ -10,9 +10,14 @@ export default defineConfig({
   base: './',
   plugins: [vue()],
   resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url)),
-    },
+    alias: [
+      // D7 : le portail public n'embarque que ses messages (pas de libellés d'administration)
+      {
+        find: /^(\.\/)?messages\/bundle$/,
+        replacement: fileURLToPath(new URL('./src/i18n/messages/bundle.portal.ts', import.meta.url)),
+      },
+      { find: '@', replacement: fileURLToPath(new URL('./src', import.meta.url)) },
+    ],
   },
   build: {
     outDir: fileURLToPath(new URL('./dist/portal', import.meta.url)),

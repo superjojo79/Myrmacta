@@ -1,7 +1,6 @@
 import { computed, type ComputedRef } from 'vue'
 import { createI18n } from 'vue-i18n'
-import en from './messages/en'
-import fr from './messages/fr'
+import { messages } from './messages/bundle'
 import {
   DEFAULT_LOCALE,
   FORMAT_TAGS,
@@ -51,7 +50,7 @@ export const i18n = createI18n({
   legacy: false,
   locale: initial(),
   fallbackLocale: DEFAULT_LOCALE,
-  messages: { fr, en },
+  messages,
   missingWarn: import.meta.env?.DEV ?? false,
   fallbackWarn: false,
 })

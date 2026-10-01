@@ -65,6 +65,8 @@ export interface CompileResult {
   warnings: string[]
   draftWritten: boolean
   replacedExistingDraft: boolean
+  /** Aperçu : pourquoi le déploiement refuserait ce BPMN (absent s'il l'accepterait). */
+  problem?: string | null
 }
 
 export async function listParcours(): Promise<ParcoursSummary[]> {

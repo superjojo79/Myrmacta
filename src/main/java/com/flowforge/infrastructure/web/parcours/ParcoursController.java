@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * TODO §88 (LC5) — parcours : une suite d'étapes compilée en BPMN (sens unique). {@code TENANT_ADMIN} et {@code WORKFLOW_ADMIN}.
- * La compilation dépose un brouillon BPMN de l'éditeur (provenance {@code UI}) que l'on relit puis publie depuis Admin → Brouillons.
+ * La compilation dépose un brouillon BPMN de l'éditeur (provenance {@code PARCOURS}) que l'on relit puis publie depuis Admin → Brouillons.
  */
 @RestController
 @RequestMapping("/api/parcours")
@@ -69,14 +69,15 @@ class ParcoursController {
         boolean replace = request != null && Boolean.TRUE.equals(request.replaceDraft());
         var result = compile.compile(accessContextFactory.user(authentication), Provenance.PARCOURS, key, dryRun, replace);
         return new CompileResponse(result.compiled().xml(), result.compiled().sha256(), result.compiled().warnings(),
-                result.proposal() != null, result.proposal() != null && result.proposal().replacedExistingDraft());
+                result.proposal() != null, result.proposal() != null && result.proposal().replacedExistingDraft(), null);
     }
 
     /** Aperçu d'une définition non enregistrée : le BPMN et les avertissements, aucune écriture. */
     @PostMapping("/preview")
     CompileResponse preview(@RequestBody PreviewRequest request, Authentication authentication) {
-        CompiledParcours compiled = compile.preview(accessContextFactory.user(authentication), request.key(), request.label(), request.definition());
-        return new CompileResponse(compiled.xml(), compiled.sha256(), compiled.warnings(), false, false);
+        var preview = compile.preview(accessContextFactory.user(authentication), request.key(), request.label(), request.definition());
+        CompiledParcours compiled = preview.compiled();
+        return new CompileResponse(compiled.xml(), compiled.sha256(), compiled.warnings(), false, false, preview.problem());
     }
 
     record SaveRequest(String label, ParcoursDefinition definition, Integer expectedVersion) {}
@@ -85,7 +86,9 @@ class ParcoursController {
 
     record PreviewRequest(String key, String label, ParcoursDefinition definition) {}
 
-    record CompileResponse(String xml, String sha256, List<String> warnings, boolean draftWritten, boolean replacedExistingDraft) {}
+    /** {@code problem} : pour un aperçu, pourquoi le déploiement refuserait ce BPMN ({@code null} s'il l'accepterait). */
+    record CompileResponse(String xml, String sha256, List<String> warnings, boolean draftWritten, boolean replacedExistingDraft,
+            String problem) {}
 
     record ParcoursSummary(String key, String label, int version, int steps, Instant updatedAt, String updatedBy, Instant lastCompiledAt) {
         static ParcoursSummary from(Parcours p) {

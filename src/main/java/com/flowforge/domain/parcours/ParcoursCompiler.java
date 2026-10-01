@@ -33,7 +33,7 @@ import java.util.regex.Pattern;
 public final class ParcoursCompiler {
 
     private static final String BPMN_NS = "http://www.omg.org/spec/BPMN/20100524/MODEL";
-    private static final Pattern DURATION = Pattern.compile("P(\\d{1,3}D)?(T(\\d{1,4}H)?(\\d{1,4}M)?)?");
+    private static final Pattern DURATION = Pattern.compile("P(?:\\d{1,3}D)?(?:T(?=\\d)(?:\\d{1,4}H)?(?:\\d{1,4}M)?)?");
     private static final Pattern SCHEMA_KEY = Pattern.compile("[A-Za-z0-9_.:-]{1,100}");
     private static final Set<String> RESERVED_IDS = Set.of("start", "end");
     private static final Set<String> DOCUMENT_KEYS = Set.of("documentType", "documentVariant", "documentLocale", "attach");
@@ -46,6 +46,16 @@ public final class ParcoursCompiler {
     public static CompiledParcours compile(
             String processKey, String label, ParcoursDefinition definition, Function<String, Set<String>> schemaFields) {
         List<Step> steps = definition.steps();
+        if (processKey == null || !com.flowforge.domain.parcours.model.Parcours.KEY.matcher(processKey).matches()) {
+            throw new InvalidParcoursException("the process key is camelCase (letters and digits, starting with a lowercase letter)");
+        }
+        if (RESERVED_IDS.contains(processKey) || steps.stream().anyMatch(s -> s.id().equals(processKey))) {
+            throw new InvalidParcoursException("the process key '" + processKey + "' clashes with a step id or a reserved id");
+        }
+        if (label == null || label.isBlank() || label.length() > 200 || label.contains("${") || label.contains("#{")
+                || label.chars().anyMatch(Character::isISOControl)) {
+            throw new InvalidParcoursException("the parcours label is a single line of plain text (max 200)");
+        }
         if (steps.isEmpty()) {
             throw new InvalidParcoursException("a parcours needs at least one step");
         }
@@ -74,7 +84,7 @@ public final class ParcoursCompiler {
             }
         }
         for (Step step : steps) {
-            if (step.kind() == Kind.DOCUMENT && attach(step) && byId.containsKey(step.id() + "Attach")) {
+            if (step.kind() == Kind.DOCUMENT && byId.containsKey(step.id() + "Attach")) {
                 throw new InvalidParcoursException("step id '" + step.id() + "Attach' clashes with the attachment of step '" + step.id() + "'");
             }
             taken.add(step.id());
@@ -107,6 +117,9 @@ public final class ParcoursCompiler {
             if (value.contains("${") || value.contains("#{")) {
                 throw new InvalidParcoursException("step " + step.id() + ": parameter " + param.getKey()
                         + " must be a literal (expressions ${…} are not allowed)");
+            }
+            if (value.chars().anyMatch(c -> Character.isISOControl(c) && c != '\n' && c != '\t' && c != '\r')) {
+                throw new InvalidParcoursException("step " + step.id() + ": parameter " + param.getKey() + " contains control characters");
             }
             if (!param.getKey().matches("[A-Za-z][A-Za-z0-9]{0,39}")) {
                 throw new InvalidParcoursException("step " + step.id() + ": invalid parameter name " + param.getKey());
@@ -182,7 +195,7 @@ public final class ParcoursCompiler {
             case WAIT -> {
                 allowOnly(step, Set.of("duration"));
                 String duration = require(step, "duration");
-                if (!DURATION.matcher(duration).matches() || duration.equals("P") || duration.equals("PT")) {
+                if (!DURATION.matcher(duration).matches() || duration.equals("P") || !duration.matches(".*[1-9].*")) {
                     throw new InvalidParcoursException("step " + step.id() + ": duration is an ISO 8601 duration such as PT24H, PT30M or P2D");
                 }
             }
@@ -476,7 +489,7 @@ public final class ParcoursCompiler {
             if (edge != null && edge.branch() != null) {
                 Branch b = edge.branch();
                 flowXml.append(">\n      <conditionExpression xsi:type=\"tFormalExpression\">${").append(b.variable()).append(' ')
-                        .append(b.operator().symbol().replace("<", "&lt;").replace(">", "&gt;")).append(' ').append(literal(b.value()))
+                        .append(b.operator().symbol().replace("<", "&lt;").replace(">", "&gt;")).append(' ').append(esc(literal(b.value())))
                         .append("}</conditionExpression>\n    </sequenceFlow>\n");
             } else {
                 flowXml.append("/>\n");
@@ -489,7 +502,7 @@ public final class ParcoursCompiler {
         final Map<String, String> defaults = new HashMap<>();
 
         private static String literal(String value) {
-            return value.matches("-?\\d+(\\.\\d+)?|true|false") ? value : "'" + value + "'";
+            return value.matches("\\d+|true|false") ? value : "'" + value + "'";
         }
 
         private String document() {
@@ -502,7 +515,7 @@ public final class ParcoursCompiler {
                     .append("             xmlns:dc=\"http://www.omg.org/spec/DD/20100524/DC\"\n")
                     .append("             xmlns:di=\"http://www.omg.org/spec/DD/20100524/DI\"\n")
                     .append("             targetNamespace=\"http://flowforge/parcours\">\n");
-            xml.append("  <process id=\"").append(key).append("\" name=\"").append(esc(label)).append("\" isExecutable=\"true\">\n");
+            xml.append("  <process id=\"").append(esc(key)).append("\" name=\"").append(esc(label)).append("\" isExecutable=\"true\">\n");
             xml.append("    <startEvent id=\"start\" name=\"Début\"/>\n");
             // Les éléments, avec le flux par défaut des passerelles.
             String body = process.toString();
@@ -578,7 +591,7 @@ public final class ParcoursCompiler {
     }
 
     private static String esc(String value) {
-        return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("\n", "&#10;");
+        return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("\n", "&#10;").replace("\r", "&#13;").replace("\t", "&#9;");
     }
 
     private static String unesc(String value) {

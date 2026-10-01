@@ -15,8 +15,15 @@ public interface CompileParcoursUseCase {
      */
     Result compile(AccessContext.User actor, Provenance provenance, String key, boolean dryRun, boolean replaceDraft);
 
-    /** Compile une définition non enregistrée (aperçu du BPMN et des avertissements) : aucune écriture. */
-    CompiledParcours preview(AccessContext.User actor, String key, String label, ParcoursDefinition definition);
+    /**
+     * Compile une définition non enregistrée (aperçu du BPMN et des avertissements) : aucune écriture. Le BPMN passe aussi par le
+     * parseur et les contrôles de références du déploiement ; leur refus n'est pas levé mais rendu dans {@link Preview#problem()}
+     * (on veut voir le BPMN et savoir pourquoi il ne serait pas déployable).
+     */
+    Preview preview(AccessContext.User actor, String key, String label, ParcoursDefinition definition);
+
+    /** {@code problem} est {@code null} si le BPMN serait accepté tel quel par le déploiement. */
+    record Preview(CompiledParcours compiled, String problem) {}
 
     /** {@code proposal} est {@code null} en mode à blanc. */
     record Result(CompiledParcours compiled, ProposeDraftUseCase.Proposal proposal) {}

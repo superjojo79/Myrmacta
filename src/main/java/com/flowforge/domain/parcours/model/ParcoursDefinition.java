@@ -25,6 +25,12 @@ public record ParcoursDefinition(
     /** Identifiant d'étape = identifiant BPMN : camelCase court. */
     public static final Pattern STEP_ID = Pattern.compile("[a-z][A-Za-z0-9]{0,39}");
     public static final Pattern VARIABLE = Pattern.compile("[A-Za-z][A-Za-z0-9_]{0,59}");
+    /** Mots de l'Unified EL : ils ne sont pas des identifiants, une condition qui les nomme échouerait à la passerelle. */
+    private static final java.util.Set<String> EL_RESERVED = java.util.Set.of(
+            "true", "false", "null", "empty", "not", "and", "or", "eq", "ne", "lt", "gt", "le", "ge", "div", "mod", "instanceof");
+    /** Ce que la grammaire de condition du parseur de déploiement sait écrire dans un littéral : ni point, ni parenthèse, crochet, @, &, <, >, ;. */
+    private static final Pattern BRANCH_VALUE = Pattern.compile("[^'\"\\\\$#{}.()\\[\\]@&<>;\\p{Cntrl}]{1,100}");
+    private static final Pattern SIGNED_OR_DECIMAL = Pattern.compile("-?\\d+(\\.\\d+)?");
 
     public ParcoursDefinition {
         statuses = statuses == null ? List.of() : List.copyOf(statuses);
@@ -84,8 +90,16 @@ public record ParcoursDefinition(
             if (variable == null || !VARIABLE.matcher(variable).matches()) {
                 throw new InvalidParcoursException("a branch variable is a plain name (letters, digits, _): " + variable);
             }
-            if (value == null || value.isBlank() || value.length() > 100 || !value.matches("[^'\"\\\\$#{}\\p{Cntrl}]*")) {
-                throw new InvalidParcoursException("a branch value is a short literal without quotes, $, # or braces: " + variable);
+            if (EL_RESERVED.contains(variable.toLowerCase(java.util.Locale.ROOT))) {
+                throw new InvalidParcoursException("a branch variable may not be the reserved word '" + variable + "'");
+            }
+            if (value == null || !BRANCH_VALUE.matcher(value).matches()) {
+                throw new InvalidParcoursException("a branch value is a short literal (max 100) without quotes, $, #, braces, dots, "
+                        + "parentheses, brackets, @, &, <, > or ; : " + variable);
+            }
+            if (SIGNED_OR_DECIMAL.matcher(value).matches() && !value.chars().allMatch(Character::isDigit)) {
+                throw new InvalidParcoursException("a branch compares with a whole number or a text: negative and decimal numbers "
+                        + "are not expressible in a BPMN condition (" + variable + " " + value + ")");
             }
             if (next == null || next.isBlank()) {
                 throw new InvalidParcoursException("a branch needs a destination step (next)");
@@ -101,6 +115,9 @@ public record ParcoursDefinition(
             }
             Objects.requireNonNull(kind, "kind");
             label = label == null || label.isBlank() ? id : label.strip();
+            if (label.contains("${") || label.contains("#{")) {
+                throw new InvalidParcoursException("a step label is plain text, never an expression (step " + id + ")");
+            }
             if (label.length() > 200 || label.chars().anyMatch(Character::isISOControl)) {
                 throw new InvalidParcoursException("a step label is a single line of at most 200 characters (step " + id + ")");
             }

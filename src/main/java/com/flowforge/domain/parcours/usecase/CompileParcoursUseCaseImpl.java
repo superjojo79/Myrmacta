@@ -10,7 +10,9 @@ import com.flowforge.domain.parcours.model.ParcoursDefinition;
 import com.flowforge.domain.parcours.model.ParcoursNotFoundException;
 import com.flowforge.domain.parcours.port.in.CompileParcoursUseCase;
 import com.flowforge.domain.parcours.port.out.ParcoursRepository;
+import com.flowforge.domain.workflow.model.InvalidBpmnException;
 import com.flowforge.domain.workflow.model.ProposedWorkflowConfig;
+import com.flowforge.domain.workflow.model.UnknownBlockReferenceException;
 import com.flowforge.domain.workflow.model.Provenance;
 import com.flowforge.domain.workflow.port.in.ProposeDraftUseCase;
 import com.flowforge.domain.workflow.port.out.TaskQuestionSchemaRepository;
@@ -64,9 +66,15 @@ public final class CompileParcoursUseCaseImpl implements CompileParcoursUseCase 
     }
 
     @Override
-    public CompiledParcours preview(AccessContext.User actor, String key, String label, ParcoursDefinition definition) {
+    public Preview preview(AccessContext.User actor, String key, String label, ParcoursDefinition definition) {
         guard.requireTenantOrWorkflowAdminOrApiService(actor);
-        return ParcoursCompiler.compile(key, label, definition, this::fieldsOf);
+        CompiledParcours compiled = ParcoursCompiler.compile(key, label, definition, this::fieldsOf);
+        try {
+            propose.validateBpmn(actor, key, compiled.xml(), config(label, definition));
+            return new Preview(compiled, null);
+        } catch (InvalidBpmnException | UnknownBlockReferenceException ex) {
+            return new Preview(compiled, ex.getMessage());
+        }
     }
 
     private static ProposedWorkflowConfig config(String label, ParcoursDefinition definition) {

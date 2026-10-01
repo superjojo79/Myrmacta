@@ -70,7 +70,11 @@ class McpEndpointApiTest {
             "export_configuration",
             "import_configuration",
             "define_document_template",
-            "preview_document");
+            "preview_document",
+            "list_parcours",
+            "get_parcours",
+            "define_parcours",
+            "compile_parcours");
 
     @Autowired
     private MockMvc mockMvc;

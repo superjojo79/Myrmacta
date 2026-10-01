@@ -125,9 +125,9 @@ class ParcoursCompilerTest {
         String xml = compile(definition(
                 step("q", Kind.QUESTION, Map.of("schemaKey", "avis")),
                 new Step("choix", "choix", Kind.DECISION, Map.of(), null,
-                        List.of(new Branch("decision", Operator.EQ, "approve", "fin"), new Branch("montant", Operator.LT, "10.5", "fin")), "fin"),
+                        List.of(new Branch("decision", Operator.EQ, "approve", "fin"), new Branch("montant", Operator.LT, "10", "fin")), "fin"),
                 step("fin", Kind.SET_WORKFLOW_STATUS, Map.of("targetWorkflowStatus", "VALIDE")))).xml();
-        assertThat(xml).contains("${decision == 'approve'}").contains("${montant &lt; 10.5}");
+        assertThat(xml).contains("${decision == 'approve'}").contains("${montant &lt; 10}");
     }
 
     @Test
@@ -234,5 +234,85 @@ class ParcoursCompilerTest {
                 step("fin", Kind.SET_WORKFLOW_STATUS, Map.of("targetWorkflowStatus", "VALIDE")));
         String xml = compile(d).xml();
         assertThat(xml).contains("id=\"flow_choix_fin\"").contains("id=\"flow_choix_fin_2\"").contains("id=\"flow_choix_fin_3\"");
+    }
+
+    // ---- revue adversariale LC5 (régressions permanentes) ----------------------------------------------------------
+
+    private static ParcoursDefinition decisionOn(String variable, Operator op, String value) {
+        return definition(
+                new Step("choix", "Choix", Kind.DECISION, Map.of(), null, List.of(new Branch(variable, op, value, "fin")), "fin"),
+                step("fin", Kind.SET_WORKFLOW_STATUS, Map.of("targetWorkflowStatus", "VALIDE")));
+    }
+
+    @Test
+    void aBranchValueTheConditionGrammarCannotWriteIsRefusedAtDesignTimeNamingTheStep() {
+        // H1 : -1 et 1.5 étaient acceptés puis refusés par le parseur de déploiement (flow_a_b, sans nom d'étape)
+        for (String value : List.of("-1", "1.5", "a.b", "M. Dupont", "(x)", "a[0]", "a@b", "R&D", "a<b", "x;y", "&apos; || true || &apos;")) {
+            assertThatThrownBy(() -> compile(decisionOn("x", Operator.EQ, value)))
+                    .as("value %s", value)
+                    .isInstanceOf(InvalidParcoursException.class);
+        }
+        assertThat(compile(decisionOn("x", Operator.GE, "100")).xml()).contains("${x &gt;= 100}");
+        assertThat(compile(decisionOn("pays", Operator.EQ, "France métropolitaine")).xml()).contains("${pays == 'France métropolitaine'}");
+    }
+
+    @Test
+    void aBranchVariableThatIsAnElReservedWordIsRefused() {
+        // M2 : `empty == 1` passait le parseur et échouait à la passerelle
+        for (String word : List.of("empty", "not", "and", "or", "eq", "ne", "lt", "gt", "le", "ge", "div", "mod", "null", "true", "false", "instanceof", "EMPTY")) {
+            assertThatThrownBy(() -> compile(decisionOn(word, Operator.EQ, "1")))
+                    .as("word %s", word)
+                    .isInstanceOf(InvalidParcoursException.class);
+        }
+    }
+
+    @Test
+    void theProcessKeyAndLabelAreValidatedAndMayNotClashWithAStepId() {
+        // M4 : clé brute dans le XML d'aperçu, label nul, collision clé / identifiant d'étape
+        ParcoursDefinition d = definition(step("saisie", Kind.QUESTION, Map.of("schemaKey", "avis")));
+        for (String key : new String[] {"p\" x=\"y", null, "Bad Key", "saisie", "start"}) {
+            assertThatThrownBy(() -> ParcoursCompiler.compile(key, "L", d, k -> Set.of()))
+                    .as("key %s", key)
+                    .isInstanceOf(InvalidParcoursException.class);
+        }
+        assertThatThrownBy(() -> ParcoursCompiler.compile("p", null, d, k -> Set.of())).isInstanceOf(InvalidParcoursException.class);
+        assertThatThrownBy(() -> ParcoursCompiler.compile("p", "x ${y}", d, k -> Set.of())).isInstanceOf(InvalidParcoursException.class);
+    }
+
+    @Test
+    void waitDurationsThatTheTimerCannotParseOrThatAreZeroAreRefused() {
+        for (String duration : List.of("P1DT", "PT0H", "P0D", "PT0M", "P", "PT")) {
+            assertThatThrownBy(() -> compile(definition(
+                            step("w", Kind.WAIT, Map.of("duration", duration)),
+                            step("fin", Kind.SET_WORKFLOW_STATUS, Map.of("targetWorkflowStatus", "VALIDE")))))
+                    .as("duration %s", duration)
+                    .isInstanceOf(InvalidParcoursException.class);
+        }
+        assertThat(compile(definition(step("w", Kind.WAIT, Map.of("duration", "P1DT2H")))).xml()).contains("P1DT2H");
+    }
+
+    @Test
+    void stepAndParcoursLabelsMayNotCarryExpressions() {
+        assertThatThrownBy(() -> new Step("a", "${'x'.concat('y')}", Kind.QUESTION, Map.of("schemaKey", "avis"), null, null, null))
+                .isInstanceOf(InvalidParcoursException.class).hasMessageContaining("a");
+        assertThatThrownBy(() -> new Step("a", "#{x}", Kind.QUESTION, Map.of("schemaKey", "avis"), null, null, null))
+                .isInstanceOf(InvalidParcoursException.class);
+    }
+
+    @Test
+    void controlCharactersInParametersAreRefusedExceptNewlinesAndTabsWhichRoundTripExactly() throws Exception {
+        assertThatThrownBy(() -> compile(definition(step("e", Kind.EXPRESSION, Map.of("formula", "1\u0001+2", "formulaResult", "r")))))
+                .isInstanceOf(InvalidParcoursException.class);
+        String xml = compile(definition(step("e", Kind.EXPRESSION, Map.of("formula", "1\t+\r\n2", "formulaResult", "r")))).xml();
+        Element task = (Element) parse(xml).getElementsByTagNameNS("http://www.omg.org/spec/BPMN/20100524/MODEL", "serviceTask").item(0);
+        assertThat(task.getAttributeNS("http://flowable.org/bpmn", "formula")).isEqualTo("1\t+\r\n2");
+    }
+
+    @Test
+    void aDocumentWithoutAttachmentStillReservesItsAttachIdSoTheDiagramHasNoDuplicate() {
+        assertThatThrownBy(() -> compile(definition(
+                        step("foo", Kind.DOCUMENT, Map.of("documentType", "courrier", "attach", "false")),
+                        step("fooAttach", Kind.SET_WORKFLOW_STATUS, Map.of("targetWorkflowStatus", "VALIDE")))))
+                .isInstanceOf(InvalidParcoursException.class);
     }
 }

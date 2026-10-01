@@ -1,7 +1,6 @@
 package com.flowforge.infrastructure.mcp.tool;
 
 import com.flowforge.domain.dossier.model.AccessContext;
-import com.flowforge.domain.parcours.model.CompiledParcours;
 import com.flowforge.domain.parcours.model.Parcours;
 import com.flowforge.domain.parcours.model.ParcoursDefinition;
 import com.flowforge.domain.parcours.port.in.CompileParcoursUseCase;
@@ -86,18 +85,23 @@ public class ParcoursTools {
             @McpToolParam(required = false, description = "Validate without saving; default false") Boolean dryRun) {
         AccessContext.User actor = accessContextFactory.currentActor();
         String parcoursKey = McpArgs.requireNonBlank(key, "key");
-        ParcoursDefinition definition = objectMapper.convertValue(Map.of(
-                "statuses", statuses == null ? List.of() : statuses,
-                "allowedDossierStatuses", allowedDossierStatuses == null ? List.of() : allowedDossierStatuses,
-                "onStartDossierStatus", onStartDossierStatus == null ? "" : onStartDossierStatus,
-                "steps", steps == null ? List.of() : steps), ParcoursDefinition.class);
+        Map<String, Object> raw = new LinkedHashMap<>();
+        raw.put("statuses", statuses == null ? List.of() : statuses);
+        raw.put("allowedDossierStatuses", allowedDossierStatuses == null ? List.of() : allowedDossierStatuses);
+        raw.put("onStartDossierStatus", onStartDossierStatus == null || onStartDossierStatus.isBlank() ? null : onStartDossierStatus.strip());
+        raw.put("steps", steps == null ? List.of() : steps);
+        ParcoursDefinition definition = objectMapper.convertValue(raw, ParcoursDefinition.class);
         if (Boolean.TRUE.equals(dryRun)) {
-            CompiledParcours compiled = compile.preview(actor, parcoursKey, label, definition);
+            var preview = compile.preview(actor, parcoursKey, label, definition);
             Map<String, Object> out = new LinkedHashMap<>();
             out.put("dryRun", true);
             out.put("key", parcoursKey);
-            out.put("valid", true);
-            out.put("warnings", compiled.warnings());
+            // « valide » = le déploiement accepterait le BPMN (parseur, liste blanche, références), pas seulement le compilateur
+            out.put("valid", preview.problem() == null);
+            if (preview.problem() != null) {
+                out.put("problem", preview.problem());
+            }
+            out.put("warnings", preview.compiled().warnings());
             return out;
         }
         Parcours saved = manage.save(actor, new ManageParcoursUseCase.SaveCommand(parcoursKey, label, definition, expectedVersion));

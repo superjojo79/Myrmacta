@@ -81,6 +81,8 @@ const version = ref<number | null>(null)
 const definition = ref<ParcoursDefinition>(blank())
 const options = ref<Record<string, ValueOption[] | null>>({})
 const result = ref<CompileResult | null>(null)
+const replaceDraft = ref(false)
+const savedSnapshot = ref('')
 const busy = ref(false)
 const error = ref<string | null>(null)
 const notice = ref<string | null>(null)
@@ -97,6 +99,8 @@ function blank(): ParcoursDefinition {
   }
 }
 
+/** Les boutons de compilation travaillent sur la version enregistrée : on les bloque tant que le formulaire a des modifications. */
+const dirty = computed(() => JSON.stringify([label.value, definition.value]) !== savedSnapshot.value)
 const stepIds = computed(() => definition.value.steps.map((s) => s.id).filter(Boolean))
 
 async function refresh() {
@@ -113,6 +117,10 @@ async function loadOptions() {
   }
 }
 
+function snapshot() {
+  savedSnapshot.value = JSON.stringify([label.value, definition.value])
+}
+
 function fresh() {
   isNew.value = true
   key.value = ''
@@ -123,6 +131,7 @@ function fresh() {
   error.value = null
   notice.value = null
   editing.value = true
+  snapshot()
   void loadOptions()
 }
 
@@ -138,6 +147,7 @@ async function open(k: string) {
     version.value = p.version
     definition.value = p.definition
     editing.value = true
+    snapshot()
     void loadOptions()
   } catch (e) {
     error.value = toProblemDetail(e).detail ?? 'Chargement impossible'
@@ -209,6 +219,7 @@ async function save() {
     isNew.value = false
     version.value = saved.version
     definition.value = saved.definition
+    snapshot()
     notice.value = `Enregistré (version ${saved.version}).`
     await refresh()
   }
@@ -224,7 +235,11 @@ async function compile(dryRun: boolean) {
     error.value = 'Enregistrez le parcours avant de le compiler.'
     return
   }
-  const r = await run(() => compileParcours(key.value, dryRun))
+  if (dirty.value) {
+    error.value = 'Enregistrez vos modifications avant de compiler : la compilation travaille sur la version enregistrée.'
+    return
+  }
+  const r = await run(() => compileParcours(key.value, dryRun, replaceDraft.value))
   if (r) {
     result.value = r
     notice.value = dryRun ? 'Le parcours est valide : rien n’a été écrit.' : 'Brouillon BPMN déposé.'
@@ -368,8 +383,9 @@ onMounted(refresh)
       <div class="parcours__actions">
         <button type="submit" :disabled="busy" data-testid="parcours-save">Enregistrer</button>
         <button type="button" :disabled="busy" data-testid="parcours-preview" @click="preview">Aperçu du BPMN</button>
-        <button type="button" :disabled="busy || isNew" data-testid="parcours-validate" @click="compile(true)">Valider (à blanc)</button>
-        <button type="button" :disabled="busy || isNew" data-testid="parcours-compile" @click="compile(false)">Compiler en brouillon</button>
+        <button type="button" :disabled="busy || isNew || dirty" data-testid="parcours-validate" @click="compile(true)">Valider (à blanc)</button>
+        <button type="button" :disabled="busy || isNew || dirty" data-testid="parcours-compile" @click="compile(false)">Compiler en brouillon</button>
+        <label class="parcours__replace"><input v-model="replaceDraft" type="checkbox" data-testid="parcours-replace" /> remplacer un brouillon existant d'un autre auteur</label>
         <button type="button" :disabled="busy || isNew" data-testid="parcours-delete" @click="remove">Supprimer</button>
         <button type="button" @click="editing = false">Fermer</button>
       </div>
@@ -378,6 +394,9 @@ onMounted(refresh)
         <p v-if="result.draftWritten" data-testid="parcours-draft-link">
           Brouillon déposé<span v-if="result.replacedExistingDraft"> (il remplace un brouillon existant)</span> :
           <RouterLink to="/admin/drafts">relire dans Admin → Brouillons</RouterLink>
+        </p>
+        <p v-if="result.problem" class="error" role="alert" data-testid="parcours-problem">
+          Le déploiement refuserait ce BPMN : {{ result.problem }}
         </p>
         <ul v-if="result.warnings.length" data-testid="parcours-warnings">
           <li v-for="w in result.warnings" :key="w">{{ w }}</li>

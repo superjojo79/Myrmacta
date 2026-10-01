@@ -3659,6 +3659,8 @@ components:
           type: boolean
         replacedExistingDraft:
           type: boolean
+        problem:
+          type: string
     PreviewRequest:
       type: object
       properties:

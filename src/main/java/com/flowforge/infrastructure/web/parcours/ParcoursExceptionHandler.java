@@ -24,6 +24,12 @@ class ParcoursExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     ProblemDetail unreadable(HttpMessageNotReadableException ex) {
+        // un record du modèle (étape, branche) refuse sa propre valeur : son message nomme l'étape, on le rend
+        for (Throwable cause = ex; cause != null; cause = cause.getCause()) {
+            if (cause instanceof InvalidParcoursException invalid) {
+                return problem(HttpStatus.BAD_REQUEST, "Invalid parcours", invalid.getMessage());
+            }
+        }
         return problem(HttpStatus.BAD_REQUEST, "Bad request", "the request body is not valid");
     }
 

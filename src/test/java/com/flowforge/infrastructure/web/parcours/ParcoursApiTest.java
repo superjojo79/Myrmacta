@@ -131,6 +131,32 @@ class ParcoursApiTest {
     }
 
     @Test
+    void previewSurfacesWhyTheDeploymentWouldRefuseTheBpmnWithoutWritingAnything() throws Exception {
+        String steps = """
+                [{"id":"saisie","kind":"DOCUMENT","params":{"documentType":"modeleInexistant"}},
+                 {"id":"cloture","kind":"SET_WORKFLOW_STATUS","params":{"targetWorkflowStatus":"VALIDE"}}]""";
+        String definition = body("x", null, steps).replaceAll("(?s)^.*\"definition\":", "").replaceAll("\\}\\s*$", "");
+        mockMvc.perform(post("/api/parcours/preview").with(admin()).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"key\":\"apercu\",\"label\":\"A\",\"definition\":" + definition + "}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.xml", containsString("<startEvent")))
+                .andExpect(jsonPath("$.problem").isString());
+    }
+
+    @Test
+    void aHostileKeyOrValueIsRefusedWithAMessageThatNamesTheCause() throws Exception {
+        String definition = body("x", null, TWO_STEPS).replaceAll("(?s)^.*\"definition\":", "").replaceAll("\\}\\s*$", "");
+        mockMvc.perform(post("/api/parcours/preview").with(admin()).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"key\":\"p\\\" x=\\\"y\",\"label\":\"A\",\"definition\":" + definition + "}"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.detail", containsString("process key")));
+        String hostile = """
+                [{"id":"a","kind":"DECISION","params":{},"defaultNext":"a",
+                  "branches":[{"variable":"x","operator":"EQ","value":"-1","next":"a"}]}]""";
+        mockMvc.perform(put("/api/parcours/{key}", key()).with(admin()).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content(body("x", null, hostile)))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.detail", containsString("negative and decimal")));
+    }
+
+    @Test
     void onlyDesignRolesMayUseParcours() throws Exception {
         mockMvc.perform(get("/api/parcours").with(role("DOSSIER_AGENT"))).andExpect(status().isForbidden());
         mockMvc.perform(get("/api/parcours").with(role("WORKFLOW_ADMIN"))).andExpect(status().isOk());

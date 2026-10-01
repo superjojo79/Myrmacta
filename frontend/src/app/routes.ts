@@ -75,6 +75,12 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/views/admin/DmnEditorView.vue'),
   },
   {
+    path: '/admin/configuration',
+    name: 'admin-configuration',
+    meta: { roles: ['TENANT_ADMIN'] },
+    component: () => import('@/views/admin/ConfigurationPromotionView.vue'),
+  },
+  {
     path: '/admin/drafts',
     name: 'admin-drafts',
     meta: { roles: ['TENANT_ADMIN', 'WORKFLOW_ADMIN'] },

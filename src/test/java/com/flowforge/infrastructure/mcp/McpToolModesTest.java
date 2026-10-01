@@ -52,7 +52,8 @@ class McpToolModesTest {
     void operationModeNeverExposesConfigurationWriters() {
         Set<String> operation = McpToolModes.toolsFor(McpToolModes.Mode.OPERATION);
         assertThat(operation).doesNotContain("deploy_workflow", "deploy_decision_table", "redeploy_decision_table",
-                "define_dossier_type", "define_connector_instance", "define_task_question_schema", "publish_draft");
+                "define_dossier_type", "define_connector_instance", "define_task_question_schema", "publish_draft",
+                "export_configuration", "import_configuration");
         assertThat(operation).contains("search_dossiers", "get_dossier", "list_dossier_types");
     }
 }

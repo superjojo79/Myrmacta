@@ -23,6 +23,7 @@ const PROVENANCE_LABELS: Record<Provenance, string> = {
   UI: 'Éditeur',
   MCP: 'Agent (MCP)',
   ASSISTANT: 'Assistant',
+  IMPORT: 'Import',
 }
 
 function rowId(d: PendingDraft): string {
@@ -221,7 +222,8 @@ onMounted(() => load())
   background: #e9ecef;
 }
 .drafts-admin__badge--mcp,
-.drafts-admin__badge--assistant {
+.drafts-admin__badge--assistant,
+.drafts-admin__badge--import {
   background: #fff3bf;
 }
 .drafts-admin__actions {

@@ -1,0 +1,87 @@
+databaseChangeLog:
+  - changeSet:
+      id: 032-config-import
+      author: flowforge
+      comment: >-
+        TODO §83 (D4) — journal des applications de bundle de configuration : qui, quand, quel bundle (somme SHA-256), par quel canal,
+        compteurs et rapport par artefact. Jamais de secret.
+      changes:
+        - createTable:
+            tableName: config_import
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_config_import
+                    nullable: false
+              - column:
+                  name: tenant_id
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: performed_by
+                  type: varchar(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: performed_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: channel
+                  type: varchar(16)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: bundle_sha256
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: format_version
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: source_label
+                  type: varchar(200)
+              - column:
+                  name: applied
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: unchanged
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: skipped
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: failed
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: report
+                  type: text
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: config_import
+            indexName: idx_config_import_tenant_performed
+            columns:
+              - column:
+                  name: tenant_id
+              - column:
+                  name: performed_at
+      rollback:
+        - dropTable:
+            tableName: config_import

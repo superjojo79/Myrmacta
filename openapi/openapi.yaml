@@ -1530,6 +1530,74 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ConfigPublication"
+  /api/admin/configuration/plan:
+    post:
+      tags:
+      - configuration-promotion-controller
+      operationId: plan
+      parameters:
+      - name: parameters
+        in: query
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+              - file
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ImportPlan"
+  /api/admin/configuration/apply:
+    post:
+      tags:
+      - configuration-promotion-controller
+      operationId: apply
+      parameters:
+      - name: secrets
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: parameters
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: expectedBundleSha256
+        in: query
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+              - file
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ImportReport"
   /api/workflow-type-configs/{workflowKey}:
     get:
       tags:
@@ -2684,6 +2752,47 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ConfigPublication"
+  /api/admin/configuration/imports:
+    get:
+      tags:
+      - configuration-promotion-controller
+      operationId: imports
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ConfigImportRecord"
+  /api/admin/configuration/export:
+    get:
+      tags:
+      - configuration-promotion-controller
+      operationId: export
+      parameters:
+      - name: sourceLabel
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: byte
   /api/dossier-types/{code}/acl/{userId}:
     delete:
       tags:
@@ -3851,6 +3960,7 @@ components:
           - UI
           - MCP
           - ASSISTANT
+          - IMPORT
         draftAuthor:
           type: string
         publishedBy:
@@ -3869,7 +3979,85 @@ components:
           - UI
           - MCP
           - ASSISTANT
+          - IMPORT
         configAuthor:
+          type: string
+    ImportPlan:
+      type: object
+      properties:
+        bundleSha256:
+          type: string
+        formatVersion:
+          type: integer
+          format: int32
+        sourceLabel:
+          type: string
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlanEntry"
+    PlanEntry:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+          - DOSSIER_TYPE
+          - TASK_QUESTION_SCHEMA
+          - CONNECTOR_INSTANCE
+          - DMN
+          - BPMN
+          - WORKFLOW_CONFIG
+        key:
+          type: string
+        action:
+          type: string
+          enum:
+          - CREATE
+          - UPDATE
+          - UNCHANGED
+          - CONFLICT
+          - BLOCKED
+        reason:
+          type: string
+        secretsRequired:
+          type: array
+          items:
+            type: string
+    ImportReport:
+      type: object
+      properties:
+        bundleSha256:
+          type: string
+        performedAt:
+          type: string
+          format: date-time
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportEntry"
+    ReportEntry:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+          - DOSSIER_TYPE
+          - TASK_QUESTION_SCHEMA
+          - CONNECTOR_INSTANCE
+          - DMN
+          - BPMN
+          - WORKFLOW_CONFIG
+        key:
+          type: string
+        outcome:
+          type: string
+          enum:
+          - APPLIED
+          - UNCHANGED
+          - SKIPPED
+          - FAILED
+        message:
           type: string
     UpdateNotificationWebhookRequest:
       type: object
@@ -5145,6 +5333,7 @@ components:
           - UI
           - MCP
           - ASSISTANT
+          - IMPORT
         author:
           type: string
         updatedAt:
@@ -5171,6 +5360,7 @@ components:
           - UI
           - MCP
           - ASSISTANT
+          - IMPORT
         configAuthor:
           type: string
     ProposedWorkflowConfig:
@@ -5206,3 +5396,39 @@ components:
           type: array
           items:
             type: string
+    ConfigImportRecord:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+        performedBy:
+          type: string
+        performedAt:
+          type: string
+          format: date-time
+        channel:
+          type: string
+        bundleSha256:
+          type: string
+        formatVersion:
+          type: integer
+          format: int32
+        sourceLabel:
+          type: string
+        applied:
+          type: integer
+          format: int32
+        unchanged:
+          type: integer
+          format: int32
+        skipped:
+          type: integer
+          format: int32
+        failed:
+          type: integer
+          format: int32
+        reportJson:
+          type: string

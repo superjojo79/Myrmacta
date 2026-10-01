@@ -34,6 +34,8 @@ public final class McpToolModes {
             Map.entry("redeploy_decision_table", Mode.DESIGN),
             Map.entry("list_pending_drafts", Mode.DESIGN),
             Map.entry("publish_draft", Mode.DESIGN),
+            Map.entry("export_configuration", Mode.DESIGN),
+            Map.entry("import_configuration", Mode.DESIGN),
             Map.entry("test_decision", Mode.DESIGN),
             Map.entry("validate_expression", Mode.DESIGN),
             Map.entry("evaluate_expression", Mode.DESIGN),

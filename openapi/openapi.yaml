@@ -1498,6 +1498,24 @@ paths:
       responses:
         "200":
           description: OK
+  /api/assistant/messages:
+    post:
+      tags:
+      - assistant-controller
+      operationId: send_2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ChatResponse"
   /api/admin/drafts/{type}/{key}/publish:
     post:
       tags:
@@ -2716,11 +2734,70 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/AuthUserResponse"
+  /api/assistant/status:
+    get:
+      tags:
+      - assistant-controller
+      operationId: status
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/StatusResponse"
+  /api/assistant/conversations:
+    get:
+      tags:
+      - assistant-controller
+      operationId: list_12
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ConversationSummary"
+  /api/assistant/conversations/{id}:
+    get:
+      tags:
+      - assistant-controller
+      operationId: get_11
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ConversationDetail"
+    delete:
+      tags:
+      - assistant-controller
+      operationId: delete_1
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
   /api/admin/drafts:
     get:
       tags:
       - drafts-controller
-      operationId: list_12
+      operationId: list_13
       responses:
         "200":
           description: OK
@@ -3934,6 +4011,37 @@ components:
           type: object
           additionalProperties:
             type: boolean
+    MessageRequest:
+      type: object
+      properties:
+        conversationId:
+          type: string
+          format: uuid
+        message:
+          type: string
+    ChatResponse:
+      type: object
+      properties:
+        conversationId:
+          type: string
+          format: uuid
+        reply:
+          type: string
+        activity:
+          type: array
+          items:
+            $ref: "#/components/schemas/ToolActivity"
+        producedDrafts:
+          type: boolean
+    ToolActivity:
+      type: object
+      properties:
+        tool:
+          type: string
+        ok:
+          type: boolean
+        summary:
+          type: string
     PublishDraftRequest:
       type: object
       properties:
@@ -5327,6 +5435,54 @@ components:
           type: array
           items:
             type: string
+    StatusResponse:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        model:
+          type: string
+    ConversationSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        turns:
+          type: integer
+          format: int32
+    ConversationDetail:
+      type: object
+      properties:
+        conversation:
+          $ref: "#/components/schemas/ConversationSummary"
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/MessageView"
+    MessageView:
+      type: object
+      properties:
+        seq:
+          type: integer
+          format: int32
+        role:
+          type: string
+        content:
+          type: string
+        toolName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
     PendingDraft:
       type: object
       properties:

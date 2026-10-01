@@ -5532,6 +5532,8 @@ components:
           type: array
           items:
             type: string
+        defaultLocale:
+          type: string
     StatusResponse:
       type: object
       properties:

@@ -4,6 +4,7 @@ import axios, { type AxiosError } from 'axios'
 import type { AuthUser } from '@/api/types'
 import { resolveApiBaseUrl } from '@/api/http'
 import { useNotificationsStore } from '@/stores/notifications'
+import { applyTenantDefault, i18n } from '@/i18n'
 
 function readCookie(name: string): string | null {
   const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))
@@ -34,6 +35,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const { data } = await axios.get<AuthUser>('/api/auth/me')
       user.value = data
+      applyTenantDefault(data.defaultLocale)
     } catch (err) {
       user.value = null
       const status = (err as AxiosError)?.response?.status
@@ -41,7 +43,7 @@ export const useAuthStore = defineStore('auth', () => {
         window.location.href = tenantPath('/oauth2/authorization/oidc')
         return
       }
-      bootError.value = 'Impossible de charger la session'
+      bootError.value = i18n.global.t('shell.sessionError')
     }
   }
 

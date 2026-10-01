@@ -150,6 +150,10 @@ app:
   drafts:
     # Brouillons d'origine MCP/assistant non modifiés depuis N jours : purgés (0 = jamais). Les brouillons de l'éditeur : jamais.
     retention-days: ${APP_DRAFTS_RETENTION_DAYS:30}
+  # D7 — langue par défaut du tenant (fr | en) : interface tant que l'utilisateur n'a pas choisi la sienne, et messages envoyés à un tiers
+  # sans profil (invitation de signature). Autre valeur : démarrage refusé.
+  i18n:
+    default-locale: ${APP_I18N_DEFAULT_LOCALE:fr}
   assistant:
     # Assistant de conception IA (Admin → Assistant). Désactivé par défaut : aucune requête sortante tant qu'il n'est pas activé.
     # L'activer exige une clé d'API (jamais exposée au navigateur) ; base-url en https (sauf boucle locale).

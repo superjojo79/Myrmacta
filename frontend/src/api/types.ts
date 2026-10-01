@@ -3,6 +3,8 @@ export interface AuthUser {
   name: string | null
   email: string | null
   roles: string[]
+  /** Langue par défaut du tenant (D7) : celle de l'interface tant que l'utilisateur n'a pas choisi la sienne. */
+  defaultLocale?: string
 }
 
 export type DossierStatus =

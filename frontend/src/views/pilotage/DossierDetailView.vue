@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
@@ -21,6 +22,7 @@ import DossierPurgeRequestButton from '@/components/dossier/DossierPurgeRequestB
 import PortalLinksPanel from '@/components/dossier/PortalLinksPanel.vue'
 import SignatureRequestsPanel from '@/components/dossier/SignatureRequestsPanel.vue'
 
+const { t } = useI18n()
 const route = useRoute()
 const store = useDossierStore()
 const auth = useAuthStore()
@@ -95,7 +97,7 @@ async function saveStatus() {
   try {
     await store.patchStatus(statusDraft.value)
   } catch (err) {
-    actionError.value = toProblemDetail(err).detail ?? 'Mise à jour statut impossible'
+    actionError.value = toProblemDetail(err).detail ?? t('dossierDetail.errors.status')
   }
 }
 
@@ -104,7 +106,7 @@ async function saveFields(patch: Record<string, unknown>) {
   try {
     await store.patchFields(patch)
   } catch (err) {
-    actionError.value = toProblemDetail(err).detail ?? 'Mise à jour champs impossible'
+    actionError.value = toProblemDetail(err).detail ?? t('dossierDetail.errors.fields')
   }
 }
 
@@ -114,7 +116,7 @@ async function onLink(payload: { targetDossierId: string; type: RelationType }) 
     await store.linkDossier(payload.targetDossierId, payload.type)
     linkOpen.value = false
   } catch (err) {
-    actionError.value = toProblemDetail(err).detail ?? 'Liaison impossible'
+    actionError.value = toProblemDetail(err).detail ?? t('dossierDetail.errors.link')
   }
 }
 
@@ -124,7 +126,7 @@ async function onAddElement(payload: { type: ElementType; label: string; metadat
     await store.addElement(payload.type, payload.label, payload.metadata)
     addElementOpen.value = false
   } catch (err) {
-    actionError.value = toProblemDetail(err).detail ?? 'Ajout impossible'
+    actionError.value = toProblemDetail(err).detail ?? t('dossierDetail.errors.add')
   }
 }
 
@@ -134,7 +136,7 @@ async function onAddAttachment(payload: { file: File; label: string }) {
     await store.addAttachment(payload.file, payload.label)
     addElementOpen.value = false
   } catch (err) {
-    actionError.value = toProblemDetail(err).detail ?? 'Ajout impossible'
+    actionError.value = toProblemDetail(err).detail ?? t('dossierDetail.errors.add')
   }
 }
 
@@ -143,7 +145,7 @@ async function onStart(key: string) {
   try {
     await store.startWorkflow(key)
   } catch (err) {
-    actionError.value = toProblemDetail(err).detail ?? 'Démarrage impossible'
+    actionError.value = toProblemDetail(err).detail ?? t('dossierDetail.errors.start')
   }
 }
 
@@ -151,7 +153,7 @@ async function onComplete(taskId: string, variables: Record<string, unknown> = {
   try {
     await store.complete(taskId, variables)
   } catch (err) {
-    actionError.value = toProblemDetail(err).detail ?? 'Complétion impossible'
+    actionError.value = toProblemDetail(err).detail ?? t('dossierDetail.errors.complete')
   }
 }
 
@@ -162,13 +164,13 @@ async function confirmReassign() {
     reassignTaskId.value = null
     reassignUserId.value = ''
   } catch (err) {
-    actionError.value = toProblemDetail(err).detail ?? 'Réassignation impossible'
+    actionError.value = toProblemDetail(err).detail ?? t('dossierDetail.errors.reassign')
   }
 }
 </script>
 
 <template>
-  <section v-if="loading">Chargement…</section>
+  <section v-if="loading">{{ t('common.loading') }}</section>
   <section v-else-if="error" class="error">{{ error }}</section>
   <section v-else-if="dossier" class="dossier-detail">
     <header class="dossier-detail__header">
@@ -178,8 +180,8 @@ async function confirmReassign() {
       </div>
       <div class="dossier-detail__actions">
         <StatusSelect v-model="statusDraft" />
-        <button type="button" @click="saveStatus">Enregistrer statut</button>
-        <button type="button" class="primary" @click="startOpen = true">Démarrer workflow</button>
+        <button type="button" @click="saveStatus">{{ t('dossierDetail.saveStatus') }}</button>
+        <button type="button" class="primary" @click="startOpen = true">{{ t('dossierDetail.startWorkflow') }}</button>
         <DossierPurgeRequestButton v-if="isTenantAdmin" :dossier-id="dossier.id" />
       </div>
     </header>
@@ -202,7 +204,7 @@ async function confirmReassign() {
       @update:page="store.loadElementsPage($event)"
     >
       <template #actions>
-        <button v-if="canEditDossier" type="button" @click="addElementOpen = true">Ajouter</button>
+        <button v-if="canEditDossier" type="button" @click="addElementOpen = true">{{ t('dossierDetail.add') }}</button>
       </template>
     </ElementsList>
     <WorkflowLinksList
@@ -220,7 +222,7 @@ async function confirmReassign() {
 
     <RelationsList :relations="relations">
       <template #actions>
-        <button v-if="canLink" type="button" @click="linkOpen = true">Lier un dossier</button>
+        <button v-if="canLink" type="button" @click="linkOpen = true">{{ t('dossierDetail.linkDossier') }}</button>
       </template>
     </RelationsList>
     <LinkDossierDialog
@@ -255,11 +257,11 @@ async function confirmReassign() {
 
     <div v-if="reassignTaskId" class="reassign">
       <label>
-        Nouvel assignee
+        {{ t('dossierDetail.newAssignee') }}
         <input v-model="reassignUserId" type="text" />
       </label>
-      <button type="button" @click="confirmReassign">Confirmer</button>
-      <button type="button" @click="reassignTaskId = null">Annuler</button>
+      <button type="button" @click="confirmReassign">{{ t('dossierDetail.confirm') }}</button>
+      <button type="button" @click="reassignTaskId = null">{{ t('common.cancel') }}</button>
     </div>
 
     <StartWorkflowDialog

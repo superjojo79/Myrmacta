@@ -21,6 +21,7 @@ const props = defineProps<{ dossierId: string }>()
 const emit = defineEmits<{ ready: [Record<string, unknown>]; error: [string] }>()
 
 const definitions = ref<FieldDefinition[]>([])
+const typeCode = ref<string | undefined>(undefined)
 const snapshot = ref<Record<string, unknown>>({})
 const fields = ref<Record<string, unknown>>({})
 const version = ref(0)
@@ -40,6 +41,7 @@ async function load() {
     version.value = dossier.version
     const type = await getDossierType(dossier.dossierTypeCode)
     definitions.value = type.fieldDefinitions
+    typeCode.value = type.code
   } catch (err) {
     loadError.value = toProblemDetail(err).detail ?? 'Impossible de charger le formulaire'
   } finally {
@@ -73,7 +75,7 @@ async function submit() {
     <p v-if="loading">Chargement du formulaire…</p>
     <p v-else-if="loadError" class="error">{{ loadError }}</p>
     <template v-else>
-      <DynamicFields v-model="fields" :definitions="definitions" :apply-defaults="false" />
+      <DynamicFields v-model="fields" :definitions="definitions" :apply-defaults="false" :type-code="typeCode" />
       <button type="button" :disabled="submitting" @click="submit">Compléter</button>
     </template>
   </div>

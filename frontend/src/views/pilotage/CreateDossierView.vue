@@ -65,6 +65,7 @@ async function submit() {
         v-if="selectedType()"
         v-model="fields"
         :definitions="selectedType()!.fieldDefinitions"
+        :type-code="selectedType()!.code"
       />
       <p v-if="error" class="create-dossier__error">{{ error }}</p>
       <button type="submit" :disabled="submitting">Créer</button>

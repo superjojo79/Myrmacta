@@ -117,6 +117,29 @@ class CreateDossierToolTest {
     }
 
     @Test
+    void dryRun_appliesFieldRules_reviewD1M2() {
+        var engine = new com.flowforge.infrastructure.expression.JsonataExpressionEngine(
+                com.flowforge.domain.expression.model.ExpressionLimits.DEFAULTS, java.time.Clock.systemUTC());
+        var ruledTool = new CreateDossierTool(createDossierUseCase, getDossierTypeUseCase, new TenantProperties(TENANT),
+                new McpAccessContextFactory(), new com.flowforge.domain.dossier.DossierFieldRules(engine));
+        var a = new com.flowforge.domain.dossier.model.FieldDefinition("a", "a", com.flowforge.domain.dossier.model.FieldType.STRING, false, null, null, null, false);
+        var hiddenRequired = new com.flowforge.domain.dossier.model.FieldDefinition("h", "h", com.flowforge.domain.dossier.model.FieldType.STRING, true,
+                null, null, null, false, null, null, null, null, "dossier.fields.a = 'Y'", null);
+        var computed = new com.flowforge.domain.dossier.model.FieldDefinition("c", "c", com.flowforge.domain.dossier.model.FieldType.STRING, false,
+                null, null, null, false, null, null, null, "'x'", null, null);
+        when(getDossierTypeUseCase.getByCode(eq(TENANT), eq("SINISTRE"), any()))
+                .thenReturn(type(true, List.of(a, hiddenRequired, computed)));
+
+        // champ masqué obligatoire : l'aperçu n'échoue pas (la création réelle passe)
+        @SuppressWarnings("unchecked")
+        Map<String, Object> ok = (Map<String, Object>) ruledTool.createDossier("SINISTRE", "Acme", Map.of("a", "N"), true);
+        assertThat(ok).containsEntry("valid", true);
+        // valeur fournie pour un champ calculé : l'aperçu la refuse comme la création
+        assertThatThrownBy(() -> ruledTool.createDossier("SINISTRE", "Acme", Map.of("a", "N", "c", "y"), true))
+                .isInstanceOf(com.flowforge.domain.dossier.model.DossierFieldValidationException.class);
+    }
+
+    @Test
     void dryRun_inactiveType_isRejected() {
         when(getDossierTypeUseCase.getByCode(eq(TENANT), eq("SINISTRE"), any()))
                 .thenReturn(type(false, List.of()));

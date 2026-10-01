@@ -181,6 +181,39 @@ function parseOptions(raw: string): string[] {
         />
         Sensible
       </label>
+      <details v-if="mode === 'fields' && def.type !== 'REPEATABLE_GROUP' && def.type !== 'FILE'" class="field-def-editor__rules" data-testid="field-def-rules">
+        <summary>Règles (calcul, visibilité, obligation conditionnelle)</summary>
+        <p class="field-def-editor__hint">
+          Expressions JSONata sur les champs simples non sensibles : <code>dossier.fields.nom_du_champ</code>.
+        </p>
+        <label>
+          Calcul (champ calculé, lecture seule, recalculé à chaque enregistrement)
+          <input
+            :value="def.formula ?? ''"
+            data-testid="field-def-formula"
+            placeholder="dossier.fields.ht * (1 + dossier.fields.taux)"
+            @input="updateRow(index, { formula: ($event.target as HTMLInputElement).value || null })"
+          />
+        </label>
+        <label>
+          Visible si
+          <input
+            :value="def.visibleWhen ?? ''"
+            data-testid="field-def-visible-when"
+            placeholder="dossier.fields.pays = 'FR'"
+            @input="updateRow(index, { visibleWhen: ($event.target as HTMLInputElement).value || null })"
+          />
+        </label>
+        <label>
+          Obligatoire si
+          <input
+            :value="def.requiredWhen ?? ''"
+            data-testid="field-def-required-when"
+            placeholder="dossier.fields.montant > 1000"
+            @input="updateRow(index, { requiredWhen: ($event.target as HTMLInputElement).value || null })"
+          />
+        </label>
+      </details>
       <template v-if="def.type === 'REPEATABLE_GROUP'">
         <label>
           Lignes min.
@@ -252,6 +285,17 @@ function parseOptions(raw: string): string[] {
   flex-direction: row !important;
   align-items: center;
   gap: 0.3rem !important;
+}
+.field-def-editor__rules {
+  flex-basis: 100%;
+}
+.field-def-editor__rules label {
+  margin-top: 0.4rem;
+}
+.field-def-editor__hint {
+  font-size: 0.8rem;
+  color: #6b6b70;
+  margin: 0.3rem 0 0;
 }
 .field-def-editor__subfields {
   flex-basis: 100%;

@@ -24,6 +24,8 @@ const GROUP_SUBFIELD_TYPES: FieldType[] = ['STRING', 'NUMBER', 'DATE', 'BOOLEAN'
 const NO_DEFAULT_TYPES: FieldType[] = ['MONEY', 'EXTERNAL_REF', 'REPEATABLE_GROUP']
 const MAX_GROUP_FIELDS = 20
 const HARD_MAX_ROWS = 500
+// TODO §80 (D1, règles) — miroir de FieldDefinition : un champ calculé est en lecture seule, toujours présent.
+const MAX_EXPRESSION_CHARS = 2000
 
 /**
  * Client-side mirror of DossierFieldValidator.matchesType (immediate feedback) plus the
@@ -74,6 +76,30 @@ export function validateFieldDefinitions(definitions: FieldDefinition[], owner?:
       errors.push(`Le champ « ${shown} » (${def.type}) ne peut pas avoir de valeur par défaut`)
     } else if (!defaultValueMatchesType(def)) {
       errors.push(`La valeur par défaut du champ « ${shown} » ne correspond pas au type ${def.type}`)
+    }
+
+    for (const [label, expression] of [
+      ['Le calcul', def.formula],
+      ['La règle « visible si »', def.visibleWhen],
+      ['La règle « obligatoire si »', def.requiredWhen],
+    ] as const) {
+      if (!isBlank(expression) && (expression as string).length > MAX_EXPRESSION_CHARS) {
+        errors.push(`${label} du champ « ${shown} » dépasse ${MAX_EXPRESSION_CHARS} caractères`)
+      }
+    }
+    if (!isBlank(def.formula)) {
+      if (def.sensitive) errors.push(`Le champ calculé « ${shown} » ne peut pas être sensible`)
+      if (def.type === 'REPEATABLE_GROUP' || def.type === 'FILE') {
+        errors.push(`Un champ ${def.type} (« ${shown} ») ne peut pas être calculé`)
+      }
+      if (def.required || !isBlank(def.defaultValue) || !isBlank(def.visibleWhen) || !isBlank(def.requiredWhen)) {
+        errors.push(
+          `Le champ calculé « ${shown} » est toujours présent et en lecture seule : ni « obligatoire », ni valeur par défaut, ni « visible si », ni « obligatoire si »`,
+        )
+      }
+    }
+    if (owner && (!isBlank(def.formula) || !isBlank(def.visibleWhen) || !isBlank(def.requiredWhen))) {
+      errors.push(`Le sous-champ « ${shown} » ne peut pas porter de règle${where}`)
     }
 
     if (def.type === 'REPEATABLE_GROUP') {

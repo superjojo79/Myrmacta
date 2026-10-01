@@ -1,6 +1,7 @@
 package com.flowforge.domain.dossier.usecase;
 
 import com.flowforge.domain.dossier.DossierAccessPolicy;
+import com.flowforge.domain.dossier.DossierFieldRules;
 import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierFieldValidator;
@@ -24,6 +25,7 @@ public final class CreateDossierUseCaseImpl implements CreateDossierUseCase {
     private final DossierReferenceGenerator referenceGenerator;
     private final DossierAccessPolicy accessPolicy;
     private final DossierFieldValidator fieldValidator;
+    private final DossierFieldRules fieldRules;
 
     public CreateDossierUseCaseImpl(
             DossierTypeRepository typeRepository,
@@ -39,6 +41,17 @@ public final class CreateDossierUseCaseImpl implements CreateDossierUseCase {
             DossierReferenceGenerator referenceGenerator,
             DossierAccessPolicy accessPolicy,
             DossierFieldValidator fieldValidator) {
+        this(typeRepository, dossierRepository, referenceGenerator, accessPolicy, fieldValidator, DossierFieldRules.disabled());
+    }
+
+    public CreateDossierUseCaseImpl(
+            DossierTypeRepository typeRepository,
+            DossierRepository dossierRepository,
+            DossierReferenceGenerator referenceGenerator,
+            DossierAccessPolicy accessPolicy,
+            DossierFieldValidator fieldValidator,
+            DossierFieldRules fieldRules) {
+        this.fieldRules = Objects.requireNonNull(fieldRules, "fieldRules");
         this.typeRepository = Objects.requireNonNull(typeRepository, "typeRepository");
         this.dossierRepository = Objects.requireNonNull(dossierRepository, "dossierRepository");
         this.referenceGenerator = Objects.requireNonNull(referenceGenerator, "referenceGenerator");
@@ -59,7 +72,13 @@ public final class CreateDossierUseCaseImpl implements CreateDossierUseCase {
         }
 
         var fields = fieldValidator.applyDefaults(type.fieldDefinitions(), command.fields());
-        var errors = fieldValidator.validate(type.fieldDefinitions(), fields, type.allowUnknownFields());
+        // TODO §80 : champs calculés, visibilité et obligation conditionnelles (aucun effet sans règle déclarée).
+        var ruled = fieldRules.apply(type.fieldDefinitions(), fields,
+                command.fields() == null ? java.util.Set.of() : command.fields().keySet());
+        fields = ruled.fields();
+        var errors = new java.util.ArrayList<>(
+                fieldValidator.validate(ruled.effectiveDefinitions(), fields, type.allowUnknownFields()));
+        errors.addAll(ruled.errors());
         if (!errors.isEmpty()) {
             throw new DossierFieldValidationException(errors);
         }

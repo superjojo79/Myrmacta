@@ -1,6 +1,8 @@
 package com.flowforge.infrastructure.config;
 
 import com.flowforge.domain.dossier.DossierAccessPolicy;
+import com.flowforge.domain.dossier.DossierFieldRules;
+import com.flowforge.domain.expression.port.out.ExpressionEnginePort;
 import com.flowforge.domain.dossier.TenantAdminGuard;
 import com.flowforge.domain.dossier.model.RetentionPolicyResolver;
 import com.flowforge.domain.dossier.port.in.AddDossierElementUseCase;
@@ -8,6 +10,7 @@ import com.flowforge.domain.dossier.port.in.CreateDossierRelationUseCase;
 import com.flowforge.domain.dossier.model.DossierFieldValidator;
 import com.flowforge.domain.dossier.port.in.CheckDossierTypeSchemaCompatibilityUseCase;
 import com.flowforge.domain.dossier.port.in.CreateDossierTypeUseCase;
+import com.flowforge.domain.dossier.port.in.EvaluateDossierRulesUseCase;
 import com.flowforge.domain.dossier.port.in.CreateDossierUseCase;
 import com.flowforge.domain.dossier.port.in.EnqueueDossierPurgeUseCase;
 import com.flowforge.domain.dossier.port.in.EvaluateDossierRetentionUseCase;
@@ -44,6 +47,7 @@ import com.flowforge.domain.dossier.usecase.AddDossierElementUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.CheckDossierTypeSchemaCompatibilityUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.CreateDossierRelationUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.CreateDossierTypeUseCaseImpl;
+import com.flowforge.domain.dossier.usecase.EvaluateDossierRulesUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.CreateDossierUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.EnqueueDossierPurgeUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.EvaluateDossierRetentionUseCaseImpl;
@@ -107,25 +111,38 @@ public class DossierConfig {
         return new DossierAccessPolicy(aclRepository);
     }
 
+    /** TODO §80 : champs calculés, visibilité et obligation conditionnelles, évalués par le moteur d'expressions borné (LC2). */
+    @Bean
+    DossierFieldRules dossierFieldRules(ExpressionEnginePort expressionEngine) {
+        return new DossierFieldRules(expressionEngine);
+    }
+
+    @Bean
+    EvaluateDossierRulesUseCase evaluateDossierRulesUseCase(
+            DossierTypeRepository typeRepository, DossierAccessPolicy accessPolicy, DossierFieldRules fieldRules) {
+        return new EvaluateDossierRulesUseCaseImpl(typeRepository, accessPolicy, fieldRules);
+    }
+
     @Bean
     CreateDossierTypeUseCase createDossierTypeUseCase(
-            DossierTypeRepository typeRepository, TenantAdminGuard tenantAdminGuard) {
-        return new CreateDossierTypeUseCaseImpl(typeRepository, tenantAdminGuard);
+            DossierTypeRepository typeRepository, TenantAdminGuard tenantAdminGuard, DossierFieldRules fieldRules) {
+        return new CreateDossierTypeUseCaseImpl(typeRepository, tenantAdminGuard, fieldRules);
     }
 
     @Bean
     UpdateDossierTypeUseCase updateDossierTypeUseCase(
             DossierTypeRepository typeRepository,
             TenantAdminGuard tenantAdminGuard,
-            CheckDossierTypeSchemaCompatibilityUseCase checkDossierTypeSchemaCompatibilityUseCase) {
+            CheckDossierTypeSchemaCompatibilityUseCase checkDossierTypeSchemaCompatibilityUseCase,
+            DossierFieldRules fieldRules) {
         return new UpdateDossierTypeUseCaseImpl(
-                typeRepository, tenantAdminGuard, checkDossierTypeSchemaCompatibilityUseCase);
+                typeRepository, tenantAdminGuard, checkDossierTypeSchemaCompatibilityUseCase, fieldRules);
     }
 
     @Bean
     CheckDossierTypeSchemaCompatibilityUseCase checkDossierTypeSchemaCompatibilityUseCase(
-            DossierRepository dossierRepository) {
-        return new CheckDossierTypeSchemaCompatibilityUseCaseImpl(dossierRepository, new DossierFieldValidator());
+            DossierRepository dossierRepository, DossierFieldRules fieldRules) {
+        return new CheckDossierTypeSchemaCompatibilityUseCaseImpl(dossierRepository, new DossierFieldValidator(), fieldRules);
     }
 
     @Bean
@@ -161,9 +178,10 @@ public class DossierConfig {
             DossierTypeRepository typeRepository,
             DossierRepository dossierRepository,
             DossierReferenceGenerator referenceGenerator,
-            DossierAccessPolicy accessPolicy) {
+            DossierAccessPolicy accessPolicy,
+            DossierFieldRules fieldRules) {
         return new CreateDossierUseCaseImpl(
-                typeRepository, dossierRepository, referenceGenerator, accessPolicy);
+                typeRepository, dossierRepository, referenceGenerator, accessPolicy, new DossierFieldValidator(), fieldRules);
     }
 
     @Bean
@@ -210,8 +228,10 @@ public class DossierConfig {
     UpdateDossierFieldsUseCase updateDossierFieldsUseCase(
             DossierRepository dossierRepository,
             DossierTypeRepository typeRepository,
-            DossierAccessPolicy accessPolicy) {
-        return new UpdateDossierFieldsUseCaseImpl(dossierRepository, typeRepository, accessPolicy);
+            DossierAccessPolicy accessPolicy,
+            DossierFieldRules fieldRules) {
+        return new UpdateDossierFieldsUseCaseImpl(
+                dossierRepository, typeRepository, accessPolicy, new DossierFieldValidator(), fieldRules);
     }
 
     @Bean

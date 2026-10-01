@@ -5,6 +5,7 @@ import com.flowforge.domain.dossier.model.DossierType;
 import com.flowforge.domain.dossier.model.FieldDefinition;
 import com.flowforge.domain.document.port.in.ListDocumentTemplatesForDossierTypeUseCase;
 import com.flowforge.domain.dossier.port.in.CreateDossierTypeUseCase;
+import com.flowforge.domain.dossier.port.in.EvaluateDossierRulesUseCase;
 import com.flowforge.domain.dossier.port.in.GetDossierTypeUseCase;
 import com.flowforge.domain.dossier.port.in.ListDossierTypesUseCase;
 import com.flowforge.domain.dossier.port.in.UpdateDossierTypeUseCase;
@@ -37,6 +38,7 @@ public class DossierTypeController {
     private final ListDossierTypesUseCase listDossierTypesUseCase;
     private final ListDocumentTemplatesForDossierTypeUseCase listDocumentTemplatesForDossierTypeUseCase;
     private final AccessContextFactory accessContextFactory;
+    private final EvaluateDossierRulesUseCase evaluateDossierRulesUseCase;
 
     public DossierTypeController(
             TenantProperties tenantProperties,
@@ -45,7 +47,9 @@ public class DossierTypeController {
             GetDossierTypeUseCase getDossierTypeUseCase,
             ListDossierTypesUseCase listDossierTypesUseCase,
             ListDocumentTemplatesForDossierTypeUseCase listDocumentTemplatesForDossierTypeUseCase,
-            AccessContextFactory accessContextFactory) {
+            AccessContextFactory accessContextFactory,
+            EvaluateDossierRulesUseCase evaluateDossierRulesUseCase) {
+        this.evaluateDossierRulesUseCase = evaluateDossierRulesUseCase;
         this.tenantProperties = tenantProperties;
         this.createDossierTypeUseCase = createDossierTypeUseCase;
         this.updateDossierTypeUseCase = updateDossierTypeUseCase;
@@ -161,6 +165,32 @@ public class DossierTypeController {
                 .map(AllowedDocumentTemplateResponse::from)
                 .toList();
     }
+
+    /**
+     * TODO §80 (D1, règles) — aperçu des règles du type sur des valeurs en cours de saisie (champs calculés, champs sans objet,
+     * champs rendus obligatoires). Sans écriture ; mêmes règles et même moteur que l'enregistrement. Mêmes droits que la
+     * création d'un dossier de ce type ; les champs sensibles fournis sont ignorés.
+     */
+    @PostMapping("/{code}/evaluate-rules")
+    public EvaluateRulesResponse evaluateRules(
+            @PathVariable String code,
+            @RequestBody EvaluateRulesRequest request,
+            Authentication authentication) {
+        EvaluateDossierRulesUseCase.Result result = evaluateDossierRulesUseCase.evaluate(
+                tenantProperties.id(), code, request == null ? null : request.fields(), accessContextFactory.user(authentication));
+        return new EvaluateRulesResponse(
+                result.computed(),
+                result.hidden().stream().sorted().toList(),
+                result.requiredByRule().stream().sorted().toList(),
+                result.errors().stream().map(e -> new RuleErrorResponse(e.field(), e.message())).toList());
+    }
+
+    public record EvaluateRulesRequest(java.util.Map<String, Object> fields) {}
+
+    public record RuleErrorResponse(String field, String message) {}
+
+    public record EvaluateRulesResponse(
+            java.util.Map<String, Object> computed, List<String> hidden, List<String> requiredByRule, List<RuleErrorResponse> errors) {}
 
     private static String required(String value, String field) {
         if (value == null || value.isBlank()) {

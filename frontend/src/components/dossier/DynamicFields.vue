@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
-import type { FieldDefinition } from '@/api/types'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import type { FieldDefinition, FieldRulesPreview } from '@/api/types'
 import SensitiveValue from './SensitiveValue.vue'
 import DynamicFieldInput from './DynamicFieldInput.vue'
 import { formatFieldValue, isStructured } from '@/dossier/fieldValues'
+import { evaluateFieldRules } from '@/api/dossierTypes'
+import { hasFieldRules, isComputedField, isFieldApplicable, isFieldRequired } from '@/dossier/fieldRules'
 
 const props = withDefaults(
   defineProps<{
@@ -11,6 +13,13 @@ const props = withDefaults(
     modelValue: Record<string, unknown>
     readonly?: boolean
     applyDefaults?: boolean
+    /**
+     * TODO §80 (D1, règles) : code du type de dossier. Quand le type porte des règles (champ calculé, visibilité, obligation
+     * conditionnelle) et que le formulaire est éditable, les règles sont évaluées côté serveur (même moteur que
+     * l'enregistrement) pendant la saisie : champs calculés affichés en lecture seule, champs sans objet masqués (et leur
+     * saisie retirée), obligations mises à jour.
+     */
+    typeCode?: string
   }>(),
   { applyDefaults: true },
 )
@@ -19,9 +28,48 @@ const emit = defineEmits<{
   'update:modelValue': [Record<string, unknown>]
 }>()
 
+const rules = ref<FieldRulesPreview | null>(null)
+let timer: ReturnType<typeof setTimeout> | undefined
+let sequence = 0
+const live = computed(() => !props.readonly && !!props.typeCode && hasFieldRules(props.definitions))
+
+function scheduleEvaluation() {
+  if (!live.value) return
+  clearTimeout(timer)
+  timer = setTimeout(async () => {
+    const mine = ++sequence
+    try {
+      const preview = await evaluateFieldRules(props.typeCode!, props.modelValue)
+      if (mine !== sequence) return // réponse périmée : une saisie plus récente est en cours d'évaluation
+      rules.value = preview
+      dropHiddenValues(preview)
+    } catch {
+      // Aperçu indisponible : le formulaire reste utilisable, le serveur valide à l'enregistrement.
+    }
+  }, 300)
+}
+
+/** Un champ devenu sans objet ne doit pas être envoyé (le serveur refuse une valeur fournie pour un champ sans objet). */
+function dropHiddenValues(preview: FieldRulesPreview) {
+  const stale = preview.hidden.filter((name) => props.modelValue[name] !== undefined)
+  if (stale.length === 0) return
+  const next = { ...props.modelValue }
+  for (const name of stale) delete next[name]
+  emit('update:modelValue', next)
+}
+
+watch(() => [props.modelValue, props.typeCode, live.value], scheduleEvaluation, { deep: true, immediate: true })
+onBeforeUnmount(() => clearTimeout(timer))
+
+/** En saisie, un champ calculé affiche l'aperçu serveur ; en lecture, la valeur stockée. */
+function computedValue(field: FieldDefinition): unknown {
+  return rules.value?.computed[field.name] ?? props.modelValue[field.name]
+}
+
 const groups = computed(() => {
   const map = new Map<string, FieldDefinition[]>()
   for (const def of props.definitions) {
+    if (!props.readonly && !isFieldApplicable(def, rules.value)) continue
     const key = def.group || 'Général'
     const list = map.get(key) ?? []
     list.push(def)
@@ -68,8 +116,14 @@ function setField(name: string, value: unknown) {
         :role="isStructured(field.type) ? 'group' : undefined"
         :aria-label="isStructured(field.type) ? field.label : undefined"
       >
-        <span>{{ field.label }}<em v-if="field.required"> *</em></span>
-        <template v-if="readonly">
+        <span>
+          {{ field.label }}<em v-if="isFieldRequired(field, rules)"> *</em>
+          <small v-if="isComputedField(field)" class="dynamic-fields__computed-hint"> (calculé)</small>
+        </span>
+        <output v-if="!readonly && isComputedField(field)" class="dynamic-fields__computed" :data-testid="`computed-${field.name}`">{{
+          formatFieldValue(field, computedValue(field)) || '—'
+        }}</output>
+        <template v-else-if="readonly">
           <SensitiveValue :value="formatFieldValue(field, modelValue[field.name])" :sensitive="!!field.sensitive">
             <!-- TODO §76 : les lignes d'un groupe se lisent en tableau (visible seulement si la valeur est révélée). -->
             <table
@@ -109,6 +163,15 @@ function setField(name: string, value: unknown) {
   display: grid;
   gap: 0.25rem;
   margin-bottom: 0.75rem;
+}
+.dynamic-fields__computed-hint {
+  color: #6b6b70;
+  font-weight: normal;
+}
+.dynamic-fields__computed {
+  padding: 0.45rem 0.55rem;
+  background: #f4f4f6;
+  border-radius: 4px;
 }
 .dynamic-fields__rows {
   border-collapse: collapse;

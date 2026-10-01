@@ -27,6 +27,21 @@ public record FieldValidationError(String field, String code, String message) {
         return new FieldValidationError(field, "INVALID_VALUE", message);
     }
 
+    /** TODO §80 : un champ calculé n'est jamais saisi. */
+    public static FieldValidationError computedReadOnly(String field) {
+        return new FieldValidationError(field, "COMPUTED_READ_ONLY", "Computed field: its value cannot be set");
+    }
+
+    /** TODO §80 : valeur fournie pour un champ que la règle de visibilité rend sans objet. */
+    public static FieldValidationError notApplicable(String field) {
+        return new FieldValidationError(field, "NOT_APPLICABLE", "Field is not applicable in the current dossier state");
+    }
+
+    /** TODO §80 : règle (calcul, visibilité, obligation) en erreur — le message ne recopie jamais de valeur. */
+    public static FieldValidationError ruleFailed(String field, String message) {
+        return new FieldValidationError(field, "RULE_FAILED", message);
+    }
+
     public static FieldValidationError unknownField(String field) {
         return new FieldValidationError(field, "UNKNOWN_FIELD", "Unknown field");
     }

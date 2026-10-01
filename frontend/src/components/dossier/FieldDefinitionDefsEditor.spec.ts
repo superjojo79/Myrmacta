@@ -235,4 +235,26 @@ describe('FieldDefinitionDefsEditor — structured types (TODO §76, D1)', () =>
     await wrapper.get('[data-testid="field-def-type"]').setValue('STRING')
     expect(last(wrapper)[0]).toMatchObject({ type: 'STRING', fields: [], minRows: null, maxRows: null, defaultValue: '' })
   })
+
+  describe('TODO §80 — règles', () => {
+    const def: FieldDefinition = { name: 'ttc', label: 'TTC', type: 'NUMBER', required: false }
+
+    it('offers the three rule inputs for a scalar field of a dossier type and emits them (blank = absent)', async () => {
+      const wrapper = mount(FieldDefinitionDefsEditor, { props: { modelValue: [def] } })
+      await wrapper.get('[data-testid="field-def-formula"]').setValue('dossier.fields.ht * 2')
+      await wrapper.get('[data-testid="field-def-visible-when"]').setValue("dossier.fields.pays = 'FR'")
+      await wrapper.get('[data-testid="field-def-required-when"]').setValue('dossier.fields.ht > 1000')
+      const last = (wrapper.emitted('update:modelValue')?.at(-1)?.[0] as FieldDefinition[])[0]!
+      expect(last).toMatchObject({ formula: 'dossier.fields.ht * 2', visibleWhen: "dossier.fields.pays = 'FR'", requiredWhen: 'dossier.fields.ht > 1000' })
+
+      await wrapper.get('[data-testid="field-def-formula"]').setValue('')
+      expect((wrapper.emitted('update:modelValue')?.at(-1)?.[0] as FieldDefinition[])[0]!.formula).toBeNull()
+    })
+
+    it('does not offer rules for groups, task questions nor group columns', () => {
+      expect(mount(FieldDefinitionDefsEditor, { props: { modelValue: [{ ...def, type: 'REPEATABLE_GROUP', fields: [] }] } }).find('[data-testid="field-def-rules"]').exists()).toBe(false)
+      expect(mount(FieldDefinitionDefsEditor, { props: { modelValue: [def], mode: 'task' } }).find('[data-testid="field-def-rules"]').exists()).toBe(false)
+      expect(mount(FieldDefinitionDefsEditor, { props: { modelValue: [def], mode: 'subfields' } }).find('[data-testid="field-def-rules"]').exists()).toBe(false)
+    })
+  })
 })

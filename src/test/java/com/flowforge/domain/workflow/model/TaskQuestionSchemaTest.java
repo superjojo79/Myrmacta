@@ -28,6 +28,18 @@ class TaskQuestionSchemaTest {
     }
 
     @Test
+    void constructor_rejectsFieldRules() {
+        // TODO §80 : les règles de champs s'évaluent à l'enregistrement du dossier, pas sur une question de tâche.
+        for (FieldDefinition withRule : List.of(
+                new FieldDefinition("a", "A", FieldType.NUMBER, false, null, null, null, false, null, null, null, "1", null, null),
+                new FieldDefinition("b", "B", FieldType.STRING, false, null, null, null, false, null, null, null, null, "true", null),
+                new FieldDefinition("c", "C", FieldType.STRING, false, null, null, null, false, null, null, null, null, null, "true"))) {
+            assertThatThrownBy(() -> new TaskQuestionSchema(ID, TENANT, "key", "Label", List.of(withRule), "u", "u"))
+                    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("rules");
+        }
+    }
+
+    @Test
     void constructor_rejectsBlankFields() {
         assertThatThrownBy(() -> new TaskQuestionSchema(ID, TENANT, "key", "Label", List.of(), "u", "u"))
                 .isInstanceOf(IllegalArgumentException.class);

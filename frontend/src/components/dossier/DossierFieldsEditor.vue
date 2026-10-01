@@ -6,6 +6,8 @@ import { diffDossierFields } from '@/dossier/diffDossierFields'
 
 const props = defineProps<{
   definitions: FieldDefinition[]
+  /** TODO §80 : code du type (règles : champs calculés, visibilité, obligations — évaluées côté serveur pendant la saisie). */
+  typeCode?: string
   fields: Record<string, unknown>
   canEdit: boolean
   locked: boolean
@@ -42,6 +44,7 @@ function save() {
       :definitions="definitions"
       :readonly="!editable"
       :apply-defaults="false"
+      :type-code="typeCode"
     />
     <button
       v-if="editable"

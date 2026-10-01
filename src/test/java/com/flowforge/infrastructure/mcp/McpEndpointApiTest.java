@@ -63,7 +63,8 @@ class McpEndpointApiTest {
             "redeploy_decision_table",
             "list_bpmn_building_blocks",
             "validate_expression",
-            "evaluate_expression");
+            "evaluate_expression",
+            "evaluate_dossier_rules");
 
     @Autowired
     private MockMvc mockMvc;

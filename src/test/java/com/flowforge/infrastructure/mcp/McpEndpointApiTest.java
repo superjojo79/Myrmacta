@@ -68,7 +68,9 @@ class McpEndpointApiTest {
             "list_pending_drafts",
             "publish_draft",
             "export_configuration",
-            "import_configuration");
+            "import_configuration",
+            "define_document_template",
+            "preview_document");
 
     @Autowired
     private MockMvc mockMvc;

@@ -112,11 +112,12 @@ describe('admin actions coverage', () => {
     vi.mocked(adminApi.newDocumentTemplateVersion).mockResolvedValue({} as never)
     const wrapper = await mountView(TemplatesAdminView, '/admin/templates')
     await flushPromises()
-    const buttons = wrapper.findAll('li button')
-    await buttons[0].trigger('click') // Renommer
-    await buttons[1].trigger('click') // Activer
-    await buttons[2].trigger('click') // Archiver
-    await buttons[3].trigger('click') // Nouvelle version
+    // par libellé : un brouillon porte aussi « Modifier le contenu » (éditeur visuel, LC4b)
+    const button = (label: string) => wrapper.findAll('li button').find((b) => b.text() === label)!
+    await button('Renommer').trigger('click')
+    await button('Activer').trigger('click')
+    await button('Archiver').trigger('click')
+    await button('Nouvelle version').trigger('click')
     await flushPromises()
     expect(adminApi.updateDocumentTemplate).toHaveBeenCalled()
     expect(adminApi.activateDocumentTemplate).toHaveBeenCalled()

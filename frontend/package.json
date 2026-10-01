@@ -20,6 +20,11 @@
   },
   "dependencies": {
     "@primevue/themes": "^4.5.4",
+    "@tiptap/extension-table": "^3.31.4",
+    "@tiptap/extension-text-align": "^3.31.4",
+    "@tiptap/pm": "^3.31.4",
+    "@tiptap/starter-kit": "^3.31.4",
+    "@tiptap/vue-3": "^3.31.4",
     "axios": "^1.19.0",
     "bpmn-js": "^18.24.0",
     "bpmn-js-properties-panel": "^5.65.0",

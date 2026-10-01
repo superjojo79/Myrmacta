@@ -36,6 +36,7 @@ class BatchImportConnectorTriggerJobTest {
     void setUp() {
         connectorInstanceRepository = mock(ConnectorInstanceRepository.class);
         scheduleStateRepository = mock(ConnectorScheduleStateRepository.class);
+        when(scheduleStateRepository.claimTrigger(any(), any(), any())).thenReturn(true);
         connectorTriggerRuntime = mock(ConnectorTriggerRuntime.class);
         job = new BatchImportConnectorTriggerJob(
                 connectorInstanceRepository,
@@ -54,7 +55,7 @@ class BatchImportConnectorTriggerJobTest {
         job.process(NOW);
 
         verify(connectorTriggerRuntime).onIncomingEvent(instance, Map.of());
-        verify(scheduleStateRepository).upsert(instance.id(), NOW);
+        verify(scheduleStateRepository).claimTrigger(eq(instance.id()), any(), eq(NOW));
     }
 
     @Test
@@ -67,7 +68,7 @@ class BatchImportConnectorTriggerJobTest {
         job.process(NOW);
 
         verify(connectorTriggerRuntime, never()).onIncomingEvent(any(), any());
-        verify(scheduleStateRepository, never()).upsert(eq(instance.id()), any());
+        verify(scheduleStateRepository, never()).claimTrigger(eq(instance.id()), any(), any());
     }
 
     @Test
@@ -103,7 +104,7 @@ class BatchImportConnectorTriggerJobTest {
         job.process(NOW);
 
         verify(connectorTriggerRuntime).onIncomingEvent(instance, Map.of());
-        verify(scheduleStateRepository).upsert(instance.id(), NOW);
+        verify(scheduleStateRepository).claimTrigger(eq(instance.id()), any(), eq(NOW));
     }
 
     @Test
@@ -116,7 +117,7 @@ class BatchImportConnectorTriggerJobTest {
 
         job.process(NOW);
 
-        verify(scheduleStateRepository).upsert(instance.id(), NOW);
+        verify(scheduleStateRepository).claimTrigger(eq(instance.id()), any(), eq(NOW));
     }
 
     @Test
@@ -132,8 +133,8 @@ class BatchImportConnectorTriggerJobTest {
         job.process(NOW);
 
         verify(connectorTriggerRuntime).onIncomingEvent(healthy, Map.of());
-        verify(scheduleStateRepository).upsert(healthy.id(), NOW);
-        verify(scheduleStateRepository, never()).upsert(eq(failing.id()), any());
+        verify(scheduleStateRepository).claimTrigger(eq(healthy.id()), any(), eq(NOW));
+        verify(scheduleStateRepository).releaseTrigger(eq(failing.id()), any(), eq(NOW));
     }
 
     @Test
@@ -156,5 +157,37 @@ class BatchImportConnectorTriggerJobTest {
                         "cronExpression", cronExpression,
                         "processKey", "smokeProcess",
                         "dossierTypeCode", "CLAIM"));
+    }
+
+    // ---- TODO §79 (D5) : le créneau est pris avant le déclenchement ---------------------------------------------------
+
+    @Test
+    void process_slotClaimedByAnotherExecutor_doesNotTrigger() {
+        ConnectorInstanceData instance = batchImportInstance("0 * * * * *");
+        when(connectorInstanceRepository.listByTenantId(TENANT)).thenReturn(List.of(instance));
+        when(scheduleStateRepository.findLastTriggeredAt(instance.id()))
+                .thenReturn(Optional.of(Instant.parse("2026-09-01T11:59:00Z")));
+        when(scheduleStateRepository.claimTrigger(any(), any(), any())).thenReturn(false);
+
+        job.process(NOW);
+
+        verify(connectorTriggerRuntime, never()).onIncomingEvent(any(), any());
+        verify(scheduleStateRepository, never()).releaseTrigger(any(), any(), any());
+    }
+
+    @Test
+    void process_claimsWithTheObservedLastTriggerThenReleasesItWhenTheTriggerFails() {
+        ConnectorInstanceData instance = batchImportInstance("0 * * * * *");
+        Instant last = Instant.parse("2026-09-01T11:59:00Z");
+        when(connectorInstanceRepository.listByTenantId(TENANT)).thenReturn(List.of(instance));
+        when(scheduleStateRepository.findLastTriggeredAt(instance.id())).thenReturn(Optional.of(last));
+        org.mockito.Mockito.doThrow(new RuntimeException("boom")).when(connectorTriggerRuntime).onIncomingEvent(any(), any());
+
+        job.process(NOW);
+
+        var order = org.mockito.Mockito.inOrder(scheduleStateRepository, connectorTriggerRuntime);
+        order.verify(scheduleStateRepository).claimTrigger(instance.id(), last, NOW);
+        order.verify(connectorTriggerRuntime).onIncomingEvent(any(), any());
+        order.verify(scheduleStateRepository).releaseTrigger(instance.id(), last, NOW);
     }
 }

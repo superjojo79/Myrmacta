@@ -162,6 +162,23 @@ class BatchImportEndToEndIT {
         public void upsert(UUID connectorInstanceId, Instant triggeredAt) {
             lastTriggeredAt.put(connectorInstanceId, triggeredAt);
         }
+
+        @Override
+        public boolean claimTrigger(UUID connectorInstanceId, Instant expectedLast, Instant claimedAt) {
+            if (expectedLast == null) {
+                return lastTriggeredAt.putIfAbsent(connectorInstanceId, claimedAt) == null;
+            }
+            return lastTriggeredAt.replace(connectorInstanceId, expectedLast, claimedAt);
+        }
+
+        @Override
+        public void releaseTrigger(UUID connectorInstanceId, Instant previousLast, Instant claimedAt) {
+            if (previousLast == null) {
+                lastTriggeredAt.remove(connectorInstanceId, claimedAt);
+            } else {
+                lastTriggeredAt.replace(connectorInstanceId, claimedAt, previousLast);
+            }
+        }
     }
 
     private static final class NoOpOutbox implements OutboxRepository {

@@ -18,6 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 public class JpaNotificationOutboxRepositoryAdapter implements NotificationOutboxRepository {
 
+    /** Durée pendant laquelle une ligne prise n'est plus proposée à un autre exécutant (au-delà : exécutant présumé mort). */
+    static final java.time.Duration CLAIM_LEASE = java.time.Duration.ofMinutes(5);
+
     private final SpringDataNotificationOutboxRepository repository;
 
     JpaNotificationOutboxRepositoryAdapter(SpringDataNotificationOutboxRepository repository) {
@@ -50,15 +53,25 @@ public class JpaNotificationOutboxRepositoryAdapter implements NotificationOutbo
         return List.copyOf(ids);
     }
 
+    /**
+     * D5 (TODO §79) : renvoie uniquement les lignes que <b>cet</b> exécutant a prises (bail de {@link #CLAIM_LEASE}).
+     * Deux pods qui interrogent en même temps se partagent les lignes au lieu de les envoyer chacun.
+     */
+    // Volontairement SANS transaction englobante : chaque prise est son propre UPDATE atomique (méthode transactionnelle du
+    // dépôt). Une transaction unique verrouillerait plusieurs lignes dans un ordre variable et provoquerait des interblocages
+    // entre exécutants concurrents.
     @Override
-    @Transactional
     public List<NotificationOutboxRecord> lockNextPending(int batchSize, Instant now) {
-        return repository
-                .findEligiblePending(
-                        NotificationOutboxStatus.PENDING, now, PageRequest.of(0, Math.max(batchSize, 0)))
-                .stream()
-                .map(NotificationOutboxJpaEntity::toDomain)
-                .toList();
+        Instant leaseUntil = now.plus(CLAIM_LEASE);
+        List<NotificationOutboxRecord> claimed = new ArrayList<>();
+        for (NotificationOutboxJpaEntity candidate : repository.findEligiblePending(
+                NotificationOutboxStatus.PENDING, now, PageRequest.of(0, Math.max(batchSize, 0)))) {
+            NotificationOutboxRecord record = candidate.toDomain();
+            if (repository.claim(record.id(), NotificationOutboxStatus.PENDING, record.nextAttemptAt(), leaseUntil, now) == 1) {
+                claimed.add(record);
+            }
+        }
+        return List.copyOf(claimed);
     }
 
     @Override

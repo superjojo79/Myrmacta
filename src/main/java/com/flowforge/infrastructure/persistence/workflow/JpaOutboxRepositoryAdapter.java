@@ -28,13 +28,23 @@ class JpaOutboxRepositoryAdapter implements OutboxRepository {
                 .toDomain();
     }
 
+    /** Durée pendant laquelle une ligne prise n'est plus proposée à un autre exécutant (au-delà : exécutant présumé mort). */
+    static final java.time.Duration CLAIM_LEASE = java.time.Duration.ofMinutes(5);
+
+    // SANS transaction englobante : chaque prise est un UPDATE atomique distinct (pas d'interblocage entre exécutants).
     @Override
-    @Transactional
     public List<OutboxEvent> lockNextPending(int batchSize) {
-        return repository.findByStatusOrderByCreatedAtAsc(OutboxStatus.PENDING).stream()
-                .limit(batchSize)
-                .map(OutboxEventJpaEntity::toDomain)
-                .toList();
+        Instant now = Instant.now();
+        Instant leaseUntil = now.plus(CLAIM_LEASE);
+        List<OutboxEvent> claimed = new java.util.ArrayList<>();
+        for (OutboxEventJpaEntity candidate : repository.findClaimable(
+                OutboxStatus.PENDING, now, org.springframework.data.domain.PageRequest.of(0, Math.max(batchSize, 0)))) {
+            OutboxEvent event = candidate.toDomain();
+            if (repository.claim(event.eventId(), OutboxStatus.PENDING, now, leaseUntil) == 1) {
+                claimed.add(event);
+            }
+        }
+        return List.copyOf(claimed);
     }
 
     @Override

@@ -49,6 +49,9 @@ class WorkflowPersistenceTest {
     private SpringDataOutboxEventRepository springDataOutbox;
 
     @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    @Autowired
     private AttachWorkflowUseCase attachWorkflow;
 
     @Autowired
@@ -128,6 +131,67 @@ class WorkflowPersistenceTest {
         assertThat(outboxRepository.lockNextPending(10))
                 .extracting(stored -> stored.eventId())
                 .doesNotContain(event.eventId());
+    }
+
+    /** D5 (TODO §79) : deux relais qui interrogent en même temps ne reçoivent jamais le même événement. */
+    @Test
+    void outboxLockNextPending_concurrentRelaysNeverReceiveTheSameEvent() throws Exception {
+        java.util.Set<UUID> created = new java.util.HashSet<>();
+        for (int i = 0; i < 40; i++) {
+            created.add(outboxRepository.savePending(new TriggerOutboxPayload(
+                    UUID.randomUUID(), null, "smokeProcess", Map.of(), "trigger-conc-" + i)).eventId());
+        }
+        int relays = 6;
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(relays);
+        java.util.concurrent.CountDownLatch go = new java.util.concurrent.CountDownLatch(1);
+        try {
+            List<java.util.concurrent.Future<List<UUID>>> futures = new java.util.ArrayList<>();
+            for (int r = 0; r < relays; r++) {
+                futures.add(pool.submit(() -> {
+                    go.await();
+                    List<UUID> mine = new java.util.ArrayList<>();
+                    int emptyInARow = 0;
+                    for (int round = 0; round < 500 && emptyInARow < 3; round++) {
+                        var got = outboxRepository.lockNextPending(10);
+                        got.forEach(e -> mine.add(e.eventId()));
+                        emptyInARow = got.isEmpty() ? emptyInARow + 1 : 0;
+                    }
+                    return mine;
+                }));
+            }
+            go.countDown();
+            List<UUID> all = new java.util.ArrayList<>();
+            for (var f : futures) {
+                all.addAll(f.get());
+            }
+            // Un relais qui perd trois courses de suite s'arrête : on termine en série ce qui reste.
+            for (List<com.flowforge.domain.workflow.model.OutboxEvent> rest = outboxRepository.lockNextPending(100);
+                    !rest.isEmpty(); rest = outboxRepository.lockNextPending(100)) {
+                rest.forEach(e -> all.add(e.eventId()));
+            }
+            assertThat(all).as("aucun événement reçu par deux relais").doesNotHaveDuplicates();
+            assertThat(new java.util.HashSet<>(all)).containsAll(created);
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    @Test
+    void outboxAClaimedEventIsOfferedAgainOnlyAfterItsLeaseOrAFailure() {
+        var event = outboxRepository.savePending(new TriggerOutboxPayload(
+                UUID.randomUUID(), null, "smokeProcess", Map.of(), "trigger-lease"));
+        assertThat(outboxRepository.lockNextPending(500)).extracting(e -> e.eventId()).contains(event.eventId());
+        assertThat(outboxRepository.lockNextPending(500)).extracting(e -> e.eventId()).doesNotContain(event.eventId());
+
+        // Exécutant mort : le bail échoit.
+        jdbc.update("update outbox_event set claimed_until = ? where event_id = ?",
+                java.sql.Timestamp.from(Instant.now().minusSeconds(1)), event.eventId());
+        assertThat(outboxRepository.lockNextPending(500)).extracting(e -> e.eventId()).contains(event.eventId());
+
+        // Échec signalé : le bail est levé, retry immédiat comme avant.
+        outboxRepository.recordFailure(event.eventId(), "boom", 5);
+        assertThat(outboxRepository.lockNextPending(500)).extracting(e -> e.eventId()).contains(event.eventId());
+        outboxRepository.markProcessed(event.eventId());
     }
 
     @Test

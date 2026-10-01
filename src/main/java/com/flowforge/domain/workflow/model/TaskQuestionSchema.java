@@ -76,6 +76,12 @@ public record TaskQuestionSchema(
                 throw new IllegalArgumentException("FieldType." + field.type()
                         + " is not supported by TaskQuestionSchema yet (field: " + field.name() + ")");
             }
+            // TODO §80 (D1, règles) : calcul, visibilité et obligation conditionnelle s'évaluent sur les champs du dossier, à
+            // l'enregistrement du dossier — pas sur les réponses d'une question de tâche.
+            if (field.formula() != null || field.visibleWhen() != null || field.requiredWhen() != null) {
+                throw new IllegalArgumentException("field rules (formula, visibleWhen, requiredWhen) are not supported by "
+                        + "TaskQuestionSchema (field: " + field.name() + ")");
+            }
         }
     }
 

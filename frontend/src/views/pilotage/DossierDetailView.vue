@@ -188,6 +188,7 @@ async function confirmReassign() {
     <DossierFieldsEditor
       v-if="dossierType"
       :definitions="dossierType.fieldDefinitions"
+      :type-code="dossierType.code"
       :fields="dossier.fields"
       :can-edit="canEditDossier"
       :locked="fieldsLocked"

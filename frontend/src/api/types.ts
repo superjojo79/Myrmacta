@@ -39,6 +39,20 @@ export interface FieldDefinition {
   /** REPEATABLE_GROUP : bornes du nombre de lignes (défaut 0 et 100, plafond 500). */
   minRows?: number | null
   maxRows?: number | null
+  /** TODO §80 (D1, règles) : champ calculé (JSONata borné sur `dossier.fields.x`), recalculé à chaque enregistrement, en lecture seule. */
+  formula?: string | null
+  /** Le champ n'est applicable que si l'expression est vraie. */
+  visibleWhen?: string | null
+  /** Le champ est obligatoire si l'expression est vraie (en plus de `required`). */
+  requiredWhen?: string | null
+}
+
+/** Aperçu des règles d'un type pour des valeurs en cours de saisie (`POST /api/dossier-types/{code}/evaluate-rules`). */
+export interface FieldRulesPreview {
+  computed: Record<string, unknown>
+  hidden: string[]
+  requiredByRule: string[]
+  errors: Array<{ field: string; message: string }>
 }
 
 export interface DossierType {

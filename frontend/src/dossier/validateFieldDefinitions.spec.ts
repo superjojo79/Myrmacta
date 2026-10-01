@@ -141,4 +141,34 @@ describe('validateFieldDefinitions — structured types (TODO §76, D1)', () => 
     expect(errors.some((e) => e.includes('utilisé plusieurs fois') && e.includes('groupe « g »'))).toBe(true)
     expect(errors.some((e) => e.includes('nom du champ est obligatoire'))).toBe(true)
   })
+
+  describe('TODO §80 — règles (champ calculé, visibilité, obligation)', () => {
+    const base = { name: 'x', label: 'X', type: 'NUMBER' as const, required: false }
+
+    it('accepts well-formed rules', () => {
+      expect(
+        validateFieldDefinitions([
+          { ...base, name: 'a' },
+          { ...base, name: 'b', formula: 'dossier.fields.a * 2' },
+          { ...base, name: 'c', visibleWhen: 'dossier.fields.a > 1', requiredWhen: 'dossier.fields.a > 5' },
+        ]),
+      ).toEqual([])
+    })
+
+    it('a computed field is read-only: no required, default, sensitivity, other rule, group or file', () => {
+      const messages = (over: Partial<FieldDefinition>) => validateFieldDefinitions([{ ...base, formula: '1', ...over }]).join(' | ')
+      expect(messages({ required: true })).toContain('lecture seule')
+      expect(messages({ defaultValue: '5' })).toContain('lecture seule')
+      expect(messages({ sensitive: true })).toContain('ne peut pas être sensible')
+      expect(messages({ visibleWhen: 'true' })).toContain('lecture seule')
+      expect(messages({ requiredWhen: 'true' })).toContain('lecture seule')
+      expect(messages({ type: 'FILE' })).toContain('ne peut pas être calculé')
+    })
+
+    it('bounds an expression and refuses rules on a group sub-field', () => {
+      expect(validateFieldDefinitions([{ ...base, formula: '1 + '.repeat(600) + '1' }]).join(' ')).toContain('dépasse 2000')
+      const group = { name: 'g', label: 'G', type: 'REPEATABLE_GROUP' as const, required: false, fields: [{ ...base, visibleWhen: 'true' }] }
+      expect(validateFieldDefinitions([group]).join(' ')).toContain('ne peut pas porter de règle')
+    })
+  })
 })

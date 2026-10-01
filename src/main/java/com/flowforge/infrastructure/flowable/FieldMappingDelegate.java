@@ -10,6 +10,7 @@ import com.flowforge.domain.expression.port.out.ExpressionEnginePort;
 import com.flowforge.domain.workflow.palette.BlockAttributeRules;
 import com.flowforge.domain.workflow.palette.FieldMappingSpec;
 import com.flowforge.infrastructure.config.TenantProperties;
+import com.flowforge.infrastructure.security.SecurityAuditLog;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -76,19 +77,38 @@ class FieldMappingDelegate implements JavaDelegate {
         BusinessExpressionContext.Evaluated evaluated = BusinessExpressionContext.forExecution(
                 execution, getDossier, dossierTypes, tenantProperties, objectMapper);
 
+        // Revue D3b B4 : cibles déclarées seulement, même si le type tolère les champs inconnus — la brique n'en crée pas.
+        java.util.Set<String> declared = new java.util.HashSet<>();
+        evaluated.definitions().forEach(d -> declared.add(d.name()));
+        for (FieldMappingSpec.Entry entry : entries) {
+            if (!declared.contains(entry.field())) {
+                throw new IllegalStateException("field '" + entry.field() + "' mapped by " + activity
+                        + " is not declared on dossier type " + evaluated.dossier().dossierTypeCode());
+            }
+        }
+
         Map<String, Object> patch = new LinkedHashMap<>();
         for (FieldMappingSpec.Entry entry : entries) {
-            ExpressionResult result = engine.evaluate(entry.expression(), evaluated.context());
+            ExpressionResult result;
+            try {
+                result = engine.evaluate(entry.expression(), evaluated.context());
+            } catch (RuntimeException e) {
+                // Revue D3b B3 : nommer le champ et l'activité (le message du moteur seul ne dit pas quelle ligne a échoué).
+                throw new IllegalStateException("mapping of field '" + entry.field() + "' in " + activity + " failed: "
+                        + e.getMessage(), e);
+            }
             if (!result.defined() || result.value() == null) {
                 throw new IllegalStateException("mapping of field '" + entry.field() + "' in " + activity
                         + " produced no value; give it a default (e.g. `a.b ? a.b : 0`)");
             }
             patch.put(entry.field(), result.value());
         }
+        String author = authorOf(execution, activity);
+        UpdateDossierFieldsUseCase.UpdateDossierFieldsResult written;
         try {
-            updateFields.update(
+            written = updateFields.update(
                     new UpdateDossierFieldsUseCase.UpdateDossierFieldsCommand(
-                            evaluated.dossier().id(), patch, "workflow", null),
+                            evaluated.dossier().id(), patch, author, null),
                     AccessContext.system("flowable-field-mapping"));
         } catch (DossierFieldValidationException e) {
             // Les messages du validateur ne recopient jamais la valeur : on les remonte pour que l'auteur sache quel champ corriger.
@@ -98,6 +118,19 @@ class FieldMappingDelegate implements JavaDelegate {
             throw new IllegalStateException(
                     "the dossier rejected the values mapped by " + activity + " (nothing was written): " + detail);
         }
+        // Revue D3b M2 : même traçabilité que le chemin REST pour un champ sensible modifié (nom seulement, jamais la valeur).
+        if (written != null && written.sensitiveFieldsChanged() != null) {
+            for (String field : written.sensitiveFieldsChanged()) {
+                SecurityAuditLog.sensitiveFieldChangedByWorkflow(
+                        evaluated.dossier().id(), execution.getProcessInstanceId(), activity, field);
+            }
+        }
         LOG.debug("{} field(s) mapped by activity {}", patch.size(), activity);
+    }
+
+    /** Auteur de l'écriture : le process et l'activité qui l'ont faite (borné à la colonne {@code updated_by}). */
+    private static String authorOf(DelegateExecution execution, String activity) {
+        String author = "workflow:" + execution.getProcessInstanceId() + "/" + activity;
+        return author.length() <= 128 ? author : author.substring(0, 128);
     }
 }

@@ -30,6 +30,10 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
+- **TODO §78 (D3b)** — Nouvelle brique BPMN « Enregistrer des valeurs dans le dossier » : des expressions métier bornées (JSONata) tirent des valeurs du dossier, du résultat d'un
+  connecteur (`connectorResult.json` : corps lu comme JSON) et des variables, et les écrivent **en un seul patch** dans des champs déclarés du dossier (validation de type, version,
+  tout ou rien ; écriture de champ sensible auditée). Éditeur : paramètres multilignes en zone de texte. `connectorResult` devient une variable réservée.
+
 - **TODO §77 (D3a)** — Connecteur `http-rest` : authentification OAuth2 `client_credentials` (Microsoft Entra ID : D365 F&O, Dataverse, Graph). Jeton obtenu,
   mis en cache par pod et renouvelé automatiquement ; secret client ou certificat (`private_key_jwt`) chiffrés au repos ; liste d'hôtes autorisés obligatoire pour que
   le jeton ne puisse pas partir ailleurs ; un `401` provoque un renouvellement et un seul rejeu. Sans `authMode`, comportement inchangé.

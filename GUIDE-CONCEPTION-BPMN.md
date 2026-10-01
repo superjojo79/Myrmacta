@@ -365,8 +365,8 @@ Contraintes :
 
 L'éditeur (`/admin/bpmn-editor`) charge le **catalogue des briques** exposé par le serveur
 (`GET /api/bpmn-building-blocks`, outil MCP `list_bpmn_building_blocks`) : une seule source pour la
-palette, le panneau, la validation au déploiement et les agents. Douze briques, chacune = **un seul
-élément BPMN** pré-configuré (D-PALETTE-GRANULARITY). Douze briques depuis LC2 (§3sexies) :
+palette, le panneau, la validation au déploiement et les agents. Treize briques, chacune = **un seul
+élément BPMN** pré-configuré (D-PALETTE-GRANULARITY). Douze briques depuis LC2 (§3sexies), treize depuis D3b (§3septies) :
 
 | Brique | Élément | Marqueur XML reconnu |
 |---|---|---|
@@ -510,7 +510,31 @@ rien du tenant n'est lu, aucun effet de bord.
 
 > **Deux langages à ne pas confondre.** La condition de passerelle reste du JUEL restreint (`${fortEnjeu == true}` :
 > il faut un opérateur, un booléen nu est refusé) ; l'expression métier est du JSONata borné et ne vit que dans
-> `flowable:formula`. Les champs calculés et le mapping de réponse de connecteur s'appuieront sur ce même moteur.
+> `flowable:formula`. Le mapping de réponse de connecteur (§3septies) s'appuie sur ce même moteur.
+
+## 3septies. Enregistrer des valeurs dans le dossier — mapping d'une réponse de connecteur (TODO §78, D3b)
+
+Une réponse de connecteur n'atterrit que dans la variable `connectorResult` (`{status, body}`, `body` = texte). La brique
+**« Enregistrer des valeurs dans le dossier »** (`${fieldMappingTask}`) en tire des valeurs et les écrit dans des **champs du dossier**,
+par le chemin métier habituel (validation de type, normalisation, version) :
+
+```xml
+<serviceTask id="enrichir" flowable:delegateExpression="${fieldMappingTask}"
+    flowable:fieldMapping="score = connectorResult.json.score&#10;total = {&quot;amount&quot;: $string(connectorResult.json.total), &quot;currency&quot;: &quot;EUR&quot;}"/>
+```
+
+- **Une ligne par champ** : `champ = expression` (JSONata borné, comme §3sexies). Le séparateur est le **premier** `=` ; 20 champs au plus.
+  Dans l'éditeur, le paramètre est une zone de texte multiligne.
+- **`connectorResult.json`** est le corps de la réponse lu comme JSON (s'il est valide, ≤ 256 Ko, ≤ 24 niveaux) ; `connectorResult.body` reste le texte brut.
+  Un nombre qui perdrait de la précision comme double (plus de 15 chiffres significatifs) est fourni en **texte décimal exact** : `$string(connectorResult.json.total)`
+  le restitue tel quel (un montant ne s'arrondit pas en silence). Une réponse non JSON ou piégée n'a simplement pas de clé `json`.
+- **Tout ou rien** : toutes les expressions sont évaluées d'abord, puis écrites **en un seul patch**. Une expression sans valeur (chemin absent) ou `null` fait échouer l'activité
+  en nommant le champ — donnez une valeur par défaut (`connectorResult.json.score ? connectorResult.json.score : 0`). Une valeur refusée par le type (montant, devise…) fait
+  échouer l'activité, aucun champ n'est écrit.
+- **Cibles déclarées seulement** : un champ non déclaré sur le type du dossier est refusé, même si le type tolère les champs inconnus. Les champs **sensibles** ne sont jamais
+  lisibles par l'expression ; ils peuvent en revanche être la cible (l'écriture est tracée dans le journal d'audit : nom du champ, process et activité, jamais la valeur).
+- L'écriture est attribuée à `workflow:<processInstanceId>/<activité>`. L'attribut est **littéral** (jamais une variable de process) et validé au déploiement. La variable
+  `connectorResult` est **réservée** : une complétion de tâche ou un démarrage ne peut pas la forger.
 
 ## 4. Instancier / appeler un service externe
 
@@ -665,6 +689,7 @@ Référence rapide — `delegateExpression`, variables lues (entrée) et écrite
 | `${notificationDispatchTask}` | envoie une notification (outbox) | `notificationChannels` + champs selon canal (§6c) | — |
 | `${signatureRequestTask}` | demande une signature électronique (§3quater) | `signatureDocument`, `signatureMode`, `signatureDeadlineDays`, `<flowable:signer>` (attributs du bloc) | `signatureRequestId` ; à la reprise : `signatureOutcome` |
 | `${businessExpressionTask}` | évalue une expression métier bornée (§3sexies) | attributs littéraux `formula`, `formulaResult` ; lit le dossier (champs non sensibles), `connectorResult`, variables scalaires | la variable nommée par `formulaResult` |
+| `${fieldMappingTask}` | enregistre des valeurs calculées dans des champs du dossier, en un patch (§3septies) | attribut littéral `fieldMapping` (lignes `champ = expression`) ; lit le dossier (champs non sensibles), `connectorResult` (+ `json`), variables | champs du dossier |
 | `${createChildDossierTask}` | crée un dossier enfant/suite et démarre son workflow | `dossierId` (réservée), `childDossierTypeCode`, `childDossierLabel`, `workflowProcessKey`, `relationType` (`PARENT_CHILD` ou `SUBSEQUENT`), `childDossierFields`?, `childWorkflowVariables`? | — |
 
 Toutes ces classes vivent dans `src/main/java/com/flowforge/infrastructure/flowable/` — en cas

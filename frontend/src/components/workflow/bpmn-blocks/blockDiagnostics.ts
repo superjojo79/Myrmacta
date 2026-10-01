@@ -82,9 +82,14 @@ const UUID_SOURCES = new Set(['connectorInstances', 'notificationWebhooks'])
 const UUID_FORM = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const KEY_FORM = /^[A-Za-z0-9_.:-]+$/
 
+/** Le catalogue serveur publie `multiline` ; le repli sur le nom garde les anciens catalogues et les fixtures de test. */
+function isMultiline(param: BlockParameter): boolean {
+  return param.multiline ?? ['notificationBody', 'formula', 'fieldMapping'].includes(param.name)
+}
+
 function formatProblem(param: BlockParameter, raw: string): string | undefined {
   const value = raw.trim()
-  if (param.name !== 'notificationBody' && (raw !== value || /[\r\n\t]/.test(raw))) {
+  if (!isMultiline(param) && (raw !== value || /[\r\n\t]/.test(raw))) {
     return 'Espaces de bord ou retours à la ligne interdits : le déploiement refusera cette valeur.'
   }
   if (param.type === 'ENUM' && !param.enumValues.includes(value)) {

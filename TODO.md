@@ -1269,6 +1269,22 @@ migration, aucune variable d'environnement, aucun changement de SPA (formulaire 
 
 ---
 
+### [x] 78. Mapping d'une réponse de connecteur → champs du dossier (D3b) (livré)
+
+**Énoncé :** sous-lot **D3b**, analyse [34-integrations-entreprise.md](analysis%20doc/34-integrations-entreprise.md), sur le moteur d'expressions de LC2 (§75). Docs SDD :
+[requirements](docs/ai/requirements/2026-10-01-feature-d3b-mapping-reponse-connecteur.md), [design](docs/ai/design/2026-10-01-feature-d3b-mapping-reponse-connecteur.md),
+[implementation](docs/ai/implementation/2026-10-01-feature-d3b-mapping-reponse-connecteur.md), [testing](docs/ai/testing/2026-10-01-feature-d3b-mapping-reponse-connecteur.md).
+
+**Décisions.** D-INTEG-MAPPING-TARGET = champs du dossier seulement ; D-MAP-FORMAT = lignes `champ = expression` ; D-MAP-UNDEFINED = échec explicite ; D-MAP-ATOMIC = un patch, tout ou rien ;
+D-MAP-BODY-JSON = `connectorResult.json` fourni par le contexte (nombres exacts en texte au-delà de 15 chiffres) ; D-MAP-SENSITIVE = cible oui (auditée), source non ; D-MAP-TARGETS = cibles
+déclarées seulement ; D-MAP-RESERVED = `connectorResult` variable réservée.
+
+**Livré.** Delegate `fieldMappingTask` (allowlist étendue d'un seul bean), brique `map-fields` (catalogue, 13 briques), `FieldMappingSpec` (format), validation au déploiement (chaque expression), `BusinessExpressionContext`
+partagé (`json`), catalogue : drapeau `multiline` → zone de texte dans l'éditeur. Aucune migration. **Impacte :** `GUIDE-CONCEPTION-BPMN.md` (§3septies, §7), `analysis doc/34`, `ROADMAP.md`, `CHANGELOG.md`.
+**Revue adversariale** : voir le document d'implémentation.
+
+---
+
 ### [x] 19. Granularité des rôles RBAC
 
 **Clos V1 (2026-08-03 — feature `autorisation-conformite`) :** les cinq rôles

@@ -3505,6 +3505,24 @@ const BLOCK_CATALOG = {
       ],
     },
     {
+      id: 'map-fields',
+      label: 'Enregistrer des valeurs dans le dossier',
+      description: 'Enregistre des valeurs calculées dans des champs du dossier.',
+      category: 'DOSSIER',
+      element: 'SERVICE_TASK',
+      marker: { delegate: 'fieldMappingTask', serviceTaskType: null, formKeyPrefix: null, portalRecipient: false },
+      parameters: [
+        blockParam({
+          name: 'fieldMapping',
+          label: 'Valeurs à enregistrer',
+          type: 'TEXT',
+          required: true,
+          maxLength: 8000,
+          multiline: true,
+        }),
+      ],
+    },
+    {
       id: 'user-question',
       label: 'Question utilisateur',
       description: 'Tâche humaine.',
@@ -3776,6 +3794,43 @@ test('E2E-PALETTE-8 brique « Décision DMN » : la table se choisit dans la lis
   await expect.poll(() => putBody.length > 0).toBe(true)
   expect(putBody).toContain('decisionTableReferenceKey')
   expect(putBody).toContain('eligibilite')
+})
+
+test('E2E-PALETTE-9 brique « Enregistrer des valeurs » : le mapping multiligne s’édite dans une zone de texte sans faux avertissement (D3b)', async ({
+  page,
+}) => {
+  await mockBlockApis(page)
+  let putBody = ''
+  await page.route('**/api/workflow-bpmn-drafts/otherWorkflow', async (route) => {
+    if (route.request().method() === 'PUT') {
+      putBody = route.request().postData() ?? ''
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ processDefinitionKey: 'otherWorkflow', xml: '', updatedAt: '2026-10-01T00:00:00Z', updatedBy: 'u' }),
+      })
+      return
+    }
+    await route.fulfill({ status: 204, body: '' })
+  })
+  const xml = editableBpmn(
+    'otherWorkflow',
+    '<serviceTask id="map" name="Enrichir" flowable:delegateExpression="${fieldMappingTask}" flowable:fieldMapping="score = connectorResult.json.score&#10;ville = connectorResult.json.city"/>',
+    ['map'],
+  )
+  await openApp(page)
+  await openBpmnEditor(page)
+  await importBpmn(page, xml, 'map')
+  await page.locator('[data-element-id="map"]').click()
+  const area = page.getByLabel('Valeurs à enregistrer', { exact: true })
+  await expect(area).toHaveCount(1)
+  await expect(area).toHaveJSProperty('tagName', 'TEXTAREA')
+  await expect(area).toHaveValue('score = connectorResult.json.score\nville = connectorResult.json.city')
+  await expect(page.getByText('retours à la ligne interdits')).toHaveCount(0)
+  await area.fill('score = connectorResult.json.score\nville = connectorResult.json.city\nratio = 1')
+  await page.getByRole('button', { name: 'Enregistrer le brouillon' }).click()
+  await expect.poll(() => putBody.length > 0).toBe(true)
+  expect(putBody).toContain('ratio = 1')
 })
 
 test('E2E-PALETTE-7 brique posée sur un diagramme importé sans xmlns:flowable : le marqueur survit à l’export (revue I3)', async ({

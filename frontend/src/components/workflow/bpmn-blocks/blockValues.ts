@@ -97,7 +97,9 @@ export function writeValue(
 ): void {
   ensureFlowableNamespace(bo)
   // Revue I2 : le déploiement refuse les espaces de bord ; on n'en écrit jamais (sauf le corps multi-lignes).
-  if (value !== undefined && param.name !== 'notificationBody') value = value.trim()
+  if (value !== undefined && !(param.multiline ?? ['notificationBody', 'formula', 'fieldMapping'].includes(param.name))) {
+    value = value.trim()
+  }
   const empty = value === undefined || value === ''
   switch (param.binding) {
     case 'FIELD_ELEMENT':

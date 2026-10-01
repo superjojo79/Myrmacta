@@ -8,8 +8,8 @@
 | 2 | LC2 langage d'expression métier | **Livré** (TODO §75) | 10 | voir `git log` (feat(expression), fix(expression)) | verify 2734/0 échec · Vitest 499 · Playwright 106 | 3 passes : 4 Critiques + 1 Haute trouvées puis corrigées, passe 3 = 0 Crit./Haut. | ⚠ D-EXPR-LANGUAGE, -ALLOWLIST, -WEIGHT-FUEL, -BOUNDED-FUNCTIONS, -AST-BRIDGE, -ALLOC-GUARD, -UNDEFINED, -CONTEXT, -REQUEST-SIZE |
 | 3 | D1 types de champs | **Livré** (TODO §76) | 10 | voir `git log` (feat(champs)) | verify 2780/0 échec · Vitest 539 · Playwright 110 | 1 passe : 0 Crit./Haut., Moyens et Bas traités ; résidu M4 | ⚠ D-CHAMPS-MONEY (texte décimal), -REPEAT, -SENSITIVE, -USERQ, M4 plafond de corps HTTP |
 | 4 | D3a OAuth2 client credentials | **Livré** (TODO §77) | 10 | voir `git log` (feat(connecteurs)) | verify 2825/0 échec · SPA inchangée (Vitest 539 · Playwright 110 au dernier run) | 1 passe : 0 Crit./Haut., 2 Moyens + 6 Bas traités | ⚠ D-INTEG-OAUTH-SCOPE (certificat), -HOSTS (hôtes obligatoires), -WILDCARD |
-| 5 | D5 audit jobs planifiés | À faire | – | – | – | – | – |
-| 6 | D3b mapping + D1 champs calculés | À faire | – | – | – | – | – |
+| 5 | D5 audit jobs planifiés | **En cours** — audit fait, correctifs en cours (branche de travail d5-work) | 6 | – | – | – | ⚠ D-JOBS-TRIGGER (corriger dès maintenant) |
+| 6 | D3b mapping + D1 champs calculés | **En cours** — D3b **livré** (TODO §78), D1 champs calculés / visibilité à faire | 10 (D3b) | voir `git log` (feat(workflow)) | D3b : verify 2857/0 échec · Vitest 543 · Playwright 111 | D3b : 1 passe, 0 Crit./Haut., 3 Moyens + 4 Bas traités | ⚠ D-MAP-RESERVED (variable `connectorResult` réservée) |
 | 7 | D2 recherche champs dynamiques | À faire | – | – | – | – | – |
 | 8 | D6 socle MCP low-code | À faire | – | – | – | – | – |
 | 9 | D4 promotion de configuration | À faire | – | – | – | – | – |

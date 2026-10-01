@@ -24,6 +24,8 @@ export interface BlockParameter {
   min: number | null
   max: number | null
   help: string | null
+  /** Paramètre pouvant s'étendre sur plusieurs lignes (publié par le catalogue ; absent des anciens catalogues). */
+  multiline?: boolean
 }
 
 export interface BlockMarker {

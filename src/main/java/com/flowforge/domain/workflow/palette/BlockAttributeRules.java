@@ -22,7 +22,7 @@ public final class BlockAttributeRules {
     private static final Pattern KEY = Pattern.compile("[A-Za-z0-9_.:-]+");
     private static final Set<String> KEY_TEXT = Set.of("documentVariant", "documentLocale");
     /** Paramètres pouvant s'étendre sur plusieurs lignes (texte libre ou expression). */
-    private static final Set<String> MULTILINE = Set.of("notificationBody", "formula", "fieldMapping");
+    private static final Set<String> MULTILINE = BlockParameter.MULTILINE_NAMES;
 
     /**
      * TODO §75 — delegates qui ne lisent <b>que</b> l'attribut littéral, jamais une variable de même nom : une variable de

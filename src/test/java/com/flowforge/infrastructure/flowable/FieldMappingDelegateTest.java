@@ -87,7 +87,14 @@ class FieldMappingDelegateTest {
         when(type.fieldDefinitions()).thenReturn(List.of(
                 new FieldDefinition("montant", "Montant", FieldType.NUMBER, false, null, null, null, false),
                 new FieldDefinition("iban", "IBAN", FieldType.STRING, false, null, null, null, true),
-                new FieldDefinition("score", "Score", FieldType.NUMBER, false, null, null, null, false)));
+                new FieldDefinition("score", "Score", FieldType.NUMBER, false, null, null, null, false),
+                new FieldDefinition("ville", "Ville", FieldType.STRING, false, null, null, null, false),
+                new FieldDefinition("ratio", "Ratio", FieldType.NUMBER, false, null, null, null, false),
+                new FieldDefinition("texte", "Texte", FieldType.STRING, false, null, null, null, false),
+                new FieldDefinition("statut", "Statut", FieldType.STRING, false, null, null, null, false),
+                new FieldDefinition("copie", "Copie", FieldType.STRING, false, null, null, null, false),
+                new FieldDefinition("a", "A", FieldType.NUMBER, false, null, null, null, false),
+                new FieldDefinition("b", "B", FieldType.NUMBER, false, null, null, null, false)));
         when(types.findByCode("tenant_dev", "SINISTRE")).thenReturn(Optional.of(type));
     }
 
@@ -202,5 +209,58 @@ class FieldMappingDelegateTest {
         String huge = "{\"a\":\"" + "x".repeat(BusinessExpressionContext.MAX_PARSED_BODY_CHARS) + "\"}";
         delegate().execute(execution("statut = $string(connectorResult.status)", variables(Map.of("status", 200, "body", huge))));
         assertThat(writtenPatch()).containsEntry("statut", "200");
+    }
+
+    @Test
+    void aTargetThatTheTypeDoesNotDeclareIsRefusedEvenIfUnknownFieldsAreAllowed() {
+        givenDossier();
+        DelegateExecution execution = execution("dump = $\nscore = 1", variables(null));
+        assertThatThrownBy(() -> delegate().execute(execution))
+                .hasMessageContaining("'dump'").hasMessageContaining("not declared");
+        verify(update, never()).update(any(), any());
+    }
+
+    @Test
+    void anEvaluationErrorNamesTheFieldAndTheActivity() {
+        givenDossier();
+        assertThatThrownBy(() -> delegate().execute(execution("score = 1\nville = 'x' + 1", variables(null))))
+                .hasMessageContaining("'ville'").hasMessageContaining("map");
+        verify(update, never()).update(any(), any());
+    }
+
+    @Test
+    void theWriteIsAttributedToTheProcessAndTheActivity() {
+        givenDossier();
+        DelegateExecution execution = execution("score = 1", variables(null));
+        when(execution.getProcessInstanceId()).thenReturn("pi-42");
+
+        delegate().execute(execution);
+
+        ArgumentCaptor<UpdateDossierFieldsUseCase.UpdateDossierFieldsCommand> captor =
+                ArgumentCaptor.forClass(UpdateDossierFieldsUseCase.UpdateDossierFieldsCommand.class);
+        verify(update).update(captor.capture(), any(AccessContext.class));
+        assertThat(captor.getValue().updatedBy()).isEqualTo("workflow:pi-42/map");
+    }
+
+    @Test
+    void aSensitiveFieldWrittenByTheMappingIsAudited() {
+        givenDossier();
+        when(update.update(any(), any())).thenReturn(
+                new UpdateDossierFieldsUseCase.UpdateDossierFieldsResult(null, List.of("iban")));
+        DelegateExecution execution = execution("iban = \"FR7630001007941234567890185\"", variables(null));
+        when(execution.getProcessInstanceId()).thenReturn("pi-7");
+        ch.qos.logback.classic.Logger audit =
+                (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger("SECURITY_AUDIT");
+        ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> appender = new ch.qos.logback.core.read.ListAppender<>();
+        appender.start();
+        audit.addAppender(appender);
+        try {
+            delegate().execute(execution);
+        } finally {
+            audit.detachAppender(appender);
+        }
+        assertThat(appender.list).extracting(e -> e.getFormattedMessage())
+                .anySatisfy(m -> assertThat(m).contains("sensitive_field_changed", "source=workflow", "pi-7", "map", "field=iban")
+                        .doesNotContain("FR7630001007941234567890185"));
     }
 }

@@ -69,10 +69,20 @@ final class BusinessExpressionContext {
 
     /** Au-delà, le corps n'est pas analysé : une réponse volumineuse ne doit pas faire échouer toute expression. */
     static final int MAX_PARSED_BODY_CHARS = 256 * 1024;
+    /** Profondeur max exposée (le moteur refuse 32 niveaux au total ; {@code connectorResult.json} en consomme 2). */
+    static final int MAX_PARSED_DEPTH = 24;
+    /** Chiffres significatifs qu'un double représente exactement : au-delà, le nombre est exposé en texte décimal exact. */
+    static final int MAX_EXACT_DIGITS = 15;
 
     /**
      * D3b : {@code connectorResult.body} est du <b>texte</b> et le moteur ne sait pas l'analyser ({@code $eval} est interdit).
-     * Quand c'est du JSON valide et de taille raisonnable, on l'expose lu sous {@code connectorResult.json}.
+     * Quand c'est du JSON valide, borné en taille et en profondeur, on l'expose lu sous {@code connectorResult.json} ; sinon
+     * la clé est omise — jamais d'échec : une réponse piégée (profondeur, nombres hors plage) ne doit pas bloquer les
+     * expressions qui n'y touchent pas (revue D3b M1).
+     *
+     * <p>Les nombres sont lus en décimal exact : un nombre qui perdrait de la précision comme double (plus de
+     * {@value #MAX_EXACT_DIGITS} chiffres significatifs ou hors plage) est exposé en <b>texte</b> décimal exact, que
+     * {@code $string} restitue tel quel — un montant ne s'arrondit pas en silence (B2).
      */
     private static Object withParsedBody(Object connectorResult, ObjectMapper objectMapper) {
         if (!(connectorResult instanceof Map<?, ?> map) || !(map.get("body") instanceof String body)
@@ -80,17 +90,46 @@ final class BusinessExpressionContext {
             return connectorResult;
         }
         try {
-            Object parsed = objectMapper.readValue(body, Object.class);
+            Object parsed = objectMapper.readerFor(Object.class)
+                    .with(tools.jackson.databind.DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
+                    .readValue(body);
             if (!(parsed instanceof Map<?, ?>) && !(parsed instanceof List<?>)) {
                 return connectorResult;
             }
+            Object safe = sanitize(parsed, 0);
             Map<String, Object> copy = new LinkedHashMap<>();
             map.forEach((k, v) -> copy.put(String.valueOf(k), v));
-            copy.put("json", parsed);
+            copy.put("json", safe);
             return copy;
-        } catch (RuntimeException notJson) {
+        } catch (RuntimeException notUsable) {
             return connectorResult;
         }
+    }
+
+    private static Object sanitize(Object value, int depth) {
+        if (depth > MAX_PARSED_DEPTH) {
+            throw new IllegalArgumentException("too deep");
+        }
+        return switch (value) {
+            case null -> null;
+            case Map<?, ?> m -> {
+                Map<String, Object> out = new LinkedHashMap<>();
+                m.forEach((k, v) -> out.put(String.valueOf(k), sanitize(v, depth + 1)));
+                yield out;
+            }
+            case List<?> l -> l.stream().map(v -> sanitize(v, depth + 1)).toList();
+            case java.math.BigDecimal d -> exactNumber(d);
+            case java.math.BigInteger i -> i.bitLength() <= 53 ? (Object) i.longValue() : i.toString();
+            default -> value;
+        };
+    }
+
+    private static Object exactNumber(java.math.BigDecimal d) {
+        double asDouble = d.doubleValue();
+        if (d.precision() > MAX_EXACT_DIGITS || Double.isInfinite(asDouble) || Double.isNaN(asDouble)) {
+            return d.toPlainString().length() > 400 ? d.toString() : d.toPlainString();
+        }
+        return asDouble;
     }
 
     /**
@@ -120,10 +159,10 @@ final class BusinessExpressionContext {
         }
         Map<String, Object> context = build(
                 dossier, definitions, execution.getVariable("connectorResult"), execution.getVariables(), objectMapper);
-        return new Evaluated(dossier, context);
+        return new Evaluated(dossier, definitions, context);
     }
 
-    record Evaluated(Dossier dossier, Map<String, Object> context) {}
+    record Evaluated(Dossier dossier, List<FieldDefinition> definitions, Map<String, Object> context) {}
 
     private static Object scalar(Object value) {
         return switch (value) {

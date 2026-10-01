@@ -36,8 +36,15 @@ public final class WorkflowVariables {
      */
     public static final String DOSSIER_FIELDS = "dossierFields";
 
+    /**
+     * Résultat du dernier appel de connecteur : écrit par {@code ConnectorServiceTask} seulement. Réservé (TODO §78, revue D3b B1) :
+     * sinon une complétion de tâche pourrait forger un « résultat de connecteur » que la brique de mapping écrirait ensuite dans
+     * le dossier sous l'identité système (blanchiment de provenance).
+     */
+    public static final String CONNECTOR_RESULT = "connectorResult";
+
     private static final Set<String> RESERVED =
-            Set.of(DOSSIER_ID, DOSSIER_WORKFLOW_LINK_ID, TENANT_ID, DOSSIER_FIELDS);
+            Set.of(DOSSIER_ID, DOSSIER_WORKFLOW_LINK_ID, TENANT_ID, DOSSIER_FIELDS, CONNECTOR_RESULT);
 
     /**
      * Business (non-platform) variable names already claimed by another task form kind —

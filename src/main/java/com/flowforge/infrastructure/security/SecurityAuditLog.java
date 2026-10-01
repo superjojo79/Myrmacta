@@ -56,6 +56,17 @@ public final class SecurityAuditLog {
                 field);
     }
 
+    /** Même événement que {@link #sensitiveFieldChanged}, pour une écriture faite par un process (aucune requête HTTP). */
+    public static void sensitiveFieldChangedByWorkflow(
+            UUID dossierId, String processInstanceId, String activityId, String field) {
+        LOGGER.info(
+                "event=sensitive_field_changed source=workflow processInstanceId={} activityId={} dossierId={} field={}",
+                processInstanceId,
+                activityId,
+                dossierId,
+                field);
+    }
+
     public static void dossierRead(HttpServletRequest request, Authentication authentication, UUID dossierId) {
         LOGGER.info(
                 "event=dossier_read method={} path={} principal={} dossierId={}",

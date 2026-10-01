@@ -47,9 +47,12 @@ class BuildingBlockApiTest {
             mockMvc.perform(get("/api/bpmn-building-blocks").with(as(role)))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.version").value(1))
-                    .andExpect(jsonPath("$.blocks.length()").value(12))
+                    .andExpect(jsonPath("$.blocks.length()").value(13))
                     .andExpect(jsonPath("$.blocks[0].id").value("generate-document"))
-                    .andExpect(jsonPath("$.blocks[0].parameters[0].name").value("documentType"));
+                    .andExpect(jsonPath("$.blocks[0].parameters[0].name").value("documentType"))
+                    // D3b : l'éditeur ne propose une zone de texte que pour les paramètres multilignes publiés par le catalogue.
+                    .andExpect(jsonPath("$.blocks[0].parameters[0].multiline").value(false))
+                    .andExpect(jsonPath("$.blocks[?(@.id=='map-fields')].parameters[0].multiline").value(true));
         }
     }
 

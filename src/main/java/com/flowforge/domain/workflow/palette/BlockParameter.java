@@ -19,7 +19,27 @@ public record BlockParameter(
         int maxLength,
         Integer min,
         Integer max,
-        String help) {
+        String help,
+        boolean multiline) {
+
+    /** Paramètres pouvant s'étendre sur plusieurs lignes (texte libre ou expression) — publié dans le catalogue pour l'éditeur. */
+    public static final java.util.Set<String> MULTILINE_NAMES = java.util.Set.of("notificationBody", "formula", "fieldMapping");
+
+    public BlockParameter(
+            String name,
+            String label,
+            ParameterType type,
+            ParameterBinding binding,
+            boolean required,
+            String valueSource,
+            List<String> enumValues,
+            int maxLength,
+            Integer min,
+            Integer max,
+            String help) {
+        this(name, label, type, binding, required, valueSource, enumValues, maxLength, min, max, help,
+                MULTILINE_NAMES.contains(name));
+    }
 
     public BlockParameter {
         Objects.requireNonNull(name, "name");

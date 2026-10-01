@@ -94,4 +94,68 @@ class BusinessExpressionContextTest {
         assertThat(fields).containsOnlyKeys("montant");
         assertThat(ctx.toString()).doesNotContain("FR7630001007941234567890185").doesNotContain("valeur");
     }
+
+    // ---- D3b (TODO §78) : connectorResult.json ----------------------------------------------------------------------
+
+    private static final tools.jackson.databind.ObjectMapper MAPPER = new tools.jackson.databind.ObjectMapper();
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> connector(String body) {
+        Map<String, Object> ctx = BusinessExpressionContext.build(
+                null, List.of(), Map.of("status", 200, "body", body), Map.of(), MAPPER);
+        return (Map<String, Object>) ctx.get("connectorResult");
+    }
+
+    @Test
+    void aJsonBodyIsExposedParsedUnderJsonAndTheRawTextStays() {
+        Map<String, Object> result = connector("{\"score\": 87, \"ok\": true, \"tags\": [\"a\"]}");
+        assertThat(result).containsKeys("status", "body", "json");
+        assertThat(result.get("body")).isEqualTo("{\"score\": 87, \"ok\": true, \"tags\": [\"a\"]}");
+        assertThat(result.get("json")).isEqualTo(Map.of("score", 87, "ok", true, "tags", List.of("a")));
+    }
+
+    @Test
+    void aTrappedResponseNeverBlocksTheExpressionsThatDoNotTouchIt() {
+        // M1 : profondeur > 24 et nombre hors plage — `json` est omis, jamais d'échec du contexte entier.
+        String deep = "{\"a\":".repeat(40) + "1" + "}".repeat(40);
+        assertThat(connector(deep)).doesNotContainKey("json").containsKey("status");
+        assertThat(connector("{\"v\": 1e400}")).containsKey("json");
+        Object huge = ((Map<?, ?>) connector("{\"v\": 1e400}").get("json")).get("v");
+        assertThat(huge).isInstanceOf(String.class);
+        // Le contexte complet reste évaluable par le moteur (aucune valeur non finie ni trop profonde).
+        com.flowforge.domain.expression.port.out.ExpressionEnginePort engine =
+                new com.flowforge.infrastructure.expression.JsonataExpressionEngine(
+                        com.flowforge.domain.expression.model.ExpressionLimits.DEFAULTS, java.time.Clock.systemUTC());
+        Map<String, Object> ctx = BusinessExpressionContext.build(
+                null, List.of(), Map.of("status", 200, "body", deep), Map.of(), MAPPER);
+        assertThat(engine.evaluate("connectorResult.status", ctx).value()).isEqualTo(200L);
+        Map<String, Object> ctx2 = BusinessExpressionContext.build(
+                null, List.of(), Map.of("status", 200, "body", "{\"v\": 1e400}"), Map.of(), MAPPER);
+        assertThat(engine.evaluate("connectorResult.status", ctx2).value()).isEqualTo(200L);
+    }
+
+    @Test
+    void numbersThatWouldLosePrecisionAsADoubleAreExposedAsExactText() {
+        // B2 : 12345678901234.567 → double 1.2345678901234566E13 ; un montant ne s'arrondit pas en silence.
+        Map<?, ?> json = (Map<?, ?>) connector("{\"total\": 12345678901234.567, \"id\": 12345678901234567890, \"small\": 1234.5, \"n\": 42}").get("json");
+        assertThat(json.get("total")).isEqualTo("12345678901234.567");
+        assertThat(json.get("id")).isEqualTo("12345678901234567890");
+        assertThat(json.get("small")).isEqualTo(1234.5);
+        assertThat(json.get("n")).isEqualTo(42);
+    }
+
+    @Test
+    void nonJsonScalarOrOversizedBodiesAreLeftAlone() {
+        assertThat(connector("<html/>")).doesNotContainKey("json");
+        assertThat(connector("42")).doesNotContainKey("json");
+        assertThat(connector("\"text\"")).doesNotContainKey("json");
+        assertThat(connector("{\"a\":\"" + "x".repeat(BusinessExpressionContext.MAX_PARSED_BODY_CHARS) + "\"}")).doesNotContainKey("json");
+    }
+
+    @Test
+    void theJsonKeyIsTheParsedBodyEvenWhenTheResultAlreadyHadOne() {
+        Map<String, Object> ctx = BusinessExpressionContext.build(null, List.of(),
+                Map.of("status", 200, "body", "{\"a\":1}", "json", "forged"), Map.of(), MAPPER);
+        assertThat(((Map<?, ?>) ctx.get("connectorResult")).get("json")).isEqualTo(Map.of("a", 1));
+    }
 }

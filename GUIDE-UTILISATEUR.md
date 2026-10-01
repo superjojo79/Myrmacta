@@ -159,9 +159,10 @@ depuis le bouton **Éditer** en face de chaque config workflow sur l'écran **Ad
    choisie (le diagramme réellement en cours d'exécution est rechargé automatiquement).
 2. **Palette d'édition** (`bpmn-js`) — glisser-déposer des éléments BPMN standard (tâches,
    passerelles, événements) **et**, dans le groupe **« Briques métier »** (icônes marquées d'un point
-   bleu), douze briques prêtes à l'emploi : générer / joindre un document, appeler un connecteur,
+   bleu), treize briques prêtes à l'emploi : générer / joindre un document, appeler un connecteur,
    notifier, créer un dossier enfant, changer le statut du dossier ou du workflow, décision DMN,
    **évaluer une expression** (calcul ou condition sur les champs du dossier, voir le guide de conception §3sexies),
+   **enregistrer des valeurs dans le dossier** (une ligne `champ = expression` par champ, typiquement à partir de la réponse d'un connecteur : `score = connectorResult.json.score` ; tout ou rien, voir §3septies),
    demander une signature, question utilisateur, tâche externe. Le **panel de propriétés** à droite
    affiche pour une brique un groupe dédié avec des **champs typés** (listes de templates, connecteurs,
    statuts, questions, **tables de décision DMN déployées** (clé et dernière version)… alimentées par le serveur) ; la section **« Avancé »**, repliée, garde les

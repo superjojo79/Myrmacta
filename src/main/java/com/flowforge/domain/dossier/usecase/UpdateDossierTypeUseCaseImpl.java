@@ -1,5 +1,6 @@
 package com.flowforge.domain.dossier.usecase;
 
+import com.flowforge.domain.dossier.DossierFieldRules;
 import com.flowforge.domain.dossier.TenantAdminGuard;
 import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.DossierNotFoundException;
@@ -15,11 +16,21 @@ public final class UpdateDossierTypeUseCaseImpl implements UpdateDossierTypeUseC
     private final DossierTypeRepository repository;
     private final TenantAdminGuard tenantAdminGuard;
     private final CheckDossierTypeSchemaCompatibilityUseCase checkCompatibilityUseCase;
+    private final DossierFieldRules fieldRules;
 
     public UpdateDossierTypeUseCaseImpl(
             DossierTypeRepository repository,
             TenantAdminGuard tenantAdminGuard,
             CheckDossierTypeSchemaCompatibilityUseCase checkCompatibilityUseCase) {
+        this(repository, tenantAdminGuard, checkCompatibilityUseCase, DossierFieldRules.disabled());
+    }
+
+    public UpdateDossierTypeUseCaseImpl(
+            DossierTypeRepository repository,
+            TenantAdminGuard tenantAdminGuard,
+            CheckDossierTypeSchemaCompatibilityUseCase checkCompatibilityUseCase,
+            DossierFieldRules fieldRules) {
+        this.fieldRules = Objects.requireNonNull(fieldRules, "fieldRules");
         this.repository = Objects.requireNonNull(repository, "repository");
         this.tenantAdminGuard = Objects.requireNonNull(tenantAdminGuard, "tenantAdminGuard");
         this.checkCompatibilityUseCase =
@@ -49,6 +60,8 @@ public final class UpdateDossierTypeUseCaseImpl implements UpdateDossierTypeUseC
                 command.slaTargetHours(),
                 command.documentTemplateKeys(),
                 actor.userId());
+
+        fieldRules.validateDefinitions(updated.fieldDefinitions()); // TODO §80 : règles (calcul, visibilité, obligation)
 
         // D-UI-SCHEMA-COMPAT=block — single source of truth for both REST and MCP callers
         // (D-DESIGN-CHECK-PLACEMENT); rejects before any write when the new schema would make

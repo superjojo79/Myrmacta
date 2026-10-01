@@ -19,6 +19,14 @@ import java.util.regex.Pattern;
  *       sensibilité se pose sur le <em>groupe entier</em> : un sous-champ sensible demanderait un masquage récursif dans
  *       chaque export, modèle et recherche, qu'on ne garantit pas.</li>
  * </ul>
+ *
+ * <p>TODO §80 (D1, règles — LC2) : trois expressions JSONata bornées facultatives, sur les champs <b>simples, non sensibles</b>
+ * du dossier ({@code dossier.fields.x}) :
+ * <ul>
+ *   <li>{@code formula} — champ <b>calculé</b> : valeur dérivée, recalculée à chaque enregistrement, en lecture seule ;</li>
+ *   <li>{@code visibleWhen} — le champ n'est applicable que si l'expression est vraie ;</li>
+ *   <li>{@code requiredWhen} — le champ est obligatoire si l'expression est vraie (en plus de {@code required}).</li>
+ * </ul>
  */
 public record FieldDefinition(
         String name,
@@ -31,8 +39,12 @@ public record FieldDefinition(
         Boolean sensitive,
         List<FieldDefinition> fields,
         Integer minRows,
-        Integer maxRows
+        Integer maxRows,
+        String formula,
+        String visibleWhen,
+        String requiredWhen
 ) {
+    public static final int MAX_EXPRESSION_CHARS = 2000;
     public static final int MAX_GROUP_FIELDS = 20;
     public static final int DEFAULT_MAX_ROWS = 100;
     public static final int HARD_MAX_ROWS = 500;
@@ -54,6 +66,27 @@ public record FieldDefinition(
         sensitive = Boolean.TRUE.equals(sensitive);
         fields = fields == null ? List.of() : List.copyOf(fields);
 
+        formula = blankToNull(formula);
+        visibleWhen = blankToNull(visibleWhen);
+        requiredWhen = blankToNull(requiredWhen);
+        for (String expression : new String[] {formula, visibleWhen, requiredWhen}) {
+            if (expression != null && expression.length() > MAX_EXPRESSION_CHARS) {
+                throw new IllegalArgumentException(
+                        "an expression exceeds " + MAX_EXPRESSION_CHARS + " characters (field: " + name + ")");
+            }
+        }
+        if (formula != null) {
+            if (Boolean.TRUE.equals(sensitive)) {
+                throw new IllegalArgumentException("a computed field cannot be sensitive (field: " + name + ")");
+            }
+            if (type == FieldType.REPEATABLE_GROUP || type == FieldType.FILE) {
+                throw new IllegalArgumentException("a " + type + " field cannot be computed (field: " + name + ")");
+            }
+            if (required || defaultValue != null || visibleWhen != null || requiredWhen != null) {
+                throw new IllegalArgumentException("a computed field is always present and read-only: it takes no 'required', "
+                        + "default value, visibleWhen or requiredWhen (field: " + name + ")");
+            }
+        }
         if (type != FieldType.REPEATABLE_GROUP && (!fields.isEmpty() || minRows != null || maxRows != null)) {
             throw new IllegalArgumentException(
                     "only a REPEATABLE_GROUP can declare sub-fields, minRows or maxRows (field: " + name + ")");
@@ -99,6 +132,9 @@ public record FieldDefinition(
                         throw new IllegalArgumentException("sub-field type " + sub.type()
                                 + " is not allowed in a group (field: " + sub.name() + ")");
                     }
+                    if (sub.formula() != null || sub.visibleWhen() != null || sub.requiredWhen() != null) {
+                        throw new IllegalArgumentException("a sub-field of a group cannot carry rules (field: " + sub.name() + ")");
+                    }
                     if (sub.isSensitive()) {
                         throw new IllegalArgumentException("a sub-field of a group cannot be sensitive: mark the group "
                                 + name + " itself");
@@ -122,6 +158,36 @@ public record FieldDefinition(
             }
             default -> { }
         }
+    }
+
+    /** Sans règles (ni calcul, ni visibilité, ni obligation conditionnelle) : tout ce qui existait avant TODO §80. */
+    public FieldDefinition(
+            String name,
+            String label,
+            FieldType type,
+            boolean required,
+            String defaultValue,
+            List<String> options,
+            String group,
+            Boolean sensitive,
+            List<FieldDefinition> fields,
+            Integer minRows,
+            Integer maxRows) {
+        this(name, label, type, required, defaultValue, options, group, sensitive, fields, minRows, maxRows, null, null, null);
+    }
+
+    /**
+     * {@code true} si le champ est calculé (valeur dérivée, jamais saisie). Nommé {@code hasFormula} et non {@code isComputed} :
+     * Jackson y verrait une propriété « computed » absente du constructeur, que la relecture JSON des définitions refuserait.
+     */
+    public boolean hasFormula() {
+        return formula != null;
+    }
+
+    /** Copie avec une obligation différente (règles de visibilité / d'obligation appliquées au moment de la validation). */
+    public FieldDefinition withRequired(boolean newRequired) {
+        return new FieldDefinition(name, label, type, newRequired, defaultValue, options, group, sensitive, fields, minRows,
+                maxRows, formula, visibleWhen, requiredWhen);
     }
 
     /** Champ scalaire historique : sans sous-champs ni bornes de lignes. */
@@ -165,6 +231,10 @@ public record FieldDefinition(
         }
     }
 
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.strip();
+    }
+
     private static void requireIsoCurrency(String field, String code) {
         if (!isIsoCurrency(code)) {
             throw new IllegalArgumentException(
@@ -195,6 +265,9 @@ public record FieldDefinition(
                 + ", fields=" + fields.size()
                 + ", minRows=" + minRows
                 + ", maxRows=" + maxRows
+                + ", computed=" + hasFormula()
+                + ", visibleWhen=" + (visibleWhen != null)
+                + ", requiredWhen=" + (requiredWhen != null)
                 + "]";
     }
 }

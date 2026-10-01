@@ -1,6 +1,7 @@
 package com.flowforge.domain.dossier.usecase;
 
 import com.flowforge.domain.dossier.DossierAccessPolicy;
+import com.flowforge.domain.dossier.DossierFieldRules;
 import com.flowforge.domain.dossier.DossierFieldMerger;
 import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.Dossier;
@@ -23,6 +24,7 @@ public final class UpdateDossierFieldsUseCaseImpl implements UpdateDossierFields
     private final DossierTypeRepository typeRepository;
     private final DossierAccessPolicy accessPolicy;
     private final DossierFieldValidator fieldValidator;
+    private final DossierFieldRules fieldRules;
 
     public UpdateDossierFieldsUseCaseImpl(
             DossierRepository dossierRepository, DossierTypeRepository typeRepository, DossierAccessPolicy accessPolicy) {
@@ -34,6 +36,16 @@ public final class UpdateDossierFieldsUseCaseImpl implements UpdateDossierFields
             DossierTypeRepository typeRepository,
             DossierAccessPolicy accessPolicy,
             DossierFieldValidator fieldValidator) {
+        this(dossierRepository, typeRepository, accessPolicy, fieldValidator, DossierFieldRules.disabled());
+    }
+
+    public UpdateDossierFieldsUseCaseImpl(
+            DossierRepository dossierRepository,
+            DossierTypeRepository typeRepository,
+            DossierAccessPolicy accessPolicy,
+            DossierFieldValidator fieldValidator,
+            DossierFieldRules fieldRules) {
+        this.fieldRules = Objects.requireNonNull(fieldRules, "fieldRules");
         this.dossierRepository = Objects.requireNonNull(dossierRepository, "dossierRepository");
         this.typeRepository = Objects.requireNonNull(typeRepository, "typeRepository");
         this.accessPolicy = Objects.requireNonNull(accessPolicy, "accessPolicy");
@@ -67,7 +79,12 @@ public final class UpdateDossierFieldsUseCaseImpl implements UpdateDossierFields
         Map<String, Object> before = dossier.fields();
         Map<String, Object> merged = DossierFieldMerger.merge(before, command.fieldsPatch());
 
-        var errors = fieldValidator.validate(type.fieldDefinitions(), merged, type.allowUnknownFields());
+        // TODO §80 : champs calculés, visibilité et obligation conditionnelles (aucun effet sans règle déclarée).
+        var ruled = fieldRules.apply(type.fieldDefinitions(), merged, command.fieldsPatch().keySet());
+        merged = ruled.fields();
+        var errors = new java.util.ArrayList<>(
+                fieldValidator.validate(ruled.effectiveDefinitions(), merged, type.allowUnknownFields()));
+        errors.addAll(ruled.errors());
         if (!errors.isEmpty()) {
             throw new DossierFieldValidationException(errors);
         }

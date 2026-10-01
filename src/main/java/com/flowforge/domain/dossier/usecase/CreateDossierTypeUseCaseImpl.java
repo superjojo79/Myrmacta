@@ -1,5 +1,6 @@
 package com.flowforge.domain.dossier.usecase;
 
+import com.flowforge.domain.dossier.DossierFieldRules;
 import com.flowforge.domain.dossier.TenantAdminGuard;
 import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.DossierType;
@@ -12,9 +13,16 @@ public final class CreateDossierTypeUseCaseImpl implements CreateDossierTypeUseC
 
     private final DossierTypeRepository repository;
     private final TenantAdminGuard tenantAdminGuard;
+    private final DossierFieldRules fieldRules;
 
     public CreateDossierTypeUseCaseImpl(
             DossierTypeRepository repository, TenantAdminGuard tenantAdminGuard) {
+        this(repository, tenantAdminGuard, DossierFieldRules.disabled());
+    }
+
+    public CreateDossierTypeUseCaseImpl(
+            DossierTypeRepository repository, TenantAdminGuard tenantAdminGuard, DossierFieldRules fieldRules) {
+        this.fieldRules = Objects.requireNonNull(fieldRules, "fieldRules");
         this.repository = Objects.requireNonNull(repository, "repository");
         this.tenantAdminGuard = Objects.requireNonNull(tenantAdminGuard, "tenantAdminGuard");
     }
@@ -39,6 +47,7 @@ public final class CreateDossierTypeUseCaseImpl implements CreateDossierTypeUseC
                 command.documentTemplateKeys(),
                 actor.userId(),
                 actor.userId());
+        fieldRules.validateDefinitions(type.fieldDefinitions()); // TODO §80 : règles (calcul, visibilité, obligation)
         repository.save(type);
         return type;
     }

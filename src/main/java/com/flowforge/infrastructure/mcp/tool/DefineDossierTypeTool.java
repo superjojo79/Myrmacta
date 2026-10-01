@@ -1,5 +1,6 @@
 package com.flowforge.infrastructure.mcp.tool;
 
+import com.flowforge.domain.dossier.DossierFieldRules;
 import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.DossierNotFoundException;
 import com.flowforge.domain.dossier.model.DossierType;
@@ -45,6 +46,7 @@ public class DefineDossierTypeTool {
     private final TenantProperties tenantProperties;
     private final McpAccessContextFactory accessContextFactory;
     private final ObjectMapper objectMapper;
+    private final DossierFieldRules fieldRules;
 
     public DefineDossierTypeTool(
             GetDossierTypeUseCase getDossierTypeUseCase,
@@ -54,6 +56,21 @@ public class DefineDossierTypeTool {
             TenantProperties tenantProperties,
             McpAccessContextFactory accessContextFactory,
             ObjectMapper objectMapper) {
+        this(getDossierTypeUseCase, createDossierTypeUseCase, updateDossierTypeUseCase, checkCompatibilityUseCase,
+                tenantProperties, accessContextFactory, objectMapper, DossierFieldRules.disabled());
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public DefineDossierTypeTool(
+            GetDossierTypeUseCase getDossierTypeUseCase,
+            CreateDossierTypeUseCase createDossierTypeUseCase,
+            UpdateDossierTypeUseCase updateDossierTypeUseCase,
+            CheckDossierTypeSchemaCompatibilityUseCase checkCompatibilityUseCase,
+            TenantProperties tenantProperties,
+            McpAccessContextFactory accessContextFactory,
+            ObjectMapper objectMapper,
+            DossierFieldRules fieldRules) {
+        this.fieldRules = Objects.requireNonNull(fieldRules, "fieldRules");
         this.getDossierTypeUseCase = Objects.requireNonNull(getDossierTypeUseCase, "getDossierTypeUseCase");
         this.createDossierTypeUseCase = Objects.requireNonNull(createDossierTypeUseCase, "createDossierTypeUseCase");
         this.updateDossierTypeUseCase = Objects.requireNonNull(updateDossierTypeUseCase, "updateDossierTypeUseCase");
@@ -88,12 +105,16 @@ public class DefineDossierTypeTool {
                             description = "Full field schema — the complete list every call, not a diff. Each "
                                     + "item: {name, label, type (STRING|NUMBER|BOOLEAN|DATE|SELECT|FILE|MONEY|"
                                     + "REPEATABLE_GROUP|EXTERNAL_REF), required, defaultValue, options, group, sensitive, "
-                                    + "fields, minRows, maxRows}. MONEY value {amount:\"1234.50\",currency:\"EUR\"} "
+                                    + "fields, minRows, maxRows, formula, visibleWhen, requiredWhen}. MONEY value {amount:\"1234.50\",currency:\"EUR\"} "
                                     + "(options = allowed ISO 4217 currencies, amount checked against the currency "
                                     + "decimals, never rounded); EXTERNAL_REF value {system,id,label?} (options = allowed "
                                     + "systems); REPEATABLE_GROUP value = list of rows typed by `fields` (one level, at "
                                     + "most 20 flat non-sensitive sub-fields, minRows/maxRows up to 500 — mark the group "
-                                    + "itself sensitive, not its sub-fields)")
+                                    + "itself sensitive, not its sub-fields). RULES (JSONata, bounded, read the plain "
+                                    + "non-sensitive fields as dossier.fields.x): formula = computed read-only field "
+                                    + "recomputed on every save; visibleWhen = field applicable only when true; requiredWhen "
+                                    + "= field required when true. Try them with evaluate_dossier_rules and "
+                                    + "evaluate_expression")
                     List<Map<String, Object>> fieldDefinitions,
             @McpToolParam(
                             required = false,
@@ -159,6 +180,8 @@ public class DefineDossierTypeTool {
             boolean dryRun,
             AccessContext.User actor) {
         if (dryRun) {
+            // TODO §80 : le dry-run valide aussi les règles (syntaxe, constructions permises, champs lus) — sinon il mentirait.
+            fieldRules.validateDefinitions(fieldDefinitions);
             return result("create", true, code, null);
         }
         DossierType created = createDossierTypeUseCase.create(
@@ -185,6 +208,7 @@ public class DefineDossierTypeTool {
         // propagates unchanged. dryRun must never call update() (nothing may persist), so it still
         // needs its own explicit check call to preview compatibility.
         if (dryRun) {
+            fieldRules.validateDefinitions(fieldDefinitions);
             var compatibility = checkCompatibilityUseCase.check(new CheckDossierTypeSchemaCompatibilityUseCase.Query(
                     existing.tenantId(), existing.code(), fieldDefinitions, allowUnknownFields));
             if (!compatibility.compatible()) {

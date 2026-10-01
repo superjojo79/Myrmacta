@@ -5,6 +5,7 @@ import { useTemplatePreview } from '@/composables/useTemplatePreview'
 const props = defineProps<{
   htmlContent: string
 }>()
+const emit = defineEmits<{ 'update:variables': [variables: Record<string, unknown>] }>()
 
 const variablesText = shallowRef('{}')
 const parseError = shallowRef<string | null>(null)
@@ -21,6 +22,8 @@ watch(
       }
       parseError.value = null
       variables.value = parsed as Record<string, unknown>
+      // TODO §84 (LC4b) : l'éditeur visuel propose ces variables d'exemple dans son menu
+      emit('update:variables', variables.value)
     } catch {
       parseError.value = 'JSON invalide'
     }

@@ -141,4 +141,18 @@ class ThymeleafHtmlTemplateProcessorTest {
         assertThat(out).contains("1234.50 EUR").contains("d365fo:V-0042").contains("Toiture").contains("1000.00")
                 .contains("Cuisine").contains("234.50");
     }
+
+    /** Revue adversariale LC4b, passe 2 (Haut) : défense en profondeur — fragments et th:utext sont sans effet au rendu, même sur un template déjà actif. */
+    @org.junit.jupiter.api.Test
+    void fragmentsAndUnescapedTextAreNeverExecutedAtRenderTime() {
+        var data = Map.<String, Object>of("x", "<i>X</i>");
+        for (String html : new String[] {
+            "<div th:replace=\"${x}\">a</div>",
+            "<div th:insert=\"${x}\">a</div>",
+            "<p th:utext=\"${x}\">a</p>"
+        }) {
+            String out = processor.process(html, data);
+            org.assertj.core.api.Assertions.assertThat(out).as(html).doesNotContain("<i>X</i>");
+        }
+    }
 }

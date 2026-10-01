@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, watch } from 'vue'
 import {
   activateDocumentTemplate,
@@ -39,7 +40,7 @@ watch(
   [page, size],
   () => {
     void refresh().catch((err) => {
-      error.value = toProblemDetail(err).detail ?? 'Chargement impossible'
+      error.value = toProblemDetail(err).detail ?? t('admin.templates.errors.load')
     })
   },
   { immediate: true },
@@ -51,12 +52,12 @@ async function create() {
     form.value = { templateKey: '', label: '', htmlContent: '<p>Contenu</p>' }
     await refresh()
   } catch (err) {
-    error.value = toProblemDetail(err).detail ?? 'Création impossible'
+    error.value = toProblemDetail(err).detail ?? t('admin.templates.errors.create')
   }
 }
 
 async function rename(template: DocumentTemplate) {
-  const label = prompt('Nouveau libellé', template.label)
+  const label = prompt(t('admin.templates.renamePrompt'), template.label)
   if (!label) return
   await updateDocumentTemplate(template.id, { label })
   await refresh()
@@ -84,7 +85,7 @@ async function editContent(template: DocumentTemplate) {
       if (index + 1 >= result.totalPages) break
     }
     if (!full || full.htmlContent == null) {
-      error.value = 'Contenu du modèle introuvable : rechargez la page.'
+      error.value = t('admin.templates.errors.contentMissing')
       return
     }
     editing.value = {
@@ -94,7 +95,7 @@ async function editContent(template: DocumentTemplate) {
       htmlContent: full.htmlContent,
     }
   } catch (err) {
-    error.value = toProblemDetail(err).detail ?? 'Chargement du contenu impossible'
+    error.value = toProblemDetail(err).detail ?? t('admin.templates.errors.contentLoad')
   }
 }
 
@@ -106,7 +107,7 @@ async function saveContent() {
     editing.value = null
     await refresh()
   } catch (err) {
-    editingError.value = toProblemDetail(err).detail ?? 'Enregistrement impossible'
+    editingError.value = toProblemDetail(err).detail ?? t('admin.templates.errors.save')
   }
 }
 
@@ -114,28 +115,30 @@ async function newVersion(template: DocumentTemplate) {
   await newDocumentTemplateVersion(template.id)
   await refresh()
 }
+
+const { t } = useI18n()
 </script>
 
 <template>
   <section>
-    <h1>Templates documents</h1>
+    <h1>{{ t('admin.templates.title') }}</h1>
     <p v-if="error" class="error">{{ error }}</p>
     <div class="templates-layout">
       <form class="admin-form" @submit.prevent="create">
-        <input v-model="form.templateKey" placeholder="templateKey" required />
-        <input v-model="form.label" placeholder="libellé" required />
+        <input v-model="form.templateKey" :placeholder="t('admin.templates.keyPlaceholder')" required />
+        <input v-model="form.label" :placeholder="t('admin.templates.labelPlaceholder')" required />
         <TemplateVisualEditor v-model="form.htmlContent" :sample-variables="sampleVariables" />
-        <button type="submit">Créer</button>
+        <button type="submit">{{ t('admin.templates.create') }}</button>
       </form>
       <TemplatePreviewPanel :html-content="editing ? editing.htmlContent : form.htmlContent" @update:variables="sampleVariables = $event" />
     </div>
     <section v-if="editing" class="templates-edit" data-testid="template-edit">
-      <h2>Modifier le contenu de « {{ editing.templateKey }} » (brouillon)</h2>
+      <h2>{{ t('admin.templates.editTitle', { key: editing.templateKey }) }}</h2>
       <p v-if="editingError" class="error" role="alert">{{ editingError }}</p>
       <TemplateVisualEditor v-model="editing.htmlContent" :sample-variables="sampleVariables" />
       <div class="actions">
-        <button type="button" data-testid="save-content" @click="saveContent">Enregistrer</button>
-        <button type="button" @click="editing = null">Annuler</button>
+        <button type="button" data-testid="save-content" @click="saveContent">{{ t('admin.templates.save') }}</button>
+        <button type="button" @click="editing = null">{{ t('common.cancel') }}</button>
       </div>
     </section>
     <ul>
@@ -144,11 +147,11 @@ async function newVersion(template: DocumentTemplate) {
           <strong>{{ tpl.templateKey }}</strong> — {{ tpl.label }} (v{{ tpl.version }}, {{ tpl.status }})
         </div>
         <div class="actions">
-          <button v-if="tpl.status === 'DRAFT'" type="button" data-testid="edit-content" @click="editContent(tpl)">Modifier le contenu</button>
-          <button type="button" @click="rename(tpl)">Renommer</button>
-          <button type="button" @click="activate(tpl)">Activer</button>
-          <button type="button" @click="archive(tpl)">Archiver</button>
-          <button type="button" @click="newVersion(tpl)">Nouvelle version</button>
+          <button v-if="tpl.status === 'DRAFT'" type="button" data-testid="edit-content" @click="editContent(tpl)">{{ t('admin.templates.editContent') }}</button>
+          <button type="button" @click="rename(tpl)">{{ t('admin.templates.rename') }}</button>
+          <button type="button" @click="activate(tpl)">{{ t('admin.templates.activate') }}</button>
+          <button type="button" @click="archive(tpl)">{{ t('admin.templates.archive') }}</button>
+          <button type="button" @click="newVersion(tpl)">{{ t('admin.templates.newVersion') }}</button>
         </div>
       </li>
     </ul>

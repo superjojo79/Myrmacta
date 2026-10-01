@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { toProblemDetail } from '@/api/http'
+import { formatDateTime } from '@/i18n/format'
 import {
   discardDraft,
   listPendingDrafts,
@@ -12,6 +14,7 @@ import {
   type Provenance,
 } from '@/api/drafts'
 
+const { t } = useI18n()
 const drafts = ref<PendingDraft[]>([])
 const publications = ref<ConfigPublication[]>([])
 const loading = ref(true)
@@ -19,13 +22,7 @@ const error = ref<string | null>(null)
 const notice = ref<string | null>(null)
 const busyKey = ref<string | null>(null)
 
-const PROVENANCE_LABELS: Record<Provenance, string> = {
-  UI: 'Éditeur',
-  MCP: 'Agent (MCP)',
-  ASSISTANT: 'Assistant',
-  IMPORT: 'Import',
-  PARCOURS: 'Parcours',
-}
+const origin = (p: Provenance): string => t(`admin.drafts.provenance.${p}`)
 
 function rowId(d: PendingDraft): string {
   return `${d.type}:${d.key}`
@@ -38,7 +35,7 @@ function editorLink(d: PendingDraft): string {
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString('fr-FR')
+  return formatDateTime(iso, {})
 }
 
 async function load(keepMessages = false) {
@@ -47,24 +44,28 @@ async function load(keepMessages = false) {
   try {
     ;[drafts.value, publications.value] = await Promise.all([listPendingDrafts(), listPublications(10)])
   } catch (err) {
-    error.value = toProblemDetail(err).detail ?? 'Impossible de charger les brouillons'
+    error.value = toProblemDetail(err).detail ?? t('admin.drafts.errors.load')
   } finally {
     loading.value = false
   }
 }
 
 async function publish(d: PendingDraft) {
-  const effect = d.hasProposedConfig ? ' (la configuration de workflow proposée sera aussi appliquée)' : ''
-  if (!window.confirm(`Publier ${d.type} « ${d.key} »${effect} ? Il passera en ligne immédiatement.\n\nAvez-vous relu le diagramme${d.hasProposedConfig ? ' ET la configuration de workflow affichée' : ''} ?`)) return
+  const effect = d.hasProposedConfig ? t('admin.drafts.confirmEffect') : ''
+  const withConfig = d.hasProposedConfig ? t('admin.drafts.confirmWithConfig') : ''
+  if (!window.confirm(t('admin.drafts.confirmPublish', { type: d.type, key: d.key, effect, withConfig }))) return
   busyKey.value = rowId(d)
   error.value = null
   notice.value = null
   try {
     // On publie exactement ce qui est affiché : un brouillon modifié entre-temps est refusé (409).
     const publication = await publishDraft(d.type, d.key, d.updatedAt)
-    notice.value = `« ${d.key} » publié${publication.version ? ` (version ${publication.version})` : ''}.`
+    notice.value = t('admin.drafts.published', {
+      key: d.key,
+      version: publication.version ? t('admin.drafts.publishedVersion', { version: publication.version }) : '',
+    })
   } catch (err) {
-    error.value = toProblemDetail(err).detail ?? 'Publication impossible'
+    error.value = toProblemDetail(err).detail ?? t('admin.drafts.errors.publish')
   } finally {
     busyKey.value = null
     await load(true)
@@ -72,15 +73,15 @@ async function publish(d: PendingDraft) {
 }
 
 async function discard(d: PendingDraft) {
-  if (!window.confirm(`Écarter le brouillon ${d.type} « ${d.key} » ? Cette action est définitive.`)) return
+  if (!window.confirm(t('admin.drafts.confirmDiscard', { type: d.type, key: d.key }))) return
   busyKey.value = rowId(d)
   error.value = null
   notice.value = null
   try {
     await discardDraft(d.type, d.key, d.updatedAt)
-    notice.value = `Brouillon « ${d.key} » écarté.`
+    notice.value = t('admin.drafts.discarded', { key: d.key })
   } catch (err) {
-    error.value = toProblemDetail(err).detail ?? 'Impossible d’écarter le brouillon'
+    error.value = toProblemDetail(err).detail ?? t('admin.drafts.errors.discard')
   } finally {
     busyKey.value = null
     await load(true)
@@ -92,26 +93,25 @@ onMounted(() => load())
 
 <template>
   <section class="drafts-admin">
-    <h1>Brouillons à publier</h1>
+    <h1>{{ t('admin.drafts.title') }}</h1>
     <p class="drafts-admin__intro">
-      Les configurations proposées par un agent ou l’assistant attendent ici une relecture humaine : rien n’est
-      déployé tant que vous n’avez pas publié. Les brouillons de l’éditeur apparaissent aussi.
+      {{ t('admin.drafts.intro') }}
     </p>
     <p v-if="notice" class="drafts-admin__notice" role="status" data-testid="drafts-notice">{{ notice }}</p>
     <p v-if="error" class="drafts-admin__error" role="alert" data-testid="drafts-error">{{ error }}</p>
-    <p v-if="loading">Chargement…</p>
+    <p v-if="loading">{{ t('common.loading') }}</p>
     <template v-else>
-      <p v-if="drafts.length === 0" data-testid="drafts-empty">Aucun brouillon en attente.</p>
+      <p v-if="drafts.length === 0" data-testid="drafts-empty">{{ t('admin.drafts.empty') }}</p>
       <table v-else class="drafts-admin__table" data-testid="drafts-table">
         <thead>
           <tr>
-            <th>Type</th>
-            <th>Clé</th>
-            <th>Origine</th>
-            <th>Auteur</th>
-            <th>Modifié</th>
-            <th>Écart avec la version en ligne</th>
-            <th>Actions</th>
+            <th>{{ t('admin.drafts.type') }}</th>
+            <th>{{ t('admin.drafts.key') }}</th>
+            <th>{{ t('admin.drafts.origin') }}</th>
+            <th>{{ t('admin.drafts.author') }}</th>
+            <th>{{ t('admin.drafts.modified') }}</th>
+            <th>{{ t('admin.drafts.diff') }}</th>
+            <th>{{ t('admin.drafts.actions') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -120,65 +120,63 @@ onMounted(() => load())
             <td>
               <RouterLink :to="editorLink(d)">{{ d.key }}</RouterLink>
               <small v-if="d.note" class="drafts-admin__note"> — {{ d.note }}</small>
-              <small v-if="d.hasProposedConfig" class="drafts-admin__note"> · configuration de workflow jointe</small>
+              <small v-if="d.hasProposedConfig" class="drafts-admin__note"> · {{ t('admin.drafts.configAttached') }}</small>
               <details v-if="d.proposedConfig" class="drafts-admin__config" :data-testid="`draft-config-${d.key}`">
-                <summary>Configuration de workflow qui sera appliquée</summary>
+                <summary>{{ t('admin.drafts.configSummary') }}</summary>
                 <p v-if="d.configProvenance" class="drafts-admin__note">
-                  Rédigée par {{ d.configAuthor }} ({{ PROVENANCE_LABELS[d.configProvenance] }})
-                  <template v-if="d.configProvenance !== d.provenance"> — le diagramme a été repris depuis</template>
+                  {{ t('admin.drafts.writtenBy', { author: d.configAuthor, origin: origin(d.configProvenance) }) }}
+                  <template v-if="d.configProvenance !== d.provenance"> — {{ t('admin.drafts.diagramReused') }}</template>
                 </p>
                 <dl>
-                  <dt>Libellé</dt>
+                  <dt>{{ t('admin.drafts.label') }}</dt>
                   <dd>{{ d.proposedConfig.label }}</dd>
-                  <dt>Statuts de workflow</dt>
+                  <dt>{{ t('admin.drafts.workflowStatuses') }}</dt>
                   <dd>
                     <span v-for="s in d.proposedConfig.statusDefinitions" :key="s.code" class="drafts-admin__chip">
-                      {{ s.code }}<template v-if="s.initial"> (initial)</template>
+                      {{ s.code }}<template v-if="s.initial">{{ ' ' + t('admin.drafts.initial') }}</template>
                       <template v-if="s.outcome !== 'NONE'"> → {{ s.outcome }}</template>
                     </span>
                   </dd>
-                  <dt>Statuts de dossier autorisés</dt>
+                  <dt>{{ t('admin.drafts.allowedStatuses') }}</dt>
                   <dd>{{ d.proposedConfig.allowedDossierStatuses.join(', ') }}</dd>
-                  <dt>Statut au démarrage</dt>
+                  <dt>{{ t('admin.drafts.startStatus') }}</dt>
                   <dd>{{ d.proposedConfig.onStartDossierStatus ?? '—' }}</dd>
-                  <dt>Observateurs notifiés</dt>
-                  <dd>{{ d.proposedConfig.observerUserIds.length ? d.proposedConfig.observerUserIds.join(', ') : 'aucun' }}</dd>
+                  <dt>{{ t('admin.drafts.observers') }}</dt>
+                  <dd>{{ d.proposedConfig.observerUserIds.length ? d.proposedConfig.observerUserIds.join(', ') : t('admin.drafts.none') }}</dd>
                 </dl>
               </details>
             </td>
             <td>
               <span :class="['drafts-admin__badge', `drafts-admin__badge--${d.provenance.toLowerCase()}`]">
-                {{ PROVENANCE_LABELS[d.provenance] }}
+                {{ origin(d.provenance) }}
               </span>
             </td>
             <td>{{ d.author }}</td>
             <td>{{ formatDate(d.updatedAt) }}</td>
             <td>
               <template v-if="d.publishedVersion != null">
-                v{{ d.publishedVersion }} : +{{ d.addedLines }} / −{{ d.removedLines }} lignes
+                {{ t('admin.drafts.linesDiff', { version: d.publishedVersion, added: d.addedLines, removed: d.removedLines }) }}
               </template>
-              <template v-else>jamais publié</template>
+              <template v-else>{{ t('admin.drafts.neverPublished') }}</template>
             </td>
             <td class="drafts-admin__actions">
               <button type="button" :disabled="busyKey === rowId(d)" data-testid="draft-publish" @click="publish(d)">
-                Publier
+                {{ t('admin.drafts.publish') }}
               </button>
               <button type="button" :disabled="busyKey === rowId(d)" data-testid="draft-discard" @click="discard(d)">
-                Écarter
+                {{ t('admin.drafts.discard') }}
               </button>
             </td>
           </tr>
         </tbody>
       </table>
 
-      <h2>Dernières publications</h2>
-      <p v-if="publications.length === 0">Aucune publication enregistrée.</p>
+      <h2>{{ t('admin.drafts.latest') }}</h2>
+      <p v-if="publications.length === 0">{{ t('admin.drafts.noPublication') }}</p>
       <ul v-else class="drafts-admin__log" data-testid="publications-log">
         <li v-for="p in publications" :key="p.id">
-          {{ formatDate(p.publishedAt) }} — {{ p.artifactType }} « {{ p.artifactKey }} »
-          <template v-if="p.version != null">v{{ p.version }}</template>
-          rédigé par {{ p.draftAuthor }} ({{ PROVENANCE_LABELS[p.draftProvenance] }}), publié par {{ p.publishedBy }}
-          <em v-if="p.mode === 'DIRECT'">(publication directe, sans relecture)</em>
+          {{ t('admin.drafts.logLine', { date: formatDate(p.publishedAt), type: p.artifactType, key: p.artifactKey, version: p.version != null ? `v${p.version} ` : '', author: p.draftAuthor, origin: origin(p.draftProvenance), by: p.publishedBy }) }}
+          <em v-if="p.mode === 'DIRECT'">{{ t('admin.drafts.direct') }}</em>
         </li>
       </ul>
     </template>

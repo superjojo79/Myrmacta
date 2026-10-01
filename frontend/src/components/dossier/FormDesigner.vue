@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { computed, ref } from 'vue'
 import type { FieldDefinition } from '@/api/types'
 import FieldDefinitionDefsEditor from './FieldDefinitionDefsEditor.vue'
@@ -10,6 +11,7 @@ import DynamicFields from './DynamicFields.vue'
  * externe applique la même disposition). `fieldDefinitions` reste la seule source : aucun format propre au concepteur.
  */
 const props = withDefaults(defineProps<{ modelValue: FieldDefinition[]; mode?: 'fields' | 'task' }>(), { mode: 'fields' })
+const { t } = useI18n()
 const emit = defineEmits<{ 'update:modelValue': [FieldDefinition[]] }>()
 
 const preview = ref(true)
@@ -22,12 +24,12 @@ const previewable = computed(() => props.modelValue.filter((def) => (def.name ??
   <div class="form-designer" data-testid="form-designer">
     <label class="form-designer__toggle">
       <input v-model="preview" type="checkbox" data-testid="form-designer-preview-toggle" />
-      Aperçu du formulaire
+      {{ t('admin.formDesigner.toggle') }}
     </label>
     <div class="form-designer__panes" :class="{ 'form-designer__panes--split': preview }">
       <FieldDefinitionDefsEditor :model-value="modelValue" :mode="mode" @update:model-value="(v) => emit('update:modelValue', v)" />
-      <aside v-if="preview" class="form-designer__preview" aria-label="Aperçu du formulaire" data-testid="form-designer-preview">
-        <p v-if="previewable.length === 0" class="form-designer__empty">Ajoutez un champ pour voir le formulaire.</p>
+      <aside v-if="preview" class="form-designer__preview" :aria-label="t('admin.formDesigner.aria')" data-testid="form-designer-preview">
+        <p v-if="previewable.length === 0" class="form-designer__empty">{{ t('admin.formDesigner.empty') }}</p>
         <DynamicFields v-else v-model="sample" :definitions="previewable" />
       </aside>
     </div>

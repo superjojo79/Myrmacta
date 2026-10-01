@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, watch } from 'vue'
 import {
   createTaskQuestionSchema,
@@ -44,7 +45,7 @@ watch(
   [page, size],
   () => {
     void refresh().catch((err) => {
-      error.value = toProblemDetail(err).detail ?? 'Chargement impossible'
+      error.value = toProblemDetail(err).detail ?? t('admin.schemas.errors.load')
     })
   },
   { immediate: true },
@@ -66,7 +67,7 @@ async function create() {
     form.value = { schemaKey: '', label: '', fieldDefinitions: [] }
     await refresh()
   } catch (err) {
-    error.value = toProblemDetail(err).detail ?? 'Création impossible'
+    error.value = toProblemDetail(err).detail ?? t('admin.schemas.errors.create')
   }
 }
 
@@ -96,7 +97,7 @@ async function saveEdit() {
     editFieldErrors.value = []
     await refresh()
   } catch (err) {
-    editFieldErrors.value = [toProblemDetail(err).detail ?? 'Enregistrement du schéma impossible']
+    editFieldErrors.value = [toProblemDetail(err).detail ?? t('admin.schemas.errors.save')]
   }
 }
 
@@ -106,33 +107,35 @@ async function remove(schema: TaskQuestionSchema) {
     await deleteTaskQuestionSchema(schema.schemaKey)
     await refresh()
   } catch (err) {
-    error.value = toProblemDetail(err).detail ?? 'Suppression impossible'
+    error.value = toProblemDetail(err).detail ?? t('admin.schemas.errors.remove')
   }
 }
+
+const { t } = useI18n()
 </script>
 
 <template>
   <section>
-    <h1>Schémas de questions de tâche</h1>
-    <p class="hint">
-      Un <code>userTask</code> BPMN déclarant <code>formKey = "user-question:&lt;schemaKey&gt;"</code>
-      affiche le mini-formulaire correspondant avant complétion — réponse indépendante du dossier.
-    </p>
+    <h1>{{ t('admin.schemas.title') }}</h1>
+    <i18n-t keypath="admin.schemas.hint" tag="p" class="hint">
+      <template #userTask><code>userTask</code></template>
+      <template #formKey><code>formKey = "user-question:&lt;schemaKey&gt;"</code></template>
+    </i18n-t>
     <p v-if="error" class="error">{{ error }}</p>
 
     <form class="admin-form" data-testid="schema-create-form" @submit.prevent="create">
-      <input v-model="form.schemaKey" placeholder="schemaKey" required data-testid="schema-key-input" />
-      <input v-model="form.label" placeholder="libellé" required data-testid="schema-label-input" />
+      <input v-model="form.schemaKey" :placeholder="t('admin.schemas.keyPlaceholder')" required data-testid="schema-key-input" />
+      <input v-model="form.label" :placeholder="t('admin.schemas.labelPlaceholder')" required data-testid="schema-label-input" />
       <FormDesigner v-model="form.fieldDefinitions" mode="task" />
-      <button type="submit">Créer</button>
+      <button type="submit">{{ t('admin.schemas.create') }}</button>
     </form>
 
     <table>
       <thead>
         <tr>
-          <th>schemaKey</th>
-          <th>Libellé</th>
-          <th>Champs</th>
+          <th>{{ t('admin.schemas.keyPlaceholder') }}</th>
+          <th>{{ t('admin.schemas.label') }}</th>
+          <th>{{ t('admin.schemas.fields') }}</th>
           <th />
         </tr>
       </thead>
@@ -142,8 +145,8 @@ async function remove(schema: TaskQuestionSchema) {
           <td>{{ schema.label }}</td>
           <td>{{ schema.fieldDefinitions.length }}</td>
           <td class="actions">
-            <button type="button" data-testid="schema-edit" @click="startEdit(schema)">Modifier</button>
-            <button type="button" data-testid="schema-delete" @click="remove(schema)">Supprimer</button>
+            <button type="button" data-testid="schema-edit" @click="startEdit(schema)">{{ t('admin.schemas.edit') }}</button>
+            <button type="button" data-testid="schema-delete" @click="remove(schema)">{{ t('admin.schemas.remove') }}</button>
           </td>
         </tr>
       </tbody>
@@ -151,16 +154,16 @@ async function remove(schema: TaskQuestionSchema) {
     <AdminPager v-model="page" :total-pages="totalPages" />
 
     <section v-if="editingKey" class="edit-panel" data-testid="schema-edit-panel">
-      <h2>Modifier — {{ editingKey }}</h2>
+      <h2>{{ t('admin.schemas.editTitle', { key: editingKey }) }}</h2>
       <p v-if="editFieldErrors.length" class="error">{{ editFieldErrors.join(' ') }}</p>
       <label>
-        Libellé
+        {{ t('admin.schemas.label') }}
         <input v-model="editDraft.label" data-testid="schema-edit-label" />
       </label>
       <FormDesigner v-model="editDraft.fieldDefinitions" mode="task" />
       <div class="edit-panel__actions">
-        <button type="button" data-testid="schema-edit-save" @click="saveEdit">Enregistrer</button>
-        <button type="button" data-testid="schema-edit-cancel" @click="cancelEdit">Annuler</button>
+        <button type="button" data-testid="schema-edit-save" @click="saveEdit">{{ t('admin.schemas.save') }}</button>
+        <button type="button" data-testid="schema-edit-cancel" @click="cancelEdit">{{ t('common.cancel') }}</button>
       </div>
     </section>
   </section>

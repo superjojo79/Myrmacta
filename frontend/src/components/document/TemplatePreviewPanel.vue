@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { shallowRef, watch } from 'vue'
 import { useTemplatePreview } from '@/composables/useTemplatePreview'
 
 const props = defineProps<{
   htmlContent: string
 }>()
+const { t } = useI18n()
 const emit = defineEmits<{ 'update:variables': [variables: Record<string, unknown>] }>()
 
 const variablesText = shallowRef('{}')
@@ -17,7 +19,7 @@ watch(
     try {
       const parsed: unknown = JSON.parse(text)
       if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-        parseError.value = 'JSON objet requis'
+        parseError.value = t('admin.preview.errors.object')
         return
       }
       parseError.value = null
@@ -25,7 +27,7 @@ watch(
       // TODO §84 (LC4b) : l'éditeur visuel propose ces variables d'exemple dans son menu
       emit('update:variables', variables.value)
     } catch {
-      parseError.value = 'JSON invalide'
+      parseError.value = t('admin.preview.errors.invalid')
     }
   },
   { immediate: true },
@@ -39,18 +41,18 @@ const { html, pdfUrl, loading, error, previewPdf } = useTemplatePreview({
 </script>
 
 <template>
-  <aside class="preview-panel" aria-label="Aperçu du template">
-    <h2>Aperçu</h2>
+  <aside class="preview-panel" :aria-label="t('admin.preview.aria')">
+    <h2>{{ t('admin.preview.title') }}</h2>
     <label class="preview-panel__vars">
-      Variables JSON
+      {{ t('admin.preview.variables') }}
       <textarea v-model="variablesText" rows="4" />
     </label>
     <p v-if="parseError" class="preview-panel__error">{{ parseError }}</p>
     <p v-else-if="error" class="preview-panel__error">{{ error }}</p>
-    <p v-if="loading" class="preview-panel__status">Chargement…</p>
-    <iframe class="preview-panel__html" sandbox="" title="Aperçu HTML" :srcdoc="html" />
-    <button type="button" :disabled="parseError !== null" @click="previewPdf">Aperçu PDF</button>
-    <iframe v-if="pdfUrl" class="preview-panel__pdf" title="Aperçu PDF" :src="pdfUrl" />
+    <p v-if="loading" class="preview-panel__status">{{ t('common.loading') }}</p>
+    <iframe class="preview-panel__html" sandbox="" :title="t('admin.preview.htmlTitle')" :srcdoc="html" />
+    <button type="button" :disabled="parseError !== null" @click="previewPdf">{{ t('admin.preview.pdfButton') }}</button>
+    <iframe v-if="pdfUrl" class="preview-panel__pdf" :title="t('admin.preview.pdfTitle')" :src="pdfUrl" />
   </aside>
 </template>
 

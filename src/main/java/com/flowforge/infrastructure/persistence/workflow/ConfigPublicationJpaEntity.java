@@ -46,6 +46,12 @@ class ConfigPublicationJpaEntity {
     @Column(name = "mode", nullable = false, length = 16)
     private String mode;
 
+    @Column(name = "config_provenance", length = 16)
+    private String configProvenance;
+
+    @Column(name = "config_author", length = 128)
+    private String configAuthor;
+
     protected ConfigPublicationJpaEntity() {
         // JPA
     }
@@ -62,11 +68,14 @@ class ConfigPublicationJpaEntity {
         e.publishedBy = p.publishedBy();
         e.publishedAt = p.publishedAt();
         e.mode = p.mode().name();
+        e.configProvenance = p.configProvenance() == null ? null : p.configProvenance().name();
+        e.configAuthor = p.configAuthor();
         return e;
     }
 
     ConfigPublication toDomain() {
         return new ConfigPublication(id, tenantId, DraftArtifactType.valueOf(artifactType), artifactKey, version,
-                Provenance.valueOf(draftProvenance), draftAuthor, publishedBy, publishedAt, PublicationMode.valueOf(mode));
+                Provenance.valueOf(draftProvenance), draftAuthor, publishedBy, publishedAt, PublicationMode.valueOf(mode),
+                configProvenance == null ? null : Provenance.valueOf(configProvenance), configAuthor);
     }
 }

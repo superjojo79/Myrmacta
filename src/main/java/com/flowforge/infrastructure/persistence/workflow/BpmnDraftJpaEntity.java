@@ -44,6 +44,12 @@ class BpmnDraftJpaEntity {
     @Column(name = "pilot_user_id", length = 128)
     private String pilotUserId;
 
+    @Column(name = "config_provenance", length = 16)
+    private String configProvenance;
+
+    @Column(name = "config_author", length = 128)
+    private String configAuthor;
+
     protected BpmnDraftJpaEntity() {
         // JPA
     }
@@ -56,7 +62,11 @@ class BpmnDraftJpaEntity {
             String updatedBy,
             String provenance,
             String proposedConfig,
-            String pilotUserId) {
+            String pilotUserId,
+            String configProvenance,
+            String configAuthor) {
+        this.configProvenance = configProvenance;
+        this.configAuthor = configAuthor;
         this.tenantId = tenantId;
         this.processDefinitionKey = processDefinitionKey;
         this.xml = xml;
@@ -76,7 +86,9 @@ class BpmnDraftJpaEntity {
                 draft.updatedBy(),
                 draft.provenance().name(),
                 draft.proposedConfig() == null ? null : mapper.writeValueAsString(draft.proposedConfig()),
-                draft.pilotUserId());
+                draft.pilotUserId(),
+                draft.configProvenance() == null ? null : draft.configProvenance().name(),
+                draft.configAuthor());
     }
 
     BpmnDraft toDomain(ObjectMapper mapper) {
@@ -88,7 +100,9 @@ class BpmnDraftJpaEntity {
                 updatedBy,
                 Provenance.valueOf(provenance),
                 proposedConfig == null ? null : mapper.readValue(proposedConfig, ProposedWorkflowConfig.class),
-                pilotUserId);
+                pilotUserId,
+                configProvenance == null ? null : Provenance.valueOf(configProvenance),
+                configAuthor);
     }
 
     static final class BpmnDraftId implements Serializable {

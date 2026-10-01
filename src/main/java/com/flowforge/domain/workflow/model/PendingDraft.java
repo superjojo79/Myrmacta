@@ -9,6 +9,8 @@ import java.util.Objects;
  * @param publishedVersion version actuellement en ligne ({@code null} : jamais publié)
  * @param addedLines lignes présentes dans le brouillon et absentes de la version en ligne (indicatif)
  * @param removedLines lignes de la version en ligne absentes du brouillon (indicatif)
+ * @param proposedConfig configuration de workflow qui sera appliquée à la publication (à relire avec le diagramme)
+ * @param configProvenance origine de cette configuration, qui peut différer de celle du diagramme (revue D6 M1)
  */
 public record PendingDraft(
         DraftArtifactType type,
@@ -20,7 +22,10 @@ public record PendingDraft(
         String note,
         Integer publishedVersion,
         int addedLines,
-        int removedLines) {
+        int removedLines,
+        ProposedWorkflowConfig proposedConfig,
+        Provenance configProvenance,
+        String configAuthor) {
 
     public PendingDraft {
         Objects.requireNonNull(type, "type");

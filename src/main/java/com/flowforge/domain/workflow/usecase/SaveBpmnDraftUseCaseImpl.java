@@ -37,7 +37,8 @@ public final class SaveBpmnDraftUseCaseImpl implements SaveBpmnDraftUseCase {
         BpmnDraft previous = draftRepository.findByTenantIdAndProcessDefinitionKey(tenantId, processDefinitionKey).orElse(null);
         BpmnDraft draft = new BpmnDraft(tenantId, processDefinitionKey, xml, Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS),
                 updatedBy, com.flowforge.domain.workflow.model.Provenance.UI,
-                previous == null ? null : previous.proposedConfig(), previous == null ? null : previous.pilotUserId());
+                previous == null ? null : previous.proposedConfig(), previous == null ? null : previous.pilotUserId(),
+                previous == null ? null : previous.configProvenance(), previous == null ? null : previous.configAuthor());
         return draftRepository.save(draft);
     }
 }

@@ -160,6 +160,22 @@ class DraftsApiTest {
     }
 
     @Test
+    void discardingADraftReplacedSinceItWasSeenIsRefusedWith409() throws Exception {
+        String key = key();
+        propose.proposeBpmn(AGENT, Provenance.MCP, key, bpmn(key), CONFIG, false);
+        String seen = stamp(key);
+        Thread.sleep(5);
+        propose.proposeBpmn(AGENT, Provenance.MCP, key, bpmn(key) + "<!-- v2 -->", CONFIG, false);
+        mockMvc.perform(delete("/api/admin/drafts/BPMN/%s".formatted(key)).param("expectedUpdatedAt", seen)
+                        .with(user("alice", "TENANT_ADMIN")).with(csrf()))
+                .andExpect(status().isConflict());
+        mockMvc.perform(get("/api/admin/drafts").with(user("alice", "TENANT_ADMIN")))
+                .andExpect(jsonPath("$[?(@.key=='%s')].proposedConfig.label".formatted(key)).value("Brouillon test"))
+                .andExpect(jsonPath("$[?(@.key=='%s')].configProvenance".formatted(key)).value("MCP"))
+                .andExpect(jsonPath("$[?(@.key=='%s')].configAuthor".formatted(key)).value("agent-1"));
+    }
+
+    @Test
     void aHumanEditingAnAgentDraftTakesItOverWithoutLosingTheProposedConfiguration() throws Exception {
         String key = key();
         propose.proposeBpmn(AGENT, Provenance.MCP, key, bpmn(key), CONFIG, false);

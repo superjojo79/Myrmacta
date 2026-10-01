@@ -18,6 +18,18 @@ const mcpDraft: PendingDraft = {
   publishedVersion: 3,
   addedLines: 4,
   removedLines: 2,
+  proposedConfig: {
+    label: 'Sinistre',
+    statusDefinitions: [
+      { code: 'STARTED', label: 'Démarré', initial: true, outcome: 'NONE' },
+      { code: 'DONE', label: 'Terminé', initial: false, outcome: 'COMPLETED' },
+    ],
+    allowedDossierStatuses: ['OUVERT', 'EN_COURS'],
+    onStartDossierStatus: null,
+    observerUserIds: ['spy-1'],
+  },
+  configProvenance: 'MCP',
+  configAuthor: 'agent-1',
 }
 const uiDraft: PendingDraft = {
   type: 'DMN',
@@ -30,6 +42,9 @@ const uiDraft: PendingDraft = {
   publishedVersion: null,
   addedLines: 10,
   removedLines: 0,
+  proposedConfig: null,
+  configProvenance: null,
+  configAuthor: null,
 }
 
 async function mountView() {
@@ -59,6 +74,18 @@ describe('DraftsAdminView (TODO §82, D6)', () => {
     expect(ui.text()).toContain('Éditeur')
     expect(ui.text()).toContain('jamais publié')
     expect(ui.text()).toContain('Remise en ligne de la version 1')
+  })
+
+  it('shows the workflow configuration that will be applied, with its origin, so it can be reviewed (revue D6 M1)', async () => {
+    const wrapper = await mountView()
+    const config = wrapper.get('[data-testid="draft-config-claim"]')
+    expect(config.text()).toContain('Sinistre')
+    expect(config.text()).toContain('STARTED (initial)')
+    expect(config.text()).toContain('DONE → COMPLETED')
+    expect(config.text()).toContain('OUVERT, EN_COURS')
+    expect(config.text()).toContain('spy-1')
+    expect(config.text()).toContain('agent-1')
+    expect(wrapper.find('[data-testid="draft-config-eligibilite"]').exists()).toBe(false)
   })
 
   it('publishes exactly the draft it displays, with its timestamp, then reloads', async () => {
@@ -97,7 +124,7 @@ describe('DraftsAdminView (TODO §82, D6)', () => {
     const wrapper = await mountView()
     await wrapper.get('[data-testid="draft-row-eligibilite"] [data-testid="draft-discard"]').trigger('click')
     await flushPromises()
-    expect(draftsApi.discardDraft).toHaveBeenCalledWith('DMN', 'eligibilite')
+    expect(draftsApi.discardDraft).toHaveBeenCalledWith('DMN', 'eligibilite', '2026-10-01T09:00:00Z')
   })
 
   it('shows an empty state and the publication log', async () => {

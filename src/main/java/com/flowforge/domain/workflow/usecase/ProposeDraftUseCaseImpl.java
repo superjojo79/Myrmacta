@@ -206,6 +206,13 @@ public final class ProposeDraftUseCaseImpl implements ProposeDraftUseCase {
             String kind,
             String key) {
         boolean sameWriter = existingAuthor.equals(actor.userId()) && existingProvenance == provenance;
+        if (!existingProvenance.automated() && !sameWriter) {
+            // Revue D6 M3 : le drapeau est fourni par l'agent lui-même (ou par une injection de consignes) : il ne peut pas servir
+            // à écraser le travail en cours d'un humain, qui doit d'abord le publier ou l'écarter.
+            throw new DraftConflictException("A " + kind + " draft for '" + key + "' is being edited by a human ("
+                    + existingAuthor + ", last change " + existingUpdatedAt + "): an agent never replaces it, not even with "
+                    + "replaceExistingDraft — ask the human to publish or discard it first");
+        }
         if (!sameWriter && !replaceExisting) {
             throw new DraftConflictException("A " + kind + " draft for '" + key + "' already exists, written by "
                     + existingAuthor + " (" + existingProvenance + ") at " + existingUpdatedAt

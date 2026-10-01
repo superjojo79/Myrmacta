@@ -25,7 +25,9 @@ describe('drafts api (TODO §82, D6)', () => {
 
   it('discards a draft', async () => {
     vi.mocked(axios.delete).mockResolvedValue({})
-    await discardDraft('DMN', 'table')
-    expect(axios.delete).toHaveBeenCalledWith('/api/admin/drafts/DMN/table')
+    await discardDraft('DMN', 'table', '2026-10-01T10:00:00Z')
+    expect(axios.delete).toHaveBeenCalledWith('/api/admin/drafts/DMN/table', {
+      params: { expectedUpdatedAt: '2026-10-01T10:00:00Z' },
+    })
   })
 })

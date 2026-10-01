@@ -186,12 +186,23 @@ class DraftUseCasesTest {
         assertThatThrownBy(() -> propose.proposeBpmn(AGENT, Provenance.MCP, KEY, "<bpmn/>", CONFIG, false))
                 .isInstanceOf(DraftConflictException.class)
                 .hasMessageContaining("alice")
-                .hasMessageContaining("UI")
+                .hasMessageContaining("human")
                 .hasMessageContaining("replaceExistingDraft");
         assertThat(bpmnStore.get(KEY).xml()).isEqualTo("<human wip/>");
 
-        propose.proposeBpmn(AGENT, Provenance.MCP, KEY, "<bpmn/>", CONFIG, true);
-        assertThat(bpmnStore.get(KEY).xml()).isEqualTo("<bpmn/>");
+        // revue D6 M3 : le drapeau ne suffit jamais à écraser le travail d'un humain
+        assertThatThrownBy(() -> propose.proposeBpmn(AGENT, Provenance.MCP, KEY, "<bpmn/>", CONFIG, true))
+                .isInstanceOf(DraftConflictException.class)
+                .hasMessageContaining("never replaces");
+        assertThat(bpmnStore.get(KEY).xml()).isEqualTo("<human wip/>");
+    }
+
+    @Test
+    void replaceExistingDraftOverwritesAnotherAutomatedDraftOnly() {
+        propose.proposeBpmn(AGENT, Provenance.MCP, KEY, "<v1/>", CONFIG, false);
+        propose.proposeBpmn(OTHER_AGENT, Provenance.MCP, KEY, "<v2/>", CONFIG, true);
+        assertThat(bpmnStore.get(KEY).xml()).isEqualTo("<v2/>");
+        assertThat(bpmnStore.get(KEY).updatedBy()).isEqualTo("agent-2");
     }
 
     @Test
@@ -247,6 +258,8 @@ class DraftUseCasesTest {
         order.verify(saveConfig).create(any(), eq(HUMAN));
         order.verify(deployBpmn).deploy(eq(KEY + ".bpmn20.xml"), any());
         assertThat(p.version()).isEqualTo(4);
+        assertThat(p.configProvenance()).isEqualTo(Provenance.MCP);
+        assertThat(p.configAuthor()).isEqualTo("agent-1");
         assertThat(p.draftProvenance()).isEqualTo(Provenance.MCP);
         assertThat(p.draftAuthor()).isEqualTo("agent-1");
         assertThat(p.publishedBy()).isEqualTo("alice");
@@ -351,13 +364,13 @@ class DraftUseCasesTest {
     void publishingOrDiscardingAMissingDraftIs404Material() {
         assertThatThrownBy(() -> manage.publish(HUMAN, DraftArtifactType.BPMN, KEY, Instant.now(), PublicationMode.MANUAL))
                 .isInstanceOf(DraftNotFoundException.class);
-        assertThatThrownBy(() -> manage.discard(HUMAN, DraftArtifactType.DMN, "table")).isInstanceOf(DraftNotFoundException.class);
+        assertThatThrownBy(() -> manage.discard(HUMAN, DraftArtifactType.DMN, "table", null)).isInstanceOf(DraftNotFoundException.class);
     }
 
     @Test
     void discardRemovesTheDraft() {
         propose.proposeDmn(AGENT, Provenance.MCP, "table", "<dmn/>", null, false);
-        manage.discard(HUMAN, DraftArtifactType.DMN, "table");
+        manage.discard(HUMAN, DraftArtifactType.DMN, "table", dmnStore.get("table").updatedAt());
         assertThat(dmnStore).isEmpty();
     }
 
@@ -389,6 +402,87 @@ class DraftUseCasesTest {
         assertThatThrownBy(() -> manage.listPending(VIEWER)).isInstanceOf(AccessDeniedException.class);
         assertThatThrownBy(() -> manage.publish(VIEWER, DraftArtifactType.BPMN, KEY, Instant.now(), PublicationMode.MANUAL))
                 .isInstanceOf(AccessDeniedException.class);
-        assertThatThrownBy(() -> manage.discard(VIEWER, DraftArtifactType.BPMN, KEY)).isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> manage.discard(VIEWER, DraftArtifactType.BPMN, KEY, null)).isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void aHumanTakeoverKeepsTheOriginOfTheProposedConfigurationInTheJournal_reviewD6M1() {
+        propose.proposeBpmn(AGENT, Provenance.MCP, KEY, "<bpmn/>", CONFIG, false);
+        // reprise humaine dans l'éditeur (SaveBpmnDraftUseCaseImpl conserve config + origine)
+        BpmnDraft agent = bpmnStore.get(KEY);
+        Instant later = agent.updatedAt().plusSeconds(60);
+        bpmnStore.put(KEY, new BpmnDraft(TENANT, KEY, "<edited/>", later, "alice", Provenance.UI, agent.proposedConfig(), null,
+                agent.configProvenance(), agent.configAuthor()));
+
+        ConfigPublication p = manage.publish(HUMAN, DraftArtifactType.BPMN, KEY, later, PublicationMode.MANUAL);
+
+        assertThat(p.draftProvenance()).isEqualTo(Provenance.UI);
+        assertThat(p.draftAuthor()).isEqualTo("alice");
+        assertThat(p.configProvenance()).as("la config reste attribuée à l'agent").isEqualTo(Provenance.MCP);
+        assertThat(p.configAuthor()).isEqualTo("agent-1");
+    }
+
+    @Test
+    void thePendingListExposesTheProposedConfigurationAndItsOrigin_reviewD6M1() {
+        propose.proposeBpmn(AGENT, Provenance.MCP, KEY, "<bpmn/>", CONFIG, false);
+        when(workflowDeployment.findDeployedXml(any(), any())).thenReturn(Optional.empty());
+        when(workflowDeployment.findDeploymentInfo(any(), any())).thenReturn(Optional.empty());
+        PendingDraft shown = manage.listPending(HUMAN).getFirst();
+        assertThat(shown.proposedConfig()).isEqualTo(CONFIG);
+        assertThat(shown.configProvenance()).isEqualTo(Provenance.MCP);
+        assertThat(shown.configAuthor()).isEqualTo("agent-1");
+    }
+
+    @Test
+    void aFailedDeploymentRestoresThePreviousConfigurationAndKeepsTheDraft_reviewD6M2() {
+        WorkflowTypeConfig existing = new WorkflowTypeConfig(UUID.randomUUID(), TENANT, KEY, "Old", CONFIG.statusDefinitions(),
+                List.of(DossierStatus.OUVERT), null, List.of(), "creator", "creator");
+        when(configRepository.findByWorkflowKey(TENANT, KEY)).thenReturn(Optional.of(existing));
+        propose.proposeBpmn(AGENT, Provenance.MCP, KEY, "<bpmn/>", CONFIG, false);
+        when(deployBpmn.deploy(any(), any())).thenThrow(new IllegalStateException("engine down"));
+
+        assertThatThrownBy(() -> manage.publish(HUMAN, DraftArtifactType.BPMN, KEY, bpmnStore.get(KEY).updatedAt(), PublicationMode.MANUAL))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("engine down");
+
+        var captor = org.mockito.ArgumentCaptor.forClass(WorkflowTypeConfig.class);
+        verify(saveConfig, org.mockito.Mockito.times(2)).update(captor.capture(), eq(HUMAN));
+        assertThat(captor.getAllValues().get(0).label()).isEqualTo("Claim");
+        assertThat(captor.getAllValues().get(1)).as("l'ancienne configuration est remise").isSameAs(existing);
+        assertThat(bpmnStore).containsKey(KEY);
+        assertThat(journal).isEmpty();
+    }
+
+    @Test
+    void aJournalFailureAfterDeploymentDoesNotReportAFailure_reviewD6L4() {
+        propose.proposeDmn(AGENT, Provenance.MCP, "table", "<dmn/>", null, false);
+        when(publications.save(any())).thenThrow(new IllegalStateException("db down"));
+
+        ConfigPublication p = manage.publish(HUMAN, DraftArtifactType.DMN, "table", dmnStore.get("table").updatedAt(), PublicationMode.MANUAL);
+
+        assertThat(p.version()).isEqualTo(7);
+        verify(deployDmn).deploy(any(), any());
+    }
+
+    @Test
+    void aDirectPublicationWithoutTimestampIsAllowedOnlyForTheAgentsOwnAutomatedDraft_reviewD6L3() {
+        direct = true;
+        bpmnStore.put(KEY, new BpmnDraft(TENANT, KEY, "<human/>", Instant.parse("2026-10-01T09:00:00Z"), "alice"));
+        assertThatThrownBy(() -> manage.publish(AGENT, DraftArtifactType.BPMN, KEY, null, PublicationMode.DIRECT))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("expectedUpdatedAt");
+        propose.proposeDmn(AGENT, Provenance.MCP, "table", "<dmn/>", null, false);
+        assertThat(manage.publish(AGENT, DraftArtifactType.DMN, "table", null, PublicationMode.DIRECT).mode()).isEqualTo(PublicationMode.DIRECT);
+        when(dmnParser.extractDecisionKey(any())).thenReturn("other");
+        propose.proposeDmn(OTHER_AGENT, Provenance.MCP, "other", "<dmn/>", null, false);
+        assertThatThrownBy(() -> manage.publish(AGENT, DraftArtifactType.DMN, "other", null, PublicationMode.DIRECT))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void discardRefusesADraftReplacedSinceItWasSeen_reviewD6L2() {
+        propose.proposeDmn(AGENT, Provenance.MCP, "table", "<dmn/>", null, false);
+        Instant seen = dmnStore.get("table").updatedAt();
+        dmnStore.put("table", new DmnDraft(TENANT, "table", "<new/>", seen.plusSeconds(1), "agent-1", Provenance.MCP, null, null));
+        assertThatThrownBy(() -> manage.discard(HUMAN, DraftArtifactType.DMN, "table", seen)).isInstanceOf(DraftChangedException.class);
+        assertThat(dmnStore).containsKey("table");
     }
 }

@@ -53,11 +53,14 @@ class DraftPersistenceTest {
                 List.of(new WorkflowStatusDefinition("S", "Start", true, StatusOutcome.NONE)),
                 List.of(DossierStatus.OUVERT, DossierStatus.EN_COURS), DossierStatus.OUVERT, List.of("u1"));
         Instant stamp = Instant.parse("2026-10-01T10:00:00.123456Z");
-        bpmnDrafts.save(new BpmnDraft(TENANT, key, "<x/>", stamp, "agent-1", Provenance.ASSISTANT, config, "pilot"));
+        bpmnDrafts.save(new BpmnDraft(TENANT, key, "<x/>", stamp, "alice", Provenance.UI, config, "pilot",
+                Provenance.ASSISTANT, "agent-1"));
 
         BpmnDraft loaded = bpmnDrafts.findByTenantIdAndProcessDefinitionKey(TENANT, key).orElseThrow();
 
-        assertThat(loaded.provenance()).isEqualTo(Provenance.ASSISTANT);
+        assertThat(loaded.provenance()).isEqualTo(Provenance.UI);
+        assertThat(loaded.configProvenance()).as("l'origine de la config survit à la reprise du diagramme").isEqualTo(Provenance.ASSISTANT);
+        assertThat(loaded.configAuthor()).isEqualTo("agent-1");
         assertThat(loaded.proposedConfig()).isEqualTo(config);
         assertThat(loaded.pilotUserId()).isEqualTo("pilot");
         assertThat(loaded.updatedAt()).isEqualTo(stamp);
@@ -108,6 +111,10 @@ class DraftPersistenceTest {
         publications.save(new ConfigPublication(UUID.randomUUID(), TENANT, DraftArtifactType.DMN, key, 2, Provenance.UI,
                 "bob", "bob", Instant.parse("2026-10-02T10:00:00Z"), PublicationMode.MANUAL));
 
+        publications.save(new ConfigPublication(UUID.randomUUID(), TENANT, DraftArtifactType.BPMN, key, 1, Provenance.UI,
+                "bob", "bob", Instant.parse("2026-10-03T10:00:00Z"), PublicationMode.MANUAL, Provenance.MCP, "agent-1"));
+        assertThat(publications.findByArtifact(TENANT, DraftArtifactType.BPMN, key, 1).getFirst().configProvenance())
+                .isEqualTo(Provenance.MCP);
         assertThat(publications.findByArtifact(TENANT, DraftArtifactType.DMN, key, 10))
                 .extracting(ConfigPublication::version).containsExactly(2, 1);
         assertThat(publications.findRecent(TENANT, 200)).extracting(ConfigPublication::artifactKey).contains(key);

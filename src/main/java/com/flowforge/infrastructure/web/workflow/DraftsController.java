@@ -60,8 +60,11 @@ class DraftsController {
 
     @DeleteMapping("/{type}/{key}")
     ResponseEntity<Void> discard(
-            @PathVariable DraftArtifactType type, @PathVariable String key, Authentication authentication) {
-        manageDrafts.discard(accessContextFactory.user(authentication), type, key);
+            @PathVariable DraftArtifactType type,
+            @PathVariable String key,
+            @RequestParam(required = false) Instant expectedUpdatedAt,
+            Authentication authentication) {
+        manageDrafts.discard(accessContextFactory.user(authentication), type, key, expectedUpdatedAt);
         return ResponseEntity.noContent().build();
     }
 }

@@ -53,7 +53,7 @@ async function load(keepMessages = false) {
 
 async function publish(d: PendingDraft) {
   const effect = d.hasProposedConfig ? ' (la configuration de workflow proposée sera aussi appliquée)' : ''
-  if (!window.confirm(`Publier ${d.type} « ${d.key} »${effect} ? Il passera en ligne immédiatement.`)) return
+  if (!window.confirm(`Publier ${d.type} « ${d.key} »${effect} ? Il passera en ligne immédiatement.\n\nAvez-vous relu le diagramme${d.hasProposedConfig ? ' ET la configuration de workflow affichée' : ''} ?`)) return
   busyKey.value = rowId(d)
   error.value = null
   notice.value = null
@@ -75,7 +75,7 @@ async function discard(d: PendingDraft) {
   error.value = null
   notice.value = null
   try {
-    await discardDraft(d.type, d.key)
+    await discardDraft(d.type, d.key, d.updatedAt)
     notice.value = `Brouillon « ${d.key} » écarté.`
   } catch (err) {
     error.value = toProblemDetail(err).detail ?? 'Impossible d’écarter le brouillon'
@@ -119,6 +119,30 @@ onMounted(() => load())
               <RouterLink :to="editorLink(d)">{{ d.key }}</RouterLink>
               <small v-if="d.note" class="drafts-admin__note"> — {{ d.note }}</small>
               <small v-if="d.hasProposedConfig" class="drafts-admin__note"> · configuration de workflow jointe</small>
+              <details v-if="d.proposedConfig" class="drafts-admin__config" :data-testid="`draft-config-${d.key}`">
+                <summary>Configuration de workflow qui sera appliquée</summary>
+                <p v-if="d.configProvenance" class="drafts-admin__note">
+                  Rédigée par {{ d.configAuthor }} ({{ PROVENANCE_LABELS[d.configProvenance] }})
+                  <template v-if="d.configProvenance !== d.provenance"> — le diagramme a été repris depuis</template>
+                </p>
+                <dl>
+                  <dt>Libellé</dt>
+                  <dd>{{ d.proposedConfig.label }}</dd>
+                  <dt>Statuts de workflow</dt>
+                  <dd>
+                    <span v-for="s in d.proposedConfig.statusDefinitions" :key="s.code" class="drafts-admin__chip">
+                      {{ s.code }}<template v-if="s.initial"> (initial)</template>
+                      <template v-if="s.outcome !== 'NONE'"> → {{ s.outcome }}</template>
+                    </span>
+                  </dd>
+                  <dt>Statuts de dossier autorisés</dt>
+                  <dd>{{ d.proposedConfig.allowedDossierStatuses.join(', ') }}</dd>
+                  <dt>Statut au démarrage</dt>
+                  <dd>{{ d.proposedConfig.onStartDossierStatus ?? '—' }}</dd>
+                  <dt>Observateurs notifiés</dt>
+                  <dd>{{ d.proposedConfig.observerUserIds.length ? d.proposedConfig.observerUserIds.join(', ') : 'aucun' }}</dd>
+                </dl>
+              </details>
             </td>
             <td>
               <span :class="['drafts-admin__badge', `drafts-admin__badge--${d.provenance.toLowerCase()}`]">
@@ -182,6 +206,13 @@ onMounted(() => load())
 }
 .drafts-admin__note {
   color: #666;
+}
+.drafts-admin__chip {
+  display: inline-block;
+  margin-right: 0.4rem;
+  padding: 0 0.4rem;
+  background: #f1f3f5;
+  border-radius: 0.3rem;
 }
 .drafts-admin__badge {
   border-radius: 0.75rem;

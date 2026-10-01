@@ -4,6 +4,14 @@ import axios from 'axios'
 export type DraftArtifactType = 'BPMN' | 'DMN'
 export type Provenance = 'UI' | 'MCP' | 'ASSISTANT'
 
+export interface ProposedWorkflowConfig {
+  label: string
+  statusDefinitions: Array<{ code: string; label: string; initial: boolean; outcome: string }>
+  allowedDossierStatuses: string[]
+  onStartDossierStatus: string | null
+  observerUserIds: string[]
+}
+
 export interface PendingDraft {
   type: DraftArtifactType
   key: string
@@ -15,6 +23,10 @@ export interface PendingDraft {
   publishedVersion: number | null
   addedLines: number
   removedLines: number
+  /** Configuration de workflow qui sera appliquée à la publication — à relire avec le diagramme. */
+  proposedConfig: ProposedWorkflowConfig | null
+  configProvenance: Provenance | null
+  configAuthor: string | null
 }
 
 export interface ConfigPublication {
@@ -24,6 +36,8 @@ export interface ConfigPublication {
   version: number | null
   draftProvenance: Provenance
   draftAuthor: string
+  configProvenance?: Provenance | null
+  configAuthor?: string | null
   publishedBy: string
   publishedAt: string
   mode: 'MANUAL' | 'DIRECT'
@@ -52,6 +66,7 @@ export async function publishDraft(
   return data
 }
 
-export async function discardDraft(type: DraftArtifactType, key: string): Promise<void> {
-  await axios.delete(`/api/admin/drafts/${type}/${encodeURIComponent(key)}`)
+/** Écarte le brouillon vu : `expectedUpdatedAt` protège contre un brouillon remplacé entre-temps (409). */
+export async function discardDraft(type: DraftArtifactType, key: string, expectedUpdatedAt: string): Promise<void> {
+  await axios.delete(`/api/admin/drafts/${type}/${encodeURIComponent(key)}`, { params: { expectedUpdatedAt } })
 }

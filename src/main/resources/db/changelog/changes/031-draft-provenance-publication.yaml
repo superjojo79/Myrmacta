@@ -21,6 +21,12 @@ databaseChangeLog:
               - column:
                   name: pilot_user_id
                   type: varchar(128)
+              - column:
+                  name: config_provenance
+                  type: varchar(16)
+              - column:
+                  name: config_author
+                  type: varchar(128)
         - addColumn:
             tableName: dmn_draft
             columns:
@@ -68,6 +74,12 @@ databaseChangeLog:
         - dropColumn:
             tableName: dmn_draft
             columnName: provenance
+        - dropColumn:
+            tableName: bpmn_draft
+            columnName: config_author
+        - dropColumn:
+            tableName: bpmn_draft
+            columnName: config_provenance
         - dropColumn:
             tableName: bpmn_draft
             columnName: pilot_user_id
@@ -136,6 +148,12 @@ databaseChangeLog:
                   type: varchar(16)
                   constraints:
                     nullable: false
+              - column:
+                  name: config_provenance
+                  type: varchar(16)
+              - column:
+                  name: config_author
+                  type: varchar(128)
         - createIndex:
             tableName: config_publication
             indexName: idx_config_publication_tenant_published

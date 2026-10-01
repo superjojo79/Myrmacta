@@ -26,7 +26,11 @@ public interface ManageDraftsUseCase {
     ConfigPublication publish(
             AccessContext.User actor, DraftArtifactType type, String key, Instant expectedUpdatedAt, PublicationMode mode);
 
-    void discard(AccessContext.User actor, DraftArtifactType type, String key);
+    /**
+     * @param expectedUpdatedAt horodatage du brouillon tel que vu ; différent ⇒ {@code DraftChangedException} ({@code null} :
+     *     pas de garde, réservé aux appels qui n'ont rien relu)
+     */
+    void discard(AccessContext.User actor, DraftArtifactType type, String key, Instant expectedUpdatedAt);
 
     List<ConfigPublication> recentPublications(AccessContext.User actor, int limit);
 }

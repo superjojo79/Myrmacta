@@ -2722,6 +2722,12 @@ paths:
         required: true
         schema:
           type: string
+      - name: expectedUpdatedAt
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
       responses:
         "200":
           description: OK
@@ -3857,6 +3863,14 @@ components:
           enum:
           - MANUAL
           - DIRECT
+        configProvenance:
+          type: string
+          enum:
+          - UI
+          - MCP
+          - ASSISTANT
+        configAuthor:
+          type: string
     UpdateNotificationWebhookRequest:
       type: object
       properties:
@@ -5149,3 +5163,46 @@ components:
         removedLines:
           type: integer
           format: int32
+        proposedConfig:
+          $ref: "#/components/schemas/ProposedWorkflowConfig"
+        configProvenance:
+          type: string
+          enum:
+          - UI
+          - MCP
+          - ASSISTANT
+        configAuthor:
+          type: string
+    ProposedWorkflowConfig:
+      type: object
+      properties:
+        label:
+          type: string
+        statusDefinitions:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkflowStatusDefinition"
+        allowedDossierStatuses:
+          type: array
+          items:
+            type: string
+            enum:
+            - DRAFT
+            - OUVERT
+            - EN_COURS
+            - SUSPENDU
+            - CLOTURE
+            - ARCHIVE
+        onStartDossierStatus:
+          type: string
+          enum:
+          - DRAFT
+          - OUVERT
+          - EN_COURS
+          - SUSPENDU
+          - CLOTURE
+          - ARCHIVE
+        observerUserIds:
+          type: array
+          items:
+            type: string

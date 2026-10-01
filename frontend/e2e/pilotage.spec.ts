@@ -1602,6 +1602,98 @@ test('E2E-RICH-FIELDS-3 a viewer reads the structured values as text and as a ta
   await expect(fields.getByRole('button', { name: 'Enregistrer les champs' })).toHaveCount(0)
 })
 
+// ---- TODO §80 (D1, règles) : champs calculés, visibilité, obligation conditionnelle -------------------------------------
+
+const RULES_TYPE = {
+  ...RICH_TYPE,
+  fieldDefinitions: [
+    { name: 'pays', label: 'Pays', type: 'STRING', required: false, options: [], group: null, sensitive: false },
+    { name: 'ht', label: 'Montant HT', type: 'NUMBER', required: false, options: [], group: null, sensitive: false },
+    { name: 'ttc', label: 'Montant TTC', type: 'NUMBER', required: false, options: [], group: null, sensitive: false, formula: 'dossier.fields.ht * 1.2' },
+    { name: 'siret', label: 'SIRET', type: 'STRING', required: true, options: [], group: null, sensitive: false, visibleWhen: "dossier.fields.pays = 'FR'" },
+    { name: 'justificatif', label: 'Justificatif', type: 'STRING', required: false, options: [], group: null, sensitive: false, requiredWhen: 'dossier.fields.ht > 1000' },
+  ],
+}
+
+async function mockRulesDossier(page: Page) {
+  await page.route('**/api/dossier-types/CLAIM', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(RULES_TYPE) }),
+  )
+  await page.route(`**/api/dossiers/${DOSSIER_ID}`, async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback()
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(dossierBody({ fields: { pays: 'FR', ht: 100, ttc: 120, siret: '12345678901234' }, canEdit: true })),
+    })
+  })
+  const previewRequests: Array<Record<string, unknown>> = []
+  await page.route('**/api/dossier-types/CLAIM/evaluate-rules', async (route) => {
+    const fields = (route.request().postDataJSON() as { fields: Record<string, unknown> }).fields
+    previewRequests.push(fields)
+    const ht = Number(fields.ht ?? 0)
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        computed: fields.ht === undefined ? {} : { ttc: ht * 1.2 },
+        hidden: fields.pays === 'FR' ? [] : ['siret'],
+        requiredByRule: ht > 1000 ? ['justificatif'] : [],
+        errors: [],
+      }),
+    })
+  })
+  return previewRequests
+}
+
+test('E2E-RULES-1 editing: a field becomes not applicable, the computed value follows, a rule makes a field required', async ({ page }) => {
+  await mockSession(page)
+  const previews = await mockRulesDossier(page)
+  await openApp(page)
+  await createAndOpenDossier(page)
+
+  const fields = page.locator('.dossier-fields-editor')
+  await expect(fields.getByTestId('computed-ttc')).toHaveText('120')
+  await expect(fields.getByText('SIRET')).toBeVisible()
+
+  await fields.getByLabel('Pays').fill('DE')
+  await expect(fields.getByText('SIRET')).toHaveCount(0)
+
+  await fields.getByLabel('Montant HT').fill('2000')
+  await expect(fields.getByTestId('computed-ttc')).toHaveText('2400')
+  await expect(fields.getByText('Justificatif').first()).toContainText('*')
+  expect(previews.length).toBeGreaterThan(0)
+
+  // Le champ calculé n'a pas de saisie et n'est jamais renvoyé ; le champ devenu sans objet est retiré, pas envoyé comme valeur.
+  const fieldsRequest = page.waitForRequest((req) => req.method() === 'PATCH' && req.url().includes('/fields'))
+  await fields.getByRole('button', { name: 'Enregistrer les champs' }).click()
+  const body = (await fieldsRequest).postDataJSON() as { fields: Record<string, unknown> }
+  expect(body.fields).not.toHaveProperty('ttc')
+  expect(body.fields).toMatchObject({ pays: 'DE', ht: 2000 })
+  expect(body.fields.siret ?? null).toBeNull()
+})
+
+test('E2E-RULES-2 a viewer reads the stored values, computed field included, without any preview call', async ({ page }) => {
+  await mockSession(page, { roles: ['DOSSIER_VIEWER'] })
+  const previews = await mockRulesDossier(page)
+  await page.route(`**/api/dossiers/${DOSSIER_ID}`, async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback()
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(dossierBody({ fields: { pays: 'FR', ht: 100, ttc: 120, siret: '12345678901234' }, canEdit: false })),
+    })
+  })
+  await openApp(page)
+  await createAndOpenDossier(page)
+  const fields = page.locator('.dossier-fields-editor')
+  await expect(fields).toContainText('Montant TTC')
+  await expect(fields).toContainText('120')
+  await expect(fields).toContainText('12345678901234')
+  await page.waitForTimeout(500)
+  expect(previews).toHaveLength(0)
+})
+
 test('E2E-RICH-FIELDS-4 admin defines a type with a group and its columns', async ({ page }) => {
   let createdBody: Record<string, unknown> | null = null
   await mockSession(page)

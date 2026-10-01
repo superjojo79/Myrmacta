@@ -445,6 +445,43 @@ class McpToolCallIntegrationTest {
         assertThat(definitions).contains("oauthAllowedHosts").contains("OAUTH2_CLIENT_CREDENTIALS");
     }
 
+    /** D1 règles (TODO §80) : définir un type à règles puis les prévisualiser, à travers la vraie chaîne MCP. */
+    @Test
+    void defineDossierTypeWithRules_thenEvaluateDossierRules_returnsTheComputedValueAndTheHiddenFields() throws Exception {
+        String code = "MCPRULE" + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+
+        MvcResult define = callMcp(sessionId, TENANT, "API_SERVICE", 2, "tools/call", """
+                {
+                  "name": "define_dossier_type",
+                  "arguments": {
+                    "code": "%s", "label": "Règles MCP", "workflowKey": "wf-mcp-rules", "active": true,
+                    "allowUnknownFields": false,
+                    "fieldDefinitions": [
+                      {"name": "ht", "label": "HT", "type": "NUMBER", "required": false},
+                      {"name": "pays", "label": "Pays", "type": "STRING", "required": false},
+                      {"name": "ttc", "label": "TTC", "type": "NUMBER", "required": false, "formula": "dossier.fields.ht * 2"},
+                      {"name": "siret", "label": "SIRET", "type": "STRING", "required": false, "visibleWhen": "dossier.fields.pays = 'FR'"}
+                    ]
+                  }
+                }
+                """.formatted(code));
+        assertThat(define.getResponse().getContentAsString()).contains("\"isError\":false");
+
+        MvcResult preview = callMcp(sessionId, TENANT, "API_SERVICE", 3, "tools/call", """
+                {"name": "evaluate_dossier_rules",
+                 "arguments": {"dossierTypeCode": "%s", "fields": {"ht": 21, "pays": "DE"}}}
+                """.formatted(code));
+        String body = preview.getResponse().getContentAsString();
+        assertThat(body).as("body: %s", body).contains("\"isError\":false").contains("ttc").contains("42").contains("siret");
+
+        MvcResult bad = callMcp(sessionId, TENANT, "API_SERVICE", 4, "tools/call", """
+                {"name": "define_dossier_type",
+                 "arguments": {"code": "%s2", "label": "x", "workflowKey": "wf", "active": true, "allowUnknownFields": false, "dryRun": true,
+                   "fieldDefinitions": [{"name": "b", "label": "B", "type": "NUMBER", "required": false, "formula": "$eval('1')"}]}}
+                """.formatted(code));
+        assertThat(bad.getResponse().getContentAsString()).contains("\"isError\":true").contains("$eval");
+    }
+
     @Test
     void defineTaskQuestionSchema_persistsAndIsVisibleToDirectRepositoryRead() throws Exception {
         String schemaKey = "mcpit" + UUID.randomUUID().toString().substring(0, 8);

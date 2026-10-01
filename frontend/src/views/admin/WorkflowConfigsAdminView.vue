@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, watch } from 'vue'
 import {
   createWorkflowTypeConfig,
@@ -32,7 +33,7 @@ watch(
   [page, size],
   () => {
     void refresh().catch((err) => {
-      error.value = toProblemDetail(err).detail ?? 'Chargement impossible'
+      error.value = toProblemDetail(err).detail ?? t('admin.workflowConfigs.errors.load')
     })
   },
   { immediate: true },
@@ -51,40 +52,42 @@ async function create() {
     form.value = { workflowKey: '', label: '', onStartDossierStatus: 'EN_COURS' }
     await refresh()
   } catch (err) {
-    error.value = toProblemDetail(err).detail ?? 'Création impossible'
+    error.value = toProblemDetail(err).detail ?? t('admin.workflowConfigs.errors.create')
   }
 }
 
 async function rename(cfg: WorkflowTypeConfig) {
-  const label = prompt('Nouveau libellé', cfg.label)
+  const label = prompt(t('admin.workflowConfigs.renamePrompt'), cfg.label)
   if (!label) return
   await updateWorkflowTypeConfig(cfg.workflowKey, { ...cfg, label })
   await refresh()
 }
 
 function onBpmnDeployed() {
-  bpmnDeployedMessage.value = 'Diagramme déployé avec succès.'
+  bpmnDeployedMessage.value = t('admin.workflowConfigs.deployed')
 }
+
+const { t } = useI18n()
 </script>
 
 <template>
   <section>
-    <h1>Configurations workflow</h1>
+    <h1>{{ t('admin.workflowConfigs.title') }}</h1>
     <p v-if="error" class="error">{{ error }}</p>
     <form class="admin-form" @submit.prevent="create">
-      <input v-model="form.workflowKey" placeholder="workflowKey" required />
-      <input v-model="form.label" placeholder="libellé" required />
-      <button type="submit">Créer</button>
+      <input v-model="form.workflowKey" :placeholder="t('admin.workflowConfigs.keyPlaceholder')" required />
+      <input v-model="form.label" :placeholder="t('admin.workflowConfigs.labelPlaceholder')" required />
+      <button type="submit">{{ t('admin.workflowConfigs.create') }}</button>
     </form>
     <ul>
       <li v-for="cfg in configs" :key="cfg.workflowKey">
         <strong>{{ cfg.workflowKey }}</strong> — {{ cfg.label }}
-        <button type="button" @click="rename(cfg)">Renommer</button>
+        <button type="button" @click="rename(cfg)">{{ t('admin.workflowConfigs.rename') }}</button>
         <router-link
           class="workflow-config-edit-link"
           :to="{ path: '/admin/bpmn-editor', query: { processDefinitionKey: cfg.workflowKey } }"
         >
-          Éditer
+          {{ t('admin.workflowConfigs.edit') }}
         </router-link>
       </li>
     </ul>

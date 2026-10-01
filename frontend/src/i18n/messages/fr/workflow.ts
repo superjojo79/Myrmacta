@@ -1,0 +1,43 @@
+export default {
+  startDialog: {
+    title: 'Démarrer un workflow',
+    useOther: 'Choisir une autre configuration',
+    defaultKey: 'Clé par défaut :',
+    configuration: 'Configuration',
+    start: 'Démarrer',
+  },
+  tasks: {
+    title: 'Tâches du lien',
+    empty: 'Aucune tâche ouverte.',
+    assignee: 'Assignee : {name}',
+    complete: 'Compléter',
+    reassign: 'Réassigner',
+  },
+  history: { title: 'Historique', ongoing: 'en cours', empty: 'Pas encore d’activité.' },
+  diagram: { title: 'Diagramme', unavailable: 'Diagramme indisponible (processus non démarré ou lien sans instance).' },
+  upload: {
+    title: 'Déployer un diagramme BPMN',
+    processKey: 'Clé du processus :',
+    currentVersion: 'Version actuelle déployée : {version} — instances actives : {count}',
+    none: "Aucune version déployée pour cette clé pour l'instant.",
+    deployed: 'Déployé : version {version} (dépôt {id}).',
+    deploying: 'Déploiement en cours…',
+    confirm: 'Confirmer le déploiement',
+    errors: {
+      unreadable: 'Fichier illisible.',
+      notBpmn: 'Fichier non reconnu comme un diagramme BPMN valide (id de processus introuvable).',
+    },
+  },
+  taskForms: {
+    loadingForm: 'Chargement du formulaire…',
+    complete: 'Compléter',
+    chooseDocument: 'Choisir un document…',
+    noTemplate: 'Aucun template disponible pour ce type de dossier.',
+    errors: {
+      templates: 'Impossible de charger les templates',
+      form: 'Impossible de charger le formulaire',
+      fields: 'Mise à jour des champs impossible',
+      invalidFormKey: 'formKey invalide pour le kind user-question',
+    },
+  },
+}

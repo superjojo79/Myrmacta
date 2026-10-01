@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref } from 'vue'
 import BpmnCanvas from './BpmnCanvas.vue'
 import type { BpmnDeploymentResult } from '@/api/types'
@@ -6,6 +7,7 @@ import { useBpmnDeployment } from '@/composables/useBpmnDeployment'
 
 const emit = defineEmits<{ deployed: [result: BpmnDeploymentResult] }>()
 
+const { t } = useI18n()
 const deployment = useBpmnDeployment()
 
 const selectedFile = ref<File | null>(null)
@@ -36,13 +38,13 @@ async function onFileChange(event: Event) {
   try {
     text = await file.text()
   } catch {
-    readError.value = 'Fichier illisible.'
+    readError.value = t('workflow.upload.errors.unreadable')
     return
   }
 
   const key = extractProcessDefinitionKey(text)
   if (!key) {
-    readError.value = "Fichier non reconnu comme un diagramme BPMN valide (id de processus introuvable)."
+    readError.value = t('workflow.upload.errors.notBpmn')
     return
   }
 
@@ -62,30 +64,28 @@ async function confirm() {
 
 <template>
   <section class="bpmn-upload-preview">
-    <h3>Déployer un diagramme BPMN</h3>
+    <h3>{{ t('workflow.upload.title') }}</h3>
     <input type="file" accept=".xml,.bpmn20.xml,.bpmn" @change="onFileChange" />
 
     <p v-if="readError" class="bpmn-upload-preview__error">{{ readError }}</p>
 
     <template v-if="bpmnXml && processDefinitionKey">
       <BpmnCanvas :bpmn-xml="bpmnXml" />
-      <p>Clé du processus : <strong>{{ processDefinitionKey }}</strong></p>
+      <p>{{ t('workflow.upload.processKey') }} <strong>{{ processDefinitionKey }}</strong></p>
       <p v-if="deployment.deploymentInfo.value">
-        Version actuelle déployée : {{ deployment.deploymentInfo.value.latestVersion }} —
-        instances actives : {{ deployment.deploymentInfo.value.activeInstanceCount }}
+        {{ t('workflow.upload.currentVersion', { version: deployment.deploymentInfo.value.latestVersion, count: deployment.deploymentInfo.value.activeInstanceCount }) }}
       </p>
-      <p v-else>Aucune version déployée pour cette clé pour l'instant.</p>
+      <p v-else>{{ t('workflow.upload.none') }}</p>
 
       <p v-if="deployment.deployError.value" class="bpmn-upload-preview__error">
         {{ deployment.deployError.value }}
       </p>
       <p v-if="deployment.deployedResult.value" class="bpmn-upload-preview__success">
-        Déployé : version {{ deployment.deployedResult.value.deployedVersion }} (dépôt
-        {{ deployment.deployedResult.value.deploymentId }}).
+        {{ t('workflow.upload.deployed', { version: deployment.deployedResult.value.deployedVersion, id: deployment.deployedResult.value.deploymentId }) }}
       </p>
 
       <button type="button" :disabled="deployment.deploying.value" @click="confirm">
-        {{ deployment.deploying.value ? 'Déploiement en cours…' : 'Confirmer le déploiement' }}
+        {{ deployment.deploying.value ? t('workflow.upload.deploying') : t('workflow.upload.confirm') }}
       </button>
     </template>
   </section>

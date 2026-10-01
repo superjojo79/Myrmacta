@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, watch } from 'vue'
 import {
   createNotificationWebhook,
@@ -32,7 +33,7 @@ watch(
   [page, size],
   () => {
     void refresh().catch((err) => {
-      error.value = toProblemDetail(err).detail ?? 'Chargement impossible'
+      error.value = toProblemDetail(err).detail ?? t('admin.webhooks.errors.load')
     })
   },
   { immediate: true },
@@ -50,7 +51,7 @@ async function create() {
     form.value = { name: '', targetUrl: '', secret: '', enabled: true }
     await refresh()
   } catch (err) {
-    error.value = toProblemDetail(err).detail ?? 'Création impossible'
+    error.value = toProblemDetail(err).detail ?? t('admin.webhooks.errors.create')
   }
 }
 
@@ -63,35 +64,37 @@ async function remove(webhook: NotificationWebhook) {
   await deleteNotificationWebhook(webhook.id)
   await refresh()
 }
+
+const { t } = useI18n()
 </script>
 
 <template>
   <section>
-    <h1>Webhooks de notification</h1>
+    <h1>{{ t('admin.webhooks.title') }}</h1>
     <p v-if="error" class="error" data-testid="webhook-error">{{ error }}</p>
     <form class="admin-form" data-testid="webhook-create-form" @submit.prevent="create">
-      <input v-model="form.name" placeholder="nom" required data-testid="webhook-name" />
+      <input v-model="form.name" :placeholder="t('admin.webhooks.namePlaceholder')" required data-testid="webhook-name" />
       <input v-model="form.targetUrl" placeholder="https://…" required data-testid="webhook-url" />
       <input
         v-model="form.secret"
         type="password"
-        placeholder="secret (écriture seule)"
+        :placeholder="t('admin.webhooks.secretPlaceholder')"
         data-testid="webhook-secret"
         autocomplete="new-password"
       />
-      <button type="submit">Créer</button>
+      <button type="submit">{{ t('admin.webhooks.create') }}</button>
     </form>
     <ul data-testid="webhook-list">
       <li v-for="hook in webhooks" :key="hook.id">
         <div>
           <strong>{{ hook.name }}</strong>
           — {{ hook.targetUrl }}
-          — {{ hook.enabled ? 'actif' : 'inactif' }}
-          <span v-if="hook.secretConfigured" class="secret-badge">secret configuré</span>
+          — {{ hook.enabled ? t('admin.webhooks.enabled') : t('admin.webhooks.disabled') }}
+          <span v-if="hook.secretConfigured" class="secret-badge">{{ t('admin.webhooks.secretConfigured') }}</span>
         </div>
         <div>
-          <button type="button" @click="toggle(hook)">Basculer</button>
-          <button type="button" @click="remove(hook)">Supprimer</button>
+          <button type="button" @click="toggle(hook)">{{ t('admin.webhooks.toggle') }}</button>
+          <button type="button" @click="remove(hook)">{{ t('admin.webhooks.remove') }}</button>
         </div>
       </li>
     </ul>

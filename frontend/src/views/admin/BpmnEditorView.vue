@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import BpmnEditorCanvas from '@/components/workflow/BpmnEditorCanvas.vue'
@@ -48,7 +49,7 @@ async function onFileChange(event: Event) {
   try {
     text = await file.text()
   } catch {
-    readError.value = 'Fichier illisible.'
+    readError.value = t('admin.bpmnEditor.errors.unreadable')
     return
   }
 
@@ -66,7 +67,7 @@ async function saveDraft() {
   const xml = await canvasRef.value.saveXML()
   const key = extractProcessDefinitionKey(xml)
   if (!key) {
-    saveError.value = "Diagramme non reconnu comme un diagramme BPMN valide (id de processus introuvable)."
+    saveError.value = t('admin.bpmnEditor.errors.notBpmn')
     return
   }
   await draft.save(key, xml)
@@ -78,7 +79,7 @@ async function prepareDeploy() {
   const xml = await canvasRef.value.saveXML()
   const key = extractProcessDefinitionKey(xml)
   if (!key) {
-    saveError.value = "Diagramme non reconnu comme un diagramme BPMN valide (id de processus introuvable)."
+    saveError.value = t('admin.bpmnEditor.errors.notBpmn')
     return
   }
   deployPending.value = true
@@ -93,41 +94,41 @@ async function confirmDeploy() {
   const file = new File([xml], `${key}.bpmn20.xml`, { type: 'application/xml' })
   await deployment.deploy(file)
 }
+
+const { t } = useI18n()
 </script>
 
 <template>
   <section class="bpmn-editor">
-    <h1>Éditeur de diagramme BPMN</h1>
+    <h1>{{ t('admin.bpmnEditor.title') }}</h1>
 
     <div class="bpmn-editor__toolbar">
       <label>
-        Importer un fichier local
+        {{ t('admin.bpmnEditor.importFile') }}
         <input type="file" accept=".xml,.bpmn20.xml,.bpmn" @change="onFileChange" />
       </label>
-      <button type="button" class="bpmn-editor__save" @click="saveDraft">Enregistrer le brouillon</button>
-      <button type="button" class="bpmn-editor__deploy" @click="prepareDeploy">Déployer</button>
+      <button type="button" class="bpmn-editor__save" @click="saveDraft">{{ t('admin.bpmnEditor.saveDraft') }}</button>
+      <button type="button" class="bpmn-editor__deploy" @click="prepareDeploy">{{ t('admin.bpmnEditor.deploy') }}</button>
     </div>
 
     <p v-if="draft.loadError.value" class="bpmn-editor__error">
-      Impossible de charger le diagramme : {{ draft.loadError.value }}
+      {{ t('admin.bpmnEditor.loadError', { error: draft.loadError.value }) }}
     </p>
     <p v-if="readError" class="bpmn-editor__error">{{ readError }}</p>
     <p v-if="saveError" class="bpmn-editor__error">{{ saveError }}</p>
-    <p v-if="draft.hasUnsavedChanges.value" class="bpmn-editor__unsaved">Modifications non enregistrées.</p>
+    <p v-if="draft.hasUnsavedChanges.value" class="bpmn-editor__unsaved">{{ t('admin.bpmnEditor.unsaved') }}</p>
 
     <BpmnEditorCanvas v-if="ready" ref="canvasRef" :bpmn-xml="canvasXml" @dirty="onCanvasDirty" />
 
     <section v-if="deployPending" class="bpmn-editor__deploy-panel">
       <p v-if="deployment.deploymentInfo.value">
-        Version actuelle déployée : {{ deployment.deploymentInfo.value.latestVersion }} —
-        instances actives : {{ deployment.deploymentInfo.value.activeInstanceCount }}
+        {{ t('admin.bpmnEditor.currentVersion', { version: deployment.deploymentInfo.value.latestVersion, count: deployment.deploymentInfo.value.activeInstanceCount }) }}
       </p>
-      <p v-else>Aucune version déployée pour cette clé pour l'instant.</p>
+      <p v-else>{{ t('admin.bpmnEditor.none') }}</p>
 
       <p v-if="deployment.deployError.value" class="bpmn-editor__error">{{ deployment.deployError.value }}</p>
       <p v-if="deployment.deployedResult.value" class="bpmn-editor__success">
-        Déployé : version {{ deployment.deployedResult.value.deployedVersion }} (dépôt
-        {{ deployment.deployedResult.value.deploymentId }}).
+        {{ t('admin.bpmnEditor.deployed', { version: deployment.deployedResult.value.deployedVersion, id: deployment.deployedResult.value.deploymentId }) }}
       </p>
 
       <button
@@ -136,7 +137,7 @@ async function confirmDeploy() {
         :disabled="deployment.deploying.value"
         @click="confirmDeploy"
       >
-        {{ deployment.deploying.value ? 'Déploiement en cours…' : 'Confirmer le déploiement' }}
+        {{ deployment.deploying.value ? t('admin.bpmnEditor.deploying') : t('admin.bpmnEditor.confirm') }}
       </button>
     </section>
   </section>

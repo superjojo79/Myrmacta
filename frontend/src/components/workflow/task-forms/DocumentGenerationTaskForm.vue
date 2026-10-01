@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { onMounted, ref } from 'vue'
 import { getDossierById } from '@/api/dossiers'
 import { listDossierTypeDocumentTemplates } from '@/api/dossierTypes'
@@ -27,7 +28,7 @@ async function load() {
     const dossier = await getDossierById(props.dossierId)
     templates.value = await listDossierTypeDocumentTemplates(dossier.dossierTypeCode)
   } catch (err) {
-    loadError.value = toProblemDetail(err).detail ?? 'Impossible de charger les templates'
+    loadError.value = toProblemDetail(err).detail ?? t('workflow.taskForms.errors.templates')
   } finally {
     loading.value = false
   }
@@ -43,21 +44,23 @@ function submit() {
     documentLocale: template.locale,
   })
 }
+
+const { t } = useI18n()
 </script>
 
 <template>
   <div class="document-generation-task-form">
-    <p v-if="loading">Chargement…</p>
+    <p v-if="loading">{{ t('common.loading') }}</p>
     <p v-else-if="loadError" class="error">{{ loadError }}</p>
-    <p v-else-if="templates.length === 0">Aucun template disponible pour ce type de dossier.</p>
+    <p v-else-if="templates.length === 0">{{ t('workflow.taskForms.noTemplate') }}</p>
     <template v-else>
       <select v-model="selectedIndex">
-        <option :value="null" disabled>Choisir un document…</option>
+        <option :value="null" disabled>{{ t('workflow.taskForms.chooseDocument') }}</option>
         <option v-for="(template, index) in templates" :key="index" :value="index">
           {{ template.label }}
         </option>
       </select>
-      <button type="button" :disabled="selectedIndex == null" @click="submit">Compléter</button>
+      <button type="button" :disabled="selectedIndex == null" @click="submit">{{ t('workflow.taskForms.complete') }}</button>
     </template>
   </div>
 </template>

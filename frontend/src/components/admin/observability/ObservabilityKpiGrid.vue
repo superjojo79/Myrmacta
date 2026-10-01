@@ -1,18 +1,20 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import type { ObservabilitySnapshot } from '@/api/observability'
 import ObservabilityKpiCard from './ObservabilityKpiCard.vue'
 
 const props = defineProps<{
   snapshot: ObservabilitySnapshot
 }>()
+const { t } = useI18n()
 
 function pdfValue(snapshot: ObservabilitySnapshot): string {
   if (snapshot.pdfRender.count === 0) {
-    return `0 rendus · n/a`
+    return t('admin.observability.pdfNone')
   }
-  const mean = snapshot.pdfRender.meanMs?.toFixed(0) ?? 'n/a'
-  const max = snapshot.pdfRender.maxMs?.toFixed(0) ?? 'n/a'
-  return `${snapshot.pdfRender.count} rendus · moy. ${mean} ms · max ${max} ms`
+  const mean = snapshot.pdfRender.meanMs?.toFixed(0) ?? t('admin.observability.na')
+  const max = snapshot.pdfRender.maxMs?.toFixed(0) ?? t('admin.observability.na')
+  return t('admin.observability.pdfSummary', { count: snapshot.pdfRender.count, mean, max })
 }
 </script>
 
@@ -20,49 +22,49 @@ function pdfValue(snapshot: ObservabilitySnapshot): string {
   <div class="kpi-grid" data-testid="observability-kpis">
     <ObservabilityKpiCard
       test-id="kpi-trigger-outbox-age"
-      label="Âge outbox déclenchement"
+      :label="t('admin.observability.triggerOutboxAge')"
       :value="`${props.snapshot.triggerOutboxOldestPendingAgeSeconds} s`"
       :severity="props.snapshot.severity.triggerOutboxOldestPendingAge"
     />
     <ObservabilityKpiCard
       test-id="kpi-notification-outbox-age"
-      label="Âge outbox notification"
+      :label="t('admin.observability.notificationOutboxAge')"
       :value="`${props.snapshot.notificationOutboxOldestPendingAgeSeconds} s`"
       :severity="props.snapshot.severity.notificationOutboxOldestPendingAge"
     />
     <ObservabilityKpiCard
       test-id="kpi-purge-outbox-age"
-      label="Âge outbox purge"
+      :label="t('admin.observability.purgeOutboxAge')"
       :value="`${props.snapshot.purgeOutboxOldestUnfinishedAgeSeconds} s`"
       :severity="props.snapshot.severity.purgeOutboxOldestUnfinishedAge"
     />
     <ObservabilityKpiCard
       test-id="kpi-flowable-dlq"
-      label="Jobs Flowable dead-letter"
+      :label="t('admin.observability.deadLetterJobs')"
       :value="String(props.snapshot.flowableDeadLetterJobCount)"
       :severity="props.snapshot.severity.flowableDeadLetterJobs"
     />
     <ObservabilityKpiCard
       test-id="kpi-flowable-exception"
-      label="Jobs Flowable en exception"
+      :label="t('admin.observability.exceptionJobs')"
       :value="String(props.snapshot.flowableExceptionJobCount)"
       :severity="props.snapshot.severity.flowableExceptionJobs"
     />
     <ObservabilityKpiCard
       test-id="kpi-pdf-render"
-      label="Rendu PDF"
+      :label="t('admin.observability.pdfRender')"
       :value="pdfValue(props.snapshot)"
       :severity="props.snapshot.severity.pdfRender"
     />
     <ObservabilityKpiCard
       test-id="kpi-webhook-dead"
-      label="Webhooks DEAD"
+      :label="t('admin.observability.deadWebhooks')"
       :value="String(props.snapshot.webhookDeadCount)"
       :severity="props.snapshot.severity.webhookDead"
     />
     <ObservabilityKpiCard
       test-id="kpi-sse-active"
-      label="SSE actifs"
+      :label="t('admin.observability.activeSse')"
       :value="String(props.snapshot.sseActiveCount)"
       :severity="props.snapshot.severity.sseActive"
     />

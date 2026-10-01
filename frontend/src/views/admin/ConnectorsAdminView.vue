@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { computed, ref, watch } from 'vue'
 import {
   createConnector,
@@ -65,7 +66,7 @@ watch(
   [page, size],
   () => {
     void refresh().catch((err) => {
-      error.value = toProblemDetail(err).detail ?? 'Chargement impossible'
+      error.value = toProblemDetail(err).detail ?? t('admin.connectors.errors.load')
     })
   },
   { immediate: true },
@@ -95,7 +96,7 @@ async function create() {
     resetForm()
     await refresh()
   } catch (err) {
-    error.value = toProblemDetail(err).detail ?? 'Création impossible'
+    error.value = toProblemDetail(err).detail ?? t('admin.connectors.errors.create')
   }
 }
 
@@ -119,18 +120,20 @@ const listedConnectors = computed(() =>
     ingress: ingressOf(connector),
   })),
 )
+
+const { t } = useI18n()
 </script>
 
 <template>
   <section>
-    <h1>Connecteurs</h1>
+    <h1>{{ t('admin.connectors.title') }}</h1>
     <p v-if="error" class="error">{{ error }}</p>
     <p v-if="definitions.length" class="defs">
-      Types catalogue :
+      {{ t('admin.connectors.catalogTypes') }}
       <span v-for="def in definitions" :key="def.type">{{ def.label || def.type }} </span>
     </p>
     <form class="admin-form" data-testid="connector-create-form" @submit.prevent="create">
-      <input v-model="form.name" placeholder="nom" required />
+      <input v-model="form.name" :placeholder="t('admin.connectors.namePlaceholder')" required />
       <select
         v-if="definitions.length"
         v-model="form.connectorType"
@@ -140,7 +143,7 @@ const listedConnectors = computed(() =>
           {{ def.label || def.type }}
         </option>
       </select>
-      <input v-else v-model="form.connectorType" placeholder="type" required />
+      <input v-else v-model="form.connectorType" :placeholder="t('admin.connectors.typePlaceholder')" required />
       <ConnectorConfigForm
         v-if="catalogueLoaded"
         v-model="configValues"
@@ -151,7 +154,7 @@ const listedConnectors = computed(() =>
         data-testid="connector-config-empty"
         class="empty-config"
       >
-        Aucune configuration d'instance pour ce type.
+        {{ t('admin.connectors.noConfig') }}
       </p>
       <textarea
         v-if="!catalogueLoaded"
@@ -159,20 +162,20 @@ const listedConnectors = computed(() =>
         rows="3"
         data-testid="connector-config-json-fallback"
       />
-      <button type="submit">Créer</button>
+      <button type="submit">{{ t('admin.connectors.create') }}</button>
     </form>
     <ul data-testid="connector-list">
       <li v-for="{ connector: c, ingress } in listedConnectors" :key="c.id">
         <div>
-          <strong>{{ c.name }}</strong> ({{ c.connectorType }}) — {{ c.enabled ? 'actif' : 'inactif' }}
+          <strong>{{ c.name }}</strong> ({{ c.connectorType }}) — {{ c.enabled ? t('admin.connectors.enabled') : t('admin.connectors.disabled') }}
           <span v-if="Object.keys(c.secretConfigured || {}).length" class="secrets">
-            secrets: {{ Object.keys(c.secretConfigured).join(', ') }}
+            {{ t('admin.connectors.secrets', { names: Object.keys(c.secretConfigured).join(', ') }) }}
           </span>
           <ConnectorIngressUrl v-if="ingress" :kind="ingress.kind" :url="ingress.url" />
         </div>
         <div>
-          <button type="button" @click="toggle(c)">Basculer</button>
-          <button type="button" @click="remove(c)">Supprimer</button>
+          <button type="button" @click="toggle(c)">{{ t('admin.connectors.toggle') }}</button>
+          <button type="button" @click="remove(c)">{{ t('admin.connectors.remove') }}</button>
         </div>
       </li>
     </ul>

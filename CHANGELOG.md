@@ -30,6 +30,10 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
+- **TODO §81 (D2)** — Recherche de dossiers sur des champs dynamiques : un champ peut être déclaré « cherchable » (texte, nombre, date, oui/non, choix ; jamais sensible),
+  puis filtré par égalité, liste, intervalle ou préfixe depuis la liste de supervision, l'API (`f.<champ>…`) et l'outil MCP `search_dossiers`. Type de dossier obligatoire,
+  cinq filtres au plus, refus explicite d'un filtre invalide. Migration 030 : `fields` passe en `jsonb` avec un index GIN (PostgreSQL ; réécriture de la table, voir `DEPLOIEMENT.md` §12).
+
 - **TODO §80 (D1 règles)** — Champs calculés (formule), visibilité conditionnelle et obligation conditionnelle sur les types de dossier : expressions métier bornées (JSONata)
   évaluées côté serveur (un champ calculé n'est jamais saisi, un champ masqué n'est ni obligatoire ni conservé), aperçu en direct dans la SPA, endpoint `evaluate-rules` et outil MCP
   `evaluate_dossier_rules`, éditeur d'administration. Règles refusées dans les questions de tâche. Aucune migration.

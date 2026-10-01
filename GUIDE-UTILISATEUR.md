@@ -423,6 +423,9 @@ Dans le tableau des templates existants (`templateKey` — libellé — version 
 - **Supervision** (`/supervision`) — tableau de bord de tous les dossiers, filtrable par statut,
   type et préfixe de référence (filtres reflétés dans l'URL, donc partageables en lien). Recherche
   rapide d'un dossier par référence ou identifiant. Lien direct vers **Nouveau dossier**.
+  **Filtres sur les champs** (TODO §81) : une fois un type choisi, la liste propose un filtre pour chaque champ que
+  l'administrateur a déclaré **Cherchable** (texte : « commence par » ; nombre et date : de / à ; choix et oui/non). Cinq
+  filtres au plus ; un champ sensible n'est jamais cherchable. Les filtres figurent dans l'URL (`f.montant.gte=5000`).
 - **Tâches** (`/tasks`) — vue personnelle des tâches actuellement assignées à l'utilisateur
   connecté, avec accès direct au dossier concerné, bouton **Compléter**, et un rappel SLA
   (`dans N h` / `dépassée`) lorsque le type de dossier a un objectif en heures. Depuis TODO §52,

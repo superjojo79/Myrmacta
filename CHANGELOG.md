@@ -30,6 +30,16 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
+- **TODO §90 (D7)** — **Interface en français et en anglais** (`vue-i18n`) : tout le SPA et le portail public, avec sélecteur de langue (choix conservé dans le navigateur), langue par défaut du
+  tenant (`app.i18n.default-locale` / `APP_I18N_DEFAULT_LOCALE`, exposée par `/api/auth/me`), dates et nombres selon la langue, messages de validation et de repli traduits. Les e-mails d'invitation de
+  tâche externe et de signature suivent la langue du tenant (lien `?lang=en` en anglais, lien français inchangé). Non traduits (journalisé) : libellés saisis par le tenant, détail d'erreur de l'API,
+  diagnostics techniques des éditeurs de template et BPMN. Garde-fous : parité fr/en typée et testée, test de couverture des templates, E2E-I18N-1.
+- **TODO §89 (LC6, spike)** — Scripts en bac à sable : **non lancé** (D-SCRIPT-GO = non). Six familles de cas « algorithme complexe » prouvées exprimables avec LC2 (`ScriptQualificationSpikeTest`) ;
+  conditions de réouverture écrites en analyse 45 §9.
+- **TODO §88 (LC5)** — **Concepteur de parcours** : une suite d'étapes (question, tiers par portail, document, notification, connecteur, DMN, expression, champs, statuts, attente, décision avec boucles)
+  compilée en **BPMN déterministe** par le même parseur et la même liste blanche, déposée en **brouillon** (provenance `PARCOURS`) à relire dans Admin → Brouillons ; jamais publiée. API `/api/parcours`
+  (versionnée, aperçu, mode à blanc, suppression versionnée), écran Admin → Parcours, outils MCP `list_parcours`, `get_parcours`, `define_parcours`, `compile_parcours`. Sens unique (le BPMN généré ne se relit pas
+  en parcours). Deux passes de revue adversariale (valeurs de branche, mots réservés EL, caractères XML, `true/false` cités, clés, durées, variables du moteur).
 - **TODO §87 (D3c + D3d)** — Deux connecteurs d'entrée par interrogation. **E-mail entrant** (`imap-inbound`) : un message crée un dossier ou alimente celui dont la référence figure dans l'objet,
   corps et expéditeur mappés vers les champs et variables, **pièces jointes rattachées après les contrôles habituels** (types, contenu, antivirus) ; réponses automatiques et listes refusées,
   messages rangés (jamais supprimés), mot de passe ou OAuth2 (XOAUTH2, Exchange Online). **Azure Service Bus** (`azure-service-bus`) : file ou abonnement par l'API REST (SAS ou OAuth2), mapping

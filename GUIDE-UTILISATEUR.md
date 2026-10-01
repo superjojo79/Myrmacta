@@ -778,6 +778,25 @@ administrateur technique doit le configurer (`DEPLOIEMENT.md` §15).
 - **Limites.** Nombre d'étapes par message, de tours et de jetons par conversation et par jour : un message vous prévient quand elles sont atteintes.
   L'assistant peut se tromper : relisez toujours.
 
+## 14. Concepteur de parcours (TODO §88)
+
+Écran **Admin → Parcours** (`TENANT_ADMIN` ou `WORKFLOW_ADMIN`). Un parcours est une **liste d'étapes** lisible par un métier ; le serveur la compile en processus BPMN et la dépose en **brouillon**
+(*Admin → Brouillons*) pour relecture. Rien n'est publié par ce chemin.
+
+- **Étapes disponibles** : question à un utilisateur, réponse d'un tiers (portail), génération de document (avec rattachement), notification, connecteur, table de décision DMN, calcul (expression),
+  renseignement de champs, changement de statut (parcours ou dossier), attente (durée ISO 8601), et **aiguillage** : des conditions simples (variable, opérateur, valeur) vers une étape, plus un « sinon » obligatoire ;
+  on peut revenir en arrière (boucle de correction) tant qu'une sortie existe. Sans « suite » explicite, une étape passe à la suivante de la liste.
+- **Valeurs de condition** : un nombre entier ou un texte court, sans point, parenthèse, guillemet, `&`, `<`, `>`, `;`. Les nombres négatifs ou décimaux ne s'écrivent pas dans une condition de BPMN ; utilisez un champ calculé.
+- **Enregistrer** vérifie le parcours (étapes atteignables, sortie possible, statuts déclarés) et nomme l'étape fautive. **Aperçu du BPMN** montre le résultat et dit si le déploiement le refuserait. **Valider** et
+  **Compiler** travaillent sur la version enregistrée (les boutons se bloquent tant qu'il y a des modifications).
+- **Sens unique** : on modifie le parcours ici, **jamais le BPMN généré** (une retouche manuelle ne revient pas dans le parcours et sera écrasée par la prochaine compilation).
+- **MCP / assistant** : `list_parcours`, `get_parcours`, `define_parcours` (avec mode à blanc), `compile_parcours`.
+
+## 15. Langue de l'interface (TODO §90)
+
+Le sélecteur de langue (français / anglais) est en haut de page, y compris sur la page publique des tiers. Votre choix est conservé dans ce navigateur et prime sur la langue par défaut de votre organisation.
+Les dates, nombres et montants suivent la langue. Les libellés saisis par votre organisation (types de dossier, champs, statuts) ne sont pas traduits, ni le détail des erreurs renvoyées par le serveur.
+
 ## Pour aller plus loin
 
 - Mise en place de l'environnement : [GETTING-STARTED.md](GETTING-STARTED.md)

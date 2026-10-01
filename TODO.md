@@ -3446,3 +3446,26 @@ métier du dossier) mais reçoit 403 sur le panneau dossier.
 **Documenté dans :** [12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md),
 [10-visualisation-workflow.md](analysis%20doc/10-visualisation-workflow.md).
 
+---
+
+## Livraisons de la Vague D — mandat « roadmap complète » (§80 à §90)
+
+Chaque lot suit `docs/roadmap-goal/CHARTE.md` : cycle de développement complet, revue adversariale indépendante (corrections avec tests de non-régression), décisions journalisées dans
+[`docs/roadmap-goal/DECISIONS.md`](docs/roadmap-goal/DECISIONS.md), avancement dans [`AVANCEMENT.md`](docs/roadmap-goal/AVANCEMENT.md). Détail fonctionnel : `CHANGELOG.md`, docs SDD : `docs/ai/*/2026-10-01-feature-<lot>.md`.
+
+| § | Lot | État | Décisions ⚠ à relire |
+|---|---|---|---|
+| 80 | D1 règles — champs calculés, visibilité et obligation conditionnelles | [x] livré | voir DECISIONS (D3b + D1 règles) |
+| 81 | D2 — recherche sur champs dynamiques | [x] livré | — |
+| 82 | D6 — socle MCP low-code (brouillons, provenance, modes, acteur) | [x] livré | — |
+| 83 | D4 — promotion de configuration entre environnements | [x] livré | D-PROMO-CONNECTOR-DISABLED, D-PROMO-INTEGRITY |
+| 84 | LC4b — éditeur visuel de templates | [x] livré | — |
+| 85 | LC4a — concepteur visuel de formulaires | [x] livré | — |
+| 86 | LC3 — assistant de conception IA | [x] livré | D-ASSIST-PROVIDER, D-ASSIST-COST, D-ASSIST-CONFIRM |
+| 87 | D3c + D3d — e-mail entrant, bus Azure | [x] livré | D-INTEG-MAIL-PROTOCOL, -REPLAY, -SENDER, D-INTEG-AZURE, D-INTEG-POLL-ACK |
+| 88 | LC5 — concepteur de parcours | [x] livré | D-PARCOURS-ROUNDTRIP, -SCOPE, -LIMITS |
+| 89 | LC6 — scripts en bac à sable | [x] spike seul, lot non lancé | D-SCRIPT-GO |
+| 90 | D7 — internationalisation (fr, en) | [x] première tranche livrée | D-I18N-SCOPE, D-I18N-ERRORS |
+
+Hors périmètre déclaré (« Non traité », voir AVANCEMENT) : fournisseur de signature qualifiée (eIDAS), export BI par JDBC, vérifications d'environnement (antivirus sous Docker, Keycloak réel),
+diffusion SSE multi-pods (Redis exclu), Microsoft Graph et Event Grid, étapes parallèles/signature/dossier enfant/escalade dans les parcours, libellés métier traduisibles.

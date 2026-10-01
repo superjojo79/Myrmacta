@@ -1,6 +1,6 @@
 # Concepteur de parcours compilé en BPMN (LC5)
 
-> **Statut : première analyse (2026-09-28), aucune décision technique tranchée.** Sous-lot
+> **Statut : livré (TODO §88, 2026-10-01) — décisions D-PARCOURS-* dans `docs/roadmap-goal/DECISIONS.md`.** Sous-lot
 > **LC5** `concepteur-parcours` de la couche low-code (D0 = C, [31](31-positionnement-produit.md),
 > rang 5). **Dépend de LC1** ([39](39-palette-metier-bpmn.md)) **et LC2**
 > ([40](40-langage-expression-metier.md)). À affiner en `dev-lifecycle` Phase 1.

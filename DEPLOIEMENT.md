@@ -512,3 +512,9 @@ le point d'accès des jetons (`login.microsoftonline.com`). Les hôtes doivent r
 **Données.** Un e-mail entrant peut contenir des données personnelles : il devient un dossier soumis aux règles de rétention habituelles ; les messages
 traités restent dans la boîte (dossier `FlowForge-processed`) et sont à purger selon votre politique. **Plusieurs répliques** : le créneau d'interrogation est pris
 par comparaison-échange (D5), une seule réplique lit une boîte ou une file à la fois.
+
+## 17. Langue de l'interface (TODO §90)
+
+L'interface existe en français et en anglais. Chaque utilisateur choisit sa langue (sélecteur en haut de page ; le choix reste dans son navigateur). Tant qu'il n'a rien choisi, la langue vient de
+**`APP_I18N_DEFAULT_LOCALE`** (`fr` par défaut, ou `en`) puis du navigateur. Cette même valeur fixe la langue des **e-mails envoyés à des tiers sans profil** (invitation de tâche externe, invitation de signature) :
+en anglais, le lien du portail porte `?lang=en`. Toute autre valeur arrête le démarrage. Les libellés saisis par le tenant (types, champs, statuts) restent dans la langue où ils ont été saisis.

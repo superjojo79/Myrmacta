@@ -1,5 +1,9 @@
 # File d’attente produit — FlowForge
 
+> **État du mandat « roadmap complète » (2026-10-01)** : tous les lots de la Vague D sont livrés (LC1-suite, LC2, D1, D2, D3a–d, D4, D5, D6, LC3, LC4a, LC4b, LC5, D7 première tranche) ; LC6 a fait l'objet
+> d'un spike qui conclut à ne pas lancer le lot. Suivi : [docs/roadmap-goal/AVANCEMENT.md](docs/roadmap-goal/AVANCEMENT.md), décisions : [DECISIONS.md](docs/roadmap-goal/DECISIONS.md). L'ordre ci-dessous est conservé à titre d'historique.
+
+
 > Ordre recommandé des **prochaines features** après les lots lifecycle déjà
 > livrés. À relire **avant** de choisir la feature suivante (même critères
 > qu’aux analyses 2026-08-17 / 2026-08-18).

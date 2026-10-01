@@ -222,8 +222,11 @@ La documentation d'architecture est disponible dans le répertoire `analysis doc
 > Projet en développement actif : le socle (dossiers, workflows BPMN/DMN, documents, connecteurs,
 > serveur MCP, portail externe tokenisé, signature électronique générique avec fournisseur de
 > simulation, reporting/SLA, notifications) est livré sur `main`.
-> Les évolutions en cours de cadrage (couche low-code, modèle de champs enrichi, intégrations
-> entreprise, fournisseur de signature réel) sont suivies dans [ROADMAP.md](ROADMAP.md).
+> La Vague D est livrée sur la branche de développement : couche low-code (palette métier, expressions bornées, éditeurs visuels de
+> formulaires et de templates, assistant de conception IA, concepteur de parcours), modèle de champs enrichi, recherche sur champs dynamiques, intégrations
+> entreprise (OAuth2, mapping, e-mail entrant, bus Azure), promotion de configuration, MCP de conception, interface en français et en anglais.
+> Restent hors périmètre : fournisseur de signature qualifiée réel, export BI JDBC, scripts en bac à sable (spike : non nécessaire). Détails : [ROADMAP.md](ROADMAP.md),
+> [docs/roadmap-goal/AVANCEMENT.md](docs/roadmap-goal/AVANCEMENT.md).
 >  Activité indépendante complémentaire.
 
 La documentation d'architecture a fait l'objet d'une [revue pré-implémentation](REVUE-PRE-IMPLEMENTATION.md)

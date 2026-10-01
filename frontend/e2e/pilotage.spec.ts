@@ -3209,7 +3209,9 @@ test('E2E-HDR-2 template preview iframes remain visible under injected A4 CSP', 
   await openApp(page)
   await page.getByRole('link', { name: 'Templates' }).click()
   await expect(page.getByRole('heading', { name: 'Templates documents' })).toBeVisible()
-  await page.locator('form textarea').fill('<p>Bonjour</p>')
+  // Éditeur visuel (LC4b) : il doit aussi fonctionner sous la CSP injectée (ProseMirror ne doit rien exiger d'inline interdit).
+  await page.locator('form .ProseMirror').click()
+  await page.keyboard.type('Bonjour')
   await expect(page.locator('iframe[title="Aperçu HTML"]')).toBeVisible()
   await page.getByRole('button', { name: 'Aperçu PDF' }).click()
   await expect(page.locator('iframe[title="Aperçu PDF"]')).toBeVisible()

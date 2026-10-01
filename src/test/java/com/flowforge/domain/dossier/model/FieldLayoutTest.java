@@ -38,13 +38,29 @@ class FieldLayoutTest {
         assertThatThrownBy(() -> field("a\u001bb", null)).hasMessageContaining("control");
     }
 
+    /** Revue adversariale LC4a (Moyen) : une aide de sous-champ n'est affichée nulle part — refusée plutôt que stockée en silence. */
     @Test
-    void aSubFieldMayHaveHelpButNoWidth() {
-        FieldDefinition withHelp = field("aide", null);
-        assertThat(new FieldDefinition("g", "G", FieldType.REPEATABLE_GROUP, false, null, null, null, false,
-                List.of(withHelp), null, null).fields()).hasSize(1);
+    void aSubFieldHasNeitherHelpNorWidth() {
         assertThatThrownBy(() -> new FieldDefinition("g", "G", FieldType.REPEATABLE_GROUP, false, null, null, null, false,
-                List.of(field(null, "HALF")), null, null)).hasMessageContaining("no width");
+                List.of(field("aide", null)), null, null)).hasMessageContaining("neither width nor help");
+        assertThatThrownBy(() -> new FieldDefinition("g", "G", FieldType.REPEATABLE_GROUP, false, null, null, null, false,
+                List.of(field(null, "HALF")), null, null)).hasMessageContaining("neither width nor help");
+        assertThat(new FieldDefinition("g", "G", FieldType.REPEATABLE_GROUP, false, null, null, null, false,
+                List.of(field(null, null)), null, null).fields()).hasSize(1);
+    }
+
+    @Test
+    void aRepeatableGroupIsAlwaysFullWidth() {
+        assertThatThrownBy(() -> new FieldDefinition("g", "G", FieldType.REPEATABLE_GROUP, false, null, null, null, false,
+                List.of(field(null, null)), null, null, null, null, null, false, null, "HALF"))
+                .hasMessageContaining("full width");
+    }
+
+    @Test
+    void bidirectionalAndZeroWidthCharactersAreRefusedInHelpText() {
+        for (String bad : new String[] {"a\u202Eb", "a\u200Bb", "a\u2066b", "a\uFEFFb"}) {
+            assertThatThrownBy(() -> field(bad, null)).as(bad).hasMessageContaining("bidirectional");
+        }
     }
 
     @Test

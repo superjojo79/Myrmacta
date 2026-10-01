@@ -70,7 +70,7 @@ const groups = computed(() => {
   const map = new Map<string, FieldDefinition[]>()
   for (const def of props.definitions) {
     if (!props.readonly && !isFieldApplicable(def, rules.value)) continue
-    const key = def.group || 'Général'
+    const key = def.group?.trim() || 'Général'
     const list = map.get(key) ?? []
     list.push(def)
     map.set(key, list)
@@ -151,7 +151,7 @@ function setField(name: string, value: unknown) {
           :model-value="modelValue[field.name]"
           @update:model-value="(value) => setField(field.name, value)"
         />
-        <small v-if="field.helpText" class="dynamic-fields__help" :data-testid="`help-${field.name}`">{{ field.helpText }}</small>
+        <small v-if="field.helpText && !readonly" class="dynamic-fields__help" :data-testid="`help-${field.name}`">{{ field.helpText }}</small>
       </component>
     </section>
   </div>

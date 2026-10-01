@@ -80,6 +80,8 @@ function changeType(index: number, type: FieldType) {
       fields: [],
       minRows: null,
       maxRows: null,
+      // Un groupe répétable occupe toute la largeur : une demi-colonne le rendrait inutilisable.
+      ...(type === 'REPEATABLE_GROUP' ? { width: null } : {}),
     })
     return
   }
@@ -220,7 +222,7 @@ function parseOptions(raw: string): string[] {
           @input="updateRow(index, { group: ($event.target as HTMLInputElement).value })"
         />
       </label>
-      <label v-if="!isSub">
+      <label v-if="!isSub && def.type !== 'REPEATABLE_GROUP'">
         Largeur
         <select
           :value="def.width ?? 'FULL'"
@@ -231,7 +233,7 @@ function parseOptions(raw: string): string[] {
           <option value="HALF">Demi</option>
         </select>
       </label>
-      <label>
+      <label v-if="!isSub">
         Aide (texte brut affiché sous le champ)
         <input
           :value="def.helpText ?? ''"

@@ -71,8 +71,8 @@ export const ConditionalBlock = Node.create({
     return { mode: { default: 'if' }, path: { default: '' }, value: { default: '' } }
   },
   parseHTML() {
-    const read = (attr: 'th:if' | 'th:unless') => (el: Node | string) => {
-      const raw = (el as HTMLElement).getAttribute(attr)
+    const read = (attr: 'th:if' | 'th:unless') => (el: HTMLElement) => {
+      const raw = el.getAttribute(attr)
       const c = raw === null ? null : parseCondition(attr, raw)
       if (!c) return false
       return { mode: c.mode, path: c.path, value: c.mode === 'equals' ? c.value : '' }

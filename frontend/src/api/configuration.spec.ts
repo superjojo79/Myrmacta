@@ -66,4 +66,15 @@ describe('configuration api (TODO §83, D4)', () => {
     expect(parseParameters('nope')).toBeNull()
     expect(parseParameters('null')).toBeNull()
   })
+
+  it('reads the JSON body of a failed blob download so the server reason is not lost (revue D4 L-3)', async () => {
+    const error = { isAxiosError: true, response: { status: 403, data: new Blob([JSON.stringify({ detail: 'Access denied' })]) } }
+    vi.mocked(axios.get).mockRejectedValue(error)
+    await expect(downloadExport('x')).rejects.toBe(error)
+    expect((error.response.data as unknown as { detail: string }).detail).toBe('Access denied')
+    // un corps non JSON laisse l'erreur intacte
+    const opaque = { isAxiosError: true, response: { status: 500, data: new Blob(['<html>']) } }
+    vi.mocked(axios.get).mockRejectedValue(opaque)
+    await expect(downloadExport('x')).rejects.toBe(opaque)
+  })
 })

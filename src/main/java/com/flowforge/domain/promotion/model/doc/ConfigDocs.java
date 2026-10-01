@@ -47,6 +47,8 @@ public final class ConfigDocs {
             String name, String connectorType, boolean enabled, Map<String, Object> config, List<String> secretFields) {
 
         public ConnectorDoc {
+            java.util.Objects.requireNonNull(name, "name");
+            java.util.Objects.requireNonNull(connectorType, "connectorType");
             // null-safe (revue D4 M1) : une valeur null équivaut à une clé absente — jamais d'échec de l'export entier
             java.util.Map<String, Object> copy = new java.util.TreeMap<>();
             if (config != null) {

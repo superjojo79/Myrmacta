@@ -396,4 +396,83 @@ class ConfigurationPromotionUseCaseTest {
         assertThat(report.entries().get(1).outcome()).isEqualTo(ImportOutcome.FAILED);
         assertThat(report.entries().get(1).message()).contains("not applied");
     }
+
+    // ---- seconde passe de la revue D4 ----
+
+    @Test
+    void anUpdateKeepsTheNestedSecretsOfTheTarget_reviewD4MA() {
+        when(connectors.listByTenantId(TENANT)).thenReturn(List.of(existing("ERP", true,
+                Map.of("auth", Map.of("user", "x", "clientSecret", "S3CR3T"), "processKey", "p"))));
+        var doc = new ConnectorDoc("ERP", "http-rest", true, Map.of("auth", Map.of("user", "y"), "processKey", "p"), List.of());
+        var b = bundle(json(ArtifactType.CONNECTOR_INSTANCE, "erp", doc));
+
+        useCase.apply(ADMIN, b, Map.of(), Map.of(), null, Channel.ADMIN);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(ManageConnectorInstanceUseCase.UpdateCommand.class);
+        verify(manageConnector).update(captor.capture(), any());
+        @SuppressWarnings("unchecked")
+        var auth = (Map<String, Object>) captor.getValue().config().get("auth");
+        assertThat(auth).containsEntry("user", "y").containsEntry("clientSecret", "S3CR3T");
+    }
+
+    @Test
+    void theWarningAboutAnEnabledConnectorsAddressSurvivesTruncation_reviewD4MB() {
+        String longValue = "https://recette.example/" + "x".repeat(300);
+        when(connectors.listByTenantId(TENANT)).thenReturn(List.of(existing("ERP", true, Map.of("baseUrl", longValue))));
+        var doc = new ConnectorDoc("ERP", "http-rest", true, Map.of("baseUrl", "https://prod.example/" + "y".repeat(300)), List.of());
+
+        var entry = useCase.plan(ADMIN, bundle(json(ArtifactType.CONNECTOR_INSTANCE, "erp", doc)), Map.of()).entries().getFirst();
+
+        assertThat(entry.reason()).startsWith("WARNING");
+        assertThat(entry.reason().length()).isLessThan(900);
+    }
+
+    @Test
+    void onlyRealUrlCredentialsAreStrippedOrRefused_reviewD4MC() {
+        for (String fine : List.of("https://host.example?email=a@b.fr", "https://host.example/path#a@b", "ssh://git@github.com/org/repo",
+                "contact@example.com", "https://host.example/a@b")) {
+            var exported = ExportConfigurationUseCaseImpl.connectorDoc("U", "http-rest", true, Map.of("baseUrl", fine), catalog);
+            assertThat(exported.config()).as(fine).containsEntry("baseUrl", fine);
+            var b = bundle(json(ArtifactType.CONNECTOR_INSTANCE, "u", new ConnectorDoc("U", "http-rest", true, Map.of("baseUrl", fine), List.of())));
+            useCase.plan(ADMIN, b, Map.of()); // accepté
+        }
+        for (String leaky : List.of("https://user:pa55@host.example/x", "ftp://:pa55@host.example")) {
+            var b = bundle(json(ArtifactType.CONNECTOR_INSTANCE, "u", new ConnectorDoc("U", "http-rest", true, Map.of("baseUrl", leaky), List.of())));
+            assertThatThrownBy(() -> useCase.plan(ADMIN, b, Map.of())).as(leaky).isInstanceOf(InvalidBundleException.class);
+        }
+    }
+
+    @Test
+    void theFileKeyFallbackNeverSendsSecretsToAnotherConnectorsName_reviewD4L1() {
+        var alpha = new ConnectorDoc("Alpha Bot", "http-rest", true, Map.of("processKey", "a"), List.of("webhookSecret"));
+        var beta = new ConnectorDoc("alpha-bot", "http-rest", true, Map.of("processKey", "b"), List.of("webhookSecret"));
+        var b = bundle(json(ArtifactType.CONNECTOR_INSTANCE, "alpha-bot", alpha), json(ArtifactType.CONNECTOR_INSTANCE, "alpha-bot-2", beta));
+
+        useCase.apply(ADMIN, b, Map.of("alpha-bot", Map.of("webhookSecret", "FOR-BETA")), Map.of(), null, Channel.ADMIN);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(ManageConnectorInstanceUseCase.CreateCommand.class);
+        verify(manageConnector, org.mockito.Mockito.atLeastOnce()).create(captor.capture(), any());
+        var forAlpha = captor.getAllValues().stream().filter(c -> c.name().equals("Alpha Bot")).toList();
+        var forBeta = captor.getAllValues().stream().filter(c -> c.name().equals("alpha-bot")).toList();
+        assertThat(forBeta).hasSize(1);
+        assertThat(forBeta.getFirst().config()).containsEntry("webhookSecret", "FOR-BETA");
+        assertThat(forAlpha).as("Alpha Bot ne reçoit jamais le secret destiné à un autre nom")
+                .allSatisfy(c -> assertThat(c.config()).doesNotContainKey("webhookSecret"));
+    }
+
+    @Test
+    void urlCredentialsNeverAppearInAPlanReason_reviewD4L4() {
+        when(connectors.listByTenantId(TENANT)).thenReturn(List.of(existing("ERP", false, Map.of("baseUrl", "https://old.example"))));
+        var doc = new ConnectorDoc("ERP", "http-rest", true, Map.of("baseUrl", "{{u}}"), List.of());
+        var entry = useCase.plan(ADMIN, bundle(json(ArtifactType.CONNECTOR_INSTANCE, "erp", doc)),
+                Map.of("u", "https://bob:hunter2@new.example")).entries().getFirst();
+        assertThat(entry.reason()).doesNotContain("hunter2");
+    }
+
+    @Test
+    void aForgedConnectorFileWithoutANameIsRefused_reviewD4L4() {
+        var forged = new BundleEntry(ArtifactType.CONNECTOR_INSTANCE, "x",
+                "{\"config\":{},\"connectorType\":\"http-rest\",\"enabled\":true,\"secretFields\":[]}".getBytes(StandardCharsets.UTF_8));
+        assertThatThrownBy(() -> useCase.plan(ADMIN, bundle(forged), Map.of())).isInstanceOf(InvalidBundleException.class);
+    }
 }

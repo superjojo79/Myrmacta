@@ -67,16 +67,37 @@ export const ARTIFACT_LABELS: Record<ArtifactType, string> = {
 /** Télécharge le bundle (ZIP) par axios : préfixe de contexte et en-têtes de session respectés, erreur lisible (jamais un JSON enregistré en .zip). */
 export async function downloadExport(sourceLabel: string): Promise<void> {
   const label = sourceLabel.trim()
-  const { data } = await axios.get<Blob>('/api/admin/configuration/export', {
-    params: label ? { sourceLabel: label } : undefined,
-    responseType: 'blob',
-  })
+  let data: Blob
+  try {
+    ;({ data } = await axios.get<Blob>('/api/admin/configuration/export', {
+      params: label ? { sourceLabel: label } : undefined,
+      responseType: 'blob',
+    }))
+  } catch (err) {
+    throw await readableError(err)
+  }
   const url = URL.createObjectURL(data)
   const anchor = document.createElement('a')
   anchor.href = url
   anchor.download = `flowforge-config${label ? `-${label.replace(/[^A-Za-z0-9_.-]+/g, '-')}` : ''}.zip`
   anchor.click()
   URL.revokeObjectURL(url)
+}
+
+/**
+ * Avec `responseType: 'blob'`, le corps d'une ERREUR est lui aussi un Blob : on le relit pour que `toProblemDetail` retrouve le
+ * `detail` du serveur (sinon « Export impossible » sans raison).
+ */
+async function readableError(err: unknown): Promise<unknown> {
+  const response = (err as { response?: { data?: unknown } })?.response
+  if (response?.data instanceof Blob) {
+    try {
+      response.data = JSON.parse(await response.data.text())
+    } catch {
+      // corps non JSON : on garde l'erreur d'origine
+    }
+  }
+  return err
 }
 
 function form(file: File, extra: Record<string, string | undefined>): FormData {

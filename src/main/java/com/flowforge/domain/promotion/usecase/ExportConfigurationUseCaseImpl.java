@@ -151,6 +151,11 @@ public final class ExportConfigurationUseCaseImpl implements ExportConfiguration
         return new ConnectorDoc(name, type, enabled, clean, secretFields);
     }
 
+    /** Même normalisation que l'export (null retirés, identifiants d'URL retirés) pour comparer à armes égales. */
+    static Object normalizeValue(Object value) {
+        return stripNested(value);
+    }
+
     @SuppressWarnings("unchecked")
     private static Object stripNested(Object value) {
         if (value instanceof Map<?, ?> map) {
@@ -172,7 +177,12 @@ public final class ExportConfigurationUseCaseImpl implements ExportConfiguration
     }
 
     /** {@code scheme://utilisateur:motdepasse@hôte} → {@code scheme://hôte}. */
-    static final java.util.regex.Pattern URL_USERINFO = java.util.regex.Pattern.compile("([A-Za-z][A-Za-z0-9+.-]*://)[^/\\s@]+@");
+    /**
+     * Des identifiants véritables : {@code utilisateur:motdepasse@} dans l'autorité de l'URL. Ni {@code git@hôte} (SSH, pas de
+     * mot de passe), ni un {@code @} dans le chemin, la requête ou le fragment ({@code ?email=a@b}) : ce sont des URL valides.
+     */
+    static final java.util.regex.Pattern URL_USERINFO =
+            java.util.regex.Pattern.compile("([A-Za-z][A-Za-z0-9+.-]*://)[^/\\s@:?#]*:[^/\\s@?#]+@");
 
     /** Vrai si une valeur porte des identifiants dans une URL ou un champ secret imbriqué (refusé à l'import). */
     @SuppressWarnings("unchecked")

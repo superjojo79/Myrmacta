@@ -160,6 +160,7 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
             Map<String, String> parameters,
             Map<String, Map<String, String>> secrets) {
         rejectSecretsInBundle(bundle);
+        Set<String> names = connectorNames(bundle);
         Map<String, PlanEntry> byKey = new LinkedHashMap<>();
         List<BundleEntry> ordered = bundle.entries().stream()
                 .sorted(Comparator.comparing((BundleEntry e) -> e.type().ordinal()).thenComparing(BundleEntry::key))
@@ -169,7 +170,7 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
             PlanEntry planned = switch (entry.type()) {
                 case DOSSIER_TYPE -> planDossierType(entry);
                 case TASK_QUESTION_SCHEMA -> planSchema(entry);
-                case CONNECTOR_INSTANCE -> planConnector(entry, parameters, secrets);
+                case CONNECTOR_INSTANCE -> planConnector(entry, parameters, secrets, names);
                 case DMN -> planDmn(actor, entry);
                 case BPMN -> planBpmn(actor, entry, bundle, byKey);
                 case WORKFLOW_CONFIG -> planWorkflowConfig(entry, byKey);
@@ -247,7 +248,10 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
     }
 
     private PlanEntry planConnector(
-            BundleEntry entry, Map<String, String> parameters, Map<String, Map<String, String>> secrets) {
+            BundleEntry entry,
+            Map<String, String> parameters,
+            Map<String, Map<String, String>> secrets,
+            Set<String> bundleNames) {
         ConnectorDoc raw = decode(entry, ConnectorDoc.class);
         ConnectorDoc doc;
         try {
@@ -286,13 +290,14 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
             // Revue D4 M3 : le plan DIT ce qui change (valeurs non secrètes) et signale les adresses : un connecteur activé garde
             // ses secrets et les enverrait à une nouvelle adresse.
             boolean address = changes.keySet().stream().anyMatch(k -> isAddressKey(k, doc.config().get(k)));
-            String reason = "configuration updated (enabled state and secrets kept): " + changes
-                    + (address && current.enabled()
-                            ? " — WARNING: an address of an ENABLED connector changes, its secrets are kept and will be sent there"
-                            : "");
-            return new PlanEntry(entry.type(), entry.key(), PlanAction.UPDATE, cap(reason), List.of(), doc.name());
+            // L'avertissement en TÊTE : seule la liste des changements peut être tronquée (revue D4 M-B)
+            String warning = address && current.enabled()
+                    ? "WARNING: an address of an ENABLED connector changes, its secrets are kept and will be sent there. "
+                    : "";
+            String reason = warning + cap("configuration updated (enabled state and secrets kept): " + changes);
+            return new PlanEntry(entry.type(), entry.key(), PlanAction.UPDATE, reason, List.of(), doc.name());
         }
-        Map<String, String> provided = secretsFor(secrets, doc.name(), entry.key());
+        Map<String, String> provided = secretsFor(secrets, doc.name(), entry.key(), bundleNames);
         Map<String, Object> candidate = new LinkedHashMap<>(doc.config());
         provided.forEach(candidate::put);
         List<String> missing = doc.secretFields().stream().filter(f -> !provided.containsKey(f)).toList();
@@ -307,13 +312,31 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
     }
 
     /** Secrets d'un connecteur : indexés par son nom exact ; la clé de fichier est acceptée aussi (revue D4 H1). */
-    private static Map<String, String> secretsFor(Map<String, Map<String, String>> secrets, String name, String fileKey) {
+    private static Map<String, String> secretsFor(
+            Map<String, Map<String, String>> secrets, String name, String fileKey, Set<String> bundleNames) {
         Map<String, String> byName = secrets.get(name);
-        return byName != null ? byName : secrets.getOrDefault(fileKey, Map.of());
+        if (byName != null) {
+            return byName;
+        }
+        // le repli sur la clé de fichier ne vaut que si cette clé n'est pas le NOM d'un autre connecteur du bundle (revue D4 L-1)
+        return bundleNames.contains(fileKey) ? Map.of() : secrets.getOrDefault(fileKey, Map.of());
+    }
+
+    private Set<String> connectorNames(ConfigurationBundle bundle) {
+        Set<String> names = new HashSet<>();
+        for (BundleEntry e : bundle.of(ArtifactType.CONNECTOR_INSTANCE)) {
+            names.add(decode(e, ConnectorDoc.class).name());
+        }
+        return names;
     }
 
     private static String describeChange(Object before, Object after) {
-        return (before == null ? "(absent)" : String.valueOf(before)) + " → " + after;
+        // jamais d'identifiants d'URL dans un plan ou un journal (revue D4 L-4)
+        return (before == null ? "(absent)" : redact(String.valueOf(before))) + " → " + redact(String.valueOf(after));
+    }
+
+    private static String redact(String text) {
+        return ExportConfigurationUseCaseImpl.URL_USERINFO.matcher(text).replaceAll("$1***@");
     }
 
     private static boolean isAddressKey(String key, Object value) {
@@ -457,7 +480,7 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
             String message = switch (entry.type()) {
                 case DOSSIER_TYPE -> applyDossierType(actor, entry, planned.action());
                 case TASK_QUESTION_SCHEMA -> applySchema(actor, entry, planned.action());
-                case CONNECTOR_INSTANCE -> applyConnector(actor, entry, planned.action(), params, secrets);
+                case CONNECTOR_INSTANCE -> applyConnector(actor, entry, planned.action(), params, secrets, connectorNames(bundle));
                 case DMN -> applyDmn(actor, entry, bundle);
                 case BPMN -> applyBpmn(actor, entry, bundle);
                 case WORKFLOW_CONFIG -> applyWorkflowConfig(actor, entry, plan, outcomes);
@@ -497,22 +520,46 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
             BundleEntry entry,
             PlanAction action,
             Map<String, String> params,
-            Map<String, Map<String, String>> secrets) {
+            Map<String, Map<String, String>> secrets,
+            Set<String> bundleNames) {
         ConnectorDoc doc = substitute(decode(entry, ConnectorDoc.class), params);
         Optional<ConnectorInstanceData> current = connectors.listByTenantId(tenantId).stream()
                 .filter(c -> c.name().equals(doc.name()))
                 .findFirst();
         if (action == PlanAction.CREATE) {
             Map<String, Object> config = new LinkedHashMap<>(doc.config());
-            secretsFor(secrets, doc.name(), entry.key()).forEach(config::put);
+            secretsFor(secrets, doc.name(), entry.key(), bundleNames).forEach(config::put);
             // désactivé : ses URLs viennent d'un autre environnement (D-PROMO-CONNECTOR-DISABLED)
             manageConnector.create(new ManageConnectorInstanceUseCase.CreateCommand(
                     tenantId, doc.name(), doc.connectorType(), false, config), actor);
             return "created disabled — review its endpoints, then enable it";
         }
+        ConnectorInstanceData target = current.orElseThrow();
         manageConnector.update(new ManageConnectorInstanceUseCase.UpdateCommand(
-                current.orElseThrow().id(), tenantId, null, null, doc.config(), false), actor);
+                target.id(), tenantId, null, null, keepNestedSecrets(target.config(), doc.config()), false), actor);
         return "configuration updated (enabled state and secrets kept)";
+    }
+
+    /**
+     * La mise à jour fusionne au premier niveau seulement : une table imbriquée du bundle REMPLACE celle de la cible. On y
+     * réinjecte les champs secrets imbriqués de la cible, sinon « secrets conservés » serait faux (revue D4 M-A).
+     */
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> keepNestedSecrets(Map<String, Object> current, Map<String, Object> incoming) {
+        Map<String, Object> out = new LinkedHashMap<>(incoming);
+        for (Map.Entry<String, Object> e : incoming.entrySet()) {
+            if (e.getValue() instanceof Map<?, ?> in && current.get(e.getKey()) instanceof Map<?, ?> cur) {
+                Map<String, Object> merged = new LinkedHashMap<>((Map<String, Object>) in);
+                for (Map.Entry<String, Object> c : ((Map<String, Object>) cur).entrySet()) {
+                    if (com.flowforge.domain.connector.usecase.ManageConnectorInstanceUseCaseImpl.isSecretKey(c.getKey())
+                            && !merged.containsKey(c.getKey())) {
+                        merged.put(c.getKey(), c.getValue());
+                    }
+                }
+                out.put(e.getKey(), keepNestedSecrets((Map<String, Object>) cur, merged));
+            }
+        }
+        return out;
     }
 
     private String applyDmn(AccessContext.User actor, BundleEntry entry, ConfigurationBundle bundle) {
@@ -611,7 +658,9 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
     private static ConnectorDoc substitute(ConnectorDoc doc, Map<String, String> parameters) {
         Map<String, Object> out = new LinkedHashMap<>();
         for (Map.Entry<String, Object> e : doc.config().entrySet()) {
-            out.put(e.getKey(), substituteValue(e.getValue(), parameters, doc.name()));
+            if (e.getValue() != null) {
+                out.put(e.getKey(), ExportConfigurationUseCaseImpl.normalizeValue(substituteValue(e.getValue(), parameters, doc.name())));
+            }
         }
         return new ConnectorDoc(doc.name(), doc.connectorType(), doc.enabled(), out, doc.secretFields());
     }

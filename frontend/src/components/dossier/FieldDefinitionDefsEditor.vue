@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { computed, ref, watch } from 'vue'
 import type { FieldDefinition, FieldType } from '@/api/types'
 
@@ -12,6 +13,7 @@ const props = withDefaults(
   { mode: 'fields' },
 )
 
+const { t } = useI18n()
 const emit = defineEmits<{
   'update:modelValue': [FieldDefinition[]]
 }>()
@@ -149,7 +151,7 @@ function parseOptions(raw: string): string[] {
         v-if="!isSub"
         class="field-def-editor__handle"
         draggable="true"
-        title="Glisser pour réordonner"
+        :title="t('dossier.defsEditor.drag')"
         aria-hidden="true"
         data-testid="field-def-handle"
         @dragstart="onDragStart(index, $event)"
@@ -157,7 +159,7 @@ function parseOptions(raw: string): string[] {
         >⋮⋮</span
       >
       <label>
-        Nom
+        {{ t('dossier.defsEditor.name') }}
         <input
           :value="def.name"
           data-testid="field-def-name"
@@ -165,7 +167,7 @@ function parseOptions(raw: string): string[] {
         />
       </label>
       <label>
-        Libellé
+        {{ t('dossier.defsEditor.label') }}
         <input
           :value="def.label"
           data-testid="field-def-label"
@@ -173,7 +175,7 @@ function parseOptions(raw: string): string[] {
         />
       </label>
       <label>
-        Type
+        {{ t('dossier.defsEditor.type') }}
         <select
           :value="def.type"
           data-testid="field-def-type"
@@ -189,10 +191,10 @@ function parseOptions(raw: string): string[] {
           data-testid="field-def-required"
           @change="updateRow(index, { required: ($event.target as HTMLInputElement).checked })"
         />
-        Obligatoire
+        {{ t('dossier.defsEditor.required') }}
       </label>
       <label v-if="!STRUCTURED.includes(def.type) && !isSub">
-        Valeur par défaut
+        {{ t('dossier.defsEditor.defaultValue') }}
         <input
           :value="def.defaultValue ?? ''"
           data-testid="field-def-default"
@@ -202,10 +204,10 @@ function parseOptions(raw: string): string[] {
       <label v-if="def.type === 'SELECT' || def.type === 'MONEY' || def.type === 'EXTERNAL_REF'" data-testid="field-def-options">
         {{
           def.type === 'MONEY'
-            ? 'Devises autorisées (codes ISO 4217 séparés par des virgules, vide = toutes)'
+            ? t('dossier.defsEditor.currencies')
             : def.type === 'EXTERNAL_REF'
-              ? 'Systèmes autorisés (séparés par des virgules, vide = tous)'
-              : 'Options (séparées par des virgules)'
+              ? t('dossier.defsEditor.systems')
+              : t('dossier.defsEditor.options')
         }}
         <input
           :value="(def.options ?? []).join(', ')"
@@ -214,7 +216,7 @@ function parseOptions(raw: string): string[] {
         />
       </label>
       <label v-if="!isSub">
-        Section
+        {{ t('dossier.defsEditor.section') }}
         <input
           :value="def.group ?? ''"
           :list="groupListId"
@@ -223,18 +225,18 @@ function parseOptions(raw: string): string[] {
         />
       </label>
       <label v-if="!isSub && def.type !== 'REPEATABLE_GROUP'">
-        Largeur
+        {{ t('dossier.defsEditor.width') }}
         <select
           :value="def.width ?? 'FULL'"
           data-testid="field-def-width"
           @change="updateRow(index, { width: ($event.target as HTMLSelectElement).value === 'HALF' ? 'HALF' : null })"
         >
-          <option value="FULL">Pleine</option>
-          <option value="HALF">Demi</option>
+          <option value="FULL">{{ t('dossier.defsEditor.full') }}</option>
+          <option value="HALF">{{ t('dossier.defsEditor.half') }}</option>
         </select>
       </label>
       <label v-if="!isSub">
-        Aide (texte brut affiché sous le champ)
+        {{ t('dossier.defsEditor.help') }}
         <input
           :value="def.helpText ?? ''"
           maxlength="500"
@@ -249,12 +251,12 @@ function parseOptions(raw: string): string[] {
           data-testid="field-def-sensitive"
           @change="updateRow(index, { sensitive: ($event.target as HTMLInputElement).checked })"
         />
-        Sensible
+        {{ t('dossier.defsEditor.sensitive') }}
       </label>
       <label
         v-if="!isSub && ['STRING', 'NUMBER', 'DATE', 'BOOLEAN', 'SELECT'].includes(def.type)"
         class="field-def-editor__checkbox"
-        :title="def.sensitive ? 'Un champ sensible ne peut pas être cherchable' : 'Proposé comme filtre dans la liste des dossiers'"
+        :title="def.sensitive ? t('dossier.defsEditor.sensitiveNotSearchable') : t('dossier.defsEditor.searchableHint')"
       >
         <input
           type="checkbox"
@@ -263,15 +265,15 @@ function parseOptions(raw: string): string[] {
           data-testid="field-def-searchable"
           @change="updateRow(index, { searchable: ($event.target as HTMLInputElement).checked })"
         />
-        Cherchable
+        {{ t('dossier.defsEditor.searchable') }}
       </label>
       <details v-if="mode === 'fields' && def.type !== 'REPEATABLE_GROUP' && def.type !== 'FILE'" class="field-def-editor__rules" data-testid="field-def-rules">
-        <summary>Règles (calcul, visibilité, obligation conditionnelle)</summary>
-        <p class="field-def-editor__hint">
-          Expressions JSONata sur les champs simples non sensibles : <code>dossier.fields.nom_du_champ</code>.
-        </p>
+        <summary>{{ t('dossier.defsEditor.rules') }}</summary>
+        <i18n-t keypath="dossier.defsEditor.rulesHint" tag="p" class="field-def-editor__hint">
+          <template #example><code>dossier.fields.nom_du_champ</code></template>
+        </i18n-t>
         <label>
-          Calcul (champ calculé, lecture seule, recalculé à chaque enregistrement)
+          {{ t('dossier.defsEditor.formula') }}
           <input
             :value="def.formula ?? ''"
             data-testid="field-def-formula"
@@ -280,7 +282,7 @@ function parseOptions(raw: string): string[] {
           />
         </label>
         <label>
-          Visible si
+          {{ t('dossier.defsEditor.visibleWhen') }}
           <input
             :value="def.visibleWhen ?? ''"
             data-testid="field-def-visible-when"
@@ -289,7 +291,7 @@ function parseOptions(raw: string): string[] {
           />
         </label>
         <label>
-          Obligatoire si
+          {{ t('dossier.defsEditor.requiredWhen') }}
           <input
             :value="def.requiredWhen ?? ''"
             data-testid="field-def-required-when"
@@ -300,7 +302,7 @@ function parseOptions(raw: string): string[] {
       </details>
       <template v-if="def.type === 'REPEATABLE_GROUP'">
         <label>
-          Lignes min.
+          {{ t('dossier.defsEditor.minRows') }}
           <input
             type="number"
             min="0"
@@ -310,7 +312,7 @@ function parseOptions(raw: string): string[] {
           />
         </label>
         <label>
-          Lignes max.
+          {{ t('dossier.defsEditor.maxRows') }}
           <input
             type="number"
             min="1"
@@ -321,7 +323,7 @@ function parseOptions(raw: string): string[] {
           />
         </label>
         <fieldset class="field-def-editor__subfields" data-testid="field-def-subfields">
-          <legend>Colonnes du groupe (sous-champs, un seul niveau ; sensibilité = celle du groupe)</legend>
+          <legend>{{ t('dossier.defsEditor.columns') }}</legend>
           <FieldDefinitionDefsEditor
             :model-value="def.fields ?? []"
             mode="subfields"
@@ -341,10 +343,10 @@ function parseOptions(raw: string): string[] {
         >
           ↓
         </button>
-        <button type="button" data-testid="field-def-remove" @click="removeRow(index)">Supprimer</button>
+        <button type="button" data-testid="field-def-remove" @click="removeRow(index)">{{ t('dossier.defsEditor.remove') }}</button>
       </div>
     </div>
-    <button type="button" data-testid="field-def-add" @click="addRow">Ajouter un champ</button>
+    <button type="button" data-testid="field-def-add" @click="addRow">{{ t('dossier.defsEditor.add') }}</button>
   </div>
 </template>
 

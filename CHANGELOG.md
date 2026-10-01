@@ -30,6 +30,10 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
+- **TODO §77 (D3a)** — Connecteur `http-rest` : authentification OAuth2 `client_credentials` (Microsoft Entra ID : D365 F&O, Dataverse, Graph). Jeton obtenu,
+  mis en cache par pod et renouvelé automatiquement ; secret client ou certificat (`private_key_jwt`) chiffrés au repos ; liste d'hôtes autorisés obligatoire pour que
+  le jeton ne puisse pas partir ailleurs ; un `401` provoque un renouvellement et un seul rejeu. Sans `authMode`, comportement inchangé.
+
 - **TODO §76 (D1)** — Champs dynamiques structurés : `MONEY` (montant décimal exact + devise ISO 4217, jamais arrondi en silence),
   `REPEATABLE_GROUP` (lignes typées, un niveau, 0–500) et `EXTERNAL_REF` (système + identifiant). Validation avec chemin d'erreur par ligne,
   valeurs normalisées, export CSV en colonnes stables, saisie et lecture dans la SPA, éditeur d'administration. Aucune migration ; types

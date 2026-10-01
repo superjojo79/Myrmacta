@@ -234,13 +234,41 @@ class ConnectorAdminApiTest {
         org.assertj.core.api.Assertions.assertThat(fetched).doesNotContain("client-secret-0123456789");
     }
 
+    /** Migration STATIC_HEADER → OAuth2 sans recréer l'instance : l'ancien en-tête (masqué, conservé) est simplement ignoré. */
     @Test
-    void createConnector_oauth2WithAStaticHeaderToo_returns400() throws Exception {
+    void updateConnector_fromStaticHeaderToOauth2_isPossibleWithoutRecreating() throws Exception {
+        String name = "Migrating " + UUID.randomUUID();
+        MvcResult created = mockMvc.perform(post("/api/connectors")
+                        .with(user("connector-admin", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(httpRestPayload(name, "SHARED_SECRET_TOKEN").replace("\"config\": {",
+                                "\"config\": {\"authHeaderValue\": \"Bearer legacy-credential-0123\",")))
+                .andExpect(status().isCreated()).andReturn();
+        String id = JsonMapper.builder().build().readTree(created.getResponse().getContentAsString()).get("id").asString();
+
+        mockMvc.perform(patch("/api/connectors/{id}", id)
+                        .with(user("connector-admin", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"config": {"authMode": "OAUTH2_CLIENT_CREDENTIALS",
+                                  "oauthTokenUrl": "https://93.184.216.34/token", "oauthClientId": "app-1",
+                                  "oauthClientSecret": "client-secret-0123456789", "oauthAllowedHosts": "erp.example.com"}}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.config.authMode").value("OAUTH2_CLIENT_CREDENTIALS"))
+                .andExpect(jsonPath("$.config.oauthClientSecret").value("********"));
+    }
+
+    @Test
+    void createConnector_withAMaskedPlaceholderAsASecret_returns400() throws Exception {
         mockMvc.perform(post("/api/connectors")
                         .with(user("connector-admin", "TENANT_ADMIN"))
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(oauthPayload("Ambiguous " + UUID.randomUUID(), ",\n\"authHeaderValue\": \"Bearer x\"")))
+                        .content(oauthPayload("Masked " + UUID.randomUUID(), "")
+                                .replace("client-secret-0123456789", "********")))
                 .andExpect(status().isBadRequest());
     }
 

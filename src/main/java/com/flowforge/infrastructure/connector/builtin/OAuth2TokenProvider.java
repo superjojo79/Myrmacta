@@ -38,6 +38,11 @@ import tools.jackson.databind.ObjectMapper;
 final class OAuth2TokenProvider {
 
     static final int MAX_CACHED_TOKENS = 256;
+    /** Un jeton émis depuis moins longtemps n'est pas renouvelé de force sur un 401 (anti-tempête vers l'IdP). */
+    static final Duration MIN_FORCED_REFRESH_AGE = Duration.ofSeconds(30);
+    /** Un échec de l'IdP est mémorisé brièvement : pas de martelage d'un IdP en panne ou qui limite le débit. */
+    static final Duration FAILURE_MEMORY = Duration.ofSeconds(5);
+    static final int MAX_TOKEN_CHARS = 16 * 1024;
     static final String MODE = "OAUTH2_CLIENT_CREDENTIALS";
     static final String METHOD_POST = "CLIENT_SECRET_POST";
     static final String METHOD_BASIC = "CLIENT_SECRET_BASIC";
@@ -53,10 +58,20 @@ final class OAuth2TokenProvider {
 
     private record Key(String tenantId, UUID instanceId, String configDigest) {}
 
+    /** Jeton, échéance de renouvellement et date d'émission lus ensemble (un seul champ volatil : lecture atomique). */
+    private record Token(String value, Instant renewAt, Instant issuedAt) {}
+
+    private record Failure(String message, Instant at) {}
+
     private static final class Entry {
-        volatile String token;
-        volatile Instant renewAt = Instant.MIN;
-        volatile Instant lastUsed = Instant.MIN;
+        volatile Token token;
+        volatile Failure failure;
+        volatile boolean inFlight;
+        volatile Instant lastUsed;
+
+        Entry(Instant now) {
+            this.lastUsed = now;
+        }
     }
 
     private final OutboundUrlGuard outboundUrlGuard;
@@ -81,33 +96,59 @@ final class OAuth2TokenProvider {
 
     String accessToken(ConnectorInstanceData instance) {
         Map<String, Object> config = instance.config();
-        Key key = keyOf(instance);
-        Entry entry = entryFor(key);
+        Entry entry = entryFor(keyOf(instance));
         Instant now = clock.instant();
         entry.lastUsed = now;
-        String cached = entry.token;
-        if (cached != null && now.isBefore(entry.renewAt)) {
-            return cached;
+        Token cached = entry.token;
+        if (cached != null && now.isBefore(cached.renewAt())) {
+            return cached.value();
         }
         synchronized (entry) {
-            now = clock.instant();
-            if (entry.token != null && now.isBefore(entry.renewAt)) {
-                return entry.token;
+            entry.inFlight = true;
+            try {
+                now = clock.instant();
+                Token current = entry.token;
+                if (current != null && now.isBefore(current.renewAt())) {
+                    return current.value();
+                }
+                Failure failure = entry.failure;
+                if (failure != null && now.isBefore(failure.at().plus(FAILURE_MEMORY))) {
+                    throw new IllegalStateException(failure.message());
+                }
+                try {
+                    Fetched fetched = fetch(instance.tenantId(), config);
+                    entry.token = new Token(fetched.token(), fetched.renewAt(), now);
+                    entry.failure = null;
+                    return fetched.token();
+                } catch (IllegalStateException ex) {
+                    entry.failure = new Failure(ex.getMessage(), now);
+                    throw ex;
+                }
+            } finally {
+                entry.inFlight = false;
             }
-            Fetched fetched = fetch(instance.tenantId(), config);
-            entry.token = fetched.token();
-            entry.renewAt = fetched.renewAt();
-            entry.lastUsed = now;
-            return fetched.token();
         }
     }
 
-    void invalidate(ConnectorInstanceData instance) {
+    /**
+     * Retire le jeton courant (rejeté par l'API). Renvoie {@code false} — sans rien retirer — si ce jeton vient
+     * d'être émis : un 401 qui persiste après un jeton neuf n'est pas un problème de jeton, et renouveler à chaque
+     * appel martèlerait l'IdP.
+     */
+    boolean invalidate(ConnectorInstanceData instance) {
         Entry entry = cache.get(keyOf(instance));
-        if (entry != null) {
-            entry.token = null;
-            entry.renewAt = Instant.MIN;
+        if (entry == null) {
+            return false;
         }
+        Token token = entry.token;
+        if (token == null) {
+            return true;
+        }
+        if (clock.instant().isBefore(token.issuedAt().plus(MIN_FORCED_REFRESH_AGE))) {
+            return false;
+        }
+        entry.token = null;
+        return true;
     }
 
     int cacheSize() {
@@ -119,20 +160,40 @@ final class OAuth2TokenProvider {
         if (existing != null) {
             return existing;
         }
-        if (cache.size() >= MAX_CACHED_TOKENS) {
-            evict();
+        synchronized (cache) {
+            existing = cache.get(key);
+            if (existing != null) {
+                return existing;
+            }
+            if (cache.size() >= MAX_CACHED_TOKENS) {
+                evict();
+            }
+            Entry created = new Entry(clock.instant());
+            cache.put(key, created);
+            return created;
         }
-        return cache.computeIfAbsent(key, k -> new Entry());
     }
 
-    /** Retire d'abord les jetons expirés, puis les moins récemment utilisés, jusqu'à repasser sous la borne. */
+    /**
+     * Retire d'abord les entrées sans jeton valide, puis les moins récemment utilisées, jusqu'à repasser sous la borne.
+     * Une entrée dont l'obtention est en cours n'est jamais retirée (sinon deux obtentions concurrentes pour une clé).
+     */
     private void evict() {
         Instant now = clock.instant();
-        cache.entrySet().removeIf(e -> e.getValue().token == null || !now.isBefore(e.getValue().renewAt));
+        cache.entrySet().removeIf(e -> {
+            Entry v = e.getValue();
+            Token t = v.token;
+            return !v.inFlight && (t == null || !now.isBefore(t.renewAt()))
+                    && now.isAfter(v.lastUsed.plus(FAILURE_MEMORY));
+        });
         while (cache.size() >= MAX_CACHED_TOKENS) {
-            cache.entrySet().stream()
-                    .min(java.util.Comparator.comparing(e -> e.getValue().lastUsed))
-                    .ifPresent(e -> cache.remove(e.getKey(), e.getValue()));
+            var victim = cache.entrySet().stream()
+                    .filter(e -> !e.getValue().inFlight)
+                    .min(java.util.Comparator.comparing(e -> e.getValue().lastUsed));
+            if (victim.isEmpty()) {
+                return;
+            }
+            cache.remove(victim.get().getKey(), victim.get().getValue());
         }
     }
 
@@ -219,7 +280,7 @@ final class OAuth2TokenProvider {
             throw new IllegalStateException("OAuth2 token response: unsupported token_type (Bearer required)");
         }
         String token = json.path("access_token").isString() ? json.path("access_token").asString() : "";
-        if (!NO_CONTROL.matcher(token).matches()) {
+        if (token.length() > MAX_TOKEN_CHARS || !NO_CONTROL.matcher(token).matches()) {
             throw new IllegalStateException("OAuth2 token response: access_token missing or malformed");
         }
         long lifetime = lifetimeSeconds(json.get("expires_in"));
@@ -239,15 +300,18 @@ final class OAuth2TokenProvider {
         if (node == null || node.isNull()) {
             return DEFAULT_LIFETIME_SECONDS;
         }
-        long value;
+        java.math.BigDecimal value;
         if (node.isNumber()) {
-            value = node.asLong();
+            value = node.decimalValue();
         } else if (node.isString() && node.asString().matches("-?\\d{1,12}")) {
-            value = Long.parseLong(node.asString());
+            value = new java.math.BigDecimal(node.asString());
         } else {
             return DEFAULT_LIFETIME_SECONDS;
         }
-        return Math.max(0, Math.min(value, MAX_LIFETIME.toSeconds()));
+        if (value.signum() <= 0) {
+            throw new IllegalStateException("OAuth2 token response: expires_in must be positive");
+        }
+        return Math.min(value.min(java.math.BigDecimal.valueOf(MAX_LIFETIME.toSeconds())).longValue(), MAX_LIFETIME.toSeconds());
     }
 
     private String clientAssertion(String clientId, String tokenUrl, Map<String, Object> config) {

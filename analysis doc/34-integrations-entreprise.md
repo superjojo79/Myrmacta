@@ -1,6 +1,8 @@
 # Intégrations entreprise (D3)
 
-> **Statut : première analyse (2026-09-28), aucune décision technique tranchée.** Lot **D3**
+> **Statut : D3a livré (TODO §77, 2026-09-30)** — décisions D-INTEG-OAUTH-* dans `docs/roadmap-goal/DECISIONS.md`, conception dans
+> `docs/ai/design/2026-09-30-feature-d3a-oauth2-client-credentials.md` ; D3b, D3c, D3d restent à faire. *(Ancien statut : première analyse
+> du 2026-09-28.)* Lot **D3**
 > `integrations-entreprise` de la Vague D (`ROADMAP.md` Catégorie 7), en quatre sous-lots
 > (D3a à D3d). À affiner en `dev-lifecycle` Phase 1. Contexte connecteurs :
 > [06-connecteurs.md](06-connecteurs.md), [18-connecteur-http-rest-service.md](18-connecteur-http-rest-service.md).

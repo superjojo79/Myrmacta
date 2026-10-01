@@ -16,7 +16,7 @@ Faits vérifiés dans le code : `HttpRestConnector.execute` résout l'URL via `O
 ## Schéma de configuration (ajouts, tous optionnels)
 `authMode` (SELECT `STATIC_HEADER` défaut | `OAUTH2_CLIENT_CREDENTIALS`), `oauthTokenUrl` (URL), `oauthClientId`, `oauthClientAuthMethod`
 (SELECT `CLIENT_SECRET_POST` défaut | `CLIENT_SECRET_BASIC` | `PRIVATE_KEY_JWT`), `oauthClientSecret` (PASSWORD), `oauthPrivateKey` (SECRET_TEXTAREA, PEM PKCS#8 RSA),
-`oauthCertThumbprint` (empreinte hexadécimale SHA-1 → `x5t`, SHA-256 → `x5t#S256`, telle qu'affichée par le portail Entra), `oauthScope`.
+`oauthAllowedHosts` (obligatoire : hôtes pouvant recevoir le jeton), `oauthCertThumbprint` (empreinte hexadécimale SHA-1 → `x5t`, SHA-256 → `x5t#S256`, telle qu'affichée par le portail Entra), `oauthScope`.
 
 ## Composants
 - `OAuth2TokenProvider` (package `builtin`, réutilise `HttpSender`) : `String accessToken(ConnectorInstanceData)` et `invalidate(instance)`.
@@ -28,7 +28,7 @@ Faits vérifiés dans le code : `HttpRestConnector.execute` résout l'URL via `O
 - Réponse : JSON borné, `token_type` = `Bearer` (insensible à la casse) exigé, `access_token` non vide sans caractère de contrôle, `expires_in` numérique
   positif borné à 24 h (défaut 3600 si absent).
 - `HttpRestConnector` : en mode OAuth, supprime tout `Authorization` fourni par l'appelant, pose `Authorization: Bearer`; sur `401`, invalide et rejoue **une fois**.
-  `validate` : cohérence des champs par méthode, refus de `authHeaderValue` en mode OAuth, URL du jeton passée au garde SSRF.
+  `validate` : cohérence des champs par méthode, `authHeaderValue` ignoré en mode OAuth, URL du jeton passée au garde SSRF, `oauthAllowedHosts` (≥ 2 libellés, joker à un niveau, refusé sur hébergement mutualisé). Revue : renouvellement forcé seulement si le jeton a ≥ 30 s, échec IdP mémorisé 5 s, entrées en cours d'obtention jamais évincées, jeton ≤ 16 Ko, `expires_in ≤ 0` refusé, masque `********` refusé à la création d'un secret.
 
 ## Sécurité
 Aucun secret/jeton dans logs, exceptions ni `connectorResult` (messages neutres, `error` RFC 6749 limité à `[a-z_]{1,40}`). Le jeton ne sort jamais du connecteur.

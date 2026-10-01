@@ -221,7 +221,10 @@ class OAuth2TokenProviderTest {
         sender.respond(200, "{\"access_token\":\"tok-1\",\"token_type\":\"Bearer\",\"expires_in\":3600}");
         ConnectorInstanceData instance = instance(secretConfig());
         provider.accessToken(instance);
-        provider.invalidate(instance);
+        assertThat(provider.invalidate(instance)).as("jeton neuf : pas de renouvellement forcé").isFalse();
+        assertThat(provider.accessToken(instance)).isEqualTo("tok-1");
+        clock.advance(Duration.ofSeconds(31));
+        assertThat(provider.invalidate(instance)).isTrue();
         sender.respond(200, "{\"access_token\":\"tok-2\",\"token_type\":\"Bearer\",\"expires_in\":3600}");
 
         assertThat(provider.accessToken(instance)).isEqualTo("tok-2");
@@ -337,14 +340,91 @@ class OAuth2TokenProviderTest {
         provider.accessToken(a);
         assertThat(sender.requests).hasSize(1);
 
-        // négatif / absurde : jamais plus de 24 h, jamais mis en cache sans borne
+        // absurde : jamais plus de 24 h
         sender.respond(200, "{\"access_token\":\"t2\",\"token_type\":\"Bearer\",\"expires_in\":99999999999}");
         ConnectorInstanceData b = instance(secretConfig());
         provider.accessToken(b);
         clock.advance(Duration.ofHours(25));
-        sender.respond(200, "{\"access_token\":\"t3\",\"token_type\":\"Bearer\",\"expires_in\":-5}");
+        sender.respond(200, "{\"access_token\":\"t3\",\"token_type\":\"Bearer\",\"expires_in\":3600}");
         assertThat(provider.accessToken(b)).isEqualTo("t3");
-        assertThat(provider.accessToken(b)).isEqualTo("t3");
+    }
+
+    @Test
+    void hugeOrNonPositiveExpiresInIsHandledWithoutRawJacksonErrors() {
+        for (String expires : List.of("1e30", "99999999999999999999")) {
+            sender.respond(200, "{\"access_token\":\"big\",\"token_type\":\"Bearer\",\"expires_in\":" + expires + "}");
+            assertThat(provider.accessToken(instance(secretConfig()))).isEqualTo("big");
+        }
+        for (String expires : List.of("0", "-5", "-1e30", "\"-7\"")) {
+            sender.respond(200, "{\"access_token\":\"bad\",\"token_type\":\"Bearer\",\"expires_in\":" + expires + "}");
+            assertThatThrownBy(() -> provider.accessToken(instance(secretConfig())))
+                    .as(expires).isInstanceOf(IllegalStateException.class).hasMessageContaining("expires_in");
+        }
+    }
+
+    @Test
+    void anOversizedAccessTokenIsRejected() {
+        sender.respond(200, "{\"access_token\":\"" + "a".repeat(OAuth2TokenProvider.MAX_TOKEN_CHARS + 1)
+                + "\",\"token_type\":\"Bearer\",\"expires_in\":3600}");
+        assertThatThrownBy(() -> provider.accessToken(instance(secretConfig()))).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void anInFlightFetchIsNeverEvictedSoConcurrentCallersStillShareOneRequest() throws Exception {
+        CountDownLatch release = new CountDownLatch(1);
+        CountDownLatch started = new CountDownLatch(1);
+        AtomicInteger slowCalls = new AtomicInteger();
+        OAuth2TokenProvider p = provider(request -> {
+            if (new String(request.body(), StandardCharsets.UTF_8).contains("client_id=slow")) {
+                slowCalls.incrementAndGet();
+                started.countDown();
+                try {
+                    release.await();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            return new HttpRestConnector.HttpCallResponse(200, "{\"access_token\":\"t\",\"token_type\":\"Bearer\",\"expires_in\":3600}");
+        });
+        Map<String, Object> slowConfig = secretConfig();
+        slowConfig.put("oauthClientId", "slow");
+        ConnectorInstanceData slow = instance(slowConfig);
+        ExecutorService pool = Executors.newFixedThreadPool(4);
+        try {
+            Future<String> first = pool.submit(() -> p.accessToken(slow));
+            started.await();
+            // On sature le cache pour déclencher l'éviction pendant que la clé « slow » est en cours d'obtention.
+            for (int i = 0; i < OAuth2TokenProvider.MAX_CACHED_TOKENS + 5; i++) {
+                p.accessToken(instance(UUID.randomUUID(), "tenant_dev", secretConfig()));
+            }
+            Future<String> second = pool.submit(() -> p.accessToken(slow));
+            Thread.sleep(200);
+            assertThat(second.isDone()).as("le second appelant attend le premier fetch").isFalse();
+            release.countDown();
+            assertThat(first.get()).isEqualTo("t");
+            assertThat(second.get()).isEqualTo("t");
+        } finally {
+            pool.shutdownNow();
+        }
+        assertThat(slowCalls).hasValue(1);
+    }
+
+    @Test
+    void theCacheStaysBoundedUnderConcurrentInsertion() throws Exception {
+        sender.respond(200, "{\"access_token\":\"t\",\"token_type\":\"Bearer\",\"expires_in\":3600}");
+        ExecutorService pool = Executors.newFixedThreadPool(32);
+        try {
+            List<Future<String>> futures = new ArrayList<>();
+            for (int i = 0; i < 1000; i++) {
+                futures.add(pool.submit(() -> provider.accessToken(instance(UUID.randomUUID(), "tenant_dev", secretConfig()))));
+            }
+            for (Future<String> f : futures) {
+                f.get();
+            }
+        } finally {
+            pool.shutdownNow();
+        }
+        assertThat(provider.cacheSize()).isLessThanOrEqualTo(OAuth2TokenProvider.MAX_CACHED_TOKENS);
     }
 
     @Test

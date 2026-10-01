@@ -29,7 +29,26 @@ class HttpRestConnectorOAuthTest {
     private final List<HttpRestConnector.HttpCallRequest> calls = new ArrayList<>();
     private final List<Integer> apiStatuses = new ArrayList<>();
     private int tokenCounter;
+    private boolean ageTokenOn401 = true;
     private HttpRestConnector connector;
+    private final java.util.concurrent.atomic.AtomicReference<java.time.Instant> now =
+            new java.util.concurrent.atomic.AtomicReference<>(java.time.Instant.parse("2026-09-30T10:00:00Z"));
+    private final Clock clock = new Clock() {
+        @Override
+        public java.time.ZoneId getZone() {
+            return java.time.ZoneOffset.UTC;
+        }
+
+        @Override
+        public Clock withZone(java.time.ZoneId zone) {
+            return this;
+        }
+
+        @Override
+        public java.time.Instant instant() {
+            return now.get();
+        }
+    };
 
     @BeforeEach
     void setUp() {
@@ -41,11 +60,15 @@ class HttpRestConnectorOAuthTest {
                         200, "{\"access_token\":\"tok-" + tokenCounter + "\",\"token_type\":\"Bearer\",\"expires_in\":3600}");
             }
             int status = apiStatuses.isEmpty() ? 200 : apiStatuses.remove(0);
+            if (status == 401 && ageTokenOn401) {
+                // Le jeton rejeté n'est pas « tout neuf » : seul un jeton plus ancien est renouvelé de force.
+                now.updateAndGet(t -> t.plusSeconds(31));
+            }
             return new HttpRestConnector.HttpCallResponse(status, "{\"ok\":true}");
         };
         OutboundUrlGuard guard = new OutboundUrlGuard(false, host -> new InetAddress[] {InetAddress.getByName("93.184.216.34")});
         connector = new HttpRestConnector(new SimpleJsonPathMapper(), guard, JsonMapper.builder().build(),
-                new ConnectorProperties(null, null, null, null, null, null), sender, Clock.systemUTC());
+                new ConnectorProperties(null, null, null, null, null, null), sender, clock);
     }
 
     private static Map<String, Object> oauthConfig() {
@@ -121,6 +144,49 @@ class HttpRestConnectorOAuthTest {
     }
 
     @Test
+    void a401ThatPersistsOnAFreshTokenIsNotRetriedAndDoesNotHammerTheIdp() {
+        ageTokenOn401 = false;
+        ConnectorInstanceData instance = instance(oauthConfig());
+        connector.execute(instance, Map.of("url", API)); // émet le jeton 1 à l'instant T
+        for (int i = 0; i < 10; i++) {
+            apiStatuses.add(401);
+        }
+
+        for (int i = 0; i < 10; i++) {
+            assertThat(connector.execute(instance, Map.of("url", "https://erp.example.com/data/Vendors", "method", "POST", "body", "x")))
+                    .containsEntry("status", 401);
+        }
+
+        assertThat(tokenCounter).as("aucun renouvellement forcé sur un jeton de moins de 30 s").isEqualTo(1);
+        assertThat(apiCalls()).as("1 appel initial + 10 appels sans rejeu").hasSize(11);
+    }
+
+    @Test
+    void anIdpFailureIsRememberedBrieflyInsteadOfBeingHammered() {
+        int[] idpCalls = {0};
+        OutboundUrlGuard guard = new OutboundUrlGuard(false, host -> new InetAddress[] {InetAddress.getByName("93.184.216.34")});
+        HttpRestConnector failing = new HttpRestConnector(new SimpleJsonPathMapper(), guard, JsonMapper.builder().build(),
+                new ConnectorProperties(null, null, null, null, null, null), request -> {
+                    idpCalls[0]++;
+                    return new HttpRestConnector.HttpCallResponse(429, "{\"error\":\"temporarily_unavailable\"}");
+                }, clock);
+        ConnectorInstanceData instance = instance(oauthConfig());
+        for (int i = 0; i < 10; i++) {
+            assertThatThrownBy(() -> failing.execute(instance, Map.of("url", API))).hasMessageContaining("429");
+        }
+        assertThat(idpCalls[0]).isEqualTo(1);
+        now.updateAndGet(t -> t.plusSeconds(6));
+        assertThatThrownBy(() -> failing.execute(instance, Map.of("url", API))).hasMessageContaining("429");
+        assertThat(idpCalls[0]).isEqualTo(2);
+    }
+
+    @Test
+    void anAuthorizationHeaderWithTrailingSpaceIsAlsoIgnored() {
+        connector.execute(instance(oauthConfig()), Map.of("url", API, "headers", Map.of("Authorization ", "Bearer attacker")));
+        assertThat(apiCalls().get(0).headers().keySet().stream().filter(k -> k.trim().equalsIgnoreCase("authorization"))).hasSize(1);
+    }
+
+    @Test
     void theTokenIsNeverSentToAnUndeclaredHostAndNoTokenIsRequested() {
         assertThatThrownBy(() -> connector.execute(instance(oauthConfig()), Map.of("url", "https://evil.example.net/steal")))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("not allowed");
@@ -139,6 +205,8 @@ class HttpRestConnectorOAuthTest {
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> connector.execute(instance(oauthConfig()), Map.of("url", "https://xcrm.example.com/api")))
                 .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> connector.execute(instance(oauthConfig()), Map.of("url", "https://a.org.crm.example.com/api")))
+                .as("a wildcard covers a single label").isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
@@ -181,9 +249,12 @@ class HttpRestConnectorOAuthTest {
             c.remove(missing);
             assertThatThrownBy(() -> connector.validate(c)).as(missing).isInstanceOf(ConnectorValidationException.class);
         }
-        Map<String, Object> both = oauthConfig();
-        both.put("authHeaderValue", "Bearer x");
-        assertThatThrownBy(() -> connector.validate(both)).hasMessageContaining("authHeaderValue");
+        // Un authHeaderValue hérité du mode statique est ignoré (jamais envoyé) : on peut migrer sans recréer l'instance.
+        Map<String, Object> legacyHeader = oauthConfig();
+        legacyHeader.put("authHeaderValue", "Bearer x");
+        connector.validate(legacyHeader);
+        connector.execute(instance(legacyHeader), Map.of("url", API));
+        assertThat(apiCalls().get(0).headers()).containsEntry("Authorization", "Bearer tok-1");
 
         Map<String, Object> unknownMode = oauthConfig();
         unknownMode.put("authMode", "NTLM");
@@ -193,6 +264,11 @@ class HttpRestConnectorOAuthTest {
         unknownMethod.put("oauthClientAuthMethod", "NONE");
         assertThatThrownBy(() -> connector.validate(unknownMethod)).hasMessageContaining("oauthClientAuthMethod");
 
+        for (String bad : List.of("*.com", "com", "localhost", "1.2.3.4", "*.azurewebsites.net", "*.x.herokuapp.com", "*.github.io", "*")) {
+            Map<String, Object> c = oauthConfig();
+            c.put("oauthAllowedHosts", bad);
+            assertThatThrownBy(() -> connector.validate(c)).as(bad).isInstanceOf(ConnectorValidationException.class);
+        }
         Map<String, Object> badHost = oauthConfig();
         badHost.put("oauthAllowedHosts", "erp.example.com/path");
         assertThatThrownBy(() -> connector.validate(badHost)).hasMessageContaining("oauthAllowedHosts");

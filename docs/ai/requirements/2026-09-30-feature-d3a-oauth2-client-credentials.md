@@ -33,5 +33,5 @@ D-INTEG-OAUTH-SCOPE, D-INTEG-OAUTH-MODE, D-INTEG-OAUTH-CACHE, D-INTEG-OAUTH-RETR
 - Premier appel : 1 requête jeton + 1 appel API avec `Authorization: Bearer <jeton>` ; appels suivants : 0 requête jeton tant que valide.
 - Expiration (moins une marge) → nouveau jeton ; `401` de l'API → jeton invalidé et **un** nouvel essai.
 - Changement de configuration (secret, scope, URL) → ancien jeton inutilisable. Deux tenants / deux instances ne partagent jamais un jeton.
-- Mode OAuth + `authHeaderValue` renseigné → refusé à la validation (ambiguïté). En mode OAuth un `Authorization` fourni par l'appelant est ignoré.
+- Mode OAuth : `authHeaderValue` hérité ignoré (migration possible) ; un `Authorization` fourni par l'appelant est ignoré ; le jeton ne part que vers `oauthAllowedHosts`.
 - Erreurs neutres : jamais le secret, le jeton ni le corps de réponse de l'IdP (seul le code `error` RFC 6749 normalisé).

@@ -178,7 +178,7 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
                         List.of(),
                         "Sent verbatim as the Authorization header on SERVICE calls, "
                                 + "e.g. 'Bearer xxx' or 'Basic yyy'. Leave empty for no auth header. "
-                                + "Must stay empty when authMode is OAUTH2_CLIENT_CREDENTIALS."),
+                                + "Ignored (never sent) when authMode is OAUTH2_CLIENT_CREDENTIALS."),
                 new ConfigField(
                         "authMode",
                         "Outbound authentication",
@@ -302,10 +302,6 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
         if (!OAuth2TokenProvider.MODE.equals(mode)) {
             throw new ConnectorValidationException("Unsupported authMode: " + mode);
         }
-        if (stringOr(config.get("authHeaderValue"), null) != null) {
-            throw new ConnectorValidationException(
-                    "authHeaderValue must be empty when authMode is " + OAuth2TokenProvider.MODE);
-        }
         String tokenUrl = requireString(config, "oauthTokenUrl");
         try {
             outboundUrlGuard.assertSafe(tokenUrl);
@@ -394,8 +390,9 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
         HttpCallResponse response = call(instance, inputParams, pinned, method, requestBody, oauth);
         if (oauth && response.status() == 401) {
             // Jeton révoqué ou expiré côté IdP avant l'heure annoncée : un nouveau jeton, un seul nouvel essai.
-            tokenProvider.invalidate(instance);
-            response = call(instance, inputParams, pinned, method, requestBody, true);
+            if (tokenProvider.invalidate(instance)) {
+                response = call(instance, inputParams, pinned, method, requestBody, true);
+            }
         }
         byte[] responseBytes = response.body().getBytes(StandardCharsets.UTF_8);
         if (responseBytes.length > connectorProperties.http().maxResponseBytes()) {
@@ -405,7 +402,13 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
     }
 
     private static final Pattern HOST_PATTERN =
-            Pattern.compile("(\\*\\.)?[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*");
+            Pattern.compile("(\\*\\.)?[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+");
+    private static final Pattern NUMERIC_TLD = Pattern.compile(".*\\.[0-9]+");
+    /** Domaines mutualisés dont les sous-domaines appartiennent à des tiers : jamais de joker dessus. */
+    private static final Set<String> SHARED_HOSTING_SUFFIXES = Set.of(
+            "azurewebsites.net", "cloudapp.azure.com", "cloudapp.net", "blob.core.windows.net", "trafficmanager.net",
+            "azureedge.net", "herokuapp.com", "github.io", "vercel.app", "netlify.app", "amazonaws.com",
+            "appspot.com", "onrender.com", "pages.dev", "workers.dev", "web.app", "firebaseapp.com");
 
     private static List<String> parseAllowedHosts(String raw) {
         List<String> hosts = new ArrayList<>();
@@ -414,8 +417,21 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
             if (host.isEmpty()) {
                 continue;
             }
-            if (!HOST_PATTERN.matcher(host).matches()) {
-                throw new ConnectorValidationException("oauthAllowedHosts contains an invalid host name");
+            if (!HOST_PATTERN.matcher(host).matches() || NUMERIC_TLD.matcher(host).matches()) {
+                throw new ConnectorValidationException(
+                        "oauthAllowedHosts contains an invalid host name (a fully qualified name with at least two labels is required)");
+            }
+            if (host.startsWith("*.")) {
+                String base = host.substring(2);
+                if (!base.contains(".")) {
+                    throw new ConnectorValidationException("oauthAllowedHosts: a wildcard needs a domain with at least two labels");
+                }
+                for (String shared : SHARED_HOSTING_SUFFIXES) {
+                    if (base.equals(shared) || base.endsWith("." + shared)) {
+                        throw new ConnectorValidationException(
+                                "oauthAllowedHosts: a wildcard on the shared hosting domain " + shared + " is not allowed");
+                    }
+                }
             }
             hosts.add(host);
         }
@@ -435,8 +451,16 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
             throw new IllegalStateException("http-rest OAuth2 configuration is incomplete: oauthAllowedHosts");
         }
         for (String pattern : allowed) {
-            if (pattern.startsWith("*.") ? target.endsWith(pattern.substring(1)) && target.length() > pattern.length() - 1
-                    : target.equals(pattern)) {
+            if (pattern.startsWith("*.")) {
+                // Un seul niveau : « *.crm.exemple.com » couvre « org.crm.exemple.com » mais pas « a.org.crm.exemple.com ».
+                String suffix = pattern.substring(1);
+                if (target.endsWith(suffix)) {
+                    String label = target.substring(0, target.length() - suffix.length());
+                    if (!label.isEmpty() && label.indexOf('.') < 0) {
+                        return;
+                    }
+                }
+            } else if (target.equals(pattern)) {
                 return;
             }
         }
@@ -458,7 +482,7 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
         applyHeaders(headers, inputParams.get("headers"));
         if (oauth) {
             // Le jeton du connecteur prévaut toujours : un en-tête Authorization fourni par l'appelant est ignoré.
-            headers.keySet().removeIf("authorization"::equalsIgnoreCase);
+            headers.keySet().removeIf(name -> "authorization".equalsIgnoreCase(name.trim()));
             headers.put("Authorization", "Bearer " + tokenProvider.accessToken(instance));
         }
         headers.put("Host", pinned.originalHost());

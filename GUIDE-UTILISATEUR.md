@@ -303,12 +303,28 @@ connecteurs eux-mêmes — leurs instances configurées). Types fournis de base 
 
 | Type | Rôle (`capability`) | Champs de config (formulaire généré) |
 |---|---|---|
-| `http-rest` | trigger **et** service (`BOTH`) | `webhookAuthType` (liste HMAC / token), `webhookSecret`, `processKey`, `dossierTypeCode`, `authHeaderValue` (optionnel, mot de passe — appels SERVICE), `mapping` (optionnel) |
+| `http-rest` | trigger **et** service (`BOTH`) | `webhookAuthType` (liste HMAC / token), `webhookSecret`, `processKey`, `dossierTypeCode`, `authHeaderValue` (optionnel, mot de passe — appels SERVICE), `authMode` et champs `oauth*` (authentification OAuth2, voir ci-dessous), `mapping` (optionnel) |
 | `flowable-signal` | trigger **et** service | `signalName`, `processKey`, `dossierTypeCode`, `mapping` (optionnel) |
 | `scheduler` | trigger | `cronExpression`, `processKey`, `dossierTypeCode` |
 | `flowable-callback` | callback | `webhookAuthType`, `webhookSecret`, `messageName`, `correlationVariableName`, `correlationValuePath`, `mapping` (optionnel) |
 | `smtp` | service | aucun champ d'instance (réutilise la config SMTP de l'application) |
 | `document-storage` | service | aucun champ d'instance (réutilise le stockage documents déjà configuré) |
+
+**Appeler une API protégée par OAuth2 (Microsoft Entra ID : D365 F&O, Dataverse, Graph).** Sur un connecteur `http-rest`, choisir
+`authMode = OAUTH2_CLIENT_CREDENTIALS` : FlowForge obtient lui-même le jeton d'accès, le garde en mémoire et le renouvelle avant son
+échéance ; vous n'avez plus de jeton à recopier. Renseigner :
+
+- `oauthTokenUrl` — `https://login.microsoftonline.com/<tenant>/oauth2/v2.0/token` (https obligatoire, adresses internes refusées) ;
+- `oauthClientId` et `oauthScope` (ex. `https://<org>.operations.dynamics.com/.default`) ;
+- l'authentification de l'application (`oauthClientAuthMethod`) : `CLIENT_SECRET_POST` (défaut) ou `CLIENT_SECRET_BASIC` avec `oauthClientSecret`,
+  ou **`PRIVATE_KEY_JWT`** (certificat) avec `oauthPrivateKey` (clé privée PEM PKCS#8 RSA) et `oauthCertThumbprint` (empreinte SHA-1 ou SHA-256 en
+  hexadécimal, telle qu'affichée par le portail Entra) ;
+- **`oauthAllowedHosts`** (obligatoire) — les noms d'hôtes qui peuvent recevoir le jeton, séparés par des virgules (`monorg.operations.dynamics.com,
+  *.crm4.dynamics.com`). Un appel vers tout autre hôte est refusé **avant** toute demande de jeton : un process ne peut pas envoyer votre jeton ailleurs.
+
+`oauthClientSecret` et `oauthPrivateKey` sont chiffrés au repos et n'apparaissent jamais ensuite (affichés `********`). Un éventuel `authHeaderValue` hérité est ignoré dans
+ce mode (on peut donc migrer une instance existante). Les jokers d'`oauthAllowedHosts` couvrent **un seul niveau** (`*.crm4.dynamics.com`) et sont refusés sur les domaines
+d'hébergement mutualisé (`*.azurewebsites.net`, `*.herokuapp.com`…). Si l'API répond `401`, le jeton est renouvelé (s'il a plus de 30 s) et l'appel rejoué **une seule fois**. Sans `authMode`, rien ne change (en-tête statique).
 
 D'autres connecteurs custom peuvent être ajoutés au classpath backend sans modifier le core (voir
 [analysis doc/06-connecteurs.md](analysis%20doc/06-connecteurs.md)) — ils apparaîtront alors dans

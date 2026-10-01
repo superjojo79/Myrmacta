@@ -64,7 +64,9 @@ class McpEndpointApiTest {
             "list_bpmn_building_blocks",
             "validate_expression",
             "evaluate_expression",
-            "evaluate_dossier_rules");
+            "evaluate_dossier_rules",
+            "list_pending_drafts",
+            "publish_draft");
 
     @Autowired
     private MockMvc mockMvc;

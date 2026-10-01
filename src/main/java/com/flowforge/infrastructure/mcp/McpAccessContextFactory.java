@@ -73,11 +73,23 @@ public class McpAccessContextFactory {
      * the tool method runs, on the same thread (WebMVC, {@code type: SYNC}).
      */
     public AccessContext.User currentActor() {
+        // TODO §82 (D6) : appel in-process (assistant) — l'acteur de la portée prime sur le JWT M2M du canal HTTP.
+        AccessContext.User scoped = McpActorScope.current();
+        if (scoped != null) {
+            return scoped;
+        }
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (!(authentication instanceof JwtAuthenticationToken jwtAuth)) {
             throw new IllegalStateException("MCP tool invoked without an authenticated M2M JWT");
         }
         return from(jwtAuth.getToken());
+    }
+
+    /** Provenance des écritures de configuration de l'appel courant : assistant (portée in-process) ou agent MCP. */
+    public com.flowforge.domain.workflow.model.Provenance provenance() {
+        return McpActorScope.active()
+                ? com.flowforge.domain.workflow.model.Provenance.ASSISTANT
+                : com.flowforge.domain.workflow.model.Provenance.MCP;
     }
 
     private static String actorId(Jwt jwt) {

@@ -2,13 +2,15 @@ package com.flowforge.infrastructure.mcp.tool;
 
 import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.DossierStatus;
-import com.flowforge.domain.workflow.model.BpmnDeploymentResult;
+import com.flowforge.domain.workflow.model.ConfigPublication;
+import com.flowforge.domain.workflow.model.DraftArtifactType;
+import com.flowforge.domain.workflow.model.ProposedWorkflowConfig;
+import com.flowforge.domain.workflow.model.PublicationMode;
 import com.flowforge.domain.workflow.model.WorkflowStatusDefinition;
-import com.flowforge.domain.workflow.model.WorkflowTypeConfig;
-import com.flowforge.domain.workflow.port.in.DeployBpmnProcessUseCase;
-import com.flowforge.domain.workflow.port.in.GetWorkflowTypeConfigUseCase;
-import com.flowforge.domain.workflow.port.in.SaveWorkflowTypeConfigUseCase;
+import com.flowforge.domain.workflow.port.in.ManageDraftsUseCase;
+import com.flowforge.domain.workflow.port.in.ProposeDraftUseCase;
 import com.flowforge.domain.workflow.port.out.BpmnParserPort;
+import com.flowforge.domain.workflow.port.out.PublicationPolicy;
 import com.flowforge.infrastructure.config.TenantProperties;
 import com.flowforge.infrastructure.mcp.McpAccessContextFactory;
 import io.modelcontextprotocol.spec.McpSchema;
@@ -17,8 +19,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,43 +27,35 @@ import org.springframework.util.unit.DataSize;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * {@code deploy_workflow} : parses + validates the BPMN XML, upserts the {@link WorkflowTypeConfig}
- * for its process id, then deploys (DD-DEPLOY-ORDER). Unlike the admin REST BPMN-deployment
- * endpoint (which requires the config to already exist), this MCP tool covers both steps in one
- * call — that is the point of exposing it as a single tool (see analysis doc 15-serveur-mcp.md).
- * Takes the raw {@link McpSchema.CallToolRequest} like {@link DefineDossierTypeTool}, for the same
- * reason: full control over parsing nested {@code statusDefinitions}/enum lists without relying on
- * untested nested-type {@code @McpToolParam} binding.
+ * {@code deploy_workflow} : validates the BPMN XML and the submitted {@code WorkflowTypeConfig}, then (TODO §82, D6) saves them
+ * as a <b>draft</b> — nothing is deployed and no configuration is written until a human publishes it (D-MCP-LC-MIGRATION = A).
+ * When the instance allows direct publication (never in production) the draft is published at once through the same use case.
+ * Takes the raw {@link McpSchema.CallToolRequest} like {@link DefineDossierTypeTool}, for the same reason: full control over
+ * parsing nested {@code statusDefinitions}/enum lists without relying on untested nested-type {@code @McpToolParam} binding.
  */
 @Component
 public class DeployWorkflowTool {
 
     private final BpmnParserPort bpmnParserPort;
-    private final GetWorkflowTypeConfigUseCase getWorkflowTypeConfigUseCase;
-    private final SaveWorkflowTypeConfigUseCase saveWorkflowTypeConfigUseCase;
-    private final DeployBpmnProcessUseCase deployBpmnProcessUseCase;
-    private final TenantProperties tenantProperties;
+    private final ProposeDraftUseCase proposeDraftUseCase;
+    private final ManageDraftsUseCase manageDraftsUseCase;
+    private final PublicationPolicy publicationPolicy;
     private final McpAccessContextFactory accessContextFactory;
     private final ObjectMapper objectMapper;
     private final DataSize maxXmlSize;
 
     public DeployWorkflowTool(
             BpmnParserPort bpmnParserPort,
-            GetWorkflowTypeConfigUseCase getWorkflowTypeConfigUseCase,
-            SaveWorkflowTypeConfigUseCase saveWorkflowTypeConfigUseCase,
-            DeployBpmnProcessUseCase deployBpmnProcessUseCase,
-            TenantProperties tenantProperties,
+            ProposeDraftUseCase proposeDraftUseCase,
+            ManageDraftsUseCase manageDraftsUseCase,
+            PublicationPolicy publicationPolicy,
             McpAccessContextFactory accessContextFactory,
             ObjectMapper objectMapper,
             @Value("${spring.servlet.multipart.max-file-size}") DataSize maxXmlSize) {
         this.bpmnParserPort = Objects.requireNonNull(bpmnParserPort, "bpmnParserPort");
-        this.getWorkflowTypeConfigUseCase =
-                Objects.requireNonNull(getWorkflowTypeConfigUseCase, "getWorkflowTypeConfigUseCase");
-        this.saveWorkflowTypeConfigUseCase =
-                Objects.requireNonNull(saveWorkflowTypeConfigUseCase, "saveWorkflowTypeConfigUseCase");
-        this.deployBpmnProcessUseCase =
-                Objects.requireNonNull(deployBpmnProcessUseCase, "deployBpmnProcessUseCase");
-        this.tenantProperties = Objects.requireNonNull(tenantProperties, "tenantProperties");
+        this.proposeDraftUseCase = Objects.requireNonNull(proposeDraftUseCase, "proposeDraftUseCase");
+        this.manageDraftsUseCase = Objects.requireNonNull(manageDraftsUseCase, "manageDraftsUseCase");
+        this.publicationPolicy = Objects.requireNonNull(publicationPolicy, "publicationPolicy");
         this.accessContextFactory = Objects.requireNonNull(accessContextFactory, "accessContextFactory");
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
         this.maxXmlSize = Objects.requireNonNull(maxXmlSize, "maxXmlSize");
@@ -71,10 +63,12 @@ public class DeployWorkflowTool {
 
     @McpTool(
             name = "deploy_workflow",
-            description = "Deploy a BPMN 2.0 process (UTF-8 XML text, not base64) and upsert its "
-                    + "WorkflowTypeConfig (statusDefinitions, allowedDossierStatuses, ...) in one call. "
-                    + "processDefinitionKey must match the BPMN process id. dryRun=true validates without "
-                    + "persisting or deploying.")
+            description = "Propose a BPMN 2.0 process (UTF-8 XML text, not base64) with its WorkflowTypeConfig "
+                    + "(statusDefinitions, allowedDossierStatuses, ...) in one call. By default the proposal is saved as a "
+                    + "DRAFT that a human publishes from the 'Brouillons à publier' screen: nothing is deployed and no "
+                    + "configuration is written until then. The instance may allow direct publication (never in production). "
+                    + "processDefinitionKey must match the BPMN process id. dryRun=true validates without writing anything. "
+                    + "A draft written by someone else is not overwritten unless replaceExistingDraft=true.")
     public Map<String, Object> deployWorkflow(
             McpSchema.CallToolRequest request,
             @McpToolParam(required = true, description = "Process definition key — must match the BPMN process id")
@@ -96,7 +90,9 @@ public class DeployWorkflowTool {
                     String onStartDossierStatus,
             @McpToolParam(required = false, description = "User ids to notify as observers") List<String> observerUserIds,
             @McpToolParam(required = false, description = "Validate without persisting or deploying; default false")
-                    Boolean dryRun) {
+                    Boolean dryRun,
+            @McpToolParam(required = false, description = "Overwrite a draft written by another author; default false")
+                    Boolean replaceExistingDraft) {
         // Note: the typed parameters above exist only to shape the generated JSON schema (see
         // class Javadoc) — every value actually used is re-read from the raw request map below.
         Map<String, Object> args = request.arguments();
@@ -121,56 +117,23 @@ public class DeployWorkflowTool {
         }
 
         AccessContext.User actor = accessContextFactory.currentActor();
-        Optional<WorkflowTypeConfig> existing = getWorkflowTypeConfigUseCase.getByKey(rawProcessDefinitionKey);
-        WorkflowTypeConfig config = buildConfig(
-                existing, rawProcessDefinitionKey, rawLabel, rawStatusDefinitions, rawAllowedDossierStatuses,
-                rawOnStartDossierStatus, rawObserverUserIds, actor);
+        ProposedWorkflowConfig config = new ProposedWorkflowConfig(
+                rawLabel, rawStatusDefinitions, rawAllowedDossierStatuses, rawOnStartDossierStatus, rawObserverUserIds);
 
-        // TODO §73 (parité + revue M5) : mêmes contrôles que le déploiement, avec la configuration SOUMISE, AVANT toute
-        // écriture — un refus (référence absente…) ne laisse plus une configuration modifiée sans BPMN déployé.
-        deployBpmnProcessUseCase.validate(xmlBytes, Optional.of(config));
         if (rawDryRun) {
-            return result(rawProcessDefinitionKey, true, null, null);
+            // Mêmes contrôles qu'un déploiement, avec la configuration SOUMISE, avant toute écriture.
+            proposeDraftUseCase.validateBpmn(actor, rawProcessDefinitionKey, rawXml, config);
+            return DraftToolResults.of("processDefinitionKey", rawProcessDefinitionKey, true, DraftToolResults.VALID, null, null);
         }
-
-        WorkflowTypeConfig saved = existing.isPresent()
-                ? saveWorkflowTypeConfigUseCase.update(config, actor)
-                : saveWorkflowTypeConfigUseCase.create(config, actor);
-
-        String filename = rawProcessDefinitionKey + ".bpmn20.xml";
-        BpmnDeploymentResult deployment = deployBpmnProcessUseCase.deploy(filename, xmlBytes);
-
-        return result(rawProcessDefinitionKey, false, deployment, saved);
-    }
-
-    private WorkflowTypeConfig buildConfig(
-            Optional<WorkflowTypeConfig> existing,
-            String processDefinitionKey,
-            String label,
-            List<WorkflowStatusDefinition> statusDefinitions,
-            List<DossierStatus> allowedDossierStatuses,
-            DossierStatus onStartDossierStatus,
-            List<String> observerUserIds,
-            AccessContext.User actor) {
-        return existing
-                .map(current -> new WorkflowTypeConfig(
-                        current.id(), current.tenantId(), processDefinitionKey, label, statusDefinitions,
-                        allowedDossierStatuses, onStartDossierStatus, observerUserIds, current.createdBy(),
-                        actor.userId()))
-                .orElseGet(() -> new WorkflowTypeConfig(
-                        UUID.randomUUID(), tenantProperties.id(), processDefinitionKey, label, statusDefinitions,
-                        allowedDossierStatuses, onStartDossierStatus, observerUserIds, actor.userId(),
-                        actor.userId()));
-    }
-
-    private static Map<String, Object> result(
-            String processDefinitionKey, boolean dryRun, BpmnDeploymentResult deployment, WorkflowTypeConfig config) {
-        Map<String, Object> map = new LinkedHashMap<>();
-        map.put("processDefinitionKey", processDefinitionKey);
-        map.put("dryRun", dryRun);
-        map.put("deployment", deployment);
-        map.put("workflowTypeConfig", config);
-        return map;
+        ProposeDraftUseCase.Proposal proposal = proposeDraftUseCase.proposeBpmn(
+                actor, accessContextFactory.provenance(), rawProcessDefinitionKey, rawXml, config,
+                Boolean.TRUE.equals(args.get("replaceExistingDraft")));
+        if (publicationPolicy.directPublicationAllowed()) {
+            ConfigPublication publication = manageDraftsUseCase.publish(
+                    actor, DraftArtifactType.BPMN, rawProcessDefinitionKey, proposal.updatedAt(), PublicationMode.DIRECT);
+            return DraftToolResults.of("processDefinitionKey", rawProcessDefinitionKey, false, DraftToolResults.PUBLISHED, proposal, publication);
+        }
+        return DraftToolResults.of("processDefinitionKey", rawProcessDefinitionKey, false, DraftToolResults.DRAFT_PENDING, proposal, null);
     }
 
     private List<WorkflowStatusDefinition> parseStatusDefinitions(Object raw) {

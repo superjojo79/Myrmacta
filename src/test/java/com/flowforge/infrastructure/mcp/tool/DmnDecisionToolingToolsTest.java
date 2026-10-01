@@ -96,20 +96,14 @@ class DmnDecisionToolingToolsTest {
     }
 
     @Test
-    void listAndRedeploy_mapArgumentsToTheUseCases() {
+    void list_mapsArgumentsToTheUseCase() {
         DecisionTableVersionInfo info =
                 new DecisionTableVersionInfo("eligibilite", 1, "dep-1", Instant.parse("2026-09-01T00:00:00Z"));
         when(listDecisionTableVersionsUseCase.list(ACTOR, "eligibilite")).thenReturn(List.of(info));
-        when(redeployDecisionTableUseCase.redeploy(ACTOR, "eligibilite", 1))
-                .thenReturn(new DecisionTableDeploymentResult("eligibilite", 3, "dep-3"));
 
         assertThat(new ListDecisionTableVersionsTool(listDecisionTableVersionsUseCase, accessContextFactory)
                         .listDecisionTableVersions("eligibilite"))
                 .containsExactly(info);
-        assertThat(new RedeployDecisionTableTool(redeployDecisionTableUseCase, accessContextFactory)
-                        .redeployDecisionTable("eligibilite", 1)
-                        .deployedVersion())
-                .isEqualTo(3);
     }
 
     @Test
@@ -144,13 +138,5 @@ class DmnDecisionToolingToolsTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("exceeds max size");
         verifyNoInteractions(testDecisionUseCase);
-    }
-
-    @Test
-    void redeploy_requiresAVersion() {
-        assertThatThrownBy(() -> new RedeployDecisionTableTool(redeployDecisionTableUseCase, accessContextFactory)
-                        .redeployDecisionTable("eligibilite", null))
-                .isInstanceOf(IllegalArgumentException.class);
-        verifyNoInteractions(redeployDecisionTableUseCase);
     }
 }

@@ -70,6 +70,7 @@ class EvaluateSlaAlertsUseCaseImplTest {
         when(settingsRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(stateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(stateRepository.transition(any(), any())).thenReturn(true);
+        when(stateRepository.insertIfAbsent(any())).thenReturn(true);
         when(linkRepository.findByDossierIdOrderBySequence(any())).thenReturn(List.of());
     }
 
@@ -100,7 +101,8 @@ class EvaluateSlaAlertsUseCaseImplTest {
         useCase.scan(TENANT, NOW, INLINE);
 
         verify(send, never()).send(any(), any());
-        verify(stateRepository, never()).save(any());
+        verify(stateRepository, never()).insertIfAbsent(any());
+        verify(stateRepository, never()).transition(any(), any());
         assertScanClockAdvanced();
     }
 
@@ -171,7 +173,7 @@ class EvaluateSlaAlertsUseCaseImplTest {
 
         verify(send, never()).send(any(), any());
         verify(stateRepository).transition(any(), eq(new SlaAlertState(TENANT, back, SlaStatus.ON_TRACK, NOW)));
-        verify(stateRepository).save(new SlaAlertState(TENANT, fresh, SlaStatus.ON_TRACK, NOW));
+        verify(stateRepository).insertIfAbsent(new SlaAlertState(TENANT, fresh, SlaStatus.ON_TRACK, NOW));
     }
 
     @Test
@@ -199,7 +201,8 @@ class EvaluateSlaAlertsUseCaseImplTest {
         useCase.scan(TENANT, NOW, INLINE);
 
         verify(send, never()).send(any(), any());
-        verify(stateRepository, never()).save(any());
+        verify(stateRepository, never()).insertIfAbsent(any());
+        verify(stateRepository, never()).transition(any(), any());
     }
 
     @Test
@@ -214,7 +217,7 @@ class EvaluateSlaAlertsUseCaseImplTest {
 
         useCase.scan(TENANT, NOW, INLINE);
 
-        verify(stateRepository).save(new SlaAlertState(TENANT, calm, SlaStatus.ON_TRACK, NOW));
+        verify(stateRepository).insertIfAbsent(new SlaAlertState(TENANT, calm, SlaStatus.ON_TRACK, NOW));
         assertStored(late, SlaStatus.BREACHED);
         NotificationEvent event = sentOnce();
         assertThat(event.subject()).contains("BREACHED");
@@ -247,9 +250,9 @@ class EvaluateSlaAlertsUseCaseImplTest {
             trace.add("send");
             return List.of();
         });
-        when(stateRepository.save(any())).thenAnswer(inv -> {
+        when(stateRepository.insertIfAbsent(any())).thenAnswer(inv -> {
             trace.add("save");
-            return inv.getArgument(0);
+            return true;
         });
 
         useCase.scan(TENANT, NOW, watching);
@@ -282,7 +285,7 @@ class EvaluateSlaAlertsUseCaseImplTest {
 
         // L'état du dossier en échec est enregistré avant sa notification, dans la même unité de travail : c'est le rollback
         // de cette unité (prouvé sur la vraie base par SlaAlertConcurrencyIT) qui annule les deux ; le mock n'en voit pas.
-        verify(stateRepository).save(new SlaAlertState(TENANT, fine, SlaStatus.AT_RISK, NOW));
+        verify(stateRepository).insertIfAbsent(new SlaAlertState(TENANT, fine, SlaStatus.AT_RISK, NOW));
         assertScanClockAdvanced();
     }
 
@@ -301,7 +304,7 @@ class EvaluateSlaAlertsUseCaseImplTest {
     private void assertStored(UUID id, SlaStatus status) {
         SlaAlertState expected = new SlaAlertState(TENANT, id, status, NOW);
         boolean saved = org.mockito.Mockito.mockingDetails(stateRepository).getInvocations().stream()
-                .anyMatch(i -> i.getMethod().getName().equals("save") && expected.equals(i.getArgument(0)));
+                .anyMatch(i -> (i.getMethod().getName().equals("save") || i.getMethod().getName().equals("insertIfAbsent")) && expected.equals(i.getArgument(0)));
         boolean transitioned = org.mockito.Mockito.mockingDetails(stateRepository).getInvocations().stream()
                 .anyMatch(i -> i.getMethod().getName().equals("transition") && expected.equals(i.getArgument(1)));
         assertThat(saved || transitioned).as("state stored for " + id).isTrue();
@@ -373,7 +376,7 @@ class EvaluateSlaAlertsUseCaseImplTest {
         assertThat(useCase.scan(TENANT, NOW, INLINE)).isZero();
 
         verify(send, never()).send(any(), any());
-        verify(stateRepository, never()).save(any());
+        verify(stateRepository, never()).insertIfAbsent(any());
         assertScanClockAdvanced();
     }
 
@@ -401,15 +404,15 @@ class EvaluateSlaAlertsUseCaseImplTest {
     }
 
     @Test
-    void scan_firstInsertRaceLoser_failsItsUnitAndNeverNotifies() {
+    void scan_firstInsertRaceLoser_neverNotifies() {
         UUID id = UUID.randomUUID();
         when(settingsRepository.findByTenantId(TENANT))
                 .thenReturn(Optional.of(settings(true, null, List.of("a@b.co"), List.of())));
         when(candidatePort.listCandidates(TENANT)).thenReturn(List.of(candidate(id, 9, false)));
         when(stateRepository.find(TENANT, id)).thenReturn(Optional.empty());
-        when(stateRepository.save(any())).thenThrow(new RuntimeException("duplicate key (clé primaire)"));
+        when(stateRepository.insertIfAbsent(any())).thenReturn(false); // un autre exécutant a inséré en premier
 
-        assertThat(useCase.scan(TENANT, NOW, INLINE)).isEqualTo(1);
+        assertThat(useCase.scan(TENANT, NOW, INLINE)).isZero();
 
         verify(send, never()).send(any(), any());
     }

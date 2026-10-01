@@ -97,7 +97,7 @@ class NotificationPersistenceIT {
     /** D5 (TODO §79) : deux exécutants qui interrogent en même temps ne reçoivent jamais la même ligne. */
     @Test
     void outbox_lockNextPending_concurrentPollersNeverReceiveTheSameRow() throws Exception {
-        Instant t = Instant.parse("2020-01-01T00:00:00Z");
+        Instant t = Instant.parse("2099-01-01T00:00:00Z"); // futur : le relais réel ne prend jamais ces lignes
         java.util.Set<UUID> created = new java.util.HashSet<>();
         for (int i = 0; i < 60; i++) {
             created.add(outbox.savePending("tenant_dev", NotificationChannel.EMAIL,
@@ -139,7 +139,7 @@ class NotificationPersistenceIT {
 
     @Test
     void outbox_aClaimedRowBecomesEligibleAgainOnlyAfterTheLease() {
-        Instant t = Instant.parse("2020-02-01T00:00:00Z");
+        Instant t = Instant.parse("2099-02-01T00:00:00Z");
         UUID id = outbox.savePending("tenant_dev", NotificationChannel.EMAIL,
                 "{\"to\":\"a@b.c\",\"subject\":\"s\",\"body\":\"b\"}", t);
         Instant poll = t.plusSeconds(5);
@@ -344,5 +344,31 @@ class NotificationPersistenceIT {
                 null,
                 now,
                 now);
+    }
+
+    /** D5 (revue) : un exécutant en retard ne ressuscite ni n'écrase une ligne déjà traitée par un autre. */
+    @Test
+    void outbox_aLateExecutorCannotResurrectOrOverwriteARowAnotherExecutorAlreadyProcessed() {
+        Instant t = Instant.parse("2099-03-01T00:00:00Z");
+        UUID id = outbox.savePending("tenant_dev", NotificationChannel.EMAIL,
+                "{\"to\":\"a@b.c\",\"subject\":\"s\",\"body\":\"b\"}", t);
+        NotificationOutboxRecord first = outbox.lockNextPending(500, t.plusSeconds(1)).stream()
+                .filter(r -> r.id().equals(id)).findFirst().orElseThrow();
+
+        // Bail échu : un second exécutant reprend la ligne et la traite.
+        Instant later = t.plusSeconds(6 * 60);
+        NotificationOutboxRecord second = outbox.lockNextPending(500, later).stream()
+                .filter(r -> r.id().equals(id)).findFirst().orElseThrow();
+        assertThat(outbox.renewClaim(id, first.nextAttemptAt(), later)).as("le premier a perdu la ligne").isFalse();
+        assertThat(outbox.renewClaim(id, second.nextAttemptAt(), later)).isTrue();
+        outbox.markProcessed(id, later);
+
+        // Échec tardif du premier : sans effet (avant : la ligne repassait en PENDING, troisième envoi).
+        outbox.recordFailure(id, "timeout SMTP tardif", 3, later.plusSeconds(1));
+        outbox.markDead(id, "tardif", later.plusSeconds(2));
+        String status = jdbc.queryForObject("SELECT status FROM notification_outbox WHERE id = ?", String.class, id);
+        Integer attempts = jdbc.queryForObject("SELECT attempts FROM notification_outbox WHERE id = ?", Integer.class, id);
+        assertThat(status).isEqualTo("PROCESSED");
+        assertThat(attempts).isZero();
     }
 }

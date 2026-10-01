@@ -68,34 +68,43 @@ public class JpaNotificationOutboxRepositoryAdapter implements NotificationOutbo
                 NotificationOutboxStatus.PENDING, now, PageRequest.of(0, Math.max(batchSize, 0)))) {
             NotificationOutboxRecord record = candidate.toDomain();
             if (repository.claim(record.id(), NotificationOutboxStatus.PENDING, record.nextAttemptAt(), leaseUntil, now) == 1) {
-                claimed.add(record);
+                // Le jeton de prise (valeur de next_attempt_at) accompagne la ligne : il sert au renouvellement avant traitement.
+                claimed.add(record.withNextAttemptAt(leaseUntil));
             }
         }
         return List.copyOf(claimed);
     }
 
+    // Chaque issue est un UPDATE conditionné à l'état « en attente » (revue D5) : un exécutant en retard — dont le bail a
+    // expiré et dont la ligne a été reprise — ne peut ni ressusciter ni écraser une ligne déjà traitée.
     @Override
-    @Transactional
     public void markProcessed(UUID id, Instant now) {
-        NotificationOutboxJpaEntity entity = repository.findById(id).orElseThrow();
-        entity.markProcessed(now);
-        repository.saveAndFlush(entity);
+        repository.finish(id, NotificationOutboxStatus.PENDING, NotificationOutboxStatus.PROCESSED, null, now);
     }
 
     @Override
-    @Transactional
     public void markDead(UUID id, String error, Instant now) {
-        NotificationOutboxJpaEntity entity = repository.findById(id).orElseThrow();
-        entity.markDead(error, now);
-        repository.saveAndFlush(entity);
+        repository.finish(id, NotificationOutboxStatus.PENDING, NotificationOutboxStatus.DEAD,
+                NotificationOutboxJpaEntity.truncate(error), now);
     }
 
     @Override
-    @Transactional
     public void recordFailure(UUID id, String error, int maxAttempts, Instant now) {
-        NotificationOutboxJpaEntity entity = repository.findById(id).orElseThrow();
-        entity.recordFailure(error, maxAttempts, now);
-        repository.saveAndFlush(entity);
+        if (repository.bumpAttempts(id, NotificationOutboxStatus.PENDING, NotificationOutboxJpaEntity.truncate(error), now) != 1) {
+            return; // ligne déjà traitée par un autre exécutant
+        }
+        int attempts = repository.findById(id).orElseThrow().toDomain().attempts();
+        if (attempts >= maxAttempts) {
+            repository.finish(id, NotificationOutboxStatus.PENDING, NotificationOutboxStatus.DEAD,
+                    NotificationOutboxJpaEntity.truncate(error), now);
+        } else {
+            repository.reschedule(id, NotificationOutboxStatus.PENDING, now.plus(NotificationOutboxJpaEntity.backoff(attempts)), now);
+        }
+    }
+
+    @Override
+    public boolean renewClaim(UUID id, Instant expectedLease, Instant now) {
+        return repository.renew(id, NotificationOutboxStatus.PENDING, expectedLease, now.plus(CLAIM_LEASE), now) == 1;
     }
 
     @Override

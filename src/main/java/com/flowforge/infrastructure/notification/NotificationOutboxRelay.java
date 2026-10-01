@@ -69,6 +69,11 @@ public class NotificationOutboxRelay {
         List<NotificationOutboxRecord> batch =
                 outboxRepository.lockNextPending(properties.outbox().batchSize(), now);
         for (NotificationOutboxRecord record : batch) {
+            // Revue D5 : bail renouvelé juste avant l'envoi — le lot entier ne doit pas dépendre d'un bail posé à son début.
+            // Une ligne reprise entre-temps par un autre exécutant (bail échu) est sautée.
+            if (!outboxRepository.renewClaim(record.id(), record.nextAttemptAt(), now)) {
+                continue;
+            }
             processOne(record, now);
         }
         Instant cutoff = now.minus(properties.outbox().retention());

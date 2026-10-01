@@ -119,8 +119,8 @@ public final class EvaluateSlaAlertsUseCaseImpl implements EvaluateSlaAlertsUseC
             if (!stateRepository.transition(previous.get(), next)) {
                 return;
             }
-        } else {
-            stateRepository.save(next);
+        } else if (!stateRepository.insertIfAbsent(next)) {
+            return; // un autre exécutant a évalué ce dossier en premier (insertion stricte, pas de fusion)
         }
         if (status == SlaStatus.AT_RISK || status == SlaStatus.BREACHED) {
             notify(settings, candidate, status, enabledWebhooks);

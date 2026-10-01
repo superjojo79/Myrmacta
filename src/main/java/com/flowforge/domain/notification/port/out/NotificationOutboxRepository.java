@@ -26,6 +26,12 @@ public interface NotificationOutboxRepository {
      */
     List<NotificationOutboxRecord> lockNextPending(int batchSize, Instant now);
 
+    /**
+     * Renouvelle, juste avant son traitement, le bail d'une ligne prise par {@link #lockNextPending} ({@code expectedLease} = le
+     * {@code nextAttemptAt} de la ligne reçue). {@code false} si un autre exécutant l'a reprise entre-temps : l'appelant la saute.
+     */
+    boolean renewClaim(UUID id, Instant expectedLease, Instant now);
+
     void markProcessed(UUID id, Instant now);
 
     void markDead(UUID id, String error, Instant now);

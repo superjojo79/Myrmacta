@@ -14,4 +14,11 @@ public record NotificationOutboxRecord(
         String lastError,
         Instant createdAt,
         Instant updatedAt,
-        Instant processedAt) {}
+        Instant processedAt) {
+
+    /** Même ligne avec un autre {@code nextAttemptAt} (le jeton de prise renvoyé par {@code lockNextPending}). */
+    public NotificationOutboxRecord withNextAttemptAt(Instant next) {
+        return new NotificationOutboxRecord(
+                id, tenantId, channel, status, payloadJson, attempts, next, lastError, createdAt, updatedAt, processedAt);
+    }
+}

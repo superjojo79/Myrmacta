@@ -58,7 +58,10 @@ class BatchImportConnectorTriggerJob {
         process(Instant.now());
     }
 
-    void process(Instant now) {
+    void process(Instant tickTime) {
+        // Les colonnes sont à la microseconde (H2, PostgreSQL) : un créneau pris à la nanoseconde ne se retrouverait pas par
+        // égalité au moment de le rendre (revue D5).
+        Instant now = tickTime.truncatedTo(java.time.temporal.ChronoUnit.MICROS);
         for (ConnectorInstanceData instance : connectorInstanceRepository.listByTenantId(tenantProperties.id())) {
             if (!BATCH_IMPORT_TYPE.equals(instance.connectorType()) || !instance.enabled()) {
                 continue;

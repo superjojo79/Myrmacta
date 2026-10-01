@@ -32,6 +32,13 @@ spring:
     password: ${DB_PASSWORD:flowforge}
     hikari:
       connection-init-sql: SET search_path TO ${app.tenant.id}, public
+  task:
+    scheduling:
+      # TODO §79 (D5) : à l'arrêt (déploiement progressif), les tâches planifiées EN COURS se terminent au lieu d'être coupées entre la
+      # prise de leur unité de travail et son effet (créneau cron perdu, par ex.).
+      shutdown:
+        await-termination: true
+        await-termination-period: ${APP_SCHEDULING_SHUTDOWN_WAIT:30s}
   jpa:
     hibernate:
       ddl-auto: none
@@ -49,6 +56,11 @@ spring:
           auth: ${MAIL_SMTP_AUTH:false}
           starttls:
             enable: ${MAIL_SMTP_STARTTLS:false}
+          # TODO §79 (D5) : JavaMail n'a aucun délai par défaut. Un serveur SMTP muet bloquerait indéfiniment un exécutant, ce qui
+          # dépasserait le bail de prise de ses lignes (outbox 5 min, invitations portail 2 min) et provoquerait un double envoi.
+          connectiontimeout: ${MAIL_SMTP_CONNECTION_TIMEOUT_MS:10000}
+          timeout: ${MAIL_SMTP_READ_TIMEOUT_MS:30000}
+          writetimeout: ${MAIL_SMTP_WRITE_TIMEOUT_MS:30000}
   servlet:
     multipart:
       max-file-size: ${APP_DOSSIER_ATTACHMENT_MAX_SIZE_MB:25}MB

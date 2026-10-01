@@ -398,6 +398,10 @@ connectés *à lui* ; l'historique de la boîte de réception reste exact), la *
 Kafka garantit « au moins une fois » : un *rebalance* peut rejouer des messages non validés (pas d'idempotence par message à ce jour).
 Les **webhooks sortants** portent l'`outboxId` dans l'enveloppe : le destinataire peut dédupliquer.
 
+Réglages liés : les envois SMTP ont des **délais** (`MAIL_SMTP_CONNECTION_TIMEOUT_MS` 10 s, `MAIL_SMTP_READ_TIMEOUT_MS` 30 s,
+`MAIL_SMTP_WRITE_TIMEOUT_MS` 30 s) — sans eux un serveur muet bloquerait un exécutant au-delà du bail de ses lignes. À l'arrêt, les tâches planifiées en cours se terminent
+(`APP_SCHEDULING_SHUTDOWN_WAIT`, 30 s) : prévoyez un délai de grâce du pod au moins égal.
+
 Conséquence en cas de crash d'un pod entre la prise et l'effet : l'unité est reprise à l'échéance du bail (notifications, outbox workflow,
 portail, réconciliation) ; un créneau cron est en revanche **au plus une fois** (un déclenchement qui *échoue* est rendu et réessayé ;
 un pod qui meurt entre la prise et le déclenchement perd ce créneau).

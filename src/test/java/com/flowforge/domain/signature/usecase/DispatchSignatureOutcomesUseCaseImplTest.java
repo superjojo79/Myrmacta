@@ -89,15 +89,30 @@ class DispatchSignatureOutcomesUseCaseImplTest {
     }
 
     @Test
-    void noMatchingInstanceBecauseAnotherExecutorAlreadyResumedTheProcessIsNotCountedAsAFailedAttempt() {
-        // D5 (TODO §79) : la souscription au message n'est consommée qu'une fois ; le perdant reçoit « aucune instance » alors
-        // que l'issue vient d'être distribuée — pas de tentative comptée, donc pas de fausse alerte dispatchGaveUp.
+    void aLateAttemptCountedByAnotherExecutorWhileWeCorrelatedNeverLeavesTheOutcomeUndispatched() {
+        // D5 (revue) : la corrélation a réussi (le process a repris) mais, avant que nous enregistrions « distribué », un autre
+        // exécutant a reçu « aucune instance » (souscription déjà consommée) et compté une tentative : notre CAS de version
+        // échoue. On relit et on réapplique — sinon outcomeDispatchedAt reste nul et une fausse alerte dispatchGaveUp suit.
         SignatureRequest r = closed(SignatureOutcome.FAILED);
-        doThrow(new CallbackNoMatchingInstanceException("signatureCompleted", "signatureRequestId", r.id().toString()))
-                .doNothing()
-                .when(engine).correlateMessageOnExecution(anyString(), anyString(), any(), any());
         org.mockito.Mockito.doAnswer(inv -> {
-                    // Pendant l'appel perdant, un autre exécutant enregistre la distribution.
+                    // L'autre exécutant incrémente les tentatives pendant notre appel (version +1).
+                    SignatureRequest current = repository.findById(r.id()).orElseThrow();
+                    repository.updateRequest(current.withDispatchAttempts(current.dispatchAttempts() + 1));
+                    return null;
+                })
+                .when(engine).correlateMessageOnExecution(anyString(), anyString(), any(), any());
+
+        assertThat(useCase.dispatch(r.id())).isTrue();
+
+        SignatureRequest after = repository.findById(r.id()).orElseThrow();
+        assertThat(after.outcomeDispatchedAt()).isEqualTo(NOW);
+    }
+
+    @Test
+    void noMatchingInstanceBecauseAnotherExecutorAlreadyDispatchedIsNotCountedAsAFailedAttempt() {
+        SignatureRequest r = closed(SignatureOutcome.FAILED);
+        org.mockito.Mockito.doAnswer(inv -> {
+                    // Pendant l'appel perdant, l'autre exécutant enregistre la distribution.
                     repository.updateRequest(repository.findById(r.id()).orElseThrow().dispatched(NOW));
                     throw new CallbackNoMatchingInstanceException("signatureCompleted", "signatureRequestId", r.id().toString());
                 })

@@ -58,6 +58,16 @@ class SlaAlertConcurrencyIT {
 
     @Test
     void twoConcurrentScansEnqueueTheTransitionAlertExactlyOnce() throws Exception {
+        runConcurrentScans(true);
+    }
+
+    /** Première évaluation d'un dossier déjà en retard (aucun état précédent) : le chemin d'insertion, le plus courant. */
+    @Test
+    void twoConcurrentFirstEvaluationsEnqueueTheAlertExactlyOnce() throws Exception {
+        runConcurrentScans(false);
+    }
+
+    private void runConcurrentScans(boolean withPreviousState) throws Exception {
         String code = "SLACONC" + (System.nanoTime() % 100_000);
         dossierTypes.save(new DossierType(UUID.randomUUID(), TENANT, code, "SLA concurrence", "wf", true, true, List.of(),
                 null, false, 1, "test", "test"));
@@ -66,7 +76,9 @@ class SlaAlertConcurrencyIT {
         Dossier dossier = dossiers.save(new Dossier(UUID.randomUUID(), TENANT, reference, code, "Dossier en retard",
                 DossierStatus.OUVERT, Map.of(), null, 0L, "test", now.minus(10, ChronoUnit.HOURS), null,
                 now.minus(10, ChronoUnit.HOURS), null, null, null));
-        states.save(new SlaAlertState(TENANT, dossier.id(), SlaStatus.ON_TRACK, now.minus(2, ChronoUnit.HOURS)));
+        if (withPreviousState) {
+            states.save(new SlaAlertState(TENANT, dossier.id(), SlaStatus.ON_TRACK, now.minus(2, ChronoUnit.HOURS)));
+        }
         TenantSlaSettings before = settingsRepository.findByTenantId(TENANT).orElse(null);
         settingsRepository.save(new TenantSlaSettings(TENANT, 95, true, 15, List.of("alerte@example.com"), List.of(), false, 24,
                 30, now.minus(1, ChronoUnit.DAYS), null, null, null, now, "test"));

@@ -20,4 +20,11 @@ public interface SlaAlertStateRepository {
      * évite que deux pods envoient la même alerte pour la même transition.
      */
     boolean transition(SlaAlertState expectedPrevious, SlaAlertState next);
+
+    /**
+     * Insertion <b>stricte</b> (TODO §79, revue D5) : {@code true} seulement si aucune ligne n'existait pour ce dossier. Un
+     * {@code save} (fusion JPA : SELECT puis INSERT <i>ou UPDATE</i>) ne protège pas la première évaluation — le perdant de la
+     * course écraserait la ligne du gagnant et notifierait aussi.
+     */
+    boolean insertIfAbsent(SlaAlertState state);
 }

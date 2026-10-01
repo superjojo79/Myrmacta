@@ -11,6 +11,19 @@ interface SpringDataSlaAlertStateRepository
 
     void deleteByTenantId(String tenantId);
 
+    /** Insertion stricte : une clé déjà prise (autre exécutant) lève une violation d'unicité, jamais une fusion silencieuse. */
+    @org.springframework.transaction.annotation.Transactional
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true, flushAutomatically = true)
+    @org.springframework.data.jpa.repository.Query("""
+            insert into SlaAlertStateJpaEntity (tenantId, dossierId, lastStatus, updatedAt)
+            values (:tenantId, :dossierId, :status, :now)
+            """)
+    int insertStrict(
+            @org.springframework.data.repository.query.Param("tenantId") String tenantId,
+            @org.springframework.data.repository.query.Param("dossierId") UUID dossierId,
+            @org.springframework.data.repository.query.Param("status") com.flowforge.domain.reporting.model.SlaStatus status,
+            @org.springframework.data.repository.query.Param("now") java.time.Instant now);
+
     @org.springframework.transaction.annotation.Transactional
     @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true, flushAutomatically = true)
     @org.springframework.data.jpa.repository.Query("""

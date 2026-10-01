@@ -152,4 +152,18 @@ class SchedulerConnectorTriggerJobTest {
         order.verify(connectorTriggerRuntime).onIncomingEvent(any(), any());
         order.verify(scheduleStateRepository).releaseTrigger(instance.id(), last, NOW);
     }
+
+    @Test
+    void process_claimsWithAMicrosecondInstantSoReleaseCanFindItAgain() {
+        // Revue D5 : H2 et PostgreSQL stockent des microsecondes ; un créneau pris à la nanoseconde ne se retrouverait pas par
+        // égalité au moment de le rendre (le réessai serait perdu sur H2).
+        ConnectorInstanceData instance = schedulerInstance("0 * * * * *");
+        when(connectorInstanceRepository.listByTenantId(TENANT)).thenReturn(List.of(instance));
+        when(scheduleStateRepository.findLastTriggeredAt(instance.id()))
+                .thenReturn(Optional.of(Instant.parse("2026-09-01T11:59:00Z")));
+
+        job.process(Instant.parse("2026-09-01T12:00:30.123456789Z"));
+
+        verify(scheduleStateRepository).claimTrigger(eq(instance.id()), any(), eq(Instant.parse("2026-09-01T12:00:30.123456Z")));
+    }
 }

@@ -41,6 +41,17 @@ public class JpaSlaAlertStateRepositoryAdapter implements SlaAlertStateRepositor
                 == 1;
     }
 
+    // Sans transaction englobante : une violation d'unicité n'invalide ainsi pas la transaction de l'appelant avant qu'il ne
+    // sache qu'il a perdu (il rend alors la main sans notifier).
+    @Override
+    public boolean insertIfAbsent(SlaAlertState state) {
+        try {
+            return repository.insertStrict(state.tenantId(), state.dossierId(), state.lastStatus(), state.updatedAt()) == 1;
+        } catch (org.springframework.dao.DataIntegrityViolationException alreadyThere) {
+            return false;
+        }
+    }
+
     @Override
     @Transactional
     public SlaAlertState save(SlaAlertState state) {

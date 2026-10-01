@@ -93,6 +93,26 @@ public final class DispatchSignatureOutcomesUseCaseImpl implements DispatchSigna
             }
             return false;
         }
-        return repository.updateRequest(request.dispatched(clock.instant()));
+        return recordDispatched(request);
+    }
+
+    /**
+     * La corrélation a réussi : le process a repris, c'est un fait. Si le compare-and-set de version échoue (un autre exécutant a
+     * compté une tentative entre-temps), on relit et on réapplique — {@code dispatched} est idempotent et fait foi (revue D5 :
+     * sinon {@code outcomeDispatchedAt} restait nul, les tentatives montaient jusqu'à une fausse alerte {@code dispatchGaveUp}).
+     */
+    private boolean recordDispatched(SignatureRequest request) {
+        SignatureRequest current = request;
+        for (int attempt = 0; attempt < 3; attempt++) {
+            if (repository.updateRequest(current.dispatched(clock.instant()))) {
+                return true;
+            }
+            Optional<SignatureRequest> fresh = repository.findById(request.id());
+            if (fresh.isEmpty() || fresh.get().outcomeDispatchedAt() != null) {
+                return fresh.isPresent();
+            }
+            current = fresh.get();
+        }
+        return false;
     }
 }

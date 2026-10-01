@@ -38,7 +38,7 @@ public final class SendPortalInvitesUseCaseImpl implements SendPortalInvitesUseC
     private final int batchSize;
 
     /** Durée pendant laquelle un lien pris pour l'envoi n'est plus proposé à un autre exécutant. */
-    static final java.time.Duration SEND_LEASE = java.time.Duration.ofMinutes(2);
+    static final java.time.Duration SEND_LEASE = java.time.Duration.ofMinutes(5);
 
     public SendPortalInvitesUseCaseImpl(
             PortalLinkRepository repository,

@@ -281,7 +281,7 @@ class NotificationOutboxRelayTest {
         NotificationOutboxRecord taken = pending(NotificationChannel.EMAIL,
                 "{\"to\":\"a@b.c\",\"subject\":\"s\",\"body\":\"b\"}", now);
         when(outboxRepository.lockNextPending(20, now)).thenReturn(List.of(taken));
-        when(outboxRepository.renewClaim(taken.id(), taken.nextAttemptAt(), now)).thenReturn(false);
+        when(outboxRepository.renewClaim(eq(taken.id()), eq(taken.nextAttemptAt()), any())).thenReturn(false);
 
         relay.relayPending(now);
 
@@ -299,7 +299,10 @@ class NotificationOutboxRelayTest {
         relay.relayPending(now);
 
         var order = org.mockito.Mockito.inOrder(outboxRepository, emailPort);
-        order.verify(outboxRepository).renewClaim(row.id(), row.nextAttemptAt(), now);
+        var renewedAt = org.mockito.ArgumentCaptor.forClass(Instant.class);
+        order.verify(outboxRepository).renewClaim(eq(row.id()), eq(row.nextAttemptAt()), renewedAt.capture());
+        // revue D5 passe 2 : l'instant de renouvellement est frais (jamais le `now` capturé au début du lot)
+        org.assertj.core.api.Assertions.assertThat(renewedAt.getValue()).isAfter(now);
         order.verify(emailPort).send("a@b.c", "s", "b");
         order.verify(outboxRepository).markProcessed(row.id(), now);
     }

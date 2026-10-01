@@ -11,8 +11,11 @@ interface SpringDataSlaAlertStateRepository
 
     void deleteByTenantId(String tenantId);
 
-    /** Insertion stricte : une clé déjà prise (autre exécutant) lève une violation d'unicité, jamais une fusion silencieuse. */
-    @org.springframework.transaction.annotation.Transactional
+    /** Insertion stricte : une clé déjà prise (autre exécutant) lève une violation d'unicité, jamais une fusion silencieuse.
+     * Transaction PROPRE (revue D5 passe 2) : sous la transaction de l'appelant (UnitOfWork du job), la violation la marquerait
+     * rollback-only et le perdant échouerait au commit au lieu de rendre la main sans notifier. */
+    @org.springframework.transaction.annotation.Transactional(
+            propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true, flushAutomatically = true)
     @org.springframework.data.jpa.repository.Query("""
             insert into SlaAlertStateJpaEntity (tenantId, dossierId, lastStatus, updatedAt)

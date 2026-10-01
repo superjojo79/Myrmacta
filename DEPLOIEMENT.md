@@ -387,7 +387,7 @@ est sûre si elle **prend** son unité de travail avant d'agir (UPDATE condition
 |---|---|
 | Relais outbox des notifications (e-mail, webhook, navigateur) et relais outbox workflow | une ligne n'est traitée que par l'exécutant qui l'a prise ; bail de 5 min (exécutant mort ⇒ reprise) |
 | Alertes SLA | la transition d'état est prise avant la mise en file de l'alerte : une seule alerte par transition |
-| Invitations du portail | le lien est pris avant l'envoi (bail de 2 min) : le tiers ne reçoit pas deux e-mails |
+| Invitations du portail | le lien est pris avant l'envoi (bail de 5 min) : le tiers ne reçoit pas deux e-mails |
 | Déclencheurs cron (`scheduler`, `batch-import`) | le créneau est pris avant le déclenchement : un seul dossier / import par échéance |
 | Export BI | l'horloge d'export avance par compare-and-set au commit : un seul jeu de fichiers catalogué |
 | Réconciliation des liens `RESERVED` | prise du lien (bail de 2 min) ; un lien dont le process a démarré n'est jamais abandonné |

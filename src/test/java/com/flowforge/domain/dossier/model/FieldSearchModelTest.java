@@ -54,6 +54,12 @@ class FieldSearchModelTest {
     }
 
     @Test
+    void aNulCharacterIsRefused_reviewD2M2() {
+        assertThatThrownBy(() -> new FieldCondition("f", Op.EQ, List.of("a\u0000b"))).hasMessageContaining("NUL");
+        assertThatThrownBy(() -> new FieldCondition("f", Op.IN, List.of("ok", "a\u0000"))).hasMessageContaining("NUL");
+    }
+
+    @Test
     void aSearchTakesAtMostFiveFilters() {
         List<FieldCondition> six = java.util.Collections.nCopies(6, new FieldCondition("f", Op.EQ, List.of("a")));
         assertThatThrownBy(() -> SearchDossiersQuery.of(null, "T", null, 0, 20, six)).hasMessageContaining("at most 5");

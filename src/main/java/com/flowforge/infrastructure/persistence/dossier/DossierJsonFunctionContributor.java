@@ -10,7 +10,8 @@ import org.hibernate.type.StandardBasicTypes;
  *
  * <ul>
  *   <li>{@code flow_jsonb_contains(fields, json)} : opérateur {@code @>} — le seul que l'index GIN {@code jsonb_path_ops} sert ;</li>
- *   <li>{@code flow_jsonb_text(fields, name)} : {@code fields ->> name} ;</li>
+ *   <li>{@code flow_jsonb_text(fields, name)} : la chaîne JSON ou {@code null} (revue D2 : un tableau ou un entier stocké sous un champ date
+ *       n'entre jamais dans une comparaison de texte) ;</li>
  *   <li>{@code flow_jsonb_number(fields, name)} : le nombre ou {@code null} si la valeur n'est pas un nombre JSON — jamais de
  *       conversion qui échoue sur une ligne atypique.</li>
  * </ul>
@@ -25,7 +26,8 @@ public class DossierJsonFunctionContributor implements FunctionContributor {
                 .setInvariantType(types.resolve(StandardBasicTypes.BOOLEAN))
                 .setExactArgumentCount(2)
                 .register();
-        registry.patternDescriptorBuilder("flow_jsonb_text", "(?1 ->> ?2)")
+        registry.patternDescriptorBuilder(
+                        "flow_jsonb_text", "(case when jsonb_typeof(?1 -> ?2) = 'string' then (?1 ->> ?2) end)")
                 .setInvariantType(types.resolve(StandardBasicTypes.STRING))
                 .setExactArgumentCount(2)
                 .register();

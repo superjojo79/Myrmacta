@@ -284,9 +284,24 @@ class SearchDossiersUseCaseImplTest {
     }
 
     @Test
-    void filtersAreValidatedEvenWhenTheCallerSeesNoType() {
+    void aCallerWithoutAccessToTheTypeLearnsNothingAboutItsSchema_reviewD2M1() {
         typeWithFields();
         when(aclRepository.findBySubject(TENANT, "u")).thenReturn(List.of());
+        DossierPage page = useCase.search(TENANT,
+                SearchDossiersQuery.of(null, "SIN", null, 0, 20,
+                        List.of(cond("note", com.flowforge.domain.dossier.model.FieldCondition.Op.EQ, "x"),
+                                cond("ghost", com.flowforge.domain.dossier.model.FieldCondition.Op.EQ, "y"))),
+                AccessContext.user("u", Set.of("USER")));
+        assertThat(page.content()).isEmpty();
+        verify(typeRepository, never()).findByCode(any(), any());
+        verify(searchPort, never()).search(any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void aVisibleTypeStillValidatesTheFilters() {
+        typeWithFields();
+        when(aclRepository.findBySubject(TENANT, "u")).thenReturn(List.of(
+                new DossierTypeAclEntry(TENANT, "SIN", "u", DossierPermission.VIEW)));
         assertThatThrownBy(() -> useCase.search(TENANT,
                 SearchDossiersQuery.of(null, "SIN", null, 0, 20,
                         List.of(cond("note", com.flowforge.domain.dossier.model.FieldCondition.Op.EQ, "x"))),

@@ -43,10 +43,6 @@ public final class SearchDossiersUseCaseImpl implements SearchDossiersUseCase {
         Objects.requireNonNull(query, "query");
         Objects.requireNonNull(ctx, "ctx");
 
-        // Un filtre invalide est une erreur 400 quel que soit le périmètre de l'appelant (jamais un résultat vide silencieux).
-        if (ctx instanceof AccessContext.User || ctx instanceof AccessContext.System) {
-            fieldPredicates(tenantId, query);
-        }
         return switch (ctx) {
             case AccessContext.System ignored -> searchUnrestricted(tenantId, query);
             case AccessContext.Service ignored -> throw new AccessDeniedException(
@@ -76,6 +72,8 @@ public final class SearchDossiersUseCaseImpl implements SearchDossiersUseCase {
         }
 
         Set<String> restricted = typeFilter == null ? visibleCodes : Set.of(typeFilter);
+        // Revue D2 M1 : les filtres ne sont validés (donc le schéma du type n'est révélé) qu'APRÈS le contrôle de périmètre —
+        // un appelant sans droit sur le type reçoit une page vide, jamais un message qui décrit ses champs.
         DossierPage page = searchPort.search(
                 tenantId,
                 DossierSearchPort.Filter.restricted(query.status(), restricted, query.referencePrefix())

@@ -151,6 +151,14 @@ class DossierFieldSearchPostgresIT {
     }
 
     @Test
+    void aDateStoredAsAnArrayOrAnIntegerNeverMatchesATextRange_reviewD2() {
+        String type = seed("D2D" + UUID.randomUUID().toString().substring(0, 6).toUpperCase());
+        save(type, "ARR", Map.of("echeance", List.of(2026, 6, 15)));
+        save(type, "INT", Map.of("echeance", 20260615));
+        assertThat(labels(type, c("echeance", Op.GTE, "2026-06-01"))).containsExactlyInAnyOrder("D2", "D3");
+    }
+
+    @Test
     void refusesWhatIsNotSearchableOrWellFormed() {
         String type = seed("D2C" + UUID.randomUUID().toString().substring(0, 6).toUpperCase());
         assertThatThrownBy(() -> labels(type, c("note", Op.EQ, "x"))).isInstanceOf(InvalidDossierSearchException.class).hasMessageContaining("not searchable");

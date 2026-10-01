@@ -45,6 +45,10 @@ public record FieldCondition(String field, Op op, List<String> values) {
             throw new IllegalArgumentException("filter on '" + field + "' takes at most " + MAX_IN_VALUES + " values");
         }
         for (String v : values) {
+            if (v != null && v.indexOf('\u0000') >= 0) {
+                // PostgreSQL ne sait ni stocker ni comparer NUL dans un texte ou un jsonb : 400 net plutôt qu'une erreur SQL.
+                throw new IllegalArgumentException("filter value on '" + field + "' must not contain a NUL character");
+            }
             if (v == null || v.isBlank() || v.length() > MAX_VALUE_CHARS) {
                 throw new IllegalArgumentException(
                         "filter value on '" + field + "' must be non-blank and at most " + MAX_VALUE_CHARS + " characters");

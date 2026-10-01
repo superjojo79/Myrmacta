@@ -413,7 +413,7 @@ un pod qui meurt entre la prise et le déclenchement perd ce créneau).
 La migration `030-dossier-fields-jsonb` convertit `dossier.fields` de `json` en `jsonb` et crée l'index GIN `idx_dossier_fields_gin`
 (`jsonb_path_ops`). Elle **réécrit la table `dossier`** (verrou exclusif le temps de la conversion) : à planifier hors pic sur un gros
 volume (compter quelques secondes par centaine de milliers de dossiers). PostgreSQL seulement ; le retour arrière est fourni
-(`rollback`). Sur H2 (tests), la recherche sur champ dynamique est refusée (400). Pour rejouer les tests PostgreSQL sans Docker :
+(`rollback`). Pré-contrôle conseillé : `jsonb` refuse le caractère NUL (`\u0000`), que `json` acceptait — `select 1 from dossier where fields::text like '%\\u0000%'` doit ne rien renvoyer. Sur H2 (tests), la recherche sur champ dynamique est refusée (400). Pour rejouer les tests PostgreSQL sans Docker :
 `FLOWFORGE_TEST_PG_URL=jdbc:postgresql://hôte:port/base FLOWFORGE_TEST_PG_USER=… ./mvnw verify`.
 
 ------

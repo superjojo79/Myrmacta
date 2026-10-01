@@ -94,7 +94,7 @@ class RunBiExportUseCaseImplTest {
                     return null;
                 })
                 .when(commitPort)
-                .commitSuccessfulExport(eq(TENANT), any(), eq(NOW));
+                .commitSuccessfulExport(eq(TENANT), any(), eq(NOW), any());
 
         useCase.run(TENANT, NOW, watching);
 
@@ -113,7 +113,7 @@ class RunBiExportUseCaseImplTest {
         when(storagePort.store(TENANT, "text/csv", bytes)).thenReturn("ref-1");
         org.mockito.Mockito.doThrow(new IllegalStateException("db"))
                 .when(commitPort)
-                .commitSuccessfulExport(eq(TENANT), any(), eq(NOW));
+                .commitSuccessfulExport(eq(TENANT), any(), eq(NOW), any());
 
         assertThatThrownBy(() -> useCase.run(TENANT, NOW, INLINE)).isInstanceOf(IllegalStateException.class);
         verify(storagePort).delete(TENANT, "ref-1");
@@ -151,5 +151,38 @@ class RunBiExportUseCaseImplTest {
                 lastExport,
                 NOW,
                 "admin");
+    }
+
+    // ---- TODO §79 (D5) -----------------------------------------------------------------------------------------------
+
+    @Test
+    void run_commitPassesTheObservedLastExportSoTheAdvanceIsACompareAndSet() {
+        Instant last = NOW.minus(Duration.ofHours(30));
+        when(settingsRepository.findByTenantId(TENANT)).thenReturn(Optional.of(settings(true, last, last)));
+        byte[] bytes = "csv".getBytes();
+        when(contentPort.render(TENANT, NOW))
+                .thenReturn(List.of(new BiExportContentPort.BiExportPayload(BiExportKind.SLA, null, "sla.csv", bytes)));
+        when(storagePort.store(TENANT, "text/csv", bytes)).thenReturn("ref-1");
+
+        useCase.run(TENANT, NOW, INLINE);
+
+        verify(commitPort).commitSuccessfulExport(eq(TENANT), any(), eq(NOW), eq(last));
+    }
+
+    @Test
+    void run_anotherExecutorAlreadyExportedThisSlot_removesOurFilesWithoutAnError() {
+        when(settingsRepository.findByTenantId(TENANT))
+                .thenReturn(Optional.of(settings(true, NOW.minus(Duration.ofHours(24)), null)));
+        byte[] bytes = "csv".getBytes();
+        when(contentPort.render(TENANT, NOW))
+                .thenReturn(List.of(new BiExportContentPort.BiExportPayload(BiExportKind.SLA, null, "sla.csv", bytes)));
+        when(storagePort.store(TENANT, "text/csv", bytes)).thenReturn("ref-1");
+        org.mockito.Mockito.doThrow(new com.flowforge.domain.reporting.port.out.BiExportAlreadyCommittedException(TENANT))
+                .when(commitPort)
+                .commitSuccessfulExport(eq(TENANT), any(), eq(NOW), any());
+
+        useCase.run(TENANT, NOW, INLINE); // aucune exception
+
+        verify(storagePort).delete(TENANT, "ref-1");
     }
 }

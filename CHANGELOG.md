@@ -30,6 +30,12 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
+- **TODO §83 (D4)** — Promotion de configuration entre environnements : export d'un **bundle ZIP** versionné (types de dossier, schémas de questions, connecteurs sans secrets, tables DMN
+  et processus BPMN déployés, configurations de workflow), **plan à blanc** par artefact (créer, modifier, inchangé, conflit, bloqué), application **idempotente** par les cas d'usage existants,
+  journal des imports. BPMN et DMN arrivent en **brouillons à publier** ; un connecteur est créé **désactivé** ; secrets jamais exportés (saisis ou injectés à l'import) ; valeurs `{{paramètre}}`
+  substituées par environnement. Écran *Admin → Promotion*, API `/api/admin/configuration`, outils MCP `export_configuration` et `import_configuration` (plan ; l'application ne dépose que des brouillons).
+  ACL, réglages et templates hors première tranche. Migration 032. Voir `DEPLOIEMENT.md` §14.
+
 - **TODO §82 (D6)** — Socle MCP low-code : les outils MCP `deploy_workflow`, `deploy_decision_table` et `redeploy_decision_table` écrivent désormais un **brouillon**
   (origine Agent ou Assistant) qu'un humain relit et publie depuis *Admin → Brouillons* (écart avec la version en ligne, publication de ce qui a été relu, journal des
   publications) ; nouveaux outils `list_pending_drafts` et `publish_draft` (ce dernier refusé sauf publication directe autorisée hors production). Un brouillon d'un autre

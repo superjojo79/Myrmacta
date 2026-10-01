@@ -316,6 +316,27 @@ retirées). Un agent branché au MCP n'écrit **jamais** en ligne par défaut : 
 - Les brouillons d'agent ou d'assistant non touchés depuis 30 jours sont purgés ; ceux de l'éditeur, jamais.
 - *Dernières publications* : qui a rédigé, qui a publié, quand, quelle version, et si la publication était relue ou **directe**.
 
+### Promotion de configuration — de la recette à la production (TODO §83)
+
+*Admin → Promotion* (rôle TENANT_ADMIN) exporte la configuration d'un environnement et l'importe sur un autre.
+
+1. **Exporter** (sur la recette) : nommez l'environnement, téléchargez le bundle (ZIP). Il contient types de dossier, schémas de questions,
+   connecteurs **sans leurs secrets**, tables DMN et processus BPMN **déployés**, configurations de workflow — des fichiers lisibles que vous pouvez
+   versionner dans Git. Le bundle n'est pas signé : transportez-le par un canal de confiance. Ni ACL, ni réglages (rétention, SLA, webhooks), ni
+   templates de documents (première tranche).
+2. **Planifier** (sur la production) : déposez le ZIP. Le plan **n'écrit rien** : pour chaque artefact, *Créer*, *Modifier*, *Inchangé*, *Conflit*
+   (ex. un type dont le nouveau schéma casserait des dossiers existants — jamais forcé) ou *Bloqué* (secret requis, table DMN à publier d'abord,
+   paramètre manquant, validation refusée), avec la raison.
+3. **Paramètres d'environnement** : dans les fichiers de connecteur du bundle, une valeur de la forme `{{url_erp}}` est remplacée à l'import par
+   le paramètre du même nom (JSON `{"url_erp": "https://…"}`) ; un paramètre absent bloque le connecteur.
+4. **Appliquer** : les types, schémas et connecteurs sont écrits ; **les BPMN et DMN deviennent des brouillons** (*Admin → Brouillons*, origine
+   « Import ») à relire et publier ; un connecteur est créé **désactivé** (relisez ses adresses, saisissez ses secrets si besoin, puis activez-le).
+   Les secrets requis à la création se saisissent dans la page (envoyés avec l'application, jamais conservés) ou plus tard dans *Connecteurs*.
+5. **Rejouer est sans danger** : un second import converge (tout *Inchangé*). Si un artefact échoue, les autres sont appliqués et le rapport dit lequel ;
+   corrigez et relancez. Un BPMN qui dépend d'une table DMN encore en brouillon est *Bloqué* : publiez le brouillon DMN, puis relancez l'import.
+
+*Derniers imports* : qui, quand, quel bundle, combien d'artefacts appliqués, inchangés, ignorés, en échec.
+
 ## 4. Configurer un connecteur
 
 Écran **Admin → Connecteurs** (`/admin/connectors`, `TENANT_ADMIN`).

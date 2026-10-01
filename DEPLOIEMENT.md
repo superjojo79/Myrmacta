@@ -433,6 +433,22 @@ agent déployait directement, prévenir ses opérateurs : ses écrans de déploi
 
 ------
 
+## 14. Promouvoir la configuration de la recette vers la production (TODO §83)
+
+Procédure type (rôle TENANT_ADMIN des deux côtés) :
+
+1. Recette : *Admin → Promotion → Télécharger le bundle* (ou `GET /api/admin/configuration/export?sourceLabel=recette`). Versionnez le ZIP (ou son contenu) dans Git.
+2. Production : *Planifier* le bundle (`POST /api/admin/configuration/plan`, multipart `file` + `parameters` JSON optionnel) et relisez le plan.
+3. *Appliquer* (`POST /api/admin/configuration/apply`, mêmes parties + `secrets` JSON `{nomConnecteur: {champ: valeur}}` pour les créations + `expectedBundleSha256` du plan relu).
+   Les secrets ne sont jamais écrits dans le bundle ni dans le journal ; transmettez-les par TLS.
+4. Publiez les brouillons BPMN/DMN déposés (*Admin → Brouillons*), relancez l'import tant que des artefacts restent *Bloqués* par une dépendance, activez les connecteurs après relecture de leurs adresses.
+
+Intégrité : chaque fichier porte son SHA-256 dans `manifest.json` (altération détectée) ; le bundle **n'est pas signé**. Limites : 2 000 artefacts, 5 Mo par fichier, 50 Mo au total ;
+la taille d'envoi reste plafonnée par `spring.servlet.multipart.max-file-size`. La migration 032 crée le journal `config_import` (additif, retour arrière fourni). Un import ne retire jamais
+une clé de configuration d'un connecteur existant (fusion) et ne change pas son état activé.
+
+------
+
 ## Ce qui n'est pas (encore) couvert par ce guide
 
 - **Démarrage de l'instance et bloc reverse-proxy** restent des étapes documentées (§1/§3/§4), pas

@@ -105,7 +105,7 @@ public class DefineDossierTypeTool {
                             description = "Full field schema — the complete list every call, not a diff. Each "
                                     + "item: {name, label, type (STRING|NUMBER|BOOLEAN|DATE|SELECT|FILE|MONEY|"
                                     + "REPEATABLE_GROUP|EXTERNAL_REF), required, defaultValue, options, group, sensitive, "
-                                    + "fields, minRows, maxRows, formula, visibleWhen, requiredWhen}. MONEY value {amount:\"1234.50\",currency:\"EUR\"} "
+                                    + "fields, minRows, maxRows, formula, visibleWhen, requiredWhen, searchable}. MONEY value {amount:\"1234.50\",currency:\"EUR\"} "
                                     + "(options = allowed ISO 4217 currencies, amount checked against the currency "
                                     + "decimals, never rounded); EXTERNAL_REF value {system,id,label?} (options = allowed "
                                     + "systems); REPEATABLE_GROUP value = list of rows typed by `fields` (one level, at "
@@ -114,7 +114,8 @@ public class DefineDossierTypeTool {
                                     + "non-sensitive fields as dossier.fields.x): formula = computed read-only field "
                                     + "recomputed on every save; visibleWhen = field applicable only when true; requiredWhen "
                                     + "= field required when true. Try them with evaluate_dossier_rules and "
-                                    + "evaluate_expression")
+                                    + "evaluate_expression. searchable=true (STRING, NUMBER, DATE, BOOLEAN, SELECT; never "
+                                    + "sensitive) makes the field usable as a search_dossiers filter")
                     List<Map<String, Object>> fieldDefinitions,
             @McpToolParam(
                             required = false,

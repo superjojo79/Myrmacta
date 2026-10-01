@@ -29,6 +29,9 @@ export async function listDossiers(params: DossierListParams = {}): Promise<Doss
   if (params.status) query.status = params.status
   if (params.dossierTypeCode) query.dossierTypeCode = params.dossierTypeCode
   if (params.reference) query.reference = params.reference
+  for (const [key, value] of Object.entries(params.fieldFilters ?? {})) {
+    if (value) query[`f.${key}`] = value
+  }
   const { data } = await axios.get<DossierPage>('/api/dossiers', { params: query })
   return data
 }

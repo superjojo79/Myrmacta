@@ -3951,3 +3951,43 @@ test('E2E-PALETTE-7 brique posée sur un diagramme importé sans xmlns:flowable 
   expect(putBody).toContain('xmlns:flowable')
   expect(putBody).toContain('flowable:delegateExpression=\\"${updateDossierStatusTask}\\"')
 })
+
+test('E2E-SEARCH-1 supervision: filters on searchable fields of the chosen type reach the API and the URL (D2)', async ({ page }) => {
+  await mockSession(page)
+  const searchType = {
+    ...CLAIM_TYPE,
+    fieldDefinitions: [
+      { name: 'montant', label: 'Montant', type: 'NUMBER', required: false, searchable: true },
+      { name: 'note', label: 'Note', type: 'STRING', required: false },
+      { name: 'iban', label: 'IBAN', type: 'STRING', required: false, sensitive: true },
+    ],
+  }
+  await page.route(/\/api\/dossier-types(?:\?|$)/, async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback()
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(envelope([searchType])) })
+  })
+  const listQueries: string[] = []
+  await page.route('**/api/dossiers?**', async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback()
+    listQueries.push(new URL(route.request().url()).search)
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }),
+    })
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Supervision' }).click()
+  await expect(page.getByTestId('field-filters')).toHaveCount(0)
+
+  await page.getByTestId('type-filter').selectOption('CLAIM')
+  await expect(page.getByTestId('field-filters')).toBeVisible()
+  await expect(page.getByTestId('field-filter-montant.gte')).toBeVisible()
+  await expect(page.getByTestId('field-filters').getByText('Note')).toHaveCount(0)
+  await expect(page.getByTestId('field-filters').getByText('IBAN')).toHaveCount(0)
+
+  await page.getByTestId('field-filter-montant.gte').fill('5000')
+  await page.getByRole('button', { name: 'Filtrer' }).click()
+  await expect(page).toHaveURL(/f\.montant\.gte=5000/)
+  expect(listQueries.some((q) => q.includes('dossierTypeCode=CLAIM') && q.includes('f.montant.gte=5000'))).toBe(true)
+})

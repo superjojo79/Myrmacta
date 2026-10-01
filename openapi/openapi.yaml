@@ -690,6 +690,11 @@ paths:
     get:
       tags:
       - dossier-controller
+      description: "Paginated list. Filters on dynamic fields declared searchable\
+        \ (TODO 81, D2): query parameters f.<field>=v (equals), f.<field>.in=a,b,\
+        \ f.<field>.gte / .lte (number, ISO date), f.<field>.prefix (text). They require\
+        \ dossierTypeCode; at most 5; unknown or non-searchable field, or incompatible\
+        \ operator: 400."
       operationId: list_3
       parameters:
       - name: page
@@ -1071,6 +1076,30 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/DossierTypeResponse"
+  /api/dossier-types/{code}/evaluate-rules:
+    post:
+      tags:
+      - dossier-type-controller
+      operationId: evaluateRules
+      parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EvaluateRulesRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/EvaluateRulesResponse"
   /api/dossier-types/{code}/acl:
     post:
       tags:
@@ -2760,6 +2789,14 @@ components:
         maxRows:
           type: integer
           format: int32
+        formula:
+          type: string
+        visibleWhen:
+          type: string
+        requiredWhen:
+          type: string
+        searchable:
+          type: boolean
     UpdateTaskQuestionSchemaRequest:
       type: object
       properties:
@@ -3458,6 +3495,37 @@ components:
           type: array
           items:
             type: string
+    EvaluateRulesRequest:
+      type: object
+      properties:
+        fields:
+          type: object
+          additionalProperties: {}
+    EvaluateRulesResponse:
+      type: object
+      properties:
+        computed:
+          type: object
+          additionalProperties: {}
+        hidden:
+          type: array
+          items:
+            type: string
+        requiredByRule:
+          type: array
+          items:
+            type: string
+        errors:
+          type: array
+          items:
+            $ref: "#/components/schemas/RuleErrorResponse"
+    RuleErrorResponse:
+      type: object
+      properties:
+        field:
+          type: string
+        message:
+          type: string
     GrantDossierTypeAccessRequest:
       type: object
       properties:
@@ -4854,6 +4922,8 @@ components:
           format: int32
         help:
           type: string
+        multiline:
+          type: boolean
     BuildingBlock:
       type: object
       properties:

@@ -30,20 +30,30 @@ public class SearchDossiersTool {
 
     @McpTool(
             name = "search_dossiers",
-            description = "Search dossier summaries by status, dossier type code and/or reference prefix, paginated.")
+            description = "Search dossier summaries by status, dossier type code, reference prefix and/or dynamic-field filters, "
+                    + "paginated. fieldFilters (needs dossierTypeCode; at most 5; only fields declared searchable in the type — see "
+                    + "get_dossier_type): keys 'name' (equals), 'name.in' (comma-separated), 'name.gte' / 'name.lte' (number, ISO "
+                    + "date), 'name.prefix' (text, case-insensitive). Example {\"contrat\":\"C-42\",\"montant.gte\":\"5000\"}.")
     public DossierPage searchDossiers(
             @McpToolParam(required = false, description = "Dossier status filter") String status,
             @McpToolParam(required = false, description = "Dossier type code filter") String dossierTypeCode,
             @McpToolParam(required = false, description = "Reference prefix filter") String referencePrefix,
+            @McpToolParam(required = false, description = "Dynamic-field filters, see the tool description")
+                    java.util.Map<String, Object> fieldFilters,
             @McpToolParam(required = false, description = "Zero-based page index, default 0") Integer page,
             @McpToolParam(required = false, description = "Page size, 1-100, default 20") Integer size) {
         DossierStatus statusFilter = status == null || status.isBlank() ? null : DossierStatus.valueOf(status);
+        java.util.Map<String, String> filterParams = new java.util.LinkedHashMap<>();
+        if (fieldFilters != null) {
+            fieldFilters.forEach((k, v) -> filterParams.put("f." + k, v == null ? null : String.valueOf(v)));
+        }
         SearchDossiersQuery query = SearchDossiersQuery.of(
                 statusFilter,
                 dossierTypeCode,
                 referencePrefix,
                 page == null ? 0 : page,
-                size == null ? PageQuery.DEFAULT_SIZE : size);
+                size == null ? PageQuery.DEFAULT_SIZE : size,
+                com.flowforge.domain.dossier.model.FieldConditionParser.parse(filterParams));
         return searchDossiersUseCase.search(tenantProperties.id(), query, accessContextFactory.currentActor());
     }
 }

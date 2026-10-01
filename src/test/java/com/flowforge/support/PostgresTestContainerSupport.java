@@ -41,7 +41,21 @@ public final class PostgresTestContainerSupport {
      * (D-TESTCONTAINERS-EXEC) : ces tests doivent alors être proprement ignorés (SKIPPED), pas
      * planter/bloquer, tout en tournant normalement en CI (Docker natif sur {@code ubuntu-latest}).
      */
+    /**
+     * Serveur PostgreSQL externe (TODO §81, D2) : si {@code FLOWFORGE_TEST_PG_URL} est défini
+     * (ex. {@code jdbc:postgresql://127.0.0.1:55432/postgres}, avec {@code FLOWFORGE_TEST_PG_USER} /
+     * {@code FLOWFORGE_TEST_PG_PASSWORD}), les tests PostgreSQL l'utilisent à la place de Testcontainers — pour les postes sans
+     * Docker. Sans cette variable, comportement inchangé (conteneur, ou tests ignorés sans Docker).
+     */
+    public static boolean isExternalPostgres() {
+        String url = System.getenv("FLOWFORGE_TEST_PG_URL");
+        return url != null && !url.isBlank();
+    }
+
     public static boolean isDockerAvailable() {
+        if (isExternalPostgres()) {
+            return true;
+        }
         try {
             return DockerClientFactory.instance().isDockerAvailable();
         } catch (Throwable ex) {
@@ -95,31 +109,29 @@ public final class PostgresTestContainerSupport {
      * éviter d'accumuler des pools de connexions non fermés sur le conteneur singleton partagé.
      */
     public static HikariDataSource dataSourceForSchema(String schemaName) {
-        PostgreSQLContainer<?> postgres = container();
         HikariConfig config = new HikariConfig();
-        config.setJdbcUrl(postgres.getJdbcUrl());
-        config.setUsername(postgres.getUsername());
-        config.setPassword(postgres.getPassword());
+        config.setJdbcUrl(jdbcUrl());
+        config.setUsername(adminUsername());
+        config.setPassword(adminPassword());
         config.setConnectionInitSql("SET search_path TO " + schemaName + ", public");
         config.setMaximumPoolSize(5);
         return new HikariDataSource(config);
     }
 
     public static String jdbcUrl() {
-        return container().getJdbcUrl();
+        return isExternalPostgres() ? System.getenv("FLOWFORGE_TEST_PG_URL") : container().getJdbcUrl();
     }
 
     public static String adminUsername() {
-        return container().getUsername();
+        return isExternalPostgres() ? System.getenv().getOrDefault("FLOWFORGE_TEST_PG_USER", "postgres") : container().getUsername();
     }
 
     public static String adminPassword() {
-        return container().getPassword();
+        return isExternalPostgres() ? System.getenv().getOrDefault("FLOWFORGE_TEST_PG_PASSWORD", "") : container().getPassword();
     }
 
     private static Connection adminConnection() throws SQLException {
-        PostgreSQLContainer<?> postgres = container();
-        return DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+        return DriverManager.getConnection(jdbcUrl(), adminUsername(), adminPassword());
     }
 
     private static Connection schemaConnection(String schemaName) throws SQLException {

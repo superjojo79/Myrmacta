@@ -51,7 +51,7 @@ class SearchDossiersToolTest {
     void relaysToSearchDossiersQuery() {
         when(searchDossiersUseCase.search(eq(TENANT), any(), any())).thenReturn(DossierPage.empty(0, 20));
 
-        tool.searchDossiers(null, "SINISTRE", "DOS-", null, null);
+        tool.searchDossiers(null, "SINISTRE", "DOS-", null, null, null);
 
         var captor = org.mockito.ArgumentCaptor.forClass(SearchDossiersQuery.class);
         verify(searchDossiersUseCase).search(eq(TENANT), captor.capture(), any());
@@ -63,7 +63,7 @@ class SearchDossiersToolTest {
 
     @Test
     void sizeOver100_isRejected() {
-        assertThatThrownBy(() -> tool.searchDossiers(null, null, null, 0, 101))
+        assertThatThrownBy(() -> tool.searchDossiers(null, null, null, null, 0, 101))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -71,7 +71,7 @@ class SearchDossiersToolTest {
     void blankStatus_isTreatedAsNoFilter() {
         when(searchDossiersUseCase.search(eq(TENANT), any(), any())).thenReturn(DossierPage.empty(0, 20));
 
-        tool.searchDossiers("   ", null, null, null, null);
+        tool.searchDossiers("   ", null, null, null, null, null);
 
         var captor = org.mockito.ArgumentCaptor.forClass(SearchDossiersQuery.class);
         verify(searchDossiersUseCase).search(eq(TENANT), captor.capture(), any());
@@ -82,10 +82,26 @@ class SearchDossiersToolTest {
     void validStatus_isParsedIntoQuery() {
         when(searchDossiersUseCase.search(eq(TENANT), any(), any())).thenReturn(DossierPage.empty(0, 20));
 
-        tool.searchDossiers("OUVERT", null, null, null, null);
+        tool.searchDossiers("OUVERT", null, null, null, null, null);
 
         var captor = org.mockito.ArgumentCaptor.forClass(SearchDossiersQuery.class);
         verify(searchDossiersUseCase).search(eq(TENANT), captor.capture(), any());
         assertThat(captor.getValue().status()).isEqualTo(com.flowforge.domain.dossier.model.DossierStatus.OUVERT);
+    }
+
+    @Test
+    void fieldFilters_areParsedIntoConditions_andABadOperatorIsRefused() {
+        when(searchDossiersUseCase.search(eq(TENANT), any(), any())).thenReturn(DossierPage.empty(0, 20));
+
+        tool.searchDossiers(null, "SINISTRE", null,
+                java.util.Map.of("contrat", "C-42", "montant.gte", 5000), null, null);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(SearchDossiersQuery.class);
+        verify(searchDossiersUseCase).search(eq(TENANT), captor.capture(), any());
+        assertThat(captor.getValue().fieldConditions()).extracting(c -> c.field() + ":" + c.op() + ":" + c.values())
+                .containsExactly("contrat:EQ:[C-42]", "montant:GTE:[5000]");
+
+        assertThatThrownBy(() -> tool.searchDossiers(null, "SINISTRE", null, java.util.Map.of("montant.between", "1"), null, null))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 }

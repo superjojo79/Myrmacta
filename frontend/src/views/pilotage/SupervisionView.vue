@@ -6,6 +6,13 @@ import { listDossiers } from '@/api/dossiers'
 import { toProblemDetail } from '@/api/http'
 import type { DossierListItem, DossierStatus, DossierType } from '@/api/types'
 import { useDossierStore } from '@/stores/dossier'
+import {
+  activeFieldFilters,
+  fieldFilterInputs,
+  fieldFiltersFromQuery,
+  MAX_FIELD_FILTERS,
+  tooManyFieldFilters,
+} from '@/dossier/fieldSearch'
 
 const STATUSES: DossierStatus[] = ['DRAFT', 'OUVERT', 'EN_COURS', 'SUSPENDU', 'CLOTURE', 'ARCHIVE']
 
@@ -27,6 +34,14 @@ const statusFilter = ref<DossierStatus | ''>('')
 const typeFilter = ref('')
 const referenceFilter = ref('')
 const types = ref<DossierType[]>([])
+// TODO §81 (D2) : filtres sur les champs cherchables du type choisi (clés de l'API : `contrat.prefix`, `montant.gte`…).
+const fieldFilters = ref<Record<string, string>>({})
+const fieldInputs = computed(() =>
+  fieldFilterInputs(types.value.find((t) => t.code === typeFilter.value)?.fieldDefinitions),
+)
+const fieldFilterError = computed(() =>
+  tooManyFieldFilters(fieldFilters.value) ? `Au plus ${MAX_FIELD_FILTERS} filtres sur les champs` : null,
+)
 
 const hasPrev = computed(() => page.value > 0)
 const hasNext = computed(() => page.value + 1 < totalPages.value)
@@ -38,6 +53,7 @@ function readFiltersFromRoute() {
     : ''
   typeFilter.value = typeof q.dossierTypeCode === 'string' ? q.dossierTypeCode : ''
   referenceFilter.value = typeof q.reference === 'string' ? q.reference : ''
+  fieldFilters.value = typeFilter.value ? fieldFiltersFromQuery(q) : {}
   const rawPage = typeof q.page === 'string' ? Number(q.page) : 0
   page.value = Number.isFinite(rawPage) && rawPage >= 0 ? rawPage : 0
   const rawSize = typeof q.size === 'string' ? Number(q.size) : 20
@@ -49,6 +65,9 @@ async function syncRoute() {
   if (statusFilter.value) nextQuery.status = statusFilter.value
   if (typeFilter.value) nextQuery.dossierTypeCode = typeFilter.value
   if (referenceFilter.value) nextQuery.reference = referenceFilter.value
+  if (typeFilter.value) {
+    for (const [key, value] of Object.entries(activeFieldFilters(fieldFilters.value))) nextQuery[`f.${key}`] = value
+  }
   if (page.value > 0) nextQuery.page = String(page.value)
   if (size.value !== 20) nextQuery.size = String(size.value)
   await router.replace({ query: nextQuery })
@@ -64,6 +83,7 @@ async function loadList() {
       status: statusFilter.value || undefined,
       dossierTypeCode: typeFilter.value || undefined,
       reference: referenceFilter.value || undefined,
+      fieldFilters: typeFilter.value ? activeFieldFilters(fieldFilters.value) : undefined,
     })
     items.value = result.content ?? []
     totalElements.value = result.totalElements ?? 0
@@ -79,6 +99,7 @@ async function loadList() {
 }
 
 async function applyFilters() {
+  if (fieldFilterError.value) return
   page.value = 0
   await syncRoute()
   await loadList()
@@ -149,7 +170,7 @@ watch(
       </label>
       <label>
         Type
-        <select v-model="typeFilter">
+        <select v-model="typeFilter" data-testid="type-filter" @change="fieldFilters = {}">
           <option value="">Tous</option>
           <option v-for="type in types" :key="type.code" :value="type.code">
             {{ type.label }} ({{ type.code }})
@@ -160,7 +181,30 @@ watch(
         Référence
         <input v-model="referenceFilter" type="text" placeholder="préfixe DOS-…" />
       </label>
-      <button type="submit" :disabled="listLoading">Filtrer</button>
+      <fieldset v-if="fieldInputs.length" class="supervision__fields" data-testid="field-filters">
+        <legend>Champs du type</legend>
+        <label v-for="input in fieldInputs" :key="input.key">
+          {{ input.label }}
+          <select v-if="input.kind === 'select'" v-model="fieldFilters[input.key]" :data-testid="`field-filter-${input.key}`">
+            <option value="">Tous</option>
+            <option v-for="option in input.options" :key="option" :value="option">{{ option }}</option>
+          </select>
+          <select v-else-if="input.kind === 'boolean'" v-model="fieldFilters[input.key]" :data-testid="`field-filter-${input.key}`">
+            <option value="">Tous</option>
+            <option value="true">Oui</option>
+            <option value="false">Non</option>
+          </select>
+          <input
+            v-else
+            v-model="fieldFilters[input.key]"
+            :type="input.kind === 'text' ? 'text' : input.kind"
+            :step="input.kind === 'number' ? 'any' : undefined"
+            :data-testid="`field-filter-${input.key}`"
+          />
+        </label>
+        <p v-if="fieldFilterError" class="supervision__error" role="alert">{{ fieldFilterError }}</p>
+      </fieldset>
+      <button type="submit" :disabled="listLoading || !!fieldFilterError">Filtrer</button>
     </form>
 
     <p v-if="listError" class="supervision__error">{{ listError }}</p>
@@ -217,6 +261,14 @@ watch(
 </template>
 
 <style scoped>
+.supervision__fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  border: 1px solid #ddd;
+  padding: 0.5rem 0.75rem;
+}
+
 .supervision__filters,
 .supervision__form,
 .supervision__pager {

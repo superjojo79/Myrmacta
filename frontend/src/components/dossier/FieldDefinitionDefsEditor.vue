@@ -91,8 +91,13 @@ function parseRows(raw: string): number | null {
   return Number.isNaN(n) ? null : n
 }
 
+const SEARCHABLE_TYPES = ['STRING', 'NUMBER', 'DATE', 'BOOLEAN', 'SELECT']
+
 function updateRow(index: number, patch: Partial<FieldDefinition>) {
-  rows.value[index] = { ...rows.value[index]!, ...patch }
+  const next = { ...rows.value[index]!, ...patch }
+  // TODO §81 (D2) : un champ sensible ou d'un type non scalaire ne peut pas être cherchable.
+  if (next.searchable && (next.sensitive || !SEARCHABLE_TYPES.includes(next.type))) next.searchable = false
+  rows.value[index] = next
   emitRows()
 }
 
@@ -180,6 +185,20 @@ function parseOptions(raw: string): string[] {
           @change="updateRow(index, { sensitive: ($event.target as HTMLInputElement).checked })"
         />
         Sensible
+      </label>
+      <label
+        v-if="!isSub && ['STRING', 'NUMBER', 'DATE', 'BOOLEAN', 'SELECT'].includes(def.type)"
+        class="field-def-editor__checkbox"
+        :title="def.sensitive ? 'Un champ sensible ne peut pas être cherchable' : 'Proposé comme filtre dans la liste des dossiers'"
+      >
+        <input
+          type="checkbox"
+          :checked="!!def.searchable"
+          :disabled="!!def.sensitive"
+          data-testid="field-def-searchable"
+          @change="updateRow(index, { searchable: ($event.target as HTMLInputElement).checked })"
+        />
+        Cherchable
       </label>
       <details v-if="mode === 'fields' && def.type !== 'REPEATABLE_GROUP' && def.type !== 'FILE'" class="field-def-editor__rules" data-testid="field-def-rules">
         <summary>Règles (calcul, visibilité, obligation conditionnelle)</summary>

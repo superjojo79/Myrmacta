@@ -87,6 +87,12 @@ export function validateFieldDefinitions(definitions: FieldDefinition[], owner?:
         errors.push(`${label} du champ « ${shown} » dépasse ${MAX_EXPRESSION_CHARS} caractères`)
       }
     }
+    if (def.searchable) {
+      if (def.sensitive) errors.push(`Le champ « ${shown} » est sensible : il ne peut pas être cherchable`)
+      if (!['STRING', 'NUMBER', 'DATE', 'BOOLEAN', 'SELECT'].includes(def.type)) {
+        errors.push(`Un champ ${def.type} (« ${shown} ») ne peut pas être cherchable`)
+      }
+    }
     if (!isBlank(def.formula)) {
       if (def.sensitive) errors.push(`Le champ calculé « ${shown} » ne peut pas être sensible`)
       if (def.type === 'REPEATABLE_GROUP' || def.type === 'FILE') {

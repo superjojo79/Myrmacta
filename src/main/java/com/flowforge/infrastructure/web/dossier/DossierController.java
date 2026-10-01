@@ -100,6 +100,11 @@ public class DossierController {
                 .body(DossierResponse.from(dossier, accessPolicy.canEdit(dossier, actor)));
     }
 
+    @io.swagger.v3.oas.annotations.Operation(
+            description = "Paginated list. Filters on dynamic fields declared searchable (TODO 81, D2): query parameters "
+                    + "f.<field>=v (equals), f.<field>.in=a,b, f.<field>.gte / .lte (number, ISO date), f.<field>.prefix "
+                    + "(text). They require dossierTypeCode; at most 5; unknown or non-searchable field, or incompatible "
+                    + "operator: 400.")
     @GetMapping
     public DossierPageResponse list(
             @RequestParam(required = false) Integer page,
@@ -108,11 +113,15 @@ public class DossierController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String dossierTypeCode,
             @RequestParam(required = false) String reference,
+            @io.swagger.v3.oas.annotations.Parameter(hidden = true) @RequestParam java.util.Map<String, String> allParams,
             Authentication authentication) {
+        com.flowforge.domain.dossier.model.SearchDossiersQuery base =
+                DossierListQueryParser.parse(page, size, sort, status, dossierTypeCode, reference);
+        com.flowforge.domain.dossier.model.SearchDossiersQuery query = com.flowforge.domain.dossier.model.SearchDossiersQuery.of(
+                base.status(), base.dossierTypeCode(), base.referencePrefix(), base.page(), base.size(),
+                DossierListQueryParser.parseFieldConditions(allParams));
         return DossierPageResponse.from(searchDossiersUseCase.search(
-                tenantProperties.id(),
-                DossierListQueryParser.parse(page, size, sort, status, dossierTypeCode, reference),
-                accessContextFactory.user(authentication)));
+                tenantProperties.id(), query, accessContextFactory.user(authentication)));
     }
 
     @GetMapping("/{id}")

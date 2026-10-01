@@ -45,6 +45,8 @@ export interface FieldDefinition {
   visibleWhen?: string | null
   /** Le champ est obligatoire si l'expression est vraie (en plus de `required`). */
   requiredWhen?: string | null
+  /** TODO §81 (D2) : le champ peut servir de filtre de recherche (jamais sensible ; STRING, NUMBER, DATE, BOOLEAN, SELECT). */
+  searchable?: boolean
 }
 
 /** Aperçu des règles d'un type pour des valeurs en cours de saisie (`POST /api/dossier-types/{code}/evaluate-rules`). */
@@ -144,6 +146,8 @@ export interface DossierListParams {
   status?: DossierStatus | ''
   dossierTypeCode?: string
   reference?: string
+  /** TODO §81 (D2) : filtres sur champs cherchables, clés `contrat`, `montant.gte`… (exigent `dossierTypeCode`). */
+  fieldFilters?: Record<string, string>
 }
 
 export interface WorkflowLink {

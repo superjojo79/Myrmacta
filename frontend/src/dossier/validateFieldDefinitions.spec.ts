@@ -171,4 +171,10 @@ describe('validateFieldDefinitions — structured types (TODO §76, D1)', () => 
       expect(validateFieldDefinitions([group]).join(' ')).toContain('ne peut pas porter de règle')
     })
   })
+
+  it('refuses a searchable sensitive or structured field (TODO §81, D2)', () => {
+    expect(validateFieldDefinitions([field({ searchable: true })])).toEqual([])
+    expect(validateFieldDefinitions([field({ searchable: true, sensitive: true })]).join(' ')).toContain('cherchable')
+    expect(validateFieldDefinitions([field({ type: 'MONEY', searchable: true })]).join(' ')).toContain('cherchable')
+  })
 })

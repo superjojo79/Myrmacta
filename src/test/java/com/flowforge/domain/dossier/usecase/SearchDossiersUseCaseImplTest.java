@@ -217,4 +217,80 @@ class SearchDossiersUseCaseImplTest {
                 .isInstanceOf(AccessDeniedException.class);
         verify(searchPort, never()).search(any(), any(), anyInt(), anyInt());
     }
+
+    // ---- TODO §81 (D2) ----
+
+    private static com.flowforge.domain.dossier.model.FieldDefinition searchable(
+            String name, com.flowforge.domain.dossier.model.FieldType t, List<String> options) {
+        return new com.flowforge.domain.dossier.model.FieldDefinition(
+                name, name, t, false, null, options, null, false, null, null, null, null, null, null, true);
+    }
+
+    private void typeWithFields() {
+        when(typeRepository.findByCode(TENANT, "SIN")).thenReturn(java.util.Optional.of(new DossierType(
+                UUID.randomUUID(), TENANT, "SIN", "Sinistre", "wf", true, true,
+                List.of(searchable("contrat", com.flowforge.domain.dossier.model.FieldType.STRING, null),
+                        searchable("montant", com.flowforge.domain.dossier.model.FieldType.NUMBER, null),
+                        searchable("cat", com.flowforge.domain.dossier.model.FieldType.SELECT, List.of("A", "B")),
+                        new com.flowforge.domain.dossier.model.FieldDefinition("note", "note",
+                                com.flowforge.domain.dossier.model.FieldType.STRING, false, null, null, null, false)),
+                null, false, null, "t", "t")));
+        when(searchPort.search(eq(TENANT), any(), anyInt(), anyInt())).thenReturn(DossierPage.empty(0, 20));
+    }
+
+    private static com.flowforge.domain.dossier.model.FieldCondition cond(
+            String f, com.flowforge.domain.dossier.model.FieldCondition.Op op, String... v) {
+        return new com.flowforge.domain.dossier.model.FieldCondition(f, op, List.of(v));
+    }
+
+    private DossierPage searchAsAdmin(String type, com.flowforge.domain.dossier.model.FieldCondition... c) {
+        return useCase.search(TENANT, SearchDossiersQuery.of(null, type, null, 0, 20, List.of(c)),
+                AccessContext.user("admin", Set.of("TENANT_ADMIN")));
+    }
+
+    @Test
+    void fieldFiltersAreTypedAndHandedToThePort() {
+        typeWithFields();
+        searchAsAdmin("SIN",
+                cond("montant", com.flowforge.domain.dossier.model.FieldCondition.Op.GTE, "5000.50"),
+                cond("contrat", com.flowforge.domain.dossier.model.FieldCondition.Op.EQ, "C-42"));
+        ArgumentCaptor<DossierSearchPort.Filter> filter = ArgumentCaptor.forClass(DossierSearchPort.Filter.class);
+        verify(searchPort).search(eq(TENANT), filter.capture(), eq(0), eq(20));
+        assertThat(filter.getValue().fieldPredicates()).hasSize(2);
+        assertThat(filter.getValue().fieldPredicates().get(0).kind()).isEqualTo(DossierSearchPort.Kind.NUMBER);
+        assertThat(filter.getValue().fieldPredicates().get(0).values()).containsExactly(new java.math.BigDecimal("5000.50"));
+        assertThat(filter.getValue().fieldPredicates().get(1).kind()).isEqualTo(DossierSearchPort.Kind.TEXT);
+    }
+
+    @Test
+    void invalidFieldFiltersAreRefusedNeverSilentlyEmpty() {
+        typeWithFields();
+        var op = com.flowforge.domain.dossier.model.FieldCondition.Op.class;
+        assertThatThrownBy(() -> searchAsAdmin("SIN", cond("note", op.getEnumConstants()[0], "x")))
+                .isInstanceOf(com.flowforge.domain.dossier.model.InvalidDossierSearchException.class).hasMessageContaining("not searchable");
+        assertThatThrownBy(() -> searchAsAdmin("SIN", cond("ghost", op.getEnumConstants()[0], "x")))
+                .hasMessageContaining("not defined");
+        assertThatThrownBy(() -> searchAsAdmin("SIN", cond("montant", com.flowforge.domain.dossier.model.FieldCondition.Op.PREFIX, "5")))
+                .hasMessageContaining("not supported");
+        assertThatThrownBy(() -> searchAsAdmin("SIN", cond("montant", com.flowforge.domain.dossier.model.FieldCondition.Op.GTE, "1e3")))
+                .hasMessageContaining("plain decimal");
+        assertThatThrownBy(() -> searchAsAdmin("SIN", cond("cat", com.flowforge.domain.dossier.model.FieldCondition.Op.EQ, "Z")))
+                .hasMessageContaining("not an option");
+        assertThatThrownBy(() -> searchAsAdmin(null, cond("contrat", com.flowforge.domain.dossier.model.FieldCondition.Op.EQ, "x")))
+                .hasMessageContaining("dossierTypeCode");
+        assertThatThrownBy(() -> searchAsAdmin("NOPE", cond("contrat", com.flowforge.domain.dossier.model.FieldCondition.Op.EQ, "x")))
+                .hasMessageContaining("unknown dossier type");
+        verify(searchPort, never()).search(any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void filtersAreValidatedEvenWhenTheCallerSeesNoType() {
+        typeWithFields();
+        when(aclRepository.findBySubject(TENANT, "u")).thenReturn(List.of());
+        assertThatThrownBy(() -> useCase.search(TENANT,
+                SearchDossiersQuery.of(null, "SIN", null, 0, 20,
+                        List.of(cond("note", com.flowforge.domain.dossier.model.FieldCondition.Op.EQ, "x"))),
+                AccessContext.user("u", Set.of("USER"))))
+                .isInstanceOf(com.flowforge.domain.dossier.model.InvalidDossierSearchException.class);
+    }
 }

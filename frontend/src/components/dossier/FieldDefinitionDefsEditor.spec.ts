@@ -257,4 +257,28 @@ describe('FieldDefinitionDefsEditor — structured types (TODO §76, D1)', () =>
       expect(mount(FieldDefinitionDefsEditor, { props: { modelValue: [def], mode: 'subfields' } }).find('[data-testid="field-def-rules"]').exists()).toBe(false)
     })
   })
+
+  describe('Cherchable (TODO §81, D2)', () => {
+    it('is offered for scalar types only and toggles the emitted flag', async () => {
+      const wrapper = mount(FieldDefinitionDefsEditor, { props: { modelValue: [
+        { name: 'a', label: 'A', type: 'STRING', required: false },
+        { name: 'm', label: 'M', type: 'MONEY', required: false },
+      ] } })
+      const boxes = wrapper.findAll('[data-testid="field-def-searchable"]')
+      expect(boxes).toHaveLength(1)
+      await boxes[0]!.setValue(true)
+      const emitted = wrapper.emitted('update:modelValue')?.[0]?.[0] as FieldDefinition[]
+      expect(emitted[0]!.searchable).toBe(true)
+    })
+
+    it('is disabled on a sensitive field and cleared when the field becomes sensitive', async () => {
+      const wrapper = mount(FieldDefinitionDefsEditor, { props: { modelValue: [{ name: 'a', label: 'A', type: 'STRING', required: false, searchable: true }] } })
+      await wrapper.get('[data-testid="field-def-sensitive"]').setValue(true)
+      const emitted = wrapper.emitted('update:modelValue')?.[0]?.[0] as FieldDefinition[]
+      expect(emitted[0]!.sensitive).toBe(true)
+      expect(emitted[0]!.searchable).toBe(false)
+      await nextTick()
+      expect((wrapper.get('[data-testid="field-def-searchable"]').element as HTMLInputElement).disabled).toBe(true)
+    })
+  })
 })

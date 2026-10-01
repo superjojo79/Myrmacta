@@ -31,6 +31,11 @@ final class DossierListQueryParser {
         return SearchDossiersQuery.of(parseStatus(status), dossierTypeCode, reference, resolvedPage, resolvedSize);
     }
 
+    static java.util.List<com.flowforge.domain.dossier.model.FieldCondition> parseFieldConditions(
+            java.util.Map<String, String> params) {
+        return com.flowforge.domain.dossier.model.FieldConditionParser.parse(params);
+    }
+
     static DossierStatus parseStatus(String status) {
         if (status == null || status.isBlank()) {
             return null;

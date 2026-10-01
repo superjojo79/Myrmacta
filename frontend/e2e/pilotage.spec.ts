@@ -1030,7 +1030,8 @@ test('E2E-NOTIF-2 marking a notification read calls the server and persists the 
   await page.getByRole('button', { name: /Notifications/ }).click()
   await expect(page.getByText('Document généré')).toBeVisible()
   await page.getByRole('button', { name: /Document généré/ }).click()
-  expect(readRequested).toBe(true)
+  // la requête part après le clic, de façon asynchrone : on l'attend au lieu de la supposer déjà partie
+  await expect.poll(() => readRequested).toBe(true)
 })
 
 test('E2E-NOTIF-3 the 3 new producer payload types render correctly in the drawer', async ({ page }) => {

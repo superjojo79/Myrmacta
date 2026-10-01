@@ -150,6 +150,18 @@ app:
   drafts:
     # Brouillons d'origine MCP/assistant non modifiés depuis N jours : purgés (0 = jamais). Les brouillons de l'éditeur : jamais.
     retention-days: ${APP_DRAFTS_RETENTION_DAYS:30}
+  assistant:
+    # Assistant de conception IA (Admin → Assistant). Désactivé par défaut : aucune requête sortante tant qu'il n'est pas activé.
+    # L'activer exige une clé d'API (jamais exposée au navigateur) ; base-url en https (sauf boucle locale).
+    enabled: ${APP_ASSISTANT_ENABLED:false}
+    api-key: ${APP_ASSISTANT_API_KEY:}
+    base-url: ${APP_ASSISTANT_BASE_URL:https://api.anthropic.com}
+    model: ${APP_ASSISTANT_MODEL:claude-sonnet-5-5}
+    retention-days: ${APP_ASSISTANT_RETENTION_DAYS:30}
+    max-tool-rounds-per-turn: ${APP_ASSISTANT_MAX_TOOL_ROUNDS:12}
+    max-turns-per-conversation: ${APP_ASSISTANT_MAX_TURNS:60}
+    max-tokens-per-conversation: ${APP_ASSISTANT_MAX_TOKENS_PER_CONVERSATION:400000}
+    max-tokens-per-tenant-per-day: ${APP_ASSISTANT_MAX_TOKENS_PER_DAY:3000000}
   inbound:
     # Connecteurs d'entrée par interrogation (e-mail IMAP, Azure Service Bus) : bornes communes.
     max-messages-per-poll: ${APP_INBOUND_MAX_MESSAGES_PER_POLL:20}

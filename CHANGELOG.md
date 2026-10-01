@@ -34,6 +34,10 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
   corps et expéditeur mappés vers les champs et variables, **pièces jointes rattachées après les contrôles habituels** (types, contenu, antivirus) ; réponses automatiques et listes refusées,
   messages rangés (jamais supprimés), mot de passe ou OAuth2 (XOAUTH2, Exchange Online). **Azure Service Bus** (`azure-service-bus`) : file ou abonnement par l'API REST (SAS ou OAuth2), mapping
   JSON identique à Kafka, message illisible rendu au courtier (lettres mortes) — pour les Business Events de D365 F&O sans relais. Bornes `APP_INBOUND_*` ; `DEPLOIEMENT.md` §16.
+- **TODO §86 (LC3)** — Assistant de conception IA (*Admin → Assistant*) : l'utilisateur décrit son besoin, l'assistant appelle le catalogue d'outils de **conception** dans le processus avec
+  l'identité de l'utilisateur (processus et tables DMN **en brouillon** ; types, schémas de questions, connecteurs sans secret et modèles de document **proposés**, validés à blanc, que l'utilisateur relit puis applique avec ses droits), vérifie son travail et renvoie ce qui est à relire. Aucune
+  donnée de dossier, jamais de publication ni de secret ; plafonds d'étapes, de tours et de jetons ; conversations conservées 30 jours, propres à leur auteur. **Désactivé par défaut** ; clé et
+  modèle par configuration serveur (`APP_ASSISTANT_*`, `DEPLOIEMENT.md` §15). Migration 033.
 
 - **TODO §85 (LC4a)** — Concepteur visuel de formulaires : aperçu en direct, sections, largeur (pleine / demi), aide contextuelle en texte brut et
   réordonnancement par glisser-déposer, pour les questions de tâche et les champs d'un type de dossier ; le portail externe applique la même disposition.

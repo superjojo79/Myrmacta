@@ -395,6 +395,12 @@ démarrer (voir DEPLOIEMENT.md § Signature électronique). Variables facultativ
 `APP_SIGNATURE_DEFAULT_DEADLINE` (défaut `14d`), `APP_SIGNATURE_MAX_DEADLINE` (défaut `90d`).
 Déployer ensuite un BPMN contenant un bloc de signature (GUIDE-CONCEPTION-BPMN §3quater).
 
+## 16. Assistant de conception IA (optionnel, TODO §86)
+
+Désactivé par défaut. Pour l'essayer en local : dans `.env`, `APP_ASSISTANT_ENABLED=true` et `APP_ASSISTANT_API_KEY=<votre clé>` (jamais commitée),
+redémarrez le backend, puis ouvrez *Admin → Assistant*. Sans clé, l'écran affiche « non activé » et rien ne sort de votre poste.
+Détails (variables, plafonds, RGPD) : `DEPLOIEMENT.md` §15.
+
 ## Pour aller plus loin
 
 - Déploiement au-delà de ce guide (reverse-proxy, provisioning tenant, comptes Keycloak) : [DEPLOIEMENT.md](DEPLOIEMENT.md)

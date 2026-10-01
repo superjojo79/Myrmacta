@@ -139,4 +139,22 @@ describe('htmlSubset (TODO §84, LC4b)', () => {
     expect(parseEach('élément : ${lignes}')).toEqual({ item: 'élément', path: 'lignes' })
     expect(parseEach('a b : ${lignes}')).toBeNull()
   })
+
+  // ---- Revue adversariale LC4b, passe 2 ----
+  it('opens a template indented over several lines (whitespace between blocks is not a loss)', () => {
+    for (const html of ['<p>a</p>\n<p>b</p>', '<h1>T</h1>\n  <p>b</p>\n', '<p><strong>a</strong> <em>b</em></p>']) {
+      expect(analyzeTemplateHtml(html, viaEditor), html).toEqual({ compatible: true, reasons: [] })
+    }
+  })
+
+  it('refuses a table row or cell outside a table: the browser would drop it with its th:each (Medium)', () => {
+    for (const html of ['<tr th:each="l : ${a}"><td>x</td></tr>', '<td th:each="l : ${a}">x</td>', '<td style="text-align:right">x</td>']) {
+      expect(analyzeTemplateHtml(html, viaEditor).compatible, html).toBe(false)
+    }
+    expect(analyzeTemplateHtml('<table><tbody><tr th:each="l : ${a}"><td>x</td></tr></tbody></table>', viaEditor).compatible).toBe(true)
+  })
+
+  it('finds an inline expression split by a plain span (Low)', () => {
+    expect(analyzeTemplateHtml('<p>[<span>[</span>x]]</p>').compatible).toBe(false)
+  })
 })

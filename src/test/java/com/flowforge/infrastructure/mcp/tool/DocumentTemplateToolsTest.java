@@ -152,7 +152,9 @@ class DocumentTemplateToolsTest {
 
     private static PreviewDocumentTool previewTool(PreviewDocumentUseCase uc, int perMinute) {
         return new PreviewDocumentTool(uc, new McpAccessContextFactory(), new DocumentPreviewHtmlRateLimiter(),
-                new DocumentPreviewProperties(perMinute));
+                new DocumentPreviewProperties(perMinute),
+                new com.flowforge.infrastructure.config.DocumentGenerationProperties(1024, 30),
+                tools.jackson.databind.json.JsonMapper.builder().build());
     }
 
     private static final AccessContext.User MANAGER = AccessContext.user("alice", java.util.Set.of("DOSSIER_MANAGER"));
@@ -179,6 +181,14 @@ class DocumentTemplateToolsTest {
         tool.previewDocument("<p>a</p>", null);
         assertThatThrownBy(() -> tool.previewDocument("<p>a</p>", null))
                 .isInstanceOf(DocumentGenerationRateLimitExceededException.class);
+    }
+
+    @Test
+    void previewVariablesAreBounded() {
+        var uc = mock(PreviewDocumentUseCase.class);
+        assertThatThrownBy(() -> previewTool(uc, 30).previewDocument("<p>a</p>", Map.of("big", "x".repeat(2000))))
+                .isInstanceOf(IllegalArgumentException.class);
+        verify(uc, never()).previewHtml(any());
     }
 
     @Test

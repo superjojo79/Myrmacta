@@ -5,6 +5,7 @@ import com.flowforge.domain.document.port.in.PreviewDocumentUseCase;
 import com.flowforge.domain.dossier.TenantAdminGuard;
 import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.infrastructure.config.DocumentConfig;
+import com.flowforge.infrastructure.config.DocumentGenerationProperties;
 import com.flowforge.infrastructure.config.DocumentPreviewProperties;
 import com.flowforge.infrastructure.mcp.McpAccessContextFactory;
 import com.flowforge.infrastructure.web.document.DocumentGenerationRateLimitExceededException;
@@ -29,12 +30,18 @@ public class PreviewDocumentTool {
     private final McpAccessContextFactory accessContextFactory;
     private final DocumentPreviewHtmlRateLimiter rateLimiter;
     private final DocumentPreviewProperties previewProperties;
+    private final DocumentGenerationProperties generationProperties;
+    private final tools.jackson.databind.ObjectMapper objectMapper;
 
     public PreviewDocumentTool(
             PreviewDocumentUseCase previewDocumentUseCase,
             McpAccessContextFactory accessContextFactory,
             DocumentPreviewHtmlRateLimiter rateLimiter,
-            DocumentPreviewProperties previewProperties) {
+            DocumentPreviewProperties previewProperties,
+            DocumentGenerationProperties generationProperties,
+            tools.jackson.databind.ObjectMapper objectMapper) {
+        this.generationProperties = Objects.requireNonNull(generationProperties, "generationProperties");
+        this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
         this.previewDocumentUseCase = Objects.requireNonNull(previewDocumentUseCase, "previewDocumentUseCase");
         this.accessContextFactory = Objects.requireNonNull(accessContextFactory, "accessContextFactory");
         this.rateLimiter = Objects.requireNonNull(rateLimiter, "rateLimiter");
@@ -55,11 +62,16 @@ public class PreviewDocumentTool {
         GUARD.requireTenantAdminOrApiService(actor);
         McpArgs.requireNonBlank(htmlContent, "htmlContent");
         DocumentTemplateSupport.assertHtmlSize(htmlContent, DocumentConfig.MAX_HTML_BYTES);
+        Map<String, Object> vars = variables == null ? Map.of() : variables;
+        // Le filtre de taille du REST ne couvre pas MCP : les variables sont bornées ici (même plafond que le corps REST).
+        if (objectMapper.writeValueAsBytes(vars).length > generationProperties.maxBodyBytes()) {
+            throw new IllegalArgumentException("variables exceed " + generationProperties.maxBodyBytes() + " bytes");
+        }
         if (!rateLimiter.tryConsume(actor.userId(), previewProperties.rateLimitPerMinute())) {
             throw new DocumentGenerationRateLimitExceededException(actor.userId());
         }
         String html = previewDocumentUseCase.previewHtml(new PreviewDocumentUseCase.PreviewCommand(
-                htmlContent, null, null, null, variables == null ? Map.of() : variables));
+                htmlContent, null, null, null, vars));
         return Map.of("html", html);
     }
 }

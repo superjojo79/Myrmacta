@@ -21,6 +21,10 @@ public class ThymeleafTemplateSyntaxChecker implements TemplateSyntaxChecker {
     private static final Pattern UNESCAPED_ATTRIBUTE =
             Pattern.compile("(?:data-)?th[:-](?:utext|inline)", Pattern.CASE_INSENSITIVE);
 
+    /** Fragments : le nom est évalué comme un template (voir {@link SafeHtmlTemplateEngineFactory}). */
+    private static final Pattern FRAGMENT_ATTRIBUTE =
+            Pattern.compile("(?:data-)?th[:-](?:replace|insert|include|substituteby)", Pattern.CASE_INSENSITIVE);
+
     private static final Pattern UNESCAPED_INLINE = Pattern.compile("\\[\\(");
 
     private final TemplateEngine templateEngine;
@@ -35,6 +39,10 @@ public class ThymeleafTemplateSyntaxChecker implements TemplateSyntaxChecker {
                 && (UNESCAPED_ATTRIBUTE.matcher(htmlContent).find() || UNESCAPED_INLINE.matcher(htmlContent).find())) {
             throw new InvalidTemplateSyntaxException(
                     "Unescaped Thymeleaf interpolation (th:utext, th:inline, [(...)]) is not allowed");
+        }
+        if (htmlContent != null && FRAGMENT_ATTRIBUTE.matcher(htmlContent).find()) {
+            throw new InvalidTemplateSyntaxException(
+                    "Thymeleaf fragments (th:replace, th:insert, th:include) are not allowed in a document template");
         }
         try {
             TemplateData templateData = new TemplateData(

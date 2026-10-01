@@ -76,6 +76,14 @@ export function analyzeTemplateHtml(html: string, render?: (html: string) => str
     reasons.push('document complet (html, head ou body)')
   }
   walk(root, reasons)
+  // Un span sans attribut peut couper « [[ » ou « ${ » en deux nœuds texte : on cherche aussi dans le texte agrégé.
+  const aggregated = root.textContent ?? ''
+  if (/\[\[|\[\(/.test(aggregated)) reasons.push('expression en ligne dans le texte ([[…]])')
+  if (/\$\{|\*\{/.test(aggregated)) reasons.push('expression ${…} dans le texte (hors attribut th:)')
+  // Le navigateur supprime un tr/td/th hors tableau (et son th:each) alors que Thymeleaf le garde : compter les balises brutes.
+  const rawTable = (html.match(/<(tr|td|th|thead|tfoot|caption|colgroup|col)[\s>/]/gi) ?? []).length
+  const domTable = root.querySelectorAll('tr,td,th,thead,tfoot,caption,colgroup,col').length
+  if (rawTable !== domTable) reasons.push('balise de tableau (tr, td…) hors d’un <table>')
   if (reasons.length === 0 && render) {
     reasons.push(...roundTripLosses(html, render(html)))
   }
@@ -104,7 +112,8 @@ function signature(html: string): { text: string; items: Map<string, number> } {
   for (const el of Array.from(doc.body.querySelectorAll('*'))) {
     if (el.hasAttribute('th:text')) el.textContent = ''
   }
-  const text = (doc.body.textContent ?? '').replace(/\s+/g, ' ').trim()
+  // Les blancs ne comptent pas : l'indentation entre blocs disparaît à l'écriture sans rien changer au rendu.
+  const text = (doc.body.textContent ?? '').replace(/\s+/g, '')
   return { text, items }
 }
 

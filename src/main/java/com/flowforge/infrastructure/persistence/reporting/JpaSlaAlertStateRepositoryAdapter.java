@@ -35,6 +35,14 @@ public class JpaSlaAlertStateRepositoryAdapter implements SlaAlertStateRepositor
 
     @Override
     @Transactional
+    public boolean transition(SlaAlertState expectedPrevious, SlaAlertState next) {
+        return repository.transition(
+                        next.tenantId(), next.dossierId(), expectedPrevious.lastStatus(), next.lastStatus(), next.updatedAt())
+                == 1;
+    }
+
+    @Override
+    @Transactional
     public SlaAlertState save(SlaAlertState state) {
         return repository.saveAndFlush(SlaAlertStateJpaEntity.fromDomain(state)).toDomain();
     }

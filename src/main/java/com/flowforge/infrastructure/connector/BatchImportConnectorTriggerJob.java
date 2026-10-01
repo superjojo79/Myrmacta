@@ -63,13 +63,19 @@ class BatchImportConnectorTriggerJob {
             if (!BATCH_IMPORT_TYPE.equals(instance.connectorType()) || !instance.enabled()) {
                 continue;
             }
-            if (!isDue(instance, now)) {
+            Optional<Instant> lastTriggeredAt = scheduleStateRepository.findLastTriggeredAt(instance.id());
+            if (!isDue(instance, lastTriggeredAt, now)) {
+                continue;
+            }
+            // TODO §79 (D5) : créneau pris avant l'import (compare-and-set) — deux exécutants ne parcourent pas le même dossier SFTP
+            // en même temps (le renommage atomique protégeait déjà les fichiers, pas les listings divergents).
+            if (!scheduleStateRepository.claimTrigger(instance.id(), lastTriggeredAt.orElse(null), now)) {
                 continue;
             }
             try {
                 connectorTriggerRuntime.onIncomingEvent(instance, Map.of());
-                scheduleStateRepository.upsert(instance.id(), now);
             } catch (RuntimeException failure) {
+                scheduleStateRepository.releaseTrigger(instance.id(), lastTriggeredAt.orElse(null), now);
                 log.warn(
                         "batch-import: instance {} failed this poll, will retry next cycle: {}",
                         instance.id(), failure.getMessage(), failure);
@@ -77,8 +83,7 @@ class BatchImportConnectorTriggerJob {
         }
     }
 
-    private boolean isDue(ConnectorInstanceData instance, Instant now) {
-        Optional<Instant> lastTriggeredAt = scheduleStateRepository.findLastTriggeredAt(instance.id());
+    private boolean isDue(ConnectorInstanceData instance, Optional<Instant> lastTriggeredAt, Instant now) {
         if (lastTriggeredAt.isEmpty()) {
             return true;
         }

@@ -20,12 +20,34 @@ interface SpringDataNotificationOutboxRepository extends JpaRepository<Notificat
             select e from NotificationOutboxJpaEntity e
             where e.status = :status
               and e.nextAttemptAt <= :now
-            order by e.nextAttemptAt asc
+            order by e.nextAttemptAt asc, e.id asc
             """)
     List<NotificationOutboxJpaEntity> findEligiblePending(
             @Param("status") NotificationOutboxStatus status,
             @Param("now") Instant now,
             Pageable pageable);
+
+    /**
+     * D5 (TODO §79) : prise d'une ligne par compare-and-set sur {@code next_attempt_at} — la ligne observée est « louée »
+     * jusqu'à {@code leaseUntil} ; un second exécutant qui l'avait lue obtient 0 ligne modifiée et la saute. Sans nouveau
+     * statut ni migration : une ligne abandonnée par un exécutant mort redevient éligible à l'échéance du bail.
+     */
+    @org.springframework.transaction.annotation.Transactional
+    @Modifying(clearAutomatically = true)
+    @Query(
+            """
+            update NotificationOutboxJpaEntity e
+               set e.nextAttemptAt = :leaseUntil, e.updatedAt = :now
+             where e.id = :id
+               and e.status = :status
+               and e.nextAttemptAt = :observedNextAttemptAt
+            """)
+    int claim(
+            @Param("id") UUID id,
+            @Param("status") NotificationOutboxStatus status,
+            @Param("observedNextAttemptAt") Instant observedNextAttemptAt,
+            @Param("leaseUntil") Instant leaseUntil,
+            @Param("now") Instant now);
 
     @Modifying(clearAutomatically = true)
     @Query(

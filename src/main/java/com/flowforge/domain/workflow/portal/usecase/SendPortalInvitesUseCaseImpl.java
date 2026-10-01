@@ -37,6 +37,9 @@ public final class SendPortalInvitesUseCaseImpl implements SendPortalInvitesUseC
     private final int maxAttempts;
     private final int batchSize;
 
+    /** Durée pendant laquelle un lien pris pour l'envoi n'est plus proposé à un autre exécutant. */
+    static final java.time.Duration SEND_LEASE = java.time.Duration.ofMinutes(2);
+
     public SendPortalInvitesUseCaseImpl(
             PortalLinkRepository repository,
             PortalTokenPort tokenPort,
@@ -70,6 +73,11 @@ public final class SendPortalInvitesUseCaseImpl implements SendPortalInvitesUseC
     }
 
     private boolean sendOne(PortalLink link) {
+        // D5 : l'e-mail part AVANT la transition (choix de conception : un envoi qui échoue n'active rien) ; sans prise
+        // préalable, deux exécutants enverraient chacun une invitation avec un jeton différent (un lien mort pour le tiers).
+        if (!repository.claimForSend(link, clock.instant(), SEND_LEASE)) {
+            return false;
+        }
         Optional<PortalTaskLookupPort.OpenTask> task = taskLookup.findOpenTask(link.taskId());
         if (task.isEmpty()) {
             repository.transition(link,

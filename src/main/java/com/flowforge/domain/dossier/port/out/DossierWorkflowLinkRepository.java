@@ -28,5 +28,12 @@ public interface DossierWorkflowLinkRepository {
 
     List<DossierWorkflowLink> findOrphanReserved(Instant olderThan);
 
+    /**
+     * TODO §79 (D5) : prend le lien orphelin pour le réconcilier (bail jusqu'à {@code leaseUntil}). Un seul des réconciliateurs
+     * concurrents obtient {@code true} ; une prise échue (exécutant disparu) peut être reprise. {@code false} aussi si le
+     * lien n'est plus orphelin (démarré ou terminé entre-temps).
+     */
+    boolean claimForReconcile(UUID linkId, Instant now, Instant leaseUntil);
+
     void deleteAllByDossierId(UUID dossierId);
 }

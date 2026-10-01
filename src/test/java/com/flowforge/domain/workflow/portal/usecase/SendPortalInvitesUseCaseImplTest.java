@@ -103,4 +103,33 @@ class SendPortalInvitesUseCaseImplTest {
         assertThat(repository.findById(pending.id()).orElseThrow().statusReason())
                 .isEqualTo(PortalLinkStatusReason.TASK_GONE);
     }
+
+    // ---- TODO §79 (D5) : un lien pris par un autre exécutant n'est pas envoyé une seconde fois ----------------------
+
+    @Test
+    void aLinkClaimedByAnotherSenderIsNeitherSentNorTouched() {
+        var spy = org.mockito.Mockito.spy(repository);
+        org.mockito.Mockito.doReturn(false).when(spy).claimForSend(any(), any(), any());
+        var contender = new SendPortalInvitesUseCaseImpl(spy, tokenPort, sender, taskLookup, dossierRepository, notifier,
+                Clock.fixed(NOW, ZoneOffset.UTC), 3, 50);
+
+        assertThat(contender.sendPending()).isZero();
+
+        verify(sender, never()).send(any(), anyString(), any());
+        verify(spy, never()).transition(any(), any());
+        assertThat(repository.findById(pending.id()).orElseThrow().status()).isEqualTo(PortalLinkStatus.PENDING_SEND);
+    }
+
+    @Test
+    void theClaimIsTakenBeforeTheEmailIsSentAndForTheDocumentedLease() {
+        var spy = org.mockito.Mockito.spy(repository);
+        var sendingUseCase = new SendPortalInvitesUseCaseImpl(spy, tokenPort, sender, taskLookup, dossierRepository, notifier,
+                Clock.fixed(NOW, ZoneOffset.UTC), 3, 50);
+
+        assertThat(sendingUseCase.sendPending()).isEqualTo(1);
+
+        var order = org.mockito.Mockito.inOrder(spy, sender);
+        order.verify(spy).claimForSend(any(), eq(NOW), eq(SendPortalInvitesUseCaseImpl.SEND_LEASE));
+        order.verify(sender).send(any(), anyString(), any());
+    }
 }

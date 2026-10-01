@@ -46,6 +46,15 @@ public class JpaTenantSlaSettingsRepositoryAdapter implements TenantSlaSettingsR
         repository.advanceLastAlertScanAt(tenantId, scannedAt);
     }
 
+    @Override
+    @Transactional
+    public boolean advanceLastBiExportAt(String tenantId, Instant expected, Instant next) {
+        return (expected == null
+                        ? repository.advanceFirstBiExport(tenantId, next)
+                        : repository.advanceLastBiExportAt(tenantId, expected, next))
+                == 1;
+    }
+
     private List<UUID> webhookIds(String tenantId) {
         return webhookRepository.findByTenantId(tenantId).stream()
                 .map(TenantSlaAlertWebhookJpaEntity::webhookId)

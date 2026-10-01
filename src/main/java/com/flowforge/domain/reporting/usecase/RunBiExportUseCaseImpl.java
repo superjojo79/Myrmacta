@@ -6,6 +6,7 @@ import com.flowforge.domain.reporting.UnitOfWork;
 import com.flowforge.domain.reporting.model.BiExportFile;
 import com.flowforge.domain.reporting.model.TenantSlaSettings;
 import com.flowforge.domain.reporting.port.in.RunBiExportUseCase;
+import com.flowforge.domain.reporting.port.out.BiExportAlreadyCommittedException;
 import com.flowforge.domain.reporting.port.out.BiExportCommitPort;
 import com.flowforge.domain.reporting.port.out.BiExportContentPort;
 import com.flowforge.domain.reporting.port.out.BiExportFileRepository;
@@ -73,7 +74,8 @@ public final class RunBiExportUseCaseImpl implements RunBiExportUseCase {
                         now,
                         payload.content().length));
             }
-            unitOfWork.run(() -> commitPort.commitSuccessfulExport(settings.tenantId(), files, now));
+            unitOfWork.run(() -> commitPort.commitSuccessfulExport(
+                    settings.tenantId(), files, now, settings.lastBiExportAt()));
         } catch (RuntimeException ex) {
             for (String storageRef : storedRefs) {
                 try {
@@ -82,6 +84,9 @@ public final class RunBiExportUseCaseImpl implements RunBiExportUseCase {
                     // Best-effort: a leftover object is removed by a later retention pass once catalogued,
                     // or stays orphaned if the catalogue row was never committed.
                 }
+            }
+            if (ex instanceof BiExportAlreadyCommittedException) {
+                return; // un autre exécutant a exporté ce créneau (D5) : nos fichiers sont retirés, ce n'est pas une erreur
             }
             throw ex;
         }

@@ -45,6 +45,10 @@ class OutboxEventJpaEntity {
     @Column(name = "processed_at")
     private Instant processedAt;
 
+    /** D5 : bail posé par l'exécutant qui a pris la ligne ; {@code null} = non louée. */
+    @Column(name = "claimed_until")
+    private Instant claimedUntil;
+
     protected OutboxEventJpaEntity() {
         // JPA
     }
@@ -72,16 +76,19 @@ class OutboxEventJpaEntity {
         this.status = OutboxStatus.PROCESSED;
         this.processedAt = at;
         this.lastError = null;
+        this.claimedUntil = null;
     }
 
     void markDead(String error) {
         this.status = OutboxStatus.DEAD;
         this.lastError = error;
+        this.claimedUntil = null;
     }
 
     void recordFailure(String error, int maxAttempts) {
         this.attempts++;
         this.lastError = error;
+        this.claimedUntil = null;
         if (this.attempts >= maxAttempts) {
             this.status = OutboxStatus.DEAD;
         }

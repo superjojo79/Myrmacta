@@ -60,6 +60,44 @@ class JpaPortalLinkRepositoryAdapterTest {
         assertThat(repository.findById(pending.id()).orElseThrow().status()).isEqualTo(PortalLinkStatus.COMPLETED);
     }
 
+    /** D5 (TODO §79) : un seul des exécutants concurrents prend le lien en attente d'envoi. */
+    @Test
+    void claimForSend_oneConcurrentSenderWins_theLeaseExpiresAndATransitionReleasesIt() throws Exception {
+        PortalLink pending = pending(UUID.randomUUID(), task());
+        repository.insert(pending);
+        int senders = 8;
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(senders);
+        java.util.concurrent.CountDownLatch go = new java.util.concurrent.CountDownLatch(1);
+        try {
+            java.util.List<java.util.concurrent.Future<Boolean>> futures = new java.util.ArrayList<>();
+            for (int i = 0; i < senders; i++) {
+                futures.add(pool.submit(() -> {
+                    go.await();
+                    return repository.claimForSend(pending, NOW, java.time.Duration.ofMinutes(2));
+                }));
+            }
+            go.countDown();
+            long winners = 0;
+            for (var f : futures) {
+                winners += f.get() ? 1 : 0;
+            }
+            assertThat(winners).as("un seul exécutant envoie l'invitation").isEqualTo(1);
+        } finally {
+            pool.shutdownNow();
+        }
+        // Tant que le bail court, personne d'autre ; une fois échu, reprise possible (exécutant disparu).
+        assertThat(repository.claimForSend(pending, NOW.plusSeconds(60), java.time.Duration.ofMinutes(2))).isFalse();
+        assertThat(repository.claimForSend(pending, NOW.plusSeconds(121), java.time.Duration.ofMinutes(2))).isTrue();
+        // Une transition (échec d'envoi comptabilisé, activation…) lève la prise : le prochain tour peut réessayer tout de suite.
+        PortalLink failed = pending.sendFailed(5);
+        assertThat(repository.transition(pending, failed)).isTrue();
+        assertThat(repository.claimForSend(failed, NOW.plusSeconds(122), java.time.Duration.ofMinutes(2))).isTrue();
+        // Un lien qui n'est plus en attente d'envoi ne se prend plus.
+        PortalLink active = failed.activated(UUID.randomUUID().toString().replace("-", "") + "0".repeat(32), NOW);
+        assertThat(repository.transition(failed, active)).isTrue();
+        assertThat(repository.claimForSend(active, NOW.plusSeconds(10_000), java.time.Duration.ofMinutes(2))).isFalse();
+    }
+
     @Test
     void secondLiveLinkForSameTask_isRejectedByDatabase() {
         // T-MANAGE-5 (exigence H2)

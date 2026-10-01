@@ -11,6 +11,8 @@ import java.time.ZonedDateTime;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.support.CronExpression;
 import org.springframework.stereotype.Component;
@@ -25,6 +27,8 @@ import org.springframework.stereotype.Component;
 class SchedulerConnectorTriggerJob {
 
     private static final String SCHEDULER_TYPE = "scheduler";
+
+    private static final Logger log = LoggerFactory.getLogger(SchedulerConnectorTriggerJob.class);
 
     private final ConnectorInstanceRepository connectorInstanceRepository;
     private final ConnectorScheduleStateRepository scheduleStateRepository;
@@ -53,15 +57,26 @@ class SchedulerConnectorTriggerJob {
             if (!SCHEDULER_TYPE.equals(instance.connectorType()) || !instance.enabled()) {
                 continue;
             }
-            if (isDue(instance, now)) {
+            Optional<Instant> lastTriggeredAt = scheduleStateRepository.findLastTriggeredAt(instance.id());
+            if (!isDue(instance, lastTriggeredAt, now)) {
+                continue;
+            }
+            // TODO §79 (D5) : le créneau est pris AVANT le déclenchement (compare-and-set). Deux exécutants qui voient la même
+            // échéance ne la déclenchent pas deux fois (pas de dossier ni de workflow en double) ; un déclenchement qui échoue
+            // rend le créneau pour un réessai au prochain tour.
+            if (!scheduleStateRepository.claimTrigger(instance.id(), lastTriggeredAt.orElse(null), now)) {
+                continue;
+            }
+            try {
                 connectorTriggerRuntime.onIncomingEvent(instance, Map.of());
-                scheduleStateRepository.upsert(instance.id(), now);
+            } catch (RuntimeException failure) {
+                scheduleStateRepository.releaseTrigger(instance.id(), lastTriggeredAt.orElse(null), now);
+                log.warn("scheduler: instance {} failed this tick, will retry next cycle: {}", instance.id(), failure.getMessage());
             }
         }
     }
 
-    private boolean isDue(ConnectorInstanceData instance, Instant now) {
-        Optional<Instant> lastTriggeredAt = scheduleStateRepository.findLastTriggeredAt(instance.id());
+    private boolean isDue(ConnectorInstanceData instance, Optional<Instant> lastTriggeredAt, Instant now) {
         if (lastTriggeredAt.isEmpty()) {
             return true;
         }

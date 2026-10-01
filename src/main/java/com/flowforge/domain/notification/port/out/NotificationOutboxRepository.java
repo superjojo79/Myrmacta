@@ -19,6 +19,11 @@ public interface NotificationOutboxRepository {
      */
     List<UUID> savePendingBatch(String tenantId, List<PendingOutboxWrite> writes, Instant now);
 
+    /**
+     * Prend (bail court, voir l'adaptateur) puis renvoie les lignes éligibles que l'appelant est <b>seul</b> à traiter :
+     * deux exécutants concurrents ne reçoivent jamais la même ligne (TODO §79, D5). Une ligne dont l'exécutant a disparu
+     * redevient éligible à l'échéance du bail.
+     */
     List<NotificationOutboxRecord> lockNextPending(int batchSize, Instant now);
 
     void markProcessed(UUID id, Instant now);

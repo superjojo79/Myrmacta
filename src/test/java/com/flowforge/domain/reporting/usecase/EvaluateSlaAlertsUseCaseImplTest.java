@@ -69,6 +69,7 @@ class EvaluateSlaAlertsUseCaseImplTest {
                 participantPort);
         when(settingsRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(stateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(stateRepository.transition(any(), any())).thenReturn(true);
         when(linkRepository.findByDossierIdOrderBySequence(any())).thenReturn(List.of());
     }
 
@@ -169,7 +170,7 @@ class EvaluateSlaAlertsUseCaseImplTest {
         useCase.scan(TENANT, NOW, INLINE);
 
         verify(send, never()).send(any(), any());
-        verify(stateRepository).save(new SlaAlertState(TENANT, back, SlaStatus.ON_TRACK, NOW));
+        verify(stateRepository).transition(any(), eq(new SlaAlertState(TENANT, back, SlaStatus.ON_TRACK, NOW)));
         verify(stateRepository).save(new SlaAlertState(TENANT, fresh, SlaStatus.ON_TRACK, NOW));
     }
 
@@ -262,7 +263,7 @@ class EvaluateSlaAlertsUseCaseImplTest {
         assertThat(captor.getAllValues().stream().filter(e -> e.channels().contains(NotificationChannel.BROWSER)))
                 .extracting(NotificationEvent::userId)
                 .containsExactly("u1", "u2");
-        assertThat(trace).containsExactly("begin", "send", "send", "send", "send", "send", "save", "end");
+        assertThat(trace).containsExactly("begin", "save", "send", "send", "send", "send", "send", "end");
     }
 
     @Test
@@ -279,7 +280,8 @@ class EvaluateSlaAlertsUseCaseImplTest {
 
         assertThat(useCase.scan(TENANT, NOW, INLINE)).isEqualTo(1);
 
-        verify(stateRepository, never()).save(new SlaAlertState(TENANT, broken, SlaStatus.AT_RISK, NOW));
+        // L'état du dossier en échec est enregistré avant sa notification, dans la même unité de travail : c'est le rollback
+        // de cette unité (prouvé sur la vraie base par SlaAlertConcurrencyIT) qui annule les deux ; le mock n'en voit pas.
         verify(stateRepository).save(new SlaAlertState(TENANT, fine, SlaStatus.AT_RISK, NOW));
         assertScanClockAdvanced();
     }
@@ -295,8 +297,14 @@ class EvaluateSlaAlertsUseCaseImplTest {
         return captor.getValue();
     }
 
+    /** L'état est enregistré soit par insertion (aucun état précédent), soit par compare-and-set (état précédent). */
     private void assertStored(UUID id, SlaStatus status) {
-        verify(stateRepository).save(new SlaAlertState(TENANT, id, status, NOW));
+        SlaAlertState expected = new SlaAlertState(TENANT, id, status, NOW);
+        boolean saved = org.mockito.Mockito.mockingDetails(stateRepository).getInvocations().stream()
+                .anyMatch(i -> i.getMethod().getName().equals("save") && expected.equals(i.getArgument(0)));
+        boolean transitioned = org.mockito.Mockito.mockingDetails(stateRepository).getInvocations().stream()
+                .anyMatch(i -> i.getMethod().getName().equals("transition") && expected.equals(i.getArgument(1)));
+        assertThat(saved || transitioned).as("state stored for " + id).isTrue();
     }
 
     @Test
@@ -348,5 +356,61 @@ class EvaluateSlaAlertsUseCaseImplTest {
         NotificationWebhookConfig config = mock(NotificationWebhookConfig.class);
         when(config.enabled()).thenReturn(enabled);
         return config;
+    }
+
+    // ---- TODO §79 (D5) : deux exécutants qui voient la même transition ne notifient qu'une fois -------------------------
+
+    @Test
+    void scan_lostCompareAndSet_doesNotNotify() {
+        UUID id = UUID.randomUUID();
+        when(settingsRepository.findByTenantId(TENANT))
+                .thenReturn(Optional.of(settings(true, null, List.of("a@b.co"), List.of())));
+        when(candidatePort.listCandidates(TENANT)).thenReturn(List.of(candidate(id, 9, false)));
+        when(stateRepository.find(TENANT, id))
+                .thenReturn(Optional.of(new SlaAlertState(TENANT, id, SlaStatus.ON_TRACK, NOW.minus(Duration.ofHours(1)))));
+        when(stateRepository.transition(any(), any())).thenReturn(false); // un autre exécutant a déjà fait la transition
+
+        assertThat(useCase.scan(TENANT, NOW, INLINE)).isZero();
+
+        verify(send, never()).send(any(), any());
+        verify(stateRepository, never()).save(any());
+        assertScanClockAdvanced();
+    }
+
+    @Test
+    void scan_transitionIsTakenBeforeTheNotification() {
+        UUID id = UUID.randomUUID();
+        when(settingsRepository.findByTenantId(TENANT))
+                .thenReturn(Optional.of(settings(true, null, List.of("a@b.co"), List.of())));
+        when(candidatePort.listCandidates(TENANT)).thenReturn(List.of(candidate(id, 9, false)));
+        when(stateRepository.find(TENANT, id))
+                .thenReturn(Optional.of(new SlaAlertState(TENANT, id, SlaStatus.ON_TRACK, NOW.minus(Duration.ofHours(1)))));
+        List<String> trace = new java.util.ArrayList<>();
+        when(stateRepository.transition(any(), any())).thenAnswer(inv -> {
+            trace.add("transition");
+            return true;
+        });
+        when(send.send(any(), eq(TENANT))).thenAnswer(inv -> {
+            trace.add("send");
+            return List.of();
+        });
+
+        useCase.scan(TENANT, NOW, INLINE);
+
+        assertThat(trace).containsExactly("transition", "send");
+    }
+
+    @Test
+    void scan_firstInsertRaceLoser_failsItsUnitAndNeverNotifies() {
+        UUID id = UUID.randomUUID();
+        when(settingsRepository.findByTenantId(TENANT))
+                .thenReturn(Optional.of(settings(true, null, List.of("a@b.co"), List.of())));
+        when(candidatePort.listCandidates(TENANT)).thenReturn(List.of(candidate(id, 9, false)));
+        when(stateRepository.find(TENANT, id)).thenReturn(Optional.empty());
+        when(stateRepository.save(any())).thenThrow(new RuntimeException("duplicate key (clé primaire)"));
+
+        assertThat(useCase.scan(TENANT, NOW, INLINE)).isEqualTo(1);
+
+        verify(send, never()).send(any(), any());
     }
 }

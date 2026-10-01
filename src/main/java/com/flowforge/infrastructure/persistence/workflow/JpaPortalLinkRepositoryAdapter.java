@@ -64,6 +64,12 @@ class JpaPortalLinkRepositoryAdapter implements PortalLinkRepository {
                 == 1;
     }
 
+    // Sans transaction englobante : la prise est un UPDATE atomique propre au dépôt.
+    @Override
+    public boolean claimForSend(PortalLink link, Instant now, java.time.Duration lease) {
+        return repository.claimForSend(link.id(), PortalLinkStatus.PENDING_SEND, now, now.plus(lease)) == 1;
+    }
+
     @Override
     @Transactional(readOnly = true)
     public Optional<PortalLink> findById(UUID id) {

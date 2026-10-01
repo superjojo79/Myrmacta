@@ -73,6 +73,10 @@ class PortalLinkJpaEntity {
     @Column(name = "revoked_at")
     private Instant revokedAt;
 
+    /** D5 : bail de prise pour l'envoi de l'invitation (non domaine) ; {@code null} = non pris. */
+    @Column(name = "claimed_until")
+    private Instant claimedUntil;
+
     @Column(name = "created_by", nullable = false, length = 128)
     private String createdBy;
 

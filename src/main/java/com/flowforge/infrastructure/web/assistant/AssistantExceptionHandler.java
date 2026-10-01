@@ -1,5 +1,8 @@
 package com.flowforge.infrastructure.web.assistant;
 
+import com.flowforge.domain.assistant.model.AssistantExceptions.ActionNotFoundException;
+import com.flowforge.domain.assistant.model.AssistantExceptions.ActionNotPendingException;
+import com.flowforge.domain.assistant.model.AssistantExceptions.AssistantBusyException;
 import com.flowforge.domain.assistant.model.AssistantExceptions.AssistantDisabledException;
 import com.flowforge.domain.assistant.model.AssistantExceptions.AssistantLimitExceededException;
 import com.flowforge.domain.assistant.model.AssistantExceptions.ConversationNotFoundException;
@@ -30,8 +33,13 @@ class AssistantExceptionHandler {
         return problem(HttpStatus.BAD_GATEWAY, "Language model unavailable", ex.getMessage());
     }
 
-    @ExceptionHandler(ConversationNotFoundException.class)
-    ProblemDetail notFound(ConversationNotFoundException ex) {
+    @ExceptionHandler({AssistantBusyException.class, ActionNotPendingException.class})
+    ProblemDetail conflict(RuntimeException ex) {
+        return problem(HttpStatus.CONFLICT, "Conflict", ex.getMessage());
+    }
+
+    @ExceptionHandler({ConversationNotFoundException.class, ActionNotFoundException.class})
+    ProblemDetail notFound(RuntimeException ex) {
         return problem(HttpStatus.NOT_FOUND, "Conversation not found", ex.getMessage());
     }
 
@@ -42,7 +50,9 @@ class AssistantExceptionHandler {
 
     @ExceptionHandler({IllegalArgumentException.class, HttpMessageNotReadableException.class})
     ProblemDetail badRequest(Exception ex) {
-        return problem(HttpStatus.BAD_REQUEST, "Bad request", ex.getMessage());
+        // Le détail d'une lecture JSON refusée peut citer des internes : message neutre (revue LC3, B5).
+        String detail = ex instanceof HttpMessageNotReadableException ? "the request body is not valid" : ex.getMessage();
+        return problem(HttpStatus.BAD_REQUEST, "Bad request", detail);
     }
 
     private static ProblemDetail problem(HttpStatus status, String title, String detail) {

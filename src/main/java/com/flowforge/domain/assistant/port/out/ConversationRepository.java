@@ -1,5 +1,6 @@
 package com.flowforge.domain.assistant.port.out;
 
+import com.flowforge.domain.assistant.model.AssistantAction;
 import com.flowforge.domain.assistant.model.ChatMessage;
 import com.flowforge.domain.assistant.model.Conversation;
 import java.time.Instant;
@@ -10,7 +11,28 @@ import java.util.UUID;
 
 public interface ConversationRepository {
 
-    Conversation save(Conversation conversation);
+    /** Insère une nouvelle conversation (jamais une fusion : une conversation supprimée ne ressuscite pas). */
+    Conversation create(Conversation conversation);
+
+    /** Met à jour une conversation existante ; {@code false} si elle a disparu (supprimée pendant un tour). */
+    boolean update(Conversation conversation);
+
+    /**
+     * Prend le droit d'exécuter un tour sur cette conversation (un seul à la fois ; bail borné pour qu'un arrêt brutal ne la
+     * bloque pas pour toujours).
+     */
+    boolean tryLock(UUID id, Instant now, Instant until);
+
+    void unlock(UUID id);
+
+    AssistantAction saveAction(AssistantAction action);
+
+    java.util.Optional<AssistantAction> findAction(UUID id, UUID conversationId);
+
+    List<AssistantAction> actions(UUID conversationId);
+
+    /** Transition atomique {@code expected → next} ; {@code false} si l'action n'était plus dans l'état attendu. */
+    boolean transitionAction(UUID id, AssistantAction.Status expected, AssistantAction.Status next, String outcome, Instant at);
 
     ChatMessage saveMessage(ChatMessage message);
 
@@ -26,7 +48,8 @@ public interface ConversationRepository {
 
     void addTokens(String tenantId, LocalDate day, long tokens);
 
-    boolean deleteByIdAndOwner(UUID id, String tenantId, String ownerId);
+    /** @throws com.flowforge.domain.assistant.model.AssistantExceptions.AssistantBusyException si un tour est en cours */
+    boolean deleteByIdAndOwner(UUID id, String tenantId, String ownerId, Instant now);
 
     int deleteOlderThan(String tenantId, Instant cutoff);
 }

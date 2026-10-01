@@ -9,7 +9,20 @@ export interface AssistantStatus {
 export interface ToolActivity {
   tool: string
   ok: boolean
+  /** Arguments de l'appel (tronqués) : ce que l'assistant a demandé, visible de l'utilisateur. */
+  arguments?: string
   summary: string
+}
+
+/** Écriture directe proposée par l'assistant : rien n'est écrit tant que l'utilisateur ne l'a pas appliquée. */
+export interface AssistantAction {
+  id: string
+  tool: string
+  arguments: string
+  status: 'PENDING' | 'APPLYING' | 'APPLIED' | 'DISMISSED' | 'FAILED'
+  outcome?: string | null
+  createdAt: string
+  resolvedAt?: string | null
 }
 
 export interface AssistantReply {
@@ -18,6 +31,7 @@ export interface AssistantReply {
   activity: ToolActivity[]
   /** Au moins un brouillon à relire dans Admin → Brouillons. */
   producedDrafts: boolean
+  proposals: AssistantAction[]
 }
 
 export interface ConversationSummary {
@@ -63,4 +77,19 @@ export async function getConversation(id: string): Promise<ConversationDetail> {
 
 export async function deleteConversation(id: string): Promise<void> {
   await axios.delete(`/api/assistant/conversations/${id}`)
+}
+
+export async function listActions(conversationId: string): Promise<AssistantAction[]> {
+  const { data } = await axios.get<AssistantAction[]>(`/api/assistant/conversations/${conversationId}/actions`)
+  return data
+}
+
+export async function applyAction(conversationId: string, actionId: string): Promise<AssistantAction> {
+  const { data } = await axios.post<AssistantAction>(`/api/assistant/conversations/${conversationId}/actions/${actionId}/apply`)
+  return data
+}
+
+export async function dismissAction(conversationId: string, actionId: string): Promise<AssistantAction> {
+  const { data } = await axios.post<AssistantAction>(`/api/assistant/conversations/${conversationId}/actions/${actionId}/dismiss`)
+  return data
 }

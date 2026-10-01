@@ -2,6 +2,9 @@ package com.flowforge.infrastructure.assistant;
 
 import com.flowforge.domain.assistant.model.ToolSpec;
 import com.flowforge.domain.assistant.port.out.DesignToolsPort;
+import com.flowforge.domain.connector.model.ConfigFieldType;
+import com.flowforge.domain.connector.port.out.ConnectorCatalog;
+import com.flowforge.domain.connector.usecase.ManageConnectorInstanceUseCaseImpl;
 import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.infrastructure.mcp.McpActorScope;
 import com.flowforge.infrastructure.mcp.McpToolModes;
@@ -40,19 +43,29 @@ public final class McpDesignToolCatalog implements DesignToolsPort {
      */
     static final Set<String> DENIED = Set.of("publish_draft", "import_configuration");
 
-    /** Clés de configuration de connecteur qui désignent un secret : l'assistant n'en écrit jamais (principe P9). */
+    /**
+     * Outils qui écrivent tout de suite (pas de brouillon) : l'assistant ne les exécute pas, il les propose (validés à blanc) et
+     * l'humain les applique (revue adversariale LC3, M2 : une consigne glissée dans une donnée de configuration ne doit pas pouvoir
+     * créer, par l'assistant, un connecteur actif ou un type de dossier).
+     */
+    static final Set<String> CONFIRMATION_TOOLS = Set.of(
+            "define_dossier_type", "define_connector_instance", "define_task_question_schema", "define_document_template");
+
+    /** Clés qui désignent un secret par leur nom (en plus des champs déclarés secrets par le schéma des connecteurs). */
     private static final Pattern SECRET_KEY =
-            Pattern.compile("(?i).*(secret|password|passwd|passphrase|token|api[-_]?key|private[-_]?key|credential|authorization).*");
+            Pattern.compile("(?i).*(secret|password|passwd|passphrase|token|api[-_]?key|private[-_]?key|credential|authorization|auth[-_]?header).*");
 
     private final ApplicationContext context;
     private final ObjectMapper mapper;
+    private final ConnectorCatalog connectorCatalog;
     private volatile Map<String, Entry> entries;
 
     private record Entry(Object bean, Method method, ToolSpec spec) {}
 
-    public McpDesignToolCatalog(ApplicationContext context, ObjectMapper mapper) {
+    public McpDesignToolCatalog(ApplicationContext context, ObjectMapper mapper, ConnectorCatalog connectorCatalog) {
         this.context = Objects.requireNonNull(context, "context");
         this.mapper = Objects.requireNonNull(mapper, "mapper");
+        this.connectorCatalog = Objects.requireNonNull(connectorCatalog, "connectorCatalog");
     }
 
     @Override
@@ -61,21 +74,52 @@ public final class McpDesignToolCatalog implements DesignToolsPort {
     }
 
     @Override
+    public boolean needsConfirmation(String toolName) {
+        return CONFIRMATION_TOOLS.contains(toolName);
+    }
+
+    @Override
     public String invoke(String toolName, String argumentsJson, AccessContext.User actor) {
+        if (needsConfirmation(toolName)) {
+            throw new ToolInvocationException("tool " + toolName + " writes directly: it must be proposed, not executed");
+        }
+        return run(toolName, argumentsJson, actor, null);
+    }
+
+    @Override
+    public String preview(String toolName, String argumentsJson, AccessContext.User actor) {
+        return run(toolName, argumentsJson, actor, Boolean.TRUE);
+    }
+
+    @Override
+    public String invokeConfirmed(String toolName, String argumentsJson, AccessContext.User actor) {
+        if (!needsConfirmation(toolName)) {
+            throw new ToolInvocationException("tool " + toolName + " is not a confirmable write");
+        }
+        return run(toolName, argumentsJson, actor, Boolean.FALSE);
+    }
+
+    private String run(String toolName, String argumentsJson, AccessContext.User actor, Boolean forcedDryRun) {
         Entry entry = entries().get(toolName);
         if (entry == null) {
             throw new ToolInvocationException("unknown tool: " + toolName + " (available: " + String.join(", ", entries().keySet()) + ")");
         }
-        JsonNode args;
+        JsonNode parsed;
         try {
-            args = mapper.readTree(argumentsJson == null || argumentsJson.isBlank() ? "{}" : argumentsJson);
+            parsed = mapper.readTree(argumentsJson == null || argumentsJson.isBlank() ? "{}" : argumentsJson);
         } catch (RuntimeException ex) {
             throw new ToolInvocationException("arguments are not valid JSON");
         }
-        if (!args.isObject()) {
+        if (!parsed.isObject()) {
             throw new ToolInvocationException("arguments must be a JSON object");
         }
-        rejectSecrets(toolName, args);
+        rejectSecrets(toolName, parsed);
+        JsonNode args = parsed;
+        if (forcedDryRun != null) {
+            tools.jackson.databind.node.ObjectNode copy = ((tools.jackson.databind.node.ObjectNode) parsed).deepCopy();
+            copy.put("dryRun", forcedDryRun);
+            args = copy;
+        }
         Parameter[] parameters = entry.method().getParameters();
         Object[] values = new Object[parameters.length];
         boolean rawRequest = false;
@@ -115,8 +159,23 @@ public final class McpDesignToolCatalog implements DesignToolsPort {
         } catch (ToolInvocationException ex) {
             throw ex;
         } catch (RuntimeException ex) {
-            throw new ToolInvocationException(ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage(), ex);
+            throw new ToolInvocationException(safeMessage(ex), ex);
         }
+    }
+
+    /**
+     * Un message de validation ou de droits est utile au modèle (et à l'utilisateur) ; celui d'une exception interne (SQL, chemins)
+     * ne doit ni partir chez le fournisseur ni être conservé (revue LC3, B5).
+     */
+    private static String safeMessage(RuntimeException ex) {
+        String name = ex.getClass().getName();
+        boolean business = ex instanceof IllegalArgumentException
+                || name.startsWith("com.flowforge.domain.")
+                || name.startsWith("com.flowforge.infrastructure.mcp.");
+        if (business && ex.getMessage() != null) {
+            return ex.getMessage();
+        }
+        return "the tool failed (" + ex.getClass().getSimpleName() + ")";
     }
 
     private Object call(Entry entry, Object[] values) {
@@ -133,17 +192,46 @@ public final class McpDesignToolCatalog implements DesignToolsPort {
         }
     }
 
-    private static void rejectSecrets(String toolName, JsonNode args) {
+    /** Noms de champs déclarés secrets par au moins un type de connecteur (ex. {@code authHeaderValue}, {@code oauthPrivateKey}). */
+    private Set<String> declaredSecretFields() {
+        Set<String> names = new java.util.HashSet<>();
+        for (var definition : connectorCatalog.listAll()) {
+            for (var field : definition.getConfigSchema()) {
+                if (field.type() == ConfigFieldType.PASSWORD || field.type() == ConfigFieldType.SECRET_TEXTAREA) {
+                    names.add(field.name());
+                }
+            }
+        }
+        return names;
+    }
+
+    /** Le secret d'un connecteur ne passe jamais par l'assistant (P9) : clé imbriquée ou non, quelle que soit la casse. */
+    private void rejectSecrets(String toolName, JsonNode args) {
         if (!"define_connector_instance".equals(toolName)) {
             return;
         }
         JsonNode config = args.get("config");
-        if (config != null && config.isObject()) {
-            for (String key : config.propertyNames()) {
-                if (SECRET_KEY.matcher(key).matches()) {
+        if (config != null) {
+            Set<String> declared = declaredSecretFields();
+            scanForSecrets(config, declared);
+        }
+    }
+
+    private static void scanForSecrets(JsonNode node, Set<String> declared) {
+        if (node.isObject()) {
+            for (String key : node.propertyNames()) {
+                boolean secret = SECRET_KEY.matcher(key).matches()
+                        || ManageConnectorInstanceUseCaseImpl.isSecretKey(key)
+                        || declared.stream().anyMatch(d -> d.equalsIgnoreCase(key));
+                if (secret) {
                     throw new ToolInvocationException("the assistant never writes secrets ('" + key + "'): create the connector "
                             + "without it and ask the user to enter it in Admin > Connecteurs");
                 }
+                scanForSecrets(node.get(key), declared);
+            }
+        } else if (node.isArray()) {
+            for (JsonNode child : node) {
+                scanForSecrets(child, declared);
             }
         }
     }

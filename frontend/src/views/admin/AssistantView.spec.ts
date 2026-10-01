@@ -16,6 +16,7 @@ describe('AssistantView (LC3)', () => {
   beforeEach(() => {
     vi.resetAllMocks()
     vi.mocked(api.listConversations).mockResolvedValue([])
+    vi.mocked(api.listActions).mockResolvedValue([])
   })
 
   it('says clearly when the assistant is not enabled, and offers no input', async () => {
@@ -34,6 +35,7 @@ describe('AssistantView (LC3)', () => {
       reply: 'Brouillon créé <img src=x onerror=alert(1)>',
       activity: [{ tool: 'deploy_workflow', ok: true, summary: '{}' }, { tool: 'define_dossier_type', ok: false, summary: 'error: x' }],
       producedDrafts: true,
+      proposals: [],
     })
     const wrapper = mountView()
     await flushPromises()
@@ -54,7 +56,7 @@ describe('AssistantView (LC3)', () => {
   it('keeps the conversation id for the next message and shows the provider error without detail', async () => {
     vi.mocked(api.getAssistantStatus).mockResolvedValue({ enabled: true })
     vi.mocked(api.sendAssistantMessage)
-      .mockResolvedValueOnce({ conversationId: 'c9', reply: 'ok', activity: [], producedDrafts: false })
+      .mockResolvedValueOnce({ conversationId: 'c9', reply: 'ok', activity: [], producedDrafts: false, proposals: [] })
       .mockRejectedValueOnce({ response: { status: 502, data: { detail: 'the language model provider answered HTTP 500', status: 502 } } })
     const wrapper = mountView()
     await flushPromises()
@@ -80,6 +82,7 @@ describe('AssistantView (LC3)', () => {
       ],
     })
     vi.mocked(api.deleteConversation).mockResolvedValue()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
     const wrapper = mountView()
     await flushPromises()
     await wrapper.get('[data-testid="assistant-open"]').trigger('click')
@@ -91,5 +94,71 @@ describe('AssistantView (LC3)', () => {
     await wrapper.get('.assistant__remove').trigger('click')
     await flushPromises()
     expect(api.deleteConversation).toHaveBeenCalledWith('c1')
+  })
+
+  // ---- revue adversariale LC3 ----
+  const pending: api.AssistantAction = {
+    id: 'a1', tool: 'define_connector_instance', arguments: '{"name":"ERP <b>x</b>","connectorType":"http-rest"}',
+    status: 'PENDING', createdAt: '', outcome: null, resolvedAt: null,
+  }
+
+  it('shows the writes the assistant proposes with their arguments, and nothing is applied before the user decides', async () => {
+    vi.mocked(api.getAssistantStatus).mockResolvedValue({ enabled: true })
+    vi.mocked(api.sendAssistantMessage).mockResolvedValue({
+      conversationId: 'c1', reply: 'Je vous propose un connecteur', activity: [], producedDrafts: false, proposals: [pending],
+    })
+    vi.mocked(api.listActions).mockResolvedValue([pending])
+    const wrapper = mountView()
+    await flushPromises()
+    await wrapper.get('[data-testid="assistant-input"]').setValue('crée un connecteur')
+    await wrapper.get('form').trigger('submit.prevent')
+    await flushPromises()
+
+    const card = wrapper.get('[data-testid="assistant-action"]')
+    expect(card.text()).toContain('Connecteur')
+    expect(card.get('[data-testid="assistant-action-args"]').text()).toContain('"connectorType": "http-rest"')
+    expect(card.find('b').exists()).toBe(false) // arguments en texte brut
+    expect(api.applyAction).not.toHaveBeenCalled()
+  })
+
+  it('applies a proposal on the user click, then shows its outcome; a dismissed one is closed', async () => {
+    vi.mocked(api.getAssistantStatus).mockResolvedValue({ enabled: true })
+    vi.mocked(api.listConversations).mockResolvedValue([{ id: 'c1', title: 'T', createdAt: '', updatedAt: '', turns: 1 }])
+    vi.mocked(api.getConversation).mockResolvedValue({ conversation: { id: 'c1', title: 'T', createdAt: '', updatedAt: '', turns: 1 }, messages: [] })
+    vi.mocked(api.listActions).mockResolvedValue([pending, { ...pending, id: 'a2' }])
+    vi.mocked(api.applyAction).mockResolvedValue({ ...pending, status: 'APPLIED', outcome: '{"written":true}' })
+    vi.mocked(api.dismissAction).mockResolvedValue({ ...pending, id: 'a2', status: 'DISMISSED' })
+    const wrapper = mountView()
+    await flushPromises()
+    await wrapper.get('[data-testid="assistant-open"]').trigger('click')
+    await flushPromises()
+    const [first, second] = wrapper.findAll('[data-testid="assistant-action"]')
+    await first!.get('[data-testid="assistant-apply"]').trigger('click')
+    await flushPromises()
+    expect(api.applyAction).toHaveBeenCalledWith('c1', 'a1')
+    expect(wrapper.findAll('[data-testid="assistant-action"]')[0]!.text()).toContain('appliquée')
+    await second!.get('[data-testid="assistant-dismiss"]').trigger('click')
+    await flushPromises()
+    expect(api.dismissAction).toHaveBeenCalledWith('c1', 'a2')
+    expect(wrapper.findAll('[data-testid="assistant-action"]')[1]!.text()).toContain('ignorée')
+    expect(wrapper.findAll('[data-testid="assistant-apply"]')).toHaveLength(0)
+  })
+
+  it('blocks conversation switching while an answer is pending, and gives the text back after a failure', async () => {
+    vi.mocked(api.getAssistantStatus).mockResolvedValue({ enabled: true })
+    vi.mocked(api.listConversations).mockResolvedValue([{ id: 'c1', title: 'T', createdAt: '', updatedAt: '', turns: 1 }])
+    let reject!: (e: unknown) => void
+    vi.mocked(api.sendAssistantMessage).mockReturnValue(new Promise((_, r) => { reject = r }))
+    const wrapper = mountView()
+    await flushPromises()
+    await wrapper.get('[data-testid="assistant-input"]').setValue('mon message important')
+    await wrapper.get('form').trigger('submit.prevent')
+    await flushPromises()
+    expect(wrapper.get('[data-testid="assistant-open"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('[data-testid="assistant-new"]').attributes('disabled')).toBeDefined()
+    reject({ response: { status: 409, data: { detail: 'already working', status: 409 } } })
+    await flushPromises()
+    expect((wrapper.get('[data-testid="assistant-input"]').element as HTMLTextAreaElement).value).toBe('mon message important')
+    expect(wrapper.get('[data-testid="assistant-error"]').text()).toContain('already working')
   })
 })

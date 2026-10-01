@@ -1516,6 +1516,56 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ChatResponse"
+  /api/assistant/conversations/{id}/actions/{actionId}/dismiss:
+    post:
+      tags:
+      - assistant-controller
+      operationId: dismiss
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: actionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ActionView"
+  /api/assistant/conversations/{id}/actions/{actionId}/apply:
+    post:
+      tags:
+      - assistant-controller
+      operationId: apply
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: actionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ActionView"
   /api/admin/drafts/{type}/{key}/publish:
     post:
       tags:
@@ -1581,7 +1631,7 @@ paths:
     post:
       tags:
       - configuration-promotion-controller
-      operationId: apply
+      operationId: apply_1
       parameters:
       - name: secrets
         in: query
@@ -2793,6 +2843,27 @@ paths:
       responses:
         "200":
           description: OK
+  /api/assistant/conversations/{id}/actions:
+    get:
+      tags:
+      - assistant-controller
+      operationId: actions
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActionView"
   /api/admin/drafts:
     get:
       tags:
@@ -4019,6 +4090,26 @@ components:
           format: uuid
         message:
           type: string
+    ActionView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tool:
+          type: string
+        arguments:
+          type: string
+        status:
+          type: string
+        outcome:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        resolvedAt:
+          type: string
+          format: date-time
     ChatResponse:
       type: object
       properties:
@@ -4033,6 +4124,10 @@ components:
             $ref: "#/components/schemas/ToolActivity"
         producedDrafts:
           type: boolean
+        proposals:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActionView"
     ToolActivity:
       type: object
       properties:
@@ -4040,6 +4135,8 @@ components:
           type: string
         ok:
           type: boolean
+        arguments:
+          type: string
         summary:
           type: string
     PublishDraftRequest:

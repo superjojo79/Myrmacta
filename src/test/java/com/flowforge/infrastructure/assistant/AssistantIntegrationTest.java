@@ -55,6 +55,9 @@ class AssistantIntegrationTest {
     @Autowired
     private ManageDraftsUseCase drafts;
 
+    @Autowired
+    private com.flowforge.domain.workflow.port.out.TaskQuestionSchemaRepository schemas;
+
     private static RequestPostProcessor as(String subject, String role) {
         return oidcLogin()
                 .idToken(t -> t.subject(subject).claim("tenant_id", TENANT).claim("email", subject + "@example.com"))
@@ -86,7 +89,7 @@ class AssistantIntegrationTest {
     void conversationsArePrivateToTheirAuthor_andCanBeReadAndDeleted() throws Exception {
         UUID id = UUID.randomUUID();
         Instant now = Instant.parse("2026-10-01T10:00:00Z");
-        repository.save(new Conversation(id, TENANT, "alice-api", "Mon sinistre", now, now, 1, 10, 5));
+        repository.create(new Conversation(id, TENANT, "alice-api", "Mon sinistre", now, now, 1, 10, 5));
         repository.saveMessage(new ChatMessage(UUID.randomUUID(), id, 0, ChatMessage.Role.USER, "bonjour", null, now));
         repository.saveMessage(new ChatMessage(UUID.randomUUID(), id, 1, ChatMessage.Role.ASSISTANT, "salut", null, now));
 
@@ -144,11 +147,17 @@ class AssistantIntegrationTest {
 
     @Test
     void theAssistantNeverWritesASecretIntoAConnector() {
-        for (String key : new String[] {"webhookSecret", "password", "apiKey", "access_token", "Authorization", "client_secret"}) {
-            assertThatThrownBy(() -> catalog.invoke("define_connector_instance",
+        // y compris les champs que le schéma d'un connecteur déclare secrets sans que leur nom le laisse voir (revue LC3, M1)
+        for (String key : new String[] {"webhookSecret", "password", "apiKey", "access_token", "Authorization", "client_secret",
+                "authHeaderValue", "AUTHHEADERVALUE", "oauthPrivateKey", "sftpPrivateKey"}) {
+            assertThatThrownBy(() -> catalog.preview("define_connector_instance",
                     "{\"name\":\"X\",\"connectorType\":\"http-rest\",\"config\":{\"" + key + "\":\"v\"}}", ALICE))
                     .as(key).isInstanceOf(DesignToolsPort.ToolInvocationException.class).hasMessageContaining("never writes secrets");
         }
+        // clé imbriquée
+        assertThatThrownBy(() -> catalog.preview("define_connector_instance",
+                "{\"name\":\"X\",\"connectorType\":\"http-rest\",\"config\":{\"headers\":{\"x\":{\"clientSecret\":\"v\"}}}}", ALICE))
+                .isInstanceOf(DesignToolsPort.ToolInvocationException.class).hasMessageContaining("never writes secrets");
     }
 
     @Test
@@ -176,9 +185,104 @@ class AssistantIntegrationTest {
     @Test
     void anActorWithoutTheRightRoleCannotUseTheToolsEvenThroughTheAssistant() {
         AccessContext.User manager = AccessContext.user("m", Set.of("DOSSIER_MANAGER"));
-        assertThatThrownBy(() -> catalog.invoke("define_task_question_schema",
-                "{\"schemaKey\":\"s\",\"label\":\"S\",\"fields\":[],\"dryRun\":true}", manager))
+        assertThatThrownBy(() -> catalog.preview("define_task_question_schema",
+                "{\"schemaKey\":\"s\",\"label\":\"S\",\"fields\":[]}", manager))
                 .isInstanceOf(DesignToolsPort.ToolInvocationException.class);
+    }
+
+    // ---- écritures proposées (revue LC3, M2) ----
+
+    @Test
+    void directWritesAreNeverExecutedByInvoke_theyAreValidatedAtDryRunAndWrittenOnlyWhenConfirmed() {
+        String key = "proposed-" + UUID.randomUUID().toString().substring(0, 8);
+        String args = "{\"schemaKey\":\"" + key + "\",\"label\":\"Proposé\",\"fields\":[{\"name\":\"nom\",\"label\":\"Nom\",\"type\":\"STRING\",\"required\":false}]}";
+
+        assertThat(catalog.needsConfirmation("define_task_question_schema")).isTrue();
+        assertThatThrownBy(() -> catalog.invoke("define_task_question_schema", args, ALICE))
+                .isInstanceOf(DesignToolsPort.ToolInvocationException.class).hasMessageContaining("must be proposed");
+
+        String validation = catalog.preview("define_task_question_schema", args, ALICE);
+        assertThat(validation).contains("\"dryRun\":true");
+        assertThat(schemas.findByKey(TENANT, key)).as("l'aperçu n'écrit rien").isEmpty();
+
+        // un dryRun:false glissé par le modèle est forcé à blanc à l'aperçu
+        catalog.preview("define_task_question_schema", args.replace("}]}", "}],\"dryRun\":false}"), ALICE);
+        assertThat(schemas.findByKey(TENANT, key)).isEmpty();
+
+        catalog.invokeConfirmed("define_task_question_schema", args, ALICE);
+        assertThat(schemas.findByKey(TENANT, key)).isPresent();
+        assertThatThrownBy(() -> catalog.invokeConfirmed("deploy_workflow", "{}", ALICE)).isInstanceOf(DesignToolsPort.ToolInvocationException.class);
+    }
+
+    @Test
+    void theHumanAppliesAProposalOnceThroughTheApi_withHisOwnIdentity() throws Exception {
+        String key = "api-applied-" + UUID.randomUUID().toString().substring(0, 8);
+        UUID conversation = UUID.randomUUID();
+        UUID action = UUID.randomUUID();
+        Instant now = Instant.parse("2026-10-01T10:00:00Z");
+        repository.create(new Conversation(conversation, TENANT, "carol", "Proposition", now, now, 0, 0, 0));
+        repository.saveAction(new com.flowforge.domain.assistant.model.AssistantAction(action, conversation, "define_task_question_schema",
+                "{\"schemaKey\":\"" + key + "\",\"label\":\"L\",\"fields\":[{\"name\":\"a\",\"label\":\"A\",\"type\":\"STRING\",\"required\":false}]}",
+                com.flowforge.domain.assistant.model.AssistantAction.Status.PENDING, null, now, null));
+
+        mockMvc.perform(get("/api/assistant/conversations/" + conversation + "/actions").with(as("carol", "TENANT_ADMIN")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].status").value("PENDING"));
+        // un autre administrateur ne voit ni n'applique la proposition d'un autre
+        mockMvc.perform(post("/api/assistant/conversations/" + conversation + "/actions/" + action + "/apply")
+                        .with(as("dave", "TENANT_ADMIN")).with(csrf())).andExpect(status().isNotFound());
+        assertThat(schemas.findByKey(TENANT, key)).isEmpty();
+
+        mockMvc.perform(post("/api/assistant/conversations/" + conversation + "/actions/" + action + "/apply")
+                        .with(as("carol", "TENANT_ADMIN")).with(csrf()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("APPLIED"));
+        assertThat(schemas.findByKey(TENANT, key)).isPresent();
+        // une seule application
+        mockMvc.perform(post("/api/assistant/conversations/" + conversation + "/actions/" + action + "/apply")
+                        .with(as("carol", "TENANT_ADMIN")).with(csrf())).andExpect(status().isConflict());
+        mockMvc.perform(post("/api/assistant/conversations/" + conversation + "/actions/" + action + "/dismiss")
+                        .with(as("carol", "TENANT_ADMIN")).with(csrf())).andExpect(status().isConflict());
+    }
+
+    @Test
+    void aFailingProposalIsKeptAsFailedWithItsReason_andADismissedOneIsNeverApplied() throws Exception {
+        UUID conversation = UUID.randomUUID();
+        UUID bad = UUID.randomUUID();
+        UUID dismissed = UUID.randomUUID();
+        Instant now = Instant.parse("2026-10-01T10:00:00Z");
+        repository.create(new Conversation(conversation, TENANT, "erin", "Echec", now, now, 0, 0, 0));
+        repository.saveAction(new com.flowforge.domain.assistant.model.AssistantAction(bad, conversation, "define_task_question_schema",
+                "{\"schemaKey\":\"x\"}", com.flowforge.domain.assistant.model.AssistantAction.Status.PENDING, null, now, null));
+        repository.saveAction(new com.flowforge.domain.assistant.model.AssistantAction(dismissed, conversation, "define_task_question_schema",
+                "{}", com.flowforge.domain.assistant.model.AssistantAction.Status.PENDING, null, now, null));
+
+        mockMvc.perform(post("/api/assistant/conversations/" + conversation + "/actions/" + bad + "/apply")
+                        .with(as("erin", "TENANT_ADMIN")).with(csrf()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("FAILED"))
+                .andExpect(jsonPath("$.outcome").value(org.hamcrest.Matchers.containsString("missing required argument")));
+        mockMvc.perform(post("/api/assistant/conversations/" + conversation + "/actions/" + dismissed + "/dismiss")
+                        .with(as("erin", "TENANT_ADMIN")).with(csrf()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("DISMISSED"));
+        mockMvc.perform(post("/api/assistant/conversations/" + conversation + "/actions/" + dismissed + "/apply")
+                        .with(as("erin", "TENANT_ADMIN")).with(csrf())).andExpect(status().isConflict());
+    }
+
+    @Test
+    void aConversationBeingProcessedCannotBeDeletedNorUpdatedIntoExistenceAgain() throws Exception {
+        UUID id = UUID.randomUUID();
+        Instant now = Instant.now(); // le contrôleur lit l'horloge réelle
+        repository.create(new Conversation(id, TENANT, "frank", "Occupée", now, now, 0, 0, 0));
+        assertThat(repository.tryLock(id, now, now.plusSeconds(600))).isTrue();
+        assertThat(repository.tryLock(id, now.plusSeconds(1), now.plusSeconds(601))).as("un seul tour à la fois").isFalse();
+        mockMvc.perform(delete("/api/assistant/conversations/" + id).with(as("frank", "TENANT_ADMIN")).with(csrf()))
+                .andExpect(status().isConflict());
+        // bail expiré : repris
+        assertThat(repository.tryLock(id, now.plusSeconds(700), now.plusSeconds(1300))).isTrue();
+        repository.unlock(id);
+        mockMvc.perform(delete("/api/assistant/conversations/" + id).with(as("frank", "TENANT_ADMIN")).with(csrf()))
+                .andExpect(status().isNoContent());
+        // mise à jour après suppression : sans effet, la conversation ne ressuscite pas
+        assertThat(repository.update(new Conversation(id, TENANT, "frank", "Occupée", now, now, 1, 1, 1))).isFalse();
+        assertThat(repository.findByIdAndOwner(id, TENANT, "frank")).isEmpty();
     }
 
     // ---- persistance ----
@@ -201,9 +305,9 @@ class AssistantIntegrationTest {
         UUID recent = UUID.randomUUID();
         Instant oldDate = Instant.parse("2026-01-01T00:00:00Z");
         Instant newDate = Instant.parse("2026-09-30T00:00:00Z");
-        repository.save(new Conversation(old, "tenant_purge", "u", "vieille", oldDate, oldDate, 1, 0, 0));
+        repository.create(new Conversation(old, "tenant_purge", "u", "vieille", oldDate, oldDate, 1, 0, 0));
         repository.saveMessage(new ChatMessage(UUID.randomUUID(), old, 0, ChatMessage.Role.USER, "x", null, oldDate));
-        repository.save(new Conversation(recent, "tenant_purge", "u", "récente", newDate, newDate, 1, 0, 0));
+        repository.create(new Conversation(recent, "tenant_purge", "u", "récente", newDate, newDate, 1, 0, 0));
 
         int removed = repository.deleteOlderThan("tenant_purge", Instant.parse("2026-06-01T00:00:00Z"));
 

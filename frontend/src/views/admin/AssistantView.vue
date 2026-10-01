@@ -3,11 +3,15 @@ import { nextTick, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { toProblemDetail } from '@/api/http'
 import {
+  applyAction,
   deleteConversation,
+  dismissAction,
   getAssistantStatus,
   getConversation,
+  listActions,
   listConversations,
   sendAssistantMessage,
+  type AssistantAction,
   type AssistantMessage,
   type AssistantStatus,
   type ConversationSummary,
@@ -34,6 +38,58 @@ const draft = ref('')
 const busy = ref(false)
 const error = ref<string | null>(null)
 const log = ref<HTMLElement | null>(null)
+const actions = ref<AssistantAction[]>([])
+const actionBusy = ref<string | null>(null)
+
+const STATUS_LABELS: Record<AssistantAction['status'], string> = {
+  PENDING: 'à relire',
+  APPLYING: 'en cours',
+  APPLIED: 'appliquée',
+  DISMISSED: 'ignorée',
+  FAILED: 'échec',
+}
+
+const TOOL_LABELS: Record<string, string> = {
+  define_dossier_type: 'Type de dossier',
+  define_connector_instance: 'Connecteur',
+  define_task_question_schema: 'Questions de tâche',
+  define_document_template: 'Modèle de document',
+}
+
+function pretty(json: string): string {
+  try {
+    return JSON.stringify(JSON.parse(json), null, 2)
+  } catch {
+    return json
+  }
+}
+
+async function loadActions() {
+  if (!conversationId.value) {
+    actions.value = []
+    return
+  }
+  try {
+    actions.value = await listActions(conversationId.value)
+  } catch {
+    actions.value = []
+  }
+}
+
+async function resolve(action: AssistantAction, apply: boolean) {
+  if (!conversationId.value || actionBusy.value) return
+  error.value = null
+  actionBusy.value = action.id
+  try {
+    const updated = await (apply ? applyAction : dismissAction)(conversationId.value, action.id)
+    actions.value = actions.value.map((a) => (a.id === updated.id ? updated : a))
+  } catch (err) {
+    error.value = toProblemDetail(err).detail ?? "L'action n'a pas pu être traitée"
+    await loadActions()
+  } finally {
+    actionBusy.value = null
+  }
+}
 
 async function loadList() {
   try {
@@ -69,11 +125,13 @@ function fromMessages(messages: AssistantMessage[]): Turn[] {
 }
 
 async function open(id: string) {
+  if (busy.value) return // une réponse en cours s'afficherait dans la mauvaise conversation
   error.value = null
   try {
     const detail = await getConversation(id)
     conversationId.value = id
     turns.value = fromMessages(detail.messages)
+    await loadActions()
     await scroll()
   } catch (err) {
     error.value = toProblemDetail(err).detail ?? 'Conversation introuvable'
@@ -81,12 +139,16 @@ async function open(id: string) {
 }
 
 function fresh() {
+  if (busy.value) return
   conversationId.value = null
   turns.value = []
+  actions.value = []
   error.value = null
 }
 
 async function remove(id: string) {
+  if (busy.value) return
+  if (!window.confirm('Supprimer cette conversation ?')) return
   try {
     await deleteConversation(id)
     if (conversationId.value === id) fresh()
@@ -113,8 +175,12 @@ async function send() {
     const reply = await sendAssistantMessage(text, conversationId.value)
     conversationId.value = reply.conversationId
     turns.value.push({ role: 'ASSISTANT', text: reply.reply, activity: reply.activity, drafts: reply.producedDrafts })
+    await loadActions()
     await loadList()
   } catch (err) {
+    // Le texte n'est pas perdu : on le remet dans la zone de saisie pour le renvoyer.
+    draft.value = text
+    turns.value.pop()
     error.value = toProblemDetail(err).detail ?? "L'assistant n'a pas pu répondre"
   } finally {
     busy.value = false
@@ -135,11 +201,11 @@ async function send() {
 
     <div v-else-if="status" class="assistant__layout">
       <aside class="assistant__history" aria-label="Conversations">
-        <button type="button" data-testid="assistant-new" @click="fresh">Nouvelle conversation</button>
+        <button type="button" :disabled="busy" data-testid="assistant-new" @click="fresh">Nouvelle conversation</button>
         <ul>
           <li v-for="c in conversations" :key="c.id" :class="{ 'assistant__current': c.id === conversationId }">
-            <button type="button" class="assistant__open" data-testid="assistant-open" @click="open(c.id)">{{ c.title }}</button>
-            <button type="button" class="assistant__remove" :aria-label="`Supprimer « ${c.title} »`" @click="remove(c.id)">✕</button>
+            <button type="button" class="assistant__open" :disabled="busy" data-testid="assistant-open" @click="open(c.id)">{{ c.title }}</button>
+            <button type="button" class="assistant__remove" :disabled="busy" :aria-label="`Supprimer « ${c.title} »`" @click="remove(c.id)">✕</button>
           </li>
         </ul>
       </aside>
@@ -159,6 +225,7 @@ async function send() {
             <ul v-if="t.activity?.length" class="assistant__activity">
               <li v-for="(a, j) in t.activity" :key="j" :class="{ 'assistant__activity--ko': !a.ok }">
                 <code>{{ a.tool }}</code> — {{ a.ok ? 'fait' : 'refusé' }}
+                <details v-if="a.arguments"><summary>Arguments</summary><pre class="assistant__args">{{ a.arguments }}</pre></details>
               </li>
             </ul>
             <p v-if="t.drafts" class="assistant__drafts" data-testid="assistant-drafts">
@@ -168,6 +235,25 @@ async function send() {
           </article>
           <p v-if="busy" class="assistant__busy" data-testid="assistant-busy">L'assistant travaille…</p>
         </div>
+        <section v-if="actions.length" class="assistant__actions" aria-label="Écritures proposées" data-testid="assistant-actions">
+          <h2>Écritures proposées</h2>
+          <p class="assistant__hint">
+            L'assistant ne les a <strong>pas</strong> écrites : relisez ce qui sera enregistré, puis appliquez-le (avec vos droits) ou ignorez-le.
+          </p>
+          <article v-for="a in actions" :key="a.id" class="assistant__action" :data-status="a.status" data-testid="assistant-action">
+            <header>
+              <strong>{{ TOOL_LABELS[a.tool] ?? a.tool }}</strong>
+              <span class="assistant__status">{{ STATUS_LABELS[a.status] }}</span>
+            </header>
+            <!-- Arguments en texte brut : c'est ce que l'on s'apprête à écrire. -->
+            <pre class="assistant__args" data-testid="assistant-action-args">{{ pretty(a.arguments) }}</pre>
+            <p v-if="a.outcome" class="assistant__outcome">{{ a.outcome }}</p>
+            <div v-if="a.status === 'PENDING'" class="assistant__action-buttons">
+              <button type="button" :disabled="!!actionBusy" data-testid="assistant-apply" @click="resolve(a, true)">Appliquer</button>
+              <button type="button" :disabled="!!actionBusy" data-testid="assistant-dismiss" @click="resolve(a, false)">Ignorer</button>
+            </div>
+          </article>
+        </section>
         <form class="assistant__form" @submit.prevent="send">
           <label class="visually-hidden" for="assistant-input">Votre message</label>
           <textarea
@@ -244,6 +330,33 @@ async function send() {
 }
 .assistant__activity--ko {
   color: #a4262c;
+}
+.assistant__args {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 14rem;
+  overflow: auto;
+  background: #f4f4f6;
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+.assistant__action {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.5rem;
+}
+.assistant__action header {
+  display: flex;
+  justify-content: space-between;
+}
+.assistant__action[data-status='FAILED'] .assistant__outcome {
+  color: #a4262c;
+}
+.assistant__action-buttons {
+  display: flex;
+  gap: 0.5rem;
 }
 .assistant__form {
   display: grid;

@@ -40,6 +40,9 @@ class AssistantConversationJpaEntity {
     @Column(name = "output_tokens", nullable = false)
     private long outputTokens;
 
+    @Column(name = "busy_until")
+    private Instant busyUntil;
+
     protected AssistantConversationJpaEntity() {}
 
     static AssistantConversationJpaEntity fromDomain(Conversation c) {

@@ -1,11 +1,13 @@
 package com.flowforge.infrastructure.config;
 
 import com.flowforge.domain.assistant.port.in.ChatWithAssistantUseCase;
+import com.flowforge.domain.assistant.port.in.ManageAssistantActionsUseCase;
 import com.flowforge.domain.assistant.port.in.ManageConversationsUseCase;
 import com.flowforge.domain.assistant.port.out.ConversationRepository;
 import com.flowforge.domain.assistant.port.out.DesignToolsPort;
 import com.flowforge.domain.assistant.port.out.LanguageModelPort;
 import com.flowforge.domain.assistant.usecase.ChatWithAssistantUseCaseImpl;
+import com.flowforge.domain.assistant.usecase.ManageAssistantActionsUseCaseImpl;
 import com.flowforge.domain.assistant.usecase.ManageConversationsUseCaseImpl;
 import com.flowforge.domain.dossier.TenantAdminGuard;
 import com.flowforge.infrastructure.assistant.AnthropicLanguageModel;
@@ -29,8 +31,9 @@ class AssistantConfig {
     }
 
     @Bean
-    DesignToolsPort designToolsPort(ApplicationContext context, ObjectMapper mapper) {
-        return new McpDesignToolCatalog(context, mapper);
+    DesignToolsPort designToolsPort(
+            ApplicationContext context, ObjectMapper mapper, com.flowforge.domain.connector.port.out.ConnectorCatalog connectorCatalog) {
+        return new McpDesignToolCatalog(context, mapper, connectorCatalog);
     }
 
     @Bean
@@ -43,6 +46,12 @@ class AssistantConfig {
             AssistantProperties properties) {
         return new ChatWithAssistantUseCaseImpl(
                 tenantProperties.id(), Clock.systemUTC(), guard, model, tools, repository, properties.limits());
+    }
+
+    @Bean
+    ManageAssistantActionsUseCase manageAssistantActionsUseCase(
+            TenantProperties tenantProperties, TenantAdminGuard guard, ConversationRepository repository, DesignToolsPort tools) {
+        return new ManageAssistantActionsUseCaseImpl(tenantProperties.id(), Clock.systemUTC(), guard, repository, tools);
     }
 
     @Bean

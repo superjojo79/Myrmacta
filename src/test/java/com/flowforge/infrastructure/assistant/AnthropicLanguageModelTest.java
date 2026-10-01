@@ -139,4 +139,19 @@ class AnthropicLanguageModelTest {
         // désactivé : aucune exigence
         new AssistantProperties(false, "http://whatever", "", "m", "v", 30, 30, 12, 60, 1, 1, 1);
     }
+
+    @Test
+    void anUnusableToolUseIdIsReplacedByAUniqueOne() throws Exception {
+        var model = start(200, "{\"content\":[{\"type\":\"tool_use\",\"id\":\"\",\"name\":\"a\",\"input\":{}},"
+                + "{\"type\":\"tool_use\",\"id\":\"x\",\"name\":\"b\",\"input\":{}},"
+                + "{\"type\":\"tool_use\",\"id\":\"x\",\"name\":\"c\",\"input\":{}}],\"usage\":{}}");
+        var ids = model.complete(request()).toolCalls().stream().map(c -> c.id()).toList();
+        assertThat(ids).doesNotContain("").doesNotHaveDuplicates();
+    }
+
+    @Test
+    void anOversizedAnswerIsRefusedRatherThanBufferedWithoutLimit() throws Exception {
+        var model = start(200, "{\"content\":[{\"type\":\"text\",\"text\":\"" + "x".repeat(AnthropicLanguageModel.MAX_RESPONSE_BYTES + 10) + "\"}]}");
+        assertThatThrownBy(() -> model.complete(request())).isInstanceOf(ModelUnavailableException.class).hasMessageContaining("too large");
+    }
 }

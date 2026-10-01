@@ -3,7 +3,7 @@ databaseChangeLog:
       id: 033-assistant
       author: flowforge
       comment: >-
-        TODO §86 (LC3) — assistant de conception : conversations (propres à leur auteur), messages (texte et résultats d'outils
+        TODO §86 (LC3) — assistant de conception : conversations (propres à leur auteur, un seul tour à la fois), écritures proposées en attente de l'accord de l'humain, messages (texte et résultats d'outils
         tronqués, jamais de secret) et compteur de jetons par jour et par tenant (indépendant de la suppression d'une conversation).
       changes:
         - createTable:
@@ -18,6 +18,7 @@ databaseChangeLog:
               - column: {name: turns, type: int, defaultValueNumeric: 0, constraints: {nullable: false}}
               - column: {name: input_tokens, type: bigint, defaultValueNumeric: 0, constraints: {nullable: false}}
               - column: {name: output_tokens, type: bigint, defaultValueNumeric: 0, constraints: {nullable: false}}
+              - column: {name: busy_until, type: timestamp with time zone}
         - createIndex:
             tableName: assistant_conversation
             indexName: idx_assistant_conversation_owner
@@ -49,6 +50,29 @@ databaseChangeLog:
             columns:
               - column: {name: conversation_id}
               - column: {name: seq}
+        - createTable:
+            tableName: assistant_action
+            columns:
+              - column: {name: id, type: uuid, constraints: {primaryKey: true, primaryKeyName: pk_assistant_action, nullable: false}}
+              - column: {name: conversation_id, type: uuid, constraints: {nullable: false}}
+              - column: {name: tool, type: varchar(100), constraints: {nullable: false}}
+              - column: {name: arguments, type: text, constraints: {nullable: false}}
+              - column: {name: status, type: varchar(16), constraints: {nullable: false}}
+              - column: {name: outcome, type: text}
+              - column: {name: created_at, type: timestamp with time zone, constraints: {nullable: false}}
+              - column: {name: resolved_at, type: timestamp with time zone}
+        - addForeignKeyConstraint:
+            baseTableName: assistant_action
+            baseColumnNames: conversation_id
+            referencedTableName: assistant_conversation
+            referencedColumnNames: id
+            constraintName: fk_assistant_action_conversation
+            onDelete: CASCADE
+        - createIndex:
+            tableName: assistant_action
+            indexName: idx_assistant_action_conversation
+            columns:
+              - column: {name: conversation_id}
         - createTable:
             tableName: assistant_usage
             columns:

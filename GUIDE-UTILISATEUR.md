@@ -721,8 +721,10 @@ administrateur technique doit le configurer (`DEPLOIEMENT.md` §15).
   L'assistant appelle les outils de conception (types de dossier, formulaires, processus, tables de décision, connecteurs, expressions) et
   vérifie son travail (essais à blanc, validation des expressions, test des tables) avant de répondre.
 - **Tout est à relire.** Ce qu'il écrit pour un **processus** ou une **table de décision** est un **brouillon** : un lien vous mène à *Admin →
-  Brouillons* pour relire l'écart et publier. L'assistant **ne publie jamais**. Les types et schémas de questions qu'il enregistre se
-  retrouvent dans leurs écrans habituels.
+  Brouillons* pour relire l'écart et publier. L'assistant **ne publie jamais**.
+- **Les autres écritures (type de dossier, schéma de questions, connecteur, modèle de document) sont des propositions.** L'assistant les valide
+  à blanc ; elles apparaissent sous la conversation, dans « Écritures proposées », **avec les arguments exacts**. Rien n'est écrit tant que vous
+  n'avez pas cliqué **Appliquer** (l'écriture se fait avec vos droits, une seule fois) ; **Ignorer** l'écarte. Un échec est conservé avec son motif.
 - **Il n'a accès à aucune donnée de dossier** et **n'écrit jamais de secret** : un connecteur est créé sans mot de passe ni jeton ; saisissez-les vous-même
   dans *Admin → Connecteurs*.
 - **Historique.** Vos conversations sont conservées 30 jours (configurable), visibles de vous seul ; vous pouvez en supprimer une.

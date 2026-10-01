@@ -18,6 +18,15 @@ public interface DesignToolsPort {
      */
     String invoke(String toolName, String argumentsJson, AccessContext.User actor);
 
+    /** Outil qui écrit tout de suite (pas de brouillon) : l'assistant le propose, l'humain l'applique. */
+    boolean needsConfirmation(String toolName);
+
+    /** Valide les arguments d'un outil à confirmation <b>sans rien écrire</b> (force le mode à blanc). */
+    String preview(String toolName, String argumentsJson, AccessContext.User actor);
+
+    /** Exécute réellement une écriture confirmée par l'humain, avec son identité. */
+    String invokeConfirmed(String toolName, String argumentsJson, AccessContext.User actor);
+
     class ToolInvocationException extends RuntimeException {
         public ToolInvocationException(String message) {
             super(message);

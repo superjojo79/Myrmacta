@@ -26,6 +26,8 @@ import tools.jackson.databind.ObjectMapper;
  */
 public final class AnthropicLanguageModel implements LanguageModelPort {
 
+    static final int MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
+
     private final AssistantProperties properties;
     private final ObjectMapper mapper;
     private final HttpClient client;
@@ -49,19 +51,28 @@ public final class AnthropicLanguageModel implements LanguageModelPort {
                 .header("anthropic-version", properties.anthropicVersion())
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build();
-        HttpResponse<String> response;
+        HttpResponse<java.io.InputStream> response;
         try {
-            response = client.send(http, HttpResponse.BodyHandlers.ofString());
+            response = client.send(http, HttpResponse.BodyHandlers.ofInputStream());
         } catch (IOException ex) {
             throw new ModelUnavailableException("the language model provider is unreachable", ex);
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
             throw new ModelUnavailableException("the call to the language model provider was interrupted", ex);
         }
-        if (response.statusCode() / 100 != 2) {
-            throw new ModelUnavailableException("the language model provider answered HTTP " + response.statusCode());
+        try (java.io.InputStream in = response.body()) {
+            if (response.statusCode() / 100 != 2) {
+                throw new ModelUnavailableException("the language model provider answered HTTP " + response.statusCode());
+            }
+            // Réponse bornée : une passerelle défaillante ne doit pas pouvoir saturer la mémoire.
+            byte[] bytes = in.readNBytes(MAX_RESPONSE_BYTES + 1);
+            if (bytes.length > MAX_RESPONSE_BYTES) {
+                throw new ModelUnavailableException("the language model provider answer is too large");
+            }
+            return parse(new String(bytes, java.nio.charset.StandardCharsets.UTF_8));
+        } catch (IOException ex) {
+            throw new ModelUnavailableException("the language model provider answer could not be read", ex);
         }
-        return parse(response.body());
     }
 
     String toJson(ModelExchange.Request request) {
@@ -133,8 +144,11 @@ public final class AnthropicLanguageModel implements LanguageModelPort {
             if ("text".equals(type)) {
                 text.append(block.path("text").asString(""));
             } else if ("tool_use".equals(type)) {
-                calls.add(new ModelExchange.ToolCall(
-                        block.path("id").asString(""), block.path("name").asString(""), block.path("input").toString()));
+                String declared = block.path("id").asString("");
+                // Un identifiant vide ou répété ferait refuser la requête suivante : on en garantit un, unique, par appel.
+                boolean unusable = declared.isBlank() || calls.stream().anyMatch(c -> c.id().equals(declared));
+                String id = unusable ? "toolu_local_" + calls.size() : declared;
+                calls.add(new ModelExchange.ToolCall(id, block.path("name").asString(""), block.path("input").toString()));
             }
         }
         JsonNode usage = root.path("usage");

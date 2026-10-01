@@ -3,6 +3,8 @@ package com.flowforge.infrastructure.web.assistant;
 import com.flowforge.domain.assistant.model.ChatMessage;
 import com.flowforge.domain.assistant.model.Conversation;
 import com.flowforge.domain.assistant.port.in.ChatWithAssistantUseCase;
+import com.flowforge.domain.assistant.model.AssistantAction;
+import com.flowforge.domain.assistant.port.in.ManageAssistantActionsUseCase;
 import com.flowforge.domain.assistant.port.in.ManageConversationsUseCase;
 import com.flowforge.infrastructure.config.AssistantProperties;
 import com.flowforge.infrastructure.web.dossier.AccessContextFactory;
@@ -32,15 +34,18 @@ class AssistantController {
 
     private final ChatWithAssistantUseCase chat;
     private final ManageConversationsUseCase conversations;
+    private final ManageAssistantActionsUseCase actions;
     private final AccessContextFactory accessContextFactory;
     private final AssistantProperties properties;
 
     AssistantController(
             ChatWithAssistantUseCase chat,
             ManageConversationsUseCase conversations,
+            ManageAssistantActionsUseCase actions,
             AccessContextFactory accessContextFactory,
             AssistantProperties properties) {
         this.chat = chat;
+        this.actions = actions;
         this.conversations = conversations;
         this.accessContextFactory = accessContextFactory;
         this.properties = properties;
@@ -54,7 +59,24 @@ class AssistantController {
     @PostMapping("/messages")
     ChatResponse send(@RequestBody MessageRequest request, Authentication authentication) {
         var result = chat.chat(accessContextFactory.user(authentication), request.conversationId(), request.message());
-        return new ChatResponse(result.conversationId(), result.reply(), result.activity(), result.producedDrafts());
+        return new ChatResponse(result.conversationId(), result.reply(), result.activity(), result.producedDrafts(),
+                result.proposals().stream().map(ActionView::from).toList());
+    }
+
+    @GetMapping("/conversations/{id}/actions")
+    List<ActionView> actions(@PathVariable UUID id, Authentication authentication) {
+        return actions.list(accessContextFactory.user(authentication), id).stream().map(ActionView::from).toList();
+    }
+
+    /** L'humain relit puis applique : l'écriture s'exécute avec SON identité, une seule fois. */
+    @PostMapping("/conversations/{id}/actions/{actionId}/apply")
+    ActionView apply(@PathVariable UUID id, @PathVariable UUID actionId, Authentication authentication) {
+        return ActionView.from(actions.apply(accessContextFactory.user(authentication), id, actionId));
+    }
+
+    @PostMapping("/conversations/{id}/actions/{actionId}/dismiss")
+    ActionView dismiss(@PathVariable UUID id, @PathVariable UUID actionId, Authentication authentication) {
+        return ActionView.from(actions.dismiss(accessContextFactory.user(authentication), id, actionId));
     }
 
     @GetMapping("/conversations")
@@ -79,7 +101,19 @@ class AssistantController {
 
     record MessageRequest(UUID conversationId, String message) {}
 
-    record ChatResponse(UUID conversationId, String reply, List<ChatWithAssistantUseCase.ToolActivity> activity, boolean producedDrafts) {}
+    record ChatResponse(
+            UUID conversationId,
+            String reply,
+            List<ChatWithAssistantUseCase.ToolActivity> activity,
+            boolean producedDrafts,
+            List<ActionView> proposals) {}
+
+    /** Une écriture proposée : ce qui sera écrit (arguments), son état, son issue. */
+    record ActionView(UUID id, String tool, String arguments, String status, String outcome, Instant createdAt, Instant resolvedAt) {
+        static ActionView from(AssistantAction a) {
+            return new ActionView(a.id(), a.tool(), a.argumentsJson(), a.status().name(), a.outcome(), a.createdAt(), a.resolvedAt());
+        }
+    }
 
     record ConversationSummary(UUID id, String title, Instant createdAt, Instant updatedAt, int turns) {
         static ConversationSummary from(Conversation c) {

@@ -4164,6 +4164,8 @@ test('E2E-ASSIST-1 design assistant: disabled notice, then a conversation that p
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ enabled, model: enabled ? 'm' : null }) }))
   await page.route('**/api/assistant/conversations', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }))
+  await page.route('**/api/assistant/conversations/c-1/actions', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }))
   await page.route('**/api/assistant/messages', async (route) => {
     sent = route.request().postDataJSON()
     await route.fulfill({
@@ -4174,6 +4176,7 @@ test('E2E-ASSIST-1 design assistant: disabled notice, then a conversation that p
         reply: 'Brouillon du processus créé : relisez-le avant publication.',
         activity: [{ tool: 'deploy_workflow', ok: true, summary: '{}' }],
         producedDrafts: true,
+        proposals: [],
       }),
     })
   })

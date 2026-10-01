@@ -18,8 +18,15 @@ public final class ManageConversationsUseCaseImpl implements ManageConversations
     private final String tenantId;
     private final TenantAdminGuard guard;
     private final ConversationRepository repository;
+    private final java.time.Clock clock;
 
     public ManageConversationsUseCaseImpl(String tenantId, TenantAdminGuard guard, ConversationRepository repository) {
+        this(tenantId, guard, repository, java.time.Clock.systemUTC());
+    }
+
+    public ManageConversationsUseCaseImpl(
+            String tenantId, TenantAdminGuard guard, ConversationRepository repository, java.time.Clock clock) {
+        this.clock = Objects.requireNonNull(clock, "clock");
         this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
         this.guard = Objects.requireNonNull(guard, "guard");
         this.repository = Objects.requireNonNull(repository, "repository");
@@ -42,7 +49,7 @@ public final class ManageConversationsUseCaseImpl implements ManageConversations
     @Override
     public void delete(AccessContext.User actor, UUID id) {
         guard.requireTenantOrWorkflowAdmin(actor);
-        if (!repository.deleteByIdAndOwner(id, tenantId, actor.userId())) {
+        if (!repository.deleteByIdAndOwner(id, tenantId, actor.userId(), clock.instant())) {
             throw new ConversationNotFoundException(id);
         }
     }

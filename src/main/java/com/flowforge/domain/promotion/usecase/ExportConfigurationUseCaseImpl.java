@@ -1,0 +1,170 @@
+package com.flowforge.domain.promotion.usecase;
+
+import com.flowforge.domain.connector.port.out.ConnectorCatalog;
+import com.flowforge.domain.connector.port.out.ConnectorInstanceRepository;
+import com.flowforge.domain.connector.usecase.ManageConnectorInstanceUseCaseImpl;
+import com.flowforge.domain.dossier.TenantAdminGuard;
+import com.flowforge.domain.dossier.model.AccessContext;
+import com.flowforge.domain.dossier.model.DossierType;
+import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
+import com.flowforge.domain.promotion.model.ArtifactType;
+import com.flowforge.domain.promotion.model.BundleEntry;
+import com.flowforge.domain.promotion.model.ConfigurationBundle;
+import com.flowforge.domain.promotion.model.doc.ConfigDocs.ConnectorDoc;
+import com.flowforge.domain.promotion.model.doc.ConfigDocs.DossierTypeDoc;
+import com.flowforge.domain.promotion.model.doc.ConfigDocs.TaskQuestionSchemaDoc;
+import com.flowforge.domain.promotion.model.doc.ConfigDocs.WorkflowConfigDoc;
+import com.flowforge.domain.promotion.port.in.ExportConfigurationUseCase;
+import com.flowforge.domain.promotion.port.out.ArtifactCodec;
+import com.flowforge.domain.workflow.model.TaskQuestionSchema;
+import com.flowforge.domain.workflow.model.WorkflowTypeConfig;
+import com.flowforge.domain.workflow.port.out.DmnDeploymentPort;
+import com.flowforge.domain.workflow.port.out.TaskQuestionSchemaRepository;
+import com.flowforge.domain.workflow.port.out.WorkflowDeploymentPort;
+import com.flowforge.domain.workflow.port.out.WorkflowTypeConfigRepository;
+import java.time.Clock;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+
+/**
+ * TODO §83 (D4) — export de la configuration du tenant en bundle. <b>Jamais de secret</b> : les champs de connecteur de type
+ * mot de passe / secret sont retirés (leurs noms sont conservés pour que l'import sache quoi demander). Les processus et tables de
+ * décision exportés sont la dernière version <b>déployée</b>, pas un brouillon.
+ */
+public final class ExportConfigurationUseCaseImpl implements ExportConfigurationUseCase {
+
+    private final String tenantId;
+    private final String appVersion;
+    private final Clock clock;
+    private final TenantAdminGuard guard;
+    private final ArtifactCodec codec;
+    private final DossierTypeRepository types;
+    private final TaskQuestionSchemaRepository schemas;
+    private final ConnectorInstanceRepository connectors;
+    private final ConnectorCatalog catalog;
+    private final DmnDeploymentPort dmnDeployment;
+    private final WorkflowTypeConfigRepository workflowConfigs;
+    private final WorkflowDeploymentPort workflowDeployment;
+
+    public ExportConfigurationUseCaseImpl(
+            String tenantId,
+            String appVersion,
+            Clock clock,
+            TenantAdminGuard guard,
+            ArtifactCodec codec,
+            DossierTypeRepository types,
+            TaskQuestionSchemaRepository schemas,
+            ConnectorInstanceRepository connectors,
+            ConnectorCatalog catalog,
+            DmnDeploymentPort dmnDeployment,
+            WorkflowTypeConfigRepository workflowConfigs,
+            WorkflowDeploymentPort workflowDeployment) {
+        this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
+        this.appVersion = appVersion == null ? "" : appVersion;
+        this.clock = Objects.requireNonNull(clock, "clock");
+        this.guard = Objects.requireNonNull(guard, "guard");
+        this.codec = Objects.requireNonNull(codec, "codec");
+        this.types = Objects.requireNonNull(types, "types");
+        this.schemas = Objects.requireNonNull(schemas, "schemas");
+        this.connectors = Objects.requireNonNull(connectors, "connectors");
+        this.catalog = Objects.requireNonNull(catalog, "catalog");
+        this.dmnDeployment = Objects.requireNonNull(dmnDeployment, "dmnDeployment");
+        this.workflowConfigs = Objects.requireNonNull(workflowConfigs, "workflowConfigs");
+        this.workflowDeployment = Objects.requireNonNull(workflowDeployment, "workflowDeployment");
+    }
+
+    @Override
+    public ConfigurationBundle export(AccessContext.User actor, String sourceLabel) {
+        guard.requireTenantAdminOrApiService(actor);
+        List<BundleEntry> entries = new ArrayList<>();
+
+        types.findAll(tenantId).stream().sorted(Comparator.comparing(DossierType::code)).forEach(t ->
+                entries.add(new BundleEntry(ArtifactType.DOSSIER_TYPE, t.code(), codec.encode(typeDoc(t)))));
+
+        schemas.findAll(tenantId).stream().sorted(Comparator.comparing(TaskQuestionSchema::schemaKey)).forEach(s ->
+                entries.add(new BundleEntry(ArtifactType.TASK_QUESTION_SCHEMA, s.schemaKey(), codec.encode(schemaDoc(s)))));
+
+        Set<String> usedKeys = new HashSet<>();
+        connectors.listByTenantId(tenantId).stream()
+                .sorted(Comparator.comparing(c -> c.name().toLowerCase(Locale.ROOT)))
+                .forEach(c -> {
+                    ConnectorDoc doc = connectorDoc(c.name(), c.connectorType(), c.enabled(), c.config(), catalog);
+                    entries.add(new BundleEntry(ArtifactType.CONNECTOR_INSTANCE, connectorKey(c.name(), usedKeys), codec.encode(doc)));
+                });
+
+        dmnDeployment.findAllLatestDeployments(tenantId).stream()
+                .sorted(Comparator.comparing(i -> i.decisionKey()))
+                .forEach(info -> dmnDeployment.findDeployedXml(tenantId, info.decisionKey()).ifPresent(xml ->
+                        entries.add(new BundleEntry(ArtifactType.DMN, info.decisionKey(), xml))));
+
+        List<WorkflowTypeConfig> configs = workflowConfigs.findAll(tenantId).stream()
+                .sorted(Comparator.comparing(WorkflowTypeConfig::workflowKey))
+                .toList();
+        for (WorkflowTypeConfig config : configs) {
+            workflowDeployment.findDeployedXml(tenantId, config.workflowKey()).ifPresent(xml ->
+                    entries.add(new BundleEntry(ArtifactType.BPMN, config.workflowKey(), xml)));
+        }
+        for (WorkflowTypeConfig config : configs) {
+            entries.add(new BundleEntry(ArtifactType.WORKFLOW_CONFIG, config.workflowKey(), codec.encode(workflowDoc(config))));
+        }
+        return new ConfigurationBundle(ConfigurationBundle.FORMAT_VERSION, clock.instant(), sourceLabel, appVersion, entries);
+    }
+
+    // ---- représentations portables (partagées avec l'import, qui compare les octets) ----
+
+    static DossierTypeDoc typeDoc(DossierType t) {
+        return new DossierTypeDoc(t.code(), t.label(), t.workflowKey(), t.active(), t.allowUnknownFields(),
+                t.fieldDefinitions(), t.retentionDays(), t.retentionNever(), t.slaTargetHours(), t.documentTemplateKeys());
+    }
+
+    static TaskQuestionSchemaDoc schemaDoc(TaskQuestionSchema s) {
+        return new TaskQuestionSchemaDoc(s.schemaKey(), s.label(), s.fields());
+    }
+
+    static WorkflowConfigDoc workflowDoc(WorkflowTypeConfig c) {
+        return new WorkflowConfigDoc(c.workflowKey(), c.label(), c.statusDefinitions(), c.allowedDossierStatuses(),
+                c.onStartDossierStatus(), c.observerUserIds());
+    }
+
+    /** Retire toute valeur de champ secret (par nom, ou déclaré mot de passe dans le catalogue) et garde les noms. */
+    static ConnectorDoc connectorDoc(
+            String name, String type, boolean enabled, Map<String, Object> config, ConnectorCatalog catalog) {
+        Map<String, Object> clean = new LinkedHashMap<>();
+        List<String> secretFields = new ArrayList<>();
+        config.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(e -> {
+            if (isSecret(type, e.getKey(), catalog)) {
+                secretFields.add(e.getKey());
+            } else {
+                clean.put(e.getKey(), e.getValue());
+            }
+        });
+        return new ConnectorDoc(name, type, enabled, clean, secretFields);
+    }
+
+    static boolean isSecret(String connectorType, String key, ConnectorCatalog catalog) {
+        return ManageConnectorInstanceUseCaseImpl.isSecretKey(key) || catalog.isPasswordField(connectorType, key);
+    }
+
+    /** Clé de fichier stable dérivée du nom (le nom d'origine reste dans le fichier) ; unique dans le bundle. */
+    static String connectorKey(String name, Set<String> used) {
+        String slug = name.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "-").replaceAll("^-+|-+$", "");
+        if (slug.isEmpty()) {
+            slug = "connector";
+        }
+        if (slug.length() > 100) {
+            slug = slug.substring(0, 100);
+        }
+        String candidate = slug;
+        for (int i = 2; !used.add(candidate); i++) {
+            candidate = slug + "-" + i;
+        }
+        return candidate;
+    }
+}

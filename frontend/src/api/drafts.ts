@@ -2,7 +2,7 @@ import axios from 'axios'
 
 /** TODO §82 (D6) — brouillons de configuration (BPMN, DMN) en attente de publication. */
 export type DraftArtifactType = 'BPMN' | 'DMN'
-export type Provenance = 'UI' | 'MCP' | 'ASSISTANT'
+export type Provenance = 'UI' | 'MCP' | 'ASSISTANT' | 'IMPORT'
 
 export interface ProposedWorkflowConfig {
   label: string

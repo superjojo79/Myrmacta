@@ -92,6 +92,42 @@ class WorkflowPersistenceTest {
         assertThat(pastEnd.totalElements()).isEqualTo(page0.totalElements());
     }
 
+    /** D5 (TODO §79) : un seul des réconciliateurs concurrents prend un lien orphelin ; une prise échue se reprend. */
+    @Test
+    void claimForReconcile_oneConcurrentReconcilerWins_andOnlyWhileTheLinkIsAnOrphan() throws Exception {
+        Dossier dossier = dossier(DossierStatus.OUVERT);
+        dossierRepository.save(dossier);
+        var orphan = linkRepository.save(new com.flowforge.domain.dossier.model.DossierWorkflowLink(
+                UUID.randomUUID(), dossier.id(), "tenant_dev", null, "procOrphan", 1, "STARTED", "manual",
+                Instant.parse("2026-08-02T10:00:00Z"), null, null, null));
+        Instant now = Instant.parse("2026-08-02T10:10:00Z");
+        int reconcilers = 6;
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(reconcilers);
+        java.util.concurrent.CountDownLatch go = new java.util.concurrent.CountDownLatch(1);
+        try {
+            List<java.util.concurrent.Future<Boolean>> futures = new java.util.ArrayList<>();
+            for (int i = 0; i < reconcilers; i++) {
+                futures.add(pool.submit(() -> {
+                    go.await();
+                    return linkRepository.claimForReconcile(orphan.id(), now, now.plusSeconds(120));
+                }));
+            }
+            go.countDown();
+            long winners = 0;
+            for (var f : futures) {
+                winners += f.get() ? 1 : 0;
+            }
+            assertThat(winners).as("un seul réconciliateur relance le process").isEqualTo(1);
+        } finally {
+            pool.shutdownNow();
+        }
+        assertThat(linkRepository.claimForReconcile(orphan.id(), now.plusSeconds(60), now.plusSeconds(180))).isFalse();
+        assertThat(linkRepository.claimForReconcile(orphan.id(), now.plusSeconds(121), now.plusSeconds(241))).isTrue();
+        // Plus orphelin (process démarré) : plus de prise.
+        linkRepository.save(orphan.withProcessInstance("proc-started"));
+        assertThat(linkRepository.claimForReconcile(orphan.id(), now.plusSeconds(10_000), now.plusSeconds(10_120))).isFalse();
+    }
+
     @Test
     void pageByDossierId_ordersBySequenceAndKeepsTotal() {
         Dossier dossier = dossier(DossierStatus.OUVERT);

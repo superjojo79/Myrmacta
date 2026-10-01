@@ -1,0 +1,19 @@
+databaseChangeLog:
+  - changeSet:
+      id: 029-workflow-link-reconcile-claim
+      author: flowforge
+      comment: >-
+        TODO §79 (D5) — bail de réconciliation d'un lien RESERVED orphelin. Le réconciliateur prend le lien (UPDATE conditionnel)
+        avant de relancer le process : deux réconciliateurs concurrents ne démarrent pas deux instances pour la même business key.
+        Additif, nullable.
+      changes:
+        - addColumn:
+            tableName: dossier_workflow_link
+            columns:
+              - column:
+                  name: reconcile_claimed_until
+                  type: timestamp with time zone
+      rollback:
+        - dropColumn:
+            tableName: dossier_workflow_link
+            columnName: reconcile_claimed_until

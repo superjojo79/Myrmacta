@@ -42,6 +42,7 @@ class ReservedReconcileJobTest {
         attachWorkflow = mock(AttachWorkflowUseCase.class);
         workflowEnginePort = mock(WorkflowEnginePort.class);
         dossierRepository = mock(DossierRepository.class);
+        when(linkRepository.claimForReconcile(any(), any(), any())).thenReturn(true);
         WorkflowProperties properties = new WorkflowProperties(
                 Duration.ofMinutes(5),
                 new WorkflowProperties.Outbox(20, 5, Duration.ofSeconds(1), Duration.ofDays(7)),
@@ -100,6 +101,49 @@ class ReservedReconcileJobTest {
 
         verify(attachWorkflow).abortReserved(link.id(), AbortReservedReason.ORPHAN_TIMEOUT);
         verify(attachWorkflow, never()).confirmStarted(any(), any());
+    }
+
+    // ---- TODO §79 (D5) ------------------------------------------------------------------------------------------------
+
+    @Test
+    void reconcile_linkClaimedByAnotherReconciler_isLeftAlone() {
+        DossierWorkflowLink link = reservedLink();
+        when(linkRepository.claimForReconcile(any(), any(), any())).thenReturn(false);
+
+        job.reconcile(link);
+
+        verify(workflowEnginePort, never()).findProcessInstanceIdByBusinessKey(any());
+        verify(workflowEnginePort, never()).start(any(), any(), any(), any());
+        verify(attachWorkflow, never()).abortReserved(any(), any());
+    }
+
+    @Test
+    void reconcile_neverAbortsALinkWhoseProcessWasStartedEvenIfConfirmationFails() {
+        DossierWorkflowLink link = reservedLink();
+        when(workflowEnginePort.findProcessInstanceIdByBusinessKey(link.id().toString())).thenReturn(Optional.empty());
+        when(dossierRepository.findById(link.dossierId()))
+                .thenReturn(Optional.of(dossier(link.dossierId(), Map.of("montant", 42))));
+        when(workflowEnginePort.start(anyString(), anyString(), anyString(), anyMap())).thenReturn("proc-running");
+        org.mockito.Mockito.doThrow(new IllegalStateException("optimistic lock"))
+                .when(attachWorkflow).confirmStarted(link.id(), "proc-running");
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> job.reconcile(link)).isInstanceOf(IllegalStateException.class);
+
+        verify(attachWorkflow, never()).abortReserved(any(), any());
+    }
+
+    @Test
+    void reconcileReserved_aFailingLinkDoesNotStopTheOthers() {
+        DossierWorkflowLink broken = reservedLink();
+        DossierWorkflowLink fine = reservedLink();
+        when(linkRepository.findOrphanReserved(any())).thenReturn(java.util.List.of(broken, fine));
+        when(workflowEnginePort.findProcessInstanceIdByBusinessKey(broken.id().toString()))
+                .thenThrow(new IllegalStateException("engine down"));
+        when(workflowEnginePort.findProcessInstanceIdByBusinessKey(fine.id().toString())).thenReturn(Optional.of("proc-ok"));
+
+        job.reconcileReserved();
+
+        verify(attachWorkflow).confirmStarted(fine.id(), "proc-ok");
     }
 
     private static DossierWorkflowLink reservedLink() {

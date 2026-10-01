@@ -5,7 +5,50 @@
 
 ## À revoir en priorité (⚠)
 
-_(aucune pour l'instant)_
+Décisions prises seul, dont le choix mérite une relecture humaine (contrat, coût, conformité, périmètre ou irréversibilité). Détail complet dans le tableau ci-dessous.
+
+- **D-EXPR-LANGUAGE** (LC2) — (a) — _ dépendance ajoutée_
+- **D-EXPR-UNDEFINED** (LC2) — (c) — _ comportement à valider_
+- **D-EXPR-AST-BRIDGE** (LC2) — (b) — _ package scindé_
+- **D-EXPR-ALLOC-GUARD** (LC2) — (b) — _ propre à HotSpot_
+- **D-EXPR-ALLOWLIST** (LC2) — (b) — _ liste à relire_
+- **D-EXPR-BOUNDED-FUNCTIONS** (LC2) — (b) — _ écart de sémantique JSONata_
+- **D-EXPR-REQUEST-SIZE** (LC2) — (b), tracé — _ résiduel accepté_
+- **D-EXPR-WEIGHT-FUEL** (LC2) — (c) — _ à valider sur données réelles_
+- **D-EXPR-CONTEXT (amendée en Ph.10)** (LC2) — liste blanche — _ restreint les champs non déclarés_
+- **D-CHAMPS-MONEY** (D1) — {amount:"1234.50", currency}, devise par valeur (restreignable par options), montant refusé s'il dépasse les décimales de la devise ; décimal JSON lu en double refusé au-… — _ montant en texte_
+- **D-CHAMPS-EXPORT** (D1) — montant → .amount + .currency, référence → .system .id .label, groupe → une colonne JSON compact — _ négatifs préfixés_
+- **D-CHAMPS-USERQ** (D1) — non (refus explicite dans TaskQuestionSchema, éditeur sans ces types) — _ limite assumée_
+- **D-CHAMPS-COMPUTED** (D1 règles) — (b) : un champ à formula est toujours recalculé, une valeur fournie est refusée (COMPUTED_READ_ONLY), un calcul sans valeur retire le champ, un calcul en erreur refuse l'… — _valeur fournie refusée_
+- **D-RECH-STORAGE** (D2) — jsonb + GIN, PostgreSQL seulement (migration 030, réécriture de la table) ; égalité et appartenance par @> (servi par l'index), intervalles et préfixe par extraction typé… — _ migration jsonb (réécriture de la table dossier)_
+- **D-SOCLE-DRAFT-SCOPE** (D6) — (a) — _ périmètre volontairement borné_
+- **D-SOCLE-PROPERTY** (D6) — direct + app.environment — _ défaut production_
+- **D-SOCLE-REDEPLOY** (D6) — Charge la version demandée dans un brouillon DMN (note « Remise en ligne de la version N ») ; publication humaine — _ rupture agents_
+- **D-MCP-LC-SCOPES** (D6) — B : M2M actif (issuer ou secret) + environnement ≠ local + liste vide ⇒ échec de démarrage avec le message qui dit quoi renseigner — _ démarrage refusé sans allowlist_
+- **D-PROMO-SCOPE** (D4) — ACL, réglages tenant et templates exclus : ACL dépendent des groupes de l'IdP ; réglages portent des URLs d'environnement ; templates ont un cycle de vie versions/variant… — _ périmètre borné_
+- **D-PROMO-MCP** (D4) — export_configuration (lecture), import_configuration : plan à blanc, et application qui ne crée que des brouillons et des artefacts de configuration non exécutables ; sec… — _ import MCP borné_
+- **D-PROMO-CONNECTOR-DISABLED** (D4) — Un connecteur est créé désactivé (un humain relit ses URLs, venues d'un autre environnement, puis l'active) ; en mise à jour, son état activé et ses secrets sont conservé… — _ connecteurs désactivés à l'import_
+- **D-PROMO-INTEGRITY** (D4) — Intégrité vérifiée (manifeste, somme par fichier, chemins recalculés, fichiers non déclarés refusés, tailles bornées) ; pas de signature : le bundle se transporte par un … — _ bundle non signé_
+- **D-INTEG-OAUTH-SCOPE** (D3a) — (b) — _certificat en plus du secret_
+- **D-INTEG-OAUTH-HOSTS** (D3a) — (b) — _champ obligatoire en mode OAuth_
+- **D-MAP-RESERVED** (D3b) — (b) — _variable réservée_
+- **D-JOBS-TRIGGER** (D5) — (b) — _lot plus large que « audit en lecture seule »_
+- **D-JOBS-CRON** (D5) — (b) + arrêt gracieux (spring.task.scheduling.shutdown.await-termination, 30 s) pour qu'un déploiement progressif n'interrompe pas une tâche entre prise et effet — _résidu : arrêt brutal = un créneau cron perdu_
+- **D-ASSIST-PROVIDER** (LC3) — Port domaine + adaptateur API Messages d'Anthropic par java.net.http (aucune dépendance de plus) ; modèle, base-url (https obligatoire hors boucle locale : passerelle d'e… — _ sous-traitant de données à déclarer (RGPD) ; choix du fournisseur par défaut_
+- **D-ASSIST-COST** (LC3) — Par message : 12 appels d'outils ; par conversation : 60 tours et 400 000 jetons ; par tenant et par jour : 3 000 000 jetons (compteur propre, que supprimer une conversat… — _ valeurs par défaut des plafonds_
+- **D-ASSIST-CONFIRM** (LC3) — Propose/confirme pour define_dossier_type, define_connector_instance, define_task_question_schema, define_document_template : l'assistant les valide à blanc (mode forcé),… — _ une confirmation par écriture directe (friction voulue)_
+- **D-INTEG-MAIL-PROTOCOL** (D3c) — IMAP (Jakarta Mail/Angus, déjà présent pour l'envoi) avec deux modes d'authentification : mot de passe, ou OAuth2 client_credentials en XOAUTH2 (réutilise le fournisseur … — _ Graph non couvert_
+- **D-INTEG-MAIL-REPLAY** (D3c) — Le message est rangé (dossier « traités » ou « refusés », jamais supprimé) ; pas de table de Message-ID. Les réponses automatiques, listes et messages sans expéditeur son… — _ pas de détection de doublon par Message-ID_
+- **D-INTEG-AZURE** (D3d) — Retenu, par l'API REST de Service Bus en verrouillage de lecture (java.net.http, aucune dépendance de plus : le SDK embarque Netty, Reactor et proton-j) ; file ou abonnem… — _ Event Grid non couvert ; lettres mortes à surveiller côté Azure_
+- **D-INTEG-POLL-ACK** (D3c, D3d) — Nouveau SPI PollingTriggerConnector : chaque événement est remis au runtime avant que le message soit rangé (IMAP) ou retiré de la file (bus) ; remise en échec ⇒ boîte « … — _ message non pris en charge = « refusés » à rejouer à la main_
+- **D-INTEG-MAIL-SENDER** (D3c) — Par défaut le rattachement par référence exige que le premier Authentication-Results, écrit par NOTRE serveur (son authserv-id doit être le trustedAuthservId configuré, o… — _ rattachement e-mail soumis à l'authentification de l'expéditeur (défaut strict)_
+- **D-PARCOURS-ROUNDTRIP** (LC5) — (a) sens unique : on modifie le parcours, jamais le BPMN généré (le brouillon peut être ouvert dans bpmn-js pour relecture)
+- **D-PARCOURS-SCOPE** (LC5) — (b) : question, tiers (portail), document (+ rattachement), notification, connecteur, DMN, expression, champs, statut de parcours/dossier, attente, décision avec boucles …
+- **D-SCRIPT-GO** (LC6) — (b) : six familles de cas « algorithme / transformation complexe » (barème progressif, IBAN modulo 97, agrégation, récursion, dates ouvrées, transformation d'objet) tienn…
+- **D-I18N-SCOPE** (D7) — Toute l'interface (SPA + portail), les messages de repli côté client, la validation de champs, et les deux e-mails envoyés à des tiers (invitation de tâche externe, invit…
+- **D-I18N-ERRORS** (D7) — Détail du serveur affiché tel quel (ProblemDetail inchangé, anglais technique) ; seuls les messages de repli (serveur muet) sont traduits par le client
+- **D-PARCOURS-LIMITS** (LC5) — Le compilateur refuse à l'enregistrement ce qui rend le BPMN non déployable sur la grammaire des conditions, les ids, durées, caractères XML ; les règles de forme des att…
+
 
 ## Toutes les décisions
 

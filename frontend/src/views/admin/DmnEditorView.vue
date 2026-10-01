@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { computed, onMounted, ref, shallowRef } from 'vue'
 import { useRoute } from 'vue-router'
 import DmnEditorCanvas from '@/components/workflow/DmnEditorCanvas.vue'
@@ -71,7 +72,7 @@ async function onFileChange(event: Event) {
   try {
     text = await file.text()
   } catch {
-    readError.value = 'Fichier illisible.'
+    readError.value = t('admin.dmnEditor.errors.unreadable')
     return
   }
 
@@ -89,7 +90,7 @@ async function saveDraft() {
   const xml = await canvasRef.value.saveXML()
   const key = extractDecisionKey(xml)
   if (!key) {
-    saveError.value = "Table de décision non reconnue (id de décision introuvable)."
+    saveError.value = t('admin.dmnEditor.errors.notDmn')
     return
   }
   await draft.save(key, xml)
@@ -101,7 +102,7 @@ async function prepareDeploy() {
   const xml = await canvasRef.value.saveXML()
   const key = extractDecisionKey(xml)
   if (!key) {
-    saveError.value = "Table de décision non reconnue (id de décision introuvable)."
+    saveError.value = t('admin.dmnEditor.errors.notDmn')
     return
   }
   deployPending.value = true
@@ -174,53 +175,54 @@ async function confirmRedeploy() {
   if (!toolingKey.value) return
   await evaluation.confirmRedeploy(toolingKey.value)
 }
+
+const { t } = useI18n()
 </script>
 
 <template>
   <section class="dmn-editor">
-    <h1>Éditeur de table de décision DMN</h1>
+    <h1>{{ t('admin.dmnEditor.title') }}</h1>
 
     <div class="dmn-editor__toolbar">
       <label>
-        Importer un fichier local
+        {{ t('admin.dmnEditor.importFile') }}
         <input type="file" accept=".xml,.dmn" @change="onFileChange" />
       </label>
       <label>
-        Charger une table existante
+        {{ t('admin.dmnEditor.loadExisting') }}
         <input
           v-model="loadKeyInput"
           type="text"
-          placeholder="Clé de la table de décision"
+          :placeholder="t('admin.dmnEditor.keyPlaceholder')"
           @keyup.enter="loadExistingTable"
         />
       </label>
-      <button type="button" class="dmn-editor__load" @click="loadExistingTable">Charger</button>
-      <button type="button" class="dmn-editor__save" @click="saveDraft">Enregistrer le brouillon</button>
-      <button type="button" class="dmn-editor__deploy" @click="prepareDeploy">Déployer</button>
-      <button type="button" class="dmn-editor__tester" @click="openTester">Tester</button>
-      <button type="button" class="dmn-editor__suite" @click="openSuite">Jeu de tests</button>
-      <button type="button" class="dmn-editor__history" @click="openHistory">Historique</button>
+      <button type="button" class="dmn-editor__load" @click="loadExistingTable">{{ t('admin.dmnEditor.load') }}</button>
+      <button type="button" class="dmn-editor__save" @click="saveDraft">{{ t('admin.dmnEditor.saveDraft') }}</button>
+      <button type="button" class="dmn-editor__deploy" @click="prepareDeploy">{{ t('admin.dmnEditor.deploy') }}</button>
+      <button type="button" class="dmn-editor__tester" @click="openTester">{{ t('admin.dmnEditor.test') }}</button>
+      <button type="button" class="dmn-editor__suite" @click="openSuite">{{ t('admin.dmnEditor.suite') }}</button>
+      <button type="button" class="dmn-editor__history" @click="openHistory">{{ t('admin.dmnEditor.history') }}</button>
     </div>
 
     <p v-if="draft.loadError.value" class="dmn-editor__error">
-      Impossible de charger la table de décision : {{ draft.loadError.value }}
+      {{ t('admin.dmnEditor.loadError', { error: draft.loadError.value }) }}
     </p>
     <p v-if="readError" class="dmn-editor__error">{{ readError }}</p>
     <p v-if="saveError" class="dmn-editor__error">{{ saveError }}</p>
-    <p v-if="draft.hasUnsavedChanges.value" class="dmn-editor__unsaved">Modifications non enregistrées.</p>
+    <p v-if="draft.hasUnsavedChanges.value" class="dmn-editor__unsaved">{{ t('admin.dmnEditor.unsaved') }}</p>
 
     <DmnEditorCanvas v-if="ready" ref="canvasRef" :dmn-xml="canvasXml" @dirty="onCanvasDirty" />
 
     <section v-if="deployPending" class="dmn-editor__deploy-panel">
       <p v-if="deployment.deploymentInfo.value">
-        Version actuelle déployée : {{ deployment.deploymentInfo.value.latestVersion }}
+        {{ t('admin.dmnEditor.currentVersion', { version: deployment.deploymentInfo.value.latestVersion }) }}
       </p>
-      <p v-else>Aucune version déployée pour cette clé pour l'instant.</p>
+      <p v-else>{{ t('admin.dmnEditor.none') }}</p>
 
       <p v-if="deployment.deployError.value" class="dmn-editor__error">{{ deployment.deployError.value }}</p>
       <p v-if="deployment.deployedResult.value" class="dmn-editor__success">
-        Déployé : version {{ deployment.deployedResult.value.deployedVersion }} (dépôt
-        {{ deployment.deployedResult.value.deploymentId }}).
+        {{ t('admin.dmnEditor.deployed', { version: deployment.deployedResult.value.deployedVersion, id: deployment.deployedResult.value.deploymentId }) }}
       </p>
 
       <button
@@ -229,25 +231,25 @@ async function confirmRedeploy() {
         :disabled="deployment.deploying.value"
         @click="confirmDeploy"
       >
-        {{ deployment.deploying.value ? 'Déploiement en cours…' : 'Confirmer le déploiement' }}
+        {{ deployment.deploying.value ? t('admin.dmnEditor.deploying') : t('admin.dmnEditor.confirm') }}
       </button>
     </section>
 
     <section v-if="testerOpen" class="dmn-editor__tester-panel">
       <label>
-        Entrées JSON
+        {{ t('admin.dmnEditor.inputs') }}
         <textarea v-model="inputsJson" class="dmn-editor__inputs" rows="4" />
       </label>
       <label>
-        Version
+        {{ t('admin.dmnEditor.version') }}
         <select v-model="selectedVersion" class="dmn-editor__version">
-          <option value="">Dernière version</option>
+          <option value="">{{ t('admin.dmnEditor.latest') }}</option>
           <option v-for="item in evaluation.versions.value" :key="item.version" :value="String(item.version)">
-            Version {{ item.version }}
+            {{ t('admin.dmnEditor.versionN', { n: item.version }) }}
           </option>
         </select>
       </label>
-      <button type="button" class="dmn-editor__evaluate" @click="runEvaluation">Évaluer</button>
+      <button type="button" class="dmn-editor__evaluate" @click="runEvaluation">{{ t('admin.dmnEditor.evaluate') }}</button>
       <pre v-if="evaluation.evaluation.value" class="dmn-editor__rows">{{
         JSON.stringify(evaluation.evaluation.value.rows)
       }}</pre>
@@ -255,21 +257,21 @@ async function confirmRedeploy() {
 
     <section v-if="suiteOpen" class="dmn-editor__suite-panel">
       <label>
-        Fichier de jeu de tests
+        {{ t('admin.dmnEditor.suiteFile') }}
         <input class="dmn-editor__suite-file" type="file" accept=".json,.csv" @change="onSuiteFile" />
       </label>
       <label>
-        Version du jeu
+        {{ t('admin.dmnEditor.suiteVersion') }}
         <select v-model="selectedVersion">
-          <option value="">Dernière version</option>
+          <option value="">{{ t('admin.dmnEditor.latest') }}</option>
           <option v-for="item in evaluation.versions.value" :key="'suite-' + item.version" :value="String(item.version)">
-            Version {{ item.version }}
+            {{ t('admin.dmnEditor.versionN', { n: item.version }) }}
           </option>
         </select>
       </label>
       <ul v-if="evaluation.report.value">
         <li v-for="result in evaluation.report.value.results" :key="result.index">
-          Cas {{ result.index + 1 }} : {{ result.passed ? 'réussi' : 'échec' }}
+          {{ t('admin.dmnEditor.case', { n: result.index + 1, state: result.passed ? t('admin.dmnEditor.passed') : t('admin.dmnEditor.failed') }) }}
           <span v-if="result.failureMessage"> — {{ result.failureMessage }}</span>
         </li>
       </ul>
@@ -278,23 +280,23 @@ async function confirmRedeploy() {
     <section v-if="historyOpen" class="dmn-editor__history-panel">
       <ul>
         <li v-for="item in evaluation.versions.value" :key="item.version">
-          Version {{ item.version }} — {{ item.deployedAt }}
+          {{ t('admin.dmnEditor.versionAt', { n: item.version, at: item.deployedAt }) }}
           <button type="button" @click="askRedeploy(item.version)">
-            Redéployer la version {{ item.version }}
+            {{ t('admin.dmnEditor.redeploy', { n: item.version }) }}
           </button>
         </li>
       </ul>
       <div v-if="evaluation.pendingRedeployVersion.value != null" class="dmn-editor__redeploy-confirm">
-        <p>Redéployer la version {{ evaluation.pendingRedeployVersion.value }} ?</p>
+        <p>{{ t('admin.dmnEditor.askRedeploy', { n: evaluation.pendingRedeployVersion.value }) }}</p>
         <button type="button" class="dmn-editor__confirm-redeploy" @click="confirmRedeploy">
-          Confirmer le redéploiement
+          {{ t('admin.dmnEditor.confirmRedeploy') }}
         </button>
         <button type="button" class="dmn-editor__cancel-redeploy" @click="evaluation.cancelRedeploy()">
-          Annuler
+          {{ t('common.cancel') }}
         </button>
       </div>
       <p v-if="evaluation.redeployed.value" class="dmn-editor__success">
-        Redéployé : version {{ evaluation.redeployed.value.deployedVersion }}.
+        {{ t('admin.dmnEditor.redeployed', { n: evaluation.redeployed.value.deployedVersion }) }}
       </p>
     </section>
 

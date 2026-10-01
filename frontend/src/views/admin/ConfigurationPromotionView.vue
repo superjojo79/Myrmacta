@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+import { formatDateTime } from '@/i18n/format'
 import { computed, onMounted, ref, watch } from 'vue'
 import { toProblemDetail } from '@/api/http'
 import {
-  ARTIFACT_LABELS,
   applyImport,
   downloadExport,
   listImports,
@@ -19,6 +20,7 @@ const file = ref<File | null>(null)
 const parametersText = ref('')
 const plan = ref<ImportPlan | null>(null)
 const report = ref<ImportReport | null>(null)
+const { t } = useI18n()
 const journal = ref<ConfigImportRecord[]>([])
 const busy = ref(false)
 const error = ref<string | null>(null)
@@ -28,19 +30,9 @@ const secrets = ref<Record<string, Record<string, string>>>({})
 const parameters = computed(() => parseParameters(parametersText.value))
 const parametersInvalid = computed(() => parameters.value === null)
 
-const PLAN_LABELS: Record<string, string> = {
-  CREATE: 'Créer',
-  UPDATE: 'Modifier',
-  UNCHANGED: 'Inchangé',
-  CONFLICT: 'Conflit',
-  BLOCKED: 'Bloqué',
-}
-const OUTCOME_LABELS: Record<string, string> = {
-  APPLIED: 'Appliqué',
-  UNCHANGED: 'Inchangé',
-  SKIPPED: 'Ignoré',
-  FAILED: 'Échec',
-}
+const planLabel = (action: string): string => t(`admin.promotion.planActions.${action}`)
+const outcomeLabel = (outcome: string): string => t(`admin.promotion.outcomes.${outcome}`)
+const artifactLabel = (type: string): string => t(`admin.promotion.artifacts.${type}`)
 
 const applicableCount = computed(() => plan.value?.entries.filter((e) => e.action === 'CREATE' || e.action === 'UPDATE').length ?? 0)
 const connectorsNeedingSecrets = computed(() =>
@@ -63,7 +55,7 @@ async function runExport() {
   try {
     await downloadExport(sourceLabel.value)
   } catch (err) {
-    error.value = toProblemDetail(err).detail ?? 'Export impossible'
+    error.value = toProblemDetail(err).detail ?? t('admin.promotion.errors.export')
   }
 }
 
@@ -96,7 +88,7 @@ async function runPlan() {
     plan.value = await planImport(file.value, parameters.value)
   } catch (err) {
     plan.value = null
-    error.value = toProblemDetail(err).detail ?? 'Plan impossible'
+    error.value = toProblemDetail(err).detail ?? t('admin.promotion.errors.plan')
   } finally {
     busy.value = false
   }
@@ -104,7 +96,7 @@ async function runPlan() {
 
 async function runApply() {
   if (!file.value || !plan.value || parameters.value === null) return
-  if (!window.confirm(`Appliquer ce bundle (${applicableCount.value} artefact(s) à créer ou modifier) ? Les processus BPMN et tables DMN arrivent en brouillons à publier.`)) return
+  if (!window.confirm(t('admin.promotion.confirmApply', { count: applicableCount.value }))) return
   busy.value = true
   error.value = null
   try {
@@ -119,7 +111,7 @@ async function runApply() {
       expectedBundleSha256: plan.value.bundleSha256,
     })
   } catch (err) {
-    error.value = toProblemDetail(err).detail ?? 'Application impossible'
+    error.value = toProblemDetail(err).detail ?? t('admin.promotion.errors.apply')
   } finally {
     secrets.value = {}
     busy.value = false
@@ -132,57 +124,57 @@ onMounted(loadJournal)
 
 <template>
   <section class="promotion">
-    <h1>Promotion de configuration</h1>
-    <p class="promotion__intro">
-      Exportez la configuration d’un environnement (recette, par exemple), puis importez-la sur un autre : un plan à
-      blanc montre ce qui serait créé, modifié ou bloqué avant toute écriture. Aucun secret n’est exporté ; les
-      processus BPMN et tables DMN arrivent en <strong>brouillons à publier</strong> ; un connecteur est créé
-      <strong>désactivé</strong> (relisez ses adresses, puis activez-le).
-    </p>
+    <h1>{{ t('admin.promotion.title') }}</h1>
+    <i18n-t keypath="admin.promotion.intro" tag="p" class="promotion__intro">
+      <template #drafts><strong>{{ t('admin.promotion.introDrafts') }}</strong></template>
+      <template #disabled><strong>{{ t('admin.promotion.introDisabled') }}</strong></template>
+    </i18n-t>
 
-    <h2>Exporter</h2>
+    <h2>{{ t('admin.promotion.export') }}</h2>
     <form class="promotion__export" @submit.prevent>
       <label>
-        Nom de cet environnement
-        <input v-model="sourceLabel" type="text" maxlength="200" placeholder="recette" data-testid="source-label" />
+        {{ t('admin.promotion.sourceName') }}
+        <input v-model="sourceLabel" type="text" maxlength="200" :placeholder="t('admin.promotion.sourcePlaceholder')" data-testid="source-label" />
       </label>
-      <button type="button" class="promotion__button" data-testid="export-button" @click="runExport">Télécharger le bundle (ZIP)</button>
+      <button type="button" class="promotion__button" data-testid="export-button" @click="runExport">{{ t('admin.promotion.download') }}</button>
     </form>
 
-    <h2>Importer</h2>
+    <h2>{{ t('admin.promotion.import') }}</h2>
     <p v-if="error" class="promotion__error" role="alert" data-testid="promotion-error">{{ error }}</p>
     <form class="promotion__import" @submit.prevent="runPlan">
       <label>
-        Bundle (ZIP)
+        {{ t('admin.promotion.bundle') }}
         <input type="file" accept=".zip,application/zip" data-testid="bundle-file" @change="onFile" />
       </label>
       <label>
-        Paramètres d’environnement (JSON, pour les valeurs <code>&#123;&#123;nom&#125;&#125;</code> des connecteurs)
+        <i18n-t keypath="admin.promotion.parameters" tag="span">
+          <template #example><code>&#123;&#123;nom&#125;&#125;</code></template>
+        </i18n-t>
         <textarea v-model="parametersText" rows="2" placeholder='{"url_erp": "https://erp.exemple.fr"}' data-testid="parameters" />
       </label>
-      <p v-if="parametersInvalid" class="promotion__error" role="alert">Les paramètres doivent être un objet JSON {nom: valeur}.</p>
-      <button type="submit" :disabled="!file || busy || parametersInvalid" data-testid="plan-button">Planifier (à blanc)</button>
+      <p v-if="parametersInvalid" class="promotion__error" role="alert">{{ t('admin.promotion.parametersInvalid') }}</p>
+      <button type="submit" :disabled="!file || busy || parametersInvalid" data-testid="plan-button">{{ t('admin.promotion.plan') }}</button>
     </form>
 
     <template v-if="plan">
-      <h3>Plan — rien n’est encore écrit</h3>
+      <h3>{{ t('admin.promotion.planTitle') }}</h3>
       <table class="promotion__table" data-testid="plan-table">
         <thead>
-          <tr><th>Artefact</th><th>Clé</th><th>Action</th><th>Détail</th></tr>
+          <tr><th>{{ t('admin.promotion.artifact') }}</th><th>{{ t('admin.promotion.key') }}</th><th>{{ t('admin.promotion.action') }}</th><th>{{ t('admin.promotion.detail') }}</th></tr>
         </thead>
         <tbody>
           <tr v-for="e in plan.entries" :key="`${e.type}:${e.key}`" :data-testid="`plan-${e.type}-${e.key}`">
-            <td>{{ ARTIFACT_LABELS[e.type] }}</td>
+            <td>{{ artifactLabel(e.type) }}</td>
             <td>{{ e.key }}</td>
-            <td><span :class="['promotion__badge', `promotion__badge--${e.action.toLowerCase()}`]">{{ PLAN_LABELS[e.action] }}</span></td>
+            <td><span :class="['promotion__badge', `promotion__badge--${e.action.toLowerCase()}`]">{{ planLabel(e.action) }}</span></td>
             <td>{{ e.reason }}</td>
           </tr>
         </tbody>
       </table>
 
       <div v-if="connectorsNeedingSecrets.length" class="promotion__secrets" data-testid="secrets-block">
-        <h4>Secrets des connecteurs à créer</h4>
-        <p>Saisissez-les ici (envoyés avec l’application seulement, jamais conservés) ou plus tard dans l’écran Connecteurs.</p>
+        <h4>{{ t('admin.promotion.secretsTitle') }}</h4>
+        <p>{{ t('admin.promotion.secretsHint') }}</p>
         <fieldset v-for="e in connectorsNeedingSecrets" :key="e.key">
           <legend>{{ connectorName(e) }}</legend>
           <label v-for="field in e.secretsRequired" :key="field">
@@ -199,38 +191,37 @@ onMounted(loadJournal)
       </div>
 
       <button type="button" :disabled="busy || applicableCount === 0" data-testid="apply-button" @click="runApply">
-        Appliquer ({{ applicableCount }})
+        {{ t('admin.promotion.apply', { count: applicableCount }) }}
       </button>
     </template>
 
     <template v-if="report">
-      <h3>Rapport</h3>
+      <h3>{{ t('admin.promotion.report') }}</h3>
       <table class="promotion__table" data-testid="report-table">
         <thead>
-          <tr><th>Artefact</th><th>Clé</th><th>Résultat</th><th>Détail</th></tr>
+          <tr><th>{{ t('admin.promotion.artifact') }}</th><th>{{ t('admin.promotion.key') }}</th><th>{{ t('admin.promotion.result') }}</th><th>{{ t('admin.promotion.detail') }}</th></tr>
         </thead>
         <tbody>
           <tr v-for="e in report.entries" :key="`${e.type}:${e.key}`">
-            <td>{{ ARTIFACT_LABELS[e.type] }}</td>
+            <td>{{ artifactLabel(e.type) }}</td>
             <td>{{ e.key }}</td>
-            <td><span :class="['promotion__badge', `promotion__badge--${e.outcome.toLowerCase()}`]">{{ OUTCOME_LABELS[e.outcome] }}</span></td>
+            <td><span :class="['promotion__badge', `promotion__badge--${e.outcome.toLowerCase()}`]">{{ outcomeLabel(e.outcome) }}</span></td>
             <td>{{ e.message }}</td>
           </tr>
         </tbody>
       </table>
-      <p>
-        Les brouillons BPMN/DMN se publient depuis <RouterLink to="/admin/drafts">Brouillons</RouterLink> ; rejouer l’import
-        est sans danger (il converge).
-      </p>
+      <i18n-t keypath="admin.promotion.reportHint" tag="p">
+        <template #link><RouterLink to="/admin/drafts">{{ t('admin.promotion.draftsLink') }}</RouterLink></template>
+      </i18n-t>
     </template>
 
-    <h2>Derniers imports</h2>
-    <p v-if="journal.length === 0">Aucun import enregistré.</p>
+    <h2>{{ t('admin.promotion.lastImports') }}</h2>
+    <p v-if="journal.length === 0">{{ t('admin.promotion.noImport') }}</p>
     <ul v-else class="promotion__log" data-testid="import-log">
       <li v-for="j in journal" :key="j.id">
-        {{ new Date(j.performedAt).toLocaleString('fr-FR') }} — {{ j.performedBy }}
+        {{ formatDateTime(j.performedAt, {}) }} — {{ j.performedBy }}
         <template v-if="j.sourceLabel">({{ j.sourceLabel }})</template> :
-        {{ j.applied }} appliqué(s), {{ j.unchanged }} inchangé(s), {{ j.skipped }} ignoré(s), {{ j.failed }} échec(s)
+        {{ t('admin.promotion.logLine', { applied: j.applied, unchanged: j.unchanged, skipped: j.skipped, failed: j.failed }) }}
         <small>[{{ j.bundleSha256.slice(0, 8) }}]</small>
       </li>
     </ul>

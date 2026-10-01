@@ -9,11 +9,11 @@ import org.springframework.stereotype.Component;
  * share a principal key.
  */
 @Component
-class DocumentPreviewHtmlRateLimiter {
+public class DocumentPreviewHtmlRateLimiter {
 
     private final SlidingWindowRateLimiter delegate;
 
-    DocumentPreviewHtmlRateLimiter() {
+    public DocumentPreviewHtmlRateLimiter() {
         this(Clock.systemUTC());
     }
 
@@ -21,7 +21,7 @@ class DocumentPreviewHtmlRateLimiter {
         this.delegate = new SlidingWindowRateLimiter(clock);
     }
 
-    boolean tryConsume(String principal, int limitPerMinute) {
+    public boolean tryConsume(String principal, int limitPerMinute) {
         return delegate.tryConsume(principal, limitPerMinute);
     }
 }

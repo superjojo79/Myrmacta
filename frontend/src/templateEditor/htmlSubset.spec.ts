@@ -1,5 +1,20 @@
-import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { afterEach, describe, expect, it } from 'vitest'
+import { Editor } from '@tiptap/core'
+import { templateExtensions } from './extensions'
+import { isVariablePath } from './variableCatalog'
 import { analyzeTemplateHtml, conditionAttributes, eachAttribute, isSafeLiteral, parseCondition, parseEach, parseVariableExpression } from './htmlSubset'
+
+let probe: Editor | null = null
+/** Ce que l'éditeur écrirait pour ce HTML (même chemin que le composant). */
+function viaEditor(html: string): string {
+  probe = new Editor({ extensions: templateExtensions(), content: html })
+  return probe.getHTML()
+}
+afterEach(() => {
+  probe?.destroy()
+  probe = null
+})
 
 describe('htmlSubset (TODO §84, LC4b)', () => {
   it('accepts the editor subset: text, formatting, tables, simple Thymeleaf', () => {
@@ -73,5 +88,55 @@ describe('htmlSubset (TODO §84, LC4b)', () => {
     for (const bad of ["l'a", 'a\\b', 'a${b}', 'a{b}', 'a\nb', 'x'.repeat(201)]) {
       expect(isSafeLiteral(bad), bad).toBe(false)
     }
+  })
+  // ---- Revue adversariale LC4b : un template jugé compatible doit être restitué sans perte ----
+  it('refuses combinations of th:if / th:unless / th:each / style on one element (High)', () => {
+    for (const html of [
+      '<div th:if="${a}" th:each="x : ${l}"><p>t</p></div>',
+      '<div th:if="${a}" th:unless="${b}"><p>t</p></div>',
+      '<div th:if="${a}" style="page-break-after: always"><p>t</p></div>',
+    ]) {
+      expect(analyzeTemplateHtml(html, viaEditor).compatible, html).toBe(false)
+    }
+  })
+
+  it('refuses what the editor would flatten or drop: thead, aligned li (Medium)', () => {
+    for (const html of [
+      '<table><thead><tr><th>A</th></tr></thead><tbody><tr><td>x</td></tr></tbody></table>',
+      '<ul><li style="text-align:center">a</li></ul>',
+    ]) {
+      expect(analyzeTemplateHtml(html, viaEditor).compatible, html).toBe(false)
+    }
+  })
+
+  it('accepts what the editor rewrites without any loss (bare td, plain div/span, top-level text)', () => {
+    for (const html of ['<table><tbody><tr><td>a</td></tr></tbody></table>', '<div><span>a</span></div>', 'Texte nu']) {
+      expect(analyzeTemplateHtml(html, viaEditor), html).toEqual({ compatible: true, reasons: [] })
+    }
+  })
+
+  it('looks for inline expressions in the decoded text, not the raw HTML (Medium)', () => {
+    for (const html of [
+      '<p>&#91;&#91;${a}&#93;&#93;</p>',
+      "<p>l'article ${x}</p>",
+      '<p>[( ${a} )]</p>',
+    ]) {
+      expect(analyzeTemplateHtml(html).compatible, html).toBe(false)
+    }
+  })
+
+  it('the shared fixture is faithfully restituted by the editor itself', () => {
+    const fixture = readFileSync('../src/test/resources/template-editor/editor-output.html', 'utf-8').trim()
+    expect(analyzeTemplateHtml(fixture, viaEditor)).toEqual({ compatible: true, reasons: [] })
+  })
+
+  it('accepts accented identifiers like the engine, and refuses the properties the engine blocks (Low)', () => {
+    expect(isVariablePath('client.prénom')).toBe(true)
+    expect(parseVariableExpression('${client.prénom}')).toBe('client.prénom')
+    expect(isVariablePath('client.class')).toBe(false)
+    expect(isVariablePath('client.getClass')).toBe(false)
+    expect(parseEach('ligne : ${lignes}')).toEqual({ item: 'ligne', path: 'lignes' })
+    expect(parseEach('élément : ${lignes}')).toEqual({ item: 'élément', path: 'lignes' })
+    expect(parseEach('a b : ${lignes}')).toBeNull()
   })
 })

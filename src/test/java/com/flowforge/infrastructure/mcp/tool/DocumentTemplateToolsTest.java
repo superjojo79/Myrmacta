@@ -10,6 +10,16 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.flowforge.domain.document.model.DocumentTemplate;
+import com.flowforge.domain.document.model.InvalidTemplateSyntaxException;
+import com.flowforge.domain.document.model.TemplateValidationException;
+import com.flowforge.domain.document.port.out.TemplateSyntaxChecker;
+import com.flowforge.domain.dossier.model.AccessContext;
+import com.flowforge.domain.dossier.model.AccessDeniedException;
+import com.flowforge.infrastructure.config.DocumentConfig;
+import com.flowforge.infrastructure.config.DocumentPreviewProperties;
+import com.flowforge.infrastructure.mcp.McpActorScope;
+import com.flowforge.infrastructure.web.document.DocumentGenerationRateLimitExceededException;
+import com.flowforge.infrastructure.web.document.DocumentPreviewHtmlRateLimiter;
 import com.flowforge.domain.document.model.TemplateStatus;
 import com.flowforge.domain.document.port.in.CreateDocumentTemplateUseCase;
 import com.flowforge.domain.document.port.in.ListDocumentTemplateUseCase;
@@ -39,6 +49,7 @@ class DocumentTemplateToolsTest {
     private CreateDocumentTemplateUseCase create;
     private UpdateDocumentTemplateUseCase update;
     private NewDocumentTemplateVersionUseCase newVersion;
+    private TemplateSyntaxChecker checker;
     private DefineDocumentTemplateTool define;
 
     @BeforeEach
@@ -47,8 +58,9 @@ class DocumentTemplateToolsTest {
         create = mock(CreateDocumentTemplateUseCase.class);
         update = mock(UpdateDocumentTemplateUseCase.class);
         newVersion = mock(NewDocumentTemplateVersionUseCase.class);
+        checker = mock(TemplateSyntaxChecker.class);
         define = new DefineDocumentTemplateTool(
-                list, create, update, newVersion, new TenantProperties(TENANT), new McpAccessContextFactory());
+                list, create, update, newVersion, new TenantProperties(TENANT), new McpAccessContextFactory(), checker);
         Jwt jwt = Jwt.withTokenValue("t").header("alg", "none").claim("sub", "agent-1")
                 .issuedAt(Instant.EPOCH).expiresAt(Instant.EPOCH.plusSeconds(3600)).build();
         SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt, List.of()));
@@ -138,11 +150,92 @@ class DocumentTemplateToolsTest {
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
+    private static PreviewDocumentTool previewTool(PreviewDocumentUseCase uc, int perMinute) {
+        return new PreviewDocumentTool(uc, new McpAccessContextFactory(), new DocumentPreviewHtmlRateLimiter(),
+                new DocumentPreviewProperties(perMinute));
+    }
+
+    private static final AccessContext.User MANAGER = AccessContext.user("alice", java.util.Set.of("DOSSIER_MANAGER"));
+
+    /** Revue adversariale LC4b (Moyen) : comme l'API REST, un acteur de session non administrateur (assistant) est refusé. */
+    @Test
+    void aNonAdminSessionActorCannotWriteTemplatesNorPreviewLive() {
+        var uc = mock(PreviewDocumentUseCase.class);
+        assertThatThrownBy(() -> McpActorScope.call(MANAGER,
+                () -> define.defineDocumentTemplate("contrat", null, null, null, "<p>x</p>", null)))
+                .isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> McpActorScope.call(MANAGER, () -> previewTool(uc, 30).previewDocument("<p>x</p>", null)))
+                .isInstanceOf(AccessDeniedException.class);
+        verify(create, never()).create(any());
+        verify(uc, never()).previewHtml(any());
+    }
+
+    @Test
+    void previewIsRateLimitedLikeTheRestEndpoint() {
+        var uc = mock(PreviewDocumentUseCase.class);
+        when(uc.previewHtml(any())).thenReturn("<p/>");
+        var tool = previewTool(uc, 2);
+        tool.previewDocument("<p>a</p>", null);
+        tool.previewDocument("<p>a</p>", null);
+        assertThatThrownBy(() -> tool.previewDocument("<p>a</p>", null))
+                .isInstanceOf(DocumentGenerationRateLimitExceededException.class);
+    }
+
+    @Test
+    void anOversizedBodyIsRefusedBeforeAnyWrite_noOrphanDraftOnTheNewVersionBranch() {
+        existing(tpl(3, TemplateStatus.ACTIVE, null));
+        String huge = "x".repeat(DocumentConfig.MAX_HTML_BYTES + 1);
+        assertThatThrownBy(() -> define.defineDocumentTemplate("contrat", null, null, null, huge, null))
+                .isInstanceOf(TemplateValidationException.class);
+        assertThatThrownBy(() -> define.defineDocumentTemplate("contrat", null, null, null, huge, true))
+                .isInstanceOf(TemplateValidationException.class);
+        verify(newVersion, never()).newVersion(any(), any(), any());
+        verify(update, never()).update(any());
+    }
+
+    /** Revue adversariale LC4b (Moyen) : la liste est triée par date, pas par version — plus de 100 lignes ne doivent pas masquer le dernier brouillon. */
+    @Test
+    void theLatestVersionIsFoundAcrossAllPages() {
+        var oldDraft = tpl(7, TemplateStatus.DRAFT, null);
+        var recent = new java.util.ArrayList<DocumentTemplate>();
+        for (int i = 0; i < 100; i++) {
+            recent.add(tpl(1, TemplateStatus.ARCHIVED, "v" + i));
+        }
+        when(list.list(eq(TENANT), eq("contrat"), eq(false), any())).thenAnswer(inv -> {
+            int page = ((com.flowforge.domain.shared.PageQuery) inv.getArgument(3)).page();
+            return page == 0
+                    ? PageResult.of(recent, 0, 100, 101)
+                    : PageResult.of(List.of(oldDraft), 1, 100, 101);
+        });
+        when(update.update(any())).thenReturn(oldDraft);
+
+        var out = define.defineDocumentTemplate("contrat", null, null, null, "<p>z</p>", null);
+
+        assertThat(out).containsEntry("operation", "update");
+        verify(create, never()).create(any());
+    }
+
+    @Test
+    void aSyntaxProblemIsReportedWithoutBlockingTheDraft_andTheLabelDefaultsToTheKey() {
+        existing();
+        org.mockito.Mockito.doThrow(new InvalidTemplateSyntaxException("Unescaped Thymeleaf interpolation"))
+                .when(checker).check(any());
+        when(create.create(any())).thenReturn(tpl(1, TemplateStatus.DRAFT, null));
+
+        var out = define.defineDocumentTemplate("contrat", null, null, null, "<p th:utext=\"${a}\">x</p>", null);
+
+        assertThat(out).containsEntry("syntax", "INVALID");
+        assertThat(out.get("syntaxProblem").toString()).contains("Unescaped");
+        var captor = ArgumentCaptor.forClass(CreateDocumentTemplateUseCase.CreateCommand.class);
+        verify(create).create(captor.capture());
+        assertThat(captor.getValue().label()).isEqualTo("contrat");
+    }
+
     @Test
     void previewIsLiveOnly_neverByTemplateKey() {
         var uc = mock(PreviewDocumentUseCase.class);
         when(uc.previewHtml(any())).thenReturn("<p>Bonjour Ada</p>");
-        var tool = new PreviewDocumentTool(uc);
+        var tool = previewTool(uc, 30);
 
         var out = tool.previewDocument("<p th:text=\"${nom}\"></p>", Map.of("nom", "Ada"));
 

@@ -131,6 +131,35 @@ describe('admin actions coverage', () => {
     expect(adminApi.createDocumentTemplate).toHaveBeenCalled()
   })
 
+  it('loads the draft content from a later page and never opens an empty editor when it is missing (review LC4b)', async () => {
+    const draft = (htmlContent: string | null) => ({
+      id: 'tpl1', templateKey: 'k', variantKey: null, locale: null, label: 'Old', version: 1, status: 'DRAFT' as const,
+      htmlContent, createdAt: '', updatedAt: '', updatedBy: null,
+    })
+    const other = { ...draft('<p>autre</p>'), id: 'other' }
+    const pageOf = (content: unknown[], page: number) => ({ content, page, size: 100, totalElements: 101, totalPages: 2 }) as never
+    // 1er appel : liste de la vue ; ensuite : chargement du contenu (page 0 sans le brouillon, page 1 avec).
+    vi.mocked(adminApi.listDocumentTemplates).mockImplementation(async (_key, includeContent, query) => {
+      if (!includeContent) return asPage([draft(null)])
+      return query?.page === 1 ? pageOf([draft('<p>v1</p>')], 1) : pageOf([other], 0)
+    })
+    const wrapper = await mountView(TemplatesAdminView, '/admin/templates')
+    await flushPromises()
+    await wrapper.findAll('li button').find((b) => b.text() === 'Modifier le contenu')!.trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="template-edit"]').exists()).toBe(true)
+
+    // Brouillon introuvable : message, pas d'éditeur (l'enregistrement écraserait le contenu).
+    vi.mocked(adminApi.listDocumentTemplates).mockImplementation(async (_key, includeContent) =>
+      includeContent ? pageOf([other], 0) : asPage([draft(null)]))
+    const missing = await mountView(TemplatesAdminView, '/admin/templates')
+    await flushPromises()
+    await missing.findAll('li button').find((b) => b.text() === 'Modifier le contenu')!.trigger('click')
+    await flushPromises()
+    expect(missing.find('[data-testid="template-edit"]').exists()).toBe(false)
+    expect(missing.text()).toContain('introuvable')
+  })
+
   it('connectors toggle remove create', async () => {
     vi.mocked(adminApi.createConnector).mockResolvedValue({} as never)
     vi.mocked(adminApi.updateConnector).mockResolvedValue({} as never)

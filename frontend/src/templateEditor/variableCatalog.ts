@@ -39,16 +39,18 @@ function walk(value: unknown, path: string, depth: number, out: VariableCatalog)
   if (path) out.scalars.push(path)
 }
 
-const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/
+// Lettres Unicode comme le moteur (Character.isLetter) : `client.prénom` est un chemin valide.
+const IDENTIFIER = /^[\p{L}_][\p{L}\p{N}_]*$/u
+
+/** Propriétés que le moteur refuse (SafeThymeleafExpressionSupport.BLOCKED_PROPERTIES) : refusées ici aussi, avant le rendu. */
+const BLOCKED = new Set(['class', 'getclass', 'wait', 'notify', 'notifyall'])
 
 /** Un segment de chemin que l'allowlist des expressions accepte. */
 export function isIdentifier(name: string): boolean {
-  return IDENTIFIER.test(name)
+  return IDENTIFIER.test(name) && !BLOCKED.has(name.toLowerCase())
 }
-
-const PATH = /^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$/
 
 /** Un chemin de variable valide : `a`, `a.b.c` (jamais d'opérateur, d'appel ni d'indice). */
 export function isVariablePath(path: string): boolean {
-  return PATH.test(path)
+  return path.length > 0 && path.split('.').every(isIdentifier)
 }

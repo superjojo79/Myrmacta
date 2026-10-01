@@ -1,4 +1,4 @@
-import { isVariablePath } from './variableCatalog'
+import { isIdentifier, isVariablePath } from './variableCatalog'
 
 /**
  * TODO §84 (LC4b, D-TPLED-ROUNDTRIP) — un template HTML existant n'est ouvert dans l'éditeur visuel que s'il appartient au
@@ -18,10 +18,10 @@ const ALLOWED_TAGS = new Set([
 const ALIGN = /^text-align:\s*(left|center|right|justify);?$/i
 const PAGE_BREAK = /^page-break-after:\s*always;?$/i
 const TH_TEXT = /^\$\{([^{}]*)}$/
-const TH_EACH = /^([A-Za-z_][A-Za-z0-9_]*)\s*:\s*\$\{([^{}]*)}$/
+const TH_EACH = /^(\S+?)\s*:\s*\$\{([^{}]*)\}$/u
 
 /** Valeur littérale d'un `#strings.equals(chemin,'valeur')` sans caractère à échapper. */
-const EQUALS = /^\$\{#strings\.equals\(\s*([A-Za-z0-9_.]+)\s*,\s*'([^'\\${}]*)'\s*\)}$/
+const EQUALS = /^\$\{#strings\.equals\(\s*([^\s,()'"]+)\s*,\s*'([^'\\${}]*)'\s*\)}$/
 
 export function parseVariableExpression(value: string): string | null {
   const m = TH_TEXT.exec(value.trim())
@@ -51,7 +51,7 @@ export function conditionAttributes(c: Condition): Record<string, string> {
 
 export function parseEach(value: string): { item: string; path: string } | null {
   const m = TH_EACH.exec(value.trim())
-  return m && isVariablePath(m[2]!.trim()) ? { item: m[1]!, path: m[2]!.trim() } : null
+  return m && isIdentifier(m[1]!) && isVariablePath(m[2]!.trim()) ? { item: m[1]!, path: m[2]!.trim() } : null
 }
 
 export function eachAttribute(item: string, path: string): string {
@@ -63,26 +63,64 @@ export function isSafeLiteral(value: string): boolean {
   return /^[^'\\${}\r\n]{0,200}$/.test(value)
 }
 
-export function analyzeTemplateHtml(html: string): SubsetAnalysis {
+/**
+ * `render` (facultatif) fait passer le HTML par l'éditeur et rend ce qu'il écrirait : quand l'analyse statique est favorable, on
+ * vérifie que rien de significatif n'est perdu (revue adversariale LC4b) — l'analyse statique juge chaque attribut isolément et ne
+ * voit ni les combinaisons ni les structures aplaties par le schéma de l'éditeur ; seul le tour complet le garantit.
+ */
+export function analyzeTemplateHtml(html: string, render?: (html: string) => string): SubsetAnalysis {
   const reasons: string[] = []
-  if (/\[\[|\[\(/.test(html)) {
-    reasons.push('expression en ligne dans le texte ([[…]])')
-  }
-  if (/\$\{|\*\{/.test(stripAttributeValues(html))) {
-    reasons.push('expression ${…} dans le texte (hors attribut th:)')
-  }
   const doc = new DOMParser().parseFromString(`<!doctype html><body>${html}</body>`, 'text/html')
   const root = doc.body
   if (/<(html|head|body)[\s>]/i.test(html)) {
     reasons.push('document complet (html, head ou body)')
   }
   walk(root, reasons)
+  if (reasons.length === 0 && render) {
+    reasons.push(...roundTripLosses(html, render(html)))
+  }
   return { compatible: reasons.length === 0, reasons: [...new Set(reasons)] }
 }
 
-/** Retire les valeurs d'attributs entre guillemets pour ne chercher `${` que dans le texte. */
-function stripAttributeValues(html: string): string {
-  return html.replace(/"[^"]*"|'[^']*'/g, '""')
+const COUNTED_TAGS = ['table', 'thead', 'tbody', 'tr', 'td', 'th', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'hr', 'br']
+const TAG_ALIASES: Record<string, string> = { b: 'strong', i: 'em' }
+
+/** Empreinte de ce qui compte à l'arrivée : contenu, structure de tableau et de liste, mise en forme, constructions th:. */
+function signature(html: string): { text: string; items: Map<string, number> } {
+  const doc = new DOMParser().parseFromString(`<!doctype html><body>${html}</body>`, 'text/html')
+  const items = new Map<string, number>()
+  const bump = (key: string) => items.set(key, (items.get(key) ?? 0) + 1)
+  for (const el of Array.from(doc.body.querySelectorAll('*'))) {
+    const raw = el.tagName.toLowerCase()
+    const tag = TAG_ALIASES[raw] ?? raw
+    if (COUNTED_TAGS.includes(tag) || tag === 'strong' || tag === 'em' || tag === 'u') bump(`<${tag}>`)
+    for (const attr of Array.from(el.attributes)) {
+      const name = attr.name.toLowerCase()
+      if (name === 'style') bump(`style=${attr.value.toLowerCase().replace(/\s+/g, '')}`)
+      else bump(`${name}=${attr.value.replace(/\s+/g, ' ').trim()}`)
+    }
+  }
+  // Le corps d'un th:text n'est qu'un texte d'exemple, remplacé au rendu (l'éditeur y écrit « chemin ») : il ne compte pas.
+  for (const el of Array.from(doc.body.querySelectorAll('*'))) {
+    if (el.hasAttribute('th:text')) el.textContent = ''
+  }
+  const text = (doc.body.textContent ?? '').replace(/\s+/g, ' ').trim()
+  return { text, items }
+}
+
+/** Ce que l'éditeur perdrait ou changerait en écrivant `after` à la place de `before` (liste vide = restitution fidèle). */
+export function roundTripLosses(before: string, after: string): string[] {
+  const a = signature(before)
+  const b = signature(after)
+  const losses: string[] = []
+  if (a.text !== b.text) losses.push('le texte serait modifié par l’éditeur')
+  const keys = new Set([...a.items.keys(), ...b.items.keys()])
+  for (const key of keys) {
+    if ((a.items.get(key) ?? 0) !== (b.items.get(key) ?? 0)) {
+      losses.push(`l’éditeur ne restitue pas fidèlement « ${key.length > 80 ? key.slice(0, 80) + '…' : key} »`)
+    }
+  }
+  return losses
 }
 
 function walk(node: Node, reasons: string[]): void {
@@ -91,12 +129,23 @@ function walk(node: Node, reasons: string[]): void {
       reasons.push('commentaire HTML')
       continue
     }
+    if (child.nodeType === Node.TEXT_NODE) {
+      // Texte décodé (les entités &#91; &#91; deviendraient des expressions vives une fois réécrites) : jamais d'expression en ligne.
+      const text = child.textContent ?? ''
+      if (/\[\[|\[\(/.test(text)) reasons.push('expression en ligne dans le texte ([[…]])')
+      if (/\$\{|\*\{/.test(text)) reasons.push('expression ${…} dans le texte (hors attribut th:)')
+      continue
+    }
     if (child.nodeType !== Node.ELEMENT_NODE) continue
     const el = child as Element
     const tag = el.tagName.toLowerCase()
     if (!ALLOWED_TAGS.has(tag)) {
       reasons.push(`balise <${tag}> non prise en charge`)
       continue
+    }
+    const exclusive = Array.from(el.attributes).filter((a) => ['th:if', 'th:unless', 'th:each', 'style'].includes(a.name.toLowerCase()))
+    if (exclusive.length > 1) {
+      reasons.push(`<${tag}> cumule ${exclusive.map((a) => a.name.toLowerCase()).join(' + ')} (un seul à la fois)`)
     }
     for (const attr of Array.from(el.attributes)) {
       const problem = attributeProblem(tag, attr.name.toLowerCase(), attr.value)
@@ -109,7 +158,7 @@ function walk(node: Node, reasons: string[]): void {
 function attributeProblem(tag: string, name: string, value: string): string | null {
   switch (name) {
     case 'style':
-      if (ALIGN.test(value.trim()) && ['p', 'h1', 'h2', 'h3', 'td', 'th', 'li'].includes(tag)) return null
+      if (ALIGN.test(value.trim()) && ['p', 'h1', 'h2', 'h3', 'td', 'th'].includes(tag)) return null
       if (PAGE_BREAK.test(value.trim()) && tag === 'div') return null
       return `style « ${value} » sur <${tag}> non pris en charge`
     case 'colspan':

@@ -17,7 +17,18 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ 'update:modelValue': [html: string] }>()
 
-const initial = analyzeTemplateHtml(props.modelValue)
+/** Ce que l'éditeur écrirait pour ce HTML : sert à vérifier qu'il le restitue sans rien perdre (revue adversariale LC4b). */
+function renderThroughEditor(html: string): string {
+  const probe = new Editor({ extensions: templateExtensions(), content: html })
+  try {
+    return probe.getHTML()
+  } finally {
+    probe.destroy()
+  }
+}
+const analyze = (html: string) => analyzeTemplateHtml(html, renderThroughEditor)
+
+const initial = analyze(props.modelValue)
 const mode = ref<'visual' | 'source'>(initial.compatible ? 'visual' : 'source')
 const sourceNotice = ref<string[]>(initial.compatible ? [] : initial.reasons)
 const editor = shallowRef<Editor | null>(null)
@@ -46,7 +57,7 @@ watch(
   (html) => {
     if (html === lastEmitted) return
     lastEmitted = html
-    const analysis = analyzeTemplateHtml(html)
+    const analysis = analyze(html)
     if (analysis.compatible) {
       sourceNotice.value = []
       mode.value = 'visual'
@@ -67,7 +78,7 @@ function onSource(event: Event) {
 }
 
 function showVisual() {
-  const analysis = analyzeTemplateHtml(props.modelValue)
+  const analysis = analyze(props.modelValue)
   if (!analysis.compatible) {
     sourceNotice.value = analysis.reasons
     return

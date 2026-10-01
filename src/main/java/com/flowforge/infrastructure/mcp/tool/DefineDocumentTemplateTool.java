@@ -1,6 +1,12 @@
 package com.flowforge.infrastructure.mcp.tool;
 
 import com.flowforge.domain.document.DocumentTemplateSupport;
+import com.flowforge.domain.document.model.InvalidTemplateSyntaxException;
+import com.flowforge.domain.document.port.out.TemplateSyntaxChecker;
+import com.flowforge.domain.dossier.TenantAdminGuard;
+import com.flowforge.domain.dossier.model.AccessContext;
+import com.flowforge.domain.shared.PageResult;
+import com.flowforge.infrastructure.config.DocumentConfig;
 import com.flowforge.domain.document.model.DocumentTemplate;
 import com.flowforge.domain.document.model.TemplateStatus;
 import com.flowforge.domain.document.port.in.CreateDocumentTemplateUseCase;
@@ -29,6 +35,9 @@ import org.springframework.stereotype.Component;
 public class DefineDocumentTemplateTool {
 
     private static final int LOOKUP_PAGE_SIZE = PageQuery.MAX_SIZE;
+    /** Garde-fou : au-delà (versions x variantes x langues d'une même clé), on refuse plutôt que de décider sur une vue partielle. */
+    private static final int LOOKUP_MAX_PAGES = 50;
+    private static final TenantAdminGuard GUARD = new TenantAdminGuard();
 
     private final ListDocumentTemplateUseCase listUseCase;
     private final CreateDocumentTemplateUseCase createUseCase;
@@ -36,6 +45,7 @@ public class DefineDocumentTemplateTool {
     private final NewDocumentTemplateVersionUseCase newVersionUseCase;
     private final TenantProperties tenantProperties;
     private final McpAccessContextFactory accessContextFactory;
+    private final TemplateSyntaxChecker syntaxChecker;
 
     public DefineDocumentTemplateTool(
             ListDocumentTemplateUseCase listUseCase,
@@ -43,7 +53,9 @@ public class DefineDocumentTemplateTool {
             UpdateDocumentTemplateUseCase updateUseCase,
             NewDocumentTemplateVersionUseCase newVersionUseCase,
             TenantProperties tenantProperties,
-            McpAccessContextFactory accessContextFactory) {
+            McpAccessContextFactory accessContextFactory,
+            TemplateSyntaxChecker syntaxChecker) {
+        this.syntaxChecker = Objects.requireNonNull(syntaxChecker, "syntaxChecker");
         this.listUseCase = Objects.requireNonNull(listUseCase, "listUseCase");
         this.createUseCase = Objects.requireNonNull(createUseCase, "createUseCase");
         this.updateUseCase = Objects.requireNonNull(updateUseCase, "updateUseCase");
@@ -69,9 +81,15 @@ public class DefineDocumentTemplateTool {
             @McpToolParam(required = true, description = "Full HTML body of the template") String htmlContent,
             @McpToolParam(required = false, description = "Report the operation without writing; default false")
                     Boolean dryRun) {
-        String actorId = accessContextFactory.currentActor().userId();
+        AccessContext.User actor = accessContextFactory.currentActor();
+        // Comme l'API REST (TENANT_ADMIN) : un acteur de session non administrateur (assistant) ne peut pas écrire un modèle.
+        GUARD.requireTenantAdminOrApiService(actor);
+        String actorId = actor.userId();
         String key = McpArgs.requireNonBlank(templateKey, "templateKey");
         McpArgs.requireNonBlank(htmlContent, "htmlContent");
+        // Avant toute écriture : un HTML trop gros ne doit pas laisser derrière lui une version brouillon vide de sens.
+        DocumentTemplateSupport.assertHtmlSize(htmlContent, DocumentConfig.MAX_HTML_BYTES);
+        String effectiveLabel = label != null && !label.isBlank() ? label : null;
         String variant = DocumentTemplateSupport.normalizeOptional(variantKey);
         String loc = DocumentTemplateSupport.normalizeOptional(locale);
         boolean dry = Boolean.TRUE.equals(dryRun);
@@ -85,35 +103,64 @@ public class DefineDocumentTemplateTool {
         } else {
             operation = "newVersion";
         }
+        String syntaxProblem = syntaxProblem(htmlContent);
         if (dry) {
-            return result(operation, true, latest);
+            return result(operation, true, latest, syntaxProblem);
         }
         DocumentTemplate saved;
         switch (operation) {
             case "create" -> saved = createUseCase.create(new CreateDocumentTemplateUseCase.CreateCommand(
-                    key, variant, loc, label, htmlContent, actorId));
+                    key, variant, loc, effectiveLabel != null ? effectiveLabel : key, htmlContent, actorId));
             case "update" -> saved = updateUseCase.update(
-                    new UpdateDocumentTemplateUseCase.UpdateCommand(latest.id(), label, htmlContent, actorId));
+                    new UpdateDocumentTemplateUseCase.UpdateCommand(latest.id(), effectiveLabel, htmlContent, actorId));
             default -> {
                 DocumentTemplate draft = newVersionUseCase.newVersion(latest.id(), tenantProperties.id(), actorId);
                 saved = updateUseCase.update(
-                        new UpdateDocumentTemplateUseCase.UpdateCommand(draft.id(), label, htmlContent, actorId));
+                        new UpdateDocumentTemplateUseCase.UpdateCommand(draft.id(), effectiveLabel, htmlContent, actorId));
             }
         }
-        return result(operation, false, saved);
+        return result(operation, false, saved, syntaxProblem);
     }
 
+    /** Dernière version (clé, variante, langue) : toutes les pages sont lues, la liste étant triée par date et non par version. */
     private DocumentTemplate latest(String key, String variant, String locale) {
-        return listUseCase.list(tenantProperties.id(), key, false, PageQuery.of(0, LOOKUP_PAGE_SIZE)).content().stream()
-                .filter(t -> Objects.equals(t.variantKey(), variant) && Objects.equals(t.locale(), locale))
-                .max(Comparator.comparingInt(DocumentTemplate::version))
-                .orElse(null);
+        DocumentTemplate best = null;
+        for (int page = 0; page < LOOKUP_MAX_PAGES; page++) {
+            PageResult<DocumentTemplate> result =
+                    listUseCase.list(tenantProperties.id(), key, false, PageQuery.of(page, LOOKUP_PAGE_SIZE));
+            for (DocumentTemplate t : result.content()) {
+                if (Objects.equals(t.variantKey(), variant)
+                        && Objects.equals(t.locale(), locale)
+                        && (best == null || t.version() > best.version())) {
+                    best = t;
+                }
+            }
+            if (page + 1 >= result.totalPages()) {
+                return best;
+            }
+        }
+        throw new IllegalStateException("template key '" + key + "' has too many versions to be resolved over MCP");
     }
 
-    private static Map<String, Object> result(String operation, boolean dryRun, DocumentTemplate template) {
+    /** Un brouillon peut être inachevé : le problème de syntaxe est signalé à l'appelant, jamais bloquant (l'activation, elle, vérifie). */
+    private String syntaxProblem(String html) {
+        try {
+            syntaxChecker.check(html);
+            return null;
+        } catch (InvalidTemplateSyntaxException ex) {
+            return ex.getMessage();
+        }
+    }
+
+    private static Map<String, Object> result(
+            String operation, boolean dryRun, DocumentTemplate template, String syntaxProblem) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("operation", operation);
         map.put("dryRun", dryRun);
+        map.put("syntax", syntaxProblem == null ? "OK" : "INVALID");
+        if (syntaxProblem != null) {
+            map.put("syntaxProblem", syntaxProblem);
+        }
         if (template != null) {
             Map<String, Object> meta = new LinkedHashMap<>();
             meta.put("id", template.id());

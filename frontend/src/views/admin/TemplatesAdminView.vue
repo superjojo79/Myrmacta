@@ -75,13 +75,23 @@ async function archive(template: DocumentTemplate) {
 async function editContent(template: DocumentTemplate) {
   editingError.value = null
   try {
-    const withContent = await listDocumentTemplates(template.templateKey, true, { page: 0, size: 100 })
-    const full = withContent.content.find((t) => t.id === template.id)
+    // La liste est triée par date de mise à jour : le brouillon n'est pas forcément dans la première page (revue adversariale
+    // LC4b). Ne jamais ouvrir l'éditeur sur un contenu vide faute de l'avoir trouvé : l'enregistrement écraserait le brouillon.
+    let full: DocumentTemplate | undefined
+    for (let index = 0; index < 50 && !full; index++) {
+      const result = await listDocumentTemplates(template.templateKey, true, { page: index, size: 100 })
+      full = result.content.find((t) => t.id === template.id)
+      if (index + 1 >= result.totalPages) break
+    }
+    if (!full || full.htmlContent == null) {
+      error.value = 'Contenu du modèle introuvable : rechargez la page.'
+      return
+    }
     editing.value = {
       id: template.id,
       templateKey: template.templateKey,
       label: template.label,
-      htmlContent: full?.htmlContent ?? '',
+      htmlContent: full.htmlContent,
     }
   } catch (err) {
     error.value = toProblemDetail(err).detail ?? 'Chargement du contenu impossible'

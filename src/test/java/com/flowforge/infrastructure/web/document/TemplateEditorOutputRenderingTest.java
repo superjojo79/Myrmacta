@@ -41,6 +41,9 @@ class TemplateEditorOutputRenderingTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private com.flowforge.domain.document.port.out.TemplateSyntaxChecker syntaxChecker;
+
     private static RequestPostProcessor admin() {
         return oidcLogin()
                 .idToken(t -> t.subject("tpl-admin").claim("tenant_id", "tenant_dev").claim("email", "a@example.com"))
@@ -69,6 +72,12 @@ class TemplateEditorOutputRenderingTest {
         assertThat(html).contains("TVA non applicable").contains("Paiement à 30 jours"); // th:each sur un bloc
         assertThat(html).contains("page-break-after");
         assertThat(html).doesNotContain(" th:").doesNotContain("«"); // aucune construction non résolue ni repère visuel
+    }
+
+    /** Revue adversariale LC4b : la porte d'activation (vérificateur de syntaxe) accepte la sortie de l'éditeur, sans quoi un template visuel ne s'activerait pas. */
+    @Test
+    void theEditorsOutputPassesTheActivationSyntaxCheck() throws Exception {
+        org.assertj.core.api.Assertions.assertThatCode(() -> syntaxChecker.check(fixture())).doesNotThrowAnyException();
     }
 
     @Test

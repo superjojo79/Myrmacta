@@ -9,6 +9,7 @@ import com.flowforge.domain.workflow.model.InvalidBpmnException;
 import com.flowforge.domain.expression.model.InvalidExpressionException;
 import com.flowforge.domain.expression.port.out.ExpressionEnginePort;
 import com.flowforge.domain.workflow.palette.BlockAttributeRules;
+import com.flowforge.domain.workflow.palette.FieldMappingSpec;
 import com.flowforge.domain.workflow.palette.BlockParameterUsage;
 import com.flowforge.domain.workflow.port.out.BpmnParserPort;
 import com.flowforge.domain.workflow.portal.model.PortalRecipientSource;
@@ -155,6 +156,26 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
         } catch (InvalidExpressionException e) {
             throw new InvalidBpmnException(
                     "BPMN attribute flowable:formula on " + element.getId() + " is invalid: " + e.getMessage());
+        }
+    }
+
+    /** TODO §78 — chaque expression de la brique « Enregistrer des valeurs dans le dossier » doit être valide. */
+    private void assertFieldMapping(FlowElement element) {
+        if (!"fieldMappingTask".equals(blockDelegate(element))) {
+            return;
+        }
+        String raw = flowableAttributes(element).get("fieldMapping");
+        if (raw == null) {
+            return; // déjà refusé par BlockAttributeRules (attribut obligatoire)
+        }
+        for (FieldMappingSpec.Entry entry : FieldMappingSpec.parse(
+                raw, "BPMN attribute flowable:fieldMapping on " + element.getId())) {
+            try {
+                expressionEngine.validate(entry.expression());
+            } catch (InvalidExpressionException e) {
+                throw new InvalidBpmnException("BPMN attribute flowable:fieldMapping on " + element.getId()
+                        + ": the expression of '" + entry.field() + "' is invalid: " + e.getMessage());
+            }
         }
     }
 
@@ -441,6 +462,7 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
         // posé hors de son delegate est refusé.
         BlockAttributeRules.validate(element.getId(), blockDelegate(element), flowableAttributes(element));
         assertBusinessExpression(element);
+        assertFieldMapping(element);
         if (element instanceof HasExecutionListeners hasListeners) {
             assertSafeListeners(element.getId(), hasListeners.getExecutionListeners());
         }

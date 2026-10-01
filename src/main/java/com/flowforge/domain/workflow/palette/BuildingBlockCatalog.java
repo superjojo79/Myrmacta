@@ -89,6 +89,14 @@ public final class BuildingBlockCatalog {
                                     + "connectorResult, variables, now.", true),
                     text("formulaResult", "Variable de résultat", 60,
                             "Nom de la variable de process qui reçoit le résultat (lettres, chiffres, _).", true)),
+            block("map-fields", "Enregistrer des valeurs dans le dossier",
+                    "Calcule des valeurs (expressions métier bornées) à partir du dossier, du résultat d'un connecteur et "
+                            + "des variables, et les enregistre dans des champs du dossier — tout ou rien.",
+                    BlockCategory.DOSSIER, BlockElement.SERVICE_TASK, BlockMarker.delegate("fieldMappingTask"),
+                    text("fieldMapping", "Valeurs à enregistrer", 8000,
+                            "Une ligne par champ : champ = expression. Ex. score = connectorResult.json.score. "
+                                    + "connectorResult.json est le corps de la réponse lu comme JSON. 20 champs au plus.",
+                            true)),
             block("user-question", "Question utilisateur",
                     "Tâche humaine qui pose un choix indépendant du dossier.",
                     BlockCategory.HUMAN, BlockElement.USER_TASK, BlockMarker.userQuestion(),

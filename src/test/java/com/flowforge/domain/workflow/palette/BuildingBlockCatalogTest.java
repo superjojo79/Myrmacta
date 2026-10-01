@@ -15,10 +15,10 @@ class BuildingBlockCatalogTest {
     private final List<BuildingBlock> blocks = BuildingBlockCatalog.all();
 
     @Test
-    void containsTheTwelveBlocksWithUniqueIds() {
+    void containsTheThirteenBlocksWithUniqueIds() {
         assertThat(blocks).extracting(BuildingBlock::id).containsExactly(
                 "generate-document", "attach-document", "call-connector", "notify", "create-child-dossier",
-                "set-dossier-status", "set-workflow-status", "dmn-decision", "evaluate-expression", "user-question",
+                "set-dossier-status", "set-workflow-status", "dmn-decision", "evaluate-expression", "map-fields", "user-question",
                 "external-task", "request-signature");
         assertThat(new HashSet<>(blocks.stream().map(BuildingBlock::id).toList())).hasSize(blocks.size());
         assertThat(blocks).allSatisfy(b -> {
@@ -80,6 +80,7 @@ class BuildingBlockCatalogTest {
         assertThat(required("set-workflow-status")).containsExactly("targetWorkflowStatus");
         assertThat(required("dmn-decision")).containsExactly("decisionTableReferenceKey");
         assertThat(required("evaluate-expression")).containsExactly("formula", "formulaResult");
+        assertThat(required("map-fields")).containsExactly("fieldMapping");
         assertThat(required("user-question")).containsExactly("schemaKey");
         assertThat(required("external-task")).containsExactly("portalRecipient", "schemaKey");
         assertThat(required("request-signature")).containsExactly("signatureDocument", "signers");

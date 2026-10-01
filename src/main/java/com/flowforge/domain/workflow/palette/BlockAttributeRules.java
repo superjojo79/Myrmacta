@@ -22,14 +22,14 @@ public final class BlockAttributeRules {
     private static final Pattern KEY = Pattern.compile("[A-Za-z0-9_.:-]+");
     private static final Set<String> KEY_TEXT = Set.of("documentVariant", "documentLocale");
     /** Paramètres pouvant s'étendre sur plusieurs lignes (texte libre ou expression). */
-    private static final Set<String> MULTILINE = Set.of("notificationBody", "formula");
+    private static final Set<String> MULTILINE = Set.of("notificationBody", "formula", "fieldMapping");
 
     /**
      * TODO §75 — delegates qui ne lisent <b>que</b> l'attribut littéral, jamais une variable de même nom : une variable de
      * process peut être posée par un utilisateur à l'exécution (complétion de tâche) ; elle ne doit jamais devenir du code
      * exécutable. Tous leurs paramètres obligatoires doivent donc figurer dans le BPMN.
      */
-    private static final Set<String> LITERAL_ONLY_DELEGATES = Set.of("businessExpressionTask");
+    private static final Set<String> LITERAL_ONLY_DELEGATES = Set.of("businessExpressionTask", "fieldMappingTask");
 
     /**
      * Le nom d'attribut est {@code formulaResult} et non {@code resultVariable} : ce dernier est un attribut natif de
@@ -183,6 +183,9 @@ public final class BlockAttributeRules {
                 }
                 if ("formulaResult".equals(parameter.name())) {
                     checkFormulaResult(owner, value);
+                }
+                if ("fieldMapping".equals(parameter.name())) {
+                    FieldMappingSpec.parse(value, owner);
                 }
             }
             default -> { }

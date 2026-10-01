@@ -104,7 +104,7 @@ class BlockAttributeRulesTest {
                 "documentType", "documentVariant", "documentLocale", "connectorInstanceId", "notificationChannels",
                 "notificationTo", "notificationSubject", "notificationBody", "notificationUserId",
                 "notificationWebhookConfigId", "childDossierTypeCode", "childDossierLabel", "workflowProcessKey",
-                "relationType", "targetDossierStatus", "targetWorkflowStatus", "formula", "formulaResult");
+                "relationType", "targetDossierStatus", "targetWorkflowStatus", "formula", "formulaResult", "fieldMapping");
     }
 
     private static void assertRefused(String delegate, String attribute, String value) {

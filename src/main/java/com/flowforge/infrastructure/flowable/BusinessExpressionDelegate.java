@@ -66,21 +66,8 @@ class BusinessExpressionDelegate implements JavaDelegate {
         // pas pouvoir écraser une variable réservée. Mêmes règles de forme qu'au déploiement.
         BlockAttributeRules.validate(
                 execution.getCurrentActivityId(), DELEGATE, Map.of("formula", formula, "formulaResult", formulaResult));
-        Dossier dossier = null;
-        List<com.flowforge.domain.dossier.model.FieldDefinition> definitions = List.of();
-        Object dossierId = execution.getVariable("dossierId");
-        if (dossierId != null) {
-            dossier = getDossier.get(UUID.fromString(dossierId.toString()), AccessContext.system("flowable-expression"));
-            // Échec FERMÉ : sans la définition du type on ne sait pas quels champs sont sensibles ; `withoutSensitiveKeys`
-            // avec une liste vide les exposerait tous.
-            String typeCode = dossier.dossierTypeCode();
-            definitions = dossierTypes.findByCode(tenantProperties.id(), typeCode)
-                    .map(DossierType::fieldDefinitions)
-                    .orElseThrow(() -> new IllegalStateException(
-                            "dossier type " + typeCode + " not found: cannot tell which fields are sensitive"));
-        }
-        Map<String, Object> context = BusinessExpressionContext.build(
-                dossier, definitions, execution.getVariable("connectorResult"), execution.getVariables());
+        Map<String, Object> context = BusinessExpressionContext.forExecution(
+                execution, getDossier, dossierTypes, tenantProperties, objectMapper).context();
 
         ExpressionResult result = engine.evaluate(formula, context);
         if (!result.defined()) {

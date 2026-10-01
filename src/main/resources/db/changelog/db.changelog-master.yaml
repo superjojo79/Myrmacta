@@ -53,3 +53,5 @@ databaseChangeLog:
       file: db/changelog/changes/026-signature.yaml
   - include:
       file: db/changelog/changes/027-outbox-claim-lease.yaml
+  - include:
+      file: db/changelog/changes/028-portal-link-send-claim.yaml

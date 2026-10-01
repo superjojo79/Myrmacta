@@ -22,6 +22,16 @@ public interface PortalLinkRepository {
      */
     boolean transition(PortalLink current, PortalLink next);
 
+    /**
+     * TODO §79 (D5) : prend le lien en attente d'envoi pour {@code lease} — un seul des exécutants concurrents obtient
+     * {@code true} et envoie l'invitation ; les autres la sautent. Une prise échue (exécutant disparu) peut être reprise.
+     * Toute transition de statut lève la prise. Par défaut {@code true} : les adaptateurs sans concurrence réelle (tests) n'ont
+     * rien à faire.
+     */
+    default boolean claimForSend(PortalLink link, Instant now, java.time.Duration lease) {
+        return true;
+    }
+
     Optional<PortalLink> findById(UUID id);
 
     Optional<PortalLink> findByTokenHash(String tokenHash);

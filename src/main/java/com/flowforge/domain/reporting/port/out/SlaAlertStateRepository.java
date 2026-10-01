@@ -13,4 +13,11 @@ public interface SlaAlertStateRepository {
     Optional<SlaAlertState> find(String tenantId, UUID dossierId);
 
     SlaAlertState save(SlaAlertState state);
+
+    /**
+     * Compare-and-set (TODO §79, D5) : passe l'état de {@code expectedPrevious} à {@code next} si, et seulement si, la ligne a
+     * encore ce statut. Renvoie {@code false} quand un autre exécutant l'a déjà fait — l'appelant ne notifie alors pas, ce qui
+     * évite que deux pods envoient la même alerte pour la même transition.
+     */
+    boolean transition(SlaAlertState expectedPrevious, SlaAlertState next);
 }

@@ -60,6 +60,24 @@ class WorkflowExceptionHandler {
         return problem(HttpStatus.NOT_FOUND, "Workflow resource not found", ex.getMessage());
     }
 
+    @ExceptionHandler({
+            com.flowforge.domain.workflow.model.DraftConflictException.class,
+            com.flowforge.domain.workflow.model.DraftChangedException.class
+    })
+    ProblemDetail handleDraftConflict(RuntimeException ex) {
+        return problem(HttpStatus.CONFLICT, "Draft conflict", ex.getMessage());
+    }
+
+    @ExceptionHandler(com.flowforge.domain.workflow.model.DraftNotFoundException.class)
+    ProblemDetail handleDraftNotFound(com.flowforge.domain.workflow.model.DraftNotFoundException ex) {
+        return problem(HttpStatus.NOT_FOUND, "Draft not found", ex.getMessage());
+    }
+
+    @ExceptionHandler(com.flowforge.domain.workflow.model.DirectPublicationNotAllowedException.class)
+    ProblemDetail handleDirectPublicationRefused(com.flowforge.domain.workflow.model.DirectPublicationNotAllowedException ex) {
+        return problem(HttpStatus.FORBIDDEN, "Direct publication not allowed", ex.getMessage());
+    }
+
     @ExceptionHandler(DecisionVersionAlreadyCurrentException.class)
     ProblemDetail handleVersionAlreadyCurrent(DecisionVersionAlreadyCurrentException ex) {
         return problem(HttpStatus.CONFLICT, "Decision version already current", ex.getMessage());

@@ -41,6 +41,13 @@ const { user, isTenantAdmin, isWorkflowAdmin, canSeeReports } = storeToRefs(auth
         <RouterLink
           v-if="isTenantAdmin || isWorkflowAdmin"
           class="app-shell__link"
+          to="/admin/drafts"
+        >
+          Brouillons
+        </RouterLink>
+        <RouterLink
+          v-if="isTenantAdmin || isWorkflowAdmin"
+          class="app-shell__link"
           to="/admin/workflow-types"
         >
           Workflows

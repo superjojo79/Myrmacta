@@ -32,4 +32,15 @@ class JpaDmnDraftRepositoryAdapter implements DmnDraftRepository {
     public void deleteByTenantIdAndDecisionKey(String tenantId, String decisionKey) {
         repository.deleteByTenantIdAndDecisionKey(tenantId, decisionKey);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.List<DmnDraft> findAllByTenantId(String tenantId) {
+        return repository.findAllByTenantId(tenantId).stream().map(DmnDraftJpaEntity::toDomain).toList();
+    }
+
+    @Override
+    public int deleteAutomatedOlderThan(String tenantId, java.time.Instant cutoff) {
+        return repository.deleteAutomatedOlderThan(tenantId, cutoff);
+    }
 }

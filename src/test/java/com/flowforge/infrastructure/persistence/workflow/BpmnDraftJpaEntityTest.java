@@ -13,12 +13,14 @@ import org.junit.jupiter.api.Test;
  */
 class BpmnDraftJpaEntityTest {
 
+    private static final tools.jackson.databind.ObjectMapper MAPPER = tools.jackson.databind.json.JsonMapper.builder().build();
+
     @Test
     void fromDomain_thenToDomain_roundTripsAllFields() {
         BpmnDraft draft = new BpmnDraft(
                 "tenant_dev", "testProcess", "<bpmn/>", Instant.parse("2026-08-24T00:00:00Z"), "alice");
 
-        BpmnDraft roundTripped = BpmnDraftJpaEntity.fromDomain(draft).toDomain();
+        BpmnDraft roundTripped = BpmnDraftJpaEntity.fromDomain(draft, MAPPER).toDomain(MAPPER);
 
         assertThat(roundTripped).isEqualTo(draft);
     }

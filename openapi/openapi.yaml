@@ -1498,6 +1498,38 @@ paths:
       responses:
         "200":
           description: OK
+  /api/admin/drafts/{type}/{key}/publish:
+    post:
+      tags:
+      - drafts-controller
+      operationId: publish
+      parameters:
+      - name: type
+        in: path
+        required: true
+        schema:
+          type: string
+          enum:
+          - BPMN
+          - DMN
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublishDraftRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ConfigPublication"
   /api/workflow-type-configs/{workflowKey}:
     get:
       tags:
@@ -2616,6 +2648,42 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/AuthUserResponse"
+  /api/admin/drafts:
+    get:
+      tags:
+      - drafts-controller
+      operationId: list_12
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PendingDraft"
+  /api/admin/drafts/publications:
+    get:
+      tags:
+      - drafts-controller
+      operationId: publications
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 50
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ConfigPublication"
   /api/dossier-types/{code}/acl/{userId}:
     delete:
       tags:
@@ -2628,6 +2696,28 @@ paths:
         schema:
           type: string
       - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+  /api/admin/drafts/{type}/{key}:
+    delete:
+      tags:
+      - drafts-controller
+      operationId: discard
+      parameters:
+      - name: type
+        in: path
+        required: true
+        schema:
+          type: string
+          enum:
+          - BPMN
+          - DMN
+      - name: key
         in: path
         required: true
         schema:
@@ -3725,6 +3815,48 @@ components:
           type: object
           additionalProperties:
             type: boolean
+    PublishDraftRequest:
+      type: object
+      properties:
+        expectedUpdatedAt:
+          type: string
+          format: date-time
+    ConfigPublication:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+        artifactType:
+          type: string
+          enum:
+          - BPMN
+          - DMN
+        artifactKey:
+          type: string
+        version:
+          type: integer
+          format: int32
+        draftProvenance:
+          type: string
+          enum:
+          - UI
+          - MCP
+          - ASSISTANT
+        draftAuthor:
+          type: string
+        publishedBy:
+          type: string
+        publishedAt:
+          type: string
+          format: date-time
+        mode:
+          type: string
+          enum:
+          - MANUAL
+          - DIRECT
     UpdateNotificationWebhookRequest:
       type: object
       properties:
@@ -4983,3 +5115,37 @@ components:
           type: array
           items:
             type: string
+    PendingDraft:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+          - BPMN
+          - DMN
+        key:
+          type: string
+        provenance:
+          type: string
+          enum:
+          - UI
+          - MCP
+          - ASSISTANT
+        author:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        hasProposedConfig:
+          type: boolean
+        note:
+          type: string
+        publishedVersion:
+          type: integer
+          format: int32
+        addedLines:
+          type: integer
+          format: int32
+        removedLines:
+          type: integer
+          format: int32

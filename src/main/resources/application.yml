@@ -139,6 +139,17 @@ server:
         secure: ${app.security.cookie.secure:true}
 
 app:
+  # TODO §82 (D6) : local | staging | production (défaut production = le plus strict). Hors local, M2M_TRUSTED_CLIENT_IDS est
+  # obligatoire dès que la chaîne M2M est active ; la publication directe par un agent est refusée en production.
+  environment: ${APP_ENVIRONMENT:production}
+  mcp:
+    publication:
+      # draft (défaut) : un agent écrit un brouillon, un humain publie ; direct : l'outil publish_draft publie sans relecture
+      # (refusé en production).
+      mode: ${APP_MCP_PUBLICATION_MODE:draft}
+  drafts:
+    # Brouillons d'origine MCP/assistant non modifiés depuis N jours : purgés (0 = jamais). Les brouillons de l'éditeur : jamais.
+    retention-days: ${APP_DRAFTS_RETENTION_DAYS:30}
   tenant:
     id: tenant_dev   # unique par instance déployée — jamais résolu dynamiquement
   security:

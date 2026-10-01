@@ -32,7 +32,12 @@ public final class SaveBpmnDraftUseCaseImpl implements SaveBpmnDraftUseCase {
             throw new InvalidBpmnException("processDefinitionKey in path ('" + processDefinitionKey
                     + "') does not match the process id defined in the XML ('" + extractedKey + "')");
         }
-        BpmnDraft draft = new BpmnDraft(tenantId, processDefinitionKey, xml, Instant.now(), updatedBy);
+        // TODO §82 (D6) : un humain qui reprend un brouillon MCP/assistant en devient l'auteur (provenance UI) mais ne perd pas la
+        // configuration de workflow proposée avec lui — elle serait sinon silencieusement abandonnée à la publication.
+        BpmnDraft previous = draftRepository.findByTenantIdAndProcessDefinitionKey(tenantId, processDefinitionKey).orElse(null);
+        BpmnDraft draft = new BpmnDraft(tenantId, processDefinitionKey, xml, Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS),
+                updatedBy, com.flowforge.domain.workflow.model.Provenance.UI,
+                previous == null ? null : previous.proposedConfig(), previous == null ? null : previous.pilotUserId());
         return draftRepository.save(draft);
     }
 }

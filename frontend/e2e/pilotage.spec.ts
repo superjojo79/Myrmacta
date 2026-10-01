@@ -3991,3 +3991,57 @@ test('E2E-SEARCH-1 supervision: filters on searchable fields of the chosen type 
   await expect(page).toHaveURL(/f\.montant\.gte=5000/)
   expect(listQueries.some((q) => q.includes('dossierTypeCode=CLAIM') && q.includes('f.montant.gte=5000'))).toBe(true)
 })
+
+test('E2E-DRAFTS-1 an agent draft is reviewed and published by a human with the reviewed timestamp (D6)', async ({ page }) => {
+  await mockSession(page)
+  const stamp = '2026-10-01T10:00:00.123456Z'
+  let published = false
+  await page.route('**/api/admin/drafts/publications**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }),
+  )
+  await page.route('**/api/admin/drafts', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(
+        published
+          ? []
+          : [
+              {
+                type: 'BPMN',
+                key: 'claim',
+                provenance: 'MCP',
+                author: 'agent-1',
+                updatedAt: stamp,
+                hasProposedConfig: true,
+                note: null,
+                publishedVersion: 3,
+                addedLines: 4,
+                removedLines: 2,
+              },
+            ],
+      ),
+    }),
+  )
+  await page.route('**/api/admin/drafts/BPMN/claim/publish', async (route) => {
+    published = true
+    expect((route.request().postDataJSON() as { expectedUpdatedAt: string }).expectedUpdatedAt).toBe(stamp)
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ id: 'p1', version: 4, mode: 'MANUAL' }),
+    })
+  })
+  page.on('dialog', (dialog) => dialog.accept())
+
+  await openApp(page)
+  await page.getByRole('link', { name: 'Brouillons' }).click()
+  await expect(page.getByRole('heading', { name: 'Brouillons à publier' })).toBeVisible()
+  const row = page.getByTestId('draft-row-claim')
+  await expect(row).toContainText('Agent (MCP)')
+  await expect(row).toContainText('agent-1')
+  await expect(row).toContainText('configuration de workflow jointe')
+  await row.getByTestId('draft-publish').click()
+  await expect(page.getByTestId('drafts-notice')).toContainText('version 4')
+  await expect(page.getByTestId('drafts-empty')).toBeVisible()
+})

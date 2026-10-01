@@ -64,6 +64,9 @@ class McpToolCallIntegrationTest {
     @Autowired
     private TaskQuestionSchemaRepository taskQuestionSchemaRepository;
 
+    @Autowired
+    private com.flowforge.domain.workflow.port.in.ManageDraftsUseCase manageDraftsUseCase;
+
     private String sessionId;
 
     @BeforeEach
@@ -140,7 +143,7 @@ class McpToolCallIntegrationTest {
     }
 
     @Test
-    void deployWorkflow_createsConfigIfAbsentThenDeploys() throws Exception {
+    void deployWorkflow_writesADraftAndAppliesNothingUntilAHumanPublishes() throws Exception {
         String key = "mcpDeploy" + UUID.randomUUID().toString().substring(0, 8);
         assertThat(getWorkflowTypeConfigUseCase.getByKey(key)).isEmpty();
         String xml = """
@@ -172,7 +175,19 @@ class McpToolCallIntegrationTest {
 
         String body = call.getResponse().getContentAsString();
         assertThat(body).as("body: %s", body).contains("\"isError\":false");
-        assertThat(getWorkflowTypeConfigUseCase.getByKey(key)).isPresent();
+        // TODO §82 (D6) : par défaut un agent écrit un BROUILLON — ni configuration ni déploiement avant la publication humaine.
+        assertThat(body).contains("DRAFT_PENDING_PUBLICATION");
+        assertThat(getWorkflowTypeConfigUseCase.getByKey(key)).isEmpty();
+        var pending = manageDraftsUseCase.listPending(com.flowforge.domain.dossier.model.AccessContext.user("alice", java.util.Set.of("TENANT_ADMIN")));
+        assertThat(pending).anyMatch(d -> d.key().equals(key)
+                && d.provenance() == com.flowforge.domain.workflow.model.Provenance.MCP && d.author().equals("agent-1"));
+
+        // publish_draft est refusé tant que l'instance n'autorise pas la publication directe
+        MvcResult publish = callMcp(sessionId, TENANT, "API_SERVICE", 3, "tools/call", """
+                {"name": "publish_draft", "arguments": {"type": "BPMN", "key": "%s"}}
+                """.formatted(key));
+        assertThat(publish.getResponse().getContentAsString()).contains("\"isError\":true").contains("human");
+        assertThat(getWorkflowTypeConfigUseCase.getByKey(key)).isEmpty();
     }
 
     @Test
@@ -613,6 +628,11 @@ class McpToolCallIntegrationTest {
 
         String body = deployCall.getResponse().getContentAsString();
         assertThat(body).as("body: %s", body).contains("\"isError\":false");
+        // D6 : l'agent propose, un humain relit et publie (même cas d'usage que l'écran « Brouillons à publier »)
+        var admin = com.flowforge.domain.dossier.model.AccessContext.user("alice", java.util.Set.of("TENANT_ADMIN"));
+        var draft = manageDraftsUseCase.listPending(admin).stream().filter(d -> d.key().equals(workflowKey)).findFirst().orElseThrow();
+        manageDraftsUseCase.publish(admin, com.flowforge.domain.workflow.model.DraftArtifactType.BPMN, workflowKey,
+                draft.updatedAt(), com.flowforge.domain.workflow.model.PublicationMode.MANUAL);
         assertThat(getWorkflowTypeConfigUseCase.getByKey(workflowKey)).isPresent();
     }
 

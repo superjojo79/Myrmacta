@@ -1,0 +1,149 @@
+databaseChangeLog:
+  - changeSet:
+      id: 031-draft-provenance
+      author: flowforge
+      comment: >-
+        TODO §82 (D6) — provenance (UI / MCP / ASSISTANT) des brouillons BPMN et DMN, configuration de workflow proposée avec un
+        brouillon MCP, note de brouillon DMN, humain pilote. Additif ; les brouillons existants sont de provenance UI.
+      changes:
+        - addColumn:
+            tableName: bpmn_draft
+            columns:
+              - column:
+                  name: provenance
+                  type: varchar(16)
+                  defaultValue: UI
+                  constraints:
+                    nullable: false
+              - column:
+                  name: proposed_config
+                  type: text
+              - column:
+                  name: pilot_user_id
+                  type: varchar(128)
+        - addColumn:
+            tableName: dmn_draft
+            columns:
+              - column:
+                  name: provenance
+                  type: varchar(16)
+                  defaultValue: UI
+                  constraints:
+                    nullable: false
+              - column:
+                  name: note
+                  type: varchar(500)
+              - column:
+                  name: pilot_user_id
+                  type: varchar(128)
+        - createIndex:
+            tableName: bpmn_draft
+            indexName: idx_bpmn_draft_provenance_updated
+            columns:
+              - column:
+                  name: provenance
+              - column:
+                  name: updated_at
+        - createIndex:
+            tableName: dmn_draft
+            indexName: idx_dmn_draft_provenance_updated
+            columns:
+              - column:
+                  name: provenance
+              - column:
+                  name: updated_at
+      rollback:
+        - dropIndex:
+            tableName: dmn_draft
+            indexName: idx_dmn_draft_provenance_updated
+        - dropIndex:
+            tableName: bpmn_draft
+            indexName: idx_bpmn_draft_provenance_updated
+        - dropColumn:
+            tableName: dmn_draft
+            columnName: pilot_user_id
+        - dropColumn:
+            tableName: dmn_draft
+            columnName: note
+        - dropColumn:
+            tableName: dmn_draft
+            columnName: provenance
+        - dropColumn:
+            tableName: bpmn_draft
+            columnName: pilot_user_id
+        - dropColumn:
+            tableName: bpmn_draft
+            columnName: proposed_config
+        - dropColumn:
+            tableName: bpmn_draft
+            columnName: provenance
+  - changeSet:
+      id: 031-config-publication
+      author: flowforge
+      comment: >-
+        TODO §82 (D6) — journal des publications de configuration (BPMN, DMN) : rédacteur, provenance, publicateur, version, mode.
+      changes:
+        - createTable:
+            tableName: config_publication
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_config_publication
+                    nullable: false
+              - column:
+                  name: tenant_id
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: artifact_type
+                  type: varchar(16)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: artifact_key
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: version
+                  type: int
+              - column:
+                  name: draft_provenance
+                  type: varchar(16)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: draft_author
+                  type: varchar(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: published_by
+                  type: varchar(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: published_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: mode
+                  type: varchar(16)
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: config_publication
+            indexName: idx_config_publication_tenant_published
+            columns:
+              - column:
+                  name: tenant_id
+              - column:
+                  name: published_at
+      rollback:
+        - dropTable:
+            tableName: config_publication

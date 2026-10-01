@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { nextTick, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { toProblemDetail } from '@/api/http'
@@ -30,6 +31,7 @@ interface Turn {
   drafts?: boolean
 }
 
+const { t, te } = useI18n()
 const status = ref<AssistantStatus | null>(null)
 const conversations = ref<ConversationSummary[]>([])
 const conversationId = ref<string | null>(null)
@@ -41,20 +43,8 @@ const log = ref<HTMLElement | null>(null)
 const actions = ref<AssistantAction[]>([])
 const actionBusy = ref<string | null>(null)
 
-const STATUS_LABELS: Record<AssistantAction['status'], string> = {
-  PENDING: 'à relire',
-  APPLYING: 'en cours',
-  APPLIED: 'appliquée',
-  DISMISSED: 'ignorée',
-  FAILED: 'échec',
-}
-
-const TOOL_LABELS: Record<string, string> = {
-  define_dossier_type: 'Type de dossier',
-  define_connector_instance: 'Connecteur',
-  define_task_question_schema: 'Questions de tâche',
-  define_document_template: 'Modèle de document',
-}
+const statusLabel = (status: AssistantAction['status']): string => t(`admin.assistant.status.${status}`)
+const toolLabel = (tool: string): string => (te(`admin.assistant.tools.${tool}`) ? t(`admin.assistant.tools.${tool}`) : tool)
 
 function pretty(json: string): string {
   try {
@@ -84,7 +74,7 @@ async function resolve(action: AssistantAction, apply: boolean) {
     const updated = await (apply ? applyAction : dismissAction)(conversationId.value, action.id)
     actions.value = actions.value.map((a) => (a.id === updated.id ? updated : a))
   } catch (err) {
-    error.value = toProblemDetail(err).detail ?? "L'action n'a pas pu être traitée"
+    error.value = toProblemDetail(err).detail ?? t('admin.assistant.errors.action')
     await loadActions()
   } finally {
     actionBusy.value = null
@@ -95,7 +85,7 @@ async function loadList() {
   try {
     conversations.value = await listConversations()
   } catch (err) {
-    error.value = toProblemDetail(err).detail ?? "Chargement de l'historique impossible"
+    error.value = toProblemDetail(err).detail ?? t('admin.assistant.errors.history')
   }
 }
 
@@ -103,7 +93,7 @@ onMounted(async () => {
   try {
     status.value = await getAssistantStatus()
   } catch (err) {
-    error.value = toProblemDetail(err).detail ?? "État de l'assistant indisponible"
+    error.value = toProblemDetail(err).detail ?? t('admin.assistant.errors.state')
     return
   }
   if (status.value.enabled) await loadList()
@@ -115,7 +105,7 @@ function fromMessages(messages: AssistantMessage[]): Turn[] {
   let pending: ToolActivity[] = []
   for (const m of messages) {
     if (m.role === 'USER') out.push({ role: 'USER', text: m.content })
-    else if (m.role === 'TOOL') pending.push({ tool: m.toolName ?? 'outil', ok: !m.content.startsWith('error:'), summary: m.content.slice(0, 300) })
+    else if (m.role === 'TOOL') pending.push({ tool: m.toolName ?? t('admin.assistant.tool'), ok: !m.content.startsWith('error:'), summary: m.content.slice(0, 300) })
     else {
       out.push({ role: 'ASSISTANT', text: m.content, activity: pending })
       pending = []
@@ -134,7 +124,7 @@ async function open(id: string) {
     await loadActions()
     await scroll()
   } catch (err) {
-    error.value = toProblemDetail(err).detail ?? 'Conversation introuvable'
+    error.value = toProblemDetail(err).detail ?? t('admin.assistant.errors.notFound')
   }
 }
 
@@ -148,13 +138,13 @@ function fresh() {
 
 async function remove(id: string) {
   if (busy.value) return
-  if (!window.confirm('Supprimer cette conversation ?')) return
+  if (!window.confirm(t('admin.assistant.confirmDelete'))) return
   try {
     await deleteConversation(id)
     if (conversationId.value === id) fresh()
     await loadList()
   } catch (err) {
-    error.value = toProblemDetail(err).detail ?? 'Suppression impossible'
+    error.value = toProblemDetail(err).detail ?? t('admin.assistant.errors.remove')
   }
 }
 
@@ -181,7 +171,7 @@ async function send() {
     // Le texte n'est pas perdu : on le remet dans la zone de saisie pour le renvoyer.
     draft.value = text
     turns.value.pop()
-    error.value = toProblemDetail(err).detail ?? "L'assistant n'a pas pu répondre"
+    error.value = toProblemDetail(err).detail ?? t('admin.assistant.errors.reply')
   } finally {
     busy.value = false
     await scroll()
@@ -191,81 +181,79 @@ async function send() {
 
 <template>
   <section class="assistant" data-testid="assistant-view">
-    <h1>Assistant de conception</h1>
+    <h1>{{ t('admin.assistant.title') }}</h1>
     <p v-if="error" class="error" role="alert" data-testid="assistant-error">{{ error }}</p>
 
-    <p v-if="status && !status.enabled" class="assistant__disabled" data-testid="assistant-disabled">
-      L'assistant n'est pas activé sur cette instance. Un administrateur technique doit configurer un modèle
-      (<code>APP_ASSISTANT_ENABLED</code>, <code>APP_ASSISTANT_API_KEY</code>) — voir DEPLOIEMENT.md.
-    </p>
+    <i18n-t v-if="status && !status.enabled" keypath="admin.assistant.disabled" tag="p" class="assistant__disabled" data-testid="assistant-disabled">
+      <template #enabled><code>APP_ASSISTANT_ENABLED</code></template>
+      <template #key><code>APP_ASSISTANT_API_KEY</code></template>
+    </i18n-t>
 
     <div v-else-if="status" class="assistant__layout">
-      <aside class="assistant__history" aria-label="Conversations">
-        <button type="button" :disabled="busy" data-testid="assistant-new" @click="fresh">Nouvelle conversation</button>
+      <aside class="assistant__history" :aria-label="t('admin.assistant.conversations')">
+        <button type="button" :disabled="busy" data-testid="assistant-new" @click="fresh">{{ t('admin.assistant.newConversation') }}</button>
         <ul>
           <li v-for="c in conversations" :key="c.id" :class="{ 'assistant__current': c.id === conversationId }">
             <button type="button" class="assistant__open" :disabled="busy" data-testid="assistant-open" @click="open(c.id)">{{ c.title }}</button>
-            <button type="button" class="assistant__remove" :disabled="busy" :aria-label="`Supprimer « ${c.title} »`" @click="remove(c.id)">✕</button>
+            <button type="button" class="assistant__remove" :disabled="busy" :aria-label="t('admin.assistant.removeConversation', { title: c.title })" @click="remove(c.id)">✕</button>
           </li>
         </ul>
       </aside>
 
       <div class="assistant__chat">
-        <p class="assistant__hint">
-          Décrivez le type de dossier, le processus, les formulaires ou les règles voulus. Ce que l'assistant écrit pour un processus ou
-          une table de décision est un <strong>brouillon</strong> : vous le relisez avant publication. Il n'a accès à aucune donnée de
-          dossier et n'écrit jamais de secret.
-        </p>
+        <i18n-t keypath="admin.assistant.hint" tag="p" class="assistant__hint">
+          <template #draft><strong>{{ t('admin.assistant.hintDraft') }}</strong></template>
+        </i18n-t>
         <div ref="log" class="assistant__log" role="log" aria-live="polite" data-testid="assistant-log">
-          <p v-if="turns.length === 0" class="assistant__empty">Posez votre première question.</p>
-          <article v-for="(t, i) in turns" :key="i" :class="['assistant__turn', `assistant__turn--${t.role.toLowerCase()}`]">
-            <header>{{ t.role === 'USER' ? 'Vous' : 'Assistant' }}</header>
+          <p v-if="turns.length === 0" class="assistant__empty">{{ t('admin.assistant.empty') }}</p>
+          <article v-for="(turn, i) in turns" :key="i" :class="['assistant__turn', `assistant__turn--${turn.role.toLowerCase()}`]">
+            <header>{{ turn.role === 'USER' ? t('admin.assistant.you') : t('admin.assistant.assistant') }}</header>
             <!-- Texte brut : la réponse d'un modèle n'est jamais interprétée comme du HTML. -->
-            <p class="assistant__text">{{ t.text }}</p>
-            <ul v-if="t.activity?.length" class="assistant__activity">
-              <li v-for="(a, j) in t.activity" :key="j" :class="{ 'assistant__activity--ko': !a.ok }">
-                <code>{{ a.tool }}</code> — {{ a.ok ? 'fait' : 'refusé' }}
-                <details v-if="a.arguments"><summary>Arguments</summary><pre class="assistant__args">{{ a.arguments }}</pre></details>
+            <p class="assistant__text">{{ turn.text }}</p>
+            <ul v-if="turn.activity?.length" class="assistant__activity">
+              <li v-for="(a, j) in turn.activity" :key="j" :class="{ 'assistant__activity--ko': !a.ok }">
+                <code>{{ a.tool }}</code> — {{ a.ok ? t('admin.assistant.done') : t('admin.assistant.refused') }}
+                <details v-if="a.arguments"><summary>{{ t('admin.assistant.arguments') }}</summary><pre class="assistant__args">{{ a.arguments }}</pre></details>
               </li>
             </ul>
-            <p v-if="t.drafts" class="assistant__drafts" data-testid="assistant-drafts">
-              Des brouillons attendent votre relecture :
-              <RouterLink to="/admin/drafts">Admin → Brouillons</RouterLink>
+            <p v-if="turn.drafts" class="assistant__drafts" data-testid="assistant-drafts">
+              {{ t('admin.assistant.draftsWaiting') }}
+              <RouterLink to="/admin/drafts">{{ t('admin.assistant.draftsLink') }}</RouterLink>
             </p>
           </article>
-          <p v-if="busy" class="assistant__busy" data-testid="assistant-busy">L'assistant travaille…</p>
+          <p v-if="busy" class="assistant__busy" data-testid="assistant-busy">{{ t('admin.assistant.working') }}</p>
         </div>
-        <section v-if="actions.length" class="assistant__actions" aria-label="Écritures proposées" data-testid="assistant-actions">
-          <h2>Écritures proposées</h2>
-          <p class="assistant__hint">
-            L'assistant ne les a <strong>pas</strong> écrites : relisez ce qui sera enregistré, puis appliquez-le (avec vos droits) ou ignorez-le.
-          </p>
+        <section v-if="actions.length" class="assistant__actions" :aria-label="t('admin.assistant.proposedAria')" data-testid="assistant-actions">
+          <h2>{{ t('admin.assistant.proposed') }}</h2>
+          <i18n-t keypath="admin.assistant.proposedHint" tag="p" class="assistant__hint">
+            <template #not><strong>{{ t('admin.assistant.proposedNot') }}</strong></template>
+          </i18n-t>
           <article v-for="a in actions" :key="a.id" class="assistant__action" :data-status="a.status" data-testid="assistant-action">
             <header>
-              <strong>{{ TOOL_LABELS[a.tool] ?? a.tool }}</strong>
-              <span class="assistant__status">{{ STATUS_LABELS[a.status] }}</span>
+              <strong>{{ toolLabel(a.tool) }}</strong>
+              <span class="assistant__status">{{ statusLabel(a.status) }}</span>
             </header>
             <!-- Arguments en texte brut : c'est ce que l'on s'apprête à écrire. -->
             <pre class="assistant__args" data-testid="assistant-action-args">{{ pretty(a.arguments) }}</pre>
             <p v-if="a.outcome" class="assistant__outcome">{{ a.outcome }}</p>
             <div v-if="a.status === 'PENDING'" class="assistant__action-buttons">
-              <button type="button" :disabled="!!actionBusy" data-testid="assistant-apply" @click="resolve(a, true)">Appliquer</button>
-              <button type="button" :disabled="!!actionBusy" data-testid="assistant-dismiss" @click="resolve(a, false)">Ignorer</button>
+              <button type="button" :disabled="!!actionBusy" data-testid="assistant-apply" @click="resolve(a, true)">{{ t('admin.assistant.apply') }}</button>
+              <button type="button" :disabled="!!actionBusy" data-testid="assistant-dismiss" @click="resolve(a, false)">{{ t('admin.assistant.dismiss') }}</button>
             </div>
           </article>
         </section>
         <form class="assistant__form" @submit.prevent="send">
-          <label class="visually-hidden" for="assistant-input">Votre message</label>
+          <label class="visually-hidden" for="assistant-input">{{ t('admin.assistant.yourMessage') }}</label>
           <textarea
             id="assistant-input"
             v-model="draft"
             rows="3"
             maxlength="8000"
             data-testid="assistant-input"
-            placeholder="Ex. : Un type « Sinistre » avec numéro de contrat et montant, et un processus de validation à deux étapes"
+            :placeholder="t('admin.assistant.placeholder')"
             @keydown.ctrl.enter.prevent="send"
           />
-          <button type="submit" :disabled="busy || !draft.trim()" data-testid="assistant-send">Envoyer</button>
+          <button type="submit" :disabled="busy || !draft.trim()" data-testid="assistant-send">{{ t('admin.assistant.send') }}</button>
         </form>
       </div>
     </div>

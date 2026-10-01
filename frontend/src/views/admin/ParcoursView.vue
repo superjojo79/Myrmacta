@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { toProblemDetail } from '@/api/http'
@@ -26,52 +27,49 @@ import type { ValueOption } from '@/components/workflow/bpmn-blocks/types'
  */
 interface ParamSpec {
   name: string
-  label: string
   /** Source de valeurs du catalogue des briques (liste déroulante) ; sinon saisie libre. */
   source?: string
   multiline?: boolean
   optional?: boolean
 }
 
-const KINDS: Record<StepKind, { label: string; params: ParamSpec[] }> = {
-  QUESTION: { label: 'Question à un utilisateur', params: [{ name: 'schemaKey', label: 'Formulaire', source: 'questionSchemas' }] },
+const KINDS: Record<StepKind, { params: ParamSpec[] }> = {
+  QUESTION: { params: [{ name: 'schemaKey', source: 'questionSchemas' }] },
   EXTERNAL: {
-    label: 'Réponse d’un tiers (portail)',
     params: [
-      { name: 'schemaKey', label: 'Formulaire', source: 'questionSchemas' },
-      { name: 'portalRecipient', label: 'Destinataire (ex. dossierField:email)' },
-      { name: 'portalLinkTtlDays', label: 'Validité du lien (jours)', optional: true },
+      { name: 'schemaKey', source: 'questionSchemas' },
+      { name: 'portalRecipient' },
+      { name: 'portalLinkTtlDays', optional: true },
     ],
   },
   DOCUMENT: {
-    label: 'Générer un document',
     params: [
-      { name: 'documentType', label: 'Modèle de document', source: 'documentTemplates' },
-      { name: 'documentLocale', label: 'Langue', optional: true },
-      { name: 'documentVariant', label: 'Variante', optional: true },
-      { name: 'attach', label: 'Joindre au dossier (true/false)', optional: true },
+      { name: 'documentType', source: 'documentTemplates' },
+      { name: 'documentLocale', optional: true },
+      { name: 'documentVariant', optional: true },
+      { name: 'attach', optional: true },
     ],
   },
-  NOTIFY: { label: 'Notifier', params: [{ name: 'notificationChannels', label: 'Canaux (ex. EMAIL,WEBHOOK)' }] },
-  CONNECTOR: { label: 'Appeler un connecteur', params: [{ name: 'connectorInstanceId', label: 'Connecteur', source: 'connectorInstances' }] },
-  DMN: { label: 'Décision (table DMN)', params: [{ name: 'decisionTableReferenceKey', label: 'Table', source: 'dmnTables' }] },
+  NOTIFY: { params: [{ name: 'notificationChannels' }] },
+  CONNECTOR: { params: [{ name: 'connectorInstanceId', source: 'connectorInstances' }] },
+  DMN: { params: [{ name: 'decisionTableReferenceKey', source: 'dmnTables' }] },
   EXPRESSION: {
-    label: 'Calculer une valeur',
     params: [
-      { name: 'formula', label: 'Formule', multiline: true },
-      { name: 'formulaResult', label: 'Variable résultat' },
+      { name: 'formula', multiline: true },
+      { name: 'formulaResult' },
     ],
   },
-  MAP_FIELDS: { label: 'Renseigner des champs du dossier', params: [{ name: 'fieldMapping', label: 'Correspondances', multiline: true }] },
-  SET_WORKFLOW_STATUS: { label: 'Changer le statut du parcours', params: [{ name: 'targetWorkflowStatus', label: 'Statut' }] },
-  SET_DOSSIER_STATUS: { label: 'Changer le statut du dossier', params: [{ name: 'targetDossierStatus', label: 'Statut du dossier' }] },
-  WAIT: { label: 'Attendre', params: [{ name: 'duration', label: 'Durée ISO 8601 (PT24H, P2D)' }] },
-  DECISION: { label: 'Aiguillage selon une valeur', params: [] },
+  MAP_FIELDS: { params: [{ name: 'fieldMapping', multiline: true }] },
+  SET_WORKFLOW_STATUS: { params: [{ name: 'targetWorkflowStatus' }] },
+  SET_DOSSIER_STATUS: { params: [{ name: 'targetDossierStatus' }] },
+  WAIT: { params: [{ name: 'duration' }] },
+  DECISION: { params: [] },
 }
 const KIND_ORDER = Object.keys(KINDS) as StepKind[]
 const OPERATORS: Record<Operator, string> = { EQ: '=', NE: '≠', GT: '>', GE: '≥', LT: '<', LE: '≤' }
 const DOSSIER_STATUSES = ['DRAFT', 'OUVERT', 'EN_COURS', 'SUSPENDU', 'CLOTURE', 'ARCHIVE']
 
+const { t } = useI18n()
 const items = ref<ParcoursSummary[]>([])
 const editing = ref<boolean>(false)
 const isNew = ref(true)
@@ -107,7 +105,7 @@ async function refresh() {
   try {
     items.value = await listParcours()
   } catch (e) {
-    error.value = toProblemDetail(e).detail ?? 'Chargement impossible'
+    error.value = toProblemDetail(e).detail ?? t('admin.parcours.errors.load')
   }
 }
 
@@ -157,7 +155,7 @@ async function open(k: string) {
     snapshot()
     void loadOptions()
   } catch (e) {
-    error.value = toProblemDetail(e).detail ?? 'Chargement impossible'
+    error.value = toProblemDetail(e).detail ?? t('admin.parcours.errors.load')
   }
 }
 
@@ -213,7 +211,7 @@ async function run<T>(action: () => Promise<T>): Promise<T | undefined> {
   try {
     return await action()
   } catch (e) {
-    error.value = toProblemDetail(e).detail ?? 'Opération impossible'
+    error.value = toProblemDetail(e).detail ?? t('admin.parcours.errors.operation')
     return undefined
   } finally {
     busy.value = false
@@ -227,7 +225,7 @@ async function save() {
     version.value = saved.version
     definition.value = saved.definition
     snapshot()
-    notice.value = `Enregistré (version ${saved.version}).`
+    notice.value = t('admin.parcours.saved', { version: saved.version })
     await refresh()
   }
 }
@@ -239,23 +237,23 @@ async function preview() {
 
 async function compile(dryRun: boolean) {
   if (isNew.value || version.value === null) {
-    error.value = 'Enregistrez le parcours avant de le compiler.'
+    error.value = t('admin.parcours.errors.saveFirst')
     return
   }
   if (dirty.value) {
-    error.value = 'Enregistrez vos modifications avant de compiler : la compilation travaille sur la version enregistrée.'
+    error.value = t('admin.parcours.errors.saveChanges')
     return
   }
   const r = await run(() => compileParcours(key.value, dryRun, replaceDraft.value))
   if (r) {
     result.value = r
-    notice.value = dryRun ? 'Le parcours est valide : rien n’a été écrit.' : 'Brouillon BPMN déposé.'
+    notice.value = dryRun ? t('admin.parcours.validNothingWritten') : t('admin.parcours.draftDeposited')
     if (!dryRun) await refresh()
   }
 }
 
 async function remove() {
-  if (!window.confirm(`Supprimer le parcours « ${key.value} » ? Les brouillons et processus déjà générés ne sont pas touchés.`)) return
+  if (!window.confirm(t('admin.parcours.confirmDelete', { key: key.value }))) return
   const done = await run(async () => {
     await deleteParcours(key.value, version.value)
     return true
@@ -275,25 +273,24 @@ onMounted(refresh)
 
 <template>
   <section class="parcours" data-testid="parcours-view">
-    <h1>Parcours</h1>
-    <p class="parcours__hint">
-      Décrivez un parcours étape par étape ; il est compilé en processus BPMN et déposé en <strong>brouillon</strong>
-      (<RouterLink to="/admin/drafts">Admin → Brouillons</RouterLink>) pour relecture avant publication. Le sens est unique : on
-      modifie le parcours ici, pas le BPMN généré.
-    </p>
+    <h1>{{ t('admin.parcours.title') }}</h1>
+    <i18n-t keypath="admin.parcours.hint" tag="p" class="parcours__hint">
+      <template #draft><strong>{{ t('admin.parcours.hintDraft') }}</strong></template>
+      <template #link><RouterLink to="/admin/drafts">{{ t('admin.parcours.hintLink') }}</RouterLink></template>
+    </i18n-t>
     <p v-if="error" class="error" role="alert" data-testid="parcours-error">{{ error }}</p>
     <p v-if="notice" class="parcours__notice" role="status" data-testid="parcours-notice">{{ notice }}</p>
 
     <div v-if="!editing">
-      <button type="button" data-testid="parcours-new" @click="fresh">Nouveau parcours</button>
-      <p v-if="items.length === 0" data-testid="parcours-empty">Aucun parcours.</p>
+      <button type="button" data-testid="parcours-new" @click="fresh">{{ t('admin.parcours.new') }}</button>
+      <p v-if="items.length === 0" data-testid="parcours-empty">{{ t('admin.parcours.empty') }}</p>
       <table v-else class="parcours__list">
-        <thead><tr><th>Clé</th><th>Libellé</th><th>Étapes</th><th>Version</th><th>Dernière compilation</th><th /></tr></thead>
+        <thead><tr><th>{{ t('admin.parcours.key') }}</th><th>{{ t('admin.parcours.label') }}</th><th>{{ t('admin.parcours.stepsCount') }}</th><th>{{ t('admin.parcours.version') }}</th><th>{{ t('admin.parcours.lastCompiled') }}</th><th /></tr></thead>
         <tbody>
           <tr v-for="p in items" :key="p.key" data-testid="parcours-row">
             <td>{{ p.key }}</td><td>{{ p.label }}</td><td>{{ p.steps }}</td><td>{{ p.version }}</td>
             <td>{{ p.lastCompiledAt ?? '—' }}</td>
-            <td><button type="button" :data-testid="`parcours-open-${p.key}`" @click="open(p.key)">Ouvrir</button></td>
+            <td><button type="button" :data-testid="`parcours-open-${p.key}`" @click="open(p.key)">{{ t('admin.parcours.open') }}</button></td>
           </tr>
         </tbody>
       </table>
@@ -301,57 +298,57 @@ onMounted(refresh)
 
     <form v-else class="parcours__editor" data-testid="parcours-editor" @submit.prevent="save">
       <div class="parcours__head">
-        <label>Clé du processus
+        <label>{{ t('admin.parcours.processKey') }}
           <input v-model="key" :disabled="!isNew" required pattern="[A-Za-z][A-Za-z0-9_-]*" data-testid="parcours-key" />
         </label>
-        <label>Libellé <input v-model="label" required data-testid="parcours-label" /></label>
+        <label>{{ t('admin.parcours.label') }} <input v-model="label" required data-testid="parcours-label" /></label>
       </div>
 
       <fieldset>
-        <legend>Statuts du parcours</legend>
+        <legend>{{ t('admin.parcours.statuses') }}</legend>
         <div v-for="(s, i) in definition.statuses" :key="i" class="parcours__row">
-          <input v-model="s.code" aria-label="Code du statut" />
-          <input v-model="s.label" aria-label="Libellé du statut" />
+          <input v-model="s.code" :aria-label="t('admin.parcours.statusCode')" />
+          <input v-model="s.label" :aria-label="t('admin.parcours.statusLabel')" />
           <label><input v-model="s.initial" type="radio" name="initial" :value="true" :checked="s.initial"
-            @change="definition.statuses.forEach((o, j) => (o.initial = j === i))" /> initial</label>
-          <select v-model="s.outcome" aria-label="Issue">
-            <option value="NONE">en cours</option><option value="COMPLETED">terminé</option><option value="CANCELLED">annulé</option>
+            @change="definition.statuses.forEach((o, j) => (o.initial = j === i))" /> {{ t('admin.parcours.initial') }}</label>
+          <select v-model="s.outcome" :aria-label="t('admin.parcours.outcome')">
+            <option value="NONE">{{ t('admin.parcours.outcomes.NONE') }}</option><option value="COMPLETED">{{ t('admin.parcours.outcomes.COMPLETED') }}</option><option value="CANCELLED">{{ t('admin.parcours.outcomes.CANCELLED') }}</option>
           </select>
-          <button type="button" aria-label="Retirer le statut" @click="definition.statuses.splice(i, 1)">✕</button>
+          <button type="button" :aria-label="t('admin.parcours.removeStatus')" @click="definition.statuses.splice(i, 1)">✕</button>
         </div>
-        <button type="button" @click="definition.statuses.push({ code: '', label: '', initial: false, outcome: 'NONE' })">Ajouter un statut</button>
+        <button type="button" @click="definition.statuses.push({ code: '', label: '', initial: false, outcome: 'NONE' })">{{ t('admin.parcours.addStatus') }}</button>
       </fieldset>
 
       <fieldset>
-        <legend>Dossier</legend>
+        <legend>{{ t('admin.parcours.dossier') }}</legend>
         <label v-for="d in DOSSIER_STATUSES" :key="d">
           <input v-model="definition.allowedDossierStatuses" type="checkbox" :value="d" /> {{ d }}
         </label>
-        <label>À l’ouverture
+        <label>{{ t('admin.parcours.onStart') }}
           <select v-model="definition.onStartDossierStatus">
-            <option :value="null">inchangé</option>
+            <option :value="null">{{ t('admin.parcours.unchanged') }}</option>
             <option v-for="d in DOSSIER_STATUSES" :key="d" :value="d">{{ d }}</option>
           </select>
         </label>
       </fieldset>
 
-      <h2>Étapes</h2>
-      <p class="parcours__hint">Sans « suite » explicite, une étape passe à la suivante de la liste ; la dernière termine le parcours.</p>
+      <h2>{{ t('admin.parcours.steps') }}</h2>
+      <p class="parcours__hint">{{ t('admin.parcours.stepsHint') }}</p>
       <article v-for="(s, i) in definition.steps" :key="i" class="parcours__step" data-testid="parcours-step">
         <header class="parcours__row">
           <strong>{{ i + 1 }}.</strong>
-          <input v-model="s.id" aria-label="Identifiant de l’étape" required pattern="[a-z][A-Za-z0-9]{0,39}" data-testid="step-id" />
-          <input v-model="s.label" aria-label="Libellé de l’étape" placeholder="Libellé (optionnel)" />
-          <select :value="s.kind" aria-label="Type d’étape" data-testid="step-kind" @change="setKind(s, ($event.target as HTMLSelectElement).value as StepKind)">
-            <option v-for="k in KIND_ORDER" :key="k" :value="k">{{ KINDS[k].label }}</option>
+          <input v-model="s.id" :aria-label="t('admin.parcours.stepId')" required pattern="[a-z][A-Za-z0-9]{0,39}" data-testid="step-id" />
+          <input v-model="s.label" :aria-label="t('admin.parcours.stepLabel')" :placeholder="t('admin.parcours.stepLabelPlaceholder')" />
+          <select :value="s.kind" :aria-label="t('admin.parcours.stepKind')" data-testid="step-kind" @change="setKind(s, ($event.target as HTMLSelectElement).value as StepKind)">
+            <option v-for="k in KIND_ORDER" :key="k" :value="k">{{ t(`admin.parcours.kinds.${k}`) }}</option>
           </select>
-          <button type="button" aria-label="Monter" @click="move(i, -1)">↑</button>
-          <button type="button" aria-label="Descendre" @click="move(i, 1)">↓</button>
-          <button type="button" aria-label="Supprimer l’étape" data-testid="step-remove" @click="removeStep(i)">✕</button>
+          <button type="button" :aria-label="t('admin.parcours.up')" @click="move(i, -1)">↑</button>
+          <button type="button" :aria-label="t('admin.parcours.down')" @click="move(i, 1)">↓</button>
+          <button type="button" :aria-label="t('admin.parcours.removeStep')" data-testid="step-remove" @click="removeStep(i)">✕</button>
         </header>
 
         <template v-if="s.kind !== 'DECISION'">
-          <label v-for="spec in KINDS[s.kind].params" :key="spec.name" class="parcours__param">{{ spec.label }}
+          <label v-for="spec in KINDS[s.kind].params" :key="spec.name" class="parcours__param">{{ t(`admin.parcours.params.${spec.name}`) }}
             <select v-if="spec.name === 'targetWorkflowStatus'" v-model="s.params[spec.name]" :data-testid="`param-${spec.name}`">
               <option value="" />
               <option v-for="st in definition.statuses.filter((x) => x.code)" :key="st.code" :value="st.code">{{ st.label || st.code }}</option>
@@ -365,50 +362,50 @@ onMounted(refresh)
             <textarea v-else-if="spec.multiline" v-model="s.params[spec.name]" rows="2" :data-testid="`param-${spec.name}`" />
             <input v-else v-model="s.params[spec.name]" :data-testid="`param-${spec.name}`" />
           </label>
-          <label class="parcours__param">Suite (si ce n’est pas l’étape suivante)
-            <select v-model="s.next"><option :value="null">étape suivante</option><option v-for="id in stepIds" :key="id" :value="id">{{ id }}</option></select>
+          <label class="parcours__param">{{ t('admin.parcours.next') }}
+            <select v-model="s.next"><option :value="null">{{ t('admin.parcours.nextStep') }}</option><option v-for="id in stepIds" :key="id" :value="id">{{ id }}</option></select>
           </label>
         </template>
 
         <template v-else>
           <div v-for="(b, j) in s.branches" :key="j" class="parcours__row" data-testid="branch">
-            Si <input v-model="b.variable" aria-label="Variable" placeholder="variable" />
-            <select v-model="b.operator" aria-label="Opérateur"><option v-for="(sym, op) in OPERATORS" :key="op" :value="op">{{ sym }}</option></select>
-            <input v-model="b.value" aria-label="Valeur" placeholder="valeur" />
-            alors
-            <select v-model="b.next" aria-label="Étape cible"><option value="" /><option v-for="id in stepIds" :key="id" :value="id">{{ id }}</option></select>
-            <button type="button" aria-label="Retirer la condition" @click="s.branches!.splice(j, 1)">✕</button>
+            {{ t('admin.parcours.if') }} <input v-model="b.variable" :aria-label="t('admin.parcours.variableAria')" :placeholder="t('admin.parcours.variable')" />
+            <select v-model="b.operator" :aria-label="t('admin.parcours.operator')"><option v-for="(sym, op) in OPERATORS" :key="op" :value="op">{{ sym }}</option></select>
+            <input v-model="b.value" :aria-label="t('admin.parcours.valueAria')" :placeholder="t('admin.parcours.value')" />
+            {{ t('admin.parcours.then') }}
+            <select v-model="b.next" :aria-label="t('admin.parcours.target')"><option value="" /><option v-for="id in stepIds" :key="id" :value="id">{{ id }}</option></select>
+            <button type="button" :aria-label="t('admin.parcours.removeCondition')" @click="s.branches!.splice(j, 1)">✕</button>
           </div>
-          <button type="button" @click="addBranch(s)">Ajouter une condition</button>
-          <label class="parcours__param">Sinon
+          <button type="button" @click="addBranch(s)">{{ t('admin.parcours.addCondition') }}</button>
+          <label class="parcours__param">{{ t('admin.parcours.otherwise') }}
             <select v-model="s.defaultNext" data-testid="step-default"><option :value="null" /><option v-for="id in stepIds" :key="id" :value="id">{{ id }}</option></select>
           </label>
         </template>
       </article>
-      <button type="button" data-testid="step-add" @click="addStep">Ajouter une étape</button>
+      <button type="button" data-testid="step-add" @click="addStep">{{ t('admin.parcours.addStep') }}</button>
 
       <div class="parcours__actions">
-        <button type="submit" :disabled="busy" data-testid="parcours-save">Enregistrer</button>
-        <button type="button" :disabled="busy" data-testid="parcours-preview" @click="preview">Aperçu du BPMN</button>
-        <button type="button" :disabled="busy || isNew || dirty" data-testid="parcours-validate" @click="compile(true)">Valider (à blanc)</button>
-        <button type="button" :disabled="busy || isNew || dirty" data-testid="parcours-compile" @click="compile(false)">Compiler en brouillon</button>
-        <label class="parcours__replace"><input v-model="replaceDraft" type="checkbox" data-testid="parcours-replace" /> remplacer un brouillon existant d'un autre auteur</label>
-        <button type="button" :disabled="busy || isNew" data-testid="parcours-delete" @click="remove">Supprimer</button>
-        <button type="button" @click="editing = false">Fermer</button>
+        <button type="submit" :disabled="busy" data-testid="parcours-save">{{ t('admin.parcours.save') }}</button>
+        <button type="button" :disabled="busy" data-testid="parcours-preview" @click="preview">{{ t('admin.parcours.preview') }}</button>
+        <button type="button" :disabled="busy || isNew || dirty" data-testid="parcours-validate" @click="compile(true)">{{ t('admin.parcours.validate') }}</button>
+        <button type="button" :disabled="busy || isNew || dirty" data-testid="parcours-compile" @click="compile(false)">{{ t('admin.parcours.compile') }}</button>
+        <label class="parcours__replace"><input v-model="replaceDraft" type="checkbox" data-testid="parcours-replace" /> {{ t('admin.parcours.replace') }}</label>
+        <button type="button" :disabled="busy || isNew" data-testid="parcours-delete" @click="remove">{{ t('admin.parcours.delete') }}</button>
+        <button type="button" @click="editing = false">{{ t('admin.parcours.close') }}</button>
       </div>
 
       <section v-if="result" class="parcours__result" data-testid="parcours-result">
         <p v-if="result.draftWritten" data-testid="parcours-draft-link">
-          Brouillon déposé<span v-if="result.replacedExistingDraft"> (il remplace un brouillon existant)</span> :
-          <RouterLink to="/admin/drafts">relire dans Admin → Brouillons</RouterLink>
+          {{ t('admin.parcours.draftWritten') }}<span v-if="result.replacedExistingDraft"> {{ t('admin.parcours.replacesDraft') }}</span> :
+          <RouterLink to="/admin/drafts">{{ t('admin.parcours.reviewDrafts') }}</RouterLink>
         </p>
         <p v-if="result.problem" class="error" role="alert" data-testid="parcours-problem">
-          Le déploiement refuserait ce BPMN : {{ result.problem }}
+          {{ t('admin.parcours.problem', { problem: result.problem }) }}
         </p>
         <ul v-if="result.warnings.length" data-testid="parcours-warnings">
           <li v-for="w in result.warnings" :key="w">{{ w }}</li>
         </ul>
-        <details><summary>BPMN généré (empreinte {{ result.sha256.slice(0, 12) }})</summary><pre data-testid="parcours-xml">{{ result.xml }}</pre></details>
+        <details><summary>{{ t('admin.parcours.bpmnSummary', { sha: result.sha256.slice(0, 12) }) }}</summary><pre data-testid="parcours-xml">{{ result.xml }}</pre></details>
       </section>
     </form>
   </section>

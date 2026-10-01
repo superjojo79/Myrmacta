@@ -1,5 +1,6 @@
 package com.flowforge.infrastructure.mcp.tool;
 
+import com.flowforge.domain.dossier.DossierFieldRules;
 import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierFieldValidationException;
@@ -25,12 +26,24 @@ public class CreateDossierTool {
     private final TenantProperties tenantProperties;
     private final McpAccessContextFactory accessContextFactory;
     private final DossierFieldValidator fieldValidator;
+    private final DossierFieldRules fieldRules;
 
     public CreateDossierTool(
             CreateDossierUseCase createDossierUseCase,
             GetDossierTypeUseCase getDossierTypeUseCase,
             TenantProperties tenantProperties,
             McpAccessContextFactory accessContextFactory) {
+        this(createDossierUseCase, getDossierTypeUseCase, tenantProperties, accessContextFactory, DossierFieldRules.disabled());
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public CreateDossierTool(
+            CreateDossierUseCase createDossierUseCase,
+            GetDossierTypeUseCase getDossierTypeUseCase,
+            TenantProperties tenantProperties,
+            McpAccessContextFactory accessContextFactory,
+            DossierFieldRules fieldRules) {
+        this.fieldRules = Objects.requireNonNull(fieldRules, "fieldRules");
         this.createDossierUseCase = Objects.requireNonNull(createDossierUseCase, "createDossierUseCase");
         this.getDossierTypeUseCase = Objects.requireNonNull(getDossierTypeUseCase, "getDossierTypeUseCase");
         this.tenantProperties = Objects.requireNonNull(tenantProperties, "tenantProperties");
@@ -70,7 +83,10 @@ public class CreateDossierTool {
             throw new InactiveDossierTypeException(type.code());
         }
         var merged = fieldValidator.applyDefaults(type.fieldDefinitions(), fields);
-        var errors = fieldValidator.validate(type.fieldDefinitions(), merged, type.allowUnknownFields());
+        var ruled = fieldRules.apply(type.fieldDefinitions(), merged, fields == null ? java.util.Set.of() : fields.keySet());
+        var errors = new java.util.ArrayList<>(
+                fieldValidator.validate(ruled.effectiveDefinitions(), ruled.fields(), type.allowUnknownFields()));
+        errors.addAll(ruled.errors());
         if (!errors.isEmpty()) {
             throw new DossierFieldValidationException(errors);
         }

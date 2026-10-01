@@ -91,7 +91,7 @@ public final class DossierFieldRules {
         for (FieldDefinition d : definitions) {
             if (d.hasFormula()) {
                 computedNames.add(d.name());
-                if (explicitKeys != null && explicitKeys.contains(d.name())) {
+                if (explicitKeys != null && explicitKeys.contains(d.name()) && fields.get(d.name()) != null) {
                     errors.add(FieldValidationError.computedReadOnly(d.name()));
                 }
                 merged.remove(d.name());
@@ -136,7 +136,7 @@ public final class DossierFieldRules {
         List<FieldDefinition> effective = new ArrayList<>(definitions.size());
         for (FieldDefinition d : definitions) {
             if (hidden.contains(d.name())) {
-                effective.add(d.withRequired(false));
+                effective.add(d.withHidden());
             } else if (requiredNow.contains(d.name()) && !d.required()) {
                 effective.add(d.withRequired(true));
             } else {
@@ -199,6 +199,12 @@ public final class DossierFieldRules {
                 readable.add(d.name());
             }
         }
+        Set<String> conditional = new HashSet<>();
+        for (FieldDefinition d : definitions) {
+            if (d.visibleWhen() != null) {
+                conditional.add(d.name());
+            }
+        }
         int count = 0;
         for (FieldDefinition d : definitions) {
             for (String[] rule : new String[][] {{"formula", d.formula()}, {"visibleWhen", d.visibleWhen()}, {"requiredWhen", d.requiredWhen()}}) {
@@ -221,6 +227,11 @@ public final class DossierFieldRules {
                         throw new IllegalArgumentException("field '" + d.name() + "' " + rule[0] + " reads '" + m.group(1)
                                 + "', which is not a plain (non-computed, non-sensitive) field of this type: rules can only "
                                 + "read those");
+                    }
+                    if (!"formula".equals(rule[0]) && conditional.contains(m.group(1))) {
+                        throw new IllegalArgumentException("field '" + d.name() + "' " + rule[0] + " reads '" + m.group(1)
+                                + "', which carries a visibleWhen rule itself: visibility and requirement rules cannot "
+                                + "depend on a field that can be hidden (the outcome would depend on save order)");
                     }
                 }
             }

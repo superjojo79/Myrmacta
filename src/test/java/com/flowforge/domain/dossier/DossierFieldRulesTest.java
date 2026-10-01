@@ -206,4 +206,35 @@ class DossierFieldRulesTest {
         assertThatThrownBy(() -> DossierFieldRules.disabled().validateDefinitions(defs)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> DossierFieldRules.disabled().apply(defs, fields("a", 1), Set.of())).isInstanceOf(IllegalStateException.class);
     }
+
+    @Test
+    void aHiddenGroupWithMinRowsCanBeSaved_reviewD1M1() {
+        FieldDefinition group = new FieldDefinition("g", "g", FieldType.REPEATABLE_GROUP, false, null, null, null, false,
+                List.of(plain("x", FieldType.STRING)), 1, 5, null, "dossier.fields.a = 'Y'", null);
+        List<FieldDefinition> defs = List.of(plain("a", FieldType.STRING), group);
+        assertThat(allErrors(defs, fields("a", "N"), Set.of("a"))).isEmpty();
+        // visible : la borne minimale s'applique toujours
+        assertThat(allErrors(defs, fields("a", "Y"), Set.of("a"))).isNotEmpty();
+    }
+
+    @Test
+    void aVisibilityRuleCannotReadAFieldThatCanBeHidden_reviewD1M3() {
+        List<FieldDefinition> defs = List.of(
+                plain("a", FieldType.STRING),
+                rule("b", FieldType.STRING, false, null, "dossier.fields.a = 'Y'", null),
+                rule("c", FieldType.STRING, false, null, "dossier.fields.b = 'on'", null));
+        assertThatThrownBy(() -> rules.validateDefinitions(defs)).hasMessageContaining("visibleWhen rule itself");
+        List<FieldDefinition> req = List.of(
+                plain("a", FieldType.STRING),
+                rule("b", FieldType.STRING, false, null, "dossier.fields.a = 'Y'", null),
+                rule("c", FieldType.STRING, false, null, null, "dossier.fields.b = 'on'"));
+        assertThatThrownBy(() -> rules.validateDefinitions(req)).hasMessageContaining("visibleWhen rule itself");
+    }
+
+    @Test
+    void anExplicitNullOnAComputedFieldIsIgnored_reviewD1L2() {
+        List<FieldDefinition> defs = List.of(plain("ht", FieldType.NUMBER), rule("d", FieldType.NUMBER, false, "dossier.fields.ht * 2", null, null));
+        var outcome = rules.apply(defs, fields("ht", 1, "d", null), Set.of("ht", "d"));
+        assertThat(outcome.errors()).isEmpty();
+    }
 }

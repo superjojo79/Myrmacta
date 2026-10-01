@@ -190,6 +190,15 @@ public record FieldDefinition(
                 maxRows, formula, visibleWhen, requiredWhen);
     }
 
+    /**
+     * Copie « non applicable » : ni obligatoire ni borne minimale de lignes (un groupe masqué avec {@code minRows > 0}
+     * resterait sinon impossible à enregistrer).
+     */
+    public FieldDefinition withHidden() {
+        return new FieldDefinition(name, label, type, false, defaultValue, options, group, sensitive, fields,
+                minRows == null ? null : 0, maxRows, formula, visibleWhen, requiredWhen);
+    }
+
     /** Champ scalaire historique : sans sous-champs ni bornes de lignes. */
     public FieldDefinition(
             String name,

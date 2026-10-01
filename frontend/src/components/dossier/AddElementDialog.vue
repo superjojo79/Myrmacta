@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { labelOr } from '@/i18n'
 import { useI18n } from 'vue-i18n'
 import { computed, ref, watch } from 'vue'
 import { MANUAL_ELEMENT_TYPES, type ElementType } from '@/api/types'
@@ -23,7 +24,7 @@ const linkUrl = ref('')
 const linkDescription = ref('')
 const error = ref<string | null>(null)
 
-const typeLabel = (type: ElementType): string => t(`dossier.addElement.types.${type}`)
+const typeLabel = (type: ElementType): string => labelOr(`dossier.addElement.types.${type}`, type)
 
 const manualTypes = computed(() => MANUAL_ELEMENT_TYPES)
 

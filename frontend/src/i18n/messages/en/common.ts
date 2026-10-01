@@ -37,6 +37,11 @@ const common: typeof fr = {
     suite: 'Test suite failed',
     redeploy: 'Redeployment failed',
   },
+  errors2: {
+    history: 'History unavailable',
+    observability: 'Unable to load observability',
+    inputsObject: 'Inputs must be a JSON object.',
+  },
 }
 
 export default common

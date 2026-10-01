@@ -93,3 +93,8 @@ export function useLocale(): { locale: ComputedRef<AppLocale>; setLocale: typeof
 export function formatTag(): string {
   return FORMAT_TAGS[currentLocale()]
 }
+
+/** Texte d'un code serveur : traduit s'il est connu, sinon le code tel quel (un nouveau code serveur n'affiche jamais une clé brute). */
+export function labelOr(key: string, code: string): string {
+  return i18n.global.te(key) ? i18n.global.t(key) : code
+}

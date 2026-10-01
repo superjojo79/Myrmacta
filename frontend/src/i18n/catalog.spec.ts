@@ -63,7 +63,7 @@ describe('key usage', () => {
     const missing: string[] = []
     for (const file of files) {
       const text = readFileSync(file, 'utf8')
-      for (const match of text.matchAll(/(?<![\w.])\$?t\(\s*'([A-Za-z][\w.]*)'/g)) {
+      for (const match of text.matchAll(/(?<![\w])\$?t\(\s*'([A-Za-z][\w.]*)'/g)) {
         if (!(match[1] in frFlat)) missing.push(`${relative(root, file)}: ${match[1]}`)
       }
     }

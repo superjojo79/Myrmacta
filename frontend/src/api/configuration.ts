@@ -55,15 +55,6 @@ export interface ConfigImportRecord {
   failed: number
 }
 
-export const ARTIFACT_LABELS: Record<ArtifactType, string> = {
-  DOSSIER_TYPE: 'Type de dossier',
-  TASK_QUESTION_SCHEMA: 'Schéma de questions',
-  CONNECTOR_INSTANCE: 'Connecteur',
-  DMN: 'Table DMN',
-  BPMN: 'Processus BPMN',
-  WORKFLOW_CONFIG: 'Config. de workflow',
-}
-
 /** Télécharge le bundle (ZIP) par axios : préfixe de contexte et en-têtes de session respectés, erreur lisible (jamais un JSON enregistré en .zip). */
 export async function downloadExport(sourceLabel: string): Promise<void> {
   const label = sourceLabel.trim()

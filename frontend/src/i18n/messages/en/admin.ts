@@ -500,6 +500,7 @@ const admin: typeof fr = {
       list: 'Invalid list and item name (e.g. lines / line)',
     },
   },
+  paramsExample: '{\'{\'}"erp_url": "https://erp.example.com"{\'}\'}',
 }
 
 export default admin

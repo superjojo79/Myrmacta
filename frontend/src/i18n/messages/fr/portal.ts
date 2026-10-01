@@ -38,4 +38,5 @@ export default {
     confirmDecline: 'Confirmer le refus',
     cancel: 'Annuler',
   },
+  pageTitle: 'Réponse à une demande — FlowForge',
 }

@@ -3,7 +3,7 @@
  * d'accessibilité ou d'aide (placeholder, title, aria-label, alt, label). Sert au test de couverture (i18nCoverage.spec.ts) :
  * il n'interprète pas le code, il repère ce qu'un lecteur étranger verrait en français.
  */
-const ATTRS = /\s(?:placeholder|title|aria-label|alt|label)="([^"]*[A-Za-zÀ-ÿ][^"]*)"/g
+const ATTRS = /\s(?:placeholder|title|aria-label|aria-description|aria-placeholder|alt|label)=(?:"([^"]*[A-Za-zÀ-ÿ][^"]*)"|'([^']*[A-Za-zÀ-ÿ][^']*)')/g
 const TEXT = />([^<>]*[A-Za-zÀ-ÿ][^<>]*)</g
 
 export function templateOf(source: string): string {
@@ -29,7 +29,7 @@ export function rawTexts(source: string): string[] {
   }
   for (const match of template.matchAll(ATTRS)) {
     // une valeur liée (:placeholder="…") n'est pas un texte ; l'attribut statique l'est
-    const text = visible(match[1])
+    const text = visible(match[1] ?? match[2] ?? '')
     if (/[A-Za-zÀ-ÿ]{2,}/.test(text) && !/^\s*[$\w.]+\(/.test(text)) found.push(text)
   }
   return found

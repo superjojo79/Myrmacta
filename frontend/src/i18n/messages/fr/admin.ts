@@ -498,4 +498,5 @@ export default {
       list: 'Liste et nom d’élément invalides (ex. lignes / ligne)',
     },
   },
+  paramsExample: '{\'{\'}"url_erp": "https://erp.exemple.fr"{\'}\'}',
 }

@@ -40,6 +40,7 @@ const portal: typeof fr = {
     confirmDecline: 'Confirm the refusal',
     cancel: 'Cancel',
   },
+  pageTitle: 'Reply to a request — FlowForge',
 }
 
 export default portal

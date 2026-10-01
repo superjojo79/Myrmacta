@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { labelOr } from '@/i18n'
 import { useI18n } from 'vue-i18n'
 import { onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
@@ -22,7 +23,7 @@ const error = ref<string | null>(null)
 const notice = ref<string | null>(null)
 const busyKey = ref<string | null>(null)
 
-const origin = (p: Provenance): string => t(`admin.drafts.provenance.${p}`)
+const origin = (p: Provenance): string => labelOr(`admin.drafts.provenance.${p}`, p)
 
 function rowId(d: PendingDraft): string {
   return `${d.type}:${d.key}`

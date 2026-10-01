@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { labelOr } from '@/i18n'
 import { useI18n } from 'vue-i18n'
 import { nextTick, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
@@ -43,7 +44,7 @@ const log = ref<HTMLElement | null>(null)
 const actions = ref<AssistantAction[]>([])
 const actionBusy = ref<string | null>(null)
 
-const statusLabel = (status: AssistantAction['status']): string => t(`admin.assistant.status.${status}`)
+const statusLabel = (status: AssistantAction['status']): string => labelOr(`admin.assistant.status.${status}`, status)
 const toolLabel = (tool: string): string => (te(`admin.assistant.tools.${tool}`) ? t(`admin.assistant.tools.${tool}`) : tool)
 
 function pretty(json: string): string {

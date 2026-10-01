@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
 import LocaleSwitcher from '@/i18n/LocaleSwitcher.vue'
 import { formatDate } from '@/i18n/format'
@@ -21,6 +21,9 @@ type State = 'no-token' | 'loading' | 'denied' | 'ready' | 'done' | 'unavailable
 const props = withDefaults(defineProps<{ token: string | null; kind?: 'task' | 'signature' }>(), { kind: 'task' })
 
 const { t } = useI18n()
+watchEffect(() => {
+  document.title = t('portal.pageTitle')
+})
 const state = ref<State>(props.token ? 'loading' : 'no-token')
 const isSignature = computed(() => props.kind === 'signature' && !!props.token)
 const task = ref<PortalTask | null>(null)

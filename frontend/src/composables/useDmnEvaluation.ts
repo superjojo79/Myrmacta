@@ -32,7 +32,7 @@ export function useDmnEvaluation() {
       versions.value = await listDecisionTableVersions(decisionKey)
     } catch (err) {
       versions.value = []
-      error.value = toProblemDetail(err).detail ?? 'Historique indisponible'
+      error.value = toProblemDetail(err).detail ?? i18n.global.t('common.errors2.history')
     } finally {
       loading.value = false
     }
@@ -53,7 +53,7 @@ export function useDmnEvaluation() {
       }
       inputs = parsed as Record<string, unknown>
     } catch {
-      error.value = 'Les entrées doivent être un objet JSON.'
+      error.value = i18n.global.t('common.errors2.inputsObject')
       return
     }
     loading.value = true

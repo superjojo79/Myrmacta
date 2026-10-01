@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { labelOr } from '@/i18n'
 import { useI18n } from 'vue-i18n'
 import { formatDateTime } from '@/i18n/format'
 import { computed, onMounted, ref, watch } from 'vue'
@@ -30,9 +31,9 @@ const secrets = ref<Record<string, Record<string, string>>>({})
 const parameters = computed(() => parseParameters(parametersText.value))
 const parametersInvalid = computed(() => parameters.value === null)
 
-const planLabel = (action: string): string => t(`admin.promotion.planActions.${action}`)
-const outcomeLabel = (outcome: string): string => t(`admin.promotion.outcomes.${outcome}`)
-const artifactLabel = (type: string): string => t(`admin.promotion.artifacts.${type}`)
+const planLabel = (action: string): string => labelOr(`admin.promotion.planActions.${action}`, action)
+const outcomeLabel = (outcome: string): string => labelOr(`admin.promotion.outcomes.${outcome}`, outcome)
+const artifactLabel = (type: string): string => labelOr(`admin.promotion.artifacts.${type}`, type)
 
 const applicableCount = computed(() => plan.value?.entries.filter((e) => e.action === 'CREATE' || e.action === 'UPDATE').length ?? 0)
 const connectorsNeedingSecrets = computed(() =>
@@ -150,7 +151,7 @@ onMounted(loadJournal)
         <i18n-t keypath="admin.promotion.parameters" tag="span">
           <template #example><code>&#123;&#123;nom&#125;&#125;</code></template>
         </i18n-t>
-        <textarea v-model="parametersText" rows="2" placeholder='{"url_erp": "https://erp.exemple.fr"}' data-testid="parameters" />
+        <textarea v-model="parametersText" rows="2" :placeholder="t('admin.paramsExample')" data-testid="parameters" />
       </label>
       <p v-if="parametersInvalid" class="promotion__error" role="alert">{{ t('admin.promotion.parametersInvalid') }}</p>
       <button type="submit" :disabled="!file || busy || parametersInvalid" data-testid="plan-button">{{ t('admin.promotion.plan') }}</button>

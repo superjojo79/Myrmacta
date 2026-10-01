@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { labelOr } from '@/i18n'
 import { useI18n } from 'vue-i18n'
 import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
@@ -340,7 +341,7 @@ onMounted(refresh)
           <input v-model="s.id" :aria-label="t('admin.parcours.stepId')" required pattern="[a-z][A-Za-z0-9]{0,39}" data-testid="step-id" />
           <input v-model="s.label" :aria-label="t('admin.parcours.stepLabel')" :placeholder="t('admin.parcours.stepLabelPlaceholder')" />
           <select :value="s.kind" :aria-label="t('admin.parcours.stepKind')" data-testid="step-kind" @change="setKind(s, ($event.target as HTMLSelectElement).value as StepKind)">
-            <option v-for="k in KIND_ORDER" :key="k" :value="k">{{ t(`admin.parcours.kinds.${k}`) }}</option>
+            <option v-for="k in KIND_ORDER" :key="k" :value="k">{{ labelOr(`admin.parcours.kinds.${k}`, k) }}</option>
           </select>
           <button type="button" :aria-label="t('admin.parcours.up')" @click="move(i, -1)">↑</button>
           <button type="button" :aria-label="t('admin.parcours.down')" @click="move(i, 1)">↓</button>
@@ -348,7 +349,7 @@ onMounted(refresh)
         </header>
 
         <template v-if="s.kind !== 'DECISION'">
-          <label v-for="spec in KINDS[s.kind].params" :key="spec.name" class="parcours__param">{{ t(`admin.parcours.params.${spec.name}`) }}
+          <label v-for="spec in KINDS[s.kind].params" :key="spec.name" class="parcours__param">{{ labelOr(`admin.parcours.params.${spec.name}`, spec.name) }}
             <select v-if="spec.name === 'targetWorkflowStatus'" v-model="s.params[spec.name]" :data-testid="`param-${spec.name}`">
               <option value="" />
               <option v-for="st in definition.statuses.filter((x) => x.code)" :key="st.code" :value="st.code">{{ st.label || st.code }}</option>

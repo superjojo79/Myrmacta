@@ -35,4 +35,9 @@ export default {
     suite: 'Jeu de tests impossible',
     redeploy: 'Redéploiement impossible',
   },
+  errors2: {
+    history: 'Historique indisponible',
+    observability: 'Impossible de charger l’observabilité',
+    inputsObject: 'Les entrées doivent être un objet JSON.',
+  },
 }

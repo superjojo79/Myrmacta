@@ -62,7 +62,13 @@ class ImapInboundConnectorTest {
 
     private static ImapMailbox.Mail mail(String subject, String body, boolean automatic, List<InboundAttachment> attachments) {
         return new ImapMailbox.Mail("<id@x>", "client@example.org", "Client", subject, Instant.parse("2026-10-01T10:00:00Z"), body,
-                automatic, attachments, 0);
+                automatic, true, attachments, 0);
+    }
+
+    private List<WorkflowTriggerEvent> events(ConnectorInstanceData instance) {
+        List<WorkflowTriggerEvent> events = new ArrayList<>();
+        connector.poll(instance, events::add);
+        return events;
     }
 
     // ---- validation ----
@@ -123,7 +129,7 @@ class ImapInboundConnectorTest {
         var file = new InboundAttachment("devis.pdf", "application/pdf", new byte[] {1, 2});
         inbox.add(mail("Panne de chauffage", "Bonjour, ma chaudière est en panne.", false, List.of(file)));
 
-        List<WorkflowTriggerEvent> events = connector.onEvent(instance(config()), Map.of());
+        List<WorkflowTriggerEvent> events = events(instance(config()));
 
         assertThat(events).hasSize(1);
         var event = events.getFirst();
@@ -143,22 +149,22 @@ class ImapInboundConnectorTest {
     @Test
     void theDossierReferenceInTheSubjectCorrelatesTheMessage() {
         inbox.add(mail("RE: [DOS-2026-0042] Votre demande", "Merci", false, List.of()));
-        var event = connector.onEvent(instance(config()), Map.of()).getFirst();
+        var event = events(instance(config())).getFirst();
         assertThat(event.existingDossierReference()).isEqualTo("DOS-2026-0042");
     }
 
     @Test
     void automaticRepliesListsAndSenderlessMessagesAreRefusedNeverADossier() {
         inbox.add(mail("Absence du bureau", "je suis absent", true, List.of()));
-        inbox.add(new ImapMailbox.Mail("<n@x>", "", "", "sans expéditeur", null, "x", false, List.of(), 0));
-        assertThat(connector.onEvent(instance(config()), Map.of())).isEmpty();
+        inbox.add(new ImapMailbox.Mail("<n@x>", "", "", "sans expéditeur", null, "x", false, true, List.of(), 0));
+        assertThat(events(instance(config()))).isEmpty();
         assertThat(outcomes).containsExactly(ImapMailbox.Outcome.REJECTED, ImapMailbox.Outcome.REJECTED);
     }
 
     @Test
     void aMappedFieldThatIsEmptyRefusesTheMessage() {
         inbox.add(mail("", "corps", false, List.of())); // objet vide, mappé
-        assertThat(connector.onEvent(instance(config()), Map.of())).isEmpty();
+        assertThat(events(instance(config()))).isEmpty();
         assertThat(outcomes).containsExactly(ImapMailbox.Outcome.REJECTED);
     }
 
@@ -168,7 +174,7 @@ class ImapInboundConnectorTest {
         c.put("referencePattern", "(a+)+$"); // retour arrière exponentiel sur un objet de « a » suivi d'un autre caractère
         inbox.add(mail("a".repeat(400) + "!", "corps", false, List.of()));
         long start = System.nanoTime();
-        var events = connector.onEvent(instance(c), Map.of());
+        var events = events(instance(c));
         assertThat((System.nanoTime() - start) / 1_000_000).as("ms").isLessThan(5_000);
         assertThat(events).hasSize(1);
         assertThat(events.getFirst().existingDossierReference()).isNull();
@@ -176,8 +182,48 @@ class ImapInboundConnectorTest {
 
     @Test
     void skippedAttachmentsAreSignalledToTheProcess() {
-        inbox.add(new ImapMailbox.Mail("<id>", "c@x.org", "C", "objet", null, "corps", false, List.of(), 2));
-        var event = connector.onEvent(instance(config()), Map.of()).getFirst();
+        inbox.add(new ImapMailbox.Mail("<id>", "c@x.org", "C", "objet", null, "corps", false, true, List.of(), 2));
+        var event = events(instance(config())).getFirst();
         assertThat(event.variables()).containsEntry("inboundAttachmentsSkipped", 2);
+    }
+
+    // ---- revue adversariale D3c/D3d ----
+
+    @Test
+    void anUnauthenticatedSenderCannotJoinAnExistingDossier_aNewOneIsCreatedAndTheProcessIsTold() {
+        inbox.add(new ImapMailbox.Mail("<s>", "attaquant@evil.example", "X", "[DOS-2026-0042] urgent", null, "corps", false, false, List.of(), 0));
+        var event = events(instance(config())).getFirst();
+        assertThat(event.existingDossierReference()).as("jamais rattaché sans attestation de notre serveur").isNull();
+        assertThat(event.variables()).containsEntry("mailReferenceIgnored", "DOS-2026-0042").containsEntry("mailSenderAuthenticated", false);
+    }
+
+    @Test
+    void theAdminCanAcceptTheRiskExplicitly() {
+        Map<String, Object> c = config();
+        c.put("requireAuthenticatedSender", "false");
+        inbox.add(new ImapMailbox.Mail("<s>", "x@y.org", "X", "[DOS-1] suite", null, "corps", false, false, List.of(), 0));
+        assertThat(events(instance(c)).getFirst().existingDossierReference()).isEqualTo("DOS-1");
+    }
+
+    @Test
+    void aMessageTheRuntimeCannotTakeInChargeIsNotAcknowledgedAsProcessed() {
+        inbox.add(mail("Panne", "corps", false, List.of()));
+        connector.poll(instance(config()), event -> {
+            throw new IllegalStateException("unknown dossier type");
+        });
+        assertThat(outcomes).containsExactly(ImapMailbox.Outcome.REJECTED);
+    }
+
+    @Test
+    void theHostIsCheckedAgainAtEveryPoll_aNameThatTurnsPrivateIsRefusedBeforeAnyConnection() throws Exception {
+        java.util.concurrent.atomic.AtomicReference<String> address = new java.util.concurrent.atomic.AtomicReference<>("93.184.216.34");
+        OutboundUrlGuard flipping = new OutboundUrlGuard(false, host -> new InetAddress[] {InetAddress.getByName(address.get())});
+        var c = new ImapInboundConnector(new SimpleJsonPathMapper(), flipping, JsonMapper.builder().build(),
+                new ConnectorProperties(null, null, null, null, null, null), InboundConnectorProperties.defaults(),
+                (a, b, d, e) -> seen.add(a));
+        c.validate(config());
+        address.set("127.0.0.1");
+        assertThatThrownBy(() -> c.poll(instance(config()), e -> { })).isInstanceOf(IllegalStateException.class).hasMessageContaining("public");
+        assertThat(seen).isEmpty();
     }
 }

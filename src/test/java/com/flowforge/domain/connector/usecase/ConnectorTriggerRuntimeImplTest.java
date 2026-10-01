@@ -228,4 +228,90 @@ class ConnectorTriggerRuntimeImplTest {
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> runtime.onIncomingEvent(instance, Map.of()))
                 .isInstanceOf(com.flowforge.domain.dossier.model.DossierNotFoundException.class);
     }
+
+    // ---- revue D3c/D3d, H2 : un connecteur d'interrogation acquitte APRÈS l'enregistrement ----
+
+    private static final class RecordingPoller implements com.flowforge.domain.connector.model.PollingTriggerConnector {
+        final List<String> log = new java.util.ArrayList<>();
+        final List<WorkflowTriggerEvent> toDeliver;
+
+        RecordingPoller(List<WorkflowTriggerEvent> toDeliver) {
+            this.toDeliver = toDeliver;
+        }
+
+        @Override
+        public void poll(com.flowforge.domain.connector.model.ConnectorInstanceData instance, EventDelivery delivery) {
+            for (WorkflowTriggerEvent event : toDeliver) {
+                try {
+                    delivery.deliver(event);
+                    log.add("acknowledged:" + event.processKey());
+                } catch (RuntimeException failure) {
+                    log.add("given back:" + event.processKey());
+                }
+            }
+        }
+    }
+
+    @Test
+    void aPollingConnectorIsAcknowledgedOnlyAfterTheEventIsPersisted_aFailureIsNotAcknowledged() {
+        var poller = new RecordingPoller(List.of(
+                new WorkflowTriggerEvent("ok1", "SINISTRE", Map.of(), Map.of(), null),
+                new WorkflowTriggerEvent("bad", "INCONNU", Map.of(), Map.of(), null),
+                new WorkflowTriggerEvent("ok3", "SINISTRE", Map.of(), Map.of(), null)));
+        var pollerDefinition = new PollingDefinition(poller);
+        when(catalog.get("http-rest")).thenReturn(pollerDefinition);
+        UUID dossierId = UUID.randomUUID();
+        when(createDossier.create(any(), any())).thenAnswer(inv -> {
+            var cmd = (CreateDossierUseCase.CreateDossierCommand) inv.getArgument(0);
+            if ("INCONNU".equals(cmd.dossierTypeCode())) {
+                throw new IllegalArgumentException("unknown dossier type");
+            }
+            return dossier(dossierId);
+        });
+
+        runtime.onIncomingEvent(instance(), Map.of());
+
+        // l'événement 2 échoue : il n'est pas acquitté, les événements 1 et 3 le sont, et le 3 est tout de même traité
+        assertThat(poller.log).containsExactly("acknowledged:ok1", "given back:bad", "acknowledged:ok3");
+        verify(outboxRepository, org.mockito.Mockito.times(2)).savePending(any());
+    }
+
+    /** Une définition de connecteur qui délègue au poller d'essai. */
+    private static final class PollingDefinition implements ConnectorDefinition, com.flowforge.domain.connector.model.PollingTriggerConnector {
+        private final RecordingPoller poller;
+
+        PollingDefinition(RecordingPoller poller) {
+            this.poller = poller;
+        }
+
+        @Override public String getType() { return "http-rest"; }
+        @Override public String getLabel() { return "poller"; }
+        @Override public com.flowforge.domain.connector.model.ConnectorCapability getCapability() {
+            return com.flowforge.domain.connector.model.ConnectorCapability.TRIGGER;
+        }
+        @Override public List<com.flowforge.domain.connector.model.ConfigField> getConfigSchema() { return List.of(); }
+        @Override public void validate(Map<String, Object> config) { }
+        @Override public void poll(com.flowforge.domain.connector.model.ConnectorInstanceData instance, EventDelivery delivery) {
+            poller.poll(instance, delivery);
+        }
+    }
+
+    @Test
+    void anAttachmentStorageFailureNeverLeavesTheDossierWithoutItsProcess() {
+        var attach = mock(com.flowforge.domain.connector.port.in.AttachInboundFilesUseCase.class);
+        var withAttach = new ConnectorTriggerRuntimeImpl(catalog, createDossier, getDossier, outboxRepository, attach);
+        var instance = instance();
+        when(catalog.get("http-rest")).thenReturn(triggerDefinition);
+        var file = new com.flowforge.domain.connector.model.InboundAttachment("a.pdf", "application/pdf", new byte[] {1});
+        when(triggerConnector.onEvent(eq(instance), any())).thenReturn(List.of(new WorkflowTriggerEvent(
+                "p", "SINISTRE", Map.of(), Map.of(), null, List.of(file))));
+        when(createDossier.create(any(), any())).thenReturn(dossier(UUID.randomUUID()));
+        when(attach.attach(any(), any(), any())).thenThrow(new IllegalStateException("storage down"));
+
+        withAttach.onIncomingEvent(instance, Map.of());
+
+        ArgumentCaptor<TriggerOutboxPayload> payload = ArgumentCaptor.forClass(TriggerOutboxPayload.class);
+        verify(outboxRepository).savePending(payload.capture());
+        assertThat(payload.getValue().variables()).containsEntry("inboundAttachmentsRejected", 1);
+    }
 }

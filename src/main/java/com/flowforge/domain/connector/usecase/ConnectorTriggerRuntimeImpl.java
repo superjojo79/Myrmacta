@@ -3,6 +3,7 @@ package com.flowforge.domain.connector.usecase;
 import com.flowforge.domain.connector.model.ConnectorDefinition;
 import com.flowforge.domain.connector.model.ConnectorInstanceData;
 import com.flowforge.domain.connector.model.ConnectorValidationException;
+import com.flowforge.domain.connector.model.PollingTriggerConnector;
 import com.flowforge.domain.connector.model.TriggerConnector;
 import com.flowforge.domain.connector.model.WorkflowTriggerEvent;
 import com.flowforge.domain.connector.port.in.AttachInboundFilesUseCase;
@@ -58,27 +59,42 @@ public final class ConnectorTriggerRuntimeImpl implements ConnectorTriggerRuntim
                     "Connector type does not support TRIGGER: " + instance.connectorType());
         }
 
-        for (WorkflowTriggerEvent event : trigger.onEvent(instance, rawPayload)) {
-            if (!event.attachments().isEmpty() && attachInboundFiles == null) {
-                throw new ConnectorValidationException("attachments are not supported by this trigger runtime");
-            }
-            UUID dossierId = resolveOrCreateDossier(instance, event);
-            Map<String, Object> variables = event.variables();
-            if (!event.attachments().isEmpty()) {
-                var report = attachInboundFiles.attach(dossierId, "connector:" + instance.id(), event.attachments());
-                if (!report.rejections().isEmpty()) {
-                    // Visible du processus : des pièces jointes ont été écartées (type, taille, contenu, antivirus).
-                    variables = new HashMap<>(variables);
-                    variables.put("inboundAttachmentsRejected", report.rejections().size());
-                }
-            }
-            outboxRepository.savePending(new TriggerOutboxPayload(
-                    dossierId,
-                    instance.id(),
-                    event.processKey(),
-                    variables,
-                    "connector:" + instance.id()));
+        if (trigger instanceof PollingTriggerConnector polling) {
+            // Source interrogée : chaque événement est enregistré AVANT que le message ne soit rangé ou acquitté (revue D3c/D3d, H2).
+            polling.poll(instance, event -> handle(instance, event));
+            return;
         }
+        for (WorkflowTriggerEvent event : trigger.onEvent(instance, rawPayload)) {
+            handle(instance, event);
+        }
+    }
+
+    private void handle(ConnectorInstanceData instance, WorkflowTriggerEvent event) {
+        if (!event.attachments().isEmpty() && attachInboundFiles == null) {
+            throw new ConnectorValidationException("attachments are not supported by this trigger runtime");
+        }
+        UUID dossierId = resolveOrCreateDossier(instance, event);
+        Map<String, Object> variables = event.variables();
+        if (!event.attachments().isEmpty()) {
+            int rejected;
+            try {
+                rejected = attachInboundFiles.attach(dossierId, "connector:" + instance.id(), event.attachments()).rejections().size();
+            } catch (RuntimeException storageFailure) {
+                // Panne de stockage : le dossier existe déjà ; on ne le laisse pas sans processus, les pièces sont signalées perdues.
+                rejected = event.attachments().size();
+            }
+            if (rejected > 0) {
+                // Visible du processus : des pièces jointes ont été écartées (type, taille, contenu, antivirus, stockage).
+                variables = new HashMap<>(variables);
+                variables.put("inboundAttachmentsRejected", rejected);
+            }
+        }
+        outboxRepository.savePending(new TriggerOutboxPayload(
+                dossierId,
+                instance.id(),
+                event.processKey(),
+                variables,
+                "connector:" + instance.id()));
     }
 
     private UUID resolveOrCreateDossier(ConnectorInstanceData instance, WorkflowTriggerEvent event) {

@@ -5,6 +5,8 @@ import jakarta.mail.Address;
 import jakarta.mail.BodyPart;
 import jakarta.mail.Flags;
 import jakarta.mail.Folder;
+import jakarta.mail.FolderClosedException;
+import jakarta.mail.StoreClosedException;
 import jakarta.mail.Message;
 import jakarta.mail.MessagingException;
 import jakarta.mail.Multipart;
@@ -32,6 +34,9 @@ import org.springframework.stereotype.Component;
 @Component
 class AngusImapMailbox implements ImapMailbox {
 
+    static final int MAX_MIME_DEPTH = 10;
+    static final int MAX_MIME_PARTS = 200;
+
     private static final Pattern TAGS = Pattern.compile("<[^>]{0,2000}>");
     private static final Pattern STYLE_SCRIPT = Pattern.compile("(?is)<(style|script)[^>]*>.*?</\\1>");
     private static final Pattern BLANKS = Pattern.compile("[ \\t\\x0B\\f\\r]+");
@@ -47,24 +52,38 @@ class AngusImapMailbox implements ImapMailbox {
             try {
                 Folder processed = target(store, s.processedFolder());
                 Folder rejected = target(store, s.rejectedFolder());
-                Message[] all = inbox.getMessages();
-                int count = Math.min(all.length, maxMessages);
-                List<Message> moved = new ArrayList<>();
-                for (int i = 0; i < count; i++) {
-                    MimeMessage message = (MimeMessage) all[i];
+                int count = Math.min(inbox.getMessageCount(), maxMessages);
+                Message[] all = count == 0 ? new Message[0] : inbox.getMessages(1, count);
+                for (Message raw : all) {
+                    MimeMessage message = (MimeMessage) raw;
+                    if (message.isSet(Flags.Flag.DELETED)) {
+                        continue; // déjà copié lors d'un tour interrompu : jamais rejoué
+                    }
                     Outcome outcome;
-                    long size = message.getSize();
-                    if (size > limits.maxMessageBytes()) {
-                        handler.oversize(size);
+                    try {
+                        long size = message.getSize();
+                        if (size > limits.maxMessageBytes()) {
+                            handler.oversize(size);
+                            outcome = Outcome.REJECTED;
+                        } else {
+                            outcome = handler.handle(parse(message, limits));
+                        }
+                    } catch (FolderClosedException | StoreClosedException transport) {
+                        throw transport;
+                    } catch (MessagingException ex) {
+                        if (ex.getCause() instanceof java.net.SocketException || ex.getCause() instanceof java.net.SocketTimeoutException) {
+                            throw ex; // panne de transport : rien n'est rangé, la prochaine interrogation reprend
+                        }
+                        handler.unreadable(ex.getClass().getSimpleName());
                         outcome = Outcome.REJECTED;
-                    } else {
-                        outcome = handler.handle(parse(message, limits));
+                    } catch (IOException | RuntimeException | StackOverflowError unreadable) {
+                        // Un message empoisonné (encodage inconnu, MIME imbriqué à l'excès) est écarté : il ne bloque jamais la boîte.
+                        handler.unreadable(unreadable.getClass().getSimpleName());
+                        outcome = Outcome.REJECTED;
                     }
                     inbox.copyMessages(new Message[] {message}, outcome == Outcome.PROCESSED ? processed : rejected);
                     message.setFlag(Flags.Flag.DELETED, true);
-                    moved.add(message);
-                }
-                if (!moved.isEmpty()) {
+                    // Retiré tout de suite : un arrêt en milieu de lot ne laisse jamais une copie rangée ET l'original en place.
                     inbox.expunge();
                 }
             } finally {
@@ -72,7 +91,7 @@ class AngusImapMailbox implements ImapMailbox {
                     inbox.close(false);
                 }
             }
-        } catch (MessagingException | IOException ex) {
+        } catch (MessagingException ex) {
             // Message neutre : jamais le mot de passe ni le jeton (certains serveurs les reprennent dans leurs refus).
             throw new IllegalStateException("mailbox access failed (" + ex.getClass().getSimpleName() + ")", ex);
         }
@@ -130,14 +149,15 @@ class AngusImapMailbox implements ImapMailbox {
                 || precedence.contains("bulk") || precedence.contains("junk") || precedence.contains("list")
                 || !header(message, "X-Auto-Response-Suppress").isBlank();
         Content content = new Content(limits);
-        walk(message, content);
+        walk(message, content, 0);
+        boolean authenticated = authenticated(header(message, "Authentication-Results"));
         Instant sent = message.getSentDate() == null ? null : message.getSentDate().toInstant();
         String body = content.text.length() > 0 ? content.text.toString() : content.html.length() > 0 ? htmlToText(content.html.toString()) : "";
         if (body.length() > limits.maxBodyChars()) {
             body = body.substring(0, limits.maxBodyChars());
         }
         String subject = message.getSubject() == null ? "" : message.getSubject();
-        return new Mail(messageId, fromAddress, fromDisplay, subject, sent, body.strip(), automatic,
+        return new Mail(messageId, fromAddress, fromDisplay, subject, sent, body.strip(), automatic, authenticated,
                 List.copyOf(content.attachments), content.skipped);
     }
 
@@ -152,18 +172,22 @@ class AngusImapMailbox implements ImapMailbox {
         final StringBuilder html = new StringBuilder();
         final List<InboundAttachment> attachments = new ArrayList<>();
         int skipped;
+        int parts;
 
         Content(Limits limits) {
             this.limits = limits;
         }
     }
 
-    private void walk(Part part, Content out) throws MessagingException, IOException {
+    private void walk(Part part, Content out, int depth) throws MessagingException, IOException {
+        if (depth > MAX_MIME_DEPTH || ++out.parts > MAX_MIME_PARTS) {
+            throw new MessagingException("message too complex");
+        }
         if (part.isMimeType("multipart/*")) {
             Multipart multipart = (Multipart) part.getContent();
             for (int i = 0; i < multipart.getCount(); i++) {
                 BodyPart child = multipart.getBodyPart(i);
-                walk(child, out);
+                walk(child, out, depth + 1);
             }
             return;
         }
@@ -233,13 +257,27 @@ class AngusImapMailbox implements ImapMailbox {
         return base.isBlank() ? "application/octet-stream" : base;
     }
 
+    /**
+     * Le premier {@code Authentication-Results} est celui que NOTRE serveur de réception a ajouté en tête ; ceux qu'un expéditeur
+     * glisse dans son message sont plus bas et ne sont pas lus. Authentifié = au moins un dkim/spf/dmarc à « pass » et aucun échec.
+     */
+    static boolean authenticated(String header) {
+        if (header == null || header.isBlank()) {
+            return false;
+        }
+        String h = header.toLowerCase(Locale.ROOT);
+        boolean fail = Pattern.compile("(dkim|spf|dmarc)=(fail|softfail|permerror|temperror)").matcher(h).find();
+        boolean pass = Pattern.compile("(dkim|spf|dmarc)=pass").matcher(h).find();
+        return pass && !fail;
+    }
+
     /** Nom de fichier assaini : ni chemin, ni caractère de contrôle (il devient une métadonnée affichée). */
     static String safeFilename(String raw) {
         if (raw == null) {
             return "";
         }
         String name = raw.replace('\\', '/');
-        name = name.substring(name.lastIndexOf('/') + 1).replaceAll("[\\p{Cntrl}]", "").strip();
+        name = name.substring(name.lastIndexOf('/') + 1).replaceAll("[\\p{Cntrl}\\p{Cf}]", "").strip();
         return name.length() > 200 ? name.substring(0, 200) : name;
     }
 }

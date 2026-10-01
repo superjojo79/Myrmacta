@@ -22,7 +22,7 @@ import org.springframework.stereotype.Component;
  * TODO §87 (D3c, D3d) — interroge les instances activées des connecteurs d'entrée par interrogation ({@code imap-inbound},
  * {@code azure-service-bus}) à leur propre cadence ({@code pollSeconds}). Même mécanique que {@link BatchImportConnectorTriggerJob} :
  * créneau pris par comparaison-échange avant l'interrogation (deux exécutants ne lisent pas la même boîte ni la même file en même
- * temps, D5), rendu si l'interrogation échoue ; chaque instance est isolée (une boîte en panne n'empêche pas les autres).
+ * temps, D5), conservé si l'interrogation échoue (réessai à l'intervalle de l'instance) ; chaque instance est isolée (une boîte en panne n'empêche pas les autres).
  */
 @Component
 class InboundPollingConnectorTriggerJob {
@@ -70,11 +70,12 @@ class InboundPollingConnectorTriggerJob {
             }
             try {
                 connectorTriggerRuntime.onIncomingEvent(instance, Map.of());
-            } catch (RuntimeException failure) {
-                scheduleStateRepository.releaseTrigger(instance.id(), last.orElse(null), now);
-                // Message neutre : le détail d'une erreur de boîte ou de bus peut citer l'hôte, jamais un secret.
-                log.warn("{}: instance {} failed this poll, will retry: {}", instance.connectorType(), instance.id(),
-                        failure.getMessage());
+            } catch (RuntimeException | StackOverflowError failure) {
+                // Le créneau n'est PAS rendu (revue D3c/D3d, M4) : une instance en échec permanent (mot de passe expiré, hôte
+                // injoignable) n'est réessayée qu'au bout de son propre intervalle, jamais à chaque tick (pas de martèlement,
+                // pas de verrouillage de compte). Message neutre : le détail peut citer l'hôte, jamais un secret.
+                log.warn("{}: instance {} failed this poll, next attempt in {} s: {}", instance.connectorType(), instance.id(),
+                        Math.max(pollSeconds(instance.config()), inbound.minPollSeconds()), failure.getMessage());
             }
         }
     }

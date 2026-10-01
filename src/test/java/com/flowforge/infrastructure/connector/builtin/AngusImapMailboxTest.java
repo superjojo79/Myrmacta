@@ -53,7 +53,7 @@ class AngusImapMailboxTest {
         user.deliver(message);
     }
 
-    private static final class Collector implements ImapMailbox.Handler {
+    private static class Collector implements ImapMailbox.Handler {
         final List<ImapMailbox.Mail> mails = new ArrayList<>();
         final List<Long> oversize = new ArrayList<>();
         ImapMailbox.Outcome outcome = ImapMailbox.Outcome.PROCESSED;
@@ -64,9 +64,16 @@ class AngusImapMailboxTest {
             return mail.automatic() ? ImapMailbox.Outcome.REJECTED : outcome;
         }
 
+        final List<String> unreadable = new ArrayList<>();
+
         @Override
         public void oversize(long bytes) {
             oversize.add(bytes);
+        }
+
+        @Override
+        public void unreadable(String reason) {
+            unreadable.add(reason);
         }
     }
 
@@ -224,6 +231,116 @@ class AngusImapMailboxTest {
         assertThat(AngusImapMailbox.htmlToText("<p>a</p><p>b&amp;c</p>")).isEqualTo("a\nb&c");
         assertThat(AngusImapMailbox.safeFilename("C:\\temp\\../x\u0007y.pdf")).isEqualTo("xy.pdf");
         assertThat(GreenMailUtil.getBody(newMessageQuiet())).isNotNull();
+    }
+
+    // ---- revue adversariale D3c/D3d ----
+
+    private MimeMessage withContentType(String subject, String contentType, String text) throws Exception {
+        MimeMessage m = newMessage();
+        m.setSubject(subject);
+        m.setText(text, "UTF-8");
+        m.setHeader("Content-Type", contentType);
+        m.saveChanges();
+        m.setHeader("Content-Type", contentType); // saveChanges() normalise : on force l'encodage inconnu
+        return m;
+    }
+
+    @Test
+    void aPoisonedMessageIsSetAsideNeverBlockingTheMailbox_andTheOthersAreTakenExactlyOnce() throws Exception {
+        MimeMessage first = newMessage();
+        first.setSubject("m1");
+        first.setText("un", "UTF-8");
+        first.saveChanges();
+        deliver(first);
+        deliver(withContentType("poison", "text/plain; charset=x-bogus-charset", "empoisonné"));
+        MimeMessage third = newMessage();
+        third.setSubject("m3");
+        third.setText("trois", "UTF-8");
+        third.saveChanges();
+        deliver(third);
+        var collector = new Collector();
+
+        mailbox.process(settings("s3cret"), 10, LIMITS, collector);
+        mailbox.process(settings("s3cret"), 10, LIMITS, collector); // 2e interrogation : rien ne rejoue
+
+        assertThat(collector.mails).extracting(ImapMailbox.Mail::subject).containsExactly("m1", "m3");
+        assertThat(collector.unreadable).hasSize(1);
+        assertThat(count("INBOX")).isZero();
+        assertThat(count("FlowForge-processed")).isEqualTo(2);
+        assertThat(count("FlowForge-rejected")).isEqualTo(1);
+    }
+
+    @Test
+    void aDeeplyNestedMimeBombIsRejectedNotParsedToTheEnd() throws Exception {
+        MimeMessage m = newMessage();
+        m.setSubject("bombe");
+        MimeMultipart inner = new MimeMultipart();
+        MimeBodyPart leaf = new MimeBodyPart();
+        leaf.setText("feuille", "UTF-8");
+        inner.addBodyPart(leaf);
+        for (int i = 0; i < 15; i++) {
+            MimeBodyPart wrapper = new MimeBodyPart();
+            wrapper.setContent(inner, "multipart/mixed");
+            MimeMultipart outer = new MimeMultipart();
+            outer.addBodyPart(wrapper);
+            inner = outer;
+        }
+        m.setContent(inner);
+        m.saveChanges();
+        deliver(m);
+        var collector = new Collector();
+        mailbox.process(settings("s3cret"), 10, LIMITS, collector);
+        assertThat(collector.mails).isEmpty();
+        assertThat(collector.unreadable).hasSize(1);
+        assertThat(count("FlowForge-rejected")).isEqualTo(1);
+    }
+
+    @Test
+    void aHandlerThatThrowsSetsTheMessageAsideInsteadOfLosingTheBatch() throws Exception {
+        for (String subject : List.of("a", "b")) {
+            MimeMessage m = newMessage();
+            m.setSubject(subject);
+            m.setText("x", "UTF-8");
+            m.saveChanges();
+            deliver(m);
+        }
+        var collector = new Collector() {
+            @Override
+            public ImapMailbox.Outcome handle(ImapMailbox.Mail mail) {
+                if (mail.subject().equals("a")) {
+                    throw new IllegalStateException("boom");
+                }
+                return super.handle(mail);
+            }
+        };
+        mailbox.process(settings("s3cret"), 10, LIMITS, collector);
+        assertThat(collector.mails).extracting(ImapMailbox.Mail::subject).containsExactly("b");
+        assertThat(count("INBOX")).isZero();
+        assertThat(count("FlowForge-rejected")).isEqualTo(1);
+    }
+
+    @Test
+    void onlyTheFirstAuthenticationResultsHeaderCountsAndAForgedOneBelowIsIgnored() throws Exception {
+        assertThat(AngusImapMailbox.authenticated("mx.example.com; dkim=pass header.d=example.org; spf=pass")).isTrue();
+        assertThat(AngusImapMailbox.authenticated("mx.example.com; dkim=pass; spf=fail")).isFalse();
+        assertThat(AngusImapMailbox.authenticated("mx.example.com; spf=none")).isFalse();
+        assertThat(AngusImapMailbox.authenticated("")).isFalse();
+        MimeMessage m = newMessage();
+        m.setSubject("forgé");
+        m.setText("x", "UTF-8");
+        m.saveChanges();
+        // l'expéditeur glisse son propre en-tête ; celui de notre serveur (tête) dit « échec »
+        m.addHeader("Authentication-Results", "mx.example.com; dkim=fail; spf=fail");
+        m.addHeader("Authentication-Results", "evil.example; dkim=pass; spf=pass");
+        deliver(m);
+        var collector = new Collector();
+        mailbox.process(settings("s3cret"), 10, LIMITS, collector);
+        assertThat(collector.mails.getFirst().authenticated()).isFalse();
+    }
+
+    @Test
+    void bidirectionalControlsAreStrippedFromAFileName() {
+        assertThat(AngusImapMailbox.safeFilename("invoice\u202Efdp.exe")).isEqualTo("invoicefdp.exe");
     }
 
     private MimeMessage newMessageQuiet() {

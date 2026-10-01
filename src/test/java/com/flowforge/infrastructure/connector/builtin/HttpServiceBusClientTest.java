@@ -148,10 +148,35 @@ class HttpServiceBusClientTest {
                 "namespaceHost", "contoso.servicebus.windows.net", "entityPath", "queue1", "sasKeyName", "k", "sasKey", "a2V5",
                 "processKey", "p", "dossierTypeCode", "T", "mapping", Map.of("fields", Map.of("nom", "$.vendor.name"))));
 
-        var events = connector.process(instance, endpoint(base));
+        var events = new ArrayList<com.flowforge.domain.connector.model.WorkflowTriggerEvent>();
+        connector.process(instance, endpoint(base), events::add);
 
         assertThat(events).hasSize(1);
         assertThat(events.getFirst().dossierFields()).containsEntry("nom", "ACME");
         assertThat(calls).contains("DELETE /queue1/messages/id1/lock", "PUT /queue1/messages/id2/lock");
+    }
+
+    /** Revue D3c/D3d, M3 : une erreur en cours de lecture rend les messages déjà verrouillés au lieu de les laisser expirer. */
+    @Test
+    void anErrorMidWayGivesBackTheMessagesAlreadyLocked() throws Exception {
+        java.util.concurrent.atomic.AtomicInteger heads = new java.util.concurrent.atomic.AtomicInteger();
+        String base = start(s -> s.createContext("/queue1/messages", ex -> {
+            String path = ex.getRequestURI().getPath();
+            calls.add(ex.getRequestMethod() + " " + path);
+            if (ex.getRequestMethod().equals("POST") && path.endsWith("/head")) {
+                int n = heads.incrementAndGet();
+                if (n == 1) {
+                    String host = "http://127.0.0.1:" + server.getAddress().getPort();
+                    reply(ex, 201, "{}", "Location", host + "/queue1/messages/id1/lock", "BrokerProperties", "{\"MessageId\":\"id1\"}");
+                } else {
+                    reply(ex, 500, "");
+                }
+            } else {
+                reply(ex, 200, "");
+            }
+        }));
+        assertThatThrownBy(() -> new HttpServiceBusClient(json).receive(endpoint(base), 5, 1, 1_000_000))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("500");
+        assertThat(calls).contains("PUT /queue1/messages/id1/lock");
     }
 }

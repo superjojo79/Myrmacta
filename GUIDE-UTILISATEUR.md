@@ -426,8 +426,15 @@ toutes les `pollSeconds` secondes (30 au minimum).
 - **Pièces jointes** : jusqu'à `maxAttachments` (5) par message, 10 Mo chacune ; elles passent les mêmes contrôles que les pièces ajoutées à la main (types autorisés,
   contenu conforme au type annoncé, antivirus). Une pièce refusée n'empêche pas les autres ni le dossier : le processus voit `inboundAttachmentsRejected` /
   `inboundAttachmentsSkipped`.
-- **Limite connue** : un message est rangé avant que le dossier ne soit enregistré (comme pour l'import par lot) ; en cas d'arrêt brutal à cet instant, il se retrouve
-  dans `FlowForge-processed` et peut être replacé dans la boîte à la main. Il n'y a pas de détection des doublons par `Message-ID`.
+- **Expéditeur et rattachement.** L'adresse « De » d'un e-mail est falsifiable. Par défaut (`requireAuthenticatedSender = true`), une référence dans l'objet n'ajoute le
+  message à un dossier existant **que si l'en-tête `Authentication-Results` ajouté par votre propre serveur de réception atteste l'expéditeur** (dkim, spf ou dmarc à *pass*) ;
+  sinon un nouveau dossier est créé et le processus voit `mailReferenceIgnored` et `mailSenderAuthenticated = false`. Ne désactivez cette exigence que si votre serveur n'ajoute
+  pas cet en-tête, en sachant que **quiconque devine une référence peut alors alimenter ce dossier**. `mailSenderAuthenticated` est toujours posée.
+- **Fiabilité.** Le message n'est rangé dans « traités » qu'**après** l'enregistrement du dossier. S'il ne peut pas être pris en charge (type de dossier inconnu, champ invalide, base
+  indisponible), il est rangé dans **`FlowForge-rejected`** (avec une alerte dans les journaux) : replacez-le dans la boîte après correction pour le rejouer. Un message illisible
+  (encodage inconnu, MIME trop imbriqué) y va aussi, sans bloquer les autres. Une instance en échec (mot de passe expiré, hôte injoignable) est réessayée à son propre intervalle
+  `pollSeconds`, jamais plus souvent. Il n'y a pas de détection des doublons par `Message-ID`. Les e-mails envoyés par FlowForge portent `Auto-Submitted: auto-generated` : ils ne
+  rebouclent pas.
 
 ### Recevoir des événements du bus Azure : le connecteur `azure-service-bus` (TODO §87)
 
@@ -438,8 +445,8 @@ Service Bus uniquement), la file ou l'abonnement (`file` ou `rubrique/subscripti
 - **OAuth2** : application Entra ID avec le rôle *Azure Service Bus Data Receiver* (`oauthScope = https://servicebus.azure.net/.default`).
 
 Le `mapping` est celui de Kafka : chemins JSON sur le corps du message (`fields`, `variables`, `processKeyPath`, `dossierTypeCodePath`,
-`existingDossierReferencePath`). Un message converti est **retiré de la file** ; un message illisible ou incomplet est **rendu au courtier**, qui le place en file de
-lettres mortes après son `MaxDeliveryCount` : à surveiller côté Azure. Aucun jeton ni clé n'est jamais affiché ni journalisé.
+`existingDossierReferencePath`). Un message est **retiré de la file après l'enregistrement du dossier** ; un message illisible, incomplet, ou que le runtime ne peut pas prendre
+en charge est **rendu au courtier**, qui le place en file de lettres mortes après son `MaxDeliveryCount` : à surveiller côté Azure. Aucun jeton ni clé n'est jamais affiché ni journalisé.
 
 ### Appeler un connecteur `http-rest` (webhook entrant)
 

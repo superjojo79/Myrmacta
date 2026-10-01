@@ -79,6 +79,12 @@ class AzureServiceBusConnectorTest {
         return c;
     }
 
+    private List<com.flowforge.domain.connector.model.WorkflowTriggerEvent> events(ConnectorInstanceData instance) {
+        List<com.flowforge.domain.connector.model.WorkflowTriggerEvent> events = new ArrayList<>();
+        connector.poll(instance, events::add);
+        return events;
+    }
+
     private static ConnectorInstanceData instance(Map<String, Object> config) {
         return new ConnectorInstanceData(UUID.randomUUID(), "t1", "Bus D365", "azure-service-bus", true, config);
     }
@@ -122,7 +128,7 @@ class AzureServiceBusConnectorTest {
     void aJsonMessageBecomesAnEventAndIsCompleted() {
         queue.add(msg("m1", "{\"vendor\":{\"name\":\"ACME\",\"account\":\"V-001\"},\"reference\":\"DOS-1\"}"));
 
-        var events = connector.onEvent(instance(config()), Map.of());
+        var events = events(instance(config()));
 
         assertThat(events).hasSize(1);
         assertThat(events.getFirst().processKey()).isEqualTo("onboarding-fournisseur");
@@ -143,7 +149,7 @@ class AzureServiceBusConnectorTest {
         queue.add(msg("empty-field", "{\"vendor\":{\"account\":\"x\"}}")); // nom absent : champ mappé manquant
         queue.add(msg("good", "{\"vendor\":{\"name\":\"OK\"}}"));
 
-        var events = connector.onEvent(instance(config()), Map.of());
+        var events = events(instance(config()));
 
         assertThat(events).hasSize(1);
         assertThat(abandoned).containsExactly("bad", "empty-field");
@@ -154,7 +160,7 @@ class AzureServiceBusConnectorTest {
     void aFailureToCompleteKeepsTheEvent_aDuplicateIsBetterThanALoss() {
         failComplete = true;
         queue.add(msg("m1", "{\"vendor\":{\"name\":\"ACME\"}}"));
-        assertThat(connector.onEvent(instance(config()), Map.of())).hasSize(1);
+        assertThat(events(instance(config()))).hasSize(1);
     }
 
     @Test
@@ -167,5 +173,29 @@ class AzureServiceBusConnectorTest {
         String expected = Base64.getEncoder().encodeToString(mac.doFinal((encodedUri + "\n1790000000").getBytes(StandardCharsets.UTF_8)));
         assertThat(token).isEqualTo("SharedAccessSignature sr=" + encodedUri + "&sig=" + java.net.URLEncoder.encode(expected, StandardCharsets.UTF_8)
                 + "&se=1790000000&skn=listen");
+    }
+
+    // ---- revue adversariale D3c/D3d ----
+
+    @Test
+    void theEventIsDeliveredBeforeTheMessageIsRemovedFromTheQueue() {
+        queue.add(msg("m1", "{\"vendor\":{\"name\":\"ACME\"}}"));
+        List<String> order = new ArrayList<>();
+        connector.poll(instance(config()), event -> order.add("delivered:" + completed.size()));
+        assertThat(order).containsExactly("delivered:0"); // rien n'était encore acquitté au moment de la remise
+        assertThat(completed).containsExactly("m1");
+    }
+
+    @Test
+    void aMessageTheRuntimeCannotTakeInChargeIsGivenBackNotCompleted() {
+        queue.add(msg("m1", "{\"vendor\":{\"name\":\"ACME\"}}"));
+        queue.add(msg("m2", "{\"vendor\":{\"name\":\"B\"}}"));
+        connector.poll(instance(config()), event -> {
+            if ("ACME".equals(event.dossierFields().get("nom"))) {
+                throw new IllegalStateException("unknown dossier type");
+            }
+        });
+        assertThat(abandoned).containsExactly("m1");
+        assertThat(completed).containsExactly("m2");
     }
 }

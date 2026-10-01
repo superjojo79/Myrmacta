@@ -25,6 +25,8 @@ public class SmtpEmailAdapter implements EmailPort {
             MimeMessageHelper helper = new MimeMessageHelper(message, false, StandardCharsets.UTF_8.name());
             helper.setTo(to);
             helper.setSubject(subject);
+            // Jamais une réponse à un message automatique : l'e-mail entrant (D3c) refuse ce qui porte cet en-tête (pas de boucle).
+            message.setHeader("Auto-Submitted", "auto-generated");
             helper.setText(body, false);
             mailSender.send(message);
         } catch (MessagingException ex) {

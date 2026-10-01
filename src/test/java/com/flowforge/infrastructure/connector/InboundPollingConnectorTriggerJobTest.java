@@ -93,7 +93,7 @@ class InboundPollingConnectorTriggerJobTest {
     }
 
     @Test
-    void aFailingMailboxIsReleasedForTheNextCycle_andDoesNotStopTheOthers() {
+    void aFailingInstanceKeepsItsSlot_noHammeringEveryTick_andDoesNotStopTheOthers() {
         var broken = instance("imap-inbound", true, 60);
         var healthy = instance("azure-service-bus", true, 60);
         when(instances.listByTenantId(TENANT)).thenReturn(List.of(broken, healthy));
@@ -102,8 +102,8 @@ class InboundPollingConnectorTriggerJobTest {
 
         job.process(NOW);
 
-        verify(state).releaseTrigger(eq(broken.id()), any(), any());
+        // Revue D3c/D3d (M4) : le créneau n'est pas rendu, la prochaine tentative attend l'intervalle de l'instance.
+        verify(state, never()).releaseTrigger(any(), any(), any());
         verify(runtime).onIncomingEvent(healthy, Map.of());
-        verify(state, never()).releaseTrigger(eq(healthy.id()), any(), any());
     }
 }

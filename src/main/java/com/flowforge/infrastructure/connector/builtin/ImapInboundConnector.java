@@ -6,7 +6,7 @@ import com.flowforge.domain.connector.model.ConnectorCapability;
 import com.flowforge.domain.connector.model.ConnectorDefinition;
 import com.flowforge.domain.connector.model.ConnectorInstanceData;
 import com.flowforge.domain.connector.model.ConnectorValidationException;
-import com.flowforge.domain.connector.model.TriggerConnector;
+import com.flowforge.domain.connector.model.PollingTriggerConnector;
 import com.flowforge.domain.connector.model.WorkflowTriggerEvent;
 import com.flowforge.infrastructure.config.ConnectorProperties;
 import com.flowforge.infrastructure.config.InboundConnectorProperties;
@@ -36,7 +36,7 @@ import tools.jackson.databind.ObjectMapper;
  * Authentification : mot de passe, ou OAuth2 {@code client_credentials} (D3a) en XOAUTH2 — Exchange Online n'accepte plus le mot de passe.
  */
 @Component
-public class ImapInboundConnector implements ConnectorDefinition, TriggerConnector {
+public class ImapInboundConnector implements ConnectorDefinition, PollingTriggerConnector {
 
     static final String PASSWORD_MODE = "PASSWORD";
     static final int MAX_SUBJECT_CHARS = 500;
@@ -114,6 +114,12 @@ public class ImapInboundConnector implements ConnectorDefinition, TriggerConnect
                 new ConfigField("pollSeconds", "Polling interval (seconds)", ConfigFieldType.INTEGER, false, "60", List.of(), null),
                 new ConfigField("maxAttachments", "Attachments kept per message", ConfigFieldType.INTEGER, false, "5", List.of(),
                         "Further attachments are skipped (and counted in the process variable inboundAttachmentsRejected)."),
+                new ConfigField("requireAuthenticatedSender", "Require an authenticated sender to join an existing dossier",
+                        ConfigFieldType.BOOLEAN, false, "true", List.of(),
+                        "true (default): a reference in the subject only adds the message to that dossier when the Authentication-Results header "
+                                + "added by YOUR receiving server shows dkim/spf/dmarc = pass (the sender address alone can be forged); "
+                                + "otherwise a new dossier is created. Set false only if your mail server does not add that header, and accept "
+                                + "that anyone who guesses a reference can feed that dossier."),
                 new ConfigField("referencePattern", "Dossier reference pattern", ConfigFieldType.STRING, false, null, List.of(),
                         "Regular expression with ONE capture group, applied to the subject, e.g. \\[(DOS-[0-9-]+)\\]. A match adds "
                                 + "the message to that dossier; otherwise (or when the dossier does not exist) a new one is created."),
@@ -183,9 +189,16 @@ public class ImapInboundConnector implements ConnectorDefinition, TriggerConnect
     }
 
     @Override
-    public List<WorkflowTriggerEvent> onEvent(ConnectorInstanceData instance, Object rawPayload) {
+    public void poll(ConnectorInstanceData instance, EventDelivery delivery) {
         Objects.requireNonNull(instance, "instance");
         Map<String, Object> config = instance.config();
+        // L'hôte est re-vérifié à CHAQUE interrogation (pas seulement à la création) : un nom qui désigne ensuite une adresse
+        // privée est refusé avant toute connexion (revue D3c/D3d, M1).
+        try {
+            outboundUrlGuard.assertSafe("https://" + OAuth2ConfigSupport.text(config, "host"));
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalStateException("host is not an acceptable public address");
+        }
         boolean oauth = OAuth2ConfigSupport.isOAuth(config);
         String secret = oauth ? tokenProvider.accessToken(instance) : OAuth2ConfigSupport.text(config, "password");
         ImapMailbox.Settings settings = new ImapMailbox.Settings(
@@ -208,7 +221,7 @@ public class ImapInboundConnector implements ConnectorDefinition, TriggerConnect
         String processKey = OAuth2ConfigSupport.text(config, "processKey");
         String dossierType = OAuth2ConfigSupport.text(config, "dossierTypeCode");
 
-        List<WorkflowTriggerEvent> events = new ArrayList<>();
+        boolean requireAuthenticated = !"false".equals(String.valueOf(config.get("requireAuthenticatedSender")));
         mailbox.process(settings, inbound.maxMessagesPerPoll(), limits, new ImapMailbox.Handler() {
             @Override
             public ImapMailbox.Outcome handle(ImapMailbox.Mail mail) {
@@ -228,12 +241,31 @@ public class ImapInboundConnector implements ConnectorDefinition, TriggerConnect
                 variables.putIfAbsent("mailMessageId", payload.get("messageId"));
                 variables.putIfAbsent("mailFrom", payload.get("from"));
                 variables.putIfAbsent("mailSubject", payload.get("subject"));
+                variables.put("mailSenderAuthenticated", mail.authenticated());
                 if (mail.attachmentsSkipped() > 0) {
                     variables.put("inboundAttachmentsSkipped", mail.attachmentsSkipped());
                 }
                 String existing = reference == null ? null : firstGroup(reference, mail.subject());
-                events.add(new WorkflowTriggerEvent(processKey, dossierType, fields, variables, existing, mail.attachments(), true));
+                if (existing != null && requireAuthenticated && !mail.authenticated()) {
+                    // L'expéditeur est usurpable : sans attestation de NOTRE serveur de réception, le message ne s'ajoute pas à un
+                    // dossier existant (il en crée un nouveau, signalé au processus) — revue D3c/D3d, H3.
+                    variables.put("mailReferenceIgnored", existing);
+                    existing = null;
+                }
+                try {
+                    delivery.deliver(new WorkflowTriggerEvent(processKey, dossierType, fields, variables, existing, mail.attachments(), true));
+                } catch (RuntimeException failure) {
+                    // Le message n'est PAS rangé comme traité : il va dans « refusés », visible et rejouable à la main.
+                    log.warn("imap-inbound: instance {} could not take a message in charge ({}): moved to the rejected folder",
+                            instance.id(), failure.getClass().getSimpleName());
+                    return ImapMailbox.Outcome.REJECTED;
+                }
                 return ImapMailbox.Outcome.PROCESSED;
+            }
+
+            @Override
+            public void unreadable(String reason) {
+                log.warn("imap-inbound: instance {} message unreadable ({}): moved to the rejected folder", instance.id(), reason);
             }
 
             @Override
@@ -241,7 +273,6 @@ public class ImapInboundConnector implements ConnectorDefinition, TriggerConnect
                 log.warn("imap-inbound: instance {} message of {} bytes refused (over maxMessageBytes)", instance.id(), bytes);
             }
         });
-        return List.copyOf(events);
     }
 
     private static Map<String, Object> payload(ImapMailbox.Mail mail) {

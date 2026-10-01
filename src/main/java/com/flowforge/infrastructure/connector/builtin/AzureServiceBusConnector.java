@@ -6,7 +6,7 @@ import com.flowforge.domain.connector.model.ConnectorCapability;
 import com.flowforge.domain.connector.model.ConnectorDefinition;
 import com.flowforge.domain.connector.model.ConnectorInstanceData;
 import com.flowforge.domain.connector.model.ConnectorValidationException;
-import com.flowforge.domain.connector.model.TriggerConnector;
+import com.flowforge.domain.connector.model.PollingTriggerConnector;
 import com.flowforge.domain.connector.model.WorkflowTriggerEvent;
 import com.flowforge.infrastructure.config.ConnectorProperties;
 import com.flowforge.infrastructure.config.InboundConnectorProperties;
@@ -40,7 +40,7 @@ import tools.jackson.databind.ObjectMapper;
  * Authentification : signature d'accès partagé (SAS) ou OAuth2 {@code client_credentials} (D3a, scope {@code https://servicebus.azure.net/.default}).
  */
 @Component
-public class AzureServiceBusConnector implements ConnectorDefinition, TriggerConnector {
+public class AzureServiceBusConnector implements ConnectorDefinition, PollingTriggerConnector {
 
     static final String SAS_MODE = "SAS";
     static final int WAIT_SECONDS = 5;
@@ -165,21 +165,20 @@ public class AzureServiceBusConnector implements ConnectorDefinition, TriggerCon
     }
 
     @Override
-    public List<WorkflowTriggerEvent> onEvent(ConnectorInstanceData instance, Object rawPayload) {
+    public void poll(ConnectorInstanceData instance, EventDelivery delivery) {
         Objects.requireNonNull(instance, "instance");
         Map<String, Object> config = instance.config();
         String host = OAuth2ConfigSupport.text(config, "namespaceHost").toLowerCase(Locale.ROOT);
         String entity = OAuth2ConfigSupport.text(config, "entityPath");
         String baseUrl = "https://" + host;
         ServiceBusPort.Endpoint endpoint = new ServiceBusPort.Endpoint(baseUrl, entity, authorization(instance, baseUrl + "/" + entity));
-        return process(instance, endpoint);
+        process(instance, endpoint, delivery);
     }
 
-    /** Séparé de {@link #onEvent} pour que les tests de bout en bout visent un serveur local. */
-    List<WorkflowTriggerEvent> process(ConnectorInstanceData instance, ServiceBusPort.Endpoint endpoint) {
+    /** Séparé de {@link #poll} pour que les tests de bout en bout visent un serveur local. */
+    void process(ConnectorInstanceData instance, ServiceBusPort.Endpoint endpoint, EventDelivery delivery) {
         List<ServiceBusPort.Received> messages =
                 bus.receive(endpoint, inbound.maxMessagesPerPoll(), WAIT_SECONDS, inbound.maxBusMessageBytes());
-        List<WorkflowTriggerEvent> events = new ArrayList<>();
         for (ServiceBusPort.Received message : messages) {
             WorkflowTriggerEvent event;
             try {
@@ -191,7 +190,15 @@ public class AzureServiceBusConnector implements ConnectorDefinition, TriggerCon
                 safeAbandon(endpoint, message);
                 continue;
             }
-            events.add(event);
+            try {
+                // L'événement est enregistré AVANT que le message ne soit retiré de la file (revue D3c/D3d, H2).
+                delivery.deliver(event);
+            } catch (RuntimeException failure) {
+                log.warn("azure-service-bus: instance {} message {} could not be taken in charge ({}): given back to the broker",
+                        instance.id(), message.messageId(), failure.getClass().getSimpleName());
+                safeAbandon(endpoint, message);
+                continue;
+            }
             try {
                 bus.complete(endpoint, message);
             } catch (RuntimeException failed) {
@@ -200,7 +207,6 @@ public class AzureServiceBusConnector implements ConnectorDefinition, TriggerCon
                         failed.getClass().getSimpleName());
             }
         }
-        return List.copyOf(events);
     }
 
     private void safeAbandon(ServiceBusPort.Endpoint endpoint, ServiceBusPort.Received message) {

@@ -52,6 +52,8 @@ interface ImapMailbox {
             Instant sentAt,
             String body,
             boolean automatic,
+            /** L'en-tête {@code Authentication-Results} ajouté par NOTRE serveur de réception atteste l'expéditeur (dkim/spf/dmarc). */
+            boolean authenticated,
             List<InboundAttachment> attachments,
             int attachmentsSkipped) {}
 
@@ -66,5 +68,8 @@ interface ImapMailbox {
 
         /** Message trop gros pour être analysé : il est rangé sans lecture. */
         void oversize(long bytes);
+
+        /** Message illisible (encodage inconnu, MIME trop imbriqué…) : rangé dans « refusés » ; ne bloque jamais la boîte. */
+        void unreadable(String reason);
     }
 }

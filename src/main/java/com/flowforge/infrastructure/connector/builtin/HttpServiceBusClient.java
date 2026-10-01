@@ -35,6 +35,23 @@ class HttpServiceBusClient implements ServiceBusPort {
     @Override
     public List<Received> receive(Endpoint endpoint, int maxMessages, int waitSeconds, long maxMessageBytes) {
         List<Received> received = new ArrayList<>();
+        try {
+            readMessages(endpoint, maxMessages, waitSeconds, maxMessageBytes, received);
+        } catch (RuntimeException failure) {
+            // Les messages déjà verrouillés ne sont pas laissés expirer (ils compteraient une livraison pour rien) : rendus au courtier.
+            for (Received message : received) {
+                try {
+                    abandon(endpoint, message);
+                } catch (RuntimeException ignored) {
+                    // Le verrou expirera tout seul.
+                }
+            }
+            throw failure;
+        }
+        return received;
+    }
+
+    private void readMessages(Endpoint endpoint, int maxMessages, int waitSeconds, long maxMessageBytes, List<Received> received) {
         for (int i = 0; i < maxMessages; i++) {
             // La première lecture attend un message ; les suivantes ne bloquent pas (file vidée = 204).
             int timeout = i == 0 ? waitSeconds : 1;
@@ -68,7 +85,6 @@ class HttpServiceBusClient implements ServiceBusPort {
                 throw new IllegalStateException("service bus answer could not be read", ex);
             }
         }
-        return received;
     }
 
     @Override

@@ -4063,7 +4063,7 @@ test('E2E-PROMO-1 import: dry-run plan first, secrets entered by name and sent o
     sourceLabel: 'recette',
     entries: [
       { type: 'DOSSIER_TYPE', key: 'SIN', action: 'CREATE', reason: '', secretsRequired: [] },
-      { type: 'CONNECTOR_INSTANCE', key: 'erp', action: 'BLOCKED', reason: 'cannot be created: webhookSecret is required', secretsRequired: ['webhookSecret'] },
+      { type: 'CONNECTOR_INSTANCE', key: 'erp-prod', action: 'BLOCKED', reason: 'cannot be created: webhookSecret is required', secretsRequired: ['webhookSecret'], connectorName: 'ERP Prod' },
     ],
   }
   let applyBody = ''
@@ -4083,7 +4083,7 @@ test('E2E-PROMO-1 import: dry-run plan first, secrets entered by name and sent o
         performedAt: '2026-10-01T10:00:00Z',
         entries: [
           { type: 'DOSSIER_TYPE', key: 'SIN', outcome: 'APPLIED', message: 'created' },
-          { type: 'CONNECTOR_INSTANCE', key: 'erp', outcome: 'APPLIED', message: 'created disabled — review its endpoints, then enable it' },
+          { type: 'CONNECTOR_INSTANCE', key: 'erp-prod', outcome: 'APPLIED', message: 'created disabled — review its endpoints, then enable it' },
         ],
       }),
     })
@@ -4093,21 +4093,28 @@ test('E2E-PROMO-1 import: dry-run plan first, secrets entered by name and sent o
   await openApp(page)
   await page.getByRole('link', { name: 'Promotion' }).click()
   await expect(page.getByRole('heading', { name: 'Promotion de configuration' })).toBeVisible()
-  await expect(page.getByTestId('export-link')).toHaveAttribute('href', /\/api\/admin\/configuration\/export/)
+  const exportRequest = page.waitForRequest('**/api/admin/configuration/export**')
+  await page.route('**/api/admin/configuration/export**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/zip', body: 'zip' }),
+  )
+  await page.getByTestId('source-label').fill('recette')
+  await page.getByTestId('export-button').click()
+  expect((await exportRequest).url()).toContain('sourceLabel=recette')
 
   await page.getByTestId('bundle-file').setInputFiles({ name: 'bundle.zip', mimeType: 'application/zip', buffer: Buffer.from('zip') })
   await page.getByTestId('plan-button').click()
   await expect(page.getByTestId('plan-DOSSIER_TYPE-SIN')).toContainText('Créer')
-  await expect(page.getByTestId('plan-CONNECTOR_INSTANCE-erp')).toContainText('Bloqué')
+  await expect(page.getByTestId('plan-CONNECTOR_INSTANCE-erp-prod')).toContainText('Bloqué')
   expect(applyBody).toBe('') // le plan n'écrit rien
 
-  await page.getByTestId('secret-erp-webhookSecret').fill('e2e-secret-value')
+  await page.getByTestId('secret-erp-prod-webhookSecret').fill('e2e-secret-value')
   await page.getByTestId('apply-button').click()
   await expect(page.getByTestId('report-table')).toContainText('created disabled')
   expect(applyBody).toContain('expectedBundleSha256')
   expect(applyBody).toContain('sha-e2e')
   expect(applyBody).toContain('e2e-secret-value')
+  expect(applyBody).toContain('ERP Prod') // les secrets sont indexés par le nom exact du connecteur
   // les secrets saisis ne restent pas dans la page après l'application
   await expect(page.locator('body')).not.toContainText('e2e-secret-value')
-  await expect(page.getByTestId('secret-erp-webhookSecret')).toHaveValue('')
+  await expect(page.getByTestId('secret-erp-prod-webhookSecret')).toHaveValue('')
 })

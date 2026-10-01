@@ -47,7 +47,16 @@ public final class ConfigDocs {
             String name, String connectorType, boolean enabled, Map<String, Object> config, List<String> secretFields) {
 
         public ConnectorDoc {
-            config = config == null ? Map.of() : Map.copyOf(config);
+            // null-safe (revue D4 M1) : une valeur null équivaut à une clé absente — jamais d'échec de l'export entier
+            java.util.Map<String, Object> copy = new java.util.TreeMap<>();
+            if (config != null) {
+                config.forEach((k, v) -> {
+                    if (v != null) {
+                        copy.put(k, v);
+                    }
+                });
+            }
+            config = java.util.Collections.unmodifiableMap(copy);
             secretFields = secretFields == null ? List.of() : List.copyOf(secretFields);
         }
     }

@@ -18,6 +18,8 @@ export interface PlanEntry {
   reason: string
   /** Connecteur : noms des champs secrets à fournir à l'application (jamais leurs valeurs). */
   secretsRequired: string[]
+  /** Connecteur : son nom exact — c'est lui qui indexe les secrets (la clé n'en est qu'un slug). */
+  connectorName?: string | null
 }
 
 export interface ImportPlan {
@@ -62,10 +64,19 @@ export const ARTIFACT_LABELS: Record<ArtifactType, string> = {
   WORKFLOW_CONFIG: 'Config. de workflow',
 }
 
-/** URL de téléchargement du bundle (ZIP) : le navigateur gère le téléchargement et le cookie de session. */
-export function exportUrl(sourceLabel: string): string {
-  const query = sourceLabel.trim() ? `?sourceLabel=${encodeURIComponent(sourceLabel.trim())}` : ''
-  return `/api/admin/configuration/export${query}`
+/** Télécharge le bundle (ZIP) par axios : préfixe de contexte et en-têtes de session respectés, erreur lisible (jamais un JSON enregistré en .zip). */
+export async function downloadExport(sourceLabel: string): Promise<void> {
+  const label = sourceLabel.trim()
+  const { data } = await axios.get<Blob>('/api/admin/configuration/export', {
+    params: label ? { sourceLabel: label } : undefined,
+    responseType: 'blob',
+  })
+  const url = URL.createObjectURL(data)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = `flowforge-config${label ? `-${label.replace(/[^A-Za-z0-9_.-]+/g, '-')}` : ''}.zip`
+  anchor.click()
+  URL.revokeObjectURL(url)
 }
 
 function form(file: File, extra: Record<string, string | undefined>): FormData {

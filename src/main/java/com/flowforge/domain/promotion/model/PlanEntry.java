@@ -7,8 +7,10 @@ import java.util.Objects;
  * TODO §83 (D4) — une ligne du plan à blanc.
  *
  * @param secretsRequired pour un connecteur : noms des champs secrets à fournir à l'import (jamais leurs valeurs)
+ * @param connectorName pour un connecteur : son nom exact (la clé du fichier n'en est qu'un slug) — c'est lui qui indexe les secrets
  */
-public record PlanEntry(ArtifactType type, String key, PlanAction action, String reason, List<String> secretsRequired) {
+public record PlanEntry(
+        ArtifactType type, String key, PlanAction action, String reason, List<String> secretsRequired, String connectorName) {
 
     public PlanEntry {
         Objects.requireNonNull(type, "type");
@@ -19,7 +21,11 @@ public record PlanEntry(ArtifactType type, String key, PlanAction action, String
     }
 
     public PlanEntry(ArtifactType type, String key, PlanAction action, String reason) {
-        this(type, key, action, reason, List.of());
+        this(type, key, action, reason, List.of(), null);
+    }
+
+    public PlanEntry(ArtifactType type, String key, PlanAction action, String reason, List<String> secretsRequired) {
+        this(type, key, action, reason, secretsRequired, null);
     }
 
     public boolean applicable() {

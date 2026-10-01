@@ -79,7 +79,7 @@ public class ImportConfigurationTool {
             }
             ArtifactType artifactType;
             try {
-                artifactType = ArtifactType.valueOf(t.strip().toUpperCase());
+                artifactType = ArtifactType.valueOf(t.strip().toUpperCase(java.util.Locale.ROOT));
             } catch (IllegalArgumentException ex) {
                 throw new InvalidBundleException("unknown artifact type: " + t);
             }

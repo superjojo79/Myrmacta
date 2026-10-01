@@ -182,13 +182,20 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
 
     /** Un bundle ne porte aucun secret : un fichier de connecteur qui en contient est un bundle forgé ou mal exporté. */
     private void rejectSecretsInBundle(ConfigurationBundle bundle) {
+        Set<String> names = new HashSet<>();
         for (BundleEntry e : bundle.of(ArtifactType.CONNECTOR_INSTANCE)) {
             ConnectorDoc doc = decode(e, ConnectorDoc.class);
+            // Revue D4 M2 : un nom de connecteur est unique dans le bundle (deux fichiers homonymes créeraient deux instances)
+            if (!names.add(doc.name().strip().toLowerCase(java.util.Locale.ROOT))) {
+                throw new InvalidBundleException("two connector files describe the connector named '" + doc.name()
+                        + "': names must be unique in a bundle");
+            }
             for (Map.Entry<String, Object> field : doc.config().entrySet()) {
-                if (ExportConfigurationUseCaseImpl.isSecret(doc.connectorType(), field.getKey(), catalog)
-                        && field.getValue() != null && !String.valueOf(field.getValue()).isBlank()) {
-                    throw new InvalidBundleException("connector '" + doc.name() + "' carries a value for the secret field '"
-                            + field.getKey() + "': a bundle never contains secrets (refused)");
+                boolean secretField = ExportConfigurationUseCaseImpl.isSecret(doc.connectorType(), field.getKey(), catalog)
+                        && field.getValue() != null && !String.valueOf(field.getValue()).isBlank();
+                if (secretField || ExportConfigurationUseCaseImpl.carriesSecret(field.getValue())) {
+                    throw new InvalidBundleException("connector '" + doc.name() + "' carries a secret in '" + field.getKey()
+                            + "' (a value, a nested secret field or credentials in a URL): a bundle never contains secrets (refused)");
                 }
             }
         }
@@ -246,24 +253,46 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
         try {
             doc = substitute(raw, parameters);
         } catch (MissingParameterException e) {
-            return new PlanEntry(entry.type(), entry.key(), PlanAction.BLOCKED, e.getMessage(), raw.secretFields());
+            return new PlanEntry(entry.type(), entry.key(), PlanAction.BLOCKED, e.getMessage(), raw.secretFields(), raw.name());
         }
-        Optional<ConnectorInstanceData> current = connectors.listByTenantId(tenantId).stream()
+        List<ConnectorInstanceData> sameName = connectors.listByTenantId(tenantId).stream()
                 .filter(c -> c.name().equals(doc.name()))
-                .findFirst();
-        if (current.isPresent()) {
-            if (!current.get().connectorType().equals(doc.connectorType())) {
+                .toList();
+        if (sameName.size() > 1) {
+            return new PlanEntry(entry.type(), entry.key(), PlanAction.CONFLICT,
+                    sameName.size() + " connectors are named '" + doc.name() + "' on this instance: rename or delete the "
+                            + "duplicates first", List.of(), doc.name());
+        }
+        if (sameName.size() == 1) {
+            ConnectorInstanceData current = sameName.getFirst();
+            if (!current.connectorType().equals(doc.connectorType())) {
                 return new PlanEntry(entry.type(), entry.key(), PlanAction.CONFLICT,
-                        "a connector named '" + doc.name() + "' exists with another type (" + current.get().connectorType() + ")");
+                        "a connector named '" + doc.name() + "' exists with another type (" + current.connectorType() + ")",
+                        List.of(), doc.name());
             }
             ConnectorDoc now = ExportConfigurationUseCaseImpl.connectorDoc(
-                    current.get().name(), current.get().connectorType(), current.get().enabled(), current.get().config(), catalog);
-            // « enabled » n'est jamais importé en mise à jour : seule la configuration compte pour l'écart
-            boolean same = now.config().equals(doc.config());
-            return new PlanEntry(entry.type(), entry.key(), same ? PlanAction.UNCHANGED : PlanAction.UPDATE,
-                    same ? "" : "configuration updated; enabled state and secrets are kept");
+                    current.name(), current.connectorType(), current.enabled(), current.config(), catalog);
+            // « enabled » n'est jamais importé ; la mise à jour FUSIONNE (aucune clé retirée) : on ne compare donc que les clés du
+            // bundle (revue D4 M4) — une clé en plus sur la cible ne produit pas un « modifié » permanent.
+            Map<String, String> changes = new java.util.TreeMap<>();
+            doc.config().forEach((k, v) -> {
+                if (!java.util.Objects.equals(now.config().get(k), v)) {
+                    changes.put(k, describeChange(now.config().get(k), v));
+                }
+            });
+            if (changes.isEmpty()) {
+                return new PlanEntry(entry.type(), entry.key(), PlanAction.UNCHANGED, "", List.of(), doc.name());
+            }
+            // Revue D4 M3 : le plan DIT ce qui change (valeurs non secrètes) et signale les adresses : un connecteur activé garde
+            // ses secrets et les enverrait à une nouvelle adresse.
+            boolean address = changes.keySet().stream().anyMatch(k -> isAddressKey(k, doc.config().get(k)));
+            String reason = "configuration updated (enabled state and secrets kept): " + changes
+                    + (address && current.enabled()
+                            ? " — WARNING: an address of an ENABLED connector changes, its secrets are kept and will be sent there"
+                            : "");
+            return new PlanEntry(entry.type(), entry.key(), PlanAction.UPDATE, cap(reason), List.of(), doc.name());
         }
-        Map<String, String> provided = secrets.getOrDefault(doc.name(), Map.of());
+        Map<String, String> provided = secretsFor(secrets, doc.name(), entry.key());
         Map<String, Object> candidate = new LinkedHashMap<>(doc.config());
         provided.forEach(candidate::put);
         List<String> missing = doc.secretFields().stream().filter(f -> !provided.containsKey(f)).toList();
@@ -271,9 +300,26 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
             catalog.get(doc.connectorType()).validate(candidate);
         } catch (RuntimeException e) {
             return new PlanEntry(entry.type(), entry.key(), PlanAction.BLOCKED,
-                    cap("cannot be created: " + e.getMessage()), missing);
+                    cap("cannot be created: " + e.getMessage()), missing, doc.name());
         }
-        return new PlanEntry(entry.type(), entry.key(), PlanAction.CREATE, "created disabled: review its endpoints, then enable it", missing);
+        return new PlanEntry(entry.type(), entry.key(), PlanAction.CREATE,
+                "created disabled: review its endpoints, then enable it", missing, doc.name());
+    }
+
+    /** Secrets d'un connecteur : indexés par son nom exact ; la clé de fichier est acceptée aussi (revue D4 H1). */
+    private static Map<String, String> secretsFor(Map<String, Map<String, String>> secrets, String name, String fileKey) {
+        Map<String, String> byName = secrets.get(name);
+        return byName != null ? byName : secrets.getOrDefault(fileKey, Map.of());
+    }
+
+    private static String describeChange(Object before, Object after) {
+        return (before == null ? "(absent)" : String.valueOf(before)) + " → " + after;
+    }
+
+    private static boolean isAddressKey(String key, Object value) {
+        String k = key.toLowerCase(java.util.Locale.ROOT);
+        return k.endsWith("url") || k.endsWith("uri") || k.endsWith("host") || k.contains("endpoint")
+                || (value instanceof String s && (s.startsWith("http://") || s.startsWith("https://")));
     }
 
     private PlanEntry planDmn(AccessContext.User actor, BundleEntry entry) {
@@ -368,8 +414,10 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
         }
         ImportPlan plan = computePlan(actor, bundle, params, providedSecrets);
         List<ReportEntry> report = new ArrayList<>();
+        Map<String, ImportOutcome> outcomes = new java.util.HashMap<>();
         for (PlanEntry planned : plan.entries()) {
             BundleEntry entry = bundle.find(planned.type(), planned.key()).orElseThrow();
+            int before = report.size();
             switch (planned.action()) {
                 case UNCHANGED -> report.add(new ReportEntry(planned.type(), planned.key(), ImportOutcome.UNCHANGED, ""));
                 case CONFLICT, BLOCKED -> report.add(new ReportEntry(planned.type(), planned.key(), ImportOutcome.SKIPPED,
@@ -377,8 +425,9 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
                 case CREATE, UPDATE -> report.add(channel == Channel.MCP && !mcpMayApply(planned)
                         ? new ReportEntry(planned.type(), planned.key(), ImportOutcome.SKIPPED,
                                 "not applied through MCP (only BPMN and DMN drafts are): use the admin import screen")
-                        : applyOne(actor, planned, entry, bundle, plan, params, providedSecrets));
+                        : applyOne(actor, planned, entry, bundle, plan, params, providedSecrets, outcomes));
             }
+            outcomes.put(planned.type() + "/" + planned.key(), report.get(before).outcome());
         }
         ImportReport result = new ImportReport(bundle.sha256(), clock.instant().truncatedTo(ChronoUnit.MICROS), report);
         recordJournal(actor, channel, bundle, result);
@@ -402,7 +451,8 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
             ConfigurationBundle bundle,
             ImportPlan plan,
             Map<String, String> params,
-            Map<String, Map<String, String>> secrets) {
+            Map<String, Map<String, String>> secrets,
+            Map<String, ImportOutcome> outcomes) {
         try {
             String message = switch (entry.type()) {
                 case DOSSIER_TYPE -> applyDossierType(actor, entry, planned.action());
@@ -410,7 +460,7 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
                 case CONNECTOR_INSTANCE -> applyConnector(actor, entry, planned.action(), params, secrets);
                 case DMN -> applyDmn(actor, entry, bundle);
                 case BPMN -> applyBpmn(actor, entry, bundle);
-                case WORKFLOW_CONFIG -> applyWorkflowConfig(actor, entry, plan);
+                case WORKFLOW_CONFIG -> applyWorkflowConfig(actor, entry, plan, outcomes);
             };
             return new ReportEntry(entry.type(), entry.key(), ImportOutcome.APPLIED, message);
         } catch (RuntimeException e) {
@@ -454,7 +504,7 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
                 .findFirst();
         if (action == PlanAction.CREATE) {
             Map<String, Object> config = new LinkedHashMap<>(doc.config());
-            secrets.getOrDefault(doc.name(), Map.of()).forEach(config::put);
+            secretsFor(secrets, doc.name(), entry.key()).forEach(config::put);
             // désactivé : ses URLs viennent d'un autre environnement (D-PROMO-CONNECTOR-DISABLED)
             manageConnector.create(new ManageConnectorInstanceUseCase.CreateCommand(
                     tenantId, doc.name(), doc.connectorType(), false, config), actor);
@@ -479,9 +529,14 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
                 + " — publish it from 'Brouillons à publier'";
     }
 
-    private String applyWorkflowConfig(AccessContext.User actor, BundleEntry entry, ImportPlan plan) {
+    private String applyWorkflowConfig(
+            AccessContext.User actor, BundleEntry entry, ImportPlan plan, Map<String, ImportOutcome> outcomes) {
         PlanEntry planned = plan.find(entry.type(), entry.key()).orElseThrow();
         if (planned.reason().startsWith("joined to the BPMN draft")) {
+            // Revue D4 L3 : « appliquée » seulement si le brouillon BPMN qui la porte a bien été enregistré
+            if (outcomes.get(ArtifactType.BPMN + "/" + entry.key()) != ImportOutcome.APPLIED) {
+                throw new IllegalStateException("its BPMN draft was not saved, so the configuration was not applied");
+            }
             return "joined to the BPMN draft, applied when it is published";
         }
         WorkflowConfigDoc d = decode(entry, WorkflowConfigDoc.class);

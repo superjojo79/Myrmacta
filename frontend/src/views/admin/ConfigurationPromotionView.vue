@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { toProblemDetail } from '@/api/http'
 import {
   ARTIFACT_LABELS,
   applyImport,
-  exportUrl,
+  downloadExport,
   listImports,
   parseParameters,
   planImport,
@@ -47,8 +47,24 @@ const connectorsNeedingSecrets = computed(() =>
   (plan.value?.entries ?? []).filter((e) => e.type === 'CONNECTOR_INSTANCE' && e.secretsRequired.length > 0),
 )
 
+/** Les secrets sont indexés par le NOM exact du connecteur (revue D4 H1), pas par la clé de fichier (un slug). */
 function connectorName(entry: PlanEntry): string {
-  return entry.key
+  return entry.connectorName ?? entry.key
+}
+
+// Le plan relu a été calculé avec ces paramètres : les modifier l'invalide (revue D4 L4).
+watch(parametersText, () => {
+  plan.value = null
+  report.value = null
+})
+
+async function runExport() {
+  error.value = null
+  try {
+    await downloadExport(sourceLabel.value)
+  } catch (err) {
+    error.value = toProblemDetail(err).detail ?? 'Export impossible'
+  }
 }
 
 function onFile(event: Event) {
@@ -130,7 +146,7 @@ onMounted(loadJournal)
         Nom de cet environnement
         <input v-model="sourceLabel" type="text" maxlength="200" placeholder="recette" data-testid="source-label" />
       </label>
-      <a class="promotion__button" :href="exportUrl(sourceLabel)" download data-testid="export-link">Télécharger le bundle (ZIP)</a>
+      <button type="button" class="promotion__button" data-testid="export-button" @click="runExport">Télécharger le bundle (ZIP)</button>
     </form>
 
     <h2>Importer</h2>
@@ -175,8 +191,8 @@ onMounted(loadJournal)
               type="password"
               autocomplete="new-password"
               :data-testid="`secret-${e.key}-${field}`"
-              :value="secrets[e.key]?.[field] ?? ''"
-              @input="setSecret(e.key, field, ($event.target as HTMLInputElement).value)"
+              :value="secrets[connectorName(e)]?.[field] ?? ''"
+              @input="setSecret(connectorName(e), field, ($event.target as HTMLInputElement).value)"
             />
           </label>
         </fieldset>

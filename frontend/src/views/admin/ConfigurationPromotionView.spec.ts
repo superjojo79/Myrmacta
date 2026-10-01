@@ -7,7 +7,7 @@ import type { ImportPlan } from '@/api/configuration'
 
 vi.mock('@/api/configuration', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/api/configuration')>()
-  return { ...actual, planImport: vi.fn(), applyImport: vi.fn(), listImports: vi.fn() }
+  return { ...actual, planImport: vi.fn(), applyImport: vi.fn(), listImports: vi.fn(), downloadExport: vi.fn() }
 })
 
 const plan: ImportPlan = {
@@ -16,7 +16,7 @@ const plan: ImportPlan = {
   sourceLabel: 'recette',
   entries: [
     { type: 'DOSSIER_TYPE', key: 'SIN', action: 'CREATE', reason: '', secretsRequired: [] },
-    { type: 'CONNECTOR_INSTANCE', key: 'erp', action: 'BLOCKED', reason: 'cannot be created: webhookSecret is required', secretsRequired: ['webhookSecret'] },
+    { type: 'CONNECTOR_INSTANCE', key: 'erp-prod', action: 'BLOCKED', reason: 'cannot be created: webhookSecret is required', secretsRequired: ['webhookSecret'], connectorName: 'ERP Prod' },
     { type: 'BPMN', key: 'flow', action: 'UNCHANGED', reason: '', secretsRequired: [] },
   ],
 }
@@ -42,10 +42,20 @@ describe('ConfigurationPromotionView (TODO §83, D4)', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true)
   })
 
-  it('links the ZIP export with the encoded environment name', async () => {
+  it('downloads the export through the API (not a bare link) with the environment name', async () => {
     const wrapper = await mountView()
     await wrapper.get('[data-testid="source-label"]').setValue('rec & co')
-    expect(wrapper.get('[data-testid="export-link"]').attributes('href')).toBe('/api/admin/configuration/export?sourceLabel=rec%20%26%20co')
+    await wrapper.get('[data-testid="export-button"]').trigger('click')
+    await flushPromises()
+    expect(api.downloadExport).toHaveBeenCalledWith('rec & co')
+  })
+
+  it('shows the server reason when the export fails', async () => {
+    vi.mocked(api.downloadExport).mockRejectedValue({ isAxiosError: true, response: { status: 403, data: { detail: 'Access denied' } } })
+    const wrapper = await mountView()
+    await wrapper.get('[data-testid="export-button"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('[data-testid="promotion-error"]').text()).toContain('Access denied')
   })
 
   it('plans a dry run and shows each artifact with its action and reason, without applying anything', async () => {
@@ -58,7 +68,7 @@ describe('ConfigurationPromotionView (TODO §83, D4)', () => {
     await flushPromises()
     expect(api.planImport).toHaveBeenCalled()
     expect(wrapper.get('[data-testid="plan-DOSSIER_TYPE-SIN"]').text()).toContain('Créer')
-    expect(wrapper.get('[data-testid="plan-CONNECTOR_INSTANCE-erp"]').text()).toContain('webhookSecret is required')
+    expect(wrapper.get('[data-testid="plan-CONNECTOR_INSTANCE-erp-prod"]').text()).toContain('webhookSecret is required')
     expect(api.applyImport).not.toHaveBeenCalled()
   })
 
@@ -77,26 +87,27 @@ describe('ConfigurationPromotionView (TODO §83, D4)', () => {
       performedAt: '2026-10-01T10:00:00Z',
       entries: [
         { type: 'DOSSIER_TYPE', key: 'SIN', outcome: 'APPLIED', message: 'created' },
-        { type: 'CONNECTOR_INSTANCE', key: 'erp', outcome: 'APPLIED', message: 'created disabled' },
+        { type: 'CONNECTOR_INSTANCE', key: 'erp-prod', outcome: 'APPLIED', message: 'created disabled' },
       ],
     })
     const wrapper = await mountView()
     await pickFile(wrapper)
     await wrapper.get('form.promotion__import').trigger('submit')
     await flushPromises()
-    await wrapper.get('[data-testid="secret-erp-webhookSecret"]').setValue('s3cret-value')
+    await wrapper.get('[data-testid="secret-erp-prod-webhookSecret"]').setValue('s3cret-value')
     await wrapper.get('[data-testid="apply-button"]').trigger('click')
     await flushPromises()
 
     expect(api.applyImport).toHaveBeenCalledWith(expect.any(File), {
       parameters: {},
-      secrets: { erp: { webhookSecret: 's3cret-value' } },
+      // indexés par le NOM exact du connecteur, pas par sa clé de fichier (revue D4 H1)
+      secrets: { 'ERP Prod': { webhookSecret: 's3cret-value' } },
       expectedBundleSha256: 'sha-1',
     })
     expect(wrapper.get('[data-testid="report-table"]').text()).toContain('created disabled')
     // le secret n'est plus dans la page
     expect(wrapper.html()).not.toContain('s3cret-value')
-    expect((wrapper.find('[data-testid="secret-erp-webhookSecret"]').element as HTMLInputElement | undefined)?.value ?? '').toBe('')
+    expect((wrapper.find('[data-testid="secret-erp-prod-webhookSecret"]').element as HTMLInputElement | undefined)?.value ?? '').toBe('')
   })
 
   it('shows the server reason when the plan is refused', async () => {
@@ -122,5 +133,17 @@ describe('ConfigurationPromotionView (TODO §83, D4)', () => {
     await flushPromises()
     await wrapper.get('[data-testid="apply-button"]').trigger('click')
     expect(api.applyImport).not.toHaveBeenCalled()
+  })
+
+  it('invalidates the reviewed plan when the parameters change (revue D4 L4)', async () => {
+    vi.mocked(api.planImport).mockResolvedValue(plan)
+    const wrapper = await mountView()
+    await pickFile(wrapper)
+    await wrapper.get('form.promotion__import').trigger('submit')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="plan-table"]').exists()).toBe(true)
+    await wrapper.get('[data-testid="parameters"]').setValue('{"pk":"other"}')
+    expect(wrapper.find('[data-testid="plan-table"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="apply-button"]').exists()).toBe(false)
   })
 })

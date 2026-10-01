@@ -293,4 +293,107 @@ class ConfigurationPromotionUseCaseTest {
             assertThatThrownBy(() -> new BundleEntry(ArtifactType.DMN, bad, new byte[0])).isInstanceOf(InvalidBundleException.class);
         }
     }
+
+    // ---- corrections de la revue adversariale D4 ----
+
+    private static com.flowforge.domain.connector.model.ConnectorInstanceData existing(String name, boolean enabled, Map<String, Object> config) {
+        return new com.flowforge.domain.connector.model.ConnectorInstanceData(java.util.UUID.randomUUID(), TENANT, name, "http-rest", enabled, config);
+    }
+
+    @Test
+    void secretsAreIndexedByTheExactConnectorNameAndTheFileKeyIsAcceptedToo_reviewD4H1() {
+        var doc = new ConnectorDoc("ERP Prod", "http-rest", true, Map.of("processKey", "p"), List.of("webhookSecret"));
+        var b = bundle(json(ArtifactType.CONNECTOR_INSTANCE, "erp-prod", doc));
+
+        var planned = useCase.plan(ADMIN, b, Map.of()).entries().getFirst();
+        assertThat(planned.connectorName()).isEqualTo("ERP Prod");
+        assertThat(planned.key()).isEqualTo("erp-prod");
+
+        useCase.apply(ADMIN, b, Map.of("ERP Prod", Map.of("webhookSecret", "s1")), Map.of(), null, Channel.ADMIN);
+        var byName = org.mockito.ArgumentCaptor.forClass(ManageConnectorInstanceUseCase.CreateCommand.class);
+        verify(manageConnector).create(byName.capture(), any());
+        assertThat(byName.getValue().config()).containsEntry("webhookSecret", "s1");
+
+        org.mockito.Mockito.clearInvocations(manageConnector);
+        useCase.apply(ADMIN, b, Map.of("erp-prod", Map.of("webhookSecret", "s2")), Map.of(), null, Channel.ADMIN);
+        var byKey = org.mockito.ArgumentCaptor.forClass(ManageConnectorInstanceUseCase.CreateCommand.class);
+        verify(manageConnector).create(byKey.capture(), any());
+        assertThat(byKey.getValue().config()).containsEntry("webhookSecret", "s2");
+    }
+
+    @Test
+    void aNullConfigurationValueNeverBreaksTheDocument_reviewD4M1() {
+        var config = new java.util.HashMap<String, Object>();
+        config.put("url", null);
+        config.put("processKey", "p");
+        var doc = ExportConfigurationUseCaseImpl.connectorDoc("n", "http-rest", true, config, catalog);
+        assertThat(doc.config()).containsOnlyKeys("processKey");
+        assertThat(new ConnectorDoc("n", "http-rest", true, config, List.of()).config()).containsOnlyKeys("processKey");
+    }
+
+    @Test
+    void duplicateConnectorNamesInABundleOrOnTheTargetAreRefusedOrConflicting_reviewD4M2() {
+        var a = new ConnectorDoc("Same", "http-rest", true, Map.of("processKey", "a"), List.of());
+        var b = new ConnectorDoc("same ", "http-rest", true, Map.of("processKey", "b"), List.of());
+        assertThatThrownBy(() -> useCase.plan(ADMIN, bundle(json(ArtifactType.CONNECTOR_INSTANCE, "a", a),
+                json(ArtifactType.CONNECTOR_INSTANCE, "b", b)), Map.of()))
+                .isInstanceOf(InvalidBundleException.class).hasMessageContaining("unique");
+
+        when(connectors.listByTenantId(TENANT)).thenReturn(List.of(existing("Same", false, Map.of()), existing("Same", true, Map.of())));
+        var entry = useCase.plan(ADMIN, bundle(json(ArtifactType.CONNECTOR_INSTANCE, "a", a)), Map.of()).entries().getFirst();
+        assertThat(entry.action()).isEqualTo(PlanAction.CONFLICT);
+        assertThat(entry.reason()).contains("2 connectors are named");
+    }
+
+    @Test
+    void anUpdatePlanSaysWhatChangesAndWarnsWhenAnEnabledConnectorsAddressMoves_reviewD4M3() {
+        when(connectors.listByTenantId(TENANT)).thenReturn(List.of(existing("ERP", true,
+                Map.of("processKey", "p", "baseUrl", "https://recette.example"))));
+        var doc = new ConnectorDoc("ERP", "http-rest", true, Map.of("processKey", "p", "baseUrl", "https://evil.example"), List.of());
+
+        var entry = useCase.plan(ADMIN, bundle(json(ArtifactType.CONNECTOR_INSTANCE, "erp", doc)), Map.of()).entries().getFirst();
+
+        assertThat(entry.action()).isEqualTo(PlanAction.UPDATE);
+        assertThat(entry.reason()).contains("https://recette.example → https://evil.example").contains("WARNING").contains("secrets");
+    }
+
+    @Test
+    void aTargetKeyAbsentFromTheBundleDoesNotMakeAConnectorPermanentlyModified_reviewD4M4() {
+        when(connectors.listByTenantId(TENANT)).thenReturn(List.of(existing("ERP", true,
+                Map.of("processKey", "p", "legacy", "x"))));
+        var doc = new ConnectorDoc("ERP", "http-rest", true, Map.of("processKey", "p"), List.of());
+        assertThat(useCase.plan(ADMIN, bundle(json(ArtifactType.CONNECTOR_INSTANCE, "erp", doc)), Map.of()).entries().getFirst().action())
+                .isEqualTo(PlanAction.UNCHANGED);
+    }
+
+    @Test
+    void nestedSecretsAndCredentialsInUrlsAreRefusedOnImportAndStrippedOnExport_reviewD4L1() {
+        var nested = new ConnectorDoc("N", "http-rest", true, Map.of("headers", Map.of("password", "x")), List.of());
+        assertThatThrownBy(() -> useCase.plan(ADMIN, bundle(json(ArtifactType.CONNECTOR_INSTANCE, "n", nested)), Map.of()))
+                .isInstanceOf(InvalidBundleException.class).hasMessageContaining("never contains secrets");
+        var userinfo = new ConnectorDoc("U", "http-rest", true, Map.of("baseUrl", "https://user:pa55@host.example/x"), List.of());
+        assertThatThrownBy(() -> useCase.plan(ADMIN, bundle(json(ArtifactType.CONNECTOR_INSTANCE, "u", userinfo)), Map.of()))
+                .isInstanceOf(InvalidBundleException.class);
+
+        var exported = ExportConfigurationUseCaseImpl.connectorDoc("U", "http-rest", true, Map.of(
+                "baseUrl", "https://user:pa55@host.example/x",
+                "headers", Map.of("password", "x", "accept", "json", "list", List.of("a", Map.of("secret", "z")))), catalog);
+        assertThat(exported.config().toString()).doesNotContain("pa55").doesNotContain("password").doesNotContain("secret=z");
+        assertThat(exported.config()).containsEntry("baseUrl", "https://host.example/x");
+    }
+
+    @Test
+    void aConfigurationJoinedToAFailedBpmnDraftIsNotReportedAsApplied_reviewD4L3() {
+        when(propose.proposeBpmn(any(), any(), any(), any(), any(), anyBoolean()))
+                .thenThrow(new com.flowforge.domain.workflow.model.DraftConflictException("a human is editing it"));
+        var b = bundle(new BundleEntry(ArtifactType.BPMN, "wf", "<bpmn/>".getBytes(StandardCharsets.UTF_8)),
+                json(ArtifactType.WORKFLOW_CONFIG, "wf", WF));
+
+        var report = useCase.apply(ADMIN, b, Map.of(), Map.of(), null, Channel.ADMIN);
+
+        assertThat(report.entries().get(0).outcome()).isEqualTo(ImportOutcome.FAILED);
+        assertThat(report.entries().get(1).type()).isEqualTo(ArtifactType.WORKFLOW_CONFIG);
+        assertThat(report.entries().get(1).outcome()).isEqualTo(ImportOutcome.FAILED);
+        assertThat(report.entries().get(1).message()).contains("not applied");
+    }
 }

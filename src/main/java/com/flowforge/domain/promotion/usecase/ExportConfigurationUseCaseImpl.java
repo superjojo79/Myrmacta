@@ -133,7 +133,10 @@ public final class ExportConfigurationUseCaseImpl implements ExportConfiguration
                 c.onStartDossierStatus(), c.observerUserIds());
     }
 
-    /** Retire toute valeur de champ secret (par nom, ou déclaré mot de passe dans le catalogue) et garde les noms. */
+    /**
+     * Retire toute valeur de champ secret — au premier niveau comme dans les structures imbriquées (revue D4 L1) — et le userinfo
+     * des URL ({@code https://user:mdp@hôte}) ; ne garde que les noms des champs secrets de premier niveau.
+     */
     static ConnectorDoc connectorDoc(
             String name, String type, boolean enabled, Map<String, Object> config, ConnectorCatalog catalog) {
         Map<String, Object> clean = new LinkedHashMap<>();
@@ -141,11 +144,49 @@ public final class ExportConfigurationUseCaseImpl implements ExportConfiguration
         config.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(e -> {
             if (isSecret(type, e.getKey(), catalog)) {
                 secretFields.add(e.getKey());
-            } else {
-                clean.put(e.getKey(), e.getValue());
+            } else if (e.getValue() != null) {
+                clean.put(e.getKey(), stripNested(e.getValue()));
             }
         });
         return new ConnectorDoc(name, type, enabled, clean, secretFields);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Object stripNested(Object value) {
+        if (value instanceof Map<?, ?> map) {
+            Map<String, Object> out = new LinkedHashMap<>();
+            ((Map<String, Object>) map).forEach((k, v) -> {
+                if (!ManageConnectorInstanceUseCaseImpl.isSecretKey(k) && v != null) {
+                    out.put(k, stripNested(v));
+                }
+            });
+            return out;
+        }
+        if (value instanceof List<?> list) {
+            return list.stream().filter(java.util.Objects::nonNull).map(ExportConfigurationUseCaseImpl::stripNested).toList();
+        }
+        if (value instanceof String text) {
+            return URL_USERINFO.matcher(text).replaceAll("$1");
+        }
+        return value;
+    }
+
+    /** {@code scheme://utilisateur:motdepasse@hôte} → {@code scheme://hôte}. */
+    static final java.util.regex.Pattern URL_USERINFO = java.util.regex.Pattern.compile("([A-Za-z][A-Za-z0-9+.-]*://)[^/\\s@]+@");
+
+    /** Vrai si une valeur porte des identifiants dans une URL ou un champ secret imbriqué (refusé à l'import). */
+    @SuppressWarnings("unchecked")
+    static boolean carriesSecret(Object value) {
+        if (value instanceof Map<?, ?> map) {
+            return ((Map<String, Object>) map).entrySet().stream().anyMatch(e ->
+                    (ManageConnectorInstanceUseCaseImpl.isSecretKey(e.getKey()) && e.getValue() != null
+                            && !String.valueOf(e.getValue()).isBlank())
+                            || carriesSecret(e.getValue()));
+        }
+        if (value instanceof List<?> list) {
+            return list.stream().anyMatch(ExportConfigurationUseCaseImpl::carriesSecret);
+        }
+        return value instanceof String text && URL_USERINFO.matcher(text).find();
     }
 
     static boolean isSecret(String connectorType, String key, ConnectorCatalog catalog) {

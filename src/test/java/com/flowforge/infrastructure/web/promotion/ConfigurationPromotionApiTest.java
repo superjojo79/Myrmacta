@@ -120,7 +120,7 @@ class ConfigurationPromotionApiTest {
                 List.of())));
         entries.add(json(ArtifactType.TASK_QUESTION_SCHEMA, "promo_" + s, new TaskQuestionSchemaDoc("promo_" + s, "Question " + s,
                 List.of(new FieldDefinition("q", "Q", FieldType.STRING, true, null, null, null, false)))));
-        entries.add(json(ArtifactType.CONNECTOR_INSTANCE, "promo-conn-" + s, new ConnectorDoc("Promo conn " + s, "http-rest", true,
+        entries.add(json(ArtifactType.CONNECTOR_INSTANCE, "promo-conn-" + s, new ConnectorDoc("Promo Conn " + s.toUpperCase(), "http-rest", true,
                 Map.of("webhookAuthType", "HMAC_SHA256", "processKey", "{{process_key}}", "dossierTypeCode", typeCode),
                 withSecretField ? List.of("webhookSecret") : List.of())));
         entries.add(new BundleEntry(ArtifactType.DMN, "promoDmn" + s, dmn("promoDmn" + s).getBytes(StandardCharsets.UTF_8)));
@@ -168,7 +168,7 @@ class ConfigurationPromotionApiTest {
 
         mockMvc.perform(multipart("/api/admin/configuration/apply").file(file(bundle))
                         .param("parameters", params)
-                        .param("secrets", "{\"Promo conn " + s + "\":{\"webhookSecret\":\"" + SECRET + "\"}}")
+                        .param("secrets", "{\"Promo Conn " + s.toUpperCase() + "\":{\"webhookSecret\":\"" + SECRET + "\"}}")
                         .param("expectedBundleSha256", bundle.sha256())
                         .with(user("alice", "TENANT_ADMIN")).with(csrf()))
                 .andExpect(status().isOk())
@@ -177,7 +177,7 @@ class ConfigurationPromotionApiTest {
 
         assertThat(typeRepository.findByCode("tenant_dev", "PROMO_" + s.toUpperCase())).isPresent();
         var created = manageConnector.list("tenant_dev", com.flowforge.domain.shared.PageQuery.of(0, 100), ADMIN).content().stream()
-                .filter(c -> c.name().equals("Promo conn " + s)).findFirst().orElseThrow();
+                .filter(c -> c.name().equals("Promo Conn " + s.toUpperCase())).findFirst().orElseThrow();
         assertThat(created.enabled()).as("un connecteur importé est créé désactivé").isFalse();
         assertThat(created.config()).containsEntry("processKey", "pk-" + s);
 
@@ -305,7 +305,7 @@ class ConfigurationPromotionApiTest {
         var agent = AccessContext.user("agent-1", Set.of("API_SERVICE"));
 
         assertThat(org.assertj.core.api.Assertions.catchThrowable(() -> importUseCase.apply(agent, bundle,
-                Map.of("Promo conn " + s, Map.of("webhookSecret", SECRET)), Map.of("process_key", "pk"), null,
+                Map.of("Promo Conn " + s.toUpperCase(), Map.of("webhookSecret", SECRET)), Map.of("process_key", "pk"), null,
                 ImportConfigurationUseCase.Channel.MCP)))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("never accepted through MCP");
 

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import axios from 'axios'
-import { applyImport, exportUrl, listImports, parseParameters, planImport } from './configuration'
+import { applyImport, downloadExport, listImports, parseParameters, planImport } from './configuration'
 
 vi.mock('axios')
 
@@ -9,9 +9,23 @@ const file = new File(['zip'], 'bundle.zip', { type: 'application/zip' })
 describe('configuration api (TODO §83, D4)', () => {
   beforeEach(() => vi.resetAllMocks())
 
-  it('builds the export url with an encoded label', () => {
-    expect(exportUrl('')).toBe('/api/admin/configuration/export')
-    expect(exportUrl(' recette & co ')).toBe('/api/admin/configuration/export?sourceLabel=recette%20%26%20co')
+  it('downloads the ZIP through axios (blob) with the label as a query parameter and a safe file name', async () => {
+    vi.mocked(axios.get).mockResolvedValue({ data: new Blob(['zip']) })
+    const created = vi.fn(() => 'blob:x')
+    const revoked = vi.fn()
+    Object.assign(URL, { createObjectURL: created, revokeObjectURL: revoked })
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    await downloadExport(' rec & co ')
+    expect(axios.get).toHaveBeenCalledWith('/api/admin/configuration/export', {
+      params: { sourceLabel: 'rec & co' },
+      responseType: 'blob',
+    })
+    expect(click).toHaveBeenCalled()
+    expect(created).toHaveBeenCalled()
+    expect(revoked).toHaveBeenCalledWith('blob:x')
+    await downloadExport('')
+    expect(vi.mocked(axios.get).mock.calls[1]![1]).toEqual({ params: undefined, responseType: 'blob' })
+    click.mockRestore()
   })
 
   it('plans with the file and the parameters only when there are some', async () => {

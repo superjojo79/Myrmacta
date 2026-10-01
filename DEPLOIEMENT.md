@@ -418,6 +418,21 @@ volume (compter quelques secondes par centaine de milliers de dossiers). Postgre
 
 ------
 
+## 13. Écritures de configuration par MCP : brouillons, publication, environnement (TODO §82)
+
+| Variable | Effet |
+|---|---|
+| `APP_ENVIRONMENT` | `local`, `staging` ou `production` (défaut **`production`**). Une valeur inconnue empêche le démarrage. |
+| `M2M_TRUSTED_CLIENT_IDS` | **Obligatoire** hors `local` dès que la chaîne M2M est active (`OAUTH2_ISSUER_URI` ou `M2M_JWT_SECRET`) : sinon tout porteur d'un JWT M2M valide est administrateur de fait (A3-M2). |
+| `APP_MCP_PUBLICATION_MODE` | `draft` (défaut) : un agent écrit un brouillon, un humain publie. `direct` : publication sans relecture — **refusé au démarrage en production**. |
+| `APP_DRAFTS_RETENTION_DAYS` | Brouillons d'agent/assistant non modifiés depuis N jours : purgés (défaut 30 ; 0 = jamais). Les brouillons de l'éditeur ne sont jamais purgés. |
+
+La migration 031 ajoute la provenance aux brouillons et crée le journal `config_publication` (additif, retour arrière fourni). **Mise à jour d'un
+déploiement existant** : renseigner `APP_ENVIRONMENT` (sans lui, le défaut `production` impose l'allowlist M2M et interdit `direct`) et, si un
+agent déployait directement, prévenir ses opérateurs : ses écrans de déploiement répondent désormais « brouillon en attente de publication ».
+
+------
+
 ## Ce qui n'est pas (encore) couvert par ce guide
 
 - **Démarrage de l'instance et bloc reverse-proxy** restent des étapes documentées (§1/§3/§4), pas

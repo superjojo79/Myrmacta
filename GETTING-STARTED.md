@@ -320,7 +320,11 @@ utilisateurs finaux du tenant.
 Par défaut, tout JWT M2M authentifié reçoit `API_SERVICE` (un seul client M2M de confiance
 assumé, TODO §56). `M2M_TRUSTED_CLIENT_IDS` (voir `.env.example`) restreint ce rôle à une
 allowlist de `client_id`/`sub` — à renseigner avant d'ouvrir `/api/m2m/mcp` à un second client M2M
-à portée réduite. `generate_document` partage par ailleurs le rate limiter (30/min par défaut,
+à portée réduite. **Depuis TODO §82 (D6)** : hors `APP_ENVIRONMENT=local`, l'allowlist est **obligatoire** dès que le
+canal M2M est actif (l'application ne démarre pas sinon) ; `deploy_workflow`, `deploy_decision_table` et
+`redeploy_decision_table` écrivent un **brouillon** qu'un humain publie depuis *Admin → Brouillons* (rupture pour les
+agents qui supposaient un déploiement immédiat — `APP_MCP_PUBLICATION_MODE=direct`, hors production, le rétablit).
+`generate_document` partage par ailleurs le rate limiter (30/min par défaut,
 `app.document.generate.rate-limit-per-minute`) de l'équivalent REST `/api/documents/generate`.
 
 ------

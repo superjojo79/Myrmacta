@@ -30,6 +30,13 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
+- **TODO §82 (D6)** — Socle MCP low-code : les outils MCP `deploy_workflow`, `deploy_decision_table` et `redeploy_decision_table` écrivent désormais un **brouillon**
+  (origine Agent ou Assistant) qu'un humain relit et publie depuis *Admin → Brouillons* (écart avec la version en ligne, publication de ce qui a été relu, journal des
+  publications) ; nouveaux outils `list_pending_drafts` et `publish_draft` (ce dernier refusé sauf publication directe autorisée hors production). Un brouillon d'un autre
+  auteur n'est jamais écrasé en silence. Chaque outil MCP est classé *conception* ou *opération* ; un outil peut s'exécuter avec l'acteur d'une session (assistant).
+  **Ruptures** : les agents ne déploient plus en ligne par défaut (`APP_MCP_PUBLICATION_MODE=direct`, hors production, le rétablit) ; `APP_ENVIRONMENT` (défaut `production`) ;
+  hors `local`, `M2M_TRUSTED_CLIENT_IDS` est obligatoire dès que le canal M2M est actif (risque A3-M2). Migration 031. Voir `DEPLOIEMENT.md` §13.
+
 - **TODO §81 (D2)** — Recherche de dossiers sur des champs dynamiques : un champ peut être déclaré « cherchable » (texte, nombre, date, oui/non, choix ; jamais sensible),
   puis filtré par égalité, liste, intervalle ou préfixe depuis la liste de supervision, l'API (`f.<champ>…`) et l'outil MCP `search_dossiers`. Type de dossier obligatoire,
   cinq filtres au plus, refus explicite d'un filtre invalide. Migration 030 : `fields` passe en `jsonb` avec un index GIN (PostgreSQL ; réécriture de la table, voir `DEPLOIEMENT.md` §12).

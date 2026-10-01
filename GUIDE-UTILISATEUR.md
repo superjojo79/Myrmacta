@@ -300,6 +300,22 @@ décision à une cascade de passerelles.
 
 ------
 
+### Brouillons à publier — relire ce qu'un agent propose (TODO §82)
+
+*Admin → Brouillons* (rôles TENANT_ADMIN ou WORKFLOW_ADMIN) liste les processus BPMN et tables de décision DMN **en attente de publication** :
+type, clé, **origine** (Éditeur, Agent (MCP), Assistant), auteur, date, et l'**écart indicatif** avec la version en ligne (lignes ajoutées /
+retirées). Un agent branché au MCP n'écrit **jamais** en ligne par défaut : `deploy_workflow`, `deploy_decision_table` et
+`redeploy_decision_table` déposent un brouillon, avec — pour un processus — la configuration de workflow proposée.
+
+- **Ouvrir** la clé dans l'éditeur BPMN / DMN pour relire ou corriger. Si vous enregistrez, le brouillon devient le vôtre (origine Éditeur) et
+  la configuration de workflow proposée est conservée.
+- **Publier** : le déploiement porte exactement sur ce que vous avez relu ; si le brouillon a été modifié entre-temps, la publication est refusée
+  (rechargez et relisez). La configuration proposée est appliquée juste avant le diagramme, après validation.
+- **Écarter** : supprime le brouillon (définitif).
+- Un agent ne peut pas écraser le brouillon d'un autre auteur sans le demander explicitement.
+- Les brouillons d'agent ou d'assistant non touchés depuis 30 jours sont purgés ; ceux de l'éditeur, jamais.
+- *Dernières publications* : qui a rédigé, qui a publié, quand, quelle version, et si la publication était relue ou **directe**.
+
 ## 4. Configurer un connecteur
 
 Écran **Admin → Connecteurs** (`/admin/connectors`, `TENANT_ADMIN`).

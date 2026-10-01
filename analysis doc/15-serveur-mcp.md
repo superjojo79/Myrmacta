@@ -1,5 +1,10 @@
 # Serveur MCP (Model Context Protocol)
 
+> **Mise à jour TODO §82 (D6, 2026-10-01).** `deploy_workflow`, `deploy_decision_table` et `redeploy_decision_table` n'agissent plus
+> directement sur l'instance : ils déposent un **brouillon** (BPMN, DMN) qu'un humain publie ([37-socle-mcp-low-code.md](37-socle-mcp-low-code.md),
+> `DEPLOIEMENT.md` §13). Nouveaux outils : `list_pending_drafts`, `publish_draft`. Chaque outil est classé *conception* / *opération*
+> (`McpToolModes`). Le texte ci-dessous décrit le cadrage initial.
+
 > **Statut : analyse initiale + cycle `dev-lifecycle` Phase 3 reviewed
 > (2026-08-27).** Cadrage 2026-08-26 inchangé. Spec d'implémentation :
 > `docs/ai/**/2026-08-27-feature-serveur-mcp.md`. Ne pas lire cette

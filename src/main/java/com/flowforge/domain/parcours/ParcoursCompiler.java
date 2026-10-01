@@ -1,6 +1,7 @@
 package com.flowforge.domain.parcours;
 
 import com.flowforge.domain.dossier.model.DossierStatus;
+import com.flowforge.domain.dossier.model.FieldType;
 import com.flowforge.domain.parcours.model.CompiledParcours;
 import com.flowforge.domain.parcours.model.InvalidParcoursException;
 import com.flowforge.domain.parcours.model.ParcoursDefinition;
@@ -34,7 +35,7 @@ public final class ParcoursCompiler {
 
     private static final String BPMN_NS = "http://www.omg.org/spec/BPMN/20100524/MODEL";
     private static final Pattern DURATION = Pattern.compile("P(?:\\d{1,3}D)?(?:T(?=\\d)(?:\\d{1,4}H)?(?:\\d{1,4}M)?)?");
-    private static final Pattern SCHEMA_KEY = Pattern.compile("[A-Za-z0-9_.:-]{1,100}");
+    private static final Pattern SCHEMA_KEY = Pattern.compile("[A-Za-z0-9_-]{1,100}");
     private static final Set<String> RESERVED_IDS = Set.of("start", "end");
     private static final Set<String> DOCUMENT_KEYS = Set.of("documentType", "documentVariant", "documentLocale", "attach");
     private static final Set<String> NOTIFY_KEYS = Set.of("notificationChannels", "notificationTo", "notificationSubject",
@@ -45,15 +46,26 @@ public final class ParcoursCompiler {
     /** @param schemaFields champs (donc variables produites) d'un schéma de question, pour les avertissements de variables */
     public static CompiledParcours compile(
             String processKey, String label, ParcoursDefinition definition, Function<String, Set<String>> schemaFields) {
+        return compile(processKey, label, definition, schemaFields, key -> null);
+    }
+
+    /** @param schemaFieldTypes type de chaque champ d'un schéma de question ({@code null} si inconnu) : avertit d'une comparaison numérique sur un texte */
+    public static CompiledParcours compile(
+            String processKey,
+            String label,
+            ParcoursDefinition definition,
+            Function<String, Set<String>> schemaFields,
+            Function<String, Map<String, FieldType>> schemaFieldTypes) {
         List<Step> steps = definition.steps();
         if (processKey == null || !com.flowforge.domain.parcours.model.Parcours.KEY.matcher(processKey).matches()) {
             throw new InvalidParcoursException("the process key is camelCase (letters and digits, starting with a lowercase letter)");
         }
-        if (RESERVED_IDS.contains(processKey) || steps.stream().anyMatch(s -> s.id().equals(processKey))) {
+        if (RESERVED_IDS.contains(processKey) || steps.stream().anyMatch(s -> s.id().equals(processKey)
+                || (s.kind() == Kind.DOCUMENT && (s.id() + "Attach").equals(processKey)))) {
             throw new InvalidParcoursException("the process key '" + processKey + "' clashes with a step id or a reserved id");
         }
         if (label == null || label.isBlank() || label.length() > 200 || label.contains("${") || label.contains("#{")
-                || label.chars().anyMatch(Character::isISOControl)) {
+                || !ParcoursDefinition.xmlSafe(label) || label.chars().anyMatch(Character::isISOControl)) {
             throw new InvalidParcoursException("the parcours label is a single line of plain text (max 200)");
         }
         if (steps.isEmpty()) {
@@ -66,7 +78,7 @@ public final class ParcoursCompiler {
         }
         Graph graph = graph(steps, byId);
         checkReachabilityAndExit(steps, graph);
-        List<String> warnings = warnings(steps, schemaFields);
+        List<String> warnings = warnings(steps, schemaFields, schemaFieldTypes);
         return new Writer(processKey, label, steps, graph, warnings).write();
     }
 
@@ -118,7 +130,8 @@ public final class ParcoursCompiler {
                 throw new InvalidParcoursException("step " + step.id() + ": parameter " + param.getKey()
                         + " must be a literal (expressions ${…} are not allowed)");
             }
-            if (value.chars().anyMatch(c -> Character.isISOControl(c) && c != '\n' && c != '\t' && c != '\r')) {
+            if (!ParcoursDefinition.xmlSafe(value)
+                    || value.chars().anyMatch(c -> Character.isISOControl(c) && c != '\n' && c != '\t' && c != '\r')) {
                 throw new InvalidParcoursException("step " + step.id() + ": parameter " + param.getKey() + " contains control characters");
             }
             if (!param.getKey().matches("[A-Za-z][A-Za-z0-9]{0,39}")) {
@@ -330,8 +343,27 @@ public final class ParcoursCompiler {
         }
     }
 
-    private static List<String> warnings(List<Step> steps, Function<String, Set<String>> schemaFields) {
+    private static List<String> warnings(
+            List<Step> steps, Function<String, Set<String>> schemaFields, Function<String, Map<String, FieldType>> schemaFieldTypes) {
         List<String> warnings = new ArrayList<>();
+        Map<String, FieldType> types = new HashMap<>();
+        for (Step s : steps) {
+            if ((s.kind() == Kind.QUESTION || s.kind() == Kind.EXTERNAL) && schemaFieldTypes != null) {
+                Map<String, FieldType> byField = schemaFieldTypes.apply(s.params().get("schemaKey"));
+                if (byField != null) {
+                    types.putAll(byField);
+                }
+            }
+        }
+        for (Step s : steps) {
+            for (Branch b : s.branches()) {
+                // `${v >= 100}` sur un texte libre : ELException à la passerelle, le dossier reste bloqué
+                if (b.value().matches("\\d+") && types.get(b.variable()) == FieldType.STRING) {
+                    warnings.add("step " + s.id() + ": the branch compares the field '" + b.variable() + "' with the number " + b.value()
+                            + " but that field is text: a non-numeric answer would stop the dossier at the gateway (use a numeric field)");
+                }
+            }
+        }
         boolean unknownProducers = steps.stream().anyMatch(s -> s.kind() == Kind.DMN || s.kind() == Kind.CONNECTOR || s.kind() == Kind.MAP_FIELDS);
         Set<String> produced = new HashSet<>();
         for (Step s : steps) {
@@ -502,7 +534,7 @@ public final class ParcoursCompiler {
         final Map<String, String> defaults = new HashMap<>();
 
         private static String literal(String value) {
-            return value.matches("\\d+|true|false") ? value : "'" + value + "'";
+            return value.matches("\\d+") ? value : "'" + value + "'";
         }
 
         private String document() {

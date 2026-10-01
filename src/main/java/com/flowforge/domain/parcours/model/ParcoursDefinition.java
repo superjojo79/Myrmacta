@@ -30,7 +30,31 @@ public record ParcoursDefinition(
             "true", "false", "null", "empty", "not", "and", "or", "eq", "ne", "lt", "gt", "le", "ge", "div", "mod", "instanceof");
     /** Ce que la grammaire de condition du parseur de déploiement sait écrire dans un littéral : ni point, ni parenthèse, crochet, @, &, <, >, ;. */
     private static final Pattern BRANCH_VALUE = Pattern.compile("[^'\"\\\\$#{}.()\\[\\]@&<>;\\p{Cntrl}]{1,100}");
+    /** Variables ou objets du moteur : une condition qui les nomme compare un objet de Flowable, pas une réponse de formulaire. */
+    private static final java.util.Set<String> ENGINE_VARIABLES = java.util.Set.of(
+            "execution", "task", "initiator", "authenticatedUserId", "processInstanceId", "processDefinitionId", "executionId",
+            "taskId", "dossierId", "dossierWorkflowLinkId", "connectorInput", "connectorResult", "now", "variables", "dossier");
     private static final Pattern SIGNED_OR_DECIMAL = Pattern.compile("-?\\d+(\\.\\d+)?");
+
+    /**
+     * Vrai si chaque point de code est un caractère XML 1.0 valide (tab, saut de ligne, retour chariot, U+0020–D7FF, U+E000–FFFD, plans
+     * supplémentaires) : un surrogate isolé deviendrait {@code ?} à l'encodage UTF-8, la valeur lue à l'exécution ne serait plus celle saisie.
+     */
+    public static boolean xmlSafe(String text) {
+        if (text == null) {
+            return false;
+        }
+        for (int i = 0; i < text.length(); ) {
+            int cp = text.codePointAt(i);
+            boolean ok = cp == 0x9 || cp == 0xA || cp == 0xD || (cp >= 0x20 && cp <= 0xD7FF) || (cp >= 0xE000 && cp <= 0xFFFD)
+                    || (cp >= 0x10000 && cp <= 0x10FFFF);
+            if (!ok || (Character.isSurrogate(text.charAt(i)) && Character.charCount(cp) == 1)) {
+                return false;
+            }
+            i += Character.charCount(cp);
+        }
+        return true;
+    }
 
     public ParcoursDefinition {
         statuses = statuses == null ? List.of() : List.copyOf(statuses);
@@ -90,10 +114,13 @@ public record ParcoursDefinition(
             if (variable == null || !VARIABLE.matcher(variable).matches()) {
                 throw new InvalidParcoursException("a branch variable is a plain name (letters, digits, _): " + variable);
             }
+            if (ENGINE_VARIABLES.contains(variable)) {
+                throw new InvalidParcoursException("a branch variable may not be the engine variable '" + variable + "': name a question field or an expression result");
+            }
             if (EL_RESERVED.contains(variable.toLowerCase(java.util.Locale.ROOT))) {
                 throw new InvalidParcoursException("a branch variable may not be the reserved word '" + variable + "'");
             }
-            if (value == null || !BRANCH_VALUE.matcher(value).matches()) {
+            if (value == null || value.isBlank() || !xmlSafe(value) || !BRANCH_VALUE.matcher(value).matches()) {
                 throw new InvalidParcoursException("a branch value is a short literal (max 100) without quotes, $, #, braces, dots, "
                         + "parentheses, brackets, @, &, <, > or ; : " + variable);
             }
@@ -117,6 +144,9 @@ public record ParcoursDefinition(
             label = label == null || label.isBlank() ? id : label.strip();
             if (label.contains("${") || label.contains("#{")) {
                 throw new InvalidParcoursException("a step label is plain text, never an expression (step " + id + ")");
+            }
+            if (!xmlSafe(label)) {
+                throw new InvalidParcoursException("a step label holds only valid XML characters (step " + id + ")");
             }
             if (label.length() > 200 || label.chars().anyMatch(Character::isISOControl)) {
                 throw new InvalidParcoursException("a step label is a single line of at most 200 characters (step " + id + ")");

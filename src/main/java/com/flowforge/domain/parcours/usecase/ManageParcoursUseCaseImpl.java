@@ -71,10 +71,20 @@ public final class ManageParcoursUseCaseImpl implements ManageParcoursUseCase {
     }
 
     @Override
-    public void delete(AccessContext.User actor, String key) {
+    public void delete(AccessContext.User actor, String key, Integer expectedVersion) {
         guard.requireTenantOrWorkflowAdminOrApiService(actor);
-        if (!repository.delete(tenantId, key)) {
-            throw new ParcoursNotFoundException(key);
+        if (expectedVersion == null) {
+            if (!repository.delete(tenantId, key)) {
+                throw new ParcoursNotFoundException(key);
+            }
+            return;
+        }
+        if (!repository.deleteIfVersion(tenantId, key, expectedVersion)) {
+            // la clé n'existe plus, ou une autre modification est passée entre-temps : on les distingue pour que l'UI le dise
+            if (repository.findByKey(tenantId, key).isEmpty()) {
+                throw new ParcoursNotFoundException(key);
+            }
+            throw new ParcoursConflictException(key);
         }
     }
 }

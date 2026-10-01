@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { toProblemDetail } from '@/api/http'
 import {
@@ -117,6 +117,11 @@ async function loadOptions() {
   }
 }
 
+// Un aperçu ou un résultat de compilation décrit la version qui a été compilée : il n'est plus d'actualité dès que l'on modifie.
+watch(dirty, (isDirty) => {
+  if (isDirty) result.value = null
+})
+
 function snapshot() {
   savedSnapshot.value = JSON.stringify([label.value, definition.value])
 }
@@ -128,6 +133,7 @@ function fresh() {
   version.value = null
   definition.value = blank()
   result.value = null
+  replaceDraft.value = false
   error.value = null
   notice.value = null
   editing.value = true
@@ -139,6 +145,7 @@ async function open(k: string) {
   error.value = null
   notice.value = null
   result.value = null
+  replaceDraft.value = false
   try {
     const p = await getParcours(k)
     isNew.value = false
@@ -250,7 +257,7 @@ async function compile(dryRun: boolean) {
 async function remove() {
   if (!window.confirm(`Supprimer le parcours « ${key.value} » ? Les brouillons et processus déjà générés ne sont pas touchés.`)) return
   const done = await run(async () => {
-    await deleteParcours(key.value)
+    await deleteParcours(key.value, version.value)
     return true
   })
   if (done) {

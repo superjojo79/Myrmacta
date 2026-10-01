@@ -54,7 +54,7 @@ public final class CompileParcoursUseCaseImpl implements CompileParcoursUseCase 
     public Result compile(AccessContext.User actor, Provenance provenance, String key, boolean dryRun, boolean replaceDraft) {
         guard.requireTenantOrWorkflowAdminOrApiService(actor);
         Parcours parcours = repository.findByKey(tenantId, key).orElseThrow(() -> new ParcoursNotFoundException(key));
-        CompiledParcours compiled = ParcoursCompiler.compile(parcours.key(), parcours.label(), parcours.definition(), this::fieldsOf);
+        CompiledParcours compiled = ParcoursCompiler.compile(parcours.key(), parcours.label(), parcours.definition(), this::fieldsOf, this::typesOf);
         ProposedWorkflowConfig config = config(parcours.label(), parcours.definition());
         if (dryRun) {
             propose.validateBpmn(actor, parcours.key(), compiled.xml(), config);
@@ -68,7 +68,7 @@ public final class CompileParcoursUseCaseImpl implements CompileParcoursUseCase 
     @Override
     public Preview preview(AccessContext.User actor, String key, String label, ParcoursDefinition definition) {
         guard.requireTenantOrWorkflowAdminOrApiService(actor);
-        CompiledParcours compiled = ParcoursCompiler.compile(key, label, definition, this::fieldsOf);
+        CompiledParcours compiled = ParcoursCompiler.compile(key, label, definition, this::fieldsOf, this::typesOf);
         try {
             propose.validateBpmn(actor, key, compiled.xml(), config(label, definition));
             return new Preview(compiled, null);
@@ -80,6 +80,12 @@ public final class CompileParcoursUseCaseImpl implements CompileParcoursUseCase 
     private static ProposedWorkflowConfig config(String label, ParcoursDefinition definition) {
         return new ProposedWorkflowConfig(label, definition.statuses(), definition.allowedDossierStatuses(),
                 definition.onStartDossierStatus(), java.util.List.of());
+    }
+
+    private java.util.Map<String, com.flowforge.domain.dossier.model.FieldType> typesOf(String schemaKey) {
+        return schemas.findByKey(tenantId, schemaKey)
+                .map(s -> s.fields().stream().collect(Collectors.toMap(FieldDefinition::name, FieldDefinition::type, (a, b) -> a)))
+                .orElse(null);
     }
 
     private Set<String> fieldsOf(String schemaKey) {

@@ -116,7 +116,7 @@ class ParcoursCompilerTest {
         String stripped = xml.replaceAll("flowable:delegateExpression=\"\\$\\{[A-Za-z]+}\"", "")
                 .replaceAll("<conditionExpression[^>]*>\\$\\{[^}]*}</conditionExpression>", "");
         assertThat(stripped).doesNotContain("${").doesNotContain("#{");
-        assertThat(xml).contains("${gros == true}").contains("${montant &gt;= 100}");
+        assertThat(xml).contains("${gros == 'true'}").contains("${montant &gt;= 100}");
         assertThat(xml).contains("default=\"flow_choix_cloture\"");
     }
 
@@ -314,5 +314,70 @@ class ParcoursCompilerTest {
                         step("foo", Kind.DOCUMENT, Map.of("documentType", "courrier", "attach", "false")),
                         step("fooAttach", Kind.SET_WORKFLOW_STATUS, Map.of("targetWorkflowStatus", "VALIDE")))))
                 .isInstanceOf(InvalidParcoursException.class);
+    }
+
+    // ---- seconde passe de la revue adversariale LC5 -----------------------------------------------------------------
+
+    @Test
+    void charactersOutsideXml10AndLoneSurrogatesAreRefusedEverywhereTheyCouldReachTheBpmn() {
+        // M-A : un surrogate isolé devenait « ? » à l'encodage UTF-8 : la valeur lue à l'exécution n'était plus celle saisie
+        for (String bad : List.of("\ud800", "a\udc00b", "x\ufffey", "\uffff")) {
+            assertThatThrownBy(() -> compile(decisionOn("x", Operator.EQ, bad))).as("branch %s", bad).isInstanceOf(InvalidParcoursException.class);
+            assertThatThrownBy(() -> new Step("a", bad, Kind.QUESTION, Map.of("schemaKey", "avis"), null, null, null))
+                    .as("label %s", bad).isInstanceOf(InvalidParcoursException.class);
+            assertThatThrownBy(() -> compile(definition(step("e", Kind.EXPRESSION, Map.of("formula", "1" + bad, "formulaResult", "r")))))
+                    .as("param %s", bad).isInstanceOf(InvalidParcoursException.class);
+            assertThatThrownBy(() -> ParcoursCompiler.compile("p", "L" + bad, definition(step("q", Kind.QUESTION, Map.of("schemaKey", "avis"))), k -> Set.of()))
+                    .as("parcours label %s", bad).isInstanceOf(InvalidParcoursException.class);
+        }
+        // un caractère hors plan multilingue de base, bien formé, reste accepté
+        assertThat(compile(decisionOn("x", Operator.EQ, "caf\u00e9 \uD83D\uDE00")).xml()).contains("caf\u00e9");
+    }
+
+    @Test
+    void trueAndFalseAreAlwaysQuotedBecauseElCoercesTheOtherSideToBoolean() {
+        // M-B : `v == false` est vrai pour v = "abc" ; entre quotes la comparaison reste exacte, Boolean comme chaîne
+        String xml = compile(decisionOn("flag", Operator.EQ, "false")).xml();
+        assertThat(xml).contains("${flag == 'false'}").doesNotContain("${flag == false}");
+        assertThat(compile(decisionOn("flag", Operator.NE, "true")).xml()).contains("${flag != 'true'}");
+        assertThat(compile(decisionOn("n", Operator.GE, "100")).xml()).contains("${n &gt;= 100}");
+    }
+
+    @Test
+    void theProcessKeyMayNotEqualAGeneratedAttachId() {
+        // L-1
+        assertThatThrownBy(() -> ParcoursCompiler.compile("fooAttach", "L", definition(
+                        step("foo", Kind.DOCUMENT, Map.of("documentType", "courrier")),
+                        step("fin", Kind.SET_WORKFLOW_STATUS, Map.of("targetWorkflowStatus", "VALIDE"))), k -> Set.of()))
+                .isInstanceOf(InvalidParcoursException.class);
+    }
+
+    @Test
+    void aSchemaKeyUsesTheAlphabetOfTheSchemasAndThePortal() {
+        // L-3 : `.` et `:` ne désignent aucun schéma possible
+        for (String key : List.of("a.b", "a:b")) {
+            assertThatThrownBy(() -> compile(definition(step("q", Kind.QUESTION, Map.of("schemaKey", key))))).as(key).isInstanceOf(InvalidParcoursException.class);
+        }
+        assertThat(compile(definition(step("q", Kind.QUESTION, Map.of("schemaKey", "avis-2_x")))).xml()).contains("user-question:avis-2_x");
+    }
+
+    @Test
+    void engineVariablesAndBlankValuesAreNotValidBranchOperands() {
+        // L-4 : `execution`, `authenticatedUserId`… sont des objets du moteur, pas des champs ; L-6 : valeur blanche
+        for (String variable : List.of("execution", "authenticatedUserId", "task", "initiator", "processInstanceId", "dossierId")) {
+            assertThatThrownBy(() -> compile(decisionOn(variable, Operator.EQ, "1"))).as(variable).isInstanceOf(InvalidParcoursException.class);
+        }
+        assertThatThrownBy(() -> compile(decisionOn("x", Operator.EQ, " "))).isInstanceOf(InvalidParcoursException.class);
+    }
+
+    @Test
+    void aNumericComparisonOnATextFieldOfTheSchemaIsWarnedAbout() {
+        // L-5 : `${v >= 100}` sur un texte libre lève une ELException à la passerelle
+        var d = definition(
+                step("saisie", Kind.QUESTION, Map.of("schemaKey", "avis")),
+                new Step("choix", "Choix", Kind.DECISION, Map.of(), null, List.of(new Branch("avis", Operator.GE, "100", "fin")), "fin"),
+                step("fin", Kind.SET_WORKFLOW_STATUS, Map.of("targetWorkflowStatus", "VALIDE")));
+        var compiled = ParcoursCompiler.compile("sinistre", "S", d, k -> Set.of("avis"), k -> java.util.Map.of("avis", com.flowforge.domain.dossier.model.FieldType.STRING));
+        assertThat(compiled.warnings()).anyMatch(w -> w.contains("avis") && w.contains("numeric"));
     }
 }

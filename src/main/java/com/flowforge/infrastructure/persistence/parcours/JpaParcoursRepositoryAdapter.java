@@ -66,6 +66,11 @@ class JpaParcoursRepositoryAdapter implements ParcoursRepository {
     }
 
     @Override
+    public boolean deleteIfVersion(String tenantId, String key, int expectedVersion) {
+        return repository.deleteByKeyAndVersion(tenantId, key, expectedVersion) > 0;
+    }
+
+    @Override
     public void markCompiled(String tenantId, String key, Instant at, String sha256) {
         repository.markCompiled(tenantId, key, at, sha256);
     }

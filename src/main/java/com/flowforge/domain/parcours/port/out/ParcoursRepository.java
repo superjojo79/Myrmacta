@@ -16,6 +16,9 @@ public interface ParcoursRepository {
 
     boolean delete(String tenantId, String key);
 
+    /** Suppression conditionnelle : ne réussit que si {@code expectedVersion} est encore la version courante. */
+    boolean deleteIfVersion(String tenantId, String key, int expectedVersion);
+
     /** Mémorise la dernière compilation (sans changer la version : la définition n'a pas bougé). */
     void markCompiled(String tenantId, String key, Instant at, String sha256);
 }

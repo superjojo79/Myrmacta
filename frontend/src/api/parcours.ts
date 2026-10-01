@@ -89,8 +89,8 @@ export async function saveParcours(
   return data
 }
 
-export async function deleteParcours(key: string): Promise<void> {
-  await axios.delete(`/api/parcours/${encodeURIComponent(key)}`)
+export async function deleteParcours(key: string, expectedVersion?: number | null): Promise<void> {
+  await axios.delete(`/api/parcours/${encodeURIComponent(key)}`, expectedVersion == null ? undefined : { params: { expectedVersion } })
 }
 
 export async function compileParcours(key: string, dryRun: boolean, replaceDraft = false): Promise<CompileResult> {

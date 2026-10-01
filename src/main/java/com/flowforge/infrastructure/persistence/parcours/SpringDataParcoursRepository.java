@@ -20,6 +20,11 @@ interface SpringDataParcoursRepository extends JpaRepository<ParcoursJpaEntity, 
     @Query("delete from ParcoursJpaEntity p where p.tenantId = :tenantId and p.key = :key")
     int deleteByKey(@Param("tenantId") String tenantId, @Param("key") String key);
 
+    @org.springframework.transaction.annotation.Transactional
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("delete from ParcoursJpaEntity p where p.tenantId = :tenantId and p.key = :key and p.version = :version")
+    int deleteByKeyAndVersion(@Param("tenantId") String tenantId, @Param("key") String key, @Param("version") int version);
+
     /** Mise à jour conditionnelle : ne réussit que si la version lue est encore la courante. */
     @org.springframework.transaction.annotation.Transactional
     @Modifying(clearAutomatically = true, flushAutomatically = true)

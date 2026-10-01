@@ -157,6 +157,24 @@ class ParcoursApiTest {
     }
 
     @Test
+    void aDeleteWithAStaleVersionIsAConflictAndTheParcoursSurvives() throws Exception {
+        String schema = "s" + key();
+        createSchema(schema);
+        String key = key();
+        mockMvc.perform(put("/api/parcours/{key}", key).with(admin()).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content(body(schema, null, TWO_STEPS))).andExpect(status().isOk());
+        mockMvc.perform(put("/api/parcours/{key}", key).with(admin()).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content(body(schema, 1, TWO_STEPS))).andExpect(status().isOk());
+        mockMvc.perform(delete("/api/parcours/{key}", key).param("expectedVersion", "1").with(admin()).with(csrf()))
+                .andExpect(status().isConflict());
+        mockMvc.perform(get("/api/parcours/{key}", key).with(admin())).andExpect(status().isOk());
+        mockMvc.perform(delete("/api/parcours/{key}", key).param("expectedVersion", "2").with(admin()).with(csrf()))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(delete("/api/parcours/{key}", key).param("expectedVersion", "2").with(admin()).with(csrf()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void onlyDesignRolesMayUseParcours() throws Exception {
         mockMvc.perform(get("/api/parcours").with(role("DOSSIER_AGENT"))).andExpect(status().isForbidden());
         mockMvc.perform(get("/api/parcours").with(role("WORKFLOW_ADMIN"))).andExpect(status().isOk());

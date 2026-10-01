@@ -210,6 +210,12 @@ paths:
         required: true
         schema:
           type: string
+      - name: expectedVersion
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
       responses:
         "200":
           description: OK

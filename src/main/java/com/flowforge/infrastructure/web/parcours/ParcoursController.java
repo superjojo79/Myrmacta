@@ -57,8 +57,11 @@ class ParcoursController {
     }
 
     @DeleteMapping("/{key}")
-    ResponseEntity<Void> delete(@PathVariable String key, Authentication authentication) {
-        manage.delete(accessContextFactory.user(authentication), key);
+    ResponseEntity<Void> delete(
+            @PathVariable String key,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Integer expectedVersion,
+            Authentication authentication) {
+        manage.delete(accessContextFactory.user(authentication), key, expectedVersion);
         return ResponseEntity.noContent().build();
     }
 

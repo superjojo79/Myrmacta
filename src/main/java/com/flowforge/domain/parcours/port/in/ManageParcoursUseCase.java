@@ -21,7 +21,8 @@ public interface ManageParcoursUseCase {
      */
     Parcours save(AccessContext.User actor, SaveCommand command);
 
-    void delete(AccessContext.User actor, String key);
+    /** @param expectedVersion si fournie, la suppression n'a lieu que si c'est encore la version courante ({@link com.flowforge.domain.parcours.model.ParcoursConflictException} sinon) */
+    void delete(AccessContext.User actor, String key, Integer expectedVersion);
 
     record SaveCommand(String key, String label, ParcoursDefinition definition, Integer expectedVersion) {}
 }

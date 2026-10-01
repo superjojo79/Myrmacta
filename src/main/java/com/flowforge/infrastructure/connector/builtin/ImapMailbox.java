@@ -1,0 +1,70 @@
+package com.flowforge.infrastructure.connector.builtin;
+
+import com.flowforge.domain.connector.model.InboundAttachment;
+import java.time.Instant;
+import java.util.List;
+
+/**
+ * TODO §87 (D3c) — accès à une boîte e-mail : lit les messages d'un dossier, les confie à un gestionnaire, puis range chacun dans le
+ * dossier « traités » ou « refusés » (jamais supprimé : la boîte reste la preuve de ce qui est arrivé).
+ */
+interface ImapMailbox {
+
+    /**
+     * @throws RuntimeException connexion, authentification ou protocole en échec : rien n'est rangé, la prochaine interrogation
+     *     reprendra les mêmes messages
+     */
+    void process(Settings settings, int maxMessages, Limits limits, Handler handler);
+
+    record Settings(
+            String host,
+            int port,
+            Security security,
+            String username,
+            /** Mot de passe, ou jeton d'accès OAuth2 (XOAUTH2) quand {@code oauth}. */
+            String secret,
+            boolean oauth,
+            String folder,
+            String processedFolder,
+            String rejectedFolder,
+            int timeoutMillis) {
+
+        @Override
+        public String toString() {
+            return "Settings[host=" + host + ", port=" + port + ", folder=" + folder + "]";
+        }
+    }
+
+    enum Security {
+        SSL,
+        STARTTLS,
+        /** Sans chiffrement : réservé aux tests (serveur en mémoire) ; jamais produit par le connecteur, qui refuse toute autre valeur. */
+        PLAIN_FOR_TESTS
+    }
+
+    record Limits(long maxMessageBytes, int maxBodyChars, long maxAttachmentBytes, int maxAttachments) {}
+
+    record Mail(
+            String messageId,
+            String fromAddress,
+            String fromDisplay,
+            String subject,
+            Instant sentAt,
+            String body,
+            boolean automatic,
+            List<InboundAttachment> attachments,
+            int attachmentsSkipped) {}
+
+    enum Outcome {
+        PROCESSED,
+        REJECTED
+    }
+
+    interface Handler {
+        /** Ne lève jamais pour un message invalide : renvoie {@link Outcome#REJECTED}. */
+        Outcome handle(Mail mail);
+
+        /** Message trop gros pour être analysé : il est rangé sans lecture. */
+        void oversize(long bytes);
+    }
+}

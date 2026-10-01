@@ -17,12 +17,17 @@ import com.flowforge.domain.workflow.port.out.OutboxRepository;
 import com.flowforge.domain.workflow.port.out.WorkflowEnginePort;
 import java.net.http.HttpClient;
 import java.util.Map;
+import com.flowforge.domain.connector.port.in.AttachInboundFilesUseCase;
+import com.flowforge.domain.connector.usecase.AttachInboundFilesUseCaseImpl;
+import com.flowforge.domain.document.port.out.DocumentStoragePort;
+import com.flowforge.domain.dossier.port.in.AddDossierElementUseCase;
+import com.flowforge.domain.dossier.port.out.AttachmentScanPort;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@EnableConfigurationProperties(ConnectorProperties.class)
+@EnableConfigurationProperties({ConnectorProperties.class, InboundConnectorProperties.class})
 public class ConnectorConfig {
 
     @Bean
@@ -30,8 +35,22 @@ public class ConnectorConfig {
             ConnectorCatalog catalog,
             CreateDossierUseCase createDossier,
             GetDossierUseCase getDossier,
-            OutboxRepository outboxRepository) {
-        return new ConnectorTriggerRuntimeImpl(catalog, createDossier, getDossier, outboxRepository);
+            OutboxRepository outboxRepository,
+            AttachInboundFilesUseCase attachInboundFiles) {
+        return new ConnectorTriggerRuntimeImpl(catalog, createDossier, getDossier, outboxRepository, attachInboundFiles);
+    }
+
+    /** TODO §87 (D3c) — pièces jointes d'un e-mail entrant : mêmes contrôles que l'upload interne (types, contenu, antivirus). */
+    @Bean
+    AttachInboundFilesUseCase attachInboundFilesUseCase(
+            TenantProperties tenantProperties,
+            AttachmentUploadProperties uploadProperties,
+            InboundConnectorProperties inbound,
+            AttachmentScanPort scanPort,
+            DocumentStoragePort storagePort,
+            AddDossierElementUseCase addElementUseCase) {
+        return new AttachInboundFilesUseCaseImpl(tenantProperties.id(), uploadProperties::isAllowed, 20, inbound.maxAttachmentBytes(),
+                scanPort, storagePort, addElementUseCase);
     }
 
     @Bean

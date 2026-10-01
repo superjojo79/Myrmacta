@@ -241,6 +241,14 @@
             <artifactId>testcontainers-postgresql</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- D3c (e-mail entrant) : serveur IMAP/SMTP en mémoire pour tester le connecteur sans boîte réelle -->
+        <dependency>
+            <groupId>com.icegreen</groupId>
+            <artifactId>greenmail-junit5</artifactId>
+            <version>2.1.14</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <profiles>

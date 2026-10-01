@@ -354,6 +354,8 @@ connecteurs eux-mêmes — leurs instances configurées). Types fournis de base 
 | `flowable-callback` | callback | `webhookAuthType`, `webhookSecret`, `messageName`, `correlationVariableName`, `correlationValuePath`, `mapping` (optionnel) |
 | `smtp` | service | aucun champ d'instance (réutilise la config SMTP de l'application) |
 | `document-storage` | service | aucun champ d'instance (réutilise le stockage documents déjà configuré) |
+| `imap-inbound` | trigger (e-mail entrant) | `host`, `port`, `security` (SSL / STARTTLS), `username`, `authMode` (mot de passe ou OAuth2), `password`, `folder`, `processedFolder`, `rejectedFolder`, `pollSeconds`, `referencePattern`, `processKey`, `dossierTypeCode`, `mapping` |
+| `azure-service-bus` | trigger (bus Azure) | `namespaceHost`, `entityPath`, `authMode` (SAS ou OAuth2), `sasKeyName`, `sasKey`, `pollSeconds`, `processKey`, `dossierTypeCode`, `mapping` |
 
 **Appeler une API protégée par OAuth2 (Microsoft Entra ID : D365 F&O, Dataverse, Graph).** Sur un connecteur `http-rest`, choisir
 `authMode = OAUTH2_CLIENT_CREDENTIALS` : FlowForge obtient lui-même le jeton d'accès, le garde en mémoire et le renouvelle avant son
@@ -405,6 +407,39 @@ Le préfixe `{tenantId}` est celui du reverse-proxy (chemin du tenant, décision
 n'y en a pas, le chemin commence à `/api/…`. Un bouton **Copier** recopie l'URL (sans le mot
 `POST`). Les autres types (`smtp`, `document-storage`, `scheduler`, `flowable-signal`) n'ont
 pas d'endpoint HTTP entrant.
+
+### Recevoir des e-mails : le connecteur `imap-inbound` (TODO §87)
+
+Un message reçu dans une boîte crée un **dossier** (ou alimente un dossier existant) et démarre le processus choisi. FlowForge interroge la boîte
+toutes les `pollSeconds` secondes (30 au minimum).
+
+- **Connexion** : `host`, `port` (993), `security` — `SSL` (IMAPS) ou `STARTTLS` (jamais facultatif) ; le certificat du serveur est toujours vérifié.
+  Le serveur doit répondre sur une adresse publique. **Authentification** : mot de passe, ou **OAuth2** (`authMode = OAUTH2_CLIENT_CREDENTIALS`, application
+  Microsoft Entra ID, `oauthScope = https://outlook.office365.com/.default`) — Exchange Online n'accepte plus le mot de passe seul.
+- **Rangement** : un message pris en charge est déplacé dans `processedFolder` (`FlowForge-processed`), un message refusé dans `rejectedFolder`
+  (`FlowForge-rejected`) ; **rien n'est jamais supprimé**. Sont refusés : les réponses automatiques (absence, accusés), les listes de diffusion, les messages sans expéditeur,
+  trop gros (25 Mo) ou dont un champ mappé est vide.
+- **Corrélation** : `referencePattern` est une expression régulière à **un seul groupe** appliquée à l'objet, par exemple `\[(DOS-[0-9-]+)\]` : une réponse
+  « RE: [DOS-2026-0042] … » est ajoutée à ce dossier ; une référence inconnue (faute de frappe) crée un nouveau dossier plutôt que de perdre le message.
+- **Contenu** : `mapping` associe des champs du dossier ou des variables du processus à l'objet (`$.subject`), au texte (`$.body`, texte brut, 20 000 caractères),
+  à l'expéditeur (`$.from`, `$.fromName`), à la date (`$.sentAt`). Les variables `mailMessageId`, `mailFrom` et `mailSubject` sont toujours posées.
+- **Pièces jointes** : jusqu'à `maxAttachments` (5) par message, 10 Mo chacune ; elles passent les mêmes contrôles que les pièces ajoutées à la main (types autorisés,
+  contenu conforme au type annoncé, antivirus). Une pièce refusée n'empêche pas les autres ni le dossier : le processus voit `inboundAttachmentsRejected` /
+  `inboundAttachmentsSkipped`.
+- **Limite connue** : un message est rangé avant que le dossier ne soit enregistré (comme pour l'import par lot) ; en cas d'arrêt brutal à cet instant, il se retrouve
+  dans `FlowForge-processed` et peut être replacé dans la boîte à la main. Il n'y a pas de détection des doublons par `Message-ID`.
+
+### Recevoir des événements du bus Azure : le connecteur `azure-service-bus` (TODO §87)
+
+Pour les **Business Events de D365 F&O** (et tout message JSON publié sur Service Bus) sans relais. Renseigner l'espace de noms (`xxx.servicebus.windows.net`, domaines
+Service Bus uniquement), la file ou l'abonnement (`file` ou `rubrique/subscriptions/abonnement`), puis l'authentification :
+
+- **SAS** : nom et clé d'une stratégie d'accès partagé qui n'a que le droit *Écouter* ;
+- **OAuth2** : application Entra ID avec le rôle *Azure Service Bus Data Receiver* (`oauthScope = https://servicebus.azure.net/.default`).
+
+Le `mapping` est celui de Kafka : chemins JSON sur le corps du message (`fields`, `variables`, `processKeyPath`, `dossierTypeCodePath`,
+`existingDossierReferencePath`). Un message converti est **retiré de la file** ; un message illisible ou incomplet est **rendu au courtier**, qui le place en file de
+lettres mortes après son `MaxDeliveryCount` : à surveiller côté Azure. Aucun jeton ni clé n'est jamais affiché ni journalisé.
 
 ### Appeler un connecteur `http-rest` (webhook entrant)
 

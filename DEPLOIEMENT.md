@@ -472,3 +472,23 @@ une clé de configuration d'un connecteur existant (fusion) et ne change pas son
 - Autorisation et conformité : [analysis doc/12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md)
 - Décisions et suivi (provisioning tenant, points 31/41 : livré via le lot `provisioning-tenant`) : [TODO.md](TODO.md) ; prochaines évolutions : [ROADMAP.md](ROADMAP.md)
 - Prise en main de l'UI : [GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md)
+
+## 16. E-mail entrant et bus Azure (TODO §87)
+
+Deux connecteurs interrogent un système externe à intervalle régulier (`imap-inbound`, `azure-service-bus`). Ils sont **inactifs tant qu'aucune instance n'est créée** et
+activée dans *Admin → Connecteurs*.
+
+| Variable | Rôle (défaut) |
+|---|---|
+| `APP_INBOUND_MAX_MESSAGES_PER_POLL` | messages traités par interrogation d'une instance (20) |
+| `APP_INBOUND_MAX_MESSAGE_BYTES` | taille maximale d'un e-mail, au-delà : rangé sans analyse (26 214 400) |
+| `APP_INBOUND_MAX_BODY_CHARS` | texte conservé du corps d'un e-mail (20 000) |
+| `APP_INBOUND_MAX_ATTACHMENT_BYTES` | taille maximale d'une pièce jointe (10 485 760) |
+| `APP_INBOUND_MIN_POLL_SECONDS` | intervalle minimal d'une instance (30) |
+| `APP_INBOUND_MAX_BUS_MESSAGE_BYTES` | taille maximale d'un message de bus lu (1 048 576) |
+
+**Réseau.** Le pare-feu sortant doit autoriser, pour chaque instance : l'hôte IMAP (993, ou 143 en STARTTLS), ou `*.servicebus.windows.net` (443), et — en OAuth2 —
+le point d'accès des jetons (`login.microsoftonline.com`). Les hôtes doivent résoudre vers des adresses publiques.
+**Données.** Un e-mail entrant peut contenir des données personnelles : il devient un dossier soumis aux règles de rétention habituelles ; les messages
+traités restent dans la boîte (dossier `FlowForge-processed`) et sont à purger selon votre politique. **Plusieurs répliques** : le créneau d'interrogation est pris
+par comparaison-échange (D5), une seule réplique lit une boîte ou une file à la fois.

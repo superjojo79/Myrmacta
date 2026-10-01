@@ -30,6 +30,11 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
+- **TODO §87 (D3c + D3d)** — Deux connecteurs d'entrée par interrogation. **E-mail entrant** (`imap-inbound`) : un message crée un dossier ou alimente celui dont la référence figure dans l'objet,
+  corps et expéditeur mappés vers les champs et variables, **pièces jointes rattachées après les contrôles habituels** (types, contenu, antivirus) ; réponses automatiques et listes refusées,
+  messages rangés (jamais supprimés), mot de passe ou OAuth2 (XOAUTH2, Exchange Online). **Azure Service Bus** (`azure-service-bus`) : file ou abonnement par l'API REST (SAS ou OAuth2), mapping
+  JSON identique à Kafka, message illisible rendu au courtier (lettres mortes) — pour les Business Events de D365 F&O sans relais. Bornes `APP_INBOUND_*` ; `DEPLOIEMENT.md` §16.
+
 - **TODO §85 (LC4a)** — Concepteur visuel de formulaires : aperçu en direct, sections, largeur (pleine / demi), aide contextuelle en texte brut et
   réordonnancement par glisser-déposer, pour les questions de tâche et les champs d'un type de dossier ; le portail externe applique la même disposition.
   `fieldDefinitions` reste la seule source (deux champs optionnels `helpText`, `width`, sans migration) ; outils MCP `define_dossier_type` et

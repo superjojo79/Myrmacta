@@ -88,16 +88,17 @@ class ConnectorAdminApiTest {
     }
 
     @Test
-    void listDefinitions_registersExactlyEightTypesWithoutCollision_connecteursCibleLotB1() throws Exception {
+    void listDefinitions_registersExactlyTenTypesWithoutCollision_connecteursCibleLotB1_etD3cD3d() throws Exception {
         // T-REG-REGISTRY-COUNT : les 6 connecteurs déjà livrés (http-rest, flowable-signal,
-        // flowable-callback, scheduler, smtp, document-storage) + batch-import + kafka, tous
+        // flowable-callback, scheduler, smtp, document-storage) + batch-import + kafka + (TODO §87, D3c/D3d) imap-inbound
+        // et azure-service-bus, tous
         // enregistrés sans collision de type au démarrage du contexte Spring réel (un doublon
         // ferait échouer ConnectorRegistry.init() et empêcherait ce test de démarrer).
         mockMvc.perform(get("/api/connector-definitions")
                         .param("size", "50")
                         .with(user("connector-admin", "TENANT_ADMIN")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(8))
+                .andExpect(jsonPath("$.totalElements").value(10))
                 .andExpect(jsonPath("$.content[*].type", hasItem("http-rest")))
                 .andExpect(jsonPath("$.content[*].type", hasItem("flowable-signal")))
                 .andExpect(jsonPath("$.content[*].type", hasItem("flowable-callback")))
@@ -105,7 +106,9 @@ class ConnectorAdminApiTest {
                 .andExpect(jsonPath("$.content[*].type", hasItem("smtp")))
                 .andExpect(jsonPath("$.content[*].type", hasItem("document-storage")))
                 .andExpect(jsonPath("$.content[*].type", hasItem("batch-import")))
-                .andExpect(jsonPath("$.content[*].type", hasItem("kafka")));
+                .andExpect(jsonPath("$.content[*].type", hasItem("kafka")))
+                .andExpect(jsonPath("$.content[*].type", hasItem("imap-inbound")))
+                .andExpect(jsonPath("$.content[*].type", hasItem("azure-service-bus")));
     }
 
     @Test

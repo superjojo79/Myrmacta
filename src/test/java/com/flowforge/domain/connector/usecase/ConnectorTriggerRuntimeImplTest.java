@@ -171,4 +171,61 @@ class ConnectorTriggerRuntimeImplTest {
                 null,
                 null);
     }
+
+    // ---- D3c : pièces jointes et référence inconnue ----
+
+    @Test
+    void attachmentsAreAttachedToTheDossier_andRejectionsAreVisibleToTheProcess() {
+        var attach = mock(com.flowforge.domain.connector.port.in.AttachInboundFilesUseCase.class);
+        var withAttach = new ConnectorTriggerRuntimeImpl(catalog, createDossier, getDossier, outboxRepository, attach);
+        var instance = instance();
+        when(catalog.get("http-rest")).thenReturn(triggerDefinition);
+        var file = new com.flowforge.domain.connector.model.InboundAttachment("a.pdf", "application/pdf", new byte[] {1});
+        when(triggerConnector.onEvent(eq(instance), any())).thenReturn(List.of(new WorkflowTriggerEvent(
+                "p", "SINISTRE", Map.of(), Map.of("v", 1), null, List.of(file))));
+        UUID dossierId = UUID.randomUUID();
+        when(createDossier.create(any(), any())).thenReturn(dossier(dossierId));
+        when(attach.attach(eq(dossierId), any(), any()))
+                .thenReturn(new com.flowforge.domain.connector.port.in.AttachInboundFilesUseCase.Report(0, List.of("a.pdf: virus")));
+
+        withAttach.onIncomingEvent(instance, Map.of());
+
+        ArgumentCaptor<TriggerOutboxPayload> payload = ArgumentCaptor.forClass(TriggerOutboxPayload.class);
+        verify(outboxRepository).savePending(payload.capture());
+        assertThat(payload.getValue().variables()).containsEntry("inboundAttachmentsRejected", 1).containsEntry("v", 1);
+    }
+
+    @Test
+    void aRuntimeWithoutAttachmentSupportRefusesAnEventThatCarriesAttachments() {
+        var instance = instance();
+        when(catalog.get("http-rest")).thenReturn(triggerDefinition);
+        var file = new com.flowforge.domain.connector.model.InboundAttachment("a.pdf", "application/pdf", new byte[] {1});
+        when(triggerConnector.onEvent(eq(instance), any())).thenReturn(List.of(new WorkflowTriggerEvent(
+                "p", "SINISTRE", Map.of(), Map.of(), null, List.of(file))));
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> runtime.onIncomingEvent(instance, Map.of()))
+                .isInstanceOf(com.flowforge.domain.connector.model.ConnectorValidationException.class);
+        verify(createDossier, org.mockito.Mockito.never()).create(any(), any());
+    }
+
+    @Test
+    void anUnknownReferenceCreatesADossierOnlyWhenTheEventAsksForIt() {
+        var instance = instance();
+        when(catalog.get("http-rest")).thenReturn(triggerDefinition);
+        when(getDossier.getByReference(any(), eq("DOS-TYPO"), any()))
+                .thenThrow(new com.flowforge.domain.dossier.model.DossierNotFoundException("Dossier not found"));
+        UUID created = UUID.randomUUID();
+        when(createDossier.create(any(), any())).thenReturn(dossier(created));
+
+        // mail : repli sur la création
+        when(triggerConnector.onEvent(eq(instance), any())).thenReturn(List.of(new WorkflowTriggerEvent(
+                "p", "SINISTRE", Map.of(), Map.of(), "DOS-TYPO", List.of(), true)));
+        runtime.onIncomingEvent(instance, Map.of());
+        verify(createDossier).create(any(), any());
+
+        // autres connecteurs : comportement inchangé (échec)
+        when(triggerConnector.onEvent(eq(instance), any())).thenReturn(List.of(new WorkflowTriggerEvent(
+                "p", "SINISTRE", Map.of(), Map.of(), "DOS-TYPO")));
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> runtime.onIncomingEvent(instance, Map.of()))
+                .isInstanceOf(com.flowforge.domain.dossier.model.DossierNotFoundException.class);
+    }
 }

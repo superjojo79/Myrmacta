@@ -150,6 +150,14 @@ app:
   drafts:
     # Brouillons d'origine MCP/assistant non modifiés depuis N jours : purgés (0 = jamais). Les brouillons de l'éditeur : jamais.
     retention-days: ${APP_DRAFTS_RETENTION_DAYS:30}
+  inbound:
+    # Connecteurs d'entrée par interrogation (e-mail IMAP, Azure Service Bus) : bornes communes.
+    max-messages-per-poll: ${APP_INBOUND_MAX_MESSAGES_PER_POLL:20}
+    max-message-bytes: ${APP_INBOUND_MAX_MESSAGE_BYTES:26214400}
+    max-body-chars: ${APP_INBOUND_MAX_BODY_CHARS:20000}
+    max-attachment-bytes: ${APP_INBOUND_MAX_ATTACHMENT_BYTES:10485760}
+    min-poll-seconds: ${APP_INBOUND_MIN_POLL_SECONDS:30}
+    max-bus-message-bytes: ${APP_INBOUND_MAX_BUS_MESSAGE_BYTES:1048576}
   tenant:
     id: tenant_dev   # unique par instance déployée — jamais résolu dynamiquement
   security:

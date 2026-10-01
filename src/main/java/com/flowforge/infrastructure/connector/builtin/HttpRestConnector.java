@@ -540,7 +540,7 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
         }
     }
 
-    private static HttpSender urlConnectionSender() {
+    static HttpSender urlConnectionSender() {
         return request -> {
             HttpURLConnection connection = null;
             try {

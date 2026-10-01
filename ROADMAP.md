@@ -48,7 +48,7 @@ FlowForge est un SaaS multi-tenant à architecture hexagonale. Stack **réelle**
 | Vague D | **D2** Recherche sur champs dynamiques (JSONB + plein texte) | [`recherche-champs-dynamiques`](analysis%20doc/33-recherche-champs-dynamiques.md) | Analyse initiale — après D1 |
 | Vague D | **D3** Intégrations entreprise (OAuth2 client credentials, mapping réponse → dossier, e-mail entrant) | [`integrations-entreprise`](analysis%20doc/34-integrations-entreprise.md) | **D3a livré** (TODO §77 : OAuth2 `client_credentials` sur `http-rest`) ; **D3b livré** (TODO §78 : mapping réponse → champs) ; D3c, D3d : analyse initiale |
 | Vague D | **D4** Promotion de configuration entre environnements | [`promotion-configuration`](analysis%20doc/35-promotion-configuration.md) | Analyse initiale |
-| Vague D | **D5** Scalabilité intra-tenant — verrou des jobs planifiés | [`verrou-jobs-planifies`](analysis%20doc/36-verrou-jobs-planifies.md) | Analyse initiale — audit d'abord |
+| Vague D | **D5** Scalabilité intra-tenant — verrou des jobs planifiés | [`verrou-jobs-planifies`](analysis%20doc/36-verrou-jobs-planifies.md) | **Livré** (TODO §79 : audit des 18 tâches ; 7 rendues sûres par prise en base, sans verrou distribué) |
 | Vague D | **D6** Socle MCP low-code (brouillon, publication, provenance, A3-M2) | [`socle-mcp-low-code`](analysis%20doc/37-socle-mcp-low-code.md) | Analyse initiale ; 4 décisions actées via le cadrage 46 (TODO §71) |
 | Vague D | **D7** Internationalisation de l'UI | [`internationalisation-ui`](analysis%20doc/38-internationalisation-ui.md) | Analyse initiale — selon marché |
 | Non planifié | **5.3 bis** Export BI JDBC / Power BI | — | Écarté du lot reporting (D-BI-MECHANISM) ; nouveau produit si besoin confirmé |

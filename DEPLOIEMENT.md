@@ -377,6 +377,33 @@ APP_SIGNATURE_MAX_DEADLINE=90d       # facultatif, plafond de ce que le BPMN peu
 
 ------
 
+## 11. Plusieurs répliques d'un même tenant et déploiement progressif (TODO §79)
+
+Le modèle reste **1 instance = 1 tenant**, mais deux pods du même tenant coexistent dès qu'on fait un **déploiement progressif**
+(rolling update) ou qu'on scale à plusieurs répliques. Les tâches planifiées (`@Scheduled`) tournent alors des deux côtés. Chacune
+est sûre si elle **prend** son unité de travail avant d'agir (UPDATE conditionnel en base, sans Redis ni verrou externe) :
+
+| Tâche | Garantie avec deux exécutants |
+|---|---|
+| Relais outbox des notifications (e-mail, webhook, navigateur) et relais outbox workflow | une ligne n'est traitée que par l'exécutant qui l'a prise ; bail de 5 min (exécutant mort ⇒ reprise) |
+| Alertes SLA | la transition d'état est prise avant la mise en file de l'alerte : une seule alerte par transition |
+| Invitations du portail | le lien est pris avant l'envoi (bail de 2 min) : le tiers ne reçoit pas deux e-mails |
+| Déclencheurs cron (`scheduler`, `batch-import`) | le créneau est pris avant le déclenchement : un seul dossier / import par échéance |
+| Export BI | l'horloge d'export avance par compare-and-set au commit : un seul jeu de fichiers catalogué |
+| Réconciliation des liens `RESERVED` | prise du lien (bail de 2 min) ; un lien dont le process a démarré n'est jamais abandonné |
+| Purge, rétention, signature (invitations, expiration, distribution), expiration des liens portail | déjà protégés par claim, version ou contrainte en base |
+
+**Ce qui n'est pas distribué** (volontairement, pas de Redis, décision n° 13/14) : le flux **SSE** (un pod ne pousse qu'aux utilisateurs
+connectés *à lui* ; l'historique de la boîte de réception reste exact), la **limite de débit par IP**, et la **session** de l'application.
+Kafka garantit « au moins une fois » : un *rebalance* peut rejouer des messages non validés (pas d'idempotence par message à ce jour).
+Les **webhooks sortants** portent l'`outboxId` dans l'enveloppe : le destinataire peut dédupliquer.
+
+Conséquence en cas de crash d'un pod entre la prise et l'effet : l'unité est reprise à l'échéance du bail (notifications, outbox workflow,
+portail, réconciliation) ; un créneau cron est en revanche **au plus une fois** (un déclenchement qui *échoue* est rendu et réessayé ;
+un pod qui meurt entre la prise et le déclenchement perd ce créneau).
+
+------
+
 ## Ce qui n'est pas (encore) couvert par ce guide
 
 - **Démarrage de l'instance et bloc reverse-proxy** restent des étapes documentées (§1/§3/§4), pas

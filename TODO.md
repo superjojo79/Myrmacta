@@ -1285,6 +1285,20 @@ partagé (`json`), catalogue : drapeau `multiline` → zone de texte dans l'édi
 
 ---
 
+### [x] 79. Tâches planifiées sûres sous double exécution (D5) (livré)
+
+**Énoncé :** lot **D5**, analyse [36-verrou-jobs-planifies.md](analysis%20doc/36-verrou-jobs-planifies.md). Docs SDD : [requirements](docs/ai/requirements/2026-10-01-feature-d5-verrou-jobs-planifies.md),
+[design (audit complet)](docs/ai/design/2026-10-01-feature-d5-verrou-jobs-planifies.md), [implementation](docs/ai/implementation/2026-10-01-feature-d5-verrou-jobs-planifies.md),
+[testing](docs/ai/testing/2026-10-01-feature-d5-verrou-jobs-planifies.md).
+
+**Décisions.** D-JOBS-TRIGGER = corriger dès l'audit (un déploiement progressif fait coexister deux pods, l'audit montre sept tâches fautives dont deux en corruption) ; D-JOBS-MECHANISM = prise par ligne
+(UPDATE conditionnel), ni advisory lock ni ShedLock ; D-JOBS-LEASE = baux courts (2 à 5 min) et reprise des unités abandonnées ; D-JOBS-CRON = créneau cron au plus une fois sous crash, rendu en cas d'échec.
+
+**Livré.** 7 tâches rendues sûres (relais outbox notifications et workflow, alertes SLA, invitations portail, déclencheurs cron, export BI, réconciliation `RESERVED`) + distribution des signatures ; migrations additives 027 à 029 ;
+`DEPLOIEMENT.md` §11 (ce qui est sûr, ce qui ne l'est pas : SSE, rate-limit, Kafka). **Impacte :** `DEPLOIEMENT.md`, `analysis doc/36`, `ROADMAP.md`, `CHANGELOG.md`. **Revue adversariale** : voir le document d'implémentation.
+
+---
+
 ### [x] 19. Granularité des rôles RBAC
 
 **Clos V1 (2026-08-03 — feature `autorisation-conformite`) :** les cinq rôles

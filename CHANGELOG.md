@@ -30,6 +30,10 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
+- **TODO §79 (D5)** — Tâches planifiées sûres si deux pods les exécutent (déploiement progressif, répliques) : audit des 18 tâches, puis prise de l'unité de travail en base avant
+  l'effet (relais d'outbox, alertes SLA, invitations du portail, déclencheurs cron, export BI, réconciliation des liens, distribution des signatures). Plus d'e-mails, de dossiers, de fichiers
+  ou d'instances de process en double ; sans Redis ni verrou externe. Trois colonnes de bail (migrations 027 à 029). Guide d'exploitation : `DEPLOIEMENT.md` §11.
+
 - **TODO §78 (D3b)** — Nouvelle brique BPMN « Enregistrer des valeurs dans le dossier » : des expressions métier bornées (JSONata) tirent des valeurs du dossier, du résultat d'un
   connecteur (`connectorResult.json` : corps lu comme JSON) et des variables, et les écrivent **en un seul patch** dans des champs déclarés du dossier (validation de type, version,
   tout ou rien ; écriture de champ sensible auditée). Éditeur : paramètres multilignes en zone de texte. `connectorResult` devient une variable réservée.

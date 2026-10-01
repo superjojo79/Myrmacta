@@ -1,0 +1,27 @@
+databaseChangeLog:
+  - changeSet:
+      id: 034-parcours
+      author: flowforge
+      comment: >-
+        TODO §88 (LC5) — parcours : suite d'étapes lisible par un métier, compilée en BPMN (sens unique). La définition est un document
+        JSON ; la version sert au verrouillage optimiste ; l'empreinte de la dernière compilation permet de savoir si le BPMN dérivé est à jour.
+      changes:
+        - createTable:
+            tableName: parcours
+            columns:
+              - column: {name: id, type: uuid, constraints: {primaryKey: true, primaryKeyName: pk_parcours, nullable: false}}
+              - column: {name: tenant_id, type: varchar(64), constraints: {nullable: false}}
+              - column: {name: parcours_key, type: varchar(64), constraints: {nullable: false}}
+              - column: {name: label, type: varchar(200), constraints: {nullable: false}}
+              - column: {name: definition, type: text, constraints: {nullable: false}}
+              - column: {name: version, type: int, constraints: {nullable: false}}
+              - column: {name: created_by, type: varchar(128), constraints: {nullable: false}}
+              - column: {name: updated_by, type: varchar(128), constraints: {nullable: false}}
+              - column: {name: created_at, type: timestamp with time zone, constraints: {nullable: false}}
+              - column: {name: updated_at, type: timestamp with time zone, constraints: {nullable: false}}
+              - column: {name: last_compiled_at, type: timestamp with time zone}
+              - column: {name: last_compiled_sha256, type: varchar(64)}
+        - addUniqueConstraint:
+            tableName: parcours
+            columnNames: tenant_id, parcours_key
+            constraintName: uq_parcours_tenant_key

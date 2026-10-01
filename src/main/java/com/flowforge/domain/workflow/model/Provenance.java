@@ -10,7 +10,9 @@ public enum Provenance {
     MCP,
     ASSISTANT,
     /** TODO §83 (D4) : brouillon créé par l'import d'un bundle de configuration (promotion entre environnements). */
-    IMPORT;
+    IMPORT,
+    /** TODO §88 (LC5) : brouillon BPMN compilé depuis un parcours (concepteur de parcours) — relu puis publié comme les autres. */
+    PARCOURS;
 
     /** {@code true} pour une origine automatisée (agent ou assistant). */
     public boolean automated() {

@@ -159,11 +159,65 @@ paths:
       responses:
         "200":
           description: OK
+  /api/parcours/{key}:
+    get:
+      tags:
+      - parcours-controller
+      operationId: get_3
+      parameters:
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ParcoursView"
+    put:
+      tags:
+      - parcours-controller
+      operationId: save_1
+      parameters:
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ParcoursView"
+    delete:
+      tags:
+      - parcours-controller
+      operationId: delete_1
+      parameters:
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
   /api/dmn-decision-drafts/{decisionKey}:
     get:
       tags:
       - dmn-draft-controller
-      operationId: get_3
+      operationId: get_4
       parameters:
       - name: decisionKey
         in: path
@@ -180,7 +234,7 @@ paths:
     put:
       tags:
       - dmn-draft-controller
-      operationId: save_1
+      operationId: save_2
       parameters:
       - name: decisionKey
         in: path
@@ -552,6 +606,47 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/SignatureDecisionResponse"
+  /api/parcours/{key}/compile:
+    post:
+      tags:
+      - parcours-controller
+      operationId: compile
+      parameters:
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompileRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CompileResponse"
+  /api/parcours/preview:
+    post:
+      tags:
+      - parcours-controller
+      operationId: preview
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PreviewRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CompileResponse"
   /api/notifications/send:
     post:
       tags:
@@ -1670,7 +1765,7 @@ paths:
     get:
       tags:
       - workflow-type-config-controller
-      operationId: get_4
+      operationId: get_5
       parameters:
       - name: workflowKey
         in: path
@@ -1726,7 +1821,7 @@ paths:
     get:
       tags:
       - notification-webhook-admin-controller
-      operationId: get_5
+      operationId: get_6
       parameters:
       - name: id
         in: path
@@ -1874,7 +1969,7 @@ paths:
     get:
       tags:
       - document-template-controller
-      operationId: get_6
+      operationId: get_7
       parameters:
       - name: id
         in: path
@@ -1917,7 +2012,7 @@ paths:
     get:
       tags:
       - connector-admin-controller
-      operationId: get_7
+      operationId: get_8
       parameters:
       - name: id
         in: path
@@ -2208,7 +2303,7 @@ paths:
     get:
       tags:
       - sla-report-controller
-      operationId: get_8
+      operationId: get_9
       parameters:
       - name: from
         in: query
@@ -2392,7 +2487,7 @@ paths:
     get:
       tags:
       - portal-controller
-      operationId: get_9
+      operationId: get_10
       parameters:
       - name: X-Portal-Token
         in: header
@@ -2443,11 +2538,25 @@ paths:
               schema:
                 type: string
                 format: byte
+  /api/parcours:
+    get:
+      tags:
+      - parcours-controller
+      operationId: list_9
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ParcoursSummary"
   /api/observability:
     get:
       tags:
       - observability-controller
-      operationId: get_10
+      operationId: get_11
       responses:
         "200":
           description: OK
@@ -2459,7 +2568,7 @@ paths:
     get:
       tags:
       - notification-inbox-controller
-      operationId: list_9
+      operationId: list_10
       parameters:
       - name: page
         in: query
@@ -2546,7 +2655,7 @@ paths:
     get:
       tags:
       - portal-link-admin-controller
-      operationId: list_10
+      operationId: list_11
       parameters:
       - name: dossierId
         in: path
@@ -2714,7 +2823,7 @@ paths:
     get:
       tags:
       - connector-definition-controller
-      operationId: list_11
+      operationId: list_12
       parameters:
       - name: page
         in: query
@@ -2800,7 +2909,7 @@ paths:
     get:
       tags:
       - assistant-controller
-      operationId: list_12
+      operationId: list_13
       responses:
         "200":
           description: OK
@@ -2814,7 +2923,7 @@ paths:
     get:
       tags:
       - assistant-controller
-      operationId: get_11
+      operationId: get_12
       parameters:
       - name: id
         in: path
@@ -2832,7 +2941,7 @@ paths:
     delete:
       tags:
       - assistant-controller
-      operationId: delete_1
+      operationId: delete_2
       parameters:
       - name: id
         in: path
@@ -2868,7 +2977,7 @@ paths:
     get:
       tags:
       - drafts-controller
-      operationId: list_13
+      operationId: list_14
       responses:
         "200":
           description: OK
@@ -3181,6 +3290,137 @@ components:
           type: string
         updatedBy:
           type: string
+    Branch:
+      type: object
+      properties:
+        variable:
+          type: string
+        operator:
+          type: string
+          enum:
+          - EQ
+          - NE
+          - GT
+          - GE
+          - LT
+          - LE
+        value:
+          type: string
+        next:
+          type: string
+    ParcoursDefinition:
+      type: object
+      properties:
+        statuses:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkflowStatusDefinition"
+        allowedDossierStatuses:
+          type: array
+          items:
+            type: string
+            enum:
+            - DRAFT
+            - OUVERT
+            - EN_COURS
+            - SUSPENDU
+            - CLOTURE
+            - ARCHIVE
+        onStartDossierStatus:
+          type: string
+          enum:
+          - DRAFT
+          - OUVERT
+          - EN_COURS
+          - SUSPENDU
+          - CLOTURE
+          - ARCHIVE
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/Step"
+    SaveRequest:
+      type: object
+      properties:
+        label:
+          type: string
+        definition:
+          $ref: "#/components/schemas/ParcoursDefinition"
+        expectedVersion:
+          type: integer
+          format: int32
+    Step:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        kind:
+          type: string
+          enum:
+          - QUESTION
+          - EXTERNAL
+          - DOCUMENT
+          - NOTIFY
+          - CONNECTOR
+          - DMN
+          - EXPRESSION
+          - MAP_FIELDS
+          - SET_WORKFLOW_STATUS
+          - SET_DOSSIER_STATUS
+          - WAIT
+          - DECISION
+        params:
+          type: object
+          additionalProperties:
+            type: string
+        next:
+          type: string
+        branches:
+          type: array
+          items:
+            $ref: "#/components/schemas/Branch"
+        defaultNext:
+          type: string
+    WorkflowStatusDefinition:
+      type: object
+      properties:
+        code:
+          type: string
+        label:
+          type: string
+        initial:
+          type: boolean
+        outcome:
+          type: string
+          enum:
+          - NONE
+          - COMPLETED
+          - CANCELLED
+          - FAILED
+    ParcoursView:
+      type: object
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        version:
+          type: integer
+          format: int32
+        definition:
+          $ref: "#/components/schemas/ParcoursDefinition"
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+        lastCompiledAt:
+          type: string
+          format: date-time
+        lastCompiledSha256:
+          type: string
     SaveDmnDraftRequest:
       type: object
       properties:
@@ -3249,22 +3489,6 @@ components:
           type: array
           items:
             type: string
-    WorkflowStatusDefinition:
-      type: object
-      properties:
-        code:
-          type: string
-        label:
-          type: string
-        initial:
-          type: boolean
-        outcome:
-          type: string
-          enum:
-          - NONE
-          - COMPLETED
-          - CANCELLED
-          - FAILED
     WorkflowTypeConfigResponse:
       type: object
       properties:
@@ -3413,6 +3637,37 @@ components:
         answers:
           type: object
           additionalProperties: {}
+    CompileRequest:
+      type: object
+      properties:
+        dryRun:
+          type: boolean
+        replaceDraft:
+          type: boolean
+    CompileResponse:
+      type: object
+      properties:
+        xml:
+          type: string
+        sha256:
+          type: string
+        warnings:
+          type: array
+          items:
+            type: string
+        draftWritten:
+          type: boolean
+        replacedExistingDraft:
+          type: boolean
+    PreviewRequest:
+      type: object
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        definition:
+          $ref: "#/components/schemas/ParcoursDefinition"
     SendNotificationRequest:
       type: object
       properties:
@@ -3893,20 +4148,6 @@ components:
           enum:
           - VIEW
           - EDIT
-    PreviewRequest:
-      type: object
-      properties:
-        htmlContent:
-          type: string
-        templateKey:
-          type: string
-        variantKey:
-          type: string
-        locale:
-          type: string
-        variables:
-          type: object
-          additionalProperties: {}
     GenerateRequest:
       type: object
       properties:
@@ -4170,6 +4411,7 @@ components:
           - MCP
           - ASSISTANT
           - IMPORT
+          - PARCOURS
         draftAuthor:
           type: string
         publishedBy:
@@ -4189,6 +4431,7 @@ components:
           - MCP
           - ASSISTANT
           - IMPORT
+          - PARCOURS
         configAuthor:
           type: string
     ImportPlan:
@@ -5058,6 +5301,27 @@ components:
           format: date-time
         simulated:
           type: boolean
+    ParcoursSummary:
+      type: object
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        version:
+          type: integer
+          format: int32
+        steps:
+          type: integer
+          format: int32
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+        lastCompiledAt:
+          type: string
+          format: date-time
     ObservabilitySeverityMap:
       type: object
       properties:
@@ -5597,6 +5861,7 @@ components:
           - MCP
           - ASSISTANT
           - IMPORT
+          - PARCOURS
         author:
           type: string
         updatedAt:
@@ -5624,6 +5889,7 @@ components:
           - MCP
           - ASSISTANT
           - IMPORT
+          - PARCOURS
         configAuthor:
           type: string
     ProposedWorkflowConfig:

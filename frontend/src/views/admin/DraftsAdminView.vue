@@ -24,6 +24,7 @@ const PROVENANCE_LABELS: Record<Provenance, string> = {
   MCP: 'Agent (MCP)',
   ASSISTANT: 'Assistant',
   IMPORT: 'Import',
+  PARCOURS: 'Parcours',
 }
 
 function rowId(d: PendingDraft): string {

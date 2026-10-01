@@ -4194,3 +4194,46 @@ test('E2E-ASSIST-1 design assistant: disabled notice, then a conversation that p
   await expect(page.getByTestId('assistant-drafts')).toBeVisible()
   expect(sent).toEqual({ message: 'Un processus de validation à deux étapes', conversationId: null })
 })
+
+test('E2E-PARCOURS-1 parcours designer: build a step list, save, compile to a draft to review (LC5)', async ({ page }) => {
+  await mockSession(page)
+  let saved: { label: string; definition: { steps: { id: string; kind: string; params: Record<string, string> }[] }; expectedVersion: number | null } | null = null
+  let compiledWith: { dryRun: boolean } | null = null
+  await page.route('**/api/bpmn-building-blocks/references/**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ value: 'avis', label: 'Avis' }]) }))
+  await page.route('**/api/task-question-schemas**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(envelope([{ schemaKey: 'avis', label: 'Avis' }])) }))
+  await page.route('**/api/parcours', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }))
+  await page.route('**/api/parcours/p1', async (route) => {
+    saved = route.request().postDataJSON()
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ key: 'p1', label: 'Sinistre', version: 1, definition: saved!.definition, updatedAt: '2026-10-01T10:00:00Z', updatedBy: 'u' }),
+    })
+  })
+  await page.route('**/api/parcours/p1/compile', async (route) => {
+    compiledWith = route.request().postDataJSON()
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ xml: '<definitions/>', sha256: 'c'.repeat(64), warnings: ['avertissement test'], draftWritten: true, replacedExistingDraft: false }),
+    })
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Parcours' }).click()
+  await expect(page.getByTestId('parcours-empty')).toBeVisible()
+  await page.getByTestId('parcours-new').click()
+  await page.getByTestId('parcours-key').fill('p1')
+  await page.getByTestId('parcours-label').fill('Sinistre')
+  await page.getByTestId('step-add').click()
+  await page.getByTestId('param-schemaKey').selectOption('avis')
+  await page.getByTestId('parcours-save').click()
+  await expect(page.getByTestId('parcours-notice')).toContainText('version 1')
+  expect(saved).toMatchObject({ label: 'Sinistre', expectedVersion: null })
+  expect(saved!.definition.steps[0]).toMatchObject({ kind: 'QUESTION', params: { schemaKey: 'avis' } })
+  await page.getByTestId('parcours-compile').click()
+  await expect(page.getByTestId('parcours-draft-link')).toBeVisible()
+  await expect(page.getByTestId('parcours-warnings')).toContainText('avertissement test')
+  expect(compiledWith).toEqual({ dryRun: false, replaceDraft: false })
+})

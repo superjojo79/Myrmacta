@@ -712,6 +712,23 @@ Droit **EDIT** sur le type du dossier (ou `TENANT_ADMIN` / `WORKFLOW_ADMIN`) : *
 lien, l'ancien cesse de fonctionner) et **Annuler la demande** (le workflow reprend avec le résultat
 *Annulée*). Une fois signée, le **document signé** et la **preuve** apparaissent dans les pièces du dossier.
 
+## 13. Assistant de conception IA (TODO §86)
+
+Écran **Admin → Assistant** (`/admin/assistant`, `TENANT_ADMIN` ou `WORKFLOW_ADMIN`). Si l'écran indique que l'assistant n'est pas activé, un
+administrateur technique doit le configurer (`DEPLOIEMENT.md` §15).
+
+- **Décrivez votre besoin** en français (« un type *Sinistre* avec numéro de contrat et montant, et un processus de validation à deux étapes »).
+  L'assistant appelle les outils de conception (types de dossier, formulaires, processus, tables de décision, connecteurs, expressions) et
+  vérifie son travail (essais à blanc, validation des expressions, test des tables) avant de répondre.
+- **Tout est à relire.** Ce qu'il écrit pour un **processus** ou une **table de décision** est un **brouillon** : un lien vous mène à *Admin →
+  Brouillons* pour relire l'écart et publier. L'assistant **ne publie jamais**. Les types et schémas de questions qu'il enregistre se
+  retrouvent dans leurs écrans habituels.
+- **Il n'a accès à aucune donnée de dossier** et **n'écrit jamais de secret** : un connecteur est créé sans mot de passe ni jeton ; saisissez-les vous-même
+  dans *Admin → Connecteurs*.
+- **Historique.** Vos conversations sont conservées 30 jours (configurable), visibles de vous seul ; vous pouvez en supprimer une.
+- **Limites.** Nombre d'étapes par message, de tours et de jetons par conversation et par jour : un message vous prévient quand elles sont atteintes.
+  L'assistant peut se tromper : relisez toujours.
+
 ## Pour aller plus loin
 
 - Mise en place de l'environnement : [GETTING-STARTED.md](GETTING-STARTED.md)

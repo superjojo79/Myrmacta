@@ -4183,7 +4183,8 @@ test('E2E-ASSIST-1 design assistant: disabled notice, then a conversation that p
   await expect(page.getByTestId('assistant-input')).toHaveCount(0)
 
   enabled = true
-  await page.reload()
+  await page.getByRole('link', { name: 'Supervision' }).click()
+  await page.getByRole('link', { name: 'Assistant' }).click()
   await page.getByTestId('assistant-input').fill('Un processus de validation à deux étapes')
   await page.getByTestId('assistant-send').click()
   await expect(page.getByTestId('assistant-log')).toContainText('relisez-le avant publication')

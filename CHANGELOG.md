@@ -30,6 +30,11 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
+- **TODO §86 (LC3)** — Assistant de conception IA (*Admin → Assistant*) : l'utilisateur décrit son besoin, l'assistant appelle le catalogue d'outils de **conception** dans le processus avec
+  l'identité de l'utilisateur (types, formulaires, processus et tables DMN **en brouillon**, connecteurs sans secret, expressions), vérifie son travail et renvoie les brouillons à relire. Aucune
+  donnée de dossier, jamais de publication ni de secret ; plafonds d'étapes, de tours et de jetons ; conversations conservées 30 jours, propres à leur auteur. **Désactivé par défaut** ; clé et
+  modèle par configuration serveur (`APP_ASSISTANT_*`, `DEPLOIEMENT.md` §15). Migration 033.
+
 - **TODO §85 (LC4a)** — Concepteur visuel de formulaires : aperçu en direct, sections, largeur (pleine / demi), aide contextuelle en texte brut et
   réordonnancement par glisser-déposer, pour les questions de tâche et les champs d'un type de dossier ; le portail externe applique la même disposition.
   `fieldDefinitions` reste la seule source (deux champs optionnels `helpText`, `width`, sans migration) ; outils MCP `define_dossier_type` et

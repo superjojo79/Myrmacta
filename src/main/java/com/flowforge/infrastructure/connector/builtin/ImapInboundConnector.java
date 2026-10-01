@@ -116,10 +116,14 @@ public class ImapInboundConnector implements ConnectorDefinition, PollingTrigger
                         "Further attachments are skipped (and counted in the process variable inboundAttachmentsRejected)."),
                 new ConfigField("requireAuthenticatedSender", "Require an authenticated sender to join an existing dossier",
                         ConfigFieldType.BOOLEAN, false, "true", List.of(),
-                        "true (default): a reference in the subject only adds the message to that dossier when the Authentication-Results header "
-                                + "added by YOUR receiving server shows dkim/spf/dmarc = pass (the sender address alone can be forged); "
-                                + "otherwise a new dossier is created. Set false only if your mail server does not add that header, and accept "
-                                + "that anyone who guesses a reference can feed that dossier."),
+                        "true (default): a reference in the subject only adds the message to that dossier when the FIRST Authentication-Results "
+                                + "header, written by YOUR receiving server (trustedAuthservId), attests the sender: dmarc=pass, or dkim=pass / spf=pass "
+                                + "aligned with the From domain. Otherwise a new dossier is created (the sender address alone can be forged). Set false "
+                                + "only if you accept that anyone who guesses a reference can feed that dossier."),
+                new ConfigField("trustedAuthservId", "Authentication-Results server id", ConfigFieldType.STRING, false, null, List.of(),
+                        "The authserv-id your receiving server writes first in Authentication-Results (e.g. mx.example.com, or "
+                                + "'spf.protection.outlook.com' style identifier shown in a received message's headers). Required to join existing dossiers "
+                                + "while requireAuthenticatedSender is true."),
                 new ConfigField("referencePattern", "Dossier reference pattern", ConfigFieldType.STRING, false, null, List.of(),
                         "Regular expression with ONE capture group, applied to the subject, e.g. \\[(DOS-[0-9-]+)\\]. A match adds "
                                 + "the message to that dossier; otherwise (or when the dossier does not exist) a new one is created."),
@@ -169,11 +173,16 @@ public class ImapInboundConnector implements ConnectorDefinition, PollingTrigger
                 throw new ConnectorValidationException(key + " is not a valid folder name");
             }
         }
-        if (String.valueOf(config.getOrDefault("processedFolder", "FlowForge-processed"))
-                .equals(String.valueOf(config.getOrDefault("folder", "INBOX")))
-                || String.valueOf(config.getOrDefault("rejectedFolder", "FlowForge-rejected"))
-                        .equals(String.valueOf(config.getOrDefault("folder", "INBOX")))) {
-            throw new ConnectorValidationException("processedFolder and rejectedFolder must differ from the folder read");
+        if (sameFolder(stringOr(config.get("processedFolder"), "FlowForge-processed"), stringOr(config.get("folder"), "INBOX"))
+                || sameFolder(stringOr(config.get("rejectedFolder"), "FlowForge-rejected"), stringOr(config.get("folder"), "INBOX"))
+                || sameFolder(stringOr(config.get("processedFolder"), "FlowForge-processed"), stringOr(config.get("rejectedFolder"), "FlowForge-rejected"))) {
+            // Casse ignorée : « inbox » et « INBOX » sont le même dossier IMAP (revue D3c/D3d, M-A : sinon le message se copierait dans la boîte).
+            throw new ConnectorValidationException("processedFolder and rejectedFolder must differ from the folder read and from each other");
+        }
+        if (referencePattern(config) != null && !"false".equals(String.valueOf(config.get("requireAuthenticatedSender")))
+                && (config.get("trustedAuthservId") == null || String.valueOf(config.get("trustedAuthservId")).isBlank())) {
+            throw new ConnectorValidationException("referencePattern needs trustedAuthservId (the server id your mail server writes first in "
+                    + "Authentication-Results), or requireAuthenticatedSender=false to accept that the sender address can be forged");
         }
         int poll = intOr(config.get("pollSeconds"), 60);
         if (poll < inbound.minPollSeconds()) {
@@ -199,6 +208,10 @@ public class ImapInboundConnector implements ConnectorDefinition, PollingTrigger
         } catch (IllegalArgumentException ex) {
             throw new IllegalStateException("host is not an acceptable public address");
         }
+        if (sameFolder(stringOr(config.get("processedFolder"), "FlowForge-processed"), stringOr(config.get("folder"), "INBOX"))
+                || sameFolder(stringOr(config.get("rejectedFolder"), "FlowForge-rejected"), stringOr(config.get("folder"), "INBOX"))) {
+            throw new IllegalStateException("processedFolder and rejectedFolder must differ from the folder read");
+        }
         boolean oauth = OAuth2ConfigSupport.isOAuth(config);
         String secret = oauth ? tokenProvider.accessToken(instance) : OAuth2ConfigSupport.text(config, "password");
         ImapMailbox.Settings settings = new ImapMailbox.Settings(
@@ -222,6 +235,7 @@ public class ImapInboundConnector implements ConnectorDefinition, PollingTrigger
         String dossierType = OAuth2ConfigSupport.text(config, "dossierTypeCode");
 
         boolean requireAuthenticated = !"false".equals(String.valueOf(config.get("requireAuthenticatedSender")));
+        String trustedAuthservId = config.get("trustedAuthservId") == null ? null : String.valueOf(config.get("trustedAuthservId"));
         mailbox.process(settings, inbound.maxMessagesPerPoll(), limits, new ImapMailbox.Handler() {
             @Override
             public ImapMailbox.Outcome handle(ImapMailbox.Mail mail) {
@@ -241,12 +255,13 @@ public class ImapInboundConnector implements ConnectorDefinition, PollingTrigger
                 variables.putIfAbsent("mailMessageId", payload.get("messageId"));
                 variables.putIfAbsent("mailFrom", payload.get("from"));
                 variables.putIfAbsent("mailSubject", payload.get("subject"));
-                variables.put("mailSenderAuthenticated", mail.authenticated());
+                boolean authenticated = AuthenticationResults.attests(mail.authenticationResults(), trustedAuthservId, mail.fromAddress());
+                variables.put("mailSenderAuthenticated", authenticated);
                 if (mail.attachmentsSkipped() > 0) {
                     variables.put("inboundAttachmentsSkipped", mail.attachmentsSkipped());
                 }
                 String existing = reference == null ? null : firstGroup(reference, mail.subject());
-                if (existing != null && requireAuthenticated && !mail.authenticated()) {
+                if (existing != null && requireAuthenticated && !authenticated) {
                     // L'expéditeur est usurpable : sans attestation de NOTRE serveur de réception, le message ne s'ajoute pas à un
                     // dossier existant (il en crée un nouveau, signalé au processus) — revue D3c/D3d, H3.
                     variables.put("mailReferenceIgnored", existing);
@@ -273,6 +288,10 @@ public class ImapInboundConnector implements ConnectorDefinition, PollingTrigger
                 log.warn("imap-inbound: instance {} message of {} bytes refused (over maxMessageBytes)", instance.id(), bytes);
             }
         });
+    }
+
+    private static boolean sameFolder(String a, String b) {
+        return a.strip().equalsIgnoreCase(b.strip());
     }
 
     private static Map<String, Object> payload(ImapMailbox.Mail mail) {

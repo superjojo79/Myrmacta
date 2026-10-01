@@ -52,6 +52,7 @@ class ImapInboundConnectorTest {
         c.put("processKey", "reclamation");
         c.put("dossierTypeCode", "RECLAMATION");
         c.put("referencePattern", "\\[(DOS-[0-9-]+)\\]");
+        c.put("trustedAuthservId", "mx.example.com");
         c.put("mapping", Map.of("fields", Map.of("objet", "$.subject", "texte", "$.body", "expediteur", "$.from")));
         return c;
     }
@@ -62,7 +63,7 @@ class ImapInboundConnectorTest {
 
     private static ImapMailbox.Mail mail(String subject, String body, boolean automatic, List<InboundAttachment> attachments) {
         return new ImapMailbox.Mail("<id@x>", "client@example.org", "Client", subject, Instant.parse("2026-10-01T10:00:00Z"), body,
-                automatic, true, attachments, 0);
+                automatic, "mx.example.com; dmarc=pass header.from=example.org; dkim=pass header.d=example.org", attachments, 0);
     }
 
     private List<WorkflowTriggerEvent> events(ConnectorInstanceData instance) {
@@ -156,7 +157,7 @@ class ImapInboundConnectorTest {
     @Test
     void automaticRepliesListsAndSenderlessMessagesAreRefusedNeverADossier() {
         inbox.add(mail("Absence du bureau", "je suis absent", true, List.of()));
-        inbox.add(new ImapMailbox.Mail("<n@x>", "", "", "sans expéditeur", null, "x", false, true, List.of(), 0));
+        inbox.add(new ImapMailbox.Mail("<n@x>", "", "", "sans expéditeur", null, "x", false, "mx.example.com; dmarc=pass header.from=example.org; dkim=pass header.d=example.org", List.of(), 0));
         assertThat(events(instance(config()))).isEmpty();
         assertThat(outcomes).containsExactly(ImapMailbox.Outcome.REJECTED, ImapMailbox.Outcome.REJECTED);
     }
@@ -182,7 +183,7 @@ class ImapInboundConnectorTest {
 
     @Test
     void skippedAttachmentsAreSignalledToTheProcess() {
-        inbox.add(new ImapMailbox.Mail("<id>", "c@x.org", "C", "objet", null, "corps", false, true, List.of(), 2));
+        inbox.add(new ImapMailbox.Mail("<id>", "c@x.org", "C", "objet", null, "corps", false, "mx.example.com; dmarc=pass header.from=example.org; dkim=pass header.d=example.org", List.of(), 2));
         var event = events(instance(config())).getFirst();
         assertThat(event.variables()).containsEntry("inboundAttachmentsSkipped", 2);
     }
@@ -191,7 +192,7 @@ class ImapInboundConnectorTest {
 
     @Test
     void anUnauthenticatedSenderCannotJoinAnExistingDossier_aNewOneIsCreatedAndTheProcessIsTold() {
-        inbox.add(new ImapMailbox.Mail("<s>", "attaquant@evil.example", "X", "[DOS-2026-0042] urgent", null, "corps", false, false, List.of(), 0));
+        inbox.add(new ImapMailbox.Mail("<s>", "attaquant@evil.example", "X", "[DOS-2026-0042] urgent", null, "corps", false, "", List.of(), 0));
         var event = events(instance(config())).getFirst();
         assertThat(event.existingDossierReference()).as("jamais rattaché sans attestation de notre serveur").isNull();
         assertThat(event.variables()).containsEntry("mailReferenceIgnored", "DOS-2026-0042").containsEntry("mailSenderAuthenticated", false);
@@ -201,7 +202,7 @@ class ImapInboundConnectorTest {
     void theAdminCanAcceptTheRiskExplicitly() {
         Map<String, Object> c = config();
         c.put("requireAuthenticatedSender", "false");
-        inbox.add(new ImapMailbox.Mail("<s>", "x@y.org", "X", "[DOS-1] suite", null, "corps", false, false, List.of(), 0));
+        inbox.add(new ImapMailbox.Mail("<s>", "x@y.org", "X", "[DOS-1] suite", null, "corps", false, "", List.of(), 0));
         assertThat(events(instance(c)).getFirst().existingDossierReference()).isEqualTo("DOS-1");
     }
 
@@ -224,6 +225,28 @@ class ImapInboundConnectorTest {
         c.validate(config());
         address.set("127.0.0.1");
         assertThatThrownBy(() -> c.poll(instance(config()), e -> { })).isInstanceOf(IllegalStateException.class).hasMessageContaining("public");
+        assertThat(seen).isEmpty();
+    }
+
+    @Test
+    void joiningADossierNeedsTheTrustedServerIdUnlessTheRiskIsAcceptedExplicitly() {
+        Map<String, Object> c = config();
+        c.remove("trustedAuthservId");
+        assertThatThrownBy(() -> connector.validate(c)).hasMessageContaining("trustedAuthservId");
+        c.put("requireAuthenticatedSender", "false");
+        connector.validate(c);
+    }
+
+    @Test
+    void folderNamesDifferingOnlyByCaseAreTheSameFolder() {
+        Map<String, Object> c = config();
+        c.put("processedFolder", "inbox");
+        assertThatThrownBy(() -> connector.validate(c)).hasMessageContaining("differ");
+        Map<String, Object> same = config();
+        same.put("processedFolder", "Traités");
+        same.put("rejectedFolder", "traités");
+        assertThatThrownBy(() -> connector.validate(same)).hasMessageContaining("differ");
+        assertThatThrownBy(() -> connector.poll(instance(c), e -> { })).isInstanceOf(IllegalStateException.class);
         assertThat(seen).isEmpty();
     }
 }

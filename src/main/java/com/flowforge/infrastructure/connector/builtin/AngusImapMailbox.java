@@ -15,6 +15,7 @@ import jakarta.mail.Session;
 import jakarta.mail.Store;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
+import jakarta.mail.search.FlagTerm;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -34,6 +35,8 @@ import org.springframework.stereotype.Component;
 @Component
 class AngusImapMailbox implements ImapMailbox {
 
+    /** Mot-clé IMAP posé sur un message déjà remis au runtime (idempotence d'un rangement qui échoue). */
+    static final Flags DELIVERED = new Flags("FlowForgeDelivered");
     static final int MAX_MIME_DEPTH = 10;
     static final int MAX_MIME_PARTS = 200;
 
@@ -52,15 +55,18 @@ class AngusImapMailbox implements ImapMailbox {
             try {
                 Folder processed = target(store, s.processedFolder());
                 Folder rejected = target(store, s.rejectedFolder());
-                int count = Math.min(inbox.getMessageCount(), maxMessages);
-                Message[] all = count == 0 ? new Message[0] : inbox.getMessages(1, count);
-                for (Message raw : all) {
-                    MimeMessage message = (MimeMessage) raw;
-                    if (message.isSet(Flags.Flag.DELETED)) {
-                        continue; // déjà copié lors d'un tour interrompu : jamais rejoué
-                    }
+                // Les messages marqués supprimés (tour interrompu, autre client) ne comptent pas dans la limite du lot : ils ne
+                // doivent jamais empêcher la lecture des nouveaux.
+                Message[] live = inbox.search(new FlagTerm(new Flags(Flags.Flag.DELETED), false));
+                int count = Math.min(live.length, maxMessages);
+                boolean canFlag = inbox.getPermanentFlags().contains(Flags.Flag.USER);
+                for (int index = 0; index < count; index++) {
+                    MimeMessage message = (MimeMessage) live[index];
                     Outcome outcome;
-                    try {
+                    if (canFlag && message.getFlags().contains(DELIVERED)) {
+                        // Déjà remis lors d'un tour dont le rangement a échoué : on réessaie seulement le rangement (jamais de 2e dossier).
+                        outcome = Outcome.PROCESSED;
+                    } else try {
                         long size = message.getSize();
                         if (size > limits.maxMessageBytes()) {
                             handler.oversize(size);
@@ -81,7 +87,10 @@ class AngusImapMailbox implements ImapMailbox {
                         handler.unreadable(unreadable.getClass().getSimpleName());
                         outcome = Outcome.REJECTED;
                     }
-                    inbox.copyMessages(new Message[] {message}, outcome == Outcome.PROCESSED ? processed : rejected);
+                    if (outcome == Outcome.PROCESSED && canFlag) {
+                        message.setFlags(DELIVERED, true); // posé AVANT le rangement : si celui-ci échoue, le message ne sera pas remis deux fois
+                    }
+                    relocate(inbox, message, outcome == Outcome.PROCESSED ? processed : rejected);
                     message.setFlag(Flags.Flag.DELETED, true);
                     // Retiré tout de suite : un arrêt en milieu de lot ne laisse jamais une copie rangée ET l'original en place.
                     inbox.expunge();
@@ -95,6 +104,11 @@ class AngusImapMailbox implements ImapMailbox {
             // Message neutre : jamais le mot de passe ni le jeton (certains serveurs les reprennent dans leurs refus).
             throw new IllegalStateException("mailbox access failed (" + ex.getClass().getSimpleName() + ")", ex);
         }
+    }
+
+    /** Copie vers le dossier cible (surchargeable en test pour simuler un rangement qui échoue après la remise). */
+    void relocate(Folder from, Message message, Folder to) throws MessagingException {
+        from.copyMessages(new Message[] {message}, to);
     }
 
     private static Folder target(Store store, String name) throws MessagingException {
@@ -150,14 +164,14 @@ class AngusImapMailbox implements ImapMailbox {
                 || !header(message, "X-Auto-Response-Suppress").isBlank();
         Content content = new Content(limits);
         walk(message, content, 0);
-        boolean authenticated = authenticated(header(message, "Authentication-Results"));
+        String authenticationResults = header(message, "Authentication-Results");
         Instant sent = message.getSentDate() == null ? null : message.getSentDate().toInstant();
         String body = content.text.length() > 0 ? content.text.toString() : content.html.length() > 0 ? htmlToText(content.html.toString()) : "";
         if (body.length() > limits.maxBodyChars()) {
             body = body.substring(0, limits.maxBodyChars());
         }
         String subject = message.getSubject() == null ? "" : message.getSubject();
-        return new Mail(messageId, fromAddress, fromDisplay, subject, sent, body.strip(), automatic, authenticated,
+        return new Mail(messageId, fromAddress, fromDisplay, subject, sent, body.strip(), automatic, authenticationResults,
                 List.copyOf(content.attachments), content.skipped);
     }
 
@@ -255,20 +269,6 @@ class AngusImapMailbox implements ImapMailbox {
         int semicolon = contentType.indexOf(';');
         String base = (semicolon < 0 ? contentType : contentType.substring(0, semicolon)).strip().toLowerCase(Locale.ROOT);
         return base.isBlank() ? "application/octet-stream" : base;
-    }
-
-    /**
-     * Le premier {@code Authentication-Results} est celui que NOTRE serveur de réception a ajouté en tête ; ceux qu'un expéditeur
-     * glisse dans son message sont plus bas et ne sont pas lus. Authentifié = au moins un dkim/spf/dmarc à « pass » et aucun échec.
-     */
-    static boolean authenticated(String header) {
-        if (header == null || header.isBlank()) {
-            return false;
-        }
-        String h = header.toLowerCase(Locale.ROOT);
-        boolean fail = Pattern.compile("(dkim|spf|dmarc)=(fail|softfail|permerror|temperror)").matcher(h).find();
-        boolean pass = Pattern.compile("(dkim|spf|dmarc)=pass").matcher(h).find();
-        return pass && !fail;
     }
 
     /** Nom de fichier assaini : ni chemin, ni caractère de contrôle (il devient une métadonnée affichée). */

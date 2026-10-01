@@ -427,9 +427,13 @@ toutes les `pollSeconds` secondes (30 au minimum).
   contenu conforme au type annoncé, antivirus). Une pièce refusée n'empêche pas les autres ni le dossier : le processus voit `inboundAttachmentsRejected` /
   `inboundAttachmentsSkipped`.
 - **Expéditeur et rattachement.** L'adresse « De » d'un e-mail est falsifiable. Par défaut (`requireAuthenticatedSender = true`), une référence dans l'objet n'ajoute le
-  message à un dossier existant **que si l'en-tête `Authentication-Results` ajouté par votre propre serveur de réception atteste l'expéditeur** (dkim, spf ou dmarc à *pass*) ;
-  sinon un nouveau dossier est créé et le processus voit `mailReferenceIgnored` et `mailSenderAuthenticated = false`. Ne désactivez cette exigence que si votre serveur n'ajoute
-  pas cet en-tête, en sachant que **quiconque devine une référence peut alors alimenter ce dossier**. `mailSenderAuthenticated` est toujours posée.
+  message à un dossier existant **que si l'en-tête `Authentication-Results` écrit en premier par VOTRE serveur de réception atteste l'expéditeur** : son identifiant de serveur
+  (`trustedAuthservId`, à relever dans les en-têtes d'un message reçu, avant le premier `;`) doit être celui que vous configurez, et il faut `dmarc=pass`, ou `dkim=pass` /
+  `spf=pass` **aligné sur le domaine de l'adresse « De »**. Sinon un nouveau dossier est créé et le processus voit `mailReferenceIgnored` et `mailSenderAuthenticated = false`
+  (toujours posée). `trustedAuthservId` est **obligatoire** dès qu'un `referencePattern` est défini (sauf `requireAuthenticatedSender = false`, qui revient à accepter que **quiconque
+  devine une référence puisse alimenter ce dossier**). Cela suppose que votre serveur ajoute lui-même cet en-tête en tête et retire ceux qui prétendent venir de lui.
+- **Idempotence du rangement.** Un message déjà remis dont le rangement échoue (quota, droits) est marqué du mot-clé IMAP `FlowForgeDelivered` : il n'est plus remis, seul le rangement est
+  réessayé. Les messages marqués supprimés ne comptent pas dans la limite d'un lot.
 - **Fiabilité.** Le message n'est rangé dans « traités » qu'**après** l'enregistrement du dossier. S'il ne peut pas être pris en charge (type de dossier inconnu, champ invalide, base
   indisponible), il est rangé dans **`FlowForge-rejected`** (avec une alerte dans les journaux) : replacez-le dans la boîte après correction pour le rejouer. Un message illisible
   (encodage inconnu, MIME trop imbriqué) y va aussi, sans bloquer les autres. Une instance en échec (mot de passe expiré, hôte injoignable) est réessayée à son propre intervalle
@@ -446,7 +450,8 @@ Service Bus uniquement), la file ou l'abonnement (`file` ou `rubrique/subscripti
 
 Le `mapping` est celui de Kafka : chemins JSON sur le corps du message (`fields`, `variables`, `processKeyPath`, `dossierTypeCodePath`,
 `existingDossierReferencePath`). Un message est **retiré de la file après l'enregistrement du dossier** ; un message illisible, incomplet, ou que le runtime ne peut pas prendre
-en charge est **rendu au courtier**, qui le place en file de lettres mortes après son `MaxDeliveryCount` : à surveiller côté Azure. Aucun jeton ni clé n'est jamais affiché ni journalisé.
+en charge est **rendu au courtier**, qui le place en file de lettres mortes après son `MaxDeliveryCount` : à surveiller côté Azure. Un incident passager de FlowForge (base indisponible quelques minutes) consomme des livraisons : prévoyez un
+`MaxDeliveryCount` confortable (10 ou plus). Aucun jeton ni clé n'est jamais affiché ni journalisé.
 
 ### Appeler un connecteur `http-rest` (webhook entrant)
 

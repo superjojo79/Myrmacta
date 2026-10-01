@@ -320,22 +320,72 @@ class AngusImapMailboxTest {
     }
 
     @Test
-    void onlyTheFirstAuthenticationResultsHeaderCountsAndAForgedOneBelowIsIgnored() throws Exception {
-        assertThat(AngusImapMailbox.authenticated("mx.example.com; dkim=pass header.d=example.org; spf=pass")).isTrue();
-        assertThat(AngusImapMailbox.authenticated("mx.example.com; dkim=pass; spf=fail")).isFalse();
-        assertThat(AngusImapMailbox.authenticated("mx.example.com; spf=none")).isFalse();
-        assertThat(AngusImapMailbox.authenticated("")).isFalse();
+    void theFirstAuthenticationResultsHeaderIsExposedRawAndAForgedOneBelowIsNotTheOneRead() throws Exception {
         MimeMessage m = newMessage();
         m.setSubject("forgé");
         m.setText("x", "UTF-8");
         m.saveChanges();
-        // l'expéditeur glisse son propre en-tête ; celui de notre serveur (tête) dit « échec »
         m.addHeader("Authentication-Results", "mx.example.com; dkim=fail; spf=fail");
         m.addHeader("Authentication-Results", "evil.example; dkim=pass; spf=pass");
         deliver(m);
         var collector = new Collector();
         mailbox.process(settings("s3cret"), 10, LIMITS, collector);
-        assertThat(collector.mails.getFirst().authenticated()).isFalse();
+        assertThat(collector.mails.getFirst().authenticationResults()).startsWith("mx.example.com; dkim=fail");
+    }
+
+    @Test
+    void messagesFlaggedDeletedAtTheHeadOfTheBoxNeverBlockTheNewOnes() throws Exception {
+        for (int i = 0; i < 3; i++) {
+            MimeMessage stale = newMessage();
+            stale.setSubject("stale" + i);
+            stale.setText("x", "UTF-8");
+            stale.setFlag(jakarta.mail.Flags.Flag.DELETED, true);
+            stale.saveChanges();
+            deliver(stale);
+        }
+        MimeMessage fresh = newMessage();
+        fresh.setSubject("fresh");
+        fresh.setText("x", "UTF-8");
+        fresh.saveChanges();
+        deliver(fresh);
+        var collector = new Collector();
+        mailbox.process(settings("s3cret"), 3, LIMITS, collector); // limite de 3 : les 3 supprimés ne la consomment pas
+        assertThat(collector.mails).extracting(ImapMailbox.Mail::subject).containsExactly("fresh");
+    }
+
+    @Test
+    void aMessageAlreadyDeliveredWhoseMoveFailedIsNeverDeliveredTwice() throws Exception {
+        MimeMessage m = newMessage();
+        m.setSubject("une seule fois");
+        m.setText("x", "UTF-8");
+        m.saveChanges();
+        deliver(m);
+        var collector = new Collector();
+        // le rangement échoue trois fois APRÈS la remise (quota, droits…)
+        var failing = new AngusImapMailbox() {
+            int attempts;
+
+            @Override
+            void relocate(jakarta.mail.Folder from, jakarta.mail.Message message, jakarta.mail.Folder to) throws jakarta.mail.MessagingException {
+                if (attempts++ < 3) {
+                    throw new jakarta.mail.MessagingException("quota exceeded");
+                }
+                super.relocate(from, message, to);
+            }
+        };
+        for (int i = 0; i < 3; i++) {
+            try {
+                failing.process(settings("s3cret"), 10, LIMITS, collector);
+            } catch (RuntimeException expected) {
+                // le rangement échoue : la prochaine interrogation ne doit pas remettre le message
+            }
+        }
+        assertThat(collector.mails).as("remis une seule fois malgré trois interrogations").hasSize(1);
+        // une fois le dossier corrigé, le message est rangé sans nouvelle remise
+        failing.process(settings("s3cret"), 10, LIMITS, collector);
+        assertThat(collector.mails).hasSize(1);
+        assertThat(count("FlowForge-processed")).isEqualTo(1);
+        assertThat(count("INBOX")).isZero();
     }
 
     @Test

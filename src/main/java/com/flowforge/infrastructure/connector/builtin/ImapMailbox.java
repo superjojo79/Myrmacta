@@ -52,8 +52,8 @@ interface ImapMailbox {
             Instant sentAt,
             String body,
             boolean automatic,
-            /** L'en-tête {@code Authentication-Results} ajouté par NOTRE serveur de réception atteste l'expéditeur (dkim/spf/dmarc). */
-            boolean authenticated,
+            /** Premier en-tête {@code Authentication-Results} du message (celui que notre serveur de réception ajoute en tête), brut. */
+            String authenticationResults,
             List<InboundAttachment> attachments,
             int attachmentsSkipped) {}
 

@@ -1,4 +1,5 @@
 import { onUnmounted, shallowRef, toValue, watch, type MaybeRefOrGetter } from 'vue'
+import { i18n } from '@/i18n'
 import { previewHtml, previewPdf } from '@/api/documents'
 import { toProblemDetail } from '@/api/http'
 
@@ -65,7 +66,7 @@ export function useTemplatePreview(options: {
       if (isAbortError(err)) {
         return
       }
-      error.value = toProblemDetail(err).detail ?? 'Aperçu HTML impossible'
+      error.value = toProblemDetail(err).detail ?? i18n.global.t('common.errors.previewHtml')
     } finally {
       if (!signal.aborted) {
         loading.value = false
@@ -93,7 +94,7 @@ export function useTemplatePreview(options: {
       }
       pdfUrl.value = URL.createObjectURL(blob)
     } catch (err) {
-      error.value = toProblemDetail(err).detail ?? 'Aperçu PDF impossible'
+      error.value = toProblemDetail(err).detail ?? i18n.global.t('common.errors.previewPdf')
     } finally {
       loading.value = false
     }

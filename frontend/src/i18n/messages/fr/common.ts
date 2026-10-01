@@ -25,4 +25,14 @@ export default {
     empty: 'Aucune notification.',
     loadMore: 'Charger plus',
   },
+  errors: {
+    tasks: 'Impossible de charger les tâches',
+    dossier: 'Impossible de charger le dossier',
+    deploy: 'Déploiement impossible',
+    previewHtml: 'Aperçu HTML impossible',
+    previewPdf: 'Aperçu PDF impossible',
+    evaluate: 'Évaluation impossible',
+    suite: 'Jeu de tests impossible',
+    redeploy: 'Redéploiement impossible',
+  },
 }

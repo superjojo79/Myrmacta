@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { Editor, EditorContent } from '@tiptap/vue-3'
 import { templateExtensions } from '@/templateEditor/extensions'
@@ -15,6 +16,7 @@ const props = defineProps<{
   /** Variables d'exemple (celles de l'aperçu) : alimentent le menu des variables. */
   sampleVariables?: Record<string, unknown>
 }>()
+const { t } = useI18n()
 const emit = defineEmits<{ 'update:modelValue': [html: string] }>()
 
 /** Ce que l'éditeur écrirait pour ce HTML : sert à vérifier qu'il le restitue sans rien perdre (revue adversariale LC4b). */
@@ -129,7 +131,7 @@ function insertVariable() {
   formError.value = null
   const path = variablePath.value.trim()
   if (!isVariablePath(path)) {
-    formError.value = 'Chemin de variable invalide (lettres, chiffres, _ et points : client.nom)'
+    formError.value = t('admin.tplEditor.errors.variable')
     return
   }
   editor.value?.chain().focus().insertContent({ type: 'variable', attrs: { path } }).run()
@@ -140,11 +142,11 @@ function wrapConditional() {
   formError.value = null
   const path = conditionPath.value.trim()
   if (!isVariablePath(path)) {
-    formError.value = 'Chemin de variable invalide pour la condition'
+    formError.value = t('admin.tplEditor.errors.conditionVariable')
     return
   }
   if (conditionMode.value === 'equals' && !isSafeLiteral(conditionValue.value)) {
-    formError.value = "La valeur ne doit contenir ni apostrophe, ni antislash, ni accolade, ni $ (200 caractères au plus)"
+    formError.value = t('admin.tplEditor.errors.literal')
     return
   }
   const attrs = { mode: conditionMode.value, path, value: conditionMode.value === 'equals' ? conditionValue.value : '' }
@@ -156,7 +158,7 @@ function wrapRepeat() {
   const path = repeatPath.value.trim()
   const item = repeatItem.value.trim()
   if (!isVariablePath(path) || !isIdentifier(item)) {
-    formError.value = 'Liste et nom d’élément invalides (ex. lignes / ligne)'
+    formError.value = t('admin.tplEditor.errors.list')
     return
   }
   editor.value?.chain().focus().wrapIn('repeatBlock', { item, path }).run()
@@ -167,7 +169,7 @@ function repeatRow() {
   const path = rowPath.value.trim()
   const item = repeatItem.value.trim()
   if (!isVariablePath(path) || !isIdentifier(item)) {
-    formError.value = 'Liste et nom d’élément invalides (ex. lignes / ligne)'
+    formError.value = t('admin.tplEditor.errors.list')
     return
   }
   editor.value?.chain().focus().updateAttributes('tableRow', { each: { item, path } }).run()
@@ -183,36 +185,36 @@ const chain = () => editor.value?.chain().focus()
 <template>
   <div class="tpl-editor" data-testid="template-editor">
     <div class="tpl-editor__modes" role="tablist">
-      <button type="button" role="tab" :aria-selected="mode === 'visual'" data-testid="mode-visual" @click="showVisual">Éditeur visuel</button>
-      <button type="button" role="tab" :aria-selected="mode === 'source'" data-testid="mode-source" @click="showSource">Source HTML</button>
+      <button type="button" role="tab" :aria-selected="mode === 'visual'" data-testid="mode-visual" @click="showVisual">{{ t('admin.tplEditor.visual') }}</button>
+      <button type="button" role="tab" :aria-selected="mode === 'source'" data-testid="mode-source" @click="showSource">{{ t('admin.tplEditor.source') }}</button>
     </div>
     <div v-if="sourceNotice.length" class="tpl-editor__notice" role="status" data-testid="source-notice">
-      Ce template utilise des éléments que l’éditeur visuel ne sait pas écrire sans les altérer : il reste en mode source.
+      {{ t('admin.tplEditor.sourceOnly') }}
       <ul>
         <li v-for="reason in sourceNotice" :key="reason">{{ reason }}</li>
       </ul>
     </div>
 
     <template v-if="mode === 'visual' && editor">
-      <div class="tpl-editor__toolbar" role="toolbar" aria-label="Mise en forme">
-        <button type="button" title="Gras" data-testid="tb-bold" @click="chain()?.toggleBold().run()"><strong>G</strong></button>
-        <button type="button" title="Italique" data-testid="tb-italic" @click="chain()?.toggleItalic().run()"><em>I</em></button>
-        <button type="button" title="Souligné" data-testid="tb-underline" @click="chain()?.toggleUnderline().run()"><u>S</u></button>
-        <button type="button" title="Paragraphe" @click="chain()?.setParagraph().run()">¶</button>
-        <button type="button" title="Titre 1" data-testid="tb-h1" @click="chain()?.toggleHeading({ level: 1 }).run()">H1</button>
-        <button type="button" title="Titre 2" @click="chain()?.toggleHeading({ level: 2 }).run()">H2</button>
-        <button type="button" title="Titre 3" @click="chain()?.toggleHeading({ level: 3 }).run()">H3</button>
-        <button type="button" title="Liste à puces" data-testid="tb-bullets" @click="chain()?.toggleBulletList().run()">• Liste</button>
-        <button type="button" title="Liste numérotée" @click="chain()?.toggleOrderedList().run()">1. Liste</button>
-        <button type="button" title="Aligner à gauche" @click="chain()?.setTextAlign('left').run()">⇤</button>
-        <button type="button" title="Centrer" data-testid="tb-center" @click="chain()?.setTextAlign('center').run()">↔</button>
-        <button type="button" title="Aligner à droite" @click="chain()?.setTextAlign('right').run()">⇥</button>
-        <button type="button" title="Ligne horizontale" @click="chain()?.setHorizontalRule().run()">—</button>
-        <button type="button" title="Saut de page" data-testid="tb-pagebreak" @click="chain()?.insertContent({ type: 'pageBreak' }).run()">⏎ page</button>
-        <button type="button" title="Tableau 3×2" data-testid="tb-table" @click="chain()?.insertTable({ rows: 2, cols: 3, withHeaderRow: true }).run()">Tableau</button>
-        <button type="button" title="Ajouter une ligne" @click="chain()?.addRowAfter().run()">+ ligne</button>
-        <button type="button" title="Ajouter une colonne" @click="chain()?.addColumnAfter().run()">+ col.</button>
-        <button type="button" title="Supprimer le tableau" @click="chain()?.deleteTable().run()">✕ tableau</button>
+      <div class="tpl-editor__toolbar" role="toolbar" :aria-label="t('admin.tplEditor.formatting')">
+        <button type="button" :title="t('admin.tplEditor.toolbar.bold')" data-testid="tb-bold" @click="chain()?.toggleBold().run()"><strong>G</strong></button>
+        <button type="button" :title="t('admin.tplEditor.toolbar.italic')" data-testid="tb-italic" @click="chain()?.toggleItalic().run()"><em>I</em></button>
+        <button type="button" :title="t('admin.tplEditor.toolbar.underline')" data-testid="tb-underline" @click="chain()?.toggleUnderline().run()"><u>S</u></button>
+        <button type="button" :title="t('admin.tplEditor.toolbar.paragraph')" @click="chain()?.setParagraph().run()">¶</button>
+        <button type="button" :title="t('admin.tplEditor.toolbar.h1')" data-testid="tb-h1" @click="chain()?.toggleHeading({ level: 1 }).run()">H1</button>
+        <button type="button" :title="t('admin.tplEditor.toolbar.h2')" @click="chain()?.toggleHeading({ level: 2 }).run()">H2</button>
+        <button type="button" :title="t('admin.tplEditor.toolbar.h3')" @click="chain()?.toggleHeading({ level: 3 }).run()">H3</button>
+        <button type="button" :title="t('admin.tplEditor.toolbar.bullets')" data-testid="tb-bullets" @click="chain()?.toggleBulletList().run()">{{ t('admin.tplEditor.toolbar.bulletsLabel') }}</button>
+        <button type="button" :title="t('admin.tplEditor.toolbar.numbered')" @click="chain()?.toggleOrderedList().run()">{{ t('admin.tplEditor.toolbar.numberedLabel') }}</button>
+        <button type="button" :title="t('admin.tplEditor.toolbar.left')" @click="chain()?.setTextAlign('left').run()">⇤</button>
+        <button type="button" :title="t('admin.tplEditor.toolbar.center')" data-testid="tb-center" @click="chain()?.setTextAlign('center').run()">↔</button>
+        <button type="button" :title="t('admin.tplEditor.toolbar.right')" @click="chain()?.setTextAlign('right').run()">⇥</button>
+        <button type="button" :title="t('admin.tplEditor.toolbar.rule')" @click="chain()?.setHorizontalRule().run()">—</button>
+        <button type="button" :title="t('admin.tplEditor.toolbar.pageBreak')" data-testid="tb-pagebreak" @click="chain()?.insertContent({ type: 'pageBreak' }).run()">{{ t('admin.tplEditor.toolbar.pageBreakLabel') }}</button>
+        <button type="button" :title="t('admin.tplEditor.toolbar.table')" data-testid="tb-table" @click="chain()?.insertTable({ rows: 2, cols: 3, withHeaderRow: true }).run()">{{ t('admin.tplEditor.toolbar.tableLabel') }}</button>
+        <button type="button" :title="t('admin.tplEditor.toolbar.addRow')" @click="chain()?.addRowAfter().run()">{{ t('admin.tplEditor.toolbar.addRowLabel') }}</button>
+        <button type="button" :title="t('admin.tplEditor.toolbar.addColumn')" @click="chain()?.addColumnAfter().run()">{{ t('admin.tplEditor.toolbar.addColumnLabel') }}</button>
+        <button type="button" :title="t('admin.tplEditor.toolbar.deleteTable')" @click="chain()?.deleteTable().run()">{{ t('admin.tplEditor.toolbar.deleteTableLabel') }}</button>
       </div>
 
       <datalist id="tpl-variables">
@@ -224,29 +226,29 @@ const chain = () => editor.value?.chain().focus()
 
       <div class="tpl-editor__inserts">
         <fieldset>
-          <legend>Variable</legend>
-          <input v-model="variablePath" list="tpl-variables" placeholder="client.nom" aria-label="Chemin de la variable" data-testid="variable-path" />
-          <button type="button" data-testid="insert-variable" @click="insertVariable">Insérer</button>
+          <legend>{{ t('admin.tplEditor.variable') }}</legend>
+          <input v-model="variablePath" list="tpl-variables" placeholder="client.nom" :aria-label="t('admin.tplEditor.variableAria')" data-testid="variable-path" />
+          <button type="button" data-testid="insert-variable" @click="insertVariable">{{ t('admin.tplEditor.insert') }}</button>
         </fieldset>
         <fieldset>
-          <legend>Bloc conditionnel</legend>
-          <select v-model="conditionMode" aria-label="Type de condition" data-testid="condition-mode">
-            <option value="if">si renseigné</option>
-            <option value="unless">sauf si renseigné</option>
-            <option value="equals">si égal à</option>
+          <legend>{{ t('admin.tplEditor.conditional') }}</legend>
+          <select v-model="conditionMode" :aria-label="t('admin.tplEditor.conditionType')" data-testid="condition-mode">
+            <option value="if">{{ t('admin.tplEditor.modes.if') }}</option>
+            <option value="unless">{{ t('admin.tplEditor.modes.unless') }}</option>
+            <option value="equals">{{ t('admin.tplEditor.modes.equals') }}</option>
           </select>
-          <input v-model="conditionPath" list="tpl-variables" placeholder="client.pro" aria-label="Variable de la condition" data-testid="condition-path" />
-          <input v-if="conditionMode === 'equals'" v-model="conditionValue" placeholder="PRO" aria-label="Valeur" data-testid="condition-value" />
-          <button type="button" data-testid="wrap-conditional" @click="wrapConditional">Entourer la sélection</button>
+          <input v-model="conditionPath" list="tpl-variables" placeholder="client.pro" :aria-label="t('admin.tplEditor.conditionVariable')" data-testid="condition-path" />
+          <input v-if="conditionMode === 'equals'" v-model="conditionValue" placeholder="PRO" :aria-label="t('admin.tplEditor.valueAria')" data-testid="condition-value" />
+          <button type="button" data-testid="wrap-conditional" @click="wrapConditional">{{ t('admin.tplEditor.wrap') }}</button>
         </fieldset>
         <fieldset>
-          <legend>Répétition</legend>
-          <input v-model="repeatPath" list="tpl-lists" placeholder="lignes" aria-label="Liste à répéter" data-testid="repeat-path" />
-          <input v-model="repeatItem" placeholder="ligne" aria-label="Nom d’un élément" data-testid="repeat-item" />
-          <button type="button" data-testid="wrap-repeat" @click="wrapRepeat">Répéter la sélection</button>
-          <input v-model="rowPath" list="tpl-lists" placeholder="lignes (tableau)" aria-label="Liste du tableau" data-testid="row-path" />
-          <button type="button" data-testid="repeat-row" @click="repeatRow">Répéter la ligne du tableau</button>
-          <button type="button" @click="stopRepeatRow">Ne plus répéter la ligne</button>
+          <legend>{{ t('admin.tplEditor.repeat') }}</legend>
+          <input v-model="repeatPath" list="tpl-lists" placeholder="lignes" :aria-label="t('admin.tplEditor.repeatList')" data-testid="repeat-path" />
+          <input v-model="repeatItem" placeholder="ligne" :aria-label="t('admin.tplEditor.repeatItemAria')" data-testid="repeat-item" />
+          <button type="button" data-testid="wrap-repeat" @click="wrapRepeat">{{ t('admin.tplEditor.repeatSelection') }}</button>
+          <input v-model="rowPath" list="tpl-lists" :placeholder="t('admin.tplEditor.rowListPlaceholder')" :aria-label="t('admin.tplEditor.rowListAria')" data-testid="row-path" />
+          <button type="button" data-testid="repeat-row" @click="repeatRow">{{ t('admin.tplEditor.repeatRow') }}</button>
+          <button type="button" @click="stopRepeatRow">{{ t('admin.tplEditor.stopRepeatRow') }}</button>
         </fieldset>
       </div>
       <p v-if="formError" class="tpl-editor__error" role="alert" data-testid="editor-error">{{ formError }}</p>

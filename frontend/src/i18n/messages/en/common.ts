@@ -27,6 +27,16 @@ const common: typeof fr = {
     empty: 'No notification.',
     loadMore: 'Load more',
   },
+  errors: {
+    tasks: 'Unable to load the tasks',
+    dossier: 'Unable to load the dossier',
+    deploy: 'Deployment failed',
+    previewHtml: 'HTML preview failed',
+    previewPdf: 'PDF preview failed',
+    evaluate: 'Evaluation failed',
+    suite: 'Test suite failed',
+    redeploy: 'Redeployment failed',
+  },
 }
 
 export default common

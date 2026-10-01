@@ -1,4 +1,7 @@
 import type { FieldDefinition, FieldType } from '@/api/types'
+import { i18n } from '@/i18n'
+
+const m = (key: string, params: Record<string, unknown> = {}): string => i18n.global.t(`dossier.fieldValidation.${key}`, params)
 
 function isBlank(value: string | undefined | null): boolean {
   return value == null || value.trim() === ''
@@ -38,118 +41,116 @@ const MAX_HELP_TEXT_CHARS = 500
 export function validateFieldDefinitions(definitions: FieldDefinition[], owner?: string): string[] {
   const errors: string[] = []
   const seenNames = new Set<string>()
-  const where = owner ? ` (groupe « ${owner} »)` : ''
+  const where = owner ? m('inGroup', { owner }) : ''
 
   for (const def of definitions) {
     const name = def.name?.trim() ?? ''
-    const shown = name || '(sans nom)'
+    const shown = name || m('unnamed')
     if (isBlank(name)) {
-      errors.push(`Le nom du champ est obligatoire${where}`)
+      errors.push(m('nameRequired', { where }))
     } else if (seenNames.has(name)) {
-      errors.push(`Le nom de champ « ${name} » est utilisé plusieurs fois${where}`)
+      errors.push(m('nameDuplicate', { name, where }))
     } else {
       seenNames.add(name)
     }
 
     if (isBlank(def.label)) {
-      errors.push(`Le libellé du champ « ${shown} » est obligatoire${where}`)
+      errors.push(m('labelRequired', { shown, where }))
     }
 
     if ((def.helpText ?? '').trim().length > MAX_HELP_TEXT_CHARS) {
-      errors.push(`L'aide du champ « ${shown} » dépasse ${MAX_HELP_TEXT_CHARS} caractères`)
+      errors.push(m('helpTooLong', { shown, max: MAX_HELP_TEXT_CHARS }))
     }
     // Miroir du serveur : texte brut, sans contrôle (hors saut de ligne), marque bidirectionnelle ni espace de largeur nulle.
     if (/[\u0000-\u0009\u000B-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/.test(def.helpText ?? '')) {
-      errors.push(`L'aide du champ « ${shown} » contient un caractère interdit (contrôle, bidirectionnel ou largeur nulle)`)
+      errors.push(m('helpForbidden', { shown }))
     }
     if (def.width === 'HALF' && def.type === 'REPEATABLE_GROUP') {
-      errors.push(`Un groupe répétable (« ${shown} ») occupe toute la largeur`)
+      errors.push(m('groupFullWidth', { shown }))
     }
 
     if (def.type === 'SELECT' && (def.options ?? []).length === 0) {
-      errors.push(`Le champ « ${shown} » de type SELECT doit avoir au moins une option`)
+      errors.push(m('selectNeedsOption', { shown }))
     }
 
     if (def.type === 'MONEY') {
       for (const code of def.options ?? []) {
         if (!/^[A-Z]{3}$/.test(code)) {
-          errors.push(`La devise « ${code} » du champ « ${shown} » n'est pas un code ISO 4217 en majuscules (ex. EUR)`)
+          errors.push(m('badCurrency', { code, shown }))
         }
       }
     }
     if (def.type === 'EXTERNAL_REF') {
       for (const system of def.options ?? []) {
         if (!/^[A-Za-z0-9_.-]{1,50}$/.test(system)) {
-          errors.push(`Le système « ${system} » du champ « ${shown} » n'est pas un identifiant valide`)
+          errors.push(m('badSystem', { system, shown }))
         }
       }
     }
 
     if (NO_DEFAULT_TYPES.includes(def.type) && !isBlank(def.defaultValue)) {
-      errors.push(`Le champ « ${shown} » (${def.type}) ne peut pas avoir de valeur par défaut`)
+      errors.push(m('noDefault', { shown, type: def.type }))
     } else if (!defaultValueMatchesType(def)) {
-      errors.push(`La valeur par défaut du champ « ${shown} » ne correspond pas au type ${def.type}`)
+      errors.push(m('defaultMismatch', { shown, type: def.type }))
     }
 
     for (const [label, expression] of [
-      ['Le calcul', def.formula],
-      ['La règle « visible si »', def.visibleWhen],
-      ['La règle « obligatoire si »', def.requiredWhen],
+      [m('ruleFormula'), def.formula],
+      [m('ruleVisible'), def.visibleWhen],
+      [m('ruleRequired'), def.requiredWhen],
     ] as const) {
       if (!isBlank(expression) && (expression as string).length > MAX_EXPRESSION_CHARS) {
-        errors.push(`${label} du champ « ${shown} » dépasse ${MAX_EXPRESSION_CHARS} caractères`)
+        errors.push(m('expressionTooLong', { label, shown, max: MAX_EXPRESSION_CHARS }))
       }
     }
     if (def.searchable) {
-      if (def.sensitive) errors.push(`Le champ « ${shown} » est sensible : il ne peut pas être cherchable`)
+      if (def.sensitive) errors.push(m('sensitiveSearchable', { shown }))
       if (!['STRING', 'NUMBER', 'DATE', 'BOOLEAN', 'SELECT'].includes(def.type)) {
-        errors.push(`Un champ ${def.type} (« ${shown} ») ne peut pas être cherchable`)
+        errors.push(m('typeNotSearchable', { type: def.type, shown }))
       }
     }
     if (!isBlank(def.formula)) {
-      if (def.sensitive) errors.push(`Le champ calculé « ${shown} » ne peut pas être sensible`)
+      if (def.sensitive) errors.push(m('computedSensitive', { shown }))
       if (def.type === 'REPEATABLE_GROUP' || def.type === 'FILE') {
-        errors.push(`Un champ ${def.type} (« ${shown} ») ne peut pas être calculé`)
+        errors.push(m('typeNotComputed', { type: def.type, shown }))
       }
       if (def.required || !isBlank(def.defaultValue) || !isBlank(def.visibleWhen) || !isBlank(def.requiredWhen)) {
-        errors.push(
-          `Le champ calculé « ${shown} » est toujours présent et en lecture seule : ni « obligatoire », ni valeur par défaut, ni « visible si », ni « obligatoire si »`,
-        )
+        errors.push(m('computedReadOnly', { shown }))
       }
     }
     if (owner && (!isBlank(def.formula) || !isBlank(def.visibleWhen) || !isBlank(def.requiredWhen))) {
-      errors.push(`Le sous-champ « ${shown} » ne peut pas porter de règle${where}`)
+      errors.push(m('subRule', { shown, where }))
     }
 
     if (def.type === 'REPEATABLE_GROUP') {
       const subs = def.fields ?? []
       if (subs.length === 0) {
-        errors.push(`Le groupe « ${shown} » doit avoir au moins un sous-champ`)
+        errors.push(m('groupNeedsSub', { shown }))
       }
       if (subs.length > MAX_GROUP_FIELDS) {
-        errors.push(`Le groupe « ${shown} » a au plus ${MAX_GROUP_FIELDS} sous-champs`)
+        errors.push(m('groupMaxSubs', { shown, max: MAX_GROUP_FIELDS }))
       }
       for (const sub of subs) {
         if (!GROUP_SUBFIELD_TYPES.includes(sub.type)) {
-          errors.push(`Le type ${sub.type} du sous-champ « ${sub.name || '(sans nom)'} » n'est pas autorisé dans un groupe`)
+          errors.push(m('subType', { type: sub.type, sub: sub.name || m('unnamed') }))
         }
         if (!isBlank(sub.defaultValue)) {
-          errors.push(`Le sous-champ « ${sub.name || '(sans nom)'} » ne peut pas avoir de valeur par défaut (elle ne serait jamais appliquée)`)
+          errors.push(m('subDefault', { sub: sub.name || m('unnamed') }))
         }
         if (sub.sensitive) {
-          errors.push(`Le sous-champ « ${sub.name || '(sans nom)'} » ne peut pas être sensible : marquez le groupe « ${shown} » lui-même`)
+          errors.push(m('subSensitive', { sub: sub.name || m('unnamed'), shown }))
         }
       }
       errors.push(...validateFieldDefinitions(subs, shown))
       const min = def.minRows ?? 0
       const max = def.maxRows ?? 100
       if (def.options && def.options.length > 0) {
-        errors.push(`Le groupe « ${shown} » n'accepte pas d'options`)
+        errors.push(m('groupNoOptions', { shown }))
       }
-      if (max < 1) errors.push(`Le nombre maximal de lignes du groupe « ${shown} » est au moins 1`)
-      if (min < 0) errors.push(`Le nombre minimal de lignes du groupe « ${shown} » ne peut pas être négatif`)
-      if (max > HARD_MAX_ROWS) errors.push(`Le nombre maximal de lignes du groupe « ${shown} » est ${HARD_MAX_ROWS}`)
-      if (min > max) errors.push(`Le minimum de lignes du groupe « ${shown} » dépasse son maximum`)
+      if (max < 1) errors.push(m('maxRowsMin', { shown }))
+      if (min < 0) errors.push(m('minRowsNegative', { shown }))
+      if (max > HARD_MAX_ROWS) errors.push(m('maxRowsHard', { shown, max: HARD_MAX_ROWS }))
+      if (min > max) errors.push(m('minAboveMax', { shown }))
     }
   }
 

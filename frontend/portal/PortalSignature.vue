@@ -102,12 +102,12 @@ async function onDecline() {
 
   <section v-else-if="state === 'signed'" class="portal__card" data-testid="signature-signed" aria-live="polite">
     <h1>{{ t('portal.signature.signed.title') }}</h1>
-    <p>Vous pouvez fermer cette page. Ce lien n’est plus utilisable.</p>
+    <p>{{ t('portal.done.body') }}</p>
   </section>
 
   <section v-else-if="state === 'declined'" class="portal__card" data-testid="signature-declined" aria-live="polite">
     <h1>{{ t('portal.signature.declined.title') }}</h1>
-    <p>Vous pouvez fermer cette page. Ce lien n’est plus utilisable.</p>
+    <p>{{ t('portal.done.body') }}</p>
   </section>
 
   <template v-else-if="context">

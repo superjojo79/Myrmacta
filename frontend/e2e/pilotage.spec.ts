@@ -4237,3 +4237,18 @@ test('E2E-PARCOURS-1 parcours designer: build a step list, save, compile to a dr
   await expect(page.getByTestId('parcours-warnings')).toContainText('avertissement test')
   expect(compiledWith).toEqual({ dryRun: false, replaceDraft: false })
 })
+
+test('E2E-I18N-1 language switch: the whole shell turns English, survives a reload, and can go back (D7)', async ({ page }) => {
+  await mockSession(page)
+  await openApp(page)
+  await expect(page.getByRole('link', { name: 'Tâches' })).toBeVisible()
+  await page.getByTestId('locale-switcher').selectOption('en')
+  await expect(page.getByRole('link', { name: 'Tasks', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Log out' })).toBeVisible()
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en')
+  await page.reload()
+  await expect(page.getByRole('link', { name: 'Tasks', exact: true })).toBeVisible()
+  await page.getByTestId('locale-switcher').selectOption('fr')
+  await expect(page.getByRole('link', { name: 'Tâches' })).toBeVisible()
+  await expect(page.locator('html')).toHaveAttribute('lang', 'fr')
+})

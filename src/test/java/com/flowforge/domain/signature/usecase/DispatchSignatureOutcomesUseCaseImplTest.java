@@ -89,6 +89,29 @@ class DispatchSignatureOutcomesUseCaseImplTest {
     }
 
     @Test
+    void noMatchingInstanceBecauseAnotherExecutorAlreadyResumedTheProcessIsNotCountedAsAFailedAttempt() {
+        // D5 (TODO §79) : la souscription au message n'est consommée qu'une fois ; le perdant reçoit « aucune instance » alors
+        // que l'issue vient d'être distribuée — pas de tentative comptée, donc pas de fausse alerte dispatchGaveUp.
+        SignatureRequest r = closed(SignatureOutcome.FAILED);
+        doThrow(new CallbackNoMatchingInstanceException("signatureCompleted", "signatureRequestId", r.id().toString()))
+                .doNothing()
+                .when(engine).correlateMessageOnExecution(anyString(), anyString(), any(), any());
+        org.mockito.Mockito.doAnswer(inv -> {
+                    // Pendant l'appel perdant, un autre exécutant enregistre la distribution.
+                    repository.updateRequest(repository.findById(r.id()).orElseThrow().dispatched(NOW));
+                    throw new CallbackNoMatchingInstanceException("signatureCompleted", "signatureRequestId", r.id().toString());
+                })
+                .when(engine).correlateMessageOnExecution(anyString(), anyString(), any(), any());
+
+        assertThat(useCase.dispatchPending()).isZero();
+
+        assertThat(repository.findById(r.id()).orElseThrow().dispatchAttempts()).isZero();
+        assertThat(repository.findById(r.id()).orElseThrow().outcomeDispatchedAt()).isEqualTo(NOW);
+        verify(metrics, never()).dispatchRetry();
+        verify(metrics, never()).dispatchGaveUp();
+    }
+
+    @Test
     void givesUpAtTheCeilingWithAnAlertAndStopsPicking() {
         // S-DISP-3
         SignatureRequest r = closed(SignatureOutcome.EXPIRED);

@@ -115,7 +115,10 @@ public class DefineDossierTypeTool {
                                     + "recomputed on every save; visibleWhen = field applicable only when true; requiredWhen "
                                     + "= field required when true. Try them with evaluate_dossier_rules and "
                                     + "evaluate_expression. searchable=true (STRING, NUMBER, DATE, BOOLEAN, SELECT; never "
-                                    + "sensitive) makes the field usable as a search_dossiers filter")
+                                    + "sensitive) makes the field usable as a search_dossiers filter. Layout (form designer): group = "
+                                    + "section title (fields sharing a group are shown together, in order); width = HALF "
+                                    + "(two fields per row, default full width); helpText = plain-text hint under the field "
+                                    + "(500 chars max)")
                     List<Map<String, Object>> fieldDefinitions,
             @McpToolParam(
                             required = false,

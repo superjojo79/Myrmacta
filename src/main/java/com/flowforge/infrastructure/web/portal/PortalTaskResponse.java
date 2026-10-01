@@ -32,10 +32,11 @@ record PortalTaskResponse(
 
     record Form(String label, List<Field> fields) {}
 
-    record Field(String name, String label, String type, boolean required, List<String> options, String group) {
+    record Field(String name, String label, String type, boolean required, List<String> options, String group,
+                 String helpText, String width) {
         static Field from(FieldDefinition definition) {
             return new Field(definition.name(), definition.label(), definition.type().name(), definition.required(),
-                    definition.options(), definition.group());
+                    definition.options(), definition.group(), definition.helpText(), definition.width());
         }
     }
 

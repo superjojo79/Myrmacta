@@ -30,6 +30,14 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
+- **TODO §85 (LC4a)** — Concepteur visuel de formulaires : aperçu en direct, sections, largeur (pleine / demi), aide contextuelle en texte brut et
+  réordonnancement par glisser-déposer, pour les questions de tâche et les champs d'un type de dossier ; le portail externe applique la même disposition.
+  `fieldDefinitions` reste la seule source (deux champs optionnels `helpText`, `width`, sans migration) ; outils MCP `define_dossier_type` et
+  `define_task_question_schema` étendus.
+- **TODO §84 (LC4b)** — Éditeur visuel de templates de documents (TipTap) : mise en forme, variables, blocs conditionnels et répétés, lignes de tableau répétées,
+  saut de page ; un template qu'il ne sait pas réécrire sans perte reste en source. Outils MCP `define_document_template` (brouillon seulement) et
+  `preview_document` (HTML en direct). Interpolation non échappée et fragments Thymeleaf refusés sous toute graphie (correctif de sécurité issu de la revue).
+
 - **TODO §83 (D4)** — Promotion de configuration entre environnements : export d'un **bundle ZIP** versionné (types de dossier, schémas de questions, connecteurs sans secrets, tables DMN
   et processus BPMN déployés, configurations de workflow), **plan à blanc** par artefact (créer, modifier, inchangé, conflit, bloqué), application **idempotente** par les cas d'usage existants,
   journal des imports. BPMN et DMN arrivent en **brouillons à publier** ; un connecteur est créé **désactivé** ; secrets jamais exportés (saisis ou injectés à l'import) ; valeurs `{{paramètre}}`

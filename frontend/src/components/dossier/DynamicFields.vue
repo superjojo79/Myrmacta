@@ -113,6 +113,7 @@ function setField(name: string, value: unknown) {
         v-for="field in fields"
         :key="field.name"
         class="dynamic-fields__field"
+        :class="{ 'dynamic-fields__field--half': field.width === 'HALF' }"
         :role="isStructured(field.type) ? 'group' : undefined"
         :aria-label="isStructured(field.type) ? field.label : undefined"
       >
@@ -150,6 +151,7 @@ function setField(name: string, value: unknown) {
           :model-value="modelValue[field.name]"
           @update:model-value="(value) => setField(field.name, value)"
         />
+        <small v-if="field.helpText" class="dynamic-fields__help" :data-testid="`help-${field.name}`">{{ field.helpText }}</small>
       </component>
     </section>
   </div>
@@ -158,11 +160,31 @@ function setField(name: string, value: unknown) {
 <style scoped>
 .dynamic-fields__group {
   margin-bottom: 1rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 1rem;
+}
+.dynamic-fields__group > h3 {
+  grid-column: 1 / -1;
 }
 .dynamic-fields__field {
   display: grid;
   gap: 0.25rem;
   margin-bottom: 0.75rem;
+  grid-column: 1 / -1;
+  align-content: start;
+}
+.dynamic-fields__field--half {
+  grid-column: auto;
+}
+.dynamic-fields__help {
+  color: #6b6b70;
+  white-space: pre-line;
+}
+@media (max-width: 640px) {
+  .dynamic-fields__field--half {
+    grid-column: 1 / -1;
+  }
 }
 .dynamic-fields__computed-hint {
   color: #6b6b70;

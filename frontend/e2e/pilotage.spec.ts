@@ -4119,3 +4119,35 @@ test('E2E-PROMO-1 import: dry-run plan first, secrets entered by name and sent o
   await expect(page.locator('body')).not.toContainText('e2e-secret-value')
   await expect(page.getByTestId('secret-erp-prod-webhookSecret')).toHaveValue('')
 })
+
+test('E2E-FORMED-1 designer: sections, half width and help text are previewed live and sent as plain fieldDefinitions (LC4a)', async ({ page }) => {
+  await mockSession(page)
+  let created: { fieldDefinitions: Array<Record<string, unknown>> } | null = null
+  await page.route('**/api/task-question-schemas*', async (route) => {
+    if (route.request().method() === 'POST') {
+      created = route.request().postDataJSON()
+      await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ id: 's-9', ...created }) })
+      return
+    }
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(envelope([])) })
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Questions de tâche' }).click()
+  await page.getByTestId('schema-key-input').fill('contact')
+  await page.getByTestId('schema-label-input').fill('Contact')
+  const form = page.getByTestId('schema-create-form')
+  await form.getByTestId('field-def-add').click()
+  const row = form.getByTestId('field-def-row').first()
+  await row.getByTestId('field-def-name').fill('nom')
+  await row.getByTestId('field-def-label').fill('Nom')
+  await row.getByTestId('field-def-group').fill('Identité')
+  await row.getByTestId('field-def-width').selectOption('HALF')
+  await row.getByTestId('field-def-help').fill('Nom de famille')
+
+  const preview = form.getByTestId('form-designer-preview')
+  await expect(preview.getByRole('heading', { name: 'Identité' })).toBeVisible()
+  await expect(preview.getByTestId('help-nom')).toHaveText('Nom de famille')
+
+  await form.locator('button[type="submit"]').click()
+  await expect.poll(() => created?.fieldDefinitions[0]).toMatchObject({ name: 'nom', group: 'Identité', width: 'HALF', helpText: 'Nom de famille' })
+})

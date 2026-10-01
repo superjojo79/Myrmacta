@@ -177,4 +177,9 @@ describe('validateFieldDefinitions — structured types (TODO §76, D1)', () => 
     expect(validateFieldDefinitions([field({ searchable: true, sensitive: true })]).join(' ')).toContain('cherchable')
     expect(validateFieldDefinitions([field({ type: 'MONEY', searchable: true })]).join(' ')).toContain('cherchable')
   })
+  it('refuses a help text longer than 500 characters (LC4a)', () => {
+    const errors = validateFieldDefinitions([{ name: 'a', label: 'A', type: 'STRING', required: false, helpText: 'x'.repeat(501) }])
+    expect(errors.join(' ')).toContain('aide')
+    expect(validateFieldDefinitions([{ name: 'a', label: 'A', type: 'STRING', required: false, helpText: 'x'.repeat(500) }])).toEqual([])
+  })
 })

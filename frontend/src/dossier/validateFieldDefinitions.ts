@@ -26,6 +26,8 @@ const MAX_GROUP_FIELDS = 20
 const HARD_MAX_ROWS = 500
 // TODO §80 (D1, règles) — miroir de FieldDefinition : un champ calculé est en lecture seule, toujours présent.
 const MAX_EXPRESSION_CHARS = 2000
+// TODO §85 (LC4a) — miroir de FieldDefinition : aide contextuelle en texte brut.
+const MAX_HELP_TEXT_CHARS = 500
 
 /**
  * Client-side mirror of DossierFieldValidator.matchesType (immediate feedback) plus the
@@ -51,6 +53,10 @@ export function validateFieldDefinitions(definitions: FieldDefinition[], owner?:
 
     if (isBlank(def.label)) {
       errors.push(`Le libellé du champ « ${shown} » est obligatoire${where}`)
+    }
+
+    if ((def.helpText ?? '').length > MAX_HELP_TEXT_CHARS) {
+      errors.push(`L'aide du champ « ${shown} » dépasse ${MAX_HELP_TEXT_CHARS} caractères`)
     }
 
     if (def.type === 'SELECT' && (def.options ?? []).length === 0) {

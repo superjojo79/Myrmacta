@@ -101,6 +101,26 @@ function updateRow(index: number, patch: Partial<FieldDefinition>) {
   emitRows()
 }
 
+// TODO §85 (LC4a) : glisser-déposer pour réordonner (les boutons ↑ ↓ restent, accessibles au clavier).
+const dragIndex = ref<number | null>(null)
+function onDragStart(index: number, event: DragEvent) {
+  dragIndex.value = index
+  event.dataTransfer?.setData('text/plain', String(index))
+  if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move'
+}
+function onDrop(index: number) {
+  const from = dragIndex.value
+  dragIndex.value = null
+  if (from == null || from === index) return
+  const [moved] = rows.value.splice(from, 1)
+  rows.value.splice(index, 0, moved!)
+  emitRows()
+}
+
+/** Sections déjà utilisées : proposées à la saisie du groupe (une faute de frappe créerait une section de plus). */
+const knownGroups = computed(() => [...new Set(rows.value.map((row) => (row.group ?? '').trim()).filter((g) => g !== ''))])
+const groupListId = `groups-${Math.random().toString(36).slice(2, 8)}`
+
 function parseOptions(raw: string): string[] {
   return raw
     .split(',')
@@ -111,7 +131,29 @@ function parseOptions(raw: string): string[] {
 
 <template>
   <div class="field-def-editor">
-    <div v-for="(def, index) in rows" :key="index" class="field-def-editor__row" data-testid="field-def-row">
+    <datalist v-if="!isSub" :id="groupListId">
+      <option v-for="group in knownGroups" :key="group" :value="group" />
+    </datalist>
+    <div
+      v-for="(def, index) in rows"
+      :key="index"
+      class="field-def-editor__row"
+      :class="{ 'field-def-editor__row--drag': dragIndex === index }"
+      data-testid="field-def-row"
+      @dragover.prevent
+      @drop.prevent="onDrop(index)"
+    >
+      <span
+        v-if="!isSub"
+        class="field-def-editor__handle"
+        draggable="true"
+        title="Glisser pour réordonner"
+        aria-hidden="true"
+        data-testid="field-def-handle"
+        @dragstart="onDragStart(index, $event)"
+        @dragend="dragIndex = null"
+        >⋮⋮</span
+      >
       <label>
         Nom
         <input
@@ -170,11 +212,32 @@ function parseOptions(raw: string): string[] {
         />
       </label>
       <label v-if="!isSub">
-        Groupe
+        Section
         <input
           :value="def.group ?? ''"
+          :list="groupListId"
           data-testid="field-def-group"
           @input="updateRow(index, { group: ($event.target as HTMLInputElement).value })"
+        />
+      </label>
+      <label v-if="!isSub">
+        Largeur
+        <select
+          :value="def.width ?? 'FULL'"
+          data-testid="field-def-width"
+          @change="updateRow(index, { width: ($event.target as HTMLSelectElement).value === 'HALF' ? 'HALF' : null })"
+        >
+          <option value="FULL">Pleine</option>
+          <option value="HALF">Demi</option>
+        </select>
+      </label>
+      <label>
+        Aide (texte brut affiché sous le champ)
+        <input
+          :value="def.helpText ?? ''"
+          maxlength="500"
+          data-testid="field-def-help"
+          @input="updateRow(index, { helpText: ($event.target as HTMLInputElement).value || null })"
         />
       </label>
       <label v-if="!isSub" class="field-def-editor__checkbox">
@@ -299,6 +362,15 @@ function parseOptions(raw: string): string[] {
   flex-direction: column;
   gap: 0.2rem;
   font-size: 0.85rem;
+}
+.field-def-editor__handle {
+  cursor: grab;
+  color: #6b6b70;
+  align-self: center;
+  user-select: none;
+}
+.field-def-editor__row--drag {
+  opacity: 0.5;
 }
 .field-def-editor__checkbox {
   flex-direction: row !important;

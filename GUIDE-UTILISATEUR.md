@@ -432,9 +432,22 @@ est rejeté même avec une nouvelle `Idempotency-Key`.
 |---|---|
 | `templateKey` | identifiant technique, référencé ensuite depuis le workflow ou la génération de document |
 | `libellé` | nom affiché |
-| `Contenu HTML` | zone de texte — HTML/Thymeleaf saisi directement (pas d'éditeur riche) |
+| `Contenu` | **éditeur visuel** (LC4b, TODO §84) ou source HTML/Thymeleaf — voir ci-dessous |
 
 Un panneau d'**aperçu en direct** affiche le rendu du HTML au fur et à mesure de la saisie.
+
+**Éditeur visuel.** Barre d'outils : gras, italique, souligné, titres, listes, alignement, tableaux, ligne horizontale,
+**saut de page**. Quatre insertions guidées, alimentées par les *variables d'exemple* de l'aperçu : une **variable**
+(`client.nom`), un **bloc conditionnel** (si / sauf / égal à une valeur), un **bloc répété** sur une liste, une **ligne de
+tableau répétée**. Le HTML produit est du Thymeleaf standard, accepté par la liste blanche d'expressions inchangée. Le bouton
+*Source HTML* donne accès au texte brut. **Un template écrit à la main que l'éditeur ne saurait pas réécrire sans rien
+perdre** (balise ou attribut non pris en charge, `th:if` et `th:each` combinés, en-tête de tableau `thead`, expression en
+ligne `[[…]]`…) **reste en mode source, intact**, avec la raison affichée. Les fragments (`th:replace`, `th:insert`,
+`th:include`) et l'interpolation non échappée (`th:utext`, `[( … )]`) sont refusés à l'activation.
+
+**Depuis un agent (MCP).** `define_document_template` écrit le HTML en **brouillon** (jamais en ligne : si la dernière
+version est active, une nouvelle version brouillon est créée) et signale un éventuel problème de syntaxe ; `preview_document`
+rend un HTML en direct avec des variables d'exemple. L'**activation reste un geste humain**.
 
 > **Limites actuelles de l'écran :** l'API supporte des variantes par langue/contexte
 > (`variantKey`, `locale`) et un versionnement complet, mais le formulaire de création n'expose
@@ -608,6 +621,13 @@ au porteur de tâche avant complétion, **indépendamment des données du dossie
   référencé dans le BPMN via `formKey = "user-question:<schemaKey>"`), un libellé, et un ou
   plusieurs champs (mêmes types que ceux d'un type de dossier : texte, nombre, date, booléen,
   choix — `FILE` n'est pas supporté ici, une tentative est rejetée avec un message explicite).
+- **Concepteur de formulaire (LC4a, TODO §85)** — à droite des champs, un **aperçu en direct** montre le formulaire tel
+  qu'il sera saisi (même moteur que les tâches, les dossiers et le portail externe ; décocher « Aperçu du formulaire » pour
+  le masquer). Chaque champ propose : une **section** (le champ « Section » ; les sections déjà utilisées sont suggérées, les
+  champs d'une même section sont regroupés), une **largeur** (*Pleine*, ou *Demi* : deux champs *Demi* se placent côte à côte,
+  une seule colonne sur écran étroit) et une **aide** (texte brut, 500 caractères, affichée sous le champ). L'ordre se règle
+  par glisser-déposer de la poignée ⋮⋮ ou avec les boutons ↑ ↓. Le même concepteur sert les champs d'un type de dossier
+  (§1).
 - Le nom de chaque champ devient le nom de la **variable de process** produite à la complétion de
   la tâche — un nom qui collisionne avec une variable déjà utilisée ailleurs dans le produit
   (`documentType`, `documentVariant`, `documentLocale`, ou une variable plateforme réservée) est

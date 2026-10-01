@@ -47,6 +47,9 @@ export interface FieldDefinition {
   requiredWhen?: string | null
   /** TODO §81 (D2) : le champ peut servir de filtre de recherche (jamais sensible ; STRING, NUMBER, DATE, BOOLEAN, SELECT). */
   searchable?: boolean
+  /** TODO §85 (LC4a) : aide contextuelle (texte brut) et largeur ('HALF' = demi-largeur ; absent = pleine). */
+  helpText?: string | null
+  width?: 'HALF' | null
 }
 
 /** Aperçu des règles d'un type pour des valeurs en cours de saisie (`POST /api/dossier-types/{code}/evaluate-rules`). */

@@ -74,6 +74,32 @@ body {
   margin-bottom: 0.9rem;
 }
 
+.portal-form__group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 1rem;
+}
+
+.portal-form__group > h3,
+.portal-form__field {
+  grid-column: 1 / -1;
+}
+
+.portal-form__field--half {
+  grid-column: auto;
+}
+
+.portal-form__help {
+  color: #5b6773;
+  white-space: pre-line;
+}
+
+@media (max-width: 640px) {
+  .portal-form__field--half {
+    grid-column: 1 / -1;
+  }
+}
+
 .portal input[type='text'],
 .portal input[type='number'],
 .portal input[type='date'],

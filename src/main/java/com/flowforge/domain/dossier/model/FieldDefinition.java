@@ -43,8 +43,14 @@ public record FieldDefinition(
         String formula,
         String visibleWhen,
         String requiredWhen,
-        Boolean searchable
+        Boolean searchable,
+        String helpText,
+        String width
 ) {
+    /** TODO §85 (LC4a) — longueur maximale de l'aide contextuelle (texte brut). */
+    public static final int MAX_HELP_TEXT_CHARS = 500;
+    public static final Set<String> WIDTHS = Set.of("FULL", "HALF");
+
     public static final int MAX_EXPRESSION_CHARS = 2000;
     public static final int MAX_GROUP_FIELDS = 20;
     public static final int DEFAULT_MAX_ROWS = 100;
@@ -71,6 +77,26 @@ public record FieldDefinition(
         searchable = Boolean.TRUE.equals(searchable);
         fields = fields == null ? List.of() : List.copyOf(fields);
 
+        helpText = blankToNull(helpText);
+        if (helpText != null) {
+            if (helpText.length() > MAX_HELP_TEXT_CHARS) {
+                throw new IllegalArgumentException(
+                        "helpText exceeds " + MAX_HELP_TEXT_CHARS + " characters (field: " + name + ")");
+            }
+            if (helpText.chars().anyMatch(c -> Character.isISOControl(c) && c != '\n')) {
+                throw new IllegalArgumentException("helpText is plain text without control characters (field: " + name + ")");
+            }
+        }
+        width = blankToNull(width);
+        if (width != null) {
+            width = width.toUpperCase(java.util.Locale.ROOT);
+            if (!WIDTHS.contains(width)) {
+                throw new IllegalArgumentException("width must be one of " + new java.util.TreeSet<>(WIDTHS) + " (field: " + name + ")");
+            }
+            if ("FULL".equals(width)) {
+                width = null; // pleine largeur = défaut : une seule représentation
+            }
+        }
         formula = blankToNull(formula);
         visibleWhen = blankToNull(visibleWhen);
         requiredWhen = blankToNull(requiredWhen);
@@ -150,6 +176,9 @@ public record FieldDefinition(
                     if (sub.formula() != null || sub.visibleWhen() != null || sub.requiredWhen() != null) {
                         throw new IllegalArgumentException("a sub-field of a group cannot carry rules (field: " + sub.name() + ")");
                     }
+                    if (sub.width() != null) {
+                        throw new IllegalArgumentException("a sub-field of a group has no width (field: " + sub.name() + ")");
+                    }
                     if (sub.isSearchable()) {
                         throw new IllegalArgumentException("a sub-field of a group cannot be searchable (field: " + sub.name() + ")");
                     }
@@ -176,6 +205,27 @@ public record FieldDefinition(
             }
             default -> { }
         }
+    }
+
+    /** Avant TODO §85 (LC4a) : sans aide contextuelle ni largeur. */
+    public FieldDefinition(
+            String name,
+            String label,
+            FieldType type,
+            boolean required,
+            String defaultValue,
+            List<String> options,
+            String group,
+            Boolean sensitive,
+            List<FieldDefinition> fields,
+            Integer minRows,
+            Integer maxRows,
+            String formula,
+            String visibleWhen,
+            String requiredWhen,
+            Boolean searchable) {
+        this(name, label, type, required, defaultValue, options, group, sensitive, fields, minRows, maxRows, formula,
+                visibleWhen, requiredWhen, searchable, null, null);
     }
 
     /** Avant TODO §81 (D2) : sans drapeau « cherchable ». */
@@ -225,7 +275,7 @@ public record FieldDefinition(
     /** Copie avec une obligation différente (règles de visibilité / d'obligation appliquées au moment de la validation). */
     public FieldDefinition withRequired(boolean newRequired) {
         return new FieldDefinition(name, label, type, newRequired, defaultValue, options, group, sensitive, fields, minRows,
-                maxRows, formula, visibleWhen, requiredWhen, searchable);
+                maxRows, formula, visibleWhen, requiredWhen, searchable, helpText, width);
     }
 
     /**
@@ -234,7 +284,7 @@ public record FieldDefinition(
      */
     public FieldDefinition withHidden() {
         return new FieldDefinition(name, label, type, false, defaultValue, options, group, sensitive, fields,
-                minRows == null ? null : 0, maxRows, formula, visibleWhen, requiredWhen, searchable);
+                minRows == null ? null : 0, maxRows, formula, visibleWhen, requiredWhen, searchable, helpText, width);
     }
 
     /** Champ scalaire historique : sans sous-champs ni bornes de lignes. */

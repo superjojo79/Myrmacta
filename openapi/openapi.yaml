@@ -3002,6 +3002,10 @@ components:
           type: string
         searchable:
           type: boolean
+        helpText:
+          type: string
+        width:
+          type: string
     UpdateTaskQuestionSchemaRequest:
       type: object
       properties:
@@ -4024,6 +4028,8 @@ components:
           type: array
           items:
             type: string
+        connectorName:
+          type: string
     ImportReport:
       type: object
       properties:
@@ -4799,6 +4805,10 @@ components:
           items:
             type: string
         group:
+          type: string
+        helpText:
+          type: string
+        width:
           type: string
     Form:
       type: object

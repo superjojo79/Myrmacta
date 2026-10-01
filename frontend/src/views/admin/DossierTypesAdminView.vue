@@ -13,7 +13,7 @@ import { listNotificationWebhooks, type NotificationWebhook } from '@/api/notifi
 import type { DossierPermission, DossierType, FieldDefinition } from '@/api/types'
 import { toProblemDetail } from '@/api/http'
 import AdminPager from '@/components/admin/AdminPager.vue'
-import FieldDefinitionDefsEditor from '@/components/dossier/FieldDefinitionDefsEditor.vue'
+import FormDesigner from '@/components/dossier/FormDesigner.vue'
 import DocumentTemplateKeysEditor from '@/components/dossier/DocumentTemplateKeysEditor.vue'
 import { validateFieldDefinitions } from '@/dossier/validateFieldDefinitions'
 import { useAdminListQuery } from '@/composables/useAdminListQuery'
@@ -406,7 +406,7 @@ async function revoke() {
         <input v-model="form.allowUnknownFields" type="checkbox" data-testid="type-allow-unknown-fields" />
         Autoriser les champs inconnus
       </label>
-      <FieldDefinitionDefsEditor v-model="form.fieldDefinitions" />
+      <FormDesigner v-model="form.fieldDefinitions" />
       <fieldset>
         <legend>Templates de documents autorisés (document-generation)</legend>
         <DocumentTemplateKeysEditor v-model="form.documentTemplateKeys" />
@@ -459,7 +459,7 @@ async function revoke() {
         <input v-model="editDraft.allowUnknownFields" type="checkbox" data-testid="type-allow-unknown-fields" />
         Autoriser les champs inconnus
       </label>
-      <FieldDefinitionDefsEditor v-model="editDraft.fieldDefinitions" />
+      <FormDesigner v-model="editDraft.fieldDefinitions" />
       <fieldset>
         <legend>Templates de documents autorisés (document-generation)</legend>
         <DocumentTemplateKeysEditor v-model="editDraft.documentTemplateKeys" />

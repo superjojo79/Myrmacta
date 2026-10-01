@@ -9,7 +9,7 @@ import {
 import type { FieldDefinition, TaskQuestionSchema } from '@/api/types'
 import { toProblemDetail } from '@/api/http'
 import AdminPager from '@/components/admin/AdminPager.vue'
-import FieldDefinitionDefsEditor from '@/components/dossier/FieldDefinitionDefsEditor.vue'
+import FormDesigner from '@/components/dossier/FormDesigner.vue'
 import { validateFieldDefinitions } from '@/dossier/validateFieldDefinitions'
 import { useAdminListQuery } from '@/composables/useAdminListQuery'
 
@@ -123,7 +123,7 @@ async function remove(schema: TaskQuestionSchema) {
     <form class="admin-form" data-testid="schema-create-form" @submit.prevent="create">
       <input v-model="form.schemaKey" placeholder="schemaKey" required data-testid="schema-key-input" />
       <input v-model="form.label" placeholder="libellé" required data-testid="schema-label-input" />
-      <FieldDefinitionDefsEditor v-model="form.fieldDefinitions" mode="task" />
+      <FormDesigner v-model="form.fieldDefinitions" mode="task" />
       <button type="submit">Créer</button>
     </form>
 
@@ -157,7 +157,7 @@ async function remove(schema: TaskQuestionSchema) {
         Libellé
         <input v-model="editDraft.label" data-testid="schema-edit-label" />
       </label>
-      <FieldDefinitionDefsEditor v-model="editDraft.fieldDefinitions" mode="task" />
+      <FormDesigner v-model="editDraft.fieldDefinitions" mode="task" />
       <div class="edit-panel__actions">
         <button type="button" data-testid="schema-edit-save" @click="saveEdit">Enregistrer</button>
         <button type="button" data-testid="schema-edit-cancel" @click="cancelEdit">Annuler</button>

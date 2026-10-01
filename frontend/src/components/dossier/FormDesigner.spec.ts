@@ -65,4 +65,40 @@ describe('FormDesigner (LC4a)', () => {
     const options = wrapper.findAll('datalist option').map((o) => o.attributes('value'))
     expect(options).toEqual(['Identité', 'Suivi'])
   })
+
+  // ---- Revue adversariale LC4a ----
+  it('does not offer a help text (nor width) for the columns of a repeatable group (Medium)', () => {
+    const wrapper = mountDesigner([
+      { name: 'g', label: 'G', type: 'REPEATABLE_GROUP', required: false, fields: [{ name: 'c', label: 'C', type: 'STRING', required: false }] },
+    ])
+    const sub = wrapper.get('[data-testid="field-def-subfields"]')
+    expect(sub.find('[data-testid="field-def-help"]').exists()).toBe(false)
+    expect(sub.find('[data-testid="field-def-width"]').exists()).toBe(false)
+    // le groupe lui-même : une aide, mais jamais de demi-largeur
+    expect(wrapper.find('[data-testid="field-def-width"]').exists()).toBe(false)
+  })
+
+  it('changing a field to a repeatable group resets its width', async () => {
+    const wrapper = mountDesigner([{ name: 'a', label: 'A', type: 'STRING', required: false, width: 'HALF' }])
+    await wrapper.get('[data-testid="field-def-type"]').setValue('REPEATABLE_GROUP')
+    const emitted = wrapper.emitted('update:modelValue')!.at(-1)![0] as FieldDefinition[]
+    expect(emitted[0]!.width ?? null).toBeNull()
+  })
+
+  it('shows no input hint when the form is read-only, and merges sections that differ by spaces only', async () => {
+    const { default: DynamicFields } = await import('./DynamicFields.vue')
+    setActivePinia(createPinia())
+    const readonly = mount(DynamicFields, { props: { definitions: defs, modelValue: {}, readonly: true } })
+    expect(readonly.find('[data-testid="help-nom"]').exists()).toBe(false)
+    const merged = mount(DynamicFields, {
+      props: {
+        definitions: [
+          { name: 'a', label: 'A', type: 'STRING', required: false, group: 'Identité' },
+          { name: 'b', label: 'B', type: 'STRING', required: false, group: 'Identité ' },
+        ],
+        modelValue: {},
+      },
+    })
+    expect(merged.findAll('h3').map((h) => h.text())).toEqual(['Identité'])
+  })
 })

@@ -182,4 +182,16 @@ describe('validateFieldDefinitions — structured types (TODO §76, D1)', () => 
     expect(errors.join(' ')).toContain('aide')
     expect(validateFieldDefinitions([{ name: 'a', label: 'A', type: 'STRING', required: false, helpText: 'x'.repeat(500) }])).toEqual([])
   })
+
+  it('mirrors the server: no control, bidirectional or zero-width character in a help text; no half width on a group', () => {
+    for (const bad of ['a\tb', 'a\rb', 'a\u202Eb', 'a\u200Bb']) {
+      const errors = validateFieldDefinitions([{ name: 'a', label: 'A', type: 'STRING', required: false, helpText: bad }])
+      expect(errors.join(' '), JSON.stringify(bad)).toContain('caractère interdit')
+    }
+    expect(validateFieldDefinitions([{ name: 'a', label: 'A', type: 'STRING', required: false, helpText: 'ligne 1\nligne 2' }])).toEqual([])
+    const group = validateFieldDefinitions([
+      { name: 'g', label: 'G', type: 'REPEATABLE_GROUP', required: false, width: 'HALF', fields: [{ name: 'c', label: 'C', type: 'STRING', required: false }] },
+    ])
+    expect(group.join(' ')).toContain('toute la largeur')
+  })
 })

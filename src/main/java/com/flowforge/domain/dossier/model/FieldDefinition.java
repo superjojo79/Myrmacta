@@ -83,8 +83,9 @@ public record FieldDefinition(
                 throw new IllegalArgumentException(
                         "helpText exceeds " + MAX_HELP_TEXT_CHARS + " characters (field: " + name + ")");
             }
-            if (helpText.chars().anyMatch(c -> Character.isISOControl(c) && c != '\n')) {
-                throw new IllegalArgumentException("helpText is plain text without control characters (field: " + name + ")");
+            if (helpText.chars().anyMatch(FieldDefinition::isForbiddenHelpChar)) {
+                throw new IllegalArgumentException(
+                        "helpText is plain text without control or bidirectional characters (field: " + name + ")");
             }
         }
         width = blankToNull(width);
@@ -95,6 +96,9 @@ public record FieldDefinition(
             }
             if ("FULL".equals(width)) {
                 width = null; // pleine largeur = défaut : une seule représentation
+            }
+            if (width != null && (type == FieldType.REPEATABLE_GROUP)) {
+                throw new IllegalArgumentException("a REPEATABLE_GROUP is always full width (field: " + name + ")");
             }
         }
         formula = blankToNull(formula);
@@ -176,8 +180,9 @@ public record FieldDefinition(
                     if (sub.formula() != null || sub.visibleWhen() != null || sub.requiredWhen() != null) {
                         throw new IllegalArgumentException("a sub-field of a group cannot carry rules (field: " + sub.name() + ")");
                     }
-                    if (sub.width() != null) {
-                        throw new IllegalArgumentException("a sub-field of a group has no width (field: " + sub.name() + ")");
+                    if (sub.width() != null || sub.helpText() != null) {
+                        throw new IllegalArgumentException(
+                                "a sub-field of a group has neither width nor help text (field: " + sub.name() + ")");
                     }
                     if (sub.isSearchable()) {
                         throw new IllegalArgumentException("a sub-field of a group cannot be searchable (field: " + sub.name() + ")");
@@ -205,6 +210,15 @@ public record FieldDefinition(
             }
             default -> { }
         }
+    }
+
+    /** Contrôles (hors saut de ligne), marques bidirectionnelles et espaces de largeur nulle : texte brut lisible seulement. */
+    private static boolean isForbiddenHelpChar(int c) {
+        return (Character.isISOControl(c) && c != '\n')
+                || (c >= 0x202A && c <= 0x202E)
+                || (c >= 0x2066 && c <= 0x2069)
+                || (c >= 0x200B && c <= 0x200F)
+                || c == 0xFEFF;
     }
 
     /** Avant TODO §85 (LC4a) : sans aide contextuelle ni largeur. */

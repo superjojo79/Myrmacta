@@ -55,8 +55,15 @@ export function validateFieldDefinitions(definitions: FieldDefinition[], owner?:
       errors.push(`Le libellé du champ « ${shown} » est obligatoire${where}`)
     }
 
-    if ((def.helpText ?? '').length > MAX_HELP_TEXT_CHARS) {
+    if ((def.helpText ?? '').trim().length > MAX_HELP_TEXT_CHARS) {
       errors.push(`L'aide du champ « ${shown} » dépasse ${MAX_HELP_TEXT_CHARS} caractères`)
+    }
+    // Miroir du serveur : texte brut, sans contrôle (hors saut de ligne), marque bidirectionnelle ni espace de largeur nulle.
+    if (/[\u0000-\u0009\u000B-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/.test(def.helpText ?? '')) {
+      errors.push(`L'aide du champ « ${shown} » contient un caractère interdit (contrôle, bidirectionnel ou largeur nulle)`)
+    }
+    if (def.width === 'HALF' && def.type === 'REPEATABLE_GROUP') {
+      errors.push(`Un groupe répétable (« ${shown} ») occupe toute la largeur`)
     }
 
     if (def.type === 'SELECT' && (def.options ?? []).length === 0) {

@@ -22,3 +22,5 @@
 
 **Non traité (hors périmètre, cf. CHARTE §2) :** fournisseur réel de signature / eIDAS, export BI JDBC,
 vérifications d'environnement (ClamAV sous Docker, smoke Keycloak réel).
+
+**Suites de la revue des décisions (2026-10-02).** D-ASSIST-PROVIDER (assistant sur le starter Spring AI Anthropic) et D-INTEG-MAIL-PROTOCOL (connecteur Microsoft Graph `graph-mail-inbound`) livrés, chacun avec revue adversariale indépendante appliquée ; dernier `./mvnw verify` : **3260 tests, 0 échec** (3 ignorés : ITs PostgreSQL sans serveur). Le front n'a pas été touché (Vitest 682 / Playwright 120 inchangés).

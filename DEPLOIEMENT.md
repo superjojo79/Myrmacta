@@ -496,7 +496,7 @@ Techniquement, l'assistant s'appuie sur le starter Spring AI Anthropic ; son aut
 
 ## 16. E-mail entrant et bus Azure (TODO §87)
 
-Deux connecteurs interrogent un système externe à intervalle régulier (`imap-inbound`, `azure-service-bus`). Ils sont **inactifs tant qu'aucune instance n'est créée** et
+Trois connecteurs interrogent un système externe à intervalle régulier (`imap-inbound`, `graph-mail-inbound`, `azure-service-bus`). Ils sont **inactifs tant qu'aucune instance n'est créée** et
 activée dans *Admin → Connecteurs*.
 
 | Variable | Rôle (défaut) |
@@ -510,6 +510,7 @@ activée dans *Admin → Connecteurs*.
 
 **Réseau.** Le pare-feu sortant doit autoriser, pour chaque instance : l'hôte IMAP (993, ou 143 en STARTTLS), ou `*.servicebus.windows.net` (443), et — en OAuth2 —
 le point d'accès des jetons (`login.microsoftonline.com`). Les hôtes doivent résoudre vers des adresses publiques.
+**Microsoft Graph** (`graph-mail-inbound`) : sortie 443 vers `graph.microsoft.com` (ou `graph.microsoft.us`, `dod-graph.microsoft.us`, `microsoftgraph.chinacloudapi.cn`) et `login.microsoftonline.com`. Inscrire une application Entra ID avec la permission d'**application** `Mail.ReadWrite` (consentement administrateur), puis **la restreindre à la seule boîte voulue** par une stratégie d'accès d'application Exchange Online (`New-ApplicationAccessPolicy`) : sans elle, la permission donne accès à TOUTES les boîtes du tenant. La stratégie d'accès d'application est la voie historique ; Microsoft promeut désormais *RBAC for Applications* pour le même besoin — l'essentiel est que l'application ne voie qu'une boîte. Pas de mot de passe : seul `client_credentials` est accepté, avec `oauthScope = https://graph.microsoft.com/.default`.
 **Données.** Un e-mail entrant peut contenir des données personnelles : il devient un dossier soumis aux règles de rétention habituelles ; les messages
 traités restent dans la boîte (dossier `FlowForge-processed`) et sont à purger selon votre politique. **Plusieurs répliques** : le créneau d'interrogation est pris
 par comparaison-échange (D5), une seule réplique lit une boîte ou une file à la fois.

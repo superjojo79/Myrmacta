@@ -50,14 +50,16 @@ class InboundPollingConnectorTriggerJobTest {
     @Test
     void aNeverPolledInstanceIsPolledNow_andOnlyTheInboundTypesAreConsidered() {
         var imap = instance("imap-inbound", true, 60);
+        var graph = instance("graph-mail-inbound", true, 60);
         var bus = instance("azure-service-bus", true, null);
         var other = instance("kafka", true, 60);
-        when(instances.listByTenantId(TENANT)).thenReturn(List.of(imap, bus, other));
+        when(instances.listByTenantId(TENANT)).thenReturn(List.of(imap, graph, bus, other));
         when(state.findLastTriggeredAt(any())).thenReturn(Optional.empty());
 
         job.process(NOW);
 
         verify(runtime).onIncomingEvent(imap, Map.of());
+        verify(runtime).onIncomingEvent(graph, Map.of());
         verify(runtime).onIncomingEvent(bus, Map.of());
         verify(runtime, never()).onIncomingEvent(eq(other), any());
     }

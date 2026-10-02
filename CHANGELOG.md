@@ -36,6 +36,9 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
+- **TODO §87 (D3c-bis, revue D-INTEG-MAIL-PROTOCOL)** — **E-mail entrant par Microsoft Graph** (`graph-mail-inbound`) : second connecteur du même SPI que l'IMAP, pour Exchange Online (OAuth2
+  `client_credentials`, hôtes Graph seuls, aucun mot de passe). Mêmes règles que l'IMAP, désormais communes (`InboundMailRouting`) : corrélation par référence, expéditeur attesté, réponses automatiques
+  refusées, pièces jointes contrôlées, message rangé (jamais supprimé) et jamais remis deux fois. Sans curseur à conserver. Voir `DEPLOIEMENT.md` §16 (permission `Mail.ReadWrite` à restreindre à la boîte).
 - **TODO §90 (D7)** — **Interface en français et en anglais** (`vue-i18n`) : tout le SPA et le portail public, avec sélecteur de langue (choix conservé dans le navigateur), langue par défaut du
   tenant (`app.i18n.default-locale` / `APP_I18N_DEFAULT_LOCALE`, exposée par `/api/auth/me`), dates et nombres selon la langue, messages de validation et de repli traduits. Les e-mails d'invitation de
   tâche externe et de signature suivent la langue du tenant (lien `?lang=en` en anglais, lien français inchangé). Non traduits (journalisé) : libellés saisis par le tenant, détail d'erreur de l'API,

@@ -88,17 +88,17 @@ class ConnectorAdminApiTest {
     }
 
     @Test
-    void listDefinitions_registersExactlyTenTypesWithoutCollision_connecteursCibleLotB1_etD3cD3d() throws Exception {
+    void listDefinitions_registersExactlyElevenTypesWithoutCollision_connecteursCibleLotB1_etD3cD3d() throws Exception {
         // T-REG-REGISTRY-COUNT : les 6 connecteurs déjà livrés (http-rest, flowable-signal,
-        // flowable-callback, scheduler, smtp, document-storage) + batch-import + kafka + (TODO §87, D3c/D3d) imap-inbound
-        // et azure-service-bus, tous
+        // flowable-callback, scheduler, smtp, document-storage) + batch-import + kafka + (TODO §87, D3c/D3d) imap-inbound,
+        // graph-mail-inbound (D3c-bis) et azure-service-bus, tous
         // enregistrés sans collision de type au démarrage du contexte Spring réel (un doublon
         // ferait échouer ConnectorRegistry.init() et empêcherait ce test de démarrer).
         mockMvc.perform(get("/api/connector-definitions")
                         .param("size", "50")
                         .with(user("connector-admin", "TENANT_ADMIN")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(10))
+                .andExpect(jsonPath("$.totalElements").value(11))
                 .andExpect(jsonPath("$.content[*].type", hasItem("http-rest")))
                 .andExpect(jsonPath("$.content[*].type", hasItem("flowable-signal")))
                 .andExpect(jsonPath("$.content[*].type", hasItem("flowable-callback")))
@@ -108,6 +108,7 @@ class ConnectorAdminApiTest {
                 .andExpect(jsonPath("$.content[*].type", hasItem("batch-import")))
                 .andExpect(jsonPath("$.content[*].type", hasItem("kafka")))
                 .andExpect(jsonPath("$.content[*].type", hasItem("imap-inbound")))
+                .andExpect(jsonPath("$.content[*].type", hasItem("graph-mail-inbound")))
                 .andExpect(jsonPath("$.content[*].type", hasItem("azure-service-bus")));
     }
 

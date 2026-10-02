@@ -354,6 +354,7 @@ connecteurs eux-mêmes — leurs instances configurées). Types fournis de base 
 | `flowable-callback` | callback | `webhookAuthType`, `webhookSecret`, `messageName`, `correlationVariableName`, `correlationValuePath`, `mapping` (optionnel) |
 | `smtp` | service | aucun champ d'instance (réutilise la config SMTP de l'application) |
 | `document-storage` | service | aucun champ d'instance (réutilise le stockage documents déjà configuré) |
+| `graph-mail-inbound` | trigger (e-mail entrant, Microsoft Graph) | `mailbox`, `graphBaseUrl`, `folder`, `processedFolder`, `rejectedFolder`, OAuth2 (`oauthTokenUrl`, `oauthClientId`, `oauthClientSecret` ou certificat, `oauthScope`), puis les mêmes réglages de routage que `imap-inbound` (`pollSeconds`, `maxAttachments`, `requireAuthenticatedSender`, `trustedAuthservId`, `referencePattern`, `processKey`, `dossierTypeCode`, `mapping`) |
 | `imap-inbound` | trigger (e-mail entrant) | `host`, `port`, `security` (SSL / STARTTLS), `username`, `authMode` (mot de passe ou OAuth2), `password`, `folder`, `processedFolder`, `rejectedFolder`, `pollSeconds`, `referencePattern`, `processKey`, `dossierTypeCode`, `mapping` |
 | `azure-service-bus` | trigger (bus Azure) | `namespaceHost`, `entityPath`, `authMode` (SAS ou OAuth2), `sasKeyName`, `sasKey`, `pollSeconds`, `processKey`, `dossierTypeCode`, `mapping` |
 
@@ -407,6 +408,25 @@ Le préfixe `{tenantId}` est celui du reverse-proxy (chemin du tenant, décision
 n'y en a pas, le chemin commence à `/api/…`. Un bouton **Copier** recopie l'URL (sans le mot
 `POST`). Les autres types (`smtp`, `document-storage`, `scheduler`, `flowable-signal`) n'ont
 pas d'endpoint HTTP entrant.
+
+### Recevoir des e-mails avec Microsoft Graph : le connecteur `graph-mail-inbound` (TODO §87)
+
+Pour une boîte **Exchange Online**, `graph-mail-inbound` fait la même chose que `imap-inbound` (voir ci-dessous : dossier créé ou alimenté par la référence de l'objet, pièces
+jointes contrôlées, réponses automatiques refusées, expéditeur attesté, rien jamais supprimé) en passant par l'API Microsoft Graph plutôt que par IMAP. Différences :
+
+- **Authentification** : application Entra ID, OAuth2 `client_credentials` uniquement (`oauthScope = https://graph.microsoft.com/.default`), permission d'application `Mail.ReadWrite`.
+  **Restreignez-la à la boîte voulue** (stratégie d'accès d'application Exchange Online), sinon l'application peut lire toutes les boîtes du tenant.
+- **Boîte** : `mailbox` (adresse de la boîte, boîte partagée comprise). `folder` vaut `Inbox` ou le nom d'un dossier de premier niveau qui doit exister ; `processedFolder` et `rejectedFolder`
+  sont des dossiers de premier niveau créés au besoin. `graphBaseUrl` n'accepte que les hôtes Microsoft Graph, en https.
+- **Rangement et idempotence** : le message est déplacé (jamais supprimé) ; un message remis reçoit d'abord la catégorie Outlook `FlowForge-delivered`, de sorte qu'un déplacement qui échoue ne provoque pas de seconde remise.
+  La seule fenêtre résiduelle est l'échec simultané du marquage **et** du déplacement (panne de Graph entre les deux) : le message serait alors remis au tour suivant — comme en IMAP, il n'y a pas de détection de doublon par `Message-ID`.
+  Il n'y a pas de curseur à conserver : un message pris en charge quitte le dossier lu. Pour rejouer un message déjà traité, remettez-le dans le dossier lu **et retirez-lui la catégorie** `FlowForge-delivered`.
+  Un message qui ne peut pas être déplacé (verrou, conflit) est signalé dans les journaux et laissé en place, sans bloquer les suivants ; un message de plus de 4 Mo (corps et en-têtes) est refusé.
+- **Pièces jointes** : seules les pièces *fichier* sont prises ; les images incrustées (logos de signature) sont ignorées, les messages joints et liens sont comptés dans `inboundAttachmentsSkipped`.
+  Le total des pièces d'un message est borné (25 Mo par défaut), quelle que soit la taille annoncée.
+- **`Authentication-Results`** : Graph expose les en-têtes du message ; `trustedAuthservId` est l'identifiant que **votre** serveur de réception écrit en premier (Exchange Online : celui qui figure
+  dans les en-têtes d'un message reçu, souvent `spf.protection.outlook.com`). FlowForge retient le **premier** en-tête `Authentication-Results` tel que Graph le restitue (ordre du message) :
+  vérifiez-le avec un message de test dont l'expéditeur ajoute un faux en-tête, avant de compter sur le rattachement par référence.
 
 ### Recevoir des e-mails : le connecteur `imap-inbound` (TODO §87)
 

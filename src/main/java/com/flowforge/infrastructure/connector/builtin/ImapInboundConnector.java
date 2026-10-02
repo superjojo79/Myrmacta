@@ -39,11 +39,9 @@ import tools.jackson.databind.ObjectMapper;
 public class ImapInboundConnector implements ConnectorDefinition, PollingTriggerConnector {
 
     static final String PASSWORD_MODE = "PASSWORD";
-    static final int MAX_SUBJECT_CHARS = 500;
-    static final int MAX_REGEX_CHARS = 200;
     private static final Logger log = LoggerFactory.getLogger(ImapInboundConnector.class);
 
-    private final SimpleJsonPathMapper mapper;
+    private final InboundMailRouting routing;
     private final OutboundUrlGuard outboundUrlGuard;
     private final ImapMailbox mailbox;
     private final InboundConnectorProperties inbound;
@@ -68,7 +66,7 @@ public class ImapInboundConnector implements ConnectorDefinition, PollingTrigger
             InboundConnectorProperties inbound,
             ImapMailbox mailbox,
             Clock clock) {
-        this.mapper = Objects.requireNonNull(mapper, "mapper");
+        this.routing = new InboundMailRouting(mapper, "imap-inbound");
         this.outboundUrlGuard = Objects.requireNonNull(outboundUrlGuard, "outboundUrlGuard");
         this.inbound = Objects.requireNonNull(inbound, "inbound");
         this.mailbox = Objects.requireNonNull(mailbox, "mailbox");
@@ -110,28 +108,8 @@ public class ImapInboundConnector implements ConnectorDefinition, PollingTrigger
                 new ConfigField("processedFolder", "Processed folder", ConfigFieldType.STRING, false, "FlowForge-processed", List.of(),
                         "Taken-in messages are moved here (created if missing), never deleted."),
                 new ConfigField("rejectedFolder", "Rejected folder", ConfigFieldType.STRING, false, "FlowForge-rejected", List.of(),
-                        "Automatic replies, lists, oversized or invalid messages are moved here."),
-                new ConfigField("pollSeconds", "Polling interval (seconds)", ConfigFieldType.INTEGER, false, "60", List.of(), null),
-                new ConfigField("maxAttachments", "Attachments kept per message", ConfigFieldType.INTEGER, false, "5", List.of(),
-                        "Further attachments are skipped (and counted in the process variable inboundAttachmentsRejected)."),
-                new ConfigField("requireAuthenticatedSender", "Require an authenticated sender to join an existing dossier",
-                        ConfigFieldType.BOOLEAN, false, "true", List.of(),
-                        "true (default): a reference in the subject only adds the message to that dossier when the FIRST Authentication-Results "
-                                + "header, written by YOUR receiving server (trustedAuthservId), attests the sender: dmarc=pass, or dkim=pass / spf=pass "
-                                + "aligned with the From domain. Otherwise a new dossier is created (the sender address alone can be forged). Set false "
-                                + "only if you accept that anyone who guesses a reference can feed that dossier."),
-                new ConfigField("trustedAuthservId", "Authentication-Results server id", ConfigFieldType.STRING, false, null, List.of(),
-                        "The authserv-id your receiving server writes first in Authentication-Results (e.g. mx.example.com, or "
-                                + "'spf.protection.outlook.com' style identifier shown in a received message's headers). Required to join existing dossiers "
-                                + "while requireAuthenticatedSender is true."),
-                new ConfigField("referencePattern", "Dossier reference pattern", ConfigFieldType.STRING, false, null, List.of(),
-                        "Regular expression with ONE capture group, applied to the subject, e.g. \\[(DOS-[0-9-]+)\\]. A match adds "
-                                + "the message to that dossier; otherwise (or when the dossier does not exist) a new one is created."),
-                new ConfigField("processKey", "Process key", ConfigFieldType.STRING, true, null, List.of(), null),
-                new ConfigField("dossierTypeCode", "Dossier type", ConfigFieldType.STRING, true, null, List.of(), null),
-                new ConfigField("mapping", "Message mapping", ConfigFieldType.STRING, false, null, List.of(),
-                        "JSON object: {\"fields\": {\"objet\": \"$.subject\", \"texte\": \"$.body\", \"expediteur\": \"$.from\"}, "
-                                + "\"variables\": {...}}. Available: messageId, from, fromName, subject, body, sentAt, attachmentCount.")));
+                        "Automatic replies, lists, oversized or invalid messages are moved here.")));
+        fields.addAll(InboundMailRouting.fields());
         fields.addAll(OAuth2ConfigSupport.fields());
         return fields;
     }
@@ -150,7 +128,7 @@ public class ImapInboundConnector implements ConnectorDefinition, PollingTrigger
         } catch (IllegalArgumentException ex) {
             throw new ConnectorValidationException("host is not an acceptable public address");
         }
-        int port = intOr(config.get("port"), 993);
+        int port = InboundMailRouting.intOr(config.get("port"), 993);
         if (port < 1 || port > 65535) {
             throw new ConnectorValidationException("port must be between 1 and 65535");
         }
@@ -173,28 +151,13 @@ public class ImapInboundConnector implements ConnectorDefinition, PollingTrigger
                 throw new ConnectorValidationException(key + " is not a valid folder name");
             }
         }
-        if (sameFolder(stringOr(config.get("processedFolder"), "FlowForge-processed"), stringOr(config.get("folder"), "INBOX"))
-                || sameFolder(stringOr(config.get("rejectedFolder"), "FlowForge-rejected"), stringOr(config.get("folder"), "INBOX"))
-                || sameFolder(stringOr(config.get("processedFolder"), "FlowForge-processed"), stringOr(config.get("rejectedFolder"), "FlowForge-rejected"))) {
+        if (sameFolder(InboundMailRouting.stringOr(config.get("processedFolder"), "FlowForge-processed"), InboundMailRouting.stringOr(config.get("folder"), "INBOX"))
+                || sameFolder(InboundMailRouting.stringOr(config.get("rejectedFolder"), "FlowForge-rejected"), InboundMailRouting.stringOr(config.get("folder"), "INBOX"))
+                || sameFolder(InboundMailRouting.stringOr(config.get("processedFolder"), "FlowForge-processed"), InboundMailRouting.stringOr(config.get("rejectedFolder"), "FlowForge-rejected"))) {
             // Casse ignorée : « inbox » et « INBOX » sont le même dossier IMAP (revue D3c/D3d, M-A : sinon le message se copierait dans la boîte).
             throw new ConnectorValidationException("processedFolder and rejectedFolder must differ from the folder read and from each other");
         }
-        if (referencePattern(config) != null && !"false".equals(String.valueOf(config.get("requireAuthenticatedSender")))
-                && (config.get("trustedAuthservId") == null || String.valueOf(config.get("trustedAuthservId")).isBlank())) {
-            throw new ConnectorValidationException("referencePattern needs trustedAuthservId (the server id your mail server writes first in "
-                    + "Authentication-Results), or requireAuthenticatedSender=false to accept that the sender address can be forged");
-        }
-        int poll = intOr(config.get("pollSeconds"), 60);
-        if (poll < inbound.minPollSeconds()) {
-            throw new ConnectorValidationException("pollSeconds must be at least " + inbound.minPollSeconds());
-        }
-        int maxAttachments = intOr(config.get("maxAttachments"), 5);
-        if (maxAttachments < 0 || maxAttachments > 20) {
-            throw new ConnectorValidationException("maxAttachments must be between 0 and 20");
-        }
-        referencePattern(config);
-        OAuth2ConfigSupport.text(config, "processKey");
-        OAuth2ConfigSupport.text(config, "dossierTypeCode");
+        InboundMailRouting.validate(config, inbound);
     }
 
     @Override
@@ -208,197 +171,30 @@ public class ImapInboundConnector implements ConnectorDefinition, PollingTrigger
         } catch (IllegalArgumentException ex) {
             throw new IllegalStateException("host is not an acceptable public address");
         }
-        if (sameFolder(stringOr(config.get("processedFolder"), "FlowForge-processed"), stringOr(config.get("folder"), "INBOX"))
-                || sameFolder(stringOr(config.get("rejectedFolder"), "FlowForge-rejected"), stringOr(config.get("folder"), "INBOX"))) {
+        if (sameFolder(InboundMailRouting.stringOr(config.get("processedFolder"), "FlowForge-processed"), InboundMailRouting.stringOr(config.get("folder"), "INBOX"))
+                || sameFolder(InboundMailRouting.stringOr(config.get("rejectedFolder"), "FlowForge-rejected"), InboundMailRouting.stringOr(config.get("folder"), "INBOX"))) {
             throw new IllegalStateException("processedFolder and rejectedFolder must differ from the folder read");
         }
         boolean oauth = OAuth2ConfigSupport.isOAuth(config);
         String secret = oauth ? tokenProvider.accessToken(instance) : OAuth2ConfigSupport.text(config, "password");
         ImapMailbox.Settings settings = new ImapMailbox.Settings(
                 OAuth2ConfigSupport.text(config, "host"),
-                intOr(config.get("port"), 993),
+                InboundMailRouting.intOr(config.get("port"), 993),
                 "STARTTLS".equals(config.get("security")) ? ImapMailbox.Security.STARTTLS : ImapMailbox.Security.SSL,
                 OAuth2ConfigSupport.text(config, "username"),
                 secret,
                 oauth,
-                stringOr(config.get("folder"), "INBOX"),
-                stringOr(config.get("processedFolder"), "FlowForge-processed"),
-                stringOr(config.get("rejectedFolder"), "FlowForge-rejected"),
+                InboundMailRouting.stringOr(config.get("folder"), "INBOX"),
+                InboundMailRouting.stringOr(config.get("processedFolder"), "FlowForge-processed"),
+                InboundMailRouting.stringOr(config.get("rejectedFolder"), "FlowForge-rejected"),
                 Math.toIntExact(Duration.ofSeconds(30).toMillis()));
         ImapMailbox.Limits limits = new ImapMailbox.Limits(inbound.maxMessageBytes(), inbound.maxBodyChars(),
-                inbound.maxAttachmentBytes(), intOr(config.get("maxAttachments"), 5));
-        Pattern reference = referencePattern(config);
-        Map<String, Object> mapping = asMap(config.get("mapping"));
-        Map<String, Object> fieldPaths = asMap(mapping.get("fields"));
-        Map<String, Object> variablePaths = asMap(mapping.get("variables"));
-        String processKey = OAuth2ConfigSupport.text(config, "processKey");
-        String dossierType = OAuth2ConfigSupport.text(config, "dossierTypeCode");
-
-        boolean requireAuthenticated = !"false".equals(String.valueOf(config.get("requireAuthenticatedSender")));
-        String trustedAuthservId = config.get("trustedAuthservId") == null ? null : String.valueOf(config.get("trustedAuthservId"));
-        mailbox.process(settings, inbound.maxMessagesPerPoll(), limits, new ImapMailbox.Handler() {
-            @Override
-            public ImapMailbox.Outcome handle(ImapMailbox.Mail mail) {
-                if (mail.automatic() || mail.fromAddress().isBlank()) {
-                    return ImapMailbox.Outcome.REJECTED;
-                }
-                Map<String, Object> payload = payload(mail);
-                Map<String, Object> fields = mapPaths(payload, fieldPaths);
-                for (Object value : fields.values()) {
-                    if (value == null || (value instanceof String text && text.isBlank())) {
-                        log.warn("imap-inbound: instance {} message refused: a mapped field is empty", instance.id());
-                        return ImapMailbox.Outcome.REJECTED;
-                    }
-                }
-                Map<String, Object> variables = new LinkedHashMap<>(mapPaths(payload, variablePaths));
-                variables.values().removeIf(Objects::isNull);
-                variables.putIfAbsent("mailMessageId", payload.get("messageId"));
-                variables.putIfAbsent("mailFrom", payload.get("from"));
-                variables.putIfAbsent("mailSubject", payload.get("subject"));
-                boolean authenticated = AuthenticationResults.attests(mail.authenticationResults(), trustedAuthservId, mail.fromAddress());
-                variables.put("mailSenderAuthenticated", authenticated);
-                if (mail.attachmentsSkipped() > 0) {
-                    variables.put("inboundAttachmentsSkipped", mail.attachmentsSkipped());
-                }
-                String existing = reference == null ? null : firstGroup(reference, mail.subject());
-                if (existing != null && requireAuthenticated && !authenticated) {
-                    // L'expéditeur est usurpable : sans attestation de NOTRE serveur de réception, le message ne s'ajoute pas à un
-                    // dossier existant (il en crée un nouveau, signalé au processus) — revue D3c/D3d, H3.
-                    variables.put("mailReferenceIgnored", existing);
-                    existing = null;
-                }
-                try {
-                    delivery.deliver(new WorkflowTriggerEvent(processKey, dossierType, fields, variables, existing, mail.attachments(), true));
-                } catch (RuntimeException failure) {
-                    // Le message n'est PAS rangé comme traité : il va dans « refusés », visible et rejouable à la main.
-                    log.warn("imap-inbound: instance {} could not take a message in charge ({}): moved to the rejected folder",
-                            instance.id(), failure.getClass().getSimpleName());
-                    return ImapMailbox.Outcome.REJECTED;
-                }
-                return ImapMailbox.Outcome.PROCESSED;
-            }
-
-            @Override
-            public void unreadable(String reason) {
-                log.warn("imap-inbound: instance {} message unreadable ({}): moved to the rejected folder", instance.id(), reason);
-            }
-
-            @Override
-            public void oversize(long bytes) {
-                log.warn("imap-inbound: instance {} message of {} bytes refused (over maxMessageBytes)", instance.id(), bytes);
-            }
-        });
+                inbound.maxAttachmentBytes(), InboundMailRouting.intOr(config.get("maxAttachments"), 5));
+        mailbox.process(settings, inbound.maxMessagesPerPoll(), limits, routing.handler(instance, delivery));
     }
 
     private static boolean sameFolder(String a, String b) {
         return a.strip().equalsIgnoreCase(b.strip());
     }
 
-    private static Map<String, Object> payload(ImapMailbox.Mail mail) {
-        Map<String, Object> p = new LinkedHashMap<>();
-        p.put("messageId", mail.messageId());
-        p.put("from", mail.fromAddress());
-        p.put("fromName", mail.fromDisplay());
-        p.put("subject", mail.subject());
-        p.put("body", mail.body());
-        p.put("sentAt", mail.sentAt() == null ? "" : mail.sentAt().toString());
-        p.put("attachmentCount", mail.attachments().size());
-        return p;
-    }
-
-    private static String firstGroup(Pattern pattern, String subject) {
-        String bounded = subject == null ? "" : subject.length() > MAX_SUBJECT_CHARS ? subject.substring(0, MAX_SUBJECT_CHARS) : subject;
-        try {
-            Matcher matcher = pattern.matcher(new DeadlineCharSequence(bounded, 50));
-            return matcher.find() && matcher.groupCount() >= 1 ? matcher.group(1) : null;
-        } catch (IllegalStateException timeout) {
-            return null; // motif trop coûteux sur cet objet : aucune corrélation, jamais un blocage de la boîte
-        }
-    }
-
-    private static Pattern referencePattern(Map<String, Object> config) {
-        Object raw = config.get("referencePattern");
-        if (raw == null || String.valueOf(raw).isBlank()) {
-            return null;
-        }
-        String text = String.valueOf(raw);
-        if (text.length() > MAX_REGEX_CHARS) {
-            throw new ConnectorValidationException("referencePattern is too long");
-        }
-        try {
-            Pattern pattern = Pattern.compile(text);
-            if (pattern.matcher("").groupCount() != 1) {
-                throw new ConnectorValidationException("referencePattern must have exactly one capture group");
-            }
-            return pattern;
-        } catch (PatternSyntaxException ex) {
-            throw new ConnectorValidationException("referencePattern is not a valid regular expression");
-        }
-    }
-
-    /** Texte dont la lecture échoue passé un délai : borne le temps d'une expression régulière écrite par un administrateur. */
-    static final class DeadlineCharSequence implements CharSequence {
-        private final CharSequence delegate;
-        private final long deadlineNanos;
-
-        DeadlineCharSequence(CharSequence delegate, long millis) {
-            this.delegate = delegate;
-            this.deadlineNanos = System.nanoTime() + millis * 1_000_000L;
-        }
-
-        @Override
-        public int length() {
-            return delegate.length();
-        }
-
-        @Override
-        public char charAt(int index) {
-            if (System.nanoTime() > deadlineNanos) {
-                throw new IllegalStateException("regular expression took too long");
-            }
-            return delegate.charAt(index);
-        }
-
-        @Override
-        public CharSequence subSequence(int start, int end) {
-            return new DeadlineCharSequence(delegate.subSequence(start, end), Math.max(1, (deadlineNanos - System.nanoTime()) / 1_000_000L));
-        }
-
-        @Override
-        public String toString() {
-            return delegate.toString();
-        }
-    }
-
-    private Map<String, Object> mapPaths(Object item, Map<String, Object> paths) {
-        if (paths.isEmpty()) {
-            return Map.of();
-        }
-        Map<String, Object> out = new LinkedHashMap<>();
-        for (Map.Entry<String, Object> entry : paths.entrySet()) {
-            Object value = mapper.read(item, String.valueOf(entry.getValue()));
-            out.put(entry.getKey(), value);
-        }
-        return out;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Map<String, Object> asMap(Object value) {
-        return value instanceof Map<?, ?> map ? (Map<String, Object>) map : Map.of();
-    }
-
-    private static String stringOr(Object value, String fallback) {
-        return value == null || String.valueOf(value).isBlank() ? fallback : String.valueOf(value);
-    }
-
-    private static int intOr(Object value, int fallback) {
-        if (value == null || String.valueOf(value).isBlank()) {
-            return fallback;
-        }
-        try {
-            return Integer.parseInt(String.valueOf(value).trim());
-        } catch (NumberFormatException ex) {
-            throw new ConnectorValidationException("not a whole number: " + value);
-        }
-    }
 }

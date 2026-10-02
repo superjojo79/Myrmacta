@@ -1,0 +1,19 @@
+databaseChangeLog:
+  - changeSet:
+      id: 028-portal-link-send-claim
+      author: flowforge
+      comment: >-
+        TODO §79 (D5) — bail de prise d'un lien portail en attente d'envoi. L'exécutant qui envoie l'invitation prend d'abord le
+        lien (UPDATE conditionnel sur claimed_until) : un second exécutant concurrent ne l'envoie pas, donc le tiers ne reçoit
+        pas deux e-mails dont un lien mort. Additif, nullable ; remis à null à chaque transition de statut.
+      changes:
+        - addColumn:
+            tableName: portal_link
+            columns:
+              - column:
+                  name: claimed_until
+                  type: timestamp with time zone
+      rollback:
+        - dropColumn:
+            tableName: portal_link
+            columnName: claimed_until

@@ -58,18 +58,27 @@ class BatchImportConnectorTriggerJob {
         process(Instant.now());
     }
 
-    void process(Instant now) {
+    void process(Instant tickTime) {
+        // Les colonnes sont à la microseconde (H2, PostgreSQL) : un créneau pris à la nanoseconde ne se retrouverait pas par
+        // égalité au moment de le rendre (revue D5).
+        Instant now = tickTime.truncatedTo(java.time.temporal.ChronoUnit.MICROS);
         for (ConnectorInstanceData instance : connectorInstanceRepository.listByTenantId(tenantProperties.id())) {
             if (!BATCH_IMPORT_TYPE.equals(instance.connectorType()) || !instance.enabled()) {
                 continue;
             }
-            if (!isDue(instance, now)) {
+            Optional<Instant> lastTriggeredAt = scheduleStateRepository.findLastTriggeredAt(instance.id());
+            if (!isDue(instance, lastTriggeredAt, now)) {
+                continue;
+            }
+            // TODO §79 (D5) : créneau pris avant l'import (compare-and-set) — deux exécutants ne parcourent pas le même dossier SFTP
+            // en même temps (le renommage atomique protégeait déjà les fichiers, pas les listings divergents).
+            if (!scheduleStateRepository.claimTrigger(instance.id(), lastTriggeredAt.orElse(null), now)) {
                 continue;
             }
             try {
                 connectorTriggerRuntime.onIncomingEvent(instance, Map.of());
-                scheduleStateRepository.upsert(instance.id(), now);
             } catch (RuntimeException failure) {
+                scheduleStateRepository.releaseTrigger(instance.id(), lastTriggeredAt.orElse(null), now);
                 log.warn(
                         "batch-import: instance {} failed this poll, will retry next cycle: {}",
                         instance.id(), failure.getMessage(), failure);
@@ -77,8 +86,7 @@ class BatchImportConnectorTriggerJob {
         }
     }
 
-    private boolean isDue(ConnectorInstanceData instance, Instant now) {
-        Optional<Instant> lastTriggeredAt = scheduleStateRepository.findLastTriggeredAt(instance.id());
+    private boolean isDue(ConnectorInstanceData instance, Optional<Instant> lastTriggeredAt, Instant now) {
         if (lastTriggeredAt.isEmpty()) {
             return true;
         }

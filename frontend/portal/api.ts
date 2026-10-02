@@ -7,6 +7,8 @@ export interface PortalField {
   required: boolean
   options?: string[]
   group?: string | null
+  helpText?: string | null
+  width?: string | null
 }
 
 export interface PortalAttachment {

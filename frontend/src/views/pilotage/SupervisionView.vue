@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { listAllDossierTypes } from '@/api/dossierTypes'
@@ -6,9 +7,17 @@ import { listDossiers } from '@/api/dossiers'
 import { toProblemDetail } from '@/api/http'
 import type { DossierListItem, DossierStatus, DossierType } from '@/api/types'
 import { useDossierStore } from '@/stores/dossier'
+import {
+  activeFieldFilters,
+  fieldFilterInputs,
+  fieldFiltersFromQuery,
+  MAX_FIELD_FILTERS,
+  tooManyFieldFilters,
+} from '@/dossier/fieldSearch'
 
 const STATUSES: DossierStatus[] = ['DRAFT', 'OUVERT', 'EN_COURS', 'SUSPENDU', 'CLOTURE', 'ARCHIVE']
 
+const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const store = useDossierStore()
@@ -27,6 +36,14 @@ const statusFilter = ref<DossierStatus | ''>('')
 const typeFilter = ref('')
 const referenceFilter = ref('')
 const types = ref<DossierType[]>([])
+// TODO §81 (D2) : filtres sur les champs cherchables du type choisi (clés de l'API : `contrat.prefix`, `montant.gte`…).
+const fieldFilters = ref<Record<string, string>>({})
+const fieldInputs = computed(() =>
+  fieldFilterInputs(types.value.find((t) => t.code === typeFilter.value)?.fieldDefinitions),
+)
+const fieldFilterError = computed(() =>
+  tooManyFieldFilters(fieldFilters.value) ? t('supervision.errors.tooManyFilters', { max: MAX_FIELD_FILTERS }) : null,
+)
 
 const hasPrev = computed(() => page.value > 0)
 const hasNext = computed(() => page.value + 1 < totalPages.value)
@@ -38,6 +55,7 @@ function readFiltersFromRoute() {
     : ''
   typeFilter.value = typeof q.dossierTypeCode === 'string' ? q.dossierTypeCode : ''
   referenceFilter.value = typeof q.reference === 'string' ? q.reference : ''
+  fieldFilters.value = typeFilter.value ? fieldFiltersFromQuery(q) : {}
   const rawPage = typeof q.page === 'string' ? Number(q.page) : 0
   page.value = Number.isFinite(rawPage) && rawPage >= 0 ? rawPage : 0
   const rawSize = typeof q.size === 'string' ? Number(q.size) : 20
@@ -49,6 +67,9 @@ async function syncRoute() {
   if (statusFilter.value) nextQuery.status = statusFilter.value
   if (typeFilter.value) nextQuery.dossierTypeCode = typeFilter.value
   if (referenceFilter.value) nextQuery.reference = referenceFilter.value
+  if (typeFilter.value) {
+    for (const [key, value] of Object.entries(activeFieldFilters(fieldFilters.value))) nextQuery[`f.${key}`] = value
+  }
   if (page.value > 0) nextQuery.page = String(page.value)
   if (size.value !== 20) nextQuery.size = String(size.value)
   await router.replace({ query: nextQuery })
@@ -64,6 +85,7 @@ async function loadList() {
       status: statusFilter.value || undefined,
       dossierTypeCode: typeFilter.value || undefined,
       reference: referenceFilter.value || undefined,
+      fieldFilters: typeFilter.value ? activeFieldFilters(fieldFilters.value) : undefined,
     })
     items.value = result.content ?? []
     totalElements.value = result.totalElements ?? 0
@@ -71,7 +93,7 @@ async function loadList() {
     page.value = result.page ?? page.value
     size.value = result.size ?? size.value
   } catch (err) {
-    listError.value = toProblemDetail(err).detail ?? 'Impossible de charger la liste'
+    listError.value = toProblemDetail(err).detail ?? t('supervision.errors.listFailed')
     items.value = []
   } finally {
     listLoading.value = false
@@ -79,6 +101,7 @@ async function loadList() {
 }
 
 async function applyFilters() {
+  if (fieldFilterError.value) return
   page.value = 0
   await syncRoute()
   await loadList()
@@ -98,7 +121,7 @@ async function openDossier() {
   error.value = null
   const value = query.value.trim()
   if (!value) {
-    error.value = 'Saisir une référence ou un identifiant'
+    error.value = t('supervision.errors.needReference')
     return
   }
   loading.value = true
@@ -110,7 +133,7 @@ async function openDossier() {
     }
     if (store.dossier) await router.push(`/dossiers/${store.dossier.id}`)
   } catch (err) {
-    error.value = toProblemDetail(err).detail ?? 'Dossier introuvable'
+    error.value = toProblemDetail(err).detail ?? t('supervision.errors.notFound')
   } finally {
     loading.value = false
   }
@@ -137,48 +160,71 @@ watch(
 
 <template>
   <section class="supervision">
-    <h1>Supervision</h1>
+    <h1>{{ t('supervision.title') }}</h1>
 
     <form class="supervision__filters" @submit.prevent="applyFilters">
       <label>
-        Statut
+        {{ t('supervision.status') }}
         <select v-model="statusFilter">
-          <option value="">Tous</option>
+          <option value="">{{ t('supervision.all') }}</option>
           <option v-for="status in STATUSES" :key="status" :value="status">{{ status }}</option>
         </select>
       </label>
       <label>
-        Type
-        <select v-model="typeFilter">
-          <option value="">Tous</option>
+        {{ t('supervision.type') }}
+        <select v-model="typeFilter" data-testid="type-filter" @change="fieldFilters = {}">
+          <option value="">{{ t('supervision.all') }}</option>
           <option v-for="type in types" :key="type.code" :value="type.code">
             {{ type.label }} ({{ type.code }})
           </option>
         </select>
       </label>
       <label>
-        Référence
-        <input v-model="referenceFilter" type="text" placeholder="préfixe DOS-…" />
+        {{ t('supervision.reference') }}
+        <input v-model="referenceFilter" type="text" :placeholder="t('supervision.referencePlaceholder')" />
       </label>
-      <button type="submit" :disabled="listLoading">Filtrer</button>
+      <fieldset v-if="fieldInputs.length" class="supervision__fields" data-testid="field-filters">
+        <legend>{{ t('supervision.typeFields') }}</legend>
+        <label v-for="input in fieldInputs" :key="input.key">
+          {{ input.label }}
+          <select v-if="input.kind === 'select'" v-model="fieldFilters[input.key]" :data-testid="`field-filter-${input.key}`">
+            <option value="">{{ t('supervision.all') }}</option>
+            <option v-for="option in input.options" :key="option" :value="option">{{ option }}</option>
+          </select>
+          <select v-else-if="input.kind === 'boolean'" v-model="fieldFilters[input.key]" :data-testid="`field-filter-${input.key}`">
+            <option value="">{{ t('supervision.all') }}</option>
+            <option value="true">{{ t('common.yes') }}</option>
+            <option value="false">{{ t('common.no') }}</option>
+          </select>
+          <input
+            v-else
+            v-model="fieldFilters[input.key]"
+            :type="input.kind === 'text' ? 'text' : input.kind"
+            :step="input.kind === 'number' ? 'any' : undefined"
+            :data-testid="`field-filter-${input.key}`"
+          />
+        </label>
+        <p v-if="fieldFilterError" class="supervision__error" role="alert">{{ fieldFilterError }}</p>
+      </fieldset>
+      <button type="submit" :disabled="listLoading || !!fieldFilterError">{{ t('supervision.filter') }}</button>
     </form>
 
     <p v-if="listError" class="supervision__error">{{ listError }}</p>
-    <p v-if="listLoading">Chargement…</p>
+    <p v-if="listLoading">{{ t('common.loading') }}</p>
 
     <table v-else class="supervision__table">
       <thead>
         <tr>
-          <th>Référence</th>
-          <th>Libellé</th>
-          <th>Type</th>
-          <th>Statut</th>
-          <th>Mis à jour</th>
+          <th>{{ t('supervision.reference') }}</th>
+          <th>{{ t('supervision.label') }}</th>
+          <th>{{ t('supervision.type') }}</th>
+          <th>{{ t('supervision.status') }}</th>
+          <th>{{ t('supervision.updated') }}</th>
         </tr>
       </thead>
       <tbody>
         <tr v-if="items.length === 0">
-          <td colspan="5">Aucun dossier</td>
+          <td colspan="5">{{ t('supervision.empty') }}</td>
         </tr>
         <tr
           v-for="item in items"
@@ -197,26 +243,34 @@ watch(
 
     <div class="supervision__pager">
       <button type="button" :disabled="!hasPrev || listLoading" @click="goPage(page - 1)">
-        Précédent
+        {{ t('common.previous') }}
       </button>
-      <span>Page {{ page + 1 }} / {{ Math.max(totalPages, 1) }} ({{ totalElements }})</span>
+      <span>{{ t('supervision.page', { page: page + 1, pages: Math.max(totalPages, 1), total: totalElements }) }}</span>
       <button type="button" :disabled="!hasNext || listLoading" @click="goPage(page + 1)">
-        Suivant
+        {{ t('common.next') }}
       </button>
     </div>
 
-    <h2>Ouverture rapide</h2>
-    <p>Ouvrir un dossier par référence ou identifiant.</p>
+    <h2>{{ t('supervision.quickOpen') }}</h2>
+    <p>{{ t('supervision.quickOpenHint') }}</p>
     <form class="supervision__form" @submit.prevent="openDossier">
-      <input v-model="query" type="text" placeholder="DOS-… ou UUID" />
-      <button type="submit" :disabled="loading">Ouvrir</button>
-      <RouterLink class="supervision__create" to="/dossiers/new">Créer un dossier</RouterLink>
+      <input v-model="query" type="text" :placeholder="t('supervision.quickPlaceholder')" />
+      <button type="submit" :disabled="loading">{{ t('supervision.open') }}</button>
+      <RouterLink class="supervision__create" to="/dossiers/new">{{ t('supervision.create') }}</RouterLink>
     </form>
     <p v-if="error" class="supervision__error">{{ error }}</p>
   </section>
 </template>
 
 <style scoped>
+.supervision__fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  border: 1px solid #ddd;
+  padding: 0.5rem 0.75rem;
+}
+
 .supervision__filters,
 .supervision__form,
 .supervision__pager {

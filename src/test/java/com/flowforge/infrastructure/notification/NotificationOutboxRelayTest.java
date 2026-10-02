@@ -54,6 +54,7 @@ class NotificationOutboxRelayTest {
     @BeforeEach
     void setUp() {
         outboxRepository = mock(NotificationOutboxRepository.class);
+        when(outboxRepository.renewClaim(any(), any(), any())).thenReturn(true);
         webhookRepository = mock(NotificationWebhookRepository.class);
         emailPort = mock(EmailPort.class);
         webhookPort = mock(WebhookPort.class);
@@ -270,5 +271,39 @@ class NotificationOutboxRelayTest {
                 now,
                 now,
                 null);
+    }
+
+    // ---- TODO §79 (D5, revue) : le bail est renouvelé juste avant chaque envoi -----------------------------------------
+
+    @Test
+    void relay_aRowTakenOverByAnotherExecutorWhileTheBatchWasRunningIsSkippedNotSentTwice() {
+        Instant now = Instant.parse("2026-08-07T12:00:00Z");
+        NotificationOutboxRecord taken = pending(NotificationChannel.EMAIL,
+                "{\"to\":\"a@b.c\",\"subject\":\"s\",\"body\":\"b\"}", now);
+        when(outboxRepository.lockNextPending(20, now)).thenReturn(List.of(taken));
+        when(outboxRepository.renewClaim(eq(taken.id()), eq(taken.nextAttemptAt()), any())).thenReturn(false);
+
+        relay.relayPending(now);
+
+        verify(emailPort, never()).send(any(), any(), any());
+        verify(outboxRepository, never()).markProcessed(any(), any());
+    }
+
+    @Test
+    void relay_renewsTheClaimWithTheTokenItReceivedBeforeSending() {
+        Instant now = Instant.parse("2026-08-07T12:00:00Z");
+        NotificationOutboxRecord row = pending(NotificationChannel.EMAIL,
+                "{\"to\":\"a@b.c\",\"subject\":\"s\",\"body\":\"b\"}", now);
+        when(outboxRepository.lockNextPending(20, now)).thenReturn(List.of(row));
+
+        relay.relayPending(now);
+
+        var order = org.mockito.Mockito.inOrder(outboxRepository, emailPort);
+        var renewedAt = org.mockito.ArgumentCaptor.forClass(Instant.class);
+        order.verify(outboxRepository).renewClaim(eq(row.id()), eq(row.nextAttemptAt()), renewedAt.capture());
+        // revue D5 passe 2 : l'instant de renouvellement est frais (jamais le `now` capturé au début du lot)
+        org.assertj.core.api.Assertions.assertThat(renewedAt.getValue()).isAfter(now);
+        order.verify(emailPort).send("a@b.c", "s", "b");
+        order.verify(outboxRepository).markProcessed(row.id(), now);
     }
 }

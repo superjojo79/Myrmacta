@@ -121,7 +121,7 @@ disponible, renseigne la clé du process ouvert et charge les feuilles de style 
 
 | # | Écart | Gravité | Justification |
 |---|---|---|---|
-| 1 | La source `dmnTables` n'est **pas listée** : saisie libre, existence vérifiée au déploiement | faible | aucune API de liste des tables déployées n'existe ; en ajouter une sortait du cadre (« frontend + catalogue »). Suite possible : endpoint de liste |
+| 1 | ~~La source `dmnTables` n'est pas listée~~ — **résolu par LC1-suite** (TODO §74, 2026-09-30) : `dmnTables` est servie par `references/dmnTables` | résolu | à l'origine, aucune API de liste n'existait ; voir [LC1-suite](2026-09-30-feature-lc1-suite-palette-dmn.md) |
 | 2 | Le premier paramètre `FORM_KEY_SUFFIX` s'appelle `schemaKey` (et non `questionSchema`) | nul | nom aligné sur `TaskQuestionSchema.schemaKey` |
 | 3 | `blockCatalogHolder` (module-level) + cache des listes vidé à l'appel de `setBlockCatalog` | faible | le Modeler instancie ses modules de façon synchrone ; alternative (props Vue) trop couplante |
 | 4 | Feuilles de style `bpmn-js` / `diagram-js` / panneau chargées par `BpmnEditorCanvas` | **à noter** | découvert par Playwright : elles n'étaient importées nulle part, la palette (police d'icônes) était invisible et le panneau non mis en forme. Correctif de fond, hors périmètre annoncé mais nécessaire |

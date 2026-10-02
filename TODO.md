@@ -1196,6 +1196,109 @@ variables de process seulement ; le lot n'est donc pas « frontend seul » (tail
 **Phase 5 (2026-09-29).** Jalons M0–M12 livrés (backend : catalogue + API + outil MCP, `DeployedActivityParameters` et six delegates, validation de forme au parseur, existence des références au déploiement, parité `dryRun` ; frontend : `bpmn-blocks/` — client, reconnaissance, palette, panneau typé, « Avancé », diagnostics, marqueurs). Vérification : `./mvnw verify` 2648 tests verts, Vitest 489, Playwright 104 (dont `E2E-PALETTE-1..6`), OpenAPI dorée additive. **Constat** : les feuilles de style de `bpmn-js` n'étaient chargées nulle part (palette invisible) — corrigé. Écart assumé : la source `dmnTables` reste en saisie libre (pas d'API de liste). Voir [implementation](docs/ai/implementation/2026-09-29-feature-palette-metier-bpmn.md). Phases 6 à 9 closes (revue adversariale par sous-agent : 0 bloquant, 4 importants et 8 mineurs corrigés, dont la précédence attribut > variable). **Mergée sur `main`** le 2026-09-30 ([PR #151](https://github.com/superjojo79/FlowForge/pull/151), squash `f161129`), CI verte (`build` + `frontend`) ; chiffres finaux : `./mvnw verify` 2653 tests, Vitest 498, Playwright 105.
 
 
+### [x] 74. Palette métier — liste des tables DMN déployées (LC1-suite) (livré)
+
+**Énoncé :** reliquat de §73 (« reste en suite : liste des tables DMN déployées »). Docs SDD :
+[requirements](docs/ai/requirements/2026-09-30-feature-lc1-suite-palette-dmn.md), [design](docs/ai/design/2026-09-30-feature-lc1-suite-palette-dmn.md),
+[planning](docs/ai/planning/2026-09-30-feature-lc1-suite-palette-dmn.md), [implementation](docs/ai/implementation/2026-09-30-feature-lc1-suite-palette-dmn.md),
+[testing](docs/ai/testing/2026-09-30-feature-lc1-suite-palette-dmn.md). Journal des décisions : [DECISIONS.md](docs/roadmap-goal/DECISIONS.md).
+
+**Décisions (mandat « roadmap complète », 2026-09-30).** D-LC1S-SOURCE = endpoint de références de la palette (pas de nouvelle API REST publique) ;
+D-LC1S-LABEL = valeur = clé, libellé = « clé (vN) » ; D-LC1S-EXISTS = `exists("dmnTables")` ajouté à l'adaptateur (l'existence reste vérifiée au
+déploiement par le use case). **Livré** : `GET /api/bpmn-building-blocks/references/dmnTables` (TENANT_ADMIN, WORKFLOW_ADMIN), frontend, `E2E-PALETTE-8`.
+**Revue adversariale** (sous-agent) : 0 Critique/Haut ; 1 Moyenne (doc obsolète), 3 Basses (2 corrigées, 1 tracée).
+**Impacte :** `GUIDE-UTILISATEUR.md` (palette), `ROADMAP.md`, `CHANGELOG.md`. Aucune variable d'environnement, aucune migration.
+
+
+### [x] 75. Langage d'expression métier borné (LC2) (livré)
+
+**Énoncé :** sous-lot **LC2** de la couche low-code (§70), analyse [40-langage-expression-metier.md](analysis%20doc/40-langage-expression-metier.md).
+Docs SDD : [requirements](docs/ai/requirements/2026-09-30-feature-lc2-langage-expression-metier.md), [design](docs/ai/design/2026-09-30-feature-lc2-langage-expression-metier.md),
+[planning](docs/ai/planning/2026-09-30-feature-lc2-langage-expression-metier.md), [implementation](docs/ai/implementation/2026-09-30-feature-lc2-langage-expression-metier.md),
+[testing](docs/ai/testing/2026-09-30-feature-lc2-langage-expression-metier.md). Journal : [DECISIONS.md](docs/roadmap-goal/DECISIONS.md).
+
+**Décisions (mandat « roadmap complète », 2026-09-30).** D-EXPR-LANGUAGE = JSONata (`com.dashjoin:jsonata` 0.9.10) ; D-EXPR-EVAL-SITE = port
+`ExpressionEnginePort` + delegate `businessExpressionTask` ; D-EXPR-CONTEXT = dossier **sans champs sensibles** + `connectorResult` + variables scalaires + `now` ;
+D-EXPR-LIMITS = 2 000 car., 250 ms, 64 Ko de résultat… ; D-EXPR-REGEX = littéraux regex refusés ; D-EXPR-FUNCTIONS = `$eval`/`$random`/`$now`/`$millis` refusés ;
+D-EXPR-LITERAL-ONLY = formule lue **uniquement** dans l'attribut littéral ; D-EXPR-UNDEFINED = résultat absent ⇒ échec explicite ; D-EXPR-RESULT ; D-EXPR-ATTR-NAME =
+`formulaResult` (`resultVariable` est un attribut natif Flowable) ; D-EXPR-AST-BRIDGE ; D-EXPR-ALLOC-GUARD ; D-EXPR-API.
+
+**Livré.** Domaine `domain/expression/**` ; adaptateur `JsonataExpressionEngine` (inspection d'AST, bornes de délai/mémoire/profondeur/taille, contexte JSON pur) ;
+brique « Évaluer une expression » (12ᵉ bloc, delegate allowlisté, formule validée au déploiement) ; `POST /api/expressions/{validate,evaluate}` ; outils MCP
+`validate_expression`, `evaluate_expression` ; règles ArchUnit (bibliothèque confinée, jamais d'UEL). Golden OpenAPI additif. Aucune migration.
+**Constats du design corrigés :** `outputConvertNulls` par défaut (null explicite ≠ absent), intervalles paresseux, regex non interruptibles, attribut natif
+`resultVariable`, grammaire de condition à opérateur obligatoire. **Revue adversariale en 3 passes** (sous-agents indépendants, sondes exécutées) : passe 1 = 2 Critiques (callbacks masquables par `$__evaluate_entry := nope` ; `$replace` à 4 arguments = regex/ReDoS), 1 Haute (`[1..9999999]` + appels natifs → OOM), 2 Moyennes, 3 Basses ; passe 2 = 2 nouvelles Critiques (aplatissement de chemin sur références partagées ; graphe partagé exponentiel pour `=`/`$distinct`) corrigées à la racine par deux invariants à chaque sortie de nœud (poids déplié, travail cumulé) ; passe 3 = **0 Critique, 0 Haute**. Détail, preuves et décisions : document d'implémentation et `DECISIONS.md` (D-EXPR-ALLOWLIST, D-EXPR-WEIGHT-FUEL…).
+**Impacte :** `GUIDE-CONCEPTION-BPMN.md` (§3sexies, §3quinquies, §7), `GUIDE-UTILISATEUR.md`, `analysis doc/40`, `ROADMAP.md`, `CHANGELOG.md`.
+Nouvelles propriétés `app.expression.*` (valeurs par défaut, aucune variable d'environnement requise).
+
+
+### [x] 76. Modèle de champs enrichi — types structurés (D1) (livré)
+
+**Énoncé :** lot **D1** de la Vague D, analyse [32-modele-champs-enrichi.md](analysis%20doc/32-modele-champs-enrichi.md). Docs SDD :
+[requirements](docs/ai/requirements/2026-09-30-feature-d1-modele-champs-enrichi.md), [design](docs/ai/design/2026-09-30-feature-d1-modele-champs-enrichi.md),
+[planning](docs/ai/planning/2026-09-30-feature-d1-modele-champs-enrichi.md), [implementation](docs/ai/implementation/2026-09-30-feature-d1-modele-champs-enrichi.md),
+[testing](docs/ai/testing/2026-09-30-feature-d1-modele-champs-enrichi.md). Journal : [DECISIONS.md](docs/roadmap-goal/DECISIONS.md).
+
+**Décisions (mandat « roadmap complète », 2026-09-30).** D-CHAMPS-TYPES = `MONEY`, `REPEATABLE_GROUP`, `EXTERNAL_REF` ; D-CHAMPS-MONEY = montant en **texte décimal exact** +
+devise par valeur, refusé (jamais arrondi) au-delà des décimales de la devise ; D-CHAMPS-REPEAT = un niveau, 20 sous-champs, 0–500 lignes ; D-CHAMPS-SENSITIVE = sensibilité sur le
+**groupe entier** ; D-CHAMPS-EXPORT = colonnes `.amount/.currency`, `.system/.id/.label`, groupe en une colonne JSON ; D-CHAMPS-STORAGE = `json` conservé (jsonb en D2) ;
+D-CHAMPS-NORMALIZE ; D-CHAMPS-USERQ = types refusés dans les questions de tâche pour l'instant ; D-CHAMPS-REF = référence seule.
+
+**Livré.** `FieldType` + `FieldDefinition` (règles de définition), `DossierFieldValidator` (validation avec chemins d'erreur `lignes[1].poste`, normalisation), `DossierFieldCsv`
+(exports dossiers et BI), branchements création/mise à jour/MCP, SPA (saisie, lecture texte/tableau, diff sans faux patch, éditeur d'administration avec colonnes de groupe, validation
+miroir). Preuves de non-régression : modèles PDF (sans modification), compatibilité 409, masquage du groupe sensible, OpenAPI additif. Aucune migration, aucune variable d'environnement.
+**Impacte :** `GUIDE-UTILISATEUR.md` (Admin → Types), `GUIDE-CONCEPTION-BPMN.md` (§3sexies), `analysis doc/32`, `ROADMAP.md`, `CHANGELOG.md`. **Revue adversariale** : 1 passe, 0 Critique/Haute, Moyens et Bas corrigés avec tests ; résidu ⚠ M4 (plafond de corps HTTP non spécifique aux `fields`), voir le document d'implémentation.
+
+
+### [x] 77. OAuth2 client credentials sur `http-rest` (D3a) (livré)
+
+**Énoncé :** sous-lot **D3a** de la Vague D, analyse [34-integrations-entreprise.md](analysis%20doc/34-integrations-entreprise.md). Docs SDD :
+[requirements](docs/ai/requirements/2026-09-30-feature-d3a-oauth2-client-credentials.md), [design](docs/ai/design/2026-09-30-feature-d3a-oauth2-client-credentials.md),
+[planning](docs/ai/planning/2026-09-30-feature-d3a-oauth2-client-credentials.md), [implementation](docs/ai/implementation/2026-09-30-feature-d3a-oauth2-client-credentials.md),
+[testing](docs/ai/testing/2026-09-30-feature-d3a-oauth2-client-credentials.md). Journal : [DECISIONS.md](docs/roadmap-goal/DECISIONS.md).
+
+**Décisions (mandat « roadmap complète », 2026-09-30).** D-INTEG-OAUTH-SCOPE = secret (POST/Basic) **et** certificat `private_key_jwt` ; D-INTEG-OAUTH-MODE = `authMode`
+(défaut `STATIC_HEADER`, `authHeaderValue` refusé en mode OAuth) ; D-INTEG-OAUTH-CACHE = mémoire du pod, 256 entrées, single-flight, clé par empreinte de configuration ;
+D-INTEG-OAUTH-RETRY = un `401` invalide le jeton et rejoue une fois ; D-INTEG-OAUTH-HOSTS = `oauthAllowedHosts` obligatoire (le jeton ne part que vers ces hôtes) ;
+D-INTEG-OAUTH-ERRORS = messages neutres (statut + code `error` normalisé).
+
+**Livré.** `OAuth2TokenProvider` (package `builtin`), schéma `http-rest` étendu (8 champs optionnels, secrets `PASSWORD`/`SECRET_TEXTAREA` donc chiffrés et masqués sans code
+spécifique), validation (cohérence par méthode, URL du jeton via le garde SSRF, hôtes), exécution (jeton posé, `Authorization` de l'appelant ignoré, rejeu sur `401`). Aucune
+migration, aucune variable d'environnement, aucun changement de SPA (formulaire généré depuis `configSchema`). **Impacte :** `GUIDE-UTILISATEUR.md` (Admin → Connecteurs),
+`analysis doc/06`, `analysis doc/34`, `ROADMAP.md`, `CHANGELOG.md`. **Revue adversariale** : voir le document d'implémentation.
+
+---
+
+### [x] 78. Mapping d'une réponse de connecteur → champs du dossier (D3b) (livré)
+
+**Énoncé :** sous-lot **D3b**, analyse [34-integrations-entreprise.md](analysis%20doc/34-integrations-entreprise.md), sur le moteur d'expressions de LC2 (§75). Docs SDD :
+[requirements](docs/ai/requirements/2026-10-01-feature-d3b-mapping-reponse-connecteur.md), [design](docs/ai/design/2026-10-01-feature-d3b-mapping-reponse-connecteur.md),
+[implementation](docs/ai/implementation/2026-10-01-feature-d3b-mapping-reponse-connecteur.md), [testing](docs/ai/testing/2026-10-01-feature-d3b-mapping-reponse-connecteur.md).
+
+**Décisions.** D-INTEG-MAPPING-TARGET = champs du dossier seulement ; D-MAP-FORMAT = lignes `champ = expression` ; D-MAP-UNDEFINED = échec explicite ; D-MAP-ATOMIC = un patch, tout ou rien ;
+D-MAP-BODY-JSON = `connectorResult.json` fourni par le contexte (nombres exacts en texte au-delà de 15 chiffres) ; D-MAP-SENSITIVE = cible oui (auditée), source non ; D-MAP-TARGETS = cibles
+déclarées seulement ; D-MAP-RESERVED = `connectorResult` variable réservée.
+
+**Livré.** Delegate `fieldMappingTask` (allowlist étendue d'un seul bean), brique `map-fields` (catalogue, 13 briques), `FieldMappingSpec` (format), validation au déploiement (chaque expression), `BusinessExpressionContext`
+partagé (`json`), catalogue : drapeau `multiline` → zone de texte dans l'éditeur. Aucune migration. **Impacte :** `GUIDE-CONCEPTION-BPMN.md` (§3septies, §7), `analysis doc/34`, `ROADMAP.md`, `CHANGELOG.md`.
+**Revue adversariale** : voir le document d'implémentation.
+
+---
+
+### [x] 79. Tâches planifiées sûres sous double exécution (D5) (livré)
+
+**Énoncé :** lot **D5**, analyse [36-verrou-jobs-planifies.md](analysis%20doc/36-verrou-jobs-planifies.md). Docs SDD : [requirements](docs/ai/requirements/2026-10-01-feature-d5-verrou-jobs-planifies.md),
+[design (audit complet)](docs/ai/design/2026-10-01-feature-d5-verrou-jobs-planifies.md), [implementation](docs/ai/implementation/2026-10-01-feature-d5-verrou-jobs-planifies.md),
+[testing](docs/ai/testing/2026-10-01-feature-d5-verrou-jobs-planifies.md).
+
+**Décisions.** D-JOBS-TRIGGER = corriger dès l'audit (un déploiement progressif fait coexister deux pods, l'audit montre sept tâches fautives dont deux en corruption) ; D-JOBS-MECHANISM = prise par ligne
+(UPDATE conditionnel), ni advisory lock ni ShedLock ; D-JOBS-LEASE = baux courts (2 à 5 min) et reprise des unités abandonnées ; D-JOBS-CRON = créneau cron au plus une fois sous crash, rendu en cas d'échec.
+
+**Livré.** 7 tâches rendues sûres (relais outbox notifications et workflow, alertes SLA, invitations portail, déclencheurs cron, export BI, réconciliation `RESERVED`) + distribution des signatures ; migrations additives 027 à 029 ;
+`DEPLOIEMENT.md` §11 (ce qui est sûr, ce qui ne l'est pas : SSE, rate-limit, Kafka). **Impacte :** `DEPLOIEMENT.md`, `analysis doc/36`, `ROADMAP.md`, `CHANGELOG.md`. **Revue adversariale** : voir le document d'implémentation.
+
+---
+
 ### [x] 19. Granularité des rôles RBAC
 
 **Clos V1 (2026-08-03 — feature `autorisation-conformite`) :** les cinq rôles
@@ -3343,3 +3446,26 @@ métier du dossier) mais reçoit 403 sur le panneau dossier.
 **Documenté dans :** [12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md),
 [10-visualisation-workflow.md](analysis%20doc/10-visualisation-workflow.md).
 
+---
+
+## Livraisons de la Vague D — mandat « roadmap complète » (§80 à §90)
+
+Chaque lot suit `docs/roadmap-goal/CHARTE.md` : cycle de développement complet, revue adversariale indépendante (corrections avec tests de non-régression), décisions journalisées dans
+[`docs/roadmap-goal/DECISIONS.md`](docs/roadmap-goal/DECISIONS.md), avancement dans [`AVANCEMENT.md`](docs/roadmap-goal/AVANCEMENT.md). Détail fonctionnel : `CHANGELOG.md`, docs SDD : `docs/ai/*/2026-10-01-feature-<lot>.md`.
+
+| § | Lot | État | Décisions ⚠ à relire |
+|---|---|---|---|
+| 80 | D1 règles — champs calculés, visibilité et obligation conditionnelles | [x] livré | voir DECISIONS (D3b + D1 règles) |
+| 81 | D2 — recherche sur champs dynamiques | [x] livré | — |
+| 82 | D6 — socle MCP low-code (brouillons, provenance, modes, acteur) | [x] livré | — |
+| 83 | D4 — promotion de configuration entre environnements | [x] livré | D-PROMO-CONNECTOR-DISABLED, D-PROMO-INTEGRITY |
+| 84 | LC4b — éditeur visuel de templates | [x] livré | — |
+| 85 | LC4a — concepteur visuel de formulaires | [x] livré | — |
+| 86 | LC3 — assistant de conception IA | [x] livré | D-ASSIST-PROVIDER, D-ASSIST-COST, D-ASSIST-CONFIRM |
+| 87 | D3c + D3d — e-mail entrant, bus Azure | [x] livré | D-INTEG-MAIL-PROTOCOL, -REPLAY, -SENDER, D-INTEG-AZURE, D-INTEG-POLL-ACK |
+| 88 | LC5 — concepteur de parcours | [x] livré | D-PARCOURS-ROUNDTRIP, -SCOPE, -LIMITS |
+| 89 | LC6 — scripts en bac à sable | [x] spike seul, lot non lancé | D-SCRIPT-GO |
+| 90 | D7 — internationalisation (fr, en) | [x] première tranche livrée | D-I18N-SCOPE, D-I18N-ERRORS |
+
+Hors périmètre déclaré (« Non traité », voir AVANCEMENT) : fournisseur de signature qualifiée (eIDAS), export BI par JDBC, vérifications d'environnement (antivirus sous Docker, Keycloak réel),
+diffusion SSE multi-pods (Redis exclu), Microsoft Graph et Event Grid, étapes parallèles/signature/dossier enfant/escalade dans les parcours, libellés métier traduisibles.

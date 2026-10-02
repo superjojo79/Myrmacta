@@ -25,7 +25,7 @@ FlowForge est un SaaS multi-tenant à architecture hexagonale. Stack **réelle**
 | Workflow | Flowable 8.0.x Community — BPMN 2.0 **et** DMN (TODO §61, PR #123) |
 | Auth | OIDC BFF (Keycloak) — pas de JWT dans le browser |
 | Frontend | **Vue 3 + TypeScript + Vite + PrimeVue + Pinia**, embarqué dans `static/` |
-| MCP | **27 tools** sur `POST /api/m2m/mcp` (Streamable HTTP, JWT M2M `API_SERVICE`) — dont 4 ajoutés par `outillage-dmn` (PR #134) |
+| MCP | **41 tools** sur `POST /api/m2m/mcp` (Streamable HTTP, JWT M2M `API_SERVICE`) — conception, brouillons, parcours, promotion, templates (Vague D) |
 | Connecteurs livrés | `http-rest`, `flowable-signal`, `scheduler`, `smtp`, `document-storage`, `flowable-callback`, `batch-import`, `kafka` |
 | Antivirus | `AttachmentScanPort` + adaptateur ClamAV opt-in (PR #131) |
 | Isolation | 1 instance Spring Boot = 1 tenant (`app.tenant.id`) |
@@ -38,19 +38,19 @@ FlowForge est un SaaS multi-tenant à architecture hexagonale. Stack **réelle**
 |---|---|---|---|
 | Livré | **2.4 Signature électronique** | `signature-electronique` | **Livré** ([PR #149](https://github.com/superjojo79/FlowForge/pull/149), TODO §72, lot XL), **socle générique + stub** (aucun provider ; fournisseur réel et eIDAS à cadrer) — [30-signature-electronique.md](analysis%20doc/30-signature-electronique.md) |
 | Décision | **D0** Positionnement produit | [analyse 31](analysis%20doc/31-positionnement-produit.md) | ✅ **Tranché = C** (TODO §70) : intégrateurs + couche low-code, décision n° 13 maintenue |
-| Vague D | **LC1** Palette métier dans l'éditeur BPMN | [`palette-metier-bpmn`](analysis%20doc/39-palette-metier-bpmn.md) | **Livré** ([PR #151](https://github.com/superjojo79/FlowForge/pull/151), TODO §73, lot M–L : catalogue serveur + delegates + parseur + éditeur) ; reste en suite : liste des tables DMN déployées (saisie libre aujourd'hui) |
-| Vague D | **LC2** Langage d'expression métier borné | [`langage-expression-metier`](analysis%20doc/40-langage-expression-metier.md) | Analyse initiale |
-| Vague D | **LC3** Assistant de conception IA | [`assistant-conception-ia`](analysis%20doc/41-assistant-conception-ia.md) | Analyse initiale — après D6 |
-| Vague D | **LC4a / LC4b** Éditeurs visuels de formulaires / de templates | [`editeur-formulaires`](analysis%20doc/42-editeur-formulaires.md), [`editeur-templates-wysiwyg`](analysis%20doc/43-editeur-templates-wysiwyg.md) | Analyses initiales |
-| Vague D | **LC5** Concepteur de parcours compilé en BPMN | [`concepteur-parcours`](analysis%20doc/44-concepteur-parcours.md) | Analyse initiale — après LC1, LC2 |
-| Vague D | **LC6** Scripts JS/TS en bac à sable | [`scripts-sandbox`](analysis%20doc/45-scripts-sandbox.md) | Analyse initiale — **conditionnel**, spike d'abord |
-| Vague D | **D1** Modèle de champs enrichi (montant/devise, groupes répétables, référence externe) | [`modele-champs-enrichi`](analysis%20doc/32-modele-champs-enrichi.md) | Analyse initiale |
-| Vague D | **D2** Recherche sur champs dynamiques (JSONB + plein texte) | [`recherche-champs-dynamiques`](analysis%20doc/33-recherche-champs-dynamiques.md) | Analyse initiale — après D1 |
-| Vague D | **D3** Intégrations entreprise (OAuth2 client credentials, mapping réponse → dossier, e-mail entrant) | [`integrations-entreprise`](analysis%20doc/34-integrations-entreprise.md) | Analyse initiale |
-| Vague D | **D4** Promotion de configuration entre environnements | [`promotion-configuration`](analysis%20doc/35-promotion-configuration.md) | Analyse initiale |
-| Vague D | **D5** Scalabilité intra-tenant — verrou des jobs planifiés | [`verrou-jobs-planifies`](analysis%20doc/36-verrou-jobs-planifies.md) | Analyse initiale — audit d'abord |
-| Vague D | **D6** Socle MCP low-code (brouillon, publication, provenance, A3-M2) | [`socle-mcp-low-code`](analysis%20doc/37-socle-mcp-low-code.md) | Analyse initiale ; 4 décisions actées via le cadrage 46 (TODO §71) |
-| Vague D | **D7** Internationalisation de l'UI | [`internationalisation-ui`](analysis%20doc/38-internationalisation-ui.md) | Analyse initiale — selon marché |
+| Vague D | **LC1** Palette métier dans l'éditeur BPMN | [`palette-metier-bpmn`](analysis%20doc/39-palette-metier-bpmn.md) | **Livré** ([PR #151](https://github.com/superjojo79/FlowForge/pull/151), TODO §73, lot M–L : catalogue serveur + delegates + parseur + éditeur) ; suite **livrée** (LC1-suite, TODO §74) : liste des tables DMN déployées dans le panneau |
+| Vague D | **LC2** Langage d'expression métier borné | [`langage-expression-metier`](analysis%20doc/40-langage-expression-metier.md) | **Livré** (TODO §75, lot M : JSONata borné hors JUEL, brique « Évaluer une expression », API et outils MCP) ; suite : champs calculés (D1) et mapping (D3b) s'appuient sur ce moteur |
+| Vague D | **LC3** Assistant de conception IA | [`assistant-conception-ia`](analysis%20doc/41-assistant-conception-ia.md) | **Livré** (TODO §86 : assistant embarqué, propose/confirme, plafonds) |
+| Vague D | **LC4a / LC4b** Éditeurs visuels de formulaires / de templates | [`editeur-formulaires`](analysis%20doc/42-editeur-formulaires.md), [`editeur-templates-wysiwyg`](analysis%20doc/43-editeur-templates-wysiwyg.md) | **Livré** (TODO §84 éditeur visuel de templates, §85 concepteur de formulaires) |
+| Vague D | **LC5** Concepteur de parcours compilé en BPMN | [`concepteur-parcours`](analysis%20doc/44-concepteur-parcours.md) | **Livré** (TODO §88 : parcours compilés en brouillon BPMN, sens unique) |
+| Vague D | **LC6** Scripts JS/TS en bac à sable | [`scripts-sandbox`](analysis%20doc/45-scripts-sandbox.md) | **Spike réalisé, lot non lancé** (TODO §89 : LC2 suffit, D-SCRIPT-GO = non ; conditions de réouverture en analyse 45 §9) |
+| Vague D | **D1** Modèle de champs enrichi (montant/devise, groupes répétables, référence externe) | [`modele-champs-enrichi`](analysis%20doc/32-modele-champs-enrichi.md) | **Livré** (TODO §76 : `MONEY`, `EXTERNAL_REF`, `REPEATABLE_GROUP` ; champs calculés et visibilité restent à faire sur LC2) |
+| Vague D | **D2** Recherche sur champs dynamiques (JSONB + plein texte) | [`recherche-champs-dynamiques`](analysis%20doc/33-recherche-champs-dynamiques.md) | **Livré** (TODO §81) |
+| Vague D | **D3** Intégrations entreprise (OAuth2 client credentials, mapping réponse → dossier, e-mail entrant) | [`integrations-entreprise`](analysis%20doc/34-integrations-entreprise.md) | **Livré** (D3a §77, D3b §78, D3c + D3d §87) |
+| Vague D | **D4** Promotion de configuration entre environnements | [`promotion-configuration`](analysis%20doc/35-promotion-configuration.md) | **Livré** (TODO §83) |
+| Vague D | **D5** Scalabilité intra-tenant — verrou des jobs planifiés | [`verrou-jobs-planifies`](analysis%20doc/36-verrou-jobs-planifies.md) | **Livré** (TODO §79 : audit des 18 tâches ; 7 rendues sûres par prise en base, sans verrou distribué) |
+| Vague D | **D6** Socle MCP low-code (brouillon, publication, provenance, A3-M2) | [`socle-mcp-low-code`](analysis%20doc/37-socle-mcp-low-code.md) | **Livré** (TODO §82) |
+| Vague D | **D7** Internationalisation de l'UI | [`internationalisation-ui`](analysis%20doc/38-internationalisation-ui.md) | **Première tranche livrée** (TODO §90 : français et anglais ; libellés métier non traduits) |
 | Non planifié | **5.3 bis** Export BI JDBC / Power BI | — | Écarté du lot reporting (D-BI-MECHANISM) ; nouveau produit si besoin confirmé |
 
 ### Déjà couvert par le code — ne plus traiter comme un gap
@@ -384,3 +384,4 @@ Correctif documentaire : le § *Statut* du `README.md` a été mis à jour le 29
 | 1.5 | 28/09/2026 | Cadrage MCP low-code (TODO §71) | Analyse 46 référencée ; D6 élargi en socle MCP low-code ; exposition MCP dans le même lot pour chaque `LC*`. |
 | 1.6 | 28/09/2026 | Analyses initiales de la Vague D | Analyses 31–45 créées (D0–D7, LC1–LC6), cadrage MCP renuméroté 31 → 46 ; lots nommés et liés à leur analyse. |
 | 1.7 | 29/09/2026 | Ordonnancement de la Vague D | Priorisation réécrite en 4 vagues (alignée sur `FILE-ATTENTE.md`), arbitrage D4/D6 signalé, en-tête recalé sur `main` @ `2283c92`, README (Statut, positionnement) aligné. |
+| 1.8 | 30/09/2026 | Objectif « roadmap complète » | LC1-suite (TODO §74), LC2 (TODO §75) et D1 (TODO §76) livrés ; décisions consignées dans `docs/roadmap-goal/DECISIONS.md`. |

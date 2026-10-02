@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { AllowedDocumentTemplate, DossierPermission, DossierType, FieldDefinition } from './types'
+import type { AllowedDocumentTemplate, DossierPermission, DossierType, FieldDefinition, FieldRulesPreview } from './types'
 import { listAllPages, type Page } from './page'
 
 export interface AdminListParams {
@@ -21,6 +21,12 @@ export async function listAllDossierTypes(): Promise<DossierType[]> {
 
 export async function getDossierType(code: string): Promise<DossierType> {
   const { data } = await axios.get<DossierType>(`/api/dossier-types/${code}`)
+  return data
+}
+
+/** TODO §80 : aperçu des règles du type (champs calculés, champs sans objet, obligations) — même moteur que l'enregistrement. */
+export async function evaluateFieldRules(code: string, fields: Record<string, unknown>): Promise<FieldRulesPreview> {
+  const { data } = await axios.post<FieldRulesPreview>(`/api/dossier-types/${encodeURIComponent(code)}/evaluate-rules`, { fields })
   return data
 }
 

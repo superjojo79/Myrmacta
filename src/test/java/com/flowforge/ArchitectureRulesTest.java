@@ -57,6 +57,25 @@ class ArchitectureRulesTest {
             .that().resideInAPackage("..application..")
             .should().dependOnClassesThat().resideInAPackage("..infrastructure..");
 
+    /**
+     * TODO §75 (LC2) : la bibliothèque JSONata n'est appelée que par l'adaptateur d'expressions — c'est lui qui porte les
+     * bornes (délai, mémoire, regex, fonctions interdites). Un second appelant contournerait ces défenses.
+     */
+    @ArchTest
+    static final ArchRule only_the_expression_adapter_uses_the_jsonata_library = noClasses()
+            .that().resideOutsideOfPackage("com.flowforge.infrastructure.expression..")
+            .should().dependOnClassesThat().resideInAPackage("com.dashjoin..");
+
+    /**
+     * TODO §75 (LC2) : le moteur d'expressions ne touche ni Flowable ni aucun évaluateur UEL — une expression métier n'est
+     * jamais interprétée (ni concaténée) en JUEL ; la passerelle ne lit que la variable que le delegate a posée.
+     */
+    @ArchTest
+    static final ArchRule the_expression_engine_never_touches_uel_or_flowable = noClasses()
+            .that().resideInAPackage("com.flowforge.infrastructure.expression..")
+            .should().dependOnClassesThat().resideInAnyPackage(
+                    "org.flowable..", "jakarta.el..", "javax.el..", "org.apache.el..", "org.springframework.expression..");
+
     @ArchTest
     static final ArchRule usecase_impl_naming_convention = classes()
             .that().resideInAPackage("..usecase..")
@@ -107,7 +126,9 @@ class ArchitectureRulesTest {
 
     /** Same rationale as {@link #DOSSIER_FIELDS_READ_ALLOWLIST}, for {@code FieldDefinition.defaultValue()}. */
     private static final Set<String> FIELD_DEFINITION_DEFAULT_VALUE_READ_ALLOWLIST = Set.of(
-            "com.flowforge.domain.dossier.model.DossierFieldValidator");
+            "com.flowforge.domain.dossier.model.DossierFieldValidator",
+            // D1 : le constructeur refuse un sous-champ de groupe portant une valeur par défaut (lecture pour rejet, jamais exposée).
+            "com.flowforge.domain.dossier.model.FieldDefinition");
 
     @ArchTest
     static final ArchRule only_allowlisted_classes_read_raw_dossier_fields = noClasses()

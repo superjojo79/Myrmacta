@@ -34,7 +34,7 @@ interface SpringDataPortalLinkRepository extends JpaRepository<PortalLinkJpaEnti
               e.tokenHash = :tokenHash, e.status = :status, e.statusReason = :statusReason,
               e.expiresAt = :expiresAt, e.sendAttempts = :sendAttempts, e.sentAt = :sentAt,
               e.lastAccessedAt = :lastAccessedAt, e.completedAt = :completedAt,
-              e.revokedAt = :revokedAt, e.revokedBy = :revokedBy
+              e.revokedAt = :revokedAt, e.revokedBy = :revokedBy, e.claimedUntil = null
             where e.id = :id and e.status = :expectedStatus
             """)
     int transition(
@@ -50,6 +50,20 @@ interface SpringDataPortalLinkRepository extends JpaRepository<PortalLinkJpaEnti
             @Param("completedAt") Instant completedAt,
             @Param("revokedAt") Instant revokedAt,
             @Param("revokedBy") String revokedBy);
+
+    /** D5 : prise par UPDATE conditionnel (statut inchangé, bail absent ou échu) — un seul exécutant obtient 1 ligne. */
+    @org.springframework.transaction.annotation.Transactional
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(
+            """
+            update PortalLinkJpaEntity e set e.claimedUntil = :until
+            where e.id = :id and e.status = :status and (e.claimedUntil is null or e.claimedUntil < :now)
+            """)
+    int claimForSend(
+            @Param("id") UUID id,
+            @Param("status") PortalLinkStatus status,
+            @Param("now") Instant now,
+            @Param("until") Instant until);
 
     @Modifying(clearAutomatically = true)
     @Query("delete from PortalLinkJpaEntity e where e.dossierId = :dossierId")

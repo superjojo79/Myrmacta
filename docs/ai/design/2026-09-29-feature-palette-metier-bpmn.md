@@ -172,7 +172,7 @@ Règles **ordonnées** appliquées à un élément importé ; la première qui c
   prioritaire) → texte au panneau + marqueur visuel sur l'élément (`canvas.addMarker` + classe CSS `fb-block-warning`).
 - `valueSourceResolver` reçoit le **contexte du process** (clé du process) : `workflowStatuses` = statuts de la configuration de ce process ; sans
   configuration, saisie libre + avertissement.
-- `valueSourceResolver.ts` : `workflowTypes`, `workflowStatuses`, `dmnTables`, `questionSchemas`, `dossierTypes` → API existantes ; `documentTemplates`, `connectorInstances`, `notificationWebhooks` → `/api/bpmn-building-blocks/references/{source}`.
+- `valueSourceResolver.ts` : `workflowTypes`, `workflowStatuses`, `questionSchemas`, `dossierTypes` → API existantes ; `documentTemplates`, `connectorInstances`, `notificationWebhooks` et (depuis LC1-suite, TODO §74) `dmnTables` → `/api/bpmn-building-blocks/references/{source}`.
 
 ## Design Decisions
 

@@ -11,6 +11,10 @@ public interface OutboxRepository {
 
     OutboxEvent savePending(TriggerOutboxPayload payload);
 
+    /**
+     * Prend (bail court) puis renvoie les événements que l'appelant est <b>seul</b> à traiter : deux exécutants concurrents ne
+     * reçoivent jamais le même (TODO §79, D5).
+     */
     List<OutboxEvent> lockNextPending(int batchSize);
 
     void markProcessed(UUID eventId);

@@ -102,4 +102,60 @@ describe('SupervisionView', () => {
     await wrapper.find('.supervision__row').trigger('click')
     expect(push).toHaveBeenCalledWith('/dossiers/d1')
   })
+
+  describe('filtres sur champs cherchables (TODO §81, D2)', () => {
+    beforeEach(() => {
+      vi.mocked(dossierTypesApi.listAllDossierTypes).mockResolvedValue([
+        {
+          id: 't1',
+          tenantId: 'tenant_dev',
+          code: 'SIN',
+          label: 'Sinistre',
+          workflowKey: 'wf',
+          active: true,
+          allowUnknownFields: false,
+          fieldDefinitions: [
+            { name: 'montant', label: 'Montant', type: 'NUMBER', required: false, searchable: true },
+            { name: 'note', label: 'Note', type: 'STRING', required: false },
+            { name: 'iban', label: 'IBAN', type: 'STRING', required: false, sensitive: true },
+          ],
+        },
+      ])
+    })
+
+    it('shows inputs only for the searchable fields of the selected type, hydrates them from the URL and sends them', async () => {
+      setActivePinia(createPinia())
+      const router = createRouter({ history: createMemoryHistory(), routes })
+      await router.push('/supervision?dossierTypeCode=SIN&f.montant.gte=5000')
+      await router.isReady()
+      const wrapper = mount(SupervisionView, { global: { plugins: [router] } })
+      await flushPromises()
+      expect(wrapper.find('[data-testid="field-filter-montant.gte"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="field-filter-montant.lte"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="field-filter-note"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="field-filter-iban"]').exists()).toBe(false)
+      expect((wrapper.find('[data-testid="field-filter-montant.gte"]').element as HTMLInputElement).value).toBe('5000')
+      expect(dossiersApi.listDossiers).toHaveBeenCalledWith(
+        expect.objectContaining({ dossierTypeCode: 'SIN', fieldFilters: { 'montant.gte': '5000' } }),
+      )
+
+      await wrapper.find('[data-testid="field-filter-montant.lte"]').setValue('9000')
+      await wrapper.find('.supervision__filters').trigger('submit')
+      await flushPromises()
+      expect(router.currentRoute.value.query['f.montant.lte']).toBe('9000')
+      expect(dossiersApi.listDossiers).toHaveBeenLastCalledWith(
+        expect.objectContaining({ fieldFilters: { 'montant.gte': '5000', 'montant.lte': '9000' } }),
+      )
+    })
+
+    it('ignores f.* parameters when no type is selected (the server would refuse them)', async () => {
+      setActivePinia(createPinia())
+      const router = createRouter({ history: createMemoryHistory(), routes })
+      await router.push('/supervision?f.montant.gte=5000')
+      await router.isReady()
+      mount(SupervisionView, { global: { plugins: [router] } })
+      await flushPromises()
+      expect(dossiersApi.listDossiers).toHaveBeenCalledWith(expect.objectContaining({ fieldFilters: undefined }))
+    })
+  })
 })

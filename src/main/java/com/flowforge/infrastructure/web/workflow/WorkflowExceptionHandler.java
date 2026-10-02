@@ -5,6 +5,8 @@ import com.flowforge.domain.dossier.model.DossierNotFoundException;
 import com.flowforge.domain.dossier.model.DossierWorkflowLinkNotFoundException;
 import com.flowforge.domain.dossier.model.WorkflowAlreadyRunningException;
 import com.flowforge.domain.workflow.model.DecisionEvaluationException;
+import com.flowforge.domain.expression.model.ExpressionEvaluationException;
+import com.flowforge.domain.expression.model.InvalidExpressionException;
 import com.flowforge.domain.workflow.model.DecisionVersionAlreadyCurrentException;
 import com.flowforge.domain.workflow.model.InvalidBpmnException;
 import com.flowforge.domain.workflow.model.InvalidDmnException;
@@ -58,6 +60,24 @@ class WorkflowExceptionHandler {
         return problem(HttpStatus.NOT_FOUND, "Workflow resource not found", ex.getMessage());
     }
 
+    @ExceptionHandler({
+            com.flowforge.domain.workflow.model.DraftConflictException.class,
+            com.flowforge.domain.workflow.model.DraftChangedException.class
+    })
+    ProblemDetail handleDraftConflict(RuntimeException ex) {
+        return problem(HttpStatus.CONFLICT, "Draft conflict", ex.getMessage());
+    }
+
+    @ExceptionHandler(com.flowforge.domain.workflow.model.DraftNotFoundException.class)
+    ProblemDetail handleDraftNotFound(com.flowforge.domain.workflow.model.DraftNotFoundException ex) {
+        return problem(HttpStatus.NOT_FOUND, "Draft not found", ex.getMessage());
+    }
+
+    @ExceptionHandler(com.flowforge.domain.workflow.model.DirectPublicationNotAllowedException.class)
+    ProblemDetail handleDirectPublicationRefused(com.flowforge.domain.workflow.model.DirectPublicationNotAllowedException ex) {
+        return problem(HttpStatus.FORBIDDEN, "Direct publication not allowed", ex.getMessage());
+    }
+
     @ExceptionHandler(DecisionVersionAlreadyCurrentException.class)
     ProblemDetail handleVersionAlreadyCurrent(DecisionVersionAlreadyCurrentException ex) {
         return problem(HttpStatus.CONFLICT, "Decision version already current", ex.getMessage());
@@ -88,7 +108,9 @@ class WorkflowExceptionHandler {
             HttpMessageNotReadableException.class,
             InvalidBpmnException.class,
             InvalidDmnException.class,
-            DecisionEvaluationException.class
+            DecisionEvaluationException.class,
+            InvalidExpressionException.class,
+            ExpressionEvaluationException.class
     })
     ProblemDetail handleBadRequest(Exception ex) {
         return problem(HttpStatus.BAD_REQUEST, "Bad request", ex.getMessage());

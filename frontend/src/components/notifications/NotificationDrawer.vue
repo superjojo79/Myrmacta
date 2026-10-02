@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { onMounted, onUnmounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import Button from 'primevue/button'
@@ -6,6 +7,7 @@ import OverlayBadge from 'primevue/overlaybadge'
 import ScrollPanel from 'primevue/scrollpanel'
 import { useNotificationsStore } from '@/stores/notifications'
 
+const { t } = useI18n()
 const store = useNotificationsStore()
 const { items, unreadCount, hasMore, failed } = storeToRefs(store)
 const open = ref(false)
@@ -22,7 +24,7 @@ onUnmounted(() => store.disconnect())
         severity="secondary"
         text
         rounded
-        aria-label="Notifications"
+        :aria-label="t('common.notifications.bell')"
         data-testid="notification-bell"
         @click="open = !open"
       />
@@ -33,16 +35,16 @@ onUnmounted(() => store.disconnect())
       severity="secondary"
       text
       rounded
-      aria-label="Notifications"
+      :aria-label="t('common.notifications.bell')"
       data-testid="notification-bell"
       @click="open = !open"
     />
-    <p v-if="failed" class="notification-drawer__fail">Flux temps réel indisponible</p>
+    <p v-if="failed" class="notification-drawer__fail">{{ t('common.notifications.streamFailed') }}</p>
     <div v-if="open" class="notification-drawer__panel" data-testid="notification-panel">
       <header class="notification-drawer__header">
-        <strong>Notifications</strong>
+        <strong>{{ t('common.notifications.title') }}</strong>
         <Button
-          label="Tout lu"
+          :label="t('common.notifications.markAllRead')"
           text
           size="small"
           :disabled="unreadCount === 0"
@@ -50,7 +52,7 @@ onUnmounted(() => store.disconnect())
           @click="store.markAllRead()"
         />
       </header>
-      <p v-if="items.length === 0" data-testid="notification-empty">Aucune notification.</p>
+      <p v-if="items.length === 0" data-testid="notification-empty">{{ t('common.notifications.empty') }}</p>
       <ScrollPanel v-else style="width: min(360px, 90vw); max-height: 360px">
         <ul class="notification-drawer__list">
           <li
@@ -71,7 +73,7 @@ onUnmounted(() => store.disconnect())
         </ul>
         <Button
           v-if="hasMore"
-          label="Charger plus"
+          :label="t('common.notifications.loadMore')"
           text
           size="small"
           data-testid="notification-load-more"

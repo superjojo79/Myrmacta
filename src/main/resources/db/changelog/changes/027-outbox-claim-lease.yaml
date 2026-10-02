@@ -1,0 +1,19 @@
+databaseChangeLog:
+  - changeSet:
+      id: 027-outbox-claim-lease
+      author: flowforge
+      comment: >-
+        TODO §79 (D5, verrou des jobs planifiés) — bail de prise d'une ligne de l'outbox workflow. claimed_until est posé par
+        l'exécutant qui prend la ligne (UPDATE conditionnel) : un second exécutant concurrent obtient 0 ligne et la saute.
+        Une ligne dont l'exécutant a disparu redevient éligible à l'échéance du bail. Additif, nullable.
+      changes:
+        - addColumn:
+            tableName: outbox_event
+            columns:
+              - column:
+                  name: claimed_until
+                  type: timestamp with time zone
+      rollback:
+        - dropColumn:
+            tableName: outbox_event
+            columnName: claimed_until

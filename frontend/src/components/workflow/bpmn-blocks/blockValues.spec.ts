@@ -44,6 +44,27 @@ async function load(xml: string) {
 const block = (id: string) => TEST_BLOCKS.find((b) => b.id === id)!
 const param = (id: string, name: string) => block(id).parameters.find((p) => p.name === name)!
 
+describe('blockValues — paramètre multiligne', () => {
+  const multi = {
+    ...block('set-dossier-status'),
+    parameters: [{ ...param('set-dossier-status', 'targetDossierStatus'), name: 'fieldMapping', type: 'TEXT' as const, enumValues: [], multiline: true }],
+  }
+
+  it('conserve les retours à la ligne internes d\'un paramètre multiligne (D3b)', async () => {
+    const { task, services, toXml } = await load(WITH_NS)
+    writeValue(services, task, task, multi, multi.parameters[0], 'a = 1\nb = 2')
+    expect(readValue(task, multi, multi.parameters[0])).toBe('a = 1\nb = 2')
+    expect(await toXml()).toContain('flowable:fieldMapping=')
+  })
+
+  it('rogne toujours un paramètre d\'une ligne', async () => {
+    const { task, services } = await load(WITH_NS)
+    const single = { ...multi, parameters: [{ ...multi.parameters[0], multiline: false }] }
+    writeValue(services, task, task, single, single.parameters[0], '  a  ')
+    expect(readValue(task, single, single.parameters[0])).toBe('a')
+  })
+})
+
 describe('blockValues', () => {
   it('écrit puis relit un attribut ; vider retire l’attribut (S-UI-2, S-UI-3)', async () => {
     const { task, services, toXml } = await load(WITH_NS)

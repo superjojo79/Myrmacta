@@ -76,6 +76,7 @@ public final class ManageConnectorInstanceUseCaseImpl implements ManageConnector
         Objects.requireNonNull(command, "command");
         ConnectorDefinition definition = catalog.get(command.connectorType());
         Map<String, Object> config = command.config() == null ? Map.of() : command.config();
+        assertNoMaskedSecret(command.connectorType(), config);
         definition.validate(config);
         assertKnownConfigKeys(definition, config);
         if (command.enabled()) {
@@ -202,6 +203,17 @@ public final class ManageConnectorInstanceUseCaseImpl implements ManageConnector
             merged.put(entry.getKey(), entry.getValue());
         }
         return merged;
+    }
+
+    /** Un masque recopié depuis une lecture ne doit jamais devenir un vrai secret à la création. */
+    private void assertNoMaskedSecret(String connectorType, Map<String, Object> config) {
+        for (Map.Entry<String, Object> entry : config.entrySet()) {
+            boolean isSecret = isSecretKey(entry.getKey()) || catalog.isPasswordField(connectorType, entry.getKey());
+            if (isSecret && entry.getValue() != null && SECRET_MASK.equals(String.valueOf(entry.getValue()))) {
+                throw new com.flowforge.domain.connector.model.ConnectorValidationException(
+                        entry.getKey() + " cannot be the masked placeholder; provide the actual value or omit it");
+            }
+        }
     }
 
     private static boolean isBlankOrMask(Object value) {

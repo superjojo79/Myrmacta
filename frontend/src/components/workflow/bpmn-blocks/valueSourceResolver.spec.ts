@@ -48,8 +48,14 @@ describe('resolveValueSource (S-FE-3, S-FE-4)', () => {
     expect(await resolveValueSource('workflowStatuses', {})).toBeNull()
   })
 
-  it('renvoie null (saisie libre) pour dmnTables et en cas d’échec réseau', async () => {
-    expect(await resolveValueSource('dmnTables')).toBeNull()
+  it('résout dmnTables par l’endpoint de références du serveur', async () => {
+    vi.mocked(axios.get).mockResolvedValue({ data: [{ value: 'scoring', label: 'scoring (v2)' }] } as never)
+    expect(await resolveValueSource('dmnTables')).toEqual([{ value: 'scoring', label: 'scoring (v2)' }])
+    expect(axios.get).toHaveBeenCalledWith('/api/bpmn-building-blocks/references/dmnTables')
+  })
+
+  it('renvoie null (saisie libre) pour une source inconnue et en cas d’échec réseau', async () => {
+    expect(await resolveValueSource('sourceInconnue')).toBeNull()
     vi.mocked(axios.get).mockResolvedValue(null as never) // réponse inexploitable → la déstructuration lève dans le try
     expect(await resolveValueSource('documentTemplates')).toBeNull()
   })

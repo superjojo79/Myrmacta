@@ -1,4 +1,5 @@
 import { ref, shallowRef } from 'vue'
+import { i18n } from '@/i18n'
 import {
   evaluateDecision,
   listDecisionTableVersions,
@@ -31,7 +32,7 @@ export function useDmnEvaluation() {
       versions.value = await listDecisionTableVersions(decisionKey)
     } catch (err) {
       versions.value = []
-      error.value = toProblemDetail(err).detail ?? 'Historique indisponible'
+      error.value = toProblemDetail(err).detail ?? i18n.global.t('common.errors2.history')
     } finally {
       loading.value = false
     }
@@ -52,14 +53,14 @@ export function useDmnEvaluation() {
       }
       inputs = parsed as Record<string, unknown>
     } catch {
-      error.value = 'Les entrées doivent être un objet JSON.'
+      error.value = i18n.global.t('common.errors2.inputsObject')
       return
     }
     loading.value = true
     try {
       evaluation.value = await evaluateDecision(decisionKey, inputs, version)
     } catch (err) {
-      error.value = toProblemDetail(err).detail ?? 'Évaluation impossible'
+      error.value = toProblemDetail(err).detail ?? i18n.global.t('common.errors.evaluate')
     } finally {
       loading.value = false
     }
@@ -83,7 +84,7 @@ export function useDmnEvaluation() {
         error.value = 'Jeu de tests JSON illisible.'
         return
       }
-      error.value = toProblemDetail(err).detail ?? 'Jeu de tests impossible'
+      error.value = toProblemDetail(err).detail ?? i18n.global.t('common.errors.suite')
     } finally {
       loading.value = false
     }
@@ -108,7 +109,7 @@ export function useDmnEvaluation() {
       pendingRedeployVersion.value = null
       await loadVersions(decisionKey)
     } catch (err) {
-      error.value = toProblemDetail(err).detail ?? 'Redéploiement impossible'
+      error.value = toProblemDetail(err).detail ?? i18n.global.t('common.errors.redeploy')
     } finally {
       loading.value = false
     }

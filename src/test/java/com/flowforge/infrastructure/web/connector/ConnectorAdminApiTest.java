@@ -88,16 +88,17 @@ class ConnectorAdminApiTest {
     }
 
     @Test
-    void listDefinitions_registersExactlyEightTypesWithoutCollision_connecteursCibleLotB1() throws Exception {
+    void listDefinitions_registersExactlyElevenTypesWithoutCollision_connecteursCibleLotB1_etD3cD3d() throws Exception {
         // T-REG-REGISTRY-COUNT : les 6 connecteurs déjà livrés (http-rest, flowable-signal,
-        // flowable-callback, scheduler, smtp, document-storage) + batch-import + kafka, tous
+        // flowable-callback, scheduler, smtp, document-storage) + batch-import + kafka + (TODO §87, D3c/D3d) imap-inbound,
+        // graph-mail-inbound (D3c-bis) et azure-service-bus, tous
         // enregistrés sans collision de type au démarrage du contexte Spring réel (un doublon
         // ferait échouer ConnectorRegistry.init() et empêcherait ce test de démarrer).
         mockMvc.perform(get("/api/connector-definitions")
                         .param("size", "50")
                         .with(user("connector-admin", "TENANT_ADMIN")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(8))
+                .andExpect(jsonPath("$.totalElements").value(11))
                 .andExpect(jsonPath("$.content[*].type", hasItem("http-rest")))
                 .andExpect(jsonPath("$.content[*].type", hasItem("flowable-signal")))
                 .andExpect(jsonPath("$.content[*].type", hasItem("flowable-callback")))
@@ -105,7 +106,10 @@ class ConnectorAdminApiTest {
                 .andExpect(jsonPath("$.content[*].type", hasItem("smtp")))
                 .andExpect(jsonPath("$.content[*].type", hasItem("document-storage")))
                 .andExpect(jsonPath("$.content[*].type", hasItem("batch-import")))
-                .andExpect(jsonPath("$.content[*].type", hasItem("kafka")));
+                .andExpect(jsonPath("$.content[*].type", hasItem("kafka")))
+                .andExpect(jsonPath("$.content[*].type", hasItem("imap-inbound")))
+                .andExpect(jsonPath("$.content[*].type", hasItem("graph-mail-inbound")))
+                .andExpect(jsonPath("$.content[*].type", hasItem("azure-service-bus")));
     }
 
     @Test
@@ -182,6 +186,105 @@ class ConnectorAdminApiTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.config.authHeaderValue").value("********"))
                 .andExpect(jsonPath("$.secretConfigured.authHeaderValue").value(true));
+    }
+
+    private static String oauthPayload(String name, String extra) {
+        return """
+                {
+                  "name": "%s",
+                  "connectorType": "http-rest",
+                  "enabled": true,
+                  "config": {
+                    "webhookAuthType": "SHARED_SECRET_TOKEN",
+                    "webhookSecret": "plain-secret-0123456789",
+                    "processKey": "smokeProcess",
+                    "dossierTypeCode": "CLAIM",
+                    "authMode": "OAUTH2_CLIENT_CREDENTIALS",
+                    "oauthTokenUrl": "https://93.184.216.34/tenant/oauth2/v2.0/token",
+                    "oauthClientId": "app-1",
+                    "oauthClientSecret": "client-secret-0123456789",
+                    "oauthAllowedHosts": "erp.example.com"%s
+                  }
+                }
+                """.formatted(name, extra);
+    }
+
+    /** D3a : la vraie chaîne HTTP/sécurité/chiffrement — secrets OAuth chiffrés puis masqués, validation appliquée. */
+    @Test
+    void createConnector_oauth2ClientCredentials_masksBothSecretsAndKeepsPublicFields() throws Exception {
+        String name = "ERP oauth " + UUID.randomUUID();
+        MvcResult created = mockMvc.perform(post("/api/connectors")
+                        .with(user("connector-admin", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(oauthPayload(name, ",\n\"oauthPrivateKey\": \"-----BEGIN PRIVATE KEY-----\\nQUJD\\n-----END PRIVATE KEY-----\"")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.config.oauthClientSecret").value("********"))
+                .andExpect(jsonPath("$.config.oauthPrivateKey").value("********"))
+                .andExpect(jsonPath("$.secretConfigured.oauthClientSecret").value(true))
+                .andExpect(jsonPath("$.secretConfigured.oauthPrivateKey").value(true))
+                .andExpect(jsonPath("$.config.oauthClientId").value("app-1"))
+                .andExpect(jsonPath("$.config.authMode").value("OAUTH2_CLIENT_CREDENTIALS"))
+                .andReturn();
+        String body = created.getResponse().getContentAsString();
+        org.assertj.core.api.Assertions.assertThat(body).doesNotContain("client-secret-0123456789", "QUJD");
+        String id = JsonMapper.builder().build().readTree(body).get("id").asString();
+
+        String fetched = mockMvc.perform(get("/api/connectors/{id}", id)
+                        .with(user("connector-admin", "TENANT_ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.config.oauthClientSecret").value("********"))
+                .andReturn().getResponse().getContentAsString();
+        org.assertj.core.api.Assertions.assertThat(fetched).doesNotContain("client-secret-0123456789");
+    }
+
+    /** Migration STATIC_HEADER → OAuth2 sans recréer l'instance : l'ancien en-tête (masqué, conservé) est simplement ignoré. */
+    @Test
+    void updateConnector_fromStaticHeaderToOauth2_isPossibleWithoutRecreating() throws Exception {
+        String name = "Migrating " + UUID.randomUUID();
+        MvcResult created = mockMvc.perform(post("/api/connectors")
+                        .with(user("connector-admin", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(httpRestPayload(name, "SHARED_SECRET_TOKEN").replace("\"config\": {",
+                                "\"config\": {\"authHeaderValue\": \"Bearer legacy-credential-0123\",")))
+                .andExpect(status().isCreated()).andReturn();
+        String id = JsonMapper.builder().build().readTree(created.getResponse().getContentAsString()).get("id").asString();
+
+        mockMvc.perform(patch("/api/connectors/{id}", id)
+                        .with(user("connector-admin", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"config": {"authMode": "OAUTH2_CLIENT_CREDENTIALS",
+                                  "oauthTokenUrl": "https://93.184.216.34/token", "oauthClientId": "app-1",
+                                  "oauthClientSecret": "client-secret-0123456789", "oauthAllowedHosts": "erp.example.com"}}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.config.authMode").value("OAUTH2_CLIENT_CREDENTIALS"))
+                .andExpect(jsonPath("$.config.oauthClientSecret").value("********"));
+    }
+
+    @Test
+    void createConnector_withAMaskedPlaceholderAsASecret_returns400() throws Exception {
+        mockMvc.perform(post("/api/connectors")
+                        .with(user("connector-admin", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(oauthPayload("Masked " + UUID.randomUUID(), "")
+                                .replace("client-secret-0123456789", "********")))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void createConnector_oauth2WithALoopbackTokenUrl_returns400() throws Exception {
+        mockMvc.perform(post("/api/connectors")
+                        .with(user("connector-admin", "TENANT_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(oauthPayload("Loopback " + UUID.randomUUID(), "")
+                                .replace("93.184.216.34", "127.0.0.1")))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

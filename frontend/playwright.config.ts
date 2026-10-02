@@ -8,6 +8,8 @@ export default defineConfig({
   use: {
     baseURL: 'http://127.0.0.1:4173',
     trace: 'on-first-retry',
+    // D7 : les scénarios s'écrivent sur les textes français (langue d'origine) ; la langue se change explicitement.
+    locale: 'fr-FR',
     launchOptions: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE
       ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE }
       : {},

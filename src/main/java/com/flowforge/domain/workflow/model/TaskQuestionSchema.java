@@ -68,6 +68,20 @@ public record TaskQuestionSchema(
                 throw new IllegalArgumentException(
                         "FieldType.FILE is not supported by TaskQuestionSchema (field: " + field.name() + ")");
             }
+            // TODO §76 (D-CHAMPS-USERQ) : les types structurés sont réservés aux champs de dossier en D1 — le formulaire de
+            // tâche et le portail ont leur propre rendu, et les réponses sont rangées en variables sans normalisation.
+            if (field.type() == FieldType.MONEY
+                    || field.type() == FieldType.REPEATABLE_GROUP
+                    || field.type() == FieldType.EXTERNAL_REF) {
+                throw new IllegalArgumentException("FieldType." + field.type()
+                        + " is not supported by TaskQuestionSchema yet (field: " + field.name() + ")");
+            }
+            // TODO §80 (D1, règles) : calcul, visibilité et obligation conditionnelle s'évaluent sur les champs du dossier, à
+            // l'enregistrement du dossier — pas sur les réponses d'une question de tâche.
+            if (field.formula() != null || field.visibleWhen() != null || field.requiredWhen() != null) {
+                throw new IllegalArgumentException("field rules (formula, visibleWhen, requiredWhen) are not supported by "
+                        + "TaskQuestionSchema (field: " + field.name() + ")");
+            }
         }
     }
 

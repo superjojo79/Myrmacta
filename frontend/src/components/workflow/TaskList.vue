@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import type { WorkflowTaskView } from '@/api/types'
 import AdminPager from '@/components/admin/AdminPager.vue'
 import { resolveTaskFormComponent } from '@/components/workflow/task-forms/taskFormRegistry'
@@ -17,17 +18,19 @@ const emit = defineEmits<{
   reassign: [taskId: string]
   'form-error': [message: string]
 }>()
+
+const { t } = useI18n()
 </script>
 
 <template>
   <section>
-    <h2>Tâches du lien</h2>
-    <p v-if="tasks.length === 0">Aucune tâche ouverte.</p>
+    <h2>{{ t('workflow.tasks.title') }}</h2>
+    <p v-if="tasks.length === 0">{{ t('workflow.tasks.empty') }}</p>
     <ul v-else class="task-list">
       <li v-for="task in tasks" :key="task.taskId">
         <div>
           <strong>{{ task.name || task.taskId }}</strong>
-          <span class="task-list__meta">Assignee : {{ task.assignee || '—' }}</span>
+          <span class="task-list__meta">{{ t('workflow.tasks.assignee', { name: task.assignee || '—' }) }}</span>
         </div>
         <div class="task-list__actions">
           <component
@@ -45,14 +48,14 @@ const emit = defineEmits<{
             data-testid="complete-task"
             @click="emit('complete', task.taskId)"
           >
-            Compléter
+            {{ t('workflow.tasks.complete') }}
           </button>
           <button
             v-if="canReassign"
             type="button"
             @click="emit('reassign', task.taskId)"
           >
-            Réassigner
+            {{ t('workflow.tasks.reassign') }}
           </button>
         </div>
       </li>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { onMounted, ref, watch } from 'vue'
 import { listAllWorkflowTypeConfigs } from '@/api/workflows'
 import type { WorkflowTypeConfig } from '@/api/types'
@@ -49,19 +50,21 @@ function submit() {
   if (!key) return
   emit('start', key)
 }
+
+const { t } = useI18n()
 </script>
 
 <template>
   <div v-if="open" class="dialog" role="dialog" aria-modal="true">
     <div class="dialog__panel">
-      <h2>Démarrer un workflow</h2>
+      <h2>{{ t('workflow.startDialog.title') }}</h2>
       <label class="dialog__row">
         <input v-model="useOther" type="checkbox" />
-        Choisir une autre configuration
+        {{ t('workflow.startDialog.useOther') }}
       </label>
-      <p v-if="!useOther">Clé par défaut : <strong>{{ defaultWorkflowKey || '—' }}</strong></p>
+      <p v-if="!useOther">{{ t('workflow.startDialog.defaultKey') }} <strong>{{ defaultWorkflowKey || '—' }}</strong></p>
       <label v-else class="dialog__row">
-        Configuration
+        {{ t('workflow.startDialog.configuration') }}
         <select v-model="selectedKey" :disabled="loading">
           <option v-for="cfg in configs" :key="cfg.workflowKey" :value="cfg.workflowKey">
             {{ cfg.label }} ({{ cfg.workflowKey }})
@@ -69,9 +72,9 @@ function submit() {
         </select>
       </label>
       <div class="dialog__actions">
-        <button type="button" @click="emit('close')">Annuler</button>
+        <button type="button" @click="emit('close')">{{ t('common.cancel') }}</button>
         <button type="button" class="primary" :disabled="!selectedKey && !defaultWorkflowKey" @click="submit">
-          Démarrer
+          {{ t('workflow.startDialog.start') }}
         </button>
       </div>
     </div>

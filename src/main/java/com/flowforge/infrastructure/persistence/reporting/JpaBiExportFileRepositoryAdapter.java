@@ -74,7 +74,14 @@ public class JpaBiExportFileRepositoryAdapter implements BiExportFileRepository,
 
     @Override
     @Transactional
-    public void commitSuccessfulExport(String tenantId, List<BiExportFile> files, Instant exportedAt) {
+    public void commitSuccessfulExport(
+            String tenantId, List<BiExportFile> files, Instant exportedAt, Instant expectedLastBiExportAt) {
+        // D5 : la prise du créneau est la PREMIÈRE écriture de la transaction. Sur PostgreSQL, un second exécutant attend la
+        // validation du premier puis ne trouve plus la valeur attendue : 0 ligne, exception, rollback — aucun fichier catalogué
+        // en double (les objets déjà stockés sont retirés par l'appelant).
+        if (!settingsRepository.advanceLastBiExportAt(tenantId, expectedLastBiExportAt, exportedAt)) {
+            throw new com.flowforge.domain.reporting.port.out.BiExportAlreadyCommittedException(tenantId);
+        }
         for (BiExportFile file : files) {
             repository.save(BiExportFileJpaEntity.fromDomain(file));
         }
@@ -84,6 +91,5 @@ public class JpaBiExportFileRepositoryAdapter implements BiExportFileRepository,
         if (!current.biExportEnabled()) {
             throw new IllegalStateException("BI export was disabled before commit");
         }
-        settingsRepository.save(current.withLastBiExportAt(exportedAt));
     }
 }

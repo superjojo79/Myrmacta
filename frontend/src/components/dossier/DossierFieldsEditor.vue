@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { computed, ref, watch } from 'vue'
 import type { FieldDefinition } from '@/api/types'
 import DynamicFields from './DynamicFields.vue'
@@ -6,6 +7,8 @@ import { diffDossierFields } from '@/dossier/diffDossierFields'
 
 const props = defineProps<{
   definitions: FieldDefinition[]
+  /** TODO §80 : code du type (règles : champs calculés, visibilité, obligations — évaluées côté serveur pendant la saisie). */
+  typeCode?: string
   fields: Record<string, unknown>
   canEdit: boolean
   locked: boolean
@@ -32,16 +35,19 @@ function save() {
   if (Object.keys(patch).length === 0) return
   emit('save', patch)
 }
+
+const { t } = useI18n()
 </script>
 
 <template>
   <section class="dossier-fields-editor">
-    <h2>Champs</h2>
+    <h2>{{ t('dossier.fieldsEditor.title') }}</h2>
     <DynamicFields
       v-model="draft"
       :definitions="definitions"
       :readonly="!editable"
       :apply-defaults="false"
+      :type-code="typeCode"
     />
     <button
       v-if="editable"
@@ -49,7 +55,7 @@ function save() {
       :disabled="saving"
       @click="save"
     >
-      Enregistrer les champs
+      {{ t('dossier.fieldsEditor.save') }}
     </button>
   </section>
 </template>

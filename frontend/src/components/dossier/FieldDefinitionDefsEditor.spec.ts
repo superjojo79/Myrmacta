@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
 import FieldDefinitionDefsEditor from './FieldDefinitionDefsEditor.vue'
 import type { FieldDefinition } from '@/api/types'
@@ -169,5 +170,115 @@ describe('FieldDefinitionDefsEditor', () => {
     expect(emitted).toHaveLength(2)
     expect(emitted[0]!.name).toBe('urgency')
     expect(emitted[1]!.name).toBe('amount')
+  })
+})
+
+describe('FieldDefinitionDefsEditor — structured types (TODO §76, D1)', () => {
+  const base: FieldDefinition = { name: 'x', label: 'X', type: 'STRING', required: false, defaultValue: 'a', options: [] }
+  const last = (w: ReturnType<typeof mount>) => w.emitted('update:modelValue')!.at(-1)![0] as FieldDefinition[]
+
+  it('offers the structured types for dossier fields but not for task questions', () => {
+    const fields = mount(FieldDefinitionDefsEditor, { props: { modelValue: [base] } })
+    expect(fields.findAll('[data-testid="field-def-type"] option').map((o) => o.text())).toEqual(
+      expect.arrayContaining(['MONEY', 'REPEATABLE_GROUP', 'EXTERNAL_REF']),
+    )
+    const task = mount(FieldDefinitionDefsEditor, { props: { modelValue: [base], mode: 'task' } })
+    expect(task.findAll('[data-testid="field-def-type"] option').map((o) => o.text())).toEqual([
+      'STRING', 'NUMBER', 'DATE', 'BOOLEAN', 'SELECT', 'FILE',
+    ])
+  })
+
+  it('switching to MONEY clears the default value and options (the server refuses a default)', async () => {
+    const wrapper = mount(FieldDefinitionDefsEditor, { props: { modelValue: [{ ...base, type: 'SELECT', options: ['A'] }] } })
+    await wrapper.get('[data-testid="field-def-type"]').setValue('MONEY')
+    expect(last(wrapper)[0]).toMatchObject({ type: 'MONEY', defaultValue: null, options: [], fields: [] })
+    await nextTick()
+    expect(wrapper.find('[data-testid="field-def-default"]').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="field-def-options"]').text()).toContain('Devises autorisées')
+  })
+
+  it('edits the allowed currencies of a MONEY field', async () => {
+    const wrapper = mount(FieldDefinitionDefsEditor, { props: { modelValue: [{ ...base, type: 'MONEY', defaultValue: null }] } })
+    await wrapper.get('[data-testid="field-def-options-input"]').setValue('EUR, USD')
+    expect(last(wrapper)[0]!.options).toEqual(['EUR', 'USD'])
+  })
+
+  it('a group edits its row bounds and its own sub-fields in a nested editor', async () => {
+    const group: FieldDefinition = { ...base, type: 'REPEATABLE_GROUP', defaultValue: null, fields: [], minRows: null, maxRows: null }
+    const wrapper = mount(FieldDefinitionDefsEditor, { props: { modelValue: [group] } })
+    await wrapper.get('[data-testid="field-def-min-rows"]').setValue('1')
+    await wrapper.get('[data-testid="field-def-max-rows"]').setValue('10')
+    expect(last(wrapper)[0]).toMatchObject({ minRows: 1, maxRows: 10 })
+
+    const nested = wrapper.get('[data-testid="field-def-subfields"]')
+    await nested.get('[data-testid="field-def-add"]').trigger('click')
+    const fields = last(wrapper)[0]!.fields!
+    expect(fields).toHaveLength(1)
+    expect(fields[0]).toMatchObject({ type: 'STRING' })
+  })
+
+  it('sub-fields cannot be FILE or groups, nor sensitive, nor grouped', async () => {
+    const group: FieldDefinition = { ...base, type: 'REPEATABLE_GROUP', defaultValue: null, fields: [{ ...base, name: 's' }] }
+    const wrapper = mount(FieldDefinitionDefsEditor, { props: { modelValue: [group] } })
+    const nested = wrapper.get('[data-testid="field-def-subfields"]')
+    expect(nested.findAll('[data-testid="field-def-type"] option').map((o) => o.text())).toEqual([
+      'STRING', 'NUMBER', 'DATE', 'BOOLEAN', 'SELECT', 'MONEY', 'EXTERNAL_REF',
+    ])
+    expect(nested.find('[data-testid="field-def-sensitive"]').exists()).toBe(false)
+    expect(nested.find('[data-testid="field-def-default"]').exists()).toBe(false)
+    expect(nested.find('[data-testid="field-def-group"]').exists()).toBe(false)
+  })
+
+  it('leaving a structured type resets its specific content', async () => {
+    const group: FieldDefinition = { ...base, type: 'REPEATABLE_GROUP', defaultValue: null, fields: [base], minRows: 1, maxRows: 3 }
+    const wrapper = mount(FieldDefinitionDefsEditor, { props: { modelValue: [group] } })
+    await wrapper.get('[data-testid="field-def-type"]').setValue('STRING')
+    expect(last(wrapper)[0]).toMatchObject({ type: 'STRING', fields: [], minRows: null, maxRows: null, defaultValue: '' })
+  })
+
+  describe('TODO §80 — règles', () => {
+    const def: FieldDefinition = { name: 'ttc', label: 'TTC', type: 'NUMBER', required: false }
+
+    it('offers the three rule inputs for a scalar field of a dossier type and emits them (blank = absent)', async () => {
+      const wrapper = mount(FieldDefinitionDefsEditor, { props: { modelValue: [def] } })
+      await wrapper.get('[data-testid="field-def-formula"]').setValue('dossier.fields.ht * 2')
+      await wrapper.get('[data-testid="field-def-visible-when"]').setValue("dossier.fields.pays = 'FR'")
+      await wrapper.get('[data-testid="field-def-required-when"]').setValue('dossier.fields.ht > 1000')
+      const last = (wrapper.emitted('update:modelValue')?.at(-1)?.[0] as FieldDefinition[])[0]!
+      expect(last).toMatchObject({ formula: 'dossier.fields.ht * 2', visibleWhen: "dossier.fields.pays = 'FR'", requiredWhen: 'dossier.fields.ht > 1000' })
+
+      await wrapper.get('[data-testid="field-def-formula"]').setValue('')
+      expect((wrapper.emitted('update:modelValue')?.at(-1)?.[0] as FieldDefinition[])[0]!.formula).toBeNull()
+    })
+
+    it('does not offer rules for groups, task questions nor group columns', () => {
+      expect(mount(FieldDefinitionDefsEditor, { props: { modelValue: [{ ...def, type: 'REPEATABLE_GROUP', fields: [] }] } }).find('[data-testid="field-def-rules"]').exists()).toBe(false)
+      expect(mount(FieldDefinitionDefsEditor, { props: { modelValue: [def], mode: 'task' } }).find('[data-testid="field-def-rules"]').exists()).toBe(false)
+      expect(mount(FieldDefinitionDefsEditor, { props: { modelValue: [def], mode: 'subfields' } }).find('[data-testid="field-def-rules"]').exists()).toBe(false)
+    })
+  })
+
+  describe('Cherchable (TODO §81, D2)', () => {
+    it('is offered for scalar types only and toggles the emitted flag', async () => {
+      const wrapper = mount(FieldDefinitionDefsEditor, { props: { modelValue: [
+        { name: 'a', label: 'A', type: 'STRING', required: false },
+        { name: 'm', label: 'M', type: 'MONEY', required: false },
+      ] } })
+      const boxes = wrapper.findAll('[data-testid="field-def-searchable"]')
+      expect(boxes).toHaveLength(1)
+      await boxes[0]!.setValue(true)
+      const emitted = wrapper.emitted('update:modelValue')?.[0]?.[0] as FieldDefinition[]
+      expect(emitted[0]!.searchable).toBe(true)
+    })
+
+    it('is disabled on a sensitive field and cleared when the field becomes sensitive', async () => {
+      const wrapper = mount(FieldDefinitionDefsEditor, { props: { modelValue: [{ name: 'a', label: 'A', type: 'STRING', required: false, searchable: true }] } })
+      await wrapper.get('[data-testid="field-def-sensitive"]').setValue(true)
+      const emitted = wrapper.emitted('update:modelValue')?.[0]?.[0] as FieldDefinition[]
+      expect(emitted[0]!.sensitive).toBe(true)
+      expect(emitted[0]!.searchable).toBe(false)
+      await nextTick()
+      expect((wrapper.get('[data-testid="field-def-searchable"]').element as HTMLInputElement).disabled).toBe(true)
+    })
   })
 })

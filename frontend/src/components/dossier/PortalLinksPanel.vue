@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+import { formatDateTime } from '@/i18n/format'
 import { computed, onMounted, ref, watch } from 'vue'
 import { toProblemDetail } from '@/api/http'
 import {
@@ -12,24 +14,12 @@ import {
 // TODO §68 (portail-externe) US-5 — liens envoyés aux tiers externes pour ce dossier. Masqué tant
 // qu'aucun lien n'existe (dossier sans tâche externe) ou si l'API est indisponible.
 const props = defineProps<{ dossierId: string }>()
+const { t, te } = useI18n()
 
-const STATUS_LABELS: Record<PortalLinkStatus, string> = {
-  PENDING_SEND: 'Envoi en cours',
-  ACTIVE: 'En attente du tiers',
-  NOT_SENT: 'Non envoyé',
-  COMPLETED: 'Répondu',
-  EXPIRED: 'Expiré',
-  REVOKED: 'Révoqué',
-}
-
-const REASON_LABELS: Record<string, string> = {
-  NO_ADDRESS: 'aucune adresse e-mail renseignée',
-  INVALID_ADDRESS: 'adresse e-mail invalide',
-  SCHEMA_MISSING: 'formulaire introuvable',
-  SEND_FAILED: 'échec d’envoi de l’e-mail',
-  TASK_GONE: 'tâche terminée',
-  RESENT: 'remplacé par un nouvel envoi',
-  REVOKED_BY_USER: 'révoqué manuellement',
+/** Libellé d'un code serveur : traduit s'il est connu, sinon le code tel quel (un nouveau code serveur ne casse pas l'écran). */
+function label(group: 'status' | 'reason', code: string): string {
+  const key = `dossier.portalLinks.${group}.${code}`
+  return te(key) ? t(key) : code
 }
 
 const links = ref<PortalLinkView[]>([])
@@ -55,13 +45,13 @@ const resendableLinkIds = computed(() => {
 })
 
 function formatDate(value: string | null): string {
-  return value ? new Date(value).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '—'
+  return formatDateTime(value)
 }
 
 function statusText(link: PortalLinkView): string {
-  const label = STATUS_LABELS[link.status] ?? link.status
-  const reason = link.statusReason ? REASON_LABELS[link.statusReason] ?? link.statusReason : ''
-  return reason ? `${label} — ${reason}` : label
+  const status = label('status', link.status)
+  const reason = link.statusReason ? label('reason', link.statusReason) : ''
+  return reason ? `${status} — ${reason}` : status
 }
 
 async function load() {
@@ -82,11 +72,15 @@ async function run(action: () => Promise<PortalLinkView>) {
   try {
     const result = await action()
     if (result.status === 'NOT_SENT') {
-      error.value = `Lien non envoyé : ${REASON_LABELS[result.statusReason ?? ''] ?? 'erreur'}. Corrigez puis réessayez.`
+      error.value = t('dossier.portalLinks.notSent', {
+        reason: result.statusReason && te(`dossier.portalLinks.reason.${result.statusReason}`)
+          ? label('reason', result.statusReason)
+          : t('dossier.portalLinks.unknownReason'),
+      })
     }
     await load()
   } catch (e) {
-    error.value = toProblemDetail(e).detail ?? 'Action impossible.'
+    error.value = toProblemDetail(e).detail ?? t('dossier.portalLinks.errors.action')
   } finally {
     busy.value = false
   }
@@ -107,18 +101,18 @@ watch(() => props.dossierId, load)
 <template>
   <section v-if="loaded && links.length" class="portal-links" data-testid="portal-links-panel">
     <header class="portal-links__header">
-      <h2>Tiers externes</h2>
+      <h2>{{ t('dossier.portalLinks.title') }}</h2>
     </header>
     <p v-if="error" class="error" role="alert">{{ error }}</p>
     <table>
       <thead>
         <tr>
-          <th>Destinataire</th>
-          <th>Statut</th>
-          <th>Envoyé</th>
-          <th>Expire</th>
-          <th>Dernier accès</th>
-          <th v-if="canManage"><span class="visually-hidden">Actions</span></th>
+          <th>{{ t('dossier.portalLinks.recipient') }}</th>
+          <th>{{ t('dossier.portalLinks.statusHeader') }}</th>
+          <th>{{ t('dossier.portalLinks.sent') }}</th>
+          <th>{{ t('dossier.portalLinks.expires') }}</th>
+          <th>{{ t('dossier.portalLinks.lastAccess') }}</th>
+          <th v-if="canManage"><span class="visually-hidden">{{ t('common.actions') }}</span></th>
         </tr>
       </thead>
       <tbody>
@@ -135,7 +129,7 @@ watch(() => props.dossierId, load)
               :disabled="busy"
               @click="onSend(link.taskId)"
             >
-              {{ link.status === 'NOT_SENT' ? 'Envoyer' : 'Renvoyer' }}
+              {{ link.status === 'NOT_SENT' ? t('dossier.portalLinks.send') : t('dossier.portalLinks.resend') }}
             </button>
             <button
               v-if="liveStatuses.includes(link.status)"
@@ -143,7 +137,7 @@ watch(() => props.dossierId, load)
               :disabled="busy"
               @click="onRevoke(link.id)"
             >
-              Révoquer
+              {{ t('dossier.portalLinks.revoke') }}
             </button>
           </td>
         </tr>

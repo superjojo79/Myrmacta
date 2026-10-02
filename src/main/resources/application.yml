@@ -32,6 +32,13 @@ spring:
     password: ${DB_PASSWORD:flowforge}
     hikari:
       connection-init-sql: SET search_path TO ${app.tenant.id}, public
+  task:
+    scheduling:
+      # TODO §79 (D5) : à l'arrêt (déploiement progressif), les tâches planifiées EN COURS se terminent au lieu d'être coupées entre la
+      # prise de leur unité de travail et son effet (créneau cron perdu, par ex.).
+      shutdown:
+        await-termination: true
+        await-termination-period: ${APP_SCHEDULING_SHUTDOWN_WAIT:30s}
   jpa:
     hibernate:
       ddl-auto: none
@@ -49,6 +56,11 @@ spring:
           auth: ${MAIL_SMTP_AUTH:false}
           starttls:
             enable: ${MAIL_SMTP_STARTTLS:false}
+          # TODO §79 (D5) : JavaMail n'a aucun délai par défaut. Un serveur SMTP muet bloquerait indéfiniment un exécutant, ce qui
+          # dépasserait le bail de prise de ses lignes (outbox 5 min, invitations portail 2 min) et provoquerait un double envoi.
+          connectiontimeout: ${MAIL_SMTP_CONNECTION_TIMEOUT_MS:10000}
+          timeout: ${MAIL_SMTP_READ_TIMEOUT_MS:30000}
+          writetimeout: ${MAIL_SMTP_WRITE_TIMEOUT_MS:30000}
   servlet:
     multipart:
       max-file-size: ${APP_DOSSIER_ATTACHMENT_MAX_SIZE_MB:25}MB
@@ -72,9 +84,13 @@ spring:
           oidc:
             issuer-uri: ${OIDC_ISSUER_URI}
   ai:
+    # Assistant de conception (D-ASSIST-PROVIDER) : le ChatModel Anthropic du starter est construit par AssistantConfig, et seulement
+    # si app.assistant.enabled=true ; l'auto-configuration du starter est coupée (sans clé elle empêcherait de démarrer).
+    model:
+      chat: none
     # Serveur MCP M2M (serveur-mcp, D-TRANSPORT/D-ENDPOINT=A) — outillage interne
-    # (API_SERVICE) sous la chaîne Security /api/m2m/** existante. Pas de starter
-    # chat/model : capabilities.tool seul, annotation-scanner détecte les @McpTool.
+    # (API_SERVICE) sous la chaîne Security /api/m2m/** existante : capabilities.tool seul,
+    # annotation-scanner détecte les @McpTool.
     mcp:
       server:
         enabled: true
@@ -127,6 +143,41 @@ server:
         secure: ${app.security.cookie.secure:true}
 
 app:
+  # TODO §82 (D6) : local | staging | production (défaut production = le plus strict). Hors local, M2M_TRUSTED_CLIENT_IDS est
+  # obligatoire dès que la chaîne M2M est active ; la publication directe par un agent est refusée en production.
+  environment: ${APP_ENVIRONMENT:production}
+  mcp:
+    publication:
+      # draft (défaut) : un agent écrit un brouillon, un humain publie ; direct : l'outil publish_draft publie sans relecture
+      # (refusé en production).
+      mode: ${APP_MCP_PUBLICATION_MODE:draft}
+  drafts:
+    # Brouillons d'origine MCP/assistant non modifiés depuis N jours : purgés (0 = jamais). Les brouillons de l'éditeur : jamais.
+    retention-days: ${APP_DRAFTS_RETENTION_DAYS:30}
+  # D7 — langue par défaut du tenant (fr | en) : interface tant que l'utilisateur n'a pas choisi la sienne, et messages envoyés à un tiers
+  # sans profil (invitation de signature). Autre valeur : démarrage refusé.
+  i18n:
+    default-locale: ${APP_I18N_DEFAULT_LOCALE:fr}
+  assistant:
+    # Assistant de conception IA (Admin → Assistant). Désactivé par défaut : aucune requête sortante tant qu'il n'est pas activé.
+    # L'activer exige une clé d'API (jamais exposée au navigateur) ; base-url en https (sauf boucle locale).
+    enabled: ${APP_ASSISTANT_ENABLED:false}
+    api-key: ${APP_ASSISTANT_API_KEY:}
+    base-url: ${APP_ASSISTANT_BASE_URL:https://api.anthropic.com}
+    model: ${APP_ASSISTANT_MODEL:claude-sonnet-5-5}
+    retention-days: ${APP_ASSISTANT_RETENTION_DAYS:30}
+    max-tool-rounds-per-turn: ${APP_ASSISTANT_MAX_TOOL_ROUNDS:12}
+    max-turns-per-conversation: ${APP_ASSISTANT_MAX_TURNS:60}
+    max-tokens-per-conversation: ${APP_ASSISTANT_MAX_TOKENS_PER_CONVERSATION:400000}
+    max-tokens-per-tenant-per-day: ${APP_ASSISTANT_MAX_TOKENS_PER_DAY:3000000}
+  inbound:
+    # Connecteurs d'entrée par interrogation (e-mail IMAP, Azure Service Bus) : bornes communes.
+    max-messages-per-poll: ${APP_INBOUND_MAX_MESSAGES_PER_POLL:20}
+    max-message-bytes: ${APP_INBOUND_MAX_MESSAGE_BYTES:26214400}
+    max-body-chars: ${APP_INBOUND_MAX_BODY_CHARS:20000}
+    max-attachment-bytes: ${APP_INBOUND_MAX_ATTACHMENT_BYTES:10485760}
+    min-poll-seconds: ${APP_INBOUND_MIN_POLL_SECONDS:30}
+    max-bus-message-bytes: ${APP_INBOUND_MAX_BUS_MESSAGE_BYTES:1048576}
   tenant:
     id: tenant_dev   # unique par instance déployée — jamais résolu dynamiquement
   security:

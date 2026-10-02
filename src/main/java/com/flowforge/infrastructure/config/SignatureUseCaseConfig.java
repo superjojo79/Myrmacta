@@ -229,8 +229,9 @@ public class SignatureUseCaseConfig {
     }
 
     @Bean
-    SignatureInviteSenderPort signatureInviteSenderPort(EmailPort emailPort, PortalProperties portalProperties) {
-        return new EmailSignatureInviteSender(emailPort, portalProperties);
+    SignatureInviteSenderPort signatureInviteSenderPort(
+            EmailPort emailPort, PortalProperties portalProperties, I18nProperties i18n) {
+        return new EmailSignatureInviteSender(emailPort, portalProperties, i18n.locale());
     }
 
     @Bean

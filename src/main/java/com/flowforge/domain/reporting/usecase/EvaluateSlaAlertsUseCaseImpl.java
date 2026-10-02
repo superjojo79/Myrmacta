@@ -111,10 +111,20 @@ public final class EvaluateSlaAlertsUseCaseImpl implements EvaluateSlaAlertsUseC
         if (previous.isPresent() && previous.get().lastStatus() == status) {
             return;
         }
+        SlaAlertState next = new SlaAlertState(settings.tenantId(), candidate.id(), status, now);
+        // TODO §79 (D5) : la transition d'état est « prise » AVANT de notifier. Deux exécutants concurrents voient le même
+        // changement ; un seul gagne le compare-and-set (ou l'insertion, protégée par la clé primaire : le perdant échoue et
+        // son unité de travail est annulée, outbox comprise). Sinon chacun mettait l'alerte (e-mail, webhook, navigateur) en file.
+        if (previous.isPresent()) {
+            if (!stateRepository.transition(previous.get(), next)) {
+                return;
+            }
+        } else if (!stateRepository.insertIfAbsent(next)) {
+            return; // un autre exécutant a évalué ce dossier en premier (insertion stricte, pas de fusion)
+        }
         if (status == SlaStatus.AT_RISK || status == SlaStatus.BREACHED) {
             notify(settings, candidate, status, enabledWebhooks);
         }
-        stateRepository.save(new SlaAlertState(settings.tenantId(), candidate.id(), status, now));
     }
 
     private void notify(

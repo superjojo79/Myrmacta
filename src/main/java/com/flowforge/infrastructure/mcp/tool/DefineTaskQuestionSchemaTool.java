@@ -64,7 +64,7 @@ public class DefineTaskQuestionSchemaTool {
                             required = true,
                             description = "Full field list — the complete schema every call, not a diff. Each "
                                     + "item: {name, label, type (STRING|NUMBER|BOOLEAN|DATE|SELECT), required, "
-                                    + "defaultValue, options, group}. FILE is not supported here. Field names "
+                                    + "defaultValue, options, group (section title), helpText (plain text, 500 chars max), width (HALF = two per row; default full)}. FILE, MONEY, REPEATABLE_GROUP and EXTERNAL_REF are not supported here. Field names "
                                     + "must not collide with reserved or already-used workflow variable names.")
                     List<Map<String, Object>> fields,
             @McpToolParam(

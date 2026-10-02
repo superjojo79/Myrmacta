@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { onMounted, ref } from 'vue'
 import { getDossierById, updateDossierFields } from '@/api/dossiers'
 import { getDossierType } from '@/api/dossierTypes'
@@ -21,6 +22,7 @@ const props = defineProps<{ dossierId: string }>()
 const emit = defineEmits<{ ready: [Record<string, unknown>]; error: [string] }>()
 
 const definitions = ref<FieldDefinition[]>([])
+const typeCode = ref<string | undefined>(undefined)
 const snapshot = ref<Record<string, unknown>>({})
 const fields = ref<Record<string, unknown>>({})
 const version = ref(0)
@@ -40,8 +42,9 @@ async function load() {
     version.value = dossier.version
     const type = await getDossierType(dossier.dossierTypeCode)
     definitions.value = type.fieldDefinitions
+    typeCode.value = type.code
   } catch (err) {
-    loadError.value = toProblemDetail(err).detail ?? 'Impossible de charger le formulaire'
+    loadError.value = toProblemDetail(err).detail ?? t('workflow.taskForms.errors.form')
   } finally {
     loading.value = false
   }
@@ -61,20 +64,22 @@ async function submit() {
     version.value = updated.version
     emit('ready', {})
   } catch (err) {
-    emit('error', toProblemDetail(err).detail ?? 'Mise à jour des champs impossible')
+    emit('error', toProblemDetail(err).detail ?? t('workflow.taskForms.errors.fields'))
   } finally {
     submitting.value = false
   }
 }
+
+const { t } = useI18n()
 </script>
 
 <template>
   <div class="dossier-fields-task-form">
-    <p v-if="loading">Chargement du formulaire…</p>
+    <p v-if="loading">{{ t('workflow.taskForms.loadingForm') }}</p>
     <p v-else-if="loadError" class="error">{{ loadError }}</p>
     <template v-else>
-      <DynamicFields v-model="fields" :definitions="definitions" :apply-defaults="false" />
-      <button type="button" :disabled="submitting" @click="submit">Compléter</button>
+      <DynamicFields v-model="fields" :definitions="definitions" :apply-defaults="false" :type-code="typeCode" />
+      <button type="button" :disabled="submitting" @click="submit">{{ t('workflow.taskForms.complete') }}</button>
     </template>
   </div>
 </template>

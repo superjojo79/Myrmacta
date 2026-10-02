@@ -69,6 +69,13 @@ public class NotificationOutboxRelay {
         List<NotificationOutboxRecord> batch =
                 outboxRepository.lockNextPending(properties.outbox().batchSize(), now);
         for (NotificationOutboxRecord record : batch) {
+            // Revue D5 : bail renouvelé juste avant l'envoi — le lot entier ne doit pas dépendre d'un bail posé à son début.
+            // Une ligne reprise entre-temps par un autre exécutant (bail échu) est sautée.
+            // (revue D5 passe 2) instant FRAIS : avec `now` capturé au début du lot le bail renouvelé serait identique au bail initial.
+            Instant fresh = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
+            if (!outboxRepository.renewClaim(record.id(), record.nextAttemptAt(), fresh.isAfter(now) ? fresh : now)) {
+                continue;
+            }
             processOne(record, now);
         }
         Instant cutoff = now.minus(properties.outbox().retention());

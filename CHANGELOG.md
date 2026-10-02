@@ -28,7 +28,90 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ## [Non publié]
 
+### Modifié
+
+- **TODO §86 (LC3, revue D-ASSIST-PROVIDER)** — L'assistant de conception passe par le **starter Spring AI** (`spring-ai-starter-model-anthropic`, `ChatModel`) derrière le même port `LanguageModelPort`, à la
+  place de l'adaptateur HTTP maison. Configuration `APP_ASSISTANT_*` inchangée ; toujours **désactivé par défaut**, démarrage refusé sans clé, https obligatoire, redirections jamais suivies, erreurs du
+  fournisseur jamais relayées, aucune relance automatique. L'auto-configuration du starter est coupée (`spring.ai.model.chat=none`) : le modèle n'est construit que si l'assistant est activé.
+
 ### Ajouté
+
+- **TODO §87 (D3c-bis, revue D-INTEG-MAIL-PROTOCOL)** — **E-mail entrant par Microsoft Graph** (`graph-mail-inbound`) : second connecteur du même SPI que l'IMAP, pour Exchange Online (OAuth2
+  `client_credentials`, hôtes Graph seuls, aucun mot de passe). Mêmes règles que l'IMAP, désormais communes (`InboundMailRouting`) : corrélation par référence, expéditeur attesté, réponses automatiques
+  refusées, pièces jointes contrôlées, message rangé (jamais supprimé) et jamais remis deux fois. Sans curseur à conserver. Voir `DEPLOIEMENT.md` §16 (permission `Mail.ReadWrite` à restreindre à la boîte).
+- **TODO §90 (D7)** — **Interface en français et en anglais** (`vue-i18n`) : tout le SPA et le portail public, avec sélecteur de langue (choix conservé dans le navigateur), langue par défaut du
+  tenant (`app.i18n.default-locale` / `APP_I18N_DEFAULT_LOCALE`, exposée par `/api/auth/me`), dates et nombres selon la langue, messages de validation et de repli traduits. Les e-mails d'invitation de
+  tâche externe et de signature suivent la langue du tenant (lien `?lang=en` en anglais, lien français inchangé). Non traduits (journalisé) : libellés saisis par le tenant, détail d'erreur de l'API,
+  diagnostics techniques des éditeurs de template et BPMN. Garde-fous : parité fr/en typée et testée, test de couverture des templates, E2E-I18N-1.
+- **TODO §89 (LC6, spike)** — Scripts en bac à sable : **non lancé** (D-SCRIPT-GO = non). Six familles de cas « algorithme complexe » prouvées exprimables avec LC2 (`ScriptQualificationSpikeTest`) ;
+  conditions de réouverture écrites en analyse 45 §9.
+- **TODO §88 (LC5)** — **Concepteur de parcours** : une suite d'étapes (question, tiers par portail, document, notification, connecteur, DMN, expression, champs, statuts, attente, décision avec boucles)
+  compilée en **BPMN déterministe** par le même parseur et la même liste blanche, déposée en **brouillon** (provenance `PARCOURS`) à relire dans Admin → Brouillons ; jamais publiée. API `/api/parcours`
+  (versionnée, aperçu, mode à blanc, suppression versionnée), écran Admin → Parcours, outils MCP `list_parcours`, `get_parcours`, `define_parcours`, `compile_parcours`. Sens unique (le BPMN généré ne se relit pas
+  en parcours). Deux passes de revue adversariale (valeurs de branche, mots réservés EL, caractères XML, `true/false` cités, clés, durées, variables du moteur).
+- **TODO §87 (D3c + D3d)** — Deux connecteurs d'entrée par interrogation. **E-mail entrant** (`imap-inbound`) : un message crée un dossier ou alimente celui dont la référence figure dans l'objet,
+  corps et expéditeur mappés vers les champs et variables, **pièces jointes rattachées après les contrôles habituels** (types, contenu, antivirus) ; réponses automatiques et listes refusées,
+  messages rangés (jamais supprimés), mot de passe ou OAuth2 (XOAUTH2, Exchange Online). **Azure Service Bus** (`azure-service-bus`) : file ou abonnement par l'API REST (SAS ou OAuth2), mapping
+  JSON identique à Kafka, message illisible rendu au courtier (lettres mortes) — pour les Business Events de D365 F&O sans relais. Bornes `APP_INBOUND_*` ; `DEPLOIEMENT.md` §16.
+- **TODO §86 (LC3)** — Assistant de conception IA (*Admin → Assistant*) : l'utilisateur décrit son besoin, l'assistant appelle le catalogue d'outils de **conception** dans le processus avec
+  l'identité de l'utilisateur (processus et tables DMN **en brouillon** ; types, schémas de questions, connecteurs sans secret et modèles de document **proposés**, validés à blanc, que l'utilisateur relit puis applique avec ses droits), vérifie son travail et renvoie ce qui est à relire. Aucune
+  donnée de dossier, jamais de publication ni de secret ; plafonds d'étapes, de tours et de jetons ; conversations conservées 30 jours, propres à leur auteur. **Désactivé par défaut** ; clé et
+  modèle par configuration serveur (`APP_ASSISTANT_*`, `DEPLOIEMENT.md` §15). Migration 033.
+
+- **TODO §85 (LC4a)** — Concepteur visuel de formulaires : aperçu en direct, sections, largeur (pleine / demi), aide contextuelle en texte brut et
+  réordonnancement par glisser-déposer, pour les questions de tâche et les champs d'un type de dossier ; le portail externe applique la même disposition.
+  `fieldDefinitions` reste la seule source (deux champs optionnels `helpText`, `width`, sans migration) ; outils MCP `define_dossier_type` et
+  `define_task_question_schema` étendus.
+- **TODO §84 (LC4b)** — Éditeur visuel de templates de documents (TipTap) : mise en forme, variables, blocs conditionnels et répétés, lignes de tableau répétées,
+  saut de page ; un template qu'il ne sait pas réécrire sans perte reste en source. Outils MCP `define_document_template` (brouillon seulement) et
+  `preview_document` (HTML en direct). Interpolation non échappée et fragments Thymeleaf refusés sous toute graphie (correctif de sécurité issu de la revue).
+
+- **TODO §83 (D4)** — Promotion de configuration entre environnements : export d'un **bundle ZIP** versionné (types de dossier, schémas de questions, connecteurs sans secrets, tables DMN
+  et processus BPMN déployés, configurations de workflow), **plan à blanc** par artefact (créer, modifier, inchangé, conflit, bloqué), application **idempotente** par les cas d'usage existants,
+  journal des imports. BPMN et DMN arrivent en **brouillons à publier** ; un connecteur est créé **désactivé** ; secrets jamais exportés (saisis ou injectés à l'import) ; valeurs `{{paramètre}}`
+  substituées par environnement. Écran *Admin → Promotion*, API `/api/admin/configuration`, outils MCP `export_configuration` et `import_configuration` (plan ; l'application ne dépose que des brouillons).
+  ACL, réglages et templates hors première tranche. Migration 032. Voir `DEPLOIEMENT.md` §14.
+
+- **TODO §82 (D6)** — Socle MCP low-code : les outils MCP `deploy_workflow`, `deploy_decision_table` et `redeploy_decision_table` écrivent désormais un **brouillon**
+  (origine Agent ou Assistant) qu'un humain relit et publie depuis *Admin → Brouillons* (écart avec la version en ligne, publication de ce qui a été relu, journal des
+  publications) ; nouveaux outils `list_pending_drafts` et `publish_draft` (ce dernier refusé sauf publication directe autorisée hors production). Un brouillon d'un autre
+  auteur n'est jamais écrasé en silence. Chaque outil MCP est classé *conception* ou *opération* ; un outil peut s'exécuter avec l'acteur d'une session (assistant).
+  **Ruptures** : les agents ne déploient plus en ligne par défaut (`APP_MCP_PUBLICATION_MODE=direct`, hors production, le rétablit) ; `APP_ENVIRONMENT` (défaut `production`) ;
+  hors `local`, `M2M_TRUSTED_CLIENT_IDS` est obligatoire dès que le canal M2M est actif (risque A3-M2). Migration 031. Voir `DEPLOIEMENT.md` §13.
+
+- **TODO §81 (D2)** — Recherche de dossiers sur des champs dynamiques : un champ peut être déclaré « cherchable » (texte, nombre, date, oui/non, choix ; jamais sensible),
+  puis filtré par égalité, liste, intervalle ou préfixe depuis la liste de supervision, l'API (`f.<champ>…`) et l'outil MCP `search_dossiers`. Type de dossier obligatoire,
+  cinq filtres au plus, refus explicite d'un filtre invalide. Migration 030 : `fields` passe en `jsonb` avec un index GIN (PostgreSQL ; réécriture de la table, voir `DEPLOIEMENT.md` §12).
+
+- **TODO §80 (D1 règles)** — Champs calculés (formule), visibilité conditionnelle et obligation conditionnelle sur les types de dossier : expressions métier bornées (JSONata)
+  évaluées côté serveur (un champ calculé n'est jamais saisi, un champ masqué n'est ni obligatoire ni conservé), aperçu en direct dans la SPA, endpoint `evaluate-rules` et outil MCP
+  `evaluate_dossier_rules`, éditeur d'administration. Règles refusées dans les questions de tâche. Aucune migration.
+
+- **TODO §79 (D5)** — Tâches planifiées sûres si deux pods les exécutent (déploiement progressif, répliques) : audit des 18 tâches, puis prise de l'unité de travail en base avant
+  l'effet (relais d'outbox, alertes SLA, invitations du portail, déclencheurs cron, export BI, réconciliation des liens, distribution des signatures). Plus d'e-mails, de dossiers, de fichiers
+  ou d'instances de process en double ; sans Redis ni verrou externe. Trois colonnes de bail (migrations 027 à 029). Guide d'exploitation : `DEPLOIEMENT.md` §11.
+
+- **TODO §78 (D3b)** — Nouvelle brique BPMN « Enregistrer des valeurs dans le dossier » : des expressions métier bornées (JSONata) tirent des valeurs du dossier, du résultat d'un
+  connecteur (`connectorResult.json` : corps lu comme JSON) et des variables, et les écrivent **en un seul patch** dans des champs déclarés du dossier (validation de type, version,
+  tout ou rien ; écriture de champ sensible auditée). Éditeur : paramètres multilignes en zone de texte. `connectorResult` devient une variable réservée.
+
+- **TODO §77 (D3a)** — Connecteur `http-rest` : authentification OAuth2 `client_credentials` (Microsoft Entra ID : D365 F&O, Dataverse, Graph). Jeton obtenu,
+  mis en cache par pod et renouvelé automatiquement ; secret client ou certificat (`private_key_jwt`) chiffrés au repos ; liste d'hôtes autorisés obligatoire pour que
+  le jeton ne puisse pas partir ailleurs ; un `401` provoque un renouvellement et un seul rejeu. Sans `authMode`, comportement inchangé.
+
+- **TODO §76 (D1)** — Champs dynamiques structurés : `MONEY` (montant décimal exact + devise ISO 4217, jamais arrondi en silence),
+  `REPEATABLE_GROUP` (lignes typées, un niveau, 0–500) et `EXTERNAL_REF` (système + identifiant). Validation avec chemin d'erreur par ligne,
+  valeurs normalisées, export CSV en colonnes stables, saisie et lecture dans la SPA, éditeur d'administration. Aucune migration ; types
+  structurés non encore proposés dans les questions de tâche.
+
+- **TODO §75 (LC2)** — Langage d'expression métier borné (JSONata, hors JUEL) : brique « Évaluer une expression » qui calcule
+  une condition ou une valeur sur le dossier (champs non sensibles), le résultat d'un connecteur et les variables, et la range dans
+  une variable comparée par une passerelle. Essai à blanc par `POST /api/expressions/{validate,evaluate}` et outils MCP
+  `validate_expression` / `evaluate_expression`. Bornes `app.expression.*` ; regex, `$eval` et fonctions non déterministes refusés.
+
+- **TODO §74 (LC1-suite)** — Le panneau de la brique « Décision DMN » propose désormais la liste des tables de décision
+  déployées (clé et dernière version) au lieu d'une saisie libre. Servie par
+  `GET /api/bpmn-building-blocks/references/dmnTables` (`TENANT_ADMIN` ou `WORKFLOW_ADMIN`). Aucune migration.
 
 - **[PR #151](https://github.com/superjojo79/FlowForge/pull/151) — TODO §73 (LC1)** — Palette métier dans l'éditeur BPMN : onze briques (document, connecteur,
   notification, dossier enfant, statuts, DMN, signature, question, tâche externe) posables depuis la

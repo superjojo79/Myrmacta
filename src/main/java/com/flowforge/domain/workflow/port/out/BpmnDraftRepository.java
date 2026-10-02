@@ -12,4 +12,15 @@ public interface BpmnDraftRepository {
 
     /** No-op if no draft exists for this key. */
     void deleteByTenantIdAndProcessDefinitionKey(String tenantId, String processDefinitionKey);
+
+    /** TODO §82 (D6) : tous les brouillons du tenant (écran « Brouillons à publier »). */
+    java.util.List<BpmnDraft> findAllByTenantId(String tenantId);
+
+    /**
+     * TODO §82 (D6) : purge les brouillons d'origine automatisée (provenance différente de {@code UI}) non modifiés depuis
+     * {@code cutoff}. Idempotent, sans effet sur les brouillons de l'éditeur.
+     *
+     * @return nombre de brouillons supprimés
+     */
+    int deleteAutomatedOlderThan(String tenantId, java.time.Instant cutoff);
 }

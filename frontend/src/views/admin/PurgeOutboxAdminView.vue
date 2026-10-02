@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, shallowRef, watch } from 'vue'
 import { toProblemDetail } from '@/api/http'
 import { listPurgeOutbox, type PurgeOutboxList } from '@/api/purgeOutbox'
@@ -19,19 +20,21 @@ watch(
     try {
       list.value = await listPurgeOutbox({ page: page.value, size: size.value })
     } catch (err) {
-      error.value = toProblemDetail(err).detail ?? 'Impossible de charger la file de purge'
+      error.value = toProblemDetail(err).detail ?? t('admin.purgeQueue.loadError')
     } finally {
       loading.value = false
     }
   },
   { immediate: true },
 )
+
+const { t } = useI18n()
 </script>
 
 <template>
   <section class="purge-outbox-admin">
-    <h1>File de purge</h1>
-    <p v-if="loading">Chargement…</p>
+    <h1>{{ t('admin.purgeQueue.title') }}</h1>
+    <p v-if="loading">{{ t('common.loading') }}</p>
     <p v-else-if="error" class="error">{{ error }}</p>
     <template v-else-if="list">
       <PurgeOutboxCounts :counts="list.counts" />

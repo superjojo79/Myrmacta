@@ -30,5 +30,15 @@ interface SpringDataDossierWorkflowLinkRepository extends JpaRepository<DossierW
     List<DossierWorkflowLinkJpaEntity> findByEndedAtIsNullAndProcessInstanceIdIsNullAndStartedAtBefore(
             Instant olderThan);
 
+    /** D5 : prise par UPDATE conditionnel — un seul réconciliateur obtient 1 ligne tant que le lien est orphelin et non loué. */
+    @org.springframework.transaction.annotation.Transactional
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            update DossierWorkflowLinkJpaEntity l set l.reconcileClaimedUntil = :until
+            where l.id = :id and l.endedAt is null and l.processInstanceId is null
+              and (l.reconcileClaimedUntil is null or l.reconcileClaimedUntil < :now)
+            """)
+    int claimForReconcile(@Param("id") UUID id, @Param("now") Instant now, @Param("until") Instant until);
+
     void deleteByDossierId(UUID dossierId);
 }

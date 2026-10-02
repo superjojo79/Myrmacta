@@ -14,7 +14,7 @@ import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
 
 class AuthControllerTest {
 
-    private final AuthController controller = new AuthController();
+    private final AuthController controller = new AuthController(new com.flowforge.infrastructure.config.I18nProperties("fr"));
 
     @Test
     void me_nullUser_returns401() {
@@ -44,7 +44,7 @@ class AuthControllerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isEqualTo(new AuthUserResponse(
-                "user-1", "Ada Lovelace", "ada@example.com", List.of("WORKFLOW_ADMIN")));
+                "user-1", "Ada Lovelace", "ada@example.com", List.of("WORKFLOW_ADMIN"), "fr"));
     }
 
     @Test
@@ -63,5 +63,13 @@ class AuthControllerTest {
         ResponseEntity<AuthUserResponse> response = controller.me(user);
 
         assertThat(response.getBody().roles()).containsExactly("TENANT_ADMIN");
+    }
+
+    @Test
+    void me_exposesTheTenantDefaultLocaleForTheInterface() {
+        OidcIdToken idToken = new OidcIdToken("token", Instant.now(), Instant.now().plusSeconds(60), Map.of("sub", "u"));
+        var user = new DefaultOidcUser(List.of(new SimpleGrantedAuthority("ROLE_TENANT_ADMIN")), idToken);
+        var english = new AuthController(new com.flowforge.infrastructure.config.I18nProperties("en"));
+        assertThat(english.me(user).getBody().defaultLocale()).isEqualTo("en");
     }
 }

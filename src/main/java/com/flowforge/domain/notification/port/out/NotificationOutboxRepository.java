@@ -19,7 +19,18 @@ public interface NotificationOutboxRepository {
      */
     List<UUID> savePendingBatch(String tenantId, List<PendingOutboxWrite> writes, Instant now);
 
+    /**
+     * Prend (bail court, voir l'adaptateur) puis renvoie les lignes éligibles que l'appelant est <b>seul</b> à traiter :
+     * deux exécutants concurrents ne reçoivent jamais la même ligne (TODO §79, D5). Une ligne dont l'exécutant a disparu
+     * redevient éligible à l'échéance du bail.
+     */
     List<NotificationOutboxRecord> lockNextPending(int batchSize, Instant now);
+
+    /**
+     * Renouvelle, juste avant son traitement, le bail d'une ligne prise par {@link #lockNextPending} ({@code expectedLease} = le
+     * {@code nextAttemptAt} de la ligne reçue). {@code false} si un autre exécutant l'a reprise entre-temps : l'appelant la saute.
+     */
+    boolean renewClaim(UUID id, Instant expectedLease, Instant now);
 
     void markProcessed(UUID id, Instant now);
 

@@ -35,6 +35,25 @@ public class JpaSlaAlertStateRepositoryAdapter implements SlaAlertStateRepositor
 
     @Override
     @Transactional
+    public boolean transition(SlaAlertState expectedPrevious, SlaAlertState next) {
+        return repository.transition(
+                        next.tenantId(), next.dossierId(), expectedPrevious.lastStatus(), next.lastStatus(), next.updatedAt())
+                == 1;
+    }
+
+    // L'insertion s'exécute dans sa propre transaction (REQUIRES_NEW sur le dépôt) : la violation d'unicité est interceptée ici
+    // sans marquer rollback-only la transaction de l'appelant, qui rend alors la main sans notifier.
+    @Override
+    public boolean insertIfAbsent(SlaAlertState state) {
+        try {
+            return repository.insertStrict(state.tenantId(), state.dossierId(), state.lastStatus(), state.updatedAt()) == 1;
+        } catch (org.springframework.dao.DataIntegrityViolationException alreadyThere) {
+            return false;
+        }
+    }
+
+    @Override
+    @Transactional
     public SlaAlertState save(SlaAlertState state) {
         return repository.saveAndFlush(SlaAlertStateJpaEntity.fromDomain(state)).toDomain();
     }

@@ -1,0 +1,46 @@
+import type fr from '../fr/portal'
+
+const portal: typeof fr = {
+  dossier: 'Dossier {reference}',
+  loadingRequest: 'Loading your request…',
+  noToken: { title: 'Open the link you received by e-mail', body: 'For your security, this page does not keep the access link. Open it again from the e-mail you received.' },
+  denied: { title: 'Invalid or expired link', body: 'This link is no longer valid. Contact the person who sent it to you.' },
+  unavailable: { title: 'Service temporarily unavailable', body: 'Try again in a moment by opening the link you received by e-mail again.' },
+  done: { title: 'Thank you, your reply has been sent', body: 'You can close this page. This link can no longer be used.' },
+  defaultTaskName: 'Request for information',
+  expiry: 'Link valid until {date}.',
+  attachments: 'Attachments',
+  noAttachment: 'No file uploaded yet.',
+  file: 'File',
+  fileLabel: 'Title (optional)',
+  upload: 'Upload the file',
+  uploading: 'Uploading…',
+  chooseFile: 'Choose a file.',
+  submit: 'Send my reply',
+  submitting: 'Sending…',
+  errors: {
+    tooMany: 'Too many attempts. Wait a minute, then try again.',
+    tooLarge: 'The file exceeds the allowed size.',
+    generic: 'The request could not be processed.',
+  },
+  signature: {
+    loading: 'Loading the document to sign…',
+    signed: { title: 'Thank you, your signature has been recorded' },
+    declined: { title: 'Your refusal has been recorded' },
+    simulation: 'SIMULATION — no legal value',
+    title: 'Signature of “{document}”',
+    intro: 'Dossier {reference} — hello {name}.',
+    deadline: 'To be signed before {date}.',
+    optional: 'Your signature is optional.',
+    view: 'View the document',
+    documentLoading: 'Document loading…',
+    reason: 'Reason for declining (optional)',
+    sign: 'Sign',
+    decline: 'Decline',
+    confirmDecline: 'Confirm the refusal',
+    cancel: 'Cancel',
+  },
+  pageTitle: 'Reply to a request — FlowForge',
+}
+
+export default portal

@@ -1,20 +1,23 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import type { PurgeOutboxItem } from '@/api/purgeOutbox'
 
 defineProps<{
   items: PurgeOutboxItem[]
 }>()
+
+const { t } = useI18n()
 </script>
 
 <template>
   <table class="purge-outbox-queue" data-testid="purge-outbox-queue">
     <thead>
       <tr>
-        <th>Dossier</th>
-        <th>Statut</th>
-        <th>Origine</th>
-        <th>Créé</th>
-        <th>Erreur</th>
+        <th>{{ t('admin.purgeQueue.dossier') }}</th>
+        <th>{{ t('admin.purgeQueue.status') }}</th>
+        <th>{{ t('admin.purgeQueue.origin') }}</th>
+        <th>{{ t('admin.purgeQueue.created') }}</th>
+        <th>{{ t('admin.purgeQueue.error') }}</th>
       </tr>
     </thead>
     <tbody>

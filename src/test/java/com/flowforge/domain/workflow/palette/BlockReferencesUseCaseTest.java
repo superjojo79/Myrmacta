@@ -42,8 +42,9 @@ class BlockReferencesUseCaseTest {
         when(lookup.list(TENANT, "documentTemplates")).thenReturn(List.of(new BlockReference("facture", "Facture")));
         when(lookup.list(TENANT, "connectorInstances")).thenReturn(List.of(new BlockReference("uuid-1", "ERP")));
         when(lookup.list(TENANT, "notificationWebhooks")).thenReturn(List.of(new BlockReference("uuid-2", "Slack")));
+        when(lookup.list(TENANT, "dmnTables")).thenReturn(List.of(new BlockReference("scoring", "scoring (v2)")));
 
-        for (String source : List.of("documentTemplates", "connectorInstances", "notificationWebhooks")) {
+        for (String source : List.of("documentTemplates", "connectorInstances", "notificationWebhooks", "dmnTables")) {
             assertThat(references.list(source, user("WORKFLOW_ADMIN"))).hasSize(1);
         }
         assertThat(references.list("documentTemplates", user("TENANT_ADMIN")))
@@ -68,7 +69,7 @@ class BlockReferencesUseCaseTest {
     @Test
     void onlyTheAdministrationSourcesAreServed() {
         // les autres sources sont lues via leurs API existantes (D-PALETTE-REFERENCES)
-        for (String source : List.of("dossierTypes", "workflowTypes", "dmnTables", "nope")) {
+        for (String source : List.of("dossierTypes", "workflowTypes", "nope")) {
             assertThatThrownBy(() -> references.list(source, user("TENANT_ADMIN")))
                     .isInstanceOf(UnknownBlockSourceException.class);
         }

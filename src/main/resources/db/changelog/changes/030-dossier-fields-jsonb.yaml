@@ -1,0 +1,19 @@
+databaseChangeLog:
+  - changeSet:
+      id: 030-dossier-fields-jsonb
+      author: flowforge
+      dbms: postgresql
+      comment: >-
+        TODO §81 (D2) — la colonne dossier.fields passe de json à jsonb et reçoit un index GIN jsonb_path_ops : recherche
+        d'égalité sur les champs dynamiques déclarés cherchables (opérateur @>). PostgreSQL seulement (H2 : inchangé, la
+        recherche sur champ dynamique y est refusée). Réécriture de la table : à planifier hors pic sur un gros volume.
+      changes:
+        - sql:
+            sql: ALTER TABLE dossier ALTER COLUMN fields TYPE jsonb USING fields::jsonb
+        - sql:
+            sql: CREATE INDEX idx_dossier_fields_gin ON dossier USING gin (fields jsonb_path_ops)
+      rollback:
+        - sql:
+            sql: DROP INDEX IF EXISTS idx_dossier_fields_gin
+        - sql:
+            sql: ALTER TABLE dossier ALTER COLUMN fields TYPE json USING fields::json

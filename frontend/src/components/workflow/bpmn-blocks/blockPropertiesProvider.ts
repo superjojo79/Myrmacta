@@ -2,9 +2,11 @@ import {
   CheckboxEntry,
   ListGroup,
   SelectEntry,
+  TextAreaEntry,
   TextFieldEntry,
   isCheckboxEntryEdited,
   isSelectEntryEdited,
+  isTextAreaEntryEdited,
   isTextFieldEntryEdited,
 } from '@bpmn-io/properties-panel'
 import { useEffect, useState } from '@bpmn-io/properties-panel/preact/hooks'
@@ -73,7 +75,7 @@ function usePreparedEntry(props: EntryProps, block: BuildingBlock, param: BlockP
 function textEntry(block: BuildingBlock, param: BlockParameter) {
   return function BlockText(props: EntryProps) {
     const { element, value, setValue, debounce, description, warnings } = usePreparedEntry(props, block, param)
-    return TextFieldEntry({
+    const entry = {
       element,
       id: `block-${param.name}`,
       label: param.label,
@@ -82,7 +84,10 @@ function textEntry(block: BuildingBlock, param: BlockParameter) {
       setValue,
       debounce,
       validate: (v: string) => rangeError(param, v) ?? warnings[0],
-    })
+    }
+    // Un paramètre multiligne (expression, corps de message, liste de mappings) s'édite dans une zone de texte : un champ
+    // d'une ligne interdirait « champ = expression » sur plusieurs lignes.
+    return param.multiline ? TextAreaEntry({ ...entry, rows: 4 }) : TextFieldEntry(entry)
   }
 }
 
@@ -287,7 +292,11 @@ export function blockEntries(block: BuildingBlock) {
         entries.push({ id: `block-${param.name}`, component: referenceEntry(block, param), isEdited: isSelectEntryEdited })
         break
       default:
-        entries.push({ id: `block-${param.name}`, component: textEntry(block, param), isEdited: isTextFieldEntryEdited })
+        entries.push({
+          id: `block-${param.name}`,
+          component: textEntry(block, param),
+          isEdited: param.multiline ? isTextAreaEntryEdited : isTextFieldEntryEdited,
+        })
     }
   }
   return entries

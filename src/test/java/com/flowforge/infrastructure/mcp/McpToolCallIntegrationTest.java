@@ -64,6 +64,9 @@ class McpToolCallIntegrationTest {
     @Autowired
     private TaskQuestionSchemaRepository taskQuestionSchemaRepository;
 
+    @Autowired
+    private com.flowforge.domain.workflow.port.in.ManageDraftsUseCase manageDraftsUseCase;
+
     private String sessionId;
 
     @BeforeEach
@@ -140,7 +143,7 @@ class McpToolCallIntegrationTest {
     }
 
     @Test
-    void deployWorkflow_createsConfigIfAbsentThenDeploys() throws Exception {
+    void deployWorkflow_writesADraftAndAppliesNothingUntilAHumanPublishes() throws Exception {
         String key = "mcpDeploy" + UUID.randomUUID().toString().substring(0, 8);
         assertThat(getWorkflowTypeConfigUseCase.getByKey(key)).isEmpty();
         String xml = """
@@ -172,7 +175,19 @@ class McpToolCallIntegrationTest {
 
         String body = call.getResponse().getContentAsString();
         assertThat(body).as("body: %s", body).contains("\"isError\":false");
-        assertThat(getWorkflowTypeConfigUseCase.getByKey(key)).isPresent();
+        // TODO §82 (D6) : par défaut un agent écrit un BROUILLON — ni configuration ni déploiement avant la publication humaine.
+        assertThat(body).contains("DRAFT_PENDING_PUBLICATION");
+        assertThat(getWorkflowTypeConfigUseCase.getByKey(key)).isEmpty();
+        var pending = manageDraftsUseCase.listPending(com.flowforge.domain.dossier.model.AccessContext.user("alice", java.util.Set.of("TENANT_ADMIN")));
+        assertThat(pending).anyMatch(d -> d.key().equals(key)
+                && d.provenance() == com.flowforge.domain.workflow.model.Provenance.MCP && d.author().equals("agent-1"));
+
+        // publish_draft est refusé tant que l'instance n'autorise pas la publication directe
+        MvcResult publish = callMcp(sessionId, TENANT, "API_SERVICE", 3, "tools/call", """
+                {"name": "publish_draft", "arguments": {"type": "BPMN", "key": "%s"}}
+                """.formatted(key));
+        assertThat(publish.getResponse().getContentAsString()).contains("\"isError\":true").contains("human");
+        assertThat(getWorkflowTypeConfigUseCase.getByKey(key)).isEmpty();
     }
 
     @Test
@@ -397,6 +412,91 @@ class McpToolCallIntegrationTest {
         assertThat(listBody).as("body: %s", listBody).doesNotContain("plaincredential5678");
     }
 
+    /** D3a : un secret OAuth2 défini via le canal M2M est chiffré en base puis masqué dans get/list et dans la réponse. */
+    @Test
+    void defineConnectorInstance_oauth2SecretsAreEncryptedAtRestAndNeverReturned() throws Exception {
+        String name = "MCP IT OAuth " + UUID.randomUUID();
+
+        MvcResult createCall = callMcp(sessionId, TENANT, "API_SERVICE", 2, "tools/call", """
+                {
+                  "name": "define_connector_instance",
+                  "arguments": {
+                    "name": "%s",
+                    "connectorType": "http-rest",
+                    "config": {
+                      "webhookAuthType": "HMAC_SHA256",
+                      "webhookSecret": "supersecretvalue1234",
+                      "processKey": "wf-mcp-it",
+                      "dossierTypeCode": "MCPIT",
+                      "authMode": "OAUTH2_CLIENT_CREDENTIALS",
+                      "oauthTokenUrl": "https://93.184.216.34/token",
+                      "oauthClientId": "app-mcp",
+                      "oauthClientSecret": "oauthclientsecret9876",
+                      "oauthAllowedHosts": "erp.example.com"
+                    }
+                  }
+                }
+                """.formatted(name));
+        String createBody = createCall.getResponse().getContentAsString();
+        assertThat(createBody).as("body: %s", createBody).contains("\"isError\":false");
+        assertThat(createBody).doesNotContain("oauthclientsecret9876");
+
+        var persisted = connectorInstanceRepository.pageByTenantId(TENANT, com.flowforge.domain.shared.PageQuery.of(0, 100))
+                .content().stream().filter(c -> c.name().equals(name)).findFirst().orElseThrow();
+        assertThat(persisted.config()).containsEntry("oauthClientSecret", "oauthclientsecret9876");
+
+        String getBody = callMcp(sessionId, TENANT, "API_SERVICE", 3, "tools/call", """
+                {"name": "get_connector_instance", "arguments": {"id": "%s"}}
+                """.formatted(persisted.id())).getResponse().getContentAsString();
+        assertThat(getBody).as("body: %s", getBody).doesNotContain("oauthclientsecret9876").contains("app-mcp");
+        String listBody = callMcp(sessionId, TENANT, "API_SERVICE", 4, "tools/call", """
+                {"name": "list_connector_instances", "arguments": {}}
+                """).getResponse().getContentAsString();
+        assertThat(listBody).doesNotContain("oauthclientsecret9876");
+
+        String definitions = callMcp(sessionId, TENANT, "API_SERVICE", 5, "tools/call", """
+                {"name": "list_connector_definitions", "arguments": {}}
+                """).getResponse().getContentAsString();
+        assertThat(definitions).contains("oauthAllowedHosts").contains("OAUTH2_CLIENT_CREDENTIALS");
+    }
+
+    /** D1 règles (TODO §80) : définir un type à règles puis les prévisualiser, à travers la vraie chaîne MCP. */
+    @Test
+    void defineDossierTypeWithRules_thenEvaluateDossierRules_returnsTheComputedValueAndTheHiddenFields() throws Exception {
+        String code = "MCPRULE" + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+
+        MvcResult define = callMcp(sessionId, TENANT, "API_SERVICE", 2, "tools/call", """
+                {
+                  "name": "define_dossier_type",
+                  "arguments": {
+                    "code": "%s", "label": "Règles MCP", "workflowKey": "wf-mcp-rules", "active": true,
+                    "allowUnknownFields": false,
+                    "fieldDefinitions": [
+                      {"name": "ht", "label": "HT", "type": "NUMBER", "required": false},
+                      {"name": "pays", "label": "Pays", "type": "STRING", "required": false},
+                      {"name": "ttc", "label": "TTC", "type": "NUMBER", "required": false, "formula": "dossier.fields.ht * 2"},
+                      {"name": "siret", "label": "SIRET", "type": "STRING", "required": false, "visibleWhen": "dossier.fields.pays = 'FR'"}
+                    ]
+                  }
+                }
+                """.formatted(code));
+        assertThat(define.getResponse().getContentAsString()).contains("\"isError\":false");
+
+        MvcResult preview = callMcp(sessionId, TENANT, "API_SERVICE", 3, "tools/call", """
+                {"name": "evaluate_dossier_rules",
+                 "arguments": {"dossierTypeCode": "%s", "fields": {"ht": 21, "pays": "DE"}}}
+                """.formatted(code));
+        String body = preview.getResponse().getContentAsString();
+        assertThat(body).as("body: %s", body).contains("\"isError\":false").contains("ttc").contains("42").contains("siret");
+
+        MvcResult bad = callMcp(sessionId, TENANT, "API_SERVICE", 4, "tools/call", """
+                {"name": "define_dossier_type",
+                 "arguments": {"code": "%s2", "label": "x", "workflowKey": "wf", "active": true, "allowUnknownFields": false, "dryRun": true,
+                   "fieldDefinitions": [{"name": "b", "label": "B", "type": "NUMBER", "required": false, "formula": "$eval('1')"}]}}
+                """.formatted(code));
+        assertThat(bad.getResponse().getContentAsString()).contains("\"isError\":true").contains("$eval");
+    }
+
     @Test
     void defineTaskQuestionSchema_persistsAndIsVisibleToDirectRepositoryRead() throws Exception {
         String schemaKey = "mcpit" + UUID.randomUUID().toString().substring(0, 8);
@@ -528,6 +628,11 @@ class McpToolCallIntegrationTest {
 
         String body = deployCall.getResponse().getContentAsString();
         assertThat(body).as("body: %s", body).contains("\"isError\":false");
+        // D6 : l'agent propose, un humain relit et publie (même cas d'usage que l'écran « Brouillons à publier »)
+        var admin = com.flowforge.domain.dossier.model.AccessContext.user("alice", java.util.Set.of("TENANT_ADMIN"));
+        var draft = manageDraftsUseCase.listPending(admin).stream().filter(d -> d.key().equals(workflowKey)).findFirst().orElseThrow();
+        manageDraftsUseCase.publish(admin, com.flowforge.domain.workflow.model.DraftArtifactType.BPMN, workflowKey,
+                draft.updatedAt(), com.flowforge.domain.workflow.model.PublicationMode.MANUAL);
         assertThat(getWorkflowTypeConfigUseCase.getByKey(workflowKey)).isPresent();
     }
 

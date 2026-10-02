@@ -117,7 +117,7 @@ class NotificationOutboxJpaEntity {
         }
     }
 
-    private static Duration backoff(int attemptsAfterIncrement) {
+    static Duration backoff(int attemptsAfterIncrement) {
         return switch (attemptsAfterIncrement) {
             case 1 -> Duration.ofSeconds(1);
             case 2 -> Duration.ofSeconds(2);
@@ -125,7 +125,7 @@ class NotificationOutboxJpaEntity {
         };
     }
 
-    private static String truncate(String error) {
+    static String truncate(String error) {
         if (error == null) {
             return null;
         }

@@ -159,11 +159,71 @@ paths:
       responses:
         "200":
           description: OK
+  /api/parcours/{key}:
+    get:
+      tags:
+      - parcours-controller
+      operationId: get_3
+      parameters:
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ParcoursView"
+    put:
+      tags:
+      - parcours-controller
+      operationId: save_1
+      parameters:
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ParcoursView"
+    delete:
+      tags:
+      - parcours-controller
+      operationId: delete_1
+      parameters:
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: expectedVersion
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: OK
   /api/dmn-decision-drafts/{decisionKey}:
     get:
       tags:
       - dmn-draft-controller
-      operationId: get_3
+      operationId: get_4
       parameters:
       - name: decisionKey
         in: path
@@ -180,7 +240,7 @@ paths:
     put:
       tags:
       - dmn-draft-controller
-      operationId: save_1
+      operationId: save_2
       parameters:
       - name: decisionKey
         in: path
@@ -552,6 +612,47 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/SignatureDecisionResponse"
+  /api/parcours/{key}/compile:
+    post:
+      tags:
+      - parcours-controller
+      operationId: compile
+      parameters:
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompileRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CompileResponse"
+  /api/parcours/preview:
+    post:
+      tags:
+      - parcours-controller
+      operationId: preview
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PreviewRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CompileResponse"
   /api/notifications/send:
     post:
       tags:
@@ -650,10 +751,51 @@ paths:
               schema:
                 type: object
                 additionalProperties: {}
+  /api/expressions/validate:
+    post:
+      tags:
+      - expression-controller
+      operationId: validateExpression
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpressionRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ValidateExpressionResponse"
+  /api/expressions/evaluate:
+    post:
+      tags:
+      - expression-controller
+      operationId: evaluateExpression
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpressionRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/EvaluateExpressionResponse"
   /api/dossiers:
     get:
       tags:
       - dossier-controller
+      description: "Paginated list. Filters on dynamic fields declared searchable\
+        \ (TODO 81, D2): query parameters f.<field>=v (equals), f.<field>.in=a,b,\
+        \ f.<field>.gte / .lte (number, ISO date), f.<field>.prefix (text). They require\
+        \ dossierTypeCode; at most 5; unknown or non-searchable field, or incompatible\
+        \ operator: 400."
       operationId: list_3
       parameters:
       - name: page
@@ -1035,6 +1177,30 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/DossierTypeResponse"
+  /api/dossier-types/{code}/evaluate-rules:
+    post:
+      tags:
+      - dossier-type-controller
+      operationId: evaluateRules
+      parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EvaluateRulesRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/EvaluateRulesResponse"
   /api/dossier-types/{code}/acl:
     post:
       tags:
@@ -1433,11 +1599,179 @@ paths:
       responses:
         "200":
           description: OK
+  /api/assistant/messages:
+    post:
+      tags:
+      - assistant-controller
+      operationId: send_2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ChatResponse"
+  /api/assistant/conversations/{id}/actions/{actionId}/dismiss:
+    post:
+      tags:
+      - assistant-controller
+      operationId: dismiss
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: actionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ActionView"
+  /api/assistant/conversations/{id}/actions/{actionId}/apply:
+    post:
+      tags:
+      - assistant-controller
+      operationId: apply
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: actionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ActionView"
+  /api/admin/drafts/{type}/{key}/publish:
+    post:
+      tags:
+      - drafts-controller
+      operationId: publish
+      parameters:
+      - name: type
+        in: path
+        required: true
+        schema:
+          type: string
+          enum:
+          - BPMN
+          - DMN
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublishDraftRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ConfigPublication"
+  /api/admin/configuration/plan:
+    post:
+      tags:
+      - configuration-promotion-controller
+      operationId: plan
+      parameters:
+      - name: parameters
+        in: query
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+              - file
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ImportPlan"
+  /api/admin/configuration/apply:
+    post:
+      tags:
+      - configuration-promotion-controller
+      operationId: apply_1
+      parameters:
+      - name: secrets
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: parameters
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: expectedBundleSha256
+        in: query
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+              - file
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ImportReport"
   /api/workflow-type-configs/{workflowKey}:
     get:
       tags:
       - workflow-type-config-controller
-      operationId: get_4
+      operationId: get_5
       parameters:
       - name: workflowKey
         in: path
@@ -1493,7 +1827,7 @@ paths:
     get:
       tags:
       - notification-webhook-admin-controller
-      operationId: get_5
+      operationId: get_6
       parameters:
       - name: id
         in: path
@@ -1641,7 +1975,7 @@ paths:
     get:
       tags:
       - document-template-controller
-      operationId: get_6
+      operationId: get_7
       parameters:
       - name: id
         in: path
@@ -1684,7 +2018,7 @@ paths:
     get:
       tags:
       - connector-admin-controller
-      operationId: get_7
+      operationId: get_8
       parameters:
       - name: id
         in: path
@@ -1975,7 +2309,7 @@ paths:
     get:
       tags:
       - sla-report-controller
-      operationId: get_8
+      operationId: get_9
       parameters:
       - name: from
         in: query
@@ -2159,7 +2493,7 @@ paths:
     get:
       tags:
       - portal-controller
-      operationId: get_9
+      operationId: get_10
       parameters:
       - name: X-Portal-Token
         in: header
@@ -2210,11 +2544,25 @@ paths:
               schema:
                 type: string
                 format: byte
+  /api/parcours:
+    get:
+      tags:
+      - parcours-controller
+      operationId: list_9
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ParcoursSummary"
   /api/observability:
     get:
       tags:
       - observability-controller
-      operationId: get_10
+      operationId: get_11
       responses:
         "200":
           description: OK
@@ -2226,7 +2574,7 @@ paths:
     get:
       tags:
       - notification-inbox-controller
-      operationId: list_9
+      operationId: list_10
       parameters:
       - name: page
         in: query
@@ -2313,7 +2661,7 @@ paths:
     get:
       tags:
       - portal-link-admin-controller
-      operationId: list_10
+      operationId: list_11
       parameters:
       - name: dossierId
         in: path
@@ -2481,7 +2829,7 @@ paths:
     get:
       tags:
       - connector-definition-controller
-      operationId: list_11
+      operationId: list_12
       parameters:
       - name: page
         in: query
@@ -2551,6 +2899,163 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/AuthUserResponse"
+  /api/assistant/status:
+    get:
+      tags:
+      - assistant-controller
+      operationId: status
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/StatusResponse"
+  /api/assistant/conversations:
+    get:
+      tags:
+      - assistant-controller
+      operationId: list_13
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ConversationSummary"
+  /api/assistant/conversations/{id}:
+    get:
+      tags:
+      - assistant-controller
+      operationId: get_12
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ConversationDetail"
+    delete:
+      tags:
+      - assistant-controller
+      operationId: delete_2
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+  /api/assistant/conversations/{id}/actions:
+    get:
+      tags:
+      - assistant-controller
+      operationId: actions
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActionView"
+  /api/admin/drafts:
+    get:
+      tags:
+      - drafts-controller
+      operationId: list_14
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PendingDraft"
+  /api/admin/drafts/publications:
+    get:
+      tags:
+      - drafts-controller
+      operationId: publications
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 50
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ConfigPublication"
+  /api/admin/configuration/imports:
+    get:
+      tags:
+      - configuration-promotion-controller
+      operationId: imports
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ConfigImportRecord"
+  /api/admin/configuration/export:
+    get:
+      tags:
+      - configuration-promotion-controller
+      operationId: export
+      parameters:
+      - name: sourceLabel
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: byte
   /api/dossier-types/{code}/acl/{userId}:
     delete:
       tags:
@@ -2567,6 +3072,34 @@ paths:
         required: true
         schema:
           type: string
+      responses:
+        "200":
+          description: OK
+  /api/admin/drafts/{type}/{key}:
+    delete:
+      tags:
+      - drafts-controller
+      operationId: discard
+      parameters:
+      - name: type
+        in: path
+        required: true
+        schema:
+          type: string
+          enum:
+          - BPMN
+          - DMN
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: expectedUpdatedAt
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
       responses:
         "200":
           description: OK
@@ -2699,6 +3232,9 @@ components:
           - BOOLEAN
           - SELECT
           - FILE
+          - MONEY
+          - REPEATABLE_GROUP
+          - EXTERNAL_REF
         required:
           type: boolean
         defaultValue:
@@ -2711,6 +3247,28 @@ components:
           type: string
         sensitive:
           type: boolean
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/FieldDefinition"
+        minRows:
+          type: integer
+          format: int32
+        maxRows:
+          type: integer
+          format: int32
+        formula:
+          type: string
+        visibleWhen:
+          type: string
+        requiredWhen:
+          type: string
+        searchable:
+          type: boolean
+        helpText:
+          type: string
+        width:
+          type: string
     UpdateTaskQuestionSchemaRequest:
       type: object
       properties:
@@ -2737,6 +3295,137 @@ components:
         createdBy:
           type: string
         updatedBy:
+          type: string
+    Branch:
+      type: object
+      properties:
+        variable:
+          type: string
+        operator:
+          type: string
+          enum:
+          - EQ
+          - NE
+          - GT
+          - GE
+          - LT
+          - LE
+        value:
+          type: string
+        next:
+          type: string
+    ParcoursDefinition:
+      type: object
+      properties:
+        statuses:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkflowStatusDefinition"
+        allowedDossierStatuses:
+          type: array
+          items:
+            type: string
+            enum:
+            - DRAFT
+            - OUVERT
+            - EN_COURS
+            - SUSPENDU
+            - CLOTURE
+            - ARCHIVE
+        onStartDossierStatus:
+          type: string
+          enum:
+          - DRAFT
+          - OUVERT
+          - EN_COURS
+          - SUSPENDU
+          - CLOTURE
+          - ARCHIVE
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/Step"
+    SaveRequest:
+      type: object
+      properties:
+        label:
+          type: string
+        definition:
+          $ref: "#/components/schemas/ParcoursDefinition"
+        expectedVersion:
+          type: integer
+          format: int32
+    Step:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        kind:
+          type: string
+          enum:
+          - QUESTION
+          - EXTERNAL
+          - DOCUMENT
+          - NOTIFY
+          - CONNECTOR
+          - DMN
+          - EXPRESSION
+          - MAP_FIELDS
+          - SET_WORKFLOW_STATUS
+          - SET_DOSSIER_STATUS
+          - WAIT
+          - DECISION
+        params:
+          type: object
+          additionalProperties:
+            type: string
+        next:
+          type: string
+        branches:
+          type: array
+          items:
+            $ref: "#/components/schemas/Branch"
+        defaultNext:
+          type: string
+    WorkflowStatusDefinition:
+      type: object
+      properties:
+        code:
+          type: string
+        label:
+          type: string
+        initial:
+          type: boolean
+        outcome:
+          type: string
+          enum:
+          - NONE
+          - COMPLETED
+          - CANCELLED
+          - FAILED
+    ParcoursView:
+      type: object
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        version:
+          type: integer
+          format: int32
+        definition:
+          $ref: "#/components/schemas/ParcoursDefinition"
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+        lastCompiledAt:
+          type: string
+          format: date-time
+        lastCompiledSha256:
           type: string
     SaveDmnDraftRequest:
       type: object
@@ -2806,22 +3495,6 @@ components:
           type: array
           items:
             type: string
-    WorkflowStatusDefinition:
-      type: object
-      properties:
-        code:
-          type: string
-        label:
-          type: string
-        initial:
-          type: boolean
-        outcome:
-          type: string
-          enum:
-          - NONE
-          - COMPLETED
-          - CANCELLED
-          - FAILED
     WorkflowTypeConfigResponse:
       type: object
       properties:
@@ -2970,6 +3643,39 @@ components:
         answers:
           type: object
           additionalProperties: {}
+    CompileRequest:
+      type: object
+      properties:
+        dryRun:
+          type: boolean
+        replaceDraft:
+          type: boolean
+    CompileResponse:
+      type: object
+      properties:
+        xml:
+          type: string
+        sha256:
+          type: string
+        warnings:
+          type: array
+          items:
+            type: string
+        draftWritten:
+          type: boolean
+        replacedExistingDraft:
+          type: boolean
+        problem:
+          type: string
+    PreviewRequest:
+      type: object
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        definition:
+          $ref: "#/components/schemas/ParcoursDefinition"
     SendNotificationRequest:
       type: object
       properties:
@@ -3068,6 +3774,30 @@ components:
           type: string
         contentType:
           type: string
+    ExpressionRequest:
+      type: object
+      properties:
+        expression:
+          type: string
+        context:
+          type: object
+          additionalProperties: {}
+    ValidateExpressionResponse:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        message:
+          type: string
+        position:
+          type: integer
+          format: int32
+    EvaluateExpressionResponse:
+      type: object
+      properties:
+        defined:
+          type: boolean
+        value: {}
     CreateDossierRequest:
       type: object
       properties:
@@ -3385,6 +4115,37 @@ components:
           type: array
           items:
             type: string
+    EvaluateRulesRequest:
+      type: object
+      properties:
+        fields:
+          type: object
+          additionalProperties: {}
+    EvaluateRulesResponse:
+      type: object
+      properties:
+        computed:
+          type: object
+          additionalProperties: {}
+        hidden:
+          type: array
+          items:
+            type: string
+        requiredByRule:
+          type: array
+          items:
+            type: string
+        errors:
+          type: array
+          items:
+            $ref: "#/components/schemas/RuleErrorResponse"
+    RuleErrorResponse:
+      type: object
+      properties:
+        field:
+          type: string
+        message:
+          type: string
     GrantDossierTypeAccessRequest:
       type: object
       properties:
@@ -3395,20 +4156,6 @@ components:
           enum:
           - VIEW
           - EDIT
-    PreviewRequest:
-      type: object
-      properties:
-        htmlContent:
-          type: string
-        templateKey:
-          type: string
-        variantKey:
-          type: string
-        locale:
-          type: string
-        variables:
-          type: object
-          additionalProperties: {}
     GenerateRequest:
       type: object
       properties:
@@ -3584,6 +4331,196 @@ components:
           type: object
           additionalProperties:
             type: boolean
+    MessageRequest:
+      type: object
+      properties:
+        conversationId:
+          type: string
+          format: uuid
+        message:
+          type: string
+    ActionView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tool:
+          type: string
+        arguments:
+          type: string
+        status:
+          type: string
+        outcome:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        resolvedAt:
+          type: string
+          format: date-time
+    ChatResponse:
+      type: object
+      properties:
+        conversationId:
+          type: string
+          format: uuid
+        reply:
+          type: string
+        activity:
+          type: array
+          items:
+            $ref: "#/components/schemas/ToolActivity"
+        producedDrafts:
+          type: boolean
+        proposals:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActionView"
+    ToolActivity:
+      type: object
+      properties:
+        tool:
+          type: string
+        ok:
+          type: boolean
+        arguments:
+          type: string
+        summary:
+          type: string
+    PublishDraftRequest:
+      type: object
+      properties:
+        expectedUpdatedAt:
+          type: string
+          format: date-time
+    ConfigPublication:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+        artifactType:
+          type: string
+          enum:
+          - BPMN
+          - DMN
+        artifactKey:
+          type: string
+        version:
+          type: integer
+          format: int32
+        draftProvenance:
+          type: string
+          enum:
+          - UI
+          - MCP
+          - ASSISTANT
+          - IMPORT
+          - PARCOURS
+        draftAuthor:
+          type: string
+        publishedBy:
+          type: string
+        publishedAt:
+          type: string
+          format: date-time
+        mode:
+          type: string
+          enum:
+          - MANUAL
+          - DIRECT
+        configProvenance:
+          type: string
+          enum:
+          - UI
+          - MCP
+          - ASSISTANT
+          - IMPORT
+          - PARCOURS
+        configAuthor:
+          type: string
+    ImportPlan:
+      type: object
+      properties:
+        bundleSha256:
+          type: string
+        formatVersion:
+          type: integer
+          format: int32
+        sourceLabel:
+          type: string
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlanEntry"
+    PlanEntry:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+          - DOSSIER_TYPE
+          - TASK_QUESTION_SCHEMA
+          - CONNECTOR_INSTANCE
+          - DMN
+          - BPMN
+          - WORKFLOW_CONFIG
+        key:
+          type: string
+        action:
+          type: string
+          enum:
+          - CREATE
+          - UPDATE
+          - UNCHANGED
+          - CONFLICT
+          - BLOCKED
+        reason:
+          type: string
+        secretsRequired:
+          type: array
+          items:
+            type: string
+        connectorName:
+          type: string
+    ImportReport:
+      type: object
+      properties:
+        bundleSha256:
+          type: string
+        performedAt:
+          type: string
+          format: date-time
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportEntry"
+    ReportEntry:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+          - DOSSIER_TYPE
+          - TASK_QUESTION_SCHEMA
+          - CONNECTOR_INSTANCE
+          - DMN
+          - BPMN
+          - WORKFLOW_CONFIG
+        key:
+          type: string
+        outcome:
+          type: string
+          enum:
+          - APPLIED
+          - UNCHANGED
+          - SKIPPED
+          - FAILED
+        message:
+          type: string
     UpdateNotificationWebhookRequest:
       type: object
       properties:
@@ -4325,6 +5262,10 @@ components:
             type: string
         group:
           type: string
+        helpText:
+          type: string
+        width:
+          type: string
     Form:
       type: object
       properties:
@@ -4368,6 +5309,27 @@ components:
           format: date-time
         simulated:
           type: boolean
+    ParcoursSummary:
+      type: object
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        version:
+          type: integer
+          format: int32
+        steps:
+          type: integer
+          format: int32
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+        lastCompiledAt:
+          type: string
+          format: date-time
     ObservabilitySeverityMap:
       type: object
       properties:
@@ -4781,6 +5743,8 @@ components:
           format: int32
         help:
           type: string
+        multiline:
+          type: boolean
     BuildingBlock:
       type: object
       properties:
@@ -4840,3 +5804,170 @@ components:
           type: array
           items:
             type: string
+        defaultLocale:
+          type: string
+    StatusResponse:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        model:
+          type: string
+    ConversationSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        turns:
+          type: integer
+          format: int32
+    ConversationDetail:
+      type: object
+      properties:
+        conversation:
+          $ref: "#/components/schemas/ConversationSummary"
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/MessageView"
+    MessageView:
+      type: object
+      properties:
+        seq:
+          type: integer
+          format: int32
+        role:
+          type: string
+        content:
+          type: string
+        toolName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    PendingDraft:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+          - BPMN
+          - DMN
+        key:
+          type: string
+        provenance:
+          type: string
+          enum:
+          - UI
+          - MCP
+          - ASSISTANT
+          - IMPORT
+          - PARCOURS
+        author:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        hasProposedConfig:
+          type: boolean
+        note:
+          type: string
+        publishedVersion:
+          type: integer
+          format: int32
+        addedLines:
+          type: integer
+          format: int32
+        removedLines:
+          type: integer
+          format: int32
+        proposedConfig:
+          $ref: "#/components/schemas/ProposedWorkflowConfig"
+        configProvenance:
+          type: string
+          enum:
+          - UI
+          - MCP
+          - ASSISTANT
+          - IMPORT
+          - PARCOURS
+        configAuthor:
+          type: string
+    ProposedWorkflowConfig:
+      type: object
+      properties:
+        label:
+          type: string
+        statusDefinitions:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkflowStatusDefinition"
+        allowedDossierStatuses:
+          type: array
+          items:
+            type: string
+            enum:
+            - DRAFT
+            - OUVERT
+            - EN_COURS
+            - SUSPENDU
+            - CLOTURE
+            - ARCHIVE
+        onStartDossierStatus:
+          type: string
+          enum:
+          - DRAFT
+          - OUVERT
+          - EN_COURS
+          - SUSPENDU
+          - CLOTURE
+          - ARCHIVE
+        observerUserIds:
+          type: array
+          items:
+            type: string
+    ConfigImportRecord:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+        performedBy:
+          type: string
+        performedAt:
+          type: string
+          format: date-time
+        channel:
+          type: string
+        bundleSha256:
+          type: string
+        formatVersion:
+          type: integer
+          format: int32
+        sourceLabel:
+          type: string
+        applied:
+          type: integer
+          format: int32
+        unchanged:
+          type: integer
+          format: int32
+        skipped:
+          type: integer
+          format: int32
+        failed:
+          type: integer
+          format: int32
+        reportJson:
+          type: string

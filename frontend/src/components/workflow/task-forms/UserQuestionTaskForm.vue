@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { computed, onMounted, ref } from 'vue'
 import { getTaskQuestionSchemaForTask } from '@/api/taskQuestionSchemas'
 import { toProblemDetail } from '@/api/http'
@@ -29,7 +30,7 @@ async function load() {
   loading.value = true
   loadError.value = null
   if (!schemaKey.value) {
-    loadError.value = 'formKey invalide pour le kind user-question'
+    loadError.value = t('workflow.taskForms.errors.invalidFormKey')
     loading.value = false
     return
   }
@@ -37,7 +38,7 @@ async function load() {
     const schema = await getTaskQuestionSchemaForTask(schemaKey.value, props.taskId)
     definitions.value = schema.fieldDefinitions
   } catch (err) {
-    loadError.value = toProblemDetail(err).detail ?? 'Impossible de charger le formulaire'
+    loadError.value = toProblemDetail(err).detail ?? t('workflow.taskForms.errors.form')
   } finally {
     loading.value = false
   }
@@ -54,15 +55,17 @@ const missingRequiredField = computed(() =>
 function submit() {
   emit('ready', { ...answers.value })
 }
+
+const { t } = useI18n()
 </script>
 
 <template>
   <div class="user-question-task-form">
-    <p v-if="loading">Chargement du formulaire…</p>
+    <p v-if="loading">{{ t('workflow.taskForms.loadingForm') }}</p>
     <p v-else-if="loadError" class="error">{{ loadError }}</p>
     <template v-else>
       <DynamicFields v-model="answers" :definitions="definitions" :apply-defaults="false" />
-      <button type="button" :disabled="missingRequiredField" @click="submit">Compléter</button>
+      <button type="button" :disabled="missingRequiredField" @click="submit">{{ t('workflow.taskForms.complete') }}</button>
     </template>
   </div>
 </template>

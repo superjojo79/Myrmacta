@@ -70,7 +70,8 @@ class FlowableBpmnParserAdapterBlockTest {
             case REFERENCE -> "connectorInstances".equals(p.valueSource()) || "notificationWebhooks".equals(p.valueSource())
                     ? UUID.randomUUID().toString() : "key1";
             case SIGNERS -> "";
-            case TEXT -> "documentVariant".equals(p.name()) || "documentLocale".equals(p.name()) ? "fr" : "texte";
+            case TEXT -> "documentVariant".equals(p.name()) || "documentLocale".equals(p.name()) ? "fr"
+                    : "fieldMapping".equals(p.name()) ? "score = connectorResult.json.score" : "texte";
         };
     }
 
@@ -170,5 +171,90 @@ class FlowableBpmnParserAdapterBlockTest {
         assertThat(BuildingBlockCatalog.all().stream().flatMap(b -> b.parameters().stream())
                         .map(BlockParameter::type).distinct().toList())
                 .contains(ParameterType.SIGNERS, ParameterType.SOURCE_REF, ParameterType.ENUM_MULTI);
+    }
+
+    // ---- TODO §75 (LC2) : la formule est validée au déploiement (syntaxe et constructions permises) ------------------
+
+    private static String expression(String formula, String formulaResult) {
+        return service("businessExpressionTask", "flowable:formula=\"" + formula.replace("\"", "&quot;")
+                + "\" flowable:formulaResult=\"" + formulaResult + "\"");
+    }
+
+    @Test
+    void aValidFormulaIsAccepted() {
+        assertThat(adapter.extractProcessDefinitionKey(
+                        bpmn(expression("dossier.fields.montant > 5000 and dossier.fields.pays = &quot;FR&quot;", "eleve"))))
+                .isEqualTo("testProcess");
+    }
+
+    @Test
+    void aSyntaxErrorInTheFormulaIsRefusedAtDeploymentWithTheActivity() {
+        assertRefused(expression("dossier.fields.montant >", "eleve"), "formula");
+        assertRefused(expression("dossier.fields.montant >", "eleve"), "act");
+    }
+
+    @Test
+    void forbiddenConstructsInTheFormulaAreRefusedAtDeployment() {
+        assertRefused(expression("$eval('1')", "x1"), "$eval");
+        assertRefused(expression("$random()", "x1"), "$random");
+        assertRefused(expression("$now()", "x1"), "$now");
+        assertRefused(expression("$match(a, /b+/)", "x1"), "regular expression");
+    }
+
+    @Test
+    void theFormulaAndItsResultVariableAreBothRequired() {
+        assertRefused(service("businessExpressionTask", "flowable:formula=\"1\""), "formulaResult");
+        assertRefused(service("businessExpressionTask", "flowable:formulaResult=\"x1\""), "formula");
+        assertRefused(service("businessExpressionTask", ""), "required");
+    }
+
+    @Test
+    void aFormulaAttributeOnAnotherServiceTaskIsStillRefused() {
+        assertRefused(service("updateDossierStatusTask", "flowable:formula=\"1\""), "formula");
+        assertRefused("<serviceTask id=\"act\" flowable:type=\"dmn\" flowable:formula=\"1\"/>", "formula");
+    }
+
+    // ---- TODO §78 (D3b) : la brique « Enregistrer des valeurs dans le dossier » ------------------------------------------
+
+    private static String mapping(String lines) {
+        return service("fieldMappingTask", "flowable:fieldMapping=\"" + lines.replace("&", "&amp;").replace("\"", "&quot;")
+                .replace("<", "&lt;").replace(">", "&gt;").replace("\n", "&#10;") + "\"");
+    }
+
+    @Test
+    void aValidFieldMappingIsAccepted() {
+        assertThat(adapter.extractProcessDefinitionKey(bpmn(mapping(
+                "score = connectorResult.json.score\nmontant = {\"amount\": $string(connectorResult.json.total), \"currency\": \"EUR\"}"))))
+                .isEqualTo("testProcess");
+    }
+
+    @Test
+    void anInvalidExpressionInTheMappingIsRefusedAtDeploymentNamingTheFieldAndTheActivity() {
+        assertRefused(mapping("score = connectorResult.json.score >"), "score");
+        assertRefused(mapping("score = connectorResult.json.score >"), "act");
+        assertRefused(mapping("ok = 1\nbad = $eval('1')"), "$eval");
+    }
+
+    @Test
+    void aMalformedMappingIsRefusedAtDeployment() {
+        assertRefused(mapping("pas de signe egal"), "field = expression");
+        assertRefused(mapping("1abc = 1"), "valid field name");
+        assertRefused(mapping("a = 1\na = 2"), "twice");
+        assertRefused(mapping("a == 1"), "field = expression");
+        assertRefused(mapping("a ="), "no expression");
+        assertRefused(service("fieldMappingTask", ""), "required");
+        assertRefused(mapping(String.join("\n", java.util.stream.IntStream.rangeClosed(1, 21).mapToObj(i -> "f" + i + " = 1").toList())),
+                "at most 20");
+    }
+
+    @Test
+    void aFieldMappingAttributeOnAnotherServiceTaskIsRefused() {
+        assertRefused(service("updateDossierStatusTask", "flowable:fieldMapping=\"a = 1\""), "fieldMapping");
+    }
+
+    @Test
+    void thePlainFlowableExpressionAttributeRemainsAForbiddenSurface() {
+        // La formule ne réintroduit pas de surface UEL : `flowable:expression` reste refusé (TODO §69).
+        assertRefused("<serviceTask id=\"act\" flowable:expression=\"${x}\"/>", "expression");
     }
 }

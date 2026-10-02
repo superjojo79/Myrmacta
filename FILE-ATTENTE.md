@@ -1,5 +1,9 @@
 # File d’attente produit — FlowForge
 
+> **État du mandat « roadmap complète » (2026-10-01)** : tous les lots de la Vague D sont livrés (LC1-suite, LC2, D1, D2, D3a–d, D4, D5, D6, LC3, LC4a, LC4b, LC5, D7 première tranche) ; LC6 a fait l'objet
+> d'un spike qui conclut à ne pas lancer le lot. Suivi : [docs/roadmap-goal/AVANCEMENT.md](docs/roadmap-goal/AVANCEMENT.md), décisions : [DECISIONS.md](docs/roadmap-goal/DECISIONS.md). L'ordre ci-dessous est conservé à titre d'historique.
+
+
 > Ordre recommandé des **prochaines features** après les lots lifecycle déjà
 > livrés. À relire **avant** de choisir la feature suivante (même critères
 > qu’aux analyses 2026-08-17 / 2026-08-18).
@@ -657,7 +661,7 @@ sécurité UEL du BPMN ([PR #136](https://github.com/superjojo79/FlowForge/pull/
 `portail-externe` ([PR #138](https://github.com/superjojo79/FlowForge/pull/138), TODO §68), puis
 `signature-electronique` ([PR #149](https://github.com/superjojo79/FlowForge/pull/149), TODO §72 : port `SignaturePort` + adaptateur stub, sans fournisseur ; eIDAS reporté).
 
-**Cycle en cours :** aucun — `palette-metier-bpmn` (LC1) mergée le 2026-09-30 ([PR #151](https://github.com/superjojo79/FlowForge/pull/151), TODO §73). Suite : voir *File d'attente — Vague D* (Vague 1 : LC2 ou D1 en parallèle).
+**Cycle en cours :** objectif « roadmap complète » (`docs/roadmap-goal/`), un lot à la fois sur la branche de développement : LC1-suite (TODO §74) et LC2 (TODO §75) livrés ; suite dans l'ordre de `docs/roadmap-goal/CHARTE.md` §2 (D1 types). `palette-metier-bpmn` (LC1) mergée le 2026-09-30 ([PR #151](https://github.com/superjojo79/FlowForge/pull/151), TODO §73).
 
 Détail inventaire : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §4 / §6.
 
@@ -860,3 +864,5 @@ Vérifié : `./mvnw verify` 1136 tests (0 échec), Jacoco OK ; frontend `npm run
 | 2026-09-29 | `palette-metier-bpmn` (LC1) Phase 2 (revue requirements) | Faits vérifiés dans le code. **Écart** : templates, connecteurs et webhooks sont `TENANT_ADMIN`-only alors que l'éditeur BPMN est ouvert à `WORKFLOW_ADMIN` — D-PALETTE-REFERENCES : endpoint de références minimal `{valeur, libellé}`. Diagnostics de compagnons ajoutés, variable prioritaire signalée. Requirements `reviewed`. |
 | 2026-09-29 | `palette-metier-bpmn` (LC1) Phase 3 (revue design) | Design revu contre le code. Bindings par paramètre (DMN `flowable:field`, `formKey`, `flowable:signer`), `ensureFlowableNamespace`, reconnaissance ordonnée, **parité `dryRun`** (le `dryRun` MCP sautait les contrôles du use case). Décisions : existence des références **vérifiée au déploiement** ; palette native conservée. Design `reviewed`. |
 | 2026-09-29 | `palette-metier-bpmn` (LC1) Phases 4–5 | TODO §73. Planning M0–M12 puis implémentation complète en TDD : catalogue serveur (API + MCP), six delegates lisant des attributs littéraux (variable prioritaire), validation de forme et d'existence au déploiement (parité `dryRun`), éditeur (palette, panneau typé, « Avancé », diagnostics). `./mvnw verify` 2648 verts, Vitest 489, Playwright 104. Découverte : feuilles de style `bpmn-js` jamais chargées (palette invisible) — corrigé. Écart : `dmnTables` en saisie libre. PR non ouverte. |
+| 2026-09-30 | `lc1-suite-palette-dmn` (LC1-suite) Phases 1–10 | TODO §74 (objectif « roadmap complète », décisions dans `docs/roadmap-goal/DECISIONS.md`). `dmnTables` servie par `references/dmnTables` : liste des tables déployées dans la brique « Décision DMN ». Revue adversariale (sous-agent) : 0 Critique/Haut, 1 Moyenne (doc) + 3 Basses traitées. Livré sur la branche de développement, pas de PR. |
+| 2026-09-30 | `lc2-langage-expression-metier` (LC2) Phases 1–10 | TODO §75 (objectif « roadmap complète »). Moteur JSONata borné hors JUEL (`ExpressionEnginePort`, adaptateur avec inspection d'AST, bornes délai/mémoire/profondeur/taille), brique « Évaluer une expression » (delegate `businessExpressionTask`, formule littérale validée au déploiement), API `/api/expressions` et outils MCP. Constats de Phase 3 : `outputConvertNulls`, regex non interruptibles, attribut natif `resultVariable` (renommé `formulaResult`). Livré sur la branche de développement, pas de PR. |

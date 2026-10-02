@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { RouterLink } from 'vue-router'
@@ -8,6 +9,7 @@ import { useAdminListQuery } from '@/composables/useAdminListQuery'
 import AdminPager from '@/components/admin/AdminPager.vue'
 import { resolveTaskFormComponent } from '@/components/workflow/task-forms/taskFormRegistry'
 
+const { t } = useI18n()
 const store = useTasksStore()
 const { tasks, totalPages, loading, error } = storeToRefs(store)
 const { page, size } = useAdminListQuery()
@@ -26,7 +28,7 @@ async function complete(taskId: string, variables: Record<string, unknown> = {})
   try {
     await store.complete(taskId, variables)
   } catch (err) {
-    actionError.value = toProblemDetail(err).detail ?? 'Complétion impossible'
+    actionError.value = toProblemDetail(err).detail ?? t('myTasks.errors.complete')
   }
 }
 
@@ -37,10 +39,10 @@ function onFormError(message: string) {
 
 <template>
   <section class="tasks-view">
-    <h1>Mes tâches</h1>
-    <p v-if="loading">Chargement…</p>
+    <h1>{{ t('myTasks.title') }}</h1>
+    <p v-if="loading">{{ t('common.loading') }}</p>
     <p v-else-if="error" class="error">{{ error }}</p>
-    <p v-else-if="tasks.length === 0" class="empty">Aucune tâche assignée.</p>
+    <p v-else-if="tasks.length === 0" class="empty">{{ t('myTasks.empty') }}</p>
     <ul v-else class="tasks-view__list">
       <li v-for="task in tasks" :key="task.taskId">
         <div>
@@ -48,12 +50,12 @@ function onFormError(message: string) {
           <span>
             {{ task.dossierReference || task.dossierId }}
             <em v-if="task.slaRemainingHours != null" data-testid="task-sla">
-              SLA {{ task.slaRemainingHours > 0 ? `dans ${task.slaRemainingHours} h` : `dépassée` }}
+              {{ t('myTasks.sla', { state: task.slaRemainingHours > 0 ? t('myTasks.slaIn', { n: task.slaRemainingHours }) : t('myTasks.slaOver') }) }}
             </em>
           </span>
         </div>
         <div class="tasks-view__actions">
-          <RouterLink v-if="task.dossierId" :to="`/dossiers/${task.dossierId}`">Dossier</RouterLink>
+          <RouterLink v-if="task.dossierId" :to="`/dossiers/${task.dossierId}`">{{ t('myTasks.dossier') }}</RouterLink>
           <component
             :is="resolveTaskFormComponent(task.formKey)"
             v-if="resolveTaskFormComponent(task.formKey)"
@@ -69,7 +71,7 @@ function onFormError(message: string) {
             data-testid="complete-task"
             @click="complete(task.taskId)"
           >
-            Compléter
+            {{ t('myTasks.complete') }}
           </button>
         </div>
       </li>

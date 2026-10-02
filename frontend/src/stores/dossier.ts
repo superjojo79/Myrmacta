@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { i18n } from '@/i18n'
 import { ref } from 'vue'
 import {
   addDossierElement,
@@ -68,7 +69,7 @@ export const useDossierStore = defineStore('dossier', () => {
       dossier.value = await getDossierById(id)
       await refreshRelated()
     } catch (err) {
-      error.value = toProblemDetail(err).detail ?? 'Impossible de charger le dossier'
+      error.value = toProblemDetail(err).detail ?? i18n.global.t('common.errors.dossier')
       throw err
     } finally {
       loading.value = false
@@ -82,7 +83,7 @@ export const useDossierStore = defineStore('dossier', () => {
       dossier.value = await getDossierByRef(ref)
       await refreshRelated()
     } catch (err) {
-      error.value = toProblemDetail(err).detail ?? 'Impossible de charger le dossier'
+      error.value = toProblemDetail(err).detail ?? i18n.global.t('common.errors.dossier')
       throw err
     } finally {
       loading.value = false

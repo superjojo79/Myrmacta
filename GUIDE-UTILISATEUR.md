@@ -60,12 +60,35 @@ Formulaire de création :
 
 **Éditeur de champs dynamiques.** Le bouton **Ajouter un champ** insère une ligne éditable :
 `name` (clé technique, doit être unique dans le type), `label` (libellé affiché), `type`
-(`STRING`, `NUMBER`, `DATE`, `BOOLEAN`, `SELECT`, `FILE`), `required`, `defaultValue`, `options`
-(liste séparée par des virgules, uniquement pour `SELECT`), `group` (regroupement visuel sur
+(`STRING`, `NUMBER`, `DATE`, `BOOLEAN`, `SELECT`, `FILE` et les trois types structurés `MONEY`,
+`EXTERNAL_REF`, `REPEATABLE_GROUP` — voir ci-dessous), `required`, `defaultValue`, `options`
+(liste séparée par des virgules, pour `SELECT`, et pour `MONEY` / `EXTERNAL_REF` : devises / systèmes autorisés), `group` (regroupement visuel sur
 l'écran dossier) et `sensible` (masquage à l'affichage/export pour tout acteur non
 `TENANT_ADMIN`). Boutons ↑/↓ pour réordonner, **Supprimer** pour retirer une ligne. La
 sauvegarde envoie la **liste complète** (pas un ajout unitaire) — même convention que l'outil MCP
 interne `define_dossier_type`.
+
+**Types structurés (TODO §76).**
+
+| Type | Saisie | Valeur stockée | Règles |
+|---|---|---|---|
+| `MONEY` (montant) | un montant et une devise | `{"amount":"1234.50","currency":"EUR"}` | devise ISO 4217 en majuscules ; **options** = devises autorisées (vide = toutes ; une seule = préremplie) ; le montant est un décimal **exact** (jamais un nombre flottant), au plus autant de décimales que la devise (2 pour EUR, 0 pour JPY, 3 pour KWD) — **refusé, jamais arrondi en silence** ; le serveur le range à l'échelle de la devise (`12.5` → `12.50`) ; négatif permis (avoir) ; aucune valeur par défaut |
+| `EXTERNAL_REF` (référence externe) | système, identifiant, libellé facultatif | `{"system":"d365fo","id":"V-0042","label":"Contoso"}` | **options** = systèmes autorisés (vide = tous) ; identifiant 200 caractères au plus, sans caractère de contrôle ; la résolution auprès du système distant n'est pas faite (la valeur est une référence) ; aucune valeur par défaut |
+| `REPEATABLE_GROUP` (lignes) | tableau de lignes, boutons **Ajouter une ligne** / ✕ | liste d'objets, un par ligne | **Colonnes** = sous-champs définis dans l'éditeur (20 au plus, **un seul niveau** : ni groupe ni `FILE` dans un groupe) ; **lignes min./max.** (défaut 0 et 100, plafond 500) ; un champ obligatoire d'une ligne doit être renseigné ; la **sensibilité se pose sur le groupe entier**, pas sur une colonne ; aucune valeur par défaut |
+
+Une erreur de saisie nomme le champ **et la ligne** (`lignes[1].poste`). Dans un export CSV, un montant se répartit en
+deux colonnes (`montant.amount`, `montant.currency`), une référence en trois (`.system`, `.id`, `.label`) et un groupe en
+**une** colonne portant les lignes en JSON compact. Un montant **négatif** y est préfixé d'une apostrophe comme tout
+nombre négatif de l'export (protection contre l'injection de formule) : à retirer à l'import. Un changement de type d'un
+champ existant (ex. `STRING` → `MONEY`) est refusé (409) tant que des dossiers ont une valeur incompatible.
+
+**Règles de champs (champs calculés, visibilité, obligation conditionnelle).** Dans l'éditeur d'un type, chaque champ peut porter
+trois expressions métier (langage JSONata borné, `dossier.fields.nomDuChamp`) : **formule** (le champ est calculé : jamais saisi,
+toujours recalculé), **visible si** (faux ⇒ le champ n'est ni affiché, ni obligatoire, et sa valeur stockée est retirée) et
+**obligatoire si**. Une règle ne lit que des champs déclarés, simples, non sensibles ; elle ne peut pas lire un champ calculé ni un
+champ qui porte lui-même une règle « visible si ». Au plus 40 règles par type. La SPA affiche un aperçu calculé par le serveur ;
+l'API et l'outil MCP `evaluate_dossier_rules` donnent le même résultat. Les règles ne sont pas disponibles dans les questions de tâche.
+Les **questions de tâche** (formulaires utilisateur, portail) ne proposent pas encore ces trois types.
 
 Une fois créé, le type apparaît dans le tableau avec un bouton **Basculer** pour l'activer/le
 désactiver — seuls les types actifs sont proposés à la création d'un dossier. Le bouton
@@ -143,11 +166,13 @@ depuis le bouton **Éditer** en face de chaque config workflow sur l'écran **Ad
    choisie (le diagramme réellement en cours d'exécution est rechargé automatiquement).
 2. **Palette d'édition** (`bpmn-js`) — glisser-déposer des éléments BPMN standard (tâches,
    passerelles, événements) **et**, dans le groupe **« Briques métier »** (icônes marquées d'un point
-   bleu), onze briques prêtes à l'emploi : générer / joindre un document, appeler un connecteur,
+   bleu), treize briques prêtes à l'emploi : générer / joindre un document, appeler un connecteur,
    notifier, créer un dossier enfant, changer le statut du dossier ou du workflow, décision DMN,
+   **évaluer une expression** (calcul ou condition sur les champs du dossier, voir le guide de conception §3sexies),
+   **enregistrer des valeurs dans le dossier** (une ligne `champ = expression` par champ, typiquement à partir de la réponse d'un connecteur : `score = connectorResult.json.score` ; tout ou rien, voir §3septies),
    demander une signature, question utilisateur, tâche externe. Le **panel de propriétés** à droite
    affiche pour une brique un groupe dédié avec des **champs typés** (listes de templates, connecteurs,
-   statuts, questions… alimentées par le serveur) ; la section **« Avancé »**, repliée, garde les
+   statuts, questions, **tables de décision DMN déployées** (clé et dernière version)… alimentées par le serveur) ; la section **« Avancé »**, repliée, garde les
    attributs Flowable bruts (`asynchrone`, `delegate expression`, `expression`, `scope`, `form key`…).
    Une tâche qui n'est pas une brique reste éditable comme avant. Un contour orange signale une brique
    à compléter (paramètre obligatoire vide, ressource supprimée) — l'avertissement n'empêche pas
@@ -275,6 +300,43 @@ décision à une cascade de passerelles.
 
 ------
 
+### Brouillons à publier — relire ce qu'un agent propose (TODO §82)
+
+*Admin → Brouillons* (rôles TENANT_ADMIN ou WORKFLOW_ADMIN) liste les processus BPMN et tables de décision DMN **en attente de publication** :
+type, clé, **origine** (Éditeur, Agent (MCP), Assistant), auteur, date, et l'**écart indicatif** avec la version en ligne (lignes ajoutées /
+retirées). Un agent branché au MCP n'écrit **jamais** en ligne par défaut : `deploy_workflow`, `deploy_decision_table` et
+`redeploy_decision_table` déposent un brouillon, avec — pour un processus — la configuration de workflow proposée.
+
+- **Ouvrir** la clé dans l'éditeur BPMN / DMN pour relire ou corriger. Si vous enregistrez, le brouillon devient le vôtre (origine Éditeur) et
+  la configuration de workflow proposée est conservée.
+- **Publier** : le déploiement porte exactement sur ce que vous avez relu ; si le brouillon a été modifié entre-temps, la publication est refusée
+  (rechargez et relisez). La configuration proposée est appliquée juste avant le diagramme, après validation.
+- **Écarter** : supprime le brouillon (définitif).
+- Un agent ne peut pas écraser le brouillon d'un autre auteur sans le demander explicitement.
+- Les brouillons d'agent ou d'assistant non touchés depuis 30 jours sont purgés ; ceux de l'éditeur, jamais.
+- *Dernières publications* : qui a rédigé, qui a publié, quand, quelle version, et si la publication était relue ou **directe**.
+
+### Promotion de configuration — de la recette à la production (TODO §83)
+
+*Admin → Promotion* (rôle TENANT_ADMIN) exporte la configuration d'un environnement et l'importe sur un autre.
+
+1. **Exporter** (sur la recette) : nommez l'environnement, téléchargez le bundle (ZIP). Il contient types de dossier, schémas de questions,
+   connecteurs **sans leurs secrets**, tables DMN et processus BPMN **déployés**, configurations de workflow — des fichiers lisibles que vous pouvez
+   versionner dans Git. Le bundle n'est pas signé : transportez-le par un canal de confiance. Ni ACL, ni réglages (rétention, SLA, webhooks), ni
+   templates de documents (première tranche).
+2. **Planifier** (sur la production) : déposez le ZIP. Le plan **n'écrit rien** : pour chaque artefact, *Créer*, *Modifier*, *Inchangé*, *Conflit*
+   (ex. un type dont le nouveau schéma casserait des dossiers existants — jamais forcé) ou *Bloqué* (secret requis, table DMN à publier d'abord,
+   paramètre manquant, validation refusée), avec la raison.
+3. **Paramètres d'environnement** : dans les fichiers de connecteur du bundle, une valeur de la forme `{{url_erp}}` est remplacée à l'import par
+   le paramètre du même nom (JSON `{"url_erp": "https://…"}`) ; un paramètre absent bloque le connecteur.
+4. **Appliquer** : les types, schémas et connecteurs sont écrits ; **les BPMN et DMN deviennent des brouillons** (*Admin → Brouillons*, origine
+   « Import ») à relire et publier ; un connecteur est créé **désactivé** (relisez ses adresses, saisissez ses secrets si besoin, puis activez-le).
+   Les secrets requis à la création se saisissent dans la page (envoyés avec l'application, jamais conservés) ou plus tard dans *Connecteurs*.
+5. **Rejouer est sans danger** : un second import converge (tout *Inchangé*). Si un artefact échoue, les autres sont appliqués et le rapport dit lequel ;
+   corrigez et relancez. Un BPMN qui dépend d'une table DMN encore en brouillon est *Bloqué* : publiez le brouillon DMN, puis relancez l'import.
+
+*Derniers imports* : qui, quand, quel bundle, combien d'artefacts appliqués, inchangés, ignorés, en échec.
+
 ## 4. Configurer un connecteur
 
 Écran **Admin → Connecteurs** (`/admin/connectors`, `TENANT_ADMIN`).
@@ -286,12 +348,31 @@ connecteurs eux-mêmes — leurs instances configurées). Types fournis de base 
 
 | Type | Rôle (`capability`) | Champs de config (formulaire généré) |
 |---|---|---|
-| `http-rest` | trigger **et** service (`BOTH`) | `webhookAuthType` (liste HMAC / token), `webhookSecret`, `processKey`, `dossierTypeCode`, `authHeaderValue` (optionnel, mot de passe — appels SERVICE), `mapping` (optionnel) |
+| `http-rest` | trigger **et** service (`BOTH`) | `webhookAuthType` (liste HMAC / token), `webhookSecret`, `processKey`, `dossierTypeCode`, `authHeaderValue` (optionnel, mot de passe — appels SERVICE), `authMode` et champs `oauth*` (authentification OAuth2, voir ci-dessous), `mapping` (optionnel) |
 | `flowable-signal` | trigger **et** service | `signalName`, `processKey`, `dossierTypeCode`, `mapping` (optionnel) |
 | `scheduler` | trigger | `cronExpression`, `processKey`, `dossierTypeCode` |
 | `flowable-callback` | callback | `webhookAuthType`, `webhookSecret`, `messageName`, `correlationVariableName`, `correlationValuePath`, `mapping` (optionnel) |
 | `smtp` | service | aucun champ d'instance (réutilise la config SMTP de l'application) |
 | `document-storage` | service | aucun champ d'instance (réutilise le stockage documents déjà configuré) |
+| `graph-mail-inbound` | trigger (e-mail entrant, Microsoft Graph) | `mailbox`, `graphBaseUrl`, `folder`, `processedFolder`, `rejectedFolder`, OAuth2 (`oauthTokenUrl`, `oauthClientId`, `oauthClientSecret` ou certificat, `oauthScope`), puis les mêmes réglages de routage que `imap-inbound` (`pollSeconds`, `maxAttachments`, `requireAuthenticatedSender`, `trustedAuthservId`, `referencePattern`, `processKey`, `dossierTypeCode`, `mapping`) |
+| `imap-inbound` | trigger (e-mail entrant) | `host`, `port`, `security` (SSL / STARTTLS), `username`, `authMode` (mot de passe ou OAuth2), `password`, `folder`, `processedFolder`, `rejectedFolder`, `pollSeconds`, `referencePattern`, `processKey`, `dossierTypeCode`, `mapping` |
+| `azure-service-bus` | trigger (bus Azure) | `namespaceHost`, `entityPath`, `authMode` (SAS ou OAuth2), `sasKeyName`, `sasKey`, `pollSeconds`, `processKey`, `dossierTypeCode`, `mapping` |
+
+**Appeler une API protégée par OAuth2 (Microsoft Entra ID : D365 F&O, Dataverse, Graph).** Sur un connecteur `http-rest`, choisir
+`authMode = OAUTH2_CLIENT_CREDENTIALS` : FlowForge obtient lui-même le jeton d'accès, le garde en mémoire et le renouvelle avant son
+échéance ; vous n'avez plus de jeton à recopier. Renseigner :
+
+- `oauthTokenUrl` — `https://login.microsoftonline.com/<tenant>/oauth2/v2.0/token` (https obligatoire, adresses internes refusées) ;
+- `oauthClientId` et `oauthScope` (ex. `https://<org>.operations.dynamics.com/.default`) ;
+- l'authentification de l'application (`oauthClientAuthMethod`) : `CLIENT_SECRET_POST` (défaut) ou `CLIENT_SECRET_BASIC` avec `oauthClientSecret`,
+  ou **`PRIVATE_KEY_JWT`** (certificat) avec `oauthPrivateKey` (clé privée PEM PKCS#8 RSA) et `oauthCertThumbprint` (empreinte SHA-1 ou SHA-256 en
+  hexadécimal, telle qu'affichée par le portail Entra) ;
+- **`oauthAllowedHosts`** (obligatoire) — les noms d'hôtes qui peuvent recevoir le jeton, séparés par des virgules (`monorg.operations.dynamics.com,
+  *.crm4.dynamics.com`). Un appel vers tout autre hôte est refusé **avant** toute demande de jeton : un process ne peut pas envoyer votre jeton ailleurs.
+
+`oauthClientSecret` et `oauthPrivateKey` sont chiffrés au repos et n'apparaissent jamais ensuite (affichés `********`). Un éventuel `authHeaderValue` hérité est ignoré dans
+ce mode (on peut donc migrer une instance existante). Les jokers d'`oauthAllowedHosts` couvrent **un seul niveau** (`*.crm4.dynamics.com`) et sont refusés sur les domaines
+d'hébergement mutualisé (`*.azurewebsites.net`, `*.herokuapp.com`…). Si l'API répond `401`, le jeton est renouvelé (s'il a plus de 30 s) et l'appel rejoué **une seule fois**. Sans `authMode`, rien ne change (en-tête statique).
 
 D'autres connecteurs custom peuvent être ajoutés au classpath backend sans modifier le core (voir
 [analysis doc/06-connecteurs.md](analysis%20doc/06-connecteurs.md)) — ils apparaîtront alors dans
@@ -328,6 +409,70 @@ n'y en a pas, le chemin commence à `/api/…`. Un bouton **Copier** recopie l'U
 `POST`). Les autres types (`smtp`, `document-storage`, `scheduler`, `flowable-signal`) n'ont
 pas d'endpoint HTTP entrant.
 
+### Recevoir des e-mails avec Microsoft Graph : le connecteur `graph-mail-inbound` (TODO §87)
+
+Pour une boîte **Exchange Online**, `graph-mail-inbound` fait la même chose que `imap-inbound` (voir ci-dessous : dossier créé ou alimenté par la référence de l'objet, pièces
+jointes contrôlées, réponses automatiques refusées, expéditeur attesté, rien jamais supprimé) en passant par l'API Microsoft Graph plutôt que par IMAP. Différences :
+
+- **Authentification** : application Entra ID, OAuth2 `client_credentials` uniquement (`oauthScope = https://graph.microsoft.com/.default`), permission d'application `Mail.ReadWrite`.
+  **Restreignez-la à la boîte voulue** (stratégie d'accès d'application Exchange Online), sinon l'application peut lire toutes les boîtes du tenant.
+- **Boîte** : `mailbox` (adresse de la boîte, boîte partagée comprise). `folder` vaut `Inbox` ou le nom d'un dossier de premier niveau qui doit exister ; `processedFolder` et `rejectedFolder`
+  sont des dossiers de premier niveau créés au besoin. `graphBaseUrl` n'accepte que les hôtes Microsoft Graph, en https.
+- **Rangement et idempotence** : le message est déplacé (jamais supprimé) ; un message remis reçoit d'abord la catégorie Outlook `FlowForge-delivered`, de sorte qu'un déplacement qui échoue ne provoque pas de seconde remise.
+  La seule fenêtre résiduelle est l'échec simultané du marquage **et** du déplacement (panne de Graph entre les deux) : le message serait alors remis au tour suivant — comme en IMAP, il n'y a pas de détection de doublon par `Message-ID`.
+  Il n'y a pas de curseur à conserver : un message pris en charge quitte le dossier lu. Pour rejouer un message déjà traité, remettez-le dans le dossier lu **et retirez-lui la catégorie** `FlowForge-delivered`.
+  Un message qui ne peut pas être déplacé (verrou, conflit) est signalé dans les journaux et laissé en place, sans bloquer les suivants ; un message de plus de 4 Mo (corps et en-têtes) est refusé.
+- **Pièces jointes** : seules les pièces *fichier* sont prises ; les images incrustées (logos de signature) sont ignorées, les messages joints et liens sont comptés dans `inboundAttachmentsSkipped`.
+  Le total des pièces d'un message est borné (25 Mo par défaut), quelle que soit la taille annoncée.
+- **`Authentication-Results`** : Graph expose les en-têtes du message ; `trustedAuthservId` est l'identifiant que **votre** serveur de réception écrit en premier (Exchange Online : celui qui figure
+  dans les en-têtes d'un message reçu, souvent `spf.protection.outlook.com`). FlowForge retient le **premier** en-tête `Authentication-Results` tel que Graph le restitue (ordre du message) :
+  vérifiez-le avec un message de test dont l'expéditeur ajoute un faux en-tête, avant de compter sur le rattachement par référence.
+
+### Recevoir des e-mails : le connecteur `imap-inbound` (TODO §87)
+
+Un message reçu dans une boîte crée un **dossier** (ou alimente un dossier existant) et démarre le processus choisi. FlowForge interroge la boîte
+toutes les `pollSeconds` secondes (30 au minimum).
+
+- **Connexion** : `host`, `port` (993), `security` — `SSL` (IMAPS) ou `STARTTLS` (jamais facultatif) ; le certificat du serveur est toujours vérifié.
+  Le serveur doit répondre sur une adresse publique. **Authentification** : mot de passe, ou **OAuth2** (`authMode = OAUTH2_CLIENT_CREDENTIALS`, application
+  Microsoft Entra ID, `oauthScope = https://outlook.office365.com/.default`) — Exchange Online n'accepte plus le mot de passe seul.
+- **Rangement** : un message pris en charge est déplacé dans `processedFolder` (`FlowForge-processed`), un message refusé dans `rejectedFolder`
+  (`FlowForge-rejected`) ; **rien n'est jamais supprimé**. Sont refusés : les réponses automatiques (absence, accusés), les listes de diffusion, les messages sans expéditeur,
+  trop gros (25 Mo) ou dont un champ mappé est vide.
+- **Corrélation** : `referencePattern` est une expression régulière à **un seul groupe** appliquée à l'objet, par exemple `\[(DOS-[0-9-]+)\]` : une réponse
+  « RE: [DOS-2026-0042] … » est ajoutée à ce dossier ; une référence inconnue (faute de frappe) crée un nouveau dossier plutôt que de perdre le message.
+- **Contenu** : `mapping` associe des champs du dossier ou des variables du processus à l'objet (`$.subject`), au texte (`$.body`, texte brut, 20 000 caractères),
+  à l'expéditeur (`$.from`, `$.fromName`), à la date (`$.sentAt`). Les variables `mailMessageId`, `mailFrom` et `mailSubject` sont toujours posées.
+- **Pièces jointes** : jusqu'à `maxAttachments` (5) par message, 10 Mo chacune ; elles passent les mêmes contrôles que les pièces ajoutées à la main (types autorisés,
+  contenu conforme au type annoncé, antivirus). Une pièce refusée n'empêche pas les autres ni le dossier : le processus voit `inboundAttachmentsRejected` /
+  `inboundAttachmentsSkipped`.
+- **Expéditeur et rattachement.** L'adresse « De » d'un e-mail est falsifiable. Par défaut (`requireAuthenticatedSender = true`), une référence dans l'objet n'ajoute le
+  message à un dossier existant **que si l'en-tête `Authentication-Results` écrit en premier par VOTRE serveur de réception atteste l'expéditeur** : son identifiant de serveur
+  (`trustedAuthservId`, à relever dans les en-têtes d'un message reçu, avant le premier `;`) doit être celui que vous configurez, et il faut `dmarc=pass`, ou `dkim=pass` /
+  `spf=pass` **aligné sur le domaine de l'adresse « De »**. Sinon un nouveau dossier est créé et le processus voit `mailReferenceIgnored` et `mailSenderAuthenticated = false`
+  (toujours posée). `trustedAuthservId` est **obligatoire** dès qu'un `referencePattern` est défini (sauf `requireAuthenticatedSender = false`, qui revient à accepter que **quiconque
+  devine une référence puisse alimenter ce dossier**). Cela suppose que votre serveur ajoute lui-même cet en-tête en tête et retire ceux qui prétendent venir de lui.
+- **Idempotence du rangement.** Un message déjà remis dont le rangement échoue (quota, droits) est marqué du mot-clé IMAP `FlowForgeDelivered` : il n'est plus remis, seul le rangement est
+  réessayé. Les messages marqués supprimés ne comptent pas dans la limite d'un lot.
+- **Fiabilité.** Le message n'est rangé dans « traités » qu'**après** l'enregistrement du dossier. S'il ne peut pas être pris en charge (type de dossier inconnu, champ invalide, base
+  indisponible), il est rangé dans **`FlowForge-rejected`** (avec une alerte dans les journaux) : replacez-le dans la boîte après correction pour le rejouer. Un message illisible
+  (encodage inconnu, MIME trop imbriqué) y va aussi, sans bloquer les autres. Une instance en échec (mot de passe expiré, hôte injoignable) est réessayée à son propre intervalle
+  `pollSeconds`, jamais plus souvent. Il n'y a pas de détection des doublons par `Message-ID`. Les e-mails envoyés par FlowForge portent `Auto-Submitted: auto-generated` : ils ne
+  rebouclent pas.
+
+### Recevoir des événements du bus Azure : le connecteur `azure-service-bus` (TODO §87)
+
+Pour les **Business Events de D365 F&O** (et tout message JSON publié sur Service Bus) sans relais. Renseigner l'espace de noms (`xxx.servicebus.windows.net`, domaines
+Service Bus uniquement), la file ou l'abonnement (`file` ou `rubrique/subscriptions/abonnement`), puis l'authentification :
+
+- **SAS** : nom et clé d'une stratégie d'accès partagé qui n'a que le droit *Écouter* ;
+- **OAuth2** : application Entra ID avec le rôle *Azure Service Bus Data Receiver* (`oauthScope = https://servicebus.azure.net/.default`).
+
+Le `mapping` est celui de Kafka : chemins JSON sur le corps du message (`fields`, `variables`, `processKeyPath`, `dossierTypeCodePath`,
+`existingDossierReferencePath`). Un message est **retiré de la file après l'enregistrement du dossier** ; un message illisible, incomplet, ou que le runtime ne peut pas prendre
+en charge est **rendu au courtier**, qui le place en file de lettres mortes après son `MaxDeliveryCount` : à surveiller côté Azure. Un incident passager de FlowForge (base indisponible quelques minutes) consomme des livraisons : prévoyez un
+`MaxDeliveryCount` confortable (10 ou plus). Aucun jeton ni clé n'est jamais affiché ni journalisé.
+
 ### Appeler un connecteur `http-rest` (webhook entrant)
 
 L'URL webhook complète est visible dans la liste dès que l'instance existe. L'appel doit
@@ -354,9 +499,22 @@ est rejeté même avec une nouvelle `Idempotency-Key`.
 |---|---|
 | `templateKey` | identifiant technique, référencé ensuite depuis le workflow ou la génération de document |
 | `libellé` | nom affiché |
-| `Contenu HTML` | zone de texte — HTML/Thymeleaf saisi directement (pas d'éditeur riche) |
+| `Contenu` | **éditeur visuel** (LC4b, TODO §84) ou source HTML/Thymeleaf — voir ci-dessous |
 
 Un panneau d'**aperçu en direct** affiche le rendu du HTML au fur et à mesure de la saisie.
+
+**Éditeur visuel.** Barre d'outils : gras, italique, souligné, titres, listes, alignement, tableaux, ligne horizontale,
+**saut de page**. Quatre insertions guidées, alimentées par les *variables d'exemple* de l'aperçu : une **variable**
+(`client.nom`), un **bloc conditionnel** (si / sauf / égal à une valeur), un **bloc répété** sur une liste, une **ligne de
+tableau répétée**. Le HTML produit est du Thymeleaf standard, accepté par la liste blanche d'expressions inchangée. Le bouton
+*Source HTML* donne accès au texte brut. **Un template écrit à la main que l'éditeur ne saurait pas réécrire sans rien
+perdre** (balise ou attribut non pris en charge, `th:if` et `th:each` combinés, en-tête de tableau `thead`, expression en
+ligne `[[…]]`…) **reste en mode source, intact**, avec la raison affichée. Les fragments (`th:replace`, `th:insert`,
+`th:include`) et l'interpolation non échappée (`th:utext`, `[( … )]`) sont refusés à l'activation.
+
+**Depuis un agent (MCP).** `define_document_template` écrit le HTML en **brouillon** (jamais en ligne : si la dernière
+version est active, une nouvelle version brouillon est créée) et signale un éventuel problème de syntaxe ; `preview_document`
+rend un HTML en direct avec des variables d'exemple. L'**activation reste un geste humain**.
 
 > **Limites actuelles de l'écran :** l'API supporte des variantes par langue/contexte
 > (`variantKey`, `locale`) et un versionnement complet, mais le formulaire de création n'expose
@@ -382,6 +540,9 @@ Dans le tableau des templates existants (`templateKey` — libellé — version 
 - **Supervision** (`/supervision`) — tableau de bord de tous les dossiers, filtrable par statut,
   type et préfixe de référence (filtres reflétés dans l'URL, donc partageables en lien). Recherche
   rapide d'un dossier par référence ou identifiant. Lien direct vers **Nouveau dossier**.
+  **Filtres sur les champs** (TODO §81) : une fois un type choisi, la liste propose un filtre pour chaque champ que
+  l'administrateur a déclaré **Cherchable** (texte : « commence par » ; nombre et date : de / à ; choix et oui/non). Cinq
+  filtres au plus ; un champ sensible n'est jamais cherchable. Les filtres figurent dans l'URL (`f.montant.gte=5000`).
 - **Tâches** (`/tasks`) — vue personnelle des tâches actuellement assignées à l'utilisateur
   connecté, avec accès direct au dossier concerné, bouton **Compléter**, et un rappel SLA
   (`dans N h` / `dépassée`) lorsque le type de dossier a un objectif en heures. Depuis TODO §52,
@@ -527,6 +688,13 @@ au porteur de tâche avant complétion, **indépendamment des données du dossie
   référencé dans le BPMN via `formKey = "user-question:<schemaKey>"`), un libellé, et un ou
   plusieurs champs (mêmes types que ceux d'un type de dossier : texte, nombre, date, booléen,
   choix — `FILE` n'est pas supporté ici, une tentative est rejetée avec un message explicite).
+- **Concepteur de formulaire (LC4a, TODO §85)** — à droite des champs, un **aperçu en direct** montre le formulaire tel
+  qu'il sera saisi (même moteur que les tâches, les dossiers et le portail externe ; décocher « Aperçu du formulaire » pour
+  le masquer). Chaque champ propose : une **section** (le champ « Section » ; les sections déjà utilisées sont suggérées, les
+  champs d'une même section sont regroupés), une **largeur** (*Pleine*, ou *Demi* : deux champs *Demi* se placent côte à côte,
+  une seule colonne sur écran étroit) et une **aide** (texte brut, 500 caractères, affichée sous le champ). L'ordre se règle
+  par glisser-déposer de la poignée ⋮⋮ ou avec les boutons ↑ ↓. Le même concepteur sert les champs d'un type de dossier
+  (§1).
 - Le nom de chaque champ devient le nom de la **variable de process** produite à la complétion de
   la tâche — un nom qui collisionne avec une variable déjà utilisée ailleurs dans le produit
   (`documentType`, `documentVariant`, `documentLocale`, ou une variable plateforme réservée) est
@@ -610,6 +778,44 @@ séquentiel). Vous pouvez consulter le document, **Signer** ou **Refuser**.
 Droit **EDIT** sur le type du dossier (ou `TENANT_ADMIN` / `WORKFLOW_ADMIN`) : **Renvoyer** (nouveau
 lien, l'ancien cesse de fonctionner) et **Annuler la demande** (le workflow reprend avec le résultat
 *Annulée*). Une fois signée, le **document signé** et la **preuve** apparaissent dans les pièces du dossier.
+
+## 13. Assistant de conception IA (TODO §86)
+
+Écran **Admin → Assistant** (`/admin/assistant`, `TENANT_ADMIN` ou `WORKFLOW_ADMIN`). Si l'écran indique que l'assistant n'est pas activé, un
+administrateur technique doit le configurer (`DEPLOIEMENT.md` §15).
+
+- **Décrivez votre besoin** en français (« un type *Sinistre* avec numéro de contrat et montant, et un processus de validation à deux étapes »).
+  L'assistant appelle les outils de conception (types de dossier, formulaires, processus, tables de décision, connecteurs, expressions) et
+  vérifie son travail (essais à blanc, validation des expressions, test des tables) avant de répondre.
+- **Tout est à relire.** Ce qu'il écrit pour un **processus** ou une **table de décision** est un **brouillon** : un lien vous mène à *Admin →
+  Brouillons* pour relire l'écart et publier. L'assistant **ne publie jamais**.
+- **Les autres écritures (type de dossier, schéma de questions, connecteur, modèle de document) sont des propositions.** L'assistant les valide
+  à blanc ; elles apparaissent sous la conversation, dans « Écritures proposées », **avec les arguments exacts**. Rien n'est écrit tant que vous
+  n'avez pas cliqué **Appliquer** (l'écriture se fait avec vos droits, une seule fois) ; **Ignorer** l'écarte. Un échec est conservé avec son motif.
+- **Il n'a accès à aucune donnée de dossier** et **n'écrit jamais de secret** : un connecteur est créé sans mot de passe ni jeton ; saisissez-les vous-même
+  dans *Admin → Connecteurs*.
+- **Historique.** Vos conversations sont conservées 30 jours (configurable), visibles de vous seul ; vous pouvez en supprimer une.
+- **Limites.** Nombre d'étapes par message, de tours et de jetons par conversation et par jour : un message vous prévient quand elles sont atteintes.
+  L'assistant peut se tromper : relisez toujours.
+
+## 14. Concepteur de parcours (TODO §88)
+
+Écran **Admin → Parcours** (`TENANT_ADMIN` ou `WORKFLOW_ADMIN`). Un parcours est une **liste d'étapes** lisible par un métier ; le serveur la compile en processus BPMN et la dépose en **brouillon**
+(*Admin → Brouillons*) pour relecture. Rien n'est publié par ce chemin.
+
+- **Étapes disponibles** : question à un utilisateur, réponse d'un tiers (portail), génération de document (avec rattachement), notification, connecteur, table de décision DMN, calcul (expression),
+  renseignement de champs, changement de statut (parcours ou dossier), attente (durée ISO 8601), et **aiguillage** : des conditions simples (variable, opérateur, valeur) vers une étape, plus un « sinon » obligatoire ;
+  on peut revenir en arrière (boucle de correction) tant qu'une sortie existe. Sans « suite » explicite, une étape passe à la suivante de la liste.
+- **Valeurs de condition** : un nombre entier ou un texte court, sans point, parenthèse, guillemet, `&`, `<`, `>`, `;`. Les nombres négatifs ou décimaux ne s'écrivent pas dans une condition de BPMN ; utilisez un champ calculé.
+- **Enregistrer** vérifie le parcours (étapes atteignables, sortie possible, statuts déclarés) et nomme l'étape fautive. **Aperçu du BPMN** montre le résultat et dit si le déploiement le refuserait. **Valider** et
+  **Compiler** travaillent sur la version enregistrée (les boutons se bloquent tant qu'il y a des modifications).
+- **Sens unique** : on modifie le parcours ici, **jamais le BPMN généré** (une retouche manuelle ne revient pas dans le parcours et sera écrasée par la prochaine compilation).
+- **MCP / assistant** : `list_parcours`, `get_parcours`, `define_parcours` (avec mode à blanc), `compile_parcours`.
+
+## 15. Langue de l'interface (TODO §90)
+
+Le sélecteur de langue (français / anglais) est en haut de page, y compris sur la page publique des tiers. Votre choix est conservé dans ce navigateur et prime sur la langue par défaut de votre organisation.
+Les dates, nombres et montants suivent la langue. Les libellés saisis par votre organisation (types de dossier, champs, statuts) ne sont pas traduits, ni le détail des erreurs renvoyées par le serveur.
 
 ## Pour aller plus loin
 

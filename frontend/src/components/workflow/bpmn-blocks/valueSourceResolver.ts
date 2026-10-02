@@ -5,12 +5,12 @@ import { listAllPages } from '@/api/page'
 import { listTaskQuestionSchemas } from '@/api/taskQuestionSchemas'
 import type { ValueOption } from './types'
 
-// Résout les sources de valeurs du catalogue (`valueSource`) en options {value,label}. Les trois sources
-// réservées à l'administration passent par `/api/bpmn-building-blocks/references/{source}` (D-PALETTE-REFERENCES).
+// Résout les sources de valeurs du catalogue (`valueSource`) en options {value,label}. Les sources
+// réservées à l'administration, et les tables DMN (pas d'API REST de liste), passent par `/api/bpmn-building-blocks/references/{source}` (D-PALETTE-REFERENCES).
 // `null` = source non listable (saisie libre : la vérification se fait au déploiement) ; un échec réseau
 // renvoie aussi `null` sans lever (D-PALETTE-FALLBACK).
 
-const SERVER_SOURCES = new Set(['documentTemplates', 'connectorInstances', 'notificationWebhooks'])
+const SERVER_SOURCES = new Set(['documentTemplates', 'connectorInstances', 'notificationWebhooks', 'dmnTables'])
 
 export interface ResolveContext {
   /** Clé du process ouvert dans l'éditeur (pour `workflowStatuses`). */
@@ -39,7 +39,7 @@ export async function resolveValueSource(source: string, context: ResolveContext
           label: s.label || s.schemaKey,
         }))
       default:
-        // `dmnTables` : pas d'API de liste côté serveur → saisie libre, existence vérifiée au déploiement.
+        // Source inconnue : saisie libre, existence vérifiée au déploiement.
         return null
     }
   } catch {

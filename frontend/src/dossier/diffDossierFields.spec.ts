@@ -53,3 +53,62 @@ describe('diffDossierFields', () => {
     expect(patch).toEqual({ amount: 12 })
   })
 })
+
+describe('diffDossierFields — structured types (TODO §76, D1)', () => {
+  const money: FieldDefinition = { name: 'm', label: 'M', type: 'MONEY', required: false }
+  const group: FieldDefinition = {
+    name: 'g',
+    label: 'G',
+    type: 'REPEATABLE_GROUP',
+    required: false,
+    fields: [{ name: 'poste', label: 'Poste', type: 'STRING', required: false }],
+  }
+
+  it('does not report an unchanged amount typed without trailing zeros', () => {
+    const snapshot = { m: { amount: '12.50', currency: 'EUR' } }
+    expect(diffDossierFields(snapshot, { m: { amount: '12.5', currency: 'EUR' } }, [money])).toEqual({})
+  })
+
+  it('reports a changed amount or currency with a clean payload', () => {
+    const snapshot = { m: { amount: '12.50', currency: 'EUR' } }
+    expect(diffDossierFields(snapshot, { m: { amount: ' 15 ', currency: 'EUR' } }, [money])).toEqual({
+      m: { amount: '15', currency: 'EUR' },
+    })
+    expect(diffDossierFields(snapshot, { m: { amount: '12.50', currency: 'USD' } }, [money])).toEqual({
+      m: { amount: '12.50', currency: 'USD' },
+    })
+  })
+
+  it('clears a structured field that became empty', () => {
+    const snapshot = { m: { amount: '1.00', currency: 'EUR' }, g: [{ poste: 'A' }] }
+    expect(diffDossierFields(snapshot, { m: { amount: '', currency: '' }, g: [] }, [money, group])).toEqual({
+      m: null,
+      g: null,
+    })
+  })
+
+  it('ignores a never-filled structured field', () => {
+    expect(diffDossierFields({}, { m: { amount: '', currency: '' }, g: [{}] }, [money, group])).toEqual({})
+  })
+
+  it('detects an added, edited or removed row of a group', () => {
+    const snapshot = { g: [{ poste: 'A' }] }
+    expect(diffDossierFields(snapshot, { g: [{ poste: 'A' }] }, [group])).toEqual({})
+    expect(diffDossierFields(snapshot, { g: [{ poste: 'A' }, { poste: 'B' }] }, [group])).toEqual({
+      g: [{ poste: 'A' }, { poste: 'B' }],
+    })
+    expect(diffDossierFields(snapshot, { g: [{ poste: 'Z' }] }, [group])).toEqual({ g: [{ poste: 'Z' }] })
+  })
+
+  it('reports a real change of a very large amount (revue adversariale D1, M3)', () => {
+    const snapshot = { m: { amount: '999999999999999.98', currency: 'EUR' } }
+    expect(diffDossierFields(snapshot, { m: { amount: '999999999999999.99', currency: 'EUR' } }, [money])).toEqual({
+      m: { amount: '999999999999999.99', currency: 'EUR' },
+    })
+  })
+
+  it('does not patch a stored group made of empty rows on every save (revue adversariale D1, B3)', () => {
+    expect(diffDossierFields({ g: [{}] }, { g: [{}] }, [group])).toEqual({})
+    expect(diffDossierFields({ g: [{ poste: 'A' }, {}] }, { g: [{ poste: 'A' }, {}] }, [group])).toEqual({})
+  })
+})

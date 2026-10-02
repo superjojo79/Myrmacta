@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { formatDate } from '@/i18n/format'
 import {
   declineSignature,
   fetchSignatureContext,
@@ -15,6 +17,7 @@ type State = 'loading' | 'denied' | 'ready' | 'signed' | 'declined' | 'unavailab
 
 const props = defineProps<{ token: string }>()
 
+const { t } = useI18n()
 const state = ref<State>('loading')
 const context = ref<SignatureContext | null>(null)
 const documentUrl = ref<string | null>(null)
@@ -24,9 +27,7 @@ const reason = ref('')
 const error = ref('')
 
 const deadline = computed(() =>
-  context.value?.deadlineAt
-    ? new Date(context.value.deadlineAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
-    : '',
+  context.value?.deadlineAt ? formatDate(context.value.deadlineAt, { day: 'numeric', month: 'long', year: 'numeric' }) : '',
 )
 
 function handleError(e: unknown): string {
@@ -35,8 +36,8 @@ function handleError(e: unknown): string {
       state.value = 'denied'
       return ''
     }
-    if (e.status === 429) return 'Trop de tentatives. Patientez une minute puis réessayez.'
-    return e.detail || 'La demande n’a pas pu être traitée.'
+    if (e.status === 429) return t('portal.errors.tooMany')
+    return e.detail || t('portal.errors.generic')
   }
   state.value = 'unavailable'
   return ''
@@ -86,48 +87,48 @@ async function onDecline() {
 
 <template>
   <section v-if="state === 'loading'" class="portal__card" aria-live="polite">
-    <p>Chargement du document à signer…</p>
+    <p>{{ t('portal.signature.loading') }}</p>
   </section>
 
   <section v-else-if="state === 'denied'" class="portal__card" data-testid="portal-denied">
-    <h1>Lien invalide ou expiré</h1>
-    <p>Ce lien n’est pas ou plus valide. Contactez la personne qui vous l’a envoyé.</p>
+    <h1>{{ t('portal.denied.title') }}</h1>
+    <p>{{ t('portal.denied.body') }}</p>
   </section>
 
   <section v-else-if="state === 'unavailable'" class="portal__card" data-testid="portal-unavailable">
-    <h1>Service momentanément indisponible</h1>
-    <p>Réessayez dans quelques instants en rouvrant le lien reçu par e-mail.</p>
+    <h1>{{ t('portal.unavailable.title') }}</h1>
+    <p>{{ t('portal.unavailable.body') }}</p>
   </section>
 
   <section v-else-if="state === 'signed'" class="portal__card" data-testid="signature-signed" aria-live="polite">
-    <h1>Merci, votre signature a bien été enregistrée</h1>
-    <p>Vous pouvez fermer cette page. Ce lien n’est plus utilisable.</p>
+    <h1>{{ t('portal.signature.signed.title') }}</h1>
+    <p>{{ t('portal.done.body') }}</p>
   </section>
 
   <section v-else-if="state === 'declined'" class="portal__card" data-testid="signature-declined" aria-live="polite">
-    <h1>Votre refus a bien été enregistré</h1>
-    <p>Vous pouvez fermer cette page. Ce lien n’est plus utilisable.</p>
+    <h1>{{ t('portal.signature.declined.title') }}</h1>
+    <p>{{ t('portal.done.body') }}</p>
   </section>
 
   <template v-else-if="context">
     <p v-if="context.simulated" class="portal__banner" role="status" data-testid="signature-simulation">
-      SIMULATION — sans valeur juridique
+      {{ t('portal.signature.simulation') }}
     </p>
     <section class="portal__card">
-      <h1>Signature de « {{ context.documentLabel }} »</h1>
-      <p>Dossier {{ context.dossierReference }} — bonjour {{ context.signerName }}.</p>
-      <p v-if="deadline" class="portal__expiry">À signer avant le {{ deadline }}.</p>
-      <p v-if="!context.required" class="portal__muted">Votre signature est facultative.</p>
+      <h1>{{ t('portal.signature.title', { document: context.documentLabel }) }}</h1>
+      <p>{{ t('portal.signature.intro', { reference: context.dossierReference, name: context.signerName }) }}</p>
+      <p v-if="deadline" class="portal__expiry">{{ t('portal.signature.deadline', { date: deadline }) }}</p>
+      <p v-if="!context.required" class="portal__muted">{{ t('portal.signature.optional') }}</p>
       <p>
         <a v-if="documentUrl" :href="documentUrl" target="_blank" rel="noopener" data-testid="signature-document">
-          Consulter le document
+          {{ t('portal.signature.view') }}
         </a>
-        <span v-else class="portal__muted">Document en cours de chargement…</span>
+        <span v-else class="portal__muted">{{ t('portal.signature.documentLoading') }}</span>
       </p>
     </section>
 
     <section v-if="declining" class="portal__card">
-      <label for="signature-reason">Motif du refus (facultatif)</label>
+      <label for="signature-reason">{{ t('portal.signature.reason') }}</label>
       <textarea id="signature-reason" v-model="reason" maxlength="500" rows="3" :disabled="busy" />
     </section>
 
@@ -135,13 +136,13 @@ async function onDecline() {
       <p v-if="error" class="portal__error" role="alert" data-testid="signature-error">{{ error }}</p>
       <template v-if="!declining">
         <button type="button" class="portal__primary" :disabled="busy" @click="onSign">
-          {{ busy ? 'Envoi en cours…' : 'Signer' }}
+          {{ busy ? t('portal.submitting') : t('portal.signature.sign') }}
         </button>
-        <button type="button" class="portal__secondary" :disabled="busy" @click="declining = true">Refuser</button>
+        <button type="button" class="portal__secondary" :disabled="busy" @click="declining = true">{{ t('portal.signature.decline') }}</button>
       </template>
       <template v-else>
-        <button type="button" class="portal__primary" :disabled="busy" @click="onDecline">Confirmer le refus</button>
-        <button type="button" class="portal__secondary" :disabled="busy" @click="declining = false">Annuler</button>
+        <button type="button" class="portal__primary" :disabled="busy" @click="onDecline">{{ t('portal.signature.confirmDecline') }}</button>
+        <button type="button" class="portal__secondary" :disabled="busy" @click="declining = false">{{ t('portal.signature.cancel') }}</button>
       </template>
     </section>
   </template>

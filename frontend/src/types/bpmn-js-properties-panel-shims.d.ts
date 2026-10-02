@@ -28,6 +28,18 @@ declare module '@bpmn-io/properties-panel' {
     validate?: (value: string) => string | undefined
   }) => unknown
 
+  export const TextAreaEntry: (props: {
+    element: unknown
+    id: string
+    label: string
+    description?: string
+    rows?: number
+    getValue: () => string
+    setValue: (value: string | undefined) => void
+    debounce?: <A extends unknown[]>(fn: (...args: A) => void) => (...args: A) => void
+    validate?: (value: string) => string | undefined
+  }) => unknown
+
   export const SelectEntry: (props: {
     element: unknown
     id: string
@@ -51,6 +63,7 @@ declare module '@bpmn-io/properties-panel' {
   }) => unknown
 
   export function isTextFieldEntryEdited(node: unknown): boolean
+  export function isTextAreaEntryEdited(node: unknown): boolean
   export function isCheckboxEntryEdited(node: unknown): boolean
   export function isSelectEntryEdited(node: unknown): boolean
 }

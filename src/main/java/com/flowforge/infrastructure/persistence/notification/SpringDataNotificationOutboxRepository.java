@@ -20,12 +20,100 @@ interface SpringDataNotificationOutboxRepository extends JpaRepository<Notificat
             select e from NotificationOutboxJpaEntity e
             where e.status = :status
               and e.nextAttemptAt <= :now
-            order by e.nextAttemptAt asc
+            order by e.nextAttemptAt asc, e.id asc
             """)
     List<NotificationOutboxJpaEntity> findEligiblePending(
             @Param("status") NotificationOutboxStatus status,
             @Param("now") Instant now,
             Pageable pageable);
+
+    /**
+     * D5 (TODO §79) : prise d'une ligne par compare-and-set sur {@code next_attempt_at} — la ligne observée est « louée »
+     * jusqu'à {@code leaseUntil} ; un second exécutant qui l'avait lue obtient 0 ligne modifiée et la saute. Sans nouveau
+     * statut ni migration : une ligne abandonnée par un exécutant mort redevient éligible à l'échéance du bail.
+     */
+    /**
+     * Renouvelle le bail d'une ligne <b>juste avant</b> de la traiter (revue D5) : un lot de 20 envois lents ne doit pas laisser
+     * expirer le bail des dernières lignes. Le jeton est la valeur de {@code next_attempt_at} posée par la prise : si un autre
+     * exécutant a repris la ligne entre-temps (bail échu), la valeur diffère et ce renouvellement échoue — la ligne est sautée.
+     */
+    @org.springframework.transaction.annotation.Transactional
+    @Modifying(clearAutomatically = true)
+    @Query(
+            """
+            update NotificationOutboxJpaEntity e
+               set e.nextAttemptAt = :newLease, e.updatedAt = :now
+             where e.id = :id
+               and e.status = :status
+               and e.nextAttemptAt = :expectedLease
+            """)
+    int renew(
+            @Param("id") UUID id,
+            @Param("status") NotificationOutboxStatus status,
+            @Param("expectedLease") Instant expectedLease,
+            @Param("newLease") Instant newLease,
+            @Param("now") Instant now);
+
+    /** Issue finale <b>conditionnée à l'état en attente</b> : un exécutant en retard ne ressuscite ni n'écrase une ligne déjà traitée. */
+    @org.springframework.transaction.annotation.Transactional
+    @Modifying(clearAutomatically = true)
+    @Query(
+            """
+            update NotificationOutboxJpaEntity e
+               set e.status = :finalStatus, e.processedAt = :now, e.updatedAt = :now, e.lastError = :error
+             where e.id = :id and e.status = :pending
+            """)
+    int finish(
+            @Param("id") UUID id,
+            @Param("pending") NotificationOutboxStatus pending,
+            @Param("finalStatus") NotificationOutboxStatus finalStatus,
+            @Param("error") String error,
+            @Param("now") Instant now);
+
+    @org.springframework.transaction.annotation.Transactional
+    @Modifying(clearAutomatically = true)
+    @Query(
+            """
+            update NotificationOutboxJpaEntity e
+               set e.attempts = e.attempts + 1, e.lastError = :error, e.updatedAt = :now
+             where e.id = :id and e.status = :pending
+            """)
+    int bumpAttempts(
+            @Param("id") UUID id,
+            @Param("pending") NotificationOutboxStatus pending,
+            @Param("error") String error,
+            @Param("now") Instant now);
+
+    @org.springframework.transaction.annotation.Transactional
+    @Modifying(clearAutomatically = true)
+    @Query(
+            """
+            update NotificationOutboxJpaEntity e
+               set e.nextAttemptAt = :next, e.updatedAt = :now
+             where e.id = :id and e.status = :pending
+            """)
+    int reschedule(
+            @Param("id") UUID id,
+            @Param("pending") NotificationOutboxStatus pending,
+            @Param("next") Instant next,
+            @Param("now") Instant now);
+
+    @org.springframework.transaction.annotation.Transactional
+    @Modifying(clearAutomatically = true)
+    @Query(
+            """
+            update NotificationOutboxJpaEntity e
+               set e.nextAttemptAt = :leaseUntil, e.updatedAt = :now
+             where e.id = :id
+               and e.status = :status
+               and e.nextAttemptAt = :observedNextAttemptAt
+            """)
+    int claim(
+            @Param("id") UUID id,
+            @Param("status") NotificationOutboxStatus status,
+            @Param("observedNextAttemptAt") Instant observedNextAttemptAt,
+            @Param("leaseUntil") Instant leaseUntil,
+            @Param("now") Instant now);
 
     @Modifying(clearAutomatically = true)
     @Query(

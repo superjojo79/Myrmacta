@@ -99,12 +99,12 @@ class BlockAttributeRulesTest {
     }
 
     @Test
-    void managedAttributeNamesAreExactlyThoseOfTheSixDelegates() {
+    void managedAttributeNamesAreExactlyThoseOfTheBlockDelegates() {
         assertThat(BlockAttributeRules.MANAGED_ATTRIBUTES).containsExactlyInAnyOrder(
                 "documentType", "documentVariant", "documentLocale", "connectorInstanceId", "notificationChannels",
                 "notificationTo", "notificationSubject", "notificationBody", "notificationUserId",
                 "notificationWebhookConfigId", "childDossierTypeCode", "childDossierLabel", "workflowProcessKey",
-                "relationType", "targetDossierStatus", "targetWorkflowStatus");
+                "relationType", "targetDossierStatus", "targetWorkflowStatus", "formula", "formulaResult", "fieldMapping");
     }
 
     private static void assertRefused(String delegate, String attribute, String value) {
@@ -126,5 +126,58 @@ class BlockAttributeRulesTest {
         // le corps du message reste multi-lignes
         BlockAttributeRules.validate("a", "notificationDispatchTask",
                 Map.of("notificationChannels", "EMAIL", "notificationBody", "L1\nL2\n"));
+    }
+
+    // ---- TODO §75 (LC2) : brique « Évaluer une expression » ---------------------------------------------------------
+
+    @Test
+    void theExpressionBlockAcceptsAFormulaAndAResultVariableOnItsDelegateOnly() {
+        BlockAttributeRules.validate("a", "businessExpressionTask",
+                Map.of("formula", "dossier.fields.montant > 5000\n and dossier.fields.pays = \"FR\"", "formulaResult", "gros_dossier"));
+        assertThatThrownBy(() -> BlockAttributeRules.validate("a", "updateDossierStatusTask",
+                        Map.of("formula", "1 + 1")))
+                .isInstanceOf(InvalidBpmnException.class).hasMessageContaining("formula");
+        assertThatThrownBy(() -> BlockAttributeRules.validate("a", null, Map.of("formulaResult", "x")))
+                .isInstanceOf(InvalidBpmnException.class);
+    }
+
+    @Test
+    void theExpressionDelegateRequiresBothLiteralAttributesBecauseItNeverFallsBackOnAVariable() {
+        assertThatThrownBy(() -> BlockAttributeRules.validate("a", "businessExpressionTask", Map.of("formulaResult", "x")))
+                .isInstanceOf(InvalidBpmnException.class).hasMessageContaining("formula").hasMessageContaining("required");
+        assertThatThrownBy(() -> BlockAttributeRules.validate("a", "businessExpressionTask", Map.of("formula", "1")))
+                .isInstanceOf(InvalidBpmnException.class).hasMessageContaining("formulaResult");
+        assertThatThrownBy(() -> BlockAttributeRules.validate("a", "businessExpressionTask", Map.of()))
+                .isInstanceOf(InvalidBpmnException.class);
+    }
+
+    @Test
+    void aFormulaIsNeverAnExpressionInTheUelSenseAndIsBoundedInLength() {
+        assertThatThrownBy(() -> BlockAttributeRules.validate("a", "businessExpressionTask",
+                        Map.of("formula", "${1+1}", "formulaResult", "x")))
+                .isInstanceOf(InvalidBpmnException.class).hasMessageContaining("literal");
+        assertThatThrownBy(() -> BlockAttributeRules.validate("a", "businessExpressionTask",
+                        Map.of("formula", "1".repeat(2001), "formulaResult", "x")))
+                .isInstanceOf(InvalidBpmnException.class).hasMessageContaining("2000");
+    }
+
+    @Test
+    void theResultVariableMustNotShadowAReservedVariableOrABlockParameterName() {
+        // Un delegate relit ses paramètres en repli depuis une variable de même nom : une expression ne doit pas
+        // pouvoir piloter le statut cible, le connecteur ou le destinataire d'une autre brique.
+        for (String reserved : List.of("dossierId", "connectorResult", "connectorInput", "now", "dossier", "variables",
+                "targetDossierStatus", "connectorInstanceId", "documentType", "notificationTo", "formula", "formulaResult",
+                // Revue adversariale LC2 : variables de la plateforme et de Flowable (multi-instance, exécution, tâche).
+                "dossierFields", "tenantId", "dossierWorkflowLinkId", "nrOfInstances", "nrOfActiveInstances",
+                "nrOfCompletedInstances", "loopCounter", "execution", "task", "initiator", "authenticatedUserId")) {
+            assertThatThrownBy(() -> BlockAttributeRules.validate("a", "businessExpressionTask",
+                            Map.of("formula", "1", "formulaResult", reserved)))
+                    .as(reserved).isInstanceOf(InvalidBpmnException.class).hasMessageContaining("reserved");
+        }
+        for (String malformed : List.of("1abc", "a-b", "a b", "a.b", "_x", "a".repeat(61))) {
+            assertThatThrownBy(() -> BlockAttributeRules.validate("a", "businessExpressionTask",
+                            Map.of("formula", "1", "formulaResult", malformed)))
+                    .as(malformed).isInstanceOf(InvalidBpmnException.class);
+        }
     }
 }

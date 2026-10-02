@@ -79,7 +79,7 @@ Pour **chacun des six delegates** (`documentGeneration`, `connectorService`, `no
 
 - [x] **S-FE-1** `catalogClient` charge une fois, met en cache ; échec → repli sur le panneau brut sans erreur bloquante.
 - [x] **S-FE-2** `recognizeBlock` applique les règles **ordonnées** du design (signature, DMN, six delegates, `portalRecipient`, `formKey` `user-question:`) : 11 briques reconnues ; `userTask` `formKey`+`portalRecipient` ⇒ tâche externe ; `formKey` `dossier-fields`/`document-generation` et élément non reconnu ⇒ `null`.
-- [x] **S-FE-3** `valueSourceResolver` : chaque source appelle son API (existante, ou `references/{source}` pour les 3 sources d'administration) et normalise `{ value, label }` ; source indisponible ⇒ liste vide + drapeau (saisie libre).
+- [x] **S-FE-3** `valueSourceResolver` : chaque source appelle son API (existante, ou `references/{source}` pour les 3 sources d'administration, rejointes par `dmnTables` au lot LC1-suite, TODO §74) et normalise `{ value, label }` ; source indisponible ⇒ liste vide + drapeau (saisie libre).
 - [x] **S-FE-4** Aucune donnée mise en cache d'un tenant à l'autre (rechargement au changement de session).
 
 ### Palette et panneau (US-1, US-5)

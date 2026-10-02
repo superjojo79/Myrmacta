@@ -14,6 +14,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    setupFiles: ['src/test/navigator.ts', 'src/test/setup.ts'],
     include: ['src/**/*.{test,spec}.ts', 'portal/**/*.{test,spec}.ts'],
     coverage: {
       provider: 'v8',

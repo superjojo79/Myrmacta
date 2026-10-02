@@ -1,6 +1,8 @@
 # Langage d'expression métier borné (LC2)
 
-> **Statut : première analyse (2026-09-28), aucune décision technique tranchée.** Sous-lot
+> **Statut : livré (TODO §75, 2026-09-30)** — décisions D-EXPR-* tranchées, voir `docs/roadmap-goal/DECISIONS.md` et
+> `docs/ai/design/2026-09-30-feature-lc2-langage-expression-metier.md`. *(Ancien statut : première analyse du 2026-09-28,
+> aucune décision technique tranchée.)* Sous-lot
 > **LC2** `langage-expression-metier` de la couche low-code (D0 = C,
 > [31](31-positionnement-produit.md), rang 2). Prérequis des champs calculés de D1
 > ([32](32-modele-champs-enrichi.md)), du mapping D3b ([34](34-integrations-entreprise.md)) et

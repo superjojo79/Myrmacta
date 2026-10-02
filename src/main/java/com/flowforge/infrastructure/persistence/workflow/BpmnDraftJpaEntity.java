@@ -1,6 +1,9 @@
 package com.flowforge.infrastructure.persistence.workflow;
 
 import com.flowforge.domain.workflow.model.BpmnDraft;
+import com.flowforge.domain.workflow.model.Provenance;
+import com.flowforge.domain.workflow.model.ProposedWorkflowConfig;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -32,26 +35,74 @@ class BpmnDraftJpaEntity {
     @Column(name = "updated_by", nullable = false, length = 128)
     private String updatedBy;
 
+    @Column(name = "provenance", nullable = false, length = 16)
+    private String provenance = Provenance.UI.name();
+
+    @Column(name = "proposed_config")
+    private String proposedConfig;
+
+    @Column(name = "pilot_user_id", length = 128)
+    private String pilotUserId;
+
+    @Column(name = "config_provenance", length = 16)
+    private String configProvenance;
+
+    @Column(name = "config_author", length = 128)
+    private String configAuthor;
+
     protected BpmnDraftJpaEntity() {
         // JPA
     }
 
     private BpmnDraftJpaEntity(
-            String tenantId, String processDefinitionKey, String xml, Instant updatedAt, String updatedBy) {
+            String tenantId,
+            String processDefinitionKey,
+            String xml,
+            Instant updatedAt,
+            String updatedBy,
+            String provenance,
+            String proposedConfig,
+            String pilotUserId,
+            String configProvenance,
+            String configAuthor) {
+        this.configProvenance = configProvenance;
+        this.configAuthor = configAuthor;
         this.tenantId = tenantId;
         this.processDefinitionKey = processDefinitionKey;
         this.xml = xml;
         this.updatedAt = updatedAt;
         this.updatedBy = updatedBy;
+        this.provenance = provenance;
+        this.proposedConfig = proposedConfig;
+        this.pilotUserId = pilotUserId;
     }
 
-    static BpmnDraftJpaEntity fromDomain(BpmnDraft draft) {
+    static BpmnDraftJpaEntity fromDomain(BpmnDraft draft, ObjectMapper mapper) {
         return new BpmnDraftJpaEntity(
-                draft.tenantId(), draft.processDefinitionKey(), draft.xml(), draft.updatedAt(), draft.updatedBy());
+                draft.tenantId(),
+                draft.processDefinitionKey(),
+                draft.xml(),
+                draft.updatedAt(),
+                draft.updatedBy(),
+                draft.provenance().name(),
+                draft.proposedConfig() == null ? null : mapper.writeValueAsString(draft.proposedConfig()),
+                draft.pilotUserId(),
+                draft.configProvenance() == null ? null : draft.configProvenance().name(),
+                draft.configAuthor());
     }
 
-    BpmnDraft toDomain() {
-        return new BpmnDraft(tenantId, processDefinitionKey, xml, updatedAt, updatedBy);
+    BpmnDraft toDomain(ObjectMapper mapper) {
+        return new BpmnDraft(
+                tenantId,
+                processDefinitionKey,
+                xml,
+                updatedAt,
+                updatedBy,
+                Provenance.valueOf(provenance),
+                proposedConfig == null ? null : mapper.readValue(proposedConfig, ProposedWorkflowConfig.class),
+                pilotUserId,
+                configProvenance == null ? null : Provenance.valueOf(configProvenance),
+                configAuthor);
     }
 
     static final class BpmnDraftId implements Serializable {

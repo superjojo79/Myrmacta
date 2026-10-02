@@ -377,6 +377,78 @@ APP_SIGNATURE_MAX_DEADLINE=90d       # facultatif, plafond de ce que le BPMN peu
 
 ------
 
+## 11. Plusieurs répliques d'un même tenant et déploiement progressif (TODO §79)
+
+Le modèle reste **1 instance = 1 tenant**, mais deux pods du même tenant coexistent dès qu'on fait un **déploiement progressif**
+(rolling update) ou qu'on scale à plusieurs répliques. Les tâches planifiées (`@Scheduled`) tournent alors des deux côtés. Chacune
+est sûre si elle **prend** son unité de travail avant d'agir (UPDATE conditionnel en base, sans Redis ni verrou externe) :
+
+| Tâche | Garantie avec deux exécutants |
+|---|---|
+| Relais outbox des notifications (e-mail, webhook, navigateur) et relais outbox workflow | une ligne n'est traitée que par l'exécutant qui l'a prise ; bail de 5 min (exécutant mort ⇒ reprise) |
+| Alertes SLA | la transition d'état est prise avant la mise en file de l'alerte : une seule alerte par transition |
+| Invitations du portail | le lien est pris avant l'envoi (bail de 5 min) : le tiers ne reçoit pas deux e-mails |
+| Déclencheurs cron (`scheduler`, `batch-import`) | le créneau est pris avant le déclenchement : un seul dossier / import par échéance |
+| Export BI | l'horloge d'export avance par compare-and-set au commit : un seul jeu de fichiers catalogué |
+| Réconciliation des liens `RESERVED` | prise du lien (bail de 2 min) ; un lien dont le process a démarré n'est jamais abandonné |
+| Purge, rétention, signature (invitations, expiration, distribution), expiration des liens portail | déjà protégés par claim, version ou contrainte en base |
+
+**Ce qui n'est pas distribué** (volontairement, pas de Redis, décision n° 13/14) : le flux **SSE** (un pod ne pousse qu'aux utilisateurs
+connectés *à lui* ; l'historique de la boîte de réception reste exact), la **limite de débit par IP**, et la **session** de l'application.
+Kafka garantit « au moins une fois » : un *rebalance* peut rejouer des messages non validés (pas d'idempotence par message à ce jour).
+Les **webhooks sortants** portent l'`outboxId` dans l'enveloppe : le destinataire peut dédupliquer.
+
+Réglages liés : les envois SMTP ont des **délais** (`MAIL_SMTP_CONNECTION_TIMEOUT_MS` 10 s, `MAIL_SMTP_READ_TIMEOUT_MS` 30 s,
+`MAIL_SMTP_WRITE_TIMEOUT_MS` 30 s) — sans eux un serveur muet bloquerait un exécutant au-delà du bail de ses lignes. À l'arrêt, les tâches planifiées en cours se terminent
+(`APP_SCHEDULING_SHUTDOWN_WAIT`, 30 s) : prévoyez un délai de grâce du pod au moins égal.
+
+Conséquence en cas de crash d'un pod entre la prise et l'effet : l'unité est reprise à l'échéance du bail (notifications, outbox workflow,
+portail, réconciliation) ; un créneau cron est en revanche **au plus une fois** (un déclenchement qui *échoue* est rendu et réessayé ;
+un pod qui meurt entre la prise et le déclenchement perd ce créneau).
+
+------
+
+## 12. Recherche sur champs dynamiques — migration `jsonb` (TODO §81)
+
+La migration `030-dossier-fields-jsonb` convertit `dossier.fields` de `json` en `jsonb` et crée l'index GIN `idx_dossier_fields_gin`
+(`jsonb_path_ops`). Elle **réécrit la table `dossier`** (verrou exclusif le temps de la conversion) : à planifier hors pic sur un gros
+volume (compter quelques secondes par centaine de milliers de dossiers). PostgreSQL seulement ; le retour arrière est fourni
+(`rollback`). Pré-contrôle conseillé : `jsonb` refuse le caractère NUL (`\u0000`), que `json` acceptait — `select 1 from dossier where fields::text like '%\\u0000%'` doit ne rien renvoyer. Sur H2 (tests), la recherche sur champ dynamique est refusée (400). Pour rejouer les tests PostgreSQL sans Docker :
+`FLOWFORGE_TEST_PG_URL=jdbc:postgresql://hôte:port/base FLOWFORGE_TEST_PG_USER=… ./mvnw verify`.
+
+------
+
+## 13. Écritures de configuration par MCP : brouillons, publication, environnement (TODO §82)
+
+| Variable | Effet |
+|---|---|
+| `APP_ENVIRONMENT` | `local`, `staging` ou `production` (défaut **`production`**). Une valeur inconnue empêche le démarrage. |
+| `M2M_TRUSTED_CLIENT_IDS` | **Obligatoire** hors `local` dès que la chaîne M2M est active (`OAUTH2_ISSUER_URI` ou `M2M_JWT_SECRET`) : sinon tout porteur d'un JWT M2M valide est administrateur de fait (A3-M2). |
+| `APP_MCP_PUBLICATION_MODE` | `draft` (défaut) : un agent écrit un brouillon, un humain publie. `direct` : publication sans relecture — **refusé au démarrage en production**. |
+| `APP_DRAFTS_RETENTION_DAYS` | Brouillons d'agent/assistant non modifiés depuis N jours : purgés (défaut 30 ; 0 = jamais). Les brouillons de l'éditeur ne sont jamais purgés. |
+
+La migration 031 ajoute la provenance aux brouillons et crée le journal `config_publication` (additif, retour arrière fourni). **Mise à jour d'un
+déploiement existant** : renseigner `APP_ENVIRONMENT` (sans lui, le défaut `production` impose l'allowlist M2M et interdit `direct`) et, si un
+agent déployait directement, prévenir ses opérateurs : ses écrans de déploiement répondent désormais « brouillon en attente de publication ».
+
+------
+
+## 14. Promouvoir la configuration de la recette vers la production (TODO §83)
+
+Procédure type (rôle TENANT_ADMIN des deux côtés) :
+
+1. Recette : *Admin → Promotion → Télécharger le bundle* (ou `GET /api/admin/configuration/export?sourceLabel=recette`). Versionnez le ZIP (ou son contenu) dans Git.
+2. Production : *Planifier* le bundle (`POST /api/admin/configuration/plan`, multipart `file` + `parameters` JSON optionnel) et relisez le plan.
+3. *Appliquer* (`POST /api/admin/configuration/apply`, mêmes parties + `secrets` JSON `{nomConnecteur: {champ: valeur}}` pour les créations + `expectedBundleSha256` du plan relu).
+   Les secrets ne sont jamais écrits dans le bundle ni dans le journal ; transmettez-les par TLS.
+4. Publiez les brouillons BPMN/DMN déposés (*Admin → Brouillons*), relancez l'import tant que des artefacts restent *Bloqués* par une dépendance, activez les connecteurs après relecture de leurs adresses.
+
+Intégrité : chaque fichier porte son SHA-256 dans `manifest.json` (altération détectée) ; le bundle **n'est pas signé**. Limites : 2 000 artefacts, 5 Mo par fichier, 50 Mo au total ;
+la taille d'envoi reste plafonnée par `spring.servlet.multipart.max-file-size`. La migration 032 crée le journal `config_import` (additif, retour arrière fourni). Un import ne retire jamais
+une clé de configuration d'un connecteur existant (fusion) et ne change pas son état activé.
+
+------
+
 ## Ce qui n'est pas (encore) couvert par ce guide
 
 - **Démarrage de l'instance et bloc reverse-proxy** restent des étapes documentées (§1/§3/§4), pas
@@ -400,3 +472,51 @@ APP_SIGNATURE_MAX_DEADLINE=90d       # facultatif, plafond de ce que le BPMN peu
 - Autorisation et conformité : [analysis doc/12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md)
 - Décisions et suivi (provisioning tenant, points 31/41 : livré via le lot `provisioning-tenant`) : [TODO.md](TODO.md) ; prochaines évolutions : [ROADMAP.md](ROADMAP.md)
 - Prise en main de l'UI : [GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md)
+
+## 15. Assistant de conception IA (TODO §86)
+
+L'écran *Admin → Assistant* est **désactivé par défaut** : sans configuration, aucune requête ne sort de l'instance.
+
+| Variable | Rôle |
+|---|---|
+| `APP_ASSISTANT_ENABLED` | `true` pour l'activer (démarrage refusé sans clé) |
+| `APP_ASSISTANT_API_KEY` | clé du fournisseur de modèle — **secret serveur**, jamais envoyée au navigateur ni journalisée |
+| `APP_ASSISTANT_BASE_URL` | point d'accès (défaut API Anthropic) ; **https obligatoire** hors boucle locale ; permet une passerelle d'entreprise ou une région d'hébergement |
+| `APP_ASSISTANT_MODEL` | modèle utilisé |
+| `APP_ASSISTANT_RETENTION_DAYS` | durée de conservation des conversations (défaut 30 ; purge automatique) |
+| `APP_ASSISTANT_MAX_*` | plafonds : appels d'outils par message (12), tours par conversation (60), jetons par conversation (400 000) et par jour et par tenant (3 000 000) |
+
+**Données et sous-traitance (RGPD).** Le fournisseur de modèle est un sous-traitant : à déclarer. En mode *conception*, l'assistant n'a accès
+à **aucune donnée de dossier** (le catalogue d'outils est celui de `McpToolModes` en conception) : partent chez le fournisseur le texte saisi par l'administrateur,
+les descriptions d'outils et les résultats d'outils de configuration (types, formulaires, processus, tables de décision, noms de connecteurs — jamais un secret).
+N'y saisissez pas de données personnelles. L'assistant **ne publie jamais** (les processus et tables DMN restent des brouillons à relire), n'applique pas de bundle de
+configuration et n'écrit jamais de secret de connecteur. Les conversations sont propres à leur auteur ; un administrateur ne lit pas celles d'un autre.
+Le pare-feu sortant doit autoriser le seul hôte de `APP_ASSISTANT_BASE_URL`.
+Techniquement, l'assistant s'appuie sur le starter Spring AI Anthropic ; son auto-configuration est coupée (`spring.ai.model.chat=none`) et le modèle n'est construit que si `APP_ASSISTANT_ENABLED=true`. Les redirections HTTP ne sont jamais suivies et aucun appel n'est relancé automatiquement.
+
+## 16. E-mail entrant et bus Azure (TODO §87)
+
+Trois connecteurs interrogent un système externe à intervalle régulier (`imap-inbound`, `graph-mail-inbound`, `azure-service-bus`). Ils sont **inactifs tant qu'aucune instance n'est créée** et
+activée dans *Admin → Connecteurs*.
+
+| Variable | Rôle (défaut) |
+|---|---|
+| `APP_INBOUND_MAX_MESSAGES_PER_POLL` | messages traités par interrogation d'une instance (20) |
+| `APP_INBOUND_MAX_MESSAGE_BYTES` | taille maximale d'un e-mail, au-delà : rangé sans analyse (26 214 400) |
+| `APP_INBOUND_MAX_BODY_CHARS` | texte conservé du corps d'un e-mail (20 000) |
+| `APP_INBOUND_MAX_ATTACHMENT_BYTES` | taille maximale d'une pièce jointe (10 485 760) |
+| `APP_INBOUND_MIN_POLL_SECONDS` | intervalle minimal d'une instance (30) |
+| `APP_INBOUND_MAX_BUS_MESSAGE_BYTES` | taille maximale d'un message de bus lu (1 048 576) |
+
+**Réseau.** Le pare-feu sortant doit autoriser, pour chaque instance : l'hôte IMAP (993, ou 143 en STARTTLS), ou `*.servicebus.windows.net` (443), et — en OAuth2 —
+le point d'accès des jetons (`login.microsoftonline.com`). Les hôtes doivent résoudre vers des adresses publiques.
+**Microsoft Graph** (`graph-mail-inbound`) : sortie 443 vers `graph.microsoft.com` (ou `graph.microsoft.us`, `dod-graph.microsoft.us`, `microsoftgraph.chinacloudapi.cn`) et `login.microsoftonline.com`. Inscrire une application Entra ID avec la permission d'**application** `Mail.ReadWrite` (consentement administrateur), puis **la restreindre à la seule boîte voulue** par une stratégie d'accès d'application Exchange Online (`New-ApplicationAccessPolicy`) : sans elle, la permission donne accès à TOUTES les boîtes du tenant. La stratégie d'accès d'application est la voie historique ; Microsoft promeut désormais *RBAC for Applications* pour le même besoin — l'essentiel est que l'application ne voie qu'une boîte. Pas de mot de passe : seul `client_credentials` est accepté, avec `oauthScope = https://graph.microsoft.com/.default`.
+**Données.** Un e-mail entrant peut contenir des données personnelles : il devient un dossier soumis aux règles de rétention habituelles ; les messages
+traités restent dans la boîte (dossier `FlowForge-processed`) et sont à purger selon votre politique. **Plusieurs répliques** : le créneau d'interrogation est pris
+par comparaison-échange (D5), une seule réplique lit une boîte ou une file à la fois.
+
+## 17. Langue de l'interface (TODO §90)
+
+L'interface existe en français et en anglais. Chaque utilisateur choisit sa langue (sélecteur en haut de page ; le choix reste dans son navigateur). Tant qu'il n'a rien choisi, la langue vient de
+**`APP_I18N_DEFAULT_LOCALE`** (`fr` par défaut, ou `en`) puis du navigateur. Cette même valeur fixe la langue des **e-mails envoyés à des tiers sans profil** (invitation de tâche externe, invitation de signature) :
+en anglais, le lien du portail porte `?lang=en`. Toute autre valeur arrête le démarrage. Les libellés saisis par le tenant (types, champs, statuts) restent dans la langue où ils ont été saisis.

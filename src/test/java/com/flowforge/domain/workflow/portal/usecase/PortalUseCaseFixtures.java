@@ -24,6 +24,23 @@ final class InMemoryPortalLinkRepository implements PortalLinkRepository {
         links.add(link);
     }
 
+    /** Prises en cours (id → échéance du bail) : fidèle à l'UPDATE conditionnel de l'adaptateur JPA. */
+    final java.util.Map<UUID, java.time.Instant> sendClaims = new java.util.HashMap<>();
+
+    @Override
+    public boolean claimForSend(PortalLink link, java.time.Instant now, java.time.Duration lease) {
+        PortalLink stored = links.stream().filter(l -> l.id().equals(link.id())).findFirst().orElse(null);
+        if (stored == null || stored.status() != com.flowforge.domain.workflow.portal.model.PortalLinkStatus.PENDING_SEND) {
+            return false;
+        }
+        java.time.Instant until = sendClaims.get(link.id());
+        if (until != null && !until.isBefore(now)) {
+            return false;
+        }
+        sendClaims.put(link.id(), now.plus(lease));
+        return true;
+    }
+
     @Override
     public boolean transition(PortalLink current, PortalLink next) {
         if (loseEveryRace) {
@@ -36,6 +53,7 @@ final class InMemoryPortalLinkRepository implements PortalLinkRepository {
                     return false;
                 }
                 links.set(i, next);
+                sendClaims.remove(next.id()); // toute transition lève la prise
                 return true;
             }
         }

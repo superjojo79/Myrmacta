@@ -1,6 +1,6 @@
 # Scripts JS/TS réduits en bac à sable (LC6)
 
-> **Statut : première analyse (2026-09-28), aucune décision technique tranchée.** Sous-lot
+> **Statut : spike réalisé le 2026-10-01 — D-SCRIPT-GO = NON (LC2 suffit ; lot non lancé), voir §9.** Sous-lot
 > **LC6** `scripts-sandbox` de la couche low-code (D0 = C, [31](31-positionnement-produit.md),
 > rang 6). **Conditionnel** : spike de qualification d'abord, lot seulement si LC2
 > ([40](40-langage-expression-metier.md)) s'avère insuffisant.
@@ -69,3 +69,33 @@ l'[analyse 31](31-positionnement-produit.md) §3.
 
 `GUIDE-CONCEPTION-BPMN.md` (brique Script), `GUIDE-UTILISATEUR.md` (éditeur de scripts),
 `12-autorisation-conformite.md` (rôle autorisé à écrire des scripts).
+
+---
+
+## 9. Résultat du spike de qualification (2026-10-01)
+
+**Question (charte §2, lot 14) :** le lot n'est lancé que si LC2 s'avère insuffisant, preuve à l'appui.
+
+**Méthode.** Les cas que §2 range sous « algorithme de calcul, transformation complexe » ont été écrits en JSONata (LC2, moteur borné réel,
+sans mock) dans [`ScriptQualificationSpikeTest`](../src/test/java/com/flowforge/infrastructure/expression/ScriptQualificationSpikeTest.java) :
+
+| Famille de cas | Résultat avec LC2 |
+|---|---|
+| Barème progressif par tranches (réduction d'état) | exprimable (`$reduce`) |
+| Contrôle IBAN (modulo 97 itératif sur chiffres) | exprimable (`$map`, `$reduce`, `%`) |
+| Regroupement / agrégation d'une liste de connecteur | exprimable (opérateur de regroupement `{clé: $sum(…)}`) |
+| Fonction récursive (solde d'un prêt) | exprimable (fonction nommée récursive) |
+| Arithmétique de dates, jours ouvrés | exprimable (`$toMillis`, `$fromMillis`, intervalles, prédicats) |
+| Transformation d'objet, chaînes, conditionnelles | exprimable |
+
+LC2 est un langage fonctionnel complet (fonctions d'ordre supérieur, récursion, agrégats) **déjà borné** : 2 000 caractères, 250 ms,
+64 Ko de résultat, profondeur et allocation gardées, regex et `$eval`/`$random`/`$now` refusés, contexte JSON pur sans champs sensibles
+(trois passes adversariales en LC2, §75). Aucun cas de la famille visée n'exige une boucle impérative ni un accès hors contexte.
+
+**Décision D-SCRIPT-GO = NON.** Lancer LC6 ajouterait une surface d'exécution de code (WASM, nouvelle dépendance jeune, revue
+d'isolation) pour une valeur que LC2 couvre déjà. **Conditions de réouverture :** un cas réel documenté (a) hors de portée de LC2
+**et** (b) hors de portée d'un connecteur Java au classpath. Le premier endroit où le consigner est le fichier de test ci-dessus.
+Si le lot était rouvert : QuickJS/Chicory (pas GraalJS : licence et isolation, analyse 31 §3), API en lecture seule
+(`ctx.dossier.fields`, `ctx.connectorResult`), JavaScript seul via MCP (TypeScript transpilé côté éditeur uniquement).
+**Non vérifié par ce spike** (sans objet puisque aucun moteur n'est ajouté) : maturité de `quickjs4j`/Chicory, performances,
+interruption de boucle infinie ; la vérification §69 reste vraie (aucun `ScriptEngine` sur le classpath, `scriptTask` refusé).

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, watch } from 'vue'
 import {
   activateDocumentTemplate,
@@ -11,6 +12,7 @@ import {
 import type { DocumentTemplate } from '@/api/types'
 import { toProblemDetail } from '@/api/http'
 import TemplatePreviewPanel from '@/components/document/TemplatePreviewPanel.vue'
+import TemplateVisualEditor from '@/components/document/TemplateVisualEditor.vue'
 import AdminPager from '@/components/admin/AdminPager.vue'
 import { useAdminListQuery } from '@/composables/useAdminListQuery'
 
@@ -23,6 +25,10 @@ const form = ref({
   label: '',
   htmlContent: '<p>Contenu</p>',
 })
+// TODO §84 (LC4b) : variables d'exemple de l'aperçu (menu de l'éditeur visuel) et édition du contenu d'un brouillon.
+const sampleVariables = ref<Record<string, unknown>>({})
+const editing = ref<{ id: string; templateKey: string; label: string; htmlContent: string } | null>(null)
+const editingError = ref<string | null>(null)
 
 async function refresh() {
   const result = await listDocumentTemplates(undefined, false, { page: page.value, size: size.value })
@@ -34,7 +40,7 @@ watch(
   [page, size],
   () => {
     void refresh().catch((err) => {
-      error.value = toProblemDetail(err).detail ?? 'Chargement impossible'
+      error.value = toProblemDetail(err).detail ?? t('admin.templates.errors.load')
     })
   },
   { immediate: true },
@@ -46,12 +52,12 @@ async function create() {
     form.value = { templateKey: '', label: '', htmlContent: '<p>Contenu</p>' }
     await refresh()
   } catch (err) {
-    error.value = toProblemDetail(err).detail ?? 'Création impossible'
+    error.value = toProblemDetail(err).detail ?? t('admin.templates.errors.create')
   }
 }
 
 async function rename(template: DocumentTemplate) {
-  const label = prompt('Nouveau libellé', template.label)
+  const label = prompt(t('admin.templates.renamePrompt'), template.label)
   if (!label) return
   await updateDocumentTemplate(template.id, { label })
   await refresh()
@@ -67,35 +73,85 @@ async function archive(template: DocumentTemplate) {
   await refresh()
 }
 
+async function editContent(template: DocumentTemplate) {
+  editingError.value = null
+  try {
+    // La liste est triée par date de mise à jour : le brouillon n'est pas forcément dans la première page (revue adversariale
+    // LC4b). Ne jamais ouvrir l'éditeur sur un contenu vide faute de l'avoir trouvé : l'enregistrement écraserait le brouillon.
+    let full: DocumentTemplate | undefined
+    for (let index = 0; index < 50 && !full; index++) {
+      const result = await listDocumentTemplates(template.templateKey, true, { page: index, size: 100 })
+      full = result.content.find((t) => t.id === template.id)
+      if (index + 1 >= result.totalPages) break
+    }
+    if (!full || full.htmlContent == null) {
+      error.value = t('admin.templates.errors.contentMissing')
+      return
+    }
+    editing.value = {
+      id: template.id,
+      templateKey: template.templateKey,
+      label: template.label,
+      htmlContent: full.htmlContent,
+    }
+  } catch (err) {
+    error.value = toProblemDetail(err).detail ?? t('admin.templates.errors.contentLoad')
+  }
+}
+
+async function saveContent() {
+  if (!editing.value) return
+  editingError.value = null
+  try {
+    await updateDocumentTemplate(editing.value.id, { htmlContent: editing.value.htmlContent })
+    editing.value = null
+    await refresh()
+  } catch (err) {
+    editingError.value = toProblemDetail(err).detail ?? t('admin.templates.errors.save')
+  }
+}
+
 async function newVersion(template: DocumentTemplate) {
   await newDocumentTemplateVersion(template.id)
   await refresh()
 }
+
+const { t } = useI18n()
 </script>
 
 <template>
   <section>
-    <h1>Templates documents</h1>
+    <h1>{{ t('admin.templates.title') }}</h1>
     <p v-if="error" class="error">{{ error }}</p>
     <div class="templates-layout">
       <form class="admin-form" @submit.prevent="create">
-        <input v-model="form.templateKey" placeholder="templateKey" required />
-        <input v-model="form.label" placeholder="libellé" required />
-        <textarea v-model="form.htmlContent" rows="4" />
-        <button type="submit">Créer</button>
+        <input v-model="form.templateKey" :placeholder="t('admin.templates.keyPlaceholder')" required />
+        <input v-model="form.label" :placeholder="t('admin.templates.labelPlaceholder')" required />
+        <TemplateVisualEditor v-model="form.htmlContent" :sample-variables="sampleVariables" />
+        <button type="submit">{{ t('admin.templates.create') }}</button>
       </form>
-      <TemplatePreviewPanel :html-content="form.htmlContent" />
+      <TemplatePreviewPanel :html-content="editing ? editing.htmlContent : form.htmlContent" @update:variables="sampleVariables = $event" />
     </div>
+    <section v-if="editing" class="templates-edit" data-testid="template-edit">
+      <h2>{{ t('admin.templates.editTitle', { key: editing.templateKey }) }}</h2>
+      <p v-if="editingError" class="error" role="alert">{{ editingError }}</p>
+      <TemplateVisualEditor v-model="editing.htmlContent" :sample-variables="sampleVariables" />
+      <div class="actions">
+        <button type="button" data-testid="save-content" @click="saveContent">{{ t('admin.templates.save') }}</button>
+        <button type="button" @click="editing = null">{{ t('common.cancel') }}</button>
+      </div>
+    </section>
     <ul>
       <li v-for="tpl in templates" :key="tpl.id">
         <div>
           <strong>{{ tpl.templateKey }}</strong> — {{ tpl.label }} (v{{ tpl.version }}, {{ tpl.status }})
         </div>
         <div class="actions">
-          <button type="button" @click="rename(tpl)">Renommer</button>
-          <button type="button" @click="activate(tpl)">Activer</button>
-          <button type="button" @click="archive(tpl)">Archiver</button>
-          <button type="button" @click="newVersion(tpl)">Nouvelle version</button>
+          <button v-if="tpl.status === 'DRAFT'" type="button" data-testid="edit-content" @click="editContent(tpl)">{{ t('admin.templates.editContent') }}</button>
+          <button type="button" @click="rename(tpl)">{{ t('admin.templates.rename') }}</button>
+          <button type="button" @click="activate(tpl)">{{ t('admin.templates.activate') }}</button>
+          <button type="button" @click="archive(tpl)">{{ t('admin.templates.archive') }}</button>
+          <button type="button" @click="newVersion(tpl)">{{ t('admin.templates.newVersion') }}</button>
         </div>
       </li>
     </ul>

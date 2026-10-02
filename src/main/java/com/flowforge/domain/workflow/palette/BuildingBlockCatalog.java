@@ -80,6 +80,23 @@ public final class BuildingBlockCatalog {
                     new BlockParameter("decisionTableReferenceKey", "Table de décision", ParameterType.REFERENCE,
                             ParameterBinding.FIELD_ELEMENT, true, "dmnTables", List.of(), 100, null, null,
                             "Clé de la table de décision déployée.")),
+            block("evaluate-expression", "Évaluer une expression",
+                    "Calcule une valeur avec une expression métier bornée (JSONata) ; le résultat alimente une variable "
+                            + "que les passerelles comparent ensuite.",
+                    BlockCategory.DECISION, BlockElement.SERVICE_TASK, BlockMarker.delegate("businessExpressionTask"),
+                    text("formula", "Expression", 2000,
+                            "Ex. dossier.fields.montant > 5000 and dossier.fields.pays = \"FR\". Racine : dossier, "
+                                    + "connectorResult, variables, now.", true),
+                    text("formulaResult", "Variable de résultat", 60,
+                            "Nom de la variable de process qui reçoit le résultat (lettres, chiffres, _).", true)),
+            block("map-fields", "Enregistrer des valeurs dans le dossier",
+                    "Calcule des valeurs (expressions métier bornées) à partir du dossier, du résultat d'un connecteur et "
+                            + "des variables, et les enregistre dans des champs du dossier — tout ou rien.",
+                    BlockCategory.DOSSIER, BlockElement.SERVICE_TASK, BlockMarker.delegate("fieldMappingTask"),
+                    text("fieldMapping", "Valeurs à enregistrer", 8000,
+                            "Une ligne par champ : champ = expression. Ex. score = connectorResult.json.score. "
+                                    + "connectorResult.json est le corps de la réponse lu comme JSON. 20 champs au plus.",
+                            true)),
             block("user-question", "Question utilisateur",
                     "Tâche humaine qui pose un choix indépendant du dossier.",
                     BlockCategory.HUMAN, BlockElement.USER_TASK, BlockMarker.userQuestion(),

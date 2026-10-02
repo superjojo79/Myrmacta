@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import type { WorkflowLink } from '@/api/types'
 import AdminPager from '@/components/admin/AdminPager.vue'
 
@@ -8,18 +9,20 @@ defineProps<{
 }>()
 
 const page = defineModel<number>('page', { default: 0 })
+
+const { t } = useI18n()
 </script>
 
 <template>
   <section class="workflow-links-list">
-    <h2>Workflows</h2>
-    <p v-if="workflows.length === 0" class="workflow-links-list__empty">Aucun workflow.</p>
+    <h2>{{ t('dossier.workflows.title') }}</h2>
+    <p v-if="workflows.length === 0" class="workflow-links-list__empty">{{ t('dossier.workflows.empty') }}</p>
     <ul v-else>
       <li v-for="link in workflows" :key="link.id">
         <div>
           <strong>{{ link.processDefinitionKey }}</strong>
           <span class="workflow-links-list__meta">
-            #{{ link.sequence }} · {{ link.status }} · {{ link.startedAt }} → {{ link.endedAt || 'en cours' }}
+            #{{ link.sequence }} · {{ link.status }} · {{ link.startedAt }} → {{ link.endedAt || t('dossier.workflows.ongoing') }}
           </span>
         </div>
       </li>

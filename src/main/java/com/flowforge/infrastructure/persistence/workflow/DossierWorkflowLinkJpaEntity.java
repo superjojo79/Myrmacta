@@ -43,6 +43,10 @@ class DossierWorkflowLinkJpaEntity {
     @Column(name = "ended_at")
     private Instant endedAt;
 
+    /** D5 : bail de réconciliation (non domaine) ; {@code null} = non pris. */
+    @Column(name = "reconcile_claimed_until")
+    private Instant reconcileClaimedUntil;
+
     @Column(name = "end_reason", length = 64)
     private String endReason;
 

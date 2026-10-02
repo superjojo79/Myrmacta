@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { i18n } from '@/i18n'
 import { deployBpmn, getBpmnDeploymentInfo } from '@/api/workflows'
 import type { BpmnDeploymentResult, ProcessDeploymentInfo } from '@/api/types'
 import { toProblemDetail } from '@/api/http'
@@ -30,7 +31,7 @@ export function useBpmnDeployment() {
       deployedResult.value = result
       return result
     } catch (err) {
-      deployError.value = toProblemDetail(err).detail ?? 'Déploiement impossible'
+      deployError.value = toProblemDetail(err).detail ?? i18n.global.t('common.errors.deploy')
       return null
     } finally {
       deploying.value = false

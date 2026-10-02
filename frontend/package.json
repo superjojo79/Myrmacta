@@ -20,6 +20,11 @@
   },
   "dependencies": {
     "@primevue/themes": "^4.5.4",
+    "@tiptap/extension-table": "^3.31.4",
+    "@tiptap/extension-text-align": "^3.31.4",
+    "@tiptap/pm": "^3.31.4",
+    "@tiptap/starter-kit": "^3.31.4",
+    "@tiptap/vue-3": "^3.31.4",
     "axios": "^1.19.0",
     "bpmn-js": "^18.24.0",
     "bpmn-js-properties-panel": "^5.65.0",
@@ -28,6 +33,7 @@
     "primeicons": "^7.0.0",
     "primevue": "^5.0.0",
     "vue": "^3.5.40",
+    "vue-i18n": "^11.4.12",
     "vue-router": "^5.2.0"
   },
   "devDependencies": {

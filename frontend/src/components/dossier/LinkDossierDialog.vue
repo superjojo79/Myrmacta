@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, watch } from 'vue'
 import { listDossiers } from '@/api/dossiers'
 import { toProblemDetail } from '@/api/http'
@@ -40,7 +41,7 @@ async function search() {
     const page = await listDossiers({ reference: query.value || undefined, size: 10 })
     results.value = page.content.filter((item) => item.id !== props.currentDossierId)
   } catch (err) {
-    error.value = toProblemDetail(err).detail ?? 'Recherche impossible'
+    error.value = toProblemDetail(err).detail ?? t('dossier.linkDialog.errors.search')
   } finally {
     searching.value = false
   }
@@ -48,22 +49,24 @@ async function search() {
 
 function confirm() {
   if (!selected.value) {
-    error.value = 'Sélectionnez un dossier cible'
+    error.value = t('dossier.linkDialog.errors.select')
     return
   }
   emit('submit', { targetDossierId: selected.value.id, type: type.value })
 }
+
+const { t } = useI18n()
 </script>
 
 <template>
   <div v-if="open" class="dialog" role="dialog" aria-labelledby="link-dossier-title">
-    <h2 id="link-dossier-title">Lier un dossier</h2>
+    <h2 id="link-dossier-title">{{ t('dossier.linkDialog.title') }}</h2>
     <p v-if="error" class="error">{{ error }}</p>
     <label>
-      Rechercher
-      <input v-model="query" type="text" placeholder="préfixe DOS-…" @keyup.enter="search" />
+      {{ t('dossier.linkDialog.search') }}
+      <input v-model="query" type="text" :placeholder="t('dossier.linkDialog.searchPlaceholder')" @keyup.enter="search" />
     </label>
-    <button type="button" @click="search" :disabled="searching">Rechercher</button>
+    <button type="button" @click="search" :disabled="searching">{{ t('dossier.linkDialog.search') }}</button>
     <ul class="results">
       <li v-for="item in results" :key="item.id">
         <button
@@ -76,14 +79,14 @@ function confirm() {
       </li>
     </ul>
     <label>
-      Type
+      {{ t('dossier.linkDialog.type') }}
       <select v-model="type">
         <option v-for="option in RELATION_TYPES" :key="option" :value="option">{{ option }}</option>
       </select>
     </label>
     <div class="actions">
-      <button type="button" class="primary" @click="confirm">Lier</button>
-      <button type="button" @click="emit('close')">Annuler</button>
+      <button type="button" class="primary" @click="confirm">{{ t('dossier.linkDialog.link') }}</button>
+      <button type="button" @click="emit('close')">{{ t('common.cancel') }}</button>
     </div>
   </div>
 </template>

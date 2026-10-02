@@ -27,9 +27,11 @@
         <aws.sdk.version>2.55.2</aws.sdk.version>
         <!-- connecteurs-cible (lot B1) — batch-import : client SFTP + parseur Excel -->
         <sshj.version>0.41.1</sshj.version>
+        <!-- LC2 (TODO §75) — JSONata, port Java de référence (Apache 2.0) -->
+        <jsonata.version>0.9.10</jsonata.version>
         <poi.version>5.5.1</poi.version>
         <commons-csv.version>1.14.1</commons-csv.version>
-        <!-- D-SDK=A (serveur-mcp) — Spring AI MCP server WebMVC starter, pas de starter chat/model -->
+        <!-- D-SDK=A (serveur-mcp) — Spring AI MCP server WebMVC starter ; D-ASSIST-PROVIDER (revue du 2026-10-02) — starter modèle Anthropic -->
         <spring-ai.version>2.0.1</spring-ai.version>
         <skip.frontend>false</skip.frontend>
         <!-- Override du Tomcat embarqué géré par spring-boot-starter-parent 4.1.1 (fige 11.0.24) :
@@ -163,6 +165,12 @@
             <artifactId>spring-ai-starter-mcp-server-webmvc</artifactId>
         </dependency>
 
+        <!-- Assistant de conception (LC3, D-ASSIST-PROVIDER) — modèle Anthropic via Spring AI, derrière LanguageModelPort ; inactif par défaut -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-anthropic</artifactId>
+        </dependency>
+
         <!-- connecteurs-cible (lot B1) — kafka : consumer TRIGGER (D-KAFKA-ROLE=A, requirements) -->
         <dependency>
             <groupId>org.springframework.kafka</groupId>
@@ -181,6 +189,15 @@
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>
             <version>${poi.version}</version>
+        </dependency>
+
+        <!-- LC2 (langage-expression-metier, TODO §75) — JSONata, port Java de référence (Apache 2.0, aucune dépendance
+             transitive à l'exécution). Évalué hors JUEL dans un adaptateur borné (délai, profondeur, taille, fonctions
+             non déterministes ou dangereuses neutralisées) ; ne jamais l'appeler hors de `infrastructure.expression`. -->
+        <dependency>
+            <groupId>com.dashjoin</groupId>
+            <artifactId>jsonata</artifactId>
+            <version>${jsonata.version}</version>
         </dependency>
 
         <!-- connecteurs-cible (lot B1) — batch-import : parsing .csv robuste (champs cités, virgules
@@ -228,6 +245,14 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers-postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- D3c (e-mail entrant) : serveur IMAP/SMTP en mémoire pour tester le connecteur sans boîte réelle -->
+        <dependency>
+            <groupId>com.icegreen</groupId>
+            <artifactId>greenmail-junit5</artifactId>
+            <version>2.1.14</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

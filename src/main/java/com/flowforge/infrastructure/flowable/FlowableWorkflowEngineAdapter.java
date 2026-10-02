@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.flowable.common.engine.api.FlowableException;
+import org.flowable.engine.HistoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
 import org.flowable.engine.runtime.Execution;
@@ -17,10 +18,17 @@ class FlowableWorkflowEngineAdapter implements WorkflowEnginePort {
 
     private final RuntimeService runtimeService;
     private final TaskService taskService;
+    private final HistoryService historyService;
 
     FlowableWorkflowEngineAdapter(RuntimeService runtimeService, TaskService taskService) {
+        this(runtimeService, taskService, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    FlowableWorkflowEngineAdapter(RuntimeService runtimeService, TaskService taskService, HistoryService historyService) {
         this.runtimeService = runtimeService;
         this.taskService = taskService;
+        this.historyService = historyService;
     }
 
     @Override
@@ -43,10 +51,21 @@ class FlowableWorkflowEngineAdapter implements WorkflowEnginePort {
 
     @Override
     public Optional<String> findProcessInstanceIdByBusinessKey(String businessKey) {
-        return Optional.ofNullable(runtimeService.createProcessInstanceQuery()
-                .processInstanceBusinessKey(businessKey)
-                .singleResult())
+        Optional<String> running = Optional.ofNullable(runtimeService.createProcessInstanceQuery()
+                        .processInstanceBusinessKey(businessKey)
+                        .singleResult())
                 .map(processInstance -> processInstance.getProcessInstanceId());
+        if (running.isPresent() || historyService == null) {
+            return running;
+        }
+        // TODO §79 (D5, revue) : un process court a pu TERMINER entre son démarrage et la confirmation du lien ; le chercher aussi
+        // dans l'historique évite que la réconciliation le relance une seconde fois.
+        return historyService.createHistoricProcessInstanceQuery()
+                .processInstanceBusinessKey(businessKey)
+                .orderByProcessInstanceStartTime().asc()
+                .listPage(0, 1).stream()
+                .findFirst()
+                .map(historic -> historic.getId());
     }
 
     @Override

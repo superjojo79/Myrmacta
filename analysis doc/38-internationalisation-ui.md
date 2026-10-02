@@ -1,6 +1,6 @@
 # Internationalisation de l'UI (D7)
 
-> **Statut : première analyse (2026-09-28), aucune décision technique tranchée.** Lot **D7**
+> **Statut : première tranche livrée (TODO §90, 2026-10-01) — décisions D-I18N-* dans `docs/roadmap-goal/DECISIONS.md` ; libellés métier non traduits.** Lot **D7**
 > `internationalisation-ui` de la Vague D (`ROADMAP.md` Catégorie 7). Priorité selon le marché
 > visé (D0 = C, [31](31-positionnement-produit.md)). À affiner en `dev-lifecycle` Phase 1.
 

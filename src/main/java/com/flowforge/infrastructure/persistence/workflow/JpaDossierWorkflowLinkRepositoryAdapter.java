@@ -94,6 +94,12 @@ class JpaDossierWorkflowLinkRepositoryAdapter implements DossierWorkflowLinkRepo
                 .toList();
     }
 
+    // Sans transaction englobante : la prise est un UPDATE atomique propre au dépôt.
+    @Override
+    public boolean claimForReconcile(UUID linkId, Instant now, Instant leaseUntil) {
+        return repository.claimForReconcile(linkId, now, leaseUntil) == 1;
+    }
+
     @Override
     @Transactional
     public void deleteAllByDossierId(UUID dossierId) {

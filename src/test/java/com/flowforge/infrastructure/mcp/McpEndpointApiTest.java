@@ -61,7 +61,20 @@ class McpEndpointApiTest {
             "test_decision",
             "list_decision_table_versions",
             "redeploy_decision_table",
-            "list_bpmn_building_blocks");
+            "list_bpmn_building_blocks",
+            "validate_expression",
+            "evaluate_expression",
+            "evaluate_dossier_rules",
+            "list_pending_drafts",
+            "publish_draft",
+            "export_configuration",
+            "import_configuration",
+            "define_document_template",
+            "preview_document",
+            "list_parcours",
+            "get_parcours",
+            "define_parcours",
+            "compile_parcours");
 
     @Autowired
     private MockMvc mockMvc;
@@ -141,6 +154,43 @@ class McpEndpointApiTest {
         assertThat(body)
                 .contains("\"isError\":true")
                 .contains("retentionDays cannot be set via define_dossier_type");
+    }
+
+    /** LC2 : appel réel de l'outil à travers la chaîne de sécurité M2M et le transport MCP. */
+    @Test
+    void toolsCall_evaluateExpression_runsBoundedAndReturnsTheValue() throws Exception {
+        String sessionId = initializeSession();
+
+        String body = callMcp(sessionId, 5, "tools/call", """
+                {"name": "evaluate_expression",
+                 "arguments": {"expression": "dossier.fields.montant > 5000 and dossier.fields.pays = \\"FR\\"",
+                               "context": {"dossier": {"fields": {"montant": 6000, "pays": "FR"}}}}}
+                """).getResponse().getContentAsString();
+
+        assertThat(body).contains("\"isError\":false").contains("defined").contains("true");
+    }
+
+    @Test
+    void toolsCall_validateExpression_reportsAForbiddenConstructWithoutRaising() throws Exception {
+        String sessionId = initializeSession();
+
+        String body = callMcp(sessionId, 6, "tools/call", """
+                {"name": "validate_expression", "arguments": {"expression": "$eval(\\"1+1\\")"}}
+                """).getResponse().getContentAsString();
+
+        assertThat(body).contains("\"isError\":false").contains("valid").contains("false").contains("$eval");
+    }
+
+    @Test
+    void toolsCall_evaluateExpression_aBoundViolationIsAToolErrorNotAServerFailure() throws Exception {
+        String sessionId = initializeSession();
+
+        String body = callMcp(sessionId, 7, "tools/call", """
+                {"name": "evaluate_expression",
+                 "arguments": {"expression": "$pad(\\"x\\", 2000000000)"}}
+                """).getResponse().getContentAsString();
+
+        assertThat(body).contains("\"isError\":true").contains("10000");
     }
 
     private String initializeSession() throws Exception {

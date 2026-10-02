@@ -1,8 +1,33 @@
 package com.flowforge.domain.dossier.model;
 
+import java.util.Currency;
+import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.regex.Pattern;
 
+/**
+ * Définition d'un champ dynamique. TODO §76 (D1) : trois types structurés.
+ *
+ * <ul>
+ *   <li>{@link FieldType#MONEY} — {@code options} = devises autorisées (ISO 4217, facultatif) ;</li>
+ *   <li>{@link FieldType#EXTERNAL_REF} — {@code options} = systèmes autorisés (facultatif) ;</li>
+ *   <li>{@link FieldType#REPEATABLE_GROUP} — {@code fields} = sous-champs (plats, non sensibles, jamais {@code FILE} ni
+ *       groupe), {@code minRows}/{@code maxRows} = bornes du nombre de lignes (défaut 0 et 100, plafond 500). La
+ *       sensibilité se pose sur le <em>groupe entier</em> : un sous-champ sensible demanderait un masquage récursif dans
+ *       chaque export, modèle et recherche, qu'on ne garantit pas.</li>
+ * </ul>
+ *
+ * <p>TODO §80 (D1, règles — LC2) : trois expressions JSONata bornées facultatives, sur les champs <b>simples, non sensibles</b>
+ * du dossier ({@code dossier.fields.x}) :
+ * <ul>
+ *   <li>{@code formula} — champ <b>calculé</b> : valeur dérivée, recalculée à chaque enregistrement, en lecture seule ;</li>
+ *   <li>{@code visibleWhen} — le champ n'est applicable que si l'expression est vraie ;</li>
+ *   <li>{@code requiredWhen} — le champ est obligatoire si l'expression est vraie (en plus de {@code required}).</li>
+ * </ul>
+ */
 public record FieldDefinition(
         String name,
         String label,
@@ -11,8 +36,37 @@ public record FieldDefinition(
         String defaultValue,
         List<String> options,
         String group,
-        Boolean sensitive
+        Boolean sensitive,
+        List<FieldDefinition> fields,
+        Integer minRows,
+        Integer maxRows,
+        String formula,
+        String visibleWhen,
+        String requiredWhen,
+        Boolean searchable,
+        String helpText,
+        String width
 ) {
+    /** TODO §85 (LC4a) — longueur maximale de l'aide contextuelle (texte brut). */
+    public static final int MAX_HELP_TEXT_CHARS = 500;
+    public static final Set<String> WIDTHS = Set.of("FULL", "HALF");
+
+    public static final int MAX_EXPRESSION_CHARS = 2000;
+    public static final int MAX_GROUP_FIELDS = 20;
+    public static final int DEFAULT_MAX_ROWS = 100;
+    public static final int HARD_MAX_ROWS = 500;
+
+    private static final Pattern CURRENCY_CODE = Pattern.compile("[A-Z]{3}");
+    private static final Pattern SYSTEM_ID = Pattern.compile("[A-Za-z0-9_.-]{1,50}");
+    private static final Set<FieldType> GROUP_SUBFIELD_TYPES = EnumSet.of(
+            FieldType.STRING, FieldType.NUMBER, FieldType.DATE, FieldType.BOOLEAN, FieldType.SELECT, FieldType.MONEY,
+            FieldType.EXTERNAL_REF);
+    /** TODO §81 (D2) — types dont la valeur est un scalaire JSON comparable ; ni MONEY, ni groupe, ni référence, ni fichier. */
+    public static final Set<FieldType> SEARCHABLE_TYPES =
+            EnumSet.of(FieldType.STRING, FieldType.NUMBER, FieldType.DATE, FieldType.BOOLEAN, FieldType.SELECT);
+    private static final Set<FieldType> NO_DEFAULT_TYPES =
+            EnumSet.of(FieldType.MONEY, FieldType.EXTERNAL_REF, FieldType.REPEATABLE_GROUP);
+
     public FieldDefinition {
         Objects.requireNonNull(name, "name");
         Objects.requireNonNull(label, "label");
@@ -20,6 +74,244 @@ public record FieldDefinition(
         options = options == null ? List.of() : List.copyOf(options);
         // Jackson may pass null when the JSON key is absent (FAIL_ON_NULL_FOR_PRIMITIVES).
         sensitive = Boolean.TRUE.equals(sensitive);
+        searchable = Boolean.TRUE.equals(searchable);
+        fields = fields == null ? List.of() : List.copyOf(fields);
+
+        helpText = blankToNull(helpText);
+        if (helpText != null) {
+            if (helpText.length() > MAX_HELP_TEXT_CHARS) {
+                throw new IllegalArgumentException(
+                        "helpText exceeds " + MAX_HELP_TEXT_CHARS + " characters (field: " + name + ")");
+            }
+            if (helpText.chars().anyMatch(FieldDefinition::isForbiddenHelpChar)) {
+                throw new IllegalArgumentException(
+                        "helpText is plain text without control or bidirectional characters (field: " + name + ")");
+            }
+        }
+        width = blankToNull(width);
+        if (width != null) {
+            width = width.toUpperCase(java.util.Locale.ROOT);
+            if (!WIDTHS.contains(width)) {
+                throw new IllegalArgumentException("width must be one of " + new java.util.TreeSet<>(WIDTHS) + " (field: " + name + ")");
+            }
+            if ("FULL".equals(width)) {
+                width = null; // pleine largeur = défaut : une seule représentation
+            }
+            if (width != null && (type == FieldType.REPEATABLE_GROUP)) {
+                throw new IllegalArgumentException("a REPEATABLE_GROUP is always full width (field: " + name + ")");
+            }
+        }
+        formula = blankToNull(formula);
+        visibleWhen = blankToNull(visibleWhen);
+        requiredWhen = blankToNull(requiredWhen);
+        for (String expression : new String[] {formula, visibleWhen, requiredWhen}) {
+            if (expression != null && expression.length() > MAX_EXPRESSION_CHARS) {
+                throw new IllegalArgumentException(
+                        "an expression exceeds " + MAX_EXPRESSION_CHARS + " characters (field: " + name + ")");
+            }
+        }
+        if (formula != null) {
+            if (Boolean.TRUE.equals(sensitive)) {
+                throw new IllegalArgumentException("a computed field cannot be sensitive (field: " + name + ")");
+            }
+            if (type == FieldType.REPEATABLE_GROUP || type == FieldType.FILE) {
+                throw new IllegalArgumentException("a " + type + " field cannot be computed (field: " + name + ")");
+            }
+            if (required || defaultValue != null || visibleWhen != null || requiredWhen != null) {
+                throw new IllegalArgumentException("a computed field is always present and read-only: it takes no 'required', "
+                        + "default value, visibleWhen or requiredWhen (field: " + name + ")");
+            }
+        }
+        if (searchable) {
+            if (!SEARCHABLE_TYPES.contains(type)) {
+                throw new IllegalArgumentException("a " + type + " field cannot be searchable: only " + SEARCHABLE_TYPES
+                        + " can (field: " + name + ")");
+            }
+            if (sensitive) {
+                throw new IllegalArgumentException("a sensitive field cannot be searchable: a filter on it would be an oracle "
+                        + "that reveals the value by trial (field: " + name + ")");
+            }
+        }
+        if (type != FieldType.REPEATABLE_GROUP && (!fields.isEmpty() || minRows != null || maxRows != null)) {
+            throw new IllegalArgumentException(
+                    "only a REPEATABLE_GROUP can declare sub-fields, minRows or maxRows (field: " + name + ")");
+        }
+        if (defaultValue != null && NO_DEFAULT_TYPES.contains(type)) {
+            throw new IllegalArgumentException(
+                    "a default value is not supported for type " + type + " (field: " + name + ")");
+        }
+        switch (type) {
+            case MONEY -> options.forEach(code -> requireIsoCurrency(name, code));
+            case EXTERNAL_REF -> options.forEach(system -> {
+                if (!SYSTEM_ID.matcher(system).matches()) {
+                    throw new IllegalArgumentException(
+                            "EXTERNAL_REF option is not a valid system identifier (field: " + name + ")");
+                }
+            });
+            case REPEATABLE_GROUP -> {
+                if (fields.isEmpty()) {
+                    throw new IllegalArgumentException(
+                            "a REPEATABLE_GROUP needs at least one sub-field (field: " + name + ")");
+                }
+                if (!options.isEmpty()) {
+                    throw new IllegalArgumentException("a REPEATABLE_GROUP does not take options (field: " + name + ")");
+                }
+                if (fields.size() > MAX_GROUP_FIELDS) {
+                    throw new IllegalArgumentException(
+                            "a group has at most " + MAX_GROUP_FIELDS + " sub-fields (field: " + name + ")");
+                }
+                Set<String> seen = new HashSet<>();
+                for (FieldDefinition sub : fields) {
+                    if (sub.name().isBlank()) {
+                        throw new IllegalArgumentException("a sub-field of a group needs a name (group: " + name + ")");
+                    }
+                    if (sub.defaultValue() != null && !sub.defaultValue().isBlank()) {
+                        throw new IllegalArgumentException("a sub-field of a group cannot have a default value (field: "
+                                + sub.name() + "): it would never be applied");
+                    }
+                    if (!seen.add(sub.name())) {
+                        throw new IllegalArgumentException(
+                                "duplicate sub-field name: " + sub.name() + " (group: " + name + ")");
+                    }
+                    if (!GROUP_SUBFIELD_TYPES.contains(sub.type())) {
+                        throw new IllegalArgumentException("sub-field type " + sub.type()
+                                + " is not allowed in a group (field: " + sub.name() + ")");
+                    }
+                    if (sub.formula() != null || sub.visibleWhen() != null || sub.requiredWhen() != null) {
+                        throw new IllegalArgumentException("a sub-field of a group cannot carry rules (field: " + sub.name() + ")");
+                    }
+                    if (sub.width() != null || sub.helpText() != null) {
+                        throw new IllegalArgumentException(
+                                "a sub-field of a group has neither width nor help text (field: " + sub.name() + ")");
+                    }
+                    if (sub.isSearchable()) {
+                        throw new IllegalArgumentException("a sub-field of a group cannot be searchable (field: " + sub.name() + ")");
+                    }
+                    if (sub.isSensitive()) {
+                        throw new IllegalArgumentException("a sub-field of a group cannot be sensitive: mark the group "
+                                + name + " itself");
+                    }
+                }
+                minRows = minRows == null ? 0 : minRows;
+                maxRows = maxRows == null ? DEFAULT_MAX_ROWS : maxRows;
+                if (minRows < 0) {
+                    throw new IllegalArgumentException("minRows must not be negative (group: " + name + ")");
+                }
+                if (maxRows < 1) {
+                    throw new IllegalArgumentException("maxRows must be at least 1 (group: " + name + ")");
+                }
+                if (maxRows > HARD_MAX_ROWS) {
+                    throw new IllegalArgumentException(
+                            "maxRows must be at most " + HARD_MAX_ROWS + " (group: " + name + ")");
+                }
+                if (minRows > maxRows) {
+                    throw new IllegalArgumentException("minRows must not exceed maxRows (group: " + name + ")");
+                }
+            }
+            default -> { }
+        }
+    }
+
+    /** Contrôles (hors saut de ligne), marques bidirectionnelles et espaces de largeur nulle : texte brut lisible seulement. */
+    private static boolean isForbiddenHelpChar(int c) {
+        return (Character.isISOControl(c) && c != '\n')
+                || (c >= 0x202A && c <= 0x202E)
+                || (c >= 0x2066 && c <= 0x2069)
+                || (c >= 0x200B && c <= 0x200F)
+                || c == 0xFEFF;
+    }
+
+    /** Avant TODO §85 (LC4a) : sans aide contextuelle ni largeur. */
+    public FieldDefinition(
+            String name,
+            String label,
+            FieldType type,
+            boolean required,
+            String defaultValue,
+            List<String> options,
+            String group,
+            Boolean sensitive,
+            List<FieldDefinition> fields,
+            Integer minRows,
+            Integer maxRows,
+            String formula,
+            String visibleWhen,
+            String requiredWhen,
+            Boolean searchable) {
+        this(name, label, type, required, defaultValue, options, group, sensitive, fields, minRows, maxRows, formula,
+                visibleWhen, requiredWhen, searchable, null, null);
+    }
+
+    /** Avant TODO §81 (D2) : sans drapeau « cherchable ». */
+    public FieldDefinition(
+            String name,
+            String label,
+            FieldType type,
+            boolean required,
+            String defaultValue,
+            List<String> options,
+            String group,
+            Boolean sensitive,
+            List<FieldDefinition> fields,
+            Integer minRows,
+            Integer maxRows,
+            String formula,
+            String visibleWhen,
+            String requiredWhen) {
+        this(name, label, type, required, defaultValue, options, group, sensitive, fields, minRows, maxRows, formula,
+                visibleWhen, requiredWhen, false);
+    }
+
+    /** Sans règles (ni calcul, ni visibilité, ni obligation conditionnelle) : tout ce qui existait avant TODO §80. */
+    public FieldDefinition(
+            String name,
+            String label,
+            FieldType type,
+            boolean required,
+            String defaultValue,
+            List<String> options,
+            String group,
+            Boolean sensitive,
+            List<FieldDefinition> fields,
+            Integer minRows,
+            Integer maxRows) {
+        this(name, label, type, required, defaultValue, options, group, sensitive, fields, minRows, maxRows, null, null, null);
+    }
+
+    /**
+     * {@code true} si le champ est calculé (valeur dérivée, jamais saisie). Nommé {@code hasFormula} et non {@code isComputed} :
+     * Jackson y verrait une propriété « computed » absente du constructeur, que la relecture JSON des définitions refuserait.
+     */
+    public boolean hasFormula() {
+        return formula != null;
+    }
+
+    /** Copie avec une obligation différente (règles de visibilité / d'obligation appliquées au moment de la validation). */
+    public FieldDefinition withRequired(boolean newRequired) {
+        return new FieldDefinition(name, label, type, newRequired, defaultValue, options, group, sensitive, fields, minRows,
+                maxRows, formula, visibleWhen, requiredWhen, searchable, helpText, width);
+    }
+
+    /**
+     * Copie « non applicable » : ni obligatoire ni borne minimale de lignes (un groupe masqué avec {@code minRows > 0}
+     * resterait sinon impossible à enregistrer).
+     */
+    public FieldDefinition withHidden() {
+        return new FieldDefinition(name, label, type, false, defaultValue, options, group, sensitive, fields,
+                minRows == null ? null : 0, maxRows, formula, visibleWhen, requiredWhen, searchable, helpText, width);
+    }
+
+    /** Champ scalaire historique : sans sous-champs ni bornes de lignes. */
+    public FieldDefinition(
+            String name,
+            String label,
+            FieldType type,
+            boolean required,
+            String defaultValue,
+            List<String> options,
+            String group,
+            Boolean sensitive) {
+        this(name, label, type, required, defaultValue, options, group, sensitive, List.of(), null, null);
     }
 
     /** Convenience — defaults {@code sensitive} to {@code false}. */
@@ -32,6 +324,38 @@ public record FieldDefinition(
             List<String> options,
             String group) {
         this(name, label, type, required, defaultValue, options, group, false);
+    }
+
+    /**
+     * Code de devise ISO 4217 connu du JDK (les pseudo-devises sans décimales connues, comme XXX, sont refusées). Le JDK
+     * connaît aussi des devises retirées (FRF, DEM…) : elles sont acceptées — restreindre les devises d'un champ avec
+     * {@code options} pour n'autoriser que celles qu'on veut.
+     */
+    public static boolean isIsoCurrency(String code) {
+        if (code == null || !CURRENCY_CODE.matcher(code).matches()) {
+            return false;
+        }
+        try {
+            return Currency.getInstance(code).getDefaultFractionDigits() >= 0;
+        } catch (IllegalArgumentException unknown) {
+            return false;
+        }
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.strip();
+    }
+
+    private static void requireIsoCurrency(String field, String code) {
+        if (!isIsoCurrency(code)) {
+            throw new IllegalArgumentException(
+                    "MONEY option must be an ISO 4217 currency code in upper case (field: " + field + ")");
+        }
+    }
+
+    /** {@code true} si le champ peut servir de filtre de recherche (TODO §81). */
+    public boolean isSearchable() {
+        return Boolean.TRUE.equals(searchable);
     }
 
     /** Canonical boolean reader for the {@code sensitive} metadata (redaction/exports later). */
@@ -54,6 +378,12 @@ public record FieldDefinition(
                 + ", options=" + options
                 + ", group=" + group
                 + ", sensitive=" + sensitive
+                + ", fields=" + fields.size()
+                + ", minRows=" + minRows
+                + ", maxRows=" + maxRows
+                + ", computed=" + hasFormula()
+                + ", visibleWhen=" + (visibleWhen != null)
+                + ", requiredWhen=" + (requiredWhen != null)
                 + "]";
     }
 }

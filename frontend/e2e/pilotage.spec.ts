@@ -1030,7 +1030,8 @@ test('E2E-NOTIF-2 marking a notification read calls the server and persists the 
   await page.getByRole('button', { name: /Notifications/ }).click()
   await expect(page.getByText('Document généré')).toBeVisible()
   await page.getByRole('button', { name: /Document généré/ }).click()
-  expect(readRequested).toBe(true)
+  // la requête part après le clic, de façon asynchrone : on l'attend au lieu de la supposer déjà partie
+  await expect.poll(() => readRequested).toBe(true)
 })
 
 test('E2E-NOTIF-3 the 3 new producer payload types render correctly in the drawer', async ({ page }) => {
@@ -1458,6 +1459,7 @@ test('E2E-20 template preview html and pdf', async ({ page }) => {
   await openApp(page)
   await page.getByRole('link', { name: 'Templates' }).click()
   await expect(page.getByRole('heading', { name: 'Templates documents' })).toBeVisible()
+  await page.getByTestId('mode-source').click() // l'éditeur visuel est le mode par défaut (LC4b)
   await page.locator('form textarea').fill('<p>Bonjour</p>')
   await expect(page.locator('iframe[title="Aperçu HTML"]')).toBeVisible()
   await page.getByRole('button', { name: 'Aperçu PDF' }).click()
@@ -1469,6 +1471,7 @@ test('E2E-21 invalid variables JSON does not request PDF preview', async ({ page
   await openApp(page)
   await page.getByRole('link', { name: 'Templates' }).click()
   await expect(page.getByRole('heading', { name: 'Templates documents' })).toBeVisible()
+  await page.getByTestId('mode-source').click()
   await page.locator('form textarea').fill('<p>Bonjour</p>')
   await page.getByLabel('Variables JSON').fill('{not-json')
   await expect(page.getByText('JSON invalide')).toBeVisible()
@@ -1491,6 +1494,255 @@ test('E2E-22 manager patches dossier fields from detail', async ({ page }) => {
     expectedVersion: 0,
   })
   await expect(page.locator('.dossier-fields-editor input')).toHaveValue('HIGH')
+})
+
+// TODO §76 (D1) — champs structurés : montant, référence externe, groupe répétable.
+const RICH_TYPE = {
+  ...CLAIM_TYPE,
+  fieldDefinitions: [
+    { name: 'montant', label: 'Montant', type: 'MONEY', required: false, options: ['EUR', 'USD'], group: null, sensitive: false },
+    {
+      name: 'fournisseur',
+      label: 'Fournisseur',
+      type: 'EXTERNAL_REF',
+      required: false,
+      options: ['d365fo'],
+      group: null,
+      sensitive: false,
+    },
+    {
+      name: 'lignes',
+      label: 'Lignes',
+      type: 'REPEATABLE_GROUP',
+      required: false,
+      options: [],
+      group: null,
+      sensitive: false,
+      minRows: 0,
+      maxRows: 5,
+      fields: [
+        { name: 'poste', label: 'Poste', type: 'STRING', required: true, options: [], group: null, sensitive: false },
+        { name: 'prix', label: 'Prix', type: 'MONEY', required: false, options: ['EUR'], group: null, sensitive: false },
+      ],
+    },
+  ],
+}
+const RICH_FIELDS = {
+  montant: { amount: '12.50', currency: 'EUR' },
+  fournisseur: { system: 'd365fo', id: 'V-0042', label: 'Contoso' },
+  lignes: [{ poste: 'Toiture', prix: { amount: '1000.00', currency: 'EUR' } }],
+}
+
+async function mockRichDossier(page: Page, canEdit = true) {
+  await page.route('**/api/dossier-types/CLAIM', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(RICH_TYPE) }),
+  )
+  await page.route(`**/api/dossiers/${DOSSIER_ID}`, async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback()
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(dossierBody({ fields: RICH_FIELDS, canEdit })),
+    })
+  })
+}
+
+test('E2E-RICH-FIELDS-1 manager edits a money amount and a group row, only the changes are patched', async ({ page }) => {
+  await mockSession(page)
+  await mockRichDossier(page)
+  await openApp(page)
+  await createAndOpenDossier(page)
+
+  await expect(page.getByLabel('Montant — montant')).toHaveValue('12.50')
+  await expect(page.getByLabel('Montant — devise')).toHaveValue('EUR')
+  await expect(page.getByLabel('Fournisseur — identifiant')).toHaveValue('V-0042')
+  await expect(page.getByLabel('Poste (ligne 1)')).toHaveValue('Toiture')
+
+  const fieldsRequest = page.waitForRequest((req) => req.method() === 'PATCH' && req.url().includes('/fields'))
+  await page.getByLabel('Montant — montant').fill('15')
+  await page.getByTestId('group-add-row').click()
+  await page.getByLabel('Poste (ligne 2)').fill('Cuisine')
+  await page.getByRole('button', { name: 'Enregistrer les champs' }).click()
+
+  const body = (await fieldsRequest).postDataJSON() as { fields: Record<string, unknown> }
+  expect(body.fields).toEqual({
+    montant: { amount: '15', currency: 'EUR' },
+    lignes: [
+      { poste: 'Toiture', prix: { amount: '1000.00', currency: 'EUR' } },
+      { poste: 'Cuisine' },
+    ],
+  })
+  // La référence externe n'a pas été touchée : elle n'est pas renvoyée.
+  expect(body.fields).not.toHaveProperty('fournisseur')
+})
+
+test('E2E-RICH-FIELDS-2 an unchanged amount typed without trailing zeros sends no patch', async ({ page }) => {
+  await mockSession(page)
+  await mockRichDossier(page)
+  await openApp(page)
+  await createAndOpenDossier(page)
+  let patched = false
+  page.on('request', (req) => {
+    if (req.method() === 'PATCH' && req.url().includes('/fields')) patched = true
+  })
+  await page.getByLabel('Montant — montant').fill('12.5')
+  await page.getByRole('button', { name: 'Enregistrer les champs' }).click()
+  await page.waitForTimeout(300)
+  expect(patched).toBe(false)
+})
+
+test('E2E-RICH-FIELDS-3 a viewer reads the structured values as text and as a table', async ({ page }) => {
+  await mockSession(page, { roles: ['DOSSIER_VIEWER'] })
+  await mockRichDossier(page, false)
+  await openApp(page)
+  await createAndOpenDossier(page)
+  const fields = page.locator('.dossier-fields-editor')
+  await expect(fields.getByText('12.50 EUR')).toBeVisible()
+  await expect(fields.getByText('d365fo · V-0042 — Contoso')).toBeVisible()
+  await expect(fields.locator('table')).toContainText('Toiture')
+  await expect(fields.locator('table')).toContainText('1000.00 EUR')
+  await expect(fields).not.toContainText('[object Object]')
+  await expect(fields.getByRole('button', { name: 'Enregistrer les champs' })).toHaveCount(0)
+})
+
+// ---- TODO §80 (D1, règles) : champs calculés, visibilité, obligation conditionnelle -------------------------------------
+
+const RULES_TYPE = {
+  ...RICH_TYPE,
+  fieldDefinitions: [
+    { name: 'pays', label: 'Pays', type: 'STRING', required: false, options: [], group: null, sensitive: false },
+    { name: 'ht', label: 'Montant HT', type: 'NUMBER', required: false, options: [], group: null, sensitive: false },
+    { name: 'ttc', label: 'Montant TTC', type: 'NUMBER', required: false, options: [], group: null, sensitive: false, formula: 'dossier.fields.ht * 1.2' },
+    { name: 'siret', label: 'SIRET', type: 'STRING', required: true, options: [], group: null, sensitive: false, visibleWhen: "dossier.fields.pays = 'FR'" },
+    { name: 'justificatif', label: 'Justificatif', type: 'STRING', required: false, options: [], group: null, sensitive: false, requiredWhen: 'dossier.fields.ht > 1000' },
+  ],
+}
+
+async function mockRulesDossier(page: Page) {
+  await page.route('**/api/dossier-types/CLAIM', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(RULES_TYPE) }),
+  )
+  await page.route(`**/api/dossiers/${DOSSIER_ID}`, async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback()
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(dossierBody({ fields: { pays: 'FR', ht: 100, ttc: 120, siret: '12345678901234' }, canEdit: true })),
+    })
+  })
+  const previewRequests: Array<Record<string, unknown>> = []
+  await page.route('**/api/dossier-types/CLAIM/evaluate-rules', async (route) => {
+    const fields = (route.request().postDataJSON() as { fields: Record<string, unknown> }).fields
+    previewRequests.push(fields)
+    const ht = Number(fields.ht ?? 0)
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        computed: fields.ht === undefined ? {} : { ttc: ht * 1.2 },
+        hidden: fields.pays === 'FR' ? [] : ['siret'],
+        requiredByRule: ht > 1000 ? ['justificatif'] : [],
+        errors: [],
+      }),
+    })
+  })
+  return previewRequests
+}
+
+test('E2E-RULES-1 editing: a field becomes not applicable, the computed value follows, a rule makes a field required', async ({ page }) => {
+  await mockSession(page)
+  const previews = await mockRulesDossier(page)
+  await openApp(page)
+  await createAndOpenDossier(page)
+
+  const fields = page.locator('.dossier-fields-editor')
+  await expect(fields.getByTestId('computed-ttc')).toHaveText('120')
+  await expect(fields.getByText('SIRET')).toBeVisible()
+
+  await fields.getByLabel('Pays').fill('DE')
+  await expect(fields.getByText('SIRET')).toHaveCount(0)
+
+  await fields.getByLabel('Montant HT').fill('2000')
+  await expect(fields.getByTestId('computed-ttc')).toHaveText('2400')
+  await expect(fields.getByText('Justificatif').first()).toContainText('*')
+  expect(previews.length).toBeGreaterThan(0)
+
+  // Le champ calculé n'a pas de saisie et n'est jamais renvoyé ; le champ devenu sans objet est retiré, pas envoyé comme valeur.
+  const fieldsRequest = page.waitForRequest((req) => req.method() === 'PATCH' && req.url().includes('/fields'))
+  await fields.getByRole('button', { name: 'Enregistrer les champs' }).click()
+  const body = (await fieldsRequest).postDataJSON() as { fields: Record<string, unknown> }
+  expect(body.fields).not.toHaveProperty('ttc')
+  expect(body.fields).toMatchObject({ pays: 'DE', ht: 2000 })
+  expect(body.fields.siret ?? null).toBeNull()
+})
+
+test('E2E-RULES-2 a viewer reads the stored values, computed field included, without any preview call', async ({ page }) => {
+  await mockSession(page, { roles: ['DOSSIER_VIEWER'] })
+  const previews = await mockRulesDossier(page)
+  await page.route(`**/api/dossiers/${DOSSIER_ID}`, async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback()
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(dossierBody({ fields: { pays: 'FR', ht: 100, ttc: 120, siret: '12345678901234' }, canEdit: false })),
+    })
+  })
+  await openApp(page)
+  await createAndOpenDossier(page)
+  const fields = page.locator('.dossier-fields-editor')
+  await expect(fields).toContainText('Montant TTC')
+  await expect(fields).toContainText('120')
+  await expect(fields).toContainText('12345678901234')
+  await page.waitForTimeout(500)
+  expect(previews).toHaveLength(0)
+})
+
+test('E2E-RICH-FIELDS-4 admin defines a type with a group and its columns', async ({ page }) => {
+  let createdBody: Record<string, unknown> | null = null
+  await mockSession(page)
+  await page.route(/\/api\/dossier-types(?:\?|$)/, async (route) => {
+    if (route.request().method() === 'POST') {
+      createdBody = route.request().postDataJSON() as Record<string, unknown>
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({ ...RICH_TYPE, code: createdBody.code, fieldDefinitions: createdBody.fieldDefinitions }),
+      })
+      return
+    }
+    await route.fallback()
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Types' }).click()
+  const form = page.getByTestId('type-create-form')
+  await form.getByPlaceholder('code').fill('SUBV')
+  await form.getByPlaceholder('libellé').fill('Subventions')
+  await form.getByPlaceholder('workflowKey').fill('wf-subv')
+  await form.getByTestId('field-def-add').click()
+  await form.getByTestId('field-def-name').first().fill('lignes')
+  await form.getByTestId('field-def-label').first().fill('Lignes budgétaires')
+  await form.getByTestId('field-def-type').first().selectOption('REPEATABLE_GROUP')
+  await form.getByTestId('field-def-max-rows').fill('10')
+  const nested = form.getByTestId('field-def-subfields')
+  await nested.getByTestId('field-def-add').click()
+  await nested.getByTestId('field-def-name').fill('nature')
+  await nested.getByTestId('field-def-label').fill('Nature')
+  await nested.getByTestId('field-def-add').click()
+  await nested.getByTestId('field-def-name').nth(1).fill('montant')
+  await nested.getByTestId('field-def-label').nth(1).fill('Montant')
+  await nested.getByTestId('field-def-type').nth(1).selectOption('MONEY')
+  await nested.getByTestId('field-def-options-input').fill('EUR')
+  await form.getByRole('button', { name: 'Créer' }).click()
+
+  await expect.poll(() => createdBody !== null).toBe(true)
+  const group = (createdBody!.fieldDefinitions as Array<Record<string, unknown>>)[0]!
+  expect(group).toMatchObject({ name: 'lignes', type: 'REPEATABLE_GROUP', maxRows: 10, defaultValue: null })
+  const subs = group.fields as Array<Record<string, unknown>>
+  expect(subs.map((f) => [f.name, f.type])).toEqual([
+    ['nature', 'STRING'],
+    ['montant', 'MONEY'],
+  ])
+  expect(subs[1]).toMatchObject({ options: ['EUR'], defaultValue: null })
 })
 
 test('E2E-23 viewer cannot edit dossier fields', async ({ page }) => {
@@ -2957,7 +3209,9 @@ test('E2E-HDR-2 template preview iframes remain visible under injected A4 CSP', 
   await openApp(page)
   await page.getByRole('link', { name: 'Templates' }).click()
   await expect(page.getByRole('heading', { name: 'Templates documents' })).toBeVisible()
-  await page.locator('form textarea').fill('<p>Bonjour</p>')
+  // Éditeur visuel (LC4b) : il doit aussi fonctionner sous la CSP injectée (ProseMirror ne doit rien exiger d'inline interdit).
+  await page.locator('form .ProseMirror').click()
+  await page.keyboard.type('Bonjour')
   await expect(page.locator('iframe[title="Aperçu HTML"]')).toBeVisible()
   await page.getByRole('button', { name: 'Aperçu PDF' }).click()
   await expect(page.locator('iframe[title="Aperçu PDF"]')).toBeVisible()
@@ -3312,6 +3566,24 @@ const BLOCK_CATALOG = {
       ],
     },
     {
+      id: 'dmn-decision',
+      label: 'Décision DMN',
+      description: 'Évalue une table de décision DMN.',
+      category: 'DECISION',
+      element: 'SERVICE_TASK',
+      marker: { delegate: null, serviceTaskType: 'dmn', formKeyPrefix: null, portalRecipient: false },
+      parameters: [
+        blockParam({
+          name: 'decisionTableReferenceKey',
+          label: 'Table de décision',
+          type: 'REFERENCE',
+          binding: 'FIELD_ELEMENT',
+          required: true,
+          valueSource: 'dmnTables',
+        }),
+      ],
+    },
+    {
       id: 'request-signature',
       label: 'Demander une signature',
       description: 'Demande la signature d’un document PDF.',
@@ -3326,6 +3598,24 @@ const BLOCK_CATALOG = {
           type: 'SIGNERS',
           binding: 'SIGNER_ELEMENTS',
           required: true,
+        }),
+      ],
+    },
+    {
+      id: 'map-fields',
+      label: 'Enregistrer des valeurs dans le dossier',
+      description: 'Enregistre des valeurs calculées dans des champs du dossier.',
+      category: 'DOSSIER',
+      element: 'SERVICE_TASK',
+      marker: { delegate: 'fieldMappingTask', serviceTaskType: null, formKeyPrefix: null, portalRecipient: false },
+      parameters: [
+        blockParam({
+          name: 'fieldMapping',
+          label: 'Valeurs à enregistrer',
+          type: 'TEXT',
+          required: true,
+          maxLength: 8000,
+          multiline: true,
         }),
       ],
     },
@@ -3387,6 +3677,16 @@ async function mockBlockApis(page: Page, opts: { catalog?: boolean; templates?: 
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify(opts.templates ?? [{ value: 'contrat', label: 'Contrat de prêt' }]),
+    }),
+  )
+  await page.route('**/api/bpmn-building-blocks/references/dmnTables', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        { value: 'eligibilite', label: 'eligibilite (v1)' },
+        { value: 'scoring', label: 'scoring (v2)' },
+      ]),
     }),
   )
   await page.route('**/api/task-question-schemas*', (route) => route.fulfill({ status: 403, body: '' }))
@@ -3559,6 +3859,77 @@ test('E2E-PALETTE-6 brique signature : ajout d’un signataire dans la liste, é
   expect(putBody).toContain('kind=\\"EXTERNAL\\"')
 })
 
+test('E2E-PALETTE-8 brique « Décision DMN » : la table se choisit dans la liste des tables déployées (LC1-suite)', async ({ page }) => {
+  await mockBlockApis(page)
+  let putBody = ''
+  await page.route('**/api/workflow-bpmn-drafts/otherWorkflow', async (route) => {
+    if (route.request().method() === 'PUT') {
+      putBody = route.request().postData() ?? ''
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ processDefinitionKey: 'otherWorkflow', xml: '', updatedAt: '2026-09-30T00:00:00Z', updatedBy: 'u' }),
+      })
+      return
+    }
+    await route.fulfill({ status: 204, body: '' })
+  })
+  const xml = editableBpmn(
+    'otherWorkflow',
+    '<serviceTask id="dec" name="Décider" flowable:type="dmn"><extensionElements><flowable:field name="decisionTableReferenceKey"><flowable:string>scoring</flowable:string></flowable:field></extensionElements></serviceTask>',
+    ['dec'],
+  )
+  await openApp(page)
+  await openBpmnEditor(page)
+  await importBpmn(page, xml, 'dec')
+  await page.locator('[data-element-id="dec"]').click()
+  const select = page.getByLabel('Table de décision', { exact: true })
+  await expect(select.locator('option', { hasText: 'scoring (v2)' })).toHaveCount(1)
+  await expect(select.locator('option', { hasText: 'eligibilite (v1)' })).toHaveCount(1)
+  await select.selectOption('eligibilite')
+  await page.getByRole('button', { name: 'Enregistrer le brouillon' }).click()
+  await expect.poll(() => putBody.length > 0).toBe(true)
+  expect(putBody).toContain('decisionTableReferenceKey')
+  expect(putBody).toContain('eligibilite')
+})
+
+test('E2E-PALETTE-9 brique « Enregistrer des valeurs » : le mapping multiligne s’édite dans une zone de texte sans faux avertissement (D3b)', async ({
+  page,
+}) => {
+  await mockBlockApis(page)
+  let putBody = ''
+  await page.route('**/api/workflow-bpmn-drafts/otherWorkflow', async (route) => {
+    if (route.request().method() === 'PUT') {
+      putBody = route.request().postData() ?? ''
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ processDefinitionKey: 'otherWorkflow', xml: '', updatedAt: '2026-10-01T00:00:00Z', updatedBy: 'u' }),
+      })
+      return
+    }
+    await route.fulfill({ status: 204, body: '' })
+  })
+  const xml = editableBpmn(
+    'otherWorkflow',
+    '<serviceTask id="map" name="Enrichir" flowable:delegateExpression="${fieldMappingTask}" flowable:fieldMapping="score = connectorResult.json.score&#10;ville = connectorResult.json.city"/>',
+    ['map'],
+  )
+  await openApp(page)
+  await openBpmnEditor(page)
+  await importBpmn(page, xml, 'map')
+  await page.locator('[data-element-id="map"]').click()
+  const area = page.getByLabel('Valeurs à enregistrer', { exact: true })
+  await expect(area).toHaveCount(1)
+  await expect(area).toHaveJSProperty('tagName', 'TEXTAREA')
+  await expect(area).toHaveValue('score = connectorResult.json.score\nville = connectorResult.json.city')
+  await expect(page.getByText('retours à la ligne interdits')).toHaveCount(0)
+  await area.fill('score = connectorResult.json.score\nville = connectorResult.json.city\nratio = 1')
+  await page.getByRole('button', { name: 'Enregistrer le brouillon' }).click()
+  await expect.poll(() => putBody.length > 0).toBe(true)
+  expect(putBody).toContain('ratio = 1')
+})
+
 test('E2E-PALETTE-7 brique posée sur un diagramme importé sans xmlns:flowable : le marqueur survit à l’export (revue I3)', async ({
   page,
 }) => {
@@ -3584,4 +3955,300 @@ test('E2E-PALETTE-7 brique posée sur un diagramme importé sans xmlns:flowable 
   await expect.poll(() => putBody.length > 0).toBe(true)
   expect(putBody).toContain('xmlns:flowable')
   expect(putBody).toContain('flowable:delegateExpression=\\"${updateDossierStatusTask}\\"')
+})
+
+test('E2E-SEARCH-1 supervision: filters on searchable fields of the chosen type reach the API and the URL (D2)', async ({ page }) => {
+  await mockSession(page)
+  const searchType = {
+    ...CLAIM_TYPE,
+    fieldDefinitions: [
+      { name: 'montant', label: 'Montant', type: 'NUMBER', required: false, searchable: true },
+      { name: 'note', label: 'Note', type: 'STRING', required: false },
+      { name: 'iban', label: 'IBAN', type: 'STRING', required: false, sensitive: true },
+    ],
+  }
+  await page.route(/\/api\/dossier-types(?:\?|$)/, async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback()
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(envelope([searchType])) })
+  })
+  const listQueries: string[] = []
+  await page.route('**/api/dossiers?**', async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback()
+    listQueries.push(new URL(route.request().url()).search)
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }),
+    })
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Supervision' }).click()
+  await expect(page.getByTestId('field-filters')).toHaveCount(0)
+
+  await page.getByTestId('type-filter').selectOption('CLAIM')
+  await expect(page.getByTestId('field-filters')).toBeVisible()
+  await expect(page.getByTestId('field-filter-montant.gte')).toBeVisible()
+  await expect(page.getByTestId('field-filters').getByText('Note')).toHaveCount(0)
+  await expect(page.getByTestId('field-filters').getByText('IBAN')).toHaveCount(0)
+
+  await page.getByTestId('field-filter-montant.gte').fill('5000')
+  await page.getByRole('button', { name: 'Filtrer' }).click()
+  await expect(page).toHaveURL(/f\.montant\.gte=5000/)
+  expect(listQueries.some((q) => q.includes('dossierTypeCode=CLAIM') && q.includes('f.montant.gte=5000'))).toBe(true)
+})
+
+test('E2E-DRAFTS-1 an agent draft is reviewed and published by a human with the reviewed timestamp (D6)', async ({ page }) => {
+  await mockSession(page)
+  const stamp = '2026-10-01T10:00:00.123456Z'
+  let published = false
+  await page.route('**/api/admin/drafts/publications**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }),
+  )
+  await page.route('**/api/admin/drafts', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(
+        published
+          ? []
+          : [
+              {
+                type: 'BPMN',
+                key: 'claim',
+                provenance: 'MCP',
+                author: 'agent-1',
+                updatedAt: stamp,
+                hasProposedConfig: true,
+                note: null,
+                publishedVersion: 3,
+                addedLines: 4,
+                removedLines: 2,
+                proposedConfig: {
+                  label: 'Sinistre',
+                  statusDefinitions: [{ code: 'STARTED', label: 'Démarré', initial: true, outcome: 'NONE' }],
+                  allowedDossierStatuses: ['OUVERT'],
+                  onStartDossierStatus: null,
+                  observerUserIds: [],
+                },
+                configProvenance: 'MCP',
+                configAuthor: 'agent-1',
+              },
+            ],
+      ),
+    }),
+  )
+  await page.route('**/api/admin/drafts/BPMN/claim/publish', async (route) => {
+    published = true
+    expect((route.request().postDataJSON() as { expectedUpdatedAt: string }).expectedUpdatedAt).toBe(stamp)
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ id: 'p1', version: 4, mode: 'MANUAL' }),
+    })
+  })
+  page.on('dialog', (dialog) => dialog.accept())
+
+  await openApp(page)
+  await page.getByRole('link', { name: 'Brouillons' }).click()
+  await expect(page.getByRole('heading', { name: 'Brouillons à publier' })).toBeVisible()
+  const row = page.getByTestId('draft-row-claim')
+  await expect(row).toContainText('Agent (MCP)')
+  await expect(row).toContainText('agent-1')
+  await expect(row).toContainText('configuration de workflow jointe')
+  await row.getByTestId('draft-publish').click()
+  await expect(page.getByTestId('drafts-notice')).toContainText('version 4')
+  await expect(page.getByTestId('drafts-empty')).toBeVisible()
+})
+
+test('E2E-PROMO-1 import: dry-run plan first, secrets entered by name and sent only with the apply (D4)', async ({ page }) => {
+  await mockSession(page)
+  const plan = {
+    bundleSha256: 'sha-e2e',
+    formatVersion: 1,
+    sourceLabel: 'recette',
+    entries: [
+      { type: 'DOSSIER_TYPE', key: 'SIN', action: 'CREATE', reason: '', secretsRequired: [] },
+      { type: 'CONNECTOR_INSTANCE', key: 'erp-prod', action: 'BLOCKED', reason: 'cannot be created: webhookSecret is required', secretsRequired: ['webhookSecret'], connectorName: 'ERP Prod' },
+    ],
+  }
+  let applyBody = ''
+  await page.route('**/api/admin/configuration/imports**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }),
+  )
+  await page.route('**/api/admin/configuration/plan', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(plan) }),
+  )
+  await page.route('**/api/admin/configuration/apply', async (route) => {
+    applyBody = route.request().postData() ?? ''
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        bundleSha256: 'sha-e2e',
+        performedAt: '2026-10-01T10:00:00Z',
+        entries: [
+          { type: 'DOSSIER_TYPE', key: 'SIN', outcome: 'APPLIED', message: 'created' },
+          { type: 'CONNECTOR_INSTANCE', key: 'erp-prod', outcome: 'APPLIED', message: 'created disabled — review its endpoints, then enable it' },
+        ],
+      }),
+    })
+  })
+  page.on('dialog', (dialog) => dialog.accept())
+
+  await openApp(page)
+  await page.getByRole('link', { name: 'Promotion' }).click()
+  await expect(page.getByRole('heading', { name: 'Promotion de configuration' })).toBeVisible()
+  const exportRequest = page.waitForRequest('**/api/admin/configuration/export**')
+  await page.route('**/api/admin/configuration/export**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/zip', body: 'zip' }),
+  )
+  await page.getByTestId('source-label').fill('recette')
+  await page.getByTestId('export-button').click()
+  expect((await exportRequest).url()).toContain('sourceLabel=recette')
+
+  await page.getByTestId('bundle-file').setInputFiles({ name: 'bundle.zip', mimeType: 'application/zip', buffer: Buffer.from('zip') })
+  await page.getByTestId('plan-button').click()
+  await expect(page.getByTestId('plan-DOSSIER_TYPE-SIN')).toContainText('Créer')
+  await expect(page.getByTestId('plan-CONNECTOR_INSTANCE-erp-prod')).toContainText('Bloqué')
+  expect(applyBody).toBe('') // le plan n'écrit rien
+
+  await page.getByTestId('secret-erp-prod-webhookSecret').fill('e2e-secret-value')
+  await page.getByTestId('apply-button').click()
+  await expect(page.getByTestId('report-table')).toContainText('created disabled')
+  expect(applyBody).toContain('expectedBundleSha256')
+  expect(applyBody).toContain('sha-e2e')
+  expect(applyBody).toContain('e2e-secret-value')
+  expect(applyBody).toContain('ERP Prod') // les secrets sont indexés par le nom exact du connecteur
+  // les secrets saisis ne restent pas dans la page après l'application
+  await expect(page.locator('body')).not.toContainText('e2e-secret-value')
+  await expect(page.getByTestId('secret-erp-prod-webhookSecret')).toHaveValue('')
+})
+
+test('E2E-FORMED-1 designer: sections, half width and help text are previewed live and sent as plain fieldDefinitions (LC4a)', async ({ page }) => {
+  await mockSession(page)
+  let created: { fieldDefinitions: Array<Record<string, unknown>> } | null = null
+  await page.route('**/api/task-question-schemas*', async (route) => {
+    if (route.request().method() === 'POST') {
+      created = route.request().postDataJSON()
+      await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ id: 's-9', ...created }) })
+      return
+    }
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(envelope([])) })
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Questions de tâche' }).click()
+  await page.getByTestId('schema-key-input').fill('contact')
+  await page.getByTestId('schema-label-input').fill('Contact')
+  const form = page.getByTestId('schema-create-form')
+  await form.getByTestId('field-def-add').click()
+  const row = form.getByTestId('field-def-row').first()
+  await row.getByTestId('field-def-name').fill('nom')
+  await row.getByTestId('field-def-label').fill('Nom')
+  await row.getByTestId('field-def-group').fill('Identité')
+  await row.getByTestId('field-def-width').selectOption('HALF')
+  await row.getByTestId('field-def-help').fill('Nom de famille')
+
+  const preview = form.getByTestId('form-designer-preview')
+  await expect(preview.getByRole('heading', { name: 'Identité' })).toBeVisible()
+  await expect(preview.getByTestId('help-nom')).toHaveText('Nom de famille')
+
+  await form.locator('button[type="submit"]').click()
+  await expect.poll(() => created?.fieldDefinitions[0]).toMatchObject({ name: 'nom', group: 'Identité', width: 'HALF', helpText: 'Nom de famille' })
+})
+
+test('E2E-ASSIST-1 design assistant: disabled notice, then a conversation that produces drafts to review (LC3)', async ({ page }) => {
+  await mockSession(page)
+  let enabled = false
+  let sent: { message: string; conversationId: string | null } | null = null
+  await page.route('**/api/assistant/status', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ enabled, model: enabled ? 'm' : null }) }))
+  await page.route('**/api/assistant/conversations', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }))
+  await page.route('**/api/assistant/conversations/c-1/actions', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }))
+  await page.route('**/api/assistant/messages', async (route) => {
+    sent = route.request().postDataJSON()
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        conversationId: 'c-1',
+        reply: 'Brouillon du processus créé : relisez-le avant publication.',
+        activity: [{ tool: 'deploy_workflow', ok: true, summary: '{}' }],
+        producedDrafts: true,
+        proposals: [],
+      }),
+    })
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Assistant' }).click()
+  await expect(page.getByTestId('assistant-disabled')).toBeVisible()
+  await expect(page.getByTestId('assistant-input')).toHaveCount(0)
+
+  enabled = true
+  await page.getByRole('link', { name: 'Supervision' }).click()
+  await page.getByRole('link', { name: 'Assistant' }).click()
+  await page.getByTestId('assistant-input').fill('Un processus de validation à deux étapes')
+  await page.getByTestId('assistant-send').click()
+  await expect(page.getByTestId('assistant-log')).toContainText('relisez-le avant publication')
+  await expect(page.getByTestId('assistant-drafts')).toBeVisible()
+  expect(sent).toEqual({ message: 'Un processus de validation à deux étapes', conversationId: null })
+})
+
+test('E2E-PARCOURS-1 parcours designer: build a step list, save, compile to a draft to review (LC5)', async ({ page }) => {
+  await mockSession(page)
+  let saved: { label: string; definition: { steps: { id: string; kind: string; params: Record<string, string> }[] }; expectedVersion: number | null } | null = null
+  let compiledWith: { dryRun: boolean } | null = null
+  await page.route('**/api/bpmn-building-blocks/references/**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ value: 'avis', label: 'Avis' }]) }))
+  await page.route('**/api/task-question-schemas**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(envelope([{ schemaKey: 'avis', label: 'Avis' }])) }))
+  await page.route('**/api/parcours', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }))
+  await page.route('**/api/parcours/p1', async (route) => {
+    saved = route.request().postDataJSON()
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ key: 'p1', label: 'Sinistre', version: 1, definition: saved!.definition, updatedAt: '2026-10-01T10:00:00Z', updatedBy: 'u' }),
+    })
+  })
+  await page.route('**/api/parcours/p1/compile', async (route) => {
+    compiledWith = route.request().postDataJSON()
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ xml: '<definitions/>', sha256: 'c'.repeat(64), warnings: ['avertissement test'], draftWritten: true, replacedExistingDraft: false }),
+    })
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Parcours' }).click()
+  await expect(page.getByTestId('parcours-empty')).toBeVisible()
+  await page.getByTestId('parcours-new').click()
+  await page.getByTestId('parcours-key').fill('p1')
+  await page.getByTestId('parcours-label').fill('Sinistre')
+  await page.getByTestId('step-add').click()
+  await page.getByTestId('param-schemaKey').selectOption('avis')
+  await page.getByTestId('parcours-save').click()
+  await expect(page.getByTestId('parcours-notice')).toContainText('version 1')
+  expect(saved).toMatchObject({ label: 'Sinistre', expectedVersion: null })
+  expect(saved!.definition.steps[0]).toMatchObject({ kind: 'QUESTION', params: { schemaKey: 'avis' } })
+  await page.getByTestId('parcours-compile').click()
+  await expect(page.getByTestId('parcours-draft-link')).toBeVisible()
+  await expect(page.getByTestId('parcours-warnings')).toContainText('avertissement test')
+  expect(compiledWith).toEqual({ dryRun: false, replaceDraft: false })
+})
+
+test('E2E-I18N-1 language switch: the whole shell turns English, survives a reload, and can go back (D7)', async ({ page }) => {
+  await mockSession(page)
+  await openApp(page)
+  await expect(page.getByRole('link', { name: 'Tâches' })).toBeVisible()
+  await page.getByTestId('locale-switcher').selectOption('en')
+  await expect(page.getByRole('link', { name: 'Tasks', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Log out' })).toBeVisible()
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en')
+  await page.reload()
+  await expect(page.getByRole('link', { name: 'Tasks', exact: true })).toBeVisible()
+  await page.getByTestId('locale-switcher').selectOption('fr')
+  await expect(page.getByRole('link', { name: 'Tâches' })).toBeVisible()
+  await expect(page.locator('html')).toHaveAttribute('lang', 'fr')
 })

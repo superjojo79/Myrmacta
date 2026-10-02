@@ -31,7 +31,12 @@ function setField(name: string, value: unknown) {
   <fieldset class="portal-form" :disabled="disabled">
     <section v-for="[group, groupFields] in groups" :key="group" class="portal-form__group">
       <h3 v-if="group">{{ group }}</h3>
-      <div v-for="field in groupFields" :key="field.name" class="portal-form__field">
+      <div
+        v-for="field in groupFields"
+        :key="field.name"
+        class="portal-form__field"
+        :class="{ 'portal-form__field--half': field.width === 'HALF' }"
+      >
         <label :for="`field-${field.name}`">
           {{ field.label }}<span v-if="field.required" aria-hidden="true"> *</span>
         </label>
@@ -41,6 +46,7 @@ function setField(name: string, value: unknown) {
           :model-value="modelValue[field.name]"
           @update:model-value="(value) => setField(field.name, value)"
         />
+        <small v-if="field.helpText" class="portal-form__help">{{ field.helpText }}</small>
       </div>
     </section>
   </fieldset>

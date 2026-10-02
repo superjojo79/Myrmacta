@@ -30,6 +30,13 @@ class WorkflowVariablesTest {
     }
 
     @Test
+    void assertNoReservedKeys_rejectsAForgedConnectorResult() {
+        // D3b (revue B1) : seul ConnectorServiceTask écrit connectorResult.
+        assertThatThrownBy(() -> WorkflowVariables.assertNoReservedKeys(Map.of("connectorResult", Map.of("body", "{}"))))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("connectorResult");
+    }
+
+    @Test
     void assertNoReservedKeys_rejectsDossierFieldsFromCaller() {
         assertThatThrownBy(() -> WorkflowVariables.assertNoReservedKeys(Map.of("dossierFields", Map.of())))
                 .isInstanceOf(IllegalArgumentException.class)

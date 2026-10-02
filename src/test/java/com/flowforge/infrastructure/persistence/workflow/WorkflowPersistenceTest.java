@@ -49,6 +49,9 @@ class WorkflowPersistenceTest {
     private SpringDataOutboxEventRepository springDataOutbox;
 
     @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    @Autowired
     private AttachWorkflowUseCase attachWorkflow;
 
     @Autowired
@@ -87,6 +90,42 @@ class WorkflowPersistenceTest {
         var pastEnd = configRepository.page("tenant_dev", PageQuery.of(9_999, 20));
         assertThat(pastEnd.content()).isEmpty();
         assertThat(pastEnd.totalElements()).isEqualTo(page0.totalElements());
+    }
+
+    /** D5 (TODO §79) : un seul des réconciliateurs concurrents prend un lien orphelin ; une prise échue se reprend. */
+    @Test
+    void claimForReconcile_oneConcurrentReconcilerWins_andOnlyWhileTheLinkIsAnOrphan() throws Exception {
+        Dossier dossier = dossier(DossierStatus.OUVERT);
+        dossierRepository.save(dossier);
+        var orphan = linkRepository.save(new com.flowforge.domain.dossier.model.DossierWorkflowLink(
+                UUID.randomUUID(), dossier.id(), "tenant_dev", null, "procOrphan", 1, "STARTED", "manual",
+                Instant.parse("2026-08-02T10:00:00Z"), null, null, null));
+        Instant now = Instant.parse("2026-08-02T10:10:00Z");
+        int reconcilers = 6;
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(reconcilers);
+        java.util.concurrent.CountDownLatch go = new java.util.concurrent.CountDownLatch(1);
+        try {
+            List<java.util.concurrent.Future<Boolean>> futures = new java.util.ArrayList<>();
+            for (int i = 0; i < reconcilers; i++) {
+                futures.add(pool.submit(() -> {
+                    go.await();
+                    return linkRepository.claimForReconcile(orphan.id(), now, now.plusSeconds(120));
+                }));
+            }
+            go.countDown();
+            long winners = 0;
+            for (var f : futures) {
+                winners += f.get() ? 1 : 0;
+            }
+            assertThat(winners).as("un seul réconciliateur relance le process").isEqualTo(1);
+        } finally {
+            pool.shutdownNow();
+        }
+        assertThat(linkRepository.claimForReconcile(orphan.id(), now.plusSeconds(60), now.plusSeconds(180))).isFalse();
+        assertThat(linkRepository.claimForReconcile(orphan.id(), now.plusSeconds(121), now.plusSeconds(241))).isTrue();
+        // Plus orphelin (process démarré) : plus de prise.
+        linkRepository.save(orphan.withProcessInstance("proc-started"));
+        assertThat(linkRepository.claimForReconcile(orphan.id(), now.plusSeconds(10_000), now.plusSeconds(10_120))).isFalse();
     }
 
     @Test
@@ -128,6 +167,67 @@ class WorkflowPersistenceTest {
         assertThat(outboxRepository.lockNextPending(10))
                 .extracting(stored -> stored.eventId())
                 .doesNotContain(event.eventId());
+    }
+
+    /** D5 (TODO §79) : deux relais qui interrogent en même temps ne reçoivent jamais le même événement. */
+    @Test
+    void outboxLockNextPending_concurrentRelaysNeverReceiveTheSameEvent() throws Exception {
+        java.util.Set<UUID> created = new java.util.HashSet<>();
+        for (int i = 0; i < 40; i++) {
+            created.add(outboxRepository.savePending(new TriggerOutboxPayload(
+                    UUID.randomUUID(), null, "smokeProcess", Map.of(), "trigger-conc-" + i)).eventId());
+        }
+        int relays = 6;
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(relays);
+        java.util.concurrent.CountDownLatch go = new java.util.concurrent.CountDownLatch(1);
+        try {
+            List<java.util.concurrent.Future<List<UUID>>> futures = new java.util.ArrayList<>();
+            for (int r = 0; r < relays; r++) {
+                futures.add(pool.submit(() -> {
+                    go.await();
+                    List<UUID> mine = new java.util.ArrayList<>();
+                    int emptyInARow = 0;
+                    for (int round = 0; round < 500 && emptyInARow < 3; round++) {
+                        var got = outboxRepository.lockNextPending(10);
+                        got.forEach(e -> mine.add(e.eventId()));
+                        emptyInARow = got.isEmpty() ? emptyInARow + 1 : 0;
+                    }
+                    return mine;
+                }));
+            }
+            go.countDown();
+            List<UUID> all = new java.util.ArrayList<>();
+            for (var f : futures) {
+                all.addAll(f.get());
+            }
+            // Un relais qui perd trois courses de suite s'arrête : on termine en série ce qui reste.
+            for (List<com.flowforge.domain.workflow.model.OutboxEvent> rest = outboxRepository.lockNextPending(100);
+                    !rest.isEmpty(); rest = outboxRepository.lockNextPending(100)) {
+                rest.forEach(e -> all.add(e.eventId()));
+            }
+            assertThat(all).as("aucun événement reçu par deux relais").doesNotHaveDuplicates();
+            assertThat(new java.util.HashSet<>(all)).containsAll(created);
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    @Test
+    void outboxAClaimedEventIsOfferedAgainOnlyAfterItsLeaseOrAFailure() {
+        var event = outboxRepository.savePending(new TriggerOutboxPayload(
+                UUID.randomUUID(), null, "smokeProcess", Map.of(), "trigger-lease"));
+        assertThat(outboxRepository.lockNextPending(500)).extracting(e -> e.eventId()).contains(event.eventId());
+        assertThat(outboxRepository.lockNextPending(500)).extracting(e -> e.eventId()).doesNotContain(event.eventId());
+
+        // Exécutant mort : le bail échoit.
+        jdbc.update("update outbox_event set claimed_until = ? where event_id = ?",
+                java.sql.Timestamp.from(Instant.now().minusSeconds(1)), event.eventId());
+        assertThat(outboxRepository.lockNextPending(500)).extracting(e -> e.eventId()).contains(event.eventId());
+
+        // Échec signalé : le bail est levé, retry immédiat comme avant.
+        outboxRepository.recordFailure(event.eventId(), "boom", 5);
+        assertThat(outboxRepository.lockNextPending(500)).extracting(e -> e.eventId()).contains(event.eventId());
+        outboxRepository.markProcessed(event.eventId());
     }
 
     @Test

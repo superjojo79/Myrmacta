@@ -28,6 +28,18 @@ class TaskQuestionSchemaTest {
     }
 
     @Test
+    void constructor_rejectsFieldRules() {
+        // TODO §80 : les règles de champs s'évaluent à l'enregistrement du dossier, pas sur une question de tâche.
+        for (FieldDefinition withRule : List.of(
+                new FieldDefinition("a", "A", FieldType.NUMBER, false, null, null, null, false, null, null, null, "1", null, null),
+                new FieldDefinition("b", "B", FieldType.STRING, false, null, null, null, false, null, null, null, null, "true", null),
+                new FieldDefinition("c", "C", FieldType.STRING, false, null, null, null, false, null, null, null, null, null, "true"))) {
+            assertThatThrownBy(() -> new TaskQuestionSchema(ID, TENANT, "key", "Label", List.of(withRule), "u", "u"))
+                    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("rules");
+        }
+    }
+
+    @Test
     void constructor_rejectsBlankFields() {
         assertThatThrownBy(() -> new TaskQuestionSchema(ID, TENANT, "key", "Label", List.of(), "u", "u"))
                 .isInstanceOf(IllegalArgumentException.class);
@@ -61,6 +73,23 @@ class TaskQuestionSchemaTest {
         assertThatThrownBy(() -> new TaskQuestionSchema(ID, TENANT, "key", "Label", fields, "u", "u"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("attachment");
+    }
+
+    @Test
+    void constructor_rejectsTheStructuredTypesOfTheDossierFieldsForNow() {
+        // TODO §76 (D-CHAMPS-USERQ) : réservés aux champs de dossier en D1.
+        FieldDefinition group = new FieldDefinition("lignes", "Lignes", FieldType.REPEATABLE_GROUP, false, null,
+                List.of(), null, false,
+                List.of(new FieldDefinition("a", "A", FieldType.STRING, false, null, List.of(), null)), null, null);
+        for (FieldDefinition field : List.of(
+                new FieldDefinition("m", "Montant", FieldType.MONEY, false, null, List.of(), null),
+                new FieldDefinition("r", "Ref", FieldType.EXTERNAL_REF, false, null, List.of(), null),
+                group)) {
+            assertThatThrownBy(() -> new TaskQuestionSchema(ID, TENANT, "key", "Label", List.of(field), "u", "u"))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining(field.name())
+                    .hasMessageContaining("not supported");
+        }
     }
 
     @Test

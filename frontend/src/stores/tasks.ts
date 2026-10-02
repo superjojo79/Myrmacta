@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { i18n } from '@/i18n'
 import { ref } from 'vue'
 import { completeTask, listMyTasks } from '@/api/tasks'
 import { toProblemDetail } from '@/api/http'
@@ -20,7 +21,7 @@ export const useTasksStore = defineStore('tasks', () => {
       totalPages.value = result.totalPages
       page.value = nextPage
     } catch (err) {
-      error.value = toProblemDetail(err).detail ?? 'Impossible de charger les tâches'
+      error.value = toProblemDetail(err).detail ?? i18n.global.t('common.errors.tasks')
       throw err
     } finally {
       loading.value = false

@@ -22,7 +22,35 @@ const ctx = (over: Partial<DiagnosticContext> = {}): DiagnosticContext => ({
 })
 const block = (id: string) => TEST_BLOCKS.find((b) => b.id === id)!
 
+const mapFields = {
+  id: 'map-fields',
+  label: 'map',
+  description: 'map',
+  category: 'DOSSIER' as const,
+  element: 'SERVICE_TASK' as const,
+  marker: { delegate: 'fieldMappingTask', serviceTaskType: null, formKeyPrefix: null, portalRecipient: false },
+  parameters: [
+    {
+      name: 'fieldMapping', label: 'Valeurs', type: 'TEXT' as const, binding: 'ATTRIBUTE' as const, required: true,
+      valueSource: null, enumValues: [], maxLength: 8000, min: null, max: null, help: null, multiline: true,
+    },
+  ],
+}
+
 describe('blockDiagnostics', () => {
+  it('un paramètre multiligne du catalogue n\'est pas signalé pour ses retours à la ligne (D3b)', () => {
+    const attrs = { 'flowable:fieldMapping': 'score = connectorResult.json.score\nville = connectorResult.json.city' }
+    expect(diagnoseBlock(bo(attrs), mapFields, ctx())).toEqual([])
+    const single = { ...mapFields, parameters: [{ ...mapFields.parameters[0], multiline: false }] }
+    expect(diagnoseBlock(bo(attrs), single, ctx())).toEqual([expect.objectContaining({ kind: 'invalid' })])
+  })
+
+  it('repli sur le nom pour un catalogue qui ne publie pas encore multiline', () => {
+    const legacy = { ...mapFields, parameters: [{ ...mapFields.parameters[0], multiline: undefined }] }
+    const attrs = { 'flowable:fieldMapping': 'a = 1\nb = 2' }
+    expect(diagnoseBlock(bo(attrs), legacy, ctx())).toEqual([])
+  })
+
   it('signale un paramètre obligatoire vide, et plus rien une fois corrigé (S-DIAG-1)', () => {
     const b = block('set-dossier-status')
     expect(diagnoseBlock(bo(), b, ctx())).toEqual([

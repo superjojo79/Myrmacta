@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import type { WorkflowDiagram } from '@/api/types'
 import BpmnCanvas from './BpmnCanvas.vue'
 
@@ -6,13 +7,15 @@ defineProps<{
   diagram: WorkflowDiagram | null
   unavailable?: boolean
 }>()
+
+const { t } = useI18n()
 </script>
 
 <template>
   <section class="bpmn-viewer">
-    <h2>Diagramme</h2>
+    <h2>{{ t('workflow.diagram.title') }}</h2>
     <p v-if="unavailable" class="bpmn-viewer__warn">
-      Diagramme indisponible (processus non démarré ou lien sans instance).
+      {{ t('workflow.diagram.unavailable') }}
     </p>
     <BpmnCanvas
       v-else

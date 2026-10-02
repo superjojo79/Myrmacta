@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, watch } from 'vue'
 import {
   createDossierType,
@@ -13,7 +14,7 @@ import { listNotificationWebhooks, type NotificationWebhook } from '@/api/notifi
 import type { DossierPermission, DossierType, FieldDefinition } from '@/api/types'
 import { toProblemDetail } from '@/api/http'
 import AdminPager from '@/components/admin/AdminPager.vue'
-import FieldDefinitionDefsEditor from '@/components/dossier/FieldDefinitionDefsEditor.vue'
+import FormDesigner from '@/components/dossier/FormDesigner.vue'
 import DocumentTemplateKeysEditor from '@/components/dossier/DocumentTemplateKeysEditor.vue'
 import { validateFieldDefinitions } from '@/dossier/validateFieldDefinitions'
 import { useAdminListQuery } from '@/composables/useAdminListQuery'
@@ -62,9 +63,9 @@ const editDraft = ref<{
 const editFieldErrors = ref<string[]>([])
 
 function retentionLabel(type: DossierType): string {
-  if (type.retentionNever) return 'NEVER'
-  if (type.retentionDays != null) return `${type.retentionDays} j`
-  return 'héritage'
+  if (type.retentionNever) return t('admin.types.retentionLabel.never')
+  if (type.retentionDays != null) return t('admin.types.retentionLabel.days', { n: type.retentionDays })
+  return t('admin.types.retentionLabel.inherit')
 }
 
 async function refresh() {
@@ -116,7 +117,7 @@ watch(
   [page, size],
   () => {
     void refresh().catch((err) => {
-      error.value = toProblemDetail(err).detail ?? 'Chargement impossible'
+      error.value = toProblemDetail(err).detail ?? t('admin.types.errors.load')
     })
   },
   { immediate: true },
@@ -129,7 +130,7 @@ async function saveRetention() {
     retentionConfigured.value = true
     retentionDaysDefault.value = saved.defaultRetentionDays
   } catch (err) {
-    error.value = toProblemDetail(err).detail ?? 'Enregistrement rétention impossible'
+    error.value = toProblemDetail(err).detail ?? t('admin.types.errors.retention')
   }
 }
 
@@ -152,7 +153,7 @@ async function saveSla() {
     slaConfigured.value = true
     slaTargetPercent.value = saved.complianceTargetPercent
   } catch (err) {
-    error.value = toProblemDetail(err).detail ?? 'Enregistrement SLA impossible'
+    error.value = toProblemDetail(err).detail ?? t('admin.types.errors.sla')
   }
 }
 
@@ -199,7 +200,7 @@ async function create() {
     }
     await refresh()
   } catch (err) {
-    error.value = toProblemDetail(err).detail ?? 'Création impossible'
+    error.value = toProblemDetail(err).detail ?? t('admin.types.errors.create')
   }
 }
 
@@ -234,7 +235,7 @@ async function saveEditFields() {
     editFieldErrors.value = []
     await refresh()
   } catch (err) {
-    editFieldErrors.value = [toProblemDetail(err).detail ?? 'Enregistrement du schéma impossible']
+    editFieldErrors.value = [toProblemDetail(err).detail ?? t('admin.types.errors.schema')]
   }
 }
 
@@ -259,7 +260,7 @@ async function clearTypeSla(type: DossierType) {
     await updateDossierType(type.code, { clearSlaTargetHours: true })
     await refresh()
   } catch (err) {
-    error.value = toProblemDetail(err).detail ?? 'Retrait SLA impossible'
+    error.value = toProblemDetail(err).detail ?? t('admin.types.errors.clearSla')
   }
 }
 
@@ -272,23 +273,24 @@ async function revoke() {
   await revokeDossierTypeAcl(acl.value.code, acl.value.subjectUserId)
   acl.value.subjectUserId = ''
 }
+
+const { t } = useI18n()
 </script>
 
 <template>
   <section>
-    <h1>Types de dossier</h1>
+    <h1>{{ t('admin.types.title') }}</h1>
     <p v-if="error" class="error">{{ error }}</p>
 
     <section class="retention-block" aria-labelledby="retention-heading">
-      <h2 id="retention-heading">Rétention tenant</h2>
+      <h2 id="retention-heading">{{ t('admin.types.retention') }}</h2>
       <p v-if="!retentionConfigured" class="hint">
-        Aucune durée par défaut configurée (GET 404). Le job de rétention est inactif jusqu’au
-        premier enregistrement.
+        {{ t('admin.types.noRetention') }}
       </p>
-      <p v-else class="hint">Défaut actuel : {{ retentionDaysDefault }} jours.</p>
+      <p v-else class="hint">{{ t('admin.types.currentRetention', { days: retentionDaysDefault }) }}</p>
       <form class="admin-form" @submit.prevent="saveRetention">
         <label>
-          Durée par défaut (jours)
+          {{ t('admin.types.defaultDays') }}
           <input
             v-model.number="retentionDraft"
             type="number"
@@ -297,16 +299,16 @@ async function revoke() {
             data-testid="retention-default-days"
           />
         </label>
-        <button type="submit" data-testid="retention-save">Enregistrer la rétention</button>
+        <button type="submit" data-testid="retention-save">{{ t('admin.types.saveRetention') }}</button>
       </form>
     </section>
 
     <section class="retention-block" aria-labelledby="sla-heading">
-      <h2 id="sla-heading">Objectif SLA tenant</h2>
-      <p v-if="!slaConfigured" class="hint">Aucune cible configurée (GET 404) — le rapport utilise 95 %.</p>
+      <h2 id="sla-heading">{{ t('admin.types.slaTitle') }}</h2>
+      <p v-if="!slaConfigured" class="hint">{{ t('admin.types.noSla') }}</p>
       <form class="admin-form" data-testid="sla-settings-form" @submit.prevent="saveSla">
         <label>
-          Objectif de conformité (%)
+          {{ t('admin.types.slaTarget') }}
           <input
             v-model.number="slaTargetPercent"
             type="number"
@@ -318,10 +320,10 @@ async function revoke() {
         </label>
         <label>
           <input v-model="alertingEnabled" type="checkbox" data-testid="sla-alerting-enabled" />
-          Alertes de franchissement SLA
+          {{ t('admin.types.slaAlerting') }}
         </label>
         <label>
-          Intervalle (minutes, 15 à 10080)
+          {{ t('admin.types.alertInterval') }}
           <input
             v-model.number="alertIntervalMinutes"
             type="number"
@@ -332,11 +334,11 @@ async function revoke() {
           />
         </label>
         <label>
-          Destinataires e-mail (un par ligne, 20 maximum)
+          {{ t('admin.types.alertEmails') }}
           <textarea v-model="alertEmailsText" rows="3" data-testid="sla-alert-emails" />
         </label>
         <label>
-          Webhooks activés
+          {{ t('admin.types.alertWebhooks') }}
           <select
             v-model="alertWebhookIds"
             multiple
@@ -349,10 +351,10 @@ async function revoke() {
         </label>
         <label>
           <input v-model="biExportEnabled" type="checkbox" data-testid="sla-bi-enabled" />
-          Export BI planifié
+          {{ t('admin.types.biExport') }}
         </label>
         <label>
-          Intervalle BI (heures, 1 à 720)
+          {{ t('admin.types.biInterval') }}
           <input
             v-model.number="biIntervalHours"
             type="number"
@@ -363,7 +365,7 @@ async function revoke() {
           />
         </label>
         <label>
-          Rétention des fichiers BI (jours, 1 à 365)
+          {{ t('admin.types.biRetention') }}
           <input
             v-model.number="biRetentionDays"
             type="number"
@@ -373,25 +375,25 @@ async function revoke() {
             data-testid="sla-bi-retention"
           />
         </label>
-        <button type="submit" data-testid="sla-save">Enregistrer l'objectif SLA</button>
+        <button type="submit" data-testid="sla-save">{{ t('admin.types.saveSla') }}</button>
       </form>
     </section>
 
     <form class="admin-form" data-testid="type-create-form" @submit.prevent="create">
-      <input v-model="form.code" placeholder="code" required />
-      <input v-model="form.label" placeholder="libellé" required />
-      <input v-model="form.workflowKey" placeholder="workflowKey" required />
+      <input v-model="form.code" :placeholder="t('admin.types.codePlaceholder')" required />
+      <input v-model="form.label" :placeholder="t('admin.types.labelPlaceholder')" required />
+      <input v-model="form.workflowKey" :placeholder="t('admin.types.workflowKeyPlaceholder')" required />
       <select v-model="form.retentionMode" data-testid="type-retention-mode">
-        <option value="inherit">Rétention : héritage</option>
-        <option value="days">Rétention : jours</option>
-        <option value="never">Rétention : NEVER</option>
+        <option value="inherit">{{ t('admin.types.retentionInherit') }}</option>
+        <option value="days">{{ t('admin.types.retentionDays') }}</option>
+        <option value="never">{{ t('admin.types.retentionNever') }}</option>
       </select>
       <input
         v-if="form.retentionMode === 'days'"
         v-model.number="form.retentionDays"
         type="number"
         min="1"
-        placeholder="jours"
+        :placeholder="t('admin.types.daysPlaceholder')"
         data-testid="type-retention-days"
         required
       />
@@ -399,28 +401,28 @@ async function revoke() {
         v-model.number="form.slaTargetHours"
         type="number"
         min="1"
-        placeholder="SLA heures"
+        :placeholder="t('admin.types.slaHoursPlaceholder')"
         data-testid="type-sla-hours"
       />
       <label class="allow-unknown-fields">
         <input v-model="form.allowUnknownFields" type="checkbox" data-testid="type-allow-unknown-fields" />
-        Autoriser les champs inconnus
+        {{ t('admin.types.allowUnknown') }}
       </label>
-      <FieldDefinitionDefsEditor v-model="form.fieldDefinitions" />
+      <FormDesigner v-model="form.fieldDefinitions" />
       <fieldset>
-        <legend>Templates de documents autorisés (document-generation)</legend>
+        <legend>{{ t('admin.types.allowedTemplates') }}</legend>
         <DocumentTemplateKeysEditor v-model="form.documentTemplateKeys" />
       </fieldset>
-      <button type="submit">Créer</button>
+      <button type="submit">{{ t('admin.types.create') }}</button>
     </form>
     <table>
       <thead>
         <tr>
-          <th>Code</th>
-          <th>Libellé</th>
-          <th>Workflow</th>
-          <th>Actif</th>
-          <th>Rétention</th>
+          <th>{{ t('admin.types.code') }}</th>
+          <th>{{ t('admin.types.label') }}</th>
+          <th>{{ t('admin.types.workflow') }}</th>
+          <th>{{ t('admin.types.active') }}</th>
+          <th>{{ t('admin.types.retentionHeader') }}</th>
           <th />
         </tr>
       </thead>
@@ -429,22 +431,22 @@ async function revoke() {
           <td>{{ type.code }}</td>
           <td>{{ type.label }}</td>
           <td>{{ type.workflowKey }}</td>
-          <td>{{ type.active ? 'oui' : 'non' }}</td>
+          <td>{{ type.active ? t('admin.types.yes') : t('admin.types.no') }}</td>
           <td data-testid="type-retention-label">{{ retentionLabel(type) }}</td>
           <td class="actions">
-            <button type="button" @click="toggleActive(type)">Basculer</button>
-            <button type="button" @click="setTypeNever(type)">NEVER</button>
-            <button type="button" @click="setTypeInherit(type)">Héritage</button>
+            <button type="button" @click="toggleActive(type)">{{ t('admin.types.toggle') }}</button>
+            <button type="button" @click="setTypeNever(type)">{{ t('admin.types.never') }}</button>
+            <button type="button" @click="setTypeInherit(type)">{{ t('admin.types.inherit') }}</button>
             <button
               v-if="type.slaTargetHours != null"
               type="button"
               data-testid="type-clear-sla"
               @click="clearTypeSla(type)"
             >
-              Retirer le SLA
+              {{ t('admin.types.clearSla') }}
             </button>
             <button type="button" data-testid="type-edit-fields" @click="startEditFields(type)">
-              Modifier les champs
+              {{ t('admin.types.editFields') }}
             </button>
           </td>
         </tr>
@@ -453,33 +455,33 @@ async function revoke() {
     <AdminPager v-model="page" :total-pages="totalPages" />
 
     <section v-if="editingCode" class="edit-fields-panel" data-testid="type-edit-fields-panel">
-      <h2>Modifier les champs — {{ editingCode }}</h2>
+      <h2>{{ t('admin.types.editFieldsTitle', { code: editingCode }) }}</h2>
       <p v-if="editFieldErrors.length" class="error">{{ editFieldErrors.join(' ') }}</p>
       <label class="allow-unknown-fields">
         <input v-model="editDraft.allowUnknownFields" type="checkbox" data-testid="type-allow-unknown-fields" />
-        Autoriser les champs inconnus
+        {{ t('admin.types.allowUnknown') }}
       </label>
-      <FieldDefinitionDefsEditor v-model="editDraft.fieldDefinitions" />
+      <FormDesigner v-model="editDraft.fieldDefinitions" />
       <fieldset>
-        <legend>Templates de documents autorisés (document-generation)</legend>
+        <legend>{{ t('admin.types.allowedTemplates') }}</legend>
         <DocumentTemplateKeysEditor v-model="editDraft.documentTemplateKeys" />
       </fieldset>
       <div class="edit-fields-panel__actions">
-        <button type="button" data-testid="type-edit-fields-save" @click="saveEditFields">Enregistrer</button>
-        <button type="button" data-testid="type-edit-fields-cancel" @click="cancelEditFields">Annuler</button>
+        <button type="button" data-testid="type-edit-fields-save" @click="saveEditFields">{{ t('admin.types.save') }}</button>
+        <button type="button" data-testid="type-edit-fields-cancel" @click="cancelEditFields">{{ t('common.cancel') }}</button>
       </div>
     </section>
 
-    <h2>ACL</h2>
+    <h2>{{ t('admin.types.aclTitle') }}</h2>
     <form class="admin-form" data-testid="acl-form" @submit.prevent="grant">
-      <input v-model="acl.code" placeholder="code type" required />
-      <input v-model="acl.subjectUserId" placeholder="userId" required />
+      <input v-model="acl.code" :placeholder="t('admin.types.aclCode')" required />
+      <input v-model="acl.subjectUserId" :placeholder="t('admin.types.aclUser')" required />
       <select v-model="acl.permission">
         <option value="VIEW">VIEW</option>
         <option value="EDIT">EDIT</option>
       </select>
-      <button type="submit">Accorder</button>
-      <button type="button" @click="revoke">Révoquer</button>
+      <button type="submit">{{ t('admin.types.grant') }}</button>
+      <button type="button" @click="revoke">{{ t('admin.types.revoke') }}</button>
     </form>
   </section>
 </template>

@@ -72,4 +72,31 @@ class ThymeleafTemplateSyntaxCheckerTest {
         assertThatThrownBy(() -> checker.check("<p>[(${title})]</p>"))
                 .isInstanceOf(InvalidTemplateSyntaxException.class);
     }
+
+    /** Revue adversariale LC4b (Moyen) : l'interdiction d'interpolation non échappée ne se contourne ni par la casse, ni par la forme HTML5, ni par un blanc. */
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "<p TH:UTEXT=\"${a}\">x</p>",
+        "<p data-th-utext=\"${a}\">x</p>",
+        "<p>[( ${a} )]</p>",
+        "<p>[(\n${a})]</p>",
+        "<p th:inline=\"text\">x</p>",
+        "<p DATA-TH-INLINE=\"text\">x</p>"
+    })
+    void unescapedInterpolationIsRefusedWhateverItsSpelling(String html) {
+        assertThatThrownBy(() -> checker.check(html)).isInstanceOf(InvalidTemplateSyntaxException.class);
+    }
+
+    /** Revue adversariale LC4b, passe 2 (Haut) : un fragment est évalué comme un template — refusé à l'activation. */
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "<p th:replace=\"${x}\">a</p>",
+        "<div th:insert=\"~{'<b th:ut' + 'ext=${x}>q</b>'}\">a</div>",
+        "<p TH:REPLACE=\"~{'[' + '(${x})]'}\">a</p>",
+        "<p data-th-include=\"${x}\">a</p>",
+        "<p th:substituteby=\"${x}\">a</p>"
+    })
+    void fragmentsAreRefused(String html) {
+        assertThatThrownBy(() -> checker.check(html)).isInstanceOf(InvalidTemplateSyntaxException.class);
+    }
 }

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { computed, ref } from 'vue'
 import type { ConnectorIngress } from './connectorConfig'
 
@@ -7,9 +8,10 @@ const props = defineProps<{
   url: string
 }>()
 
+const { t } = useI18n()
 const copied = ref(false)
 
-const title = computed(() => (props.kind === 'callback' ? 'URL callback' : 'URL webhook'))
+const title = computed(() => (props.kind === 'callback' ? t('admin.connectors.ingress.callback') : t('admin.connectors.ingress.webhook')))
 
 async function copy() {
   copied.value = false
@@ -30,10 +32,10 @@ async function copy() {
       type="button"
       class="connector-ingress__copy"
       data-testid="connector-ingress-copy"
-      :aria-label="`Copier ${title}`"
+      :aria-label="t('admin.connectors.ingress.copyAria', { title })"
       @click="copy"
     >
-      {{ copied ? 'Copié' : 'Copier' }}
+      {{ copied ? t('admin.connectors.ingress.copied') : t('admin.connectors.ingress.copy') }}
     </button>
   </div>
 </template>

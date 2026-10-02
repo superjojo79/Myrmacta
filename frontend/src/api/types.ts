@@ -3,6 +3,8 @@ export interface AuthUser {
   name: string | null
   email: string | null
   roles: string[]
+  /** Langue par défaut du tenant (D7) : celle de l'interface tant que l'utilisateur n'a pas choisi la sienne. */
+  defaultLocale?: string
 }
 
 export type DossierStatus =
@@ -13,7 +15,17 @@ export type DossierStatus =
   | 'CLOTURE'
   | 'ARCHIVE'
 
-export type FieldType = 'STRING' | 'NUMBER' | 'DATE' | 'BOOLEAN' | 'SELECT' | 'FILE'
+export type FieldType =
+  | 'STRING'
+  | 'NUMBER'
+  | 'DATE'
+  | 'BOOLEAN'
+  | 'SELECT'
+  | 'FILE'
+  // TODO §76 (D1) : types structurés (valeurs objet/liste, voir dossier/fieldValues.ts)
+  | 'MONEY'
+  | 'REPEATABLE_GROUP'
+  | 'EXTERNAL_REF'
 
 export interface FieldDefinition {
   name: string
@@ -24,6 +36,30 @@ export interface FieldDefinition {
   options?: string[]
   group?: string | null
   sensitive?: boolean
+  /** REPEATABLE_GROUP : sous-champs (plats, non sensibles, un seul niveau). */
+  fields?: FieldDefinition[]
+  /** REPEATABLE_GROUP : bornes du nombre de lignes (défaut 0 et 100, plafond 500). */
+  minRows?: number | null
+  maxRows?: number | null
+  /** TODO §80 (D1, règles) : champ calculé (JSONata borné sur `dossier.fields.x`), recalculé à chaque enregistrement, en lecture seule. */
+  formula?: string | null
+  /** Le champ n'est applicable que si l'expression est vraie. */
+  visibleWhen?: string | null
+  /** Le champ est obligatoire si l'expression est vraie (en plus de `required`). */
+  requiredWhen?: string | null
+  /** TODO §81 (D2) : le champ peut servir de filtre de recherche (jamais sensible ; STRING, NUMBER, DATE, BOOLEAN, SELECT). */
+  searchable?: boolean
+  /** TODO §85 (LC4a) : aide contextuelle (texte brut) et largeur ('HALF' = demi-largeur ; absent = pleine). */
+  helpText?: string | null
+  width?: 'HALF' | null
+}
+
+/** Aperçu des règles d'un type pour des valeurs en cours de saisie (`POST /api/dossier-types/{code}/evaluate-rules`). */
+export interface FieldRulesPreview {
+  computed: Record<string, unknown>
+  hidden: string[]
+  requiredByRule: string[]
+  errors: Array<{ field: string; message: string }>
 }
 
 export interface DossierType {
@@ -115,6 +151,8 @@ export interface DossierListParams {
   status?: DossierStatus | ''
   dossierTypeCode?: string
   reference?: string
+  /** TODO §81 (D2) : filtres sur champs cherchables, clés `contrat`, `montant.gte`… (exigent `dossierTypeCode`). */
+  fieldFilters?: Record<string, string>
 }
 
 export interface WorkflowLink {

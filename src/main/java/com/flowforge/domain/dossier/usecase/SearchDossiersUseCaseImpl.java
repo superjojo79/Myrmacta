@@ -3,6 +3,9 @@ package com.flowforge.domain.dossier.usecase;
 import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.AccessDeniedException;
 import com.flowforge.domain.dossier.model.DossierListItem;
+import com.flowforge.domain.dossier.model.FieldCondition;
+import com.flowforge.domain.dossier.model.FieldDefinition;
+import com.flowforge.domain.dossier.model.InvalidDossierSearchException;
 import com.flowforge.domain.dossier.model.DossierPage;
 import com.flowforge.domain.dossier.model.DossierPermission;
 import com.flowforge.domain.dossier.model.DossierType;
@@ -12,6 +15,7 @@ import com.flowforge.domain.dossier.port.in.SearchDossiersUseCase;
 import com.flowforge.domain.dossier.port.out.DossierSearchPort;
 import com.flowforge.domain.dossier.port.out.DossierTypeAclRepository;
 import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -68,9 +72,12 @@ public final class SearchDossiersUseCaseImpl implements SearchDossiersUseCase {
         }
 
         Set<String> restricted = typeFilter == null ? visibleCodes : Set.of(typeFilter);
+        // Revue D2 M1 : les filtres ne sont validés (donc le schéma du type n'est révélé) qu'APRÈS le contrôle de périmètre —
+        // un appelant sans droit sur le type reçoit une page vide, jamais un message qui décrit ses champs.
         DossierPage page = searchPort.search(
                 tenantId,
-                DossierSearchPort.Filter.restricted(query.status(), restricted, query.referencePrefix()),
+                DossierSearchPort.Filter.restricted(query.status(), restricted, query.referencePrefix())
+                        .withFieldPredicates(fieldPredicates(tenantId, query)),
                 query.page(),
                 query.size());
         return withLabels(tenantId, page);
@@ -82,7 +89,8 @@ public final class SearchDossiersUseCaseImpl implements SearchDossiersUseCase {
                 ? DossierSearchPort.Filter.unrestricted(query.status(), query.referencePrefix())
                 : DossierSearchPort.Filter.restricted(
                         query.status(), typeCodes, query.referencePrefix());
-        return withLabels(tenantId, searchPort.search(tenantId, filter, query.page(), query.size()));
+        return withLabels(tenantId, searchPort.search(
+                tenantId, filter.withFieldPredicates(fieldPredicates(tenantId, query)), query.page(), query.size()));
     }
 
     private DossierPage withLabels(String tenantId, DossierPage page) {
@@ -96,5 +104,95 @@ public final class SearchDossiersUseCaseImpl implements SearchDossiersUseCase {
                 .toList();
         return new DossierPage(
                 labeled, page.page(), page.size(), page.totalElements(), page.totalPages());
+    }
+
+    // ---- TODO §81 (D2) : critères sur champs dynamiques cherchables ----
+
+    private static final java.util.regex.Pattern PLAIN_DECIMAL = java.util.regex.Pattern.compile("-?[0-9]{1,30}(\\.[0-9]{1,15})?");
+
+    private List<DossierSearchPort.FieldPredicate> fieldPredicates(String tenantId, SearchDossiersQuery query) {
+        List<FieldCondition> conditions = query.fieldConditions();
+        if (conditions.isEmpty()) {
+            return List.of();
+        }
+        // D-RECH-GUARD : un filtre sur champ dynamique exige un cadrage — ici, le type de dossier (le schéma qui fait foi).
+        if (query.dossierTypeCode() == null) {
+            throw new InvalidDossierSearchException("field filters need a dossierTypeCode: they are resolved against its schema");
+        }
+        DossierType type = typeRepository.findByCode(tenantId, query.dossierTypeCode())
+                .orElseThrow(() -> new InvalidDossierSearchException("unknown dossier type: " + query.dossierTypeCode()));
+        List<DossierSearchPort.FieldPredicate> predicates = new java.util.ArrayList<>();
+        for (FieldCondition c : conditions) {
+            FieldDefinition def = type.fieldDefinitions().stream()
+                    .filter(d -> d.name().equals(c.field()))
+                    .findFirst()
+                    .orElseThrow(() -> new InvalidDossierSearchException(
+                            "field '" + c.field() + "' is not defined on type " + type.code()));
+            if (!def.isSearchable() || def.isSensitive()) {
+                throw new InvalidDossierSearchException("field '" + c.field() + "' is not searchable");
+            }
+            predicates.add(toPredicate(def, c));
+        }
+        return predicates;
+    }
+
+    private static DossierSearchPort.FieldPredicate toPredicate(FieldDefinition def, FieldCondition c) {
+        Set<FieldCondition.Op> allowed = switch (def.type()) {
+            case STRING -> EnumSet.of(FieldCondition.Op.EQ, FieldCondition.Op.IN, FieldCondition.Op.PREFIX);
+            case SELECT -> EnumSet.of(FieldCondition.Op.EQ, FieldCondition.Op.IN);
+            case NUMBER, DATE -> EnumSet.of(FieldCondition.Op.EQ, FieldCondition.Op.GTE, FieldCondition.Op.LTE);
+            case BOOLEAN -> EnumSet.of(FieldCondition.Op.EQ);
+            default -> throw new InvalidDossierSearchException("field '" + def.name() + "' is not searchable");
+        };
+        if (!allowed.contains(c.op())) {
+            throw new InvalidDossierSearchException("operator " + c.op() + " is not supported on " + def.type() + " field '"
+                    + def.name() + "' (allowed: " + allowed + ")");
+        }
+        DossierSearchPort.Kind kind;
+        List<Object> values = new java.util.ArrayList<>();
+        switch (def.type()) {
+            case NUMBER -> {
+                kind = DossierSearchPort.Kind.NUMBER;
+                for (String v : c.values()) {
+                    String t = v.strip();
+                    if (!PLAIN_DECIMAL.matcher(t).matches()) {
+                        throw new InvalidDossierSearchException("'" + v + "' is not a plain decimal number (field '" + def.name() + "')");
+                    }
+                    values.add(new java.math.BigDecimal(t));
+                }
+            }
+            case BOOLEAN -> {
+                kind = DossierSearchPort.Kind.BOOLEAN;
+                String t = c.values().get(0).strip();
+                if (!"true".equals(t) && !"false".equals(t)) {
+                    throw new InvalidDossierSearchException("a boolean filter takes true or false (field '" + def.name() + "')");
+                }
+                values.add(Boolean.valueOf(t));
+            }
+            case DATE -> {
+                kind = DossierSearchPort.Kind.TEXT;
+                for (String v : c.values()) {
+                    try {
+                        values.add(java.time.LocalDate.parse(v.strip()).toString());
+                    } catch (java.time.format.DateTimeParseException e) {
+                        throw new InvalidDossierSearchException("'" + v + "' is not an ISO date (yyyy-MM-dd) (field '" + def.name() + "')");
+                    }
+                }
+            }
+            case SELECT -> {
+                kind = DossierSearchPort.Kind.TEXT;
+                for (String v : c.values()) {
+                    if (!def.options().contains(v)) {
+                        throw new InvalidDossierSearchException("'" + v + "' is not an option of field '" + def.name() + "'");
+                    }
+                    values.add(v);
+                }
+            }
+            default -> {
+                kind = DossierSearchPort.Kind.TEXT;
+                values.addAll(c.values());
+            }
+        }
+        return new DossierSearchPort.FieldPredicate(def.name(), kind, c.op(), values);
     }
 }

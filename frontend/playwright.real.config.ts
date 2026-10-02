@@ -7,6 +7,8 @@ export default defineConfig({
   workers: 1,
   reporter: 'list',
   use: {
+    // L'interface suit la langue du navigateur (D7) : le test attend les libellés français, quelle que soit la machine (CI en en-US).
+    locale: 'fr-FR',
     launchOptions: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE
       ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE }
       : {},

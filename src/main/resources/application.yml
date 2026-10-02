@@ -84,9 +84,13 @@ spring:
           oidc:
             issuer-uri: ${OIDC_ISSUER_URI}
   ai:
+    # Assistant de conception (D-ASSIST-PROVIDER) : le ChatModel Anthropic du starter est construit par AssistantConfig, et seulement
+    # si app.assistant.enabled=true ; l'auto-configuration du starter est coupée (sans clé elle empêcherait de démarrer).
+    model:
+      chat: none
     # Serveur MCP M2M (serveur-mcp, D-TRANSPORT/D-ENDPOINT=A) — outillage interne
-    # (API_SERVICE) sous la chaîne Security /api/m2m/** existante. Pas de starter
-    # chat/model : capabilities.tool seul, annotation-scanner détecte les @McpTool.
+    # (API_SERVICE) sous la chaîne Security /api/m2m/** existante : capabilities.tool seul,
+    # annotation-scanner détecte les @McpTool.
     mcp:
       server:
         enabled: true

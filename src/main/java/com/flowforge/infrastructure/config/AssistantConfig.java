@@ -10,9 +10,10 @@ import com.flowforge.domain.assistant.usecase.ChatWithAssistantUseCaseImpl;
 import com.flowforge.domain.assistant.usecase.ManageAssistantActionsUseCaseImpl;
 import com.flowforge.domain.assistant.usecase.ManageConversationsUseCaseImpl;
 import com.flowforge.domain.dossier.TenantAdminGuard;
-import com.flowforge.infrastructure.assistant.AnthropicLanguageModel;
+import com.flowforge.infrastructure.assistant.AnthropicChatModels;
 import com.flowforge.infrastructure.assistant.DisabledLanguageModel;
 import com.flowforge.infrastructure.assistant.McpDesignToolCatalog;
+import com.flowforge.infrastructure.assistant.SpringAiLanguageModel;
 import java.time.Clock;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.ApplicationContext;
@@ -27,7 +28,7 @@ class AssistantConfig {
 
     @Bean
     LanguageModelPort languageModelPort(AssistantProperties properties, ObjectMapper mapper) {
-        return properties.enabled() ? new AnthropicLanguageModel(properties, mapper) : new DisabledLanguageModel();
+        return properties.enabled() ? new SpringAiLanguageModel(AnthropicChatModels.create(properties), properties.model(), mapper) : new DisabledLanguageModel();
     }
 
     @Bean

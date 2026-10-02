@@ -492,6 +492,7 @@ les descriptions d'outils et les résultats d'outils de configuration (types, fo
 N'y saisissez pas de données personnelles. L'assistant **ne publie jamais** (les processus et tables DMN restent des brouillons à relire), n'applique pas de bundle de
 configuration et n'écrit jamais de secret de connecteur. Les conversations sont propres à leur auteur ; un administrateur ne lit pas celles d'un autre.
 Le pare-feu sortant doit autoriser le seul hôte de `APP_ASSISTANT_BASE_URL`.
+Techniquement, l'assistant s'appuie sur le starter Spring AI Anthropic ; son auto-configuration est coupée (`spring.ai.model.chat=none`) et le modèle n'est construit que si `APP_ASSISTANT_ENABLED=true`. Les redirections HTTP ne sont jamais suivies et aucun appel n'est relancé automatiquement.
 
 ## 16. E-mail entrant et bus Azure (TODO §87)
 

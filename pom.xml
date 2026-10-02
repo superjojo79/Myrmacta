@@ -31,7 +31,7 @@
         <jsonata.version>0.9.10</jsonata.version>
         <poi.version>5.5.1</poi.version>
         <commons-csv.version>1.14.1</commons-csv.version>
-        <!-- D-SDK=A (serveur-mcp) — Spring AI MCP server WebMVC starter, pas de starter chat/model -->
+        <!-- D-SDK=A (serveur-mcp) — Spring AI MCP server WebMVC starter ; D-ASSIST-PROVIDER (revue du 2026-10-02) — starter modèle Anthropic -->
         <spring-ai.version>2.0.1</spring-ai.version>
         <skip.frontend>false</skip.frontend>
         <!-- Override du Tomcat embarqué géré par spring-boot-starter-parent 4.1.1 (fige 11.0.24) :
@@ -163,6 +163,12 @@
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-mcp-server-webmvc</artifactId>
+        </dependency>
+
+        <!-- Assistant de conception (LC3, D-ASSIST-PROVIDER) — modèle Anthropic via Spring AI, derrière LanguageModelPort ; inactif par défaut -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-anthropic</artifactId>
         </dependency>
 
         <!-- connecteurs-cible (lot B1) — kafka : consumer TRIGGER (D-KAFKA-ROLE=A, requirements) -->

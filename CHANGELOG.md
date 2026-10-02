@@ -28,6 +28,12 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ## [Non publié]
 
+### Modifié
+
+- **TODO §86 (LC3, revue D-ASSIST-PROVIDER)** — L'assistant de conception passe par le **starter Spring AI** (`spring-ai-starter-model-anthropic`, `ChatModel`) derrière le même port `LanguageModelPort`, à la
+  place de l'adaptateur HTTP maison. Configuration `APP_ASSISTANT_*` inchangée ; toujours **désactivé par défaut**, démarrage refusé sans clé, https obligatoire, redirections jamais suivies, erreurs du
+  fournisseur jamais relayées, aucune relance automatique. L'auto-configuration du starter est coupée (`spring.ai.model.chat=none`) : le modèle n'est construit que si l'assistant est activé.
+
 ### Ajouté
 
 - **TODO §90 (D7)** — **Interface en français et en anglais** (`vue-i18n`) : tout le SPA et le portail public, avec sélecteur de langue (choix conservé dans le navigateur), langue par défaut du

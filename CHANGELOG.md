@@ -179,6 +179,10 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Corrigé
 
+- **[PR #158](https://github.com/superjojo79/FlowForge/pull/158) — suite de TODO §91** — `SlaAlertConcurrencyIT` échouait
+  de façon aléatoire en CI (« une seule alerte… expected 1 but was 0 ») : le pool de connexions des tests, plafonné à 4,
+  se bloquait sous les tests à 4 threads (timeout 30 s, transaction annulée). Pool Hikari par défaut rétabli.
+
 - **[PR #157](https://github.com/superjojo79/FlowForge/pull/157) — TODO §91** — La génération de référence
   de dossier (`SequentialReferenceGenerator`) échouait sous PostgreSQL dès que le compteur existait
   déjà (transaction avortée par la violation de clé, masquée par H2) : `INSERT … ON CONFLICT DO NOTHING`.

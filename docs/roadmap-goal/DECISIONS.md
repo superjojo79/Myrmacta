@@ -3,6 +3,13 @@
 > Tenu par l'agent selon [CHARTE.md](CHARTE.md) §4. Une ligne par décision, écrite au moment où elle est
 > prise. Les décisions **⚠ à revoir** sont à relire en priorité.
 
+## Revue par l'utilisateur (2026-10-02)
+
+Les 134 décisions ont été relues une à une (⚠) ou par lot (autres). **132 validées sans changement.** **2 à modifier** (changements demandés, à réaliser) :
+
+- **D-ASSIST-PROVIDER** — l'utilisateur préfère un **starter Spring AI** au port + adaptateur HTTP maison ; l'assistant reste **désactivé par défaut**. À réaliser : remplacer l'adaptateur `AnthropicLanguageModel` par le starter Spring AI derrière le même port `LanguageModelPort`.
+- **D-INTEG-MAIL-PROTOCOL** — l'utilisateur demande d'**ajouter Microsoft Graph** à IMAP (second connecteur du même SPI `PollingTriggerConnector`, authentification OAuth2 `client_credentials` de D3a, suivi par deltas).
+
 ## À revoir en priorité (⚠)
 
 Décisions prises seul, dont le choix mérite une relecture humaine (contrat, coût, conformité, périmètre ou irréversibilité). Détail complet dans le tableau ci-dessous.

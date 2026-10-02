@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.flowforge.support.OidcClientTestConfiguration;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -18,6 +19,17 @@ class DocumentTemplateSchemaIT {
 
     @Autowired
     private JdbcTemplate jdbc;
+
+    /**
+     * Le contexte (donc la base PostgreSQL) est partagé avec d'autres tests via le cache Spring. Les
+     * lignes insérées en SQL brut (html_content en texte) ne sont pas relisibles par l'entité JPA
+     * ({@code @Lob String} : sous PostgreSQL Hibernate lit la colonne comme un OID de large object) :
+     * on les supprime pour ne pas polluer {@code JpaDocumentTemplateRepositoryAdapterTest}.
+     */
+    @AfterEach
+    void removeRowsInsertedBySqlOnly() {
+        jdbc.update("DELETE FROM document_template WHERE template_key LIKE 'uq-%'");
+    }
 
     @Test
     void liquibase_createsDocumentTemplateTable() {

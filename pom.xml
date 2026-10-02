@@ -34,6 +34,10 @@
         <!-- D-SDK=A (serveur-mcp) — Spring AI MCP server WebMVC starter ; D-ASSIST-PROVIDER (revue du 2026-10-02) — starter modèle Anthropic -->
         <spring-ai.version>2.0.1</spring-ai.version>
         <skip.frontend>false</skip.frontend>
+        <!-- PostgreSQL embarqué (tests + mode démo/QA) — version majeure alignée sur docker-compose
+             (postgres:17-alpine). Les binaires sont fournis par le BOM zonky ci-dessous. -->
+        <embedded-postgres.version>2.2.2</embedded-postgres.version>
+        <embedded-postgres-binaries.version>17.11.0</embedded-postgres-binaries.version>
         <!-- Override du Tomcat embarqué géré par spring-boot-starter-parent 4.1.1 (fige 11.0.24) :
              11.0.24 porte plusieurs CVE critiques (CVSS 9.8/9.1 — CVE-2026-65905, CVE-2026-65637,
              CVE-2026-68525, CVE-2026-65182 notamment), corrigées à partir de 11.0.25/11.0.26. À
@@ -47,6 +51,13 @@
                 <groupId>org.springframework.ai</groupId>
                 <artifactId>spring-ai-bom</artifactId>
                 <version>${spring-ai.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.zonky.test.postgres</groupId>
+                <artifactId>embedded-postgres-binaries-bom</artifactId>
+                <version>${embedded-postgres-binaries.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -225,26 +236,24 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>com.tngtech.archunit</groupId>
             <artifactId>archunit-junit5</artifactId>
             <version>${archunit.version}</version>
             <scope>test</scope>
         </dependency>
 
-        <!-- Fiabilisation-tests-plateforme : isolation search_path + séquence multi-pods sous Postgres réel -->
+        <!-- PostgreSQL embarqué (zonky) : moteur réel des tests, sans Docker ni PG préinstallé -->
+        <dependency>
+            <groupId>io.zonky.test</groupId>
+            <artifactId>embedded-postgres</artifactId>
+            <version>${embedded-postgres.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Testcontainers : uniquement pour ClamAvAttachmentScanIT (conteneur ClamAV). PostgreSQL de test = zonky. -->
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers-junit-jupiter</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>testcontainers-postgresql</artifactId>
             <scope>test</scope>
         </dependency>
 
@@ -258,6 +267,107 @@
     </dependencies>
 
     <profiles>
+
+        <!-- ./mvnw -Pembedded-db package — jar de DÉMO/QA avec PostgreSQL embarqué persistant (zonky).
+             Activer ensuite le profil Spring `embedded-db` (voir GETTING-STARTED.md § base embarquée).
+             Le jar de production (sans ce profil) ne contient ni zonky ni les binaires PostgreSQL ;
+             src/embedded (lanceur) et src/embedded-test (ses tests) ne sont compilés qu'ici. -->
+        <profile>
+            <id>embedded-db</id>
+            <dependencies>
+                <dependency>
+                    <groupId>io.zonky.test</groupId>
+                    <artifactId>embedded-postgres</artifactId>
+                    <version>${embedded-postgres.version}</version>
+                    <scope>compile</scope>
+                </dependency>
+                <dependency>
+                    <groupId>io.zonky.test.postgres</groupId>
+                    <artifactId>embedded-postgres-binaries-linux-arm64v8</artifactId>
+                    <scope>runtime</scope>
+                </dependency>
+                <dependency>
+                    <groupId>io.zonky.test.postgres</groupId>
+                    <artifactId>embedded-postgres-binaries-darwin-arm64v8</artifactId>
+                    <scope>runtime</scope>
+                </dependency>
+            </dependencies>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>build-helper-maven-plugin</artifactId>
+                        <version>3.6.1</version>
+                        <executions>
+                            <execution>
+                                <id>add-embedded-sources</id>
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>add-source</goal>
+                                </goals>
+                                <configuration>
+                                    <sources>
+                                        <source>src/embedded/java</source>
+                                    </sources>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>add-embedded-resources</id>
+                                <phase>generate-resources</phase>
+                                <goals>
+                                    <goal>add-resource</goal>
+                                </goals>
+                                <configuration>
+                                    <resources>
+                                        <resource>
+                                            <directory>src/embedded/resources</directory>
+                                        </resource>
+                                    </resources>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>add-embedded-test-sources</id>
+                                <phase>generate-test-sources</phase>
+                                <goals>
+                                    <goal>add-test-source</goal>
+                                </goals>
+                                <configuration>
+                                    <sources>
+                                        <source>src/embedded-test/java</source>
+                                    </sources>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- Même script SQL que docker-compose (docker/postgres/init) : une seule source de
+                         vérité pour le schéma tenant et le rôle applicatif. -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-resources-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>copy-embedded-init-sql</id>
+                                <phase>process-resources</phase>
+                                <goals>
+                                    <goal>copy-resources</goal>
+                                </goals>
+                                <configuration>
+                                    <outputDirectory>${project.build.outputDirectory}/db/embedded</outputDirectory>
+                                    <resources>
+                                        <resource>
+                                            <directory>docker/postgres/init</directory>
+                                            <includes>
+                                                <include>01-init-tenant-schema.sql</include>
+                                            </includes>
+                                        </resource>
+                                    </resources>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
         <!-- ./mvnw -Psecurity-scan verify — scan CVE des dépendances (OWASP Dependency-Check).
              Non lié au cycle de vie par défaut : appelle le NVD (réseau + cache local), pas
              adapté à chaque build local/CI standard. -->
@@ -327,6 +437,15 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
+                    <!-- Les *IT tournent désormais dans `verify` (PostgreSQL embarqué zonky : plus de
+                         dépendance à Docker). Surefire seul, sans plugin Failsafe, comme le reste du dépôt. -->
+                    <includes>
+                        <include>**/Test*.java</include>
+                        <include>**/*Test.java</include>
+                        <include>**/*Tests.java</include>
+                        <include>**/*TestCase.java</include>
+                        <include>**/*IT.java</include>
+                    </includes>
                     <!-- D-44 follow-up: must be a forked-JVM startup property, not a
                          System.setProperty() call in application code — Surefire reuses
                          JVM forks across test classes, and whichever test happens to

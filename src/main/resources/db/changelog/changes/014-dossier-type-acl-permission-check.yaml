@@ -6,9 +6,9 @@ databaseChangeLog:
         - sqlFile:
             path: sql/014-dossier-type-acl-permission-check.sql
             relativeToChangelogFile: true
-            dbms: postgresql,h2
+            dbms: postgresql
       rollback:
         - sqlFile:
             path: sql/014-dossier-type-acl-permission-check-rollback.sql
             relativeToChangelogFile: true
-            dbms: postgresql,h2
+            dbms: postgresql

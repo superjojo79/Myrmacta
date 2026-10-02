@@ -1,1 +1,0 @@
-DROP INDEX IF EXISTS uq_notification_webhook_tenant_name_active;

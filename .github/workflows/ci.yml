@@ -26,7 +26,18 @@ jobs:
       - name: Build and verify (tests, ArchUnit, Jacoco)
         run: ./mvnw -B verify
 
-      # TODO §72 : parcours réel de bout en bout (navigateur + Spring Boot H2, sans API simulée).
+      # Le jar de production ne doit embarquer ni zonky ni PostgreSQL embarqué (profil démo/QA).
+      - name: Check production jar has no embedded database
+        run: scripts/check-no-embedded-db-in-jar.sh
+
+      # Profil démo/QA : persistance de la base embarquée (arrêt/redémarrage de l'application).
+      - name: Embedded database profile tests (demo/QA)
+        run: >
+          ./mvnw -B test -Pembedded-db -Dskip.frontend=true -Djacoco.skip=true
+          -Dtest='ZonkyEmbeddedDbLauncherTest,EmbeddedDbProfileRestartIT'
+          -Dsurefire.failIfNoSpecifiedTests=false
+
+      # TODO §72 : parcours réel de bout en bout (navigateur + Spring Boot sur PostgreSQL embarqué, sans API simulée).
       # Réutilise le portail construit par l'étape précédente (target/classes/static/portal).
       - name: Install Playwright browsers (signature E2E)
         run: npx playwright install --with-deps chromium

@@ -32,7 +32,7 @@ import org.springframework.context.annotation.Import;
 
 /**
  * Dimensionnement des verrous Flowable (lockOwner/lockExpirationTime) sous contention réelle —
- * fiabilisation-tests-plateforme, D-FLOWABLE-LOCK-TEST : H2 + threads réels, exercice direct de
+ * fiabilisation-tests-plateforme, D-FLOWABLE-LOCK-TEST : PostgreSQL embarqué + threads réels, exercice direct de
  * {@link AcquireJobsCmd}, la commande que l'AsyncExecutor de Flowable exécute lui-même en
  * production pour acquérir un job. L'exécuteur async intégré est désactivé
  * ({@code flowable.async-executor-activate=false}) pour que seuls les threads du test se

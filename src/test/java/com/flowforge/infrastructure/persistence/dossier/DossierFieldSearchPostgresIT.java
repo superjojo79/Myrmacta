@@ -17,66 +17,28 @@ import com.flowforge.domain.dossier.port.in.SearchDossiersUseCase;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
 import com.flowforge.support.OidcClientTestConfiguration;
-import com.flowforge.support.PostgresTestContainerSupport;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 
 /**
- * TODO §81 (D2) — recherche sur champs dynamiques sur un vrai PostgreSQL (jsonb, opérateur {@code @>}, index GIN). Ignoré sans
- * Docker ni {@code FLOWFORGE_TEST_PG_URL} ; exécuté en CI (Testcontainers) et en local avec un serveur externe.
+ * TODO §81 (D2) — recherche sur champs dynamiques sur un vrai PostgreSQL (jsonb, opérateur {@code @>}, index GIN). Tourne
+ * sur le PostgreSQL embarqué des tests ({@code EmbeddedPostgresEnvironmentPostProcessor}), comme tous les tests Spring.
  */
-@SpringBootTest
+// Propriété factice : contexte Spring (donc base PostgreSQL embarquée) dédié à ce test, qui sème ses propres données.
+@SpringBootTest(properties = "test.context=field-search-postgres")
 @Import(OidcClientTestConfiguration.class)
-@EnabledIf("postgresAvailable")
 class DossierFieldSearchPostgresIT {
 
     private static final String TENANT = "tenant_dev";
-    private static final String SCHEMA = "d2_search_" + UUID.randomUUID().toString().replace("-", "");
-
-    static boolean postgresAvailable() {
-        return PostgresTestContainerSupport.isDockerAvailable();
-    }
-
-    @BeforeAll
-    static void schema() {
-        PostgresTestContainerSupport.createSchema(SCHEMA);
-    }
-
-    @org.junit.jupiter.api.AfterAll
-    static void dropSchema() {
-        if (postgresAvailable()) {
-            PostgresTestContainerSupport.dropSchema(SCHEMA);
-        }
-    }
-
-    @DynamicPropertySource
-    static void datasource(DynamicPropertyRegistry registry) {
-        if (!postgresAvailable()) {
-            return;
-        }
-        PostgresTestContainerSupport.createSchema(SCHEMA);
-        String url = PostgresTestContainerSupport.jdbcUrl();
-        registry.add("spring.datasource.url", () -> url + (url.contains("?") ? "&" : "?") + "currentSchema=" + SCHEMA);
-        registry.add("spring.datasource.username", PostgresTestContainerSupport::adminUsername);
-        registry.add("spring.datasource.password", PostgresTestContainerSupport::adminPassword);
-        registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
-        // Flowable détecte ses tables par les métadonnées JDBC, tous schémas confondus : on lui donne le schéma du test.
-        registry.add("flowable.database-schema", () -> SCHEMA);
-        registry.add("flowable.database-schema-update", () -> "true");
-    }
 
     @Autowired
     private DossierRepository dossierRepository;
@@ -182,11 +144,11 @@ class DossierFieldSearchPostgresIT {
     @Test
     void theColumnIsJsonbWithAGinIndexThatServesContainment() {
         assertThat(jdbc.queryForObject(
-                        "select data_type from information_schema.columns where table_schema = ? and table_name = 'dossier' and column_name = 'fields'",
-                        String.class, SCHEMA))
+                        "select data_type from information_schema.columns where table_schema = current_schema() and table_name = 'dossier' and column_name = 'fields'",
+                        String.class))
                 .isEqualTo("jsonb");
         assertThat(jdbc.queryForObject(
-                        "select indexdef from pg_indexes where schemaname = ? and indexname = 'idx_dossier_fields_gin'", String.class, SCHEMA))
+                        "select indexdef from pg_indexes where schemaname = current_schema() and indexname = 'idx_dossier_fields_gin'", String.class))
                 .contains("USING gin").contains("jsonb_path_ops");
         // le plan choisi quand le planificateur n'a pas d'alternative séquentielle : l'index GIN sert bien l'opérateur @>
         String plan = jdbc.execute((java.sql.Connection con) -> {

@@ -20,7 +20,11 @@ RUN chmod +x mvnw
 COPY src/ src/
 COPY frontend/ frontend/
 
-RUN ./mvnw -B clean package -DskipTests
+# Image de production par défaut. Image de DÉMO/QA avec PostgreSQL embarqué persistant :
+#   docker build --build-arg MAVEN_PROFILES=embedded-db -t flowforge:demo .
+# (voir GETTING-STARTED.md § « Base embarquée persistante » ; jamais en production).
+ARG MAVEN_PROFILES=""
+RUN ./mvnw -B clean package -DskipTests ${MAVEN_PROFILES:+-P${MAVEN_PROFILES}}
 
 # --- Stage 2 : runtime --------------------------------------------------------
 # Image minimale : JRE seule (pas de JDK, pas de sources, pas de Maven), utilisateur
@@ -32,6 +36,13 @@ RUN groupadd --system --gid 10001 flowforge \
 
 WORKDIR /app
 COPY --from=build --chown=flowforge:flowforge /workspace/target/flowforge-*.jar app.jar
+
+# Répertoire des données du PostgreSQL embarqué (profil Spring embedded-db, image de démo/QA
+# uniquement) : à monter en volume (-v flowforge-data:/data) pour conserver les données entre
+# deux démarrages. Sans effet dans l'image de production.
+RUN mkdir -p /data/embedded-db && chown -R flowforge:flowforge /data
+ENV APP_EMBEDDED_DB_DATA_DIR=/data/embedded-db
+VOLUME /data
 
 USER flowforge
 

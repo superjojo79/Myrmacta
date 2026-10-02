@@ -22,6 +22,8 @@ class JpaUserNotificationRepositoryAdapterTest {
     @Autowired
     private UserNotificationRepository repository;
 
+    private static final tools.jackson.databind.json.JsonMapper JSON = tools.jackson.databind.json.JsonMapper.builder().build();
+
     @Test
     void save_persistsUnreadNotification() {
         Instant now = Instant.parse("2026-09-22T10:00:00Z");
@@ -35,7 +37,9 @@ class JpaUserNotificationRepositoryAdapterTest {
         assertThat(record.id()).isEqualTo(id);
         assertThat(record.tenantId()).isEqualTo("tenant_dev");
         assertThat(record.recipient()).isEqualTo(recipient);
-        assertThat(record.payloadJson()).isEqualTo("{\"type\":\"X\"}");
+        // jsonb (PostgreSQL) normalise la mise en forme : comparaison sémantique, pas textuelle.
+        assertThat(JSON.readTree(record.payloadJson()))
+                .isEqualTo(JSON.readTree("{\"type\":\"X\"}"));
         assertThat(record.createdAt()).isEqualTo(now);
         assertThat(record.readAt()).isNull();
         assertThat(record.isRead()).isFalse();

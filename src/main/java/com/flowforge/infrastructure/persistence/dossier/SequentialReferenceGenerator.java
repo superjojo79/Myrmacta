@@ -4,7 +4,6 @@ import com.flowforge.domain.dossier.port.out.DossierReferenceGenerator;
 import java.time.Clock;
 import java.time.ZoneOffset;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +14,7 @@ public class SequentialReferenceGenerator implements DossierReferenceGenerator {
     private static final String INSERT_SQL = """
             insert into dossier_reference_seq (tenant_id, dossier_type_code, "year", last_value)
             values (?, ?, ?, 0)
+            on conflict do nothing
             """;
 
     private static final String UPDATE_SQL = """
@@ -46,11 +46,10 @@ public class SequentialReferenceGenerator implements DossierReferenceGenerator {
     @Transactional
     public String generate(String tenantId, String dossierTypeCode) {
         int year = clock.instant().atZone(ZoneOffset.UTC).getYear();
-        try {
-            jdbcTemplate.update(INSERT_SQL, tenantId, dossierTypeCode, year);
-        } catch (DuplicateKeyException ignored) {
-            // Existing counter row: proceed to the atomic increment below.
-        }
+        // "on conflict do nothing" (et non un catch de DuplicateKeyException) : sous PostgreSQL une
+        // violation de contrainte avorte la transaction en cours, l'UPDATE suivant échouerait alors
+        // ("current transaction is aborted") dès que la ligne du compteur existe déjà.
+        jdbcTemplate.update(INSERT_SQL, tenantId, dossierTypeCode, year);
         jdbcTemplate.update(UPDATE_SQL, tenantId, dossierTypeCode, year);
         Long sequence = jdbcTemplate.queryForObject(SELECT_SQL, Long.class, tenantId, dossierTypeCode, year);
 

@@ -60,20 +60,11 @@ databaseChangeLog:
             relativeToChangelogFile: true
             dbms: postgresql
             splitStatements: false
-        - sqlFile:
-            path: sql/006-notification-webhook-active-index-h2.sql
-            relativeToChangelogFile: true
-            dbms: h2
-            splitStatements: true
       rollback:
         - sqlFile:
             path: sql/006-notification-webhook-active-index-rollback-postgresql.sql
             relativeToChangelogFile: true
             dbms: postgresql
-        - sqlFile:
-            path: sql/006-notification-webhook-active-index-rollback-h2.sql
-            relativeToChangelogFile: true
-            dbms: h2
         - dropTable:
             tableName: notification_webhook
 

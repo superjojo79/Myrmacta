@@ -6,4 +6,4 @@ databaseChangeLog:
         - sqlFile:
             path: sql/008-dossier-list-indexes.sql
             relativeToChangelogFile: true
-            dbms: postgresql,h2
+            dbms: postgresql

@@ -118,11 +118,6 @@ databaseChangeLog:
             relativeToChangelogFile: true
             dbms: postgresql
             splitStatements: false
-        - sqlFile:
-            path: sql/025-portal-link-live-index-h2.sql
-            relativeToChangelogFile: true
-            dbms: h2
-            splitStatements: true
       rollback:
         - dropTable:
             tableName: portal_link

@@ -36,6 +36,12 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
+- **[PR #157](https://github.com/superjojo79/FlowForge/pull/157) — TODO §91** — PostgreSQL embarqué (zonky) :
+  tous les tests tournent sur un PostgreSQL 17 réel, sans Docker (une base par contexte Spring), et un
+  profil `embedded-db` (`./mvnw -Pembedded-db package`) offre une base **persistante** pour les
+  démos/QA (`APP_EMBEDDED_DB_DATA_DIR`, `scripts/embedded-db.sh`, build Docker `MAVEN_PROFILES`).
+  Absent du jar de production, refusé en `APP_ENVIRONMENT=production` ou profil `prod`. Garde-fou `ChangelogChecksumStabilityIT`
+  (aucun changeSet appliqué ne peut être modifié).
 - **TODO §87 (D3c-bis, revue D-INTEG-MAIL-PROTOCOL)** — **E-mail entrant par Microsoft Graph** (`graph-mail-inbound`) : second connecteur du même SPI que l'IMAP, pour Exchange Online (OAuth2
   `client_credentials`, hôtes Graph seuls, aucun mot de passe). Mêmes règles que l'IMAP, désormais communes (`InboundMailRouting`) : corrélation par référence, expéditeur attesté, réponses automatiques
   refusées, pièces jointes contrôlées, message rangé (jamais supprimé) et jamais remis deux fois. Sans curseur à conserver. Voir `DEPLOIEMENT.md` §16 (permission `Mail.ReadWrite` à restreindre à la boîte).
@@ -166,6 +172,16 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
   les process `-smoke` existants.
 
 ### Modifié
+
+- **[PR #157](https://github.com/superjojo79/FlowForge/pull/157) — TODO §91** — H2 et les branches
+  `dbms: h2` des changelogs sont supprimés (checksums PostgreSQL inchangés) ; les classes `*IT`
+  (jusqu'ici jamais exécutées par `./mvnw verify`) y sont désormais incluses.
+
+### Corrigé
+
+- **[PR #157](https://github.com/superjojo79/FlowForge/pull/157) — TODO §91** — La génération de référence
+  de dossier (`SequentialReferenceGenerator`) échouait sous PostgreSQL dès que le compteur existait
+  déjà (transaction avortée par la violation de clé, masquée par H2) : `INSERT … ON CONFLICT DO NOTHING`.
 
 - **PR [#117](https://github.com/superjojo79/FlowForge/pull/117)** — L’écran Admin → Connecteurs
   génère un formulaire champ par champ depuis `configSchema` au lieu d’un JSON brut (lot A2).

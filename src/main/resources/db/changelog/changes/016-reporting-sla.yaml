@@ -56,9 +56,9 @@ databaseChangeLog:
         - sqlFile:
             path: sql/016-dossier-created-at-index.sql
             relativeToChangelogFile: true
-            dbms: postgresql,h2
+            dbms: postgresql
       rollback:
         - sqlFile:
             path: sql/016-dossier-created-at-index-rollback.sql
             relativeToChangelogFile: true
-            dbms: postgresql,h2
+            dbms: postgresql

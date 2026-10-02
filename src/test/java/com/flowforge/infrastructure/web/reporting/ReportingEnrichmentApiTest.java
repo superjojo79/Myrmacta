@@ -379,7 +379,7 @@ class ReportingEnrichmentApiTest {
 
     private java.util.List<String> channelsFor(String reference) {
         return jdbcTemplate.query(
-                "SELECT channel FROM notification_outbox WHERE tenant_id = ? AND payload_json LIKE ?",
+                "SELECT channel FROM notification_outbox WHERE tenant_id = ? AND CAST(payload_json AS VARCHAR) LIKE ?",
                 (rs, row) -> rs.getString(1),
                 TENANT,
                 "%" + reference + "%");

@@ -24,7 +24,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 
-/** T1.5 / S-EMIT-5 / S-EMIT-10 (variante H2) : persistance des demandes de signature (TODO §72). */
+/** T1.5 / S-EMIT-5 / S-EMIT-10 (PostgreSQL embarqué) : persistance des demandes de signature (TODO §72). */
 @SpringBootTest
 @Import(OidcClientTestConfiguration.class)
 class JpaSignatureRequestRepositoryAdapterTest {

@@ -23,7 +23,7 @@ import org.springframework.context.annotation.Import;
  * « Résolution en cascade ») — fiabilisation-tests-plateforme, trou confirmé en Phase 1
  * (aucun test dédié n'existait). La cascade elle-même est implémentée par le classement SQL de
  * {@code findBestActive} ({@code SpringDataDocumentTemplateRepository}), donc ce test passe par
- * le vrai repository JPA (H2) plutôt que par un mock, pour exercer le classement réel : match
+ * le vrai repository JPA (PostgreSQL embarqué) plutôt que par un mock, pour exercer le classement réel : match
  * exact (variant+locale) > repli locale (variant seul) > repli variant (locale seule) > défaut
  * (ni variant ni locale) > {@link TemplateNotFoundException}.
  */

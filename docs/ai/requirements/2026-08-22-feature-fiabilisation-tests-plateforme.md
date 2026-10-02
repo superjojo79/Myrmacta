@@ -16,6 +16,10 @@ todo_ref: TODO.md §28, §26 (reste), §37 · FILE-ATTENTE.md (priorité 1)
 
 > Requirements **reviewed** (Phase 2), 6 décisions actées, aucun point
 > ouvert bloquant.
+>
+> **Mise à jour 2026-10-02 :** D-TESTCONTAINERS-EXEC et la partie PostgreSQL de D-TESTCONTAINERS sont
+> **remplacées** par [zonky-embedded-postgres](2026-10-02-feature-zonky-embedded-postgres.md) (PostgreSQL
+> embarqué, sans Docker ; les tests concernés s'exécutent désormais).
 
 ## Problem Statement
 

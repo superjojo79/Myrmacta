@@ -13,7 +13,7 @@ Appliquer ces règles **avant** les skills génériques Java/Spring/Vue. En cas 
 |--------|--------|
 | Backend | Java 25 · Spring Boot 4.1.x · Maven mono-module |
 | Workflow | Flowable 8 Community (BPMN 2.0) |
-| Persistence | PostgreSQL + JPA + Liquibase · schéma **par tenant** |
+| Persistence | PostgreSQL + JPA + Liquibase · schéma **par tenant** · tests sur **PostgreSQL embarqué zonky** (pas de H2, pas de Docker ; non-root requis, sinon `TEST_PG_URL`) · `*IT` inclus dans `verify` · changeSets appliqués **jamais modifiés** (`ChangelogChecksumStabilityIT`) |
 | PDF | Flying Saucer + OpenPDF (+ jsoup) — pas iText |
 | Auth | OAuth2/OIDC BFF (Keycloak par défaut) — pas de JWT dans le browser |
 | Frontend | Vue 3 + TypeScript + Vite + PrimeVue + Pinia, embarqué dans `src/main/resources/static/` |

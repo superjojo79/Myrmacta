@@ -73,8 +73,3 @@ databaseChangeLog:
             relativeToChangelogFile: true
             dbms: postgresql
             splitStatements: true
-        - sqlFile:
-            path: sql/004-document-template-unique-indexes-h2.sql
-            relativeToChangelogFile: true
-            dbms: h2
-            splitStatements: true

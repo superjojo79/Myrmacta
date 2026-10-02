@@ -449,6 +449,15 @@ une clé de configuration d'un connecteur existant (fusion) et ne change pas son
 
 ------
 
+## 18. Base de données — PostgreSQL géré uniquement
+
+La production utilise un **PostgreSQL géré** (schéma et rôle par tenant, §4). Le mode « base embarquée
+persistante » (`-Pembedded-db`, profil Spring `embedded-db`, voir GETTING-STARTED §18) est réservé aux
+démos/QA : il n'est **pas** dans le jar construit sans ce profil (la CI le vérifie avec
+`scripts/check-no-embedded-db-in-jar.sh`), et l'application refuse de démarrer si `embedded-db` est
+combiné à un profil `prod`/`production` ou si `APP_ENVIRONMENT` est absent ou vaut `production`. Ne jamais publier l'image construite avec
+`--build-arg MAVEN_PROFILES=embedded-db` comme image de production.
+
 ## Ce qui n'est pas (encore) couvert par ce guide
 
 - **Démarrage de l'instance et bloc reverse-proxy** restent des étapes documentées (§1/§3/§4), pas

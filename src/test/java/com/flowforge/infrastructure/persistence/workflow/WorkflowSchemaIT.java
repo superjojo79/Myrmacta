@@ -30,8 +30,8 @@ class WorkflowSchemaIT {
     void processInstanceLookupIndexExists() {
         List<String> indexes = jdbcTemplate.queryForList(
                 """
-                SELECT lower(index_name) FROM information_schema.indexes
-                WHERE lower(table_name) = 'dossier_workflow_link'
+                SELECT lower(indexname) FROM pg_indexes
+                WHERE schemaname = current_schema() AND lower(tablename) = 'dossier_workflow_link'
                 """,
                 String.class);
 

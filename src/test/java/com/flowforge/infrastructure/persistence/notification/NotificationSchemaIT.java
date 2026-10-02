@@ -55,9 +55,9 @@ class NotificationSchemaIT {
     void notificationOutbox_hasStatusNextAttemptIndex() {
         Integer count = jdbc.queryForObject(
                 """
-                SELECT COUNT(*) FROM information_schema.indexes
-                WHERE lower(table_name) = 'notification_outbox'
-                  AND lower(index_name) = 'ix_notification_outbox_status_next'
+                SELECT COUNT(*) FROM pg_indexes
+                WHERE schemaname = current_schema() AND lower(tablename) = 'notification_outbox'
+                  AND lower(indexname) = 'ix_notification_outbox_status_next'
                 """,
                 Integer.class);
         assertThat(count).isGreaterThanOrEqualTo(1);
@@ -67,9 +67,9 @@ class NotificationSchemaIT {
     void notificationOutbox_hasStatusCreatedIndex() {
         Integer count = jdbc.queryForObject(
                 """
-                SELECT COUNT(*) FROM information_schema.indexes
-                WHERE lower(table_name) = 'notification_outbox'
-                  AND lower(index_name) = 'ix_notification_outbox_status_created_at'
+                SELECT COUNT(*) FROM pg_indexes
+                WHERE schemaname = current_schema() AND lower(tablename) = 'notification_outbox'
+                  AND lower(indexname) = 'ix_notification_outbox_status_created_at'
                 """,
                 Integer.class);
         assertThat(count).isGreaterThanOrEqualTo(1);
@@ -79,9 +79,9 @@ class NotificationSchemaIT {
     void notificationWebhook_hasActiveNameUniqueIndex() {
         Integer count = jdbc.queryForObject(
                 """
-                SELECT COUNT(*) FROM information_schema.indexes
-                WHERE lower(table_name) = 'notification_webhook'
-                  AND lower(index_name) = 'uq_notification_webhook_tenant_name_active'
+                SELECT COUNT(*) FROM pg_indexes
+                WHERE schemaname = current_schema() AND lower(tablename) = 'notification_webhook'
+                  AND lower(indexname) = 'uq_notification_webhook_tenant_name_active'
                 """,
                 Integer.class);
         assertThat(count).isGreaterThanOrEqualTo(1);

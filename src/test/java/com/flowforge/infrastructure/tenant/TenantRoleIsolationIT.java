@@ -3,29 +3,23 @@ package com.flowforge.infrastructure.tenant;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.flowforge.support.PostgresTestContainerSupport;
+import com.flowforge.support.EmbeddedPostgresSupport;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.UUID;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.postgresql.util.PSQLException;
 
 /**
  * D-41 : le rôle LOGIN d'un tenant SELECT son schéma et se voit refuser un autre schéma.
- * SKIPPED sans Docker (même contrat que {@link TenantSchemaIsolationIT}).
  */
 class TenantRoleIsolationIT {
 
     @Test
     void tenantRole_canSelectOwnSchema_butNotAnother() throws Exception {
-        Assumptions.assumeTrue(
-                PostgresTestContainerSupport.isDockerAvailable(),
-                "Docker indisponible dans ce bac à sable (D-TESTCONTAINERS-EXEC) — exécuté en CI (ubuntu-latest, Docker natif)");
-
         String suffix = UUID.randomUUID().toString().replace("-", "");
         String schemaA = "tenant_role_a_" + suffix;
         String schemaB = "tenant_role_b_" + suffix;
@@ -34,16 +28,16 @@ class TenantRoleIsolationIT {
         String password = "role-pass-" + suffix;
 
         try (Connection admin = DriverManager.getConnection(
-                PostgresTestContainerSupport.jdbcUrl(),
-                PostgresTestContainerSupport.adminUsername(),
-                PostgresTestContainerSupport.adminPassword());
+                EmbeddedPostgresSupport.jdbcUrl(),
+                EmbeddedPostgresSupport.adminUsername(),
+                EmbeddedPostgresSupport.adminPassword());
                 Statement statement = admin.createStatement()) {
             createSchemaAndRole(statement, schemaA, roleA, password);
             createSchemaAndRole(statement, schemaB, roleB, password);
         }
 
         try (Connection asA = DriverManager.getConnection(
-                        PostgresTestContainerSupport.jdbcUrl(), roleA, password);
+                        EmbeddedPostgresSupport.jdbcUrl(), roleA, password);
                 Statement statement = asA.createStatement()) {
             statement.execute("SET search_path TO " + schemaA);
             try (ResultSet resultSet = statement.executeQuery("SELECT COUNT(*) FROM t")) {
@@ -55,9 +49,9 @@ class TenantRoleIsolationIT {
                     .hasMessageContaining("permission denied");
         } finally {
             try (Connection admin = DriverManager.getConnection(
-                    PostgresTestContainerSupport.jdbcUrl(),
-                    PostgresTestContainerSupport.adminUsername(),
-                    PostgresTestContainerSupport.adminPassword());
+                    EmbeddedPostgresSupport.jdbcUrl(),
+                    EmbeddedPostgresSupport.adminUsername(),
+                    EmbeddedPostgresSupport.adminPassword());
                     Statement statement = admin.createStatement()) {
                 statement.execute("DROP SCHEMA IF EXISTS " + schemaA + " CASCADE");
                 statement.execute("DROP SCHEMA IF EXISTS " + schemaB + " CASCADE");

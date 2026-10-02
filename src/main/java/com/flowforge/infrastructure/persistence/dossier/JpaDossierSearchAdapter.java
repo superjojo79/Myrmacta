@@ -31,10 +31,6 @@ public class JpaDossierSearchAdapter implements DossierSearchPort {
     @Override
     @Transactional(readOnly = true)
     public DossierPage search(String tenantId, Filter filter, int page, int size) {
-        if (!filter.fieldPredicates().isEmpty() && !postgres()) {
-            throw new com.flowforge.domain.dossier.model.InvalidDossierSearchException(
-                    "search on dynamic fields needs PostgreSQL (jsonb): not supported by this database");
-        }
         Specification<DossierJpaEntity> spec = DossierSpecifications.forSearch(tenantId, filter);
         long total = repository.count(spec);
         if (total == 0) {
@@ -67,14 +63,6 @@ public class JpaDossierSearchAdapter implements DossierSearchPort {
                 .map(JpaDossierSearchAdapter::toItem)
                 .toList();
         return DossierPage.of(content, page, size, total);
-    }
-
-    private boolean postgres() {
-        return entityManager.getEntityManagerFactory()
-                        .unwrap(org.hibernate.engine.spi.SessionFactoryImplementor.class)
-                        .getJdbcServices()
-                        .getDialect()
-                instanceof org.hibernate.dialect.PostgreSQLDialect;
     }
 
     private static DossierListItem toItem(Object[] row) {

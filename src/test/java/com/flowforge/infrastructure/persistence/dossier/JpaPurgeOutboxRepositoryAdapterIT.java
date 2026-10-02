@@ -50,8 +50,8 @@ class JpaPurgeOutboxRepositoryAdapterIT {
                 """,
                 id,
                 UUID.randomUUID(),
-                updatedAt,
-                updatedAt);
+                java.sql.Timestamp.from(updatedAt),
+                java.sql.Timestamp.from(updatedAt));
     }
 
     private String statusOf(UUID id) {

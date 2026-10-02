@@ -104,11 +104,11 @@ class DossierFieldSearchApiTest {
     }
 
     @Test
-    void onH2AValidFieldFilterIsExplicitlyRefused() throws Exception {
+    void aValidFieldFilterRunsOnPostgresql() throws Exception {
+        // Plus de H2 : la recherche jsonb s'exécute toujours (aucun refus « base non supportée »).
         String code = type();
         mockMvc.perform(get("/api/dossiers").param("dossierTypeCode", code).param("f.contrat", "C-1").with(admin()))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("PostgreSQL")));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
     }
 
     @Test

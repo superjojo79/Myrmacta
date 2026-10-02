@@ -8,7 +8,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.UUID;
+import com.flowforge.support.EmbeddedPostgresSupport;
 import liquibase.Liquibase;
 import liquibase.database.Database;
 import liquibase.database.DatabaseFactory;
@@ -26,19 +26,19 @@ import org.junit.jupiter.api.Test;
  * reprise via le suivi natif Liquibase ({@code DATABASECHANGELOG}), exactement comme au
  * redémarrage réel d'une instance après correction du changeset fautif.
  *
- * <p>H2 pur (pas de dépendance Testcontainers) : le mécanisme testé (transaction par changeset,
- * suivi par {@code DATABASECHANGELOG}) est du Liquibase générique, pas du SQL Postgres-spécifique.
+ * <p>Exécuté sur le PostgreSQL embarqué ({@link EmbeddedPostgresSupport}), une base fraîche par
+ * test : en PostgreSQL le changeset fautif est rejoué dans sa propre transaction, comme en production.
  */
 class LiquibasePartialFailureIT {
 
     private static final String BROKEN_CHANGELOG = "db/changelog/failure-injection/changelog-failure.yaml";
     private static final String FIXED_CHANGELOG = "db/changelog/failure-injection/changelog-failure-fixed.yaml";
 
-    private String jdbcUrl;
+    private EmbeddedPostgresSupport.ApplicationDatabase database;
 
     @BeforeEach
-    void freshInMemoryDatabase() {
-        jdbcUrl = "jdbc:h2:mem:liquibase-failure-" + UUID.randomUUID() + ";DB_CLOSE_DELAY=-1";
+    void freshDatabase() {
+        database = EmbeddedPostgresSupport.newApplicationDatabase();
     }
 
     @Test
@@ -81,7 +81,8 @@ class LiquibasePartialFailureIT {
     }
 
     private Connection openConnection() throws SQLException {
-        return DriverManager.getConnection(jdbcUrl, "sa", "");
+        return DriverManager.getConnection(
+                database.jdbcUrl() + "?currentSchema=tenant_dev", database.username(), database.password());
     }
 
     private static int rowCount(Connection connection, String table) throws SQLException {

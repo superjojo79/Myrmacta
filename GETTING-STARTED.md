@@ -401,6 +401,59 @@ Désactivé par défaut. Pour l'essayer en local : dans `.env`, `APP_ASSISTANT_E
 redémarrez le backend, puis ouvrez *Admin → Assistant*. Sans clé, l'écran affiche « non activé » et rien ne sort de votre poste.
 Détails (variables, plafonds, RGPD) : `DEPLOIEMENT.md` §15.
 
+## 17. Lancer les tests — sans Docker ni PostgreSQL préinstallé
+
+Les tests (`./mvnw verify`) utilisent un **PostgreSQL 17 embarqué** (zonky, binaires téléchargés par
+Maven) : une instance par JVM de test, une base fraîche par contexte Spring. Aucun conteneur,
+aucune base à démarrer. Seul `ClamAvAttachmentScanIT` utilise encore Docker (conteneur ClamAV) et
+s'ignore sans démon Docker.
+
+- **Ne pas lancer en root** : `initdb` refuse de tourner sous l'utilisateur root (cas fréquent des
+  conteneurs de CI et des bacs à sable). Lancer sous un utilisateur normal, par exemple
+  `runuser -u <utilisateur> -- ./mvnw verify` (le dépôt et `~/.m2` doivent lui être accessibles).
+- **PostgreSQL externe** (poste où les binaires embarqués ne conviennent pas, ou root imposé) :
+
+  ```bash
+  export FLOWFORGE_TEST_PG_URL=jdbc:postgresql://localhost:5432/postgres
+  export FLOWFORGE_TEST_PG_USER=postgres          # doit pouvoir CREATE DATABASE et CREATE ROLE
+  export FLOWFORGE_TEST_PG_PASSWORD=...
+  ./mvnw verify
+  ```
+
+- Les classes `*IT` s'exécutent désormais dans `./mvnw verify` (plus besoin de `-Dtest='*IT'`).
+
+## 18. Base embarquée persistante — démos et QA (optionnel)
+
+Pour une démo ou une machine de QA **sans Docker Compose ni PostgreSQL**, le profil Maven
+`embedded-db` produit un jar qui embarque PostgreSQL ; les données sont **conservées** entre deux
+démarrages.
+
+```bash
+./mvnw -Pembedded-db package
+APP_ENVIRONMENT=local SPRING_PROFILES_ACTIVE=local,embedded-db java -jar target/flowforge-*.jar   # + variables du §3 (OIDC…)
+```
+
+| Variable | Défaut | Rôle |
+|---|---|---|
+| `APP_EMBEDDED_DB_DATA_DIR` | `~/.flowforge/embedded-db` | répertoire persistant (cluster `pgdata/`, secret du rôle applicatif, verrou) |
+| `APP_EMBEDDED_DB_PORT` | `15432` | port TCP (127.0.0.1) ; `0` = port libre aléatoire |
+
+- Le profil `embedded-db` remplace `DB_URL`/`DB_USERNAME`/`DB_PASSWORD` : le rôle applicatif
+  (`flowforge_tenant_dev`) reçoit un **mot de passe généré** (`app-role-password`, droits 0600).
+  Hors profil `local`/`test`, les autres secrets (clé connecteurs, client OIDC) restent exigés.
+- Un seul tenant (`tenant_dev`) ; une seule instance par répertoire (verrou) ; un cluster initialisé
+  par une autre version majeure de PostgreSQL est refusé avec un message explicite.
+- **Exploitation** : `scripts/embedded-db.sh status | backup <archive.tar.gz> | restore <archive.tar.gz> |
+  dump <fichier.sql> | reset`. `backup`/`restore`/`reset` exigent l'application arrêtée ; `dump`
+  (pg_dump du schéma tenant) se fait à chaud.
+- **Image Docker de démo** : `docker build --build-arg MAVEN_PROFILES=embedded-db -t flowforge:demo .`
+  puis `docker run -v flowforge-data:/data -e APP_ENVIRONMENT=staging -e SPRING_PROFILES_ACTIVE=local,embedded-db …` (le volume
+  `/data` conserve les données ; l'application tourne en utilisateur non-root).
+- **Interdit en production** : le jar standard ne contient pas ce mode, et le profil est refusé si un
+  profil `prod`/`production` est actif ou si `APP_ENVIRONMENT` est absent ou vaut `production` (à
+  définir à `local` ou `staging`). Le serveur écoute 127.0.0.1 mais en authentification `trust` :
+  réserver à une machine ou un conteneur non partagé.
+
 ## Pour aller plus loin
 
 - Déploiement au-delà de ce guide (reverse-proxy, provisioning tenant, comptes Keycloak) : [DEPLOIEMENT.md](DEPLOIEMENT.md)

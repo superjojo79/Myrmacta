@@ -62,11 +62,6 @@ databaseChangeLog:
             relativeToChangelogFile: true
             dbms: postgresql
             splitStatements: false
-        - sqlFile:
-            path: sql/003-connector-instance-active-index-h2.sql
-            relativeToChangelogFile: true
-            dbms: h2
-            splitStatements: true
 
   - changeSet:
       id: 003-tenant-connector-dek

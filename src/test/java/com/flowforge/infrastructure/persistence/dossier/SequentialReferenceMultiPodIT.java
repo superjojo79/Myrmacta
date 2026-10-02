@@ -2,7 +2,7 @@ package com.flowforge.infrastructure.persistence.dossier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.flowforge.support.PostgresTestContainerSupport;
+import com.flowforge.support.EmbeddedPostgresSupport;
 import com.zaxxer.hikari.HikariDataSource;
 import java.time.Clock;
 import java.time.Instant;
@@ -20,7 +20,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.sql.DataSource;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
@@ -28,16 +27,13 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * {@link SequentialReferenceGenerator} sous accès concurrent multi-pods réel — fiabilisation-tests-plateforme,
- * TODO §26 reste, D-TESTCONTAINERS (adoption ciblée). Chaque "pod" a sa propre
+ * TODO §26 reste, D-ZONKY (PostgreSQL embarqué). Chaque "pod" a sa propre
  * {@link DataSource}/{@link JdbcTemplate}/transaction, comme en déploiement réel (plusieurs
  * répliques d'une même instance tenant partageant un schéma, {@code 02-multi-tenant.md}), et
  * chaque appel est enveloppé dans une transaction réelle ({@link TransactionTemplate}) pour
  * reproduire fidèlement le {@code @Transactional} de production — sans quoi les 3 instructions
  * SQL de {@code generate()} (INSERT, UPDATE, SELECT) tourneraient en 3 auto-commits indépendants
  * et pourraient lire la valeur d'un autre pod.
- *
- * <p><strong>⚠️ Non exécuté dans ce bac à sable</strong> (Docker absent, D-TESTCONTAINERS-EXEC) —
- * écrit et compilé ; exécution/vérification à faire en CI (GitHub Actions {@code ubuntu-latest}).
  */
 class SequentialReferenceMultiPodIT {
 
@@ -47,13 +43,9 @@ class SequentialReferenceMultiPodIT {
 
     @Test
     void concurrentMultiPodGeneration_hasNoDuplicateAndNoGap() throws Exception {
-        Assumptions.assumeTrue(
-                PostgresTestContainerSupport.isDockerAvailable(),
-                "Docker indisponible dans ce bac à sable (D-TESTCONTAINERS-EXEC) — exécuté en CI (ubuntu-latest, Docker natif)");
-
         String schema = "seq_multipod_" + UUID.randomUUID().toString().replace("-", "");
-        PostgresTestContainerSupport.createSchema(schema);
-        PostgresTestContainerSupport.migrateSchema(schema);
+        EmbeddedPostgresSupport.createSchema(schema);
+        EmbeddedPostgresSupport.migrateSchema(schema);
 
         List<HikariDataSource> dataSources = new ArrayList<>();
         try {
@@ -61,7 +53,7 @@ class SequentialReferenceMultiPodIT {
             List<SequentialReferenceGenerator> generators = new ArrayList<>();
             Clock fixedClock = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC);
             for (int i = 0; i < PODS; i++) {
-                HikariDataSource dataSource = PostgresTestContainerSupport.dataSourceForSchema(schema);
+                HikariDataSource dataSource = EmbeddedPostgresSupport.dataSourceForSchema(schema);
                 dataSources.add(dataSource);
                 JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
                 pods.add(new TransactionTemplate(new DataSourceTransactionManager(dataSource)));
@@ -106,7 +98,7 @@ class SequentialReferenceMultiPodIT {
             }
         } finally {
             dataSources.forEach(HikariDataSource::close);
-            PostgresTestContainerSupport.dropSchema(schema);
+            EmbeddedPostgresSupport.dropSchema(schema);
         }
     }
 

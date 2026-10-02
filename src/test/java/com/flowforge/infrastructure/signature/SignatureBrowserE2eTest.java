@@ -28,7 +28,7 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 /**
  * TODO §72, S-PW-2/3/4/5 — parcours <strong>réel</strong> de bout en bout : un vrai navigateur
  * (Playwright, {@code frontend/e2e-real}) ouvre le lien reçu par e-mail sur un vrai Spring Boot
- * (H2, vrai Flowable, vrai portail statique) ; aucune API simulée. Le test Java sème les données,
+ * (PostgreSQL embarqué, vrai Flowable, vrai portail statique) ; aucune API simulée. Le test Java sème les données,
  * pilote le navigateur puis vérifie l'état du process, de la demande et des pièces du dossier.
  *
  * <p>Désactivé par défaut (nécessite Node, les navigateurs Playwright et le portail construit dans

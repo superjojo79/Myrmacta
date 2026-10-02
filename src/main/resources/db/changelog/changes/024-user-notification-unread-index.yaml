@@ -8,9 +8,8 @@ databaseChangeLog:
         (server-truth badge), so this index covers
         countByTenantIdAndRecipientAndReadAtIsNull's WHERE tenant_id = ? AND recipient = ? AND
         read_at IS NULL. A plain btree index on (tenant_id, recipient, read_at) rather than a
-        PostgreSQL-only partial index (WHERE read_at IS NULL) — portable to H2, which this repo's
-        tests run against, while serving the same query just as well since read_at IS NULL is a
-        normal indexable predicate on a btree.
+        PostgreSQL partial index (WHERE read_at IS NULL) — a plain btree already serves the same
+        query since read_at IS NULL is a normal indexable predicate on a btree.
       changes:
         - createIndex:
             tableName: user_notification

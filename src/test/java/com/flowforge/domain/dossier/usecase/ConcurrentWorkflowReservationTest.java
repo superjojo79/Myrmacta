@@ -32,9 +32,9 @@ import org.springframework.context.annotation.Import;
 
 /**
  * La règle « un seul workflow actif par dossier » sous parallélisme réel — fiabilisation-tests-plateforme,
- * D-PARALLELISM-TEST : H2 + threads réels, exercice direct de {@link AttachWorkflowUseCase#reserve}
+ * D-PARALLELISM-TEST : PostgreSQL embarqué + threads réels, exercice direct de {@link AttachWorkflowUseCase#reserve}
  * concurremment sur le même dossier. La garantie repose sur l'index unique partiel
- * {@code uq_dossier_workflow_link_active} (émulé sur H2, {@code 002-workflow-tables.yaml}) ; ce test
+ * {@code uq_dossier_workflow_link_active} (index partiel PostgreSQL natif, {@code 002-workflow-tables.yaml}) ; ce test
  * prouve à la fois qu'un seul thread gagne la course et que les perdants reçoivent
  * {@link WorkflowAlreadyRunningException}, pas une exception de persistance brute.
  */

@@ -1299,6 +1299,34 @@ partagé (`json`), catalogue : drapeau `multiline` → zone de texte dans l'édi
 
 ---
 
+
+### [x] 91. PostgreSQL embarqué (zonky) pour les tests et les démos/QA (livré)
+
+**Énoncé :** remplacer H2 (émulation) et Testcontainers-PostgreSQL (Docker requis) par un PostgreSQL
+embarqué ; offrir une base **persistante** pour les démos/QA. Décision : [47-postgresql-embarque-tests-demo.md](analysis%20doc/47-postgresql-embarque-tests-demo.md) —
+remplace D-TESTCONTAINERS-EXEC. Docs SDD : [requirements](docs/ai/requirements/2026-10-02-feature-zonky-embedded-postgres.md),
+[design](docs/ai/design/2026-10-02-feature-zonky-embedded-postgres.md), [planning](docs/ai/planning/2026-10-02-feature-zonky-embedded-postgres.md),
+[implementation](docs/ai/implementation/2026-10-02-feature-zonky-embedded-postgres.md), [testing](docs/ai/testing/2026-10-02-feature-zonky-embedded-postgres.md) ;
+prompt source : [docs/goals/zonky-embedded-postgres.md](docs/goals/zonky-embedded-postgres.md).
+
+**Livré.** zonky 2.2.2 / PostgreSQL 17 (aligné docker-compose) ; une instance par JVM, une base par
+contexte Spring ; H2, `testcontainers-postgresql`, branches `dbms: h2` et `sql/*-h2.sql` retirés (checksums
+PostgreSQL inchangés, gardés par `ChangelogChecksumStabilityIT`) ; `*IT` inclus dans `verify` ;
+profil `embedded-db` persistant (Maven + Spring), `scripts/embedded-db.sh`, Dockerfile `MAVEN_PROFILES`,
+garde-fou CI « pas de zonky dans le jar de production ». Vérification : `./mvnw verify` **2747 tests, 0 échec**,
+Jacoco tenu (avant : 2653 tests H2, ITs hors `verify`).
+
+**Constats corrigés.** Bug de production `SequentialReferenceGenerator` (transaction PostgreSQL avortée dès
+que la ligne du compteur existe ; masqué par H2) ; les 34 `*IT` n'étaient jamais exécutés par la CI.
+
+**Point ouvert (non tranché).** `DocumentTemplateJpaEntity.htmlContent` est un `@Lob String` sur une colonne
+`text` : Hibernate y stocke un OID de large object (HTML réel dans `pg_largeobject`). Changer le mapping exige une
+migration des données existantes — à décider avant toute évolution du modèle de templates.
+
+**Impacte :** `GETTING-STARTED.md` (§17, §18), `DEPLOIEMENT.md` (§18), `.env.example` (`APP_EMBEDDED_DB_*`, `FLOWFORGE_TEST_PG_*`),
+`CHANGELOG.md`, `Dockerfile`, `.github/workflows/ci.yml`, skill `flowforge-conventions`.
+
+
 ### [x] 19. Granularité des rôles RBAC
 
 **Clos V1 (2026-08-03 — feature `autorisation-conformite`) :** les cinq rôles

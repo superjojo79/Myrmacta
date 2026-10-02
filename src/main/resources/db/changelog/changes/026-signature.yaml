@@ -250,11 +250,6 @@ databaseChangeLog:
             relativeToChangelogFile: true
             dbms: postgresql
             splitStatements: false
-        - sqlFile:
-            path: sql/026-signature-request-pending-index-h2.sql
-            relativeToChangelogFile: true
-            dbms: h2
-            splitStatements: true
       rollback:
         - dropTable:
             tableName: signature_signer

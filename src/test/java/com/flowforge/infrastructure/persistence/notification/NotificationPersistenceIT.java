@@ -152,7 +152,7 @@ class NotificationPersistenceIT {
 
     @Test
     void outbox_savePending_lock_backoff_dead_and_purge() {
-        Instant t0 = Instant.parse("2026-08-07T12:00:00Z");
+        Instant t0 = Instant.parse("2099-04-01T12:00:00Z"); // futur : le relais réel ne prend jamais ces lignes
         UUID id = outbox.savePending(
                 "tenant_dev", NotificationChannel.EMAIL, "{\"to\":\"a@b.c\",\"subject\":\"s\",\"body\":\"b\"}", t0);
 
@@ -196,7 +196,7 @@ class NotificationPersistenceIT {
 
     @Test
     void outbox_markProcessed_thenPurgeUsesProcessedAt() {
-        Instant now = Instant.parse("2026-08-07T13:00:00Z");
+        Instant now = Instant.parse("2099-04-02T13:00:00Z");
         UUID id = outbox.savePending(
                 "tenant_dev", NotificationChannel.BROWSER, "{\"userId\":\"u1\",\"payload\":{}}", now);
         outbox.markProcessed(id, now);
@@ -205,7 +205,7 @@ class NotificationPersistenceIT {
 
     @Test
     void outbox_savePendingBatch_persistsAllRows() {
-        Instant now = Instant.parse("2026-08-07T14:00:00Z");
+        Instant now = Instant.parse("2099-04-03T14:00:00Z");
         List<UUID> ids = outbox.savePendingBatch(
                 "tenant_dev",
                 List.of(
@@ -243,7 +243,7 @@ class NotificationPersistenceIT {
         // que les lignes PENDING qu'il crée lui-même.
         jdbc.update("DELETE FROM notification_outbox WHERE status = 'PENDING'");
 
-        Instant now = Instant.parse("2026-08-20T10:00:00Z");
+        Instant now = Instant.parse("2099-04-04T10:00:00Z");
         UUID pending = outbox.savePending(
                 "tenant_dev",
                 NotificationChannel.EMAIL,

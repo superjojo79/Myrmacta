@@ -38,8 +38,12 @@
 
     <suppress until="2027-01-07Z">
         <notes><![CDATA[
-        GHSA-p98j-92pf-mc4p (CVSS 2.3, DOMPurify 3.4.13–3.4.15, XSS en mode IN_PLACE avec un hook
-        afterSanitize* qui retire des nœuds) — NON EXPLOITABLE dans swagger-ui, et pas de correctif
+        Famille "IN_PLACE" de DOMPurify <= 3.4.15 (sévérité Low, corrigée en 3.4.16) :
+        - GHSA-p98j-92pf-mc4p (CVSS 2.3) : XSS en mode IN_PLACE avec un hook afterSanitize* qui
+          retire des nœuds ;
+        - GHSA-6688-9rhm-gjv2 (publiée le 2026-09-23) : texte d'éléments rawtext (<style>…) non
+          neutralisé en mode IN_PLACE, exploitable après sérialisation/re-parsing.
+        NON EXPLOITABLES dans swagger-ui, et pas de correctif
         disponible en amont : même org.webjars:swagger-ui 5.33.1 (dernière version au 2026-10-07)
         embarque DOMPurify 3.4.13.
         Vérifié dans le bundle : swagger-ui appelle DOMPurify.sanitize() sur des chaînes (jamais
@@ -50,6 +54,7 @@
         ]]></notes>
         <packageUrl regex="true">^pkg:javascript/DOMPurify@.*$</packageUrl>
         <vulnerabilityName>GHSA-p98j-92pf-mc4p</vulnerabilityName>
+        <vulnerabilityName>GHSA-6688-9rhm-gjv2</vulnerabilityName>
     </suppress>
 
 </suppressions>

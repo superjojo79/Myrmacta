@@ -43,6 +43,11 @@
              CVE-2026-68525, CVE-2026-65182 notamment), corrigées à partir de 11.0.25/11.0.26. À
              retirer une fois que Spring Boot gère nativement 11.0.26+ (cf. prochaine version 4.1.x). -->
         <tomcat.version>11.0.26</tomcat.version>
+        <!-- Override du Kotlin géré par spring-boot-starter-parent 4.1.1 (fige 2.3.21) : stdlib
+             < 2.4.20 porte CVE-2026-53914 (CVSS 9.8, désérialisation non sûre). Kotlin n'arrive
+             que transitivement (anthropic-java-core via spring-ai-anthropic) ; la stdlib reste
+             rétrocompatible binairement. À retirer quand Spring Boot gère nativement 2.4.20+. -->
+        <kotlin.version>2.4.20</kotlin.version>
     </properties>
 
     <dependencyManagement>
@@ -180,6 +185,17 @@
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-model-anthropic</artifactId>
+            <exclusions>
+                <!-- Tiré en 1.9.10 par okio 3.6.0 (via okhttp 4.12.0) : CVE-2026-53914 (9.8) et
+                     CVE-2020-29582. Le kotlin-bom ne le gère qu'en type pom (artefact vide depuis
+                     Kotlin 1.9.20), donc kotlin.version ne le remonte pas. Le jar 1.9.10 ne
+                     contient que des .kotlin_metadata (aucune classe JVM) : exclusion sans effet
+                     à l'exécution, kotlin-stdlib fournit tout. -->
+                <exclusion>
+                    <groupId>org.jetbrains.kotlin</groupId>
+                    <artifactId>kotlin-stdlib-common</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- connecteurs-cible (lot B1) — kafka : consumer TRIGGER (D-KAFKA-ROLE=A, requirements) -->

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Suppressions OWASP Dependency-Check (profil Maven security-scan, seuil d'échec CVSS >= 7).
+
+  Règle : on ne supprime qu'une alerte NON APPLICABLE à FlowForge, jamais une alerte gênante.
+  Chaque entrée cible un couple (package, vulnérabilité) précis et porte sa justification
+  vérifiée. Une entrée liée à une version figée en amont porte un "until" : passé cette date,
+  l'alerte réapparaît et doit être réévaluée (montée de version ou prolongation argumentée).
+-->
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+
+    <suppress>
+        <notes><![CDATA[
+        CVE-2026-52746 (CVSS 7.5, ReDoS sur $toMillis) — FAUX POSITIF.
+        La CVE vise le paquet npm "jsonata" (regex ISO-8601 de src/datetime.js, corrigée en
+        2.2.0 / 1.8.9). Le rapprochement se fait uniquement sur le nom du CPE (jsonata:jsonata).
+        Le port Java com.dashjoin:jsonata n'utilise pas cette regex : Functions.dateTimeToMillis
+        s'appuie sur java.time (OffsetDateTime.parse / LocalDate.parse), à coût linéaire.
+        Vérifié le 2026-10-07 sur 0.9.10 : 5 charges de 50 000+ caractères (motifs de
+        backtracking) rejetées en moins de 10 ms chacune.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/com\.dashjoin/jsonata@.*$</packageUrl>
+        <cve>CVE-2026-52746</cve>
+    </suppress>
+
+    <suppress>
+        <notes><![CDATA[
+        CVE-2026-41115 (CVSS 4.3, autorisation de CONSUMER_GROUP_DESCRIBE) — NON APPLICABLE au
+        client. Le défaut est dans le contrôle d'ACL effectué par le BROKER Kafka (vérifie
+        DESCRIBE au lieu de READ sur la ressource GROUP) ; aucun code de kafka-clients n'est en
+        cause et aucune version du client ne "corrige" le problème. Action côté exploitation :
+        revoir les ACL de groupe des brokers 4.0.0–4.3.0 (moindre privilège), cf. avis Apache
+        Kafka du 2026-06-02.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.apache\.kafka/kafka-clients@.*$</packageUrl>
+        <cve>CVE-2026-41115</cve>
+    </suppress>
+
+    <suppress until="2027-01-07Z">
+        <notes><![CDATA[
+        GHSA-p98j-92pf-mc4p (CVSS 2.3, DOMPurify 3.4.13–3.4.15, XSS en mode IN_PLACE avec un hook
+        afterSanitize* qui retire des nœuds) — NON EXPLOITABLE dans swagger-ui, et pas de correctif
+        disponible en amont : même org.webjars:swagger-ui 5.33.1 (dernière version au 2026-10-07)
+        embarque DOMPurify 3.4.13.
+        Vérifié dans le bundle : swagger-ui appelle DOMPurify.sanitize() sur des chaînes (jamais
+        IN_PLACE) et n'enregistre qu'un hook beforeSanitizeElements qui ajoute rel=noopener, sans
+        retirer de nœud. De plus Swagger UI est désactivé par défaut
+        (springdoc.swagger-ui.enabled=false dans application.yml).
+        "until" : réévaluer à une nouvelle release swagger-ui embarquant DOMPurify >= 3.4.16.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:javascript/DOMPurify@.*$</packageUrl>
+        <vulnerabilityName>GHSA-p98j-92pf-mc4p</vulnerabilityName>
+    </suppress>
+
+</suppressions>

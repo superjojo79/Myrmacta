@@ -48,6 +48,11 @@
              que transitivement (anthropic-java-core via spring-ai-anthropic) ; la stdlib reste
              rétrocompatible binairement. À retirer quand Spring Boot gère nativement 2.4.20+. -->
         <kotlin.version>2.4.20</kotlin.version>
+        <!-- Override du Netty géré par spring-boot-starter-parent 4.1.1 (fige 4.2.17.Final) :
+             CVE-2026-89044 (request smuggling, Transfer-Encoding mal validé), corrigée en
+             4.2.18.Final. Netty n'arrive que via le client HTTP async du SDK AWS (netty-nio-client).
+             À retirer quand Spring Boot gère nativement 4.2.18+. -->
+        <netty.version>4.2.19.Final</netty.version>
     </properties>
 
     <dependencyManagement>
@@ -396,7 +401,10 @@
                         <artifactId>dependency-check-maven</artifactId>
                         <version>13.0.0</version>
                         <configuration>
-                            <failBuildOnCVSS>9</failBuildOnCVSS>
+                            <!-- Seuil "High" CVSS (>= 7). Les faux positifs / non-applicables sont
+                                 documentés un par un dans dependency-check-suppressions.xml. -->
+                            <failBuildOnCVSS>7</failBuildOnCVSS>
+                            <suppressionFile>${project.basedir}/dependency-check-suppressions.xml</suppressionFile>
                             <formats>
                                 <format>HTML</format>
                                 <format>JSON</format>
@@ -405,6 +413,17 @@
                                  échec immédiat "Invalid API Key"). Fournie via la variable d'env
                                  NVD_API_KEY (secret GitHub Actions), jamais commitée en clair. -->
                             <nvdApiKey>${env.NVD_API_KEY}</nvdApiKey>
+                            <!-- Sonatype OSS Index (via l'API de compatibilité Sonatype Guide,
+                                 https://api.guide.sonatype.com par défaut) : authentification
+                                 obligatoire. Username = e-mail du compte (ignoré avec un token Guide),
+                                 password = Personal Access Token Guide. Secrets GitHub Actions
+                                 OSS_INDEX_USERNAME / OSS_INDEX_TOKEN ; valeurs vides ignorées par le
+                                 plugin (analyseur alors désactivé avec un warning, comme avant). -->
+                            <ossIndexUsername>${env.OSS_INDEX_USERNAME}</ossIndexUsername>
+                            <ossIndexPassword>${env.OSS_INDEX_TOKEN}</ossIndexPassword>
+                            <!-- Une panne/limitation d'OSS Index ne doit pas faire échouer le scan :
+                                 le NVD reste la source de référence. -->
+                            <ossIndexWarnOnlyOnRemoteErrors>true</ossIndexWarnOnlyOnRemoteErrors>
                             <!-- Chemin fixe (par défaut sous ~/.m2) pour pouvoir être mis en cache
                                  entre les runs CI : sans ça, chaque run retélécharge les ~400k
                                  enregistrements NVD depuis zéro (~1h30). -->

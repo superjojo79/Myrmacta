@@ -21,7 +21,7 @@
         <java.version>25</java.version>
         <!-- Décision n° 27 — versions de stack -->
         <flowable.version>8.0.0</flowable.version>
-        <flying-saucer.version>10.5.0</flying-saucer.version>
+        <flying-saucer.version>10.6.0</flying-saucer.version>
         <jsoup.version>1.23.2</jsoup.version>
         <archunit.version>1.5.1</archunit.version>
         <aws.sdk.version>2.55.8</aws.sdk.version>

@@ -179,6 +179,10 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Corrigé
 
+- **SPA sous context-path (DD-BASE)** — Un lien profond rechargé (`/tenant_a/admin/types`, favori, F5) donnait une page blanche,
+  la déconnexion depuis une route ciblait `/{route}/api/auth/logout` et le routeur perdait le préfixe tenant : `index.html` porte
+  désormais `<base href>`, réécrit par le backend au context-path de l'instance. La garde de rôles attend `/api/auth/me` (un lien
+  profond admin s'affichait avant la réponse pour un rôle non autorisé ; l'API restait protégée).
 - **Outillage Windows + Podman** — Le realm Keycloak de dev émet désormais `tenant_id` et `realm_access.roles` dans l'ID token
   (connexion `demo` refusée en 403 sinon) et `/api/auth/me` renvoie les rôles mappés (liste vide après un vrai login OIDC, menus
   admin masqués) ; la suite de tests passe sous Windows (DNS figé, SQLState, IP de test sans `nanoTime`, `playwright.cmd`).

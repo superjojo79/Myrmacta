@@ -74,4 +74,27 @@ describe('auth store', () => {
     expect((form.querySelector('input[name="_csrf"]') as HTMLInputElement).value).toBe('test-csrf')
     expect(store.user).toBeNull()
   })
+
+  it('logout from a nested route targets the context-path, not the route (DD-BASE)', () => {
+    const base = document.createElement('base')
+    document.head.appendChild(base)
+    window.history.pushState({}, '', '/dossiers/new')
+    try {
+      for (const [href, expected] of [
+        ['/', '/api/auth/logout'],
+        ['/tenant_a/', '/tenant_a/api/auth/logout'],
+      ]) {
+        base.setAttribute('href', href)
+        document.body.innerHTML = ''
+        const store = useAuthStore()
+        store.user = { id: 'u', name: 'Ada', email: null, roles: [] }
+        store.logout()
+        const form = document.querySelector('form') as HTMLFormElement
+        expect(new URL(form.action).pathname).toBe(expected)
+      }
+    } finally {
+      base.remove()
+      window.history.pushState({}, '', '/')
+    }
+  })
 })

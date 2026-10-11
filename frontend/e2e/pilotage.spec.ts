@@ -2038,15 +2038,11 @@ const BPMN_FOR_OTHER_WORKFLOW_EDITABLE = `<?xml version="1.0" encoding="UTF-8"?>
   </bpmndi:BPMNDiagram>
 </definitions>`
 
-// NOTE: navigation to the BPMN editor always goes through the "Éditer"
-// link on /admin/workflow-types (client-side router push), never a direct
-// page.goto('/admin/bpmn-editor...'). This app's production build uses
-// relative asset paths (decision n°27, same-origin embedded SPA) — a full
-// page load of a nested route resolves "./assets/…" against that nested
-// path and 404s the JS bundle. Every other test in this file already
-// avoids this by navigating via link clicks; the BPMN editor tests follow
-// the same proven pattern rather than hitting a pre-existing, unrelated
-// deep-link limitation.
+// NOTE: navigation to the BPMN editor goes through the "Éditer" link on
+// /admin/workflow-types (client-side router push), like a user would. Direct
+// loads of nested routes also work since
+// DD-BASE <base href> (see E2E-BASE-1); they used to resolve "./assets/…" against
+// the nested path and 404 the JS bundle.
 async function openBpmnEditor(page: Page) {
   await page.getByRole('link', { name: 'Workflows' }).click()
   await page.getByRole('link', { name: 'Éditer' }).click()
@@ -4251,4 +4247,25 @@ test('E2E-I18N-1 language switch: the whole shell turns English, survives a relo
   await page.getByTestId('locale-switcher').selectOption('fr')
   await expect(page.getByRole('link', { name: 'Tâches' })).toBeVisible()
   await expect(page.locator('html')).toHaveAttribute('lang', 'fr')
+})
+
+// DD-BASE : index.html porte <base href="/"> (réécrit par le backend en <base href="{context-path}/">).
+// Sans elle, un chargement direct d'une route imbriquée résolvait "./assets/…" contre cette route
+// (page blanche) et le préfixe API/logout reprenait le 1er segment de la route (/dossiers/api/…).
+test('E2E-BASE-1 a nested route loaded directly renders the app', async ({ page }) => {
+  await mockSession(page)
+  await page.goto('/dossiers/new')
+  await expect(page.getByText('Ada')).toBeVisible()
+  await expect(page.locator('#dossier-label')).toBeVisible()
+})
+
+test('E2E-BASE-2 logout from a nested route posts to /api/auth/logout', async ({ page }) => {
+  await mockSession(page)
+  await page.route('**/auth/logout', (route) => route.fulfill({ status: 200, body: 'ok' }))
+  await openApp(page)
+  await page.getByRole('link', { name: 'Nouveau dossier' }).click()
+  await expect(page).toHaveURL(/\/dossiers\/new$/)
+  const logout = page.waitForRequest((request) => request.method() === 'POST' && request.url().includes('auth/logout'))
+  await page.getByRole('button', { name: 'Déconnexion' }).click()
+  expect(new URL((await logout).url()).pathname).toBe('/api/auth/logout')
 })

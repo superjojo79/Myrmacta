@@ -105,6 +105,12 @@ Checklist des variables à revoir pour un environnement réel :
 la racine `/`. Aucune action nécessaire pour l'activer sur une instance déployée : ne pas passer
 `SPRING_PROFILES_ACTIVE=local` suffit à l'exposer sous son préfixe de tenant.
 
+Le SPA servi par l'instance reçoit `<base href="/{context-path}/">` (réécrit au service
+d'`index.html`) : assets, routeur et appels API se résolvent contre ce préfixe, liens profonds et
+rechargements compris. Le reverse-proxy doit donc publier l'instance **sous le même chemin** que son
+context-path (`/tenant_a` → `…/tenant_a`, comme ci-dessous) — jamais en retirant ou réécrivant le
+préfixe.
+
 Router ensuite chaque instance depuis un reverse-proxy Apache à configuration **statique** (un bloc par
 tenant, ajouté au provisioning — voir [analysis doc/02-multi-tenant.md](analysis%20doc/02-multi-tenant.md#routage-vers-linstance--chemin-par-tenant-reverse-proxy-statique)
 pour le détail et la justification du choix) :

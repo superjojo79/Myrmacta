@@ -179,6 +179,10 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Corrigé
 
+- **Outillage Windows + Podman** — Le realm Keycloak de dev émet désormais `tenant_id` et `realm_access.roles` dans l'ID token
+  (connexion `demo` refusée en 403 sinon) et `/api/auth/me` renvoie les rôles mappés (liste vide après un vrai login OIDC, menus
+  admin masqués) ; la suite de tests passe sous Windows (DNS figé, SQLState, IP de test sans `nanoTime`, `playwright.cmd`).
+  Profil Compose `mailpit` (SMTP de capture) ; parcours Windows/Podman documenté dans `GETTING-STARTED.md`.
 - **[PR #158](https://github.com/superjojo79/FlowForge/pull/158) — suite de TODO §91** — `SlaAlertConcurrencyIT` échouait
   de façon aléatoire en CI (« une seule alerte… expected 1 but was 0 ») : le pool de connexions des tests, plafonné à 4,
   se bloquait sous les tests à 4 threads (timeout 30 s, transaction annulée). Pool Hikari par défaut rétabli.

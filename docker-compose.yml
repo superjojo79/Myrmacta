@@ -21,6 +21,10 @@
 # Avec ClamAV (pour activer le scan antivirus réel des pièces jointes, lot C — voir
 # DEPLOIEMENT.md § ClamAV ; nécessite aussi APP_DOSSIER_ATTACHMENT_SCAN_TYPE=clamav) :
 #   docker compose --profile clamav up -d
+#
+# Avec Mailpit (SMTP de capture local : reçoit les e-mails sans les délivrer, UI web sur :8025 ;
+# nécessite MAIL_PORT=1025 dans .env — voir GETTING-STARTED.md §6) :
+#   docker compose --profile mailpit up -d
 
 services:
   postgres:
@@ -198,6 +202,20 @@ services:
       timeout: 10s
       retries: 20
       start_period: 5m
+
+  # --- E-mail — SMTP de capture pour le canal email (dev/démo local uniquement) ---
+
+  mailpit:
+    # Capture tous les e-mails sans les délivrer (invitations de signature, liens du portail,
+    # notifications), consultables sur http://localhost:8025. SMTP sans auth ni TLS sur le port
+    # 1025 de l'hôte (pas 587 : Docker/Podman rootless refusent les ports < 1024) — positionner
+    # MAIL_PORT=1025 dans .env ; l'indicateur de santé mail du backend passe alors UP. Jamais en
+    # production : relais SMTP réel (GETTING-STARTED.md §6, DEPLOIEMENT.md).
+    image: axllent/mailpit:v1.31.5
+    profiles: ["mailpit"]
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"   # SMTP
+      - "8025:8025"                         # UI web
 
   # --- Observabilité — scrape local de /actuator/prometheus, exposé par le backend ---
 

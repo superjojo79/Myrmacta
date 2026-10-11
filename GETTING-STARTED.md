@@ -125,8 +125,16 @@ profils, voir §5 — inactifs par défaut). Au premier démarrage :
   l'app (`DB_USERNAME=flowforge_tenant_dev`) : ce rôle LOGIN n'a de droits que sur `tenant_dev`.
 - Keycloak importe un realm `flowforge` préconfiguré
   ([`docker/keycloak/import/flowforge-realm.json`](docker/keycloak/import/flowforge-realm.json)) :
-  client `mon-app` (celui attendu par `application.yml`) et un utilisateur de test
-  `demo` / `demo` (rôles `TENANT_ADMIN` + `WORKFLOW_ADMIN`, attribut `tenant_id=tenant_dev`). Les
+  client `mon-app` (celui attendu par `application.yml`) et trois utilisateurs de test, tous avec
+  l'attribut `tenant_id=tenant_dev` (mot de passe = identifiant) :
+
+  | Identifiant | Rôles | Voit |
+  |---|---|---|
+  | `demo` / `demo` | `TENANT_ADMIN` + `WORKFLOW_ADMIN` | tout, menus Admin compris |
+  | `manager` / `manager` | `DOSSIER_MANAGER` | pilotage + Rapports & SLA |
+  | `viewer` / `viewer` | `DOSSIER_VIEWER` | pilotage en lecture |
+
+  Les
   mappers du client émettent `realm_access.roles` et `tenant_id` dans l'ID token, ce qu'exige le
   BFF — voir [DEPLOIEMENT.md §5](DEPLOIEMENT.md#5-keycloak-en-production). Après une modification
   du fichier de realm : `docker compose rm -sf keycloak`, `docker volume rm <projet>_keycloak_data`
@@ -293,7 +301,7 @@ Deux modes, voir aussi [frontend/README.md](frontend/README.md) :
 ## 9. Vérifier que tout fonctionne
 
 1. Ouvrir http://localhost:8080 — redirection automatique vers Keycloak.
-2. Se connecter avec `demo` / `demo` (utilisateur importé au §4).
+2. Se connecter avec `demo` / `demo` (ou `manager` / `viewer` pour un rôle restreint, §4).
 3. Retour sur l'app, authentifié — `GET /api/auth/me` doit renvoyer l'identité et les rôles.
 
 Si l'authentification boucle sans jamais aboutir (retour immédiat vers Keycloak), voir le
@@ -323,6 +331,7 @@ docker compose down -v         # + supprime les volumes (base, realm Keycloak, b
 | Connexion Keycloak réussie puis 403 vide sur l'app | L'ID token ne porte pas `tenant_id` égal à `app.tenant.id` (`TenantResolutionFilter`) | Attribut utilisateur `tenant_id` + mapper du client (DEPLOIEMENT.md §5) ; realm dev : réimporter (§4) |
 | Connecté mais aucun menu Admin, `/api/auth/me` → `"roles": []` | `realm_access.roles` absent de l'ID token (le mapper par défaut de Keycloak ne l'y met pas) | Mapper *User Realm Role* « Add to ID token » sur le client (DEPLOIEMENT.md §5) |
 | `/actuator/health` → `DOWN`, liveness/readiness `UP` | Indicateur mail : aucun serveur SMTP sur `MAIL_HOST:MAIL_PORT` | Profil `mailpit` + `MAIL_PORT=1025` (§6), ou relais SMTP réel |
+| Connexion qui aboutit sur `/login?error` | Deux onglets ouverts sur l'app lancent chacun un login OIDC dans la même session : le second écrase la requête d'autorisation du premier | Un seul onglet pendant la connexion, puis recharger |
 | `podman compose` → `looking up compose provider failed` | Aucun fournisseur compose installé | `winget install --id Docker.DockerCompose --scope user` (§2) |
 | `rootlessport cannot expose privileged port` | Port hôte < 1024 refusé par Docker/Podman rootless | Publier un port ≥ 1024 (ex. Mailpit sur 1025) |
 

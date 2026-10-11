@@ -93,6 +93,52 @@
         "TENANT_ADMIN",
         "WORKFLOW_ADMIN"
       ]
+    },
+    {
+      "username": "manager",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Manager",
+      "lastName": "User",
+      "email": "manager@flowforge.local",
+      "attributes": {
+        "tenant_id": [
+          "tenant_dev"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "manager",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "DOSSIER_MANAGER"
+      ]
+    },
+    {
+      "username": "viewer",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Viewer",
+      "lastName": "User",
+      "email": "viewer@flowforge.local",
+      "attributes": {
+        "tenant_id": [
+          "tenant_dev"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "viewer",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "DOSSIER_VIEWER"
+      ]
     }
   ],
   "components": {

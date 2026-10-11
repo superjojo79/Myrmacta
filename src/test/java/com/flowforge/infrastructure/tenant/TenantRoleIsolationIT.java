@@ -46,7 +46,10 @@ class TenantRoleIsolationIT {
             }
             assertThatThrownBy(() -> statement.executeQuery("SELECT COUNT(*) FROM " + schemaB + ".t"))
                     .isInstanceOf(PSQLException.class)
-                    .hasMessageContaining("permission denied");
+                    // SQLState 42501 (insufficient_privilege) plutôt que le texte, traduit selon la
+                    // locale du serveur (« droit refusé » sous un Windows français).
+                    .extracting(e -> ((PSQLException) e).getSQLState())
+                    .isEqualTo("42501");
         } finally {
             try (Connection admin = DriverManager.getConnection(
                     EmbeddedPostgresSupport.jdbcUrl(),

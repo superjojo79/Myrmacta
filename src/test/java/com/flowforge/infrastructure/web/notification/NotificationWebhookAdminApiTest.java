@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.flowforge.support.OidcClientTestConfiguration;
+import com.flowforge.support.StubPublicDnsTestConfiguration;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,7 +28,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 @SpringBootTest(properties = "app.connector.crypto.master-key=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=")
 @AutoConfigureMockMvc
-@Import(OidcClientTestConfiguration.class)
+@Import({OidcClientTestConfiguration.class, StubPublicDnsTestConfiguration.class})
 class NotificationWebhookAdminApiTest {
 
     private static final String TENANT_ID = "tenant_dev";

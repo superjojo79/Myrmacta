@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.flowforge.infrastructure.reporting.BiExportJob;
 import com.flowforge.infrastructure.reporting.SlaAlertJob;
 import com.flowforge.support.OidcClientTestConfiguration;
+import com.flowforge.support.StubPublicDnsTestConfiguration;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -36,7 +37,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 @SpringBootTest(properties = "app.connector.crypto.master-key=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=")
 @AutoConfigureMockMvc
-@Import(OidcClientTestConfiguration.class)
+@Import({OidcClientTestConfiguration.class, StubPublicDnsTestConfiguration.class})
 class ReportingEnrichmentApiTest {
 
     private static final String TENANT = "tenant_dev";

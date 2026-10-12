@@ -1,8 +1,8 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import { createRouter, createWebHistory } from 'vue-router'
-import PrimeVue from 'primevue/config'
-import Aura from '@primevue/themes/aura'
+import OpenVue from 'openvue/config'
+import Aura from '@openvue/themes/aura'
 import 'primeicons/primeicons.css'
 import '@/styles/main.css'
 import App from './App.vue'
@@ -40,7 +40,7 @@ router.beforeEach(
 app.use(pinia)
 app.use(i18n)
 app.use(router)
-app.use(PrimeVue, {
+app.use(OpenVue, {
   theme: {
     preset: Aura,
   },

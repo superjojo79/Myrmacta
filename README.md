@@ -133,7 +133,7 @@ L'application est construite sur le modèle **Ports & Adapters (hexagonal)** —
 | Persistence       | PostgreSQL + Spring Data JPA    | JSONB pour champs dynamiques, schéma par tenant |
 | Génération PDF    | Flying Saucer 10.4.x + jsoup 1.23.1 | LGPL, sans licence commerciale              |
 | Sécurité          | Spring Security 7 + OAuth2 Client | BFF intégré, provider-agnostique              |
-| Frontend          | Vue 3 + Vite + TypeScript + PrimeVue (embarqué `static/`) | SPA même origine, typage statique aligné sur le contrat API, composants métier riches |
+| Frontend          | Vue 3 + Vite + TypeScript + OpenVue (embarqué `static/`) | SPA même origine, typage statique aligné sur le contrat API, composants métier riches |
 | State management  | Pinia                           | Store réactif Vue 3                             |
 | Tests frontend    | Vitest + Playwright + ESLint/Prettier | Unitaire/composants **et** e2e (`npm run test:all`) obligatoires pour features FE ; aligné job CI `frontend` |
 | BPMN viewer/éditeur | bpmn-js + bpmn-js-properties-panel | Rendu fidèle, overlays d'état, édition (Modeler + panel de propriétés Flowable custom) |

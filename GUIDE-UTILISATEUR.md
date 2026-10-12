@@ -561,7 +561,7 @@ Dans le tableau des templates existants (`templateKey` — libellé — version 
 
 ### Notifications (cloche, tous rôles)
 
-La cloche affichée en haut de chaque page (icône PrimeVue, badge rouge = nombre de notifications
+La cloche affichée en haut de chaque page (icône PrimeIcons, badge rouge = nombre de notifications
 non lues) donne accès à un historique persistant — TODO §66. Contrairement au comportement
 précédent (purement en mémoire de l'onglet, perdu au reload), les notifications reçues pendant
 une déconnexion sont désormais retrouvées à la réouverture du tiroir : au montage, le tiroir

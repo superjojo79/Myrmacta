@@ -30,6 +30,9 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Modifié
 
+- **[PR #165](https://github.com/superjojo79/FlowForge/pull/165)** — Bibliothèque UI : **PrimeVue** (passé sous licence
+  propriétaire, badge « Invalid PrimeUI License ») remplacé par **OpenVue**, son fork communautaire sous licence MIT.
+  Mêmes composants et thème Aura, seuls les imports changent ; `primeicons` (MIT) est conservé.
 - **TODO §86 (LC3, revue D-ASSIST-PROVIDER)** — L'assistant de conception passe par le **starter Spring AI** (`spring-ai-starter-model-anthropic`, `ChatModel`) derrière le même port `LanguageModelPort`, à la
   place de l'adaptateur HTTP maison. Configuration `APP_ASSISTANT_*` inchangée ; toujours **désactivé par défaut**, démarrage refusé sans clé, https obligatoire, redirections jamais suivies, erreurs du
   fournisseur jamais relayées, aucune relance automatique. L'auto-configuration du starter est coupée (`spring.ai.model.chat=none`) : le modèle n'est construit que si l'assistant est activé.

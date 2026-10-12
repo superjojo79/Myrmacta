@@ -16,7 +16,7 @@ Appliquer ces règles **avant** les skills génériques Java/Spring/Vue. En cas 
 | Persistence | PostgreSQL + JPA + Liquibase · schéma **par tenant** |
 | PDF | Flying Saucer + OpenPDF (+ jsoup) — pas iText |
 | Auth | OAuth2/OIDC BFF (Keycloak par défaut) — pas de JWT dans le browser |
-| Frontend | Vue 3 + TypeScript + Vite + PrimeVue + Pinia, embarqué dans `src/main/resources/static/` |
+| Frontend | Vue 3 + TypeScript + Vite + OpenVue + Pinia, embarqué dans `src/main/resources/static/` |
 | Tests FE | Vitest + Playwright · ESLint/Prettier |
 | Stockage fichiers | Port abstrait S3 / filesystem (pas MinIO couplé en dur) |
 | Package root | `com.flowforge` |
@@ -63,8 +63,8 @@ Référence : `analysis doc/02-multi-tenant.md`.
 
 - SPA **même origine** servie depuis `static/` (décision n° 27) — pas de CORS applicatif en prod.
 - TypeScript obligatoire pour le nouveau code FE.
-- State : Pinia. UI : PrimeVue. Viewer BPMN : `bpmn-js`.
-- Respecter l’UI PrimeVue / patterns existants du dépôt.
+- State : Pinia. UI : OpenVue (fork MIT de PrimeVue). Viewer BPMN : `bpmn-js`.
+- Respecter l’UI OpenVue / patterns existants du dépôt.
 
 Référence : `analysis doc/11-frontend.md`.
 

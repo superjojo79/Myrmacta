@@ -105,6 +105,12 @@ Checklist des variables à revoir pour un environnement réel :
 la racine `/`. Aucune action nécessaire pour l'activer sur une instance déployée : ne pas passer
 `SPRING_PROFILES_ACTIVE=local` suffit à l'exposer sous son préfixe de tenant.
 
+Le SPA servi par l'instance reçoit `<base href="/{context-path}/">` (réécrit au service
+d'`index.html`) : assets, routeur et appels API se résolvent contre ce préfixe, liens profonds et
+rechargements compris. Le reverse-proxy doit donc publier l'instance **sous le même chemin** que son
+context-path (`/tenant_a` → `…/tenant_a`, comme ci-dessous) — jamais en retirant ou réécrivant le
+préfixe.
+
 Router ensuite chaque instance depuis un reverse-proxy Apache à configuration **statique** (un bloc par
 tenant, ajouté au provisioning — voir [analysis doc/02-multi-tenant.md](analysis%20doc/02-multi-tenant.md#routage-vers-linstance--chemin-par-tenant-reverse-proxy-statique)
 pour le détail et la justification du choix) :
@@ -185,6 +191,17 @@ production — créer un realm dédié avec :
   `DOSSIER_MANAGER`, `DOSSIER_VIEWER` (voir le tableau de rôles de [GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md#0-rôles-et-navigation)
   pour ce que chacun débloque). Le rôle `API_SERVICE` est traité séparément — ce n'est pas un rôle
   attribué à un utilisateur humain, voir §7.
+- **Deux protocol mappers sur le client BFF**, tous deux émis dans l'**ID token** (c'est lui que
+  lit le BFF) : `realm_access.roles` (mapper *User Realm Role* — le mapper par défaut du scope
+  `roles` ne l'émet que dans l'access token) et `tenant_id` (mapper *User Attribute* sur l'attribut
+  utilisateur `tenant_id`). Sans `tenant_id` égal à l'`app.tenant.id` de l'instance,
+  `TenantResolutionFilter` invalide la session et répond 403 ; sans les rôles, l'utilisateur est
+  connecté sans aucun droit.
+- **L'attribut utilisateur `tenant_id` déclaré dans le profil utilisateur** (Realm settings → User
+  profile) avec vue/édition réservées à l'admin : sinon Keycloak 24+ ignore l'attribut (attributs
+  non gérés désactivés), et s'il était éditable par l'utilisateur, celui-ci pourrait changer de
+  tenant depuis la console de compte. Le realm dev
+  ([`flowforge-realm.json`](docker/keycloak/import/flowforge-realm.json)) applique ces trois points.
 
 ------
 
@@ -192,10 +209,10 @@ production — créer un realm dédié avec :
 
 FlowForge ne fournit **aucun écran de gestion des comptes** — toute création d'utilisateur ou
 attribution de rôle se fait côté Keycloak (console admin ou API Admin Keycloak), jamais dans l'UI
-FlowForge elle-même. Mécanisme : le token OIDC transmis au BFF porte les rôles dans la structure
+FlowForge elle-même. Mécanisme : l'ID token transmis au BFF porte les rôles dans la structure
 **standard** Keycloak `realm_access.roles` ; `RealmAccessAuthoritiesMapper` les convertit en
-autorités `ROLE_<nom>`, ce que l'API vérifie ensuite (`hasRole('TENANT_ADMIN')`, etc.) — aucun
-protocol mapper particulier à ajouter pour ce flux, contrairement au flux M2M (§7).
+autorités `ROLE_<nom>`, ce que l'API vérifie ensuite (`hasRole('TENANT_ADMIN')`, etc.). Keycloak
+n'émet pas cette structure dans l'ID token par défaut : les mappers du client BFF (§5) sont requis.
 
 Procédure pour un nouvel utilisateur :
 
@@ -205,7 +222,9 @@ Procédure pour un nouvel utilisateur :
 3. Onglet **Role mapping** → **Assign role** → cocher un ou plusieurs des 4 rôles réalm (§5). Un
    utilisateur peut cumuler plusieurs rôles (ex. l'utilisateur `demo` du realm dev a
    `TENANT_ADMIN` + `WORKFLOW_ADMIN`).
-4. L'utilisateur peut se connecter dès son prochain login — pas de propagation différée côté
+4. Onglet **Details** → attribut **`tenant_id`** = l'`app.tenant.id` de l'instance qu'il utilise
+   (ex. `tenant_a`) — sans lui, la connexion aboutit à un 403 (§5).
+5. L'utilisateur peut se connecter dès son prochain login — pas de propagation différée côté
    FlowForge, aucun cache de session à invalider.
 
 **Droits fins par type de dossier (ACL `VIEW`/`EDIT`)** restent, eux, gérés **dans** FlowForge

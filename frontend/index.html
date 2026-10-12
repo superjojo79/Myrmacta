@@ -2,6 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- DD-BASE : réécrite par le backend en <base href="{context-path}/"> (SpaFallbackConfig) ; les
+         assets relatifs (base: './'), le routeur et le préfixe API se résolvent contre elle, jamais
+         contre la route courante. -->
+    <base href="/" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>frontend</title>

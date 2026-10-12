@@ -64,7 +64,10 @@ class ZonkyEmbeddedDbLauncherTest {
             }
             assertThatThrownBy(() -> statement.execute("CREATE TABLE public.forbidden (id int)"))
                     .isInstanceOf(SQLException.class)
-                    .hasMessageContaining("permission denied");
+                    // SQLState 42501 (insufficient_privilege) plutôt que le texte, traduit selon la
+                    // locale du serveur (« droit refusé » sous un Windows français).
+                    .extracting(e -> ((SQLException) e).getSQLState())
+                    .isEqualTo("42501");
             statement.execute("CREATE TABLE tenant_dev.allowed (id int)");
         } finally {
             db.handle().close();

@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +28,11 @@ import tools.jackson.databind.json.JsonMapper;
 /** TODO §72, M5 — API publique de signature (S-ACCESS-1/2/3/4/5, S-DEC-5 côté API). */
 @AutoConfigureMockMvc
 class SignaturePortalApiTest extends AbstractSignatureEngineTest {
+
+    // Compteur et non System.nanoTime() : sous Windows nanoTime avance par pas de 100 ns, d'où
+    // une poignée d'IP distinctes seulement — une IP « fraîche » retombait sur celle saturée par
+    // le test de rate limit (429).
+    private static final AtomicInteger IP_SEQUENCE = new AtomicInteger();
 
     private static final String TOKEN = "X-Portal-Token";
 
@@ -61,7 +67,8 @@ class SignaturePortalApiTest extends AbstractSignatureEngineTest {
     }
 
     private static String freshIp() {
-        return "10.30." + (System.nanoTime() % 250) + "." + (1 + (System.nanoTime() % 250));
+        int n = IP_SEQUENCE.getAndIncrement();
+        return "10.30." + (n / 250 % 250) + "." + (1 + n % 250);
     }
 
     private Signer signer(String name) {

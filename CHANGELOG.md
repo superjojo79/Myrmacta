@@ -179,6 +179,10 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Corrigé
 
+- **[PR #164](https://github.com/superjojo79/FlowForge/pull/164) — Outillage Windows + Podman** — Connexion de dev réparée (le realm
+  émet `tenant_id` et les rôles dans l'ID token ; `/api/auth/me` renvoie les rôles mappés) ; le SPA sous context-path recharge les
+  liens profonds, déconnecte et garde le préfixe tenant (`<base href>` réécrit par le backend), sa garde de rôles attend `/me`.
+  Suite de tests verte sous Windows, profil Compose `mailpit`, comptes `manager` / `viewer` ; parcours documenté dans `GETTING-STARTED.md`.
 - **[PR #158](https://github.com/superjojo79/FlowForge/pull/158) — suite de TODO §91** — `SlaAlertConcurrencyIT` échouait
   de façon aléatoire en CI (« une seule alerte… expected 1 but was 0 ») : le pool de connexions des tests, plafonné à 4,
   se bloquait sous les tests à 4 threads (timeout 30 s, transaction annulée). Pool Hikari par défaut rétabli.

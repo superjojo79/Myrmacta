@@ -103,8 +103,10 @@ class EmbeddedDbEnvironmentPostProcessorTest {
         new EmbeddedDbEnvironmentPostProcessor(() -> Optional.of(launcher))
                 .postProcessEnvironment(environment, application());
 
-        assertThat(received.get().baseDir()).isEqualTo(Path.of("/var/lib/flowforge-demo"));
-        assertThat(received.get().pgDataDir()).isEqualTo(Path.of("/var/lib/flowforge-demo/pgdata"));
+        // EmbeddedDbSettings rend le chemin absolu : sous Windows, /var/lib/... devient C:\var\lib\...
+        assertThat(received.get().baseDir()).isEqualTo(Path.of("/var/lib/flowforge-demo").toAbsolutePath());
+        assertThat(received.get().pgDataDir())
+                .isEqualTo(Path.of("/var/lib/flowforge-demo/pgdata").toAbsolutePath());
         assertThat(received.get().port()).isEqualTo(25432);
         assertThat(received.get().database()).isEqualTo("flowforge");
         assertThat(environment.getProperty("spring.datasource.url"))

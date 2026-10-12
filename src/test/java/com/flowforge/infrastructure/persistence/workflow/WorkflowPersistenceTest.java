@@ -28,9 +28,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.TestPropertySource;
 
 @SpringBootTest
 @Import(OidcClientTestConfiguration.class)
+// Le relais réel (OutboxRelayScheduler, poll 1s) prendrait des événements créés par les tests d'outbox
+// ci-dessous et les ferait disparaître de lockNextPending : on l'endort pour cette classe.
+@TestPropertySource(properties = "app.workflow.outbox.poll-delay=1h")
 class WorkflowPersistenceTest {
 
     @Autowired

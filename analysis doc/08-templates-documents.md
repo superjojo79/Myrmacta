@@ -200,4 +200,78 @@ Sont refusés (`TemplateProcessingException` / `InvalidTemplateSyntaxException` 
 generate/preview **et** à l'**activation**) : `T()`, `#beans`, `new`, `#request`, et tout
 objet d'expression hors allowlist. Le POST draft reste 201 (le checker métier s'exécute à
 l'activation, pas à la création). Le checker valide la même allowlist **sans** exécuter le
-template (les variables métier absentes à l'activation ne font pas échouer la syntaxe).
+template (les variables métier absentes à l'activation ne font pas échouer la syntaxe — elles
+font en revanche échouer le **rendu**, voir ci-dessous).
+
+### Grammaire des expressions `${…}`
+
+Référence : `SafeThymeleafExpressionSupport` (et ses tests `SafeThymeleafExpressionSupportTest`).
+Le même évaluateur sert à l'aperçu (`POST /api/documents/preview`, outil MCP `preview_document`)
+et à la génération (`documentGenerationTask`) ; le checker d'activation applique la même grammaire
+à chaque `${…}` et `*{…}` du template, sans variables.
+
+**Forme d'une expression** — exactement une des formes suivantes, rien après :
+
+```
+expression := littéral | chemin | "#vars." chemin | utilitaire
+chemin     := ident ("." ident)*                   ident = lettre ou _, puis lettres, chiffres, _
+utilitaire := "#" ("strings"|"dates"|"numbers"|"lists") "." méthode "(" [expression ("," expression)*] ")"
+littéral   := 'texte' | "texte" | entier | décimal | true | false | null
+```
+
+- **Littéraux** : texte entre `'…'` ou `"…"` (échappement par `\'` ou en doublant le guillemet :
+  `'it''s'`) ; entier éventuellement négatif (`42`, `-7` ; au-delà de l'`int`, un `long`) ;
+  décimal `1.5` (pas de notation exponentielle) ; `true`, `false`, `null`.
+- **Chemin** : le premier segment est une variable du modèle ; chaque segment suivant lit une clé
+  de `Map`, un getter **public** sans argument `getX()`/`isX()` (hérité compris, hors `Object`) ou
+  l'accesseur canonique d'un `record`. Jamais une méthode arbitraire, même publique, ni un membre
+  non public. Les noms `class`, `getClass`, `wait`, `notify`, `notifyAll` (toute casse) sont
+  refusés.
+- **`#vars.<chemin>`** : équivalent au chemin direct ; `#vars` seul est refusé.
+- **Utilitaires** : seules les méthodes **déclarées** sur `org.thymeleaf.expression.Strings`,
+  `Dates`, `Numbers`, `Lists`, avec le bon nombre d'arguments (varargs admis). Les arguments sont
+  eux-mêmes des expressions (imbrication permise :
+  `#strings.toUpperCase(#strings.trim(nom))`) ; les nombres sont convertis vers le type du
+  paramètre, un `Instant` vers `Date`. Rien ne peut suivre l'appel (`#strings.trim(x).length` est
+  refusé).
+- **`*{…}`** est évalué exactement comme `${…}`, contre les variables du modèle : `th:object`
+  n'est **pas** pris comme racine (`<div th:object="${m}"><p th:text="*{x}">` cherche la variable
+  `x`, pas `m.x`).
+
+**Refusé dans les accolades** (`Unsupported Thymeleaf expression`, template refusé à
+l'activation) : opérateurs de comparaison (`${statut == 'VALIDE'}`), `and`/`or`, ternaire
+(`${a ? 'x' : 'y'}`), indexation (`${map['x']}`), appel de méthode sur une valeur
+(`${map.get('x')}`, `${map.containsKey('x')}`), chaînage après un utilitaire, `T(…)`, `new`,
+`#beans`, `#request`, tout autre objet `#…`. Sont aussi refusés à l'activation, quelle que soit la
+graphie : `th:utext`, `th:inline`, l'inline non échappé `[(…)]` et les fragments (`th:replace`,
+`th:insert`, `th:include`, `th:substituteby`) ; l'inline échappé `[[${…}]]` est accepté.
+
+**Hors des accolades**, les opérateurs de l'expression standard Thymeleaf combinent les résultats
+de plusieurs `${…}` déjà évalués : concaténation `${a} + ' ' + ${b}`, et aussi
+`${statut} == 'VALIDE'`, `${a} and ${b}`, `${a} ? 'oui' : 'non'` (constaté avec
+`preview_document`). L'opérateur `${x} ?: 'défaut'` ne sert à rien pour une valeur manquante :
+`${x}` échoue avant que Thymeleaf n'applique le défaut.
+
+**Condition** — idiome recommandé : `th:if="${#strings.equals(statut, 'VALIDE')}"`. Quand la
+condition est fausse, l'élément et **tout son contenu** ne sont pas évalués : un `th:text` ou un
+`th:each` qui y référence une variable absente ne fait pas échouer le rendu. La variable testée
+par le `th:if` lui-même doit exister et être non nulle.
+
+**Variable ou propriété absente ou nulle ⇒ échec du rendu.** Un premier segment absent ou nul
+lève `TemplateProcessingException` « Unknown template variable: x » ; un segment suivant absent,
+nul (clé de map présente avec la valeur `null` comprise) ou sans getter lève « Unknown template
+property: … ». Il n'y a **aucune** résolution silencieuse en chaîne vide — seule une valeur
+présente, y compris `""`, s'affiche. Cela vaut aussi pour un argument d'utilitaire :
+`#strings.isEmpty(x)` ou `#strings.defaultString(x, '-')` échouent si `x` est absent ou nul. En
+workflow, `documentGenerationTask` échoue sans produire de PDF.
+
+**Valeurs facultatives : les calculer en amont.** Plutôt que de référencer directement un champ
+qui peut manquer (`${dossierFields.complement}`), poser avant `documentGenerationTask` une brique
+« Évaluer une expression » (`${businessExpressionTask}`, voir
+[GUIDE-CONCEPTION-BPMN.md](../GUIDE-CONCEPTION-BPMN.md) §3sexies) qui produit une variable avec
+une valeur par défaut non nulle —
+`$exists(dossier.fields.complement) ? dossier.fields.complement : ""` dans `flowable:formula`,
+`complementAdresse` dans `flowable:formulaResult` — et référencer `${complementAdresse}` dans le
+template. Toutes les variables du processus sont transmises au template, la variable ainsi
+calculée comprise. Tester ensuite le template avec `preview_document`, avec et sans les champs
+facultatifs.

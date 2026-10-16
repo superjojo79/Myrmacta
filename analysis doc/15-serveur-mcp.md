@@ -5,6 +5,11 @@
 > `DEPLOIEMENT.md` §13). Nouveaux outils : `list_pending_drafts`, `publish_draft`. Chaque outil est classé *conception* / *opération*
 > (`McpToolModes`). Le texte ci-dessous décrit le cadrage initial.
 
+> **Mise à jour TODO §93 (2026-10-16).** `deploy_workflow` (proposition et `dryRun`) accepte une ressource référencée qui
+> existe sans être active (template en brouillon, type de dossier inactif, webhook ou connecteur désactivé) et la liste
+> dans `inactiveReferences` (`activityId`, `parameter`, `source`, `value`) avec `inactiveReferencesMessage`. La
+> publication reste stricte.
+
 > **Statut : analyse initiale + cycle `dev-lifecycle` Phase 3 reviewed
 > (2026-08-27).** Cadrage 2026-08-26 inchangé. Spec d'implémentation :
 > `docs/ai/**/2026-08-27-feature-serveur-mcp.md`. Ne pas lire cette

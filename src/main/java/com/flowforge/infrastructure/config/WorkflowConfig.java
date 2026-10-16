@@ -191,6 +191,7 @@ public class WorkflowConfig {
     @Bean
     ManualStartOrchestrator manualStartOrchestrator(
             DossierRepository dossierRepository,
+            DossierTypeRepository dossierTypeRepository,
             DossierWorkflowLinkRepository linkRepository,
             AttachWorkflowUseCase attachWorkflow,
             WorkflowEnginePort workflowEnginePort,
@@ -199,6 +200,7 @@ public class WorkflowConfig {
             WorkflowEventPublisher eventPublisher) {
         return new ManualStartOrchestrator(
                 dossierRepository,
+                dossierTypeRepository,
                 linkRepository,
                 attachWorkflow,
                 workflowEnginePort,

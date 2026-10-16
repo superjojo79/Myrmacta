@@ -966,6 +966,40 @@ test('E2E-4 start workflow sends Idempotency-Key', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Diagramme' })).toBeVisible()
 })
 
+test('E2E-START-VARS-1 start variables typed in the dialog are sent with the start request (TODO §93)', async ({ page }) => {
+  await mockSession(page)
+  await openApp(page)
+  await createAndOpenDossier(page)
+  await page.getByRole('button', { name: 'Démarrer workflow' }).click()
+  await page.getByText('Variables de démarrage').click()
+  await page.getByRole('button', { name: 'Ajouter une variable' }).click()
+  await page.getByRole('textbox', { name: 'Nom' }).fill('priorite')
+  await page.getByRole('textbox', { name: 'Valeur' }).fill('haute')
+  const request = page.waitForRequest(
+    (r) => r.method() === 'POST' && /\/api\/dossiers\/[^/]+\/workflows$/.test(new URL(r.url()).pathname),
+  )
+  await page.locator('.dialog button.primary').click()
+  expect((await request).postDataJSON()).toEqual({ processDefinitionKey: expect.any(String), variables: { priorite: 'haute' } })
+})
+
+test('E2E-START-VARS-2 a reserved start variable name is refused before any request (TODO §93)', async ({ page }) => {
+  await mockSession(page)
+  await openApp(page)
+  await createAndOpenDossier(page)
+  let started = false
+  page.on('request', (r) => {
+    if (r.method() === 'POST' && /\/api\/dossiers\/[^/]+\/workflows$/.test(new URL(r.url()).pathname)) started = true
+  })
+  await page.getByRole('button', { name: 'Démarrer workflow' }).click()
+  await page.getByText('Variables de démarrage').click()
+  await page.getByRole('button', { name: 'Ajouter une variable' }).click()
+  await page.getByRole('textbox', { name: 'Nom' }).fill('dossierId')
+  await page.locator('.dialog button.primary').click()
+  await expect(page.getByRole('alert').filter({ hasText: 'réservé' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Démarrer un workflow' })).toBeVisible()
+  expect(started).toBe(false)
+})
+
 test('E2E-5 complete task from inbox with {}', async ({ page }) => {
   await mockSession(page)
   await openApp(page)

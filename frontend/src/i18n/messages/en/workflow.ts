@@ -7,6 +7,19 @@ const workflow: typeof fr = {
     defaultKey: 'Default key:',
     configuration: 'Configuration',
     start: 'Start',
+    variables: {
+      title: 'Start variables',
+      hint: 'Text values passed to the workflow. A parameter written in the BPMN takes precedence over a variable with the same name.',
+      name: 'Name',
+      value: 'Value',
+      add: 'Add a variable',
+      remove: 'Remove the variable',
+      errors: {
+        invalid: 'Invalid name: letters, digits and _, not starting with a digit.',
+        reserved: '“{name}” is reserved by the platform.',
+        duplicate: '“{name}” is already set.',
+      },
+    },
   },
   tasks: {
     title: 'Link tasks',

@@ -5,6 +5,19 @@ export default {
     defaultKey: 'Clé par défaut :',
     configuration: 'Configuration',
     start: 'Démarrer',
+    variables: {
+      title: 'Variables de démarrage',
+      hint: 'Valeurs texte transmises au workflow. Un paramètre écrit dans le BPMN prime sur une variable de même nom.',
+      name: 'Nom',
+      value: 'Valeur',
+      add: 'Ajouter une variable',
+      remove: 'Supprimer la variable',
+      errors: {
+        invalid: 'Nom invalide : lettres, chiffres et _, sans commencer par un chiffre.',
+        reserved: '« {name} » est réservé par la plateforme.',
+        duplicate: '« {name} » est déjà renseignée.',
+      },
+    },
   },
   tasks: {
     title: 'Tâches du lien',

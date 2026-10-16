@@ -104,6 +104,16 @@ class WorkflowExceptionHandler {
         return problem(HttpStatus.CONFLICT, "Workflow task already assigned", ex.getMessage());
     }
 
+    /**
+     * TODO §93 (revue M1) — une brique « Notifier » synchrone qui échoue (destinataire lu dans le dossier vide ou mal formé)
+     * fait échouer la complétion ou le démarrage. 422 plutôt que 500 : la requête est valide, c'est une donnée du dossier qui
+     * empêche l'étape. Le message nomme la source (dossierField:…), jamais l'adresse.
+     */
+    @ExceptionHandler(com.flowforge.domain.notification.model.NotificationValidationException.class)
+    ProblemDetail handleWorkflowStepFailed(com.flowforge.domain.notification.model.NotificationValidationException ex) {
+        return problem(HttpStatus.UNPROCESSABLE_ENTITY, "Workflow step failed", ex.getMessage());
+    }
+
     @ExceptionHandler(IllegalStateException.class)
     ProblemDetail handleIllegalState(IllegalStateException ex) {
         return problem(HttpStatus.CONFLICT, "Workflow conflict", ex.getMessage());

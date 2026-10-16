@@ -5,6 +5,7 @@ import static org.mockito.Mockito.mock;
 
 import com.flowforge.domain.dossier.model.AccessDeniedException;
 import com.flowforge.domain.dossier.model.DossierWorkflowLinkNotFoundException;
+import com.flowforge.domain.notification.model.NotificationValidationException;
 import com.flowforge.domain.workflow.model.WorkflowProcessInstanceMissingException;
 import com.flowforge.domain.workflow.model.WorkflowTaskNotFoundException;
 import com.flowforge.domain.workflow.model.WorkflowTypeConfigNotFoundException;
@@ -15,6 +16,21 @@ import org.springframework.security.core.Authentication;
 class WorkflowExceptionHandlerTest {
 
     private final WorkflowExceptionHandler handler = new WorkflowExceptionHandler();
+
+    /**
+     * Revue adversariale TODO §93 (M1) : une brique « Notifier » synchrone qui échoue (destinataire lu dans le dossier vide ou
+     * mal formé) remonte dans la complétion de tâche ou le démarrage : 422 explicite, pas une 500. Le message nomme la source,
+     * jamais l'adresse, pour que l'éditeur corrige le champ.
+     */
+    @Test
+    void handlesAFailedNotificationStep_as422WithTheSourceNamed() {
+        var problem = handler.handleWorkflowStepFailed(new NotificationValidationException(
+                "notificationTo source dossierField:email resolved to an empty value"));
+
+        assertThat(problem.getStatus()).isEqualTo(422);
+        assertThat(problem.getTitle()).isEqualTo("Workflow step failed");
+        assertThat(problem.getDetail()).contains("dossierField:email");
+    }
 
     @Test
     void handlesProcessInstanceMissing_as409() {

@@ -74,6 +74,25 @@ class FlowableSignalConnectorTest {
                 .signalEventReceivedWithTenantId(eq("override"), eq(Map.of("x", 1)), eq("tenant_dev"));
     }
 
+    /**
+     * Revue adversariale TODO §93 (I7) : un signal est diffusé à toutes les instances du tenant qui l'attendent ;
+     * connectorInput étant posable à la complétion d'une tâche, ses variables ne doivent pas écraser dossierId & co.
+     */
+    @Test
+    void execute_refusesReservedPlatformVariablesAndSignalsNothing() {
+        ConnectorInstanceData instance = instance(Map.of(
+                "signalName", "configured",
+                "processKey", "p",
+                "dossierTypeCode", "T"));
+
+        for (String reserved : List.of("dossierId", "dossierWorkflowLinkId", "tenantId", "dossierFields", "connectorResult")) {
+            assertThatThrownBy(() -> connector.execute(instance, Map.of("variables", Map.of(reserved, "x"))))
+                    .isInstanceOf(ConnectorValidationException.class)
+                    .hasMessageContaining(reserved);
+        }
+        org.mockito.Mockito.verifyNoInteractions(runtimeService);
+    }
+
     @Test
     void onEvent_mapsPayloadToTriggerEvent() {
         ConnectorInstanceData instance = instance(Map.of(

@@ -418,6 +418,15 @@ enfant, statut du dossier, statut du workflow) lisent désormais aussi des **att
    dossier, workflow, statut déclaré dans la configuration **de ce process**, table DMN, schéma de
    question ; sinon `404`, comme pour une table DMN inconnue.
 
+**Brouillon proposé par un canal automatisé** (MCP `deploy_workflow`, `dryRun` compris ; compilation d'un
+parcours ; import de configuration — TODO §93) : la forme est vérifiée de la même façon, mais une ressource
+qui **existe sans être active** est acceptée — template encore en brouillon, type de dossier inactif,
+connecteur de rôle service ou webhook désactivé. Le brouillon est enregistré et la réponse la signale
+(`inactiveReferences` côté MCP, `warnings` pour un parcours). Une ressource inconnue, supprimée, de mauvais
+rôle ou un template seulement archivé reste refusé. **La publication du brouillon reste stricte** : elle est
+refusée tant que la ressource n'est pas activée. Un agent peut ainsi proposer ensemble un modèle de document
+et le workflow qui l'utilise ; l'humain active le modèle, puis publie le workflow.
+
 Les avertissements de l'éditeur (paramètre obligatoire vide, référence disparue, `${…}` saisi,
 signature sans attente `signatureCompleted`, tâche externe sans question, adresse e-mail littérale dans
 « Notifier ») sont **non bloquants** : ils n'empêchent ni l'enregistrement du brouillon ni l'export.
@@ -715,11 +724,33 @@ Pour un message métier explicite (pas juste « ça a bougé »), poser :
 | Variable | Obligatoire | Rôle |
 |---|---|---|
 | `notificationChannels` | oui | liste ou CSV parmi `EMAIL`, `WEBHOOK`, `BROWSER` |
-| `notificationTo` | selon canal | destinataire email |
+| `notificationTo` | selon canal | destinataire email : adresse littérale, ou en attribut `flowable:notificationTo` une source `dossierField:<champ>` / `variable:<nom>` (voir ci-dessous) |
 | `notificationSubject` / `notificationBody` | selon canal | contenu email |
 | `notificationUserId` | pour `BROWSER` | **un seul** utilisateur — pour notifier plusieurs intervenants (ex. tous les participants), utiliser un `multiInstanceLoopCharacteristics` Flowable standard sur cette tâche, itérant sur une variable liste, ou combiner avec le mécanisme (b) qui couvre déjà le cas générique |
 | `notificationWebhookConfigId` | pour `WEBHOOK` | UUID de la config webhook tenant |
 | `notificationPayload` | non | `Map` libre, transmis tel quel au canal |
+
+**Destinataire lu dans le dossier (TODO §93).** Écrit dans l'attribut de la brique,
+`flowable:notificationTo="dossierField:email"` envoie à la valeur **actuelle** du champ `email` du dossier
+(relue au moment de l'envoi, pas l'instantané `dossierFields` du démarrage) ; `"variable:adresse"` lit la
+variable de process `adresse`, qu'une tâche « Évaluer une expression » peut calculer en amont. Même grammaire
+que `flowable:portalRecipient` (nom simple, jamais évalué). La source n'est lue que dans l'**attribut** du
+BPMN : une variable de process `notificationTo` qui contiendrait `dossierField:…` n'est jamais résolue (un
+utilisateur ne peut pas rediriger l'envoi vers un autre champ).
+
+La valeur obtenue — comme une variable `notificationTo` posée au démarrage ou à la complétion d'une tâche — doit
+être **une seule adresse** `local@domaine` (ni liste, ni « Nom <adresse> », ni retour à la ligne). Absente, vide,
+non textuelle ou mal formée, l'étape **échoue** ; le message nomme la source, jamais l'adresse. Une adresse écrite
+en dur dans l'attribut reste libre.
+
+> **Où se voit l'échec ?** La brique « Notifier » est synchrone par défaut : l'échec annule l'action qui l'a
+> exécutée — la complétion de la tâche précédente ou le démarrage — avec une réponse **422** qui nomme le champ en
+> cause ; il suffit de corriger le dossier et de recommencer. Pour obtenir plutôt un **incident** (tâche suivie par
+> le moteur, rejouable) sans bloquer l'utilisateur, cocher **asynchrone** (`flowable:async="true"`) sur la brique.
+>
+> **Champ sensible.** Une source peut désigner un champ marqué sensible : l'adresse part uniquement à cette adresse
+> et n'apparaît dans aucun message d'erreur, mais elle est conservée en clair dans la file d'envoi (outbox), comme
+> pour l'adresse d'une tâche externe du portail.
 
 Le contenu peut référencer les champs dynamiques exposés selon la méthode du §3
 (`notificationBody` reste une simple variable process — construire la chaîne avec une expression

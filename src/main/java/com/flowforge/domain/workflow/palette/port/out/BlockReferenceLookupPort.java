@@ -13,6 +13,10 @@ public interface BlockReferenceLookupPort {
     /** Ressources du tenant : templates actifs, instances de connecteur activées de rôle service, webhooks activés, tables DMN (valeur = clé). */
     List<BlockReference> list(String tenantId, String source);
 
-    /** Vrai si la ressource existe dans ce tenant (template : au moins une version active). */
-    boolean exists(String tenantId, String source, String value);
+    /**
+     * État de la ressource dans ce tenant (TODO §93) : template actif s'il a au moins une version active, inactif s'il n'a
+     * que des brouillons ; connecteur de rôle service, webhook non supprimé et type de dossier inactifs s'ils sont
+     * désactivés ; {@code workflowTypes} et {@code dmnTables} n'ont pas d'état inactif.
+     */
+    ReferenceStatus status(String tenantId, String source, String value);
 }

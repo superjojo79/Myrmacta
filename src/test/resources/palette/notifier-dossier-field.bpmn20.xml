@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://flowforge/test">
+
+  <!-- TODO §93 : destinataire de « Notifier » lu dans le dossier, après une tâche humaine pour prouver la lecture à jour. -->
+  <process id="notifierDossierField" name="Notifier Dossier Field" isExecutable="true">
+    <startEvent id="ndStart"/>
+    <sequenceFlow id="ndFlow1" sourceRef="ndStart" targetRef="ndWait"/>
+    <userTask id="ndWait" name="Attente" flowable:assignee="notifier-smoke"/>
+    <sequenceFlow id="ndFlow2" sourceRef="ndWait" targetRef="ndNotify"/>
+    <serviceTask id="ndNotify" name="Notifier"
+                 flowable:delegateExpression="${notificationDispatchTask}"
+                 flowable:notificationChannels="EMAIL"
+                 flowable:notificationTo="dossierField:email"
+                 flowable:notificationSubject="Votre demande"
+                 flowable:notificationBody="Votre demande a été traitée."/>
+    <sequenceFlow id="ndFlow3" sourceRef="ndNotify" targetRef="ndDone"/>
+    <userTask id="ndDone" name="Terminé" flowable:assignee="notifier-smoke"/>
+  </process>
+</definitions>

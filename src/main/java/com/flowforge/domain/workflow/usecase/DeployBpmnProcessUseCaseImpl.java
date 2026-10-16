@@ -12,6 +12,7 @@ import com.flowforge.domain.workflow.model.UnknownDecisionKeyException;
 import com.flowforge.domain.workflow.model.UnknownWorkflowKeyException;
 import com.flowforge.domain.workflow.model.WorkflowTypeConfig;
 import com.flowforge.domain.workflow.palette.BlockReferenceVerifier;
+import com.flowforge.domain.workflow.palette.InactiveBlockReference;
 import com.flowforge.domain.workflow.port.in.DeployBpmnProcessUseCase;
 import com.flowforge.domain.workflow.port.out.BpmnDraftRepository;
 import com.flowforge.domain.workflow.port.out.BpmnParserPort;
@@ -70,6 +71,16 @@ public final class DeployBpmnProcessUseCaseImpl implements DeployBpmnProcessUseC
 
     @Override
     public void validate(byte[] bpmnXml, Optional<WorkflowTypeConfig> effectiveConfig) {
+        validate(bpmnXml, effectiveConfig, BlockReferenceVerifier.Mode.STRICT);
+    }
+
+    @Override
+    public List<InactiveBlockReference> validateDraft(byte[] bpmnXml, Optional<WorkflowTypeConfig> effectiveConfig) {
+        return validate(bpmnXml, effectiveConfig, BlockReferenceVerifier.Mode.DRAFT);
+    }
+
+    private List<InactiveBlockReference> validate(
+            byte[] bpmnXml, Optional<WorkflowTypeConfig> effectiveConfig, BlockReferenceVerifier.Mode mode) {
         String processDefinitionKey = bpmnParserPort.extractProcessDefinitionKey(bpmnXml);
         // TODO §61 D1 -- a serviceTask flowable:type="dmn" is only accepted by the BPMN parser in
         // shape (literal decisionTableReferenceKey); the parser alone cannot know which decision
@@ -83,7 +94,8 @@ public final class DeployBpmnProcessUseCaseImpl implements DeployBpmnProcessUseC
         assertPortalTasksDeployable(bpmnParserPort.extractPortalTasks(bpmnXml));
         assertSignatureBlocksDeployable(bpmnParserPort.extractSignatureBlocks(bpmnXml));
         // TODO §73 D-PALETTE-DEPLOY-REFERENCES : existence des ressources référencées par les attributs de brique.
-        blockReferenceVerifier.verify(processDefinitionKey, effectiveConfig, bpmnParserPort.extractBlockReferences(bpmnXml));
+        return blockReferenceVerifier.verify(
+                processDefinitionKey, effectiveConfig, bpmnParserPort.extractBlockReferences(bpmnXml), mode);
     }
 
     /**

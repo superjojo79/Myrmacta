@@ -70,12 +70,58 @@ class DeployBpmnProcessUseCaseImplTest {
         when(bpmnParserPort.extractBlockReferences(BPMN_BYTES)).thenReturn(java.util.List.of(
                 new com.flowforge.domain.workflow.palette.BlockParameterUsage(
                         "gen", "generate-document", "documentType", "documentTemplates", "absent")));
-        when(lookup.exists(TENANT, "documentTemplates", "absent")).thenReturn(false);
+        when(lookup.status(TENANT, "documentTemplates", "absent"))
+                .thenReturn(com.flowforge.domain.workflow.palette.port.out.ReferenceStatus.MISSING);
 
         assertThatThrownBy(() -> useCase.deploy("diagram.bpmn20.xml", BPMN_BYTES))
                 .isInstanceOf(com.flowforge.domain.workflow.model.UnknownBlockReferenceException.class);
 
         verify(deploymentPort, never()).deploy(any(), any(), any());
+    }
+
+    private static final com.flowforge.domain.workflow.palette.BlockParameterUsage DRAFT_TEMPLATE =
+            new com.flowforge.domain.workflow.palette.BlockParameterUsage(
+                    "gen", "generate-document", "documentType", "documentTemplates", "nouveau");
+
+    private void givenAReferenceToADraftTemplate() {
+        when(bpmnParserPort.extractProcessDefinitionKey(BPMN_BYTES)).thenReturn("testProcess");
+        when(configRepository.findByWorkflowKey(TENANT, "testProcess")).thenReturn(Optional.of(smokeConfig()));
+        when(bpmnParserPort.extractReferencedDecisionKeys(BPMN_BYTES)).thenReturn(Set.of());
+        when(bpmnParserPort.extractBlockReferences(BPMN_BYTES)).thenReturn(List.of(DRAFT_TEMPLATE));
+        when(lookup.status(TENANT, "documentTemplates", "nouveau"))
+                .thenReturn(com.flowforge.domain.workflow.palette.port.out.ReferenceStatus.INACTIVE);
+    }
+
+    @Test
+    void deployAndValidate_stillRefuseAnInactiveResource() {
+        // TODO §93 D-DRAFT-REF-STATUS : déploiement, dryRun de l'écran et publication restent stricts.
+        givenAReferenceToADraftTemplate();
+
+        assertThatThrownBy(() -> useCase.deploy("diagram.bpmn20.xml", BPMN_BYTES))
+                .isInstanceOf(com.flowforge.domain.workflow.model.UnknownBlockReferenceException.class);
+        assertThatThrownBy(() -> useCase.validate(BPMN_BYTES, Optional.of(smokeConfig())))
+                .isInstanceOf(com.flowforge.domain.workflow.model.UnknownBlockReferenceException.class);
+        verify(deploymentPort, never()).deploy(any(), any(), any());
+    }
+
+    @Test
+    void validateDraft_acceptsAnInactiveResourceAndReturnsIt() {
+        givenAReferenceToADraftTemplate();
+
+        assertThat(useCase.validateDraft(BPMN_BYTES, Optional.of(smokeConfig()))).containsExactly(
+                new com.flowforge.domain.workflow.palette.InactiveBlockReference(
+                        "gen", "documentType", "documentTemplates", "nouveau"));
+        verify(deploymentPort, never()).deploy(any(), any(), any());
+    }
+
+    @Test
+    void validateDraft_keepsEveryOtherDeploymentCheck() {
+        when(bpmnParserPort.extractProcessDefinitionKey(BPMN_BYTES)).thenReturn("testProcess");
+        when(bpmnParserPort.extractReferencedDecisionKeys(BPMN_BYTES)).thenReturn(Set.of("eligibilite"));
+        when(dmnDeploymentPort.findDeploymentInfo(TENANT, "eligibilite")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> useCase.validateDraft(BPMN_BYTES, Optional.of(smokeConfig())))
+                .isInstanceOf(UnknownDecisionKeyException.class);
     }
 
     @Test

@@ -18,12 +18,16 @@ import com.flowforge.domain.dossier.port.in.UpdateDossierStatusUseCase;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.notification.model.NotificationChannel;
 import com.flowforge.domain.notification.model.NotificationEvent;
+import com.flowforge.domain.notification.model.NotificationValidationException;
 import com.flowforge.domain.notification.port.in.SendNotificationUseCase;
 import com.flowforge.domain.workflow.port.in.UpdateWorkflowLinkStatusUseCase;
+import com.flowforge.domain.workflow.portal.model.PortalRecipientSource;
+import com.flowforge.domain.workflow.portal.port.out.PortalRecipientResolverPort;
 import com.flowforge.application.workflow.ManualStartOrchestrator;
 import com.flowforge.infrastructure.dossier.ChildDossierRelationConfirmer;
 import com.flowforge.infrastructure.config.TenantProperties;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.flowable.bpmn.model.ServiceTask;
@@ -119,10 +123,142 @@ class BlockAttributesDelegatesTest {
 
     // --- notificationDispatchTask ------------------------------------------------------------------------------
 
+    /** TODO §93 (D-NOTIF-SOURCE-LITERAL) — destinataire lu dans le dossier ou dans une variable désignée par le BPMN. */
+    @Test
+    void notification_recipientSourceInTheLiteralAttributeIsResolved() {
+        SendNotificationUseCase useCase = mock(SendNotificationUseCase.class);
+        PortalRecipientResolverPort resolver = mock(PortalRecipientResolverPort.class);
+        NotificationDispatchTask delegate = new NotificationDispatchTask(new TenantProperties("tenant_dev"), useCase, resolver);
+        UUID dossier = UUID.randomUUID();
+        when(resolver.resolve(new PortalRecipientSource(PortalRecipientSource.Kind.DOSSIER_FIELD, "email"), dossier, "pi-1"))
+                .thenReturn(java.util.Optional.of("camille@example.org"));
+        // variable: est lue dans l'exécution (valeur posée plus tôt dans la même transaction comprise), sans le résolveur.
+        Map<String, Object> vars = Map.of("dossierId", dossier.toString(), "adresse", " b@example.org ");
+
+        delegate.execute(execution(vars, Map.of("notificationChannels", "EMAIL", "notificationTo", "dossierField:email")));
+        delegate.execute(execution(vars, Map.of("notificationChannels", "EMAIL", "notificationTo", "variable:adresse")));
+
+        ArgumentCaptor<NotificationEvent> captor = ArgumentCaptor.forClass(NotificationEvent.class);
+        verify(useCase, org.mockito.Mockito.times(2)).send(captor.capture(), eq("tenant_dev"));
+        assertThat(captor.getAllValues()).extracting(NotificationEvent::to)
+                .containsExactly("camille@example.org", "b@example.org");
+    }
+
+    @Test
+    void notification_emptyResolvedRecipientIsAnIncidentNamingTheSourceNeverAValue() {
+        SendNotificationUseCase useCase = mock(SendNotificationUseCase.class);
+        PortalRecipientResolverPort resolver = mock(PortalRecipientResolverPort.class);
+        NotificationDispatchTask delegate = new NotificationDispatchTask(new TenantProperties("tenant_dev"), useCase, resolver);
+        UUID dossier = UUID.randomUUID();
+        PortalRecipientSource email = new PortalRecipientSource(PortalRecipientSource.Kind.DOSSIER_FIELD, "email");
+        Map<String, Object> vars = Map.of("dossierId", dossier.toString());
+        Map<String, String> attrs = Map.of("notificationChannels", "EMAIL", "notificationTo", "dossierField:email");
+
+        for (java.util.Optional<Object> resolved : List.of(java.util.Optional.<Object>empty(),
+                java.util.Optional.<Object>of("  "), java.util.Optional.<Object>of(List.of("x@example.org")))) {
+            when(resolver.resolve(email, dossier, "pi-1")).thenReturn(resolved);
+            assertThatThrownBy(() -> delegate.execute(execution(vars, attrs)))
+                    .isInstanceOf(NotificationValidationException.class)
+                    .hasMessageContaining("dossierField:email")
+                    .hasMessageNotContaining("x@example.org");
+        }
+        verify(useCase, never()).send(any(), any());
+    }
+
+    @Test
+    void notification_aResolvedRecipientMustBeASingleMailbox() {
+        // MimeMessageHelper.setTo analyse une LISTE : un champ « a@x.org, b@y.org » enverrait à plusieurs destinataires.
+        SendNotificationUseCase useCase = mock(SendNotificationUseCase.class);
+        PortalRecipientResolverPort resolver = mock(PortalRecipientResolverPort.class);
+        NotificationDispatchTask delegate = new NotificationDispatchTask(new TenantProperties("tenant_dev"), useCase, resolver);
+        UUID dossier = UUID.randomUUID();
+        PortalRecipientSource email = new PortalRecipientSource(PortalRecipientSource.Kind.DOSSIER_FIELD, "email");
+        Map<String, Object> vars = Map.of("dossierId", dossier.toString());
+        Map<String, String> attrs = Map.of("notificationChannels", "EMAIL", "notificationTo", "dossierField:email");
+
+        String crlf = new String(new char[] {13, 10});
+        for (String bad : List.of("a@x.org, b@y.org", "a@x.org;b@y.org", "Camille <a@x.org>", "a@x.org" + crlf + "Bcc: b@y.org",
+                "a b@x.org", "pas-une-adresse", "@x.org", "a@")) {
+            when(resolver.resolve(email, dossier, "pi-1")).thenReturn(java.util.Optional.of(bad));
+            assertThatThrownBy(() -> delegate.execute(execution(vars, attrs)))
+                    .as(bad)
+                    .isInstanceOf(NotificationValidationException.class)
+                    .hasMessageContaining("dossierField:email")
+                    .hasMessageNotContaining("x.org");
+        }
+        verify(useCase, never()).send(any(), any());
+    }
+
+    @Test
+    void notification_aSourceGivenThroughTheVariableIsNeverResolved() {
+        // Une variable est contrôlée par un utilisateur (démarrage, complétion de tâche) : elle ne désigne pas un autre champ.
+        SendNotificationUseCase useCase = mock(SendNotificationUseCase.class);
+        PortalRecipientResolverPort resolver = mock(PortalRecipientResolverPort.class);
+        NotificationDispatchTask delegate = new NotificationDispatchTask(new TenantProperties("tenant_dev"), useCase, resolver);
+
+        // Elle reste une adresse littérale… qui n'en est pas une : refusée (revue L3), jamais résolue.
+        assertThatThrownBy(() -> delegate.execute(
+                execution(Map.of("notificationTo", "dossierField:email"), Map.of("notificationChannels", "EMAIL"))))
+                .isInstanceOf(NotificationValidationException.class);
+        org.mockito.Mockito.verifyNoInteractions(resolver, useCase);
+    }
+
+    /**
+     * Revue adversariale TODO §93 (L3) : la variable notificationTo (démarrage, complétion de tâche : saisie utilisateur) est
+     * soumise au même contrôle « une seule adresse » qu'une source ; l'attribut littéral écrit par le concepteur reste libre.
+     */
+    @Test
+    void notification_theUserControlledVariableMustAlsoBeASingleMailbox() {
+        SendNotificationUseCase useCase = mock(SendNotificationUseCase.class);
+        NotificationDispatchTask delegate = new NotificationDispatchTask(
+                new TenantProperties("tenant_dev"), useCase, mock(PortalRecipientResolverPort.class));
+
+        for (String bad : List.of("Camille <x@evil.org>", "g: a@x.org, b@y.org;", "a@x.org, b@y.org")) {
+            assertThatThrownBy(() -> delegate.execute(
+                    execution(Map.of("notificationTo", bad), Map.of("notificationChannels", "EMAIL"))))
+                    .as(bad)
+                    .isInstanceOf(NotificationValidationException.class)
+                    .hasMessageNotContaining("x.org");
+        }
+        delegate.execute(execution(Map.of("notificationTo", " a@example.org "), Map.of("notificationChannels", "EMAIL")));
+        delegate.execute(execution(Map.of(), Map.of("notificationChannels", "EMAIL", "notificationTo", "Service <s@example.org>")));
+
+        ArgumentCaptor<NotificationEvent> captor = ArgumentCaptor.forClass(NotificationEvent.class);
+        verify(useCase, org.mockito.Mockito.times(2)).send(captor.capture(), eq("tenant_dev"));
+        assertThat(captor.getAllValues()).extracting(NotificationEvent::to)
+                .containsExactly("a@example.org", "Service <s@example.org>");
+    }
+
+    @Test
+    void notification_aMalformedDossierIdIsAValidationErrorWithoutTheValue() {
+        NotificationDispatchTask delegate = new NotificationDispatchTask(new TenantProperties("tenant_dev"),
+                mock(SendNotificationUseCase.class), mock(PortalRecipientResolverPort.class));
+
+        assertThatThrownBy(() -> delegate.execute(execution(Map.of("dossierId", "pas-un-uuid"),
+                Map.of("notificationChannels", "EMAIL", "notificationTo", "dossierField:email"))))
+                .isInstanceOf(NotificationValidationException.class)
+                .hasMessageNotContaining("pas-un-uuid");
+    }
+
+    @Test
+    void notification_aLiteralAddressIsUnchangedAndNeverResolved() {
+        SendNotificationUseCase useCase = mock(SendNotificationUseCase.class);
+        PortalRecipientResolverPort resolver = mock(PortalRecipientResolverPort.class);
+        NotificationDispatchTask delegate = new NotificationDispatchTask(new TenantProperties("tenant_dev"), useCase, resolver);
+
+        delegate.execute(execution(Map.of(), Map.of("notificationChannels", "EMAIL", "notificationTo", "contact@example.org")));
+
+        ArgumentCaptor<NotificationEvent> captor = ArgumentCaptor.forClass(NotificationEvent.class);
+        verify(useCase).send(captor.capture(), eq("tenant_dev"));
+        assertThat(captor.getValue().to()).isEqualTo("contact@example.org");
+        org.mockito.Mockito.verifyNoInteractions(resolver);
+    }
+
     @Test
     void notification_attributesOnly_attributeWins_andMissingChannelsKeepsTheError() {
         SendNotificationUseCase useCase = mock(SendNotificationUseCase.class);
-        NotificationDispatchTask delegate = new NotificationDispatchTask(new TenantProperties("tenant_dev"), useCase);
+        NotificationDispatchTask delegate = new NotificationDispatchTask(
+                new TenantProperties("tenant_dev"), useCase, mock(PortalRecipientResolverPort.class));
         UUID webhook = UUID.randomUUID();
 
         delegate.execute(execution(Map.of(), Map.of(

@@ -198,6 +198,21 @@ class ConfigurationPromotionUseCaseTest {
         assertThat(entry.reason()).contains("no workflow configuration");
     }
 
+    /** Revue adversariale TODO §93 (L2) : le plan annonce qu'une ressource référencée est encore inactive. */
+    @Test
+    void thePlanOfABpmnReferencingAnInactiveResourceSaysPublicationWaitsForItsActivation() {
+        when(propose.validateBpmn(any(), org.mockito.ArgumentMatchers.eq("wf"), any(), any())).thenReturn(List.of(
+                new com.flowforge.domain.workflow.palette.InactiveBlockReference(
+                        "generer", "documentType", "documentTemplates", "decision")));
+        var b = bundle(new BundleEntry(ArtifactType.BPMN, "wf", "<bpmn/>".getBytes(StandardCharsets.UTF_8)),
+                json(ArtifactType.WORKFLOW_CONFIG, "wf", WF));
+
+        var bpmn = useCase.plan(ADMIN, b, Map.of()).find(ArtifactType.BPMN, "wf").orElseThrow();
+
+        assertThat(bpmn.action()).isEqualTo(PlanAction.CREATE);
+        assertThat(bpmn.reason()).contains("saved as a draft to publish").contains("decision").contains("not active");
+    }
+
     @Test
     void aBpmnDraftCarriesItsConfigurationAndTheConfigIsNotAppliedTwice() {
         var b = bundle(new BundleEntry(ArtifactType.BPMN, "wf", "<bpmn/>".getBytes(StandardCharsets.UTF_8)),

@@ -48,7 +48,7 @@ public final class BuildingBlockCatalog {
                     enumMulti("notificationChannels", "Canaux", true, names(NotificationChannel.values()),
                             "Un ou plusieurs canaux."),
                     text("notificationTo", "Destinataire e-mail", 254,
-                            "Pour une personne physique, préférer une variable ou un identifiant utilisateur."),
+                            "Adresse littérale, dossierField:<champ> (lu dans le dossier) ou variable:<nom>."),
                     text("notificationSubject", "Objet", SHORT, "Objet du message."),
                     text("notificationBody", "Message", LONG, "Texte littéral du message."),
                     text("notificationUserId", "Utilisateur", 100, "Identifiant de l'utilisateur à notifier (navigateur)."),

@@ -144,6 +144,46 @@ class DeployWorkflowToolTest {
         verifyNoInteractions(manage);
     }
 
+    private static final com.flowforge.domain.workflow.palette.InactiveBlockReference INACTIVE =
+            new com.flowforge.domain.workflow.palette.InactiveBlockReference(
+                    "generer", "documentType", "documentTemplates", "decision");
+
+    @Test
+    void aProposalReferencingAnInactiveResourceIsSavedAndListsItWithAWarning() {
+        // TODO §92 D-DRAFT-REF-STATUS
+        when(bpmnParserPort.extractProcessDefinitionKey(any())).thenReturn(KEY);
+        when(propose.proposeBpmn(any(), any(), any(), any(), any(), anyBoolean()))
+                .thenReturn(new ProposeDraftUseCase.Proposal(DraftArtifactType.BPMN, KEY, STAMP, false, List.of(INACTIVE)));
+
+        Map<String, Object> result = invoke(baseArgs());
+
+        assertThat(result).containsEntry("status", "DRAFT_PENDING_PUBLICATION");
+        assertThat(result.get("inactiveReferences")).isEqualTo(List.of(Map.of("activityId", "generer",
+                "parameter", "documentType", "source", "documentTemplates", "value", "decision")));
+        assertThat(result.get("inactiveReferencesMessage").toString()).contains("not active").contains("activate");
+    }
+
+    @Test
+    void aDryRunListsInactiveResourcesToo() {
+        when(bpmnParserPort.extractProcessDefinitionKey(any())).thenReturn(KEY);
+        when(propose.validateBpmn(any(), eq(KEY), any(), any())).thenReturn(List.of(INACTIVE));
+        Map<String, Object> args = baseArgs();
+        args.put("dryRun", true);
+
+        Map<String, Object> result = invoke(args);
+
+        assertThat(result).containsEntry("status", "VALID").containsKey("inactiveReferences");
+    }
+
+    @Test
+    void withoutInactiveResourceTheResultHasNoInactiveReferencesEntry() {
+        when(bpmnParserPort.extractProcessDefinitionKey(any())).thenReturn(KEY);
+        when(propose.proposeBpmn(any(), any(), any(), any(), any(), anyBoolean()))
+                .thenReturn(new ProposeDraftUseCase.Proposal(DraftArtifactType.BPMN, KEY, STAMP, false));
+
+        assertThat(invoke(baseArgs())).doesNotContainKeys("inactiveReferences", "inactiveReferencesMessage");
+    }
+
     @Test
     void invalidXmlAndMismatchedKeyAreRejectedBeforeAnyProposal() {
         when(bpmnParserPort.extractProcessDefinitionKey(any())).thenThrow(new InvalidBpmnException("bad xml"));

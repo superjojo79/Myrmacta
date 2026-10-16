@@ -14,9 +14,12 @@ import com.flowforge.domain.workflow.model.InvalidBpmnException;
 import com.flowforge.domain.workflow.model.ProposedWorkflowConfig;
 import com.flowforge.domain.workflow.model.UnknownBlockReferenceException;
 import com.flowforge.domain.workflow.model.Provenance;
+import com.flowforge.domain.workflow.palette.InactiveBlockReference;
 import com.flowforge.domain.workflow.port.in.ProposeDraftUseCase;
 import com.flowforge.domain.workflow.port.out.TaskQuestionSchemaRepository;
 import java.time.Clock;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -57,12 +60,11 @@ public final class CompileParcoursUseCaseImpl implements CompileParcoursUseCase 
         CompiledParcours compiled = ParcoursCompiler.compile(parcours.key(), parcours.label(), parcours.definition(), this::fieldsOf, this::typesOf);
         ProposedWorkflowConfig config = config(parcours.label(), parcours.definition());
         if (dryRun) {
-            propose.validateBpmn(actor, parcours.key(), compiled.xml(), config);
-            return new Result(compiled, null);
+            return new Result(withInactive(compiled, propose.validateBpmn(actor, parcours.key(), compiled.xml(), config)), null);
         }
         ProposeDraftUseCase.Proposal proposal = propose.proposeBpmn(actor, provenance, parcours.key(), compiled.xml(), config, replaceDraft);
         repository.markCompiled(tenantId, parcours.key(), clock.instant(), compiled.sha256());
-        return new Result(compiled, proposal);
+        return new Result(withInactive(compiled, proposal.inactiveReferences()), proposal);
     }
 
     @Override
@@ -70,11 +72,26 @@ public final class CompileParcoursUseCaseImpl implements CompileParcoursUseCase 
         guard.requireTenantOrWorkflowAdminOrApiService(actor);
         CompiledParcours compiled = ParcoursCompiler.compile(key, label, definition, this::fieldsOf, this::typesOf);
         try {
-            propose.validateBpmn(actor, key, compiled.xml(), config(label, definition));
-            return new Preview(compiled, null);
+            return new Preview(withInactive(compiled, propose.validateBpmn(actor, key, compiled.xml(), config(label, definition))), null);
         } catch (InvalidBpmnException | UnknownBlockReferenceException ex) {
             return new Preview(compiled, ex.getMessage());
         }
+    }
+
+    /**
+     * TODO §92 D-DRAFT-REF-STATUS — une ressource référencée présente mais inactive n'empêche pas le brouillon : elle devient un
+     * avertissement, car la publication la refusera tant qu'elle n'est pas activée. L'empreinte reste celle du BPMN.
+     */
+    private static CompiledParcours withInactive(CompiledParcours compiled, List<InactiveBlockReference> inactive) {
+        if (inactive.isEmpty()) {
+            return compiled;
+        }
+        List<String> warnings = new ArrayList<>(compiled.warnings());
+        for (InactiveBlockReference ref : inactive) {
+            warnings.add("step " + ref.activityId() + ": " + ref.parameter() + " '" + ref.value()
+                    + "' exists but is not active yet; publishing the draft will be refused until it is activated");
+        }
+        return new CompiledParcours(compiled.xml(), compiled.sha256(), warnings, compiled.elements());
     }
 
     private static ProposedWorkflowConfig config(String label, ParcoursDefinition definition) {

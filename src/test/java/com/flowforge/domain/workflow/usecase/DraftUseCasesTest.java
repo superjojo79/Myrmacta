@@ -165,14 +165,30 @@ class DraftUseCasesTest {
         assertThat(saved.provenance()).isEqualTo(Provenance.MCP);
         assertThat(saved.updatedBy()).isEqualTo("agent-1");
         assertThat(saved.proposedConfig()).isEqualTo(CONFIG);
-        verify(deployBpmn).validate(any(), any());
+        // TODO §92 D-DRAFT-REF-STATUS : une proposition est validée en mode brouillon, jamais en mode strict.
+        verify(deployBpmn).validateDraft(any(), any());
+        verify(deployBpmn, never()).validate(any(), any());
         verify(deployBpmn, never()).deploy(any(), any());
         verifyNoInteractions(saveConfig);
+        assertThat(proposal.inactiveReferences()).isEmpty();
+    }
+
+    @Test
+    void aProposalReferencingAnInactiveResourceIsSavedAndReportsIt() {
+        var inactive = new com.flowforge.domain.workflow.palette.InactiveBlockReference(
+                "generer", "documentType", "documentTemplates", "decision");
+        when(deployBpmn.validateDraft(any(), any())).thenReturn(List.of(inactive));
+
+        var proposal = propose.proposeBpmn(AGENT, Provenance.MCP, KEY, "<bpmn/>", CONFIG, false);
+
+        assertThat(proposal.inactiveReferences()).containsExactly(inactive);
+        assertThat(bpmnStore).containsKey(KEY);
+        assertThat(propose.validateBpmn(AGENT, KEY, "<bpmn/>", CONFIG)).containsExactly(inactive);
     }
 
     @Test
     void theProposalIsValidatedAgainstTheSubmittedConfigurationBeforeAnyWrite() {
-        org.mockito.Mockito.doThrow(new InvalidBpmnException("unknown reference")).when(deployBpmn).validate(any(), any());
+        org.mockito.Mockito.doThrow(new InvalidBpmnException("unknown reference")).when(deployBpmn).validateDraft(any(), any());
 
         assertThatThrownBy(() -> propose.proposeBpmn(AGENT, Provenance.MCP, KEY, "<bpmn/>", CONFIG, false))
                 .isInstanceOf(InvalidBpmnException.class);

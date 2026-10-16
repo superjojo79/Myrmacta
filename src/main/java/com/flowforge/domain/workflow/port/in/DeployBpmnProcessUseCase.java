@@ -14,4 +14,13 @@ public interface DeployBpmnProcessUseCase {
      *     <em>soumise</em> en {@code dryRun}
      */
     void validate(byte[] bpmnXml, java.util.Optional<com.flowforge.domain.workflow.model.WorkflowTypeConfig> effectiveConfig);
+
+    /**
+     * TODO §92 (D-DRAFT-REF-STATUS) — mêmes contrôles que {@link #validate}, pour un brouillon proposé par un canal
+     * automatisé : une ressource référencée qui existe mais n'est pas encore active est acceptée.
+     *
+     * @return les références inactives, que la publication refusera tant qu'elles ne sont pas activées
+     */
+    java.util.List<com.flowforge.domain.workflow.palette.InactiveBlockReference> validateDraft(
+            byte[] bpmnXml, java.util.Optional<com.flowforge.domain.workflow.model.WorkflowTypeConfig> effectiveConfig);
 }

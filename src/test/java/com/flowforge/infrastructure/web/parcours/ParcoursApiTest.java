@@ -121,6 +121,27 @@ class ParcoursApiTest {
     }
 
     @Test
+    void aParcoursUsingADraftTemplateCompilesIntoADraftAndWarnsThatPublicationAwaitsActivation() throws Exception {
+        // TODO §92 D-DRAFT-REF-STATUS : un modèle encore en brouillon n'empêche plus de déposer le brouillon du workflow.
+        String template = "t" + key();
+        mockMvc.perform(post("/api/document-templates").with(admin()).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"templateKey":"%s","variantKey":null,"locale":null,"label":"Décision",
+                                "htmlContent":"<p>Décision</p>"}""".formatted(template)))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.status").value("DRAFT"));
+        String key = key();
+        String steps = """
+                [{"id":"generer","kind":"DOCUMENT","params":{"documentType":"%s"}},
+                 {"id":"cloture","kind":"SET_WORKFLOW_STATUS","params":{"targetWorkflowStatus":"VALIDE"}}]""".formatted(template);
+        mockMvc.perform(put("/api/parcours/{key}", key).with(admin()).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content(body("x", null, steps))).andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/parcours/{key}/compile", key).with(admin()).with(csrf()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.draftWritten").value(true))
+                .andExpect(jsonPath("$.warnings", hasItem(containsString(template))));
+    }
+
+    @Test
     void compilingAnUnknownParcoursIs404AndPreviewNeverWrites() throws Exception {
         mockMvc.perform(post("/api/parcours/{key}/compile", key()).with(admin()).with(csrf())).andExpect(status().isNotFound());
         mockMvc.perform(post("/api/parcours/preview").with(admin()).with(csrf()).contentType(MediaType.APPLICATION_JSON)

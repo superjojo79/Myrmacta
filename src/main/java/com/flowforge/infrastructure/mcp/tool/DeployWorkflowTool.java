@@ -68,7 +68,9 @@ public class DeployWorkflowTool {
                     + "DRAFT that a human publishes from the 'Brouillons à publier' screen: nothing is deployed and no "
                     + "configuration is written until then. The instance may allow direct publication (never in production). "
                     + "processDefinitionKey must match the BPMN process id. dryRun=true validates without writing anything. "
-                    + "A draft written by someone else is not overwritten unless replaceExistingDraft=true.")
+                    + "A draft written by someone else is not overwritten unless replaceExistingDraft=true. "
+                    + "A referenced resource that exists but is not active yet (e.g. a document template still in draft) "
+                    + "is accepted and listed in inactiveReferences: publication is refused until a human activates it.")
     public Map<String, Object> deployWorkflow(
             McpSchema.CallToolRequest request,
             @McpToolParam(required = true, description = "Process definition key — must match the BPMN process id")
@@ -122,8 +124,9 @@ public class DeployWorkflowTool {
 
         if (rawDryRun) {
             // Mêmes contrôles qu'un déploiement, avec la configuration SOUMISE, avant toute écriture.
-            proposeDraftUseCase.validateBpmn(actor, rawProcessDefinitionKey, rawXml, config);
-            return DraftToolResults.of("processDefinitionKey", rawProcessDefinitionKey, true, DraftToolResults.VALID, null, null);
+            var inactive = proposeDraftUseCase.validateBpmn(actor, rawProcessDefinitionKey, rawXml, config);
+            return DraftToolResults.of(
+                    "processDefinitionKey", rawProcessDefinitionKey, true, DraftToolResults.VALID, null, null, inactive);
         }
         ProposeDraftUseCase.Proposal proposal = proposeDraftUseCase.proposeBpmn(
                 actor, accessContextFactory.provenance(), rawProcessDefinitionKey, rawXml, config,

@@ -19,6 +19,8 @@ vi.mock('@/api/workflows', () => ({
   getWorkflowTasks: vi.fn().mockResolvedValue({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }),
   listAllWorkflowTypeConfigs: vi.fn().mockResolvedValue([]),
   reassignWorkflowTask: vi.fn().mockResolvedValue(undefined),
+  claimWorkflowTask: vi.fn().mockResolvedValue(undefined),
+  listAssignableUsers: vi.fn().mockResolvedValue([]),
 }))
 vi.mock('@/api/tasks')
 vi.mock('@/api/purgeOutbox', () => ({
@@ -104,6 +106,10 @@ describe('DossierDetailView phase 8', () => {
       startedBy: 'u',
     })
     vi.mocked(tasksApi.completeTask).mockResolvedValue(undefined)
+    vi.mocked(workflowsApi.claimWorkflowTask).mockResolvedValue(undefined)
+    vi.mocked(workflowsApi.listAssignableUsers).mockResolvedValue([
+      { userId: 'user-2', displayName: 'Grace Hopper', email: 'grace@example.org' },
+    ])
   })
 
   async function mountDetail(roles: string[], canEdit = false) {
@@ -149,10 +155,51 @@ describe('DossierDetailView phase 8', () => {
     expect(admin.text()).toContain('Réassigner')
     const reassignBtn = admin.findAll('.task-list button').find((b) => b.text() === 'Réassigner')
     await reassignBtn!.trigger('click')
-    await admin.get('.reassign input').setValue('user-2')
+    await flushPromises()
+    // D-ASSIGN-DIR : une liste des utilisateurs connus remplace la saisie d'un identifiant.
+    const select = admin.get('[data-testid="reassign-user"]')
+    expect(select.text()).toContain('Grace Hopper (grace@example.org)')
+    await select.setValue('user-2')
     await admin.get('.reassign button').trigger('click')
     await flushPromises()
     expect(workflowsApi.reassignWorkflowTask).toHaveBeenCalledWith('link-1', 'task-1', 'user-2')
+  })
+
+  it('explains an empty user list instead of showing a bare select', async () => {
+    vi.mocked(workflowsApi.listAssignableUsers).mockResolvedValue([])
+    const admin = await mountDetail(['TENANT_ADMIN'])
+    const reassignBtn = admin.findAll('.task-list button').find((b) => b.text() === 'Réassigner')
+    await reassignBtn!.trigger('click')
+    await flushPromises()
+    expect(admin.text()).toContain('Un utilisateur apparaît ici après sa première connexion.')
+  })
+
+  it('lets a dossier editor take a free task with the claim button (D-ASSIGN-CLAIM)', async () => {
+    vi.mocked(workflowsApi.getWorkflowTasks).mockResolvedValue(
+      asPage([{ taskId: 'task-1', name: 'Review', assignee: null, taskDefinitionKey: 'k', createTime: null }]),
+    )
+    const viewer = await mountDetail(['DOSSIER_VIEWER'], false)
+    expect(viewer.find('[data-testid="claim-task"]').exists()).toBe(false)
+    viewer.unmount()
+
+    const editor = await mountDetail(['DOSSIER_MANAGER'], true)
+    await editor.get('[data-testid="claim-task"]').trigger('click')
+    await flushPromises()
+    expect(workflowsApi.claimWorkflowTask).toHaveBeenCalledWith('link-1', 'task-1')
+    // Pas d'appel à l'annuaire pour un non-admin : il lui est refusé.
+    expect(workflowsApi.listAssignableUsers).not.toHaveBeenCalled()
+  })
+
+  it('shows the assignee display name for admins and "vous" for oneself', async () => {
+    vi.mocked(workflowsApi.getWorkflowTasks).mockResolvedValue(
+      asPage([
+        { taskId: 'task-1', name: 'Review', assignee: 'user-2', taskDefinitionKey: 'k', createTime: null },
+        { taskId: 'task-2', name: 'Sign', assignee: 'u', taskDefinitionKey: 'k', createTime: null },
+      ]),
+    )
+    const admin = await mountDetail(['WORKFLOW_ADMIN'])
+    expect(admin.text()).toContain('Assignee : Grace Hopper')
+    expect(admin.text()).toContain('Assignee : vous')
   })
 
   it('follows the server-computed canEdit flag rather than the role alone (TODO §36)', async () => {

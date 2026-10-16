@@ -6,6 +6,7 @@ import com.flowforge.infrastructure.config.M2mSecurityProperties;
 import com.flowforge.infrastructure.config.SecurityCookieProperties;
 import com.flowforge.infrastructure.config.SecurityHeadersProperties;
 import com.flowforge.infrastructure.config.TenantProperties;
+import com.flowforge.infrastructure.security.oidc.KnownUserRecordingSuccessHandler;
 import com.flowforge.infrastructure.security.oidc.RealmAccessAuthoritiesMapper;
 import com.flowforge.infrastructure.tenant.TenantResolutionFilter;
 import com.flowforge.infrastructure.web.connector.WebhookBodySizeLimitFilter;
@@ -184,6 +185,7 @@ public class SecurityConfig {
             HttpSecurity http,
             SecurityCookieProperties cookieProperties,
             RealmAccessAuthoritiesMapper authoritiesMapper,
+            KnownUserRecordingSuccessHandler loginSuccessHandler,
             TenantResolutionFilter tenantResolutionFilter,
             ClientRegistrationRepository clientRegistrationRepository,
             DocumentGenerationProperties documentGenerationProperties,
@@ -211,8 +213,11 @@ public class SecurityConfig {
                 .addFilterBefore(
                         new DocumentGenerationBodySizeLimitFilter(documentGenerationProperties.maxBodyBytes()),
                         SecurityContextHolderFilter.class)
-                .oauth2Login(oauth2 -> oauth2.userInfoEndpoint(
-                        userInfo -> userInfo.userAuthoritiesMapper(authoritiesMapper)))
+                .oauth2Login(oauth2 -> oauth2
+                        .userInfoEndpoint(userInfo -> userInfo.userAuthoritiesMapper(authoritiesMapper))
+                        // D-ASSIGN-DIR : enregistre l'utilisateur dans l'annuaire local, puis
+                        // redirige comme le gestionnaire par défaut.
+                        .successHandler(loginSuccessHandler))
                 .logout(logout -> logout
                         .logoutUrl("/api/auth/logout")
                         .logoutSuccessHandler(oidcLogoutSuccessHandler(clientRegistrationRepository))

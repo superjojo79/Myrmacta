@@ -5,6 +5,7 @@ import com.flowforge.domain.shared.PageResult;
 import com.flowforge.domain.workflow.model.ActivityHistoryEntry;
 import com.flowforge.domain.workflow.model.WorkflowDiagramView;
 import com.flowforge.domain.workflow.model.WorkflowProcessInstanceNotFoundException;
+import com.flowforge.domain.workflow.model.WorkflowTaskAlreadyAssignedException;
 import com.flowforge.domain.workflow.model.WorkflowTaskNotFoundException;
 import com.flowforge.domain.workflow.model.WorkflowTaskView;
 import com.flowforge.domain.workflow.port.out.WorkflowVisualizationPort;
@@ -16,6 +17,7 @@ import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
+import org.flowable.common.engine.api.FlowableTaskAlreadyClaimedException;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
@@ -127,6 +129,18 @@ class FlowableWorkflowVisualizationAdapter implements WorkflowVisualizationPort 
     public void reassignTask(String processInstanceId, String taskId, String assigneeId, String tenantId) {
         assertTaskOnInstance(processInstanceId, taskId, tenantId);
         taskService.setAssignee(taskId, assigneeId);
+    }
+
+    @Override
+    public void claimTask(String processInstanceId, String taskId, String userId, String tenantId) {
+        assertTaskOnInstance(processInstanceId, taskId, tenantId);
+        try {
+            // claim() (et non setAssignee) : Flowable refuse atomiquement une tâche déjà prise par
+            // un autre, ce qui tranche aussi la course entre deux « M'assigner » simultanés.
+            taskService.claim(taskId, userId);
+        } catch (FlowableTaskAlreadyClaimedException ex) {
+            throw new WorkflowTaskAlreadyAssignedException("Workflow task already assigned: " + taskId);
+        }
     }
 
     private ProcessReference requireProcess(String processInstanceId, String tenantId) {

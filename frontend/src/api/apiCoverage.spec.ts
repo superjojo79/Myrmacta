@@ -29,6 +29,8 @@ import {
   getWorkflowTypeConfig,
   listWorkflowTypeConfigs,
   reassignWorkflowTask,
+  claimWorkflowTask,
+  listAssignableUsers,
   updateWorkflowTypeConfig,
 } from './workflows'
 import {
@@ -80,6 +82,15 @@ describe('api coverage', () => {
     await grantDossierTypeAcl('C', 'u', 'EDIT')
     await revokeDossierTypeAcl('C', 'u')
     expect(axios.delete).toHaveBeenCalled()
+  })
+
+  it('covers task claim and assignable users (D-ASSIGN-CLAIM / D-ASSIGN-DIR)', async () => {
+    vi.mocked(axios.get).mockResolvedValue({ data: [{ userId: 'u1', displayName: 'Ada', email: null }] })
+    await claimWorkflowTask('l', 't')
+    const users = await listAssignableUsers('l')
+    expect(axios.post).toHaveBeenCalledWith('/api/workflow-links/l/tasks/t/claim')
+    expect(axios.get).toHaveBeenCalledWith('/api/workflow-links/l/assignable-users')
+    expect(users).toEqual([{ userId: 'u1', displayName: 'Ada', email: null }])
   })
 
   it('covers workflows viz and configs', async () => {

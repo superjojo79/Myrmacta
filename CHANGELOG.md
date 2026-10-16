@@ -46,6 +46,11 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
+- **[PR #171](https://github.com/superjojo79/FlowForge/pull/171) — TODO §92** — Assignation des tâches : bouton
+  **« M'assigner »** sur une tâche libre pour tout éditeur du dossier, et réassignation (TA/WA) par une **liste des
+  utilisateurs** au lieu d'un identifiant à saisir. La liste vient d'un annuaire local alimenté à chaque connexion : un
+  utilisateur n'y figure qu'après sa première connexion. Corrige aussi les boutons blancs sur fond blanc sous un OS en
+  mode sombre (thème clair forcé).
 - **[PR #157](https://github.com/superjojo79/FlowForge/pull/157) — TODO §91** — PostgreSQL embarqué (zonky) :
   tous les tests tournent sur un PostgreSQL 17 réel, sans Docker (une base par contexte Spring), et un
   profil `embedded-db` (`./mvnw -Pembedded-db package`) offre une base **persistante** pour les

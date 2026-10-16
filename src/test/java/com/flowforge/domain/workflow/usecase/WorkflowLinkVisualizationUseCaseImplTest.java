@@ -2,7 +2,10 @@ package com.flowforge.domain.workflow.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -32,8 +35,13 @@ import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
 import com.flowforge.domain.notification.model.NotificationChannel;
 import com.flowforge.domain.notification.model.NotificationEvent;
 import com.flowforge.domain.notification.port.in.SendNotificationUseCase;
+import com.flowforge.domain.shared.PageQuery;
+import com.flowforge.domain.shared.PageResult;
+import com.flowforge.domain.user.model.KnownUser;
+import com.flowforge.domain.user.port.out.KnownUserRepository;
 import com.flowforge.domain.workflow.model.WorkflowDiagramView;
 import com.flowforge.domain.workflow.model.WorkflowProcessInstanceMissingException;
+import com.flowforge.domain.workflow.model.WorkflowTaskView;
 import com.flowforge.domain.workflow.port.out.WorkflowParticipantPort;
 import com.flowforge.domain.workflow.port.out.WorkflowVisualizationPort;
 import java.time.Instant;
@@ -59,6 +67,7 @@ class WorkflowLinkVisualizationUseCaseImplTest {
     private WorkflowParticipantPort participantPort;
     private DossierAccessPolicy dossierAccessPolicy;
     private SendNotificationUseCase sendNotificationUseCase;
+    private KnownUserRepository knownUserRepository;
     private WorkflowLinkVisualizationUseCaseImpl useCase;
 
     @BeforeEach
@@ -74,6 +83,7 @@ class WorkflowLinkVisualizationUseCaseImplTest {
         participantPort = mock(WorkflowParticipantPort.class);
         dossierAccessPolicy = mock(DossierAccessPolicy.class);
         sendNotificationUseCase = mock(SendNotificationUseCase.class);
+        knownUserRepository = mock(KnownUserRepository.class);
         when(dossierTypeRepository.findByCode(anyString(), anyString())).thenReturn(Optional.empty());
         useCase = new WorkflowLinkVisualizationUseCaseImpl(
                 TENANT,
@@ -85,7 +95,8 @@ class WorkflowLinkVisualizationUseCaseImplTest {
                 visualizationPort,
                 participantPort,
                 dossierAccessPolicy,
-                sendNotificationUseCase);
+                sendNotificationUseCase,
+                knownUserRepository);
     }
 
     @Test
@@ -355,6 +366,133 @@ class WorkflowLinkVisualizationUseCaseImplTest {
 
         assertThatThrownBy(() -> useCase.reassign(link.id(), "task-1", "assignee", user("admin", "TENANT_ADMIN")))
                 .isInstanceOf(WorkflowProcessInstanceMissingException.class);
+    }
+
+    @Test
+    void reassign_acceptsKnownUserWhoCanEditTheDossierEvenIfNotYetAParticipant() {
+        // D-ASSIGN-DIR : l'annuaire local complète la liste des participants comme garde.
+        DossierWorkflowLink link = activeLink("proc-1");
+        Dossier dossier = dossier(link.dossierId());
+        when(linkRepository.findById(link.id())).thenReturn(Optional.of(link));
+        when(dossierRepository.findById(link.dossierId())).thenReturn(Optional.of(dossier));
+        when(participantPort.findParticipantUserIds(link)).thenReturn(List.of("starter-sub"));
+        when(knownUserRepository.findById(TENANT, "manager-sub"))
+                .thenReturn(Optional.of(knownUser("manager-sub", "Manager", "DOSSIER_MANAGER")));
+        when(dossierAccessPolicy.canEdit(eq(dossier), any())).thenReturn(true);
+
+        useCase.reassign(link.id(), "task-1", "manager-sub", user("admin", "TENANT_ADMIN"));
+
+        verify(visualizationPort).reassignTask("proc-1", "task-1", "manager-sub", TENANT);
+    }
+
+    @Test
+    void reassign_rejectsKnownUserWhoCannotEditTheDossier() {
+        DossierWorkflowLink link = activeLink("proc-1");
+        Dossier dossier = dossier(link.dossierId());
+        when(linkRepository.findById(link.id())).thenReturn(Optional.of(link));
+        when(dossierRepository.findById(link.dossierId())).thenReturn(Optional.of(dossier));
+        when(participantPort.findParticipantUserIds(link)).thenReturn(List.of("starter-sub"));
+        when(knownUserRepository.findById(TENANT, "viewer-sub"))
+                .thenReturn(Optional.of(knownUser("viewer-sub", "Viewer", "DOSSIER_VIEWER")));
+
+        assertThatThrownBy(() -> useCase.reassign(link.id(), "task-1", "viewer-sub", user("admin", "TENANT_ADMIN")))
+                .isInstanceOf(IllegalArgumentException.class);
+        verify(visualizationPort, never()).reassignTask("proc-1", "task-1", "viewer-sub", TENANT);
+    }
+
+    @Test
+    void listAssignableUsers_returnsKnownUsersWhoCanEditTheDossier() {
+        DossierWorkflowLink link = activeLink("proc-1");
+        Dossier dossier = dossier(link.dossierId());
+        KnownUser editor = knownUser("editor-sub", "Editor", "DOSSIER_MANAGER");
+        KnownUser viewer = knownUser("viewer-sub", "Viewer", "DOSSIER_VIEWER");
+        when(linkRepository.findById(link.id())).thenReturn(Optional.of(link));
+        when(dossierRepository.findById(link.dossierId())).thenReturn(Optional.of(dossier));
+        when(knownUserRepository.findAll(TENANT)).thenReturn(List.of(editor, viewer));
+        when(dossierAccessPolicy.canEdit(dossier, AccessContext.user("editor-sub", Set.of("DOSSIER_MANAGER"))))
+                .thenReturn(true);
+
+        List<KnownUser> result = useCase.listAssignableUsers(link.id(), user("admin", "WORKFLOW_ADMIN"));
+
+        assertThat(result).containsExactly(editor);
+    }
+
+    @Test
+    void listAssignableUsers_isReservedToAdmins() {
+        DossierWorkflowLink link = activeLink("proc-1");
+        when(linkRepository.findById(link.id())).thenReturn(Optional.of(link));
+
+        assertThatThrownBy(() -> useCase.listAssignableUsers(link.id(), user("manager-sub", "DOSSIER_MANAGER")))
+                .isInstanceOf(AccessDeniedException.class);
+        verify(knownUserRepository, never()).findAll(TENANT);
+    }
+
+    @Test
+    void claim_assignsTaskToActorWhenActorCanEditTheDossier() {
+        DossierWorkflowLink link = activeLink("proc-1");
+        Dossier dossier = dossier(link.dossierId());
+        when(linkRepository.findById(link.id())).thenReturn(Optional.of(link));
+        when(dossierRepository.findById(link.dossierId())).thenReturn(Optional.of(dossier));
+
+        useCase.claim(link.id(), "task-1", user("manager-sub", "DOSSIER_MANAGER"));
+
+        verify(dossierAccessPolicy).assertCanEdit(eq(dossier), any());
+        verify(visualizationPort).claimTask("proc-1", "task-1", "manager-sub", TENANT);
+        verify(sendNotificationUseCase, never()).send(any(), anyString());
+    }
+
+    @Test
+    void claim_deniesActorWithoutEditPermission() {
+        DossierWorkflowLink link = activeLink("proc-1");
+        Dossier dossier = dossier(link.dossierId());
+        when(linkRepository.findById(link.id())).thenReturn(Optional.of(link));
+        when(dossierRepository.findById(link.dossierId())).thenReturn(Optional.of(dossier));
+        doThrow(new AccessDeniedException("no edit")).when(dossierAccessPolicy).assertCanEdit(eq(dossier), any());
+
+        assertThatThrownBy(() -> useCase.claim(link.id(), "task-1", user("viewer-sub", "DOSSIER_VIEWER")))
+                .isInstanceOf(AccessDeniedException.class);
+        verify(visualizationPort, never()).claimTask("proc-1", "task-1", "viewer-sub", TENANT);
+    }
+
+    @Test
+    void claim_rejectsBlankTaskId() {
+        assertThatThrownBy(() -> useCase.claim(UUID.randomUUID(), " ", user("manager-sub")))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void getTasks_allowsDossierEditorWhoIsNotYetAParticipant() {
+        // Sans cette ouverture, un éditeur ne verrait jamais la tâche libre qu'il peut prendre.
+        DossierWorkflowLink link = activeLink("proc-1");
+        Dossier dossier = dossier(link.dossierId());
+        when(linkRepository.findById(link.id())).thenReturn(Optional.of(link));
+        when(dossierRepository.findById(link.dossierId())).thenReturn(Optional.of(dossier));
+        when(participantPort.findParticipantUserIds(link)).thenReturn(List.of("starter-sub"));
+        when(dossierAccessPolicy.canEdit(eq(dossier), any())).thenReturn(true);
+        PageQuery query = PageQuery.of(0, 10);
+        when(visualizationPort.listActiveTasks("proc-1", TENANT, query))
+                .thenReturn(PageResult.of(
+                        List.of(new WorkflowTaskView("task-1", "Instruire", null, "instruire", null)), 0, 10, 1));
+
+        var page = useCase.getTasks(link.id(), user("manager-sub", "DOSSIER_MANAGER"), query);
+
+        assertThat(page.content()).extracting(WorkflowTaskView::taskId).containsExactly("task-1");
+    }
+
+    @Test
+    void getTasks_deniesNonParticipantWithoutEditPermission() {
+        DossierWorkflowLink link = activeLink("proc-1");
+        when(linkRepository.findById(link.id())).thenReturn(Optional.of(link));
+        when(dossierRepository.findById(link.dossierId())).thenReturn(Optional.of(dossier(link.dossierId())));
+        when(participantPort.findParticipantUserIds(link)).thenReturn(List.of("starter-sub"));
+
+        assertThatThrownBy(() -> useCase.getTasks(link.id(), user("viewer-sub", "DOSSIER_VIEWER"), PageQuery.of(0, 10)))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    private static KnownUser knownUser(String userId, String name, String... roles) {
+        return new KnownUser(
+                TENANT, userId, name, userId + "@example.org", Set.of(roles), Instant.parse("2026-10-13T08:00:00Z"));
     }
 
     private static AccessContext.User user(String userId, String... roles) {

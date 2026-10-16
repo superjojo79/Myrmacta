@@ -352,6 +352,26 @@ paths:
       responses:
         "200":
           description: OK
+  /api/workflow-links/{linkId}/tasks/{taskId}/claim:
+    post:
+      tags:
+      - workflow-link-visualization-controller
+      operationId: claim
+      parameters:
+      - name: linkId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
   /api/workflow-bpmn-deployments:
     post:
       tags:
@@ -2211,6 +2231,27 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/WorkflowDiagramView"
+  /api/workflow-links/{linkId}/assignable-users:
+    get:
+      tags:
+      - workflow-link-visualization-controller
+      operationId: assignableUsers
+      parameters:
+      - name: linkId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AssignableUserResponse"
   /api/workflow-bpmn-deployments/{processDefinitionKey}/xml:
     get:
       tags:
@@ -4911,6 +4952,15 @@ components:
           type: array
           items:
             type: string
+    AssignableUserResponse:
+      type: object
+      properties:
+        userId:
+          type: string
+        displayName:
+          type: string
+        email:
+          type: string
     ProcessDeploymentInfoResponse:
       type: object
       properties:

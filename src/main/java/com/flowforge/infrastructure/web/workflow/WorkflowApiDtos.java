@@ -2,6 +2,7 @@ package com.flowforge.infrastructure.web.workflow;
 
 import com.flowforge.domain.dossier.model.DossierStatus;
 import com.flowforge.domain.dossier.model.DossierWorkflowLink;
+import com.flowforge.domain.user.model.KnownUser;
 import com.flowforge.domain.workflow.model.StatusOutcome;
 import com.flowforge.domain.workflow.model.WorkflowStatusDefinition;
 import com.flowforge.domain.workflow.model.WorkflowTypeConfig;
@@ -15,6 +16,14 @@ record StartWorkflowRequest(String processDefinitionKey, Map<String, Object> var
 record CompleteTaskRequest(Map<String, Object> variables) {}
 
 record ReassignWorkflowTaskRequest(String assigneeId) {}
+
+/** D-ASSIGN-DIR — rôles volontairement absents : seul le choix d'un assigné est servi. */
+record AssignableUserResponse(String userId, String displayName, String email) {
+
+    static AssignableUserResponse from(KnownUser user) {
+        return new AssignableUserResponse(user.userId(), user.displayName(), user.email());
+    }
+}
 
 record WorkflowLinkResponse(
         UUID id,

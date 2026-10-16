@@ -4,6 +4,7 @@ import com.flowforge.domain.dossier.model.AccessDeniedException;
 import com.flowforge.domain.dossier.model.DossierNotFoundException;
 import com.flowforge.domain.dossier.model.DossierWorkflowLinkNotFoundException;
 import com.flowforge.domain.dossier.model.WorkflowAlreadyRunningException;
+import com.flowforge.domain.workflow.model.WorkflowTaskAlreadyAssignedException;
 import com.flowforge.domain.workflow.model.DecisionEvaluationException;
 import com.flowforge.domain.expression.model.ExpressionEvaluationException;
 import com.flowforge.domain.expression.model.InvalidExpressionException;
@@ -96,6 +97,11 @@ class WorkflowExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     ProblemDetail handleIntegrity(DataIntegrityViolationException ex) {
         return problem(HttpStatus.CONFLICT, "Workflow conflict", "Unique constraint or data integrity violation");
+    }
+
+    @ExceptionHandler(WorkflowTaskAlreadyAssignedException.class)
+    ProblemDetail handleTaskAlreadyAssigned(WorkflowTaskAlreadyAssignedException ex) {
+        return problem(HttpStatus.CONFLICT, "Workflow task already assigned", ex.getMessage());
     }
 
     @ExceptionHandler(IllegalStateException.class)

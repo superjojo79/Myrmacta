@@ -208,6 +208,44 @@ class FlowableWorkflowVisualizationAdapterTest {
     }
 
     @Test
+    void claimTask_claimsTaskBelongingToInstanceAndTenant() {
+        stubTaskOnInstance(PI);
+
+        adapter.claimTask(PI, "task-1", "manager-sub", TENANT);
+
+        verify(taskService).claim("task-1", "manager-sub");
+    }
+
+    @Test
+    void claimTask_translatesAlreadyClaimedIntoDomainConflict() {
+        stubTaskOnInstance(PI);
+        org.mockito.Mockito.doThrow(new org.flowable.common.engine.api.FlowableTaskAlreadyClaimedException("task-1", "other"))
+                .when(taskService).claim("task-1", "manager-sub");
+
+        assertThatThrownBy(() -> adapter.claimTask(PI, "task-1", "manager-sub", TENANT))
+                .isInstanceOf(com.flowforge.domain.workflow.model.WorkflowTaskAlreadyAssignedException.class);
+    }
+
+    @Test
+    void claimTask_rejectsTaskFromOtherProcess() {
+        stubTaskOnInstance("other-pi");
+
+        assertThatThrownBy(() -> adapter.claimTask(PI, "task-1", "manager-sub", TENANT))
+                .isInstanceOf(WorkflowTaskNotFoundException.class);
+        verify(taskService, never()).claim(any(), any());
+    }
+
+    private void stubTaskOnInstance(String processInstanceId) {
+        TaskQuery query = mock(TaskQuery.class);
+        Task task = mock(Task.class);
+        when(taskService.createTaskQuery()).thenReturn(query);
+        when(query.taskId("task-1")).thenReturn(query);
+        when(query.singleResult()).thenReturn(task);
+        when(task.getProcessInstanceId()).thenReturn(processInstanceId);
+        when(task.getTenantId()).thenReturn(TENANT);
+    }
+
+    @Test
     void assertTaskOnInstance_rejectsTaskFromOtherProcess() {
         TaskQuery query = mock(TaskQuery.class);
         Task task = mock(Task.class);

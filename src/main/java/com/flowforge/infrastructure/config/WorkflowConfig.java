@@ -11,6 +11,7 @@ import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
 import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
 import com.flowforge.domain.dossier.usecase.AttachWorkflowUseCaseImpl;
 import com.flowforge.domain.notification.port.in.SendNotificationUseCase;
+import com.flowforge.domain.user.port.out.KnownUserRepository;
 import com.flowforge.domain.workflow.port.in.CompleteTaskUseCase;
 import com.flowforge.domain.workflow.port.in.DeployBpmnProcessUseCase;
 import com.flowforge.domain.workflow.port.in.DeployDecisionTableUseCase;
@@ -171,7 +172,8 @@ public class WorkflowConfig {
             WorkflowVisualizationPort visualizationPort,
             WorkflowParticipantPort participantPort,
             DossierAccessPolicy dossierAccessPolicy,
-            SendNotificationUseCase sendNotificationUseCase) {
+            SendNotificationUseCase sendNotificationUseCase,
+            KnownUserRepository knownUserRepository) {
         return new WorkflowLinkVisualizationUseCaseImpl(
                 tenantProperties.id(),
                 linkRepository,
@@ -182,7 +184,8 @@ public class WorkflowConfig {
                 visualizationPort,
                 participantPort,
                 dossierAccessPolicy,
-                sendNotificationUseCase);
+                sendNotificationUseCase,
+                knownUserRepository);
     }
 
     @Bean

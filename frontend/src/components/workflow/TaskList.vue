@@ -4,10 +4,15 @@ import type { WorkflowTaskView } from '@/api/types'
 import AdminPager from '@/components/admin/AdminPager.vue'
 import { resolveTaskFormComponent } from '@/components/workflow/task-forms/taskFormRegistry'
 
-defineProps<{
+const props = defineProps<{
   tasks: WorkflowTaskView[]
   dossierId?: string
   canReassign?: boolean
+  /** D-ASSIGN-CLAIM : l'utilisateur peut modifier le dossier, donc prendre une tâche libre. */
+  canClaim?: boolean
+  currentUserId?: string | null
+  /** Noms affichés par identifiant d'utilisateur (annuaire local), quand ils sont connus. */
+  assigneeNames?: Record<string, string>
   totalPages?: number
 }>()
 
@@ -16,10 +21,17 @@ const page = defineModel<number>('page', { default: 0 })
 const emit = defineEmits<{
   complete: [taskId: string, variables?: Record<string, unknown>]
   reassign: [taskId: string]
+  claim: [taskId: string]
   'form-error': [message: string]
 }>()
 
 const { t } = useI18n()
+
+function assigneeLabel(assignee: string | null): string {
+  if (!assignee) return '—'
+  if (assignee === props.currentUserId) return t('workflow.tasks.you')
+  return props.assigneeNames?.[assignee] ?? assignee
+}
 </script>
 
 <template>
@@ -30,7 +42,7 @@ const { t } = useI18n()
       <li v-for="task in tasks" :key="task.taskId">
         <div>
           <strong>{{ task.name || task.taskId }}</strong>
-          <span class="task-list__meta">{{ t('workflow.tasks.assignee', { name: task.assignee || '—' }) }}</span>
+          <span class="task-list__meta">{{ t('workflow.tasks.assignee', { name: assigneeLabel(task.assignee) }) }}</span>
         </div>
         <div class="task-list__actions">
           <component
@@ -49,6 +61,14 @@ const { t } = useI18n()
             @click="emit('complete', task.taskId)"
           >
             {{ t('workflow.tasks.complete') }}
+          </button>
+          <button
+            v-if="canClaim && !task.assignee"
+            type="button"
+            data-testid="claim-task"
+            @click="emit('claim', task.taskId)"
+          >
+            {{ t('workflow.tasks.claim') }}
           </button>
           <button
             v-if="canReassign"

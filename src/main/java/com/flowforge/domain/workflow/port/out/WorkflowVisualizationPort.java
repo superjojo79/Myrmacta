@@ -18,4 +18,11 @@ public interface WorkflowVisualizationPort {
 
     /** Reassigns after verifying the task belongs to the process instance and tenant. */
     void reassignTask(String processInstanceId, String taskId, String assigneeId, String tenantId);
+
+    /**
+     * Assigne la tâche à {@code userId} si elle est libre ; sans effet si elle lui est déjà
+     * assignée. Lève {@link com.flowforge.domain.workflow.model.WorkflowTaskAlreadyAssignedException}
+     * si quelqu'un d'autre l'a prise, y compris dans une course entre deux prises simultanées.
+     */
+    void claimTask(String processInstanceId, String taskId, String userId, String tenantId);
 }

@@ -1,0 +1,36 @@
+{
+  "_commentaire": "Exemple NON créé sur l'instance : le secret doit être choisi et partagé avec l'équipe du portail. À créer dans Admin → Connecteurs (ou avec l'outil MCP define_connector_instance).",
+  "type": "http-rest",
+  "label": "Portail — demandes d'autorisation riverain",
+  "config": {
+    "webhookAuthType": "HMAC_SHA256",
+    "webhookSecret": "<secret partagé avec le portail, 20 caractères minimum>",
+    "processKey": "autorisationRiverain",
+    "dossierTypeCode": "AUTORISATION_RIVERAIN",
+    "mapping": "{\"fields\": {\"nom\": \"$.demandeur.nom\", \"prenom\": \"$.demandeur.prenom\", \"email\": \"$.demandeur.email\", \"telephone\": \"$.demandeur.telephone\", \"adresseRue\": \"$.domicile.rue\", \"adresseNumero\": \"$.domicile.numero\", \"codePostal\": \"$.domicile.codePostal\", \"commune\": \"$.domicile.commune\", \"paysImmatriculation\": \"$.vehicule.pays\", \"plaque\": \"$.vehicule.plaque\", \"marque\": \"$.vehicule.marque\", \"modele\": \"$.vehicule.modele\", \"zoneRiverain\": \"$.autorisation.zone\", \"dateDebutSouhaitee\": \"$.autorisation.dateDebut\"}, \"variables\": {\"notificationTo\": \"$.demandeur.email\"}}"
+  },
+  "exempleCorpsRequete": {
+    "demandeur": {
+      "nom": "Dupont",
+      "prenom": "Camille",
+      "email": "camille.dupont@example.org",
+      "telephone": "+32 470 00 00 00"
+    },
+    "domicile": {
+      "rue": "Rue des Tilleuls",
+      "numero": "12",
+      "codePostal": "1000",
+      "commune": "Bruxelles"
+    },
+    "vehicule": {
+      "pays": "BE",
+      "plaque": "1-ABC-123",
+      "marque": "Renault",
+      "modele": "Clio"
+    },
+    "autorisation": {
+      "zone": "Zone riveraine Tilleuls",
+      "dateDebut": "2026-11-01"
+    }
+  }
+}

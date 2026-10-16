@@ -1,0 +1,188 @@
+{
+  "code": "AUTORISATION_RIVERAIN",
+  "label": "Autorisation riverain (véhicule)",
+  "workflowKey": "autorisationRiverain",
+  "active": true,
+  "allowUnknownFields": false,
+  "fieldDefinitions": [
+    {
+      "name": "nom",
+      "label": "Nom",
+      "type": "STRING",
+      "required": true,
+      "group": "Demandeur",
+      "width": "HALF",
+      "searchable": true
+    },
+    {
+      "name": "prenom",
+      "label": "Prénom",
+      "type": "STRING",
+      "required": true,
+      "group": "Demandeur",
+      "width": "HALF"
+    },
+    {
+      "name": "email",
+      "label": "Adresse e-mail",
+      "type": "STRING",
+      "required": true,
+      "group": "Demandeur",
+      "width": "HALF",
+      "helpText": "Adresse à laquelle la décision et les éventuelles demandes de compléments sont envoyées."
+    },
+    {
+      "name": "telephone",
+      "label": "Téléphone",
+      "type": "STRING",
+      "required": false,
+      "group": "Demandeur",
+      "width": "HALF"
+    },
+    {
+      "name": "adresseRue",
+      "label": "Rue",
+      "type": "STRING",
+      "required": true,
+      "group": "Domicile",
+      "width": "HALF"
+    },
+    {
+      "name": "adresseNumero",
+      "label": "Numéro / boîte",
+      "type": "STRING",
+      "required": true,
+      "group": "Domicile",
+      "width": "HALF"
+    },
+    {
+      "name": "codePostal",
+      "label": "Code postal",
+      "type": "STRING",
+      "required": true,
+      "group": "Domicile",
+      "width": "HALF"
+    },
+    {
+      "name": "commune",
+      "label": "Commune",
+      "type": "STRING",
+      "required": true,
+      "group": "Domicile",
+      "width": "HALF"
+    },
+    {
+      "name": "paysImmatriculation",
+      "label": "Pays d'immatriculation",
+      "type": "SELECT",
+      "required": true,
+      "defaultValue": "BE",
+      "options": [
+        "BE",
+        "FR",
+        "NL",
+        "LU",
+        "DE",
+        "AUTRE"
+      ],
+      "group": "Véhicule",
+      "width": "HALF"
+    },
+    {
+      "name": "plaque",
+      "label": "Plaque d'immatriculation",
+      "type": "STRING",
+      "required": true,
+      "group": "Véhicule",
+      "width": "HALF",
+      "helpText": "Telle qu'elle figure sur le certificat d'immatriculation."
+    },
+    {
+      "name": "plaqueNormalisee",
+      "label": "Clé d'unicité du véhicule",
+      "type": "STRING",
+      "required": false,
+      "group": "Véhicule",
+      "searchable": true,
+      "formula": "dossier.fields.paysImmatriculation & \"-\" & $uppercase($replace($replace($replace($replace(dossier.fields.plaque, \" \", \"\"), \"-\", \"\"), \".\", \"\"), \"/\", \"\"))",
+      "helpText": "Calculée : pays + plaque sans espaces, tirets, points ni barres, en majuscules. Rechercher sur ce champ pour détecter une demande existante."
+    },
+    {
+      "name": "marque",
+      "label": "Marque",
+      "type": "STRING",
+      "required": true,
+      "group": "Véhicule",
+      "width": "HALF"
+    },
+    {
+      "name": "modele",
+      "label": "Modèle",
+      "type": "STRING",
+      "required": true,
+      "group": "Véhicule",
+      "width": "HALF"
+    },
+    {
+      "name": "zoneRiverain",
+      "label": "Zone ou rue riveraine demandée",
+      "type": "STRING",
+      "required": true,
+      "group": "Autorisation"
+    },
+    {
+      "name": "dateDebutSouhaitee",
+      "label": "Date de début souhaitée",
+      "type": "DATE",
+      "required": true,
+      "group": "Autorisation",
+      "width": "HALF"
+    },
+    {
+      "name": "certificatImmatriculation",
+      "label": "Certificat d'immatriculation",
+      "type": "FILE",
+      "required": false,
+      "group": "Pièces justificatives",
+      "width": "HALF"
+    },
+    {
+      "name": "preuveDomicile",
+      "label": "Preuve de domicile",
+      "type": "FILE",
+      "required": false,
+      "group": "Pièces justificatives",
+      "width": "HALF"
+    },
+    {
+      "name": "decision",
+      "label": "Décision",
+      "type": "SELECT",
+      "required": false,
+      "options": [
+        "AUTORISEE",
+        "AUTORISEE_TACITEMENT",
+        "REFUSEE",
+        "REFUSEE_SANS_REPONSE"
+      ],
+      "group": "Décision (renseignée par le workflow)",
+      "width": "HALF",
+      "searchable": true
+    },
+    {
+      "name": "dateDecision",
+      "label": "Date de la décision",
+      "type": "DATE",
+      "required": false,
+      "group": "Décision (renseignée par le workflow)",
+      "width": "HALF"
+    },
+    {
+      "name": "motifDecision",
+      "label": "Motif",
+      "type": "STRING",
+      "required": false,
+      "group": "Décision (renseignée par le workflow)"
+    }
+  ]
+}

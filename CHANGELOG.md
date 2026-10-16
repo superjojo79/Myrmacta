@@ -28,6 +28,13 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ## [Non publié]
 
+### Documentation
+
+- **[PR #168](https://github.com/superjojo79/FlowForge/pull/168)** — Templates de document : une variable ou propriété
+  **absente ou nulle** fait échouer la génération (le guide BPMN annonçait à tort une chaîne vide). Grammaire réelle des
+  expressions `${…}` documentée (`GUIDE-CONCEPTION-BPMN.md` §5, `08-templates-documents.md`), avec l'idiome de condition
+  `#strings.equals` et le calcul des valeurs facultatives en amont par la brique « Évaluer une expression ».
+
 ### Modifié
 
 - **[PR #165](https://github.com/superjojo79/FlowForge/pull/165)** — Bibliothèque UI : **PrimeVue** (passé sous licence

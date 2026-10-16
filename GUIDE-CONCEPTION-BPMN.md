@@ -220,11 +220,17 @@ de `dossierFields` et n'existe toujours pas nativement — c'est la signalétiqu
 (`reference`, `label`, `status`…), pas ses champs dynamiques. Une tâche qui en a besoin doit
 encore faire `execution.setVariable("dossier", ...)` explicitement.
 
-**Rappel utile malgré la correction :** un champ absent de `dossierFields` (parce qu'il n'a
-jamais été saisi sur ce dossier, ou que le nom est mal orthographié dans le template) continue de
-se résoudre silencieusement à une chaîne vide dans le PDF plutôt que de faire échouer la
-génération — Thymeleaf ne distingue pas « valeur vide » de « clé absente de la map ». Tester
-chaque template avec un jeu de champs réel reste la seule façon fiable de s'en assurer.
+**Champ absent ou nul ⇒ la génération échoue.** Un champ absent de `dossierFields` (jamais saisi
+sur ce dossier, ou nom mal orthographié dans le template) **ou** présent avec la valeur `null` ne
+se résout **pas** en chaîne vide : l'évaluateur des templates (`SafeThymeleafExpressionSupport`)
+lève `TemplateProcessingException` — « Unknown template property: dossierFields.x » pour une
+propriété, « Unknown template variable: x » pour une variable de processus absente ou nulle — et
+`documentGenerationTask` échoue sans produire de PDF ni écrire `generatedDocumentId`. Seule une
+valeur réellement présente, y compris une chaîne vide `""`, s'affiche (vide dans ce dernier cas).
+L'activation du template ne détecte pas ce cas (elle ne contrôle que la grammaire, sans
+variables) : pour un champ facultatif, calculer la valeur en amont (voir §5, « Valeurs
+facultatives ») et tester le template avec un jeu de champs réel (`POST /api/documents/preview`
+ou l'outil MCP `preview_document`), y compris un jeu où les champs facultatifs manquent.
 
 ---
 
@@ -601,6 +607,52 @@ Toutes les autres variables du processus au moment de l'exécution sont transmis
 Thymeleaf (voir §3 pour la mécanique exacte et l'allowlist de rendu — pas de `T()`, `#beans`,
 `new`, cf. décision **D-40**). Variable écrite : `generatedDocumentId` (référence de stockage).
 
+#### Ce qu'un template peut écrire dans `${…}`
+
+Le contenu des accolades n'est **pas** du SpEL ni de l'OGNL : c'est une grammaire restreinte
+(`SafeThymeleafExpressionSupport`), détaillée dans
+[08-templates-documents.md](analysis%20doc/08-templates-documents.md) « Grammaire des expressions ».
+En résumé :
+
+| Accepté dans `${…}` | Exemple |
+|---|---|
+| chemin de propriétés (clé de map, getter `getX`/`isX` public, accesseur de record) | `${dossierFields.montant.amount}` |
+| littéral texte, nombre, `true`/`false`/`null` | `${'VALIDE'}`, `${42}`, `${-1.5}` |
+| `#vars.<chemin>` | `${#vars.dossierFields.reference}` |
+| méthode **déclarée** de `#strings`, `#dates`, `#numbers`, `#lists`, arguments = toute expression acceptée | `${#strings.toUpperCase(#strings.trim(nom))}` |
+
+**Refusé dans `${…}`** (template refusé à l'activation, `Unsupported Thymeleaf expression`) :
+comparaison (`${statut == 'VALIDE'}`), `and`/`or`, ternaire (`${a ? 'x' : 'y'}`), indexation
+(`${map['x']}`), tout appel de méthode sur une valeur (`${map.get('x')}`, `${map.containsKey('x')}`),
+chaînage après un utilitaire (`${#strings.trim(x).length}`), en plus de `T()`, `new`, `#beans`,
+`#request`.
+
+**Condition dans un template** : passer par un utilitaire —
+`th:if="${#strings.equals(statut, 'VALIDE')}"`. Quand la condition est fausse, l'élément et tout
+son contenu ne sont **pas évalués** (un `th:text`/`th:each` à l'intérieur peut référencer une
+variable absente sans faire échouer le rendu) ; en revanche la variable testée par le `th:if`
+lui-même doit exister et être non nulle.
+
+#### Valeurs facultatives : les calculer en amont
+
+Toute variable ou propriété **absente ou nulle** référencée par un `${…}` évalué fait échouer
+`documentGenerationTask` (voir §3) — `#strings.isEmpty(...)`, `#strings.defaultString(...)` ou
+l'opérateur Thymeleaf `?:` n'y changent rien, l'argument est résolu avant l'appel. Pour un champ
+facultatif, poser **avant** la génération une brique « Évaluer une expression » (§3sexies) qui
+fournit une valeur par défaut, et référencer la variable produite dans le template :
+
+```xml
+<serviceTask id="calcComplement" name="Complément d'adresse (défaut vide)"
+             flowable:delegateExpression="${businessExpressionTask}"
+             flowable:formula="$exists(dossier.fields.complement) ? dossier.fields.complement : &quot;&quot;"
+             flowable:formulaResult="complementAdresse"/>
+<!-- puis documentGenerationTask ; dans le template : th:text="${complementAdresse}" -->
+```
+
+La valeur par défaut ne doit pas être `null` (une formule peut produire `null`, qui ferait échouer
+le rendu). Rappel : l'expression ne voit que les champs **déclarés et non sensibles** du type de
+dossier (§3sexies) — un champ sensible facultatif ne peut pas être traité ainsi.
+
 ### `attachGeneratedDocumentTask` — attache le PDF au dossier
 
 ```xml
@@ -764,7 +816,10 @@ chercher à le contourner, la même classe de vulnérabilité que H1-bis (BPMN) 
 - **Templates de document** : n'utiliser que `${...}` et les objets utilitaires Thymeleaf
   autorisés (`#dates`, `#numbers`, `#strings`, `#lists`) — `T()`, `#beans`, `new`, `#request`
   sont refusés à l'activation du template (décision **D-40**, voir
-  [08-templates-documents.md](analysis%20doc/08-templates-documents.md)).
+  [08-templates-documents.md](analysis%20doc/08-templates-documents.md)), de même que les
+  opérateurs (`==`, `and`, ternaire…), l'indexation et les appels de méthode à l'intérieur des
+  accolades (§5). Une variable ou propriété absente ou nulle fait échouer la génération (§3) :
+  calculer les valeurs facultatives en amont plutôt que d'espérer un rendu vide.
 - **Concurrence** : ne jamais tenter de démarrer un second workflow sur un dossier qui en a déjà
   un actif en dehors des mécanismes documentés ici (§2) — la contrainte unique
   `uq_dossier_workflow_link_active` le refuse de toute façon, mais un `serviceTask` custom qui

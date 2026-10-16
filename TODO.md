@@ -3500,7 +3500,7 @@ diffusion SSE multi-pods (Redis exclu), Microsoft Graph et Event Grid, étapes p
 
 ---
 
-## 91. Assignation des tâches — « M'assigner » et annuaire local des utilisateurs
+## 92. Assignation des tâches — « M'assigner » et annuaire local des utilisateurs
 
 [x] livré (branche `feat/assignation-taches`). Avant : la seule façon d'assigner une tâche était la réassignation TA/WA en
 saisissant le **sujet OIDC** (UUID) à la main, et une tâche sans assigné n'apparaissait jamais dans **Tâches**.

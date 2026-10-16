@@ -30,6 +30,9 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Documentation
 
+- **[PR #172](https://github.com/superjojo79/FlowForge/pull/172)** — Exemple `exemples/autorisation-riverain/` : un flux complet
+  monté uniquement par configuration via MCP, avec la liste des manques rencontrés (`DIFFICULTES.md`), reportés et priorisés dans
+  `DEFERRED-FEATURES.md` §7. `GETTING-STARTED.md` §12 : périmètre MCP à jour et activation du canal M2M en local.
 - **[PR #168](https://github.com/superjojo79/FlowForge/pull/168)** — Templates de document : une variable ou propriété
   **absente ou nulle** fait échouer la génération (le guide BPMN annonçait à tort une chaîne vide). Grammaire réelle des
   expressions `${…}` documentée (`GUIDE-CONCEPTION-BPMN.md` §5, `08-templates-documents.md`), avec l'idiome de condition

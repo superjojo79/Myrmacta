@@ -3,6 +3,7 @@ import { useI18n } from 'vue-i18n'
 import { onMounted, ref, watch } from 'vue'
 import { listAllWorkflowTypeConfigs } from '@/api/workflows'
 import type { WorkflowTypeConfig } from '@/api/types'
+import { validateStartVariables, type StartVariableError, type StartVariableRow } from './startVariables'
 
 const props = defineProps<{
   open: boolean
@@ -11,13 +12,17 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
-  start: [processDefinitionKey: string]
+  start: [processDefinitionKey: string, variables: Record<string, string>]
 }>()
 
 const useOther = ref(false)
 const selectedKey = ref(props.defaultWorkflowKey)
 const configs = ref<WorkflowTypeConfig[]>([])
 const loading = ref(false)
+// TODO §92 — variables de démarrage (texte) : section repliée, validée avant l'envoi.
+const rows = ref<StartVariableRow[]>([])
+const rowErrors = ref<Record<number, StartVariableError>>({})
+const variablesOpen = ref(false)
 
 watch(
   () => props.defaultWorkflowKey,
@@ -32,6 +37,9 @@ watch(
     if (open) {
       useOther.value = false
       selectedKey.value = props.defaultWorkflowKey
+      rows.value = []
+      rowErrors.value = {}
+      variablesOpen.value = false
     }
   },
 )
@@ -45,10 +53,30 @@ onMounted(async () => {
   }
 })
 
+function addRow() {
+  rows.value.push({ name: '', value: '' })
+  variablesOpen.value = true
+}
+
+function removeRow(index: number) {
+  rows.value.splice(index, 1)
+  rowErrors.value = {}
+}
+
+function onToggle(event: Event) {
+  variablesOpen.value = (event.target as HTMLDetailsElement).open
+}
+
 function submit() {
   const key = useOther.value ? selectedKey.value : props.defaultWorkflowKey
   if (!key) return
-  emit('start', key)
+  const { variables, errors } = validateStartVariables(rows.value)
+  rowErrors.value = errors
+  if (Object.keys(errors).length > 0) {
+    variablesOpen.value = true
+    return
+  }
+  emit('start', key, variables)
 }
 
 const { t } = useI18n()
@@ -71,6 +99,39 @@ const { t } = useI18n()
           </option>
         </select>
       </label>
+      <details data-testid="start-variables" class="dialog__variables" :open="variablesOpen" @toggle="onToggle">
+        <summary>{{ t('workflow.startDialog.variables.title') }}</summary>
+        <p class="dialog__hint">{{ t('workflow.startDialog.variables.hint') }}</p>
+        <div v-for="(row, index) in rows" :key="index" data-testid="start-variable-row" class="dialog__variable">
+          <input
+            v-model="row.name"
+            data-testid="start-variable-name"
+            :aria-label="t('workflow.startDialog.variables.name')"
+            :placeholder="t('workflow.startDialog.variables.name')"
+            :aria-invalid="rowErrors[index] ? 'true' : undefined"
+          />
+          <input
+            v-model="row.value"
+            data-testid="start-variable-value"
+            :aria-label="t('workflow.startDialog.variables.value')"
+            :placeholder="t('workflow.startDialog.variables.value')"
+          />
+          <button
+            type="button"
+            data-testid="start-variable-remove"
+            :aria-label="t('workflow.startDialog.variables.remove')"
+            @click="removeRow(index)"
+          >
+            ×
+          </button>
+          <p v-if="rowErrors[index]" data-testid="start-variable-error" class="dialog__error" role="alert">
+            {{ t(`workflow.startDialog.variables.errors.${rowErrors[index]}`, { name: row.name.trim() }) }}
+          </p>
+        </div>
+        <button type="button" data-testid="start-variables-add" @click="addRow">
+          {{ t('workflow.startDialog.variables.add') }}
+        </button>
+      </details>
       <div class="dialog__actions">
         <button type="button" @click="emit('close')">{{ t('common.cancel') }}</button>
         <button type="button" class="primary" :disabled="!selectedKey && !defaultWorkflowKey" @click="submit">
@@ -101,6 +162,33 @@ const { t } = useI18n()
 .dialog__row {
   display: grid;
   gap: 0.35rem;
+}
+.dialog__variables {
+  display: grid;
+  gap: 0.5rem;
+}
+.dialog__variables summary {
+  cursor: pointer;
+}
+.dialog__variable {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 0.35rem;
+  align-items: center;
+}
+.dialog__variable input {
+  min-width: 0;
+}
+.dialog__hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #55595f;
+}
+.dialog__error {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #a12a2a;
+  font-size: 0.85rem;
 }
 .dialog__actions {
   display: flex;

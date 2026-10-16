@@ -134,7 +134,22 @@ describe('DossierDetailView phase 8', () => {
     const call = vi.mocked(dossiersApi.startDossierWorkflow).mock.calls[0]
     expect(call[0]).toBe('d1')
     expect(call[1]).toBe('wf')
+    expect(call[2]).toEqual({})
     expect(call[3]).toBeTruthy()
+  })
+
+  it('transmet les variables de démarrage saisies dans le dialogue (TODO §92)', async () => {
+    const wrapper = await mountDetail(['TENANT_ADMIN'])
+    await wrapper.get('button.primary').trigger('click')
+    await flushPromises()
+    await wrapper.get('[data-testid="start-variables-add"]').trigger('click')
+    await wrapper.get('[data-testid="start-variable-name"]').setValue('priorite')
+    await wrapper.get('[data-testid="start-variable-value"]').setValue('haute')
+    await wrapper.get('.dialog button.primary').trigger('click')
+    await flushPromises()
+    const call = vi.mocked(dossiersApi.startDossierWorkflow).mock.calls[0]
+    expect(call[1]).toBe('wf')
+    expect(call[2]).toEqual({ priorite: 'haute' })
   })
 
   it('completes a task with empty variables', async () => {

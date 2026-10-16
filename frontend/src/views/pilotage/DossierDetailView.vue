@@ -162,10 +162,10 @@ async function onAddAttachment(payload: { file: File; label: string }) {
   }
 }
 
-async function onStart(key: string) {
+async function onStart(key: string, variables: Record<string, string> = {}) {
   startOpen.value = false
   try {
-    await store.startWorkflow(key)
+    await store.startWorkflow(key, variables)
   } catch (err) {
     actionError.value = toProblemDetail(err).detail ?? t('dossierDetail.errors.start')
   }

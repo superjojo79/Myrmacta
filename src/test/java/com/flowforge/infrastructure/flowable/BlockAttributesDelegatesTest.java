@@ -166,6 +166,30 @@ class BlockAttributesDelegatesTest {
     }
 
     @Test
+    void notification_aResolvedRecipientMustBeASingleMailbox() {
+        // MimeMessageHelper.setTo analyse une LISTE : un champ « a@x.org, b@y.org » enverrait à plusieurs destinataires.
+        SendNotificationUseCase useCase = mock(SendNotificationUseCase.class);
+        PortalRecipientResolverPort resolver = mock(PortalRecipientResolverPort.class);
+        NotificationDispatchTask delegate = new NotificationDispatchTask(new TenantProperties("tenant_dev"), useCase, resolver);
+        UUID dossier = UUID.randomUUID();
+        PortalRecipientSource email = new PortalRecipientSource(PortalRecipientSource.Kind.DOSSIER_FIELD, "email");
+        Map<String, Object> vars = Map.of("dossierId", dossier.toString());
+        Map<String, String> attrs = Map.of("notificationChannels", "EMAIL", "notificationTo", "dossierField:email");
+
+        String crlf = new String(new char[] {13, 10});
+        for (String bad : List.of("a@x.org, b@y.org", "a@x.org;b@y.org", "Camille <a@x.org>", "a@x.org" + crlf + "Bcc: b@y.org",
+                "a b@x.org", "pas-une-adresse", "@x.org", "a@")) {
+            when(resolver.resolve(email, dossier, "pi-1")).thenReturn(java.util.Optional.of(bad));
+            assertThatThrownBy(() -> delegate.execute(execution(vars, attrs)))
+                    .as(bad)
+                    .isInstanceOf(NotificationValidationException.class)
+                    .hasMessageContaining("dossierField:email")
+                    .hasMessageNotContaining("x.org");
+        }
+        verify(useCase, never()).send(any(), any());
+    }
+
+    @Test
     void notification_aSourceGivenThroughTheVariableIsNeverResolved() {
         // Une variable est contrôlée par un utilisateur (démarrage, complétion de tâche) : elle ne désigne pas un autre champ.
         SendNotificationUseCase useCase = mock(SendNotificationUseCase.class);

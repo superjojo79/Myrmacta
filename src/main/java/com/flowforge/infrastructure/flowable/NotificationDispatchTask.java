@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
 import org.springframework.stereotype.Component;
@@ -23,6 +24,8 @@ import org.springframework.stereotype.Component;
 public class NotificationDispatchTask implements JavaDelegate {
 
     private static final String RECIPIENT = "notificationTo";
+    /** Une seule boîte {@code local@domaine} : ni espace ni séparateur de liste, ni forme « Nom <adresse> ». */
+    private static final Pattern SINGLE_MAILBOX = Pattern.compile("[^\\s@,;:<>()\\[\\]\\\\\"]+@[^\\s@,;:<>()\\[\\]\\\\\"]+");
 
     private final TenantProperties tenantProperties;
     private final SendNotificationUseCase sendNotificationUseCase;
@@ -82,6 +85,11 @@ public class NotificationDispatchTask implements JavaDelegate {
         String address = text.toString().strip();
         if (address.isEmpty()) {
             throw new NotificationValidationException(RECIPIENT + " source " + literal + " resolved to an empty value");
+        }
+        // MimeMessageHelper.setTo lit une LISTE d'adresses : une valeur saisie dans un dossier (ou reçue d'un portail) ne doit
+        // pas pouvoir ajouter des destinataires (virgule, point-virgule, forme « Nom <adresse> », retour à la ligne).
+        if (!SINGLE_MAILBOX.matcher(address).matches()) {
+            throw new NotificationValidationException(RECIPIENT + " source " + literal + " is not a single e-mail address");
         }
         return address;
     }

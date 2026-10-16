@@ -44,6 +44,12 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
   place de l'adaptateur HTTP maison. Configuration `APP_ASSISTANT_*` inchangée ; toujours **désactivé par défaut**, démarrage refusé sans clé, https obligatoire, redirections jamais suivies, erreurs du
   fournisseur jamais relayées, aucune relance automatique. L'auto-configuration du starter est coupée (`spring.ai.model.chat=none`) : le modèle n'est construit que si l'assistant est activé.
 
+### Corrigé
+
+- **[PR #173](https://github.com/superjojo79/FlowForge/pull/173)** — Tests de limite de débit (portail, signature,
+  webhooks, génération de documents) rendus déterministes : les limiteurs y tournent sur une horloge figée, au lieu de
+  l'horloge système qui pouvait remettre le compteur à zéro en milieu de test (échec intermittent en CI).
+
 ### Ajouté
 
 - **[PR #171](https://github.com/superjojo79/FlowForge/pull/171) — TODO §92** — Assignation des tâches : bouton

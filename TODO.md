@@ -3556,5 +3556,22 @@ déploiement et diagnostic dans la palette.
 workflow », valeurs texte, noms réservés et doublons refusés côté client ; l'API existante est inchangée. Variables
 **déclarées** dans la configuration du workflow : hors périmètre, notées au backlog.
 
+**Revue adversariale (2026-10-16, sous-agent, aucun High introduit) — tout corrigé :**
+- **M1** — « Notifier » synchrone : un champ mal rempli annulait la complétion ou le démarrage en 500 → `NotificationValidationException`
+  traduite en **422** (source nommée, jamais la valeur) ; le guide recommande `flowable:async="true"` pour obtenir un incident.
+- **L1** — MCP en publication directe : un brouillon à ressource inactive n'est plus publié (erreur « n'existe pas » trompeuse) ;
+  il reste en attente avec `inactiveReferences`.
+- **L2** — le plan d'import dit quelles ressources inactives bloqueront la publication.
+- **L3** — la variable `notificationTo` (démarrage, complétion) passe le même contrôle « une seule adresse » que les sources ;
+  l'adresse écrite en dur dans le BPMN reste libre. *Changement de comportement* : « Nom <adresse> » en variable est refusé.
+- **I1/I2/I3/I4** — commentaire SMTP corrigé ; `dossierId` invalide → erreur de validation sans la valeur ; `exists` retiré du port
+  (sans appelant) ; l'entrée `draft` des réponses MCP garde sa forme d'avant.
+- **I6** — adresse lue dans un champ sensible : documentée (conservée en clair dans l'outbox, comme le portail).
+- **I7 (préexistant)** — le connecteur `flowable-signal` refuse les variables plateforme (`dossierId`…) dans `connectorInput.variables`,
+  qui pouvaient réécrire `dossierId` de toutes les instances du tenant en attente du signal.
+- **I8 (préexistant)** — `documentType` passé au démarrage (dialogue, API, MCP, dossier enfant) est soumis à la liste blanche du
+  type de dossier, comme à la complétion d'une tâche (`DocumentTypeAllowList`, D-TASK-FORM-DOCTYPE-SCOPE).
+- **I5, I9** — sans action (pas de fuite nouvelle ; un tenant par instance).
+
 **Impacte :** `GUIDE-CONCEPTION-BPMN.md` (§3ter références, §6c Notifier), `GUIDE-UTILISATEUR.md` (démarrer une instance),
 `analysis doc/15-serveur-mcp.md`, `CHANGELOG.md`. Aucune migration, aucune variable d'environnement, golden OpenAPI inchangé.

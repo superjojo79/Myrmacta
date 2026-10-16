@@ -196,12 +196,48 @@ class BlockAttributesDelegatesTest {
         PortalRecipientResolverPort resolver = mock(PortalRecipientResolverPort.class);
         NotificationDispatchTask delegate = new NotificationDispatchTask(new TenantProperties("tenant_dev"), useCase, resolver);
 
-        delegate.execute(execution(Map.of("notificationTo", "dossierField:email"), Map.of("notificationChannels", "EMAIL")));
+        // Elle reste une adresse littérale… qui n'en est pas une : refusée (revue L3), jamais résolue.
+        assertThatThrownBy(() -> delegate.execute(
+                execution(Map.of("notificationTo", "dossierField:email"), Map.of("notificationChannels", "EMAIL"))))
+                .isInstanceOf(NotificationValidationException.class);
+        org.mockito.Mockito.verifyNoInteractions(resolver, useCase);
+    }
+
+    /**
+     * Revue adversariale TODO §93 (L3) : la variable notificationTo (démarrage, complétion de tâche : saisie utilisateur) est
+     * soumise au même contrôle « une seule adresse » qu'une source ; l'attribut littéral écrit par le concepteur reste libre.
+     */
+    @Test
+    void notification_theUserControlledVariableMustAlsoBeASingleMailbox() {
+        SendNotificationUseCase useCase = mock(SendNotificationUseCase.class);
+        NotificationDispatchTask delegate = new NotificationDispatchTask(
+                new TenantProperties("tenant_dev"), useCase, mock(PortalRecipientResolverPort.class));
+
+        for (String bad : List.of("Camille <x@evil.org>", "g: a@x.org, b@y.org;", "a@x.org, b@y.org")) {
+            assertThatThrownBy(() -> delegate.execute(
+                    execution(Map.of("notificationTo", bad), Map.of("notificationChannels", "EMAIL"))))
+                    .as(bad)
+                    .isInstanceOf(NotificationValidationException.class)
+                    .hasMessageNotContaining("x.org");
+        }
+        delegate.execute(execution(Map.of("notificationTo", " a@example.org "), Map.of("notificationChannels", "EMAIL")));
+        delegate.execute(execution(Map.of(), Map.of("notificationChannels", "EMAIL", "notificationTo", "Service <s@example.org>")));
 
         ArgumentCaptor<NotificationEvent> captor = ArgumentCaptor.forClass(NotificationEvent.class);
-        verify(useCase).send(captor.capture(), eq("tenant_dev"));
-        assertThat(captor.getValue().to()).isEqualTo("dossierField:email");
-        org.mockito.Mockito.verifyNoInteractions(resolver);
+        verify(useCase, org.mockito.Mockito.times(2)).send(captor.capture(), eq("tenant_dev"));
+        assertThat(captor.getAllValues()).extracting(NotificationEvent::to)
+                .containsExactly("a@example.org", "Service <s@example.org>");
+    }
+
+    @Test
+    void notification_aMalformedDossierIdIsAValidationErrorWithoutTheValue() {
+        NotificationDispatchTask delegate = new NotificationDispatchTask(new TenantProperties("tenant_dev"),
+                mock(SendNotificationUseCase.class), mock(PortalRecipientResolverPort.class));
+
+        assertThatThrownBy(() -> delegate.execute(execution(Map.of("dossierId", "pas-un-uuid"),
+                Map.of("notificationChannels", "EMAIL", "notificationTo", "dossierField:email"))))
+                .isInstanceOf(NotificationValidationException.class)
+                .hasMessageNotContaining("pas-un-uuid");
     }
 
     @Test

@@ -131,7 +131,9 @@ public class DeployWorkflowTool {
         ProposeDraftUseCase.Proposal proposal = proposeDraftUseCase.proposeBpmn(
                 actor, accessContextFactory.provenance(), rawProcessDefinitionKey, rawXml, config,
                 Boolean.TRUE.equals(args.get("replaceExistingDraft")));
-        if (publicationPolicy.directPublicationAllowed()) {
+        // Revue adversariale TODO §93 (L1) : une ressource encore inactive ferait refuser la publication stricte ; le brouillon
+        // reste en attente, avec la liste, plutôt qu'une erreur « n'existe pas » qui masquerait le brouillon enregistré.
+        if (publicationPolicy.directPublicationAllowed() && proposal.inactiveReferences().isEmpty()) {
             ConfigPublication publication = manageDraftsUseCase.publish(
                     actor, DraftArtifactType.BPMN, rawProcessDefinitionKey, proposal.updatedAt(), PublicationMode.DIRECT);
             return DraftToolResults.of("processDefinitionKey", rawProcessDefinitionKey, false, DraftToolResults.PUBLISHED, proposal, publication);

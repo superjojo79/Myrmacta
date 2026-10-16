@@ -61,12 +61,20 @@ public class NotificationDispatchTask implements JavaDelegate {
      * dans le dossier, {@code "variable:<nom>"} la variable de process désignée. Une source n'est résolue que si elle est écrite
      * dans l'attribut littéral du BPMN déployé : une variable {@code notificationTo} (posée au démarrage ou à la complétion
      * d'une tâche, donc par un utilisateur) reste une adresse littérale et ne peut pas désigner un autre champ. Une valeur
-     * résolue absente, vide ou non textuelle fait échouer la tâche (incident) ; le message nomme la source, jamais une valeur.
+     * résolue absente, vide, non textuelle ou qui n'est pas une seule adresse fait échouer l'étape : incident si la brique est
+     * asynchrone ({@code flowable:async}), sinon refus 422 de la complétion ou du démarrage qui l'exécute (revue M1). Le message
+     * nomme la source, jamais une valeur.
      */
     private String recipient(DelegateExecution execution) {
         String literal = DeployedActivityParameters.getLiteral(execution, RECIPIENT);
-        if (literal == null || !PortalRecipientSource.hasSourcePrefix(literal)) {
-            return stringOrNull(DeployedActivityParameters.get(execution, RECIPIENT));
+        if (literal != null && !PortalRecipientSource.hasSourcePrefix(literal)) {
+            return literal; // écrit par le concepteur dans le BPMN déployé : inchangé
+        }
+        if (literal == null) {
+            // Revue L3 : repli sur la variable notificationTo, posée au démarrage ou à la complétion d'une tâche (saisie
+            // utilisateur) — même contrôle « une seule adresse » qu'une source.
+            String variable = stringOrNull(DeployedActivityParameters.get(execution, RECIPIENT));
+            return variable == null ? null : singleMailbox(variable.strip(), RECIPIENT + " variable");
         }
         PortalRecipientSource source = PortalRecipientSource.parse(literal)
                 .orElseThrow(() -> new NotificationValidationException(RECIPIENT + " source is malformed: " + literal));
@@ -86,10 +94,18 @@ public class NotificationDispatchTask implements JavaDelegate {
         if (address.isEmpty()) {
             throw new NotificationValidationException(RECIPIENT + " source " + literal + " resolved to an empty value");
         }
-        // MimeMessageHelper.setTo lit une LISTE d'adresses : une valeur saisie dans un dossier (ou reçue d'un portail) ne doit
-        // pas pouvoir ajouter des destinataires (virgule, point-virgule, forme « Nom <adresse> », retour à la ligne).
+        return singleMailbox(address, RECIPIENT + " source " + literal);
+    }
+
+    /**
+     * Une valeur saisie par un utilisateur (champ du dossier, valeur reçue d'un portail, variable de démarrage ou de complétion)
+     * doit être une seule boîte {@code local@domaine}. Le relais SMTP refuse déjà plusieurs adresses, mais tard et sans incident ;
+     * ce contrôle échoue tôt et écarte aussi la forme « Nom <adresse> », la syntaxe de groupe et les retours à la ligne. Le
+     * message nomme l'origine, jamais la valeur.
+     */
+    private static String singleMailbox(String address, String origin) {
         if (!SINGLE_MAILBOX.matcher(address).matches()) {
-            throw new NotificationValidationException(RECIPIENT + " source " + literal + " is not a single e-mail address");
+            throw new NotificationValidationException(origin + " is not a single e-mail address");
         }
         return address;
     }
@@ -99,7 +115,14 @@ public class NotificationDispatchTask implements JavaDelegate {
         if (raw == null || raw.toString().isBlank()) {
             throw new NotificationValidationException(RECIPIENT + " source " + literal + " needs the dossierId variable");
         }
-        return raw instanceof UUID uuid ? uuid : UUID.fromString(raw.toString().trim());
+        if (raw instanceof UUID uuid) {
+            return uuid;
+        }
+        try {
+            return UUID.fromString(raw.toString().trim());
+        } catch (IllegalArgumentException malformed) {
+            throw new NotificationValidationException(RECIPIENT + " source " + literal + " needs a valid dossierId variable");
+        }
     }
 
     private static List<NotificationChannel> parseChannels(Object raw) {

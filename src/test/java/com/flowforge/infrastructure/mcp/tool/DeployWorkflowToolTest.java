@@ -161,6 +161,27 @@ class DeployWorkflowToolTest {
         assertThat(result.get("inactiveReferences")).isEqualTo(List.of(Map.of("activityId", "generer",
                 "parameter", "documentType", "source", "documentTemplates", "value", "decision")));
         assertThat(result.get("inactiveReferencesMessage").toString()).contains("not active").contains("activate");
+        // Revue I4 : la liste n'est pas répétée dans « draft », dont la forme reste celle d'avant.
+        assertThat(result.get("draft")).isEqualTo(Map.of("type", DraftArtifactType.BPMN, "key", KEY,
+                "updatedAt", STAMP, "replacedExistingDraft", false));
+    }
+
+    /**
+     * Revue adversariale TODO §93 (L1) : même quand l'instance permet la publication directe, un brouillon qui référence une
+     * ressource inactive n'est pas publié (la publication stricte le refuserait avec un « n'existe pas » trompeur) : il reste
+     * en attente et l'agent reçoit la liste.
+     */
+    @Test
+    void directPublicationIsSkippedWhileAReferencedResourceIsInactive() {
+        direct = true;
+        when(bpmnParserPort.extractProcessDefinitionKey(any())).thenReturn(KEY);
+        when(propose.proposeBpmn(any(), any(), any(), any(), any(), anyBoolean()))
+                .thenReturn(new ProposeDraftUseCase.Proposal(DraftArtifactType.BPMN, KEY, STAMP, false, List.of(INACTIVE)));
+
+        Map<String, Object> result = invoke(baseArgs());
+
+        assertThat(result).containsEntry("status", "DRAFT_PENDING_PUBLICATION").containsKey("inactiveReferences");
+        verifyNoInteractions(manage);
     }
 
     @Test

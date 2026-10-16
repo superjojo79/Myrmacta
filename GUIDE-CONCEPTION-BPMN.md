@@ -734,10 +734,23 @@ Pour un message métier explicite (pas juste « ça a bougé »), poser :
 `flowable:notificationTo="dossierField:email"` envoie à la valeur **actuelle** du champ `email` du dossier
 (relue au moment de l'envoi, pas l'instantané `dossierFields` du démarrage) ; `"variable:adresse"` lit la
 variable de process `adresse`, qu'une tâche « Évaluer une expression » peut calculer en amont. Même grammaire
-que `flowable:portalRecipient` (nom simple, jamais évalué). Une valeur absente, vide ou non textuelle fait
-**échouer la tâche** (incident à traiter) ; le message nomme la source, jamais l'adresse. La source n'est lue
-que dans l'**attribut** du BPMN : une variable de process `notificationTo` qui contiendrait `dossierField:…`
-reste une adresse littérale (un utilisateur ne peut pas rediriger l'envoi vers un autre champ).
+que `flowable:portalRecipient` (nom simple, jamais évalué). La source n'est lue que dans l'**attribut** du
+BPMN : une variable de process `notificationTo` qui contiendrait `dossierField:…` n'est jamais résolue (un
+utilisateur ne peut pas rediriger l'envoi vers un autre champ).
+
+La valeur obtenue — comme une variable `notificationTo` posée au démarrage ou à la complétion d'une tâche — doit
+être **une seule adresse** `local@domaine` (ni liste, ni « Nom <adresse> », ni retour à la ligne). Absente, vide,
+non textuelle ou mal formée, l'étape **échoue** ; le message nomme la source, jamais l'adresse. Une adresse écrite
+en dur dans l'attribut reste libre.
+
+> **Où se voit l'échec ?** La brique « Notifier » est synchrone par défaut : l'échec annule l'action qui l'a
+> exécutée — la complétion de la tâche précédente ou le démarrage — avec une réponse **422** qui nomme le champ en
+> cause ; il suffit de corriger le dossier et de recommencer. Pour obtenir plutôt un **incident** (tâche suivie par
+> le moteur, rejouable) sans bloquer l'utilisateur, cocher **asynchrone** (`flowable:async="true"`) sur la brique.
+>
+> **Champ sensible.** Une source peut désigner un champ marqué sensible : l'adresse part uniquement à cette adresse
+> et n'apparaît dans aucun message d'erreur, mais elle est conservée en clair dans la file d'envoi (outbox), comme
+> pour l'adresse d'une tâche externe du portail.
 
 Le contenu peut référencer les champs dynamiques exposés selon la méthode du §3
 (`notificationBody` reste une simple variable process — construire la chaîne avec une expression

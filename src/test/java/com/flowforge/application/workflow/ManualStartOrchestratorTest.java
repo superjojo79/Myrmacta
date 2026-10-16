@@ -15,9 +15,11 @@ import static org.mockito.Mockito.when;
 import com.flowforge.domain.dossier.model.AbortReservedReason;
 import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierStatus;
+import com.flowforge.domain.dossier.model.DossierType;
 import com.flowforge.domain.dossier.model.DossierWorkflowLink;
 import com.flowforge.domain.dossier.port.in.AttachWorkflowUseCase;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
+import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
 import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
 import com.flowforge.domain.workflow.WorkflowVariables;
 import com.flowforge.domain.workflow.port.out.IdempotencyStore;
@@ -44,6 +46,7 @@ class ManualStartOrchestratorTest {
     private IdempotencyStore idempotencyStore;
     private WorkflowStartConfirmationPort workflowStartConfirmer;
     private WorkflowEventPublisher eventPublisher;
+    private DossierTypeRepository dossierTypeRepository;
     private ManualStartOrchestrator orchestrator;
 
     @BeforeEach
@@ -55,8 +58,10 @@ class ManualStartOrchestratorTest {
         idempotencyStore = mock(IdempotencyStore.class);
         workflowStartConfirmer = mock(WorkflowStartConfirmationPort.class);
         eventPublisher = mock(WorkflowEventPublisher.class);
+        dossierTypeRepository = mock(DossierTypeRepository.class);
         orchestrator = new ManualStartOrchestrator(
                 dossierRepository,
+                dossierTypeRepository,
                 linkRepository,
                 attachWorkflow,
                 workflowEnginePort,
@@ -88,6 +93,44 @@ class ManualStartOrchestratorTest {
         // TX2 (confirm + idempotency + onStart) est déléguée à un seul appel transactionnel.
         verify(workflowStartConfirmer).confirm(dossier, reserved, "proc-1", PROCESS, "idem-1");
         verify(eventPublisher).publish(any());
+    }
+
+    /**
+     * Revue adversariale TODO §93 (I8) : documentType passé au démarrage (dialogue, API, MCP, dossier enfant) est soumis à
+     * la même liste blanche du type de dossier qu'à la complétion d'une tâche (D-TASK-FORM-DOCTYPE-SCOPE).
+     */
+    @Test
+    void start_refusesADocumentTypeNotAllowedForTheDossierTypeBeforeAnyReservation() {
+        UUID dossierId = UUID.randomUUID();
+        when(dossierRepository.findById(dossierId)).thenReturn(Optional.of(dossier(dossierId)));
+        when(idempotencyStore.findLinkId(TENANT, dossierId, "idem-1")).thenReturn(Optional.empty());
+        when(dossierTypeRepository.findByCode(TENANT, "WF")).thenReturn(Optional.of(typeAllowing("facture")));
+
+        assertThatThrownBy(() -> orchestrator.start(
+                dossierId, PROCESS, Map.of("documentType", "secret"), "idem-1", "starter-sub"))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("secret");
+        verifyNoInteractions(attachWorkflow, workflowEnginePort);
+    }
+
+    @Test
+    void start_acceptsAnAllowedDocumentType() {
+        UUID dossierId = UUID.randomUUID();
+        DossierWorkflowLink reserved = reservedLink(dossierId);
+        when(dossierRepository.findById(dossierId)).thenReturn(Optional.of(dossier(dossierId)));
+        when(idempotencyStore.findLinkId(TENANT, dossierId, "idem-1")).thenReturn(Optional.empty());
+        when(dossierTypeRepository.findByCode(TENANT, "WF")).thenReturn(Optional.of(typeAllowing("facture")));
+        when(attachWorkflow.reserve(eq(dossierId), eq(PROCESS), anyString(), eq("starter-sub"))).thenReturn(reserved);
+        when(workflowEnginePort.start(eq(PROCESS), eq(TENANT), eq(reserved.id().toString()), anyMap())).thenReturn("proc-1");
+
+        orchestrator.start(dossierId, PROCESS, Map.of("documentType", "facture"), "idem-1", "starter-sub");
+
+        verify(workflowEnginePort).start(eq(PROCESS), eq(TENANT), eq(reserved.id().toString()), anyMap());
+    }
+
+    private static DossierType typeAllowing(String... templateKeys) {
+        return DossierType.inherit(UUID.randomUUID(), TENANT, "WF", "Type", PROCESS, true, true, java.util.List.of())
+                .withUpdate("Type", PROCESS, true, true, java.util.List.of(), null, false, null,
+                        java.util.List.of(templateKeys), "admin");
     }
 
     @Test

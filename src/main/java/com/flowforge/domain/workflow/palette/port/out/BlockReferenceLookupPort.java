@@ -19,9 +19,4 @@ public interface BlockReferenceLookupPort {
      * désactivés ; {@code workflowTypes} et {@code dmnTables} n'ont pas d'état inactif.
      */
     ReferenceStatus status(String tenantId, String source, String value);
-
-    /** Vrai si la ressource est utilisable dans ce tenant ({@link ReferenceStatus#ACTIVE}). */
-    default boolean exists(String tenantId, String source, String value) {
-        return status(tenantId, source, value) == ReferenceStatus.ACTIVE;
-    }
 }

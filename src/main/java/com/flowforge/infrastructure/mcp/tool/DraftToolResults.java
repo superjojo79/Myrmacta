@@ -44,7 +44,13 @@ final class DraftToolResults {
         map.put("dryRun", dryRun);
         map.put("status", status);
         if (proposal != null) {
-            map.put("draft", proposal);
+            // Revue TODO §93 (I4) : forme d'avant (sans inactiveReferences, déjà au premier niveau) — contrat des outils DMN inchangé.
+            Map<String, Object> draft = new LinkedHashMap<>();
+            draft.put("type", proposal.type());
+            draft.put("key", proposal.key());
+            draft.put("updatedAt", proposal.updatedAt());
+            draft.put("replacedExistingDraft", proposal.replacedExistingDraft());
+            map.put("draft", draft);
         }
         if (publication != null) {
             map.put("publication", publication);

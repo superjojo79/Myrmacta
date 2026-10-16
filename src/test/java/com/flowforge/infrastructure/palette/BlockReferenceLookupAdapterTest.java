@@ -117,10 +117,10 @@ class BlockReferenceLookupAdapterTest {
                 .thenReturn(Optional.of(new DecisionTableDeploymentInfo("scoring", 2)));
         when(dmnDeployments.findDeploymentInfo(TENANT, "absente")).thenReturn(Optional.empty());
 
-        assertThat(adapter.exists(TENANT, "dmnTables", "scoring")).isTrue();
-        assertThat(adapter.exists(TENANT, "dmnTables", "absente")).isFalse();
-        assertThat(adapter.exists(TENANT, "dmnTables", " ")).isFalse();
-        assertThat(adapter.exists("tenant_b", "dmnTables", "scoring")).isFalse();
+        assertThat(adapter.status(TENANT, "dmnTables", "scoring")).isEqualTo(ReferenceStatus.ACTIVE);
+        assertThat(adapter.status(TENANT, "dmnTables", "absente")).isNotEqualTo(ReferenceStatus.ACTIVE);
+        assertThat(adapter.status(TENANT, "dmnTables", " ")).isNotEqualTo(ReferenceStatus.ACTIVE);
+        assertThat(adapter.status("tenant_b", "dmnTables", "scoring")).isNotEqualTo(ReferenceStatus.ACTIVE);
     }
 
     @Test
@@ -138,16 +138,16 @@ class BlockReferenceLookupAdapterTest {
         when(dossierTypes.findByCode(TENANT, "INACTIF")).thenReturn(Optional.of(mock(com.flowforge.domain.dossier.model.DossierType.class)));
         when(workflows.findByWorkflowKey(TENANT, "claim")).thenReturn(Optional.of(mock(com.flowforge.domain.workflow.model.WorkflowTypeConfig.class)));
 
-        assertThat(adapter.exists(TENANT, "connectorInstances", id.toString())).isTrue();
-        assertThat(adapter.exists("tenant_b", "connectorInstances", id.toString())).isFalse();
-        assertThat(adapter.exists(TENANT, "connectorInstances", "pas-un-uuid")).isFalse();
-        assertThat(adapter.exists(TENANT, "documentTemplates", "facture")).isTrue();
-        assertThat(adapter.exists(TENANT, "documentTemplates", "archive")).isFalse();
-        assertThat(adapter.exists(TENANT, "dossierTypes", "SINISTRE")).isTrue();
-        assertThat(adapter.exists(TENANT, "dossierTypes", "AUTRE")).isFalse();
-        assertThat(adapter.exists(TENANT, "dossierTypes", "INACTIF")).isFalse();
-        assertThat(adapter.exists(TENANT, "workflowTypes", "claim")).isTrue();
-        assertThat(adapter.exists(TENANT, "workflowTypes", " ")).isFalse();
+        assertThat(adapter.status(TENANT, "connectorInstances", id.toString())).isEqualTo(ReferenceStatus.ACTIVE);
+        assertThat(adapter.status("tenant_b", "connectorInstances", id.toString())).isNotEqualTo(ReferenceStatus.ACTIVE);
+        assertThat(adapter.status(TENANT, "connectorInstances", "pas-un-uuid")).isNotEqualTo(ReferenceStatus.ACTIVE);
+        assertThat(adapter.status(TENANT, "documentTemplates", "facture")).isEqualTo(ReferenceStatus.ACTIVE);
+        assertThat(adapter.status(TENANT, "documentTemplates", "archive")).isNotEqualTo(ReferenceStatus.ACTIVE);
+        assertThat(adapter.status(TENANT, "dossierTypes", "SINISTRE")).isEqualTo(ReferenceStatus.ACTIVE);
+        assertThat(adapter.status(TENANT, "dossierTypes", "AUTRE")).isNotEqualTo(ReferenceStatus.ACTIVE);
+        assertThat(adapter.status(TENANT, "dossierTypes", "INACTIF")).isNotEqualTo(ReferenceStatus.ACTIVE);
+        assertThat(adapter.status(TENANT, "workflowTypes", "claim")).isEqualTo(ReferenceStatus.ACTIVE);
+        assertThat(adapter.status(TENANT, "workflowTypes", " ")).isNotEqualTo(ReferenceStatus.ACTIVE);
     }
 
     /** TODO §93 D-DRAFT-REF-STATUS — un brouillon accepte une ressource qui existe mais n'est pas encore active. */
@@ -189,7 +189,7 @@ class BlockReferenceLookupAdapterTest {
         assertThat(adapter.status(TENANT, "documentTemplates", "nouveau")).isEqualTo(ReferenceStatus.INACTIVE);
         assertThat(adapter.status(TENANT, "documentTemplates", "archive")).isEqualTo(ReferenceStatus.MISSING);
         assertThat(adapter.status(TENANT, "documentTemplates", "absent")).isEqualTo(ReferenceStatus.MISSING);
-        assertThat(adapter.exists(TENANT, "documentTemplates", "nouveau")).isFalse();
+        assertThat(adapter.status(TENANT, "documentTemplates", "nouveau")).isNotEqualTo(ReferenceStatus.ACTIVE);
     }
 
     @Test

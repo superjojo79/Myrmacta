@@ -33,6 +33,7 @@ import com.flowforge.domain.workflow.model.Provenance;
 import com.flowforge.domain.workflow.model.ProposedWorkflowConfig;
 import com.flowforge.domain.workflow.model.TaskQuestionSchema;
 import com.flowforge.domain.workflow.model.WorkflowTypeConfig;
+import com.flowforge.domain.workflow.palette.InactiveBlockReference;
 import com.flowforge.domain.workflow.port.in.ProposeDraftUseCase;
 import com.flowforge.domain.workflow.port.in.SaveTaskQuestionSchemaUseCase;
 import com.flowforge.domain.workflow.port.in.SaveWorkflowTypeConfigUseCase;
@@ -369,6 +370,7 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
             return new PlanEntry(entry.type(), entry.key(), PlanAction.BLOCKED,
                     "no workflow configuration for '" + entry.key() + "', in the bundle or on this instance");
         }
+        List<InactiveBlockReference> inactive;
         try {
             for (String decisionKey : bpmnParser.extractReferencedDecisionKeys(xml.getBytes(StandardCharsets.UTF_8))) {
                 if (dmnDeployment.findDeploymentInfo(tenantId, decisionKey).isEmpty()
@@ -377,17 +379,33 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
                             + decisionKey + "', which is only a draft: publish it first, then run the import again");
                 }
             }
-            propose.validateBpmn(actor, entry.key(), xml, config);
+            inactive = propose.validateBpmn(actor, entry.key(), xml, config);
         } catch (RuntimeException e) {
             return new PlanEntry(entry.type(), entry.key(), PlanAction.BLOCKED, cap(e.getMessage()));
         }
+        String draftReason = "saved as a draft to publish" + inactiveNote(inactive);
         Optional<byte[]> deployed = workflowDeployment.findDeployedXml(tenantId, entry.key());
         if (deployed.isEmpty()) {
-            return new PlanEntry(entry.type(), entry.key(), PlanAction.CREATE, "saved as a draft to publish");
+            return new PlanEntry(entry.type(), entry.key(), PlanAction.CREATE, draftReason);
         }
         return sameXml(deployed.get(), entry.content())
                 ? new PlanEntry(entry.type(), entry.key(), PlanAction.UNCHANGED, "")
-                : new PlanEntry(entry.type(), entry.key(), PlanAction.UPDATE, "saved as a draft to publish");
+                : new PlanEntry(entry.type(), entry.key(), PlanAction.UPDATE, draftReason);
+    }
+
+    /**
+     * TODO §93 (revue L2, D-DRAFT-REF-STATUS) — une ressource référencée présente mais inactive n'empêche pas le brouillon ;
+     * le plan le dit, puisque la publication sera refusée tant qu'elle n'est pas activée.
+     */
+    private static String inactiveNote(List<InactiveBlockReference> inactive) {
+        if (inactive.isEmpty()) {
+            return "";
+        }
+        return cap("; publishing it will be refused until these referenced resources, which exist but are not active, "
+                + "are activated: " + inactive.stream()
+                        .map(r -> r.source() + " '" + r.value() + "'")
+                        .distinct()
+                        .collect(java.util.stream.Collectors.joining(", ")));
     }
 
     private PlanEntry planWorkflowConfig(BundleEntry entry, Map<String, PlanEntry> planned) {

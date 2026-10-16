@@ -48,8 +48,11 @@ un agent dans l'interface n'envoie aucun e-mail automatique, et l'adresse est sa
   que si elle est écrite dans l'**attribut littéral** du BPMN déployé. Une variable de process `notificationTo` posée au
   démarrage ou à la complétion d'une tâche reste un littéral : un utilisateur ne doit pas pouvoir rediriger l'envoi vers la
   valeur d'un autre champ.
-- **G5 (§3).** Si la source résolue est absente, nulle ou vide, la brique **échoue** et crée un incident Flowable, comme
-  aujourd'hui pour un destinataire e-mail absent. L'erreur nomme la source, jamais la valeur.
+- **G5 (§3).** Si la source résolue est absente, nulle, vide ou n'est pas une seule adresse, la brique **échoue**, comme
+  aujourd'hui pour un destinataire e-mail absent. L'erreur nomme la source, jamais la valeur. *Précisé après la revue
+  adversariale (M1)* : la brique étant synchrone par défaut, l'échec annule la complétion ou le démarrage qui l'exécute
+  (réponse 422) ; c'est un incident Flowable seulement si la brique est asynchrone (`flowable:async`), ce que le guide
+  recommande.
 - **G6 (§3).** Une source mal formée (`dossierField:` suivi d'un nom invalide, ou d'un nom vide) est refusée au déploiement et à
   la proposition de brouillon (`InvalidBpmnException`, 400).
 - **G7 (dialogue).** L'écran « Démarrer workflow » propose une section repliée **« Variables de démarrage »** : des lignes

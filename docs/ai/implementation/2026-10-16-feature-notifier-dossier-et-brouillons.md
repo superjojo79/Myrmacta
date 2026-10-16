@@ -1,7 +1,7 @@
 ---
 phase: implementation
 title: Implementation — notifier-dossier-et-brouillons
-status: in-progress
+status: complete
 created: 2026-10-16
 feature: notifier-dossier-et-brouillons
 todo_ref: TODO.md §93
@@ -67,3 +67,22 @@ nommant la source ; `dossierId` absent → même exception ; adresse rognée.
 - Mise à jour de l'exemple `exemples/autorisation-riverain/` et de `DEFERRED-FEATURES.md` §7 : après le merge de la PR #172
   (ces fichiers n'existent pas encore sur `main`).
 - Variables de démarrage **déclarées** par workflow : backlog.
+
+## Revue adversariale (Phase 9)
+
+Sous-agent en lecture seule sur `git diff main...HEAD`. Aucun High introduit. Correctifs (détail : `TODO.md` §93) :
+
+| Finding | Fichiers |
+|---|---|
+| Adresse unique pour une source (relecture avant revue) | `NotificationDispatchTask` |
+| M1 — 422 au lieu de 500 | `web/workflow/WorkflowExceptionHandler`, guide BPMN, exigence G5 précisée |
+| L1 — pas de publication directe avec ressource inactive | `mcp/tool/DeployWorkflowTool` |
+| L2 — plan d'import | `promotion/usecase/ImportConfigurationUseCaseImpl` |
+| L3, I1, I2 — variable `notificationTo` contrôlée, commentaire, `dossierId` | `NotificationDispatchTask` |
+| I3 — `exists` retiré | `BlockReferenceLookupPort`, tests de l'adaptateur |
+| I4 — forme de `draft` | `mcp/tool/DraftToolResults` |
+| I7 (préexistant) — variables réservées refusées | `connector/builtin/FlowableSignalConnector` |
+| I8 (préexistant) — liste blanche `documentType` au démarrage | `domain/workflow/DocumentTypeAllowList` (nouveau), `ManualStartOrchestrator`, `CompleteTaskUseCaseImpl`, `WorkflowConfig` |
+
+Les tests des correctifs ont été écrits avant le code ; ils n'ont pas été exécutés en rouge isolément (un `verify` complet
+occupait `target/`), puis tous exécutés en vert.

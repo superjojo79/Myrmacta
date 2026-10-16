@@ -16,6 +16,7 @@ import com.flowforge.domain.notification.port.in.SendNotificationUseCase;
 import com.flowforge.domain.workflow.TaskAssignmentGuard;
 import com.flowforge.domain.workflow.TaskQuestionFormKeys;
 import com.flowforge.domain.workflow.UserQuestionAnswers;
+import com.flowforge.domain.workflow.DocumentTypeAllowList;
 import com.flowforge.domain.workflow.WorkflowVariables;
 import com.flowforge.domain.workflow.model.TaskQuestionAnswer;
 import com.flowforge.domain.workflow.model.TaskQuestionSchema;
@@ -186,11 +187,7 @@ public final class CompleteTaskUseCaseImpl implements CompleteTaskUseCase {
      * rather than trusting the frontend picker.
      */
     private void assertDocumentTypeAllowed(String dossierId, Map<String, Object> variables) {
-        if (variables == null) {
-            return;
-        }
-        Object documentType = variables.get(WorkflowVariables.DOCUMENT_TYPE);
-        if (documentType == null) {
+        if (!DocumentTypeAllowList.concerns(variables)) {
             return;
         }
         Dossier dossier = dossierRepository.findById(UUID.fromString(dossierId))
@@ -198,10 +195,6 @@ public final class CompleteTaskUseCaseImpl implements CompleteTaskUseCase {
         DossierType type = dossierTypeRepository.findByCode(tenantId, dossier.dossierTypeCode())
                 .orElseThrow(() -> new DossierNotFoundException(
                         "Dossier type not found: " + tenantId + "/" + dossier.dossierTypeCode()));
-        if (!type.documentTemplateKeys().contains(documentType.toString())) {
-            throw new IllegalArgumentException(
-                    "documentType '" + documentType + "' is not an allowed template for dossier type '"
-                            + type.code() + "' -- configure it in Admin > Types > Templates de documents autorisés");
-        }
+        DocumentTypeAllowList.assertAllowed(type, variables);
     }
 }

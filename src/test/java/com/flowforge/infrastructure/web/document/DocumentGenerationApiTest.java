@@ -14,14 +14,19 @@ import com.flowforge.domain.document.port.out.DocumentTemplateRepository;
 import com.flowforge.support.OidcClientTestConfiguration;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
@@ -46,6 +51,23 @@ class DocumentGenerationApiTest {
 
     @Value("${app.storage.filesystem.root}")
     private String storageRoot;
+
+    /**
+     * Le limiteur compte par minute calendaire : avec l'horloge système, un test de quota qui
+     * chevauche une frontière de minute voit son compteur remis à zéro (200 au lieu de 429). Une
+     * horloge figée garde toutes les requêtes d'un test dans la même fenêtre.
+     */
+    @TestConfiguration
+    static class FixedClockRateLimiterConfig {
+
+        private static final Clock FIXED = Clock.fixed(Instant.parse("2026-01-01T00:00:30Z"), ZoneOffset.UTC);
+
+        @Bean
+        @Primary
+        DocumentGenerationRateLimiter fixedClockGenerationRateLimiter() {
+            return new DocumentGenerationRateLimiter(FIXED);
+        }
+    }
 
     @Test
     void generate_spelTypeExpression_returns400() throws Exception {

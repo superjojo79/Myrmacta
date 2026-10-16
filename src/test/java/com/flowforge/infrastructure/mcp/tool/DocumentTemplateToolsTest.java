@@ -29,7 +29,9 @@ import com.flowforge.domain.document.port.in.UpdateDocumentTemplateUseCase;
 import com.flowforge.domain.shared.PageResult;
 import com.flowforge.infrastructure.config.TenantProperties;
 import com.flowforge.infrastructure.mcp.McpAccessContextFactory;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -44,6 +46,9 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 class DocumentTemplateToolsTest {
 
     private static final String TENANT = "tenant_dev";
+    // Le limiteur compte par minute calendaire : une horloge figée évite qu'un test de quota
+    // chevauchant une frontière de minute voie son compteur remis à zéro (pas de 429).
+    private static final Clock FIXED_CLOCK = Clock.fixed(Instant.parse("2026-01-01T00:00:30Z"), ZoneOffset.UTC);
 
     private ListDocumentTemplateUseCase list;
     private CreateDocumentTemplateUseCase create;
@@ -151,7 +156,7 @@ class DocumentTemplateToolsTest {
     }
 
     private static PreviewDocumentTool previewTool(PreviewDocumentUseCase uc, int perMinute) {
-        return new PreviewDocumentTool(uc, new McpAccessContextFactory(), new DocumentPreviewHtmlRateLimiter(),
+        return new PreviewDocumentTool(uc, new McpAccessContextFactory(), new DocumentPreviewHtmlRateLimiter(FIXED_CLOCK),
                 new DocumentPreviewProperties(perMinute),
                 new com.flowforge.infrastructure.config.DocumentGenerationProperties(1024, 30),
                 tools.jackson.databind.json.JsonMapper.builder().build());

@@ -17,7 +17,7 @@ public class DocumentPreviewHtmlRateLimiter {
         this(Clock.systemUTC());
     }
 
-    DocumentPreviewHtmlRateLimiter(Clock clock) {
+    public DocumentPreviewHtmlRateLimiter(Clock clock) {
         this.delegate = new SlidingWindowRateLimiter(clock);
     }
 

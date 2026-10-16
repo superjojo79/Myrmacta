@@ -101,9 +101,9 @@ Playwright (`frontend/e2e/pilotage.spec.ts`) :
 
 ## Vérifications finales
 
-- [ ] `./mvnw verify` vert (tests, IT, ArchUnit, Jacoco).
-- [ ] `cd frontend && npm run test:all` vert.
-- [ ] Golden OpenAPI inchangé.
+- [x] `./mvnw verify` vert (tests, IT, ArchUnit, Jacoco).
+- [x] `cd frontend && npm run test:all` vert.
+- [x] Golden OpenAPI inchangé.
 
 ## Résultats
 
@@ -115,3 +115,9 @@ Tests ciblés verts au fil des tâches (rapports surefire) :
 - Vitest 711 (124 fichiers) ; Playwright `E2E-4`, `E2E-START-VARS-1`, `E2E-START-VARS-2`.
 
 Suites complètes : voir la section « Vérification finale » ci-dessous.
+
+## Vérification finale (2026-10-16, après correctifs de revue)
+
+- `./mvnw clean verify` (frontend compris, comme la CI) : **3436 tests, 0 échec**, 5 ignorés, « All coverage checks have been met »,
+  `OpenApiContractIT` vert (golden inchangé).
+- `npm run test:all` : Vitest **711** (124 fichiers), Playwright **126**.

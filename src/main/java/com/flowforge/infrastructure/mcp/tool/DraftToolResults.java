@@ -28,7 +28,7 @@ final class DraftToolResults {
     }
 
     /**
-     * @param inactiveReferences TODO §92 D-DRAFT-REF-STATUS — ressources référencées qui existent mais ne sont pas actives :
+     * @param inactiveReferences TODO §93 D-DRAFT-REF-STATUS — ressources référencées qui existent mais ne sont pas actives :
      *     signalées à l'agent, car la publication les refusera tant qu'un humain ne les a pas activées
      */
     static Map<String, Object> of(

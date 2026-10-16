@@ -82,7 +82,7 @@ export function diagnoseParameter(
 const UUID_SOURCES = new Set(['connectorInstances', 'notificationWebhooks'])
 const UUID_FORM = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const KEY_FORM = /^[A-Za-z0-9_.:-]+$/
-/** Même grammaire que `PortalRecipientSource` côté serveur (TODO §92). */
+/** Même grammaire que `PortalRecipientSource` côté serveur (TODO §93). */
 const SOURCE_PREFIX = /^(dossierField|variable):/
 const SOURCE_FORM = /^(dossierField|variable):[A-Za-z_][A-Za-z0-9_]*$/
 

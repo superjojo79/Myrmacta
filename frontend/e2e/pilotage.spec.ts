@@ -966,7 +966,7 @@ test('E2E-4 start workflow sends Idempotency-Key', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Diagramme' })).toBeVisible()
 })
 
-test('E2E-START-VARS-1 start variables typed in the dialog are sent with the start request (TODO §92)', async ({ page }) => {
+test('E2E-START-VARS-1 start variables typed in the dialog are sent with the start request (TODO §93)', async ({ page }) => {
   await mockSession(page)
   await openApp(page)
   await createAndOpenDossier(page)
@@ -982,7 +982,7 @@ test('E2E-START-VARS-1 start variables typed in the dialog are sent with the sta
   expect((await request).postDataJSON()).toEqual({ processDefinitionKey: expect.any(String), variables: { priorite: 'haute' } })
 })
 
-test('E2E-START-VARS-2 a reserved start variable name is refused before any request (TODO §92)', async ({ page }) => {
+test('E2E-START-VARS-2 a reserved start variable name is refused before any request (TODO §93)', async ({ page }) => {
   await mockSession(page)
   await openApp(page)
   await createAndOpenDossier(page)

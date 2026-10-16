@@ -79,7 +79,7 @@ public final class CompileParcoursUseCaseImpl implements CompileParcoursUseCase 
     }
 
     /**
-     * TODO §92 D-DRAFT-REF-STATUS — une ressource référencée présente mais inactive n'empêche pas le brouillon : elle devient un
+     * TODO §93 D-DRAFT-REF-STATUS — une ressource référencée présente mais inactive n'empêche pas le brouillon : elle devient un
      * avertissement, car la publication la refusera tant qu'elle n'est pas activée. L'empreinte reste celle du BPMN.
      */
     private static CompiledParcours withInactive(CompiledParcours compiled, List<InactiveBlockReference> inactive) {

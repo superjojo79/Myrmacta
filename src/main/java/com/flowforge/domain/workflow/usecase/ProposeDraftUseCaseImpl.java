@@ -107,7 +107,7 @@ public final class ProposeDraftUseCaseImpl implements ProposeDraftUseCase {
         }
         Optional<WorkflowTypeConfig> existing = configRepository.findByWorkflowKey(tenantId, processDefinitionKey);
         // Même contrôle qu'un déploiement, avec la configuration SOUMISE (sinon l'existante) : une référence absente est refusée ici.
-        // TODO §92 D-DRAFT-REF-STATUS : une ressource présente mais pas encore active est acceptée (la publication, stricte, la
+        // TODO §93 D-DRAFT-REF-STATUS : une ressource présente mais pas encore active est acceptée (la publication, stricte, la
         // refusera tant qu'elle ne l'est pas) — un agent peut proposer ensemble un modèle de document et le workflow qui l'utilise.
         Optional<WorkflowTypeConfig> effective = config == null
                 ? existing

@@ -3523,3 +3523,38 @@ entre deux prises) ; reprendre la sienne est sans effet. Pour que l'éditeur voi
 
 **Impacte :** `GUIDE-UTILISATEUR.md` §3 et §6, `openapi/openapi.yaml`, changeset `035-known-user.yaml`. Aucune variable
 d'environnement nouvelle.
+
+---
+
+## 93. Brouillons avec ressource inactive, destinataire de « Notifier » depuis le dossier, variables de démarrage
+
+[x] livré (branche `feature-notifier-dossier-et-brouillons`). Trois manques relevés par l'exemple
+[`exemples/autorisation-riverain/`](exemples/autorisation-riverain/DIFFICULTES.md) (§8 et §3), monté uniquement par
+configuration via MCP. Docs SDD : [requirements](docs/ai/requirements/2026-10-16-feature-notifier-dossier-et-brouillons.md),
+[design](docs/ai/design/2026-10-16-feature-notifier-dossier-et-brouillons.md),
+[planning](docs/ai/planning/2026-10-16-feature-notifier-dossier-et-brouillons.md),
+[implementation](docs/ai/implementation/2026-10-16-feature-notifier-dossier-et-brouillons.md),
+[testing](docs/ai/testing/2026-10-16-feature-notifier-dossier-et-brouillons.md).
+
+**D-DRAFT-REF-STATUS** (tranché par l'utilisateur, 2026-10-16) — un brouillon BPMN proposé par un canal automatisé (MCP
+`deploy_workflow` et son `dryRun`, compilation de parcours, import de configuration) accepte une ressource référencée qui
+**existe sans être active** : template seulement en brouillon, type de dossier inactif, connecteur de rôle service ou webhook
+désactivé. Elle est renvoyée (`inactiveReferences` MCP, `warnings` du parcours). Inconnue, supprimée, de mauvais rôle, ou template
+seulement archivé : refus inchangé. Déploiement direct et publication d'un brouillon restent **stricts**. Écarté : ne rien
+vérifier sur un brouillon (faute de frappe vue trop tard) ; n'assouplir que les templates.
+
+**D-NOTIF-SOURCE-LITERAL** — `flowable:notificationTo` accepte `dossierField:<champ>` (relu à jour dans le dossier) et
+`variable:<nom>`, grammaire de `portalRecipient`. La source n'est résolue que depuis l'**attribut littéral** déployé : une
+variable `notificationTo` (démarrage, complétion de tâche) reste une adresse et ne peut pas désigner un autre champ. Valeur
+absente, vide ou non textuelle : **incident** (tranché par l'utilisateur), message sans la valeur. Source mal formée : 400 au
+déploiement et diagnostic dans la palette.
+
+**D-NOTIF-REUSE-PORTAL-SOURCE** — réutilisation telle quelle de `PortalRecipientSource` et `PortalRecipientResolverAdapter`
+(déjà dans la liste blanche ArchUnit de `Dossier.fields()`) ; renommage écarté (19 fichiers pour un gain nominal).
+
+**Variables de démarrage** (tranché par l'utilisateur : inclus, clé/valeur libre) — section repliée du dialogue « Démarrer un
+workflow », valeurs texte, noms réservés et doublons refusés côté client ; l'API existante est inchangée. Variables
+**déclarées** dans la configuration du workflow : hors périmètre, notées au backlog.
+
+**Impacte :** `GUIDE-CONCEPTION-BPMN.md` (§3ter références, §6c Notifier), `GUIDE-UTILISATEUR.md` (démarrer une instance),
+`analysis doc/15-serveur-mcp.md`, `CHANGELOG.md`. Aucune migration, aucune variable d'environnement, golden OpenAPI inchangé.

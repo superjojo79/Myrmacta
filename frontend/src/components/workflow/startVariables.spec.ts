@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { RESERVED_START_VARIABLES, validateStartVariables } from './startVariables'
 
-describe('validateStartVariables (TODO §92)', () => {
+describe('validateStartVariables (TODO §93)', () => {
   it('construit les variables texte et ignore les lignes vides', () => {
     const result = validateStartVariables([
       { name: ' priorite ', value: 'haute' },

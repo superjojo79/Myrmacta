@@ -29,7 +29,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-/** TODO §92 — « Notifier » avec {@code notificationTo="dossierField:email"} sur le moteur réel. */
+/** TODO §93 — « Notifier » avec {@code notificationTo="dossierField:email"} sur le moteur réel. */
 @SpringBootTest
 @Import(OidcClientTestConfiguration.class)
 class NotifierRecipientFromDossierIT {

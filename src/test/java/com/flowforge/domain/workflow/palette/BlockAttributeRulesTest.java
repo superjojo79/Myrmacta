@@ -30,7 +30,7 @@ class BlockAttributeRulesTest {
         BlockAttributeRules.validate("a", "attachGeneratedDocumentTask", Map.of());
     }
 
-    /** TODO §92 — notificationTo : adresse littérale, ou source dossierField:/variable: bien formée. */
+    /** TODO §93 — notificationTo : adresse littérale, ou source dossierField:/variable: bien formée. */
     @Test
     void notificationToAcceptsALiteralOrAWellFormedSource() {
         for (String ok : List.of("a@example.org", "dossierField:email", "variable:adresse_demandeur")) {

@@ -54,7 +54,7 @@ public class NotificationDispatchTask implements JavaDelegate {
     }
 
     /**
-     * TODO §92 (D-NOTIF-SOURCE-LITERAL) — {@code flowable:notificationTo="dossierField:<champ>"} lit le champ <b>à jour</b>
+     * TODO §93 (D-NOTIF-SOURCE-LITERAL) — {@code flowable:notificationTo="dossierField:<champ>"} lit le champ <b>à jour</b>
      * dans le dossier, {@code "variable:<nom>"} la variable de process désignée. Une source n'est résolue que si elle est écrite
      * dans l'attribut littéral du BPMN déployé : une variable {@code notificationTo} (posée au démarrage ou à la complétion
      * d'une tâche, donc par un utilisateur) reste une adresse littérale et ne peut pas désigner un autre champ. Une valeur

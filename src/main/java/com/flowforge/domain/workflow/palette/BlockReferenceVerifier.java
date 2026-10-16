@@ -16,7 +16,7 @@ import java.util.Optional;
  * configuration de workflow (ou le process en cours de déploiement), webhook, et statut déclaré dans la configuration
  * <b>de ce process</b> (stockée, ou soumise en {@code dryRun}).
  *
- * <p>TODO §92 (D-DRAFT-REF-STATUS) — en mode {@link Mode#DRAFT} (brouillon proposé par un canal automatisé), une
+ * <p>TODO §93 (D-DRAFT-REF-STATUS) — en mode {@link Mode#DRAFT} (brouillon proposé par un canal automatisé), une
  * ressource qui existe mais n'est pas encore active est acceptée et renvoyée : la publication, elle, reste stricte.
  */
 public final class BlockReferenceVerifier {

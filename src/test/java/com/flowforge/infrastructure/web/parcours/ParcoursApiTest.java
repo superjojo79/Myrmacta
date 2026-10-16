@@ -122,7 +122,7 @@ class ParcoursApiTest {
 
     @Test
     void aParcoursUsingADraftTemplateCompilesIntoADraftAndWarnsThatPublicationAwaitsActivation() throws Exception {
-        // TODO §92 D-DRAFT-REF-STATUS : un modèle encore en brouillon n'empêche plus de déposer le brouillon du workflow.
+        // TODO §93 D-DRAFT-REF-STATUS : un modèle encore en brouillon n'empêche plus de déposer le brouillon du workflow.
         String template = "t" + key();
         mockMvc.perform(post("/api/document-templates").with(admin()).with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content("""

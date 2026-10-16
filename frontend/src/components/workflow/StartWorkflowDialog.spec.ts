@@ -26,7 +26,7 @@ describe('StartWorkflowDialog', () => {
     expect(wrapper.emitted('start')?.[0]).toEqual(['default-wf', {}])
   })
 
-  describe('variables de démarrage (TODO §92)', () => {
+  describe('variables de démarrage (TODO §93)', () => {
     async function addRow(wrapper: ReturnType<typeof mount>, name: string, value: string) {
       await wrapper.find('[data-testid="start-variables-add"]').trigger('click')
       const rows = wrapper.findAll('[data-testid="start-variable-row"]')

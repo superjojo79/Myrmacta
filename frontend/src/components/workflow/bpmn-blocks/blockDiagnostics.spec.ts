@@ -111,7 +111,7 @@ describe('blockDiagnostics', () => {
     expect(priorityHint(block('request-signature').parameters[3])).toBeUndefined()
   })
 
-  it('accepte une source de destinataire bien formée et refuse une source mal formée, comme le déploiement (TODO §92)', () => {
+  it('accepte une source de destinataire bien formée et refuse une source mal formée, comme le déploiement (TODO §93)', () => {
     const b = block('notify')
     for (const ok of ['dossierField:email', 'variable:adresse_demandeur']) {
       expect(diagnoseBlock(bo({ 'flowable:notificationChannels': 'EMAIL', 'flowable:notificationTo': ok }), b, ctx())).toEqual([])
@@ -123,7 +123,7 @@ describe('blockDiagnostics', () => {
     }
   })
 
-  it('l’avertissement sur l’e-mail littéral propose de lire l’adresse dans le dossier (TODO §92)', () => {
+  it('l’avertissement sur l’e-mail littéral propose de lire l’adresse dans le dossier (TODO §93)', () => {
     const attrs = { 'flowable:notificationChannels': 'EMAIL', 'flowable:notificationTo': 'jean@example.org' }
     expect(diagnoseBlock(bo(attrs), block('notify'), ctx())[0]?.message).toContain('dossierField:')
   })

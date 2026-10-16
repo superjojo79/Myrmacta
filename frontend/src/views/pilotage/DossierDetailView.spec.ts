@@ -138,7 +138,7 @@ describe('DossierDetailView phase 8', () => {
     expect(call[3]).toBeTruthy()
   })
 
-  it('transmet les variables de démarrage saisies dans le dialogue (TODO §92)', async () => {
+  it('transmet les variables de démarrage saisies dans le dialogue (TODO §93)', async () => {
     const wrapper = await mountDetail(['TENANT_ADMIN'])
     await wrapper.get('button.primary').trigger('click')
     await flushPromises()

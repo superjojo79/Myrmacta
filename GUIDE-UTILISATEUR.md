@@ -242,6 +242,11 @@ Depuis la fiche dossier (`/dossiers/{id}`), bouton **Démarrer workflow** :
 
 - proposé par défaut : la config workflow associée au type du dossier (`workflowKey` du type) ;
 - possibilité de choisir une autre config workflow existante dans la liste déroulante.
+- **Variables de démarrage** (section repliée) : ajouter des lignes *nom / valeur* (texte) transmises au
+  workflow, par exemple une adresse ou une priorité attendue par le processus. Le nom accepte lettres,
+  chiffres et `_` ; les noms réservés de la plateforme (`dossierId`, `dossierWorkflowLinkId`, `tenantId`,
+  `dossierFields`, `connectorResult`) et les doublons sont refusés avant l'envoi. Un paramètre écrit dans
+  le BPMN prime toujours sur une variable de même nom.
 
 ### Suivre l'exécution
 

@@ -123,7 +123,7 @@ class BlockAttributesDelegatesTest {
 
     // --- notificationDispatchTask ------------------------------------------------------------------------------
 
-    /** TODO §92 (D-NOTIF-SOURCE-LITERAL) — destinataire lu dans le dossier ou dans une variable désignée par le BPMN. */
+    /** TODO §93 (D-NOTIF-SOURCE-LITERAL) — destinataire lu dans le dossier ou dans une variable désignée par le BPMN. */
     @Test
     void notification_recipientSourceInTheLiteralAttributeIsResolved() {
         SendNotificationUseCase useCase = mock(SendNotificationUseCase.class);

@@ -150,7 +150,7 @@ class BlockReferenceLookupAdapterTest {
         assertThat(adapter.exists(TENANT, "workflowTypes", " ")).isFalse();
     }
 
-    /** TODO §92 D-DRAFT-REF-STATUS — un brouillon accepte une ressource qui existe mais n'est pas encore active. */
+    /** TODO §93 D-DRAFT-REF-STATUS — un brouillon accepte une ressource qui existe mais n'est pas encore active. */
     @Test
     void statusDistinguishesActiveInactiveAndMissingResources() {
         UUID enabled = UUID.randomUUID();

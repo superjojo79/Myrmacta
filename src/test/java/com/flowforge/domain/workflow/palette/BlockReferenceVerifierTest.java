@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * S-REFCHK-1..3 — existence des ressources référencées par les attributs de brique, au déploiement (TODO §73) ; mode
- * brouillon (TODO §92 D-DRAFT-REF-STATUS).
+ * brouillon (TODO §93 D-DRAFT-REF-STATUS).
  */
 class BlockReferenceVerifierTest {
 

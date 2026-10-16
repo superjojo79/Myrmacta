@@ -150,7 +150,7 @@ class DeployWorkflowToolTest {
 
     @Test
     void aProposalReferencingAnInactiveResourceIsSavedAndListsItWithAWarning() {
-        // TODO §92 D-DRAFT-REF-STATUS
+        // TODO §93 D-DRAFT-REF-STATUS
         when(bpmnParserPort.extractProcessDefinitionKey(any())).thenReturn(KEY);
         when(propose.proposeBpmn(any(), any(), any(), any(), any(), anyBoolean()))
                 .thenReturn(new ProposeDraftUseCase.Proposal(DraftArtifactType.BPMN, KEY, STAMP, false, List.of(INACTIVE)));

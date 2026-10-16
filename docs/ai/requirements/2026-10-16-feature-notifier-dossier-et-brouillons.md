@@ -4,7 +4,7 @@ title: Requirements — destinataire de « Notifier » depuis le dossier, réfé
 status: reviewed
 created: 2026-10-16
 feature: notifier-dossier-et-brouillons
-todo_ref: TODO.md §92 · DEFERRED-FEATURES.md §7 · exemples/autorisation-riverain/DIFFICULTES.md §3 et §8
+todo_ref: TODO.md §93 · DEFERRED-FEATURES.md §7 · exemples/autorisation-riverain/DIFFICULTES.md §3 et §8
 ---
 
 # Requirements — notifier-dossier-et-brouillons

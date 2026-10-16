@@ -129,7 +129,7 @@ public final class BlockAttributeRules {
     }
 
     /**
-     * TODO §92 — {@code notificationTo} : adresse littérale, ou source {@code dossierField:<nom>} / {@code variable:<nom>}
+     * TODO §93 — {@code notificationTo} : adresse littérale, ou source {@code dossierField:<nom>} / {@code variable:<nom>}
      * (même grammaire que {@code flowable:portalRecipient}). Une source mal formée est refusée ici plutôt que de partir comme
      * adresse littérale à l'exécution.
      */

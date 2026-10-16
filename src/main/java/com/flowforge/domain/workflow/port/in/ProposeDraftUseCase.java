@@ -42,7 +42,7 @@ public interface ProposeDraftUseCase {
     /**
      * Validation seule (aucune écriture) : mêmes contrôles que {@code proposeBpmn}.
      *
-     * @return les références inactives acceptées (TODO §92 D-DRAFT-REF-STATUS)
+     * @return les références inactives acceptées (TODO §93 D-DRAFT-REF-STATUS)
      */
     List<InactiveBlockReference> validateBpmn(AccessContext.User actor, String processDefinitionKey, String xml, ProposedWorkflowConfig config);
 
@@ -50,7 +50,7 @@ public interface ProposeDraftUseCase {
 
     /**
      * @param inactiveReferences ressources référencées qui existent mais ne sont pas encore actives : la publication les
-     *     refusera tant qu'elles ne le sont pas (TODO §92 D-DRAFT-REF-STATUS ; toujours vide pour un DMN)
+     *     refusera tant qu'elles ne le sont pas (TODO §93 D-DRAFT-REF-STATUS ; toujours vide pour un DMN)
      */
     record Proposal(
             DraftArtifactType type,

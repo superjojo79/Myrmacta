@@ -14,7 +14,7 @@ public interface BlockReferenceLookupPort {
     List<BlockReference> list(String tenantId, String source);
 
     /**
-     * État de la ressource dans ce tenant (TODO §92) : template actif s'il a au moins une version active, inactif s'il n'a
+     * État de la ressource dans ce tenant (TODO §93) : template actif s'il a au moins une version active, inactif s'il n'a
      * que des brouillons ; connecteur de rôle service, webhook non supprimé et type de dossier inactifs s'ils sont
      * désactivés ; {@code workflowTypes} et {@code dmnTables} n'ont pas d'état inactif.
      */

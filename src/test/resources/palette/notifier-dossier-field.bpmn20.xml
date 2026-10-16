@@ -3,7 +3,7 @@
              xmlns:flowable="http://flowable.org/bpmn"
              targetNamespace="http://flowforge/test">
 
-  <!-- TODO §92 : destinataire de « Notifier » lu dans le dossier, après une tâche humaine pour prouver la lecture à jour. -->
+  <!-- TODO §93 : destinataire de « Notifier » lu dans le dossier, après une tâche humaine pour prouver la lecture à jour. -->
   <process id="notifierDossierField" name="Notifier Dossier Field" isExecutable="true">
     <startEvent id="ndStart"/>
     <sequenceFlow id="ndFlow1" sourceRef="ndStart" targetRef="ndWait"/>

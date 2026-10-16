@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
  * ({@code Dossier.fields()}, lecture autorisée par {@code ArchitectureRulesTest} — une seule clé,
  * jamais renvoyée à un navigateur) ou une variable de process ({@code RuntimeService.getVariable},
  * sans évaluation d'expression — TODO §69). Sert aussi au destinataire de la brique « Notifier »
- * ({@code dossierField:}, TODO §92).
+ * ({@code dossierField:}, TODO §93).
  */
 @Component
 class PortalRecipientResolverAdapter implements PortalRecipientResolverPort {

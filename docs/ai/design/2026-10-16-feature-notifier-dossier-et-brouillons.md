@@ -4,7 +4,7 @@ title: Design — notifier-dossier-et-brouillons
 status: reviewed
 created: 2026-10-16
 feature: notifier-dossier-et-brouillons
-todo_ref: TODO.md §92
+todo_ref: TODO.md §93
 ---
 
 # Design — notifier-dossier-et-brouillons
@@ -169,4 +169,4 @@ priorité (`DeployedActivityParameters`). Ce point est rappelé dans le guide ut
 - `analysis doc/15-serveur-mcp.md` : `inactiveReferences` dans la réponse de `deploy_workflow`.
 - `exemples/autorisation-riverain/` (après le merge de la PR #172) : passer à `notificationTo="dossierField:email"`, supprimer
   la variable de démarrage et mettre à jour DIFFICULTES §3 et §8.
-- `TODO.md` §92, `CHANGELOG.md`, `DEFERRED-FEATURES.md` §7 (statuts).
+- `TODO.md` §93, `CHANGELOG.md`, `DEFERRED-FEATURES.md` §7 (statuts).

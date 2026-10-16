@@ -9,7 +9,7 @@ import java.util.regex.Pattern;
  * {@code flowable:portalRecipient} : {@code dossierField:<clé>} ou {@code variable:<nom>}. Le nom
  * est un identifiant simple, toujours lu <strong>par nom littéral</strong> (jamais évalué en UEL —
  * TODO §69). Même grammaire pour le destinataire de la brique « Notifier » ({@code flowable:notificationTo},
- * TODO §92).
+ * TODO §93).
  */
 public record PortalRecipientSource(Kind kind, String name) {
 

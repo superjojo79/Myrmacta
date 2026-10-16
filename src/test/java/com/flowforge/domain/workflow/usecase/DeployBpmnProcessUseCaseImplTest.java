@@ -94,7 +94,7 @@ class DeployBpmnProcessUseCaseImplTest {
 
     @Test
     void deployAndValidate_stillRefuseAnInactiveResource() {
-        // TODO §92 D-DRAFT-REF-STATUS : déploiement, dryRun de l'écran et publication restent stricts.
+        // TODO §93 D-DRAFT-REF-STATUS : déploiement, dryRun de l'écran et publication restent stricts.
         givenAReferenceToADraftTemplate();
 
         assertThatThrownBy(() -> useCase.deploy("diagram.bpmn20.xml", BPMN_BYTES))

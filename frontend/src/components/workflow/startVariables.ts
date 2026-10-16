@@ -1,5 +1,5 @@
 /**
- * TODO §92 — variables de démarrage saisies dans « Démarrer un workflow ». Le serveur reste l'autorité
+ * TODO §93 — variables de démarrage saisies dans « Démarrer un workflow ». Le serveur reste l'autorité
  * (`WorkflowVariables.assertNoReservedKeys`) ; ce contrôle évite seulement un aller-retour en erreur.
  */
 export interface StartVariableRow {

@@ -165,7 +165,7 @@ class DraftUseCasesTest {
         assertThat(saved.provenance()).isEqualTo(Provenance.MCP);
         assertThat(saved.updatedBy()).isEqualTo("agent-1");
         assertThat(saved.proposedConfig()).isEqualTo(CONFIG);
-        // TODO §92 D-DRAFT-REF-STATUS : une proposition est validée en mode brouillon, jamais en mode strict.
+        // TODO §93 D-DRAFT-REF-STATUS : une proposition est validée en mode brouillon, jamais en mode strict.
         verify(deployBpmn).validateDraft(any(), any());
         verify(deployBpmn, never()).validate(any(), any());
         verify(deployBpmn, never()).deploy(any(), any());

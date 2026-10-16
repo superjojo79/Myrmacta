@@ -4,7 +4,7 @@ title: Planning — notifier-dossier-et-brouillons
 status: draft
 created: 2026-10-16
 feature: notifier-dossier-et-brouillons
-todo_ref: TODO.md §92
+todo_ref: TODO.md §93
 ---
 
 # Planning — notifier-dossier-et-brouillons
@@ -14,15 +14,15 @@ A, B, C, avec un commit par tâche.
 
 ## Volet A — §8 références des brouillons
 
-- [ ] **A1.** `ReferenceStatus` (domaine) et `BlockReferenceLookupPort.status(...)`. `exists` devient une méthode par défaut
+- [x] **A1.** `ReferenceStatus` (domaine) et `BlockReferenceLookupPort.status(...)`. `exists` devient une méthode par défaut
   (`status == ACTIVE`). Tests du port simulé.
-- [ ] **A2.** `BlockReferenceLookupAdapter.status` selon la table du design. Tests de l'adaptateur (modèle, connecteur,
+- [x] **A2.** `BlockReferenceLookupAdapter.status` selon la table du design. Tests de l'adaptateur (modèle, connecteur,
   webhook, type de dossier).
-- [ ] **A3.** `BlockReferenceVerifier.verify(..., Mode)` renvoie `List<InactiveBlockReference>`, et la surcharge stricte est
+- [x] **A3.** `BlockReferenceVerifier.verify(..., Mode)` renvoie `List<InactiveBlockReference>`, et la surcharge stricte est
   conservée. `BlockReferenceVerifierTest`.
-- [ ] **A4.** `DeployBpmnProcessUseCase.validateDraft`, puis `ProposeDraftUseCase.validateBpmn` (nouveau type de retour) et
+- [x] **A4.** `DeployBpmnProcessUseCase.validateDraft`, puis `ProposeDraftUseCase.validateBpmn` (nouveau type de retour) et
   `Proposal.inactiveReferences`. Tests des use cases (proposition acceptée, publication refusée puis acceptée).
-- [ ] **A5.** Appelants :
+- [x] **A5.** Appelants :
   - `DeployWorkflowTool` et `DraftToolResults` (`inactiveReferences` et message) ;
   - `CompileParcoursUseCaseImpl` (`warnings`) ;
   - `ImportConfigurationUseCaseImpl` (compilation seulement).
@@ -31,26 +31,26 @@ A, B, C, avec un commit par tâche.
 
 ## Volet B — §3 destinataire de « Notifier »
 
-- [ ] **B1.** `BlockAttributeRules` : règle `notificationTo` (forme de source) et texte d'aide du catalogue.
+- [x] **B1.** `BlockAttributeRules` : règle `notificationTo` (forme de source) et texte d'aide du catalogue.
   `BlockAttributeRulesTest`, et `BuildingBlockCatalogTest` si un instantané couvre l'aide.
-- [ ] **B2.** `NotificationDispatchTask` : résolution depuis l'attribut littéral seulement, via `PortalRecipientResolverPort`.
+- [x] **B2.** `NotificationDispatchTask` : résolution depuis l'attribut littéral seulement, via `PortalRecipientResolverPort`.
   Valeur vide ou non textuelle → `NotificationValidationException`. Commentaires du port et de l'adaptateur mis à jour.
   `NotificationDispatchTaskTest`.
-- [ ] **B3.** Test d'intégration Flowable : `dossierField:email` produit un e-mail dans l'outbox. `ArchitectureRulesTest` vert.
+- [x] **B3.** Test d'intégration Flowable : `dossierField:email` produit un e-mail dans l'outbox. `ArchitectureRulesTest` vert.
 
 ## Volet C — variables de démarrage
 
-- [ ] **C1.** `startVariables.ts` (validation pure) et `startVariables.spec.ts`.
-- [ ] **C2.** `StartWorkflowDialog.vue` (section repliée, lignes, erreurs, `emit('start', key, variables)`), i18n,
+- [x] **C1.** `startVariables.ts` (validation pure) et `startVariables.spec.ts`.
+- [x] **C2.** `StartWorkflowDialog.vue` (section repliée, lignes, erreurs, `emit('start', key, variables)`), i18n,
   `StartWorkflowDialog.spec.ts`.
-- [ ] **C3.** `DossierDetailView.vue` transmet `variables`. Spec et `componentCoverage.spec.ts` si besoin.
-- [ ] **C4.** Playwright `pilotage.spec.ts` : variable transmise ; nom réservé bloqué.
+- [x] **C3.** `DossierDetailView.vue` transmet `variables`. Spec et `componentCoverage.spec.ts` si besoin.
+- [x] **C4.** Playwright `pilotage.spec.ts` : variable transmise ; nom réservé bloqué.
 
 ## Documentation et clôture
 
-- [ ] **D1.** `GUIDE-CONCEPTION-BPMN.md` (sources de `notificationTo`, règle des brouillons), `GUIDE-UTILISATEUR.md`
+- [x] **D1.** `GUIDE-CONCEPTION-BPMN.md` (sources de `notificationTo`, règle des brouillons), `GUIDE-UTILISATEUR.md`
   (variables de démarrage), `analysis doc/15-serveur-mcp.md` (`inactiveReferences`).
-- [ ] **D2.** `TODO.md` §92 (énoncé, décisions D-DRAFT-REF-STATUS, D-NOTIF-SOURCE-LITERAL, D-NOTIF-REUSE-PORTAL-SOURCE, champ
+- [x] **D2.** `TODO.md` §93 (énoncé, décisions D-DRAFT-REF-STATUS, D-NOTIF-SOURCE-LITERAL, D-NOTIF-REUSE-PORTAL-SOURCE, champ
   « Impacte »), `DEFERRED-FEATURES.md` §7 (statuts ; variables de démarrage déclarées ajoutées au backlog).
 - [ ] **D3.** Une fois la PR #172 mergée : mettre à jour l'exemple `exemples/autorisation-riverain/` (`dossierField:email`,
   suppression de `emailConnu` et de la variable de démarrage, DIFFICULTES §3 et §8), avec un rebase sur `main`.

@@ -43,6 +43,9 @@ app.use(router)
 app.use(OpenVue, {
   theme: {
     preset: Aura,
+    // Le CSS applicatif est clair uniquement : sans ça, Aura passe `color-scheme: dark` quand l'OS
+    // est en mode sombre et les contrôles natifs deviennent blanc sur blanc.
+    options: { darkModeSelector: 'none' },
   },
 })
 app.mount('#app')

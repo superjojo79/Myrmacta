@@ -28,6 +28,18 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ## [Non publié]
 
+### Ajouté
+
+- **[PR #174](https://github.com/superjojo79/FlowForge/pull/174) — TODO §93** — Un brouillon de workflow proposé par MCP, un
+  parcours ou un import peut référencer une ressource encore inactive (modèle en brouillon…) : elle est signalée et la publication
+  reste stricte. « Notifier » lit son destinataire dans le dossier (`dossierField:email`), et « Démarrer un workflow » accepte des
+  variables de démarrage. Une variable `notificationTo` doit désormais être une seule adresse.
+
+### Sécurité
+
+- **[PR #174](https://github.com/superjojo79/FlowForge/pull/174)** — Le connecteur `flowable-signal` refuse les variables plateforme
+  (`dossierId`…) ; un `documentType` passé au démarrage d'un workflow est soumis à la liste blanche du type de dossier.
+
 ### Documentation
 
 - **[PR #168](https://github.com/superjojo79/FlowForge/pull/168)** — Templates de document : une variable ou propriété

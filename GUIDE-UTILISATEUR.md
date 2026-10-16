@@ -250,9 +250,16 @@ Toujours sur la fiche dossier :
 - **Diagramme BPMN** — vue en lecture seule (bpmn-js), avec surbrillance des étapes actives,
   terminées et en erreur. Affiché uniquement si une instance de workflow est démarrée sur ce
   dossier.
-- **Tâches** — liste des tâches humaines en cours, bouton **Compléter** ; les rôles
-  `TENANT_ADMIN`/`WORKFLOW_ADMIN` peuvent en plus réassigner une tâche à un autre utilisateur
-  (identifiant saisi librement).
+- **Tâches** — liste des tâches humaines en cours, bouton **Compléter**. L'assigné s'affiche par
+  son nom quand il est connu (« vous » pour soi-même).
+  - **M'assigner** — tout utilisateur qui peut modifier le dossier (ACL **EDIT** du type, ou rôle
+    `TENANT_ADMIN`/`WORKFLOW_ADMIN`) peut prendre une tâche **sans assigné** ; elle apparaît alors
+    dans son menu **Tâches**. Une tâche déjà prise par quelqu'un d'autre ne se prend pas (message
+    d'erreur) : elle se réassigne.
+  - **Réassigner** (`TENANT_ADMIN`/`WORKFLOW_ADMIN`) — choisir le nouvel assigné dans une liste
+    déroulante. La liste ne propose que les utilisateurs **déjà connectés au moins une fois** à
+    l'application et qui **peuvent modifier ce dossier** (inutile d'assigner une tâche à quelqu'un
+    qui ne pourrait pas la terminer). Un utilisateur qui n'apparaît pas doit d'abord se connecter.
 - **Historique** — frise chronologique des événements du dossier.
 
 Un utilisateur peut aussi retrouver l'ensemble de ses tâches assignées, tous dossiers confondus,
@@ -544,7 +551,8 @@ Dans le tableau des templates existants (`templateKey` — libellé — version 
   l'administrateur a déclaré **Cherchable** (texte : « commence par » ; nombre et date : de / à ; choix et oui/non). Cinq
   filtres au plus ; un champ sensible n'est jamais cherchable. Les filtres figurent dans l'URL (`f.montant.gte=5000`).
 - **Tâches** (`/tasks`) — vue personnelle des tâches actuellement assignées à l'utilisateur
-  connecté, avec accès direct au dossier concerné, bouton **Compléter**, et un rappel SLA
+  connecté (une tâche sans assigné n'y figure pas : la prendre avec **M'assigner** depuis la fiche
+  dossier, voir §3), avec accès direct au dossier concerné, bouton **Compléter**, et un rappel SLA
   (`dans N h` / `dépassée`) lorsque le type de dossier a un objectif en heures. Depuis TODO §52,
   une tâche dont le diagramme BPMN déclare un formulaire (voir
   [GUIDE-CONCEPTION-BPMN.md](GUIDE-CONCEPTION-BPMN.md) §3bis) affiche ce formulaire à la place du

@@ -20,15 +20,19 @@ import com.flowforge.domain.notification.model.NotificationEvent;
 import com.flowforge.domain.notification.port.in.SendNotificationUseCase;
 import com.flowforge.domain.shared.PageQuery;
 import com.flowforge.domain.shared.PageResult;
+import com.flowforge.domain.user.model.KnownUser;
+import com.flowforge.domain.user.port.out.KnownUserRepository;
 import com.flowforge.domain.workflow.model.ActivityHistoryEntry;
 import com.flowforge.domain.workflow.model.WorkflowDiagramView;
 import com.flowforge.domain.workflow.model.WorkflowLinkDossierView;
 import com.flowforge.domain.workflow.model.WorkflowProcessInstanceMissingException;
 import com.flowforge.domain.workflow.model.WorkflowTaskView;
+import com.flowforge.domain.workflow.port.in.ClaimWorkflowTaskUseCase;
 import com.flowforge.domain.workflow.port.in.GetWorkflowDiagramUseCase;
 import com.flowforge.domain.workflow.port.in.GetWorkflowHistoryUseCase;
 import com.flowforge.domain.workflow.port.in.GetWorkflowLinkDossierUseCase;
 import com.flowforge.domain.workflow.port.in.GetWorkflowTasksUseCase;
+import com.flowforge.domain.workflow.port.in.ListAssignableUsersUseCase;
 import com.flowforge.domain.workflow.port.in.ReassignWorkflowTaskUseCase;
 import com.flowforge.domain.workflow.port.out.WorkflowParticipantPort;
 import com.flowforge.domain.workflow.port.out.WorkflowVisualizationPort;
@@ -42,7 +46,9 @@ public final class WorkflowLinkVisualizationUseCaseImpl implements
         GetWorkflowHistoryUseCase,
         GetWorkflowTasksUseCase,
         GetWorkflowLinkDossierUseCase,
-        ReassignWorkflowTaskUseCase {
+        ReassignWorkflowTaskUseCase,
+        ClaimWorkflowTaskUseCase,
+        ListAssignableUsersUseCase {
 
     private final String tenantId;
     private final DossierWorkflowLinkRepository linkRepository;
@@ -54,6 +60,7 @@ public final class WorkflowLinkVisualizationUseCaseImpl implements
     private final WorkflowParticipantPort participantPort;
     private final DossierAccessPolicy dossierAccessPolicy;
     private final SendNotificationUseCase sendNotificationUseCase;
+    private final KnownUserRepository knownUserRepository;
 
     public WorkflowLinkVisualizationUseCaseImpl(
             String tenantId,
@@ -65,7 +72,8 @@ public final class WorkflowLinkVisualizationUseCaseImpl implements
             WorkflowVisualizationPort visualizationPort,
             WorkflowParticipantPort participantPort,
             DossierAccessPolicy dossierAccessPolicy,
-            SendNotificationUseCase sendNotificationUseCase) {
+            SendNotificationUseCase sendNotificationUseCase,
+            KnownUserRepository knownUserRepository) {
         this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
         this.linkRepository = Objects.requireNonNull(linkRepository, "linkRepository");
         this.dossierRepository = Objects.requireNonNull(dossierRepository, "dossierRepository");
@@ -77,6 +85,7 @@ public final class WorkflowLinkVisualizationUseCaseImpl implements
         this.participantPort = Objects.requireNonNull(participantPort, "participantPort");
         this.dossierAccessPolicy = Objects.requireNonNull(dossierAccessPolicy, "dossierAccessPolicy");
         this.sendNotificationUseCase = Objects.requireNonNull(sendNotificationUseCase, "sendNotificationUseCase");
+        this.knownUserRepository = Objects.requireNonNull(knownUserRepository, "knownUserRepository");
     }
 
     @Override
@@ -93,7 +102,15 @@ public final class WorkflowLinkVisualizationUseCaseImpl implements
 
     @Override
     public PageResult<WorkflowTaskView> getTasks(UUID linkId, AccessContext.User actor, PageQuery query) {
-        DossierWorkflowLink link = requireReadableLink(linkId, actor);
+        // D-ASSIGN-CLAIM : un éditeur du dossier voit les tâches même sans y avoir encore participé,
+        // sinon il ne pourrait jamais prendre une tâche libre. Diagramme et historique restent
+        // réservés aux participants.
+        DossierWorkflowLink link = loadTenantLink(linkId);
+        if (!isAdmin(actor)
+                && !participantPort.findParticipantUserIds(link).contains(actor.userId())
+                && !canEditLinkedDossier(link, actor)) {
+            throw new AccessDeniedException("User is not a workflow participant nor a dossier editor");
+        }
         return visualizationPort.listActiveTasks(requireProcessInstance(link), tenantId, query);
     }
 
@@ -130,11 +147,14 @@ public final class WorkflowLinkVisualizationUseCaseImpl implements
         }
         DossierWorkflowLink link = loadTenantLink(linkId);
         String processInstanceId = requireProcessInstance(link);
-        // Best-effort guard against typos, not an identity check (no local user directory —
-        // OIDC only): assigneeId must already be a recognized participant or configured observer.
-        if (!participantPort.findParticipantUserIds(link).contains(assigneeId)) {
+        // Guard against typos: assigneeId must be a recognized participant or configured observer,
+        // or a user of the local directory (D-ASSIGN-DIR) who can edit the dossier — assigning a
+        // task to someone who could not complete it would only strand it.
+        if (!participantPort.findParticipantUserIds(link).contains(assigneeId)
+                && !isAssignableKnownUser(link, assigneeId)) {
             throw new IllegalArgumentException(
-                    "assigneeId is not a known participant or observer of this workflow: " + assigneeId);
+                    "assigneeId is neither a participant of this workflow nor a known user who can edit the dossier: "
+                            + assigneeId);
         }
         visualizationPort.reassignTask(processInstanceId, taskId, assigneeId, tenantId);
         // M5 (TODO §66), transactional semantics fixed per F4 (Phase 10 adversarial review): not
@@ -168,6 +188,52 @@ public final class WorkflowLinkVisualizationUseCaseImpl implements
                                 "dossierId", link.dossierId().toString(),
                                 "taskId", taskId)),
                 tenantId);
+    }
+
+    @Override
+    public void claim(UUID linkId, String taskId, AccessContext.User actor) {
+        if (taskId == null || taskId.isBlank()) {
+            throw new IllegalArgumentException("taskId is required");
+        }
+        DossierWorkflowLink link = loadTenantLink(linkId);
+        String processInstanceId = requireProcessInstance(link);
+        dossierAccessPolicy.assertCanEdit(loadLinkedDossier(link), actor);
+        // Pas de notification : l'acteur s'assigne lui-même.
+        visualizationPort.claimTask(processInstanceId, taskId, actor.userId(), tenantId);
+    }
+
+    @Override
+    public List<KnownUser> listAssignableUsers(UUID linkId, AccessContext.User actor) {
+        if (!isAdmin(actor)) {
+            throw new AccessDeniedException("Listing assignable users requires TENANT_ADMIN or WORKFLOW_ADMIN");
+        }
+        Dossier dossier = loadLinkedDossier(loadTenantLink(linkId));
+        return knownUserRepository.findAll(tenantId).stream()
+                .filter(user -> canEdit(dossier, user))
+                .toList();
+    }
+
+    private boolean isAssignableKnownUser(DossierWorkflowLink link, String userId) {
+        return knownUserRepository.findById(tenantId, userId)
+                .filter(user -> canEdit(loadLinkedDossier(link), user))
+                .isPresent();
+    }
+
+    private boolean canEdit(Dossier dossier, KnownUser user) {
+        return dossierAccessPolicy.canEdit(dossier, AccessContext.user(user.userId(), user.roles()));
+    }
+
+    private boolean canEditLinkedDossier(DossierWorkflowLink link, AccessContext.User actor) {
+        return dossierRepository.findById(link.dossierId())
+                .filter(dossier -> tenantId.equals(dossier.tenantId()))
+                .map(dossier -> dossierAccessPolicy.canEdit(dossier, actor))
+                .orElse(false);
+    }
+
+    private Dossier loadLinkedDossier(DossierWorkflowLink link) {
+        return dossierRepository.findById(link.dossierId())
+                .filter(dossier -> tenantId.equals(dossier.tenantId()))
+                .orElseThrow(() -> new DossierNotFoundException("Dossier not found: " + link.dossierId()));
     }
 
     private DossierWorkflowLink requireReadableLink(UUID linkId, AccessContext.User actor) {

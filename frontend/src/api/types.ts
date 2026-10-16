@@ -245,6 +245,13 @@ export interface DecisionTestReport {
   results: DecisionTestCaseResult[]
 }
 
+/** D-ASSIGN-DIR — utilisateur connu pouvant modifier le dossier d'un lien. */
+export interface AssignableUser {
+  userId: string
+  displayName: string
+  email: string | null
+}
+
 export interface WorkflowTaskView {
   taskId: string
   name: string | null

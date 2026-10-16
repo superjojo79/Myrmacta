@@ -4,6 +4,8 @@ type MockOpts = {
   roles?: string[]
   withActiveLink?: boolean
   dossierStatus?: string
+  /** La tâche du lien n'a pas d'assigné (D-ASSIGN-CLAIM). */
+  freeTask?: boolean
 }
 
 const DOSSIER_ID = '11111111-1111-1111-1111-111111111111'
@@ -144,10 +146,10 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
     {
       taskId: 'task-1',
       name: 'Review',
-      assignee: 'user-1',
+      assignee: opts.freeTask ? null : 'user-1',
       taskDefinitionKey: 'review',
       createTime: '2026-08-12T00:00:00Z',
-    },
+    } as { taskId: string; name: string; assignee: string | null; taskDefinitionKey: string; createTime: string },
   ]
   let elements: Array<Record<string, unknown>> = []
 
@@ -673,7 +675,35 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
       return
     }
     if (url.includes('/reassign') && route.request().method() === 'POST') {
+      const { assigneeId } = route.request().postDataJSON() as { assigneeId: string }
+      tasks = tasks.map((task) => ({ ...task, assignee: assigneeId }))
       await route.fulfill({ status: 204, body: '' })
+      return
+    }
+    if (url.includes('/claim') && route.request().method() === 'POST') {
+      // Miroir de D-ASSIGN-CLAIM : prise réservée aux éditeurs, sur une tâche libre.
+      if (!canEdit) {
+        await route.fulfill({ status: 403, contentType: 'application/json', body: '{"status":403}' })
+        return
+      }
+      tasks = tasks.map((task) => ({ ...task, assignee: task.assignee ?? 'user-1' }))
+      await route.fulfill({ status: 204, body: '' })
+      return
+    }
+    if (url.includes('/assignable-users')) {
+      const admin = roles.some((role) => ['TENANT_ADMIN', 'WORKFLOW_ADMIN'].includes(role))
+      await route.fulfill({
+        status: admin ? 200 : 403,
+        contentType: 'application/json',
+        body: JSON.stringify(
+          admin
+            ? [
+                { userId: 'user-1', displayName: 'Ada', email: 'ada@example.com' },
+                { userId: 'user-2', displayName: 'Grace Hopper', email: 'grace@example.com' },
+              ]
+            : { status: 403 },
+        ),
+      })
       return
     }
     if (url.includes('/tasks')) {
@@ -957,6 +987,27 @@ test('E2E-6b manager cannot reassign', async ({ page }) => {
   await openApp(page)
   await createAndOpenDossier(page)
   await expect(page.getByRole('button', { name: 'Réassigner' })).toHaveCount(0)
+})
+
+test('E2E-ASSIGN-1 a dossier editor takes a free task with M’assigner (D-ASSIGN-CLAIM)', async ({ page }) => {
+  await mockSession(page, { withActiveLink: true, roles: ['DOSSIER_MANAGER'], freeTask: true })
+  await openApp(page)
+  await createAndOpenDossier(page)
+  await expect(page.getByText('Assignee : —')).toBeVisible()
+  await page.getByRole('button', { name: 'M’assigner' }).click()
+  await expect(page.getByText('Assignee : vous')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'M’assigner' })).toHaveCount(0)
+})
+
+test('E2E-ASSIGN-2 admin reassigns by picking a known user, shown by name (D-ASSIGN-DIR)', async ({ page }) => {
+  await mockSession(page, { withActiveLink: true, roles: ['TENANT_ADMIN', 'WORKFLOW_ADMIN'] })
+  await openApp(page)
+  await createAndOpenDossier(page)
+  await expect(page.getByText('Assignee : vous')).toBeVisible()
+  await page.getByRole('button', { name: 'Réassigner' }).click()
+  await page.getByTestId('reassign-user').selectOption({ label: 'Grace Hopper (grace@example.com)' })
+  await page.getByRole('button', { name: 'Confirmer' }).click()
+  await expect(page.getByText('Assignee : Grace Hopper')).toBeVisible()
 })
 
 test('E2E-7 inbox lists mine tasks', async ({ page }) => {

@@ -12,6 +12,8 @@ export default {
     assignee: 'Assignee : {name}',
     complete: 'Compléter',
     reassign: 'Réassigner',
+    claim: 'M’assigner',
+    you: 'vous',
   },
   history: { title: 'Historique', ongoing: 'en cours', empty: 'Pas encore d’activité.' },
   diagram: { title: 'Diagramme', unavailable: 'Diagramme indisponible (processus non démarré ou lien sans instance).' },

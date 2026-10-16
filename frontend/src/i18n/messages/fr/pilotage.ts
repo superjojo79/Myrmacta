@@ -92,6 +92,9 @@ export default {
     add: 'Ajouter',
     linkDossier: 'Lier un dossier',
     newAssignee: 'Nouvel assignee',
+    chooseAssignee: '— Choisir un utilisateur —',
+    noAssignableUsers:
+      'Aucun utilisateur connu ne peut modifier ce dossier. Un utilisateur apparaît ici après sa première connexion.',
     confirm: 'Confirmer',
     errors: {
       status: 'Mise à jour statut impossible',
@@ -101,6 +104,8 @@ export default {
       start: 'Démarrage impossible',
       complete: 'Complétion impossible',
       reassign: 'Réassignation impossible',
+      claim: 'Prise de la tâche impossible',
+      assignableUsers: 'Liste des utilisateurs indisponible',
     },
   },
   myTasks: {

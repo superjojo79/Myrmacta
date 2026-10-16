@@ -1,6 +1,7 @@
 import axios from 'axios'
 import type {
   ActivityHistoryEntry,
+  AssignableUser,
   BpmnDeploymentResult,
   BpmnDraft,
   DecisionEvaluationResult,
@@ -49,6 +50,17 @@ export async function reassignWorkflowTask(
   assigneeId: string,
 ): Promise<void> {
   await axios.post(`/api/workflow-links/${linkId}/tasks/${taskId}/reassign`, { assigneeId })
+}
+
+/** « M'assigner » (D-ASSIGN-CLAIM) — 409 si quelqu'un d'autre a déjà pris la tâche. */
+export async function claimWorkflowTask(linkId: string, taskId: string): Promise<void> {
+  await axios.post(`/api/workflow-links/${linkId}/tasks/${taskId}/claim`)
+}
+
+/** Utilisateurs connus pouvant modifier le dossier du lien (D-ASSIGN-DIR) — TA/WA. */
+export async function listAssignableUsers(linkId: string): Promise<AssignableUser[]> {
+  const { data } = await axios.get<AssignableUser[]>(`/api/workflow-links/${linkId}/assignable-users`)
+  return data
 }
 
 export async function listWorkflowTypeConfigs(

@@ -4,15 +4,18 @@ import com.flowforge.domain.workflow.model.ActivityHistoryEntry;
 import com.flowforge.domain.workflow.model.WorkflowDiagramView;
 import com.flowforge.domain.workflow.model.WorkflowLinkDossierView;
 import com.flowforge.domain.workflow.model.WorkflowTaskView;
+import com.flowforge.domain.workflow.port.in.ClaimWorkflowTaskUseCase;
 import com.flowforge.domain.workflow.port.in.GetWorkflowDiagramUseCase;
 import com.flowforge.domain.workflow.port.in.GetWorkflowHistoryUseCase;
 import com.flowforge.domain.workflow.port.in.GetWorkflowLinkDossierUseCase;
 import com.flowforge.domain.workflow.port.in.GetWorkflowTasksUseCase;
+import com.flowforge.domain.workflow.port.in.ListAssignableUsersUseCase;
 import com.flowforge.domain.workflow.port.in.ReassignWorkflowTaskUseCase;
 import com.flowforge.infrastructure.web.ListSorts;
 import com.flowforge.infrastructure.web.PageQueryParser;
 import com.flowforge.infrastructure.web.PageResponse;
 import com.flowforge.infrastructure.web.dossier.AccessContextFactory;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -34,6 +37,8 @@ class WorkflowLinkVisualizationController {
     private final GetWorkflowTasksUseCase getTasksUseCase;
     private final GetWorkflowLinkDossierUseCase getDossierUseCase;
     private final ReassignWorkflowTaskUseCase reassignUseCase;
+    private final ClaimWorkflowTaskUseCase claimUseCase;
+    private final ListAssignableUsersUseCase assignableUsersUseCase;
     private final AccessContextFactory accessContextFactory;
 
     WorkflowLinkVisualizationController(
@@ -42,12 +47,16 @@ class WorkflowLinkVisualizationController {
             GetWorkflowTasksUseCase getTasksUseCase,
             GetWorkflowLinkDossierUseCase getDossierUseCase,
             ReassignWorkflowTaskUseCase reassignUseCase,
+            ClaimWorkflowTaskUseCase claimUseCase,
+            ListAssignableUsersUseCase assignableUsersUseCase,
             AccessContextFactory accessContextFactory) {
         this.getDiagramUseCase = getDiagramUseCase;
         this.getHistoryUseCase = getHistoryUseCase;
         this.getTasksUseCase = getTasksUseCase;
         this.getDossierUseCase = getDossierUseCase;
         this.reassignUseCase = reassignUseCase;
+        this.claimUseCase = claimUseCase;
+        this.assignableUsersUseCase = assignableUsersUseCase;
         this.accessContextFactory = accessContextFactory;
     }
 
@@ -107,5 +116,25 @@ class WorkflowLinkVisualizationController {
                 request == null ? null : request.assigneeId(),
                 accessContextFactory.user(authentication));
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * « M'assigner » (D-ASSIGN-CLAIM) — {@code @Transactional} comme {@link #reassign} : Flowable
+     * participe à la transaction ambiante.
+     */
+    @PostMapping("/tasks/{taskId}/claim")
+    @Transactional
+    ResponseEntity<Void> claim(
+            @PathVariable UUID linkId, @PathVariable String taskId, Authentication authentication) {
+        claimUseCase.claim(linkId, taskId, accessContextFactory.user(authentication));
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Utilisateurs connus pouvant modifier le dossier du lien (D-ASSIGN-DIR) — TA/WA. */
+    @GetMapping("/assignable-users")
+    List<AssignableUserResponse> assignableUsers(@PathVariable UUID linkId, Authentication authentication) {
+        return assignableUsersUseCase.listAssignableUsers(linkId, accessContextFactory.user(authentication)).stream()
+                .map(AssignableUserResponse::from)
+                .toList();
     }
 }

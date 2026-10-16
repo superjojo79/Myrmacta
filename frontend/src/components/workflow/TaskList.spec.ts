@@ -31,6 +31,51 @@ describe('TaskList', () => {
     expect(wrapper.emitted('complete')?.[0]).toEqual(['t1'])
   })
 
+  it('offers the claim button on unassigned tasks only, when the user can claim (D-ASSIGN-CLAIM)', async () => {
+    const wrapper = mount(TaskList, {
+      props: {
+        tasks: [
+          { taskId: 'free', name: 'Free', assignee: null, taskDefinitionKey: 'k', createTime: null },
+          { taskId: 'taken', name: 'Taken', assignee: 'u2', taskDefinitionKey: 'k', createTime: null },
+        ],
+        canClaim: true,
+      },
+    })
+    const claimButtons = wrapper.findAll('[data-testid="claim-task"]')
+    expect(claimButtons).toHaveLength(1)
+    expect(claimButtons[0].text()).toBe('M’assigner')
+    await claimButtons[0].trigger('click')
+    expect(wrapper.emitted('claim')?.[0]).toEqual(['free'])
+  })
+
+  it('hides the claim button without edit permission', () => {
+    const wrapper = mount(TaskList, {
+      props: {
+        tasks: [{ taskId: 'free', name: 'Free', assignee: null, taskDefinitionKey: 'k', createTime: null }],
+        canClaim: false,
+      },
+    })
+    expect(wrapper.find('[data-testid="claim-task"]').exists()).toBe(false)
+  })
+
+  it('shows "vous" for the current user and a known display name for others', () => {
+    const wrapper = mount(TaskList, {
+      props: {
+        tasks: [
+          { taskId: 'a', name: 'Mine', assignee: 'me', taskDefinitionKey: 'k', createTime: null },
+          { taskId: 'b', name: 'Theirs', assignee: 'u2', taskDefinitionKey: 'k', createTime: null },
+          { taskId: 'c', name: 'Unknown', assignee: 'u3', taskDefinitionKey: 'k', createTime: null },
+        ],
+        currentUserId: 'me',
+        assigneeNames: { u2: 'Grace Hopper' },
+      },
+    })
+    const text = wrapper.text()
+    expect(text).toContain('Assignee : vous')
+    expect(text).toContain('Assignee : Grace Hopper')
+    expect(text).toContain('Assignee : u3')
+  })
+
   it('shows the pager when there is more than one page and emits update:page', async () => {
     const wrapper = mount(TaskList, { props: { tasks: [], page: 0, totalPages: 2 } })
     expect(wrapper.find('[data-testid="admin-pager-next"]').exists()).toBe(true)

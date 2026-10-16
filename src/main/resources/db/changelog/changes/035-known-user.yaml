@@ -1,0 +1,22 @@
+databaseChangeLog:
+  - changeSet:
+      id: 035-known-user
+      author: flowforge
+      comment: >-
+        D-ASSIGN-DIR — annuaire local des utilisateurs, alimenté à chaque connexion OIDC, pour proposer des assignés
+        lisibles. user_id est le sujet OIDC ; roles sont ceux de la dernière connexion (l'IdP reste la référence).
+      changes:
+        - createTable:
+            tableName: known_user
+            columns:
+              - column: {name: id, type: uuid, constraints: {primaryKey: true, primaryKeyName: pk_known_user, nullable: false}}
+              - column: {name: tenant_id, type: varchar(64), constraints: {nullable: false}}
+              - column: {name: user_id, type: varchar(128), constraints: {nullable: false}}
+              - column: {name: display_name, type: varchar(200), constraints: {nullable: false}}
+              - column: {name: email, type: varchar(320)}
+              - column: {name: roles, type: json, constraints: {nullable: false}}
+              - column: {name: last_login_at, type: timestamp with time zone, constraints: {nullable: false}}
+        - addUniqueConstraint:
+            tableName: known_user
+            columnNames: tenant_id, user_id
+            constraintName: uq_known_user_tenant_user

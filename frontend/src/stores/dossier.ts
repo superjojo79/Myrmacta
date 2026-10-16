@@ -21,11 +21,14 @@ import {
   getWorkflowHistory,
   getWorkflowTasks,
   reassignWorkflowTask,
+  claimWorkflowTask,
+  listAssignableUsers,
 } from '@/api/workflows'
 import { completeTask } from '@/api/tasks'
 import { toProblemDetail } from '@/api/http'
 import type {
   ActivityHistoryEntry,
+  AssignableUser,
   Dossier,
   DossierElementView,
   DossierRelation,
@@ -55,6 +58,7 @@ export const useDossierStore = defineStore('dossier', () => {
   const historyPage = ref(0)
   const historyTotalPages = ref(0)
   const tasks = ref<WorkflowTaskView[]>([])
+  const assignableUsers = ref<AssignableUser[]>([])
   const tasksPage = ref(0)
   const tasksTotalPages = ref(0)
   const currentLinkId = ref<string | null>(null)
@@ -240,6 +244,15 @@ export const useDossierStore = defineStore('dossier', () => {
     await loadVisualization(linkId)
   }
 
+  async function claim(linkId: string, taskId: string): Promise<void> {
+    await claimWorkflowTask(linkId, taskId)
+    await loadVisualization(linkId)
+  }
+
+  async function loadAssignableUsers(linkId: string): Promise<void> {
+    assignableUsers.value = await listAssignableUsers(linkId)
+  }
+
   return {
     dossier,
     dossierType,
@@ -275,6 +288,9 @@ export const useDossierStore = defineStore('dossier', () => {
     startWorkflow,
     complete,
     reassign,
+    claim,
+    assignableUsers,
+    loadAssignableUsers,
     loadVisualization,
   }
 })

@@ -14,6 +14,8 @@ const workflow: typeof fr = {
     assignee: 'Assignee: {name}',
     complete: 'Complete',
     reassign: 'Reassign',
+    claim: 'Assign to me',
+    you: 'you',
   },
   history: { title: 'History', ongoing: 'ongoing', empty: 'No activity yet.' },
   diagram: { title: 'Diagram', unavailable: 'Diagram unavailable (process not started or link without instance).' },

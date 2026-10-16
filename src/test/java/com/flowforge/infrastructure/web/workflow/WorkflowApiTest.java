@@ -14,7 +14,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.flowforge.support.OidcClientTestConfiguration;
 import com.flowforge.domain.dossier.port.in.AttachWorkflowUseCase;
+import com.flowforge.domain.user.port.in.RecordUserLoginUseCase;
 import java.util.Arrays;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
@@ -44,6 +46,9 @@ class WorkflowApiTest {
 
     @Autowired
     private AttachWorkflowUseCase attachWorkflow;
+
+    @Autowired
+    private RecordUserLoginUseCase recordUserLogin;
 
     @Test
     void configCrudAndManualStartExposeHistory() throws Exception {
@@ -510,6 +515,92 @@ class WorkflowApiTest {
                                 }
                                 """))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void claimLetsDossierEditorTakeAFreeTaskAndAssignableUsersFeedTheReassignment() throws Exception {
+        // D-ASSIGN-CLAIM / D-ASSIGN-DIR
+        String processKey = "smokeProcess";
+        createWorkflowConfig(processKey);
+        String typeCode = createType();
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        String starter = "claim-starter-" + suffix;
+        String editor = "claim-editor-" + suffix;
+        String lateEditor = "claim-late-" + suffix;
+        String viewer = "claim-viewer-" + suffix;
+        grant(typeCode, starter, "EDIT");
+        grant(typeCode, editor, "EDIT");
+        grant(typeCode, lateEditor, "EDIT");
+        grant(typeCode, viewer, "VIEW");
+        String dossierId = createDossier(typeCode, starter);
+        MvcResult startResult = mockMvc.perform(post("/api/dossiers/{id}/workflows", dossierId)
+                        .with(user(starter))
+                        .with(csrf())
+                        .header("Idempotency-Key", "idem-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"processDefinitionKey\": \"%s\"}".formatted(processKey)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String linkId = extractString(startResult.getResponse().getContentAsString(), "id");
+        String taskId = taskService.createTaskQuery()
+                .processInstanceId(extractString(startResult.getResponse().getContentAsString(), "processInstanceId"))
+                .singleResult()
+                .getId();
+
+        // Un éditeur qui n'a pas encore participé voit la tâche libre…
+        mockMvc.perform(get("/api/workflow-links/{id}/tasks", linkId).with(user(editor, "DOSSIER_MANAGER")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].assignee").value(org.hamcrest.Matchers.nullValue()));
+        // …un simple lecteur non, et il ne peut pas la prendre.
+        mockMvc.perform(get("/api/workflow-links/{id}/tasks", linkId).with(user(viewer, "DOSSIER_VIEWER")))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/workflow-links/{id}/tasks/{taskId}/claim", linkId, taskId)
+                        .with(user(viewer, "DOSSIER_VIEWER"))
+                        .with(csrf()))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/api/workflow-links/{id}/tasks/{taskId}/claim", linkId, taskId)
+                        .with(user(editor, "DOSSIER_MANAGER"))
+                        .with(csrf()))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(get("/api/workflow-tasks/mine").with(user(editor, "DOSSIER_MANAGER")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].taskId").value(taskId));
+        // Reprendre sa propre tâche est sans effet ; prendre celle d'un autre est un conflit.
+        mockMvc.perform(post("/api/workflow-links/{id}/tasks/{taskId}/claim", linkId, taskId)
+                        .with(user(editor, "DOSSIER_MANAGER"))
+                        .with(csrf()))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(post("/api/workflow-links/{id}/tasks/{taskId}/claim", linkId, taskId)
+                        .with(user(lateEditor, "DOSSIER_MANAGER"))
+                        .with(csrf()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409));
+
+        recordUserLogin.record(lateEditor, "Late Editor", lateEditor + "@example.com", Set.of("DOSSIER_MANAGER"));
+        recordUserLogin.record(viewer, "Viewer", null, Set.of("DOSSIER_VIEWER"));
+        mockMvc.perform(get("/api/workflow-links/{id}/assignable-users", linkId).with(user(editor, "DOSSIER_MANAGER")))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/workflow-links/{id}/assignable-users", linkId)
+                        .with(user("claim-admin-" + suffix, "WORKFLOW_ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].userId", hasItem(lateEditor)))
+                .andExpect(jsonPath("$[*].userId", org.hamcrest.Matchers.not(hasItem(viewer))))
+                .andExpect(jsonPath("$[?(@.userId == '%s')].displayName".formatted(lateEditor)).value("Late Editor"));
+
+        // Un utilisateur connu qui peut modifier le dossier est un assigné valide sans être participant.
+        mockMvc.perform(post("/api/workflow-links/{id}/tasks/{taskId}/reassign", linkId, taskId)
+                        .with(user("claim-admin-" + suffix, "WORKFLOW_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"assigneeId\": \"%s\"}".formatted(lateEditor)))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(post("/api/workflow-links/{id}/tasks/{taskId}/reassign", linkId, taskId)
+                        .with(user("claim-admin-" + suffix, "WORKFLOW_ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"assigneeId\": \"%s\"}".formatted(viewer)))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

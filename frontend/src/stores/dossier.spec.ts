@@ -267,6 +267,38 @@ describe('dossier store', () => {
     expect(store.diagram).toBeNull()
   })
 
+  it('claim takes the task then reloads the visualization of that link', async () => {
+    vi.mocked(workflowsApi.claimWorkflowTask).mockResolvedValue(undefined)
+    vi.mocked(workflowsApi.getWorkflowDiagram).mockResolvedValue({
+      bpmnXml: '<xml/>',
+      activeIds: [],
+      completedIds: [],
+      failedIds: [],
+    })
+    vi.mocked(workflowsApi.getWorkflowHistory).mockResolvedValue(asPage([]))
+    vi.mocked(workflowsApi.getWorkflowTasks).mockResolvedValue(
+      asPage([{ taskId: 't1', name: 'Review', assignee: 'me', taskDefinitionKey: 'k', createTime: null }]),
+    )
+    const store = useDossierStore()
+
+    await store.claim('link-1', 't1')
+
+    expect(workflowsApi.claimWorkflowTask).toHaveBeenCalledWith('link-1', 't1')
+    expect(store.tasks[0].assignee).toBe('me')
+  })
+
+  it('loadAssignableUsers stores the users returned for the link', async () => {
+    vi.mocked(workflowsApi.listAssignableUsers).mockResolvedValue([
+      { userId: 'u1', displayName: 'Ada', email: 'ada@example.org' },
+    ])
+    const store = useDossierStore()
+
+    await store.loadAssignableUsers('link-1')
+
+    expect(workflowsApi.listAssignableUsers).toHaveBeenCalledWith('link-1')
+    expect(store.assignableUsers.map((u) => u.userId)).toEqual(['u1'])
+  })
+
   it('creates and starts workflow with reload', async () => {
     vi.mocked(dossiersApi.createDossier).mockResolvedValue({
       id: 'd1',

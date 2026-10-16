@@ -72,7 +72,8 @@ export function diagnoseParameter(
     out.push({
       kind: 'email',
       param: param.name,
-      message: 'Adresse e-mail littérale dans le BPMN : pour une personne physique, préférer une variable ou un identifiant utilisateur.',
+      message:
+        'Adresse e-mail littérale dans le BPMN : pour une personne physique, lire l’adresse dans le dossier (dossierField:<champ>) ou dans une variable (variable:<nom>).',
     })
   }
   return out
@@ -81,6 +82,9 @@ export function diagnoseParameter(
 const UUID_SOURCES = new Set(['connectorInstances', 'notificationWebhooks'])
 const UUID_FORM = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const KEY_FORM = /^[A-Za-z0-9_.:-]+$/
+/** Même grammaire que `PortalRecipientSource` côté serveur (TODO §92). */
+const SOURCE_PREFIX = /^(dossierField|variable):/
+const SOURCE_FORM = /^(dossierField|variable):[A-Za-z_][A-Za-z0-9_]*$/
 
 /** Le catalogue serveur publie `multiline` ; le repli sur le nom garde les anciens catalogues et les fixtures de test. */
 function isMultiline(param: BlockParameter): boolean {
@@ -98,6 +102,9 @@ function formatProblem(param: BlockParameter, raw: string): string | undefined {
   if (param.type === 'ENUM_MULTI') {
     const unknown = value.split(',').map((v) => v.trim()).filter((v) => v && !param.enumValues.includes(v))
     if (unknown.length > 0) return `Valeur(s) invalide(s) : ${unknown.join(', ')} (${param.enumValues.join(', ')}).`
+  }
+  if (param.name === 'notificationTo' && SOURCE_PREFIX.test(value) && !SOURCE_FORM.test(value)) {
+    return 'Source mal formée : dossierField:<champ> ou variable:<nom> (lettres, chiffres, _).'
   }
   if (param.type === 'REFERENCE' && param.binding === 'ATTRIBUTE') {
     if (UUID_SOURCES.has(param.valueSource ?? '') ? !UUID_FORM.test(value) : !KEY_FORM.test(value)) {

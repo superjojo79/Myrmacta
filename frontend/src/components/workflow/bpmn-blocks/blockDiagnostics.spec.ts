@@ -111,6 +111,23 @@ describe('blockDiagnostics', () => {
     expect(priorityHint(block('request-signature').parameters[3])).toBeUndefined()
   })
 
+  it('accepte une source de destinataire bien formée et refuse une source mal formée, comme le déploiement (TODO §92)', () => {
+    const b = block('notify')
+    for (const ok of ['dossierField:email', 'variable:adresse_demandeur']) {
+      expect(diagnoseBlock(bo({ 'flowable:notificationChannels': 'EMAIL', 'flowable:notificationTo': ok }), b, ctx())).toEqual([])
+    }
+    for (const bad of ['dossierField:', 'dossierField:a.b', 'variable:1x']) {
+      expect(diagnoseBlock(bo({ 'flowable:notificationChannels': 'EMAIL', 'flowable:notificationTo': bad }), b, ctx())).toEqual([
+        expect.objectContaining({ kind: 'invalid', param: 'notificationTo' }),
+      ])
+    }
+  })
+
+  it('l’avertissement sur l’e-mail littéral propose de lire l’adresse dans le dossier (TODO §92)', () => {
+    const attrs = { 'flowable:notificationChannels': 'EMAIL', 'flowable:notificationTo': 'jean@example.org' }
+    expect(diagnoseBlock(bo(attrs), block('notify'), ctx())[0]?.message).toContain('dossierField:')
+  })
+
   it('signale une valeur d’énumération ou un format invalide, comme le déploiement (I4)', () => {
     const status = block('set-dossier-status')
     expect(diagnoseBlock(bo({ 'flowable:targetDossierStatus': 'CLOSED' }), status, ctx())).toEqual([

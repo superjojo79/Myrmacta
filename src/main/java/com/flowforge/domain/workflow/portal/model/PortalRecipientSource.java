@@ -8,7 +8,8 @@ import java.util.regex.Pattern;
  * Source de l'adresse du destinataire d'une tâche externe, déclarée dans le BPMN par
  * {@code flowable:portalRecipient} : {@code dossierField:<clé>} ou {@code variable:<nom>}. Le nom
  * est un identifiant simple, toujours lu <strong>par nom littéral</strong> (jamais évalué en UEL —
- * TODO §69).
+ * TODO §69). Même grammaire pour le destinataire de la brique « Notifier » ({@code flowable:notificationTo},
+ * TODO §92).
  */
 public record PortalRecipientSource(Kind kind, String name) {
 
@@ -27,6 +28,15 @@ public record PortalRecipientSource(Kind kind, String name) {
         if (!IDENTIFIER.matcher(name).matches()) {
             throw new IllegalArgumentException("portal recipient name must be a simple identifier: " + name);
         }
+    }
+
+    /** Vrai si {@code raw} se présente comme une source ({@code dossierField:} ou {@code variable:}), bien formée ou non. */
+    public static boolean hasSourcePrefix(String raw) {
+        if (raw == null) {
+            return false;
+        }
+        String value = raw.trim();
+        return value.startsWith(DOSSIER_FIELD_PREFIX) || value.startsWith(VARIABLE_PREFIX);
     }
 
     /** Vide si {@code raw} n'a pas la forme attendue. */

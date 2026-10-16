@@ -2,6 +2,7 @@ package com.flowforge.domain.workflow.palette;
 
 import com.flowforge.domain.workflow.WorkflowVariables;
 import com.flowforge.domain.workflow.model.InvalidBpmnException;
+import com.flowforge.domain.workflow.portal.model.PortalRecipientSource;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -127,6 +128,17 @@ public final class BlockAttributeRules {
         }
     }
 
+    /**
+     * TODO §92 — {@code notificationTo} : adresse littérale, ou source {@code dossierField:<nom>} / {@code variable:<nom>}
+     * (même grammaire que {@code flowable:portalRecipient}). Une source mal formée est refusée ici plutôt que de partir comme
+     * adresse littérale à l'exécution.
+     */
+    private static void checkRecipient(String owner, String value) {
+        if (PortalRecipientSource.hasSourcePrefix(value) && PortalRecipientSource.parse(value).isEmpty()) {
+            throw new InvalidBpmnException(owner + " must be dossierField:<name>, variable:<name> or a literal address");
+        }
+    }
+
     private static boolean isManaged(BuildingBlock block) {
         String delegate = block.marker().delegate();
         return delegate != null && !SIGNATURE_DELEGATE.equals(delegate);
@@ -186,6 +198,9 @@ public final class BlockAttributeRules {
                 }
                 if ("fieldMapping".equals(parameter.name())) {
                     FieldMappingSpec.parse(value, owner);
+                }
+                if ("notificationTo".equals(parameter.name())) {
+                    checkRecipient(owner, value);
                 }
             }
             default -> { }

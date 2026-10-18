@@ -277,8 +277,8 @@ codegen OpenAPI ∥ tout FE ; `signature-electronique` avant `portail-externe`. 
 
 | Priorité | § | Manque | Lot proposé | Statut |
 |---|---|---|---|---|
-| 1 | 8 | Un workflow qui référence un modèle de document **en brouillon** ne peut pas être enregistré, même comme brouillon (`BlockReferenceVerifier` exige un modèle actif). Un modèle créé par MCP reste en brouillon tant qu'un humain ne l'a pas activé. Résultat : l'exemple ne peut pas être déployé. | `references-blocs-brouillon` | À cadrer |
-| 1 | 3 | Le destinataire de la brique « Notifier » ne peut pas venir d'un champ du dossier (pas de source `dossierField:`). De plus, `StartWorkflowDialog.vue` ne transmet aucune variable au démarrage. Une demande encodée par un agent n'envoie donc aucun e-mail. | `notifier-destinataire-dossier` | À cadrer |
+| 1 | 8 | Un workflow qui référence un modèle de document **en brouillon** ne peut pas être enregistré, même comme brouillon (`BlockReferenceVerifier` exige un modèle actif). Un modèle créé par MCP reste en brouillon tant qu'un humain ne l'a pas activé. Résultat : l'exemple ne peut pas être déployé. | `notifier-dossier-et-brouillons` | **Livré** ([PR #174](https://github.com/superjojo79/FlowForge/pull/174), TODO §93) |
+| 1 | 3 | Le destinataire de la brique « Notifier » ne peut pas venir d'un champ du dossier (pas de source `dossierField:`). De plus, `StartWorkflowDialog.vue` ne transmet aucune variable au démarrage. Une demande encodée par un agent n'envoie donc aucun e-mail. | `notifier-dossier-et-brouillons` | **Livré** ([PR #174](https://github.com/superjojo79/FlowForge/pull/174), TODO §93) ; l'exemple utilise `dossierField:email` |
 | 2 | 2 | La brique « Notifier » (et le connecteur `smtp`) ne peut pas joindre de document, par exemple le PDF généré. | `notifier-piece-jointe` | Backlog |
 | 2 | 1 | Aucune contrainte d'unicité sur un champ de dossier, et aucune brique pour rechercher un dossier existant depuis un workflow. Un doublon peut être autorisé tacitement. | `unicite-champ-dossier` | Backlog |
 | 3 | 4 | Les textes envoyés au demandeur (e-mail, consignes du portail) sont des littéraux du BPMN, sans gabarit ni variable. | `gabarits-notification` | Backlog |
@@ -287,7 +287,7 @@ codegen OpenAPI ∥ tout FE ; `signature-electronique` avant `portail-externe`. 
 | 3 | 10 | `dossierFields` est un instantané pris au démarrage du workflow : les champs modifiés ensuite ne sont pas relus. | — (à arbitrer) | Backlog |
 | — | 5 | Moteur de modèles plus strict que la documentation. | — | **Doc corrigée** ([PR #168](https://github.com/superjojo79/FlowForge/pull/168)) ; le moteur reste strict |
 | — | 9 | Pas d'assignation des tâches par groupe. | — | **En partie levé** ([PR #171](https://github.com/superjojo79/FlowForge/pull/171), « M'assigner ») ; D-EDIT-SCOPE inchangée |
+| 3 | — | Variables de démarrage **déclarées** par workflow (nom, libellé, obligatoire) affichées comme un formulaire dans « Démarrer un workflow », au lieu de la saisie libre livrée par la PR #174. | `variables-demarrage-declarees` | Backlog |
 
-Ordre recommandé : traiter les deux lots de priorité 1 dans **un même cycle**, puisqu'ils
-débloquent ensemble le déploiement et les e-mails de l'exemple. Faire ensuite une recette de bout
-en bout de l'exemple.
+Les deux lots de priorité 1 sont livrés ensemble (PR #174). Prochaine étape : recette de bout en bout de
+l'exemple, puis un lot de priorité 2 (§2 pièce jointe ou §1 unicité).

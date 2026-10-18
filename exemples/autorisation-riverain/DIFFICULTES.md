@@ -52,6 +52,12 @@ fixe**, sans référence du dossier, nom, plaque ni motif (voir point 4).
 
 ## 3. Le destinataire de l'e-mail ne peut pas venir du dossier
 
+> **Levé le 2026-10-16 (PR #174, TODO §93).** `flowable:notificationTo="dossierField:email"` lit l'adresse dans le
+> dossier au moment de l'envoi, et l'écran « Démarrer un workflow » sait transmettre des variables. L'exemple utilise
+> désormais `dossierField:email` : la variable `notificationTo`, la passerelle `emailConnu` et le mapping
+> `variables.notificationTo` du connecteur ont disparu. Les briques e-mail sont asynchrones, pour qu'une adresse mal
+> saisie crée un incident au lieu de bloquer l'agent. Le texte ci-dessous décrit la situation d'origine.
+
 **Constat.** La brique « Notifier » n'a pas de source `dossierField:` pour le destinataire (contrairement
 à la tâche externe et à la signature). L'adresse est soit un littéral, soit la variable de process
 `notificationTo`. Et cette variable ne peut pas être calculée dans le workflow : « Évaluer une
@@ -154,6 +160,10 @@ réponse). Le diagramme (BPMNDI) est produit par `generer-bpmn.py` pour rester l
 s'arrête sur le portail désactivé.
 
 ## 8. Le modèle de document doit être activé avant même l'enregistrement du workflow
+
+> **Levé le 2026-10-16 (PR #174, TODO §93).** Un brouillon proposé par MCP accepte un modèle encore en brouillon et le
+> signale dans `inactiveReferences` ; seule la publication exige le modèle actif. L'ordre de mise en service du
+> `README.md` en tient compte. Le texte ci-dessous décrit la situation d'origine.
 
 **Constat.** Un modèle créé par MCP reste en **brouillon** : son activation est un geste humain dans
 l'administration. Or la validation du BPMN, au déploiement **comme à l'enregistrement d'un brouillon**,

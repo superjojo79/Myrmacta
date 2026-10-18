@@ -19,8 +19,6 @@
   },
   "demarrageWorkflow": {
     "processDefinitionKey": "autorisationRiverain",
-    "variables": {
-      "notificationTo": "camille.dupont@example.org"
-    }
+    "variables": {}
   }
 }

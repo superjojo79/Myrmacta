@@ -22,6 +22,7 @@ import com.flowforge.domain.dossier.port.out.AttachmentScanResult;
 import com.flowforge.domain.workflow.portal.model.PortalLink;
 import com.flowforge.domain.workflow.portal.model.PortalLinkStatus;
 import com.flowforge.domain.workflow.portal.model.PortalLinkStatusReason;
+import com.flowforge.infrastructure.web.portal.FixedClockPortalRateLimiterConfig;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -38,6 +39,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
@@ -48,6 +50,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /** TODO §68 — API publique du portail, de bout en bout sur le vrai moteur (T-ACCESS, T-UPLOAD, T-SUBMIT, T-SEC). */
 @AutoConfigureMockMvc
+@Import(FixedClockPortalRateLimiterConfig.class)
 class PortalApiTest extends AbstractPortalEngineTest {
 
     // Compteur et non System.nanoTime() : sous Windows nanoTime avance par pas de 100 ns, d'où

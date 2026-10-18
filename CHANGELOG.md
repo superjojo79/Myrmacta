@@ -42,6 +42,9 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Documentation
 
+- **[PR #175](https://github.com/superjojo79/FlowForge/pull/175)** — L'exemple « autorisation riverain » lit l'adresse du
+  demandeur dans le dossier (`dossierField:email`, envoi asynchrone) au lieu d'une variable de démarrage ; ordre de mise en
+  service et backlog (`DEFERRED-FEATURES.md` §7) mis à jour.
 - **[PR #172](https://github.com/superjojo79/FlowForge/pull/172)** — Exemple `exemples/autorisation-riverain/` : un flux complet
   monté uniquement par configuration via MCP, avec la liste des manques rencontrés (`DIFFICULTES.md`), reportés et priorisés dans
   `DEFERRED-FEATURES.md` §7. `GETTING-STARTED.md` §12 : périmètre MCP à jour et activation du canal M2M en local.

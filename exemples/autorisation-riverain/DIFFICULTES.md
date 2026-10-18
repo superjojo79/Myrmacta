@@ -200,3 +200,18 @@ reste refusée (D-EDIT-SCOPE inchangée).
 - **Aucun test de bout en bout** n'a encore été fait : le workflow n'a jamais été publié sur l'instance.
   Les expressions, la formule, le formulaire de dossier et le rendu du modèle ont été vérifiés
   séparément avec les outils de validation à blanc.
+
+## 11. Un e-mail asynchrone en échec est invisible dans l'interface (recette du 2026-10-18)
+
+**Constat.** Avec une adresse mal saisie (`Camille Moreau <camille@…>`), la brique « Notifier » asynchrone échoue
+comme prévu : trois tentatives, puis job en *dead letter*, message « notificationTo source dossierField:email is not a
+single e-mail address », adresse jamais journalisée. Mais la fiche dossier affiche toujours le workflow « en cours »,
+et le diagramme ne marque aucune étape : `failedIds` ne retient que les activités terminées par une erreur BPMN, et
+l'étape en attente du job n'apparaît pas non plus parmi les étapes actives
+(`FlowableWorkflowVisualizationAdapter.getDiagram`). Seul le compteur global de *dead letters* (observabilité) bouge.
+
+**Conséquence.** Le guide recommande l'asynchrone pour transformer l'échec en incident ; l'incident existe, mais
+personne ne le voit sur le dossier, et rien dans l'interface ne permet de le rejouer après correction de l'adresse.
+
+**Évolution proposée (développement).** Marquer en erreur, dans le diagramme, les activités qui ont un job en *dead
+letter* ou en échec, afficher l'incident sur la fiche dossier, et offrir une action « Rejouer » aux administrateurs.

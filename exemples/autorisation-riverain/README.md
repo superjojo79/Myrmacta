@@ -60,15 +60,31 @@ annulée et l'issue « autorisée tacitement » s'applique.
 Statuts du workflow : `DEPOSEE` (initial), `EN_INSTRUCTION`, `EN_ATTENTE_INFOS`, puis `AUTORISEE`,
 `AUTORISEE_TACITEMENT` ou `REFUSEE` (issue `COMPLETED`).
 
-## État sur l'instance (`tenant_dev`, relevé le 2026-10-18)
+## État sur l'instance locale (`tenant_dev`, 2026-10-18)
 
 | Élément | État |
 |---|---|
 | Type de dossier `AUTORISATION_RIVERAIN` | Créé, actif |
 | Questionnaires `instruction-…`, `complement-…`, `complement-recu-…`, `transmission-decision-riverain` | Créés |
 | Modèle `decision-autorisation-riverain` | Activé |
-| Workflow `autorisationRiverain` (variante sans portail) | **Brouillon périmé**, proposé le 2026-10-13 avant la PR #174 (adresse passée en variable de démarrage, passerelle `emailConnu`). À remplacer par la version actuelle de `autorisation-riverain-sans-portail.bpmn20.xml` (étape 1 ci-dessous) avant de publier |
+| Workflow `autorisationRiverain` (variante sans portail) | **Publié en version de recette** : délais de 5 minutes (`DELAI = "PT5M"`). Republier la version `P30D` avant tout usage réel. |
 | Connecteur du portail | Non créé (secret à définir) |
+
+## Résultats de la recette (2026-10-18)
+
+Instance locale (`main` après la PR #174, Mailpit pour les e-mails), délais de 5 minutes.
+
+| Cas | Parcours | Résultat |
+|---|---|---|
+| R1 | Autoriser | `AUTORISEE`, PDF joint, e-mail « accordée », transmission, dossier `CLOTURE` |
+| R2 | Refuser avec un motif | `REFUSEE`, motif repris, e-mail « refusée », dossier `CLOTURE` |
+| R3 | Demander des informations, encoder la réponse, autoriser | E-mail « informations complémentaires », retour en instruction, `AUTORISEE`, dossier `CLOTURE` |
+| R4 | Demander des informations, laisser expirer | Minuteur déclenché, `REFUSEE_SANS_REPONSE`, e-mail « refusée », dossier `CLOTURE` |
+| R5 | Laisser expirer l'instruction | Minuteur déclenché, `AUTORISEE_TACITEMENT`, e-mail « accordée », dossier `CLOTURE` |
+| R6 | Adresse `Nom <adresse>` dans le champ `email`, refuser | La complétion de l'agent passe ; l'e-mail asynchrone échoue sans exposer l'adresse (« is not a single e-mail address »), le job finit en *dead letter*. **Mais rien ne le montre dans l'interface** : voir `DIFFICULTES.md` §11. |
+| R7 | Doublon `1 aaa 101` de R1 | La recherche `plaqueNormalisee = BE-1AAA101` remonte les deux dossiers |
+
+Chaque e-mail est parti à l'adresse du dossier concerné (`dossierField:email`), sans variable de démarrage.
 
 ## Mise en service
 
@@ -90,7 +106,9 @@ Statuts du workflow : `DEPOSEE` (initial), `EN_INSTRUCTION`, `EN_ATTENTE_INFOS`,
 
 1. Dans `generer-bpmn.py`, passer `DELAI` à `"PT5M"` puis exécuter `python generer-bpmn.py`.
    Les deux délais passent ainsi à 5 minutes.
-2. Créer le dossier de `config/exemple-dossier.json` et démarrer le workflow, depuis la fiche dossier,
+2. Créer le dossier de `config/exemple-dossier.json`. Un dossier créé par l'API ou par `create_dossier` est au
+   statut `DRAFT` : le passer en `OUVERT` (fiche dossier, « Enregistrer statut »), car le workflow ne démarre que
+   depuis `OUVERT`, `EN_COURS`, `SUSPENDU` ou `CLOTURE`. Démarrer ensuite le workflow, depuis la fiche dossier,
    l'API ou `start_workflow`. Aucune variable n'est nécessaire : l'adresse est lue dans le champ `email`.
 3. Parcourir les quatre issues :
    - autoriser ;

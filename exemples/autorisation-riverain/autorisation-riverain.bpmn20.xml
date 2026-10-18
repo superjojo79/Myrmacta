@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+             targetNamespace="http://flowforge/exemples">
+  <!-- Variante avec portail. Généré par generer-bpmn.py : modifier le script plutôt que ce fichier. -->
+  <process id="autorisationRiverain" name="Autorisation riverain (véhicule)" isExecutable="true">
+    <startEvent id="debut" name="Demande introduite"/>
+    <serviceTask id="prepEmail" name="Adresse de notification connue ?" flowable:delegateExpression="${businessExpressionTask}" flowable:formula='$exists(variables.notificationTo) and $contains($string(variables.notificationTo), "@")' flowable:formulaResult="emailConnu"/>
+    <serviceTask id="statutEnInstruction" name="Statut : en instruction" flowable:delegateExpression="${updateWorkflowLinkStatusTask}" flowable:targetWorkflowStatus="EN_INSTRUCTION"/>
+    <userTask id="instruction" name="Instruire la demande" flowable:formKey="user-question:instruction-autorisation-riverain"><documentation>Vérifier la demande et l'absence d'autre demande pour le même véhicule (recherche sur « Clé d'unicité du véhicule »), puis autoriser, refuser ou demander des informations complémentaires. Sans décision dans les 30 jours, l'autorisation est accordée automatiquement.</documentation></userTask>
+    <boundaryEvent id="delaiInstruction" name="30 jours écoulés" attachedToRef="instruction" cancelActivity="true"><timerEventDefinition><timeDuration>P30D</timeDuration></timerEventDefinition></boundaryEvent>
+    <exclusiveGateway id="aiguillageDecision" name="Décision ?" default="flow_aiguillageDecision_statutEnAttente"/>
+    <serviceTask id="issueTacite" name="Issue : autorisée tacitement" flowable:delegateExpression="${businessExpressionTask}" flowable:formula='"AUTORISEE_TACITEMENT"' flowable:formulaResult="issueDecision"/>
+    <serviceTask id="issueAutorisee" name="Issue : autorisée" flowable:delegateExpression="${businessExpressionTask}" flowable:formula='"AUTORISEE"' flowable:formulaResult="issueDecision"/>
+    <serviceTask id="issueRefusee" name="Issue : refusée" flowable:delegateExpression="${businessExpressionTask}" flowable:formula='"REFUSEE"' flowable:formulaResult="issueDecision"/>
+    <serviceTask id="statutEnAttente" name="Statut : en attente d'informations" flowable:delegateExpression="${updateWorkflowLinkStatusTask}" flowable:targetWorkflowStatus="EN_ATTENTE_INFOS"/>
+    <serviceTask id="dossierSuspendu" name="Dossier suspendu" flowable:delegateExpression="${updateDossierStatusTask}" flowable:targetDossierStatus="SUSPENDU"/>
+    <userTask id="complement" name="Compléments du demandeur (portail)" flowable:formKey="user-question:complement-autorisation-riverain" flowable:portalRecipient="dossierField:email" flowable:portalLinkTtlDays="30"><documentation>Le gestionnaire a besoin d'informations complémentaires pour instruire votre demande d'autorisation riverain. Répondez ci-dessous et joignez les pièces utiles (certificat d'immatriculation, preuve de domicile). Sans réponse dans les 30 jours, la demande sera refusée.</documentation></userTask>
+    <boundaryEvent id="delaiComplement" name="30 jours sans réponse" attachedToRef="complement" cancelActivity="true"><timerEventDefinition><timeDuration>P30D</timeDuration></timerEventDefinition></boundaryEvent>
+    <serviceTask id="dossierRepris" name="Dossier repris" flowable:delegateExpression="${updateDossierStatusTask}" flowable:targetDossierStatus="EN_COURS"/>
+    <serviceTask id="issueSansReponse" name="Issue : refusée sans réponse" flowable:delegateExpression="${businessExpressionTask}" flowable:formula='"REFUSEE_SANS_REPONSE"' flowable:formulaResult="issueDecision"/>
+    <exclusiveGateway id="decisionPrise"/>
+    <serviceTask id="prepReference" name="Référence du dossier" flowable:delegateExpression="${businessExpressionTask}" flowable:formula="dossier.reference" flowable:formulaResult="referenceDossier"/>
+    <serviceTask id="prepDate" name="Date de décision" flowable:delegateExpression="${businessExpressionTask}" flowable:formula="$substring(now, 0, 10)" flowable:formulaResult="dateDecision"/>
+    <serviceTask id="prepTelephone" name="Téléphone (défaut)" flowable:delegateExpression="${businessExpressionTask}" flowable:formula='$exists(dossier.fields.telephone) and $length($trim($string(dossier.fields.telephone))) &gt; 0 ? dossier.fields.telephone : "Non communiqué"' flowable:formulaResult="docTelephone"/>
+    <serviceTask id="prepPieces" name="Pièces jointes à la demande" flowable:delegateExpression="${businessExpressionTask}" flowable:formula="&quot;Certificat d'immatriculation : &quot; &amp; ($exists(dossier.fields.certificatImmatriculation) ? &quot;fourni&quot; : &quot;non fourni&quot;) &amp; &quot; — preuve de domicile : &quot; &amp; ($exists(dossier.fields.preuveDomicile) ? &quot;fournie&quot; : &quot;non fournie&quot;)" flowable:formulaResult="docPieces"/>
+    <serviceTask id="prepComplements" name="Compléments (défaut)" flowable:delegateExpression="${businessExpressionTask}" flowable:formula='$exists(variables.reponseComplement) ? variables.reponseComplement : "Aucun"' flowable:formulaResult="docComplements"/>
+    <serviceTask id="prepMotivation" name="Motivation" flowable:delegateExpression="${businessExpressionTask}" flowable:formula='variables.issueDecision = "AUTORISEE_TACITEMENT" ? "Absence de décision dans le délai de 30 jours" : variables.issueDecision = "REFUSEE_SANS_REPONSE" ? "Informations complémentaires non fournies dans le délai de 30 jours" : ($exists(variables.motivation) ? variables.motivation : "-")' flowable:formulaResult="docMotivation"/>
+    <serviceTask id="enregistrerDecision" name="Enregistrer la décision au dossier" flowable:delegateExpression="${fieldMappingTask}" flowable:fieldMapping="decision = variables.issueDecision&#10;dateDecision = variables.dateDecision&#10;motifDecision = variables.docMotivation"/>
+    <serviceTask id="genererDecision" name="Générer le document de décision" flowable:delegateExpression="${documentGenerationTask}" flowable:documentType="decision-autorisation-riverain"/>
+    <serviceTask id="joindreDecision" name="Joindre le document au dossier" flowable:delegateExpression="${attachGeneratedDocumentTask}"/>
+    <exclusiveGateway id="aiguillageEmail" name="E-mail ?" default="flow_aiguillageEmail_mailEnvoye"/>
+    <exclusiveGateway id="aiguillageMail" name="Accordée ?" default="flow_aiguillageMail_mailRefus"/>
+    <serviceTask id="mailAutorisation" name="E-mail : autorisation accordée" flowable:delegateExpression="${notificationDispatchTask}" flowable:notificationChannels="EMAIL" flowable:notificationSubject="Votre demande d'autorisation riverain est accordée" flowable:notificationBody="Bonjour,&#10;&#10;Votre demande d'autorisation riverain est accordée.&#10;&#10;Le document de décision, qui reprend l'ensemble des informations de votre demande, vous est transmis séparément par nos services.&#10;&#10;Cordialement,&#10;Le service des autorisations riverains"/>
+    <serviceTask id="mailRefus" name="E-mail : autorisation refusée" flowable:delegateExpression="${notificationDispatchTask}" flowable:notificationChannels="EMAIL" flowable:notificationSubject="Votre demande d'autorisation riverain est refusée" flowable:notificationBody="Bonjour,&#10;&#10;Votre demande d'autorisation riverain est refusée. Les motifs figurent dans le document de décision.&#10;&#10;Le document de décision, qui reprend l'ensemble des informations de votre demande, vous est transmis séparément par nos services.&#10;&#10;Cordialement,&#10;Le service des autorisations riverains"/>
+    <exclusiveGateway id="mailEnvoye"/>
+    <userTask id="transmission" name="Transmettre le document de décision" flowable:formKey="user-question:transmission-decision-riverain"><documentation>Télécharger le PDF de décision depuis les éléments du dossier et l'envoyer au demandeur (FlowForge ne joint pas de fichier à ses e-mails).</documentation></userTask>
+    <exclusiveGateway id="aiguillageStatut" name="Issue ?" default="flow_aiguillageStatut_statutRefusee"/>
+    <serviceTask id="statutAutorisee" name="Statut : autorisée" flowable:delegateExpression="${updateWorkflowLinkStatusTask}" flowable:targetWorkflowStatus="AUTORISEE"/>
+    <serviceTask id="statutTacite" name="Statut : autorisée tacitement" flowable:delegateExpression="${updateWorkflowLinkStatusTask}" flowable:targetWorkflowStatus="AUTORISEE_TACITEMENT"/>
+    <serviceTask id="statutRefusee" name="Statut : refusée" flowable:delegateExpression="${updateWorkflowLinkStatusTask}" flowable:targetWorkflowStatus="REFUSEE"/>
+    <exclusiveGateway id="statutPose"/>
+    <serviceTask id="clotureDossier" name="Clôturer le dossier" flowable:delegateExpression="${updateDossierStatusTask}" flowable:targetDossierStatus="CLOTURE"/>
+    <endEvent id="fin" name="Demande traitée"/>
+    <sequenceFlow id="flow_dossierSuspendu_complement" sourceRef="dossierSuspendu" targetRef="complement"/>
+    <sequenceFlow id="flow_debut_prepEmail" sourceRef="debut" targetRef="prepEmail"/>
+    <sequenceFlow id="flow_prepEmail_statutEnInstruction" sourceRef="prepEmail" targetRef="statutEnInstruction"/>
+    <sequenceFlow id="flow_statutEnInstruction_instruction" sourceRef="statutEnInstruction" targetRef="instruction"/>
+    <sequenceFlow id="flow_instruction_aiguillageDecision" sourceRef="instruction" targetRef="aiguillageDecision"/>
+    <sequenceFlow id="flow_delaiInstruction_issueTacite" sourceRef="delaiInstruction" targetRef="issueTacite"/>
+    <sequenceFlow id="flow_aiguillageDecision_issueAutorisee" sourceRef="aiguillageDecision" targetRef="issueAutorisee"><conditionExpression xsi:type="tFormalExpression">${decisionAgent == 'AUTORISER'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="flow_aiguillageDecision_issueRefusee" sourceRef="aiguillageDecision" targetRef="issueRefusee"><conditionExpression xsi:type="tFormalExpression">${decisionAgent == 'REFUSER'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="flow_aiguillageDecision_statutEnAttente" sourceRef="aiguillageDecision" targetRef="statutEnAttente"/>
+    <sequenceFlow id="flow_statutEnAttente_dossierSuspendu" sourceRef="statutEnAttente" targetRef="dossierSuspendu"/>
+    <sequenceFlow id="flow_complement_dossierRepris" sourceRef="complement" targetRef="dossierRepris"/>
+    <sequenceFlow id="flow_dossierRepris_statutEnInstruction" sourceRef="dossierRepris" targetRef="statutEnInstruction"/>
+    <sequenceFlow id="flow_delaiComplement_issueSansReponse" sourceRef="delaiComplement" targetRef="issueSansReponse"/>
+    <sequenceFlow id="flow_issueTacite_decisionPrise" sourceRef="issueTacite" targetRef="decisionPrise"/>
+    <sequenceFlow id="flow_issueAutorisee_decisionPrise" sourceRef="issueAutorisee" targetRef="decisionPrise"/>
+    <sequenceFlow id="flow_issueRefusee_decisionPrise" sourceRef="issueRefusee" targetRef="decisionPrise"/>
+    <sequenceFlow id="flow_issueSansReponse_decisionPrise" sourceRef="issueSansReponse" targetRef="decisionPrise"/>
+    <sequenceFlow id="flow_decisionPrise_prepReference" sourceRef="decisionPrise" targetRef="prepReference"/>
+    <sequenceFlow id="flow_prepReference_prepDate" sourceRef="prepReference" targetRef="prepDate"/>
+    <sequenceFlow id="flow_prepDate_prepTelephone" sourceRef="prepDate" targetRef="prepTelephone"/>
+    <sequenceFlow id="flow_prepTelephone_prepPieces" sourceRef="prepTelephone" targetRef="prepPieces"/>
+    <sequenceFlow id="flow_prepPieces_prepComplements" sourceRef="prepPieces" targetRef="prepComplements"/>
+    <sequenceFlow id="flow_prepComplements_prepMotivation" sourceRef="prepComplements" targetRef="prepMotivation"/>
+    <sequenceFlow id="flow_prepMotivation_enregistrerDecision" sourceRef="prepMotivation" targetRef="enregistrerDecision"/>
+    <sequenceFlow id="flow_enregistrerDecision_genererDecision" sourceRef="enregistrerDecision" targetRef="genererDecision"/>
+    <sequenceFlow id="flow_genererDecision_joindreDecision" sourceRef="genererDecision" targetRef="joindreDecision"/>
+    <sequenceFlow id="flow_joindreDecision_aiguillageEmail" sourceRef="joindreDecision" targetRef="aiguillageEmail"/>
+    <sequenceFlow id="flow_aiguillageEmail_aiguillageMail" sourceRef="aiguillageEmail" targetRef="aiguillageMail"><conditionExpression xsi:type="tFormalExpression">${emailConnu == true}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="flow_aiguillageEmail_mailEnvoye" sourceRef="aiguillageEmail" targetRef="mailEnvoye"/>
+    <sequenceFlow id="flow_aiguillageMail_mailAutorisation" sourceRef="aiguillageMail" targetRef="mailAutorisation"><conditionExpression xsi:type="tFormalExpression">${issueDecision == 'AUTORISEE'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="flow_aiguillageMail_mailAutorisation_tacite" sourceRef="aiguillageMail" targetRef="mailAutorisation"><conditionExpression xsi:type="tFormalExpression">${issueDecision == 'AUTORISEE_TACITEMENT'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="flow_aiguillageMail_mailRefus" sourceRef="aiguillageMail" targetRef="mailRefus"/>
+    <sequenceFlow id="flow_mailAutorisation_mailEnvoye" sourceRef="mailAutorisation" targetRef="mailEnvoye"/>
+    <sequenceFlow id="flow_mailRefus_mailEnvoye" sourceRef="mailRefus" targetRef="mailEnvoye"/>
+    <sequenceFlow id="flow_mailEnvoye_transmission" sourceRef="mailEnvoye" targetRef="transmission"/>
+    <sequenceFlow id="flow_transmission_aiguillageStatut" sourceRef="transmission" targetRef="aiguillageStatut"/>
+    <sequenceFlow id="flow_aiguillageStatut_statutAutorisee" sourceRef="aiguillageStatut" targetRef="statutAutorisee"><conditionExpression xsi:type="tFormalExpression">${issueDecision == 'AUTORISEE'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="flow_aiguillageStatut_statutTacite" sourceRef="aiguillageStatut" targetRef="statutTacite"><conditionExpression xsi:type="tFormalExpression">${issueDecision == 'AUTORISEE_TACITEMENT'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="flow_aiguillageStatut_statutRefusee" sourceRef="aiguillageStatut" targetRef="statutRefusee"/>
+    <sequenceFlow id="flow_statutAutorisee_statutPose" sourceRef="statutAutorisee" targetRef="statutPose"/>
+    <sequenceFlow id="flow_statutTacite_statutPose" sourceRef="statutTacite" targetRef="statutPose"/>
+    <sequenceFlow id="flow_statutRefusee_statutPose" sourceRef="statutRefusee" targetRef="statutPose"/>
+    <sequenceFlow id="flow_statutPose_clotureDossier" sourceRef="statutPose" targetRef="clotureDossier"/>
+    <sequenceFlow id="flow_clotureDossier_fin" sourceRef="clotureDossier" targetRef="fin"/>
+  </process>
+  <bpmndi:BPMNDiagram id="diagram_autorisationRiverain">
+    <bpmndi:BPMNPlane id="plane_autorisationRiverain" bpmnElement="autorisationRiverain">
+      <bpmndi:BPMNShape id="shape_debut" bpmnElement="debut"><omgdc:Bounds x="122" y="312" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_prepEmail" bpmnElement="prepEmail"><omgdc:Bounds x="250" y="290" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_statutEnInstruction" bpmnElement="statutEnInstruction"><omgdc:Bounds x="420" y="290" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_instruction" bpmnElement="instruction"><omgdc:Bounds x="590" y="290" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_delaiInstruction" bpmnElement="delaiInstruction"><omgdc:Bounds x="664" y="272" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_aiguillageDecision" bpmnElement="aiguillageDecision"><omgdc:Bounds x="795" y="305" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_issueTacite" bpmnElement="issueTacite"><omgdc:Bounds x="930" y="60" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_issueAutorisee" bpmnElement="issueAutorisee"><omgdc:Bounds x="930" y="170" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_issueRefusee" bpmnElement="issueRefusee"><omgdc:Bounds x="930" y="410" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_statutEnAttente" bpmnElement="statutEnAttente"><omgdc:Bounds x="930" y="530" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_dossierSuspendu" bpmnElement="dossierSuspendu"><omgdc:Bounds x="1100" y="530" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_complement" bpmnElement="complement"><omgdc:Bounds x="1270" y="530" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_delaiComplement" bpmnElement="delaiComplement"><omgdc:Bounds x="1344" y="592" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_dossierRepris" bpmnElement="dossierRepris"><omgdc:Bounds x="1440" y="530" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_issueSansReponse" bpmnElement="issueSansReponse"><omgdc:Bounds x="1440" y="660" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_decisionPrise" bpmnElement="decisionPrise"><omgdc:Bounds x="1645" y="305" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_prepReference" bpmnElement="prepReference"><omgdc:Bounds x="1780" y="290" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_prepDate" bpmnElement="prepDate"><omgdc:Bounds x="1950" y="290" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_prepTelephone" bpmnElement="prepTelephone"><omgdc:Bounds x="2120" y="290" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_prepPieces" bpmnElement="prepPieces"><omgdc:Bounds x="2290" y="290" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_prepComplements" bpmnElement="prepComplements"><omgdc:Bounds x="2460" y="290" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_prepMotivation" bpmnElement="prepMotivation"><omgdc:Bounds x="2630" y="290" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_enregistrerDecision" bpmnElement="enregistrerDecision"><omgdc:Bounds x="2800" y="290" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_genererDecision" bpmnElement="genererDecision"><omgdc:Bounds x="2970" y="290" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_joindreDecision" bpmnElement="joindreDecision"><omgdc:Bounds x="3140" y="290" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_aiguillageEmail" bpmnElement="aiguillageEmail"><omgdc:Bounds x="3345" y="305" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_aiguillageMail" bpmnElement="aiguillageMail"><omgdc:Bounds x="3515" y="305" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_mailAutorisation" bpmnElement="mailAutorisation"><omgdc:Bounds x="3650" y="170" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_mailRefus" bpmnElement="mailRefus"><omgdc:Bounds x="3650" y="410" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_mailEnvoye" bpmnElement="mailEnvoye"><omgdc:Bounds x="3855" y="305" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_transmission" bpmnElement="transmission"><omgdc:Bounds x="3990" y="290" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_aiguillageStatut" bpmnElement="aiguillageStatut"><omgdc:Bounds x="4195" y="305" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_statutAutorisee" bpmnElement="statutAutorisee"><omgdc:Bounds x="4330" y="170" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_statutTacite" bpmnElement="statutTacite"><omgdc:Bounds x="4330" y="60" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_statutRefusee" bpmnElement="statutRefusee"><omgdc:Bounds x="4330" y="410" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_statutPose" bpmnElement="statutPose"><omgdc:Bounds x="4535" y="305" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_clotureDossier" bpmnElement="clotureDossier"><omgdc:Bounds x="4670" y="290" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_fin" bpmnElement="fin"><omgdc:Bounds x="4882" y="312" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="edge_flow_dossierSuspendu_complement" bpmnElement="flow_dossierSuspendu_complement"><omgdi:waypoint x="1220" y="570"/><omgdi:waypoint x="1270" y="570"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_debut_prepEmail" bpmnElement="flow_debut_prepEmail"><omgdi:waypoint x="158" y="330"/><omgdi:waypoint x="250" y="330"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_prepEmail_statutEnInstruction" bpmnElement="flow_prepEmail_statutEnInstruction"><omgdi:waypoint x="370" y="330"/><omgdi:waypoint x="420" y="330"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_statutEnInstruction_instruction" bpmnElement="flow_statutEnInstruction_instruction"><omgdi:waypoint x="540" y="330"/><omgdi:waypoint x="590" y="330"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_instruction_aiguillageDecision" bpmnElement="flow_instruction_aiguillageDecision"><omgdi:waypoint x="710" y="330"/><omgdi:waypoint x="795" y="330"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_delaiInstruction_issueTacite" bpmnElement="flow_delaiInstruction_issueTacite"><omgdi:waypoint x="682" y="272"/><omgdi:waypoint x="682" y="100"/><omgdi:waypoint x="930" y="100"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_aiguillageDecision_issueAutorisee" bpmnElement="flow_aiguillageDecision_issueAutorisee"><omgdi:waypoint x="820" y="305"/><omgdi:waypoint x="820" y="210"/><omgdi:waypoint x="930" y="210"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_aiguillageDecision_issueRefusee" bpmnElement="flow_aiguillageDecision_issueRefusee"><omgdi:waypoint x="820" y="355"/><omgdi:waypoint x="820" y="450"/><omgdi:waypoint x="930" y="450"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_aiguillageDecision_statutEnAttente" bpmnElement="flow_aiguillageDecision_statutEnAttente"><omgdi:waypoint x="820" y="355"/><omgdi:waypoint x="820" y="570"/><omgdi:waypoint x="930" y="570"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_statutEnAttente_dossierSuspendu" bpmnElement="flow_statutEnAttente_dossierSuspendu"><omgdi:waypoint x="1050" y="570"/><omgdi:waypoint x="1100" y="570"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_complement_dossierRepris" bpmnElement="flow_complement_dossierRepris"><omgdi:waypoint x="1390" y="570"/><omgdi:waypoint x="1440" y="570"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_dossierRepris_statutEnInstruction" bpmnElement="flow_dossierRepris_statutEnInstruction"><omgdi:waypoint x="1500" y="610"/><omgdi:waypoint x="1500" y="800"/><omgdi:waypoint x="480" y="800"/><omgdi:waypoint x="480" y="370"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_delaiComplement_issueSansReponse" bpmnElement="flow_delaiComplement_issueSansReponse"><omgdi:waypoint x="1362" y="628"/><omgdi:waypoint x="1362" y="700"/><omgdi:waypoint x="1440" y="700"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_issueTacite_decisionPrise" bpmnElement="flow_issueTacite_decisionPrise"><omgdi:waypoint x="1050" y="100"/><omgdi:waypoint x="1670" y="100"/><omgdi:waypoint x="1670" y="305"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_issueAutorisee_decisionPrise" bpmnElement="flow_issueAutorisee_decisionPrise"><omgdi:waypoint x="1050" y="210"/><omgdi:waypoint x="1670" y="210"/><omgdi:waypoint x="1670" y="305"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_issueRefusee_decisionPrise" bpmnElement="flow_issueRefusee_decisionPrise"><omgdi:waypoint x="1050" y="450"/><omgdi:waypoint x="1670" y="450"/><omgdi:waypoint x="1670" y="355"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_issueSansReponse_decisionPrise" bpmnElement="flow_issueSansReponse_decisionPrise"><omgdi:waypoint x="1560" y="700"/><omgdi:waypoint x="1670" y="700"/><omgdi:waypoint x="1670" y="355"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_decisionPrise_prepReference" bpmnElement="flow_decisionPrise_prepReference"><omgdi:waypoint x="1695" y="330"/><omgdi:waypoint x="1780" y="330"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_prepReference_prepDate" bpmnElement="flow_prepReference_prepDate"><omgdi:waypoint x="1900" y="330"/><omgdi:waypoint x="1950" y="330"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_prepDate_prepTelephone" bpmnElement="flow_prepDate_prepTelephone"><omgdi:waypoint x="2070" y="330"/><omgdi:waypoint x="2120" y="330"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_prepTelephone_prepPieces" bpmnElement="flow_prepTelephone_prepPieces"><omgdi:waypoint x="2240" y="330"/><omgdi:waypoint x="2290" y="330"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_prepPieces_prepComplements" bpmnElement="flow_prepPieces_prepComplements"><omgdi:waypoint x="2410" y="330"/><omgdi:waypoint x="2460" y="330"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_prepComplements_prepMotivation" bpmnElement="flow_prepComplements_prepMotivation"><omgdi:waypoint x="2580" y="330"/><omgdi:waypoint x="2630" y="330"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_prepMotivation_enregistrerDecision" bpmnElement="flow_prepMotivation_enregistrerDecision"><omgdi:waypoint x="2750" y="330"/><omgdi:waypoint x="2800" y="330"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_enregistrerDecision_genererDecision" bpmnElement="flow_enregistrerDecision_genererDecision"><omgdi:waypoint x="2920" y="330"/><omgdi:waypoint x="2970" y="330"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_genererDecision_joindreDecision" bpmnElement="flow_genererDecision_joindreDecision"><omgdi:waypoint x="3090" y="330"/><omgdi:waypoint x="3140" y="330"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_joindreDecision_aiguillageEmail" bpmnElement="flow_joindreDecision_aiguillageEmail"><omgdi:waypoint x="3260" y="330"/><omgdi:waypoint x="3345" y="330"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_aiguillageEmail_aiguillageMail" bpmnElement="flow_aiguillageEmail_aiguillageMail"><omgdi:waypoint x="3395" y="330"/><omgdi:waypoint x="3515" y="330"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_aiguillageEmail_mailEnvoye" bpmnElement="flow_aiguillageEmail_mailEnvoye"><omgdi:waypoint x="3370" y="355"/><omgdi:waypoint x="3370" y="530"/><omgdi:waypoint x="3880" y="530"/><omgdi:waypoint x="3880" y="355"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_aiguillageMail_mailAutorisation" bpmnElement="flow_aiguillageMail_mailAutorisation"><omgdi:waypoint x="3540" y="305"/><omgdi:waypoint x="3540" y="210"/><omgdi:waypoint x="3650" y="210"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_aiguillageMail_mailAutorisation_tacite" bpmnElement="flow_aiguillageMail_mailAutorisation_tacite"><omgdi:waypoint x="3540" y="305"/><omgdi:waypoint x="3540" y="210"/><omgdi:waypoint x="3650" y="210"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_aiguillageMail_mailRefus" bpmnElement="flow_aiguillageMail_mailRefus"><omgdi:waypoint x="3540" y="355"/><omgdi:waypoint x="3540" y="450"/><omgdi:waypoint x="3650" y="450"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_mailAutorisation_mailEnvoye" bpmnElement="flow_mailAutorisation_mailEnvoye"><omgdi:waypoint x="3770" y="210"/><omgdi:waypoint x="3880" y="210"/><omgdi:waypoint x="3880" y="305"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_mailRefus_mailEnvoye" bpmnElement="flow_mailRefus_mailEnvoye"><omgdi:waypoint x="3770" y="450"/><omgdi:waypoint x="3880" y="450"/><omgdi:waypoint x="3880" y="355"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_mailEnvoye_transmission" bpmnElement="flow_mailEnvoye_transmission"><omgdi:waypoint x="3905" y="330"/><omgdi:waypoint x="3990" y="330"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_transmission_aiguillageStatut" bpmnElement="flow_transmission_aiguillageStatut"><omgdi:waypoint x="4110" y="330"/><omgdi:waypoint x="4195" y="330"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_aiguillageStatut_statutAutorisee" bpmnElement="flow_aiguillageStatut_statutAutorisee"><omgdi:waypoint x="4220" y="305"/><omgdi:waypoint x="4220" y="210"/><omgdi:waypoint x="4330" y="210"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_aiguillageStatut_statutTacite" bpmnElement="flow_aiguillageStatut_statutTacite"><omgdi:waypoint x="4220" y="305"/><omgdi:waypoint x="4220" y="100"/><omgdi:waypoint x="4330" y="100"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_aiguillageStatut_statutRefusee" bpmnElement="flow_aiguillageStatut_statutRefusee"><omgdi:waypoint x="4220" y="355"/><omgdi:waypoint x="4220" y="450"/><omgdi:waypoint x="4330" y="450"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_statutAutorisee_statutPose" bpmnElement="flow_statutAutorisee_statutPose"><omgdi:waypoint x="4450" y="210"/><omgdi:waypoint x="4560" y="210"/><omgdi:waypoint x="4560" y="305"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_statutTacite_statutPose" bpmnElement="flow_statutTacite_statutPose"><omgdi:waypoint x="4450" y="100"/><omgdi:waypoint x="4560" y="100"/><omgdi:waypoint x="4560" y="305"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_statutRefusee_statutPose" bpmnElement="flow_statutRefusee_statutPose"><omgdi:waypoint x="4450" y="450"/><omgdi:waypoint x="4560" y="450"/><omgdi:waypoint x="4560" y="355"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_statutPose_clotureDossier" bpmnElement="flow_statutPose_clotureDossier"><omgdi:waypoint x="4585" y="330"/><omgdi:waypoint x="4670" y="330"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_clotureDossier_fin" bpmnElement="flow_clotureDossier_fin"><omgdi:waypoint x="4790" y="330"/><omgdi:waypoint x="4882" y="330"/></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>

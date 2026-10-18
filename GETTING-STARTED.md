@@ -340,21 +340,30 @@ docker compose down -v         # + supprime les volumes (base, realm Keycloak, b
 ## 12. Serveur MCP (outillage agent IA)
 
 FlowForge expose un serveur [MCP](https://modelcontextprotocol.io) pour un agent IA interne
-(Claude Code ou tout autre client MCP compatible Streamable HTTP) — 20 tools couvrant la
-définition de type de dossier (schéma + templates de documents associés), le déploiement de
-workflow BPMN, la définition de connecteurs et de schémas de questions de tâche, **et les
-écritures métier** (`create_dossier`, `add_dossier_element`, `start_workflow`,
-`generate_document`), plus la lecture d'un dossier, la recherche, les statistiques SLA, et
-la lecture des types/templates/workflows/connecteurs — de quoi définir **et opérer** un flux
-métier sans sortir du canal MCP.
+(Claude Code ou tout autre client MCP compatible Streamable HTTP) — une quarantaine de tools
+couvrant :
+
+- **la conception** : types de dossier et schémas de questions de tâche, templates de documents
+  (avec aperçu), workflows BPMN (et leurs briques de palette), tables de décision DMN
+  (déploiement, versions, évaluation, test), parcours, expressions et règles métier,
+  connecteurs ;
+- **la gouvernance** : brouillons en attente et publication, export/import de configuration ;
+- **les écritures métier** (`create_dossier`, `add_dossier_element`, `start_workflow`,
+  `generate_document`) ;
+- **la lecture** : dossier, recherche, statistiques SLA —
+
+de quoi définir **et opérer** un flux métier sans sortir du canal MCP.
 
 Endpoint : `POST http://localhost:8080/api/m2m/mcp` — même chaîne de sécurité machine-à-machine
 que `/api/m2m/connectors/**` (aucune session navigateur, aucun cookie) : un JWT `Authorization:
 Bearer <token>` avec le rôle `API_SERVICE` et un claim `tenant_id` correspondant à
 `app.tenant.id` (`tenant_dev` par défaut en local, §3).
 
-En local (profil `local`, HMAC M2M déjà activé au §3), générer un JWT de test signé avec
-`M2M_JWT_SECRET` (voir `.env`) puis pointer un client MCP dessus :
+En local (profil `local`), le canal M2M est **désactivé tant que `M2M_JWT_SECRET` est vide**
+(défaut de `.env.example`) : y renseigner un secret d'au moins 32 caractères (HS256), recharger
+`.env` (§3) et relancer le backend. Générer ensuite un JWT de test signé HS256 avec ce secret —
+claims `roles` (`["API_SERVICE"]`), `tenant_id` (`tenant_dev`), `sub` (ou `client_id`), `exp` —
+puis pointer un client MCP dessus :
 
 ```bash
 curl -i http://localhost:8080/api/m2m/mcp \
@@ -365,10 +374,10 @@ curl -i http://localhost:8080/api/m2m/mcp \
 ```
 
 Une réponse `200` avec `"serverInfo":{"name":"flowforge",...}` confirme l'endpoint actif. La
-liste des 20 tools (`tools/list`) et leurs schémas d'entrée sont générés automatiquement depuis le
-code (`infrastructure.mcp.tool`) — pas de documentation à maintenir manuellement en plus de
-celle-ci. Aucune UI dédiée côté SPA : ce canal est réservé à l'outillage interne, pas aux
-utilisateurs finaux du tenant.
+liste des tools (`tools/list`, qui fait foi pour leur nombre exact) et leurs schémas d'entrée
+sont générés automatiquement depuis le code (`infrastructure.mcp.tool`) — pas de documentation à
+maintenir manuellement en plus de celle-ci. Aucune UI dédiée côté SPA : ce canal est réservé à
+l'outillage interne, pas aux utilisateurs finaux du tenant.
 
 Par défaut, tout JWT M2M authentifié reçoit `API_SERVICE` (un seul client M2M de confiance
 assumé, TODO §56). `M2M_TRUSTED_CLIENT_IDS` (voir `.env.example`) restreint ce rôle à une

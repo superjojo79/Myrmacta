@@ -1,0 +1,50 @@
+{
+  "processDefinitionKey": "autorisationRiverain",
+  "label": "Autorisation riverain (véhicule)",
+  "onStartDossierStatus": "EN_COURS",
+  "allowedDossierStatuses": [
+    "OUVERT",
+    "EN_COURS",
+    "SUSPENDU",
+    "CLOTURE"
+  ],
+  "statusDefinitions": [
+    {
+      "code": "DEPOSEE",
+      "label": "Demande déposée",
+      "initial": true,
+      "outcome": "NONE"
+    },
+    {
+      "code": "EN_INSTRUCTION",
+      "label": "En instruction",
+      "initial": false,
+      "outcome": "NONE"
+    },
+    {
+      "code": "EN_ATTENTE_INFOS",
+      "label": "En attente d'informations du demandeur",
+      "initial": false,
+      "outcome": "NONE"
+    },
+    {
+      "code": "AUTORISEE",
+      "label": "Autorisée",
+      "initial": false,
+      "outcome": "COMPLETED"
+    },
+    {
+      "code": "AUTORISEE_TACITEMENT",
+      "label": "Autorisée (délai de 30 jours dépassé)",
+      "initial": false,
+      "outcome": "COMPLETED"
+    },
+    {
+      "code": "REFUSEE",
+      "label": "Refusée",
+      "initial": false,
+      "outcome": "COMPLETED"
+    }
+  ],
+  "_xml": "autorisation-riverain-sans-portail.bpmn20.xml (instance sans portail) ou autorisation-riverain.bpmn20.xml (portail activé)"
+}

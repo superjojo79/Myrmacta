@@ -265,3 +265,29 @@ Voir le détail et les options dans [TODO.md](TODO.md),
 
 **Interdits :** Kafka ∥ import-batch ∥ ERP ; import batch ∥ A3 ; ClamAV ∥ A1 (Compose) ;
 codegen OpenAPI ∥ tout FE ; `signature-electronique` avant `portail-externe`. Hors vague : Redis/SSE multi-pod, Chart.js SLA, Cockpit.
+
+---
+
+## 7. Manques relevés par l'exemple « autorisation riverain » (2026-10-16)
+
+> **Source :** [exemples/autorisation-riverain/DIFFICULTES.md](exemples/autorisation-riverain/DIFFICULTES.md).
+> Ce flux a été monté uniquement par configuration (via MCP), sans développement. Chaque ligne
+> renvoie au § correspondant de ce fichier, qui décrit le constat, le contournement appliqué et ce
+> qui reste imparfait. Aucun de ces lots n'est encore cadré au sens `dev-lifecycle`.
+
+| Priorité | § | Manque | Lot proposé | Statut |
+|---|---|---|---|---|
+| 1 | 8 | Un workflow qui référence un modèle de document **en brouillon** ne peut pas être enregistré, même comme brouillon (`BlockReferenceVerifier` exige un modèle actif). Un modèle créé par MCP reste en brouillon tant qu'un humain ne l'a pas activé. Résultat : l'exemple ne peut pas être déployé. | `references-blocs-brouillon` | À cadrer |
+| 1 | 3 | Le destinataire de la brique « Notifier » ne peut pas venir d'un champ du dossier (pas de source `dossierField:`). De plus, `StartWorkflowDialog.vue` ne transmet aucune variable au démarrage. Une demande encodée par un agent n'envoie donc aucun e-mail. | `notifier-destinataire-dossier` | À cadrer |
+| 2 | 2 | La brique « Notifier » (et le connecteur `smtp`) ne peut pas joindre de document, par exemple le PDF généré. | `notifier-piece-jointe` | Backlog |
+| 2 | 1 | Aucune contrainte d'unicité sur un champ de dossier, et aucune brique pour rechercher un dossier existant depuis un workflow. Un doublon peut être autorisé tacitement. | `unicite-champ-dossier` | Backlog |
+| 3 | 4 | Les textes envoyés au demandeur (e-mail, consignes du portail) sont des littéraux du BPMN, sans gabarit ni variable. | `gabarits-notification` | Backlog |
+| 3 | 6 | Le concepteur de parcours ne propose pas de minuteur en bordure d'une tâche (course « décision **ou** délai »). Les minuteurs n'acceptent pas d'expression, et il n'existe pas de calendrier de jours ouvrables. | `parcours-minuteur-bordure` | Backlog |
+| 3 | 7 | Le portail ne sait pas recevoir une demande initiale : il ne sert qu'à répondre à une tâche. Le dépôt passe par un site externe et le connecteur `http-rest`. | — (à arbitrer) | Backlog |
+| 3 | 10 | `dossierFields` est un instantané pris au démarrage du workflow : les champs modifiés ensuite ne sont pas relus. | — (à arbitrer) | Backlog |
+| — | 5 | Moteur de modèles plus strict que la documentation. | — | **Doc corrigée** ([PR #168](https://github.com/superjojo79/FlowForge/pull/168)) ; le moteur reste strict |
+| — | 9 | Pas d'assignation des tâches par groupe. | — | **En partie levé** ([PR #171](https://github.com/superjojo79/FlowForge/pull/171), « M'assigner ») ; D-EDIT-SCOPE inchangée |
+
+Ordre recommandé : traiter les deux lots de priorité 1 dans **un même cycle**, puisqu'ils
+débloquent ensemble le déploiement et les e-mails de l'exemple. Faire ensuite une recette de bout
+en bout de l'exemple.

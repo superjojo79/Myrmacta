@@ -139,11 +139,11 @@ public final class SecurityAuditLog {
      * message de l'exception (il peut contenir des données métier).
      */
     public static void incidentRetried(
-            HttpServletRequest request, Authentication authentication, UUID linkId, String jobId) {
+            String method, String path, Authentication authentication, UUID linkId, String jobId) {
         LOGGER.info(
                 "event=incident_retried method={} path={} principal={} linkId={} jobId={}",
-                request.getMethod(),
-                request.getRequestURI(),
+                method,
+                path,
                 authentication == null ? "anonymous" : authentication.getName(),
                 linkId,
                 jobId);

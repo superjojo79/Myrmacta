@@ -15,6 +15,7 @@ import com.flowforge.domain.workflow.model.IncidentState;
 import com.flowforge.domain.workflow.model.TenantIncident;
 import com.flowforge.domain.workflow.model.WorkflowIncident;
 import com.flowforge.domain.workflow.model.WorkflowIncidentNotFoundException;
+import com.flowforge.domain.workflow.port.in.ListDossierIncidentsSystemUseCase;
 import com.flowforge.domain.workflow.port.in.WorkflowIncidentsUseCase;
 import com.flowforge.domain.workflow.port.out.WorkflowIncidentPort;
 import com.flowforge.domain.workflow.port.out.WorkflowParticipantPort;
@@ -32,7 +33,7 @@ import java.util.UUID;
  * (D-INCIDENT-MESSAGE) ; rejeu par TA/WA d'un incident (dead letter) de l'exécution visée seulement
  * (D-INCIDENT-RETRY-SCOPE).
  */
-public final class WorkflowIncidentsUseCaseImpl implements WorkflowIncidentsUseCase {
+public final class WorkflowIncidentsUseCaseImpl implements WorkflowIncidentsUseCase, ListDossierIncidentsSystemUseCase {
 
     /** Tentatives rendues à un job rejoué : le défaut du moteur. */
     public static final int RETRIES_ON_RETRY = 3;
@@ -68,6 +69,10 @@ public final class WorkflowIncidentsUseCaseImpl implements WorkflowIncidentsUseC
         if (!admin
                 && !participantPort.findParticipantUserIds(link).contains(actor.userId())
                 && !canEditLinkedDossier(link, actor)) {
+            // Revue Info : un lecteur du dossier ouvre la fiche sans déclencher de refus d'audit ; il ne voit rien.
+            if (canViewLinkedDossier(link, actor)) {
+                return List.of();
+            }
             throw new AccessDeniedException("User is not a workflow participant nor a dossier editor");
         }
         if (link.processInstanceId() == null) {
@@ -91,8 +96,8 @@ public final class WorkflowIncidentsUseCaseImpl implements WorkflowIncidentsUseC
                 .orElseThrow(() -> new WorkflowIncidentNotFoundException(
                         "No failed job " + jobId + " in workflow link " + linkId));
         if (incident.state() != IncidentState.INCIDENT) {
-            throw new IncidentNotRetryableException("Job " + jobId + " still has automatic retries left ("
-                    + incident.retriesLeft() + "); only a dead-letter incident can be retried");
+            // Revue L2 : cas typique d'un double clic — message neutre, sans détail technique.
+            throw new IncidentNotRetryableException("Incident " + jobId + " has already been retried or is retrying");
         }
         incidentPort.retry(jobId, tenantId, RETRIES_ON_RETRY);
     }
@@ -102,41 +107,47 @@ public final class WorkflowIncidentsUseCaseImpl implements WorkflowIncidentsUseC
         if (!isAdmin(actor)) {
             throw new AccessDeniedException("Listing incidents requires TENANT_ADMIN or WORKFLOW_ADMIN");
         }
-        List<WorkflowIncident> scanned = incidentPort.listByTenant(tenantId, TENANT_SCAN_LIMIT);
-        Map<String, Optional<DossierWorkflowLink>> linksByProcess = new HashMap<>();
-        Map<UUID, Optional<Dossier>> dossiersById = new HashMap<>();
-        List<TenantIncident> attached = new ArrayList<>();
-        for (WorkflowIncident incident : scanned) {
-            Optional<DossierWorkflowLink> link = linksByProcess.computeIfAbsent(incident.processInstanceId(),
-                    pi -> linkRepository.findByProcessInstanceId(tenantId, pi));
-            if (link.isEmpty()) {
-                continue; // process sans dossier : hors périmètre
-            }
-            Optional<Dossier> dossier = dossiersById.computeIfAbsent(link.get().dossierId(),
-                    id -> dossierRepository.findById(id).filter(d -> tenantId.equals(d.tenantId())));
-            attached.add(new TenantIncident(incident, link.get().id(), link.get().dossierId(),
-                    dossier.map(Dossier::reference).orElse(null), link.get().processDefinitionKey()));
-        }
-        int from = Math.min(query.page() * query.size(), attached.size());
-        int to = Math.min(from + query.size(), attached.size());
-        int totalPages = (attached.size() + query.size() - 1) / query.size();
-        PageResult<TenantIncident> page = new PageResult<>(
-                attached.subList(from, to), query.page(), query.size(), attached.size(), totalPages);
-        return new TenantIncidentPage(page, scanned.size() >= TENANT_SCAN_LIMIT);
+        // Revue L4 : lire un élément de plus que la borne pour savoir si elle est réellement dépassée.
+        List<WorkflowIncident> scanned = incidentPort.listByTenant(tenantId, TENANT_SCAN_LIMIT + 1);
+        boolean truncated = scanned.size() > TENANT_SCAN_LIMIT;
+        List<TenantIncident> attached = attach(truncated ? scanned.subList(0, TENANT_SCAN_LIMIT) : scanned);
+        return new TenantIncidentPage(PageResult.slice(attached, query), truncated);
     }
 
     @Override
-    public List<WorkflowIncident> listForDossierSystem(UUID dossierId) {
+    public List<TenantIncident> listForDossierSystem(UUID dossierId) {
         Objects.requireNonNull(dossierId, "dossierId");
-        List<WorkflowIncident> result = new ArrayList<>();
+        List<TenantIncident> result = new ArrayList<>();
         for (DossierWorkflowLink link : linkRepository.findByDossierIdOrderBySequence(dossierId)) {
             if (link.processInstanceId() != null && tenantId.equals(link.tenantId())) {
                 incidentPort.listByProcessInstance(link.processInstanceId(), tenantId).stream()
-                        .map(WorkflowIncident::withoutMessage)
+                        .map(incident -> new TenantIncident(incident.withoutMessage(), link.id(), link.dossierId(), null,
+                                link.processDefinitionKey()))
                         .forEach(result::add);
             }
         }
         return List.copyOf(result);
+    }
+
+    /** Rattache chaque échec à son lien et à son dossier, en une lecture de liens ; les process sans dossier sont ignorés. */
+    private List<TenantIncident> attach(List<WorkflowIncident> incidents) {
+        Map<String, DossierWorkflowLink> linksByProcess = new HashMap<>();
+        linkRepository.findByProcessInstanceIds(tenantId,
+                        incidents.stream().map(WorkflowIncident::processInstanceId).distinct().toList())
+                .forEach(link -> linksByProcess.put(link.processInstanceId(), link));
+        Map<UUID, Optional<Dossier>> dossiersById = new HashMap<>();
+        List<TenantIncident> attached = new ArrayList<>();
+        for (WorkflowIncident incident : incidents) {
+            DossierWorkflowLink link = linksByProcess.get(incident.processInstanceId());
+            if (link == null) {
+                continue; // process sans dossier : hors périmètre
+            }
+            Optional<Dossier> dossier = dossiersById.computeIfAbsent(link.dossierId(),
+                    id -> dossierRepository.findById(id).filter(d -> tenantId.equals(d.tenantId())));
+            attached.add(new TenantIncident(incident, link.id(), link.dossierId(),
+                    dossier.map(Dossier::reference).orElse(null), link.processDefinitionKey()));
+        }
+        return attached;
     }
 
     private DossierWorkflowLink loadTenantLink(UUID linkId) {
@@ -149,6 +160,13 @@ public final class WorkflowIncidentsUseCaseImpl implements WorkflowIncidentsUseC
         return dossierRepository.findById(link.dossierId())
                 .filter(dossier -> tenantId.equals(dossier.tenantId()))
                 .map(dossier -> dossierAccessPolicy.canEdit(dossier, actor))
+                .orElse(false);
+    }
+
+    private boolean canViewLinkedDossier(DossierWorkflowLink link, AccessContext.User actor) {
+        return dossierRepository.findById(link.dossierId())
+                .filter(dossier -> tenantId.equals(dossier.tenantId()))
+                .map(dossier -> dossierAccessPolicy.canViewType(dossier.tenantId(), dossier.dossierTypeCode(), actor))
                 .orElse(false);
     }
 

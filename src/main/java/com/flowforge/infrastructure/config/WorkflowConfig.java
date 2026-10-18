@@ -190,7 +190,7 @@ public class WorkflowConfig {
 
     /** TODO §94 — échecs des jobs du moteur rattachés aux dossiers (lecture, rejeu, supervision). */
     @Bean
-    com.flowforge.domain.workflow.port.in.WorkflowIncidentsUseCase workflowIncidentsUseCase(
+    com.flowforge.domain.workflow.usecase.WorkflowIncidentsUseCaseImpl workflowIncidentsUseCase(
             TenantProperties tenantProperties,
             DossierWorkflowLinkRepository linkRepository,
             DossierRepository dossierRepository,

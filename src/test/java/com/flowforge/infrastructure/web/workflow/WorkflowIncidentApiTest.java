@@ -57,6 +57,10 @@ class WorkflowIncidentApiTest {
     @MockitoBean
     private WorkflowIncidentsUseCase useCase;
 
+    /** Le mock remplace le bean du use case, qui fournit aussi le port système de MCP get_dossier. */
+    @MockitoBean
+    private com.flowforge.domain.workflow.port.in.ListDossierIncidentsSystemUseCase systemUseCase;
+
     private static RequestPostProcessor user(String id, String role) {
         return oidcLogin()
                 .idToken(t -> t.subject(id).claim("tenant_id", "tenant_dev").claim("email", id + "@example.com"))

@@ -92,6 +92,14 @@ class WorkflowIncidentsUseCaseImplTest {
     }
 
     @Test
+    void aMereReaderOfTheDossierGetsAnEmptyListInsteadOfADenial() {
+        when(accessPolicy.canViewType(TENANT, dossier.dossierTypeCode(), STRANGER)).thenReturn(true);
+        when(incidents.listByProcessInstance("pi-1", TENANT)).thenReturn(List.of(incident("j1", "pi-1", IncidentState.INCIDENT)));
+
+        assertThat(useCase.listForLink(link.id(), STRANGER)).isEmpty();
+    }
+
+    @Test
     void aReservedLinkWithoutProcessInstanceHasNoFailure() {
         DossierWorkflowLink reserved = link(dossier.id(), null);
         when(links.findById(reserved.id())).thenReturn(Optional.of(reserved));
@@ -130,11 +138,10 @@ class WorkflowIncidentsUseCaseImplTest {
 
     @Test
     void theTenantListIsForAdminsLinksEachFailureToItsDossierAndSkipsOrphans() {
-        when(incidents.listByTenant(TENANT, WorkflowIncidentsUseCaseImpl.TENANT_SCAN_LIMIT)).thenReturn(List.of(
+        when(incidents.listByTenant(TENANT, WorkflowIncidentsUseCaseImpl.TENANT_SCAN_LIMIT + 1)).thenReturn(List.of(
                 incident("j1", "pi-1", IncidentState.INCIDENT),
                 incident("j2", "pi-orphan", IncidentState.RETRYING)));
-        when(links.findByProcessInstanceId(TENANT, "pi-1")).thenReturn(Optional.of(link));
-        when(links.findByProcessInstanceId(TENANT, "pi-orphan")).thenReturn(Optional.empty());
+        when(links.findByProcessInstanceIds(TENANT, List.of("pi-1", "pi-orphan"))).thenReturn(List.of(link));
 
         var result = useCase.listForTenant(ADMIN, new PageQuery(0, 20));
 
@@ -151,20 +158,27 @@ class WorkflowIncidentsUseCaseImplTest {
     }
 
     @Test
-    void theTenantListPaginatesAndSaysWhenTheScanLimitWasReached() {
-        List<WorkflowIncident> many = new ArrayList<>();
-        for (int i = 0; i < WorkflowIncidentsUseCaseImpl.TENANT_SCAN_LIMIT; i++) {
-            many.add(incident("j" + i, "pi-1", IncidentState.INCIDENT));
+    void theTenantListPaginatesAndSaysWhenTheScanLimitWasReallyExceeded() {
+        int limit = WorkflowIncidentsUseCaseImpl.TENANT_SCAN_LIMIT;
+        List<WorkflowIncident> exactly = new ArrayList<>();
+        for (int i = 0; i < limit; i++) {
+            exactly.add(incident("j" + i, "pi-1", IncidentState.INCIDENT));
         }
-        when(incidents.listByTenant(TENANT, WorkflowIncidentsUseCaseImpl.TENANT_SCAN_LIMIT)).thenReturn(many);
-        when(links.findByProcessInstanceId(TENANT, "pi-1")).thenReturn(Optional.of(link));
+        List<WorkflowIncident> beyond = new ArrayList<>(exactly);
+        beyond.add(incident("j-extra", "pi-1", IncidentState.INCIDENT));
+        when(links.findByProcessInstanceIds(TENANT, List.of("pi-1"))).thenReturn(List.of(link));
 
-        var result = useCase.listForTenant(ADMIN, new PageQuery(2, 20));
+        when(incidents.listByTenant(TENANT, limit + 1)).thenReturn(exactly);
+        var atTheLimit = useCase.listForTenant(ADMIN, new PageQuery(2, 20));
+        assertThat(atTheLimit.truncated()).isFalse();
+        assertThat(atTheLimit.page().content()).hasSize(20);
+        assertThat(atTheLimit.page().content().getFirst().incident().jobId()).isEqualTo("j40");
+        assertThat(atTheLimit.page().totalElements()).isEqualTo(limit);
 
-        assertThat(result.truncated()).isTrue();
-        assertThat(result.page().content()).hasSize(20);
-        assertThat(result.page().content().getFirst().incident().jobId()).isEqualTo("j40");
-        assertThat(result.page().totalElements()).isEqualTo(WorkflowIncidentsUseCaseImpl.TENANT_SCAN_LIMIT);
+        when(incidents.listByTenant(TENANT, limit + 1)).thenReturn(beyond);
+        var overTheLimit = useCase.listForTenant(ADMIN, new PageQuery(0, 20));
+        assertThat(overTheLimit.truncated()).isTrue();
+        assertThat(overTheLimit.page().totalElements()).isEqualTo(limit);
     }
 
     @Test
@@ -176,8 +190,9 @@ class WorkflowIncidentsUseCaseImplTest {
         when(incidents.listByProcessInstance("pi-1", TENANT)).thenReturn(List.of(incident("j1", "pi-1", IncidentState.INCIDENT)));
 
         assertThat(useCase.listForDossierSystem(dossier.id()))
-                .extracting(WorkflowIncident::jobId, WorkflowIncident::message)
-                .containsExactly(org.assertj.core.groups.Tuple.tuple("j0", null), org.assertj.core.groups.Tuple.tuple("j1", null));
+                .extracting(t -> t.incident().jobId(), t -> t.incident().message(), t -> t.linkId())
+                .containsExactly(org.assertj.core.groups.Tuple.tuple("j0", null, previous.id()),
+                        org.assertj.core.groups.Tuple.tuple("j1", null, link.id()));
         // Une exécution réservée (sans instance de process) n'est pas interrogée.
         verify(incidents, never()).listByProcessInstance(org.mockito.ArgumentMatchers.isNull(), any());
     }

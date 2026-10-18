@@ -25,8 +25,8 @@ public record WorkflowIncident(
         Objects.requireNonNull(processInstanceId, "processInstanceId");
         Objects.requireNonNull(state, "state");
         retriesLeft = Math.max(0, retriesLeft);
-        if (message != null && message.length() > MAX_MESSAGE_LENGTH) {
-            message = message.substring(0, MAX_MESSAGE_LENGTH) + "…";
+        if (message != null && message.codePointCount(0, message.length()) > MAX_MESSAGE_LENGTH) {
+            message = message.substring(0, message.offsetByCodePoints(0, MAX_MESSAGE_LENGTH)) + "…";
         }
     }
 

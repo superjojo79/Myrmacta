@@ -12,13 +12,17 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -43,20 +47,37 @@ class WorkflowIncidentController {
                 .toList();
     }
 
-    /** Flowable participe à la transaction ambiante : le rejeu et sa trace d'audit vont ensemble. */
+    /**
+     * Flowable participe à la transaction ambiante. Revue L5 : la trace d'audit n'est écrite qu'après le commit — un rejeu
+     * annulé n'est pas journalisé comme effectué.
+     */
     @PostMapping("/api/workflow-links/{linkId}/incidents/{jobId}/retry")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     @Transactional
-    ResponseEntity<Void> retry(
+    void retry(
             @PathVariable UUID linkId,
             @PathVariable String jobId,
             Authentication authentication,
             HttpServletRequest request) {
         useCase.retry(linkId, jobId, accessContextFactory.user(authentication));
-        SecurityAuditLog.incidentRetried(request, authentication, linkId, jobId);
-        return ResponseEntity.noContent().build();
+        String method = request.getMethod();
+        String path = request.getRequestURI();
+        Runnable audit = () -> SecurityAuditLog.incidentRetried(method, path, authentication, linkId, jobId);
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    audit.run();
+                }
+            });
+        } else {
+            audit.run();
+        }
     }
 
+    /** Revue Info : défense en profondeur, en plus de la garde du use case (même règle que les brouillons). */
     @GetMapping("/api/admin/incidents")
+    @PreAuthorize("hasAnyRole('TENANT_ADMIN','WORKFLOW_ADMIN')")
     TenantIncidentsResponse tenantIncidents(
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size,

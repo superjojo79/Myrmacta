@@ -11,8 +11,7 @@ import com.flowforge.domain.dossier.port.in.ListDossierElementsUseCase;
 import com.flowforge.domain.dossier.port.in.ListDossierRelationsUseCase;
 import com.flowforge.domain.shared.PageQuery;
 import com.flowforge.domain.shared.PageResult;
-import com.flowforge.domain.workflow.model.WorkflowIncident;
-import com.flowforge.domain.workflow.port.in.WorkflowIncidentsUseCase;
+import com.flowforge.domain.workflow.port.in.ListDossierIncidentsSystemUseCase;
 import com.flowforge.infrastructure.config.TenantProperties;
 import com.flowforge.infrastructure.mcp.McpAccessContextFactory;
 import java.util.ArrayList;
@@ -32,7 +31,7 @@ public class GetDossierTool {
     private final ListDossierElementsUseCase listDossierElementsUseCase;
     private final GetDossierWorkflowHistoryUseCase getDossierWorkflowHistoryUseCase;
     private final ListDossierRelationsUseCase listDossierRelationsUseCase;
-    private final WorkflowIncidentsUseCase incidentsUseCase;
+    private final ListDossierIncidentsSystemUseCase incidentsUseCase;
     private final TenantProperties tenantProperties;
     private final McpAccessContextFactory accessContextFactory;
 
@@ -41,7 +40,7 @@ public class GetDossierTool {
             ListDossierElementsUseCase listDossierElementsUseCase,
             GetDossierWorkflowHistoryUseCase getDossierWorkflowHistoryUseCase,
             ListDossierRelationsUseCase listDossierRelationsUseCase,
-            WorkflowIncidentsUseCase incidentsUseCase,
+            ListDossierIncidentsSystemUseCase incidentsUseCase,
             TenantProperties tenantProperties,
             McpAccessContextFactory accessContextFactory) {
         this.getDossierUseCase = Objects.requireNonNull(getDossierUseCase, "getDossierUseCase");
@@ -83,8 +82,8 @@ public class GetDossierTool {
         List<DossierRelationView> relations = listDossierRelationsUseCase.list(dossier.id(), actor);
 
         // TODO §94 : lecture seule, sans message (D-INCIDENT-MESSAGE) ; le dossier est déjà autorisé ci-dessus.
-        List<WorkflowIncident> incidents = incidentsUseCase.listForDossierSystem(dossier.id()).stream()
-                .map(WorkflowIncident::withoutMessage)
+        List<IncidentMcpView> incidents = incidentsUseCase.listForDossierSystem(dossier.id()).stream()
+                .map(IncidentMcpView::from)
                 .toList();
         return new Result(DossierMcpView.from(dossier), elements, history, relations, incidents);
     }
@@ -107,5 +106,22 @@ public class GetDossierTool {
             List<DossierElementView> elements,
             List<DossierWorkflowLink> history,
             List<DossierRelationView> relations,
-            List<WorkflowIncident> incidents) {}
+            List<IncidentMcpView> incidents) {}
+
+    /** TODO §94 — échec d'un job du dossier, sans message (D-INCIDENT-MESSAGE). */
+    public record IncidentMcpView(
+            java.util.UUID workflowLinkId,
+            String jobId,
+            String activityId,
+            String activityName,
+            com.flowforge.domain.workflow.model.IncidentState state,
+            java.time.Instant since,
+            int retriesLeft) {
+
+        static IncidentMcpView from(com.flowforge.domain.workflow.model.TenantIncident row) {
+            var i = row.incident();
+            return new IncidentMcpView(row.linkId(), i.jobId(), i.activityId(), i.activityName(), i.state(), i.since(),
+                    i.retriesLeft());
+        }
+    }
 }

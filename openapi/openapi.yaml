@@ -390,8 +390,8 @@ paths:
         schema:
           type: string
       responses:
-        "200":
-          description: OK
+        "204":
+          description: No Content
   /api/workflow-bpmn-deployments:
     post:
       tags:

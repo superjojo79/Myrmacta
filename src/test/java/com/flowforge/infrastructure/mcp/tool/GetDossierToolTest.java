@@ -45,7 +45,7 @@ class GetDossierToolTest {
     private ListDossierElementsUseCase listDossierElementsUseCase;
     private GetDossierWorkflowHistoryUseCase getDossierWorkflowHistoryUseCase;
     private ListDossierRelationsUseCase listDossierRelationsUseCase;
-    private com.flowforge.domain.workflow.port.in.WorkflowIncidentsUseCase incidentsUseCase;
+    private com.flowforge.domain.workflow.port.in.ListDossierIncidentsSystemUseCase incidentsUseCase;
     private GetDossierTool tool;
 
     @BeforeEach
@@ -54,7 +54,7 @@ class GetDossierToolTest {
         listDossierElementsUseCase = mock(ListDossierElementsUseCase.class);
         getDossierWorkflowHistoryUseCase = mock(GetDossierWorkflowHistoryUseCase.class);
         listDossierRelationsUseCase = mock(ListDossierRelationsUseCase.class);
-        incidentsUseCase = mock(com.flowforge.domain.workflow.port.in.WorkflowIncidentsUseCase.class);
+        incidentsUseCase = mock(com.flowforge.domain.workflow.port.in.ListDossierIncidentsSystemUseCase.class);
         tool = new GetDossierTool(
                 getDossierUseCase,
                 listDossierElementsUseCase,
@@ -120,16 +120,21 @@ class GetDossierToolTest {
         when(listDossierElementsUseCase.list(eq(dossierId), any(), any())).thenReturn(PageResult.of(List.of(), 0, 100, 0));
         when(getDossierWorkflowHistoryUseCase.getHistory(eq(dossierId), any())).thenReturn(PageResult.of(List.of(), 0, 100, 0));
         when(listDossierRelationsUseCase.list(eq(dossierId), any())).thenReturn(List.of());
+        UUID linkId = UUID.randomUUID();
         when(incidentsUseCase.listForDossierSystem(dossierId)).thenReturn(List.of(
-                new com.flowforge.domain.workflow.model.WorkflowIncident("job-1", "pi-1", "mailRefus", "E-mail : refus",
-                        com.flowforge.domain.workflow.model.IncidentState.INCIDENT, Instant.EPOCH, 0, "secret detail")));
+                new com.flowforge.domain.workflow.model.TenantIncident(
+                        new com.flowforge.domain.workflow.model.WorkflowIncident("job-1", "pi-1", "mailRefus",
+                                "E-mail : refus", com.flowforge.domain.workflow.model.IncidentState.INCIDENT,
+                                Instant.EPOCH, 0, "secret detail"),
+                        linkId, dossierId, null, "autorisationRiverain")));
 
         GetDossierTool.Result result = tool.getDossier(dossierId.toString(), null);
 
         assertThat(result.incidents()).singleElement().satisfies(i -> {
             assertThat(i.activityId()).isEqualTo("mailRefus");
             assertThat(i.state()).isEqualTo(com.flowforge.domain.workflow.model.IncidentState.INCIDENT);
-            assertThat(i.processInstanceId()).isEqualTo("pi-1");
+            assertThat(i.workflowLinkId()).isEqualTo(linkId);
+            assertThat(i.jobId()).isEqualTo("job-1");
         });
         assertThat(result.incidents().toString()).doesNotContain("secret detail");
     }

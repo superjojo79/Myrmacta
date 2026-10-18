@@ -65,7 +65,8 @@ class FlowableWorkflowIncidentAdapterIT {
     void deploy() {
         FAIL.set(true);
         deploymentId = repositoryService.createDeployment().name("incident-smoke").tenantId(TENANT)
-                .addClasspathResource("incidents/incident-smoke.bpmn20.xml").deploy().getId();
+                .addClasspathResource("incidents/incident-smoke.bpmn20.xml")
+                .addClasspathResource("incidents/incident-parent.bpmn20.xml").deploy().getId();
         otherDeploymentId = repositoryService.createDeployment().name("incident-smoke-autre").tenantId(OTHER_TENANT)
                 .addClasspathResource("incidents/incident-smoke.bpmn20.xml").deploy().getId();
     }
@@ -128,5 +129,40 @@ class FlowableWorkflowIncidentAdapterIT {
         assertThat(adapter.listByTenant(TENANT, 1000)).noneMatch(i -> i.processInstanceId().equals(other));
         String jobId = adapter.listByProcessInstance(other, OTHER_TENANT).getFirst().jobId();
         assertThat(adapter.find(jobId, TENANT)).isEmpty();
+    }
+
+    @Test
+    void aFailureInACalledSubProcessIsReportedOnTheCallActivityOfTheRootInstance() throws Exception {
+        String parent = runtimeService.startProcessInstanceByKeyAndTenantId("incidentParent", Map.of(), TENANT).getId();
+
+        List<WorkflowIncident> dead = await(() -> adapter.listByProcessInstance(parent, TENANT),
+                list -> list.stream().anyMatch(i -> i.state() == IncidentState.INCIDENT));
+        WorkflowIncident incident = assertThat(dead).singleElement().actual();
+        assertThat(incident.processInstanceId()).isEqualTo(parent);
+        assertThat(incident.activityId()).isEqualTo("ipCall");
+        assertThat(incident.activityName()).contains("Appel du sous-process").contains("Étape fragile");
+        assertThat(adapter.find(incident.jobId(), TENANT)).hasValueSatisfying(
+                found -> assertThat(found.processInstanceId()).isEqualTo(parent));
+        assertThat(adapter.listByTenant(TENANT, 1000)).anySatisfy(i -> {
+            assertThat(i.jobId()).isEqualTo(incident.jobId());
+            assertThat(i.processInstanceId()).isEqualTo(parent);
+        });
+
+        FAIL.set(false);
+        adapter.retry(incident.jobId(), TENANT, 3);
+        assertThat(await(() -> adapter.listByProcessInstance(parent, TENANT), List::isEmpty)).isEmpty();
+    }
+
+    @Test
+    void aDeadLetterOfAnotherTenantCannotBeRetried() throws Exception {
+        String other = runtimeService.startProcessInstanceByKeyAndTenantId("incidentSmoke", Map.of(), OTHER_TENANT).getId();
+        List<WorkflowIncident> dead = await(() -> adapter.listByProcessInstance(other, OTHER_TENANT),
+                list -> list.stream().anyMatch(i -> i.state() == IncidentState.INCIDENT));
+        String jobId = dead.getFirst().jobId();
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> adapter.retry(jobId, TENANT, 3))
+                .isInstanceOf(com.flowforge.domain.workflow.model.WorkflowIncidentNotFoundException.class);
+        assertThat(adapter.find(jobId, OTHER_TENANT)).hasValueSatisfying(
+                i -> assertThat(i.state()).isEqualTo(IncidentState.INCIDENT));
     }
 }

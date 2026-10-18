@@ -1,73 +1,46 @@
 ---
 phase: implementation
-title: Implementation Guide
-description: Technical implementation notes, patterns, and code guidelines
+title: Implementation — incidents-visibles-dossier
+status: complete
+created: 2026-10-18
+feature: incidents-visibles-dossier
+todo_ref: TODO.md §94
 ---
 
-# Implementation Guide
+# Implementation — incidents-visibles-dossier
 
-## Development Setup
+## Backend
 
-**How do we get started?**
+| Fichier | Rôle |
+|---|---|
+| `domain/workflow/model/{IncidentState, WorkflowIncident, TenantIncident, WorkflowIncidentNotFoundException, IncidentNotRetryableException}` | Modèle ; `WorkflowIncident` tronque le message à 300 caractères, `withoutMessage()` |
+| `domain/workflow/port/out/WorkflowIncidentPort`, `port/in/WorkflowIncidentsUseCase` | Ports |
+| `domain/workflow/usecase/WorkflowIncidentsUseCaseImpl` | Garde (participants, éditeurs, TA/WA), message réservé aux admins, rejeu, liste du tenant bornée, vue système MCP |
+| `infrastructure/flowable/FlowableWorkflowIncidentAdapter` | `ManagementService` : jobs et minuteurs avec exception (RETRYING), dead letters (INCIDENT), filtre `jobTenantId`, `moveDeadLetterJobToExecutableJob` |
+| `infrastructure/flowable/FlowableWorkflowVisualizationAdapter` | Étapes des jobs en échec ajoutées à `failedIds` et `activeIds` |
+| `infrastructure/web/workflow/WorkflowIncidentController` | `GET/POST /api/workflow-links/{id}/incidents[/{jobId}/retry]`, `GET /api/admin/incidents` |
+| `infrastructure/web/workflow/WorkflowExceptionHandler` | 404 (`WorkflowIncidentNotFoundException`), 409 (`IncidentNotRetryableException`) |
+| `infrastructure/security/SecurityAuditLog.incidentRetried` | Audit du rejeu, sans message |
+| `infrastructure/mcp/tool/GetDossierTool` | `incidents` sans message |
+| `infrastructure/config/WorkflowConfig` | Bean du use case |
+| `openapi/openapi.yaml` | Golden régénéré |
 
-- Prerequisites and dependencies
-- Environment setup steps
-- Configuration needed
+## Frontend
 
-## Code Structure
+`api/incidents.ts`, types ; `components/workflow/IncidentBanner.vue` ; `stores/dossier.ts` (`incidents`,
+`retryIncident`, chargement dans `loadVisualization`, échec silencieux) ; `views/pilotage/DossierDetailView.vue` ;
+`views/admin/IncidentsAdminView.vue`, route `/admin/incidents`, entrée de menu ; i18n fr/en.
 
-**How is the code organized?**
+## Écarts au design
 
-- Directory structure
-- Module organization
-- Naming conventions
+- **Diagramme enrichi dans l'adaptateur de visualisation** (et non dans `WorkflowLinkVisualizationUseCaseImpl`), qui reçoit
+  `WorkflowIncidentPort` : évite d'élargir un constructeur de use case déjà à 11 paramètres. L'étape en échec est aussi
+  ajoutée aux `activeIds` (elle est toujours en attente).
+- **Contrôleur dédié** `WorkflowIncidentController` dans `web.workflow` (même gestionnaire d'exceptions) plutôt que
+  d'étendre `WorkflowLinkVisualizationController`.
 
-## Implementation Notes
+## Notes
 
-**Key technical details to remember:**
-
-### Core Features
-
-- Feature 1: Implementation approach
-- Feature 2: Implementation approach
-- Feature 3: Implementation approach
-
-### Patterns & Best Practices
-
-- Design patterns being used
-- Code style guidelines
-- Common utilities/helpers
-
-## Integration Points
-
-**How do pieces connect?**
-
-- API integration details
-- Database connections
-- Third-party service setup
-
-## Error Handling
-
-**How do we handle failures?**
-
-- Error handling strategy
-- Logging approach
-- Retry/fallback mechanisms
-
-## Performance Considerations
-
-**How do we keep it fast?**
-
-- Optimization strategies
-- Caching approach
-- Query optimization
-- Resource management
-
-## Security Notes
-
-**What security measures are in place?**
-
-- Authentication/authorization
-- Input validation
-- Data encryption
-- Secrets management
+- L'IT moteur dure ~40 s : l'exécuteur asynchrone acquiert jobs et minuteurs par intervalles (~10 s). Attente bornée à
+  120 s.
+- Suivi après merge de la PR #175 : statut `DEFERRED-FEATURES.md` §7 et `DIFFICULTES.md` §11 de l'exemple.

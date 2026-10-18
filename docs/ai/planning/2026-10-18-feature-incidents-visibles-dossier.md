@@ -13,29 +13,29 @@ TDD, un commit par volet.
 
 ## Volet A — domaine et adaptateur
 
-- [ ] **A1.** Modèle (`WorkflowIncident`, `IncidentState`, `TenantIncident`, exceptions), port `WorkflowIncidentPort`.
-- [ ] **A2.** `FlowableWorkflowIncidentAdapter` et son IT sur moteur réel (états, message tronqué, rejeu, tenant).
-- [ ] **A3.** `WorkflowIncidentsUseCaseImpl` (liste du lien, rejeu, liste du tenant, liste système pour MCP) et câblage
+- [x] **A1.** Modèle (`WorkflowIncident`, `IncidentState`, `TenantIncident`, exceptions), port `WorkflowIncidentPort`.
+- [x] **A2.** `FlowableWorkflowIncidentAdapter` et son IT sur moteur réel (états, message tronqué, rejeu, tenant).
+- [x] **A3.** `WorkflowIncidentsUseCaseImpl` (liste du lien, rejeu, liste du tenant, liste système pour MCP) et câblage
   Spring.
-- [ ] **A4.** Diagramme : `failedIds` enrichi (`WorkflowLinkVisualizationUseCaseImpl`, `WorkflowDiagramView.withFailed`).
+- [x] **A4.** Diagramme : `failedIds` enrichi (`WorkflowLinkVisualizationUseCaseImpl`, `WorkflowDiagramView.withFailed`).
 
 ## Volet B — API et MCP
 
-- [ ] **B1.** Endpoints lien (liste, rejeu), audit `incident_retried`, gestion des exceptions (404, 409).
-- [ ] **B2.** `AdminIncidentController` (liste paginée du tenant).
-- [ ] **B3.** MCP `get_dossier` : `incidents` sans message.
-- [ ] **B4.** Golden OpenAPI régénéré, `OpenApiContractIT` vert.
+- [x] **B1.** Endpoints lien (liste, rejeu), audit `incident_retried`, gestion des exceptions (404, 409).
+- [x] **B2.** `AdminIncidentController` (liste paginée du tenant).
+- [x] **B3.** MCP `get_dossier` : `incidents` sans message.
+- [x] **B4.** Golden OpenAPI régénéré, `OpenApiContractIT` vert.
 
 ## Volet C — interface
 
-- [ ] **C1.** `api/incidents.ts` et types.
-- [ ] **C2.** `IncidentBanner.vue` dans la fiche dossier (rejeu sans `confirm`, rechargement du diagramme).
-- [ ] **C3.** `IncidentsAdminView.vue`, route `/admin/incidents`, entrée de menu, i18n fr/en.
-- [ ] **C4.** Playwright (fiche et écran de supervision).
+- [x] **C1.** `api/incidents.ts` et types.
+- [x] **C2.** `IncidentBanner.vue` dans la fiche dossier (rejeu sans `confirm`, rechargement du diagramme).
+- [x] **C3.** `IncidentsAdminView.vue`, route `/admin/incidents`, entrée de menu, i18n fr/en.
+- [x] **C4.** Playwright (fiche et écran de supervision).
 
 ## Documentation et clôture
 
-- [ ] **D1.** `GUIDE-UTILISATEUR.md`, `GUIDE-CONCEPTION-BPMN.md` §6c, `analysis doc/15-serveur-mcp.md`, `TODO.md` §94,
+- [x] **D1.** `GUIDE-UTILISATEUR.md`, `GUIDE-CONCEPTION-BPMN.md` §6c, `analysis doc/15-serveur-mcp.md`, `TODO.md` §94,
   `DEFERRED-FEATURES.md` §7.
 - [ ] **D2.** Verify complet, `test:all`, recette R6 sur l'instance locale, `CHANGELOG.md` à l'ouverture de la PR.
 - [ ] **D3.** Revue adversariale (sous-agent) et correctifs.

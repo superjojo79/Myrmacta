@@ -3575,3 +3575,37 @@ workflow », valeurs texte, noms réservés et doublons refusés côté client ;
 
 **Impacte :** `GUIDE-CONCEPTION-BPMN.md` (§3ter références, §6c Notifier), `GUIDE-UTILISATEUR.md` (démarrer une instance),
 `analysis doc/15-serveur-mcp.md`, `CHANGELOG.md`. Aucune migration, aucune variable d'environnement, golden OpenAPI inchangé.
+
+---
+
+## 94. Incidents visibles et rejouables sur le dossier
+
+[x] livré (branche `feature-incidents-visibles-dossier`). Relevé par la recette de l'exemple riverain (PR #175, cas R6 ;
+`exemples/autorisation-riverain/DIFFICULTES.md` §11) : une brique **asynchrone** en échec partait en *dead letter* sans
+que rien ne le montre — ni la fiche dossier, ni le diagramme (`failedIds` ne retenait que les erreurs BPMN) — et
+sans moyen de la rejouer. Docs SDD : [requirements](docs/ai/requirements/2026-10-18-feature-incidents-visibles-dossier.md),
+[design](docs/ai/design/2026-10-18-feature-incidents-visibles-dossier.md),
+[planning](docs/ai/planning/2026-10-18-feature-incidents-visibles-dossier.md),
+[implementation](docs/ai/implementation/2026-10-18-feature-incidents-visibles-dossier.md),
+[testing](docs/ai/testing/2026-10-18-feature-incidents-visibles-dossier.md).
+
+Décisions (tranchées par l'utilisateur, 2026-10-18) : périmètre « visible + rejouable + supervision » ; deux états
+(`RETRYING` : job ou minuteur en échec avec tentatives restantes ; `INCIDENT` : dead letter) ; MCP en lecture seule.
+
+**D-INCIDENT-MESSAGE** — le message de l'exception (tronqué à 300 caractères) n'est renvoyé qu'à `TENANT_ADMIN` /
+`WORKFLOW_ADMIN` ; il peut contenir des données métier selon la brique. Jamais par MCP, jamais dans l'audit.
+
+**D-INCIDENT-DIAGRAM** — les deux états marquent l'étape en erreur (et active) dans le diagramme ; le bandeau les
+distingue.
+
+**D-INCIDENT-RETRY-SCOPE** — rejeu par `POST /api/workflow-links/{id}/incidents/{jobId}/retry` seulement : le job doit
+appartenir à l'exécution du lien, dans le tenant (sinon 404) et être en dead letter (sinon 409). 3 tentatives rendues
+(défaut du moteur). Journalisé (`SECURITY_AUDIT`, `event=incident_retried`, sans message). Pas de fenêtre de
+confirmation native (bloquée par certains navigateurs, recette du 2026-10-18).
+
+**D-INCIDENT-SCAN** — `GET /api/admin/incidents` lit au plus les 1 000 échecs les plus récents du tenant, rattachés à un
+dossier, et paginés en mémoire ; `truncated` signale la borne. Les jobs restent la source de vérité (pas de table).
+
+**Impacte :** `GUIDE-UTILISATEUR.md` (§0 rôles, §3 « Suivre l'exécution »), `GUIDE-CONCEPTION-BPMN.md` (§6c),
+`analysis doc/15-serveur-mcp.md`, `openapi/openapi.yaml`, `CHANGELOG.md`. Aucune migration, aucune variable
+d'environnement. Suivi : statut de `DEFERRED-FEATURES.md` §7 et de DIFFICULTES §11 une fois la PR #175 mergée.

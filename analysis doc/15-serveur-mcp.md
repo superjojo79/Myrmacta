@@ -10,6 +10,10 @@
 > dans `inactiveReferences` (`activityId`, `parameter`, `source`, `value`) avec `inactiveReferencesMessage`. La
 > publication reste stricte.
 
+> **Mise à jour TODO §94 (2026-10-18).** `get_dossier` renvoie `incidents` : jobs du moteur en échec du dossier
+> (`activityId`, `activityName`, `state` = `RETRYING` ou `INCIDENT`, `since`, `retriesLeft`), **sans** le message de
+> l'exception. Lecture seule : le rejeu reste un geste humain dans l'interface.
+
 > **Statut : analyse initiale + cycle `dev-lifecycle` Phase 3 reviewed
 > (2026-08-27).** Cadrage 2026-08-26 inchangé. Spec d'implémentation :
 > `docs/ai/**/2026-08-27-feature-serveur-mcp.md`. Ne pas lire cette

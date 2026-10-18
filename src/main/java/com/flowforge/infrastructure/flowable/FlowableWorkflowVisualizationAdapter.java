@@ -4,10 +4,12 @@ import com.flowforge.domain.shared.PageQuery;
 import com.flowforge.domain.shared.PageResult;
 import com.flowforge.domain.workflow.model.ActivityHistoryEntry;
 import com.flowforge.domain.workflow.model.WorkflowDiagramView;
+import com.flowforge.domain.workflow.model.WorkflowIncident;
 import com.flowforge.domain.workflow.model.WorkflowProcessInstanceNotFoundException;
 import com.flowforge.domain.workflow.model.WorkflowTaskAlreadyAssignedException;
 import com.flowforge.domain.workflow.model.WorkflowTaskNotFoundException;
 import com.flowforge.domain.workflow.model.WorkflowTaskView;
+import com.flowforge.domain.workflow.port.out.WorkflowIncidentPort;
 import com.flowforge.domain.workflow.port.out.WorkflowVisualizationPort;
 import java.io.IOException;
 import java.io.InputStream;
@@ -33,16 +35,19 @@ class FlowableWorkflowVisualizationAdapter implements WorkflowVisualizationPort 
     private final RuntimeService runtimeService;
     private final HistoryService historyService;
     private final TaskService taskService;
+    private final WorkflowIncidentPort incidentPort;
 
     FlowableWorkflowVisualizationAdapter(
             RepositoryService repositoryService,
             RuntimeService runtimeService,
             HistoryService historyService,
-            TaskService taskService) {
+            TaskService taskService,
+            WorkflowIncidentPort incidentPort) {
         this.repositoryService = Objects.requireNonNull(repositoryService, "repositoryService");
         this.runtimeService = Objects.requireNonNull(runtimeService, "runtimeService");
         this.historyService = Objects.requireNonNull(historyService, "historyService");
         this.taskService = Objects.requireNonNull(taskService, "taskService");
+        this.incidentPort = Objects.requireNonNull(incidentPort, "incidentPort");
     }
 
     @Override
@@ -55,22 +60,33 @@ class FlowableWorkflowVisualizationAdapter implements WorkflowVisualizationPort 
         List<String> activeIds = process.active()
                 ? runtimeService.getActiveActivityIds(processInstanceId)
                 : List.of();
+        // TODO §94 (D-INCIDENT-DIAGRAM) : une étape dont le job est en échec (tentatives restantes ou dead letter) est
+        // marquée en erreur — et reste active : l'exécution l'attend toujours.
+        List<String> incidentIds = process.active()
+                ? incidentPort.listByProcessInstance(processInstanceId, tenantId).stream()
+                        .map(WorkflowIncident::activityId)
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .toList()
+                : List.of();
         List<String> completedIds = activities.stream()
                 .filter(activity -> activity.getEndTime() != null)
                 .map(HistoricActivityInstance::getActivityId)
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList();
-        List<String> failedIds = activities.stream()
-                .filter(activity -> activity.getDeleteReason() != null
-                        && activity.getDeleteReason().startsWith("error"))
-                .map(HistoricActivityInstance::getActivityId)
+        List<String> failedIds = java.util.stream.Stream.concat(
+                        activities.stream()
+                                .filter(activity -> activity.getDeleteReason() != null
+                                        && activity.getDeleteReason().startsWith("error"))
+                                .map(HistoricActivityInstance::getActivityId),
+                        incidentIds.stream())
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList();
         return new WorkflowDiagramView(
                 processModelXml(process.processDefinitionId()),
-                activeIds,
+                java.util.stream.Stream.concat(incidentIds.stream(), activeIds.stream()).distinct().toList(),
                 completedIds,
                 failedIds);
     }

@@ -44,6 +44,7 @@ class FlowableWorkflowVisualizationAdapterTest {
     private RuntimeService runtimeService;
     private HistoryService historyService;
     private TaskService taskService;
+    private com.flowforge.domain.workflow.port.out.WorkflowIncidentPort incidentPort;
     private FlowableWorkflowVisualizationAdapter adapter;
 
     @BeforeEach
@@ -52,8 +53,9 @@ class FlowableWorkflowVisualizationAdapterTest {
         runtimeService = mock(RuntimeService.class);
         historyService = mock(HistoryService.class);
         taskService = mock(TaskService.class);
+        incidentPort = mock(com.flowforge.domain.workflow.port.out.WorkflowIncidentPort.class);
         adapter = new FlowableWorkflowVisualizationAdapter(
-                repositoryService, runtimeService, historyService, taskService);
+                repositoryService, runtimeService, historyService, taskService, incidentPort);
     }
 
     @Test
@@ -79,6 +81,33 @@ class FlowableWorkflowVisualizationAdapterTest {
         assertThat(view.activeIds()).containsExactly("taskA");
         assertThat(view.completedIds()).contains("start", "svc", "other");
         assertThat(view.failedIds()).containsExactly("svc");
+    }
+
+    /** TODO §94 (D-INCIDENT-DIAGRAM) — une étape dont le job est en échec (tentatives ou dead letter) est marquée. */
+    @Test
+    void getDiagram_marksStepsWithAFailedJobAsFailedAndActive() {
+        stubActiveProcess();
+        when(runtimeService.getActiveActivityIds(PI)).thenReturn(List.of());
+        HistoricActivityInstanceQuery activityQuery = mock(HistoricActivityInstanceQuery.class);
+        when(historyService.createHistoricActivityInstanceQuery()).thenReturn(activityQuery);
+        when(activityQuery.processInstanceId(PI)).thenReturn(activityQuery);
+        when(activityQuery.activityTenantId(TENANT)).thenReturn(activityQuery);
+        HistoricActivityInstance bpmnError = activity("svc", null, new Date(), "error: boom");
+        when(activityQuery.list()).thenReturn(List.of(bpmnError));
+        when(repositoryService.getProcessModel(DEF))
+                .thenReturn(new ByteArrayInputStream("<xml/>".getBytes(StandardCharsets.UTF_8)));
+        java.time.Instant now = java.time.Instant.now();
+        when(incidentPort.listByProcessInstance(PI, TENANT)).thenReturn(List.of(
+                new com.flowforge.domain.workflow.model.WorkflowIncident("j1", PI, "mailRefus", "E-mail",
+                        com.flowforge.domain.workflow.model.IncidentState.INCIDENT, now, 0, "x"),
+                new com.flowforge.domain.workflow.model.WorkflowIncident("j2", PI, "svc", "Svc",
+                        com.flowforge.domain.workflow.model.IncidentState.RETRYING, now, 2, "y")));
+
+        WorkflowDiagramView view = adapter.getDiagram(PI, TENANT);
+
+        assertThat(view.failedIds()).containsExactly("svc", "mailRefus");
+        // L'étape en attente de son job est toujours en cours : marquée active aussi.
+        assertThat(view.activeIds()).containsExactly("mailRefus", "svc");
     }
 
     @Test

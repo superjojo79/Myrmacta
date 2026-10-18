@@ -188,6 +188,19 @@ public class WorkflowConfig {
                 knownUserRepository);
     }
 
+    /** TODO §94 — échecs des jobs du moteur rattachés aux dossiers (lecture, rejeu, supervision). */
+    @Bean
+    com.flowforge.domain.workflow.port.in.WorkflowIncidentsUseCase workflowIncidentsUseCase(
+            TenantProperties tenantProperties,
+            DossierWorkflowLinkRepository linkRepository,
+            DossierRepository dossierRepository,
+            WorkflowParticipantPort participantPort,
+            DossierAccessPolicy dossierAccessPolicy,
+            com.flowforge.domain.workflow.port.out.WorkflowIncidentPort incidentPort) {
+        return new com.flowforge.domain.workflow.usecase.WorkflowIncidentsUseCaseImpl(
+                tenantProperties.id(), linkRepository, dossierRepository, participantPort, dossierAccessPolicy, incidentPort);
+    }
+
     @Bean
     ManualStartOrchestrator manualStartOrchestrator(
             DossierRepository dossierRepository,

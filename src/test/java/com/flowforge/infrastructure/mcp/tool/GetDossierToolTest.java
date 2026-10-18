@@ -45,6 +45,7 @@ class GetDossierToolTest {
     private ListDossierElementsUseCase listDossierElementsUseCase;
     private GetDossierWorkflowHistoryUseCase getDossierWorkflowHistoryUseCase;
     private ListDossierRelationsUseCase listDossierRelationsUseCase;
+    private com.flowforge.domain.workflow.port.in.WorkflowIncidentsUseCase incidentsUseCase;
     private GetDossierTool tool;
 
     @BeforeEach
@@ -53,11 +54,13 @@ class GetDossierToolTest {
         listDossierElementsUseCase = mock(ListDossierElementsUseCase.class);
         getDossierWorkflowHistoryUseCase = mock(GetDossierWorkflowHistoryUseCase.class);
         listDossierRelationsUseCase = mock(ListDossierRelationsUseCase.class);
+        incidentsUseCase = mock(com.flowforge.domain.workflow.port.in.WorkflowIncidentsUseCase.class);
         tool = new GetDossierTool(
                 getDossierUseCase,
                 listDossierElementsUseCase,
                 getDossierWorkflowHistoryUseCase,
                 listDossierRelationsUseCase,
+                incidentsUseCase,
                 new TenantProperties(TENANT),
                 new McpAccessContextFactory());
 
@@ -106,6 +109,29 @@ class GetDossierToolTest {
         assertThat(result.elements()).hasSize(1);
         assertThat(result.history()).hasSize(1);
         assertThat(result.relations()).hasSize(1);
+        assertThat(result.incidents()).isEmpty();
+    }
+
+    /** TODO §94 — les échecs des jobs du dossier sont exposés, jamais le message de l'exception. */
+    @Test
+    void exposesTheDossierIncidentsWithoutTheMessage() {
+        UUID dossierId = UUID.randomUUID();
+        when(getDossierUseCase.get(eq(dossierId), any())).thenReturn(dossier(dossierId));
+        when(listDossierElementsUseCase.list(eq(dossierId), any(), any())).thenReturn(PageResult.of(List.of(), 0, 100, 0));
+        when(getDossierWorkflowHistoryUseCase.getHistory(eq(dossierId), any())).thenReturn(PageResult.of(List.of(), 0, 100, 0));
+        when(listDossierRelationsUseCase.list(eq(dossierId), any())).thenReturn(List.of());
+        when(incidentsUseCase.listForDossierSystem(dossierId)).thenReturn(List.of(
+                new com.flowforge.domain.workflow.model.WorkflowIncident("job-1", "pi-1", "mailRefus", "E-mail : refus",
+                        com.flowforge.domain.workflow.model.IncidentState.INCIDENT, Instant.EPOCH, 0, "secret detail")));
+
+        GetDossierTool.Result result = tool.getDossier(dossierId.toString(), null);
+
+        assertThat(result.incidents()).singleElement().satisfies(i -> {
+            assertThat(i.activityId()).isEqualTo("mailRefus");
+            assertThat(i.state()).isEqualTo(com.flowforge.domain.workflow.model.IncidentState.INCIDENT);
+            assertThat(i.processInstanceId()).isEqualTo("pi-1");
+        });
+        assertThat(result.incidents().toString()).doesNotContain("secret detail");
     }
 
     @Test

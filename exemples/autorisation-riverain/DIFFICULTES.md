@@ -197,6 +197,6 @@ reste refusée (D-EDIT-SCOPE inchangée).
   qu'après la transmission du document, pour ne pas marquer l'exécution terminée pendant que des
   tâches restent à faire. Pendant la génération et la transmission, le statut affiché reste
   `EN_INSTRUCTION`.
-- **Aucun test de bout en bout** n'a été possible, puisque le workflow n'est pas encore déployé
-  (point 8). Les expressions, la formule, le formulaire de dossier et le rendu du modèle ont été
-  vérifiés séparément avec les outils de validation à blanc.
+- **Aucun test de bout en bout** n'a encore été fait : le workflow n'a jamais été publié sur l'instance.
+  Les expressions, la formule, le formulaire de dossier et le rendu du modèle ont été vérifiés
+  séparément avec les outils de validation à blanc.

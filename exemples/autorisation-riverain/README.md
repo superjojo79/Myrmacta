@@ -23,7 +23,7 @@ désactivé et le moteur de modèles strict.
 | `autorisation-riverain.bpmn20.xml` | Processus cible, avec complément par le **portail** externe |
 | `generer-bpmn.py` | Génère les deux BPMN (sémantique et mise en page) ; à modifier plutôt que les XML |
 | `config/connecteur-portail.exemple.json` | Connecteur webhook pour un portail de dépôt externe (**non créé**) |
-| `config/exemple-dossier.json` | Jeu de données de recette et variables de démarrage |
+| `config/exemple-dossier.json` | Jeu de données de recette |
 
 ## Déroulé
 
@@ -60,14 +60,14 @@ annulée et l'issue « autorisée tacitement » s'applique.
 Statuts du workflow : `DEPOSEE` (initial), `EN_INSTRUCTION`, `EN_ATTENTE_INFOS`, puis `AUTORISEE`,
 `AUTORISEE_TACITEMENT` ou `REFUSEE` (issue `COMPLETED`).
 
-## État sur l'instance (`tenant_dev`, 2026-10-13)
+## État sur l'instance (`tenant_dev`, relevé le 2026-10-18)
 
 | Élément | État |
 |---|---|
 | Type de dossier `AUTORISATION_RIVERAIN` | Créé, actif |
 | Questionnaires `instruction-…`, `complement-…`, `complement-recu-…`, `transmission-decision-riverain` | Créés |
 | Modèle `decision-autorisation-riverain` | Activé |
-| Workflow `autorisationRiverain` (variante sans portail) | **Brouillon en attente de publication** (écran « Brouillons à publier ») |
+| Workflow `autorisationRiverain` (variante sans portail) | **Brouillon périmé**, proposé le 2026-10-13 avant la PR #174 (adresse passée en variable de démarrage, passerelle `emailConnu`). À remplacer par la version actuelle de `autorisation-riverain-sans-portail.bpmn20.xml` (étape 1 ci-dessous) avant de publier |
 | Connecteur du portail | Non créé (secret à définir) |
 
 ## Mise en service
@@ -76,7 +76,8 @@ Statuts du workflow : `DEPOSEE` (initial), `EN_INSTRUCTION`, `EN_ATTENTE_INFOS`,
    `autorisation-riverain-sans-portail.bpmn20.xml`, via l'outil MCP `deploy_workflow` ou l'éditeur BPMN.
    Avec le portail activé (`APP_PORTAL_ENABLED=true`, `APP_PORTAL_PUBLIC_BASE_URL`), prendre
    `autorisation-riverain.bpmn20.xml` à la place. Le modèle de document peut être encore en brouillon :
-   la réponse le signale dans `inactiveReferences` (TODO §93).
+   la réponse le signale dans `inactiveReferences` (TODO §93). Le brouillon remplace celui du même
+   auteur ; s'il a été écrit par quelqu'un d'autre, passer `replaceExistingDraft=true`.
 2. **Activer le modèle de document** `decision-autorisation-riverain` dans l'administration des modèles.
    C'est un geste humain, impossible par MCP.
 3. **Publier le brouillon** depuis l'écran « Brouillons à publier ». La publication est refusée tant que

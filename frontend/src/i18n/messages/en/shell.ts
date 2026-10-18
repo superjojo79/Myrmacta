@@ -23,6 +23,7 @@ const shell: typeof fr = {
     assistant: 'Assistant',
     parcours: 'Journeys',
     drafts: 'Drafts',
+    incidents: 'Incidents',
     workflows: 'Workflows',
     taskQuestions: 'Task questions',
     decisionTables: 'Decision tables',

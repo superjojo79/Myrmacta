@@ -19,6 +19,18 @@ export default {
       },
     },
   },
+  incidents: {
+    title: 'Étapes en échec',
+    state: {
+      INCIDENT: 'Incident',
+      RETRYING: 'Nouvelle tentative prévue ({n} restantes)',
+    },
+    since: 'depuis le {date}',
+    retry: 'Rejouer',
+    hintAdmin: 'Corrigez la cause (donnée du dossier, configuration…) puis rejouez l’incident.',
+    hintReader: 'Un administrateur doit rejouer l’étape une fois la cause corrigée.',
+    retryError: 'Le rejeu a échoué.',
+  },
   tasks: {
     title: 'Tâches du lien',
     empty: 'Aucune tâche ouverte.',

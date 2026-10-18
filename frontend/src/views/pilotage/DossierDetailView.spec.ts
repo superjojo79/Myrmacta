@@ -8,6 +8,7 @@ import * as dossiersApi from '@/api/dossiers'
 import * as typesApi from '@/api/dossierTypes'
 import * as workflowsApi from '@/api/workflows'
 import * as tasksApi from '@/api/tasks'
+import * as incidentsApi from '@/api/incidents'
 import { useAuthStore } from '@/stores/auth'
 import { asPage } from '@/api/page'
 
@@ -23,6 +24,7 @@ vi.mock('@/api/workflows', () => ({
   listAssignableUsers: vi.fn().mockResolvedValue([]),
 }))
 vi.mock('@/api/tasks')
+vi.mock('@/api/incidents')
 vi.mock('@/api/purgeOutbox', () => ({
   enqueueDossierPurge: vi.fn().mockResolvedValue(undefined),
 }))
@@ -123,6 +125,55 @@ describe('DossierDetailView phase 8', () => {
     await flushPromises()
     return wrapper
   }
+
+  describe('incidents (TODO §94)', () => {
+    const incident = {
+      jobId: 'job-1',
+      activityId: 'mailRefus',
+      activityName: 'E-mail : refus',
+      state: 'INCIDENT' as const,
+      since: '2026-10-18T18:51:26Z',
+      retriesLeft: 0,
+      message: 'notificationTo source dossierField:email is not a single e-mail address',
+    }
+
+    it('affiche le bandeau et rejoue un incident pour un administrateur', async () => {
+      vi.mocked(incidentsApi.listLinkIncidents).mockResolvedValueOnce([incident]).mockResolvedValue([])
+      vi.mocked(incidentsApi.retryIncident).mockResolvedValue(undefined)
+      const wrapper = await mountDetail(['WORKFLOW_ADMIN'])
+
+      expect(wrapper.find('[data-testid="incident-banner"]').text()).toContain('E-mail : refus')
+      const diagramCalls = vi.mocked(workflowsApi.getWorkflowDiagram).mock.calls.length
+      await wrapper.get('[data-testid="incident-retry"]').trigger('click')
+      await flushPromises()
+
+      expect(incidentsApi.retryIncident).toHaveBeenCalledWith('link-1', 'job-1')
+      expect(vi.mocked(workflowsApi.getWorkflowDiagram).mock.calls.length).toBeGreaterThan(diagramCalls)
+      expect(wrapper.find('[data-testid="incident-banner"]').exists()).toBe(false)
+    })
+
+    it('un gestionnaire voit le bandeau sans bouton « Rejouer »', async () => {
+      vi.mocked(incidentsApi.listLinkIncidents).mockResolvedValue([{ ...incident, message: undefined }])
+      const wrapper = await mountDetail(['DOSSIER_MANAGER'], true)
+
+      expect(wrapper.find('[data-testid="incident-banner"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="incident-retry"]').exists()).toBe(false)
+    })
+
+    it('un rejeu refusé affiche une erreur au lieu de faire disparaître le bandeau', async () => {
+      vi.mocked(incidentsApi.listLinkIncidents).mockResolvedValue([incident])
+      vi.mocked(incidentsApi.retryIncident).mockRejectedValue({
+        response: { status: 409, data: { detail: 'Job job-1 still has automatic retries left' } },
+      })
+      const wrapper = await mountDetail(['TENANT_ADMIN'])
+
+      await wrapper.get('[data-testid="incident-retry"]').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.text()).toContain('still has automatic retries left')
+      expect(wrapper.find('[data-testid="incident-banner"]').exists()).toBe(true)
+    })
+  })
 
   it('starts workflow from dialog with default key', async () => {
     const wrapper = await mountDetail(['TENANT_ADMIN'])

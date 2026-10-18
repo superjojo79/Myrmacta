@@ -21,6 +21,7 @@ export default {
     assistant: 'Assistant',
     parcours: 'Parcours',
     drafts: 'Brouillons',
+    incidents: 'Incidents',
     workflows: 'Workflows',
     taskQuestions: 'Questions de tâche',
     decisionTables: 'Tables de décision',

@@ -15,6 +15,7 @@ import AddElementDialog from '@/components/dossier/AddElementDialog.vue'
 import RelationsList from '@/components/dossier/RelationsList.vue'
 import LinkDossierDialog from '@/components/dossier/LinkDossierDialog.vue'
 import BpmnViewer from '@/components/workflow/BpmnViewer.vue'
+import IncidentBanner from '@/components/workflow/IncidentBanner.vue'
 import TaskList from '@/components/workflow/TaskList.vue'
 import HistoryTimeline from '@/components/workflow/HistoryTimeline.vue'
 import StartWorkflowDialog from '@/components/workflow/StartWorkflowDialog.vue'
@@ -47,6 +48,7 @@ const {
   error,
   diagramUnavailable,
   assignableUsers,
+  incidents,
 } = storeToRefs(store)
 const { user, isTenantAdmin, isWorkflowAdmin } = storeToRefs(auth)
 
@@ -57,6 +59,8 @@ const addElementOpen = ref(false)
 const reassignTaskId = ref<string | null>(null)
 const reassignUserId = ref('')
 const actionError = ref<string | null>(null)
+/** TODO §94 — job dont le rejeu est en cours. */
+const retryingJobId = ref<string | null>(null)
 const assignableUsersLoaded = ref(false)
 
 const canReassign = computed(() => isTenantAdmin.value || isWorkflowAdmin.value)
@@ -171,6 +175,19 @@ async function onStart(key: string, variables: Record<string, string> = {}) {
   }
 }
 
+async function onRetryIncident(jobId: string) {
+  if (!linkId.value) return
+  actionError.value = null
+  retryingJobId.value = jobId
+  try {
+    await store.retryIncident(linkId.value, jobId)
+  } catch (err) {
+    actionError.value = toProblemDetail(err).detail ?? t('workflow.incidents.retryError')
+  } finally {
+    retryingJobId.value = null
+  }
+}
+
 async function onComplete(taskId: string, variables: Record<string, unknown> = {}) {
   try {
     await store.complete(taskId, variables)
@@ -276,6 +293,12 @@ async function confirmReassign() {
       @submit="onLink"
     />
 
+    <IncidentBanner
+      :incidents="incidents"
+      :can-retry="isWorkflowAdmin"
+      :retrying-job-id="retryingJobId"
+      @retry="onRetryIncident"
+    />
     <BpmnViewer :diagram="diagram" :unavailable="diagramUnavailable || !linkId" />
     <HistoryTimeline
       :history="history"

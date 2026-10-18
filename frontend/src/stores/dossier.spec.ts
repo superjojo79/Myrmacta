@@ -5,6 +5,7 @@ import * as dossiersApi from '@/api/dossiers'
 import * as typesApi from '@/api/dossierTypes'
 import * as workflowsApi from '@/api/workflows'
 import * as elementsApi from '@/api/elements'
+import * as incidentsApi from '@/api/incidents'
 import { asPage } from '@/api/page'
 
 vi.mock('@/api/dossiers')
@@ -12,6 +13,7 @@ vi.mock('@/api/dossierTypes')
 vi.mock('@/api/workflows')
 vi.mock('@/api/tasks')
 vi.mock('@/api/elements')
+vi.mock('@/api/incidents')
 
 describe('dossier store', () => {
   beforeEach(() => {
@@ -285,6 +287,60 @@ describe('dossier store', () => {
 
     expect(workflowsApi.claimWorkflowTask).toHaveBeenCalledWith('link-1', 't1')
     expect(store.tasks[0].assignee).toBe('me')
+  })
+
+  describe('incidents (TODO §94)', () => {
+    const incident = {
+      jobId: 'job-1',
+      activityId: 'mailRefus',
+      activityName: 'E-mail : refus',
+      state: 'INCIDENT' as const,
+      since: '2026-10-18T18:51:26Z',
+      retriesLeft: 0,
+    }
+
+    beforeEach(() => {
+      vi.mocked(workflowsApi.getWorkflowDiagram).mockResolvedValue({
+        bpmnXml: '<xml/>',
+        activeIds: [],
+        completedIds: [],
+        failedIds: ['mailRefus'],
+      })
+      vi.mocked(workflowsApi.getWorkflowHistory).mockResolvedValue(asPage([]))
+      vi.mocked(workflowsApi.getWorkflowTasks).mockResolvedValue(asPage([]))
+    })
+
+    it('loadVisualization charge aussi les échecs du lien', async () => {
+      vi.mocked(incidentsApi.listLinkIncidents).mockResolvedValue([incident])
+      const store = useDossierStore()
+
+      await store.loadVisualization('link-1')
+
+      expect(incidentsApi.listLinkIncidents).toHaveBeenCalledWith('link-1')
+      expect(store.incidents).toEqual([incident])
+    })
+
+    it('un refus de lecture des échecs ne masque ni le diagramme ni le dossier', async () => {
+      vi.mocked(incidentsApi.listLinkIncidents).mockRejectedValue({ response: { status: 403 } })
+      const store = useDossierStore()
+
+      await store.loadVisualization('link-1')
+
+      expect(store.incidents).toEqual([])
+      expect(store.diagram?.failedIds).toEqual(['mailRefus'])
+    })
+
+    it('retryIncident rejoue puis recharge la visualisation du lien', async () => {
+      vi.mocked(incidentsApi.retryIncident).mockResolvedValue(undefined)
+      vi.mocked(incidentsApi.listLinkIncidents).mockResolvedValue([])
+      const store = useDossierStore()
+
+      await store.retryIncident('link-1', 'job-1')
+
+      expect(incidentsApi.retryIncident).toHaveBeenCalledWith('link-1', 'job-1')
+      expect(workflowsApi.getWorkflowDiagram).toHaveBeenCalledWith('link-1')
+      expect(store.incidents).toEqual([])
+    })
   })
 
   it('loadAssignableUsers stores the users returned for the link', async () => {

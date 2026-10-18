@@ -21,6 +21,18 @@ const workflow: typeof fr = {
       },
     },
   },
+  incidents: {
+    title: 'Failed steps',
+    state: {
+      INCIDENT: 'Incident',
+      RETRYING: 'Retry scheduled ({n} left)',
+    },
+    since: 'since {date}',
+    retry: 'Retry',
+    hintAdmin: 'Fix the cause (dossier data, configuration…) then retry the incident.',
+    hintReader: 'An administrator must retry the step once the cause is fixed.',
+    retryError: 'The retry failed.',
+  },
   tasks: {
     title: 'Link tasks',
     empty: 'No open task.',

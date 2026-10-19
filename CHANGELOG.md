@@ -30,6 +30,10 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
+- **[PR #176](https://github.com/superjojo79/FlowForge/pull/176) — TODO §94** — Les étapes automatiques en échec (job en
+  nouvelle tentative ou en *dead letter*) sont visibles sur la fiche dossier (bandeau, diagramme) et dans Admin → Incidents ;
+  un administrateur les rejoue une fois la cause corrigée. Message technique réservé aux administrateurs, lecture seule MCP.
+
 - **[PR #174](https://github.com/superjojo79/FlowForge/pull/174) — TODO §93** — Un brouillon de workflow proposé par MCP, un
   parcours ou un import peut référencer une ressource encore inactive (modèle en brouillon…) : elle est signalée et la publication
   reste stricte. « Notifier » lit son destinataire dans le dossier (`dossierField:email`), et « Démarrer un workflow » accepte des

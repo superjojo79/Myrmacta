@@ -37,8 +37,8 @@ TDD, un commit par volet.
 
 - [x] **D1.** `GUIDE-UTILISATEUR.md`, `GUIDE-CONCEPTION-BPMN.md` §6c, `analysis doc/15-serveur-mcp.md`, `TODO.md` §94,
   `DEFERRED-FEATURES.md` §7.
-- [ ] **D2.** Verify complet, `test:all`, recette R6 sur l'instance locale, `CHANGELOG.md` à l'ouverture de la PR.
-- [ ] **D3.** Revue adversariale (sous-agent) et correctifs.
+- [x] **D2.** Verify complet, `test:all`, recette R6 sur l'instance locale, `CHANGELOG.md` à l'ouverture de la PR.
+- [x] **D3.** Revue adversariale (sous-agent) et correctifs.
 
 ## Risques
 

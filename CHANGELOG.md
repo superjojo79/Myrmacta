@@ -30,7 +30,7 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
-- **PR à venir — concepteur de parcours** — L'aperçu dessine le diagramme BPMN au lieu d'afficher le XML. Le parcours peut
+- **[PR #177](https://github.com/superjojo79/FlowForge/pull/177) — concepteur de parcours** — L'aperçu dessine le diagramme BPMN au lieu d'afficher le XML. Le parcours peut
   désigner le type de dossier sur lequel il porte : ses champs sont proposés dans les formules (liste « Insérer… », vérification
   pendant la frappe) et dans les correspondances, désormais saisies comme un tableau « champ ← valeur ».
 

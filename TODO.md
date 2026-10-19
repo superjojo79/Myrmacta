@@ -3606,6 +3606,25 @@ confirmation native (bloquée par certains navigateurs, recette du 2026-10-18).
 **D-INCIDENT-SCAN** — `GET /api/admin/incidents` lit au plus les 1 000 échecs les plus récents du tenant, rattachés à un
 dossier, et paginés en mémoire ; `truncated` signale la borne. Les jobs restent la source de vérité (pas de table).
 
+**Revue adversariale (2026-10-19, sous-agent, aucun High) — corrigée :**
+- **M1** — un job sans instance de process (minuteur de démarrage) faisait tomber `/api/admin/incidents` en 500 : ignoré.
+- **M2** — l'échec d'un sous-process appelé (`callActivity`) était invisible : rapporté à l'instance racine du lien et à
+  l'étape d'appel du diagramme (« Appel › étape du sous-process »), rejouable depuis le dossier.
+- **L1/L2** — rejeu sans effet (exécution disparue) ou concurrent : 409 au message neutre (traduit dans l'interface) au
+  lieu de 204 trompeur ou de 500.
+- **L4** — tri départagé par `jobId`, `truncated` calculé sur une lecture de 1 001, liens chargés en une requête `IN`.
+- **L5** — l'audit `incident_retried` n'est écrit qu'après le commit.
+- **L6** — bandeau en région nommée (plus d'alerte réannoncée), boutons « Rejouer » nommés d'après l'étape, retour à la page
+  précédente quand un rejeu vide la dernière, réponse périmée d'un autre lien ignorée ; relectures à 5 s et 15 s après un
+  rejeu (relevé en recette : l'état « nouvelle tentative prévue » restait affiché).
+- **Info** — 204 documenté, `@PreAuthorize` sur `/api/admin/incidents`, port système séparé pour MCP (vue avec
+  `workflowLinkId`), un simple lecteur du dossier reçoit une liste vide (plus de refus journalisé à chaque fiche),
+  troncature sûre des caractères Unicode, pluriel des tentatives.
+- **L3 (acté, non modifié)** — le message est montré à `WORKFLOW_ADMIN` comme à `TENANT_ADMIN` (décision du 2026-10-18),
+  alors que les champs sensibles ne sont visibles que de `TENANT_ADMIN`. Risque accepté : les messages des briques
+  FlowForge ne reprennent pas de valeur de champ (« Notifier » nomme la source) ; un message d'exception tierce
+  (connecteur, JDBC) pourrait en contenir. À reconsidérer si un cas réel apparaît.
+
 **Impacte :** `GUIDE-UTILISATEUR.md` (§0 rôles, §3 « Suivre l'exécution »), `GUIDE-CONCEPTION-BPMN.md` (§6c),
 `analysis doc/15-serveur-mcp.md`, `openapi/openapi.yaml`, `CHANGELOG.md`. Aucune migration, aucune variable
 d'environnement. Suivi : statut de `DEFERRED-FEATURES.md` §7 et de DIFFICULTES §11 une fois la PR #175 mergée.

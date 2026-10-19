@@ -182,7 +182,11 @@ async function onRetryIncident(jobId: string) {
   try {
     await store.retryIncident(linkId.value, jobId)
   } catch (err) {
-    actionError.value = toProblemDetail(err).detail ?? t('workflow.incidents.retryError')
+    const problem = toProblemDetail(err)
+    actionError.value =
+      problem.status === 409
+        ? t('workflow.incidents.alreadyRetried')
+        : (problem.detail ?? t('workflow.incidents.retryError'))
   } finally {
     retryingJobId.value = null
   }

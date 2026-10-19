@@ -24,6 +24,11 @@ async function load(): Promise<void> {
   error.value = null
   try {
     const result = await listTenantIncidents({ page: page.value, size: PAGE_SIZE })
+    // Revue L6 : un rejeu qui vide la dernière page ramène à la précédente plutôt qu'à un faux « aucun échec ».
+    if (result.content.length === 0 && page.value > 0) {
+      page.value -= 1
+      return
+    }
     rows.value = result.content
     totalPages.value = result.totalPages
     truncated.value = result.truncated
@@ -42,7 +47,11 @@ async function onRetry(row: TenantIncident): Promise<void> {
     await retryIncident(row.linkId, row.jobId)
     await load()
   } catch (err) {
-    error.value = toProblemDetail(err).detail ?? t('workflow.incidents.retryError')
+    const problem = toProblemDetail(err)
+    error.value =
+      problem.status === 409
+        ? t('workflow.incidents.alreadyRetried')
+        : (problem.detail ?? t('workflow.incidents.retryError'))
   } finally {
     retryingJobId.value = null
   }
@@ -86,7 +95,7 @@ onMounted(load)
             {{
               row.state === 'INCIDENT'
                 ? t('workflow.incidents.state.INCIDENT')
-                : t('workflow.incidents.state.RETRYING', { n: row.retriesLeft })
+                : t('workflow.incidents.state.RETRYING', row.retriesLeft)
             }}
           </td>
           <td>{{ row.since ? formatDateTime(row.since) : '—' }}</td>
@@ -97,6 +106,7 @@ onMounted(load)
               type="button"
               data-testid="incident-admin-retry"
               :disabled="retryingJobId === row.jobId"
+              :aria-label="t('workflow.incidents.retryStep', { step: row.activityName })"
               @click="onRetry(row)"
             >
               {{ t('workflow.incidents.retry') }}

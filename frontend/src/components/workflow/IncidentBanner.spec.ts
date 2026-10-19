@@ -39,9 +39,22 @@ describe('IncidentBanner (TODO §94)', () => {
       'single e-mail address',
     )
     expect(rows[1].text()).toContain('Appel ERP')
-    expect(rows[1].text()).toContain('2')
+    expect(rows[1].text()).toContain('2 restantes')
     expect(rows[1].find('[data-testid="incident-message"]').exists()).toBe(false)
-    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+    // Revue L6 : région nommée, pas d'alerte réannoncée à chaque rechargement.
+    const region = wrapper.get('[data-testid="incident-banner"]')
+    expect(region.attributes('role')).toBe('region')
+    expect(wrapper.get(`#${region.attributes('aria-labelledby')}`).text()).toBe('Étapes en échec')
+  })
+
+  it('accorde le nombre de tentatives restantes', () => {
+    const wrapper = mount(IncidentBanner, { props: { incidents: [{ ...retrying, retriesLeft: 1 }], canRetry: false } })
+    expect(wrapper.text()).toContain('1 restante)')
+  })
+
+  it('nomme chaque bouton « Rejouer » d’après son étape', () => {
+    const wrapper = mount(IncidentBanner, { props: { incidents: [incident], canRetry: true } })
+    expect(wrapper.get('[data-testid="incident-retry"]').attributes('aria-label')).toBe('Rejouer : E-mail : refus')
   })
 
   it('propose « Rejouer » seulement sur un incident et pour qui peut rejouer', async () => {

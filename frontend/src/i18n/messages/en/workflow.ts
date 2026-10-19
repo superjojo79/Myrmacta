@@ -25,10 +25,12 @@ const workflow: typeof fr = {
     title: 'Failed steps',
     state: {
       INCIDENT: 'Incident',
-      RETRYING: 'Retry scheduled ({n} left)',
+      RETRYING: 'Retry scheduled ({n} left) | Retry scheduled ({n} left)',
     },
     since: 'since {date}',
     retry: 'Retry',
+    retryStep: 'Retry: {step}',
+    alreadyRetried: 'This incident has already been retried or is being resumed.',
     hintAdmin: 'Fix the cause (dossier data, configuration…) then retry the incident.',
     hintReader: 'An administrator must retry the step once the cause is fixed.',
     retryError: 'The retry failed.',

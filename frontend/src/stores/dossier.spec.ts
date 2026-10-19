@@ -330,6 +330,46 @@ describe('dossier store', () => {
       expect(store.diagram?.failedIds).toEqual(['mailRefus'])
     })
 
+    it('après un rejeu, relit le lien à 5 s puis 15 s pour suivre la reprise par le moteur', async () => {
+      vi.useFakeTimers()
+      try {
+        vi.mocked(incidentsApi.retryIncident).mockResolvedValue(undefined)
+        vi.mocked(incidentsApi.listLinkIncidents)
+          .mockResolvedValueOnce([{ ...incident, state: 'RETRYING', retriesLeft: 3 }])
+          .mockResolvedValue([])
+        const store = useDossierStore()
+
+        await store.retryIncident('link-1', 'job-1')
+        expect(store.incidents).toHaveLength(1)
+
+        await vi.advanceTimersByTimeAsync(5_000)
+        expect(store.incidents).toEqual([])
+        const calls = vi.mocked(incidentsApi.listLinkIncidents).mock.calls.length
+        await vi.advanceTimersByTimeAsync(10_000)
+        expect(vi.mocked(incidentsApi.listLinkIncidents).mock.calls.length).toBe(calls + 1)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('les relectures programmées ne touchent pas un autre dossier ouvert entre-temps', async () => {
+      vi.useFakeTimers()
+      try {
+        vi.mocked(incidentsApi.retryIncident).mockResolvedValue(undefined)
+        vi.mocked(incidentsApi.listLinkIncidents).mockResolvedValue([])
+        const store = useDossierStore()
+
+        await store.retryIncident('link-1', 'job-1')
+        await store.loadVisualization('link-2')
+        vi.mocked(incidentsApi.listLinkIncidents).mockClear()
+        await vi.advanceTimersByTimeAsync(20_000)
+
+        expect(incidentsApi.listLinkIncidents).not.toHaveBeenCalledWith('link-1')
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
     it('retryIncident rejoue puis recharge la visualisation du lien', async () => {
       vi.mocked(incidentsApi.retryIncident).mockResolvedValue(undefined)
       vi.mocked(incidentsApi.listLinkIncidents).mockResolvedValue([])

@@ -24,10 +24,11 @@ const { t } = useI18n()
   <section
     v-if="incidents.length > 0"
     class="incident-banner"
-    role="alert"
+    role="region"
+    aria-labelledby="incident-banner-title"
     data-testid="incident-banner"
   >
-    <h2>{{ t('workflow.incidents.title') }}</h2>
+    <h2 id="incident-banner-title">{{ t('workflow.incidents.title') }}</h2>
     <ul>
       <li
         v-for="incident in incidents"
@@ -42,7 +43,7 @@ const { t } = useI18n()
           {{
             incident.state === 'INCIDENT'
               ? t('workflow.incidents.state.INCIDENT')
-              : t('workflow.incidents.state.RETRYING', { n: incident.retriesLeft })
+              : t('workflow.incidents.state.RETRYING', incident.retriesLeft)
           }}
         </span>
         <strong>{{ incident.activityName }}</strong>
@@ -60,6 +61,7 @@ const { t } = useI18n()
           type="button"
           data-testid="incident-retry"
           :disabled="retryingJobId === incident.jobId"
+          :aria-label="t('workflow.incidents.retryStep', { step: incident.activityName })"
           @click="emit('retry', incident.jobId)"
         >
           {{ t('workflow.incidents.retry') }}

@@ -84,6 +84,35 @@ describe('IncidentsAdminView (TODO §94)', () => {
     expect(wrapper.text()).toContain('Aucune étape en échec')
   })
 
+  it('revient à la page précédente quand le rejeu vide la dernière page', async () => {
+    vi.mocked(incidentsApi.listTenantIncidents)
+      .mockResolvedValueOnce(page({ page: 0, totalPages: 2 }))
+      .mockResolvedValueOnce(page({ page: 1, totalPages: 2 }))
+      .mockResolvedValueOnce(page({ content: [], page: 1, totalPages: 1 }))
+      .mockResolvedValue(page({ page: 0, totalPages: 1 }))
+    vi.mocked(incidentsApi.retryIncident).mockResolvedValue(undefined)
+    const wrapper = mountView()
+    await flushPromises()
+    await wrapper.get('[data-testid="admin-pager-next"]').trigger('click')
+    await flushPromises()
+
+    await wrapper.findAll('[data-testid="incident-admin-retry"]')[0].trigger('click')
+    await flushPromises()
+
+    expect(vi.mocked(incidentsApi.listTenantIncidents).mock.lastCall?.[0]).toEqual({ page: 0, size: 20 })
+    expect(wrapper.findAll('[data-testid="incident-admin-row"]')).toHaveLength(2)
+  })
+
+  it('traduit un 409 de rejeu', async () => {
+    vi.mocked(incidentsApi.listTenantIncidents).mockResolvedValue(page())
+    vi.mocked(incidentsApi.retryIncident).mockRejectedValue({ response: { status: 409, data: { detail: 'technical' } } })
+    const wrapper = mountView()
+    await flushPromises()
+    await wrapper.findAll('[data-testid="incident-admin-retry"]')[0].trigger('click')
+    await flushPromises()
+    expect(wrapper.get('[role="alert"]').text()).toContain('Cet incident a déjà été rejoué')
+  })
+
   it('signale une liste tronquée et une erreur de chargement', async () => {
     vi.mocked(incidentsApi.listTenantIncidents).mockResolvedValue(page({ truncated: true }))
     const truncated = mountView()

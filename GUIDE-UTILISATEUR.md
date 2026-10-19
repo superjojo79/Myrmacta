@@ -274,7 +274,9 @@ Toujours sur la fiche dossier :
   **incident** (plus de tentative automatique). Visible de quiconque voit les tâches de l'exécution ;
   le **message technique** n'est montré qu'aux `TENANT_ADMIN`/`WORKFLOW_ADMIN`. Une fois la cause
   corrigée (par exemple une adresse e-mail mal saisie dans le dossier), un administrateur clique sur
-  **Rejouer** : l'étape repart et le workflow reprend. Le rejeu est journalisé.
+  **Rejouer** : l'étape repart et le workflow reprend. Le rejeu est journalisé. Juste après, l'étape peut
+  apparaître quelques secondes en « nouvelle tentative prévue », le temps que le moteur la reprenne ; la fiche se
+  met à jour seule. Un échec dans un sous-process appelé s'affiche sur l'étape d'appel (« Appel › étape »).
 
 Tous les incidents du tenant se retrouvent dans **Admin → Incidents** (`/admin/incidents`,
 `TENANT_ADMIN`/`WORKFLOW_ADMIN`) : dossier (lien vers la fiche), workflow, étape, état, date, message et

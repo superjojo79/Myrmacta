@@ -39,6 +39,14 @@ todo_ref: TODO.md §94
 - **Contrôleur dédié** `WorkflowIncidentController` dans `web.workflow` (même gestionnaire d'exceptions) plutôt que
   d'étendre `WorkflowLinkVisualizationController`.
 
+## Revue adversariale (Phase 9)
+
+Sous-agent en lecture seule (javap des jars Flowable 8 pour les comportements du moteur). Aucun High. Correctifs :
+M1, M2, L1, L2, L4, L5, L6 et les points Info — détail dans `TODO.md` §94. L3 acté (risque accepté et documenté).
+Recette locale (cas R6 de l'exemple riverain) : bandeau, diagramme marqué, correction de l'adresse, rejeu → e-mail reçu
+dans Mailpit ; elle a révélé l'état « nouvelle tentative prévue » resté affiché après un rejeu, corrigé par des
+relectures programmées.
+
 ## Notes
 
 - L'IT moteur dure ~40 s : l'exécuteur asynchrone acquiert jobs et minuteurs par intervalles (~10 s). Attente bornée à

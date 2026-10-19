@@ -163,14 +163,16 @@ describe('DossierDetailView phase 8', () => {
     it('un rejeu refusé affiche une erreur au lieu de faire disparaître le bandeau', async () => {
       vi.mocked(incidentsApi.listLinkIncidents).mockResolvedValue([incident])
       vi.mocked(incidentsApi.retryIncident).mockRejectedValue({
-        response: { status: 409, data: { detail: 'Job job-1 still has automatic retries left' } },
+        response: { status: 409, data: { detail: 'Incident job-1 has already been retried or is retrying' } },
       })
       const wrapper = await mountDetail(['TENANT_ADMIN'])
 
       await wrapper.get('[data-testid="incident-retry"]').trigger('click')
       await flushPromises()
 
-      expect(wrapper.text()).toContain('still has automatic retries left')
+      // Revue L2 : message traduit, pas le détail technique du serveur.
+      expect(wrapper.text()).toContain('Cet incident a déjà été rejoué')
+      expect(wrapper.text()).not.toContain('has already been retried')
       expect(wrapper.find('[data-testid="incident-banner"]').exists()).toBe(true)
     })
   })

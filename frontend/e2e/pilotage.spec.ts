@@ -4319,6 +4319,94 @@ test('E2E-PARCOURS-1 parcours designer: build a step list, save, compile to a dr
   expect(compiledWith).toEqual({ dryRun: false, replaceDraft: false })
 })
 
+test('E2E-PARCOURS-2 parcours designer: dossier type, field mapping rows, live formula check and BPMN diagram preview', async ({ page }) => {
+  await mockSession(page)
+  let saved: { definition: { dossierTypeCode: string | null; steps: { params: Record<string, string> }[] } } | null = null
+  const validated: string[] = []
+  const bpmn = `<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="d" targetNamespace="t">
+  <process id="p1" isExecutable="true">
+    <startEvent id="start"/><sequenceFlow id="f1" sourceRef="start" targetRef="maj"/>
+    <serviceTask id="maj" name="Mettre à jour"/><sequenceFlow id="f2" sourceRef="maj" targetRef="end"/>
+    <endEvent id="end"/>
+  </process>
+  <bpmndi:BPMNDiagram id="dia"><bpmndi:BPMNPlane id="plane" bpmnElement="p1">
+    <bpmndi:BPMNShape id="s_start" bpmnElement="start"><dc:Bounds x="100" y="100" width="36" height="36"/></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="s_maj" bpmnElement="maj"><dc:Bounds x="200" y="78" width="100" height="80"/></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="s_end" bpmnElement="end"><dc:Bounds x="360" y="100" width="36" height="36"/></bpmndi:BPMNShape>
+    <bpmndi:BPMNEdge id="e_f1" bpmnElement="f1"><di:waypoint x="136" y="118"/><di:waypoint x="200" y="118"/></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="e_f2" bpmnElement="f2"><di:waypoint x="300" y="118"/><di:waypoint x="360" y="118"/></bpmndi:BPMNEdge>
+  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
+</definitions>`
+  await page.route('**/api/bpmn-building-blocks/references/**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }))
+  await page.route('**/api/task-question-schemas**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(envelope([])) }))
+  await page.route(/\/api\/dossier-types(?:\?|$)/, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(envelope([{
+        id: 'dt-1', tenantId: 't', code: 'PERMIS', label: 'Permis riverain', workflowKey: 'p1', active: true, allowUnknownFields: false,
+        fieldDefinitions: [
+          { name: 'adresse', label: 'Adresse', type: 'STRING', required: true },
+          { name: 'montant', label: 'Montant', type: 'NUMBER', required: false },
+        ],
+      }])),
+    }))
+  await page.route('**/api/expressions/validate', async (route) => {
+    const { expression } = route.request().postDataJSON() as { expression: string }
+    validated.push(expression)
+    const valid = !expression.trim().endsWith('+')
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(valid ? { valid } : { valid, message: 'expression incomplète', position: 3 }) })
+  })
+  await page.route('**/api/parcours', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }))
+  await page.route('**/api/parcours/p1', async (route) => {
+    saved = route.request().postDataJSON()
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ key: 'p1', label: 'Permis', version: 1, definition: saved!.definition, updatedAt: '2026-10-01T10:00:00Z', updatedBy: 'u' }),
+    })
+  })
+  await page.route('**/api/parcours/preview', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ xml: bpmn, sha256: 'a'.repeat(64), warnings: [], draftWritten: false, replacedExistingDraft: false }) }))
+
+  await openApp(page)
+  await page.getByRole('link', { name: 'Parcours' }).click()
+  await page.getByTestId('parcours-new').click()
+  await page.getByTestId('parcours-dossier-type').selectOption('PERMIS')
+  await expect(page.getByTestId('parcours-key')).toHaveValue('p1')
+  await page.getByTestId('parcours-label').fill('Permis')
+
+  await page.getByTestId('step-add').click()
+  await page.getByTestId('step-kind').selectOption('EXPRESSION')
+  await page.getByTestId('param-formula').fill('1 +')
+  await expect(page.getByTestId('param-formula-status')).toContainText('expression incomplète')
+  await page.getByTestId('param-formula').fill('')
+  await page.getByTestId('param-formula-insert').selectOption('dossier.fields.montant')
+  await expect(page.getByTestId('param-formula')).toHaveValue('dossier.fields.montant')
+  await expect(page.getByTestId('param-formula-status')).toContainText('Formule valide')
+  await page.getByTestId('param-formulaResult').fill('montantCalcule')
+
+  await page.getByTestId('step-add').click()
+  await page.getByTestId('step-kind').nth(1).selectOption('MAP_FIELDS')
+  await page.getByTestId('mapping-field').selectOption('adresse')
+  await page.getByTestId('mapping-expression-insert').selectOption('variables.montantCalcule')
+  await expect(page.getByTestId('mapping-warning')).toHaveCount(0)
+
+  await page.getByTestId('parcours-save').click()
+  await expect(page.getByTestId('parcours-notice')).toContainText('version 1')
+  expect(saved!.definition.dossierTypeCode).toBe('PERMIS')
+  expect(saved!.definition.steps[1].params).toEqual({ fieldMapping: 'adresse = variables.montantCalcule' })
+  expect(validated).toContain('1 +')
+
+  await page.getByTestId('parcours-preview').click()
+  await expect(page.getByTestId('parcours-diagram').locator('[data-element-id="maj"]')).toBeVisible()
+  await expect(page.getByTestId('parcours-xml')).toBeHidden()
+})
+
 test('E2E-I18N-1 language switch: the whole shell turns English, survives a reload, and can go back (D7)', async ({ page }) => {
   await mockSession(page)
   await openApp(page)

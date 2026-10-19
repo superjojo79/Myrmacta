@@ -3386,6 +3386,8 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Step"
+        dossierTypeCode:
+          type: string
     SaveRequest:
       type: object
       properties:

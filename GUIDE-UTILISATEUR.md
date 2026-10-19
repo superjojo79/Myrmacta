@@ -820,11 +820,19 @@ administrateur technique doit le configurer (`DEPLOIEMENT.md` §15).
 - **Étapes disponibles** : question à un utilisateur, réponse d'un tiers (portail), génération de document (avec rattachement), notification, connecteur, table de décision DMN, calcul (expression),
   renseignement de champs, changement de statut (parcours ou dossier), attente (durée ISO 8601), et **aiguillage** : des conditions simples (variable, opérateur, valeur) vers une étape, plus un « sinon » obligatoire ;
   on peut revenir en arrière (boucle de correction) tant qu'une sortie existe. Sans « suite » explicite, une étape passe à la suivante de la liste.
+- **Type de dossier** : en tête du parcours, choisissez le type de dossier sur lequel il porte. Ses champs sont alors proposés dans les formules et les correspondances ; l'écran
+  signale si ce type démarre un autre workflow que ce parcours (clé de workflow du type ≠ clé du parcours). Le choix est enregistré avec le parcours mais n'entre pas dans le BPMN.
+- **Formules** (étape « Calculer une valeur ») : la liste **Insérer…** ajoute au curseur un champ du dossier, une variable du parcours (réponses des formulaires, résultats de calcul),
+  la réponse du dernier connecteur, un opérateur ou une fonction ; la formule est vérifiée pendant la frappe (mêmes règles qu'au déploiement). Les champs sensibles ne sont pas proposés :
+  une expression ne les voit pas.
+- **Correspondances** (étape « Renseigner des champs du dossier ») : un tableau « champ du dossier ← valeur », une ligne par champ ; le champ se choisit parmi ceux du type (hors champs
+  calculés) et l'écran signale un champ non déclaré, renseigné deux fois ou sans valeur. La case **Éditer en texte** donne la forme brute (`champ = expression`, une ligne par champ).
+- **Aiguillage** : le nom de variable propose les variables connues du parcours.
 - **Valeurs de condition** : un nombre entier ou un texte court, sans point, parenthèse, guillemet, `&`, `<`, `>`, `;`. Les nombres négatifs ou décimaux ne s'écrivent pas dans une condition de BPMN ; utilisez un champ calculé.
-- **Enregistrer** vérifie le parcours (étapes atteignables, sortie possible, statuts déclarés) et nomme l'étape fautive. **Aperçu du BPMN** montre le résultat et dit si le déploiement le refuserait. **Valider** et
+- **Enregistrer** vérifie le parcours (étapes atteignables, sortie possible, statuts déclarés) et nomme l'étape fautive. **Aperçu du BPMN** dessine le diagramme généré (le XML reste consultable dessous) et dit si le déploiement le refuserait. **Valider** et
   **Compiler** travaillent sur la version enregistrée (les boutons se bloquent tant qu'il y a des modifications).
 - **Sens unique** : on modifie le parcours ici, **jamais le BPMN généré** (une retouche manuelle ne revient pas dans le parcours et sera écrasée par la prochaine compilation).
-- **MCP / assistant** : `list_parcours`, `get_parcours`, `define_parcours` (avec mode à blanc), `compile_parcours`.
+- **MCP / assistant** : `list_parcours`, `get_parcours`, `define_parcours` (avec mode à blanc et `dossierTypeCode` facultatif), `compile_parcours`.
 
 ## 15. Langue de l'interface (TODO §90)
 

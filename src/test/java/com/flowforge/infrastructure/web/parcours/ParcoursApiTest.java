@@ -81,6 +81,23 @@ class ParcoursApiTest {
     }
 
     @Test
+    void theDossierTypeTheParcoursWorksOnIsKeptAndAHostileCodeIsRefused() throws Exception {
+        String schema = "s" + key();
+        createSchema(schema);
+        String key = key();
+        String withType = body(schema, null, TWO_STEPS).replace("\"onStartDossierStatus\":null,",
+                "\"onStartDossierStatus\":null,\"dossierTypeCode\":\"PERMIS_RIVERAIN\",");
+        mockMvc.perform(put("/api/parcours/{key}", key).with(admin()).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content(withType))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.definition.dossierTypeCode").value("PERMIS_RIVERAIN"));
+        mockMvc.perform(get("/api/parcours/{key}", key).with(admin()))
+                .andExpect(jsonPath("$.definition.dossierTypeCode").value("PERMIS_RIVERAIN"));
+        mockMvc.perform(put("/api/parcours/{key}", key()).with(admin()).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content(withType.replace("PERMIS_RIVERAIN", "a b\\\"")))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.detail", containsString("dossier type code")));
+    }
+
+    @Test
     void staleVersionAndDuplicateCreationAreConflicts() throws Exception {
         String schema = "s" + key();
         createSchema(schema);

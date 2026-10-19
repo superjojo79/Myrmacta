@@ -30,6 +30,10 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
+- **PR à venir — concepteur de parcours** — L'aperçu dessine le diagramme BPMN au lieu d'afficher le XML. Le parcours peut
+  désigner le type de dossier sur lequel il porte : ses champs sont proposés dans les formules (liste « Insérer… », vérification
+  pendant la frappe) et dans les correspondances, désormais saisies comme un tableau « champ ← valeur ».
+
 - **[PR #174](https://github.com/superjojo79/FlowForge/pull/174) — TODO §93** — Un brouillon de workflow proposé par MCP, un
   parcours ou un import peut référencer une ressource encore inactive (modèle en brouillon…) : elle est signalée et la publication
   reste stricte. « Notifier » lit son destinataire dans le dossier (`dossierField:email`), et « Démarrer un workflow » accepte des

@@ -203,6 +203,11 @@ reste refusée (D-EDIT-SCOPE inchangée).
 
 ## 11. Un e-mail asynchrone en échec est invisible dans l'interface (recette du 2026-10-18)
 
+> **Levé le 2026-10-20 (PR #176, TODO §94).** Un job en échec apparaît désormais sur la fiche dossier (bandeau « Étapes en
+> échec », étape marquée dans le diagramme) et dans **Admin → Incidents** ; un administrateur le **rejoue** une fois la
+> cause corrigée. Vérifié sur ce cas (R6) : adresse corrigée, rejeu, e-mail reçu. Le texte ci-dessous décrit la situation
+> d'origine.
+
 **Constat.** Avec une adresse mal saisie (`Camille Moreau <camille@…>`), la brique « Notifier » asynchrone échoue
 comme prévu : trois tentatives, puis job en *dead letter*, message « notificationTo source dossierField:email is not a
 single e-mail address », adresse jamais journalisée. Mais la fiche dossier affiche toujours le workflow « en cours »,

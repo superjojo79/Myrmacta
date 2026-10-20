@@ -287,7 +287,7 @@ codegen OpenAPI ∥ tout FE ; `signature-electronique` avant `portail-externe`. 
 | 3 | 10 | `dossierFields` est un instantané pris au démarrage du workflow : les champs modifiés ensuite ne sont pas relus. | — (à arbitrer) | Backlog |
 | — | 5 | Moteur de modèles plus strict que la documentation. | — | **Doc corrigée** ([PR #168](https://github.com/superjojo79/FlowForge/pull/168)) ; le moteur reste strict |
 | — | 9 | Pas d'assignation des tâches par groupe. | — | **En partie levé** ([PR #171](https://github.com/superjojo79/FlowForge/pull/171), « M'assigner ») ; D-EDIT-SCOPE inchangée |
-| 2 | 11 | Un e-mail asynchrone en échec (job en *dead letter*) n'apparaît ni sur la fiche dossier ni dans le diagramme (`failedIds` ne retient que les erreurs BPMN) ; aucun moyen de le rejouer dans l'interface. Relevé par la recette du 2026-10-18. | `incidents-visibles-dossier` | Backlog |
+| 2 | 11 | Un e-mail asynchrone en échec (job en *dead letter*) n'apparaît ni sur la fiche dossier ni dans le diagramme (`failedIds` ne retient que les erreurs BPMN) ; aucun moyen de le rejouer dans l'interface. Relevé par la recette du 2026-10-18. | `incidents-visibles-dossier` | **Livré** ([PR #176](https://github.com/superjojo79/FlowForge/pull/176), TODO §94) |
 | 3 | — | Variables de démarrage **déclarées** par workflow (nom, libellé, obligatoire) affichées comme un formulaire dans « Démarrer un workflow », au lieu de la saisie libre livrée par la PR #174. | `variables-demarrage-declarees` | Backlog |
 
 Les deux lots de priorité 1 sont livrés ensemble (PR #174). Prochaine étape : recette de bout en bout de

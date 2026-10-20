@@ -52,6 +52,12 @@ fixe**, sans référence du dossier, nom, plaque ni motif (voir point 4).
 
 ## 3. Le destinataire de l'e-mail ne peut pas venir du dossier
 
+> **Levé le 2026-10-16 (PR #174, TODO §93).** `flowable:notificationTo="dossierField:email"` lit l'adresse dans le
+> dossier au moment de l'envoi, et l'écran « Démarrer un workflow » sait transmettre des variables. L'exemple utilise
+> désormais `dossierField:email` : la variable `notificationTo`, la passerelle `emailConnu` et le mapping
+> `variables.notificationTo` du connecteur ont disparu. Les briques e-mail sont asynchrones, pour qu'une adresse mal
+> saisie crée un incident au lieu de bloquer l'agent. Le texte ci-dessous décrit la situation d'origine.
+
 **Constat.** La brique « Notifier » n'a pas de source `dossierField:` pour le destinataire (contrairement
 à la tâche externe et à la signature). L'adresse est soit un littéral, soit la variable de process
 `notificationTo`. Et cette variable ne peut pas être calculée dans le workflow : « Évaluer une
@@ -155,6 +161,10 @@ s'arrête sur le portail désactivé.
 
 ## 8. Le modèle de document doit être activé avant même l'enregistrement du workflow
 
+> **Levé le 2026-10-16 (PR #174, TODO §93).** Un brouillon proposé par MCP accepte un modèle encore en brouillon et le
+> signale dans `inactiveReferences` ; seule la publication exige le modèle actif. L'ordre de mise en service du
+> `README.md` en tient compte. Le texte ci-dessous décrit la situation d'origine.
+
 **Constat.** Un modèle créé par MCP reste en **brouillon** : son activation est un geste humain dans
 l'administration. Or la validation du BPMN, au déploiement **comme à l'enregistrement d'un brouillon**,
 exige un modèle **actif** (« flowable:documentType … references a resource that does not exist »).
@@ -187,6 +197,21 @@ reste refusée (D-EDIT-SCOPE inchangée).
   qu'après la transmission du document, pour ne pas marquer l'exécution terminée pendant que des
   tâches restent à faire. Pendant la génération et la transmission, le statut affiché reste
   `EN_INSTRUCTION`.
-- **Aucun test de bout en bout** n'a été possible, puisque le workflow n'est pas encore déployé
-  (point 8). Les expressions, la formule, le formulaire de dossier et le rendu du modèle ont été
-  vérifiés séparément avec les outils de validation à blanc.
+- **Aucun test de bout en bout** n'a encore été fait : le workflow n'a jamais été publié sur l'instance.
+  Les expressions, la formule, le formulaire de dossier et le rendu du modèle ont été vérifiés
+  séparément avec les outils de validation à blanc.
+
+## 11. Un e-mail asynchrone en échec est invisible dans l'interface (recette du 2026-10-18)
+
+**Constat.** Avec une adresse mal saisie (`Camille Moreau <camille@…>`), la brique « Notifier » asynchrone échoue
+comme prévu : trois tentatives, puis job en *dead letter*, message « notificationTo source dossierField:email is not a
+single e-mail address », adresse jamais journalisée. Mais la fiche dossier affiche toujours le workflow « en cours »,
+et le diagramme ne marque aucune étape : `failedIds` ne retient que les activités terminées par une erreur BPMN, et
+l'étape en attente du job n'apparaît pas non plus parmi les étapes actives
+(`FlowableWorkflowVisualizationAdapter.getDiagram`). Seul le compteur global de *dead letters* (observabilité) bouge.
+
+**Conséquence.** Le guide recommande l'asynchrone pour transformer l'échec en incident ; l'incident existe, mais
+personne ne le voit sur le dossier, et rien dans l'interface ne permet de le rejouer après correction de l'adresse.
+
+**Évolution proposée (développement).** Marquer en erreur, dans le diagramme, les activités qui ont un job en *dead
+letter* ou en échec, afficher l'incident sur la fiche dossier, et offrir une action « Rejouer » aux administrateurs.

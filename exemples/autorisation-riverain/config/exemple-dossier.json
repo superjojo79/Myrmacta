@@ -18,9 +18,6 @@
     "dateDebutSouhaitee": "2026-11-01"
   },
   "demarrageWorkflow": {
-    "processDefinitionKey": "autorisationRiverain",
-    "variables": {
-      "notificationTo": "camille.dupont@example.org"
-    }
+    "processDefinitionKey": "autorisationRiverain"
   }
 }

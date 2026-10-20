@@ -33,6 +33,9 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 - **[PR #177](https://github.com/superjojo79/FlowForge/pull/177) — concepteur de parcours** — L'aperçu dessine le diagramme BPMN au lieu d'afficher le XML. Le parcours peut
   désigner le type de dossier sur lequel il porte : ses champs sont proposés dans les formules (liste « Insérer… », vérification
   pendant la frappe) et dans les correspondances, désormais saisies comme un tableau « champ ← valeur ».
+- **[PR #176](https://github.com/superjojo79/FlowForge/pull/176) — TODO §94** — Les étapes automatiques en échec (job en
+  nouvelle tentative ou en *dead letter*) sont visibles sur la fiche dossier (bandeau, diagramme) et dans Admin → Incidents ;
+  un administrateur les rejoue une fois la cause corrigée. Message technique réservé aux administrateurs, lecture seule MCP.
 
 - **[PR #174](https://github.com/superjojo79/FlowForge/pull/174) — TODO §93** — Un brouillon de workflow proposé par MCP, un
   parcours ou un import peut référencer une ressource encore inactive (modèle en brouillon…) : elle est signalée et la publication
@@ -46,6 +49,10 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Documentation
 
+- **[PR #175](https://github.com/superjojo79/FlowForge/pull/175)** — L'exemple « autorisation riverain » lit l'adresse du
+  demandeur dans le dossier (`dossierField:email`, envoi asynchrone) au lieu d'une variable de démarrage ; ordre de mise en
+  service et backlog (`DEFERRED-FEATURES.md` §7) mis à jour. Recette de bout en bout consignée (README) : les sept cas passent,
+  sauf l'incident d'un e-mail asynchrone en échec, invisible dans l'interface (DIFFICULTES §11, backlog).
 - **[PR #172](https://github.com/superjojo79/FlowForge/pull/172)** — Exemple `exemples/autorisation-riverain/` : un flux complet
   monté uniquement par configuration via MCP, avec la liste des manques rencontrés (`DIFFICULTES.md`), reportés et priorisés dans
   `DEFERRED-FEATURES.md` §7. `GETTING-STARTED.md` §12 : périmètre MCP à jour et activation du canal M2M en local.

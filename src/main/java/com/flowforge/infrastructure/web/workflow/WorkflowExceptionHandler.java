@@ -55,6 +55,7 @@ class WorkflowExceptionHandler {
             UnknownDecisionKeyException.class,
             UnknownBlockSourceException.class,
             UnknownBlockReferenceException.class,
+            com.flowforge.domain.workflow.model.WorkflowIncidentNotFoundException.class,
             UnknownDecisionVersionException.class
     })
     ProblemDetail handleWorkflowResourceNotFound(RuntimeException ex) {
@@ -97,6 +98,12 @@ class WorkflowExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     ProblemDetail handleIntegrity(DataIntegrityViolationException ex) {
         return problem(HttpStatus.CONFLICT, "Workflow conflict", "Unique constraint or data integrity violation");
+    }
+
+    /** TODO §94 — le job a encore des tentatives automatiques : seul un incident (dead letter) se rejoue. */
+    @ExceptionHandler(com.flowforge.domain.workflow.model.IncidentNotRetryableException.class)
+    ProblemDetail handleIncidentNotRetryable(com.flowforge.domain.workflow.model.IncidentNotRetryableException ex) {
+        return problem(HttpStatus.CONFLICT, "Incident not retryable", ex.getMessage());
     }
 
     @ExceptionHandler(WorkflowTaskAlreadyAssignedException.class)

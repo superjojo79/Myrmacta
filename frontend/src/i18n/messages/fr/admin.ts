@@ -1,4 +1,21 @@
 export default {
+  incidents: {
+    title: 'Étapes en échec',
+    intro:
+      'Jobs du moteur en échec, rattachés à un dossier. Une nouvelle tentative prévue se relance seule ; un incident doit être rejoué une fois la cause corrigée.',
+    empty: 'Aucune étape en échec.',
+    truncated: 'Liste limitée aux 1 000 échecs les plus récents.',
+    loadError: 'Impossible de charger les incidents.',
+    columns: {
+      dossier: 'Dossier',
+      workflow: 'Workflow',
+      step: 'Étape',
+      state: 'État',
+      since: 'Depuis',
+      message: 'Message',
+      actions: 'Actions',
+    },
+  },
   purgeQueue: {
     title: 'File de purge',
     loadError: 'Impossible de charger la file de purge',

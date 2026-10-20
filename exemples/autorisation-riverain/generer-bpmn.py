@@ -57,10 +57,12 @@ class Model:
         self.service(node_id, name, col, row, "businessExpressionTask", formula=formula, formulaResult=result)
 
     def email(self, node_id, name, col, row, subject, body):
-        # Pas de flowable:notificationTo : le destinataire vient de la variable de process
-        # notificationTo, posée au démarrage (voir DIFFICULTES.md).
-        self.service(node_id, name, col, row, "notificationDispatchTask",
-                     notificationChannels="EMAIL", notificationSubject=subject, notificationBody=body)
+        # Destinataire lu dans le dossier (champ obligatoire « email », relu au moment de l'envoi — TODO §93).
+        # Asynchrone : une adresse mal saisie crée un incident rejouable au lieu de bloquer l'agent qui
+        # complète la tâche précédente (GUIDE-CONCEPTION-BPMN.md §6c).
+        self.service(node_id, name, col, row, "notificationDispatchTask", **{"async": "true"},
+                     notificationChannels="EMAIL", notificationTo="dossierField:email",
+                     notificationSubject=subject, notificationBody=body)
 
     def timer(self, node_id, name, host, top):
         self.node(node_id, "boundaryEvent", name, None, None,
@@ -77,10 +79,7 @@ def build(portail):
     m = Model()
 
     # ------------------------------------------------------------ 1. Instruction
-    m.node("debut", "startEvent", "Demande introduite", 0, "main")
-    m.expression("prepEmail", "Adresse de notification connue ?", 1, "main",
-                 '$exists(variables.notificationTo) and $contains($string(variables.notificationTo), "@")',
-                 "emailConnu")
+    m.node("debut", "startEvent", "Demande introduite", 1, "main")
     m.wf_status("statutEnInstruction", "Statut : en instruction", 2, "main", "EN_INSTRUCTION")
     m.node("instruction", "userTask", "Instruire la demande", 3, "main",
            {"flowable:formKey": "user-question:instruction-autorisation-riverain"},
@@ -111,26 +110,20 @@ def build(portail):
                     "demande sera refusée.</documentation>")
         m.flow("dossierSuspendu", "complement")
     else:
-        m.node("aiguillageInfos", "exclusiveGateway", "E-mail ?", 7, "infos",
-               {"default": "flow_aiguillageInfos_infosDemandees"})
-        m.email("mailDemandeInfos", "E-mail : informations demandées", 8, "infos",
+        m.email("mailDemandeInfos", "E-mail : informations demandées", 7, "infos",
                 "Votre demande d'autorisation riverain : informations complémentaires",
                 "Bonjour,\n\nPour instruire votre demande d'autorisation riverain, nos services ont besoin "
                 "d'informations complémentaires. Un gestionnaire vous précisera les éléments attendus. "
                 "Sans réponse de votre part dans les 30 jours, la demande sera refusée." + SIGNATURE)
-        m.node("infosDemandees", "exclusiveGateway", "", 9, "infos")
-        c = 10
+        c = 8
         m.node("complement", "userTask", "Encoder les compléments reçus", c, "infos",
                {"flowable:formKey": "user-question:complement-recu-autorisation-riverain"},
                body="<documentation>Contacter le demandeur pour lui préciser les informations attendues "
                     "(motivation saisie à l'instruction), puis encoder sa réponse et ajouter les pièces "
                     "reçues au dossier. Sans réponse dans les 30 jours, la demande est refusée "
                     "automatiquement.</documentation>")
-        m.flow("dossierSuspendu", "aiguillageInfos")
-        m.flow("aiguillageInfos", "mailDemandeInfos", "${emailConnu == true}")
-        m.flow("aiguillageInfos", "infosDemandees", low=ROW["infos"] + 120)
-        m.flow("mailDemandeInfos", "infosDemandees")
-        m.flow("infosDemandees", "complement")
+        m.flow("dossierSuspendu", "mailDemandeInfos")
+        m.flow("mailDemandeInfos", "complement")
     m.timer("delaiComplement", "30 jours sans réponse", "complement", top=False)
     m.dossier_status("dossierRepris", "Dossier repris", c + 1, "infos", "EN_COURS")
     m.expression("issueSansReponse", "Issue : refusée sans réponse", c + 1, "sansReponse",
@@ -165,36 +158,33 @@ def build(portail):
     m.service("joindreDecision", "Joindre le document au dossier", k + 9, "main", "attachGeneratedDocumentTask")
 
     # ------------------------------------------------------------ 4. Information du demandeur
-    m.node("aiguillageEmail", "exclusiveGateway", "E-mail ?", k + 10, "main",
-           {"default": "flow_aiguillageEmail_mailEnvoye"})
-    m.node("aiguillageMail", "exclusiveGateway", "Accordée ?", k + 11, "main",
+    m.node("aiguillageMail", "exclusiveGateway", "Accordée ?", k + 10, "main",
            {"default": "flow_aiguillageMail_mailRefus"})
-    m.email("mailAutorisation", "E-mail : autorisation accordée", k + 12, "autorisee",
+    m.email("mailAutorisation", "E-mail : autorisation accordée", k + 11, "autorisee",
             "Votre demande d'autorisation riverain est accordée",
             "Bonjour,\n\nVotre demande d'autorisation riverain est accordée." + MAIL_FIN)
-    m.email("mailRefus", "E-mail : autorisation refusée", k + 12, "refusee",
+    m.email("mailRefus", "E-mail : autorisation refusée", k + 11, "refusee",
             "Votre demande d'autorisation riverain est refusée",
             "Bonjour,\n\nVotre demande d'autorisation riverain est refusée. "
             "Les motifs figurent dans le document de décision." + MAIL_FIN)
-    m.node("mailEnvoye", "exclusiveGateway", "", k + 13, "main")
-    m.node("transmission", "userTask", "Transmettre le document de décision", k + 14, "main",
+    m.node("mailEnvoye", "exclusiveGateway", "", k + 12, "main")
+    m.node("transmission", "userTask", "Transmettre le document de décision", k + 13, "main",
            {"flowable:formKey": "user-question:transmission-decision-riverain"},
            body="<documentation>Télécharger le PDF de décision depuis les éléments du dossier et l'envoyer au "
                 "demandeur (FlowForge ne joint pas de fichier à ses e-mails).</documentation>")
 
     # ------------------------------------------------------------ 5. Clôture
-    m.node("aiguillageStatut", "exclusiveGateway", "Issue ?", k + 15, "main",
+    m.node("aiguillageStatut", "exclusiveGateway", "Issue ?", k + 14, "main",
            {"default": "flow_aiguillageStatut_statutRefusee"})
-    m.wf_status("statutAutorisee", "Statut : autorisée", k + 16, "autorisee", "AUTORISEE")
-    m.wf_status("statutTacite", "Statut : autorisée tacitement", k + 16, "tacite", "AUTORISEE_TACITEMENT")
-    m.wf_status("statutRefusee", "Statut : refusée", k + 16, "refusee", "REFUSEE")
-    m.node("statutPose", "exclusiveGateway", "", k + 17, "main")
-    m.dossier_status("clotureDossier", "Clôturer le dossier", k + 18, "main", "CLOTURE")
-    m.node("fin", "endEvent", "Demande traitée", k + 19, "main")
+    m.wf_status("statutAutorisee", "Statut : autorisée", k + 15, "autorisee", "AUTORISEE")
+    m.wf_status("statutTacite", "Statut : autorisée tacitement", k + 15, "tacite", "AUTORISEE_TACITEMENT")
+    m.wf_status("statutRefusee", "Statut : refusée", k + 15, "refusee", "REFUSEE")
+    m.node("statutPose", "exclusiveGateway", "", k + 16, "main")
+    m.dossier_status("clotureDossier", "Clôturer le dossier", k + 17, "main", "CLOTURE")
+    m.node("fin", "endEvent", "Demande traitée", k + 18, "main")
 
     # ------------------------------------------------------------ Flux
-    for a, b in [("debut", "prepEmail"), ("prepEmail", "statutEnInstruction"),
-                 ("statutEnInstruction", "instruction"), ("instruction", "aiguillageDecision"),
+    for a, b in [("debut", "statutEnInstruction"), ("statutEnInstruction", "instruction"), ("instruction", "aiguillageDecision"),
                  ("delaiInstruction", "issueTacite")]:
         m.flow(a, b)
     m.flow("aiguillageDecision", "issueAutorisee", "${decisionAgent == 'AUTORISER'}")
@@ -207,11 +197,9 @@ def build(portail):
     for issue in ("issueTacite", "issueAutorisee", "issueRefusee", "issueSansReponse"):
         m.flow(issue, "decisionPrise")
     chain = ["decisionPrise", "prepReference", "prepDate", "prepTelephone", "prepPieces", "prepComplements",
-             "prepMotivation", "enregistrerDecision", "genererDecision", "joindreDecision", "aiguillageEmail"]
+             "prepMotivation", "enregistrerDecision", "genererDecision", "joindreDecision", "aiguillageMail"]
     for a, b in zip(chain, chain[1:]):
         m.flow(a, b)
-    m.flow("aiguillageEmail", "aiguillageMail", "${emailConnu == true}")
-    m.flow("aiguillageEmail", "mailEnvoye", low=ROW["infos"])  # pas d'adresse : transmission manuelle seule
     m.flow("aiguillageMail", "mailAutorisation", "${issueDecision == 'AUTORISEE'}")
     m.flow("aiguillageMail", "mailAutorisation", "${issueDecision == 'AUTORISEE_TACITEMENT'}",
            flow_id="flow_aiguillageMail_mailAutorisation_tacite")

@@ -1,6 +1,23 @@
 import type fr from '../fr/admin'
 
 const admin: typeof fr = {
+  incidents: {
+    title: 'Failed steps',
+    intro:
+      'Failed engine jobs linked to a dossier. A scheduled retry runs on its own; an incident must be retried once its cause is fixed.',
+    empty: 'No failed step.',
+    truncated: 'List limited to the 1,000 most recent failures.',
+    loadError: 'Unable to load incidents.',
+    columns: {
+      dossier: 'Dossier',
+      workflow: 'Workflow',
+      step: 'Step',
+      state: 'State',
+      since: 'Since',
+      message: 'Message',
+      actions: 'Actions',
+    },
+  },
   purgeQueue: {
     title: 'Purge queue',
     loadError: 'Unable to load the purge queue',

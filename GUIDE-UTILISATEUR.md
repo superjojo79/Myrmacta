@@ -30,6 +30,7 @@ le permet — l'affichage du menu est indicatif, le contrôle réel se fait côt
 | Admin | Webhooks (notification) | `/admin/notification-webhooks` | `TENANT_ADMIN` |
 | Admin | File purge | `/admin/purge-outbox` | `TENANT_ADMIN` |
 | Admin | Observabilité | `/admin/observabilite` | `TENANT_ADMIN` |
+| Admin | Incidents (étapes en échec) | `/admin/incidents` | `TENANT_ADMIN` ou `WORKFLOW_ADMIN` |
 | Public | Portail tiers externe | `/portal/` | **aucun compte** — lien personnel reçu par e-mail, si le portail est activé (§11) |
 
 Sans le rôle requis, l'entrée de menu correspondante n'apparaît simplement pas — pas besoin de la
@@ -267,6 +268,19 @@ Toujours sur la fiche dossier :
     l'application et qui **peuvent modifier ce dossier** (inutile d'assigner une tâche à quelqu'un
     qui ne pourrait pas la terminer). Un utilisateur qui n'apparaît pas doit d'abord se connecter.
 - **Historique** — frise chronologique des événements du dossier.
+- **Étapes en échec** (TODO §94) — bandeau rouge au-dessus du diagramme quand une étape automatique
+  (e-mail, connecteur, génération…) a échoué ; l'étape est aussi marquée en erreur dans le diagramme.
+  Deux états : **nouvelle tentative prévue** (le moteur réessaiera seul, n tentatives restantes) et
+  **incident** (plus de tentative automatique). Visible de quiconque voit les tâches de l'exécution ;
+  le **message technique** n'est montré qu'aux `TENANT_ADMIN`/`WORKFLOW_ADMIN`. Une fois la cause
+  corrigée (par exemple une adresse e-mail mal saisie dans le dossier), un administrateur clique sur
+  **Rejouer** : l'étape repart et le workflow reprend. Le rejeu est journalisé. Juste après, l'étape peut
+  apparaître quelques secondes en « nouvelle tentative prévue », le temps que le moteur la reprenne ; la fiche se
+  met à jour seule. Un échec dans un sous-process appelé s'affiche sur l'étape d'appel (« Appel › étape »).
+
+Tous les incidents du tenant se retrouvent dans **Admin → Incidents** (`/admin/incidents`,
+`TENANT_ADMIN`/`WORKFLOW_ADMIN`) : dossier (lien vers la fiche), workflow, étape, état, date, message et
+action **Rejouer**. La liste porte sur les 1 000 échecs les plus récents.
 
 Un utilisateur peut aussi retrouver l'ensemble de ses tâches assignées, tous dossiers confondus,
 depuis **Tâches** (`/tasks`) — pratique en mobilité.

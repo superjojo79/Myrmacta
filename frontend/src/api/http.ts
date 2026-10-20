@@ -48,7 +48,8 @@ export function configureHttpClient(): void {
 export function toProblemDetail(error: unknown): ProblemDetail {
   const axiosError = error as AxiosError<ProblemDetail>
   if (axiosError?.response?.data && typeof axiosError.response.data === 'object') {
-    return axiosError.response.data
+    // Le statut HTTP fait foi quand le corps ne le reprend pas (corps d'erreur non ProblemDetail).
+    return { ...axiosError.response.data, status: axiosError.response.data.status ?? axiosError.response.status }
   }
   return {
     title: 'Request failed',

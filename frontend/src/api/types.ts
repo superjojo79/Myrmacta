@@ -170,6 +170,37 @@ export interface WorkflowLink {
   startedBy: string | null
 }
 
+/** TODO §94 — job en échec : RETRYING (le moteur retentera) ou INCIDENT (dead letter, à rejouer). */
+export type IncidentState = 'RETRYING' | 'INCIDENT'
+
+export interface WorkflowIncident {
+  jobId: string
+  activityId: string
+  activityName: string
+  state: IncidentState
+  since: string | null
+  retriesLeft: number
+  /** Présent pour TENANT_ADMIN / WORKFLOW_ADMIN seulement. */
+  message?: string
+}
+
+export interface TenantIncident extends WorkflowIncident {
+  linkId: string
+  dossierId: string
+  dossierReference: string | null
+  processDefinitionKey: string | null
+}
+
+export interface TenantIncidentsPage {
+  content: TenantIncident[]
+  page: number
+  size: number
+  totalElements: number
+  totalPages: number
+  /** Vrai si la borne de lecture du serveur a été atteinte. */
+  truncated: boolean
+}
+
 export interface WorkflowDiagram {
   bpmnXml: string
   activeIds: string[]

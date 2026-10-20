@@ -7,7 +7,7 @@
     "webhookSecret": "<secret partagé avec le portail, 20 caractères minimum>",
     "processKey": "autorisationRiverain",
     "dossierTypeCode": "AUTORISATION_RIVERAIN",
-    "mapping": "{\"fields\": {\"nom\": \"$.demandeur.nom\", \"prenom\": \"$.demandeur.prenom\", \"email\": \"$.demandeur.email\", \"telephone\": \"$.demandeur.telephone\", \"adresseRue\": \"$.domicile.rue\", \"adresseNumero\": \"$.domicile.numero\", \"codePostal\": \"$.domicile.codePostal\", \"commune\": \"$.domicile.commune\", \"paysImmatriculation\": \"$.vehicule.pays\", \"plaque\": \"$.vehicule.plaque\", \"marque\": \"$.vehicule.marque\", \"modele\": \"$.vehicule.modele\", \"zoneRiverain\": \"$.autorisation.zone\", \"dateDebutSouhaitee\": \"$.autorisation.dateDebut\"}, \"variables\": {\"notificationTo\": \"$.demandeur.email\"}}"
+    "mapping": "{\"fields\": {\"nom\": \"$.demandeur.nom\", \"prenom\": \"$.demandeur.prenom\", \"email\": \"$.demandeur.email\", \"telephone\": \"$.demandeur.telephone\", \"adresseRue\": \"$.domicile.rue\", \"adresseNumero\": \"$.domicile.numero\", \"codePostal\": \"$.domicile.codePostal\", \"commune\": \"$.domicile.commune\", \"paysImmatriculation\": \"$.vehicule.pays\", \"plaque\": \"$.vehicule.plaque\", \"marque\": \"$.vehicule.marque\", \"modele\": \"$.vehicule.modele\", \"zoneRiverain\": \"$.autorisation.zone\", \"dateDebutSouhaitee\": \"$.autorisation.dateDebut\"}}"
   },
   "exempleCorpsRequete": {
     "demandeur": {

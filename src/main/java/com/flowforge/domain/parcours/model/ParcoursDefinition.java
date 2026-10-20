@@ -12,12 +12,25 @@ import java.util.regex.Pattern;
  * Une étape sans {@code next} passe à la suivante de la liste ; la dernière termine le parcours. Une étape {@link Kind#DECISION}
  * choisit sa suite selon des comparaisons simples (la grammaire des conditions de passerelle de la liste blanche BPMN) et peut
  * revenir en arrière (boucle de correction). Les paramètres d'une étape portent le nom des paramètres de la brique correspondante.
+ *
+ * <p>{@code dossierTypeCode} (facultatif) nomme le type de dossier sur lequel le concepteur travaille : il sert à proposer les champs
+ * de ce type dans les formules et les correspondances. Il n'entre pas dans le BPMN compilé.
  */
 public record ParcoursDefinition(
         List<WorkflowStatusDefinition> statuses,
         List<DossierStatus> allowedDossierStatuses,
         DossierStatus onStartDossierStatus,
-        List<Step> steps) {
+        List<Step> steps,
+        String dossierTypeCode) {
+
+    /** Même forme que {@code DossierType.code}. */
+    private static final Pattern DOSSIER_TYPE_CODE = Pattern.compile("[A-Za-z0-9_-]{1,64}");
+
+    public ParcoursDefinition(
+            List<WorkflowStatusDefinition> statuses, List<DossierStatus> allowedDossierStatuses, DossierStatus onStartDossierStatus,
+            List<Step> steps) {
+        this(statuses, allowedDossierStatuses, onStartDossierStatus, steps, null);
+    }
 
     public static final int MAX_STEPS = 60;
     public static final int MAX_BRANCHES = 8;
@@ -62,6 +75,10 @@ public record ParcoursDefinition(
         steps = steps == null ? List.of() : List.copyOf(steps);
         if (steps.size() > MAX_STEPS) {
             throw new InvalidParcoursException("a parcours has at most " + MAX_STEPS + " steps");
+        }
+        dossierTypeCode = dossierTypeCode == null || dossierTypeCode.isBlank() ? null : dossierTypeCode.strip();
+        if (dossierTypeCode != null && !DOSSIER_TYPE_CODE.matcher(dossierTypeCode).matches()) {
+            throw new InvalidParcoursException("a dossier type code holds letters, digits, _ or - (max 64)");
         }
     }
 

@@ -30,6 +30,9 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Ajouté
 
+- **[PR #177](https://github.com/superjojo79/FlowForge/pull/177) — concepteur de parcours** — L'aperçu dessine le diagramme BPMN au lieu d'afficher le XML. Le parcours peut
+  désigner le type de dossier sur lequel il porte : ses champs sont proposés dans les formules (liste « Insérer… », vérification
+  pendant la frappe) et dans les correspondances, désormais saisies comme un tableau « champ ← valeur ».
 - **[PR #176](https://github.com/superjojo79/FlowForge/pull/176) — TODO §94** — Les étapes automatiques en échec (job en
   nouvelle tentative ou en *dead letter*) sont visibles sur la fiche dossier (bandeau, diagramme) et dans Admin → Incidents ;
   un administrateur les rejoue une fois la cause corrigée. Message technique réservé aux administrateurs, lecture seule MCP.

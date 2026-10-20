@@ -36,6 +36,8 @@ export interface ParcoursDefinition {
   allowedDossierStatuses: string[]
   onStartDossierStatus: string | null
   steps: ParcoursStep[]
+  /** Type de dossier sur lequel on travaille (aide à la saisie : ses champs) ; absent du BPMN compilé. */
+  dossierTypeCode?: string | null
 }
 
 export interface ParcoursSummary {

@@ -67,12 +67,12 @@ class ParcoursToolsTest {
     @Test
     void aDryRunIsValidOnlyWhenTheDeploymentWouldAcceptTheBpmn() {
         when(compile.preview(any(), eq("p"), eq("P"), any())).thenReturn(new CompileParcoursUseCase.Preview(compiled(), "unknown connector x"));
-        Map<String, Object> out = tools.defineParcours("p", "P", STATUSES, List.of("OUVERT"), null, STEPS, null, true);
+        Map<String, Object> out = tools.defineParcours("p", "P", STATUSES, List.of("OUVERT"), null, STEPS, null, null, true);
         assertThat(out).containsEntry("dryRun", true).containsEntry("valid", false).containsEntry("problem", "unknown connector x");
         verify(manage, never()).save(any(), any());
 
         when(compile.preview(any(), eq("p"), eq("P"), any())).thenReturn(new CompileParcoursUseCase.Preview(compiled(), null));
-        assertThat(tools.defineParcours("p", "P", STATUSES, List.of("OUVERT"), null, STEPS, null, true))
+        assertThat(tools.defineParcours("p", "P", STATUSES, List.of("OUVERT"), null, STEPS, null, null, true))
                 .containsEntry("valid", true).doesNotContainKey("problem");
     }
 
@@ -82,19 +82,20 @@ class ParcoursToolsTest {
                 new ParcoursDefinition(List.of(), List.of(DossierStatus.OUVERT), null, List.of()), 2, "agent-1", "agent-1",
                 Instant.EPOCH, Instant.EPOCH, null, null);
         when(manage.save(any(), any())).thenReturn(saved);
-        tools.defineParcours("p", "P", STATUSES, List.of("OUVERT"), "", STEPS, 1, null);
+        tools.defineParcours("p", "P", STATUSES, List.of("OUVERT"), "", STEPS, "PERMIS", 1, null);
         ArgumentCaptor<ManageParcoursUseCase.SaveCommand> command = ArgumentCaptor.forClass(ManageParcoursUseCase.SaveCommand.class);
         verify(manage).save(any(), command.capture());
         assertThat(command.getValue().expectedVersion()).isEqualTo(1);
         assertThat(command.getValue().definition().onStartDossierStatus()).isNull();
         assertThat(command.getValue().definition().steps()).hasSize(2);
+        assertThat(command.getValue().definition().dossierTypeCode()).isEqualTo("PERMIS");
     }
 
     @Test
     void aHostileStepArgumentIsRefusedBeforeAnythingIsSaved() {
         List<Map<String, Object>> hostile = List.of(Map.of("id", "a", "kind", "DECISION", "params", Map.of(), "defaultNext", "a",
                 "branches", List.of(Map.of("variable", "x", "operator", "EQ", "value", "&apos; || true || &apos;", "next", "a"))));
-        assertThatThrownBy(() -> tools.defineParcours("p", "P", STATUSES, List.of("OUVERT"), null, hostile, null, null))
+        assertThatThrownBy(() -> tools.defineParcours("p", "P", STATUSES, List.of("OUVERT"), null, hostile, null, null, null))
                 .hasRootCauseInstanceOf(InvalidParcoursException.class);
         verify(manage, never()).save(any(), any());
     }

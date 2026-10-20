@@ -372,6 +372,26 @@ paths:
       responses:
         "200":
           description: OK
+  /api/workflow-links/{linkId}/incidents/{jobId}/retry:
+    post:
+      tags:
+      - workflow-incident-controller
+      operationId: retry
+      parameters:
+      - name: linkId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: jobId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "204":
+          description: No Content
   /api/workflow-bpmn-deployments:
     post:
       tags:
@@ -2157,6 +2177,27 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/PageResponseWorkflowTaskView"
+  /api/workflow-links/{linkId}/incidents:
+    get:
+      tags:
+      - workflow-incident-controller
+      operationId: incidents
+      parameters:
+      - name: linkId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/IncidentResponse"
   /api/workflow-links/{linkId}/history:
     get:
       tags:
@@ -3020,6 +3061,31 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ActionView"
+  /api/admin/incidents:
+    get:
+      tags:
+      - workflow-incident-controller
+      operationId: tenantIncidents
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TenantIncidentsResponse"
   /api/admin/drafts:
     get:
       tags:
@@ -4747,6 +4813,28 @@ components:
           format: date-time
         formKey:
           type: string
+    IncidentResponse:
+      type: object
+      properties:
+        jobId:
+          type: string
+        activityId:
+          type: string
+        activityName:
+          type: string
+        state:
+          type: string
+          enum:
+          - RETRYING
+          - INCIDENT
+        since:
+          type: string
+          format: date-time
+        retriesLeft:
+          type: integer
+          format: int32
+        message:
+          type: string
     ActivityHistoryEntry:
       type: object
       properties:
@@ -5904,6 +5992,59 @@ components:
         createdAt:
           type: string
           format: date-time
+    TenantIncidentResponse:
+      type: object
+      properties:
+        jobId:
+          type: string
+        activityId:
+          type: string
+        activityName:
+          type: string
+        state:
+          type: string
+          enum:
+          - RETRYING
+          - INCIDENT
+        since:
+          type: string
+          format: date-time
+        retriesLeft:
+          type: integer
+          format: int32
+        message:
+          type: string
+        linkId:
+          type: string
+          format: uuid
+        dossierId:
+          type: string
+          format: uuid
+        dossierReference:
+          type: string
+        processDefinitionKey:
+          type: string
+    TenantIncidentsResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/TenantIncidentResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        truncated:
+          type: boolean
     PendingDraft:
       type: object
       properties:

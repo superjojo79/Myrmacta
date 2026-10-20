@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://flowforge/test">
+
+  <!-- TODO §94 : brique asynchrone qui échoue tant que le test le veut ; deux tentatives à une seconde d'écart. -->
+  <process id="incidentSmoke" name="Incident Smoke" isExecutable="true">
+    <startEvent id="isStart"/>
+    <sequenceFlow id="isFlow1" sourceRef="isStart" targetRef="isFragile"/>
+    <serviceTask id="isFragile" name="Étape fragile" flowable:async="true"
+                 flowable:failedJobRetryTimeCycle="R2/PT1S"
+                 flowable:delegateExpression="${incidentTestDelegate}"/>
+    <sequenceFlow id="isFlow2" sourceRef="isFragile" targetRef="isDone"/>
+    <userTask id="isDone" name="Terminé" flowable:assignee="incident-smoke"/>
+  </process>
+</definitions>

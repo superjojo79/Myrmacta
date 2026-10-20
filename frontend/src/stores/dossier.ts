@@ -25,6 +25,7 @@ import {
   listAssignableUsers,
 } from '@/api/workflows'
 import { completeTask } from '@/api/tasks'
+import { listLinkIncidents, retryIncident as retryIncidentApi } from '@/api/incidents'
 import { toProblemDetail } from '@/api/http'
 import type {
   ActivityHistoryEntry,
@@ -39,6 +40,7 @@ import type {
   WorkflowDiagram,
   WorkflowLink,
   WorkflowTaskView,
+  WorkflowIncident,
 } from '@/api/types'
 
 const DEFAULT_SIZE = 20
@@ -65,6 +67,8 @@ export const useDossierStore = defineStore('dossier', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
   const diagramUnavailable = ref(false)
+  /** TODO §94 — échecs des jobs de l'exécution courante (vide si non lisible). */
+  const incidents = ref<WorkflowIncident[]>([])
 
   async function loadById(id: string): Promise<void> {
     loading.value = true
@@ -105,6 +109,7 @@ export const useDossierStore = defineStore('dossier', () => {
       }),
     ])
     diagram.value = null
+    incidents.value = []
     history.value = []
     historyPage.value = 0
     historyTotalPages.value = 0
@@ -150,11 +155,49 @@ export const useDossierStore = defineStore('dossier', () => {
     tasksTotalPages.value = result.totalPages
   }
 
+  async function loadIncidents(linkId: string): Promise<void> {
+    let found: WorkflowIncident[] = []
+    try {
+      found = (await listLinkIncidents(linkId)) ?? []
+    } catch {
+      // Lecture refusée (403) ou indisponible : le bandeau reste vide, le dossier et le diagramme s'affichent.
+    }
+    // Revue L6 : une réponse lente d'un autre lien n'écrase pas le bandeau du lien affiché.
+    if (currentLinkId.value === linkId) incidents.value = found
+  }
+
+  /** Relectures après un rejeu : le moteur reprend le job par intervalles (~10 s). */
+  const RETRY_REFRESH_DELAYS_MS = [5_000, 15_000]
+  let retryRefreshTimers: ReturnType<typeof setTimeout>[] = []
+
+  function cancelRetryRefresh(): void {
+    retryRefreshTimers.forEach((timer) => clearTimeout(timer))
+    retryRefreshTimers = []
+  }
+
+  /**
+   * TODO §94 — rejoue un incident (dead letter) puis recharge la visualisation du lien. Juste après, le job attend
+   * l'exécuteur (« nouvelle tentative prévue ») : deux relectures programmées suivent sa reprise, tant que ce lien
+   * reste celui affiché.
+   */
+  async function retryIncident(linkId: string, jobId: string): Promise<void> {
+    await retryIncidentApi(linkId, jobId)
+    await loadVisualization(linkId)
+    cancelRetryRefresh()
+    retryRefreshTimers = RETRY_REFRESH_DELAYS_MS.map((delay) =>
+      setTimeout(() => {
+        if (currentLinkId.value === linkId) void loadVisualization(linkId)
+      }, delay),
+    )
+  }
+
   async function loadVisualization(linkId: string): Promise<void> {
     currentLinkId.value = linkId
+    const incidentsLoaded = loadIncidents(linkId)
     try {
       const [diagramResult] = await Promise.all([
         getWorkflowDiagram(linkId),
+        incidentsLoaded,
         loadHistoryPage(0, DEFAULT_SIZE),
         loadTasksPage(0, DEFAULT_SIZE),
       ])
@@ -170,6 +213,7 @@ export const useDossierStore = defineStore('dossier', () => {
       await loadTasksPage(0, DEFAULT_SIZE).catch(() => {
         tasks.value = []
       })
+      await incidentsLoaded
       void err
     }
   }
@@ -254,6 +298,8 @@ export const useDossierStore = defineStore('dossier', () => {
   }
 
   return {
+    incidents,
+    retryIncident,
     dossier,
     dossierType,
     workflows,

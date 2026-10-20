@@ -6,6 +6,8 @@ type MockOpts = {
   dossierStatus?: string
   /** La tâche du lien n'a pas d'assigné (D-ASSIGN-CLAIM). */
   freeTask?: boolean
+  /** TODO §94 : une étape du lien est en incident (job en dead letter). */
+  withIncident?: boolean
 }
 
 const DOSSIER_ID = '11111111-1111-1111-1111-111111111111'
@@ -654,8 +656,62 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
     }
     await route.continue()
   })
+  // TODO §94 : un incident à état — message réservé aux administrateurs, rejeu qui le fait disparaître.
+  const incidentAdmin = roles.some((role) => ['TENANT_ADMIN', 'WORKFLOW_ADMIN'].includes(role))
+  let incidents = opts.withIncident
+    ? [
+        {
+          jobId: 'job-1',
+          activityId: 'mailRefus',
+          activityName: 'E-mail : refus',
+          state: 'INCIDENT',
+          since: '2026-10-18T18:51:26Z',
+          retriesLeft: 0,
+          message: 'notificationTo source dossierField:email is not a single e-mail address',
+        },
+      ]
+    : []
+  const visibleIncidents = () =>
+    incidents.map((incident) => (incidentAdmin ? incident : { ...incident, message: undefined }))
+  await page.route('**/api/admin/incidents**', async (route) => {
+    if (!incidentAdmin) {
+      await route.fulfill({ status: 403, contentType: 'application/json', body: '{"status":403,"detail":"denied"}' })
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        content: incidents.map((incident) => ({
+          ...incident,
+          linkId: LINK_ID,
+          dossierId: DOSSIER_ID,
+          dossierReference: 'DOS-TEST-1',
+          processDefinitionKey: 'claimWorkflow',
+        })),
+        page: 0,
+        size: 20,
+        totalElements: incidents.length,
+        totalPages: incidents.length > 0 ? 1 : 0,
+        truncated: false,
+      }),
+    })
+  })
   await page.route('**/api/workflow-links/**', async (route) => {
     const url = route.request().url()
+    if (url.includes('/incidents/') && url.endsWith('/retry') && route.request().method() === 'POST') {
+      if (!incidentAdmin) {
+        await route.fulfill({ status: 403, contentType: 'application/json', body: '{"status":403}' })
+        return
+      }
+      incidents = []
+      await route.fulfill({ status: 204, body: '' })
+      return
+    }
+    if (url.endsWith('/incidents')) {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(visibleIncidents()) })
+      return
+    }
     if (url.includes('/diagram')) {
       await route.fulfill({
         status: 200,
@@ -665,7 +721,7 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
             '<?xml version="1.0"?><definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" id="Defs"><process id="P" isExecutable="true"><startEvent id="start"/></process></definitions>',
           activeIds: ['start'],
           completedIds: [],
-          failedIds: [],
+          failedIds: incidents.length > 0 ? ['start'] : [],
         }),
       })
       return
@@ -1007,6 +1063,43 @@ test('E2E-5 complete task from inbox with {}', async ({ page }) => {
   await expect(page.getByText('Valider')).toBeVisible()
   await page.getByRole('button', { name: 'Compléter' }).click()
   await expect(page.getByText('Aucune tâche assignée')).toBeVisible()
+})
+
+test('E2E-INCIDENT-1 an administrator sees the incident with its message and retries it (TODO §94)', async ({ page }) => {
+  await mockSession(page, { withActiveLink: true, withIncident: true, roles: ['TENANT_ADMIN', 'WORKFLOW_ADMIN'] })
+  await openApp(page)
+  await createAndOpenDossier(page)
+  const banner = page.getByTestId('incident-banner')
+  await expect(banner).toContainText('E-mail : refus')
+  await expect(banner).toContainText('single e-mail address')
+  const retry = page.waitForRequest(
+    (r) => r.method() === 'POST' && /\/incidents\/job-1\/retry$/.test(new URL(r.url()).pathname),
+  )
+  await banner.getByRole('button', { name: 'Rejouer' }).click()
+  await retry
+  await expect(page.getByTestId('incident-banner')).toHaveCount(0)
+})
+
+test('E2E-INCIDENT-2 a manager sees the incident without message nor retry (TODO §94)', async ({ page }) => {
+  await mockSession(page, { withActiveLink: true, withIncident: true, roles: ['DOSSIER_MANAGER'] })
+  await openApp(page)
+  await createAndOpenDossier(page)
+  const banner = page.getByTestId('incident-banner')
+  await expect(banner).toContainText('E-mail : refus')
+  await expect(banner).not.toContainText('single e-mail address')
+  await expect(banner.getByRole('button', { name: 'Rejouer' })).toHaveCount(0)
+})
+
+test('E2E-INCIDENT-3 the admin incidents screen lists failures with a link to the dossier (TODO §94)', async ({ page }) => {
+  await mockSession(page, { withActiveLink: true, withIncident: true, roles: ['TENANT_ADMIN', 'WORKFLOW_ADMIN'] })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Incidents' }).click()
+  await expect(page.getByRole('heading', { name: 'Étapes en échec' })).toBeVisible()
+  const row = page.getByTestId('incident-admin-row')
+  await expect(row).toContainText('DOS-TEST-1')
+  await expect(row).toContainText('E-mail : refus')
+  await row.getByRole('button', { name: 'Rejouer' }).click()
+  await expect(page.getByText('Aucune étape en échec.')).toBeVisible()
 })
 
 test('E2E-6 reassign visible for admin only', async ({ page }) => {

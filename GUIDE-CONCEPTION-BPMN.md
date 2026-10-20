@@ -747,6 +747,8 @@ en dur dans l'attribut reste libre.
 > exécutée — la complétion de la tâche précédente ou le démarrage — avec une réponse **422** qui nomme le champ en
 > cause ; il suffit de corriger le dossier et de recommencer. Pour obtenir plutôt un **incident** (tâche suivie par
 > le moteur, rejouable) sans bloquer l'utilisateur, cocher **asynchrone** (`flowable:async="true"`) sur la brique.
+> L'incident est alors visible sur la fiche dossier (bandeau « Étapes en échec », étape marquée dans le diagramme)
+> et dans **Admin → Incidents** ; un administrateur le **rejoue** une fois la cause corrigée (TODO §94).
 >
 > **Champ sensible.** Une source peut désigner un champ marqué sensible : l'adresse part uniquement à cette adresse
 > et n'apparaît dans aucun message d'erreur, mais elle est conservée en clair dans la file d'envoi (outbox), comme

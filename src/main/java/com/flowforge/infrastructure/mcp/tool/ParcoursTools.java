@@ -81,6 +81,8 @@ public class ParcoursTools {
             @McpToolParam(required = false, description = "Dossier status set when the workflow starts") String onStartDossierStatus,
             @McpToolParam(required = true, description = "Steps: [{id (camelCase), label, kind, params:{…}, next?, branches?:[…], "
                     + "defaultNext?}]") List<Map<String, Object>> steps,
+            @McpToolParam(required = false, description = "Code of the dossier type the parcours works on (helps the designer screen "
+                    + "suggest its fields; not compiled into the BPMN)") String dossierTypeCode,
             @McpToolParam(required = false, description = "Version read with get_parcours; absent = create") Integer expectedVersion,
             @McpToolParam(required = false, description = "Validate without saving; default false") Boolean dryRun) {
         AccessContext.User actor = accessContextFactory.currentActor();
@@ -90,6 +92,7 @@ public class ParcoursTools {
         raw.put("allowedDossierStatuses", allowedDossierStatuses == null ? List.of() : allowedDossierStatuses);
         raw.put("onStartDossierStatus", onStartDossierStatus == null || onStartDossierStatus.isBlank() ? null : onStartDossierStatus.strip());
         raw.put("steps", steps == null ? List.of() : steps);
+        raw.put("dossierTypeCode", dossierTypeCode);
         ParcoursDefinition definition = objectMapper.convertValue(raw, ParcoursDefinition.class);
         if (Boolean.TRUE.equals(dryRun)) {
             var preview = compile.preview(actor, parcoursKey, label, definition);

@@ -81,6 +81,23 @@ class ParcoursApiTest {
     }
 
     @Test
+    void theDossierTypeTheParcoursWorksOnIsKeptAndAHostileCodeIsRefused() throws Exception {
+        String schema = "s" + key();
+        createSchema(schema);
+        String key = key();
+        String withType = body(schema, null, TWO_STEPS).replace("\"onStartDossierStatus\":null,",
+                "\"onStartDossierStatus\":null,\"dossierTypeCode\":\"PERMIS_RIVERAIN\",");
+        mockMvc.perform(put("/api/parcours/{key}", key).with(admin()).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content(withType))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.definition.dossierTypeCode").value("PERMIS_RIVERAIN"));
+        mockMvc.perform(get("/api/parcours/{key}", key).with(admin()))
+                .andExpect(jsonPath("$.definition.dossierTypeCode").value("PERMIS_RIVERAIN"));
+        mockMvc.perform(put("/api/parcours/{key}", key()).with(admin()).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content(withType.replace("PERMIS_RIVERAIN", "a b\\\"")))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.detail", containsString("dossier type code")));
+    }
+
+    @Test
     void staleVersionAndDuplicateCreationAreConflicts() throws Exception {
         String schema = "s" + key();
         createSchema(schema);
@@ -118,6 +135,27 @@ class ParcoursApiTest {
                 .andExpect(jsonPath("$.sha256").isString());
         mockMvc.perform(get("/api/parcours/{key}", key).with(admin()))
                 .andExpect(jsonPath("$.lastCompiledSha256").isString());
+    }
+
+    @Test
+    void aParcoursUsingADraftTemplateCompilesIntoADraftAndWarnsThatPublicationAwaitsActivation() throws Exception {
+        // TODO §93 D-DRAFT-REF-STATUS : un modèle encore en brouillon n'empêche plus de déposer le brouillon du workflow.
+        String template = "t" + key();
+        mockMvc.perform(post("/api/document-templates").with(admin()).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"templateKey":"%s","variantKey":null,"locale":null,"label":"Décision",
+                                "htmlContent":"<p>Décision</p>"}""".formatted(template)))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.status").value("DRAFT"));
+        String key = key();
+        String steps = """
+                [{"id":"generer","kind":"DOCUMENT","params":{"documentType":"%s"}},
+                 {"id":"cloture","kind":"SET_WORKFLOW_STATUS","params":{"targetWorkflowStatus":"VALIDE"}}]""".formatted(template);
+        mockMvc.perform(put("/api/parcours/{key}", key).with(admin()).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content(body("x", null, steps))).andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/parcours/{key}/compile", key).with(admin()).with(csrf()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.draftWritten").value(true))
+                .andExpect(jsonPath("$.warnings", hasItem(containsString(template))));
     }
 
     @Test

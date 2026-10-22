@@ -22,6 +22,7 @@ import com.flowforge.domain.dossier.port.out.AttachmentScanResult;
 import com.flowforge.domain.workflow.portal.model.PortalLink;
 import com.flowforge.domain.workflow.portal.model.PortalLinkStatus;
 import com.flowforge.domain.workflow.portal.model.PortalLinkStatusReason;
+import com.flowforge.infrastructure.web.portal.FixedClockPortalRateLimiterConfig;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -32,11 +33,13 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.flowable.task.api.Task;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
@@ -47,7 +50,13 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /** TODO §68 — API publique du portail, de bout en bout sur le vrai moteur (T-ACCESS, T-UPLOAD, T-SUBMIT, T-SEC). */
 @AutoConfigureMockMvc
+@Import(FixedClockPortalRateLimiterConfig.class)
 class PortalApiTest extends AbstractPortalEngineTest {
+
+    // Compteur et non System.nanoTime() : sous Windows nanoTime avance par pas de 100 ns, d'où
+    // une poignée d'IP distinctes seulement — une IP « fraîche » retombait sur celle saturée par
+    // le test de rate limit (429).
+    private static final AtomicInteger IP_SEQUENCE = new AtomicInteger();
 
     private static final String TOKEN = "X-Portal-Token";
     private static final byte[] PDF = "%PDF-1.7\n1 0 obj\n".getBytes();
@@ -93,7 +102,8 @@ class PortalApiTest extends AbstractPortalEngineTest {
     }
 
     private static String freshIp() {
-        return "10.20." + (System.nanoTime() % 250) + "." + (1 + (System.nanoTime() % 250));
+        int n = IP_SEQUENCE.getAndIncrement();
+        return "10.20." + (n / 250 % 250) + "." + (1 + n % 250);
     }
 
     private PortalLink link() {

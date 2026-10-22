@@ -33,9 +33,9 @@ types/templates/connectors/workflow-configs ; packaging Maven→`static/` ;
 maquette
 [FlowForge - Maquettes UI.html](analysis%20doc/FlowForge%20-%20Maquettes%20UI.html)
 = référence UX). Détail des lots livrés en §2.
-**TODO.md entièrement clos** (points 1–58). **File d'attente (2026-09-08) :**
-reliquat V1.x / ops cadré en **vagues parallèles** — voir
-[FILE-ATTENTE.md](FILE-ATTENTE.md) § *File d’attente* et **§6** ci-dessous.
+Vagues A/B/C/D livrées. **File active (2026-10-22) :** §7 (exemple riverain) —
+voir [FILE-ATTENTE.md](FILE-ATTENTE.md) § *File active — backlog riverain*.
+Seul point TODO encore `[ ]` : §71 (cadrage MCP, décisions résiduelles).
 [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) intégralement
 close (§40–46).
 
@@ -200,7 +200,7 @@ Voir le détail et les options dans [TODO.md](TODO.md),
 | 28 | Stratégie de test | **Clos** (2026-08-22, `fiabilisation-tests-plateforme` PR #66) — Testcontainers PostgreSQL ajoutés (`TenantSchemaIsolationIT`, `LiquibasePartialFailureIT`, `SequentialReferenceMultiPodIT`), seuils Jacoco relevés ; FE = Vitest + Playwright, câblés en CI (job `frontend`, `.github/workflows/ci.yml`) |
 | 29 | Observabilité | **Livré** (2026-08-20) — `observabilite` PR #59 Phase 9 READY ; Q1–Q6 |
 | 30 | Durcissement entrées exposées | **Clos** (2026-08-21, `durcissement-donnees-sensibles` PR #62) — en plus du rate limit/taille max/SSRF déjà livrés, validation magic-bytes des pièces jointes + port `AttachmentScanPort` pluggable (adaptateur no-op, pas d'antivirus dans la stack figée — décision explicite, contrat prêt pour un futur adaptateur type ClamAV) + audit anti-fuite de secrets déchiffrés |
-| 31 | Découpage en lots / provisioning | **Partiel** — lots lifecycle V1 livrés ; outillage provisioning ops = lot **A1** ([FILE-ATTENTE.md](FILE-ATTENTE.md)) |
+| 31 | Découpage en lots / provisioning | **Clos** — lots lifecycle V1 livrés ; outillage provisioning = lot **A1** ([PR #119](https://github.com/superjojo79/FlowForge/pull/119)) |
 | 40 | SSTI Thymeleaf / SpEL | **Clos** (2026-08-25, `durcissement-securite-post-revue` PR #76) — évaluateur allowlist (`#vars`/`#dates`/`#numbers`/`#strings`/`#lists` + chemins modèle), D-40 = B/B2 |
 | 41 | Isolation PG sans GRANT par tenant | **Clos** (2026-08-25, PR #76) — GRANT PG `LOGIN` par tenant |
 | 42 | Actuator `permitAll` / port 8081 | **Clos** (2026-08-25, PR #76) — actuator bindé `127.0.0.1:8090` |
@@ -265,3 +265,31 @@ Voir le détail et les options dans [TODO.md](TODO.md),
 
 **Interdits :** Kafka ∥ import-batch ∥ ERP ; import batch ∥ A3 ; ClamAV ∥ A1 (Compose) ;
 codegen OpenAPI ∥ tout FE ; `signature-electronique` avant `portail-externe`. Hors vague : Redis/SSE multi-pod, Chart.js SLA, Cockpit.
+
+---
+
+## 7. Manques relevés par l'exemple « autorisation riverain » (2026-10-16)
+
+> **Source :** [exemples/autorisation-riverain/DIFFICULTES.md](exemples/autorisation-riverain/DIFFICULTES.md).
+> Ce flux a été monté uniquement par configuration (via MCP), sans développement. Chaque ligne
+> renvoie au § correspondant de ce fichier, qui décrit le constat, le contournement appliqué et ce
+> qui reste imparfait. Aucun de ces lots n'est encore cadré au sens `dev-lifecycle`.
+
+| Priorité | § | Manque | Lot proposé | Statut |
+|---|---|---|---|---|
+| 1 | 8 | Un workflow qui référence un modèle de document **en brouillon** ne peut pas être enregistré, même comme brouillon (`BlockReferenceVerifier` exige un modèle actif). Un modèle créé par MCP reste en brouillon tant qu'un humain ne l'a pas activé. Résultat : l'exemple ne peut pas être déployé. | `notifier-dossier-et-brouillons` | **Livré** ([PR #174](https://github.com/superjojo79/FlowForge/pull/174), TODO §93) |
+| 1 | 3 | Le destinataire de la brique « Notifier » ne peut pas venir d'un champ du dossier (pas de source `dossierField:`). De plus, `StartWorkflowDialog.vue` ne transmet aucune variable au démarrage. Une demande encodée par un agent n'envoie donc aucun e-mail. | `notifier-dossier-et-brouillons` | **Livré** ([PR #174](https://github.com/superjojo79/FlowForge/pull/174), TODO §93) ; l'exemple utilise `dossierField:email` |
+| 2 | 2 | La brique « Notifier » (et le connecteur `smtp`) ne peut pas joindre de document, par exemple le PDF généré. | `notifier-piece-jointe` | Backlog |
+| 2 | 1 | Aucune contrainte d'unicité sur un champ de dossier, et aucune brique pour rechercher un dossier existant depuis un workflow. Un doublon peut être autorisé tacitement. | `unicite-champ-dossier` | Backlog |
+| 3 | 4 | Les textes envoyés au demandeur (e-mail, consignes du portail) sont des littéraux du BPMN, sans gabarit ni variable. | `gabarits-notification` | Backlog |
+| 3 | 6 | Le concepteur de parcours ne propose pas de minuteur en bordure d'une tâche (course « décision **ou** délai »). Les minuteurs n'acceptent pas d'expression, et il n'existe pas de calendrier de jours ouvrables. | `parcours-minuteur-bordure` | Backlog |
+| 3 | 7 | Le portail ne sait pas recevoir une demande initiale : il ne sert qu'à répondre à une tâche. Le dépôt passe par un site externe et le connecteur `http-rest`. | — (à arbitrer) | Backlog |
+| 3 | 10 | `dossierFields` est un instantané pris au démarrage du workflow : les champs modifiés ensuite ne sont pas relus. | — (à arbitrer) | Backlog |
+| — | 5 | Moteur de modèles plus strict que la documentation. | — | **Doc corrigée** ([PR #168](https://github.com/superjojo79/FlowForge/pull/168)) ; le moteur reste strict |
+| — | 9 | Pas d'assignation des tâches par groupe. | — | **En partie levé** ([PR #171](https://github.com/superjojo79/FlowForge/pull/171), « M'assigner ») ; D-EDIT-SCOPE inchangée |
+| 2 | 11 | Un e-mail asynchrone en échec (job en *dead letter*) n'apparaît ni sur la fiche dossier ni dans le diagramme (`failedIds` ne retient que les erreurs BPMN) ; aucun moyen de le rejouer dans l'interface. Relevé par la recette du 2026-10-18. | `incidents-visibles-dossier` | **Livré** ([PR #176](https://github.com/superjojo79/FlowForge/pull/176), TODO §94) |
+| 3 | — | Variables de démarrage **déclarées** par workflow (nom, libellé, obligatoire) affichées comme un formulaire dans « Démarrer un workflow », au lieu de la saisie libre livrée par la PR #174. | `variables-demarrage-declarees` | Backlog |
+
+Les deux lots de priorité 1 sont livrés (PR #174, PR #176). Recette R1–R7 de l'exemple : faite
+(2026-10-18) ; R6 rejoué après la PR #176 (incident visible et rejouable). **Prochaine étape :**
+un lot de priorité 2 (`notifier-piece-jointe` ou `unicite-champ-dossier`), Phase 1 obligatoire.

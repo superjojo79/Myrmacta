@@ -47,6 +47,12 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 class SignatureBrowserE2eTest extends AbstractSignatureEngineTest {
 
     private static final Path FRONTEND = Path.of("frontend");
+    // Sous Windows, node_modules/.bin/playwright est un script shell non exécutable (CreateProcess
+    // error=193) : npm y installe le lanceur playwright.cmd.
+    private static final Path PLAYWRIGHT = FRONTEND.resolve(
+            System.getProperty("os.name").startsWith("Windows")
+                    ? "node_modules/.bin/playwright.cmd"
+                    : "node_modules/.bin/playwright");
     private static final Pattern LINK = Pattern.compile("(https://[^\\s\"<]+/portal/#signature:[A-Za-z0-9_-]{43})");
 
     @LocalServerPort
@@ -55,7 +61,7 @@ class SignatureBrowserE2eTest extends AbstractSignatureEngineTest {
     @BeforeEach
     void requireBrowserEnvironment() {
         assumeTrue(Boolean.getBoolean("signature.e2e"), "-Dsignature.e2e=true requis");
-        assumeTrue(Files.exists(FRONTEND.resolve("node_modules/.bin/playwright")), "Playwright non installé");
+        assumeTrue(Files.exists(PLAYWRIGHT), "Playwright non installé");
         assumeTrue(Files.exists(Path.of("target/classes/static/portal/index.html")), "portail non construit");
     }
 
@@ -73,7 +79,7 @@ class SignatureBrowserE2eTest extends AbstractSignatureEngineTest {
         Map<String, String> env = new HashMap<>();
         env.put("SIGNATURE_LINK", link);
         env.put("SIGNATURE_MODE", mode);
-        ProcessBuilder pb = new ProcessBuilder(FRONTEND.resolve("node_modules/.bin/playwright").toAbsolutePath()
+        ProcessBuilder pb = new ProcessBuilder(PLAYWRIGHT.toAbsolutePath()
                 .toString(), "test", "-c", "playwright.real.config.ts")
                 .directory(FRONTEND.toFile())
                 .redirectErrorStream(true);

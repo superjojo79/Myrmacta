@@ -13,7 +13,8 @@ import org.springframework.stereotype.Component;
  * TODO §68 — lit l'adresse du destinataire <strong>par nom littéral</strong> : un champ du dossier
  * ({@code Dossier.fields()}, lecture autorisée par {@code ArchitectureRulesTest} — une seule clé,
  * jamais renvoyée à un navigateur) ou une variable de process ({@code RuntimeService.getVariable},
- * sans évaluation d'expression — TODO §69).
+ * sans évaluation d'expression — TODO §69). Sert aussi au destinataire de la brique « Notifier »
+ * ({@code dossierField:}, TODO §93).
  */
 @Component
 class PortalRecipientResolverAdapter implements PortalRecipientResolverPort {

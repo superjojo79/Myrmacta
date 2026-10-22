@@ -1,0 +1,23 @@
+{
+  "dossierTypeCode": "AUTORISATION_RIVERAIN",
+  "label": "Autorisation riverain — Dupont — 1-ABC-123",
+  "fields": {
+    "nom": "Dupont",
+    "prenom": "Camille",
+    "email": "camille.dupont@example.org",
+    "telephone": "+32 470 00 00 00",
+    "adresseRue": "Rue des Tilleuls",
+    "adresseNumero": "12",
+    "codePostal": "1000",
+    "commune": "Bruxelles",
+    "paysImmatriculation": "BE",
+    "plaque": "1-ABC-123",
+    "marque": "Renault",
+    "modele": "Clio",
+    "zoneRiverain": "Zone riveraine Tilleuls",
+    "dateDebutSouhaitee": "2026-11-01"
+  },
+  "demarrageWorkflow": {
+    "processDefinitionKey": "autorisationRiverain"
+  }
+}

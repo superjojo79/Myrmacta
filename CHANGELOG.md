@@ -28,14 +28,65 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ## [Non publié]
 
+### Ajouté
+
+- **[PR #177](https://github.com/superjojo79/FlowForge/pull/177) — concepteur de parcours** — L'aperçu dessine le diagramme BPMN au lieu d'afficher le XML. Le parcours peut
+  désigner le type de dossier sur lequel il porte : ses champs sont proposés dans les formules (liste « Insérer… », vérification
+  pendant la frappe) et dans les correspondances, désormais saisies comme un tableau « champ ← valeur ».
+- **[PR #176](https://github.com/superjojo79/FlowForge/pull/176) — TODO §94** — Les étapes automatiques en échec (job en
+  nouvelle tentative ou en *dead letter*) sont visibles sur la fiche dossier (bandeau, diagramme) et dans Admin → Incidents ;
+  un administrateur les rejoue une fois la cause corrigée. Message technique réservé aux administrateurs, lecture seule MCP.
+
+- **[PR #174](https://github.com/superjojo79/FlowForge/pull/174) — TODO §93** — Un brouillon de workflow proposé par MCP, un
+  parcours ou un import peut référencer une ressource encore inactive (modèle en brouillon…) : elle est signalée et la publication
+  reste stricte. « Notifier » lit son destinataire dans le dossier (`dossierField:email`), et « Démarrer un workflow » accepte des
+  variables de démarrage. Une variable `notificationTo` doit désormais être une seule adresse.
+
+### Sécurité
+
+- **[PR #174](https://github.com/superjojo79/FlowForge/pull/174)** — Le connecteur `flowable-signal` refuse les variables plateforme
+  (`dossierId`…) ; un `documentType` passé au démarrage d'un workflow est soumis à la liste blanche du type de dossier.
+
+### Documentation
+
+- **[PR #179](https://github.com/superjojo79/FlowForge/pull/179)** — File d'attente, roadmap et README recadrés sur `main` : Vague D livrée, prochains lots = backlog de l'exemple riverain (pièce jointe, unicité). Frontend documenté comme OpenVue ; catalogue de connecteurs et recette R6 alignés.
+
+- **[PR #178](https://github.com/superjojo79/FlowForge/pull/178)** — Suivi de la PR #176 : `DEFERRED-FEATURES.md` §7 et `DIFFICULTES.md` §11 de l'exemple riverain passés
+  à « livré ».
+- **[PR #175](https://github.com/superjojo79/FlowForge/pull/175)** — L'exemple « autorisation riverain » lit l'adresse du
+  demandeur dans le dossier (`dossierField:email`, envoi asynchrone) au lieu d'une variable de démarrage ; ordre de mise en
+  service et backlog (`DEFERRED-FEATURES.md` §7) mis à jour. Recette de bout en bout consignée (README) : les sept cas passent,
+  sauf l'incident d'un e-mail asynchrone en échec, invisible dans l'interface (DIFFICULTES §11, backlog).
+- **[PR #172](https://github.com/superjojo79/FlowForge/pull/172)** — Exemple `exemples/autorisation-riverain/` : un flux complet
+  monté uniquement par configuration via MCP, avec la liste des manques rencontrés (`DIFFICULTES.md`), reportés et priorisés dans
+  `DEFERRED-FEATURES.md` §7. `GETTING-STARTED.md` §12 : périmètre MCP à jour et activation du canal M2M en local.
+- **[PR #168](https://github.com/superjojo79/FlowForge/pull/168)** — Templates de document : une variable ou propriété
+  **absente ou nulle** fait échouer la génération (le guide BPMN annonçait à tort une chaîne vide). Grammaire réelle des
+  expressions `${…}` documentée (`GUIDE-CONCEPTION-BPMN.md` §5, `08-templates-documents.md`), avec l'idiome de condition
+  `#strings.equals` et le calcul des valeurs facultatives en amont par la brique « Évaluer une expression ».
+
 ### Modifié
 
+- **[PR #165](https://github.com/superjojo79/FlowForge/pull/165)** — Bibliothèque UI : **PrimeVue** (passé sous licence
+  propriétaire, badge « Invalid PrimeUI License ») remplacé par **OpenVue**, son fork communautaire sous licence MIT.
+  Mêmes composants et thème Aura, seuls les imports changent ; `primeicons` (MIT) est conservé.
 - **TODO §86 (LC3, revue D-ASSIST-PROVIDER)** — L'assistant de conception passe par le **starter Spring AI** (`spring-ai-starter-model-anthropic`, `ChatModel`) derrière le même port `LanguageModelPort`, à la
   place de l'adaptateur HTTP maison. Configuration `APP_ASSISTANT_*` inchangée ; toujours **désactivé par défaut**, démarrage refusé sans clé, https obligatoire, redirections jamais suivies, erreurs du
   fournisseur jamais relayées, aucune relance automatique. L'auto-configuration du starter est coupée (`spring.ai.model.chat=none`) : le modèle n'est construit que si l'assistant est activé.
 
+### Corrigé
+
+- **[PR #173](https://github.com/superjojo79/FlowForge/pull/173)** — Tests de limite de débit (portail, signature,
+  webhooks, génération de documents) rendus déterministes : les limiteurs y tournent sur une horloge figée, au lieu de
+  l'horloge système qui pouvait remettre le compteur à zéro en milieu de test (échec intermittent en CI).
+
 ### Ajouté
 
+- **[PR #171](https://github.com/superjojo79/FlowForge/pull/171) — TODO §92** — Assignation des tâches : bouton
+  **« M'assigner »** sur une tâche libre pour tout éditeur du dossier, et réassignation (TA/WA) par une **liste des
+  utilisateurs** au lieu d'un identifiant à saisir. La liste vient d'un annuaire local alimenté à chaque connexion : un
+  utilisateur n'y figure qu'après sa première connexion. Corrige aussi les boutons blancs sur fond blanc sous un OS en
+  mode sombre (thème clair forcé).
 - **[PR #157](https://github.com/superjojo79/FlowForge/pull/157) — TODO §91** — PostgreSQL embarqué (zonky) :
   tous les tests tournent sur un PostgreSQL 17 réel, sans Docker (une base par contexte Spring), et un
   profil `embedded-db` (`./mvnw -Pembedded-db package`) offre une base **persistante** pour les
@@ -179,6 +230,10 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Corrigé
 
+- **[PR #164](https://github.com/superjojo79/FlowForge/pull/164) — Outillage Windows + Podman** — Connexion de dev réparée (le realm
+  émet `tenant_id` et les rôles dans l'ID token ; `/api/auth/me` renvoie les rôles mappés) ; le SPA sous context-path recharge les
+  liens profonds, déconnecte et garde le préfixe tenant (`<base href>` réécrit par le backend), sa garde de rôles attend `/me`.
+  Suite de tests verte sous Windows, profil Compose `mailpit`, comptes `manager` / `viewer` ; parcours documenté dans `GETTING-STARTED.md`.
 - **[PR #158](https://github.com/superjojo79/FlowForge/pull/158) — suite de TODO §91** — `SlaAlertConcurrencyIT` échouait
   de façon aléatoire en CI (« une seule alerte… expected 1 but was 0 ») : le pool de connexions des tests, plafonné à 4,
   se bloquait sous les tests à 4 threads (timeout 30 s, transaction annulée). Pool Hikari par défaut rétabli.

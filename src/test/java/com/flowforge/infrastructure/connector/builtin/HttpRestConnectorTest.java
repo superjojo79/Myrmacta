@@ -40,9 +40,11 @@ class HttpRestConnectorTest {
     @BeforeEach
     void setUp() {
         httpSender = new RecordingHttpSender();
+        // Résolution figée : le test ne doit pas dépendre du DNS du poste (example.com filtré
+        // derrière certains résolveurs → « host cannot be resolved »).
         connector = new HttpRestConnector(
                 new SimpleJsonPathMapper(),
-                new OutboundUrlGuard(false),
+                new OutboundUrlGuard(false, host -> new InetAddress[] {InetAddress.getByName("93.184.216.34")}),
                 JsonMapper.builder().build(),
                 DEFAULT_PROPERTIES,
                 httpSender);

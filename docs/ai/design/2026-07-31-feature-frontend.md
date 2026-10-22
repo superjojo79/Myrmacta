@@ -231,6 +231,16 @@ Erreurs : `ProblemDetail`.
   l’active ; chemins d’auth OAuth relatifs à la même origine.
 - V1 : yaml context-path encore commenté — tester aussi le cas
   `context-path=/ {tenantId}/` en checklist manuelle.
+- **Mise en œuvre (2026-10-11, décision inchangée)** : `document.baseURI` valait la
+  route courante faute de `<base>` — lien profond rechargé = assets
+  `/{route}/assets/…` (page blanche), préfixe API/logout = 1er segment de la route,
+  routeur sur `BASE_URL` (`'./'`) perdant le préfixe tenant. Désormais `index.html`
+  porte `<base href="/">`, réécrit par `SpaFallbackConfig.SpaBaseHrefTransformer` en
+  `<base href="{server.servlet.context-path}/">` ; axios, `tenantPath` et le routeur
+  (`routerBase()`) dérivent tous de cette base. Toujours un seul artefact pour N
+  instances. Couvert par `SpaFallbackConfigTest`, `http.spec.ts`, `auth.spec.ts` et
+  E2E-BASE-1/2 ; garde de rôles qui attend `/me` (`roleGuard.ts`) — elle laissait
+  passer un lien profond admin avant la réponse de `/me`.
 
 ---
 

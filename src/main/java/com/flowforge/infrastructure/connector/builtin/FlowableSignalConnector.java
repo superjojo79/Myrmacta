@@ -9,6 +9,7 @@ import com.flowforge.domain.connector.model.ConnectorValidationException;
 import com.flowforge.domain.connector.model.ServiceConnector;
 import com.flowforge.domain.connector.model.TriggerConnector;
 import com.flowforge.domain.connector.model.WorkflowTriggerEvent;
+import com.flowforge.domain.workflow.WorkflowVariables;
 import com.flowforge.infrastructure.connector.mapping.SimpleJsonPathMapper;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -115,6 +116,14 @@ public class FlowableSignalConnector implements ConnectorDefinition, ServiceConn
         Map<String, Object> variables = params.get("variables") instanceof Map<?, ?> map
                 ? (Map<String, Object>) map
                 : Map.of();
+
+        // Revue adversariale TODO §93 (I7) : connectorInput est posable à la complétion d'une tâche ; le signal touche toutes les
+        // instances du tenant qui l'attendent. Les variables plateforme (dossierId…) ne doivent jamais être réécrites ainsi.
+        try {
+            WorkflowVariables.assertNoReservedKeys(variables);
+        } catch (IllegalArgumentException reserved) {
+            throw new ConnectorValidationException(reserved.getMessage());
+        }
 
         String tenantId = instance.tenantId();
         if (variables.isEmpty()) {

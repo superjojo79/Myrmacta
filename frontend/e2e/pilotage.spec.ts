@@ -4,6 +4,10 @@ type MockOpts = {
   roles?: string[]
   withActiveLink?: boolean
   dossierStatus?: string
+  /** La tâche du lien n'a pas d'assigné (D-ASSIGN-CLAIM). */
+  freeTask?: boolean
+  /** TODO §94 : une étape du lien est en incident (job en dead letter). */
+  withIncident?: boolean
 }
 
 const DOSSIER_ID = '11111111-1111-1111-1111-111111111111'
@@ -144,10 +148,10 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
     {
       taskId: 'task-1',
       name: 'Review',
-      assignee: 'user-1',
+      assignee: opts.freeTask ? null : 'user-1',
       taskDefinitionKey: 'review',
       createTime: '2026-08-12T00:00:00Z',
-    },
+    } as { taskId: string; name: string; assignee: string | null; taskDefinitionKey: string; createTime: string },
   ]
   let elements: Array<Record<string, unknown>> = []
 
@@ -652,8 +656,62 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
     }
     await route.continue()
   })
+  // TODO §94 : un incident à état — message réservé aux administrateurs, rejeu qui le fait disparaître.
+  const incidentAdmin = roles.some((role) => ['TENANT_ADMIN', 'WORKFLOW_ADMIN'].includes(role))
+  let incidents = opts.withIncident
+    ? [
+        {
+          jobId: 'job-1',
+          activityId: 'mailRefus',
+          activityName: 'E-mail : refus',
+          state: 'INCIDENT',
+          since: '2026-10-18T18:51:26Z',
+          retriesLeft: 0,
+          message: 'notificationTo source dossierField:email is not a single e-mail address',
+        },
+      ]
+    : []
+  const visibleIncidents = () =>
+    incidents.map((incident) => (incidentAdmin ? incident : { ...incident, message: undefined }))
+  await page.route('**/api/admin/incidents**', async (route) => {
+    if (!incidentAdmin) {
+      await route.fulfill({ status: 403, contentType: 'application/json', body: '{"status":403,"detail":"denied"}' })
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        content: incidents.map((incident) => ({
+          ...incident,
+          linkId: LINK_ID,
+          dossierId: DOSSIER_ID,
+          dossierReference: 'DOS-TEST-1',
+          processDefinitionKey: 'claimWorkflow',
+        })),
+        page: 0,
+        size: 20,
+        totalElements: incidents.length,
+        totalPages: incidents.length > 0 ? 1 : 0,
+        truncated: false,
+      }),
+    })
+  })
   await page.route('**/api/workflow-links/**', async (route) => {
     const url = route.request().url()
+    if (url.includes('/incidents/') && url.endsWith('/retry') && route.request().method() === 'POST') {
+      if (!incidentAdmin) {
+        await route.fulfill({ status: 403, contentType: 'application/json', body: '{"status":403}' })
+        return
+      }
+      incidents = []
+      await route.fulfill({ status: 204, body: '' })
+      return
+    }
+    if (url.endsWith('/incidents')) {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(visibleIncidents()) })
+      return
+    }
     if (url.includes('/diagram')) {
       await route.fulfill({
         status: 200,
@@ -663,7 +721,7 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
             '<?xml version="1.0"?><definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" id="Defs"><process id="P" isExecutable="true"><startEvent id="start"/></process></definitions>',
           activeIds: ['start'],
           completedIds: [],
-          failedIds: [],
+          failedIds: incidents.length > 0 ? ['start'] : [],
         }),
       })
       return
@@ -673,7 +731,35 @@ async function mockSession(page: Page, opts: MockOpts = {}) {
       return
     }
     if (url.includes('/reassign') && route.request().method() === 'POST') {
+      const { assigneeId } = route.request().postDataJSON() as { assigneeId: string }
+      tasks = tasks.map((task) => ({ ...task, assignee: assigneeId }))
       await route.fulfill({ status: 204, body: '' })
+      return
+    }
+    if (url.includes('/claim') && route.request().method() === 'POST') {
+      // Miroir de D-ASSIGN-CLAIM : prise réservée aux éditeurs, sur une tâche libre.
+      if (!canEdit) {
+        await route.fulfill({ status: 403, contentType: 'application/json', body: '{"status":403}' })
+        return
+      }
+      tasks = tasks.map((task) => ({ ...task, assignee: task.assignee ?? 'user-1' }))
+      await route.fulfill({ status: 204, body: '' })
+      return
+    }
+    if (url.includes('/assignable-users')) {
+      const admin = roles.some((role) => ['TENANT_ADMIN', 'WORKFLOW_ADMIN'].includes(role))
+      await route.fulfill({
+        status: admin ? 200 : 403,
+        contentType: 'application/json',
+        body: JSON.stringify(
+          admin
+            ? [
+                { userId: 'user-1', displayName: 'Ada', email: 'ada@example.com' },
+                { userId: 'user-2', displayName: 'Grace Hopper', email: 'grace@example.com' },
+              ]
+            : { status: 403 },
+        ),
+      })
       return
     }
     if (url.includes('/tasks')) {
@@ -936,6 +1022,40 @@ test('E2E-4 start workflow sends Idempotency-Key', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Diagramme' })).toBeVisible()
 })
 
+test('E2E-START-VARS-1 start variables typed in the dialog are sent with the start request (TODO §93)', async ({ page }) => {
+  await mockSession(page)
+  await openApp(page)
+  await createAndOpenDossier(page)
+  await page.getByRole('button', { name: 'Démarrer workflow' }).click()
+  await page.getByText('Variables de démarrage').click()
+  await page.getByRole('button', { name: 'Ajouter une variable' }).click()
+  await page.getByRole('textbox', { name: 'Nom' }).fill('priorite')
+  await page.getByRole('textbox', { name: 'Valeur' }).fill('haute')
+  const request = page.waitForRequest(
+    (r) => r.method() === 'POST' && /\/api\/dossiers\/[^/]+\/workflows$/.test(new URL(r.url()).pathname),
+  )
+  await page.locator('.dialog button.primary').click()
+  expect((await request).postDataJSON()).toEqual({ processDefinitionKey: expect.any(String), variables: { priorite: 'haute' } })
+})
+
+test('E2E-START-VARS-2 a reserved start variable name is refused before any request (TODO §93)', async ({ page }) => {
+  await mockSession(page)
+  await openApp(page)
+  await createAndOpenDossier(page)
+  let started = false
+  page.on('request', (r) => {
+    if (r.method() === 'POST' && /\/api\/dossiers\/[^/]+\/workflows$/.test(new URL(r.url()).pathname)) started = true
+  })
+  await page.getByRole('button', { name: 'Démarrer workflow' }).click()
+  await page.getByText('Variables de démarrage').click()
+  await page.getByRole('button', { name: 'Ajouter une variable' }).click()
+  await page.getByRole('textbox', { name: 'Nom' }).fill('dossierId')
+  await page.locator('.dialog button.primary').click()
+  await expect(page.getByRole('alert').filter({ hasText: 'réservé' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Démarrer un workflow' })).toBeVisible()
+  expect(started).toBe(false)
+})
+
 test('E2E-5 complete task from inbox with {}', async ({ page }) => {
   await mockSession(page)
   await openApp(page)
@@ -943,6 +1063,43 @@ test('E2E-5 complete task from inbox with {}', async ({ page }) => {
   await expect(page.getByText('Valider')).toBeVisible()
   await page.getByRole('button', { name: 'Compléter' }).click()
   await expect(page.getByText('Aucune tâche assignée')).toBeVisible()
+})
+
+test('E2E-INCIDENT-1 an administrator sees the incident with its message and retries it (TODO §94)', async ({ page }) => {
+  await mockSession(page, { withActiveLink: true, withIncident: true, roles: ['TENANT_ADMIN', 'WORKFLOW_ADMIN'] })
+  await openApp(page)
+  await createAndOpenDossier(page)
+  const banner = page.getByTestId('incident-banner')
+  await expect(banner).toContainText('E-mail : refus')
+  await expect(banner).toContainText('single e-mail address')
+  const retry = page.waitForRequest(
+    (r) => r.method() === 'POST' && /\/incidents\/job-1\/retry$/.test(new URL(r.url()).pathname),
+  )
+  await banner.getByRole('button', { name: 'Rejouer' }).click()
+  await retry
+  await expect(page.getByTestId('incident-banner')).toHaveCount(0)
+})
+
+test('E2E-INCIDENT-2 a manager sees the incident without message nor retry (TODO §94)', async ({ page }) => {
+  await mockSession(page, { withActiveLink: true, withIncident: true, roles: ['DOSSIER_MANAGER'] })
+  await openApp(page)
+  await createAndOpenDossier(page)
+  const banner = page.getByTestId('incident-banner')
+  await expect(banner).toContainText('E-mail : refus')
+  await expect(banner).not.toContainText('single e-mail address')
+  await expect(banner.getByRole('button', { name: 'Rejouer' })).toHaveCount(0)
+})
+
+test('E2E-INCIDENT-3 the admin incidents screen lists failures with a link to the dossier (TODO §94)', async ({ page }) => {
+  await mockSession(page, { withActiveLink: true, withIncident: true, roles: ['TENANT_ADMIN', 'WORKFLOW_ADMIN'] })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Incidents' }).click()
+  await expect(page.getByRole('heading', { name: 'Étapes en échec' })).toBeVisible()
+  const row = page.getByTestId('incident-admin-row')
+  await expect(row).toContainText('DOS-TEST-1')
+  await expect(row).toContainText('E-mail : refus')
+  await row.getByRole('button', { name: 'Rejouer' }).click()
+  await expect(page.getByText('Aucune étape en échec.')).toBeVisible()
 })
 
 test('E2E-6 reassign visible for admin only', async ({ page }) => {
@@ -957,6 +1114,27 @@ test('E2E-6b manager cannot reassign', async ({ page }) => {
   await openApp(page)
   await createAndOpenDossier(page)
   await expect(page.getByRole('button', { name: 'Réassigner' })).toHaveCount(0)
+})
+
+test('E2E-ASSIGN-1 a dossier editor takes a free task with M’assigner (D-ASSIGN-CLAIM)', async ({ page }) => {
+  await mockSession(page, { withActiveLink: true, roles: ['DOSSIER_MANAGER'], freeTask: true })
+  await openApp(page)
+  await createAndOpenDossier(page)
+  await expect(page.getByText('Assignee : —')).toBeVisible()
+  await page.getByRole('button', { name: 'M’assigner' }).click()
+  await expect(page.getByText('Assignee : vous')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'M’assigner' })).toHaveCount(0)
+})
+
+test('E2E-ASSIGN-2 admin reassigns by picking a known user, shown by name (D-ASSIGN-DIR)', async ({ page }) => {
+  await mockSession(page, { withActiveLink: true, roles: ['TENANT_ADMIN', 'WORKFLOW_ADMIN'] })
+  await openApp(page)
+  await createAndOpenDossier(page)
+  await expect(page.getByText('Assignee : vous')).toBeVisible()
+  await page.getByRole('button', { name: 'Réassigner' }).click()
+  await page.getByTestId('reassign-user').selectOption({ label: 'Grace Hopper (grace@example.com)' })
+  await page.getByRole('button', { name: 'Confirmer' }).click()
+  await expect(page.getByText('Assignee : Grace Hopper')).toBeVisible()
 })
 
 test('E2E-7 inbox lists mine tasks', async ({ page }) => {
@@ -2038,15 +2216,11 @@ const BPMN_FOR_OTHER_WORKFLOW_EDITABLE = `<?xml version="1.0" encoding="UTF-8"?>
   </bpmndi:BPMNDiagram>
 </definitions>`
 
-// NOTE: navigation to the BPMN editor always goes through the "Éditer"
-// link on /admin/workflow-types (client-side router push), never a direct
-// page.goto('/admin/bpmn-editor...'). This app's production build uses
-// relative asset paths (decision n°27, same-origin embedded SPA) — a full
-// page load of a nested route resolves "./assets/…" against that nested
-// path and 404s the JS bundle. Every other test in this file already
-// avoids this by navigating via link clicks; the BPMN editor tests follow
-// the same proven pattern rather than hitting a pre-existing, unrelated
-// deep-link limitation.
+// NOTE: navigation to the BPMN editor goes through the "Éditer" link on
+// /admin/workflow-types (client-side router push), like a user would. Direct
+// loads of nested routes also work since
+// DD-BASE <base href> (see E2E-BASE-1); they used to resolve "./assets/…" against
+// the nested path and 404 the JS bundle.
 async function openBpmnEditor(page: Page) {
   await page.getByRole('link', { name: 'Workflows' }).click()
   await page.getByRole('link', { name: 'Éditer' }).click()
@@ -4238,6 +4412,94 @@ test('E2E-PARCOURS-1 parcours designer: build a step list, save, compile to a dr
   expect(compiledWith).toEqual({ dryRun: false, replaceDraft: false })
 })
 
+test('E2E-PARCOURS-2 parcours designer: dossier type, field mapping rows, live formula check and BPMN diagram preview', async ({ page }) => {
+  await mockSession(page)
+  let saved: { definition: { dossierTypeCode: string | null; steps: { params: Record<string, string> }[] } } | null = null
+  const validated: string[] = []
+  const bpmn = `<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="d" targetNamespace="t">
+  <process id="p1" isExecutable="true">
+    <startEvent id="start"/><sequenceFlow id="f1" sourceRef="start" targetRef="maj"/>
+    <serviceTask id="maj" name="Mettre à jour"/><sequenceFlow id="f2" sourceRef="maj" targetRef="end"/>
+    <endEvent id="end"/>
+  </process>
+  <bpmndi:BPMNDiagram id="dia"><bpmndi:BPMNPlane id="plane" bpmnElement="p1">
+    <bpmndi:BPMNShape id="s_start" bpmnElement="start"><dc:Bounds x="100" y="100" width="36" height="36"/></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="s_maj" bpmnElement="maj"><dc:Bounds x="200" y="78" width="100" height="80"/></bpmndi:BPMNShape>
+    <bpmndi:BPMNShape id="s_end" bpmnElement="end"><dc:Bounds x="360" y="100" width="36" height="36"/></bpmndi:BPMNShape>
+    <bpmndi:BPMNEdge id="e_f1" bpmnElement="f1"><di:waypoint x="136" y="118"/><di:waypoint x="200" y="118"/></bpmndi:BPMNEdge>
+    <bpmndi:BPMNEdge id="e_f2" bpmnElement="f2"><di:waypoint x="300" y="118"/><di:waypoint x="360" y="118"/></bpmndi:BPMNEdge>
+  </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
+</definitions>`
+  await page.route('**/api/bpmn-building-blocks/references/**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }))
+  await page.route('**/api/task-question-schemas**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(envelope([])) }))
+  await page.route(/\/api\/dossier-types(?:\?|$)/, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(envelope([{
+        id: 'dt-1', tenantId: 't', code: 'PERMIS', label: 'Permis riverain', workflowKey: 'p1', active: true, allowUnknownFields: false,
+        fieldDefinitions: [
+          { name: 'adresse', label: 'Adresse', type: 'STRING', required: true },
+          { name: 'montant', label: 'Montant', type: 'NUMBER', required: false },
+        ],
+      }])),
+    }))
+  await page.route('**/api/expressions/validate', async (route) => {
+    const { expression } = route.request().postDataJSON() as { expression: string }
+    validated.push(expression)
+    const valid = !expression.trim().endsWith('+')
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(valid ? { valid } : { valid, message: 'expression incomplète', position: 3 }) })
+  })
+  await page.route('**/api/parcours', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }))
+  await page.route('**/api/parcours/p1', async (route) => {
+    saved = route.request().postDataJSON()
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ key: 'p1', label: 'Permis', version: 1, definition: saved!.definition, updatedAt: '2026-10-01T10:00:00Z', updatedBy: 'u' }),
+    })
+  })
+  await page.route('**/api/parcours/preview', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ xml: bpmn, sha256: 'a'.repeat(64), warnings: [], draftWritten: false, replacedExistingDraft: false }) }))
+
+  await openApp(page)
+  await page.getByRole('link', { name: 'Parcours' }).click()
+  await page.getByTestId('parcours-new').click()
+  await page.getByTestId('parcours-dossier-type').selectOption('PERMIS')
+  await expect(page.getByTestId('parcours-key')).toHaveValue('p1')
+  await page.getByTestId('parcours-label').fill('Permis')
+
+  await page.getByTestId('step-add').click()
+  await page.getByTestId('step-kind').selectOption('EXPRESSION')
+  await page.getByTestId('param-formula').fill('1 +')
+  await expect(page.getByTestId('param-formula-status')).toContainText('expression incomplète')
+  await page.getByTestId('param-formula').fill('')
+  await page.getByTestId('param-formula-insert').selectOption('dossier.fields.montant')
+  await expect(page.getByTestId('param-formula')).toHaveValue('dossier.fields.montant')
+  await expect(page.getByTestId('param-formula-status')).toContainText('Formule valide')
+  await page.getByTestId('param-formulaResult').fill('montantCalcule')
+
+  await page.getByTestId('step-add').click()
+  await page.getByTestId('step-kind').nth(1).selectOption('MAP_FIELDS')
+  await page.getByTestId('mapping-field').selectOption('adresse')
+  await page.getByTestId('mapping-expression-insert').selectOption('variables.montantCalcule')
+  await expect(page.getByTestId('mapping-warning')).toHaveCount(0)
+
+  await page.getByTestId('parcours-save').click()
+  await expect(page.getByTestId('parcours-notice')).toContainText('version 1')
+  expect(saved!.definition.dossierTypeCode).toBe('PERMIS')
+  expect(saved!.definition.steps[1].params).toEqual({ fieldMapping: 'adresse = variables.montantCalcule' })
+  expect(validated).toContain('1 +')
+
+  await page.getByTestId('parcours-preview').click()
+  await expect(page.getByTestId('parcours-diagram').locator('[data-element-id="maj"]')).toBeVisible()
+  await expect(page.getByTestId('parcours-xml')).toBeHidden()
+})
+
 test('E2E-I18N-1 language switch: the whole shell turns English, survives a reload, and can go back (D7)', async ({ page }) => {
   await mockSession(page)
   await openApp(page)
@@ -4251,4 +4513,25 @@ test('E2E-I18N-1 language switch: the whole shell turns English, survives a relo
   await page.getByTestId('locale-switcher').selectOption('fr')
   await expect(page.getByRole('link', { name: 'Tâches' })).toBeVisible()
   await expect(page.locator('html')).toHaveAttribute('lang', 'fr')
+})
+
+// DD-BASE : index.html porte <base href="/"> (réécrit par le backend en <base href="{context-path}/">).
+// Sans elle, un chargement direct d'une route imbriquée résolvait "./assets/…" contre cette route
+// (page blanche) et le préfixe API/logout reprenait le 1er segment de la route (/dossiers/api/…).
+test('E2E-BASE-1 a nested route loaded directly renders the app', async ({ page }) => {
+  await mockSession(page)
+  await page.goto('/dossiers/new')
+  await expect(page.getByText('Ada')).toBeVisible()
+  await expect(page.locator('#dossier-label')).toBeVisible()
+})
+
+test('E2E-BASE-2 logout from a nested route posts to /api/auth/logout', async ({ page }) => {
+  await mockSession(page)
+  await page.route('**/auth/logout', (route) => route.fulfill({ status: 200, body: 'ok' }))
+  await openApp(page)
+  await page.getByRole('link', { name: 'Nouveau dossier' }).click()
+  await expect(page).toHaveURL(/\/dossiers\/new$/)
+  const logout = page.waitForRequest((request) => request.method() === 'POST' && request.url().includes('auth/logout'))
+  await page.getByRole('button', { name: 'Déconnexion' }).click()
+  expect(new URL((await logout).url()).pathname).toBe('/api/auth/logout')
 })

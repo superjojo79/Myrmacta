@@ -51,6 +51,31 @@ Notes :
   cette VM, puis suivre le reste du guide normalement depuis là.
 - Vérifier l'installation : `docker compose version` (ou `podman compose version`).
 
+### Windows + Podman (sans Docker Desktop) — parcours vérifié
+
+Parcours validé de bout en bout (Windows 11, Podman 5.8, machine WSL) :
+
+```powershell
+winget install RedHat.Podman
+podman machine init
+podman machine start
+winget install --id Docker.DockerCompose --scope user   # fournisseur compose, sans droits admin
+podman compose version                                  # doit afficher « Docker Compose version … »
+```
+
+- **`podman compose` n'embarque pas de moteur compose** : il délègue à `docker-compose` ou
+  `podman-compose`, sinon `Error: looking up compose provider failed`. Le binaire autonome
+  `docker-compose` (sans Docker Desktop) est recommandé : il gère les valeurs par défaut imbriquées
+  de `docker-compose.yml` (`${POSTGRES_PASSWORD:-${DB_PASSWORD:-flowforge}}`).
+- **PATH non rafraîchi** : un terminal (ou un IDE / agent) ouvert avant l'installation ne voit pas
+  `podman` / `docker-compose`. Rouvrir le terminal, ou recharger le PATH dans la session :
+  `$env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User')`.
+- **Testcontainers** (`ClamAvAttachmentScanIT`) fonctionne sans configuration : la machine Podman
+  publie le pipe nommé compatible Docker `\\.\pipe\docker_engine` (tant que Docker Desktop n'est pas
+  installé), que Testcontainers détecte seul.
+- Les ports publiés par les conteneurs (`5432`, `8081`) sont joignables sur `localhost` depuis
+  Windows (redirection `gvproxy` de la machine Podman).
+
 ------
 
 ## 3. Config minimale
@@ -100,8 +125,20 @@ profils, voir §5 — inactifs par défaut). Au premier démarrage :
   l'app (`DB_USERNAME=flowforge_tenant_dev`) : ce rôle LOGIN n'a de droits que sur `tenant_dev`.
 - Keycloak importe un realm `flowforge` préconfiguré
   ([`docker/keycloak/import/flowforge-realm.json`](docker/keycloak/import/flowforge-realm.json)) :
-  client `mon-app` (celui attendu par `application.yml`) et un utilisateur de test
-  `demo` / `demo`.
+  client `mon-app` (celui attendu par `application.yml`) et trois utilisateurs de test, tous avec
+  l'attribut `tenant_id=tenant_dev` (mot de passe = identifiant) :
+
+  | Identifiant | Rôles | Voit |
+  |---|---|---|
+  | `demo` / `demo` | `TENANT_ADMIN` + `WORKFLOW_ADMIN` | tout, menus Admin compris |
+  | `manager` / `manager` | `DOSSIER_MANAGER` | pilotage + Rapports & SLA |
+  | `viewer` / `viewer` | `DOSSIER_VIEWER` | pilotage en lecture |
+
+  Les
+  mappers du client émettent `realm_access.roles` et `tenant_id` dans l'ID token, ce qu'exige le
+  BFF — voir [DEPLOIEMENT.md §5](DEPLOIEMENT.md#5-keycloak-en-production). Après une modification
+  du fichier de realm : `docker compose rm -sf keycloak`, `docker volume rm <projet>_keycloak_data`
+  puis `docker compose up -d keycloak` (un realm déjà présent n'est pas réimporté).
 
 Vérifier que tout est prêt :
 
@@ -155,17 +192,26 @@ Ne jamais coder un client spécifique à MinIO/RustFS/SeaweedFS dans l'applicati
 ## 6. Configurer le canal email (optionnel)
 
 Un des trois canaux de notification ([analysis doc/09-notifications.md](analysis%20doc/09-notifications.md))
-est l'email, envoyé via SMTP (`spring-boot-starter-mail`). **Aucun serveur SMTP n'est fourni par
-`docker-compose.yml`** — contrairement à PostgreSQL/Keycloak/stockage, ce n'est pas un prérequis
+est l'email, envoyé via SMTP (`spring-boot-starter-mail`). **Aucun serveur SMTP n'est démarré par
+défaut par `docker-compose.yml`** (profil optionnel `mailpit` ci-dessous) — contrairement à PostgreSQL/Keycloak/stockage, ce n'est pas un prérequis
 pour démarrer : sans configuration, `MAIL_HOST` vaut `localhost:587`, les envois échoueront
 silencieusement (pas de service à l'écoute) et resteront en re-tentative dans
 `notification_outbox` jusqu'à passer en `DEAD` (voir l'écran **Observabilité**, §9 de
 [GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md)) — sans bloquer le workflow déclencheur ni les autres
 canaux (webhook, navigateur).
 
-Pour activer réellement l'envoi, renseigner dans `.env` un relais SMTP existant (fournisseur cloud,
-relais interne, ou un outil de capture d'email pour du test local type Mailpit/Mailhog — non
-fourni par ce dépôt) :
+**En local, le plus simple : Mailpit** (profil Compose `mailpit`), qui capture tous les e-mails
+sans les délivrer — UI sur http://localhost:8025 — et fait passer l'indicateur de santé mail du
+backend à `UP` (sans serveur SMTP, `/actuator/health` reste `DOWN`, liveness/readiness restant
+`UP`) :
+
+```bash
+docker compose --profile mailpit up -d
+# puis, dans .env : MAIL_PORT=1025 (Docker/Podman rootless ne publient pas le port 587)
+```
+
+Pour un envoi réel, renseigner dans `.env` un relais SMTP existant (fournisseur cloud, relais
+interne) :
 
 ```bash
 MAIL_HOST=smtp.example.com
@@ -223,7 +269,8 @@ local — aucune dépendance du reste de l'application sur ce service.
 Test rapide sans frontend :
 
 ```bash
-curl -i http://localhost:8080/api/auth/me   # doit rediriger vers Keycloak (302) si pas de session
+curl -i http://localhost:8080/api/auth/me   # 401 sans session (l'API ne redirige jamais)
+curl -i http://localhost:8080/              # 302 vers /oauth2/authorization/oidc (login Keycloak)
 curl -s http://127.0.0.1:8090/actuator/health
 ```
 
@@ -254,7 +301,7 @@ Deux modes, voir aussi [frontend/README.md](frontend/README.md) :
 ## 9. Vérifier que tout fonctionne
 
 1. Ouvrir http://localhost:8080 — redirection automatique vers Keycloak.
-2. Se connecter avec `demo` / `demo` (utilisateur importé au §4).
+2. Se connecter avec `demo` / `demo` (ou `manager` / `viewer` pour un rôle restreint, §4).
 3. Retour sur l'app, authentifié — `GET /api/auth/me` doit renvoyer l'identité et les rôles.
 
 Si l'authentification boucle sans jamais aboutir (retour immédiat vers Keycloak), voir le
@@ -281,27 +328,42 @@ docker compose down -v         # + supprime les volumes (base, realm Keycloak, b
 | Tables créées dans `public` au lieu du schéma tenant | Le schéma `tenant_dev` n'existait pas avant le premier démarrage de PostgreSQL (le script d'init ne s'exécute qu'une fois, sur un volume vide) | `docker compose down -v` puis `docker compose up -d` pour repartir d'un volume vierge — **aussi** après un changement du rôle LOGIN / GRANT (D-41) |
 | Port déjà utilisé (`8080`, `5432`, `8081`, `8090`, `9000`…) | Conflit avec un service local existant | Adapter les ports dans `.env` (`DB_PORT`, `KEYCLOAK_PORT`, `MANAGEMENT_PORT`) ou dans `docker-compose.yml` pour le stockage objet |
 | `OIDC_CLIENT_SECRET` vide au démarrage backend | `.env` non chargé dans le shell avant `spring-boot:run` | Refaire `set -a; source .env; set +a` dans le même terminal que la commande Maven |
+| Connexion Keycloak réussie puis 403 vide sur l'app | L'ID token ne porte pas `tenant_id` égal à `app.tenant.id` (`TenantResolutionFilter`) | Attribut utilisateur `tenant_id` + mapper du client (DEPLOIEMENT.md §5) ; realm dev : réimporter (§4) |
+| Connecté mais aucun menu Admin, `/api/auth/me` → `"roles": []` | `realm_access.roles` absent de l'ID token (le mapper par défaut de Keycloak ne l'y met pas) | Mapper *User Realm Role* « Add to ID token » sur le client (DEPLOIEMENT.md §5) |
+| `/actuator/health` → `DOWN`, liveness/readiness `UP` | Indicateur mail : aucun serveur SMTP sur `MAIL_HOST:MAIL_PORT` | Profil `mailpit` + `MAIL_PORT=1025` (§6), ou relais SMTP réel |
+| Connexion qui aboutit sur `/login?error` | Deux onglets ouverts sur l'app lancent chacun un login OIDC dans la même session : le second écrase la requête d'autorisation du premier | Un seul onglet pendant la connexion, puis recharger |
+| `podman compose` → `looking up compose provider failed` | Aucun fournisseur compose installé | `winget install --id Docker.DockerCompose --scope user` (§2) |
+| `rootlessport cannot expose privileged port` | Port hôte < 1024 refusé par Docker/Podman rootless | Publier un port ≥ 1024 (ex. Mailpit sur 1025) |
 
 ------
 
 ## 12. Serveur MCP (outillage agent IA)
 
 FlowForge expose un serveur [MCP](https://modelcontextprotocol.io) pour un agent IA interne
-(Claude Code ou tout autre client MCP compatible Streamable HTTP) — 20 tools couvrant la
-définition de type de dossier (schéma + templates de documents associés), le déploiement de
-workflow BPMN, la définition de connecteurs et de schémas de questions de tâche, **et les
-écritures métier** (`create_dossier`, `add_dossier_element`, `start_workflow`,
-`generate_document`), plus la lecture d'un dossier, la recherche, les statistiques SLA, et
-la lecture des types/templates/workflows/connecteurs — de quoi définir **et opérer** un flux
-métier sans sortir du canal MCP.
+(Claude Code ou tout autre client MCP compatible Streamable HTTP) — une quarantaine de tools
+couvrant :
+
+- **la conception** : types de dossier et schémas de questions de tâche, templates de documents
+  (avec aperçu), workflows BPMN (et leurs briques de palette), tables de décision DMN
+  (déploiement, versions, évaluation, test), parcours, expressions et règles métier,
+  connecteurs ;
+- **la gouvernance** : brouillons en attente et publication, export/import de configuration ;
+- **les écritures métier** (`create_dossier`, `add_dossier_element`, `start_workflow`,
+  `generate_document`) ;
+- **la lecture** : dossier, recherche, statistiques SLA —
+
+de quoi définir **et opérer** un flux métier sans sortir du canal MCP.
 
 Endpoint : `POST http://localhost:8080/api/m2m/mcp` — même chaîne de sécurité machine-à-machine
 que `/api/m2m/connectors/**` (aucune session navigateur, aucun cookie) : un JWT `Authorization:
 Bearer <token>` avec le rôle `API_SERVICE` et un claim `tenant_id` correspondant à
 `app.tenant.id` (`tenant_dev` par défaut en local, §3).
 
-En local (profil `local`, HMAC M2M déjà activé au §3), générer un JWT de test signé avec
-`M2M_JWT_SECRET` (voir `.env`) puis pointer un client MCP dessus :
+En local (profil `local`), le canal M2M est **désactivé tant que `M2M_JWT_SECRET` est vide**
+(défaut de `.env.example`) : y renseigner un secret d'au moins 32 caractères (HS256), recharger
+`.env` (§3) et relancer le backend. Générer ensuite un JWT de test signé HS256 avec ce secret —
+claims `roles` (`["API_SERVICE"]`), `tenant_id` (`tenant_dev`), `sub` (ou `client_id`), `exp` —
+puis pointer un client MCP dessus :
 
 ```bash
 curl -i http://localhost:8080/api/m2m/mcp \
@@ -312,10 +374,10 @@ curl -i http://localhost:8080/api/m2m/mcp \
 ```
 
 Une réponse `200` avec `"serverInfo":{"name":"flowforge",...}` confirme l'endpoint actif. La
-liste des 20 tools (`tools/list`) et leurs schémas d'entrée sont générés automatiquement depuis le
-code (`infrastructure.mcp.tool`) — pas de documentation à maintenir manuellement en plus de
-celle-ci. Aucune UI dédiée côté SPA : ce canal est réservé à l'outillage interne, pas aux
-utilisateurs finaux du tenant.
+liste des tools (`tools/list`, qui fait foi pour leur nombre exact) et leurs schémas d'entrée
+sont générés automatiquement depuis le code (`infrastructure.mcp.tool`) — pas de documentation à
+maintenir manuellement en plus de celle-ci. Aucune UI dédiée côté SPA : ce canal est réservé à
+l'outillage interne, pas aux utilisateurs finaux du tenant.
 
 Par défaut, tout JWT M2M authentifié reçoit `API_SERVICE` (un seul client M2M de confiance
 assumé, TODO §56). `M2M_TRUSTED_CLIENT_IDS` (voir `.env.example`) restreint ce rôle à une
@@ -421,6 +483,17 @@ s'ignore sans démon Docker.
   ```
 
 - Les classes `*IT` s'exécutent désormais dans `./mvnw verify` (plus besoin de `-Dtest='*IT'`).
+- **Windows** : `.\mvnw.cmd verify` passe tel quel (zonky fournit des binaires Windows). Les tests ne
+  doivent dépendre ni du DNS du poste (résolveur figé : `StubPublicDnsTestConfiguration`, ou
+  `OutboundUrlGuard.HostResolver` en test unitaire — certains résolveurs répondent NXDOMAIN pour
+  `example.com`), ni de la langue des messages PostgreSQL (tester le SQLState, pas le texte : le
+  serveur embarqué hérite de la locale de l'OS), ni de la résolution de `System.nanoTime()` (pas de
+  100 ns sous Windows — utiliser un compteur pour générer des valeurs distinctes).
+- **Suites opt-in de la CI** (job backend de `.github/workflows/ci.yml`) :
+  `./mvnw test -Pembedded-db -Dskip.frontend=true -Djacoco.skip=true -Dtest='ZonkyEmbeddedDbLauncherTest,EmbeddedDbProfileRestartIT' -Dsurefire.failIfNoSpecifiedTests=false`
+  et `./mvnw test -Dtest=SignatureBrowserE2eTest -Dsignature.e2e=true -Dskip.frontend=true -Djacoco.skip=true -Dsurefire.failIfNoSpecifiedTests=false`
+  (après `npx playwright install chromium` dans `frontend/`). Sous PowerShell, mettre chaque
+  `-D…` entre guillemets.
 
 ## 18. Base embarquée persistante — démos et QA (optionnel)
 

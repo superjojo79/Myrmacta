@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import com.flowforge.domain.document.port.out.DocumentStoragePort;
 import com.flowforge.domain.dossier.port.out.AttachmentScanPort;
 import com.flowforge.domain.dossier.port.out.AttachmentScanResult;
+import com.flowforge.infrastructure.web.portal.FixedClockPortalRateLimiterConfig;
 import com.flowforge.support.OidcClientTestConfiguration;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -33,7 +34,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
         "app.portal.send.poll-delay=1h",
         "app.portal.expiry.poll-delay=1h"
 })
-@Import(OidcClientTestConfiguration.class)
+@Import({OidcClientTestConfiguration.class, FixedClockPortalRateLimiterConfig.class})
 class PortalRealServerTest extends AbstractPortalEngineTest {
 
     private static final String TOKEN = "X-Portal-Token";

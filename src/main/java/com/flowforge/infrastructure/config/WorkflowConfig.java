@@ -11,6 +11,7 @@ import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
 import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
 import com.flowforge.domain.dossier.usecase.AttachWorkflowUseCaseImpl;
 import com.flowforge.domain.notification.port.in.SendNotificationUseCase;
+import com.flowforge.domain.user.port.out.KnownUserRepository;
 import com.flowforge.domain.workflow.port.in.CompleteTaskUseCase;
 import com.flowforge.domain.workflow.port.in.DeployBpmnProcessUseCase;
 import com.flowforge.domain.workflow.port.in.DeployDecisionTableUseCase;
@@ -171,7 +172,8 @@ public class WorkflowConfig {
             WorkflowVisualizationPort visualizationPort,
             WorkflowParticipantPort participantPort,
             DossierAccessPolicy dossierAccessPolicy,
-            SendNotificationUseCase sendNotificationUseCase) {
+            SendNotificationUseCase sendNotificationUseCase,
+            KnownUserRepository knownUserRepository) {
         return new WorkflowLinkVisualizationUseCaseImpl(
                 tenantProperties.id(),
                 linkRepository,
@@ -182,12 +184,27 @@ public class WorkflowConfig {
                 visualizationPort,
                 participantPort,
                 dossierAccessPolicy,
-                sendNotificationUseCase);
+                sendNotificationUseCase,
+                knownUserRepository);
+    }
+
+    /** TODO §94 — échecs des jobs du moteur rattachés aux dossiers (lecture, rejeu, supervision). */
+    @Bean
+    com.flowforge.domain.workflow.usecase.WorkflowIncidentsUseCaseImpl workflowIncidentsUseCase(
+            TenantProperties tenantProperties,
+            DossierWorkflowLinkRepository linkRepository,
+            DossierRepository dossierRepository,
+            WorkflowParticipantPort participantPort,
+            DossierAccessPolicy dossierAccessPolicy,
+            com.flowforge.domain.workflow.port.out.WorkflowIncidentPort incidentPort) {
+        return new com.flowforge.domain.workflow.usecase.WorkflowIncidentsUseCaseImpl(
+                tenantProperties.id(), linkRepository, dossierRepository, participantPort, dossierAccessPolicy, incidentPort);
     }
 
     @Bean
     ManualStartOrchestrator manualStartOrchestrator(
             DossierRepository dossierRepository,
+            DossierTypeRepository dossierTypeRepository,
             DossierWorkflowLinkRepository linkRepository,
             AttachWorkflowUseCase attachWorkflow,
             WorkflowEnginePort workflowEnginePort,
@@ -196,6 +213,7 @@ public class WorkflowConfig {
             WorkflowEventPublisher eventPublisher) {
         return new ManualStartOrchestrator(
                 dossierRepository,
+                dossierTypeRepository,
                 linkRepository,
                 attachWorkflow,
                 workflowEnginePort,

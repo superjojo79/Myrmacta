@@ -220,11 +220,17 @@ de `dossierFields` et n'existe toujours pas nativement — c'est la signalétiqu
 (`reference`, `label`, `status`…), pas ses champs dynamiques. Une tâche qui en a besoin doit
 encore faire `execution.setVariable("dossier", ...)` explicitement.
 
-**Rappel utile malgré la correction :** un champ absent de `dossierFields` (parce qu'il n'a
-jamais été saisi sur ce dossier, ou que le nom est mal orthographié dans le template) continue de
-se résoudre silencieusement à une chaîne vide dans le PDF plutôt que de faire échouer la
-génération — Thymeleaf ne distingue pas « valeur vide » de « clé absente de la map ». Tester
-chaque template avec un jeu de champs réel reste la seule façon fiable de s'en assurer.
+**Champ absent ou nul ⇒ la génération échoue.** Un champ absent de `dossierFields` (jamais saisi
+sur ce dossier, ou nom mal orthographié dans le template) **ou** présent avec la valeur `null` ne
+se résout **pas** en chaîne vide : l'évaluateur des templates (`SafeThymeleafExpressionSupport`)
+lève `TemplateProcessingException` — « Unknown template property: dossierFields.x » pour une
+propriété, « Unknown template variable: x » pour une variable de processus absente ou nulle — et
+`documentGenerationTask` échoue sans produire de PDF ni écrire `generatedDocumentId`. Seule une
+valeur réellement présente, y compris une chaîne vide `""`, s'affiche (vide dans ce dernier cas).
+L'activation du template ne détecte pas ce cas (elle ne contrôle que la grammaire, sans
+variables) : pour un champ facultatif, calculer la valeur en amont (voir §5, « Valeurs
+facultatives ») et tester le template avec un jeu de champs réel (`POST /api/documents/preview`
+ou l'outil MCP `preview_document`), y compris un jeu où les champs facultatifs manquent.
 
 ---
 
@@ -411,6 +417,15 @@ enfant, statut du dossier, statut du workflow) lisent désormais aussi des **att
 2. *L'existence* — template de document, connecteur (activé, rôle service), webhook (activé), type de
    dossier, workflow, statut déclaré dans la configuration **de ce process**, table DMN, schéma de
    question ; sinon `404`, comme pour une table DMN inconnue.
+
+**Brouillon proposé par un canal automatisé** (MCP `deploy_workflow`, `dryRun` compris ; compilation d'un
+parcours ; import de configuration — TODO §93) : la forme est vérifiée de la même façon, mais une ressource
+qui **existe sans être active** est acceptée — template encore en brouillon, type de dossier inactif,
+connecteur de rôle service ou webhook désactivé. Le brouillon est enregistré et la réponse la signale
+(`inactiveReferences` côté MCP, `warnings` pour un parcours). Une ressource inconnue, supprimée, de mauvais
+rôle ou un template seulement archivé reste refusé. **La publication du brouillon reste stricte** : elle est
+refusée tant que la ressource n'est pas activée. Un agent peut ainsi proposer ensemble un modèle de document
+et le workflow qui l'utilise ; l'humain active le modèle, puis publie le workflow.
 
 Les avertissements de l'éditeur (paramètre obligatoire vide, référence disparue, `${…}` saisi,
 signature sans attente `signatureCompleted`, tâche externe sans question, adresse e-mail littérale dans
@@ -601,6 +616,52 @@ Toutes les autres variables du processus au moment de l'exécution sont transmis
 Thymeleaf (voir §3 pour la mécanique exacte et l'allowlist de rendu — pas de `T()`, `#beans`,
 `new`, cf. décision **D-40**). Variable écrite : `generatedDocumentId` (référence de stockage).
 
+#### Ce qu'un template peut écrire dans `${…}`
+
+Le contenu des accolades n'est **pas** du SpEL ni de l'OGNL : c'est une grammaire restreinte
+(`SafeThymeleafExpressionSupport`), détaillée dans
+[08-templates-documents.md](analysis%20doc/08-templates-documents.md) « Grammaire des expressions ».
+En résumé :
+
+| Accepté dans `${…}` | Exemple |
+|---|---|
+| chemin de propriétés (clé de map, getter `getX`/`isX` public, accesseur de record) | `${dossierFields.montant.amount}` |
+| littéral texte, nombre, `true`/`false`/`null` | `${'VALIDE'}`, `${42}`, `${-1.5}` |
+| `#vars.<chemin>` | `${#vars.dossierFields.reference}` |
+| méthode **déclarée** de `#strings`, `#dates`, `#numbers`, `#lists`, arguments = toute expression acceptée | `${#strings.toUpperCase(#strings.trim(nom))}` |
+
+**Refusé dans `${…}`** (template refusé à l'activation, `Unsupported Thymeleaf expression`) :
+comparaison (`${statut == 'VALIDE'}`), `and`/`or`, ternaire (`${a ? 'x' : 'y'}`), indexation
+(`${map['x']}`), tout appel de méthode sur une valeur (`${map.get('x')}`, `${map.containsKey('x')}`),
+chaînage après un utilitaire (`${#strings.trim(x).length}`), en plus de `T()`, `new`, `#beans`,
+`#request`.
+
+**Condition dans un template** : passer par un utilitaire —
+`th:if="${#strings.equals(statut, 'VALIDE')}"`. Quand la condition est fausse, l'élément et tout
+son contenu ne sont **pas évalués** (un `th:text`/`th:each` à l'intérieur peut référencer une
+variable absente sans faire échouer le rendu) ; en revanche la variable testée par le `th:if`
+lui-même doit exister et être non nulle.
+
+#### Valeurs facultatives : les calculer en amont
+
+Toute variable ou propriété **absente ou nulle** référencée par un `${…}` évalué fait échouer
+`documentGenerationTask` (voir §3) — `#strings.isEmpty(...)`, `#strings.defaultString(...)` ou
+l'opérateur Thymeleaf `?:` n'y changent rien, l'argument est résolu avant l'appel. Pour un champ
+facultatif, poser **avant** la génération une brique « Évaluer une expression » (§3sexies) qui
+fournit une valeur par défaut, et référencer la variable produite dans le template :
+
+```xml
+<serviceTask id="calcComplement" name="Complément d'adresse (défaut vide)"
+             flowable:delegateExpression="${businessExpressionTask}"
+             flowable:formula="$exists(dossier.fields.complement) ? dossier.fields.complement : &quot;&quot;"
+             flowable:formulaResult="complementAdresse"/>
+<!-- puis documentGenerationTask ; dans le template : th:text="${complementAdresse}" -->
+```
+
+La valeur par défaut ne doit pas être `null` (une formule peut produire `null`, qui ferait échouer
+le rendu). Rappel : l'expression ne voit que les champs **déclarés et non sensibles** du type de
+dossier (§3sexies) — un champ sensible facultatif ne peut pas être traité ainsi.
+
 ### `attachGeneratedDocumentTask` — attache le PDF au dossier
 
 ```xml
@@ -663,11 +724,35 @@ Pour un message métier explicite (pas juste « ça a bougé »), poser :
 | Variable | Obligatoire | Rôle |
 |---|---|---|
 | `notificationChannels` | oui | liste ou CSV parmi `EMAIL`, `WEBHOOK`, `BROWSER` |
-| `notificationTo` | selon canal | destinataire email |
+| `notificationTo` | selon canal | destinataire email : adresse littérale, ou en attribut `flowable:notificationTo` une source `dossierField:<champ>` / `variable:<nom>` (voir ci-dessous) |
 | `notificationSubject` / `notificationBody` | selon canal | contenu email |
 | `notificationUserId` | pour `BROWSER` | **un seul** utilisateur — pour notifier plusieurs intervenants (ex. tous les participants), utiliser un `multiInstanceLoopCharacteristics` Flowable standard sur cette tâche, itérant sur une variable liste, ou combiner avec le mécanisme (b) qui couvre déjà le cas générique |
 | `notificationWebhookConfigId` | pour `WEBHOOK` | UUID de la config webhook tenant |
 | `notificationPayload` | non | `Map` libre, transmis tel quel au canal |
+
+**Destinataire lu dans le dossier (TODO §93).** Écrit dans l'attribut de la brique,
+`flowable:notificationTo="dossierField:email"` envoie à la valeur **actuelle** du champ `email` du dossier
+(relue au moment de l'envoi, pas l'instantané `dossierFields` du démarrage) ; `"variable:adresse"` lit la
+variable de process `adresse`, qu'une tâche « Évaluer une expression » peut calculer en amont. Même grammaire
+que `flowable:portalRecipient` (nom simple, jamais évalué). La source n'est lue que dans l'**attribut** du
+BPMN : une variable de process `notificationTo` qui contiendrait `dossierField:…` n'est jamais résolue (un
+utilisateur ne peut pas rediriger l'envoi vers un autre champ).
+
+La valeur obtenue — comme une variable `notificationTo` posée au démarrage ou à la complétion d'une tâche — doit
+être **une seule adresse** `local@domaine` (ni liste, ni « Nom <adresse> », ni retour à la ligne). Absente, vide,
+non textuelle ou mal formée, l'étape **échoue** ; le message nomme la source, jamais l'adresse. Une adresse écrite
+en dur dans l'attribut reste libre.
+
+> **Où se voit l'échec ?** La brique « Notifier » est synchrone par défaut : l'échec annule l'action qui l'a
+> exécutée — la complétion de la tâche précédente ou le démarrage — avec une réponse **422** qui nomme le champ en
+> cause ; il suffit de corriger le dossier et de recommencer. Pour obtenir plutôt un **incident** (tâche suivie par
+> le moteur, rejouable) sans bloquer l'utilisateur, cocher **asynchrone** (`flowable:async="true"`) sur la brique.
+> L'incident est alors visible sur la fiche dossier (bandeau « Étapes en échec », étape marquée dans le diagramme)
+> et dans **Admin → Incidents** ; un administrateur le **rejoue** une fois la cause corrigée (TODO §94).
+>
+> **Champ sensible.** Une source peut désigner un champ marqué sensible : l'adresse part uniquement à cette adresse
+> et n'apparaît dans aucun message d'erreur, mais elle est conservée en clair dans la file d'envoi (outbox), comme
+> pour l'adresse d'une tâche externe du portail.
 
 Le contenu peut référencer les champs dynamiques exposés selon la méthode du §3
 (`notificationBody` reste une simple variable process — construire la chaîne avec une expression
@@ -764,7 +849,10 @@ chercher à le contourner, la même classe de vulnérabilité que H1-bis (BPMN) 
 - **Templates de document** : n'utiliser que `${...}` et les objets utilitaires Thymeleaf
   autorisés (`#dates`, `#numbers`, `#strings`, `#lists`) — `T()`, `#beans`, `new`, `#request`
   sont refusés à l'activation du template (décision **D-40**, voir
-  [08-templates-documents.md](analysis%20doc/08-templates-documents.md)).
+  [08-templates-documents.md](analysis%20doc/08-templates-documents.md)), de même que les
+  opérateurs (`==`, `and`, ternaire…), l'indexation et les appels de méthode à l'intérieur des
+  accolades (§5). Une variable ou propriété absente ou nulle fait échouer la génération (§3) :
+  calculer les valeurs facultatives en amont plutôt que d'espérer un rendu vide.
 - **Concurrence** : ne jamais tenter de démarrer un second workflow sur un dossier qui en a déjà
   un actif en dehors des mécanismes documentés ici (§2) — la contrainte unique
   `uq_dossier_workflow_link_active` le refuse de toute façon, mais un `serviceTask` custom qui

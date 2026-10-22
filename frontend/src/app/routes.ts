@@ -99,6 +99,12 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/views/admin/DraftsAdminView.vue'),
   },
   {
+    path: '/admin/incidents',
+    name: 'admin-incidents',
+    meta: { roles: ['TENANT_ADMIN', 'WORKFLOW_ADMIN'] },
+    component: () => import('@/views/admin/IncidentsAdminView.vue'),
+  },
+  {
     path: '/admin/purge-outbox',
     name: 'admin-purge-outbox',
     meta: { roles: ['TENANT_ADMIN'] },

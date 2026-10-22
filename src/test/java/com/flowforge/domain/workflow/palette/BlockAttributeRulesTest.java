@@ -30,6 +30,21 @@ class BlockAttributeRulesTest {
         BlockAttributeRules.validate("a", "attachGeneratedDocumentTask", Map.of());
     }
 
+    /** TODO §93 — notificationTo : adresse littérale, ou source dossierField:/variable: bien formée. */
+    @Test
+    void notificationToAcceptsALiteralOrAWellFormedSource() {
+        for (String ok : List.of("a@example.org", "dossierField:email", "variable:adresse_demandeur")) {
+            BlockAttributeRules.validate("a", "notificationDispatchTask",
+                    Map.of("notificationChannels", "EMAIL", "notificationTo", ok));
+        }
+        for (String bad : List.of("dossierField:", "dossierField:a.b", "variable:1x", "variable:", "dossierField:e-mail")) {
+            assertThatThrownBy(() -> BlockAttributeRules.validate("act", "notificationDispatchTask",
+                    Map.of("notificationChannels", "EMAIL", "notificationTo", bad)))
+                    .isInstanceOf(InvalidBpmnException.class)
+                    .hasMessageContaining("notificationTo").hasMessageContaining("dossierField:<name>");
+        }
+    }
+
     @Test
     void noBlockAttributeMeansNothingToCheck() {
         BlockAttributeRules.validate("a", "updateDossierStatusTask", Map.of());

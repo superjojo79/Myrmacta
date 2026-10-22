@@ -19,7 +19,7 @@
     "test:all": "npm run test && npm run test:e2e"
   },
   "dependencies": {
-    "@primevue/themes": "^4.5.4",
+    "@openvue/themes": "^1.0.0",
     "@tiptap/extension-table": "^3.31.4",
     "@tiptap/extension-text-align": "^3.31.4",
     "@tiptap/pm": "^3.31.4",
@@ -29,9 +29,9 @@
     "bpmn-js": "^18.24.0",
     "bpmn-js-properties-panel": "^5.65.0",
     "dmn-js": "^17.10.2",
+    "openvue": "^1.0.0",
     "pinia": "^4.0.2",
     "primeicons": "^7.0.0",
-    "primevue": "^5.0.0",
     "vue": "^3.5.40",
     "vue-i18n": "^11.4.12",
     "vue-router": "^5.2.0"

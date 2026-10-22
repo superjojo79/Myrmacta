@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { mount, flushPromises } from '@vue/test-utils'
-import PrimeVue from 'primevue/config'
-import Aura from '@primevue/themes/aura'
+import OpenVue from 'openvue/config'
+import Aura from '@openvue/themes/aura'
 import NotificationDrawer from './NotificationDrawer.vue'
 import { useNotificationsStore } from '@/stores/notifications'
 import * as notificationsApi from '@/api/notifications'
@@ -35,7 +35,7 @@ describe('NotificationDrawer', () => {
 
   function mountDrawer() {
     return mount(NotificationDrawer, {
-      global: { plugins: [[PrimeVue, { theme: { preset: Aura } }]] },
+      global: { plugins: [[OpenVue, { theme: { preset: Aura } }]] },
     })
   }
 

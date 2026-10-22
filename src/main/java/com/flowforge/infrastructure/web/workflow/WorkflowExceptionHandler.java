@@ -4,6 +4,7 @@ import com.flowforge.domain.dossier.model.AccessDeniedException;
 import com.flowforge.domain.dossier.model.DossierNotFoundException;
 import com.flowforge.domain.dossier.model.DossierWorkflowLinkNotFoundException;
 import com.flowforge.domain.dossier.model.WorkflowAlreadyRunningException;
+import com.flowforge.domain.workflow.model.WorkflowTaskAlreadyAssignedException;
 import com.flowforge.domain.workflow.model.DecisionEvaluationException;
 import com.flowforge.domain.expression.model.ExpressionEvaluationException;
 import com.flowforge.domain.expression.model.InvalidExpressionException;
@@ -54,6 +55,7 @@ class WorkflowExceptionHandler {
             UnknownDecisionKeyException.class,
             UnknownBlockSourceException.class,
             UnknownBlockReferenceException.class,
+            com.flowforge.domain.workflow.model.WorkflowIncidentNotFoundException.class,
             UnknownDecisionVersionException.class
     })
     ProblemDetail handleWorkflowResourceNotFound(RuntimeException ex) {
@@ -96,6 +98,27 @@ class WorkflowExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     ProblemDetail handleIntegrity(DataIntegrityViolationException ex) {
         return problem(HttpStatus.CONFLICT, "Workflow conflict", "Unique constraint or data integrity violation");
+    }
+
+    /** TODO §94 — le job a encore des tentatives automatiques : seul un incident (dead letter) se rejoue. */
+    @ExceptionHandler(com.flowforge.domain.workflow.model.IncidentNotRetryableException.class)
+    ProblemDetail handleIncidentNotRetryable(com.flowforge.domain.workflow.model.IncidentNotRetryableException ex) {
+        return problem(HttpStatus.CONFLICT, "Incident not retryable", ex.getMessage());
+    }
+
+    @ExceptionHandler(WorkflowTaskAlreadyAssignedException.class)
+    ProblemDetail handleTaskAlreadyAssigned(WorkflowTaskAlreadyAssignedException ex) {
+        return problem(HttpStatus.CONFLICT, "Workflow task already assigned", ex.getMessage());
+    }
+
+    /**
+     * TODO §93 (revue M1) — une brique « Notifier » synchrone qui échoue (destinataire lu dans le dossier vide ou mal formé)
+     * fait échouer la complétion ou le démarrage. 422 plutôt que 500 : la requête est valide, c'est une donnée du dossier qui
+     * empêche l'étape. Le message nomme la source (dossierField:…), jamais l'adresse.
+     */
+    @ExceptionHandler(com.flowforge.domain.notification.model.NotificationValidationException.class)
+    ProblemDetail handleWorkflowStepFailed(com.flowforge.domain.notification.model.NotificationValidationException ex) {
+        return problem(HttpStatus.UNPROCESSABLE_ENTITY, "Workflow step failed", ex.getMessage());
     }
 
     @ExceptionHandler(IllegalStateException.class)

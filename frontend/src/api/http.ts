@@ -14,11 +14,17 @@ export function resolveApiBaseUrl(baseUri = globalThis.document?.baseURI ?? '/')
     if (segments.length === 0) {
       return ''
     }
-    // Keep first path segment as tenant context-path when present (DD-BASE)
+    // Keep first path segment as tenant context-path when present (DD-BASE). baseURI comes from
+    // <base href> (index.html, rewritten server-side to the context-path) — never the current route.
     return `/${segments[0]}`
   } catch {
     return ''
   }
+}
+
+/** Base of the router history: the tenant context-path ('/' when served at the root). */
+export function routerBase(baseUri?: string): string {
+  return `${resolveApiBaseUrl(baseUri)}/`
 }
 
 export function apiContextPath(): string {
@@ -42,7 +48,8 @@ export function configureHttpClient(): void {
 export function toProblemDetail(error: unknown): ProblemDetail {
   const axiosError = error as AxiosError<ProblemDetail>
   if (axiosError?.response?.data && typeof axiosError.response.data === 'object') {
-    return axiosError.response.data
+    // Le statut HTTP fait foi quand le corps ne le reprend pas (corps d'erreur non ProblemDetail).
+    return { ...axiosError.response.data, status: axiosError.response.data.status ?? axiosError.response.status }
   }
   return {
     title: 'Request failed',

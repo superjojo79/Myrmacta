@@ -16,6 +16,7 @@ import com.flowforge.domain.workflow.model.ProposedWorkflowConfig;
 import com.flowforge.domain.workflow.model.UnknownDecisionKeyException;
 import com.flowforge.domain.workflow.model.UnknownDecisionVersionException;
 import com.flowforge.domain.workflow.model.WorkflowTypeConfig;
+import com.flowforge.domain.workflow.palette.InactiveBlockReference;
 import com.flowforge.domain.workflow.port.in.DeployBpmnProcessUseCase;
 import com.flowforge.domain.workflow.port.in.ProposeDraftUseCase;
 import com.flowforge.domain.workflow.port.out.BpmnDraftRepository;
@@ -27,6 +28,7 @@ import com.flowforge.domain.workflow.port.out.WorkflowTypeConfigRepository;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -79,7 +81,7 @@ public final class ProposeDraftUseCaseImpl implements ProposeDraftUseCase {
             boolean replaceExisting) {
         guard.requireTenantOrWorkflowAdminOrApiService(actor);
         requireAutomated(provenance);
-        validateBpmn(actor, processDefinitionKey, xml, config);
+        List<InactiveBlockReference> inactive = validateBpmn(actor, processDefinitionKey, xml, config);
         Optional<BpmnDraft> existing = bpmnDrafts.findByTenantIdAndProcessDefinitionKey(tenantId, processDefinitionKey);
         boolean replaced = existing.isPresent();
         existing.ifPresent(d -> requireNoForeignDraft(
@@ -87,11 +89,11 @@ public final class ProposeDraftUseCaseImpl implements ProposeDraftUseCase {
         Instant now = Instant.now().truncatedTo(ChronoUnit.MICROS);
         BpmnDraft saved = bpmnDrafts.save(new BpmnDraft(
                 tenantId, processDefinitionKey, xml, now, actor.userId(), provenance, config, null));
-        return new Proposal(DraftArtifactType.BPMN, processDefinitionKey, saved.updatedAt(), replaced);
+        return new Proposal(DraftArtifactType.BPMN, processDefinitionKey, saved.updatedAt(), replaced, inactive);
     }
 
     @Override
-    public void validateBpmn(
+    public List<InactiveBlockReference> validateBpmn(
             AccessContext.User actor, String processDefinitionKey, String xml, ProposedWorkflowConfig config) {
         guard.requireTenantOrWorkflowAdminOrApiService(actor);
         if (xml == null || xml.isBlank()) {
@@ -105,10 +107,12 @@ public final class ProposeDraftUseCaseImpl implements ProposeDraftUseCase {
         }
         Optional<WorkflowTypeConfig> existing = configRepository.findByWorkflowKey(tenantId, processDefinitionKey);
         // Même contrôle qu'un déploiement, avec la configuration SOUMISE (sinon l'existante) : une référence absente est refusée ici.
+        // TODO §93 D-DRAFT-REF-STATUS : une ressource présente mais pas encore active est acceptée (la publication, stricte, la
+        // refusera tant qu'elle ne l'est pas) — un agent peut proposer ensemble un modèle de document et le workflow qui l'utilise.
         Optional<WorkflowTypeConfig> effective = config == null
                 ? existing
                 : Optional.of(ProposedConfigs.toConfig(tenantId, existing, processDefinitionKey, config, actor.userId()));
-        deployBpmn.validate(bytes, effective);
+        return deployBpmn.validateDraft(bytes, effective);
     }
 
     @Override

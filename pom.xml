@@ -21,12 +21,12 @@
         <java.version>25</java.version>
         <!-- Décision n° 27 — versions de stack -->
         <flowable.version>8.0.0</flowable.version>
-        <flying-saucer.version>10.5.0</flying-saucer.version>
+        <flying-saucer.version>10.6.0</flying-saucer.version>
         <jsoup.version>1.23.2</jsoup.version>
         <archunit.version>1.5.1</archunit.version>
-        <aws.sdk.version>2.55.8</aws.sdk.version>
+        <aws.sdk.version>2.55.15</aws.sdk.version>
         <!-- connecteurs-cible (lot B1) — batch-import : client SFTP + parseur Excel -->
-        <sshj.version>0.41.1</sshj.version>
+        <sshj.version>0.41.2</sshj.version>
         <!-- LC2 (TODO §75) — JSONata, port Java de référence (Apache 2.0) -->
         <jsonata.version>0.9.10</jsonata.version>
         <poi.version>5.5.1</poi.version>
@@ -318,7 +318,7 @@
                     <plugin>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>build-helper-maven-plugin</artifactId>
-                        <version>3.6.1</version>
+                        <version>3.6.2</version>
                         <executions>
                             <execution>
                                 <id>add-embedded-sources</id>

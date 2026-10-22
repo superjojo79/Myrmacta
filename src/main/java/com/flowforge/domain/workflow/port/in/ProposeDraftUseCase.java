@@ -4,7 +4,9 @@ import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.workflow.model.DraftArtifactType;
 import com.flowforge.domain.workflow.model.Provenance;
 import com.flowforge.domain.workflow.model.ProposedWorkflowConfig;
+import com.flowforge.domain.workflow.palette.InactiveBlockReference;
 import java.time.Instant;
+import java.util.List;
 
 /**
  * TODO §82 (D6) — écriture d'un brouillon par un canal automatisé (MCP, assistant) : mêmes contrôles qu'un déploiement
@@ -37,10 +39,32 @@ public interface ProposeDraftUseCase {
     Proposal proposeDmnFromVersion(
             AccessContext.User actor, Provenance provenance, String decisionKey, int version, boolean replaceExisting);
 
-    /** Validation seule (aucune écriture) : mêmes contrôles que {@code proposeBpmn}. */
-    void validateBpmn(AccessContext.User actor, String processDefinitionKey, String xml, ProposedWorkflowConfig config);
+    /**
+     * Validation seule (aucune écriture) : mêmes contrôles que {@code proposeBpmn}.
+     *
+     * @return les références inactives acceptées (TODO §93 D-DRAFT-REF-STATUS)
+     */
+    List<InactiveBlockReference> validateBpmn(AccessContext.User actor, String processDefinitionKey, String xml, ProposedWorkflowConfig config);
 
     void validateDmn(AccessContext.User actor, String decisionKey, String xml);
 
-    record Proposal(DraftArtifactType type, String key, Instant updatedAt, boolean replacedExistingDraft) {}
+    /**
+     * @param inactiveReferences ressources référencées qui existent mais ne sont pas encore actives : la publication les
+     *     refusera tant qu'elles ne le sont pas (TODO §93 D-DRAFT-REF-STATUS ; toujours vide pour un DMN)
+     */
+    record Proposal(
+            DraftArtifactType type,
+            String key,
+            Instant updatedAt,
+            boolean replacedExistingDraft,
+            List<InactiveBlockReference> inactiveReferences) {
+
+        public Proposal {
+            inactiveReferences = inactiveReferences == null ? List.of() : List.copyOf(inactiveReferences);
+        }
+
+        public Proposal(DraftArtifactType type, String key, Instant updatedAt, boolean replacedExistingDraft) {
+            this(type, key, updatedAt, replacedExistingDraft, List.of());
+        }
+    }
 }

@@ -2,6 +2,7 @@ package com.flowforge.infrastructure.signature;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.flowforge.infrastructure.web.portal.FixedClockPortalRateLimiterConfig;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.context.annotation.Import;
 
 /**
  * T14.3 — revue adversariale de l'API publique de signature (TODO §72) sur un <strong>vrai
@@ -30,6 +32,7 @@ import org.springframework.boot.test.web.server.LocalServerPort;
         "app.portal.send.poll-delay=1h",
         "app.portal.expiry.poll-delay=1h"
 })
+@Import(FixedClockPortalRateLimiterConfig.class)
 class SignaturePortalRealServerTest extends AbstractSignatureEngineTest {
 
     private static final String TOKEN = "X-Portal-Token";

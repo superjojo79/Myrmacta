@@ -30,6 +30,7 @@ le permet — l'affichage du menu est indicatif, le contrôle réel se fait côt
 | Admin | Webhooks (notification) | `/admin/notification-webhooks` | `TENANT_ADMIN` |
 | Admin | File purge | `/admin/purge-outbox` | `TENANT_ADMIN` |
 | Admin | Observabilité | `/admin/observabilite` | `TENANT_ADMIN` |
+| Admin | Incidents (étapes en échec) | `/admin/incidents` | `TENANT_ADMIN` ou `WORKFLOW_ADMIN` |
 | Public | Portail tiers externe | `/portal/` | **aucun compte** — lien personnel reçu par e-mail, si le portail est activé (§11) |
 
 Sans le rôle requis, l'entrée de menu correspondante n'apparaît simplement pas — pas besoin de la
@@ -242,6 +243,12 @@ Depuis la fiche dossier (`/dossiers/{id}`), bouton **Démarrer workflow** :
 
 - proposé par défaut : la config workflow associée au type du dossier (`workflowKey` du type) ;
 - possibilité de choisir une autre config workflow existante dans la liste déroulante.
+- **Variables de démarrage** (section repliée) : ajouter des lignes *nom / valeur* (texte) transmises au
+  workflow, par exemple une adresse ou une priorité attendue par le processus. Le nom accepte lettres,
+  chiffres et `_` ; les noms réservés de la plateforme (`dossierId`, `dossierWorkflowLinkId`, `tenantId`,
+  `dossierFields`, `connectorResult`) et les doublons sont refusés avant l'envoi. Un paramètre écrit dans
+  le BPMN prime toujours sur une variable de même nom. Une adresse `notificationTo` doit être une seule
+  adresse (`nom@domaine`) ; un `documentType` doit faire partie des templates autorisés du type de dossier.
 
 ### Suivre l'exécution
 
@@ -250,10 +257,30 @@ Toujours sur la fiche dossier :
 - **Diagramme BPMN** — vue en lecture seule (bpmn-js), avec surbrillance des étapes actives,
   terminées et en erreur. Affiché uniquement si une instance de workflow est démarrée sur ce
   dossier.
-- **Tâches** — liste des tâches humaines en cours, bouton **Compléter** ; les rôles
-  `TENANT_ADMIN`/`WORKFLOW_ADMIN` peuvent en plus réassigner une tâche à un autre utilisateur
-  (identifiant saisi librement).
+- **Tâches** — liste des tâches humaines en cours, bouton **Compléter**. L'assigné s'affiche par
+  son nom quand il est connu (« vous » pour soi-même).
+  - **M'assigner** — tout utilisateur qui peut modifier le dossier (ACL **EDIT** du type, ou rôle
+    `TENANT_ADMIN`/`WORKFLOW_ADMIN`) peut prendre une tâche **sans assigné** ; elle apparaît alors
+    dans son menu **Tâches**. Une tâche déjà prise par quelqu'un d'autre ne se prend pas (message
+    d'erreur) : elle se réassigne.
+  - **Réassigner** (`TENANT_ADMIN`/`WORKFLOW_ADMIN`) — choisir le nouvel assigné dans une liste
+    déroulante. La liste ne propose que les utilisateurs **déjà connectés au moins une fois** à
+    l'application et qui **peuvent modifier ce dossier** (inutile d'assigner une tâche à quelqu'un
+    qui ne pourrait pas la terminer). Un utilisateur qui n'apparaît pas doit d'abord se connecter.
 - **Historique** — frise chronologique des événements du dossier.
+- **Étapes en échec** (TODO §94) — bandeau rouge au-dessus du diagramme quand une étape automatique
+  (e-mail, connecteur, génération…) a échoué ; l'étape est aussi marquée en erreur dans le diagramme.
+  Deux états : **nouvelle tentative prévue** (le moteur réessaiera seul, n tentatives restantes) et
+  **incident** (plus de tentative automatique). Visible de quiconque voit les tâches de l'exécution ;
+  le **message technique** n'est montré qu'aux `TENANT_ADMIN`/`WORKFLOW_ADMIN`. Une fois la cause
+  corrigée (par exemple une adresse e-mail mal saisie dans le dossier), un administrateur clique sur
+  **Rejouer** : l'étape repart et le workflow reprend. Le rejeu est journalisé. Juste après, l'étape peut
+  apparaître quelques secondes en « nouvelle tentative prévue », le temps que le moteur la reprenne ; la fiche se
+  met à jour seule. Un échec dans un sous-process appelé s'affiche sur l'étape d'appel (« Appel › étape »).
+
+Tous les incidents du tenant se retrouvent dans **Admin → Incidents** (`/admin/incidents`,
+`TENANT_ADMIN`/`WORKFLOW_ADMIN`) : dossier (lien vers la fiche), workflow, étape, état, date, message et
+action **Rejouer**. La liste porte sur les 1 000 échecs les plus récents.
 
 Un utilisateur peut aussi retrouver l'ensemble de ses tâches assignées, tous dossiers confondus,
 depuis **Tâches** (`/tasks`) — pratique en mobilité.
@@ -544,7 +571,8 @@ Dans le tableau des templates existants (`templateKey` — libellé — version 
   l'administrateur a déclaré **Cherchable** (texte : « commence par » ; nombre et date : de / à ; choix et oui/non). Cinq
   filtres au plus ; un champ sensible n'est jamais cherchable. Les filtres figurent dans l'URL (`f.montant.gte=5000`).
 - **Tâches** (`/tasks`) — vue personnelle des tâches actuellement assignées à l'utilisateur
-  connecté, avec accès direct au dossier concerné, bouton **Compléter**, et un rappel SLA
+  connecté (une tâche sans assigné n'y figure pas : la prendre avec **M'assigner** depuis la fiche
+  dossier, voir §3), avec accès direct au dossier concerné, bouton **Compléter**, et un rappel SLA
   (`dans N h` / `dépassée`) lorsque le type de dossier a un objectif en heures. Depuis TODO §52,
   une tâche dont le diagramme BPMN déclare un formulaire (voir
   [GUIDE-CONCEPTION-BPMN.md](GUIDE-CONCEPTION-BPMN.md) §3bis) affiche ce formulaire à la place du
@@ -561,7 +589,7 @@ Dans le tableau des templates existants (`templateKey` — libellé — version 
 
 ### Notifications (cloche, tous rôles)
 
-La cloche affichée en haut de chaque page (icône PrimeVue, badge rouge = nombre de notifications
+La cloche affichée en haut de chaque page (icône PrimeIcons, badge rouge = nombre de notifications
 non lues) donne accès à un historique persistant — TODO §66. Contrairement au comportement
 précédent (purement en mémoire de l'onglet, perdu au reload), les notifications reçues pendant
 une déconnexion sont désormais retrouvées à la réouverture du tiroir : au montage, le tiroir
@@ -806,11 +834,19 @@ administrateur technique doit le configurer (`DEPLOIEMENT.md` §15).
 - **Étapes disponibles** : question à un utilisateur, réponse d'un tiers (portail), génération de document (avec rattachement), notification, connecteur, table de décision DMN, calcul (expression),
   renseignement de champs, changement de statut (parcours ou dossier), attente (durée ISO 8601), et **aiguillage** : des conditions simples (variable, opérateur, valeur) vers une étape, plus un « sinon » obligatoire ;
   on peut revenir en arrière (boucle de correction) tant qu'une sortie existe. Sans « suite » explicite, une étape passe à la suivante de la liste.
+- **Type de dossier** : en tête du parcours, choisissez le type de dossier sur lequel il porte. Ses champs sont alors proposés dans les formules et les correspondances ; l'écran
+  signale si ce type démarre un autre workflow que ce parcours (clé de workflow du type ≠ clé du parcours). Le choix est enregistré avec le parcours mais n'entre pas dans le BPMN.
+- **Formules** (étape « Calculer une valeur ») : la liste **Insérer…** ajoute au curseur un champ du dossier, une variable du parcours (réponses des formulaires, résultats de calcul),
+  la réponse du dernier connecteur, un opérateur ou une fonction ; la formule est vérifiée pendant la frappe (mêmes règles qu'au déploiement). Les champs sensibles ne sont pas proposés :
+  une expression ne les voit pas.
+- **Correspondances** (étape « Renseigner des champs du dossier ») : un tableau « champ du dossier ← valeur », une ligne par champ ; le champ se choisit parmi ceux du type (hors champs
+  calculés) et l'écran signale un champ non déclaré, renseigné deux fois ou sans valeur. La case **Éditer en texte** donne la forme brute (`champ = expression`, une ligne par champ).
+- **Aiguillage** : le nom de variable propose les variables connues du parcours.
 - **Valeurs de condition** : un nombre entier ou un texte court, sans point, parenthèse, guillemet, `&`, `<`, `>`, `;`. Les nombres négatifs ou décimaux ne s'écrivent pas dans une condition de BPMN ; utilisez un champ calculé.
-- **Enregistrer** vérifie le parcours (étapes atteignables, sortie possible, statuts déclarés) et nomme l'étape fautive. **Aperçu du BPMN** montre le résultat et dit si le déploiement le refuserait. **Valider** et
+- **Enregistrer** vérifie le parcours (étapes atteignables, sortie possible, statuts déclarés) et nomme l'étape fautive. **Aperçu du BPMN** dessine le diagramme généré (le XML reste consultable dessous) et dit si le déploiement le refuserait. **Valider** et
   **Compiler** travaillent sur la version enregistrée (les boutons se bloquent tant qu'il y a des modifications).
 - **Sens unique** : on modifie le parcours ici, **jamais le BPMN généré** (une retouche manuelle ne revient pas dans le parcours et sera écrasée par la prochaine compilation).
-- **MCP / assistant** : `list_parcours`, `get_parcours`, `define_parcours` (avec mode à blanc), `compile_parcours`.
+- **MCP / assistant** : `list_parcours`, `get_parcours`, `define_parcours` (avec mode à blanc et `dossierTypeCode` facultatif), `compile_parcours`.
 
 ## 15. Langue de l'interface (TODO §90)
 

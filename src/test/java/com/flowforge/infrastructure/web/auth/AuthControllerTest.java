@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.oidc.OidcIdToken;
 import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
 
@@ -16,9 +17,14 @@ class AuthControllerTest {
 
     private final AuthController controller = new AuthController(new com.flowforge.infrastructure.config.I18nProperties("fr"));
 
+    /** Rôles portés par l'Authentication, comme après RealmAccessAuthoritiesMapper. */
+    private static OAuth2AuthenticationToken login(DefaultOidcUser user) {
+        return new OAuth2AuthenticationToken(user, user.getAuthorities(), "oidc");
+    }
+
     @Test
     void me_nullUser_returns401() {
-        ResponseEntity<AuthUserResponse> response = controller.me(null);
+        ResponseEntity<AuthUserResponse> response = controller.me(null, null);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         assertThat(response.getBody()).isNull();
@@ -40,7 +46,7 @@ class AuthControllerTest {
                         new SimpleGrantedAuthority("SCOPE_openid")),
                 idToken);
 
-        ResponseEntity<AuthUserResponse> response = controller.me(user);
+        ResponseEntity<AuthUserResponse> response = controller.me(user, login(user));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isEqualTo(new AuthUserResponse(
@@ -60,7 +66,7 @@ class AuthControllerTest {
                         new SimpleGrantedAuthority("ROLE_TENANT_ADMIN")),
                 idToken);
 
-        ResponseEntity<AuthUserResponse> response = controller.me(user);
+        ResponseEntity<AuthUserResponse> response = controller.me(user, login(user));
 
         assertThat(response.getBody().roles()).containsExactly("TENANT_ADMIN");
     }
@@ -70,6 +76,6 @@ class AuthControllerTest {
         OidcIdToken idToken = new OidcIdToken("token", Instant.now(), Instant.now().plusSeconds(60), Map.of("sub", "u"));
         var user = new DefaultOidcUser(List.of(new SimpleGrantedAuthority("ROLE_TENANT_ADMIN")), idToken);
         var english = new AuthController(new com.flowforge.infrastructure.config.I18nProperties("en"));
-        assertThat(english.me(user).getBody().defaultLocale()).isEqualTo("en");
+        assertThat(english.me(user, login(user)).getBody().defaultLocale()).isEqualTo("en");
     }
 }

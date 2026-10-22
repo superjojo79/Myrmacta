@@ -1,0 +1,87 @@
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Décision — autorisation riverain</title>
+  <style>
+    body { font-family: Helvetica, Arial, sans-serif; font-size: 10.5pt; color: #222; }
+    h1 { font-size: 15pt; margin: 0 0 4pt 0; }
+    h2 { font-size: 11.5pt; margin: 16pt 0 6pt 0; border-bottom: 1px solid #999; padding-bottom: 2pt; }
+    .entete { color: #555; font-size: 9pt; margin-bottom: 18pt; }
+    table { width: 100%; border-collapse: collapse; }
+    td { padding: 3pt 4pt; vertical-align: top; }
+    td.libelle { width: 38%; color: #555; }
+    .decision { margin-top: 10pt; padding: 8pt 10pt; border: 1.5pt solid #333; font-size: 12pt; font-weight: bold; }
+    .mention { margin-top: 14pt; font-size: 9pt; color: #555; }
+  </style>
+</head>
+<body>
+  <!--
+    Variables lues (toutes doivent exister et être non nulles : le moteur de rendu échoue sinon) :
+    - dossierFields.* : champs OBLIGATOIRES du type AUTORISATION_RIVERAIN (instantané au démarrage) ;
+    - referenceDossier, dateDecision, issueDecision, docTelephone, docPieces, docComplements, docMotivation :
+      posées par le workflow autorisationRiverain juste avant la génération.
+  -->
+
+  <h1>Demande d'autorisation riverain — décision</h1>
+  <div class="entete">
+    Dossier <span th:text="${referenceDossier}">DOS-0000</span>
+    — décision du <span th:text="${dateDecision}">2026-01-01</span>
+  </div>
+
+  <h2>Demandeur</h2>
+  <table>
+    <tr><td class="libelle">Nom et prénom</td>
+        <td><span th:text="${dossierFields.nom}">Nom</span> <span th:text="${dossierFields.prenom}">Prénom</span></td></tr>
+    <tr><td class="libelle">Adresse e-mail</td><td th:text="${dossierFields.email}">email</td></tr>
+    <tr><td class="libelle">Téléphone</td><td th:text="${docTelephone}">-</td></tr>
+    <tr><td class="libelle">Domicile</td>
+        <td><span th:text="${dossierFields.adresseRue}">Rue</span> <span th:text="${dossierFields.adresseNumero}">1</span>,
+            <span th:text="${dossierFields.codePostal}">0000</span> <span th:text="${dossierFields.commune}">Commune</span></td></tr>
+  </table>
+
+  <h2>Véhicule</h2>
+  <table>
+    <tr><td class="libelle">Plaque d'immatriculation</td>
+        <td><span th:text="${dossierFields.plaque}">1-ABC-123</span> (<span th:text="${dossierFields.paysImmatriculation}">BE</span>)</td></tr>
+    <tr><td class="libelle">Marque et modèle</td>
+        <td><span th:text="${dossierFields.marque}">Marque</span> <span th:text="${dossierFields.modele}">Modèle</span></td></tr>
+  </table>
+
+  <h2>Autorisation demandée</h2>
+  <table>
+    <tr><td class="libelle">Zone ou rue riveraine</td><td th:text="${dossierFields.zoneRiverain}">Zone</td></tr>
+    <tr><td class="libelle">Date de début souhaitée</td><td th:text="${dossierFields.dateDebutSouhaitee}">-</td></tr>
+    <tr><td class="libelle">Pièces justificatives jointes à la demande</td><td th:text="${docPieces}">-</td></tr>
+    <tr><td class="libelle">Compléments fournis par le demandeur</td><td th:text="${docComplements}">-</td></tr>
+  </table>
+
+  <h2>Décision</h2>
+
+  <div th:if="${#strings.equals(issueDecision, 'AUTORISEE')}">
+    <div class="decision">L'autorisation riverain est accordée pour le véhicule ci-dessus.</div>
+    <p><strong>Motivation :</strong> <span th:text="${docMotivation}">-</span></p>
+  </div>
+
+  <div th:if="${#strings.equals(issueDecision, 'AUTORISEE_TACITEMENT')}">
+    <div class="decision">L'autorisation riverain est accordée pour le véhicule ci-dessus.</div>
+    <p>Aucune décision n'ayant été prise dans le délai de 30 jours suivant l'introduction de la demande
+       (ou la réception du dernier complément), l'autorisation est réputée accordée.</p>
+  </div>
+
+  <div th:if="${#strings.equals(issueDecision, 'REFUSEE')}">
+    <div class="decision">L'autorisation riverain est refusée.</div>
+    <p><strong>Motif :</strong> <span th:text="${docMotivation}">-</span></p>
+    <p class="mention">Vous pouvez introduire une nouvelle demande ou un recours auprès de l'autorité compétente dans
+       les délais légaux. [Mention de recours à adapter par l'administration.]</p>
+  </div>
+
+  <div th:if="${#strings.equals(issueDecision, 'REFUSEE_SANS_REPONSE')}">
+    <div class="decision">L'autorisation riverain est refusée.</div>
+    <p><strong>Motif :</strong> les informations complémentaires demandées n'ont pas été fournies dans le
+       délai de 30 jours.</p>
+    <p class="mention">Vous pouvez introduire une nouvelle demande ou un recours auprès de l'autorité compétente dans
+       les délais légaux. [Mention de recours à adapter par l'administration.]</p>
+  </div>
+
+</body>
+</html>

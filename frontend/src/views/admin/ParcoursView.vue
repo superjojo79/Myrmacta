@@ -20,6 +20,13 @@ import {
 } from '@/api/parcours'
 import { resolveValueSource } from '@/components/workflow/bpmn-blocks/valueSourceResolver'
 import type { ValueOption } from '@/components/workflow/bpmn-blocks/types'
+import { listAllDossierTypes } from '@/api/dossierTypes'
+import { listTaskQuestionSchemas } from '@/api/taskQuestionSchemas'
+import { listAllPages } from '@/api/page'
+import type { DossierType, FieldDefinition } from '@/api/types'
+import BpmnCanvas from '@/components/workflow/BpmnCanvas.vue'
+import ExpressionInput, { type SuggestionGroup } from '@/components/parcours/ExpressionInput.vue'
+import FieldMappingEditor from '@/components/parcours/FieldMappingEditor.vue'
 
 /**
  * TODO §88 (LC5) — concepteur de parcours : on enchaîne des étapes lisibles (question, document, notification, décision…) ;
@@ -70,7 +77,7 @@ const KIND_ORDER = Object.keys(KINDS) as StepKind[]
 const OPERATORS: Record<Operator, string> = { EQ: '=', NE: '≠', GT: '>', GE: '≥', LT: '<', LE: '≤' }
 const DOSSIER_STATUSES = ['DRAFT', 'OUVERT', 'EN_COURS', 'SUSPENDU', 'CLOTURE', 'ARCHIVE']
 
-const { t } = useI18n()
+const { t, te } = useI18n()
 const items = ref<ParcoursSummary[]>([])
 const editing = ref<boolean>(false)
 const isNew = ref(true)
@@ -82,6 +89,8 @@ const options = ref<Record<string, ValueOption[] | null>>({})
 const result = ref<CompileResult | null>(null)
 const replaceDraft = ref(false)
 const savedSnapshot = ref('')
+const dossierTypes = ref<DossierType[]>([])
+const schemaFields = ref<Record<string, FieldDefinition[]>>({})
 const busy = ref(false)
 const error = ref<string | null>(null)
 const notice = ref<string | null>(null)
@@ -95,12 +104,78 @@ function blank(): ParcoursDefinition {
     allowedDossierStatuses: ['OUVERT', 'EN_COURS'],
     onStartDossierStatus: null,
     steps: [],
+    dossierTypeCode: null,
   }
 }
 
 /** Les boutons de compilation travaillent sur la version enregistrée : on les bloque tant que le formulaire a des modifications. */
 const dirty = computed(() => JSON.stringify([label.value, definition.value]) !== savedSnapshot.value)
 const stepIds = computed(() => definition.value.steps.map((s) => s.id).filter(Boolean))
+
+/** Type de dossier sur lequel on travaille : ses champs alimentent les formules et les correspondances. */
+const selectedType = computed(() => dossierTypes.value.find((d) => d.code === definition.value.dossierTypeCode) ?? null)
+const typeFields = computed(() => (selectedType.value?.fieldDefinitions ?? []).filter((f) => f.type !== 'REPEATABLE_GROUP'))
+/** Un champ calculé est recalculé à chaque enregistrement : y écrire ne servirait à rien. */
+const mappingTargets = computed(() => (selectedType.value ? typeFields.value.filter((f) => !f.formula) : null))
+
+/** Variables que le parcours produit : réponses des formulaires de ses étapes et résultats de ses calculs. */
+const knownVariables = computed(() => {
+  const names = new Set<string>()
+  for (const s of definition.value.steps) {
+    if ((s.kind === 'QUESTION' || s.kind === 'EXTERNAL') && s.params.schemaKey) {
+      for (const f of schemaFields.value[s.params.schemaKey] ?? []) names.add(f.name)
+    }
+    if (s.kind === 'EXPRESSION' && s.params.formulaResult?.trim()) names.add(s.params.formulaResult.trim())
+  }
+  return [...names].sort()
+})
+
+const suggestions = computed<SuggestionGroup[]>(() => [
+  {
+    label: selectedType.value ? t('admin.parcours.expr.typeFields', { type: selectedType.value.label }) : t('admin.parcours.expr.fields'),
+    // Un champ sensible n'est pas exposé aux expressions : le proposer mènerait à une valeur toujours vide.
+    items: typeFields.value.filter((f) => !f.sensitive).map((f) => ({ value: `dossier.fields.${f.name}`, label: `${f.label} (${f.name})` })),
+  },
+  {
+    label: t('admin.parcours.expr.dossier'),
+    items: [
+      ...['reference', 'label', 'type', 'status'].map((k) => ({ value: `dossier.${k}`, label: t(`admin.parcours.expr.dossierKeys.${k}`) })),
+      { value: 'now', label: t('admin.parcours.expr.now') },
+    ],
+  },
+  { label: t('admin.parcours.expr.variables'), items: knownVariables.value.map((v) => ({ value: `variables.${v}`, label: v })) },
+  {
+    label: t('admin.parcours.expr.connector'),
+    items: [
+      { value: 'connectorResult.json.', label: t('admin.parcours.expr.connectorJson') },
+      { value: 'connectorResult.status', label: t('admin.parcours.expr.connectorStatus') },
+    ],
+  },
+  {
+    label: t('admin.parcours.expr.operators'),
+    items: [
+      ['=', 'eq'], ['!=', 'ne'], ['>', 'gt'], ['<', 'lt'], ['and', 'and'], ['or', 'or'], ['&', 'concat'], ['? :', 'ternary'], ['in', 'in'],
+    ].map(([value, k]) => ({ value, label: `${value} — ${t(`admin.parcours.expr.ops.${k}`)}` })),
+  },
+  {
+    label: t('admin.parcours.expr.functions'),
+    items: ['$round()', '$sum()', '$count()', '$string()', '$number()', '$uppercase()', '$contains()', '$exists()'].map((f) => ({ value: f, label: f })),
+  },
+])
+
+function stepOption(id: string): string {
+  const step = definition.value.steps.find((s) => s.id === id)
+  return step?.label?.trim() ? `${id} — ${step.label.trim()}` : id
+}
+
+/** Le type de dossier démarre un workflow par sa clé : on signale quand ce n'est pas ce parcours. */
+const typeWorkflowMismatch = computed(() =>
+  selectedType.value && key.value.trim() && selectedType.value.workflowKey !== key.value.trim() ? selectedType.value.workflowKey : null,
+)
+
+function onTypeChange() {
+  if (isNew.value && !key.value.trim() && selectedType.value?.workflowKey) key.value = selectedType.value.workflowKey
+}
 
 async function refresh() {
   try {
@@ -111,8 +186,24 @@ async function refresh() {
 }
 
 async function loadOptions() {
+  void loadDesignContext()
   for (const source of new Set(KIND_ORDER.flatMap((k) => KINDS[k].params.map((p) => p.source)).filter(Boolean) as string[])) {
     options.value[source] = await resolveValueSource(source)
+  }
+}
+
+/** Types de dossier et champs des formulaires : de l'aide à la saisie, l'écran reste utilisable s'ils ne se chargent pas. */
+async function loadDesignContext() {
+  try {
+    dossierTypes.value = await listAllDossierTypes()
+  } catch {
+    dossierTypes.value = []
+  }
+  try {
+    const schemas = await listAllPages((page, size) => listTaskQuestionSchemas({ page, size }))
+    schemaFields.value = Object.fromEntries(schemas.map((s) => [s.schemaKey, s.fieldDefinitions]))
+  } catch {
+    schemaFields.value = {}
   }
 }
 
@@ -194,6 +285,7 @@ function addBranch(step: ParcoursStep) {
 function cleaned(): ParcoursDefinition {
   return {
     ...definition.value,
+    dossierTypeCode: definition.value.dossierTypeCode || null,
     steps: definition.value.steps.map((s) => ({
       ...s,
       label: s.label?.trim() || null,
@@ -303,7 +395,21 @@ onMounted(refresh)
           <input v-model="key" :disabled="!isNew" required pattern="[A-Za-z][A-Za-z0-9_-]*" data-testid="parcours-key" />
         </label>
         <label>{{ t('admin.parcours.label') }} <input v-model="label" required data-testid="parcours-label" /></label>
+        <label>{{ t('admin.parcours.dossierType') }}
+          <select v-model="definition.dossierTypeCode" data-testid="parcours-dossier-type" @change="onTypeChange">
+            <option :value="null">{{ t('admin.parcours.noDossierType') }}</option>
+            <option v-if="definition.dossierTypeCode && !selectedType" :value="definition.dossierTypeCode">{{ definition.dossierTypeCode }} ⚠</option>
+            <option v-for="d in dossierTypes" :key="d.code" :value="d.code">{{ d.label }} ({{ d.code }})</option>
+          </select>
+        </label>
       </div>
+      <p v-if="!definition.dossierTypeCode" class="parcours__hint">{{ t('admin.parcours.dossierTypeHint') }}</p>
+      <p v-else-if="!selectedType && dossierTypes.length" class="parcours__warn" data-testid="parcours-type-unknown">
+        {{ t('admin.parcours.dossierTypeUnknown', { code: definition.dossierTypeCode }) }}
+      </p>
+      <p v-else-if="typeWorkflowMismatch" class="parcours__warn" data-testid="parcours-type-mismatch">
+        {{ t('admin.parcours.dossierTypeMismatch', { type: selectedType?.label, workflow: typeWorkflowMismatch, key: key.trim() }) }}
+      </p>
 
       <fieldset>
         <legend>{{ t('admin.parcours.statuses') }}</legend>
@@ -360,30 +466,35 @@ onMounted(refresh)
             <select v-else-if="optionsFor(spec)" v-model="s.params[spec.name]" :data-testid="`param-${spec.name}`">
               <option value="" /><option v-for="o in optionsFor(spec)!" :key="o.value" :value="o.value">{{ o.label }}</option>
             </select>
+            <FieldMappingEditor v-else-if="spec.name === 'fieldMapping'" v-model="s.params[spec.name]" :targets="mappingTargets" :suggestions="suggestions" />
+            <ExpressionInput v-else-if="spec.name === 'formula'" v-model="s.params[spec.name]" multiline :suggestions="suggestions"
+              :placeholder="t('admin.parcours.expr.formulaPlaceholder')" :testid="`param-${spec.name}`" />
             <textarea v-else-if="spec.multiline" v-model="s.params[spec.name]" rows="2" :data-testid="`param-${spec.name}`" />
             <input v-else v-model="s.params[spec.name]" :data-testid="`param-${spec.name}`" />
+            <small v-if="te(`admin.parcours.paramHints.${spec.name}`)" class="parcours__hint">{{ t(`admin.parcours.paramHints.${spec.name}`) }}</small>
           </label>
           <label class="parcours__param">{{ t('admin.parcours.next') }}
-            <select v-model="s.next"><option :value="null">{{ t('admin.parcours.nextStep') }}</option><option v-for="id in stepIds" :key="id" :value="id">{{ id }}</option></select>
+            <select v-model="s.next"><option :value="null">{{ t('admin.parcours.nextStep') }}</option><option v-for="id in stepIds.filter((x) => x !== s.id)" :key="id" :value="id">{{ stepOption(id) }}</option></select>
           </label>
         </template>
 
         <template v-else>
           <div v-for="(b, j) in s.branches" :key="j" class="parcours__row" data-testid="branch">
-            {{ t('admin.parcours.if') }} <input v-model="b.variable" :aria-label="t('admin.parcours.variableAria')" :placeholder="t('admin.parcours.variable')" />
+            {{ t('admin.parcours.if') }} <input v-model="b.variable" list="parcours-variables" :aria-label="t('admin.parcours.variableAria')" :placeholder="t('admin.parcours.variable')" data-testid="branch-variable" />
             <select v-model="b.operator" :aria-label="t('admin.parcours.operator')"><option v-for="(sym, op) in OPERATORS" :key="op" :value="op">{{ sym }}</option></select>
             <input v-model="b.value" :aria-label="t('admin.parcours.valueAria')" :placeholder="t('admin.parcours.value')" />
             {{ t('admin.parcours.then') }}
-            <select v-model="b.next" :aria-label="t('admin.parcours.target')"><option value="" /><option v-for="id in stepIds" :key="id" :value="id">{{ id }}</option></select>
+            <select v-model="b.next" :aria-label="t('admin.parcours.target')"><option value="" /><option v-for="id in stepIds" :key="id" :value="id">{{ stepOption(id) }}</option></select>
             <button type="button" :aria-label="t('admin.parcours.removeCondition')" @click="s.branches!.splice(j, 1)">✕</button>
           </div>
           <button type="button" @click="addBranch(s)">{{ t('admin.parcours.addCondition') }}</button>
           <label class="parcours__param">{{ t('admin.parcours.otherwise') }}
-            <select v-model="s.defaultNext" data-testid="step-default"><option :value="null" /><option v-for="id in stepIds" :key="id" :value="id">{{ id }}</option></select>
+            <select v-model="s.defaultNext" data-testid="step-default"><option :value="null" /><option v-for="id in stepIds" :key="id" :value="id">{{ stepOption(id) }}</option></select>
           </label>
         </template>
       </article>
       <button type="button" data-testid="step-add" @click="addStep">{{ t('admin.parcours.addStep') }}</button>
+      <datalist id="parcours-variables"><option v-for="v in knownVariables" :key="v" :value="v" /></datalist>
 
       <div class="parcours__actions">
         <button type="submit" :disabled="busy" data-testid="parcours-save">{{ t('admin.parcours.save') }}</button>
@@ -406,6 +517,7 @@ onMounted(refresh)
         <ul v-if="result.warnings.length" data-testid="parcours-warnings">
           <li v-for="w in result.warnings" :key="w">{{ w }}</li>
         </ul>
+        <BpmnCanvas :bpmn-xml="result.xml" class="parcours__diagram" data-testid="parcours-diagram" />
         <details><summary>{{ t('admin.parcours.bpmnSummary', { sha: result.sha256.slice(0, 12) }) }}</summary><pre data-testid="parcours-xml">{{ result.xml }}</pre></details>
       </section>
     </form>
@@ -419,4 +531,8 @@ onMounted(refresh)
 .parcours__actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 1rem 0; }
 .parcours__hint { color: var(--color-text-muted, #555); }
 .parcours__result pre { overflow: auto; max-height: 24rem; }
+.parcours__diagram { height: 28rem; margin: 0.6rem 0; }
+fieldset > label { margin-right: 0.8rem; }
+.parcours__head { display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end; }
+.parcours__warn { color: #8a4b08; background: #fff4e5; padding: 0.4rem 0.6rem; border-radius: 4px; }
 </style>

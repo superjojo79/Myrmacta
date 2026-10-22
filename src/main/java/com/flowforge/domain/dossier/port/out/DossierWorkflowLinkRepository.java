@@ -16,6 +16,14 @@ public interface DossierWorkflowLinkRepository {
 
     Optional<DossierWorkflowLink> findByProcessInstanceId(String tenantId, String processInstanceId);
 
+    /** TODO §94 (revue L4) — liens de plusieurs instances en une lecture ; défaut : une lecture par instance. */
+    default List<DossierWorkflowLink> findByProcessInstanceIds(String tenantId, java.util.Collection<String> processInstanceIds) {
+        return processInstanceIds.stream()
+                .map(id -> findByProcessInstanceId(tenantId, id))
+                .flatMap(Optional::stream)
+                .toList();
+    }
+
     Optional<DossierWorkflowLink> findActiveByDossierId(UUID dossierId);
 
     Optional<DossierWorkflowLink> findReservedByDossierAndProcess(UUID dossierId, String processDefinitionKey);

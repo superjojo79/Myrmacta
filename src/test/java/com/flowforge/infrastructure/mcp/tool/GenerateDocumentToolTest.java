@@ -29,6 +29,7 @@ import com.flowforge.infrastructure.web.document.DocumentGenerationRateLimitExce
 import com.flowforge.infrastructure.web.document.DocumentGenerationRateLimiter;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -43,6 +44,9 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 class GenerateDocumentToolTest {
 
     private static final String TENANT = "tenant_dev";
+    // Le limiteur compte par minute calendaire : une horloge figée évite qu'un test de quota
+    // chevauchant une frontière de minute voie son compteur remis à zéro (pas de 429).
+    private static final Clock FIXED_CLOCK = Clock.fixed(Instant.parse("2026-01-01T00:00:30Z"), ZoneOffset.UTC);
 
     private GetDossierUseCase getDossierUseCase;
     private GetDossierTypeUseCase getDossierTypeUseCase;
@@ -61,7 +65,7 @@ class GenerateDocumentToolTest {
         generateDocumentUseCase = mock(GenerateDocumentUseCase.class);
         documentStoragePort = mock(DocumentStoragePort.class);
         addDossierElementUseCase = mock(AddDossierElementUseCase.class);
-        tool = newTool(new DocumentGenerationRateLimiter(Clock.systemUTC()), 30);
+        tool = newTool(new DocumentGenerationRateLimiter(FIXED_CLOCK), 30);
         dossierId = UUID.randomUUID();
         when(getDossierUseCase.get(eq(dossierId), any())).thenReturn(dossier(dossierId));
         when(getDossierTypeUseCase.getByCode(eq(TENANT), eq("SINISTRE"), any()))
@@ -165,7 +169,7 @@ class GenerateDocumentToolTest {
 
     @Test
     void rateLimitExceeded_deniesGeneration() {
-        DocumentGenerationRateLimiter exhausted = new DocumentGenerationRateLimiter(Clock.systemUTC());
+        DocumentGenerationRateLimiter exhausted = new DocumentGenerationRateLimiter(FIXED_CLOCK);
         exhausted.tryConsume("agent-1", 1);
         tool = newTool(exhausted, 1);
 
@@ -179,7 +183,7 @@ class GenerateDocumentToolTest {
 
     @Test
     void dryRun_doesNotConsumeRateLimit() {
-        DocumentGenerationRateLimiter exhausted = new DocumentGenerationRateLimiter(Clock.systemUTC());
+        DocumentGenerationRateLimiter exhausted = new DocumentGenerationRateLimiter(FIXED_CLOCK);
         exhausted.tryConsume("agent-1", 1);
         tool = newTool(exhausted, 1);
 

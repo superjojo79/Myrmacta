@@ -19,9 +19,10 @@ FlowForge est une plateforme permettant à des organisations de **modéliser, ex
 
 **Positionnement (décision du 2026-09-28, [TODO §70](TODO.md)) :** produit pour **intégrateurs**,
 avec hébergement dédié par client. L'intégrateur conçoit les processus (BPMN/DMN) ; une couche
-**low-code / no-code** (palette métier, éditeurs de formulaires et de templates, assistant IA) est
-planifiée pour que les utilisateurs avancés côté client ajustent formulaires, documents et règles.
-Cette couche n'est pas encore livrée : voir [ROADMAP.md](ROADMAP.md) (Vague D).
+**low-code / no-code** (palette métier, éditeurs de formulaires et de templates, assistant IA,
+concepteur de parcours) est **livrée** (Vague D) pour que les utilisateurs avancés côté client
+ajustent formulaires, documents et règles. Suite : [ROADMAP.md](ROADMAP.md) et
+[DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §7.
 
 L'idée centrale : un dossier métier suit un workflow adapté à son type, déclenché automatiquement depuis des sources externes, avec production de documents et notification des parties prenantes à chaque étape clé.
 
@@ -43,7 +44,7 @@ L'idée centrale : un dossier métier suit un workflow adapté à son type, déc
 | Exprimer des règles/critères métier sans cascade de gateways | Éditeur de tables de décision DMN intégré (`dmn-js`, `/admin/dmn-editor`), invocable depuis un process via `serviceTask` |
 | Gérer des dossiers structurés          | Entité dossier avec signalétique et champs dynamiques par type |
 | Produire des documents automatiquement | Génération PDF à partir de templates Thymeleaf versionnés    |
-| Intégrer des systèmes existants        | Système de connecteurs extensible (V1 : REST/webhook, signal Flowable, cron, email ad hoc, stockage fichier ; cible : Kafka, import batch, ERP…) |
+| Intégrer des systèmes existants        | Système de connecteurs extensible (REST/webhook, signal Flowable, cron, SMTP, Kafka, import batch SFTP, e-mail entrant IMAP/Graph, Azure Service Bus, stockage fichier) |
 | Adapter à chaque client                | Architecture multi-tenant — schéma de données isolé par organisation |
 | Intégrer les outils noCode             | Webhooks sortants compatibles Make, n8n, Zapier              |
 | Suivre l'avancement en temps réel      | Visualisation BPMN avec coloration des étapes + notifications navigateur |
@@ -62,7 +63,7 @@ Orchestration des flux métier via **Flowable** — standard industriel ouvert (
 
 ### Système de connecteurs
 
-Architecture extensible permettant d'intégrer n'importe quelle source ou destination. Un connecteur peut jouer le rôle de **trigger** (déclenche un workflow sur événement entrant), de **service** (exécute un traitement dans le workflow) ou de **callback** (reprend un workflow en attente d'une réponse asynchrone). En V1 le catalogue livré est `http-rest` (**TRIGGER + SERVICE**), `flowable-signal` (TRIGGER + SERVICE), `scheduler` (TRIGGER, déclenchement planifié par cron), `smtp` (SERVICE, envoi email ad hoc depuis un `serviceTask`), `document-storage` (SERVICE, lecture/écriture de contenu hors dossier via `DocumentStoragePort`) et `flowable-callback` (**CALLBACK**, corrèle un callback HTTP asynchrone à un appel `serviceTask` antérieur, quel que soit le connecteur SERVICE utilisé). Les types cible Kafka, import batch, ERP restent hors V1 ; des connecteurs custom peuvent être ajoutés au classpath sans modifier le core.
+Architecture extensible permettant d'intégrer n'importe quelle source ou destination. Un connecteur peut jouer le rôle de **trigger** (déclenche un workflow sur événement entrant), de **service** (exécute un traitement dans le workflow) ou de **callback** (reprend un workflow en attente d'une réponse asynchrone). Catalogue livré : `http-rest` (**TRIGGER + SERVICE**), `flowable-signal` (TRIGGER + SERVICE), `scheduler` (TRIGGER, cron), `smtp` (SERVICE), `document-storage` (SERVICE, via `DocumentStoragePort`), `flowable-callback` (**CALLBACK**), `batch-import` (TRIGGER, SFTP), `kafka` (TRIGGER), `imap-inbound` et `graph-mail-inbound` (TRIGGER, e-mail entrant), `azure-service-bus` (TRIGGER). Des connecteurs custom peuvent être ajoutés au classpath sans modifier le core.
 
 ### Génération de documents
 
@@ -100,9 +101,8 @@ L'application est construite sur le modèle **Ports & Adapters (hexagonal)** —
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  Connecteurs (triggers entrants)                                │
-│  V1 : REST webhook · signal Flowable                            │
-│  Cible (hors V1) : Kafka · Scheduler · Import fichier · ERP     │
+│  Connecteurs (triggers / services / callbacks)                  │
+│  REST · signal · cron · SMTP · Kafka · SFTP · e-mail · Azure    │
 └───────────────────────────┬─────────────────────────────────────┘
                             │ événements
                             ▼
@@ -133,7 +133,7 @@ L'application est construite sur le modèle **Ports & Adapters (hexagonal)** —
 | Persistence       | PostgreSQL + Spring Data JPA    | JSONB pour champs dynamiques, schéma par tenant |
 | Génération PDF    | Flying Saucer 10.4.x + jsoup 1.23.1 | LGPL, sans licence commerciale              |
 | Sécurité          | Spring Security 7 + OAuth2 Client | BFF intégré, provider-agnostique              |
-| Frontend          | Vue 3 + Vite + TypeScript + PrimeVue (embarqué `static/`) | SPA même origine, typage statique aligné sur le contrat API, composants métier riches |
+| Frontend          | Vue 3 + Vite + TypeScript + OpenVue (embarqué `static/`) | SPA même origine, typage statique aligné sur le contrat API, composants métier riches |
 | State management  | Pinia                           | Store réactif Vue 3                             |
 | Tests frontend    | Vitest + Playwright + ESLint/Prettier | Unitaire/composants **et** e2e (`npm run test:all`) obligatoires pour features FE ; aligné job CI `frontend` |
 | BPMN viewer/éditeur | bpmn-js + bpmn-js-properties-panel | Rendu fidèle, overlays d'état, édition (Modeler + panel de propriétés Flowable custom) |
@@ -212,7 +212,7 @@ La documentation d'architecture est disponible dans le répertoire `analysis doc
 | [08-templates-documents.md](analysis%20doc/08-templates-documents.md) | Versionning, variants, résolution    |
 | [09-notifications.md](analysis%20doc/09-notifications.md)    | Email, webhook, SSE                  |
 | [10-visualisation-workflow.md](analysis%20doc/10-visualisation-workflow.md) | BPMN.js, historique, réassignation   |
-| [11-frontend.md](analysis%20doc/11-frontend.md)              | Vue 3, PrimeVue, Pinia               |
+| [11-frontend.md](analysis%20doc/11-frontend.md)              | Vue 3, OpenVue, Pinia                |
 | [12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md) | RBAC, rétention, conformité RGPD     |
 
 ------
@@ -221,15 +221,15 @@ La documentation d'architecture est disponible dans le répertoire `analysis doc
 
 > Projet en développement actif : le socle (dossiers, workflows BPMN/DMN, documents, connecteurs,
 > serveur MCP, portail externe tokenisé, signature électronique générique avec fournisseur de
-> simulation, reporting/SLA, notifications) est livré sur `main`.
-> La Vague D est livrée sur la branche de développement : couche low-code (palette métier, expressions bornées, éditeurs visuels de
-> formulaires et de templates, assistant de conception IA, concepteur de parcours), modèle de champs enrichi, recherche sur champs dynamiques, intégrations
-> entreprise (OAuth2, mapping, e-mail entrant, bus Azure), promotion de configuration, MCP de conception, interface en français et en anglais.
-> Restent hors périmètre : fournisseur de signature qualifiée réel, export BI JDBC, scripts en bac à sable (spike : non nécessaire). Détails : [ROADMAP.md](ROADMAP.md),
+> simulation, reporting/SLA, notifications) et la Vague D (couche low-code, champs enrichis,
+> recherche, intégrations entreprise, promotion, MCP de conception, i18n fr/en) sont livrés sur
+> `main`. Prochains lots : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §7 (pièce jointe e-mail,
+> unicité de champ). Hors périmètre : fournisseur de signature qualifiée réel, export BI JDBC,
+> scripts en bac à sable (spike : non nécessaire). Détails : [ROADMAP.md](ROADMAP.md),
 > [docs/roadmap-goal/AVANCEMENT.md](docs/roadmap-goal/AVANCEMENT.md).
 >  Activité indépendante complémentaire.
 
-La documentation d'architecture a fait l'objet d'une [revue pré-implémentation](REVUE-PRE-IMPLEMENTATION.md)
-qui en détaille les points restant à trancher. Ces points, ainsi que les décisions déjà actées, sont
-suivis dans [TODO.md](TODO.md). L'ordre des prochaines features est dans
-[FILE-ATTENTE.md](FILE-ATTENTE.md).
+La documentation d'architecture a fait l'objet d'une [revue pré-implémentation](REVUE-PRE-IMPLEMENTATION.md).
+Les décisions actées et le seul point encore ouvert (§71) sont dans [TODO.md](TODO.md).
+L'ordre des prochaines features est dans [FILE-ATTENTE.md](FILE-ATTENTE.md)
+(file active = backlog riverain).

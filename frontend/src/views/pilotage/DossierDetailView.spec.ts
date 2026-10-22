@@ -8,6 +8,7 @@ import * as dossiersApi from '@/api/dossiers'
 import * as typesApi from '@/api/dossierTypes'
 import * as workflowsApi from '@/api/workflows'
 import * as tasksApi from '@/api/tasks'
+import * as incidentsApi from '@/api/incidents'
 import { useAuthStore } from '@/stores/auth'
 import { asPage } from '@/api/page'
 
@@ -19,8 +20,11 @@ vi.mock('@/api/workflows', () => ({
   getWorkflowTasks: vi.fn().mockResolvedValue({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }),
   listAllWorkflowTypeConfigs: vi.fn().mockResolvedValue([]),
   reassignWorkflowTask: vi.fn().mockResolvedValue(undefined),
+  claimWorkflowTask: vi.fn().mockResolvedValue(undefined),
+  listAssignableUsers: vi.fn().mockResolvedValue([]),
 }))
 vi.mock('@/api/tasks')
+vi.mock('@/api/incidents')
 vi.mock('@/api/purgeOutbox', () => ({
   enqueueDossierPurge: vi.fn().mockResolvedValue(undefined),
 }))
@@ -104,6 +108,10 @@ describe('DossierDetailView phase 8', () => {
       startedBy: 'u',
     })
     vi.mocked(tasksApi.completeTask).mockResolvedValue(undefined)
+    vi.mocked(workflowsApi.claimWorkflowTask).mockResolvedValue(undefined)
+    vi.mocked(workflowsApi.listAssignableUsers).mockResolvedValue([
+      { userId: 'user-2', displayName: 'Grace Hopper', email: 'grace@example.org' },
+    ])
   })
 
   async function mountDetail(roles: string[], canEdit = false) {
@@ -118,6 +126,57 @@ describe('DossierDetailView phase 8', () => {
     return wrapper
   }
 
+  describe('incidents (TODO §94)', () => {
+    const incident = {
+      jobId: 'job-1',
+      activityId: 'mailRefus',
+      activityName: 'E-mail : refus',
+      state: 'INCIDENT' as const,
+      since: '2026-10-18T18:51:26Z',
+      retriesLeft: 0,
+      message: 'notificationTo source dossierField:email is not a single e-mail address',
+    }
+
+    it('affiche le bandeau et rejoue un incident pour un administrateur', async () => {
+      vi.mocked(incidentsApi.listLinkIncidents).mockResolvedValueOnce([incident]).mockResolvedValue([])
+      vi.mocked(incidentsApi.retryIncident).mockResolvedValue(undefined)
+      const wrapper = await mountDetail(['WORKFLOW_ADMIN'])
+
+      expect(wrapper.find('[data-testid="incident-banner"]').text()).toContain('E-mail : refus')
+      const diagramCalls = vi.mocked(workflowsApi.getWorkflowDiagram).mock.calls.length
+      await wrapper.get('[data-testid="incident-retry"]').trigger('click')
+      await flushPromises()
+
+      expect(incidentsApi.retryIncident).toHaveBeenCalledWith('link-1', 'job-1')
+      expect(vi.mocked(workflowsApi.getWorkflowDiagram).mock.calls.length).toBeGreaterThan(diagramCalls)
+      expect(wrapper.find('[data-testid="incident-banner"]').exists()).toBe(false)
+    })
+
+    it('un gestionnaire voit le bandeau sans bouton « Rejouer »', async () => {
+      vi.mocked(incidentsApi.listLinkIncidents).mockResolvedValue([{ ...incident, message: undefined }])
+      const wrapper = await mountDetail(['DOSSIER_MANAGER'], true)
+
+      expect(wrapper.find('[data-testid="incident-banner"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="incident-retry"]').exists()).toBe(false)
+    })
+
+    it('un rejeu refusé affiche une erreur au lieu de faire disparaître le bandeau', async () => {
+      vi.mocked(incidentsApi.listLinkIncidents).mockResolvedValue([incident])
+      vi.mocked(incidentsApi.retryIncident).mockRejectedValue({
+        response: { status: 409, data: { detail: 'Incident job-1 has already been retried or is retrying' } },
+      })
+      const wrapper = await mountDetail(['TENANT_ADMIN'])
+
+      await wrapper.get('[data-testid="incident-retry"]').trigger('click')
+      await flushPromises()
+
+      // Revue L2 : message traduit, pas le détail technique du serveur.
+      expect(wrapper.text()).toContain('Cet incident a déjà été rejoué')
+      expect(wrapper.text()).not.toContain('has already been retried')
+      expect(wrapper.find('[data-testid="incident-banner"]').exists()).toBe(true)
+    })
+  })
+
   it('starts workflow from dialog with default key', async () => {
     const wrapper = await mountDetail(['TENANT_ADMIN'])
     await wrapper.get('button.primary').trigger('click')
@@ -128,7 +187,22 @@ describe('DossierDetailView phase 8', () => {
     const call = vi.mocked(dossiersApi.startDossierWorkflow).mock.calls[0]
     expect(call[0]).toBe('d1')
     expect(call[1]).toBe('wf')
+    expect(call[2]).toEqual({})
     expect(call[3]).toBeTruthy()
+  })
+
+  it('transmet les variables de démarrage saisies dans le dialogue (TODO §93)', async () => {
+    const wrapper = await mountDetail(['TENANT_ADMIN'])
+    await wrapper.get('button.primary').trigger('click')
+    await flushPromises()
+    await wrapper.get('[data-testid="start-variables-add"]').trigger('click')
+    await wrapper.get('[data-testid="start-variable-name"]').setValue('priorite')
+    await wrapper.get('[data-testid="start-variable-value"]').setValue('haute')
+    await wrapper.get('.dialog button.primary').trigger('click')
+    await flushPromises()
+    const call = vi.mocked(dossiersApi.startDossierWorkflow).mock.calls[0]
+    expect(call[1]).toBe('wf')
+    expect(call[2]).toEqual({ priorite: 'haute' })
   })
 
   it('completes a task with empty variables', async () => {
@@ -149,10 +223,51 @@ describe('DossierDetailView phase 8', () => {
     expect(admin.text()).toContain('Réassigner')
     const reassignBtn = admin.findAll('.task-list button').find((b) => b.text() === 'Réassigner')
     await reassignBtn!.trigger('click')
-    await admin.get('.reassign input').setValue('user-2')
+    await flushPromises()
+    // D-ASSIGN-DIR : une liste des utilisateurs connus remplace la saisie d'un identifiant.
+    const select = admin.get('[data-testid="reassign-user"]')
+    expect(select.text()).toContain('Grace Hopper (grace@example.org)')
+    await select.setValue('user-2')
     await admin.get('.reassign button').trigger('click')
     await flushPromises()
     expect(workflowsApi.reassignWorkflowTask).toHaveBeenCalledWith('link-1', 'task-1', 'user-2')
+  })
+
+  it('explains an empty user list instead of showing a bare select', async () => {
+    vi.mocked(workflowsApi.listAssignableUsers).mockResolvedValue([])
+    const admin = await mountDetail(['TENANT_ADMIN'])
+    const reassignBtn = admin.findAll('.task-list button').find((b) => b.text() === 'Réassigner')
+    await reassignBtn!.trigger('click')
+    await flushPromises()
+    expect(admin.text()).toContain('Un utilisateur apparaît ici après sa première connexion.')
+  })
+
+  it('lets a dossier editor take a free task with the claim button (D-ASSIGN-CLAIM)', async () => {
+    vi.mocked(workflowsApi.getWorkflowTasks).mockResolvedValue(
+      asPage([{ taskId: 'task-1', name: 'Review', assignee: null, taskDefinitionKey: 'k', createTime: null }]),
+    )
+    const viewer = await mountDetail(['DOSSIER_VIEWER'], false)
+    expect(viewer.find('[data-testid="claim-task"]').exists()).toBe(false)
+    viewer.unmount()
+
+    const editor = await mountDetail(['DOSSIER_MANAGER'], true)
+    await editor.get('[data-testid="claim-task"]').trigger('click')
+    await flushPromises()
+    expect(workflowsApi.claimWorkflowTask).toHaveBeenCalledWith('link-1', 'task-1')
+    // Pas d'appel à l'annuaire pour un non-admin : il lui est refusé.
+    expect(workflowsApi.listAssignableUsers).not.toHaveBeenCalled()
+  })
+
+  it('shows the assignee display name for admins and "vous" for oneself', async () => {
+    vi.mocked(workflowsApi.getWorkflowTasks).mockResolvedValue(
+      asPage([
+        { taskId: 'task-1', name: 'Review', assignee: 'user-2', taskDefinitionKey: 'k', createTime: null },
+        { taskId: 'task-2', name: 'Sign', assignee: 'u', taskDefinitionKey: 'k', createTime: null },
+      ]),
+    )
+    const admin = await mountDetail(['WORKFLOW_ADMIN'])
+    expect(admin.text()).toContain('Assignee : Grace Hopper')
+    expect(admin.text()).toContain('Assignee : vous')
   })
 
   it('follows the server-computed canEdit flag rather than the role alone (TODO §36)', async () => {

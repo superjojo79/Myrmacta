@@ -3,6 +3,7 @@ package com.flowforge.infrastructure.web.auth;
 import com.flowforge.infrastructure.config.I18nProperties;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
@@ -21,11 +22,14 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<AuthUserResponse> me(@AuthenticationPrincipal OidcUser user) {
+    public ResponseEntity<AuthUserResponse> me(
+            @AuthenticationPrincipal OidcUser user, Authentication authentication) {
         if (user == null) {
             return ResponseEntity.status(401).build();
         }
-        List<String> roles = user.getAuthorities().stream()
+        // Rôles lus sur l'Authentication, pas sur le principal : RealmAccessAuthoritiesMapper ne
+        // s'applique qu'aux autorités de l'Authentication, l'OidcUser garde OIDC_USER / SCOPE_*.
+        List<String> roles = authentication.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .filter(authority -> authority != null && authority.startsWith("ROLE_"))
                 .map(authority -> authority.substring("ROLE_".length()))

@@ -10,6 +10,7 @@ import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
 import com.flowforge.domain.notification.port.out.NotificationWebhookRepository;
 import com.flowforge.domain.workflow.palette.port.out.BlockReference;
 import com.flowforge.domain.workflow.palette.port.out.BlockReferenceLookupPort;
+import com.flowforge.domain.workflow.palette.port.out.ReferenceStatus;
 import com.flowforge.domain.workflow.model.DecisionTableDeploymentInfo;
 import com.flowforge.domain.workflow.port.out.DmnDeploymentPort;
 import com.flowforge.domain.workflow.port.out.WorkflowTypeConfigRepository;
@@ -76,26 +77,43 @@ class BlockReferenceLookupAdapter implements BlockReferenceLookupPort {
 
     @Override
     @Transactional(readOnly = true)
-    public boolean exists(String tenantId, String source, String value) {
+    public ReferenceStatus status(String tenantId, String source, String value) {
         if (value == null || value.isBlank()) {
-            return false;
+            return ReferenceStatus.MISSING;
         }
         return switch (source) {
-            case "documentTemplates" -> templates.listByTenantId(tenantId, value).stream()
-                    .anyMatch(t -> t.status() == TemplateStatus.ACTIVE);
+            case "documentTemplates" -> templateStatus(templates.listByTenantId(tenantId, value));
             case "connectorInstances" -> uuid(value)
                     .flatMap(id -> connectors.findByIdAndTenantId(id, tenantId))
-                    .filter(this::isUsableService)
-                    .isPresent();
+                    .filter(this::isServiceType)
+                    .map(c -> c.enabled() ? ReferenceStatus.ACTIVE : ReferenceStatus.INACTIVE)
+                    .orElse(ReferenceStatus.MISSING);
             case "notificationWebhooks" -> uuid(value)
                     .flatMap(id -> webhooks.findByIdAndTenantId(id, tenantId))
-                    .filter(w -> w.enabled() && w.deletedAt() == null)
-                    .isPresent();
-            case "dossierTypes" -> dossierTypes.findByCode(tenantId, value).filter(t -> t.active()).isPresent();
-            case "workflowTypes" -> workflowTypes.findByWorkflowKey(tenantId, value).isPresent();
-            case "dmnTables" -> dmnDeployments.findDeploymentInfo(tenantId, value).isPresent();
+                    .filter(w -> w.deletedAt() == null)
+                    .map(w -> w.enabled() ? ReferenceStatus.ACTIVE : ReferenceStatus.INACTIVE)
+                    .orElse(ReferenceStatus.MISSING);
+            case "dossierTypes" -> dossierTypes.findByCode(tenantId, value)
+                    .map(t -> t.active() ? ReferenceStatus.ACTIVE : ReferenceStatus.INACTIVE)
+                    .orElse(ReferenceStatus.MISSING);
+            case "workflowTypes" -> present(workflowTypes.findByWorkflowKey(tenantId, value).isPresent());
+            case "dmnTables" -> present(dmnDeployments.findDeploymentInfo(tenantId, value).isPresent());
             default -> throw new IllegalArgumentException("Unsupported source: " + source);
         };
+    }
+
+    /** Une version active suffit ; un modèle qui n'a que des versions archivées est retiré (absent), pas « inactif ». */
+    private static ReferenceStatus templateStatus(List<DocumentTemplate> versions) {
+        if (versions.stream().anyMatch(t -> t.status() == TemplateStatus.ACTIVE)) {
+            return ReferenceStatus.ACTIVE;
+        }
+        return versions.stream().anyMatch(t -> t.status() == TemplateStatus.DRAFT)
+                ? ReferenceStatus.INACTIVE
+                : ReferenceStatus.MISSING;
+    }
+
+    private static ReferenceStatus present(boolean present) {
+        return present ? ReferenceStatus.ACTIVE : ReferenceStatus.MISSING;
     }
 
     private List<BlockReference> activeTemplates(String tenantId) {
@@ -110,9 +128,10 @@ class BlockReferenceLookupAdapter implements BlockReferenceLookupPort {
     }
 
     private boolean isUsableService(ConnectorInstanceData instance) {
-        if (!instance.enabled()) {
-            return false;
-        }
+        return instance.enabled() && isServiceType(instance);
+    }
+
+    private boolean isServiceType(ConnectorInstanceData instance) {
         try {
             return connectorCatalog.get(instance.connectorType()).getCapability().includesService();
         } catch (RuntimeException unknownType) {

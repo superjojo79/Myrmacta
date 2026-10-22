@@ -94,6 +94,8 @@ const pilotage: typeof fr = {
     add: 'Add',
     linkDossier: 'Link a dossier',
     newAssignee: 'New assignee',
+    chooseAssignee: '— Choose a user —',
+    noAssignableUsers: 'No known user can edit this dossier. A user appears here after their first sign-in.',
     confirm: 'Confirm',
     errors: {
       status: 'Unable to update the status',
@@ -103,6 +105,8 @@ const pilotage: typeof fr = {
       start: 'Unable to start',
       complete: 'Unable to complete',
       reassign: 'Unable to reassign',
+      claim: 'Unable to take the task',
+      assignableUsers: 'User list unavailable',
     },
   },
   myTasks: {

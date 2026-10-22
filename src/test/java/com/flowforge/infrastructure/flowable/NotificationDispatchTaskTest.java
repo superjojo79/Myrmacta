@@ -27,7 +27,8 @@ class NotificationDispatchTaskTest {
     @BeforeEach
     void setUp() {
         sendNotificationUseCase = mock(SendNotificationUseCase.class);
-        task = new NotificationDispatchTask(new TenantProperties("tenant_dev"), sendNotificationUseCase);
+        task = new NotificationDispatchTask(new TenantProperties("tenant_dev"), sendNotificationUseCase,
+                mock(com.flowforge.domain.workflow.portal.port.out.PortalRecipientResolverPort.class));
         execution = mock(DelegateExecution.class);
     }
 

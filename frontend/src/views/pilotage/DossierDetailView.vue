@@ -15,6 +15,7 @@ import AddElementDialog from '@/components/dossier/AddElementDialog.vue'
 import RelationsList from '@/components/dossier/RelationsList.vue'
 import LinkDossierDialog from '@/components/dossier/LinkDossierDialog.vue'
 import BpmnViewer from '@/components/workflow/BpmnViewer.vue'
+import IncidentBanner from '@/components/workflow/IncidentBanner.vue'
 import TaskList from '@/components/workflow/TaskList.vue'
 import HistoryTimeline from '@/components/workflow/HistoryTimeline.vue'
 import StartWorkflowDialog from '@/components/workflow/StartWorkflowDialog.vue'
@@ -46,8 +47,10 @@ const {
   loading,
   error,
   diagramUnavailable,
+  assignableUsers,
+  incidents,
 } = storeToRefs(store)
-const { isTenantAdmin, isWorkflowAdmin } = storeToRefs(auth)
+const { user, isTenantAdmin, isWorkflowAdmin } = storeToRefs(auth)
 
 const statusDraft = ref<DossierStatus>('DRAFT')
 const startOpen = ref(false)
@@ -56,6 +59,9 @@ const addElementOpen = ref(false)
 const reassignTaskId = ref<string | null>(null)
 const reassignUserId = ref('')
 const actionError = ref<string | null>(null)
+/** TODO §94 — job dont le rejeu est en cours. */
+const retryingJobId = ref<string | null>(null)
+const assignableUsersLoaded = ref(false)
 
 const canReassign = computed(() => isTenantAdmin.value || isWorkflowAdmin.value)
 // TODO §36: server-computed effective permission (DossierAccessPolicy.canEdit), not a role guess.
@@ -65,11 +71,31 @@ const fieldsLocked = computed(
 )
 const canLink = canEditDossier
 const linkId = computed(() => dossier.value?.currentWorkflowLinkId)
+// D-ASSIGN-CLAIM : prendre une tâche libre exige le même droit que la terminer (EDIT).
+const canClaim = canEditDossier
+const assigneeNames = computed(() =>
+  Object.fromEntries(assignableUsers.value.map((candidate) => [candidate.userId, candidate.displayName])),
+)
 
 watch(
   dossier,
   (value) => {
     if (value) statusDraft.value = value.status
+  },
+  { immediate: true },
+)
+
+// Les admins ont accès à l'annuaire : il sert aussi à afficher un nom plutôt qu'un identifiant.
+watch(
+  [linkId, canReassign],
+  async ([id, admin]) => {
+    if (!id || !admin) return
+    try {
+      await store.loadAssignableUsers(id)
+      assignableUsersLoaded.value = true
+    } catch {
+      // Noms facultatifs : la liste des tâches reste utilisable avec les identifiants.
+    }
   },
   { immediate: true },
 )
@@ -140,12 +166,29 @@ async function onAddAttachment(payload: { file: File; label: string }) {
   }
 }
 
-async function onStart(key: string) {
+async function onStart(key: string, variables: Record<string, string> = {}) {
   startOpen.value = false
   try {
-    await store.startWorkflow(key)
+    await store.startWorkflow(key, variables)
   } catch (err) {
     actionError.value = toProblemDetail(err).detail ?? t('dossierDetail.errors.start')
+  }
+}
+
+async function onRetryIncident(jobId: string) {
+  if (!linkId.value) return
+  actionError.value = null
+  retryingJobId.value = jobId
+  try {
+    await store.retryIncident(linkId.value, jobId)
+  } catch (err) {
+    const problem = toProblemDetail(err)
+    actionError.value =
+      problem.status === 409
+        ? t('workflow.incidents.alreadyRetried')
+        : (problem.detail ?? t('workflow.incidents.retryError'))
+  } finally {
+    retryingJobId.value = null
   }
 }
 
@@ -154,6 +197,28 @@ async function onComplete(taskId: string, variables: Record<string, unknown> = {
     await store.complete(taskId, variables)
   } catch (err) {
     actionError.value = toProblemDetail(err).detail ?? t('dossierDetail.errors.complete')
+  }
+}
+
+async function onClaim(taskId: string) {
+  if (!linkId.value) return
+  actionError.value = null
+  try {
+    await store.claim(linkId.value, taskId)
+  } catch (err) {
+    actionError.value = toProblemDetail(err).detail ?? t('dossierDetail.errors.claim')
+  }
+}
+
+async function openReassign(taskId: string) {
+  reassignTaskId.value = taskId
+  reassignUserId.value = ''
+  if (!linkId.value) return
+  try {
+    await store.loadAssignableUsers(linkId.value)
+    assignableUsersLoaded.value = true
+  } catch (err) {
+    actionError.value = toProblemDetail(err).detail ?? t('dossierDetail.errors.assignableUsers')
   }
 }
 
@@ -232,6 +297,12 @@ async function confirmReassign() {
       @submit="onLink"
     />
 
+    <IncidentBanner
+      :incidents="incidents"
+      :can-retry="isWorkflowAdmin"
+      :retrying-job-id="retryingJobId"
+      @retry="onRetryIncident"
+    />
     <BpmnViewer :diagram="diagram" :unavailable="diagramUnavailable || !linkId" />
     <HistoryTimeline
       :history="history"
@@ -243,10 +314,14 @@ async function confirmReassign() {
       :tasks="tasks"
       :dossier-id="dossier?.id"
       :can-reassign="canReassign"
+      :can-claim="canClaim"
+      :current-user-id="user?.id"
+      :assignee-names="assigneeNames"
       :page="tasksPage"
       :total-pages="tasksTotalPages"
       @complete="onComplete"
-      @reassign="reassignTaskId = $event"
+      @reassign="openReassign"
+      @claim="onClaim"
       @form-error="actionError = $event"
       @update:page="store.loadTasksPage($event)"
     />
@@ -258,10 +333,20 @@ async function confirmReassign() {
     <div v-if="reassignTaskId" class="reassign">
       <label>
         {{ t('dossierDetail.newAssignee') }}
-        <input v-model="reassignUserId" type="text" />
+        <select v-model="reassignUserId" data-testid="reassign-user">
+          <option value="" disabled>{{ t('dossierDetail.chooseAssignee') }}</option>
+          <option v-for="candidate in assignableUsers" :key="candidate.userId" :value="candidate.userId">
+            {{ candidate.email ? `${candidate.displayName} (${candidate.email})` : candidate.displayName }}
+          </option>
+        </select>
       </label>
-      <button type="button" @click="confirmReassign">{{ t('dossierDetail.confirm') }}</button>
+      <button type="button" :disabled="!reassignUserId" @click="confirmReassign">
+        {{ t('dossierDetail.confirm') }}
+      </button>
       <button type="button" @click="reassignTaskId = null">{{ t('common.cancel') }}</button>
+      <p v-if="assignableUsersLoaded && assignableUsers.length === 0" class="reassign__hint">
+        {{ t('dossierDetail.noAssignableUsers') }}
+      </p>
     </div>
 
     <StartWorkflowDialog
@@ -303,8 +388,15 @@ button.primary {
 }
 .reassign {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   align-items: end;
   margin-top: 1rem;
+}
+.reassign__hint {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.75;
 }
 </style>

@@ -1,7 +1,13 @@
 # File d’attente produit — FlowForge
 
-> **État du mandat « roadmap complète » (2026-10-01)** : tous les lots de la Vague D sont livrés (LC1-suite, LC2, D1, D2, D3a–d, D4, D5, D6, LC3, LC4a, LC4b, LC5, D7 première tranche) ; LC6 a fait l'objet
-> d'un spike qui conclut à ne pas lancer le lot. Suivi : [docs/roadmap-goal/AVANCEMENT.md](docs/roadmap-goal/AVANCEMENT.md), décisions : [DECISIONS.md](docs/roadmap-goal/DECISIONS.md). L'ordre ci-dessous est conservé à titre d'historique.
+> **État (2026-10-22, `main`)** : Vagues A, B, C et D **livrées**. Mandat « roadmap complète » clos
+> ([AVANCEMENT.md](docs/roadmap-goal/AVANCEMENT.md), [DECISIONS.md](docs/roadmap-goal/DECISIONS.md)).
+> Aucun cycle `dev-lifecycle` en cours.
+>
+> **File active :** lots relevés par l'exemple « autorisation riverain » —
+> [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §7. Aucun n'est cadré (Phase 1 obligatoire).
+> Prochains candidats (priorité 2) : `notifier-piece-jointe` **ou** `unicite-champ-dossier`.
+> L'ordonnancement Vague D ci-dessous est conservé à titre d'historique.
 
 
 > Ordre recommandé des **prochaines features** après les lots lifecycle déjà
@@ -516,16 +522,33 @@ Lots lifecycle antérieurs (`workflow-engine` … `frontend`, pagination, relati
 
 ## File d’attente
 
-Le V1 nommé est **livré** (`reporting-sla` … `revue-adversariale-securite` / §58,
-voir *Récemment livré*). TODO.md **entièrement clos**. Reliquat = lots V1.x / ops,
-**sans analyse `dev-lifecycle` écrite** (sauf backlog MCP déjà cadré dans
-[15-serveur-mcp.md](analysis%20doc/15-serveur-mcp.md) § *Backlog*). Chaque agent
-démarre par requirements → design ; **ne pas trancher silencieusement** une
-décision d’image Docker, de store partagé, ou d’activation `context-path`.
+Le V1 nommé, les vagues A/B/C et la Vague D (mandat « roadmap complète ») sont **livrés**.
+Le seul point TODO encore `[ ]` est le §71 (cadrage MCP : PARITY / RESOURCES / SECRETS
+résiduels ; SCOPES tranché en D6 ; TS caduc après le spike LC6). Reliquat produit =
+[DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §7. Chaque agent démarre par requirements →
+design ; **ne pas trancher silencieusement** une décision ouverte de `TODO.md`.
 
-> **Les Vagues A, B et C ci-dessous sont intégralement livrées** (PR #117–#119, #129, #131) ;
-> elles sont conservées pour mémoire et pour les règles de collision de coutures. La file active
-> est la **Vague D** ci-après.
+### File active — backlog riverain (2026-10-22)
+
+Source : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §7 et
+[exemples/autorisation-riverain/DIFFICULTES.md](exemples/autorisation-riverain/DIFFICULTES.md).
+Aucun lot n'est cadré au sens `dev-lifecycle`.
+
+| Priorité | Feature | Objectif |
+|---|---|---|
+| 2 | `notifier-piece-jointe` | Joindre un document (PDF généré) à la brique « Notifier » / au connecteur `smtp` |
+| 2 | `unicite-champ-dossier` | Contrainte d'unicité sur un champ, ou brique « rechercher un dossier » depuis un workflow |
+| 3 | `gabarits-notification` | Gabarits d'e-mail / consignes portail à variables, au lieu de littéraux BPMN |
+| 3 | `parcours-minuteur-bordure` | Course « décision ou délai » dans le concepteur de parcours ; expressions de minuteur ; jours ouvrables |
+| 3 | `variables-demarrage-declarees` | Formulaire de démarrage déclaré (nom, libellé, obligatoire) |
+| 3 | *(à arbitrer)* | Portail de dépôt initial ; relire `dossierFields` pendant l'instance |
+
+Lots de priorité 1 déjà livrés : `notifier-dossier-et-brouillons` (PR #174, TODO §93),
+`incidents-visibles-dossier` (PR #176, TODO §94). Recette R1–R7 de l'exemple : faite
+(2026-10-18) ; R6 rejoué après la PR #176.
+
+> **Les Vagues A, B, C et D ci-dessous sont intégralement livrées** ; elles sont conservées
+> pour mémoire et pour les règles de collision de coutures.
 
 ### File d'attente — Vague D (ordonnancement du 2026-09-29)
 
@@ -661,9 +684,10 @@ sécurité UEL du BPMN ([PR #136](https://github.com/superjojo79/FlowForge/pull/
 `portail-externe` ([PR #138](https://github.com/superjojo79/FlowForge/pull/138), TODO §68), puis
 `signature-electronique` ([PR #149](https://github.com/superjojo79/FlowForge/pull/149), TODO §72 : port `SignaturePort` + adaptateur stub, sans fournisseur ; eIDAS reporté).
 
-**Cycle en cours :** objectif « roadmap complète » (`docs/roadmap-goal/`), un lot à la fois sur la branche de développement : LC1-suite (TODO §74) et LC2 (TODO §75) livrés ; suite dans l'ordre de `docs/roadmap-goal/CHARTE.md` §2 (D1 types). `palette-metier-bpmn` (LC1) mergée le 2026-09-30 ([PR #151](https://github.com/superjojo79/FlowForge/pull/151), TODO §73).
+**Cycle en cours :** aucun. Vague D et mandat « roadmap complète » clos. File active =
+[DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §7.
 
-Détail inventaire : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §4 / §6.
+Détail inventaire : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §4 / §6 / §7.
 
 ## En revue
 

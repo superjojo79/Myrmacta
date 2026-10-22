@@ -1,6 +1,7 @@
 package com.flowforge.infrastructure.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oidcLogin;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -11,6 +12,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.flowforge.infrastructure.tenant.TenantResolutionFilter;
 import com.flowforge.support.OidcClientTestConfiguration;
+import java.time.Instant;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -19,7 +22,11 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.core.oidc.OidcIdToken;
+import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
+import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -69,6 +76,27 @@ class BffSecurityTest {
                 .andExpect(jsonPath("$.roles").isArray())
                 .andExpect(jsonPath("$.roles[0]").value("DOSSIER_VIEWER"))
                 .andExpect(jsonPath("$.roles[1]").value("WORKFLOW_ADMIN"));
+    }
+
+    @Test
+    void me_rolesComeFromTheMappedAuthentication_notFromTheRawOidcPrincipal() throws Exception {
+        // Forme réelle d'un login OIDC : le userAuthoritiesMapper (RealmAccessAuthoritiesMapper)
+        // ne s'applique qu'aux autorités de l'Authentication ; le principal OidcUser garde ses
+        // autorités brutes (OIDC_USER, SCOPE_*). oidcLogin() met les mêmes autorités des deux côtés.
+        OidcIdToken idToken = OidcIdToken.withTokenValue("id-token")
+                .subject("ada")
+                .claim("tenant_id", "tenant_dev")
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(300))
+                .build();
+        DefaultOidcUser principal = new DefaultOidcUser(List.of(new OidcUserAuthority(idToken)), idToken);
+        OAuth2AuthenticationToken login = new OAuth2AuthenticationToken(
+                principal, List.of(new SimpleGrantedAuthority("ROLE_TENANT_ADMIN")), "oidc");
+
+        mockMvc.perform(get("/api/auth/me").with(authentication(login)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.roles.length()").value(1))
+                .andExpect(jsonPath("$.roles[0]").value("TENANT_ADMIN"));
     }
 
     @Test

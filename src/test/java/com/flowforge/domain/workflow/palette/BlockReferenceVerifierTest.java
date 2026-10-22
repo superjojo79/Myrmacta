@@ -11,11 +11,15 @@ import com.flowforge.domain.workflow.model.UnknownBlockReferenceException;
 import com.flowforge.domain.workflow.model.WorkflowStatusDefinition;
 import com.flowforge.domain.workflow.model.WorkflowTypeConfig;
 import com.flowforge.domain.workflow.palette.port.out.BlockReferenceLookupPort;
+import com.flowforge.domain.workflow.palette.port.out.ReferenceStatus;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
-/** S-REFCHK-1..3 — existence des ressources référencées par les attributs de brique, au déploiement (TODO §73). */
+/**
+ * S-REFCHK-1..3 — existence des ressources référencées par les attributs de brique, au déploiement (TODO §73) ; mode
+ * brouillon (TODO §93 D-DRAFT-REF-STATUS).
+ */
 class BlockReferenceVerifierTest {
 
     private static final String TENANT = "tenant_a";
@@ -38,11 +42,11 @@ class BlockReferenceVerifierTest {
 
     @Test
     void existingResourcesAreAccepted() {
-        when(lookup.exists(TENANT, "documentTemplates", "facture")).thenReturn(true);
-        when(lookup.exists(TENANT, "connectorInstances", "uuid-1")).thenReturn(true);
-        when(lookup.exists(TENANT, "dossierTypes", "ENFANT")).thenReturn(true);
-        when(lookup.exists(TENANT, "workflowTypes", "suite")).thenReturn(true);
-        when(lookup.exists(TENANT, "notificationWebhooks", "uuid-2")).thenReturn(true);
+        when(lookup.status(TENANT, "documentTemplates", "facture")).thenReturn(ReferenceStatus.ACTIVE);
+        when(lookup.status(TENANT, "connectorInstances", "uuid-1")).thenReturn(ReferenceStatus.ACTIVE);
+        when(lookup.status(TENANT, "dossierTypes", "ENFANT")).thenReturn(ReferenceStatus.ACTIVE);
+        when(lookup.status(TENANT, "workflowTypes", "suite")).thenReturn(ReferenceStatus.ACTIVE);
+        when(lookup.status(TENANT, "notificationWebhooks", "uuid-2")).thenReturn(ReferenceStatus.ACTIVE);
 
         verifier.verify("claim", Optional.of(config("OUVERT")), List.of(
                 usage("documentType", "documentTemplates", "facture"),
@@ -54,7 +58,7 @@ class BlockReferenceVerifierTest {
 
     @Test
     void missingResourceIsRefusedNamingActivityAttributeAndValue() {
-        when(lookup.exists(TENANT, "documentTemplates", "absent")).thenReturn(false);
+        when(lookup.status(TENANT, "documentTemplates", "absent")).thenReturn(ReferenceStatus.MISSING);
 
         assertThatThrownBy(() -> verifier.verify("claim", Optional.empty(),
                 List.of(usage("documentType", "documentTemplates", "absent"))))
@@ -86,6 +90,50 @@ class BlockReferenceVerifierTest {
     @Test
     void noUsageMeansNoLookup() {
         verifier.verify("claim", Optional.empty(), List.of());
+        verifyNoInteractions(lookup);
+    }
+
+    @Test
+    void strictModeRefusesAnInactiveResourceAsBefore() {
+        when(lookup.status(TENANT, "documentTemplates", "nouveau")).thenReturn(ReferenceStatus.INACTIVE);
+
+        assertThatThrownBy(() -> verifier.verify("claim", Optional.empty(),
+                List.of(usage("documentType", "documentTemplates", "nouveau"))))
+                .isInstanceOf(UnknownBlockReferenceException.class).hasMessageContaining("nouveau");
+        assertThatThrownBy(() -> verifier.verify("claim", Optional.empty(),
+                List.of(usage("documentType", "documentTemplates", "nouveau")), BlockReferenceVerifier.Mode.STRICT))
+                .isInstanceOf(UnknownBlockReferenceException.class);
+    }
+
+    @Test
+    void draftModeAcceptsAnInactiveResourceAndReportsIt() {
+        when(lookup.status(TENANT, "documentTemplates", "nouveau")).thenReturn(ReferenceStatus.INACTIVE);
+        when(lookup.status(TENANT, "dossierTypes", "ENFANT")).thenReturn(ReferenceStatus.ACTIVE);
+
+        List<InactiveBlockReference> inactive = verifier.verify("claim", Optional.empty(), List.of(
+                usage("documentType", "documentTemplates", "nouveau"),
+                usage("childDossierTypeCode", "dossierTypes", "ENFANT")), BlockReferenceVerifier.Mode.DRAFT);
+
+        assertThat(inactive).containsExactly(
+                new InactiveBlockReference("act", "documentType", "documentTemplates", "nouveau"));
+    }
+
+    @Test
+    void draftModeStillRefusesAMissingResource() {
+        when(lookup.status(TENANT, "documentTemplates", "absent")).thenReturn(ReferenceStatus.MISSING);
+
+        assertThatThrownBy(() -> verifier.verify("claim", Optional.empty(),
+                List.of(usage("documentType", "documentTemplates", "absent")), BlockReferenceVerifier.Mode.DRAFT))
+                .isInstanceOf(UnknownBlockReferenceException.class).hasMessageContaining("absent");
+    }
+
+    @Test
+    void draftModeKeepsWorkflowStatusAndSelfReferenceRules() {
+        assertThat(verifier.verify("claim", Optional.empty(),
+                List.of(usage("workflowProcessKey", "workflowTypes", "claim")), BlockReferenceVerifier.Mode.DRAFT)).isEmpty();
+        assertThatThrownBy(() -> verifier.verify("claim", Optional.of(config("OUVERT")),
+                List.of(usage("targetWorkflowStatus", "workflowStatuses", "VALIDE")), BlockReferenceVerifier.Mode.DRAFT))
+                .isInstanceOf(UnknownBlockReferenceException.class);
         verifyNoInteractions(lookup);
     }
 }

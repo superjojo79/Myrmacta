@@ -50,6 +50,19 @@ class JpaDossierWorkflowLinkRepositoryAdapter implements DossierWorkflowLinkRepo
                 .map(DossierWorkflowLinkJpaEntity::toDomain);
     }
 
+    /** TODO §94 (revue L4) — une seule requête pour la liste des incidents du tenant. */
+    @Override
+    @Transactional(readOnly = true)
+    public List<DossierWorkflowLink> findByProcessInstanceIds(
+            String tenantId, java.util.Collection<String> processInstanceIds) {
+        if (processInstanceIds.isEmpty()) {
+            return List.of();
+        }
+        return repository.findByTenantIdAndProcessInstanceIdIn(tenantId, processInstanceIds).stream()
+                .map(DossierWorkflowLinkJpaEntity::toDomain)
+                .toList();
+    }
+
     @Override
     @Transactional(readOnly = true)
     public Optional<DossierWorkflowLink> findActiveByDossierId(UUID dossierId) {

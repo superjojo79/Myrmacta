@@ -5,13 +5,16 @@ import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierNotFoundException;
 import com.flowforge.domain.dossier.model.DossierWorkflowLink;
 import com.flowforge.domain.dossier.port.in.AttachWorkflowUseCase;
+import com.flowforge.domain.dossier.model.DossierType;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
+import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
 import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
 import com.flowforge.domain.workflow.model.WorkflowStartedEvent;
 import com.flowforge.domain.workflow.port.out.IdempotencyStore;
 import com.flowforge.domain.workflow.port.out.WorkflowEnginePort;
 import com.flowforge.domain.workflow.port.out.WorkflowEventPublisher;
 import com.flowforge.domain.workflow.port.out.WorkflowStartConfirmationPort;
+import com.flowforge.domain.workflow.DocumentTypeAllowList;
 import com.flowforge.domain.workflow.WorkflowVariables;
 import java.time.Instant;
 import java.util.Map;
@@ -21,6 +24,7 @@ import java.util.UUID;
 public final class ManualStartOrchestrator {
 
     private final DossierRepository dossierRepository;
+    private final DossierTypeRepository dossierTypeRepository;
     private final DossierWorkflowLinkRepository linkRepository;
     private final AttachWorkflowUseCase attachWorkflow;
     private final WorkflowEnginePort workflowEnginePort;
@@ -30,6 +34,7 @@ public final class ManualStartOrchestrator {
 
     public ManualStartOrchestrator(
             DossierRepository dossierRepository,
+            DossierTypeRepository dossierTypeRepository,
             DossierWorkflowLinkRepository linkRepository,
             AttachWorkflowUseCase attachWorkflow,
             WorkflowEnginePort workflowEnginePort,
@@ -37,6 +42,7 @@ public final class ManualStartOrchestrator {
             WorkflowStartConfirmationPort workflowStartConfirmer,
             WorkflowEventPublisher eventPublisher) {
         this.dossierRepository = Objects.requireNonNull(dossierRepository, "dossierRepository");
+        this.dossierTypeRepository = Objects.requireNonNull(dossierTypeRepository, "dossierTypeRepository");
         this.linkRepository = Objects.requireNonNull(linkRepository, "linkRepository");
         this.attachWorkflow = Objects.requireNonNull(attachWorkflow, "attachWorkflow");
         this.workflowEnginePort = Objects.requireNonNull(workflowEnginePort, "workflowEnginePort");
@@ -61,6 +67,13 @@ public final class ManualStartOrchestrator {
                 .flatMap(linkRepository::findById);
         if (replay.isPresent()) {
             return new StartResult(replay.get(), true);
+        }
+        // Revue adversariale TODO §93 (I8) : même liste blanche qu'à la complétion d'une tâche (D-TASK-FORM-DOCTYPE-SCOPE).
+        if (DocumentTypeAllowList.concerns(variables)) {
+            DossierType type = dossierTypeRepository.findByCode(dossier.tenantId(), dossier.dossierTypeCode())
+                    .orElseThrow(() -> new DossierNotFoundException(
+                            "Dossier type not found: " + dossier.tenantId() + "/" + dossier.dossierTypeCode()));
+            DocumentTypeAllowList.assertAllowed(type, variables);
         }
 
         DossierWorkflowLink reserved = attachWorkflow.reserve(

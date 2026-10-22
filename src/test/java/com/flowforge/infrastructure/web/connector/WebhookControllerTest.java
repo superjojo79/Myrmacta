@@ -23,7 +23,10 @@ import com.flowforge.domain.connector.port.out.ConnectorInstanceRepository;
 import com.flowforge.domain.connector.port.out.WebhookIdempotencyStore;
 import com.flowforge.infrastructure.config.ConnectorProperties;
 import com.flowforge.infrastructure.config.TenantProperties;
+import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -39,6 +42,9 @@ import tools.jackson.databind.json.JsonMapper;
 class WebhookControllerTest {
 
     private static final UUID INSTANCE_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
+    // Les limiteurs comptent par minute calendaire : une horloge figée évite qu'un test de quota
+    // chevauchant une frontière de minute voie son compteur remis à zéro (pas de 429).
+    private static final Clock FIXED_CLOCK = Clock.fixed(Instant.parse("2026-01-01T00:00:30Z"), ZoneOffset.UTC);
 
     private ConnectorInstanceRepository instances;
     private WebhookIdempotencyStore idempotencyStore;
@@ -63,8 +69,8 @@ class WebhookControllerTest {
                         null,
                         null),
                 JsonMapper.builder().build(),
-                new WebhookRequestRateLimiter(),
-                new WebhookPreAuthRateLimiter(),
+                new WebhookRequestRateLimiter(FIXED_CLOCK),
+                new WebhookPreAuthRateLimiter(FIXED_CLOCK),
                 List.of(new SharedSecretWebhookAuthenticator(), new HmacWebhookAuthenticator()));
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new ConnectorExceptionHandler())

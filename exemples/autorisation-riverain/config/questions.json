@@ -1,0 +1,100 @@
+[
+  {
+    "schemaKey": "instruction-autorisation-riverain",
+    "label": "Instruction de la demande d'autorisation riverain",
+    "fields": [
+      {
+        "name": "doublonVerifie",
+        "label": "J'ai vérifié qu'aucune autre demande n'existe pour ce véhicule",
+        "type": "BOOLEAN",
+        "required": true,
+        "group": "Contrôles",
+        "helpText": "Rechercher les dossiers « Autorisation riverain » sur le champ « Clé d'unicité du véhicule » (ex. BE-1ABC123). S'il en existe un autre, refuser avec le motif « Une demande existe déjà pour ce véhicule »."
+      },
+      {
+        "name": "decisionAgent",
+        "label": "Décision",
+        "type": "SELECT",
+        "required": true,
+        "options": [
+          "AUTORISER",
+          "REFUSER",
+          "DEMANDER_INFOS"
+        ],
+        "group": "Décision",
+        "width": "HALF",
+        "helpText": "DEMANDER_INFOS met le dossier en attente et envoie au demandeur un lien pour compléter sa demande ; le délai de 30 jours repart à sa réponse."
+      },
+      {
+        "name": "motivation",
+        "label": "Motivation",
+        "type": "STRING",
+        "required": true,
+        "group": "Décision",
+        "helpText": "AUTORISER / REFUSER : motivation reprise telle quelle dans le document de décision. DEMANDER_INFOS : liste des informations ou pièces attendues (conservée au dossier ; à communiquer au demandeur, voir la note du flux)."
+      }
+    ]
+  },
+  {
+    "schemaKey": "complement-autorisation-riverain",
+    "label": "Compléter votre demande d'autorisation riverain",
+    "_usage": "variante avec portail (tâche externe remplie par le demandeur)",
+    "fields": [
+      {
+        "name": "reponseComplement",
+        "label": "Informations complémentaires",
+        "type": "STRING",
+        "required": true,
+        "helpText": "Répondez à la demande du gestionnaire. Les pièces justificatives (certificat d'immatriculation, preuve de domicile…) se déposent avec le bouton d'ajout de pièces de cette page."
+      }
+    ]
+  },
+  {
+    "schemaKey": "complement-recu-autorisation-riverain",
+    "label": "Compléments reçus du demandeur",
+    "_usage": "variante sans portail (saisie par l'agent)",
+    "fields": [
+      {
+        "name": "reponseComplement",
+        "label": "Informations complémentaires reçues",
+        "type": "STRING",
+        "required": true,
+        "helpText": "Résumé de la réponse du demandeur, repris dans le document de décision. Ajouter les pièces reçues aux éléments du dossier."
+      },
+      {
+        "name": "dateReceptionComplement",
+        "label": "Date de réception",
+        "type": "DATE",
+        "required": true,
+        "width": "HALF",
+        "helpText": "Le délai d'instruction de 30 jours repart à la validation de cette tâche."
+      }
+    ]
+  },
+  {
+    "schemaKey": "transmission-decision-riverain",
+    "label": "Transmission du document de décision au demandeur",
+    "fields": [
+      {
+        "name": "modeTransmission",
+        "label": "Mode de transmission",
+        "type": "SELECT",
+        "required": true,
+        "options": [
+          "EMAIL_AVEC_PIECE_JOINTE",
+          "COURRIER",
+          "REMISE_EN_MAIN_PROPRE"
+        ],
+        "width": "HALF",
+        "helpText": "Télécharger le PDF « Décision » depuis les éléments du dossier et l'envoyer au demandeur : FlowForge ne joint pas encore de fichier à ses e-mails."
+      },
+      {
+        "name": "dateTransmission",
+        "label": "Date de transmission",
+        "type": "DATE",
+        "required": true,
+        "width": "HALF"
+      }
+    ]
+  }
+]

@@ -2,9 +2,9 @@
 import { useI18n } from 'vue-i18n'
 import { onMounted, onUnmounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import Button from 'primevue/button'
-import OverlayBadge from 'primevue/overlaybadge'
-import ScrollPanel from 'primevue/scrollpanel'
+import Button from 'openvue/button'
+import OverlayBadge from 'openvue/overlaybadge'
+import ScrollPanel from 'openvue/scrollpanel'
 import { useNotificationsStore } from '@/stores/notifications'
 
 const { t } = useI18n()

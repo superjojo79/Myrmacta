@@ -133,4 +133,19 @@ public final class SecurityAuditLog {
                 violatedDirective,
                 blockedUri);
     }
+
+    /**
+     * TODO §94 — un administrateur a rejoué un incident (job en dead letter). INFO : action légitime, tracée. Jamais le
+     * message de l'exception (il peut contenir des données métier).
+     */
+    public static void incidentRetried(
+            String method, String path, Authentication authentication, UUID linkId, String jobId) {
+        LOGGER.info(
+                "event=incident_retried method={} path={} principal={} linkId={} jobId={}",
+                method,
+                path,
+                authentication == null ? "anonymous" : authentication.getName(),
+                linkId,
+                jobId);
+    }
 }

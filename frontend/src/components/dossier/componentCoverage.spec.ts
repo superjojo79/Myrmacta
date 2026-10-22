@@ -52,6 +52,6 @@ describe('component coverage extras', () => {
     await dialog.get('input[type="checkbox"]').setValue(true)
     await dialog.get('select').setValue('other')
     await dialog.get('button.primary').trigger('click')
-    expect(dialog.emitted('start')?.[0]).toEqual(['other'])
+    expect(dialog.emitted('start')?.[0]).toEqual(['other', {}])
   })
 })

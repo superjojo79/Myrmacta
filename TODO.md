@@ -1083,15 +1083,16 @@ provenance, aucun secret via l'assistant), exposition par sous-lot, risques prop
 l'assistant (injection de consignes par les données, données transmises au fournisseur du
 modèle, DoS par les outils d'évaluation, élévation via A3-M2).
 
-**Statut :** **ouvert** — 4 décisions tranchées par l'utilisateur (2026-09-28) :
-**D-MCP-LC-IDENTITY = A** (assistant in-process avec l'`AccessContext` de l'utilisateur de la
-session BFF, catalogue partagé avec le serveur MCP M2M) ; **D-MCP-LC-PUBLISH = C, défaut = A**
-(publication directe autorisable hors production par propriété de démarrage, humaine dans l'UI
-sinon) ; **D-MCP-LC-MIGRATION = A** (`deploy_workflow`, `deploy_decision_table`,
-`redeploy_decision_table` passent au brouillon dans D6 — rupture de comportement à annoncer) ;
-**D-MCP-LC-MODES = A** (modes *conception* et *opération* séparés). Restent ouvertes :
-D-MCP-LC-PARITY, D-MCP-LC-RESOURCES, D-MCP-LC-SCOPES (B suffit vu IDENTITY = A),
-D-MCP-LC-SECRETS, D-MCP-LC-TS (après le spike LC6).
+**Statut :** **ouvert** (reliquat de cadrage, lots Vague D déjà livrés). 4 décisions tranchées
+par l'utilisateur (2026-09-28) : **D-MCP-LC-IDENTITY = A** (assistant in-process avec
+l'`AccessContext` de l'utilisateur de la session BFF, catalogue partagé avec le serveur MCP M2M) ;
+**D-MCP-LC-PUBLISH = C, défaut = A** (publication directe autorisable hors production par
+propriété de démarrage, humaine dans l'UI sinon) ; **D-MCP-LC-MIGRATION = A**
+(`deploy_workflow`, `deploy_decision_table`, `redeploy_decision_table` passent au brouillon dans
+D6 — rupture de comportement à annoncer) ; **D-MCP-LC-MODES = A** (modes *conception* et
+*opération* séparés). **D-MCP-LC-SCOPES = B** tranché en D6 (TODO §82). **D-MCP-LC-TS** caduc
+tant que LC6 n'est pas relancé (D-SCRIPT-GO = non). Restent ouvertes : D-MCP-LC-PARITY,
+D-MCP-LC-RESOURCES, D-MCP-LC-SECRETS.
 
 **Numérotation :** l'analyse, créée en 31, a été renumérotée **46** le 2026-09-28 pour suivre les
 analyses initiales des lots qu'elle cadre (31 à 45) ; le lot D6 a sa propre analyse
@@ -3497,3 +3498,134 @@ Chaque lot suit `docs/roadmap-goal/CHARTE.md` : cycle de développement complet,
 
 Hors périmètre déclaré (« Non traité », voir AVANCEMENT) : fournisseur de signature qualifiée (eIDAS), export BI par JDBC, vérifications d'environnement (antivirus sous Docker, Keycloak réel),
 diffusion SSE multi-pods (Redis exclu), Microsoft Graph et Event Grid, étapes parallèles/signature/dossier enfant/escalade dans les parcours, libellés métier traduisibles.
+
+---
+
+## 92. Assignation des tâches — « M'assigner » et annuaire local des utilisateurs
+
+[x] livré (branche `feat/assignation-taches`). Avant : la seule façon d'assigner une tâche était la réassignation TA/WA en
+saisissant le **sujet OIDC** (UUID) à la main, et une tâche sans assigné n'apparaissait jamais dans **Tâches**.
+
+**D-ASSIGN-DIR** (tranché par l'utilisateur, 2026-10-13) — annuaire **local** (`known_user`, par tenant), alimenté à chaque
+connexion OIDC (`KnownUserRecordingSuccessHandler` → `RecordUserLoginUseCase`) ; écarté : API admin Keycloak (secret
+supplémentaire, couplage à un IdP). Conséquences assumées : un utilisateur n'apparaît qu'après sa première connexion ; les rôles
+stockés sont ceux du dernier jeton (l'IdP reste la référence, seule l'ACL des types est relue en direct). Un échec
+d'enregistrement ne bloque jamais la connexion. `GET /api/workflow-links/{id}/assignable-users` (TA/WA) ne renvoie que les
+utilisateurs connus **pouvant modifier** le dossier ; la garde anti-faute de frappe de `reassign` accepte désormais un tel
+utilisateur en plus des participants/observateurs.
+
+**D-ASSIGN-CLAIM** (tranché par l'utilisateur, 2026-10-13) — `POST /api/workflow-links/{id}/tasks/{taskId}/claim` : tout
+utilisateur avec l'ACL **EDIT** du dossier (ou TA/WA) prend une tâche **sans assigné** (cohérent avec D-H2 : EDIT suffit pour
+terminer une tâche libre). Tâche déjà prise par un autre → **409** (`TaskService.claim`, atomique, tranche aussi la course
+entre deux prises) ; reprendre la sienne est sans effet. Pour que l'éditeur voie la tâche, `GET .../tasks` est ouvert aux
+éditeurs du dossier ; diagramme et historique restent réservés aux participants.
+
+**Limite connue :** filtrer l'annuaire par droit EDIT fait une lecture d'ACL par utilisateur connu (acceptable pour V1).
+
+**Impacte :** `GUIDE-UTILISATEUR.md` §3 et §6, `openapi/openapi.yaml`, changeset `035-known-user.yaml`. Aucune variable
+d'environnement nouvelle.
+
+---
+
+## 93. Brouillons avec ressource inactive, destinataire de « Notifier » depuis le dossier, variables de démarrage
+
+[x] livré (branche `feature-notifier-dossier-et-brouillons`). Trois manques relevés par l'exemple
+[`exemples/autorisation-riverain/`](exemples/autorisation-riverain/DIFFICULTES.md) (§8 et §3), monté uniquement par
+configuration via MCP. Docs SDD : [requirements](docs/ai/requirements/2026-10-16-feature-notifier-dossier-et-brouillons.md),
+[design](docs/ai/design/2026-10-16-feature-notifier-dossier-et-brouillons.md),
+[planning](docs/ai/planning/2026-10-16-feature-notifier-dossier-et-brouillons.md),
+[implementation](docs/ai/implementation/2026-10-16-feature-notifier-dossier-et-brouillons.md),
+[testing](docs/ai/testing/2026-10-16-feature-notifier-dossier-et-brouillons.md).
+
+**D-DRAFT-REF-STATUS** (tranché par l'utilisateur, 2026-10-16) — un brouillon BPMN proposé par un canal automatisé (MCP
+`deploy_workflow` et son `dryRun`, compilation de parcours, import de configuration) accepte une ressource référencée qui
+**existe sans être active** : template seulement en brouillon, type de dossier inactif, connecteur de rôle service ou webhook
+désactivé. Elle est renvoyée (`inactiveReferences` MCP, `warnings` du parcours). Inconnue, supprimée, de mauvais rôle, ou template
+seulement archivé : refus inchangé. Déploiement direct et publication d'un brouillon restent **stricts**. Écarté : ne rien
+vérifier sur un brouillon (faute de frappe vue trop tard) ; n'assouplir que les templates.
+
+**D-NOTIF-SOURCE-LITERAL** — `flowable:notificationTo` accepte `dossierField:<champ>` (relu à jour dans le dossier) et
+`variable:<nom>`, grammaire de `portalRecipient`. La source n'est résolue que depuis l'**attribut littéral** déployé : une
+variable `notificationTo` (démarrage, complétion de tâche) reste une adresse et ne peut pas désigner un autre champ. Valeur
+absente, vide ou non textuelle : **incident** (tranché par l'utilisateur), message sans la valeur. Source mal formée : 400 au
+déploiement et diagnostic dans la palette.
+
+**D-NOTIF-REUSE-PORTAL-SOURCE** — réutilisation telle quelle de `PortalRecipientSource` et `PortalRecipientResolverAdapter`
+(déjà dans la liste blanche ArchUnit de `Dossier.fields()`) ; renommage écarté (19 fichiers pour un gain nominal).
+
+**Variables de démarrage** (tranché par l'utilisateur : inclus, clé/valeur libre) — section repliée du dialogue « Démarrer un
+workflow », valeurs texte, noms réservés et doublons refusés côté client ; l'API existante est inchangée. Variables
+**déclarées** dans la configuration du workflow : hors périmètre, notées au backlog.
+
+**Revue adversariale (2026-10-16, sous-agent, aucun High introduit) — tout corrigé :**
+- **M1** — « Notifier » synchrone : un champ mal rempli annulait la complétion ou le démarrage en 500 → `NotificationValidationException`
+  traduite en **422** (source nommée, jamais la valeur) ; le guide recommande `flowable:async="true"` pour obtenir un incident.
+- **L1** — MCP en publication directe : un brouillon à ressource inactive n'est plus publié (erreur « n'existe pas » trompeuse) ;
+  il reste en attente avec `inactiveReferences`.
+- **L2** — le plan d'import dit quelles ressources inactives bloqueront la publication.
+- **L3** — la variable `notificationTo` (démarrage, complétion) passe le même contrôle « une seule adresse » que les sources ;
+  l'adresse écrite en dur dans le BPMN reste libre. *Changement de comportement* : « Nom <adresse> » en variable est refusé.
+- **I1/I2/I3/I4** — commentaire SMTP corrigé ; `dossierId` invalide → erreur de validation sans la valeur ; `exists` retiré du port
+  (sans appelant) ; l'entrée `draft` des réponses MCP garde sa forme d'avant.
+- **I6** — adresse lue dans un champ sensible : documentée (conservée en clair dans l'outbox, comme le portail).
+- **I7 (préexistant)** — le connecteur `flowable-signal` refuse les variables plateforme (`dossierId`…) dans `connectorInput.variables`,
+  qui pouvaient réécrire `dossierId` de toutes les instances du tenant en attente du signal.
+- **I8 (préexistant)** — `documentType` passé au démarrage (dialogue, API, MCP, dossier enfant) est soumis à la liste blanche du
+  type de dossier, comme à la complétion d'une tâche (`DocumentTypeAllowList`, D-TASK-FORM-DOCTYPE-SCOPE).
+- **I5, I9** — sans action (pas de fuite nouvelle ; un tenant par instance).
+
+**Impacte :** `GUIDE-CONCEPTION-BPMN.md` (§3ter références, §6c Notifier), `GUIDE-UTILISATEUR.md` (démarrer une instance),
+`analysis doc/15-serveur-mcp.md`, `CHANGELOG.md`. Aucune migration, aucune variable d'environnement, golden OpenAPI inchangé.
+
+---
+
+## 94. Incidents visibles et rejouables sur le dossier
+
+[x] livré (branche `feature-incidents-visibles-dossier`). Relevé par la recette de l'exemple riverain (PR #175, cas R6 ;
+`exemples/autorisation-riverain/DIFFICULTES.md` §11) : une brique **asynchrone** en échec partait en *dead letter* sans
+que rien ne le montre — ni la fiche dossier, ni le diagramme (`failedIds` ne retenait que les erreurs BPMN) — et
+sans moyen de la rejouer. Docs SDD : [requirements](docs/ai/requirements/2026-10-18-feature-incidents-visibles-dossier.md),
+[design](docs/ai/design/2026-10-18-feature-incidents-visibles-dossier.md),
+[planning](docs/ai/planning/2026-10-18-feature-incidents-visibles-dossier.md),
+[implementation](docs/ai/implementation/2026-10-18-feature-incidents-visibles-dossier.md),
+[testing](docs/ai/testing/2026-10-18-feature-incidents-visibles-dossier.md).
+
+Décisions (tranchées par l'utilisateur, 2026-10-18) : périmètre « visible + rejouable + supervision » ; deux états
+(`RETRYING` : job ou minuteur en échec avec tentatives restantes ; `INCIDENT` : dead letter) ; MCP en lecture seule.
+
+**D-INCIDENT-MESSAGE** — le message de l'exception (tronqué à 300 caractères) n'est renvoyé qu'à `TENANT_ADMIN` /
+`WORKFLOW_ADMIN` ; il peut contenir des données métier selon la brique. Jamais par MCP, jamais dans l'audit.
+
+**D-INCIDENT-DIAGRAM** — les deux états marquent l'étape en erreur (et active) dans le diagramme ; le bandeau les
+distingue.
+
+**D-INCIDENT-RETRY-SCOPE** — rejeu par `POST /api/workflow-links/{id}/incidents/{jobId}/retry` seulement : le job doit
+appartenir à l'exécution du lien, dans le tenant (sinon 404) et être en dead letter (sinon 409). 3 tentatives rendues
+(défaut du moteur). Journalisé (`SECURITY_AUDIT`, `event=incident_retried`, sans message). Pas de fenêtre de
+confirmation native (bloquée par certains navigateurs, recette du 2026-10-18).
+
+**D-INCIDENT-SCAN** — `GET /api/admin/incidents` lit au plus les 1 000 échecs les plus récents du tenant, rattachés à un
+dossier, et paginés en mémoire ; `truncated` signale la borne. Les jobs restent la source de vérité (pas de table).
+
+**Revue adversariale (2026-10-19, sous-agent, aucun High) — corrigée :**
+- **M1** — un job sans instance de process (minuteur de démarrage) faisait tomber `/api/admin/incidents` en 500 : ignoré.
+- **M2** — l'échec d'un sous-process appelé (`callActivity`) était invisible : rapporté à l'instance racine du lien et à
+  l'étape d'appel du diagramme (« Appel › étape du sous-process »), rejouable depuis le dossier.
+- **L1/L2** — rejeu sans effet (exécution disparue) ou concurrent : 409 au message neutre (traduit dans l'interface) au
+  lieu de 204 trompeur ou de 500.
+- **L4** — tri départagé par `jobId`, `truncated` calculé sur une lecture de 1 001, liens chargés en une requête `IN`.
+- **L5** — l'audit `incident_retried` n'est écrit qu'après le commit.
+- **L6** — bandeau en région nommée (plus d'alerte réannoncée), boutons « Rejouer » nommés d'après l'étape, retour à la page
+  précédente quand un rejeu vide la dernière, réponse périmée d'un autre lien ignorée ; relectures à 5 s et 15 s après un
+  rejeu (relevé en recette : l'état « nouvelle tentative prévue » restait affiché).
+- **Info** — 204 documenté, `@PreAuthorize` sur `/api/admin/incidents`, port système séparé pour MCP (vue avec
+  `workflowLinkId`), un simple lecteur du dossier reçoit une liste vide (plus de refus journalisé à chaque fiche),
+  troncature sûre des caractères Unicode, pluriel des tentatives.
+- **L3 (acté, non modifié)** — le message est montré à `WORKFLOW_ADMIN` comme à `TENANT_ADMIN` (décision du 2026-10-18),
+  alors que les champs sensibles ne sont visibles que de `TENANT_ADMIN`. Risque accepté : les messages des briques
+  FlowForge ne reprennent pas de valeur de champ (« Notifier » nomme la source) ; un message d'exception tierce
+  (connecteur, JDBC) pourrait en contenir. À reconsidérer si un cas réel apparaît.
+
+**Impacte :** `GUIDE-UTILISATEUR.md` (§0 rôles, §3 « Suivre l'exécution »), `GUIDE-CONCEPTION-BPMN.md` (§6c),
+`analysis doc/15-serveur-mcp.md`, `openapi/openapi.yaml`, `CHANGELOG.md`. Aucune migration, aucune variable
+d'environnement. Suivi : statut de `DEFERRED-FEATURES.md` §7 et de DIFFICULTES §11 une fois la PR #175 mergée.

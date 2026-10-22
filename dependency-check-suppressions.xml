@@ -6,6 +6,8 @@
   Chaque entrée cible un couple (package, vulnérabilité) précis et porte sa justification
   vérifiée. Une entrée liée à une version figée en amont porte un "until" : passé cette date,
   l'alerte réapparaît et doit être réévaluée (montée de version ou prolongation argumentée).
+  Une alerte corrigeable par montée de version se corrige dans le pom, pas ici (cf. DOMPurify,
+  traité par l'override swagger-ui.version).
 -->
 <suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
 
@@ -34,27 +36,6 @@
         ]]></notes>
         <packageUrl regex="true">^pkg:maven/org\.apache\.kafka/kafka-clients@.*$</packageUrl>
         <cve>CVE-2026-41115</cve>
-    </suppress>
-
-    <suppress until="2027-01-07Z">
-        <notes><![CDATA[
-        Famille "IN_PLACE" de DOMPurify <= 3.4.15 (sévérité Low, corrigée en 3.4.16) :
-        - GHSA-p98j-92pf-mc4p (CVSS 2.3) : XSS en mode IN_PLACE avec un hook afterSanitize* qui
-          retire des nœuds ;
-        - GHSA-6688-9rhm-gjv2 (publiée le 2026-09-23) : texte d'éléments rawtext (<style>…) non
-          neutralisé en mode IN_PLACE, exploitable après sérialisation/re-parsing.
-        NON EXPLOITABLES dans swagger-ui, et pas de correctif
-        disponible en amont : même org.webjars:swagger-ui 5.33.1 (dernière version au 2026-10-07)
-        embarque DOMPurify 3.4.13.
-        Vérifié dans le bundle : swagger-ui appelle DOMPurify.sanitize() sur des chaînes (jamais
-        IN_PLACE) et n'enregistre qu'un hook beforeSanitizeElements qui ajoute rel=noopener, sans
-        retirer de nœud. De plus Swagger UI est désactivé par défaut
-        (springdoc.swagger-ui.enabled=false dans application.yml).
-        "until" : réévaluer à une nouvelle release swagger-ui embarquant DOMPurify >= 3.4.16.
-        ]]></notes>
-        <packageUrl regex="true">^pkg:javascript/DOMPurify@.*$</packageUrl>
-        <vulnerabilityName>GHSA-p98j-92pf-mc4p</vulnerabilityName>
-        <vulnerabilityName>GHSA-6688-9rhm-gjv2</vulnerabilityName>
     </suppress>
 
 </suppressions>

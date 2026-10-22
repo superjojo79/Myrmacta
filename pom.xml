@@ -53,6 +53,12 @@
              4.2.18.Final. Netty n'arrive que via le client HTTP async du SDK AWS (netty-nio-client).
              À retirer quand Spring Boot gère nativement 4.2.18+. -->
         <netty.version>4.2.19.Final</netty.version>
+        <!-- Override du webjar swagger-ui tiré par springdoc 3.1.1 (5.32.14) : le DOMPurify 3.4.13
+             embarqué porte CVE-2026-109344 / CVE-2026-109345 (XSS en mode IN_PLACE), corrigées
+             en DOMPurify 3.4.16, embarqué à partir de swagger-ui 5.34.0. springdoc résout le
+             chemin du webjar dynamiquement (webjars-locator-lite). À retirer quand springdoc
+             tire nativement 5.34.0+. -->
+        <swagger-ui.version>5.34.0</swagger-ui.version>
     </properties>
 
     <dependencyManagement>
@@ -70,6 +76,11 @@
                 <version>${embedded-postgres-binaries.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.webjars</groupId>
+                <artifactId>swagger-ui</artifactId>
+                <version>${swagger-ui.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

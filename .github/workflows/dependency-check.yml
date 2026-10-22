@@ -36,12 +36,20 @@ jobs:
           restore-keys: |
             nvd-data-
 
-      - name: OWASP Dependency-Check (fails this job on CVSS >= 9)
+      # Seuil défini dans le pom (failBuildOnCVSS) ; alertes non applicables documentées dans
+      # dependency-check-suppressions.xml.
+      - name: OWASP Dependency-Check (fails this job on CVSS >= 7)
         env:
           # Requise par l'API NVD (nvd.nist.gov) depuis fin 2023 — sans clé, le job échoue avec
           # "Invalid API Key". À créer sur https://nvd.nist.gov/developers/request-an-api-key
           # et à stocker comme secret de repo/organisation nommé NVD_API_KEY.
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+          # Sonatype OSS Index (2e source de vulnérabilités, authentification obligatoire) :
+          # compte gratuit sur https://guide.sonatype.com, puis Personal Access Token.
+          # OSS_INDEX_USERNAME = e-mail du compte, OSS_INDEX_TOKEN = le token. Secrets absents :
+          # analyseur désactivé avec un warning, le scan NVD tourne quand même.
+          OSS_INDEX_USERNAME: ${{ secrets.OSS_INDEX_USERNAME }}
+          OSS_INDEX_TOKEN: ${{ secrets.OSS_INDEX_TOKEN }}
         run: ./mvnw -B -Psecurity-scan -Dskip.frontend=true -DskipTests verify
 
       - name: Save NVD database cache

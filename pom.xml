@@ -43,6 +43,22 @@
              CVE-2026-68525, CVE-2026-65182 notamment), corrigées à partir de 11.0.25/11.0.26. À
              retirer une fois que Spring Boot gère nativement 11.0.26+ (cf. prochaine version 4.1.x). -->
         <tomcat.version>11.0.26</tomcat.version>
+        <!-- Override du Kotlin géré par spring-boot-starter-parent 4.1.1 (fige 2.3.21) : stdlib
+             < 2.4.20 porte CVE-2026-53914 (CVSS 9.8, désérialisation non sûre). Kotlin n'arrive
+             que transitivement (anthropic-java-core via spring-ai-anthropic) ; la stdlib reste
+             rétrocompatible binairement. À retirer quand Spring Boot gère nativement 2.4.20+. -->
+        <kotlin.version>2.4.20</kotlin.version>
+        <!-- Override du Netty géré par spring-boot-starter-parent 4.1.1 (fige 4.2.17.Final) :
+             CVE-2026-89044 (request smuggling, Transfer-Encoding mal validé), corrigée en
+             4.2.18.Final. Netty n'arrive que via le client HTTP async du SDK AWS (netty-nio-client).
+             À retirer quand Spring Boot gère nativement 4.2.18+. -->
+        <netty.version>4.2.19.Final</netty.version>
+        <!-- Override du webjar swagger-ui tiré par springdoc 3.1.1 (5.32.14) : le DOMPurify 3.4.13
+             embarqué porte CVE-2026-109344 / CVE-2026-109345 (XSS en mode IN_PLACE), corrigées
+             en DOMPurify 3.4.16, embarqué à partir de swagger-ui 5.34.0. springdoc résout le
+             chemin du webjar dynamiquement (webjars-locator-lite). À retirer quand springdoc
+             tire nativement 5.34.0+. -->
+        <swagger-ui.version>5.34.0</swagger-ui.version>
     </properties>
 
     <dependencyManagement>
@@ -60,6 +76,11 @@
                 <version>${embedded-postgres-binaries.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.webjars</groupId>
+                <artifactId>swagger-ui</artifactId>
+                <version>${swagger-ui.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -180,6 +201,17 @@
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-model-anthropic</artifactId>
+            <exclusions>
+                <!-- Tiré en 1.9.10 par okio 3.6.0 (via okhttp 4.12.0) : CVE-2026-53914 (9.8) et
+                     CVE-2020-29582. Le kotlin-bom ne le gère qu'en type pom (artefact vide depuis
+                     Kotlin 1.9.20), donc kotlin.version ne le remonte pas. Le jar 1.9.10 ne
+                     contient que des .kotlin_metadata (aucune classe JVM) : exclusion sans effet
+                     à l'exécution, kotlin-stdlib fournit tout. -->
+                <exclusion>
+                    <groupId>org.jetbrains.kotlin</groupId>
+                    <artifactId>kotlin-stdlib-common</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- connecteurs-cible (lot B1) — kafka : consumer TRIGGER (D-KAFKA-ROLE=A, requirements) -->
@@ -380,7 +412,10 @@
                         <artifactId>dependency-check-maven</artifactId>
                         <version>13.0.0</version>
                         <configuration>
-                            <failBuildOnCVSS>9</failBuildOnCVSS>
+                            <!-- Seuil "High" CVSS (>= 7). Les faux positifs / non-applicables sont
+                                 documentés un par un dans dependency-check-suppressions.xml. -->
+                            <failBuildOnCVSS>7</failBuildOnCVSS>
+                            <suppressionFile>${project.basedir}/dependency-check-suppressions.xml</suppressionFile>
                             <formats>
                                 <format>HTML</format>
                                 <format>JSON</format>
@@ -389,6 +424,17 @@
                                  échec immédiat "Invalid API Key"). Fournie via la variable d'env
                                  NVD_API_KEY (secret GitHub Actions), jamais commitée en clair. -->
                             <nvdApiKey>${env.NVD_API_KEY}</nvdApiKey>
+                            <!-- Sonatype OSS Index (via l'API de compatibilité Sonatype Guide,
+                                 https://api.guide.sonatype.com par défaut) : authentification
+                                 obligatoire. Username = e-mail du compte (ignoré avec un token Guide),
+                                 password = Personal Access Token Guide. Secrets GitHub Actions
+                                 OSS_INDEX_USERNAME / OSS_INDEX_TOKEN ; valeurs vides ignorées par le
+                                 plugin (analyseur alors désactivé avec un warning, comme avant). -->
+                            <ossIndexUsername>${env.OSS_INDEX_USERNAME}</ossIndexUsername>
+                            <ossIndexPassword>${env.OSS_INDEX_TOKEN}</ossIndexPassword>
+                            <!-- Une panne/limitation d'OSS Index ne doit pas faire échouer le scan :
+                                 le NVD reste la source de référence. -->
+                            <ossIndexWarnOnlyOnRemoteErrors>true</ossIndexWarnOnlyOnRemoteErrors>
                             <!-- Chemin fixe (par défaut sous ~/.m2) pour pouvoir être mis en cache
                                  entre les runs CI : sans ça, chaque run retélécharge les ~400k
                                  enregistrements NVD depuis zéro (~1h30). -->

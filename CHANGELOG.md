@@ -44,6 +44,9 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Sécurité
 
+- **[PR #180](https://github.com/superjojo79/FlowForge/pull/180)** — Scan de dépendances de nouveau au vert : Kotlin 2.4.20,
+  Netty 4.2.19 et swagger-ui 5.34.0 corrigent les CVE remontées (dont une critique, 9.8). Le scan échoue désormais dès CVSS 7 ;
+  les deux faux positifs restants (jsonata, Kafka côté broker) sont justifiés un à un. OSS Index s'active via les secrets `OSS_INDEX_*`.
 - **[PR #174](https://github.com/superjojo79/FlowForge/pull/174)** — Le connecteur `flowable-signal` refuse les variables plateforme
   (`dossierId`…) ; un `documentType` passé au démarrage d'un workflow est soumis à la liste blanche du type de dossier.
 

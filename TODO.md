@@ -1083,15 +1083,16 @@ provenance, aucun secret via l'assistant), exposition par sous-lot, risques prop
 l'assistant (injection de consignes par les données, données transmises au fournisseur du
 modèle, DoS par les outils d'évaluation, élévation via A3-M2).
 
-**Statut :** **ouvert** — 4 décisions tranchées par l'utilisateur (2026-09-28) :
-**D-MCP-LC-IDENTITY = A** (assistant in-process avec l'`AccessContext` de l'utilisateur de la
-session BFF, catalogue partagé avec le serveur MCP M2M) ; **D-MCP-LC-PUBLISH = C, défaut = A**
-(publication directe autorisable hors production par propriété de démarrage, humaine dans l'UI
-sinon) ; **D-MCP-LC-MIGRATION = A** (`deploy_workflow`, `deploy_decision_table`,
-`redeploy_decision_table` passent au brouillon dans D6 — rupture de comportement à annoncer) ;
-**D-MCP-LC-MODES = A** (modes *conception* et *opération* séparés). Restent ouvertes :
-D-MCP-LC-PARITY, D-MCP-LC-RESOURCES, D-MCP-LC-SCOPES (B suffit vu IDENTITY = A),
-D-MCP-LC-SECRETS, D-MCP-LC-TS (après le spike LC6).
+**Statut :** **ouvert** (reliquat de cadrage, lots Vague D déjà livrés). 4 décisions tranchées
+par l'utilisateur (2026-09-28) : **D-MCP-LC-IDENTITY = A** (assistant in-process avec
+l'`AccessContext` de l'utilisateur de la session BFF, catalogue partagé avec le serveur MCP M2M) ;
+**D-MCP-LC-PUBLISH = C, défaut = A** (publication directe autorisable hors production par
+propriété de démarrage, humaine dans l'UI sinon) ; **D-MCP-LC-MIGRATION = A**
+(`deploy_workflow`, `deploy_decision_table`, `redeploy_decision_table` passent au brouillon dans
+D6 — rupture de comportement à annoncer) ; **D-MCP-LC-MODES = A** (modes *conception* et
+*opération* séparés). **D-MCP-LC-SCOPES = B** tranché en D6 (TODO §82). **D-MCP-LC-TS** caduc
+tant que LC6 n'est pas relancé (D-SCRIPT-GO = non). Restent ouvertes : D-MCP-LC-PARITY,
+D-MCP-LC-RESOURCES, D-MCP-LC-SECRETS.
 
 **Numérotation :** l'analyse, créée en 31, a été renumérotée **46** le 2026-09-28 pour suivre les
 analyses initiales des lots qu'elle cadre (31 à 45) ; le lot D6 a sa propre analyse

@@ -49,6 +49,8 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Documentation
 
+- **[PR #179](https://github.com/superjojo79/FlowForge/pull/179)** — File d'attente, roadmap et README recadrés sur `main` : Vague D livrée, prochains lots = backlog de l'exemple riverain (pièce jointe, unicité). Frontend documenté comme OpenVue ; catalogue de connecteurs et recette R6 alignés.
+
 - **[PR #178](https://github.com/superjojo79/FlowForge/pull/178)** — Suivi de la PR #176 : `DEFERRED-FEATURES.md` §7 et `DIFFICULTES.md` §11 de l'exemple riverain passés
   à « livré ».
 - **[PR #175](https://github.com/superjojo79/FlowForge/pull/175)** — L'exemple « autorisation riverain » lit l'adresse du

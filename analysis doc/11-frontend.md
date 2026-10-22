@@ -1,4 +1,4 @@
-# Frontend — Vue 3 + TypeScript + PrimeVue
+# Frontend — Vue 3 + TypeScript + OpenVue
 
 > SPA consommée depuis la même origine que l'API Spring Boot (pattern BFF).  
 > Aucun token JWT manipulé côté browser.  
@@ -13,7 +13,7 @@ La construction de l'interface doit se baser sur le mock HTML présent dans ce d
 
 - **[FlowForge - Maquettes UI.html](FlowForge%20-%20Maquettes%20UI.html)** — maquettes UI de référence (écrans, navigation, composition visuelle).
 
-Toute implémentation Vue / PrimeVue (layouts, pages, composants métier, hiérarchie visuelle) doit s'aligner sur ce mock. En cas d'écart entre la maquette et les choix techniques de cette analyse (PrimeVue, BFF, etc.), la maquette prime pour le rendu et l'UX ; la stack technique documentée ici reste celle à utiliser pour l'implémenter.
+Toute implémentation Vue / OpenVue (layouts, pages, composants métier, hiérarchie visuelle) doit s'aligner sur ce mock. En cas d'écart entre la maquette et les choix techniques de cette analyse (OpenVue, BFF, etc.), la maquette prime pour le rendu et l'UX ; la stack technique documentée ici reste celle à utiliser pour l'implémenter. PrimeVue (devenu propriétaire) a été remplacé par **OpenVue**, fork communautaire MIT (PR #165) : mêmes composants et thème Aura, seuls les imports changent.
 
 Pour faciliter la création de l'interface, s'appuyer sur les **skills spécialisés** du dépôt (à charger avant d'écrire le code UI) :
 
@@ -26,14 +26,14 @@ Pour faciliter la création de l'interface, s'appuyer sur les **skills spéciali
 
 ---
 
-**Choix retenu : Vue 3 (Vite) + TypeScript + PrimeVue + Pinia**
+**Choix retenu : Vue 3 (Vite) + TypeScript + OpenVue + Pinia**
 
 | Composant | Rôle |
 |---|---|
 | Vue 3 | Framework SPA |
 | TypeScript | Typage statique — `<script setup lang="ts">`, `strict: true` |
 | Vite | Bundler / HMR (dev) ; build de production copié dans `static/` |
-| PrimeVue | Librairie de composants UI métier (DataTable, formulaires, timeline…) |
+| OpenVue | Librairie de composants UI métier (fork MIT de PrimeVue : DataTable, formulaires, timeline…) |
 | Pinia | State management (remplaçant officiel Vuex) |
 | Axios | Client HTTP — appels relatifs vers l'API Spring Boot (même origine) |
 | Vitest + Vue Test Utils | Tests unitaires / composants |
@@ -73,9 +73,9 @@ Le frontend n'est **pas** déployé séparément. Le pipeline de build :
 2. le contenu est copié (Maven `frontend-maven-plugin` ou étape CI) vers
    `src/main/resources/static/` ;
 3. chaque instance Spring Boot dédiée à un tenant (décision n° 13) sert à la fois l'API/BFF et les
-   assets statiques. Le `server.servlet.context-path` (`/{tenantId}/`) est la **cible ops**
-   (décision n° 14, TODO §31) : il reste commenté dans `application.yml` ; en V1 l'instance
-   sert à la racine (`/`) derrière le reverse-proxy.
+   assets statiques. Le `server.servlet.context-path` (`/{tenantId}/`) est activé par défaut
+   (décision n° 14, lot A1, PR #119) ; le profil `local` le neutralise (`context-path: ""`) pour
+   le poste de développement.
 
 Conséquences actées : pas de configuration CORS ; cookie de session et CSRF en `SameSite=Lax`
 (décision n° 15) ; N instances embarquent le même artefact front (acceptable — simplicité
@@ -132,7 +132,7 @@ La configuration Axios pour le jeton CSRF (`xsrfCookieName`/`xsrfHeaderName`) es
 
 ```bash
 npm create vite@latest frontend -- --template vue-ts
-npm install primevue @primevue/themes primeicons
+npm install openvue @openvue/themes primeicons
 npm install pinia axios bpmn-js
 
 # Qualité et tests

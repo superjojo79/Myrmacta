@@ -81,7 +81,7 @@ Instance locale (`main` après la PR #174, Mailpit pour les e-mails), délais de
 | R3 | Demander des informations, encoder la réponse, autoriser | E-mail « informations complémentaires », retour en instruction, `AUTORISEE`, dossier `CLOTURE` |
 | R4 | Demander des informations, laisser expirer | Minuteur déclenché, `REFUSEE_SANS_REPONSE`, e-mail « refusée », dossier `CLOTURE` |
 | R5 | Laisser expirer l'instruction | Minuteur déclenché, `AUTORISEE_TACITEMENT`, e-mail « accordée », dossier `CLOTURE` |
-| R6 | Adresse `Nom <adresse>` dans le champ `email`, refuser | La complétion de l'agent passe ; l'e-mail asynchrone échoue sans exposer l'adresse (« is not a single e-mail address »), le job finit en *dead letter*. **Mais rien ne le montre dans l'interface** : voir `DIFFICULTES.md` §11. |
+| R6 | Adresse `Nom <adresse>` dans le champ `email`, refuser | La complétion de l'agent passe ; l'e-mail asynchrone échoue sans exposer l'adresse (« is not a single e-mail address »), le job finit en *dead letter*. **Levé (PR #176, TODO §94)** : bandeau d'incident sur la fiche, étape marquée dans le diagramme, rejeu admin. Vérifié : adresse corrigée, rejeu, e-mail reçu. |
 | R7 | Doublon `1 aaa 101` de R1 | La recherche `plaqueNormalisee = BE-1AAA101` remonte les deux dossiers |
 
 Chaque e-mail est parti à l'adresse du dossier concerné (`dossierField:email`), sans variable de démarrage.

@@ -1,16 +1,14 @@
 # FlowForge — Roadmap Fonctionnelle
 
-> **Document de référence** — Dernière vérification : 29 septembre 2026 (`main` @ `2283c92`, PR #144)  
+> **Document de référence** — Dernière vérification : 22 octobre 2026 (`main` @ `b8885800`, PR #178)  
 > **Statut** : statuts **recoupés sur le code et sur l’API GitHub**, pas sur l’analyse d’origine du 12/09  
 > **Sources de vérité produit :** [FILE-ATTENTE.md](FILE-ATTENTE.md), [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md), [TODO.md](TODO.md)  
-> **Vagues A, B, C et A4 : livrées.** `enrichissement-reporting` (PR #132), `inbox-notifications-persistee` (PR #135) et `outillage-dmn` ([PR #134](https://github.com/superjojo79/FlowForge/pull/134)) : livrés.
-> `portail-externe` ([PR #138](https://github.com/superjojo79/FlowForge/pull/138), TODO §68) et `signature-electronique` ([PR #149](https://github.com/superjojo79/FlowForge/pull/149), TODO §72, stub sans provider) : livrés.
-> **Vague D (nouvelle, 28/09) :** priorités issues de l'analyse critique fonctionnelle — adéquation
-> aux cas d'usage et industrialisation. **D0 tranché = C** (intégrateurs + couche low-code, TODO §70),
-> découpé en sous-lots `LC1`–`LC6`. Exposition MCP de ces sous-lots cadrée en amont
-> ([analyse 46](analysis%20doc/46-exposition-mcp-couche-low-code.md), TODO §71, décisions ouvertes).
-> Aucun lot cadré ; voir [Catégorie 7](#catégorie-7--adéquation-métier--industrialisation-vague-d).
-> **Ordonnancement (29/09) :** parallélisme, dépendances et vagues détaillés dans
+> **Vagues A, B, C, A4 et D : livrées.** Mandat « roadmap complète » clos
+> ([AVANCEMENT.md](docs/roadmap-goal/AVANCEMENT.md)). `portail-externe` (PR #138) et
+> `signature-electronique` (PR #149, stub sans provider) : livrés.
+> **File active :** [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §7 (exemple riverain).
+> D0 = C (TODO §70). TODO §71 reste `[ ]` (PARITY / RESOURCES / SECRETS).
+> Ordonnancement Vague D conservé ci-dessous pour mémoire :
 > [FILE-ATTENTE.md](FILE-ATTENTE.md) § *File d'attente — Vague D*.
 
 ---
@@ -24,9 +22,9 @@ FlowForge est un SaaS multi-tenant à architecture hexagonale. Stack **réelle**
 | Backend | Java 25 · Spring Boot 4.1.x · Maven mono-module |
 | Workflow | Flowable 8.0.x Community — BPMN 2.0 **et** DMN (TODO §61, PR #123) |
 | Auth | OIDC BFF (Keycloak) — pas de JWT dans le browser |
-| Frontend | **Vue 3 + TypeScript + Vite + PrimeVue + Pinia**, embarqué dans `static/` |
+| Frontend | **Vue 3 + TypeScript + Vite + OpenVue + Pinia**, embarqué dans `static/` (PR #165 : fork MIT de PrimeVue) |
 | MCP | **41 tools** sur `POST /api/m2m/mcp` (Streamable HTTP, JWT M2M `API_SERVICE`) — conception, brouillons, parcours, promotion, templates (Vague D) |
-| Connecteurs livrés | `http-rest`, `flowable-signal`, `scheduler`, `smtp`, `document-storage`, `flowable-callback`, `batch-import`, `kafka` |
+| Connecteurs livrés | `http-rest`, `flowable-signal`, `scheduler`, `smtp`, `document-storage`, `flowable-callback`, `batch-import`, `kafka`, `imap-inbound`, `graph-mail-inbound`, `azure-service-bus` |
 | Antivirus | `AttachmentScanPort` + adaptateur ClamAV opt-in (PR #131) |
 | Isolation | 1 instance Spring Boot = 1 tenant (`app.tenant.id`) |
 
@@ -44,7 +42,10 @@ FlowForge est un SaaS multi-tenant à architecture hexagonale. Stack **réelle**
 | Vague D | **LC4a / LC4b** Éditeurs visuels de formulaires / de templates | [`editeur-formulaires`](analysis%20doc/42-editeur-formulaires.md), [`editeur-templates-wysiwyg`](analysis%20doc/43-editeur-templates-wysiwyg.md) | **Livré** (TODO §84 éditeur visuel de templates, §85 concepteur de formulaires) |
 | Vague D | **LC5** Concepteur de parcours compilé en BPMN | [`concepteur-parcours`](analysis%20doc/44-concepteur-parcours.md) | **Livré** (TODO §88 : parcours compilés en brouillon BPMN, sens unique) |
 | Vague D | **LC6** Scripts JS/TS en bac à sable | [`scripts-sandbox`](analysis%20doc/45-scripts-sandbox.md) | **Spike réalisé, lot non lancé** (TODO §89 : LC2 suffit, D-SCRIPT-GO = non ; conditions de réouverture en analyse 45 §9) |
-| Vague D | **D1** Modèle de champs enrichi (montant/devise, groupes répétables, référence externe) | [`modele-champs-enrichi`](analysis%20doc/32-modele-champs-enrichi.md) | **Livré** (TODO §76 : `MONEY`, `EXTERNAL_REF`, `REPEATABLE_GROUP` ; champs calculés et visibilité restent à faire sur LC2) |
+| Vague D | **D1** Modèle de champs enrichi (montant/devise, groupes répétables, référence externe) | [`modele-champs-enrichi`](analysis%20doc/32-modele-champs-enrichi.md) | **Livré** (TODO §76 : `MONEY`, `EXTERNAL_REF`, `REPEATABLE_GROUP` ; champs calculés / visibilité / obligation : TODO §80) |
+| P2 | Pièce jointe sur « Notifier » | `notifier-piece-jointe` | Backlog riverain ([DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §7) — non cadré |
+| P2 | Unicité de champ / recherche depuis un workflow | `unicite-champ-dossier` | Backlog riverain — non cadré |
+| P3 | Gabarits de notification, minuteur de parcours, variables de démarrage déclarées | `gabarits-notification`, `parcours-minuteur-bordure`, `variables-demarrage-declarees` | Backlog riverain — non cadré |
 | Vague D | **D2** Recherche sur champs dynamiques (JSONB + plein texte) | [`recherche-champs-dynamiques`](analysis%20doc/33-recherche-champs-dynamiques.md) | **Livré** (TODO §81) |
 | Vague D | **D3** Intégrations entreprise (OAuth2 client credentials, mapping réponse → dossier, e-mail entrant) | [`integrations-entreprise`](analysis%20doc/34-integrations-entreprise.md) | **Livré** (D3a §77, D3b §78, D3c + D3d §87) |
 | Vague D | **D4** Promotion de configuration entre environnements | [`promotion-configuration`](analysis%20doc/35-promotion-configuration.md) | **Livré** (TODO §83) |
@@ -131,16 +132,15 @@ FlowForge est un SaaS multi-tenant à architecture hexagonale. Stack **réelle**
 | Item | Statut |
 |---|---|
 | 6.1 SSE multi-pod | ⛔ Hors V1 (pas de Redis) |
-| 6.2 Tests PostgreSQL réels | ⚠️ Partiel volontaire (D-TESTCONTAINERS, adoption ciblée) |
+| 6.2 Tests PostgreSQL réels | ✅ zonky / PostgreSQL 17 embarqué dans `verify` (TODO §91, PR #157) ; smoke Keycloak réel toujours hors file |
 
 ### Catégorie 7 : Adéquation métier & industrialisation (Vague D)
 
 > **Origine :** analyse critique fonctionnelle du 28/09/2026 (fonctionnalités × cas d'usage du
 > `README.md` : sinistres, subventions, onboarding, réclamations, et intégration ERP type
-> D365 F&O). Le socle technique et la sécurité ne sont pas en cause ; les manques sont
-> **fonctionnels** et de **positionnement**. Chaque gap ci-dessous est **recoupé sur le code**
-> de `main` @ `f9638c7`. Aucun lot n'est cadré : `dev-lifecycle` Phase 1 obligatoire avant tout
-> code, et les décisions ouvertes restent à trancher par l'utilisateur, pas en cours de route.
+> D365 F&O). **Lots LC1–LC5 et D1–D7 (1ʳᵉ tranche) livrés** ; LC6 = spike, non lancé.
+> Le texte ci-dessous décrit le constat d'alors (`main` @ `f9638c7`). File actuelle :
+> [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §7.
 
 #### D0 — Décision de positionnement ✅ tranchée (TODO §70)
 
@@ -336,10 +336,14 @@ PDF gèrent déjà des variantes par langue. Priorité selon le marché visé (D
 
 ## Priorisation
 
-> Détail (surfaces d'écriture, contraintes de collision, plafond de 3 agents simultanés, 4 avec
-> D3a) : [FILE-ATTENTE.md](FILE-ATTENTE.md) § *File d'attente — Vague D*.
+> **Vague D livrée (2026-10-01, mandat « roadmap complète »).** L'ordre ci-dessous est
+> historique. File actuelle : [FILE-ATTENTE.md](FILE-ATTENTE.md) § *File active — backlog riverain*
+> et [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §7.
+>
+> Détail d'alors (surfaces d'écriture, collisions, plafond de 3 agents) :
+> [FILE-ATTENTE.md](FILE-ATTENTE.md) § *File d'attente — Vague D*.
 
-**Vague 1 — en parallèle (surfaces disjointes)**
+**Vague 1 — en parallèle (surfaces disjointes)** — *livrée*
 
 1. ~~`signature-electronique`~~ — **livré** (PR #149). ~~LC1 palette métier BPMN~~ — **livré** (PR #151).
 3. **D1** (nouveaux types uniquement) **ou LC2** — LC2 raccourcit le chemin critique (il débloque
@@ -367,7 +371,8 @@ PDF gèrent déjà des variantes par langue. Priorité selon le marché visé (D
 12. **LC6** — spike de qualification, puis lot seulement si LC2 ne suffit pas ; **D7** i18n selon le marché.
 13. Vérifications d'environnement hors file : `ClamAvAttachmentScanIT` sous Docker, smoke Keycloak réel.
 
-Correctif documentaire : le § *Statut* du `README.md` a été mis à jour le 29/09/2026 (fait).
+Correctif documentaire : le § *Statut* du `README.md` a été mis à jour le 29/09/2026, puis
+réaligné le 22/10/2026 (Vague D sur `main`, file riverain).
 
 
 ---
@@ -385,3 +390,4 @@ Correctif documentaire : le § *Statut* du `README.md` a été mis à jour le 29
 | 1.6 | 28/09/2026 | Analyses initiales de la Vague D | Analyses 31–45 créées (D0–D7, LC1–LC6), cadrage MCP renuméroté 31 → 46 ; lots nommés et liés à leur analyse. |
 | 1.7 | 29/09/2026 | Ordonnancement de la Vague D | Priorisation réécrite en 4 vagues (alignée sur `FILE-ATTENTE.md`), arbitrage D4/D6 signalé, en-tête recalé sur `main` @ `2283c92`, README (Statut, positionnement) aligné. |
 | 1.8 | 30/09/2026 | Objectif « roadmap complète » | LC1-suite (TODO §74), LC2 (TODO §75) et D1 (TODO §76) livrés ; décisions consignées dans `docs/roadmap-goal/DECISIONS.md`. |
+| 1.9 | 22/10/2026 | Alignement post-Vague D | File active = backlog riverain (§7) ; D1 champs calculés marqués livrés (§80) ; frontend OpenVue ; connecteurs IMAP/Graph/Service Bus. |

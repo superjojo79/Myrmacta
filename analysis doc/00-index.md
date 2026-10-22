@@ -25,7 +25,7 @@
 | 08 | Templates de documents | [08-templates-documents.md](08-templates-documents.md) |
 | 09 | Notifications | [09-notifications.md](09-notifications.md) |
 | 10 | Visualisation des instances de workflow | [10-visualisation-workflow.md](10-visualisation-workflow.md) |
-| 11 | Frontend — Vue 3 + PrimeVue | [11-frontend.md](11-frontend.md) |
+| 11 | Frontend — Vue 3 + OpenVue | [11-frontend.md](11-frontend.md) |
 | 12 | Autorisation (RBAC) & conformité des données | [12-autorisation-conformite.md](12-autorisation-conformite.md) |
 | 13 | Modèle physique de données consolidé | [13-modele-physique.md](13-modele-physique.md) |
 | 14 | Construction/édition de diagrammes BPMN | [14-edition-bpmn.md](14-edition-bpmn.md) |
@@ -89,7 +89,7 @@
 | Composant | Librairie | Rôle |
 |---|---|---|
 | Framework | Vue 3 + Vite | SPA, build copié dans `static/` |
-| UI | PrimeVue | Composants métier |
+| UI | OpenVue | Composants métier (fork MIT de PrimeVue, PR #165) |
 | State | Pinia | Store réactif |
 | HTTP | Axios | Appels API (même origine) |
 | BPMN viewer | bpmn-js | Visualisation workflow |

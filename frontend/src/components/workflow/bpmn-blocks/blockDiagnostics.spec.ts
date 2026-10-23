@@ -123,6 +123,23 @@ describe('blockDiagnostics', () => {
     }
   })
 
+  it('pièce jointe : source dossierField:/variable: exigée, nom de fichier sans chemin, comme le déploiement (issue #183)', () => {
+    const b = block('notify')
+    const base = { 'flowable:notificationChannels': 'EMAIL', 'flowable:notificationTo': 'dossierField:email' }
+    const ok = { ...base, 'flowable:notificationAttachment': 'variable:generatedDocumentId', 'flowable:notificationAttachmentName': 'Décision (2026).pdf' }
+    expect(diagnoseBlock(bo(ok), b, ctx())).toEqual([])
+    for (const bad of ['tenant/doc.pdf', 'variable:', 'dossierField:a.b']) {
+      expect(diagnoseBlock(bo({ ...base, 'flowable:notificationAttachment': bad }), b, ctx())).toEqual([
+        expect.objectContaining({ kind: 'invalid', param: 'notificationAttachment' }),
+      ])
+    }
+    for (const bad of ['../x.pdf', 'a/b.pdf', '.pdf', 'a"b']) {
+      expect(diagnoseBlock(bo({ ...base, 'flowable:notificationAttachmentName': bad }), b, ctx())).toEqual([
+        expect.objectContaining({ kind: 'invalid', param: 'notificationAttachmentName' }),
+      ])
+    }
+  })
+
   it('l’avertissement sur l’e-mail littéral propose de lire l’adresse dans le dossier (TODO §93)', () => {
     const attrs = { 'flowable:notificationChannels': 'EMAIL', 'flowable:notificationTo': 'jean@example.org' }
     expect(diagnoseBlock(bo(attrs), block('notify'), ctx())[0]?.message).toContain('dossierField:')

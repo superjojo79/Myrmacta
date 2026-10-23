@@ -76,6 +76,11 @@ public final class WorkflowVariables {
         }
     }
 
+    /** Noms refusés en entrée utilisateur ; le SPA en tient une copie ({@code startVariables.ts}), vérifiée par un test. */
+    public static Set<String> reservedKeys() {
+        return RESERVED;
+    }
+
     public static boolean isReservedOrKnownKey(String key) {
         return RESERVED.contains(key) || KNOWN_BUSINESS_KEYS.contains(key);
     }

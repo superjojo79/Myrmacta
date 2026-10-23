@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://flowforge/test">
+
+  <!-- Issue #201 : une tâche humaine s'intercale entre la génération (simulée au démarrage) et « Joindre le document ». -->
+  <process id="attachAfterUserTask" name="Attach After User Task" isExecutable="true">
+    <startEvent id="aaStart"/>
+    <sequenceFlow id="aaFlow1" sourceRef="aaStart" targetRef="aaReview"/>
+    <userTask id="aaReview" name="Relire" flowable:assignee="actor-1"/>
+    <sequenceFlow id="aaFlow2" sourceRef="aaReview" targetRef="aaAttach"/>
+    <serviceTask id="aaAttach" name="Joindre le document" flowable:delegateExpression="${attachGeneratedDocumentTask}"/>
+    <sequenceFlow id="aaFlow3" sourceRef="aaAttach" targetRef="aaDone"/>
+    <userTask id="aaDone" name="Terminé" flowable:assignee="actor-1"/>
+  </process>
+</definitions>

@@ -43,8 +43,16 @@ public final class WorkflowVariables {
      */
     public static final String CONNECTOR_RESULT = "connectorResult";
 
-    private static final Set<String> RESERVED =
-            Set.of(DOSSIER_ID, DOSSIER_WORKFLOW_LINK_ID, TENANT_ID, DOSSIER_FIELDS, CONNECTOR_RESULT);
+    /**
+     * Référence du PDF produit : écrite par {@code DocumentGenerationTask} seulement, lue par « Joindre le document ».
+     * Réservée (issue #201, D-DOC-GENERATED-RESERVED) : sinon une complétion de tâche placée entre la génération et le
+     * rattachement pourrait désigner le document d'un autre dossier, rattaché alors comme {@code PRODUCED_DOC} du dossier
+     * courant (joignable à un e-mail, signable) — même blanchiment que {@link #CONNECTOR_RESULT}.
+     */
+    public static final String GENERATED_DOCUMENT_ID = "generatedDocumentId";
+
+    private static final Set<String> RESERVED = Set.of(
+            DOSSIER_ID, DOSSIER_WORKFLOW_LINK_ID, TENANT_ID, DOSSIER_FIELDS, CONNECTOR_RESULT, GENERATED_DOCUMENT_ID);
 
     /**
      * Business (non-platform) variable names already claimed by another task form kind —

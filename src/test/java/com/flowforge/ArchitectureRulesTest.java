@@ -18,7 +18,7 @@ import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 
 /**
- * Règles de dépendance hexagonales — analysis doc/01-architecture-hexagonale.md.
+ * Règles de dépendance hexagonales — docs/specs/01-architecture-hexagonale.md.
  */
 @AnalyzeClasses(packages = "com.flowforge", importOptions = ImportOption.DoNotIncludeTests.class)
 class ArchitectureRulesTest {
@@ -113,7 +113,7 @@ class ArchitectureRulesTest {
             // Les trois chemins de démarrage de workflow (API manuelle, relais outbox,
             // réconciliation RESERVED) injectent Dossier.fields() dans la variable de processus
             // réservée `dossierFields` (WorkflowVariables.withPlatformVariables) — comble l'écart
-            // DossierAwareTask identifié dans GUIDE-CONCEPTION-BPMN.md §3. Appelant système
+            // DossierAwareTask identifié dans docs/guides/GUIDE-CONCEPTION-BPMN.md §3. Appelant système
             // (AccessContext.System), même rationale que DossierFieldRedactor : la donnée brute
             // est nécessaire au moteur de workflow, jamais renvoyée telle quelle à un navigateur.
             "com.flowforge.application.workflow.ManualStartOrchestrator",

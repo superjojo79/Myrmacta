@@ -7,7 +7,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{ dirty: [] }>()
 
-// D2 (docs/ai/design/2026-09-11-feature-introduction-dmn.md) : dmn-js Modeler seul, sans
+// D2 (https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-09-11-feature-introduction-dmn.md) : dmn-js Modeler seul, sans
 // provider de propriétés custom -- le .dmn est du DMN 1.3 standard, contrairement au BPMN
 // FlowForge qui porte des extensions flowable:* (voir BpmnEditorCanvas.vue).
 const EMPTY_DMN_XML = `<?xml version="1.0" encoding="UTF-8"?>

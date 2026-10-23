@@ -1,4 +1,7 @@
 org.springframework.boot.env.EnvironmentPostProcessor=\
 com.flowforge.infrastructure.tenant.TenantIdEnvironmentValidator,\
 com.flowforge.infrastructure.config.OpenApiEnvironmentPostProcessor,\
-com.flowforge.infrastructure.embeddeddb.EmbeddedDbEnvironmentPostProcessor
+com.flowforge.infrastructure.embeddeddb.EmbeddedDbEnvironmentPostProcessor,\
+com.flowforge.infrastructure.security.SecretsEnvironmentPostProcessor,\
+com.flowforge.infrastructure.security.SecurityHeadersEnvironmentPostProcessor,\
+com.flowforge.infrastructure.security.DevModeEnvironmentPostProcessor

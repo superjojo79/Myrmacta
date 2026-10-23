@@ -2,13 +2,13 @@
 > Plateforme de gestion de flux métier, de dossiers et de génération de documents.
 >  Solution SaaS multi-tenant, extensible par design.
 
-> **Démarrage local :** voir [GETTING-STARTED.md](GETTING-STARTED.md) — infrastructure Docker/Podman
+> **Démarrage local :** voir [docs/guides/GETTING-STARTED.md](docs/guides/GETTING-STARTED.md) — infrastructure Docker/Podman
 > (PostgreSQL, Keycloak, stockage S3-compatible en option) + lancement backend/frontend, config minimale incluse.
->  **Utilisation de l'UI :** voir [GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md) — créer un dossier,
+>  **Utilisation de l'UI :** voir [docs/guides/GUIDE-UTILISATEUR.md](docs/guides/GUIDE-UTILISATEUR.md) — créer un dossier,
 > démarrer/suivre un workflow, configurer un connecteur ou un template de document.
->  **Déploiement :** voir [DEPLOIEMENT.md](DEPLOIEMENT.md) — au-delà du poste de dev : artefact,
+>  **Déploiement :** voir [docs/guides/DEPLOIEMENT.md](docs/guides/DEPLOIEMENT.md) — au-delà du poste de dev : artefact,
 > reverse-proxy, provisioning d'un tenant, comptes Keycloak (`Dockerfile` et `scripts/provision-tenant.sh` livrés ; démarrage de l'instance, reverse-proxy et Keycloak restent documentés, non automatisés).
->  **Concevoir un BPMN :** voir [GUIDE-CONCEPTION-BPMN.md](GUIDE-CONCEPTION-BPMN.md) — conventions,
+>  **Concevoir un BPMN :** voir [docs/guides/GUIDE-CONCEPTION-BPMN.md](docs/guides/GUIDE-CONCEPTION-BPMN.md) — conventions,
 > champs dynamiques, connecteurs, intervenants, génération de documents depuis un diagramme.
 
 ------
@@ -17,12 +17,12 @@
 
 FlowForge est une plateforme permettant à des organisations de **modéliser, exécuter et superviser leurs processus métier** sans développement sur mesure pour chaque cas d'usage.
 
-**Positionnement (décision du 2026-09-28, [TODO §70](TODO.md)) :** produit pour **intégrateurs**,
+**Positionnement (décision du 2026-09-28, [TODO §70](docs/decisions/070-positionnement-produit-d0-integrateurs-couche-low-code.md)) :** produit pour **intégrateurs**,
 avec hébergement dédié par client. L'intégrateur conçoit les processus (BPMN/DMN) ; une couche
 **low-code / no-code** (palette métier, éditeurs de formulaires et de templates, assistant IA,
 concepteur de parcours) est **livrée** (Vague D) pour que les utilisateurs avancés côté client
-ajustent formulaires, documents et règles. Suite : [ROADMAP.md](ROADMAP.md) et
-[DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §7.
+ajustent formulaires, documents et règles. Suite : [ROADMAP.md](ROADMAP.md) et les
+[issues GitHub](https://github.com/superjojo79/FlowForge/issues).
 
 L'idée centrale : un dossier métier suit un workflow adapté à son type, déclenché automatiquement depuis des sources externes, avec production de documents et notification des parties prenantes à chaque étape clé.
 
@@ -59,7 +59,7 @@ Entité métier centrale de la plateforme. Chaque dossier est constitué d'un **
 
 ### Moteur de workflow BPMN 2.0
 
-Orchestration des flux métier via **Flowable** — standard industriel ouvert (pas de cockpit Flowable intégré à FlowForge, `DEFERRED-FEATURES.md` §1.5). Les processus se modélisent directement dans FlowForge (éditeur `bpmn-js` intégré à `/admin/bpmn-editor` — création, import, édition d'un diagramme déjà déployé, brouillon persisté) ou avec un outil externe, puis se déploient soit au build/démarrage (scan classpath), soit à chaud depuis l'écran d'administration `/admin/workflow-types` (upload avec prévisualisation) ou directement depuis l'éditeur. Support des gateways, tâches humaines et événements de signal. Le moteur DMN Flowable est activé et un `serviceTask flowable:type="dmn"` peut invoquer une table de décision éditée dans son propre éditeur intégré (`dmn-js`, `/admin/dmn-editor`) — mêmes principes que l'éditeur BPMN (brouillon persisté, déploiement à chaud), grammaire d'expression JUEL restreinte à une allowlist sûre (littéraux/comparaisons, pas d'EL brut) côté serveur.
+Orchestration des flux métier via **Flowable** — standard industriel ouvert (pas de cockpit Flowable intégré à FlowForge, hors V1). Les processus se modélisent directement dans FlowForge (éditeur `bpmn-js` intégré à `/admin/bpmn-editor` — création, import, édition d'un diagramme déjà déployé, brouillon persisté) ou avec un outil externe, puis se déploient soit au build/démarrage (scan classpath), soit à chaud depuis l'écran d'administration `/admin/workflow-types` (upload avec prévisualisation) ou directement depuis l'éditeur. Support des gateways, tâches humaines et événements de signal. Le moteur DMN Flowable est activé et un `serviceTask flowable:type="dmn"` peut invoquer une table de décision éditée dans son propre éditeur intégré (`dmn-js`, `/admin/dmn-editor`) — mêmes principes que l'éditeur BPMN (brouillon persisté, déploiement à chaud), grammaire d'expression JUEL restreinte à une allowlist sûre (littéraux/comparaisons, pas d'EL brut) côté serveur.
 
 ### Système de connecteurs
 
@@ -79,7 +79,7 @@ Email, webhook sortant et notification navigateur (SSE) — configurables par te
 
 ### Multi-tenant
 
-Chaque organisation dispose d'un schéma PostgreSQL dédié — isolation forte des données, migration indépendante, facturation séparée. **Une instance Spring Boot = un tenant** : `app.tenant.id` est fixé au démarrage (décision n° 13), jamais résolu dynamiquement par requête. Le claim OIDC `tenant_id` sert de **garde d'appartenance** : il doit correspondre à l'instance, sinon la requête est refusée. Voir [02-multi-tenant.md](analysis%20doc/02-multi-tenant.md).
+Chaque organisation dispose d'un schéma PostgreSQL dédié — isolation forte des données, migration indépendante, facturation séparée. **Une instance Spring Boot = un tenant** : `app.tenant.id` est fixé au démarrage (décision n° 13), jamais résolu dynamiquement par requête. Le claim OIDC `tenant_id` sert de **garde d'appartenance** : il doit correspondre à l'instance, sinon la requête est refusée. Voir [02-multi-tenant.md](docs/specs/02-multi-tenant.md).
 
 ### Authentification flexible
 
@@ -87,7 +87,7 @@ OAuth2/OIDC avec pattern BFF — le browser ne manipule jamais de token JWT. Le 
 
 ### Serveur MCP (outillage agent IA interne)
 
-Un serveur [MCP](https://modelcontextprotocol.io) (Model Context Protocol) expose un sous-ensemble des capacités métier à un agent IA interne (Claude Code ou tout autre client MCP) : définir un type de dossier, déployer un workflow BPMN, consulter un dossier, rechercher des dossiers, consulter les statistiques SLA. Transport Streamable HTTP sur `/api/m2m/mcp`, authentification par le même JWT machine-à-machine que les connecteurs (`Authorization: Bearer`, rôle `API_SERVICE`) — pas de nouveau mécanisme d'authentification, pas d'exposition tenant tierce. Voir [GETTING-STARTED.md](GETTING-STARTED.md#12-serveur-mcp-outillage-agent-ia) pour s'y connecter en local.
+Un serveur [MCP](https://modelcontextprotocol.io) (Model Context Protocol) expose un sous-ensemble des capacités métier à un agent IA interne (Claude Code ou tout autre client MCP) : définir un type de dossier, déployer un workflow BPMN, consulter un dossier, rechercher des dossiers, consulter les statistiques SLA. Transport Streamable HTTP sur `/api/m2m/mcp`, authentification par le même JWT machine-à-machine que les connecteurs (`Authorization: Bearer`, rôle `API_SERVICE`) — pas de nouveau mécanisme d'authentification, pas d'exposition tenant tierce. Voir [docs/guides/GETTING-STARTED.md](docs/guides/GETTING-STARTED.md#12-serveur-mcp-outillage-agent-ia) pour s'y connecter en local.
 
 ------
 
@@ -131,7 +131,7 @@ L'application est construite sur le modèle **Ports & Adapters (hexagonal)** —
 | Backend           | Java 25 LTS · Spring Boot 4.1.x | Virtual Threads, ecosystem mature               |
 | Workflow          | Flowable 8.0.x Community        | BPMN 2.0, Apache 2.0, moteur d'exécution seul (pas de Flowable UI) |
 | Persistence       | PostgreSQL + Spring Data JPA    | JSONB pour champs dynamiques, schéma par tenant |
-| Génération PDF    | Flying Saucer 10.4.x + jsoup 1.23.1 | LGPL, sans licence commerciale              |
+| Génération PDF    | Flying Saucer 10.x + jsoup 1.x (versions exactes : `pom.xml`) | LGPL, sans licence commerciale              |
 | Sécurité          | Spring Security 7 + OAuth2 Client | BFF intégré, provider-agnostique              |
 | Frontend          | Vue 3 + Vite + TypeScript + OpenVue (embarqué `static/`) | SPA même origine, typage statique aligné sur le contrat API, composants métier riches |
 | State management  | Pinia                           | Store réactif Vue 3                             |
@@ -153,7 +153,7 @@ Toutes les librairies retenues sont sous licences libres (Apache 2.0, LGPL, MIT)
 L'application est conçue pour un déploiement **SaaS mutualisé au niveau de l'infrastructure**, avec
 une isolation applicative complète : chaque organisation est servie par sa **propre instance Spring
 Boot dédiée**, configurée avec son identifiant de tenant au démarrage (voir
-[02-multi-tenant.md](analysis%20doc/02-multi-tenant.md), décision n° 13). Chaque instance embarque
+[02-multi-tenant.md](docs/specs/02-multi-tenant.md), décision n° 13). Chaque instance embarque
 également le frontend Vue 3 dans `static/` (décision n° 27) — même origine API / SPA. Toutes les
 instances partagent la même base PostgreSQL (isolation par schéma dédié) et le même serveur Keycloak
 (realm partagé). Le routage vers la bonne instance est assuré par un reverse-proxy Apache à
@@ -189,31 +189,31 @@ charge le justifie.
 
 ## Documentation technique
 
-Mise en place et utilisation en local : [GETTING-STARTED.md](GETTING-STARTED.md). Prise en main
-de l'UI (dossiers, workflows, connecteurs, templates) : [GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md).
+Mise en place et utilisation en local : [docs/guides/GETTING-STARTED.md](docs/guides/GETTING-STARTED.md). Prise en main
+de l'UI (dossiers, workflows, connecteurs, templates) : [docs/guides/GUIDE-UTILISATEUR.md](docs/guides/GUIDE-UTILISATEUR.md).
 Déploiement au-delà du poste de dev (reverse-proxy, provisioning tenant, comptes Keycloak) :
-[DEPLOIEMENT.md](DEPLOIEMENT.md). Historique synthétique des changements, par pull request :
+[docs/guides/DEPLOIEMENT.md](docs/guides/DEPLOIEMENT.md). Historique synthétique des changements, par pull request :
 [CHANGELOG.md](CHANGELOG.md). Conception d'un diagramme BPMN (conventions, `serviceTask`
 disponibles, champs dynamiques, connecteurs, intervenants) :
-[GUIDE-CONCEPTION-BPMN.md](GUIDE-CONCEPTION-BPMN.md).
+[docs/guides/GUIDE-CONCEPTION-BPMN.md](docs/guides/GUIDE-CONCEPTION-BPMN.md).
 
-La documentation d'architecture est disponible dans le répertoire `analysis doc` :
+La documentation d'architecture est disponible dans le répertoire `docs/specs` :
 
 | Fichier                                                      | Contenu                              |
 | ------------------------------------------------------------ | ------------------------------------ |
-| [00-index.md](analysis%20doc/00-index.md)                    | Vue d'ensemble et dépendances        |
-| [01-architecture-hexagonale.md](analysis%20doc/01-architecture-hexagonale.md) | Ports & Adapters, structure packages |
-| [02-multi-tenant.md](analysis%20doc/02-multi-tenant.md)      | Isolation schéma PostgreSQL          |
-| [03-authentification.md](analysis%20doc/03-authentification.md) | OAuth2/OIDC, BFF, providers          |
-| [04-dossiers.md](analysis%20doc/04-dossiers.md)              | Entité métier centrale               |
-| [05-workflow-engine.md](analysis%20doc/05-workflow-engine.md) | Flowable, BPMN, event bus            |
-| [06-connecteurs.md](analysis%20doc/06-connecteurs.md)        | Système de connecteurs extensible    |
-| [07-generation-documents.md](analysis%20doc/07-generation-documents.md) | Stack PDF, CSS print, performances   |
-| [08-templates-documents.md](analysis%20doc/08-templates-documents.md) | Versionning, variants, résolution    |
-| [09-notifications.md](analysis%20doc/09-notifications.md)    | Email, webhook, SSE                  |
-| [10-visualisation-workflow.md](analysis%20doc/10-visualisation-workflow.md) | BPMN.js, historique, réassignation   |
-| [11-frontend.md](analysis%20doc/11-frontend.md)              | Vue 3, OpenVue, Pinia                |
-| [12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md) | RBAC, rétention, conformité RGPD     |
+| [00-index.md](docs/specs/00-index.md)                    | Vue d'ensemble et dépendances        |
+| [01-architecture-hexagonale.md](docs/specs/01-architecture-hexagonale.md) | Ports & Adapters, structure packages |
+| [02-multi-tenant.md](docs/specs/02-multi-tenant.md)      | Isolation schéma PostgreSQL          |
+| [03-authentification.md](docs/specs/03-authentification.md) | OAuth2/OIDC, BFF, providers          |
+| [04-dossiers.md](docs/specs/04-dossiers.md)              | Entité métier centrale               |
+| [05-workflow-engine.md](docs/specs/05-workflow-engine.md) | Flowable, BPMN, event bus            |
+| [06-connecteurs.md](docs/specs/06-connecteurs.md)        | Système de connecteurs extensible    |
+| [07-generation-documents.md](docs/specs/07-generation-documents.md) | Stack PDF, CSS print, performances   |
+| [08-templates-documents.md](docs/specs/08-templates-documents.md) | Versionning, variants, résolution    |
+| [09-notifications.md](docs/specs/09-notifications.md)    | Email, webhook, SSE                  |
+| [10-visualisation-workflow.md](docs/specs/10-visualisation-workflow.md) | BPMN.js, historique, réassignation   |
+| [11-frontend.md](docs/specs/11-frontend.md)              | Vue 3, OpenVue, Pinia                |
+| [12-autorisation-conformite.md](docs/specs/12-autorisation-conformite.md) | RBAC, rétention, conformité RGPD     |
 
 ------
 
@@ -223,13 +223,13 @@ La documentation d'architecture est disponible dans le répertoire `analysis doc
 > serveur MCP, portail externe tokenisé, signature électronique générique avec fournisseur de
 > simulation, reporting/SLA, notifications) et la Vague D (couche low-code, champs enrichis,
 > recherche, intégrations entreprise, promotion, MCP de conception, i18n fr/en) sont livrés sur
-> `main`. Prochains lots : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §7 (pièce jointe e-mail,
-> unicité de champ). Hors périmètre : fournisseur de signature qualifiée réel, export BI JDBC,
+> `main`. Prochains lots : [issues GitHub](https://github.com/superjojo79/FlowForge/issues) de priorité 2
+> (pièce jointe e-mail #183, unicité de champ #184). Hors périmètre : fournisseur de signature qualifiée réel, export BI JDBC,
 > scripts en bac à sable (spike : non nécessaire). Détails : [ROADMAP.md](ROADMAP.md),
-> [docs/roadmap-goal/AVANCEMENT.md](docs/roadmap-goal/AVANCEMENT.md).
+> [docs/decisions/roadmap-2026/AVANCEMENT.md](docs/decisions/roadmap-2026/AVANCEMENT.md).
 >  Activité indépendante complémentaire.
 
-La documentation d'architecture a fait l'objet d'une [revue pré-implémentation](REVUE-PRE-IMPLEMENTATION.md).
-Les décisions actées et le seul point encore ouvert (§71) sont dans [TODO.md](TODO.md).
-L'ordre des prochaines features est dans [FILE-ATTENTE.md](FILE-ATTENTE.md)
-(file active = backlog riverain).
+La documentation d'architecture a fait l'objet d'une [revue pré-implémentation](docs/analyses/REVUE-PRE-IMPLEMENTATION.md).
+Les décisions actées et le seul point encore ouvert (§71) sont dans le [registre des décisions](docs/decisions/README.md).
+Ce qui reste à faire est suivi dans les [issues GitHub](https://github.com/superjojo79/FlowForge/issues)
+(libellés `priorite-*`, `type-*`, `vague-*`).

@@ -10,6 +10,20 @@ permissions:
   contents: read
 
 jobs:
+  # TODO §95 : cohérence de la documentation (liens, copies de skills, références TODO §N et identifiants de
+  # décision cités par le code, versions du README). Hors ligne, quelques secondes.
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Self-test of the documentation checks
+        run: scripts/check-docs.sh --self-test
+
+      - name: Documentation checks
+        run: scripts/check-docs.sh
+
   build:
     runs-on: ubuntu-latest
     steps:

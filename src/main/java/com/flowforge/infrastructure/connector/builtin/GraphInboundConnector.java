@@ -28,7 +28,7 @@ import tools.jackson.databind.ObjectMapper;
  * une boîte (Exchange Online) pour le même routage que l'IMAP ({@link InboundMailRouting}) — un message crée un dossier ou alimente celui
  * dont la référence figure dans l'objet, pièces jointes contrôlées, réponses automatiques refusées, message rangé dans « traités » ou
  * « refusés » sans jamais être supprimé. Authentification : application Entra ID en OAuth2 {@code client_credentials} (D3a), seul mode
- * de Graph ; l'accès à la seule boîte voulue se restreint côté Microsoft (stratégie d'accès d'application, voir DEPLOIEMENT.md).
+ * de Graph ; l'accès à la seule boîte voulue se restreint côté Microsoft (stratégie d'accès d'application, voir docs/guides/DEPLOIEMENT.md).
  */
 @Component
 public class GraphInboundConnector implements ConnectorDefinition, PollingTriggerConnector {

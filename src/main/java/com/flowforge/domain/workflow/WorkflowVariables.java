@@ -31,7 +31,7 @@ public final class WorkflowVariables {
      * Instantané des champs dynamiques du dossier (voir {@code Dossier.fields()}), injecté
      * automatiquement à chaque démarrage de workflow — comble l'écart identifié avec le
      * {@code DossierAwareTask} décrit (mais jamais implémenté) dans
-     * {@code analysis doc/04-dossiers.md} : un `serviceTask` ou un template de document n'a plus
+     * {@code docs/specs/04-dossiers.md} : un `serviceTask` ou un template de document n'a plus
      * besoin de propager explicitement chaque champ métier pour y accéder (`${dossierFields.x}`).
      */
     public static final String DOSSIER_FIELDS = "dossierFields";
@@ -79,7 +79,7 @@ public final class WorkflowVariables {
      *
      * @param dossierFields l'instantané de {@code Dossier.fields()} au moment du démarrage —
      *     jamais rafraîchi automatiquement ensuite (une modification du dossier en cours de
-     *     workflow n'est pas répercutée sur cette variable ; voir GUIDE-CONCEPTION-BPMN.md pour
+     *     workflow n'est pas répercutée sur cette variable ; voir docs/guides/GUIDE-CONCEPTION-BPMN.md pour
      *     le mécanisme de rafraîchissement explicite si nécessaire).
      */
     public static Map<String, Object> withPlatformVariables(

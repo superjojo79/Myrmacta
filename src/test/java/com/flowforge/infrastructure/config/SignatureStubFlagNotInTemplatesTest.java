@@ -22,7 +22,8 @@ class SignatureStubFlagNotInTemplatesTest {
         Path root = Path.of("").toAbsolutePath();
         try (Stream<Path> files = Stream.concat(
                 Files.walk(root.resolve("src/main/resources"), 1),
-                Stream.of(root.resolve(".env.example"), root.resolve("docker-compose.yml")))) {
+                Stream.of(root.resolve(".env.example"), root.resolve(".env.local.example"),
+                        root.resolve("docker-compose.yml")))) {
             for (Path file : files.filter(Files::isRegularFile)
                     .filter(f -> f.getFileName().toString().matches("application.*\\.(yml|yaml|properties)|\\.env.*|docker-compose.*"))
                     .toList()) {

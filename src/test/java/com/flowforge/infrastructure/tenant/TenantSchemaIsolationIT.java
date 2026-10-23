@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 /**
  * Étanchéité du {@code search_path} par tenant sous un vrai PostgreSQL — fiabilisation-tests-plateforme,
  * D-ZONKY (PostgreSQL embarqué). Reproduit le bootstrap réel (CREATE SCHEMA + migration
- * Liquibase par schéma, {@code analysis doc/02-multi-tenant.md}) sur l'instance PostgreSQL
+ * Liquibase par schéma, {@code docs/specs/02-multi-tenant.md}) sur l'instance PostgreSQL
  * embarquée partagée ({@link EmbeddedPostgresSupport}), puis prouve qu'une connexion dont le search_path est fixé
  * sur le schéma A ne voit jamais les lignes du schéma B.
  */

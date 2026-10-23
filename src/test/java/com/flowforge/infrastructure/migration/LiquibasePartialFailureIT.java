@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test;
 /**
  * Migration Liquibase mono-schéma en échec partiel + reprise idempotente au redémarrage —
  * fiabilisation-tests-plateforme, D-LIQUIBASE-TEST. L'architecture réelle est « un schéma par
- * instance, migré une fois au démarrage » ({@code analysis doc/02-multi-tenant.md}), pas un job
+ * instance, migré une fois au démarrage » ({@code docs/specs/02-multi-tenant.md}), pas un job
  * migrant plusieurs schémas partagés — ce test exerce donc l'échec partiel sur UN schéma, puis la
  * reprise via le suivi natif Liquibase ({@code DATABASECHANGELOG}), exactement comme au
  * redémarrage réel d'une instance après correction du changeset fautif.

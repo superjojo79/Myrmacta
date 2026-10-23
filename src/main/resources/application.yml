@@ -132,8 +132,8 @@ server:
     # Routage multi-tenant par chemin (décision n°14) — actif par défaut pour toute
     # instance déployée (surchargé à vide en profil local, cf. application-local.yml, pour
     # que le poste de dev continue de servir l'application à la racine "/", comme
-    # documenté dans GETTING-STARTED.md). À faire correspondre au bloc reverse-proxy
-    # statique du tenant (DEPLOIEMENT.md §3).
+    # documenté dans docs/guides/GETTING-STARTED.md). À faire correspondre au bloc reverse-proxy
+    # statique du tenant (docs/guides/DEPLOIEMENT.md §3).
     context-path: /${app.tenant.id}
     session:
       # C1 (revue adversariale du portail) : jamais de ;jsessionid dans une URL.
@@ -186,7 +186,7 @@ app:
     headers:
       enabled: ${APP_SECURITY_HEADERS_ENABLED:true}
       # Pairs TCP immédiats de confiance pour l'émission HSTS (A4-HSTS-001). Défaut = loopback +
-      # RFC1918, valable pour le modèle Docker+Apache mono-host (DEPLOIEMENT.md §1/§3) -- à
+      # RFC1918, valable pour le modèle Docker+Apache mono-host (docs/guides/DEPLOIEMENT.md §1/§3) -- à
       # restreindre à l'IP réelle du reverse-proxy avant toute migration vers un environnement où
       # d'autres pairs (ex. pods Kubernetes) partagent ce même espace d'adresses.
       trusted-proxy-cidrs: ${APP_SECURITY_HEADERS_TRUSTED_PROXY_CIDRS:127.0.0.0/8,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
@@ -269,7 +269,7 @@ app:
   portal:
     # TODO §68 (portail-externe) — opt-in (D-PORTAL-ACTIVATION). Activé, APP_PORTAL_PUBLIC_BASE_URL
     # est obligatoire (URL publique de l'instance derrière le reverse-proxy, chemin du tenant
-    # compris) — démarrage refusé sinon. Voir DEPLOIEMENT.md § Portail externe.
+    # compris) — démarrage refusé sinon. Voir docs/guides/DEPLOIEMENT.md § Portail externe.
     enabled: ${APP_PORTAL_ENABLED:false}
     public-base-url: ${APP_PORTAL_PUBLIC_BASE_URL:}
     default-link-ttl: ${APP_PORTAL_DEFAULT_LINK_TTL:7d}
@@ -313,9 +313,12 @@ app:
       allowed-content-types: ${APP_DOSSIER_ATTACHMENT_ALLOWED_TYPES:application/pdf,image/png,image/jpeg,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain}
       scan:
         # D-AV-CLAMAV-CONFIG-SELECTOR : même idiome que app.storage.type — noop (défaut) tant
-        # que clamd n'est pas provisionné et activé explicitement. Voir DEPLOIEMENT.md § ClamAV
+        # que clamd n'est pas provisionné et activé explicitement. Voir docs/guides/DEPLOIEMENT.md § ClamAV
         # et docker-compose.yml (profil clamav, local/démo uniquement).
         type: ${APP_DOSSIER_ATTACHMENT_SCAN_TYPE:noop}
+        # TODO §95 : noop est refusé au démarrage quand APP_ENVIRONMENT=production, sauf acquittement explicite
+        # (pièces jointes acceptées sans analyse) ; en staging, simple avertissement.
+        noop-acknowledged: ${APP_DOSSIER_ATTACHMENT_SCAN_NOOP_ACKNOWLEDGED:false}
         clamav:
           host: ${APP_DOSSIER_ATTACHMENT_SCAN_CLAMAV_HOST:localhost}
           port: ${APP_DOSSIER_ATTACHMENT_SCAN_CLAMAV_PORT:3310}
@@ -324,6 +327,10 @@ app:
 
 flowable:
   async-executor-activate: true
+  # TODO §95 (D-REMED-FLOWABLE-SCHEMA) : sans schéma explicite, Flowable cherche ses tables dans tous les schémas de
+  # la base (métadonnées JDBC) ; sur une base partagée, la seconde instance trouve celles du premier tenant, ne crée
+  # pas les siennes et échoue au démarrage (« act_ge_property does not exist »). Une instance = un schéma (n° 13).
+  database-schema: ${app.tenant.id}
 
 springdoc:
   api-docs:

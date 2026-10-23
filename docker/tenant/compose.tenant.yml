@@ -1,0 +1,26 @@
+# Une instance FlowForge = un tenant (décision n° 13) — TODO §95, D-REMED-TENANT-DEPLOY.
+#
+# Les deux fichiers d'environnement sont générés par :
+#   TENANT_DB_PASSWORD='…' scripts/provision-tenant.sh <tenant_id> --instance-dir <dossier> --port <port>
+# puis, une fois les variables vides de <dossier>/<tenant_id>.env renseignées :
+#   docker compose -p flowforge-<tenant_id> --env-file <dossier>/<tenant_id>.compose.env \
+#     -f docker/tenant/compose.tenant.yml up -d
+#
+# PostgreSQL, Keycloak, ClamAV et le stockage S3 sont des services externes partagés, déjà provisionnés
+# (docs/guides/DEPLOIEMENT.md §4, §5, §8) : ce fichier ne démarre que l'application du tenant, publiée sur
+# 127.0.0.1:<port> derrière le reverse-proxy (<dossier>/<tenant_id>.apache.conf).
+services:
+  flowforge:
+    image: ${FLOWFORGE_IMAGE:?FLOWFORGE_IMAGE (image construite en DEPLOIEMENT.md §1) est requis}
+    container_name: flowforge-${TENANT_ID:?TENANT_ID est requis}
+    env_file:
+      - ${TENANT_ENV_FILE:?TENANT_ENV_FILE (fichier généré <tenant_id>.env) est requis}
+    environment:
+      # Garde-fou : l'identifiant du tenant vient du fichier compose, pas d'une valeur oubliée dans l'env_file.
+      APP_TENANT_ID: ${TENANT_ID}
+      JAVA_OPTS: ${JAVA_OPTS:-}
+    ports:
+      # Jamais exposé directement : seul le reverse-proxy local publie /<tenant_id>.
+      - "127.0.0.1:${TENANT_PORT:?TENANT_PORT est requis}:8080"
+    restart: unless-stopped
+    stop_grace_period: 30s

@@ -55,7 +55,7 @@ On procède en trois passes, du plus fiable au moins fiable :
   - Bases légales : mission d'intérêt public (art. 6.1.e) et minimisation, ce qui signifie n'envoyer au modèle que les champs et extraits utiles.
   - **Pas de décision exclusivement automatisée** (art. 22) : l'IA ne fait que préparer.
   - Une **AIPD** est recommandée.
-  - Le fournisseur du modèle est un **sous-traitant** (art. 28) : il faut un contrat, la localisation des données et l'absence de réutilisation pour l'entraînement. L'analyse du lot 11 dit déjà que le fournisseur est un « sous-traitant à déclarer » (`docs/roadmap-goal/AVANCEMENT.md`).
+  - Le fournisseur du modèle est un **sous-traitant** (art. 28) : il faut un contrat, la localisation des données et l'absence de réutilisation pour l'entraînement. L'analyse du lot 11 dit déjà que le fournisseur est un « sous-traitant à déclarer » (`docs/decisions/roadmap-2026/AVANCEMENT.md`).
 - **AI Act (classification plausible, à confirmer au cas par cas).**
   - La complétude, le résumé et les signalements pour un agent relèvent a priori de la « tâche préparatoire » (art. 6.3), donc **hors haut risque**.
   - En revanche, un usage qui pèse sur l'**éligibilité à une prestation ou à une aide publique** (subsides) pourrait relever de l'annexe III, point 5 a). Il faut alors appliquer les exigences du haut risque.
@@ -92,7 +92,7 @@ On procède en trois passes, du plus fiable au moins fiable :
 4. L'agent écarte un constat, en accepte deux, puis « Demander des informations » relance le demandeur.
 5. On montre le journal : modèle, version du prompt, constats et choix de l'agent.
 
-Pour que ce scénario fonctionne, il faut rendre les pièces obligatoires par une règle, car dans `config/type-dossier.json` les champs `FILE` sont `required: false`. Il faut aussi livrer le lot « unicité / recherche » (`DEFERRED-FEATURES.md` §7) ou une vérification équivalente.
+Pour que ce scénario fonctionne, il faut rendre les pièces obligatoires par une règle, car dans `config/type-dossier.json` les champs `FILE` sont `required: false`. Il faut aussi livrer le lot « unicité / recherche » ([`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) §7) ou une vérification équivalente.
 
 ## 7. Risques et limites
 
@@ -102,4 +102,4 @@ Pour que ce scénario fonctionne, il faut rendre les pièces obligatoires par un
 - **Données personnelles chez un tiers :** c'est le choix du fournisseur et de sa région qui décide, et l'auto-hébergement a un coût d'infrastructure.
 - **Coût et latence :** plafonds existants par tenant (`AssistantLimits`) et exécution asynchrone.
 - **Dérive réglementaire :** la classification AI Act est à revoir pour chaque cas d'usage, en particulier les aides et subsides.
-- **Rupture d'un choix actuel :** aujourd'hui, l'IA ne voit aucune donnée de dossier (`McpToolModes`). Ouvrir cette porte doit faire l'objet d'une décision explicite, consignée dans `docs/roadmap-goal/DECISIONS.md`, et d'une revue de sécurité.
+- **Rupture d'un choix actuel :** aujourd'hui, l'IA ne voit aucune donnée de dossier (`McpToolModes`). Ouvrir cette porte doit faire l'objet d'une décision explicite, consignée dans `docs/decisions/roadmap-2026/DECISIONS.md`, et d'une revue de sécurité.

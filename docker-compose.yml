@@ -2,7 +2,7 @@
 # et un backend de stockage objet compatible S3, au choix via profil Compose.
 #
 # Compatible `docker compose` et `podman compose` (ou `podman-compose`) sans modification —
-# voir GETTING-STARTED.md pour le choix du runtime conteneur selon l'OS.
+# voir docs/guides/GETTING-STARTED.md pour le choix du runtime conteneur selon l'OS.
 #
 # Démarrage minimal (stockage filesystem, aucun conteneur objet requis) :
 #   docker compose up -d
@@ -19,11 +19,11 @@
 #   docker compose --profile kafka up -d
 #
 # Avec ClamAV (pour activer le scan antivirus réel des pièces jointes, lot C — voir
-# DEPLOIEMENT.md § ClamAV ; nécessite aussi APP_DOSSIER_ATTACHMENT_SCAN_TYPE=clamav) :
+# docs/guides/DEPLOIEMENT.md § ClamAV ; nécessite aussi APP_DOSSIER_ATTACHMENT_SCAN_TYPE=clamav) :
 #   docker compose --profile clamav up -d
 #
 # Avec Mailpit (SMTP de capture local : reçoit les e-mails sans les délivrer, UI web sur :8025 ;
-# nécessite MAIL_PORT=1025 dans .env — voir GETTING-STARTED.md §6) :
+# nécessite MAIL_PORT=1025 dans .env — voir docs/guides/GETTING-STARTED.md §6) :
 #   docker compose --profile mailpit up -d
 
 services:
@@ -185,7 +185,7 @@ services:
       # dev/démo local (même exposition que postgres/keycloak ci-dessus), mais ne jamais publier
       # ce port au-delà du loopback/réseau de confiance hors de ce contexte — trouvé en revue
       # adversariale, en prod clamd est de toute façon un service externe séparé (D-AV-CLAMAV-
-      # PROD-TOPO, DEPLOIEMENT.md § ClamAV), pas ce profil Compose.
+      # PROD-TOPO, docs/guides/DEPLOIEMENT.md § ClamAV), pas ce profil Compose.
       - "${CLAMAV_PORT:-3310}:3310"
     healthcheck:
       # Trouvé en Phase 7 (check implementation) : un premier essai basé sur la redirection
@@ -210,7 +210,7 @@ services:
     # notifications), consultables sur http://localhost:8025. SMTP sans auth ni TLS sur le port
     # 1025 de l'hôte (pas 587 : Docker/Podman rootless refusent les ports < 1024) — positionner
     # MAIL_PORT=1025 dans .env ; l'indicateur de santé mail du backend passe alors UP. Jamais en
-    # production : relais SMTP réel (GETTING-STARTED.md §6, DEPLOIEMENT.md).
+    # production : relais SMTP réel (docs/guides/GETTING-STARTED.md §6, docs/guides/DEPLOIEMENT.md).
     image: axllent/mailpit:v1.31.5
     profiles: ["mailpit"]
     ports:
@@ -222,7 +222,7 @@ services:
   prometheus:
     image: prom/prometheus:latest
     profiles: ["prometheus"]
-    # Le backend tourne sur l'hôte (pas en conteneur, voir GETTING-STARTED.md §7) et son port
+    # Le backend tourne sur l'hôte (pas en conteneur, voir docs/guides/GETTING-STARTED.md §7) et son port
     # management est bindé en loopback (127.0.0.1:8090 par défaut, D-42, application.yml) —
     # `permitAll` n'y est acceptable QUE parce qu'il n'est joignable que depuis la machine
     # elle-même. `network_mode: host` fait partager à ce conteneur l'espace réseau de l'hôte :

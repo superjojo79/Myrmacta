@@ -6,7 +6,7 @@ import java.util.Objects;
 /**
  * A saved-but-not-yet-deployed BPMN diagram for a given process definition key. One record per
  * {@code (tenantId, processDefinitionKey)} — overwritten in place on every save, no version
- * history (D-EDIT-DRAFT-MODEL, {@code docs/ai/design/2026-08-24-feature-edition-bpmn.md}).
+ * history (D-EDIT-DRAFT-MODEL, {@code https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-08-24-feature-edition-bpmn.md}).
  *
  * <p>TODO §82 (D6) : {@code provenance} dit qui l'a rédigé (éditeur, agent MCP, assistant) ; {@code proposedConfig} est la
  * configuration de workflow proposée avec le diagramme (brouillons MCP), appliquée à la publication ; {@code pilotUserId} est

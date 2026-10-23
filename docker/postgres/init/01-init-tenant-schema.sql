@@ -13,7 +13,7 @@
 -- Volume existant : `docker compose down -v` pour rejouer ce script.
 --
 -- Pour ajouter un second tenant local : CREATE SCHEMA + CREATE ROLE + GRANT (voir
--- analysis doc/02-multi-tenant.md), puis une seconde instance APP_TENANT_ID / DB_USERNAME.
+-- docs/specs/02-multi-tenant.md), puis une seconde instance APP_TENANT_ID / DB_USERNAME.
 CREATE SCHEMA IF NOT EXISTS tenant_dev;
 
 DO $$

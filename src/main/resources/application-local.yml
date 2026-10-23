@@ -1,6 +1,6 @@
 # Profil local : secrets de démo et HMAC M2M autorisés (D-43).
 # Activer avec --spring.profiles.active=local ou SPRING_PROFILES_ACTIVE=local
-# (voir GETTING-STARTED.md). Hors local/test, SecretsEnvironmentPostProcessor
+# (voir docs/guides/GETTING-STARTED.md). Hors local/test, SecretsEnvironmentPostProcessor
 # refuse les mots de passe denylist et le HMAC M2M.
 spring:
   config:

@@ -34,7 +34,7 @@ import liquibase.resource.ClassLoaderResourceAccessor;
  * le rôle doit pouvoir {@code CREATE DATABASE} et {@code CREATE ROLE}.
  *
  * <p>Le schéma applicatif n'est pas créé par du code de production (le bootstrap décrit dans
- * {@code analysis doc/02-multi-tenant.md} est de la responsabilité de l'infra) : cette classe le
+ * {@code docs/specs/02-multi-tenant.md} est de la responsabilité de l'infra) : cette classe le
  * reproduit explicitement pour les besoins du test.
  */
 public final class EmbeddedPostgresSupport {
@@ -82,7 +82,7 @@ public final class EmbeddedPostgresSupport {
             throw new IllegalStateException(
                     "Impossible de démarrer PostgreSQL embarqué (zonky). Si les tests tournent sous root, "
                             + "initdb refuse de démarrer : les lancer avec un utilisateur non-root, ou fournir "
-                            + "FLOWFORGE_TEST_PG_URL / _USER / _PASSWORD (voir GETTING-STARTED.md).",
+                            + "FLOWFORGE_TEST_PG_URL / _USER / _PASSWORD (voir docs/guides/GETTING-STARTED.md).",
                     e);
         }
         // Arrêt : zonky enregistre son propre shutdown hook et supprime le répertoire de données.

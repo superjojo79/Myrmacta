@@ -1,4 +1,4 @@
 /**
- * Couche hexagonale — voir analysis doc/01-architecture-hexagonale.md.
+ * Couche hexagonale — voir docs/specs/01-architecture-hexagonale.md.
  */
 package com.flowforge.infrastructure.storage;

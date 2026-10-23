@@ -2591,7 +2591,7 @@ changer la signature de 4 interfaces `port.in`
 REST existants. Point de conception encore ouvert (Phase 3) : emplacement du garde-fou partagé
 (dupliquer un guard par bounded context, le déplacer dans un package neutre, ou étendre
 `TenantAdminGuard` en l'acceptant comme dépendance transverse) — voir
-[docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md).
+[docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md](docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md).
 
 **Phase 2 (revue requirements) close** — 1 décision supplémentaire tranchée via `AskUserQuestion` :
 **D-MCP-EXT-RBAC-SCOPE**, trouvée en revérifiant le RBAC REST exact de chaque contrôleur (pas
@@ -2646,10 +2646,10 @@ directement `page(...)`, pas `findAll(...)` ; (3) seule régression trouvée par
 0 régression (zéro fichier `frontend/**` modifié, confirmé par `git diff --stat`). Playwright non
 exécutable dans ce bac à sable (binaire `chrome-headless-shell` absent, pré-existant, sans rapport
 avec cette feature) — non bloquant, feature backend-only. Documentation resynchronisée :
-[GETTING-STARTED.md](../GETTING-STARTED.md) §12 (9 → 16 tools),
+[GETTING-STARTED.md](GETTING-STARTED.md) §12 (9 → 16 tools),
 [15-serveur-mcp.md](analysis%20doc/15-serveur-mcp.md) (bandeau d'extension). `CHANGELOG.md`
 différé (aucune PR ouverte à ce stade, même convention que TODO §47/§55). Détail complet :
-[docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md).
+[docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md](docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md).
 
 **Phase 6 (mise à jour planning)** — déjà reflétée ci-dessus (les 9 milestones étaient marqués
 `[x]` en fin de Phase 5).
@@ -2675,7 +2675,7 @@ Spring Security M2M (rôle métier vs. validité transport du JWT, objets diffé
 aucun accès tenant). `./mvnw verify` final (JDK 25 installé dans ce bac à sable, absent au
 démarrage du conteneur) : **1657 tests, 0 échec**, ArchUnit conforme, couverture Jacoco tenue.
 Détail complet dans
-[docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md)
+[docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md](docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md)
 § « Phase 7 — Check Implementation ».
 
 **Phase 8 (dev-testing) close** — vérification Jacoco **classe par classe** (convention TODO §28)
@@ -2693,7 +2693,7 @@ l'appel au garde-fou (une ligne sans branche), les branches non couvertes
 et hors sujet de ce cycle — même principe que l'import mort laissé intact en Phase 7. `./mvnw
 verify` final : **1666 tests, 0 échec** (+9 vs Phase 7), ArchUnit conforme, gate Jacoco `BUNDLE`
 tenue. Détail complet dans
-[docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md).
+[docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md](docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md).
 
 **Phase 9 (revue finale) close** — revue holistique du diff réel contre `origin/main` (53 fichiers,
 +3703/-118, pas les 1043 fichiers de bruit d'un mauvais `merge-base`). Checklist complète passée :
@@ -2717,7 +2717,7 @@ sur demande explicite de l'utilisateur **sans attendre la CI GitHub Actions** (c
 décision basée sur la vérification locale fraîche (`./mvnw verify` : 1675 tests, 0 échec, même
 build que celui poussé). `CHANGELOG.md` mis à jour (entrées Ajouté + Corrigé référençant la PR).
 Détail complet dans
-[docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md)
+[docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md](docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md)
 § « Phase 9 — Revue finale ».
 
 **Post-Phase 9 — revue adversariale (sous-agent) et correctifs** : analyse dédiée du diff complet
@@ -2756,15 +2756,15 @@ sans garde-fou côté configuration. `McpAccessContextFactory` accepte désormai
 autres sont rejetés (403). Le risque de fond (aucune dérivation des scopes JWT réels) reste assumé
 et non corrigé — à activer explicitement avant d'accorder l'accès `/api/m2m/mcp` à un second client
 M2M à portée réduite. Détail complet dans
-[docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md)
+[docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md](docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md)
 § « Post-Phase 9 — Revue adversariale et correctifs de sécurité ».
 
 **Suite, sur demande :** ouverture PR + `CHANGELOG.md` ; éventuel cycle dédié pour le follow-up
 `DefineDossierTypeTool` restant (trouvaille (1) ci-dessus, toujours non corrigée). Documents lifecycle :
-[docs/ai/requirements/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/requirements/2026-09-06-feature-extension-mcp-flux-metier.md),
-[docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md),
-[docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md),
-[docs/ai/planning/2026-09-06-feature-extension-mcp-flux-metier.md](../docs/ai/planning/2026-09-06-feature-extension-mcp-flux-metier.md).
+[docs/ai/requirements/2026-09-06-feature-extension-mcp-flux-metier.md](docs/ai/requirements/2026-09-06-feature-extension-mcp-flux-metier.md),
+[docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md](docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md),
+[docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md](docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md),
+[docs/ai/planning/2026-09-06-feature-extension-mcp-flux-metier.md](docs/ai/planning/2026-09-06-feature-extension-mcp-flux-metier.md).
 
 **Impacte :** `infrastructure/mcp/tool/**` (7 nouveaux tools + `DefineDossierTypeTool` étendu),
 `domain/connector/**`, `domain/workflow/**` (`TaskQuestionSchemaUseCaseImpl`,
@@ -3677,3 +3677,29 @@ mais il doit l'écrire. À relire : une production sans ClamAV doit désormais p
 profil `prod`, secrets vides donc démarrage refusé tant qu'ils ne sont pas renseignés, ClamAV) ; l'ancien contenu,
 calibré pour le dev, devient `.env.local.example` (`cp .env.local.example .env`). Le nom historique désigne ainsi
 le gabarit le moins dangereux à copier par erreur. Réversible.
+
+**Identifiants cités par le code sans définition (reconstitués en P2 depuis les commentaires du code).** Ces
+décisions avaient été prises sans être écrites ailleurs que dans le code ; elles sont consignées ici telles que le
+code les décrit, sans changement de comportement.
+
+- **D-PALETTE-FALLBACK** (§73) — catalogue des briques indisponible : l'éditeur BPMN retombe sur la palette et le
+  panneau natifs de bpmn-js, sans briques métier.
+- **D-PALETTE-NATIVE** (§73) — la palette native bpmn-js reste intégralement disponible ; les briques métier
+  s'ajoutent dans un groupe « Briques métier ».
+- **D-PALETTE-PANEL** (§73) — le groupe « Brique » du panneau de propriétés (champs typés du catalogue) s'insère
+  après « General » ; le groupe « Flowable » devient « Avancé », replié pour une brique reconnue.
+- **D-PALETTE-STATUSES** (§73) — les statuts de workflow proposés par les briques viennent de la configuration du
+  process ouvert dans l'éditeur.
+- **D-BI-SFTP-CONN-FAILURE** (connecteur `batch-import`, lot B1) — un échec de connexion ou d'authentification SFTP
+  sort de `BatchImportConnector.onEvent` en `SftpConnectionException` ; le job de déclenchement décide de
+  poursuivre avec les autres instances du même cycle.
+- **D-CALLBACK-BRUTEFORCE** (revue adversariale) — secret partagé des webhooks et callbacks d'au moins
+  20 caractères (`WebhookSecretPolicy.MIN_LENGTH`) : ces routes sont anonymes et exposées, un secret court se
+  devine malgré la limite de débit.
+- **D-CALLBACK-DOS** (revue adversariale) — corps des webhooks borné avant lecture : refus sur `Content-Length`
+  déclaré trop grand, et flux d'entrée limité en octets pour un corps sans longueur (chunked) ou mensonger
+  (`WebhookBodySizeLimitFilter`).
+- **D-CSP-REPORTING** (§64) — collecte anonyme des rapports CSP : liste blanche de champs journalisés tronqués,
+  jamais le corps brut, réponse toujours 204.
+- **D-SIGNATURE-ACTIVATION** (§72) — sans fournisseur de signature (`app.signature.provider=none`), aucun use case,
+  delegate, job ni route de signature n'est créé.

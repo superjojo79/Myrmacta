@@ -4,6 +4,7 @@ import com.flowforge.domain.workflow.WorkflowVariables;
 import com.flowforge.domain.workflow.model.InvalidBpmnException;
 import com.flowforge.domain.workflow.portal.model.PortalRecipientSource;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +52,9 @@ public final class BlockAttributeRules {
             "nrOfInstances", "nrOfActiveInstances", "nrOfCompletedInstances", "loopCounter", "execution", "task",
             "initiator", "authenticatedUserId", "processInstanceId", "processDefinitionId", "executionId", "taskId");
 
+    /** D-NOTIF-ATTACH-NAME — nom de fichier vu par le destinataire : ni chemin, ni guillemet, ni point initial. */
+    private static final Pattern FILE_NAME = Pattern.compile("[\\p{L}\\p{N}_()'-][\\p{L}\\p{N} ._()'-]*");
+
     private static final Set<String> UUID_SOURCES = Set.of("connectorInstances", "notificationWebhooks");
     private static final Pattern UUID_FORM =
             Pattern.compile("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
@@ -92,6 +96,9 @@ public final class BlockAttributeRules {
                             + activityId + (delegate == null ? " (not a building-block serviceTask)"
                                     : " (delegate " + delegate + ")")));
             check(activityId, parameter, entry.getValue());
+        }
+        if (flowableAttributes.containsKey("notificationAttachment") || flowableAttributes.containsKey("notificationAttachmentName")) {
+            checkAttachmentCompanions(activityId, flowableAttributes);
         }
         block.filter(b -> LITERAL_ONLY_DELEGATES.contains(delegate)).ifPresent(b -> {
             for (BlockParameter p : b.parameters()) {
@@ -136,6 +143,36 @@ public final class BlockAttributeRules {
     private static void checkRecipient(String owner, String value) {
         if (PortalRecipientSource.hasSourcePrefix(value) && PortalRecipientSource.parse(value).isEmpty()) {
             throw new InvalidBpmnException(owner + " must be dossierField:<name>, variable:<name> or a literal address");
+        }
+    }
+
+    /**
+     * Revue adversariale #183 (M1, L5) — une pièce jointe ne part que vers un destinataire écrit dans le BPMN, par le canal
+     * EMAIL écrit dans le BPMN : sinon la variable {@code notificationTo}, posée par un utilisateur à la complétion d'une
+     * tâche ou au démarrage, enverrait le PDF du dossier à l'adresse de son choix. Un nom de fichier sans pièce jointe est
+     * une erreur de conception, pas une option ignorée.
+     */
+    private static void checkAttachmentCompanions(String activityId, Map<String, String> attributes) {
+        String owner = "BPMN attribute flowable:notificationAttachment on " + activityId;
+        if (!attributes.containsKey("notificationAttachment")) {
+            throw new InvalidBpmnException("BPMN attribute flowable:notificationAttachmentName on " + activityId
+                    + " requires flowable:notificationAttachment");
+        }
+        if (!attributes.containsKey("notificationTo")) {
+            throw new InvalidBpmnException(owner + " requires flowable:notificationTo in the BPMN");
+        }
+        String channels = attributes.get("notificationChannels");
+        boolean email = channels != null && Arrays.stream(channels.split(","))
+                .anyMatch(c -> "EMAIL".equals(c.strip()));
+        if (!email) {
+            throw new InvalidBpmnException(owner + " requires EMAIL in flowable:notificationChannels");
+        }
+    }
+
+    private static void checkFileName(String owner, String value) {
+        if (!FILE_NAME.matcher(value).matches()) {
+            throw new InvalidBpmnException(owner
+                    + " must be a file name (letters, digits, space, . _ - ( ) '; not starting with a dot)");
         }
     }
 
@@ -201,6 +238,14 @@ public final class BlockAttributeRules {
                 }
                 if ("notificationTo".equals(parameter.name())) {
                     checkRecipient(owner, value);
+                }
+                if ("notificationAttachmentName".equals(parameter.name())) {
+                    checkFileName(owner, value);
+                }
+            }
+            case SOURCE_REF -> {
+                if (PortalRecipientSource.parse(value).isEmpty()) {
+                    throw new InvalidBpmnException(owner + " must be dossierField:<name> or variable:<name>");
                 }
             }
             default -> { }

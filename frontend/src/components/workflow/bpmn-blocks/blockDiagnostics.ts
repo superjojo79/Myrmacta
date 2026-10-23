@@ -85,6 +85,8 @@ const KEY_FORM = /^[A-Za-z0-9_.:-]+$/
 /** Même grammaire que `PortalRecipientSource` côté serveur (TODO §93). */
 const SOURCE_PREFIX = /^(dossierField|variable):/
 const SOURCE_FORM = /^(dossierField|variable):[A-Za-z_][A-Za-z0-9_]*$/
+/** Même alphabet que `BlockAttributeRules.FILE_NAME` (D-NOTIF-ATTACH-NAME, issue #183). */
+const FILE_NAME_FORM = /^[\p{L}\p{N}_()'-][\p{L}\p{N} ._()'-]*$/u
 
 /** Le catalogue serveur publie `multiline` ; le repli sur le nom garde les anciens catalogues et les fixtures de test. */
 function isMultiline(param: BlockParameter): boolean {
@@ -106,6 +108,12 @@ function formatProblem(param: BlockParameter, raw: string): string | undefined {
   if (param.name === 'notificationTo' && SOURCE_PREFIX.test(value) && !SOURCE_FORM.test(value)) {
     return 'Source mal formée : dossierField:<champ> ou variable:<nom> (lettres, chiffres, _).'
   }
+  if (param.type === 'SOURCE_REF' && !SOURCE_FORM.test(value)) {
+    return 'Source attendue : dossierField:<champ> ou variable:<nom> (lettres, chiffres, _).'
+  }
+  if (param.name === 'notificationAttachmentName' && !FILE_NAME_FORM.test(value)) {
+    return 'Nom de fichier : lettres, chiffres, espace et . _ - ( ) \' ; ni chemin, ni point initial.'
+  }
   if (param.type === 'REFERENCE' && param.binding === 'ATTRIBUTE') {
     if (UUID_SOURCES.has(param.valueSource ?? '') ? !UUID_FORM.test(value) : !KEY_FORM.test(value)) {
       return UUID_SOURCES.has(param.valueSource ?? '') ? 'Un identifiant (UUID) est attendu.' : 'Format de clé invalide.'
@@ -126,11 +134,37 @@ export function diagnoseBlock(bo: Moddled, block: BuildingBlock, ctx: Diagnostic
       })
     }
   }
+  if (block.id === 'notify') out.push(...attachmentCompanions(bo, block))
   if (block.id === 'request-signature' && !ctx.hasSignatureCompletedCatch) {
     out.push({
       kind: 'companion',
       message: 'Ajoutez en aval un événement intermédiaire de réception du message « signatureCompleted », sinon le process ne reprend pas.',
     })
+  }
+  return out
+}
+
+/**
+ * Revue adversariale #183 (M1, L5), comme `BlockAttributeRules` : une pièce jointe exige un destinataire écrit dans le BPMN
+ * et le canal EMAIL ; un nom de fichier sans pièce jointe est refusé au déploiement.
+ */
+function attachmentCompanions(bo: Moddled, block: BuildingBlock): Diagnostic[] {
+  const value = (name: string) => {
+    const param = block.parameters.find((p) => p.name === name)
+    return param ? readValue(bo, block, param).trim() : ''
+  }
+  const out: Diagnostic[] = []
+  if (!value('notificationAttachment')) {
+    if (value('notificationAttachmentName')) {
+      out.push({ kind: 'invalid', param: 'notificationAttachmentName', message: 'Nom de fichier sans pièce jointe : renseignez aussi la pièce jointe.' })
+    }
+    return out
+  }
+  if (!value('notificationTo')) {
+    out.push({ kind: 'invalid', param: 'notificationTo', message: 'Avec une pièce jointe, le destinataire doit être écrit ici (adresse ou dossierField:/variable:).' })
+  }
+  if (!value('notificationChannels').split(',').some((c) => c.trim() === 'EMAIL')) {
+    out.push({ kind: 'invalid', param: 'notificationChannels', message: 'Avec une pièce jointe, le canal EMAIL est obligatoire.' })
   }
   return out
 }

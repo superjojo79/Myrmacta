@@ -114,6 +114,7 @@ jamais en le supprimant ou en le renumérotant ; un nouveau point prend le numé
 | 93 | [Brouillons avec ressource inactive, destinataire de « Notifier » depuis le dossier, variables de démarrage](093-brouillons-avec-ressource-inactive-destinataire-de-notifier.md) | clos | — |
 | 94 | [Incidents visibles et rejouables sur le dossier](094-incidents-visibles-et-rejouables-sur-le-dossier.md) | clos | — |
 | 95 | [Remédiation de la revue du 22 octobre 2026](095-remediation-de-la-revue-du-22-octobre.md) | clos | — |
+| 96 | [Pièce jointe de la brique « Notifier »](096-piece-jointe-de-la-brique-notifier.md) | clos | — |
 
 ## Sections de l'ancien registre
 

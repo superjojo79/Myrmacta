@@ -5,18 +5,19 @@ Flux FlowForge entièrement **configuré, sans développement** :
 2. un gestionnaire l'instruit sous 30 jours ;
 3. il autorise, refuse ou demande des informations complémentaires (le dossier passe alors en attente) ;
 4. si personne ne décide dans le délai, l'autorisation est accordée d'office ;
-5. un document de décision reprenant toute la demande est produit et transmis au demandeur.
+5. un document de décision reprenant toute la demande est produit, joint au dossier et envoyé au demandeur
+   en pièce jointe de l'e-mail de décision.
 
 Les limites rencontrées et leurs contournements sont décrits dans [DIFFICULTES.md](DIFFICULTES.md).
-Ce sont notamment : l'unicité de la plaque, l'absence de pièce jointe dans les e-mails, le portail
-désactivé et le moteur de modèles strict.
+Ce sont notamment : l'unicité de la plaque, le portail désactivé et le moteur de modèles strict. L'absence
+de pièce jointe dans les e-mails est levée (issue #183).
 
 ## Contenu
 
 | Fichier | Rôle |
 |---|---|
 | `config/type-dossier.json` | Type de dossier `AUTORISATION_RIVERAIN` (champs, clé d'unicité calculée) |
-| `config/questions.json` | Les 4 questionnaires de tâches (instruction, compléments × 2, transmission) |
+| `config/questions.json` | Les 3 questionnaires de tâches (instruction, compléments × 2) |
 | `config/workflow-config.json` | Statuts du workflow et statuts de dossier autorisés |
 | `config/modele-document.json` + `template-decision.html` | Modèle du document de décision |
 | `autorisation-riverain-sans-portail.bpmn20.xml` | Processus déployable sur une instance **sans** portail |
@@ -37,8 +38,7 @@ flowchart LR
   I -. 30 jours .-> T[Autorisée tacitement]
   C -. 30 jours .-> RS[Refusée sans réponse]
   A & R & T & RS --> P[Valeurs par défaut du document] --> G[Générer et joindre le PDF]
-  G --> E[E-mail informatif à l'adresse du dossier] --> X[Transmettre le PDF]
-  X --> F[Statut final, dossier clôturé]
+  G --> E[E-mail de décision avec le PDF en pièce jointe] --> F[Statut final, dossier clôturé]
 ```
 
 Le minuteur de 30 jours est **interrompant** : si l'agent n'a pas validé la tâche à temps, elle est
@@ -53,7 +53,7 @@ annulée et l'issue « autorisée tacitement » s'applique.
 | Compléments | Demandeur via le portail (cible) ; sinon e-mail et saisie par l'agent |
 | Silence du demandeur | Refus motivé après 30 jours, avec le même document |
 | Document | Un modèle unique ; le texte varie selon l'issue (`AUTORISEE`, `AUTORISEE_TACITEMENT`, `REFUSEE`, `REFUSEE_SANS_REPONSE`) |
-| E-mail | Informatif automatique à l'adresse saisie dans le dossier (`notificationTo="dossierField:email"`, relue à l'envoi), envoyé en **asynchrone** : une adresse mal saisie crée un incident sans bloquer l'agent. Plus une tâche de transmission manuelle du PDF (pas de pièce jointe possible) |
+| E-mail | Automatique à l'adresse saisie dans le dossier (`notificationTo="dossierField:email"`, relue à l'envoi), avec le PDF de décision en pièce jointe (`notificationAttachment="variable:generatedDocumentId"`, issue #183). Envoyé en **asynchrone** : une adresse mal saisie ou un document manquant crée un incident sans bloquer l'agent |
 | Décision au dossier | Champs `decision`, `dateDecision` et `motifDecision`, renseignés par le workflow (`decision` est cherchable) |
 | Statuts du dossier | `EN_COURS` au démarrage, `SUSPENDU` en attente d'informations, `CLOTURE` à la fin |
 
@@ -85,6 +85,12 @@ Instance locale (`main` après la PR #174, Mailpit pour les e-mails), délais de
 | R7 | Doublon `1 aaa 101` de R1 | La recherche `plaqueNormalisee = BE-1AAA101` remonte les deux dossiers |
 
 Chaque e-mail est parti à l'adresse du dossier concerné (`dossierField:email`), sans variable de démarrage.
+
+**Depuis l'issue #183** (2026-10-23) : les e-mails de décision portent le PDF en pièce jointe et la tâche
+« Transmettre le document de décision » (questionnaire `transmission-decision-riverain`) est supprimée. Le
+BPMN régénéré passe le parseur (`FlowableBpmnParserAdapterShippedProcessesTest`) ; la recette R1–R5 est à
+rejouer sur une instance avant de republier le workflow. Le questionnaire de transmission déjà créé sur
+l'instance locale peut être archivé.
 
 ## Mise en service
 
@@ -121,7 +127,7 @@ Chaque e-mail est parti à l'adresse du dossier concerné (`dossierField:email`)
    - le PDF joint au dossier ;
    - les champs `decision`, `dateDecision` et `motifDecision` ;
    - l'e-mail (Mailpit en local : `http://localhost:8025`) ;
-   - la tâche de transmission ;
+   - le PDF en pièce jointe de l'e-mail ;
    - le statut final.
 5. Doublon : créer un second dossier avec la plaque `1 abc 123` et rechercher
    `plaqueNormalisee = BE-1ABC123`. Les deux dossiers doivent remonter.

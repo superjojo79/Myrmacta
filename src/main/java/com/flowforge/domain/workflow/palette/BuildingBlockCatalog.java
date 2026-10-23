@@ -16,7 +16,7 @@ import java.util.Set;
 public final class BuildingBlockCatalog {
 
     /** Incrémenté à chaque changement de contenu du catalogue (contrat MCP / client). */
-    public static final int VERSION = 1;
+    public static final int VERSION = 2;
 
     public static final Set<String> VALUE_SOURCES = Set.of(
             "documentTemplates", "connectorInstances", "notificationWebhooks", "dossierTypes", "workflowTypes",
@@ -53,7 +53,14 @@ public final class BuildingBlockCatalog {
                     text("notificationBody", "Message", LONG, "Texte littéral du message."),
                     text("notificationUserId", "Utilisateur", 100, "Identifiant de l'utilisateur à notifier (navigateur)."),
                     reference("notificationWebhookConfigId", "Webhook", false, "notificationWebhooks",
-                            "Configuration de webhook sortant.")),
+                            "Configuration de webhook sortant."),
+                    // Issue #183 — lus dans le BPMN déployé seulement (D-NOTIF-ATTACH-LITERAL).
+                    new BlockParameter("notificationAttachment", "Pièce jointe (e-mail)", ParameterType.SOURCE_REF,
+                            ParameterBinding.ATTRIBUTE, false, null, List.of(), SHORT, null, null,
+                            "variable:<nom> (ex. generatedDocumentId) ou dossierField:<nom> : PDF produit et joint au "
+                                    + "dossier courant (facultatif)."),
+                    text("notificationAttachmentName", "Nom du fichier joint", 100,
+                            "Ex. autorisation.pdf ; par défaut le libellé du document (facultatif).")),
             block("create-child-dossier", "Créer un dossier enfant",
                     "Crée un dossier lié et démarre son workflow.",
                     BlockCategory.DOSSIER, BlockElement.SERVICE_TASK, BlockMarker.delegate("createChildDossierTask"),

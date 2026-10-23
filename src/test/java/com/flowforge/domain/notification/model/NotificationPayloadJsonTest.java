@@ -24,6 +24,16 @@ class NotificationPayloadJsonTest {
     }
 
     @Test
+    void email_withAttachment_carriesTheReferenceAndNoAttachmentKeyOtherwise() throws Exception {
+        JsonNode node = MAPPER.readTree(NotificationPayloadJson.email("a@b.c", "S", "B",
+                new EmailAttachment("t/doc\"1.pdf", "Décision.pdf", "application/pdf")));
+        assertThat(node.get("attachment").get("storageRef").asText()).isEqualTo("t/doc\"1.pdf");
+        assertThat(node.get("attachment").get("fileName").asText()).isEqualTo("Décision.pdf");
+        assertThat(node.get("attachment").get("contentType").asText()).isEqualTo("application/pdf");
+        assertThat(MAPPER.readTree(NotificationPayloadJson.email("a@b.c", "S", "B")).has("attachment")).isFalse();
+    }
+
+    @Test
     void webhook_serializesNestedPayloadTypes() throws Exception {
         UUID id = UUID.fromString("11111111-1111-1111-1111-111111111111");
         Map<String, Object> nested = new LinkedHashMap<>();

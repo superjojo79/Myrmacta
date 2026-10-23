@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.flowforge.domain.connector.model.ConnectorInstanceData;
 import com.flowforge.domain.connector.port.out.ConnectorInstanceRepository;
+import com.flowforge.domain.workflow.palette.BuildingBlockCatalog;
 import com.flowforge.support.OidcClientTestConfiguration;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -46,7 +47,7 @@ class BuildingBlockApiTest {
         for (String role : new String[] {"WORKFLOW_ADMIN", "TENANT_ADMIN"}) {
             mockMvc.perform(get("/api/bpmn-building-blocks").with(as(role)))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.version").value(1))
+                    .andExpect(jsonPath("$.version").value(BuildingBlockCatalog.VERSION))
                     .andExpect(jsonPath("$.blocks.length()").value(13))
                     .andExpect(jsonPath("$.blocks[0].id").value("generate-document"))
                     .andExpect(jsonPath("$.blocks[0].parameters[0].name").value("documentType"))

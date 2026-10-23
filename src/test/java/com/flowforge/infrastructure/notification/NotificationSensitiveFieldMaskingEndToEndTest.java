@@ -98,7 +98,7 @@ class NotificationSensitiveFieldMaskingEndToEndTest {
         var relay = new NotificationOutboxRelay(
                 mock(NotificationOutboxRepository.class),
                 webhookRepository,
-                (to, subject, body) -> { },
+                (to, subject, body, attachment) -> { },
                 capturingPort,
                 (userId, event) -> true,
                 mock(ConnectorSecretCipher.class),
@@ -107,7 +107,9 @@ class NotificationSensitiveFieldMaskingEndToEndTest {
                         null,
                         null,
                         null),
-                MAPPER);
+                MAPPER,
+                mock(com.flowforge.domain.document.port.out.DocumentStoragePort.class),
+                new com.flowforge.infrastructure.config.NotificationEmailProperties(null));
         NotificationOutboxRecord record = new NotificationOutboxRecord(
                 UUID.randomUUID(), tenantId, NotificationChannel.WEBHOOK, NotificationOutboxStatus.PENDING,
                 payloadJson, 0, null, null, now, now, null);

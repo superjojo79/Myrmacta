@@ -724,6 +724,47 @@ test('E2E-PALETTE-9 brique « Enregistrer des valeurs » : le mapping multiligne
   expect(putBody).toContain('ratio = 1')
 })
 
+test('E2E-PALETTE-10 brique « Notifier » : la pièce jointe exige une source, puis s’enregistre avec son nom (issue #183)', async ({
+  page,
+}) => {
+  await mockBlockApis(page)
+  let putBody = ''
+  await page.route('**/api/workflow-bpmn-drafts/otherWorkflow', async (route) => {
+    if (route.request().method() === 'PUT') {
+      putBody = route.request().postData() ?? ''
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ processDefinitionKey: 'otherWorkflow', xml: '', updatedAt: '2026-10-23T00:00:00Z', updatedBy: 'u' }),
+      })
+      return
+    }
+    await route.fulfill({ status: 204, body: '' })
+  })
+  const xml = editableBpmn(
+    'otherWorkflow',
+    '<serviceTask id="mail" name="E-mail" flowable:delegateExpression="${notificationDispatchTask}" flowable:notificationChannels="EMAIL" flowable:notificationTo="dossierField:email" flowable:notificationAttachment="tenant/doc.pdf"/>',
+    ['mail'],
+  )
+  await openApp(page)
+  await openBpmnEditor(page)
+  await importBpmn(page, xml, 'mail')
+  // Un storageRef écrit en dur n'est pas une source : signalé avant le déploiement, qui le refuserait.
+  await expect(page.locator('[data-element-id="mail"].fb-block-warning')).toBeVisible()
+  await page.locator('[data-element-id="mail"]').click()
+  await expect(page.locator('.bio-properties-panel-error', { hasText: 'Source attendue' })).toBeVisible()
+
+  await page.getByLabel('Pièce jointe (e-mail)').fill('variable:generatedDocumentId')
+  // Le panneau se redessine quand le diagnostic disparaît : attendre avant de saisir le champ suivant.
+  await expect(page.locator('[data-element-id="mail"].fb-block-warning')).toHaveCount(0)
+  await page.getByLabel('Nom du fichier joint').fill('autorisation.pdf')
+  await expect(page.getByLabel('Nom du fichier joint')).toHaveValue('autorisation.pdf')
+  await page.getByRole('button', { name: 'Enregistrer le brouillon' }).click()
+  await expect.poll(() => putBody.length > 0).toBe(true)
+  expect(putBody).toContain('flowable:notificationAttachment=\\"variable:generatedDocumentId\\"')
+  expect(putBody).toContain('flowable:notificationAttachmentName=\\"autorisation.pdf\\"')
+})
+
 test('E2E-PALETTE-7 brique posée sur un diagramme importé sans xmlns:flowable : le marqueur survit à l’export (revue I3)', async ({
   page,
 }) => {

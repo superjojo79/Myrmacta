@@ -1463,6 +1463,26 @@ export const BLOCK_CATALOG = {
       ],
     },
     {
+      id: 'notify',
+      label: 'Notifier',
+      description: 'Envoie une notification par e-mail, webhook ou navigateur.',
+      category: 'INTEGRATION',
+      element: 'SERVICE_TASK',
+      marker: { delegate: 'notificationDispatchTask', serviceTaskType: null, formKeyPrefix: null, portalRecipient: false },
+      parameters: [
+        blockParam({
+          name: 'notificationChannels',
+          label: 'Canaux',
+          type: 'ENUM_MULTI',
+          required: true,
+          enumValues: ['EMAIL', 'WEBHOOK', 'BROWSER'],
+        }),
+        blockParam({ name: 'notificationTo', label: 'Destinataire e-mail', maxLength: 254 }),
+        blockParam({ name: 'notificationAttachment', label: 'Pièce jointe (e-mail)', type: 'SOURCE_REF' }),
+        blockParam({ name: 'notificationAttachmentName', label: 'Nom du fichier joint', maxLength: 100 }),
+      ],
+    },
+    {
       id: 'user-question',
       label: 'Question utilisateur',
       description: 'Tâche humaine.',

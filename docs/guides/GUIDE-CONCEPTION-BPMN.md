@@ -729,6 +729,8 @@ Pour un message métier explicite (pas juste « ça a bougé »), poser :
 | `notificationUserId` | pour `BROWSER` | **un seul** utilisateur — pour notifier plusieurs intervenants (ex. tous les participants), utiliser un `multiInstanceLoopCharacteristics` Flowable standard sur cette tâche, itérant sur une variable liste, ou combiner avec le mécanisme (b) qui couvre déjà le cas générique |
 | `notificationWebhookConfigId` | pour `WEBHOOK` | UUID de la config webhook tenant |
 | `notificationPayload` | non | `Map` libre, transmis tel quel au canal |
+| `notificationAttachment` | non | **attribut seulement** : source `variable:<nom>` / `dossierField:<champ>` du PDF à joindre à l'e-mail (voir ci-dessous) |
+| `notificationAttachmentName` | non | **attribut seulement** : nom du fichier joint, ex. `autorisation.pdf` |
 
 **Destinataire lu dans le dossier (TODO §93).** Écrit dans l'attribut de la brique,
 `flowable:notificationTo="dossierField:email"` envoie à la valeur **actuelle** du champ `email` du dossier
@@ -753,6 +755,31 @@ en dur dans l'attribut reste libre.
 > **Champ sensible.** Une source peut désigner un champ marqué sensible : l'adresse part uniquement à cette adresse
 > et n'apparaît dans aucun message d'erreur, mais elle est conservée en clair dans la file d'envoi (outbox), comme
 > pour l'adresse d'une tâche externe du portail.
+
+**Pièce jointe (issue #183, TODO §96).** `flowable:notificationAttachment="variable:generatedDocumentId"` joint à
+l'e-mail le PDF produit par « Générer un document » ; `dossierField:<champ>` lit la référence dans un champ du
+dossier. Le document doit être un **PDF produit et rattaché au dossier courant** : placer « Joindre le document »
+**avant** « Notifier ». Une référence vers un autre dossier, une pièce déposée ou un fichier quelconque est refusée.
+`flowable:notificationAttachmentName` (facultatif) fixe le nom vu par le destinataire (lettres, chiffres, espace,
+`. _ - ( ) '`, 100 caractères au plus) ; à défaut, le libellé du document ; `.pdf` est ajouté s'il manque. Une seule
+pièce jointe, 7 Mio au plus (`app.notification.email.attachment-max-bytes`). Les deux attributs ne sont lus que dans le
+BPMN : une variable de process de même nom est ignorée. Avec une pièce jointe, `flowable:notificationTo` et
+`flowable:notificationChannels` (avec `EMAIL`) doivent aussi être écrits dans le BPMN : le déploiement le refuse sinon, et
+une variable `notificationTo` ne peut jamais rediriger le document. Document absent, vide, non
+PDF ou trop gros : l'étape échoue comme pour un destinataire invalide (422 ou incident si asynchrone), le message
+nomme la source. Un document supprimé entre l'émission et l'envoi fait échouer l'envoi (nouvelles tentatives, puis
+abandon visible sur la fiche dossier). Le connecteur `smtp` n'envoie pas de pièce jointe.
+
+```xml
+<serviceTask id="mailDecision" name="E-mail de décision" flowable:async="true"
+             flowable:delegateExpression="${notificationDispatchTask}"
+             flowable:notificationChannels="EMAIL"
+             flowable:notificationTo="dossierField:email"
+             flowable:notificationSubject="Votre autorisation"
+             flowable:notificationBody="Vous trouverez votre autorisation en pièce jointe."
+             flowable:notificationAttachment="variable:generatedDocumentId"
+             flowable:notificationAttachmentName="autorisation.pdf"/>
+```
 
 Le contenu peut référencer les champs dynamiques exposés selon la méthode du §3
 (`notificationBody` reste une simple variable process — construire la chaîne avec une expression

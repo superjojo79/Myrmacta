@@ -46,6 +46,8 @@ export const TEST_BLOCKS: BuildingBlock[] = [
   block('notify', 'SERVICE_TASK', { delegate: 'notificationDispatchTask' }, [
     param({ name: 'notificationChannels', type: 'ENUM_MULTI', enumValues: ['EMAIL', 'WEBHOOK'], required: true }),
     param({ name: 'notificationTo', maxLength: 254 }),
+    param({ name: 'notificationAttachment', type: 'SOURCE_REF', maxLength: 200 }),
+    param({ name: 'notificationAttachmentName', maxLength: 100 }),
   ]),
   block('create-child-dossier', 'SERVICE_TASK', { delegate: 'createChildDossierTask' }, [
     param({ name: 'childDossierTypeCode', type: 'REFERENCE', valueSource: 'dossierTypes', required: true }),

@@ -15,6 +15,7 @@ import com.flowforge.domain.dossier.model.FieldDefinition;
 import com.flowforge.domain.dossier.model.FieldType;
 import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
 import com.flowforge.domain.notification.model.DossierFieldsSnapshot;
+import com.flowforge.domain.notification.model.EmailAttachment;
 import com.flowforge.domain.notification.model.NotificationChannel;
 import com.flowforge.domain.notification.model.NotificationEvent;
 import com.flowforge.domain.notification.model.NotificationValidationException;
@@ -55,6 +56,39 @@ class SendNotificationUseCaseImplTest {
                     List<PendingOutboxWrite> writes = invocation.getArgument(1);
                     return writes.stream().map(w -> UUID.randomUUID()).toList();
                 });
+    }
+
+    /** Issue #183 — la pièce jointe voyage par référence dans le snapshot e-mail, jamais dans les autres canaux. */
+    @Test
+    void send_emailWithAttachment_snapshotsTheReferenceOnTheEmailRowOnly() {
+        EmailAttachment attachment = new EmailAttachment("tenant_dev/doc-1.pdf", "autorisation.pdf", "application/pdf");
+        NotificationEvent event = new NotificationEvent(
+                List.of(NotificationChannel.EMAIL, NotificationChannel.BROWSER),
+                "a@example.com", "Hello", "Body", "u1", null, Map.of()).withAttachment(attachment);
+
+        useCase.send(event, "tenant_dev");
+
+        ArgumentCaptor<List<PendingOutboxWrite>> writesCaptor = ArgumentCaptor.forClass(List.class);
+        verify(outboxRepository).savePendingBatch(eq("tenant_dev"), writesCaptor.capture(), any());
+        PendingOutboxWrite email = writesCaptor.getValue().get(0);
+        PendingOutboxWrite browser = writesCaptor.getValue().get(1);
+        assertThat(email.payloadJson()).contains(
+                "\"attachment\":{\"storageRef\":\"tenant_dev/doc-1.pdf\",\"fileName\":\"autorisation.pdf\","
+                        + "\"contentType\":\"application/pdf\"}");
+        assertThat(browser.payloadJson()).doesNotContain("attachment").doesNotContain("doc-1");
+    }
+
+    /** D-NOTIF-ATTACH-EMAIL-ONLY — une pièce jointe sans canal EMAIL est refusée, rien n'est écrit. */
+    @Test
+    void send_attachmentWithoutEmailChannel_isRefusedBeforeAnyWrite() {
+        NotificationEvent event = new NotificationEvent(
+                List.of(NotificationChannel.BROWSER), null, null, null, "u1", null, Map.of())
+                .withAttachment(new EmailAttachment("tenant_dev/doc-1.pdf", "a.pdf", "application/pdf"));
+
+        assertThatThrownBy(() -> useCase.send(event, "tenant_dev"))
+                .isInstanceOf(NotificationValidationException.class)
+                .hasMessageContaining("attachment").hasMessageContaining("EMAIL");
+        verify(outboxRepository, never()).savePendingBatch(anyString(), any(), any());
     }
 
     @Test

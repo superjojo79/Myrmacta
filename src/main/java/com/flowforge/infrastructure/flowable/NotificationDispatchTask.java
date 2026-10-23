@@ -1,8 +1,10 @@
 package com.flowforge.infrastructure.flowable;
 
+import com.flowforge.domain.notification.model.EmailAttachment;
 import com.flowforge.domain.notification.model.NotificationChannel;
 import com.flowforge.domain.notification.model.NotificationEvent;
 import com.flowforge.domain.notification.model.NotificationValidationException;
+import com.flowforge.domain.notification.port.in.ResolveEmailAttachmentUseCase;
 import com.flowforge.domain.notification.port.in.SendNotificationUseCase;
 import com.flowforge.domain.workflow.WorkflowVariables;
 import com.flowforge.domain.workflow.portal.model.PortalRecipientSource;
@@ -24,36 +26,77 @@ import org.springframework.stereotype.Component;
 public class NotificationDispatchTask implements JavaDelegate {
 
     private static final String RECIPIENT = "notificationTo";
+    private static final String ATTACHMENT = "notificationAttachment";
+    private static final String ATTACHMENT_NAME = "notificationAttachmentName";
     /** Une seule boîte {@code local@domaine} : ni espace ni séparateur de liste, ni forme « Nom <adresse> ». */
     private static final Pattern SINGLE_MAILBOX = Pattern.compile("[^\\s@,;:<>()\\[\\]\\\\\"]+@[^\\s@,;:<>()\\[\\]\\\\\"]+");
 
     private final TenantProperties tenantProperties;
     private final SendNotificationUseCase sendNotificationUseCase;
     private final PortalRecipientResolverPort recipientResolver;
+    private final ResolveEmailAttachmentUseCase attachmentResolver;
 
     public NotificationDispatchTask(
             TenantProperties tenantProperties,
             SendNotificationUseCase sendNotificationUseCase,
-            PortalRecipientResolverPort recipientResolver) {
+            PortalRecipientResolverPort recipientResolver,
+            ResolveEmailAttachmentUseCase attachmentResolver) {
         this.tenantProperties = Objects.requireNonNull(tenantProperties, "tenantProperties");
         this.sendNotificationUseCase =
                 Objects.requireNonNull(sendNotificationUseCase, "sendNotificationUseCase");
         this.recipientResolver = Objects.requireNonNull(recipientResolver, "recipientResolver");
+        this.attachmentResolver = Objects.requireNonNull(attachmentResolver, "attachmentResolver");
     }
 
     @Override
     public void execute(DelegateExecution execution) {
-        List<NotificationChannel> channels = parseChannels(DeployedActivityParameters.get(execution, "notificationChannels"));
-        String to = recipient(execution);
+        // Revue adversariale #183 (M1, L5) : avec une pièce jointe, canaux et destinataire ne viennent que du BPMN, et le canal
+        // EMAIL est vérifié avant toute lecture du document.
+        boolean withAttachment = DeployedActivityParameters.getLiteral(execution, ATTACHMENT) != null;
+        List<NotificationChannel> channels = withAttachment
+                ? attachmentChannels(execution)
+                : parseChannels(DeployedActivityParameters.get(execution, "notificationChannels"));
+        String to = recipient(execution, withAttachment);
         String subject = stringOrNull(DeployedActivityParameters.get(execution, "notificationSubject"));
         String body = stringOrNull(DeployedActivityParameters.get(execution, "notificationBody"));
         String userId = stringOrNull(DeployedActivityParameters.get(execution, "notificationUserId"));
         UUID webhookConfigId = parseUuid(DeployedActivityParameters.get(execution, "notificationWebhookConfigId"));
         Map<String, Object> payload = parsePayload(execution.getVariable("notificationPayload"));
 
-        NotificationEvent event =
-                new NotificationEvent(channels, to, subject, body, userId, webhookConfigId, payload);
+        NotificationEvent event = new NotificationEvent(channels, to, subject, body, userId, webhookConfigId, payload)
+                .withAttachment(attachment(execution));
         sendNotificationUseCase.send(event, tenantProperties.id());
+    }
+
+    /**
+     * Issue #183 (D-NOTIF-ATTACH-LITERAL) — {@code flowable:notificationAttachment="variable:<nom>|dossierField:<nom>"} et
+     * {@code flowable:notificationAttachmentName} ne sont lus que dans le BPMN déployé : une variable de même nom, posée par un
+     * utilisateur, est ignorée. La valeur résolue est une référence de stockage, vérifiée par {@link ResolveEmailAttachmentUseCase}
+     * (document produit et rattaché à <b>ce</b> dossier, PDF, taille). Toute erreur nomme la source, jamais la valeur.
+     */
+    private EmailAttachment attachment(DelegateExecution execution) {
+        String literal = DeployedActivityParameters.getLiteral(execution, ATTACHMENT);
+        if (literal == null) {
+            return null;
+        }
+        String origin = ATTACHMENT + " source " + literal;
+        PortalRecipientSource source = PortalRecipientSource.parse(literal)
+                .orElseThrow(() -> new NotificationValidationException(ATTACHMENT + " source is malformed: " + literal));
+        UUID dossierId = dossierId(execution, origin);
+        Object value = switch (source.kind()) {
+            case PROCESS_VARIABLE -> execution.getVariable(source.name());
+            case DOSSIER_FIELD -> recipientResolver
+                    .resolve(source, dossierId, execution.getProcessInstanceId())
+                    .orElse(null);
+        };
+        if (value == null || value.toString().isBlank()) {
+            throw new NotificationValidationException(origin + " resolved to no value");
+        }
+        if (!(value instanceof CharSequence text)) {
+            throw new NotificationValidationException(origin + " is not a text value");
+        }
+        return attachmentResolver.resolve(dossierId, text.toString().strip(),
+                DeployedActivityParameters.getLiteral(execution, ATTACHMENT_NAME), origin);
     }
 
     /**
@@ -65,10 +108,13 @@ public class NotificationDispatchTask implements JavaDelegate {
      * asynchrone ({@code flowable:async}), sinon refus 422 de la complétion ou du démarrage qui l'exécute (revue M1). Le message
      * nomme la source, jamais une valeur.
      */
-    private String recipient(DelegateExecution execution) {
+    private String recipient(DelegateExecution execution, boolean withAttachment) {
         String literal = DeployedActivityParameters.getLiteral(execution, RECIPIENT);
         if (literal != null && !PortalRecipientSource.hasSourcePrefix(literal)) {
             return literal; // écrit par le concepteur dans le BPMN déployé : inchangé
+        }
+        if (literal == null && withAttachment) {
+            throw new NotificationValidationException(ATTACHMENT + " requires flowable:" + RECIPIENT + " in the BPMN");
         }
         if (literal == null) {
             // Revue L3 : repli sur la variable notificationTo, posée au démarrage ou à la complétion d'une tâche (saisie
@@ -81,7 +127,7 @@ public class NotificationDispatchTask implements JavaDelegate {
         Object value = switch (source.kind()) {
             case PROCESS_VARIABLE -> execution.getVariable(source.name());
             case DOSSIER_FIELD -> recipientResolver
-                    .resolve(source, dossierId(execution, literal), execution.getProcessInstanceId())
+                    .resolve(source, dossierId(execution, RECIPIENT + " source " + literal), execution.getProcessInstanceId())
                     .orElse(null);
         };
         if (value == null) {
@@ -110,10 +156,11 @@ public class NotificationDispatchTask implements JavaDelegate {
         return address;
     }
 
-    private static UUID dossierId(DelegateExecution execution, String literal) {
+    /** @param origin « {@code <paramètre> source <source>} », repris tel quel dans le message d'erreur */
+    private static UUID dossierId(DelegateExecution execution, String origin) {
         Object raw = execution.getVariable(WorkflowVariables.DOSSIER_ID);
         if (raw == null || raw.toString().isBlank()) {
-            throw new NotificationValidationException(RECIPIENT + " source " + literal + " needs the dossierId variable");
+            throw new NotificationValidationException(origin + " needs the dossierId variable");
         }
         if (raw instanceof UUID uuid) {
             return uuid;
@@ -121,8 +168,20 @@ public class NotificationDispatchTask implements JavaDelegate {
         try {
             return UUID.fromString(raw.toString().trim());
         } catch (IllegalArgumentException malformed) {
-            throw new NotificationValidationException(RECIPIENT + " source " + literal + " needs a valid dossierId variable");
+            throw new NotificationValidationException(origin + " needs a valid dossierId variable");
         }
+    }
+
+    private static List<NotificationChannel> attachmentChannels(DelegateExecution execution) {
+        String literal = DeployedActivityParameters.getLiteral(execution, "notificationChannels");
+        if (literal == null) {
+            throw new NotificationValidationException(ATTACHMENT + " requires flowable:notificationChannels in the BPMN");
+        }
+        List<NotificationChannel> channels = parseChannels(literal);
+        if (!channels.contains(NotificationChannel.EMAIL)) {
+            throw new NotificationValidationException(ATTACHMENT + " requires EMAIL in flowable:notificationChannels");
+        }
+        return channels;
     }
 
     private static List<NotificationChannel> parseChannels(Object raw) {

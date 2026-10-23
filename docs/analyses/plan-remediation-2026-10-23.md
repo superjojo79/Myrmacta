@@ -67,7 +67,7 @@ Les lots sont ordonnés pour qu'aucun ne casse le précédent. D0 et D1 sont rap
 Ajouter un script `scripts/check-docs.sh`, lancé par un job `docs` dans `.github/workflows/ci.yml`. Il vérifie quatre choses :
 
 1. **Liens relatifs :** toute cible de lien Markdown existe (hors `.claude/`, `.cursor/`, `.agents/`).
-2. **Skills générés :** relancer le script de vendor puis `git diff --exit-code .claude/skills .cursor/skills`. Une modification faite directement dans une copie générée fait échouer la CI.
+2. **Skills générés :** `.claude/skills` et `.cursor/skills` sont identiques, et chaque skill de `.project-skills/` et `.agents/skills/` est identique à ses deux copies. Une modification faite directement dans une copie générée fait échouer la CI. On ne relance pas le script de vendor en CI : il appelle `npx ai-devkit@latest`, ce qui rendrait le contrôle dépendant du réseau et des publications en amont.
 3. **Références du code :** chaque `TODO §N` trouvé dans `src/` et `frontend/src/` correspond à un titre existant du registre ; idem pour les identifiants `D-…` dans `DECISIONS.md`.
 4. **Versions :** si le README garde des versions, leur majeure et leur mineure correspondent aux propriétés du `pom.xml`.
 

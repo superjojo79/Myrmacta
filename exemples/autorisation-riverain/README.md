@@ -88,9 +88,31 @@ Chaque e-mail est parti à l'adresse du dossier concerné (`dossierField:email`)
 
 **Depuis l'issue #183** (2026-10-23) : les e-mails de décision portent le PDF en pièce jointe et la tâche
 « Transmettre le document de décision » (questionnaire `transmission-decision-riverain`) est supprimée. Le
-BPMN régénéré passe le parseur (`FlowableBpmnParserAdapterShippedProcessesTest`) ; la recette R1–R5 est à
-rejouer sur une instance avant de republier le workflow. Le questionnaire de transmission déjà créé sur
-l'instance locale peut être archivé.
+questionnaire de transmission déjà créé sur une instance peut être archivé.
+
+## Résultats de la recette (2026-10-23, après l'issue #183)
+
+Instance neuve (PostgreSQL et Keycloak en conteneurs), Mailpit pour les e-mails, délais de 5 minutes, version sans portail.
+Code testé : `main` après la PR #202 (pièce jointe) plus le correctif de l'issue #201 (commit `3faee8d`, cas R1 à R7), puis
+le correctif §98 (commit `013708e`, cas R1 bis). Configuration posée **par un agent MCP** (jeton M2M) : type de dossier,
+questionnaires, modèle, brouillon du workflow. Gestes **humains** faits avec de vrais comptes Keycloak : `demo` active le
+modèle, publie le brouillon et accorde l'ACL ; `manager` ouvre les dossiers, démarre le workflow et instruit les tâches.
+
+| Cas | Parcours | Résultat |
+|---|---|---|
+| R1 | Autoriser | `AUTORISEE`, champs de décision remplis, PDF joint au dossier, e-mail « accordée » **avec le PDF en pièce jointe**, dossier `CLOTURE` |
+| R2 | Refuser avec un motif | `REFUSEE`, motif repris dans le PDF, e-mail « refusée » avec le PDF, dossier `CLOTURE` |
+| R3 | Demander des informations, encoder la réponse, autoriser | E-mail « informations complémentaires » **sans** pièce jointe, retour en instruction, `AUTORISEE`, e-mail avec le PDF, `CLOTURE` |
+| R4 | Demander des informations, laisser expirer | Minuteur déclenché, `REFUSEE_SANS_REPONSE`, e-mail « refusée » avec le PDF, `CLOTURE` |
+| R5 | Laisser expirer l'instruction | Minuteur déclenché, `AUTORISEE_TACITEMENT`, e-mail « accordée » avec le PDF, `CLOTURE` |
+| R7 | Doublon `1-AAA-101` de R1 (`1 aaa 101`) | `search_dossiers` sur `plaqueNormalisee = BE-1AAA101` remonte les deux dossiers |
+
+**Défaut trouvé et corrigé (TODO §98).** Le PDF reçu affichait en tête le titre et toute la feuille de style du modèle, sans
+mise en page : la feuille de style par défaut du moteur PDF était bloquée par la protection anti-SSRF. Corrigé ; le PDF de
+R1 bis (rejoué après correction) est conforme. Les PDF générés avant le correctif ne sont pas régénérés.
+
+**Étape manquante dans la mise en service.** Un gestionnaire (`DOSSIER_MANAGER`) ne peut ni ouvrir ni faire avancer un dossier
+sans droit **EDIT** sur le type : l'accorder dans Admin → Types de dossier → ACL (ajoutée ci-dessous, étape 4).
 
 ## Mise en service
 
@@ -104,9 +126,11 @@ l'instance locale peut être archivé.
    C'est un geste humain, impossible par MCP.
 3. **Publier le brouillon** depuis l'écran « Brouillons à publier ». La publication est refusée tant que
    le modèle n'est pas actif.
-4. *(Facultatif)* Créer le connecteur du portail à partir de `config/connecteur-portail.exemple.json`,
+4. **Accorder l'ACL** du type `AUTORISATION_RIVERAIN` aux gestionnaires (`EDIT`) et aux lecteurs (`VIEW`), dans
+   Admin → Types de dossier. Sans elle, un gestionnaire reçoit un refus 403 en ouvrant ou en instruisant un dossier.
+5. *(Facultatif)* Créer le connecteur du portail à partir de `config/connecteur-portail.exemple.json`,
    avec un vrai secret.
-5. Vérifier qu'un serveur d'envoi d'e-mails est configuré sur l'instance (canal `EMAIL`).
+6. Vérifier qu'un serveur d'envoi d'e-mails est configuré sur l'instance (canal `EMAIL`).
 
 ## Recette
 

@@ -30,7 +30,7 @@
 | `SseNotificationAdapter` (heartbeat) | configurable | local à la JVM par nature, hors sujet |
 
 Hors périmètre, décidé : SSE multi-pod, rate-limit distribué, Spring Session — pas de Redis dans
-la stack figée (`FILE-ATTENTE.md` § *Ne pas lancer*). Le moteur Flowable a son propre exécuteur
+la stack figée ([`FILE-ATTENTE.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md) § *Ne pas lancer*). Le moteur Flowable a son propre exécuteur
 de jobs asynchrones (TODO point 11).
 
 ## 2. Objectif

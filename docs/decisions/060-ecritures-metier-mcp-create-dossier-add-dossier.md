@@ -2,7 +2,7 @@
 
 > **Statut :** clos · **Section :** [Points ouverts › Security](section-points-security.md) · ancien `TODO.md` §60 · [registre](README.md)
 
-**Énoncé :** lot **A3** ([FILE-ATTENTE.md](../../FILE-ATTENTE.md)) — le canal MCP (16 tools) définit un
+**Énoncé :** lot **A3** ([FILE-ATTENTE.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md)) — le canal MCP (16 tools) définit un
 flux mais ne l'opère pas. Backlog déjà cadré dans
 [15-serveur-mcp.md](../specs/15-serveur-mcp.md). **Un seul cycle**, pas 4 PRs.
 

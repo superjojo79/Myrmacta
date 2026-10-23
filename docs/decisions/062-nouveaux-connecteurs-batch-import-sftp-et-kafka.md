@@ -3,7 +3,7 @@
 > **Statut :** clos · **Section :** [Points ouverts › Compléments de conception](section-points-complements-de-conception.md) · ancien `TODO.md` §62 · [registre](README.md)
 
 **Statut (2026-09-14) : clos.** Cycle `dev-lifecycle` Phases 1-9 complet, lot **B1** de la Vague B
-([FILE-ATTENTE.md](../../FILE-ATTENTE.md)), décrit à l'origine comme « Kafka + import batch + ERP » — «
+([FILE-ATTENTE.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md)), décrit à l'origine comme « Kafka + import batch + ERP » — «
 ERP » s'est avéré être le cas d'usage métier de `batch-import`
 ([ROADMAP.md](../../ROADMAP.md) §2.1/§2.2), pas un 3ème connecteur : périmètre réel confirmé = 2
 connecteurs. **16 décisions tranchées en Phase 1 via `AskUserQuestion`**, dont plusieurs

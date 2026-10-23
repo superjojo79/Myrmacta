@@ -16,7 +16,7 @@ sécurité (§40–46) et du sweep de dette technique (§49), parmi deux pistes 
 l'utilisateur (l'autre — outillage provisioning tenant — reste en réserve). Périmètre précisé par
 l'utilisateur : les 3 connecteurs, avec `s3-minio` **généralisé** en `document-storage` (réutilise
 le port `DocumentStoragePort` déjà agnostique S3/filesystem, cohérent avec le principe
-« ne pas coupler à MinIO » de `DEFERRED-FEATURES.md` §0) plutôt que couplé à un client S3 direct.
+« ne pas coupler à MinIO » de [`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) §0) plutôt que couplé à un client S3 direct.
 
 **Mécanismes identifiés en analyse (pas supposés, vérifiés contre le code) :**
 
@@ -72,6 +72,6 @@ design) : aucun écart supplémentaire trouvé.
 DocumentStorageConnector}.java`, `infrastructure/connector/SchedulerConnectorTriggerJob.java`,
 `domain/connector/port/out/ConnectorScheduleStateRepository.java`, migration Liquibase
 `018-connector-schedule-state.yaml`, `ConnectorProperties.DocumentStorage`,
-`ExecuteConnectorRequest`, `DEFERRED-FEATURES.md`, `CHANGELOG.md`.
+`ExecuteConnectorRequest`, [`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md), `CHANGELOG.md`.
 
 **Détail :** [20-connecteurs-hors-v1.md](../specs/20-connecteurs-hors-v1.md).

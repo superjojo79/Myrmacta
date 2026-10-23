@@ -205,7 +205,7 @@ tool `query_sla_summary` dans cette V1.
   `start_workflow`, `generate_document`) — identifiées et détaillées en
   [backlog](#backlog--extensions-futures-envisageables-hors-v1).
 - Pas de Flowable Modeler/Cockpit ni d'édition visuelle de BPMN via MCP —
-  déjà écarté du produit ([DEFERRED-FEATURES.md](../../DEFERRED-FEATURES.md) §1.5).
+  déjà écarté du produit ([DEFERRED-FEATURES.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) §1.5).
 
 ---
 

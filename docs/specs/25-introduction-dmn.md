@@ -221,7 +221,7 @@ de leur livraison backend initiale).
 ### 3.5 Documentation à mettre à jour si la feature est retenue
 
 `README.md` (retirer « DMN hors V1 » du schéma ASCII L105 et du texte L54), `docs/specs/05`,
-`docs/specs/00-index.md` L57, `FILE-ATTENTE.md` § *Ne pas lancer* (retirer DMN de la liste),
+`docs/specs/00-index.md` L57, [`FILE-ATTENTE.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md) § *Ne pas lancer* (retirer DMN de la liste),
 `docs/guides/GUIDE-CONCEPTION-BPMN.md` (nouvelle section « quand utiliser un gateway vs une table DMN »).
 
 ---
@@ -249,7 +249,7 @@ avant de lever le blocage `businessRuleTask` :
 **Correction :** l'affirmation « FlowForge ne fait que déployer du BPMN modélisé ailleurs » n'est
 plus exacte depuis `edition-bpmn` (PR #71, 2026-08-24, TODO §39) — un éditeur graphique est
 **intégré** à `/admin/bpmn-editor` (`bpmn-js` Modeler + `bpmn-js-properties-panel`), en plus de
-l'upload d'un fichier modélisé en externe. Ce que la décision `DEFERRED-FEATURES.md` §1.5 /
+l'upload d'un fichier modélisé en externe. Ce que la décision [`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) §1.5 /
 TODO §35 exclut réellement, c'est de déployer les **applications web propriétaires** de Flowable
 (Modeler, Cockpit — option (d) écartée dans [14-edition-bpmn.md](14-edition-bpmn.md) §Options :
 « app tierce à opérer/sécuriser par tenant ») — pas d'embarquer une **librairie JS** d'édition dans

@@ -92,7 +92,7 @@ On procède en trois passes, du plus fiable au moins fiable :
 4. L'agent écarte un constat, en accepte deux, puis « Demander des informations » relance le demandeur.
 5. On montre le journal : modèle, version du prompt, constats et choix de l'agent.
 
-Pour que ce scénario fonctionne, il faut rendre les pièces obligatoires par une règle, car dans `config/type-dossier.json` les champs `FILE` sont `required: false`. Il faut aussi livrer le lot « unicité / recherche » (`DEFERRED-FEATURES.md` §7) ou une vérification équivalente.
+Pour que ce scénario fonctionne, il faut rendre les pièces obligatoires par une règle, car dans `config/type-dossier.json` les champs `FILE` sont `required: false`. Il faut aussi livrer le lot « unicité / recherche » ([`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) §7) ou une vérification équivalente.
 
 ## 7. Risques et limites
 

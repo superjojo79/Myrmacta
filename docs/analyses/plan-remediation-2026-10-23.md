@@ -169,8 +169,8 @@ Le risque 5 passe en P1 devant la documentation : c'est le seul où une erreur d
 | P3 D1, `check-docs` | Livré | `fd12110` | `scripts/check-docs.sh` : 5 contrôles verts en moins d'une seconde ; `--self-test` : chaque contrôle passe sur un dépôt sain et détecte la faute injectée ; job `docs` ajouté à `ci.yml` | Contrôles en Python lancé avec `-I` derrière un lanceur bash. Le registre des numéros accepte déjà la structure cible (`docs/decisions/NNN-*.md`) et les lignes de tableau (§80 à §90) ; l'index `docs/decisions/identifiants.md` remplacera la recherche dans toute la doc dès qu'il existera (P5) |
 | P4 D2, `docs/specs/` | Livré | `2dcf890` + `6f4c1bd` | 49 fichiers déplacés par `git mv` ; 379 liens Markdown recalculés et 290 mentions de chemin remplacées par script ; `check-docs` vert ; dans `src/` et `frontend/`, seules des lignes de commentaire changent | Les textes qui décrivent l'état antérieur (ce plan, le goal, `TODO §95`) gardent volontairement l'ancien nom |
 | P5 D3, `docs/ai/` | Livré | `0d50afc` | 473 documents retirés (`docs/ai/` : 3,5 Mo → 11 Ko, les 7 README de phase restent) ; `docs/decisions/identifiants.md` : 187 identifiants cités par le code, 0 sans définition ; 102 liens, 46 mentions et 7 commentaires deviennent des permaliens ; table fonctionnalité → spec en annexe de `docs/specs/00-index.md` ; `check-docs` vert (contrôle `decision-ids` désormais sur l'index) | Tag d'archive non poussé (refus 403 de la session) : permaliens au commit `e91aa7b` de `main` à la place (D-REMED-ARCHIVE-REF ⚠). Cinq specs complétées d'une section « Implémentation ». Le commentaire d'une ressource DMN déployée garde l'ancien chemin |
-| P6 D4, `docs/decisions/` | Livré | `docs(remediation): P6` | `TODO.md` (3 660 lignes) → 95 fichiers `NNN-*.md` (93 clos, 2 ouverts : §71, §95) + 13 fichiers `section-*.md` ; index `docs/decisions/README.md` généré et contrôlé (`decisions-index`) ; 63 liens entrants réécrits (11 vers un point précis, 52 vers l'index) ; revues → `docs/analyses/`, `docs/roadmap-goal/` → `docs/decisions/roadmap-2026/`, guides → `docs/guides/` (199 liens recalculés) ; `check-docs` vert, auto-test compris | §80 à §90 n'avaient pas de section : chacun reçoit un fichier tiré de sa ligne du tableau de la Vague D. Les textes d'interface qui citent un guide par son nom ne changent pas |
-| P7 D5, backlog | À faire | | | |
+| P6 D4, `docs/decisions/` | Livré | `6f1de3a` | `TODO.md` (3 660 lignes) → 95 fichiers `NNN-*.md` (93 clos, 2 ouverts : §71, §95) + 13 fichiers `section-*.md` ; index `docs/decisions/README.md` généré et contrôlé (`decisions-index`) ; 63 liens entrants réécrits (11 vers un point précis, 52 vers l'index) ; revues → `docs/analyses/`, `docs/roadmap-goal/` → `docs/decisions/roadmap-2026/`, guides → `docs/guides/` (199 liens recalculés) ; `check-docs` vert, auto-test compris | §80 à §90 n'avaient pas de section : chacun reçoit un fichier tiré de sa ligne du tableau de la Vague D. Les textes d'interface qui citent un guide par son nom ne changent pas |
+| P7 D5, backlog | Livré | `docs(remediation): P7` | 12 issues créées (#183 à #194, table ci-dessous) ; `FILE-ATTENTE.md` et `DEFERRED-FEATURES.md` retirés (85 liens et mentions → permaliens) ; `ROADMAP.md` réduit à une page ; `cliff.toml` + `scripts/changelog-release.sh` testés sur l'historique de `main` (une entrée par PR, rubriques vides masquées) ; `check-docs` vert | Les sujets hors V1 sont regroupés dans une seule issue-inventaire (#194) |
 | P8 D6, `AGENTS.md` et skills | À faire | | | |
 | P9 risque 4, sandboxes | À faire | | | |
 | P10 risque 3, déploiement tenant | À faire | | | |
@@ -188,3 +188,20 @@ Le risque 5 passe en P1 devant la documentation : c'est le seul où une erreur d
   - `D-…` et `DD-…` : 217 identifiants distincts. 38 sont définis dans `DECISIONS.md`, 65 seulement dans `docs/ai/`, 101 dans d'autres `.md`, et 9 nulle part.
   - « décision n° N » : 5 numéros distincts dans le code ; même numérotation que `TODO §N`.
 - **Fautes relevées par `scripts/check-docs.sh`** (écrit en P3, lancé sur cet état) : 11 liens cassés, 3 écarts entre une copie de skill et sa source, 2 versions du README incohérentes avec le `pom.xml`, 9 identifiants de décision sans définition.
+
+### Table élément → issue (P7)
+
+| Élément de l'ancien suivi | Source | Issue |
+|---|---|---|
+| `notifier-piece-jointe` | DEFERRED §7, priorité 2 | #183 |
+| `unicite-champ-dossier` | DEFERRED §7, priorité 2 | #184 |
+| `gabarits-notification` | DEFERRED §7, priorité 3 | #185 |
+| `parcours-minuteur-bordure` | DEFERRED §7, priorité 3 | #186 |
+| `variables-demarrage-declarees` | DEFERRED §7, priorité 3 | #187 |
+| Demande initiale par le portail (à arbitrer) | DEFERRED §7, DIFFICULTES §7 | #188 |
+| `dossierFields` instantané (à arbitrer) | DEFERRED §7, DIFFICULTES §10 | #189 |
+| Assignation des tâches par groupe | DEFERRED §7, DIFFICULTES §9 | #190 |
+| Fournisseur de signature réel (eIDAS) | ROADMAP 2.4, AVANCEMENT « Non traité » | #191 |
+| ClamAV sous Docker, Keycloak réel | ROADMAP vague 4, DEFERRED §1.3 et §4 | #192 |
+| État des migrations par tenant | DEFERRED §1.2 | #193 |
+| Sujets hors V1 (Redis/SSE multi-pods, OTel, codegen OpenAPI, BI JDBC, Graph delta, LC6…) | DEFERRED §1, ROADMAP « Hors scope actif », AVANCEMENT | #194 |

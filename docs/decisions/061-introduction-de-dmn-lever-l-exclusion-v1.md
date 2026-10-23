@@ -126,7 +126,7 @@ exercé un vrai déploiement DMN de bout en bout au lieu de s'arrêter aux tests
 (qui, eux, n'appellent jamais ce chemin de code précis). `./mvnw verify` complet (1817 tests,
 ArchUnit compris) + suite Playwright (71/71, dont 3 scénarios DMN réels) verts après correctif.
 Documentation mise à jour : `README.md`, `docs/specs/05-workflow-engine.md` (nouvelle section
-« Tables de décision — DMN »), `docs/specs/00-index.md` (entrée 25), `FILE-ATTENTE.md` (clôture
+« Tables de décision — DMN »), `docs/specs/00-index.md` (entrée 25), [`FILE-ATTENTE.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md) (clôture
 définitive), `docs/guides/GUIDE-CONCEPTION-BPMN.md` (§7bis/§7ter), `docs/guides/GUIDE-UTILISATEUR.md` (nouvel écran),
 `CHANGELOG.md`.
 
@@ -148,7 +148,7 @@ fournit un `Modeler` dédié aux tables de décision : c'est l'équivalent DMN d
 
 **Impacté :** `application.yml`, `FlowableBpmnParserAdapter`, nouveaux ports/adaptateurs de
 parsing/déploiement DMN, écran admin `dmn-editor`, `infrastructure.mcp`,
-`README.md`/`docs/specs/05`/`docs/specs/00-index.md`/`FILE-ATTENTE.md` (retrait de la mention
+`README.md`/`docs/specs/05`/`docs/specs/00-index.md`/[`FILE-ATTENTE.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md) (retrait de la mention
 « hors V1 »), `docs/guides/GUIDE-CONCEPTION-BPMN.md`, `docs/guides/GUIDE-UTILISATEUR.md`, `CHANGELOG.md` — voir détail
 Phase 5 ci-dessus.
 

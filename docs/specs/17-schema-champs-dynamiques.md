@@ -290,6 +290,6 @@ CSS, avec des `data-testid` pour Playwright — pas de composants PrimeVue. Le n
    « Limite actuelle de l'écran » cité en §1 devient obsolète) : rappel de convention (§ « Workflow
    de feature » point 6 de la skill `flowforge-conventions`), non fait dans ce document puisqu'aucun
    code n'est encore livré.
-6. **Nommage du lot** — aucun nom de feature n'est réservé dans `FILE-ATTENTE.md` /
-   `DEFERRED-FEATURES.md` pour ce sujet à ce jour ; à choisir en séquençant avec le reste de la file
+6. **Nommage du lot** — aucun nom de feature n'est réservé dans [`FILE-ATTENTE.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md) /
+   [`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) pour ce sujet à ce jour ; à choisir en séquençant avec le reste de la file
    (ne pas réutiliser `edition-champs-dossier`, déjà pris par la feature valeurs livrée).

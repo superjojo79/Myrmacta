@@ -21,7 +21,7 @@
 Le produit a déjà tranché, à plusieurs reprises et indépendamment, que
 « Rapports / SLA » est hors périmètre V1 :
 
-- `DEFERRED-FEATURES.md` §1.6 (`frontend`) : « Écrans Rapports / SLA —
+- [`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) §1.6 (`frontend`) : « Écrans Rapports / SLA —
   Hors scope V1 (mock UI de référence uniquement) ».
 - [`docs/ai/requirements/2026-08-20-feature-observabilite.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-08-20-feature-observabilite.md) (non-goals) :
   « Rapports / SLA (FILE-ATTENTE hors V1) », distinct de l'observabilité
@@ -236,6 +236,6 @@ comptage) — voir [Questions ouvertes](#questions-ouvertes).
 Une fois ce cadrage validé, cette feature suit le cycle `dev-lifecycle`
 complet (requirements → design → planning → implementation → testing →
 review) comme les autres features du produit, et doit être positionnée
-dans `FILE-ATTENTE.md` **avant** `serveur-mcp`, conformément à la
+dans [`FILE-ATTENTE.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md) **avant** `serveur-mcp`, conformément à la
 dépendance actée côté MCP
 ([15-serveur-mcp.md](15-serveur-mcp.md#dépendance-reporting--sla-point-4)).

@@ -4,7 +4,7 @@
 
 **Énoncé :** `GET /api/connector-definitions` expose déjà `configSchema` ; l’écran
 Admin → Connecteurs ignore le schéma et impose un `<textarea>` JSON
-(`ConnectorsAdminView.vue`). Lot **A2** de [FILE-ATTENTE.md](../../FILE-ATTENTE.md) :
+(`ConnectorsAdminView.vue`). Lot **A2** de [FILE-ATTENTE.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md) :
 feature `admin-connector-form-schema`, frontend seulement.
 
 **Décisions (cycle 2026-09-08, agent cloud) :** D-REPLACE-TEXTAREA, D-EMPTY-SCHEMA,

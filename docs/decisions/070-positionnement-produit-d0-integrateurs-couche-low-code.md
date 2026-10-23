@@ -72,6 +72,6 @@ prêts à l'emploi (documentation), l'intégration no-code restant externalisée
   contre la défense `language`/`scriptFormat` de §69.
 - LC4b : éditeur (TipTap vs GrapesJS), limité au sous-ensemble CSS 2.1 que Flying Saucer rend.
 
-**Impacte :** `ROADMAP.md` (Catégorie 7, priorisation), `FILE-ATTENTE.md` (note de décision, file
+**Impacte :** `ROADMAP.md` (Catégorie 7, priorisation), [`FILE-ATTENTE.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md) (note de décision, file
 inchangée). À répercuter lors du premier lot livré : `README.md` (vision « sans développement »
 à nuancer, § Statut obsolète).

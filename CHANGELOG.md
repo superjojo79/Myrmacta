@@ -1,32 +1,26 @@
 # Changelog
 
-Historique synthétique des changements notables du projet, **un lot par pull request mergée** —
+Historique synthétique des changements notables du projet, **une entrée par pull request mergée** —
 pas un journal de commits. Format inspiré de
-[Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), adapté à un projet sans releases
-versionnées à ce jour (voir `README.md` → Statut) : ce fichier ne connaît pas de section `[X.Y.Z]`
-tant qu'aucune version n'est publiée, seulement une section **[Non publié]** qui grandit au fil
-des PR.
+[Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Catégories : **Ajouté**, **Modifié**,
+**Corrigé**, **Sécurité**, **Documentation**, **Dépendances**.
 
-> **Ce que ce fichier n'est pas.** Pour l'historique technique détaillé (décisions actées,
-> alternatives écartées, bugs trouvés en revue, chiffres de couverture) : voir `TODO.md` et
-> `FILE-ATTENTE.md` § *Récemment livré*. `CHANGELOG.md` reste volontairement court — une entrée
-> tient en 2 à 5 lignes, lisible sans avoir suivi le projet.
+> **Ce que ce fichier n'est pas.** Pour le détail technique (décisions, alternatives écartées, bugs
+> trouvés en revue) : le [registre des décisions](docs/decisions/README.md). Pour ce qui reste à faire :
+> les [issues GitHub](https://github.com/superjojo79/FlowForge/issues).
 
-Catégories utilisées (n'inclure que celles pertinentes à l'entrée) : **Ajouté**, **Modifié**,
-**Corrigé**, **Sécurité**, **Documentation**, **Déprécié**, **Supprimé**.
+**Alimentation (depuis la PR #182, TODO §95) :** plus d'entrée écrite à la main dans chaque PR. Les
+sections sont **générées** à chaque release par `scripts/changelog-release.sh <version>`, à partir des
+PR mergées sur `main` ([git-cliff](https://git-cliff.org), configuration [`cliff.toml`](cliff.toml)) :
+le **titre de la PR**, au format Conventional Commits (`feat:`, `fix:`, `fix(security):`, `docs:`…),
+devient l'entrée et choisit sa catégorie. Le titre d'une PR doit donc se lire seul, comme une ligne de
+ce fichier. Aperçu des PR pas encore publiées : `scripts/changelog-release.sh --preview`.
 
-Règle d'alimentation — voir `flowforge-conventions` (skill projet) : chaque pull request qui
-touche du code, de la configuration ou de la documentation utilisateur/admin ajoute (ou met à
-jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous ce format :
-
-```markdown
-- **PR #123** — Résumé en une phrase de ce qui change et pourquoi. Détail court supplémentaire
-  si nécessaire (2ᵉ phrase max).
-```
+La section ci-dessous a été tenue à la main jusqu'à la PR #182 ; elle est conservée telle quelle.
 
 ------
 
-## [Non publié]
+## Historique tenu à la main (jusqu'à la PR #182)
 
 ### Ajouté
 

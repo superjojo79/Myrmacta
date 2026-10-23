@@ -35,7 +35,7 @@ porter `"http-rest"` — le skeleton (classe séparée) ne peut pas être enregi
 
 **À produire :** décisions ci-dessus, puis activation (fusion capacité + config schema le cas
 échéant), avec mise à jour de `06-connecteurs.md` (tableau catalogue), `README.md` (§ Système de
-connecteurs) et `DEFERRED-FEATURES.md`/`FILE-ATTENTE.md` une fois livrée.
+connecteurs) et [`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md)/[`FILE-ATTENTE.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md) une fois livrée.
 
 **Impacte :** `HttpRestTriggerConnector`, `HttpRestServiceConnector`,
 `HttpRestServiceConnectorTest`, `06-connecteurs.md`, `README.md`.

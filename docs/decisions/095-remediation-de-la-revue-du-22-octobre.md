@@ -105,3 +105,22 @@ mènent au point précis quand le texte nomme son numéro, sinon à l'index `doc
 (`REVUE-*.md`) dans `docs/analyses/`, et les quatre guides dans `docs/guides/`. Aucun build, test, Dockerfile ni
 écran ne lit ces fichiers ; les textes de l'interface qui citent un guide par son nom (`frontend/src/i18n`) restent
 inchangés. Réversible (`git mv`).
+
+**D-REMED-BACKLOG** — Paramètre Backlog = `issues`. Ce qui restait réellement à faire dans `FILE-ATTENTE.md`,
+`DEFERRED-FEATURES.md` et `ROADMAP.md` devient 12 issues GitHub (#183 à #194, libellés `vague-riverain`,
+`priorite-2/3/4`, `type-feature/arbitrage/ops/hors-v1`), après recherche de doublons (le dépôt n'en avait aucune).
+Une ligne par lot du backlog riverain ; les sujets écartés de la V1 sont regroupés dans une seule issue-inventaire
+(#194) plutôt qu'en dix issues sans perspective. Les follow-ups déjà livrés ou rendus caducs par le code (activation
+du `context-path`, tests sur vrai PostgreSQL, chaînes M2M…) ne sont pas repris. Les points ouverts qui sont des
+décisions (§71) restent dans le registre. `FILE-ATTENTE.md` (163 Ko, dont une dizaine de lignes actives) et
+`DEFERRED-FEATURES.md` sont retirés ; leurs liens deviennent des permaliens (D-REMED-ARCHIVE-REF).
+
+**D-REMED-ROADMAP** — `ROADMAP.md` garde un rôle de vision produit (ce qui est livré, les prochaines étapes, le
+hors V1) : réduit à une page qui renvoie aux issues ; la version détaillée reste accessible par permalien.
+
+**D-REMED-CHANGELOG** — Plus d'entrée `CHANGELOG.md` écrite à la main dans chaque PR : à chaque release,
+`scripts/changelog-release.sh <version>` génère la section avec git-cliff (`cliff.toml`, lancé par `npx`, sans
+installation), une entrée par PR tirée de son titre (commit « Merge pull request #N » ou squash « (#N) »), la
+catégorie venant du type Conventional Commits. Les entrées existantes, tenues à la main jusqu'à la PR #182, sont
+conservées sous « Historique tenu à la main ». Option écartée : release-please, qui impose un flux de PR de release
+et des versions sémantiques automatiques, disproportionné pour un projet sans release publiée. Réversible.

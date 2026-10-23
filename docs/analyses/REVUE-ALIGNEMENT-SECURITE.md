@@ -22,7 +22,7 @@
 | | |
 |---|---|
 | Cible | Dépôt complet au commit `797df03` (`main`, PR #71 `edition-bpmn` mergée) |
-| Specs | `docs/specs/00` → `14`, `README.md`, `TODO.md` (points 1–39 tous `[x]`), `FILE-ATTENTE.md`, `DEFERRED-FEATURES.md` |
+| Specs | `docs/specs/00` → `14`, `README.md`, `TODO.md` (points 1–39 tous `[x]`), [`FILE-ATTENTE.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md), [`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) |
 | Lifecycle AI-devkit | `docs/ai/{requirements,design,planning,implementation,testing,monitoring,deployment}/` |
 | Code | `com.flowforge.{domain,application,infrastructure}`, `frontend/src`, `application.yml`, `pom.xml`, `docker-compose.yml` |
 | Angle | (1) décisions d'architecture vs implémentation ; (2) dérive documentaire ; (3) sécurité réelle, pas de finding écarté sans preuve d'inexploitabilité |
@@ -63,8 +63,8 @@ arbitrage produit ; 40 et 41 **avant** toute exposition internet multi-tenant ;
 | `docs/ai/{requirements,design,planning,implementation,testing}` | Lifecycle par feature | Une série datée par feature livrée |
 | `docs/ai/review/` | Artefact Phase 9 dédié | **Absent** — Phase 9 dans le YAML / le corps des docs `implementation` (`phase9:`) |
 | `docs/ai/monitoring/README.md`, `implementation/README.md` | Guides de phase | Squelettes vides (templates AI-devkit) |
-| `FILE-ATTENTE.md` | Prochaine feature | Stale à l'ouverture de cette revue : `edition-bpmn` encore « En revue » alors que PR #71 est mergée sur `main` |
-| `DEFERRED-FEATURES.md` | Inventaire reporté | Stale : masquage encore « en attente de PR » (PR #70 mergée) |
+| [`FILE-ATTENTE.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md) | Prochaine feature | Stale à l'ouverture de cette revue : `edition-bpmn` encore « En revue » alors que PR #71 est mergée sur `main` |
+| [`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) | Inventaire reporté | Stale : masquage encore « en attente de PR » (PR #70 mergée) |
 
 ### 3.2 Décisions structurantes — alignées
 
@@ -231,7 +231,7 @@ egress allowlist.
 ### Low / reliquats V1 (non rouverts dans TODO)
 
 Déjà assumés par des features livrées ; listés ici pour ne pas les perdre.
-Suivi : [DEFERRED-FEATURES.md](../../DEFERRED-FEATURES.md) §4.
+Suivi : [DEFERRED-FEATURES.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) §4.
 
 | ID | Sujet | Pourquoi pas un nouveau point TODO |
 |---|---|---|
@@ -286,7 +286,7 @@ allowlist possible plus tard, pas un finding High.
 | 45 | Dérive documentaire analyse / README / code | Docs — **clos** PR #75 | — | `README.md`, `docs/specs/00` `06` `07` `11` `12`, `application.yml` L1 (`01` `com.monapp` déjà PR #72) |
 | 46 | Couche `application` non gardée par ArchUnit | Architecture | Low | `ManualStartOrchestrator`, `ArchitectureRulesTest`, `01-architecture-hexagonale.md` |
 
-Reliquats S-6…S-10 : pas de nouveau point — [DEFERRED-FEATURES.md](../../DEFERRED-FEATURES.md) §4.
+Reliquats S-6…S-10 : pas de nouveau point — [DEFERRED-FEATURES.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) §4.
 
 ---
 

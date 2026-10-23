@@ -6,7 +6,7 @@
 `.bpmn20.xml` **déjà modélisé en externe**, avec comme non-goal explicite « pas d'édition/design
 de diagramme dans FlowForge ». Le besoin métier sous-jacent (pouvoir construire/modifier un
 diagramme BPMN *depuis* FlowForge) reste donc un écart réel, pas un choix assumé — distinct du
-volet Cockpit (`DEFERRED-FEATURES.md` §1.5, hors scope produit, non remis en cause ici).
+volet Cockpit ([`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) §1.5, hors scope produit, non remis en cause ici).
 
 **Options analysées (2026-08-24, discussion utilisateur) :**
 
@@ -23,7 +23,7 @@ volet Cockpit (`DEFERRED-FEATURES.md` §1.5, hors scope produit, non remis en ca
 - **(c) `diagram-js` bas niveau, éditeur maison.** Écarté — réinvente ce que `bpmn-js` fait déjà.
 - **(d) Flowable Modeler (webapp séparée).** Dernier recours explicitement écarté par
   l'utilisateur — app tierce à opérer/sécuriser par tenant, contradictoire avec la décision déjà
-  actée d'exclure les apps Flowable UI (§35, `DEFERRED-FEATURES.md` §1.5).
+  actée d'exclure les apps Flowable UI (§35, [`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) §1.5).
 
 **Recommandation actée :** option **(b)**. Analyse détaillée :
 [docs/specs/14-edition-bpmn.md](../specs/14-edition-bpmn.md) et

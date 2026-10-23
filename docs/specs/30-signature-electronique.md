@@ -178,7 +178,7 @@ propriété dédiée).
   entrée `ConnectorCatalog`, `AllowedBpmnDelegates`, portail (nouveau type de tâche « signature »),
   détail du dossier (statut), purge, golden OpenAPI, tools MCP (exposition dans le même lot,
   principe P1 de l'[analyse 46](46-exposition-mcp-couche-low-code.md)).
-- **Parallélisme (voir `FILE-ATTENTE.md`, Vague 1) :** disjoint de LC1 (frontend BPMN), D1
+- **Parallélisme (voir [`FILE-ATTENTE.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md), Vague 1) :** disjoint de LC1 (frontend BPMN), D1
   (`FieldDefinition`) et D3a (`HttpRestConnector`). **Attention** : l'entrée `ConnectorCatalog` et
   l'enregistrement des tools MCP sont des coutures partagées avec D3c/D3d et tout lot `LC*` —
   pas de PR concurrente sur le catalogue.

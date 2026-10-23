@@ -33,7 +33,7 @@
 | 16 | Reporting & SLA — **livré** (PR #80) | [16-reporting-sla.md](16-reporting-sla.md) |
 | 17 | Édition du schéma des champs dynamiques (admin `DossierType`) — **livré** (TODO §47, PR #87) | [17-schema-champs-dynamiques.md](17-schema-champs-dynamiques.md) |
 | 18 | Activation du connecteur `http-rest` en rôle SERVICE — **livré** (TODO §48, PR #95) | [18-connecteur-http-rest-service.md](18-connecteur-http-rest-service.md) |
-| 19 | Assainissement de la dette technique (reliquats `DEFERRED-FEATURES.md` §1) — **livré** (TODO §49, PR #97) | [19-assainissement-dette-technique.md](19-assainissement-dette-technique.md) |
+| 19 | Assainissement de la dette technique (reliquats [`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) §1) — **livré** (TODO §49, PR #97) | [19-assainissement-dette-technique.md](19-assainissement-dette-technique.md) |
 | 20 | Nouveaux connecteurs hors V1 (`scheduler`, `smtp`, `document-storage`) — **livré** (TODO §50, PR #99) | [20-connecteurs-hors-v1.md](20-connecteurs-hors-v1.md) |
 | 21 | Corrélation par clé métier pour callbacks asynchrones (`http-rest`) — analyse initiale | [21-correlation-callback-async.md](21-correlation-callback-async.md) |
 | 22 | Formulaires dynamiques rattachés aux tâches BPMN (`userTask`) — analyse initiale | [22-formulaires-dynamiques-taches.md](22-formulaires-dynamiques-taches.md) |

@@ -7,7 +7,7 @@
 
 **Énoncé :** reliquat **S-9** ([docs/analyses/REVUE-ALIGNEMENT-SECURITE.md](../analyses/REVUE-ALIGNEMENT-SECURITE.md)) —
 pas de CSP / HSTS / `X-Frame-Options` applicatifs. Lot **A4**
-([FILE-ATTENTE.md](../../FILE-ATTENTE.md)) : surface exclusive `SecurityConfig.java`.
+([FILE-ATTENTE.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md)) : surface exclusive `SecurityConfig.java`.
 
 **Statut (2026-09-20) : clos.** Phases 1–9 closes. Remédiation A4-HSTS-001
 incluse. **Mergée sur `main`**

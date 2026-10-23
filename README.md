@@ -21,8 +21,8 @@ FlowForge est une plateforme permettant à des organisations de **modéliser, ex
 avec hébergement dédié par client. L'intégrateur conçoit les processus (BPMN/DMN) ; une couche
 **low-code / no-code** (palette métier, éditeurs de formulaires et de templates, assistant IA,
 concepteur de parcours) est **livrée** (Vague D) pour que les utilisateurs avancés côté client
-ajustent formulaires, documents et règles. Suite : [ROADMAP.md](ROADMAP.md) et
-[DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §7.
+ajustent formulaires, documents et règles. Suite : [ROADMAP.md](ROADMAP.md) et les
+[issues GitHub](https://github.com/superjojo79/FlowForge/issues).
 
 L'idée centrale : un dossier métier suit un workflow adapté à son type, déclenché automatiquement depuis des sources externes, avec production de documents et notification des parties prenantes à chaque étape clé.
 
@@ -59,7 +59,7 @@ Entité métier centrale de la plateforme. Chaque dossier est constitué d'un **
 
 ### Moteur de workflow BPMN 2.0
 
-Orchestration des flux métier via **Flowable** — standard industriel ouvert (pas de cockpit Flowable intégré à FlowForge, `DEFERRED-FEATURES.md` §1.5). Les processus se modélisent directement dans FlowForge (éditeur `bpmn-js` intégré à `/admin/bpmn-editor` — création, import, édition d'un diagramme déjà déployé, brouillon persisté) ou avec un outil externe, puis se déploient soit au build/démarrage (scan classpath), soit à chaud depuis l'écran d'administration `/admin/workflow-types` (upload avec prévisualisation) ou directement depuis l'éditeur. Support des gateways, tâches humaines et événements de signal. Le moteur DMN Flowable est activé et un `serviceTask flowable:type="dmn"` peut invoquer une table de décision éditée dans son propre éditeur intégré (`dmn-js`, `/admin/dmn-editor`) — mêmes principes que l'éditeur BPMN (brouillon persisté, déploiement à chaud), grammaire d'expression JUEL restreinte à une allowlist sûre (littéraux/comparaisons, pas d'EL brut) côté serveur.
+Orchestration des flux métier via **Flowable** — standard industriel ouvert (pas de cockpit Flowable intégré à FlowForge, hors V1). Les processus se modélisent directement dans FlowForge (éditeur `bpmn-js` intégré à `/admin/bpmn-editor` — création, import, édition d'un diagramme déjà déployé, brouillon persisté) ou avec un outil externe, puis se déploient soit au build/démarrage (scan classpath), soit à chaud depuis l'écran d'administration `/admin/workflow-types` (upload avec prévisualisation) ou directement depuis l'éditeur. Support des gateways, tâches humaines et événements de signal. Le moteur DMN Flowable est activé et un `serviceTask flowable:type="dmn"` peut invoquer une table de décision éditée dans son propre éditeur intégré (`dmn-js`, `/admin/dmn-editor`) — mêmes principes que l'éditeur BPMN (brouillon persisté, déploiement à chaud), grammaire d'expression JUEL restreinte à une allowlist sûre (littéraux/comparaisons, pas d'EL brut) côté serveur.
 
 ### Système de connecteurs
 
@@ -223,13 +223,13 @@ La documentation d'architecture est disponible dans le répertoire `docs/specs` 
 > serveur MCP, portail externe tokenisé, signature électronique générique avec fournisseur de
 > simulation, reporting/SLA, notifications) et la Vague D (couche low-code, champs enrichis,
 > recherche, intégrations entreprise, promotion, MCP de conception, i18n fr/en) sont livrés sur
-> `main`. Prochains lots : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §7 (pièce jointe e-mail,
-> unicité de champ). Hors périmètre : fournisseur de signature qualifiée réel, export BI JDBC,
+> `main`. Prochains lots : [issues GitHub](https://github.com/superjojo79/FlowForge/issues) de priorité 2
+> (pièce jointe e-mail #183, unicité de champ #184). Hors périmètre : fournisseur de signature qualifiée réel, export BI JDBC,
 > scripts en bac à sable (spike : non nécessaire). Détails : [ROADMAP.md](ROADMAP.md),
 > [docs/decisions/roadmap-2026/AVANCEMENT.md](docs/decisions/roadmap-2026/AVANCEMENT.md).
 >  Activité indépendante complémentaire.
 
 La documentation d'architecture a fait l'objet d'une [revue pré-implémentation](docs/analyses/REVUE-PRE-IMPLEMENTATION.md).
 Les décisions actées et le seul point encore ouvert (§71) sont dans le [registre des décisions](docs/decisions/README.md).
-L'ordre des prochaines features est dans [FILE-ATTENTE.md](FILE-ATTENTE.md)
-(file active = backlog riverain).
+Ce qui reste à faire est suivi dans les [issues GitHub](https://github.com/superjojo79/FlowForge/issues)
+(libellés `priorite-*`, `type-*`, `vague-*`).

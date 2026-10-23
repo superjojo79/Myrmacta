@@ -20,7 +20,7 @@ couvert aujourd'hui, même partiellement.
 - [§39 — Construction de diagrammes BPMN dans FlowForge — écart restant après §35](039-construction-de-diagrammes-bpmn-dans-flowforge-ecart.md) — clos
 - [§47 — Édition du schéma des champs dynamiques — écran admin `DossierType`](047-edition-du-schema-des-champs-dynamiques-ecran.md) — clos
 - [§48 — Activation du connecteur `http-rest` en rôle SERVICE](048-activation-du-connecteur-http-rest-en-role.md) — clos
-- [§49 — Assainissement de la dette technique — reliquats `DEFERRED-FEATURES.md` §1](049-assainissement-de-la-dette-technique-reliquats-deferred.md) — clos
+- [§49 — Assainissement de la dette technique — reliquats [`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) §1](049-assainissement-de-la-dette-technique-reliquats-deferred.md) — clos
 - [§50 — Nouveaux connecteurs hors V1 — `scheduler`, `smtp`, `document-storage`](050-nouveaux-connecteurs-hors-v1-scheduler-smtp-document.md) — clos
 - [§51 — Corrélation par clé métier pour callbacks asynchrones — connecteur `flowable-callback`](051-correlation-par-cle-metier-pour-callbacks-asynchrones.md) — clos
 - [§52 — Formulaires dynamiques rattachés aux tâches BPMN (`userTask`)](052-formulaires-dynamiques-rattaches-aux-taches-bpmn-usertask.md) — clos

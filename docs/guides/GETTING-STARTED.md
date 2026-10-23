@@ -188,7 +188,7 @@ MinIO → http://localhost:9001, RustFS → http://localhost:9001 (ports distinc
 profils tournent en même temps — sinon changer `9000`/`9001` dans `docker-compose.yml` ou `.env`).
 
 Ne jamais coder un client spécifique à MinIO/RustFS/SeaweedFS dans l'application : seul
-`APP_STORAGE_S3_*` doit changer d'un backend à l'autre (voir `DEFERRED-FEATURES.md`, §0 —
+`APP_STORAGE_S3_*` doit changer d'un backend à l'autre (voir [`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md), §0 —
 « pas de MinIO en dur »).
 
 ------
@@ -537,4 +537,4 @@ APP_ENVIRONMENT=local SPRING_PROFILES_ACTIVE=local,embedded-db java -jar target/
 - Déploiement au-delà de ce guide (reverse-proxy, provisioning tenant, comptes Keycloak) : [docs/guides/DEPLOIEMENT.md](DEPLOIEMENT.md)
 - Architecture détaillée : [docs/specs/](../specs/00-index.md)
 - Décisions actées et points ouverts : [registre des décisions](../decisions/README.md)
-- Prochaine feature / backlog : [FILE-ATTENTE.md](../../FILE-ATTENTE.md), [DEFERRED-FEATURES.md](../../DEFERRED-FEATURES.md)
+- Prochaine feature / backlog : [FILE-ATTENTE.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md), [DEFERRED-FEATURES.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md)

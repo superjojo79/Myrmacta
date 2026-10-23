@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
  * {@code frontend/e2e/pilotage.spec.ts} keeps its own {@code A4_CSP} literal in sync with
  * {@link SecurityHeadersCustomizer#CONTENT_SECURITY_POLICY} by convention only (a code comment,
  * "Must stay equal to ..."), because Playwright's E2E environment never exercises the real
- * Spring Security header writer (see {@code A-E2E-CSP-INJECT}, FILE-ATTENTE.md). Nothing
+ * Spring Security header writer (see {@code A-E2E-CSP-INJECT}, https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md). Nothing
  * previously caught the two drifting apart. This test reads the TS literal back and compares it
  * to the Java constant, so a future edit to either side without the other fails CI (TODO §64,
  * revue adversariale post-merge PR #128).

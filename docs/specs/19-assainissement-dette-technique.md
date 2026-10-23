@@ -1,4 +1,4 @@
-# Assainissement de la dette technique — reliquats `DEFERRED-FEATURES.md` §1
+# Assainissement de la dette technique — reliquats [`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) §1
 
 > **Statut : livré** (2026-09-01, TODO §49, cycle `dev-lifecycle` complet Phases 1-9). Les 3
 > décisions listées en « Points ouverts » ont été tranchées via `AskUserQuestion` (options
@@ -15,18 +15,18 @@
 
 ## 1. Constat — vérification item par item contre le code réel
 
-`DEFERRED-FEATURES.md` §1 recense plusieurs lignes « Nice-to-have » jamais reprises depuis leur
+[`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) §1 recense plusieurs lignes « Nice-to-have » jamais reprises depuis leur
 identification initiale. Avant de proposer un périmètre, chaque ligne a été vérifiée contre le code
 actuel plutôt que reprise telle quelle — deux se révèlent déjà closes, non répercutées dans le doc.
 
 ### 1.1 Déjà fait, jamais coché (dérive documentaire)
 
-| Item (`DEFERRED-FEATURES.md` §1) | Constat réel |
+| Item ([`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) §1) | Constat réel |
 |---|---|
-| `CHECK SQL dossier_type_acl.permission ∈ {VIEW,EDIT}` (§1.4) | **Déjà livré.** Migration `014-dossier-type-acl-permission-check.yaml` (`ALTER TABLE dossier_type_acl ADD CONSTRAINT chk_dossier_type_acl_permission CHECK (permission IN ('VIEW','EDIT'))`) — ajoutée hors cycle formel le 2026-08-25 (PR #72, déjà notée dans `FILE-ATTENTE.md` § « Hors file produit », jamais répercutée dans `DEFERRED-FEATURES.md` §1.4). |
+| `CHECK SQL dossier_type_acl.permission ∈ {VIEW,EDIT}` (§1.4) | **Déjà livré.** Migration `014-dossier-type-acl-permission-check.yaml` (`ALTER TABLE dossier_type_acl ADD CONSTRAINT chk_dossier_type_acl_permission CHECK (permission IN ('VIEW','EDIT'))`) — ajoutée hors cycle formel le 2026-08-25 (PR #72, déjà notée dans [`FILE-ATTENTE.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md) § « Hors file produit », jamais répercutée dans [`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) §1.4). |
 | Validation blank `tenantId` (§1.1, moitié de la ligne) | **Déjà livré.** `TenantProperties` (`infrastructure/config/TenantProperties.java`) porte `@Validated` + `@NotBlank String id` — le démarrage échoue déjà si `app.tenant.id` est vide ou blanc, pas seulement `null`. |
 
-Ces deux lignes sont proposées à la suppression de `DEFERRED-FEATURES.md` §1 dans le cadre de cette
+Ces deux lignes sont proposées à la suppression de [`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) §1 dans le cadre de cette
 feature (documentation uniquement, aucun code à écrire pour elles).
 
 ### 1.2 Réels, encore ouverts
@@ -40,7 +40,7 @@ feature (documentation uniquement, aucun code à écrire pour elles).
 
 | Item | Pourquoi hors périmètre |
 |---|---|
-| IT stdout ECS `tenantId` (§1.8) | Déjà qualifié « smoke manuel » dans `DEFERRED-FEATURES.md` lui-même — la config `ecs` (format de log) est livrée (`observabilite`, PR #59) ; il ne reste qu'une vérification humaine ponctuelle en environnement réel, pas du code à écrire. |
+| IT stdout ECS `tenantId` (§1.8) | Déjà qualifié « smoke manuel » dans [`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) lui-même — la config `ecs` (format de log) est livrée (`observabilite`, PR #59) ; il ne reste qu'une vérification humaine ponctuelle en environnement réel, pas du code à écrire. |
 | `Long version` / `Persistable` pour `isNew()` (§1.4) | **Probablement obsolète, à confirmer en design plutôt qu'assumé ici.** `@Version` est déjà présent sur `DossierJpaEntity` (ligne 54) — c'est précisément le mécanisme standard Spring Data JPA qui permet de distinguer une entité nouvelle d'une entité existante quand l'`@Id` est assigné côté application (UUID généré en Java, pas par séquence DB) : `SimpleJpaRepository.save()` route déjà correctement vers `persist`/`merge` sur la seule base de `@Version == null`. Implémenter `Persistable<UUID>` en plus serait redondant, sauf si un besoin précis (ex. `saveAndFlush` sur une entité pré-remplie côté test) le justifie — à vérifier explicitement en phase design plutôt que d'assumer le besoin. |
 
 ---
@@ -56,7 +56,7 @@ feature (documentation uniquement, aucun code à écrire pour elles).
 2. **`dossierId` en MDC sur le job de purge** — porter le contexte MDC par item plutôt que
    seulement par batch, sans faire fuir de dépendance MDC/SLF4J dans le domaine (contrainte
    ArchUnit à respecter, cf. §3).
-3. **Nettoyage documentaire** — retirer de `DEFERRED-FEATURES.md` §1 les deux lignes déjà closes
+3. **Nettoyage documentaire** — retirer de [`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) §1 les deux lignes déjà closes
    (§1.1).
 
 ### Explicitement hors périmètre (proposé)
@@ -105,9 +105,9 @@ Options à trancher en phase design (aucune tranchée ici) :
 2. **D-MDC-DOSSIER-MECHANISM** — option (a), (b) ou (c) ci-dessus (§3).
 3. **D-PERSISTABLE-CONFIRM** — confirmer explicitement en design que `Persistable`/`isNew()` est
    bien redondant avec `@Version` (§1.3) avant de le retirer définitivement de
-   `DEFERRED-FEATURES.md`, plutôt que de l'assumer depuis cette seule analyse.
+   [`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md), plutôt que de l'assumer depuis cette seule analyse.
 4. **Nommage du lot** — proposition `assainissement-dette-technique`, à confirmer en séquençant
-   avec le reste (aucun autre nom réservé dans `FILE-ATTENTE.md`/`DEFERRED-FEATURES.md` pour ce
+   avec le reste (aucun autre nom réservé dans [`FILE-ATTENTE.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md)/[`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) pour ce
    sujet à ce jour).
 5. **Valeur produit limitée, à assumer explicitement** — contrairement aux features précédentes
    (parcours utilisateur ou sécurité), ce lot est de l'hygiène pure, sans impact visible pour un

@@ -7,7 +7,7 @@
 > pour les décisions actées). Document conservé tel quel comme trace de l'analyse initiale.
 > Périmètre précisé par l'utilisateur : les 3 connecteurs candidats du catalogue
 > [06-connecteurs.md](06-connecteurs.md) (`scheduler`, `smtp`, `s3-minio`), avec `s3-minio`
-> **généralisé** en `document-storage` plutôt que couplé à S3 (cohérent avec `DEFERRED-FEATURES.md`
+> **généralisé** en `document-storage` plutôt que couplé à S3 (cohérent avec [`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md)
 > §0 : « Ne pas coupler à MinIO »).
 
 ---
@@ -110,7 +110,7 @@ passer par le modèle de notification.
 
 Le candidat catalogue s'appelait `s3-minio` et ciblait S3 spécifiquement. **Décision actée
 (2026-09-01, demande utilisateur) : le connecteur s'appuie sur le port `DocumentStoragePort` déjà
-existant** (agnostique S3/filesystem, cf. `DEFERRED-FEATURES.md` §0 « Ne pas coupler à MinIO »),
+existant** (agnostique S3/filesystem, cf. [`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) §0 « Ne pas coupler à MinIO »),
 pas sur un client S3 direct — nommé `document-storage`, pas `s3-minio`.
 
 `DocumentStoragePort` expose déjà `store(tenantId, contentType, content) → storageRef`,
@@ -161,7 +161,7 @@ dossier.
 | Rattachement `document-storage` → `Dossier`/`DossierElement` | Cas déjà couvert par les pièces
   jointes existantes ; ce connecteur cible explicitement du contenu hors dossier |
 | Nouveau client S3 direct | Écarté par la généralisation demandée — `DocumentStoragePort` reste
-  la seule abstraction de stockage du dépôt (§0 `DEFERRED-FEATURES.md`) |
+  la seule abstraction de stockage du dépôt (§0 [`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md)) |
 
 ---
 

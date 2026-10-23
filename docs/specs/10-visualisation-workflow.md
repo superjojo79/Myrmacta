@@ -308,7 +308,7 @@ GET /api/workflow-links/{linkId}/dossier
 
 > **Mise à jour — décision DD-REL (implémentation).** `relations` est toujours renvoyé vide
 > (`List.of()`, `WorkflowLinkVisualizationUseCaseImpl.getDossier`). Les relations entre dossiers
-> sont différées (lot suivant, voir [DEFERRED-FEATURES.md §1.4](../../DEFERRED-FEATURES.md)) — le champ
+> sont différées (lot suivant, voir [DEFERRED-FEATURES.md §1.4](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md)) — le champ
 > existe dans le contrat de réponse pour ne pas casser le SPA quand elles seront livrées, mais
 > n'est peuplé par aucun code aujourd'hui.
 >

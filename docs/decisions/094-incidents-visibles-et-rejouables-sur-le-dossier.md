@@ -49,4 +49,4 @@ dossier, et paginés en mémoire ; `truncated` signale la borne. Les jobs resten
 
 **Impacte :** `docs/guides/GUIDE-UTILISATEUR.md` (§0 rôles, §3 « Suivre l'exécution »), `docs/guides/GUIDE-CONCEPTION-BPMN.md` (§6c),
 `docs/specs/15-serveur-mcp.md`, `openapi/openapi.yaml`, `CHANGELOG.md`. Aucune migration, aucune variable
-d'environnement. Suivi : statut de `DEFERRED-FEATURES.md` §7 et de DIFFICULTES §11 une fois la PR #175 mergée.
+d'environnement. Suivi : statut de [`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) §7 et de DIFFICULTES §11 une fois la PR #175 mergée.

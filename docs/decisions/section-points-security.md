@@ -9,7 +9,7 @@ logique métier, exposition, DoS, crypto, config). Les IDs `H*` / `M*` / `L*` so
 
 Les findings S-1…S-5 (2026-08-25) restent **clos**. Reliquats S-6…S-10 (AV, rate-limit JVM,
 CSRF cookie, headers HTTP, `allowUnknownFields`) non rouverts — voir
-[DEFERRED-FEATURES.md](../../DEFERRED-FEATURES.md) §4.
+[DEFERRED-FEATURES.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) §4.
 
 Le cycle `dev-lifecycle` `revue-adversariale-securite` (TODO §57) **a livré** les High et
 Medium (Q1–Q12 = A, stakeholder 2026-09-07). Les Low L1–L7 restent hors correctif (Q12=A).

@@ -3,9 +3,9 @@
 > **Statut : première analyse fonctionnelle, aucune décision technique tranchée.** À affiner en
 > phase `dev-lifecycle` (requirements → design) avant tout code — voir « Points ouverts » en fin de
 > document. Choisi comme prochaine feature le 2026-08-31 : le backlog V1 (analyses 01–17 + tous les
-> points du registre des décisions) est entièrement livré, `FILE-ATTENTE.md` était explicitement vide ; ce sujet a
+> points du registre des décisions) est entièrement livré, [`FILE-ATTENTE.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md) était explicitement vide ; ce sujet a
 > été retenu parmi trois pistes proposées à l'utilisateur (les deux autres — outillage provisioning,
-> sweep tech-debt — restent en réserve, voir `DEFERRED-FEATURES.md` §1/§4).
+> sweep tech-debt — restent en réserve, voir [`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) §1/§4).
 
 ---
 
@@ -64,7 +64,7 @@ coder — voir §3.
    `http-rest` SERVICE, sans exception ni contournement.
 3. Mise à jour de la documentation qui affirme aujourd'hui explicitement « TRIGGER seulement » :
    tableau catalogue de [06-connecteurs.md](06-connecteurs.md), [README.md](../../README.md) (§ Système
-   de connecteurs), et le point du registre des décisions ou de `FILE-ATTENTE.md` qui référence ce skeleton comme
+   de connecteurs), et le point du registre des décisions ou de [`FILE-ATTENTE.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md) qui référence ce skeleton comme
    « hors V1 ».
 4. Sort des deux tests qui verrouillent volontairement l'état « non activé »
    (`connector_doesNotImplementConnectorDefinition`, `connector_isNotASpringBean`) — à réécrire pour
@@ -185,7 +185,7 @@ conséquence ; si au contraire tout reste piloté dynamiquement par `connectorIn
    `flowforge-conventions` § « Workflow de feature » point 6) : tableau catalogue de
    [06-connecteurs.md](06-connecteurs.md) (colonne « V1 livré »), [README.md](../../README.md) (§
    Système de connecteurs), et tout renvoi à ce skeleton comme « hors V1 » dans le registre des décisions (`docs/decisions/`) /
-   `DEFERRED-FEATURES.md` / `FILE-ATTENTE.md`.
-7. **Nommage du lot** — aucun nom n'est encore réservé dans `FILE-ATTENTE.md` /
-   `DEFERRED-FEATURES.md` pour ce sujet ; proposition : `connecteur-http-rest-service` (à confirmer
+   [`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) / [`FILE-ATTENTE.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md).
+7. **Nommage du lot** — aucun nom n'est encore réservé dans [`FILE-ATTENTE.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md) /
+   [`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) pour ce sujet ; proposition : `connecteur-http-rest-service` (à confirmer
    en séquençant avec le reste de la file au moment de la Phase 1 `dev-requirements`).

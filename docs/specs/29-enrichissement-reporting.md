@@ -59,7 +59,7 @@
   2. Job planifié qui pousse un export (réutiliser `document-storage` — port déjà généralisé S3/FS,
      PR #99 — plutôt qu'un connecteur SFTP dédié à inventer).
 - **Contrainte stack figée** : pas de Redis (rate-limit distribué/SSE multi-pod déjà exclus par
-  `FILE-ATTENTE.md` § *Ne pas lancer*) — tout mécanisme de planification doit rester dans le mono-pod
+  [`FILE-ATTENTE.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md) § *Ne pas lancer*) — tout mécanisme de planification doit rester dans le mono-pod
   actuel (`@Scheduled` classique, comme les jobs existants), pas une queue distribuée.
 
 ---

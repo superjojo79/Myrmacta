@@ -24,7 +24,7 @@ diagramme dans FlowForge ».
 
 Le besoin de **construire ou modifier** un diagramme BPMN depuis
 FlowForge reste donc un écart non couvert — distinct du volet Cockpit
-(`DEFERRED-FEATURES.md` §1.5, hors scope produit, non remis en cause ici)
+([`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) §1.5, hors scope produit, non remis en cause ici)
 et distinct du mécanisme de déploiement (§35, réutilisable tel quel : ce
 qui manque est la *saisie* du diagramme, pas sa validation/déploiement).
 
@@ -35,7 +35,7 @@ qui manque est la *saisie* du diagramme, pas sa validation/déploiement).
 | (a) `bpmn-js` Modeler seul | Non | Pas d'édition des attributs `flowable:*` utilisés par les process réels du dépôt |
 | **(b) `bpmn-js` Modeler + `bpmn-js-properties-panel` + provider Flowable custom** | **Oui** | Couvre l'édition BPMN standard **et** les extensions Flowable réellement utilisées ; zéro app tierce ; licences MIT |
 | (c) `diagram-js` bas niveau, éditeur maison | Non | Réinvente ce que `bpmn-js` fait déjà ; effort disproportionné |
-| (d) Flowable Modeler (webapp séparée) | Non — dernier recours écarté | App tierce à opérer/sécuriser par tenant, contradictoire avec l'exclusion déjà actée des apps Flowable UI (§35, `DEFERRED-FEATURES.md` §1.5) |
+| (d) Flowable Modeler (webapp séparée) | Non — dernier recours écarté | App tierce à opérer/sécuriser par tenant, contradictoire avec l'exclusion déjà actée des apps Flowable UI (§35, [`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) §1.5) |
 
 ## Approche retenue
 
@@ -103,7 +103,7 @@ requirements pour le détail) :
 **Non-goals actés :**
 
 - Pas de Flowable Modeler ni de Cockpit (cohérent avec §35 et
-  `DEFERRED-FEATURES.md` §1.5).
+  [`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) §1.5).
 - Pas de simulation/exécution de process depuis l'éditeur.
 - Pas d'**historique** de versions de brouillons (un slot unique par clé
   de process) — le seul vrai versionnement reste celui de Flowable au
@@ -205,4 +205,4 @@ désormais les feuilles de style `bpmn-js` / `diagram-js` / panneau de propriét
 ## Prochaine étape
 
 TODO §39 clos. Prochaine étape sur demande explicite de l'utilisateur :
-`dev-review` (Phase 9), puis PR. Voir `FILE-ATTENTE.md` pour le suivi.
+`dev-review` (Phase 9), puis PR. Voir [`FILE-ATTENTE.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md) pour le suivi.

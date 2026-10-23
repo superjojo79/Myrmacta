@@ -70,10 +70,11 @@ Référence : `docs/specs/11-frontend.md`.
 
 ## Workflow de feature (AI DevKit)
 
-1. Lire `FILE-ATTENTE.md` (prochaine feature) + `DEFERRED-FEATURES.md` + docs `docs/ai/**` de la feature.
-   Si la file décrit des **vagues parallèles**, respecter les surfaces exclusives
-   (un agent n’écrit que dans sa colonne) et ne pas démarrer deux lots qui
-   partagent une couture listée en « interdits de parallélisme ».
+1. Partir de l'issue GitHub de la feature (backlog : issues ouvertes, libellés `priorite-*`, `type-*`,
+   `vague-*` ; la prochaine feature est l'issue ouverte de plus haute priorité, sauf consigne contraire), de la
+   spec du domaine (`docs/specs/`) et des points ouverts liés (`docs/decisions/`). Deux agents en parallèle ne
+   démarrent pas deux lots qui écrivent dans les mêmes fichiers ; une issue `type-arbitrage` se tranche avant
+   d'être implémentée. La PR qui livre la feature ferme son issue (`Closes #N`).
 2. Suivre `dev-lifecycle` (requirements → design → planning → implementation → testing → review → PR).
 3. Implémentation en **TDD** (`tdd` + `verify`) : test qui échoue → code → `./mvnw verify` (ou scope de tests ciblé puis verify avant claim).
 4. Pour le FE : **Vitest et Playwright sont tous les deux obligatoires** dès qu’une
@@ -97,16 +98,14 @@ Référence : `docs/specs/11-frontend.md`.
      pour le point 20 (workflow-engine) — les points 21/22/29 (rétention, purge, observabilité) ne
      l'ont pas fait et ont laissé `docs/guides/GUIDE-UTILISATEUR.md` en retard sur l'UI réelle, ne pas répéter
      cet oubli.
-7. **`CHANGELOG.md` à jour avant d'ouvrir ou de mettre à jour une pull request** — toute PR qui
-   touche du code, de la configuration ou de la documentation utilisateur/admin ajoute (ou met à
-   jour si la PR est déjà ouverte) **une entrée** dans la section `[Non publié]` :
-   - format court : `- **PR #<numéro>** — résumé en une phrase, détail optionnel en une seconde` ;
-   - catégorie parmi Ajouté / Modifié / Corrigé / Sécurité / Documentation / Déprécié / Supprimé ;
-   - **synthétique** — 2 à 5 lignes maximum, lisible sans contexte projet ; le détail technique
-     (décisions, alternatives écartées, bugs trouvés) reste dans le registre `docs/decisions/`, pas
-     dans `CHANGELOG.md` ;
-   - une entrée par PR, pas par commit — regrouper les commits successifs d'une même PR sous sa
-     ligne existante plutôt que d'en ajouter une nouvelle à chaque push.
+7. **Titre de PR = entrée du `CHANGELOG.md`** (TODO §95) — on n'écrit plus d'entrée à la main : à chaque
+   release, `scripts/changelog-release.sh <version>` génère la section depuis les PR mergées (git-cliff,
+   `cliff.toml`). Le titre de la PR doit donc :
+   - suivre Conventional Commits, qui choisit la catégorie (`feat:` Ajouté, `fix:` Corrigé, `fix(security):`
+     Sécurité, `docs:` Documentation, autres types : Modifié) ;
+   - se lire seul, en une phrase, sans contexte projet ; le détail technique (décisions, alternatives,
+     bugs trouvés en revue) va dans le registre `docs/decisions/`, pas dans le titre ;
+   - aperçu des PR pas encore publiées : `scripts/changelog-release.sh --preview`.
 8. **Fin de cycle : vider `docs/ai/`** (TODO §95) — `docs/ai/` est la mémoire de travail de la feature
    **en cours**, pas une documentation de référence. Dans la PR qui livre la feature :
    - ce qui reste vrai du système remonte dans la spec du domaine (`docs/specs/NN-*.md`, section
@@ -139,12 +138,12 @@ npx ai-devkit@latest skill list              # skills installés
 | Vision / stack | `README.md` |
 | Décisions & points ouverts (« TODO §N ») | `docs/decisions/NNN-*.md`, index `docs/decisions/README.md` |
 | Revues (pré-code / post-implémentation) | `docs/analyses/REVUE-PRE-IMPLEMENTATION.md`, `docs/analyses/REVUE-ALIGNEMENT-SECURITE.md` |
-| Prochaine feature (file d’attente) | `FILE-ATTENTE.md` |
-| Backlog différé | `DEFERRED-FEATURES.md` |
+| Vision produit | `ROADMAP.md` (une page) |
+| Backlog, prochaine feature, sujets hors V1 | issues GitHub (libellés `priorite-*`, `type-*`, `vague-*`) |
 | Architecture détaillée | `docs/specs/*.md` |
 | Identifiants de décision cités par le code | `docs/decisions/identifiants.md` |
 | Artefacts lifecycle de la feature **en cours** (vidés à la livraison) | `docs/ai/{requirements,design,planning,implementation,testing,...}/` |
-| Historique synthétique par PR | `CHANGELOG.md` |
+| Historique synthétique par PR | `CHANGELOG.md` (généré à chaque release, `cliff.toml`) |
 
 ## Anti-patterns à refuser
 
@@ -161,5 +160,6 @@ npx ai-devkit@latest skill list              # skills installés
   « Workflow de feature » point 6).
 - Laisser les documents `docs/ai/` d'une feature livrée dans la branche principale, ou citer dans le code un
   identifiant de décision absent de `docs/decisions/identifiants.md` (voir § « Workflow de feature » point 8).
-- Ouvrir ou merger une PR sans entrée `CHANGELOG.md` correspondante, ou y écrire un pavé
-  technique au lieu d'un résumé synthétique (voir § « Workflow de feature » point 7).
+- Écrire une entrée `CHANGELOG.md` à la main dans une PR, ou donner à une PR un titre hors Conventional
+  Commits ou illisible sans contexte : c'est lui qui devient l'entrée (voir § « Workflow de feature » point 7).
+- Créer un nouveau fichier de suivi (file d'attente, backlog) : le backlog vit dans les issues GitHub.

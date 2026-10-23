@@ -1,4 +1,4 @@
-# §49 — Assainissement de la dette technique — reliquats `DEFERRED-FEATURES.md` §1
+# §49 — Assainissement de la dette technique — reliquats [`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) §1
 
 > **Statut :** clos · **Section :** [Points ouverts › Compléments de conception](section-points-complements-de-conception.md) · ancien `TODO.md` §49 · [registre](README.md)
 
@@ -47,6 +47,6 @@ en régression, zéro fichier `frontend/**` touché.
 
 **Impacte :** `WorkflowTypeConfig`, `TriggerOutboxPayload`, `WorkflowStartedEvent`, `DossierType`,
 `ProcessPurgeOutboxUseCase`, `ProcessPurgeOutboxUseCaseImpl`, `PurgeOutboxJob`,
-`DEFERRED-FEATURES.md`, `CHANGELOG.md`.
+[`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md), `CHANGELOG.md`.
 
 **Détail :** [19-assainissement-dette-technique.md](../specs/19-assainissement-dette-technique.md).

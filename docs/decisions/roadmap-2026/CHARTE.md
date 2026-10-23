@@ -7,7 +7,7 @@
 ## 1. Mandat
 
 L'utilisateur délègue à l'agent les **décisions ouvertes** des lots de la roadmap (`ROADMAP.md`
-Catégorie 7, `FILE-ATTENTE.md` § *File d'attente — Vague D*). Cette délégation vaut pour les décisions
+Catégorie 7, [`FILE-ATTENTE.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md) § *File d'attente — Vague D*). Cette délégation vaut pour les décisions
 **ouvertes** uniquement, et elle est **tracée** (§4) : elle n'autorise jamais une décision silencieuse
 (`flowforge-conventions` § Workflow, point 5). Elle vaut aussi approbation explicite de chaque phase
 (`dev-lifecycle` § *Plan Before Execution*) : ne pas s'arrêter pour demander un feu vert de phase.
@@ -15,7 +15,7 @@ Catégorie 7, `FILE-ATTENTE.md` § *File d'attente — Vague D*). Cette déléga
 ## 2. Périmètre et ordre
 
 Un lot à la fois (une seule branche, pas de collision de coutures). Ordre (respecte les contraintes de
-`FILE-ATTENTE.md` : LC2 avant D3b et champs calculés ; D1 avant D2, LC4a, D4 ; D6 avant LC3 et D4 ;
+[`FILE-ATTENTE.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md) : LC2 avant D3b et champs calculés ; D1 avant D2, LC4a, D4 ; D6 avant LC3 et D4 ;
 LC1 et LC2 avant LC5) :
 
 | # | Lot | Remarque |
@@ -46,7 +46,7 @@ traité, raison ».
 
 Suivre `dev-lifecycle` (Phases 1 à 9) puis **Phase 10 — revue adversariale**. Nommage des docs :
 `docs/ai/{requirements,design,planning,implementation,testing}/AAAA-MM-JJ-feature-<lot>.md`, point
-`TODO.md` numéroté (suite du §73), statuts `ROADMAP.md` / `FILE-ATTENTE.md` mis à jour.
+`TODO.md` numéroté (suite du §73), statuts `ROADMAP.md` / [`FILE-ATTENTE.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md) mis à jour.
 
 1. **Phase 1–2** requirements + revue : périmètre, décisions ouvertes listées et **tranchées** (§4).
 2. **Phase 3** design (vérifier les faits contre le code et les sources des bibliothèques — précédent :
@@ -115,6 +115,6 @@ interruption : relire AVANCEMENT puis `check-status.sh <feature>` et continuer a
 
 Tous les lots du §2 sont `Livré`, `Bloqué` (motif et décision requise) ou `Non traité` (motif) ; AUCUN
 `À faire` / `En cours`. Sur le HEAD final, sorties **fraîches** de `./mvnw verify` et de
-`cd frontend && npm run test:all`, 0 échec. `ROADMAP.md`, `FILE-ATTENTE.md`, `README.md` (Statut),
+`cd frontend && npm run test:all`, 0 échec. `ROADMAP.md`, [`FILE-ATTENTE.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md), `README.md` (Statut),
 `CHANGELOG.md` alignés. `DECISIONS.md` sans ligne incomplète, décisions ⚠ listées en tête pour la revue.
 Tout est poussé sur la branche de développement.

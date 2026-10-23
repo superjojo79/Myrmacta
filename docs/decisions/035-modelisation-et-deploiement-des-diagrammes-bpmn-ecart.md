@@ -9,7 +9,7 @@ cockpit Flowable »). En pratique, `pom.xml` ne dépend que de `flowable-spring-
 d'exécution) — aucune des applications web Flowable UI (Modeler, Cockpit, Task, IDM) n'est intégrée, et
 `application.yml` exclut explicitement leurs autoconfigurations (REST API, sécurité, app engine).
 
-Le volet **Cockpit** a déjà une décision tracée : `DEFERRED-FEATURES.md` le classe « Hors scope
+Le volet **Cockpit** a déjà une décision tracée : [`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) le classe « Hors scope
 produit », remplacé par le viewer lecture seule Vue/`bpmn-js` (`BpmnViewer.vue`, déjà livré). Le volet
 **Modeler / déploiement** n'a en revanche **aucune décision équivalente** — c'est un écart de fait, pas
 un choix assumé. Le déploiement réel des diagrammes se fait par scan classpath au démarrage

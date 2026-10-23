@@ -50,6 +50,13 @@ fixe**, sans référence du dossier, nom, plaque ni motif (voir point 4).
 **Évolution proposée.** Ajouter à la brique « Notifier » un paramètre de pièce jointe, par exemple
 `notificationAttachment="variable:generatedDocumentId"`.
 
+**Levé (issue #183, TODO §96).** La brique « Notifier » accepte
+`flowable:notificationAttachment="variable:generatedDocumentId"` (ou `dossierField:<champ>`) et un nom de
+fichier facultatif `flowable:notificationAttachmentName`. Le document doit être un PDF **produit et joint au
+dossier courant** (brique « Joindre le document » en amont). L'exemple envoie désormais le PDF avec l'e-mail
+de décision ; la tâche de transmission manuelle est supprimée. Le connecteur `smtp` reste sans pièce jointe
+(D-NOTIF-ATTACH-SMTP-CONNECTOR).
+
 ## 3. Le destinataire de l'e-mail ne peut pas venir du dossier
 
 > **Levé le 2026-10-16 (PR #174, TODO §93).** `flowable:notificationTo="dossierField:email"` lit l'adresse dans le

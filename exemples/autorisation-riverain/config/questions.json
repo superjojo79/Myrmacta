@@ -70,31 +70,5 @@
         "helpText": "Le délai d'instruction de 30 jours repart à la validation de cette tâche."
       }
     ]
-  },
-  {
-    "schemaKey": "transmission-decision-riverain",
-    "label": "Transmission du document de décision au demandeur",
-    "fields": [
-      {
-        "name": "modeTransmission",
-        "label": "Mode de transmission",
-        "type": "SELECT",
-        "required": true,
-        "options": [
-          "EMAIL_AVEC_PIECE_JOINTE",
-          "COURRIER",
-          "REMISE_EN_MAIN_PROPRE"
-        ],
-        "width": "HALF",
-        "helpText": "Télécharger le PDF « Décision » depuis les éléments du dossier et l'envoyer au demandeur : FlowForge ne joint pas encore de fichier à ses e-mails."
-      },
-      {
-        "name": "dateTransmission",
-        "label": "Date de transmission",
-        "type": "DATE",
-        "required": true,
-        "width": "HALF"
-      }
-    ]
   }
 ]

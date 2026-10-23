@@ -27,8 +27,9 @@ ROW = {"tacite": 60, "autorisee": 170, "main": 290, "refusee": 410, "infos": 530
 SIZE = {"task": (120, 80), "gateway": (50, 50), "event": (36, 36)}
 
 SIGNATURE = "\n\nCordialement,\nLe service des autorisations riverains"
-MAIL_FIN = ("\n\nLe document de décision, qui reprend l'ensemble des informations de votre demande, "
-            "vous est transmis séparément par nos services." + SIGNATURE)
+MAIL_FIN = ("\n\nVous trouverez en pièce jointe le document de décision, qui reprend l'ensemble des "
+            "informations de votre demande." + SIGNATURE)
+PIECE_JOINTE = "decision-autorisation-riverain.pdf"
 
 
 class Model:
@@ -56,13 +57,16 @@ class Model:
     def expression(self, node_id, name, col, row, formula, result):
         self.service(node_id, name, col, row, "businessExpressionTask", formula=formula, formulaResult=result)
 
-    def email(self, node_id, name, col, row, subject, body):
+    def email(self, node_id, name, col, row, subject, body, decision=False):
         # Destinataire lu dans le dossier (champ obligatoire « email », relu au moment de l'envoi — TODO §93).
         # Asynchrone : une adresse mal saisie crée un incident rejouable au lieu de bloquer l'agent qui
         # complète la tâche précédente (docs/guides/GUIDE-CONCEPTION-BPMN.md §6c).
+        # E-mails de décision : le PDF, généré puis joint au dossier en amont, part en pièce jointe (issue #183).
+        attachment = ({"notificationAttachment": "variable:generatedDocumentId",
+                       "notificationAttachmentName": PIECE_JOINTE} if decision else {})
         self.service(node_id, name, col, row, "notificationDispatchTask", **{"async": "true"},
                      notificationChannels="EMAIL", notificationTo="dossierField:email",
-                     notificationSubject=subject, notificationBody=body)
+                     notificationSubject=subject, notificationBody=body, **attachment)
 
     def timer(self, node_id, name, host, top):
         self.node(node_id, "boundaryEvent", name, None, None,
@@ -162,26 +166,22 @@ def build(portail):
            {"default": "flow_aiguillageMail_mailRefus"})
     m.email("mailAutorisation", "E-mail : autorisation accordée", k + 11, "autorisee",
             "Votre demande d'autorisation riverain est accordée",
-            "Bonjour,\n\nVotre demande d'autorisation riverain est accordée." + MAIL_FIN)
+            "Bonjour,\n\nVotre demande d'autorisation riverain est accordée." + MAIL_FIN, decision=True)
     m.email("mailRefus", "E-mail : autorisation refusée", k + 11, "refusee",
             "Votre demande d'autorisation riverain est refusée",
             "Bonjour,\n\nVotre demande d'autorisation riverain est refusée. "
-            "Les motifs figurent dans le document de décision." + MAIL_FIN)
+            "Les motifs figurent dans le document de décision." + MAIL_FIN, decision=True)
     m.node("mailEnvoye", "exclusiveGateway", "", k + 12, "main")
-    m.node("transmission", "userTask", "Transmettre le document de décision", k + 13, "main",
-           {"flowable:formKey": "user-question:transmission-decision-riverain"},
-           body="<documentation>Télécharger le PDF de décision depuis les éléments du dossier et l'envoyer au "
-                "demandeur (FlowForge ne joint pas de fichier à ses e-mails).</documentation>")
 
     # ------------------------------------------------------------ 5. Clôture
-    m.node("aiguillageStatut", "exclusiveGateway", "Issue ?", k + 14, "main",
+    m.node("aiguillageStatut", "exclusiveGateway", "Issue ?", k + 13, "main",
            {"default": "flow_aiguillageStatut_statutRefusee"})
-    m.wf_status("statutAutorisee", "Statut : autorisée", k + 15, "autorisee", "AUTORISEE")
-    m.wf_status("statutTacite", "Statut : autorisée tacitement", k + 15, "tacite", "AUTORISEE_TACITEMENT")
-    m.wf_status("statutRefusee", "Statut : refusée", k + 15, "refusee", "REFUSEE")
-    m.node("statutPose", "exclusiveGateway", "", k + 16, "main")
-    m.dossier_status("clotureDossier", "Clôturer le dossier", k + 17, "main", "CLOTURE")
-    m.node("fin", "endEvent", "Demande traitée", k + 18, "main")
+    m.wf_status("statutAutorisee", "Statut : autorisée", k + 14, "autorisee", "AUTORISEE")
+    m.wf_status("statutTacite", "Statut : autorisée tacitement", k + 14, "tacite", "AUTORISEE_TACITEMENT")
+    m.wf_status("statutRefusee", "Statut : refusée", k + 14, "refusee", "REFUSEE")
+    m.node("statutPose", "exclusiveGateway", "", k + 15, "main")
+    m.dossier_status("clotureDossier", "Clôturer le dossier", k + 16, "main", "CLOTURE")
+    m.node("fin", "endEvent", "Demande traitée", k + 17, "main")
 
     # ------------------------------------------------------------ Flux
     for a, b in [("debut", "statutEnInstruction"), ("statutEnInstruction", "instruction"), ("instruction", "aiguillageDecision"),
@@ -205,7 +205,7 @@ def build(portail):
            flow_id="flow_aiguillageMail_mailAutorisation_tacite")
     m.flow("aiguillageMail", "mailRefus")
     for a, b in [("mailAutorisation", "mailEnvoye"), ("mailRefus", "mailEnvoye"),
-                 ("mailEnvoye", "transmission"), ("transmission", "aiguillageStatut")]:
+                 ("mailEnvoye", "aiguillageStatut")]:
         m.flow(a, b)
     m.flow("aiguillageStatut", "statutAutorisee", "${issueDecision == 'AUTORISEE'}")
     m.flow("aiguillageStatut", "statutTacite", "${issueDecision == 'AUTORISEE_TACITEMENT'}")

@@ -33,10 +33,9 @@
     <serviceTask id="genererDecision" name="Générer le document de décision" flowable:delegateExpression="${documentGenerationTask}" flowable:documentType="decision-autorisation-riverain"/>
     <serviceTask id="joindreDecision" name="Joindre le document au dossier" flowable:delegateExpression="${attachGeneratedDocumentTask}"/>
     <exclusiveGateway id="aiguillageMail" name="Accordée ?" default="flow_aiguillageMail_mailRefus"/>
-    <serviceTask id="mailAutorisation" name="E-mail : autorisation accordée" flowable:delegateExpression="${notificationDispatchTask}" flowable:async="true" flowable:notificationChannels="EMAIL" flowable:notificationTo="dossierField:email" flowable:notificationSubject="Votre demande d'autorisation riverain est accordée" flowable:notificationBody="Bonjour,&#10;&#10;Votre demande d'autorisation riverain est accordée.&#10;&#10;Le document de décision, qui reprend l'ensemble des informations de votre demande, vous est transmis séparément par nos services.&#10;&#10;Cordialement,&#10;Le service des autorisations riverains"/>
-    <serviceTask id="mailRefus" name="E-mail : autorisation refusée" flowable:delegateExpression="${notificationDispatchTask}" flowable:async="true" flowable:notificationChannels="EMAIL" flowable:notificationTo="dossierField:email" flowable:notificationSubject="Votre demande d'autorisation riverain est refusée" flowable:notificationBody="Bonjour,&#10;&#10;Votre demande d'autorisation riverain est refusée. Les motifs figurent dans le document de décision.&#10;&#10;Le document de décision, qui reprend l'ensemble des informations de votre demande, vous est transmis séparément par nos services.&#10;&#10;Cordialement,&#10;Le service des autorisations riverains"/>
+    <serviceTask id="mailAutorisation" name="E-mail : autorisation accordée" flowable:delegateExpression="${notificationDispatchTask}" flowable:async="true" flowable:notificationChannels="EMAIL" flowable:notificationTo="dossierField:email" flowable:notificationSubject="Votre demande d'autorisation riverain est accordée" flowable:notificationBody="Bonjour,&#10;&#10;Votre demande d'autorisation riverain est accordée.&#10;&#10;Vous trouverez en pièce jointe le document de décision, qui reprend l'ensemble des informations de votre demande.&#10;&#10;Cordialement,&#10;Le service des autorisations riverains" flowable:notificationAttachment="variable:generatedDocumentId" flowable:notificationAttachmentName="decision-autorisation-riverain.pdf"/>
+    <serviceTask id="mailRefus" name="E-mail : autorisation refusée" flowable:delegateExpression="${notificationDispatchTask}" flowable:async="true" flowable:notificationChannels="EMAIL" flowable:notificationTo="dossierField:email" flowable:notificationSubject="Votre demande d'autorisation riverain est refusée" flowable:notificationBody="Bonjour,&#10;&#10;Votre demande d'autorisation riverain est refusée. Les motifs figurent dans le document de décision.&#10;&#10;Vous trouverez en pièce jointe le document de décision, qui reprend l'ensemble des informations de votre demande.&#10;&#10;Cordialement,&#10;Le service des autorisations riverains" flowable:notificationAttachment="variable:generatedDocumentId" flowable:notificationAttachmentName="decision-autorisation-riverain.pdf"/>
     <exclusiveGateway id="mailEnvoye"/>
-    <userTask id="transmission" name="Transmettre le document de décision" flowable:formKey="user-question:transmission-decision-riverain"><documentation>Télécharger le PDF de décision depuis les éléments du dossier et l'envoyer au demandeur (FlowForge ne joint pas de fichier à ses e-mails).</documentation></userTask>
     <exclusiveGateway id="aiguillageStatut" name="Issue ?" default="flow_aiguillageStatut_statutRefusee"/>
     <serviceTask id="statutAutorisee" name="Statut : autorisée" flowable:delegateExpression="${updateWorkflowLinkStatusTask}" flowable:targetWorkflowStatus="AUTORISEE"/>
     <serviceTask id="statutTacite" name="Statut : autorisée tacitement" flowable:delegateExpression="${updateWorkflowLinkStatusTask}" flowable:targetWorkflowStatus="AUTORISEE_TACITEMENT"/>
@@ -75,8 +74,7 @@
     <sequenceFlow id="flow_aiguillageMail_mailRefus" sourceRef="aiguillageMail" targetRef="mailRefus"/>
     <sequenceFlow id="flow_mailAutorisation_mailEnvoye" sourceRef="mailAutorisation" targetRef="mailEnvoye"/>
     <sequenceFlow id="flow_mailRefus_mailEnvoye" sourceRef="mailRefus" targetRef="mailEnvoye"/>
-    <sequenceFlow id="flow_mailEnvoye_transmission" sourceRef="mailEnvoye" targetRef="transmission"/>
-    <sequenceFlow id="flow_transmission_aiguillageStatut" sourceRef="transmission" targetRef="aiguillageStatut"/>
+    <sequenceFlow id="flow_mailEnvoye_aiguillageStatut" sourceRef="mailEnvoye" targetRef="aiguillageStatut"/>
     <sequenceFlow id="flow_aiguillageStatut_statutAutorisee" sourceRef="aiguillageStatut" targetRef="statutAutorisee"><conditionExpression xsi:type="tFormalExpression">${issueDecision == 'AUTORISEE'}</conditionExpression></sequenceFlow>
     <sequenceFlow id="flow_aiguillageStatut_statutTacite" sourceRef="aiguillageStatut" targetRef="statutTacite"><conditionExpression xsi:type="tFormalExpression">${issueDecision == 'AUTORISEE_TACITEMENT'}</conditionExpression></sequenceFlow>
     <sequenceFlow id="flow_aiguillageStatut_statutRefusee" sourceRef="aiguillageStatut" targetRef="statutRefusee"/>
@@ -116,14 +114,13 @@
       <bpmndi:BPMNShape id="shape_mailAutorisation" bpmnElement="mailAutorisation"><omgdc:Bounds x="3480" y="170" width="120" height="80"/></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="shape_mailRefus" bpmnElement="mailRefus"><omgdc:Bounds x="3480" y="410" width="120" height="80"/></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="shape_mailEnvoye" bpmnElement="mailEnvoye"><omgdc:Bounds x="3685" y="305" width="50" height="50"/></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="shape_transmission" bpmnElement="transmission"><omgdc:Bounds x="3820" y="290" width="120" height="80"/></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="shape_aiguillageStatut" bpmnElement="aiguillageStatut"><omgdc:Bounds x="4025" y="305" width="50" height="50"/></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="shape_statutAutorisee" bpmnElement="statutAutorisee"><omgdc:Bounds x="4160" y="170" width="120" height="80"/></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="shape_statutTacite" bpmnElement="statutTacite"><omgdc:Bounds x="4160" y="60" width="120" height="80"/></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="shape_statutRefusee" bpmnElement="statutRefusee"><omgdc:Bounds x="4160" y="410" width="120" height="80"/></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="shape_statutPose" bpmnElement="statutPose"><omgdc:Bounds x="4365" y="305" width="50" height="50"/></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="shape_clotureDossier" bpmnElement="clotureDossier"><omgdc:Bounds x="4500" y="290" width="120" height="80"/></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="shape_fin" bpmnElement="fin"><omgdc:Bounds x="4712" y="312" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_aiguillageStatut" bpmnElement="aiguillageStatut"><omgdc:Bounds x="3855" y="305" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_statutAutorisee" bpmnElement="statutAutorisee"><omgdc:Bounds x="3990" y="170" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_statutTacite" bpmnElement="statutTacite"><omgdc:Bounds x="3990" y="60" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_statutRefusee" bpmnElement="statutRefusee"><omgdc:Bounds x="3990" y="410" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_statutPose" bpmnElement="statutPose"><omgdc:Bounds x="4195" y="305" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_clotureDossier" bpmnElement="clotureDossier"><omgdc:Bounds x="4330" y="290" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_fin" bpmnElement="fin"><omgdc:Bounds x="4542" y="312" width="36" height="36"/></bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="edge_flow_dossierSuspendu_complement" bpmnElement="flow_dossierSuspendu_complement"><omgdi:waypoint x="1220" y="570"/><omgdi:waypoint x="1270" y="570"/></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="edge_flow_debut_statutEnInstruction" bpmnElement="flow_debut_statutEnInstruction"><omgdi:waypoint x="328" y="330"/><omgdi:waypoint x="420" y="330"/></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="edge_flow_statutEnInstruction_instruction" bpmnElement="flow_statutEnInstruction_instruction"><omgdi:waypoint x="540" y="330"/><omgdi:waypoint x="590" y="330"/></bpmndi:BPMNEdge>
@@ -155,16 +152,15 @@
       <bpmndi:BPMNEdge id="edge_flow_aiguillageMail_mailRefus" bpmnElement="flow_aiguillageMail_mailRefus"><omgdi:waypoint x="3370" y="355"/><omgdi:waypoint x="3370" y="450"/><omgdi:waypoint x="3480" y="450"/></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="edge_flow_mailAutorisation_mailEnvoye" bpmnElement="flow_mailAutorisation_mailEnvoye"><omgdi:waypoint x="3600" y="210"/><omgdi:waypoint x="3710" y="210"/><omgdi:waypoint x="3710" y="305"/></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="edge_flow_mailRefus_mailEnvoye" bpmnElement="flow_mailRefus_mailEnvoye"><omgdi:waypoint x="3600" y="450"/><omgdi:waypoint x="3710" y="450"/><omgdi:waypoint x="3710" y="355"/></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="edge_flow_mailEnvoye_transmission" bpmnElement="flow_mailEnvoye_transmission"><omgdi:waypoint x="3735" y="330"/><omgdi:waypoint x="3820" y="330"/></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="edge_flow_transmission_aiguillageStatut" bpmnElement="flow_transmission_aiguillageStatut"><omgdi:waypoint x="3940" y="330"/><omgdi:waypoint x="4025" y="330"/></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="edge_flow_aiguillageStatut_statutAutorisee" bpmnElement="flow_aiguillageStatut_statutAutorisee"><omgdi:waypoint x="4050" y="305"/><omgdi:waypoint x="4050" y="210"/><omgdi:waypoint x="4160" y="210"/></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="edge_flow_aiguillageStatut_statutTacite" bpmnElement="flow_aiguillageStatut_statutTacite"><omgdi:waypoint x="4050" y="305"/><omgdi:waypoint x="4050" y="100"/><omgdi:waypoint x="4160" y="100"/></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="edge_flow_aiguillageStatut_statutRefusee" bpmnElement="flow_aiguillageStatut_statutRefusee"><omgdi:waypoint x="4050" y="355"/><omgdi:waypoint x="4050" y="450"/><omgdi:waypoint x="4160" y="450"/></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="edge_flow_statutAutorisee_statutPose" bpmnElement="flow_statutAutorisee_statutPose"><omgdi:waypoint x="4280" y="210"/><omgdi:waypoint x="4390" y="210"/><omgdi:waypoint x="4390" y="305"/></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="edge_flow_statutTacite_statutPose" bpmnElement="flow_statutTacite_statutPose"><omgdi:waypoint x="4280" y="100"/><omgdi:waypoint x="4390" y="100"/><omgdi:waypoint x="4390" y="305"/></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="edge_flow_statutRefusee_statutPose" bpmnElement="flow_statutRefusee_statutPose"><omgdi:waypoint x="4280" y="450"/><omgdi:waypoint x="4390" y="450"/><omgdi:waypoint x="4390" y="355"/></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="edge_flow_statutPose_clotureDossier" bpmnElement="flow_statutPose_clotureDossier"><omgdi:waypoint x="4415" y="330"/><omgdi:waypoint x="4500" y="330"/></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="edge_flow_clotureDossier_fin" bpmnElement="flow_clotureDossier_fin"><omgdi:waypoint x="4620" y="330"/><omgdi:waypoint x="4712" y="330"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_mailEnvoye_aiguillageStatut" bpmnElement="flow_mailEnvoye_aiguillageStatut"><omgdi:waypoint x="3735" y="330"/><omgdi:waypoint x="3855" y="330"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_aiguillageStatut_statutAutorisee" bpmnElement="flow_aiguillageStatut_statutAutorisee"><omgdi:waypoint x="3880" y="305"/><omgdi:waypoint x="3880" y="210"/><omgdi:waypoint x="3990" y="210"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_aiguillageStatut_statutTacite" bpmnElement="flow_aiguillageStatut_statutTacite"><omgdi:waypoint x="3880" y="305"/><omgdi:waypoint x="3880" y="100"/><omgdi:waypoint x="3990" y="100"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_aiguillageStatut_statutRefusee" bpmnElement="flow_aiguillageStatut_statutRefusee"><omgdi:waypoint x="3880" y="355"/><omgdi:waypoint x="3880" y="450"/><omgdi:waypoint x="3990" y="450"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_statutAutorisee_statutPose" bpmnElement="flow_statutAutorisee_statutPose"><omgdi:waypoint x="4110" y="210"/><omgdi:waypoint x="4220" y="210"/><omgdi:waypoint x="4220" y="305"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_statutTacite_statutPose" bpmnElement="flow_statutTacite_statutPose"><omgdi:waypoint x="4110" y="100"/><omgdi:waypoint x="4220" y="100"/><omgdi:waypoint x="4220" y="305"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_statutRefusee_statutPose" bpmnElement="flow_statutRefusee_statutPose"><omgdi:waypoint x="4110" y="450"/><omgdi:waypoint x="4220" y="450"/><omgdi:waypoint x="4220" y="355"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_statutPose_clotureDossier" bpmnElement="flow_statutPose_clotureDossier"><omgdi:waypoint x="4245" y="330"/><omgdi:waypoint x="4330" y="330"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_clotureDossier_fin" bpmnElement="flow_clotureDossier_fin"><omgdi:waypoint x="4450" y="330"/><omgdi:waypoint x="4542" y="330"/></bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
 </definitions>

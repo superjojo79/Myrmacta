@@ -127,7 +127,12 @@ cd frontend && npm run test:all              # Vitest + Playwright
 npx playwright install --with-deps chromium  # navigateurs Playwright si manquants
 npx ai-devkit@latest skill list              # skills installés
 ./scripts/vendor-ai-devkit-skills.sh         # recopier les skills en fichiers portables
+scripts/check-docs.sh                        # cohérence de la doc (job CI « docs »)
+scripts/check-docs.sh --write-decisions-index  # régénérer docs/decisions/README.md
+scripts/changelog-release.sh --preview       # entrées CHANGELOG des PR pas encore publiées
 ```
+
+> Point d'entrée court pour tout agent : `AGENTS.md` (lu aussi par Claude Code via `CLAUDE.md`).
 
 > Le wrapper Maven du dépôt peut imposer `-Dmaven.compiler.release=21` selon l’environnement ; respecter le `pom.xml` / CI.
 

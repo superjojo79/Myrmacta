@@ -34,9 +34,10 @@ ID_INDEX = "docs/decisions/identifiants.md"
 
 
 def files(root, predicate):
-    """Fichiers suivis par git (ou parcours du disque hors dépôt git, pour l'auto-test)."""
+    """Fichiers suivis ou non suivis mais non ignorés par git (ou parcours du disque hors dépôt git, pour l'auto-test)."""
     try:
-        out = subprocess.run(["git", "-C", root, "ls-files", "-z"], capture_output=True, check=True).stdout
+        out = subprocess.run(["git", "-C", root, "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+                             capture_output=True, check=True).stdout
         paths = [p.decode() for p in out.split(b"\0") if p]
         if not paths:
             raise subprocess.CalledProcessError(1, "git")

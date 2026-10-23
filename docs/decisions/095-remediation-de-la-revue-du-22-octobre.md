@@ -124,3 +124,8 @@ installation), une entrée par PR tirée de son titre (commit « Merge pull requ
 catégorie venant du type Conventional Commits. Les entrées existantes, tenues à la main jusqu'à la PR #182, sont
 conservées sous « Historique tenu à la main ». Option écartée : release-please, qui impose un flux de PR de release
 et des versions sémantiques automatiques, disproportionné pour un projet sans release publiée. Réversible.
+
+**D-REMED-AGENTS** — `AGENTS.md` (35 lignes : où lire, où écrire, interdits, vérifications) devient le point
+d'entrée de tout agent ; `CLAUDE.md` se limite à `@AGENTS.md`, pour qu'une seule source serve Claude Code, Cursor
+et Codex. Le skill `flowforge-conventions` garde le détail et renvoie à `AGENTS.md`. Inventaire des 28 skills
+(paramètre Skills = `proposer` : recommandation seulement, rien n'est supprimé) dans la section Suivi du plan.

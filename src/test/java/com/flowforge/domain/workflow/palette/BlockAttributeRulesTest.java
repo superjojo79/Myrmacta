@@ -49,12 +49,12 @@ class BlockAttributeRulesTest {
     @Test
     void notificationAttachmentMustBeAWellFormedSource() {
         for (String ok : List.of("variable:generatedDocumentId", "dossierField:decision_pdf")) {
-            BlockAttributeRules.validate("a", "notificationDispatchTask",
-                    Map.of("notificationChannels", "EMAIL", "notificationAttachment", ok));
+            BlockAttributeRules.validate("a", "notificationDispatchTask", Map.of("notificationChannels", "EMAIL",
+                    "notificationTo", "dossierField:email", "notificationAttachment", ok));
         }
         for (String bad : List.of("tenant/abc.pdf", "variable:", "variable:a.b", "dossierField:e-mail")) {
-            assertThatThrownBy(() -> BlockAttributeRules.validate("act", "notificationDispatchTask",
-                    Map.of("notificationChannels", "EMAIL", "notificationAttachment", bad)))
+            assertThatThrownBy(() -> BlockAttributeRules.validate("act", "notificationDispatchTask", Map.of(
+                    "notificationChannels", "EMAIL", "notificationTo", "dossierField:email", "notificationAttachment", bad)))
                     .as(bad).isInstanceOf(InvalidBpmnException.class)
                     .hasMessageContaining("notificationAttachment").hasMessageContaining("dossierField:<name>");
         }
@@ -64,13 +64,38 @@ class BlockAttributeRulesTest {
     @Test
     void notificationAttachmentNameIsAPlainFileName() {
         for (String ok : List.of("autorisation.pdf", "Décision riverain (2026)", "d_1-2.pdf", "l'autorisation")) {
-            BlockAttributeRules.validate("a", "notificationDispatchTask", Map.of("notificationAttachmentName", ok));
+            BlockAttributeRules.validate("a", "notificationDispatchTask", withAttachment("notificationAttachmentName", ok));
         }
         for (String bad : List.of("../x.pdf", "a/b.pdf", "a\\b.pdf", ".pdf", "a\"b.pdf", "a;b", "x".repeat(101))) {
             assertThatThrownBy(() -> BlockAttributeRules.validate("act", "notificationDispatchTask",
-                    Map.of("notificationAttachmentName", bad)))
+                    withAttachment("notificationAttachmentName", bad)))
                     .as(bad).isInstanceOf(InvalidBpmnException.class).hasMessageContaining("notificationAttachmentName");
         }
+    }
+
+    /**
+     * Revue adversariale #183 (M1, L5) — avec une pièce jointe, destinataire et canal EMAIL sont écrits dans le BPMN : une
+     * variable posée par un utilisateur ne peut pas diriger le PDF vers une autre adresse. Un nom sans pièce jointe est refusé.
+     */
+    @Test
+    void anAttachmentNeedsALiteralRecipientAndTheEmailChannelInTheBpmn() {
+        Map<String, String> noRecipient = Map.of("notificationChannels", "EMAIL", "notificationAttachment", "variable:doc");
+        Map<String, String> noChannels = Map.of("notificationTo", "dossierField:email", "notificationAttachment", "variable:doc");
+        Map<String, String> noEmail = Map.of("notificationChannels", "BROWSER,WEBHOOK", "notificationTo", "a@example.org",
+                "notificationAttachment", "variable:doc");
+        for (Map<String, String> bad : List.of(noRecipient, noChannels, noEmail)) {
+            assertThatThrownBy(() -> BlockAttributeRules.validate("act", "notificationDispatchTask", bad))
+                    .as(bad.toString()).isInstanceOf(InvalidBpmnException.class)
+                    .hasMessageContaining("notificationAttachment");
+        }
+        assertThatThrownBy(() -> BlockAttributeRules.validate("act", "notificationDispatchTask",
+                Map.of("notificationChannels", "EMAIL", "notificationAttachmentName", "a.pdf")))
+                .isInstanceOf(InvalidBpmnException.class).hasMessageContaining("notificationAttachmentName");
+    }
+
+    private static Map<String, String> withAttachment(String name, String value) {
+        return Map.of("notificationChannels", "EMAIL", "notificationTo", "dossierField:email",
+                "notificationAttachment", "variable:doc", name, value);
     }
 
     @Test

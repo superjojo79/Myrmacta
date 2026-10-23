@@ -248,8 +248,9 @@ app:
       retention: 30d
       poll-delay: 1d
     email:
-      # Issue #183 (D-NOTIF-ATTACH-MAX) : plafond de la pièce jointe d'un e-mail « Notifier » (octets, 10 Mio).
-      attachment-max-bytes: 10485760
+      # Issue #183 (D-NOTIF-ATTACH-MAX) : plafond de la pièce jointe d'un e-mail « Notifier » (octets, 7 Mio : ~9,8 Mo
+      # encodé en base64, sous la limite par défaut de Postfix).
+      attachment-max-bytes: 7340032
   storage:
     type: ${APP_STORAGE_TYPE:filesystem}
     filesystem:

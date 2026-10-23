@@ -4,6 +4,7 @@ import com.flowforge.domain.workflow.WorkflowVariables;
 import com.flowforge.domain.workflow.model.InvalidBpmnException;
 import com.flowforge.domain.workflow.portal.model.PortalRecipientSource;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -96,6 +97,9 @@ public final class BlockAttributeRules {
                                     : " (delegate " + delegate + ")")));
             check(activityId, parameter, entry.getValue());
         }
+        if (flowableAttributes.containsKey("notificationAttachment") || flowableAttributes.containsKey("notificationAttachmentName")) {
+            checkAttachmentCompanions(activityId, flowableAttributes);
+        }
         block.filter(b -> LITERAL_ONLY_DELEGATES.contains(delegate)).ifPresent(b -> {
             for (BlockParameter p : b.parameters()) {
                 if (p.required() && p.binding() == ParameterBinding.ATTRIBUTE && !flowableAttributes.containsKey(p.name())) {
@@ -139,6 +143,29 @@ public final class BlockAttributeRules {
     private static void checkRecipient(String owner, String value) {
         if (PortalRecipientSource.hasSourcePrefix(value) && PortalRecipientSource.parse(value).isEmpty()) {
             throw new InvalidBpmnException(owner + " must be dossierField:<name>, variable:<name> or a literal address");
+        }
+    }
+
+    /**
+     * Revue adversariale #183 (M1, L5) — une pièce jointe ne part que vers un destinataire écrit dans le BPMN, par le canal
+     * EMAIL écrit dans le BPMN : sinon la variable {@code notificationTo}, posée par un utilisateur à la complétion d'une
+     * tâche ou au démarrage, enverrait le PDF du dossier à l'adresse de son choix. Un nom de fichier sans pièce jointe est
+     * une erreur de conception, pas une option ignorée.
+     */
+    private static void checkAttachmentCompanions(String activityId, Map<String, String> attributes) {
+        String owner = "BPMN attribute flowable:notificationAttachment on " + activityId;
+        if (!attributes.containsKey("notificationAttachment")) {
+            throw new InvalidBpmnException("BPMN attribute flowable:notificationAttachmentName on " + activityId
+                    + " requires flowable:notificationAttachment");
+        }
+        if (!attributes.containsKey("notificationTo")) {
+            throw new InvalidBpmnException(owner + " requires flowable:notificationTo in the BPMN");
+        }
+        String channels = attributes.get("notificationChannels");
+        boolean email = channels != null && Arrays.stream(channels.split(","))
+                .anyMatch(c -> "EMAIL".equals(c.strip()));
+        if (!email) {
+            throw new InvalidBpmnException(owner + " requires EMAIL in flowable:notificationChannels");
         }
     }
 

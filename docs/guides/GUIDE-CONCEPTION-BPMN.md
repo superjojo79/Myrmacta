@@ -762,8 +762,10 @@ dossier. Le document doit être un **PDF produit et rattaché au dossier courant
 **avant** « Notifier ». Une référence vers un autre dossier, une pièce déposée ou un fichier quelconque est refusée.
 `flowable:notificationAttachmentName` (facultatif) fixe le nom vu par le destinataire (lettres, chiffres, espace,
 `. _ - ( ) '`, 100 caractères au plus) ; à défaut, le libellé du document ; `.pdf` est ajouté s'il manque. Une seule
-pièce jointe, canal `EMAIL` obligatoire, 10 Mio au plus (`app.notification.email.attachment-max-bytes`). Les deux
-attributs ne sont lus que dans le BPMN : une variable de process de même nom est ignorée. Document absent, vide, non
+pièce jointe, 7 Mio au plus (`app.notification.email.attachment-max-bytes`). Les deux attributs ne sont lus que dans le
+BPMN : une variable de process de même nom est ignorée. Avec une pièce jointe, `flowable:notificationTo` et
+`flowable:notificationChannels` (avec `EMAIL`) doivent aussi être écrits dans le BPMN : le déploiement le refuse sinon, et
+une variable `notificationTo` ne peut jamais rediriger le document. Document absent, vide, non
 PDF ou trop gros : l'étape échoue comme pour un destinataire invalide (422 ou incident si asynchrone), le message
 nomme la source. Un document supprimé entre l'émission et l'envoi fait échouer l'envoi (nouvelles tentatives, puis
 abandon visible sur la fiche dossier). Le connecteur `smtp` n'envoie pas de pièce jointe.

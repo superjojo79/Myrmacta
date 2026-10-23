@@ -79,7 +79,7 @@ class NotificationOutboxRelayTest {
                 properties,
                 JsonMapper.builder().build(),
                 storage,
-                new NotificationEmailProperties(16));
+                new NotificationEmailProperties(16L));
     }
 
     /** Issue #183 (D-NOTIF-ATTACH-REF-IN-OUTBOX) — le contenu est relu dans le stockage du tenant de la ligne au moment de l'envoi. */
@@ -111,14 +111,15 @@ class NotificationOutboxRelayTest {
 
         when(storage.retrieve("tenant_dev", "tenant_dev/doc.pdf")).thenReturn(new byte[17]);
         relay.relayPending(now);
-        org.mockito.Mockito.doThrow(new com.flowforge.domain.document.model.DocumentStorageException("gone"))
+        org.mockito.Mockito.doThrow(new com.flowforge.domain.document.model.DocumentStorageException("Document not found: tenant_dev/doc.pdf"))
                 .when(storage).retrieve("tenant_dev", "tenant_dev/doc.pdf");
         relay.relayPending(now);
 
         verify(emailPort, never()).send(anyString(), anyString(), anyString(), any());
         verify(outboxRepository).recordFailure(eq(record.id()), org.mockito.ArgumentMatchers.contains("exceeds 16 bytes"),
                 eq(3), eq(now));
-        verify(outboxRepository).recordFailure(eq(record.id()), eq("gone"), eq(3), eq(now));
+        // Revue adversariale I1 : jamais la référence de stockage (que porte le message de l'adaptateur) dans lastError.
+        verify(outboxRepository).recordFailure(eq(record.id()), eq("attachment content could not be read"), eq(3), eq(now));
         verify(outboxRepository, never()).markProcessed(any(), any());
     }
 

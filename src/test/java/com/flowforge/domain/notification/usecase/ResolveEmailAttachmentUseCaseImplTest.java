@@ -65,6 +65,17 @@ class ResolveEmailAttachmentUseCaseImplTest {
         assertThat(useCase.resolve(dossierId, REF, "x".repeat(150), ORIGIN).fileName()).isEqualTo("x".repeat(100) + ".pdf");
     }
 
+    /** Revue adversariale I2 — libellé décomposé (NFD) recomposé ; troncature par caractère, jamais au milieu d'une paire. */
+    @Test
+    void fileNamesAreNfcNormalisedAndTruncatedByCodePoint() {
+        assertThat(ResolveEmailAttachmentUseCaseImpl.fileName("De\u0301cision")).isEqualTo("Décision.pdf");
+        String emoji = "\uD835\uDC00"; // 𝐀 : lettre hors BMP (paire de substitution)
+        String name = ResolveEmailAttachmentUseCaseImpl.fileName("a" + emoji.repeat(100));
+        assertThat(name.codePointCount(0, name.length())).isEqualTo(104);
+        assertThat(name).endsWith(emoji + ".pdf").doesNotContain("\uFFFD");
+        assertThat(Character.isHighSurrogate(name.charAt(name.length() - 5))).isFalse();
+    }
+
     @Test
     void aReferenceThatIsNotAProducedDocumentOfThisDossier_isRefusedWithoutReadingTheStorage() {
         stubElements(element(ElementType.ATTACHMENT, REF, "Pièce déposée"),

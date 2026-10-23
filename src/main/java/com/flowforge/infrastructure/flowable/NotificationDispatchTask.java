@@ -50,8 +50,13 @@ public class NotificationDispatchTask implements JavaDelegate {
 
     @Override
     public void execute(DelegateExecution execution) {
-        List<NotificationChannel> channels = parseChannels(DeployedActivityParameters.get(execution, "notificationChannels"));
-        String to = recipient(execution);
+        // Revue adversariale #183 (M1, L5) : avec une pièce jointe, canaux et destinataire ne viennent que du BPMN, et le canal
+        // EMAIL est vérifié avant toute lecture du document.
+        boolean withAttachment = DeployedActivityParameters.getLiteral(execution, ATTACHMENT) != null;
+        List<NotificationChannel> channels = withAttachment
+                ? attachmentChannels(execution)
+                : parseChannels(DeployedActivityParameters.get(execution, "notificationChannels"));
+        String to = recipient(execution, withAttachment);
         String subject = stringOrNull(DeployedActivityParameters.get(execution, "notificationSubject"));
         String body = stringOrNull(DeployedActivityParameters.get(execution, "notificationBody"));
         String userId = stringOrNull(DeployedActivityParameters.get(execution, "notificationUserId"));
@@ -103,10 +108,13 @@ public class NotificationDispatchTask implements JavaDelegate {
      * asynchrone ({@code flowable:async}), sinon refus 422 de la complétion ou du démarrage qui l'exécute (revue M1). Le message
      * nomme la source, jamais une valeur.
      */
-    private String recipient(DelegateExecution execution) {
+    private String recipient(DelegateExecution execution, boolean withAttachment) {
         String literal = DeployedActivityParameters.getLiteral(execution, RECIPIENT);
         if (literal != null && !PortalRecipientSource.hasSourcePrefix(literal)) {
             return literal; // écrit par le concepteur dans le BPMN déployé : inchangé
+        }
+        if (literal == null && withAttachment) {
+            throw new NotificationValidationException(ATTACHMENT + " requires flowable:" + RECIPIENT + " in the BPMN");
         }
         if (literal == null) {
             // Revue L3 : repli sur la variable notificationTo, posée au démarrage ou à la complétion d'une tâche (saisie
@@ -162,6 +170,18 @@ public class NotificationDispatchTask implements JavaDelegate {
         } catch (IllegalArgumentException malformed) {
             throw new NotificationValidationException(origin + " needs a valid dossierId variable");
         }
+    }
+
+    private static List<NotificationChannel> attachmentChannels(DelegateExecution execution) {
+        String literal = DeployedActivityParameters.getLiteral(execution, "notificationChannels");
+        if (literal == null) {
+            throw new NotificationValidationException(ATTACHMENT + " requires flowable:notificationChannels in the BPMN");
+        }
+        List<NotificationChannel> channels = parseChannels(literal);
+        if (!channels.contains(NotificationChannel.EMAIL)) {
+            throw new NotificationValidationException(ATTACHMENT + " requires EMAIL in flowable:notificationChannels");
+        }
+        return channels;
     }
 
     private static List<NotificationChannel> parseChannels(Object raw) {

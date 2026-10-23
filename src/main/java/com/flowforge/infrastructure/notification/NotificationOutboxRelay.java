@@ -129,8 +129,14 @@ public class NotificationOutboxRelay {
      * (il a pu baisser depuis l'émission). Document absent ou trop gros : échec ordinaire, l'outbox retente puis abandonne.
      */
     private EmailPort.EmailAttachmentContent attachmentContent(String tenantId, JsonNode attachment) {
-        byte[] content = documentStorage.retrieve(tenantId, textRequired(attachment, "storageRef"));
-        if (content.length > emailProperties.attachmentMaxBytes()) {
+        byte[] content;
+        try {
+            content = documentStorage.retrieve(tenantId, textRequired(attachment, "storageRef"));
+        } catch (RuntimeException unreadable) {
+            // Revue adversariale I1 : le message de l'adaptateur cite la référence de stockage ; lastError ne la garde pas.
+            throw new IllegalStateException("attachment content could not be read");
+        }
+        if (content == null || content.length > emailProperties.attachmentMaxBytes()) {
             throw new IllegalStateException(
                     "attachment exceeds " + emailProperties.attachmentMaxBytes() + " bytes");
         }

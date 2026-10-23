@@ -98,6 +98,28 @@ class NotificationDispatchAttachmentTest {
         verify(send, never()).send(any(), anyString());
     }
 
+    /**
+     * Revue adversariale #183 (M1) — BPMN déployé avant le contrôle de déploiement, ou contourné : sans destinataire ni canal
+     * écrits dans le BPMN, les variables posées par un utilisateur ne dirigent jamais le PDF ; le document n'est même pas lu.
+     */
+    @Test
+    void withAnAttachmentRecipientAndChannelsComeFromTheBpmnOnly() {
+        Map<String, Object> userVariables = Map.of("generatedDocumentId", REF, "notificationTo", "x@evil.example",
+                "notificationChannels", "EMAIL");
+        Map<String, String> attachment = Map.of("notificationAttachment", "variable:generatedDocumentId");
+
+        assertThatThrownBy(() -> task.execute(execution(userVariables, attachment, java.util.Set.of("notificationTo"))))
+                .isInstanceOf(NotificationValidationException.class)
+                .hasMessageContaining("flowable:notificationTo").hasMessageNotContaining("evil");
+        assertThatThrownBy(() -> task.execute(execution(userVariables, attachment, java.util.Set.of("notificationChannels"))))
+                .isInstanceOf(NotificationValidationException.class).hasMessageContaining("flowable:notificationChannels");
+        assertThatThrownBy(() -> task.execute(execution(userVariables,
+                Map.of("notificationAttachment", "variable:generatedDocumentId", "notificationChannels", "BROWSER"))))
+                .isInstanceOf(NotificationValidationException.class).hasMessageContaining("EMAIL");
+        verifyNoInteractions(attachments);
+        verify(send, never()).send(any(), anyString());
+    }
+
     private NotificationEvent sentEvent() {
         ArgumentCaptor<NotificationEvent> captor = ArgumentCaptor.forClass(NotificationEvent.class);
         verify(send).send(captor.capture(), eq("tenant_dev"));
@@ -105,11 +127,17 @@ class NotificationDispatchAttachmentTest {
     }
 
     private DelegateExecution execution(Map<String, Object> variables, Map<String, String> extraAttributes) {
+        return execution(variables, extraAttributes, java.util.Set.of());
+    }
+
+    private DelegateExecution execution(
+            Map<String, Object> variables, Map<String, String> extraAttributes, java.util.Set<String> withoutAttributes) {
         Map<String, Object> vars = new LinkedHashMap<>(variables);
         vars.put("dossierId", dossierId.toString());
         Map<String, String> attributes = new LinkedHashMap<>(Map.of("notificationChannels", "EMAIL",
                 "notificationTo", "camille@example.org", "notificationSubject", "Décision", "notificationBody", "Ci-joint."));
         attributes.putAll(extraAttributes);
+        attributes.keySet().removeAll(withoutAttributes);
         DelegateExecution execution = mock(DelegateExecution.class);
         vars.forEach((k, v) -> when(execution.getVariable(k)).thenReturn(v));
         when(execution.getProcessInstanceId()).thenReturn("pi-1");

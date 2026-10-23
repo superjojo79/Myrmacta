@@ -4,16 +4,20 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
  * Issue #183 (D-NOTIF-ATTACH-MAX) — plafond de la pièce jointe d'un e-mail « Notifier », vérifié à l'émission et revérifié à
- * l'envoi. Défaut 10 Mio : sous la limite courante des relais SMTP une fois le contenu encodé en base64 (+33 %).
+ * l'envoi. Défaut 7 Mio : environ 9,8 Mo une fois encodé en base64 (+33 %), sous la limite par défaut de Postfix
+ * ({@code message_size_limit} = 10 240 000 octets ; revue adversariale L1). Une valeur nulle ou négative est une erreur de
+ * configuration, refusée au démarrage plutôt que remplacée en silence (revue I4).
  */
 @ConfigurationProperties(prefix = "app.notification.email")
-public record NotificationEmailProperties(long attachmentMaxBytes) {
+public record NotificationEmailProperties(Long attachmentMaxBytes) {
 
-    public static final long DEFAULT_ATTACHMENT_MAX_BYTES = 10L * 1024 * 1024;
+    public static final long DEFAULT_ATTACHMENT_MAX_BYTES = 7L * 1024 * 1024;
 
     public NotificationEmailProperties {
-        if (attachmentMaxBytes <= 0) {
+        if (attachmentMaxBytes == null) {
             attachmentMaxBytes = DEFAULT_ATTACHMENT_MAX_BYTES;
+        } else if (attachmentMaxBytes <= 0) {
+            throw new IllegalArgumentException("app.notification.email.attachment-max-bytes must be positive");
         }
     }
 }

@@ -109,7 +109,7 @@ class NotificationSensitiveFieldMaskingEndToEndTest {
                         null),
                 MAPPER,
                 mock(com.flowforge.domain.document.port.out.DocumentStoragePort.class),
-                new com.flowforge.infrastructure.config.NotificationEmailProperties(0));
+                new com.flowforge.infrastructure.config.NotificationEmailProperties(null));
         NotificationOutboxRecord record = new NotificationOutboxRecord(
                 UUID.randomUUID(), tenantId, NotificationChannel.WEBHOOK, NotificationOutboxStatus.PENDING,
                 payloadJson, 0, null, null, now, now, null);

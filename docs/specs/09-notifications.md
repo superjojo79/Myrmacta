@@ -178,15 +178,16 @@ public interface BrowserPushPort {
 
 - **Paramètres** : `flowable:notificationAttachment="variable:<nom>|dossierField:<champ>"` et
   `flowable:notificationAttachmentName` (facultatif), lus **seulement** dans le BPMN déployé (D-NOTIF-ATTACH-LITERAL) ;
-  forme vérifiée au déploiement (`BlockAttributeRules`) et dans la palette.
+  forme vérifiée au déploiement (`BlockAttributeRules`) et dans la palette. Avec une pièce jointe, `notificationTo` et
+  `notificationChannels` (avec `EMAIL`) doivent être écrits dans le BPMN (déploiement, palette et exécution).
 - **Émission** (`NotificationDispatchTask`, transaction du process) : la source est résolue en référence de stockage,
   puis `ResolveEmailAttachmentUseCase` exige un élément `PRODUCED_DOC` **du dossier courant** portant cette référence,
-  un contenu non vide, PDF (`%PDF-`), sous `app.notification.email.attachment-max-bytes` (défaut 10 Mio)
+  un contenu non vide, PDF (`%PDF-`), sous `app.notification.email.attachment-max-bytes` (défaut 7 Mio)
   (D-NOTIF-ATTACH-PRODUCED-DOC, D-NOTIF-ATTACH-MAX). Échec : `NotificationValidationException` (422 ou incident si
   asynchrone), message sans la valeur. Canal `EMAIL` absent : refus (D-NOTIF-ATTACH-EMAIL-ONLY).
 - **Outbox** : le snapshot e-mail porte `attachment: {storageRef, fileName, contentType}`, jamais les octets
   (D-NOTIF-ATTACH-REF-IN-OUTBOX). Le relais relit le contenu dans le stockage du tenant de la ligne et revérifie le
-  plafond ; document absent : échec ordinaire de la ligne (tentatives, puis `DEAD`).
+  plafond ; document absent : échec ordinaire de la ligne (tentatives, puis `DEAD`), message sans la référence.
 - **SMTP** : `SmtpEmailAdapter` construit un `multipart/mixed` (texte + PDF nommé), en-tête `Auto-Submitted` conservé.
   Le connecteur `smtp` n'envoie pas de pièce jointe (D-NOTIF-ATTACH-SMTP-CONNECTOR).
 - **Tests de référence** : `ResolveEmailAttachmentUseCaseImplTest`, `NotificationDispatchAttachmentTest`,

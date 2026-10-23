@@ -7,6 +7,7 @@ import com.flowforge.domain.notification.model.EmailAttachment;
 import com.flowforge.domain.notification.model.NotificationValidationException;
 import com.flowforge.domain.notification.port.in.ResolveEmailAttachmentUseCase;
 import java.nio.charset.StandardCharsets;
+import java.text.Normalizer;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Objects;
@@ -78,12 +79,14 @@ public final class ResolveEmailAttachmentUseCaseImpl implements ResolveEmailAtta
         return new EmailAttachment(ref, fileName(requestedFileName != null ? requestedFileName : label), PDF_CONTENT_TYPE);
     }
 
-    /** Alphabet du nom validé au déploiement ; tout autre caractère devient {@code _}. Jamais vide, jamais un point initial. */
+    /** Alphabet du nom validé au déploiement ; tout autre caractère devient {@code _}. Jamais vide, jamais un point initial, 100 caractères au plus. */
     static String fileName(String raw) {
-        String name = NOT_ALLOWED.matcher(raw == null ? "" : raw.strip()).replaceAll("_");
+        // Revue adversariale I2 : forme NFC (un « é » décomposé n'est pas remplacé par « e_ ») et troncature par caractère.
+        String nfc = Normalizer.normalize(raw == null ? "" : raw.strip(), Normalizer.Form.NFC);
+        String name = NOT_ALLOWED.matcher(nfc).replaceAll("_");
         name = name.replaceFirst("^[. ]+", "");
-        if (name.length() > MAX_FILE_NAME) {
-            name = name.substring(0, MAX_FILE_NAME).strip();
+        if (name.codePointCount(0, name.length()) > MAX_FILE_NAME) {
+            name = name.substring(0, name.offsetByCodePoints(0, MAX_FILE_NAME)).strip();
         }
         if (name.isEmpty()) {
             name = "document";

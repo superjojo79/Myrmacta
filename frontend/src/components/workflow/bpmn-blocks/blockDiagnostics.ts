@@ -134,11 +134,37 @@ export function diagnoseBlock(bo: Moddled, block: BuildingBlock, ctx: Diagnostic
       })
     }
   }
+  if (block.id === 'notify') out.push(...attachmentCompanions(bo, block))
   if (block.id === 'request-signature' && !ctx.hasSignatureCompletedCatch) {
     out.push({
       kind: 'companion',
       message: 'Ajoutez en aval un événement intermédiaire de réception du message « signatureCompleted », sinon le process ne reprend pas.',
     })
+  }
+  return out
+}
+
+/**
+ * Revue adversariale #183 (M1, L5), comme `BlockAttributeRules` : une pièce jointe exige un destinataire écrit dans le BPMN
+ * et le canal EMAIL ; un nom de fichier sans pièce jointe est refusé au déploiement.
+ */
+function attachmentCompanions(bo: Moddled, block: BuildingBlock): Diagnostic[] {
+  const value = (name: string) => {
+    const param = block.parameters.find((p) => p.name === name)
+    return param ? readValue(bo, block, param).trim() : ''
+  }
+  const out: Diagnostic[] = []
+  if (!value('notificationAttachment')) {
+    if (value('notificationAttachmentName')) {
+      out.push({ kind: 'invalid', param: 'notificationAttachmentName', message: 'Nom de fichier sans pièce jointe : renseignez aussi la pièce jointe.' })
+    }
+    return out
+  }
+  if (!value('notificationTo')) {
+    out.push({ kind: 'invalid', param: 'notificationTo', message: 'Avec une pièce jointe, le destinataire doit être écrit ici (adresse ou dossierField:/variable:).' })
+  }
+  if (!value('notificationChannels').split(',').some((c) => c.trim() === 'EMAIL')) {
+    out.push({ kind: 'invalid', param: 'notificationChannels', message: 'Avec une pièce jointe, le canal EMAIL est obligatoire.' })
   }
   return out
 }

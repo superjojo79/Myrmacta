@@ -87,7 +87,7 @@ describe('BpmnEditorCanvas', () => {
     // diagram (async/delegateExpression/expression/scope/formKey) round-trips through
     // getValue()/setValue() but is silently dropped by saveXML() -- moddle-xml can't emit a
     // prefix it never saw a URI for. Proven against the real (unmocked) engine in
-    // e2e/pilotage.spec.ts E2E-FORM-4.
+    // e2e/pilotage-templates-formulaires.spec.ts E2E-FORM-4.
     mount(BpmnEditorCanvas, { props: { bpmnXml: '' } })
     await flushPromises()
 

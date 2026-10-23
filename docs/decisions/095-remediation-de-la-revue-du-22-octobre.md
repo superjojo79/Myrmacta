@@ -165,3 +165,13 @@ voyait les tables `act_*` du premier tenant, ne créait pas les siennes, puis é
 not exist »). Corrigé par `flowable.database-schema: ${app.tenant.id}` dans `application.yml`, cohérent avec la
 décision n° 13 (une instance, un schéma). Aucun effet sur une instance seule dans sa base. À relire : tout
 environnement qui hébergeait déjà plusieurs tenants dans une même base a dû contourner ce défaut (bases séparées ?).
+
+**D-REMED-E2E-SPLIT** — `frontend/e2e/pilotage.spec.ts` (4 537 lignes, 127 tests) est découpé par écran en neuf
+fichiers `pilotage-<écran>.spec.ts` ; les 34 déclarations partagées (données de mock, `mockSession`, fixtures BPMN,
+helpers) vont dans `frontend/e2e/support/pilotage.ts`, importées nom par nom. Découpage mécanique, sans réécriture
+de test : chaque ligne d'origine se retrouve une fois et une seule (vérifié), `playwright test --list` donne les
+130 mêmes titres avant et après, `eslint` est vert et `tsc --strict` ne relève que l'erreur de type déjà présente
+dans le fichier d'origine (`pilotage-securite-portail.spec.ts`, inférence d'un objet de mock du portail).
+`FrontendCspLiteralConsistencyTest` lit désormais la constante `A4_CSP` dans `support/pilotage.ts`. Le nouvel ordonnancement des fichiers a révélé
+une course préexistante dans E2E-USERQ-1 et E2E-FORM-2 (variable lue juste après le clic, avant l'envoi de la
+requête) : assertions passées en `expect.poll`, sans désactiver ni affaiblir les tests.

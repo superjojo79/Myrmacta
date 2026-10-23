@@ -28,7 +28,7 @@ menée après merge. Cinq constats, tous traités dans ce point :
    dédiée `@Order(2)`), directive `report-uri`/`report-to` + header `Reporting-Endpoints`,
    journalisation tronquée via `SecurityAuditLog.cspViolationReported` (jamais le corps brut).
 6. **Duplication non vérifiée `CONTENT_SECURITY_POLICY` (Java) / `A4_CSP` (TypeScript,
-   `frontend/e2e/pilotage.spec.ts`)** — un test Java lit désormais le fichier TS et échoue si les
+   `frontend/e2e/support/pilotage.ts`, ex-`pilotage.spec.ts`)** — un test Java lit désormais le fichier TS et échoue si les
    deux dérivent (voir `SecurityHeadersCustomizerTest`/vérification équivalente), plutôt qu'un
    simple commentaire de convention.
 

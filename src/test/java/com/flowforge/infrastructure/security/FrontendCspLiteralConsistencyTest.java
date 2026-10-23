@@ -10,7 +10,7 @@ import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 
 /**
- * {@code frontend/e2e/pilotage.spec.ts} keeps its own {@code A4_CSP} literal in sync with
+ * {@code frontend/e2e/support/pilotage.ts} (shared by the {@code pilotage-*.spec.ts} files) keeps its own {@code A4_CSP} literal in sync with
  * {@link SecurityHeadersCustomizer#CONTENT_SECURITY_POLICY} by convention only (a code comment,
  * "Must stay equal to ..."), because Playwright's E2E environment never exercises the real
  * Spring Security header writer (see {@code A-E2E-CSP-INJECT}, https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md). Nothing
@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test;
  */
 class FrontendCspLiteralConsistencyTest {
 
-    private static final Path SPEC_FILE = Path.of("frontend/e2e/pilotage.spec.ts");
+    private static final Path SPEC_FILE = Path.of("frontend/e2e/support/pilotage.ts");
     private static final Pattern A4_CSP_LITERAL = Pattern.compile("const A4_CSP =\\s*\"([^\"]+)\"");
 
     @Test

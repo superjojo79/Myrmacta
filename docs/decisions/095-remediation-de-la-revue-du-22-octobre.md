@@ -147,3 +147,21 @@ regex non inspectée (complète D-EXPR-AST-BRIDGE, qui ne protège que contre un
 commentaire (CVE, condition de retrait) et pointent chacune vers une issue (#195 à #198) qui décrit la vérification
 à faire avant de la retirer. Option écartée : un test qui compare la version surchargée à celle gérée par Spring
 Boot, fragile (lecture du BOM dans le dépôt Maven local) pour un gain faible face à Dependabot et au scan OWASP.
+
+**D-REMED-TENANT-DEPLOY** — Déploiement d'un tenant en code : `scripts/provision-tenant.sh --instance-dir
+<dossier> --port <port>` génère, à côté du SQL inchangé, l'environnement de l'instance (droits 600, secrets vides
+donc démarrage refusé tant qu'ils manquent), les paramètres de `docker/tenant/compose.tenant.yml`, le bloc Apache
+du tenant et les en-têtes communs, et un script `kcadm.sh` idempotent pour son client machine-to-machine (claim
+`tenant_id` figé, rôles plats, `API_SERVICE`). Choix : Docker Compose et Apache, ceux que documente déjà
+`DEPLOIEMENT.md` ; pas de chart Helm (hors périmètre). Le realm de production et le client BFF partagé restent une
+procédure manuelle unique. Validation : `docker compose config` sur les fichiers générés, `shellcheck` sans
+avertissement, et `TenantInstancesIsolationIT`, qui démarre deux instances réelles sur une même base provisionnée
+par ce script. Le script Keycloak n'a pas pu être exécuté faute de Keycloak dans le bac à sable (issue #192).
+
+**D-REMED-FLOWABLE-SCHEMA** ⚠ — Constat de P10, par `TenantInstancesIsolationIT` : deux instances sur une même base
+(modèle documenté par `DEPLOIEMENT.md` §4) ne démarraient pas toutes les deux. Sans `flowable.database-schema`,
+Flowable vérifie la présence de ses tables par les métadonnées JDBC **dans tous les schémas** : la seconde instance
+voyait les tables `act_*` du premier tenant, ne créait pas les siennes, puis échouait (« relation act_ge_property does
+not exist »). Corrigé par `flowable.database-schema: ${app.tenant.id}` dans `application.yml`, cohérent avec la
+décision n° 13 (une instance, un schéma). Aucun effet sur une instance seule dans sa base. À relire : tout
+environnement qui hébergeait déjà plusieurs tenants dans une même base a dû contourner ce défaut (bases séparées ?).

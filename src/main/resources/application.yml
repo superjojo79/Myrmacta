@@ -327,6 +327,10 @@ app:
 
 flowable:
   async-executor-activate: true
+  # TODO §95 (D-REMED-FLOWABLE-SCHEMA) : sans schéma explicite, Flowable cherche ses tables dans tous les schémas de
+  # la base (métadonnées JDBC) ; sur une base partagée, la seconde instance trouve celles du premier tenant, ne crée
+  # pas les siennes et échoue au démarrage (« act_ge_property does not exist »). Une instance = un schéma (n° 13).
+  database-schema: ${app.tenant.id}
 
 springdoc:
   api-docs:

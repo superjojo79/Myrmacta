@@ -81,6 +81,9 @@ La section ci-dessous a été tenue à la main jusqu'à la PR #182 ; elle est co
 
 ### Corrigé
 
+- **[PR #182](https://github.com/superjojo79/FlowForge/pull/182)** — Deux tenants dans une même base PostgreSQL : la
+  seconde instance ne créait pas ses tables Flowable (elle voyait celles du premier tenant) et ne démarrait pas.
+  Flowable cherche désormais ses tables dans le seul schéma du tenant.
 - **[PR #173](https://github.com/superjojo79/FlowForge/pull/173)** — Tests de limite de débit (portail, signature,
   webhooks, génération de documents) rendus déterministes : les limiteurs y tournent sur une horloge figée, au lieu de
   l'horloge système qui pouvait remettre le compteur à zéro en milieu de test (échec intermittent en CI).

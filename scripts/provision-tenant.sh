@@ -5,13 +5,14 @@ set -euo pipefail
 # rôle LOGIN dédié d'un nouveau tenant FlowForge (isolation par schéma, D-41 —
 # option A déjà tranchée ; gabarit : docker/postgres/init/01-init-tenant-schema.sql).
 #
-# Voir docs/guides/DEPLOIEMENT.md §4 pour le runbook de provisioning complet (ce script couvre l'étape
-# "créer le schéma et le rôle PostgreSQL dédiés", pas le démarrage de l'instance applicative
-# ni le bloc reverse-proxy).
+# Voir docs/guides/DEPLOIEMENT.md §4 pour le runbook de provisioning complet. Avec --instance-dir, le
+# script génère aussi la configuration de l'instance (docker/tenant/compose.tenant.yml), son bloc
+# reverse-proxy Apache et le script Keycloak de son client machine-to-machine (TODO §95).
 
 usage() {
   cat <<'USAGE'
 Usage: scripts/provision-tenant.sh <tenant_id> [-o <fichier.sql>] [--apply]
+                                   [--instance-dir <dossier> --port <port>]
 
   <tenant_id>       Identifiant de tenant (schéma + rôle PostgreSQL). Doit matcher
                      ^[a-z][a-z0-9_]{2,52}$ (3 à 53 caractères) — le rôle généré
@@ -28,12 +29,29 @@ Usage: scripts/provision-tenant.sh <tenant_id> [-o <fichier.sql>] [--apply]
                      ce tenant). Échoue explicitement si le schéma <tenant_id> existe déjà
                      — ne réécrase jamais un tenant déjà provisionné.
 
+  --instance-dir <dossier>
+                    Écrit aussi dans <dossier> la configuration de l'instance (TODO §95) :
+                     <tenant_id>.env          variables de l'instance (droits 600 : contient
+                                              DB_PASSWORD ; les secrets restés vides empêchent
+                                              le démarrage tant qu'ils ne sont pas renseignés) ;
+                     <tenant_id>.compose.env  paramètres de docker/tenant/compose.tenant.yml ;
+                     <tenant_id>.apache.conf  bloc reverse-proxy (docs/guides/DEPLOIEMENT.md §3) ;
+                     proxy-headers.conf       en-têtes X-Forwarded-* communs (écrit une fois) ;
+                     <tenant_id>.keycloak.sh  client client_credentials du tenant, idempotent
+                                              (docs/guides/DEPLOIEMENT.md §7).
+                     Refuse d'écraser des fichiers existants pour ce tenant.
+
+  --port <port>     Port local (127.0.0.1) de l'instance. Requis avec --instance-dir.
+
 Variables d'environnement :
   TENANT_DB_PASSWORD  Mot de passe du rôle applicatif du tenant (requis dans tous les
                        modes : le SQL généré contient toujours "CREATE ROLE ... PASSWORD").
   PGHOST/PGPORT/PGDATABASE/PGUSER/PGPASSWORD
                        Variables psql standard, utilisées uniquement avec --apply, pour se
                        connecter en tant que superuser de provisioning.
+  Avec --instance-dir, valeurs reprises si elles sont définies (sinon à compléter) :
+  TENANT_DB_URL, OIDC_ISSUER_URI, OIDC_CLIENT_ID, FLOWFORGE_IMAGE (défaut flowforge:latest),
+  KEYCLOAK_REALM (défaut flowforge).
 
 Exemples :
   # SQL sur stdout, pour revue avant application
@@ -46,12 +64,18 @@ Exemples :
   TENANT_DB_PASSWORD='...' PGHOST=localhost PGPORT=5432 PGDATABASE=flowforge \
     PGUSER=flowforge PGPASSWORD='...' \
     scripts/provision-tenant.sh tenant_b --apply
+
+  # Schéma et rôle appliqués, plus la configuration de l'instance dans ./tenants
+  TENANT_DB_PASSWORD='...' PGHOST=... scripts/provision-tenant.sh tenant_b --apply \
+    --instance-dir ./tenants --port 8082
 USAGE
 }
 
 tenant_id=""
 output_file=""
 apply=0
+instance_dir=""
+port=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -63,6 +87,16 @@ while [[ $# -gt 0 ]]; do
     --apply)
       apply=1
       shift
+      ;;
+    --instance-dir)
+      [[ $# -ge 2 ]] || { echo "--instance-dir requiert un argument" >&2; exit 1; }
+      instance_dir="$2"
+      shift 2
+      ;;
+    --port)
+      [[ $# -ge 2 ]] || { echo "--port requiert un argument" >&2; exit 1; }
+      port="$2"
+      shift 2
       ;;
     -h|--help)
       usage
@@ -103,6 +137,13 @@ fi
 
 role_name="flowforge_${tenant_id}"
 
+if [[ -n "$instance_dir" ]]; then
+  if ! [[ "$port" =~ ^[0-9]+$ ]] || (( port < 1024 || port > 65535 )); then
+    echo "--port requis avec --instance-dir (entier entre 1024 et 65535)." >&2
+    exit 1
+  fi
+fi
+
 : "${TENANT_DB_PASSWORD:?TENANT_DB_PASSWORD doit être défini (mot de passe du rôle ${role_name})}"
 
 # Échappement SQL standard (guillemet simple doublé) — le mot de passe vient uniquement de
@@ -142,6 +183,152 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA ${tenant_id}
     GRANT ALL ON SEQUENCES TO ${role_name};
 SQL
 }
+
+# --- Configuration de l'instance (--instance-dir), TODO §95 -------------------------------------------
+generate_instance_files() {
+  local dir="$1" env_file compose_env apache keycloak headers
+  mkdir -p "$dir"
+  dir="$(cd "$dir" && pwd)"
+  env_file="${dir}/${tenant_id}.env"
+  compose_env="${dir}/${tenant_id}.compose.env"
+  apache="${dir}/${tenant_id}.apache.conf"
+  keycloak="${dir}/${tenant_id}.keycloak.sh"
+  headers="${dir}/proxy-headers.conf"
+  local f
+  for f in "$env_file" "$compose_env" "$apache" "$keycloak"; do
+    if [[ -e "$f" ]]; then
+      echo "$f existe déjà — génération refusée (pas d'écrasement)." >&2
+      exit 1
+    fi
+  done
+  local m2m_client="flowforge-m2m-${tenant_id}"
+
+  (umask 077 && cat > "$env_file" <<ENV
+# Instance FlowForge du tenant '${tenant_id}' — généré par scripts/provision-tenant.sh (TODO §95).
+# Gabarit commenté : .env.example ; détail : docs/guides/DEPLOIEMENT.md §2. Les variables laissées vides
+# sont des secrets à renseigner : l'instance refuse de démarrer tant qu'ils manquent (fail-fast).
+APP_ENVIRONMENT=production
+SPRING_PROFILES_ACTIVE=prod
+APP_TENANT_ID=${tenant_id}
+
+DB_URL=${TENANT_DB_URL:-}
+DB_USERNAME=${role_name}
+DB_PASSWORD=${TENANT_DB_PASSWORD}
+
+APP_CONNECTOR_MASTER_KEY=
+
+OIDC_ISSUER_URI=${OIDC_ISSUER_URI:-}
+OIDC_CLIENT_ID=${OIDC_CLIENT_ID:-}
+OIDC_CLIENT_SECRET=
+
+# Machine-to-machine : client ${m2m_client} (script ${tenant_id}.keycloak.sh).
+OAUTH2_ISSUER_URI=${OIDC_ISSUER_URI:-}
+M2M_TRUSTED_CLIENT_IDS=${m2m_client}
+
+APP_DOSSIER_ATTACHMENT_SCAN_TYPE=clamav
+APP_DOSSIER_ATTACHMENT_SCAN_CLAMAV_HOST=
+APP_DOSSIER_ATTACHMENT_SCAN_CLAMAV_PORT=3310
+
+APP_STORAGE_TYPE=s3
+APP_STORAGE_S3_BUCKET=
+APP_STORAGE_S3_REGION=
+APP_STORAGE_S3_ACCESS_KEY=
+APP_STORAGE_S3_SECRET_KEY=
+
+MANAGEMENT_ADDRESS=127.0.0.1
+ENV
+  )
+
+  cat > "$compose_env" <<ENV
+# Paramètres de docker/tenant/compose.tenant.yml pour le tenant '${tenant_id}' (TODO §95).
+#   docker compose -p flowforge-${tenant_id} --env-file ${compose_env} -f docker/tenant/compose.tenant.yml up -d
+TENANT_ID=${tenant_id}
+TENANT_PORT=${port}
+TENANT_ENV_FILE=${env_file}
+FLOWFORGE_IMAGE=${FLOWFORGE_IMAGE:-flowforge:latest}
+ENV
+
+  if [[ ! -e "$headers" ]]; then
+    cat > "$headers" <<'APACHE'
+# En-têtes communs à tous les tenants (docs/guides/DEPLOIEMENT.md §3) — à inclure une seule fois dans le
+# VirtualHost HTTPS, avant les blocs <tenant_id>.apache.conf. Écrase les X-Forwarded-* venus du client.
+RequestHeader unset X-Forwarded-Proto early
+RequestHeader unset X-Forwarded-For early
+RequestHeader unset X-Forwarded-Host early
+RequestHeader unset X-Forwarded-Port early
+RequestHeader unset Forwarded early
+RequestHeader unset X-Forwarded-Prefix early
+RequestHeader set X-Forwarded-Proto "https"
+RequestHeader set X-Forwarded-For "%{REMOTE_ADDR}s"
+APACHE
+  fi
+
+  cat > "$apache" <<APACHE
+# Tenant '${tenant_id}' — généré par scripts/provision-tenant.sh (TODO §95). Le préfixe n'est jamais
+# réécrit : /${tenant_id} côté client = context-path /${tenant_id} de l'instance (décision n° 14).
+# Inclure proxy-headers.conf une fois par VirtualHost avant ce bloc.
+ProxyPass        "/${tenant_id}" "http://127.0.0.1:${port}/${tenant_id}"
+ProxyPassReverse "/${tenant_id}" "http://127.0.0.1:${port}/${tenant_id}"
+APACHE
+
+  cat > "$keycloak" <<KEYCLOAK
+#!/usr/bin/env bash
+# Client machine-to-machine du tenant '${tenant_id}' (docs/guides/DEPLOIEMENT.md §7) — généré par
+# scripts/provision-tenant.sh (TODO §95). Idempotent : relançable sans doublon.
+# Prérequis : kcadm.sh authentifié sur le Keycloak de production, par exemple
+#   kcadm.sh config credentials --server https://keycloak.example --realm master --user <admin>
+set -euo pipefail
+KCADM="\${KCADM:-kcadm.sh}"
+REALM="\${KEYCLOAK_REALM:-${KEYCLOAK_REALM:-flowforge}}"
+CLIENT="${m2m_client}"
+TENANT="${tenant_id}"
+
+client_id() {
+  "\$KCADM" get clients -r "\$REALM" -q clientId="\$CLIENT" --fields id --format csv --noquotes
+}
+
+id="\$(client_id)"
+if [[ -z "\$id" ]]; then
+  "\$KCADM" create clients -r "\$REALM" -s clientId="\$CLIENT" -s enabled=true -s publicClient=false \\
+    -s serviceAccountsEnabled=true -s standardFlowEnabled=false -s directAccessGrantsEnabled=false \\
+    -s clientAuthenticatorType=client-secret
+  id="\$(client_id)"
+fi
+
+has_mapper() {
+  "\$KCADM" get "clients/\$id/protocol-mappers/models" -r "\$REALM" --fields name --format csv --noquotes \\
+    | grep -qx "\$1"
+}
+
+# Claim tenant_id figé : ce client ne peut appeler que l'instance de ce tenant (M2mTenantValidationFilter).
+if ! has_mapper tenant_id; then
+  "\$KCADM" create "clients/\$id/protocol-mappers/models" -r "\$REALM" -s name=tenant_id \\
+    -s protocol=openid-connect -s protocolMapper=oidc-hardcoded-claim-mapper \\
+    -s 'config."claim.name"=tenant_id' -s "config.\"claim.value\"=\$TENANT" \\
+    -s 'config."jsonType.label"=String' -s 'config."access.token.claim"=true'
+fi
+# Rôles réalm projetés dans un claim plat « roles » (lu par M2mJwtAuthoritiesConverter).
+if ! has_mapper roles; then
+  "\$KCADM" create "clients/\$id/protocol-mappers/models" -r "\$REALM" -s name=roles \\
+    -s protocol=openid-connect -s protocolMapper=oidc-usermodel-realm-role-mapper \\
+    -s 'config."claim.name"=roles' -s 'config.multivalued=true' \\
+    -s 'config."jsonType.label"=String' -s 'config."access.token.claim"=true'
+fi
+
+"\$KCADM" get roles/API_SERVICE -r "\$REALM" >/dev/null 2>&1 \\
+  || "\$KCADM" create roles -r "\$REALM" -s name=API_SERVICE
+"\$KCADM" add-roles -r "\$REALM" --uusername "service-account-\$CLIENT" --rolename API_SERVICE
+
+echo "Client \$CLIENT prêt (realm \$REALM). Secret : \$KCADM get clients/\$id/client-secret -r \$REALM"
+KEYCLOAK
+  chmod 700 "$keycloak"
+
+  echo "Configuration de l'instance écrite dans ${dir} (${tenant_id}.env, .compose.env, .apache.conf, .keycloak.sh)." >&2
+}
+
+if [[ -n "$instance_dir" ]]; then
+  generate_instance_files "$instance_dir"
+fi
 
 if [[ "$apply" -eq 1 ]]; then
   existing="$(psql -X -A -t -v ON_ERROR_STOP=1 \

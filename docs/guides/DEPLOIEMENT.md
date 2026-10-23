@@ -176,14 +176,41 @@ OAuth2), les webhooks entrants et l'API machine-to-machine (§7) — pas de rout
    retenue par la décision D-41 (**un rôle PostgreSQL par tenant**, [§41](../decisions/041-isolation-postgresql-par-schema-sans-grant-par.md) point 41) —
    un seul rôle superutilisateur partagé entre tenants romprait l'isolation par schéma.
    Voir `scripts/provision-tenant.sh --help` pour le détail des options.
+   Ajouter `--instance-dir <dossier> --port <port>` génère en plus, dans `<dossier>`, toute la
+   configuration de l'instance (TODO §95) :
+
+   ```bash
+   TENANT_DB_PASSWORD='<mot-de-passe-fort>' TENANT_DB_URL=jdbc:postgresql://<host>:5432/flowforge \
+     OIDC_ISSUER_URI=https://keycloak.example/realms/flowforge OIDC_CLIENT_ID=<client-bff> \
+     FLOWFORGE_IMAGE=registry.example/flowforge:<version> \
+     PGHOST=<host> PGPORT=5432 PGDATABASE=flowforge PGUSER=<superuser> PGPASSWORD=<mdp-superuser> \
+     scripts/provision-tenant.sh tenant_b --apply --instance-dir /etc/flowforge/tenants --port 8082
+   ```
+
+   | Fichier | Rôle |
+   |---|---|
+   | `tenant_b.env` | Variables de l'instance (droits 600, contient `DB_PASSWORD`). Les secrets restés vides (`APP_CONNECTOR_MASTER_KEY`, `OIDC_CLIENT_SECRET`, ClamAV, S3) **empêchent le démarrage** tant qu'ils ne sont pas renseignés. |
+   | `tenant_b.compose.env` | Paramètres de [`docker/tenant/compose.tenant.yml`](../../docker/tenant/compose.tenant.yml) (image, port, fichier d'environnement). |
+   | `tenant_b.apache.conf`, `proxy-headers.conf` | Bloc reverse-proxy du tenant et en-têtes communs (§3). |
+   | `tenant_b.keycloak.sh` | Client `client_credentials` du tenant (§7), par `kcadm.sh`, idempotent. |
+
+   Le script refuse d'écraser les fichiers d'un tenant déjà généré.
 3. **Démarrer une nouvelle instance** (image buildée en §1) avec sa propre configuration :
    `APP_TENANT_ID=tenant_b`, `DB_USERNAME=flowforge_tenant_b` / `DB_PASSWORD` correspondant, un port
-   dédié — `context-path` (`/tenant_b`) est déjà actif par défaut (§3), aucune configuration
-   supplémentaire nécessaire pour ce point précis.
-4. **Ajouter le bloc reverse-proxy** de ce tenant (§3).
+   dédié — `context-path` (`/tenant_b`) est déjà actif par défaut (§3). Avec les fichiers générés :
+   ```bash
+   docker compose -p flowforge-tenant_b --env-file /etc/flowforge/tenants/tenant_b.compose.env \
+     -f docker/tenant/compose.tenant.yml up -d
+   ```
+4. **Ajouter le bloc reverse-proxy** de ce tenant (§3) : `Include` de `tenant_b.apache.conf` (et une
+   seule fois de `proxy-headers.conf`) dans le VirtualHost HTTPS, puis recharger Apache.
 5. **Si ce tenant a besoin de l'API machine-to-machine** (connecteurs, serveur MCP) : provisionner son
-   client Keycloak `client_credentials` dédié (§7). Le flux humain (BFF), lui, n'a besoin d'aucun
-   provisioning Keycloak supplémentaire par tenant — voir §5.
+   client Keycloak `client_credentials` dédié (§7) — `tenant_b.keycloak.sh`, après
+   `kcadm.sh config credentials …`. Le flux humain (BFF), lui, n'a besoin d'aucun provisioning
+   Keycloak supplémentaire par tenant — voir §5.
+
+L'isolation entre deux instances ainsi provisionnées (rôle PostgreSQL qui ne lit pas le schéma voisin,
+jeton machine d'un autre tenant refusé) est vérifiée par `TenantInstancesIsolationIT`.
 
 ------
 
@@ -490,11 +517,11 @@ combiné à un profil `prod`/`production` ou si `APP_ENVIRONMENT` est absent ou 
 
 ## Ce qui n'est pas (encore) couvert par ce guide
 
-- **Démarrage de l'instance et bloc reverse-proxy** restent des étapes documentées (§1/§3/§4), pas
-  automatisées de bout en bout — dépendent trop de l'environnement cible (systemd/Docker/bare metal,
-  Apache/nginx) pour un script générique.
-- **Provisioning Keycloak** (réalm, clients OIDC/M2M, §5/§7) reste une procédure manuelle — hors
-  scope du lot `provisioning-tenant`.
+- **Démarrage de l'instance et bloc reverse-proxy** : générés pour Docker Compose et Apache
+  (`--instance-dir`, §4). Un autre environnement (systemd, Kubernetes, nginx) reprend les mêmes
+  fichiers d'environnement ; pas de chart Helm.
+- **Provisioning Keycloak** : le client machine-to-machine de chaque tenant est scripté (§4, §7) ; le
+  realm de production et son client BFF partagé (§5) restent une procédure manuelle, faite une fois.
 - **Provisioning `clamd`** (dimensionnement, mise à jour des signatures, éventuelle HA, §8) reste
   une procédure manuelle — hors scope du lot `scan-antivirus-clamav` (D-AV-CLAMAV-PROD-TOPO).
 - **Sauvegarde/restauration PostgreSQL par schéma et stratégie de montée de version** ne sont pas

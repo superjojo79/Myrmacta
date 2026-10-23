@@ -81,20 +81,24 @@ podman compose version                                  # doit afficher « Docke
 ## 3. Config minimale
 
 ```bash
-cp .env.example .env
+cp .env.local.example .env
 ```
 
-[`.env.example`](.env.example) documente chaque variable. Les valeurs par défaut suffisent pour un
+[`.env.local.example`](.env.local.example) documente chaque variable ([`.env.example`](.env.example)
+est le gabarit d'un environnement réel, voir `DEPLOIEMENT.md` §2). Les valeurs par défaut suffisent pour un
 premier démarrage — rien à modifier pour suivre ce guide tel quel.
 `APP_SECURITY_HEADERS_ENABLED` (défaut `true`) coupe le paquet CSP / HSTS / `X-Frame-Options` —
 uniquement utilisable en profil `local`/`test` (seul HSTS y est absent par ailleurs) : hors de ces
 profils, le boot refuse de démarrer si cette variable vaut `false` (TODO §64).
 `APP_SECURITY_HEADERS_TRUSTED_PROXY_CIDRS` et `APP_SECURITY_HEADERS_CSP_REPORT_RATE_LIMIT` ont des
-défauts adaptés au dev local — voir `.env.example`.
+défauts adaptés au dev local — voir `.env.local.example`.
 
-Le profil Spring **`local`** (`SPRING_PROFILES_ACTIVE=local` dans `.env.example`) autorise les
+Le profil Spring **`local`** (`SPRING_PROFILES_ACTIVE=local` dans `.env.local.example`) autorise les
 secrets de démo et le HMAC M2M. Hors `local`/`test`, le boot refuse `DB_PASSWORD` dans la denylist
 (`flowforge`, `postgres`, `admin`, `password`, vide) et tout `M2M_JWT_SECRET` non vide.
+`APP_ENVIRONMENT` est le seul interrupteur « mode dev » (TODO §95) : le profil `local` exige
+`APP_ENVIRONMENT=local` et le profil `test` est refusé quand `APP_ENVIRONMENT=production` (valeur par
+défaut) — un `.env` de dev recopié tel quel sur un serveur ne démarre donc pas.
 
 `docker compose` lit `.env` automatiquement. Le backend Spring Boot, lui, tourne sur l'hôte (pas
 en conteneur) et ne lit **pas** `.env` nativement : avant `./mvnw spring-boot:run`, charger les
@@ -154,7 +158,7 @@ Console Keycloak : http://localhost:8081 (admin / admin, cf. `.env`).
 
 ### Par défaut : filesystem (aucun conteneur requis)
 
-`.env.example` fixe `APP_STORAGE_TYPE=filesystem` — les documents générés sont écrits dans
+`.env.local.example` fixe `APP_STORAGE_TYPE=filesystem` — les documents générés sont écrits dans
 `./data/documents` (créé automatiquement). Rien d'autre à faire : passer directement à l'étape 6.
 
 ### En option : stockage compatible S3 (MinIO, RustFS, SeaweedFS, AWS S3…)
@@ -323,7 +327,7 @@ docker compose down -v         # + supprime les volumes (base, realm Keycloak, b
 | Symptôme | Cause probable | Fix |
 |---|---|---|
 | Boucle de redirection vers Keycloak, jamais authentifié, sur `http://localhost` | `app.security.cookie.secure=true` (défaut) exige HTTPS ; le navigateur rejette le cookie de session sur HTTP | Vérifier `APP_SECURITY_COOKIE_SECURE=false` dans `.env`, variables bien rechargées dans le shell avant `spring-boot:run` |
-| Erreur `app.storage.s3.bucket is required` au démarrage | `APP_STORAGE_TYPE=s3` sans bucket configuré | Renseigner `APP_STORAGE_S3_BUCKET` (déjà positionné dans `.env.example`) |
+| Erreur `app.storage.s3.bucket is required` au démarrage | `APP_STORAGE_TYPE=s3` sans bucket configuré | Renseigner `APP_STORAGE_S3_BUCKET` (déjà positionné dans `.env.local.example`) |
 | `NoSuchBucket` / erreurs S3 à l'upload | Le profil Compose du backend de stockage n'est pas démarré, ou le service `*-init` n'a pas encore créé le bucket | `docker compose --profile <minio\|rustfs\|seaweedfs> up -d`, puis `docker compose logs <backend>-init` |
 | Tables créées dans `public` au lieu du schéma tenant | Le schéma `tenant_dev` n'existait pas avant le premier démarrage de PostgreSQL (le script d'init ne s'exécute qu'une fois, sur un volume vide) | `docker compose down -v` puis `docker compose up -d` pour repartir d'un volume vierge — **aussi** après un changement du rôle LOGIN / GRANT (D-41) |
 | Port déjà utilisé (`8080`, `5432`, `8081`, `8090`, `9000`…) | Conflit avec un service local existant | Adapter les ports dans `.env` (`DB_PORT`, `KEYCLOAK_PORT`, `MANAGEMENT_PORT`) ou dans `docker-compose.yml` pour le stockage objet |
@@ -360,7 +364,7 @@ Bearer <token>` avec le rôle `API_SERVICE` et un claim `tenant_id` correspondan
 `app.tenant.id` (`tenant_dev` par défaut en local, §3).
 
 En local (profil `local`), le canal M2M est **désactivé tant que `M2M_JWT_SECRET` est vide**
-(défaut de `.env.example`) : y renseigner un secret d'au moins 32 caractères (HS256), recharger
+(défaut de `.env.local.example`) : y renseigner un secret d'au moins 32 caractères (HS256), recharger
 `.env` (§3) et relancer le backend. Générer ensuite un JWT de test signé HS256 avec ce secret —
 claims `roles` (`["API_SERVICE"]`), `tenant_id` (`tenant_dev`), `sub` (ou `client_id`), `exp` —
 puis pointer un client MCP dessus :
@@ -380,7 +384,7 @@ maintenir manuellement en plus de celle-ci. Aucune UI dédiée côté SPA : ce c
 l'outillage interne, pas aux utilisateurs finaux du tenant.
 
 Par défaut, tout JWT M2M authentifié reçoit `API_SERVICE` (un seul client M2M de confiance
-assumé, TODO §56). `M2M_TRUSTED_CLIENT_IDS` (voir `.env.example`) restreint ce rôle à une
+assumé, TODO §56). `M2M_TRUSTED_CLIENT_IDS` (voir `.env.local.example`) restreint ce rôle à une
 allowlist de `client_id`/`sub` — à renseigner avant d'ouvrir `/api/m2m/mcp` à un second client M2M
 à portée réduite. **Depuis TODO §82 (D6)** : hors `APP_ENVIRONMENT=local`, l'allowlist est **obligatoire** dès que le
 canal M2M est actif (l'application ne démarre pas sinon) ; `deploy_workflow`, `deploy_decision_table` et
@@ -393,9 +397,10 @@ agents qui supposaient un déploiement immédiat — `APP_MCP_PUBLICATION_MODE=d
 
 ## 13. Scan antivirus des pièces jointes (optionnel)
 
-Par défaut (`APP_DOSSIER_ATTACHMENT_SCAN_TYPE=noop`, `.env.example`), les pièces jointes
-(`POST /api/dossiers/{id}/elements/attachment`) ne sont pas scannées — comportement inchangé
-depuis toujours. Pour activer un scan réel via [ClamAV](https://www.clamav.net/) :
+Par défaut (`APP_DOSSIER_ATTACHMENT_SCAN_TYPE=noop`, `.env.local.example`), les pièces jointes
+(`POST /api/dossiers/{id}/elements/attachment`) ne sont pas scannées. Ce défaut n'est accepté qu'en
+dev : avec `APP_ENVIRONMENT=staging` le démarrage l'avertit, avec `APP_ENVIRONMENT=production` il
+est refusé sauf `APP_DOSSIER_ATTACHMENT_SCAN_NOOP_ACKNOWLEDGED=true` (TODO §95). Pour activer un scan réel via [ClamAV](https://www.clamav.net/) :
 
 ```bash
 docker compose --profile clamav up -d

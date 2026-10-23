@@ -164,7 +164,7 @@ Le risque 5 passe en P1 devant la documentation : c'est le seul où une erreur d
 | Phase | Statut | Commit | Preuves | Écarts au plan |
 |---|---|---|---|---|
 | P0 état initial | Livré | (ce commit) | voir « État initial » ci-dessous | Le code cite 217 identifiants de décision distincts, pas seulement les 38 de `DECISIONS.md` (D-REMED-ID-INVENTORY) |
-| P1 risque 5, mode dev | À faire | | | |
+| P1 risque 5, mode dev | Livré | `fix(security): P1` | `./mvnw verify` vert, 3 471 tests (0 échec, 5 ignorés comme en P0) ; tests du profil `embedded-db` (6) et `SignatureBrowserE2eTest` (3) verts ; `DevModeEnvironmentPostProcessorTest`, `DevModeStartupRefusalTest`, `EnvironmentPostProcessorRegistrationTest` | Défaut trouvé et corrigé : les post-processeurs des secrets et des en-têtes n'étaient jamais chargés (D-REMED-EPP-REGISTRATION ⚠). La source du skill `flowforge-conventions` est réalignée sur sa copie dans ce commit (prévu en P2) |
 | P2 D0, corrections immédiates | À faire | | | |
 | P3 D1, `check-docs` | À faire | | | |
 | P4 D2, `docs/specs/` | À faire | | | |

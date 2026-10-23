@@ -316,6 +316,9 @@ app:
         # que clamd n'est pas provisionné et activé explicitement. Voir DEPLOIEMENT.md § ClamAV
         # et docker-compose.yml (profil clamav, local/démo uniquement).
         type: ${APP_DOSSIER_ATTACHMENT_SCAN_TYPE:noop}
+        # TODO §95 : noop est refusé au démarrage quand APP_ENVIRONMENT=production, sauf acquittement explicite
+        # (pièces jointes acceptées sans analyse) ; en staging, simple avertissement.
+        noop-acknowledged: ${APP_DOSSIER_ATTACHMENT_SCAN_NOOP_ACKNOWLEDGED:false}
         clamav:
           host: ${APP_DOSSIER_ATTACHMENT_SCAN_CLAMAV_HOST:localhost}
           port: ${APP_DOSSIER_ATTACHMENT_SCAN_CLAMAV_PORT:3310}

@@ -13,7 +13,7 @@ Appliquer ces règles **avant** les skills génériques Java/Spring/Vue. En cas 
 |--------|--------|
 | Backend | Java 25 · Spring Boot 4.1.x · Maven mono-module |
 | Workflow | Flowable 8 Community (BPMN 2.0) |
-| Persistence | PostgreSQL + JPA + Liquibase · schéma **par tenant** |
+| Persistence | PostgreSQL + JPA + Liquibase · schéma **par tenant** · tests sur **PostgreSQL embarqué zonky** (pas de H2, pas de Docker ; non-root requis, sinon `FLOWFORGE_TEST_PG_URL`) · `*IT` inclus dans `verify` · changeSets appliqués **jamais modifiés** (`ChangelogChecksumStabilityIT`) |
 | PDF | Flying Saucer + OpenPDF (+ jsoup) — pas iText |
 | Auth | OAuth2/OIDC BFF (Keycloak par défaut) — pas de JWT dans le browser |
 | Frontend | Vue 3 + TypeScript + Vite + OpenVue + Pinia, embarqué dans `src/main/resources/static/` |
@@ -88,7 +88,8 @@ Référence : `analysis doc/11-frontend.md`.
    - nouvel écran ou champ visible en admin → section correspondante de `GUIDE-UTILISATEUR.md`
      (et tableau de rôles §0 si le rôle requis ou la route sont nouveaux) ;
    - nouvelle variable d'environnement consommée par l'app (`${MA_VAR}` dans `application.yml`)
-     → `.env.example` **et** `GETTING-STARTED.md` ;
+     → `.env.local.example` **et** `GETTING-STARTED.md`, plus `.env.example` (gabarit d'un
+     environnement réel) et `DEPLOIEMENT.md` §2 si elle compte hors dev ;
    - lister ces fichiers dans la section « Impacte » du point `TODO.md` de la feature, comme fait
      pour le point 20 (workflow-engine) — les points 21/22/29 (rétention, purge, observabilité) ne
      l'ont pas fait et ont laissé `GUIDE-UTILISATEUR.md` en retard sur l'UI réelle, ne pas répéter
@@ -143,7 +144,7 @@ npx ai-devkit@latest skill list              # skills installés
 - Claim Phase 8/9 FE sans preuve Playwright (`npm run test:e2e` / `test:all`) alors
   que le SPA ou ses mocks E2E sont impactés.
 - Livrer un écran admin ou une variable d'environnement sans mettre à jour
-  `GUIDE-UTILISATEUR.md` / `GETTING-STARTED.md` / `.env.example` en conséquence (voir §
+  `GUIDE-UTILISATEUR.md` / `GETTING-STARTED.md` / `.env.local.example` en conséquence (voir §
   « Workflow de feature » point 6).
 - Ouvrir ou merger une PR sans entrée `CHANGELOG.md` correspondante, ou y écrire un pavé
   technique au lieu d'un résumé synthétique (voir § « Workflow de feature » point 7).

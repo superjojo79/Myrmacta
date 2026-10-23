@@ -73,10 +73,19 @@ provisioning du schéma/rôle PostgreSQL correspondant.
 
 ------
 
-## 2. Variables d'environnement — ce qui change par rapport au `.env.example` de dev
+## 2. Variables d'environnement — ce qui change par rapport au `.env.local.example` de dev
 
-`.env.example` est calibré pour le dev local (`SPRING_PROFILES_ACTIVE=local`), qui autorise des
-secrets de démo. Hors profils `local`/`test`, le boot **refuse de démarrer** (fail-fast, décision
+[`.env.example`](.env.example) est le gabarit d'un environnement réel : `APP_ENVIRONMENT=production`,
+un profil dédié et des secrets **vides**, si bien que l'instance refuse de démarrer tant qu'ils ne
+sont pas renseignés. [`.env.local.example`](.env.local.example) est calibré pour le dev local
+(`SPRING_PROFILES_ACTIVE=local`), qui autorise des secrets de démo.
+
+`APP_ENVIRONMENT` est le **seul interrupteur « mode dev »** (TODO §95) : le profil `local` est refusé
+au démarrage si `APP_ENVIRONMENT` n'est pas `local`, et le profil `test` est refusé quand
+`APP_ENVIRONMENT=production` (valeur par défaut). Un `.env` de dev recopié sur un serveur ne peut
+donc plus relâcher les contrôles en silence.
+
+Hors profils `local`/`test`, le boot **refuse de démarrer** (fail-fast, décision
 D-43, [TODO.md](TODO.md) point 43) si :
 
 - `DB_PASSWORD` est vide ou dans la denylist (`flowforge`, `postgres`, `admin`, `password`) ;
@@ -86,7 +95,9 @@ Checklist des variables à revoir pour un environnement réel :
 
 | Variable | Dev local | Environnement réel |
 |---|---|---|
-| `SPRING_PROFILES_ACTIVE` | `local` | un profil dédié (≠ `local`/`test`) pour activer les garde-fous D-43 |
+| `APP_ENVIRONMENT` | `local` | `production` (défaut) ou `staging` — refuse le profil `local`, et le profil `test` en production (TODO §95) |
+| `SPRING_PROFILES_ACTIVE` | `local` | un profil dédié (≠ `local`/`test`, ex. `prod`) pour activer les garde-fous D-43 |
+| `APP_DOSSIER_ATTACHMENT_SCAN_TYPE` | `noop` | `clamav` (§8). `noop` est refusé au démarrage en `production`, sauf `APP_DOSSIER_ATTACHMENT_SCAN_NOOP_ACKNOWLEDGED=true` (pièces jointes acceptées sans analyse, risque assumé) ; en `staging`, il est signalé au démarrage (TODO §95) |
 | `DB_PASSWORD` | `flowforge` | mot de passe fort, hors denylist |
 | `APP_SECURITY_COOKIE_SECURE` | `false` (HTTP) | `true` (défaut) — exige HTTPS de bout en bout ou une terminaison TLS au reverse-proxy ; `server.forward-headers-strategy: framework` est déjà positionné pour honorer les en-têtes `X-Forwarded-*` **posés par le proxy de confiance** |
 | `APP_SECURITY_HEADERS_ENABLED` | `true` (défaut, à laisser) | `true` — l’app émet HSTS `max-age=31536000; includeSubDomains` (pas de `preload`) hors profils `local`/`test`, seulement si la requête est HTTPS **et** que le pair TCP immédiat est dans `APP_SECURITY_HEADERS_TRUSTED_PROXY_CIDRS`. Ne pas poser un HSTS reverse-proxy **plus court** qui le contredirait. **Depuis TODO §64, `false` hors profils `local`/`test` empêche le démarrage** (fail-fast, même doctrine que `DB_PASSWORD`/§2) — ce n'est plus un coupe-circuit d'urgence. |

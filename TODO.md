@@ -3647,3 +3647,33 @@ orphelines des références du code. Choix : avant toute suppression, un index d
 (`docs/decisions/identifiants.md`, une ligne par identifiant cité : énoncé court, source) est extrait des documents
 existants, et `check-docs` exige que chaque identifiant cité par le code y figure. Réversible (simple fichier généré
 puis relu).
+
+**D-REMED-EPP-REGISTRATION** ⚠ — Constat de P1 : `SecretsEnvironmentPostProcessor` (D-43) et
+`SecurityHeadersEnvironmentPostProcessor` (§64) n'étaient déclarés que dans
+`META-INF/spring/org.springframework.boot.env.EnvironmentPostProcessor`, un fichier que Spring Boot ne lit
+pas : depuis leur création (2026-09-03 et 2026-09-21), leurs refus au démarrage ne s'exécutaient jamais en
+dehors des tests unitaires. Corrigé : déclaration dans `META-INF/spring.factories` (seul emplacement lu, comme
+les trois post-processeurs qui fonctionnaient déjà), fichier mort supprimé, et
+`EnvironmentPostProcessorRegistrationTest` fait échouer le build si un post-processeur de production n'est pas
+chargé. Effet : une instance démarrée hors profils `local`/`test` avec un mot de passe de la denylist, sans
+`APP_CONNECTOR_MASTER_KEY`, avec un HMAC M2M ou avec les en-têtes désactivés refuse désormais de démarrer, comme
+le documentent `DEPLOIEMENT.md` §2 et le point 43. À relire : toute instance existante qui démarrait grâce à
+cette absence échouera au prochain démarrage.
+
+**D-REMED-DEVMODE** — `app.environment` (APP_ENVIRONMENT, défaut `production`) devient le seul interrupteur
+« mode dev » (`DevModeEnvironmentPostProcessor`) : le profil `local` exige `APP_ENVIRONMENT=local` ; le profil
+`test` est refusé seulement en `production`, parce que la suite de tests exerce aussi `staging`
+(`McpDirectPublicationIntegrationTest`). Options écartées : refuser `test` hors `local` (casse un test légitime),
+ou supprimer le relâchement par profil des deux autres post-processeurs (changement plus large, sans gain tant
+que les profils sont verrouillés par `app.environment`). Réversible.
+
+**D-REMED-NOOP-ACK** ⚠ — Antivirus `noop` (défaut) : refusé au démarrage quand `APP_ENVIRONMENT=production`,
+sauf `app.dossier.attachment.scan.noop-acknowledged=true` (`APP_DOSSIER_ATTACHMENT_SCAN_NOOP_ACKNOWLEDGED`,
+défaut `false`) ; simple avertissement en `staging` ; silencieux en `local`. Un acquittement explicite plutôt
+qu'un refus sans issue : un tenant sans portail ni pièce jointe externe peut assumer l'absence d'antivirus,
+mais il doit l'écrire. À relire : une production sans ClamAV doit désormais poser cet acquittement.
+
+**D-REMED-ENV-TEMPLATES** — `.env.example` devient le gabarit d'un environnement réel (`APP_ENVIRONMENT=production`,
+profil `prod`, secrets vides donc démarrage refusé tant qu'ils ne sont pas renseignés, ClamAV) ; l'ancien contenu,
+calibré pour le dev, devient `.env.local.example` (`cp .env.local.example .env`). Le nom historique désigne ainsi
+le gabarit le moins dangereux à copier par erreur. Réversible.

@@ -44,6 +44,10 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Sécurité
 
+- **[PR #182](https://github.com/superjojo79/FlowForge/pull/182)** — Les refus au démarrage des secrets par défaut et
+  des en-têtes désactivés n'étaient jamais exécutés (post-processeurs mal déclarés) : ils le sont désormais.
+  `APP_ENVIRONMENT` devient le seul interrupteur « mode dev » (profil `local` refusé hors `local`, antivirus `noop`
+  refusé en production sans acquittement) ; `.env.example` est un gabarit de production, le dev passe à `.env.local.example`.
 - **[PR #180](https://github.com/superjojo79/FlowForge/pull/180)** — Scan de dépendances de nouveau au vert : Kotlin 2.4.20,
   Netty 4.2.19 et swagger-ui 5.34.0 corrigent les CVE remontées (dont une critique, 9.8). Le scan échoue désormais dès CVSS 7 ;
   les deux faux positifs restants (jsonata, Kafka côté broker) sont justifiés un à un. OSS Index s'active via les secrets `OSS_INDEX_*`.

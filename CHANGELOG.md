@@ -52,6 +52,8 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 ### Documentation
 
+- **[PR #182](https://github.com/superjojo79/FlowForge/pull/182)** — Plan de remédiation de la revue du 22 octobre, centré sur la
+  documentation (`docs/analyses/`), et prompt `/goal` pour l'exécuter (`docs/goals/`). Aucun changement de code.
 - **[PR #181](https://github.com/superjojo79/FlowForge/pull/181)** — Deux analyses ajoutées dans `docs/analyses/` : revue du dépôt du 22 octobre 2026 et fiche technique de la pré-vérification IA des dossiers. Aucun changement de code.
 
 - **[PR #179](https://github.com/superjojo79/FlowForge/pull/179)** — File d'attente, roadmap et README recadrés sur `main` : Vague D livrée, prochains lots = backlog de l'exemple riverain (pièce jointe, unicité). Frontend documenté comme OpenVue ; catalogue de connecteurs et recette R6 alignés.

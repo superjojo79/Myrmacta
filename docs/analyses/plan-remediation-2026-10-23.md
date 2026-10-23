@@ -156,3 +156,35 @@ Le risque 5 passe en P1 devant la documentation : c'est le seul où une erreur d
 2. **Semaine 2 :** D2, D3 et D4 (une PR par lot, chacune validée par le contrôle D1).
 3. **Semaine 3 :** D5 et D6, puis le risque 4.
 4. **Ensuite :** le risque 3 avant le premier client, et les classes volumineuses au fil de l'eau.
+
+## 7. Suivi
+
+*Tenu par le goal [`docs/goals/remediation-revue-2026-10.md`](../goals/remediation-revue-2026-10.md). Décisions prises en cours de route : `TODO §95`.*
+
+| Phase | Statut | Commit | Preuves | Écarts au plan |
+|---|---|---|---|---|
+| P0 état initial | Livré | (ce commit) | voir « État initial » ci-dessous | Le code cite 217 identifiants de décision distincts, pas seulement les 38 de `DECISIONS.md` (D-REMED-ID-INVENTORY) |
+| P1 risque 5, mode dev | À faire | | | |
+| P2 D0, corrections immédiates | À faire | | | |
+| P3 D1, `check-docs` | À faire | | | |
+| P4 D2, `docs/specs/` | À faire | | | |
+| P5 D3, `docs/ai/` | À faire | | | |
+| P6 D4, `docs/decisions/` | À faire | | | |
+| P7 D5, backlog | À faire | | | |
+| P8 D6, `AGENTS.md` et skills | À faire | | | |
+| P9 risque 4, sandboxes | À faire | | | |
+| P10 risque 3, déploiement tenant | À faire | | | |
+| P11 découpage `pilotage.spec.ts` | À faire | | | |
+| P12 clôture | À faire | | | |
+
+### État initial (P0, `main` à `e91aa7b` + PR #182)
+
+- **Environnement d'exécution :** le bac à sable tourne en root et zonky refuse `initdb` en root. `./mvnw verify` est lancé sous l'utilisateur `ubuntu`, sur une copie de travail synchronisée, avec `-Dmaven.compiler.release=21` (seul un JDK 21 est installé ; la CI utilise le JDK 25). Playwright utilise le Chromium préinstallé (`PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium`), la version du navigateur attendue par `playwright-core` n'étant pas installée.
+- **Backend :** `./mvnw verify` vert en 12 min 44 s (téléchargement des dépendances compris) ; 3 461 tests, 0 échec, 5 ignorés (`ClamAvAttachmentScanIT`, faute de Docker ; `SignatureBrowserE2eTest`, activé seulement par `-Dsignature.e2e=true`) ; seuils JaCoCo atteints.
+- **Frontend :** `npm run lint` vert ; Vitest 739 tests (127 fichiers) ; Playwright 130 tests (2 fichiers, dont 127 dans `pilotage.spec.ts`).
+- **Volume :** 5,04 Mo de `.md` suivis hors arbres de skills, 8,19 Mo au total.
+- **Identifiants cités par le code** (`src/`, `frontend/src/`) :
+  - `TODO §N` : 41 numéros distincts dans 650 fichiers. Tous ont une section dans `TODO.md` (titre `N.`, ou ligne du tableau §80 à §90).
+  - `D-…` et `DD-…` : 217 identifiants distincts. 38 sont définis dans `DECISIONS.md`, 65 seulement dans `docs/ai/`, 101 dans d'autres `.md`, et 9 nulle part.
+  - « décision n° N » : 5 numéros distincts dans le code ; même numérotation que `TODO §N`.
+- **Fautes relevées par `scripts/check-docs.sh`** (écrit en P3, lancé sur cet état) : 11 liens cassés, 3 écarts entre une copie de skill et sa source, 2 versions du README incohérentes avec le `pom.xml`, 9 identifiants de décision sans définition.

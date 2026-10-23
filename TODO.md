@@ -3629,3 +3629,21 @@ dossier, et paginés en mémoire ; `truncated` signale la borne. Les jobs resten
 **Impacte :** `GUIDE-UTILISATEUR.md` (§0 rôles, §3 « Suivre l'exécution »), `GUIDE-CONCEPTION-BPMN.md` (§6c),
 `analysis doc/15-serveur-mcp.md`, `openapi/openapi.yaml`, `CHANGELOG.md`. Aucune migration, aucune variable
 d'environnement. Suivi : statut de `DEFERRED-FEATURES.md` §7 et de DIFFICULTES §11 une fois la PR #175 mergée.
+
+---
+
+## 95. Remédiation de la revue du 22 octobre 2026
+
+[ ] en cours (branche `claude/eager-galileo-4i5w0g`, PR #182). Exécution du plan
+[docs/analyses/plan-remediation-2026-10-23.md](docs/analyses/plan-remediation-2026-10-23.md) par le goal
+[docs/goals/remediation-revue-2026-10.md](docs/goals/remediation-revue-2026-10.md). Le suivi phase par phase est tenu
+dans la section « Suivi » du plan ; ce point consigne les décisions prises en cours de route.
+
+**D-REMED-ID-INVENTORY** — L'inventaire de P0 élargit le périmètre des identifiants protégés. Le code cite
+217 identifiants de décision distincts (`D-…` et `DD-…`), et pas seulement ceux de `docs/roadmap-goal/DECISIONS.md`
+(38) : 65 ne sont définis que dans `docs/ai/`, 101 dans d'autres `.md` (`TODO.md`, `analysis doc/`, `FILE-ATTENTE.md`…)
+et 13 ne sont définis nulle part. Supprimer `docs/ai/` (P5) ou `FILE-ATTENTE.md` (P7) sans précaution rendrait
+orphelines des références du code. Choix : avant toute suppression, un index des identifiants
+(`docs/decisions/identifiants.md`, une ligne par identifiant cité : énoncé court, source) est extrait des documents
+existants, et `check-docs` exige que chaque identifiant cité par le code y figure. Réversible (simple fichier généré
+puis relu).

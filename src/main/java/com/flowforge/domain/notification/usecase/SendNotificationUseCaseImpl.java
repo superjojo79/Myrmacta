@@ -63,6 +63,10 @@ public final class SendNotificationUseCaseImpl implements SendNotificationUseCas
         // letting the client mark that exact inbox row read instead of the outbox row's own id
         // (which the inbox never shares and the client can never resolve to a 200 on PATCH).
         UUID inboxId = channels.contains(NotificationChannel.BROWSER) ? UUID.randomUUID() : null;
+        if (event.attachment() != null && !channels.contains(NotificationChannel.EMAIL)) {
+            // D-NOTIF-ATTACH-EMAIL-ONLY : jamais ignorée en silence.
+            throw new NotificationValidationException("attachment requires the EMAIL channel");
+        }
 
         // Validate all channels before any write (atomic fan-out).
         List<PendingOutboxWrite> writes = new ArrayList<>(channels.size());
@@ -166,7 +170,7 @@ public final class SendNotificationUseCaseImpl implements SendNotificationUseCas
     private static String snapshot(
             NotificationChannel channel, NotificationEvent event, Map<String, Object> payload, UUID inboxId) {
         return switch (channel) {
-            case EMAIL -> NotificationPayloadJson.email(event.to(), event.subject(), event.body());
+            case EMAIL -> NotificationPayloadJson.email(event.to(), event.subject(), event.body(), event.attachment());
             case WEBHOOK -> NotificationPayloadJson.webhook(event.webhookConfigId(), payload);
             case BROWSER -> NotificationPayloadJson.browser(event.userId(), payload, inboxId);
         };

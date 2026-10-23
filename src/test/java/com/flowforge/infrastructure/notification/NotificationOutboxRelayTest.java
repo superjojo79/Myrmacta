@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.flowforge.domain.connector.port.out.ConnectorSecretCipher;
+import com.flowforge.domain.document.port.out.DocumentStoragePort;
 import com.flowforge.domain.notification.model.NotificationChannel;
 import com.flowforge.domain.notification.model.NotificationOutboxRecord;
 import com.flowforge.domain.notification.model.NotificationOutboxStatus;
@@ -20,6 +21,7 @@ import com.flowforge.domain.notification.port.out.EmailPort;
 import com.flowforge.domain.notification.port.out.NotificationOutboxRepository;
 import com.flowforge.domain.notification.port.out.NotificationWebhookRepository;
 import com.flowforge.domain.notification.port.out.WebhookPort;
+import com.flowforge.infrastructure.config.NotificationEmailProperties;
 import com.flowforge.infrastructure.config.NotificationProperties;
 import com.flowforge.infrastructure.observability.MdcScope;
 import java.time.Duration;
@@ -41,6 +43,7 @@ class NotificationOutboxRelayTest {
     private NotificationOutboxRepository outboxRepository;
     private NotificationWebhookRepository webhookRepository;
     private EmailPort emailPort;
+    private DocumentStoragePort storage;
     private WebhookPort webhookPort;
     private BrowserPushPort browserPushPort;
     private ConnectorSecretCipher cipher;
@@ -57,6 +60,7 @@ class NotificationOutboxRelayTest {
         when(outboxRepository.renewClaim(any(), any(), any())).thenReturn(true);
         webhookRepository = mock(NotificationWebhookRepository.class);
         emailPort = mock(EmailPort.class);
+        storage = mock(DocumentStoragePort.class);
         webhookPort = mock(WebhookPort.class);
         browserPushPort = mock(BrowserPushPort.class);
         cipher = mock(ConnectorSecretCipher.class);
@@ -73,8 +77,54 @@ class NotificationOutboxRelayTest {
                 browserPushPort,
                 cipher,
                 properties,
-                JsonMapper.builder().build());
+                JsonMapper.builder().build(),
+                storage,
+                new NotificationEmailProperties(16));
     }
+
+    /** Issue #183 (D-NOTIF-ATTACH-REF-IN-OUTBOX) — le contenu est relu dans le stockage du tenant de la ligne au moment de l'envoi. */
+    @Test
+    void relay_emailWithAttachment_readsTheContentFromTheStorageAtSendTime() {
+        Instant now = Instant.parse("2026-08-07T12:00:00Z");
+        byte[] pdf = "%PDF-1.7 x".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+        when(storage.retrieve("tenant_dev", "tenant_dev/doc.pdf")).thenReturn(pdf);
+        NotificationOutboxRecord record = pending(NotificationChannel.EMAIL, ATTACHMENT_JSON, now);
+        when(outboxRepository.lockNextPending(20, now)).thenReturn(List.of(record));
+
+        relay.relayPending(now);
+
+        ArgumentCaptor<EmailPort.EmailAttachmentContent> captor =
+                ArgumentCaptor.forClass(EmailPort.EmailAttachmentContent.class);
+        verify(emailPort).send(eq("a@example.com"), eq("Hi"), eq("Body"), captor.capture());
+        org.assertj.core.api.Assertions.assertThat(captor.getValue().fileName()).isEqualTo("autorisation.pdf");
+        org.assertj.core.api.Assertions.assertThat(captor.getValue().contentType()).isEqualTo("application/pdf");
+        org.assertj.core.api.Assertions.assertThat(captor.getValue().content()).isEqualTo(pdf);
+        verify(outboxRepository).markProcessed(record.id(), now);
+    }
+
+    /** Plafond revérifié à l'envoi (il a pu baisser) ; document purgé entre-temps : échec ordinaire, l'outbox retente. */
+    @Test
+    void relay_emailWithAttachment_tooLargeOrMissingIsAFailureAndNothingIsSent() {
+        Instant now = Instant.parse("2026-08-07T12:00:00Z");
+        NotificationOutboxRecord record = pending(NotificationChannel.EMAIL, ATTACHMENT_JSON, now);
+        when(outboxRepository.lockNextPending(20, now)).thenReturn(List.of(record));
+
+        when(storage.retrieve("tenant_dev", "tenant_dev/doc.pdf")).thenReturn(new byte[17]);
+        relay.relayPending(now);
+        org.mockito.Mockito.doThrow(new com.flowforge.domain.document.model.DocumentStorageException("gone"))
+                .when(storage).retrieve("tenant_dev", "tenant_dev/doc.pdf");
+        relay.relayPending(now);
+
+        verify(emailPort, never()).send(anyString(), anyString(), anyString(), any());
+        verify(outboxRepository).recordFailure(eq(record.id()), org.mockito.ArgumentMatchers.contains("exceeds 16 bytes"),
+                eq(3), eq(now));
+        verify(outboxRepository).recordFailure(eq(record.id()), eq("gone"), eq(3), eq(now));
+        verify(outboxRepository, never()).markProcessed(any(), any());
+    }
+
+    private static final String ATTACHMENT_JSON = "{\"to\":\"a@example.com\",\"subject\":\"Hi\",\"body\":\"Body\","
+            + "\"attachment\":{\"storageRef\":\"tenant_dev/doc.pdf\",\"fileName\":\"autorisation.pdf\","
+            + "\"contentType\":\"application/pdf\"}}";
 
     @Test
     void relay_emailSuccess_marksProcessed() {

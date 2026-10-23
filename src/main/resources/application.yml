@@ -247,6 +247,9 @@ app:
     inbox:
       retention: 30d
       poll-delay: 1d
+    email:
+      # Issue #183 (D-NOTIF-ATTACH-MAX) : plafond de la pièce jointe d'un e-mail « Notifier » (octets, 10 Mio).
+      attachment-max-bytes: 10485760
   storage:
     type: ${APP_STORAGE_TYPE:filesystem}
     filesystem:

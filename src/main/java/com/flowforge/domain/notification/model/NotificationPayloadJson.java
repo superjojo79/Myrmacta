@@ -13,11 +13,25 @@ public final class NotificationPayloadJson {
     private NotificationPayloadJson() {}
 
     public static String email(String to, String subject, String body) {
+        return email(to, subject, body, null);
+    }
+
+    /** Issue #183 — {@code attachment} (facultatif) : la référence seulement, jamais le contenu (D-NOTIF-ATTACH-REF-IN-OUTBOX). */
+    public static String email(String to, String subject, String body, EmailAttachment attachment) {
         StringBuilder sb = new StringBuilder(64);
         sb.append('{');
         appendField(sb, "to", to, true);
         appendField(sb, "subject", subject, false);
         appendField(sb, "body", body, false);
+        if (attachment != null) {
+            sb.append(',');
+            quote(sb, "attachment");
+            sb.append(":{");
+            appendField(sb, "storageRef", attachment.storageRef(), true);
+            appendField(sb, "fileName", attachment.fileName(), false);
+            appendField(sb, "contentType", attachment.contentType(), false);
+            sb.append('}');
+        }
         sb.append('}');
         return sb.toString();
     }

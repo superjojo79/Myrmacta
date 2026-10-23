@@ -1,6 +1,7 @@
 package com.flowforge.infrastructure.notification;
 
 import com.flowforge.domain.connector.port.out.ConnectorSecretCipher;
+import com.flowforge.domain.document.port.out.DocumentStoragePort;
 import com.flowforge.domain.notification.model.NotificationChannel;
 import com.flowforge.domain.notification.model.NotificationOutboxRecord;
 import com.flowforge.domain.notification.model.NotificationWebhookConfig;
@@ -10,6 +11,7 @@ import com.flowforge.domain.notification.port.out.EmailPort;
 import com.flowforge.domain.notification.port.out.NotificationOutboxRepository;
 import com.flowforge.domain.notification.port.out.NotificationWebhookRepository;
 import com.flowforge.domain.notification.port.out.WebhookPort;
+import com.flowforge.infrastructure.config.NotificationEmailProperties;
 import com.flowforge.infrastructure.config.NotificationProperties;
 import com.flowforge.infrastructure.observability.MdcScope;
 import java.time.Instant;
@@ -40,6 +42,8 @@ public class NotificationOutboxRelay {
     private final ConnectorSecretCipher cipher;
     private final NotificationProperties properties;
     private final ObjectMapper objectMapper;
+    private final DocumentStoragePort documentStorage;
+    private final NotificationEmailProperties emailProperties;
 
     public NotificationOutboxRelay(
             NotificationOutboxRepository outboxRepository,
@@ -49,7 +53,9 @@ public class NotificationOutboxRelay {
             BrowserPushPort browserPushPort,
             ConnectorSecretCipher cipher,
             NotificationProperties properties,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            DocumentStoragePort documentStorage,
+            NotificationEmailProperties emailProperties) {
         this.outboxRepository = Objects.requireNonNull(outboxRepository, "outboxRepository");
         this.webhookRepository = Objects.requireNonNull(webhookRepository, "webhookRepository");
         this.emailPort = Objects.requireNonNull(emailPort, "emailPort");
@@ -58,6 +64,8 @@ public class NotificationOutboxRelay {
         this.cipher = Objects.requireNonNull(cipher, "cipher");
         this.properties = Objects.requireNonNull(properties, "properties");
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
+        this.documentStorage = Objects.requireNonNull(documentStorage, "documentStorage");
+        this.emailProperties = Objects.requireNonNull(emailProperties, "emailProperties");
     }
 
     @Scheduled(fixedDelayString = "${app.notification.outbox.poll-delay:1s}")
@@ -107,8 +115,27 @@ public class NotificationOutboxRelay {
         String to = textRequired(root, "to");
         String subject = textRequired(root, "subject");
         String body = textRequired(root, "body");
-        emailPort.send(to, subject, body);
+        JsonNode attachment = root.get("attachment");
+        if (attachment == null || attachment.isNull()) {
+            emailPort.send(to, subject, body);
+        } else {
+            emailPort.send(to, subject, body, attachmentContent(record.tenantId(), attachment));
+        }
         outboxRepository.markProcessed(record.id(), now);
+    }
+
+    /**
+     * Issue #183 (D-NOTIF-ATTACH-REF-IN-OUTBOX) — contenu relu dans le stockage du tenant de la ligne ; le plafond est revérifié
+     * (il a pu baisser depuis l'émission). Document absent ou trop gros : échec ordinaire, l'outbox retente puis abandonne.
+     */
+    private EmailPort.EmailAttachmentContent attachmentContent(String tenantId, JsonNode attachment) {
+        byte[] content = documentStorage.retrieve(tenantId, textRequired(attachment, "storageRef"));
+        if (content.length > emailProperties.attachmentMaxBytes()) {
+            throw new IllegalStateException(
+                    "attachment exceeds " + emailProperties.attachmentMaxBytes() + " bytes");
+        }
+        return new EmailPort.EmailAttachmentContent(
+                textRequired(attachment, "fileName"), textRequired(attachment, "contentType"), content);
     }
 
     private void dispatchWebhook(NotificationOutboxRecord record, Instant now) {

@@ -128,7 +128,8 @@ class BlockAttributesDelegatesTest {
     void notification_recipientSourceInTheLiteralAttributeIsResolved() {
         SendNotificationUseCase useCase = mock(SendNotificationUseCase.class);
         PortalRecipientResolverPort resolver = mock(PortalRecipientResolverPort.class);
-        NotificationDispatchTask delegate = new NotificationDispatchTask(new TenantProperties("tenant_dev"), useCase, resolver);
+        NotificationDispatchTask delegate = new NotificationDispatchTask(new TenantProperties("tenant_dev"), useCase, resolver,
+                mock(com.flowforge.domain.notification.port.in.ResolveEmailAttachmentUseCase.class));
         UUID dossier = UUID.randomUUID();
         when(resolver.resolve(new PortalRecipientSource(PortalRecipientSource.Kind.DOSSIER_FIELD, "email"), dossier, "pi-1"))
                 .thenReturn(java.util.Optional.of("camille@example.org"));
@@ -148,7 +149,8 @@ class BlockAttributesDelegatesTest {
     void notification_emptyResolvedRecipientIsAnIncidentNamingTheSourceNeverAValue() {
         SendNotificationUseCase useCase = mock(SendNotificationUseCase.class);
         PortalRecipientResolverPort resolver = mock(PortalRecipientResolverPort.class);
-        NotificationDispatchTask delegate = new NotificationDispatchTask(new TenantProperties("tenant_dev"), useCase, resolver);
+        NotificationDispatchTask delegate = new NotificationDispatchTask(new TenantProperties("tenant_dev"), useCase, resolver,
+                mock(com.flowforge.domain.notification.port.in.ResolveEmailAttachmentUseCase.class));
         UUID dossier = UUID.randomUUID();
         PortalRecipientSource email = new PortalRecipientSource(PortalRecipientSource.Kind.DOSSIER_FIELD, "email");
         Map<String, Object> vars = Map.of("dossierId", dossier.toString());
@@ -170,7 +172,8 @@ class BlockAttributesDelegatesTest {
         // MimeMessageHelper.setTo analyse une LISTE : un champ « a@x.org, b@y.org » enverrait à plusieurs destinataires.
         SendNotificationUseCase useCase = mock(SendNotificationUseCase.class);
         PortalRecipientResolverPort resolver = mock(PortalRecipientResolverPort.class);
-        NotificationDispatchTask delegate = new NotificationDispatchTask(new TenantProperties("tenant_dev"), useCase, resolver);
+        NotificationDispatchTask delegate = new NotificationDispatchTask(new TenantProperties("tenant_dev"), useCase, resolver,
+                mock(com.flowforge.domain.notification.port.in.ResolveEmailAttachmentUseCase.class));
         UUID dossier = UUID.randomUUID();
         PortalRecipientSource email = new PortalRecipientSource(PortalRecipientSource.Kind.DOSSIER_FIELD, "email");
         Map<String, Object> vars = Map.of("dossierId", dossier.toString());
@@ -194,7 +197,8 @@ class BlockAttributesDelegatesTest {
         // Une variable est contrôlée par un utilisateur (démarrage, complétion de tâche) : elle ne désigne pas un autre champ.
         SendNotificationUseCase useCase = mock(SendNotificationUseCase.class);
         PortalRecipientResolverPort resolver = mock(PortalRecipientResolverPort.class);
-        NotificationDispatchTask delegate = new NotificationDispatchTask(new TenantProperties("tenant_dev"), useCase, resolver);
+        NotificationDispatchTask delegate = new NotificationDispatchTask(new TenantProperties("tenant_dev"), useCase, resolver,
+                mock(com.flowforge.domain.notification.port.in.ResolveEmailAttachmentUseCase.class));
 
         // Elle reste une adresse littérale… qui n'en est pas une : refusée (revue L3), jamais résolue.
         assertThatThrownBy(() -> delegate.execute(
@@ -211,7 +215,8 @@ class BlockAttributesDelegatesTest {
     void notification_theUserControlledVariableMustAlsoBeASingleMailbox() {
         SendNotificationUseCase useCase = mock(SendNotificationUseCase.class);
         NotificationDispatchTask delegate = new NotificationDispatchTask(
-                new TenantProperties("tenant_dev"), useCase, mock(PortalRecipientResolverPort.class));
+                new TenantProperties("tenant_dev"), useCase, mock(PortalRecipientResolverPort.class),
+                mock(com.flowforge.domain.notification.port.in.ResolveEmailAttachmentUseCase.class));
 
         for (String bad : List.of("Camille <x@evil.org>", "g: a@x.org, b@y.org;", "a@x.org, b@y.org")) {
             assertThatThrownBy(() -> delegate.execute(
@@ -232,7 +237,8 @@ class BlockAttributesDelegatesTest {
     @Test
     void notification_aMalformedDossierIdIsAValidationErrorWithoutTheValue() {
         NotificationDispatchTask delegate = new NotificationDispatchTask(new TenantProperties("tenant_dev"),
-                mock(SendNotificationUseCase.class), mock(PortalRecipientResolverPort.class));
+                mock(SendNotificationUseCase.class), mock(PortalRecipientResolverPort.class),
+                mock(com.flowforge.domain.notification.port.in.ResolveEmailAttachmentUseCase.class));
 
         assertThatThrownBy(() -> delegate.execute(execution(Map.of("dossierId", "pas-un-uuid"),
                 Map.of("notificationChannels", "EMAIL", "notificationTo", "dossierField:email"))))
@@ -244,7 +250,8 @@ class BlockAttributesDelegatesTest {
     void notification_aLiteralAddressIsUnchangedAndNeverResolved() {
         SendNotificationUseCase useCase = mock(SendNotificationUseCase.class);
         PortalRecipientResolverPort resolver = mock(PortalRecipientResolverPort.class);
-        NotificationDispatchTask delegate = new NotificationDispatchTask(new TenantProperties("tenant_dev"), useCase, resolver);
+        NotificationDispatchTask delegate = new NotificationDispatchTask(new TenantProperties("tenant_dev"), useCase, resolver,
+                mock(com.flowforge.domain.notification.port.in.ResolveEmailAttachmentUseCase.class));
 
         delegate.execute(execution(Map.of(), Map.of("notificationChannels", "EMAIL", "notificationTo", "contact@example.org")));
 
@@ -258,7 +265,8 @@ class BlockAttributesDelegatesTest {
     void notification_attributesOnly_attributeWins_andMissingChannelsKeepsTheError() {
         SendNotificationUseCase useCase = mock(SendNotificationUseCase.class);
         NotificationDispatchTask delegate = new NotificationDispatchTask(
-                new TenantProperties("tenant_dev"), useCase, mock(PortalRecipientResolverPort.class));
+                new TenantProperties("tenant_dev"), useCase, mock(PortalRecipientResolverPort.class),
+                mock(com.flowforge.domain.notification.port.in.ResolveEmailAttachmentUseCase.class));
         UUID webhook = UUID.randomUUID();
 
         delegate.execute(execution(Map.of(), Map.of(

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://flowforge/test">
+
+  <!-- Issue #183 : « Notifier » joint le document produit puis rattaché au dossier (generatedDocumentId posé par le test). -->
+  <process id="notifierAttachment" name="Notifier Attachment" isExecutable="true">
+    <startEvent id="naStart"/>
+    <sequenceFlow id="naFlow1" sourceRef="naStart" targetRef="naWait"/>
+    <userTask id="naWait" name="Attente" flowable:assignee="notifier-smoke"/>
+    <sequenceFlow id="naFlow2" sourceRef="naWait" targetRef="naAttach"/>
+    <serviceTask id="naAttach" name="Joindre le document" flowable:delegateExpression="${attachGeneratedDocumentTask}"/>
+    <sequenceFlow id="naFlow3" sourceRef="naAttach" targetRef="naNotify"/>
+    <serviceTask id="naNotify" name="Notifier"
+                 flowable:delegateExpression="${notificationDispatchTask}"
+                 flowable:notificationChannels="EMAIL"
+                 flowable:notificationTo="dossierField:email"
+                 flowable:notificationSubject="Votre autorisation"
+                 flowable:notificationBody="Vous trouverez votre autorisation en pièce jointe."
+                 flowable:notificationAttachment="variable:generatedDocumentId"
+                 flowable:notificationAttachmentName="autorisation"/>
+    <sequenceFlow id="naFlow4" sourceRef="naNotify" targetRef="naDone"/>
+    <userTask id="naDone" name="Terminé" flowable:assignee="notifier-smoke"/>
+  </process>
+
+  <!-- Même brique sans « Joindre le document » : le PDF n'est pas un élément du dossier, l'envoi est refusé. -->
+  <process id="notifierAttachmentNotAttached" name="Notifier Attachment Not Attached" isExecutable="true">
+    <startEvent id="nnStart"/>
+    <sequenceFlow id="nnFlow1" sourceRef="nnStart" targetRef="nnWait"/>
+    <userTask id="nnWait" name="Attente" flowable:assignee="notifier-smoke"/>
+    <sequenceFlow id="nnFlow2" sourceRef="nnWait" targetRef="nnNotify"/>
+    <serviceTask id="nnNotify" name="Notifier"
+                 flowable:delegateExpression="${notificationDispatchTask}"
+                 flowable:notificationChannels="EMAIL"
+                 flowable:notificationTo="dossierField:email"
+                 flowable:notificationSubject="Votre autorisation"
+                 flowable:notificationBody="Ci-joint."
+                 flowable:notificationAttachment="variable:generatedDocumentId"/>
+    <sequenceFlow id="nnFlow3" sourceRef="nnNotify" targetRef="nnDone"/>
+    <userTask id="nnDone" name="Terminé" flowable:assignee="notifier-smoke"/>
+  </process>
+</definitions>

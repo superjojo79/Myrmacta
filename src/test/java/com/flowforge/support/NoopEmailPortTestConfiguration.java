@@ -17,6 +17,6 @@ public class NoopEmailPortTestConfiguration {
     @Bean
     @Primary
     EmailPort emailPort() {
-        return (to, subject, body) -> { };
+        return (to, subject, body, attachment) -> { };
     }
 }

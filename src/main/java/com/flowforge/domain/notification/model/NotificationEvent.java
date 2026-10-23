@@ -16,7 +16,21 @@ public record NotificationEvent(
         String userId,
         UUID webhookConfigId,
         Map<String, Object> payload,
-        DossierFieldsSnapshot dossierFieldsSnapshot) {
+        DossierFieldsSnapshot dossierFieldsSnapshot,
+        EmailAttachment attachment) {
+
+    /** Sans pièce jointe (issue #183 : seule la brique « Notifier » en pose une). */
+    public NotificationEvent(
+            List<NotificationChannel> channels,
+            String to,
+            String subject,
+            String body,
+            String userId,
+            UUID webhookConfigId,
+            Map<String, Object> payload,
+            DossierFieldsSnapshot dossierFieldsSnapshot) {
+        this(channels, to, subject, body, userId, webhookConfigId, payload, dossierFieldsSnapshot, null);
+    }
 
     /** Convenience — no dossier fields carried in the payload (today's only producers). */
     public NotificationEvent(
@@ -27,6 +41,12 @@ public record NotificationEvent(
             String userId,
             UUID webhookConfigId,
             Map<String, Object> payload) {
-        this(channels, to, subject, body, userId, webhookConfigId, payload, null);
+        this(channels, to, subject, body, userId, webhookConfigId, payload, null, null);
+    }
+
+    /** Même événement, avec cette pièce jointe e-mail ({@code null} : aucune). */
+    public NotificationEvent withAttachment(EmailAttachment emailAttachment) {
+        return new NotificationEvent(
+                channels, to, subject, body, userId, webhookConfigId, payload, dossierFieldsSnapshot, emailAttachment);
     }
 }

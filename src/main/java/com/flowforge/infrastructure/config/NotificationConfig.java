@@ -1,14 +1,18 @@
 package com.flowforge.infrastructure.config;
 
+import com.flowforge.domain.document.port.out.DocumentStoragePort;
+import com.flowforge.domain.dossier.port.out.DossierElementRepository;
 import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
 import com.flowforge.domain.notification.port.in.ManageNotificationWebhookUseCase;
 import com.flowforge.domain.notification.port.in.NotificationInboxUseCase;
+import com.flowforge.domain.notification.port.in.ResolveEmailAttachmentUseCase;
 import com.flowforge.domain.notification.port.in.SendNotificationUseCase;
 import com.flowforge.domain.notification.port.out.NotificationOutboxRepository;
 import com.flowforge.domain.notification.port.out.NotificationWebhookRepository;
 import com.flowforge.domain.notification.port.out.UserNotificationRepository;
 import com.flowforge.domain.notification.usecase.ManageNotificationWebhookUseCaseImpl;
 import com.flowforge.domain.notification.usecase.NotificationInboxUseCaseImpl;
+import com.flowforge.domain.notification.usecase.ResolveEmailAttachmentUseCaseImpl;
 import com.flowforge.domain.notification.usecase.SendNotificationUseCaseImpl;
 import com.flowforge.infrastructure.notification.OutboundUrlGuard;
 import java.util.Arrays;
@@ -19,7 +23,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 
 @Configuration
-@EnableConfigurationProperties(NotificationProperties.class)
+@EnableConfigurationProperties({NotificationProperties.class, NotificationEmailProperties.class})
 public class NotificationConfig {
 
     @Bean
@@ -39,6 +43,17 @@ public class NotificationConfig {
             UserNotificationRepository userNotificationRepository) {
         return new SendNotificationUseCaseImpl(
                 outboxRepository, webhookRepository, dossierTypeRepository, userNotificationRepository);
+    }
+
+    /** Issue #183 — contrôles de la pièce jointe d'un e-mail « Notifier » (D-NOTIF-ATTACH-PRODUCED-DOC). */
+    @Bean
+    ResolveEmailAttachmentUseCase resolveEmailAttachmentUseCase(
+            TenantProperties tenantProperties,
+            DossierElementRepository elementRepository,
+            DocumentStoragePort documentStoragePort,
+            NotificationEmailProperties emailProperties) {
+        return new ResolveEmailAttachmentUseCaseImpl(
+                tenantProperties.id(), elementRepository, documentStoragePort, emailProperties.attachmentMaxBytes());
     }
 
     @Bean

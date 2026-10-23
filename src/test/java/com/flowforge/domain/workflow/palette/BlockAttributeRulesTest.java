@@ -45,6 +45,34 @@ class BlockAttributeRulesTest {
         }
     }
 
+    /** Issue #183 — notificationAttachment : source dossierField:/variable: obligatoire, jamais un storageRef littéral. */
+    @Test
+    void notificationAttachmentMustBeAWellFormedSource() {
+        for (String ok : List.of("variable:generatedDocumentId", "dossierField:decision_pdf")) {
+            BlockAttributeRules.validate("a", "notificationDispatchTask",
+                    Map.of("notificationChannels", "EMAIL", "notificationAttachment", ok));
+        }
+        for (String bad : List.of("tenant/abc.pdf", "variable:", "variable:a.b", "dossierField:e-mail")) {
+            assertThatThrownBy(() -> BlockAttributeRules.validate("act", "notificationDispatchTask",
+                    Map.of("notificationChannels", "EMAIL", "notificationAttachment", bad)))
+                    .as(bad).isInstanceOf(InvalidBpmnException.class)
+                    .hasMessageContaining("notificationAttachment").hasMessageContaining("dossierField:<name>");
+        }
+    }
+
+    /** Issue #183 (D-NOTIF-ATTACH-NAME) — nom de fichier : alphabet restreint, sans chemin ni point initial. */
+    @Test
+    void notificationAttachmentNameIsAPlainFileName() {
+        for (String ok : List.of("autorisation.pdf", "Décision riverain (2026)", "d_1-2.pdf", "l'autorisation")) {
+            BlockAttributeRules.validate("a", "notificationDispatchTask", Map.of("notificationAttachmentName", ok));
+        }
+        for (String bad : List.of("../x.pdf", "a/b.pdf", "a\\b.pdf", ".pdf", "a\"b.pdf", "a;b", "x".repeat(101))) {
+            assertThatThrownBy(() -> BlockAttributeRules.validate("act", "notificationDispatchTask",
+                    Map.of("notificationAttachmentName", bad)))
+                    .as(bad).isInstanceOf(InvalidBpmnException.class).hasMessageContaining("notificationAttachmentName");
+        }
+    }
+
     @Test
     void noBlockAttributeMeansNothingToCheck() {
         BlockAttributeRules.validate("a", "updateDossierStatusTask", Map.of());
@@ -118,7 +146,7 @@ class BlockAttributeRulesTest {
         assertThat(BlockAttributeRules.MANAGED_ATTRIBUTES).containsExactlyInAnyOrder(
                 "documentType", "documentVariant", "documentLocale", "connectorInstanceId", "notificationChannels",
                 "notificationTo", "notificationSubject", "notificationBody", "notificationUserId",
-                "notificationWebhookConfigId", "childDossierTypeCode", "childDossierLabel", "workflowProcessKey",
+                "notificationWebhookConfigId", "notificationAttachment", "notificationAttachmentName", "childDossierTypeCode", "childDossierLabel", "workflowProcessKey",
                 "relationType", "targetDossierStatus", "targetWorkflowStatus", "formula", "formulaResult", "fieldMapping");
     }
 

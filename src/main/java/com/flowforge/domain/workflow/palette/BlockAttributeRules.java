@@ -51,6 +51,9 @@ public final class BlockAttributeRules {
             "nrOfInstances", "nrOfActiveInstances", "nrOfCompletedInstances", "loopCounter", "execution", "task",
             "initiator", "authenticatedUserId", "processInstanceId", "processDefinitionId", "executionId", "taskId");
 
+    /** D-NOTIF-ATTACH-NAME — nom de fichier vu par le destinataire : ni chemin, ni guillemet, ni point initial. */
+    private static final Pattern FILE_NAME = Pattern.compile("[\\p{L}\\p{N}_()'-][\\p{L}\\p{N} ._()'-]*");
+
     private static final Set<String> UUID_SOURCES = Set.of("connectorInstances", "notificationWebhooks");
     private static final Pattern UUID_FORM =
             Pattern.compile("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
@@ -139,6 +142,13 @@ public final class BlockAttributeRules {
         }
     }
 
+    private static void checkFileName(String owner, String value) {
+        if (!FILE_NAME.matcher(value).matches()) {
+            throw new InvalidBpmnException(owner
+                    + " must be a file name (letters, digits, space, . _ - ( ) '; not starting with a dot)");
+        }
+    }
+
     private static boolean isManaged(BuildingBlock block) {
         String delegate = block.marker().delegate();
         return delegate != null && !SIGNATURE_DELEGATE.equals(delegate);
@@ -201,6 +211,14 @@ public final class BlockAttributeRules {
                 }
                 if ("notificationTo".equals(parameter.name())) {
                     checkRecipient(owner, value);
+                }
+                if ("notificationAttachmentName".equals(parameter.name())) {
+                    checkFileName(owner, value);
+                }
+            }
+            case SOURCE_REF -> {
+                if (PortalRecipientSource.parse(value).isEmpty()) {
+                    throw new InvalidBpmnException(owner + " must be dossierField:<name> or variable:<name>");
                 }
             }
             default -> { }

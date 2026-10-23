@@ -301,7 +301,7 @@
     <profiles>
 
         <!-- ./mvnw -Pembedded-db package — jar de DÉMO/QA avec PostgreSQL embarqué persistant (zonky).
-             Activer ensuite le profil Spring `embedded-db` (voir GETTING-STARTED.md § base embarquée).
+             Activer ensuite le profil Spring `embedded-db` (voir docs/guides/GETTING-STARTED.md § base embarquée).
              Le jar de production (sans ce profil) ne contient ni zonky ni les binaires PostgreSQL ;
              src/embedded (lanceur) et src/embedded-test (ses tests) ne sont compilés qu'ici. -->
         <profile>

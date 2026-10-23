@@ -240,12 +240,83 @@ def check_versions(root):
     return faults
 
 
+# --- decisions-index ---------------------------------------------------------------------------
+
+DECISION_HEADER = re.compile(r"^# §(\d+) — (.+)$")
+DECISION_STATUS = re.compile(r"^> \*\*Statut :\*\* (\w+) · (?:\*\*Section :\*\* \[([^\]]+)\]\(([^)]+)\)|point de premier niveau)")
+INDEX_INTRO = """# Registre des décisions
+
+> Généré par `scripts/check-docs.sh --write-decisions-index` à partir de l'en-tête de chaque fichier :
+> ne pas modifier ce tableau à la main. Le contrôle `decisions-index` échoue s'il n'est plus à jour.
+
+Ce registre remplace l'ancien `TODO.md` (TODO §95, D-REMED-REGISTRY). Chaque point y est un fichier
+`NNN-<titre>.md` dont le numéro ne change jamais : **« TODO §N » et « décision n° N », cités par le
+code et la documentation, désignent le fichier `NNN-*.md`**. Un point se clôt en changeant son statut,
+jamais en le supprimant ou en le renumérotant ; un nouveau point prend le numéro suivant.
+
+- Les points **ouverts** sont des décisions encore à trancher : ne pas en choisir une option en
+  silence (`flowforge-conventions`).
+- Les identifiants fins (`D-…`, `DD-…`) cités par le code sont indexés dans
+  [identifiants.md](identifiants.md).
+- Le journal du mandat « roadmap complète » (2026, figé) est dans [roadmap-2026/](roadmap-2026/DECISIONS.md).
+- Les sections de l'ancien registre gardent leur texte d'introduction dans les fichiers `section-*.md`.
+"""
+
+
+def decision_entries(root):
+    folder = os.path.join(root, DECISIONS_DIR)
+    if not os.path.isdir(folder):
+        return []
+    entries = []
+    for name in sorted(os.listdir(folder)):
+        if not re.match(r"^\d{3}-.+\.md$", name):
+            continue
+        lines = read(root, f"{DECISIONS_DIR}/{name}").splitlines()
+        header = DECISION_HEADER.match(lines[0]) if lines else None
+        status = next((DECISION_STATUS.match(line) for line in lines[1:6] if DECISION_STATUS.match(line)), None)
+        entries.append((name, header, status))
+    return entries
+
+
+def decisions_index(root):
+    entries = decision_entries(root)
+    if not entries:
+        return None
+    rows = ["| § | Point | Statut | Section |", "|---|---|---|---|"]
+    for name, header, status in entries:
+        if not header or not status:
+            continue
+        section = f"[{status.group(2)}]({status.group(3)})" if status.group(2) else "—"
+        rows.append(f"| {int(header.group(1))} | [{header.group(2)}]({name}) | {status.group(1)} | {section} |")
+    sections = sorted(n for n in os.listdir(os.path.join(root, DECISIONS_DIR)) if n.startswith("section-"))
+    lines = [INDEX_INTRO, "## Points", ""] + rows + ["", "## Sections de l'ancien registre", ""]
+    lines += [f"- [{n[len('section-'):-3]}]({n})" for n in sections]
+    return "\n".join(lines) + "\n"
+
+
+def check_decisions_index(root):
+    entries = decision_entries(root)
+    faults = [f"{DECISIONS_DIR}/{name}: en-tête « # §N — titre » ou ligne de statut illisible"
+              for name, header, status in entries if not header or not status]
+    for name, header, _ in entries:
+        if header and int(name[:3]) != int(header.group(1)):
+            faults.append(f"{DECISIONS_DIR}/{name}: numéro du fichier ≠ §{header.group(1)} de l'en-tête")
+    expected = decisions_index(root)
+    if expected is not None:
+        path = os.path.join(root, DECISIONS_DIR, "README.md")
+        current = read(root, f"{DECISIONS_DIR}/README.md") if os.path.isfile(path) else None
+        if current != expected:
+            faults.append(f"{DECISIONS_DIR}/README.md pas à jour : lancer scripts/check-docs.sh --write-decisions-index")
+    return faults
+
+
 CHECKS = {
     "links": check_links,
     "skills": check_skills,
     "todo-refs": check_todo_refs,
     "decision-ids": check_decision_ids,
     "versions": check_versions,
+    "decisions-index": check_decisions_index,
 }
 
 
@@ -284,6 +355,11 @@ def fixture(root):
     write(root, "src/main/java/A.java", "// TODO §12, TODO §80, décision n° 12, D-ALPHA-ONE\nclass A {}\n")
     for tree in (".project-skills/demo", ".claude/skills/demo", ".cursor/skills/demo"):
         write(root, f"{tree}/SKILL.md", "# demo\n")
+    write(root, "docs/decisions/012-un-point.md", "# §12 — Un point\n\n> **Statut :** clos · point de premier niveau\n")
+    write(root, "docs/decisions/095-remediation.md", "# §95 — Remédiation\n\n> **Statut :** ouvert · point de premier niveau\n")
+    write(root, "docs/decisions/identifiants.md", "| `D-ALPHA-ONE` | défini |\n")
+    write(root, "docs/decisions/roadmap-2026/DECISIONS.md", "# Journal\n")
+    write(root, "docs/decisions/README.md", decisions_index(root))
 
 
 def self_test():
@@ -294,6 +370,8 @@ def self_test():
         "todo-refs": lambda r: write(r, "src/main/java/B.java", "// TODO §999\n"),
         "decision-ids": lambda r: write(r, "src/main/java/B.java", "// D-UNKNOWN-ID\n"),
         "versions": lambda r: write(r, "README.md", "Stack : Spring Boot 3.5.x.\n"),
+        "decisions-index": lambda r: write(r, "docs/decisions/013-un-autre-point.md",
+                                           "# §13 — Un autre point\n\n> **Statut :** ouvert · point de premier niveau\n"),
     }
     ok = True
     for name, mutate in mutations.items():
@@ -314,6 +392,15 @@ def main(argv):
     root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     if argv[:1] == ["--self-test"]:
         return self_test()
+    if argv[:1] == ["--write-decisions-index"]:
+        index = decisions_index(root)
+        if index is None:
+            print(f"aucun point dans {DECISIONS_DIR}/", file=sys.stderr)
+            return 1
+        with open(os.path.join(root, DECISIONS_DIR, "README.md"), "w", encoding="utf-8") as handle:
+            handle.write(index)
+        print(f"{DECISIONS_DIR}/README.md écrit")
+        return 0
     names = argv or list(CHECKS)
     unknown = [n for n in names if n not in CHECKS]
     if unknown:

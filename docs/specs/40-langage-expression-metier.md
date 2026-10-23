@@ -1,6 +1,6 @@
 # Langage d'expression métier borné (LC2)
 
-> **Statut : livré (TODO §75, 2026-09-30)** — décisions D-EXPR-* tranchées, voir `docs/roadmap-goal/DECISIONS.md` et
+> **Statut : livré (TODO §75, 2026-09-30)** — décisions D-EXPR-* tranchées, voir `docs/decisions/roadmap-2026/DECISIONS.md` et
 > [`docs/ai/design/2026-09-30-feature-lc2-langage-expression-metier.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-09-30-feature-lc2-langage-expression-metier.md). *(Ancien statut : première analyse du 2026-09-28,
 > aucune décision technique tranchée.)* Sous-lot
 > **LC2** `langage-expression-metier` de la couche low-code (D0 = C,
@@ -18,7 +18,7 @@
 | Autres surfaces UEL | Toutes refusées sauf `delegateExpression` allowlistée et `conditionExpression` revalidée ; `language` / `scriptFormat` refusés | §69, `BpmnExpressionSurfaceScanner` |
 | DMN | Cellules en JUEL (Flowable n'implémente pas FEEL), allowlist stricte ; `inputExpression` = identifiant nu | §61, `FlowableDmnParserAdapter` |
 | Templates | Évaluateur allowlist Thymeleaf (`#vars`, `#dates`, `#numbers`, `#strings`, `#lists` + chemins du modèle) | §40, `SafeThymeleafExpressionSupport` |
-| Champs du dossier dans une condition | `${dossierFields.x}` **interdit** (le point est refusé) | §69, `GUIDE-CONCEPTION-BPMN.md` |
+| Champs du dossier dans une condition | `${dossierFields.x}` **interdit** (le point est refusé) | §69, `docs/guides/GUIDE-CONCEPTION-BPMN.md` |
 | Moteurs de script | Aucun sur le classpath (459 jars vérifiés) | §69 |
 
 **Lecture :** la sécurité a été obtenue en **retirant** de l'expressivité à JUEL. Il n'existe
@@ -77,5 +77,5 @@ bornés comme l'exécution réelle ; les expressions s'écrivent via les tools q
 
 ## 8. Documentation impactée
 
-`GUIDE-CONCEPTION-BPMN.md` (nouvelle syntaxe), `GUIDE-UTILISATEUR.md` (champs calculés),
+`docs/guides/GUIDE-CONCEPTION-BPMN.md` (nouvelle syntaxe), `docs/guides/GUIDE-UTILISATEUR.md` (champs calculés),
 `05-workflow-engine.md`.

@@ -5,7 +5,7 @@ description: FlowForge · Conventions projet (architecture hexagonale, multi-ten
 
 # FlowForge — conventions projet
 
-Appliquer ces règles **avant** les skills génériques Java/Spring/Vue. En cas de conflit, la doc `docs/specs/` et `TODO.md` priment.
+Appliquer ces règles **avant** les skills génériques Java/Spring/Vue. En cas de conflit, la doc `docs/specs/` et le registre des décisions `docs/decisions/` priment.
 
 ## Stack figée
 
@@ -82,17 +82,20 @@ Référence : `docs/specs/11-frontend.md`.
    - `cd frontend && npm run test:e2e` (ou `npm run test:all`)
    - Mettre à jour les mocks/assertions `frontend/e2e/**` quand les shapes API changent.
    - **Interdit** de déclarer Playwright « hors scope » pour contourner Phase 8/9.
-5. Points ouverts : `TODO.md` / `REVUE-PRE-IMPLEMENTATION.md` — ne pas « trancher » silencieusement une décision ouverte.
+5. Points ouverts : registre `docs/decisions/` (statut `ouvert`, index `docs/decisions/README.md`) — ne pas « trancher »
+   silencieusement une décision ouverte. Un nouveau point est un fichier `NNN-<titre>.md` au numéro suivant ; un point
+   se clôt en changeant son statut, jamais en le supprimant ni en le renumérotant (« TODO §N » = `docs/decisions/NNN-*.md`),
+   puis `scripts/check-docs.sh --write-decisions-index`.
 6. **Doc admin/utilisateur à jour avant de clore une feature** — si la feature ajoute/modifie un
    écran `/admin/**` ou change une variable lue par le backend au démarrage :
-   - nouvel écran ou champ visible en admin → section correspondante de `GUIDE-UTILISATEUR.md`
+   - nouvel écran ou champ visible en admin → section correspondante de `docs/guides/GUIDE-UTILISATEUR.md`
      (et tableau de rôles §0 si le rôle requis ou la route sont nouveaux) ;
    - nouvelle variable d'environnement consommée par l'app (`${MA_VAR}` dans `application.yml`)
-     → `.env.local.example` **et** `GETTING-STARTED.md`, plus `.env.example` (gabarit d'un
-     environnement réel) et `DEPLOIEMENT.md` §2 si elle compte hors dev ;
-   - lister ces fichiers dans la section « Impacte » du point `TODO.md` de la feature, comme fait
+     → `.env.local.example` **et** `docs/guides/GETTING-STARTED.md`, plus `.env.example` (gabarit d'un
+     environnement réel) et `docs/guides/DEPLOIEMENT.md` §2 si elle compte hors dev ;
+   - lister ces fichiers dans la section « Impacte » du point du registre (`docs/decisions/NNN-*.md`) de la feature, comme fait
      pour le point 20 (workflow-engine) — les points 21/22/29 (rétention, purge, observabilité) ne
-     l'ont pas fait et ont laissé `GUIDE-UTILISATEUR.md` en retard sur l'UI réelle, ne pas répéter
+     l'ont pas fait et ont laissé `docs/guides/GUIDE-UTILISATEUR.md` en retard sur l'UI réelle, ne pas répéter
      cet oubli.
 7. **`CHANGELOG.md` à jour avant d'ouvrir ou de mettre à jour une pull request** — toute PR qui
    touche du code, de la configuration ou de la documentation utilisateur/admin ajoute (ou met à
@@ -100,7 +103,7 @@ Référence : `docs/specs/11-frontend.md`.
    - format court : `- **PR #<numéro>** — résumé en une phrase, détail optionnel en une seconde` ;
    - catégorie parmi Ajouté / Modifié / Corrigé / Sécurité / Documentation / Déprécié / Supprimé ;
    - **synthétique** — 2 à 5 lignes maximum, lisible sans contexte projet ; le détail technique
-     (décisions, alternatives écartées, bugs trouvés) reste dans `TODO.md`/`FILE-ATTENTE.md`, pas
+     (décisions, alternatives écartées, bugs trouvés) reste dans le registre `docs/decisions/`, pas
      dans `CHANGELOG.md` ;
    - une entrée par PR, pas par commit — regrouper les commits successifs d'une même PR sous sa
      ligne existante plutôt que d'en ajouter une nouvelle à chaque push.
@@ -134,8 +137,8 @@ npx ai-devkit@latest skill list              # skills installés
 | Besoin | Fichier |
 |--------|---------|
 | Vision / stack | `README.md` |
-| Décisions & points ouverts | `TODO.md` |
-| Revues (pré-code / post-implémentation) | `REVUE-PRE-IMPLEMENTATION.md`, `REVUE-ALIGNEMENT-SECURITE.md` |
+| Décisions & points ouverts (« TODO §N ») | `docs/decisions/NNN-*.md`, index `docs/decisions/README.md` |
+| Revues (pré-code / post-implémentation) | `docs/analyses/REVUE-PRE-IMPLEMENTATION.md`, `docs/analyses/REVUE-ALIGNEMENT-SECURITE.md` |
 | Prochaine feature (file d’attente) | `FILE-ATTENTE.md` |
 | Backlog différé | `DEFERRED-FEATURES.md` |
 | Architecture détaillée | `docs/specs/*.md` |
@@ -154,7 +157,7 @@ npx ai-devkit@latest skill list              # skills installés
 - Claim Phase 8/9 FE sans preuve Playwright (`npm run test:e2e` / `test:all`) alors
   que le SPA ou ses mocks E2E sont impactés.
 - Livrer un écran admin ou une variable d'environnement sans mettre à jour
-  `GUIDE-UTILISATEUR.md` / `GETTING-STARTED.md` / `.env.local.example` en conséquence (voir §
+  `docs/guides/GUIDE-UTILISATEUR.md` / `docs/guides/GETTING-STARTED.md` / `.env.local.example` en conséquence (voir §
   « Workflow de feature » point 6).
 - Laisser les documents `docs/ai/` d'une feature livrée dans la branche principale, ou citer dans le code un
   identifiant de décision absent de `docs/decisions/identifiants.md` (voir § « Workflow de feature » point 8).

@@ -49,7 +49,7 @@ Clôture du dossier             ← Dossier.status = CLOTURE / ARCHIVE, piloté 
 
 ## Modèle de données
 
-> **Depuis la décision n° 17** ([TODO.md](../../TODO.md)), toutes les classes ci-dessous sont des
+> **Depuis la décision n° 17** ([registre des décisions](../decisions/017-entites-jpa-dans-le-domaine-regle-appliquee.md)), toutes les classes ci-dessous sont des
 > `record` Java — objets domaine purs, aucune annotation JPA, accesseurs sans préfixe (`.id()`,
 > `.tenantId()`…). `@Builder` (Lombok) reste utilisé au-dessus du `record` pour la construction à
 > de nombreux champs — un `record` conserve son constructeur canonique quoi qu'il arrive, `@Builder`
@@ -969,7 +969,7 @@ infrastructure
 *Synthèse ajoutée lors de la remédiation (TODO §95), d'après les documents de travail
 ([requirements](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-09-20-feature-scan-antivirus-clamav.md),
 [implementation](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-09-20-feature-scan-antivirus-clamav.md)). Exploitation :
-[DEPLOIEMENT.md](../../DEPLOIEMENT.md) §8.*
+[docs/guides/DEPLOIEMENT.md](../guides/DEPLOIEMENT.md) §8.*
 
 - **Port inchangé :** `DossierElementUploadController` appelle `AttachmentScanPort.scan(...)` ; la propriété
   `app.dossier.attachment.scan.type` (`noop` par défaut, ou `clamav`) choisit l'unique adaptateur actif

@@ -12,7 +12,7 @@
 
 ## 1. Constat — l'écart actuel
 
-[`GUIDE-UTILISATEUR.md` §1](../../GUIDE-UTILISATEUR.md#1-préalable--configurer-un-type-de-dossier)
+[`docs/guides/GUIDE-UTILISATEUR.md` §1](../guides/GUIDE-UTILISATEUR.md#1-préalable--configurer-un-type-de-dossier)
 documente déjà la limite en toutes lettres :
 
 > **Limite actuelle de l'écran :** ce formulaire ne permet pas de définir les **champs
@@ -228,7 +228,7 @@ faire porter par le formulaire, a minima :
 Aucun changement de rôle : `POST`/`PATCH /api/dossier-types` exigent déjà
 `@PreAuthorize("hasRole('TENANT_ADMIN')")` (`DossierTypeController`), cohérent avec l'entrée de menu
 existante **Admin → Types** déjà restreinte à `TENANT_ADMIN`
-([GUIDE-UTILISATEUR.md](../../GUIDE-UTILISATEUR.md#0-rôles-et-navigation)). Pas de nouvelle route, pas
+([docs/guides/GUIDE-UTILISATEUR.md](../guides/GUIDE-UTILISATEUR.md#0-rôles-et-navigation)). Pas de nouvelle route, pas
 de nouveau rôle.
 
 ---
@@ -286,7 +286,7 @@ CSS, avec des `data-testid` pour Playwright — pas de composants PrimeVue. Le n
    `FlowForge - Maquettes UI.html` ; aucun écran de ce fichier ne couvre aujourd'hui l'édition du
    schéma de champs (recherche infructueuse lors de cette analyse). À vérifier en phase design avant
    d'improviser une disposition, ou à faire ajouter au mock si absent.
-5. **`GUIDE-UTILISATEUR.md` §1** — à mettre à jour une fois la feature livrée (le paragraphe
+5. **`docs/guides/GUIDE-UTILISATEUR.md` §1** — à mettre à jour une fois la feature livrée (le paragraphe
    « Limite actuelle de l'écran » cité en §1 devient obsolète) : rappel de convention (§ « Workflow
    de feature » point 6 de la skill `flowforge-conventions`), non fait dans ce document puisqu'aucun
    code n'est encore livré.

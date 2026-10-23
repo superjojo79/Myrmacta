@@ -1,6 +1,6 @@
 # Intégrations entreprise (D3)
 
-> **Statut : D3a livré (TODO §77, 2026-09-30)** — décisions D-INTEG-OAUTH-* dans `docs/roadmap-goal/DECISIONS.md`, conception dans
+> **Statut : D3a livré (TODO §77, 2026-09-30)** — décisions D-INTEG-OAUTH-* dans `docs/decisions/roadmap-2026/DECISIONS.md`, conception dans
 > [`docs/ai/design/2026-09-30-feature-d3a-oauth2-client-credentials.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-09-30-feature-d3a-oauth2-client-credentials.md) ; D3b livré (TODO §78) ; D3c, D3d restent à faire. *(Ancien statut : première analyse
 > du 2026-09-28.)* Lot **D3**
 > `integrations-entreprise` de la Vague D (`ROADMAP.md` Catégorie 7), en quatre sous-lots
@@ -72,6 +72,6 @@ brique de mapping entre dans le catalogue de LC1 ; `validate_expression` / `eval
 
 ## 7. Documentation impactée
 
-`GUIDE-UTILISATEUR.md` (Admin → Connecteurs), `GUIDE-CONCEPTION-BPMN.md` (brique de mapping),
-`06-connecteurs.md`, `.env.example` et `GETTING-STARTED.md` si de nouvelles variables sont lues au
+`docs/guides/GUIDE-UTILISATEUR.md` (Admin → Connecteurs), `docs/guides/GUIDE-CONCEPTION-BPMN.md` (brique de mapping),
+`06-connecteurs.md`, `.env.example` et `docs/guides/GETTING-STARTED.md` si de nouvelles variables sont lues au
 démarrage.

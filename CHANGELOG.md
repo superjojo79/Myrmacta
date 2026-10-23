@@ -70,10 +70,10 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
   sauf l'incident d'un e-mail asynchrone en échec, invisible dans l'interface (DIFFICULTES §11, backlog).
 - **[PR #172](https://github.com/superjojo79/FlowForge/pull/172)** — Exemple `exemples/autorisation-riverain/` : un flux complet
   monté uniquement par configuration via MCP, avec la liste des manques rencontrés (`DIFFICULTES.md`), reportés et priorisés dans
-  `DEFERRED-FEATURES.md` §7. `GETTING-STARTED.md` §12 : périmètre MCP à jour et activation du canal M2M en local.
+  `DEFERRED-FEATURES.md` §7. `docs/guides/GETTING-STARTED.md` §12 : périmètre MCP à jour et activation du canal M2M en local.
 - **[PR #168](https://github.com/superjojo79/FlowForge/pull/168)** — Templates de document : une variable ou propriété
   **absente ou nulle** fait échouer la génération (le guide BPMN annonçait à tort une chaîne vide). Grammaire réelle des
-  expressions `${…}` documentée (`GUIDE-CONCEPTION-BPMN.md` §5, `08-templates-documents.md`), avec l'idiome de condition
+  expressions `${…}` documentée (`docs/guides/GUIDE-CONCEPTION-BPMN.md` §5, `08-templates-documents.md`), avec l'idiome de condition
   `#strings.equals` et le calcul des valeurs facultatives en amont par la brique « Évaluer une expression ».
 
 ### Modifié
@@ -106,7 +106,7 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
   (aucun changeSet appliqué ne peut être modifié).
 - **TODO §87 (D3c-bis, revue D-INTEG-MAIL-PROTOCOL)** — **E-mail entrant par Microsoft Graph** (`graph-mail-inbound`) : second connecteur du même SPI que l'IMAP, pour Exchange Online (OAuth2
   `client_credentials`, hôtes Graph seuls, aucun mot de passe). Mêmes règles que l'IMAP, désormais communes (`InboundMailRouting`) : corrélation par référence, expéditeur attesté, réponses automatiques
-  refusées, pièces jointes contrôlées, message rangé (jamais supprimé) et jamais remis deux fois. Sans curseur à conserver. Voir `DEPLOIEMENT.md` §16 (permission `Mail.ReadWrite` à restreindre à la boîte).
+  refusées, pièces jointes contrôlées, message rangé (jamais supprimé) et jamais remis deux fois. Sans curseur à conserver. Voir `docs/guides/DEPLOIEMENT.md` §16 (permission `Mail.ReadWrite` à restreindre à la boîte).
 - **TODO §90 (D7)** — **Interface en français et en anglais** (`vue-i18n`) : tout le SPA et le portail public, avec sélecteur de langue (choix conservé dans le navigateur), langue par défaut du
   tenant (`app.i18n.default-locale` / `APP_I18N_DEFAULT_LOCALE`, exposée par `/api/auth/me`), dates et nombres selon la langue, messages de validation et de repli traduits. Les e-mails d'invitation de
   tâche externe et de signature suivent la langue du tenant (lien `?lang=en` en anglais, lien français inchangé). Non traduits (journalisé) : libellés saisis par le tenant, détail d'erreur de l'API,
@@ -120,11 +120,11 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 - **TODO §87 (D3c + D3d)** — Deux connecteurs d'entrée par interrogation. **E-mail entrant** (`imap-inbound`) : un message crée un dossier ou alimente celui dont la référence figure dans l'objet,
   corps et expéditeur mappés vers les champs et variables, **pièces jointes rattachées après les contrôles habituels** (types, contenu, antivirus) ; réponses automatiques et listes refusées,
   messages rangés (jamais supprimés), mot de passe ou OAuth2 (XOAUTH2, Exchange Online). **Azure Service Bus** (`azure-service-bus`) : file ou abonnement par l'API REST (SAS ou OAuth2), mapping
-  JSON identique à Kafka, message illisible rendu au courtier (lettres mortes) — pour les Business Events de D365 F&O sans relais. Bornes `APP_INBOUND_*` ; `DEPLOIEMENT.md` §16.
+  JSON identique à Kafka, message illisible rendu au courtier (lettres mortes) — pour les Business Events de D365 F&O sans relais. Bornes `APP_INBOUND_*` ; `docs/guides/DEPLOIEMENT.md` §16.
 - **TODO §86 (LC3)** — Assistant de conception IA (*Admin → Assistant*) : l'utilisateur décrit son besoin, l'assistant appelle le catalogue d'outils de **conception** dans le processus avec
   l'identité de l'utilisateur (processus et tables DMN **en brouillon** ; types, schémas de questions, connecteurs sans secret et modèles de document **proposés**, validés à blanc, que l'utilisateur relit puis applique avec ses droits), vérifie son travail et renvoie ce qui est à relire. Aucune
   donnée de dossier, jamais de publication ni de secret ; plafonds d'étapes, de tours et de jetons ; conversations conservées 30 jours, propres à leur auteur. **Désactivé par défaut** ; clé et
-  modèle par configuration serveur (`APP_ASSISTANT_*`, `DEPLOIEMENT.md` §15). Migration 033.
+  modèle par configuration serveur (`APP_ASSISTANT_*`, `docs/guides/DEPLOIEMENT.md` §15). Migration 033.
 
 - **TODO §85 (LC4a)** — Concepteur visuel de formulaires : aperçu en direct, sections, largeur (pleine / demi), aide contextuelle en texte brut et
   réordonnancement par glisser-déposer, pour les questions de tâche et les champs d'un type de dossier ; le portail externe applique la même disposition.
@@ -138,18 +138,18 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
   et processus BPMN déployés, configurations de workflow), **plan à blanc** par artefact (créer, modifier, inchangé, conflit, bloqué), application **idempotente** par les cas d'usage existants,
   journal des imports. BPMN et DMN arrivent en **brouillons à publier** ; un connecteur est créé **désactivé** ; secrets jamais exportés (saisis ou injectés à l'import) ; valeurs `{{paramètre}}`
   substituées par environnement. Écran *Admin → Promotion*, API `/api/admin/configuration`, outils MCP `export_configuration` et `import_configuration` (plan ; l'application ne dépose que des brouillons).
-  ACL, réglages et templates hors première tranche. Migration 032. Voir `DEPLOIEMENT.md` §14.
+  ACL, réglages et templates hors première tranche. Migration 032. Voir `docs/guides/DEPLOIEMENT.md` §14.
 
 - **TODO §82 (D6)** — Socle MCP low-code : les outils MCP `deploy_workflow`, `deploy_decision_table` et `redeploy_decision_table` écrivent désormais un **brouillon**
   (origine Agent ou Assistant) qu'un humain relit et publie depuis *Admin → Brouillons* (écart avec la version en ligne, publication de ce qui a été relu, journal des
   publications) ; nouveaux outils `list_pending_drafts` et `publish_draft` (ce dernier refusé sauf publication directe autorisée hors production). Un brouillon d'un autre
   auteur n'est jamais écrasé en silence. Chaque outil MCP est classé *conception* ou *opération* ; un outil peut s'exécuter avec l'acteur d'une session (assistant).
   **Ruptures** : les agents ne déploient plus en ligne par défaut (`APP_MCP_PUBLICATION_MODE=direct`, hors production, le rétablit) ; `APP_ENVIRONMENT` (défaut `production`) ;
-  hors `local`, `M2M_TRUSTED_CLIENT_IDS` est obligatoire dès que le canal M2M est actif (risque A3-M2). Migration 031. Voir `DEPLOIEMENT.md` §13.
+  hors `local`, `M2M_TRUSTED_CLIENT_IDS` est obligatoire dès que le canal M2M est actif (risque A3-M2). Migration 031. Voir `docs/guides/DEPLOIEMENT.md` §13.
 
 - **TODO §81 (D2)** — Recherche de dossiers sur des champs dynamiques : un champ peut être déclaré « cherchable » (texte, nombre, date, oui/non, choix ; jamais sensible),
   puis filtré par égalité, liste, intervalle ou préfixe depuis la liste de supervision, l'API (`f.<champ>…`) et l'outil MCP `search_dossiers`. Type de dossier obligatoire,
-  cinq filtres au plus, refus explicite d'un filtre invalide. Migration 030 : `fields` passe en `jsonb` avec un index GIN (PostgreSQL ; réécriture de la table, voir `DEPLOIEMENT.md` §12).
+  cinq filtres au plus, refus explicite d'un filtre invalide. Migration 030 : `fields` passe en `jsonb` avec un index GIN (PostgreSQL ; réécriture de la table, voir `docs/guides/DEPLOIEMENT.md` §12).
 
 - **TODO §80 (D1 règles)** — Champs calculés (formule), visibilité conditionnelle et obligation conditionnelle sur les types de dossier : expressions métier bornées (JSONata)
   évaluées côté serveur (un champ calculé n'est jamais saisi, un champ masqué n'est ni obligatoire ni conservé), aperçu en direct dans la SPA, endpoint `evaluate-rules` et outil MCP
@@ -157,7 +157,7 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 - **TODO §79 (D5)** — Tâches planifiées sûres si deux pods les exécutent (déploiement progressif, répliques) : audit des 18 tâches, puis prise de l'unité de travail en base avant
   l'effet (relais d'outbox, alertes SLA, invitations du portail, déclencheurs cron, export BI, réconciliation des liens, distribution des signatures). Plus d'e-mails, de dossiers, de fichiers
-  ou d'instances de process en double ; sans Redis ni verrou externe. Trois colonnes de bail (migrations 027 à 029). Guide d'exploitation : `DEPLOIEMENT.md` §11.
+  ou d'instances de process en double ; sans Redis ni verrou externe. Trois colonnes de bail (migrations 027 à 029). Guide d'exploitation : `docs/guides/DEPLOIEMENT.md` §11.
 
 - **TODO §78 (D3b)** — Nouvelle brique BPMN « Enregistrer des valeurs dans le dossier » : des expressions métier bornées (JSONata) tirent des valeurs du dossier, du résultat d'un
   connecteur (`connectorResult.json` : corps lu comme JSON) et des variables, et les écrivent **en un seul patch** dans des champs déclarés du dossier (validation de type, version,
@@ -244,7 +244,7 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 - **[PR #164](https://github.com/superjojo79/FlowForge/pull/164) — Outillage Windows + Podman** — Connexion de dev réparée (le realm
   émet `tenant_id` et les rôles dans l'ID token ; `/api/auth/me` renvoie les rôles mappés) ; le SPA sous context-path recharge les
   liens profonds, déconnecte et garde le préfixe tenant (`<base href>` réécrit par le backend), sa garde de rôles attend `/me`.
-  Suite de tests verte sous Windows, profil Compose `mailpit`, comptes `manager` / `viewer` ; parcours documenté dans `GETTING-STARTED.md`.
+  Suite de tests verte sous Windows, profil Compose `mailpit`, comptes `manager` / `viewer` ; parcours documenté dans `docs/guides/GETTING-STARTED.md`.
 - **[PR #158](https://github.com/superjojo79/FlowForge/pull/158) — suite de TODO §91** — `SlaAlertConcurrencyIT` échouait
   de façon aléatoire en CI (« une seule alerte… expected 1 but was 0 ») : le pool de connexions des tests, plafonné à 4,
   se bloquait sous les tests à 4 threads (timeout 30 s, transaction annulée). Pool Hikari par défaut rétabli.
@@ -271,7 +271,7 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
   sa table est bornée même sous une rafale de clients distincts, IPv6 regroupé par /64. Une
   requête mal formée sur le portail ne produit plus d'erreur 500 journalisée. **Action de
   déploiement** : le reverse-proxy doit aussi supprimer `Forwarded` et `X-Forwarded-Prefix`
-  (DEPLOIEMENT.md §3).
+  (docs/guides/DEPLOIEMENT.md §3).
 - **PR [#136](https://github.com/superjojo79/FlowForge/pull/136) — TODO §69** — Un BPMN déployé pouvait faire exécuter une
   méthode d'un bean Spring via le nom, le `formKey`, l'échéance d'une tâche, un timer ou un
   `callActivity` (surfaces évaluées par Flowable, hors de l'allowlist H1-bis). Le backend refuse
@@ -323,7 +323,7 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 
 - **PR [#145](https://github.com/superjojo79/FlowForge/pull/145)** — Ordonnancement de la Vague D :
   lots parallélisables, contraintes d'ordre et quatre vagues dans `FILE-ATTENTE.md` et `ROADMAP.md` ;
-  `README.md` (statut, positionnement) et `DEPLOIEMENT.md` (provisioning livré) alignés.
+  `README.md` (statut, positionnement) et `docs/guides/DEPLOIEMENT.md` (provisioning livré) alignés.
 - **PR [#144](https://github.com/superjojo79/FlowForge/pull/144)** — Positionnement tranché (TODO §70) :
   produit pour intégrateurs avec une couche low-code, découpée en six sous-lots. Exposition MCP de
   cette couche cadrée (TODO §71, quatre décisions actées) et analyses initiales de tous les lots de
@@ -339,12 +339,12 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 - **PR [#83](https://github.com/superjojo79/FlowForge/pull/83)** — Rattrapage de la documentation
   admin/utilisateur : trois écrans admin livrés mais jamais documentés (webhooks de notification,
   file de purge RGPD, observabilité), rétention par type de dossier, limite du connecteur
-  `service`, canal email (config SMTP + limites connues), nouveau guide `DEPLOIEMENT.md`
+  `service`, canal email (config SMTP + limites connues), nouveau guide `docs/guides/DEPLOIEMENT.md`
   (reverse-proxy, provisioning manuel d'un tenant, gestion des utilisateurs/rôles Keycloak).
 - **PR [#83](https://github.com/superjojo79/FlowForge/pull/83)** — Ajout de ce fichier
   `CHANGELOG.md` et de la règle d'alimentation associée dans le skill `flowforge-conventions`.
 - **PR [#86](https://github.com/superjojo79/FlowForge/pull/86)** — Nouveau guide
-  `GUIDE-CONCEPTION-BPMN.md` (racine du dépôt) : conventions de nommage, catalogue des
+  `docs/guides/GUIDE-CONCEPTION-BPMN.md` (racine du dépôt) : conventions de nommage, catalogue des
   `serviceTask` disponibles, référencement des champs dynamiques du dossier, instanciation d'un
   service externe, référencement des intervenants, déclenchement de la génération de documents —
   destiné à quiconque conçoit un diagramme BPMN pour FlowForge.

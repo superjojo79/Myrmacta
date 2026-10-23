@@ -50,5 +50,5 @@ Extension de `define_task_question_schema` et `define_dossier_type` pour la mise
 
 ## 7. Documentation impactée
 
-`GUIDE-UTILISATEUR.md` (schémas de questions, types), `22-formulaires-dynamiques-taches.md`,
+`docs/guides/GUIDE-UTILISATEUR.md` (schémas de questions, types), `22-formulaires-dynamiques-taches.md`,
 `23-questions-utilisateur-taches.md`.

@@ -82,7 +82,7 @@ public final class EmbeddedPostgresSupport {
             throw new IllegalStateException(
                     "Impossible de démarrer PostgreSQL embarqué (zonky). Si les tests tournent sous root, "
                             + "initdb refuse de démarrer : les lancer avec un utilisateur non-root, ou fournir "
-                            + "FLOWFORGE_TEST_PG_URL / _USER / _PASSWORD (voir GETTING-STARTED.md).",
+                            + "FLOWFORGE_TEST_PG_URL / _USER / _PASSWORD (voir docs/guides/GETTING-STARTED.md).",
                     e);
         }
         // Arrêt : zonky enregistre son propre shutdown hook et supprime le répertoire de données.

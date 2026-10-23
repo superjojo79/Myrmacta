@@ -17,7 +17,7 @@
 | Briques autorisées | 7 delegates (`connectorServiceTask`, `documentGenerationTask`, `attachGeneratedDocumentTask`, `notificationDispatchTask`, `createChildDossierTask`, `updateDossierStatusTask`, `updateWorkflowLinkStatusTask`) + `type="dmn"` + `formKey` `dossier-fields` / `document-generation` / `user-question:<clé>` | `AllowedBpmnDelegates`, §52, §55, §61 |
 | Validation | Uniquement **au déploiement** (serveur) | `FlowableBpmnParserAdapter`, `BpmnExpressionSurfaceScanner` |
 | Catalogues disponibles en lecture | Templates, instances de connecteurs, définitions de connecteurs, configurations de workflow (statuts), tables DMN, schémas de questions | `/api/document-templates`, `/api/connectors`, `/api/connector-definitions`, `/api/workflow-type-configs`, `/api/dmn-decision-deployments`, `/api/task-question-schemas` |
-| Guide | 33 Ko de conventions à connaître pour concevoir | `GUIDE-CONCEPTION-BPMN.md` |
+| Guide | 33 Ko de conventions à connaître pour concevoir | `docs/guides/GUIDE-CONCEPTION-BPMN.md` |
 
 ## 2. Objectif
 
@@ -69,5 +69,5 @@ l'agent compose le BPMN à partir des briques et le vérifie par `deploy_workflo
 
 ## 8. Documentation impactée
 
-`GUIDE-CONCEPTION-BPMN.md` (fortement simplifié), `GUIDE-UTILISATEUR.md` (éditeur BPMN),
+`docs/guides/GUIDE-CONCEPTION-BPMN.md` (fortement simplifié), `docs/guides/GUIDE-UTILISATEUR.md` (éditeur BPMN),
 `14-edition-bpmn.md`.

@@ -1,7 +1,7 @@
 # Goal — outillage local FlowForge sous Windows + Podman
 
 Mettre en place et valider l'outillage local de FlowForge sous Windows avec **Podman** (pas
-Docker). Lire d'abord `GETTING-STARTED.md`, `.env.example`, `docker-compose.yml` et la skill
+Docker). Lire d'abord `docs/guides/GETTING-STARTED.md`, `.env.example`, `docker-compose.yml` et la skill
 `flowforge-conventions`.
 
 ## Contexte poste
@@ -21,7 +21,7 @@ Docker). Lire d'abord `GETTING-STARTED.md`, `.env.example`, `docker-compose.yml`
    de la démarrer.
 2. **Config** — créer `.env` depuis `.env.example` sans changer les valeurs par défaut sauf
    nécessité (justifier chaque écart). Charger les variables dans le shell PowerShell avant le
-   backend (méthode de `GETTING-STARTED.md` §3).
+   backend (méthode de `docs/guides/GETTING-STARTED.md` §3).
 3. **PostgreSQL** — `podman compose up -d`. Vérifier : postgres healthy, base `flowforge`,
    schéma `tenant_dev`, rôle `flowforge_tenant_dev` capable de se connecter avec le mot de passe
    de `.env` (script `docker/postgres/init`).
@@ -32,7 +32,7 @@ Docker). Lire d'abord `GETTING-STARTED.md`, `.env.example`, `docker-compose.yml`
    `keycloak_data` si nécessaire).
 5. **Tests backend** — `.\mvnw.cmd verify` complet (unitaires, `*IT`, ArchUnit, couverture).
    - Si le PostgreSQL embarqué zonky échoue sous Windows : diagnostiquer, puis repli
-     `FLOWFORGE_TEST_PG_URL` / `_USER` / `_PASSWORD` (`GETTING-STARTED.md` §17) sur le postgres
+     `FLOWFORGE_TEST_PG_URL` / `_USER` / `_PASSWORD` (`docs/guides/GETTING-STARTED.md` §17) sur le postgres
      Podman.
    - `ClamAvAttachmentScanIT` (Testcontainers) : tenter de faire pointer Testcontainers vers
      Podman (`DOCKER_HOST` sur le pipe Podman, Ryuk adapté). Si impossible, il doit s'ignorer
@@ -54,7 +54,7 @@ Docker). Lire d'abord `GETTING-STARTED.md`, `.env.example`, `docker-compose.yml`
   assertions affaiblies, sécurité affaiblie (D-41 / D-42 / D-43, en-têtes, cookie).
 - Ne jamais modifier un changeSet Liquibase déjà appliqué.
 - `docker-compose.yml` doit rester compatible Docker **et** Podman.
-- Documenter les spécificités Windows/Podman dans `GETTING-STARTED.md` ; entrée `CHANGELOG.md`
+- Documenter les spécificités Windows/Podman dans `docs/guides/GETTING-STARTED.md` ; entrée `CHANGELOG.md`
   `[Non publié]` si du code ou de la config change.
 - Branche `chore/outillage-podman-windows`, commits conventionnels. **Ne pas pousser** sans mon
   accord.

@@ -1,7 +1,7 @@
 # Modèle de champs dynamiques enrichi (D1)
 
 > **Statut : première tranche livrée (TODO §76, 2026-09-30)** — `MONEY`, `REPEATABLE_GROUP`, `EXTERNAL_REF` ; décisions D-CHAMPS-* tranchées dans
-> `docs/roadmap-goal/DECISIONS.md` ; champs calculés et visibilité conditionnelle : lot suivant (après LC2, désormais livré).
+> `docs/decisions/roadmap-2026/DECISIONS.md` ; champs calculés et visibilité conditionnelle : lot suivant (après LC2, désormais livré).
 > *(Ancien statut : première analyse du 2026-09-28.)* Lot **D1**
 > `modele-champs-enrichi` de la Vague D (`ROADMAP.md` Catégorie 7). À affiner en `dev-lifecycle`
 > Phase 1 avant tout code. Contexte : [31-positionnement-produit.md](31-positionnement-produit.md).
@@ -76,5 +76,5 @@ Format du contrat = format du domaine (P5).
 
 ## 8. Documentation impactée
 
-`GUIDE-UTILISATEUR.md` (Admin → Types), `GUIDE-CONCEPTION-BPMN.md` (référencement des champs),
+`docs/guides/GUIDE-UTILISATEUR.md` (Admin → Types), `docs/guides/GUIDE-CONCEPTION-BPMN.md` (référencement des champs),
 `04-dossiers.md`, `17-schema-champs-dynamiques.md`, `openapi/` (golden).

@@ -1,6 +1,6 @@
 # Socle MCP low-code — brouillon, publication, provenance (D6)
 
-> **Statut : LIVRÉ (2026-10-01, TODO §82) — voir `docs/ai/requirements|design|implementation|testing/2026-10-01-feature-d6-socle-mcp-low-code.md` et les décisions D-SOCLE-* de `docs/roadmap-goal/DECISIONS.md`.** *(Analyse initiale du 2026-09-28 conservée ci-dessous.)* Lot **D6** `socle-mcp-low-code` de la Vague D
+> **Statut : LIVRÉ (2026-10-01, TODO §82) — voir `docs/ai/requirements|design|implementation|testing/2026-10-01-feature-d6-socle-mcp-low-code.md` et les décisions D-SOCLE-* de `docs/decisions/roadmap-2026/DECISIONS.md`.** *(Analyse initiale du 2026-09-28 conservée ci-dessous.)* Lot **D6** `socle-mcp-low-code` de la Vague D
 > (`ROADMAP.md` Catégorie 7), élargi le 2026-09-28 par le cadrage transverse
 > [46-exposition-mcp-couche-low-code.md](46-exposition-mcp-couche-low-code.md) (TODO §71).
 > Ce document décrit **le lot** ; les principes P1–P9 et le raisonnement complet sont dans
@@ -69,5 +69,5 @@ de démarrage. ArchUnit : la notion de provenance vit dans le domaine, sans dép
 
 ## 8. Documentation impactée
 
-`.env.example`, `GETTING-STARTED.md`, `DEPLOIEMENT.md` (propriété de publication),
-`GUIDE-UTILISATEUR.md` (brouillons à publier), `15-serveur-mcp.md`, `CHANGELOG.md` (rupture).
+`.env.example`, `docs/guides/GETTING-STARTED.md`, `docs/guides/DEPLOIEMENT.md` (propriété de publication),
+`docs/guides/GUIDE-UTILISATEUR.md` (brouillons à publier), `15-serveur-mcp.md`, `CHANGELOG.md` (rupture).

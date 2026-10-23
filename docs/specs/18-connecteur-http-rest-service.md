@@ -3,7 +3,7 @@
 > **Statut : première analyse fonctionnelle, aucune décision technique tranchée.** À affiner en
 > phase `dev-lifecycle` (requirements → design) avant tout code — voir « Points ouverts » en fin de
 > document. Choisi comme prochaine feature le 2026-08-31 : le backlog V1 (analyses 01–17 + tous les
-> points `TODO.md`) est entièrement livré, `FILE-ATTENTE.md` était explicitement vide ; ce sujet a
+> points du registre des décisions) est entièrement livré, `FILE-ATTENTE.md` était explicitement vide ; ce sujet a
 > été retenu parmi trois pistes proposées à l'utilisateur (les deux autres — outillage provisioning,
 > sweep tech-debt — restent en réserve, voir `DEFERRED-FEATURES.md` §1/§4).
 
@@ -38,11 +38,11 @@ Constat confirmé côté code :
   (`infrastructure/web/connector`) appellent tous le même port `ExecuteConnectorUseCase`, déjà
   exercé aujourd'hui par le connecteur `flowable-signal` (seul type actuellement `BOTH`). Le
   `serviceTask` `${connectorServiceTask}` est déjà documenté au catalogue §7 de
-  [GUIDE-CONCEPTION-BPMN.md](../../GUIDE-CONCEPTION-BPMN.md), avec un exemple générique
+  [docs/guides/GUIDE-CONCEPTION-BPMN.md](../guides/GUIDE-CONCEPTION-BPMN.md), avec un exemple générique
   d'instanciation/appel (§4) qui ne mentionne aucun type en particulier.
 - L'écran d'admin connecteurs est lui aussi générique : il construit son formulaire depuis
   `ConnectorDefinition.getConfigSchema()` (`ConfigField` déclaratif) — d'après
-  [GUIDE-CONCEPTION-BPMN.md §4](../../GUIDE-CONCEPTION-BPMN.md) « Étape 1 », créer une instance d'un
+  [docs/guides/GUIDE-CONCEPTION-BPMN.md §4](../guides/GUIDE-CONCEPTION-BPMN.md) « Étape 1 », créer une instance d'un
   nouveau type ne demande *a priori* aucun changement d'écran.
 
 Autrement dit, comme pour `schema-champs-dynamiques` (§17) : le gros du travail (hardening
@@ -64,7 +64,7 @@ coder — voir §3.
    `http-rest` SERVICE, sans exception ni contournement.
 3. Mise à jour de la documentation qui affirme aujourd'hui explicitement « TRIGGER seulement » :
    tableau catalogue de [06-connecteurs.md](06-connecteurs.md), [README.md](../../README.md) (§ Système
-   de connecteurs), et le point `TODO.md`/`FILE-ATTENTE.md` qui référence ce skeleton comme
+   de connecteurs), et le point du registre des décisions ou de `FILE-ATTENTE.md` qui référence ce skeleton comme
    « hors V1 ».
 4. Sort des deux tests qui verrouillent volontairement l'état « non activé »
    (`connector_doesNotImplementConnectorDefinition`, `connector_isNotASpringBean`) — à réécrire pour
@@ -184,7 +184,7 @@ conséquence ; si au contraire tout reste piloté dynamiquement par `connectorIn
 6. **Documentation à mettre à jour une fois livré** (rappel de convention, skill
    `flowforge-conventions` § « Workflow de feature » point 6) : tableau catalogue de
    [06-connecteurs.md](06-connecteurs.md) (colonne « V1 livré »), [README.md](../../README.md) (§
-   Système de connecteurs), et tout renvoi à ce skeleton comme « hors V1 » dans `TODO.md` /
+   Système de connecteurs), et tout renvoi à ce skeleton comme « hors V1 » dans le registre des décisions (`docs/decisions/`) /
    `DEFERRED-FEATURES.md` / `FILE-ATTENTE.md`.
 7. **Nommage du lot** — aucun nom n'est encore réservé dans `FILE-ATTENTE.md` /
    `DEFERRED-FEATURES.md` pour ce sujet ; proposition : `connecteur-http-rest-service` (à confirmer

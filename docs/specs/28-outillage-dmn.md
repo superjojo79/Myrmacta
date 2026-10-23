@@ -97,7 +97,7 @@ Détail :
 
 *Synthèse ajoutée lors de la remédiation (TODO §95), d'après le document de travail
 [requirements](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-09-30-feature-lc1-suite-palette-dmn.md) ; décisions D-LC1S-* dans
-[DECISIONS.md](../roadmap-goal/DECISIONS.md).*
+[DECISIONS.md](../decisions/roadmap-2026/DECISIONS.md).*
 
 - La brique « Décision DMN » de la palette métier (TODO §73, [39](39-palette-metier-bpmn.md)) propose la liste des
   tables déployées du tenant au lieu d'une clé saisie à la main :

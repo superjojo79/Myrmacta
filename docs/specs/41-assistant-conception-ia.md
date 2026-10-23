@@ -69,5 +69,5 @@ D-MCP-LC-PUBLISH.
 
 ## 8. Documentation impactée
 
-`GUIDE-UTILISATEUR.md` (assistant), `.env.example` et `GETTING-STARTED.md` (clé et modèle),
+`docs/guides/GUIDE-UTILISATEUR.md` (assistant), `.env.example` et `docs/guides/GETTING-STARTED.md` (clé et modèle),
 `12-autorisation-conformite.md` (sous-traitance des données), `15-serveur-mcp.md`.

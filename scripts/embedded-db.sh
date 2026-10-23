@@ -9,7 +9,7 @@
 #
 # Répertoire : APP_EMBEDDED_DB_DATA_DIR (défaut ~/.flowforge/embedded-db). Port pour `dump` :
 # APP_EMBEDDED_DB_PORT (défaut 15432 ; avec le port 0 aléatoire, le dump à chaud n'est pas possible).
-# Voir GETTING-STARTED.md § « Base embarquée persistante ».
+# Voir docs/guides/GETTING-STARTED.md § « Base embarquée persistante ».
 set -euo pipefail
 
 BASE="${APP_EMBEDDED_DB_DATA_DIR:-$HOME/.flowforge/embedded-db}"

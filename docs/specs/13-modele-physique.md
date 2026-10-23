@@ -201,7 +201,7 @@ ligne devenue inactive.
 
 ## Répartition tenant / `platform`
 
-**État réel (pas celui que TODO.md §25 supposait avant cette
+**État réel (pas celui que TODO §25 supposait avant cette
 feature) :** les 17 tables ci-dessus vivent **toutes dans le schéma
 unique du tenant courant** (`app.tenant.id`, fixé une fois au
 démarrage de l'instance — décision n° 13). **Aucun schéma `platform`
@@ -260,7 +260,7 @@ processus.
 
 ## Écart de documentation corrigé
 
-TODO.md §25 (avant cette feature) demandait de documenter un
+TODO §25 (avant cette feature) demandait de documenter un
 `TenantRegistry` (« registre des tenants actifs ») avec sa politique
 de rafraîchissement de cache, ainsi que des changelogs Liquibase avec
 contextes `tenant-init`/`tenant-migration` séparés.
@@ -279,7 +279,7 @@ neuf ou déjà à jour — les deux cas (« init » et « migration ») sont
 couverts par la même exécution, sans distinction de contexte
 nécessaire.
 
-TODO.md §25 n'avait jamais été mis à jour après cette note de la
+TODO §25 n'avait jamais été mis à jour après cette note de la
 décision n° 1 — un lecteur repartant du TODO seul aurait pu documenter
 un mécanisme obsolète comme s'il était toujours d'actualité. Ce
 document reflète l'architecture réellement en place.

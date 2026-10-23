@@ -2,7 +2,7 @@
 
 > **Livré (2026-09-11).** Cycle `dev-lifecycle` complet (requirements → design → planning →
 > implémentation, M1-M12, TODO §61) — détail dans
-> [TODO.md](../../TODO.md) §61. Le reste de ce document (état « non tranché ») est conservé tel
+> [§61](../decisions/061-introduction-de-dmn-lever-l-exclusion-v1.md) §61. Le reste de ce document (état « non tranché ») est conservé tel
 > quel comme trace de l'analyse initiale, y compris ce qui a depuis été corrigé (blocs
 > « Corrigé »/« Confirmé » ci-dessous) et ce que l'implémentation a confirmé ou infirmé.
 >
@@ -50,7 +50,7 @@ sécurité** — deux décisions distinctes, à connaître avant de rouvrir le s
 - `README.md` / `docs/specs/00-index.md` / `docs/specs/05-workflow-engine.md` documentent tous
   les trois ce choix de façon cohérente : *« Le moteur DMN Flowable n'est pas activé en V1
   (auto-config exclue) »*.
-- `TODO.md` §45 (`derive-documentaire`, clos) note explicitement, en 2026-08-25 : *« Ne pas
+- TODO §45 (`derive-documentaire`, clos) note explicitement, en 2026-08-25 : *« Ne pas
   élargir le V1 (DMN, connecteurs SERVICE) »* — **precedent utile** : `connecteurs SERVICE` était
   listé dans la même phrase comme hors-V1, et a pourtant été livré depuis (`http-rest` en rôle
   SERVICE, PR #95, 2026-08-31). L'exclusion DMN n'est donc pas un mur définitif, seulement une
@@ -222,7 +222,7 @@ de leur livraison backend initiale).
 
 `README.md` (retirer « DMN hors V1 » du schéma ASCII L105 et du texte L54), `docs/specs/05`,
 `docs/specs/00-index.md` L57, `FILE-ATTENTE.md` § *Ne pas lancer* (retirer DMN de la liste),
-`GUIDE-CONCEPTION-BPMN.md` (nouvelle section « quand utiliser un gateway vs une table DMN »).
+`docs/guides/GUIDE-CONCEPTION-BPMN.md` (nouvelle section « quand utiliser un gateway vs une table DMN »).
 
 ---
 
@@ -285,7 +285,7 @@ FEEL d'une table de décision restent à durcir côté moteur avant de lever le 
 
 Aucun diagramme livré avec ce dépôt n'utilise `businessRuleTask` (bloqué depuis toujours) — lever
 le blocage est donc **sans régression** sur l'existant. Reste à documenter, dans
-`GUIDE-CONCEPTION-BPMN.md`, quand préférer une table DMN à une cascade de gateways, pour éviter que
+`docs/guides/GUIDE-CONCEPTION-BPMN.md`, quand préférer une table DMN à une cascade de gateways, pour éviter que
 les deux mécanismes cohabitent sans règle claire dans les diagrammes livrés avec le produit.
 
 ### 4.4 Effort de test

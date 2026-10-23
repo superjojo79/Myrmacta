@@ -2,7 +2,7 @@
 
 > **Mise à jour TODO §82 (D6, 2026-10-01).** `deploy_workflow`, `deploy_decision_table` et `redeploy_decision_table` n'agissent plus
 > directement sur l'instance : ils déposent un **brouillon** (BPMN, DMN) qu'un humain publie ([37-socle-mcp-low-code.md](37-socle-mcp-low-code.md),
-> `DEPLOIEMENT.md` §13). Nouveaux outils : `list_pending_drafts`, `publish_draft`. Chaque outil est classé *conception* / *opération*
+> `docs/guides/DEPLOIEMENT.md` §13). Nouveaux outils : `list_pending_drafts`, `publish_draft`. Chaque outil est classé *conception* / *opération*
 > (`McpToolModes`). Le texte ci-dessous décrit le cadrage initial.
 
 > **Mise à jour TODO §93 (2026-10-16).** `deploy_workflow` (proposition et `dryRun`) accepte une ressource référencée qui

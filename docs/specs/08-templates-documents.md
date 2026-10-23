@@ -268,7 +268,7 @@ workflow, `documentGenerationTask` échoue sans produire de PDF.
 **Valeurs facultatives : les calculer en amont.** Plutôt que de référencer directement un champ
 qui peut manquer (`${dossierFields.complement}`), poser avant `documentGenerationTask` une brique
 « Évaluer une expression » (`${businessExpressionTask}`, voir
-[GUIDE-CONCEPTION-BPMN.md](../../GUIDE-CONCEPTION-BPMN.md) §3sexies) qui produit une variable avec
+[docs/guides/GUIDE-CONCEPTION-BPMN.md](../guides/GUIDE-CONCEPTION-BPMN.md) §3sexies) qui produit une variable avec
 une valeur par défaut non nulle —
 `$exists(dossier.fields.complement) ? dossier.fields.complement : ""` dans `flowable:formula`,
 `complementAdresse` dans `flowable:formulaResult` — et référencer `${complementAdresse}` dans le

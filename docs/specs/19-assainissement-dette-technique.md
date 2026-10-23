@@ -5,7 +5,7 @@
 > recommandées) — voir [`docs/ai/requirements/2026-09-01-feature-assainissement-dette-technique.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-09-01-feature-assainissement-dette-technique.md)
 > et [`docs/ai/design/2026-09-01-feature-assainissement-dette-technique.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-09-01-feature-assainissement-dette-technique.md) pour le détail. Choisi
 > comme prochaine feature le 2026-08-31 : le backlog V1 (analyses 01–18 + tous les
-> points `TODO.md`, y compris §48 `connecteur-http-rest-service` désormais livré) est de nouveau
+> points du registre des décisions, y compris §48 `connecteur-http-rest-service` désormais livré) est de nouveau
 > entièrement épuisé, aucun autre skeleton pré-positionné n'existe dans le code (recherche
 > exhaustive de `skeleton`/`non enregistré`/références `TODO §` dans `src/main/java`). Retenu parmi
 > trois pistes proposées à l'utilisateur (les deux autres — outillage provisioning, nouveau

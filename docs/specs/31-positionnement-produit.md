@@ -13,7 +13,7 @@
 | Élément | Constat | Preuve |
 |---|---|---|
 | Promesse | « Modéliser un processus sans coder » | `README.md` § Proposition de valeur |
-| Réalité de la conception | Expertise BPMN nécessaire : conventions, noms de delegates, champs d'extension | `GUIDE-CONCEPTION-BPMN.md` (33 Ko) |
+| Réalité de la conception | Expertise BPMN nécessaire : conventions, noms de delegates, champs d'extension | `docs/guides/GUIDE-CONCEPTION-BPMN.md` (33 Ko) |
 | Extension | 7 delegates allowlistés ; toute logique hors de ce catalogue impose du code Java et un rebuild | `AllowedBpmnDelegates` |
 | Panneau BPMN | Champs texte libres (`delegateExpression`, `formKey`, `type`, `decisionTableReferenceKey`) | `flowablePropertiesProvider.ts` |
 | Templates | HTML Thymeleaf saisi dans un `<textarea>` | `TemplatesAdminView.vue` |

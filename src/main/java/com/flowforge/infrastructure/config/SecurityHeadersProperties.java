@@ -10,7 +10,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *
  * @param trustedProxyCidrs pairs TCP immédiats considérés comme le reverse-proxy de confiance
  *     pour l'émission HSTS (A4-HSTS-001) -- défaut = loopback + RFC1918, valable pour le modèle
- *     Docker+Apache mono-host documenté dans DEPLOIEMENT.md. À restreindre à l'IP réelle du
+ *     Docker+Apache mono-host documenté dans docs/guides/DEPLOIEMENT.md. À restreindre à l'IP réelle du
  *     proxy avant toute migration vers un environnement où d'autres pairs partagent ce même
  *     espace d'adresses (ex. pods Kubernetes).
  * @param cspReportRateLimitPerMinute plafond par pair TCP sur {@code /api/security/csp-reports},

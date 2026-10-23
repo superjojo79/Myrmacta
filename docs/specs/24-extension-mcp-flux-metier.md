@@ -47,7 +47,7 @@ Livré en trois vagues, toutes postérieures au 27/08 :
 | [#102](https://github.com/superjojo79/FlowForge/pull/102) | 2026-09-02 | `flowable-callback` (capability CALLBACK, corrélation asynchrone) |
 
 Un `serviceTask` référence désormais un connecteur configuré par **UUID d'instance**
-(`GUIDE-CONCEPTION-BPMN.md` §4, extrait) :
+(`docs/guides/GUIDE-CONCEPTION-BPMN.md` §4, extrait) :
 
 ```xml
 <serviceTask id="appelServiceExterne" flowable:delegateExpression="${connectorServiceTask}" />

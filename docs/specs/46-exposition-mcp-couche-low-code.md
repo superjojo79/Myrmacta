@@ -146,7 +146,7 @@ Tools de publication : un `publish_draft` générique, ou un par artefact, selon
   `AccessContext` de l'utilisateur de la session pour l'assistant, inchangé pour le M2M. Le
   canal `/api/m2m/mcp` ne change pas.
 - **PUBLISH = C (défaut A)** : nouvelle propriété de démarrage (nom à fixer en design, lue au
-  démarrage comme `app.tenant.id`) → `.env.example`, `GETTING-STARTED.md` et `DEPLOIEMENT.md`
+  démarrage comme `app.tenant.id`) → `.env.example`, `docs/guides/GETTING-STARTED.md` et `docs/guides/DEPLOIEMENT.md`
   à mettre à jour dans D6. La publication humaine exige le rôle qui publie déjà dans l'UI
   (`WORKFLOW_ADMIN` / `TENANT_ADMIN`).
 - **MIGRATION = A** : `deploy_workflow`, `deploy_decision_table` et `redeploy_decision_table`

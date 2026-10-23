@@ -1,6 +1,6 @@
 # Internationalisation de l'UI (D7)
 
-> **Statut : première tranche livrée (TODO §90, 2026-10-01) — décisions D-I18N-* dans `docs/roadmap-goal/DECISIONS.md` ; libellés métier non traduits.** Lot **D7**
+> **Statut : première tranche livrée (TODO §90, 2026-10-01) — décisions D-I18N-* dans `docs/decisions/roadmap-2026/DECISIONS.md` ; libellés métier non traduits.** Lot **D7**
 > `internationalisation-ui` de la Vague D (`ROADMAP.md` Catégorie 7). Priorité selon le marché
 > visé (D0 = C, [31](31-positionnement-produit.md)). À affiner en `dev-lifecycle` Phase 1.
 
@@ -53,4 +53,4 @@ l'[analyse 46](46-exposition-mcp-couche-low-code.md)). Sinon, aucune.
 
 ## 7. Documentation impactée
 
-`GUIDE-UTILISATEUR.md`, `11-frontend.md`, tests Playwright (sélecteurs par texte à revoir).
+`docs/guides/GUIDE-UTILISATEUR.md`, `11-frontend.md`, tests Playwright (sélecteurs par texte à revoir).

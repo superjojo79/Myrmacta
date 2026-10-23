@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
  * <p>{@code server.forward-headers-strategy: framework} fait réécrire {@code getRemoteAddr()} par
  * {@code ForwardedHeaderFilter}, qui <strong>préfère</strong> l'en-tête RFC 7239 {@code Forwarded}
  * à {@code X-Forwarded-For} et fait confiance à n'importe quel pair. Le proxy documenté
- * (DEPLOIEMENT.md) écrase {@code X-Forwarded-For} mais laisse passer {@code Forwarded} : un client
+ * (docs/guides/DEPLOIEMENT.md) écrase {@code X-Forwarded-For} mais laisse passer {@code Forwarded} : un client
  * choisissait donc la clé de sa propre limite. Règle ici, indépendante de ces réécritures :
  *
  * <ul>

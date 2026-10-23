@@ -1,6 +1,6 @@
 # Promotion de configuration entre environnements (D4)
 
-> **Statut : LIVRÉ en première tranche (2026-10-01, TODO §83) — décisions D-PROMO-* dans `docs/roadmap-goal/DECISIONS.md`, spec dans `docs/ai/*/2026-10-01-feature-d4-promotion-configuration.md`.** *(Analyse initiale du 2026-09-28 conservée ci-dessous.)* Lot **D4**
+> **Statut : LIVRÉ en première tranche (2026-10-01, TODO §83) — décisions D-PROMO-* dans `docs/decisions/roadmap-2026/DECISIONS.md`, spec dans `docs/ai/*/2026-10-01-feature-d4-promotion-configuration.md`.** *(Analyse initiale du 2026-09-28 conservée ci-dessous.)* Lot **D4**
 > `promotion-configuration` de la Vague D (`ROADMAP.md` Catégorie 7). Priorité **remontée** par
 > D0 = C ([31](31-positionnement-produit.md)) : un intégrateur fait recette puis production.
 > À affiner en `dev-lifecycle` Phase 1.
@@ -79,5 +79,5 @@ et P4 de l'[analyse 46](46-exposition-mcp-couche-low-code.md)) ; jamais de secre
 
 ## 8. Documentation impactée
 
-`DEPLOIEMENT.md` (procédure recette → production), `GUIDE-UTILISATEUR.md` (écran d'export /
-import), `GETTING-STARTED.md` si une CLI est fournie.
+`docs/guides/DEPLOIEMENT.md` (procédure recette → production), `docs/guides/GUIDE-UTILISATEUR.md` (écran d'export /
+import), `docs/guides/GETTING-STARTED.md` si une CLI est fournie.

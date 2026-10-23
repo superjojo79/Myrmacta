@@ -1,6 +1,6 @@
 # Scalabilité intra-tenant — verrou des jobs planifiés (D5)
 
-> **Statut : livré (TODO §79, 2026-10-01)** — audit des 18 tâches planifiées et correctifs par *prise* (claim) en base, voir [`docs/ai/design/2026-10-01-feature-d5-verrou-jobs-planifies.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-10-01-feature-d5-verrou-jobs-planifies.md) et `docs/roadmap-goal/DECISIONS.md` (D-JOBS-*). *(Ancien statut : première analyse du 2026-09-28.)* Lot **D5**
+> **Statut : livré (TODO §79, 2026-10-01)** — audit des 18 tâches planifiées et correctifs par *prise* (claim) en base, voir [`docs/ai/design/2026-10-01-feature-d5-verrou-jobs-planifies.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-10-01-feature-d5-verrou-jobs-planifies.md) et `docs/decisions/roadmap-2026/DECISIONS.md` (D-JOBS-*). *(Ancien statut : première analyse du 2026-09-28.)* Lot **D5**
 > `verrou-jobs-planifies` de la Vague D (`ROADMAP.md` Catégorie 7). Avec D0 = C
 > ([31](31-positionnement-produit.md), hébergement dédié), le lot **reste à l'audit** : le verrou
 > ne devient nécessaire que si un client impose plusieurs pods pour un même tenant.
@@ -64,4 +64,4 @@ Aucune : lot d'infrastructure sans artefact de configuration.
 
 ## 7. Documentation impactée
 
-`DEPLOIEMENT.md` (conditions pour scaler un tenant à plusieurs pods), `02-multi-tenant.md`.
+`docs/guides/DEPLOIEMENT.md` (conditions pour scaler un tenant à plusieurs pods), `02-multi-tenant.md`.

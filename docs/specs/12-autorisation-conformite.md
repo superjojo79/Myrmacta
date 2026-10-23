@@ -172,7 +172,7 @@ DD-DOSSIER-LOAD, motivée par l'évitement d'une double vérification d'ACL). Un
 observer du workflow, sans entrée `dossier_type_acl` de niveau VIEW, pouvait donc lire l'intégralité
 des champs du dossier — incohérent avec le modèle d'accès décrit ci-dessus.
 
-**Décision retenue (décision n° 34, [TODO.md](../../TODO.md)) :**
+**Décision retenue (décision n° 34, [registre des décisions](../decisions/034-acl-type-de-dossier-sur-le-panneau.md)) :**
 `WorkflowLinkVisualizationUseCaseImpl.getDossier` appelle désormais
 `DossierAccessPolicy.assertCanView(dossier, actor)` **en plus** du contrôle « participant
 workflow ». Un observer/assigné sans ACL VIEW voit toujours le diagramme, l'historique et les
@@ -188,13 +188,13 @@ y compris pour un simple détenteur d'ACL `EDIT`. `DossierFieldRedactor` (domain
 `sensitive`, sauf pour `TENANT_ADMIN` — appliqué sur `GetDossierUseCaseImpl` et
 `WorkflowLinkVisualizationUseCaseImpl.getDossier`. Les contextes `System` (génération de documents,
 triggers connecteurs) ne sont pas concernés : ils ne rendent jamais la donnée à un navigateur.
-Voir point 23 dans [TODO.md](../../TODO.md) pour le contexte complet.
+Voir point 23 dans le [registre des décisions](../decisions/README.md) pour le contexte complet.
 
 ## Conformité des données (RGPD et assimilés)
 
 Le produit traite des données potentiellement sensibles pour le compte de tiers (sinistres,
 subventions, réclamations — voir README). Les points suivants doivent être tranchés avant la mise en
-production, au même titre que les points sécurité déjà listés dans [TODO.md](../../TODO.md).
+production, au même titre que les points sécurité déjà listés dans le [registre des décisions](../decisions/README.md).
 
 ### Rétention et suppression
 
@@ -237,8 +237,8 @@ production, au même titre que les points sécurité déjà listés dans [TODO.m
 
 ## Synthèse des décisions à trancher
 
-Ces décisions sont désormais suivies dans [TODO.md](../../TODO.md), avec leur contexte détaillé dans
-[REVUE-PRE-IMPLEMENTATION.md](../../REVUE-PRE-IMPLEMENTATION.md).
+Ces décisions sont désormais suivies dans le [registre des décisions](../decisions/README.md), avec leur contexte détaillé dans
+[docs/analyses/REVUE-PRE-IMPLEMENTATION.md](../analyses/REVUE-PRE-IMPLEMENTATION.md).
 
 | Sujet | Décision à prendre | Suivi |
 |---|---|---|

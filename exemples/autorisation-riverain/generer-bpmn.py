@@ -59,7 +59,7 @@ class Model:
     def email(self, node_id, name, col, row, subject, body):
         # Destinataire lu dans le dossier (champ obligatoire « email », relu au moment de l'envoi — TODO §93).
         # Asynchrone : une adresse mal saisie crée un incident rejouable au lieu de bloquer l'agent qui
-        # complète la tâche précédente (GUIDE-CONCEPTION-BPMN.md §6c).
+        # complète la tâche précédente (docs/guides/GUIDE-CONCEPTION-BPMN.md §6c).
         self.service(node_id, name, col, row, "notificationDispatchTask", **{"async": "true"},
                      notificationChannels="EMAIL", notificationTo="dossierField:email",
                      notificationSubject=subject, notificationBody=body)

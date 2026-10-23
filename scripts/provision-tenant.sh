@@ -2,10 +2,10 @@
 set -euo pipefail
 
 # scripts/provision-tenant.sh — génère (et applique en option) le schéma PostgreSQL et le
-# rôle LOGIN dédié d'un nouveau tenant FlowForge (isolation par schéma, TODO.md D-41 —
+# rôle LOGIN dédié d'un nouveau tenant FlowForge (isolation par schéma, D-41 —
 # option A déjà tranchée ; gabarit : docker/postgres/init/01-init-tenant-schema.sql).
 #
-# Voir DEPLOIEMENT.md §4 pour le runbook de provisioning complet (ce script couvre l'étape
+# Voir docs/guides/DEPLOIEMENT.md §4 pour le runbook de provisioning complet (ce script couvre l'étape
 # "créer le schéma et le rôle PostgreSQL dédiés", pas le démarrage de l'instance applicative
 # ni le bloc reverse-proxy).
 
@@ -23,7 +23,7 @@ Usage: scripts/provision-tenant.sh <tenant_id> [-o <fichier.sql>] [--apply]
 
   --apply           Applique directement le SQL contre PostgreSQL au lieu de l'imprimer.
                      Requiert les variables psql standard (PGHOST, PGPORT, PGDATABASE,
-                     PGUSER, PGPASSWORD — le superuser de provisioning, cf. DEPLOIEMENT.md
+                     PGUSER, PGPASSWORD — le superuser de provisioning, cf. docs/guides/DEPLOIEMENT.md
                      §4) et TENANT_DB_PASSWORD (mot de passe du rôle applicatif créé pour
                      ce tenant). Échoue explicitement si le schéma <tenant_id> existe déjà
                      — ne réécrase jamais un tenant déjà provisionné.
@@ -113,7 +113,7 @@ escaped_password="${TENANT_DB_PASSWORD//\'/\'\'}"
 generate_sql() {
   cat <<SQL
 -- Généré par scripts/provision-tenant.sh pour le tenant '${tenant_id}'.
--- Gabarit : docker/postgres/init/01-init-tenant-schema.sql (D-41, TODO.md point 41).
+-- Gabarit : docker/postgres/init/01-init-tenant-schema.sql (D-41, TODO §41).
 CREATE SCHEMA IF NOT EXISTS ${tenant_id};
 
 DO \$\$

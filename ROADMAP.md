@@ -2,9 +2,9 @@
 
 > **Document de référence** — Dernière vérification : 22 octobre 2026 (`main` @ `b8885800`, PR #178)  
 > **Statut** : statuts **recoupés sur le code et sur l’API GitHub**, pas sur l’analyse d’origine du 12/09  
-> **Sources de vérité produit :** [FILE-ATTENTE.md](FILE-ATTENTE.md), [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md), [TODO.md](TODO.md)  
+> **Sources de vérité produit :** [FILE-ATTENTE.md](FILE-ATTENTE.md), [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md), [registre des décisions](docs/decisions/README.md)  
 > **Vagues A, B, C, A4 et D : livrées.** Mandat « roadmap complète » clos
-> ([AVANCEMENT.md](docs/roadmap-goal/AVANCEMENT.md)). `portail-externe` (PR #138) et
+> ([AVANCEMENT.md](docs/decisions/roadmap-2026/AVANCEMENT.md)). `portail-externe` (PR #138) et
 > `signature-electronique` (PR #149, stub sans provider) : livrés.
 > **File active :** [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §7 (exemple riverain).
 > D0 = C (TODO §70). TODO §71 reste `[ ]` (PARITY / RESOURCES / SECRETS).
@@ -147,7 +147,7 @@ FlowForge est un SaaS multi-tenant à architecture hexagonale. Stack **réelle**
 > Analyse initiale : [31-positionnement-produit.md](docs/specs/31-positionnement-produit.md).
 
 **Constat :** le `README.md` promet « modéliser sans développement », mais la conception d'un
-process exige une expertise BPMN (`GUIDE-CONCEPTION-BPMN.md`) et toute logique hors des 7
+process exige une expertise BPMN (`docs/guides/GUIDE-CONCEPTION-BPMN.md`) et toute logique hors des 7
 delegates allowlistés impose du code Java. Le verrouillage est **serveur** (allowlist §57/§69) ;
 le manque de no-code est **côté UI** : panneau de propriétés BPMN en champs texte libres
 (`flowablePropertiesProvider.ts`), templates en HTML brut (`TemplatesAdminView.vue`), pas de
@@ -180,7 +180,7 @@ prérequis de LC3, les champs calculés de D1 et le mapping de D3b s'appuient su
 type, tables DMN, schémas de questions) et écrit lui-même `delegateExpression`, `formKey`,
 `type`, etc. Validation dès la conception. *Coutures :* frontend `bpmn-properties` et, au besoin,
 endpoints de catalogue en lecture ; **aucun changement du parseur serveur**. Parallélisable avec D1
-(surfaces disjointes). *Valeur :* rend l'essentiel de `GUIDE-CONCEPTION-BPMN.md` implicite.
+(surfaces disjointes). *Valeur :* rend l'essentiel de `docs/guides/GUIDE-CONCEPTION-BPMN.md` implicite.
 
 **LC2 — `langage-expression-metier` (M).** ([analyse](docs/specs/40-langage-expression-metier.md)) Langage borné, sans accès au serveur et à durée
 d'évaluation limitée, pour trois usages : conditions de passerelle, **champs calculés** (D1),
@@ -389,5 +389,5 @@ réaligné le 22/10/2026 (Vague D sur `main`, file riverain).
 | 1.5 | 28/09/2026 | Cadrage MCP low-code (TODO §71) | Analyse 46 référencée ; D6 élargi en socle MCP low-code ; exposition MCP dans le même lot pour chaque `LC*`. |
 | 1.6 | 28/09/2026 | Analyses initiales de la Vague D | Analyses 31–45 créées (D0–D7, LC1–LC6), cadrage MCP renuméroté 31 → 46 ; lots nommés et liés à leur analyse. |
 | 1.7 | 29/09/2026 | Ordonnancement de la Vague D | Priorisation réécrite en 4 vagues (alignée sur `FILE-ATTENTE.md`), arbitrage D4/D6 signalé, en-tête recalé sur `main` @ `2283c92`, README (Statut, positionnement) aligné. |
-| 1.8 | 30/09/2026 | Objectif « roadmap complète » | LC1-suite (TODO §74), LC2 (TODO §75) et D1 (TODO §76) livrés ; décisions consignées dans `docs/roadmap-goal/DECISIONS.md`. |
+| 1.8 | 30/09/2026 | Objectif « roadmap complète » | LC1-suite (TODO §74), LC2 (TODO §75) et D1 (TODO §76) livrés ; décisions consignées dans `docs/decisions/roadmap-2026/DECISIONS.md`. |
 | 1.9 | 22/10/2026 | Alignement post-Vague D | File active = backlog riverain (§7) ; D1 champs calculés marqués livrés (§80) ; frontend OpenVue ; connecteurs IMAP/Graph/Service Bus. |

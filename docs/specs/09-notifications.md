@@ -2,7 +2,7 @@
 
 > Trois canaux : email, webhook sortant, notification navigateur (SSE).  
 > Envoi déclenché depuis un ServiceTask Flowable ou directement via l'API, via un
-> **outbox transactionnel** — voir décision n° 33 ([TODO.md](../../TODO.md)).
+> **outbox transactionnel** — voir décision n° 33 ([registre des décisions](../decisions/033-pattern-outbox-pour-les-notifications-workfloweventpublisher.md)).
 
 ---
 

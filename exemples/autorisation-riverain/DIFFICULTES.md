@@ -94,7 +94,7 @@ ou affichage sur le portail d'une variable désignée par le concepteur.
 
 **Constat** (vérifié avec `preview_document`) :
 - une variable absente, une propriété absente **ou une valeur nulle** fait **échouer** la génération
-  (`Unknown template variable` / `Unknown template property`). Le guide `GUIDE-CONCEPTION-BPMN.md` §3
+  (`Unknown template variable` / `Unknown template property`). Le guide `docs/guides/GUIDE-CONCEPTION-BPMN.md` §3
   affirme au contraire qu'un champ absent « se résout silencieusement à une chaîne vide » ;
 - pas d'opérateur de comparaison (`==`), pas de `or`/`and`, pas de ternaire, pas d'accès `map['x']`
   ni `map.get('x')`, pas de `containsKey`. Seuls sont acceptés les chemins de propriétés, les
@@ -116,7 +116,7 @@ ou affichage sur le portail d'une variable désignée par le concepteur.
 
 **Évolution proposée.** Corriger le guide, ou rendre le moteur tolérant (valeur vide, opérateur `?:`).
 
-**Mise à jour du 2026-10-16.** Le guide est corrigé (PR #168) : `GUIDE-CONCEPTION-BPMN.md` §3 indique
+**Mise à jour du 2026-10-16.** Le guide est corrigé (PR #168) : `docs/guides/GUIDE-CONCEPTION-BPMN.md` §3 indique
 désormais qu'une valeur absente ou nulle fait échouer la génération, et décrit la grammaire acceptée.
 Le moteur reste strict : le contournement ci-dessus reste nécessaire.
 

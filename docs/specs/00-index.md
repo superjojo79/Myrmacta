@@ -5,9 +5,9 @@
 > Build : mono-module Maven · frontend embarqué (`static/`) — décision n° 27
 >
 > **Revues :** pré-implémentation (docs, points 1–39) —
-> [REVUE-PRE-IMPLEMENTATION.md](../../REVUE-PRE-IMPLEMENTATION.md) ;
+> [docs/analyses/REVUE-PRE-IMPLEMENTATION.md](../analyses/REVUE-PRE-IMPLEMENTATION.md) ;
 > post-implémentation alignement × sécurité (2026-08-25, points 40–46) —
-> [REVUE-ALIGNEMENT-SECURITE.md](../../REVUE-ALIGNEMENT-SECURITE.md).
+> [docs/analyses/REVUE-ALIGNEMENT-SECURITE.md](../analyses/REVUE-ALIGNEMENT-SECURITE.md).
 
 ---
 
@@ -65,7 +65,7 @@
 
 > Pour concevoir concrètement un diagramme BPMN pour FlowForge (conventions, référence des
 > `serviceTask` disponibles, champs dynamiques, connecteurs, intervenants, génération de
-> documents), voir le guide pratique [GUIDE-CONCEPTION-BPMN.md](../../GUIDE-CONCEPTION-BPMN.md) à la
+> documents), voir le guide pratique [docs/guides/GUIDE-CONCEPTION-BPMN.md](../guides/GUIDE-CONCEPTION-BPMN.md) à la
 > racine du dépôt — ce n'est pas un document d'analyse d'architecture, il n'a donc pas de numéro
 > dans la table ci-dessus.
 
@@ -211,7 +211,7 @@ décrit son état actuel, et un permalien vers ses documents de travail au commi
 | `derive-documentaire` | 2026-08-25 | [12-autorisation-conformite](12-autorisation-conformite.md) | [requirements](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-08-25-feature-derive-documentaire.md) (7 documents) |
 | `dossiers` | 2026-07-31 | [04-dossiers](04-dossiers.md) | [requirements](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-07-31-feature-dossiers.md) (7 documents) |
 | `durcissement-donnees-sensibles` | 2026-08-21 | [04-dossiers](04-dossiers.md) | [requirements](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-08-21-feature-durcissement-donnees-sensibles.md) (7 documents) |
-| `durcissement-securite-post-revue` | 2026-08-25 | [REVUE-ALIGNEMENT-SECURITE](../../REVUE-ALIGNEMENT-SECURITE.md) | [requirements](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-08-25-feature-durcissement-securite-post-revue.md) (7 documents) |
+| `durcissement-securite-post-revue` | 2026-08-25 | [REVUE-ALIGNEMENT-SECURITE](../analyses/REVUE-ALIGNEMENT-SECURITE.md) | [requirements](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-08-25-feature-durcissement-securite-post-revue.md) (7 documents) |
 | `edition-bpmn` | 2026-08-24 | [14-edition-bpmn](14-edition-bpmn.md) | [requirements](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-08-24-feature-edition-bpmn.md) (7 documents) |
 | `edition-champs-dossier` | 2026-08-18 | [17-schema-champs-dynamiques](17-schema-champs-dynamiques.md) | [requirements](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-08-18-feature-edition-champs-dossier.md) (7 documents) |
 | `elements-dossier` | 2026-08-16 | [04-dossiers](04-dossiers.md) | [requirements](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-08-16-feature-elements-dossier.md) (7 documents) |

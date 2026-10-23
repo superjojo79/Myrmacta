@@ -59,4 +59,4 @@ l'aperçu REST) — comble le trou actuel. Contrat = HTML Thymeleaf, pas le JSON
 
 ## 8. Documentation impactée
 
-`GUIDE-UTILISATEUR.md` (templates), `08-templates-documents.md`.
+`docs/guides/GUIDE-UTILISATEUR.md` (templates), `08-templates-documents.md`.

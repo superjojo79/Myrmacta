@@ -188,7 +188,7 @@ E2E) exécuté par l'orchestrateur sur l'arbre fusionné.
   93.86%/BRANCH 77.14%. Frontend — 193 tests Vitest, typecheck/lint
   propres, 47/47 Playwright (4 nouveaux `E2E-EDIT-BPMN-1..4`).
 - `README.md`, `05-workflow-engine.md` (ce même dossier) et
-  `GUIDE-UTILISATEUR.md` corrigés — retrait des mentions « pas de
+  `docs/guides/GUIDE-UTILISATEUR.md` corrigés — retrait des mentions « pas de
   designer visuel/éditeur BPMN » devenues fausses, nouveau mécanisme
   documenté.
 

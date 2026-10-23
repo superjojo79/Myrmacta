@@ -3,7 +3,7 @@
 > Synthèse du travail **reporté** hors des tranches déjà livrées
 > (`architecture-hexagonale`, `multi-tenant`, `authentification`, `dossiers`).
 >
-> - Les **points ouverts à trancher** restent dans [TODO.md](TODO.md).
+> - Les **points ouverts à trancher** restent dans le [registre des décisions](docs/decisions/README.md).
 > - L’**ordre de la prochaine feature** (et les vagues parallèles) est dans [FILE-ATTENTE.md](FILE-ATTENTE.md).
 > - Le détail par feature reste dans `docs/ai/**/2026-*-feature-*.md`
 >   (sections Non-goals, Différé, Follow-ups).
@@ -36,7 +36,7 @@ maquette
 Vagues A/B/C/D livrées. **File active (2026-10-22) :** §7 (exemple riverain) —
 voir [FILE-ATTENTE.md](FILE-ATTENTE.md) § *File active — backlog riverain*.
 Seul point TODO encore `[ ]` : §71 (cadrage MCP, décisions résiduelles).
-[REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) intégralement
+[docs/analyses/REVUE-ALIGNEMENT-SECURITE.md](docs/analyses/REVUE-ALIGNEMENT-SECURITE.md) intégralement
 close (§40–46).
 
 ---
@@ -184,9 +184,9 @@ Ordre indicatif aligné sur l’analyse et les dépendances techniques :
 
 ## 3. Points TODO encore ouverts (mapping)
 
-Voir le détail et les options dans [TODO.md](TODO.md),
-[REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md) (points 1–39) et
-[REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) (points 40–46).
+Voir le détail et les options dans le [registre des décisions](docs/decisions/README.md),
+[docs/analyses/REVUE-PRE-IMPLEMENTATION.md](docs/analyses/REVUE-PRE-IMPLEMENTATION.md) (points 1–39) et
+[docs/analyses/REVUE-ALIGNEMENT-SECURITE.md](docs/analyses/REVUE-ALIGNEMENT-SECURITE.md) (points 40–46).
 
 | Point | Titre | État après tranches livrées |
 |---|---|---|
@@ -224,7 +224,7 @@ Voir le détail et les options dans [TODO.md](TODO.md),
   dérive README / `docs/specs/` (TODO §45) — **clos** (PR #75)
 - Build FE : `npm run build` → copie vers `src/main/resources/static/` (Maven plugin ou CI)
 - Reliquats sécu V1 assumés (pas rouverts **sauf** lots A4 headers / C ClamAV) : AV no-op, rate-limit JVM, headers HTTP —
-  [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) §4 Low
+  [docs/analyses/REVUE-ALIGNEMENT-SECURITE.md](docs/analyses/REVUE-ALIGNEMENT-SECURITE.md) §4 Low
 
 ---
 
@@ -233,8 +233,8 @@ Voir le détail et les options dans [TODO.md](TODO.md),
 | Source | Usage |
 |---|---|
 | [FILE-ATTENTE.md](FILE-ATTENTE.md) | Prochaine feature + **vagues parallèles** (surfaces exclusives) |
-| [TODO.md](TODO.md) | Points ouverts + décisions actées |
-| [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) | Revue 2026-08-25 alignement × sécurité (points 40–46) |
+| [registre des décisions](docs/decisions/README.md) | Points ouverts + décisions actées |
+| [docs/analyses/REVUE-ALIGNEMENT-SECURITE.md](docs/analyses/REVUE-ALIGNEMENT-SECURITE.md) | Revue 2026-08-25 alignement × sécurité (points 40–46) |
 | `docs/ai/**/2026-*-feature-*.md` | Non-goals, Différé, Follow-ups lifecycle |
 | [11-frontend.md](docs/specs/11-frontend.md) | Stack FE + packaging + maquette |
 | [FlowForge - Maquettes UI.html](docs/specs/FlowForge%20-%20Maquettes%20UI.html) | Référence UX / écrans |

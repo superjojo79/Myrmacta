@@ -2,7 +2,7 @@
 
 > **Statut : livré** (2026-09-22, TODO §66, cycle `dev-lifecycle` complet). Ce document reste
 > l'analyse d'origine (2026-09-14) — conservé pour l'historique du raisonnement, **pas à jour**
-> sur l'état du code : voir `TODO.md` §66 et
+> sur l'état du code : voir TODO §66 et
 > `docs/ai/{requirements,design,planning,testing}/2026-09-22-feature-inbox-notifications-persistee.md`
 > pour l'état livré (table `user_notification`, `NotificationInboxController`, 5 producteurs
 > BROWSER, `NotificationDrawer.vue` en PrimeVue). Constat corrigé en Phase 1 : cette analyse

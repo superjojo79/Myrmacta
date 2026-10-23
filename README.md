@@ -2,13 +2,13 @@
 > Plateforme de gestion de flux métier, de dossiers et de génération de documents.
 >  Solution SaaS multi-tenant, extensible par design.
 
-> **Démarrage local :** voir [GETTING-STARTED.md](GETTING-STARTED.md) — infrastructure Docker/Podman
+> **Démarrage local :** voir [docs/guides/GETTING-STARTED.md](docs/guides/GETTING-STARTED.md) — infrastructure Docker/Podman
 > (PostgreSQL, Keycloak, stockage S3-compatible en option) + lancement backend/frontend, config minimale incluse.
->  **Utilisation de l'UI :** voir [GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md) — créer un dossier,
+>  **Utilisation de l'UI :** voir [docs/guides/GUIDE-UTILISATEUR.md](docs/guides/GUIDE-UTILISATEUR.md) — créer un dossier,
 > démarrer/suivre un workflow, configurer un connecteur ou un template de document.
->  **Déploiement :** voir [DEPLOIEMENT.md](DEPLOIEMENT.md) — au-delà du poste de dev : artefact,
+>  **Déploiement :** voir [docs/guides/DEPLOIEMENT.md](docs/guides/DEPLOIEMENT.md) — au-delà du poste de dev : artefact,
 > reverse-proxy, provisioning d'un tenant, comptes Keycloak (`Dockerfile` et `scripts/provision-tenant.sh` livrés ; démarrage de l'instance, reverse-proxy et Keycloak restent documentés, non automatisés).
->  **Concevoir un BPMN :** voir [GUIDE-CONCEPTION-BPMN.md](GUIDE-CONCEPTION-BPMN.md) — conventions,
+>  **Concevoir un BPMN :** voir [docs/guides/GUIDE-CONCEPTION-BPMN.md](docs/guides/GUIDE-CONCEPTION-BPMN.md) — conventions,
 > champs dynamiques, connecteurs, intervenants, génération de documents depuis un diagramme.
 
 ------
@@ -17,7 +17,7 @@
 
 FlowForge est une plateforme permettant à des organisations de **modéliser, exécuter et superviser leurs processus métier** sans développement sur mesure pour chaque cas d'usage.
 
-**Positionnement (décision du 2026-09-28, [TODO §70](TODO.md)) :** produit pour **intégrateurs**,
+**Positionnement (décision du 2026-09-28, [TODO §70](docs/decisions/070-positionnement-produit-d0-integrateurs-couche-low-code.md)) :** produit pour **intégrateurs**,
 avec hébergement dédié par client. L'intégrateur conçoit les processus (BPMN/DMN) ; une couche
 **low-code / no-code** (palette métier, éditeurs de formulaires et de templates, assistant IA,
 concepteur de parcours) est **livrée** (Vague D) pour que les utilisateurs avancés côté client
@@ -87,7 +87,7 @@ OAuth2/OIDC avec pattern BFF — le browser ne manipule jamais de token JWT. Le 
 
 ### Serveur MCP (outillage agent IA interne)
 
-Un serveur [MCP](https://modelcontextprotocol.io) (Model Context Protocol) expose un sous-ensemble des capacités métier à un agent IA interne (Claude Code ou tout autre client MCP) : définir un type de dossier, déployer un workflow BPMN, consulter un dossier, rechercher des dossiers, consulter les statistiques SLA. Transport Streamable HTTP sur `/api/m2m/mcp`, authentification par le même JWT machine-à-machine que les connecteurs (`Authorization: Bearer`, rôle `API_SERVICE`) — pas de nouveau mécanisme d'authentification, pas d'exposition tenant tierce. Voir [GETTING-STARTED.md](GETTING-STARTED.md#12-serveur-mcp-outillage-agent-ia) pour s'y connecter en local.
+Un serveur [MCP](https://modelcontextprotocol.io) (Model Context Protocol) expose un sous-ensemble des capacités métier à un agent IA interne (Claude Code ou tout autre client MCP) : définir un type de dossier, déployer un workflow BPMN, consulter un dossier, rechercher des dossiers, consulter les statistiques SLA. Transport Streamable HTTP sur `/api/m2m/mcp`, authentification par le même JWT machine-à-machine que les connecteurs (`Authorization: Bearer`, rôle `API_SERVICE`) — pas de nouveau mécanisme d'authentification, pas d'exposition tenant tierce. Voir [docs/guides/GETTING-STARTED.md](docs/guides/GETTING-STARTED.md#12-serveur-mcp-outillage-agent-ia) pour s'y connecter en local.
 
 ------
 
@@ -189,13 +189,13 @@ charge le justifie.
 
 ## Documentation technique
 
-Mise en place et utilisation en local : [GETTING-STARTED.md](GETTING-STARTED.md). Prise en main
-de l'UI (dossiers, workflows, connecteurs, templates) : [GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md).
+Mise en place et utilisation en local : [docs/guides/GETTING-STARTED.md](docs/guides/GETTING-STARTED.md). Prise en main
+de l'UI (dossiers, workflows, connecteurs, templates) : [docs/guides/GUIDE-UTILISATEUR.md](docs/guides/GUIDE-UTILISATEUR.md).
 Déploiement au-delà du poste de dev (reverse-proxy, provisioning tenant, comptes Keycloak) :
-[DEPLOIEMENT.md](DEPLOIEMENT.md). Historique synthétique des changements, par pull request :
+[docs/guides/DEPLOIEMENT.md](docs/guides/DEPLOIEMENT.md). Historique synthétique des changements, par pull request :
 [CHANGELOG.md](CHANGELOG.md). Conception d'un diagramme BPMN (conventions, `serviceTask`
 disponibles, champs dynamiques, connecteurs, intervenants) :
-[GUIDE-CONCEPTION-BPMN.md](GUIDE-CONCEPTION-BPMN.md).
+[docs/guides/GUIDE-CONCEPTION-BPMN.md](docs/guides/GUIDE-CONCEPTION-BPMN.md).
 
 La documentation d'architecture est disponible dans le répertoire `docs/specs` :
 
@@ -226,10 +226,10 @@ La documentation d'architecture est disponible dans le répertoire `docs/specs` 
 > `main`. Prochains lots : [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §7 (pièce jointe e-mail,
 > unicité de champ). Hors périmètre : fournisseur de signature qualifiée réel, export BI JDBC,
 > scripts en bac à sable (spike : non nécessaire). Détails : [ROADMAP.md](ROADMAP.md),
-> [docs/roadmap-goal/AVANCEMENT.md](docs/roadmap-goal/AVANCEMENT.md).
+> [docs/decisions/roadmap-2026/AVANCEMENT.md](docs/decisions/roadmap-2026/AVANCEMENT.md).
 >  Activité indépendante complémentaire.
 
-La documentation d'architecture a fait l'objet d'une [revue pré-implémentation](REVUE-PRE-IMPLEMENTATION.md).
-Les décisions actées et le seul point encore ouvert (§71) sont dans [TODO.md](TODO.md).
+La documentation d'architecture a fait l'objet d'une [revue pré-implémentation](docs/analyses/REVUE-PRE-IMPLEMENTATION.md).
+Les décisions actées et le seul point encore ouvert (§71) sont dans le [registre des décisions](docs/decisions/README.md).
 L'ordre des prochaines features est dans [FILE-ATTENTE.md](FILE-ATTENTE.md)
 (file active = backlog riverain).

@@ -67,7 +67,7 @@ l'[analyse 31](31-positionnement-produit.md) §3.
 
 ## 8. Documentation impactée
 
-`GUIDE-CONCEPTION-BPMN.md` (brique Script), `GUIDE-UTILISATEUR.md` (éditeur de scripts),
+`docs/guides/GUIDE-CONCEPTION-BPMN.md` (brique Script), `docs/guides/GUIDE-UTILISATEUR.md` (éditeur de scripts),
 `12-autorisation-conformite.md` (rôle autorisé à écrire des scripts).
 
 ---

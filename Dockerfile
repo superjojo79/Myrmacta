@@ -1,4 +1,4 @@
-# Image de déploiement FlowForge — voir DEPLOIEMENT.md §1 et
+# Image de déploiement FlowForge — voir docs/guides/DEPLOIEMENT.md §1 et
 # https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-09-08-feature-provisioning-tenant.md pour le contexte des choix
 # (image de base, utilisateur non-root, heap JVM).
 
@@ -22,7 +22,7 @@ COPY frontend/ frontend/
 
 # Image de production par défaut. Image de DÉMO/QA avec PostgreSQL embarqué persistant :
 #   docker build --build-arg MAVEN_PROFILES=embedded-db -t flowforge:demo .
-# (voir GETTING-STARTED.md § « Base embarquée persistante » ; jamais en production).
+# (voir docs/guides/GETTING-STARTED.md § « Base embarquée persistante » ; jamais en production).
 ARG MAVEN_PROFILES=""
 RUN ./mvnw -B clean package -DskipTests ${MAVEN_PROFILES:+-P${MAVEN_PROFILES}}
 

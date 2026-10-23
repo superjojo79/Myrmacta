@@ -64,5 +64,5 @@ l'[analyse 46](46-exposition-mcp-couche-low-code.md)). Même masquage que l'API.
 
 ## 8. Documentation impactée
 
-`GUIDE-UTILISATEUR.md` (recherche), `openapi/` (golden), `13-modele-physique.md` (index),
+`docs/guides/GUIDE-UTILISATEUR.md` (recherche), `openapi/` (golden), `13-modele-physique.md` (index),
 `04-dossiers.md`.

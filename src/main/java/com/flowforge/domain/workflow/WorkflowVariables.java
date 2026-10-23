@@ -79,7 +79,7 @@ public final class WorkflowVariables {
      *
      * @param dossierFields l'instantané de {@code Dossier.fields()} au moment du démarrage —
      *     jamais rafraîchi automatiquement ensuite (une modification du dossier en cours de
-     *     workflow n'est pas répercutée sur cette variable ; voir GUIDE-CONCEPTION-BPMN.md pour
+     *     workflow n'est pas répercutée sur cette variable ; voir docs/guides/GUIDE-CONCEPTION-BPMN.md pour
      *     le mécanisme de rafraîchissement explicite si nécessaire).
      */
     public static Map<String, Object> withPlatformVariables(

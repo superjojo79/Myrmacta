@@ -76,7 +76,7 @@ bac à sable).
 - **L4 (accepté)** — `SendNotificationUseCaseImpl` ne revérifie pas `EmailAttachment` ; seul `NotificationDispatchTask` en
   construit un (vérifié sur tous les producteurs de `NotificationEvent`, REST `/send` compris).
 - **I5 (hors périmètre)** — le concepteur de parcours (`ParcoursCompiler`) ne propose pas la pièce jointe.
-- **P1 (préexistant, issue [#201](https://github.com/superjojo79/FlowForge/issues/201))** — `AttachGeneratedDocumentTask` rattache comme `PRODUCED_DOC` tout objet du tenant
+- **P1 (préexistant, levé par l'issue [#201](https://github.com/superjojo79/FlowForge/issues/201), TODO §97)** — `AttachGeneratedDocumentTask` rattache comme `PRODUCED_DOC` tout objet du tenant
   désigné par `generatedDocumentId`, variable modifiable par un utilisateur si une tâche s'intercale entre génération et
   rattachement. Une référence connue d'un autre dossier deviendrait alors un document produit légitime, joignable (et
   signable, §72). Atténué : références aléatoires jamais exposées (`DossierElementView` masque `storageRef`). D-NOTIF-ATTACH-PRODUCED-DOC

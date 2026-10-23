@@ -156,9 +156,11 @@ public interface SendNotificationUseCase {
     List<UUID> send(NotificationEvent event, String tenantId);
 }
 
-// domain/notification/port/out — appelés uniquement par NotificationOutboxRelay
+// domain/notification/port/out — appelés par NotificationOutboxRelay (EmailPort aussi par le connecteur smtp
+// et les invitations portail / signature)
 public interface EmailPort {
-    void send(String to, String subject, String body);
+    default void send(String to, String subject, String body) { send(to, subject, body, null); }
+    void send(String to, String subject, String body, EmailAttachmentContent attachment); // issue #183
 }
 
 public interface WebhookPort {
@@ -169,3 +171,24 @@ public interface BrowserPushPort {
     boolean push(String userId, Map<String, Object> event);
 }
 ```
+
+---
+
+## Implémentation — pièce jointe de « Notifier » (issue #183, TODO §96)
+
+- **Paramètres** : `flowable:notificationAttachment="variable:<nom>|dossierField:<champ>"` et
+  `flowable:notificationAttachmentName` (facultatif), lus **seulement** dans le BPMN déployé (D-NOTIF-ATTACH-LITERAL) ;
+  forme vérifiée au déploiement (`BlockAttributeRules`) et dans la palette.
+- **Émission** (`NotificationDispatchTask`, transaction du process) : la source est résolue en référence de stockage,
+  puis `ResolveEmailAttachmentUseCase` exige un élément `PRODUCED_DOC` **du dossier courant** portant cette référence,
+  un contenu non vide, PDF (`%PDF-`), sous `app.notification.email.attachment-max-bytes` (défaut 10 Mio)
+  (D-NOTIF-ATTACH-PRODUCED-DOC, D-NOTIF-ATTACH-MAX). Échec : `NotificationValidationException` (422 ou incident si
+  asynchrone), message sans la valeur. Canal `EMAIL` absent : refus (D-NOTIF-ATTACH-EMAIL-ONLY).
+- **Outbox** : le snapshot e-mail porte `attachment: {storageRef, fileName, contentType}`, jamais les octets
+  (D-NOTIF-ATTACH-REF-IN-OUTBOX). Le relais relit le contenu dans le stockage du tenant de la ligne et revérifie le
+  plafond ; document absent : échec ordinaire de la ligne (tentatives, puis `DEAD`).
+- **SMTP** : `SmtpEmailAdapter` construit un `multipart/mixed` (texte + PDF nommé), en-tête `Auto-Submitted` conservé.
+  Le connecteur `smtp` n'envoie pas de pièce jointe (D-NOTIF-ATTACH-SMTP-CONNECTOR).
+- **Tests de référence** : `ResolveEmailAttachmentUseCaseImplTest`, `NotificationDispatchAttachmentTest`,
+  `NotificationOutboxRelayTest`, `SmtpEmailAdapterTest`, `NotifierAttachmentIT` (moteur réel, outbox et relais réels),
+  `BlockAttributeRulesTest`, `blockDiagnostics.spec.ts`, E2E-PALETTE-10.

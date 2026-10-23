@@ -171,8 +171,8 @@ Le risque 5 passe en P1 devant la documentation : c'est le seul où une erreur d
 | P5 D3, `docs/ai/` | Livré | `0d50afc` | 473 documents retirés (`docs/ai/` : 3,5 Mo → 11 Ko, les 7 README de phase restent) ; `docs/decisions/identifiants.md` : 187 identifiants cités par le code, 0 sans définition ; 102 liens, 46 mentions et 7 commentaires deviennent des permaliens ; table fonctionnalité → spec en annexe de `docs/specs/00-index.md` ; `check-docs` vert (contrôle `decision-ids` désormais sur l'index) | Tag d'archive non poussé (refus 403 de la session) : permaliens au commit `e91aa7b` de `main` à la place (D-REMED-ARCHIVE-REF ⚠). Cinq specs complétées d'une section « Implémentation ». Le commentaire d'une ressource DMN déployée garde l'ancien chemin |
 | P6 D4, `docs/decisions/` | Livré | `6f1de3a` | `TODO.md` (3 660 lignes) → 95 fichiers `NNN-*.md` (93 clos, 2 ouverts : §71, §95) + 13 fichiers `section-*.md` ; index `docs/decisions/README.md` généré et contrôlé (`decisions-index`) ; 63 liens entrants réécrits (11 vers un point précis, 52 vers l'index) ; revues → `docs/analyses/`, `docs/roadmap-goal/` → `docs/decisions/roadmap-2026/`, guides → `docs/guides/` (199 liens recalculés) ; `check-docs` vert, auto-test compris | §80 à §90 n'avaient pas de section : chacun reçoit un fichier tiré de sa ligne du tableau de la Vague D. Les textes d'interface qui citent un guide par son nom ne changent pas |
 | P7 D5, backlog | Livré | `80fef65` | 12 issues créées (#183 à #194, table ci-dessous) ; `FILE-ATTENTE.md` et `DEFERRED-FEATURES.md` retirés (85 liens et mentions → permaliens) ; `ROADMAP.md` réduit à une page ; `cliff.toml` + `scripts/changelog-release.sh` testés sur l'historique de `main` (une entrée par PR, rubriques vides masquées) ; `check-docs` vert | Les sujets hors V1 sont regroupés dans une seule issue-inventaire (#194) |
-| P8 D6, `AGENTS.md` et skills | Livré | `docs(remediation): P8` | `AGENTS.md` (35 lignes) + `CLAUDE.md` (`@AGENTS.md`) ; `flowforge-conventions` à jour (source puis copies) ; inventaire des skills ci-dessous ; `check-docs` vert | `check-docs` lit désormais aussi les fichiers non suivis : un fichier pas encore commité échappait au contrôle (faute réelle trouvée : `D-REMED-CHANGELOG` cité par `scripts/changelog-release.sh` sans ligne d'index) |
-| P9 risque 4, sandboxes | À faire | | | |
+| P8 D6, `AGENTS.md` et skills | Livré | `ef33bee` | `AGENTS.md` (35 lignes) + `CLAUDE.md` (`@AGENTS.md`) ; `flowforge-conventions` à jour (source puis copies) ; inventaire des skills ci-dessous ; `check-docs` vert | `check-docs` lit désormais aussi les fichiers non suivis : un fichier pas encore commité échappait au contrôle (faute réelle trouvée : `D-REMED-CHANGELOG` cité par `scripts/changelog-release.sh` sans ligne d'index) |
+| P9 risque 4, sandboxes | Livré | `test(security): P9` | `./mvnw verify` vert, 3 482 tests (0 échec, 5 ignorés) ; `SafeHtmlTemplateEngineFactoryTest` (3) et `AstInspectorRegressionTest` (8) verts ; échec démontré en retirant un processeur de la liste blanche (« `StandardXmlSpaceTagProcessor` non classé ») ; issues #195 à #198 pour les surcharges CVE | Thymeleaf passe réellement en liste blanche (43 processeurs), sans changement de comportement |
 | P10 risque 3, déploiement tenant | À faire | | | |
 | P11 découpage `pilotage.spec.ts` | À faire | | | |
 | P12 clôture | À faire | | | |
@@ -208,8 +208,8 @@ Le risque 5 passe en P1 devant la documentation : c'est le seul où une erreur d
 
 ### Inventaire des skills (P8, recommandation sans suppression)
 
-Taille totale d'une copie : 1,2 Mo, dont 762 Ko pour `playwright-best-practices`. Les 26 skills hors projet viennent
-du registre ai-devkit (25) ou de `npx skills add` (1).
+Taille totale d'une copie : 1,2 Mo, dont 762 Ko pour `playwright-best-practices`. Les 27 skills hors projet viennent
+du registre ai-devkit (26) ou de `npx skills add` (1).
 
 | Skills | Recommandation | Motif |
 |---|---|---|

@@ -129,3 +129,21 @@ et des versions sémantiques automatiques, disproportionné pour un projet sans 
 d'entrée de tout agent ; `CLAUDE.md` se limite à `@AGENTS.md`, pour qu'une seule source serve Claude Code, Cursor
 et Codex. Le skill `flowforge-conventions` garde le détail et renvoie à `AGENTS.md`. Inventaire des 28 skills
 (paramètre Skills = `proposer` : recommandation seulement, rien n'est supprimé) dans la section Suivi du plan.
+
+**D-REMED-THYME-ALLOWLIST** — `SafeHtmlTemplateEngineFactory` charge désormais une **liste blanche** des
+43 processeurs du dialecte standard de Thymeleaf 3.1.5 (les 47 moins les 4 de `DISABLED_PROCESSORS`), au lieu de
+tout charger sauf la liste noire. Aucun changement de comportement aujourd'hui (même ensemble chargé, vérifié par
+`SafeHtmlTemplateEngineFactoryTest`). À la prochaine montée de version, un processeur nouveau n'est pas chargé et le
+test le nomme : il faut le relire et le classer. Démontré en retirant un nom de la liste : le test échoue sur
+« `StandardXmlSpaceTagProcessor` non classé ».
+
+**D-REMED-JSONATA-CORPUS** — `AstInspectorRegressionTest` place une expression régulière (18 positions) et une
+variable (13 positions) dans chaque construction syntaxique de JSONata (arguments, prédicats, branches, objets,
+tableaux, blocs, lambdas, tri, regroupement, `~>`, transformation, application partielle…). Une montée de version qui
+rangerait un nœud dans un champ que `AstInspector` ne parcourt pas fait échouer ce test au lieu de laisser passer une
+regex non inspectée (complète D-EXPR-AST-BRIDGE, qui ne protège que contre un champ renommé).
+
+**D-REMED-CVE-OVERRIDES** — Les quatre surcharges du `pom.xml` (Tomcat, Kotlin, Netty, swagger-ui) gardent leur
+commentaire (CVE, condition de retrait) et pointent chacune vers une issue (#195 à #198) qui décrit la vérification
+à faire avant de la retirer. Option écartée : un test qui compare la version surchargée à celle gérée par Spring
+Boot, fragile (lecture du BOM dans le dépôt Maven local) pour un gain faible face à Dependabot et au scan OWASP.

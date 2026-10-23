@@ -50,8 +50,11 @@ La section ci-dessous a été tenue à la main jusqu'à la PR #182 ; elle est co
 
 ### Documentation
 
-- **[PR #182](https://github.com/superjojo79/FlowForge/pull/182)** — Plan de remédiation de la revue du 22 octobre, centré sur la
-  documentation (`docs/analyses/`), et prompt `/goal` pour l'exécuter (`docs/goals/`). Aucun changement de code.
+- **[PR #182](https://github.com/superjojo79/FlowForge/pull/182)** — Remédiation de la revue du 22 octobre : la doc se range
+  sous `docs/` (`specs/`, `decisions/` qui remplace `TODO.md`, `guides/`, `analyses/`), le backlog passe en issues GitHub,
+  `docs/ai/` est vidé des fonctionnalités livrées, `AGENTS.md` sert de point d'entrée, et `scripts/check-docs.sh` (job CI
+  « docs ») contrôle liens, skills et identifiants cités par le code. Déploiement d'un tenant généré par
+  `provision-tenant.sh --instance-dir`.
 - **[PR #181](https://github.com/superjojo79/FlowForge/pull/181)** — Deux analyses ajoutées dans `docs/analyses/` : revue du dépôt du 22 octobre 2026 et fiche technique de la pré-vérification IA des dossiers. Aucun changement de code.
 
 - **[PR #179](https://github.com/superjojo79/FlowForge/pull/179)** — File d'attente, roadmap et README recadrés sur `main` : Vague D livrée, prochains lots = backlog de l'exemple riverain (pièce jointe, unicité). Frontend documenté comme OpenVue ; catalogue de connecteurs et recette R6 alignés.

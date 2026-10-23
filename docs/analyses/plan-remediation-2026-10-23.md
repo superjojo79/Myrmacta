@@ -174,8 +174,8 @@ Le risque 5 passe en P1 devant la documentation : c'est le seul où une erreur d
 | P8 D6, `AGENTS.md` et skills | Livré | `ef33bee` | `AGENTS.md` (35 lignes) + `CLAUDE.md` (`@AGENTS.md`) ; `flowforge-conventions` à jour (source puis copies) ; inventaire des skills ci-dessous ; `check-docs` vert | `check-docs` lit désormais aussi les fichiers non suivis : un fichier pas encore commité échappait au contrôle (faute réelle trouvée : `D-REMED-CHANGELOG` cité par `scripts/changelog-release.sh` sans ligne d'index) |
 | P9 risque 4, sandboxes | Livré | `1e7bf5e` | `./mvnw verify` vert, 3 482 tests (0 échec, 5 ignorés) ; `SafeHtmlTemplateEngineFactoryTest` (3) et `AstInspectorRegressionTest` (8) verts ; échec démontré en retirant un processeur de la liste blanche (« `StandardXmlSpaceTagProcessor` non classé ») ; issues #195 à #198 pour les surcharges CVE | Thymeleaf passe réellement en liste blanche (43 processeurs), sans changement de comportement |
 | P10 risque 3, déploiement tenant | Livré | `7b5bdd0` | `TenantInstancesIsolationIT` (4 tests) vert : deux instances réelles sur une base provisionnée par `scripts/provision-tenant.sh` ; `docker compose config` valide sur les fichiers générés ; `shellcheck` sans avertissement ; non-écrasement et `--port` obligatoire vérifiés | Défaut de production trouvé et corrigé : la seconde instance d'une base partagée ne démarrait pas (Flowable, D-REMED-FLOWABLE-SCHEMA ⚠). Le script Keycloak n'a pas pu être exécuté (pas de Keycloak dans le bac à sable, issue #192). Pas de chart Helm (hors périmètre) |
-| P11 découpage `pilotage.spec.ts` | Livré | `test(e2e): P11` | 127 tests répartis en 9 fichiers `pilotage-<écran>.spec.ts` + `e2e/support/pilotage.ts` (34 déclarations) ; aucune ligne perdue ni ajoutée (comparaison ligne à ligne) ; `playwright test --list` : 130 titres identiques avant et après ; Playwright 130/130 vert ; `eslint` vert ; `FrontendCspLiteralConsistencyTest` vert sur le nouveau chemin | Le nouvel ordonnancement a révélé une course préexistante dans E2E-USERQ-1 (et la même dans E2E-FORM-2) : assertion lue avant l'envoi de la requête, rendue robuste par `expect.poll` (5 répétitions vertes). Le commit P9 contient par erreur la suppression de `pilotage.spec.ts` : entre P9 et P11, la branche n'avait plus ses tests e2e |
-| P12 clôture | À faire | | | |
+| P11 découpage `pilotage.spec.ts` | Livré | `d784052` | 127 tests répartis en 9 fichiers `pilotage-<écran>.spec.ts` + `e2e/support/pilotage.ts` (34 déclarations) ; aucune ligne perdue ni ajoutée (comparaison ligne à ligne) ; `playwright test --list` : 130 titres identiques avant et après ; Playwright 130/130 vert ; `eslint` vert ; `FrontendCspLiteralConsistencyTest` vert sur le nouveau chemin | Le nouvel ordonnancement a révélé une course préexistante dans E2E-USERQ-1 (et la même dans E2E-FORM-2) : assertion lue avant l'envoi de la requête, rendue robuste par `expect.poll` (5 répétitions vertes). Le commit P9 contient par erreur la suppression de `pilotage.spec.ts` : entre P9 et P11, la branche n'avait plus ses tests e2e |
+| P12 clôture | Livré | `docs(remediation): P12` | Sur `d784052` (le commit de clôture ne change que des `.md`) : `./mvnw verify` vert, 3 486 tests (0 échec, 5 ignorés comme en P0), seuils JaCoCo atteints ; profil `embedded-db` (6) et `SignatureBrowserE2eTest` (3) verts ; `npm run lint` vert ; `npm run test:all` : Vitest 739/739, Playwright 130/130 ; `scripts/check-docs.sh` et `--self-test` verts | Point §95 clos ; indicateurs et décisions ⚠ ci-dessous |
 
 ### État initial (P0, `main` à `e91aa7b` + PR #182)
 
@@ -224,3 +224,33 @@ du registre ai-devkit (26) ou de `npx skills add` (1).
 
 Pour retirer un skill du registre : l'enlever de `.ai-devkit.json`, relancer `scripts/vendor-ai-devkit-skills.sh`, puis
 `scripts/check-docs.sh skills`.
+
+### Indicateurs de réussite (P12)
+
+| Indicateur | Avant (P0) | Après (P12) | Cible du plan |
+|---|---|---|---|
+| `.md` suivis hors arbres de skills | 5,04 Mo | 1,56 Mo | moins de 2 Mo |
+| `.md` à la racine | 12 | 5 (`README`, `CHANGELOG`, `ROADMAP`, `AGENTS`, `CLAUDE`) | — |
+| `docs/ai/` | 3,5 Mo, 481 fichiers | 11 Ko, 7 README de phase | feature en cours seulement |
+| Liens Markdown relatifs cassés | 11 | 0, contrôlé en CI | 0 |
+| Écarts copie de skill / source | 3 | 0, contrôlé en CI | 0 |
+| Identifiants de décision cités par le code sans définition | 9 | 0 (189 indexés), contrôlé en CI | 0 |
+| Versions du README incohérentes avec le `pom.xml` | 2 | 0, contrôlé en CI | 0 |
+| Fichiers de suivi touchés par une PR (sur les 20 derniers merges de `main`) | de 0 à 5 : 7 merges à 0, 6 à 1, 6 à 2, 1 à 5 ; le `CHANGELOG` presque à chaque PR | une PR de feature écrit sa spec et son point du registre ; plus d'entrée `CHANGELOG`, plus de file d'attente à tenir | 1 ou 2 |
+
+Mesure « avant » de la dernière ligne : `TODO.md`, `FILE-ATTENTE.md`, `DEFERRED-FEATURES.md`, `ROADMAP.md`,
+`CHANGELOG.md` et `AVANCEMENT.md` modifiés par chaque merge. Elle corrige le « 4 à 6 » estimé au §1 de ce plan : la
+moyenne réelle est plus basse, mais le `CHANGELOG` et `TODO.md` restaient touchés presque systématiquement.
+
+### Décisions ⚠ à relire (registre, `TODO §95`)
+
+- **D-REMED-EPP-REGISTRATION** — les refus au démarrage des secrets par défaut et des en-têtes désactivés n'étaient
+  jamais exécutés depuis septembre ; ils le sont désormais. Une instance qui démarrait grâce à ce défaut ne
+  redémarrera plus.
+- **D-REMED-NOOP-ACK** — l'antivirus `noop` est refusé en production sans
+  `APP_DOSSIER_ATTACHMENT_SCAN_NOOP_ACKNOWLEDGED=true`.
+- **D-REMED-ARCHIVE-REF** — le tag d'archive n'a pas pu être poussé (refus 403 de la session) : les contenus retirés
+  pointent vers le commit `e91aa7b` de `main`. Le tag peut être poussé à la main (commande dans le point §95).
+- **D-REMED-FLOWABLE-SCHEMA** — deux tenants dans une même base ne démarraient pas (Flowable) ; corrigé par
+  `flowable.database-schema`.
+

@@ -1,8 +1,8 @@
 # §95 — Remédiation de la revue du 22 octobre 2026
 
-> **Statut :** ouvert · point de premier niveau · ancien `TODO.md` §95 · [registre](README.md)
+> **Statut :** clos · point de premier niveau · ancien `TODO.md` §95 · [registre](README.md)
 
-[ ] en cours (branche `claude/eager-galileo-4i5w0g`, PR #182). Exécution du plan
+[x] livré (branche `claude/eager-galileo-4i5w0g`, PR #182, 2026-10-23 ; phases P0 à P12). Exécution du plan
 [docs/analyses/plan-remediation-2026-10-23.md](../analyses/plan-remediation-2026-10-23.md) par le goal
 [docs/goals/remediation-revue-2026-10.md](../goals/remediation-revue-2026-10.md). Le suivi phase par phase est tenu
 dans la section « Suivi » du plan ; ce point consigne les décisions prises en cours de route.

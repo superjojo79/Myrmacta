@@ -7,7 +7,7 @@ description: Clarify the problem space, gather requirements, and define success 
 # Requirements & Problem Understanding
 
 > Feature `questions-utilisateur-taches`. Origine : question utilisateur (2026-09-05) — cadrage
-> initial dans [analysis doc/23-questions-utilisateur-taches.md](../../../analysis%20doc/23-questions-utilisateur-taches.md),
+> initial dans [docs/specs/23-questions-utilisateur-taches.md](../../specs/23-questions-utilisateur-taches.md),
 > TODO §55. Toutes les décisions de cadrage ci-dessous ont été tranchées explicitement par
 > l'utilisateur via `AskUserQuestion` avant rédaction de ce document (2 séries de questions,
 > 7 décisions au total).

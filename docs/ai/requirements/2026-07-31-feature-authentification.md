@@ -21,7 +21,7 @@ de JWT au browser, et garantir que la session OIDC appartient bien au tenant de
 - **Situation actuelle :** socle hexagonal + multi-tenant config livrés ; exclusions
   autoconfig **Security / OAuth2 client** encore actives (`application.yml`) ; aucun
   `SecurityFilterChain`, pas de `/api/auth/me`, pas de garde claim `tenant_id`.
-  Analyse : `analysis doc/03-authentification.md` + décisions n° 14 / 15 / TODO 32.
+  Analyse : `docs/specs/03-authentification.md` + décisions n° 14 / 15 / TODO 32.
 - **UX :** pas d’écran login maison — redirection vers l’IdP ; la SPA (hors scope)
   consommera `/api/auth/me` et initiera `/oauth2/authorization/oidc`.
 
@@ -134,7 +134,7 @@ de JWT au browser, et garantir que la session OIDC appartient bien au tenant de
 
 ### Assumptions nommées
 
-- `analysis doc/03-authentification.md` + revue pré-implémentation (n° 15) font
+- `docs/specs/03-authentification.md` + revue pré-implémentation (n° 15) font
   foi sauf écarts actés (`registrationId=oidc`).
 - L’IdP émet un claim custom `tenant_id` et `realm_access.roles` (Keycloak).
 - `TenantProperties` / `TenantIdValidator` déjà livrés (multi-tenant).

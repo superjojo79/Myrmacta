@@ -2,7 +2,7 @@
 
 > **Statut : analyse initiale, Phases 1–3 `dev-lifecycle` closes** (TODO §68, 2026-09-23). Les
 > décisions produit et d'architecture sont tranchées dans
-> [docs/ai/requirements/2026-09-23-feature-portail-externe.md](../docs/ai/requirements/2026-09-23-feature-portail-externe.md),
+> [docs/ai/requirements/2026-09-23-feature-portail-externe.md](../ai/requirements/2026-09-23-feature-portail-externe.md),
 > pas ici. Origine : `ROADMAP.md` v1.1 (14/09/2026), item **3.1** (Portail externe tokenisé),
 > classé « Produit, pas cadré ».
 >
@@ -69,7 +69,7 @@
 
 ## 4. Points ouverts — tranchés en Phase 1
 
-Voir [docs/ai/requirements/2026-09-23-feature-portail-externe.md](../docs/ai/requirements/2026-09-23-feature-portail-externe.md)
+Voir [docs/ai/requirements/2026-09-23-feature-portail-externe.md](../ai/requirements/2026-09-23-feature-portail-externe.md)
 § *Décisions*. Questions d'origine :
 
 | ID | Question |

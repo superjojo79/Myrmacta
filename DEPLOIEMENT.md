@@ -6,7 +6,7 @@ cadre : construire un artefact déployable, exposer une instance derrière un re
 tourner plusieurs tenants, et gérer les comptes réels côté Keycloak.
 
 > **Portée.** Le modèle cible (une instance Spring Boot dédiée par tenant, routage par chemin) est
-> **décidé** (décisions n° 13–14, [analysis doc/02-multi-tenant.md](analysis%20doc/02-multi-tenant.md))
+> **décidé** (décisions n° 13–14, [docs/specs/02-multi-tenant.md](docs/specs/02-multi-tenant.md))
 > et désormais **outillé** ([TODO.md](TODO.md) points 31/41 — lot `provisioning-tenant`) : un
 > `Dockerfile` à la racine du dépôt et un script `scripts/provision-tenant.sh` pour le schéma/rôle
 > PostgreSQL par tenant. Le démarrage de l'instance et le bloc reverse-proxy restent des étapes
@@ -123,7 +123,7 @@ context-path (`/tenant_a` → `…/tenant_a`, comme ci-dessous) — jamais en re
 préfixe.
 
 Router ensuite chaque instance depuis un reverse-proxy Apache à configuration **statique** (un bloc par
-tenant, ajouté au provisioning — voir [analysis doc/02-multi-tenant.md](analysis%20doc/02-multi-tenant.md#routage-vers-linstance--chemin-par-tenant-reverse-proxy-statique)
+tenant, ajouté au provisioning — voir [docs/specs/02-multi-tenant.md](docs/specs/02-multi-tenant.md#routage-vers-linstance--chemin-par-tenant-reverse-proxy-statique)
 pour le détail et la justification du choix) :
 
 ```apache
@@ -506,9 +506,9 @@ combiné à un profil `prod`/`production` ou si `APP_ENVIRONMENT` est absent ou 
 
 ## Pour aller plus loin
 
-- Modèle multi-tenant détaillé : [analysis doc/02-multi-tenant.md](analysis%20doc/02-multi-tenant.md)
-- Authentification, BFF, machine-to-machine : [analysis doc/03-authentification.md](analysis%20doc/03-authentification.md)
-- Autorisation et conformité : [analysis doc/12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md)
+- Modèle multi-tenant détaillé : [docs/specs/02-multi-tenant.md](docs/specs/02-multi-tenant.md)
+- Authentification, BFF, machine-to-machine : [docs/specs/03-authentification.md](docs/specs/03-authentification.md)
+- Autorisation et conformité : [docs/specs/12-autorisation-conformite.md](docs/specs/12-autorisation-conformite.md)
 - Décisions et suivi (provisioning tenant, points 31/41 : livré via le lot `provisioning-tenant`) : [TODO.md](TODO.md) ; prochaines évolutions : [ROADMAP.md](ROADMAP.md)
 - Prise en main de l'UI : [GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md)
 

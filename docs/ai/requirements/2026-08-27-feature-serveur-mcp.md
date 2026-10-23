@@ -9,7 +9,7 @@ feature: serveur-mcp
 phase1: 2026-08-27
 phase1_clarification: close
 phase2: 2026-08-27
-todo_ref: FILE-ATTENTE.md · analysis doc/15-serveur-mcp.md · analysis doc/16-reporting-sla.md · PR #80
+todo_ref: FILE-ATTENTE.md · docs/specs/15-serveur-mcp.md · docs/specs/16-reporting-sla.md · PR #80
 ---
 
 # Requirements & Problem Understanding — `serveur-mcp`
@@ -82,7 +82,7 @@ parcours navigateur.
     `TENANT_ADMIN` (`TenantAdminGuard`) ; `DossierAccessPolicy` et
     `SlaReportAccess` **refusent** `AccessContext.Service` et ne
     connaissent pas `API_SERVICE` comme lecteur tenant-wide.
-- **Réf. :** [15-serveur-mcp.md](../../../analysis%20doc/15-serveur-mcp.md),
+- **Réf. :** [15-serveur-mcp.md](../../specs/15-serveur-mcp.md),
   décision n° 13, chaîne M2M (décision n° 14), `reporting-sla` PR #80.
 
 ## Brainstorm — approaches

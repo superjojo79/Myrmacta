@@ -24,7 +24,7 @@ description: Break down work into actionable tasks and estimate timeline
 - [ ] **M8** — Frontend : client API + réécriture `stores/notifications.ts`
 - [ ] **M9** — Frontend : `NotificationDrawer.vue` en PrimeVue
 - [ ] **M10** — Playwright E2E (dont non-régression producteurs existants)
-- [ ] **M11** — Documentation (`GUIDE-UTILISATEUR.md`, `README.md`/`analysis doc` si pertinent)
+- [ ] **M11** — Documentation (`GUIDE-UTILISATEUR.md`, `README.md`/`docs/specs` si pertinent)
 - [ ] **M12** — Vérification globale finale (`./mvnw verify`, Vitest, Playwright, revue fichier par fichier)
 
 ## Task Breakdown
@@ -137,7 +137,7 @@ description: Break down work into actionable tasks and estimate timeline
 **Dépendances :** M9 (le comportement UI final doit être stable avant de le documenter).
 
 - [ ] **M11.1** — `GUIDE-UTILISATEUR.md` : section notifications mise à jour (persistance, pas de nouvel écran admin donc pas de nouvelle ligne de rôles §0).
-- [ ] **M11.2** — `analysis doc/27-notifications-inbox.md` : statut mis à jour (« absent » → « livré »), pour ne pas laisser un document d'analyse obsolète comme source de vérité après cette feature (même défaut que celui qui a motivé le constat corrigé en Phase 1).
+- [ ] **M11.2** — `docs/specs/27-notifications-inbox.md` : statut mis à jour (« absent » → « livré »), pour ne pas laisser un document d'analyse obsolète comme source de vérité après cette feature (même défaut que celui qui a motivé le constat corrigé en Phase 1).
 - [ ] **M11.3** — `CHANGELOG.md` : entrée `[Non publié]` au moment de l'ouverture/mise à jour de la PR (pas avant, par convention).
 
 ### M12 — Vérification globale finale

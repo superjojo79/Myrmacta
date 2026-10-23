@@ -28,7 +28,7 @@ signaler un champ sensible (TODO §23).
   `TenantAdminGuard` infra HTTP ; checks `hasRole("TENANT_ADMIN")` dupliqués
   dans les use cases ; `WorkflowTypeConfigController.requireWorkflowAdmin`
   manuel ; aucun `@EnableMethodSecurity`. Analyse :
-  `analysis doc/12-autorisation-conformite.md` + TODO §19 / §23.
+  `docs/specs/12-autorisation-conformite.md` + TODO §19 / §23.
 - **UX :** pas d’écrans Vue — contrat REST + métadonnée `sensitive` pour la
   future SPA / exports ; pas de masquage à l’affichage dans cette tranche.
 

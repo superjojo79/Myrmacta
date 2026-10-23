@@ -79,7 +79,7 @@ Email, webhook sortant et notification navigateur (SSE) — configurables par te
 
 ### Multi-tenant
 
-Chaque organisation dispose d'un schéma PostgreSQL dédié — isolation forte des données, migration indépendante, facturation séparée. **Une instance Spring Boot = un tenant** : `app.tenant.id` est fixé au démarrage (décision n° 13), jamais résolu dynamiquement par requête. Le claim OIDC `tenant_id` sert de **garde d'appartenance** : il doit correspondre à l'instance, sinon la requête est refusée. Voir [02-multi-tenant.md](analysis%20doc/02-multi-tenant.md).
+Chaque organisation dispose d'un schéma PostgreSQL dédié — isolation forte des données, migration indépendante, facturation séparée. **Une instance Spring Boot = un tenant** : `app.tenant.id` est fixé au démarrage (décision n° 13), jamais résolu dynamiquement par requête. Le claim OIDC `tenant_id` sert de **garde d'appartenance** : il doit correspondre à l'instance, sinon la requête est refusée. Voir [02-multi-tenant.md](docs/specs/02-multi-tenant.md).
 
 ### Authentification flexible
 
@@ -153,7 +153,7 @@ Toutes les librairies retenues sont sous licences libres (Apache 2.0, LGPL, MIT)
 L'application est conçue pour un déploiement **SaaS mutualisé au niveau de l'infrastructure**, avec
 une isolation applicative complète : chaque organisation est servie par sa **propre instance Spring
 Boot dédiée**, configurée avec son identifiant de tenant au démarrage (voir
-[02-multi-tenant.md](analysis%20doc/02-multi-tenant.md), décision n° 13). Chaque instance embarque
+[02-multi-tenant.md](docs/specs/02-multi-tenant.md), décision n° 13). Chaque instance embarque
 également le frontend Vue 3 dans `static/` (décision n° 27) — même origine API / SPA. Toutes les
 instances partagent la même base PostgreSQL (isolation par schéma dédié) et le même serveur Keycloak
 (realm partagé). Le routage vers la bonne instance est assuré par un reverse-proxy Apache à
@@ -197,23 +197,23 @@ Déploiement au-delà du poste de dev (reverse-proxy, provisioning tenant, compt
 disponibles, champs dynamiques, connecteurs, intervenants) :
 [GUIDE-CONCEPTION-BPMN.md](GUIDE-CONCEPTION-BPMN.md).
 
-La documentation d'architecture est disponible dans le répertoire `analysis doc` :
+La documentation d'architecture est disponible dans le répertoire `docs/specs` :
 
 | Fichier                                                      | Contenu                              |
 | ------------------------------------------------------------ | ------------------------------------ |
-| [00-index.md](analysis%20doc/00-index.md)                    | Vue d'ensemble et dépendances        |
-| [01-architecture-hexagonale.md](analysis%20doc/01-architecture-hexagonale.md) | Ports & Adapters, structure packages |
-| [02-multi-tenant.md](analysis%20doc/02-multi-tenant.md)      | Isolation schéma PostgreSQL          |
-| [03-authentification.md](analysis%20doc/03-authentification.md) | OAuth2/OIDC, BFF, providers          |
-| [04-dossiers.md](analysis%20doc/04-dossiers.md)              | Entité métier centrale               |
-| [05-workflow-engine.md](analysis%20doc/05-workflow-engine.md) | Flowable, BPMN, event bus            |
-| [06-connecteurs.md](analysis%20doc/06-connecteurs.md)        | Système de connecteurs extensible    |
-| [07-generation-documents.md](analysis%20doc/07-generation-documents.md) | Stack PDF, CSS print, performances   |
-| [08-templates-documents.md](analysis%20doc/08-templates-documents.md) | Versionning, variants, résolution    |
-| [09-notifications.md](analysis%20doc/09-notifications.md)    | Email, webhook, SSE                  |
-| [10-visualisation-workflow.md](analysis%20doc/10-visualisation-workflow.md) | BPMN.js, historique, réassignation   |
-| [11-frontend.md](analysis%20doc/11-frontend.md)              | Vue 3, OpenVue, Pinia                |
-| [12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md) | RBAC, rétention, conformité RGPD     |
+| [00-index.md](docs/specs/00-index.md)                    | Vue d'ensemble et dépendances        |
+| [01-architecture-hexagonale.md](docs/specs/01-architecture-hexagonale.md) | Ports & Adapters, structure packages |
+| [02-multi-tenant.md](docs/specs/02-multi-tenant.md)      | Isolation schéma PostgreSQL          |
+| [03-authentification.md](docs/specs/03-authentification.md) | OAuth2/OIDC, BFF, providers          |
+| [04-dossiers.md](docs/specs/04-dossiers.md)              | Entité métier centrale               |
+| [05-workflow-engine.md](docs/specs/05-workflow-engine.md) | Flowable, BPMN, event bus            |
+| [06-connecteurs.md](docs/specs/06-connecteurs.md)        | Système de connecteurs extensible    |
+| [07-generation-documents.md](docs/specs/07-generation-documents.md) | Stack PDF, CSS print, performances   |
+| [08-templates-documents.md](docs/specs/08-templates-documents.md) | Versionning, variants, résolution    |
+| [09-notifications.md](docs/specs/09-notifications.md)    | Email, webhook, SSE                  |
+| [10-visualisation-workflow.md](docs/specs/10-visualisation-workflow.md) | BPMN.js, historique, réassignation   |
+| [11-frontend.md](docs/specs/11-frontend.md)              | Vue 3, OpenVue, Pinia                |
+| [12-autorisation-conformite.md](docs/specs/12-autorisation-conformite.md) | RBAC, rétention, conformité RGPD     |
 
 ------
 

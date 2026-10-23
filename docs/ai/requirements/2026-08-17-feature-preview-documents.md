@@ -9,7 +9,7 @@ feature: preview-documents
 phase1: 2026-08-17
 phase2: 2026-08-17
 stakeholder_decisions: 2026-08-17
-todo_ref: D-PREVIEW (templates-documents / generation-documents) · analysis doc/07
+todo_ref: D-PREVIEW (templates-documents / generation-documents) · docs/specs/07
 ---
 
 # Requirements & Problem Understanding — `preview-documents`
@@ -17,7 +17,7 @@ todo_ref: D-PREVIEW (templates-documents / generation-documents) · analysis doc
 > Identifiée comme prochaine feature après clôture de `elements-dossier` (PR #51).
 > Lot **D-PREVIEW** différé depuis `templates-documents` → `generation-documents`
 > (« lot suivant ») → `frontend` (jamais repris). Spécifié dans
-> [07-generation-documents.md](../../../analysis%20doc/07-generation-documents.md)
+> [07-generation-documents.md](../../specs/07-generation-documents.md)
 > § « Preview des documents ».
 
 ## Problem Statement
@@ -35,7 +35,7 @@ d'aperçu pendant la saisie.
   `DOSSIER_MANAGER` (déjà autorisés à générer un PDF pour valider un modèle).
 - **Situation actuelle :** pipeline resolve → Thymeleaf → PDF livré ; aucun
   endpoint `/preview` ni `/pdf` inline ; aucun composant UI d'aperçu.
-- **Réf. :** D-PREVIEW ; `analysis doc/07` (stratégie hybride HTML + PDF) ;
+- **Réf. :** D-PREVIEW ; `docs/specs/07` (stratégie hybride HTML + PDF) ;
   README (« Preview en temps réel pendant la saisie, aperçu PDF avant
   validation ») ; `11-frontend.md` (preview documentaire).
 

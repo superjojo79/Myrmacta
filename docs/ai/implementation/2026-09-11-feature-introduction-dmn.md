@@ -251,7 +251,7 @@ tests/docs).
 
 **Documentation :**
 - `docs/ai/{requirements,design,planning,testing,implementation}/2026-09-11-feature-introduction-dmn.md`.
-- `analysis doc/{00-index,05-workflow-engine,25-introduction-dmn}.md`.
+- `docs/specs/{00-index,05-workflow-engine,25-introduction-dmn}.md`.
 - `README.md`, `GUIDE-CONCEPTION-BPMN.md`, `GUIDE-UTILISATEUR.md`, `CHANGELOG.md`.
 - `TODO.md` (§61, clôturé), `FILE-ATTENTE.md`.
 
@@ -334,7 +334,7 @@ de couverture et 1 gap d'accessibilité UI trouvés et comblés) · sécurité �
 contournement JDK25 revérifiés) · points d'intégration vérifiés ✅ · tests couvrent les
 changements ✅ (1875 backend + 350 frontend + 71 Playwright, tous verts, preuve fraîche cette
 session) · docs à jour ✅ (les 7 docs du cycle, `TODO.md` §61 clôturé, `FILE-ATTENTE.md`,
-`analysis doc/{00,05,25}`, `GUIDE-CONCEPTION-BPMN.md`, `GUIDE-UTILISATEUR.md` mis à jour pour le
+`docs/specs/{00,05,25}`, `GUIDE-CONCEPTION-BPMN.md`, `GUIDE-UTILISATEUR.md` mis à jour pour le
 nouveau champ **Charger**).
 
 **Aucun blocage.**
@@ -402,7 +402,7 @@ demande explicite de l'utilisateur (« lance la phase 9 ») :
 - **Diff complet vérifié** (`git diff --stat b14c602 HEAD`, base = dernier commit avant le premier
   commit `introduction-dmn`) : **97 fichiers**, strictement scopé à la feature — code
   backend/frontend DMN, ses tests, et la documentation qui la référence (`README.md`,
-  `analysis doc/**`, `TODO.md`/`FILE-ATTENTE.md`/`CHANGELOG.md`/`GUIDE-*`,
+  `docs/specs/**`, `TODO.md`/`FILE-ATTENTE.md`/`CHANGELOG.md`/`GUIDE-*`,
   `docs/ai/**/2026-09-11-feature-introduction-dmn.md`). Aucun fichier hors scope.
 - **Working tree propre** (`git status -sb`) : branche à jour avec `origin`, aucun changement non
   committé.
@@ -449,7 +449,7 @@ JDK25 sans impact XXE, RBAC identique BPMN sur tous les nouveaux endpoints/tools
 d'intégration vérifiés ✅ (contrat API, dépendances, migration, aucune rupture de contrat) · tests
 couvrent les changements ✅ (1875 backend + 351 frontend + 71 Playwright, tous verts, preuve
 fraîche) · docs à jour ✅ (les 7 docs du cycle + `TODO.md` §61 clôturé + `FILE-ATTENTE.md` +
-`analysis doc/{00,05,25}` + `README.md` + `GUIDE-CONCEPTION-BPMN.md` + `GUIDE-UTILISATEUR.md` +
+`docs/specs/{00,05,25}` + `README.md` + `GUIDE-CONCEPTION-BPMN.md` + `GUIDE-UTILISATEUR.md` +
 `CHANGELOG.md`).
 
 **Aucun blocage. Feature prête à être poussée / PR à créer** (demande explicite de l'utilisateur,

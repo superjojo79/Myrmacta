@@ -65,7 +65,7 @@ Séquencement : M1 → M2/M3 (indépendants après M1) → M4 → M5 (réutilise
 
 - [x] **T7.1** `GETTING-STARTED.md` §12 : 16 → 20 tools + mention écritures métier
 - [x] **T7.2** `FILE-ATTENTE.md` / `DEFERRED-FEATURES.md` §6 / `TODO.md` §60 /
-  `analysis doc/15-serveur-mcp.md` backlog : lot A3 en cours puis en revue Phase 9
+  `docs/specs/15-serveur-mcp.md` backlog : lot A3 en cours puis en revue Phase 9
 - [x] **T7.3** `CHANGELOG.md` [Non publié] à l'ouverture de PR (PR #118)
 
 ### M8 — Qualité

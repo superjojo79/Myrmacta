@@ -308,7 +308,7 @@ cycle : aucun fichier notification/tenant touché par `connecteurs-cible`.
   même extension point sécurité unique (`ConnectorCatalog.isPasswordField`), zéro modification de
   `ConnectorTriggerRuntimeImpl`/`ConnectorRegistry`/`ExecuteConnectorRequest`.
 
-**Docs projet (T8.2) :** `analysis doc/06-connecteurs.md` (2 lignes catalogue), `TODO.md` §62,
+**Docs projet (T8.2) :** `docs/specs/06-connecteurs.md` (2 lignes catalogue), `TODO.md` §62,
 `CHANGELOG.md` (§ Ajouté), `FILE-ATTENTE.md` (ligne déplacée vers *Récemment livré*, en-tête et
 § *File d'attente* resynchronisés — Vagues A et B toutes deux intégralement livrées, file produit
 vide), `DEFERRED-FEATURES.md` §6 (B1 marqué **Livré**). `GUIDE-CONCEPTION-BPMN.md` **non modifié**

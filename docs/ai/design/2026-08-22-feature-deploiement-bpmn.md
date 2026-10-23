@@ -162,7 +162,7 @@ Exceptions domaine nouvelles :
 | `FlowableWorkflowDeploymentAdapter` | Nouveau | `src/main/java/com/flowforge/infrastructure/flowable/` |
 | `BpmnUploadProperties` | Nouveau | `src/main/java/com/flowforge/infrastructure/config/` |
 | `ProcessDeploymentInfo`, `InvalidBpmnException`, `UnknownWorkflowKeyException` | Nouveau | `src/main/java/com/flowforge/domain/workflow/model/` |
-| `README.md`, `05-workflow-engine.md`, `GUIDE-UTILISATEUR.md` | Modifiés (doc) | racine, `analysis doc/` |
+| `README.md`, `05-workflow-engine.md`, `GUIDE-UTILISATEUR.md` | Modifiés (doc) | racine, `docs/specs/` |
 
 ## Design Decisions
 

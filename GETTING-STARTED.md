@@ -5,7 +5,7 @@ l'hôte (`./mvnw spring-boot:run`) connecté à une infrastructure de support (P
 et en option un stockage objet compatible S3) fournie par des conteneurs. Il ne couvre pas un
 déploiement de production — voir [DEPLOIEMENT.md](DEPLOIEMENT.md) pour la suite (artefact,
 reverse-proxy, provisioning tenant, comptes Keycloak), [README.md](README.md#modèle-de-déploiement)
-et [analysis doc/](analysis%20doc/00-index.md) pour l'architecture cible.
+et [docs/specs/](docs/specs/00-index.md) pour l'architecture cible.
 
 ------
 
@@ -124,7 +124,7 @@ profils, voir §5 — inactifs par défaut). Au premier démarrage :
 - PostgreSQL crée la base `flowforge` **et** le schéma `tenant_dev` (script
   [`docker/postgres/init/01-init-tenant-schema.sql`](docker/postgres/init/01-init-tenant-schema.sql))
   — nécessaire car l'application ne fait que `SET search_path` à la connexion, elle ne crée jamais
-  le schéma elle-même (décision n° 13, [analysis doc/02-multi-tenant.md](analysis%20doc/02-multi-tenant.md)).
+  le schéma elle-même (décision n° 13, [docs/specs/02-multi-tenant.md](docs/specs/02-multi-tenant.md)).
   Le superuser du conteneur (`POSTGRES_USER`, défaut `flowforge`) n'est **pas** le user JDBC de
   l'app (`DB_USERNAME=flowforge_tenant_dev`) : ce rôle LOGIN n'a de droits que sur `tenant_dev`.
 - Keycloak importe un realm `flowforge` préconfiguré
@@ -195,7 +195,7 @@ Ne jamais coder un client spécifique à MinIO/RustFS/SeaweedFS dans l'applicati
 
 ## 6. Configurer le canal email (optionnel)
 
-Un des trois canaux de notification ([analysis doc/09-notifications.md](analysis%20doc/09-notifications.md))
+Un des trois canaux de notification ([docs/specs/09-notifications.md](docs/specs/09-notifications.md))
 est l'email, envoyé via SMTP (`spring-boot-starter-mail`). **Aucun serveur SMTP n'est démarré par
 défaut par `docker-compose.yml`** (profil optionnel `mailpit` ci-dessous) — contrairement à PostgreSQL/Keycloak/stockage, ce n'est pas un prérequis
 pour démarrer : sans configuration, `MAIL_HOST` vaut `localhost:587`, les envois échoueront
@@ -535,6 +535,6 @@ APP_ENVIRONMENT=local SPRING_PROFILES_ACTIVE=local,embedded-db java -jar target/
 ## Pour aller plus loin
 
 - Déploiement au-delà de ce guide (reverse-proxy, provisioning tenant, comptes Keycloak) : [DEPLOIEMENT.md](DEPLOIEMENT.md)
-- Architecture détaillée : [analysis doc/](analysis%20doc/00-index.md)
+- Architecture détaillée : [docs/specs/](docs/specs/00-index.md)
 - Décisions actées et points ouverts : [TODO.md](TODO.md)
 - Prochaine feature / backlog : [FILE-ATTENTE.md](FILE-ATTENTE.md), [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md)

@@ -366,6 +366,6 @@ A13 SSRF précisé (http loopback only).
 ## Sources
 
 - Requirements `notifications` `reviewed` (2026-08-07)
-- `analysis doc/09-notifications.md`, `01-architecture-hexagonale.md`
+- `docs/specs/09-notifications.md`, `01-architecture-hexagonale.md`
 - Code : `OutboxRelayScheduler`, `JpaOutboxRepositoryAdapter.recordFailure`,
   `ConnectorSecretCipher`, `WorkflowProperties.Outbox`

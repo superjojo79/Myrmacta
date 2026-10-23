@@ -7,7 +7,7 @@ created: 2026-09-30
 updated: 2026-09-30
 feature: d1-modele-champs-enrichi
 lot: D1
-todo_ref: TODO.md §76 · analysis doc/32-modele-champs-enrichi.md · ROADMAP.md D1
+todo_ref: TODO.md §76 · docs/specs/32-modele-champs-enrichi.md · ROADMAP.md D1
 ---
 
 # Requirements — `d1-modele-champs-enrichi`

@@ -28,7 +28,7 @@ Make/n8n/Zapier, ni envoyer un email métier via un ServiceTask dédié.
   `TriggerOutboxPayload`) livrée ; crypto secrets connecteurs livrée ; pas de
   table/config webhook sortant notif ; pas de SSE ; pas de mail ;
   `NoOpWorkflowEventPublisher` reste un no-op (**D-PUBLISHER = 1** — hors
-  branchement auto). Analyse : `analysis doc/09-notifications.md` + hexagone
+  branchement auto). Analyse : `docs/specs/09-notifications.md` + hexagone
   `01` ; roadmap `DEFERRED-FEATURES.md`.
 - **UX :** pas d’écrans Vue V1 — API REST admin / send / stream + ServiceTask.
   Erreurs `ProblemDetail` alignées dossiers / connecteurs / documents.
@@ -296,7 +296,7 @@ index corrigés ; verify **490/0**, Jacoco **87.8 %**.
 
 ## Sources
 
-- `analysis doc/09-notifications.md`, `01-architecture-hexagonale.md`,
+- `docs/specs/09-notifications.md`, `01-architecture-hexagonale.md`,
   `06-connecteurs.md` (crypto, HMAC entrant), `02-multi-tenant.md` (déc. 13)
 - `DEFERRED-FEATURES.md` §2 ; TODO §23, §29, §30
 - Décisions TODO n° 13, 15, 16 ; pattern outbox workflow livré

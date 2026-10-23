@@ -226,7 +226,7 @@ voir ci-dessous).
 (`allowUnknownFields()`, non `isAllowUnknownFields()`), incompatibles avec des points d'appel déjà
 rédigés ailleurs dans la documentation. Cet argument ne tient pas : le projet est encore en phase
 d'analyse, sans aucune implémentation — il n'existe pas de code réel dont les appelants seraient
-figés. Les extraits illustratifs de `analysis doc/` peuvent être mis à jour au même titre que
+figés. Les extraits illustratifs de `docs/specs/` peuvent être mis à jour au même titre que
 n'importe quel autre passage de cette documentation ; leur cohérence s'entretient par l'édition, pas
 en évitant la meilleure convention pour ne pas avoir à les retoucher. Une fois cette contrainte
 artificielle levée, `record` redevient le choix le mieux justifié : fonctionnalité native du JDK,

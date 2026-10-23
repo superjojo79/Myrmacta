@@ -112,7 +112,7 @@ final : **1050 tests, 0 échec**, LINE 93.7% (seuil 85%), BRANCH 75.0%
    suivant le pattern déjà établi par `DossierRelationJpaAdapter` (même
    traduction d'exception).
 2. **Portée du test Liquibase revue** (D-LIQUIBASE-TEST, Phase 3) :
-   `analysis doc/02-multi-tenant.md` montre que l'architecture réelle est
+   `docs/specs/02-multi-tenant.md` montre que l'architecture réelle est
    « un schéma par instance, migré une fois au démarrage », pas un job
    partagé migrant plusieurs schémas — la prémisse « multi-schéma » du
    TODO §28 ne correspond à rien en production. Le test couvre l'échec

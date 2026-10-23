@@ -25,7 +25,7 @@ avec des données dossier / workflow.
   `frontend`.
 - **Situation actuelle :** placeholders `package-info` uniquement ; Liquibase
   s’arrête à `003-connector-tables` ; analyse :
-  `analysis doc/08-templates-documents.md` + décisions n° 13, 17, 18 ;
+  `docs/specs/08-templates-documents.md` + décisions n° 13, 17, 18 ;
   authz templates = `TENANT_ADMIN` (`12-autorisation-conformite.md`).
 - **UX :** pas d’écrans Vue — API REST admin + résolution. Erreurs
   `ProblemDetail` alignées dossiers / connecteurs / workflow.
@@ -246,7 +246,7 @@ mutabilité, archive, validate parse activate, 5 MiB, includeContent).
 
 ## Sources
 
-- `analysis doc/08-templates-documents.md`, `07-generation-documents.md`,
+- `docs/specs/08-templates-documents.md`, `07-generation-documents.md`,
   `12-autorisation-conformite.md`, `01-architecture-hexagonale.md`
 - Décisions TODO n° 13, 17, 18 ; TODO §24 / §28 (partiels)
 - `DEFERRED-FEATURES.md` — ordre feature `templates-documents`

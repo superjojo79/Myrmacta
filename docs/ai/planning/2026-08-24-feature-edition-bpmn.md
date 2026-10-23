@@ -119,7 +119,7 @@ testing_ref: docs/ai/testing/2026-08-24-feature-edition-bpmn.md
     3. Le bug réel `eventBus`/`commandStack` (cf. T5.2) — trouvé en écrivant ces tests, corrigé dans le code de production, pas contourné dans les tests.
     4. Fixtures BPMN sans DI (`bpmndi:BPMNDiagram`) rejetées par le `Modeler` réel (`"no diagram to display"`) alors qu'elles « marchaient » avec le `NavigatedViewer` en lecture seule de `BpmnUploadPreview.vue` (qui n'a jamais vérifié que le rendu réussissait). Fixtures dédiées avec DI complète ajoutées pour les tests de l'éditeur, sans toucher aux fixtures existantes partagées par `E2E-BPMN-1/2/3`.
 - [x] T8.4 — Mise à jour documentation
-  - Cette mise à jour (planning, testing, implementation, TODO §39, FILE-ATTENTE.md, `analysis doc/14`).
+  - Cette mise à jour (planning, testing, implementation, TODO §39, FILE-ATTENTE.md, `docs/specs/14`).
 
 ## Dependencies
 

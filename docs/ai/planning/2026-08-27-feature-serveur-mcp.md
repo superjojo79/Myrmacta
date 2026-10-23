@@ -210,7 +210,7 @@ puis, en fin de milestone, `./mvnw test -Dtest=…` (ou classe) vert.
       `WorkflowTypeConfig` existe déjà (`UnknownWorkflowKeyException`
       sinon) — il n'upserte jamais. Le tool MCP fait délibérément plus
       (upsert + deploy en un seul appel), conforme à l'intention design
-      et à `analysis doc/15-serveur-mcp.md` ("un seul outil MCP couvre
+      et à `docs/specs/15-serveur-mcp.md` ("un seul outil MCP couvre
       déploiement + création/mise à jour du WorkflowTypeConfig").
       Tests : UT-DEP-1..5 (`DeployWorkflowToolTest`, 6 tests)
       Dépend : T2.3, T4.2

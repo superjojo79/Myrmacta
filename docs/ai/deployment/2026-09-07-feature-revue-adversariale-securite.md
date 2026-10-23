@@ -18,7 +18,7 @@ Inchangé : une instance Spring Boot = un tenant. Pas de nouveau service.
 
 Les partenaires qui signent `timestamp + "." + body` doivent passer à
 `timestamp + "." + Idempotency-Key + "." + body`. Documenté dans
-`GUIDE-UTILISATEUR.md` et `analysis doc/06-connecteurs.md`. Déployer **après**
+`GUIDE-UTILISATEUR.md` et `docs/specs/06-connecteurs.md`. Déployer **après**
 avoir prévenu les intégrateurs (401 sinon).
 
 ## Environment Configuration

@@ -17,12 +17,12 @@ lot: B1
 > [PR #118](https://github.com/superjojo79/FlowForge/pull/118)) — plus aucune contrainte de
 > surface exclusive à respecter pour B1.
 >
-> **Constat de code (Phase 1, pas supposé) :** aucun document d'analyse (`analysis doc/NN-*.md`)
+> **Constat de code (Phase 1, pas supposé) :** aucun document d'analyse (`docs/specs/NN-*.md`)
 > ne définissait « Kafka », « import batch » ou « ERP » comme connecteurs, contrairement à toutes
-> les features précédentes de ce dépôt. `analysis doc/06-connecteurs.md` catalogue exactement 5
+> les features précédentes de ce dépôt. `docs/specs/06-connecteurs.md` catalogue exactement 5
 > types de connecteurs cibles historiques (`http-rest`, `flowable-signal`, `scheduler`, `smtp`,
 > `s3-minio`→`document-storage`) — **tous les 5 sont déjà livrés**
-> ([20-connecteurs-hors-v1.md](../../../analysis%20doc/20-connecteurs-hors-v1.md) §1, PR #99). Le
+> ([20-connecteurs-hors-v1.md](../../specs/20-connecteurs-hors-v1.md) §1, PR #99). Le
 > périmètre concret de ce lot vient donc de [ROADMAP.md](../../../ROADMAP.md) §2.1/§2.2
 > (rédigé par l'utilisateur, 2026-09-12) : **`BatchImportConnector`** (SFTP/CSV/Excel) et
 > **`KafkaConnector`** (événementiel) — l'« ERP » de FILE-ATTENTE y est le **cas d'usage** que ces

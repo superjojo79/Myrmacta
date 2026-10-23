@@ -20,7 +20,7 @@ revue humaine seule ne suffit pas.
 - **Affectés :** développeurs et agents qui implémentent les features métier ; mainteneurs
   qui doivent remplacer ou faire évoluer un adaptateur (PDF, Flowable, stockage) sans
   toucher au domaine.
-- **Situation actuelle :** analyse technique complète dans `analysis doc/01-architecture-hexagonale.md` ;
+- **Situation actuelle :** analyse technique complète dans `docs/specs/01-architecture-hexagonale.md` ;
   socle Maven mono-module et arborescence de packages déjà amorcés sous `com.monapp`
   (à renommer en `com.flowforge`). Aucune tranche verticale câblée ni preuve exécutable
   du pattern au-delà d’ArchUnit sur packages quasi vides.
@@ -54,7 +54,7 @@ revue humaine seule ne suffit pas.
 - Implémentation métier des contextes `dossier`, `document`, `connector`, `notification`
   (arborescence vide autorisée).
 - Module Maven `domain` séparé (écarté par la décision n° 27).
-- Réécriture de `analysis doc/` pour remplacer `com.monapp` (chore docs ultérieure).
+- Réécriture de `docs/specs/` pour remplacer `com.monapp` (chore docs ultérieure).
 
 ## User Stories & Use Cases
 **How will users interact with the solution?**
@@ -135,9 +135,9 @@ domaine sans contexte Spring.
 
 ### Assumptions nommées
 
-- `analysis doc/01-architecture-hexagonale.md` fait foi pour les règles et le découpage
+- `docs/specs/01-architecture-hexagonale.md` fait foi pour les règles et le découpage
   package **logique** ; le code utilise `com.flowforge` (rename acté). La synchro textuelle
-  `com.monapp` → `com.flowforge` dans `analysis doc/` est une chore docs séparée.
+  `com.monapp` → `com.flowforge` dans `docs/specs/` est une chore docs séparée.
 - Les adaptateurs in-memory occupent les **packages cibles** des futurs adaptateurs réels
   (`persistence.workflow`, `flowable`) pour un remplacement localisé.
 - Les features suivantes remplacent les adaptateurs in-memory sans changer les ports.
@@ -151,7 +151,7 @@ domaine sans contexte Spring.
 - Aucune question bloquante — phase 2 requirements **revue et acceptée**.
 - **Différé :** contrat d’API / DTO (point 24).
 - **Différé :** modèles complets des autres contextes (leurs features).
-- **Différé :** mise à jour lexicale `com.monapp` dans `analysis doc/`.
+- **Différé :** mise à jour lexicale `com.monapp` dans `docs/specs/`.
 - **Lifecycle :** phases 1–9 terminées — prêt à merger.
 
 ## Review notes (phase 2)
@@ -162,5 +162,5 @@ domaine sans contexte Spring.
 | Emplacement in-memory / `DomainConfig` | Figé dans les success criteria |
 | `complete()` vs `CompleteTaskUseCase` | Use case hors scope ; méthode modèle pour tests d’état |
 | UX / perf / rollout manquants au template | Ajoutés (N/A ou PR sans feature flag) |
-| Divergence `analysis doc` `com.monapp` | Chore docs différée (assumption) |
+| Divergence `docs/specs` `com.monapp` | Chore docs différée (assumption) |
 | Alternatives revalidées | Socle seul / full 5 contextes / REST / Flowable réel — toujours écartés |

@@ -63,7 +63,7 @@ description: Break down work into actionable tasks and estimate timeline
   (`http-rest` BOTH, `flowable-signal`, `scheduler`, `flowable-callback`, `smtp`,
   `document-storage`) ; retirer « zone de texte JSON brut » et la note périmée « http-rest
   SERVICE n’est pas enregistré » (faux depuis PR #95).
-- [x] T5.2 : `analysis doc/06-connecteurs.md` § « Écran d'admin » — V1 livré = formulaire
+- [x] T5.2 : `docs/specs/06-connecteurs.md` § « Écran d'admin » — V1 livré = formulaire
   généré. Impacte FILE-ATTENTE *Récemment livré* / TODO §59 en clôture.
 
 ### M6 — Qualité

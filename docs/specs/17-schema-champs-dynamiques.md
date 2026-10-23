@@ -12,7 +12,7 @@
 
 ## 1. Constat — l'écart actuel
 
-[`GUIDE-UTILISATEUR.md` §1](../GUIDE-UTILISATEUR.md#1-préalable--configurer-un-type-de-dossier)
+[`GUIDE-UTILISATEUR.md` §1](../../GUIDE-UTILISATEUR.md#1-préalable--configurer-un-type-de-dossier)
 documente déjà la limite en toutes lettres :
 
 > **Limite actuelle de l'écran :** ce formulaire ne permet pas de définir les **champs
@@ -228,7 +228,7 @@ faire porter par le formulaire, a minima :
 Aucun changement de rôle : `POST`/`PATCH /api/dossier-types` exigent déjà
 `@PreAuthorize("hasRole('TENANT_ADMIN')")` (`DossierTypeController`), cohérent avec l'entrée de menu
 existante **Admin → Types** déjà restreinte à `TENANT_ADMIN`
-([GUIDE-UTILISATEUR.md](../GUIDE-UTILISATEUR.md#0-rôles-et-navigation)). Pas de nouvelle route, pas
+([GUIDE-UTILISATEUR.md](../../GUIDE-UTILISATEUR.md#0-rôles-et-navigation)). Pas de nouvelle route, pas
 de nouveau rôle.
 
 ---

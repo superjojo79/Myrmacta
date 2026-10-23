@@ -31,7 +31,7 @@ existent, mais sans horloge métier ni file pour une purge ultérieure.
   limitée), ops qui prépareront §22.
 - **Situation actuelle :** `Dossier.closedAt` est posé à la clôture ;
   `DossierType` n’a pas de champs rétention ; pas de job ni d’outbox purge.
-- **Réf. :** TODO §21, `analysis doc/12-autorisation-conformite.md`
+- **Réf. :** TODO §21, `docs/specs/12-autorisation-conformite.md`
   (rétention), `04-dossiers.md` (cycle de statut).
 
 ## Goals & Objectives

@@ -82,7 +82,7 @@ colocalisées dans le même schéma tenant mais hors du contrôle des
 changelogs FlowForge. Mentionnées dans l'ERD sans énumération
 (dizaines de tables internes à Flowable, propriété de la librairie,
 pas de FlowForge) — renvoi vers
-[05-workflow-engine.md](../../../analysis%20doc/05-workflow-engine.md).
+[05-workflow-engine.md](../../specs/05-workflow-engine.md).
 
 ## Structure du document `13-modele-physique.md`
 

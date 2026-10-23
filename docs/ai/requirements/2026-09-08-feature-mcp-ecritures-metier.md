@@ -10,7 +10,7 @@ lot: A3
 # Requirements & Problem Understanding — `mcp-ecritures-metier`
 
 > Origine : lot **A3** ([FILE-ATTENTE.md](../../../FILE-ATTENTE.md) Vague A, 2026-09-08) ;
-> backlog déjà cadré dans [15-serveur-mcp.md](../../../analysis%20doc/15-serveur-mcp.md)
+> backlog déjà cadré dans [15-serveur-mcp.md](../../specs/15-serveur-mcp.md)
 > § *Backlog — extensions futures envisageables*. Extension précédente du canal MCP :
 > [extension-mcp-flux-metier](2026-09-06-feature-extension-mcp-flux-metier.md) (PR #111, 16 tools).
 >
@@ -77,7 +77,7 @@ nouvelle surface HTTP, sans SPA, sans toucher à `SecurityConfig`**.
 **Non-goals**
 
 - ACL `grant`/`revoke`, purge, mise à jour du statut d'un `DossierWorkflowLink`
-  (exclusions explicites de [15-serveur-mcp.md](../../../analysis%20doc/15-serveur-mcp.md)).
+  (exclusions explicites de [15-serveur-mcp.md](../../specs/15-serveur-mcp.md)).
 - Upload binaire (`ATTACHMENT`) via MCP.
 - `frontend/**`, admin connecteurs, Compose, `SecurityConfig`, golden OpenAPI
   (le contrat MCP n'y figure pas).

@@ -179,7 +179,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Tests liés :** tous scénarios testing restants.
 
 - [x] **T19. Docs implementation + `DEFERRED-FEATURES.md`**
-  - **Outcome :** notes `docs/ai/implementation/2026-08-14-feature-relations-dossiers.md` ; `DEFERRED-FEATURES.md` §1.4 (relations livrées, retirer "lot suivant") ; `analysis doc/04-dossiers.md` synchronisé si le modèle livré diverge du modèle documenté (colonne `idempotency_key` notamment, absente du doc d'origine).
+  - **Outcome :** notes `docs/ai/implementation/2026-08-14-feature-relations-dossiers.md` ; `DEFERRED-FEATURES.md` §1.4 (relations livrées, retirer "lot suivant") ; `docs/specs/04-dossiers.md` synchronisé si le modèle livré diverge du modèle documenté (colonne `idempotency_key` notamment, absente du doc d'origine).
   - **Depends on :** T18
   - **Validation :** `lint --feature relations-dossiers`.
   - **Tests liés :** —

@@ -23,7 +23,7 @@ contournement Phase 8.
 - [x] **T-TENANT** — `README.md` ne contient plus « résolu depuis le token OIDC à chaque requête ».
 - [x] **T-GARDE** — `README.md` mentionne instance / `app.tenant.id` **et** claim OIDC comme garde.
 - [x] **T-DMN-README** — README ne présente plus DMN comme capacité livrée sans qualifier « hors V1 » / « non activé ».
-- [x] **T-COCKPIT** — `analysis doc/12-autorisation-conformite.md` : plus de « accès au cockpit Flowable » dans la table des rôles.
+- [x] **T-COCKPIT** — `docs/specs/12-autorisation-conformite.md` : plus de « accès au cockpit Flowable » dans la table des rôles.
 - [x] **T-JSOUP** — plus de `1.22.x` dans `README.md`, `00-index.md`, `07-generation-documents.md`.
 - [x] **T-YAML** — `application.yml` ne commence plus par « until real adapters land ».
 - [x] **T-CATALOG** — `06-connecteurs.md` mentionne le V1 livré (`http-rest` TRIGGER, `flowable-signal`) distinct de la cible.
@@ -34,11 +34,11 @@ contournement Phase 8.
 ```
 # T-TENANT / T-JSOUP — 0 match
 rg -n "résolu depuis le token OIDC à chaque requête|jsoup 1\\.22" \
-  README.md "analysis doc/00-index.md" "analysis doc/07-generation-documents.md"
+  README.md "docs/specs/00-index.md" "docs/specs/07-generation-documents.md"
 # (aucune ligne)
 
 # T-COCKPIT — 0 match après retrait de la parenthèse « pas de cockpit… »
-rg -n "cockpit Flowable" "analysis doc/12-autorisation-conformite.md"
+rg -n "cockpit Flowable" "docs/specs/12-autorisation-conformite.md"
 # (aucune ligne)
 
 # T-YAML — 0 match

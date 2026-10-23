@@ -6,10 +6,10 @@
 > Phase 3 design, Phase 4 planning, Phase 5 implémentation — voir
 > « Implémentation livrée » ci-dessous). Voir les documents de travail
 > détaillés :
-> [docs/ai/requirements/2026-08-24-feature-edition-bpmn.md](../docs/ai/requirements/2026-08-24-feature-edition-bpmn.md),
-> [docs/ai/design/2026-08-24-feature-edition-bpmn.md](../docs/ai/design/2026-08-24-feature-edition-bpmn.md),
-> [docs/ai/planning/2026-08-24-feature-edition-bpmn.md](../docs/ai/planning/2026-08-24-feature-edition-bpmn.md) et
-> [docs/ai/implementation/2026-08-24-feature-edition-bpmn.md](../docs/ai/implementation/2026-08-24-feature-edition-bpmn.md).
+> [docs/ai/requirements/2026-08-24-feature-edition-bpmn.md](../ai/requirements/2026-08-24-feature-edition-bpmn.md),
+> [docs/ai/design/2026-08-24-feature-edition-bpmn.md](../ai/design/2026-08-24-feature-edition-bpmn.md),
+> [docs/ai/planning/2026-08-24-feature-edition-bpmn.md](../ai/planning/2026-08-24-feature-edition-bpmn.md) et
+> [docs/ai/implementation/2026-08-24-feature-edition-bpmn.md](../ai/implementation/2026-08-24-feature-edition-bpmn.md).
 
 ## Constat
 

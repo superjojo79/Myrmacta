@@ -3,9 +3,9 @@
 > Public : quiconque modélise ou modifie un processus `.bpmn20.xml` destiné à tourner sur le
 > moteur FlowForge (dans l'éditeur intégré `/admin/bpmn-editor` ou avec un outil externe type
 > Camunda Modeler). Ce document répond aux questions pratiques que l'existant
-> ([05-workflow-engine.md](analysis%20doc/05-workflow-engine.md), [06-connecteurs.md](analysis%20doc/06-connecteurs.md),
-> [07-generation-documents.md](analysis%20doc/07-generation-documents.md),
-> [08-templates-documents.md](analysis%20doc/08-templates-documents.md), [04-dossiers.md](analysis%20doc/04-dossiers.md))
+> ([05-workflow-engine.md](docs/specs/05-workflow-engine.md), [06-connecteurs.md](docs/specs/06-connecteurs.md),
+> [07-generation-documents.md](docs/specs/07-generation-documents.md),
+> [08-templates-documents.md](docs/specs/08-templates-documents.md), [04-dossiers.md](docs/specs/04-dossiers.md))
 > documente chacun sous son propre angle, sans jamais les rassembler du point de vue de
 > l'auteur d'un diagramme. Tous les noms de variables, de beans et d'attributs cités ci-dessous
 > sont vérifiés contre le code réel du dépôt (`src/main/java/com/flowforge/infrastructure/flowable/`),
@@ -80,7 +80,7 @@ déploiement.
 
 ### Ce que l'éditeur BPMN intégré permet réellement d'éditer
 
-L'éditeur (`/admin/bpmn-editor`, voir [14-edition-bpmn.md](analysis%20doc/14-edition-bpmn.md)) est
+L'éditeur (`/admin/bpmn-editor`, voir [14-edition-bpmn.md](docs/specs/14-edition-bpmn.md)) est
 `bpmn-js` Modeler + `bpmn-js-properties-panel` avec un **provider Flowable volontairement
 restreint** (`flowablePropertiesProvider.ts`) — décision **D-EDIT-SCOPE**. Seuls ces attributs
 `flowable:*` sont exposés dans le panel de propriétés :
@@ -149,9 +149,9 @@ injectées, le reste des variables passées par l'appelant :
 
 | Origine | Mécanisme | Détail |
 |---|---|---|
-| **Connecteur externe** (webhook, signal Flowable…) | `TriggerConnector.onEvent(...)` → outbox → relais (`OutboxRelayScheduler`) | [06-connecteurs.md](analysis%20doc/06-connecteurs.md). `WorkflowTriggerEvent.variables()` devient les variables du processus ; `WorkflowTriggerEvent.dossierFields()` sert à créer le `Dossier` puis revient automatiquement via la variable `dossierFields` (voir §3) — deux routes distinctes vers le même résultat |
+| **Connecteur externe** (webhook, signal Flowable…) | `TriggerConnector.onEvent(...)` → outbox → relais (`OutboxRelayScheduler`) | [06-connecteurs.md](docs/specs/06-connecteurs.md). `WorkflowTriggerEvent.variables()` devient les variables du processus ; `WorkflowTriggerEvent.dossierFields()` sert à créer le `Dossier` puis revient automatiquement via la variable `dossierFields` (voir §3) — deux routes distinctes vers le même résultat |
 | **Manuel — API/UI** | `POST /api/dossiers/{id}/workflows` (en-tête `Idempotency-Key` obligatoire) → `ManualStartOrchestrator.start(...)` | Depuis la fiche dossier, bouton **Démarrer workflow** (`GUIDE-UTILISATEUR.md` §3) |
-| **Chaînage — dossier enfant/suite** | `serviceTask` `${createChildDossierTask}` (voir §7) — crée un dossier `PARENT_CHILD` ou `SUBSEQUENT` **et** démarre son workflow via le même `ManualStartOrchestrator` | [04-dossiers.md](analysis%20doc/04-dossiers.md) §« Démarrage d'un nouveau workflow sur un dossier existant » |
+| **Chaînage — dossier enfant/suite** | `serviceTask` `${createChildDossierTask}` (voir §7) — crée un dossier `PARENT_CHILD` ou `SUBSEQUENT` **et** démarre son workflow via le même `ManualStartOrchestrator` | [04-dossiers.md](docs/specs/04-dossiers.md) §« Démarrage d'un nouveau workflow sur un dossier existant » |
 
 > **Chaîner un *nouveau* workflow sur le *même* dossier** (pas un dossier enfant) — utile pour
 > enchaîner deux processus BPMN distincts sur le même objet — n'a **pas** de `serviceTask`
@@ -160,7 +160,7 @@ injectées, le reste des variables passées par l'appelant :
 > le workflow précédent clos (statut terminal atteint), ou écrire un delegate dédié appelant
 > `ManualStartOrchestrator` avec le `dossierId` courant — ne pas contourner la règle de
 > concurrence (« un seul `DossierWorkflowLink` actif par dossier », voir
-> [04-dossiers.md](analysis%20doc/04-dossiers.md)).
+> [04-dossiers.md](docs/specs/04-dossiers.md)).
 
 ---
 
@@ -177,7 +177,7 @@ copier la valeur dans une variable simple (`montantSinistre`), puis la condition
 (`${montantSinistre > 1000}`).
 
 > **Historique — écart désormais comblé.** Cette section signalait jusqu'ici un écart réel entre
-> le pseudo-code de [04-dossiers.md](analysis%20doc/04-dossiers.md) (`DossierAwareTask`, chargement
+> le pseudo-code de [04-dossiers.md](docs/specs/04-dossiers.md) (`DossierAwareTask`, chargement
 > automatique du dossier avant chaque `ServiceTask`) et le code livré, où cette classe n'existait
 > pas et où aucun champ dynamique n'était exposé sans câblage manuel. `WorkflowVariables
 > .withPlatformVariables(...)` (le point d'injection commun aux trois chemins de démarrage) porte
@@ -208,14 +208,14 @@ Deux limites à connaître :
   passe **pas** par le masquage `DossierFieldsSnapshot` des notifications (voir §8).
 
 Dans un template Thymeleaf de document (voir §5 et
-[08-templates-documents.md](analysis%20doc/08-templates-documents.md)) : `DocumentGenerationTask`
+[08-templates-documents.md](docs/specs/08-templates-documents.md)) : `DocumentGenerationTask`
 fusionne **toutes** les variables du processus en cours (`execution.getVariables()`, `dossierFields`
 compris), moins une allowlist de clés plateforme filtrée par `DocumentVariableFilter` (`dossierId`,
 `dossierWorkflowLinkId`, `tenantId`, `generatedDocumentId`, `documentType`, `documentVariant`,
 `documentLocale` — `dossierFields` n'y figure pas, il reste donc visible du template).
 
 **Objet `dossier` en tant que tel** (`${dossier.reference}`, mentionné comme exemple générique
-dans [08-templates-documents.md](analysis%20doc/08-templates-documents.md)) : reste **différent**
+dans [08-templates-documents.md](docs/specs/08-templates-documents.md)) : reste **différent**
 de `dossierFields` et n'existe toujours pas nativement — c'est la signalétique du dossier
 (`reference`, `label`, `status`…), pas ses champs dynamiques. Une tâche qui en a besoin doit
 encore faire `execution.setVariable("dossier", ...)` explicitement.
@@ -553,16 +553,16 @@ par le chemin métier habituel (validation de type, normalisation, version) :
 
 ## 4. Instancier / appeler un service externe
 
-Le mécanisme est le **système de connecteurs** ([06-connecteurs.md](analysis%20doc/06-connecteurs.md)), jamais
+Le mécanisme est le **système de connecteurs** ([06-connecteurs.md](docs/specs/06-connecteurs.md)), jamais
 un appel HTTP écrit en dur dans un delegate ad hoc.
 
 ### Étape 1 — créer une instance de connecteur (une fois, côté admin)
 
 Écran d'admin des connecteurs (`ConnectorsAdminView.vue`) : choisir un type (`ConnectorDefinition.getType()`,
 ex. `flowable-signal`, ou un connecteur custom ajouté au classpath — voir
-[06-connecteurs.md](analysis%20doc/06-connecteurs.md) « Ajout d'un connecteur custom »), puis saisir la
+[06-connecteurs.md](docs/specs/06-connecteurs.md) « Ajout d'un connecteur custom »), puis saisir la
 configuration dans le **formulaire généré** depuis `getConfigSchema()` du type
-(voir [06-connecteurs.md](analysis%20doc/06-connecteurs.md) « Écran d'admin » et
+(voir [06-connecteurs.md](docs/specs/06-connecteurs.md) « Écran d'admin » et
 [GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md) §4). La validation métier reste côté backend
 (`ConnectorDefinition.validate(config)`).
 Cela produit un `ConnectorInstanceData.id`
@@ -608,7 +608,7 @@ Deux `serviceTask` distincts, presque toujours chaînés l'un après l'autre :
 
 | Variable | Obligatoire | Rôle |
 |---|---|---|
-| `documentType` | oui | `templateKey` — résout le template actif (voir [08-templates-documents.md](analysis%20doc/08-templates-documents.md)) |
+| `documentType` | oui | `templateKey` — résout le template actif (voir [08-templates-documents.md](docs/specs/08-templates-documents.md)) |
 | `documentVariant` | non | `variantKey` (ex. `"premium"`, `"B2B"`) — résolution en cascade si absent |
 | `documentLocale` | non | langue du destinataire (ex. `"fr"`, `"nl"`) — résolution en cascade si absent |
 
@@ -620,7 +620,7 @@ Thymeleaf (voir §3 pour la mécanique exacte et l'allowlist de rendu — pas de
 
 Le contenu des accolades n'est **pas** du SpEL ni de l'OGNL : c'est une grammaire restreinte
 (`SafeThymeleafExpressionSupport`), détaillée dans
-[08-templates-documents.md](analysis%20doc/08-templates-documents.md) « Grammaire des expressions ».
+[08-templates-documents.md](docs/specs/08-templates-documents.md) « Grammaire des expressions ».
 En résumé :
 
 | Accepté dans `${…}` | Exemple |
@@ -778,7 +778,7 @@ Référence rapide — `delegateExpression`, variables lues (entrée) et écrite
 | `${createChildDossierTask}` | crée un dossier enfant/suite et démarre son workflow | `dossierId` (réservée), `childDossierTypeCode`, `childDossierLabel`, `workflowProcessKey`, `relationType` (`PARENT_CHILD` ou `SUBSEQUENT`), `childDossierFields`?, `childWorkflowVariables`? | — |
 
 Toutes ces classes vivent dans `src/main/java/com/flowforge/infrastructure/flowable/` — en cas
-de doute sur une variable, elles font foi avant ce document ou avant les `analysis doc/*`
+de doute sur une variable, elles font foi avant ce document ou avant les `docs/specs/*`
 pseudo-code.
 
 ### §7bis. `serviceTask flowable:type="dmn"` — invoquer une table de décision (TODO §61)
@@ -815,7 +815,7 @@ TODO §58).
 
 **Sécurité — ne jamais oublier en concevant une table :** Flowable évalue les cellules d'une table
 de décision en **JUEL**, pas en FEEL malgré ce que le standard DMN laisse penser (voir
-[05-workflow-engine.md](analysis%20doc/05-workflow-engine.md) §« Tables de décision — DMN »). Une
+[05-workflow-engine.md](docs/specs/05-workflow-engine.md) §« Tables de décision — DMN »). Une
 cellule d'entrée/sortie doit rester un littéral (entre guillemets, nombre, booléen), un `-`
 (« n'importe quelle valeur »), ou l'un de ces littéraux précédé d'un opérateur de comparaison
 (`==`, `!=`, `<`, `>`, `<=`, `>=`) — jamais une expression EL libre ni une navigation de propriété
@@ -832,8 +832,8 @@ chercher à le contourner, la même classe de vulnérabilité que H1-bis (BPMN) 
   le BPMN).
 - **URLs sortantes** (webhook, connecteur HTTP) passent toujours par `OutboundUrlGuard` côté
   infrastructure — ne jamais construire un appel HTTP direct dans un delegate custom sans
-  réutiliser cette garde (protection SSRF, voir [06-connecteurs.md](analysis%20doc/06-connecteurs.md) et
-  [09-notifications.md](analysis%20doc/09-notifications.md)).
+  réutiliser cette garde (protection SSRF, voir [06-connecteurs.md](docs/specs/06-connecteurs.md) et
+  [09-notifications.md](docs/specs/09-notifications.md)).
 - **`dossierFields` (§3) est non masqué** — il porte les valeurs réelles, y compris les champs
   `sensitive`, cohérent avec le fait que le contexte workflow est un appelant système
   (`AccessContext.System`, voir `DossierFieldRedactor`). C'est le comportement voulu pour la
@@ -849,7 +849,7 @@ chercher à le contourner, la même classe de vulnérabilité que H1-bis (BPMN) 
 - **Templates de document** : n'utiliser que `${...}` et les objets utilitaires Thymeleaf
   autorisés (`#dates`, `#numbers`, `#strings`, `#lists`) — `T()`, `#beans`, `new`, `#request`
   sont refusés à l'activation du template (décision **D-40**, voir
-  [08-templates-documents.md](analysis%20doc/08-templates-documents.md)), de même que les
+  [08-templates-documents.md](docs/specs/08-templates-documents.md)), de même que les
   opérateurs (`==`, `and`, ternaire…), l'indexation et les appels de méthode à l'intérieur des
   accolades (§5). Une variable ou propriété absente ou nulle fait échouer la génération (§3) :
   calculer les valeurs facultatives en amont plutôt que d'espérer un rendu vide.

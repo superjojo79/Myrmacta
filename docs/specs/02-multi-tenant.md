@@ -1,7 +1,7 @@
 # Multi-tenant
 
 > Isolation par schéma PostgreSQL. Chaque tenant est servi par sa propre instance Spring Boot,
-> configurée avec son identifiant au démarrage — décision n° 13, [TODO.md](../TODO.md).
+> configurée avec son identifiant au démarrage — décision n° 13, [TODO.md](../../TODO.md).
 
 ---
 
@@ -71,7 +71,7 @@ ce tenant, les questions de session HTTP partagée (voir
 
 ### Routage vers l'instance — chemin par tenant, reverse-proxy statique
 
-**Décision retenue (point 14, [TODO.md](../TODO.md)).** Le routage vers la bonne instance se fait
+**Décision retenue (point 14, [TODO.md](../../TODO.md)).** Le routage vers la bonne instance se fait
 par **chemin** — chaque tenant est adressé sous un préfixe d'URL qui lui est propre
 (`https://example.com/tenant_a/...`) — plutôt que par sous-domaine ou par port. La configuration du
 reverse-proxy est **statique** : un bloc par tenant, ajouté à la configuration du serveur lors du
@@ -200,7 +200,7 @@ ailleurs. **D-41 :** chaque tenant a un rôle **LOGIN** dédié, avec `GRANT` un
 schéma. Le superuser du conteneur (`POSTGRES_USER`, défaut `flowforge` en local) sert au bootstrap
 (init SQL, éventuellement ops) ; l'application se connecte avec `DB_USERNAME`
 (`flowforge_tenant_dev` en local). Voir
-[`docker/postgres/init/01-init-tenant-schema.sql`](../docker/postgres/init/01-init-tenant-schema.sql).
+[`docker/postgres/init/01-init-tenant-schema.sql`](../../docker/postgres/init/01-init-tenant-schema.sql).
 Un volume Postgres déjà initialisé **ne rejoue pas** ce script : `docker compose down -v` puis
 `up -d`. Le provisioning d'un second tenant (CLI / orchestrateur) reste hors V1 (point 31).
 
@@ -297,7 +297,7 @@ health check) ne la met jamais en service, et son redémarrage rejoue naturellem
 Il n'y a plus besoin d'une table de suivi inter-tenants pour coordonner cet aspect : chaque instance
 ne rend compte que d'elle-même, via ses propres logs et son propre statut de santé. Une table
 `platform.tenant_migration_status` peut néanmoins être conservée à titre d'observabilité inter-
-tenants pour un tableau de bord d'exploitation (voir point 29 du [TODO.md](../TODO.md)), sans rôle de
+tenants pour un tableau de bord d'exploitation (voir point 29 du [TODO.md](../../TODO.md)), sans rôle de
 coordination.
 
 ### Synthèse des choix multi-tenant

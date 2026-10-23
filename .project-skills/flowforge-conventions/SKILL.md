@@ -5,7 +5,7 @@ description: FlowForge · Conventions projet (architecture hexagonale, multi-ten
 
 # FlowForge — conventions projet
 
-Appliquer ces règles **avant** les skills génériques Java/Spring/Vue. En cas de conflit, la doc `analysis doc/` et `TODO.md` priment.
+Appliquer ces règles **avant** les skills génériques Java/Spring/Vue. En cas de conflit, la doc `docs/specs/` et `TODO.md` priment.
 
 ## Stack figée
 
@@ -41,7 +41,7 @@ Règles :
 5. **ArchUnit en CI** : toute violation de frontière fait échouer `./mvnw verify`.
 6. **Use cases** : classes domaine `*UseCase` / `*UseCaseImpl`, câblées par constructeur — pas de `@Service` dans le domaine.
 
-Référence : `analysis doc/01-architecture-hexagonale.md`.
+Référence : `docs/specs/01-architecture-hexagonale.md`.
 
 ## Multi-tenant (décisions n° 13–14)
 
@@ -50,7 +50,7 @@ Référence : `analysis doc/01-architecture-hexagonale.md`.
 - Routage reverse-proxy par chemin (config statique) vers l’instance.
 - Les appels non authentifiés (webhooks, triggers) restent scopés à l’instance / schéma courant.
 
-Référence : `analysis doc/02-multi-tenant.md`.
+Référence : `docs/specs/02-multi-tenant.md`.
 
 ## Sécurité & conformité
 
@@ -66,7 +66,7 @@ Référence : `analysis doc/02-multi-tenant.md`.
 - State : Pinia. UI : OpenVue (fork MIT de PrimeVue). Viewer BPMN : `bpmn-js`.
 - Respecter l’UI OpenVue / patterns existants du dépôt.
 
-Référence : `analysis doc/11-frontend.md`.
+Référence : `docs/specs/11-frontend.md`.
 
 ## Workflow de feature (AI DevKit)
 
@@ -129,7 +129,7 @@ npx ai-devkit@latest skill list              # skills installés
 | Revues (pré-code / post-implémentation) | `REVUE-PRE-IMPLEMENTATION.md`, `REVUE-ALIGNEMENT-SECURITE.md` |
 | Prochaine feature (file d’attente) | `FILE-ATTENTE.md` |
 | Backlog différé | `DEFERRED-FEATURES.md` |
-| Architecture détaillée | `analysis doc/*.md` |
+| Architecture détaillée | `docs/specs/*.md` |
 | Artefacts lifecycle feature | `docs/ai/{requirements,design,planning,implementation,testing,...}/` |
 | Historique synthétique par PR | `CHANGELOG.md` |
 

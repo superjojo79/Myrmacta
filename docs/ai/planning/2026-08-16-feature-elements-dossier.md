@@ -149,7 +149,7 @@ Statuts : `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
   - **Outcome :** `frontend/src/api/types.ts` déclare aujourd'hui
     `'PRODUCED_DOC' | 'ATTACHMENT' | 'NOTE' | 'EXTERNAL_REF'` — ni aligné sur le backend actuel
     (`PRODUCED_DOC` seul en V1) ni sur la cible de cette feature (`LINK`, pas `EXTERNAL_REF` ;
-    `INFORMATION` manquant), cf. `analysis doc/04-dossiers.md`. Corrigé en
+    `INFORMATION` manquant), cf. `docs/specs/04-dossiers.md`. Corrigé en
     `'PRODUCED_DOC' | 'ATTACHMENT' | 'INFORMATION' | 'NOTE' | 'LINK'`. Pas une régression de
     cette feature (le type était déjà faux avant), mais bloquant pour écrire un FE correct —
     corrigé dans cette tranche plutôt que de perpétuer l'erreur.

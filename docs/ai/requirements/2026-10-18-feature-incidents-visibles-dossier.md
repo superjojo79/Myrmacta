@@ -84,7 +84,7 @@ justement l'asynchrone pour transformer un échec en incident plutôt que de blo
 - `get_dossier` (MCP) expose les échecs sans message.
 - `./mvnw verify`, `npm run test:all` verts. Le golden OpenAPI est régénéré pour les nouveaux endpoints.
 - Documentation : `GUIDE-UTILISATEUR.md` (bandeau, écran Incidents, rôle), `GUIDE-CONCEPTION-BPMN.md` (§6c :
-  l'incident est désormais visible et rejouable), `analysis doc/15-serveur-mcp.md`, `TODO.md` §94, `CHANGELOG.md`.
+  l'incident est désormais visible et rejouable), `docs/specs/15-serveur-mcp.md`, `TODO.md` §94, `CHANGELOG.md`.
 
 ## Contraintes et hypothèses
 

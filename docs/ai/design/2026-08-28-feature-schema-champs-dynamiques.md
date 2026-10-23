@@ -179,7 +179,7 @@ types déjà complets (vérifié ci-dessus).
   `DynamicFields.vue` (édite des *valeurs*, pas des *définitions* — contexte différent, confirmé
   par l'analyse §7) ; pas de diff/patch minimal type `diffDossierFields.ts` (remplacement intégral
   retenu, cf. requirements Constraints) ; suit le pattern HTML natif + scoped CSS déjà en place sur
-  l'écran qu'il étend, malgré [11-frontend.md](../../../analysis%20doc/11-frontend.md) qui retient
+  l'écran qu'il étend, malgré [11-frontend.md](../../specs/11-frontend.md) qui retient
   PrimeVue comme cible globale (contrainte déjà actée en requirements, pas rouverte ici).
 - **Panneau d'édition inline (pas de modale)** — cohérent avec l'absence de bibliothèque de modale
   dans ce dépôt (aucun composant `Dialog`/`Modal` existant en dehors de `LinkDossierDialog.vue`,

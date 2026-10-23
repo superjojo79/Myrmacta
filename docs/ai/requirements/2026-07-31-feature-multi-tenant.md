@@ -24,7 +24,7 @@ schéma PostgreSQL par tenant, et un routage par chemin via reverse-proxy statiq
   exclusions autoconfig JPA/Security/Flowable ; `StartWorkflowCommand` porte déjà un
   `tenantId` fourni par l’appelant ; aucune config `app.tenant`, aucun validateur
   d’identifiant, aucun package `infrastructure.tenant`. Analyse complète dans
-  `analysis doc/02-multi-tenant.md`.
+  `docs/specs/02-multi-tenant.md`.
 - **UX :** N/A pour cette tranche — fondation technique / ops ; pas d’écran
   d’onboarding tenant.
 
@@ -142,7 +142,7 @@ Fondation technique ; « utilisateurs » = contributeurs et features aval.
 
 ### Assumptions nommées
 
-- `analysis doc/02-multi-tenant.md` fait foi pour le modèle cible complet.
+- `docs/specs/02-multi-tenant.md` fait foi pour le modèle cible complet.
 - Le filtre OIDC et le bootstrap Liquibase seront livrés par
   `authentification` / persistence, en réutilisant `TenantProperties` et
   `TenantIdValidator`.

@@ -27,11 +27,11 @@ code (`TenantProperties`, `TenantResolutionFilter`, `HttpRestTriggerConnector`,
 | Fichier | Édition |
 |---|---|
 | `README.md` | Tenant instance + garde OIDC ; V1 connecteurs/DMN ; diagrammes ; jsoup 1.23.1 ; stockage port S3 ; `context-path` cible |
-| `analysis doc/00-index.md` | Flowable sans DMN V1 ; stockage ; jsoup 1.23.1 |
-| `analysis doc/06-connecteurs.md` | Catalogue : colonnes Cible / V1 livré |
-| `analysis doc/07-generation-documents.md` | jsoup 1.23.1 ; parenthèse stockage (fichier déjà touché) |
-| `analysis doc/11-frontend.md` | `context-path` = cible ops, yaml commenté |
-| `analysis doc/12-autorisation-conformite.md` | `WORKFLOW_ADMIN` → `/admin/bpmn-editor` |
+| `docs/specs/00-index.md` | Flowable sans DMN V1 ; stockage ; jsoup 1.23.1 |
+| `docs/specs/06-connecteurs.md` | Catalogue : colonnes Cible / V1 livré |
+| `docs/specs/07-generation-documents.md` | jsoup 1.23.1 ; parenthèse stockage (fichier déjà touché) |
+| `docs/specs/11-frontend.md` | `context-path` = cible ops, yaml commenté |
+| `docs/specs/12-autorisation-conformite.md` | `WORKFLOW_ADMIN` → `/admin/bpmn-editor` |
 | `src/main/resources/application.yml` | Commentaire d'en-tête Flowable V1 |
 
 ## Implementation Notes

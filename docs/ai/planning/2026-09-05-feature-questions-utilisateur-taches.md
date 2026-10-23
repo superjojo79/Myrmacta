@@ -159,7 +159,7 @@ description: Break down work into actionable tasks and estimate timeline
   document testing § Test Reporting & Coverage.
 - [x] 9.4 `GUIDE-UTILISATEUR.md` (§0 + nouvelle §10) et `GUIDE-CONCEPTION-BPMN.md` (§3bis étendu)
   mis à jour.
-- [x] 9.5 `analysis doc/00-index.md` (§23 marqué livré), `TODO.md` §55 clos, `FILE-ATTENTE.md` à jour.
+- [x] 9.5 `docs/specs/00-index.md` (§23 marqué livré), `TODO.md` §55 clos, `FILE-ATTENTE.md` à jour.
 - [ ] 9.6 `CHANGELOG.md` — différé (aucune PR ouverte à ce stade), conformément à la convention du
   dépôt déjà appliquée pour `schema-champs-dynamiques` (TODO §47).
 - **Dépend de** M8.

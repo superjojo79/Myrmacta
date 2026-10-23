@@ -7,7 +7,7 @@ description: Clarify the problem space, gather requirements, and define success 
 # Requirements & Problem Understanding — `formulaires-dynamiques-taches`
 
 > Origine : question utilisateur (2026-09-01), analyse écrite
-> [22-formulaires-dynamiques-taches.md](../../../analysis%20doc/22-formulaires-dynamiques-taches.md),
+> [22-formulaires-dynamiques-taches.md](../../specs/22-formulaires-dynamiques-taches.md),
 > TODO §52. Choisie comme prochaine feature après épuisement de `FILE-ATTENTE.md` (file vide, seul
 > candidat éligible — le provisioning tenant est explicitement hors file produit). Arbitrages
 > produit tranchés par l'utilisateur au lancement du cycle (2026-09-03) : voir § « Décisions

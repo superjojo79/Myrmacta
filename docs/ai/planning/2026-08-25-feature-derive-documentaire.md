@@ -19,7 +19,7 @@ Tâches T1.1–T4.2 ci-dessous (figées avant implémentation).
 ## Milestones
 
 - [x] **M1** README + `00-index` (tenant, DMN, connecteurs, stockage, jsoup, diagrammes)
-- [x] **M2** `analysis doc/` 06, 07, 11, 12
+- [x] **M2** `docs/specs/` 06, 07, 11, 12
 - [x] **M3** `application.yml` en-tête
 - [x] **M4** Grep de contrôle + clôture TODO §45 / FILE-ATTENTE / registre revue
 
@@ -32,9 +32,9 @@ Tâches T1.1–T4.2 ci-dessous (figées avant implémentation).
 - [x] **T1.2** README proposition de valeur, BPMN/DMN, diagrammes ASCII, table stack
       (jsoup 1.23.1, stockage S3-compatible / filesystem).
       Validation : T-DMN-README, T-JSOUP.
-- [x] **T1.3** `analysis doc/00-index.md` : Flowable sans DMN V1, stockage, jsoup 1.23.1.
+- [x] **T1.3** `docs/specs/00-index.md` : Flowable sans DMN V1, stockage, jsoup 1.23.1.
 
-### M2 — analysis doc ciblés
+### M2 — docs/specs ciblés
 
 - [x] **T2.1** `06-connecteurs.md` : colonne V1 sur le catalogue.
       Validation : T-CATALOG.

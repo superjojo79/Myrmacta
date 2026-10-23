@@ -6,9 +6,9 @@ description: Clarify the problem space, gather requirements, and define success 
 
 # Requirements & Problem Understanding — `extension-mcp-flux-metier`
 
-> Origine : [analysis doc/24-extension-mcp-flux-metier.md](../../../analysis%20doc/24-extension-mcp-flux-metier.md)
+> Origine : [docs/specs/24-extension-mcp-flux-metier.md](../../specs/24-extension-mcp-flux-metier.md)
 > (analyse initiale, demande utilisateur 2026-09-06). Cadrage initial du serveur MCP :
-> [analysis doc/15-serveur-mcp.md](../../../analysis%20doc/15-serveur-mcp.md) (PR #82, 9 tools livrés
+> [docs/specs/15-serveur-mcp.md](../../specs/15-serveur-mcp.md) (PR #82, 9 tools livrés
 > le 2026-08-27). Décisions ci-dessous actées via `AskUserQuestion`, une à la fois.
 
 ## Problem Statement
@@ -71,10 +71,10 @@ pré-existant sur du code déjà en production, pas seulement un risque introdui
 **Non-goals**
 
 - `create_dossier`, `add_dossier_element`, `start_workflow`, `generate_document` : hors périmètre,
-  déjà en backlog explicite de [15-serveur-mcp.md](../../../analysis%20doc/15-serveur-mcp.md) pour
+  déjà en backlog explicite de [15-serveur-mcp.md](../../specs/15-serveur-mcp.md) pour
   une raison différente (écriture sur des données métier, pas de la configuration).
 - Gestion des ACL (`grant/revoke_dossier_type_access`) : exclusion déjà actée
-  ([15-serveur-mcp.md](../../../analysis%20doc/15-serveur-mcp.md) « Exclusions explicites »),
+  ([15-serveur-mcp.md](../../specs/15-serveur-mcp.md) « Exclusions explicites »),
   inchangée.
 - Aucun nouveau mécanisme de secret hors-bande (vault externe, référence indirecte) — le secret
   connecteur transite en clair sur l'appel MCP, comme sur l'écran admin (voir décisions).

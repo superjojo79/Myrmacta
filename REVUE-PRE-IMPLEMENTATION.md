@@ -1,6 +1,6 @@
 # Revue pré-implémentation — FlowForge
 
-> Revue de la documentation d'architecture (`analysis doc/`, 12 fichiers) menée avant le lancement
+> Revue de la documentation d'architecture (`docs/specs/`, 12 fichiers) menée avant le lancement
 > du développement, pour répondre à une question : **l'analyse est-elle implémentable en l'état ?**
 >
 > Ce document porte le **contexte détaillé** de chaque point ouvert — constat, extraits concernés,
@@ -18,13 +18,13 @@
 
 | | |
 |---|---|
-| Documents revus | `analysis doc/00-index.md` → `12-autorisation-conformite.md`, `README.md`, `TODO.md` |
+| Documents revus | `docs/specs/00-index.md` → `12-autorisation-conformite.md`, `README.md`, `TODO.md` |
 | Volume | 12 documents thématiques, ~3 150 lignes |
 | État du dépôt à la revue | commit `1d3d9eb` — aucun code applicatif, documentation seule |
 | Angle de lecture | Cohérence inter-documents, complétude fonctionnelle, faisabilité des extraits de code fournis comme spécification |
 
 Les numéros de ligne cités ci-dessous correspondent à l'état des documents au commit `1d3d9eb`.
-Les extraits de code de `analysis doc/` sont traités comme de la **spécification exécutable** :
+Les extraits de code de `docs/specs/` sont traités comme de la **spécification exécutable** :
 c'est le niveau de détail qu'ils affichent, et c'est ainsi qu'ils seront lus par les développeurs.
 
 Le point le plus structurant identifié par cette revue (propagation du tenant hors requête HTTP) a
@@ -140,7 +140,7 @@ propagation peut se reproduire.
 ### Conséquences sur le mécanisme technique déjà documenté
 
 Cette décision rend obsolète une part importante du mécanisme dynamique de `02-multi-tenant.md` —
-à réviser lors de la prochaine passe sur `analysis doc/`, non encore faite à ce stade :
+à réviser lors de la prochaine passe sur `docs/specs/`, non encore faite à ce stade :
 
 - Le tenant devient une propriété de configuration lue une fois au démarrage. `TenantContext`
   (`@RequestScope`), `TenantIdentifierResolver` (SPI multi-tenant Hibernate) et
@@ -245,11 +245,11 @@ disponible, donc n'est jamais atteinte par le routage — pas de logique 503 dé
 application. `findByIdAndTenantId(...)` dans `WebhookController` redevient une défense en profondeur
 plutôt qu'une nécessité, puisque le schéma seul garantit déjà l'isolement une fois la requête routée.
 
-**Documents révisés en conséquence :** [02-multi-tenant.md](analysis%20doc/02-multi-tenant.md)
-(section « Routage vers l'instance »), [03-authentification.md](analysis%20doc/03-authentification.md)
-(section « Authentification machine-to-machine »), [06-connecteurs.md](analysis%20doc/06-connecteurs.md)
+**Documents révisés en conséquence :** [02-multi-tenant.md](docs/specs/02-multi-tenant.md)
+(section « Routage vers l'instance »), [03-authentification.md](docs/specs/03-authentification.md)
+(section « Authentification machine-to-machine »), [06-connecteurs.md](docs/specs/06-connecteurs.md)
 (`WebhookController` corrigé, note sur `ConnectorExecutionController`),
-[12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md) (renvoi vers le flux
+[12-autorisation-conformite.md](docs/specs/12-autorisation-conformite.md) (renvoi vers le flux
 `client_credentials`).
 
 ### 15. Sécurité et cycle de vie de la session BFF — CSRF, déconnexion, session par tenant
@@ -302,10 +302,10 @@ entrée à caractère joker (`https://example.com/*`) dans les `Valid Redirect U
 supplémentaire à l'onboarding — combinée à `server.forward-headers-strategy: framework` (décision
 n° 14), qui garantit que Spring calcule ces URLs dynamiquement, préfixe de tenant inclus.
 
-**Documents révisés en conséquence :** [03-authentification.md](analysis%20doc/03-authentification.md)
+**Documents révisés en conséquence :** [03-authentification.md](docs/specs/03-authentification.md)
 (nouvelles sections « Callback OAuth2 derrière le routage par chemin », « Protection CSRF » et
 « Déconnexion — RP-initiated logout » ; suppression de la méthode `logout()` manuelle),
-[11-frontend.md](analysis%20doc/11-frontend.md) (renvoi vers la configuration Axios).
+[11-frontend.md](docs/specs/11-frontend.md) (renvoi vers la configuration Axios).
 
 ---
 
@@ -354,14 +354,14 @@ code existants (`type.isAllowUnknownFields()`, `type.getFieldDefinitions()` dans
 
 Ce raisonnement traitait la documentation comme du code réel déjà compilé, avec des appelants figés
 qu'il faudrait préserver — alors que le projet est encore en phase d'analyse, sans aucune
-implémentation. Les extraits illustratifs de `analysis doc/` ne sont pas des points d'appel figés :
+implémentation. Les extraits illustratifs de `docs/specs/` ne sont pas des points d'appel figés :
 ils s'éditent au même titre que le reste de cette documentation, sans coût de rupture de
 compatibilité réel. Une fois cette contrainte artificielle levée, `record` redevient le choix le
 mieux justifié : fonctionnalité native du JDK, sans dépendance à un processeur d'annotations pour le
 modèle domaine ; immuabilité garantie par le langage plutôt que par convention ; cohérent avec
 l'appétit déjà montré pour Java 21 moderne (`sealed interface` de la décision n° 6) ; et déjà
 utilisé ailleurs dans ces mêmes documents (`WorkflowDiagramView` dans
-[10-visualisation-workflow.md](analysis%20doc/10-visualisation-workflow.md)) — ce n'est pas une
+[10-visualisation-workflow.md](docs/specs/10-visualisation-workflow.md)) — ce n'est pas une
 convention étrangère au projet, seulement pas encore appliquée aux agrégats.
 
 `@Builder` (Lombok) reste utilisé au-dessus des `record` pour la construction des objets à de
@@ -391,14 +391,14 @@ tant qu'un DTO dédié n'est pas introduit.
 `usecase`/`Impl` de la décision n° 9, qui avait déjà dérivé une fois sous la seule garde de la revue
 de code — est désormais vérifiée par un test **ArchUnit** exécuté en CI.
 
-**Documents révisés en conséquence :** [01-architecture-hexagonale.md](analysis%20doc/01-architecture-hexagonale.md)
+**Documents révisés en conséquence :** [01-architecture-hexagonale.md](docs/specs/01-architecture-hexagonale.md)
 (règle généralisée, convention de nommage, section ArchUnit),
-[04-dossiers.md](analysis%20doc/04-dossiers.md) (5 entités converties en `record`, exemple
-d'adaptateur complet sur `Dossier`), [05-workflow-engine.md](analysis%20doc/05-workflow-engine.md)
-(`WorkflowTypeConfig`), [06-connecteurs.md](analysis%20doc/06-connecteurs.md) (`ConnectorInstanceData`
+[04-dossiers.md](docs/specs/04-dossiers.md) (5 entités converties en `record`, exemple
+d'adaptateur complet sur `Dossier`), [05-workflow-engine.md](docs/specs/05-workflow-engine.md)
+(`WorkflowTypeConfig`), [06-connecteurs.md](docs/specs/06-connecteurs.md) (`ConnectorInstanceData`
 alignée sur le `record`, tous ses points d'appel mis à jour),
-[08-templates-documents.md](analysis%20doc/08-templates-documents.md) (`DocumentTemplate`),
-[10-visualisation-workflow.md](analysis%20doc/10-visualisation-workflow.md) (note sur la réponse
+[08-templates-documents.md](docs/specs/08-templates-documents.md) (`DocumentTemplate`),
+[10-visualisation-workflow.md](docs/specs/10-visualisation-workflow.md) (note sur la réponse
 d'API désormais sans risque technique).
 
 ---
@@ -443,12 +443,12 @@ servi par chaque instance Spring Boot dédiée (décision n° 13). Conséquences
 - le reverse-proxy Apache (décision n° 14) route `/{tenantId}/...` vers l'instance, assets statiques
   inclus.
 
-**Documents révisés en conséquence :** [00-index.md](analysis%20doc/00-index.md),
-[05-workflow-engine.md](analysis%20doc/05-workflow-engine.md),
-[07-generation-documents.md](analysis%20doc/07-generation-documents.md),
-[03-authentification.md](analysis%20doc/03-authentification.md) (`SameSite` confirmé),
-[11-frontend.md](analysis%20doc/11-frontend.md) (packaging embarqué),
-[01-architecture-hexagonale.md](analysis%20doc/01-architecture-hexagonale.md) (note mono-module),
+**Documents révisés en conséquence :** [00-index.md](docs/specs/00-index.md),
+[05-workflow-engine.md](docs/specs/05-workflow-engine.md),
+[07-generation-documents.md](docs/specs/07-generation-documents.md),
+[03-authentification.md](docs/specs/03-authentification.md) (`SameSite` confirmé),
+[11-frontend.md](docs/specs/11-frontend.md) (packaging embarqué),
+[01-architecture-hexagonale.md](docs/specs/01-architecture-hexagonale.md) (note mono-module),
 [README.md](README.md).
 
 ---
@@ -496,10 +496,10 @@ configurable.
 pas rejouable — le webhook reçoit l'erreur et l'appelant retry. C'est le prix de l'ACK après
 validation métier / création de dossier.
 
-**Documents révisés en conséquence :** [05-workflow-engine.md](analysis%20doc/05-workflow-engine.md)
-(outbox + relais corrigés), [06-connecteurs.md](analysis%20doc/06-connecteurs.md)
+**Documents révisés en conséquence :** [05-workflow-engine.md](docs/specs/05-workflow-engine.md)
+(outbox + relais corrigés), [06-connecteurs.md](docs/specs/06-connecteurs.md)
 (`ConnectorTriggerRuntime` scindé producteur / consommateur),
-[04-dossiers.md](analysis%20doc/04-dossiers.md) (création batch alignée).
+[04-dossiers.md](docs/specs/04-dossiers.md) (création batch alignée).
 
 ---
 
@@ -523,10 +523,10 @@ extraits de spécification (a/b/d/g déjà corrigés au passage) :
 - **f1 :** `updatedBy` ajouté sur `Dossier` (record, JPA, mappers, `withStatus`) ; `12` corrigé pour
   `DossierElement` (`addedBy` / `addedAt`).
 
-**Documents révisés en conséquence :** [06-connecteurs.md](analysis%20doc/06-connecteurs.md),
-[08-templates-documents.md](analysis%20doc/08-templates-documents.md),
-[04-dossiers.md](analysis%20doc/04-dossiers.md),
-[12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md).
+**Documents révisés en conséquence :** [06-connecteurs.md](docs/specs/06-connecteurs.md),
+[08-templates-documents.md](docs/specs/08-templates-documents.md),
+[04-dossiers.md](docs/specs/04-dossiers.md),
+[12-autorisation-conformite.md](docs/specs/12-autorisation-conformite.md).
 
 ---
 
@@ -563,8 +563,8 @@ liste filtrée aux types `VIEW`. Pas de grant à la création d'instance ni à l
 **`DossierAccessPolicy` (C1)** — évalue sur `dossierTypeCode` via `DossierTypeAclRepository`.
 Refus → `AccessDeniedException` → 403.
 
-**Documents révisés :** [12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md),
-[04-dossiers.md](analysis%20doc/04-dossiers.md).
+**Documents révisés :** [12-autorisation-conformite.md](docs/specs/12-autorisation-conformite.md),
+[04-dossiers.md](docs/specs/04-dossiers.md).
 
 ---
 

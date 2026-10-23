@@ -8,7 +8,7 @@ updated: 2026-08-24
 feature: edition-bpmn
 phase1: 2026-08-24
 phase2: 2026-08-24
-todo_ref: TODO.md §39 · FILE-ATTENTE.md (candidat, prochaine phase = dev-design) · analysis doc/14-edition-bpmn.md
+todo_ref: TODO.md §39 · FILE-ATTENTE.md (candidat, prochaine phase = dev-design) · docs/specs/14-edition-bpmn.md
 ---
 
 # Requirements & Problem Understanding — `edition-bpmn`

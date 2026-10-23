@@ -205,7 +205,7 @@ tool `query_sla_summary` dans cette V1.
   `start_workflow`, `generate_document`) — identifiées et détaillées en
   [backlog](#backlog--extensions-futures-envisageables-hors-v1).
 - Pas de Flowable Modeler/Cockpit ni d'édition visuelle de BPMN via MCP —
-  déjà écarté du produit ([DEFERRED-FEATURES.md](../DEFERRED-FEATURES.md) §1.5).
+  déjà écarté du produit ([DEFERRED-FEATURES.md](../../DEFERRED-FEATURES.md) §1.5).
 
 ---
 
@@ -330,4 +330,4 @@ tool MCP, même en backlog, au vu de leur impact :
 
 Cycle `dev-lifecycle` : Phases 1–4 (2026-08-27). Prochain : Phase 5
 TDD **T1.1**. Spec :
-[`docs/ai/planning/2026-08-27-feature-serveur-mcp.md`](../docs/ai/planning/2026-08-27-feature-serveur-mcp.md).
+[`docs/ai/planning/2026-08-27-feature-serveur-mcp.md`](../ai/planning/2026-08-27-feature-serveur-mcp.md).

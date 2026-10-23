@@ -361,7 +361,7 @@ aucune question design bloquante restante.
 ## Sources
 
 - Requirements `visualisation-workflow` `reviewed` (+ phase3_sync R3)
-- `analysis doc/10-visualisation-workflow.md`
+- `docs/specs/10-visualisation-workflow.md`
 - Code : `AttachWorkflowUseCase`, `ManualStartOrchestrator`,
   `OutboxRelayScheduler`, `GetDossierUseCaseImpl`,
   `NotificationOutboxRelay`, `WorkflowTypeConfigController`

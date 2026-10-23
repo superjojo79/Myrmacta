@@ -27,11 +27,11 @@ fichier markdown produit.
 
 ## Code Structure
 
-- `analysis doc/13-modele-physique.md` (nouveau) — le document lui-même,
+- `docs/specs/13-modele-physique.md` (nouveau) — le document lui-même,
   7 sections (intro, ERD mermaid, index uniques partiels, répartition
   tenant/`platform`, tables notables, tables Flowable, écart de
   documentation corrigé).
-- `analysis doc/00-index.md` (modifié) — ligne 13 ajoutée au tableau
+- `docs/specs/00-index.md` (modifié) — ligne 13 ajoutée au tableau
   des fonctionnalités.
 
 ## Implementation Notes
@@ -106,7 +106,7 @@ Revue holistique (au-delà de la vérification factuelle de Phase 7) :
   `13-modele-physique.md` (tableau de traçabilité du design doc).
   Aucun écart.
 - **Cohérence avec les docs existantes** : style et ton alignés sur
-  les 12 docs `analysis doc/` existants (citations de décisions
+  les 12 docs `docs/specs/` existants (citations de décisions
   numérotées, renvois croisés, pas de duplication de DDL déjà pratiqué
   nulle part ailleurs dans ces docs). Numérotation 13 cohérente avec
   la séquence 01–12 déjà en place.

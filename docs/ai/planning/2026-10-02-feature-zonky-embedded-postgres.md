@@ -16,4 +16,4 @@ feature: zonky-embedded-postgres
 - [x] P3 — Bascule des `@SpringBootTest` (datasource H2 supprimé) ; écarts H2/PostgreSQL corrigés côté tests.
 - [x] P4 — H2 et `testcontainers-postgresql` retirés ; branches `dbms: h2` et `*-h2.sql` supprimées ; `ChangelogChecksumStabilityIT` ; `*IT` dans `verify` ; CI mise à jour.
 - [x] P5 — Profil `embedded-db` persistant, `scripts/embedded-db.sh`, Dockerfile (`--build-arg MAVEN_PROFILES=embedded-db`), garde-fou jar en CI.
-- [x] P6 — Documentation (GETTING-STARTED, DEPLOIEMENT, `.env.example`, CHANGELOG, TODO §91, analysis doc 47).
+- [x] P6 — Documentation (GETTING-STARTED, DEPLOIEMENT, `.env.example`, CHANGELOG, TODO §91, docs/specs 47).

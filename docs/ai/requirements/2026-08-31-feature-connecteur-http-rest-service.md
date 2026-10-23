@@ -31,7 +31,7 @@ description: Clarify the problem space, gather requirements, and define success 
   `"http-rest"`. Le skeleton, en tant que classe séparée, ne peut donc pas être « juste enregistré »
   à côté de `HttpRestTriggerConnector` (`@Component`, capability `TRIGGER`) sans conflit de type.
 
-Référence : [analysis doc/18-connecteur-http-rest-service.md](../../../analysis%20doc/18-connecteur-http-rest-service.md).
+Référence : [docs/specs/18-connecteur-http-rest-service.md](../../specs/18-connecteur-http-rest-service.md).
 
 ## Goals & Objectives
 **What do we want to achieve?**
@@ -64,7 +64,7 @@ Primaire :
 Secondaire :
 
 - Mettre à jour la documentation qui affirme aujourd'hui explicitement « TRIGGER seulement » :
-  tableau catalogue de [06-connecteurs.md](../../../analysis%20doc/06-connecteurs.md) (colonne « V1
+  tableau catalogue de [06-connecteurs.md](../../specs/06-connecteurs.md) (colonne « V1
   livré »), [README.md](../../../README.md) (§ Système de connecteurs) — convention
   `flowforge-conventions` §6.
 

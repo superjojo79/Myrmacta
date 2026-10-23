@@ -23,7 +23,7 @@ documents, visualisation) ne peut s’ancrer sur un agrégat réel.
 - **Situation actuelle :** socle hexagonal + multi-tenant + authentification BFF
   livrés (phase 9) ; package `domain.dossier` amorcé (`package-info` only) ;
   exclusions autoconfig DataSource / JPA / Liquibase encore actives ; aucune
-  table ni API dossier. Analyse : `analysis doc/04-dossiers.md` + décisions
+  table ni API dossier. Analyse : `docs/specs/04-dossiers.md` + décisions
   n° 17, 18, 20 + clarifications lifecycle (tranche B).
 - **UX :** pas d’écrans Vue dans cette feature — la SPA (`frontend`) consommera
   les endpoints REST ; formulaires dynamiques dérivés de `fieldDefinitions`.
@@ -211,7 +211,7 @@ version optimiste.
 
 ### Assumptions nommées
 
-- `analysis doc/04-dossiers.md` + `12-autorisation-conformite.md` font foi sauf
+- `docs/specs/04-dossiers.md` + `12-autorisation-conformite.md` font foi sauf
   écarts de périmètre tranche B et clarifications actées ci-dessous.
 - Auth BFF + `TenantProperties` + claim `tenant_id` déjà opérationnels.
 - H2 mode PostgreSQL suffit pour JSON (équivalent jsonb), `UPDATE … RETURNING`

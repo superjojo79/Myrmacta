@@ -107,7 +107,7 @@ description: Break down work into actionable tasks and estimate timeline
 
 ### M6 — Documentation (dépend de M2–M4, comportement final requis)
 
-- [x] T6.1 : `analysis doc/06-connecteurs.md` — tableau catalogue, colonne « V1 livré » pour
+- [x] T6.1 : `docs/specs/06-connecteurs.md` — tableau catalogue, colonne « V1 livré » pour
   `http-rest` : « TRIGGER seulement... skeleton SERVICE non enregistré » → « TRIGGER + SERVICE ».
   Dépendance : M2–M4 livrés (comportement final à décrire). Validation : revue manuelle, cohérence
   avec le design.

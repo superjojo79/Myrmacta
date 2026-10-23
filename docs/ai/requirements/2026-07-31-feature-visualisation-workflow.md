@@ -28,7 +28,7 @@ Viewer Vue/`bpmn-js` (feature `frontend`) n’a pas de contrat backend.
 - **Situation actuelle :** `GET /api/dossiers/{id}/workflows` + complete
   task livrés ; packages visualisation absents ; SSE notifications livré
   (canal `BROWSER`) ; `WorkflowTypeConfig` sans observateurs. Analyse :
-  `analysis doc/10-visualisation-workflow.md` ; roadmap
+  `docs/specs/10-visualisation-workflow.md` ; roadmap
   `DEFERRED-FEATURES.md`.
 - **UX V1 :** **pas d’écrans Vue / bpmn-js** (**D-SCOPE = A**) — API REST
   + listener SSE uniquement. Erreurs `ProblemDetail` alignées dossiers /
@@ -338,9 +338,9 @@ Viewer Vue (`frontend`).
 
 ## Sources
 
-- `analysis doc/10-visualisation-workflow.md`
-- `analysis doc/12-autorisation-conformite.md` (réassign WA)
-- `analysis doc/04-dossiers.md` (panneau dossier)
+- `docs/specs/10-visualisation-workflow.md`
+- `docs/specs/12-autorisation-conformite.md` (réassign WA)
+- `docs/specs/04-dossiers.md` (panneau dossier)
 - `DEFERRED-FEATURES.md`
 - Code : `WorkflowTypeConfigController`, `NotificationEvent` /
   `NotificationOutboxRelay` (forme SSE)

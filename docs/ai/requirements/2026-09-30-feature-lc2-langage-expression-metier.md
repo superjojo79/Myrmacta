@@ -7,7 +7,7 @@ created: 2026-09-30
 updated: 2026-09-30
 feature: lc2-langage-expression-metier
 lot: LC2
-todo_ref: TODO.md §75 · analysis doc/40-langage-expression-metier.md · ROADMAP.md LC2
+todo_ref: TODO.md §75 · docs/specs/40-langage-expression-metier.md · ROADMAP.md LC2
 ---
 
 # Requirements — `lc2-langage-expression-metier`

@@ -143,8 +143,8 @@ description: Break down work into actionable tasks and estimate timeline
       (`ConnectorAdminControllerTest`, `TaskQuestionSchemaApiTest`, `WorkflowTypeConfigController`
       tests) + `frontend` (`npm run test`) — feature backend-only pressentie, à confirmer par
       `git diff --stat` (zéro fichier `frontend/**`).
-- [x] T9.3 : Mise à jour documentation : [15-serveur-mcp.md](../../../analysis%20doc/15-serveur-mcp.md)
-      (catalogue des tools, 9 → 16), [06-connecteurs.md](../../../analysis%20doc/06-connecteurs.md)
+- [x] T9.3 : Mise à jour documentation : [15-serveur-mcp.md](../../specs/15-serveur-mcp.md)
+      (catalogue des tools, 9 → 16), [06-connecteurs.md](../../specs/06-connecteurs.md)
       si pertinent, `README.md`/`GETTING-STARTED.md` si une variable d'environnement change (a
       priori non — aucune prévue). `CHANGELOG.md` : entrée `[Non publié]` à la PR (convention
       `flowforge-conventions`).

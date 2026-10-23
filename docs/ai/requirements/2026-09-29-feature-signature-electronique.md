@@ -8,7 +8,7 @@ description: Clarify the problem space, gather requirements, and define success 
 # Requirements & Problem Understanding — `signature-electronique`
 
 > Origine : `ROADMAP.md` item **2.4**, analyse
-> [analysis doc/30-signature-electronique.md](../../../analysis%20doc/30-signature-electronique.md)
+> [docs/specs/30-signature-electronique.md](../../specs/30-signature-electronique.md)
 > (recalibrée le 2026-09-29). TODO §72. Prérequis livré : `portail-externe`
 > ([PR #138](https://github.com/superjojo79/FlowForge/pull/138), TODO §68).
 > **Phase 1 close le 2026-09-29** : neuf décisions tranchées par l'utilisateur via

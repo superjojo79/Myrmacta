@@ -2,7 +2,7 @@
 
 > **Livré (2026-09-11).** Cycle `dev-lifecycle` complet (requirements → design → planning →
 > implémentation, M1-M12, TODO §61) — détail dans
-> [TODO.md](../TODO.md) §61. Le reste de ce document (état « non tranché ») est conservé tel
+> [TODO.md](../../TODO.md) §61. Le reste de ce document (état « non tranché ») est conservé tel
 > quel comme trace de l'analyse initiale, y compris ce qui a depuis été corrigé (blocs
 > « Corrigé »/« Confirmé » ci-dessous) et ce que l'implémentation a confirmé ou infirmé.
 >
@@ -38,7 +38,7 @@ DMN a toujours fait partie du standard porté par le moteur retenu, mais a été
 désactivé** au lancement du projet, et **re-bloqué une seconde fois, plus tard, pour une raison de
 sécurité** — deux décisions distinctes, à connaître avant de rouvrir le sujet.
 
-### 1.1 Exclusion d'origine (choix technique, décision n° 5 / `analysis doc/05`)
+### 1.1 Exclusion d'origine (choix technique, décision n° 5 / `docs/specs/05`)
 
 - `pom.xml` L23/L62-64 : une **seule** dépendance, `flowable-spring-boot-starter`
   (`flowable.version = 8.0.0`). Ce starter embarque déjà les classes du moteur DMN sur le
@@ -47,7 +47,7 @@ sécurité** — deux décisions distinctes, à connaître avant de rouvrir le s
   d'autres modules non retenus (App Engine, IDM, Event Registry, CMMN, REST API Flowable, LDAP),
   **`DmnEngineAutoConfiguration`** et **`DmnEngineServicesAutoConfiguration`** (L16-17). Le
   commentaire en tête de fichier (L1-2) le documente : *« Flowable V1 = moteur BPMN uniquement »*.
-- `README.md` / `analysis doc/00-index.md` / `analysis doc/05-workflow-engine.md` documentent tous
+- `README.md` / `docs/specs/00-index.md` / `docs/specs/05-workflow-engine.md` documentent tous
   les trois ce choix de façon cohérente : *« Le moteur DMN Flowable n'est pas activé en V1
   (auto-config exclue) »*.
 - `TODO.md` §45 (`derive-documentaire`, clos) note explicitement, en 2026-08-25 : *« Ne pas
@@ -220,8 +220,8 @@ de leur livraison backend initiale).
 
 ### 3.5 Documentation à mettre à jour si la feature est retenue
 
-`README.md` (retirer « DMN hors V1 » du schéma ASCII L105 et du texte L54), `analysis doc/05`,
-`analysis doc/00-index.md` L57, `FILE-ATTENTE.md` § *Ne pas lancer* (retirer DMN de la liste),
+`README.md` (retirer « DMN hors V1 » du schéma ASCII L105 et du texte L54), `docs/specs/05`,
+`docs/specs/00-index.md` L57, `FILE-ATTENTE.md` § *Ne pas lancer* (retirer DMN de la liste),
 `GUIDE-CONCEPTION-BPMN.md` (nouvelle section « quand utiliser un gateway vs une table DMN »).
 
 ---

@@ -341,7 +341,7 @@ Ajouter `com.h2database:h2` en `test` scope (absent du `pom` aujourd’hui).
 - **Perf :** N/A formel ; index UNIQUE `(tenant_id, reference)` et codes type.
 - **Rollout :** PR `feature-dossiers` ; datasource env obligatoire dès activation JPA.
 
-## Écarts vs `analysis doc/04-dossiers.md`
+## Écarts vs `docs/specs/04-dossiers.md`
 
 | Analyse | Cette feature |
 |---|---|

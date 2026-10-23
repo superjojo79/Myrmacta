@@ -12,7 +12,7 @@ description: Clarify the problem space, gather requirements, and define success 
 - Un process BPMN qui déclenche un appel asynchrone vers un système externe (via un connecteur
   SERVICE, ex. `http-rest`) n'a aujourd'hui **aucun moyen de reprendre son exécution** quand ce
   système externe répond plus tard par un callback HTTP entrant. Vérifié contre le code réel
-  (`analysis doc/21-correlation-callback-async.md`) : ni le mode SERVICE de `http-rest`
+  (`docs/specs/21-correlation-callback-async.md`) : ni le mode SERVICE de `http-rest`
   (`httpClient.send(...)` bloquant, timeout fixe 5 s), ni le mode TRIGGER (`WebhookController` →
   `ConnectorTriggerRuntimeImpl.onIncomingEvent`, dont toute la sémantique est « créer ou attacher
   un dossier », jamais « réveiller un point d'attente précis d'une instance en cours »), ni

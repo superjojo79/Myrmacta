@@ -320,5 +320,5 @@ Conflit nom actif → **409** (unique partiel).
 ## References
 
 - Requirements `2026-07-31-feature-connecteurs.md` (`reviewed`)
-- `analysis doc/06-connecteurs.md`, `03-authentification.md`
+- `docs/specs/06-connecteurs.md`, `03-authentification.md`
 - Design `workflow-engine` (outbox / TriggerOutboxPayload)

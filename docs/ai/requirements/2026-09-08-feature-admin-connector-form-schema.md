@@ -22,7 +22,7 @@ chaque D-* est ancrée dans le code réel et l’analyse, pas inventée.
   `name`, `label`, `type`, `required`, `defaultValue`, `options`, `helpText`) — vérifié dans
   `ConnectorDefinitionResponse` / OpenAPI `ConfigField`. Le frontend n’en lit que `type` et
   `label` (`ConnectorDefinitionItem` dans `frontend/src/api/admin.ts`).
-- Cible produit déjà écrite : [06-connecteurs.md](../../../analysis%20doc/06-connecteurs.md)
+- Cible produit déjà écrite : [06-connecteurs.md](../../specs/06-connecteurs.md)
   « Le schéma de configuration est déclaratif […] **Cible produit :** un formulaire d'admin
   généré dynamiquement à partir de ce schéma. **V1 livré :** textarea JSON ». Ce lot livre
   cette cible, sans toucher au backend.

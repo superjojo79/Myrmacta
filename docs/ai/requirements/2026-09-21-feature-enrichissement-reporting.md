@@ -9,7 +9,7 @@ feature: enrichissement-reporting
 phase1: 2026-09-21
 phase2: 2026-09-21
 stakeholder_decisions: 2026-09-21
-todo_ref: TODO.md §65 · analysis doc/29-enrichissement-reporting.md
+todo_ref: TODO.md §65 · docs/specs/29-enrichissement-reporting.md
 ---
 
 # Requirements & Problem Understanding — `enrichissement-reporting`
@@ -43,7 +43,7 @@ par l’admin.
 Contournement actuel : consulter `/rapports` et relancer les exports CSV
 à la main.
 
-Source : [29-enrichissement-reporting.md](../../../analysis%20doc/29-enrichissement-reporting.md).
+Source : [29-enrichissement-reporting.md](../../specs/29-enrichissement-reporting.md).
 
 ## Goals & Objectives
 

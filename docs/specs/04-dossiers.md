@@ -49,7 +49,7 @@ Clôture du dossier             ← Dossier.status = CLOTURE / ARCHIVE, piloté 
 
 ## Modèle de données
 
-> **Depuis la décision n° 17** ([TODO.md](../TODO.md)), toutes les classes ci-dessous sont des
+> **Depuis la décision n° 17** ([TODO.md](../../TODO.md)), toutes les classes ci-dessous sont des
 > `record` Java — objets domaine purs, aucune annotation JPA, accesseurs sans préfixe (`.id()`,
 > `.tenantId()`…). `@Builder` (Lombok) reste utilisé au-dessus du `record` pour la construction à
 > de nombreux champs — un `record` conserve son constructeur canonique quoi qu'il arrive, `@Builder`

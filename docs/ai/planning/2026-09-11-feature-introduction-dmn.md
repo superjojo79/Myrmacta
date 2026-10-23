@@ -155,7 +155,7 @@ description: Break down work into actionable tasks and estimate timeline
 
 ### M12 — Documentation + vérification globale
 
-- [ ] **12.1** `README.md`, `analysis doc/05-workflow-engine.md`, `analysis doc/00-index.md` —
+- [ ] **12.1** `README.md`, `docs/specs/05-workflow-engine.md`, `docs/specs/00-index.md` —
   retrait des mentions « DMN hors V1 » / « auto-config exclue ». Dépendances : feature livrée.
 - [ ] **12.2** `FILE-ATTENTE.md` — clôture TODO §61 (retrait définitif, pas seulement « retiré de Ne
   pas lancer »). `GUIDE-CONCEPTION-BPMN.md` — nouvelle section « quand utiliser une table DMN vs un

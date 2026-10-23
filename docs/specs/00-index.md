@@ -5,9 +5,9 @@
 > Build : mono-module Maven · frontend embarqué (`static/`) — décision n° 27
 >
 > **Revues :** pré-implémentation (docs, points 1–39) —
-> [REVUE-PRE-IMPLEMENTATION.md](../REVUE-PRE-IMPLEMENTATION.md) ;
+> [REVUE-PRE-IMPLEMENTATION.md](../../REVUE-PRE-IMPLEMENTATION.md) ;
 > post-implémentation alignement × sécurité (2026-08-25, points 40–46) —
-> [REVUE-ALIGNEMENT-SECURITE.md](../REVUE-ALIGNEMENT-SECURITE.md).
+> [REVUE-ALIGNEMENT-SECURITE.md](../../REVUE-ALIGNEMENT-SECURITE.md).
 
 ---
 
@@ -65,7 +65,7 @@
 
 > Pour concevoir concrètement un diagramme BPMN pour FlowForge (conventions, référence des
 > `serviceTask` disponibles, champs dynamiques, connecteurs, intervenants, génération de
-> documents), voir le guide pratique [GUIDE-CONCEPTION-BPMN.md](../GUIDE-CONCEPTION-BPMN.md) à la
+> documents), voir le guide pratique [GUIDE-CONCEPTION-BPMN.md](../../GUIDE-CONCEPTION-BPMN.md) à la
 > racine du dépôt — ce n'est pas un document d'analyse d'architecture, il n'a donc pas de numéro
 > dans la table ci-dessus.
 

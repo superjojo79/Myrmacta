@@ -86,7 +86,7 @@ description: Technical implementation notes, patterns, and code guidelines
   target/flowforge-*.jar` (déjà documenté dans `DEPLOIEMENT.md` §1), pas un nouveau mode de
   démarrage de l'application.
 - `context-path` s'intègre au routage reverse-proxy déjà documenté (décision n°14,
-  `analysis doc/02-multi-tenant.md`) — aucun changement du comportement applicatif au-delà du
+  `docs/specs/02-multi-tenant.md`) — aucun changement du comportement applicatif au-delà du
   préfixe d'URL.
 
 ## Error Handling

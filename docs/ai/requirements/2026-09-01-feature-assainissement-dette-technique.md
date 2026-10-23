@@ -33,7 +33,7 @@ description: Clarify the problem space, gather requirements, and define success 
   d'exploitation (diagnostic de logs de purge) et les futurs développeurs du domaine `workflow`
   (protection contre une régression silencieuse si un futur appelant contourne les DTOs actuels).
 
-Référence : [analysis doc/19-assainissement-dette-technique.md](../../../analysis%20doc/19-assainissement-dette-technique.md).
+Référence : [docs/specs/19-assainissement-dette-technique.md](../../specs/19-assainissement-dette-technique.md).
 
 ## Goals & Objectives
 **What do we want to achieve?**

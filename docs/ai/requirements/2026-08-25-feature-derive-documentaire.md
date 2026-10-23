@@ -37,7 +37,7 @@ Conséquence : un agent ou un humain relit une spec fausse et peut
 réintroduire le tenant-par-requête ou « livrer » Kafka/DMN/SERVICE HTTP.
 
 **Déjà clos hors de cette feature :** `com.monapp` dans
-`analysis doc/01-architecture-hexagonale.md` (PR #72). Ne pas replanifier.
+`docs/specs/01-architecture-hexagonale.md` (PR #72). Ne pas replanifier.
 
 **Hors de cette feature :** TODO §40–44 (feature candidate
 `durcissement-securite-post-revue`, arbitrages A/B/C ouverts) ; TODO §46
@@ -51,12 +51,12 @@ Aligner les docs listées sur le code **sans changer le code métier** :
 
 1. `README.md` — tenant instance (`app.tenant.id`) ; claim OIDC = garde ;
    connecteurs / DMN / stockage / jsoup / diagrammes.
-2. `analysis doc/12-autorisation-conformite.md` — retirer « cockpit Flowable »
+2. `docs/specs/12-autorisation-conformite.md` — retirer « cockpit Flowable »
    pour `WORKFLOW_ADMIN` (hors V1 ; éditeur `/admin/bpmn-editor`).
 3. jsoup `1.22.x` → `1.23.1` (`README`, `00-index`, `07-generation-documents`)
    pour coller à `pom.xml`.
 4. `application.yml` L1–3 — commentaire autoconfig périmé.
-5. `analysis doc/06-connecteurs.md` — distinguer **cible d'analyse** vs
+5. `docs/specs/06-connecteurs.md` — distinguer **cible d'analyse** vs
    **V1 livré** (ne pas supprimer le catalogue cible, ne pas implémenter
    `scheduler`/`smtp`/`http-rest` SERVICE).
 6. `context-path` : rester commenté dans le yaml ; README / `11-frontend.md`
@@ -123,4 +123,4 @@ figées ci-dessous (issues de la revue, pas ré-ouvertes) :
 |---|---|---|
 | A — Corriger les docs listées (chore) | Alignement immédiat, pas de code | **Retenue** (FILE-ATTENTE « Prochain ») |
 | B — Attendre `durcissement-securite-post-revue` | Les docs fausses restent le temps des arbitrages 40–44 | Écartée — §45 n'a pas besoin d'arbitrage |
-| C — Réécrire toute `analysis doc/` | Trop large, hors §45 | Écartée |
+| C — Réécrire toute `docs/specs/` | Trop large, hors §45 | Écartée |

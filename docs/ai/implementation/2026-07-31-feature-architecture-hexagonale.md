@@ -98,7 +98,7 @@ Lint feature OK. Aucun `com.monapp` résiduel. Domaine sans Spring/JPA/Flowable.
 
 - Remplacer in-memory par JPA/Flowable (features aval)
 - Retirer exclusions autoconfig progressivement
-- Sync lexicale `com.monapp` dans `analysis doc/` (chore)
+- Sync lexicale `com.monapp` dans `docs/specs/` (chore)
 - Jacoco / seuils (phase 8 optionnelle)
 
 **Verdict phase 7 :** implementation **alignée** — prêt pour phase 8 (`dev-testing`) puis phase 9 (`dev-review`).
@@ -122,6 +122,6 @@ Lint feature OK. Aucun `com.monapp` résiduel. Domaine sans Spring/JPA/Flowable.
 
 - **Bloquants :** aucun
 - **Important :** stubs in-memory câblés en « prod » via `DomainConfig` jusqu’au remplacement JPA/Flowable — attendu pour cette fondation, à ne pas déployer comme backend métier
-- **Nice-to-have :** valider `processKey`/`tenantId` non blank ; sync `com.monapp` dans `analysis doc/` ; `allowEmptyShould` retiré en review
+- **Nice-to-have :** valider `processKey`/`tenantId` non blank ; sync `com.monapp` dans `docs/specs/` ; `allowEmptyShould` retiré en review
 
 **Verdict phase 9 :** **prêt à merger** (PR #7).

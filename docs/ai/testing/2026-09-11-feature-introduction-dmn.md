@@ -18,7 +18,7 @@ updated: 2026-09-11
 > Flowable **n'implémente pas FEEL** pour ses tables de décision : le moteur réel est **JUEL**
 > (même moteur que les gateways BPMN), vérifié par décompilation du bytecode
 > `flowable-dmn-engine` réel, pas supposé — voir
-> [05-workflow-engine.md](../../../analysis%20doc/05-workflow-engine.md) §« Tables de décision —
+> [05-workflow-engine.md](../../specs/05-workflow-engine.md) §« Tables de décision —
 > DMN ». Les scénarios ci-dessous sont corrigés en conséquence ; les mentions historiques de
 > « FEEL » dans les titres de section sont conservées à l'identique pour ne pas réécrire
 > l'historique, mais chaque case cochée référence le comportement JUEL réel.

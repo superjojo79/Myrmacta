@@ -39,7 +39,7 @@
 ## Tables de décision — DMN
 
 **Choix retenu : moteur DMN Flowable, activé (feature `introduction-dmn`, voir
-[25-introduction-dmn.md](../analysis%20doc/25-introduction-dmn.md), TODO §61).** Un
+[25-introduction-dmn.md](25-introduction-dmn.md), TODO §61).** Un
 `serviceTask flowable:type="dmn"` (une extension native Flowable, pas le `businessRuleTask`
 standard — celui-ci est câblé sur un moteur Drools absent de ce dépôt) invoque une table de
 décision déployée séparément via `decisionTableReferenceKey`, un champ d'extension `flowable:field`

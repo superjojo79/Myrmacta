@@ -35,7 +35,7 @@ TDD, un commit par volet.
 
 ## Documentation et clôture
 
-- [x] **D1.** `GUIDE-UTILISATEUR.md`, `GUIDE-CONCEPTION-BPMN.md` §6c, `analysis doc/15-serveur-mcp.md`, `TODO.md` §94,
+- [x] **D1.** `GUIDE-UTILISATEUR.md`, `GUIDE-CONCEPTION-BPMN.md` §6c, `docs/specs/15-serveur-mcp.md`, `TODO.md` §94,
   `DEFERRED-FEATURES.md` §7.
 - [x] **D2.** Verify complet, `test:all`, recette R6 sur l'instance locale, `CHANGELOG.md` à l'ouverture de la PR.
 - [x] **D3.** Revue adversariale (sous-agent) et correctifs.

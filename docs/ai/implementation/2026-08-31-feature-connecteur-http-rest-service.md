@@ -24,7 +24,7 @@ Fichiers modifiés/créés/supprimés (M1–M6, tous dans `com.flowforge.infrast
 | `infrastructure/connector/builtin/HttpRestTriggerConnector.java` | **Renommé** → `HttpRestConnector.java` ; ajoute `ServiceConnector`, capability `BOTH`, `execute(...)`, `authHeaderValue` au schéma |
 | `infrastructure/connector/builtin/HttpRestServiceConnector.java` | **Supprimé** (logique fusionnée) |
 | `infrastructure/web/connector/ConnectorApiDtos.java` | `ExecuteConnectorRequest` étendu (`url`, `method`, `body`, `headers`) — **écart design corrigé, voir Design Deviations** |
-| `analysis doc/06-connecteurs.md` | Tableau catalogue mis à jour |
+| `docs/specs/06-connecteurs.md` | Tableau catalogue mis à jour |
 | `README.md` | § Système de connecteurs mis à jour |
 | `openapi/openapi.yaml` | Golden régénéré (`-Dopenapi.update=true`) — **conséquence de l'écart ci-dessus** |
 

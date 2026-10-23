@@ -10,7 +10,7 @@ phase1: 2026-09-22
 phase2: 2026-09-22
 phase3: 2026-09-23
 stakeholder_decisions: 2026-09-23
-todo_ref: TODO.md §67 · analysis doc/28-outillage-dmn.md
+todo_ref: TODO.md §67 · docs/specs/28-outillage-dmn.md
 ---
 
 # Requirements & Problem Understanding — `outillage-dmn`
@@ -63,7 +63,7 @@ Qui est touché : `WORKFLOW_ADMIN` / `TENANT_ADMIN`, agents M2M
 
 Contournement actuel : process jetable + lecture des variables.
 
-Source : [28-outillage-dmn.md](../../../analysis%20doc/28-outillage-dmn.md),
+Source : [28-outillage-dmn.md](../../specs/28-outillage-dmn.md),
 `ROADMAP.md` **1.1**, **1.2**, **1.3** / **5.1**.
 
 ## Goals & Objectives

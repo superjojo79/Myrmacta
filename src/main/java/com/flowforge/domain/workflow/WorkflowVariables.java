@@ -31,7 +31,7 @@ public final class WorkflowVariables {
      * Instantané des champs dynamiques du dossier (voir {@code Dossier.fields()}), injecté
      * automatiquement à chaque démarrage de workflow — comble l'écart identifié avec le
      * {@code DossierAwareTask} décrit (mais jamais implémenté) dans
-     * {@code analysis doc/04-dossiers.md} : un `serviceTask` ou un template de document n'a plus
+     * {@code docs/specs/04-dossiers.md} : un `serviceTask` ou un template de document n'a plus
      * besoin de propager explicitement chaque champ métier pour y accéder (`${dossierFields.x}`).
      */
     public static final String DOSSIER_FIELDS = "dossierFields";

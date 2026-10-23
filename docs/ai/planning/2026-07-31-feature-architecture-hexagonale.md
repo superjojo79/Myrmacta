@@ -159,12 +159,12 @@ Pas d’échéances calendaires. Ordre d’exécution recommandé : **T1 → T3 
 - Worktree : `/workspace/.worktrees/feature-architecture-hexagonale`
 - JDK 25 + `./mvnw`
 - Docs : requirements / design / testing `2026-07-31-feature-architecture-hexagonale`
-- Analyse : `analysis doc/01-architecture-hexagonale.md` (règles ; package racine = `com.flowforge` dans le code)
+- Analyse : `docs/specs/01-architecture-hexagonale.md` (règles ; package racine = `com.flowforge` dans le code)
 
 ## Next action
 
 **Phase 9 terminée** — prêt à merger. Suivi : remplacer stubs in-memory (features aval) ;
-sync lexicale `com.monapp` dans `analysis doc/`.
+sync lexicale `com.monapp` dans `docs/specs/`.
 
 ## Progress summary
 

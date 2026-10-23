@@ -47,7 +47,7 @@ Corrections localisées. Nouveaux types domaine : `AllowedBpmnDelegates`, `TaskA
 | M13 | `ThymeleafTemplateSyntaxChecker` ; header CSP preview |
 
 Écarts vs design : M12 dans le **contrôleur** (pas le use case) pour ne pas casser
-`DocumentGenerationTask` BPMN. HMAC rupture documentée GUIDE / analysis doc.
+`DocumentGenerationTask` BPMN. HMAC rupture documentée GUIDE / docs/specs.
 
 Phase 9 (non bloquant) : bean `HttpClient` dans `ConnectorConfig` n’est plus injecté par
 `HttpRestConnector` (reste testé par `ConnectorConfigTest`, D-44 redirects NEVER). Nettoyage

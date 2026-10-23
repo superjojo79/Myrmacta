@@ -9,12 +9,12 @@ description: Define the technical architecture, components, and data models
 > Statut : **Phase 3 (Review Design) close (2026-09-02)**. Toutes les décisions d'architecture
 > sont tranchées ou explicitement reportées à une phase ultérieure sans impact sur ce design.
 > **Correction majeure faite en Phase 3** : le mécanisme proposé dans l'analyse d'origine
-> (`analysis doc/21-correlation-callback-async.md`) — `RuntimeService.createMessageCorrelation(...)`
+> (`docs/specs/21-correlation-callback-async.md`) — `RuntimeService.createMessageCorrelation(...)`
 > — **n'existe pas** dans la version réelle de Flowable utilisée par le dépôt (8.0.0 Community).
 > Vérifié en extrayant et lisant les sources réelles
 > (`flowable-engine-8.0.0-sources.jar`, `org/flowable/engine/RuntimeService.java` /
 > `org/flowable/engine/runtime/ExecutionQuery.java`), pas supposé, pas recopié de la doc en ligne.
-> Le mécanisme correct pour cette version est détaillé ci-dessous ; `analysis doc/21-...md` et
+> Le mécanisme correct pour cette version est détaillé ci-dessous ; `docs/specs/21-...md` et
 > `TODO.md` §51 sont corrigés en conséquence dans le même commit.
 
 ## Architecture Overview

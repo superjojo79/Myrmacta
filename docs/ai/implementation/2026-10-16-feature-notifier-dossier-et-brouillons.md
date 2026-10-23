@@ -58,7 +58,7 @@ nommant la source ; `dossierId` absent → même exception ; adresse rognée.
 
 ## Documentation
 
-`GUIDE-CONCEPTION-BPMN.md`, `GUIDE-UTILISATEUR.md`, `analysis doc/15-serveur-mcp.md`, `TODO.md` §93.
+`GUIDE-CONCEPTION-BPMN.md`, `GUIDE-UTILISATEUR.md`, `docs/specs/15-serveur-mcp.md`, `TODO.md` §93.
 
 **Renumérotation.** Le cadrage visait TODO §92, déjà pris par l'assignation des tâches (PR #171) : le lot est §93.
 

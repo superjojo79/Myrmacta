@@ -11,7 +11,7 @@
 
 ## 1. Constat — l'écart actuel
 
-[README.md](../README.md) et [06-connecteurs.md](06-connecteurs.md) le documentent déjà en toutes
+[README.md](../../README.md) et [06-connecteurs.md](06-connecteurs.md) le documentent déjà en toutes
 lettres : le catalogue V1 livré pour `http-rest` est **TRIGGER seulement** ; la capacité SERVICE est
 un « skeleton non enregistré ».
 
@@ -38,11 +38,11 @@ Constat confirmé côté code :
   (`infrastructure/web/connector`) appellent tous le même port `ExecuteConnectorUseCase`, déjà
   exercé aujourd'hui par le connecteur `flowable-signal` (seul type actuellement `BOTH`). Le
   `serviceTask` `${connectorServiceTask}` est déjà documenté au catalogue §7 de
-  [GUIDE-CONCEPTION-BPMN.md](../GUIDE-CONCEPTION-BPMN.md), avec un exemple générique
+  [GUIDE-CONCEPTION-BPMN.md](../../GUIDE-CONCEPTION-BPMN.md), avec un exemple générique
   d'instanciation/appel (§4) qui ne mentionne aucun type en particulier.
 - L'écran d'admin connecteurs est lui aussi générique : il construit son formulaire depuis
   `ConnectorDefinition.getConfigSchema()` (`ConfigField` déclaratif) — d'après
-  [GUIDE-CONCEPTION-BPMN.md §4](../GUIDE-CONCEPTION-BPMN.md) « Étape 1 », créer une instance d'un
+  [GUIDE-CONCEPTION-BPMN.md §4](../../GUIDE-CONCEPTION-BPMN.md) « Étape 1 », créer une instance d'un
   nouveau type ne demande *a priori* aucun changement d'écran.
 
 Autrement dit, comme pour `schema-champs-dynamiques` (§17) : le gros du travail (hardening
@@ -63,7 +63,7 @@ coder — voir §3.
 2. Le hardening SSRF déjà livré (`OutboundUrlGuard`, pin IP D-44) s'applique à tout appel sortant
    `http-rest` SERVICE, sans exception ni contournement.
 3. Mise à jour de la documentation qui affirme aujourd'hui explicitement « TRIGGER seulement » :
-   tableau catalogue de [06-connecteurs.md](06-connecteurs.md), [README.md](../README.md) (§ Système
+   tableau catalogue de [06-connecteurs.md](06-connecteurs.md), [README.md](../../README.md) (§ Système
    de connecteurs), et le point `TODO.md`/`FILE-ATTENTE.md` qui référence ce skeleton comme
    « hors V1 ».
 4. Sort des deux tests qui verrouillent volontairement l'état « non activé »
@@ -183,7 +183,7 @@ conséquence ; si au contraire tout reste piloté dynamiquement par `connectorIn
    protéger le code fusionné.
 6. **Documentation à mettre à jour une fois livré** (rappel de convention, skill
    `flowforge-conventions` § « Workflow de feature » point 6) : tableau catalogue de
-   [06-connecteurs.md](06-connecteurs.md) (colonne « V1 livré »), [README.md](../README.md) (§
+   [06-connecteurs.md](06-connecteurs.md) (colonne « V1 livré »), [README.md](../../README.md) (§
    Système de connecteurs), et tout renvoi à ce skeleton comme « hors V1 » dans `TODO.md` /
    `DEFERRED-FEATURES.md` / `FILE-ATTENTE.md`.
 7. **Nommage du lot** — aucun nom n'est encore réservé dans `FILE-ATTENTE.md` /

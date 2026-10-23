@@ -26,9 +26,9 @@ HTTP bruts pour piloter les dossiers et tâches.
   (`WORKFLOW_ADMIN` / `TENANT_ADMIN`), opérateurs mobiles, admins
   de configuration tenant.
 - **Situation actuelle :** backends Complete (dont `visualisation-workflow`) ;
-  analyse [11-frontend.md](../../../analysis%20doc/11-frontend.md) ;
+  analyse [11-frontend.md](../../specs/11-frontend.md) ;
   maquette HTML de référence
-  [FlowForge - Maquettes UI.html](../../../analysis%20doc/FlowForge%20-%20Maquettes%20UI.html) ;
+  [FlowForge - Maquettes UI.html](../../specs/FlowForge%20-%20Maquettes%20UI.html) ;
   décision n° 27 (frontend embarqué `static/`, TypeScript, Vitest,
   Playwright, ESLint/Prettier).
 - **Écarts API comblés par cette feature (Phase 2) :**
@@ -259,9 +259,9 @@ HTTP bruts pour piloter les dossiers et tâches.
 
 ## References
 
-- [11-frontend.md](../../../analysis%20doc/11-frontend.md)
-- [03-authentification.md](../../../analysis%20doc/03-authentification.md)
-- [10-visualisation-workflow.md](../../../analysis%20doc/10-visualisation-workflow.md)
+- [11-frontend.md](../../specs/11-frontend.md)
+- [03-authentification.md](../../specs/03-authentification.md)
+- [10-visualisation-workflow.md](../../specs/10-visualisation-workflow.md)
 - Maquette UI HTML ; [DEFERRED-FEATURES.md](../../../DEFERRED-FEATURES.md)
 - Décision n° 27 (`TODO.md`)
 - Controllers : `AuthController`, `DossierController`,

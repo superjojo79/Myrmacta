@@ -57,7 +57,7 @@ risque réel une fois le volume de données/tenants croissant :
   export de dossiers) ; ops/sécurité (audit secrets, futur connecteur
   SERVICE) ; conformité (masquage sensible sur export).
 - **Situation actuelle :** voir `TODO.md` §23 et §30 (partiels), et
-  `analysis doc/04-dossiers.md`, `06-connecteurs.md`, `09-notifications.md`,
+  `docs/specs/04-dossiers.md`, `06-connecteurs.md`, `09-notifications.md`,
   `12-autorisation-conformite.md`.
 
 ## Goals & Objectives
@@ -101,10 +101,10 @@ risque réel une fois le volume de données/tenants croissant :
 
 ### Secondary goals
 
-- Documenter dans `analysis doc/06-connecteurs.md` le contrat
+- Documenter dans `docs/specs/06-connecteurs.md` le contrat
   `ServiceConnector` + `OutboundUrlGuard` pour faciliter l'activation
   future du rôle SERVICE.
-- Documenter le contrat `AttachmentScanPort` (javadoc + `analysis doc/04-dossiers.md`)
+- Documenter le contrat `AttachmentScanPort` (javadoc + `docs/specs/04-dossiers.md`)
   pour qu'un futur adaptateur AV (ClamAV ou autre) sache où s'insérer.
 
 ### Non-goals (actés)

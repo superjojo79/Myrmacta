@@ -25,7 +25,7 @@ description: Clarify the problem space, gather requirements, and define success 
   proposées (outillage provisioning tenant reste en réserve). Périmètre précisé par l'utilisateur :
   les 3 connecteurs candidats, avec `s3-minio` **généralisé** en `document-storage`.
 
-Référence : [analysis doc/20-connecteurs-hors-v1.md](../../../analysis%20doc/20-connecteurs-hors-v1.md).
+Référence : [docs/specs/20-connecteurs-hors-v1.md](../../specs/20-connecteurs-hors-v1.md).
 
 ## Goals & Objectives
 **What do we want to achieve?**

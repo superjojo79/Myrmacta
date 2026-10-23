@@ -39,8 +39,8 @@ TODO §22.
   - `PurgeOutboxStatus` = `PENDING` seulement ; UNIQUE(`dossier_id`).
   - Pas de cascade applicative (éléments, relations, workflow links).
 - **Réf. :** TODO §22, DEFERRED §0 (jamais MinIO en dur),
-  `analysis doc/12-autorisation-conformite.md`,
-  `analysis doc/07-generation-documents.md`.
+  `docs/specs/12-autorisation-conformite.md`,
+  `docs/specs/07-generation-documents.md`.
 
 ## Goals & Objectives
 **What do we want to achieve?**

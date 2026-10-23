@@ -7,7 +7,7 @@ description: Clarify the problem space, gather requirements, and define success 
 # Requirements & Problem Understanding
 
 > Origine : `ROADMAP.md` v1.1, item **3.2** (« Produit, pas cadré »), analyse initiale
-> [analysis doc/27-notifications-inbox.md](../../../analysis%20doc/27-notifications-inbox.md).
+> [docs/specs/27-notifications-inbox.md](../../specs/27-notifications-inbox.md).
 > Cadrage Phase 1 mené le 2026-09-22, décisions tranchées une par une via `AskUserQuestion`
 > (voir « Questions & Open Items »).
 
@@ -158,6 +158,6 @@ existants (`notification_outbox`, inbox de tâches).
 | **D-NOTIF-RETENTION** | Durée de rétention par défaut | 30 jours, purge automatique | Cohérent avec la cadence déjà utilisée ailleurs dans le dépôt (D-CADENCE, PR #132) ; tous les autres mécanismes de rétention du dépôt (`retention-dossier-type`, `purge-stockage`, outbox) ont une purge dès le départ, pas d'exception ici |
 | **D-NOTIF-SCOPE-VS-TASKS** | Relation avec l'inbox de tâches (`/rapports`) | Vue strictement séparée, aucune fusion | Deux sémantiques différentes (« à faire » vs « déjà su/passé ») ; fusionner changerait la nature de l'inbox tâches existante (utilisée par `/rapports`, `slaRemainingHours`), hors périmètre de ce cycle |
 | **D-NOTIF-SOURCE-VERITE** | Comportement du tiroir au montage/reconnexion | `GET /api/notifications` (paginé, `PageResponse`) hydrate le store au montage, remplaçant l'état 100% éphémère actuel ; le flux SSE existant continue d'insérer les nouveaux événements en direct ; `markRead`/`markAllRead` appellent `PATCH /api/notifications/{id}/read` au lieu de muter uniquement l'état local | Sans backfill REST, le problème initial (rattraper ce qui a été manqué hors connexion) ne serait pas résolu dans le tiroir lui-même — écarté : SSE seul avec écran d'historique séparé |
-| **D-NOTIF-UI-CONFORMITE** | Conformité PrimeVue de `NotificationDrawer.vue` | Migration vers PrimeVue dans ce cycle (ex. `OverlayPanel`/`Badge`) | Le composant est de toute façon réécrit pour le branchement REST (D-NOTIF-SOURCE-VERITE) — coût marginal de le faire correctement plutôt que de perpétuer un écart déjà constaté aux conventions du dépôt (`analysis doc/11-frontend.md`) |
+| **D-NOTIF-UI-CONFORMITE** | Conformité PrimeVue de `NotificationDrawer.vue` | Migration vers PrimeVue dans ce cycle (ex. `OverlayPanel`/`Badge`) | Le composant est de toute façon réécrit pour le branchement REST (D-NOTIF-SOURCE-VERITE) — coût marginal de le faire correctement plutôt que de perpétuer un écart déjà constaté aux conventions du dépôt (`docs/specs/11-frontend.md`) |
 
 **Aucune question matérielle ouverte restante** pour la Phase 1 — prêt pour la Phase 3 (design).

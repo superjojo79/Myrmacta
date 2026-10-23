@@ -135,7 +135,7 @@ déjà établi par `signal-smoke.bpmn20.xml`/`smoke-process.bpmn20.xml`/
       branches nouvelles : succès/404/409/idempotence), gaps documentés et comblés ou justifiés.
 - [x] T7.2 : `./mvnw verify` complet (ArchUnit inclus) — sortie fraîche avant toute claim de
       complétion (skill `verify`).
-- [x] T7.3 : `analysis doc/06-connecteurs.md` (doc catalogue) mis à jour avec le nouveau connecteur
+- [x] T7.3 : `docs/specs/06-connecteurs.md` (doc catalogue) mis à jour avec le nouveau connecteur
       callback (cf. TODO §51 « Impacte »).
 - [ ] T7.4 : `CHANGELOG.md` — entrée `[Non publié]` avant ouverture de PR (convention projet).
       **Reporté à Phase 9** (revue finale pré-push) : pas de PR ouverte à ce stade, l'implémentation

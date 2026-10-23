@@ -17,12 +17,12 @@ Toute implémentation Vue / OpenVue (layouts, pages, composants métier, hiérar
 
 Pour faciliter la création de l'interface, s'appuyer sur les **skills spécialisés** du dépôt (à charger avant d'écrire le code UI) :
 
-- [`flowforge-conventions`](../.claude/skills/flowforge-conventions/SKILL.md) — conventions projet (stack FE, packaging, priorités)
-- [`vue-best-practices`](../.claude/skills/vue-best-practices/SKILL.md) — Composition API, structure des composants, patterns Vue
-- [`vue`](../.claude/skills/vue/SKILL.md) — SFC, réactivité, macros `<script setup>`
-- [`pinia`](../.claude/skills/pinia/SKILL.md) — stores et état applicatif
-- [`vite`](../.claude/skills/vite/SKILL.md) — bundler / config de build
-- [`vue-testing-best-practices`](../.claude/skills/vue-testing-best-practices/SKILL.md), [`vitest`](../.claude/skills/vitest/SKILL.md), [`playwright-best-practices`](../.claude/skills/playwright-best-practices/SKILL.md) — tests composants et e2e
+- [`flowforge-conventions`](../../.claude/skills/flowforge-conventions/SKILL.md) — conventions projet (stack FE, packaging, priorités)
+- [`vue-best-practices`](../../.claude/skills/vue-best-practices/SKILL.md) — Composition API, structure des composants, patterns Vue
+- [`vue`](../../.claude/skills/vue/SKILL.md) — SFC, réactivité, macros `<script setup>`
+- [`pinia`](../../.claude/skills/pinia/SKILL.md) — stores et état applicatif
+- [`vite`](../../.claude/skills/vite/SKILL.md) — bundler / config de build
+- [`vue-testing-best-practices`](../../.claude/skills/vue-testing-best-practices/SKILL.md), [`vitest`](../../.claude/skills/vitest/SKILL.md), [`playwright-best-practices`](../../.claude/skills/playwright-best-practices/SKILL.md) — tests composants et e2e
 
 ---
 
@@ -45,7 +45,7 @@ Pour faciliter la création de l'interface, s'appuyer sur les **skills spéciali
 Écarté à tort dans une première itération de cette analyse (exemples de code en `.js` pur) alors que
 l'application manipule des ACL, des variables de workflow et des documents multi-tenant — un terrain
 propice aux régressions silencieuses au refactor sans typage statique. Le typage statique est d'autant
-plus pertinent que le point ouvert n° 24 du [TODO](../TODO.md) (statut de contrat de l'API vis-à-vis du
+plus pertinent que le point ouvert n° 24 du [TODO](../../TODO.md) (statut de contrat de l'API vis-à-vis du
 frontend) reste à trancher : si une génération OpenAPI est retenue côté backend, un client TypeScript
 généré (`openapi-typescript` ou `orval`) donne une garantie de synchronisation front/back qu'un client
 JavaScript ne peut pas offrir — à réévaluer dès que le point n° 24 sera acté.

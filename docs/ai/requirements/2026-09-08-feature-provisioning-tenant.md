@@ -11,7 +11,7 @@ description: Clarify the problem space, gather requirements, and define success 
 
 - Le modèle multi-tenant cible (une instance Spring Boot dédiée par tenant, routage par chemin,
   isolation PostgreSQL par schéma + rôle LOGIN dédié) est **décidé** (décisions n°13-14,
-  [analysis doc/02-multi-tenant.md](../../../analysis%20doc/02-multi-tenant.md) ; D-41,
+  [docs/specs/02-multi-tenant.md](../../specs/02-multi-tenant.md) ; D-41,
   [TODO.md](../../../TODO.md) point 41) mais son **outillage** ne l'est pas :
   - aucun `Dockerfile` n'existe dans le dépôt ;
   - le provisioning d'un nouveau tenant (schéma + rôle PG, instance Boot, bloc reverse-proxy) est

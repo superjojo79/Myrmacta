@@ -25,7 +25,7 @@ ne peuvent pas démarrer de processus de façon durable.
 - **Situation actuelle :** placeholders `domain/connector` /
   `infrastructure/*/connector` ; seule chaîne Security BFF `@Order(3)` ;
   outbox + `TriggerOutboxPayload` déjà livrés. Analyse :
-  `analysis doc/06-connecteurs.md` + décisions n° 3, 4, 5, 14, 15, 16, 17, 18.
+  `docs/specs/06-connecteurs.md` + décisions n° 3, 4, 5, 14, 15, 16, 17, 18.
 - **UX :** pas d’écrans Vue — API REST admin + webhooks + execute. Erreurs
   `ProblemDetail` alignées dossiers / workflow.
 
@@ -259,7 +259,7 @@ Anonyme hors webhook → 401. Auth webhook KO → **401**. Erreurs :
 
 ## Sources
 
-- `analysis doc/06-connecteurs.md`, `03-authentification.md`, `05-workflow-engine.md`
+- `docs/specs/06-connecteurs.md`, `03-authentification.md`, `05-workflow-engine.md`
 - Décisions TODO n° 3, 4, 5, 14, 15, 16, 17, 18 ; TODO §30 (partiel)
 - `DEFERRED-FEATURES.md` — ordre feature connecteurs
 - Features livrées : `workflow-engine` (outbox), `authentification` (BFF),

@@ -34,7 +34,7 @@ import liquibase.resource.ClassLoaderResourceAccessor;
  * le rôle doit pouvoir {@code CREATE DATABASE} et {@code CREATE ROLE}.
  *
  * <p>Le schéma applicatif n'est pas créé par du code de production (le bootstrap décrit dans
- * {@code analysis doc/02-multi-tenant.md} est de la responsabilité de l'infra) : cette classe le
+ * {@code docs/specs/02-multi-tenant.md} est de la responsabilité de l'infra) : cette classe le
  * reproduit explicitement pour les besoins du test.
  */
 public final class EmbeddedPostgresSupport {

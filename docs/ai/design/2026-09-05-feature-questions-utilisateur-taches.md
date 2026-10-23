@@ -7,8 +7,8 @@ description: Define the technical architecture, components, and data models
 # System Design & Architecture
 
 > Feature `questions-utilisateur-taches`. S'appuie sur le mécanisme `formKey`/`taskFormRegistry.ts`
-> livré par TODO §52 — voir [22-formulaires-dynamiques-taches.md](../../../analysis%20doc/22-formulaires-dynamiques-taches.md)
-> et [23-questions-utilisateur-taches.md](../../../analysis%20doc/23-questions-utilisateur-taches.md).
+> livré par TODO §52 — voir [22-formulaires-dynamiques-taches.md](../../specs/22-formulaires-dynamiques-taches.md)
+> et [23-questions-utilisateur-taches.md](../../specs/23-questions-utilisateur-taches.md).
 > Décisions de cadrage actées dans le
 > [document requirements](../requirements/2026-09-05-feature-questions-utilisateur-taches.md).
 

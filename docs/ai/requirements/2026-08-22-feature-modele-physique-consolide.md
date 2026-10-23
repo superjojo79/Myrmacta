@@ -50,7 +50,7 @@ commencer :**
   à l'origine **« n'a plus lieu d'être »** depuis la décision n° 13
   (une instance Spring Boot dédiée par tenant, schéma fixé une fois au
   démarrage — voir
-  [02-multi-tenant.md](../../../analysis%20doc/02-multi-tenant.md)).
+  [02-multi-tenant.md](../../specs/02-multi-tenant.md)).
   Le TODO §25 n'a jamais été mis à jour après cette note — écart de
   documentation pure, pas un gap de code.
 - **Aucun contexte Liquibase `tenant-init`/`tenant-migration` séparé
@@ -81,7 +81,7 @@ commencer :**
 - Mentionner les tables `ACT_*`/`ACT_RU_*`/`ACT_HI_*` de Flowable sans
   les énumérer (schéma géré entièrement par `flowable-engine`, hors
   périmètre des changelogs FlowForge) — renvoi vers
-  [05-workflow-engine.md](../../../analysis%20doc/05-workflow-engine.md).
+  [05-workflow-engine.md](../../specs/05-workflow-engine.md).
 - Clore TODO §25.
 
 ### Non-goals (actés)
@@ -119,7 +119,7 @@ Aucun — feature documentaire, pas de chemin d'exécution à couvrir.
 
 ## Success Criteria
 
-- [ ] Nouveau document `analysis doc/13-modele-physique.md` : ERD
+- [ ] Nouveau document `docs/specs/13-modele-physique.md` : ERD
       mermaid des 17 tables, référencé dans `00-index.md`.
 - [ ] Les 4 index uniques partiels décrits avec leur rôle métier
       (quelle invariant chacun protège).
@@ -150,7 +150,7 @@ Aucun — feature documentaire, pas de chemin d'exécution à couvrir.
 |---|---|---|
 | **D-MPC-SCOPE** | Écart `TenantRegistry`/contextes Liquibase | Corriger le scope de §25 : documenter l'architecture réelle (décision n° 13), pas les mécanismes abandonnés |
 | **D-MPC-PLATFORM** | Table `platform.tenant_migration_status` | Documentation seule — option non retenue, pas d'implémentation dans cette feature |
-| **D-MPC-FORMAT** | Format et emplacement du livrable | Nouveau document `analysis doc/13-modele-physique.md`, ERD mermaid, référencé dans `00-index.md` |
+| **D-MPC-FORMAT** | Format et emplacement du livrable | Nouveau document `docs/specs/13-modele-physique.md`, ERD mermaid, référencé dans `00-index.md` |
 
 ## Questions & Open Items
 

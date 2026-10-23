@@ -19,7 +19,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 
 /**
- * Résolution en cascade des templates de document (analysis doc/08-templates-documents.md,
+ * Résolution en cascade des templates de document (docs/specs/08-templates-documents.md,
  * « Résolution en cascade ») — fiabilisation-tests-plateforme, trou confirmé en Phase 1
  * (aucun test dédié n'existait). La cascade elle-même est implémentée par le classement SQL de
  * {@code findBestActive} ({@code SpringDataDocumentTemplateRepository}), donc ce test passe par

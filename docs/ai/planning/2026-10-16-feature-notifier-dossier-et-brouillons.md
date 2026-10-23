@@ -49,7 +49,7 @@ A, B, C, avec un commit par tâche.
 ## Documentation et clôture
 
 - [x] **D1.** `GUIDE-CONCEPTION-BPMN.md` (sources de `notificationTo`, règle des brouillons), `GUIDE-UTILISATEUR.md`
-  (variables de démarrage), `analysis doc/15-serveur-mcp.md` (`inactiveReferences`).
+  (variables de démarrage), `docs/specs/15-serveur-mcp.md` (`inactiveReferences`).
 - [x] **D2.** `TODO.md` §93 (énoncé, décisions D-DRAFT-REF-STATUS, D-NOTIF-SOURCE-LITERAL, D-NOTIF-REUSE-PORTAL-SOURCE, champ
   « Impacte »), `DEFERRED-FEATURES.md` §7 (statuts ; variables de démarrage déclarées ajoutées au backlog).
 - [ ] **D3.** Une fois la PR #172 mergée : mettre à jour l'exemple `exemples/autorisation-riverain/` (`dossierField:email`,

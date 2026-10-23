@@ -43,7 +43,7 @@ P5 — Mode démo/QA persistant : profil Spring `embedded-db` qui démarre un Po
   - commande de reset documentée (script `scripts/embedded-db-reset.sh` ou équivalent) et procédure de sauvegarde (pg_dump ou copie à froid) ;
   - utilisable dans le Dockerfile existant pour une démo (volume pour le répertoire de données, utilisateur non-root).
   Tests : redémarrage de l'application → les données écrites avant l'arrêt sont toujours présentes ; refus du profil en prod ; refus si version PG différente.
-P6 — Docs : GETTING-STARTED.md (lancer sans Docker ni PG local, mode démo, reset, limites), DEPLOIEMENT.md (le mode embedded est interdit en production : PostgreSQL géré), `.env.example` (toute nouvelle variable), CHANGELOG.md (`[Non publié]`, format du dépôt), TODO.md (point de la feature + section « Impacte »), et un ADR/décision dans `analysis doc/` remplaçant la décision test D-TESTCONTAINERS-EXEC.
+P6 — Docs : GETTING-STARTED.md (lancer sans Docker ni PG local, mode démo, reset, limites), DEPLOIEMENT.md (le mode embedded est interdit en production : PostgreSQL géré), `.env.example` (toute nouvelle variable), CHANGELOG.md (`[Non publié]`, format du dépôt), TODO.md (point de la feature + section « Impacte »), et un ADR/décision dans `docs/specs/` remplaçant la décision test D-TESTCONTAINERS-EXEC.
 
 ### Critères d'acceptation (preuves attendues, sorties de commandes à l'appui)
 1. `./mvnw verify` vert sans Docker et sans PostgreSQL préinstallé ; 0 test SKIPPED pour cause d'absence de Docker.

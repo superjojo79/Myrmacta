@@ -126,5 +126,5 @@ retriesLeft}`), sans message. La description de l'outil est mise à jour.
 
 - `GUIDE-UTILISATEUR.md` : bandeau incident sur la fiche, écran Admin → Incidents, rôles §0.
 - `GUIDE-CONCEPTION-BPMN.md` §6c : l'incident d'une brique asynchrone est visible et rejouable.
-- `analysis doc/15-serveur-mcp.md` : `incidents` dans `get_dossier`.
+- `docs/specs/15-serveur-mcp.md` : `incidents` dans `get_dossier`.
 - `DIFFICULTES.md` §11 de l'exemple (après le merge de la #175), `DEFERRED-FEATURES.md` §7, `TODO.md` §94, `CHANGELOG.md`.

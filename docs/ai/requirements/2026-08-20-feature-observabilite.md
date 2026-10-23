@@ -42,7 +42,7 @@ Le `TENANT_ADMIN` n’a pas non plus de vue santé dans le SPA.
   - PDF : pas de timer (ordres `07` non vérifiables en prod).
   - Webhooks `DEAD` / SSE / jobs Flowable : pas de jauge.
   - SPA admin : pas d’écran de santé instance.
-- **Réf. :** TODO §29, REVUE §29, `analysis doc/12`, `07`, `09`,
+- **Réf. :** TODO §29, REVUE §29, `docs/specs/12`, `07`, `09`,
   `11-frontend.md`, DEFERRED §1.2 / §4.
 
 ## Goals & Objectives

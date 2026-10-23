@@ -402,7 +402,7 @@ ce mode (on peut donc migrer une instance existante). Les jokers d'`oauthAllowed
 d'hébergement mutualisé (`*.azurewebsites.net`, `*.herokuapp.com`…). Si l'API répond `401`, le jeton est renouvelé (s'il a plus de 30 s) et l'appel rejoué **une seule fois**. Sans `authMode`, rien ne change (en-tête statique).
 
 D'autres connecteurs custom peuvent être ajoutés au classpath backend sans modifier le core (voir
-[analysis doc/06-connecteurs.md](analysis%20doc/06-connecteurs.md)) — ils apparaîtront alors dans
+[docs/specs/06-connecteurs.md](docs/specs/06-connecteurs.md)) — ils apparaîtront alors dans
 ce même catalogue, avec un formulaire généré depuis leur `configSchema`.
 
 ### Créer une instance de connecteur
@@ -644,7 +644,7 @@ Sur la fiche d'un dossier (`/dossiers/{id}`), en plus du suivi de workflow (§3)
 
 À ne pas confondre avec les connecteurs `http-rest` du §4, qui sont des webhooks **entrants**
 (ils déclenchent un workflow). Ici, la plateforme **appelle** une URL externe pour notifier un
-événement métier (voir [analysis doc/09-notifications.md](analysis%20doc/09-notifications.md)),
+événement métier (voir [docs/specs/09-notifications.md](docs/specs/09-notifications.md)),
 typiquement pour rebrancher un outil noCode (Make, n8n, Zapier).
 
 | Champ | Rôle |
@@ -857,9 +857,9 @@ Les dates, nombres et montants suivent la langue. Les libellés saisis par votre
 
 - Mise en place de l'environnement : [GETTING-STARTED.md](GETTING-STARTED.md)
 - Déploiement, provisioning d'un tenant, gestion des utilisateurs/rôles Keycloak : [DEPLOIEMENT.md](DEPLOIEMENT.md)
-- Architecture des connecteurs : [analysis doc/06-connecteurs.md](analysis%20doc/06-connecteurs.md)
-- Architecture des templates/génération de documents : [analysis doc/07-generation-documents.md](analysis%20doc/07-generation-documents.md), [analysis doc/08-templates-documents.md](analysis%20doc/08-templates-documents.md)
-- Visualisation des workflows : [analysis doc/10-visualisation-workflow.md](analysis%20doc/10-visualisation-workflow.md)
-- Notifications (email, webhook, SSE) : [analysis doc/09-notifications.md](analysis%20doc/09-notifications.md)
-- Autorisation et conformité (rétention, RGPD) : [analysis doc/12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md)
+- Architecture des connecteurs : [docs/specs/06-connecteurs.md](docs/specs/06-connecteurs.md)
+- Architecture des templates/génération de documents : [docs/specs/07-generation-documents.md](docs/specs/07-generation-documents.md), [docs/specs/08-templates-documents.md](docs/specs/08-templates-documents.md)
+- Visualisation des workflows : [docs/specs/10-visualisation-workflow.md](docs/specs/10-visualisation-workflow.md)
+- Notifications (email, webhook, SSE) : [docs/specs/09-notifications.md](docs/specs/09-notifications.md)
+- Autorisation et conformité (rétention, RGPD) : [docs/specs/12-autorisation-conformite.md](docs/specs/12-autorisation-conformite.md)
 - Décisions ouvertes (dont les limites d'écran citées ci-dessus) : [TODO.md](TODO.md)

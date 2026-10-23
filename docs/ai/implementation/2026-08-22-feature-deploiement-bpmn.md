@@ -194,7 +194,7 @@ comblé en cours de route).
 - `frontend/e2e/pilotage.spec.ts` (modifié — 3 nouveaux scénarios `E2E-BPMN-*`)
 
 **Documentation :**
-- `README.md`, `analysis doc/05-workflow-engine.md` (mentions non livrées retirées)
+- `README.md`, `docs/specs/05-workflow-engine.md` (mentions non livrées retirées)
 - `GUIDE-UTILISATEUR.md` (§3 réécrit — 2 mécanismes de déploiement documentés)
 - `TODO.md` (§35 clos), `FILE-ATTENTE.md` (reconcilié)
 

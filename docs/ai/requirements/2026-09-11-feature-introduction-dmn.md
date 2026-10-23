@@ -7,7 +7,7 @@ description: Clarify the problem space, gather requirements, and define success 
 # Requirements & Problem Understanding — `introduction-dmn`
 
 > Origine : question utilisateur (2026-09-10/11). Analyse préalable :
-> [25-introduction-dmn.md](../../../analysis%20doc/25-introduction-dmn.md), TODO §61. 6 décisions
+> [25-introduction-dmn.md](../../specs/25-introduction-dmn.md), TODO §61. 6 décisions
 > actées via `AskUserQuestion` le 2026-09-11 (voir « Constraints & Assumptions » et « Questions &
 > Open Items »).
 
@@ -55,14 +55,14 @@ peuvent aujourd'hui définir un flux métier complet qu'avec cette même limite.
 
 ### Secondaire
 
-- Documentation à jour : `README.md`, `analysis doc/05-workflow-engine.md`,
-  `analysis doc/00-index.md`, `FILE-ATTENTE.md` (retrait définitif de la mention « hors V1 »),
+- Documentation à jour : `README.md`, `docs/specs/05-workflow-engine.md`,
+  `docs/specs/00-index.md`, `FILE-ATTENTE.md` (retrait définitif de la mention « hors V1 »),
   `GUIDE-CONCEPTION-BPMN.md` (nouvelle section « quand utiliser une table DMN vs un gateway »).
 
 ### Non-goals
 
 - **Pas de Flowable Modeler ni de Cockpit** (webapps séparées) — cohérent avec la décision déjà
-  actée (`DEFERRED-FEATURES.md` §1.5, [14-edition-bpmn.md](../../../analysis%20doc/14-edition-bpmn.md)
+  actée (`DEFERRED-FEATURES.md` §1.5, [14-edition-bpmn.md](../../specs/14-edition-bpmn.md)
   §Options, option (d) écartée). `dmn-js` est une librairie front embarquée dans le SPA FlowForge,
   pas une application à opérer.
 - **Pas de cas métier réel spécifique dans ce cycle** — le scénario « grille d'éligibilité » est
@@ -175,7 +175,7 @@ Restent à trancher en Phase 3 (design) — questions **techniques**, pas des d�
    — à vérifier contre la doc/le code Flowable réel en Phase 3, pas en Phase 1.
 2. **Noms de tools MCP** — `deploy_decision_table` a été utilisé comme nom provisoire dans
    l'analyse ; à confirmer/aligner sur la convention `list_*`/`get_*`/`define_*`/`deploy_*` déjà
-   établie (cf. [15-serveur-mcp.md](../../../analysis%20doc/15-serveur-mcp.md)).
+   établie (cf. [15-serveur-mcp.md](../../specs/15-serveur-mcp.md)).
 3. **Clé de brouillon éditeur** — composite `(tenant_id, decisionKey)`, miroir
    `BpmnDraftJpaEntity`/`@IdClass` — à confirmer en design comme pour BPMN plutôt que supposé.
 4. **Grammaire FEEL exacte de l'allowlist** — dépend des types de données (numérique, chaîne,

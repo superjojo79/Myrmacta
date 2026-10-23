@@ -8,10 +8,10 @@ description: Palette métier dans l'éditeur BPMN (LC1) — briques prêtes à l
 # Requirements & Problem Understanding — `palette-metier-bpmn` (LC1)
 
 > Sous-lot **LC1** de la couche low-code (D0 = C, TODO §70). Analyse d'origine :
-> [39-palette-metier-bpmn.md](../../../analysis%20doc/39-palette-metier-bpmn.md). **Phase 1 du 2026-09-29** : 6
+> [39-palette-metier-bpmn.md](../../specs/39-palette-metier-bpmn.md). **Phase 1 du 2026-09-29** : 6
 > décisions tranchées par l'utilisateur (`AskUserQuestion`), dont une qui **corrige l'analyse d'origine**
 > (voir « Constat qui change le périmètre »). **Phase 2 (revue) close le 2026-09-29** : faits vérifiés dans le code, 1 décision
-> supplémentaire (D-PALETTE-REFERENCES), voir « Revue Phase 2 ». **Phase 3** : D-PALETTE-DEPLOY-REFERENCES (existence vérifiée au déploiement). Exposition MCP : [46](../../../analysis%20doc/46-exposition-mcp-couche-low-code.md).
+> supplémentaire (D-PALETTE-REFERENCES), voir « Revue Phase 2 ». **Phase 3** : D-PALETTE-DEPLOY-REFERENCES (existence vérifiée au déploiement). Exposition MCP : [46](../../specs/46-exposition-mcp-couche-low-code.md).
 
 ## Problem Statement
 

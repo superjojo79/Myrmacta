@@ -273,7 +273,7 @@ com.flowforge.infrastructure
 - **Scale :** session mémoire ; multi-répliques hors scope (décision n° 13 / 15).
 - **Perf :** N/A — filtres O(1) sur claims.
 
-## Écarts vs `analysis doc/03-authentification.md`
+## Écarts vs `docs/specs/03-authentification.md`
 
 | Analyse | Cette feature |
 |---|---|

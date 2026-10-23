@@ -26,7 +26,7 @@ description: Clarify the problem space, gather requirements, and define success 
   existant — contournement actuel = ticket à l'équipe technique ou usage du MCP par un opérateur
   technique.
 
-Référence : [analysis doc/17-schema-champs-dynamiques.md](../../../analysis%20doc/17-schema-champs-dynamiques.md).
+Référence : [docs/specs/17-schema-champs-dynamiques.md](../../specs/17-schema-champs-dynamiques.md).
 
 ## Goals & Objectives
 **What do we want to achieve?**
@@ -123,7 +123,7 @@ Cas limites :
 - Pas de nouvelle route SPA — extension de l'écran `DossierTypesAdminView.vue` existant.
 - Style front existant à respecter : éléments HTML natifs + scoped CSS + `data-testid` (pas
   PrimeVue isolé sur ce sous-formulaire) — cohérent avec `DossierTypesAdminView.vue`,
-  `DynamicFields.vue`, `DossierFieldsEditor.vue`, malgré [11-frontend.md](../../../analysis%20doc/11-frontend.md)
+  `DynamicFields.vue`, `DossierFieldsEditor.vue`, malgré [11-frontend.md](../../specs/11-frontend.md)
   qui retient PrimeVue comme librairie cible globale. Confirmation du layout exact déferrée à la
   phase design (cf. Questions & Open Items).
 - Backend domaine/port/persistance déjà en place — le travail backend de cette feature se limite à
@@ -141,7 +141,7 @@ Décisions actées 2026-08-28 (`AskUserQuestion`, TODO §47) :
 
 Restant à trancher en phase design (pas bloquant pour clore les requirements) :
 
-- **Alignement maquette** — [11-frontend.md](../../../analysis%20doc/11-frontend.md) impose
+- **Alignement maquette** — [11-frontend.md](../../specs/11-frontend.md) impose
   `FlowForge - Maquettes UI.html` comme référence UX ; aucun écran de ce fichier ne couvre
   aujourd'hui l'édition du schéma de champs. À vérifier en phase design : suivre le pattern visuel
   de `DossierTypesAdminView.vue` (HTML natif + scoped CSS, cf. Constraints) faute de maquette

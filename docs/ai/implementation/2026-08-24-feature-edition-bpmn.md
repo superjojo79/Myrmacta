@@ -282,7 +282,7 @@ nouvelles branches non testées sont ajoutées plus tard sur ce module).
 
 **Documentation :**
 - `docs/ai/{requirements,design,planning,testing,implementation}/2026-08-24-feature-edition-bpmn.md`
-- `analysis doc/14-edition-bpmn.md`, `analysis doc/00-index.md`
+- `docs/specs/14-edition-bpmn.md`, `docs/specs/00-index.md`
 - `TODO.md` (§39), `FILE-ATTENTE.md`
 
 ## Integration Points
@@ -387,7 +387,7 @@ sécurité ✅ (le bug corrigé était justement un point de robustesse/sécurit
 un `500` non contrôlé) · points d'intégration vérifiés ✅ · tests
 couvrent les changements ✅ (1110 backend + 193 frontend + 47 Playwright,
 tous verts) · docs à jour ✅ (requirements, design, planning, testing,
-implementation, TODO §39, FILE-ATTENTE.md, `analysis doc/14`).
+implementation, TODO §39, FILE-ATTENTE.md, `docs/specs/14`).
 
 **Aucun blocage.**
 
@@ -426,7 +426,7 @@ couverture de Phase 8), sur demande explicite de l'utilisateur :
 - **Diff complet vérifié** (`git diff --stat origin/main...HEAD`) : 65
   fichiers, strictement scopé à `edition-bpmn` (+ `.gitignore`,
   `TODO.md`/`FILE-ATTENTE.md`/`README.md`/`GUIDE-UTILISATEUR.md`/
-  `analysis doc/**` — documentation liée à cette feature uniquement).
+  `docs/specs/**` — documentation liée à cette feature uniquement).
   Aucun fichier hors scope.
 - **Contrat API** (`openapi/openapi.yaml`) : 2 nouveaux chemins
   (`/api/workflow-bpmn-drafts/{key}`, `/api/workflow-bpmn-deployments/{key}/xml`)
@@ -464,7 +464,7 @@ documentés) · sécurité ✅ · points d'intégration vérifiés ✅ (contrat
 API, dépendances, migration) · tests couvrent les changements ✅ (1110
 backend + 196 frontend + 47 Playwright, tous verts, preuve fraîche
 cette session) · docs à jour ✅ (les 7 docs du cycle + TODO §39 +
-FILE-ATTENTE.md + `analysis doc/14` + `README.md`/`05-workflow-engine.md`/
+FILE-ATTENTE.md + `docs/specs/14` + `README.md`/`05-workflow-engine.md`/
 `GUIDE-UTILISATEUR.md`).
 
 **Aucun blocage.** Feature prête à être poussée / PR à créer (demande

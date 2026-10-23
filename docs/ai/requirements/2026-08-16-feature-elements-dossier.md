@@ -42,7 +42,7 @@ Le frontend confirme explicitement le manque — le bouton d'ajout manuel est d�
 Un utilisateur (`DOSSIER_MANAGER`) ne peut donc **rien ajouter lui-même** à un dossier : ni
 déposer une pièce jointe (contrat, justificatif scanné…), ni consigner une information
 structurée, ni laisser une note, ni référencer une ressource externe — alors que
-[04-dossiers.md](../../../analysis%20doc/04-dossiers.md) documente `ElementType` avec cinq
+[04-dossiers.md](../../specs/04-dossiers.md) documente `ElementType` avec cinq
 valeurs (`PRODUCED_DOC`, `ATTACHMENT`, `INFORMATION`, `NOTE`, `LINK`) depuis l'origine.
 
 **Qui est affecté :** les utilisateurs métier (`DOSSIER_MANAGER`, `DOSSIER_VIEWER` en lecture)

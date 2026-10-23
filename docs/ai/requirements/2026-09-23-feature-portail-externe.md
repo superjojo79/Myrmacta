@@ -8,9 +8,9 @@ description: Clarify the problem space, gather requirements, and define success 
 # Requirements & Problem Understanding
 
 > Origine : `ROADMAP.md` item **3.1** (« Produit, pas cadré »), analyse initiale
-> [analysis doc/26-portail-externe.md](../../../analysis%20doc/26-portail-externe.md) — scindée le
+> [docs/specs/26-portail-externe.md](../../specs/26-portail-externe.md) — scindée le
 > 2026-09-23 de la signature électronique (désormais lot distinct,
-> [30-signature-electronique.md](../../../analysis%20doc/30-signature-electronique.md), démarrable
+> [30-signature-electronique.md](../../specs/30-signature-electronique.md), démarrable
 > après ce lot). Cadrage Phase 1 mené le 2026-09-23, **10 décisions tranchées par l'utilisateur**
 > via `AskUserQuestion` (voir « Décisions »). TODO §68. **Phase 2 (revue) close le même jour** :
 > hypothèses H1–H6 validées en exigences, 2 trous comblés (adresse absente, purge RGPD) dont un

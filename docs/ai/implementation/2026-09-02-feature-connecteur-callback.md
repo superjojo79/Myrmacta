@@ -170,7 +170,7 @@ description: Technical implementation notes, patterns, and code guidelines
 7. **Doc catalogue oubliée en Phase 7, trouvée en Phase 9** : `README.md` § « Système de
    connecteurs » liste le catalogue de connecteurs livrés (`http-rest`, `flowable-signal`,
    `scheduler`, `smtp`, `document-storage`) mais n'avait pas été mis à jour avec `flowable-callback`
-   — seul `analysis doc/06-connecteurs.md` l'avait été en Phase 7. Corrigé : `README.md` mentionne
+   — seul `docs/specs/06-connecteurs.md` l'avait été en Phase 7. Corrigé : `README.md` mentionne
    désormais le rôle **callback** et le connecteur `flowable-callback`.
 
 ## Correctifs post-merge (passe de contrôle adversariale, 2026-09-02)
@@ -276,7 +276,7 @@ maintenant ») :
    **Rupture de contrat pour les appelants HMAC déjà en production** — ils doivent désormais
    envoyer cet en-tête et l'inclure dans le calcul de signature ; documenté dans le champ de config
    `webhookAuthType` des deux connecteurs (`http-rest`, `flowable-callback`) et dans
-   `analysis doc/06-connecteurs.md`. `SHARED_SECRET_TOKEN` (jeton nu, jamais de signature) non
+   `docs/specs/06-connecteurs.md`. `SHARED_SECRET_TOKEN` (jeton nu, jamais de signature) non
    concerné — compromis déjà documenté comme plus faible, pas une régression de cette revue. 6
    tests dédiés dans `WebhookAuthenticatorTest` (horodatage manquant/non numérique/périmé/futur,
    signature calculée sans le préfixe horodatage).

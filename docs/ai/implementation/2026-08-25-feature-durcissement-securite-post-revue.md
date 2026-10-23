@@ -58,7 +58,7 @@ SKIPPED sans Docker.
 
 ### Docs (M6)
 
-- `GETTING-STARTED.md`, `analysis doc/02` / `08` / `09`, TODO §40–44,
+- `GETTING-STARTED.md`, `docs/specs/02` / `08` / `09`, TODO §40–44,
   note port 8090 dans le design observabilite
 
 ## Design Deviations
@@ -112,7 +112,7 @@ vide (A-NO-SPA, hexagone). Plus de `SpringTemplateEngine` dans `src/main`.
 - Header `Host` webhook : voir Design Deviations (moyenne). Pin IP tient le TOCTOU.
 - Pas de test HTTP generate dédié `T()` : l'activation empêche un template ACTIVE hors allowlist ; le handler generate mappe déjà `TemplateProcessingException` → 400. Candidat Phase 8 (injecter un template ACTIVE de test).
 - `*IT.java` hors `verify` surefire — lancer explicitement ou ajouter failsafe.
-- Docs `analysis doc/08` / TODO §40 : « enregistrement » précisé en **activation**.
+- Docs `docs/specs/08` / TODO §40 : « enregistrement » précisé en **activation**.
 
 ### Verify Phase 7 (cette session)
 

@@ -28,7 +28,7 @@ des instances Flowable et un historique d’exécutions.
   `InMemoryWorkflowRepository` / `InMemoryWorkflowEventPublisher` ;
   `WorkflowEventPublisher` typé sur `WorkflowStartedEvent` seulement (pas
   l’interface scellée décision n° 6) ; pas de `DossierWorkflowLink`, pas
-  d’outbox. Analyse : `analysis doc/05-workflow-engine.md` +
+  d’outbox. Analyse : `docs/specs/05-workflow-engine.md` +
   `04-dossiers.md` (lien / AttachWorkflow) + décisions n° 6, 7, 11, 13, 16, 17.
 - **UX :** pas d’écrans Vue ici — API REST + tâches humaines Flowable
   consommées plus tard par `frontend` / `visualisation-workflow`. Contrat
@@ -332,7 +332,7 @@ mapping stubs→adaptateurs.
 
 ## Sources
 
-- `analysis doc/05-workflow-engine.md`, `04-dossiers.md` (lien / AttachWorkflow)
+- `docs/specs/05-workflow-engine.md`, `04-dossiers.md` (lien / AttachWorkflow)
 - Décisions TODO n° 6, 7, 11, 13, 16, 17, 20, 27
 - `DEFERRED-FEATURES.md` §2 ordre 1 `workflow-engine`
 - Code existant : `domain.workflow.*`, stubs

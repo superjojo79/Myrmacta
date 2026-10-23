@@ -1,7 +1,7 @@
 # Revue alignement × sécurité — FlowForge
 
 > Revue **post-implémentation** (2026-08-25) : alignement du code livré sur la
-> spécification de bout en bout (`analysis doc/` → `REVUE-PRE-IMPLEMENTATION.md` /
+> spécification de bout en bout (`docs/specs/` → `REVUE-PRE-IMPLEMENTATION.md` /
 > `TODO.md` → artefacts AI-devkit `docs/ai/**` → sources), et audit de sécurité
 > (OWASP / checklist skill `security-review`).
 >
@@ -22,7 +22,7 @@
 | | |
 |---|---|
 | Cible | Dépôt complet au commit `797df03` (`main`, PR #71 `edition-bpmn` mergée) |
-| Specs | `analysis doc/00` → `14`, `README.md`, `TODO.md` (points 1–39 tous `[x]`), `FILE-ATTENTE.md`, `DEFERRED-FEATURES.md` |
+| Specs | `docs/specs/00` → `14`, `README.md`, `TODO.md` (points 1–39 tous `[x]`), `FILE-ATTENTE.md`, `DEFERRED-FEATURES.md` |
 | Lifecycle AI-devkit | `docs/ai/{requirements,design,planning,implementation,testing,monitoring,deployment}/` |
 | Code | `com.flowforge.{domain,application,infrastructure}`, `frontend/src`, `application.yml`, `pom.xml`, `docker-compose.yml` |
 | Angle | (1) décisions d'architecture vs implémentation ; (2) dérive documentaire ; (3) sécurité réelle, pas de finding écarté sans preuve d'inexploitabilité |
@@ -42,7 +42,7 @@ couvert les 14 blocs d'analyse et les follow-ups V1. L'écart restant est :
 |---|---|---|
 | **Sécurité à trancher avant prod internet** | SSTI Thymeleaf/SpEL (point 40) × isolation PG sans GRANT par tenant (point 41) | Chaîne d'attaque High → Critical sur un cluster PG partagé |
 | **Sécurité ops / config** | Actuator `permitAll` (42), secrets par défaut / HMAC M2M (43), SSRF DNS TOCTOU (44) | Exploitables si le déploiement copie le local ou expose 8081 |
-| **Dérive documentaire** | README, `analysis doc/01`/`12`, catalogue connecteurs, DMN (point 45) | Agents et humains relisent une spec fausse ; le code a raison |
+| **Dérive documentaire** | README, `docs/specs/01`/`12`, catalogue connecteurs, DMN (point 45) | Agents et humains relisent une spec fausse ; le code a raison |
 | **Hygiène architecture** | Couche `application` non gardée par ArchUnit (point 46) | Fuite `application` → `infrastructure` déjà réelle |
 | **Reliquats V1 assumés** | AV no-op, rate-limit JVM, headers HTTP, `allowUnknownFields` | Déjà documentés comme hors V1 / décision de feature — pas rouverts ici |
 
@@ -58,7 +58,7 @@ arbitrage produit ; 40 et 41 **avant** toute exposition internet multi-tenant ;
 
 | Couche | Rôle | État à la revue |
 |---|---|---|
-| `analysis doc/00`–`14` | Spécification initiale + ajouts 13/14 | 14 thèmes ; `com.monapp` dans `01` **clos** PR #72 |
+| `docs/specs/00`–`14` | Spécification initiale + ajouts 13/14 | 14 thèmes ; `com.monapp` dans `01` **clos** PR #72 |
 | `REVUE-PRE-IMPLEMENTATION.md` + `TODO.md` 1–39 | Revue avant code + registre | Tous `[x]` ; §9 « avant prod » (21/22/23) **livrée** |
 | `docs/ai/{requirements,design,planning,implementation,testing}` | Lifecycle par feature | Une série datée par feature livrée |
 | `docs/ai/review/` | Artefact Phase 9 dédié | **Absent** — Phase 9 dans le YAML / le corps des docs `implementation` (`phase9:`) |
@@ -86,8 +86,8 @@ arbitrage produit ; 40 et 41 **avant** toute exposition internet multi-tenant ;
 Voir point **45** pour le suivi. Synthèse :
 
 1. **`README.md` § Multi-tenant** — « Le tenant est résolu depuis le token OIDC à chaque requête » : **faux**. Le même README décrit plus bas l'instance dédiée (décision 13). Le code suit `02-multi-tenant.md`.
-2. **`analysis doc/01-architecture-hexagonale.md`** — `com.monapp` **clos** (PR #72, 2026-08-25) : 3 occurrences → `com.flowforge`. Ne plus replanifier (TODO §45).
-3. **`analysis doc/12-autorisation-conformite.md`** — `WORKFLOW_ADMIN` a « accès au cockpit Flowable » : **hors V1** (`05-workflow-engine.md`, `DEFERRED-FEATURES` §1.5). L'éditeur `/admin/bpmn-editor` couvre le besoin métier.
+2. **`docs/specs/01-architecture-hexagonale.md`** — `com.monapp` **clos** (PR #72, 2026-08-25) : 3 occurrences → `com.flowforge`. Ne plus replanifier (TODO §45).
+3. **`docs/specs/12-autorisation-conformite.md`** — `WORKFLOW_ADMIN` a « accès au cockpit Flowable » : **hors V1** (`05-workflow-engine.md`, `DEFERRED-FEATURES` §1.5). L'éditeur `/admin/bpmn-editor` couvre le besoin métier.
 4. **jsoup** — analyse/README `1.22.x`, `pom.xml` `1.23.1`.
 5. **`application.yml` L1–3** — commentaire « disable infra autoconfig until real adapters land » : **périmé**.
 6. **Périmètre V1 plus étroit que le marketing README / `06-connecteurs.md`** — déjà scopé dans les requirements `connecteurs` / `durcissement-donnees-sensibles`, **pas repris** dans le README : pas de DMN (auto-config exclue), pas de `scheduler`/`smtp`/`s3-minio`/`Kafka`, `http-rest` TRIGGER seulement (`HttpRestServiceConnector` skeleton non enregistré), `context-path` commenté (ops, point 31).
@@ -283,7 +283,7 @@ allowlist possible plus tard, pas un finding High.
 | 42 | Actuator `permitAll` + port 8081 | Config — à durcir ops | Medium | `SecurityConfig`, `application.yml`, design `observabilite`, GETTING-STARTED |
 | 43 | Secrets défaut + HMAC M2M | Secrets — fail-fast | Medium | `application.yml`, `docker-compose.yml`, `SecurityConfig` |
 | 44 | SSRF sortant DNS TOCTOU | SSRF — pin IP | Medium | `OutboundUrlGuard`, `WebhookRestAdapter`, `06` / `09` |
-| 45 | Dérive documentaire analyse / README / code | Docs — **clos** PR #75 | — | `README.md`, `analysis doc/00` `06` `07` `11` `12`, `application.yml` L1 (`01` `com.monapp` déjà PR #72) |
+| 45 | Dérive documentaire analyse / README / code | Docs — **clos** PR #75 | — | `README.md`, `docs/specs/00` `06` `07` `11` `12`, `application.yml` L1 (`01` `com.monapp` déjà PR #72) |
 | 46 | Couche `application` non gardée par ArchUnit | Architecture | Low | `ManualStartOrchestrator`, `ArchitectureRulesTest`, `01-architecture-hexagonale.md` |
 
 Reliquats S-6…S-10 : pas de nouveau point — [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md) §4.

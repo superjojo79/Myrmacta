@@ -16,7 +16,7 @@ todo_ref: DEFERRED-FEATURES.md §1.4 (Relations entre dossiers)
 ## Problem Statement
 **What problem are we solving?**
 
-`DossierRelation` est déjà **spécifié** dans `analysis doc/04-dossiers.md`
+`DossierRelation` est déjà **spécifié** dans `docs/specs/04-dossiers.md`
 (record domaine + entité JPA + table `dossier_relation`) mais **jamais
 implémenté** — `DEFERRED-FEATURES.md` §1.4 le liste comme « lot suivant ».
 Conséquence concrète et déjà visible en prod : le panneau « dossiers liés »
@@ -29,11 +29,11 @@ construit la vue avec `List.of()` (`WorkflowLinkVisualizationUseCaseImpl.java:94
   dossiers liés — enfant, dossier de suite, doublon…), utilisateurs de la
   Supervision et de la visualisation workflow (panneau muet aujourd'hui).
 - **Situation actuelle :** aucune table, aucun endpoint, aucun affichage.
-  `analysis doc/04-dossiers.md` documente déjà le modèle cible (voir
+  `docs/specs/04-dossiers.md` documente déjà le modèle cible (voir
   `DossierRelation`, 5 `RelationType` : `PARENT_CHILD`, `SUBSEQUENT`,
   `LINKED`, `DUPLICATE`, `MERGED_INTO`) et le cas d'usage métier « workflow
   supplémentaire sur le même dossier vs nouveau dossier lié ».
-- **Réf. :** `DEFERRED-FEATURES.md` §1.4 ; `analysis doc/04-dossiers.md`
+- **Réf. :** `DEFERRED-FEATURES.md` §1.4 ; `docs/specs/04-dossiers.md`
   (section *DossierRelation*) ; `WorkflowLinkDossierView.java` ;
   `WorkflowLinkVisualizationUseCaseImpl.java:87-95`.
 
@@ -43,7 +43,7 @@ construit la vue avec `List.of()` (`WorkflowLinkVisualizationUseCaseImpl.java:94
 ### Primary goals
 
 - Modéliser et persister `DossierRelation` conformément à
-  `analysis doc/04-dossiers.md` (domaine pur, `dossier_relation` en base,
+  `docs/specs/04-dossiers.md` (domaine pur, `dossier_relation` en base,
   même tenant obligatoire).
 - **`POST /api/dossiers/{id}/relations`** — création manuelle d'une relation
   par un utilisateur autorisé : EDIT sur le type du dossier source **et**
@@ -108,7 +108,7 @@ construit la vue avec `List.of()` (`WorkflowLinkVisualizationUseCaseImpl.java:94
 | **D-SERVICETASK** | Portée du ServiceTask | **B** — crée un **nouveau** dossier enfant + relation + démarre un workflow dédié (pas une simple liaison entre deux dossiers déjà existants) |
 | **D-ACL** | Visibilité relation vs dossier lié non VIEW-accessible | **A** — filtrage serveur : la relation n'apparaît que si le dossier « de l'autre côté » est aussi VIEW-accessible (même logique que `pagination-dossiers` D-ACL : accès partiel = résultat filtré, pas d'erreur) |
 | **D-DIRECTION** | Affichage panneau | **A** — bidirectionnel avec libellé inversé (le dossier montre ses relations sortantes ET entrantes) |
-| **D-TYPES** | Types de relation | Réutilisation telle quelle de la liste déjà spécifiée dans `analysis doc/04-dossiers.md` : `PARENT_CHILD`, `SUBSEQUENT`, `LINKED`, `DUPLICATE`, `MERGED_INTO` |
+| **D-TYPES** | Types de relation | Réutilisation telle quelle de la liste déjà spécifiée dans `docs/specs/04-dossiers.md` : `PARENT_CHILD`, `SUBSEQUENT`, `LINKED`, `DUPLICATE`, `MERGED_INTO` |
 | **D-MUTABILITY** | Cycle de vie relation | Création + lecture seule en V1 — pas d'update/delete |
 | **D-IDEMPOTENCY** *(Phase 2)* | Anti-doublon `ServiceTask` | **A** — nouveau store d'idempotence dédié, même pattern que `IdempotencyStore` (DD-TX) : clé dérivée de `(processInstanceId, activityId)`, vérifiée avant `CreateDossierUseCase.create()` |
 | **D-SERVICETASK-TYPES** *(Phase 2)* | Types autorisés au `ServiceTask` | **A** — restreint à `PARENT_CHILD` / `SUBSEQUENT` (seuls types cohérents avec une création automatique) ; `LINKED`/`DUPLICATE`/`MERGED_INTO` restent réservés à la création manuelle |
@@ -119,7 +119,7 @@ construit la vue avec `List.of()` (`WorkflowLinkVisualizationUseCaseImpl.java:94
 
 | Sujet | Retenu | Écarté |
 |---|---|---|
-| Portée ServiceTask | Crée dossier enfant + relation + workflow dédié | Simple liaison entre deux dossiers déjà existants (plus petit scope, mais ne couvre pas le cas d'usage métier principal documenté dans `analysis doc/04`) |
+| Portée ServiceTask | Crée dossier enfant + relation + workflow dédié | Simple liaison entre deux dossiers déjà existants (plus petit scope, mais ne couvre pas le cas d'usage métier principal documenté dans `docs/specs/04`) |
 | ACL relation masquée | Filtrer côté serveur (omise) | Renvoyer un résumé minimal masqué (fuite de métadonnées : existence + statut d'un dossier hors ACL de l'utilisateur) |
 | Affichage | Bidirectionnel | Sortant uniquement (UX dégradée : un dossier enfant ne verrait pas son parent) |
 | Idempotence ServiceTask | Store dédié (D-IDEMPOTENCY) | Compter sur l'atomicité Flowable+JPA — rejeté, contredit la raison d'être du split reserve/confirm (DD-TX) déjà en place pour le démarrage manuel |
@@ -141,7 +141,7 @@ construit la vue avec `List.of()` (`WorkflowLinkVisualizationUseCaseImpl.java:94
 4. **En tant que** concepteur de process BPMN, **je veux** un `ServiceTask`
    qui crée un dossier enfant et démarre son propre workflow, **afin
    d'**automatiser le scénario « instruction sur un aspect précis
-   nécessitant un workflow dédié » (déjà décrit dans `analysis doc/04`).
+   nécessitant un workflow dédié » (déjà décrit dans `docs/specs/04`).
 5. **En tant qu'** utilisateur sans droit VIEW sur le type d'un dossier lié,
    **je ne veux pas** voir cette relation apparaître, **afin de** ne pas
    apprendre l'existence d'un dossier hors de mon périmètre.

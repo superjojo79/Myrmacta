@@ -18,7 +18,7 @@ import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 
 /**
- * Règles de dépendance hexagonales — analysis doc/01-architecture-hexagonale.md.
+ * Règles de dépendance hexagonales — docs/specs/01-architecture-hexagonale.md.
  */
 @AnalyzeClasses(packages = "com.flowforge", importOptions = ImportOption.DoNotIncludeTests.class)
 class ArchitectureRulesTest {

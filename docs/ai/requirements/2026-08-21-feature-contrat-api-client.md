@@ -96,7 +96,7 @@ trous subsistent dans le contrat HTTP :
 
 ### Secondary goals
 
-- Documenter dans `analysis doc/` ou en javadoc les allow-lists de tri
+- Documenter dans `docs/specs/` ou en javadoc les allow-lists de tri
   retenues par ressource, pour rester cohérent avec le pattern déjà en
   place sur les listes admin.
 

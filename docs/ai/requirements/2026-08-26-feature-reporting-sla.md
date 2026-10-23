@@ -8,7 +8,7 @@ updated: 2026-08-26
 feature: reporting-sla
 phase1: 2026-08-26
 phase2: 2026-08-26
-todo_ref: DEFERRED-FEATURES.md §1.6 · FILE-ATTENTE.md · analysis doc/16-reporting-sla.md · maquette UI
+todo_ref: DEFERRED-FEATURES.md §1.6 · FILE-ATTENTE.md · docs/specs/16-reporting-sla.md · maquette UI
 ---
 
 # Requirements & Problem Understanding — `reporting-sla`
@@ -31,7 +31,7 @@ premier jet restent à réaligner en Phase 4 / 8.
 ### Décisions déjà actées hors de cette phase
 
 - Les **deux lots** Reporting **et** SLA sont dans le périmètre
-  (analyse [16-reporting-sla.md](../../../analysis%20doc/16-reporting-sla.md),
+  (analyse [16-reporting-sla.md](../../specs/16-reporting-sla.md),
   2026-08-26) — pas de version dégradée Lot 1 seul pour le MCP.
 
 ## Problem Statement
@@ -39,7 +39,7 @@ premier jet restent à réaligner en Phase 4 / 8.
 
 Les gestionnaires et superviseurs n'ont **aucune vue métier** du
 respect des délais. La maquette
-[FlowForge - Maquettes UI.html](../../../analysis%20doc/FlowForge%20-%20Maquettes%20UI.html)
+[FlowForge - Maquettes UI.html](../../specs/FlowForge%20-%20Maquettes%20UI.html)
 spécifie un écran **Rapports & SLA** (conformité, délai moyen,
 répartition par type, temps par étape, charge par gestionnaire,
 détail par type, export CSV). La feature `frontend` a **volontairement

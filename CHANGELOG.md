@@ -327,7 +327,7 @@ jour, si la PR est encore en cours) **une entrée** dans **[Non publié]**, sous
 - **PR [#144](https://github.com/superjojo79/FlowForge/pull/144)** — Positionnement tranché (TODO §70) :
   produit pour intégrateurs avec une couche low-code, découpée en six sous-lots. Exposition MCP de
   cette couche cadrée (TODO §71, quatre décisions actées) et analyses initiales de tous les lots de
-  la Vague D (`analysis doc/` 31 à 46). Aucun changement de code.
+  la Vague D (`docs/specs/` 31 à 46). Aucun changement de code.
 - **PR [#143](https://github.com/superjojo79/FlowForge/pull/143)** — `ROADMAP.md` enrichie d'une
   Vague D issue d'une analyse critique fonctionnelle : décision de positionnement à trancher (D0)
   et sept lots non cadrés (champs enrichis, recherche, intégrations entreprise, promotion de

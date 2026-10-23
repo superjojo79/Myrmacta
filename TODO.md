@@ -11,7 +11,7 @@
 >   - la section **[Security](#security)** ci-dessous pour le point **57**
 >     (revue adversariale 2026-09-07, **clos** — PR #113).
 > - **[Décisions actées](#décisions-actées)** — décisions prises lors de la revue de conception
->   initiale, déjà répercutées dans `analysis doc/`. Elles font office de journal ; ne les rouvrir
+>   initiale, déjà répercutées dans `docs/specs/`. Elles font office de journal ; ne les rouvrir
 >   qu'avec une raison explicite.
 >
 > **Reste à implémenter (features / lots différés) :** synthèse consolidée dans
@@ -176,7 +176,7 @@ D-CLIENT-REQUIRED, D-SWITCH-TYPE, D-NO-BACKEND, **D-WEBHOOK-URL = C** (rejeu Pha
 
 **Impacte :** `frontend/src/views/admin/ConnectorsAdminView.vue`,
 `frontend/src/api/admin.ts`, `frontend/src/components/connectors/**`, e2e connecteurs,
-[GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md) §4, [06-connecteurs.md](analysis%20doc/06-connecteurs.md)
+[GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md) §4, [06-connecteurs.md](docs/specs/06-connecteurs.md)
 § écran d’admin.
 
 **Statut :** cycle `dev-lifecycle` Phases 1–9 **clos** — [PR #117](https://github.com/superjojo79/FlowForge/pull/117).
@@ -189,7 +189,7 @@ Vitest 324/324 ; Playwright 68/68 (`E2E-CONN-1` webhook, `E2E-CONN-2` smtp, `E2E
 
 **Énoncé :** lot **A3** ([FILE-ATTENTE.md](FILE-ATTENTE.md)) — le canal MCP (16 tools) définit un
 flux mais ne l'opère pas. Backlog déjà cadré dans
-[15-serveur-mcp.md](analysis%20doc/15-serveur-mcp.md). **Un seul cycle**, pas 4 PRs.
+[15-serveur-mcp.md](docs/specs/15-serveur-mcp.md). **Un seul cycle**, pas 4 PRs.
 
 **Statut :** **clos** — [PR #118](https://github.com/superjojo79/FlowForge/pull/118) mergée sur
 `main` (2026-09-08, `cursor/mcp-ecritures-metier-6efe`). Case cochée lors du rattrapage
@@ -233,7 +233,7 @@ question utilisateur (2026-09-10), pas encore priorisé ni tranché en `dev-life
 cas/règles métier (barèmes, seuils, éligibilité) séparément du flux BPMN — pas une introduction
 technologique pour elle-même. **D-DMN-SCOPE n'est donc plus une question d'opportunité** ; reste à
 préciser en Phase 1 le périmètre concret (quel `DossierType`/process, quelle forme de règle, quel
-volume) — voir [25-introduction-dmn.md](analysis%20doc/25-introduction-dmn.md) §2/§5.
+volume) — voir [25-introduction-dmn.md](docs/specs/25-introduction-dmn.md) §2/§5.
 
 **Phase 1 (requirements) close (2026-09-11)** : cycle `dev-lifecycle` démarré, no-worktree
 (branche de session), doc
@@ -256,7 +256,7 @@ http/shell/dmn...). Décision actée avec l'utilisateur (`AskUserQuestion`) : ou
 **native** et étroite (`type="dmn"` strictement littéral, `decisionTableReferenceKey` en
 `flowable:string` uniquement, jamais `flowable:expression`, clé vérifiée contre le catalogue des
 tables déployées) plutôt qu'un delegate custom réimplémentant la sémantique DMN à la main.
-[25-introduction-dmn.md](analysis%20doc/25-introduction-dmn.md) §1.2/§3.1 corrigés en conséquence.
+[25-introduction-dmn.md](docs/specs/25-introduction-dmn.md) §1.2/§3.1 corrigés en conséquence.
 
 **Phase 3 (design) close (2026-09-11)** :
 [docs/ai/design/2026-09-11-feature-introduction-dmn.md](docs/ai/design/2026-09-11-feature-introduction-dmn.md).
@@ -298,7 +298,7 @@ vulnérabilité H1-bis. M1 devient une **adaptation** de `assertSafeConditionExp
 grammaire plus étroite, pas une grammaire FEEL à inventer — risque réduit par rapport à l'estimation
 du planning. Confirmé aussi : ni intervalles `[a..b]` ni listes `"a","b"` ne sont supportés par
 l'implémentation Flowable (fixture M11 à base de règles multiples, pas de cellules à liste).
-[25-introduction-dmn.md](analysis%20doc/25-introduction-dmn.md) §1.2,
+[25-introduction-dmn.md](docs/specs/25-introduction-dmn.md) §1.2,
 [design](docs/ai/design/2026-09-11-feature-introduction-dmn.md) §Sécurité et
 [planning](docs/ai/planning/2026-09-11-feature-introduction-dmn.md) corrigés en conséquence.
 
@@ -346,12 +346,12 @@ donc un `EngineConfigurationConfigurer<SpringDmnEngineConfiguration>` mettant
 exercé un vrai déploiement DMN de bout en bout au lieu de s'arrêter aux tests déjà verts de M1-M10
 (qui, eux, n'appellent jamais ce chemin de code précis). `./mvnw verify` complet (1817 tests,
 ArchUnit compris) + suite Playwright (71/71, dont 3 scénarios DMN réels) verts après correctif.
-Documentation mise à jour : `README.md`, `analysis doc/05-workflow-engine.md` (nouvelle section
-« Tables de décision — DMN »), `analysis doc/00-index.md` (entrée 25), `FILE-ATTENTE.md` (clôture
+Documentation mise à jour : `README.md`, `docs/specs/05-workflow-engine.md` (nouvelle section
+« Tables de décision — DMN »), `docs/specs/00-index.md` (entrée 25), `FILE-ATTENTE.md` (clôture
 définitive), `GUIDE-CONCEPTION-BPMN.md` (§7bis/§7ter), `GUIDE-UTILISATEUR.md` (nouvel écran),
 `CHANGELOG.md`.
 
-**Analyse écrite :** [25-introduction-dmn.md](analysis%20doc/25-introduction-dmn.md) — état actuel
+**Analyse écrite :** [25-introduction-dmn.md](docs/specs/25-introduction-dmn.md) — état actuel
 vérifié dans le code (activation moteur = 2 lignes de config + lever le rejet
 `businessRuleTask`), risque dominant identifié = durcissement des expressions FEEL avant de lever
 ce rejet (même classe de risque que H1/H1-bis, qui a nécessité deux passes avant d'être fermé),
@@ -369,7 +369,7 @@ fournit un `Modeler` dédié aux tables de décision : c'est l'équivalent DMN d
 
 **Impacté :** `application.yml`, `FlowableBpmnParserAdapter`, nouveaux ports/adaptateurs de
 parsing/déploiement DMN, écran admin `dmn-editor`, `infrastructure.mcp`,
-`README.md`/`analysis doc/05`/`analysis doc/00-index.md`/`FILE-ATTENTE.md` (retrait de la mention
+`README.md`/`docs/specs/05`/`docs/specs/00-index.md`/`FILE-ATTENTE.md` (retrait de la mention
 « hors V1 »), `GUIDE-CONCEPTION-BPMN.md`, `GUIDE-UTILISATEUR.md`, `CHANGELOG.md` — voir détail
 Phase 5 ci-dessus.
 
@@ -484,7 +484,7 @@ nouveaux `TrustedProxyCidrMatcher`, `SecurityHeadersEnvironmentPostProcessor`,
 ### [x] 65. Enrichissement du reporting — alerting SLA, widgets, export BI
 
 **Énoncé :** les trois écarts de
-[29-enrichissement-reporting.md](analysis%20doc/29-enrichissement-reporting.md)
+[29-enrichissement-reporting.md](docs/specs/29-enrichissement-reporting.md)
 dans un seul cycle : alerting sur les statuts SLA déjà calculés, compteurs
 dead-letter et tâches sans assigné, export CSV planifié vers
 `DocumentStoragePort`.
@@ -516,7 +516,7 @@ Compose, pas `AttachmentScanPort`, pas de variable d’environnement.
 ### [x] 66. Inbox de notifications persistée — historique utilisateur
 
 **Énoncé :** item **3.2** de `ROADMAP.md` (« Produit, pas cadré »), analyse initiale
-[27-notifications-inbox.md](analysis%20doc/27-notifications-inbox.md). Origine : question
+[27-notifications-inbox.md](docs/specs/27-notifications-inbox.md). Origine : question
 utilisateur (2026-09-22), après épuisement de la file produit (Vagues A/B/C + A4 +
 `enrichissement-reporting` toutes livrées).
 
@@ -551,7 +551,7 @@ montage puis le flux SSE existant continue en direct, `markRead`/`markAllRead` p
 `PATCH /api/notifications/{id}/read` (source de vérité serveur, cohérente entre onglets/appareils)
 au lieu de muter uniquement l'état local actuel ; **D-NOTIF-UI-CONFORMITE** = migration de
 `NotificationDrawer.vue` vers PrimeVue dans ce cycle (actuellement CSS scoped fait main, non
-conforme à `analysis doc/11-frontend.md`), coût marginal vu qu'il est de toute façon réécrit pour
+conforme à `docs/specs/11-frontend.md`), coût marginal vu qu'il est de toute façon réécrit pour
 le branchement REST.
 
 **Impacte (prévisionnel) :** `domain.notification` (nouveau port/use cases lecture +
@@ -611,7 +611,7 @@ producteurs réels via le seul point commun). Frontend (M8-M9) : `stores/notific
 rollback) ; `NotificationDrawer.vue` réécrit avec de vrais composants PrimeVue (`Button`,
 `OverlayBadge`, `ScrollPanel`). Playwright (M10) : 2 nouveaux scénarios, régression E2E-8
 confirmée. Doc (M11) : `GUIDE-UTILISATEUR.md` §6, statut mis à jour dans
-`analysis doc/27-notifications-inbox.md` et `00-index.md`.
+`docs/specs/27-notifications-inbox.md` et `00-index.md`.
 
 **2 déviations trouvées en implémentation, non silencieuses :**
 - **M2** — le design décrivait une écriture outbox+inbox « dans la même transaction » ;
@@ -798,7 +798,7 @@ les findings de la Phase 10 traités**, aucun report vers un suivi post-merge.
 ### [x] 67. Outillage DMN — évaluation ad hoc, jeux de tests, historique/rollback
 
 **Énoncé :** les trois écarts de
-[28-outillage-dmn.md](analysis%20doc/28-outillage-dmn.md) /
+[28-outillage-dmn.md](docs/specs/28-outillage-dmn.md) /
 `ROADMAP.md` **1.1** + **1.2** + **1.3/5.1** dans un seul cycle :
 `evaluate_decision` (MCP + REST + bouton Tester), jeu de tests JSON,
 historique des versions Flowable + redéploiement d’une version
@@ -833,9 +833,9 @@ Pas de table historique applicative, pas de variable d’environnement.
 ### [x] 68. Portail externe tokenisé — tâche externe par lien magique
 
 **Énoncé :** item **3.1** de `ROADMAP.md`, analyse
-[26-portail-externe.md](analysis%20doc/26-portail-externe.md). Scindé le 2026-09-23 (demande
+[26-portail-externe.md](docs/specs/26-portail-externe.md). Scindé le 2026-09-23 (demande
 utilisateur) de la signature électronique, désormais lot distinct après celui-ci
-([30-signature-electronique.md](analysis%20doc/30-signature-electronique.md)). Un tiers **sans
+([30-signature-electronique.md](docs/specs/30-signature-electronique.md)). Un tiers **sans
 compte** répond à une `userTask` qui lui est destinée (formulaire `user-question` + dépôt de
 pièces) via un lien reçu par e-mail. Aujourd'hui aucune route publique n'existe : même
 `index.html` exige la session BFF.
@@ -1017,9 +1017,9 @@ métier en dehors du JUEL restreint.
 
 **Découpage en sous-lots (Vague D, préfixe `LC`)** — détail et coutures dans `ROADMAP.md`
 Catégorie 7. Aucun n'est cadré : `dev-lifecycle` Phase 1 obligatoire pour chacun. Analyses
-initiales (2026-09-28) : [31](analysis%20doc/31-positionnement-produit.md) pour cette décision,
-[32](analysis%20doc/32-modele-champs-enrichi.md)–[38](analysis%20doc/38-internationalisation-ui.md)
-pour D1–D7, [39](analysis%20doc/39-palette-metier-bpmn.md)–[45](analysis%20doc/45-scripts-sandbox.md)
+initiales (2026-09-28) : [31](docs/specs/31-positionnement-produit.md) pour cette décision,
+[32](docs/specs/32-modele-champs-enrichi.md)–[38](docs/specs/38-internationalisation-ui.md)
+pour D1–D7, [39](docs/specs/39-palette-metier-bpmn.md)–[45](docs/specs/45-scripts-sandbox.md)
 pour LC1–LC6.
 
 | Sous-lot | Contenu | Taille | Dépend de |
@@ -1066,9 +1066,9 @@ inchangée). À répercuter lors du premier lot livré : `README.md` (vision « 
 
 **Énoncé :** conséquence directe de §70. Le sous-lot LC3 (assistant de conception IA) fait du
 serveur MCP le moteur du no-code côté client, alors qu'il a été cadré comme outillage interne M2M
-([15-serveur-mcp.md](analysis%20doc/15-serveur-mcp.md)). Sans cadrage préalable, chaque lot `LC*`
+([15-serveur-mcp.md](docs/specs/15-serveur-mcp.md)). Sans cadrage préalable, chaque lot `LC*`
 exposerait ses artefacts au MCP à sa façon, ou pas du tout (précédent : trois mécanismes livrés
-sans tool, rattrapés par [24-extension-mcp-flux-metier.md](analysis%20doc/24-extension-mcp-flux-metier.md)).
+sans tool, rattrapés par [24-extension-mcp-flux-metier.md](docs/specs/24-extension-mcp-flux-metier.md)).
 
 **Constat vérifié (`main` @ `e3985fe`) :** 27 tools atomiques ; `dryRun` sur 9 tools d'écriture
 (absent de `redeploy_decision_table`) ; déploiements BPMN/DMN **directs** ; brouillons
@@ -1076,7 +1076,7 @@ sans tool, rattrapés par [24-extension-mcp-flux-metier.md](analysis%20doc/24-ex
 MCP ; rôle constant `API_SERVICE` pour tout JWT M2M (risque A3-M2 accepté) ; capacités MCP
 `resource`/`prompt` désactivées.
 
-**Analyse :** [46-exposition-mcp-couche-low-code.md](analysis%20doc/46-exposition-mcp-couche-low-code.md)
+**Analyse :** [46-exposition-mcp-couche-low-code.md](docs/specs/46-exposition-mcp-couche-low-code.md)
 — principes P1–P9 (parité par conception, atomicité, brouillon par défaut, auto-vérification,
 formats du domaine comme contrat, aucun nouveau chemin de confiance, identité réelle de l'acteur,
 provenance, aucun secret via l'assistant), exposition par sous-lot, risques propres à
@@ -1096,10 +1096,10 @@ D-MCP-LC-RESOURCES, D-MCP-LC-SECRETS.
 
 **Numérotation :** l'analyse, créée en 31, a été renumérotée **46** le 2026-09-28 pour suivre les
 analyses initiales des lots qu'elle cadre (31 à 45) ; le lot D6 a sa propre analyse
-([37-socle-mcp-low-code.md](analysis%20doc/37-socle-mcp-low-code.md)).
+([37-socle-mcp-low-code.md](docs/specs/37-socle-mcp-low-code.md)).
 
 **Impacte :** `ROADMAP.md` (D6 élargi en socle MCP low-code, ligne « Exposition MCP » dans chaque
-lot `LC*`), `analysis doc/00-index.md`, `15-serveur-mcp.md` § Décisions de cadrage (amendé). Dans le lot D6 :
+lot `LC*`), `docs/specs/00-index.md`, `15-serveur-mcp.md` § Décisions de cadrage (amendé). Dans le lot D6 :
 `.env.example`, `GETTING-STARTED.md`, `DEPLOIEMENT.md` (propriété de publication),
 `CHANGELOG.md` (rupture des tools de déploiement).
 
@@ -1110,7 +1110,7 @@ lot `LC*`), `analysis doc/00-index.md`, `15-serveur-mcp.md` § Décisions de cad
 **Livré (2026-09-29).** Phases 1 à 9 closes, analyse adversariale par sous-agent comprise. **Mergée sur `main`** le 2026-09-29 ([PR #149](https://github.com/superjojo79/FlowForge/pull/149), squash `1c839ff`), CI verte (`build` + `frontend`). Preuves : `./mvnw verify` → **2571 tests, 0 échec** ; Vitest 424 ; Playwright 98 ; test de bout en bout réel navigateur + backend (`SignatureBrowserE2eTest`). Seul fournisseur livré : `stub` (simulation, sans valeur juridique) ; un fournisseur réel et eIDAS restent à cadrer. Restent ouverts (voir `docs/ai/implementation/2026-09-29-feature-signature-electronique.md`) : S-EMIT-10 sur PostgreSQL réel, vérifications manuelles T14.4, tests de concurrence à deux transactions réelles, parcours internes en e2e réel (session OIDC).
 
 **Énoncé :** item **2.4** de `ROADMAP.md`, analyse
-[30-signature-electronique.md](analysis%20doc/30-signature-electronique.md), recalibrée le
+[30-signature-electronique.md](docs/specs/30-signature-electronique.md), recalibrée le
 2026-09-29 : aucun fournisseur désigné, le lot pose le contrat, le modèle, le parcours et un
 adaptateur **stub** qui simule le cycle complet, pour qu'un provider réel se branche ensuite par un
 adaptateur et une configuration. Prérequis livré : portail externe (§68, PR #138).
@@ -1173,12 +1173,12 @@ dossier, golden OpenAPI, tools MCP (principe P1 de l'analyse 46), `GUIDE-CONCEPT
 
 ## Autorisation et conformité
 
-Points identifiés par [12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md),
+Points identifiés par [12-autorisation-conformite.md](docs/specs/12-autorisation-conformite.md),
 qui prévoyait leur fusion dans ce registre.
 
 ### [x] 73. Palette métier dans l'éditeur BPMN (LC1) (livré)
 
-**Énoncé :** sous-lot **LC1** de la couche low-code (§70), analyse [39-palette-metier-bpmn.md](analysis%20doc/39-palette-metier-bpmn.md).
+**Énoncé :** sous-lot **LC1** de la couche low-code (§70), analyse [39-palette-metier-bpmn.md](docs/specs/39-palette-metier-bpmn.md).
 Docs SDD : [requirements](docs/ai/requirements/2026-09-29-feature-palette-metier-bpmn.md), [design](docs/ai/design/2026-09-29-feature-palette-metier-bpmn.md),
 [planning](docs/ai/planning/2026-09-29-feature-palette-metier-bpmn.md), [testing](docs/ai/testing/2026-09-29-feature-palette-metier-bpmn.md).
 
@@ -1213,7 +1213,7 @@ déploiement par le use case). **Livré** : `GET /api/bpmn-building-blocks/refer
 
 ### [x] 75. Langage d'expression métier borné (LC2) (livré)
 
-**Énoncé :** sous-lot **LC2** de la couche low-code (§70), analyse [40-langage-expression-metier.md](analysis%20doc/40-langage-expression-metier.md).
+**Énoncé :** sous-lot **LC2** de la couche low-code (§70), analyse [40-langage-expression-metier.md](docs/specs/40-langage-expression-metier.md).
 Docs SDD : [requirements](docs/ai/requirements/2026-09-30-feature-lc2-langage-expression-metier.md), [design](docs/ai/design/2026-09-30-feature-lc2-langage-expression-metier.md),
 [planning](docs/ai/planning/2026-09-30-feature-lc2-langage-expression-metier.md), [implementation](docs/ai/implementation/2026-09-30-feature-lc2-langage-expression-metier.md),
 [testing](docs/ai/testing/2026-09-30-feature-lc2-langage-expression-metier.md). Journal : [DECISIONS.md](docs/roadmap-goal/DECISIONS.md).
@@ -1229,13 +1229,13 @@ brique « Évaluer une expression » (12ᵉ bloc, delegate allowlisté, formule 
 `validate_expression`, `evaluate_expression` ; règles ArchUnit (bibliothèque confinée, jamais d'UEL). Golden OpenAPI additif. Aucune migration.
 **Constats du design corrigés :** `outputConvertNulls` par défaut (null explicite ≠ absent), intervalles paresseux, regex non interruptibles, attribut natif
 `resultVariable`, grammaire de condition à opérateur obligatoire. **Revue adversariale en 3 passes** (sous-agents indépendants, sondes exécutées) : passe 1 = 2 Critiques (callbacks masquables par `$__evaluate_entry := nope` ; `$replace` à 4 arguments = regex/ReDoS), 1 Haute (`[1..9999999]` + appels natifs → OOM), 2 Moyennes, 3 Basses ; passe 2 = 2 nouvelles Critiques (aplatissement de chemin sur références partagées ; graphe partagé exponentiel pour `=`/`$distinct`) corrigées à la racine par deux invariants à chaque sortie de nœud (poids déplié, travail cumulé) ; passe 3 = **0 Critique, 0 Haute**. Détail, preuves et décisions : document d'implémentation et `DECISIONS.md` (D-EXPR-ALLOWLIST, D-EXPR-WEIGHT-FUEL…).
-**Impacte :** `GUIDE-CONCEPTION-BPMN.md` (§3sexies, §3quinquies, §7), `GUIDE-UTILISATEUR.md`, `analysis doc/40`, `ROADMAP.md`, `CHANGELOG.md`.
+**Impacte :** `GUIDE-CONCEPTION-BPMN.md` (§3sexies, §3quinquies, §7), `GUIDE-UTILISATEUR.md`, `docs/specs/40`, `ROADMAP.md`, `CHANGELOG.md`.
 Nouvelles propriétés `app.expression.*` (valeurs par défaut, aucune variable d'environnement requise).
 
 
 ### [x] 76. Modèle de champs enrichi — types structurés (D1) (livré)
 
-**Énoncé :** lot **D1** de la Vague D, analyse [32-modele-champs-enrichi.md](analysis%20doc/32-modele-champs-enrichi.md). Docs SDD :
+**Énoncé :** lot **D1** de la Vague D, analyse [32-modele-champs-enrichi.md](docs/specs/32-modele-champs-enrichi.md). Docs SDD :
 [requirements](docs/ai/requirements/2026-09-30-feature-d1-modele-champs-enrichi.md), [design](docs/ai/design/2026-09-30-feature-d1-modele-champs-enrichi.md),
 [planning](docs/ai/planning/2026-09-30-feature-d1-modele-champs-enrichi.md), [implementation](docs/ai/implementation/2026-09-30-feature-d1-modele-champs-enrichi.md),
 [testing](docs/ai/testing/2026-09-30-feature-d1-modele-champs-enrichi.md). Journal : [DECISIONS.md](docs/roadmap-goal/DECISIONS.md).
@@ -1248,12 +1248,12 @@ D-CHAMPS-NORMALIZE ; D-CHAMPS-USERQ = types refusés dans les questions de tâch
 **Livré.** `FieldType` + `FieldDefinition` (règles de définition), `DossierFieldValidator` (validation avec chemins d'erreur `lignes[1].poste`, normalisation), `DossierFieldCsv`
 (exports dossiers et BI), branchements création/mise à jour/MCP, SPA (saisie, lecture texte/tableau, diff sans faux patch, éditeur d'administration avec colonnes de groupe, validation
 miroir). Preuves de non-régression : modèles PDF (sans modification), compatibilité 409, masquage du groupe sensible, OpenAPI additif. Aucune migration, aucune variable d'environnement.
-**Impacte :** `GUIDE-UTILISATEUR.md` (Admin → Types), `GUIDE-CONCEPTION-BPMN.md` (§3sexies), `analysis doc/32`, `ROADMAP.md`, `CHANGELOG.md`. **Revue adversariale** : 1 passe, 0 Critique/Haute, Moyens et Bas corrigés avec tests ; résidu ⚠ M4 (plafond de corps HTTP non spécifique aux `fields`), voir le document d'implémentation.
+**Impacte :** `GUIDE-UTILISATEUR.md` (Admin → Types), `GUIDE-CONCEPTION-BPMN.md` (§3sexies), `docs/specs/32`, `ROADMAP.md`, `CHANGELOG.md`. **Revue adversariale** : 1 passe, 0 Critique/Haute, Moyens et Bas corrigés avec tests ; résidu ⚠ M4 (plafond de corps HTTP non spécifique aux `fields`), voir le document d'implémentation.
 
 
 ### [x] 77. OAuth2 client credentials sur `http-rest` (D3a) (livré)
 
-**Énoncé :** sous-lot **D3a** de la Vague D, analyse [34-integrations-entreprise.md](analysis%20doc/34-integrations-entreprise.md). Docs SDD :
+**Énoncé :** sous-lot **D3a** de la Vague D, analyse [34-integrations-entreprise.md](docs/specs/34-integrations-entreprise.md). Docs SDD :
 [requirements](docs/ai/requirements/2026-09-30-feature-d3a-oauth2-client-credentials.md), [design](docs/ai/design/2026-09-30-feature-d3a-oauth2-client-credentials.md),
 [planning](docs/ai/planning/2026-09-30-feature-d3a-oauth2-client-credentials.md), [implementation](docs/ai/implementation/2026-09-30-feature-d3a-oauth2-client-credentials.md),
 [testing](docs/ai/testing/2026-09-30-feature-d3a-oauth2-client-credentials.md). Journal : [DECISIONS.md](docs/roadmap-goal/DECISIONS.md).
@@ -1266,13 +1266,13 @@ D-INTEG-OAUTH-ERRORS = messages neutres (statut + code `error` normalisé).
 **Livré.** `OAuth2TokenProvider` (package `builtin`), schéma `http-rest` étendu (8 champs optionnels, secrets `PASSWORD`/`SECRET_TEXTAREA` donc chiffrés et masqués sans code
 spécifique), validation (cohérence par méthode, URL du jeton via le garde SSRF, hôtes), exécution (jeton posé, `Authorization` de l'appelant ignoré, rejeu sur `401`). Aucune
 migration, aucune variable d'environnement, aucun changement de SPA (formulaire généré depuis `configSchema`). **Impacte :** `GUIDE-UTILISATEUR.md` (Admin → Connecteurs),
-`analysis doc/06`, `analysis doc/34`, `ROADMAP.md`, `CHANGELOG.md`. **Revue adversariale** : voir le document d'implémentation.
+`docs/specs/06`, `docs/specs/34`, `ROADMAP.md`, `CHANGELOG.md`. **Revue adversariale** : voir le document d'implémentation.
 
 ---
 
 ### [x] 78. Mapping d'une réponse de connecteur → champs du dossier (D3b) (livré)
 
-**Énoncé :** sous-lot **D3b**, analyse [34-integrations-entreprise.md](analysis%20doc/34-integrations-entreprise.md), sur le moteur d'expressions de LC2 (§75). Docs SDD :
+**Énoncé :** sous-lot **D3b**, analyse [34-integrations-entreprise.md](docs/specs/34-integrations-entreprise.md), sur le moteur d'expressions de LC2 (§75). Docs SDD :
 [requirements](docs/ai/requirements/2026-10-01-feature-d3b-mapping-reponse-connecteur.md), [design](docs/ai/design/2026-10-01-feature-d3b-mapping-reponse-connecteur.md),
 [implementation](docs/ai/implementation/2026-10-01-feature-d3b-mapping-reponse-connecteur.md), [testing](docs/ai/testing/2026-10-01-feature-d3b-mapping-reponse-connecteur.md).
 
@@ -1281,14 +1281,14 @@ D-MAP-BODY-JSON = `connectorResult.json` fourni par le contexte (nombres exacts 
 déclarées seulement ; D-MAP-RESERVED = `connectorResult` variable réservée.
 
 **Livré.** Delegate `fieldMappingTask` (allowlist étendue d'un seul bean), brique `map-fields` (catalogue, 13 briques), `FieldMappingSpec` (format), validation au déploiement (chaque expression), `BusinessExpressionContext`
-partagé (`json`), catalogue : drapeau `multiline` → zone de texte dans l'éditeur. Aucune migration. **Impacte :** `GUIDE-CONCEPTION-BPMN.md` (§3septies, §7), `analysis doc/34`, `ROADMAP.md`, `CHANGELOG.md`.
+partagé (`json`), catalogue : drapeau `multiline` → zone de texte dans l'éditeur. Aucune migration. **Impacte :** `GUIDE-CONCEPTION-BPMN.md` (§3septies, §7), `docs/specs/34`, `ROADMAP.md`, `CHANGELOG.md`.
 **Revue adversariale** : voir le document d'implémentation.
 
 ---
 
 ### [x] 79. Tâches planifiées sûres sous double exécution (D5) (livré)
 
-**Énoncé :** lot **D5**, analyse [36-verrou-jobs-planifies.md](analysis%20doc/36-verrou-jobs-planifies.md). Docs SDD : [requirements](docs/ai/requirements/2026-10-01-feature-d5-verrou-jobs-planifies.md),
+**Énoncé :** lot **D5**, analyse [36-verrou-jobs-planifies.md](docs/specs/36-verrou-jobs-planifies.md). Docs SDD : [requirements](docs/ai/requirements/2026-10-01-feature-d5-verrou-jobs-planifies.md),
 [design (audit complet)](docs/ai/design/2026-10-01-feature-d5-verrou-jobs-planifies.md), [implementation](docs/ai/implementation/2026-10-01-feature-d5-verrou-jobs-planifies.md),
 [testing](docs/ai/testing/2026-10-01-feature-d5-verrou-jobs-planifies.md).
 
@@ -1296,7 +1296,7 @@ partagé (`json`), catalogue : drapeau `multiline` → zone de texte dans l'édi
 (UPDATE conditionnel), ni advisory lock ni ShedLock ; D-JOBS-LEASE = baux courts (2 à 5 min) et reprise des unités abandonnées ; D-JOBS-CRON = créneau cron au plus une fois sous crash, rendu en cas d'échec.
 
 **Livré.** 7 tâches rendues sûres (relais outbox notifications et workflow, alertes SLA, invitations portail, déclencheurs cron, export BI, réconciliation `RESERVED`) + distribution des signatures ; migrations additives 027 à 029 ;
-`DEPLOIEMENT.md` §11 (ce qui est sûr, ce qui ne l'est pas : SSE, rate-limit, Kafka). **Impacte :** `DEPLOIEMENT.md`, `analysis doc/36`, `ROADMAP.md`, `CHANGELOG.md`. **Revue adversariale** : voir le document d'implémentation.
+`DEPLOIEMENT.md` §11 (ce qui est sûr, ce qui ne l'est pas : SSE, rate-limit, Kafka). **Impacte :** `DEPLOIEMENT.md`, `docs/specs/36`, `ROADMAP.md`, `CHANGELOG.md`. **Revue adversariale** : voir le document d'implémentation.
 
 ---
 
@@ -1304,7 +1304,7 @@ partagé (`json`), catalogue : drapeau `multiline` → zone de texte dans l'édi
 ### [x] 91. PostgreSQL embarqué (zonky) pour les tests et les démos/QA (livré)
 
 **Énoncé :** remplacer H2 (émulation) et Testcontainers-PostgreSQL (Docker requis) par un PostgreSQL
-embarqué ; offrir une base **persistante** pour les démos/QA. Décision : [47-postgresql-embarque-tests-demo.md](analysis%20doc/47-postgresql-embarque-tests-demo.md) —
+embarqué ; offrir une base **persistante** pour les démos/QA. Décision : [47-postgresql-embarque-tests-demo.md](docs/specs/47-postgresql-embarque-tests-demo.md) —
 remplace D-TESTCONTAINERS-EXEC. Docs SDD : [requirements](docs/ai/requirements/2026-10-02-feature-zonky-embedded-postgres.md),
 [design](docs/ai/design/2026-10-02-feature-zonky-embedded-postgres.md), [planning](docs/ai/planning/2026-10-02-feature-zonky-embedded-postgres.md),
 [implementation](docs/ai/implementation/2026-10-02-feature-zonky-embedded-postgres.md), [testing](docs/ai/testing/2026-10-02-feature-zonky-embedded-postgres.md) ;
@@ -1337,7 +1337,7 @@ migration des données existantes — à décider avant toute évolution du mod�
 (décision n° 20). Peut être rouvert si les premiers clients réels exigent
 d’autres rôles.
 
-**Impacte :** [12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md).
+**Impacte :** [12-autorisation-conformite.md](docs/specs/12-autorisation-conformite.md).
 
 ---
 
@@ -1356,8 +1356,8 @@ d’autres rôles.
 **Suite livrée :** purge physique PG + object store → point **22** /
 `purge-stockage` (PR #56).
 
-**Impacte :** [04-dossiers.md](analysis%20doc/04-dossiers.md),
-[12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md).
+**Impacte :** [04-dossiers.md](docs/specs/04-dossiers.md),
+[12-autorisation-conformite.md](docs/specs/12-autorisation-conformite.md).
 
 ---
 
@@ -1382,8 +1382,8 @@ d’autres rôles.
 **Reste hors V1 :** recovery d’une ligne `PROCESSING` coincée après crash JVM ;
 backoff `nextAttemptAt` ; GC orphelins store.
 
-**Impacte :** [07-generation-documents.md](analysis%20doc/07-generation-documents.md),
-[12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md).
+**Impacte :** [07-generation-documents.md](docs/specs/07-generation-documents.md),
+[12-autorisation-conformite.md](docs/specs/12-autorisation-conformite.md).
 
 ---
 
@@ -1418,8 +1418,8 @@ désérialisation → corps HTTP réel) et par contrôle mutant manuel (le
 masquage désactivé fait échouer les tests). `./mvnw verify` : 1088 tests,
 0 échec.
 
-**Impacte :** [04-dossiers.md](analysis%20doc/04-dossiers.md),
-[12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md).
+**Impacte :** [04-dossiers.md](docs/specs/04-dossiers.md),
+[12-autorisation-conformite.md](docs/specs/12-autorisation-conformite.md).
 
 ---
 
@@ -1492,7 +1492,7 @@ l'énoncé lui-même était en partie obsolète. Ni le `TenantRegistry` ni les c
 de mise à jour explicite disant que les deux mécanismes « n'ont plus lieu d'être » depuis la
 décision n° 13 (une instance dédiée par tenant, schéma fixé au démarrage, changelog unique
 appliqué à chaque démarrage). Nouveau document
-[13-modele-physique.md](analysis%20doc/13-modele-physique.md) : ERD mermaid des **17** tables
+[13-modele-physique.md](docs/specs/13-modele-physique.md) : ERD mermaid des **17** tables
 métier réelles (pas « une dizaine »), **4** index uniques partiels critiques avec leur invariant
 métier (pas « deux » — `uq_dossier_workflow_link_active`, `uq_template_active`,
 `uq_connector_instance_tenant_name_active`, `uq_notification_webhook_tenant_name_active`),
@@ -1519,7 +1519,7 @@ réelle. Écrit et compilé ; non exécuté dans le bac à sable de développeme
 exécution/vérification en CI (`ubuntu-latest`, Docker natif). Voir
 `docs/ai/testing/2026-08-22-feature-fiabilisation-tests-plateforme.md`.
 
-**Impacte :** [04-dossiers.md](analysis%20doc/04-dossiers.md).
+**Impacte :** [04-dossiers.md](docs/specs/04-dossiers.md).
 
 ---
 
@@ -1606,15 +1606,15 @@ un jour scalé horizontalement. Aucun déploiement multi-réplique n'est prévu
 stack figée sans besoin actuel. À réactiver si/quand un tenant est
 effectivement scalé horizontalement.
 
-**Impacte :** [06-connecteurs.md](analysis%20doc/06-connecteurs.md),
-[09-notifications.md](analysis%20doc/09-notifications.md),
-[12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md).
+**Impacte :** [06-connecteurs.md](docs/specs/06-connecteurs.md),
+[09-notifications.md](docs/specs/09-notifications.md),
+[12-autorisation-conformite.md](docs/specs/12-autorisation-conformite.md).
 
 ---
 
 ### [x] 35. Modélisation et déploiement des diagrammes BPMN — écart vision / implémentation
 
-**Constat :** [05-workflow-engine.md](analysis%20doc/05-workflow-engine.md) retient « Designer visuel :
+**Constat :** [05-workflow-engine.md](docs/specs/05-workflow-engine.md) retient « Designer visuel :
 Flowable UI (web, embarqué) » et « Monitoring instances : Flowable UI Cockpit » ; le `README.md`
 reprend cette vision (« designer visuel intégré », « déployés sans redémarrage », « supervisés via le
 cockpit Flowable »). En pratique, `pom.xml` ne dépend que de `flowable-spring-boot-starter` (le moteur
@@ -1644,7 +1644,7 @@ dépôt backend par l'équipe technique (documenté comme limite actuelle dans
   `processDefinitionKey` cohérent avec la config workflow) via l'API FlowForge existante, déploiement
   via `RepositoryService` — sans réintroduire toute la stack Flowable UI ni son coût opérationnel.
 
-**Impacte :** [05-workflow-engine.md](analysis%20doc/05-workflow-engine.md), `README.md` (sections
+**Impacte :** [05-workflow-engine.md](docs/specs/05-workflow-engine.md), `README.md` (sections
 Proposition de valeur et Fonctionnalités principales), [GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md),
 `TenantProcessDeployment.java`.
 
@@ -1714,7 +1714,7 @@ désormais exposée par le backend plutôt que redocumentée côté UI.
 
 **Impacte :** `frontend/src/views/pilotage/DossierDetailView.vue` (`canEditDossier`),
 `DossierAccessPolicy.java`, `DossierController.java`, `DossierApiDtos.java`,
-[12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md).
+[12-autorisation-conformite.md](docs/specs/12-autorisation-conformite.md).
 
 ---
 
@@ -1738,7 +1738,7 @@ paramètre de `evaluate(...)`. Test de non-régression (seul appelant existant) 
 d'isolation multi-tenant dans `DossierPersistenceTest`.
 
 **Impacte :** `SpringDataDossierRepository.java`, `JpaDossierRepositoryAdapter.java`,
-[02-multi-tenant.md](analysis%20doc/02-multi-tenant.md).
+[02-multi-tenant.md](docs/specs/02-multi-tenant.md).
 
 ---
 
@@ -1788,7 +1788,7 @@ remplacer aurait ajouté une dépendance, pas seulement corrigé un bug.
   couverture Jacoco au vert — aucune régression, aucun `code` existant en base/tests hors charset.
 
 **Impacte :** `PurgeOutboxPayloads.java`, `DossierType.java`,
-[04-dossiers.md](analysis%20doc/04-dossiers.md).
+[04-dossiers.md](docs/specs/04-dossiers.md).
 
 ---
 
@@ -1818,7 +1818,7 @@ volet Cockpit (`DEFERRED-FEATURES.md` §1.5, hors scope produit, non remis en ca
   actée d'exclure les apps Flowable UI (§35, `DEFERRED-FEATURES.md` §1.5).
 
 **Recommandation actée :** option **(b)**. Analyse détaillée :
-[analysis doc/14-edition-bpmn.md](analysis%20doc/14-edition-bpmn.md) et
+[docs/specs/14-edition-bpmn.md](docs/specs/14-edition-bpmn.md) et
 [docs/ai/requirements/2026-08-24-feature-edition-bpmn.md](docs/ai/requirements/2026-08-24-feature-edition-bpmn.md).
 
 **Cycle `dev-lifecycle` lancé (2026-08-24), Phase 2 (requirements) close** — 7 décisions actées via
@@ -1903,7 +1903,7 @@ Phase 9 (revue finale) close, PR ouverte sur demande explicite de l'utilisateur 
 
 **Impacte :** `frontend/src/components/workflow/BpmnCanvas.vue`, `BpmnUploadPreview.vue`,
 `WorkflowBpmnDeploymentController` (endpoint de déploiement potentiellement réutilisable tel
-quel), [05-workflow-engine.md](analysis%20doc/05-workflow-engine.md), `README.md`.
+quel), [05-workflow-engine.md](docs/specs/05-workflow-engine.md), `README.md`.
 
 ---
 
@@ -1938,7 +1938,7 @@ mappe pas non plus `DossierTypeSchemaIncompatibleException` vers un statut HTTP.
    domaine (`DossierType`/`DossierFieldValidator`) pour couvrir aussi MCP/API directe ?
 3. **`allowUnknownFields`** — à confirmer dans le périmètre de cette feature (proposé) plutôt
    qu'un lot séparé ; absent de l'écran actuel malgré son exposition API complète.
-4. **Alignement maquette** — [11-frontend.md](analysis%20doc/11-frontend.md) impose
+4. **Alignement maquette** — [11-frontend.md](docs/specs/11-frontend.md) impose
    `FlowForge - Maquettes UI.html` comme référence ; aucun écran de ce fichier ne couvre
    aujourd'hui l'édition du schéma de champs — à vérifier en phase design.
 
@@ -1948,7 +1948,7 @@ mappe pas non plus `DossierTypeSchemaIncompatibleException` vers un statut HTTP.
 **Impacte :** `frontend/src/views/admin/DossierTypesAdminView.vue`, `DossierTypeController`,
 `UpdateDossierTypeUseCaseImpl`, `DossierExceptionHandler`, `GUIDE-UTILISATEUR.md` §1.
 
-**Détail :** [17-schema-champs-dynamiques.md](analysis%20doc/17-schema-champs-dynamiques.md).
+**Détail :** [17-schema-champs-dynamiques.md](docs/specs/17-schema-champs-dynamiques.md).
 
 **Implémenté (2026-08-28, feature `schema-champs-dynamiques`, Phase 5 dev-lifecycle) :**
 `UpdateDossierTypeUseCaseImpl` branche désormais `CheckDossierTypeSchemaCompatibilityUseCase`
@@ -1979,7 +1979,7 @@ backend, 247 Vitest + 59 Playwright) et 9 (revue finale, aucun blocage) closes.
 
 ### [x] 48. Activation du connecteur `http-rest` en rôle SERVICE
 
-**Constat :** [README.md](README.md) et [06-connecteurs.md](analysis%20doc/06-connecteurs.md)
+**Constat :** [README.md](README.md) et [06-connecteurs.md](docs/specs/06-connecteurs.md)
 documentent déjà la limite : le catalogue V1 livré pour `http-rest` est **TRIGGER seulement** ; un
 skeleton `HttpRestServiceConnector`
 (`src/main/java/com/flowforge/infrastructure/connector/builtin/HttpRestServiceConnector.java`)
@@ -2037,7 +2037,7 @@ comblées en Phase 8 sur le code touché) ; Vitest 247/247, Playwright 59/59 (fe
 zéro fichier `frontend/**` touché, régression complète). Doc à jour :
 `06-connecteurs.md`, `README.md`, `CHANGELOG.md`.
 
-**Détail :** [18-connecteur-http-rest-service.md](analysis%20doc/18-connecteur-http-rest-service.md).
+**Détail :** [18-connecteur-http-rest-service.md](docs/specs/18-connecteur-http-rest-service.md).
 
 ---
 
@@ -2090,7 +2090,7 @@ en régression, zéro fichier `frontend/**` touché.
 `ProcessPurgeOutboxUseCase`, `ProcessPurgeOutboxUseCaseImpl`, `PurgeOutboxJob`,
 `DEFERRED-FEATURES.md`, `CHANGELOG.md`.
 
-**Détail :** [19-assainissement-dette-technique.md](analysis%20doc/19-assainissement-dette-technique.md).
+**Détail :** [19-assainissement-dette-technique.md](docs/specs/19-assainissement-dette-technique.md).
 
 ---
 
@@ -2168,7 +2168,7 @@ DocumentStorageConnector}.java`, `infrastructure/connector/SchedulerConnectorTri
 `018-connector-schedule-state.yaml`, `ConnectorProperties.DocumentStorage`,
 `ExecuteConnectorRequest`, `DEFERRED-FEATURES.md`, `CHANGELOG.md`.
 
-**Détail :** [20-connecteurs-hors-v1.md](analysis%20doc/20-connecteurs-hors-v1.md).
+**Détail :** [20-connecteurs-hors-v1.md](docs/specs/20-connecteurs-hors-v1.md).
 
 ---
 
@@ -2242,7 +2242,7 @@ patron `WebhookController`), doc catalogue à jour.
 `domain/connector/model/CallbackConnector.java` (nom provisoire) + adaptateur infra dédié,
 `06-connecteurs.md`, `README.md`.
 
-**Détail :** [21-correlation-callback-async.md](analysis%20doc/21-correlation-callback-async.md).
+**Détail :** [21-correlation-callback-async.md](docs/specs/21-correlation-callback-async.md).
 
 ---
 
@@ -2349,7 +2349,7 @@ lecture dans `FlowableWorkflowTaskInboxAdapter`, champ `flowable:formKey` dans l
 `FlowableWorkflowTaskInboxAdapter`, `flowablePropertiesProvider.ts`, `MobileTasksView.vue`/
 `TaskList.vue`, nouveau composant sélection template/variante/locale.
 
-**Détail :** [22-formulaires-dynamiques-taches.md](analysis%20doc/22-formulaires-dynamiques-taches.md).
+**Détail :** [22-formulaires-dynamiques-taches.md](docs/specs/22-formulaires-dynamiques-taches.md).
 
 </details>
 
@@ -2410,7 +2410,7 @@ et corrige 4 nouveaux écarts (« corrige tout maintenant ») :
   non signée) : une paire (corps, signature) capturée une fois était rejouable indéfiniment.
   Corrigé : signature étendue à `timestamp + "." + corps` (`X-Webhook-Timestamp` requis, fenêtre
   de fraîcheur 5 min) — **rupture de contrat pour les appelants HMAC existants**, documentée dans
-  les champs de config et `analysis doc/06-connecteurs.md`.
+  les champs de config et `docs/specs/06-connecteurs.md`.
 - **F7 (moyenne)** — aucune longueur minimale sur `webhookSecret` : brute-forçable en pratique avec
   la limite de débit par défaut (120 req/min) si l'opérateur choisit un secret court. Corrigé :
   `WebhookSecretPolicy.MIN_LENGTH = 20`, appliqué dans `validate()` des 2 connecteurs concernés.
@@ -2546,7 +2546,7 @@ seulement un contrôle sur les champs qu'il reconnaît. Test de régression ajou
 `./mvnw verify` re-exécuté : **1592 tests**, 0 échec, Jacoco tenu ; `UserQuestionFormSmokeIT`
 re-confirmée verte ; Vitest/Playwright inchangés (correctif backend seul).
 
-**Détail :** [23-questions-utilisateur-taches.md](analysis%20doc/23-questions-utilisateur-taches.md).
+**Détail :** [23-questions-utilisateur-taches.md](docs/specs/23-questions-utilisateur-taches.md).
 
 ---
 
@@ -2556,7 +2556,7 @@ re-confirmée verte ; Vitest/Playwright inchangés (correctif backend seul).
 demande utilisateur — inspecter ce qui a été ajouté à FlowForge depuis `serveur-mcp` (PR #82, 9
 tools) et déterminer ce qui manque pour qu'un agent MCP puisse définir un flux métier complet sans
 sortir du canal MCP. Analyse initiale :
-[24-extension-mcp-flux-metier.md](analysis%20doc/24-extension-mcp-flux-metier.md). Trois lacunes
+[24-extension-mcp-flux-metier.md](docs/specs/24-extension-mcp-flux-metier.md). Trois lacunes
 vérifiées contre le code réel : **(1)** aucun tool ne couvre `ConnectorInstance` (créée
 aujourd'hui uniquement via l'écran admin `TENANT_ADMIN`-only, alors qu'un `serviceTask` BPMN la
 référence par UUID d'instance) ; **(2)** `DossierType.documentTemplateKeys` (association template
@@ -2647,7 +2647,7 @@ directement `page(...)`, pas `findAll(...)` ; (3) seule régression trouvée par
 exécutable dans ce bac à sable (binaire `chrome-headless-shell` absent, pré-existant, sans rapport
 avec cette feature) — non bloquant, feature backend-only. Documentation resynchronisée :
 [GETTING-STARTED.md](GETTING-STARTED.md) §12 (9 → 16 tools),
-[15-serveur-mcp.md](analysis%20doc/15-serveur-mcp.md) (bandeau d'extension). `CHANGELOG.md`
+[15-serveur-mcp.md](docs/specs/15-serveur-mcp.md) (bandeau d'extension). `CHANGELOG.md`
 différé (aucune PR ouverte à ce stade, même convention que TODO §47/§55). Détail complet :
 [docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md](docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md).
 
@@ -2768,10 +2768,10 @@ M2M à portée réduite. Détail complet dans
 
 **Impacte :** `infrastructure/mcp/tool/**` (7 nouveaux tools + `DefineDossierTypeTool` étendu),
 `domain/connector/**`, `domain/workflow/**` (`TaskQuestionSchemaUseCaseImpl`,
-`WorkflowTypeConfigUseCaseImpl`), [15-serveur-mcp.md](analysis%20doc/15-serveur-mcp.md),
-[06-connecteurs.md](analysis%20doc/06-connecteurs.md).
+`WorkflowTypeConfigUseCaseImpl`), [15-serveur-mcp.md](docs/specs/15-serveur-mcp.md),
+[06-connecteurs.md](docs/specs/06-connecteurs.md).
 
-**Détail :** [24-extension-mcp-flux-metier.md](analysis%20doc/24-extension-mcp-flux-metier.md).
+**Détail :** [24-extension-mcp-flux-metier.md](docs/specs/24-extension-mcp-flux-metier.md).
 
 ---
 
@@ -2901,7 +2901,7 @@ que le XSS navigateur. Le sandboxing Thymeleaf avancé a été reporté dès
 (`${T(java.lang.Runtime)}` → 400 / non évalué).
 
 **Impacte :** `ThymeleafHtmlTemplateProcessor`,
-[08-templates-documents.md](analysis%20doc/08-templates-documents.md).
+[08-templates-documents.md](docs/specs/08-templates-documents.md).
 
 **Détail :** [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) §4 S-1.
 
@@ -2932,7 +2932,7 @@ tenants.
 **À produire :** décision + runbook provisioning (point 31) + IT « user A ne
 `SELECT` pas `tenant_b` ».
 
-**Impacte :** [02-multi-tenant.md](analysis%20doc/02-multi-tenant.md),
+**Impacte :** [02-multi-tenant.md](docs/specs/02-multi-tenant.md),
 `docker/postgres/init/`, point 31.
 
 **Détail :** [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) §4 S-2.
@@ -3015,7 +3015,7 @@ mais le client HTTP n'est pas pinté sur l'IP vérifiée (javadoc explicite).
 **À produire :** décision + tests de rebinding.
 
 **Impacte :** `OutboundUrlGuard`, `WebhookRestAdapter`,
-[09-notifications.md](analysis%20doc/09-notifications.md).
+[09-notifications.md](docs/specs/09-notifications.md).
 
 **Détail :** [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) §4 S-5.
 
@@ -3031,10 +3031,10 @@ décrivaient encore l'ancien modèle ou un périmètre non livré.
 Corrigé (liste revue §3.3) :
 
 - `README.md` : tenant instance (`app.tenant.id`) + garde OIDC `tenant_id` ; DMN hors V1 ; catalogue connecteurs V1 vs cible ; stockage port S3 ; jsoup 1.23.1 ; `context-path` cible (yaml commenté)
-- `analysis doc/12` : `WORKFLOW_ADMIN` → `/admin/bpmn-editor` (plus « accès au cockpit Flowable »)
-- `analysis doc/06` : colonnes Cible / V1 livré
-- `analysis doc/00` / `07` : jsoup 1.23.1 ; stockage
-- `analysis doc/11` : `context-path` = cible ops
+- `docs/specs/12` : `WORKFLOW_ADMIN` → `/admin/bpmn-editor` (plus « accès au cockpit Flowable »)
+- `docs/specs/06` : colonnes Cible / V1 livré
+- `docs/specs/00` / `07` : jsoup 1.23.1 ; stockage
+- `docs/specs/11` : `context-path` = cible ops
 - `application.yml` : commentaire d'en-tête Flowable V1 (plus « until real adapters land »)
 
 **Détail :** [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) §3.3.
@@ -3066,7 +3066,7 @@ seule classe (`ManualStartOrchestrator`), aucune autre violation trouvée.
 **Impacte :** `ManualStartOrchestrator`, `WorkflowStartConfirmer`,
 `WorkflowStartConfirmationPort` (nouveau), `WorkflowConfig`,
 `ArchitectureRulesTest`,
-[01-architecture-hexagonale.md](analysis%20doc/01-architecture-hexagonale.md).
+[01-architecture-hexagonale.md](docs/specs/01-architecture-hexagonale.md).
 
 **Détail :** [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) §3.3 / §7.
 
@@ -3107,7 +3107,7 @@ déploiement. Détail :
 # Décisions actées
 
 > Décisions architecturales et de sécurité identifiées lors de la revue de conception initiale.
-> Toutes sont actées et répercutées dans la documentation technique correspondante (`analysis doc/`).
+> Toutes sont actées et répercutées dans la documentation technique correspondante (`docs/specs/`).
 
 ## Sécurité
 
@@ -3121,9 +3121,9 @@ déploiement. Détail :
 > modèle d'instance dédiée par tenant de la décision n° 13. La validation par regex reste pertinente
 > au provisioning (création du schéma) ; le registre des tenants actifs consulté à chaque requête et
 > le routage dynamique du `search_path` n'ont plus lieu d'être. Répercuté dans
-> [02-multi-tenant.md](analysis%20doc/02-multi-tenant.md).
+> [02-multi-tenant.md](docs/specs/02-multi-tenant.md).
 
-**Documenté dans :** [02-multi-tenant.md](analysis%20doc/02-multi-tenant.md).
+**Documenté dans :** [02-multi-tenant.md](docs/specs/02-multi-tenant.md).
 
 ---
 
@@ -3137,9 +3137,9 @@ déploiement. Détail :
 > schéma : il vérifie que le claim `tenant_id` du token correspond au tenant configuré de l'instance,
 > et rejette (403) sinon ou si le claim est absent. `TenantIdentifierResolver` disparaît avec le SPI
 > multi-tenant Hibernate, devenu inutile. Répercuté dans
-> [02-multi-tenant.md](analysis%20doc/02-multi-tenant.md).
+> [02-multi-tenant.md](docs/specs/02-multi-tenant.md).
 
-**Documenté dans :** [02-multi-tenant.md](analysis%20doc/02-multi-tenant.md).
+**Documenté dans :** [02-multi-tenant.md](docs/specs/02-multi-tenant.md).
 
 ---
 
@@ -3149,7 +3149,7 @@ déploiement. Détail :
 
 **Décision retenue :** Signature HMAC-SHA256 par défaut (modèle GitHub/Stripe), secret stocké comme champ `PASSWORD` de la `ConnectorInstance` (donc chiffré au repos comme les autres secrets). Un champ `webhookAuthType` (SELECT : `HMAC_SHA256`, `SHARED_SECRET_TOKEN`, `IP_ALLOWLIST`) permet d'adapter le mécanisme aux capacités du système appelant. Vérification effectuée dans l'adaptateur web (`WebhookController`), avant d'atteindre `ConnectorTriggerRuntime` — c'est un détail HTTP/infrastructure, pas une responsabilité du domaine.
 
-**Documenté dans :** [06-connecteurs.md](analysis%20doc/06-connecteurs.md).
+**Documenté dans :** [06-connecteurs.md](docs/specs/06-connecteurs.md).
 
 ---
 
@@ -3159,7 +3159,7 @@ déploiement. Détail :
 
 **Décision retenue :** Chiffrement en enveloppe — une KEK (Key Encryption Key) unique gérée par un service externe (HashiCorp Vault Transit, Azure Key Vault ou AWS KMS), et une DEK (Data Encryption Key) par tenant, chiffrée par la KEK et stockée en base sous forme chiffrée. La rotation de la KEK est déléguée au vault (versionnage natif) ; la rotation d'une DEK est un job explicite (`RotateTenantEncryptionKeyUseCase`), jamais automatique. Une clé maître unique via variable d'environnement reste un compromis toléré uniquement en mono-tenant/développement, documenté comme limitation temporaire.
 
-**Documenté dans :** [06-connecteurs.md](analysis%20doc/06-connecteurs.md).
+**Documenté dans :** [06-connecteurs.md](docs/specs/06-connecteurs.md).
 
 ---
 
@@ -3196,7 +3196,7 @@ jugée nécessaire au-delà de cette couverture.
 > La généralisation de cette règle aux autres entités du domaine n'a pas été faite — voir le point
 > ouvert 17.
 
-**Documenté dans :** [06-connecteurs.md](analysis%20doc/06-connecteurs.md), [01-architecture-hexagonale.md](analysis%20doc/01-architecture-hexagonale.md).
+**Documenté dans :** [06-connecteurs.md](docs/specs/06-connecteurs.md), [01-architecture-hexagonale.md](docs/specs/01-architecture-hexagonale.md).
 
 ---
 
@@ -3206,7 +3206,7 @@ jugée nécessaire au-delà de cette couverture.
 
 **Décision retenue :** Signature générique `void publish(WorkflowEvent event)` avec `WorkflowEvent` en interface scellée (`sealed interface`, Java 21). Un nouvel événement = un nouveau type implémentant l'interface scellée, sans modification de `WorkflowEventPublisher`. Les adaptateurs qui routent par type utilisent un `switch` exhaustif sur les types permis, ce qui conserve la vérification à la compilation malgré la signature générique.
 
-**Documenté dans :** [05-workflow-engine.md](analysis%20doc/05-workflow-engine.md).
+**Documenté dans :** [05-workflow-engine.md](docs/specs/05-workflow-engine.md).
 
 ---
 
@@ -3219,8 +3219,8 @@ jugée nécessaire au-delà de cette couverture.
 > Articulation avec `ConnectorTriggerRuntime` tranchée par la décision n° 16 (option B) : le runtime
 > crée/résout le dossier et écrit l'outbox ; le relais réserve le lien, démarre Flowable et confirme.
 
-**Documenté dans :** [05-workflow-engine.md](analysis%20doc/05-workflow-engine.md),
-[06-connecteurs.md](analysis%20doc/06-connecteurs.md) (décision n° 16).
+**Documenté dans :** [05-workflow-engine.md](docs/specs/05-workflow-engine.md),
+[06-connecteurs.md](docs/specs/06-connecteurs.md) (décision n° 16).
 
 ---
 
@@ -3248,7 +3248,7 @@ notifications : le bean réel est `NoOpWorkflowEventPublisher`, volontairement i
   un futur besoin (audit trail générique, intégration tierce) justifie un abonné réel — non requis
   en V1.
 
-**Documenté dans :** [09-notifications.md](analysis%20doc/09-notifications.md) (mis à jour pour
+**Documenté dans :** [09-notifications.md](docs/specs/09-notifications.md) (mis à jour pour
 refléter l'outbox au lieu du dispatcher synchrone d'origine).
 
 ---
@@ -3259,7 +3259,7 @@ refléter l'outbox au lieu du dispatcher synchrone d'origine).
 
 **Décision retenue :** Validation aux deux niveaux — couche REST pour le retour d'erreurs par champ (400) à des fins d'UX, et use case (`CreateDossierUseCase`/`CreateDossierBatchUseCase`) comme garde-fou faisant autorité, car les triggers/imports batch contournent la couche REST. Un service domaine pur `DossierFieldValidator` vérifie les champs requis, la conformité de type, et les valeurs `SELECT` hors énumération. Les champs inconnus sont rejetés par défaut, avec un indicateur `allowUnknownFields` sur `DossierType` pour les cas de compatibilité ascendante volontaire.
 
-**Documenté dans :** [04-dossiers.md](analysis%20doc/04-dossiers.md).
+**Documenté dans :** [04-dossiers.md](docs/specs/04-dossiers.md).
 
 ---
 
@@ -3269,7 +3269,7 @@ refléter l'outbox au lieu du dispatcher synchrone d'origine).
 
 **Décision retenue :** Convention uniformisée : `port/in/` contient uniquement les interfaces, `usecase/` contient les implémentations suffixées `Impl` (ex. `CreateDossierUseCaseImpl` implémente `CreateDossierUseCase`). Appliqué à tous les modules du domaine (`workflow`, `document`, `connector`, `notification`, `dossier`) et vérifié en revue de code.
 
-**Documenté dans :** [04-dossiers.md](analysis%20doc/04-dossiers.md).
+**Documenté dans :** [04-dossiers.md](docs/specs/04-dossiers.md).
 
 ---
 
@@ -3286,9 +3286,9 @@ refléter l'outbox au lieu du dispatcher synchrone d'origine).
 > génériques n'est plus nécessaire par défaut. Le suivi par tenant (`platform.tenant_migration_status`)
 > et les contextes `tenant-init`/`tenant-migration` restent des idées valables, en version simplifiée
 > (une instance n'écrit plus que sa propre ligne, sans coordination inter-schéma). Répercuté dans
-> [02-multi-tenant.md](analysis%20doc/02-multi-tenant.md).
+> [02-multi-tenant.md](docs/specs/02-multi-tenant.md).
 
-**Documenté dans :** [02-multi-tenant.md](analysis%20doc/02-multi-tenant.md).
+**Documenté dans :** [02-multi-tenant.md](docs/specs/02-multi-tenant.md).
 
 ---
 
@@ -3302,9 +3302,9 @@ refléter l'outbox au lieu du dispatcher synchrone d'origine).
 > contention entre pods d'un même tenant n'est possible tant qu'il n'est pas scalé. Le repli
 > « pods API / pods worker » ne redevient pertinent que dans le pool de répliques d'un tenant scalé,
 > jamais entre tenants. Répercuté dans
-> [05-workflow-engine.md](analysis%20doc/05-workflow-engine.md).
+> [05-workflow-engine.md](docs/specs/05-workflow-engine.md).
 
-**Documenté dans :** [05-workflow-engine.md](analysis%20doc/05-workflow-engine.md).
+**Documenté dans :** [05-workflow-engine.md](docs/specs/05-workflow-engine.md).
 
 ---
 
@@ -3312,9 +3312,9 @@ refléter l'outbox au lieu du dispatcher synchrone d'origine).
 
 **Problème :** Le fichier `architecture-technique v7.md` coexistait avec les 11 fichiers thématiques numérotés qui en sont le découpage, sans qu'il soit clair lequel faisait référence.
 
-**Décision retenue :** `00-index.md` couvre intégralement et sans écart les 11 fichiers thématiques (déjà la table des matières utilisée par le `README.md` du dépôt). `architecture-technique v7.md` est supprimé du suivi ; les fichiers numérotés de `analysis doc/` sont l'unique source de vérité.
+**Décision retenue :** `00-index.md` couvre intégralement et sans écart les 11 fichiers thématiques (déjà la table des matières utilisée par le `README.md` du dépôt). `architecture-technique v7.md` est supprimé du suivi ; les fichiers numérotés de `docs/specs/` sont l'unique source de vérité.
 
-**Documenté dans :** suppression effective du fichier ; voir [00-index.md](analysis%20doc/00-index.md).
+**Documenté dans :** suppression effective du fichier ; voir [00-index.md](docs/specs/00-index.md).
 
 ---
 
@@ -3326,7 +3326,7 @@ refléter l'outbox au lieu du dispatcher synchrone d'origine).
 
 Cette décision rend obsolète le mécanisme dynamique décrit par les décisions n° 1, 2, 10 et 11 (voir notes ajoutées sous chacune).
 
-**Documenté dans :** [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md), section 3, et répercuté dans [02-multi-tenant.md](analysis%20doc/02-multi-tenant.md), [05-workflow-engine.md](analysis%20doc/05-workflow-engine.md), [06-connecteurs.md](analysis%20doc/06-connecteurs.md), [09-notifications.md](analysis%20doc/09-notifications.md), [04-dossiers.md](analysis%20doc/04-dossiers.md), [08-templates-documents.md](analysis%20doc/08-templates-documents.md) et le `README.md`.
+**Documenté dans :** [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md), section 3, et répercuté dans [02-multi-tenant.md](docs/specs/02-multi-tenant.md), [05-workflow-engine.md](docs/specs/05-workflow-engine.md), [06-connecteurs.md](docs/specs/06-connecteurs.md), [09-notifications.md](docs/specs/09-notifications.md), [04-dossiers.md](docs/specs/04-dossiers.md), [08-templates-documents.md](docs/specs/08-templates-documents.md) et le `README.md`.
 
 ---
 
@@ -3340,7 +3340,7 @@ Pour l'API machine-to-machine, un flux OAuth2 **`client_credentials`** est ajout
 
 Effet de bord : le comportement pour un tenant en `MIGRATING_ERROR` est résolu par construction — une instance dont la migration échoue au démarrage (décision n° 13) ne devient jamais disponible, donc n'est jamais atteinte par le routage, sans logique 503 dédiée à écrire côté application.
 
-**Documenté dans :** [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md), section 3, et répercuté dans [02-multi-tenant.md](analysis%20doc/02-multi-tenant.md) (routage), [03-authentification.md](analysis%20doc/03-authentification.md) (`client_credentials`), [06-connecteurs.md](analysis%20doc/06-connecteurs.md) (`WebhookController`, `ConnectorExecutionController`) et [12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md).
+**Documenté dans :** [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md), section 3, et répercuté dans [02-multi-tenant.md](docs/specs/02-multi-tenant.md) (routage), [03-authentification.md](docs/specs/03-authentification.md) (`client_credentials`), [06-connecteurs.md](docs/specs/06-connecteurs.md) (`WebhookController`, `ConnectorExecutionController`) et [12-autorisation-conformite.md](docs/specs/12-autorisation-conformite.md).
 
 ---
 
@@ -3354,7 +3354,7 @@ Déconnexion via `OidcClientInitiatedLogoutSuccessHandler`, qui appelle l'`end_s
 
 La session partagée entre répliques reste hors périmètre de la V1 (déjà tranché par la décision n° 13) — non requise par défaut, à réexaminer seulement si un tenant précis est scalé sur plusieurs répliques.
 
-**Documenté dans :** [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md), section 3, et répercuté dans [03-authentification.md](analysis%20doc/03-authentification.md) (protection CSRF, déconnexion, chaînes de sécurité), [11-frontend.md](analysis%20doc/11-frontend.md) (renvoi vers la configuration Axios).
+**Documenté dans :** [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md), section 3, et répercuté dans [03-authentification.md](docs/specs/03-authentification.md) (protection CSRF, déconnexion, chaînes de sécurité), [11-frontend.md](docs/specs/11-frontend.md) (renvoi vers la configuration Axios).
 
 ---
 
@@ -3364,11 +3364,11 @@ La session partagée entre répliques reste hors périmètre de la V1 (déjà tr
 
 **Décision retenue :** La règle est appliquée strictement, sans exception, aux sept classes concernées. Le modèle domaine garde son nom métier naturel (`Dossier`, `DossierType`…) ; l'entité de persistance reçoit le suffixe `JpaEntity` (`DossierJpaEntity`…) — le principe déjà illustré par `WorkflowInstance`/`WorkflowJpaEntity`. `ConnectorInstanceData`/`ConnectorInstanceJpaEntity` reste une exception de nommage historique de la décision n° 5 (le nom lui-même n'est pas retouché), mais sa forme de déclaration est alignée sur la nouvelle convention.
 
-Le modèle domaine est un `record` Java. Un `record` avait d'abord été écarté au profit de `@Value @Builder` (Lombok) au motif qu'il génère des accesseurs sans préfixe, incompatibles avec le style déjà utilisé dans des extraits de code existants (`type.isAllowUnknownFields()`, `type.getFieldDefinitions()`). **Cet argument a été corrigé** : le projet est en phase d'analyse, sans aucune implémentation — il n'existe pas de code réel dont les appelants seraient figés, et les extraits illustratifs de `analysis doc/` s'éditent au même titre que le reste de cette documentation. Une fois ce coût artificiel écarté, `record` est le choix le mieux justifié (fonctionnalité native du JDK, immuabilité garantie par le langage, cohérent avec l'usage déjà fait de Java 21 moderne — `sealed interface` de la décision n° 6 — et déjà utilisé ailleurs dans ces mêmes documents, `WorkflowDiagramView`). `@Builder` (Lombok) reste utilisé au-dessus du `record` pour la construction des objets à de nombreux champs, sans renoncer aux accesseurs natifs ni à l'immuabilité ; une transition d'état (`Dossier.withStatus(...)`) s'implémente comme une méthode d'instance retournant une nouvelle instance via le constructeur canonique. `ConnectorInstanceData` a été alignée sur cette même convention pour ne pas laisser sa forme de déclaration seule diverger.
+Le modèle domaine est un `record` Java. Un `record` avait d'abord été écarté au profit de `@Value @Builder` (Lombok) au motif qu'il génère des accesseurs sans préfixe, incompatibles avec le style déjà utilisé dans des extraits de code existants (`type.isAllowUnknownFields()`, `type.getFieldDefinitions()`). **Cet argument a été corrigé** : le projet est en phase d'analyse, sans aucune implémentation — il n'existe pas de code réel dont les appelants seraient figés, et les extraits illustratifs de `docs/specs/` s'éditent au même titre que le reste de cette documentation. Une fois ce coût artificiel écarté, `record` est le choix le mieux justifié (fonctionnalité native du JDK, immuabilité garantie par le langage, cohérent avec l'usage déjà fait de Java 21 moderne — `sealed interface` de la décision n° 6 — et déjà utilisé ailleurs dans ces mêmes documents, `WorkflowDiagramView`). `@Builder` (Lombok) reste utilisé au-dessus du `record` pour la construction des objets à de nombreux champs, sans renoncer aux accesseurs natifs ni à l'immuabilité ; une transition d'état (`Dossier.withStatus(...)`) s'implémente comme une méthode d'instance retournant une nouvelle instance via le constructeur canonique. `ConnectorInstanceData` a été alignée sur cette même convention pour ne pas laisser sa forme de déclaration seule diverger.
 
 Corollaires actés dans le même mouvement : le risque concret de fuite d'un proxy Hibernate en réponse REST (`GetDossierWorkflowHistoryUseCase`) disparaît par construction ; le découplage plus général du contrat d'API reste du ressort du point 24. La règle de dépendance du domaine (et la convention `usecase`/`Impl` de la décision n° 9) est désormais vérifiée par un test ArchUnit en CI plutôt que confiée à la seule revue de code.
 
-**Documenté dans :** [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md), section 3, et répercuté dans [01-architecture-hexagonale.md](analysis%20doc/01-architecture-hexagonale.md) (règle généralisée, convention de nommage, section ArchUnit), [04-dossiers.md](analysis%20doc/04-dossiers.md), [05-workflow-engine.md](analysis%20doc/05-workflow-engine.md), [06-connecteurs.md](analysis%20doc/06-connecteurs.md) (`ConnectorInstanceData` alignée), [08-templates-documents.md](analysis%20doc/08-templates-documents.md) (entités converties) et [10-visualisation-workflow.md](analysis%20doc/10-visualisation-workflow.md) (note sur la réponse d'API).
+**Documenté dans :** [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md), section 3, et répercuté dans [01-architecture-hexagonale.md](docs/specs/01-architecture-hexagonale.md) (règle généralisée, convention de nommage, section ArchUnit), [04-dossiers.md](docs/specs/04-dossiers.md), [05-workflow-engine.md](docs/specs/05-workflow-engine.md), [06-connecteurs.md](docs/specs/06-connecteurs.md) (`ConnectorInstanceData` alignée), [08-templates-documents.md](docs/specs/08-templates-documents.md) (entités converties) et [10-visualisation-workflow.md](docs/specs/10-visualisation-workflow.md) (note sur la réponse d'API).
 
 ---
 
@@ -3390,10 +3390,10 @@ Corollaires actés dans le même mouvement : le risque concret de fuite d'un pro
 > ouvert n° 24 (contrat OpenAPI vis-à-vis du frontend) ouvre la voie à un client généré typé ; (2)
 > absence d'outillage qualité, corrigée par l'ajout de **Vitest** (unitaire/composants), **Playwright**
 > (e2e) et **ESLint/Prettier** (`@vue/eslint-config-typescript`) comme gate CI, sur le même principe que
-> `./mvnw verify` côté backend. Répercuté dans [11-frontend.md](analysis%20doc/11-frontend.md) et
+> `./mvnw verify` côté backend. Répercuté dans [11-frontend.md](docs/specs/11-frontend.md) et
 > [README.md](README.md).
 
-**Documenté dans :** [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md), section 3, et répercuté dans [00-index.md](analysis%20doc/00-index.md), [05-workflow-engine.md](analysis%20doc/05-workflow-engine.md), [07-generation-documents.md](analysis%20doc/07-generation-documents.md), [03-authentification.md](analysis%20doc/03-authentification.md) (`SameSite` confirmé), [11-frontend.md](analysis%20doc/11-frontend.md) (packaging) et [README.md](README.md).
+**Documenté dans :** [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md), section 3, et répercuté dans [00-index.md](docs/specs/00-index.md), [05-workflow-engine.md](docs/specs/05-workflow-engine.md), [07-generation-documents.md](docs/specs/07-generation-documents.md), [03-authentification.md](docs/specs/03-authentification.md) (`SameSite` confirmé), [11-frontend.md](docs/specs/11-frontend.md) (packaging) et [README.md](README.md).
 
 ---
 
@@ -3415,7 +3415,7 @@ Corollaires actés dans le même mouvement : le risque concret de fuite d'un pro
 
 **Écartées :** A (tout synchrone — rouvre n° 7), C (outbox du brut — ACK avant validation métier), D (hybride par source — double chemin).
 
-**Documenté dans :** [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md), section 3, et répercuté dans [05-workflow-engine.md](analysis%20doc/05-workflow-engine.md) (outbox + relais corrigés), [06-connecteurs.md](analysis%20doc/06-connecteurs.md) (`ConnectorTriggerRuntime` scindé) et [04-dossiers.md](analysis%20doc/04-dossiers.md) (création batch alignée).
+**Documenté dans :** [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md), section 3, et répercuté dans [05-workflow-engine.md](docs/specs/05-workflow-engine.md) (outbox + relais corrigés), [06-connecteurs.md](docs/specs/06-connecteurs.md) (`ConnectorTriggerRuntime` scindé) et [04-dossiers.md](docs/specs/04-dossiers.md) (création batch alignée).
 
 ---
 
@@ -3433,7 +3433,7 @@ Corollaires actés dans le même mouvement : le risque concret de fuite d'un pro
 
 (Les résidus a/b/d/g étaient déjà corrigés par les décisions n° 14 et 16.)
 
-**Documenté dans :** [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md), section 3, et répercuté dans [06-connecteurs.md](analysis%20doc/06-connecteurs.md), [08-templates-documents.md](analysis%20doc/08-templates-documents.md), [04-dossiers.md](analysis%20doc/04-dossiers.md), [12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md).
+**Documenté dans :** [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md), section 3, et répercuté dans [06-connecteurs.md](docs/specs/06-connecteurs.md), [08-templates-documents.md](docs/specs/08-templates-documents.md), [04-dossiers.md](docs/specs/04-dossiers.md), [12-autorisation-conformite.md](docs/specs/12-autorisation-conformite.md).
 
 ---
 
@@ -3451,7 +3451,7 @@ Corollaires actés dans le même mouvement : le risque concret de fuite d'un pro
 
 **Écartées / abandonnées :** ACL par instance de dossier (première B2) ; A1, A3, B1, B3, C2.
 
-**Documenté dans :** [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md), section 3, et répercuté dans [12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md), [04-dossiers.md](analysis%20doc/04-dossiers.md) et [06-connecteurs.md](analysis%20doc/06-connecteurs.md).
+**Documenté dans :** [REVUE-PRE-IMPLEMENTATION.md](REVUE-PRE-IMPLEMENTATION.md), section 3, et répercuté dans [12-autorisation-conformite.md](docs/specs/12-autorisation-conformite.md), [04-dossiers.md](docs/specs/04-dossiers.md) et [06-connecteurs.md](docs/specs/06-connecteurs.md).
 
 ---
 
@@ -3472,8 +3472,8 @@ participant. `TENANT_ADMIN`/`WORKFLOW_ADMIN` continuent de contourner (comme par
 un participant/observer sans ACL VIEW garde l'accès au diagramme/historique/tâches (aucune donnée
 métier du dossier) mais reçoit 403 sur le panneau dossier.
 
-**Documenté dans :** [12-autorisation-conformite.md](analysis%20doc/12-autorisation-conformite.md),
-[10-visualisation-workflow.md](analysis%20doc/10-visualisation-workflow.md).
+**Documenté dans :** [12-autorisation-conformite.md](docs/specs/12-autorisation-conformite.md),
+[10-visualisation-workflow.md](docs/specs/10-visualisation-workflow.md).
 
 ---
 
@@ -3575,7 +3575,7 @@ workflow », valeurs texte, noms réservés et doublons refusés côté client ;
 - **I5, I9** — sans action (pas de fuite nouvelle ; un tenant par instance).
 
 **Impacte :** `GUIDE-CONCEPTION-BPMN.md` (§3ter références, §6c Notifier), `GUIDE-UTILISATEUR.md` (démarrer une instance),
-`analysis doc/15-serveur-mcp.md`, `CHANGELOG.md`. Aucune migration, aucune variable d'environnement, golden OpenAPI inchangé.
+`docs/specs/15-serveur-mcp.md`, `CHANGELOG.md`. Aucune migration, aucune variable d'environnement, golden OpenAPI inchangé.
 
 ---
 
@@ -3627,7 +3627,7 @@ dossier, et paginés en mémoire ; `truncated` signale la borne. Les jobs resten
   (connecteur, JDBC) pourrait en contenir. À reconsidérer si un cas réel apparaît.
 
 **Impacte :** `GUIDE-UTILISATEUR.md` (§0 rôles, §3 « Suivre l'exécution »), `GUIDE-CONCEPTION-BPMN.md` (§6c),
-`analysis doc/15-serveur-mcp.md`, `openapi/openapi.yaml`, `CHANGELOG.md`. Aucune migration, aucune variable
+`docs/specs/15-serveur-mcp.md`, `openapi/openapi.yaml`, `CHANGELOG.md`. Aucune migration, aucune variable
 d'environnement. Suivi : statut de `DEFERRED-FEATURES.md` §7 et de DIFFICULTES §11 une fois la PR #175 mergée.
 
 ---

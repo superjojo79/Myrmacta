@@ -94,7 +94,7 @@ graph TD
 ## Data Models
 **What data do we need to manage?**
 
-Reprise conforme de `analysis doc/04-dossiers.md` (déjà spécifié, non
+Reprise conforme de `docs/specs/04-dossiers.md` (déjà spécifié, non
 modifié ici) :
 
 ```java

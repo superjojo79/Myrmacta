@@ -270,7 +270,7 @@ validés stakeholder ; section Alternatives ; mapping HTTP↔Flowable.
 
 ## Sources
 
-- `analysis doc/07-generation-documents.md`, `08-templates-documents.md`,
+- `docs/specs/07-generation-documents.md`, `08-templates-documents.md`,
   `04-dossiers.md` (§ DossierElement / AttachGeneratedDocumentTask),
   `01-architecture-hexagonale.md`, `12-autorisation-conformite.md`
 - Décisions TODO n° 13, 17, 18, 20 ; TODO §22 (différé)

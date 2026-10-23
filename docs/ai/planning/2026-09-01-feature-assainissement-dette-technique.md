@@ -86,7 +86,7 @@ description: Break down work into actionable tasks and estimate timeline
       (feature confirmée backend seul), aucun fichier `frontend/**` modifié attendu. Dépendance :
       T4.1.
 - [x] T4.4 : Phase 9 (revue finale) — alignement design confirmé, `CHANGELOG.md` mis à jour
-      (convention `flowforge-conventions` §7), `analysis doc/19-...md`/`00-index.md` marqués livrés,
+      (convention `flowforge-conventions` §7), `docs/specs/19-...md`/`00-index.md` marqués livrés,
       `DEFERRED-FEATURES.md` cohérent avec le code (T3.1–T3.4 vérifiées), PR prête. Dépendance :
       T4.1–T4.3.
 

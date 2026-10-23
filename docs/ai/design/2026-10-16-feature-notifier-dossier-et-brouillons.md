@@ -166,7 +166,7 @@ priorité (`DeployedActivityParameters`). Ce point est rappelé dans le guide ut
 
 - `GUIDE-CONCEPTION-BPMN.md` : sources de `notificationTo`, règle « brouillon = existence, publication = actif ».
 - `GUIDE-UTILISATEUR.md` : section « Démarrer un workflow », variables de démarrage.
-- `analysis doc/15-serveur-mcp.md` : `inactiveReferences` dans la réponse de `deploy_workflow`.
+- `docs/specs/15-serveur-mcp.md` : `inactiveReferences` dans la réponse de `deploy_workflow`.
 - `exemples/autorisation-riverain/` (après le merge de la PR #172) : passer à `notificationTo="dossierField:email"`, supprimer
   la variable de démarrage et mettre à jour DIFFICULTES §3 et §8.
 - `TODO.md` §93, `CHANGELOG.md`, `DEFERRED-FEATURES.md` §7 (statuts).

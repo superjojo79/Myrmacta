@@ -948,3 +948,38 @@ infrastructure
         ├── DossierTypeAclJpaAdapter
         └── SequentialReferenceGenerator
 ```
+
+## Implémentation — correction des champs d'un dossier (`PATCH /api/dossiers/{id}/fields`, TODO §24)
+
+*Synthèse ajoutée lors de la remédiation (TODO §95), d'après les documents de travail
+([requirements](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-08-15-feature-patch-dossier-fields.md),
+[implementation](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-08-15-feature-patch-dossier-fields.md)).*
+
+- **Fusion :** seuls les champs présents dans le corps changent ; une valeur `null` efface le champ
+  (`DossierFieldMerger`). Le jeu **fusionné** est revalidé en entier par le même `DossierFieldValidator` qu'à la
+  création (types, `required`, options `SELECT`, `allowUnknownFields`).
+- **Garde-fous :** 409 si le dossier est `CLOTURE` ou `ARCHIVE` ; verrou optimiste `expectedVersion` optionnel,
+  comme `PATCH …/status`. L'édition reste possible sur un type de dossier inactif (seule la création l'interdit).
+- **Champs sensibles :** tout détenteur de l'ACL `EDIT` peut les modifier ; chaque changement est journalisé
+  (`SecurityAuditLog.sensitiveFieldChanged`, niveau INFO), jamais bloqué.
+- **Tests :** `UpdateDossierFieldsUseCaseImplTest`, tests du contrôleur, Playwright `E2E-22`.
+
+## Implémentation — antivirus des pièces jointes (lot C, PR #131)
+
+*Synthèse ajoutée lors de la remédiation (TODO §95), d'après les documents de travail
+([requirements](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-09-20-feature-scan-antivirus-clamav.md),
+[implementation](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-09-20-feature-scan-antivirus-clamav.md)). Exploitation :
+[DEPLOIEMENT.md](../../DEPLOIEMENT.md) §8.*
+
+- **Port inchangé :** `DossierElementUploadController` appelle `AttachmentScanPort.scan(...)` ; la propriété
+  `app.dossier.attachment.scan.type` (`noop` par défaut, ou `clamav`) choisit l'unique adaptateur actif
+  (D-AV-CLAMAV-CONFIG-SELECTOR). Un autre moteur ne demanderait qu'un nouvel adaptateur.
+- **ClamAV :** protocole `INSTREAM` de `clamd` en TCP brut, sans bibliothèque cliente (D-AV-CLAMAV-PROTO). Un verdict
+  infecté bloque le dépôt.
+- **Panne de `clamd` :** fail-open (D-AV-CLAMAV-FAILMODE) — la pièce est acceptée, un `WARN` est journalisé et le
+  compteur `flowforge_attachment_scan_fail_open_total` est incrémenté (D-AV-CLAMAV-HEALTH), pour qu'une panne
+  prolongée reste visible dans Prometheus.
+- **Démarrage :** depuis TODO §95, `noop` est refusé en `production` sans
+  `APP_DOSSIER_ATTACHMENT_SCAN_NOOP_ACKNOWLEDGED=true`, et signalé en `staging`.
+- **Tests :** `ClamAvAttachmentScanAdapterTest` (faux `clamd` sur socket loopback), `ClamAvAttachmentScanIT` (vrai
+  ClamAV sous Docker, ignoré sans démon Docker).

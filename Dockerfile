@@ -1,5 +1,5 @@
 # Image de déploiement FlowForge — voir DEPLOIEMENT.md §1 et
-# docs/ai/design/2026-09-08-feature-provisioning-tenant.md pour le contexte des choix
+# https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-09-08-feature-provisioning-tenant.md pour le contexte des choix
 # (image de base, utilisateur non-root, heap JVM).
 
 # --- Stage 1 : build ---------------------------------------------------------
@@ -54,6 +54,6 @@ EXPOSE 8080
 # JAVA_OPTS permet d'ajuster les options JVM sans reconstruire l'image. Le heap suit la
 # mémoire allouée au conteneur (-XX:MaxRAMPercentage) plutôt qu'une valeur -Xmx figée à
 # retrancher manuellement par tenant — décision actée en Phase 1 du cycle
-# provisioning-tenant (docs/ai/requirements/2026-09-08-feature-provisioning-tenant.md).
+# provisioning-tenant (https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-09-08-feature-provisioning-tenant.md).
 ENV JAVA_OPTS=""
 ENTRYPOINT ["sh", "-c", "exec java -XX:MaxRAMPercentage=75.0 $JAVA_OPTS -jar app.jar"]

@@ -109,7 +109,7 @@ avertissement, ou blocage.
 ### 2. Insertion d'un processus BPMN avec ses paramètres
 
 S'appuie sur le mécanisme de déploiement déjà livré
-(`deploiement-bpmn`, `docs/ai/requirements/2026-08-22-feature-deploiement-bpmn.md`) :
+(`deploiement-bpmn`, [`docs/ai/requirements/2026-08-22-feature-deploiement-bpmn.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-08-22-feature-deploiement-bpmn.md)) :
 upload `.bpmn20.xml`, validation (BPMN 2.0 bien formé, cohérence
 `processDefinitionKey`), `RepositoryService.createDeployment()`. Le
 périmètre MCP va plus loin que l'écran admin existant en couvrant en un
@@ -330,4 +330,4 @@ tool MCP, même en backlog, au vu de leur impact :
 
 Cycle `dev-lifecycle` : Phases 1–4 (2026-08-27). Prochain : Phase 5
 TDD **T1.1**. Spec :
-[`docs/ai/planning/2026-08-27-feature-serveur-mcp.md`](../ai/planning/2026-08-27-feature-serveur-mcp.md).
+[`docs/ai/planning/2026-08-27-feature-serveur-mcp.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/planning/2026-08-27-feature-serveur-mcp.md).

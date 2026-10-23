@@ -38,7 +38,7 @@ docker build -t flowforge:<tag> .
 ```
 
 Décisions actées pour cette image (lot `provisioning-tenant`, voir
-[docs/ai/requirements/2026-09-08-feature-provisioning-tenant.md](docs/ai/requirements/2026-09-08-feature-provisioning-tenant.md)) :
+[docs/ai/requirements/2026-09-08-feature-provisioning-tenant.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-09-08-feature-provisioning-tenant.md)) :
 
 | Décision | Choix |
 |---|---|

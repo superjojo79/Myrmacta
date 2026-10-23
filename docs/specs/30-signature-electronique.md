@@ -3,7 +3,7 @@
 > **Statut : livré le 2026-09-29** ([PR #149](https://github.com/superjojo79/FlowForge/pull/149), TODO §72 clos) — socle générique + stub, sans provider ; fournisseur réel et eIDAS à cadrer. La Phase 2 a élargi
 > le périmètre (signataires internes, modes parallèle et séquentiel, requis / facultatifs, issue en
 > variable de process, un seul document, échéance unique, preuve PDF) : les
-> [requirements](../ai/requirements/2026-09-29-feature-signature-electronique.md) font foi sur
+> [requirements](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-09-29-feature-signature-electronique.md) font foi sur
 > ce point.
 >
 > Statut d'origine de la Phase 1 : Les décisions

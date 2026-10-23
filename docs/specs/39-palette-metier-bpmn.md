@@ -1,6 +1,6 @@
 # Palette métier dans l'éditeur BPMN (LC1)
 
-> **Statut : livré — mergé le 2026-09-30 ([PR #151](https://github.com/superjojo79/FlowForge/pull/151), TODO §73).** Phase 1 : — décisions D-PALETTE-* tranchées, voir les [requirements](../ai/requirements/2026-09-29-feature-palette-metier-bpmn.md). **Correction** : les paramètres de six delegates vivent dans des variables de process, pas dans le XML ; le lot inclut donc les delegates et le parseur (§4 ci-dessous « aucun changement du parseur » est caduc). Analyse d'origine (2026-09-28) : Sous-lot
+> **Statut : livré — mergé le 2026-09-30 ([PR #151](https://github.com/superjojo79/FlowForge/pull/151), TODO §73).** Phase 1 : — décisions D-PALETTE-* tranchées, voir les [requirements](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-09-29-feature-palette-metier-bpmn.md). **Correction** : les paramètres de six delegates vivent dans des variables de process, pas dans le XML ; le lot inclut donc les delegates et le parseur (§4 ci-dessous « aucun changement du parseur » est caduc). Analyse d'origine (2026-09-28) : Sous-lot
 > **LC1** `palette-metier-bpmn` de la couche low-code (D0 = C, [31](31-positionnement-produit.md),
 > rang 1 du classement). À affiner en `dev-lifecycle` Phase 1. Exposition MCP :
 > [46](46-exposition-mcp-couche-low-code.md).

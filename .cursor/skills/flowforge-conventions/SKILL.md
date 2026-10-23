@@ -104,6 +104,15 @@ Référence : `docs/specs/11-frontend.md`.
      dans `CHANGELOG.md` ;
    - une entrée par PR, pas par commit — regrouper les commits successifs d'une même PR sous sa
      ligne existante plutôt que d'en ajouter une nouvelle à chaque push.
+8. **Fin de cycle : vider `docs/ai/`** (TODO §95) — `docs/ai/` est la mémoire de travail de la feature
+   **en cours**, pas une documentation de référence. Dans la PR qui livre la feature :
+   - ce qui reste vrai du système remonte dans la spec du domaine (`docs/specs/NN-*.md`, section
+     « Implémentation », quelques lignes : comportement, garde-fous, tests de référence) ;
+   - chaque identifiant de décision (`D-…`, `DD-…`) cité par le code reçoit sa ligne dans
+     `docs/decisions/identifiants.md`, et les décisions structurantes vont dans le registre ;
+   - les fichiers `docs/ai/*/AAAA-MM-JJ-feature-<lot>.md` de la feature sont supprimés (l'historique git
+     les garde) ; seuls les `README.md` de phase (modèles ai-devkit) restent ;
+   - `scripts/check-docs.sh` doit être vert (liens, identifiants, skills).
 
 ## Commandes utiles
 
@@ -130,7 +139,8 @@ npx ai-devkit@latest skill list              # skills installés
 | Prochaine feature (file d’attente) | `FILE-ATTENTE.md` |
 | Backlog différé | `DEFERRED-FEATURES.md` |
 | Architecture détaillée | `docs/specs/*.md` |
-| Artefacts lifecycle feature | `docs/ai/{requirements,design,planning,implementation,testing,...}/` |
+| Identifiants de décision cités par le code | `docs/decisions/identifiants.md` |
+| Artefacts lifecycle de la feature **en cours** (vidés à la livraison) | `docs/ai/{requirements,design,planning,implementation,testing,...}/` |
 | Historique synthétique par PR | `CHANGELOG.md` |
 
 ## Anti-patterns à refuser
@@ -146,5 +156,7 @@ npx ai-devkit@latest skill list              # skills installés
 - Livrer un écran admin ou une variable d'environnement sans mettre à jour
   `GUIDE-UTILISATEUR.md` / `GETTING-STARTED.md` / `.env.local.example` en conséquence (voir §
   « Workflow de feature » point 6).
+- Laisser les documents `docs/ai/` d'une feature livrée dans la branche principale, ou citer dans le code un
+  identifiant de décision absent de `docs/decisions/identifiants.md` (voir § « Workflow de feature » point 8).
 - Ouvrir ou merger une PR sans entrée `CHANGELOG.md` correspondante, ou y écrire un pavé
   technique au lieu d'un résumé synthétique (voir § « Workflow de feature » point 7).

@@ -123,7 +123,7 @@ JVM**. L'iframe SPA `sandbox=""` ne protège que le navigateur. Le testing
 - `src/main/java/com/flowforge/infrastructure/document/ThymeleafHtmlTemplateProcessor.java` (engine SpringEL, `TemplateMode.HTML`)
 - `DocumentTemplateController` — `@PreAuthorize("hasRole('TENANT_ADMIN')")`
 - `DocumentGenerationController.denyLiveUnlessTenantAdmin` — live preview = admin tenant
-- `docs/ai/testing/2026-07-31-feature-templates-documents.md` — sandboxing Thymeleaf avancé hors scope
+- [`docs/ai/testing/2026-07-31-feature-templates-documents.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/testing/2026-07-31-feature-templates-documents.md) — sandboxing Thymeleaf avancé hors scope
 
 **Scénario :** compte `TENANT_ADMIN` compromis (ou admin malveillant d'un tenant
 SaaS) → RCE sur l'instance → `APP_CONNECTOR_MASTER_KEY`, `OIDC_CLIENT_SECRET`,
@@ -181,7 +181,7 @@ accident : `observabilite` DD-MGMT-SEC (scrape Prometheus interne sans OIDC).
 
 - `SecurityConfig.java` Order 0 — `EndpointRequest.toAnyEndpoint()`, `permitAll()`, CSRF off
 - `application.yml` — `management.server.port: ${MANAGEMENT_PORT:8081}`, `include: health,prometheus`
-- `docs/ai/design/2026-08-20-feature-observabilite.md` — DD-MGMT-SEC
+- [`docs/ai/design/2026-08-20-feature-observabilite.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-08-20-feature-observabilite.md) — DD-MGMT-SEC
 - `GETTING-STARTED.md` / `docker-compose.yml` — Keycloak hôte **8081** (conflit local avec l'actuator)
 
 Aucun `management.server.address`. Bind par défaut = toutes les interfaces.

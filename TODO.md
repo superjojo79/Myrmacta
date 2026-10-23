@@ -172,7 +172,7 @@ feature `admin-connector-form-schema`, frontend seulement.
 D-FALLBACK-NO-DEFS, D-SCOPE-CREATE, D-NO-DYNAMICFIELDS, D-COERCE, D-PASSWORD,
 D-CLIENT-REQUIRED, D-SWITCH-TYPE, D-NO-BACKEND, **D-WEBHOOK-URL = C** (rejeu Phase 1–3)
 — détail dans
-`docs/ai/requirements/2026-09-08-feature-admin-connector-form-schema.md`.
+[`docs/ai/requirements/2026-09-08-feature-admin-connector-form-schema.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-09-08-feature-admin-connector-form-schema.md).
 
 **Impacte :** `frontend/src/views/admin/ConnectorsAdminView.vue`,
 `frontend/src/api/admin.ts`, `frontend/src/components/connectors/**`, e2e connecteurs,
@@ -237,7 +237,7 @@ volume) — voir [25-introduction-dmn.md](docs/specs/25-introduction-dmn.md) §2
 
 **Phase 1 (requirements) close (2026-09-11)** : cycle `dev-lifecycle` démarré, no-worktree
 (branche de session), doc
-[docs/ai/requirements/2026-09-11-feature-introduction-dmn.md](docs/ai/requirements/2026-09-11-feature-introduction-dmn.md).
+[docs/ai/requirements/2026-09-11-feature-introduction-dmn.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-09-11-feature-introduction-dmn.md).
 5 décisions actées via `AskUserQuestion` : **D-DMN-SCOPE** = cas illustratif générique (grille
 d'éligibilité, pas de cas métier réel identifié) ; **D-DMN-SECURITY-OWNER** = durcissement FEEL
 dans le même cycle que l'activation moteur (pas de split H1/H1-bis) ; **D-DMN-DEPLOY** = éditeur
@@ -259,7 +259,7 @@ tables déployées) plutôt qu'un delegate custom réimplémentant la sémantiqu
 [25-introduction-dmn.md](docs/specs/25-introduction-dmn.md) §1.2/§3.1 corrigés en conséquence.
 
 **Phase 3 (design) close (2026-09-11)** :
-[docs/ai/design/2026-09-11-feature-introduction-dmn.md](docs/ai/design/2026-09-11-feature-introduction-dmn.md).
+[docs/ai/design/2026-09-11-feature-introduction-dmn.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-09-11-feature-introduction-dmn.md).
 Architecture : `DmnParserPort`/`DmnDeploymentPort`/`DmnDraftRepository` (domaine, miroir exact
 `BpmnParserPort`/`WorkflowDeploymentPort`/`BpmnDraftRepository`), exception native `type="dmn"`
 dans `assertSafeServiceTask` (D1), `dmn-js` Modeler **sans** provider custom — le `.dmn` est du DMN
@@ -273,8 +273,8 @@ grammaire que l'UEL des gateways, ne peut pas être calquée telle quelle sur
 `assertSafeConditionExpression`. Suite : Phase 4 (planning).
 
 **Phase 4 (planning) close (2026-09-11)** :
-[docs/ai/planning/2026-09-11-feature-introduction-dmn.md](docs/ai/planning/2026-09-11-feature-introduction-dmn.md) +
-[docs/ai/testing/2026-09-11-feature-introduction-dmn.md](docs/ai/testing/2026-09-11-feature-introduction-dmn.md).
+[docs/ai/planning/2026-09-11-feature-introduction-dmn.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/planning/2026-09-11-feature-introduction-dmn.md) +
+[docs/ai/testing/2026-09-11-feature-introduction-dmn.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/testing/2026-09-11-feature-introduction-dmn.md).
 12 milestones séquencés : **M1** grammaire FEEL (spike bloquant, prérequis de tout le reste) ;
 M2 activation moteur + parsing/allowlist (TDD) ; M3 déploiement DMN ; M4 exception BPMN
 `type="dmn"` + vérification clé au déploiement process ; M5 persistence brouillon ; M6 endpoints
@@ -299,8 +299,8 @@ grammaire plus étroite, pas une grammaire FEEL à inventer — risque réduit p
 du planning. Confirmé aussi : ni intervalles `[a..b]` ni listes `"a","b"` ne sont supportés par
 l'implémentation Flowable (fixture M11 à base de règles multiples, pas de cellules à liste).
 [25-introduction-dmn.md](docs/specs/25-introduction-dmn.md) §1.2,
-[design](docs/ai/design/2026-09-11-feature-introduction-dmn.md) §Sécurité et
-[planning](docs/ai/planning/2026-09-11-feature-introduction-dmn.md) corrigés en conséquence.
+[design](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-09-11-feature-introduction-dmn.md) §Sécurité et
+[planning](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/planning/2026-09-11-feature-introduction-dmn.md) corrigés en conséquence.
 
 **Phase 5 (implémentation) — livré (2026-09-11), M1 à M12.** Backend (M1-M6, M10) : allowlist JUEL
 (`FlowableDmnParserAdapter`, 16 tests unitaires + `DmnJuelSecuritySmokeIT` — bean Spring réel
@@ -563,7 +563,7 @@ marquage lu), migration Liquibase `user_notification` (schéma par tenant), nouv
 écran admin, mais comportement utilisateur changé). Suite : Phase 3 (design).
 
 **Phase 3 (design) close (2026-09-22).** Architecture détaillée dans
-[docs/ai/design/2026-09-22-feature-inbox-notifications-persistee.md](docs/ai/design/2026-09-22-feature-inbox-notifications-persistee.md) :
+[docs/ai/design/2026-09-22-feature-inbox-notifications-persistee.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-09-22-feature-inbox-notifications-persistee.md) :
 nouveau port `UserNotificationRepository` (miroir `NotificationOutboxRepository`), table
 `user_notification` (migration `023-user-notification.yaml`), `SendNotificationUseCaseImpl`
 écrit désormais 2 lignes pour le canal BROWSER (outbox + inbox, même transaction), nouveau
@@ -584,14 +584,14 @@ aucun composant existant ne l'utilise, donc pas de précédent local à copier. 
 (planning).
 
 **Phase 4 (planning) close (2026-09-22).** Plan de tâches
-[docs/ai/planning/2026-09-22-feature-inbox-notifications-persistee.md](docs/ai/planning/2026-09-22-feature-inbox-notifications-persistee.md) :
+[docs/ai/planning/2026-09-22-feature-inbox-notifications-persistee.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/planning/2026-09-22-feature-inbox-notifications-persistee.md) :
 12 milestones séquencés (M1 fondation domaine/persistance → M2 écriture au point de couture +
 correctif payload `WorkflowStateEventListener` → M3 REST + golden OpenAPI → M4 rétention,
 parallélisable à M3 → M5/M6/M7 les 3 nouveaux producteurs, parallélisables entre eux une fois M2
 clos → M8 client + store frontend → M9 `NotificationDrawer.vue` en PrimeVue → M10 Playwright
 (dont non-régression explicite des 2 producteurs déjà en production) → M11 documentation → M12
 vérification globale). Jeu de tests tracé en amont
-([docs/ai/testing/2026-09-22-feature-inbox-notifications-persistee.md](docs/ai/testing/2026-09-22-feature-inbox-notifications-persistee.md),
+([docs/ai/testing/2026-09-22-feature-inbox-notifications-persistee.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/testing/2026-09-22-feature-inbox-notifications-persistee.md),
 18 `UT-NOTIF-*`, 7 `IT-NOTIF-*`, 8 `E2E-NOTIF-*`) — chaque scénario tracé vers au moins une tâche,
 table de couverture exhaustive en fin de doc planning. Suite : Phase 5 (implémentation),
 démarrage par **M1**.
@@ -787,11 +787,11 @@ scénarios rejoués intégralement, pas seulement les 4 touchés). Suite backend
 dans ce conteneur (JDK 25 indisponible, même limite que Phase 10). **Feature prête pour PR — tous
 les findings de la Phase 10 traités**, aucun report vers un suivi post-merge.
 
-**Détail :** `docs/ai/requirements/2026-09-22-feature-inbox-notifications-persistee.md`,
-`docs/ai/design/2026-09-22-feature-inbox-notifications-persistee.md`,
-`docs/ai/planning/2026-09-22-feature-inbox-notifications-persistee.md`,
-`docs/ai/testing/2026-09-22-feature-inbox-notifications-persistee.md`,
-`docs/ai/implementation/2026-09-22-feature-inbox-notifications-persistee.md`.
+**Détail :** [`docs/ai/requirements/2026-09-22-feature-inbox-notifications-persistee.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-09-22-feature-inbox-notifications-persistee.md),
+[`docs/ai/design/2026-09-22-feature-inbox-notifications-persistee.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-09-22-feature-inbox-notifications-persistee.md),
+[`docs/ai/planning/2026-09-22-feature-inbox-notifications-persistee.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/planning/2026-09-22-feature-inbox-notifications-persistee.md),
+[`docs/ai/testing/2026-09-22-feature-inbox-notifications-persistee.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/testing/2026-09-22-feature-inbox-notifications-persistee.md),
+[`docs/ai/implementation/2026-09-22-feature-inbox-notifications-persistee.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-09-22-feature-inbox-notifications-persistee.md).
 
 ---
 
@@ -930,11 +930,11 @@ workflow (`CompleteTaskUseCaseImpl`, `TaskAssignmentGuard`), upload de pièce jo
 (EMAIL + BROWSER), Liquibase (table des liens), `application.yml`, `GUIDE-UTILISATEUR.md`,
 `GUIDE-CONCEPTION-BPMN.md`, `GETTING-STARTED.md`, `.env.example`, `DEPLOIEMENT.md`, golden OpenAPI.
 
-**Détail :** `docs/ai/requirements/2026-09-23-feature-portail-externe.md`,
-`docs/ai/design/2026-09-23-feature-portail-externe.md`,
-`docs/ai/testing/2026-09-23-feature-portail-externe.md`,
-`docs/ai/planning/2026-09-23-feature-portail-externe.md`,
-`docs/ai/implementation/2026-09-23-feature-portail-externe.md`.
+**Détail :** [`docs/ai/requirements/2026-09-23-feature-portail-externe.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-09-23-feature-portail-externe.md),
+[`docs/ai/design/2026-09-23-feature-portail-externe.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-09-23-feature-portail-externe.md),
+[`docs/ai/testing/2026-09-23-feature-portail-externe.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/testing/2026-09-23-feature-portail-externe.md),
+[`docs/ai/planning/2026-09-23-feature-portail-externe.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/planning/2026-09-23-feature-portail-externe.md),
+[`docs/ai/implementation/2026-09-23-feature-portail-externe.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-09-23-feature-portail-externe.md).
 
 ---
 
@@ -1107,7 +1107,7 @@ lot `LC*`), `docs/specs/00-index.md`, `15-serveur-mcp.md` § Décisions de cadra
 
 ### [x] 72. Signature électronique — socle générique et stub (livré)
 
-**Livré (2026-09-29).** Phases 1 à 9 closes, analyse adversariale par sous-agent comprise. **Mergée sur `main`** le 2026-09-29 ([PR #149](https://github.com/superjojo79/FlowForge/pull/149), squash `1c839ff`), CI verte (`build` + `frontend`). Preuves : `./mvnw verify` → **2571 tests, 0 échec** ; Vitest 424 ; Playwright 98 ; test de bout en bout réel navigateur + backend (`SignatureBrowserE2eTest`). Seul fournisseur livré : `stub` (simulation, sans valeur juridique) ; un fournisseur réel et eIDAS restent à cadrer. Restent ouverts (voir `docs/ai/implementation/2026-09-29-feature-signature-electronique.md`) : S-EMIT-10 sur PostgreSQL réel, vérifications manuelles T14.4, tests de concurrence à deux transactions réelles, parcours internes en e2e réel (session OIDC).
+**Livré (2026-09-29).** Phases 1 à 9 closes, analyse adversariale par sous-agent comprise. **Mergée sur `main`** le 2026-09-29 ([PR #149](https://github.com/superjojo79/FlowForge/pull/149), squash `1c839ff`), CI verte (`build` + `frontend`). Preuves : `./mvnw verify` → **2571 tests, 0 échec** ; Vitest 424 ; Playwright 98 ; test de bout en bout réel navigateur + backend (`SignatureBrowserE2eTest`). Seul fournisseur livré : `stub` (simulation, sans valeur juridique) ; un fournisseur réel et eIDAS restent à cadrer. Restent ouverts (voir [`docs/ai/implementation/2026-09-29-feature-signature-electronique.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-09-29-feature-signature-electronique.md)) : S-EMIT-10 sur PostgreSQL réel, vérifications manuelles T14.4, tests de concurrence à deux transactions réelles, parcours internes en e2e réel (session OIDC).
 
 **Énoncé :** item **2.4** de `ROADMAP.md`, analyse
 [30-signature-electronique.md](docs/specs/30-signature-electronique.md), recalibrée le
@@ -1141,7 +1141,7 @@ recommandation externes seuls) ; D-SIGNATURE-INTERNAL-UX = vue « Mes signatures
 D-SIGNATURE-SIGNER-SOURCE = utilisateur désigné par champ / variable ; D-SIGNATURE-PROOF = PDF de
 preuve filigrané ; D-SIGNATURE-DELIVERY = un lot XL à jalons internes. Hypothèses A1–A5 acceptées
 (voir requirements). Documents SDD : requirements `reviewed`, design / planning / testing `draft`
-([requirements](docs/ai/requirements/2026-09-29-feature-signature-electronique.md)).
+([requirements](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-09-29-feature-signature-electronique.md)).
 
 **Phase 3 (design) close (2026-09-29)** — 4 décisions tranchées par l'utilisateur :
 D-SIGNATURE-DATA-MODEL = **tables dédiées** (le portail exige une `userTask` ouverte, F1) ;
@@ -1179,8 +1179,8 @@ qui prévoyait leur fusion dans ce registre.
 ### [x] 73. Palette métier dans l'éditeur BPMN (LC1) (livré)
 
 **Énoncé :** sous-lot **LC1** de la couche low-code (§70), analyse [39-palette-metier-bpmn.md](docs/specs/39-palette-metier-bpmn.md).
-Docs SDD : [requirements](docs/ai/requirements/2026-09-29-feature-palette-metier-bpmn.md), [design](docs/ai/design/2026-09-29-feature-palette-metier-bpmn.md),
-[planning](docs/ai/planning/2026-09-29-feature-palette-metier-bpmn.md), [testing](docs/ai/testing/2026-09-29-feature-palette-metier-bpmn.md).
+Docs SDD : [requirements](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-09-29-feature-palette-metier-bpmn.md), [design](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-09-29-feature-palette-metier-bpmn.md),
+[planning](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/planning/2026-09-29-feature-palette-metier-bpmn.md), [testing](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/testing/2026-09-29-feature-palette-metier-bpmn.md).
 
 **Phase 1 (2026-09-29).** Décisions tranchées par l'utilisateur : D-PALETTE-MECHANISM = provider maison étendu + palette ;
 D-PALETTE-CATALOG-SOURCE = catalogue **serveur** (API + MCP, source unique) ; D-PALETTE-EXPERT = champs bruts en section « Avancé » repliée ;
@@ -1194,15 +1194,15 @@ variables de process seulement ; le lot n'est donc pas « frontend seul » (tail
 
 **Phase 3 (2026-09-29).** Design revu contre le code. **Écarts corrigés** : un attribut par paramètre est faux pour la clé DMN, le `formKey` et la signature ⇒ `ParameterBinding` ; import sans `xmlns:flowable` ⇒ perte silencieuse de l'attribut ⇒ `ensureFlowableNamespace` ; le `dryRun` MCP saute les contrôles du use case de déploiement (DMN, portail, signature) ⇒ `validate(...)` partagé. **Décisions utilisateur** : D-PALETTE-DEPLOY-REFERENCES = **existence vérifiée au déploiement** (template, connecteur, type de dossier, workflow, webhook, statut) ; D-PALETTE-RAW-PALETTE = palette native conservée.
 
-**Phase 5 (2026-09-29).** Jalons M0–M12 livrés (backend : catalogue + API + outil MCP, `DeployedActivityParameters` et six delegates, validation de forme au parseur, existence des références au déploiement, parité `dryRun` ; frontend : `bpmn-blocks/` — client, reconnaissance, palette, panneau typé, « Avancé », diagnostics, marqueurs). Vérification : `./mvnw verify` 2648 tests verts, Vitest 489, Playwright 104 (dont `E2E-PALETTE-1..6`), OpenAPI dorée additive. **Constat** : les feuilles de style de `bpmn-js` n'étaient chargées nulle part (palette invisible) — corrigé. Écart assumé : la source `dmnTables` reste en saisie libre (pas d'API de liste). Voir [implementation](docs/ai/implementation/2026-09-29-feature-palette-metier-bpmn.md). Phases 6 à 9 closes (revue adversariale par sous-agent : 0 bloquant, 4 importants et 8 mineurs corrigés, dont la précédence attribut > variable). **Mergée sur `main`** le 2026-09-30 ([PR #151](https://github.com/superjojo79/FlowForge/pull/151), squash `f161129`), CI verte (`build` + `frontend`) ; chiffres finaux : `./mvnw verify` 2653 tests, Vitest 498, Playwright 105.
+**Phase 5 (2026-09-29).** Jalons M0–M12 livrés (backend : catalogue + API + outil MCP, `DeployedActivityParameters` et six delegates, validation de forme au parseur, existence des références au déploiement, parité `dryRun` ; frontend : `bpmn-blocks/` — client, reconnaissance, palette, panneau typé, « Avancé », diagnostics, marqueurs). Vérification : `./mvnw verify` 2648 tests verts, Vitest 489, Playwright 104 (dont `E2E-PALETTE-1..6`), OpenAPI dorée additive. **Constat** : les feuilles de style de `bpmn-js` n'étaient chargées nulle part (palette invisible) — corrigé. Écart assumé : la source `dmnTables` reste en saisie libre (pas d'API de liste). Voir [implementation](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-09-29-feature-palette-metier-bpmn.md). Phases 6 à 9 closes (revue adversariale par sous-agent : 0 bloquant, 4 importants et 8 mineurs corrigés, dont la précédence attribut > variable). **Mergée sur `main`** le 2026-09-30 ([PR #151](https://github.com/superjojo79/FlowForge/pull/151), squash `f161129`), CI verte (`build` + `frontend`) ; chiffres finaux : `./mvnw verify` 2653 tests, Vitest 498, Playwright 105.
 
 
 ### [x] 74. Palette métier — liste des tables DMN déployées (LC1-suite) (livré)
 
 **Énoncé :** reliquat de §73 (« reste en suite : liste des tables DMN déployées »). Docs SDD :
-[requirements](docs/ai/requirements/2026-09-30-feature-lc1-suite-palette-dmn.md), [design](docs/ai/design/2026-09-30-feature-lc1-suite-palette-dmn.md),
-[planning](docs/ai/planning/2026-09-30-feature-lc1-suite-palette-dmn.md), [implementation](docs/ai/implementation/2026-09-30-feature-lc1-suite-palette-dmn.md),
-[testing](docs/ai/testing/2026-09-30-feature-lc1-suite-palette-dmn.md). Journal des décisions : [DECISIONS.md](docs/roadmap-goal/DECISIONS.md).
+[requirements](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-09-30-feature-lc1-suite-palette-dmn.md), [design](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-09-30-feature-lc1-suite-palette-dmn.md),
+[planning](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/planning/2026-09-30-feature-lc1-suite-palette-dmn.md), [implementation](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-09-30-feature-lc1-suite-palette-dmn.md),
+[testing](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/testing/2026-09-30-feature-lc1-suite-palette-dmn.md). Journal des décisions : [DECISIONS.md](docs/roadmap-goal/DECISIONS.md).
 
 **Décisions (mandat « roadmap complète », 2026-09-30).** D-LC1S-SOURCE = endpoint de références de la palette (pas de nouvelle API REST publique) ;
 D-LC1S-LABEL = valeur = clé, libellé = « clé (vN) » ; D-LC1S-EXISTS = `exists("dmnTables")` ajouté à l'adaptateur (l'existence reste vérifiée au
@@ -1214,9 +1214,9 @@ déploiement par le use case). **Livré** : `GET /api/bpmn-building-blocks/refer
 ### [x] 75. Langage d'expression métier borné (LC2) (livré)
 
 **Énoncé :** sous-lot **LC2** de la couche low-code (§70), analyse [40-langage-expression-metier.md](docs/specs/40-langage-expression-metier.md).
-Docs SDD : [requirements](docs/ai/requirements/2026-09-30-feature-lc2-langage-expression-metier.md), [design](docs/ai/design/2026-09-30-feature-lc2-langage-expression-metier.md),
-[planning](docs/ai/planning/2026-09-30-feature-lc2-langage-expression-metier.md), [implementation](docs/ai/implementation/2026-09-30-feature-lc2-langage-expression-metier.md),
-[testing](docs/ai/testing/2026-09-30-feature-lc2-langage-expression-metier.md). Journal : [DECISIONS.md](docs/roadmap-goal/DECISIONS.md).
+Docs SDD : [requirements](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-09-30-feature-lc2-langage-expression-metier.md), [design](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-09-30-feature-lc2-langage-expression-metier.md),
+[planning](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/planning/2026-09-30-feature-lc2-langage-expression-metier.md), [implementation](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-09-30-feature-lc2-langage-expression-metier.md),
+[testing](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/testing/2026-09-30-feature-lc2-langage-expression-metier.md). Journal : [DECISIONS.md](docs/roadmap-goal/DECISIONS.md).
 
 **Décisions (mandat « roadmap complète », 2026-09-30).** D-EXPR-LANGUAGE = JSONata (`com.dashjoin:jsonata` 0.9.10) ; D-EXPR-EVAL-SITE = port
 `ExpressionEnginePort` + delegate `businessExpressionTask` ; D-EXPR-CONTEXT = dossier **sans champs sensibles** + `connectorResult` + variables scalaires + `now` ;
@@ -1236,9 +1236,9 @@ Nouvelles propriétés `app.expression.*` (valeurs par défaut, aucune variable 
 ### [x] 76. Modèle de champs enrichi — types structurés (D1) (livré)
 
 **Énoncé :** lot **D1** de la Vague D, analyse [32-modele-champs-enrichi.md](docs/specs/32-modele-champs-enrichi.md). Docs SDD :
-[requirements](docs/ai/requirements/2026-09-30-feature-d1-modele-champs-enrichi.md), [design](docs/ai/design/2026-09-30-feature-d1-modele-champs-enrichi.md),
-[planning](docs/ai/planning/2026-09-30-feature-d1-modele-champs-enrichi.md), [implementation](docs/ai/implementation/2026-09-30-feature-d1-modele-champs-enrichi.md),
-[testing](docs/ai/testing/2026-09-30-feature-d1-modele-champs-enrichi.md). Journal : [DECISIONS.md](docs/roadmap-goal/DECISIONS.md).
+[requirements](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-09-30-feature-d1-modele-champs-enrichi.md), [design](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-09-30-feature-d1-modele-champs-enrichi.md),
+[planning](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/planning/2026-09-30-feature-d1-modele-champs-enrichi.md), [implementation](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-09-30-feature-d1-modele-champs-enrichi.md),
+[testing](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/testing/2026-09-30-feature-d1-modele-champs-enrichi.md). Journal : [DECISIONS.md](docs/roadmap-goal/DECISIONS.md).
 
 **Décisions (mandat « roadmap complète », 2026-09-30).** D-CHAMPS-TYPES = `MONEY`, `REPEATABLE_GROUP`, `EXTERNAL_REF` ; D-CHAMPS-MONEY = montant en **texte décimal exact** +
 devise par valeur, refusé (jamais arrondi) au-delà des décimales de la devise ; D-CHAMPS-REPEAT = un niveau, 20 sous-champs, 0–500 lignes ; D-CHAMPS-SENSITIVE = sensibilité sur le
@@ -1254,9 +1254,9 @@ miroir). Preuves de non-régression : modèles PDF (sans modification), compatib
 ### [x] 77. OAuth2 client credentials sur `http-rest` (D3a) (livré)
 
 **Énoncé :** sous-lot **D3a** de la Vague D, analyse [34-integrations-entreprise.md](docs/specs/34-integrations-entreprise.md). Docs SDD :
-[requirements](docs/ai/requirements/2026-09-30-feature-d3a-oauth2-client-credentials.md), [design](docs/ai/design/2026-09-30-feature-d3a-oauth2-client-credentials.md),
-[planning](docs/ai/planning/2026-09-30-feature-d3a-oauth2-client-credentials.md), [implementation](docs/ai/implementation/2026-09-30-feature-d3a-oauth2-client-credentials.md),
-[testing](docs/ai/testing/2026-09-30-feature-d3a-oauth2-client-credentials.md). Journal : [DECISIONS.md](docs/roadmap-goal/DECISIONS.md).
+[requirements](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-09-30-feature-d3a-oauth2-client-credentials.md), [design](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-09-30-feature-d3a-oauth2-client-credentials.md),
+[planning](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/planning/2026-09-30-feature-d3a-oauth2-client-credentials.md), [implementation](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-09-30-feature-d3a-oauth2-client-credentials.md),
+[testing](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/testing/2026-09-30-feature-d3a-oauth2-client-credentials.md). Journal : [DECISIONS.md](docs/roadmap-goal/DECISIONS.md).
 
 **Décisions (mandat « roadmap complète », 2026-09-30).** D-INTEG-OAUTH-SCOPE = secret (POST/Basic) **et** certificat `private_key_jwt` ; D-INTEG-OAUTH-MODE = `authMode`
 (défaut `STATIC_HEADER`, `authHeaderValue` refusé en mode OAuth) ; D-INTEG-OAUTH-CACHE = mémoire du pod, 256 entrées, single-flight, clé par empreinte de configuration ;
@@ -1273,8 +1273,8 @@ migration, aucune variable d'environnement, aucun changement de SPA (formulaire 
 ### [x] 78. Mapping d'une réponse de connecteur → champs du dossier (D3b) (livré)
 
 **Énoncé :** sous-lot **D3b**, analyse [34-integrations-entreprise.md](docs/specs/34-integrations-entreprise.md), sur le moteur d'expressions de LC2 (§75). Docs SDD :
-[requirements](docs/ai/requirements/2026-10-01-feature-d3b-mapping-reponse-connecteur.md), [design](docs/ai/design/2026-10-01-feature-d3b-mapping-reponse-connecteur.md),
-[implementation](docs/ai/implementation/2026-10-01-feature-d3b-mapping-reponse-connecteur.md), [testing](docs/ai/testing/2026-10-01-feature-d3b-mapping-reponse-connecteur.md).
+[requirements](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-10-01-feature-d3b-mapping-reponse-connecteur.md), [design](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-10-01-feature-d3b-mapping-reponse-connecteur.md),
+[implementation](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-10-01-feature-d3b-mapping-reponse-connecteur.md), [testing](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/testing/2026-10-01-feature-d3b-mapping-reponse-connecteur.md).
 
 **Décisions.** D-INTEG-MAPPING-TARGET = champs du dossier seulement ; D-MAP-FORMAT = lignes `champ = expression` ; D-MAP-UNDEFINED = échec explicite ; D-MAP-ATOMIC = un patch, tout ou rien ;
 D-MAP-BODY-JSON = `connectorResult.json` fourni par le contexte (nombres exacts en texte au-delà de 15 chiffres) ; D-MAP-SENSITIVE = cible oui (auditée), source non ; D-MAP-TARGETS = cibles
@@ -1288,9 +1288,9 @@ partagé (`json`), catalogue : drapeau `multiline` → zone de texte dans l'édi
 
 ### [x] 79. Tâches planifiées sûres sous double exécution (D5) (livré)
 
-**Énoncé :** lot **D5**, analyse [36-verrou-jobs-planifies.md](docs/specs/36-verrou-jobs-planifies.md). Docs SDD : [requirements](docs/ai/requirements/2026-10-01-feature-d5-verrou-jobs-planifies.md),
-[design (audit complet)](docs/ai/design/2026-10-01-feature-d5-verrou-jobs-planifies.md), [implementation](docs/ai/implementation/2026-10-01-feature-d5-verrou-jobs-planifies.md),
-[testing](docs/ai/testing/2026-10-01-feature-d5-verrou-jobs-planifies.md).
+**Énoncé :** lot **D5**, analyse [36-verrou-jobs-planifies.md](docs/specs/36-verrou-jobs-planifies.md). Docs SDD : [requirements](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-10-01-feature-d5-verrou-jobs-planifies.md),
+[design (audit complet)](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-10-01-feature-d5-verrou-jobs-planifies.md), [implementation](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-10-01-feature-d5-verrou-jobs-planifies.md),
+[testing](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/testing/2026-10-01-feature-d5-verrou-jobs-planifies.md).
 
 **Décisions.** D-JOBS-TRIGGER = corriger dès l'audit (un déploiement progressif fait coexister deux pods, l'audit montre sept tâches fautives dont deux en corruption) ; D-JOBS-MECHANISM = prise par ligne
 (UPDATE conditionnel), ni advisory lock ni ShedLock ; D-JOBS-LEASE = baux courts (2 à 5 min) et reprise des unités abandonnées ; D-JOBS-CRON = créneau cron au plus une fois sous crash, rendu en cas d'échec.
@@ -1305,9 +1305,9 @@ partagé (`json`), catalogue : drapeau `multiline` → zone de texte dans l'édi
 
 **Énoncé :** remplacer H2 (émulation) et Testcontainers-PostgreSQL (Docker requis) par un PostgreSQL
 embarqué ; offrir une base **persistante** pour les démos/QA. Décision : [47-postgresql-embarque-tests-demo.md](docs/specs/47-postgresql-embarque-tests-demo.md) —
-remplace D-TESTCONTAINERS-EXEC. Docs SDD : [requirements](docs/ai/requirements/2026-10-02-feature-zonky-embedded-postgres.md),
-[design](docs/ai/design/2026-10-02-feature-zonky-embedded-postgres.md), [planning](docs/ai/planning/2026-10-02-feature-zonky-embedded-postgres.md),
-[implementation](docs/ai/implementation/2026-10-02-feature-zonky-embedded-postgres.md), [testing](docs/ai/testing/2026-10-02-feature-zonky-embedded-postgres.md) ;
+remplace D-TESTCONTAINERS-EXEC. Docs SDD : [requirements](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-10-02-feature-zonky-embedded-postgres.md),
+[design](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-10-02-feature-zonky-embedded-postgres.md), [planning](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/planning/2026-10-02-feature-zonky-embedded-postgres.md),
+[implementation](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-10-02-feature-zonky-embedded-postgres.md), [testing](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/testing/2026-10-02-feature-zonky-embedded-postgres.md) ;
 prompt source : [docs/goals/zonky-embedded-postgres.md](docs/goals/zonky-embedded-postgres.md).
 
 **Livré.** zonky 2.2.2 / PostgreSQL 17 (aligné docker-compose) ; une instance par JVM, une base par
@@ -1374,7 +1374,7 @@ d’autres rôles.
 | Flowable (Q5) | `WorkflowEnginePort.deleteProcessInstanceBestEffort` ; ACT_HI résiduel OK |
 | UI (Q6) | Admin **lecture** `/admin/purge-outbox` ; enqueue sur détail dossier |
 | HTTP (Q7) | `POST /api/dossiers/{id}/purge-requests` async ; pas de purge dans le thread HTTP |
-| Tenant (Q8) | Destroy tenant = **runbook ops** (`docs/ai/deployment/2026-08-19-feature-purge-stockage.md`) |
+| Tenant (Q8) | Destroy tenant = **runbook ops** ([`docs/ai/deployment/2026-08-19-feature-purge-stockage.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/deployment/2026-08-19-feature-purge-stockage.md)) |
 | Orphelins (Q9) | Pas de GC store hors outbox |
 | E2E (Q10) | Playwright E2E-PURGE-1..5 + suite existante |
 | Enqueue (Q11) | Seulement `CLOTURE`/`ARCHIVE` (ouvert → 409) ; job ignore l’horloge si `origin=ADMIN` |
@@ -1517,7 +1517,7 @@ allégué (`Instant` ne supporte pas `%tY`) n'existe pas dans `SequentialReferen
 80 générations concurrentes) prouve l'absence de doublon et de trou dans la séquence sous charge
 réelle. Écrit et compilé ; non exécuté dans le bac à sable de développement (Docker absent) —
 exécution/vérification en CI (`ubuntu-latest`, Docker natif). Voir
-`docs/ai/testing/2026-08-22-feature-fiabilisation-tests-plateforme.md`.
+[`docs/ai/testing/2026-08-22-feature-fiabilisation-tests-plateforme.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/testing/2026-08-22-feature-fiabilisation-tests-plateforme.md).
 
 **Impacte :** [04-dossiers.md](docs/specs/04-dossiers.md).
 
@@ -1550,7 +1550,7 @@ exécution/vérification en CI (`ubuntu-latest`, Docker natif). Voir
   pas). `./mvnw verify` vert avec 1050 tests (0 échec), LINE 93.7%, BRANCH 75.0%.
 
 Détails complets (décisions techniques, requirements coverage) :
-`docs/ai/design/2026-08-22-feature-fiabilisation-tests-plateforme.md`.
+[`docs/ai/design/2026-08-22-feature-fiabilisation-tests-plateforme.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-08-22-feature-fiabilisation-tests-plateforme.md).
 
 ---
 
@@ -1562,7 +1562,7 @@ Micrometer `flowforge.*` (3 âges outbox, Flowable DLQ+exception, timer
 PDF, webhooks DEAD, SSE) sur le **port management** ; audit lecture
 `SECURITY_AUDIT` Q1=B ; `GET /api/observability` + SPA
 `/admin/observabilite` (`TENANT_ADMIN`). Voir
-`docs/ai/implementation/2026-08-20-feature-observabilite.md`.
+[`docs/ai/implementation/2026-08-20-feature-observabilite.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-08-20-feature-observabilite.md).
 
 Follow-ups non bloquants : wrapper MDC async Flowable Community 8 ;
 `dossierId` MDC par item de purge.
@@ -1819,7 +1819,7 @@ volet Cockpit (`DEFERRED-FEATURES.md` §1.5, hors scope produit, non remis en ca
 
 **Recommandation actée :** option **(b)**. Analyse détaillée :
 [docs/specs/14-edition-bpmn.md](docs/specs/14-edition-bpmn.md) et
-[docs/ai/requirements/2026-08-24-feature-edition-bpmn.md](docs/ai/requirements/2026-08-24-feature-edition-bpmn.md).
+[docs/ai/requirements/2026-08-24-feature-edition-bpmn.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-08-24-feature-edition-bpmn.md).
 
 **Cycle `dev-lifecycle` lancé (2026-08-24), Phase 2 (requirements) close** — 7 décisions actées via
 `AskUserQuestion` (une à la fois) : D-EDIT-SCOPE=provider custom limité aux attributs `flowable:*`
@@ -1840,7 +1840,7 @@ D-DESIGN-ROUTE=une seule route SPA `/admin/bpmn-editor` avec `processDefinitionK
 optionnel ; D-DESIGN-DRAFT-LIFECYCLE=le brouillon est supprimé automatiquement après un déploiement
 réussi. Gap réel trouvé en exploration (pas supposé) : aucun mécanisme existant ne renvoyait le XML brut
 d'une définition de process par clé — nouvelle méthode `WorkflowDeploymentPort.findDeployedXml`. Détail :
-[docs/ai/design/2026-08-24-feature-edition-bpmn.md](docs/ai/design/2026-08-24-feature-edition-bpmn.md).
+[docs/ai/design/2026-08-24-feature-edition-bpmn.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-08-24-feature-edition-bpmn.md).
 
 **Phase 4 (planning) close** — testing doc créé (comblant l'étape sautée en Phase 1 initiale) puis plan en
 8 milestones / ~20 tâches : M1 domaine backend brouillon, M2 persistence (migration
@@ -1848,8 +1848,8 @@ d'une définition de process par clé — nouvelle méthode `WorkflowDeploymentP
 M5 canvas éditeur (`bpmn-js` Modeler + `bpmn-js-properties-panel`), M6 composables partagés
 (`useBpmnDraft`/`useBpmnDeployment`), M7 écran dédié + intégration admin, M8 vérification globale
 (4 nouveaux scénarios E2E). Couverture testing→planning vérifiée exhaustive. Détail :
-[docs/ai/testing/2026-08-24-feature-edition-bpmn.md](docs/ai/testing/2026-08-24-feature-edition-bpmn.md),
-[docs/ai/planning/2026-08-24-feature-edition-bpmn.md](docs/ai/planning/2026-08-24-feature-edition-bpmn.md).
+[docs/ai/testing/2026-08-24-feature-edition-bpmn.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/testing/2026-08-24-feature-edition-bpmn.md),
+[docs/ai/planning/2026-08-24-feature-edition-bpmn.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/planning/2026-08-24-feature-edition-bpmn.md).
 
 **Résolu (2026-08-24, feature `edition-bpmn`) :** Phase 5 (implémentation) exécutée en TDD, M1-M4
 (backend) et M5-M7 (frontend) en parallèle par deux agents dans des worktrees git isolés (contrat
@@ -1897,7 +1897,7 @@ API déjà figé par le design), fusionnés puis M8 (vérification globale) exé
   sur la feature (Phases 5 et 7). Preuve fraîche re-vérifiée avant PR : 1110 backend + 196 Vitest +
   47 Playwright, tous verts.
 
-Détail complet : [docs/ai/implementation/2026-08-24-feature-edition-bpmn.md](docs/ai/implementation/2026-08-24-feature-edition-bpmn.md).
+Détail complet : [docs/ai/implementation/2026-08-24-feature-edition-bpmn.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-08-24-feature-edition-bpmn.md).
 Phase 9 (revue finale) close, PR ouverte sur demande explicite de l'utilisateur :
 [PR #71](https://github.com/superjojo79/FlowForge/pull/71).
 
@@ -1970,7 +1970,7 @@ au design — la réponse de liste porte déjà le schéma complet. `./mvnw veri
 `FieldDefinitionDefsEditor.vue` liait son rendu directement sur la prop `modelValue` au lieu de
 l'état local réactif, donc n'affichait pas ses propres modifications avant un aller-retour par le
 parent (ex. `type=SELECT` ne révélait pas l'éditeur d'options). Détail :
-`docs/ai/implementation/2026-08-28-feature-schema-champs-dynamiques.md`. Phases 7 (check
+[`docs/ai/implementation/2026-08-28-feature-schema-champs-dynamiques.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-08-28-feature-schema-champs-dynamiques.md). Phases 7 (check
 implementation — 1 écart trouvé et corrigé, ordre validation/check), 8 (write tests — 1383 tests
 backend, 247 Vitest + 59 Playwright) et 9 (revue finale, aucun blocage) closes.
 [PR #87](https://github.com/superjojo79/FlowForge/pull/87).
@@ -2284,7 +2284,7 @@ régression). `GUIDE-UTILISATEUR.md`/`GUIDE-CONCEPTION-BPMN.md`/`CHANGELOG.md` m
 Écart de revue trouvé et corrigé en Phase 9 : `openapi/openapi.yaml` (fichier de référence testé
 par contrat) n'avait pas été régénéré après l'ajout du nouvel endpoint et des nouveaux champs —
 régénéré et vérifié vert. Détail complet :
-`docs/ai/implementation/2026-09-03-feature-formulaires-dynamiques-taches.md`.
+[`docs/ai/implementation/2026-09-03-feature-formulaires-dynamiques-taches.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-09-03-feature-formulaires-dynamiques-taches.md).
 
 **Revue adversariale approfondie (subagent dédié, post-Phase 9)** : 6 écarts réels trouvés et
 corrigés — le kind `document-generation` était non fonctionnel de bout en bout (mismatch de noms
@@ -2297,7 +2297,7 @@ diff) ; `documentTemplateKeys` n'était appliqué qu'à la découverte, jamais �
 clés héritées d'`Object.prototype`. Chacun corrigé avec un test de non-régression dédié
 (unitaire + IT/E2E réel selon le cas — dont un nouveau fixture BPMN + IT Flowable réel pour le
 premier). Détail complet et écarts mineurs restants (non corrigés, hors périmètre) :
-`docs/ai/implementation/2026-09-03-feature-formulaires-dynamiques-taches.md` §M8. Vérification
+[`docs/ai/implementation/2026-09-03-feature-formulaires-dynamiques-taches.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-09-03-feature-formulaires-dynamiques-taches.md) §M8. Vérification
 finale après correctifs : 1566 tests `Test*` (0 échec), 13 tests `*IT.java` (0 échec), Vitest
 278/278, Playwright 63/63.
 
@@ -2374,7 +2374,7 @@ inconnue, etc.), la ligne d'idempotence reste `IN_FLIGHT` en base — un rejeu a
 (24 h par défaut), au lieu de recevoir la vraie réponse d'échec ou d'être retraité. Exactement le
 même défaut a été corrigé sur `CallbackWebhookController` (composant `JpaWebhookIdempotencyStoreAdapter`
 partagé) dans le correctif post-merge de TODO §51 — voir
-`docs/ai/implementation/2026-09-02-feature-connecteur-callback.md` § « Correctifs post-merge »
+[`docs/ai/implementation/2026-09-02-feature-connecteur-callback.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-09-02-feature-connecteur-callback.md) § « Correctifs post-merge »
 pour le détail du mécanisme et le pattern de correction déjà écrit et testé (capturer
 `RuntimeException`, appeler `complete(...)` avec le statut déterministe pour les échecs dont
 l'issue est stable sur le même contenu de requête, laisser `IN_FLIGHT` pour l'imprévu).
@@ -2420,7 +2420,7 @@ et corrige 4 nouveaux écarts (« corrige tout maintenant ») :
   `ConnectorExceptionHandler`.
 
 Détail complet (root cause, faux positifs écartés) :
-`docs/ai/implementation/2026-09-02-feature-connecteur-callback.md` § « Correctifs post-merge
+[`docs/ai/implementation/2026-09-02-feature-connecteur-callback.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-09-02-feature-connecteur-callback.md) § « Correctifs post-merge
 (2ème passe adversariale) ». `./mvnw verify` : **1554 tests, 0 échec** (+13 tests de régression
 permanents).
 
@@ -2523,8 +2523,8 @@ défaut, convention du dépôt). Vitest 289/289 (287 existants + 2 nouveaux, 0 r
 `vue-tsc`/`eslint` propres, Playwright 65/65 (inchangé, aucun scénario E2E supplémentaire en Phase
 8). `GUIDE-UTILISATEUR.md` (§0 + nouvelle §10), `GUIDE-CONCEPTION-BPMN.md` (§3bis étendu) mis à
 jour. `CHANGELOG.md` différé (aucune PR ouverte à ce stade, même convention que TODO §47).
-Détail complet : `docs/ai/implementation/2026-09-05-feature-questions-utilisateur-taches.md`,
-`docs/ai/testing/2026-09-05-feature-questions-utilisateur-taches.md`.
+Détail complet : [`docs/ai/implementation/2026-09-05-feature-questions-utilisateur-taches.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-09-05-feature-questions-utilisateur-taches.md),
+[`docs/ai/testing/2026-09-05-feature-questions-utilisateur-taches.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/testing/2026-09-05-feature-questions-utilisateur-taches.md).
 
 **Bug réel trouvé et corrigé après Phase 9, via un subagent dédié à une analyse adversariale
 demandée explicitement par l'utilisateur (pas dans le contrat des skills `dev-lifecycle`)** :
@@ -2591,7 +2591,7 @@ changer la signature de 4 interfaces `port.in`
 REST existants. Point de conception encore ouvert (Phase 3) : emplacement du garde-fou partagé
 (dupliquer un guard par bounded context, le déplacer dans un package neutre, ou étendre
 `TenantAdminGuard` en l'acceptant comme dépendance transverse) — voir
-[docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md](docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md).
+[docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md).
 
 **Phase 2 (revue requirements) close** — 1 décision supplémentaire tranchée via `AskUserQuestion` :
 **D-MCP-EXT-RBAC-SCOPE**, trouvée en revérifiant le RBAC REST exact de chaque contrôleur (pas
@@ -2649,7 +2649,7 @@ avec cette feature) — non bloquant, feature backend-only. Documentation resync
 [GETTING-STARTED.md](GETTING-STARTED.md) §12 (9 → 16 tools),
 [15-serveur-mcp.md](docs/specs/15-serveur-mcp.md) (bandeau d'extension). `CHANGELOG.md`
 différé (aucune PR ouverte à ce stade, même convention que TODO §47/§55). Détail complet :
-[docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md](docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md).
+[docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md).
 
 **Phase 6 (mise à jour planning)** — déjà reflétée ci-dessus (les 9 milestones étaient marqués
 `[x]` en fin de Phase 5).
@@ -2675,7 +2675,7 @@ Spring Security M2M (rôle métier vs. validité transport du JWT, objets diffé
 aucun accès tenant). `./mvnw verify` final (JDK 25 installé dans ce bac à sable, absent au
 démarrage du conteneur) : **1657 tests, 0 échec**, ArchUnit conforme, couverture Jacoco tenue.
 Détail complet dans
-[docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md](docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md)
+[docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md)
 § « Phase 7 — Check Implementation ».
 
 **Phase 8 (dev-testing) close** — vérification Jacoco **classe par classe** (convention TODO §28)
@@ -2693,7 +2693,7 @@ l'appel au garde-fou (une ligne sans branche), les branches non couvertes
 et hors sujet de ce cycle — même principe que l'import mort laissé intact en Phase 7. `./mvnw
 verify` final : **1666 tests, 0 échec** (+9 vs Phase 7), ArchUnit conforme, gate Jacoco `BUNDLE`
 tenue. Détail complet dans
-[docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md](docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md).
+[docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md).
 
 **Phase 9 (revue finale) close** — revue holistique du diff réel contre `origin/main` (53 fichiers,
 +3703/-118, pas les 1043 fichiers de bruit d'un mauvais `merge-base`). Checklist complète passée :
@@ -2717,7 +2717,7 @@ sur demande explicite de l'utilisateur **sans attendre la CI GitHub Actions** (c
 décision basée sur la vérification locale fraîche (`./mvnw verify` : 1675 tests, 0 échec, même
 build que celui poussé). `CHANGELOG.md` mis à jour (entrées Ajouté + Corrigé référençant la PR).
 Détail complet dans
-[docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md](docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md)
+[docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md)
 § « Phase 9 — Revue finale ».
 
 **Post-Phase 9 — revue adversariale (sous-agent) et correctifs** : analyse dédiée du diff complet
@@ -2756,15 +2756,15 @@ sans garde-fou côté configuration. `McpAccessContextFactory` accepte désormai
 autres sont rejetés (403). Le risque de fond (aucune dérivation des scopes JWT réels) reste assumé
 et non corrigé — à activer explicitement avant d'accorder l'accès `/api/m2m/mcp` à un second client
 M2M à portée réduite. Détail complet dans
-[docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md](docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md)
+[docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-09-06-feature-extension-mcp-flux-metier.md)
 § « Post-Phase 9 — Revue adversariale et correctifs de sécurité ».
 
 **Suite, sur demande :** ouverture PR + `CHANGELOG.md` ; éventuel cycle dédié pour le follow-up
 `DefineDossierTypeTool` restant (trouvaille (1) ci-dessus, toujours non corrigée). Documents lifecycle :
-[docs/ai/requirements/2026-09-06-feature-extension-mcp-flux-metier.md](docs/ai/requirements/2026-09-06-feature-extension-mcp-flux-metier.md),
-[docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md](docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md),
-[docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md](docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md),
-[docs/ai/planning/2026-09-06-feature-extension-mcp-flux-metier.md](docs/ai/planning/2026-09-06-feature-extension-mcp-flux-metier.md).
+[docs/ai/requirements/2026-09-06-feature-extension-mcp-flux-metier.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-09-06-feature-extension-mcp-flux-metier.md),
+[docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-09-06-feature-extension-mcp-flux-metier.md),
+[docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/testing/2026-09-06-feature-extension-mcp-flux-metier.md),
+[docs/ai/planning/2026-09-06-feature-extension-mcp-flux-metier.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/planning/2026-09-06-feature-extension-mcp-flux-metier.md).
 
 **Impacte :** `infrastructure/mcp/tool/**` (7 nouveaux tools + `DefineDossierTypeTool` étendu),
 `domain/connector/**`, `domain/workflow/**` (`TaskQuestionSchemaUseCaseImpl`,
@@ -2884,7 +2884,7 @@ y compris privée) était sans pont vers `Runtime` mais dépassait le contrat
 désormais que les getters JavaBean publics et les accesseurs canoniques de
 `record` (via `Class#getRecordComponents()`) — plus de `setAccessible`, plus
 de méthode privée/non-conventionnelle atteignable. Détail :
-`docs/ai/implementation/2026-08-25-feature-durcissement-securite-post-revue.md`
+[`docs/ai/implementation/2026-08-25-feature-durcissement-securite-post-revue.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-08-25-feature-durcissement-securite-post-revue.md)
 § Findings.
 
 **Énoncé :** `ThymeleafHtmlTemplateProcessor` utilise `SpringTemplateEngine`
@@ -2919,7 +2919,7 @@ IT `TenantRoleIsolationIT` (SKIPPED sans Docker).
 depuis le même gabarit que l'init Compose. Isolation cross-tenant vérifiée avec un vrai PostgreSQL
 pendant ce cycle (rôle A refusé sur le schéma de B — `permission denied`, reproduisant
 `TenantRoleIsolationIT` sans Testcontainers). Voir point 31 et
-[docs/ai/implementation/2026-09-08-feature-provisioning-tenant.md](docs/ai/implementation/2026-09-08-feature-provisioning-tenant.md).
+[docs/ai/implementation/2026-09-08-feature-provisioning-tenant.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-09-08-feature-provisioning-tenant.md).
 
 **Énoncé :** `search_path` n'est pas une barrière. Un seul rôle PG (Compose :
 superuser de la base `flowforge`) peut lire les autres schémas du cluster
@@ -2958,7 +2958,7 @@ départager `MANAGEMENT_PORT` et `KEYCLOAK_PORT`.
 changement de défaut yaml.
 
 **Impacte :** `SecurityConfig`, `application.yml`,
-`docs/ai/design/2026-08-20-feature-observabilite.md`, `GETTING-STARTED.md`.
+[`docs/ai/design/2026-08-20-feature-observabilite.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-08-20-feature-observabilite.md), `GETTING-STARTED.md`.
 
 **Détail :** [REVUE-ALIGNEMENT-SECURITE.md](REVUE-ALIGNEMENT-SECURITE.md) §4 S-3.
 
@@ -3004,7 +3004,7 @@ endroits complémentaires (`FlowForgeApplication.main`, static init
 `WebhookRestAdapter`, `systemPropertyVariables` Surefire pour les forks de
 test) — le pin IP / TOCTOU (D-44 lui-même) n'était pas affecté, seul le
 header `Host` du serveur cible l'était. Détail :
-`docs/ai/implementation/2026-08-25-feature-durcissement-securite-post-revue.md`
+[`docs/ai/implementation/2026-08-25-feature-durcissement-securite-post-revue.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-08-25-feature-durcissement-securite-post-revue.md)
 § Findings.
 
 **Énoncé :** `OutboundUrlGuard` bloque privé/metadata après résolution DNS,
@@ -3098,7 +3098,7 @@ réel (isolation cross-tenant vérifiée). **Limite assumée** : `docker build`/
 exécutable dans le bac à sable de ce cycle (politique réseau bloquant Docker Hub) — Dockerfile
 validé par `hadolint` + revue statique uniquement, à confirmer par un build réel avant premier
 déploiement. Détail :
-[docs/ai/implementation/2026-09-08-feature-provisioning-tenant.md](docs/ai/implementation/2026-09-08-feature-provisioning-tenant.md).
+[docs/ai/implementation/2026-09-08-feature-provisioning-tenant.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-09-08-feature-provisioning-tenant.md).
 
 **Documenté dans :** [FILE-ATTENTE.md](FILE-ATTENTE.md), [DEFERRED-FEATURES.md](DEFERRED-FEATURES.md).
 
@@ -3180,7 +3180,7 @@ tenant, donc un retrait partiel futur (ex. lors du retrait des exclusions JPA/Fl
 serait immédiatement détecté par la suite de tests existante. Pas de garde dédiée supplémentaire
 jugée nécessaire au-delà de cette couverture.
 
-**Documenté dans :** [docs/ai/requirements/2026-07-31-feature-authentification.md](docs/ai/requirements/2026-07-31-feature-authentification.md),
+**Documenté dans :** [docs/ai/requirements/2026-07-31-feature-authentification.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-07-31-feature-authentification.md),
 `src/main/java/com/flowforge/infrastructure/security/SecurityConfig.java`.
 
 ---
@@ -3531,11 +3531,11 @@ d'environnement nouvelle.
 
 [x] livré (branche `feature-notifier-dossier-et-brouillons`). Trois manques relevés par l'exemple
 [`exemples/autorisation-riverain/`](exemples/autorisation-riverain/DIFFICULTES.md) (§8 et §3), monté uniquement par
-configuration via MCP. Docs SDD : [requirements](docs/ai/requirements/2026-10-16-feature-notifier-dossier-et-brouillons.md),
-[design](docs/ai/design/2026-10-16-feature-notifier-dossier-et-brouillons.md),
-[planning](docs/ai/planning/2026-10-16-feature-notifier-dossier-et-brouillons.md),
-[implementation](docs/ai/implementation/2026-10-16-feature-notifier-dossier-et-brouillons.md),
-[testing](docs/ai/testing/2026-10-16-feature-notifier-dossier-et-brouillons.md).
+configuration via MCP. Docs SDD : [requirements](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-10-16-feature-notifier-dossier-et-brouillons.md),
+[design](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-10-16-feature-notifier-dossier-et-brouillons.md),
+[planning](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/planning/2026-10-16-feature-notifier-dossier-et-brouillons.md),
+[implementation](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-10-16-feature-notifier-dossier-et-brouillons.md),
+[testing](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/testing/2026-10-16-feature-notifier-dossier-et-brouillons.md).
 
 **D-DRAFT-REF-STATUS** (tranché par l'utilisateur, 2026-10-16) — un brouillon BPMN proposé par un canal automatisé (MCP
 `deploy_workflow` et son `dryRun`, compilation de parcours, import de configuration) accepte une ressource référencée qui
@@ -3584,11 +3584,11 @@ workflow », valeurs texte, noms réservés et doublons refusés côté client ;
 [x] livré (branche `feature-incidents-visibles-dossier`). Relevé par la recette de l'exemple riverain (PR #175, cas R6 ;
 `exemples/autorisation-riverain/DIFFICULTES.md` §11) : une brique **asynchrone** en échec partait en *dead letter* sans
 que rien ne le montre — ni la fiche dossier, ni le diagramme (`failedIds` ne retenait que les erreurs BPMN) — et
-sans moyen de la rejouer. Docs SDD : [requirements](docs/ai/requirements/2026-10-18-feature-incidents-visibles-dossier.md),
-[design](docs/ai/design/2026-10-18-feature-incidents-visibles-dossier.md),
-[planning](docs/ai/planning/2026-10-18-feature-incidents-visibles-dossier.md),
-[implementation](docs/ai/implementation/2026-10-18-feature-incidents-visibles-dossier.md),
-[testing](docs/ai/testing/2026-10-18-feature-incidents-visibles-dossier.md).
+sans moyen de la rejouer. Docs SDD : [requirements](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-10-18-feature-incidents-visibles-dossier.md),
+[design](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-10-18-feature-incidents-visibles-dossier.md),
+[planning](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/planning/2026-10-18-feature-incidents-visibles-dossier.md),
+[implementation](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-10-18-feature-incidents-visibles-dossier.md),
+[testing](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/testing/2026-10-18-feature-incidents-visibles-dossier.md).
 
 Décisions (tranchées par l'utilisateur, 2026-10-18) : périmètre « visible + rejouable + supervision » ; deux états
 (`RETRYING` : job ou minuteur en échec avec tentatives restantes ; `INCIDENT` : dead letter) ; MCP en lecture seule.
@@ -3703,3 +3703,24 @@ code les décrit, sans changement de comportement.
   jamais le corps brut, réponse toujours 204.
 - **D-SIGNATURE-ACTIVATION** (§72) — sans fournisseur de signature (`app.signature.provider=none`), aucun use case,
   delegate, job ni route de signature n'est créé.
+
+**D-REMED-ARCHIVE-REF** ⚠ — Le goal prévoyait un tag `archive/docs-pre-remediation-2026-10` poussé avant toute
+suppression. Le push du tag est refusé par la politique de la session (HTTP 403 : seule la branche de développement
+peut être poussée) ; il n'a pas été contourné. Choix : les contenus retirés pointent vers des permaliens au commit
+`e91aa7b` de `main` (`https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/…`),
+qui contient `docs/ai/`, `TODO.md`, `FILE-ATTENTE.md` et `DEFERRED-FEATURES.md` complets. Un commit de `main` reste
+accessible quel que soit le mode de merge de la PR, ce qui est la garantie recherchée. La numérotation des lignes
+est identique (P4 n'a modifié `docs/ai/` que ligne à ligne), si bien que les ancres `#Lnn` restent justes. À faire
+par l'utilisateur, s'il veut aussi le tag : `git tag -a archive/docs-pre-remediation-2026-10 e91aa7b -m "…"` puis
+`git push origin archive/docs-pre-remediation-2026-10`.
+
+**D-REMED-DOCS-AI** — `docs/ai/` : les 473 documents de travail des 74 fonctionnalités livrées sont retirés
+(aucun cycle en cours, d'après `FILE-ATTENTE.md`) ; les sept `README.md` de phase (modèles ai-devkit) restent, et
+le goal `goal-outillage-podman-windows.md` rejoint `docs/goals/`. Avant suppression : index
+`docs/decisions/identifiants.md` (187 identifiants cités par le code, chacun avec son énoncé et sa source),
+correspondance fonctionnalité → spec, et section « Implémentation » ajoutée aux specs pour les cinq fonctionnalités
+qu'aucune ne couvrait (en-têtes HTTP → `03`, correction des champs et antivirus → `04`, contrat OpenAPI et
+pagination admin → `11`, tables DMN de la palette → `28`). Les liens et mentions vers ces documents deviennent des
+permaliens (D-REMED-ARCHIVE-REF). Exception : le commentaire XML de
+`src/main/resources/decisions/grille-eligibilite-client.dmn` garde l'ancien chemin, pour ne pas modifier une
+ressource déployée dans Flowable (un contenu modifié crée une nouvelle version de déploiement).

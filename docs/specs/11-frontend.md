@@ -141,3 +141,20 @@ npm install -D @playwright/test
 npm install -D eslint @vue/eslint-config-typescript eslint-plugin-vue prettier
 npm install -D vue-tsc
 ```
+
+## Implémentation — contrat OpenAPI et pagination des listes admin (PR #58, TODO §24)
+
+*Synthèse ajoutée lors de la remédiation (TODO §95), d'après les documents de travail
+([requirements](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-08-19-feature-openapi-pagination-admin.md),
+[implementation](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-08-19-feature-openapi-pagination-admin.md)).*
+
+- **Contrat :** springdoc publie l'OpenAPI 3 au runtime seulement si `app.openapi.enabled=true` (défaut `false`,
+  relayé vers `springdoc.*` par `OpenApiEnvironmentPostProcessor`). Le fichier versionné
+  [`openapi/openapi.yaml`](../../openapi/openapi.yaml) est la référence : `OpenApiContractIT` échoue si le contrat
+  généré en diffère. SSE, upload multipart et `POST /api/webhooks/**` sont masqués (`@Hidden`).
+- **Pagination :** les listes admin (types, templates, connecteurs, configurations de workflow, webhooks de
+  notification, file de purge) renvoient la même enveloppe de page que `GET /api/dossiers` (`PageQuery` /
+  `PageResult` dans le domaine, `Pageable` confiné aux adaptateurs JPA). La file de purge ajoute ses `counts`
+  globaux. Les listes imbriquées restent des tableaux.
+- **SPA :** `AdminPager` et `useAdminListQuery` ; les listes déroulantes hors admin lisent toutes les pages
+  (`listAllPages`, taille 100). Écran `/admin/notification-webhooks` ajouté.

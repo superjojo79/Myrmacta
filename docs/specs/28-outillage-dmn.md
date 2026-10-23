@@ -90,5 +90,19 @@ que la contrainte « ne pas découper B1 en 3 PRs » de la Vague B connecteurs.
 | D-DMN-TEST-SURFACE | **C** — MCP + REST + upload UI JSON/CSV (Phase 2, 2026-09-22) |
 
 Détail :
-[`docs/ai/requirements/2026-09-22-feature-outillage-dmn.md`](../ai/requirements/2026-09-22-feature-outillage-dmn.md)
+[`docs/ai/requirements/2026-09-22-feature-outillage-dmn.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-09-22-feature-outillage-dmn.md)
 (status **reviewed**, Phase 2 close).
+
+## Implémentation — tables DMN proposées dans la palette BPMN (LC1-suite, TODO §74)
+
+*Synthèse ajoutée lors de la remédiation (TODO §95), d'après le document de travail
+[requirements](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-09-30-feature-lc1-suite-palette-dmn.md) ; décisions D-LC1S-* dans
+[DECISIONS.md](../roadmap-goal/DECISIONS.md).*
+
+- La brique « Décision DMN » de la palette métier (TODO §73, [39](39-palette-metier-bpmn.md)) propose la liste des
+  tables déployées du tenant au lieu d'une clé saisie à la main :
+  `GET /api/bpmn-building-blocks/references/dmnTables` renvoie une entrée `{value, label}` par clé (libellé
+  « clé (vN) », dernière version), triée par clé, sans XML ni règles.
+- Accès `TENANT_ADMIN` et `WORKFLOW_ADMIN` (403 pour `DOSSIER_MANAGER`, 401 anonyme), isolé par tenant.
+- L'existence de la clé reste vérifiée au déploiement. Si la liste est indisponible, le panneau retombe en saisie
+  libre et l'éditeur reste utilisable (D-PALETTE-FALLBACK).

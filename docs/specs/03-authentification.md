@@ -340,3 +340,25 @@ Le claim `tenant_id` est résolu depuis le token OIDC dans le filtre
 instance (chemin `/{tenantId}/...`, reverse-proxy statique, `server.forward-headers-strategy` pour le
 calcul correct des `redirect_uri` OAuth2 derrière le proxy) est également documenté dans
 [02-multi-tenant.md](02-multi-tenant.md).
+
+## Implémentation — en-têtes HTTP de défense (lot A4, PR #128, TODO §64)
+
+*Synthèse ajoutée lors de la remédiation (TODO §95) : la fonctionnalité n'était décrite que dans ses documents de
+travail ([requirements](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-09-20-feature-headers-http-globaux.md),
+[implementation](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-09-20-feature-headers-http-globaux.md)).*
+
+- **Portée :** les quatre chaînes de `SecurityConfig` (actuator, M2M, webhooks/callbacks, BFF) reçoivent le même
+  paquet d'en-têtes par un customizer par chaîne (`SecurityHeadersCustomizer`), pas par un filtre global qui
+  raterait le port actuator.
+- **Contenu :** `Content-Security-Policy` (constante unique `CONTENT_SECURITY_POLICY`, partagée par le code et les
+  tests, compatible bpmn-js, dmn-js et PrimeVue), `X-Frame-Options`, `X-Content-Type-Options: nosniff` et
+  `Referrer-Policy`. Le preview HTML de document garde sa CSP propre (`default-src 'none'; sandbox`, TODO §57).
+- **HSTS :** `max-age=31536000; includeSubDomains`, sans `preload`, hors profils `local`/`test`, et seulement si la
+  requête est HTTPS **et** si le pair TCP immédiat est un proxy de confiance
+  (`APP_SECURITY_HEADERS_TRUSTED_PROXY_CIDRS`, défaut loopback + RFC1918).
+- **Rapports CSP :** collecte anonyme sur `/api/security/csp-reports`, champs en liste blanche, journalisés
+  tronqués, réponse toujours 204 (D-CSP-REPORTING), débit borné par pair TCP.
+- **Interrupteur :** `APP_SECURITY_HEADERS_ENABLED=false` coupe le paquet applicatif (les défauts Spring restent) ;
+  hors profils `local`/`test`, le démarrage est refusé (`SecurityHeadersEnvironmentPostProcessor`, TODO §64).
+- **Tests :** `SecurityHeadersCustomizerTest`, `SecurityHeadersApiTest`, `SecurityHeadersHstsApiTest`,
+  `FrontendCspLiteralConsistencyTest` ; Playwright `E2E-HDR-1/2`.

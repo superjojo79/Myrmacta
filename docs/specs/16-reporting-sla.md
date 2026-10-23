@@ -23,7 +23,7 @@ Le produit a déjà tranché, à plusieurs reprises et indépendamment, que
 
 - `DEFERRED-FEATURES.md` §1.6 (`frontend`) : « Écrans Rapports / SLA —
   Hors scope V1 (mock UI de référence uniquement) ».
-- `docs/ai/requirements/2026-08-20-feature-observabilite.md` (non-goals) :
+- [`docs/ai/requirements/2026-08-20-feature-observabilite.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-08-20-feature-observabilite.md) (non-goals) :
   « Rapports / SLA (FILE-ATTENTE hors V1) », distinct de l'observabilité
   technique (Prometheus/MDC) qui couvre la santé de la **plateforme**, pas
   les indicateurs **métier** sur les dossiers/workflows.

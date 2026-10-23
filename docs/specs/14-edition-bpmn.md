@@ -6,10 +6,10 @@
 > Phase 3 design, Phase 4 planning, Phase 5 implémentation — voir
 > « Implémentation livrée » ci-dessous). Voir les documents de travail
 > détaillés :
-> [docs/ai/requirements/2026-08-24-feature-edition-bpmn.md](../ai/requirements/2026-08-24-feature-edition-bpmn.md),
-> [docs/ai/design/2026-08-24-feature-edition-bpmn.md](../ai/design/2026-08-24-feature-edition-bpmn.md),
-> [docs/ai/planning/2026-08-24-feature-edition-bpmn.md](../ai/planning/2026-08-24-feature-edition-bpmn.md) et
-> [docs/ai/implementation/2026-08-24-feature-edition-bpmn.md](../ai/implementation/2026-08-24-feature-edition-bpmn.md).
+> [docs/ai/requirements/2026-08-24-feature-edition-bpmn.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-08-24-feature-edition-bpmn.md),
+> [docs/ai/design/2026-08-24-feature-edition-bpmn.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-08-24-feature-edition-bpmn.md),
+> [docs/ai/planning/2026-08-24-feature-edition-bpmn.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/planning/2026-08-24-feature-edition-bpmn.md) et
+> [docs/ai/implementation/2026-08-24-feature-edition-bpmn.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-08-24-feature-edition-bpmn.md).
 
 ## Constat
 
@@ -200,7 +200,7 @@ inséré après « General » (`blockPropertiesProvider`), section « Avancé »
 repliée pour une brique reconnue), diagnostics non bloquants et marqueur de canevas (`blockMarkers`),
 `ensureFlowableNamespace` (D-FLOWABLE-NS). Le catalogue vient du serveur ; l'éditeur charge aussi
 désormais les feuilles de style `bpmn-js` / `diagram-js` / panneau de propriétés, absentes jusque-là
-(palette et panneau apparaissaient sans mise en forme). Détail : `docs/ai/design/2026-09-29-feature-palette-metier-bpmn.md`.
+(palette et panneau apparaissaient sans mise en forme). Détail : [`docs/ai/design/2026-09-29-feature-palette-metier-bpmn.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-09-29-feature-palette-metier-bpmn.md).
 
 ## Prochaine étape
 

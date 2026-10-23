@@ -2,9 +2,9 @@
 
 > **Statut : livré** (TODO §91). Remplace la décision de test **D-TESTCONTAINERS-EXEC** et la partie
 > PostgreSQL de **D-TESTCONTAINERS** (feature `fiabilisation-tests-plateforme`). Docs SDD :
-> [requirements](../ai/requirements/2026-10-02-feature-zonky-embedded-postgres.md),
-> [design](../ai/design/2026-10-02-feature-zonky-embedded-postgres.md),
-> [implementation](../ai/implementation/2026-10-02-feature-zonky-embedded-postgres.md).
+> [requirements](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-10-02-feature-zonky-embedded-postgres.md),
+> [design](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-10-02-feature-zonky-embedded-postgres.md),
+> [implementation](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/implementation/2026-10-02-feature-zonky-embedded-postgres.md).
 
 ## Décision
 

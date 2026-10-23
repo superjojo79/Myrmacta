@@ -14,7 +14,7 @@
 > corrigée en conséquence ; le mécanisme réellement retenu est équivalent en faisabilité mais
 > utilise `ExecutionQuery.messageEventSubscriptionName(...).processVariableValueEquals(...)` +
 > `RuntimeService.messageEventReceived(messageName, executionId, variables)`. Détail complet et
-> décisions de design : `docs/ai/design/2026-09-02-feature-connecteur-callback.md`.
+> décisions de design : [`docs/ai/design/2026-09-02-feature-connecteur-callback.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-09-02-feature-connecteur-callback.md).
 
 ---
 

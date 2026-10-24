@@ -964,6 +964,20 @@ infrastructure
   (`SecurityAuditLog.sensitiveFieldChanged`, niveau INFO), jamais bloqué.
 - **Tests :** `UpdateDossierFieldsUseCaseImplTest`, tests du contrôleur, Playwright `E2E-22`.
 
+## Implémentation — unicité d'un champ (TODO §102, issue #184, lot A)
+
+- **Déclaration :** `FieldDefinition.unique` sur un champ `STRING`, `NUMBER` ou `DATE`, non sensible, hors groupe, nom ≤ 100
+  caractères ; permis sur un champ calculé (clé normalisée par une formule).
+- **Règle :** une valeur canonique (texte tel quel, nombre sans zéro non significatif, date ISO) ne figure que dans un seul
+  dossier non `CLOTURE`/`ARCHIVE` du type. Valeur vide : jamais en conflit. Valeur unique ≤ 500 caractères.
+- **Garantie :** table `dossier_unique_value` tenue par `DossierRepository.save` (toutes les écritures y passent), sous
+  verrou consultatif partagé du type ; reconstruite à l'enregistrement du type sous verrou exclusif. Les clés sont tirées du
+  dossier recalculé par les règles (`DossierUniqueKeys`).
+- **Erreurs :** doublon → 400, `errors[]` `code: "UNIQUE"` + `reference` du détenteur (pré-contrôle de la création, de la
+  correction et de l'essai à blanc MCP ; la base tranche les courses). Activer `unique` sur des doublons ouverts → 409 avec
+  `duplicates`. Webhook entrant : 400 avec champs et codes seulement.
+- **Tests :** `DossierUniqueValueIT`, `DossierUniqueTypeIT`, `UniqueFieldApiTest`, `UniqueFieldWorkflowIT`.
+
 ## Implémentation — antivirus des pièces jointes (lot C, PR #131)
 
 *Synthèse ajoutée lors de la remédiation (TODO §95), d'après les documents de travail

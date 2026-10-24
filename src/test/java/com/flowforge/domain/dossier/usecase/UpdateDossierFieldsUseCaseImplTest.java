@@ -275,6 +275,35 @@ class UpdateDossierFieldsUseCaseImplTest {
         verify(dossierRepository).save(any());
     }
 
+    /** TODO §102 (U8) — le dossier corrigé est exclu de la recherche du détenteur ; un autre détenteur est refusé. */
+    @Test
+    void update_refusesAValueHeldByAnotherOpenDossier_andExcludesItself() {
+        var plaque = new FieldDefinition("plaque", "Plaque", FieldType.STRING, false, null, null, null, false, null, null,
+                null, null, null, null, false, null, null, true);
+        Dossier existing = dossier(DossierStatus.EN_COURS, 1, Map.of("plaque", "BE-1"));
+        when(dossierRepository.findById(existing.id())).thenReturn(Optional.of(existing));
+        when(typeRepository.findByCode(TENANT, TYPE_CODE)).thenReturn(Optional.of(type(plaque)));
+        when(dossierRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        var key = new com.flowforge.domain.dossier.model.UniqueKey("plaque", "BE-2");
+        var port = mock(com.flowforge.domain.dossier.port.out.DossierUniquenessPort.class);
+        when(port.findHolders(TENANT, TYPE_CODE, Set.of(key), existing.id())).thenReturn(Map.of(key, "DOS-9"));
+        var checked = new UpdateDossierFieldsUseCaseImpl(dossierRepository, typeRepository, accessPolicy,
+                new com.flowforge.domain.dossier.model.DossierFieldValidator(),
+                com.flowforge.domain.dossier.DossierFieldRules.disabled(),
+                new com.flowforge.domain.dossier.DossierUniquenessCheck(port));
+
+        assertThatThrownBy(() -> checked.update(
+                new UpdateDossierFieldsCommand(existing.id(), Map.of("plaque", "BE-2"), "editor", 1L), actor))
+                .isInstanceOfSatisfying(DossierFieldValidationException.class, ex -> assertThat(ex.errors())
+                        .extracting("field", "code", "reference")
+                        .containsExactly(org.assertj.core.groups.Tuple.tuple("plaque", "UNIQUE", "DOS-9")));
+        verify(dossierRepository, never()).save(any());
+
+        checked.update(new UpdateDossierFieldsCommand(existing.id(), Map.of("plaque", "BE-1"), "editor", 1L), actor);
+        verify(port).findHolders(TENANT, TYPE_CODE,
+                Set.of(new com.flowforge.domain.dossier.model.UniqueKey("plaque", "BE-1")), existing.id());
+    }
+
     private static Dossier dossier(DossierStatus status, long version, Map<String, Object> fields) {
         Instant createdAt = Instant.parse("2026-07-31T12:00:00Z");
         return new Dossier(

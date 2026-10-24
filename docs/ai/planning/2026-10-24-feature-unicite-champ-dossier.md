@@ -10,14 +10,17 @@ Chaque tâche commence par un test rouge (skill `tdd`).
 
 ## Lot A — unicité
 
-- [ ] A1 `FieldDefinition.unique` + règles U2-U4 (domaine, unitaires) ; JSON et golden OpenAPI.
-- [ ] A2 `UniqueFieldKeys` et forme canonique (U5-U7).
-- [ ] A3 ChangeSet `037-dossier-unique-value` ; verrou consultatif partagé du type et synchronisation dans
+- [x] A1 `FieldDefinition.unique` + règles U2-U4 (domaine, unitaires) ; JSON et golden OpenAPI.
+- [x] A2 `UniqueFieldKeys` et forme canonique (U5-U7).
+- [x] A3 ChangeSet `037-dossier-unique-value` ; verrou consultatif partagé du type et synchronisation dans
       `JpaDossierRepositoryAdapter.save` avec `ON CONFLICT` ; `DossierUniqueValueIT`, `DossierUniqueConcurrencyIT`.
-- [ ] A4 `DossierUniquenessPort` et pré-contrôles dans `CreateDossierUseCaseImpl` et `UpdateDossierFieldsUseCaseImpl`.
-- [ ] A5 Type : détection des doublons dans le contrôle de compatibilité ; verrou exclusif et reconstruction des lignes
+- [x] A4 `DossierUniquenessPort` et pré-contrôles dans `CreateDossierUseCaseImpl` et `UpdateDossierFieldsUseCaseImpl`.
+- [x] A5 Type : détection des doublons dans le contrôle de compatibilité ; verrou exclusif et reconstruction des lignes
       dans `JpaDossierTypeRepositoryAdapter.save` (U10, U11) ; IT de course type/dossier ; promotion (U12).
-- [ ] A6 Écritures par workflow (tâche `dossier-fields`, `fieldMappingTask`) et MCP couvertes par IT.
+- [x] A6 Écritures par workflow (tâche `dossier-fields`, `fieldMappingTask`) et MCP couvertes par IT.
+
+- [x] A7 (revue adversariale) Webhook entrant : erreur de validation de champ → 400 déterministe, corps sans référence ;
+      essai à blanc MCP avec pré-contrôle ; message de l'exception détaillé.
 
 ## Lot B — brique de recherche
 

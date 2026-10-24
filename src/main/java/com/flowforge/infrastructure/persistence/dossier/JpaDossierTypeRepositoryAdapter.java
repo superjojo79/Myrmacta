@@ -1,30 +1,77 @@
 package com.flowforge.infrastructure.persistence.dossier;
 
+import com.flowforge.domain.dossier.DossierFieldRules;
+import com.flowforge.domain.dossier.DossierUniqueKeys;
+import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierType;
+import com.flowforge.domain.dossier.model.DossierTypeSchemaIncompatibleException;
+import com.flowforge.domain.dossier.model.UniqueFieldKeys;
+import com.flowforge.domain.dossier.model.UniqueKey;
 import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
 import com.flowforge.domain.shared.PageQuery;
 import com.flowforge.domain.shared.PageResult;
 import com.flowforge.infrastructure.persistence.SpringPages;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
 public class JpaDossierTypeRepositoryAdapter implements DossierTypeRepository {
 
-    private final SpringDataDossierTypeRepository repository;
+    private static final int SAMPLE_LIMIT = 5;
 
-    public JpaDossierTypeRepositoryAdapter(SpringDataDossierTypeRepository repository) {
+    private final SpringDataDossierTypeRepository repository;
+    private final SpringDataDossierRepository dossierRepository;
+    private final JdbcDossierUniqueValueStore uniqueValues;
+    private final DossierUniqueKeys uniqueKeys;
+
+    @Autowired
+    public JpaDossierTypeRepositoryAdapter(
+            SpringDataDossierTypeRepository repository,
+            SpringDataDossierRepository dossierRepository,
+            JdbcDossierUniqueValueStore uniqueValues,
+            DossierFieldRules fieldRules) {
         this.repository = repository;
+        this.dossierRepository = dossierRepository;
+        this.uniqueValues = uniqueValues;
+        this.uniqueKeys = new DossierUniqueKeys(fieldRules);
     }
 
+    /**
+     * TODO §102 (D-UNIQUE-TYPE-LOCK) : sous verrou exclusif du type, les valeurs uniques sont reconstruites à partir des
+     * dossiers ouverts et des nouvelles définitions. Aucun enregistrement de dossier du type ne peut s'intercaler : il
+     * attend le verrou partagé. Un doublon (créé entre le contrôle de compatibilité et ce verrou) annule tout.
+     */
     @Override
     @Transactional
     public void save(DossierType type) {
+        uniqueValues.lockTypeExclusive(type.tenantId(), type.code());
         repository.save(DossierTypeJpaEntity.fromDomain(type));
+        rebuildUniqueValues(type);
+    }
+
+    private void rebuildUniqueValues(DossierType type) {
+        Map<UUID, Set<UniqueKey>> keysByDossier = new LinkedHashMap<>();
+        List<Dossier> dossiers = List.of();
+        if (UniqueFieldKeys.hasUniqueField(type.fieldDefinitions())) {
+            dossiers = dossierRepository.findByTenantIdAndDossierTypeCode(type.tenantId(), type.code()).stream()
+                    .map(DossierJpaEntity::toDomain)
+                    .filter(dossier -> !dossier.status().blocksMutation())
+                    .toList();
+            dossiers.forEach(dossier -> keysByDossier.put(dossier.id(), uniqueKeys.of(type.fieldDefinitions(), dossier)));
+        }
+        if (!uniqueValues.replaceForType(type.tenantId(), type.code(), keysByDossier).isEmpty()) {
+            var duplicates = uniqueKeys.duplicates(type.fieldDefinitions(), dossiers);
+            List<String> references = duplicates.stream().flatMap(d -> d.references().stream()).distinct().toList();
+            throw new DossierTypeSchemaIncompatibleException(
+                    references.size(), references.stream().limit(SAMPLE_LIMIT).toList(), duplicates);
+        }
     }
 
     @Override

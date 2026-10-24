@@ -11,14 +11,14 @@ pré-contrôles), chaque règle U/R couverte par au moins un test. Tests d'inté
 
 ## Unitaires — domaine
 
-- [ ] `FieldDefinitionTest` : `unique` accepté sur `STRING`, `NUMBER`, `DATE`, champ calculé ; refusé sur `BOOLEAN`,
+- [x] `FieldDefinitionTest` : `unique` accepté sur `STRING`, `NUMBER`, `DATE`, champ calculé ; refusé sur `BOOLEAN`,
       `SELECT`, `MONEY`, `EXTERNAL_REF`, `FILE`, groupe, sous-champ de groupe, champ sensible (U2-U4) ; `null` → faux.
-- [ ] Valeur unique de plus de 500 caractères refusée (`TOO_LONG`) ; `unique` refusé sur un nom de plus de 100 caractères (U13).
-- [ ] `UniqueFieldKeysTest` : forme canonique (`1.50` = `1.5`, date ISO, texte non modifié) ; valeur vide ignorée ;
+- [x] Valeur unique de plus de 500 caractères refusée (`TOO_LONG`) ; `unique` refusé sur un nom de plus de 100 caractères (U13).
+- [x] `UniqueFieldKeysTest` : forme canonique (`1.50` = `1.5`, date ISO, texte non modifié) ; valeur vide ignorée ;
       aucune clé pour `CLOTURE`/`ARCHIVE` ; un champ non unique ignoré (U5-U7).
-- [ ] `CreateDossierUseCaseImplTest` / `UpdateDossierFieldsUseCaseImplTest` : conflit → erreur `UNIQUE` avec la
+- [x] `CreateDossierUseCaseImplTest` / `UpdateDossierFieldsUseCaseImplTest` : conflit → erreur `UNIQUE` avec la
       référence, groupée avec les autres erreurs ; le dossier lui-même n'est pas un conflit (PATCH sans changement).
-- [ ] `UpdateDossierTypeUseCaseImplTest` / compatibilité : activer `unique` avec doublons ouverts → refus avec valeurs et
+- [x] `UpdateDossierTypeUseCaseImplTest` / compatibilité : activer `unique` avec doublons ouverts → refus avec valeurs et
       références ; doublons seulement parmi les clôturés → accepté ; retirer `unique` → accepté (U10, U11).
 - [ ] `SearchSimilarDossiersUseCaseTest` : champ non cherchable → erreur ; source `dossierField:` sensible ou non
       déclarée → erreur (R8) ; source vide → (0, null) sans appel au port ;
@@ -28,24 +28,24 @@ pré-contrôles), chaque règle U/R couverte par au moins un test. Tests d'inté
 
 ## Intégration — backend
 
-- [ ] `DossierUniqueValueIT` : création d'un doublon refusée (400, `UNIQUE`, référence) ; même valeur après clôture du
+- [x] `DossierUniqueValueIT` : création d'un doublon refusée (400, `UNIQUE`, référence) ; même valeur après clôture du
       premier acceptée ; PATCH vers une valeur prise refusé ; purge → lignes supprimées (cascade).
-- [ ] `DossierUniqueConcurrencyIT` : deux créations simultanées de la même valeur (deux threads, barrière) → une
+- [x] `DossierUniqueConcurrencyIT` : deux créations simultanées de la même valeur (deux threads, barrière) → une
       réussite, une erreur `UNIQUE`, une seule ligne en base (U9).
-- [ ] `DossierUniqueComputedIT` : `plaqueNormalisee` calculée ; `1 ABC 123` puis `1-abc 123` → refus.
-- [ ] Écritures par workflow : complétion d'une tâche `dossier-fields` et `fieldMappingTask` avec une valeur prise →
+- [x] `DossierUniqueComputedIT` : `plaqueNormalisee` calculée ; `1 ABC 123` puis `1-abc 123` → refus.
+- [x] Écritures par workflow : complétion d'une tâche `dossier-fields` et `fieldMappingTask` avec une valeur prise →
       refus / incident, rien n'est écrit.
-- [ ] Verrou du type : une mise à jour du type qui active `unique` pendant une création concurrente de doublon (barrière
+- [x] Verrou du type : une mise à jour du type qui active `unique` pendant une création concurrente de doublon (barrière
       entre threads) → soit la création échoue `UNIQUE`, soit la mise à jour échoue 409 ; jamais deux dossiers ouverts
       avec la même valeur et un champ unique actif.
-- [ ] Type : activation avec doublons ouverts → 409 avec exemples ; sans doublon → contrainte active immédiatement
+- [x] Type : activation avec doublons ouverts → 409 avec exemples ; sans doublon → contrainte active immédiatement
       (création suivante refusée) ; désactivation → lignes supprimées.
 - [ ] Promotion de configuration : bundle qui active `unique` sur une cible contenant des doublons → refus (U12).
 - [ ] `DossierSearchTaskIT` : 0 voisin → 0 et `null` ; 2 voisins → 2 et référence du plus ancien ; clôturés et dossier
       courant exclus ; source `variable:` ; champ rendu non cherchable après déploiement → incident rejouable.
 - [ ] Déploiement : BPMN avec `searchCriteria` invalide ou sortie réservée refusé (parser).
-- [ ] MCP : `define_dossier_type` avec `unique` ; `create_dossier` en doublon → erreur `UNIQUE`.
-- [ ] `ChangelogChecksumStabilityIT` vert avec le changeSet 037 ; ArchUnit vert (allowlist `Dossier.fields()` étendue).
+- [x] MCP : `define_dossier_type` avec `unique` ; `create_dossier` en doublon → erreur `UNIQUE`.
+- [x] `ChangelogChecksumStabilityIT` vert avec le changeSet 037 ; ArchUnit vert (allowlist `Dossier.fields()` étendue).
 
 ## Frontend — Vitest
 
@@ -66,6 +66,20 @@ pré-contrôles), chaque règle U/R couverte par au moins un test. Tests d'inté
 - [ ] Dossier : création refusée avec l'erreur `UNIQUE` sous le champ et la référence (mock 400).
 - [ ] Tâche `dossier-fields` : enregistrement refusé avec l'erreur `UNIQUE` sous le champ (mock 400).
 - [ ] Éditeur BPMN : la brique « Rechercher des dossiers » est dans la palette et produit les attributs attendus.
+
+### Réalisé pour le lot A (2026-10-24)
+
+- Domaine : `FieldUniqueModelTest` (U2-U4, U13, copies, message de l'exception), `UniqueFieldKeysTest`,
+  `DossierUniqueKeysTest` (recalcul d'un champ calculé, doublons), `DossierFieldValidatorTest` (U13), use cases de création
+  et de correction, `CreateDossierToolTest` (essai à blanc).
+- Intégration : `DossierUniqueValueIT` (U5, U7, U8, U9, purge), `DossierUniqueTypeIT` (U10, U11, champ calculé ajouté
+  après coup, course type/dossier), `UniqueFieldApiTest` (400 `UNIQUE` + `reference`, 409 `duplicates`, refus à la
+  définition), `UniqueFieldWorkflowIT` (`fieldMappingTask`).
+- Revue adversariale : `WebhookControllerTest.receive_dossierFieldValidationFailure_isA400WithoutTheHolderReference`.
+- Mutations vérifiées : sans synchronisation à l'enregistrement (4 échecs), sans verrou exclusif du type (1 échec), sans
+  recalcul des règles (1 échec).
+- Promotion (U12) : couverte par construction (`ImportConfigurationUseCaseImpl` passe par le contrôle de compatibilité et
+  `UpdateDossierTypeUseCase`) ; pas de test dédié.
 
 ## Fixtures et mocks
 

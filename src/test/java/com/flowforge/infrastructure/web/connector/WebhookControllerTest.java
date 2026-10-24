@@ -344,6 +344,35 @@ class WebhookControllerTest {
         verify(idempotencyStore).complete(INSTANCE_ID, "idem-invalid", 400);
     }
 
+    /**
+     * TODO §102 (revue adversariale) — un dossier refusé à la validation de ses champs, dont un doublon d'un champ unique,
+     * est un échec déterministe : 400 et clé d'idempotence soldée (avant : 500 et réessais sans fin). Le corps nomme les
+     * champs et les codes, sans la référence du dossier détenteur : l'émetteur est un système externe.
+     */
+    @Test
+    void receive_dossierFieldValidationFailure_isA400WithoutTheHolderReference() throws Exception {
+        ConnectorInstanceData instance = instance(true);
+        when(instances.findByIdAndTenantId(INSTANCE_ID, "tenant_dev")).thenReturn(Optional.of(instance));
+        when(idempotencyStore.beginOrGetCompleted(INSTANCE_ID, "idem-dup")).thenReturn(Optional.empty());
+        doThrow(new com.flowforge.domain.dossier.model.DossierFieldValidationException(List.of(
+                        com.flowforge.domain.dossier.model.FieldValidationError.notUnique("plaque", "DOS-SECRET-1"))))
+                .when(runtime)
+                .onIncomingEvent(eq(instance), any());
+
+        String body = mockMvc.perform(post("/api/webhooks/{instanceId}", INSTANCE_ID)
+                        .header("Idempotency-Key", "idem-dup")
+                        .header("X-Webhook-Token", "secret")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("plaque"))
+                .andExpect(jsonPath("$.errors[0].code").value("UNIQUE"))
+                .andReturn().getResponse().getContentAsString();
+
+        org.assertj.core.api.Assertions.assertThat(body).doesNotContain("DOS-SECRET-1");
+        verify(idempotencyStore).complete(INSTANCE_ID, "idem-dup", 400);
+    }
+
     @Test
     void receive_unmappedRuntimeException_leavesClaimInFlightForFreshRetry() {
         // An exception this endpoint doesn't recognize is not assumed deterministic on the exact

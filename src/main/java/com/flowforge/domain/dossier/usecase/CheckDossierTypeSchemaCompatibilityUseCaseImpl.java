@@ -1,5 +1,9 @@
 package com.flowforge.domain.dossier.usecase;
 
+import com.flowforge.domain.dossier.DossierUniqueKeys;
+import com.flowforge.domain.dossier.model.UniqueDuplicate;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import com.flowforge.domain.dossier.DossierFieldRules;
 import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierFieldValidator;
@@ -13,10 +17,13 @@ public final class CheckDossierTypeSchemaCompatibilityUseCaseImpl
         implements CheckDossierTypeSchemaCompatibilityUseCase {
 
     private static final int SAMPLE_LIMIT = 5;
+    /** TODO §102 — nombre maximal de valeurs en double renvoyées (aperçu ; le nombre de dossiers en cause reste complet). */
+    private static final int DUPLICATE_LIMIT = 20;
 
     private final DossierRepository dossierRepository;
     private final DossierFieldValidator fieldValidator;
     private final DossierFieldRules fieldRules;
+    private final DossierUniqueKeys uniqueKeys;
 
     public CheckDossierTypeSchemaCompatibilityUseCaseImpl(
             DossierRepository dossierRepository, DossierFieldValidator fieldValidator) {
@@ -26,6 +33,7 @@ public final class CheckDossierTypeSchemaCompatibilityUseCaseImpl
     public CheckDossierTypeSchemaCompatibilityUseCaseImpl(
             DossierRepository dossierRepository, DossierFieldValidator fieldValidator, DossierFieldRules fieldRules) {
         this.fieldRules = Objects.requireNonNull(fieldRules, "fieldRules");
+        this.uniqueKeys = new DossierUniqueKeys(fieldRules);
         this.dossierRepository = Objects.requireNonNull(dossierRepository, "dossierRepository");
         this.fieldValidator = Objects.requireNonNull(fieldValidator, "fieldValidator");
     }
@@ -47,8 +55,15 @@ public final class CheckDossierTypeSchemaCompatibilityUseCaseImpl
             }
         }
 
+        // TODO §102 (U10, D-UNIQUE-EXISTING) : un champ unique ne s'active pas tant que des dossiers ouverts en partagent la
+        // valeur ; ces dossiers sont incompatibles au même titre que les autres.
+        List<UniqueDuplicate> duplicates = uniqueKeys.duplicates(query.newFieldDefinitions(), dossiers);
+        Set<String> incompatible = new LinkedHashSet<>(incompatibleReferences);
+        duplicates.forEach(duplicate -> incompatible.addAll(duplicate.references()));
+
         return new Result(
-                incompatibleReferences.size(),
-                incompatibleReferences.stream().limit(SAMPLE_LIMIT).toList());
+                incompatible.size(),
+                incompatible.stream().limit(SAMPLE_LIMIT).toList(),
+                duplicates.stream().limit(DUPLICATE_LIMIT).toList());
     }
 }

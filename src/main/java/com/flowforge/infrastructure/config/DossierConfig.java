@@ -2,6 +2,7 @@ package com.flowforge.infrastructure.config;
 
 import com.flowforge.domain.dossier.DossierAccessPolicy;
 import com.flowforge.domain.dossier.DossierFieldRules;
+import com.flowforge.domain.dossier.DossierUniquenessCheck;
 import com.flowforge.domain.expression.port.out.ExpressionEnginePort;
 import com.flowforge.domain.dossier.TenantAdminGuard;
 import com.flowforge.domain.dossier.model.RetentionPolicyResolver;
@@ -40,6 +41,7 @@ import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.dossier.port.out.DossierSearchPort;
 import com.flowforge.domain.dossier.port.out.DossierTypeAclRepository;
 import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
+import com.flowforge.domain.dossier.port.out.DossierUniquenessPort;
 import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
 import com.flowforge.domain.dossier.port.out.PurgeOutboxRepository;
 import com.flowforge.domain.dossier.port.out.TenantRetentionSettingsRepository;
@@ -179,9 +181,10 @@ public class DossierConfig {
             DossierRepository dossierRepository,
             DossierReferenceGenerator referenceGenerator,
             DossierAccessPolicy accessPolicy,
-            DossierFieldRules fieldRules) {
-        return new CreateDossierUseCaseImpl(
-                typeRepository, dossierRepository, referenceGenerator, accessPolicy, new DossierFieldValidator(), fieldRules);
+            DossierFieldRules fieldRules,
+            DossierUniquenessPort uniquenessPort) {
+        return new CreateDossierUseCaseImpl(typeRepository, dossierRepository, referenceGenerator, accessPolicy,
+                new DossierFieldValidator(), fieldRules, new DossierUniquenessCheck(uniquenessPort));
     }
 
     @Bean
@@ -229,9 +232,10 @@ public class DossierConfig {
             DossierRepository dossierRepository,
             DossierTypeRepository typeRepository,
             DossierAccessPolicy accessPolicy,
-            DossierFieldRules fieldRules) {
-        return new UpdateDossierFieldsUseCaseImpl(
-                dossierRepository, typeRepository, accessPolicy, new DossierFieldValidator(), fieldRules);
+            DossierFieldRules fieldRules,
+            DossierUniquenessPort uniquenessPort) {
+        return new UpdateDossierFieldsUseCaseImpl(dossierRepository, typeRepository, accessPolicy,
+                new DossierFieldValidator(), fieldRules, new DossierUniquenessCheck(uniquenessPort));
     }
 
     @Bean

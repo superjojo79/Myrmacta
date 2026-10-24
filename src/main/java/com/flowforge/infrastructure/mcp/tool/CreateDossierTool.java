@@ -1,14 +1,18 @@
 package com.flowforge.infrastructure.mcp.tool;
 
 import com.flowforge.domain.dossier.DossierFieldRules;
+import com.flowforge.domain.dossier.DossierUniquenessCheck;
 import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierFieldValidationException;
 import com.flowforge.domain.dossier.model.DossierFieldValidator;
+import com.flowforge.domain.dossier.model.DossierStatus;
+import com.flowforge.domain.dossier.model.FieldValidationError;
 import com.flowforge.domain.dossier.model.DossierType;
 import com.flowforge.domain.dossier.model.InactiveDossierTypeException;
 import com.flowforge.domain.dossier.port.in.CreateDossierUseCase;
 import com.flowforge.domain.dossier.port.in.GetDossierTypeUseCase;
+import com.flowforge.domain.dossier.port.out.DossierUniquenessPort;
 import com.flowforge.infrastructure.config.TenantProperties;
 import com.flowforge.infrastructure.mcp.McpAccessContextFactory;
 import java.util.LinkedHashMap;
@@ -27,6 +31,7 @@ public class CreateDossierTool {
     private final McpAccessContextFactory accessContextFactory;
     private final DossierFieldValidator fieldValidator;
     private final DossierFieldRules fieldRules;
+    private final DossierUniquenessCheck uniqueness;
 
     public CreateDossierTool(
             CreateDossierUseCase createDossierUseCase,
@@ -36,13 +41,36 @@ public class CreateDossierTool {
         this(createDossierUseCase, getDossierTypeUseCase, tenantProperties, accessContextFactory, DossierFieldRules.disabled());
     }
 
-    @org.springframework.beans.factory.annotation.Autowired
     public CreateDossierTool(
             CreateDossierUseCase createDossierUseCase,
             GetDossierTypeUseCase getDossierTypeUseCase,
             TenantProperties tenantProperties,
             McpAccessContextFactory accessContextFactory,
             DossierFieldRules fieldRules) {
+        this(createDossierUseCase, getDossierTypeUseCase, tenantProperties, accessContextFactory, fieldRules,
+                DossierUniquenessCheck.disabled());
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public CreateDossierTool(
+            CreateDossierUseCase createDossierUseCase,
+            GetDossierTypeUseCase getDossierTypeUseCase,
+            TenantProperties tenantProperties,
+            McpAccessContextFactory accessContextFactory,
+            DossierFieldRules fieldRules,
+            DossierUniquenessPort uniquenessPort) {
+        this(createDossierUseCase, getDossierTypeUseCase, tenantProperties, accessContextFactory, fieldRules,
+                new DossierUniquenessCheck(uniquenessPort));
+    }
+
+    private CreateDossierTool(
+            CreateDossierUseCase createDossierUseCase,
+            GetDossierTypeUseCase getDossierTypeUseCase,
+            TenantProperties tenantProperties,
+            McpAccessContextFactory accessContextFactory,
+            DossierFieldRules fieldRules,
+            DossierUniquenessCheck uniqueness) {
+        this.uniqueness = Objects.requireNonNull(uniqueness, "uniqueness");
         this.fieldRules = Objects.requireNonNull(fieldRules, "fieldRules");
         this.createDossierUseCase = Objects.requireNonNull(createDossierUseCase, "createDossierUseCase");
         this.getDossierTypeUseCase = Objects.requireNonNull(getDossierTypeUseCase, "getDossierTypeUseCase");
@@ -87,6 +115,9 @@ public class CreateDossierTool {
         var errors = new java.util.ArrayList<>(
                 fieldValidator.validate(ruled.effectiveDefinitions(), ruled.fields(), type.allowUnknownFields()));
         errors.addAll(ruled.errors());
+        // TODO §102 : un essai à blanc annonce le doublon que la création refuserait.
+        errors.addAll(uniqueness.conflicts(type, DossierStatus.DRAFT, ruled.fields(),
+                errors.stream().map(FieldValidationError::field).toList(), null));
         if (!errors.isEmpty()) {
             throw new DossierFieldValidationException(errors);
         }

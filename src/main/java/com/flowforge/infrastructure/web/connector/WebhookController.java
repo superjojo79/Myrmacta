@@ -6,8 +6,10 @@ import com.flowforge.domain.connector.model.WebhookAuthType;
 import com.flowforge.domain.connector.port.in.ConnectorTriggerRuntime;
 import com.flowforge.domain.connector.port.out.ConnectorInstanceRepository;
 import com.flowforge.domain.connector.port.out.WebhookIdempotencyStore;
+import com.flowforge.domain.dossier.model.DossierFieldValidationException;
 import com.flowforge.infrastructure.config.ConnectorProperties;
 import com.flowforge.infrastructure.config.TenantProperties;
+import io.swagger.v3.oas.annotations.Parameter;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -19,7 +21,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import io.swagger.v3.oas.annotations.Parameter;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
@@ -117,7 +118,9 @@ class WebhookController {
     }
 
     private static Integer deterministicFailureStatus(RuntimeException ex) {
-        if (ex instanceof ConnectorValidationException || ex instanceof IllegalArgumentException) {
+        // TODO §102 : un dossier refusé à la validation de ses champs (dont un doublon) l'est pour ce même contenu.
+        if (ex instanceof ConnectorValidationException || ex instanceof IllegalArgumentException
+                || ex instanceof DossierFieldValidationException) {
             return 400;
         }
         return null;

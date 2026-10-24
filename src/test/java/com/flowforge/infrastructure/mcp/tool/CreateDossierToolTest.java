@@ -160,6 +160,25 @@ class CreateDossierToolTest {
         verify(createDossierUseCase, never()).create(any(), any());
     }
 
+    /** TODO §102 — l'essai à blanc annonce le doublon que la création refuserait, avec la référence du détenteur. */
+    @Test
+    void dryRun_reportsADuplicateOfAUniqueField() {
+        var plaque = new FieldDefinition("plaque", "Plaque", FieldType.STRING, false, null, null, null, false, null, null,
+                null, null, null, null, false, null, null, true);
+        when(getDossierTypeUseCase.getByCode(eq(TENANT), eq("SINISTRE"), any())).thenReturn(type(true, List.of(plaque)));
+        var port = org.mockito.Mockito.mock(com.flowforge.domain.dossier.port.out.DossierUniquenessPort.class);
+        var key = new com.flowforge.domain.dossier.model.UniqueKey("plaque", "BE-1");
+        when(port.findHolders(TENANT, "SINISTRE", java.util.Set.of(key), null)).thenReturn(Map.of(key, "DOS-1"));
+        var checked = new CreateDossierTool(createDossierUseCase, getDossierTypeUseCase, new TenantProperties(TENANT),
+                new McpAccessContextFactory(), com.flowforge.domain.dossier.DossierFieldRules.disabled(), port);
+
+        assertThatThrownBy(() -> checked.createDossier("SINISTRE", "Acme", Map.of("plaque", "BE-1"), true))
+                .isInstanceOf(DossierFieldValidationException.class)
+                .hasMessageContaining("plaque UNIQUE")
+                .hasMessageContaining("DOS-1");
+        verify(createDossierUseCase, never()).create(any(), any());
+    }
+
     private static void bindJwt() {
         Jwt jwt = Jwt.withTokenValue("t")
                 .header("alg", "none")

@@ -48,6 +48,7 @@ class FlowableBpmnParserAdapterReservedWriteTest {
                     + "<flowable:in source=\"dossierId\" target=\"dossierId\" targetExpression=\"dossierId\"/>"
                     + "</extensionElements></callActivity>",
             // Autres écritures portées par un attribut.
+            "<callActivity id=\"wait\" calledElement=\"child\" flowable:idVariableName=\"dossierWorkflowLinkId\"/>",
             "<userTask id=\"wait\" flowable:taskIdVariableName=\"dossierId\"/>",
             "<userTask id=\"wait\" flowable:taskCompleterVariableName=\"tenantId\"/>",
             "<userTask id=\"wait\"><extensionElements><flowable:formProperty id=\"dossierWorkflowLinkId\"/>"

@@ -34,9 +34,25 @@ la liste de l'issue, car ils écrivent aussi une variable. Les associations de d
 lues que par la tâche Web Service, déjà refusée. Les sorties DMN restent l'objet de l'issue
 [#204](https://github.com/superjojo79/FlowForge/issues/204).
 
-**Tests.** `FlowableBpmnParserAdapterReservedWriteTest` : 21 refus (rouges avant le correctif, documents valides et acceptés)
+**Tests.** `FlowableBpmnParserAdapterReservedWriteTest` : 22 refus (rouges avant le correctif, documents valides et acceptés)
 et 5 acceptations (recopies à l'identique, lecture sous un autre nom) ; `ReservedVariableWriteIT` : scénarios A et B
 déployés directement dans le moteur (le document de la victime est rattaché), puis refusés par le parseur.
+
+**Revue adversariale (2026-10-24, sur le bytecode Flowable 8.0.0 ; la revue par sous-agent a été interrompue avant tout
+constat).** Aucun contournement trouvé.
+- Inventaire des accesseurs du modèle qui nomment une variable écrite (`getElementVariable`, `getElementIndexVariable`,
+  `getTarget`, `getTargetExpression`, `getInitiator`, `getErrorVariableName`, `getTaskIdVariableName`,
+  `getTaskCompleterVariableName`, `getResultVariableName`, `getProcessInstanceIdVariableName` = attribut `idVariableName`,
+  `FormProperty.getVariable`) : tous couverts. L'`id` d'un sous-processus appelé est ajouté aux tests.
+- Les variables d'un `dataObject` sont indexées par `getName()` (`SubProcessActivityBehavior`, `ProcessInstanceHelper`),
+  pas par l'`id`. `MultiInstanceParser` ne lit ni `loopDataOutputRef` ni `outputDataItem`.
+- Flowable ne rogne pas les noms : `" dossierId"` est une autre variable. Le `strip()` du scanner refuse donc plus que
+  nécessaire, sans ouvrir de brèche. La casse compte des deux côtés.
+- Recopie à l'identique : la valeur reçue est celle du même nom dans l'autre process, que ce process ne peut écrire que par
+  les mêmes règles. Un `out` dont l'enfant n'a pas reçu `dossierId` remet la variable à `null` chez le parent : incident à
+  l'étape suivante, pas de changement de dossier (accepté).
+- Faux positif accepté : un `eventInParameter` (variable vers un champ d'événement) dont la cible porte un nom réservé est
+  refusé. Les tâches d'envoi d'événement et de travailleur externe sont de toute façon refusées par leur `type`.
 
 **Avant de déployer.** Un BPMN déjà déployé n'est pas recontrôlé ; ses instances continuent. Un redéploiement ou une nouvelle
 sauvegarde du brouillon est refusé tant que l'écriture reste. Requête de contrôle, sur le schéma du tenant (doit être vide) :

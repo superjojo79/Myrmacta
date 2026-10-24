@@ -1,6 +1,7 @@
 package com.flowforge.infrastructure.portal;
 
 import com.flowforge.domain.workflow.portal.port.in.ExpirePortalLinksUseCase;
+import com.flowforge.domain.workflow.portal.port.out.PortalIdentityRepository;
 import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,9 +17,11 @@ class PortalLinkExpiryJob {
     private static final Logger log = LoggerFactory.getLogger(PortalLinkExpiryJob.class);
 
     private final ExpirePortalLinksUseCase useCase;
+    private final PortalIdentityRepository identities;
 
-    PortalLinkExpiryJob(ExpirePortalLinksUseCase useCase) {
+    PortalLinkExpiryJob(ExpirePortalLinksUseCase useCase, PortalIdentityRepository identities) {
         this.useCase = Objects.requireNonNull(useCase, "useCase");
+        this.identities = Objects.requireNonNull(identities, "identities");
     }
 
     @Scheduled(fixedDelayString = "${app.portal.expiry.poll-delay:15m}")
@@ -26,6 +29,12 @@ class PortalLinkExpiryJob {
         int expired = useCase.expireDue();
         if (expired > 0) {
             log.info("Portal link expiry job expired {} link(s)", expired);
+        }
+        // TODO §103 (T9) — tentatives échues, identités non soumises échues ou d'un lien qui n'est plus actif (NRN chiffré
+        // compris) : supprimées. Les traces des soumissions restent.
+        int purged = identities.purgeExpired(java.time.Instant.now());
+        if (purged > 0) {
+            log.info("Portal identity cleanup removed {} row(s)", purged);
         }
     }
 }

@@ -1,8 +1,10 @@
 package com.flowforge.domain.workflow.portal.port.in;
 
 import com.flowforge.domain.dossier.model.AccessContext;
+import com.flowforge.domain.workflow.portal.model.IdentityVerification;
 import com.flowforge.domain.workflow.portal.model.PortalLink;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -18,5 +20,16 @@ public interface ManagePortalLinkUseCase {
 
     PortalLink revoke(UUID dossierId, UUID linkId, AccessContext.User actor);
 
-    record PortalLinks(boolean canManage, List<PortalLink> links) {}
+    /** {@code identities} : trace d'authentification forte par lien (TODO §103, T8), sans NRN. */
+    record PortalLinks(boolean canManage, List<PortalLink> links,
+                       Map<UUID, IdentityVerification> identities) {
+
+        public PortalLinks(boolean canManage, List<PortalLink> links) {
+            this(canManage, links, Map.of());
+        }
+
+        public PortalLinks {
+            identities = identities == null ? Map.of() : Map.copyOf(identities);
+        }
+    }
 }

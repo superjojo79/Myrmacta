@@ -7,4 +7,12 @@ public interface PortalAvailabilityPort {
 
     /** Plafond tenant de durée de vie d'un lien (D-PORTAL-TTL), en jours. */
     int maxLinkTtlDays();
+
+    /**
+     * TODO §103 (E1, D-BEAUTH-ACTIVATION) — authentification forte des tiers activée, avec au moins un fournisseur
+     * configuré (vérifié au démarrage). Désactivée par défaut.
+     */
+    default boolean isStrongAuthenticationEnabled() {
+        return false;
+    }
 }

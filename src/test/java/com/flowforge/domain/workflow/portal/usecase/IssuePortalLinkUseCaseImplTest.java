@@ -49,6 +49,41 @@ class IssuePortalLinkUseCaseImplTest {
         return new ExternalTaskCreated("task-1", "pi-1", dossierId, new PortalTaskDefinition("tiers", "avis", SOURCE, ttl));
     }
 
+    /** TODO §103 (T2) — champ d'identité inutilisable : lien non envoyé et participants notifiés, jamais d'incident. */
+    @Test
+    void strongAuthenticationTaskWithAnUnusableIdentityField_isNotSentAndNotifies() {
+        var field = new com.flowforge.domain.workflow.portal.model.PortalIdentityField("nrnDemandeur");
+        var check = mock(com.flowforge.domain.workflow.portal.PortalIdentityFieldCheck.class);
+        useCase = new IssuePortalLinkUseCaseImpl("tenant_dev", repository, schemaRepository, resolver, notifier,
+                Clock.fixed(NOW, ZoneOffset.UTC), 7, 30, check);
+        when(resolver.resolve(SOURCE, dossierId, "pi-1")).thenReturn(Optional.of("alice@example.org"));
+        var definition = new PortalTaskDefinition("tiers", "avis", SOURCE, null, field);
+
+        when(check.isUsable(dossierId, field)).thenReturn(false);
+        PortalLink refused = useCase.onExternalTaskCreated(new ExternalTaskCreated("task-1", "pi-1", dossierId, definition))
+                .orElseThrow();
+        assertThat(refused.status()).isEqualTo(PortalLinkStatus.NOT_SENT);
+        assertThat(refused.statusReason()).isEqualTo(PortalLinkStatusReason.INVALID_IDENTITY_FIELD);
+        verify(notifier).notifyNotSent(refused);
+
+        when(check.isUsable(dossierId, field)).thenReturn(true);
+        PortalLink sent = useCase.onExternalTaskCreated(new ExternalTaskCreated("task-2", "pi-1", dossierId, definition))
+                .orElseThrow();
+        assertThat(sent.status()).isEqualTo(PortalLinkStatus.PENDING_SEND);
+    }
+
+    @Test
+    void withoutAnIdentityFieldCheck_aStrongAuthenticationTaskIsNeverSent() {
+        when(resolver.resolve(SOURCE, dossierId, "pi-1")).thenReturn(Optional.of("alice@example.org"));
+        var definition = new PortalTaskDefinition("tiers", "avis", SOURCE, null,
+                new com.flowforge.domain.workflow.portal.model.PortalIdentityField("nrn"));
+
+        PortalLink link = useCase.onExternalTaskCreated(new ExternalTaskCreated("task-1", "pi-1", dossierId, definition))
+                .orElseThrow();
+
+        assertThat(link.statusReason()).isEqualTo(PortalLinkStatusReason.INVALID_IDENTITY_FIELD);
+    }
+
     @Test
     void validAddress_createsPendingSendWithDefaultTtl() {
         when(resolver.resolve(SOURCE, dossierId, "pi-1")).thenReturn(Optional.of(" alice@example.org "));

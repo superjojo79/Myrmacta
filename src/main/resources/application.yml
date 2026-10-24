@@ -289,6 +289,20 @@ app:
     rate-limit:
       per-ip-per-minute: 30
     max-body-bytes: 65536
+    strong-auth:
+      # TODO §103 (issue #210) — authentification forte des tiers par FAS ou itsme, opt-in (D-BEAUTH-ACTIVATION).
+      # Activée, elle exige le portail, au moins un fournisseur complet (providers.fas / providers.itsme : issuer-uri,
+      # client-id, claims.nrn, claims.level, levels.HIGH / levels.SUBSTANTIAL) et une clé de signature PEM : démarrage
+      # refusé sinon. Voir docs/guides/DEPLOIEMENT.md § Fournisseurs d'identité belges.
+      enabled: ${APP_PORTAL_STRONG_AUTH_ENABLED:false}
+      identity-ttl: ${APP_PORTAL_STRONG_AUTH_IDENTITY_TTL:60m}
+      keys:
+        signing-key-file: ${APP_PORTAL_STRONG_AUTH_SIGNING_KEY_FILE:}
+        signing-key-id: ${APP_PORTAL_STRONG_AUTH_SIGNING_KEY_ID:}
+        previous-signing-key-file: ${APP_PORTAL_STRONG_AUTH_PREVIOUS_SIGNING_KEY_FILE:}
+        previous-signing-key-id: ${APP_PORTAL_STRONG_AUTH_PREVIOUS_SIGNING_KEY_ID:}
+        encryption-key-file: ${APP_PORTAL_STRONG_AUTH_ENCRYPTION_KEY_FILE:}
+        encryption-key-id: ${APP_PORTAL_STRONG_AUTH_ENCRYPTION_KEY_ID:}
   signature:
     # TODO §72 (signature-electronique). provider : none (défaut : fonctionnalité absente, un bloc
     # signature est refusé au déploiement) | stub (simulation, sans valeur juridique). Le stub ne

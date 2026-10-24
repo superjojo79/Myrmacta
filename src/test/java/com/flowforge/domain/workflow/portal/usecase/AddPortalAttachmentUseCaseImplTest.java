@@ -17,6 +17,7 @@ import com.flowforge.domain.dossier.port.in.AddDossierElementUseCase;
 import com.flowforge.domain.dossier.port.out.AttachmentScanPort;
 import com.flowforge.domain.dossier.port.out.AttachmentScanResult;
 import com.flowforge.domain.workflow.portal.PortalAccessResolver;
+import com.flowforge.domain.workflow.portal.model.PortalCredential;
 import com.flowforge.domain.workflow.portal.model.PortalLink;
 import com.flowforge.domain.workflow.portal.port.in.AddPortalAttachmentUseCase.AttachmentUpload;
 import com.flowforge.domain.workflow.portal.port.out.PortalTaskLookupPort;
@@ -45,7 +46,7 @@ class AddPortalAttachmentUseCaseImplTest {
         UUID dossierId = UUID.randomUUID();
         link = PortalLink.pendingSend(UUID.randomUUID(), "tenant_dev", dossierId, "t", "pi", "avis", "a@b.org", 7, NOW,
                 "x").activated("h", NOW);
-        when(resolver.resolve("tok")).thenReturn(access(DossierStatus.OUVERT));
+        when(resolver.resolve(PortalCredential.of("tok", null))).thenReturn(access(DossierStatus.OUVERT));
         when(scan.scan(any(), anyString())).thenReturn(new AttachmentScanResult(true, null));
         when(storage.store(anyString(), anyString(), any())).thenReturn("tenant_dev/x.pdf");
     }
@@ -90,7 +91,7 @@ class AddPortalAttachmentUseCaseImplTest {
 
     @Test
     void closedDossier_isRejectedBeforeAnyStorage() {
-        when(resolver.resolve("tok")).thenReturn(access(DossierStatus.CLOTURE));
+        when(resolver.resolve(PortalCredential.of("tok", null))).thenReturn(access(DossierStatus.CLOTURE));
 
         assertThatThrownBy(() -> useCase.add("tok", new AttachmentUpload("L", "f.pdf", "application/pdf", PDF)))
                 .isInstanceOf(com.flowforge.domain.dossier.model.DossierConflictException.class);

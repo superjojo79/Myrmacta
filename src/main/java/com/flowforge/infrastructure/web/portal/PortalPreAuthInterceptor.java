@@ -1,6 +1,7 @@
 package com.flowforge.infrastructure.web.portal;
 
 import com.flowforge.domain.workflow.portal.PortalAccessResolver;
+import com.flowforge.domain.workflow.portal.model.PortalCredential;
 import com.flowforge.infrastructure.security.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -50,14 +51,19 @@ final class PortalPreAuthInterceptor implements HandlerInterceptor {
         }
         rateLimiter.consumeOrThrow(clientIpResolver.resolve(request));
         if (method.hasMethodAnnotation(PortalController.TokenCheckedBeforeBody.class)) {
-            accessResolver.assertUsableToken(request.getHeader(PortalController.TOKEN_HEADER));
+            accessResolver.assertUsable(PortalCredential.of(request.getHeader(PortalController.TOKEN_HEADER),
+                    request.getHeader(PortalController.IDENTITY_HEADER)));
         }
         return true;
     }
 
-    /** Contrôleurs publics du portail : tâche externe et signature (TODO §72) partagent la limite par IP. */
+    /**
+     * Contrôleurs publics du portail : tâche externe, signature (TODO §72) et authentification forte (TODO §103)
+     * partagent la limite par IP.
+     */
     private static boolean isPortalPublicController(Class<?> beanType) {
-        return PortalController.class.equals(beanType) || SignaturePortalController.class.equals(beanType);
+        return PortalController.class.equals(beanType) || SignaturePortalController.class.equals(beanType)
+                || PortalIdentityController.class.equals(beanType);
     }
 
     @Configuration

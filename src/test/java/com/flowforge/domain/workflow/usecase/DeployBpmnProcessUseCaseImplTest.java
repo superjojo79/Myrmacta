@@ -289,6 +289,44 @@ class DeployBpmnProcessUseCaseImplTest {
         verify(deploymentPort, never()).deploy(any(), any(), any());
     }
 
+    /** TODO §103 (E2, D-BEAUTH-ACTIVATION) — une tâche à authentification forte exige le réglage d'instance. */
+    @Test
+    void deploy_strongAuthenticationTaskWhileStrongAuthDisabled_isRejected() {
+        when(bpmnParserPort.extractProcessDefinitionKey(BPMN_BYTES)).thenReturn("testProcess");
+        when(configRepository.findByWorkflowKey(TENANT, "testProcess")).thenReturn(Optional.of(smokeConfig()));
+        when(bpmnParserPort.extractPortalTasks(BPMN_BYTES)).thenReturn(java.util.List.of(strongAuthTask()));
+        when(portalAvailability.isPortalEnabled()).thenReturn(true);
+        when(portalAvailability.maxLinkTtlDays()).thenReturn(30);
+        when(portalAvailability.isStrongAuthenticationEnabled()).thenReturn(false);
+
+        assertThatThrownBy(() -> useCase.deploy("diagram.bpmn20.xml", BPMN_BYTES))
+                .isInstanceOf(com.flowforge.domain.workflow.model.InvalidBpmnException.class)
+                .hasMessageContaining("portalIdentityField")
+                .hasMessageContaining("APP_PORTAL_STRONG_AUTH_ENABLED");
+        verify(deploymentPort, never()).deploy(any(), any(), any());
+    }
+
+    @Test
+    void deploy_strongAuthenticationTaskWhileStrongAuthEnabled_isDeployed() {
+        when(bpmnParserPort.extractProcessDefinitionKey(BPMN_BYTES)).thenReturn("testProcess");
+        when(configRepository.findByWorkflowKey(TENANT, "testProcess")).thenReturn(Optional.of(smokeConfig()));
+        when(bpmnParserPort.extractReferencedDecisionKeys(BPMN_BYTES)).thenReturn(Set.of());
+        when(bpmnParserPort.extractPortalTasks(BPMN_BYTES)).thenReturn(java.util.List.of(strongAuthTask()));
+        when(portalAvailability.isPortalEnabled()).thenReturn(true);
+        when(portalAvailability.maxLinkTtlDays()).thenReturn(30);
+        when(portalAvailability.isStrongAuthenticationEnabled()).thenReturn(true);
+        BpmnDeploymentResult expected = new BpmnDeploymentResult("testProcess", 1, "deployment-1");
+        when(deploymentPort.deploy(TENANT, "diagram.bpmn20.xml", BPMN_BYTES)).thenReturn(expected);
+
+        assertThat(useCase.deploy("diagram.bpmn20.xml", BPMN_BYTES)).isEqualTo(expected);
+    }
+
+    private static com.flowforge.domain.workflow.portal.model.PortalTaskDefinition strongAuthTask() {
+        return new com.flowforge.domain.workflow.portal.model.PortalTaskDefinition("tiers", "avis",
+                com.flowforge.domain.workflow.portal.model.PortalRecipientSource.parse("dossierField:email").orElseThrow(),
+                null, new com.flowforge.domain.workflow.portal.model.PortalIdentityField("nrnDemandeur"));
+    }
+
     // ---- TODO §72 : blocs signature (S-PARSE-2 partie déploiement, S-STUB-7, S-PW-8)
 
     private com.flowforge.domain.signature.model.SignatureBlockDefinition block(

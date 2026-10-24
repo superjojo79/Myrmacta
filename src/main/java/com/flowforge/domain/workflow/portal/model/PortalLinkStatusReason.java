@@ -6,6 +6,8 @@ public enum PortalLinkStatusReason {
     INVALID_ADDRESS,
     SCHEMA_MISSING,
     SEND_FAILED,
+    /** TODO §103 (T2) — champ d'identité absent du type, ou non {@code STRING} ou non sensible. */
+    INVALID_IDENTITY_FIELD,
     TASK_GONE,
     RESENT,
     REVOKED_BY_USER

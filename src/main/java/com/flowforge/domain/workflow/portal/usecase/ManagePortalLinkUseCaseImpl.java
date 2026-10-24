@@ -11,9 +11,12 @@ import com.flowforge.domain.workflow.portal.model.PortalLinkStatusReason;
 import com.flowforge.domain.workflow.portal.model.PortalTaskDefinition;
 import com.flowforge.domain.workflow.portal.port.in.ManagePortalLinkUseCase;
 import com.flowforge.domain.workflow.portal.port.out.PortalAvailabilityPort;
+import com.flowforge.domain.workflow.portal.port.out.PortalIdentityRepository;
 import com.flowforge.domain.workflow.portal.port.out.PortalLinkRepository;
 import com.flowforge.domain.workflow.portal.port.out.PortalTaskLookupPort;
 import java.time.Clock;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -35,6 +38,7 @@ public final class ManagePortalLinkUseCaseImpl implements ManagePortalLinkUseCas
     private final IssuePortalLinkUseCaseImpl issuer;
     private final PortalAvailabilityPort availability;
     private final Clock clock;
+    private final PortalIdentityRepository identities;
 
     public ManagePortalLinkUseCaseImpl(
             String tenantId,
@@ -46,6 +50,23 @@ public final class ManagePortalLinkUseCaseImpl implements ManagePortalLinkUseCas
             IssuePortalLinkUseCaseImpl issuer,
             PortalAvailabilityPort availability,
             Clock clock) {
+        this(tenantId, repository, dossierRepository, accessPolicy, taskLookup, workflowEnginePort, issuer, availability,
+                clock, null);
+    }
+
+    /** {@code identities} : traces d'authentification forte montrées à l'instructeur (TODO §103) ; nul si absentes. */
+    public ManagePortalLinkUseCaseImpl(
+            String tenantId,
+            PortalLinkRepository repository,
+            DossierRepository dossierRepository,
+            DossierAccessPolicy accessPolicy,
+            PortalTaskLookupPort taskLookup,
+            WorkflowEnginePort workflowEnginePort,
+            IssuePortalLinkUseCaseImpl issuer,
+            PortalAvailabilityPort availability,
+            Clock clock,
+            PortalIdentityRepository identities) {
+        this.identities = identities;
         this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
         this.repository = Objects.requireNonNull(repository, "repository");
         this.dossierRepository = Objects.requireNonNull(dossierRepository, "dossierRepository");
@@ -61,7 +82,9 @@ public final class ManagePortalLinkUseCaseImpl implements ManagePortalLinkUseCas
     public PortalLinks list(UUID dossierId, AccessContext.User actor) {
         Dossier dossier = requireDossier(dossierId);
         accessPolicy.assertCanView(dossier, actor);
-        return new PortalLinks(accessPolicy.canEdit(dossier, actor), repository.findByDossierId(dossierId));
+        List<PortalLink> links = repository.findByDossierId(dossierId);
+        return new PortalLinks(accessPolicy.canEdit(dossier, actor), links, identities == null ? Map.of()
+                : identities.tracesByLinkId(links.stream().map(PortalLink::id).toList()));
     }
 
     @Override
@@ -81,7 +104,7 @@ public final class ManagePortalLinkUseCaseImpl implements ManagePortalLinkUseCas
             repository.transition(live, live.revoked(clock.instant(), actor.userId(), PortalLinkStatusReason.RESENT));
         }
         return issuer.issue(taskId, task.processInstanceId(), dossierId, definition.schemaKey(),
-                definition.recipientSource(), definition.ttlDays(), actor.userId());
+                definition.recipientSource(), definition.ttlDays(), definition.identityField(), actor.userId());
     }
 
     @Override

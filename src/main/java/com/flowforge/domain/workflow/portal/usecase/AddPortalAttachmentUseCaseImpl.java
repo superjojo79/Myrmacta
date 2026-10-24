@@ -11,6 +11,7 @@ import com.flowforge.domain.dossier.port.in.AddDossierElementUseCase;
 import com.flowforge.domain.dossier.port.out.AttachmentScanPort;
 import com.flowforge.domain.dossier.port.out.AttachmentScanResult;
 import com.flowforge.domain.workflow.portal.PortalAccessResolver;
+import com.flowforge.domain.workflow.portal.model.PortalCredential;
 import com.flowforge.domain.workflow.portal.model.PortalLink;
 import com.flowforge.domain.workflow.portal.port.in.AddPortalAttachmentUseCase;
 import java.util.Map;
@@ -50,9 +51,9 @@ public final class AddPortalAttachmentUseCaseImpl implements AddPortalAttachment
     }
 
     @Override
-    public DossierElement add(String token, AttachmentUpload upload) {
+    public DossierElement add(PortalCredential credential, AttachmentUpload upload) {
         Objects.requireNonNull(upload, "upload");
-        PortalAccessResolver.ResolvedAccess access = accessResolver.resolve(token);
+        PortalAccessResolver.ResolvedAccess access = accessResolver.resolve(credential);
         if (access.dossier().status().blocksMutation()) {
             throw new DossierConflictException("Dossier elements cannot be added in status " + access.dossier().status());
         }

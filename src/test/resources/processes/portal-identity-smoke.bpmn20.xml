@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://flowforge/test">
+
+  <!-- TODO §103 (issue #210) : tâche externe à authentification forte — le tiers s'identifie par FAS ou itsme ; son NRN
+       est comparé au champ nrnDemandeur du dossier, ou y est écrit s'il est vide. -->
+  <process id="portalIdentitySmoke" name="Portal Identity Smoke" isExecutable="true">
+    <startEvent id="portalIdentityStart"/>
+    <sequenceFlow id="portalIdentityFlow1" sourceRef="portalIdentityStart" targetRef="portalIdentityTask"/>
+    <userTask id="portalIdentityTask" name="Avis du demandeur"
+              flowable:formKey="user-question:portal-smoke"
+              flowable:portalRecipient="dossierField:contactEmail"
+              flowable:portalIdentityField="dossierField:nrnDemandeur">
+      <documentation>Merci de confirmer votre demande.</documentation>
+    </userTask>
+    <sequenceFlow id="portalIdentityFlow2" sourceRef="portalIdentityTask" targetRef="portalIdentityEnd"/>
+    <endEvent id="portalIdentityEnd"/>
+  </process>
+</definitions>

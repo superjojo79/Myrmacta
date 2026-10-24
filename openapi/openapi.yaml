@@ -602,6 +602,11 @@ paths:
         required: false
         schema:
           type: string
+      - name: X-Portal-Identity
+        in: header
+        required: false
+        schema:
+          type: string
       requestBody:
         content:
           application/json:
@@ -2582,6 +2587,11 @@ paths:
         required: false
         schema:
           type: string
+      - name: X-Portal-Identity
+        in: header
+        required: false
+        schema:
+          type: string
       responses:
         "200":
           description: OK
@@ -4124,6 +4134,22 @@ components:
           additionalProperties: {}
         downloadable:
           type: boolean
+    IdentityResponse:
+      type: object
+      properties:
+        provider:
+          type: string
+        level:
+          type: string
+        givenName:
+          type: string
+        familyName:
+          type: string
+        result:
+          type: string
+        verifiedAt:
+          type: string
+          format: date-time
     PortalLinkResponse:
       type: object
       properties:
@@ -4163,6 +4189,8 @@ components:
           type: string
         revokedBy:
           type: string
+        identity:
+          $ref: "#/components/schemas/IdentityResponse"
     CreateDossierTypeRequest:
       type: object
       properties:
@@ -5417,6 +5445,17 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Field"
+    Identity:
+      type: object
+      properties:
+        verified:
+          type: boolean
+        name:
+          type: string
+        providers:
+          type: array
+          items:
+            $ref: "#/components/schemas/Provider"
     PortalTaskResponse:
       type: object
       properties:
@@ -5435,6 +5474,15 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Attachment"
+        identity:
+          $ref: "#/components/schemas/Identity"
+    Provider:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
     SignatureContextResponse:
       type: object
       properties:

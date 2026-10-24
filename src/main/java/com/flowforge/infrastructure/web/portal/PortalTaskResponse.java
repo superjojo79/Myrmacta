@@ -1,5 +1,6 @@
 package com.flowforge.infrastructure.web.portal;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.flowforge.domain.dossier.model.DossierElement;
 import com.flowforge.domain.dossier.model.FieldDefinition;
 import com.flowforge.domain.workflow.portal.port.in.GetPortalTaskUseCase.PortalTaskView;
@@ -18,7 +19,9 @@ record PortalTaskResponse(
         String instructions,
         Form form,
         Instant expiresAt,
-        List<Attachment> attachments) {
+        List<Attachment> attachments,
+        // Absent pour une tâche sans authentification forte : le contrat minimal de D-PORTAL-DATA ne change pas.
+        @JsonInclude(JsonInclude.Include.NON_NULL) Identity identity) {
 
     static PortalTaskResponse from(PortalTaskView view) {
         return new PortalTaskResponse(
@@ -27,8 +30,18 @@ record PortalTaskResponse(
                 view.instructions(),
                 new Form(view.formLabel(), view.fields().stream().map(Field::from).toList()),
                 view.expiresAt(),
-                view.ownAttachments().stream().map(Attachment::from).toList());
+                view.ownAttachments().stream().map(Attachment::from).toList(),
+                view.identityRequired() ? new Identity(view.verifiedName() != null, view.verifiedName(),
+                        view.identityProviders().stream().map(p -> new Provider(p.id(), p.label())).toList()) : null);
     }
+
+    /**
+     * TODO §103 (T3b) — présent seulement pour une tâche à authentification forte : {@code verified} faux, la page
+     * montre le choix du fournisseur et rien d'autre ; vrai, le nom de la personne authentifiée.
+     */
+    record Identity(boolean verified, String name, List<Provider> providers) {}
+
+    record Provider(String id, String label) {}
 
     record Form(String label, List<Field> fields) {}
 

@@ -1,0 +1,71 @@
+databaseChangeLog:
+  - changeSet:
+      id: 038-portal-identity
+      author: flowforge
+      comment: >-
+        TODO §103 (issue #210, D-BEAUTH-STORE) — authentification forte des tiers du portail. portal_identity_attempt :
+        tentative d'authentification (state haché, nonce, vérificateur PKCE chiffré), à usage unique et de courte durée.
+        portal_link_identity : identité vérifiée pour un lien (preuve hachée, NRN chiffré) puis, après la soumission,
+        trace sans NRN ni preuve (fournisseur, niveau, nom, résultat). Les deux disparaissent avec le lien, donc avec
+        le dossier (purge).
+      changes:
+        - createTable:
+            tableName: portal_identity_attempt
+            columns:
+              - column: {name: id, type: uuid, constraints: {primaryKey: true, primaryKeyName: pk_portal_identity_attempt, nullable: false}}
+              - column: {name: tenant_id, type: varchar(64), constraints: {nullable: false}}
+              - column: {name: state_hash, type: varchar(64), constraints: {nullable: false}}
+              - column:
+                  name: portal_link_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_portal_identity_attempt_link
+                    references: portal_link(id)
+                    deleteCascade: true
+              - column: {name: provider, type: varchar(32), constraints: {nullable: false}}
+              - column: {name: nonce, type: varchar(128), constraints: {nullable: false}}
+              - column: {name: pkce_verifier_enc, type: varchar(512), constraints: {nullable: false}}
+              - column: {name: created_at, type: timestamp with time zone, constraints: {nullable: false}}
+              - column: {name: expires_at, type: timestamp with time zone, constraints: {nullable: false}}
+              - column: {name: consumed_at, type: timestamp with time zone}
+        - addUniqueConstraint:
+            tableName: portal_identity_attempt
+            columnNames: state_hash
+            constraintName: ux_portal_identity_attempt_state
+        - createIndex:
+            tableName: portal_identity_attempt
+            indexName: idx_portal_identity_attempt_expires
+            columns:
+              - column: {name: expires_at}
+        - createTable:
+            tableName: portal_link_identity
+            columns:
+              - column:
+                  name: portal_link_id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_portal_link_identity
+                    nullable: false
+                    foreignKeyName: fk_portal_link_identity_link
+                    references: portal_link(id)
+                    deleteCascade: true
+              - column: {name: tenant_id, type: varchar(64), constraints: {nullable: false}}
+              - column: {name: proof_hash, type: varchar(64)}
+              - column: {name: provider, type: varchar(32), constraints: {nullable: false}}
+              - column: {name: assurance_level, type: varchar(16), constraints: {nullable: false}}
+              - column: {name: given_name, type: varchar(255)}
+              - column: {name: family_name, type: varchar(255)}
+              - column: {name: nrn_enc, type: varchar(512)}
+              - column: {name: match_result, type: varchar(32), constraints: {nullable: false}}
+              - column: {name: verified_at, type: timestamp with time zone, constraints: {nullable: false}}
+              - column: {name: expires_at, type: timestamp with time zone}
+              - column: {name: submitted_at, type: timestamp with time zone}
+        - addUniqueConstraint:
+            tableName: portal_link_identity
+            columnNames: proof_hash
+            constraintName: ux_portal_link_identity_proof
+      rollback:
+        - dropTable: {tableName: portal_link_identity}
+        - dropTable: {tableName: portal_identity_attempt}

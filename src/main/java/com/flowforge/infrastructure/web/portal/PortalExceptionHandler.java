@@ -25,7 +25,8 @@ import org.springframework.web.multipart.support.MissingServletRequestPartExcept
  * même corps (US-3, T-ACCESS-2) : le motif réel ne va qu'au log serveur (IP + motif, jamais le
  * jeton) et au compteur {@value #DENIED_METRIC}.
  */
-@RestControllerAdvice(assignableTypes = {PortalController.class, SignaturePortalController.class})
+@RestControllerAdvice(assignableTypes = {
+        PortalController.class, SignaturePortalController.class, PortalIdentityController.class})
 class PortalExceptionHandler {
 
     static final String DENIED_METRIC = "flowforge.portal.access.denied";

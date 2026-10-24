@@ -12,6 +12,7 @@ import com.flowforge.domain.workflow.palette.BlockAttributeRules;
 import com.flowforge.domain.workflow.palette.FieldMappingSpec;
 import com.flowforge.domain.workflow.palette.BlockParameterUsage;
 import com.flowforge.domain.workflow.port.out.BpmnParserPort;
+import com.flowforge.domain.workflow.portal.model.PortalIdentityField;
 import com.flowforge.domain.workflow.portal.model.PortalRecipientSource;
 import com.flowforge.domain.workflow.portal.model.PortalTaskDefinition;
 import java.util.ArrayList;
@@ -381,12 +382,20 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
         String owner = "BPMN external portal task " + userTask.getId();
         String recipientRaw = userTask.getAttributeValue(FLOWABLE_NAMESPACE, PORTAL_RECIPIENT_ATTRIBUTE);
         String ttlRaw = userTask.getAttributeValue(FLOWABLE_NAMESPACE, PORTAL_TTL_ATTRIBUTE);
+        String identityRaw = userTask.getAttributeValue(FLOWABLE_NAMESPACE, PORTAL_IDENTITY_ATTRIBUTE);
         if (recipientRaw == null) {
             if (ttlRaw != null) {
                 throw new InvalidBpmnException(owner + ": portalLinkTtlDays requires portalRecipient");
             }
+            if (identityRaw != null) {
+                throw new InvalidBpmnException(owner + ": portalIdentityField requires portalRecipient");
+            }
             return Optional.empty();
         }
+        // TODO §103 (T2) — dossierField: seulement : le NRN vit dans le dossier, jamais dans une variable (N2).
+        PortalIdentityField identityField = identityRaw == null ? null : PortalIdentityField.parse(identityRaw)
+                .orElseThrow(() -> new InvalidBpmnException(
+                        owner + ": portalIdentityField must be dossierField:<name>"));
         PortalRecipientSource source = PortalRecipientSource.parse(recipientRaw)
                 .orElseThrow(() -> new InvalidBpmnException(
                         owner + ": portalRecipient must be dossierField:<name> or variable:<name>"));
@@ -411,12 +420,13 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
                 || !safeList(userTask.getCandidateGroups()).isEmpty()) {
             throw new InvalidBpmnException(owner + ": an external task must not be assigned internally");
         }
-        return Optional.of(new PortalTaskDefinition(userTask.getId(), schemaKey, source, ttlDays));
+        return Optional.of(new PortalTaskDefinition(userTask.getId(), schemaKey, source, ttlDays, identityField));
     }
 
     private static final String FLOWABLE_NAMESPACE = "http://flowable.org/bpmn";
     private static final String PORTAL_RECIPIENT_ATTRIBUTE = "portalRecipient";
     private static final String PORTAL_TTL_ATTRIBUTE = "portalLinkTtlDays";
+    private static final String PORTAL_IDENTITY_ATTRIBUTE = "portalIdentityField";
     private static final int MAX_PORTAL_TTL_DAYS = 365;
     /** Même format que {@code TaskQuestionSchema} (clé de schéma {@code user-question}). */
     private static final Pattern SCHEMA_KEY = Pattern.compile("[A-Za-z0-9_-]+");

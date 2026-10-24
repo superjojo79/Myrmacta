@@ -24,16 +24,16 @@ Plan initial de phase 1. Chaque tâche de code commence par un test rouge (skill
 
 ## Lot B — tiers du portail, serveur
 
-- [ ] B1 Domaine : `NationalRegisterNumber`, `IdentityAssuranceLevel`, règle de correspondance, identité vérifiée.
-- [ ] B2 BPMN : `flowable:portalIdentityField`, `PortalTaskDefinition`, validation au déploiement (E1, E2) ; émission
+- [x] B1 Domaine : `NationalRegisterNumber`, `IdentityAssuranceLevel`, règle de correspondance, identité vérifiée.
+- [x] B2 BPMN : `flowable:portalIdentityField`, `PortalTaskDefinition`, validation au déploiement (E1, E2) ; émission
       `NOT_SENT` / `INVALID_IDENTITY_FIELD` (T2).
-- [ ] B3 Persistance : changeSet `038` (`portal_identity_attempt`, `portal_link_identity`, `portal_link.identity_field`,
+- [x] B3 Persistance : changeSet `038` (`portal_identity_attempt`, `portal_link_identity`, `portal_link.identity_field`,
       `task_question_answer.identity_verification`), effacement sur soumission, révocation, expiration et purge.
-- [ ] B4 Port et adaptateur OIDC direct (FAS, itsme) : URL d'autorisation, échange du code en `private_key_jwt`,
+- [x] B4 Port et adaptateur OIDC direct (FAS, itsme) : URL d'autorisation, échange du code en `private_key_jwt`,
       validation de l'ID token, claims configurables (K5) ; clé de l'instance et JWKS (T11).
-- [ ] B5 Routes `start`, `callback` et `jwks` dans la chaîne portail ; vue réduite avant l'identité (T3b) ; dépôt et
+- [x] B5 Routes `start`, `callback` et `jwks` dans la chaîne portail ; vue réduite avant l'identité (T3b) ; dépôt et
       soumission avec comparaison ou écriture du champ.
-- [ ] B6 Test « NRN nulle part » (logs, audit, outbox, variables, webhooks).
+- [x] B6 Test « NRN nulle part » (logs, audit, outbox, variables, webhooks).
 
 ## Lot C — tiers du portail, page
 

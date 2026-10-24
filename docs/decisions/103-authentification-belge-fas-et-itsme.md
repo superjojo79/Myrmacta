@@ -2,8 +2,8 @@
 
 > **Statut :** ouvert · point de premier niveau · [registre](README.md)
 
-[ ] en cours (issue [#210](https://github.com/superjojo79/FlowForge/issues/210)). Lot A (Keycloak, agents) livré ;
-restent le portail (lots B et C) et la documentation (lot D).
+[ ] en cours (issue [#210](https://github.com/superjojo79/FlowForge/issues/210)). Lots A (Keycloak, agents) et B (portail,
+serveur) livrés ; restent la page du portail (lot C) et la documentation (lot D).
 
 **Constat.** FlowForge ne proposait ni eID, ni itsme, ni CSAM ; le realm Keycloak n'avait aucun fournisseur d'identité.
 Les communes l'exigent en premier (marché de Schaerbeek, échéance 05/11/2026). Les agents se connectent au BFF par OIDC
@@ -36,11 +36,32 @@ Les communes l'exigent en premier (marché de Schaerbeek, échéance 05/11/2026)
 - **D-BEAUTH-VALIDATION** — critère de fin : tests et démo contre un fournisseur simulé (`fas-simulateur`) ; recette contre
   les vrais FAS et itsme dans #192.
 
-Décisions du portail (lots B et C) : D-BEAUTH-PORTAL-CLIENT (client OIDC direct, aucun compte pour un tiers),
-D-BEAUTH-PREVIEW (nom de la tâche et référence seulement avant l'authentification), D-BEAUTH-NRN-FIELD (champ cible
-`STRING` sensible : vide, le NRN y est écrit ; rempli, il est attendu), D-BEAUTH-LOA (substantiel ou élevé),
-D-BEAUTH-ACTIVATION (opt-in, refus au déploiement), D-BEAUTH-STORE, D-BEAUTH-TTL (60 min), D-BEAUTH-PROVIDER-CHOICE,
-D-BEAUTH-PROOF. Détail dans la conception de la feature, reporté ici à la livraison.
+**Décisions du portail (tranchées par l'utilisateur, phases 1 à 3).**
+
+- **D-BEAUTH-PORTAL-CLIENT** — l'instance est elle-même cliente OIDC de FAS et d'itsme pour le portail, sans Keycloak :
+  aucun compte n'est créé pour un tiers ; clé `private_key_jwt` de l'instance publiée en JWKS. Conséquence : deux clients
+  à enregistrer par fournisseur et par tenant (Keycloak pour les agents, l'instance pour le portail). Écarté : realm
+  « portail » avec utilisateurs transitoires (fonction expérimentale de Keycloak) ; realm « portail » à comptes purgés.
+- **D-BEAUTH-PREVIEW** — avant l'authentification, le porteur du lien ne voit que le nom de la tâche et la référence du
+  dossier ; dépôt de pièce et soumission refusés. Écarté : écran totalement neutre ; contexte visible.
+- **D-BEAUTH-NRN-FIELD** — la tâche désigne un champ d'identité `STRING` sensible (`flowable:portalIdentityField`) :
+  vide, le NRN vérifié y est écrit à la soumission ; rempli, il est attendu et un écart donne un refus neutre. Champ
+  inutilisable à l'émission : lien `NOT_SENT` (`INVALID_IDENTITY_FIELD`). Écarté : NRN seulement tracé ; NRN conservé
+  chiffré hors du dossier ; deux réglages séparés.
+- **D-BEAUTH-LOA** — niveaux eIDAS substantiel ou élevé ; une identité sans NRN est refusée si un NRN est attendu.
+  Écarté : élevé seulement ; niveau réglable par tâche.
+- **D-BEAUTH-ACTIVATION** — `app.portal.strong-auth.enabled`, désactivé par défaut ; un BPMN qui exige l'authentification
+  forte est refusé au déploiement s'il est éteint. Écarté : actif dès qu'un fournisseur existe.
+- **D-BEAUTH-STORE** — tables `portal_identity_attempt` et `portal_link_identity` (changeSet `038`), supprimées avec le
+  lien. Écarté : jetons signés côté navigateur ; colonnes de `portal_link`.
+- **D-BEAUTH-TTL** — identité vérifiée valable 60 minutes, réglable, plafond 4 heures. Écarté : 30 minutes ; durée du
+  lien.
+- **D-BEAUTH-PROVIDER-CHOICE** — un bouton par fournisseur configuré, dans l'ordre de l'instance. Écarté : choix par
+  tâche ; un seul fournisseur.
+- **D-BEAUTH-PROOF** (sans arbitrage) — au retour du fournisseur, une preuve d'identité (256 bits, hachée en base) est
+  remise dans le fragment d'URL et remplace ensuite le jeton (`X-Portal-Identity`) : aucun stockage navigateur
+  (D-PORTAL-CSRF-SESSION), et une identité vérifiée sur un appareil ne sert pas à un autre porteur du lien. Écarté :
+  `sessionStorage`.
 
 **Défaut existant corrigé (A6).** `KnownUserRecordingSuccessHandler` inscrivait l'utilisateur dans l'annuaire des
 assignés au retour de connexion, avant toute vérification du `tenant_id` (`TenantResolutionFilter` ne voit que les
@@ -53,6 +74,27 @@ successives du script sans erreur, agent connecté par le FAS simulé (`private_
 compte sans `tenant_id`, sans NRN, sans rôle FlowForge ; connexion directe par mot de passe en `both` ; mot de passe
 refusé à un compte ordinaire en `idp-only` (`access_denied`) ; compte de secours : mot de passe temporaire changé, OTP
 enrôlé, reconnexion par mot de passe et OTP.
+
+**Lot B — portail, serveur.** `flowable:portalIdentityField`, refus au déploiement (E2), émission `NOT_SENT` ;
+`PortalAccessResolver` distingue l'accès pour agir (identité exigée) de la vue réduite ; routes publiques
+`/api/portal/identity/start`, `/callback` et `/jwks` ; soumission qui recalcule la correspondance sur le dossier relu
+(T6) et écrit le NRN par le use case de correction des champs, en contexte système et à version attendue ; trace
+conservée sans NRN ni preuve, montrée à l'instructeur avec le lien (nom réservé à qui peut gérer le lien).
+
+Écarts avec la conception, sans arbitrage : la trace reste dans `portal_link_identity` (NRN et preuve effacés à la
+soumission) plutôt que dans `task_question_answer`, aujourd'hui en écriture seule ; l'exigence d'identité est relue
+dans la définition BPMN de la tâche plutôt que stockée sur le lien ; l'adaptateur OIDC est écrit avec Nimbus plutôt
+qu'avec les `ClientRegistration` de Spring Security, pensés pour une session ; le contrôle préalable à un upload ne lit
+toujours pas la tâche (F-PORTAL-1) : le porteur du seul jeton d'une tâche à authentification forte peut faire lire un
+upload avant son refus, comme tout porteur du lien le pouvait déjà.
+
+**Lot B — preuves.** `PortalIdentityModelTest`, `PortalAccessResolverIdentityTest`, `PortalIdentityUseCasesTest`
+(13 cas ; le refus d'un champ modifié depuis l'authentification et celui d'un niveau faible ont été retirés à titre
+d'essai : les tests échouent), `PortalStrongAuthPropertiesTest`, `OidcPortalIdentityProviderAdapterTest` (fournisseur en
+mémoire : PKCE, `private_key_jwt`, `nonce`, émetteur, audience, expiration, signature, ID token chiffré),
+`PortalIdentityRepositoryIT` (PostgreSQL), `PortalStrongAuthApiTest` (bout en bout : vue réduite, preuve, premier
+enregistrement, refus d'une autre personne, rejeu, JWKS ; NRN absent des journaux, des variables de process et des
+outbox).
 
 **Constats de la recette Keycloak.** Keycloak refuse un fournisseur qui valide les signatures sans URL JWKS : le JSON
 n'active la validation qu'avec les URL posées par le script (découverte). Le client BFF généré n'exige pas PKCE, comme le

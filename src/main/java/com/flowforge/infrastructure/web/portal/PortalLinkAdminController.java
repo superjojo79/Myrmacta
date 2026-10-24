@@ -41,7 +41,9 @@ class PortalLinkAdminController {
         ManagePortalLinkUseCase.PortalLinks links = useCase.list(dossierId, actor);
         return new PortalLinkResponse.ListResponse(
                 links.canManage(),
-                links.links().stream().map(l -> PortalLinkResponse.from(l, links.canManage())).toList());
+                links.links().stream()
+                        .map(l -> PortalLinkResponse.from(l, links.canManage(), links.identities().get(l.id())))
+                        .toList());
     }
 
     @PostMapping("/tasks/{taskId}/send")

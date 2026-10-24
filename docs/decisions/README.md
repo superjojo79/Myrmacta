@@ -117,6 +117,7 @@ jamais en le supprimant ou en le renumérotant ; un nouveau point prend le numé
 | 96 | [Pièce jointe de la brique « Notifier »](096-piece-jointe-de-la-brique-notifier.md) | clos | — |
 | 97 | [`generatedDocumentId` réservé : pas de rattachement d'un document d'un autre dossier](097-generateddocumentid-reserve.md) | clos | — |
 | 98 | [Feuille de style par défaut du rendu PDF](098-feuille-de-style-par-defaut-du-rendu-pdf.md) | clos | — |
+| 99 | [Le BPMN ne peut pas recopier une valeur dans une variable réservée](099-recopie-bpmn-vers-une-variable-reservee.md) | clos | — |
 
 ## Sections de l'ancien registre
 

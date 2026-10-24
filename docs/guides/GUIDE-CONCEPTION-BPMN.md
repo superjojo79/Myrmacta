@@ -139,6 +139,12 @@ suivie par toutes les tâches livrées (voir catalogue §7) :
 
   Toute tâche qui a besoin du dossier ou du tenant les lit sur `DelegateExecution`, jamais en
   paramètre statique du BPMN.
+- **Le diagramme ne peut pas écrire une variable réservée** (les quatre ci-dessus, `connectorResult`
+  et `generatedDocumentId`, TODO §99). Sont refusés à la sauvegarde comme au déploiement : un
+  `elementVariable` / `elementIndexVariable` de multi-instance, un `flowable:in` / `flowable:out` dont
+  la cible est réservée, un `dataObject`, un `initiator`, une variable d'erreur ou de tâche
+  (`errorVariableName`, `taskIdVariableName`…) portant l'un de ces noms. Seule exception : la recopie
+  à l'identique vers un sous-processus, `<flowable:in source="dossierId" target="dossierId"/>`.
 
 ---
 

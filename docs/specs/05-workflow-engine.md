@@ -194,6 +194,14 @@ producteur.
 > mono-tenant. `FOR UPDATE SKIP LOCKED` ne redevient utile que si ce tenant est scalé sur plusieurs
 > répliques (voir « Scaling horizontal d'un tenant » dans [02-multi-tenant.md](02-multi-tenant.md)).
 
+### Variables réservées et BPMN déployé
+
+Les variables réservées (`WorkflowVariables.reservedKeys()`) sont refusées dans toute entrée utilisateur
+(`assertNoReservedKeys`) et ne peuvent pas non plus être écrites par le BPMN lui-même :
+`BpmnReservedVariableWriteScanner` refuse au parseur (brouillon, proposition, déploiement REST et MCP) toute
+écriture vers un nom réservé, sauf la recopie à l'identique d'un `flowable:in` / `flowable:out`. Liste des
+surfaces et choix : [§99](../decisions/099-recopie-bpmn-vers-une-variable-reservee.md) (D-BPMN-RESERVED-WRITE).
+
 ---
 
 ## Ports domaine

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://flowforge/test">
+
+  <!-- Issue #203, scénario B : le mapping d'entrée du sous-processus recopie une valeur posée à la complétion dans
+       generatedDocumentId. Refusé au déploiement (TODO §99), sauf les recopies à l'identique de dossierId et tenantId. -->
+  <process id="reservedWriteCallActivity" name="Reserved Write Call Activity" isExecutable="true">
+    <startEvent id="rwcStart"/>
+    <sequenceFlow id="rwcFlow1" sourceRef="rwcStart" targetRef="rwcReview"/>
+    <userTask id="rwcReview" name="Relire" flowable:assignee="actor-1"/>
+    <sequenceFlow id="rwcFlow2" sourceRef="rwcReview" targetRef="rwcCall"/>
+    <callActivity id="rwcCall" name="Joindre" calledElement="reservedWriteChild">
+      <extensionElements>
+        <flowable:in source="dossierId" target="dossierId"/>
+        <flowable:in source="tenantId" target="tenantId"/>
+        <flowable:in source="docRef" target="generatedDocumentId"/>
+      </extensionElements>
+    </callActivity>
+    <sequenceFlow id="rwcFlow3" sourceRef="rwcCall" targetRef="rwcDone"/>
+    <userTask id="rwcDone" name="Terminé" flowable:assignee="actor-1"/>
+  </process>
+
+  <process id="reservedWriteChild" name="Reserved Write Child" isExecutable="true">
+    <startEvent id="rwChildStart"/>
+    <sequenceFlow id="rwChildFlow1" sourceRef="rwChildStart" targetRef="rwChildAttach"/>
+    <serviceTask id="rwChildAttach" name="Joindre le document" flowable:delegateExpression="${attachGeneratedDocumentTask}"/>
+    <sequenceFlow id="rwChildFlow2" sourceRef="rwChildAttach" targetRef="rwChildEnd"/>
+    <endEvent id="rwChildEnd"/>
+  </process>
+</definitions>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://flowforge/test">
+
+  <!-- Issue #203, scénario A : la boucle multi-instance recopie une valeur posée à la complétion dans generatedDocumentId.
+       Refusé au déploiement (TODO §99) ; ReservedVariableWriteIT le déploie directement dans le moteur pour prouver l'effet. -->
+  <process id="reservedWriteMultiInstance" name="Reserved Write Multi Instance" isExecutable="true">
+    <startEvent id="rwmStart"/>
+    <sequenceFlow id="rwmFlow1" sourceRef="rwmStart" targetRef="rwmReview"/>
+    <userTask id="rwmReview" name="Relire" flowable:assignee="actor-1"/>
+    <sequenceFlow id="rwmFlow2" sourceRef="rwmReview" targetRef="rwmAttach"/>
+    <serviceTask id="rwmAttach" name="Joindre le document" flowable:delegateExpression="${attachGeneratedDocumentTask}">
+      <multiInstanceLoopCharacteristics isSequential="true" flowable:collection="refs"
+                                        flowable:elementVariable="generatedDocumentId"/>
+    </serviceTask>
+    <sequenceFlow id="rwmFlow3" sourceRef="rwmAttach" targetRef="rwmDone"/>
+    <userTask id="rwmDone" name="Terminé" flowable:assignee="actor-1"/>
+  </process>
+</definitions>

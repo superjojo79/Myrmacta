@@ -1,7 +1,7 @@
 ---
 phase: implementation
 title: Unicité d'un champ de dossier — implémentation
-description: Lot A livré (unicité serveur et MCP) ; lots B, C, D à venir
+description: Lots A (unicité serveur et MCP) et B (brique de recherche) livrés ; lots C et D à venir
 ---
 
 # Implémentation — `unicite-champ-dossier` (issue #184)
@@ -53,6 +53,23 @@ description: Lot A livré (unicité serveur et MCP) ; lots B, C, D à venir
 - Le dossier corrigé ne se gêne pas lui-même (pré-contrôle et table).
 - Insertion des clés dans un ordre stable : deux transactions concurrentes ne s'interbloquent pas.
 - Détenteur introuvable après conflit (supprimé entre-temps) : référence « ? ».
+
+## Lot B — brique « Rechercher des dossiers » (livré)
+
+| Fichier | Rôle |
+|---|---|
+| `domain/workflow/palette/DossierSearchSpec.java` | grammaire de `searchCriteria` (1 à 3 lignes, sources `dossierField:`/`variable:`) |
+| `domain/workflow/palette/BuildingBlockCatalog.java`, `BlockParameter.java`, `BlockAttributeRules.java` | bloc `search-dossiers`, paramètre multiligne, sorties validées comme `formulaResult`, distinctes, lecture littérale |
+| `domain/workflow/AllowedBpmnDelegates.java` | `dossierSearchTask` |
+| `domain/dossier/port/in/SearchSimilarDossiersUseCase.java`, `usecase/SearchSimilarDossiersUseCaseImpl.java` | règles R2-R8, conversion typée |
+| `domain/dossier/port/out/DossierSearchPort.java` | `findOpenMatches`, `MatchSummary` |
+| `infrastructure/persistence/dossier/JpaDossierSearchAdapter.java`, `DossierSpecifications.java` | requête : type, statuts ouverts, exclusion, plus ancien |
+| `infrastructure/flowable/DossierSearchDelegate.java` | délégué |
+| `infrastructure/config/DossierConfig.java`, `ArchitectureRulesTest` | câblage ; liste blanche `Dossier.fields()` |
+
+Écarts avec la conception : une valeur de `SELECT` hors options est cherchée telle quelle (revue adversariale) ; la
+conversion des valeurs est propre au use case (pas de réutilisation de `FieldCondition`, dont la borne de 200 caractères
+produirait de faux 0 pour un texte long).
 
 ## Suites (hors lot A)
 

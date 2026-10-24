@@ -2,8 +2,8 @@
 
 > **Statut :** ouvert · point de premier niveau · [registre](README.md)
 
-[ ] en cours (issue [#184](https://github.com/superjojo79/FlowForge/issues/184)). Lot A (unicité, serveur et MCP) livré ;
-restent la brique « Rechercher des dossiers » (lot B), l'interface (lot C) et l'exemple riverain (lot D).
+[ ] en cours (issue [#184](https://github.com/superjojo79/FlowForge/issues/184)). Lot A (unicité, serveur et MCP) et lot B
+(brique « Rechercher des dossiers ») livrés ; restent l'interface (lot C) et l'exemple riverain (lot D).
 
 **Constat.** Aucun champ de dossier ne pouvait être déclaré unique. Dans l'exemple « autorisation riverain »
 (`exemples/autorisation-riverain/DIFFICULTES.md` §1), « une seule demande par plaque » reposait sur une case cochée par
@@ -76,7 +76,45 @@ l'enregistrement et le recalcul des règles ont chacun été retirés à titre d
   transaction, sans cycle possible ; l'éditeur de schéma du SPA conserve les propriétés qu'il ne connaît pas (`unique`
   survit à un enregistrement depuis l'interface, en attendant le lot C).
 
+**Brique « Rechercher des dossiers » (lot B).** `${dossierSearchTask}` compte les dossiers en cours du type du dossier
+courant, lui exclu, dont 1 à 3 champs cherchables valent les valeurs données (`searchCriteria` : lignes
+`champ = dossierField:<champ>` ou `champ = variable:<nom>`), et pose le nombre et la référence du plus ancien dans les
+variables nommées par `searchCountResult` et `searchFirstReferenceResult`.
+
+- **D-SEARCH-BLOCK-SCOPE** (tranché par l'utilisateur) — type courant seulement, dossiers ni `CLOTURE` ni `ARCHIVE`, dossier
+  courant exclu, égalité stricte. Écarté : type cible déclaré dans le BPMN (un workflow lirait des dossiers d'un type que son
+  concepteur ne voit pas : règle d'accès à trancher) ; tous les opérateurs de la recherche.
+- **D-SEARCH-BLOCK-OUTPUT** (tranché par l'utilisateur) — un nombre (entier) et la référence du plus ancien (date de création,
+  puis identifiant), `null` si aucun. Écarté : nombre seul ; liste de références (variable non scalaire).
+
+Choix faits sans arbitrage :
+- Champ cherché déclaré `searchable` (donc non sensible), vérifié **à l'exécution** : le type du dossier n'est pas connu au
+  déploiement. Source `dossierField:` déclarée et non sensible (R8), sinon le nombre serait un oracle sur la valeur masquée.
+  Un manquement est une erreur de conception : incident rejouable.
+- Une valeur vide, ou qu'aucun dossier ne peut tenir (texte dans un champ nombre, date mal formée, `NUL`), donne 0 sans
+  requête. Une valeur structurée (objet, liste) est une erreur de conception. Une valeur de `SELECT` se cherche telle
+  quelle : une option retirée du type reste stockée dans d'anciens dossiers (revue adversariale).
+- Attributs littéraux seulement, validés au déploiement et à l'exécution (mêmes règles que `formulaResult` pour les
+  sorties, deux noms distincts). Égalité servie par l'index GIN (`flow_jsonb_contains`).
+- La brique n'est pas une garantie : deux exécutions simultanées peuvent toutes deux trouver 0. La garantie est `unique`.
+
+**Tests du lot B.** `DossierSearchSpecTest`, `SearchSimilarDossiersUseCaseImplTest` (portée, conversion, valeur vide,
+champ non cherchable, source sensible ou non déclarée, valeur structurée, bornes), `BlockAttributeRulesTest`,
+`BuildingBlockCatalogTest`, `FlowableBpmnParserAdapterBlockTest` ; `DossierOpenMatchesIT` (PostgreSQL : statuts, type,
+dossier courant, plus ancien, nombres par valeur) ; `DossierSearchTaskIT` (moteur : nombre et référence, source variable,
+incident, refus au déploiement).
+
+**Revue adversariale du lot B (2026-10-24).**
+- *Corrigé* — une valeur de `SELECT` qui n'est plus une option donnait 0, alors que d'anciens dossiers la tiennent.
+- *Vérifié* — les critères et les sorties ne viennent que du BPMN (délégué en lecture littérale) ; `variable:` ne lit qu'une
+  valeur scalaire (`dossierFields`, `connectorResult` et autres structures sont refusés) ; seuls un nombre et une référence
+  sortent ; une réponse de portail ne pose que les réponses de son questionnaire, jamais un nom choisi par le tiers.
+- *Accepté* — celui qui complète une tâche peut poser la variable source d'un critère `variable:` et apprendre, par la
+  passerelle ou la référence, si un dossier en cours du même type tient une valeur : c'est ce que sa recherche de dossiers lui
+  permet déjà (même type, champs cherchables). Le guide de conception demande de ne pas transmettre la référence à un tiers
+  externe sans l'avoir voulu.
+
 **Impacte :** `docs/specs/04-dossiers.md`, `docs/specs/13-modele-physique.md`, `docs/guides/GUIDE-UTILISATEUR.md`,
-`docs/guides/GUIDE-CONCEPTION-BPMN.md` (à la livraison des lots B et C), golden OpenAPI (`FieldDefinition.unique`),
+`docs/guides/GUIDE-CONCEPTION-BPMN.md` (§3octies et §7, lot B ; palette au lot C), golden OpenAPI (`FieldDefinition.unique`), catalogue des briques en version 3 (bloc `search-dossiers`),
 description MCP de `define_dossier_type`. Migration `037` (nouvelle table, vide au déploiement : elle se remplit à
 l'activation de `unique` sur un type).

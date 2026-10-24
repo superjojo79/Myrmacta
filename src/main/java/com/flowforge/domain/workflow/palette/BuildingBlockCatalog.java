@@ -16,7 +16,7 @@ import java.util.Set;
 public final class BuildingBlockCatalog {
 
     /** Incrémenté à chaque changement de contenu du catalogue (contrat MCP / client). */
-    public static final int VERSION = 2;
+    public static final int VERSION = 3;
 
     public static final Set<String> VALUE_SOURCES = Set.of(
             "documentTemplates", "connectorInstances", "notificationWebhooks", "dossierTypes", "workflowTypes",
@@ -103,6 +103,19 @@ public final class BuildingBlockCatalog {
                     text("fieldMapping", "Valeurs à enregistrer", 8000,
                             "Une ligne par champ : champ = expression. Ex. score = connectorResult.json.score. "
                                     + "connectorResult.json est le corps de la réponse lu comme JSON. 20 champs au plus.",
+                            true)),
+            // TODO §102 (issue #184, lot B) — dossiers ouverts du même type qui partagent des valeurs avec le dossier courant.
+            block("search-dossiers", "Rechercher des dossiers",
+                    "Compte les dossiers en cours du même type qui ont les mêmes valeurs que des champs choisis (hors "
+                            + "dossier courant), et donne la référence du plus ancien ; une passerelle route ensuite.",
+                    BlockCategory.DOSSIER, BlockElement.SERVICE_TASK, BlockMarker.delegate("dossierSearchTask"),
+                    text("searchCriteria", "Critères", 1000,
+                            "Une ligne par critère : champ = dossierField:<champ> ou champ = variable:<nom>. Ex. email = "
+                                    + "dossierField:email. Champs déclarés cherchables ; 3 critères au plus.", true),
+                    text("searchCountResult", "Variable du nombre trouvé", 60,
+                            "Nom de la variable qui reçoit le nombre de dossiers trouvés (0 si aucun).", true),
+                    text("searchFirstReferenceResult", "Variable de la référence", 60,
+                            "Nom de la variable qui reçoit la référence du plus ancien dossier trouvé (vide si aucun).",
                             true)),
             block("user-question", "Question utilisateur",
                     "Tâche humaine qui pose un choix indépendant du dossier.",

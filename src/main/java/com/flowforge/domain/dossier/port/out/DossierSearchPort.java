@@ -6,10 +6,32 @@ import com.flowforge.domain.dossier.model.DossierStatus;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 
 public interface DossierSearchPort {
 
     DossierPage search(String tenantId, Filter filter, int page, int size);
+
+    /**
+     * TODO §102 (issue #184, lot B, D-SEARCH-BLOCK-SCOPE) — dossiers du type {@code dossierTypeCode} ni {@code CLOTURE} ni
+     * {@code ARCHIVE}, autres que {@code excludeDossierId}, qui satisfont tous les {@code predicates} : leur nombre et la
+     * référence du plus ancien (date de création, puis identifiant), {@code null} s'il n'y en a aucun.
+     */
+    MatchSummary findOpenMatches(
+            String tenantId, String dossierTypeCode, List<FieldPredicate> predicates, UUID excludeDossierId);
+
+    /** TODO §102 (D-SEARCH-BLOCK-OUTPUT) — résultat de {@link #findOpenMatches}. */
+    record MatchSummary(long count, String firstReference) {
+        public MatchSummary {
+            if (count < 0 || (count == 0) != (firstReference == null)) {
+                throw new IllegalArgumentException("a match summary has a first reference exactly when it counts a match");
+            }
+        }
+
+        public static MatchSummary none() {
+            return new MatchSummary(0, null);
+        }
+    }
 
     /**
      * @param dossierTypeCodes {@code null} = no type restriction (admin bypass);

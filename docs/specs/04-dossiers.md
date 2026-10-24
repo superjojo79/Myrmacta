@@ -964,7 +964,7 @@ infrastructure
   (`SecurityAuditLog.sensitiveFieldChanged`, niveau INFO), jamais bloqué.
 - **Tests :** `UpdateDossierFieldsUseCaseImplTest`, tests du contrôleur, Playwright `E2E-22`.
 
-## Implémentation — unicité d'un champ (TODO §102, issue #184, lot A)
+## Implémentation — unicité d'un champ et recherche depuis un workflow (TODO §102, issue #184, lots A et B)
 
 - **Déclaration :** `FieldDefinition.unique` sur un champ `STRING`, `NUMBER` ou `DATE`, non sensible, hors groupe, nom ≤ 100
   caractères ; permis sur un champ calculé (clé normalisée par une formule).
@@ -977,6 +977,10 @@ infrastructure
   correction et de l'essai à blanc MCP ; la base tranche les courses). Activer `unique` sur des doublons ouverts → 409 avec
   `duplicates`. Webhook entrant : 400 avec champs et codes seulement.
 - **Tests :** `DossierUniqueValueIT`, `DossierUniqueTypeIT`, `UniqueFieldApiTest`, `UniqueFieldWorkflowIT`.
+- **Recherche depuis un workflow (lot B) :** brique `${dossierSearchTask}` — dossiers en cours du même type, dossier courant
+  exclu, 1 à 3 égalités sur des champs cherchables ; nombre et référence du plus ancien
+  ([GUIDE-CONCEPTION-BPMN.md](../guides/GUIDE-CONCEPTION-BPMN.md) §3octies). Port `DossierSearchPort.findOpenMatches`,
+  use case `SearchSimilarDossiersUseCase`. Tests : `DossierOpenMatchesIT`, `DossierSearchTaskIT`.
 
 ## Implémentation — antivirus des pièces jointes (lot C, PR #131)
 

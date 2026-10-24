@@ -31,7 +31,12 @@ public final class BlockAttributeRules {
      * process peut être posée par un utilisateur à l'exécution (complétion de tâche) ; elle ne doit jamais devenir du code
      * exécutable. Tous leurs paramètres obligatoires doivent donc figurer dans le BPMN.
      */
-    private static final Set<String> LITERAL_ONLY_DELEGATES = Set.of("businessExpressionTask", "fieldMappingTask");
+    private static final Set<String> LITERAL_ONLY_DELEGATES =
+            Set.of("businessExpressionTask", "fieldMappingTask", "dossierSearchTask");
+
+    /** TODO §102 (lot B, R4) — noms de variables écrites par la brique « Rechercher des dossiers ». */
+    private static final Set<String> RESULT_VARIABLE_PARAMETERS =
+            Set.of("formulaResult", "searchCountResult", "searchFirstReferenceResult");
 
     /**
      * Le nom d'attribut est {@code formulaResult} et non {@code resultVariable} : ce dernier est un attribut natif de
@@ -96,6 +101,12 @@ public final class BlockAttributeRules {
                             + activityId + (delegate == null ? " (not a building-block serviceTask)"
                                     : " (delegate " + delegate + ")")));
             check(activityId, parameter, entry.getValue());
+        }
+        String count = flowableAttributes.get("searchCountResult");
+        if (count != null && count.strip().equals(
+                String.valueOf(flowableAttributes.get("searchFirstReferenceResult")).strip())) {
+            throw new InvalidBpmnException("BPMN attributes flowable:searchCountResult and flowable:searchFirstReferenceResult on "
+                    + activityId + " must name two distinct variables");
         }
         if (flowableAttributes.containsKey("notificationAttachment") || flowableAttributes.containsKey("notificationAttachmentName")) {
             checkAttachmentCompanions(activityId, flowableAttributes);
@@ -230,8 +241,11 @@ public final class BlockAttributeRules {
                 if (KEY_TEXT.contains(parameter.name()) && !KEY.matcher(value).matches()) {
                     throw new InvalidBpmnException(owner + " has an invalid format");
                 }
-                if ("formulaResult".equals(parameter.name())) {
+                if (RESULT_VARIABLE_PARAMETERS.contains(parameter.name())) {
                     checkFormulaResult(owner, value);
+                }
+                if ("searchCriteria".equals(parameter.name())) {
+                    DossierSearchSpec.parse(value, owner);
                 }
                 if ("fieldMapping".equals(parameter.name())) {
                     FieldMappingSpec.parse(value, owner);

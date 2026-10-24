@@ -43,6 +43,23 @@ final class DossierSpecifications {
         };
     }
 
+    /**
+     * TODO §102 (lot B) — dossiers ouverts du type, hors {@code excludeDossierId}, qui satisfont tous les critères. Mêmes
+     * prédicats de champ que la recherche D2 (containment servi par l'index GIN).
+     */
+    static Specification<DossierJpaEntity> forOpenMatches(
+            String tenantId,
+            String dossierTypeCode,
+            List<DossierSearchPort.FieldPredicate> fieldPredicates,
+            java.util.UUID excludeDossierId) {
+        Specification<DossierJpaEntity> base = forSearch(tenantId,
+                DossierSearchPort.Filter.restricted(null, Set.of(dossierTypeCode), null).withFieldPredicates(fieldPredicates));
+        return base.and((root, query, cb) -> {
+            Predicate open = cb.not(root.get("status").in(DossierStatus.CLOTURE, DossierStatus.ARCHIVE));
+            return excludeDossierId == null ? open : cb.and(open, cb.notEqual(root.get("id"), excludeDossierId));
+        });
+    }
+
     // ---- TODO §81 (D2) : champs dynamiques (PostgreSQL jsonb ; fonctions enregistrées par DossierJsonFunctionContributor) ----
 
     private static final tools.jackson.databind.ObjectMapper JSON = tools.jackson.databind.json.JsonMapper.builder().build();

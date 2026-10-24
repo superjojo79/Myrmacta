@@ -28,6 +28,7 @@ import com.flowforge.domain.dossier.port.in.ListDossierTypesUseCase;
 import com.flowforge.domain.dossier.port.in.ListPurgeOutboxUseCase;
 import com.flowforge.domain.dossier.port.in.RevokeDossierTypeAccessUseCase;
 import com.flowforge.domain.dossier.port.in.SearchDossiersUseCase;
+import com.flowforge.domain.dossier.port.in.SearchSimilarDossiersUseCase;
 import com.flowforge.domain.dossier.port.in.UpdateDossierFieldsUseCase;
 import com.flowforge.domain.dossier.port.in.UpdateDossierStatusUseCase;
 import com.flowforge.domain.dossier.port.in.UpdateDossierTypeUseCase;
@@ -66,6 +67,7 @@ import com.flowforge.domain.dossier.usecase.ListPurgeOutboxUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.ProcessPurgeOutboxUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.RevokeDossierTypeAccessUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.SearchDossiersUseCaseImpl;
+import com.flowforge.domain.dossier.usecase.SearchSimilarDossiersUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.UpdateDossierFieldsUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.UpdateDossierStatusUseCaseImpl;
 import com.flowforge.domain.dossier.usecase.UpdateDossierTypeUseCaseImpl;
@@ -201,6 +203,15 @@ public class DossierConfig {
             DossierTypeAclRepository aclRepository,
             DossierTypeRepository typeRepository) {
         return new SearchDossiersUseCaseImpl(dossierSearchPort, aclRepository, typeRepository);
+    }
+
+    /** TODO §102 (issue #184, lot B) — brique « Rechercher des dossiers ». */
+    @Bean
+    SearchSimilarDossiersUseCase searchSimilarDossiersUseCase(
+            DossierRepository dossierRepository,
+            DossierTypeRepository typeRepository,
+            DossierSearchPort dossierSearchPort) {
+        return new SearchSimilarDossiersUseCaseImpl(dossierRepository, typeRepository, dossierSearchPort);
     }
 
     @Bean

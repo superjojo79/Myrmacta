@@ -24,9 +24,10 @@ Chaque tâche commence par un test rouge (skill `tdd`).
 
 ## Lot B — brique de recherche
 
-- [ ] B1 `DossierSearchPort.findOpenMatches` (adaptateur JPA, IT).
-- [ ] B2 Use case `SearchSimilarDossiersUseCase` (domaine).
-- [ ] B3 `DossierSearchDelegate` (`dossierSearchTask`), `AllowedBpmnDelegates`, validation au déploiement,
+- [x] B0 `DossierSearchSpec` : grammaire de `searchCriteria`.
+- [x] B1 `DossierSearchPort.findOpenMatches` (adaptateur JPA, IT).
+- [x] B2 Use case `SearchSimilarDossiersUseCase` (domaine).
+- [x] B3 `DossierSearchDelegate` (`dossierSearchTask`), `AllowedBpmnDelegates`, validation au déploiement,
       `BuildingBlockCatalog` (`dossier-search`) ; `DossierSearchTaskIT`.
 
 ## Lot C — SPA

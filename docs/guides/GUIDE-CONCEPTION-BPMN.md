@@ -392,6 +392,7 @@ palette, le panneau, la validation au déploiement et les agents. Treize briques
 | Changer le statut du workflow | `serviceTask` | `${updateWorkflowLinkStatusTask}` |
 | Décision DMN | `serviceTask` | `flowable:type="dmn"` |
 | Évaluer une expression | `serviceTask` | `${businessExpressionTask}` |
+| Rechercher des dossiers | `serviceTask` | `${dossierSearchTask}` |
 | Demander une signature | `serviceTask` | `${signatureRequestTask}` |
 | Question utilisateur | `userTask` | `flowable:formKey="user-question:<clé>"` |
 | Tâche externe (portail) | `userTask` | `formKey` `user-question:` + `flowable:portalRecipient` |
@@ -557,6 +558,41 @@ par le chemin métier habituel (validation de type, normalisation, version) :
   lisibles par l'expression ; ils peuvent en revanche être la cible (l'écriture est tracée dans le journal d'audit : nom du champ, process et activité, jamais la valeur).
 - L'écriture est attribuée à `workflow:<processInstanceId>/<activité>`. L'attribut est **littéral** (jamais une variable de process) et validé au déploiement. La variable
   `connectorResult` est **réservée** : une complétion de tâche ou un démarrage ne peut pas la forger.
+
+## 3octies. Rechercher des dossiers (TODO §102, issue #184)
+
+La brique **« Rechercher des dossiers »** (`${dossierSearchTask}`) compte les dossiers **en cours du même type** (ni `CLOTURE`
+ni `ARCHIVE`, le dossier courant exclu) qui ont les mêmes valeurs que des champs choisis, et donne la référence du plus
+ancien. Une passerelle route ensuite sur le nombre :
+
+```xml
+<serviceTask id="voisins" name="Demandes en cours du même demandeur"
+             flowable:delegateExpression="${dossierSearchTask}"
+             flowable:searchCriteria="email = dossierField:email"
+             flowable:searchCountResult="nbDemandes"
+             flowable:searchFirstReferenceResult="premiereDemande"/>
+<exclusiveGateway id="doublon" default="instruire"/>
+<sequenceFlow id="existe" sourceRef="doublon" targetRef="signaler">
+  <conditionExpression xsi:type="tFormalExpression">${nbDemandes > 0}</conditionExpression>
+</sequenceFlow>
+```
+
+- **Critères** : une ligne `champ = dossierField:<champ>` (valeur du dossier courant) ou `champ = variable:<nom>` (variable de
+  process), trois au plus, tous à satisfaire. Le champ cherché doit être déclaré **cherchable** sur le type ; une source
+  `dossierField:` doit être un champ **déclaré et non sensible** (sinon le nombre révélerait la valeur masquée). Sinon
+  l'activité échoue en incident, rejouable après correction du type.
+- **Égalité stricte**, typée comme la recherche des dossiers : un nombre se compare par valeur, une date au format ISO
+  (`yyyy-MM-dd`). Une valeur vide, ou qu'aucun dossier ne peut tenir (texte dans un champ nombre), donne 0 sans erreur.
+- **Sorties** : `searchCountResult` reçoit le nombre (entier), `searchFirstReferenceResult` la référence du plus ancien
+  dossier trouvé, ou `null`. Deux noms distincts, jamais une variable réservée. Aucune autre valeur d'un autre dossier n'entre
+  dans le process.
+- Attributs **littéraux**, validés au déploiement : une variable posée à la complétion ne remplace ni les critères ni les
+  sorties.
+- **Ce n'est pas une garantie d'unicité** : deux exécutions simultanées peuvent toutes deux trouver 0. Pour interdire un
+  doublon, déclarer le champ `unique` sur le type (§102) ; la brique sert à router (« le demandeur a-t-il d'autres demandes
+  en cours ? »).
+- La référence trouvée appartient à un autre dossier : ne l'envoyez pas à un tiers externe (notification, portail) sans
+  l'avoir voulu.
 
 ## 4. Instancier / appeler un service externe
 
@@ -815,6 +851,7 @@ Référence rapide — `delegateExpression`, variables lues (entrée) et écrite
 | `${signatureRequestTask}` | demande une signature électronique (§3quater) | `signatureDocument`, `signatureMode`, `signatureDeadlineDays`, `<flowable:signer>` (attributs du bloc) | `signatureRequestId` ; à la reprise : `signatureOutcome` |
 | `${businessExpressionTask}` | évalue une expression métier bornée (§3sexies) | attributs littéraux `formula`, `formulaResult` ; lit le dossier (champs non sensibles), `connectorResult`, variables scalaires | la variable nommée par `formulaResult` |
 | `${fieldMappingTask}` | enregistre des valeurs calculées dans des champs du dossier, en un patch (§3septies) | attribut littéral `fieldMapping` (lignes `champ = expression`) ; lit le dossier (champs non sensibles), `connectorResult` (+ `json`), variables | champs du dossier |
+| `${dossierSearchTask}` | compte les dossiers en cours du même type qui partagent des valeurs avec le dossier courant (§3octies) | attributs littéraux `searchCriteria` (lignes `champ = dossierField:<champ>` ou `variable:<nom>`), `searchCountResult`, `searchFirstReferenceResult` ; `dossierId` (réservée) | les variables nommées par `searchCountResult` (nombre) et `searchFirstReferenceResult` (référence ou `null`) |
 | `${createChildDossierTask}` | crée un dossier enfant/suite et démarre son workflow | `dossierId` (réservée), `childDossierTypeCode`, `childDossierLabel`, `workflowProcessKey`, `relationType` (`PARENT_CHILD` ou `SUBSEQUENT`), `childDossierFields`?, `childWorkflowVariables`? | — |
 
 Toutes ces classes vivent dans `src/main/java/com/flowforge/infrastructure/flowable/` — en cas

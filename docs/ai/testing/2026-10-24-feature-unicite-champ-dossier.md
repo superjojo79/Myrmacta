@@ -20,10 +20,10 @@ pré-contrôles), chaque règle U/R couverte par au moins un test. Tests d'inté
       référence, groupée avec les autres erreurs ; le dossier lui-même n'est pas un conflit (PATCH sans changement).
 - [x] `UpdateDossierTypeUseCaseImplTest` / compatibilité : activer `unique` avec doublons ouverts → refus avec valeurs et
       références ; doublons seulement parmi les clôturés → accepté ; retirer `unique` → accepté (U10, U11).
-- [ ] `SearchSimilarDossiersUseCaseTest` : champ non cherchable → erreur ; source `dossierField:` sensible ou non
+- [x] `SearchSimilarDossiersUseCaseTest` : champ non cherchable → erreur ; source `dossierField:` sensible ou non
       déclarée → erreur (R8) ; source vide → (0, null) sans appel au port ;
       exclusion du dossier courant transmise au port.
-- [ ] `BlockAttributeRules` / catalogue : 0 ou 4 critères refusés, ligne mal formée, source inconnue, sortie réservée ou
+- [x] `BlockAttributeRules` / catalogue : 0 ou 4 critères refusés, ligne mal formée, source inconnue, sortie réservée ou
       absente.
 
 ## Intégration — backend
@@ -41,9 +41,9 @@ pré-contrôles), chaque règle U/R couverte par au moins un test. Tests d'inté
 - [x] Type : activation avec doublons ouverts → 409 avec exemples ; sans doublon → contrainte active immédiatement
       (création suivante refusée) ; désactivation → lignes supprimées.
 - [ ] Promotion de configuration : bundle qui active `unique` sur une cible contenant des doublons → refus (U12).
-- [ ] `DossierSearchTaskIT` : 0 voisin → 0 et `null` ; 2 voisins → 2 et référence du plus ancien ; clôturés et dossier
+- [x] `DossierSearchTaskIT` : 0 voisin → 0 et `null` ; 2 voisins → 2 et référence du plus ancien ; clôturés et dossier
       courant exclus ; source `variable:` ; champ rendu non cherchable après déploiement → incident rejouable.
-- [ ] Déploiement : BPMN avec `searchCriteria` invalide ou sortie réservée refusé (parser).
+- [x] Déploiement : BPMN avec `searchCriteria` invalide ou sortie réservée refusé (parser).
 - [x] MCP : `define_dossier_type` avec `unique` ; `create_dossier` en doublon → erreur `UNIQUE`.
 - [x] `ChangelogChecksumStabilityIT` vert avec le changeSet 037 ; ArchUnit vert (allowlist `Dossier.fields()` étendue).
 
@@ -80,6 +80,13 @@ pré-contrôles), chaque règle U/R couverte par au moins un test. Tests d'inté
   recalcul des règles (1 échec).
 - Promotion (U12) : couverte par construction (`ImportConfigurationUseCaseImpl` passe par le contrôle de compatibilité et
   `UpdateDossierTypeUseCase`) ; pas de test dédié.
+
+### Réalisé pour le lot B (2026-10-24)
+
+- `DossierSearchSpecTest`, `SearchSimilarDossiersUseCaseImplTest` (8 cas, dont l'option `SELECT` retirée),
+  `BlockAttributeRulesTest.theDossierSearchBlockIsValidatedAtDeployment`, `BuildingBlockCatalogTest`,
+  `FlowableBpmnParserAdapterBlockTest` (XML de chaque brique accepté).
+- `DossierOpenMatchesIT` (PostgreSQL) et `DossierSearchTaskIT` (moteur).
 
 ## Fixtures et mocks
 

@@ -113,6 +113,12 @@ public final class DossierFieldValidator {
                 errors.add(FieldValidationError.invalidValue(path, "Text exceeds " + CELL_TEXT_MAX + " characters"));
                 continue;
             }
+            // TODO §102 (U13) : la forme canonique d'une valeur unique doit tenir dans la clé de dossier_unique_value.
+            if (def.isUnique() && lengthOf(UniqueFieldKeys.canonical(def.type(), value)) > UniqueFieldKeys.MAX_VALUE_CHARS) {
+                errors.add(FieldValidationError.invalidValue(
+                        path, "A unique value has at most " + UniqueFieldKeys.MAX_VALUE_CHARS + " characters"));
+                continue;
+            }
             if (def.type() == FieldType.SELECT
                     && value != null
                     && !def.options().contains(String.valueOf(value))) {
@@ -333,6 +339,10 @@ public final class DossierFieldValidator {
             case BOOLEAN -> Boolean.parseBoolean(raw);
             default -> raw;
         };
+    }
+
+    private static int lengthOf(String text) {
+        return text == null ? 0 : text.length();
     }
 
     private static boolean isBlank(Object value) {

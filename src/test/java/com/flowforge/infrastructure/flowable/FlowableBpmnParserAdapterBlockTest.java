@@ -71,7 +71,10 @@ class FlowableBpmnParserAdapterBlockTest {
                     ? UUID.randomUUID().toString() : "key1";
             case SIGNERS -> "";
             case TEXT -> "documentVariant".equals(p.name()) || "documentLocale".equals(p.name()) ? "fr"
-                    : "fieldMapping".equals(p.name()) ? "score = connectorResult.json.score" : "texte";
+                    : "fieldMapping".equals(p.name()) ? "score = connectorResult.json.score"
+                    : "searchCriteria".equals(p.name()) ? "email = dossierField:email"
+                    : "searchCountResult".equals(p.name()) ? "nbTrouves"
+                    : "searchFirstReferenceResult".equals(p.name()) ? "premierTrouve" : "texte";
         };
     }
 

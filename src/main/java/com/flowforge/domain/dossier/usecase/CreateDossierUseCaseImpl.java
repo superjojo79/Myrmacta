@@ -2,6 +2,7 @@ package com.flowforge.domain.dossier.usecase;
 
 import com.flowforge.domain.dossier.DossierAccessPolicy;
 import com.flowforge.domain.dossier.DossierFieldRules;
+import com.flowforge.domain.dossier.DossierUniquenessCheck;
 import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.model.DossierFieldValidator;
@@ -26,6 +27,7 @@ public final class CreateDossierUseCaseImpl implements CreateDossierUseCase {
     private final DossierAccessPolicy accessPolicy;
     private final DossierFieldValidator fieldValidator;
     private final DossierFieldRules fieldRules;
+    private final DossierUniquenessCheck uniqueness;
 
     public CreateDossierUseCaseImpl(
             DossierTypeRepository typeRepository,
@@ -51,6 +53,19 @@ public final class CreateDossierUseCaseImpl implements CreateDossierUseCase {
             DossierAccessPolicy accessPolicy,
             DossierFieldValidator fieldValidator,
             DossierFieldRules fieldRules) {
+        this(typeRepository, dossierRepository, referenceGenerator, accessPolicy, fieldValidator, fieldRules,
+                DossierUniquenessCheck.disabled());
+    }
+
+    public CreateDossierUseCaseImpl(
+            DossierTypeRepository typeRepository,
+            DossierRepository dossierRepository,
+            DossierReferenceGenerator referenceGenerator,
+            DossierAccessPolicy accessPolicy,
+            DossierFieldValidator fieldValidator,
+            DossierFieldRules fieldRules,
+            DossierUniquenessCheck uniqueness) {
+        this.uniqueness = Objects.requireNonNull(uniqueness, "uniqueness");
         this.fieldRules = Objects.requireNonNull(fieldRules, "fieldRules");
         this.typeRepository = Objects.requireNonNull(typeRepository, "typeRepository");
         this.dossierRepository = Objects.requireNonNull(dossierRepository, "dossierRepository");
@@ -79,6 +94,9 @@ public final class CreateDossierUseCaseImpl implements CreateDossierUseCase {
         var errors = new java.util.ArrayList<>(
                 fieldValidator.validate(ruled.effectiveDefinitions(), fields, type.allowUnknownFields()));
         errors.addAll(ruled.errors());
+        // TODO §102 (U8) : doublon signalé avec les autres erreurs ; la garantie est tenue à l'enregistrement.
+        errors.addAll(uniqueness.conflicts(type, DossierStatus.DRAFT, fields,
+                errors.stream().map(com.flowforge.domain.dossier.model.FieldValidationError::field).toList(), null));
         if (!errors.isEmpty()) {
             throw new DossierFieldValidationException(errors);
         }

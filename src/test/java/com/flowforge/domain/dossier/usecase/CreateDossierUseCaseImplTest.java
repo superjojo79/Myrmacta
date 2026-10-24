@@ -112,6 +112,34 @@ class CreateDossierUseCaseImplTest {
         verify(dossierRepository, never()).save(org.mockito.ArgumentMatchers.any());
     }
 
+    /** TODO §102 (U8) — doublon refusé avant écriture, avec la référence du détenteur et les autres erreurs. */
+    @Test
+    void create_refusesAValueAlreadyHeldByAnOpenDossier_withTheOtherFieldErrors() {
+        var plaque = new FieldDefinition("plaque", "Plaque", FieldType.STRING, false, null, null, null, false, null, null,
+                null, null, null, null, false, null, null, true);
+        var type = type(true, false, List.of(plaque, field("amount", FieldType.NUMBER, false, null)));
+        when(typeRepository.findByCode(TENANT, TYPE_CODE)).thenReturn(Optional.of(type));
+        var port = mock(com.flowforge.domain.dossier.port.out.DossierUniquenessPort.class);
+        when(port.findHolders(TENANT, TYPE_CODE,
+                Set.of(new com.flowforge.domain.dossier.model.UniqueKey("plaque", "BE-1")), null))
+                .thenReturn(Map.of(new com.flowforge.domain.dossier.model.UniqueKey("plaque", "BE-1"), "DOS-1"));
+        var checked = new CreateDossierUseCaseImpl(typeRepository, dossierRepository, referenceGenerator, accessPolicy,
+                new com.flowforge.domain.dossier.model.DossierFieldValidator(),
+                com.flowforge.domain.dossier.DossierFieldRules.disabled(),
+                new com.flowforge.domain.dossier.DossierUniquenessCheck(port));
+
+        assertThatExceptionOfType(DossierFieldValidationException.class)
+                .isThrownBy(() -> checked.create(new CreateDossierUseCase.CreateDossierCommand(
+                        TENANT, TYPE_CODE, "A", Map.of("plaque", "BE-1", "amount", "bad"), "u1"), actor))
+                .satisfies(exception -> assertThat(exception.errors())
+                        .extracting("field", "code", "reference")
+                        .containsExactlyInAnyOrder(
+                                org.assertj.core.groups.Tuple.tuple("amount", "TYPE_MISMATCH", null),
+                                org.assertj.core.groups.Tuple.tuple("plaque", "UNIQUE", "DOS-1")));
+        verify(referenceGenerator, never()).generate(TENANT, TYPE_CODE);
+        verify(dossierRepository, never()).save(any());
+    }
+
     private static DossierType type(boolean active, boolean allowUnknownFields, List<FieldDefinition> fields) {
         return DossierType.inherit(UUID.randomUUID(), TENANT, TYPE_CODE, "Sinistre", "wf-sinistre",
                 active, allowUnknownFields, fields);

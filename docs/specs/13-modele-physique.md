@@ -239,6 +239,15 @@ ce projet ; jusque-là, la répartition tenant/`platform` se résume à
   `purge_outbox` pour la purge de stockage) plutôt que factorisé en une
   seule table générique — observation factuelle, pas un défaut à
   corriger dans cette feature documentaire.
+- **`dossier_unique_value`** (TODO §102, changeSet `037`, [04-dossiers.md](04-dossiers.md)) —
+  valeurs des champs `unique` tenues par les dossiers non clôturés. Clé
+  primaire `(tenant_id, dossier_type_code, field_name, field_value)` :
+  une valeur canonique n'appartient qu'à un dossier ouvert du type, même
+  sous écritures concurrentes. Tenue par `DossierRepository.save` sous
+  verrou consultatif partagé du type, reconstruite à l'enregistrement du
+  type sous verrou exclusif ; `dossier_id` en `ON DELETE CASCADE`. C'est
+  l'équivalent d'un index unique partiel sur une valeur JSONB, sans DDL
+  à l'exécution.
 
 ---
 

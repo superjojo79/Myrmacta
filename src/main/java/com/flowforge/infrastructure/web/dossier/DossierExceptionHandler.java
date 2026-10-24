@@ -68,9 +68,13 @@ public class DossierExceptionHandler {
                 : " (ex. " + String.join(", ", ex.sampleReferences()) + ")";
         ProblemDetail problem = problem(HttpStatus.CONFLICT, "Dossier type schema incompatible",
                 "Cette modification rend " + ex.incompatibleCount()
-                        + " dossier(s) existant(s) incompatible(s) avec le nouveau schéma" + examples);
+                        + " dossier(s) existant(s) incompatible(s) avec le nouveau schéma" + examples
+                        + (ex.duplicates().isEmpty() ? "" : " ; " + ex.duplicates().size()
+                                + " valeur(s) d'un champ unique sont partagées par des dossiers en cours"));
         problem.setProperty("incompatibleCount", ex.incompatibleCount());
         problem.setProperty("sampleReferences", ex.sampleReferences());
+        // TODO §102 (U10) : valeurs en double d'un champ unique, pour que l'administrateur les résolve.
+        problem.setProperty("duplicates", ex.duplicates());
         return problem;
     }
 

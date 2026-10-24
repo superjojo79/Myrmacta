@@ -9,8 +9,10 @@ import com.flowforge.domain.connector.model.ConnectorValidationException;
 import com.flowforge.domain.connector.model.UnknownConnectorException;
 import com.flowforge.domain.connector.model.WebhookAuthenticationException;
 import com.flowforge.domain.connector.model.WebhookIdempotencyInFlightException;
+import com.flowforge.domain.dossier.model.DossierFieldValidationException;
 import com.flowforge.infrastructure.security.SecurityAuditLog;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.Map;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -98,6 +100,20 @@ public class ConnectorExceptionHandler {
     })
     ProblemDetail handleBadRequest(Exception ex) {
         return problem(HttpStatus.BAD_REQUEST, "Bad request", ex.getMessage());
+    }
+
+    /**
+     * TODO §102 (revue adversariale) — webhook entrant dont le dossier est refusé à la validation de ses champs. Champs et
+     * codes seulement : ni message ni référence d'un autre dossier (doublon) ne partent vers un système externe.
+     */
+    @ExceptionHandler(DossierFieldValidationException.class)
+    ProblemDetail handleDossierFieldValidation(DossierFieldValidationException ex) {
+        ProblemDetail problem = problem(HttpStatus.BAD_REQUEST, "Dossier field validation failed",
+                "The dossier carried by this event was refused by its type schema");
+        problem.setProperty("errors", ex.errors().stream()
+                .map(error -> Map.of("field", error.field(), "code", error.code()))
+                .toList());
+        return problem;
     }
 
     @ExceptionHandler(UnsupportedOperationException.class)

@@ -11,6 +11,20 @@ class DossierFieldValidatorTest {
 
     private final DossierFieldValidator validator = new DossierFieldValidator();
 
+    /** TODO §102 (U13) — une valeur unique au-delà de 500 caractères ne tiendrait pas dans la clé en base. */
+    @Test
+    void aUniqueValueIsAtMostFiveHundredCharacters() {
+        var defs = List.of(new FieldDefinition("cle", "Clé", FieldType.STRING, false, null, null, null, false, null, null,
+                null, null, null, null, false, null, null, true));
+        assertThat(validator.validate(defs, Map.of("cle", "x".repeat(500)), false)).isEmpty();
+        var errors = validator.validate(defs, Map.of("cle", "x".repeat(501)), false);
+        assertThat(errors).extracting(FieldValidationError::field, FieldValidationError::code)
+                .containsExactly(org.assertj.core.groups.Tuple.tuple("cle", "INVALID_VALUE"));
+        assertThat(errors.getFirst().message()).contains("500").doesNotContain("xxx");
+        var notUnique = List.of(new FieldDefinition("cle", "Clé", FieldType.STRING, false, null, null, null));
+        assertThat(validator.validate(notUnique, Map.of("cle", "x".repeat(501)), false)).isEmpty();
+    }
+
     @Test
     void requiredMissing_returnsError() {
         var defs = List.of(field("name", FieldType.STRING, true, null));

@@ -27,6 +27,9 @@ import java.util.regex.Pattern;
  *   <li>{@code visibleWhen} — le champ n'est applicable que si l'expression est vraie ;</li>
  *   <li>{@code requiredWhen} — le champ est obligatoire si l'expression est vraie (en plus de {@code required}).</li>
  * </ul>
+ *
+ * <p>TODO §102 (issue #184) : {@code unique} — une valeur ne peut figurer que dans un seul dossier non clôturé du type
+ * (D-UNIQUE-SCOPE). Réservé aux champs {@link #UNIQUE_TYPES}, non sensibles, hors groupe ; possible sur un champ calculé.
  */
 public record FieldDefinition(
         String name,
@@ -45,7 +48,8 @@ public record FieldDefinition(
         String requiredWhen,
         Boolean searchable,
         String helpText,
-        String width
+        String width,
+        Boolean unique
 ) {
     /** TODO §85 (LC4a) — longueur maximale de l'aide contextuelle (texte brut). */
     public static final int MAX_HELP_TEXT_CHARS = 500;
@@ -64,6 +68,10 @@ public record FieldDefinition(
     /** TODO §81 (D2) — types dont la valeur est un scalaire JSON comparable ; ni MONEY, ni groupe, ni référence, ni fichier. */
     public static final Set<FieldType> SEARCHABLE_TYPES =
             EnumSet.of(FieldType.STRING, FieldType.NUMBER, FieldType.DATE, FieldType.BOOLEAN, FieldType.SELECT);
+    /** TODO §102 — types dont la valeur canonique est un texte comparable par égalité stricte (D-UNIQUE-COMPARE). */
+    public static final Set<FieldType> UNIQUE_TYPES = EnumSet.of(FieldType.STRING, FieldType.NUMBER, FieldType.DATE);
+    /** TODO §102 (U13) — la clé {@code (type, champ, valeur)} de {@code dossier_unique_value} reste sous la limite B-tree. */
+    public static final int MAX_UNIQUE_NAME_CHARS = 100;
     private static final Set<FieldType> NO_DEFAULT_TYPES =
             EnumSet.of(FieldType.MONEY, FieldType.EXTERNAL_REF, FieldType.REPEATABLE_GROUP);
 
@@ -75,6 +83,7 @@ public record FieldDefinition(
         // Jackson may pass null when the JSON key is absent (FAIL_ON_NULL_FOR_PRIMITIVES).
         sensitive = Boolean.TRUE.equals(sensitive);
         searchable = Boolean.TRUE.equals(searchable);
+        unique = Boolean.TRUE.equals(unique);
         fields = fields == null ? List.of() : List.copyOf(fields);
 
         helpText = blankToNull(helpText);
@@ -132,6 +141,20 @@ public record FieldDefinition(
                         + "that reveals the value by trial (field: " + name + ")");
             }
         }
+        if (unique) {
+            if (!UNIQUE_TYPES.contains(type)) {
+                throw new IllegalArgumentException("a " + type + " field cannot be unique: only " + UNIQUE_TYPES
+                        + " can (field: " + name + ")");
+            }
+            if (sensitive) {
+                throw new IllegalArgumentException("a sensitive field cannot be unique: refusing a duplicate would be an "
+                        + "oracle that reveals the value by trial (field: " + name + ")");
+            }
+            if (name.length() > MAX_UNIQUE_NAME_CHARS) {
+                throw new IllegalArgumentException("a unique field name has at most " + MAX_UNIQUE_NAME_CHARS
+                        + " characters (field: " + name + ")");
+            }
+        }
         if (type != FieldType.REPEATABLE_GROUP && (!fields.isEmpty() || minRows != null || maxRows != null)) {
             throw new IllegalArgumentException(
                     "only a REPEATABLE_GROUP can declare sub-fields, minRows or maxRows (field: " + name + ")");
@@ -187,6 +210,9 @@ public record FieldDefinition(
                     if (sub.isSearchable()) {
                         throw new IllegalArgumentException("a sub-field of a group cannot be searchable (field: " + sub.name() + ")");
                     }
+                    if (sub.isUnique()) {
+                        throw new IllegalArgumentException("a sub-field of a group cannot be unique (field: " + sub.name() + ")");
+                    }
                     if (sub.isSensitive()) {
                         throw new IllegalArgumentException("a sub-field of a group cannot be sensitive: mark the group "
                                 + name + " itself");
@@ -219,6 +245,29 @@ public record FieldDefinition(
                 || (c >= 0x2066 && c <= 0x2069)
                 || (c >= 0x200B && c <= 0x200F)
                 || c == 0xFEFF;
+    }
+
+    /** Avant TODO §102 : sans drapeau « valeur unique ». */
+    public FieldDefinition(
+            String name,
+            String label,
+            FieldType type,
+            boolean required,
+            String defaultValue,
+            List<String> options,
+            String group,
+            Boolean sensitive,
+            List<FieldDefinition> fields,
+            Integer minRows,
+            Integer maxRows,
+            String formula,
+            String visibleWhen,
+            String requiredWhen,
+            Boolean searchable,
+            String helpText,
+            String width) {
+        this(name, label, type, required, defaultValue, options, group, sensitive, fields, minRows, maxRows, formula,
+                visibleWhen, requiredWhen, searchable, helpText, width, false);
     }
 
     /** Avant TODO §85 (LC4a) : sans aide contextuelle ni largeur. */
@@ -289,7 +338,7 @@ public record FieldDefinition(
     /** Copie avec une obligation différente (règles de visibilité / d'obligation appliquées au moment de la validation). */
     public FieldDefinition withRequired(boolean newRequired) {
         return new FieldDefinition(name, label, type, newRequired, defaultValue, options, group, sensitive, fields, minRows,
-                maxRows, formula, visibleWhen, requiredWhen, searchable, helpText, width);
+                maxRows, formula, visibleWhen, requiredWhen, searchable, helpText, width, unique);
     }
 
     /**
@@ -298,7 +347,7 @@ public record FieldDefinition(
      */
     public FieldDefinition withHidden() {
         return new FieldDefinition(name, label, type, false, defaultValue, options, group, sensitive, fields,
-                minRows == null ? null : 0, maxRows, formula, visibleWhen, requiredWhen, searchable, helpText, width);
+                minRows == null ? null : 0, maxRows, formula, visibleWhen, requiredWhen, searchable, helpText, width, unique);
     }
 
     /** Champ scalaire historique : sans sous-champs ni bornes de lignes. */
@@ -358,6 +407,11 @@ public record FieldDefinition(
         return Boolean.TRUE.equals(searchable);
     }
 
+    /** {@code true} si la valeur doit être unique parmi les dossiers non clôturés du type (TODO §102). */
+    public boolean isUnique() {
+        return Boolean.TRUE.equals(unique);
+    }
+
     /** Canonical boolean reader for the {@code sensitive} metadata (redaction/exports later). */
     public boolean isSensitive() {
         return Boolean.TRUE.equals(sensitive);
@@ -384,6 +438,8 @@ public record FieldDefinition(
                 + ", computed=" + hasFormula()
                 + ", visibleWhen=" + (visibleWhen != null)
                 + ", requiredWhen=" + (requiredWhen != null)
+                + ", searchable=" + searchable
+                + ", unique=" + unique
                 + "]";
     }
 }

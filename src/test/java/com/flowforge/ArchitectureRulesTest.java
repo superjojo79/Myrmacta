@@ -122,7 +122,15 @@ class ArchitectureRulesTest {
             // TODO §68 (portail-externe) : lit une seule clé — l'adresse e-mail du tiers désignée par
             // flowable:portalRecipient="dossierField:<nom>" — pour lui envoyer son lien. La valeur
             // n'est jamais renvoyée à un navigateur ni journalisée en clair (PortalEmails.mask).
-            "com.flowforge.infrastructure.flowable.PortalRecipientResolverAdapter");
+            "com.flowforge.infrastructure.flowable.PortalRecipientResolverAdapter",
+            // TODO §102 (issue #184) : calcule les clés d'unicité d'un dossier (champs calculés recalculés) — les règles ne
+            // lisent que des champs non sensibles, un champ `unique` n'est jamais sensible (FieldDefinition le refuse), et
+            // aucune valeur n'est renvoyée à un navigateur ni à un journal.
+            "com.flowforge.domain.dossier.DossierUniqueKeys",
+            // TODO §102 (lot B) : la brique « Rechercher des dossiers » lit la valeur d'un champ source déclaré et non
+            // sensible du dossier courant (R8), la passe à la requête et ne la renvoie jamais (seuls un nombre et une
+            // référence sortent).
+            "com.flowforge.domain.dossier.usecase.SearchSimilarDossiersUseCaseImpl");
 
     /** Same rationale as {@link #DOSSIER_FIELDS_READ_ALLOWLIST}, for {@code FieldDefinition.defaultValue()}. */
     private static final Set<String> FIELD_DEFINITION_DEFAULT_VALUE_READ_ALLOWLIST = Set.of(

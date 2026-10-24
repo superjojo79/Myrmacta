@@ -65,6 +65,26 @@ public class JpaDossierSearchAdapter implements DossierSearchPort {
         return DossierPage.of(content, page, size, total);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public MatchSummary findOpenMatches(
+            String tenantId, String dossierTypeCode, List<FieldPredicate> predicates, UUID excludeDossierId) {
+        Specification<DossierJpaEntity> spec = DossierSpecifications.forOpenMatches(
+                tenantId, dossierTypeCode, predicates, excludeDossierId);
+        long total = repository.count(spec);
+        if (total == 0) {
+            return MatchSummary.none();
+        }
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<String> cq = cb.createQuery(String.class);
+        Root<DossierJpaEntity> root = cq.from(DossierJpaEntity.class);
+        cq.select(root.get("reference"));
+        cq.where(spec.toPredicate(root, cq, cb));
+        cq.orderBy(cb.asc(root.get("createdAt")), cb.asc(root.get("id")));
+        String first = entityManager.createQuery(cq).setMaxResults(1).getSingleResult();
+        return new MatchSummary(total, first);
+    }
+
     private static DossierListItem toItem(Object[] row) {
         return new DossierListItem(
                 (UUID) row[0],

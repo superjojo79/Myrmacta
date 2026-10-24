@@ -10,11 +10,23 @@ public class DossierTypeSchemaIncompatibleException extends IllegalStateExceptio
 
     private final int incompatibleCount;
     private final List<String> sampleReferences;
+    private final List<UniqueDuplicate> duplicates;
 
     public DossierTypeSchemaIncompatibleException(int incompatibleCount, List<String> sampleReferences) {
+        this(incompatibleCount, sampleReferences, List.of());
+    }
+
+    /** TODO §102 (U10) — {@code duplicates} : valeurs d'un champ unique tenues par plusieurs dossiers ouverts. */
+    public DossierTypeSchemaIncompatibleException(
+            int incompatibleCount, List<String> sampleReferences, List<UniqueDuplicate> duplicates) {
         super("Schema change incompatible with " + incompatibleCount + " existing dossier(s)");
         this.incompatibleCount = incompatibleCount;
         this.sampleReferences = List.copyOf(Objects.requireNonNull(sampleReferences, "sampleReferences"));
+        this.duplicates = List.copyOf(Objects.requireNonNull(duplicates, "duplicates"));
+    }
+
+    public List<UniqueDuplicate> duplicates() {
+        return duplicates;
     }
 
     public int incompatibleCount() {

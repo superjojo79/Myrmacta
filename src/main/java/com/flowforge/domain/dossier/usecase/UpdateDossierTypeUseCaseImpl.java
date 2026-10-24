@@ -70,7 +70,7 @@ public final class UpdateDossierTypeUseCaseImpl implements UpdateDossierTypeUseC
                 command.tenantId(), command.code(), command.fieldDefinitions(), command.allowUnknownFields()));
         if (!compatibility.compatible()) {
             throw new DossierTypeSchemaIncompatibleException(
-                    compatibility.incompatibleCount(), compatibility.sampleReferences());
+                    compatibility.incompatibleCount(), compatibility.sampleReferences(), compatibility.duplicates());
         }
 
         repository.save(updated);

@@ -15,10 +15,10 @@ class BuildingBlockCatalogTest {
     private final List<BuildingBlock> blocks = BuildingBlockCatalog.all();
 
     @Test
-    void containsTheThirteenBlocksWithUniqueIds() {
+    void containsTheFourteenBlocksWithUniqueIds() {
         assertThat(blocks).extracting(BuildingBlock::id).containsExactly(
                 "generate-document", "attach-document", "call-connector", "notify", "create-child-dossier",
-                "set-dossier-status", "set-workflow-status", "dmn-decision", "evaluate-expression", "map-fields", "user-question",
+                "set-dossier-status", "set-workflow-status", "dmn-decision", "evaluate-expression", "map-fields", "search-dossiers", "user-question",
                 "external-task", "request-signature");
         assertThat(new HashSet<>(blocks.stream().map(BuildingBlock::id).toList())).hasSize(blocks.size());
         assertThat(blocks).allSatisfy(b -> {
@@ -74,7 +74,7 @@ class BuildingBlockCatalogTest {
         // Publié au SPA : l'éditeur n'offre une zone de texte, et ne tolère des retours à la ligne, que pour ceux-là.
         assertThat(blocks.stream().flatMap(b -> b.parameters().stream()).filter(BlockParameter::multiline)
                 .map(BlockParameter::name).distinct().toList())
-                .containsExactlyInAnyOrder("notificationBody", "formula", "fieldMapping");
+                .containsExactlyInAnyOrder("notificationBody", "formula", "fieldMapping", "searchCriteria");
     }
 
     @Test

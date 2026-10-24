@@ -2,11 +2,26 @@ package com.flowforge.domain.dossier.model;
 
 import java.util.Objects;
 
-public record FieldValidationError(String field, String code, String message) {
+/**
+ * Erreur de validation d'un champ. {@code reference} : référence d'un autre dossier en cause, renseignée seulement pour
+ * {@code UNIQUE} (TODO §102, D-UNIQUE-HTTP) ; le message ne recopie jamais la valeur saisie.
+ */
+public record FieldValidationError(String field, String code, String message, String reference) {
     public FieldValidationError {
         Objects.requireNonNull(field, "field");
         Objects.requireNonNull(code, "code");
         Objects.requireNonNull(message, "message");
+    }
+
+    public FieldValidationError(String field, String code, String message) {
+        this(field, code, message, null);
+    }
+
+    /** TODO §102 (U8) — la valeur est déjà tenue par un dossier non clôturé du même type. */
+    public static FieldValidationError notUnique(String field, String existingReference) {
+        Objects.requireNonNull(existingReference, "existingReference");
+        return new FieldValidationError(
+                field, "UNIQUE", "Value already used by dossier " + existingReference, existingReference);
     }
 
     public static FieldValidationError required(String field) {

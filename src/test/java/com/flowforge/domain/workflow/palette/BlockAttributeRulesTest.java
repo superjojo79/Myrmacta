@@ -172,7 +172,39 @@ class BlockAttributeRulesTest {
                 "documentType", "documentVariant", "documentLocale", "connectorInstanceId", "notificationChannels",
                 "notificationTo", "notificationSubject", "notificationBody", "notificationUserId",
                 "notificationWebhookConfigId", "notificationAttachment", "notificationAttachmentName", "childDossierTypeCode", "childDossierLabel", "workflowProcessKey",
-                "relationType", "targetDossierStatus", "targetWorkflowStatus", "formula", "formulaResult", "fieldMapping");
+                "relationType", "targetDossierStatus", "targetWorkflowStatus", "formula", "formulaResult", "fieldMapping",
+                "searchCriteria", "searchCountResult", "searchFirstReferenceResult");
+    }
+
+    /** TODO §102 (lot B, R1, R4, R5) — brique « Rechercher des dossiers » : forme validée au déploiement. */
+    @Test
+    void theDossierSearchBlockIsValidatedAtDeployment() {
+        BlockAttributeRules.validate("s", "dossierSearchTask", Map.of(
+                "searchCriteria", "email = dossierField:email\nplaque = variable:plaque",
+                "searchCountResult", "nbDemandes", "searchFirstReferenceResult", "premiereDemande"));
+        // Littéraux seulement : sans les trois attributs, une variable posée à la complétion ne doit pas les remplacer.
+        for (String missing : List.of("searchCriteria", "searchCountResult", "searchFirstReferenceResult")) {
+            Map<String, String> attributes = new java.util.HashMap<>(Map.of("searchCriteria", "email = dossierField:email",
+                    "searchCountResult", "n", "searchFirstReferenceResult", "r"));
+            attributes.remove(missing);
+            assertThatThrownBy(() -> BlockAttributeRules.validate("s", "dossierSearchTask", attributes))
+                    .as(missing).isInstanceOf(InvalidBpmnException.class).hasMessageContaining(missing);
+        }
+        assertThatThrownBy(() -> BlockAttributeRules.validate("s", "dossierSearchTask", Map.of(
+                "searchCriteria", "email = \"x\"", "searchCountResult", "n", "searchFirstReferenceResult", "r")))
+                .isInstanceOf(InvalidBpmnException.class).hasMessageContaining("dossierField:");
+        for (String reserved : List.of("dossierId", "connectorInput", "formula", "searchCriteria", "loopCounter")) {
+            assertThatThrownBy(() -> BlockAttributeRules.validate("s", "dossierSearchTask", Map.of(
+                    "searchCriteria", "email = dossierField:email", "searchCountResult", reserved,
+                    "searchFirstReferenceResult", "r")))
+                    .as(reserved).isInstanceOf(InvalidBpmnException.class).hasMessageContaining("reserved");
+        }
+        assertThatThrownBy(() -> BlockAttributeRules.validate("s", "dossierSearchTask", Map.of(
+                "searchCriteria", "email = dossierField:email", "searchCountResult", "n", "searchFirstReferenceResult", "n")))
+                .isInstanceOf(InvalidBpmnException.class).hasMessageContaining("distinct");
+        assertThatThrownBy(() -> BlockAttributeRules.validate("s", "businessExpressionTask", Map.of(
+                "formula", "1", "formulaResult", "x", "searchCountResult", "n")))
+                .isInstanceOf(InvalidBpmnException.class).hasMessageContaining("not allowed");
     }
 
     private static void assertRefused(String delegate, String attribute, String value) {

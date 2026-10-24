@@ -3376,6 +3376,8 @@ components:
           type: string
         width:
           type: string
+        unique:
+          type: boolean
     UpdateTaskQuestionSchemaRequest:
       type: object
       properties:

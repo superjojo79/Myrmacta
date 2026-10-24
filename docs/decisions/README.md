@@ -120,6 +120,7 @@ jamais en le supprimant ou en le renumérotant ; un nouveau point prend le numé
 | 99 | [Le BPMN ne peut pas recopier une valeur dans une variable réservée](099-recopie-bpmn-vers-une-variable-reservee.md) | clos | — |
 | 100 | [Une table DMN ne peut pas écrire une variable réservée](100-sortie-dmn-vers-une-variable-reservee.md) | clos | — |
 | 101 | [Le connecteur `document-storage` ne touche que ce qu'il a stocké pour le dossier](101-document-storage-limite-au-dossier.md) | clos | — |
+| 102 | [Unicité d'un champ de dossier](102-unicite-d-un-champ-de-dossier.md) | ouvert | — |
 
 ## Sections de l'ancien registre
 

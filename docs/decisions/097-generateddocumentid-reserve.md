@@ -40,11 +40,11 @@ batch, planificateur) via l'outbox, les maps imbriquées contrôlées à leur en
   Changements visibles : un événement d'outbox de démarrage déjà en attente qui porterait la clé passe `DEAD` ; un dossier
   enfant qui la transmet crée un incident ; MCP `generate_document` répond 400 au lieu d'ignorer la clé.
 - **L3 (accepté, contrôle avant déploiement ci-dessus)** — questionnaire existant portant ce nom.
-- **L1 (préexistant, hors périmètre)** — le concepteur peut recopier une valeur dans un nom réservé : `elementVariable` d'une
+- **L1 (préexistant, issue [#203](https://github.com/superjojo79/FlowForge/issues/203))** — le concepteur peut recopier une valeur dans un nom réservé : `elementVariable` d'une
   boucle multi-instance, mappings `flowable:in`/`flowable:out` d'un `callActivity`. Cela vaut pour toutes les variables
   réservées, `dossierId` compris. Correctif proposé : refus au déploiement d'une cible réservée, sauf recopie à l'identique.
-- **L2 (préexistant, hors périmètre)** — une colonne de sortie DMN peut porter un nom réservé (valeur littérale du concepteur).
-- **L4 (préexistant, hors périmètre)** — le connecteur `document-storage` lit ou supprime n'importe quelle référence du tenant
+- **L2 (préexistant, issue [#204](https://github.com/superjojo79/FlowForge/issues/204))** — une colonne de sortie DMN peut porter un nom réservé (valeur littérale du concepteur).
+- **L4 (préexistant, issue [#205](https://github.com/superjojo79/FlowForge/issues/205))** — le connecteur `document-storage` lit ou supprime n'importe quelle référence du tenant
   (`connectorInput` posable à la complétion) : les références de stockage ne sont rattachées à aucun dossier.
 - **I3 (préexistant)** — deux générations dans des branches parallèles écrasent la même variable (même dossier).
 - **I4 (accepté)** — l'IT couvre la complétion REST ; portail, callback et signal partagent la même garde.

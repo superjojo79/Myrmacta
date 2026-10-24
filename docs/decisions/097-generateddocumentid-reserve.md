@@ -40,7 +40,7 @@ batch, planificateur) via l'outbox, les maps imbriquées contrôlées à leur en
   Changements visibles : un événement d'outbox de démarrage déjà en attente qui porterait la clé passe `DEAD` ; un dossier
   enfant qui la transmet crée un incident ; MCP `generate_document` répond 400 au lieu d'ignorer la clé.
 - **L3 (accepté, contrôle avant déploiement ci-dessus)** — questionnaire existant portant ce nom.
-- **L1 (préexistant, issue [#203](https://github.com/superjojo79/FlowForge/issues/203))** — le concepteur peut recopier une valeur dans un nom réservé : `elementVariable` d'une
+- **L1 (préexistant, issue [#203](https://github.com/superjojo79/FlowForge/issues/203), corrigé au [§99](099-recopie-bpmn-vers-une-variable-reservee.md))** — le concepteur peut recopier une valeur dans un nom réservé : `elementVariable` d'une
   boucle multi-instance, mappings `flowable:in`/`flowable:out` d'un `callActivity`. Cela vaut pour toutes les variables
   réservées, `dossierId` compris. Correctif proposé : refus au déploiement d'une cible réservée, sauf recopie à l'identique.
 - **L2 (préexistant, issue [#204](https://github.com/superjojo79/FlowForge/issues/204))** — une colonne de sortie DMN peut porter un nom réservé (valeur littérale du concepteur).

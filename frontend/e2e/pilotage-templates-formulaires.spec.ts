@@ -214,7 +214,9 @@ test('E2E-FORM-3 admin associates document templates to a dossier type and it pe
   await expect(panel.getByText('invoice')).toBeVisible()
   await panel.locator('[data-testid="document-template-key-invoice"]').check()
   await page.getByTestId('type-edit-fields-save').click()
-  expect((updatedPayload as { documentTemplateKeys?: string[] })?.documentTemplateKeys).toEqual(['invoice'])
+  await expect
+    .poll(() => (updatedPayload as { documentTemplateKeys?: string[] } | null)?.documentTemplateKeys)
+    .toEqual(['invoice'])
 })
 
 test('E2E-USERQ-1 user-question task shows the schema form and completes with the submitted answer', async ({

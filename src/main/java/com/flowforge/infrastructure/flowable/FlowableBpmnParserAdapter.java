@@ -81,6 +81,8 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
         // TODO §69 : après les règles ciblées ci-dessus (qui gardent leurs messages précis), toute
         // autre surface UEL du document est refusée — voir BpmnExpressionSurfaceScanner.
         BpmnExpressionSurfaceScanner.assertNoUnvettedExpressions(bpmnXml);
+        // TODO §99 (issue #203) : le BPMN ne peut pas recopier une valeur dans une variable réservée.
+        BpmnReservedVariableWriteScanner.assertNoReservedVariableWrites(bpmnXml);
         return mainProcess.getId();
     }
 

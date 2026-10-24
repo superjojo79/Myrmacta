@@ -40,7 +40,7 @@ public class DocumentGenerationTask implements JavaDelegate {
                 documentType.toString(), variant, locale, variables));
         String storageRef =
                 documentStoragePort.store(tenantProperties.id(), "application/pdf", pdf);
-        execution.setVariable("generatedDocumentId", storageRef);
+        execution.setVariable(WorkflowVariables.GENERATED_DOCUMENT_ID, storageRef);
     }
 
     private static String stringOrNull(Object value) {

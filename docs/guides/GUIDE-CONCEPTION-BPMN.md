@@ -614,7 +614,9 @@ Deux `serviceTask` distincts, presque toujours chaînés l'un après l'autre :
 
 Toutes les autres variables du processus au moment de l'exécution sont transmises au template
 Thymeleaf (voir §3 pour la mécanique exacte et l'allowlist de rendu — pas de `T()`, `#beans`,
-`new`, cf. décision **D-40**). Variable écrite : `generatedDocumentId` (référence de stockage).
+`new`, cf. décision **D-40**). Variable écrite : `generatedDocumentId` (référence de stockage). Elle est **réservée**
+(issue #201, TODO §97) : un démarrage, une complétion de tâche, le portail, MCP, un callback ou un signal ne peuvent pas la
+poser — seule cette brique l'écrit, et « Joindre le document » ne rattache donc que le PDF réellement généré.
 
 #### Ce qu'un template peut écrire dans `${…}`
 

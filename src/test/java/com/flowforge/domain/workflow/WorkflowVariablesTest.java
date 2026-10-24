@@ -37,6 +37,14 @@ class WorkflowVariablesTest {
     }
 
     @Test
+    void assertNoReservedKeys_rejectsAForgedGeneratedDocument() {
+        // Issue #201 : seul DocumentGenerationTask écrit generatedDocumentId.
+        assertThatThrownBy(() -> WorkflowVariables.assertNoReservedKeys(Map.of("generatedDocumentId", "tenant_dev/x.pdf")))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("generatedDocumentId");
+        assertThat(WorkflowVariables.isReservedOrKnownKey("generatedDocumentId")).isTrue();
+    }
+
+    @Test
     void assertNoReservedKeys_rejectsDossierFieldsFromCaller() {
         assertThatThrownBy(() -> WorkflowVariables.assertNoReservedKeys(Map.of("dossierFields", Map.of())))
                 .isInstanceOf(IllegalArgumentException.class)

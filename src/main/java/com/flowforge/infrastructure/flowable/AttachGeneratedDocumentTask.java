@@ -4,6 +4,7 @@ import com.flowforge.domain.dossier.model.AccessContext;
 import com.flowforge.domain.dossier.model.ElementType;
 import com.flowforge.domain.dossier.port.in.AddDossierElementUseCase;
 import com.flowforge.domain.document.port.out.DocumentStoragePort;
+import com.flowforge.domain.workflow.WorkflowVariables;
 import com.flowforge.infrastructure.config.TenantProperties;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -41,7 +42,7 @@ public class AttachGeneratedDocumentTask implements JavaDelegate {
     @Override
     public void execute(DelegateExecution execution) {
         Object dossierIdVar = execution.getVariable("dossierId");
-        Object storageRefVar = execution.getVariable("generatedDocumentId");
+        Object storageRefVar = execution.getVariable(WorkflowVariables.GENERATED_DOCUMENT_ID);
         if (dossierIdVar == null || storageRefVar == null) {
             throw new IllegalArgumentException("dossierId and generatedDocumentId variables are required");
         }

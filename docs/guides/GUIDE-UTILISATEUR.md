@@ -247,7 +247,7 @@ Depuis la fiche dossier (`/dossiers/{id}`), bouton **Démarrer workflow** :
 - **Variables de démarrage** (section repliée) : ajouter des lignes *nom / valeur* (texte) transmises au
   workflow, par exemple une adresse ou une priorité attendue par le processus. Le nom accepte lettres,
   chiffres et `_` ; les noms réservés de la plateforme (`dossierId`, `dossierWorkflowLinkId`, `tenantId`,
-  `dossierFields`, `connectorResult`) et les doublons sont refusés avant l'envoi. Un paramètre écrit dans
+  `dossierFields`, `connectorResult`, `generatedDocumentId`) et les doublons sont refusés avant l'envoi. Un paramètre écrit dans
   le BPMN prime toujours sur une variable de même nom. Une adresse `notificationTo` doit être une seule
   adresse (`nom@domaine`) ; un `documentType` doit faire partie des templates autorisés du type de dossier.
 

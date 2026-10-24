@@ -16,6 +16,7 @@ export const RESERVED_START_VARIABLES = [
   'tenantId',
   'dossierFields',
   'connectorResult',
+  'generatedDocumentId',
 ]
 
 const NAME = /^[A-Za-z_][A-Za-z0-9_]*$/

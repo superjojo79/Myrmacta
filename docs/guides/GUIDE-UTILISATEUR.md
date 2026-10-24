@@ -381,7 +381,7 @@ connecteurs eux-mêmes — leurs instances configurées). Types fournis de base 
 | `scheduler` | trigger | `cronExpression`, `processKey`, `dossierTypeCode` |
 | `flowable-callback` | callback | `webhookAuthType`, `webhookSecret`, `messageName`, `correlationVariableName`, `correlationValuePath`, `mapping` (optionnel) |
 | `smtp` | service | aucun champ d'instance (réutilise la config SMTP de l'application) |
-| `document-storage` | service | aucun champ d'instance (réutilise le stockage documents déjà configuré) |
+| `document-storage` | service | aucun champ d'instance (réutilise le stockage documents déjà configuré) ; depuis un process, ne relit que ce qu'il a stocké pour le même dossier |
 | `graph-mail-inbound` | trigger (e-mail entrant, Microsoft Graph) | `mailbox`, `graphBaseUrl`, `folder`, `processedFolder`, `rejectedFolder`, OAuth2 (`oauthTokenUrl`, `oauthClientId`, `oauthClientSecret` ou certificat, `oauthScope`), puis les mêmes réglages de routage que `imap-inbound` (`pollSeconds`, `maxAttachments`, `requireAuthenticatedSender`, `trustedAuthservId`, `referencePattern`, `processKey`, `dossierTypeCode`, `mapping`) |
 | `imap-inbound` | trigger (e-mail entrant) | `host`, `port`, `security` (SSL / STARTTLS), `username`, `authMode` (mot de passe ou OAuth2), `password`, `folder`, `processedFolder`, `rejectedFolder`, `pollSeconds`, `referencePattern`, `processKey`, `dossierTypeCode`, `mapping` |
 | `azure-service-bus` | trigger (bus Azure) | `namespaceHost`, `entityPath`, `authMode` (SAS ou OAuth2), `sasKeyName`, `sasKey`, `pollSeconds`, `processKey`, `dossierTypeCode`, `mapping` |

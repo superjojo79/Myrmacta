@@ -9,6 +9,7 @@ import com.flowforge.domain.connector.model.ConnectorCapability;
 import com.flowforge.domain.connector.model.ConnectorDefinition;
 import com.flowforge.domain.connector.model.ConnectorInstanceData;
 import com.flowforge.domain.connector.model.ServiceConnector;
+import com.flowforge.domain.connector.model.ConnectorCallContext;
 import com.flowforge.domain.connector.port.in.ExecuteConnectorUseCase;
 import com.flowforge.domain.connector.port.out.ConnectorCatalog;
 import com.flowforge.domain.connector.port.out.ConnectorInstanceRepository;
@@ -43,7 +44,8 @@ class ExecuteConnectorUseCaseImplTest {
         when(repository.findByIdAndTenantId(id, "tenant_dev")).thenReturn(Optional.of(instance));
         when(catalog.get("service-test")).thenReturn(definition);
         when(definition.getCapability()).thenReturn(ConnectorCapability.SERVICE);
-        when(service.execute(instance, Map.of("input", "value"))).thenReturn(Map.of("ok", true));
+        when(service.execute(instance, Map.of("input", "value"), ConnectorCallContext.direct()))
+                .thenReturn(Map.of("ok", true));
 
         assertThat(useCase.execute(id, "tenant_dev", Map.of("input", "value")))
                 .containsEntry("ok", true);

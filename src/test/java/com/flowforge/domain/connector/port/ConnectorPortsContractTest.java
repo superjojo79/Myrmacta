@@ -127,7 +127,7 @@ class ConnectorPortsContractTest {
             }
         };
 
-        ExecuteConnectorUseCase execute = (instanceId, tenantId, input) -> Map.of("signaled", true);
+        ExecuteConnectorUseCase execute = (instanceId, tenantId, input, context) -> Map.of("signaled", true);
 
         assertThat(repo.findByIdAndTenantId(id, "tenant_dev")).contains(instance);
         assertThat(cipher.encryptPasswordFields("tenant_dev", "http-rest", Map.of("webhookSecret", "x")))

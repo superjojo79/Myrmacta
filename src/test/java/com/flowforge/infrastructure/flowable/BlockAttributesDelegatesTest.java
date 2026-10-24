@@ -115,8 +115,8 @@ class BlockAttributesDelegatesTest {
 
         delegate.execute(execution(Map.of("connectorInstanceId", fromVariable.toString()), Map.of()));
 
-        verify(useCase, org.mockito.Mockito.times(2)).execute(eq(fromAttribute), eq("tenant_dev"), any());
-        verify(useCase).execute(eq(fromVariable), eq("tenant_dev"), any());
+        verify(useCase, org.mockito.Mockito.times(2)).execute(eq(fromAttribute), eq("tenant_dev"), any(), any());
+        verify(useCase).execute(eq(fromVariable), eq("tenant_dev"), any(), any());
         assertThatThrownBy(() -> delegate.execute(execution(Map.of(), Map.of())))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("connectorInstanceId");
     }

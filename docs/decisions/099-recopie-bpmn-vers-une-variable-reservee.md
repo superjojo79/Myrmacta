@@ -31,8 +31,8 @@ Les lectures (`source`, `collection`, `in variables="all"`) restent libres. Choi
 sur le XML plutôt qu'une liste d'objets du modèle Flowable (même raisonnement que le §69, et le XML voit les éléments
 d'extension que le modèle ne type pas) ; `initiator`, `dataObject`, `formProperty`, variables d'erreur et de tâche ajoutés à
 la liste de l'issue, car ils écrivent aussi une variable. Les associations de données BPMN (`dataInputAssociation`) ne sont
-lues que par la tâche Web Service, déjà refusée. Les sorties DMN restent l'objet de l'issue
-[#204](https://github.com/superjojo79/FlowForge/issues/204).
+lues que par la tâche Web Service, déjà refusée. Les sorties DMN sont traitées au
+[§100](100-sortie-dmn-vers-une-variable-reservee.md) (issue [#204](https://github.com/superjojo79/FlowForge/issues/204)).
 
 **Tests.** `FlowableBpmnParserAdapterReservedWriteTest` : 22 refus (rouges avant le correctif, documents valides et acceptés)
 et 5 acceptations (recopies à l'identique, lecture sous un autre nom) ; `ReservedVariableWriteIT` : scénarios A et B

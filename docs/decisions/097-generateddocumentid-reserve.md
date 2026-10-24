@@ -43,7 +43,7 @@ batch, planificateur) via l'outbox, les maps imbriquées contrôlées à leur en
 - **L1 (préexistant, issue [#203](https://github.com/superjojo79/FlowForge/issues/203), corrigé au [§99](099-recopie-bpmn-vers-une-variable-reservee.md))** — le concepteur peut recopier une valeur dans un nom réservé : `elementVariable` d'une
   boucle multi-instance, mappings `flowable:in`/`flowable:out` d'un `callActivity`. Cela vaut pour toutes les variables
   réservées, `dossierId` compris. Correctif proposé : refus au déploiement d'une cible réservée, sauf recopie à l'identique.
-- **L2 (préexistant, issue [#204](https://github.com/superjojo79/FlowForge/issues/204))** — une colonne de sortie DMN peut porter un nom réservé (valeur littérale du concepteur).
+- **L2 (préexistant, issue [#204](https://github.com/superjojo79/FlowForge/issues/204), corrigé au [§100](100-sortie-dmn-vers-une-variable-reservee.md))** — une colonne de sortie DMN peut porter un nom réservé (valeur littérale du concepteur).
 - **L4 (préexistant, issue [#205](https://github.com/superjojo79/FlowForge/issues/205))** — le connecteur `document-storage` lit ou supprime n'importe quelle référence du tenant
   (`connectorInput` posable à la complétion) : les références de stockage ne sont rattachées à aucun dossier.
 - **I3 (préexistant)** — deux générations dans des branches parallèles écrasent la même variable (même dossier).

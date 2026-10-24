@@ -19,6 +19,8 @@ RUN chmod +x mvnw
 
 COPY src/ src/
 COPY frontend/ frontend/
+# Décision n° 103 : copiés dans META-INF/ du jar par maven-resources-plugin.
+COPY LICENSE NOTICE ./
 
 # Image de production par défaut. Image de DÉMO/QA avec PostgreSQL embarqué persistant :
 #   docker build --build-arg MAVEN_PROFILES=embedded-db -t flowforge:demo .
@@ -36,6 +38,9 @@ RUN groupadd --system --gid 10001 flowforge \
 
 WORKDIR /app
 COPY --from=build --chown=flowforge:flowforge /workspace/target/flowforge-*.jar app.jar
+# LICENSE (PolyForm-Noncommercial-1.0.0) et NOTICE, mêmes fichiers que la racine du dépôt et que
+# META-INF/ du jar. Lisibles par l'utilisateur applicatif.
+COPY --from=build --chown=flowforge:flowforge /workspace/LICENSE /workspace/NOTICE /usr/share/doc/flowforge/
 
 # Répertoire des données du PostgreSQL embarqué (profil Spring embedded-db, image de démo/QA
 # uniquement) : à monter en volume (-v flowforge-data:/data) pour conserver les données entre

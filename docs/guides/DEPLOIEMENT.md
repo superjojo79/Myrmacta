@@ -29,6 +29,11 @@ dans `target/classes/static/`) — pas d'étape manuelle séparée comme en dev 
 java -jar target/flowforge-*.jar
 ```
 
+Ce jar embarque `LICENSE` (PolyForm-Noncommercial-1.0.0) et `NOTICE`, aux entrées `META-INF/LICENSE` et
+`META-INF/NOTICE` (mêmes octets que les fichiers à la racine du dépôt).
+`scripts/check-license-notice-in-jar.sh` échoue si l'un des deux manque ou s'il en diffère.
+La CI lance ce contrôle après `./mvnw verify`, avec l'auto-test du script.
+
 ### Construire l'image conteneur
 
 Le `Dockerfile` à la racine du dépôt construit une image exécutable en 2 stages :
@@ -45,6 +50,7 @@ Décisions actées pour cette image (lot `provisioning-tenant`, voir
 | Image de base | `eclipse-temurin:25-jre` (stage runtime) — build avec `eclipse-temurin:25-jdk` (stage build) |
 | Utilisateur du conteneur | Non-root dédié (`flowforge`, UID/GID 10001) |
 | Heap JVM par défaut | Dynamique (`-XX:MaxRAMPercentage=75.0`), pas de `-Xmx` fixe — s'adapte à la limite mémoire du conteneur |
+| Licence | `LICENSE` et `NOTICE` dans l'image, sous `/usr/share/doc/flowforge/` (mêmes fichiers que la racine du dépôt et que `META-INF/` du jar) |
 
 ```bash
 docker run -d --name flowforge-<tenant_id> -p 127.0.0.1:8081:8080 \

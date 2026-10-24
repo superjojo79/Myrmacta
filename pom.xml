@@ -602,10 +602,34 @@
                     </execution>
                 </executions>
             </plugin>
+            <!-- Décision n° 103. LICENSE et NOTICE accompagnent le jar, à META-INF/LICENSE et
+                 META-INF/NOTICE. Le repackager Spring Boot ne déplace pas ces entrées sous
+                 BOOT-INF/classes (contrairement à META-INF/services/). Contrôle :
+                 scripts/check-license-notice-in-jar.sh -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
                 <executions>
+                    <execution>
+                        <id>copy-license-notice</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.outputDirectory}/META-INF</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.basedir}</directory>
+                                    <filtering>false</filtering>
+                                    <includes>
+                                        <include>LICENSE</include>
+                                        <include>NOTICE</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
                     <execution>
                         <id>copy-frontend-dist</id>
                         <phase>process-resources</phase>

@@ -44,6 +44,12 @@ jobs:
       - name: Check production jar has no embedded database
         run: scripts/check-no-embedded-db-in-jar.sh
 
+      # Décision n° 103 : LICENSE (PolyForm-Noncommercial-1.0.0) et NOTICE accompagnent le jar.
+      - name: Check production jar ships LICENSE and NOTICE
+        run: |
+          scripts/check-license-notice-in-jar.sh --self-test
+          scripts/check-license-notice-in-jar.sh
+
       # Profil démo/QA : persistance de la base embarquée (arrêt/redémarrage de l'application).
       - name: Embedded database profile tests (demo/QA)
         run: >

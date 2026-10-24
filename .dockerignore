@@ -19,7 +19,9 @@ frontend/node_modules/
 !.env.example
 !.env.local.example
 
-# Docs, scripts et fichiers projet non nécessaires au build de l'image
+# Docs, scripts et fichiers projet non nécessaires au build de l'image.
+# LICENSE et NOTICE (sans extension) restent dans le contexte : le stage build les met
+# dans le jar, le stage runtime les copie sous /usr/share/doc/flowforge/.
 *.md
 docs/specs/
 docs/

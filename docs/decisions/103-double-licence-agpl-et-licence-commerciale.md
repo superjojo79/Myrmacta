@@ -115,9 +115,17 @@ tranchés ici. Suites techniques, pas des points ouverts : en-têtes SPDX après
 fichier `NOTICE` est livré) ; offre de source dans l'interface pour une version modifiée servie
 en réseau (article 13), sans écran dans cette PR (`LICENSING.md`, `NOTICE`).
 
+**Complément (2026-10-24).** Le jar de production et l'image Docker n'emportaient pas `LICENSE`
+ni `NOTICE`. Le jar les contient à `META-INF/LICENSE` et `META-INF/NOTICE` : le repackager
+Spring Boot laisse ces entrées à la racine du jar. L'image les contient sous
+`/usr/share/doc/flowforge/`. `scripts/check-license-notice-in-jar.sh` échoue si l'un des deux
+manque ou diffère des fichiers de la racine du dépôt.
+
 **Impacte.** `LICENSE`, `LICENSING.md`, `COMMERCIAL-LICENSE.md`, `CLA.md`, `CONTRIBUTING.md`,
-`TRADEMARKS.md`, `README.md`, `pom.xml` (`<licenses>`, `liquibase.version`), `frontend/package.json` (`license`),
-`.github/dependabot.yml`,
+`TRADEMARKS.md`, `README.md`, `pom.xml` (`<licenses>`, `liquibase.version`, copie de `LICENSE`
+et `NOTICE` dans le jar), `frontend/package.json` (`license`),
+`.github/dependabot.yml`, `.github/workflows/ci.yml`, `Dockerfile`, `.dockerignore`,
+`scripts/check-license-notice-in-jar.sh`, `docs/guides/DEPLOIEMENT.md`,
 `docs/analyses/audit-licences-2026-10-24.md`, `docs/analyses/audit-licences-2026-10-24-annexe.md`,
 `docs/specs/00-index.md`, `docs/specs/07-generation-documents.md`, `NOTICE`. Pas d'écran admin, pas de
 variable d'environnement, pas de changeSet Liquibase, pas de renommage dans le code.

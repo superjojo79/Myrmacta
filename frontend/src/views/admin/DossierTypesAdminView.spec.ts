@@ -256,6 +256,55 @@ describe('DossierTypesAdminView', () => {
     expect(wrapper.find('[data-testid="type-edit-fields-panel"]').exists()).toBe(false)
   })
 
+  it('shows the duplicate values when the server refuses the schema (409)', async () => {
+    vi.mocked(api.updateDossierType).mockRejectedValue({
+      response: {
+        status: 409,
+        data: {
+          detail: 'Cette modification rend 0 dossier(s) existant(s) incompatible(s) avec le nouveau schéma ; 1 valeur(s) d\'un champ unique sont partagées par des dossiers en cours',
+          duplicates: [{ field: 'plaque', value: '1ABC123', references: ['DOS-1', 'DOS-2'] }],
+        },
+      },
+    })
+    const { wrapper } = await mountView(DossierTypesAdminView)
+    await flushPromises()
+    await wrapper.get('[data-testid="type-edit-fields"]').trigger('click')
+    await wrapper.get('[data-testid="type-edit-fields-save"]').trigger('click')
+    await flushPromises()
+    const text = wrapper.get('[data-testid="type-edit-fields-panel"]').text()
+    expect(text).toContain('incompatible')
+    expect(text).toContain('plaque = 1ABC123 : DOS-1, DOS-2')
+  })
+
+  it('keeps a multiline duplicate value in one item and caps the references (TODO §102)', async () => {
+    const references = Array.from({ length: 25 }, (_, index) => `D${String(index).padStart(2, '0')}`)
+    vi.mocked(api.updateDossierType).mockRejectedValue({
+      response: {
+        status: 409,
+        data: {
+          detail: 'schéma incompatible',
+          duplicates: [{ field: 'plaque', value: 'AB\nCD<script>', references, referenceCount: 25 }],
+        },
+      },
+    })
+    const { wrapper } = await mountView(DossierTypesAdminView)
+    await flushPromises()
+    await wrapper.get('[data-testid="type-edit-fields"]').trigger('click')
+    await wrapper.get('[data-testid="type-edit-fields-save"]').trigger('click')
+    await flushPromises()
+    const panel = wrapper.get('[data-testid="type-edit-fields-panel"]')
+    expect(panel.get('[data-testid="schema-detail"]').text()).toBe('schéma incompatible')
+    const items = panel.findAll('[data-testid="schema-duplicate"]')
+    expect(items).toHaveLength(1)
+    expect(items[0].text()).toContain('AB')
+    expect(items[0].text()).toContain('CD<script>')
+    expect(items[0].element.querySelector('script')).toBeNull()
+    expect(items[0].text()).toContain('D00')
+    expect(items[0].text()).toContain('D19')
+    expect(items[0].text()).not.toContain('D24')
+    expect(items[0].text()).toContain('25')
+  })
+
   it('blocks the save when the edited schema has validation errors', async () => {
     const { wrapper } = await mountView(DossierTypesAdminView)
     await flushPromises()

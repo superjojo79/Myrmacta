@@ -25,6 +25,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -86,6 +89,8 @@ public class DossierTypeController {
 
     @PatchMapping("/{code}")
     @PreAuthorize("hasRole('TENANT_ADMIN')")
+    @ApiResponse(responseCode = "409", description = "Schema incompatible with existing dossiers",
+            content = @Content(schema = @Schema(implementation = SchemaIncompatibleProblem.class)))
     public ResponseEntity<DossierTypeResponse> update(
             @PathVariable String code,
             @RequestBody UpdateDossierTypeRequest request,

@@ -975,7 +975,9 @@ infrastructure
   dossier recalculé par les règles (`DossierUniqueKeys`).
 - **Erreurs :** doublon → 400, `errors[]` `code: "UNIQUE"` + `reference` du détenteur (pré-contrôle de la création, de la
   correction et de l'essai à blanc MCP ; la base tranche les courses). Activer `unique` sur des doublons ouverts → 409 avec
-  `duplicates`. Webhook entrant : 400 avec champs et codes seulement.
+  `duplicates` (au plus 20 valeurs ; `duplicateCount` est le total, et le `detail` le nomme quand la liste est tronquée).
+  Chaque valeur cite au plus 20 références et garde le total dans `referenceCount`. Webhook entrant : 400 avec champs et
+  codes seulement.
 - **Tests :** `DossierUniqueValueIT`, `DossierUniqueTypeIT`, `UniqueFieldApiTest`, `UniqueFieldWorkflowIT`.
 - **Recherche depuis un workflow (lot B) :** brique `${dossierSearchTask}` — dossiers en cours du même type, dossier courant
   exclu, 1 à 3 égalités sur des champs cherchables ; nombre et référence du plus ancien

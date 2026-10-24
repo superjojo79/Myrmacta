@@ -135,6 +135,7 @@ class UniqueFieldApiTest {
                 .andExpect(jsonPath("$.incompatibleCount").value(2))
                 .andExpect(jsonPath("$.duplicates[0].field").value("cle"))
                 .andExpect(jsonPath("$.duplicates[0].value").value("1ABC123"))
-                .andExpect(jsonPath("$.duplicates[0].references.length()").value(2));
+                .andExpect(jsonPath("$.duplicates[0].references.length()").value(2))
+                .andExpect(jsonPath("$.duplicates[0].referenceCount").value(2));
     }
 }

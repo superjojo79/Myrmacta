@@ -129,6 +129,10 @@ const dossier: typeof fr = {
     searchable: 'Searchable',
     sensitiveNotSearchable: 'A sensitive field cannot be searchable',
     searchableHint: 'Offered as a filter in the dossier list',
+    unique: 'Unique value',
+    uniqueHint: 'Only once among the open dossiers of this type',
+    uniqueDisabledType: 'Only for text, number or date fields',
+    uniqueDisabledSensitive: 'A sensitive field cannot be unique: refusing a duplicate would reveal the value',
     rules: 'Rules (computation, visibility, conditional requirement)',
     rulesHint: 'JSONata expressions on simple, non-sensitive fields: {example}.',
     formula: 'Computation (computed field, read-only, recomputed on every save)',
@@ -158,6 +162,10 @@ const dossier: typeof fr = {
     ruleRequired: 'The “required if” rule',
     sensitiveSearchable: 'The field “{shown}” is sensitive: it cannot be searchable',
     typeNotSearchable: 'A {type} field (“{shown}”) cannot be searchable',
+    sensitiveUnique: 'The field “{shown}” is sensitive: it cannot be unique (refusing a duplicate would reveal the value)',
+    typeNotUnique: 'A {type} field (“{shown}”) cannot be unique: only text, number or date',
+    uniqueNameTooLong: 'The unique field name “{shown}” exceeds {max} characters',
+    subUnique: 'The sub-field “{shown}” cannot be unique{where}',
     computedSensitive: 'The computed field “{shown}” cannot be sensitive',
     typeNotComputed: 'A {type} field (“{shown}”) cannot be computed',
     computedReadOnly: 'The computed field “{shown}” is always present and read-only: neither “required”, nor a default value, nor “visible if”, nor “required if”',
@@ -174,6 +182,11 @@ const dossier: typeof fr = {
     minAboveMax: 'The minimum number of rows of group “{shown}” exceeds its maximum',
     unnamed: '(unnamed)',
     inGroup: ' (group “{owner}”)',
+  },
+  fieldError: {
+    unique: 'Already used by dossier {reference}',
+    uniqueUnknown: 'Already used by another open dossier',
+    detached: '{label}: {message}',
   },
 }
 

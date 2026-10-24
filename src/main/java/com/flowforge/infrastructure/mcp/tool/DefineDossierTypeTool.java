@@ -220,7 +220,10 @@ public class DefineDossierTypeTool {
                     existing.tenantId(), existing.code(), fieldDefinitions, allowUnknownFields));
             if (!compatibility.compatible()) {
                 throw new DossierTypeSchemaIncompatibleException(
-                        compatibility.incompatibleCount(), compatibility.sampleReferences(), compatibility.duplicates());
+                        compatibility.incompatibleCount(),
+                        compatibility.sampleReferences(),
+                        compatibility.duplicates(),
+                        compatibility.duplicateCount());
             }
             return result("update", true, existing.code(), null);
         }

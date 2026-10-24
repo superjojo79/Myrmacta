@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import DossierFieldsTaskForm from './DossierFieldsTaskForm.vue'
 import { getDossierById, updateDossierFields } from '@/api/dossiers'
-import { getDossierType } from '@/api/dossierTypes'
+import { evaluateFieldRules, getDossierType } from '@/api/dossierTypes'
 
 vi.mock('@/api/dossiers', () => ({
   getDossierById: vi.fn(),
@@ -10,6 +10,7 @@ vi.mock('@/api/dossiers', () => ({
 }))
 vi.mock('@/api/dossierTypes', () => ({
   getDossierType: vi.fn(),
+  evaluateFieldRules: vi.fn(),
 }))
 
 beforeEach(() => {
@@ -183,6 +184,323 @@ describe('DossierFieldsTaskForm', () => {
     await flushPromises()
 
     expect(updateDossierFields).toHaveBeenLastCalledWith('d1', { priority: 'URGENT' }, 4)
+  })
+
+  it('shows UNIQUE under the field and does not emit the holder reference', async () => {
+    vi.mocked(getDossierById).mockResolvedValue(DOSSIER as never)
+    vi.mocked(getDossierType).mockResolvedValue(DOSSIER_TYPE as never)
+    vi.mocked(updateDossierFields).mockRejectedValue({
+      response: {
+        data: {
+          detail: 'priority UNIQUE Value already used by dossier DOS-9',
+          errors: [{ field: 'priority', code: 'UNIQUE', message: 'Value already used by dossier DOS-9', reference: 'DOS-9' }],
+        },
+      },
+    })
+    const wrapper = mount(DossierFieldsTaskForm, { props: { dossierId: 'd1' } })
+    await flushPromises()
+    await wrapper.findAll('input')[0].setValue('HIGH')
+    await wrapper.get('button').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('[data-testid="field-error"]').text()).toContain('Déjà utilisé par le dossier DOS-9')
+    expect(wrapper.text()).not.toContain('Value already used')
+    expect(wrapper.emitted('ready')).toBeUndefined()
+    const emitted = (wrapper.emitted('error') ?? []).flat().join(' ')
+    expect(emitted).not.toContain('DOS-9')
+  })
+
+  it('emits a translated UNIQUE error when the field is hidden by a visibility rule (TODO §102)', async () => {
+    vi.useFakeTimers()
+    try {
+      vi.mocked(getDossierById).mockResolvedValue(DOSSIER as never)
+      vi.mocked(getDossierType).mockResolvedValue({
+        ...DOSSIER_TYPE,
+        fieldDefinitions: [
+          ...DOSSIER_TYPE.fieldDefinitions,
+          { name: 'siret', label: 'SIRET', type: 'STRING', required: false, visibleWhen: "dossier.fields.priority = 'FR'" },
+        ],
+      } as never)
+      vi.mocked(evaluateFieldRules).mockResolvedValue({ computed: {}, hidden: ['siret'], requiredByRule: [], errors: [] })
+      vi.mocked(updateDossierFields).mockRejectedValue({
+        response: {
+          data: {
+            detail: 'siret UNIQUE Value already used by dossier DOS-9',
+            errors: [{ field: 'siret', code: 'UNIQUE', message: 'Value already used by dossier DOS-9 SECRET-PLAQUE', reference: 'DOS-9' }],
+          },
+        },
+      })
+      const wrapper = mount(DossierFieldsTaskForm, { props: { dossierId: 'd1' } })
+      await flushPromises()
+      await vi.advanceTimersByTimeAsync(350)
+      await flushPromises()
+      await wrapper.findAll('input')[0].setValue('HIGH')
+      await wrapper.get('button').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.find('[data-testid="field-error"]').exists()).toBe(false)
+      expect(wrapper.emitted('ready')).toBeUndefined()
+    const emitted = (wrapper.emitted('error') ?? []).flat().join(' ')
+    expect(emitted).toContain('SIRET')
+    expect(emitted).toContain('Déjà utilisé par le dossier DOS-9')
+    expect(emitted).not.toContain('SECRET-PLAQUE')
+    expect(emitted).not.toContain('Value already used')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('retracts the previous holder when the next refusal is shown under a visible field (TODO §102)', async () => {
+    vi.useFakeTimers()
+    try {
+      vi.mocked(getDossierById).mockResolvedValue(DOSSIER as never)
+      vi.mocked(getDossierType).mockResolvedValue({
+        ...DOSSIER_TYPE,
+        fieldDefinitions: [
+          ...DOSSIER_TYPE.fieldDefinitions,
+          { name: 'siret', label: 'SIRET', type: 'STRING', required: false, visibleWhen: "dossier.fields.priority = 'FR'" },
+        ],
+      } as never)
+      vi.mocked(evaluateFieldRules).mockResolvedValue({ computed: {}, hidden: ['siret'], requiredByRule: [], errors: [] })
+      vi.mocked(updateDossierFields)
+        .mockRejectedValueOnce({
+          response: {
+            data: {
+              detail: 'siret UNIQUE Value already used by dossier DOS-9',
+              errors: [{ field: 'siret', code: 'UNIQUE', message: 'Value already used by dossier DOS-9', reference: 'DOS-9' }],
+            },
+          },
+        })
+        .mockRejectedValueOnce({
+          response: {
+            data: {
+              detail: 'priority UNIQUE Value already used by dossier DOS-2',
+              errors: [{ field: 'priority', code: 'UNIQUE', message: 'Value already used by dossier DOS-2', reference: 'DOS-2' }],
+            },
+          },
+        })
+      const wrapper = mount(DossierFieldsTaskForm, { props: { dossierId: 'd1' } })
+      await flushPromises()
+      await vi.advanceTimersByTimeAsync(350)
+      await flushPromises()
+      await wrapper.findAll('input')[0].setValue('HIGH')
+      await wrapper.get('button').trigger('click')
+      await flushPromises()
+      await wrapper.findAll('input')[0].setValue('LOW')
+      await wrapper.get('button').trigger('click')
+      await flushPromises()
+
+      const events = wrapper.emitted('error') ?? []
+      expect(events.at(-1)?.[0] ?? '').not.toContain('DOS-9')
+      expect(events.at(-1)?.[0]).toBeNull()
+      expect(wrapper.get('[data-testid="field-error"]').text()).toContain('Déjà utilisé par le dossier DOS-2')
+      expect(wrapper.text()).not.toContain('DOS-9')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('retracts the banner when a hidden field becomes visible again (TODO §102)', async () => {
+    vi.useFakeTimers()
+    try {
+      vi.mocked(getDossierById).mockResolvedValue(DOSSIER as never)
+      vi.mocked(getDossierType).mockResolvedValue({
+        ...DOSSIER_TYPE,
+        fieldDefinitions: [
+          ...DOSSIER_TYPE.fieldDefinitions,
+          { name: 'siret', label: 'SIRET', type: 'STRING', required: false, visibleWhen: "dossier.fields.priority = 'FR'" },
+        ],
+      } as never)
+      vi.mocked(evaluateFieldRules)
+        .mockResolvedValueOnce({ computed: {}, hidden: ['siret'], requiredByRule: [], errors: [] })
+        .mockResolvedValue({ computed: {}, hidden: [], requiredByRule: [], errors: [] })
+      vi.mocked(updateDossierFields).mockRejectedValue({
+        response: {
+          data: {
+            detail: 'siret UNIQUE Value already used by dossier DOS-9',
+            errors: [{ field: 'siret', code: 'UNIQUE', message: 'Value already used by dossier DOS-9', reference: 'DOS-9' }],
+          },
+        },
+      })
+      const wrapper = mount(DossierFieldsTaskForm, { props: { dossierId: 'd1' } })
+      await flushPromises()
+      await vi.advanceTimersByTimeAsync(350)
+      await flushPromises()
+      await wrapper.findAll('input')[0].setValue('HIGH')
+      await wrapper.get('button').trigger('click')
+      await flushPromises()
+      await wrapper.findAll('input')[0].setValue('LOW')
+      await vi.advanceTimersByTimeAsync(350)
+      await flushPromises()
+
+      const events = wrapper.emitted('error') ?? []
+      expect(events.at(-1)?.[0]).toBeNull()
+      expect(wrapper.get('[data-testid="field-error"]').text()).toContain('Déjà utilisé par le dossier DOS-9')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('drops the off-screen banner once a successful patch clears the hidden field (TODO §102)', async () => {
+    vi.useFakeTimers()
+    try {
+      vi.mocked(getDossierById).mockResolvedValue({
+        ...DOSSIER,
+        fields: { priority: 'NORMAL', notes: 'unchanged', siret: '12345678901234' },
+      } as never)
+      vi.mocked(getDossierType).mockResolvedValue({
+        ...DOSSIER_TYPE,
+        fieldDefinitions: [
+          ...DOSSIER_TYPE.fieldDefinitions,
+          { name: 'siret', label: 'SIRET', type: 'STRING', required: false, visibleWhen: "dossier.fields.priority = 'FR'" },
+        ],
+      } as never)
+      vi.mocked(evaluateFieldRules).mockResolvedValue({ computed: {}, hidden: ['siret'], requiredByRule: [], errors: [] })
+      vi.mocked(updateDossierFields)
+        .mockRejectedValueOnce({
+          response: {
+            data: {
+              detail: 'siret UNIQUE Value already used by dossier DOS-9',
+              errors: [{ field: 'siret', code: 'UNIQUE', message: 'Value already used by dossier DOS-9', reference: 'DOS-9' }],
+            },
+          },
+        })
+        .mockResolvedValueOnce({
+          ...DOSSIER,
+          fields: { priority: 'LOW', notes: 'unchanged' },
+          version: 4,
+        } as never)
+      const wrapper = mount(DossierFieldsTaskForm, { props: { dossierId: 'd1' } })
+      await flushPromises()
+      await vi.advanceTimersByTimeAsync(350)
+      await flushPromises()
+      await wrapper.findAll('input')[0].setValue('LOW')
+      await wrapper.get('button').trigger('click')
+      await flushPromises()
+
+      expect(updateDossierFields).toHaveBeenCalledWith('d1', { priority: 'LOW', siret: null }, 3)
+      expect(wrapper.get('[data-testid="task-form-banner"]').text()).toContain('DOS-9')
+
+      await wrapper.get('button').trigger('click')
+      await flushPromises()
+
+      expect(updateDossierFields).toHaveBeenLastCalledWith('d1', { priority: 'LOW', siret: null }, 3)
+      expect(wrapper.find('[data-testid="task-form-banner"]').exists()).toBe(false)
+      expect(wrapper.text()).not.toContain('DOS-9')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('keeps only the off-screen error the successful patch did not touch (TODO §102)', async () => {
+    vi.useFakeTimers()
+    try {
+      vi.mocked(getDossierById).mockResolvedValue({
+        ...DOSSIER,
+        fields: { priority: 'NORMAL', notes: 'unchanged', siret: '12345678901234' },
+      } as never)
+      vi.mocked(getDossierType).mockResolvedValue({
+        ...DOSSIER_TYPE,
+        fieldDefinitions: [
+          ...DOSSIER_TYPE.fieldDefinitions,
+          { name: 'siret', label: 'SIRET', type: 'STRING', required: false, visibleWhen: "dossier.fields.priority = 'FR'" },
+        ],
+      } as never)
+      vi.mocked(evaluateFieldRules).mockResolvedValue({ computed: {}, hidden: ['siret'], requiredByRule: [], errors: [] })
+      vi.mocked(updateDossierFields)
+        .mockRejectedValueOnce({
+          response: {
+            data: {
+              detail: 'siret UNIQUE',
+              errors: [
+                { field: 'siret', code: 'UNIQUE', message: 'Value already used by dossier DOS-9', reference: 'DOS-9' },
+                { field: 'legacy', code: 'UNIQUE', message: 'Value already used by dossier DOS-8', reference: 'DOS-8' },
+              ],
+            },
+          },
+        })
+        .mockResolvedValueOnce({
+          ...DOSSIER,
+          fields: { priority: 'LOW', notes: 'unchanged' },
+          version: 4,
+        } as never)
+      const wrapper = mount(DossierFieldsTaskForm, { props: { dossierId: 'd1' } })
+      await flushPromises()
+      await vi.advanceTimersByTimeAsync(350)
+      await flushPromises()
+      await wrapper.findAll('input')[0].setValue('LOW')
+      await wrapper.get('button').trigger('click')
+      await flushPromises()
+      expect(wrapper.get('[data-testid="task-form-banner"]').text()).toContain('DOS-9')
+      expect(wrapper.get('[data-testid="task-form-banner"]').text()).toContain('DOS-8')
+
+      await wrapper.get('button').trigger('click')
+      await flushPromises()
+
+      const banner = wrapper.get('[data-testid="task-form-banner"]').text()
+      expect(banner).toContain('DOS-8')
+      expect(banner).not.toContain('DOS-9')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('keeps an untouched out-of-schema banner when the successful patch does not mention that field (TODO §102)', async () => {
+    vi.mocked(getDossierById).mockResolvedValue(DOSSIER as never)
+    vi.mocked(getDossierType).mockResolvedValue(DOSSIER_TYPE as never)
+    vi.mocked(updateDossierFields)
+      .mockRejectedValueOnce({
+        response: {
+          data: {
+            detail: 'legacy UNIQUE Value already used by dossier DOS-9',
+            errors: [{ field: 'legacy', code: 'UNIQUE', message: 'Value already used by dossier DOS-9', reference: 'DOS-9' }],
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        ...DOSSIER,
+        fields: { priority: 'LOW', notes: 'unchanged' },
+        version: 4,
+      } as never)
+    const wrapper = mount(DossierFieldsTaskForm, { props: { dossierId: 'd1' } })
+    await flushPromises()
+    await wrapper.findAll('input')[0].setValue('HIGH')
+    await wrapper.get('button').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('[data-testid="task-form-banner"]').text()).toContain('DOS-9')
+
+    await wrapper.findAll('input')[0].setValue('LOW')
+    await wrapper.get('button').trigger('click')
+    await flushPromises()
+
+    expect(updateDossierFields).toHaveBeenLastCalledWith('d1', { priority: 'LOW' }, 3)
+    expect(wrapper.get('[data-testid="task-form-banner"]').text()).toContain('DOS-9')
+  })
+
+  it('keeps the off-screen banner when the next submit has an empty patch (TODO §102)', async () => {
+    vi.mocked(getDossierById).mockResolvedValue(DOSSIER as never)
+    vi.mocked(getDossierType).mockResolvedValue(DOSSIER_TYPE as never)
+    vi.mocked(updateDossierFields).mockRejectedValue({
+      response: {
+        data: {
+          detail: 'legacy UNIQUE Value already used by dossier DOS-9',
+          errors: [{ field: 'legacy', code: 'UNIQUE', message: 'Value already used by dossier DOS-9', reference: 'DOS-9' }],
+        },
+      },
+    })
+    const wrapper = mount(DossierFieldsTaskForm, { props: { dossierId: 'd1' } })
+    await flushPromises()
+    await wrapper.findAll('input')[0].setValue('HIGH')
+    await wrapper.get('button').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('[data-testid="task-form-banner"]').text()).toContain('DOS-9')
+
+    await wrapper.findAll('input')[0].setValue('NORMAL')
+    await wrapper.get('button').trigger('click')
+    await flushPromises()
+
+    expect(updateDossierFields).toHaveBeenCalledTimes(1)
+    expect(wrapper.emitted('ready')).toHaveLength(1)
+    expect(wrapper.get('[data-testid="task-form-banner"]').text()).toContain('DOS-9')
   })
 
   it('emits error and does not emit ready when the PATCH fails', async () => {

@@ -5,6 +5,7 @@ import {
   LINK_ID,
   envelope,
   CLAIM_TYPE,
+  dossierBody,
   mockSession,
   openApp,
   openBpmnEditor,
@@ -78,6 +79,244 @@ test('E2E-FORM-1 dossier-fields task shows the fields form and completes via PAT
   const patched = (await patchRequest).postDataJSON() as { fields: Record<string, unknown> }
   expect(patched.fields.priority).toBe('HIGH')
   await expect(page.getByText('Aucune tâche assignée')).toBeVisible()
+})
+
+test('E2E-UNIQUE-4 a dossier-fields task shows UNIQUE under the field and not the raw server message', async ({ page }) => {
+  await mockSession(page)
+  await page.route('**/api/workflow-tasks/mine*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(
+        envelope([
+          {
+            taskId: 'task-1',
+            name: 'Valider',
+            assigneeId: 'user-1',
+            createdAt: '2026-08-12T00:00:00Z',
+            processInstanceId: 'pi-1',
+            dossierId: DOSSIER_ID,
+            dossierReference: 'DOS-1',
+            linkId: LINK_ID,
+            slaRemainingHours: 12,
+            formKey: 'dossier-fields',
+          },
+        ]),
+      ),
+    })
+  })
+  await page.route(`**/api/dossiers/${DOSSIER_ID}/fields`, async (route) => {
+    if (route.request().method() !== 'PATCH') {
+      await route.fallback()
+      return
+    }
+    await route.fulfill({
+      status: 400,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        title: 'Dossier field validation failed',
+        status: 400,
+        detail: 'priority UNIQUE Value already used by dossier DOS-9 SECRET-PLAQUE',
+        errors: [{ field: 'priority', code: 'UNIQUE', message: 'Value already used by dossier DOS-9 SECRET-PLAQUE', reference: 'DOS-9' }],
+      }),
+    })
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Tâches' }).click()
+  const priority = page.locator('.dossier-fields-task-form input')
+  await expect(priority).toHaveValue('NORMAL')
+  await priority.fill('HIGH')
+  await page.locator('.dossier-fields-task-form button').click()
+  const alert = page.getByTestId('field-error')
+  await expect(alert).toContainText('Déjà utilisé par le dossier DOS-9')
+  await expect(page.getByText('SECRET-PLAQUE')).toHaveCount(0)
+  await expect(page.getByText('Value already used')).toHaveCount(0)
+  await expect(page.getByText('Valider')).toBeVisible()
+})
+
+test('E2E-UNIQUE-6 two dossier-fields tasks keep their own off-screen banners', async ({ page }) => {
+  await mockSession(page)
+  await page.route('**/api/workflow-tasks/mine*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(
+        envelope([
+          {
+            taskId: 'task-1',
+            name: 'Première',
+            assigneeId: 'user-1',
+            createdAt: '2026-08-12T00:00:00Z',
+            processInstanceId: 'pi-1',
+            dossierId: DOSSIER_ID,
+            dossierReference: 'DOS-1',
+            linkId: LINK_ID,
+            formKey: 'dossier-fields',
+          },
+          {
+            taskId: 'task-2',
+            name: 'Seconde',
+            assigneeId: 'user-1',
+            createdAt: '2026-08-12T00:00:00Z',
+            processInstanceId: 'pi-2',
+            dossierId: DOSSIER_ID,
+            dossierReference: 'DOS-1',
+            linkId: LINK_ID,
+            formKey: 'dossier-fields',
+          },
+        ]),
+      ),
+    })
+  })
+  let fieldsPatch = 0
+  await page.route(`**/api/dossiers/${DOSSIER_ID}/fields`, async (route) => {
+    if (route.request().method() !== 'PATCH') {
+      await route.fallback()
+      return
+    }
+    fieldsPatch += 1
+    const offScreen = fieldsPatch === 1
+    await route.fulfill({
+      status: 400,
+      contentType: 'application/json',
+      body: JSON.stringify(
+        offScreen
+          ? {
+              detail: 'absent UNIQUE Value already used by dossier DOS-9',
+              errors: [{ field: 'absent', code: 'UNIQUE', message: 'Value already used by dossier DOS-9', reference: 'DOS-9' }],
+            }
+          : {
+              detail: 'priority UNIQUE Value already used by dossier DOS-2',
+              errors: [{ field: 'priority', code: 'UNIQUE', message: 'Value already used by dossier DOS-2', reference: 'DOS-2' }],
+            },
+      ),
+    })
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Tâches' }).click()
+  const forms = page.locator('.dossier-fields-task-form')
+  await expect(forms).toHaveCount(2)
+  await forms.nth(0).locator('input').fill('HIGH')
+  await forms.nth(0).locator('button').click()
+  await forms.nth(1).locator('input').fill('LOW')
+  await forms.nth(1).locator('button').click()
+  const first = page.locator('.tasks-view__list li', { hasText: 'Première' })
+  const second = page.locator('.tasks-view__list li', { hasText: 'Seconde' })
+  await expect(first.getByTestId('task-form-banner')).toContainText('DOS-9')
+  await expect(second.getByTestId('field-error')).toContainText('DOS-2')
+  await expect(second).not.toContainText('DOS-9')
+})
+
+test('E2E-UNIQUE-8 a successful patch that clears a hidden field drops its banner', async ({ page }) => {
+  await mockSession(page)
+  await page.route('**/api/workflow-tasks/mine*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(
+        envelope([
+          {
+            taskId: 'task-1',
+            name: 'Valider',
+            assigneeId: 'user-1',
+            createdAt: '2026-08-12T00:00:00Z',
+            processInstanceId: 'pi-1',
+            dossierId: DOSSIER_ID,
+            dossierReference: 'DOS-1',
+            linkId: LINK_ID,
+            formKey: 'dossier-fields',
+          },
+        ]),
+      ),
+    })
+  })
+  await page.route('**/api/dossier-types/CLAIM', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        ...CLAIM_TYPE,
+        fieldDefinitions: [
+          ...CLAIM_TYPE.fieldDefinitions,
+          {
+            name: 'siret',
+            label: 'SIRET',
+            type: 'STRING',
+            required: false,
+            options: [],
+            group: null,
+            sensitive: false,
+            visibleWhen: "dossier.fields.priority = 'FR'",
+          },
+        ],
+      }),
+    })
+  })
+  await page.route(`**/api/dossiers/${DOSSIER_ID}`, async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.fallback()
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(dossierBody({ fields: { priority: 'NORMAL', siret: '12345678901234' }, version: 3 })),
+    })
+  })
+  await page.route('**/api/dossier-types/CLAIM/evaluate-rules', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ computed: {}, hidden: ['siret'], requiredByRule: [], errors: [] }),
+    })
+  })
+  let fieldsPatch = 0
+  await page.route(`**/api/dossiers/${DOSSIER_ID}/fields`, async (route) => {
+    if (route.request().method() !== 'PATCH') {
+      await route.fallback()
+      return
+    }
+    fieldsPatch += 1
+    const posted = route.request().postDataJSON() as { fields: Record<string, unknown> }
+    expect(posted.fields.priority).toBe('LOW')
+    expect(posted.fields.siret).toBeNull()
+    if (fieldsPatch === 1) {
+      await route.fulfill({
+        status: 400,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          detail: 'siret UNIQUE Value already used by dossier DOS-9',
+          errors: [{ field: 'siret', code: 'UNIQUE', message: 'Value already used by dossier DOS-9', reference: 'DOS-9' }],
+        }),
+      })
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(dossierBody({ fields: { priority: 'LOW' }, version: 4 })),
+    })
+  })
+  await page.route('**/api/workflow-tasks/*/complete', async (route) => {
+    await route.fulfill({
+      status: 500,
+      contentType: 'application/json',
+      body: JSON.stringify({ detail: 'Le moteur a refusé la tâche' }),
+    })
+  })
+  const rulesReady = page.waitForResponse((response) => response.url().includes('/evaluate-rules') && response.ok())
+  await openApp(page)
+  await page.getByRole('link', { name: 'Tâches' }).click()
+  await rulesReady
+  const form = page.locator('.dossier-fields-task-form')
+  await expect(form.getByLabel('SIRET')).toHaveCount(0)
+  await form.locator('input').fill('LOW')
+  await form.locator('button').click()
+  await expect(form.getByTestId('task-form-banner')).toContainText('DOS-9')
+  await form.locator('button').click()
+  await expect(page.locator('.tasks-view > .error')).toContainText('Le moteur a refusé la tâche')
+  await expect(form.getByTestId('task-form-banner')).toHaveCount(0)
+  await expect(form).not.toContainText('DOS-9')
 })
 
 test('E2E-FORM-2 document-generation task lists only the allowed templates and completes with variables', async ({

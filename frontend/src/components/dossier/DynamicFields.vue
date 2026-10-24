@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import type { FieldDefinition, FieldRulesPreview } from '@/api/types'
+import type { FieldDefinition, FieldError, FieldRulesPreview } from '@/api/types'
 import SensitiveValue from './SensitiveValue.vue'
 import DynamicFieldInput from './DynamicFieldInput.vue'
 import { formatFieldValue, isStructured } from '@/dossier/fieldValues'
+import { describeFieldError } from '@/dossier/fieldErrors'
 import { evaluateFieldRules } from '@/api/dossierTypes'
 import { hasFieldRules, isComputedField, isFieldApplicable, isFieldRequired } from '@/dossier/fieldRules'
+
+const { t } = useI18n()
 
 const props = withDefaults(
   defineProps<{
@@ -21,12 +24,16 @@ const props = withDefaults(
      * saisie retirée), obligations mises à jour.
      */
     typeCode?: string
+    /** Erreurs de champ renvoyées par le serveur (`errors[]`), affichées sous le champ concerné. */
+    serverErrors?: FieldError[]
   }>(),
-  { applyDefaults: true },
+  { applyDefaults: true, serverErrors: () => [] },
 )
 
 const emit = defineEmits<{
   'update:modelValue': [Record<string, unknown>]
+  /** Erreurs serveur dont le champ n'est pas rendu (masqué par une règle, ou inconnu du schéma affiché). */
+  'undisplayed-errors': [FieldError[]]
 }>()
 
 const rules = ref<FieldRulesPreview | null>(null)
@@ -100,7 +107,20 @@ function setField(name: string, value: unknown) {
   emit('update:modelValue', { ...props.modelValue, [name]: value })
 }
 
-const { t } = useI18n()
+function messagesFor(name: string): string[] {
+  return (props.serverErrors ?? []).filter((error) => error.field === name).map(describeFieldError)
+}
+
+const undisplayedErrors = computed(() => {
+  const rendered = new Set(groups.value.flatMap(([, fields]) => fields.map((field) => field.name)))
+  return (props.serverErrors ?? []).filter((error) => !rendered.has(error.field))
+})
+
+watch(undisplayedErrors, (errors) => emit('undisplayed-errors', errors), { immediate: true })
+
+function fieldErrorId(name: string): string {
+  return `field-error-${name}`
+}
 </script>
 
 <template>
@@ -111,8 +131,7 @@ const { t } = useI18n()
         Un champ structuré (montant, référence, groupe) porte plusieurs contrôles, voire un tableau : dans un <label>, un clic
         sur le libellé activerait le premier contrôle (ajout de ligne, case à cocher) et le HTML serait invalide.
       -->
-      <component
-        :is="isStructured(field.type) ? 'div' : 'label'"
+      <div
         v-for="field in fields"
         :key="field.name"
         class="dynamic-fields__field"
@@ -120,11 +139,18 @@ const { t } = useI18n()
         :role="isStructured(field.type) ? 'group' : undefined"
         :aria-label="isStructured(field.type) ? field.label : undefined"
       >
+        <component :is="isStructured(field.type) ? 'div' : 'label'" class="dynamic-fields__control">
         <span>
           {{ field.label }}<em v-if="isFieldRequired(field, rules)"> *</em>
           <small v-if="isComputedField(field)" class="dynamic-fields__computed-hint"> {{ t('dossier.computed') }}</small>
         </span>
-        <output v-if="!readonly && isComputedField(field)" class="dynamic-fields__computed" :data-testid="`computed-${field.name}`">{{
+        <output
+          v-if="!readonly && isComputedField(field)"
+          class="dynamic-fields__computed"
+          :data-testid="`computed-${field.name}`"
+          :aria-invalid="messagesFor(field.name).length > 0 ? 'true' : undefined"
+          :aria-describedby="messagesFor(field.name).length > 0 ? fieldErrorId(field.name) : undefined"
+        >{{
           formatFieldValue(field, computedValue(field)) || '—'
         }}</output>
         <template v-else-if="readonly">
@@ -152,10 +178,22 @@ const { t } = useI18n()
           v-else
           :field="field"
           :model-value="modelValue[field.name]"
+          :invalid="messagesFor(field.name).length > 0"
+          :described-by="messagesFor(field.name).length > 0 ? fieldErrorId(field.name) : undefined"
           @update:model-value="(value) => setField(field.name, value)"
         />
+        </component>
         <small v-if="field.helpText && !readonly" class="dynamic-fields__help" :data-testid="`help-${field.name}`">{{ field.helpText }}</small>
-      </component>
+        <p
+          v-if="!readonly && messagesFor(field.name).length > 0"
+          :id="fieldErrorId(field.name)"
+          class="dynamic-fields__error"
+          role="alert"
+          data-testid="field-error"
+        >
+          {{ messagesFor(field.name).join(' ') }}
+        </p>
+      </div>
     </section>
   </div>
 </template>
@@ -180,9 +218,17 @@ const { t } = useI18n()
 .dynamic-fields__field--half {
   grid-column: auto;
 }
+.dynamic-fields__control {
+  display: grid;
+  gap: 0.25rem;
+}
 .dynamic-fields__help {
   color: #6b6b70;
   white-space: pre-line;
+}
+.dynamic-fields__error {
+  color: #c92a2a;
+  margin: 0;
 }
 @media (max-width: 640px) {
   .dynamic-fields__field--half {

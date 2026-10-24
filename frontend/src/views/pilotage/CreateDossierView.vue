@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { listAllDossierTypes } from '@/api/dossierTypes'
 import { useDossierStore } from '@/stores/dossier'
-import { toProblemDetail } from '@/api/http'
-import type { DossierType } from '@/api/types'
+import { fieldErrorsOf, toProblemDetail } from '@/api/http'
+import type { DossierType, FieldError } from '@/api/types'
 import DynamicFields from '@/components/dossier/DynamicFields.vue'
 import { onMounted } from 'vue'
 import { cleanStructuredFields } from '@/dossier/fieldValues'
+import { describeDetachedFieldError } from '@/dossier/fieldErrors'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -18,9 +19,21 @@ const dossierTypeCode = ref('')
 const label = ref('')
 const fields = ref<Record<string, unknown>>({})
 const error = ref<string | null>(null)
+const serverErrors = ref<FieldError[]>([])
 const submitting = ref(false)
 
 const selectedType = () => types.value.find((t) => t.code === dossierTypeCode.value) ?? null
+
+function onUndisplayed(errors: FieldError[]) {
+  if (serverErrors.value.length === 0) return
+  const labels = new Map((selectedType()?.fieldDefinitions ?? []).map((def) => [def.name, def.label]))
+  error.value = errors.length > 0 ? errors.map((item) => describeDetachedFieldError(item, labels.get(item.field))).join(' ') : null
+}
+
+watch(dossierTypeCode, () => {
+  error.value = null
+  serverErrors.value = []
+})
 
 onMounted(async () => {
   types.value = (await listAllDossierTypes()).filter((t) => t.active)
@@ -29,6 +42,7 @@ onMounted(async () => {
 
 async function submit() {
   error.value = null
+  serverErrors.value = []
   if (!dossierTypeCode.value || !label.value.trim()) {
     error.value = t('createDossier.errors.required')
     return
@@ -42,7 +56,10 @@ async function submit() {
     })
     await router.push(`/dossiers/${created.id}`)
   } catch (err) {
-    error.value = toProblemDetail(err).detail ?? t('createDossier.errors.create')
+    const problem = toProblemDetail(err)
+    const parsed = fieldErrorsOf(problem)
+    serverErrors.value = parsed
+    if (parsed.length === 0) error.value = problem.detail ?? t('createDossier.errors.create')
   } finally {
     submitting.value = false
   }
@@ -68,8 +85,10 @@ async function submit() {
         v-model="fields"
         :definitions="selectedType()!.fieldDefinitions"
         :type-code="selectedType()!.code"
+        :server-errors="serverErrors"
+        @undisplayed-errors="onUndisplayed"
       />
-      <p v-if="error" class="create-dossier__error">{{ error }}</p>
+      <p v-if="error" class="create-dossier__error" role="alert">{{ error }}</p>
       <button type="submit" :disabled="submitting">{{ t('createDossier.create') }}</button>
     </form>
   </section>

@@ -49,23 +49,44 @@ pré-contrôles), chaque règle U/R couverte par au moins un test. Tests d'inté
 
 ## Frontend — Vitest
 
-- [ ] `FieldDefinitionDefsEditor.spec.ts` : case « Valeur unique » visible, désactivée hors types autorisés et pour un
-      champ sensible ; valeur envoyée dans la charge utile.
-- [ ] `validateFieldDefinitions.spec.ts` : mêmes règles que le serveur.
-- [ ] `api/http` : extraction de `errors[]` d'un `ProblemDetail` (avec `code`, `reference`), tolérante à une réponse
-      sans `errors`.
-- [ ] `DynamicFields` : erreur serveur affichée sous le bon champ ; `UNIQUE` traduit avec la référence ; autre code →
-      message serveur.
-- [ ] `CreateDossierView` et `DossierFieldsTaskForm` : un 400 avec `errors[]` alimente les erreurs par champ.
-- [ ] Admin type : refus 409 avec valeurs en double affiché.
-- [ ] `blockDiagnostics.spec.ts` / `catalogClient.spec.ts` : bloc `dossier-search` et ses diagnostics.
+- [x] `FieldDefinitionDefsEditor.spec.ts` : case « Valeur unique » visible, désactivée hors types autorisés et pour un
+      champ sensible ; la raison inactive est un texte visible relié par `aria-describedby` ; valeur envoyée dans la
+      charge utile ; absente des colonnes de groupe.
+- [x] `validateFieldDefinitions.spec.ts` : mêmes règles que le serveur (U2, U3, U4, U13, sous-champ).
+- [x] `api/http` : extraction de `errors[]` d'un `ProblemDetail` (avec `code`, `reference`), tolérante à une réponse
+      sans `errors` ; extraction de `duplicates[]`.
+- [x] `DynamicFields` : erreur serveur affichée sous le bon champ, hors du `<label>` ; `UNIQUE` traduit avec la
+      référence ; autre code → message serveur ; la référence n'est pas montrée pour un autre code ; `aria-invalid` et
+      `aria-describedby` sur la saisie, sur `<output>` (champ calculé, ex. `plaqueNormalisee`) et sur `MONEY`,
+      `EXTERNAL_REF`, `REPEATABLE_GROUP`.
+- [x] `CreateDossierView` : un 400 avec `errors[]` alimente les erreurs par champ ; un corps sans `errors[]` garde le
+      `detail` dans une bannière `role="alert"`.
+- [x] `DossierFieldsTaskForm` et `MobileTasksView` : un premier refus sur un champ absent ou masqué, puis un refus sur
+      un champ visible, retire la référence précédente de la bannière de ce formulaire ; un champ masqué qui redevient
+      visible aussi. Deux tâches : le `null` de la seconde ne retire pas la référence hors écran de la première.
+      Un second PATCH accepté `{ priority: 'LOW', siret: null }` retire la bannière DOS-9 du champ masqué. Une erreur
+      hors schéma absente du correctif reste, de même qu'un envoi dont le correctif est vide.
+- [x] `DossierDetailView` : l'enregistrement des champs hors écran garde sa bannière quand une tâche liée affiche
+      ensuite une erreur sur un champ visible.
+- [x] `DossierDetailView` (écran « corriger ») : `UNIQUE` sous le champ, sans le `detail` anglais ; un champ hors écran
+      reste dans la bannière, phrase traduite.
+- [x] Admin type : refus 409 avec un paragraphe pour `detail` et une liste pour les doublons ; une valeur multiligne
+      reste dans un seul item ; au plus 20 références, avec le nombre total ; pas de HTML injecté.
+- [x] `DossierUniqueKeys` et le contrôle de compatibilité : au plus 20 références par valeur, `referenceCount` et le
+      nombre de dossiers incompatibles complets.
+- [x] `blockDiagnostics.spec.ts` : bloc `search-dossiers` (critères, noms réservés, sorties distinctes, longueur au-delà
+      de `maxLength` = 1000, caractères de contrôle).
 
 ## Frontend — Playwright
 
-- [ ] Admin : cocher « Valeur unique », enregistrer, voir le refus quand l'API renvoie des doublons (mock).
-- [ ] Dossier : création refusée avec l'erreur `UNIQUE` sous le champ et la référence (mock 400).
-- [ ] Tâche `dossier-fields` : enregistrement refusé avec l'erreur `UNIQUE` sous le champ (mock 400).
-- [ ] Éditeur BPMN : la brique « Rechercher des dossiers » est dans la palette et produit les attributs attendus.
+- [x] Admin : cocher « Valeur unique », enregistrer (`E2E-UNIQUE-1`, la raison d'une case inactive est visible), voir
+      le refus quand l'API renvoie des doublons (`E2E-UNIQUE-2`, mock).
+- [x] Dossier : création refusée avec l'erreur `UNIQUE` sous le champ et la référence (`E2E-UNIQUE-3`, mock 400).
+- [x] Tâche `dossier-fields` : enregistrement refusé avec l'erreur `UNIQUE` sous le champ (`E2E-UNIQUE-4`, mock 400).
+      Deux tâches gardent chacune leur bannière (`E2E-UNIQUE-6`). Un PATCH accepté qui retire le champ masqué retire
+      la bannière, même si la complétion de la tâche échoue ensuite (`E2E-UNIQUE-8`).
+- [x] Éditeur BPMN : la brique « Rechercher des dossiers » est dans la palette, produit les attributs attendus, et un
+      critère mal formé est signalé sur le canevas (`E2E-UNIQUE-5`).
 
 ### Réalisé pour le lot A (2026-10-24)
 

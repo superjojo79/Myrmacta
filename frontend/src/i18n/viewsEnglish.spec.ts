@@ -60,6 +60,8 @@ describe('English UI (D7)', () => {
     const errors = validateFieldDefinitions([{ name: 'a', label: '', type: 'SELECT', required: false, options: [] }] as never)
     expect(errors).toContain('The label of field “a” is required')
     expect(errors).toContain('The SELECT field “a” needs at least one option')
+    const unique = validateFieldDefinitions([{ name: 'a', label: 'A', type: 'BOOLEAN', required: false, unique: true }] as never)
+    expect(unique.join(' ')).toContain('cannot be unique')
   })
 
   it('relation labels and dates follow the language', () => {

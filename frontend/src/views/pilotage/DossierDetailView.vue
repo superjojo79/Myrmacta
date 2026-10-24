@@ -5,8 +5,8 @@ import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useDossierStore } from '@/stores/dossier'
 import { useAuthStore } from '@/stores/auth'
-import { toProblemDetail } from '@/api/http'
-import type { DossierStatus, ElementType, RelationType } from '@/api/types'
+import { fieldErrorsOf, toProblemDetail } from '@/api/http'
+import type { DossierStatus, ElementType, FieldError, RelationType } from '@/api/types'
 import DossierFieldsEditor from '@/components/dossier/DossierFieldsEditor.vue'
 import StatusSelect from '@/components/dossier/StatusSelect.vue'
 import ElementsList from '@/components/dossier/ElementsList.vue'
@@ -59,6 +59,7 @@ const addElementOpen = ref(false)
 const reassignTaskId = ref<string | null>(null)
 const reassignUserId = ref('')
 const actionError = ref<string | null>(null)
+const fieldServerErrors = ref<FieldError[]>([])
 /** TODO §94 — job dont le rejeu est en cours. */
 const retryingJobId = ref<string | null>(null)
 const assignableUsersLoaded = ref(false)
@@ -115,6 +116,7 @@ async function loadCurrent() {
   const id = String(route.params.id ?? '')
   if (!id) return
   actionError.value = null
+  fieldServerErrors.value = []
   await store.loadById(id)
 }
 
@@ -127,12 +129,20 @@ async function saveStatus() {
   }
 }
 
+function onFieldBanner(message: string | null) {
+  actionError.value = message
+}
+
 async function saveFields(patch: Record<string, unknown>) {
   actionError.value = null
+  fieldServerErrors.value = []
   try {
     await store.patchFields(patch)
   } catch (err) {
-    actionError.value = toProblemDetail(err).detail ?? t('dossierDetail.errors.fields')
+    const problem = toProblemDetail(err)
+    const parsed = fieldErrorsOf(problem)
+    fieldServerErrors.value = parsed
+    if (parsed.length === 0) actionError.value = problem.detail ?? t('dossierDetail.errors.fields')
   }
 }
 
@@ -250,7 +260,7 @@ async function confirmReassign() {
         <DossierPurgeRequestButton v-if="isTenantAdmin" :dossier-id="dossier.id" />
       </div>
     </header>
-    <p v-if="actionError" class="error">{{ actionError }}</p>
+    <p v-if="actionError" class="error" role="alert">{{ actionError }}</p>
 
     <DossierFieldsEditor
       v-if="dossierType"
@@ -259,7 +269,9 @@ async function confirmReassign() {
       :fields="dossier.fields"
       :can-edit="canEditDossier"
       :locked="fieldsLocked"
+      :server-errors="fieldServerErrors"
       @save="saveFields"
+      @field-banner="onFieldBanner"
     />
 
     <ElementsList
@@ -322,7 +334,6 @@ async function confirmReassign() {
       @complete="onComplete"
       @reassign="openReassign"
       @claim="onClaim"
-      @form-error="actionError = $event"
       @update:page="store.loadTasksPage($event)"
     />
 

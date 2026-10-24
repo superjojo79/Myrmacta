@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { computed, ref, watch } from 'vue'
-import type { FieldDefinition } from '@/api/types'
+import type { FieldDefinition, FieldError } from '@/api/types'
 import DynamicFields from './DynamicFields.vue'
 import { diffDossierFields } from '@/dossier/diffDossierFields'
+import { describeDetachedFieldError } from '@/dossier/fieldErrors'
 
 const props = defineProps<{
   definitions: FieldDefinition[]
@@ -13,10 +14,14 @@ const props = defineProps<{
   canEdit: boolean
   locked: boolean
   saving?: boolean
+  /** Erreurs `errors[]` du dernier enregistrement (TODO §102). */
+  serverErrors?: FieldError[]
 }>()
 
 const emit = defineEmits<{
   save: [Record<string, unknown>]
+  /** Bannière : texte des erreurs hors écran, ou null pour la retirer. */
+  'field-banner': [string | null]
 }>()
 
 const draft = ref<Record<string, unknown>>({ ...props.fields })
@@ -29,6 +34,16 @@ watch(
 )
 
 const editable = computed(() => props.canEdit && !props.locked)
+
+function onUndisplayed(errors: FieldError[]) {
+  if ((props.serverErrors ?? []).length === 0) return
+  if (errors.length === 0) {
+    emit('field-banner', null)
+    return
+  }
+  const labels = new Map(props.definitions.map((def) => [def.name, def.label]))
+  emit('field-banner', errors.map((item) => describeDetachedFieldError(item, labels.get(item.field))).join(' '))
+}
 
 function save() {
   const patch = diffDossierFields(props.fields, draft.value, props.definitions)
@@ -48,6 +63,8 @@ const { t } = useI18n()
       :readonly="!editable"
       :apply-defaults="false"
       :type-code="typeCode"
+      :server-errors="serverErrors"
+      @undisplayed-errors="onUndisplayed"
     />
     <button
       v-if="editable"

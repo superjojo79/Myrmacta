@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import axios from 'axios'
-import { apiContextPath, configureHttpClient, resolveApiBaseUrl, routerBase } from './http'
+import { apiContextPath, configureHttpClient, fieldErrorsOf, resolveApiBaseUrl, routerBase, schemaDuplicatesOf } from './http'
 
 describe('http client', () => {
   let previousBaseUrl: string | undefined
@@ -45,6 +45,32 @@ describe('http client', () => {
       base.remove()
       window.history.pushState({}, '', '/')
     }
+  })
+
+  it('extracts field errors (code and reference) and ignores a body without a usable errors array', () => {
+    expect(
+      fieldErrorsOf({
+        detail: 'Dossier field validation failed',
+        errors: [{ field: 'plaque', code: 'UNIQUE', message: 'Value already used by dossier DOS-9', reference: 'DOS-9' }],
+      }),
+    ).toEqual([{ field: 'plaque', code: 'UNIQUE', message: 'Value already used by dossier DOS-9', reference: 'DOS-9' }])
+    expect(fieldErrorsOf({ errors: [{ field: 'a', code: 'REQUIRED', message: 'Field is required' }] })).toEqual([
+      { field: 'a', code: 'REQUIRED', message: 'Field is required', reference: null },
+    ])
+    expect(fieldErrorsOf({ detail: 'type inactive' })).toEqual([])
+    expect(fieldErrorsOf({ errors: 'nope' })).toEqual([])
+    expect(fieldErrorsOf({ errors: [{ code: 'UNIQUE' }, null, { field: 'a', message: 'x' }] })).toEqual([])
+  })
+
+  it('extracts the duplicate values of a schema conflict and ignores anything else', () => {
+    expect(
+      schemaDuplicatesOf({
+        detail: 'incompatible',
+        duplicates: [{ field: 'plaque', value: '1ABC123', references: ['DOS-2', 'DOS-1'] }],
+      }),
+    ).toEqual([{ field: 'plaque', value: '1ABC123', references: ['DOS-2', 'DOS-1'] }])
+    expect(schemaDuplicatesOf({ detail: 'conflit' })).toEqual([])
+    expect(schemaDuplicatesOf({ duplicates: [{ field: 'a', value: 1, references: 'DOS-1' }] })).toEqual([])
   })
 
   it('apiContextPath uses the axios baseURL captured at boot', () => {

@@ -163,6 +163,81 @@ test('E2E-SCHEMA-1 admin creates a type with fieldDefinitions and allowUnknownFi
     .toEqual(['A', 'B'])
 })
 
+test('E2E-UNIQUE-1 admin marks a field unique and sees why the checkbox is unavailable', async ({ page }) => {
+  let createdBody: Record<string, unknown> | null = null
+  await mockSession(page)
+  await page.route(/\/api\/dossier-types(?:\?|$)/, async (route) => {
+    if (route.request().method() === 'POST') {
+      createdBody = route.request().postDataJSON() as Record<string, unknown>
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 't-unique',
+          tenantId: 'tenant_dev',
+          code: createdBody.code,
+          label: createdBody.label,
+          workflowKey: createdBody.workflowKey,
+          active: true,
+          allowUnknownFields: false,
+          fieldDefinitions: createdBody.fieldDefinitions,
+        }),
+      })
+      return
+    }
+    await route.fallback()
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Types' }).click()
+  const createForm = page.getByTestId('type-create-form')
+  await createForm.getByPlaceholder('code').fill('RIVERAIN')
+  await createForm.getByPlaceholder('libellé').fill('Riverain')
+  await createForm.getByPlaceholder('workflowKey').fill('wf-riverain')
+  await createForm.getByTestId('field-def-add').click()
+  await createForm.getByTestId('field-def-name').fill('plaque')
+  await createForm.getByTestId('field-def-label').fill('Plaque')
+  const unique = createForm.getByRole('checkbox', { name: 'Valeur unique' })
+  await expect(unique).toBeEnabled()
+  await createForm.getByTestId('field-def-type').selectOption('BOOLEAN')
+  await expect(unique).toBeDisabled()
+  await expect(createForm.getByText('Réservé aux champs texte, nombre ou date')).toBeVisible()
+  await createForm.getByTestId('field-def-type').selectOption('STRING')
+  await unique.check()
+  await createForm.getByRole('button', { name: 'Créer' }).click()
+  await expect
+    .poll(() => (createdBody?.fieldDefinitions as Array<Record<string, unknown>> | undefined)?.[0]?.unique)
+    .toBe(true)
+})
+
+test('E2E-UNIQUE-2 a schema update refused for duplicates shows the values and the references', async ({ page }) => {
+  await mockSession(page)
+  await page.route('**/api/dossier-types/CLAIM', async (route) => {
+    if (route.request().method() === 'PATCH') {
+      await route.fulfill({
+        status: 409,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          title: 'Dossier type schema incompatible',
+          status: 409,
+          detail: 'Cette modification rend 0 dossier(s) existant(s) incompatible(s) avec le nouveau schéma ; 1 valeur(s) d\'un champ unique sont partagées par des dossiers en cours',
+          incompatibleCount: 0,
+          sampleReferences: [],
+          duplicates: [{ field: 'plaque', value: '1ABC123', references: ['DOS-1', 'DOS-2'] }],
+        }),
+      })
+      return
+    }
+    await route.fallback()
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Types' }).click()
+  await page.getByTestId('type-edit-fields').click()
+  await page.getByTestId('type-edit-fields-save').click()
+  const panel = page.getByTestId('type-edit-fields-panel')
+  await expect(panel).toContainText('incompatible')
+  await expect(panel).toContainText('plaque = 1ABC123 : DOS-1, DOS-2')
+})
+
 test('E2E-SCHEMA-2 admin edits a type schema with no existing dossiers', async ({ page }) => {
   let patchedBody: Record<string, unknown> | null = null
   await mockSession(page)

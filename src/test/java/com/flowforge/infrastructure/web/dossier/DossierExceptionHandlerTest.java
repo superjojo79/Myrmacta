@@ -75,4 +75,18 @@ class DossierExceptionHandlerTest {
 
         assertThat(problem.getDetail()).contains("5").doesNotContain("(ex.");
     }
+
+    @Test
+    void handleSchemaIncompatible_statesTheFullValueCountWhenTheDuplicateListIsCapped() {
+        var shown = java.util.stream.IntStream.range(0, 20)
+                .mapToObj(i -> new com.flowforge.domain.dossier.model.UniqueDuplicate(
+                        "plaque", "V" + i, java.util.List.of("A" + i, "B" + i)))
+                .toList();
+        var problem = new DossierExceptionHandler().handleSchemaIncompatible(
+                new DossierTypeSchemaIncompatibleException(42, java.util.List.of(), shown, 21));
+
+        assertThat(problem.getDetail()).contains("21").contains("20 citées");
+        assertThat(problem.getProperties()).containsEntry("duplicateCount", 21);
+        assertThat(problem.getProperties()).containsEntry("duplicates", shown);
+    }
 }

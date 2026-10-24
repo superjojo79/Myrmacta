@@ -189,4 +189,49 @@ describe('blockDiagnostics', () => {
     expect(diagnoseBlock(bo(attrs), child, ctx({ processKey: 'claim' })).map((d) => d.kind)).toContain('recursion')
     expect(diagnoseBlock(bo(attrs), child, ctx({ processKey: 'autre' })).map((d) => d.kind)).not.toContain('recursion')
   })
+
+  it('valide la brique Rechercher des dossiers comme le déploiement (TODO §102)', () => {
+    const search = {
+      id: 'search-dossiers',
+      label: 'Rechercher des dossiers',
+      description: 'Compte les dossiers en cours du même type',
+      category: 'DOSSIER' as const,
+      element: 'SERVICE_TASK' as const,
+      marker: { delegate: 'dossierSearchTask', serviceTaskType: null, formKeyPrefix: null, portalRecipient: false },
+      parameters: [
+        { name: 'searchCriteria', label: 'Critères', type: 'TEXT' as const, binding: 'ATTRIBUTE' as const, required: true, valueSource: null, enumValues: [], maxLength: 1000, min: null, max: null, help: null, multiline: true },
+        { name: 'searchCountResult', label: 'Nombre', type: 'TEXT' as const, binding: 'ATTRIBUTE' as const, required: true, valueSource: null, enumValues: [], maxLength: 60, min: null, max: null, help: null },
+        { name: 'searchFirstReferenceResult', label: 'Référence', type: 'TEXT' as const, binding: 'ATTRIBUTE' as const, required: true, valueSource: null, enumValues: [], maxLength: 60, min: null, max: null, help: null },
+      ],
+    }
+    const ok = {
+      'flowable:searchCriteria': 'email = dossierField:email\nplaque = variable:plaque',
+      'flowable:searchCountResult': 'nbDemandes',
+      'flowable:searchFirstReferenceResult': 'premiereDemande',
+    }
+    expect(diagnoseBlock(bo(ok), search, ctx())).toEqual([])
+    expect(diagnoseBlock(bo({}), search, ctx()).map((d) => d.param).sort()).toEqual([
+      'searchCountResult',
+      'searchCriteria',
+      'searchFirstReferenceResult',
+    ])
+    expect(diagnoseBlock(bo({ ...ok, 'flowable:searchCriteria': 'email = "x"' }), search, ctx())).toEqual([
+      expect.objectContaining({ kind: 'invalid', param: 'searchCriteria' }),
+    ])
+    const four = 'a = dossierField:a\nb = dossierField:b\nc = variable:c\nd = dossierField:d'
+    expect(diagnoseBlock(bo({ ...ok, 'flowable:searchCriteria': four }), search, ctx())[0]?.message).toContain('3')
+    expect(diagnoseBlock(bo({ ...ok, 'flowable:searchCriteria': 'email = dossierField:email\nemail = variable:x' }), search, ctx())[0]?.message).toContain('email')
+    for (const reserved of ['dossierId', 'connectorInput', 'formula', 'searchCriteria', 'loopCounter']) {
+      expect(diagnoseBlock(bo({ ...ok, 'flowable:searchCountResult': reserved }), search, ctx())).toEqual([
+        expect.objectContaining({ kind: 'invalid', param: 'searchCountResult' }),
+      ])
+    }
+    expect(diagnoseBlock(bo({ ...ok, 'flowable:searchFirstReferenceResult': 'nbDemandes' }), search, ctx())).toEqual([
+      expect.objectContaining({ kind: 'invalid', param: 'searchFirstReferenceResult' }),
+    ])
+    const tooLong = 'e'.repeat(1001)
+    expect(diagnoseBlock(bo({ ...ok, 'flowable:searchCriteria': tooLong }), search, ctx())[0]?.message).toContain('1000')
+    expect(diagnoseBlock(bo({ ...ok, 'flowable:searchCriteria': 'email = dossierField:email\u0001' }), search, ctx())[0]?.message).toMatch(/contrôle/)
+    expect(diagnoseBlock(bo(ok), search, ctx())).toEqual([])
+  })
 })

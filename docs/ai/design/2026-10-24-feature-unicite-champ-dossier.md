@@ -140,12 +140,20 @@ libère la valeur.
   jamais `errors[]`. Ce lot ajoute :
   - un utilitaire qui extrait `errors[]` d'un `ProblemDetail` (`api/http.ts`, type `FieldError` dans `api/types.ts`,
     avec `code` et `reference`) ;
-  - l'affichage sous chaque champ dans `DynamicFields.vue`, utilisé par `CreateDossierView.vue` et
-    `DossierFieldsTaskForm.vue` ; message traduit pour `UNIQUE` (« Déjà utilisé par le dossier {reference} »), message
-    serveur pour les autres codes ;
+  - l'affichage sous chaque champ dans `DynamicFields.vue`, utilisé par `CreateDossierView.vue`,
+    `DossierFieldsTaskForm.vue` et l'écran « corriger » (`DossierFieldsEditor.vue` branché par
+    `DossierDetailView.vue`) ; message traduit pour `UNIQUE` (« Déjà utilisé par le dossier {reference} »), message
+    serveur pour les autres codes ; le `detail` anglais n'est repris que si le corps n'a pas `errors[]` ;
+  - la bannière (création, tâche, fiche) réservée à un champ masqué ou inconnu, phrase traduite avec le libellé ;
+    chaque formulaire de tâche porte la sienne. Quand ses erreurs deviennent toutes visibles, il la retire. Après un
+    PATCH accepté, il ne republie que les erreurs dont le champ est absent du correctif, et la retire s'il n'en reste
+    aucune. Un correctif vide, ou une erreur hors schéma non mentionnée, la laisse en place ;
   - la case « Valeur unique » dans `FieldDefinitionDefsEditor.vue` (désactivée hors `STRING/NUMBER/DATE` et pour un
-    champ sensible), les règles dans `validateFieldDefinitions.ts`, les messages fr/en ;
-  - l'affichage des valeurs en double dans le refus de mise à jour du type (`DossierTypesAdminView.vue`).
+    champ sensible, avec la raison en texte visible reliée par `aria-describedby`), les règles dans
+    `validateFieldDefinitions.ts`, les messages fr/en ;
+  - le refus de mise à jour du type (`DossierTypesAdminView.vue`) : un paragraphe pour `detail`, une liste pour les
+    doublons, valeur non découpée, au plus 20 références affichées avec le total. Le serveur borne aussi les
+    références par valeur (`DossierUniqueKeys`, 20) ; le nombre de dossiers incompatibles compte tous les détenteurs.
 
 ## Décisions
 

@@ -71,7 +71,34 @@ description: Lots A (unicité serveur et MCP) et B (brique de recherche) livrés
 conversion des valeurs est propre au use case (pas de réutilisation de `FieldCondition`, dont la borne de 200 caractères
 produirait de faux 0 pour un texte long).
 
-## Suites (hors lot A)
+## Lot C — interface (livré)
 
-- Webhook entrant : une erreur de validation de champ (dont un doublon) n'est mappée par aucun gestionnaire. Voir la revue
-  adversariale dans le registre (§102).
+| Fichier | Rôle |
+|---|---|
+| `frontend/src/components/dossier/FieldDefinitionDefsEditor.vue` | case « Valeur unique », désactivée hors `STRING`/`NUMBER`/`DATE` et sur un champ sensible ; la raison est un texte visible relié par `aria-describedby` ; le drapeau est retiré si le champ quitte ces cas |
+| `frontend/src/dossier/validateFieldDefinitions.ts` | miroir U2, U3, U4, U13 et refus sur un sous-champ |
+| `frontend/src/api/types.ts`, `api/http.ts` | `FieldError`, `SchemaDuplicate` (avec `referenceCount`), `fieldErrorsOf`, `schemaDuplicatesOf` |
+| `frontend/src/dossier/fieldErrors.ts` | texte affiché : `UNIQUE` traduit (référence seule), autres codes = message serveur |
+| `frontend/src/components/dossier/DynamicFields.vue`, `DynamicFieldInput.vue` | erreur sous le champ, hors du `<label>`, `role="alert"` ; `aria-invalid` et `aria-describedby` sur la saisie, sur `<output>` (champ calculé) et sur `MONEY`, `EXTERNAL_REF`, `REPEATABLE_GROUP` |
+| `CreateDossierView.vue` | `errors[]` sous le champ ; bannière `role="alert"` pour un corps sans `errors[]` ou un champ masqué ou inconnu ; rétractation quand la liste hors écran redevient vide |
+| `DossierFieldsTaskForm.vue` | bannière propre au formulaire (`task-form-banner`). Après un PATCH accepté, seules les erreurs dont le champ est absent du correctif sont republées ; la bannière tombe s'il n'en reste aucune. Un correctif vide ne la retire pas |
+| `MobileTasksView.vue`, `DossierDetailView.vue`, `TaskList.vue` | ne recopient plus ce `null` dans la bannière de page ; la fiche garde la bannière de l'enregistrement des champs |
+| `DossierFieldsEditor.vue`, `DossierDetailView.vue` | écran « corriger » : `errors[]` sous le champ, `detail` seulement sans `errors[]`, bannière réservée au champ masqué ou inconnu, phrase traduite |
+| `DossierTypesAdminView.vue` | 409 : un paragraphe pour `detail`, une liste pour les doublons (interpolation, pas de `v-html`) ; la valeur n'est pas découpée ; au plus 20 références, avec le total |
+| `DossierUniqueKeys.java`, `UniqueDuplicate.java` | les références d'une valeur sont bornées à 20 ; `referenceCount` et l'ensemble des détenteurs restent complets |
+| `blockDiagnostics.ts` | critères, noms réservés, sorties distinctes, plafond `maxLength` et caractères de contrôle de `search-dossiers` |
+
+Écarts avec la conception : l'identifiant de brique est `search-dossiers` (lot B), pas `dossier-search`. La case n'est
+proposée que dans l'éditeur de champs de dossier (`mode === 'fields'`). Sur la création, la tâche et l'écran
+« corriger », le message serveur anglais d'un `UNIQUE` (`field UNIQUE (Value already used by dossier REF)`) n'est pas
+affiché : la référence n'apparaît que dans la phrase traduite, sous le champ s'il est visible, dans la bannière s'il
+est masqué ou inconnu. Une valeur en double du refus 409 est montrée entière, y compris si elle contient un retour
+à la ligne. Au-delà de 20 valeurs, le `detail` du 409 indique le total (`duplicateCount`) et le nombre cité. Le golden
+OpenAPI documente `duplicates`, `referenceCount` et `duplicateCount`. La raison d'une case inactive est hors du
+`<label>`, lue une seule fois via `aria-describedby`. Les bannières de la fiche et de Mes tâches ont `role="alert"`.
+Un enregistrement accepté qui envoie `null` pour un champ masqué retire l'erreur de ce champ de la bannière de la tâche.
+Une erreur hors schéma absente du correctif, et un envoi sans aucun changement, la laissent affichée.
+
+## Suites
+
+- Lot D : exemple riverain, guides, clôture du §102, vidage de `docs/ai/`.

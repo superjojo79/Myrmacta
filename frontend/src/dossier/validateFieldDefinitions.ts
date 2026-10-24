@@ -31,6 +31,9 @@ const HARD_MAX_ROWS = 500
 const MAX_EXPRESSION_CHARS = 2000
 // TODO §85 (LC4a) — miroir de FieldDefinition : aide contextuelle en texte brut.
 const MAX_HELP_TEXT_CHARS = 500
+// TODO §102 (U2, U3, U13) — miroir de FieldDefinition.UNIQUE_TYPES et MAX_UNIQUE_NAME_CHARS.
+const UNIQUE_TYPES: FieldType[] = ['STRING', 'NUMBER', 'DATE']
+const MAX_UNIQUE_NAME_CHARS = 100
 
 /**
  * Client-side mirror of DossierFieldValidator.matchesType (immediate feedback) plus the
@@ -108,6 +111,12 @@ export function validateFieldDefinitions(definitions: FieldDefinition[], owner?:
       if (!['STRING', 'NUMBER', 'DATE', 'BOOLEAN', 'SELECT'].includes(def.type)) {
         errors.push(m('typeNotSearchable', { type: def.type, shown }))
       }
+    }
+    if (def.unique) {
+      if (owner) errors.push(m('subUnique', { shown, where }))
+      if (def.sensitive) errors.push(m('sensitiveUnique', { shown }))
+      if (!UNIQUE_TYPES.includes(def.type)) errors.push(m('typeNotUnique', { type: def.type, shown }))
+      if (name.length > MAX_UNIQUE_NAME_CHARS) errors.push(m('uniqueNameTooLong', { shown, max: MAX_UNIQUE_NAME_CHARS }))
     }
     if (!isBlank(def.formula)) {
       if (def.sensitive) errors.push(m('computedSensitive', { shown }))

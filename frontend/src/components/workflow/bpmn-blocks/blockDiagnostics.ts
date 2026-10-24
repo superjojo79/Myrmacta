@@ -90,10 +90,69 @@ const FILE_NAME_FORM = /^[\p{L}\p{N}_()'-][\p{L}\p{N} ._()'-]*$/u
 
 /** Le catalogue serveur publie `multiline` ; le repli sur le nom garde les anciens catalogues et les fixtures de test. */
 function isMultiline(param: BlockParameter): boolean {
-  return param.multiline ?? ['notificationBody', 'formula', 'fieldMapping'].includes(param.name)
+  return param.multiline ?? ['notificationBody', 'formula', 'fieldMapping', 'searchCriteria'].includes(param.name)
+}
+
+const FIELD_NAME = /^[A-Za-z][A-Za-z0-9_]{0,99}$/
+const CRITERION_LINE = /^([^=]*?)\s*=(?!=)\s*(.*)$/
+const VARIABLE_NAME = /^[A-Za-z][A-Za-z0-9_]{0,59}$/
+const RESULT_VARIABLES = new Set(['formulaResult', 'searchCountResult', 'searchFirstReferenceResult'])
+/**
+ * Miroir de BlockAttributeRules : variables réservées, clés connues de WorkflowVariables, et noms d'attributs
+ * ATTRIBUTE des briques gérées (un résultat ne doit pas les écraser).
+ */
+const RESERVED_RESULT_NAMES = new Set([
+  'dossierId', 'dossierWorkflowLinkId', 'tenantId', 'dossierFields', 'connectorInput', 'connectorResult',
+  'childDossierFields', 'childWorkflowVariables', 'generatedDocumentId', 'notificationPayload', 'now',
+  'variables', 'dossier', 'nrOfInstances', 'nrOfActiveInstances', 'nrOfCompletedInstances', 'loopCounter',
+  'execution', 'task', 'initiator', 'authenticatedUserId', 'processInstanceId', 'processDefinitionId',
+  'executionId', 'taskId', 'documentType', 'documentVariant', 'documentLocale', 'connectorInstanceId',
+  'notificationChannels', 'notificationTo', 'notificationSubject', 'notificationBody', 'notificationUserId',
+  'notificationWebhookConfigId', 'notificationAttachment', 'notificationAttachmentName', 'childDossierTypeCode',
+  'childDossierLabel', 'workflowProcessKey', 'relationType', 'targetDossierStatus', 'targetWorkflowStatus',
+  'formula', 'formulaResult', 'fieldMapping', 'searchCriteria', 'searchCountResult', 'searchFirstReferenceResult',
+])
+
+function searchCriteriaProblem(raw: string): string | undefined {
+  const lines = raw.split(/\r?\n/).map((line) => line.trim()).filter((line) => line !== '')
+  if (lines.length === 0) return 'Au moins un critère : champ = dossierField:<champ> ou champ = variable:<nom>.'
+  if (lines.length > 3) return '3 critères au plus.'
+  const seen = new Set<string>()
+  for (const line of lines) {
+    const match = CRITERION_LINE.exec(line)
+    if (!match) return 'Chaque ligne doit être « champ = dossierField:<champ> » ou « champ = variable:<nom> ».'
+    const field = match[1]!.trim()
+    if (!FIELD_NAME.test(field)) return `« ${field.slice(0, 30)} » n'est pas un nom de champ (lettre, puis lettres, chiffres, _).`
+    const source = match[2]!.trim()
+    if (!SOURCE_FORM.test(source)) return `La valeur de « ${field} » doit être dossierField:<champ> ou variable:<nom>.`
+    if (seen.has(field)) return `Le champ « ${field} » est cherché deux fois.`
+    seen.add(field)
+  }
+  return undefined
+}
+
+function resultVariableProblem(value: string): string | undefined {
+  if (!VARIABLE_NAME.test(value)) return 'Nom de variable attendu : une lettre, puis des lettres, des chiffres ou _ (60 caractères au plus).'
+  if (RESERVED_RESULT_NAMES.has(value)) return `« ${value} » est un nom réservé : choisissez-en un autre.`
+  return undefined
+}
+
+function isForbiddenControl(raw: string): boolean {
+  for (const char of raw) {
+    const code = char.codePointAt(0)!
+    if (code === 0x09 || code === 0x0a || code === 0x0d) continue
+    if (code <= 0x1f || (code >= 0x7f && code <= 0x9f)) return true
+  }
+  return false
 }
 
 function formatProblem(param: BlockParameter, raw: string): string | undefined {
+  if (raw.length > param.maxLength) {
+    return `« ${param.label} » dépasse ${param.maxLength} caractères : le déploiement refusera cette valeur.`
+  }
+  if (isForbiddenControl(raw)) {
+    return 'Caractères de contrôle interdits : le déploiement refusera cette valeur.'
+  }
   const value = raw.trim()
   if (!isMultiline(param) && (raw !== value || /[\r\n\t]/.test(raw))) {
     return 'Espaces de bord ou retours à la ligne interdits : le déploiement refusera cette valeur.'
@@ -114,6 +173,8 @@ function formatProblem(param: BlockParameter, raw: string): string | undefined {
   if (param.name === 'notificationAttachmentName' && !FILE_NAME_FORM.test(value)) {
     return 'Nom de fichier : lettres, chiffres, espace et . _ - ( ) \' ; ni chemin, ni point initial.'
   }
+  if (param.name === 'searchCriteria') return searchCriteriaProblem(value)
+  if (RESULT_VARIABLES.has(param.name)) return resultVariableProblem(value)
   if (param.type === 'REFERENCE' && param.binding === 'ATTRIBUTE') {
     if (UUID_SOURCES.has(param.valueSource ?? '') ? !UUID_FORM.test(value) : !KEY_FORM.test(value)) {
       return UUID_SOURCES.has(param.valueSource ?? '') ? 'Un identifiant (UUID) est attendu.' : 'Format de clé invalide.'
@@ -131,6 +192,21 @@ export function diagnoseBlock(bo: Moddled, block: BuildingBlock, ctx: Diagnostic
         kind: 'recursion',
         param: 'workflowProcessKey',
         message: 'Ce dossier enfant redémarre le même process : sans condition d\'arrêt, la chaîne de dossiers est infinie.',
+      })
+    }
+  }
+  if (block.id === 'search-dossiers') {
+    const read = (name: string) => {
+      const param = block.parameters.find((item) => item.name === name)
+      return param ? readValue(bo, block, param).trim() : ''
+    }
+    const count = read('searchCountResult')
+    const first = read('searchFirstReferenceResult')
+    if (count !== '' && count === first) {
+      out.push({
+        kind: 'invalid',
+        param: 'searchFirstReferenceResult',
+        message: 'Les deux variables de sortie doivent porter des noms distincts.',
       })
     }
   }

@@ -69,13 +69,27 @@ public class DossierExceptionHandler {
         ProblemDetail problem = problem(HttpStatus.CONFLICT, "Dossier type schema incompatible",
                 "Cette modification rend " + ex.incompatibleCount()
                         + " dossier(s) existant(s) incompatible(s) avec le nouveau schéma" + examples
-                        + (ex.duplicates().isEmpty() ? "" : " ; " + ex.duplicates().size()
-                                + " valeur(s) d'un champ unique sont partagées par des dossiers en cours"));
+                        + duplicateSentence(ex));
         problem.setProperty("incompatibleCount", ex.incompatibleCount());
         problem.setProperty("sampleReferences", ex.sampleReferences());
         // TODO §102 (U10) : valeurs en double d'un champ unique, pour que l'administrateur les résolve.
+        // La liste est bornée (20) ; duplicateCount est le total, referenceCount celui des détenteurs d'une valeur.
         problem.setProperty("duplicates", ex.duplicates());
+        problem.setProperty("duplicateCount", ex.duplicateCount());
         return problem;
+    }
+
+    /** Le détail nomme le total. Quand la liste est tronquée à 20, il précise combien de valeurs sont citées. */
+    private static String duplicateSentence(DossierTypeSchemaIncompatibleException ex) {
+        if (ex.duplicates().isEmpty()) {
+            return "";
+        }
+        String sentence = " ; " + ex.duplicateCount()
+                + " valeur(s) d'un champ unique sont partagées par des dossiers en cours";
+        if (ex.duplicates().size() < ex.duplicateCount()) {
+            sentence += " (" + ex.duplicates().size() + " citées)";
+        }
+        return sentence;
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)

@@ -177,6 +177,25 @@ describe('validateFieldDefinitions — structured types (TODO §76, D1)', () => 
     expect(validateFieldDefinitions([field({ searchable: true, sensitive: true })]).join(' ')).toContain('cherchable')
     expect(validateFieldDefinitions([field({ type: 'MONEY', searchable: true })]).join(' ')).toContain('cherchable')
   })
+
+  it('mirrors unique: STRING, NUMBER, DATE and a computed field; not a sensitive field, another type, a long name or a group column (TODO §102)', () => {
+    expect(validateFieldDefinitions([field({ unique: true })])).toEqual([])
+    expect(validateFieldDefinitions([field({ type: 'NUMBER', unique: true })])).toEqual([])
+    expect(validateFieldDefinitions([field({ type: 'DATE', unique: true })])).toEqual([])
+    expect(validateFieldDefinitions([field({ unique: true, formula: 'dossier.fields.x' })])).toEqual([])
+    expect(validateFieldDefinitions([field({ unique: true, sensitive: true })]).join(' ')).toContain('unique')
+    expect(validateFieldDefinitions([field({ type: 'BOOLEAN', unique: true })]).join(' ')).toContain('unique')
+    expect(validateFieldDefinitions([field({ type: 'SELECT', unique: true, options: ['A'] })]).join(' ')).toContain('unique')
+    expect(validateFieldDefinitions([field({ name: 'n'.repeat(101), unique: true })]).join(' ')).toContain('100')
+    const group = {
+      name: 'g',
+      label: 'G',
+      type: 'REPEATABLE_GROUP' as const,
+      required: false,
+      fields: [{ name: 'a', label: 'A', type: 'STRING' as const, required: false, unique: true }],
+    }
+    expect(validateFieldDefinitions([group]).join(' ')).toContain('unique')
+  })
   it('refuses a help text longer than 500 characters (LC4a)', () => {
     const errors = validateFieldDefinitions([{ name: 'a', label: 'A', type: 'STRING', required: false, helpText: 'x'.repeat(501) }])
     expect(errors.join(' ')).toContain('aide')

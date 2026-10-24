@@ -32,9 +32,6 @@ async function complete(taskId: string, variables: Record<string, unknown> = {})
   }
 }
 
-function onFormError(message: string) {
-  actionError.value = message
-}
 </script>
 
 <template>
@@ -63,7 +60,6 @@ function onFormError(message: string) {
             :task-id="task.taskId"
             :form-key="task.formKey"
             @ready="complete(task.taskId, $event)"
-            @error="onFormError"
           />
           <button
             v-else
@@ -77,7 +73,7 @@ function onFormError(message: string) {
       </li>
     </ul>
     <AdminPager v-if="tasks.length > 0" v-model="page" :total-pages="totalPages" />
-    <p v-if="actionError" class="error">{{ actionError }}</p>
+    <p v-if="actionError" class="error" role="alert">{{ actionError }}</p>
   </section>
 </template>
 

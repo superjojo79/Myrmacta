@@ -83,6 +83,11 @@ export const TEST_BLOCKS: BuildingBlock[] = [
       required: true,
     }),
   ]),
+  block('search-dossiers', 'SERVICE_TASK', { delegate: 'dossierSearchTask' }, [
+    param({ name: 'searchCriteria', required: true, maxLength: 1000, multiline: true }),
+    param({ name: 'searchCountResult', required: true, maxLength: 60 }),
+    param({ name: 'searchFirstReferenceResult', required: true, maxLength: 60 }),
+  ]),
   block('external-task', 'USER_TASK', { formKeyPrefix: 'user-question:', portalRecipient: true }, [
     param({
       name: 'schemaKey',

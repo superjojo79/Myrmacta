@@ -202,6 +202,11 @@ Les variables réservées (`WorkflowVariables.reservedKeys()`) sont refusées da
 écriture vers un nom réservé, sauf la recopie à l'identique d'un `flowable:in` / `flowable:out`. Liste des
 surfaces et choix : [§99](../decisions/099-recopie-bpmn-vers-une-variable-reservee.md) (D-BPMN-RESERVED-WRITE).
 
+Une table DMN appelée par `serviceTask flowable:type="dmn"` écrit ses sorties sous le nom de chaque colonne (résultat
+unique), ou sa liste sous l'id de la décision ou du service de décision (résultat multiple). `FlowableDmnParserAdapter`
+refuse donc un nom réservé à ces trois places, sur tous les chemins de mise en ligne d'une table :
+[§100](../decisions/100-sortie-dmn-vers-une-variable-reservee.md) (D-DMN-RESERVED-OUTPUT).
+
 ---
 
 ## Ports domaine

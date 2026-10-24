@@ -1,5 +1,6 @@
 package com.flowforge.infrastructure.flowable;
 
+import com.flowforge.domain.workflow.WorkflowVariables;
 import com.flowforge.domain.workflow.model.InvalidDmnException;
 import com.flowforge.domain.workflow.port.out.DmnParserPort;
 import java.io.ByteArrayInputStream;
@@ -8,10 +9,12 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import org.flowable.dmn.model.Decision;
 import org.flowable.dmn.model.DecisionRule;
+import org.flowable.dmn.model.DecisionService;
 import org.flowable.dmn.model.DecisionTable;
 import org.flowable.dmn.model.DmnDefinition;
 import org.flowable.dmn.model.HitPolicy;
 import org.flowable.dmn.model.InputClause;
+import org.flowable.dmn.model.OutputClause;
 import org.flowable.dmn.model.RuleInputClauseContainer;
 import org.flowable.dmn.model.RuleOutputClauseContainer;
 import org.flowable.dmn.xml.converter.DmnXMLConverter;
@@ -84,6 +87,10 @@ class FlowableDmnParserAdapter implements DmnParserPort {
             throw new InvalidDmnException("DMN decision does not define an id");
         }
         assertSafeDecision(decision);
+        // TODO §100 (issue #204) : un service de décision se déploie comme une décision appelable par le BPMN.
+        for (DecisionService service : safeList(model.getDecisionServices())) {
+            assertNotReserved(service.getId(), "decisionService @id");
+        }
         return decision.getId();
     }
 
@@ -93,6 +100,11 @@ class FlowableDmnParserAdapter implements DmnParserPort {
         }
         if (!ALLOWED_HIT_POLICIES.contains(table.getHitPolicy())) {
             throw new InvalidDmnException("DMN hit policy is not allowed: " + table.getHitPolicy());
+        }
+        // TODO §100 (issue #204) : la table ne peut pas écrire une variable réservée.
+        assertNotReserved(decision.getId(), "decision @id");
+        for (OutputClause output : safeList(table.getOutputs())) {
+            assertNotReserved(output.getName(), "output " + output.getId() + " @name");
         }
         for (InputClause input : safeList(table.getInputs())) {
             assertSafeInputExpression(
@@ -113,6 +125,20 @@ class FlowableDmnParserAdapter implements DmnParserPort {
                         "rule " + rule.getRuleNumber() + " outputEntry",
                         output.getOutputEntry() == null ? null : output.getOutputEntry().getText());
             }
+        }
+    }
+
+    /**
+     * Issue #204 (TODO §100, D-DMN-RESERVED-OUTPUT) — {@code DmnActivityBehavior} pose chaque sortie d'un résultat unique
+     * sous le nom de sa colonne, et la liste d'un résultat multiple sous l'id de la décision ou du service de décision
+     * appelé (vérifié sur le bytecode Flowable 8.0.0). Une table qui nommerait ainsi {@code generatedDocumentId} ou
+     * {@code dossierId} écraserait une valeur que les délégués lisent comme sûre. Même comparaison que
+     * {@code BpmnReservedVariableWriteScanner} (TODO §99) : valeur sans espaces de bord, casse respectée.
+     */
+    private static void assertNotReserved(String variable, String owner) {
+        if (variable != null && WorkflowVariables.reservedKeys().contains(variable.strip())) {
+            throw new InvalidDmnException(
+                    "DMN cannot write the reserved variable '" + variable.strip() + "': " + owner);
         }
     }
 

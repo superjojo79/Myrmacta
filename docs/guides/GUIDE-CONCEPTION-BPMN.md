@@ -144,7 +144,8 @@ suivie par toutes les tâches livrées (voir catalogue §7) :
   `elementVariable` / `elementIndexVariable` de multi-instance, un `flowable:in` / `flowable:out` dont
   la cible est réservée, un `dataObject`, un `initiator`, une variable d'erreur ou de tâche
   (`errorVariableName`, `taskIdVariableName`…) portant l'un de ces noms. Seule exception : la recopie
-  à l'identique vers un sous-processus, `<flowable:in source="dossierId" target="dossierId"/>`.
+  à l'identique vers un sous-processus, `<flowable:in source="dossierId" target="dossierId"/>`. Même règle
+  pour les sorties d'une table DMN (§7bis).
 
 ---
 
@@ -835,7 +836,9 @@ mais l'attribut natif Flowable `flowable:type="dmn"` **+** un champ d'extension
 
 Les colonnes de sortie de la table de décision (`<output name="…">`) sont écrites telles quelles
 comme variables de process — pas de configuration côté BPMN, le nom de sortie DMN **est** le nom
-de la variable. Pas de `businessRuleTask` : cet élément BPMN standard est câblé sur un moteur
+de la variable. Une sortie ne peut donc pas porter un nom réservé (`dossierId`, `generatedDocumentId`…), pas plus que
+l'id de la décision, sous lequel le moteur pose la liste d'un résultat multiple : la table est refusée (TODO §100). Pas de
+`businessRuleTask` : cet élément BPMN standard est câblé sur un moteur
 Drools absent de ce dépôt et reste explicitement rejeté au parsing (`FlowableBpmnParserAdapter`,
 TODO §58).
 

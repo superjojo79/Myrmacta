@@ -7,7 +7,9 @@
 > **Revues :** pré-implémentation (docs, points 1–39) —
 > [docs/analyses/REVUE-PRE-IMPLEMENTATION.md](../analyses/REVUE-PRE-IMPLEMENTATION.md) ;
 > post-implémentation alignement × sécurité (2026-08-25, points 40–46) —
-> [docs/analyses/REVUE-ALIGNEMENT-SECURITE.md](../analyses/REVUE-ALIGNEMENT-SECURITE.md).
+> [docs/analyses/REVUE-ALIGNEMENT-SECURITE.md](../analyses/REVUE-ALIGNEMENT-SECURITE.md) ;
+> avis mis à jour au 24 octobre 2026 —
+> [docs/analyses/revue-2026-10-24.md](../analyses/revue-2026-10-24.md).
 
 ---
 

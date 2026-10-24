@@ -13,7 +13,7 @@ pré-contrôles), chaque règle U/R couverte par au moins un test. Tests d'inté
 
 - [ ] `FieldDefinitionTest` : `unique` accepté sur `STRING`, `NUMBER`, `DATE`, champ calculé ; refusé sur `BOOLEAN`,
       `SELECT`, `MONEY`, `EXTERNAL_REF`, `FILE`, groupe, sous-champ de groupe, champ sensible (U2-U4) ; `null` → faux.
-- [ ] Valeur unique de plus de 1 000 caractères refusée (U13).
+- [ ] Valeur unique de plus de 500 caractères refusée (`TOO_LONG`) ; `unique` refusé sur un nom de plus de 100 caractères (U13).
 - [ ] `UniqueFieldKeysTest` : forme canonique (`1.50` = `1.5`, date ISO, texte non modifié) ; valeur vide ignorée ;
       aucune clé pour `CLOTURE`/`ARCHIVE` ; un champ non unique ignoré (U5-U7).
 - [ ] `CreateDossierUseCaseImplTest` / `UpdateDossierFieldsUseCaseImplTest` : conflit → erreur `UNIQUE` avec la
@@ -35,6 +35,9 @@ pré-contrôles), chaque règle U/R couverte par au moins un test. Tests d'inté
 - [ ] `DossierUniqueComputedIT` : `plaqueNormalisee` calculée ; `1 ABC 123` puis `1-abc 123` → refus.
 - [ ] Écritures par workflow : complétion d'une tâche `dossier-fields` et `fieldMappingTask` avec une valeur prise →
       refus / incident, rien n'est écrit.
+- [ ] Verrou du type : une mise à jour du type qui active `unique` pendant une création concurrente de doublon (barrière
+      entre threads) → soit la création échoue `UNIQUE`, soit la mise à jour échoue 409 ; jamais deux dossiers ouverts
+      avec la même valeur et un champ unique actif.
 - [ ] Type : activation avec doublons ouverts → 409 avec exemples ; sans doublon → contrainte active immédiatement
       (création suivante refusée) ; désactivation → lignes supprimées.
 - [ ] Promotion de configuration : bundle qui active `unique` sur une cible contenant des doublons → refus (U12).
@@ -49,13 +52,19 @@ pré-contrôles), chaque règle U/R couverte par au moins un test. Tests d'inté
 - [ ] `FieldDefinitionDefsEditor.spec.ts` : case « Valeur unique » visible, désactivée hors types autorisés et pour un
       champ sensible ; valeur envoyée dans la charge utile.
 - [ ] `validateFieldDefinitions.spec.ts` : mêmes règles que le serveur.
-- [ ] Formulaire de dossier : erreur `UNIQUE` affichée sous le champ avec la référence.
+- [ ] `api/http` : extraction de `errors[]` d'un `ProblemDetail` (avec `code`, `reference`), tolérante à une réponse
+      sans `errors`.
+- [ ] `DynamicFields` : erreur serveur affichée sous le bon champ ; `UNIQUE` traduit avec la référence ; autre code →
+      message serveur.
+- [ ] `CreateDossierView` et `DossierFieldsTaskForm` : un 400 avec `errors[]` alimente les erreurs par champ.
+- [ ] Admin type : refus 409 avec valeurs en double affiché.
 - [ ] `blockDiagnostics.spec.ts` / `catalogClient.spec.ts` : bloc `dossier-search` et ses diagnostics.
 
 ## Frontend — Playwright
 
 - [ ] Admin : cocher « Valeur unique », enregistrer, voir le refus quand l'API renvoie des doublons (mock).
-- [ ] Dossier : création refusée avec l'erreur `UNIQUE` sur le champ (mock 400).
+- [ ] Dossier : création refusée avec l'erreur `UNIQUE` sous le champ et la référence (mock 400).
+- [ ] Tâche `dossier-fields` : enregistrement refusé avec l'erreur `UNIQUE` sous le champ (mock 400).
 - [ ] Éditeur BPMN : la brique « Rechercher des dossiers » est dans la palette et produit les attributs attendus.
 
 ## Fixtures et mocks

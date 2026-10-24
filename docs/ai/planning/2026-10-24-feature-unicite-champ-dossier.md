@@ -12,11 +12,11 @@ Chaque tâche commence par un test rouge (skill `tdd`).
 
 - [ ] A1 `FieldDefinition.unique` + règles U2-U4 (domaine, unitaires) ; JSON et golden OpenAPI.
 - [ ] A2 `UniqueFieldKeys` et forme canonique (U5-U7).
-- [ ] A3 ChangeSet `037-dossier-unique-value` ; synchronisation dans `JpaDossierRepositoryAdapter.save` avec
-      `ON CONFLICT` et verrou du type ; `DossierUniqueValueIT`, `DossierUniqueConcurrencyIT`.
+- [ ] A3 ChangeSet `037-dossier-unique-value` ; verrou consultatif partagé du type et synchronisation dans
+      `JpaDossierRepositoryAdapter.save` avec `ON CONFLICT` ; `DossierUniqueValueIT`, `DossierUniqueConcurrencyIT`.
 - [ ] A4 `DossierUniquenessPort` et pré-contrôles dans `CreateDossierUseCaseImpl` et `UpdateDossierFieldsUseCaseImpl`.
-- [ ] A5 Type : détection des doublons dans le contrôle de compatibilité, reconstruction des lignes à l'enregistrement du
-      type (U10, U11) ; promotion (U12).
+- [ ] A5 Type : détection des doublons dans le contrôle de compatibilité ; verrou exclusif et reconstruction des lignes
+      dans `JpaDossierTypeRepositoryAdapter.save` (U10, U11) ; IT de course type/dossier ; promotion (U12).
 - [ ] A6 Écritures par workflow (tâche `dossier-fields`, `fieldMappingTask`) et MCP couvertes par IT.
 
 ## Lot B — brique de recherche
@@ -29,7 +29,9 @@ Chaque tâche commence par un test rouge (skill `tdd`).
 ## Lot C — SPA
 
 - [ ] C1 Éditeur de schéma : case « Valeur unique », validation client, i18n fr/en (Vitest).
-- [ ] C2 Formulaire de dossier : rendu de l'erreur `UNIQUE` (Vitest).
+- [ ] C2 Erreurs de champ du serveur : extraction de `errors[]` (`api/http.ts`), affichage dans `DynamicFields.vue`,
+      branchement dans `CreateDossierView.vue` et `DossierFieldsTaskForm.vue`, message `UNIQUE` traduit ; refus 409
+      détaillé dans l'admin des types (Vitest).
 - [ ] C3 Palette : bloc `dossier-search`, diagnostics (Vitest).
 - [ ] C4 Playwright : schéma, création refusée, palette ; mocks `frontend/e2e/**`.
 
@@ -48,6 +50,9 @@ A1 → A2 → A3 → A4 → A5 ; A6 après A4. B1 → B2 → B3, indépendant du
 
 ## Risques
 
-- Écriture hors `DossierRepository.save` (requête SQL directe) qui contournerait la table : à rechercher en A3.
-- Course entre l'activation de `unique` et une création concurrente : couverte par le verrou du type (D-UNIQUE-TYPE-LOCK).
+- Écriture hors `DossierRepository.save` qui contournerait la table : aucune trouvée en phase 2 ; revérifier en revue (D3).
+- Course entre l'activation de `unique` et une création concurrente : couverte par le verrou consultatif du type
+  (D-UNIQUE-TYPE-LOCK) et prouvée par un IT dédié.
+- Affichage des erreurs par champ : nouveau comportement pour toutes les erreurs de validation, pas seulement `UNIQUE` ;
+  vérifier que les messages serveur existants restent lisibles.
 - CI GitHub Actions actuellement hors service (jobs refusés en 2-3 s) : les vérifications locales font foi en attendant.

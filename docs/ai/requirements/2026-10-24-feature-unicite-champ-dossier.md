@@ -68,7 +68,7 @@ se déclenche sans vérification : un doublon jamais instruit est autorisé d'of
 | U10 | Activer `unique` (ou changer un champ unique) alors que des doublons existent parmi les dossiers ouverts : la mise à jour du type est refusée, avec les valeurs en double et des références d'exemple. Aucune écriture partielle. |
 | U11 | Retirer `unique` lève la contrainte immédiatement. |
 | U12 | La promotion de configuration applique U10 sur l'environnement cible. |
-| U13 | Une valeur de champ unique dépasse 1 000 caractères : refusée (erreur de validation), la garantie en base ayant une longueur bornée. |
+| U13 | Une valeur de champ unique de plus de 500 caractères est refusée (erreur de validation), et `unique` est refusé sur un nom de champ de plus de 100 caractères : la clé en base a une taille bornée (phase 3). |
 
 ### Brique « Rechercher des dossiers »
 
@@ -97,8 +97,9 @@ se déclenche sans vérification : un doublon jamais instruit est autorisé d'of
       courant et les clôturés ne sont jamais comptés.
 - [ ] Brique : déploiement refusé pour un critère mal formé ou une sortie réservée ; incident si le champ n'est plus
       cherchable.
-- [ ] SPA : case « Valeur unique » dans l'éditeur de schéma, erreur `UNIQUE` affichée sur le champ du formulaire de
-      dossier, brique présente dans la palette (Vitest + Playwright).
+- [ ] SPA : case « Valeur unique » dans l'éditeur de schéma ; erreurs de champ du serveur (`errors[]`, dont `UNIQUE`
+      avec la référence) affichées sous chaque champ à la création et dans la tâche `dossier-fields` ; brique présente
+      dans la palette (Vitest + Playwright).
 - [ ] MCP : `define_dossier_type` accepte `unique` ; les erreurs `UNIQUE` remontent comme dans l'API.
 - [ ] Exemple riverain : `plaqueNormalisee` unique, case de vérification manuelle retirée, R7 attend un refus ;
       `DIFFICULTES.md` §1 marquée levée.
@@ -134,9 +135,9 @@ Constats vérifiés dans le code et corrections apportées :
   `ccr-1b2a2fd0-r71qj0`.
 
 Hypothèses retenues sans arbitrage explicite, révisables en phase 3 : U2 (types), U3 (sensible), U4 (calculé), U7 (vide),
-R4 (premier = plus ancien), R6 (source vide → 0 ; champ plus cherchable → incident), U13 (1 000 caractères).
+R4 (premier = plus ancien), R6 (source vide → 0 ; champ plus cherchable → incident), U13 (500 caractères, ramené de 1 000 en phase 3).
 
 ## Questions ouvertes
 
-- Code HTTP d'un refus `UNIQUE` : 400 (comme toute erreur de champ) ou 409. À trancher en conception.
-- Mécanisme de garantie en base : table de valeurs uniques ou index. À trancher en conception.
+Aucune. Tranchées en phase 3 : D-UNIQUE-HTTP (400 et erreurs par champ affichées dans le SPA), D-UNIQUE-STORE (table de
+valeurs uniques), D-UNIQUE-TYPE-LOCK (verrou consultatif par type).

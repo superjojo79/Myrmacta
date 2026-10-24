@@ -1,12 +1,12 @@
 ---
 phase: design
 title: Unicité d'un champ de dossier — conception
-description: Réglage unique sur FieldDefinition, table de valeurs uniques tenue à l'enregistrement, brique dossierSearchTask
+description: Réglage unique sur FieldDefinition, table de valeurs uniques tenue à l'enregistrement sous verrou consultatif du type, brique dossierSearchTask
 ---
 
 # Conception — `unicite-champ-dossier` (issue #184)
 
-> Proposition à valider en phase 3. Les identifiants `D-…` marqués ⚠ sont des choix à confirmer.
+> Revue de phase 3 du 2026-10-24 : D-UNIQUE-STORE, D-UNIQUE-TYPE-LOCK et D-UNIQUE-HTTP tranchés par l'utilisateur.
 
 ## Vue d'ensemble
 
@@ -14,38 +14,40 @@ description: Réglage unique sur FieldDefinition, table de valeurs uniques tenue
 flowchart LR
   subgraph Domaine
     FD[FieldDefinition.unique] --> UK[UniqueFieldKeys<br/>forme canonique]
-    UC[Create / UpdateFields /<br/>UpdateDossierType] -->|pré-contrôle| UP[[DossierUniquenessPort]]
-    SB[DossierSearch<br/>use case] --> SP[[DossierSearchPort.findOpenMatches]]
+    UC[CreateDossier / UpdateDossierFields] -->|pré-contrôle| UP[[DossierUniquenessPort]]
+    UT[UpdateDossierType<br/>+ contrôle de compatibilité] -->|doublons ouverts ?| UK
+    SB[SearchSimilarDossiersUseCase] --> SP[[DossierSearchPort.findOpenMatches]]
   end
   subgraph Infrastructure
-    RA[JpaDossierRepositoryAdapter.save] -->|synchronise| T[(dossier_unique_value<br/>PK type, champ, valeur)]
+    RA[JpaDossierRepositoryAdapter.save] -->|verrou partagé du type<br/>puis synchronise| T[(dossier_unique_value<br/>PK type, champ, valeur)]
+    TA[JpaDossierTypeRepositoryAdapter.save] -->|verrou exclusif du type<br/>puis reconstruit| T
     UP -.-> T
-    TA[DossierType adapter.save] -->|reconstruit| T
     DL[DossierSearchDelegate<br/>dossierSearchTask] --> SB
-    SP -.-> D[(dossier.fields jsonb)]
+    SP -.-> D[(dossier.fields jsonb<br/>GIN 030)]
   end
   UK --> RA
   UK --> TA
 ```
 
 Deux garde-fous pour l'unicité :
-1. **Pré-contrôle dans le domaine**, pour une erreur lisible (`UNIQUE` + référence existante), groupée avec les autres
+1. **Pré-contrôle dans le domaine** : erreur lisible (`UNIQUE` + référence du dossier existant), groupée avec les autres
    erreurs de champ.
-2. **Contrainte en base** (clé primaire de `dossier_unique_value`), pour les accès concurrents et toute écriture qui ne
-   passerait pas par un use case.
+2. **Contrainte en base** (clé primaire de `dossier_unique_value`) : accès concurrents et toute écriture, use case ou non.
 
 ## Modèle domaine
 
-- `FieldDefinition` reçoit `Boolean unique` (null → faux, comme `searchable`). Le constructeur refuse : un type hors
+- `FieldDefinition` reçoit `Boolean unique` (null → faux, comme `searchable`). Le constructeur refuse un type hors
   `UNIQUE_TYPES = {STRING, NUMBER, DATE}`, un champ `sensitive`, un sous-champ de groupe (U2, U3). Un champ calculé est
   accepté (U4).
-- `UniqueFieldKeys` (domaine, pur) : `Set<UniqueKey> of(List<FieldDefinition> defs, Dossier dossier)`.
-  - Vide si le statut bloque les mutations (`CLOTURE`, `ARCHIVE`) — U5.
-  - Une clé par champ unique dont la valeur est non vide — U7.
-  - Valeur canonique — U6 : texte tel quel ; nombre `BigDecimal.stripTrailingZeros().toPlainString()` ; date ISO
-    `yyyy-MM-dd`.
-- Erreur : `FieldValidationError(field, "UNIQUE", message)`. Le message cite le libellé et la référence du dossier
-  existant.
+- `UniqueKey(String field, String value)` et `UniqueFieldKeys.of(List<FieldDefinition> defs, Dossier dossier)` (pur) :
+  - vide si `status.blocksMutation()` (`CLOTURE`, `ARCHIVE`) — U5 ;
+  - une clé par champ unique dont la valeur est non vide — U7 ;
+  - valeur canonique — U6 : texte tel quel ; nombre `new BigDecimal(…).stripTrailingZeros().toPlainString()` ; date
+    ISO `yyyy-MM-dd`.
+- `DossierFieldValidator` : une valeur de champ unique de plus de 500 caractères → erreur `TOO_LONG` (U13).
+- `FieldDefinition` : `unique` refusé sur un nom de champ de plus de 100 caractères (borne de la clé en base).
+- `FieldValidationError` gagne un composant facultatif `reference` (constructeur à trois arguments conservé, `null` par
+  défaut). Une erreur d'unicité : `(field, "UNIQUE", message, referenceExistante)`.
 
 ## Persistance
 
@@ -53,41 +55,52 @@ Deux garde-fous pour l'unicité :
 
 | Colonne | Type | Rôle |
 |---|---|---|
-| `dossier_type_code` | varchar | type |
-| `field_name` | varchar | champ |
-| `field_value` | varchar(1000) | valeur canonique |
-| `dossier_id` | uuid | FK `dossier(id)` `ON DELETE CASCADE` (purge) |
+| `tenant_id` | varchar(64) not null | convention des tables du schéma (cf. 036) |
+| `dossier_type_code` | varchar(64) not null | type (même longueur que `dossier.dossier_type_code`) |
+| `field_name` | varchar(100) not null | champ |
+| `field_value` | varchar(500) not null | valeur canonique |
+| `dossier_id` | uuid not null | FK `dossier(id)` `ON DELETE CASCADE` (purge) |
 
-Clé primaire `(dossier_type_code, field_name, field_value)` ; index sur `dossier_id`. Le tenant est le schéma, la colonne
-`tenant_id` est inutile (décision n° 13). Une valeur plus longue que 1 000 caractères est refusée par la validation du
-champ unique.
+Clé primaire `(tenant_id, dossier_type_code, field_name, field_value)` ; index sur `dossier_id`. Les bornes gardent la clé
+sous la limite d'une entrée B-tree PostgreSQL (≈ 2 700 octets, valeur UTF-8 jusqu'à 4 octets par caractère) : d'où
+U13 (500 caractères) et un nom de champ unique limité à 100 caractères (refus dans `FieldDefinition`).
 
-**Synchronisation à l'enregistrement d'un dossier** (`JpaDossierRepositoryAdapter.save`, même transaction) :
-1. Charger les définitions du type du dossier, verrou `FOR SHARE` sur la ligne `dossier_type` (voir D-UNIQUE-TYPE-LOCK).
-2. Si aucun champ unique et aucune ligne existante : rien à faire (coût nul pour les types sans unicité).
-3. Sinon : supprimer les lignes du dossier, puis `INSERT … ON CONFLICT DO NOTHING RETURNING` les clés de
+**Verrou consultatif par type** (D-UNIQUE-TYPE-LOCK) : clé `hashtext(current_schema() || ':' || code_du_type)` dans un
+espace de clés propre à la fonctionnalité (`pg_advisory_xact_lock_shared(ns, key)` / `pg_advisory_xact_lock(ns, key)`).
+Le schéma entre dans la clé parce que les verrous consultatifs valent pour toute la base. Une collision de hachage entre
+deux types ne coûte qu'une attente, jamais une erreur. Les verrous sont libérés à la fin de la transaction.
+
+**Enregistrement d'un dossier** (`JpaDossierRepositoryAdapter.save`, même transaction que l'écriture) :
+1. Verrou consultatif **partagé** sur le type du dossier. Les enregistrements ne s'attendent jamais entre eux.
+2. Lire les définitions du type (requête fraîche, après le verrou).
+3. Si le type n'a aucun champ unique et que le dossier n'a aucune ligne : terminé.
+4. Sinon : supprimer les lignes du dossier, puis `INSERT … ON CONFLICT DO NOTHING RETURNING` les clés de
    `UniqueFieldKeys`. Une clé non insérée = doublon : lire le dossier qui la détient (la transaction reste valide grâce à
    `ON CONFLICT`) et lever `DossierFieldValidationException(UNIQUE)`, ce qui annule toute la transaction.
 
-Toutes les écritures passent par `DossierRepository.save` (vérifié en phase 2 : aucune requête SQL directe sur
-`dossier`) : création, PATCH (y compris le formulaire de tâche `dossier-fields`), `fieldMappingTask`, dossier enfant,
-import, MCP, changement de statut. La clôture supprime les clés et libère la valeur.
+Vérifié en phase 2 : toutes les écritures passent par `DossierRepository.save` (aucune requête SQL directe sur
+`dossier`) : création, PATCH (dont le formulaire de tâche `dossier-fields`), `fieldMappingTask`, dossier enfant,
+déclencheurs (webhook, Kafka, Service Bus, IMAP/Graph, SFTP), MCP, changement de statut. La clôture supprime les clés et
+libère la valeur.
 
-**Reconstruction à l'enregistrement d'un type** (adaptateur du `DossierTypeRepository`, même transaction) :
-supprimer les lignes des champs qui ne sont plus uniques, insérer celles des champs devenus uniques, pour les dossiers
-ouverts du type. Un conflit à ce stade signifie qu'un doublon a échappé au pré-contrôle : refus (409, comme
-`DossierTypeSchemaIncompatibleException`).
+**Enregistrement d'un type** (`JpaDossierTypeRepositoryAdapter.save`, même transaction) :
+1. Verrou consultatif **exclusif** sur le type : il attend la fin des enregistrements de dossiers en cours et bloque les
+   suivants jusqu'au commit.
+2. Si l'ensemble des champs uniques change : supprimer les lignes des champs qui ne sont plus uniques, puis insérer
+   celles des champs devenus uniques pour les dossiers ouverts du type (`UniqueFieldKeys`, mêmes règles qu'en écriture).
+3. Un conflit à ce stade = doublon créé entre le pré-contrôle et le verrou : `DossierTypeSchemaIncompatibleException`
+   (409, comme aujourd'hui), rien n'est écrit.
 
 ## Pré-contrôles (domaine)
 
 - Port `DossierUniquenessPort.findHolders(String typeCode, Set<UniqueKey> keys, UUID excludeDossierId)` →
-  `Map<UniqueKey, String reference>`.
+  `Map<UniqueKey, String reference>` (lecture de la table, sans verrou).
 - `CreateDossierUseCaseImpl` et `UpdateDossierFieldsUseCaseImpl` : après normalisation, calculer les clés, appeler le
-  port, ajouter une erreur `UNIQUE` par conflit aux erreurs de validation.
-- `UpdateDossierTypeUseCaseImpl` : si l'ensemble des champs uniques change, `CheckDossierTypeSchemaCompatibility`
-  recherche les doublons parmi les dossiers ouverts (calcul en Java avec `UniqueFieldKeys`, sur les dossiers déjà
-  chargés par le contrôle de compatibilité) et refuse avec les valeurs en double et des références d'exemple (U10). La
-  promotion de configuration passe par ce même use case (U12).
+  port, ajouter une erreur `UNIQUE` par conflit aux erreurs de validation (une seule réponse pour toutes les erreurs).
+- `CheckDossierTypeSchemaCompatibilityUseCaseImpl` : quand le schéma proposé rend un champ unique, regrouper les
+  dossiers ouverts déjà chargés par clé ; tout groupe de plus d'un dossier rend le schéma incompatible. Le résultat porte
+  les valeurs en double et des références d'exemple (U10). `UpdateDossierTypeUseCaseImpl` et la promotion
+  (`ImportConfigurationUseCaseImpl`, qui passe par `UpdateDossierTypeUseCase`) en héritent (U12).
 
 ## Brique `dossierSearchTask`
 
@@ -100,27 +113,39 @@ ouverts du type. Un conflit à ce stade signifie qu'un doublon a échappé au pr
 ```
 
 - `searchCriteria` : 1 à 3 lignes `champ = dossierField:<champ>` ou `champ = variable:<nom>`.
-- Déploiement (`FlowableBpmnParserAdapter`, `BlockAttributeRules`) : syntaxe des lignes, nombre de critères, noms de
-  sortie valides et non réservés (§99), attributs de sortie obligatoires. Le type du dossier n'est pas connu au
-  déploiement : le caractère cherchable des champs est vérifié à l'exécution.
-- Exécution (`DossierSearchDelegate` → use case domaine `SearchSimilarDossiersUseCase`) :
-  - charger le dossier courant et son type ; chaque champ critère doit être `searchable`, et chaque source
-    `dossierField:` un champ déclaré non sensible (R8), sinon `FlowableException` → incident rejouable (R6) ;
-  - résoudre les sources ; une source vide → nombre 0, référence vide, sans requête ;
-  - `DossierSearchPort.findOpenMatches(typeCode, predicates, excludeDossierId)` → `(long count, String firstReference)`,
-    `ORDER BY created_at, id LIMIT 1` + `count(*)`, prédicats d'égalité réutilisant le code de la recherche D2 (§81) ;
-  - écrire les deux variables (référence `null` si aucun résultat).
+- Déploiement (`FlowableBpmnParserAdapter`, `BlockAttributeRules`) : syntaxe des lignes, nombre de critères, sorties
+  obligatoires, valides et non réservées (§99). Le type du dossier n'étant pas connu au déploiement, le caractère
+  cherchable des champs est vérifié à l'exécution.
+- Exécution (`DossierSearchDelegate` → `SearchSimilarDossiersUseCase`, domaine, appelant système) :
+  - charger le dossier courant et son type ; chaque champ critère doit être `searchable` ; chaque source `dossierField:`
+    un champ déclaré non sensible (R8). Sinon `FlowableException` → incident rejouable (R6) ;
+  - résoudre les sources ; une source vide → nombre 0, référence `null`, sans requête ;
+  - `DossierSearchPort.findOpenMatches(typeCode, predicates, excludeDossierId)` → `(long count, String firstReference)` :
+    `count(*)` et `ORDER BY created_at, id LIMIT 1`, statut hors `CLOTURE`/`ARCHIVE`, prédicats d'égalité de la recherche
+    D2 (§81) ;
+  - écrire les deux variables.
 - Catalogue `BuildingBlockCatalog` : bloc `dossier-search`, catégorie `DOSSIER`, trois paramètres texte. La palette SPA
-  est générée depuis le catalogue ; `blockDiagnostics` reçoit les règles côté client.
-- MCP : le catalogue est déjà exposé aux outils de conception ; `define_dossier_type` décrit `unique`.
+  est générée depuis ce catalogue (`BuildingBlockController`, `catalogClient.ts`) ; `blockDiagnostics` reprend les
+  règles côté client.
+- MCP : le catalogue est déjà exposé aux outils de conception ; la description de `define_dossier_type` mentionne
+  `unique`.
 
 ## API et SPA
 
 - `FieldDefinition` JSON : propriété `unique` (golden OpenAPI mis à jour).
-- Refus `UNIQUE` : **400** `Dossier field validation failed`, `errors[]` avec `code: "UNIQUE"` (D-UNIQUE-HTTP ⚠).
-- SPA : case « Valeur unique » dans `FieldDefinitionDefsEditor.vue` (désactivée hors `STRING/NUMBER/DATE` et pour un champ
-  sensible), règles dans `validateFieldDefinitions.ts`, type dans `api/types.ts`, messages fr/en. Le formulaire de
-  dossier affiche déjà `errors[]` par champ : vérifier le rendu du code `UNIQUE`.
+- Doublon (D-UNIQUE-HTTP) : **400** `Dossier field validation failed`, `errors[]` avec `field`, `code: "UNIQUE"`,
+  `message`, `reference`. Le MCP (`create_dossier`) renvoie le même détail.
+- Type incompatible : 409 existant, enrichi des valeurs en double.
+- SPA, **constat de phase 3** : les écrans n'affichent aujourd'hui que `detail` (« Dossier field validation failed »),
+  jamais `errors[]`. Ce lot ajoute :
+  - un utilitaire qui extrait `errors[]` d'un `ProblemDetail` (`api/http.ts`, type `FieldError` dans `api/types.ts`,
+    avec `code` et `reference`) ;
+  - l'affichage sous chaque champ dans `DynamicFields.vue`, utilisé par `CreateDossierView.vue` et
+    `DossierFieldsTaskForm.vue` ; message traduit pour `UNIQUE` (« Déjà utilisé par le dossier {reference} »), message
+    serveur pour les autres codes ;
+  - la case « Valeur unique » dans `FieldDefinitionDefsEditor.vue` (désactivée hors `STRING/NUMBER/DATE` et pour un
+    champ sensible), les règles dans `validateFieldDefinitions.ts`, les messages fr/en ;
+  - l'affichage des valeurs en double dans le refus de mise à jour du type (`DossierTypesAdminView.vue`).
 
 ## Décisions
 
@@ -129,29 +154,32 @@ ouverts du type. Un conflit à ce stade signifie qu'un doublon a échappé au pr
 | D-UNIQUE-SCOPE | Dossiers du même type non `CLOTURE`/`ARCHIVE` | toujours ; réglable par champ |
 | D-UNIQUE-EXISTING | Refus de la mise à jour du type en présence de doublons | tolérance des doublons existants |
 | D-UNIQUE-COMPARE | Égalité stricte sur la forme canonique | insensible à la casse et aux espaces |
-| D-UNIQUE-STORE ⚠ | Table `dossier_unique_value` tenue à l'enregistrement | index unique partiel par champ (DDL à l'exécution, interdit) ; verrou consultatif + requête (pas de garantie déclarative, plus difficile à prouver) |
-| D-UNIQUE-TYPE-LOCK ⚠ | `FOR SHARE` sur le type à l'enregistrement d'un dossier | aucun verrou : un dossier enregistré pendant qu'on active `unique` échapperait à la reconstruction |
-| D-UNIQUE-HTTP ⚠ | 400 avec `errors[].code = UNIQUE` | 409 (nouveau traitement côté SPA et MCP) |
+| D-UNIQUE-STORE | Table `dossier_unique_value` tenue à l'enregistrement | verrou consultatif + requête (garantie qui dépend de chaque chemin) ; index unique partiel par champ (DDL à l'exécution, interdit) |
+| D-UNIQUE-TYPE-LOCK | Verrou consultatif par type : partagé à l'enregistrement d'un dossier, exclusif à celui du type | `FOR SHARE` sur la ligne du type (point chaud multixact) ; aucun verrou + contrôle différé (garantie non absolue) |
+| D-UNIQUE-HTTP | 400, `errors[]` avec `code: UNIQUE` et `reference` ; le SPA affiche les erreurs par champ | 409 dédié (second format) ; message général seulement |
 | D-SEARCH-BLOCK-SCOPE | Type courant, non clôturés, hors dossier courant, égalité | type cible déclaré ; tous opérateurs |
 | D-SEARCH-BLOCK-OUTPUT | Nombre + référence du plus ancien | nombre seul ; liste |
 
 ## Sécurité et performance
 
-- Oracle : `unique` interdit sur un champ sensible ; la brique n'accepte que des champs `searchable` (donc non sensibles)
-  et ne renvoie qu'un nombre et une référence (R7).
+- Oracle : `unique` interdit sur un champ sensible ; la brique n'accepte que des critères `searchable` (donc non
+  sensibles) et des sources non sensibles (R8), et ne renvoie qu'un nombre et une référence (R7).
 - Le refus `UNIQUE` révèle une référence de dossier du même type : celui qui écrit a déjà le droit d'édition sur ce type
-  (`DossierAccessPolicy.assertCanEditType`). Le MCP applique la même politique.
-- Coût : une lecture du type par enregistrement de dossier (déjà en cache JPA de premier niveau pour les use cases qui
-  l'ont chargé) ; écriture dans la table seulement pour les types qui ont un champ unique. Brique : une requête sur
-  l'index GIN `jsonb_path_ops` (changeSet 030) restreinte au type.
+  (`DossierAccessPolicy.assertCanEditType`). Même politique en MCP.
+- Coût par enregistrement de dossier : un verrou consultatif partagé (mémoire) et une lecture des définitions du type ;
+  écriture dans la table seulement pour les types qui ont un champ unique. Mise à jour d'un type : bloque brièvement les
+  enregistrements de ce type seulement. Brique : une requête sur l'index GIN `jsonb_path_ops` (changeSet 030), restreinte
+  au type.
+- Déclencheurs entrants : un doublon suit le chemin d'échec existant d'une erreur de validation (webhook 400 ; Kafka,
+  Service Bus, IMAP/Graph, SFTP : traitement d'échec actuel). Un message rejoué après succès est désormais refusé au lieu
+  de créer un doublon.
 - Purge : `ON DELETE CASCADE`.
-- ArchUnit : `UniqueFieldKeys` et le use case de la brique rejoignent `DOSSIER_FIELDS_READ_ALLOWLIST`. Justification :
-  ils ne lisent que des champs non sensibles (unique et cherchable l'excluent) et n'en renvoient aucune valeur à un
-  navigateur.
+- ArchUnit : `UniqueFieldKeys` et `SearchSimilarDossiersUseCase` rejoignent `DOSSIER_FIELDS_READ_ALLOWLIST`, avec cette
+  justification : ils ne lisent que des champs non sensibles et n'en renvoient aucune valeur à un navigateur.
 
 ## Documentation impactée
 
 `docs/specs/04-dossiers.md` (Implémentation), `docs/specs/13-modele-physique.md`, `docs/guides/GUIDE-UTILISATEUR.md`
-(éditeur de schéma, erreur), `docs/guides/GUIDE-CONCEPTION-BPMN.md` (§7 et nouvelle section), registre §102 et
-`docs/decisions/identifiants.md`, `exemples/autorisation-riverain/` (README, DIFFICULTES §1, type-dossier, questions,
-générateur BPMN si la case de vérification y est référencée).
+(éditeur de schéma, erreurs de champ), `docs/guides/GUIDE-CONCEPTION-BPMN.md` (§7 et nouvelle section), registre §102 et
+`docs/decisions/identifiants.md`, `openapi/` (golden), `exemples/autorisation-riverain/` (README, DIFFICULTES §1,
+type-dossier, questions, générateur BPMN si la case de vérification y est référencée).

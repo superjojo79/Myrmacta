@@ -9,8 +9,9 @@ Flux FlowForge entièrement **configuré, sans développement** :
    en pièce jointe de l'e-mail de décision.
 
 Les limites rencontrées et leurs contournements sont décrits dans [DIFFICULTES.md](DIFFICULTES.md).
-Ce sont notamment : l'unicité de la plaque, le portail désactivé et le moteur de modèles strict. L'absence
-de pièce jointe dans les e-mails est levée (issue #183).
+L'unicité de la plaque est levée (issue #184) : la clé calculée est unique, et une seconde demande ouverte
+est refusée. Restent notamment le portail désactivé et le moteur de modèles strict. L'absence de pièce
+jointe dans les e-mails est levée (issue #183).
 
 ## Contenu
 
@@ -48,7 +49,7 @@ annulée et l'issue « autorisée tacitement » s'applique.
 
 | Question | Choix |
 |---|---|
-| Unicité de la plaque | Clé calculée `plaqueNormalisee` (pays + plaque normalisée), cherchable ; vérification déclarée par l'agent |
+| Unicité de la plaque | Clé calculée `plaqueNormalisee` (pays + plaque normalisée), cherchable et unique. La création d'un second dossier ouvert pour la même clé est refusée |
 | Délai | 30 jours calendaires ; repart pour 30 jours complets à chaque retour du demandeur |
 | Compléments | Demandeur via le portail (cible) ; sinon e-mail et saisie par l'agent |
 | Silence du demandeur | Refus motivé après 30 jours, avec le même document |
@@ -82,7 +83,7 @@ Instance locale (`main` après la PR #174, Mailpit pour les e-mails), délais de
 | R4 | Demander des informations, laisser expirer | Minuteur déclenché, `REFUSEE_SANS_REPONSE`, e-mail « refusée », dossier `CLOTURE` |
 | R5 | Laisser expirer l'instruction | Minuteur déclenché, `AUTORISEE_TACITEMENT`, e-mail « accordée », dossier `CLOTURE` |
 | R6 | Adresse `Nom <adresse>` dans le champ `email`, refuser | La complétion de l'agent passe ; l'e-mail asynchrone échoue sans exposer l'adresse (« is not a single e-mail address »), le job finit en *dead letter*. **Levé (PR #176, TODO §94)** : bandeau d'incident sur la fiche, étape marquée dans le diagramme, rejeu admin. Vérifié : adresse corrigée, rejeu, e-mail reçu. |
-| R7 | Doublon `1 aaa 101` de R1 | La recherche `plaqueNormalisee = BE-1AAA101` remonte les deux dossiers |
+| R7 | Doublon `1 aaa 101` de R1 | Observation d'avant l'issue #184 : la recherche `plaqueNormalisee = BE-1AAA101` trouvait les deux dossiers. Désormais la création du second est refusée |
 
 Chaque e-mail est parti à l'adresse du dossier concerné (`dossierField:email`), sans variable de démarrage.
 
@@ -105,7 +106,7 @@ modèle, publie le brouillon et accorde l'ACL ; `manager` ouvre les dossiers, d�
 | R3 | Demander des informations, encoder la réponse, autoriser | E-mail « informations complémentaires » **sans** pièce jointe, retour en instruction, `AUTORISEE`, e-mail avec le PDF, `CLOTURE` |
 | R4 | Demander des informations, laisser expirer | Minuteur déclenché, `REFUSEE_SANS_REPONSE`, e-mail « refusée » avec le PDF, `CLOTURE` |
 | R5 | Laisser expirer l'instruction | Minuteur déclenché, `AUTORISEE_TACITEMENT`, e-mail « accordée » avec le PDF, `CLOTURE` |
-| R7 | Doublon `1-AAA-101` de R1 (`1 aaa 101`) | `search_dossiers` sur `plaqueNormalisee = BE-1AAA101` remonte les deux dossiers |
+| R7 | Doublon `1-AAA-101` de R1 (`1 aaa 101`) | Observation d'avant l'issue #184 : `search_dossiers` sur `plaqueNormalisee = BE-1AAA101` trouvait les deux dossiers. Désormais la création du second est refusée |
 
 **Défaut trouvé et corrigé (TODO §98).** Le PDF reçu affichait en tête le titre et toute la feuille de style du modèle, sans
 mise en page : la feuille de style par défaut du moteur PDF était bloquée par la protection anti-SSRF. Corrigé ; le PDF de
@@ -153,8 +154,9 @@ sans droit **EDIT** sur le type : l'accorder dans Admin → Types de dossier →
    - l'e-mail (Mailpit en local : `http://localhost:8025`) ;
    - le PDF en pièce jointe de l'e-mail ;
    - le statut final.
-5. Doublon : créer un second dossier avec la plaque `1 abc 123` et rechercher
-   `plaqueNormalisee = BE-1ABC123`. Les deux dossiers doivent remonter.
+5. Doublon : alors qu'une demande ouverte porte déjà la plaque `1 abc 123`, créer un second dossier
+   ouvert avec `1-ABC-123` (même clé `BE-1ABC123`). La création est refusée (`UNIQUE`, référence du
+   premier dossier). Un dossier clôturé ne bloque plus cette clé.
 6. Remettre `DELAI` à `"P30D"` avant la mise en production.
 
 ```bash

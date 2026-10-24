@@ -590,7 +590,8 @@ ancien. Une passerelle route ensuite sur le nombre :
   sorties.
 - **Ce n'est pas une garantie d'unicité** : deux exécutions simultanées peuvent toutes deux trouver 0. Pour interdire un
   doublon, déclarer le champ `unique` sur le type (§102) ; la brique sert à router (« le demandeur a-t-il d'autres demandes
-  en cours ? »).
+  en cours ? »). L'exemple `exemples/autorisation-riverain` déclare ainsi la clé calculée `plaqueNormalisee` unique :
+  la seconde demande ouverte est refusée à la création, et l'agent n'a plus à déclarer qu'il a cherché le doublon.
 - La référence trouvée appartient à un autre dossier : ne l'envoyez pas à un tiers externe (notification, portail) sans
   l'avoir voulu.
 

@@ -87,9 +87,9 @@ def build(portail):
     m.wf_status("statutEnInstruction", "Statut : en instruction", 2, "main", "EN_INSTRUCTION")
     m.node("instruction", "userTask", "Instruire la demande", 3, "main",
            {"flowable:formKey": "user-question:instruction-autorisation-riverain"},
-           body="<documentation>Vérifier la demande et l'absence d'autre demande pour le même véhicule "
-                "(recherche sur « Clé d'unicité du véhicule »), puis autoriser, refuser ou demander des "
-                "informations complémentaires. Sans décision dans les 30 jours, l'autorisation est "
+           body="<documentation>Vérifier la demande, puis autoriser, refuser ou demander des "
+                "informations complémentaires. Une seconde demande pour le même véhicule est "
+                "refusée à la création (clé d'unicité). Sans décision dans les 30 jours, l'autorisation est "
                 "accordée automatiquement.</documentation>")
     m.timer("delaiInstruction", "30 jours écoulés", "instruction", top=True)
     m.node("aiguillageDecision", "exclusiveGateway", "Décision ?", 4, "main",

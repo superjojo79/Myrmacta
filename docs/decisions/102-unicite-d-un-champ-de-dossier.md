@@ -1,9 +1,10 @@
 # §102 — Unicité d'un champ de dossier
 
-> **Statut :** ouvert · point de premier niveau · [registre](README.md)
+> **Statut :** clos · point de premier niveau · [registre](README.md)
 
-[ ] en cours (issue [#184](https://github.com/superjojo79/FlowForge/issues/184)). Lot A (unicité, serveur et MCP) et lot B
-(brique « Rechercher des dossiers ») livrés ; restent l'interface (lot C) et l'exemple riverain (lot D).
+[x] clos (issue [#184](https://github.com/superjojo79/FlowForge/issues/184)). Lots A (unicité, serveur et MCP), B
+(brique « Rechercher des dossiers »), C (saisie) et D (exemple riverain) livrés. `plaqueNormalisee` est unique ;
+la vérification manuelle est retirée ; une seconde demande ouverte est refusée à la création.
 
 **Constat.** Aucun champ de dossier ne pouvait être déclaré unique. Dans l'exemple « autorisation riverain »
 (`exemples/autorisation-riverain/DIFFICULTES.md` §1), « une seule demande par plaque » reposait sur une case cochée par
@@ -148,10 +149,11 @@ Choix faits sans arbitrage :
 
 **Revue adversariale du lot C (2026-10-24).** Sept constats (bannière de tâche qui gardait une référence, `detail`
 anglais sur l'écran « corriger », affichage du 409, accessibilité, diagnostics, raison de la case, test du corps sans
-`errors[]`) sont corrigés sur la branche du lot C. Les revues de contrôle suivantes ont isolé la bannière par formulaire,
-puis demandé qu'un PATCH accepté retire l'erreur du champ qu'il corrige. Le point n'est pas clos.
+`errors[]`) sont corrigés. Les revues de contrôle suivantes ont isolé la bannière par formulaire, puis demandé qu'un
+PATCH accepté retire l'erreur du champ qu'il corrige. Le lot D retire la vérification manuelle de l'exemple riverain.
+Le point est clos.
 
-**Impacte :** `docs/specs/04-dossiers.md`, `docs/specs/13-modele-physique.md`, `docs/guides/GUIDE-UTILISATEUR.md`,
+**Impacte :** `docs/specs/04-dossiers.md`, `docs/specs/13-modele-physique.md`, `exemples/autorisation-riverain/`, `docs/guides/GUIDE-UTILISATEUR.md`,
 `docs/guides/GUIDE-CONCEPTION-BPMN.md` (§3octies et §7, lot B ; palette au lot C), golden OpenAPI (`FieldDefinition.unique`), catalogue des briques en version 3 (bloc `search-dossiers`),
 description MCP de `define_dossier_type`. Migration `037` (nouvelle table, vide au déploiement : elle se remplit à
 l'activation de `unique` sur un type).

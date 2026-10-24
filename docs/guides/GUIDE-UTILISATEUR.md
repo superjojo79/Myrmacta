@@ -69,6 +69,17 @@ l'écran dossier) et `sensible` (masquage à l'affichage/export pour tout acteur
 sauvegarde envoie la **liste complète** (pas un ajout unitaire) — même convention que l'outil MCP
 interne `define_dossier_type`.
 
+**Valeur unique (TODO §102).** Une case « Valeur unique » est proposée pour un champ texte, nombre ou
+date qui n'est pas sensible, y compris un champ calculé. Elle est visible mais inactive pour les autres
+types et pour un champ sensible ; la raison est affichée à côté de la case. Cochée, une même valeur ne
+peut figurer que dans un seul dossier en cours de ce type (ni clôturé, ni archivé). Une valeur vide n'est
+jamais un doublon. À la création ou à la correction, un doublon est refusé sous le champ : « Déjà utilisé
+par le dossier {référence} ». Activer la case alors que des dossiers ouverts partagent déjà une valeur est
+refusé : l'écran liste les valeurs et des références (20 au plus ; le total est indiqué). Clôturer le
+dossier libère la valeur. L'exemple « autorisation riverain » l'utilise pour la clé calculée
+`plaqueNormalisee` (pays et plaque normalisés) : une seconde demande ouverte pour le même véhicule est
+refusée à la création, sans case à cocher par l'agent.
+
 **Types structurés (TODO §76).**
 
 | Type | Saisie | Valeur stockée | Règles |

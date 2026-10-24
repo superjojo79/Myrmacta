@@ -104,8 +104,9 @@
       "required": false,
       "group": "Véhicule",
       "searchable": true,
+      "unique": true,
       "formula": "dossier.fields.paysImmatriculation & \"-\" & $uppercase($replace($replace($replace($replace(dossier.fields.plaque, \" \", \"\"), \"-\", \"\"), \".\", \"\"), \"/\", \"\"))",
-      "helpText": "Calculée : pays + plaque sans espaces, tirets, points ni barres, en majuscules. Rechercher sur ce champ pour détecter une demande existante."
+      "helpText": "Calculée : pays + plaque sans espaces, tirets, points ni barres, en majuscules. Une seule demande ouverte peut porter cette clé."
     },
     {
       "name": "marque",

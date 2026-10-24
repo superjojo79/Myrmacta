@@ -10,8 +10,14 @@ Configuration produite le 2026-10-13 sur le tenant `tenant_dev`, via le serveur 
 
 ## 1. « Une seule demande par plaque » ne peut pas être imposée
 
-**Constat.** Un champ de type de dossier ne peut pas être déclaré unique : seule l'unicité des *noms* de
-champs est contrôlée (`DossierType.requireUniqueFieldNames`). Aucune brique BPMN ne permet non plus de
+**Levé (issue #184, TODO §102).** `plaqueNormalisee` est déclarée `unique`. Une seconde demande ouverte
+dont la plaque se normalise vers la même clé est refusée à la création (erreur `UNIQUE`, référence du
+dossier détenteur). L'autorisation tacite ne peut plus accorder un doublon qui n'a pas pu être créé.
+La case « J'ai vérifié qu'aucune autre demande n'existe pour ce véhicule » est retirée du questionnaire
+d'instruction. La clôture du premier dossier libère la clé. Le texte ci-dessous décrit la situation d'origine.
+
+**Constat.** Un champ de type de dossier ne pouvait pas être déclaré unique : seule l'unicité des *noms* de
+champs était contrôlée (`DossierType.requireUniqueFieldNames`). Aucune brique BPMN ne permettait non plus de
 chercher un dossier existant depuis le workflow. Les expressions ne voient que le dossier courant.
 
 **Contournement.**

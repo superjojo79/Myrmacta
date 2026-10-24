@@ -10,7 +10,7 @@
   <process id="autorisationRiverain" name="Autorisation riverain (véhicule)" isExecutable="true">
     <startEvent id="debut" name="Demande introduite"/>
     <serviceTask id="statutEnInstruction" name="Statut : en instruction" flowable:delegateExpression="${updateWorkflowLinkStatusTask}" flowable:targetWorkflowStatus="EN_INSTRUCTION"/>
-    <userTask id="instruction" name="Instruire la demande" flowable:formKey="user-question:instruction-autorisation-riverain"><documentation>Vérifier la demande et l'absence d'autre demande pour le même véhicule (recherche sur « Clé d'unicité du véhicule »), puis autoriser, refuser ou demander des informations complémentaires. Sans décision dans les 30 jours, l'autorisation est accordée automatiquement.</documentation></userTask>
+    <userTask id="instruction" name="Instruire la demande" flowable:formKey="user-question:instruction-autorisation-riverain"><documentation>Vérifier la demande, puis autoriser, refuser ou demander des informations complémentaires. Une seconde demande pour le même véhicule est refusée à la création (clé d'unicité). Sans décision dans les 30 jours, l'autorisation est accordée automatiquement.</documentation></userTask>
     <boundaryEvent id="delaiInstruction" name="30 jours écoulés" attachedToRef="instruction" cancelActivity="true"><timerEventDefinition><timeDuration>P30D</timeDuration></timerEventDefinition></boundaryEvent>
     <exclusiveGateway id="aiguillageDecision" name="Décision ?" default="flow_aiguillageDecision_statutEnAttente"/>
     <serviceTask id="issueTacite" name="Issue : autorisée tacitement" flowable:delegateExpression="${businessExpressionTask}" flowable:formula='"AUTORISEE_TACITEMENT"' flowable:formulaResult="issueDecision"/>

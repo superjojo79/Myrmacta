@@ -29,7 +29,7 @@
         <sshj.version>0.41.2</sshj.version>
         <!-- LC2 (TODO §75) — JSONata, port Java de référence (Apache 2.0) -->
         <jsonata.version>0.9.10</jsonata.version>
-        <poi.version>5.5.1</poi.version>
+        <poi.version>6.0.0</poi.version>
         <commons-csv.version>1.14.1</commons-csv.version>
         <!-- D-SDK=A (serveur-mcp) — Spring AI MCP server WebMVC starter ; D-ASSIST-PROVIDER (revue du 2026-10-02) — starter modèle Anthropic -->
         <spring-ai.version>2.0.1</spring-ai.version>

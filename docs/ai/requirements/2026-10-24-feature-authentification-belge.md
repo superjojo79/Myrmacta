@@ -99,7 +99,7 @@ PKCE, URI de redirection fixe `/realms/<realm>/broker/<alias>/endpoint` (lecture
 | T6 | Champ d'identité **vide** : le NRN vérifié y est écrit **à la soumission**, dans la transaction de la complétion. Si le champ a été rempli entre-temps avec un autre NRN, refus neutre. |
 | T7 | Identité sans NRN (eIDAS étranger) : refus si un NRN est attendu ; si le champ est vide, rien n'est écrit et seul le nom est tracé. |
 | T8 | La trace de la réponse conserve le nom vérifié, le fournisseur, le niveau et le résultat (« conforme », « premier enregistrement », « sans NRN »), jamais le NRN. |
-| T9 | L'identité vérifiée vaut pour **ce lien seulement**, pour une durée bornée. Elle tombe à la soumission, à la révocation, à l'expiration du lien et à la purge du dossier. Un lien renvoyé exige une nouvelle authentification. |
+| T9 | L'identité vérifiée vaut pour **ce lien et cet appareil seulement**, 60 minutes par défaut (réglable, plafond 4 h). Elle tombe à la soumission, à la révocation, à l'expiration du lien et à la purge du dossier. Un lien renvoyé exige une nouvelle authentification. |
 | T10 | Un refus (identité non conforme, niveau insuffisant, authentification annulée) ne révèle pas le NRN attendu : même refus neutre que le portail. |
 | T11 | La clé de l'instance pour `private_key_jwt` (et le déchiffrement d'un jeton chiffré) vient de la configuration, jamais de la base ; sa partie publique est publiée en JWKS à une URL publique de l'instance, enregistrée chez le fournisseur. |
 
@@ -202,6 +202,4 @@ Constats vérifiés dans le code, et corrections apportées :
 
 ## Questions ouvertes
 
-Aucune question d'exigence. Pour la phase 3 : forme du realm généré (fichier d'import ou script `kcadm`), mécanisme du
-mode `idp-only`, stockage de la tentative et de l'identité vérifiée (table ou colonnes de `portal_link`), durée de
-l'identité vérifiée, choix du fournisseur sur la page portail quand les deux sont activés.
+Aucune. Les points de conception ont été tranchés en phase 3 (voir la conception, « Décisions de la phase 3 »).

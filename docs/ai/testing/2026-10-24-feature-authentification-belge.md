@@ -23,7 +23,11 @@ un fournisseur simulé.
       soumission → refus (T6) ; trace sans NRN (T8).
 - [ ] Use case de démarrage : fournisseur non configuré refusé ; `state` à usage unique ; lien inactif → refus neutre.
 - [ ] Use case de retour : `state` inconnu, expiré ou rejoué → refus neutre ; niveau faible → refus ; non-conformité
-      détectée dès le retour.
+      détectée dès le retour ; succès → preuve remise, hachée en base, identité précédente du lien remplacée.
+- [ ] Preuve : expirée (60 min), d'un lien révoqué ou d'un autre lien → refus neutre ; le jeton du lien seul ne suffit
+      plus pour lire le contexte, déposer ou soumettre (T3b, T9).
+- [ ] Durée : `identity-ttl` au-delà de 4 h → démarrage refusé.
+- [ ] Trace `identity_verification` de la réponse : fournisseur, niveau, nom, résultat, sans NRN (T8).
 - [ ] Émission du lien : champ d'identité absent, non `STRING` ou non sensible → `NOT_SENT` (`INVALID_IDENTITY_FIELD`)
       et `notifyNotSent`, sans exception vers le moteur (T2).
 - [ ] Vue portail sans identité : nom de la tâche, référence et fournisseurs seulement ; dépôt de pièce refusé (T3b).
@@ -45,14 +49,21 @@ un fournisseur simulé.
 - [ ] `GET /api/portal/identity/jwks` : clé publique de l'instance seulement (aucun paramètre privé) ; l'assertion
       `private_key_jwt` envoyée à l'endpoint de jeton simulé est signée par cette clé (T11).
 - [ ] Connexion OIDC d'un utilisateur d'un autre tenant : absent de l'annuaire après la tentative (A6).
-- [ ] Provisionnement : `provision-tenant.sh --idp fas --idp itsme --password-login idp-only` génère un realm valide
-      (JSON analysé dans le test), sans secret en clair, refuse d'écraser.
+- [ ] Provisionnement : `provision-tenant.sh --realm-per-tenant --idp fas --idp itsme --password-login idp-only` génère
+      `<tenant>.realm.json` (structure vérifiée : client BFF et mappers, rôles, `default-roles` vide, profil, mappers des
+      fournisseurs sans NRN ni `tenant_id`, surcharge de flux) et `<tenant>.keycloak.sh`, sans secret en clair, et refuse
+      d'écraser ; sans `--realm-per-tenant`, sortie inchangée.
+- [ ] Recette Keycloak (`scripts/keycloak-realm-smoke.sh`, D-BEAUTH-KC-SMOKE) : realm appliqué deux fois sans erreur
+      (idempotence), connexion par le simulateur, compte sans `tenant_id`, aucun NRN dans l'ID token, mode `idp-only`,
+      admin de secours dans la console.
 
 ## Frontend — Vitest
 
 - [ ] Page portail : identité requise → écran de choix du fournisseur, contexte selon la phase 2.
-- [ ] Jeton gardé en `sessionStorage` avant la redirection, relu au retour, effacé après la soumission.
-- [ ] Retour avec erreur → refus neutre ; retour réussi → formulaire.
+- [ ] Aucun stockage navigateur : `#identity:<preuve>` lu une fois, effacé de la barre d'adresse, envoyé en
+      `X-Portal-Identity` (D-BEAUTH-PROOF).
+- [ ] `#identity-refused` → refus neutre ; preuve valide → formulaire ; deux fournisseurs → deux boutons dans l'ordre
+      reçu, un seul sinon.
 
 ## Frontend — Playwright
 

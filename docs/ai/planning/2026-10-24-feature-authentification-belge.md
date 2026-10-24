@@ -12,8 +12,9 @@ Plan initial de phase 1. Chaque tâche de code commence par un test rouge (skill
 
 - [ ] A1 Simulateur : realm `fas-simulateur` (utilisateurs de test, NRN, niveau), client `private_key_jwt` ; branché sur
       le realm de dev.
-- [ ] A2 Provisionnement d'un realm par tenant : `provision-tenant.sh` génère le realm (client BFF, rôles, profil,
-      fournisseurs `fas` et `itsme`, flux de première connexion, mode de mot de passe) ; tests du script.
+- [ ] A2 Provisionnement d'un realm par tenant : `provision-tenant.sh --realm-per-tenant` génère `<tenant>.realm.json` et
+      `<tenant>.keycloak.sh` (client BFF, rôles, profil, fournisseurs `fas` et `itsme`, flux de première connexion, flux
+      `idp-only` et admin de secours) ; tests de structure ; `scripts/keycloak-realm-smoke.sh`.
 - [ ] A3 Annuaire (A6, défaut existant) : `KnownUserRecordingSuccessHandler` vérifie le `tenant_id` avant
       d'enregistrer.
 - [ ] A3b Recette locale agents : connexion simulée, compte sans `tenant_id` refusé puis validé, rattachement, mode
@@ -26,8 +27,8 @@ Plan initial de phase 1. Chaque tâche de code commence par un test rouge (skill
 - [ ] B1 Domaine : `NationalRegisterNumber`, `IdentityAssuranceLevel`, règle de correspondance, identité vérifiée.
 - [ ] B2 BPMN : `flowable:portalIdentityField`, `PortalTaskDefinition`, validation au déploiement (E1, E2) ; émission
       `NOT_SENT` / `INVALID_IDENTITY_FIELD` (T2).
-- [ ] B3 Persistance : tentative (`state`) et identité vérifiée (changeSet `038`), effacement sur soumission,
-      révocation, expiration et purge.
+- [ ] B3 Persistance : changeSet `038` (`portal_identity_attempt`, `portal_link_identity`, `portal_link.identity_field`,
+      `task_question_answer.identity_verification`), effacement sur soumission, révocation, expiration et purge.
 - [ ] B4 Port et adaptateur OIDC direct (FAS, itsme) : URL d'autorisation, échange du code en `private_key_jwt`,
       validation de l'ID token, claims configurables (K5) ; clé de l'instance et JWKS (T11).
 - [ ] B5 Routes `start`, `callback` et `jwks` dans la chaîne portail ; vue réduite avant l'identité (T3b) ; dépôt et

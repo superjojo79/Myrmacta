@@ -10,14 +10,14 @@ Plan initial de phase 1. Chaque tâche de code commence par un test rouge (skill
 
 ## Lot A — Keycloak, agents (priorité : échéance du 05/11)
 
-- [ ] A1 Simulateur : realm `fas-simulateur` (utilisateurs de test, NRN, niveau), client `private_key_jwt` ; branché sur
+- [x] A1 Simulateur : realm `fas-simulateur` (utilisateurs de test, NRN, niveau), client `private_key_jwt` ; branché sur
       le realm de dev.
-- [ ] A2 Provisionnement d'un realm par tenant : `provision-tenant.sh --realm-per-tenant` génère `<tenant>.realm.json` et
+- [x] A2 Provisionnement d'un realm par tenant : `provision-tenant.sh --realm-per-tenant` génère `<tenant>.realm.json` et
       `<tenant>.keycloak.sh` (client BFF, rôles, profil, fournisseurs `fas` et `itsme`, flux de première connexion, flux
       `idp-only` et admin de secours) ; tests de structure ; `scripts/keycloak-realm-smoke.sh`.
-- [ ] A3 Annuaire (A6, défaut existant) : `KnownUserRecordingSuccessHandler` vérifie le `tenant_id` avant
+- [x] A3 Annuaire (A6, défaut existant) : `KnownUserRecordingSuccessHandler` vérifie le `tenant_id` avant
       d'enregistrer.
-- [ ] A3b Recette locale agents : connexion simulée, compte sans `tenant_id` refusé puis validé, rattachement, mode
+- [x] A3b Recette locale agents : connexion simulée, compte sans `tenant_id` refusé puis validé, rattachement, mode
       `idp-only`, aucun NRN dans l'ID token.
 - [ ] A4 Docs : `03-authentification.md`, `02-multi-tenant.md`, `DEPLOIEMENT.md` (realm par tenant, fournisseurs
       belges, conditions FAS et itsme, procédure de migration).

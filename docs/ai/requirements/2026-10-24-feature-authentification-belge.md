@@ -82,7 +82,7 @@ PKCE, URI de redirection fixe `/realms/<realm>/broker/<alias>/endpoint` (lecture
 | A1 | La page de connexion du realm du tenant propose les fournisseurs activés. |
 | A2 | Première connexion par un fournisseur sans compte relié : Keycloak crée le compte **sans `tenant_id` ni rôle**. FlowForge le refuse (403, `TenantResolutionFilter`) jusqu'à ce qu'un admin pose le `tenant_id` et les rôles. |
 | A3 | Un agent qui a déjà un compte peut y relier le fournisseur en se ré-authentifiant (flux Keycloak standard). Le `sub` reste le même, donc ses ACL, assignations et entrées d'annuaire aussi. |
-| A4 | Connexion par mot de passe réglable par tenant : mot de passe et fournisseurs côte à côte (défaut), ou fournisseurs seuls avec un compte admin de secours à mot de passe. |
+| A4 | Connexion par mot de passe réglable par tenant : mot de passe et fournisseurs côte à côte (défaut), ou fournisseurs seuls. En mode « fournisseurs seuls », les comptes de secours (rôle `secours`) entrent encore dans FlowForge par mot de passe et OTP Keycloak. Sans `--realm-per-tenant`, rien ne change. |
 | A5 | Le NRN d'un agent n'est jamais transmis à FlowForge : aucun mapper ne le pose dans les jetons du client BFF. |
 | A6 | Un utilisateur dont le `tenant_id` est absent ou différent de celui de l'instance n'entre jamais dans l'annuaire des assignés, et n'obtient aucune session. |
 

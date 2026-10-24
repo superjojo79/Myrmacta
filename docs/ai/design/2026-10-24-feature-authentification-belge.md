@@ -78,7 +78,8 @@ Il écrit alors deux fichiers, et refuse comme aujourd'hui d'écraser des fichie
   2. pose les secrets et métadonnées des fournisseurs depuis l'environnement (`FAS_CLIENT_ID`, `FAS_CLIENT_SECRET` ou
      clé, `ITSME_CLIENT_ID`, issuers) ;
   3. crée le client M2M actuel ;
-  4. en mode `idp-only`, crée l'admin de secours (mot de passe temporaire et OTP obligatoire), sans rôle FlowForge.
+  4. en mode `idp-only`, crée le rôle `secours` et l'admin de secours (rôles `secours` et `TENANT_ADMIN`, `tenant_id`,
+     mot de passe temporaire et OTP à configurer à la première connexion).
 
 `OIDC_ISSUER_URI` et `KEYCLOAK_REALM` du `<tenant>.env` pointent vers ce realm. Sans `--realm-per-tenant`, le
 comportement actuel (realm partagé) est inchangé.
@@ -94,11 +95,22 @@ URI à enregistrer chez le fournisseur : `https://<keycloak>/realms/flowforge-<t
 
 ### Mode « fournisseurs seuls » (D-BEAUTH-IDP-ONLY)
 
-Le flux `browser-fournisseurs` enchaîne `Cookie`, puis le formulaire de choix du fournisseur (`identity-provider-redirector`
-sans fournisseur par défaut, la page de connexion n'affichant que les boutons). Il est attaché au client BFF par la
-surcharge de flux par client (`authenticationFlowBindingOverrides.browser`). La console d'administration du realm garde le
-flux `browser` standard : l'admin de secours y entre par mot de passe et OTP pour corriger Keycloak si FAS est en panne,
-mais pas dans FlowForge. Le flux exact (exécutions et exigences) est validé par la recette Keycloak.
+Le flux `browser-fournisseurs` est attaché au client BFF par la surcharge de flux par client
+(`authenticationFlowBindingOverrides.browser`). Il comporte :
+
+- `Cookie` (alternative) ;
+- `Identity Provider Redirector` (alternative, sans fournisseur par défaut) ;
+- un sous-flux `formulaire` (alternative), qui commence par `Username Form` puis enchaîne deux sous-flux conditionnels :
+  - si l'utilisateur **n'a pas** le rôle `secours` (`conditional-user-role`, négation) : `Deny Access` ;
+  - s'il l'a : `Password Form` puis `OTP Form`.
+
+La page de connexion affiche les boutons des fournisseurs et un champ d'identifiant. Seul un compte `secours` peut aller
+plus loin par mot de passe et OTP (décision de l'utilisateur, 2026-10-24 : l'admin de secours doit pouvoir administrer
+FlowForge si FAS est en panne). Il porte aussi `TENANT_ADMIN`. La console d'administration du realm garde le flux
+`browser` standard.
+
+Écart accepté : l'identifiant saisi révèle si le compte est un compte de secours (refus immédiat sinon). Le flux exact est
+validé par la recette Keycloak.
 
 ### Annuaire (A6, défaut existant)
 
@@ -269,7 +281,7 @@ réglage par tâche.
 | Identifiant | Décision | Écarté |
 |---|---|---|
 | D-BEAUTH-PROVISION (utilisateur) | JSON déclaratif + script idempotent qui l'applique et pose les secrets | `kcadm` seul (flux illisibles) ; keycloak-config-cli (dépendance) |
-| D-BEAUTH-IDP-ONLY (utilisateur) | Flux sans mot de passe attaché au client BFF ; console du realm pour l'admin de secours | Comptes sans mot de passe (simple convention) ; redirection automatique (incompatible avec deux fournisseurs) |
+| D-BEAUTH-IDP-ONLY (utilisateur) | Flux dédié au client BFF : fournisseurs pour tous, mot de passe et OTP pour les seuls comptes `secours` | Comptes sans mot de passe (simple convention) ; redirection automatique (incompatible avec deux fournisseurs) ; aucun mot de passe vers FlowForge (admin bloqué si FAS est en panne) |
 | D-BEAUTH-STORE (utilisateur) | Deux tables, cascade depuis `portal_link`, changeSet `038` | Jetons signés côté navigateur (pas d'usage unique) ; colonnes de `portal_link` |
 | D-BEAUTH-TTL (utilisateur) | 60 min par défaut, réglable, plafond 4 h | 30 min fixes ; durée du lien |
 | D-BEAUTH-PROVIDER-CHOICE (utilisateur) | Un bouton par fournisseur configuré, ordre de l'instance | Choix par tâche ; un seul fournisseur |

@@ -121,6 +121,7 @@ jamais en le supprimant ou en le renumérotant ; un nouveau point prend le numé
 | 100 | [Une table DMN ne peut pas écrire une variable réservée](100-sortie-dmn-vers-une-variable-reservee.md) | clos | — |
 | 101 | [Le connecteur `document-storage` ne touche que ce qu'il a stocké pour le dossier](101-document-storage-limite-au-dossier.md) | clos | — |
 | 102 | [Unicité d'un champ de dossier](102-unicite-d-un-champ-de-dossier.md) | ouvert | — |
+| 103 | [Authentification belge (FAS, itsme) des agents et des tiers du portail](103-authentification-belge-fas-et-itsme.md) | ouvert | — |
 
 ## Sections de l'ancien registre
 

@@ -12,7 +12,8 @@ set -euo pipefail
 usage() {
   cat <<'USAGE'
 Usage: scripts/provision-tenant.sh <tenant_id> [-o <fichier.sql>] [--apply]
-                                   [--instance-dir <dossier> --port <port>]
+                                   [--instance-dir <dossier> --port <port>
+                                    [--realm-per-tenant [--idp fas|itsme]... [--password-login both|idp-only]]]
 
   <tenant_id>       Identifiant de tenant (schéma + rôle PostgreSQL). Doit matcher
                      ^[a-z][a-z0-9_]{2,52}$ (3 à 53 caractères) — le rôle généré
@@ -43,6 +44,18 @@ Usage: scripts/provision-tenant.sh <tenant_id> [-o <fichier.sql>] [--apply]
 
   --port <port>     Port local (127.0.0.1) de l'instance. Requis avec --instance-dir.
 
+  --realm-per-tenant
+                    Avec --instance-dir : realm Keycloak propre au tenant (flowforge-<tenant_id>,
+                     TODO §103, modèle par défaut en production). Écrit aussi
+                     <tenant_id>.realm.json (déclaratif, sans secret), que <tenant_id>.keycloak.sh
+                     applique avant de créer le client machine-to-machine. Requiert jq.
+  --idp fas|itsme   Fournisseur d'identité belge du realm (répétable) : FAS de BOSA (eID, itsme,
+                     eIDAS) ou itsme en direct. Requiert --realm-per-tenant.
+  --password-login both|idp-only
+                    both (défaut) : mot de passe Keycloak et fournisseurs côte à côte. idp-only :
+                     fournisseurs seuls pour FlowForge ; seuls les comptes de rôle « secours » gardent
+                     le mot de passe et l'OTP. Requiert --realm-per-tenant et au moins un --idp.
+
 Variables d'environnement :
   TENANT_DB_PASSWORD  Mot de passe du rôle applicatif du tenant (requis dans tous les
                        modes : le SQL généré contient toujours "CREATE ROLE ... PASSWORD").
@@ -52,6 +65,10 @@ Variables d'environnement :
   Avec --instance-dir, valeurs reprises si elles sont définies (sinon à compléter) :
   TENANT_DB_URL, OIDC_ISSUER_URI, OIDC_CLIENT_ID, FLOWFORGE_IMAGE (défaut flowforge:latest),
   KEYCLOAK_REALM (défaut flowforge).
+  Avec --realm-per-tenant (requis) : KEYCLOAK_URL (ex. https://auth.example.be) et PUBLIC_BASE_URL
+  (URL publique des instances, sans le préfixe du tenant). Facultatif : FAS_CLAIM_GIVEN_NAME,
+  FAS_CLAIM_FAMILY_NAME, FAS_CLAIM_EMAIL, ITSME_CLAIM_GIVEN_NAME, ITSME_CLAIM_FAMILY_NAME,
+  ITSME_CLAIM_EMAIL (noms des claims, à confirmer auprès du fournisseur).
 
 Exemples :
   # SQL sur stdout, pour revue avant application
@@ -76,6 +93,9 @@ output_file=""
 apply=0
 instance_dir=""
 port=""
+realm_per_tenant=0
+idps=()
+password_login="both"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -96,6 +116,20 @@ while [[ $# -gt 0 ]]; do
     --port)
       [[ $# -ge 2 ]] || { echo "--port requiert un argument" >&2; exit 1; }
       port="$2"
+      shift 2
+      ;;
+    --realm-per-tenant)
+      realm_per_tenant=1
+      shift
+      ;;
+    --idp)
+      [[ $# -ge 2 ]] || { echo "--idp requiert un argument" >&2; exit 1; }
+      idps+=("$2")
+      shift 2
+      ;;
+    --password-login)
+      [[ $# -ge 2 ]] || { echo "--password-login requiert un argument" >&2; exit 1; }
+      password_login="$2"
       shift 2
       ;;
     -h|--help)
@@ -143,6 +177,123 @@ if [[ -n "$instance_dir" ]]; then
     exit 1
   fi
 fi
+
+# --- Realm par tenant (TODO §103) : options validées avant toute écriture ---------------------------------------
+if (( realm_per_tenant == 0 )); then
+  if (( ${#idps[@]} > 0 )) || [[ "$password_login" != "both" ]]; then
+    echo "--idp et --password-login requièrent --realm-per-tenant." >&2
+    exit 1
+  fi
+else
+  [[ -n "$instance_dir" ]] || { echo "--realm-per-tenant requiert --instance-dir." >&2; exit 1; }
+  command -v jq >/dev/null || { echo "--realm-per-tenant requiert jq." >&2; exit 1; }
+  for idp in "${idps[@]}"; do
+    [[ "$idp" == "fas" || "$idp" == "itsme" ]] || { echo "Fournisseur inconnu : '$idp' (fas ou itsme)." >&2; exit 1; }
+  done
+  [[ "$password_login" == "both" || "$password_login" == "idp-only" ]] \
+    || { echo "--password-login : both ou idp-only (reçu : '$password_login')." >&2; exit 1; }
+  if [[ "$password_login" == "idp-only" ]] && (( ${#idps[@]} == 0 )); then
+    echo "--password-login idp-only requiert au moins un --idp." >&2
+    exit 1
+  fi
+  : "${KEYCLOAK_URL:?KEYCLOAK_URL doit être défini avec --realm-per-tenant (ex. https://auth.example.be)}"
+  : "${PUBLIC_BASE_URL:?PUBLIC_BASE_URL doit être défini avec --realm-per-tenant (URL publique des instances)}"
+  KEYCLOAK_URL="${KEYCLOAK_URL%/}"
+  PUBLIC_BASE_URL="${PUBLIC_BASE_URL%/}"
+  KEYCLOAK_REALM="flowforge-${tenant_id}"
+  OIDC_ISSUER_URI="${OIDC_ISSUER_URI:-${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}}"
+  OIDC_CLIENT_ID="${OIDC_CLIENT_ID:-mon-app}"
+fi
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+new_uuid() {
+  if [[ -r /proc/sys/kernel/random/uuid ]]; then
+    cat /proc/sys/kernel/random/uuid
+  else
+    uuidgen | tr '[:upper:]' '[:lower:]'
+  fi
+}
+
+generate_realm_json() {
+  local idps_json claims_json
+  idps_json="$(printf '%s\n' "${idps[@]}" | jq -R . | jq -cs 'map(select(. != ""))')"
+  claims_json="$(jq -cn \
+    --arg fg "${FAS_CLAIM_GIVEN_NAME:-givenName}" --arg ff "${FAS_CLAIM_FAMILY_NAME:-surname}" \
+    --arg fe "${FAS_CLAIM_EMAIL:-mail}" --arg ig "${ITSME_CLAIM_GIVEN_NAME:-given_name}" \
+    --arg if "${ITSME_CLAIM_FAMILY_NAME:-family_name}" --arg ie "${ITSME_CLAIM_EMAIL:-email}" \
+    '{fas: {given: $fg, family: $ff, email: $fe}, itsme: {given: $ig, family: $if, email: $ie}}')"
+  jq -n -f "${script_dir}/tenant-realm.jq" \
+    --arg tenant "$tenant_id" --arg base "$PUBLIC_BASE_URL" --arg mode "$password_login" \
+    --arg flowId "$(new_uuid)" --argjson idps "$idps_json" --argjson claims "$claims_json"
+}
+
+# Section « realm » de <tenant>.keycloak.sh (TODO §103) : variables figées au provisionnement, puis logique littérale.
+generate_realm_section() {
+  cat <<SECTION
+
+# --- Realm du tenant (TODO §103, D-BEAUTH-PROVISION) -------------------------------------------------------------
+# Créé depuis ${tenant_id}.realm.json s'il est absent ; sinon complété par import partiel (clients, rôles,
+# fournisseurs existants conservés ; les flux d'authentification ne sont posés qu'à la création).
+REALM_FILE="\$(cd "\$(dirname "\${BASH_SOURCE[0]}")" && pwd)/${tenant_id}.realm.json"
+IDPS="${idps[*]:-}"
+PASSWORD_LOGIN="${password_login}"
+SECTION
+  cat <<'SECTION'
+command -v jq >/dev/null || { echo "jq est requis." >&2; exit 1; }
+
+if "$KCADM" get "realms/$REALM" >/dev/null 2>&1; then
+  "$KCADM" create partialImport -r "$REALM" -s ifResourceExists=SKIP -f "$REALM_FILE" >/dev/null
+  echo "Realm $REALM déjà présent : complété (import partiel, flux d'authentification inchangés)." >&2
+else
+  "$KCADM" create realms -f "$REALM_FILE"
+fi
+
+# Identifiants d'un fournisseur : URL de découverte et client enregistré chez lui, depuis l'environnement.
+# FAS : FAS_DISCOVERY_URL, FAS_CLIENT_ID, et FAS_CLIENT_SECRET si BOSA a émis un secret (sinon private_key_jwt,
+# signé par la clé du realm). itsme : ITSME_DISCOVERY_URL, ITSME_CLIENT_ID, toujours private_key_jwt.
+configure_idp() {
+  local alias="$1" prefix="$2" discovery client secret imported current
+  discovery="$(printenv "${prefix}_DISCOVERY_URL" || true)"
+  client="$(printenv "${prefix}_CLIENT_ID" || true)"
+  secret="$(printenv "${prefix}_CLIENT_SECRET" || true)"
+  if [[ -z "$discovery" || -z "$client" ]]; then
+    echo "Fournisseur $alias : ${prefix}_DISCOVERY_URL et ${prefix}_CLIENT_ID requis — non configuré." >&2
+    return 1
+  fi
+  imported="$("$KCADM" create identity-provider/import-config -r "$REALM" -s providerId=oidc -s fromUrl="$discovery" -o)"
+  current="$("$KCADM" get "identity-provider/instances/$alias" -r "$REALM")"
+  jq --argjson imported "$imported" --arg client "$client" --arg secret "$secret" --arg alias "$alias" '
+    .config += ($imported | with_entries(select(.key | IN("authorizationUrl", "tokenUrl", "userInfoUrl",
+                                                       "jwksUrl", "issuer", "logoutUrl"))))
+    | .config.clientId = $client | .config.validateSignature = "true" | .config.useJwksUrl = "true"
+    | if $secret != "" and $alias == "fas"
+      then .config.clientSecret = $secret | .config.clientAuthMethod = "client_secret_post"
+      else .config.clientAuthMethod = "private_key_jwt" end' <<<"$current" \
+    | "$KCADM" update "identity-provider/instances/$alias" -r "$REALM" -f -
+  echo "Fournisseur $alias configuré. URI à enregistrer chez lui : <keycloak>/realms/$REALM/broker/$alias/endpoint" >&2
+}
+
+for idp in $IDPS; do
+  case "$idp" in
+    fas) configure_idp fas FAS ;;
+    itsme) configure_idp itsme ITSME ;;
+  esac
+done
+
+# Mode « fournisseurs seuls » : compte de secours (mot de passe temporaire, OTP à la première connexion).
+if [[ "$PASSWORD_LOGIN" == "idp-only" ]]; then
+  : "${SECOURS_PASSWORD:?SECOURS_PASSWORD doit être défini (mot de passe temporaire du compte de secours)}"
+  SECOURS_USER="${SECOURS_USERNAME:-secours}"
+  if [[ -z "$("$KCADM" get users -r "$REALM" -q exact=true -q username="$SECOURS_USER" --fields id --format csv --noquotes)" ]]; then
+    "$KCADM" create users -r "$REALM" -s username="$SECOURS_USER" -s enabled=true \
+      -s "attributes.tenant_id=[\"$TENANT\"]" -s 'requiredActions=["CONFIGURE_TOTP"]'
+    "$KCADM" set-password -r "$REALM" --username "$SECOURS_USER" --new-password "$SECOURS_PASSWORD" --temporary
+    "$KCADM" add-roles -r "$REALM" --uusername "$SECOURS_USER" --rolename secours --rolename TENANT_ADMIN
+    echo "Compte de secours $SECOURS_USER créé (mot de passe temporaire, OTP à configurer)." >&2
+  fi
+fi
+SECTION
+}
 
 : "${TENANT_DB_PASSWORD:?TENANT_DB_PASSWORD doit être défini (mot de passe du rôle ${role_name})}"
 
@@ -193,9 +344,10 @@ generate_instance_files() {
   compose_env="${dir}/${tenant_id}.compose.env"
   apache="${dir}/${tenant_id}.apache.conf"
   keycloak="${dir}/${tenant_id}.keycloak.sh"
+  local realm_file="${dir}/${tenant_id}.realm.json"
   headers="${dir}/proxy-headers.conf"
   local f
-  for f in "$env_file" "$compose_env" "$apache" "$keycloak"; do
+  for f in "$env_file" "$compose_env" "$apache" "$keycloak" "$realm_file"; do
     if [[ -e "$f" ]]; then
       echo "$f existe déjà — génération refusée (pas d'écrasement)." >&2
       exit 1
@@ -271,6 +423,10 @@ ProxyPass        "/${tenant_id}" "http://127.0.0.1:${port}/${tenant_id}"
 ProxyPassReverse "/${tenant_id}" "http://127.0.0.1:${port}/${tenant_id}"
 APACHE
 
+  if (( realm_per_tenant == 1 )); then
+    generate_realm_json > "$realm_file"
+  fi
+
   cat > "$keycloak" <<KEYCLOAK
 #!/usr/bin/env bash
 # Client machine-to-machine du tenant '${tenant_id}' (docs/guides/DEPLOIEMENT.md §7) — généré par
@@ -282,6 +438,11 @@ KCADM="\${KCADM:-kcadm.sh}"
 REALM="\${KEYCLOAK_REALM:-${KEYCLOAK_REALM:-flowforge}}"
 CLIENT="${m2m_client}"
 TENANT="${tenant_id}"
+KEYCLOAK
+  if (( realm_per_tenant == 1 )); then
+    generate_realm_section >> "$keycloak"
+  fi
+  cat >> "$keycloak" <<KEYCLOAK
 
 client_id() {
   "\$KCADM" get clients -r "\$REALM" -q clientId="\$CLIENT" --fields id --format csv --noquotes
@@ -322,8 +483,12 @@ fi
 echo "Client \$CLIENT prêt (realm \$REALM). Secret : \$KCADM get clients/\$id/client-secret -r \$REALM"
 KEYCLOAK
   chmod 700 "$keycloak"
+  if (( realm_per_tenant == 1 )); then
+    chmod 644 "$realm_file"
+  fi
 
-  echo "Configuration de l'instance écrite dans ${dir} (${tenant_id}.env, .compose.env, .apache.conf, .keycloak.sh)." >&2
+  echo "Configuration de l'instance écrite dans ${dir} (${tenant_id}.env, .compose.env, .apache.conf, .keycloak.sh$( \
+    (( realm_per_tenant == 1 )) && printf ', .realm.json'))." >&2
 }
 
 if [[ -n "$instance_dir" ]]; then

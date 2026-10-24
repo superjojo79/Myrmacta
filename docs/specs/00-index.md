@@ -2,7 +2,9 @@
 
 > Projet : activité indépendante complémentaire  
 > Stack de base : Java 25 LTS · Spring Boot 4.1.x · PostgreSQL · Vue 3  
-> Build : mono-module Maven · frontend embarqué (`static/`) — décision n° 27
+> Build : mono-module Maven · frontend embarqué (`static/`) — décision n° 27  
+> Licence : PolyForm-Noncommercial-1.0.0, licence commerciale sur demande — [LICENSING.md](../../LICENSING.md),
+> [TRADEMARKS.md](../../TRADEMARKS.md), décision n° 103
 >
 > **Revues :** pré-implémentation (docs, points 1–39) —
 > [docs/analyses/REVUE-PRE-IMPLEMENTATION.md](../analyses/REVUE-PRE-IMPLEMENTATION.md) ;

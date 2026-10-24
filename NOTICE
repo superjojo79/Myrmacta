@@ -1,0 +1,41 @@
+NOTICE
+
+Required Notice: Copyright 2026 Benoit Joseph (contact@myrmacta.be)
+Required Notice: Licensed under the PolyForm Noncommercial License 1.0.0 (LICENSE) together with the Belgian-law addendum LICENSE-ADDENDUM.md, which must accompany every copy. Commercial licenses: contact@myrmacta.be.
+
+Le Logiciel de ce dépôt est concédé sous la PolyForm Noncommercial License 1.0.0
+([`LICENSE`](LICENSE), texte officiel non modifié), complétée par l'addendum de droit belge
+[`LICENSE-ADDENDUM.md`](LICENSE-ADDENDUM.md). L'explication est [`LICENSING.md`](LICENSING.md).
+Les deux lignes « Required Notice » ci-dessus accompagnent toute copie, avec `LICENSE` et
+`LICENSE-ADDENDUM.md`. Le nom commercial (Myrmacta), le nom de code et le logo ont pour source de
+vérité le tableau Dénomination de [`TRADEMARKS.md`](TRADEMARKS.md). Ce fichier n'est pas un
+conseil juridique.
+
+Ces trois fichiers sont à la racine du dépôt, à la racine du jar (`META-INF/LICENSE`,
+`META-INF/NOTICE`, `META-INF/LICENSE-ADDENDUM.md`) et dans l'image Docker
+(`/usr/share/doc/myrmacta/`).
+
+Les composants tiers gardent leur licence. L'inventaire est
+[`docs/analyses/audit-licences-2026-10-24.md`](docs/analyses/audit-licences-2026-10-24.md).
+Notices à conserver en particulier :
+
+- Flying Saucer : LGPL-2.1 or later.
+- OpenPDF : MPL-2.0 OU LGPL-2.1+.
+- Liquibase 4.33.0 : Apache-2.0. Les versions 5.x (FSL) ne sont pas embarquées.
+- Logback : EPL-2.0 OU LGPL-2.1-only. AspectJ weaver : EPL-2.0.
+- Police Liberation Sans : SIL OFL-1.1. Noms réservés : Liberation, Arimo, Tinos, Cousine.
+  Ne pas vendre la police seule.
+- bpmn-js et dmn-js : permission Camunda / bpmn.io, avec le filigrane vers https://bpmn.io
+  qui doit rester visible.
+
+---
+
+The Software in this repository is licensed under the PolyForm Noncommercial License 1.0.0
+(LICENSE, official unmodified text), together with the Belgian-law addendum LICENSE-ADDENDUM.md.
+See LICENSING.md. The two “Required Notice” lines above must accompany every copy, with LICENSE
+and LICENSE-ADDENDUM.md. These three files are at the repository root, at the root of the jar
+(`META-INF/`), and in the Docker image (`/usr/share/doc/myrmacta/`). The commercial name
+(Myrmacta), the code name, and the logo have their source of truth in the Dénomination table of
+TRADEMARKS.md. This file is not legal advice.
+
+Third-party components keep their own licenses. See the audit named above.

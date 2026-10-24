@@ -17,8 +17,22 @@
     <name>FlowForge</name>
     <description>Plateforme de gestion de flux métier, de dossiers et de génération de documents</description>
 
+    <!-- Décision n° 103. Identifiant SPDX : PolyForm-Noncommercial-1.0.0. La licence commerciale est un contrat séparé. -->
+    <licenses>
+        <license>
+            <name>PolyForm Noncommercial License 1.0.0</name>
+            <url>https://polyformproject.org/licenses/noncommercial/1.0.0</url>
+            <distribution>repo</distribution>
+            <comments>SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0</comments>
+        </license>
+    </licenses>
+
     <properties>
         <java.version>25</java.version>
+        <!-- Décision n° 103. Spring Boot 4.1.1 gère Liquibase 5.0.3, sous FSL-1.1-ALv2.
+             4.33.0 est la dernière version dont le texte de licence et le POM sont Apache-2.0.
+             Dependabot ignore org.liquibase:* >= 5.0.0 (.github/dependabot.yml). -->
+        <liquibase.version>4.33.0</liquibase.version>
         <!-- Décision n° 27 — versions de stack -->
         <flowable.version>8.0.0</flowable.version>
         <flying-saucer.version>10.6.0</flying-saucer.version>

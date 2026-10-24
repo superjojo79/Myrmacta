@@ -119,6 +119,7 @@ jamais en le supprimant ou en le renumérotant ; un nouveau point prend le numé
 | 98 | [Feuille de style par défaut du rendu PDF](098-feuille-de-style-par-defaut-du-rendu-pdf.md) | clos | — |
 | 99 | [Le BPMN ne peut pas recopier une valeur dans une variable réservée](099-recopie-bpmn-vers-une-variable-reservee.md) | clos | — |
 | 100 | [Une table DMN ne peut pas écrire une variable réservée](100-sortie-dmn-vers-une-variable-reservee.md) | clos | — |
+| 101 | [Le connecteur `document-storage` ne touche que ce qu'il a stocké pour le dossier](101-document-storage-limite-au-dossier.md) | clos | — |
 
 ## Sections de l'ancien registre
 

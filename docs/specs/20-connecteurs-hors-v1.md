@@ -136,6 +136,10 @@ dossier.
   jointes, purgées avec le dossier). À la charge du process BPMN de le supprimer explicitement
   (`DELETE`) s'il ne doit pas persister indéfiniment — à documenter clairement comme un piège
   potentiel, pas un bug.
+- **D-STORAGE-REF-DOSSIER** (TODO §101, issue #205) — `connectorInput` est posable à la complétion d'une tâche. Depuis un
+  process, `RETRIEVE` / `EXISTS` / `DELETE` n'acceptent donc qu'un objet que le connecteur a stocké pour le **dossier de
+  l'exécution** (registre `connector_stored_object`, rempli au `STORE`). Une pièce d'un dossier ou un contenu stocké pour
+  un autre dossier est refusé. Un appel direct (admin, M2M) garde la portée du tenant.
 - **Config schema** : aucun champ requis a priori (réutilise le `DocumentStoragePort` déjà
   configuré au niveau instance) — à confirmer en design.
 

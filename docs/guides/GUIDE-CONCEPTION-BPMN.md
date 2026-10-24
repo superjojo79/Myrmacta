@@ -593,6 +593,10 @@ Variables lues par `connectorServiceTask` :
 Variable écrite : `connectorResult` (`Map<String, Object>`, uniquement si le résultat n'est pas
 vide) — à lire dans les tâches suivantes du même processus.
 
+Avec `document-storage`, `RETRIEVE`, `EXISTS` et `DELETE` n'acceptent que ce que le connecteur a stocké (`STORE`) pour le
+dossier du process, dans ce workflow ou un autre du même dossier. Une pièce du dossier se lit par les pièces jointes, pas
+par ce connecteur (TODO §101).
+
 ### Étape 3 (facultative) — signal Flowable entre deux processus
 
 Le connecteur `flowable-signal` permet à un `serviceTask` (`${connectorServiceTask}` avec

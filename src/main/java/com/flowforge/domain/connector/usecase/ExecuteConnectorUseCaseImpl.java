@@ -1,5 +1,6 @@
 package com.flowforge.domain.connector.usecase;
 
+import com.flowforge.domain.connector.model.ConnectorCallContext;
 import com.flowforge.domain.connector.model.ConnectorDefinition;
 import com.flowforge.domain.connector.model.ConnectorInstanceData;
 import com.flowforge.domain.connector.model.ConnectorInstanceNotFoundException;
@@ -27,7 +28,9 @@ public final class ExecuteConnectorUseCaseImpl implements ExecuteConnectorUseCas
     }
 
     @Override
-    public Map<String, Object> execute(UUID instanceId, String tenantId, Map<String, Object> inputParams) {
+    public Map<String, Object> execute(
+            UUID instanceId, String tenantId, Map<String, Object> inputParams, ConnectorCallContext context) {
+        Objects.requireNonNull(context, "context");
         ConnectorInstanceData instance = repository
                 .findByIdAndTenantId(instanceId, tenantId)
                 .filter(ConnectorInstanceData::enabled)
@@ -43,7 +46,7 @@ public final class ExecuteConnectorUseCaseImpl implements ExecuteConnectorUseCas
                     "Connector type does not implement ServiceConnector: " + instance.connectorType());
         }
         Map<String, Object> params = inputParams == null ? Map.of() : inputParams;
-        Map<String, Object> result = service.execute(instance, params);
+        Map<String, Object> result = service.execute(instance, params, context);
         return result == null ? Map.of() : result;
     }
 }

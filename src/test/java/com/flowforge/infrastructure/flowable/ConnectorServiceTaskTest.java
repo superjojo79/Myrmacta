@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.flowforge.domain.connector.model.ConnectorCallContext;
 import com.flowforge.domain.connector.port.in.ExecuteConnectorUseCase;
 import com.flowforge.infrastructure.config.TenantProperties;
 import java.util.Map;
@@ -15,6 +16,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class ConnectorServiceTaskTest {
+
+    private static final ConnectorCallContext NO_DOSSIER = ConnectorCallContext.process(null);
 
     private ExecuteConnectorUseCase executeUseCase;
     private ConnectorServiceTask task;
@@ -33,12 +36,12 @@ class ConnectorServiceTaskTest {
         when(execution.getVariable("connectorInstanceId")).thenReturn(id.toString());
         when(execution.getVariable("tenantId")).thenReturn(null);
         when(execution.getVariable("connectorInput")).thenReturn(Map.of("signalName", "s"));
-        when(executeUseCase.execute(eq(id), eq("tenant_dev"), eq(Map.of("signalName", "s"))))
+        when(executeUseCase.execute(eq(id), eq("tenant_dev"), eq(Map.of("signalName", "s")), eq(NO_DOSSIER)))
                 .thenReturn(Map.of("signaled", true));
 
         task.execute(execution);
 
-        verify(executeUseCase).execute(id, "tenant_dev", Map.of("signalName", "s"));
+        verify(executeUseCase).execute(id, "tenant_dev", Map.of("signalName", "s"), NO_DOSSIER);
         verify(execution).setVariable("connectorResult", Map.of("signaled", true));
     }
 
@@ -55,10 +58,33 @@ class ConnectorServiceTaskTest {
         UUID id = UUID.randomUUID();
         when(execution.getVariable("connectorInstanceId")).thenReturn(id);
         when(execution.getVariable("connectorInput")).thenReturn(null);
-        when(executeUseCase.execute(id, "tenant_dev", Map.of())).thenReturn(Map.of());
+        when(executeUseCase.execute(id, "tenant_dev", Map.of(), NO_DOSSIER)).thenReturn(Map.of());
 
         task.execute(execution);
 
-        verify(executeUseCase).execute(id, "tenant_dev", Map.of());
+        verify(executeUseCase).execute(id, "tenant_dev", Map.of(), NO_DOSSIER);
+    }
+
+    @Test
+    void execute_passesTheDossierOfTheExecution() {
+        UUID id = UUID.randomUUID();
+        UUID dossierId = UUID.randomUUID();
+        when(execution.getVariable("connectorInstanceId")).thenReturn(id);
+        when(execution.getVariable("dossierId")).thenReturn(dossierId.toString());
+
+        task.execute(execution);
+
+        verify(executeUseCase).execute(id, "tenant_dev", Map.of(), ConnectorCallContext.process(dossierId));
+    }
+
+    @Test
+    void execute_aDossierIdThatIsNotAUuid_givesNoDossier() {
+        UUID id = UUID.randomUUID();
+        when(execution.getVariable("connectorInstanceId")).thenReturn(id);
+        when(execution.getVariable("dossierId")).thenReturn("pas-un-uuid");
+
+        task.execute(execution);
+
+        verify(executeUseCase).execute(id, "tenant_dev", Map.of(), NO_DOSSIER);
     }
 }

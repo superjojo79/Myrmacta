@@ -3,8 +3,8 @@
 > **Statut :** ouvert · point de premier niveau · [registre](README.md)
 
 [ ] en cours (issue [#211](https://github.com/superjojo79/FlowForge/issues/211)), livré par lots : **P** (types de pièces)
-[x] livré ; **A** (fournisseur et extraction), **B** (moteur et brique), **C** (panneau), **D** (documentation et
-évaluation) à venir. Cadrage : [`docs/analyses/fiche-preverification-ia.md`](../analyses/fiche-preverification-ia.md).
+[x] livré ; **A** (fournisseur et extraction) [x] livré ; **B** (moteur et brique), **C** (panneau), **D** (documentation
+et évaluation) à venir. Cadrage : [`docs/analyses/fiche-preverification-ia.md`](../analyses/fiche-preverification-ia.md).
 
 **Constat.** Une brique de workflow doit pré-vérifier un dossier avant son instruction (complétude, règles, synthèse
 avec constats sourcés), l'agent gardant la décision. Or une pièce jointe n'était qu'un élément `ATTACHMENT` à libellé
@@ -31,6 +31,22 @@ ni l'exclusion des pièces sensibles n'étaient possibles. Le lot P comble ce ma
   propose **et** que le type du dossier déclare (sinon refus avant stockage) ; sans attribut, dépôt non classé comme
   avant. La vue du portail ne donne que la clé et le libellé, jamais `sensitive`. Écarté : classement par l'agent
   seulement.
+
+**Lot A — fournisseur et extraction (livré, sans effet visible : rien ne l'appelle encore).**
+
+- **D-PRECHECK-PROVIDER** — `spring-ai-openai` 2.0.1 (module seul, sans starter ni auto-configuration) pour les
+  fournisseurs compatibles OpenAI, réponse contrainte par `response_format: json_schema` strict ; Anthropic par le
+  `ChatModel` de l'assistant, schéma donné dans les consignes. Transport `java.net.http` sans redirection ni relance,
+  réponse bornée (même principe que l'assistant). Dépendance réellement tirée : `openai-java-core`, `okhttp` 4.12 (déjà
+  présent) ; `azure-identity` n'est pas tiré ; `kotlin-stdlib-common` 1.9.10 exclu comme pour Anthropic.
+- **D-PRECHECK-CONFIG** — `app.precheck.*`, désactivé par défaut et distinct de `app.assistant.*` ; HTTPS hors boucle
+  locale, sauf `allow-plain-http=true` (réseau interne, données en clair : risque documenté) ; clé facultative pour un
+  serveur local (jeton factice envoyé) ; bornes validées même désactivé.
+- **D-PRECHECK-BUDGET** — plafond de jetons par jour UTC et par instance, vérifié avant chaque appel (pas de
+  réservation : un appel en cours peut dépasser d'une réponse).
+- **D-PRECHECK-EXTRACT** — PDFBox 3.0.8 : PDF à couche texte et texte brut UTF-8, pages et caractères bornés, lecture en
+  mémoire bornée (64 Mo, aucun fichier temporaire) ; image, scan, PDF chiffré, illisible ou format non pris en charge
+  donnent un statut, jamais une erreur.
 
 **Décisions des lots suivants (tranchées, non encore livrées).** Fournisseur par API compatible OpenAI
 (`spring-ai-openai`) et Anthropic ; configuration `app.precheck.*` désactivée par défaut ; brique asynchrone

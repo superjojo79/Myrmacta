@@ -27,7 +27,7 @@
 > **Extension du périmètre (2026-08-26) :** quatre tools de lecture à
 > faible risque ajoutés au V1 (§ [Capacités en périmètre V1](#capacités-en-périmètre-v1),
 > points 4 à 7) ; quatre tools d'écriture à risque modéré identifiés et
-> placés en [backlog](#backlog--extensions-futures-envisageables-hors-v1),
+> placés en [backlog](#backlog--écritures-métier-lot-a3--mcp-ecritures-metier),
 > pas retenus pour le V1.
 >
 > **Extension (2026-09-06, feature `extension-mcp-flux-metier`, TODO §56) :** 7 nouveaux tools
@@ -203,7 +203,7 @@ tool `query_sla_summary` dans cette V1.
 - Pas de création d'instances `Dossier` ni d'autres écritures à risque
   modéré via MCP en V1 (`create_dossier`, `add_dossier_element`,
   `start_workflow`, `generate_document`) — identifiées et détaillées en
-  [backlog](#backlog--extensions-futures-envisageables-hors-v1).
+  [backlog](#backlog--écritures-métier-lot-a3--mcp-ecritures-metier).
 - Pas de Flowable Modeler/Cockpit ni d'édition visuelle de BPMN via MCP —
   déjà écarté du produit ([DEFERRED-FEATURES.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) §1.5).
 
